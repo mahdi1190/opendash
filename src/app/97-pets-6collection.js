@@ -66,13 +66,14 @@ function _ptCollection(root) {
       b.innerHTML = icon(ic, 'i-sm');
       b.appendChild(_ptEl('span', null, label)); b.appendChild(_ptEl('b', null, String(n)));
       b.setAttribute('aria-pressed', String(_ptCol.filter === id));
-      b.onclick = () => { _ptCol.filter = id; paint(); };
+      b.onclick = () => { if (_ptCol.filter === id) return; _ptCol.filter = id; paint(); };
       filters.appendChild(b);
     }
   };
   const card = (r) => {
     const c = _ptEl('button', 'ptl-card ptr-' + (PET_RARITY[r.rar] || PET_RARITY[0]).id + (r.owned ? ' is-owned' : ' is-locked') + (r.me ? ' is-me' : '') + (r.can ? ' is-ready' : '') + (r.fresh ? ' is-fresh' : '') + (_ptCol.sel === r.id ? ' is-sel' : ''));
     c.type = 'button'; c.dataset.id = r.id;
+    if (_ptCol.sel === r.id) c.setAttribute('aria-current', 'true');
     const art = _ptEl('span', 'ptl-art');
     if (r.owned) art.innerHTML = petSvg(r.me ? petGet().look : petRosterLook(r.id), { size: 92, pose: 'sit', crop: 'none', mood: { eyes: 'open', mouth: 'smile' } });
     else { art.innerHTML = _ptSilhouette(r.id, 92); }
@@ -93,7 +94,14 @@ function _ptCollection(root) {
       if (rt.type !== 'enc') c.appendChild(_ptBar(r.pct));
       c.setAttribute('aria-label', `A pet you have not met yet: ${rt.line}`);
     }
-    c.onclick = () => { _ptCol.sel = r.id; for (const x of grid.querySelectorAll('.is-sel')) x.classList.remove('is-sel'); c.classList.add('is-sel'); paintPanel(r.id); if (matchMedia('(max-width: 900px)').matches) panel.scrollIntoView({ block: 'nearest' }); };
+    c.onclick = () => {
+      if (_ptCol.sel !== r.id) {
+        _ptCol.sel = r.id;
+        for (const x of grid.querySelectorAll('.is-sel')) { x.classList.remove('is-sel'); x.removeAttribute('aria-current'); }
+        c.classList.add('is-sel'); c.setAttribute('aria-current', 'true'); paintPanel(r.id);
+      }
+      if (panel.getBoundingClientRect().bottom <= grid.getBoundingClientRect().top) panel.scrollIntoView({ block: 'nearest' });
+    };
     return c;
   };
   const paint = () => {
@@ -101,10 +109,18 @@ function _ptCollection(root) {
     paintFilters(all);
     grid.replaceChildren();
     const show = all.filter(r => (_ptCol.filter === 'all' ? true : _ptCol.filter === 'mine' ? r.owned : _ptCol.filter === 'find' ? !r.owned : r.can));
+    if (!show.some(r => r.id === _ptCol.sel)) {
+      const next = show.find(r => r.me) || show.find(r => r.can) || show[0];
+      _ptCol.sel = next ? next.id : '';
+    }
+    panel.hidden = !show.length;
+    body.classList.toggle('is-empty', !show.length);
     for (const r of show) grid.appendChild(card(r));
-    if (!show.length) grid.appendChild(emptyLine(_ptCol.filter === 'now' ? 'Nothing ready yet. Keep playing.' : 'Nobody here yet.'));
-    if (!_ptCol.sel || !all.some(r => r.id === _ptCol.sel)) _ptCol.sel = (all.find(r => r.can) || all.find(r => !r.owned) || all[0]).id;
-    paintPanel(_ptCol.sel);
+    if (show.length) paintPanel(_ptCol.sel);
+    else {
+      grid.appendChild(emptyLine(_ptCol.filter === 'now' ? 'Nothing ready yet. Keep playing.' : 'Nobody here yet.'));
+      panel.replaceChildren();
+    }
     petCollectSeen();
   };
   const after = () => { paintHead(); paint(); };
@@ -203,6 +219,7 @@ function _ptRoomCard(S) {
         else b.appendChild(_ptCostIcon(x.treats ? 'treats' : 'coins', x.treats || x.coins, 13));
       }
       b.onclick = () => {
+        if (own && (kind === 'toy' ? petToyNow() : petBedNow()) === x.id) return;
         if (!own) {
           const r = petBuy(key);
           if (!r.ok) { _ptDeny(b, r.why === 'bond' ? { kind: 'lock', badge: r.need, say: 'Needs a higher friend level' } : { kind: r.why === 'coins' ? 'coins' : '', badge: r.need, say: 'Not enough ' + r.why }); return; }

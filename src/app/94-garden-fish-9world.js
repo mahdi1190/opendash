@@ -55,7 +55,20 @@ function _gcwGulls(o) {
 function _gcwEvent(id, sc, o) {
   const L = gardenLakeWater(), [x0, y0] = _gcwP(L.x, L.y), [x1, y1] = _gcwP(L.x + L.w, L.y + L.h), w = x1 - x0, h = y1 - y0, mov = (c) => (o.still ? '' : c), r = gardenRand('ev-art|' + id); let s = '';
   switch (id) {
-    case 'fog': for (let i = 0; i < 14; i++) s += `<ellipse class="${mov('gca-drift')}" style="animation-delay:-${i * 4}s" cx="${_gcwN(x0 + w * r())}" cy="${_gcwN(y0 - 16 + h * 0.55 * r())}" rx="${_gcwN(110 + r() * 110)}" ry="${_gcwN(16 + r() * 22)}" fill="#f4f6f8" fill-opacity=".5"/>`; return s;
+    case 'fog': {
+      const uid = (o.uid || 'gd') + '-lake-fog';
+      for (let i = 0; i < 14; i++) {
+        const cx = Number(_gcwN(x0 + w * r())), cy = Number(_gcwN(y0 - 16 + h * 0.55 * r())), rx = Number(_gcwN(110 + r() * 110)), ry = Number(_gcwN(16 + r() * 22)), id = uid + '-' + i;
+        // All four sectors sample one full-veil gradient in the same world
+        // coordinates. Their static body can use the existing native cache;
+        // only its original drift group moves, including reduced-motion rules.
+        s += `<defs><radialGradient id="${id}" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="1" gradientTransform="translate(${cx} ${cy}) scale(${rx} ${ry})"><stop offset="0" stop-color="#f4f6f8" stop-opacity="1"/><stop offset=".28" stop-color="#f4f6f8" stop-opacity=".9"/><stop offset=".6" stop-color="#f4f6f8" stop-opacity=".42"/><stop offset=".84" stop-color="#f4f6f8" stop-opacity=".1"/><stop offset="1" stop-color="#f4f6f8" stop-opacity="0"/></radialGradient></defs><g class="${mov('gca-drift')}" style="animation-delay:-${i * 4}s">`;
+        const ends = [[cx + rx, cy], [cx, cy + ry], [cx - rx, cy], [cx, cy - ry]];
+        for (let q = 0; q < 4; q++) { const a = ends[q], b = ends[(q + 1) % 4]; s += `<path d="M${cx} ${cy}L${a[0]} ${a[1]}A${rx} ${ry} 0 0 1 ${b[0]} ${b[1]}Z" fill="url(#${id})" fill-opacity=".5"/>`; }
+        s += '</g>';
+      }
+      return s;
+    }
     case 'storm': { s += `<rect x="${_gcwN(x0)}" y="${_gcwN(y0)}" width="${_gcwN(w)}" height="${_gcwN(h)}" fill="#0a1a2e" fill-opacity=".26"/><rect class="${mov('gca-flash')}" x="${_gcwN(x0)}" y="${_gcwN(y0 - 300)}" width="${_gcwN(w)}" height="${_gcwN(h + 300)}" fill="#f4f8ff" fill-opacity="0"/>`; let d = ''; for (let i = 0; i < 12; i++) { const x = x0 + r() * w, y = y0 + r() * h * 0.6; d += `M${_gcwN(x)} ${_gcwN(y)}q8 -3 18 0`; } return s + `<path d="${d}" stroke="#ffffff" stroke-opacity=".5" stroke-width="1.4" fill="none" stroke-linecap="round"/>`; }
     case 'meteor': for (let i = 0; i < 5; i++) { const x = x0 + w * (0.1 + r() * 0.8), y = y0 - 130 + r() * 120; s += `<path class="${mov('gca-streak')}" style="animation-delay:-${_gcwN(i * 1.7)}s" d="M${_gcwN(x)} ${_gcwN(y)}l-46 22" stroke="#fff6c8" stroke-width="2" stroke-linecap="round"/>`; const rx = x0 + w * (0.1 + r() * 0.8), ry = y0 + 20 + r() * h * 0.5; s += `<path d="M${_gcwN(rx)} ${_gcwN(ry)}l-16 7" stroke="#fff6c8" stroke-opacity=".35" stroke-width="1.4" stroke-linecap="round"/>`; } return s;
     case 'blood-moon': { const cx = x0 + w * 0.68, cy = y0 - 90; return `<rect x="${_gcwN(x0)}" y="${_gcwN(y0)}" width="${_gcwN(w)}" height="${_gcwN(h)}" fill="#8a1a1a" fill-opacity=".2"/><circle cx="${_gcwN(cx)}" cy="${_gcwN(cy)}" r="34" fill="#c8402a"/><circle cx="${_gcwN(cx - 9)}" cy="${_gcwN(cy - 7)}" r="7" fill="#a83020"/><circle cx="${_gcwN(cx + 11)}" cy="${_gcwN(cy + 9)}" r="5" fill="#a83020"/><ellipse cx="${_gcwN(cx)}" cy="${_gcwN(y0 + 60)}" rx="36" ry="10" fill="#e8503a" fill-opacity=".42"/><ellipse cx="${_gcwN(cx)}" cy="${_gcwN(y0 + 84)}" rx="24" ry="6" fill="#e8503a" fill-opacity=".3"/>`; }
@@ -85,9 +98,10 @@ function gardenCatchWorldArt(sc, o) {
   try { const live = !sc.ca; if (live) { list = gardenEventsNow(); hot = gardenHotSpot(gardenHere().today); } } catch (e) { hot = null; }
   for (const s of GARDEN_SPOTS) {
     const draw = _GCW_SPOT[s.id]; if (!draw) continue;
-    const [x, y] = _gcwP(s.x, s.y); let art = draw(s, o, ca);
-    if (fed.has(s.id)) { const r = gardenRand('fed|' + s.id); for (let i = 0; i < 12; i++) art += `<circle cx="${_gcwN((r() - 0.5) * 50)}" cy="${_gcwN((r() - 0.5) * 18)}" r="1.1" fill="#e8c88a"/>`; }
-    if (!(sc.season === 'winter' && _GCW_FLAT.has(s.id))) push('sp' + s.id + (fed.has(s.id) ? 'f' : '') + (s.id === 'lily-pads' ? Math.floor((Number(ca.rl) || 0) / 3) : ''), _GCW_FLAT.has(s.id) ? Math.ceil(s.y) - 3 : Math.ceil(s.y), s.x, `<g transform="translate(${_gcwN(x)} ${_gcwN(y)})">${art}</g>`);
+    const packed = typeof gardenIslandActive === 'function' && gardenIslandActive() && (s.id === 'reed-bank' || s.id === 'lily-pads');
+    const [x, y] = _gcwP(s.x, s.y); let art = packed ? '' : draw(s, o, ca);
+    if (!packed && fed.has(s.id)) { const r = gardenRand('fed|' + s.id); for (let i = 0; i < 12; i++) art += `<circle cx="${_gcwN((r() - 0.5) * 50)}" cy="${_gcwN((r() - 0.5) * 18)}" r="1.1" fill="#e8c88a"/>`; }
+    if (art && !(sc.season === 'winter' && _GCW_FLAT.has(s.id))) push('sp' + s.id + (fed.has(s.id) ? 'f' : '') + (s.id === 'lily-pads' ? Math.floor((Number(ca.rl) || 0) / 3) : ''), _GCW_FLAT.has(s.id) ? Math.ceil(s.y) - 3 : Math.ceil(s.y), s.x, `<g transform="translate(${_gcwN(x)} ${_gcwN(y)})">${art}</g>`);
     if (hot && hot.id === s.id) push('hot' + s.id, Math.ceil(s.y) + 1, s.x, `<g transform="translate(${_gcwN(x)} ${_gcwN(y)})">${_gcwGulls(o)}</g>`);
   }
   for (const id of list) { const svg = _gcwEvent(id, sc, o); if (svg) push('ev' + id, id === 'festival' ? 13 : 29, 0, svg, true); }

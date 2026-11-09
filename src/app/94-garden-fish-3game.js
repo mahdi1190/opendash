@@ -18,6 +18,7 @@
    is an HTML panel over the stage. State: _gw.fishing, _gw.reel, _gw.netting, _gw.bugs (94-garden-world-0walk.js declares _gw).
    ============================================================ */
 const NS_SVG = 'http://www.w3.org/2000/svg';
+let _gwFishHudNode = null;   // presentation only; never part of a fishing plan or snapshot
 function _gwActors() { if (_grm.on && _grm.game) return _grm.game; return _gw.svg ? _gw.svg.querySelector('.gd-actors') : null; }
 function _gwEl(tag, attrs) { return gardenSceneElement(tag, attrs); }
 function _gwPx(x, y) { if (x >= GARDEN_ROOM_X) return gardenRoomPx(x, y); const W = GARDEN_WORLD; return [x * W.cellW, W.sky + y * W.cellH]; }
@@ -54,10 +55,10 @@ function _gwFishResume() {
   if (R && box) { box.appendChild(R.el); box.addEventListener('pointerdown', R.down, true); box.focus({ preventScroll: true }); }
 }
 function _gwFishBusy() { return !!(_gw.fishing && _gw.fishing.state !== 'idle'); }
-function _gwFishReset() { if (_gwFishBusy() && typeof gardenLiveFx === 'function') gardenLiveFx('fish', 'in'); _gwFishClearFx(); _gw.fishing = null; _gwReelClose(); _gwFishFocus(false); }
+function _gwFishReset() { if (typeof gardenHelpInviteClear === 'function') gardenHelpInviteClear(); if (_gwFishBusy() && typeof gardenLiveFx === 'function') gardenLiveFx('fish', 'in'); _gwFishClearFx(); _gw.fishing = null; _gwReelClose(); _gwFishFocus(false); }
 /** Fishing locks you in: the camera closes in on you, nothing under the pointer lights up, the toolbar rests; a little bar says what to do. */
 function _gwFishFocus(on) {
-  if (!on) gardenMessageDrop('fish');
+  if (!on) { _gwFishHudNode = null; gardenMessageDrop('fish'); }
   if (!_gdp.root) return;
   _gdp.root.classList.toggle('is-fishing', !!on);
   const box = _gdgBox();
@@ -68,19 +69,21 @@ function _gwFishFocus(on) {
 }
 const _GW_FISH_SAY = { cast: 'Casting…', wait: 'Waiting for a fish…', bite: 'Now! Click or press Space', reel: 'Hold to lift the bar', land: '', help: 'You have the second line. Hold to lift the bar.' };
 function _gwFishHud(F) {
-  const box = _gdgBox(); if (!box) return;
+  const box = _gdgBox(); if (!box) { _gwFishHudNode = null; return; }
   // what is going on is the message line; while the reel is up it says what it is doing (94-garden-fish-8reel.js). Down here only the button
   if (!_gw.reel) {
     const say = F.state === 'wait' ? F.mood || _GW_FISH_SAY.wait : _GW_FISH_SAY[F.state] || '';
     gardenMessageHold('fish', say, F.state === 'bite' ? { urgent: true, tone: 'now' } : { urgent: F.state === 'reel' || F.state === 'help' });
   }
-  let h = box.querySelector('.gd-fishhud');
+  let h = _gwFishHudNode;
+  if (!h || h.parentNode !== box) h = box.querySelector('.gd-fishhud');
   if (!h) {
     h = document.createElement('div'); h.className = 'gd-fishhud';
     h.innerHTML = '<button type="button" class="gd-fishhud-b">Reel in <kbd>Esc</kbd></button>';
     h.querySelector('button').onclick = (ev) => { ev.stopPropagation(); _gwFishCancel('You wound the line in.'); };
     box.appendChild(h);
   }
+  _gwFishHudNode = h;
   h.hidden = F.state === 'land' || F.state === 'reel';
 }
 function _gwFishClearFx() { if (_gw.fx) { for (const k of ['line', 'rod', 'bob', 'bubble', 'wake', 'ring', 'reel']) if (_gw.fx[k] && _gw.fx[k].remove) _gw.fx[k].remove(); if (_gw.fx.skin) _gw.fx.skin.g.remove(); } _gw.fx = null; }
@@ -209,6 +212,7 @@ function _gwRing(x, y, k) {
   layer.appendChild(g); setTimeout(() => g.remove(), 1500);
 }
 function _gwFishCancel() {
+  if (typeof gardenHelpInviteClear === 'function') gardenHelpInviteClear();
   // you wound it in yourself: that is not a mistake, so nothing is said
   if (!_gwFishBusy()) return;
   if (typeof gardenLiveFx === 'function') gardenLiveFx('fish', 'in');
@@ -260,6 +264,7 @@ function _gwFishCast(pt0) {
   _gwFacePt(pt);
   const plan = gardenFishPlan(Math.floor(pt.x), Math.floor(pt.y));
   if (!plan.ok) { _gdpSay(plan); return; }
+  if (typeof gardenHelpInviteClear === 'function') gardenHelpInviteClear();
   if (typeof _gmo !== 'undefined' && _gmo.g) gardenMomentEnd();
   if (typeof _gfsTooClose === 'function' && _gfsDecides() && _gfsTooClose(pt)) _gdpSay({ ok: false, msg: 'Too close! Your float landed on it and scared it. Cast just in front of a shadow.' });
   _gw.fishing = { state: 'cast', t: 0, plan, bx: pt.x, by: pt.y, nibN: 0, nibble: 0, hold: false, fu: null, mood: '' };
@@ -409,13 +414,18 @@ function _gwBugsSync(m) {
     const node = _gwEl('g', { class: 'gd-bug', 'data-bk': s.key, 'data-live': '1', 'data-z': String(s.y) });
     node.innerHTML = `<g class="gb-sh"><ellipse cx="0" cy="0" rx="${(GW_BUG_SCALE * 9 * def.size).toFixed(1)}" ry="${(GW_BUG_SCALE * 3 * def.size).toFixed(1)}" fill="#1a2a14" fill-opacity="0.18"/></g><g class="gb-lift"><g class="gb-in" transform="scale(${(GW_BUG_SCALE * def.size).toFixed(2)})">${gardenBugArt(s.id, { uid: 'bg' + (gardenHash(s.key) % 9999).toString(36), v: s.v })}</g></g>`;
     _gwPlace(node, s.y);
-    const b = { key: s.key, id: s.id, v: s.v || '', def, x: s.x, y: s.y, tx: s.x, ty: s.y, state: 'rest', timer: 0.6 + (s.t || 0) * 4, lift: def.rest === 'crawl' ? 0 : 5, face: 1, node, liftEl: node.querySelector('.gb-lift'), inEl: node.querySelector('.gb-in'), fleeT: 0, hab: s.hab, seed: s.t || Math.random(), anchor: { x: s.x, y: s.y } };
+    const b = { key: s.key, id: s.id, v: s.v || '', def, x: s.x, y: s.y, tx: s.x, ty: s.y, state: 'rest', timer: 0.6 + (s.t || 0) * 4, lift: def.rest === 'crawl' ? 0 : 5, face: 1, node, liftEl: node.querySelector('.gb-lift'), inEl: node.querySelector('.gb-in'), fleeT: 0, hab: s.hab, beach: !!s.beach && gardenBugBeachCell(s.x, s.y), seed: s.t || Math.random(), anchor: { x: s.x, y: s.y } };
     _gw.bugs.set(s.key, b);
   }
   for (const [k, b] of _gw.bugs) if (!keep.has(k)) { if (b.node && b.node.remove) b.node.remove(); _gw.bugs.delete(k); }
   _gw.bugsAt = performance.now();
 }
 function _gwBugFree(x, y) { return gardenWalkable(Math.floor(x), Math.floor(y)) || gardenIsWater(Math.floor(x), Math.floor(y)) && false; }
+function _gwBugBeachRoute(ax, ay, bx, by) {
+  const W = GARDEN_WORLD, steps = Math.max(1, Math.ceil(Math.hypot((bx - ax) * W.cellW, (by - ay) * W.cellH) / 8));
+  for (let i = 1; i <= steps; i++) { const t = i / steps, x = ax + (bx - ax) * t, y = ay + (by - ay) * t; if (!gardenBugBeachCell(x, y) || !gardenWorldFree(x, y, .08)) return false; }
+  return true;
+}
 function _gwBugPick(b, far) {
   // somewhere to go: near its anchor (a flower, a log), or well away when it bolts
   const W = GARDEN_WORLD;
@@ -427,9 +437,10 @@ function _gwBugPick(b, far) {
     if (b.hab === 'water' || b.def.hab.includes('water') && Math.random() < 0.5) { if ((water || y >= 20) && !gardenAreaAt(Math.floor(x), Math.floor(Math.max(y, 20.4)), 99).startsWith('locked')) return { x, y: Math.max(y, 20.4) }; continue; }
     if (flyer ? !!gardenPropAt(Math.floor(x), Math.floor(y)) || gardenAreaAt(Math.floor(x), Math.floor(y), 99).startsWith('locked') : !gardenWalkable(Math.floor(x), Math.floor(y))) continue;
     if (!flyer && water) continue;
+    if (b.beach && (!gardenBugBeachCell(x, y) || !_gwBugBeachRoute(b.x, b.y, x, y))) continue;
     return { x, y };
   }
-  return { x: b.anchor.x, y: b.anchor.y };
+  return b.beach ? { x: b.x, y: b.y } : { x: b.anchor.x, y: b.anchor.y };
 }
 /* a fish leaps out of the lake somewhere in view now and then, with a splash: just for life (never while you fish, never with motion off) */
 function _gwLeapFrame(dt) {
@@ -483,7 +494,7 @@ function _gwBugsFrame(dt) {
         const wob = !crawl && motion ? Math.sin(_gw.t * 6 + b.seed * 9) * 0.25 : 0;
         const nx = b.x + dx / dist * sp * dt * (1 + wob * 0.2), ny = b.y + dy / dist * sp * dt * 0.7;
         // what crawls keeps to the same ground you do (the one collision map); what flies goes over it
-        if (crawl && !gardenWorldFree(nx, ny, 0.08)) { b.state = 'rest'; b.timer = 0.6 + Math.random() * 2; }
+        if (crawl && (!gardenWorldFree(nx, ny, 0.08) || b.beach && !gardenBugBeachCell(nx, ny))) { b.state = 'rest'; b.timer = 0.6 + Math.random() * 2; }
         else { b.x = nx; b.y = ny; }
         if (Math.abs(dx) > 0.05) b.face = dx > 0 ? 1 : -1;
         b.lift += ((crawl ? 0 : 13 + Math.sin(_gw.t * 5 + b.seed * 7) * 3) - b.lift) * Math.min(1, dt * 4);

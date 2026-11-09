@@ -57,7 +57,7 @@ function _gdpSay(r, target) {
 
 /* ---------- the section, the sidebar, the palette ---------- */
 registerSection('garden', {
-  match: v => v === 'garden' || /^garden:(shop|almanac|basket|friends|catch)$/.test(String(v || '')),
+  match: v => v === 'garden' || /^garden:(shop|almanac|basket|friends|catch|update)$/.test(String(v || '')),
   title: () => 'Garden',
   crumb: v => (_gdpTab(v) === 'garden' ? [] : [GARDEN_TABS.find(t => t[0] === _gdpTab(v))[1]]),
   group: 'home', layout: 'bare', hashable: true, taskControls: false, icon: 'sprout',
@@ -90,6 +90,7 @@ registerCommand({ id: 'garden-almanac', label: 'Garden almanac and ribbons', ico
 registerCommand({ id: 'garden-basket', label: 'Garden basket and bouquets', icon: 'shopping-basket', keywords: 'garden basket harvest sell market bouquet', run: () => setView('garden:basket') });
 registerCommand({ id: 'garden-photo', label: 'Take a photo of the garden', icon: 'camera', keywords: 'garden photo picture image png', run: () => { gardenEnsure(); if (typeof gardenPhotoOpen === 'function') gardenPhotoOpen(); } });
 registerCommand({ id: 'garden-timelapse', label: 'Garden time-lapse', icon: 'film', keywords: 'garden time lapse history growth replay', run: () => { gardenEnsure(); if (typeof gardenTimelapseOpen === 'function') gardenTimelapseOpen(); } });
+registerCommand({ id: 'garden-update', label: 'Finish the garden update', icon: 'sprout', keywords: 'garden island update share earlier computer', run: () => setView('garden:update') });
 
 /* ---------- mount ---------- */
 function _gdpMount(container, view) {
@@ -98,11 +99,86 @@ function _gdpMount(container, view) {
     mountEmptyState(container, { icon: 'sprout', title: 'Your garden is waking up', text: 'Reading your history so everything you have grown comes with you.' });
     return;
   }
+  if (view === 'garden:update' || !gardenWorldReady()) {
+    _gdpWorldUnmount();
+    _gdpPendingGarden(container);
+    return;
+  }
   // 2.23: the shop, the almanac and the rest are panels over the world, so their old routes open the world and then the panel
   const tab = _gdpTab(view);
   if (tab !== 'garden') { _gdp.then = tab; setTimeout(() => { if (state.view === view) setView('garden'); }, 0); return; }
   _gdpWorldMount(container, view);
 }
+/** The pending view has one deliberate local action, never an automatic migration. */
+function _gdpPendingGarden(container) {
+  const root = mountEmptyState(container, { icon: 'sprout', title: 'Your garden update is pending' });
+  const status = _gdpEl('div', 'es-text', 'Your saved garden is safe. Checking the local update...'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
+  const actions = _gdpEl('div', 'es-actions');
+  const update = _gdpBtn('Update my garden', { kind: 'btn-primary', icon: 'sprout', disabled: true });
+  update.dataset.gardenAction = 'update-local';
+  const sync = _gdpBtn('Open Sync', { icon: 'refresh-cw', run: () => setView('settings:sync') }); sync.hidden = true;
+  sync.dataset.gardenAction = 'update-sync';
+  const enter = _gdpBtn('Open garden', { icon: 'sprout', run: () => setView('garden') }); enter.hidden = true;
+  enter.dataset.gardenAction = 'update-enter';
+  actions.append(update, sync, enter); root.append(status, actions);
+  let running = false, admitted = false;
+  const mounted = () => root.isConnected && /^garden(?::|$)/.test(String(state.view || ''));
+  const request = async (method, body) => {
+    const r = await fetch('/api/garden/update', { method, cache: 'no-store', ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(typeof data.error === 'string' ? data.error : data.error?.message || 'The Garden update could not finish. Your saved Garden is preserved.');
+    return data;
+  };
+  const paint = data => {
+    if (!mounted()) return;
+    status.textContent = data.message || 'Your saved Garden is preserved.';
+    if (data.canUpdate && data.counts && data.mode === 'migrate') status.textContent += ' ' + data.counts.retained + ' placements stay in place, ' + data.counts.relocated + ' move nearby, and ' + data.counts.stored + ' stay complete in your Bag.';
+    if (data.canUpdate && data.counts && data.mode === 'import') status.textContent += ' The updated island has ' + data.counts.retained + ' placed items and ' + data.counts.stored + ' complete items in its Bag.';
+    admitted = !!data.canUpdate;
+    update.querySelector('span').textContent = !admitted ? 'Check again' : data.mode === 'import' ? 'Use updated island' : data.mode === 'publish' ? 'Share updated island' : 'Update my garden';
+    update.disabled = running || data.status === 'current';
+    sync.hidden = data.status !== 'sync-blocked' && data.status !== 'host-blocked';
+    enter.hidden = data.status !== 'current' || !gardenWorldReady();
+  };
+  update.onclick = async () => {
+    if (running || update.disabled) return;
+    const maySubmit = admitted;
+    running = true; update.disabled = true; root.setAttribute('aria-busy', 'true');
+    let submitted = false;
+    try {
+      // Finish ordinary local saves first, preserving unrelated app changes.
+      if (_persistInFlight) status.textContent = 'Saving your latest changes...';
+      for (let i = 0; i < 20 && _persistInFlight; i++) await new Promise(resolve => setTimeout(resolve, 100));
+      if (!mounted()) return;
+      if (_persistInFlight) throw new Error('A save is finishing. Try Update my garden again in a moment.');
+      if (state._localDirty || _persistTimer || _persistUITimer) await _persistFire();
+      if (state._localDirty || _persistInFlight) throw new Error('Your latest changes are still saving. Try Update my garden again when the save has finished.');
+      const inspected = await request('GET');
+      if (!maySubmit || !inspected.canUpdate) { paint(inspected); return; }
+      if (!mounted()) return;
+      status.textContent = inspected.mode === 'publish' ? 'Sharing the saved updated island...' : inspected.mode === 'import' ? 'Keeping your earlier Garden and opening the updated island...' : 'Saving a backup and updating your Garden...';
+      submitted = true;
+      const result = await request('POST', { wv: inspected.wv, lh: inspected.lh, version: inspected.version, planId: inspected.planId, mode: inspected.mode, handoverId: inspected.handoverId });
+      if (result.status === 'publish-pending' && /^garden(?::|$)/.test(String(state.view || '')) && state.view !== 'garden:update') setView('garden:update');
+      // Use the normal live reconcile path; never replace all browser state
+      // with the route result or discard edits to another app component.
+      if (typeof _liveOnRemote === 'function') await _liveOnRemote({ version: result.version, source: 'garden-update', client: 'Garden' });
+      if (mounted()) {
+        if (gardenWorldReady() && result.status !== 'publish-pending') { if (state.view === 'garden:update') setView('garden'); else render(); }
+        else if (result.status === 'publish-pending') request('GET').then(paint).catch(() => {});
+        else status.textContent = 'Your Garden is updated. Finish saving any current edits, then return to Garden to load it.';
+      }
+    } catch (e) {
+      if (mounted()) { status.textContent = e.message || 'The update could not finish. Your saved Garden is preserved.'; update.disabled = false; }
+      else if (submitted && gardenWorldReady() && /^garden(?::|$)/.test(String(state.view || '')) && state.view !== 'garden:update') setView('garden:update');
+    } finally {
+      running = false; root.removeAttribute('aria-busy');
+      if (mounted() && update.disabled) request('GET').then(paint).catch(() => {});
+    }
+  };
+  request('GET').then(paint).catch(e => { if (mounted()) status.textContent = typeof netErrorMessage === 'function' ? netErrorMessage(e) : e.message; });
+}
+
 /** The world on the page: your own garden, or on a visit your friend's. The same stage and the same everything: gardenHere() says which garden it is. */
 function _gdpWorldMount(container, view) {
   const m = gardenHere();
@@ -330,7 +406,7 @@ function _gdpHover(ev) {
   if (_gdpPopOpen() || !onWorld || (typeof gardenDesignOn === 'function' && gardenDesignOn()) || (typeof _gwFishBusy === 'function' && _gwFishBusy())) { _gdpHighlight(null); _gdpGhostClear(); gardenHoverCardHide(); gameCursor(box, ''); box.dataset.hover = ''; if (status) status.hidden = true; return; }
   const m = gardenHere(), cell = _gdpCellOf(ev), it = _gdpPickItem(ev, cell), tool = _gdpTool(), mode = _gdpMode();
   if (_gdp.carry) return;
-  const placing = _gdp.moving ? (_gdp.moving.kind === 'decor' ? (gardenDecorById(m, _gdp.moving.uid) || {}).def : (gardenPlantById(m, _gdp.moving.uid) || {}).def)
+  const placing = _gdp.moving ? (gardenPlacementItem(m, _gdp.moving.kind, _gdp.moving.uid) || {}).def
     : mode === 'decorate' && _gdp.decor ? gardenDecor(_gdp.decor) : tool === 'seed' && _gdp.seed ? gardenPlant(_gdp.seed) : null;
   if (placing) {
     // placing: the ghost shows where it will go, green or red, and the cursor says the same
@@ -376,7 +452,7 @@ function _gdpGhost(m, def, kind, x, y, ignore) {
   const gh = _gdp.svg && _gdp.svg.querySelector('.gd-ghost'); if (!gh) return;
   const why = _gdPlaceOk(m, def, x, y, kind, ignore);
   const W = GARDEN_WORLD, fw = kind === 'decor' ? def.w || 1 : def.fp || 1, fh = kind === 'decor' ? def.h || 1 : def.fp || 1;
-  const source = ignore ? kind === 'plant' ? gardenPlantById(m, ignore) : gardenDecorById(m, ignore) : null;
+  const source = ignore ? gardenPlacementItem(m, kind, ignore) : null;
   const showy = kind === 'decor' && def.effect && def.effect.kind === 'show', show = showy ? m.visit && m.visit.snap ? m.visit.snap.sh : typeof _gdrShowOf === 'function' ? _gdrShowOf() : null : null;
   const artOptions = kind === 'plant'
     ? { kind, stage: source ? source.stage : 1, variant: source ? source.variant : 0, season: m.season, size: 'l', tod: m.tod, t: source && source.t || 0, thirsty: !!(source && source.thirsty), overgrown: !!(source && source.overgrown), ripe: !!(source && source.ripe), glow: !!def.glow, heart: source && source.heart }

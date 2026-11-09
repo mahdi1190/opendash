@@ -6,32 +6,95 @@ Tables: `src/app/94-garden-lands-0table.js`. Engine: `94-garden-lands-1core.js`.
 
 ## The map
 
-The world is 52 by 44 cells (the wire allows 64 by 64). The old garden is the middle (x 12-39, y 8-18). The lane runs right through the world under it (y 19-20), with the shops on it, and the lake lies below (x 12-39, y 21-37). North is the hill (meadows and stones), east the orchards, west the fields, and south, reached round the lake by a path on each shore, the marsh. There are 128 small sections and 21 trails, one character a cell, in `GARDEN_LAND_MAPS`: letters are sections, signs and digits are trails, `#` is thicket, rock or reeds, where trees stand and nobody walks.
+The current v3 world is a 52-by-56-cell island surrounded by connected ocean.
+The canonical file is `assets/garden/island-v3.json`, fingerprint
+`94f5b2dbe4dce765cafb2b40`. Its coast, public paths, building approaches, five gates,
+freshwater basins and explicit `sectionCells` are shared by the browser,
+multiplayer validation and migration planner. `GARDEN_LAND_MAPS` still supplies
+the established land IDs and their progression; its old rectangular positions
+are not a second v3 coastline.
 
-- A **trail** opens with your garden level. It has a small gate and a sign until then. It costs nothing. You walk on it; nothing grows on it and nothing stands in the way on it.
-- A **section** in the old garden is free at its level. Anywhere else it needs its zone's gate open, its trail open, and coins (see Zones). It is fenced where it faces land you can stand on.
-- What is drawn follows the cells loosely: a section's outline is traced round its cells and rounded off, a trail is a curve that stays inside its cells. Walking and planting are still on the cell grid.
+The starter bed remains at (15,13), size 7 by 4, with the heart-oak anchor at
+(16,13). The main pier is three cells wide at x25..27: its base spans y28..32,
+with the existing earned extensions at y33..36 and y37..40. Ocean continues
+below and around it; southern rows 44..55 contain no mainland. Broad beaches
+occupy the 84-pixel inland edge of the same continuous coast, leaving its actual
+water/collision boundary intact. The rendering extends ocean beyond the map;
+walking, placement and fishing continue to use their normal logical bounds.
 
-## Zones
+Fresh water stays inland: the northern pond's wet rectangle is (35,9,4,2), and
+the allotment pool's is (7,27,4,3). The latter carries the six existing pool
+section IDs. Existing owned inland pool cells retain their water behavior.
+Public routes, doors, building rear clearances and future pier approaches are
+reserved rather than sold or silently covered by plants.
 
-The owner, 1 Nov 2026: "further from the centre costs more and needs a higher level ... gates and zones locked ... we should only see we can buy stuff when that zone itself is unlocked." The purpose is to avoid barren-looking land. One table, `GARDEN_ZONES` in `src/app/94-garden-lands-0table.js`.
+All 128 section IDs retain a nonempty authored allotment. Their names, kinds,
+owned ledger items, level rules and purchase authority remain. The original
+section cells that fit are retained where possible; other cells are remapped
+within the canonical island. A section's current footprint and price must be
+read from the source tables and current Land panel, not the old estimates below.
 
-| Zone | Garden level | Coins a square | Lake open down to | Pieces of land | Coins for all of it |
-|---|---|---|---|---|---|
-| The square | 1 | free, by its own levels | row 27 | | |
-| Near land | 3 | 10 | row 27 | 11 | 650 |
-| Middle land | 6 | 18 | row 30 | 17 | 2,600 |
-| Far land | 10 | 30 | row 33 | 32 | 9,395 |
-| Wild land | 14 | 48 | row 35 | 14 | 6,315 |
-| The world’s edge | 18 | 75 | row 37 | 26 | 20,455 |
+## Five staged entrance gates
 
-All of it: 100 pieces, 39,415 coins. Dearer kinds of land cost more (`GARDEN_ZONE_COST`: pool, rich soil, sun trap, warm glade, nursery; the walled garden double), and a piece is charged for 14 squares at most.
+The v3 asset explicitly authors five entrances, each using an existing zone.
+The level shown below is that zone's ordinary level; existing land ownership
+continues to open the access it already entitles the player to.
 
-- Every cell is in one zone, by how far it is from the square (x 10-41, y 8-20), and a path is never in an earlier zone than the way to it. A path's cells only go up in zone, walking out from its mouth; the lane goes up towards each end. The old garden's own sections and paths keep their own levels.
-- A **gate** (24 of them, `GARDEN_ZONE_GATES`, worked out from the map) stands wherever a path or the lane crosses into a further zone. Only the next gate shows shut, with a board saying the level. An opened gate stands wide. Further out there is nothing to see of it.
-- Past a shut gate there are no plots, signs or stakes: one stretch of long grass, wildflowers, brambles and young trees, thicker with mist the further it is. The lane and the paths stop at the gate and grow over. The land office lists the zone, not what is in it.
-- **Water** in a shut zone is shut: no casts, no fish, no pets on it, and bugs do not come there. The lake has a line of floats and a sign across it at its open row, with mist beyond. A pier you have built always has water round it. The island and the stones stay open at every level.
-- Land you already own keeps its zone, and the zones on the way to it, open. Nothing goes in a snapshot for this: a garden's zones come from its level and what it owns, so a friend's garden shows theirs.
+| Entrance | Stable ID | Ordinary garden level | Anchor cell |
+| --- | --- | --- | --- |
+| Woodland entrance | `island-woods` | 3 | 12, 20 |
+| Mill path | `island-mill` | 6 | 38, 25 |
+| Ruins path | `island-ruins` | 10 | 16, 29 |
+| Outer orchard path | `island-orchard` | 14 | 39, 24 |
+| Northern headland | `island-headland` | 18 | 30, 8 |
+
+Only meaningful reachable boundaries need to advertise progression. Distant
+land remains scenery with restrained mist, rather than a grid of repeated
+prices and nested gates. Inspecting land or opening the Land panel still gives
+the existing requirement and price. Ocean is not covered with a rectangular
+locked-land fog strip: normal fishing access checks and refusal feedback still
+apply. The zone fishing-row caps are 36, 40, 44, 48, 52 and 56; owned pier length
+continues to guarantee the existing minimum usable water beyond its end.
+
+## Saved gardens and recoverable layouts
+
+New gardens stamp both `seen.world` and `seen.worldLayout`. An existing garden
+requires an explicit backed-up v3 migration plan; the old in-page world-refund
+conversion does not run on v3. Technical acceptance of isolated restoration,
+Designer and encrypted-sync play enabled the adapter readiness gate; migration
+100 remains nonautomatic. The local Update action cannot independently restamp
+a known multi-device/canonical history. Its ordinary backed-up update and exact
+legacy-save archive/deduplication and an exact browser download have been
+observed. Current-client ACK refresh remains unplayed; no real-data apply or complete
+historical-save coverage is reported.
+
+The planner retains valid placements and their complete records, relocates
+only where ordinary rules permit, and stores records that cannot fit with
+`_packed:3`. **Bag → Stored garden** restores an original plant or decoration
+through an ordinary legal move. Earlier Designer layouts remain complete
+archives, with deliberate **Adapt to this island** working copies and the
+existing **Keep my changes** / **Cancel** choices. Earned structures stay owned
+while put away and use **Land → Your built structures → Set out nearby** when
+the owner wants them back. See [engine ownership](GARDEN_ENGINE.md#canonical-island-and-saved-world-ownership-v3)
+and [calm presentation](GARDEN_PACING.md#island-space-and-owned-content).
+
+Ordinary isolated recovery preserved an aged stored plant and rotated decor,
+structure ownership/history through Set out / Put away / Undo, and both full
+earlier Designer archives through Keep/Cancel. A separate modest level-3 route
+reached four public beaches and explained the level-6 entrance restriction.
+This is not observation of every gate level. Later actual Stored garden paging
+and second-page bench restoration retained complete metadata and the remaining
+records. The viewed full Classic photo includes woodland without the earlier
+horizontal sea edges. The preserved Garden download matched its immutable
+archive; current-client ACK refresh remains unplayed.
+
+## Earlier v2 reference tables
+
+The price estimates, coordinate lists and old-map tables below are retained
+design history. Their cell counts, totals and placements are not current v3
+quotes or a second layout authority. Runtime tables and the canonical asset
+take precedence. V3 play and migration acceptance are not claimed by these
+historical notes.
 
 ## Prices, and a player earning at the cap
 
@@ -39,13 +102,17 @@ Coins come from focus time and finished tasks, at most 120 a day (`GARDEN_ECON.d
 
 All of it: 39,415 coins for the land, about 33 weeks of steady play, plus the features. Levels hold it back too: level 12 is 3,300 XP (about 6 weeks), level 20 is 9,500 (about 4 months). 
 
-## Saved games
+## Saved games (earlier v2 behavior)
+
+The conversion below is historical; v3 preserves full rows and archives instead.
 
 The owner: "because the game is in alpha, if it means destroying existing gardens, that is fine." `GARDEN_WORLD.v` is the world's version. The first time a save from an older world is seen (`gardenWorldCheck`): everything planted goes back as its seed (the old oak moves), everything placed goes back in the bag, a friend's decoration goes back to them, land and buildings are paid back in coins (the boots stay), what is in a kettle or under the oak is paid out, and a short note says so. Coins, level, XP, the books, gear and everything else that is not a position stay.
 
 It runs once and is safe across a sync: each refund has its own ledger key, the same on every device, so doing it twice adds nothing. `seen.world` and `seen.worldAt` sync. An old plant or decoration that another device's copy brings back later goes to the bag the same way. A device still on an older app can go on writing old cells until it updates.
 
-## Friends
+## Friends (earlier v2 protocol)
+
+Current v3 admission uses protocol 4 and matching world/layout tags above.
 
 `wv` in a snapshot says which world its cells are in. A copy from another world is not drawn: it says the garden is from an older version. An older app cannot read `wv`, so it will draw a newer friend's cells wrongly until it updates. `GL_V` is 3, so live play refuses a mismatch with its existing note.
 

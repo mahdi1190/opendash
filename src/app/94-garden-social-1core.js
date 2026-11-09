@@ -55,6 +55,7 @@ function _gscFun() { try { return typeof gardenFun === 'function' ? gardenFun() 
 function _gscReduced() { return !!(window.Motion && Motion.prefersReduced && Motion.prefersReduced()); }
 function _gscServer() { return typeof _serverAvailable === 'undefined' || !!_serverAvailable; }
 async function _gscApi(path, body, opts) {
+  if (path === '/api/garden-social/act' && body && (body.t === 'water' || body.t === 'gift' && Number.isInteger(body.x) && Number.isInteger(body.y))) body = Object.assign({}, body, { wv: GARDEN_WORLD.v, lh: GARDEN_WORLD.lh });
   const init = body === undefined ? { method: 'GET', cache: 'no-store' } : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
   if (opts && opts.signal) init.signal = opts.signal;
   const r = await fetch(path, init);
@@ -224,6 +225,7 @@ async function _gscApplyPending() {
   _gsc.applyBusy = true;
   try {
     const g = typeof _gdG === 'function' ? _gdG() : state.garden;
+    if (GARDEN_WORLD.v >= 3 && (g.seen.world !== GARDEN_WORLD.v || g.seen.worldLayout !== GARDEN_WORLD.lh)) return;
     const today = _gscToday(), now = _gscNow();
     const done = [];
     let changed = false, boosts = Object.values(g.led || {}).filter(e => e && e.k === 'fw' && e.d === today && e.b).length;
@@ -232,7 +234,7 @@ async function _gscApplyPending() {
     for (const a of d.pending) {
       if (!a || !_GSC_MSG_RE.test(String(a.id || ''))) continue;
       if (a.t === 'gift') { if (g.led['gg.' + a.id]) done.push(a.id); continue; }
-      if (a.t !== 'water') continue;
+      if (a.t !== 'water' || !gardenSnapSameWorld(a)) continue; // old coordinates stay preserved in the social inbox, never reinterpreted on this island.
       if (g.led['fw.' + a.id]) { done.push(a.id); continue; }
       const uid = Object.keys(g.plants).find(u => { const p = g.plants[u]; return p && p.p === a.p && p.x === a.x && p.y === a.y; });
       if (!uid) { g.led['fw.' + a.id] = { d: today, k: 'fw', n: 0, u: '' }; done.push(a.id); changed = true; continue; }

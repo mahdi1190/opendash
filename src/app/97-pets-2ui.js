@@ -73,6 +73,7 @@ function _ptMount(container, view) {
     root.replaceChildren();
     mountEmptyState(root, { icon: 'circle-alert', compact: true, title: 'Your pet couldn’t load just now', text: 'Nothing is lost.', actions: [{ label: 'Try again', icon: 'refresh-cw', primary: true, run: () => { if (typeof render === 'function') render(); } }] });
   }
+  if (entering && typeof petCelebrationsResume === 'function') petCelebrationsResume();
   if (tab === 'journal') requestAnimationFrame(() => { const e = root.querySelector('.pt-journal-sec'); if (e) { e.open = true; e.scrollIntoView({ block: 'start' }); } });   // #view=pet:journal: Together, at the journal
 }
 /** Away on a little journey: where it is, when it is back, and how to call it home. big: it stands in for the page. */
@@ -199,7 +200,9 @@ function _ptTogether(root, g) {
     dock.appendChild(big('Pat', icon('heart'), () => S.pat(), { cls: 'is-pat' }));
     dock.appendChild(big('Treat', petTreatSvg(sp.treat || 'cookie', 34), (b) => { S.feed(b); paintDock(); }, { cls: 'is-treat' + (t.have ? '' : ' is-empty'), badge: t.have }));
     dock.appendChild(big('Play', petPropSvg('toy', petToyNow(), 34), (b) => S.playNow(b), { cls: 'is-play' }));
-    dock.appendChild(big('Nap', icon('moon'), () => S.nap(), { cls: 'is-nap' }));
+    const nap = big('Nap', icon('moon'), () => S.nap(), { cls: 'is-nap' });
+    S.setNapButton(nap);
+    dock.appendChild(nap);
     dock.appendChild(big('Tricks', icon('wand-sparkles'), () => setView('pet:tricks'), { cls: 'is-tricks' }));
     dock.appendChild(big('Dress up', icon('shirt'), () => setView('pet:wardrobe'), { cls: 'is-dress' }));
   };

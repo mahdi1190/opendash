@@ -437,21 +437,45 @@ function _gwNearestFreePt(x, y, maxR) {
   }
   return best;
 }
+/** A stable frontier for the two route searches. Each cell has one live slot;
+ * lowering its cost updates that slot rather than scanning or queuing copies.
+ * Equal costs keep first-in order, as in the earlier array frontier. */
+function _gwPathFrontier(cost, capacity) {
+  const heap = new Int32Array(capacity), positions = new Int32Array(capacity).fill(-1), order = new Uint32Array(capacity);
+  let length = 0, serial = 0;
+  const before = (a, b) => cost[a] < cost[b] || cost[a] === cost[b] && order[a] < order[b];
+  const swap = (a, b) => { const value = heap[a]; heap[a] = heap[b]; heap[b] = value; positions[heap[a]] = a; positions[heap[b]] = b; };
+  return {
+    get length() { return length; },
+    lower(cell) {
+      let at = positions[cell];
+      if (at < 0) { at = length++; heap[at] = cell; positions[cell] = at; order[cell] = ++serial; }
+      while (at) { const parent = (at - 1) >> 1; if (!before(heap[at], heap[parent])) break; swap(at, parent); at = parent; }
+    },
+    take() {
+      const cell = heap[0], last = heap[--length]; positions[cell] = -1;
+      if (length) {
+        heap[0] = last; positions[last] = 0; let at = 0;
+        for (;;) { const left = at * 2 + 1; if (left >= length) break; const right = left + 1, child = right < length && before(heap[right], heap[left]) ? right : left; if (!before(heap[child], heap[at])) break; swap(at, child); at = child; }
+      }
+      return cell;
+    },
+  };
+}
 /** The cells A* goes through, eight ways, no cutting corners (raw: every cell; else string-pulled by cell). null when there is no way. */
 function gardenPath(from, to, raw) {
   const W = GARDEN_WORLD, C = W.cols, R = W.rows, grid = _gwGrid(gardenHere());
   const sx = Math.max(0, Math.min(C - 1, Math.floor(from.x))), sy = Math.max(0, Math.min(R - 1, Math.floor(from.y)));
   const tx = to.x, ty = to.y;
   if (sx === tx && sy === ty) return [];
-  const idx = (x, y) => y * C + x, open = [idx(sx, sy)], came = new Int32Array(C * R).fill(-1), gs = new Float32Array(C * R).fill(1e9), closed = new Uint8Array(C * R);
+  const idx = (x, y) => y * C + x, came = new Int32Array(C * R).fill(-1), gs = new Float32Array(C * R).fill(1e9), closed = new Uint8Array(C * R);
   const hcost = (x, y) => Math.hypot((x - tx) * W.cellW, (y - ty) * W.cellH) / 40;
   gs[idx(sx, sy)] = 0;
-  const f = new Float32Array(C * R).fill(1e9); f[idx(sx, sy)] = hcost(sx, sy);
+  const f = new Float32Array(C * R).fill(1e9), open = _gwPathFrontier(f, C * R); f[idx(sx, sy)] = hcost(sx, sy); open.lower(idx(sx, sy));
   const free = (x, y) => x >= 0 && y >= 0 && x < C && y < R && !grid[idx(x, y)];
   let guard = 0;
   while (open.length && guard++ < 4000) {
-    let bi = 0; for (let i = 1; i < open.length; i++) if (f[open[i]] < f[open[bi]]) bi = i;
-    const cur = open.splice(bi, 1)[0];
+    const cur = open.take();
     if (cur === idx(tx, ty)) break;
     closed[cur] = 1;
     const cx = cur % C, cy = (cur - cx) / C;
@@ -463,7 +487,7 @@ function gardenPath(from, to, raw) {
       const ni = idx(nx, ny); if (closed[ni]) continue;
       if (grid.anchors && (grid.anchors.has(cur) || grid.anchors.has(ni)) && !_gwLos(_gwCellPoint({ x: cx, y: cy }, grid), _gwCellPoint({ x: nx, y: ny }, grid))) continue;
       const step = Math.hypot(dx * W.cellW, dy * W.cellH) / 40, ng = gs[cur] + step;
-      if (ng < gs[ni]) { gs[ni] = ng; came[ni] = cur; f[ni] = ng + hcost(nx, ny); if (!open.includes(ni)) open.push(ni); }
+      if (ng < gs[ni]) { gs[ni] = ng; came[ni] = cur; f[ni] = ng + hcost(nx, ny); open.lower(ni); }
     }
   }
   const goal = idx(tx, ty);
@@ -536,14 +560,12 @@ function _gwLocalPath(a, b) {
   const sI = Math.round((a.x - x0) / S), sJ = Math.round((a.y - y0) / S), gI = Math.round((b.x - x0) / S), gJ = Math.round((b.y - y0) / S);
   const id = (i, j) => j * nx + i, memo = new Int8Array(nx * ny);   // 0 not looked at, 1 open, 2 not
   const free = (i, j) => { if (i < 0 || j < 0 || i >= nx || j >= ny) return false; const k = id(i, j); if (!memo[k]) memo[k] = _gwFree(x0 + i * S, y0 + j * S) ? 1 : 2; return memo[k] === 1; };
-  const g = new Float32Array(nx * ny).fill(1e9), came = new Int32Array(nx * ny).fill(-1), done = new Uint8Array(nx * ny), open = [id(sI, sJ)];
-  g[open[0]] = 0;
+  const g = new Float32Array(nx * ny).fill(1e9), came = new Int32Array(nx * ny).fill(-1), done = new Uint8Array(nx * ny), costs = new Float64Array(nx * ny).fill(1e9), open = _gwPathFrontier(costs, nx * ny);
+  const start = id(sI, sJ); g[start] = 0; costs[start] = Math.hypot(sI - gI, sJ - gJ); open.lower(start);
   let guard = 0, end = -1;
   while (open.length && guard++ < 1200) {
     if ((guard & 63) === 0 && Date.now() - t0 > 15) return null;   // clock-ok: a time budget; the leg then stays as it was
-    let bt = 0, bf = 1e9;
-    for (let t = 0; t < open.length; t++) { const k = open[t], f = g[k] + Math.hypot(k % nx - gI, (k - k % nx) / nx - gJ); if (f < bf) { bf = f; bt = t; } }
-    const cur = open.splice(bt, 1)[0]; if (done[cur]) continue; done[cur] = 1;
+    const cur = open.take(); if (done[cur]) continue; done[cur] = 1;
     const ci = cur % nx, cj = (cur - ci) / nx;
     if (Math.abs(ci - gI) <= 1 && Math.abs(cj - gJ) <= 1) { end = cur; break; }
     for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
@@ -552,7 +574,7 @@ function _gwLocalPath(a, b) {
       if (di && dj && (!free(ci + di, cj) || !free(ci, cj + dj))) continue;   // no corner cutting
       const k = id(ni, nj); if (done[k]) continue;
       const ng = g[cur] + Math.hypot(di, dj);
-      if (ng < g[k]) { g[k] = ng; came[k] = cur; open.push(k); }
+      if (ng < g[k]) { g[k] = ng; came[k] = cur; costs[k] = g[k] + Math.hypot(ni - gI, nj - gJ); open.lower(k); }
     }
   }
   if (end < 0) return null;
@@ -923,8 +945,25 @@ function _gwPace() {
  * Only the drawing: what it is doing carries on, so a friend's fish, a pet's errand and the host's decisions are not affected. `o` is whatever keeps its state. True when it is off.
  */
 const GW_CULL = 3.5;
-function gardenCull(o, node, x, y) {
-  const off = !_gwInView(x, y, GW_CULL) && !_gwInCamGoal(x, y);
+function _gwCullBoxView(box, x, y, lift, view) {
+  const W = GARDEN_WORLD, margin = GW_CULL * W.cellW;
+  // Unknown presentation geometry must remain visible, never become a
+  // point-sized substitute for this long authored road.
+  if (!view || !Number.isFinite(view.x) || !Number.isFinite(view.y) || !Number.isFinite(view.w) || !Number.isFinite(view.h) || view.w <= 0 || view.h <= 0 || !Number.isFinite(box.x) || !Number.isFinite(box.y) || !Number.isFinite(box.width) || !Number.isFinite(box.height) || box.width <= 0 || box.height <= 0 || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(lift)) return true;
+  const left = x * W.cellW + box.x, top = W.sky + y * W.cellH - lift + box.y;
+  if (!Number.isFinite(left + box.width) || !Number.isFinite(top + box.height)) return true;
+  return left + box.width > view.x - margin && left < view.x + view.w + margin && top + box.height > view.y - margin && top < view.y + view.h + margin;
+}
+function gardenCull(o, node, x, y, view) {
+  const box = o.id === 'wd-stones' && o.cullBox;
+  // Only the stone road opts into body bounds. Existing actors keep their
+  // point/goal policy. An explicit photo view uses that actual viewport.
+  let off;
+  if (box) {
+    const lift = o.lift == null ? 0 : o.lift, visible = _gwCullBoxView(box, x, y, lift, view || _gw.cam);
+    const goalVisible = !view && _gw.cam.goal && _gwCullBoxView(box, x, y, lift, _gw.cam.goal);
+    off = !visible && !goalVisible;
+  } else off = !_gwInView(x, y, GW_CULL) && !_gwInCamGoal(x, y);
   if (o._off !== off) { o._off = off; node.classList.toggle('gart-off', off); }
   return off;
 }
@@ -1075,10 +1114,17 @@ function _gwFadeProps() {
     for (const n of nodes) if (!!n._gwBehind !== behind) { n._gwBehind = behind; n.classList.toggle('gd-behind', behind); }
   }
 }
-const GW_POS_KEY = 'opendash.garden.pos';
+const GW_POS_KEY = 'opendash.garden.pos'; // exact legacy value is retained for recovery.
+function _gwPositionKey() {
+  if (GARDEN_WORLD.v < 3) return GW_POS_KEY;
+  return typeof GARDEN_WORLD.lh === 'string' && /^[0-9a-f]{24}$/.test(GARDEN_WORLD.lh) ? GW_POS_KEY + '.v' + GARDEN_WORLD.v + '.' + GARDEN_WORLD.lh : null;
+}
+function _gwOutdoorPosition(p) { return !!p && Number.isFinite(p.x) && Number.isFinite(p.y) && p.x >= 0 && p.y >= 0 && p.x < GARDEN_WORLD.cols && p.y < GARDEN_WORLD.rows; }
 function _gwSaveSoon() {
-  if (typeof gardenVisitOn === 'function' && gardenVisitOn()) return;   // where you stood at home stays where you stood at home
-  _gw.saveDue = performance.now() + 1200;
+  if (typeof gardenVisitOn === 'function' && gardenVisitOn()) return;
+  const key = _gwPositionKey(); if (!key || !_gwOutdoorPosition({ x: _gw.px, y: _gw.py })) return;
+  if (GARDEN_WORLD.v >= 3 && typeof gardenWorldReady === 'function' && !gardenWorldReady()) return;
+  _gw.saveDue = performance.now() + 1200; _gw.savePosKey = key;
   _gw.saveX = Math.round(_gw.px * 10) / 10; _gw.saveY = Math.round(_gw.py * 10) / 10;
   if (!_gw.saveT) _gw.saveT = setTimeout(_gwSavePosition, 1200);
 }
@@ -1086,9 +1132,45 @@ function _gwSavePosition() {
   _gw.saveT = 0;
   const wait = _gw.saveDue - performance.now();
   if (wait > 1) { _gw.saveT = setTimeout(_gwSavePosition, wait); return; }
-  try { localStorage.setItem(GW_POS_KEY, JSON.stringify({ x: _gw.saveX, y: _gw.saveY })); } catch (e) { /* private window: you start at the gate next time */ }
+  const key = _gwPositionKey(), point = { x: _gw.saveX, y: _gw.saveY };
+  if (!key || key !== _gw.savePosKey || !_gwOutdoorPosition(point) || typeof gardenVisitOn === 'function' && gardenVisitOn()) return;
+  if (GARDEN_WORLD.v >= 3 && typeof gardenWorldReady === 'function' && !gardenWorldReady()) return;
+  const value = GARDEN_WORLD.v >= 3 ? { wv: GARDEN_WORLD.v, lh: GARDEN_WORLD.lh, ...point } : point;
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* private window: no position persistence */ }
 }
-function _gwSavedPos() { if (typeof gardenVisitOn === 'function' && gardenVisitOn()) return null; try { const o = JSON.parse(localStorage.getItem(GW_POS_KEY) || 'null'); return o && Number.isFinite(o.x) && Number.isFinite(o.y) ? o : null; } catch (e) { return null; } }
+function _gwRestorePosition(point) {
+  if (!_gwOutdoorPosition(point)) return null; // room sentinel columns remain the room owner's coordinates.
+  if (_gwFree(point.x, point.y)) return { x: point.x, y: point.y };
+  let best = _gwNearestFreePt(point.x, point.y, 3), distance = best ? ((best.x - point.x) * GARDEN_WORLD.cellW) ** 2 + ((best.y - point.y) * GARDEN_WORLD.cellH) ** 2 : Infinity;
+  const grid = _gwGridNow(), W = GARDEN_WORLD;
+  for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
+    if (grid[y * W.cols + x]) continue;
+    const p = _gwCellPoint({ x, y }, grid), d = ((p.x - point.x) * W.cellW) ** 2 + ((p.y - point.y) * W.cellH) ** 2;
+    if (d < distance && _gwFree(p.x, p.y)) { best = p; distance = d; }
+  }
+  return best ? { x: best.x, y: best.y } : null;
+}
+function _gwSavedPos() {
+  if (typeof gardenVisitOn === 'function' && gardenVisitOn()) return null;
+  const key = _gwPositionKey(); if (!key) return null;
+  if (GARDEN_WORLD.v >= 3 && typeof gardenWorldReady === 'function' && !gardenWorldReady()) return null;
+  try {
+    const raw = localStorage.getItem(key), current = raw ? JSON.parse(raw) : null;
+    if (GARDEN_WORLD.v < 3) return current && Number.isFinite(current.x) && Number.isFinite(current.y) ? current : null;
+    const tagged = current && current.wv === GARDEN_WORLD.v && current.lh === GARDEN_WORLD.lh;
+    const legacyRaw = tagged ? null : localStorage.getItem(GW_POS_KEY), legacy = legacyRaw ? JSON.parse(legacyRaw) : null;
+    const before = tagged ? current : legacy;
+    // A raw legacy foot becomes a current foot only after the real new coast,
+    // solids and current owned access have accepted or relocated it.
+    const point = _gwRestorePosition(before); if (!point) return null;
+    _gw.positionLayout = key;
+    if (!tagged || point.x !== before.x || point.y !== before.y) {
+      const resolution = { wv: GARDEN_WORLD.v, lh: GARDEN_WORLD.lh, ...point, restoredFrom: { kind: tagged ? 'same-layout-obstruction' : 'legacy', x: before.x, y: before.y } };
+      try { localStorage.setItem(key, JSON.stringify(resolution)); } catch (e) { /* accepted foot still works without persistence */ } // exact old key is never changed/removed.
+    }
+    return point;
+  } catch (e) { return null; }
+}
 
 /* ---------- the pet: it trots after you, sits when you stop, and sits at the pier while you fish ---------- */
 function _gwPetSprite() {
@@ -1476,12 +1558,12 @@ function gardenWorldStart(root, m) {
   gardenWorldStop(true);
   _gw.on = true; _gw.root = root; _gw.box = root.querySelector('.gd-stagebox'); _gw.cam.init = false; _gw.cam.dirty = true; _gw.t = 0; _gw.sizeOk = false;
   // where you stood: this page's own position if the garden is drawn again (another tab wrote, the state was replaced), else the last one on this device
-  const again = !!_gw.placed;
+  const again = !!_gw.placed && (GARDEN_WORLD.v < 3 || _gw.positionLayout === _gwPositionKey());
   const sv = again ? { x: _gw.px, y: _gw.py } : _gwSavedPos();
   if (sv && (again || _gwFree(sv.x, sv.y))) { _gw.px = sv.x; _gw.py = sv.y; }   // (a redraw never moves you: the walk-out below does, if something is in the way)
   else { const f = _gwCellPoint(_gwNearestFree(GARDEN_WORLD.start.x, GARDEN_WORLD.start.y, 8) || GARDEN_WORLD.start); _gw.px = f.x; _gw.py = f.y; }
   // the page being drawn again (another tab wrote, the state was replaced) used to stop a walk in progress: it now carries on
-  _gw.placed = true; if (!again) { _gw.path = []; _gw.then = null; } _gw.moving = false; _gw.fig = { idle: '', walk: '' }; _gw.bodyKey = ''; _gw.node = null; _gw.pet = null; _gw.keys.clear();
+  _gw.positionLayout = _gwPositionKey(); _gw.placed = true; if (!again) { _gw.path = []; _gw.then = null; } _gw.moving = false; _gw.fig = { idle: '', walk: '' }; _gw.bodyKey = ''; _gw.node = null; _gw.pet = null; _gw.keys.clear();
   if (_gw.box) {
     _gwBuildCamUi(_gw.box);
     if (typeof ResizeObserver !== 'undefined') { _gw.ro = new ResizeObserver(() => { _gw.sizeOk = false; _gw.cam.dirty = true; _gw.cam.snap = true; _gwEnsureLoop(); }); _gw.ro.observe(_gw.box); }

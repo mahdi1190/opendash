@@ -185,7 +185,7 @@ function gardenDesignEnter() {
   const z = g.dz && g.dz.lay ? g.dz : { cur: 'l1', lay: { l1: { n: 'My garden', d: gardenDesignEmpty() } } };
   T.lay = JSON.parse(JSON.stringify(z));
   const cur = T.lay.lay[T.lay.cur] || (T.lay.lay[T.lay.cur] = { n: 'My garden', d: gardenDesignEmpty() });
-  T.draft = gardenDesignClean(cur.d) || gardenDesignEmpty();
+  T.draft = gardenDesignLayoutDraft(T.lay, T.lay.cur, g);
   T.was = JSON.stringify(z); T.resume = null; T.dm = {}; T.hist = []; T.lifted = null; T.stroke = null; T.press = null; T.tool = 'path'; T.rubbing = false; T.on = true;
   _gdzHold().draftOf = () => _gdzT().draft;
   _gw.path = []; _gw.then = null; _gw.keys.clear();
@@ -196,7 +196,9 @@ function gardenDesignEnter() {
   _gdzBind(box);
   _gdzStage();
   gardenDesignPanel();
-  _gdzSay('Press on a path, a plaza or a door, and draw to another one.');
+  const earlier = GARDEN_WORLD.v >= 3 && !gardenDesignIslandVersion(cur) && gardenDesignArchives(g).some(a => a.id === T.lay.cur);
+  if (earlier) { T.tool = 'layouts'; T.archiveOpen = true; gardenDesignPanel(); }
+  _gdzSay(earlier ? 'Your complete earlier layout is archived. Choose Adapt to this island to place its objects with the current guides.' : 'Press on a path, a plaza or a door, and draw to another one.');
 }
 /** Leaving by any door: back to what is saved. */
 function _gdzClose() {
@@ -224,6 +226,7 @@ function _gdzStageSaved() { gardenDesignShow(gardenDesignSaved(_gdG())); _gd.rev
 function gardenDesignKeep() {
   const T = _gdzT(), g = _gdG(), was = T.was, moves = Object.entries(T.dm), backs = [], fails = [];
   T.lay.lay[T.lay.cur].d = JSON.parse(JSON.stringify(T.draft));
+  if (GARDEN_WORLD.v >= 3) T.lay.lay[T.lay.cur].island = [GARDEN_WORLD.v, GARDEN_WORLD.lh];
   const m0 = gardenModel(), wired = gardenDesignWire(T.draft).dropped;
   _gdzClose();
   g.dz = JSON.parse(JSON.stringify(T.lay));
@@ -239,12 +242,66 @@ function gardenDesignKeep() {
   gardenToast('Your garden is saved.' + lost + stuck, { now: true, icon: 'check', timeout: lost || stuck ? 12000 : 6000, action: { label: 'Undo', run: () => { const gg = _gdG(); gg.dz = JSON.parse(was); gardenDesignShow(gardenDesignSaved(gg)); for (const [uid, x, y] of backs) gardenMoveDecor(uid, x, y); _gdSave(); _gdEmit('landshow', {}); } } });
 }
 
+/* Ordinary Layouts controls stage one archived item through the existing
+   legality/preview/drop path; they never apply its old coordinates. */
+function _gdzArchivePending() {
+  const T = _gdzT(), row = T.lay && T.lay.lay[T.lay.cur], r = row && row.recovery;
+  const archive = r && gardenDesignArchives(_gdG()).find(a => a.key === r.key);
+  if (!archive) return null;
+  const raw = archive.layout.d || {}, doneM = Array.isArray(r.m) ? r.m : [], doneC = Array.isArray(r.c) ? r.c : [];
+  return { archive, moved: (Array.isArray(raw.m) ? raw.m : []).map((row, index) => ({ row, index })).filter(x => !doneM.includes(x.index)), made: (Array.isArray(raw.c) ? raw.c : []).map((row, index) => ({ row, index })).filter(x => !doneC.includes(x.index)) };
+}
+function gardenDesignAdaptArchive(key) {
+  const T = _gdzT(), archive = gardenDesignArchives(_gdG()).find(a => a.key === key); if (!T.on || !archive) return;
+  if (T.lifted) _gdzDropCancel();
+  if (!T.lay.lay[archive.id] && Object.keys(T.lay.lay).length >= GDZ_LIMITS.layouts) { _gdzSay('Keep or remove a working layout first. The earlier layout stays archived.', true); return; }
+  _gdzPush();
+  T.lay.lay[T.lay.cur].d = JSON.parse(JSON.stringify(T.draft));
+  if (GARDEN_WORLD.v >= 3) T.lay.lay[T.lay.cur].island = [GARDEN_WORLD.v, GARDEN_WORLD.lh];
+  if (!T.lay.lay[archive.id]) T.lay.lay[archive.id] = { n: archive.layout.n || 'Earlier layout', d: gardenDesignIslandProjection(archive.layout.d) };
+  T.lay.cur = archive.id;
+  const row = T.lay.lay[T.lay.cur]; T.draft = gardenDesignLayoutDraft(T.lay, T.lay.cur, _gdG());
+  if (!row.recovery || row.recovery.key !== key) row.recovery = { key, m: [], c: [] };
+  T.tool = 'layouts'; T.archiveOpen = true;
+  _gdzStage(); gardenDesignPanel();
+  _gdzSay('The original layout stays archived. Choose an earlier object, place its ghost on this island, then Keep my changes. Cancel leaves the saved layout alone.');
+}
+function gardenDesignAdaptPlace(kind, index) {
+  const T = _gdzT(), pending = _gdzArchivePending(); if (!T.on || !pending) return;
+  const item = (kind === 'm' ? pending.moved : pending.made).find(x => x.index === index); if (!item || !Array.isArray(item.row)) return;
+  if (T.lifted) _gdzDropCancel();
+  const native = _gdzNativeWorld(); let L;
+  if (kind === 'm') {
+    const row = gardenDesignRow(item.row[0]);
+    if (!row || !gardenDesignMovable(row.id) || gardenDesignLandmark(row.id)) { _gdzSay('This structure uses its own Land controls. Set it out nearby there; its earlier placement stays archived.', true); return; }
+    const node = _gdp.svg && _gdp.svg.querySelector(`.gd-prop[data-prop="${CSS.escape(row.id)}"]`);
+    if (!node) { _gdzSay('Put this structure out through Land first. Its earlier placement stays archived.', true); return; }
+    L = { kind: 'prop', row, w: row.w || 1, h: row.h || 1, ox: row.x, oy: row.y, node, clone: !native ? node.cloneNode(true) : null, nativeSource: native ? 'prop:' + row.id : null };
+  } else {
+    const clean = gardenDesignClean({ p: [], g: [], m: [], c: [item.row] });
+    if (!clean || !clean.c.length || !GDZ_MADE[clean.c[0][0]]) { _gdzSay('This earlier object is not understood by this version; its full record stays archived.', true); return; }
+    if (T.draft.c.length >= GDZ_LIMITS.made) { _gdzSay('Put away one made object first. This earlier one stays archived.', true); return; }
+    L = { kind: 'made', i: null, c: clean.c[0], w: 1, h: 1, ox: 0, oy: 0, fresh: true };
+  }
+  L.recovery = { key: pending.archive.key, kind, index };
+  T.lifted = L; T.tool = kind === 'm' ? 'move' : 'make';
+  if (L.node && !native) L.node.classList.add('gdz-lifted');
+  _gdzGhostAt({ x: Math.floor(_gw.px), y: Math.floor(_gw.py) }); gardenDesignPanel();
+}
+function _gdzAdaptPlaced(L) {
+  const T = _gdzT(), current = T.lay.lay[T.lay.cur], r = current && current.recovery;
+  if (!L.recovery || !r || r.key !== L.recovery.key) return;
+  const list = r[L.recovery.kind] || (r[L.recovery.kind] = []);
+  if (!list.includes(L.recovery.index)) list.push(L.recovery.index);
+}
+
 /* ---------- layouts ---------- */
 function gardenDesignLayoutUse(id) {
   const T = _gdzT(); if (!T.lay.lay[id] || id === T.lay.cur) return;
   _gdzPush();
   T.lay.lay[T.lay.cur].d = JSON.parse(JSON.stringify(T.draft));
-  T.lay.cur = id; T.draft = gardenDesignClean(T.lay.lay[id].d) || gardenDesignEmpty();
+  if (GARDEN_WORLD.v >= 3) T.lay.lay[T.lay.cur].island = [GARDEN_WORLD.v, GARDEN_WORLD.lh];
+  T.lay.cur = id; T.draft = gardenDesignLayoutDraft(T.lay, id, _gdG());
   // a layout saved a while ago may meet things put out since: anything that no longer works goes back where it started, and says so
   const back = [];
   for (const q of T.draft.m.slice()) {
@@ -260,7 +317,7 @@ function gardenDesignLayoutNew(name) {
   const n = gardenDesignText(name) || `Layout ${ids.length + 1}`; let k = 1; while (T.lay.lay['l' + k]) k++;
   _gdzPush();
   T.lay.lay[T.lay.cur].d = JSON.parse(JSON.stringify(T.draft));
-  T.lay.lay['l' + k] = { n, d: JSON.parse(JSON.stringify(T.draft)) }; T.lay.cur = 'l' + k;
+  T.lay.lay['l' + k] = { n, d: JSON.parse(JSON.stringify(T.draft)), ...(GARDEN_WORLD.v >= 3 ? { island: [GARDEN_WORLD.v, GARDEN_WORLD.lh] } : {}) }; T.lay.cur = 'l' + k;
   gardenDesignPanel(); _gdzSay(`${n} saved as a layout.`);
 }
 function gardenDesignLayoutRemove(id) {
@@ -491,6 +548,7 @@ function _gdzDrop() {
   else if (L.kind === 'decor') T.dm[L.uid] = [L.x, L.y];
   else if (L.fresh) T.draft.c.push([L.c[0], L.x, L.y, L.c[3], L.c[4], L.c[5], L.c[6]]);
   else { T.draft.c[L.i][1] = L.x; T.draft.c[L.i][2] = L.y; }
+  _gdzAdaptPlaced(L); if (L.recovery) T.tool = 'layouts';
   T.lifted = null; _gdzLive(''); _gdzStage(); gardenDesignPanel();
   _gdzSay(`${_gdzFootName(L)} is there now. It stays a preview until you keep your changes.`);
 }

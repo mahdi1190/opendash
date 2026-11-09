@@ -370,9 +370,10 @@ function _eeHear(A, ev) {
   if (!A || A.me || !ev) return;
   if (ev.i) { if (typeof gardenRoomHear === 'function') gardenRoomHear(A, ev); return; }   // (one of the hidden rooms: 94-garden-world-4rooms.js)
   const e = String(ev.e || '');
-  if (e === 'out') { const R = _ee.m.get(A.w); if (R) { R.g.remove(); _ee.m.delete(A.w); } return; }
+  if (e === 'out') { _grmChipClear(A); const R = _ee.m.get(A.w); if (R) { R.g.remove(); _ee.m.delete(A.w); } return; }
   if (e !== 'in' && e !== 'at') return;
   if (!Number.isInteger(ev.x) || !Number.isInteger(ev.y)) return;
+  _grmChipClear(A);   // the peer is in the stage room now, not the old doorway
   const x = ev.x * EE.U, y = ev.y * EE.U;
   let pulled = false;
   if (!_ee.on) { if (e !== 'in' || !eeEnter({ from: A })) return; pulled = true; }

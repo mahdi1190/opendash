@@ -338,7 +338,7 @@ function gardenFishShadowMotion(def, length) {
 function _gcpShadowTail(k, x, L, ry, fill, op) {
   const n = _gfaN, F = `fill="${fill}" fill-opacity="${op}"`, t = L * 0.2, a = ry * 1.1;
   if (k === 'none') return '';
-  const d = k === 'crescent' ? `M1 ${n(-a * 0.2)}L${n(-t)} ${n(-a * 1.8)}Q${n(-t * 0.5)} 0 ${n(-t)} ${n(a * 1.8)}L1 ${n(a * 0.2)}Z` : k === 'long' ? `M1 ${n(-a * 0.4)}L${n(-t * 1.2)} ${n(-a * 0.5)}L${n(-t * 1.2)} ${n(a * 0.2)}L1 ${n(a * 0.4)}Z` : k === 'veil' ? `M1 -2C${n(-t)} ${n(-a * 2.2)} ${n(-t * 2)} ${n(-a * 1.6)} ${n(-t * 1.8)} 0C${n(-t * 2)} ${n(a * 1.6)} ${n(-t)} ${n(a * 2.2)} 1 2Z` : k === 'fan' ? `M1 ${n(-a * 0.3)}C${n(-t * 0.6)} ${n(-a)} ${n(-t)} ${n(-a)} ${n(-t)} 0C${n(-t)} ${n(a)} ${n(-t * 0.6)} ${n(a)} 1 ${n(a * 0.3)}Z` : `M1 ${n(-a * 0.3)}L${n(-t)} ${n(-a)}L${n(-t * 0.7)} 0L${n(-t)} ${n(a)}L1 ${n(a * 0.3)}Z`;
+  const d = k === 'crescent' ? `M1 ${n(-a * 0.2)}L${n(-t)} ${n(-a * 1.8)}Q${n(-t * 0.5)} 0 ${n(-t)} ${n(a * 1.8)}L1 ${n(a * 0.2)}Z` : k === 'long' ? `M1 ${n(-a * 0.4)}C${n(-t * .28)} ${n(-a * .22)} ${n(-t * 1.2)} ${n(-a * .9)} ${n(-t * 1.2)} ${n(-a * .65)}Q${n(-t * 1.2)} ${n(-a * .43)} ${n(-t * .64)} ${n(-a * .02)}Q${n(-t * .78)} ${n(a * .18)} ${n(-t * 1.02)} ${n(a * .48)}C${n(-t * .92)} ${n(a * .66)} ${n(-t * .3)} ${n(a * .25)} 1 ${n(a * 0.4)}Z` : k === 'veil' ? `M1 -2C${n(-t)} ${n(-a * 2.2)} ${n(-t * 2)} ${n(-a * 1.6)} ${n(-t * 1.8)} 0C${n(-t * 2)} ${n(a * 1.6)} ${n(-t)} ${n(a * 2.2)} 1 2Z` : k === 'fan' ? `M1 ${n(-a * 0.3)}C${n(-t * 0.6)} ${n(-a)} ${n(-t)} ${n(-a)} ${n(-t)} 0C${n(-t)} ${n(a)} ${n(-t * 0.6)} ${n(a)} 1 ${n(a * 0.3)}Z` : `M1 ${n(-a * 0.3)}L${n(-t)} ${n(-a)}L${n(-t * 0.7)} 0L${n(-t)} ${n(a)}L1 ${n(a * 0.3)}Z`;
   return _gcpJoint(x, 0, 'gcs-tail', `<path d="${d}" ${F}/>`);
 }
 /** Its shadow, the same on every screen. '' for anything without a family (the older oval). */
@@ -367,13 +367,30 @@ function _gcpShadow(def, L, fill) {
   const R = _GCP_SHADOW[fam]; if (!R) return '';
   const rx = L * R[0], ry = L * R[1], x = R[3];
   const body = _gcpSmooth([[-rx, -ry * 0.24], [-rx * 0.3, -ry * 0.86], [rx * 0.3, -ry], [rx, 0], [rx * 0.3, ry], [-rx * 0.3, ry * 0.86], [-rx, ry * 0.24]]);
-  let s = _gcpShadowTail(R[2], -rx + 1, L, ry, fill, op) + `<path d="${body}" ${F}/>`;
+  // Ordinary fish need the same small stabilising fins as the special
+  // silhouettes. One retained joint shares the existing swim-effort cadence;
+  // its fan stays behind the body and never shifts the authored mouth anchor.
+  let fins = '';
+  if (fam !== 'pipe' && !['wings', 'plate', 'plumes'].includes(x)) {
+    const fan = sign => `M${n(rx * .43)} ${n(sign * ry * .62)}Q${n(rx * .24)} ${n(sign * ry * 1.22)} ${n(-rx * .08)} ${n(sign * ry * 1.32)}Q${n(rx * .01)} ${n(sign * ry * .83)} ${n(rx * .18)} ${n(sign * ry * .68)}Z`;
+    fins = `<g class="gcs-fin"><path d="${fan(-1)}${fan(1)}" ${F}/></g>`;
+  }
+  let s = fins + _gcpShadowTail(R[2], -rx + 1, L, ry, fill, op) + `<path d="${body}" ${F}/>`;
   if (x === 'wings') s += `<g class="gcs-fin"><path d="M${n(rx * 0.3)} ${n(-ry * 0.7)}L${n(-rx * 0.1)} ${n(-ry - L * 0.2)}L${n(-rx * 0.2)} ${n(-ry * 0.5)}ZM${n(rx * 0.3)} ${n(ry * 0.7)}L${n(-rx * 0.1)} ${n(ry + L * 0.2)}L${n(-rx * 0.2)} ${n(ry * 0.5)}Z" ${F}/></g>`;
   if (x === 'sail') s += `<path d="M${n(rx * 0.4)} ${n(-ry)}Q${n(-rx * 0.1)} ${n(-ry - L * 0.26)} ${n(-rx * 0.4)} ${n(-ry)}Z" ${F}/>`;
   if (x === 'tall') s += `<path d="M${n(rx * 0.3)} ${n(-ry)}L${n(-rx * 0.5)} ${n(-ry - L * 0.2)}L${n(-rx * 0.4)} ${n(-ry)}ZM${n(rx * 0.3)} ${n(ry)}L${n(-rx * 0.5)} ${n(ry + L * 0.2)}L${n(-rx * 0.4)} ${n(ry)}Z" ${F}/>`;
   if (x === 'beak') s += `<path d="M${n(rx)} 0H${n(rx + L * 0.1)}" ${S} stroke-width="1.6" stroke-linecap="round"/>`;
-  if (x === 'paddle') s += `<ellipse cx="${n(rx + L * 0.14)}" rx="${n(L * 0.14)}" ry="${n(ry * 0.56)}" ${F}/>`;
-  if (x === 'plate') { let d = ''; for (let i = 0; i < 6; i++) d += `M${n(-rx * 0.8 + i * rx * 0.3)} ${n(-ry * 1.3)}v${n(ry * 2.6)}`; s += `<path d="${d}" ${S} stroke-width="1"/>`; }
+  if (x === 'paddle') {
+    const tip = n(rx + L * .14) + n(L * .14);
+    s += `<path d="M${n(rx * .72)} ${n(-ry * .4)}C${n(rx * .88)} ${n(-ry * .28)} ${n(rx + L * .04)} ${n(-ry * .25)} ${n(rx + L * .09)} ${n(-ry * .37)}C${n(rx + L * .13)} ${n(-ry * .48)} ${n(rx + L * .17)} ${n(-ry * .56)} ${n(rx + L * .21)} ${n(-ry * .56)}C${n(rx + L * .26)} ${n(-ry * .56)} ${n(tip)} ${n(-ry * .3)} ${n(tip)} 0C${n(tip)} ${n(ry * .3)} ${n(rx + L * .26)} ${n(ry * .56)} ${n(rx + L * .21)} ${n(ry * .56)}C${n(rx + L * .17)} ${n(ry * .56)} ${n(rx + L * .13)} ${n(ry * .48)} ${n(rx + L * .09)} ${n(ry * .37)}C${n(rx + L * .04)} ${n(ry * .25)} ${n(rx * .88)} ${n(ry * .28)} ${n(rx * .72)} ${n(ry * .4)}Z" ${F}/>`;
+  }
+  if (x === 'plate') {
+    // Small contained scutes and connected pectoral fins, never ribs
+    // crossing out through the solid top-view body.
+    let plates = '';
+    for (let i = 0; i < 6; i++) { const px = -rx * .66 + i * rx * .22; plates += `M${n(px - rx * .035)} 0L${n(px)} ${n(-ry * .1)}L${n(px + rx * .035)} 0L${n(px)} ${n(ry * .1)}Z`; }
+    s += `<g class="gcs-fin"><path d="M${n(rx * .32)} ${n(-ry * .7)}Q${n(rx * .15)} ${n(-ry * 1.1)} ${n(-rx * .04)} ${n(-ry * 1.22)}Q${n(rx * .02)} ${n(-ry * .72)} ${n(rx * .12)} ${n(-ry * .55)}ZM${n(rx * .32)} ${n(ry * .7)}Q${n(rx * .15)} ${n(ry * 1.1)} ${n(-rx * .04)} ${n(ry * 1.22)}Q${n(rx * .02)} ${n(ry * .72)} ${n(rx * .12)} ${n(ry * .55)}Z" ${F}/></g><path d="${plates}" fill="#b7cdc4" fill-opacity=".16"/>`;
+  }
   if (x === 'whisk') s += `<path d="M${n(rx)} ${n(-ry * 0.3)}l${n(L * 0.1)} ${n(-L * 0.08)}M${n(rx)} ${n(ry * 0.3)}l${n(L * 0.1)} ${n(L * 0.08)}" ${S} stroke-width="1.1" stroke-linecap="round"/>`;
   if (x === 'lure') s += `<circle class="gcs-pulse" cx="${n(rx + L * 0.12)}" r="${n(L * 0.05)}" fill="#ffe27a" fill-opacity=".7"/>`;
   if (x === 'plumes') { let d = ''; for (let i = 0; i < 8; i++) { const a = -1.1 + i * 0.32, b = i < 4 ? 1 : -1; d += `M${n(-rx * 0.1)} 0L${n(-rx * 0.5 + Math.abs(a) * 3)} ${n(b * (ry + L * 0.18))}`; } s += `<path d="${d}" ${S} stroke-width="1.3" stroke-linecap="round"/>`; }

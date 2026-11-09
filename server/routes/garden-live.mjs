@@ -51,7 +51,7 @@ export default function register(app) {
   route('/api/garden-live', 'GET', () => gl.view(), { quiet: true });
   route('/api/garden-live/here', 'POST', async (c) => {
     const b = await body(c);
-    return gl.here({ role: str(b.role, 8), on: b.on === 'again' ? 'again' : b.on === 'release' ? 'release' : b.on === 'gone' ? 'gone' : b.on === true, f: str(b.f, 20), look: b.look, name: str(b.name, 60), tab: str(b.tab, 24), hidden: b.hidden === true });
+    return gl.here({ v: b.v, wv: b.wv, lh: str(b.lh, 24), role: str(b.role, 8), on: b.on === 'again' ? 'again' : b.on === 'release' ? 'release' : b.on === 'gone' ? 'gone' : b.on === true, f: str(b.f, 20), look: b.look, name: str(b.name, 60), tab: str(b.tab, 24), hidden: b.hidden === true });
   }, { quiet: true, maxBody: 8192 });
   route('/api/garden-live/send', 'POST', async (c) => { const b = await body(c); return gl.visitSend({ k: str(b.k, 8), body: b.body, f: str(b.f, 20), gen: Number.isSafeInteger(b.gen) ? b.gen : undefined, boot: str(b.boot, 32) }); }, { quiet: true });
   route('/api/garden-live/host', 'POST', async (c) => { const b = await body(c); return gl.hostSend({ to: b.to === undefined ? 'all' : str(b.to, 20), k: str(b.k, 8), body: b.body, tab: str(b.tab, 24) }); }, { quiet: true, maxBody: 64 * 1024 });
@@ -59,7 +59,7 @@ export default function register(app) {
   route('/api/garden-live/applied', 'POST', async (c) => { const b = await body(c); return gl.applied({ ids: Array.isArray(b.ids) ? b.ids.slice(0, 200).map(x => str(x, 64)) : [] }); }, { maxBody: 16384 });
   route('/api/garden-live/perm', 'POST', async (c) => { const b = await body(c); return gl.setPerm({ id: str(b.id, 20), lv: str(b.lv, 8), touch: typeof b.touch === 'boolean' ? b.touch : undefined, share: str(b.share, 8) }); });
   route('/api/garden-live/prefs', 'POST', async (c) => { const b = await body(c); return gl.setPrefs({ open: typeof b.open === 'boolean' ? b.open : undefined, groupLook: typeof b.groupLook === 'boolean' ? b.groupLook : undefined, queue: typeof b.queue === 'boolean' ? b.queue : undefined }); });
-  route('/api/garden-live/queue', 'POST', async (c) => { const b = await body(c); return gl.queueSend({ to: str(b.to, 20), i: str(b.i, 24), t: str(b.t, 8), p: str(b.p, 64), x: b.x, y: b.y, r: b.r, at: b.at }); });
+  route('/api/garden-live/queue', 'POST', async (c) => { const b = await body(c); return gl.queueSend({ wv: b.wv, lh: str(b.lh, 24), to: str(b.to, 20), i: str(b.i, 24), t: str(b.t, 8), p: str(b.p, 64), x: b.x, y: b.y, r: b.r, at: b.at }); });
   route('/api/garden-live/queued', 'POST', async (c) => { const b = await body(c); return gl.queued({ ids: Array.isArray(b.ids) ? b.ids.slice(0, 400).map(x => str(x, 64)) : [] }); }, { maxBody: 32768 });
   route('/api/garden-live/ask', 'POST', async (c) => { const b = await body(c); return gl.ask({ to: str(b.to, 20) }); });
   route('/api/garden-live/home', 'POST', async (c) => gl.sendHome({ id: str((await body(c)).id, 20) }));

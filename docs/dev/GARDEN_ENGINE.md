@@ -14,6 +14,73 @@ discoveries and owned objects remain saved. Map, status and extra controls are
 available on demand, and passive notes go to Recent instead of competing with
 the player's current action. See [Garden pacing](GARDEN_PACING.md).
 
+Previously discovered shelved sights can be placed deliberately through Land.
+Each `garden.wd['sight.place.<id>']` is an atomic `[3,x,y]` value, separate from
+its discovery and room progress. Owner and visitor models derive props, doors
+and lights from the current placement. The optional snapshot `rp` carries only
+known sight IDs and bounded integer cells through both browser and Node cleaning.
+The normal room entry path uses the placed door rather than a legacy entrance.
+This adds access without automatically furnishing the island.
+
+Native lighting retains selected pooled shadow images across a paint pass,
+hiding unused images afterward. Their constant indoor/outdoor tint is assigned
+on creation; entering or leaving a room still recreates the relevant pools.
+Shadow subjects, alpha, geometry, weather and update cadence remain unchanged.
+
+Ordinary isolated play placed two previously discovered sights, walked through
+their registered doors on both sides of an encrypted visit, cast in the cellar,
+and returned through the dry den. Put away and Undo reached the visitor while
+preserving the original discovery dates, room progress and placement. A separate
+Fish book route started with the cellar packed: Get ready explained how to set
+it out, then Take me there walked to its current entrance after placement.
+Rainy puddle contact and one actual-clock night shore walk also completed
+without captured app errors. These observations cover those routes, rather
+than a frame-rate measurement or every room and weather transition.
+
+Native room narration and the fishing status pill occupy separate rows in the
+overlay. The reel fits above them, leaving the top controls clear; hidden or
+removed fishing controls release their row. Reduced motion suppresses their
+entry fade. Cellar and den doorway symbols use ground-plane steps and a ring
+hatch within their original drawing bounds and registered interaction areas.
+The fishing controls share the room's dark, warm palette and visible focus
+outline instead of inheriting the dashboard's light card colours.
+
+An ordinary paired cellar cast kept the caption and fishing pill separate at
+1024 by 700 and again after restoring 1280 by 800. Leave remained exposed, and
+the doorway artwork was inspected outside both rooms. The first caption
+capture crossed the normal introductory-text change; that initial phase is
+not counted as played. A reel did not naturally appear in that resize route.
+The subsequent natural cellar route waited for a bite and used a normal strike.
+Its live reel, current narration and Leave control remained separate and within
+the stage at both sizes. Ordinary Escape ended the reel; no catch or phase was
+forced. The room fishing controls' final dark palette was inspected there.
+
+Native camera updates interpolate and publish the same fields directly and
+reuse one private controls result for the HUD comparison. Public controls
+snapshots remain independent objects. Fishing reflections compute each filled
+triangle's bounds directly, omit x clipping against that triangle's own exact
+finite bounds, and retain full clipping against distorted shoreline spans.
+This removes temporary collections and redundant work without changing camera
+arithmetic, live poses, shoreline geometry, capture policy or update cadence.
+
+Ordinary native play retained Fit, Map, Follow, held walking and wheel zoom
+before and after the actual Photo open/close path. Public controls snapshots
+were separate objects and older snapshots stayed unchanged. A genuine paired
+shore route showed player, pet and rod/line/float reflections through a natural
+wait, nibble and bite, then normal departure, without captured app errors.
+That route did not land a catch, and these observations do not measure a
+frame-rate improvement. Photo used its normal Classic SVG presentation.
+
+The native surface view computes the same four transformed camera corners
+directly, keeping a fresh bounds result while avoiding temporary corner and
+point collections each outdoor update. Puddle, footprint, seasonal and shoreline
+rules retain their existing geometry and cadence. Clean release exports now
+include the authored canonical Garden asset alongside the other runtime assets.
+An ordinary rainy route after the surface change contacted an existing puddle,
+left visible tracks and rings, reached two public dry beaches and returned Home
+without captured app errors. No weather, clock or surface state was forced
+after boot; the route used an isolated provider fixture.
+
 Phaser **4.2.1** is pinned in `vendor/phaser/` with its licence and source digest.
 The build verifies and embeds the bundle. `FreefloGameEngine.load()` loads it
 on demand without a runtime CDN request. Opening cinematics use their separate
@@ -34,10 +101,277 @@ Actual isolated startup covered normal completion and Escape before native
 readiness, with a retained game session, continuing updates and a visible garden
 after the opening. Wrapped cinematic captions have explicit line spacing.
 
+## Canonical island and saved-world ownership (v3)
+
+The current island is authored once in `assets/garden/island-v3.json`.
+Its full SHA256 is `94f5b2dbe4dce765cafb2b404cfbf0db1c7c4b321f4d28bbf173df23fcc64eea`; the shared layout fingerprint is
+`94f5b2dbe4dce765cafb2b40`. `lib/garden-island.mjs` loads and freezes it for Node;
+the build embeds the same frozen data before the app. Node evaluators receive
+bare `GardenIslandLayout`, without a browser `window`. `GARDEN_WORLD` has
+version 3, 52 columns, 56 rows and room sentinel column 53. The main garden
+uses 48-by-30-pixel cells with the existing 150-pixel sky offset.
+
+`94-garden-0island.js` derives coast, reserved approaches, routes, section
+cells and water classification from that provider. The mainland contour is the
+same authority used by walking, placement and rendering. Ocean is a connected
+rectangle with the mainland as a hole; the pier decks overlay that sea. Native
+and Classic terrain use the same coast and separate inland pools. An 84-pixel
+inland beach band leaves the water boundary unchanged. The visual ocean extends
+beyond the logical map, to cell bounds (-12,-12,76,80); it does not grant access
+outside the 52-by-56 world. Rows 44 through 55 are open ocean.
+
+The northern pond and the small southwest allotment pool remain separate fresh
+water. Existing inland pool sections retain water classification. All 128 land
+section IDs remain, with nonempty authored allotments, existing entitlements and
+existing purchase authority. Five staged entrance gates replace the old map's
+repeated zone crossings; see [the map contract](GARDEN_PLAN.md#the-map).
+Fishing depth/access progression remains authoritative even where the sea is
+visually continuous. Locked ocean cells do not become rectangular land-mist
+regions. Optional workshops and structures are not scattered across the coast.
+
+### Native island finishing and route work
+
+Empty owned soil sections use lawn paint until a plant or ground decoration
+cultivates that section. Plants and ground decor retain the soil underneath;
+hover, land inspection and planting guides keep the original section identity.
+A sorted set of cultivated section IDs joins the native terrain cache key.
+Moving, planting or removing the last object in a section can repaint terrain;
+care or growth within the same sections keeps its retained terrain caches.
+
+Village walks follow the authored route centres with rounded bends and quiet
+grass shoulders. Small strips clip to each open path cell; a closed branch
+stops at its own gate even where another public apron overlaps it. Their broad
+physical reservations remain clear and walkable;
+the square reservation mask is not itself painted as a road. Small rounded
+doorway forecourts replace full-apron stone rectangles. Woodland floors use
+gentler contrast. These are native presentation changes: canonical coast, map
+fingerprint, water classification, collisions and earned ownership are unchanged.
+
+NativeWater builds three clipped surf contours from actual ocean land holes
+when region geometry changes. Freshwater banks and the outer world rectangle
+do not generate surf. Its existing ambient update changes three retained layer
+alphas using daylight and wetness; reduced motion leaves a steady appearance,
+and the existing ambient pause clock remains authoritative. The contours do not
+request new reflection captures or shoreline clipping on each ambient update.
+
+Both coarse and fine A* searches use an indexed binary frontier with one live
+slot per cell. Lower costs update that slot; equal costs retain insertion order.
+Existing heuristics, diagonal restrictions, search limits and the fine search's
+time budget remain. Movement, route sampling and creatures share one collision
+snapshot during a simulation step, subject to the current grid and data revision;
+boat routing keeps its separate ground-only distinction. Native updates also
+reuse the same preferences during that step. This avoids repeated map revision
+and preference preparation without changing movement authority.
+
+The next reachable closed v3 gate has a taller stone arch, capped stone posts,
+solid timber leaves and a latch. Native art retains its 25/31-pixel span and
+side projection, with feet aligned to the actual first closed cell edge rather
+than the bottom of the earlier art envelope. The gate, landmark, shadow and
+reflection metadata share that anchor. Its visual bounds extend upward for the
+arch. The two existing moving leaves and reduced-motion handling remain.
+Classic/fallback art uses the same stone-and-timber direction. Requirements
+remain in deliberate inspection, and gate access/collisions do not change.
+
+An initial isolated ordinary flow reached four public beach stops, received the
+closed level-6 gate explanation and returned Home with no captured app errors.
+Viewed images exposed broad reservation paint and oversized road ends; a later
+ordinary pass covered the refined south/east beaches and closed gate. The final
+gate approach recorded zero offset between its canonical crossing, art anchor
+and landmark foot, with the approach free and the closed row blocked. Inspection
+still explained level 6, then returned Home without captured errors. A separate
+ordinary preview session covered Fit, Map, Follow, held keyboard walking,
+wheel zoom both ways and Leave, also without captured errors. These bounded
+observations do not establish a measured framerate or every saved garden.
+
+The waterfall's existing native scenery now uses a broader water sheet,
+wet-rock recesses and ledge highlights. Three retained sheet highlights replace
+three small streaks; the existing foam, spray and mist remain on the same
+scenery clock, with twenty moving parts overall. Its anchor, bounds and
+reduced-motion handling are unchanged.
+
+Ordinary top-view fish have a small paired pectoral-fin joint using the existing
+swim-effort animator. Pipefish and silhouettes that already have wings, plates
+or plumes keep their established shape. Existing paddlefish snout geometry,
+mouth contact, bite recoil, casting rules and multiplayer authority are unchanged.
+
+The outdoor camera skips Phaser's zoom setters when both actual zoom axes
+already equal the target scale, and shares one fresh preferences object between
+its target and controls calculations. Photo restoration still compares the
+actual camera state; interpolation and input thresholds are unchanged.
+
+Selected reflection bands retain visibility across a normal update. Only unused
+bands, unselected sources and explicit empty-snapshot/height cases are hidden.
+Stationary rod and line paths reuse their numeric coordinates while the exact
+path strings remain unchanged. Capture cadence, clipping and budgets are unchanged.
+
+Closed district gate leaves initialize their constant poses once and remain
+static for reflection capture. Open leaves keep their existing motion, and the
+normal area signature rebuilds the gate when it opens. The old watermill remains
+stopped, matching its existing story about the brook moving away.
+
+Surface contacts index shoreline edges in vertical bands when the existing
+shoreline geometry revision changes. Footstep and puddle queries use the same
+edge straddle/intersection arithmetic and region/hole rules, considering only
+edges that can cross the queried height. This removes repeated full mainland
+loop scans without approximating the water boundary or changing effect timing.
+
+An ordinary two-player island visit with these changes reached both piers,
+accepted visitor watering and showed a cast through natural waiting, nibbling
+and a bite. The rod, line and float were visible; actor, pet and fishing-rig
+reflection diagnostics were active. Both players left normally with no captured
+app errors. That session did not land a fish and does not establish every species
+or a measured framerate.
+
+The close waterfall walk framed its full native art and observed all twenty
+retained parts changing over two samples, then left normally without captured
+errors. A static gallery rendered nine actual fish families and their existing
+mouth anchors; that gallery is not a catch or native-animation claim. An isolated
+rainy-provider play-through walked through an existing puddle, observed contact
+rings and wet tracks, reached the south/east dry beaches and returned Home without
+captured errors. No weather or game state was assigned after boot in that flow.
+
+`94-garden-1stored.js` retains a displaced plant or decoration as its complete
+original record with `_packed:3`. Normal model and snapshot rows omit it while
+stored. **Bag → Stored garden** starts the existing move ghost. A legal ordinary
+drop changes x/y and clears that marker, preserving the UID, planting/care
+history, variety, decoration rotation/style and original stored decoration
+timestamp. It is a move of an owned object, not a new purchase or seed refund.
+
+Earned structures are a separate collection. **Land → Your built structures →
+Set out nearby** searches for legal clear ground and a reachable entrance.
+**Put away** clears only the placement; ownership and progress remain. A crowded
+space can refuse placement. Host placements travel as typed `fp` rows, while
+visitors follow the host's current positions. These controls are separate from
+the single optional **Play → In the garden** workshop selection.
+
+Outdoor feet are stored under a version-and-fingerprint position key. A legacy
+point is accepted or relocated through the current coast, solid and access
+rules before it becomes a v3 position; the exact legacy key stays intact.
+Room-sentinel coordinates and visiting positions are not saved as home feet.
+Saved and live visits require the same world version and layout fingerprint;
+the live protocol is now `GL_V=4`. Incompatible coordinates are rejected rather
+than interpreted on another map. See [shared-world agreement](GARDEN_TOGETHER.md#canonical-island-agreement-v3).
+
+Earlier Designer layouts remain complete atomic archives. **Designer → Layouts
+→ Earlier layouts → Adapt to this island** opens a working copy: safe paths and
+ground can project, while earlier moved/made objects use deliberate placement
+ghosts. **Keep my changes** commits the draft; **Cancel** leaves the saved layout
+alone. The full original archive remains, including entries that do not fit.
+Earned structures use the Land controls instead of old coordinate overrides.
+
+Same-user synchronization uses strict world provenance and an internal atomic
+`@xy` move register while retaining ordinary x/y and independent care fields in
+saved rows. Local Update, legacy-write preservation and the recovery boundaries
+are mapped in [MODULES](../../MODULES.md#garden-island-and-recovery-world-v3).
+The nonautomatic migration shares its planner with the deliberate
+**Update my garden** action. After technical acceptance of ordinary nursery,
+structure, Designer and encrypted-sync play, the adapter's `contractReady` gate
+is enabled; migration 100 remains `auto:false`. Multi-device histories use the
+explicit creator-selected handover below; unverified or incomplete histories
+cannot be independently restamped. Incompatible
+full Garden saves are archived before acknowledgement; their download is not
+an automatic import or whole-state restore.
+
+Recorded isolated ordinary play covered an encrypted v3 visit, accepted visitor
+watering, and an aged plant/rotated decoration restored through Bag and normal
+move controls with their nonplacement fields retained. A separate recovery
+flow covered structure Set out / Put away / Undo and two complete earlier
+Designer archives: an accepted original sign ghost retained its text/colours,
+Keep saved the adaptation, and Cancel left the saved layout/archive unchanged.
+
+Two genuinely paired encrypted devices also completed one concurrent physical
+flower move and watering. Both reached the same complete coordinates and care,
+retained age/variant, and survived normal reload/leave. The incremental sealed
+payload retains `gw`; the virtual `@xy` key does not enter dashboard rows.
+
+A modest level-3 coastal flow reached four public beach stops and explained the
+closed level-6 gate. A later actual autumn-night Classic Photo flow saved a
+1600-by-1173 JPEG through normal Keep in Memories and returned Home, with no
+recorded app errors. Its viewed image includes woodland and no longer shows
+the earlier horizontal sea edges; the hour wash/ocean grade are continuous.
+This does not establish dawn/dusk transitions, native capture parity or all-GPU
+rendering behavior.
+
+Ordinary Stored garden browsing covered 25 complete records: 24 items, Next to
+one, Previous to 24, then Next and restoration of the rotated second-page bench.
+Its nonplacement metadata and all other records remained intact; the resulting
+24-item list needed no pager. The original observer's two ASCII range flags
+were false against actual en-dash labels **1–24 of 25** / **25–25 of 25**;
+read-only labels and inspected images establish the ranges, not a source failure.
+
+A physical **Update my garden** produced the canonical fingerprint with a
+full-folder backup plus exact pre-update state/Garden/receipt copies. A genuine
+older document's incompatible full save archived its exact incoming Garden and
+provenance; repeating that same input reused the immutable archive unchanged.
+The preserved copy was downloaded through the actual Backups control, with
+browser completion and bytes matching the immutable archive. The current app
+recorded no errors; the authentic earlier document reported one ResizeObserver
+notification. Current-client canonical-component ACK refresh did not arise
+naturally and remains unplayed.
+The normal migration CLI also preserved every full record and other app state
+in a separate backed-up fixture; a second run left state bytes/version unchanged.
+No real-data migration, complete historical-save coverage, all-gate progression,
+universal reflection result or frame-rate improvement is claimed. Earlier v2
+evidence below retains only its recorded scope.
+
+### One island across the owner's computers
+
+This is same-user encrypted sync, separate from a live friend visit. Before the
+first canonical commit, the engine requires the unique current authenticated
+group member with `via:created`, a fresh complete pass and matching
+`island:{v:1,wv,lh}` capability from every other current member’s encrypted
+device document. Plain app versions and presence are insufficient. A genuinely
+earlier server cannot safely ingest the new world marker, so it must be updated
+before that first commit. Unknown origin, unreadable history, incomplete changes
+or another layout keep the original Gardens unchanged.
+
+The creator retains an exact immutable first snapshot and retry record. One
+encrypted shared file, `garden/island-handover.json`, carries bounded
+16,384-character parts plus metadata naming the group, creator, world/layout, snapshot ID,
+part count, exact text length and SHA-256. Only the creator publishes it; other
+members mirror it. Admission checks the actual creator-written root, metadata,
+parts container and every part register, the register reconstruction against
+the local file, all original canonical baseline paths, and the Node SHA/content
+check. A partial file never becomes a usable island.
+
+Another computer explicitly chooses **Use updated island**. Full-folder and
+exact state/Garden backups and an immutable earlier-Garden component precede
+the Garden-only commit; unrelated app state stays intact. The engine projects
+currently held matching canonical registers onto the complete first snapshot,
+retaining their original HLCs and ordinary care/deletion/coordinate rules.
+It does not publish the older snapshot as a new full local edit, which would
+otherwise overwrite changes made later on the original computer.
+
+`prepareImport` saves a private baseline intent before the state commit.
+`finishImport` adopts that original-register baseline and atomically saves an
+applied ticket in sync metadata. If interrupted after state commit, the next
+ordinary sync mutation matches the journal to the committed world and
+`seen['world3.handoverId']` before any capture. An uncommitted legacy intent
+is discarded, and an already applied ticket never reapplies an older baseline.
+The first snapshot and pending publication retry never recapture a later
+Garden, and an already canonical computer never imports it again.
+
+Before migration, real world2 local changes continue through their ordinary
+untagged split-axis format instead of being dropped by the new server. After
+migration, the strict layout tag and atomic `@xy` format apply. Historical
+incompatible registers remain preserved and keep a qualified attention state:
+matching island changes and other dashboard changes can still sync. No history
+is discarded merely to display Up to date.
+
+An ordinary paired two-device flow completed creator Update, encrypted transfer
+and deliberate import with the exact earlier Garden archived. Watering performed
+after publication but before import survived; subsequent movement and watering
+converged, retained original age/variant, and survived reload/Leave with no app
+errors. The first run exposed a completed-join guard error, corrected before
+the successful rerun. Crash recovery, all-history, all-race and performance
+claims remain outside this observation.
+
 ## Ownership
 
 | Module | Responsibility |
 | --- | --- |
+| `assets/garden/island-v3.json`, `lib/garden-island.mjs`, `94-garden-0island.js`, `94-garden-0shore.js` | One frozen island contract, shared coast/water topology and physical reservations. |
+| `94-garden-1stored.js` | Full-record stored-item recovery and deliberate earned-structure placement. |
 | `94-garden-0pacing.js` | Existing-level activity availability, one owner-selected world setup, shelving and optional shared selection. |
 | `94-garden-native-runtime.js` | Scene lifecycle, input, shared clock, gameplay integration, room transitions and photo capture. |
 | `94-garden-native-world.js` | Model-driven outdoor composition, numeric movement/collision, camera projection, picking, culling and depth. |
@@ -71,6 +405,86 @@ keyboard slot selection intentionally bypasses only the post-drag pointer-click
 guard. Moves restores its opener on keyboard/selection close, and outside
 pointer dismissal leaves the clicked control's focus alone. These changes add
 no frame work, timers or network messages.
+
+Routine Play refreshes keep the connected pager and same-game card roots while
+the group and eligible ID list are unchanged. Changed status content/classes
+patch those buttons; changed header content leaves the pager connected. Actual
+group/list/page changes retain normal pager behavior. The popup refresh path
+lets Play reconcile its own content instead of first clearing it. Existing
+onclick dispatch, escaping, pacing and selected status remain unchanged.
+
+Single normal press/hold/release observations before and after this retention
+change both opened Photo mode and saved its opened marker, with no application
+errors. Neither bounded hold encountered a natural repaint, so those runs
+establish stability at rest rather than a reproduced replacement race. The
+earlier missed Photo click remains causally unproved; its first card's gold
+outline was freshness styling, not recorded keyboard focus.
+
+A later encrypted host/visitor observation supplied an actual incoming update:
+the visitor physically watered an existing thirsty flower while the host held
+the Photo card. The authoritative timestamp and visitor-attributed diary entry
+confirmed acceptance, and the host's native repaint count advanced. Its same
+connected button and onclick survived with no held pointer move or button
+replacement. One release opened Photo mode and saved its marker; both clients
+left normally without reported errors. This verifies that concurrent scenario,
+while leaving the earlier missed click's exact cause unproved.
+
+Native hover feedback records the numeric camera projection after a physical
+pointer move. Accumulated movement beyond one eighth of a screen pixel clears
+the old label, highlight, card and unowned hover cursor once. Resting projection
+noise leaves fresh feedback intact; the frame path compares scalars only while
+armed. Native canvas pointerleave, blur, room transitions and teardown also
+retire transient hover. Selected bubbles, placement ghosts and active actions
+retain their existing owners. Classic pointer handling is unchanged.
+
+The separate world-tip owner accepts only actual stage targets before its
+pointer throttle. Controls no longer project through to habitats beneath the
+HUD. Stage leave and native hover cleanup hide only this transient card;
+fishing hold/reel messages and selected room guidance keep their own owners.
+The outdoor owner also rejects both room contexts before interpreting points.
+Its measured card chooses above the pointer when placing below would cross the
+viewport or a horizontally overlapping, visible direct-child hotbar. Placement
+uses the existing throttled pointer path and adds no observers or frame work.
+
+One ordinary isolated London-day route hovered the actual lily-pad habitat,
+then the Water control, left the stage and walked away through Map. The card
+appeared over the habitat and retired on each exit. A single normal cast kept
+its separate fish-owned waiting message while the transient card stayed hidden;
+Escape, Leave and Life return completed with no captured errors. The Map leg
+combines a UI exit with camera movement, rather than isolating camera cleanup.
+The separate multiplayer second-line invitation branch was not played here.
+
+A later ordinary visit used one physically picked built-windmill door. Its
+intro gave way to the naturally delayed how text, which survived mechanism and
+Leave-control hovers. An exposed upper-left room pointer did not create outdoor
+habitat help. The actual Frontier shader was hidden indoors, visible after
+normal exit and retired on garden Leave; Life return created a new outdoor
+owner. Inspected images also show the outdoor habitat card above the hotbar.
+No puzzle was activated or solved, and no application errors were captured.
+
+Frontier reads a retained world-owned view of the actual locked-region array
+and terrain revision. The revision advances on the existing terrain rebuild.
+Its old full-effects fallback remains available. Actor sampling is already
+memoized once per frame; this narrower accessor avoids the unused wrapper and
+conditional held-reflection concatenation rather than repeated actor scans.
+The full effects view also reuses its exact water predicate for the lifetime
+of the world, reading the same live regions. These are allocation changes,
+with no measured frame-rate claim.
+
+Lighting also writes the six computed shadow overrides directly into its
+existing source-keyed cast record. It keeps the actor-field copy and evaluates
+the exact position/size expressions before that copy, in their original order.
+This removes one temporary override object per eligible actor update; shadow
+geometry, visibility, pools and simulation timing keep their existing rules.
+
+The same ordinary physical route and bench hover reproduced stale feedback in
+the prior build after both stationary-pointer wheel zoom and pointerleave.
+The updated build cleared the label, highlight and cursor in both cases; raw
+input counts confirmed that zoom had no intervening pointer move. A fresh
+physical hover showed the label again, and inspected images confirmed the
+result without reported application errors. Active action and selected-bubble
+preservation, room/blur transitions and Classic remain source-only in this
+focused observation.
 
 Companion menus retain the identity of their actual pat response for its short
 natural lifetime. Passive roaming yields while that response still owns its
@@ -182,7 +596,13 @@ clipping share this shape. Saved occupied water footprints extend preservation
 coves, derived from the current home or visit model, without rewriting data.
 Piers and ice remain water exclusions, including exclusions touching the shore.
 `gardenOtherWaterShapes()` supplies the same continuous pond and pool contours
-to physics and both renderers. Prepared cell buckets resolve ellipse clearance
+to physics and both renderers. Complete compact rectangular pools can use a
+deterministic asymmetric superellipse within the original wet rectangle. Its
+sampled polygon must retain every wet-cell centre; otherwise the old contour
+is used. Irregular components, holes, cut-outs and narrow or elongated channels
+keep that old contour. Generation remains inside the signature cache rebuild,
+with the same shared resident and detached visitor algorithm.
+Prepared cell buckets resolve ellipse clearance
 and shore normals without scanning every edge at each step. Hard obstacles and
 locked land keep their grid rules; water occupancy uses actual curves. Route
 cells can retain a dry fractional anchor, and swept movement follows bank
@@ -192,9 +612,42 @@ when their person is boating.
 Locked-land polygons retain owned plot holes. The frontier mist uploads a
 signed-distance field only when the locked boundary changes; animation scrolls
 a small reusable noise texture across a broad, irregular fade in one shader.
+The dark billows fade to zero across the inner 24 world pixels before exact
+locked membership clips them. This removes a possible nonzero alpha jump at
+the cell boundary; the deep fog, pale outer fringe and terrain patches keep
+their existing palette and shapes.
 Gates sit above the fog without changing collision
 or progression. World scale comes from roofs, canopies and landmark height;
 player size and saved coordinates stay stable.
+
+An ordinary rendered walk, wheel zoom and Wide/Up photo covered the inward fog
+fade and compact pond contours. The native frontier started without reported
+shader errors and retained one mask build through that trip and capture. A
+normal Map route reached the dry shore of the existing small pond; its close
+view, Fit view and saved 1600 by 1000 JPEG were inspected. Photo Done restored
+normal input, and Leave/Life returned to a new ready scene. The daylight copy
+used a different actual local calendar after an overnight restart, so the
+earlier image supports a silhouette comparison rather than identical lighting.
+Blocked shore crossings, unseen ponds, weather changes and indoor transitions
+remain unplayed in this focused flow. The fog change does not remove intended
+rectangular terrain patches or establish an FPS improvement.
+
+The native woodland substrate joins wood, dell and wild cells that already
+share the same floor colour. A single global visual contour is sampled before
+chunk partitioning. Small inward waves and one restrained palette blend avoid
+layered contour stripes. Other surfaces paint afterward using their
+existing contours. This static work follows terrain signature invalidation;
+canonical land cells, exact locked masks, water geometry, chunk/cache policy
+and shoreline contour generation remain unchanged.
+
+The ordinary Wide/Up photo, Fit view and existing pond-shore approach were
+repeated for this terrain treatment. A first layered draft looked banded in
+the saved image and was replaced before installation. The simpler single-floor
+version completed the same walk, wheels, photo restoration and Leave/Life flow
+without reported application errors; its saved JPEG, Fit and close shore images
+were inspected. The observed frontier retained one mask build during the trip.
+This is a visual refinement, not a new performance or all-season claim.
+
 Retained crown polygons also supply local player occlusion. Only a front-layer
 crown covering the head or torso fades; trunks and tree-root alpha stay intact.
 The original crown alpha is restored when coverage ends or the world closes.
@@ -219,8 +672,118 @@ Curved shoreline edges use a prepared spatial index for short wave/ring segments
 Water depth is a soft cached mask with a numeric depth channel, shaded by one
 quad; it does not replay a large gradient-triangle drawing each frame. The mask
 is rebuilt on water/room revisions and counted inside the existing water cache.
+Reflection and depth-spot strips stop their three-sample shoreline intersection
+once its result is empty. Surviving strips retain the exact original samples
+and painting. `water.intervalCache.emptyBandQueriesSkipped` counts skipped
+sample calls, independently of region query, cache, frame or timing counts.
+
+A single ordinary cast reached natural waiting, nibbling, bite and reel states.
+The rod, line and float were visible, a rig and pet reflection drew, and water
+capture errors stayed at zero through Escape and a real saved photo. The new
+skip counter advanced during that opportunity. Wait/reel images and the saved
+JPEG were inspected; Leave/Life returned normally. The brief reel did not land
+a fish, and the actor body did not produce a drawn reflection in that geometry.
+Those are opportunity limits; the counter establishes skipped calculations,
+without a frame-rate or timing claim.
+
+Normalized water regions also prepare conservative horizontal extents from
+their outer polygon and every ellipse. Polygon extents include the existing
+interpolation's endpoint evaluations, preserving floating crossings just past
+a vertex extremum. Disjoint finite query slices skip the region before exact-y
+cache lookup; uncertain extents or arguments retain the old path. Holes still
+subtract water, and frozen merge/subtraction and interval ownership are
+unchanged. `water.intervalCache.horizontalRegionsSkipped` counts those region
+lookups avoided; it is separate from the empty-band sample counter.
+
+Ice scratch storage is allocated only for the first positive frozen interval
+in a liquid-only query. Ordinary queries still return fresh clipped arrays;
+no shared empty-array contract changes. When ice exists, union and subtraction
+run in their original order. With no ice, the unused empty union/subtraction
+is skipped. This changes temporary allocation, not shore or frozen geometry.
+
+The ordinary fishing/photo flow was repeated with lazy scratch allocation:
+natural wait, nibble, bite and reel, visible rod/line/float, drawn rig/pet
+reflections, saved JPEG, normal Escape and Leave/Life remained observed, with
+zero capture errors and no reported application errors. Reel and saved-photo
+images were inspected. No landing or named sturgeon/paddlefish occurrence was
+observed in that run; frozen-water execution remains source-only here. These
+results do not measure frame rate or allocation timing.
+
+The horizontal rejection counter advanced in another single ordinary cast and
+photo flow. Natural nibble, bite and reel states, visible rod/line/float, drawn
+rig and pet reflections, Escape cleanup and Leave/Life all remained observed;
+capture errors stayed at zero. Reel and saved-photo images were inspected.
+No landing occurred in the brief opportunity, and no actor-body reflection was
+drawn in that geometry. Skipped-region counts describe avoided lookups rather
+than an FPS or elapsed-time comparison with the earlier run.
 
 ## Native components and one clock
+
+Dragonfly artwork groups its existing static body primitives in an identity
+`gcp-df-body` node, alongside the original moving wing group. Existing actor
+enrollment can then cache that static branch through the normal four-shape
+threshold while retaining wing transforms and outer opacity. No new cache
+hook, authored primitive, random draw, motion or gameplay policy is added.
+Earlier off-camera vector counts did not establish an in-view cache failure;
+this change addresses the source topology of the static branch.
+
+`freeflo-natural-dragonfly32-1793916925480` approached an existing common
+darter through normal Map movement in actual clear Honolulu daytime. Its
+static body used one 8,512-byte capture, hiding 14 original Graphics with
+1,212 command-buffer entries. The separate wing branch retained its own
+capture and live shimmer: local scale and opacity progressed numerically.
+Physical hover reached the actual picking target. Leave retired the bug and
+remembered tiles; Life/Garden recreated the same natural key with new nodes
+and continuing wing motion. No errors or incomplete observations were
+captured. Both the approach and body/wing observation images were inspected.
+This covers one natural species and motion policy, not every variant,
+renderer, season or multiplayer condition, and establishes no FPS gain.
+
+Fresh plant-need rings enroll individually in the shared adaptive cache after
+their marks are attached and ordered; badge siblings retain their existing
+native/calm animation policy. The rings use normal cache budget, zoom quality
+and node cleanup, with no added artwork, timers, gameplay or network state.
+NativeWorld owns them in a keyed ground layer at depth -9260, below piers and
+facades. The existing filtered HUD list reconciles that layer on its normal
+refresh/movement path; only the nearest badges remain in the actor annotation
+layer. Stable need-state and geometry retain ring caches through badge changes.
+Current-root and renderer-mode dependencies handle startup and switching;
+membership or position changes invalidate the existing viewport memo. Room
+visibility and world destruction own the layer's lifetime. Native photo capture
+explicitly hides and restores this ground owner alongside the existing HUD.
+Classic keeps its original SVG path.
+
+`freeflo-ground-rings-photo33-1793917974100` used normal front-bed Map
+movement, wheel zoom, Water/Hand choices, Photo mode and Leave/Life return.
+Twelve unique ground rings retained their geometry, materials, nodes and
+caches across UI refresh and movement; the actor annotations contained no
+duplicate rings. The ground layer reported depth -9260 below object facades,
+and the opaque-roof image was inspected. A normal Wide/Up capture saved one
+1600 by 1000 JPEG (177,922 bytes), with matching GET/disk bytes. Passive render
+observations recorded the ground layer, badges and UI hidden during that
+capture; the saved image was inspected without those markers. Done restored
+the same ring nodes and ordinary walking/camera, and Leave retired old nodes
+and tiles before a distinct remount. No errors were captured. Room entry/exit
+and Classic rendering remain unplayed in this focused flow; ordinary discovery
+and photo rewards were allowed rather than mislabeled as progress changes.
+
+Stepping stones already use the static actor-part cache when visible;
+off-camera raw vector counts alone do not establish missing cache enrollment.
+
+`freeflo-static-owners31-opportunity-1793916569676` used normal Map walking,
+held movement, wheel zoom and Leave/Life return in actual clear Honolulu day.
+All twelve visible rings held native captures, leaving their 3,984 original
+command-buffer entries ineligible for the main camera; materials, opacity and
+unchanged mark identities were retained. Badges remained separate with their
+existing still native policy. Old rings and tiles retired on Leave; new marks
+remounted outside the camera and correctly deferred capture. Existing stone
+caching was also observed when the normal trip brought it into view. The
+image was inspected and no application errors were captured. A literal
+unchanged-progress field was false: the trip crossed the existing hidden-glade
+discovery and added its normal once-only 4-coin/3-XP receipt. Plants,
+decorations, water state and all other ledger entries were unchanged. Counts
+describe rendering representation, not frame rate; no dawn/dusk transition is
+established by this daytime flow.
 
 Short action-feedback bursts use a lazy Image pool bounded by the existing
 180-particle limit. The pool shares the weather atlas's snow-disc frame with
@@ -461,6 +1024,73 @@ multiplayer catch, input method or assistive technology.
 
 ## Camera, quality and caches
 
+Native peer-name text has a memoized label role. Its existing retained-label
+pass caps only the glyph's nominal screen font size at 16 pixels, using the
+owning node's effective pixel scale and excluding the child glyph's own scale.
+It applies during camera easing, before deferred texture-quality work. Text
+content, anchor, position, origin and logical picking bounds remain unchanged;
+Classic and other labels retain their existing behavior. Static partitions
+keep this presentation label separate from cached body artwork. Texture
+resolution retains its existing policy. No frame-time DOM query or layout read
+is added.
+
+An ordinary encrypted pair walked through Map, then the host used one wheel-in
+and one return-out gesture. The same retained name and Text objects stayed at
+the nominal cap, with their authored anchor unchanged within floating-point
+precision. Projected glyph bounds, inspected images and both final Leave logs
+confirmed the result without captured errors. The glyph's ink/padding box can
+be taller than its nominal font size. This was one normal camera route, with
+no fishing or frame-rate measurement.
+
+The sturgeon shadow's plate detail uses connected pectoral fins through the
+existing `gcs-fin` motion and small contained scutes. Its base body, length,
+mouth joint, tail, global opacity, variant wrappers and above-water fin remain
+the existing ones. Other fish families and fishing authority are unchanged.
+
+A static source-native comparison used the actual catalogue functions at the
+recorded large sturgeon size and a smaller authored size, with enlarged detail.
+It retained complete tail, fin and mouth markup; the rendered sheet was
+inspected. A separate ordinary fishing run reached reel and Escape without
+application errors, but later Photo entry stayed in Play and the observation
+timed out. That failure is retained separately; the run does not establish a
+saved photo or a naturally observed sturgeon animation after this artwork
+change. The static comparison does not prove motion or a recorded variant.
+
+The shared sturgeon/paddle long-tail path uses softly curved lobes and a shallow
+fork, retaining the old root endpoints, rear reach, single path and `gcs-tail`
+pivot/motion. Its neutral control points stay within the existing body height.
+A separate real-source static sheet compared both affected catalogue families
+with the accepted sturgeon fins already present; it was rendered and inspected.
+It establishes neutral artwork, not a natural paddlefish occurrence or newly
+verified animation bounds under joint rotation.
+
+The paddlefish bill is one continuous rounded path overlapping the head,
+replacing the tangential oval. Its forward and lateral extent, mouth position,
+body and the shared tail joint stay unchanged. A real-source static comparison
+at two labelled catalogue sizes was rendered and inspected; no natural
+paddlefish occurrence or new animation behavior is claimed by that sheet.
+
+The island stepping-stone road computes one local cull box while emitting its
+existing ellipse artwork. Only that sprite uses the full box with the existing
+168-world-pixel logical preparation margin, against the current and goal views.
+Its island producers preserve unrelated classes, including the cull owner's
+`gart-off`, rather than replacing the whole class list. Explicit native capture
+and restoration prepare logical visibility against their actual camera view;
+an unplaced canonical road also receives its normal transform and depth there.
+Other sprites retain their existing point policy. The separate 16-world-pixel
+main-camera guard and its filter-bit ownership remain unchanged.
+
+A focused rendered walk and two wheel steps observed partial road visibility
+with its anchor beyond the old point margin, preparation-only visibility and
+fully outside preparation states. The canonical off flag and actual cull class
+agreed throughout the passive render observations. A normal Wide/Up photo saved
+the same previously offscreen road in a 1600 by 1000 JPEG; Done restored its
+normal camera exclusion. Leave and Life return retired and recreated scene
+nodes without reported application errors. The saved JPEG was inspected.
+Direct cold capture before any normal placement, dawn/dusk access and Classic
+remain unplayed in this focused flow. This establishes visibility behavior,
+not an FPS improvement or reflected pixels for the road.
+
 Outdoor drawings retain the existing 96-world-pixel logical/preparation
 visibility. A separate main-camera filter excludes known finite drawing bounds
 outside a 16-world-pixel rendering guard. Unknown bounds remain eligible. Only
@@ -471,6 +1101,35 @@ viewport. The shipped engine's DynamicTexture camera has id zero, so cache and
 water captures keep access to the logically visible artwork. Public
 `world.renderStats().mainCameraCull` reports the guard, camera and exclusions
 among logically visible drawings.
+
+The same owned-bit guard also covers canonical stepping stones and ordinary
+native dragonfly roots outside the drawing registry. Discovery uses existing
+dirty object sorting and explicit photo preparation; each frame visits only
+the retained target map. Stones reuse one prepared local box and displayed
+translation. Dragonflies use conservative authored body/wing/shadow bounds
+and the union of displayed and live poses. Decorated variants, unknown bounds
+and unsupported transforms retain their existing rendering. Leaving ownership
+or destroying the world clears the owned filter. Logical visibility, cache
+recipes and id-zero captures stay separate from this main-camera decision.
+`mainCameraCull.specialActors` reports these bounded diagnostic targets. A
+freshly attached target may enter at the final dirty sort after its first
+normal cull; photo preparation refreshes discovery before using its viewport.
+
+`freeflo-special-cull-photo34-1793919113131` recorded normal Map/held movement,
+wheel zoom and one Wide/Up photo. Twelve off-guard stone samples had the owned
+main-camera mask, fifteen in-view samples cleared it, and twenty-six off-guard
+natural dragonfly samples were masked. The same stone root was excluded before
+entering Photo mode, allowed in both actual widened-capture samples, and masked
+again after Done restored the normal view. The 1600 by 1000 JPEG (162,133 bytes)
+matched its saved bytes and was visually inspected. Ground-marker/photo
+cleanup and Leave/Life observations completed without captured errors; water
+capture errors stayed zero. No matching reflection-source rows or foreign
+filter bits occurred for these targets, so those cases remain source evidence.
+Two broad helper fields were false: three ordinary movement samples retained
+the existing `gart-off` logical state, and its prior-offscreen photo predicate
+selected the already widened preview. The raw before-Photo and capture records
+establish the same-root mask transition; a separate root interpretation retains
+those qualifications. Entry counts and mask states establish no FPS gain.
 
 Seasonal ground places its unchanged static patch artwork in
 `.tg-ground-patches` and enrolls only that child in the existing adaptive,
@@ -658,6 +1317,219 @@ Its temporary sharp pass exposes retained vectors without deleting the normal
 view's captures, so returning from an export does not rebuild the fit map.
 
 ## Persistence, networking and current limits
+
+Automatic new-friend presentation is queued separately from earned pet state.
+It starts disarmed, rearms only on genuine Pets view entry and uses Together's
+existing idle callback. Garden/Visit, active stages, modal and editing owners
+defer it. One presented celebration consumes that entry's allowance, including
+after selection or dismissal; saves do not rearm it. Deliberate Collection
+meetings can take priority over the automatic queue. Ownership, journal and
+collection freshness retain their existing durable state; presentation IDs
+remain in memory as before. Motion-off or sleeping stages can leave them
+pending. The legacy mounted modal card blocks only while its overlay is open.
+The retained sleep toggle labels itself Wake up while asleep and Nap while
+awake, with matching pressed state; its existing action and timing stay intact.
+The first Places notice also treats the owner garden route as busy before its
+immersive class mounts, retaining its existing retry and preference choices.
+That loading guard is separate from a notice appearing before Visit activation.
+
+Collection preview art keeps its authored size instead of stretching across a
+stacked panel. Medium content widths place art beside the details; narrow
+widths retain the smaller vertical preview. The existing card-selection scroll
+uses the actual panel/grid order rather than the window width, so stacked
+details return into reach while a side panel stays still. These layout reads
+occur only on explicit card selection.
+
+Re-selecting the current Collection filter leaves its cards and detail artwork
+connected. Re-selecting the current card also keeps its artwork, while retaining
+the existing stacked-detail scroll. A genuine filter or data refresh preserves
+a selection only if it is shown, otherwise preferring the current companion,
+an eligible shown pet, then the first shown row. That choice precedes card
+construction so its highlight matches immediately. Empty filters hide and clear
+the unrelated detail panel and give their message the full content width.
+
+A later ordinary starter-duck account re-clicked Mine and its selected owned
+card through physical input. The same panel, SVG and five running CSS animation
+objects survived both clicks, with advancing animation clocks. Its genuine
+Ready now filter had no eligible rows: the selection cleared, the detail panel
+was hidden and empty, and the message used the full width. Inspected images and
+normal Home cleanup completed without captured errors. The nonempty fallback
+ordering is source-derived; this flow did not force an eligible offer.
+
+One ordinary account earned three real queued companions through its existing
+collect cadence. They stayed pending through Garden Water, Menu and Map. On
+Pets, the normal Wake up control returned to Nap, one automatic celebration
+appeared at idle, and Later kept the remainder parked through a normal Pat/save.
+Collection browsing used physical scrolling, retained an earned owned card and
+completed one displayed affordable Meet it purchase with its explicit party.
+That party left the pending earned remainder intact, then Home cleanup finished
+without captured errors. Inspected images show the compact art, reachable
+controls and normal celebration. This covers the observed medium layout;
+other viewport sizes and motion-off/asleep deferral remain source-only.
+
+Two separate starter-duck rain opportunities completed scene cleanup, but
+neither reached a puddle endpoint. The first exercised the ordinary pat/menu;
+its route request correctly rejected the duck's non-free origin. The spacious
+alternative had no eligible exposed approach and attempted no pat or request.
+No routine, contact-joint or splash-endpoint success is claimed from them.
+
+Pet locomotion writes its calculated fields into the existing plain motion
+state directly, evaluating the same expressions before those writes. This
+removes the intermediate Object.assign input object, retaining phase, feet,
+wetness, shadow data and foot-effect decisions. Active fishing similarly
+retains its presentation-only HUD reference while its parent is the current
+scene box. A missing, changed or retired host falls back to the existing lookup;
+focus cleanup clears the reference even after the garden root has gone. Neither
+change alters artwork, simulation timing, saved state or multiplayer messages.
+These are reductions in source work, without a measured frame-rate claim.
+
+One ordinary starter-duck route showed advancing feet, moving state and retained
+body joints. A single natural cast reached wait, nibble, bite and reel with the
+rod, line and float visible. Across 156 active samples, the same HUD and button
+belonged to the current scene. Escape retired the rig and HUD reference; normal
+Leave, Life return and final Leave retired the old owners without captured
+errors, including the final cleanup sink. Pet and rig reflection bands were
+drawn in that geometry; player-body reflection and a landed catch were absent.
+No second cast tested HUD creation after remount. Inspected images show the
+shore, companion, rig and reel; this is one play observation, not a speed claim.
+
+Puddle ripple clipping first rejects finite straight segments strictly beyond
+one side of the actual outline bounds. Touching and non-finite inputs still
+reach the original clipper, and surviving segments retain every intersection
+and midpoint calculation. The bounds come from the actual organic points and
+are read directly, without another geometry cache. Lamp-shadow selection also
+constructs its candidate record only when it enters an existing winning slot;
+the same computed values, strict comparisons, tie order and drawing remain.
+Neither reduction changes the rendered effects or measures their frame cost.
+
+An ordinary current-time Tokyo rainy-night account used three acquired lamps
+and one physical Map walk to the pier. Actual point lights, shadow images,
+wet pools, tracks and puddle rings were present, with an actor inside three
+lamp ranges. Leave, normal Life return and final Home cleanup retired the old
+lights, shadows, pet and surface records without captured errors. Images show
+the warm lamps, rain, organic pools and shore. Water diagnostics included player
+reflection bands but no pet band in this geometry; those diagnostics alone do
+not prove reflected source pixels. This flow adds no clipping-skip counter or
+performance measurement, and is not a device or weather coverage claim.
+
+Glow cleanup reuses a private membership set, clearing and refilling it from
+current sources at each existing paint before retiring missing lights. This
+avoids constructing a mapped array and a Set object per paint. It does not
+memoize source-array identity: retained arrays can change contents, and ID-less
+room sources can move. Room changes and destroy clear this scratch state.
+
+The pet room also skips setters, room rebuilding and stage-prop refresh when
+an owned toy or bed is already current. Its click reads the canonical current
+getter rather than a captured selection flag. Actual item changes and the
+existing purchase, error, reward and Undo paths retain their behavior.
+
+One later rainy-night route retained actual lamp and shadow presentation through
+movement, Leave and normal Life return. Afterwards, two trusted physical clicks
+reselected the current ball and cushion on Together. The room buttons, both prop
+roots and SVGs, actor and HUD nodes stayed identical, with unchanged selections
+and acquisition records. After natural entry settled, the same sleeping-pet
+animation objects kept advancing through both clicks. The toy and bed had no
+CSS animations, so their animation continuity remains unclaimed. Inspected
+images and final Home retirement completed without captured errors, including
+the late sink. ID-less moving room lights remain source-derived in this flow.
+
+Reflection normalization visits the current actor, creature and scenery groups
+directly, in the same order, rather than first copying all their rows into one
+flat array. Producer refresh finishes before this read-only normalization;
+capture and drawing begin afterwards. Duplicate precedence, priorities and
+capture policy stay the same. Companion painting similarly uses one shared
+helper with explicit frame arguments, retaining its call-local deduplication
+set, local/peer/roaming order and owner associations. These remove explicit
+temporary work without a measured timing claim.
+
+Collection cards expose their actual preview selection through aria-current,
+updated with the existing visual highlight. Current cards, filters and owned
+room selections use the normal cursor; locked room purchases remain actionable.
+
+An ordinary collection route retained the same artwork and five animation
+objects on current-filter/card re-clicks. A genuine Duck-to-Cat selection moved
+the sole aria-current marker with its highlight and details; the real empty
+Ready now filter cleared it. Current cards, filters and owned room controls had
+the default cursor. The inspected layout and final Home cleanup had no captured
+errors; this observes attributes and rendering rather than a screen-reader run.
+
+A separate encrypted host/visitor visit showed both ordinary ducks on both
+pages. One physical visitor Water was accepted by the host, both players walked
+to shore, and one natural cast reached wait, nibble and bite with its rig
+visible. Retained own and peer joints changed transforms, and one own Hand pat
+produced its normal count, hearts and menu. Escape and both normal departures
+retired the pet owners, with no captured errors in either final sink. Inspected
+images show the remote cast and a duck's reflected head in the shallows. Broader
+actor/pet/rig band diagnostics do not establish every source's reflected pixels.
+No catch or pending-pose-at-Leave opportunity occurred in that flow.
+
+A short ordinary Map walk recorded a main-thread CPU profile with reflection,
+clipping and native transform parsing in its application call stacks. It
+contained substantial unattributed native/program time. This single 1.4-second
+observation does not establish GPU cost, call frequencies or a frame-rate gain.
+
+Normalized water geometry now prepares its reflection-height sequence alongside
+its private points, holes and ellipses. Existing geometry rebuilds replace this
+sequence as well. Vertex, hole and ellipse-extremum order, duplicates and the
+existing strip cap remain exact. Painting reads these heights instead of
+flattening all polygon points for every reflection and frame. Scene-owned
+forwarding callbacks also serve the existing synchronous wave and ripple clipper.
+Native matrix parsing converts each dense argument list in a local indexed loop,
+retaining the original unit expressions, order and fresh result ownership.
+
+Companion pointer capture shares one pure free-hand eligibility check across
+native picking, native pointer dispatch and the Classic capture listener. An
+explicit tool exposes the underlying world pick instead of a pet's bounding
+box; carried placements and active gesture, fishing, room, design and modal
+owners retain their input. The shared listener yields before preventing or
+stopping an event. Eligible free-hand selection, pats, encounters and menus
+keep their existing path. The predicate reads existing ownership fields and
+adds no layout query, timer or network state.
+
+An ordinary encrypted visitor launched one owned Phoenix spectacle, then
+watered the existing flower previously covered by its pet pick. The host
+accepted the changed water row and visitor-attributed diary entry. The visitor
+left with a real avatar pose still pending; its actor and pet retired before
+that callback and the spectacle's delayed rebirth step. The host remained
+through the authored duration, with the old effect root destroyed and its clock
+stopped, then used Hand to pat its own visible duck. One trusted owned-pet
+pointer, one pat increment, hearts and the normal menu confirmed that path;
+Escape cleared it. Both final error sinks were empty and images were inspected.
+The artifact's action-label count flag is false because hit metadata overwrote
+that recording label; those independent input and response records remain.
+Classic, carried placement and active-fishing branches are source-only here.
+
+Delayed peer-pose completion requires the same current roster actor and its
+current connected inner drawing. Central avatar paint also rejects retired or
+inactive native inners, while allowing an alive drawing's initial attachment.
+The original pose duration and timeout remain. Native pet spectacles capture
+their pet node, garden root and scene ownership; a retired owner stops the
+postupdate runner before queued steps can redraw it. Final sitting-pose
+restoration uses the same owner guard, retaining existing lift, visibility and
+ambient cleanup. The pet counterpart is a separate source-derived lifecycle
+repair; it was not the avatar error's stack.
+
+One ordinary encrypted cast on the preceding build reached a natural
+sand-goby landing, then recorded a visitor's delayed avatar repaint error
+after Leave. The initial summary omitted that late error; the preserved Leave
+snapshot contains it. The observation helper now collects both Leave logs and
+final early-error sinks, and holds pages through any actually observed pending
+pose deadline within a declared bound. A subsequent single natural cast reached
+wait, bite and reel, then both clients left without captured errors. It had no
+pending pose at Leave, no landing and no multi-round invitation, so it does not
+by itself exercise the retired pose callback or accepted second-line branch.
+
+Second-line prompts own one pending invitation and expiry timer, separately
+from the already accepted helper slot. A physical click checks the same scene,
+room, roster actor, deadline and free hands again. Music-room context is also
+excluded. A fresh big-fish event can precede cast presentation; no initial reel
+snapshot is required. Once its matching canonical float has actually been
+observed, a disappeared or changed line retires that prompt. Matching terminal
+events and catches clear it, including terminals received without a local fish
+presentation. Reset, cancel and an accepted new cast clear pending UI. The
+existing quarter-second school tick checks active prompts; no frame timer or
+network message is added. Accepted-help ownership, rewards and consent remain
+on their existing path.
 
 Save formats, item identities and the encrypted host-authoritative multiplayer
 protocol are unchanged. Rendering caches are never save data or network state.

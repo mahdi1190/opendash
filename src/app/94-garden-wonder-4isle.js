@@ -47,9 +47,12 @@ function gardenWonderWayRoute(from, to) {
   else out.push({ x: to.x, y: to.y });
   return out;
 }
-for (const c of _wdIsleCells()) _GD_WALK_EXTRA.add(c);   // (the island is always land)
+// The old lake island is packed away on the coastal map. Its discoveries stay
+// saved, but its old cells must never turn the new ocean into invisible grass.
+if (GARDEN_WORLD.v < 3) for (const c of _wdIsleCells()) _GD_WALK_EXTRA.add(c);
 const _WD_ROADCELLS = _wdRoadCells();
 function gardenWonderIsleWay(m) {
+  if (GARDEN_WORLD.v >= 3) return '';
   const tod = m && m.tod;
   if (tod === 'dawn' || tod === 'dusk') return 'stones';
   if (tod === 'night' && wdMoon(_wdToday()).full) return 'moon';
@@ -92,9 +95,12 @@ function _wdBellSvg() {
   const A = GART;
   return A.P('#000000', A.ell(0, 0.5, 10, 2.6), 0.14) + A.S('#6a4a2a', 2.4, 'M-9 0L-9 -34M9 0L9 -34M-11 -33L11 -33') + A.P('#a88a3a', 'M-6 -18C-6 -27 -3 -30 0 -30C3 -30 6 -27 6 -18L8 -14L-8 -14z') + A.P('#7a6428', A.circ(0, -13, 1.6)) + A.P('#d8c06a', 'M-4 -18C-4 -24 -2 -27 0 -28C-2 -24 -2 -20 -2.4 -17z', 0.7);
 }
-function _wdRoadStonesSvg() {
-  const G = GARDEN_WORLD, o = WD_ROAD[0]; let s = '';
-  for (const [x, y] of _wdRoadPts(0.82).slice(1)) { const px = (x - o[0]) * G.cellW, py = (y - o[1]) * G.cellH; s += `<ellipse cx="${px.toFixed(1)}" cy="${(py + 2).toFixed(1)}" rx="16" ry="5.6" fill="#7fa4b0" opacity="0.5"/><ellipse cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" rx="13" ry="4.6" fill="#a8a498"/><ellipse cx="${(px - 2).toFixed(1)}" cy="${(py - 1).toFixed(1)}" rx="7" ry="2" fill="#c8c4b6"/>`; }
+function _wdRoadStonesSvg(cullBox) {
+  const G = GARDEN_WORLD, o = WD_ROAD[0]; let s = '', left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+  for (const [x, y] of _wdRoadPts(0.82).slice(1)) { const px = (x - o[0]) * G.cellW, py = (y - o[1]) * G.cellH; s += `<ellipse cx="${px.toFixed(1)}" cy="${(py + 2).toFixed(1)}" rx="16" ry="5.6" fill="#7fa4b0" opacity="0.5"/><ellipse cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" rx="13" ry="4.6" fill="#a8a498"/><ellipse cx="${(px - 2).toFixed(1)}" cy="${(py - 1).toFixed(1)}" rx="7" ry="2" fill="#c8c4b6"/>`; const cx = Number(px.toFixed(1)), shadowY = Number((py + 2).toFixed(1)), bodyY = Number(py.toFixed(1)), glintY = Number((py - 1).toFixed(1)); left = Math.min(left, cx - 16); right = Math.max(right, cx + 16); top = Math.min(top, shadowY - 5.6, bodyY - 4.6, glintY - 2); bottom = Math.max(bottom, shadowY + 5.6, bodyY + 4.6, glintY + 2); }
+  // The same rounded ellipse geometry supplies this one sprite's logical
+  // cull box, with one pixel for the raster edge. No DOM/bbox query is needed.
+  if (cullBox && Number.isFinite(left) && Number.isFinite(top) && right > left && bottom > top) Object.assign(cullBox, { x: left - 1, y: top - 1, width: right - left + 2, height: bottom - top + 2 });
   return s;
 }
 function _wdMoonRoadSvg() {
@@ -103,12 +109,17 @@ function _wdMoonRoadSvg() {
   for (let i = 1; i < pts.length; i += 1) { const [x, y] = pts[i], w = 8 + (gardenHash('m' + i) % 16); dash += `<path class="wd-moonlet" style="animation-delay:-${(i * 0.37).toFixed(2)}s" d="M${((x - o[0]) * G.cellW - w).toFixed(1)} ${((y - o[1]) * G.cellH).toFixed(1)}h${w * 2}" stroke="#fffbe0" stroke-width="1.6" stroke-linecap="round"/>`; }
   return `<path d="${d}" fill="none" stroke="#dff0ff" stroke-width="26" stroke-linecap="round" opacity="0.2"/><path d="${d}" fill="none" stroke="#f6fbff" stroke-width="11" stroke-linecap="round" opacity="0.36"/>${dash}`;
 }
+function _wdStonesClass(node, up) {
+  if (!node) return;
+  // Logical culling and other presentation owners retain their own classes.
+  node.classList.add('gd-sprite', 'wd-stones'); node.classList.toggle('is-up', up);
+}
 function _wdIsleDraw() {
   const S = _wdi.S; if (!_wd.on) return;
-  if (S.stones) { const on = _wdi.open === 'stones'; S.stones.dataOn = on; if (S.stones.node) S.stones.node.setAttribute('class', 'gd-sprite wd-stones' + (on ? ' is-up' : '')); S.stones.hit = _wdi.open ? 0 : 1.5; }
+  if (S.stones) { const on = _wdi.open === 'stones'; S.stones.dataOn = on; _wdStonesClass(S.stones.node, on); S.stones.hit = _wdi.open ? 0 : 1.5; }
   if (_wdi.open === 'moon') wdGlow('moon-road', _wdMoonRoadSvg(), WD_ROAD[0][0], WD_ROAD[0][1]); else wdGlowOff('moon-road');
 }
-function _wdOnIsle() { if (typeof _gw === 'undefined') return false; const dx = (_gw.px - WD_ISLE.cx) / WD_ISLE.rx, dy = (_gw.py - WD_ISLE.cy) / WD_ISLE.ry; return dx * dx + dy * dy <= 1.05; }
+function _wdOnIsle() { if (GARDEN_WORLD.v >= 3 || typeof _gw === 'undefined') return false; const dx = (_gw.px - WD_ISLE.cx) / WD_ISLE.rx, dy = (_gw.py - WD_ISLE.cy) / WD_ISLE.ry; return dx * dx + dy * dy <= 1.05; }
 /** Back to the shore in the little boat: the way has closed behind you. */
 function _wdIsleRowHome() {
   const box = _wdBox(); if (box) { const f = document.createElement('div'); f.className = 'wd-fade'; box.appendChild(f); setTimeout(() => f.remove(), 1600); }
@@ -134,7 +145,7 @@ function _wdBellRing(S, heard) {
     if (gardenFun() !== 'off' && _gl.W && _gl.W.own) { const pool = ['grey-heron', 'heron', 'kingfisher', 'swan', 'mallard', 'duck', 'blackbird'].filter(id => GL_CREATURE.has(id)); if (pool.length) gardenLifeSpawn(pool[gardenHash(today) % pool.length]); }
   }, 2400);
 }
-wdMod({
+if (GARDEN_WORLD.v < 3) wdMod({
   id: 'isle', fun: false, visit: true,
   begin(m) {
     const S = _wdi.S = {};
@@ -143,7 +154,8 @@ wdMod({
     S.willow = wdSprite({ id: 'wd-willow', x: WD_AT.willow.x, y: WD_AT.willow.y, still: true, svg: _wdWillowSvg() });
     S.seat = wdSprite({ id: 'wd-seat', x: WD_AT.seat.x, y: WD_AT.seat.y, still: true, hit: 0.75, hitUp: 8, label: 'Sit a while', cursor: 'hand', svg: _wdStoneSeatSvg(false), onClick: () => { if (typeof gardenWonderSit === 'function') gardenWonderSit({ x: WD_AT.seat.x, y: WD_AT.seat.y + 0.3 }); } });
     S.bell = wdSprite({ id: 'wd-bell', x: WD_AT.bell.x, y: WD_AT.bell.y, still: true, hit: 0.7, hitUp: 18, label: 'An old bell', cursor: 'hand', svg: _wdBellSvg(), onClick: (Sp) => _wdBellRing(Sp) });
-    S.stones = wdSprite({ id: 'wd-stones', x: WD_ROAD[0][0], y: WD_ROAD[0][1], z: WD_ROAD[0][1] + 0.3, still: true, svg: _wdRoadStonesSvg(), hit: 1.5, hitUp: -60, label: 'Under the water, stones', cursor: 'hand', onAim() { wdWhisper('The stones are under the water. They come up at dawn and at dusk.', 6000); } });
+    const stonesCullBox = {};
+    S.stones = wdSprite({ id: 'wd-stones', cullBox: stonesCullBox, x: WD_ROAD[0][0], y: WD_ROAD[0][1], z: WD_ROAD[0][1] + 0.3, still: true, svg: _wdRoadStonesSvg(stonesCullBox), hit: 1.5, hitUp: -60, label: 'Under the water, stones', cursor: 'hand', onAim() { wdWhisper('The stones are under the water. They come up at dawn and at dusk.', 6000); } });
     S.boat = null;
     _wdi.open = ''; _wdi.bell = ''; _wdIsleApply(gardenWonderIsleWay(m));
   },
@@ -151,7 +163,7 @@ wdMod({
   tick(m) {
     _wdIsleApply(gardenWonderIsleWay(m));
     const S = _wdi.S; if (!S.land) return;
-    if (S.stones && S.stones.node) { const cl = 'gd-sprite wd-stones' + (_wdi.open === 'stones' ? ' is-up' : ''); if (S.stones.node.getAttribute('class') !== cl) S.stones.node.setAttribute('class', cl); }
+    if (S.stones) _wdStonesClass(S.stones.node, _wdi.open === 'stones');
     if (_wdi.open === 'moon') wdGlow('moon-road', _wdMoonRoadSvg(), WD_ROAD[0][0], WD_ROAD[0][1]);
     S.land.hit = !_wdi.open && !_wdOnIsle() ? 2.4 : 0;
     const on = _wdOnIsle();

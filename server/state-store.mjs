@@ -32,6 +32,9 @@ import { join } from 'node:path';
 import { atomicWrite, withLock, readJson, retryFs } from '../lib/fsutil.mjs';
 import { dataFingerprint, fullFingerprint } from '../lib/state-keys.mjs';
 import { HttpError } from './http.mjs';
+import { fenceGardenUiWrite, gardenWorldTag, sameGardenWorldTag } from '../lib/garden-world-fence.mjs';
+import { gardenIslandLayout, gardenIslandFingerprint } from '../lib/garden-island.mjs';
+import { archiveGardenUiComponent } from '../lib/garden-ui-archive.mjs';
 
 export const ROLLING_KEEP = 40;
 export const ROLLING_MIN_GAP_MS = 10 * 60 * 1000;
@@ -181,6 +184,7 @@ export function createStateStore({ stateDir, log = () => {}, now = () => Date.no
     try { parsed = JSON.parse(text); } catch { throw new HttpError(400, 'body must be JSON'); }
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new HttpError(400, 'state must be a JSON object');
     if (!Array.isArray(parsed.custom)) throw new HttpError(400, "refusing to write: state has no 'custom' task array");
+    const gardenClaim = parsed._gardenClient; delete parsed._gardenClient;
 
     const r = await withLock(file, async () => {
       const { prevText, prev } = await readLocked();
@@ -194,7 +198,20 @@ export function createStateStore({ stateDir, log = () => {}, now = () => Date.no
       if (base < prevSave) {
         throw new HttpError(409, 'stale write: the state file is newer than this tab - reload the page', { lastSave: prevSave });
       }
-      return commit(prevText, prev, parsed);
+      const fenced = fenceGardenUiWrite(prev, parsed, gardenClaim, [gardenIslandLayout.world.v, gardenIslandFingerprint]);
+      let gardenArchive = null;
+      if (fenced.held && Object.hasOwn(parsed, 'garden')) gardenArchive = await archiveGardenUiComponent(stateDir, parsed.garden, {
+        receivedAt: new Date(now()).toISOString(), source: opts.source || 'ui', client: opts.client || null,
+        requestVersion: base, keptVersion: prevSave, clientWorld: gardenClaim == null ? null : gardenClaim,
+        keptWorld: fenced.world || null, reason: fenced.why,
+      });
+      // A full incompatible component must be durable before acknowledging
+      // the otherwise accepted app write. Ordinary backup rules are unchanged.
+      const saved = await commit(prevText, prev, fenced.next);
+      return { ...saved, ...(fenced.held ? { gardenPreserved: true, gardenWorld: fenced.world,
+        gardenComponent: { present: Object.hasOwn(fenced.next, 'garden'), ...(Object.hasOwn(fenced.next, 'garden') ? { value: fenced.next.garden } : {}) },
+        ...(gardenArchive ? { gardenArchive } : {}),
+      } : {}) };
     });
     if (r.written) emit({ version: r.lastSave, source: opts.source || 'ui', client: opts.client || null, dataChanged: r.dataChanged });
     return r;
@@ -226,6 +243,8 @@ export function createStateStore({ stateDir, log = () => {}, now = () => Date.no
       const out = await fn(cur, { version, recoveredFrom });
       if (!out || !out.next) return { version, written: false, result: out ? out.result : undefined, dataChanged: false };
       if (!Array.isArray(out.next.custom)) throw new HttpError(500, 'refusing to write: state has no task array');
+      const currentWorld = Number(cur.garden?.seen?.world) || 1;
+      if (currentWorld >= 3 && !sameGardenWorldTag(gardenWorldTag(cur.garden), gardenWorldTag(out.next.garden))) out.next = { ...out.next, garden: cur.garden };
       const c = await commit(prevText, prev, out.next);
       const info = { version: c.lastSave, written: c.written, result: out.result, dataChanged: c.dataChanged, prevVersion: version, ...(recoveredFrom ? { recoveredFrom } : {}) };
       if (c.written && opts.afterCommit) await opts.afterCommit(info);

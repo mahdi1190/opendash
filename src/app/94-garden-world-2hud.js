@@ -166,11 +166,13 @@ function _ghBag() {
   if (!_gh.bag) { if (el) { const focused = el.contains(document.activeElement); el.remove(); if (focused) box.focus({ preventScroll: true }); } return; }
   const fresh = !el;
   if (!el) { el = document.createElement('div'); el.className = 'gd-bagpop'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-labelledby', 'gd-bag-title'); el.setAttribute('aria-describedby', 'gd-bag-instruction'); box.appendChild(el); }
-  const seeds = _gdpSeedList(), decor = _gdpDecorList();
-  const stamp = JSON.stringify([seeds.map(x => [x.id, x.n, x.def.name]), decor.map(x => [x.id, x.n, x.def.name])]);
-  if (el._bagStamp === stamp && el.firstChild) return;
+  const m = gardenHere(), seeds = _gdpSeedList(), decor = _gdpDecorList(), stored = gardenStoredIndex(m);
+  const pageSize = 24, pageCount = Math.max(1, Math.ceil(stored.rows.length / pageSize));
+  const page = Math.max(0, Math.min(pageCount - 1, Math.floor(Number(el._bagStoredPage) || 0))); el._bagStoredPage = page;
+  const stamp = JSON.stringify([seeds.map(x => [x.id, x.n, x.def.name]), decor.map(x => [x.id, x.n, x.def.name]), page]);
+  if (el._bagStamp === stamp && el._bagStoredSignature === stored.signature && el.firstChild) return;
   const previous = el.contains(document.activeElement) ? document.activeElement.dataset.bagItem || document.activeElement.dataset.bagAction : '';
-  const previousScroll = el.querySelector('.gd-bagcontents')?.scrollTop || 0; el._bagStamp = stamp; el.textContent = '';
+  const previousScroll = el.querySelector('.gd-bagcontents')?.scrollTop || 0; el._bagStamp = stamp; el._bagStoredSignature = stored.signature; el.textContent = '';
   const close = () => _ghCloseBag(box);
   const head = _gdpEl('div', 'gd-baghead'), title = _gdpEl('h2', '', 'Your bag'), dismiss = _gdpEl('button', 'gd-bagclose');
   title.id = 'gd-bag-title'; dismiss.type = 'button'; dismiss.dataset.bagAction = 'close'; dismiss.setAttribute('aria-label', 'Close bag'); dismiss.innerHTML = icon('x'); dismiss.onclick = close; head.append(title, dismiss); el.appendChild(head);
@@ -188,15 +190,48 @@ function _ghBag() {
     };
     return b;
   };
-  if (!seeds.length && !decor.length) {
+  if (!seeds.length && !decor.length && !stored.rows.length) {
     contents.appendChild(_gdpEl('p', 'gd-bagempty', 'Your bag is empty.'));
   }
   const section = (kind, name, rows) => { if (!rows.length) return; const s = _gdpEl('section', 'gd-bagsection'), h = _gdpEl('h3', '', name), g = _gdpEl('div', 'gd-baggrid'); h.id = 'gd-bag-' + kind; g.setAttribute('role', 'group'); g.setAttribute('aria-labelledby', h.id); for (const x of rows) g.appendChild(tile(kind, x)); s.append(h, g); contents.appendChild(s); };
   section('seed', 'Seeds', seeds); section('decor', 'Decorations', decor);
+  if (stored.rows.length) {
+    const shelf = _gdpEl('section', 'gd-bagsection'), heading = _gdpEl('h3', '', 'Stored garden'), grid = _gdpEl('div', 'gd-baggrid');
+    heading.id = 'gd-bag-stored'; grid.setAttribute('role', 'group'); grid.setAttribute('aria-labelledby', heading.id);
+    shelf.append(heading, _gdpEl('p', 'gd-bag-instruction', 'These keep their original growth and history. Choose one, then place it in a free spot.'));
+    if (pageCount > 1) {
+      const pages = _gdpEl('div', 'gd-bagfoot'); pages.setAttribute('role', 'group'); pages.setAttribute('aria-label', 'Stored garden pages');
+      pages.style.gap = '8px'; pages.style.alignItems = 'center'; pages.style.flexWrap = 'wrap';
+      grid.id = 'gd-bag-stored-grid'; grid.setAttribute('aria-describedby', 'gd-bag-stored-range');
+      const turn = next => {
+        const last = Math.max(0, Math.ceil(gardenStoredIndex(gardenHere()).rows.length / pageSize) - 1), target = Math.max(0, Math.min(last, next));
+        if (target === el._bagStoredPage) return;
+        el._bagStoredPage = target; _ghBag();
+      };
+      const pageButton = (label, action, next, disabled) => {
+        const b = _gdpEl('button', 'gd-bagshop', label); b.type = 'button'; b.dataset.bagAction = action; b.disabled = disabled;
+        b.setAttribute('aria-label', label + ' stored garden page'); b.setAttribute('aria-controls', grid.id);
+        if (disabled) { b.style.opacity = '.45'; b.style.cursor = 'default'; }
+        b.onclick = () => turn(next); return b;
+      };
+      const range = _gdpEl('span', 'gd-bagit-count', (page * pageSize + 1) + '\u2013' + Math.min(stored.rows.length, (page + 1) * pageSize) + ' of ' + stored.rows.length);
+      range.id = 'gd-bag-stored-range'; range.setAttribute('role', 'status'); range.setAttribute('aria-live', 'polite'); range.setAttribute('aria-atomic', 'true');
+      pages.append(pageButton('Previous', 'stored-prev', page - 1, page === 0), range, pageButton('Next', 'stored-next', page + 1, page === pageCount - 1)); shelf.appendChild(pages);
+    }
+    for (const item of gardenStoredItems(m, page * pageSize, pageSize)) {
+      const button = _gdpEl('button', 'gd-bagit'); button.type = 'button'; button.dataset.bagItem = 'stored:' + item.kind + ':' + item.uid;
+      button.setAttribute('aria-label', 'Place stored ' + item.def.name);
+      button.innerHTML = '<span class="gd-bagit-art" aria-hidden="true">' + gardenIconSvg(item.def.id, { kind: item.kind, stage: item.stage, variant: item.variant, r: item.r, v: item.v, px: 48 }) + '</span>';
+      const label = _gdpEl('span', 'gd-bagit-label'); label.append(_gdpEl('span', 'gd-bagit-name', item.def.name), _gdpEl('small', 'gd-bagit-count', item.kind === 'plant' ? 'Saved plant' : 'Saved decoration')); button.appendChild(label);
+      button.onclick = () => { if (!gardenMoveStart(item.uid, item.kind)) return; _gh.bag = false; _ghBag(); _gh.bar = ''; _ghBar(box, gardenHere()); _ghFocusStage(box); };
+      grid.appendChild(button);
+    }
+    shelf.appendChild(grid); contents.appendChild(shelf);
+  }
   const foot = _gdpEl('div', 'gd-bagfoot'), shop = _gdpEl('button', 'gd-bagshop'); shop.type = 'button'; shop.dataset.bagAction = 'shop'; shop.innerHTML = icon('store') + '<span>Visit shop</span>'; shop.onclick = () => { _gh.bag = false; _ghBag(); _gh.bar = ''; _ghBar(box, gardenHere()); gardenPopupOpen('shop'); }; foot.appendChild(shop); el.appendChild(foot);
   contents.scrollTop = previousScroll;
   if (fresh) dismiss.focus({ preventScroll: true });
-  else if (previous) { const active = [...el.querySelectorAll('[data-bag-item],[data-bag-action]')].find(n => n.dataset.bagItem === previous || n.dataset.bagAction === previous); (active || dismiss).focus({ preventScroll: true }); }
+  else if (previous) { const active = [...el.querySelectorAll('[data-bag-item],[data-bag-action]')].find(n => n.dataset.bagItem === previous || n.dataset.bagAction === previous), fallback = el.querySelector('[data-bag-action="stored-prev"]:not(:disabled),[data-bag-action="stored-next"]:not(:disabled)') || dismiss; (active && !active.disabled ? active : fallback).focus({ preventScroll: true }); }
 }
 
 /* ---------- the quick pills: pick all, water all, undo ---------- */
@@ -324,36 +359,51 @@ function _ghNeeds(m) {
   if (!_gdp.svg) return;
   const layer = _gdp.svg.querySelector('.gd-actors'); if (!layer) return;
   let g = layer.querySelector(':scope > .gd-needs');
+  const nativeWorld = window.GardenNative && GardenNative.world(), groundNeeds = !!(nativeWorld && nativeWorld.rootNode === _gdp.svg && typeof nativeWorld.syncNeedRings === 'function');
   const W = GARDEN_WORLD, list = m.plants.filter(p => p.def.special !== 'heart' && (p.ripe || (p.thirsty && p.def.thirst && !m.rain.now)) && (!m.visit || gardenVisitWants(p))).slice(0, 60);
   // a full bed must not disappear under marks: every plant that wants you gets a soft ring on the ground, and only the few nearest you get a mark above it
   const far = (p) => Math.hypot((p.x + p.fp / 2) - _gw.px, ((p.y + p.fp) - _gw.py) * 0.8);
   const near = new Set(list.slice().sort((a, b) => far(a) - far(b)).slice(0, GH_NEED_MARKS).map(p => p.uid));
-  const key = list.map(p => p.uid + (p.ripe ? 'r' : 't') + (near.has(p.uid) ? '!' : '')).join(',');
+  const key = list.map(p => p.uid + (p.ripe ? 'r' : 't') + (near.has(p.uid) ? '!' : '')).join(',') + (groundNeeds && list.length ? '|ground' : '');
+  // World-owned ground rings are separate from the nearest badge annotations.
+  // Reconcile before the badge memo return; a moved plant keeps its ring cache.
+  if (groundNeeds) nativeWorld.syncNeedRings(list.map(p => ({ key: p.uid + (p.ripe ? 'r' : 't'), x: (p.x + p.fp / 2) * W.cellW, y: W.sky + (p.y + p.fp) * W.cellH - 3, rx: 12 + p.fp * 7, ry: 4 + p.fp * 2.4, fill: p.ripe ? '#ffd24a' : '#62c2ff' })));
+  const annotations = groundNeeds ? list.filter(p => near.has(p.uid)) : list;
   _gh.needsAt = { x: _gw.px, y: _gw.py };
   if (g && _gh.needs === key) return;
   _gh.needs = key;
   if (!g) { g = gardenSceneElement('g'); g.setAttribute('class', 'gd-needs'); layer.insertBefore(g, layer.firstChild); }
   // only the marks that changed: writing them all again restarted every ring and mark in view each time the nearest few changed, which is every few steps
   const have = new Map(); for (const c of g.children) have.set(c.getAttribute('data-k'), c);
-  const keyOf = (p) => p.uid + (p.ripe ? 'r' : 't') + (near.has(p.uid) ? '!' : '');
+  const keyOf = (p) => p.uid + (p.ripe ? 'r' : 't') + (near.has(p.uid) ? '!' : '') + (groundNeeds ? '|ground' : '');
   const draw = (p, i) => {
     const x = (p.x + p.fp / 2) * W.cellW, foot = W.sky + (p.y + p.fp) * W.cellH - 3, h = Math.max(22, Math.min(92, 64 * ((p.def.look && p.def.look.h) || 0.7) * 0.75 * (0.45 + p.stage * 0.14)));
-    const ripe = p.ripe, ring = `<ellipse class="gd-need-ring" rx="${(12 + p.fp * 7)}" ry="${(4 + p.fp * 2.4)}" fill="${ripe ? '#ffd24a' : '#62c2ff'}"/>`;
+    const ripe = p.ripe, ring = groundNeeds ? '' : `<ellipse class="gd-need-ring" rx="${(12 + p.fp * 7)}" ry="${(4 + p.fp * 2.4)}" fill="${ripe ? '#ffd24a' : '#62c2ff'}"/>`;
     if (!near.has(p.uid)) return `<g transform="translate(${x.toFixed(1)} ${foot.toFixed(1)})">${ring}</g>`;
     let top = -h - 9;
     try { const n = _ghNodeOf(p.uid); if (n && n._ghTop === undefined) { const b = n.getBBox ? n.getBBox() : null; n._ghTop = b && b.height > 1 ? Math.max(-118, b.y * 0.75 - 9) : null; } if (n && n._ghTop != null) top = n._ghTop; } catch (e) { /* the estimate will do */ }   // (once per plant: asking forces the whole page's layout)
     return `<g transform="translate(${x.toFixed(1)} ${foot.toFixed(1)})">${ring}<g transform="translate(0 ${top.toFixed(1)})"><g class="gd-need-b" style="--i:${i % 5}"><circle r="6" fill="#fff" stroke="${ripe ? '#c88a08' : '#2c7ab0'}" stroke-width="1.200"/>${ripe ? '<path transform="scale(.74)" d="M0 -5.200l1.500 3.700 3.700 1.500-3.700 1.500L0 5.200l-1.500-3.700-3.700-1.500 3.700-1.500z" fill="#f2a60c"/>' : '<path transform="scale(.74)" d="M0 -5.400c2.500 3.300 3.800 5 3.800 6.800a3.800 3.800 0 0 1-7.600 0c0-1.800 1.300-3.500 3.800-6.800z" fill="#3b9ad8"/>'}</g></g></g>`;
   };
-  const fresh = []; list.forEach((p, i) => { const k = keyOf(p); if (!have.has(k)) fresh.push([k, draw(p, i)]); });
-  _gdrParse(fresh.map(f => f[1]).join('')).forEach((n, i) => {
+  const fresh = []; list.forEach((p, i) => { if (groundNeeds && !near.has(p.uid)) return; const k = keyOf(p); if (!have.has(k)) fresh.push([k, draw(p, i)]); });
+  const parsed = _gdrParse(fresh.map(f => f[1]).join(''));
+  parsed.forEach((n, i) => {
     n.setAttribute('data-k', fresh[i][0]); have.set(fresh[i][0], n);
     const tm = /translate\(([-\d.]+) ([-\d.]+)\)/.exec(n.getAttribute('transform') || '');   // where it is, for what is drawn following the view (94-garden-art-h-life.js), without asking the page
     if (tm) n._gartBox = { x: +tm[1] - 40, y: +tm[2] - 130, w: 80, h: 145 };
   });
   if (fresh.length) _gdp.svg._gartAux = null;
   let ref = g.firstChild;
-  for (const p of list) { const n = have.get(keyOf(p)); if (n === ref) ref = ref.nextSibling; else g.insertBefore(n, ref); }
+  for (const p of annotations) { const n = have.get(keyOf(p)); if (n === ref) ref = ref.nextSibling; else g.insertBefore(n, ref); }
   while (ref) { const nx = ref.nextSibling; ref.remove(); ref = nx; }
+  // Only fresh, attached static rings enroll in the existing shared cache.
+  // Badge siblings keep their own animation and nearest-mark lifetime.
+  const nativeScene = window.GardenNative && GardenNative.scene();
+  if (!groundNeeds && nativeScene && window.GardenNativeArt) for (const n of parsed) {
+    const ring = n.querySelector(':scope > .gd-need-ring');
+    if (ring && ring.target && ring.isConnected && ring.scene === nativeScene) {
+      GardenNativeArt.cache(ring, { staticOnly: false, quality: 1, adaptive: true, crop: false, tileSize: 512 });
+    }
+  }
 }
 
 /* ---------- the bubble ---------- */
@@ -458,11 +508,11 @@ function gardenLandClick(id, ev) {
 /** Pick up something already in the garden: it follows the pointer as a ghost until you click somewhere it can go. */
 function gardenMoveStart(uid, kind) {
   gardenBubbleClose();
-  const m = gardenHere(), item = kind === 'decor' ? gardenDecorById(m, uid) : kind === 'plant' ? gardenPlantById(m, uid) : null;
+  const m = gardenHere(), item = kind === 'decor' || kind === 'plant' ? gardenPlacementItem(m, kind, uid) : null;
   if (!item || item.pend) return false;
   if (typeof gardenVisitMayMove === 'function' && !gardenVisitMayMove(uid)) return;
   if (_gdp.moving) gardenMoveEnd();
-  _gdp.moving = { uid, kind, id: item.def.id, originX: item.x, originY: item.y, visitId: m.visit ? m.visit.fid : '' };
+  _gdp.moving = { uid, kind, id: item.def.id, originX: item.x, originY: item.y, packed: !!item.packed, visitId: m.visit ? m.visit.fid : '' };
   const box = _ghBox(); if (box) box.focus({ preventScroll: true });
   const n = _ghNodeOf(uid); if (n) n.classList.add('is-lifted');
   if (box) box.dataset.placing = '1';
@@ -482,8 +532,8 @@ function gardenMoveEnd() {
 function _ghPlacementReconcile(m) {
   const moving = _gdp.moving;
   if (moving) {
-    const item = moving.kind === 'decor' ? gardenDecorById(m, moving.uid) : gardenPlantById(m, moving.uid);
-    if (!item || item.pend || item.def.id !== moving.id || item.x !== moving.originX || item.y !== moving.originY || (m.visit ? m.visit.fid : '') !== moving.visitId || m.visit && typeof gardenVisitMay === 'function' && !gardenVisitMay('move', item)) gardenMoveEnd();
+    const item = gardenPlacementItem(m, moving.kind, moving.uid);
+    if (!item || item.pend || item.def.id !== moving.id || item.x !== moving.originX || item.y !== moving.originY || !!item.packed !== moving.packed || (m.visit ? m.visit.fid : '') !== moving.visitId || m.visit && typeof gardenVisitMay === 'function' && !gardenVisitMay('move', item)) gardenMoveEnd();
     else { const node = _ghNodeOf(moving.uid); if (node) node.classList.add('is-lifted'); }
   }
   if (_gdp.sel && !gardenPlantById(m, _gdp.sel) && !gardenDecorById(m, _gdp.sel)) {

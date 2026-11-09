@@ -43,6 +43,7 @@ import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { rasterAssetBlocks } from './tools/lib/raster-assets.mjs';
 import { GAME_ENGINE_VERSION, GAME_ENGINE_JS, GAME_ENGINE_SHA256 } from './lib/game-engine.mjs';
+import { gardenIslandScript } from './lib/garden-island.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -156,6 +157,7 @@ export function collectSources(root = HERE) {
     sceneVersion: sceneHash.digest('hex').slice(0, 24),
     gameEngineJs: engineBytes.toString('utf8'),
     gameEngineBlock: `<script id="freeflo-game-engine" type="application/octet-stream" data-version="${GAME_ENGINE_VERSION}">${engineBytes.toString('base64')}</script>\n`,
+    islandJs: gardenIslandScript(root),
     beforeJs: readExtras(root, EXTRA_JS_BEFORE, '.js'),
     afterJs: readExtras(root, EXTRA_JS_AFTER, '.js'),
   };
@@ -177,7 +179,7 @@ ${s.css}
 </style>
 </head>
 <body>
-${s.sprite}${s.body.replace(ORB_MARKER, () => (s.orbJs ? scriptBlock(s.orbJs) : ''))}${s.raster}${s.gameEngineBlock}${s.beforeJs.map(scriptBlock).join('')}<script>
+${s.sprite}${s.body.replace(ORB_MARKER, () => (s.orbJs ? scriptBlock(s.orbJs) : ''))}${s.raster}${s.gameEngineBlock}${s.beforeJs.map(scriptBlock).join('')}${scriptBlock(s.islandJs)}<script>
 ${s.appJs.replace(/<\/script/gi, '<\\/script')}
 </script>
 ${s.afterJs.map(scriptBlock).join('')}</body>
@@ -189,7 +191,7 @@ ${s.afterJs.map(scriptBlock).join('')}</body>
 export function syntaxCheck(root = HERE) {
   const s = collectSources(root);
   const dir = mkdtempSync(join(tmpdir(), 'dash-syntax-'));
-  const blocks = [['src/app/*.js (bundle)', s.appJs], [GAME_ENGINE_JS, s.gameEngineJs], ...(s.orbJs ? [[ORB_JS, s.orbJs]] : []),
+  const blocks = [['src/app/*.js (bundle)', s.appJs], ['garden island layout', s.islandJs], [GAME_ENGINE_JS, s.gameEngineJs], ...(s.orbJs ? [[ORB_JS, s.orbJs]] : []),
     ...EXTRA_JS_AFTER.map(r => [r.endsWith('/') ? r + '*.js (one IIFE)' : r, readExtra(root, r, '.js')]).filter(b => b[1] != null)];
   const failures = [];
   try {

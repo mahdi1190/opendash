@@ -11,7 +11,7 @@
    ============================================================ */
 const GRM = Object.freeze({ W: 960, H: 600, U: 16, speed: 200, floor: Object.freeze({ x0: 44, x1: 916, y0: 400, y1: 556 }), door: Object.freeze({ x: 66, y: 540, x0: 14, x1: 112, y0: 396, y1: 560 }), spawn: Object.freeze({ x: 160, y: 500 }), firstFind: Object.freeze({ ticket: 3 }) });
 const GRM_WORDS = Object.freeze({ ticket: 'tickets', 'mat:peg': 'survey pegs', 'mat:timber': 'timber', 'mat:stone': 'field stone', 'mat:reed': 'reeds' });
-const _grm = { on: false, closing: false, R: null, S: null, root: null, svg: null, actors: null, props: null, game: null, school: null, bugL: null, raf: 0, last: 0, t: 0, m: new Map(), me: null, keys: new Set(), sentAt: 0, sayT: 0, chipT: 0 };
+const _grm = { on: false, closing: false, R: null, S: null, root: null, svg: null, actors: null, props: null, game: null, school: null, bugL: null, raf: 0, last: 0, t: 0, m: new Map(), me: null, keys: new Set(), sentAt: 0, sayT: 0, chipT: 0, chip: null };
 
 /* ---------- marks and gifts ---------- */
 function _grmG(R, k, d) { return gpGet('rm.' + R.id + '.' + k, d); }
@@ -477,7 +477,7 @@ function _grmMarkFound(R) {
   return first && _grmOnce(R, 'found', GRM.firstFind);
 }
 function gardenRoomEnter(R) {
-  if (window.GardenNative && GardenNative.active()) return GardenNative.enterRoom(R);
+  if (window.GardenNative && GardenNative.active()) { const entered = GardenNative.enterRoom(R); if (entered) _grmChipClear(); return entered; }
   if (!_grmMayEnter() || !R) return false;
   try { _gw.keys.clear(); _gw.path = []; gardenBubbleClose(); if (typeof _gwFishBusy === 'function' && _gwFishBusy()) _gwFishCancel(''); } catch (e) { /* not in the way */ }
   const root = document.createElement('div'); root.className = `ee-room grm-room grm-r-${R.id}`; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', R.name);
@@ -495,7 +495,7 @@ function gardenRoomEnter(R) {
   const sp0 = R.spawn || GRM.spawn, p0 = _grmClamp(sp0.x + Math.random() * 40 - 20, sp0.y + Math.random() * 24 - 12);
   const me = { w: -1, n: 'You', a: (function () { try { return typeof profileGet === 'function' ? profileGet().avatar : null; } catch (e) { return null; } })(), x: p0.x, y: p0.y, tx: null, ty: null, face: 1, dir: 'e', moving: false, me: true, ph: 0 };
   _grm.me = me; _grmMake(me); _grm.on = true; _grmPaintFig(me, 0);
-  _grwStock(R);
+  _grwStock(R); _grmChipClear();
   root.addEventListener('pointerdown', _grmClick); window.addEventListener('pointerup', _grmUp); window.addEventListener('pointercancel', _grmUp);
   root.querySelector('.ee-leave').onclick = () => gardenRoomLeave();
   { const fb = root.querySelector('.grm-furn'); if (fb) fb.onclick = () => gardenRoomFurnish(); }
@@ -541,9 +541,9 @@ function _grmShow(A, inside) { try { if (A.root) A.root.style.visibility = insid
 function gardenRoomHear(A, ev) {
   if (!A || A.me || !ev) return;
   const e = String(ev.e || ''), R = GRM_ROOMS.find(r => r.id === ev.i); if (!R) return;
-  if (e === 'out') { A.rm = ''; _grmShow(A, false); const Q = _grm.m.get(A.w); if (Q && _grm.R === R) { Q.g.remove(); if (Q.fxr) Q.fxr.remove(); _grm.m.delete(A.w); } return; }
+  if (e === 'out') { A.rm = ''; _grmChipCheck(); _grmShow(A, false); const Q = _grm.m.get(A.w); if (Q && _grm.R === R) { Q.g.remove(); if (Q.fxr) Q.fxr.remove(); _grm.m.delete(A.w); } return; }
   if ((e !== 'in' && e !== 'at') || !Number.isInteger(ev.x) || !Number.isInteger(ev.y)) return;
-  _grmShow(A, true); A.rm = R.id;
+  _grmShow(A, true); A.rm = R.id; _grmChipCheck();
   if (typeof _gll !== 'undefined' && _gll.role === 'host') _grwStock(R);   // (a fish for them, from whoever runs the water)
   if (!_grm.on || _grm.R !== R) { if (e === 'in') _grmChip(A, R); return; }
   const x = ev.x * GRM.U, y = ev.y * GRM.U;
@@ -553,15 +553,32 @@ function gardenRoomHear(A, ev) {
   if (e === 'in') { Q.x = x; Q.y = y; Q.tx = Q.ty = null; if (_grm.me) _grmSend(_grm.me.x, _grm.me.y); }   // (somebody new: they see where you are)
   else { Q.tx = x; Q.ty = y; }
 }
+/** A follow button belongs to one current peer and room, never just its expiry time. */
+function _grmChipClear(A) {
+  const C = _grm.chip; if (!C || A && C.A !== A) return;
+  clearTimeout(_grm.chipT); _grm.chipT = 0; _grm.chip = null; C.el.remove();
+}
+function _grmChipCheck() {
+  const C = _grm.chip; if (!C) return false;
+  const P = _grmDoorPt(C.R);
+  const current = C.el.isConnected && _gw.on && _gw.box && C.el.parentNode === _gw.box
+    && typeof _gll !== 'undefined' && _gll.actors.get(C.A.w) === C.A && C.A.rm === C.R.id
+    && !(_grm.on && _grm.R === C.R) && P && !gardenZoneLockAt(Math.floor(P.x), Math.floor(P.y));
+  if (!current) _grmChipClear();
+  return !!current;
+}
 /** Someone went in somewhere: a quiet line in the corner, and a way to follow them. Never a pull. */
 function _grmChip(A, R) {
   const box = typeof _gw !== 'undefined' ? _gw.box : null; if (!box || !_gw.on) return;
-  let c = box.querySelector(':scope > .grm-chip');
-  if (!c) { c = gpEl('div', 'grm-chip'); box.appendChild(c); }
+  _grmChipClear();
+  const c = gpEl('div', 'grm-chip');
   c.innerHTML = gardenRoomSym(R, 26);   // (the same picture as the door)
   c.appendChild(gpEl('span', null, `${String(A.n || 'A friend').slice(0, 40)} went into ${R.name.replace(/^The /, 'the ')}`));
-  const b = gpEl('button', 'btn btn-secondary btn-sm', 'Go in too'); b.type = 'button'; b.onclick = () => { c.remove(); gardenRoomGo(R, true); }; c.appendChild(b);
-  clearTimeout(_grm.chipT); _grm.chipT = setTimeout(() => c.remove(), 14000);
+  const C = { A, R, el: c }, b = gpEl('button', 'btn btn-secondary btn-sm', 'Go in too');
+  b.type = 'button'; b.onclick = () => { if (_grm.chip !== C || !_grmChipCheck()) return; _grmChipClear(); gardenRoomGo(R, true); }; c.appendChild(b);
+  box.appendChild(c); _grm.chip = C;
+  if (!_grmChipCheck()) return;
+  _grm.chipT = setTimeout(() => { if (_grm.chip === C) _grmChipClear(); }, 14000);
 }
 function gardenRoomTell(fid) {
   if (!_grm.on || !_grm.me || typeof _glhSend !== 'function' || !/^[A-Za-z0-9_-]{1,64}$/.test(String(fid || ''))) return;

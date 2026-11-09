@@ -26,6 +26,36 @@ const _gardenOtherWaters = (function () {
       return { x: p.x - dy / length * inset, y: p.y + dx / length * inset };
     });
   }
+  // Only complete compact pools get a broader, asymmetric shore. Every
+  // wet-cell centre remains water; cut-outs and channels use contour().
+  // This runs only when the existing bitmap/signature cache is rebuilt.
+  function compactPond(points, bitmap) {
+    if (points.length !== 4 || area(points) <= 0) return null;
+    const W = GARDEN_WORLD, box = bounds(points), x0 = box.x / W.cellW, y0 = (box.y - W.sky) / W.cellH, cols = box.width / W.cellW, rows = box.height / W.cellH;
+    if (![x0, y0, cols, rows].every(Number.isInteger) || cols < 2 || rows < 2 || cols > 8 || rows > 8 || cols * rows < 8 || Math.max(cols, rows) / Math.min(cols, rows) > 3.5) return null;
+    if (points.some(p => (p.x !== box.x && p.x !== box.x + box.width) || (p.y !== box.y && p.y !== box.y + box.height))) return null;
+    // A rectangular outside loop can still surround an island or a bridge.
+    // Check the actual wet mask before changing any part of its outline.
+    for (let y = y0; y < y0 + rows; y++) for (let x = x0; x < x0 + cols; x++) if (!bitmap[y * W.cols + x]) return null;
+    const cx = box.x + box.width / 2, cy = box.y + box.height / 2, rx = box.width / 2 - Math.min(5, W.cellW * .08), ry = box.height / 2 - Math.min(5, W.cellH * .08);
+    // The two shore waves shrink by at most .07. Choose the softest curve
+    // that contains even the corner cell centres under that full shrink.
+    const nx = (box.width / 2 - W.cellW / 2) / (rx * .93), ny = (box.height / 2 - W.cellH / 2) / (ry * .93);
+    let power = 2.6;
+    while (power < 8 && nx ** power + ny ** power > .94) power = Math.min(8, power + .4);
+    if (nx ** power + ny ** power > .94) return null;
+    const phase = (x0 * .73 + y0 * 1.17 + cols * .37 + rows * .61) % (Math.PI * 2), steps = Math.max(48, Math.min(96, Math.ceil((box.width + box.height) / 32) * 4)), result = [];
+    for (let i = 0; i < steps; i++) {
+      const angle = i * Math.PI * 2 / steps, c = Math.cos(angle), s = Math.sin(angle), radial = (Math.abs(c) ** power + Math.abs(s) ** power) ** (-1 / power);
+      const shore = 1 - .044 * (1 + Math.sin(angle + phase)) / 2 - .026 * (1 + Math.sin(angle * 3 - phase * .7)) / 2;
+      result.push({ x: cx + c * rx * radial * shore, y: cy + s * ry * radial * shore });
+    }
+    // Chords are contained by the wet rectangle. Keep the original contour
+    // if numerical sampling could lose any authoritative wet-cell centre.
+    if (result.some(p => !Number.isFinite(p.x) || !Number.isFinite(p.y) || p.x < box.x || p.y < box.y || p.x > box.x + box.width || p.y > box.y + box.height) || area(result) <= 0) return null;
+    for (let y = y0; y < y0 + rows; y++) for (let x = x0; x < x0 + cols; x++) if (!inside((x + .5) * W.cellW, W.sky + (y + .5) * W.cellH, result)) return null;
+    return result;
+  }
   function loopsOf(bitmap) {
     const W = GARDEN_WORLD, edges = new Map(), at = (x, y) => x >= 0 && y >= 0 && x < W.cols && y < W.rows && bitmap[y * W.cols + x];
     const add = (x, y, xx, yy) => { const key = x + ',' + y; let list = edges.get(key); if (!list) edges.set(key, list = []); list.push([xx, yy]); };
@@ -36,7 +66,7 @@ const _gardenOtherWaters = (function () {
       do { const p = key.split(',').map(Number); points.push({ x: p[0] * W.cellW, y: W.sky + p[1] * W.cellH }); const list = edges.get(key); if (!list || !list.length) break; const next = list.pop(); if (!list.length) edges.delete(key); key = next.join(','); } while (key !== start && guard-- > 0);
       if (points.length < 3) continue;
       points = points.filter((p, i, all) => { const a = all[(i + all.length - 1) % all.length], b = all[(i + 1) % all.length]; return (p.x - a.x) * (b.y - p.y) !== (p.y - a.y) * (b.x - p.x); });
-      if (points.length >= 3) loops.push(contour(points));
+      if (points.length >= 3) loops.push(compactPond(points, bitmap) || contour(points));
     }
     return loops;
   }
@@ -73,10 +103,10 @@ const _gardenOtherWaters = (function () {
     const key = isDetached ? JSON.stringify([model && model.dz || null, options.workIds || [], options.walkCells || [], options.iceCells || []]) : [visit ? _gdv.fid + ':' + _gdv.rev : 'home', typeof _gd !== 'undefined' ? _gd.rev : 0, typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0, setKey(typeof _GD_WORKS === 'undefined' ? null : _GD_WORKS), setKey(typeof _GD_WALK_EXTRA === 'undefined' ? null : _GD_WALK_EXTRA), setKey(typeof _GD_ICE === 'undefined' ? null : _GD_ICE)].join('|');
     if (!isDetached && resident.bundle && resident.key === key && resident.source === source) return resident.bundle;
     if (isDetached && detached.has(key)) return detached.get(key);
-    const bitmap = new Uint8Array(W.cols * W.rows), walk = isDetached ? detachedWalk(model, options) : null; let signature = '';
+    const bitmap = new Uint8Array(W.cols * W.rows), walk = isDetached ? detachedWalk(model, options) : null, island = typeof gardenIslandActive === 'function' && gardenIslandActive(); let signature = '';
     for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
       const land = typeof gardenLandWaterAt === 'function' ? gardenLandWaterAt(x, y) : null;
-      if (x >= 12 && x < 40 && y >= 21 && y < 38 && land === null) continue;
+      if (island ? gardenIslandOceanCell(x, y) : x >= 12 && x < 40 && y >= 21 && y < 38 && land === null) continue;
       const wet = isDetached ? (land === null ? GARDEN_AREAS.some(area => { const water = area.water; return water && x >= water.x && y >= water.y && x < water.x + water.w && y < water.y + water.h; }) : land) && !walk.has(x + ',' + y) : gardenIsWater(x, y);
       if (wet) { const index = y * W.cols + x; bitmap[index] = 1; signature += index + ','; }
     }

@@ -156,25 +156,24 @@ const _GLD_ZP = (function () {
 })();
 const GARDEN_LAND_TRAILS = _gdRows(_GLD_TRAIL_ROWS.map(t => { const b = _GLD_ZP.base.get(t.id); return Object.assign({ trail: 1 }, t, b ? { lv: GARDEN_ZONES[b].lv, zn: b } : { zn: 0 }); }));
 /** The zone a cell is in (a number). */
-function gardenZoneOf(x, y) { const W = GARDEN_WORLD; return x >= 0 && y >= 0 && x < W.cols && y < W.rows ? _GLD_ZP.ring[y * W.cols + x] : 0; }
+function gardenZoneOf(x, y) { const zone = gardenIslandZoneAt(x, y); if (zone != null) return zone; const W = GARDEN_WORLD; return x >= 0 && y >= 0 && x < W.cols && y < W.rows ? _GLD_ZP.ring[y * W.cols + x] : 0; }
 /** The zone's row, for a number. */
 function gardenZone(n) { return GARDEN_ZONES[Math.max(0, Math.min(GARDEN_ZONES.length - 1, n | 0))]; }
 /** What locks this path or lane cell, in the garden on screen: '' when it is open, else the zone's id. */
-function gardenZoneLockAt(x, y) { const n = gardenZoneOf(x, y); return n && !_GD_LAND.has('zn-' + n) ? 'zn-' + n : ''; }
+function gardenZoneLockAt(x, y) { if (gardenIslandPublicCell(x, y)) return ''; const n = gardenZoneOf(x, y); return n && !_GD_LAND.has('zn-' + n) ? 'zn-' + n : ''; }
 /** The lake is open down to this row, in the garden on screen: the open zones say, and a pier you have built always has water round it. */
 function gardenLakeOpenTo() {
-  let to = GARDEN_ZONES[0].lake;
-  for (const z of GARDEN_ZONES) if (_GD_LAND.has(z.id)) to = Math.max(to, z.lake);
-  return Math.min(GARDEN_ZONES[GARDEN_ZONES.length - 1].lake, Math.max(to, 28 + gardenPierMore()));
+  return gardenLakeOpenToOf(_GD_LAND);
 }
 /** The same from a set of what is open (the drawing, the page). */
 function gardenLakeOpenToOf(open) {
-  let to = GARDEN_ZONES[0].lake;
-  for (const z of GARDEN_ZONES) if (open.has(z.id)) to = Math.max(to, z.lake);
-  return Math.min(GARDEN_ZONES[GARDEN_ZONES.length - 1].lake, Math.max(to, 28 + gardenPierMore()));
+  const caps = [36, 40, 44, 48, 52, 56], pier = GARDEN_PROPS.find(p => p.id === 'pier');
+  let to = caps[0];
+  for (const z of GARDEN_ZONES) if (open.has(z.id)) to = Math.max(to, caps[z.n]);
+  return Math.min(GARDEN_WORLD.rows, Math.max(to, pier.y + pier.h + gardenPierMore() + 3));
 }
 /** The first zone whose opening would open this row of the lake. */
-function gardenLakeZoneOfRow(y) { for (const z of GARDEN_ZONES) if (y < z.lake) return z; return GARDEN_ZONES[GARDEN_ZONES.length - 1]; }
+function gardenLakeZoneOfRow(y) { const caps = [36, 40, 44, 48, 52, 56]; for (const z of GARDEN_ZONES) if (y < caps[z.n]) return z; return GARDEN_ZONES[GARDEN_ZONES.length - 1]; }
 /* The old garden's sections: free, each at its own level. [map character, id, name, kind, level, via, the old area it counts as]. */
 const _GLD_CORE_ROWS = [
   ['O', 'lc-front-bed', 'Front bed', 'bed', 1, '0', 'bed'], ['U', 'lc-cottage-bed', 'Cottage bed', 'bed', 1, '5', 'bed'], ['K', 'lc-rose-corner', 'Rose corner', 'bed', 2, '5', 'bed'],
@@ -216,6 +215,7 @@ const _GLD_SECTION_ROWS = [
 const _GLD_GRID = new Array(GARDEN_WORLD.cols * GARDEN_WORLD.rows).fill(null);
 const _GLD_TRAIL_BY_CH = new Map(GARDEN_LAND_TRAILS.map(t => [t.ch, t]));
 const _GLD_LANE = _gdF({ id: 'lane', lane: 1, name: 'The lane' });
+const _GLD_ISLAND_LAWN = _gdF(Object.assign({}, GARDEN_LAWN, { green: 1 }));
 const GARDEN_LAND_THICKET = _gdF({ id: 'lt-thicket', solid: 1, name: 'The thicket', lv: 999 });
 function _gldCellsOf(region, ch) { const M = GARDEN_LAND_MAPS[region], out = []; M.rows.forEach((row, dy) => { for (let dx = 0; dx < row.length; dx++) if (row[dx] === ch) out.push([M.x + dx, M.y + dy]); }); return out; }
 function _gldSectionRow(region, ch, id, name, kind, lv, buy, via, needs, fam) {
@@ -238,7 +238,7 @@ function _gldZonedRow(region, ch, id, name, kind, lv, buy, via, needs) {
   return Object.assign(r, { lv: Z.lv, buy: Math.max(5, Math.round(price / 5) * 5), zn: n });
 }
 function _gldTrailCh(x, y) { for (const M of Object.values(GARDEN_LAND_MAPS)) { const row = M.rows[y - M.y]; if (row && x >= M.x && x < M.x + row.length) return row[x - M.x]; } return ''; }
-const GARDEN_LAND_SECTIONS = _gdRows(_GLD_CORE_ROWS.map(([ch, id, name, kind, lv, via, fam]) => Object.assign(_gldSectionRow('core', ch, id, name, kind, lv, 0, via, '', fam), { zn: 0 })).concat(_GLD_SECTION_ROWS.map(r => _gldZonedRow(...r))));
+const GARDEN_LAND_SECTIONS = _gdRows(_GLD_CORE_ROWS.map(([ch, id, name, kind, lv, via, fam]) => Object.assign(_gldSectionRow('core', ch, id, name, kind, lv, 0, via, '', fam), { zn: 0 })).concat(_GLD_SECTION_ROWS.map(r => _gldZonedRow(...r))).map(gardenIslandSectionRow));
 const _GLD_ROW = new Map();
 for (let y = 19; y <= 20; y++) for (let x = 0; x < GARDEN_WORLD.cols; x++) _GLD_GRID[y * GARDEN_WORLD.cols + x] = _GLD_LANE;
 for (const M of Object.values(GARDEN_LAND_MAPS)) M.rows.forEach((row, dy) => { for (let dx = 0; dx < row.length; dx++) { const t = row[dx] === '#' ? GARDEN_LAND_THICKET : _GLD_TRAIL_BY_CH.get(row[dx]); if (t) _GLD_GRID[(M.y + dy) * GARDEN_WORLD.cols + M.x + dx] = t; } });
@@ -248,21 +248,7 @@ for (const t of GARDEN_LAND_TRAILS) _GD_AREA.set(t.id, t);   // (so a 'locked:' 
 _GD_AREA.set(GARDEN_LAND_THICKET.id, GARDEN_LAND_THICKET);
 for (const z of GARDEN_ZONES) _GD_AREA.set(z.id, z);   // (a 'locked:zn-2' answer is looked up the same way, and says its own name and level)
 /* The gates: wherever a path or the lane crosses into a further zone. {id, n (the zone it opens), x, y (the cell it stands at, on the far side), dx, dy (the way through), h (cells across, for the lane), door (the cell you knock at)}. */
-const GARDEN_ZONE_GATES = (function () {
-  const out = [], W = GARDEN_WORLD, walk = (x, y) => { const c = gardenLandCell(x, y); return !!c && !c.solid && (!!c.lane || !!c.trail); };
-  for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
-    if (!walk(x, y)) continue;
-    const n = gardenZoneOf(x, y); if (!n) continue;
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      const ix = x - dx, iy = y - dy; if (!walk(ix, iy) || gardenZoneOf(ix, iy) >= n) continue;
-      const lane = !!gardenLandCell(x, y).lane && !!gardenLandCell(ix, iy).lane;
-      if (lane && y === 20) continue;   // one gate right across the lane, from its top row
-      if (out.some(g => g.n === n && (Math.abs(g.x - x) + Math.abs(g.y - y) <= 1 || (g.door.x === ix && g.door.y === iy)))) continue;   // (a corner of a path, or a fork: one gate is enough)
-      out.push(Object.freeze({ id: 'zg-' + x + '-' + y, n, x, y, dx, dy, h: lane ? 2 : 1, door: Object.freeze({ x: ix, y: iy }) }));
-    }
-  }
-  return Object.freeze(out);
-})();
+const GARDEN_ZONE_GATES = Object.freeze(GardenIslandLayout.data.gates.map(g => Object.freeze(Object.assign({}, g, { door: Object.freeze(Object.assign({}, g.door)) }))));
 const _GLD_GATE = new Map(GARDEN_ZONE_GATES.map(g => [g.id, g]));
 function gardenZoneGate(id) { return _GLD_GATE.get(String(id)) || null; }
 /** Presentation only: keep the next reachable boundary, rather than furnishing
@@ -271,12 +257,13 @@ function gardenZoneGate(id) { return _GLD_GATE.get(String(id)) || null; }
 function gardenLandGatePresented(gate, open, customized) {
   if (!gate || !open) return false;
   if (customized) return true;
+  if (gate.n > 1 && !open.has('zn-' + (gate.n - 1))) return false;
   if (open.has('zn-' + gate.n)) return false;
   const inner = gardenZoneOf(gate.door.x, gate.door.y);
   return !inner || open.has('zn-' + inner);
 }
 /** What a cell is: a section's row, a trail's row, the lane, the thicket, or null (the lake). */
-function gardenLandCell(x, y) { const W = GARDEN_WORLD; return x >= 0 && y >= 0 && x < W.cols && y < W.rows ? _GLD_GRID[y * W.cols + x] : null; }
+function gardenLandCell(x, y) { const W = GARDEN_WORLD; return x >= 0 && y >= 0 && x < W.cols && y < W.rows ? gardenIslandLandRow(x, y, _GLD_GRID[y * W.cols + x], _GLD_LANE, _GLD_ISLAND_LAWN) : null; }
 function gardenLandIsTrail(r) { return !!r && !!r.trail; }
 function gardenLandRow(id) { return _GLD_ROW.get(String(id)) || null; }
 /** The cell you stand on to knock at a section: on its trail or the lane, the one nearest its middle, and never where a building stands. Worked out once. */
@@ -364,10 +351,10 @@ const GARDEN_LAND_FEATURES = (function () {
   return _gdMovable(_GLD_FEATURE_ROWS.map(place).map(f => { const q = f.sec ? _GLD_ROW.get(f.sec) : null; return q && q.lv > f.lv ? Object.assign({}, f, { lv: q.lv }) : f; }));   // (never before the zone it stands in)
 })();
 const _GLD_FEAT = new Map(GARDEN_LAND_FEATURES.map(f => [f.id, f]));
-function gardenLandFeature(id) { return _GLD_FEAT.get(String(id)) || null; }
+function gardenLandFeature(id) { const f = _GLD_FEAT.get(String(id)); return f ? (typeof gardenFeatureRow === 'function' && gardenFeatureRow(f)) || f : null; }
 /* The maze, one character a cell over its footprint: # is hedge, C the chest. Gate at the top, from the Cabbage steps. */
 const GARDEN_LAND_MAZE = _gdF(['##.#####', '#...#.C#', '###.#.##', '#.....##', '########']);
-const GARDEN_LAND_OFFICE = ({ id: 'land-office', name: 'Land office', x: 24, y: 19, w: 3, h: 1, door: _gdF({ x: 25, y: 20 }), act: 'lands', kind: 'lf-office', tall: 2.4, verb: 'look at the land', blurb: 'What you can buy and build, and what is still to come.' });
+const GARDEN_LAND_OFFICE = gardenIslandStaticRow({ id: 'land-office', name: 'Land office', x: 24, y: 19, w: 3, h: 1, door: _gdF({ x: 25, y: 20 }), act: 'lands', kind: 'lf-office', tall: 2.4, verb: 'look at the land', blurb: 'What you can buy and build, and what is still to come.' });
 const GARDEN_LAND_LAMPS = _gdF([4, 8, 47, 50]);   // x along the lane's north edge, out where there are no shops
 /* Your finds, laid out on a table on the lane from the first one you dig up, until a museum takes them in. */
 const GARDEN_LAND_FINDS = ({ id: 'land-finds', name: 'Your finds', x: 40, y: 19, w: 2, h: 1, col: 'soft', walk: 0, act: 'lf', lf: 'land-finds', door: _gdF({ x: 40, y: 20 }), kind: 'lf-finds', tall: 1, blurb: 'What has turned up so far.' });
@@ -455,7 +442,7 @@ const GARDEN_LAND_SIGHTS = _gdMovable([
   // where you stand to look at it: right there if it is a path, else the nearest ground beside it
   let best = null, bd = 1e9; for (let yy = d.y - 2; yy <= d.y + 3; yy++) for (let xx = d.x - 3; xx <= d.x + w + 2; xx++) { const c = gardenLandCell(xx, yy); if (!c || c.solid || c.pool || _gldDoorTaken(xx, yy) || c.fam === 'pond' && !(yy === 8 || yy === 11) || (xx >= d.x && xx < d.x + w && yy === d.y && d.col !== 'none')) continue; const n = Math.hypot(xx - d.x - w / 2 + 0.5, (yy - d.y - 0.5) * 0.9) + (c.trail || c.lane || c.green ? 0 : 0.6); if (n < bd) { bd = n; best = { x: xx, y: yy }; } }
   r.door = best || { x: d.x, y: d.y + 1 };
-  return r; }));
+  return r; }).map(gardenIslandStaticRow));
 /* The small paved squares, [x, y, rx, ry] in px for the last two (world cells); the brooks, as points they run through, ending in water or under a bridge. */
 const GARDEN_LAND_SQUARES = _gdF([[48.5, 12.5, 40, 16], [8.5, 9.5, 34, 15], [46.5, 29.5, 34, 15], [27, 6.5, 34, 13], [36.5, 40.5, 40, 13], [9.5, 24.5, 34, 13], [5.5, 39.5, 30, 13], [30.5, 12.5, 30, 12]]);
 const GARDEN_LAND_BROOKS = _gdF([
@@ -464,7 +451,30 @@ const GARDEN_LAND_BROOKS = _gdF([
   _gdF([[49.5, 34.6], [48.5, 34.2], [47.5, 34.7], [46.5, 34.4], [45.6, 34.6]]),   // under the rope bridge to the sedge pool
 ]);
 const _GLD_SIGHT = new Map(GARDEN_LAND_SIGHTS.map(d => [d.id, d]));
-function gardenLandSight(id) { return _GLD_SIGHT.get(String(id)) || null; }
+function gardenLandSight(id) { const row = _GLD_SIGHT.get(String(id)) || null; return typeof gardenSightRow === 'function' ? gardenSightRow(row) || row : row; }
+// Names and habitat identities remain in the catalogue while a place is put
+// away. A physical route or wildlife home must use only its current footprint.
+function gardenLandSightPhysical(id) {
+  const row = _GLD_SIGHT.get(String(id)) || null; if (!row) return null;
+  if (typeof gardenSightRow === 'function') return gardenSightRow(row);
+  return GARDEN_WORLD.v < 3 || gardenIslandDefaultSight(row.id) ? row : null;
+}
+// Fixed island landmarks stay fixed. Only a known shelved sight can receive a
+// deliberate placement; the identity list is also the visitor wire allowlist.
+const GARDEN_SIGHT_PLACE_IDS = Object.freeze(GARDEN_LAND_SIGHTS.filter(row => !gardenIslandDefaultSight(row.id)).map(row => row.id));
+// Discovery mark identities from the room catalogue are pure saved facts too:
+// Node snapshot writers must not need the room renderer to retain a placement.
+const GARDEN_ROOM_SIGHT_ROOMS = Object.freeze({"ld-sunk":"cellar","ld-mile":"den","ld-boathouse":"boatloft","ld-lamp-a":"lampcup","ld-sign-c":"nowhere","ld-hollow":"owl","ld-grotto":"grotto","ld-falls":"falls","ld-lighthouse":"lamproom","ld-chapel":"ringers","ld-barn":"barnloft","ld-stump":"parlour","ld-hut":"hut","ld-treehouse":"treehouse","ld-icehouse":"icehouse","ld-statue":"hothouse"});
+function gardenSightPlacementsClean(raw) {
+  const out = [], seen = new Set(); if (!Array.isArray(raw)) return out;
+  for (const row of raw.slice(0, GARDEN_SIGHT_PLACE_IDS.length)) {
+    if (!Array.isArray(row) || row.length !== 3 || !GARDEN_SIGHT_PLACE_IDS.includes(row[0]) || seen.has(row[0])) continue;
+    const def = _GLD_SIGHT.get(row[0]), x = row[1], y = row[2];
+    if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x + (def.w || 1) > GARDEN_WORLD.cols || y + (def.h || 1) > GARDEN_WORLD.rows) continue;
+    seen.add(row[0]); out.push([row[0], x, y]);
+  }
+  return out;
+}
 
 /* ---------- what you can collect ---------- */
 const GARDEN_LAND_CURIOS = _gdRows([
@@ -537,10 +547,11 @@ function _gldMazeRects(f) {
 /** The rows of GARDEN_PROPS' shape that stand now: the land office and what has been built in the garden on screen. Rebuilt when the land changes (gardenLandSet). */
 function gardenLandProps() { if (_GLD_PROPS.key === null) _gldPropsRebuild(); return _GLD_PROPS.built; }
 function _gldPropsRebuild() {
-  const built = [GARDEN_LAND_OFFICE, ...GARDEN_LAND_SIGHTS];
-  if (_GD_LAND.has('finds') && !_GD_LAND.has('lf-museum')) built.push(GARDEN_LAND_FINDS);
-  for (const f of GARDEN_LAND_FEATURES) {
-    if (f.x == null || !_GD_LAND.has(f.id)) continue;
+  const built = [GARDEN_LAND_OFFICE, ...GARDEN_LAND_SIGHTS.map(p => typeof gardenSightRow === 'function' ? gardenSightRow(p) : gardenIslandDefaultSight(p.id) ? p : null).filter(Boolean)];
+  if (!gardenIslandActive() && _GD_LAND.has('finds') && !_GD_LAND.has('lf-museum')) built.push(GARDEN_LAND_FINDS);
+  for (const sourceFeature of GARDEN_LAND_FEATURES) {
+    const f = typeof gardenFeatureRow === 'function' ? gardenFeatureRow(sourceFeature) : sourceFeature;
+    if (!f || f.x == null || !_GD_LAND.has(f.id)) continue;
     if (f.does === 'maze') { built.push(..._gldMazeRects(f)); continue; }
     built.push({ id: f.id, name: f.name, x: f.x, y: f.y, w: f.w, h: f.h, col: f.col, walk: 0, act: 'lf', lf: f.id, door: f.door, kind: 'lf-' + f.art, tall: f.tall, blurb: f.blurb });
   }
@@ -558,6 +569,8 @@ function gardenPropsNow() { return GARDEN_PROPS.concat(gardenLandProps()); }
 /* ---------- water, paths, and how things grow ---------- */
 /** A cell of the land: is it water? null: the lake and the pond, which gardenIsWater knows from their own rectangles. */
 function gardenLandWaterAt(x, y) {
+  if (gardenIslandOceanCell(x, y)) return true;
+  if (gardenIslandFreshwaterCell(x, y)) return null;
   const c = gardenLandCell(x, y); if (!c) return null;
   if (c.solid && typeof gardenRegionWaterAt === 'function' && gardenRegionWaterAt(x, y)) return true;   // a region's own water, on the thicket (94-garden-regions-0table.js)
   if (c.fam === 'pond') return null;
@@ -568,14 +581,26 @@ function gardenLandPathAt(x, y) { return gardenLandIsTrail(gardenLandCell(x, y))
 /** How much faster a plant grows here (the kind of land, a scarecrow), and is it always in season. */
 function gardenLandGrow(x, y) {
   const c = gardenLandCell(x, y); let k = c && c.plot && c.grow ? c.grow : 1;
-  if (_GD_LAND.has('lf-scarecrow')) { const f = gardenLandFeature('lf-scarecrow'); if (Math.abs(x - f.x) <= f.r && Math.abs(y - f.y) <= f.r) k *= f.grow; }
+  if (_GD_LAND.has('lf-scarecrow') && (typeof gardenFeatureIsSetOut !== 'function' || gardenFeatureIsSetOut('lf-scarecrow'))) { const f = gardenLandFeature('lf-scarecrow'); if (Math.abs(x - f.x) <= f.r && Math.abs(y - f.y) <= f.r) k *= f.grow; }
   return k;
 }
 function gardenLandAlways(x, y) { const c = gardenLandCell(x, y); return !!(c && c.always); }
 /** The whole cost of the land, for the numbers in docs/dev/GARDEN_PLAN.md. */
 function gardenLandTotals() { return { sections: GARDEN_LAND_SECTIONS.length, trails: GARDEN_LAND_TRAILS.length, features: GARDEN_LAND_FEATURES.length, land: GARDEN_LAND_SECTIONS.reduce((n, s) => n + s.buy, 0), built: GARDEN_LAND_FEATURES.reduce((n, f) => n + f.cost, 0) }; }
 /** Where the trees stand in the thickets: every so many cells, the same every time. For the drawing and nothing else. */
-function gardenLandTrees() {
+function gardenLandTrees(o) {
+  if (typeof gardenIslandActive === 'function' && gardenIslandActive()) {
+    // Only the native caller supplies retained forestRows. A Classic Photo or
+    // thumbnail still needs its own trees, even while that world is active.
+    if (o && o.native) return [];
+    const W = GARDEN_WORLD, out = [];
+    for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
+      const physical = gardenIslandBaseCell(x, y), row = gardenLandCell(x, y);
+      if (!physical.land || physical.beach || physical.freshwater || physical.reserved || !row || !['wood', 'dell', 'wild'].includes(row.kind) || gardenIsWater(x, y)) continue;
+      if (gardenHash('island-tree|' + x + ',' + y) % 5 === 0) out.push({ x, y, theme: row.kind === 'dell' ? 'shrub' : 'oak' });
+    }
+    return out;
+  }
   const out = [], taken = new Set();
   for (const d of GARDEN_LAND_SIGHTS) for (let k = -1; k <= d.w; k++) taken.add((d.x + k) + ',' + d.y);
   // a tree is about three rows tall: nothing stands in the rows just in front of something you would want to see

@@ -33,8 +33,8 @@ const _GRG_WATER_ROWS = [
   { id: 'brook', name: 'the brook under the rope bridge', r: 'marsh', x: 47, y: 34, w: 3, h: 1, via: 'lt-reed', cap: 40, like: /dace|shiner|bleak|gudgeon|pebble|elver/ },
   { id: 'folly', name: 'the folly pool', r: 'marsh', x: 23, y: 38, w: 5, h: 1, via: 'lt-heron', cap: 60, like: /paper|wish|sun|sprite|crown|ghost/ },
   { id: 'light', name: 'the rocks by the lighthouse', r: 'marsh', x: 36, y: 38, w: 2, h: 1, via: 'lt-heron', cap: 60, like: /lantern|jelly|squid|hatchet|angler/ },
-  { id: 'cavepool', name: 'the cave pool at the back of the mossy grotto', r: 'hill', room: 1, via: _grgDoorCell(gardenLandSight('ld-grotto')), cap: 40, like: /^$/ },   // inside a hidden room: its own cells past the map (94-garden-world-4rooms3water.js)
-  { id: 'cellarpool', name: 'the flooded floor of the drowned cellar, under the sunken pool', r: 'garden', room: 1, via: _grgDoorCell(gardenLandSight('ld-sunk')), cap: 70, like: /^$/ },
+  { id: 'cavepool', name: 'the cave pool at the back of the mossy grotto', r: 'hill', room: 1, at: 'ld-grotto', cap: 40, like: /^$/ },   // inside a hidden room: its own cells past the map (94-garden-world-4rooms3water.js)
+  { id: 'cellarpool', name: 'the flooded floor of the drowned cellar, under the sunken pool', r: 'garden', room: 1, at: 'ld-sunk', cap: 70, like: /^$/ },
 ];
 const _GRG_POOL_LIKE = Object.freeze({ 'ls-lily-pool': /lily|pipefish|reed|weed|sunfish|bluegill|crappie/, 'ls-deep-pool': /catfish|burbot|snakehead|bowfin|gar$|eel/, 'ls-clear-pool': /clear|pearl|silver|glass/, 'ls-moon-pool': /moon|night/, 'ls-sedge-pool': /pike|perch|sedge/, 'ls-stone-pool': /bass|stone|rock/ });
 const GARDEN_REGION_WATERS = _gdRows(_GRG_WATER_ROWS.map(w => {
@@ -53,7 +53,11 @@ const _GRG_WET = new Set();
 for (const w of GARDEN_REGION_WATERS) if (!w.area && !w.sec) for (let y = w.y; y < w.y + w.h; y++) for (let x = w.x; x < w.x + w.w; x++) _GRG_WET.add(x + ',' + y);
 /** Is this cell one of the waters that stand on a thicket? (gardenLandWaterAt asks; the falls and the pools are water already.) */
 function gardenRegionWaterAt(x, y) { return _GRG_WET.has(x + ',' + y); }
-function gardenRegionWaterDef(id) { return _GRG_WATER.get(String(id)) || null; }
+function gardenRegionWaterDef(id) {
+  const w = _GRG_WATER.get(String(id)) || null; if (!w || !w.room || !w.at) return w;
+  const s = gardenLandSightPhysical(w.at);
+  return Object.assign({}, w, { via: s ? _grgSightHomeTrail(s, true) : '', entrance: s && s.door ? { x: s.door.x + .5, y: s.door.y + .5 } : null });
+}
 function _grgWaterOfCell(x, y) { for (const w of GARDEN_REGION_WATERS) if (x >= w.x && x < w.x + w.w && y >= w.y && y < w.y + w.h && (w.area || (w.sec ? gardenLandCell(x, y) === gardenLandRow(w.sec) : _GRG_WET.has(x + ',' + y)))) return w; return null; }
 
 /* ---------- the hand-placed ones: a few kinds at one place only ---------- */
@@ -100,6 +104,13 @@ const _GRG_BUG_HAND = Object.freeze([
 /** What you have to open to stand at a sight's door (a hidden room's door is there). */
 function _grgDoorCell(s) { const c = gardenLandCell(s.door.x, s.door.y); return c && !c.lane && !c.solid ? c.id : _grgSightTrail(s); }
 /** A sight's way in: the trail cell nearest to it. */
+function _grgSightHomeTrail(s, door) {
+  if (GARDEN_WORLD.v >= 3) {
+    const p = door && s.door ? s.door : { x: s.x + (s.w || 1) / 2, y: s.y + (s.h || 1) }, c = gardenLandCell(Math.floor(p.x), Math.floor(p.y));
+    if (c && !c.solid) return c.lane ? '' : c.id;
+  }
+  return door ? _grgDoorCell(s) : _grgSightTrail(s);
+}
 function _grgSightTrail(s) {
   let best = '', bd = 1e9;
   const W = GARDEN_WORLD;
@@ -151,7 +162,11 @@ function _grgBugHomes() {
 }
 const _GRG_FISH_HOME = _grgFishHomes(), _GRG_BUG_HOME = _grgBugHomes();
 /** Where this kind lives, or null for a find (a boot turns up in any water). */
-function gardenRegionHome(def) { return !def ? null : def.cat === 'bug' ? _GRG_BUG_HOME.get(def.id) || null : def.cat === 'fish' ? _GRG_FISH_HOME.get(def.id) || null : null; }
+function gardenRegionHome(def) {
+  const H = !def ? null : def.cat === 'bug' ? _GRG_BUG_HOME.get(def.id) || null : def.cat === 'fish' ? _GRG_FISH_HOME.get(def.id) || null : null;
+  if (!H || !H.p || GARDEN_WORLD.v < 3) return H;
+  const s = gardenLandSightPhysical(H.p); return s ? Object.assign({}, H, { t: _grgSightHomeTrail(s, !!H.room) }) : H;
+}
 /** Every kind in a region: [{kind: 'fish' | 'bug', def}]. */
 const _GRG_KINDS = new Map(GARDEN_REGIONS.map(r => [r.id, []]));
 for (const f of GARDEN_FISH_ONLY) if (!(f.needs && f.needs.home)) _GRG_KINDS.get(_GRG_FISH_HOME.get(f.id).r).push({ kind: 'fish', def: f });   // (a garden's own kinds are on no page: no page should need a friend)
@@ -160,7 +175,19 @@ function gardenRegionKinds(id) { return _GRG_KINDS.get(String(id)) || []; }
 /** Can you get to this home, with these areas open? */
 function gardenRegionHomeOpen(H, areas) {
   if (!H) return true;
-  if (H.w) { if (H.w === 'pond') return areas.includes('pond'); const w = _GRG_WATER.get(H.w), zn = _grgWaterZone(w); if (zn && !areas.includes('zn-' + zn)) return false; return w.sec ? areas.includes(w.sec) : w.area ? areas.includes(w.area) : areas.includes(w.via); }
+  if (H.w) {
+    if (H.w === 'pond') return areas.includes('pond'); const w = gardenRegionWaterDef(H.w); if (!w) return false;
+    if (w.room) {
+      if (!w.entrance) return false; const zn = gardenZoneOf(Math.floor(w.entrance.x), Math.floor(w.entrance.y));
+      return (!zn || areas.includes('zn-' + zn)) && (!w.via || areas.includes(w.via));
+    }
+    const zn = _grgWaterZone(w); if (zn && !areas.includes('zn-' + zn)) return false; return w.sec ? areas.includes(w.sec) : w.area ? areas.includes(w.area) : areas.includes(w.via);
+  }
+  if (H.p && GARDEN_WORLD.v >= 3) {
+    const s = gardenLandSightPhysical(H.p); if (!s) return false;
+    const p = s.door || s, zn = gardenZoneOf(Math.floor(p.x), Math.floor(p.y)), t = _grgSightHomeTrail(s, !!H.room);
+    return (!zn || areas.includes('zn-' + zn)) && (!t || areas.includes(t));
+  }
   return !H.t || areas.includes(H.t);
 }
 /** Is this lake or pond kind one the lake holds? (what is "in stock" today comes from these) */
@@ -168,13 +195,21 @@ function gardenRegionInLake(f) { const H = gardenRegionHome(f); return !H || H.r
 
 /* ---------- the plain words: these are what the book says ---------- */
 function _grgTrailWords(id) { const t = gardenLandRow(id); if (!t) return ''; const n = t.name; return n.startsWith('The ') ? 't' + n.slice(1) : n.startsWith('Over ') ? n : 'the ' + n[0].toLowerCase() + n.slice(1); }
+function _grgSightReachWords(id, inside) {
+  const s = gardenLandSight(id); if (!s) return '';
+  const name = s.name.replace(/^The /, 'the ').replace(/^A /, 'a ');
+  if (gardenLandSightPhysical(id)) return (inside ? 'Use the entrance beside ' : 'Look around ') + name + '.';
+  return typeof gardenSightKnown === 'function' && gardenSightKnown(id) ? 'Set out ' + name + ' nearby from Land → Your discovered places.' : 'Find ' + name + (inside ? ' and its way inside.' : '.');
+}
 function _grgOpenWords(H) {
   if (H.w) {
-    const w = H.w === 'pond' ? null : _GRG_WATER.get(H.w);
+    const w = H.w === 'pond' ? null : gardenRegionWaterDef(H.w);
+    if (w && w.room && w.at) return _grgSightReachWords(w.at, true);
     if (!w || w.area) return 'The pond opens at garden level 7.';
     if (w.sec) { const s = gardenLandRow(w.sec), t = gardenLandRow(w.via); return `Open ${_grgTrailWords(w.via)} (garden level ${t.lv}), then buy ${w.name} at the land office (level ${s.lv}).`; }
     return `Open ${_grgTrailWords(w.via)} (garden level ${Math.max(gardenLandRow(w.via).lv, gardenZone(_grgWaterZone(w)).lv)}).`;
   }
+  if (H.p && GARDEN_WORLD.v >= 3) return _grgSightReachWords(H.p, !!H.room);
   if (H.t) return `Open ${_grgTrailWords(H.t)} (garden level ${gardenLandRow(H.t).lv}).`;
   return '';
 }
@@ -230,14 +265,20 @@ function gardenRegionOdds(odds, b, ctx) {
 /** May this fish appear in this band? (the one that got away, a legend: they keep to where they live) */
 function gardenRegionBandHas(id, b) { const H = gardenRegionHome(gardenFishDef(id)); if (!H) return true; return b.rw ? H.w === b.rw : b.zone === 'pond' ? H.w === 'pond' : H.r === 'lake'; }
 /** The cells a bug of this home may sit on, open or not: its trail and the sections off it, or round its place. Cached. */
-const _GRG_CELLS = new Map();
+const _GRG_CELLS = new Map(), _GRG_CELL_PLACES = new Map();
 function _grgHomeCells(H) {
-  const k = H.p || H.t; let c = _GRG_CELLS.get(k); if (c) return c;
+  const k = H.p || H.t, s = H.p ? gardenLandSightPhysical(H.p) : null;
+  if (s && GARDEN_WORLD.v >= 3) H = Object.assign({}, H, { t: _grgSightHomeTrail(s, !!H.room) });
+  if (H.p) {
+    const signature = s ? [s.x, s.y, s.w || 1, s.h || 1, _grgSightHomeTrail(s, !!H.room)].join('|') : 'packed';
+    if (_GRG_CELL_PLACES.get(k) !== signature) { _GRG_CELL_PLACES.set(k, signature); _GRG_CELLS.delete(k); }
+  }
+  let c = _GRG_CELLS.get(k); if (c) return c;
   c = [];
   if (H.p) {
-    const s = gardenLandSight(H.p);
+    if (!s) { _GRG_CELLS.set(k, c); return c; } // Packed landmarks have no physical wildlife home.
     for (let y = s.y - 3; y <= s.y + 3; y++) for (let x = s.x - 3; x <= s.x + 3 + (s.w || 1); x++) { const q = gardenLandCell(x, y); if (q && !q.solid && !q.lane) c.push({ x, y, id: q.id, far: 0 }); }
-    if (!c.some(q => q.id === H.t)) { const t = gardenLandRow(H.t), near = []; const W = GARDEN_WORLD; for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) if (gardenLandCell(x, y) === t) near.push({ x, y, id: t.id, d: Math.abs(x - s.x) + Math.abs(y - s.y) }); near.sort((a, b) => a.d - b.d); c.push(...near.slice(0, 5)); }
+    if (!c.some(q => q.id === H.t)) { const t = gardenLandRow(H.t), near = []; const W = GARDEN_WORLD; if (t) for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) if (gardenLandCell(x, y) === t) near.push({ x, y, id: t.id, d: Math.abs(x - s.x) + Math.abs(y - s.y) }); near.sort((a, b) => a.d - b.d); c.push(...near.slice(0, 5)); }
   } else {
     const W = GARDEN_WORLD;
     for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) { const q = gardenLandCell(x, y); if (q && !q.solid && (q.id === H.t || (q.plot && q.via === H.t))) c.push({ x, y, id: q.id }); }

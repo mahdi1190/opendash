@@ -192,6 +192,7 @@ function _gllBugGone(key) {
 /* ---------- a line out, on their figure ---------- */
 function _gllFxClear(A) { if (A.fxg) { A.fxg.remove(); A.fxg = null; A.fxe = null; } }
 function _gllFishFx(A, e, ev) {
+  if ((e === 'land' || e === 'lost' || e === 'in') && typeof gardenHelpInviteClear === 'function') gardenHelpInviteClear(A);
   const t = Date.now();   // clock-ok: how long they have been quiet
   if (e === 'cast') {
     const bx = ev.x + 0.5, by = ev.y + 0.5;

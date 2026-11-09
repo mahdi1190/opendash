@@ -197,10 +197,46 @@ function gardenLandsTab(el, m) {
   head.appendChild(txt); box.appendChild(head);
   const sec = (title) => { box.appendChild(_gdpEl('h4', 'gld-h', title)); const d = _gdpEl('div', 'gld-list'); box.appendChild(d); return d; };
   const buyRow = (host, s) => { const i = gardenLandInfo(s.id, m), K = GARDEN_LAND_KINDS[s.kind]; _gldRow(host, { icon: s.icon, name: s.name, sub: `${K.name}, ${s.cells.length} squares: ${gardenLandGrowsLine(s)}. ${K.says || ''}`, btn: `${_gdpNum(s.buy)} coins`, off: !i.afford, run: (b) => { const r = gardenBuyLand(s.id); if (!r.ok) gameDenyOf(r, b); else gameCheer(b, { text: '-' + s.buy, tone: 'coin', sound: true }); }, ...gardenRewardBtn2(s.buy, m, () => gardenBuyLand(s.id)) }); };
-  const buildRow = (host, f, I) => _gldRow(host, { icon: f.icon, name: f.name, sub: f.blurb + (I.spot ? ` ${I.spot} is in the way.` : ''), btn: `${_gdpNum(f.cost)} coins`, off: !I.afford || !!I.spot, run: (b) => { const r = gardenBuildFeature(f.id); if (!r.ok) gameDenyOf(r, b); else gameCheer(b, { text: '-' + f.cost, tone: 'coin', sound: true }); }, ...(I.spot ? {} : gardenRewardBtn2(f.cost, m, () => gardenBuildFeature(f.id))) });
+  const buildRow = (host, f, I) => _gldRow(host, { icon: f.icon, name: f.name, sub: f.blurb + (GARDEN_WORLD.v >= 3 ? ' Build it, then choose where to set it out.' : '') + (I.spot ? ` ${I.spot} is in the way.` : ''), btn: `${_gdpNum(f.cost)} coins`, off: !I.afford || !!I.spot, run: (b) => { const r = gardenBuildFeature(f.id); if (!r.ok) gameDenyOf(r, b); else gameCheer(b, { text: '-' + f.cost, tone: 'coin', sound: true }); }, ...(I.spot ? {} : gardenRewardBtn2(f.cost, m, () => gardenBuildFeature(f.id))) });
   gardenRewardLandRows(sec, m);
+  if (GARDEN_WORLD.v >= 3) {
+    const structures = GARDEN_LAND_FEATURES.filter(f => f.x != null && gardenLandOwnsFeature(f.id));
+    if (structures.length) {
+      const details = document.createElement('details'), summary = document.createElement('summary'), list = _gdpEl('div', 'gld-list');
+      details.dataset.ownedFeatures = '1'; summary.textContent = 'Your built structures (' + structures.length + ')';
+      details.append(summary, _gdpEl('p', 'gld-more', 'Walk to an open area to set a structure out nearby. Putting it away keeps your ownership and progress.'));
+      for (const f of structures) {
+        const setOut = gardenFeatureIsSetOut(f.id);
+        _gldRow(list, { icon: f.icon, name: f.name, sub: setOut ? 'In the garden' : 'Put away', btn: setOut ? 'Put away' : 'Set out nearby', run: button => {
+          const result = setOut ? gardenFeaturePutAway(f.id) : gardenFeatureSetNearby(f.id);
+          if (!result.ok) { gameDenyOf(result, button); return; }
+          const scroll = el.scrollTop; gardenLandsTab(el, gardenModel()); el.scrollTop = scroll;
+          const restored = el.querySelector('details[data-owned-features]'); if (restored) restored.open = true;
+        } });
+      }
+      details.appendChild(list); box.appendChild(details);
+    }
+  }
+  if (GARDEN_WORLD.v >= 3 && !m.visit) {
+    const known = GARDEN_LAND_SIGHTS.filter(row => gardenSightKnown(row.id));
+    if (known.length) {
+      const details = document.createElement('details'), summary = document.createElement('summary'), list = _gdpEl('div', 'gld-list');
+      details.dataset.discoveredPlaces = '1'; summary.textContent = 'Your discovered places (' + known.length + ')';
+      details.append(summary, _gdpEl('p', 'gld-more', 'Bring back a place you already found, one at a time. Its discoveries stay saved when it is put away; usual opening conditions still apply.'));
+      for (const row of known) {
+        const setOut = gardenSightIsSetOut(row.id);
+        _gldRow(list, { icon: 'door-open', name: row.name, sub: setOut ? 'In the garden' : 'Put away', btn: setOut ? 'Put away' : 'Set out nearby', run: button => {
+          const result = setOut ? gardenSightPutAway(row.id) : gardenSightSetNearby(row.id);
+          if (!result.ok) { gameDenyOf(result, button); return; }
+          const scroll = el.scrollTop; gardenLandsTab(el, gardenModel()); el.scrollTop = scroll;
+          const restored = el.querySelector('details[data-discovered-places]'); if (restored) restored.open = true;
+        } });
+      }
+      details.appendChild(list); box.appendChild(details);
+    }
+  }
   // now
-  const canLand = GARDEN_LAND_SECTIONS.filter(s => { const i = s.buy ? gardenLandInfo(s.id, m) : null; return i && !i.owned && i.lvOk && i.reach && i.keyOk; }).sort((a, b) => a.buy - b.buy);
+  const canLand = GARDEN_LAND_SECTIONS.filter(s => { const i = s.buy && !s.relayoutEmpty ? gardenLandInfo(s.id, m) : null; return i && !i.owned && i.lvOk && i.reach && i.keyOk; }).sort((a, b) => a.buy - b.buy);
   const canBuild = GARDEN_LAND_FEATURES.map(f => [f, gardenLandFeatureInfo(f.id, m)]).filter(([, I]) => !I.built && !I.why).sort((a, b) => a[0].cost - b[0].cost);
   if (canBuild.length) { const d = sec('You can build these now'); for (const [f, I] of canBuild) buildRow(d, f, I); }
   if (canLand.length) { const d = sec('You can buy these now'); for (const s of canLand.slice(0, 12)) buyRow(d, s); if (canLand.length > 12) d.appendChild(_gdpEl('p', 'gld-more', `And ${canLand.length - 12} more.`)); }
@@ -208,12 +244,14 @@ function gardenLandsTab(el, m) {
   // next
   // past a gate there is nothing to choose yet: only the gate, and what is behind it in a line
   const later = [], zOpen = (n) => !n || m.areas.includes('zn-' + n);
-  for (const z of GARDEN_ZONES) { if (!z.n || zOpen(z.n)) continue; const n = GARDEN_LAND_SECTIONS.filter(s => s.zn === z.n && s.buy).length; later.push({ lv: z.lv, icon: 'map-pin', name: z.name, sub: `A gate opens: ${n} pieces of land and more water to fish`, tag: `Level ${z.lv}` }); }
+  for (const z of GARDEN_ZONES) { if (!z.n || zOpen(z.n)) continue; const n = GARDEN_LAND_SECTIONS.filter(s => s.zn === z.n && s.buy && !s.relayoutEmpty).length; later.push({ lv: z.lv, icon: 'map-pin', name: z.name, sub: `A gate opens: ${n} pieces of land and more water to fish`, tag: `Level ${z.lv}` }); }
   for (const t of GARDEN_LAND_TRAILS) if (!m.areas.includes(t.id) && zOpen(t.zn)) later.push({ lv: t.lv, icon: 'footprints', name: t.name, sub: 'A new path', tag: `Level ${t.lv}` });
-  for (const s of GARDEN_LAND_SECTIONS) { if (m.areas.includes(s.id) || !zOpen(s.zn)) continue; if (!s.buy) { later.push({ lv: s.lv, icon: s.icon, name: s.name, sub: GARDEN_LAND_KINDS[s.kind].name + ', free', tag: `Level ${s.lv}` }); continue; } const i = gardenLandInfo(s.id, m); if (i && i.lvOk && i.reach && i.keyOk) continue; const key = i && i.lvOk && i.reach && !i.keyOk; later.push({ lv: s.lv, icon: s.icon, name: s.name, sub: `${GARDEN_LAND_KINDS[s.kind].name}, ${_gdpNum(s.buy)} coins${key ? '. Behind a rusty gate: keep digging, somebody lost a key' : ''}`, tag: key ? 'Key' : `Level ${s.lv}` }); }
+  for (const s of GARDEN_LAND_SECTIONS) { if (s.relayoutEmpty || m.areas.includes(s.id) || !zOpen(s.zn)) continue; if (!s.buy) { later.push({ lv: s.lv, icon: s.icon, name: s.name, sub: GARDEN_LAND_KINDS[s.kind].name + ', free', tag: `Level ${s.lv}` }); continue; } const i = gardenLandInfo(s.id, m); if (i && i.lvOk && i.reach && i.keyOk) continue; const key = i && i.lvOk && i.reach && !i.keyOk; later.push({ lv: s.lv, icon: s.icon, name: s.name, sub: `${GARDEN_LAND_KINDS[s.kind].name}, ${_gdpNum(s.buy)} coins${key ? '. Behind a rusty gate: keep digging, somebody lost a key' : ''}`, tag: key ? 'Key' : `Level ${s.lv}` }); }
   for (const f of GARDEN_LAND_FEATURES) { const I = gardenLandFeatureInfo(f.id, m); if (I.built || !I.why || f.prize || (f.sec && !zOpen((gardenLandRow(f.sec) || {}).zn))) continue; later.push({ lv: f.lv, icon: f.icon, name: f.name, sub: `${f.blurb} ${_gdpNum(f.cost)} coins.${lv >= f.lv ? ' ' + I.why + '.' : ''}`, tag: lv >= f.lv ? 'Land first' : `Level ${f.lv}` }); }
   later.sort((a, b) => a.lv - b.lv);
   if (later.length) { const d = sec('Still to come'); for (const r of later.slice(0, 14)) _gldRow(d, Object.assign({ dim: true }, r)); if (later.length > 14) d.appendChild(_gdpEl('p', 'gld-more', `And ${later.length - 14} more further on.`)); }
+  const recorded = GARDEN_LAND_SECTIONS.filter(s => s.relayoutEmpty && gardenHas('land:' + s.id) > 0);
+  if (recorded.length) { const d = sec('Recorded land'); for (const s of recorded) _gldRow(d, { icon: s.icon, name: s.name, sub: 'Ownership preserved in your land book.', tag: 'Owned' }); }
   // finds
   { const d = sec(`Curios found: ${gardenLandCurioCount()} of ${GARDEN_LAND_CURIOS.length}`);
     const n = _gdpEl('p', 'gld-more', 'Look for a little cross on the ground: one spot a day, somewhere on your land or the lane. Some turn up when you forage, help out or open the maze chest.'); d.appendChild(n);

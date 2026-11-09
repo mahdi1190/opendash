@@ -511,13 +511,19 @@ function gardenReadyFor(def) {
   const sp = n.spot ? gardenSpotDef(n.spot) : null; let where = null;
   if (sp) where = { x: sp.x, y: sp.y, words: sp.name };
   else { const z = (n.zone && [].concat(n.zone)[0]) || def.zone[0], fav = GARDEN_SPOTS.find(s => s.zone === z); if (z === 'pond') { const a = GARDEN_AREAS.find(q => q.water && !q.fishing); if (a) where = { x: a.water.x + a.water.w / 2, y: a.water.y + a.water.h / 2, words: 'the pond' }; } else if (fav) where = { x: fav.x, y: fav.y, words: fav.name.replace(/^The /, 'the ') + ', or anywhere in that water' }; }
-  { const H = gardenRegionHome(def), w = H && H.w && H.w !== 'pond' ? gardenRegionWaterDef(H.w) : null; if (w) where = { x: w.x + w.w / 2, y: w.y + w.h / 2, words: w.name }; }   // it lives in a water of its own
+  let reach = '';
+  { const H = gardenRegionHome(def), w = H && H.w && H.w !== 'pond' ? gardenRegionWaterDef(H.w) : null;
+    if (w && w.room) {
+      const room = GARDEN_ROOM_SIGHT_ROOMS[w.at]; where = w.entrance && room ? { x: w.entrance.x, y: w.entrance.y, words: w.name, room } : null;
+      if (!where) reach = _grgOpenWords(H);
+    } else if (w) where = { x: w.x + w.w / 2, y: w.y + w.h / 2, words: w.name };
+  }   // it lives in a water of its own; indoor water is reached through its current door
   const bits = [];
   if (def.tod && def.tod.length && def.tod.length < 4) bits.push(def.tod.map(t => ({ dawn: 'at dawn', day: 'by day', dusk: 'at dusk', night: 'at night' })[t]).join(' or '));
   if (def.seasons && def.seasons.length) bits.push('in ' + def.seasons.join(' or '));
   if (n.rain || def.rain) bits.push(n.rain ? 'in the rain' : 'best in the rain');
   void u;
-  return { rows, where, when: bits.join(', ') };
+  return { rows, where, reach, when: bits.join(', ') };
 }
 /** Put on everything you have that it needs. */
 function gardenReadyEquip(def) {
@@ -579,23 +585,51 @@ function gardenFestivalWeigh() {
 }
 
 /* ---------- the second line: a monster on someone's line, and anyone can grab hold ---------- */
-const _gcaHelp = { of: null, el: null };
+const _gcaHelp = { of: null, el: null, invite: null, timer: 0 };
+/** Pending consent is separate from the second line already accepted. */
+function gardenHelpInviteClear(A) {
+  const I = _gcaHelp.invite; if (A && (!I || I.actor !== A)) return;
+  clearTimeout(_gcaHelp.timer); _gcaHelp.timer = 0;
+  if (_gcaHelp.el) _gcaHelp.el.remove();
+  _gcaHelp.el = null; _gcaHelp.invite = null;
+}
+function _gcaHelpInviteRoom() { return typeof _grm !== 'undefined' && _grm.on && _grm.R ? _grm.R.id : ''; }
+function _gcaHelpInviteReady(I) {
+  if (!I || performance.now() >= I.until || !_gw.on || (typeof _ee !== 'undefined' && _ee.on) || !_gw.svg || !_gw.svg.isConnected || _gw.svg !== I.root || !I.box.isConnected || _gdgBox() !== I.box || _gwFishBusy()) return false;
+  const A = I.actor, room = _gcaHelpInviteRoom();
+  if (typeof _gll === 'undefined' || (I.role !== 'host' && I.role !== 'visit') || _gll.role !== I.role || _gll.actors.get(A.w) !== A || room !== I.room || room && _grm.game !== I.roomRoot) return false;
+  if (I.x >= GARDEN_ROOM_X ? !room || A.rm !== room : !!room || !!A.rm) return false;
+  // A big request can precede its cast/reel presentation. Only a float we
+  // actually saw at these canonical cell centres can later prove it ended.
+  const F = A.fish, matches = !!F && F.bx === I.x + .5 && F.by === I.y + .5;
+  if (I.lineSeen && (!matches || F.state === 'land')) return false;
+  if (matches && F.state !== 'land') I.lineSeen = true;
+  return true;
+}
+function _gcaHelpInviteCheck() {
+  const I = _gcaHelp.invite;
+  if (I && (!_gcaHelp.el || !_gcaHelp.el.isConnected || !_gcaHelpInviteReady(I))) gardenHelpInviteClear();
+}
 function gardenHelpHeard(A, e, ev) {
   if (e === 'help') {
     if (ev.to === _gfsSlot() && _gw.reel) { _gw.reel.help = (_gw.reel.help || 0) + 1; _gw.reel.note = 'Somebody has the second line.'; _gw.reel.noteTo = _gw.reel.t + 3; }
     return;
   }
-  // a monster on someone's line: a small button for a little while. No more than that
-  if (_gwFishBusy()) return;
-  if (ev.x >= GARDEN_ROOM_X && !(_grm.on && _grm.R && A.rm === _grm.R.id)) return;   // (in a room: only for whoever is in it with them)
+  if (e !== 'big' || !A || !ev || !Number.isInteger(ev.x) || !Number.isInteger(ev.y)) return;
   const box = _gdgBox(); if (!box) return;
-  if (_gcaHelp.el) _gcaHelp.el.remove();
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'gd-helpbtn'; b.textContent = `${A.n || 'A friend'} has a monster on! Grab the second line`;
-  b.onclick = (x) => { x.stopPropagation(); b.remove(); _gcaHelp.el = null; _gcaHelpGo(A, ev); };
-  box.appendChild(b); _gcaHelp.el = b; setTimeout(() => { if (_gcaHelp.el === b) { b.remove(); _gcaHelp.el = null; } }, 25000);
+  const room = _gcaHelpInviteRoom(), I = { actor: A, x: ev.x, y: ev.y, root: _gw.svg, box, room, roomRoot: room ? _grm.game : null, role: typeof _gll === 'undefined' ? '' : _gll.role, until: performance.now() + 25000, lineSeen: false };
+  if (!_gcaHelpInviteReady(I)) return;
+  gardenHelpInviteClear();
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'gd-helpbtn'; b.textContent = (A.n || 'A friend') + ' has a monster on! Grab the second line';
+  b.onclick = (x) => { x.stopPropagation(); if (_gcaHelp.el === b) _gcaHelpGo(A, ev); };
+  box.appendChild(b); _gcaHelp.el = b; _gcaHelp.invite = I;
+  _gcaHelp.timer = setTimeout(() => { if (_gcaHelp.invite === I) gardenHelpInviteClear(); }, 25000);
 }
 function _gcaHelpGo(A, ev) {
-  if (!Number.isInteger(ev.x) || !Number.isInteger(ev.y)) return;
+  const I = _gcaHelp.invite;
+  if (!I || I.actor !== A || I.x !== ev.x || I.y !== ev.y) return;
+  if (!_gcaHelpInviteReady(I)) { gardenHelpInviteClear(); return; }
+  gardenHelpInviteClear();
   const pt = { x: ev.x + 0.5, y: ev.y + 0.5 };
   _gwFacePt(pt);
   _gw.fishing = { state: 'help', t: 0, plan: { baitDef: GARDEN_BAITS[0] }, bx: pt.x, by: pt.y, nibN: 0, nibble: 0, hold: false, fu: null, mood: '' };
@@ -606,6 +640,7 @@ function _gcaHelpGo(A, ev) {
 }
 /** The fight is over. Landed: you share the glory, and a little bait. */
 function gardenHelpDone(A, won) {
+  if (A) gardenHelpInviteClear(A);
   if (_gcaHelp.of == null || !A || A.w !== _gcaHelp.of || !_gw.fishing || _gw.fishing.state !== 'help') return;
   _gcaHelp.of = null; _gwFishCancel();
   if (won) { const today = _gdToday(); _gdG().led['ca.' + today + '.' + _gdUid('')] = { d: today, k: 'ca', x: 3, i: { 'bait:maggot': 2 }, n: 1 }; _gdSave(); if (typeof _gdgNote === 'function') _gdgNote('You landed it together! Two lots of maggots for your trouble.', icon('fish')); }
@@ -614,6 +649,7 @@ function gardenHelpDone(A, won) {
 /* ---------- a look every few seconds, while the garden is open ---------- */
 const _gcaTick = { at: 0, ev: '', dark: null };
 function gardenCatchTick() {
+  _gcaHelpInviteCheck();
   if (typeof gardenThingFrame === 'function') gardenThingFrame();
   if (typeof _gw !== 'undefined' && _gw.boat && typeof gardenBoatHud === 'function') gardenBoatHud();
   const t = performance.now(); if (t - _gcaTick.at < 5000) return; _gcaTick.at = t;

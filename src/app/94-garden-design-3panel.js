@@ -78,6 +78,34 @@ function _gdzPanelMake(box, m, c, rw) {
     box.appendChild(row);
   }
 }
+function _gdzPanelArchive(box) {
+  const T = _gdzT(), archives = gardenDesignArchives(_gdG()); if (!archives.length) return;
+  const details = _gdzEl('details', 'gdz-list'); details.open = !!T.archiveOpen; details.setAttribute('data-garden-section', 'designer-earlier-layouts');
+  details.addEventListener('toggle', () => { T.archiveOpen = details.open; });
+  details.appendChild(_gdzEl('summary', 'gdz-sub', `Earlier layouts (${archives.length})`));
+  details.appendChild(_gdzEl('p', 'gdz-note', 'Complete originals stay here. Adapt a working copy; nothing is moved until you place it and keep your changes.'));
+  for (const archive of archives) {
+    const li = _gdzEl('div', 'gdz-li'); li.appendChild(_gdzEl('span', 'gdz-li-n', String(archive.layout.n || 'Earlier layout')));
+    const b = _gdzBtn('gdz-small', 'Adapt to this island', 'move', () => gardenDesignAdaptArchive(archive.key)); b.setAttribute('data-garden-action', 'adapt-layout:' + archive.key); li.appendChild(b); details.appendChild(li);
+  }
+  box.appendChild(details);
+  const pending = _gdzArchivePending(); if (!pending) return;
+  const n = pending.moved.length + pending.made.length;
+  box.appendChild(_gdzEl('p', 'gdz-note', n ? `${n} earlier objects are still archived. Place any you want; the others can stay put away.` : 'These earlier objects have been placed in this draft. The complete original still stays archived.'));
+  const list = _gdzEl('div', 'gdz-list');
+  for (const item of pending.moved) {
+    const id = Array.isArray(item.row) && item.row[0], row = gardenDesignRow(id), allowed = row && gardenDesignMovable(id) && !gardenDesignLandmark(id);
+    const li = _gdzEl('div', 'gdz-li'); li.appendChild(_gdzEl('span', 'gdz-li-n', row ? row.name : 'Earlier structure'));
+    const b = _gdzBtn('gdz-small', allowed ? 'Place it' : 'Use Land controls', 'move', () => gardenDesignAdaptPlace('m', item.index), { disabled: !allowed, title: allowed ? 'Choose a legal place using the existing move guide' : 'This earned structure uses Land → Set out nearby; its earlier placement stays archived' });
+    b.setAttribute('data-garden-action', 'adapt-moved:' + item.index); li.appendChild(b); list.appendChild(li);
+  }
+  for (const item of pending.made) {
+    const def = Array.isArray(item.row) && GDZ_MADE[item.row[0]], li = _gdzEl('div', 'gdz-li'); li.appendChild(_gdzEl('span', 'gdz-li-n', def ? 'Earlier ' + def.id : 'Earlier made object'));
+    const b = _gdzBtn('gdz-small', 'Place it', 'move', () => gardenDesignAdaptPlace('c', item.index), { disabled: !def }); b.setAttribute('data-garden-action', 'adapt-made:' + item.index); li.appendChild(b); list.appendChild(li);
+  }
+  box.appendChild(list);
+}
+
 function _gdzPanelLayouts(box) {
   const T = _gdzT(), list = _gdzEl('div', 'gdz-list');
   box.appendChild(_gdzEl('p', 'gdz-note', 'A layout keeps your paths, your ground, where things stand and what you made. Plants and decorations stay as they are.'));
@@ -88,6 +116,7 @@ function _gdzPanelLayouts(box) {
     list.appendChild(li);
   }
   box.appendChild(list);
+  _gdzPanelArchive(box);
   const n = Object.keys(T.lay.lay).length;
   if (n < GDZ_LIMITS.layouts) {
     const row = _gdzEl('div', 'gdz-acts'), inp = _gdzEl('input', 'gdz-input'); inp.type = 'text'; inp.maxLength = GDZ_LIMITS.text; inp.placeholder = 'A name, like Summer'; inp.setAttribute('aria-label', 'Name for a new layout');

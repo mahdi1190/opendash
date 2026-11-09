@@ -10,6 +10,242 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.64.7] - 2026-11-09
+
+### Changed
+
+- A cleaner shared 52-by-56 coastal island, with continuous ocean, broad beaches, separate freshwater pools, buildings spaced along public routes, and clearer district gates.
+- Earned structures and previously discovered places can be set out deliberately from Land, put away, or restored with Undo. Ownership, discoveries and room progress stay saved.
+- Bag → Stored garden restores original plants and decorations with their age, care, variety, rotation and style. Earlier Designer layouts remain available for deliberate adaptation or cancellation.
+- Optional world activities stay packed away until chosen. Shared goals start as a compact progress chip, with contributions and extra controls available on demand.
+- Refined village paths, doorway forecourts, fish silhouettes, coastal surf, cellar steps and den hatches. Room narration and fishing controls share a readable dark palette and fit separately on smaller screens.
+- Reduced repeated rendering work in water reflections, shadows, clouds, weather, companion animations, camera movement and ground effects, while retaining current poses and shoreline shapes.
+
+### Fixed
+
+- Live visits check the exact shared island layout. Synced plant and decoration moves keep their coordinates together while watering and other care remain independent; incompatible older-world data stays preserved for recovery.
+- Room directions follow the current placed entrance, and follow invitations clear when a friend leaves or changes rooms. Tool clicks, Bag drags and keyboard controls work more consistently around companions and panels.
+- Garden photo exports retain woodland and continuous sea colouring.
+- Release archives include the required Garden map assets.
+
+### Updating a synced Garden
+
+Update Freeflo on every synced computer and open Sync on each before starting the Garden update. Update the Garden once on the computer that created your Sync group, then choose **Use updated island** on the other computers when offered. The update makes backups and preserves earlier Garden copies.
+
+## [2.64.0] - 2026-11-08
+
+### Changed
+
+- The garden uses one shared 52-by-56 island layout, with connected ocean, broad beaches, inland pools and buildings spread along public routes.
+- Five staged district entrances replace repeated zone crossings while retaining all 128 land section IDs and existing ownership/progression.
+- Full original plants and decorations that need storage can be recovered through Bag → Stored garden, preserving their age, care, variety and decoration rotation/style.
+- Earned structures can be deliberately set out nearby or put away without losing ownership and progress.
+- Saved positions and multiplayer coordinates identify the exact world/layout; earlier Designer layouts remain complete archives with deliberate, cancellable adaptation.
+- Same-user plant/decor moves synchronize as complete coordinate pairs while concurrent watering and other care fields remain independent.
+- A guarded local Garden update and complete compatibility-copy preservation use the normal backup and synchronization boundaries.
+- Synced computers can deliberately adopt one complete updated island, retaining their earlier Garden in Backups. The first shared-map update waits until every synced server supports it.
+
+### Fixed
+
+- Encrypted incremental Garden changes retain their world provenance, allowing matching-layout moves and care to sync instead of being held without their tag.
+- Large Stored garden inventories support deliberate paging and original-record restoration without drawing every item at once.
+- Classic island photos include the woodland and continuous sea/hour grading, removing the earlier horizontal sea edges.
+
+Development qualification: ordinary local Update/backups, legacy-save
+archive/deduplication, Stored garden paging and repaired Classic photo export
+and exact compatibility-copy download have recorded outcomes. A paired legacy-to-island
+handover retained newer care, original records and subsequent movement/watering
+through import and reload. Current-client ACK refresh and crash recovery remain
+unplayed. No real-data migration is recorded here.
+
+## [2.63.59] - 2026-11-06
+
+### Changed
+
+- Water geometry prepares its ordered reflection heights once for reuse during drawing.
+- Water waves and ripples reuse scene-owned drawing callbacks.
+- Native transform parsing converts its arguments with a local loop.
+
+## [2.63.58] - 2026-11-06
+
+### Changed
+
+- Water reflections traverse their source groups without first copying every row into a flattened array.
+- Companion animation reuses its paint helper while preserving per-frame deduplication.
+- The selected Collection pet is announced as current, and active pet controls use the current-item cursor.
+
+## [2.63.57] - 2026-11-06
+
+### Fixed
+
+- Clicking the toy or bed already in use keeps its existing room artwork and controls.
+
+### Changed
+
+- Lamp cleanup reuses a private membership set, refreshed from current sources at every glow update.
+
+## [2.63.56] - 2026-11-06
+
+### Changed
+
+- Puddle ripples skip clipping work for segments wholly outside the actual puddle outline bounds.
+- Lamp shadows avoid constructing candidate records that are not selected for drawing.
+
+## [2.63.55] - 2026-11-06
+
+### Changed
+
+- Pet movement updates reuse their existing motion state without an intermediate copy object.
+- Active fishing reuses its current scene's HUD reference instead of searching for it each frame.
+
+## [2.63.54] - 2026-11-06
+
+### Fixed
+
+- Re-selecting a pet or the current Collection filter keeps its existing artwork and animation.
+- Collection details follow the visible filter, and empty filters leave a clear full-width message.
+
+## [2.63.53] - 2026-11-06
+
+### Changed
+
+- New-friend celebrations wait for a quiet moment on Pets, one per visit. Garden actions and collection browsing stay clear, and deliberate meetings remain available.
+- The first Places notice also waits while the owner garden is waking up.
+- The pet sleep control says “Wake up” while the pet is asleep.
+- Pet Collection previews stay compact, and selecting a card brings its details into reach when the panel is stacked above the cards.
+
+## [2.63.52] - 2026-11-06
+
+### Fixed
+
+- Companions yield to watering cans, other selected tools, carried placements and active fishing instead of capturing those clicks. Free-hand pats keep their existing behavior.
+
+## [2.63.51] - 2026-11-06
+
+### Changed
+
+- Multiplayer player names stay compact as the native camera zooms in, keeping nearby action instructions readable.
+
+## [2.63.50] - 2026-11-06
+
+### Fixed
+
+- Delayed multiplayer avatar poses skip retired drawings after leaving the garden, while live redraws finish normally.
+- Native pet spectacles stop their queued steps when their pet or scene has gone and restore a sitting pose only to their current owner.
+
+## [2.63.49] - 2026-11-06
+
+### Fixed
+
+- Second-line fishing invitations expire with their opportunity and recheck eligibility when clicked, keeping a stale prompt from replacing a player's current cast or following them into another room.
+
+## [2.63.48] - 2026-11-06
+
+### Fixed
+
+- Habitat hover labels clear when the pointer reaches garden controls, leaves the stage or the camera moves.
+- Low habitat labels fit above the hotbar, and outdoor habitat help stays out of indoor rooms.
+
+### Changed
+
+- Locked-area mist reads resident boundary metadata without requesting the full water and actor view each frame.
+- Outdoor lighting reuses its world-owned water predicate instead of recreating that function with each effects view.
+- Actor shadows update their retained records without an extra temporary override object.
+
+## [2.63.45] - 2026-11-06
+
+### Changed
+
+- Water clipping creates temporary ice intervals only when a frozen span actually needs them.
+
+## [2.63.44] - 2026-11-06
+
+### Changed
+
+- Paddlefish shadows have a connected rounded bill instead of an oval meeting the body at a point. Mouth contact and overall reach stay the same.
+
+## [2.63.43] - 2026-11-06
+
+### Changed
+
+- Sturgeon and paddlefish shadows have curved, forked tails in place of blunt strips, preserving their existing reach and animation joint.
+
+## [2.63.42] - 2026-11-06
+
+### Fixed
+
+- Routine Play-panel refreshes retain the current game buttons and keyboard focus. Changed game lists and page changes keep their normal navigation.
+
+## [2.63.41] - 2026-11-06
+
+### Changed
+
+- Sturgeon shadows have connected fins and subtle plates in place of projecting bars, while retaining their existing size and swimming motion.
+
+## [2.63.40] - 2026-11-06
+
+### Changed
+
+- Water clipping skips regions outside the horizontal slice being drawn, using bounds prepared from their actual shore and ellipse geometry.
+
+## [2.63.39] - 2026-11-06
+
+### Changed
+
+- Water reflections and depth spots skip further shoreline calculations once a drawing strip is known to be empty.
+
+## [2.63.38] - 2026-11-06
+
+### Changed
+
+- Woodland ground has softer, irregular edges and joined colour transitions. Paths, ponds and land access keep their existing shapes and rules.
+
+## [2.63.37] - 2026-11-06
+
+### Fixed
+
+- Garden object labels, highlights and hover cursors clear when the native camera moves or the pointer leaves the game canvas.
+
+## [2.63.36] - 2026-11-06
+
+### Changed
+
+- Compact garden ponds have smoother, asymmetric shores shared by their artwork, water effects and movement boundaries.
+
+### Fixed
+
+- Drifting fog fades smoothly at locked boundaries instead of ending in a hard dark edge.
+
+## [2.63.35] - 2026-11-05
+
+### Fixed
+
+- The island stepping-stone path keeps its visibility state and uses its full shape when approaching the edge of the view. Wide photos prepare its position and depth before capture.
+
+## [2.63.34] - 2026-11-05
+
+### Changed
+
+- Less vector drawing for stepping stones and dragonflies outside the camera view, with separate preparation for widened photos and normal-view restoration.
+
+## [2.63.33] - 2026-11-05
+
+### Fixed
+
+- Plant-need rings render beneath buildings and piers. Nearby badges remain above the scene, and photo captures hide both kinds of marker.
+
+## [2.63.32] - 2026-11-05
+
+### Changed
+
+- Dragonfly body artwork has a separate static group so the existing native cache can retain it while its wings keep their live animation.
+
+## [2.63.31] - 2026-11-05
+
+### Changed
+
+- Static plant-need rings use individual native graphics caches. Plant badges keep their separate behavior and the existing calm presentation.
+
 ## [2.63.30] - 2026-11-05
 
 ### Changed

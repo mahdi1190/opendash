@@ -14,10 +14,22 @@ uniform sampler2D uDepth;
 uniform vec3 uTop;
 uniform vec3 uBottom;
 uniform vec2 uAlpha;
+uniform vec4 uField;
+uniform vec2 uMaskSize;
+uniform vec2 uOcean;
 #pragma phaserTemplate(outVariables)
 #pragma phaserTemplate(fragmentHeader)
 void main () {
-  vec4 field = texture2D(uDepth, outTexCoord);
+  vec2 sampleUV = outTexCoord;
+  if (uOcean.x > 0.5) {
+    vec2 worldPoint = vec2(uField.x + outTexCoord.x * uField.z, uField.y + (1.0 - outTexCoord.y) * uField.w);
+    sampleUV = vec2(worldPoint.x / uMaskSize.x, 1.0 - worldPoint.y / uMaskSize.y);
+  }
+  vec4 field;
+  if (sampleUV.x < 0.0 || sampleUV.x > 1.0 || sampleUV.y < 0.0 || sampleUV.y > 1.0) {
+    if (uOcean.x < 0.5) discard;
+    field = vec4(1.0, 0.0, 0.0, 1.0);
+  } else field = texture2D(uDepth, sampleUV);
   if (field.a < 0.001) discard;
   float depth = clamp(field.r / max(field.a, 0.001), 0.0, 1.0);
   float alpha = field.a * (uAlpha.x + depth * uAlpha.y);
@@ -28,7 +40,7 @@ void main () {
   function create(scene, options) {
     const W = GARDEN_WORLD, width = W.cols * W.cellW, height = W.sky + W.rows * W.cellH, scale = .5;
     const pixelWidth = Math.ceil(width * scale), pixelHeight = Math.ceil(height * scale), textureBytes = pixelWidth * pixelHeight * 4, key = '__garden-water-depth-' + scene.sys.settings.key;
-    const top = [0, 0, 0], bottom = [0, 0, 0], alpha = [.11, .09];
+    const top = [0, 0, 0], bottom = [0, 0, 0], alpha = [.11, .09], fieldBounds = [0, 0, width, height], maskSize = [width, height], ocean = [0, 0];
     let mask = null, shader = null, reserved = false, dead = false, active = false, visible = true, builds = 0, lastError = null;
     function release() {
       if (shader) { shader.destroy(); shader = null; }
@@ -41,7 +53,7 @@ void main () {
       reserved = true;
       try {
         mask = scene.textures.createCanvas(key, pixelWidth, pixelHeight);
-        shader = scene.add.shader({ name: 'GardenWaterDepth', fragmentSource: fragment, setupUniforms(set) { set('uDepth', 0); set('uTop', top); set('uBottom', bottom); set('uAlpha', alpha); } }, width / 2, height / 2, width, height, [key]);
+        shader = scene.add.shader({ name: 'GardenWaterDepth', fragmentSource: fragment, setupUniforms(set) { set('uDepth', 0); set('uTop', top); set('uBottom', bottom); set('uAlpha', alpha); set('uField', fieldBounds); set('uMaskSize', maskSize); set('uOcean', ocean); } }, fieldBounds[0] + fieldBounds[2] / 2, fieldBounds[1] + fieldBounds[3] / 2, fieldBounds[2], fieldBounds[3], [key]);
         options.parent.add(shader); shader.setVisible(false); lastError = null; return true;
       } catch (error) { lastError = String(error && error.message || error); release(); return false; }
     }
@@ -49,13 +61,18 @@ void main () {
       if (dead) return false;
       const liquid = regions.filter(region => !region.frozen), frozen = regions.filter(region => region.frozen); active = liquid.length > 0;
       if (!active) { if (shader) shader.setVisible(false); return true; }
+      // Only the quad grows into the open sea. The world mask keeps its
+      // existing half-resolution allocation and all exact inland/ice holes.
+      const sea = liquid.find(region => region.ocean), b = sea && sea.bounds;
+      ocean[0] = b ? 1 : 0; fieldBounds[0] = b ? b.x : 0; fieldBounds[1] = b ? b.y : 0; fieldBounds[2] = b ? b.width : width; fieldBounds[3] = b ? b.height : height;
       if (!ensure()) return false;
+      shader.setPosition(fieldBounds[0] + fieldBounds[2] / 2, fieldBounds[1] + fieldBounds[3] / 2).setSize(fieldBounds[2], fieldBounds[3]);
       const context = mask.context, image = context.createImageData(pixelWidth, pixelHeight), pixels = image.data;
       for (let row = 0; row < pixelHeight; row++) {
         const y = (row + .5) / scale, spans = [], ice = options.merge(frozen.flatMap(region => options.intervals(region, y)));
         for (const region of liquid) {
           const bounds = region.bounds; if (y < bounds.y || y >= bounds.y + bounds.height) continue;
-          const depth = Math.max(0, Math.min(1, (y - bounds.y) / Math.max(1, bounds.height)));
+          const depth = region.ocean ? 1 : Math.max(0, Math.min(1, (y - bounds.y) / Math.max(1, bounds.height)));
           const intervals = options.subtract(options.intervals(region, y), ice);
           for (const [left, right] of intervals) spans.push({ left: Math.max(0, left * scale), right: Math.min(pixelWidth, right * scale), depth });
         }

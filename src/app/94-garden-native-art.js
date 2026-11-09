@@ -159,7 +159,12 @@ window.GardenNativeArt = (function () {
   function matrix(text, box, styles) {
     let out = ID, rotationHint = 0; text = resolve(text, styles || {});
     for (const call of text.matchAll(/(matrix|translate[xy]?|scale[xy]?|rotate|skew[xy]?)\s*\(([^)]*)\)/gi)) {
-      const name = call[1].toLowerCase(), raw = call[2].split(/[ ,]+/).filter(Boolean), v = raw.map((s, i) => s.endsWith('%') ? name.startsWith('scale') ? num(s) / 100 : num(s) * ((name === 'translatey' || name === 'translate' && i === 1 ? box && box.height : box && box.width) || 0) / 100 : s.endsWith('rad') ? num(s) * 180 / Math.PI : s.endsWith('turn') ? num(s) * 360 : num(s)); let m = ID;
+      const name = call[1].toLowerCase(), raw = call[2].split(/[ ,]+/).filter(Boolean), v = [];
+      for (let i = 0, length = raw.length; i < length; i++) {
+        const s = raw[i];
+        v[i] = s.endsWith('%') ? name.startsWith('scale') ? num(s) / 100 : num(s) * ((name === 'translatey' || name === 'translate' && i === 1 ? box && box.height : box && box.width) || 0) / 100 : s.endsWith('rad') ? num(s) * 180 / Math.PI : s.endsWith('turn') ? num(s) * 360 : num(s);
+      }
+      let m = ID;
       if (name === 'matrix' && v.length >= 6) m = { a: v[0], b: v[1], c: v[2], d: v[3], e: v[4], f: v[5] };
       else if (name.startsWith('translate')) m = { ...ID, e: name === 'translatey' ? 0 : v[0] || 0, f: name === 'translatey' ? v[0] || 0 : v[1] || 0 };
       else if (name.startsWith('scale')) m = { ...ID, a: name === 'scaley' ? 1 : v[0] == null ? 1 : v[0], d: name === 'scalex' ? 1 : name === 'scaley' ? v[0] : v[1] == null ? v[0] : v[1] };
@@ -519,6 +524,11 @@ window.GardenNativeArt = (function () {
       // Resolve inheritance first, then geometry and bottom-up pivots. A whole
       // asset is compiled once rather than once per ancestor during assembly.
       for (const node of nodes) {
+        if (node.localName === 'text' || node.localName === 'tspan') {
+          const peerName = node.classList.contains('gll-name');
+          if (node._peerNameLabel !== peerName && node._label) { node._uncache(true, true); if (!peerName) node._label.setScale(1); }
+          node._peerNameLabel = peerName;
+        }
         node._styles = stylesFor(node); node._motionBlocked = node.context.options.motion === false || !!(node.parentNode && node.parentNode._motionBlocked) || node.classList.contains('is-still') || node.classList.contains('is-funoff');
         node._clipKey = (node.parentNode ? node.parentNode._clipKey || '' : '') + '|' + (node._styles['clip-path'] || node.attrs['clip-path'] || '') + (node.localName === 'svg' ? '|viewport:' + [node.attrs.x, node.attrs.y, node.attrs.width, node.attrs.height, node.attrs.viewBox, node._styles.overflow || node.attrs.overflow].join(',') : '');
         const nextPaint = paintKey(node, node._clipKey), nextTransform = transformKey(node), nextAlpha = alpha(node._styles.opacity, node._styles), nextVisible = node.attrs.display !== 'none' && node.attrs.visibility !== 'hidden' && node._styles.display !== 'none' && node._styles.visibility !== 'hidden' && !DEFINITIONS.has(node.localName);
@@ -952,7 +962,22 @@ window.GardenNativeArt = (function () {
       else if (node._cache) { showCache(node, true); node._cache.lastUsed = now; if (cacheRefreshNeeded(node)) queueCache(node, 0, 'coverage'); else if (!scene._nativeViewTransition && state.cacheBytes > state.cacheBudget * .7 && node._cache.bytes > 512 * 1024 && node._cache.quality > cacheQuality(node) * 1.5) queueCache(node, 150, 'demote'); }
     }
     const camera = scene.cameras && scene.cameras.main, resolution = num(scene.game && scene.game.renderer && scene.game.renderer.resolution, num(scene.game && scene.game.config && scene.game.config.resolution, 1)), labelBucket = camera ? Math.ceil(camera.zoom * resolution * 64) + '|' + camera.width + 'x' + camera.height : '1';
-    for (const node of state.labels) { if (!sharp && scene._nativeViewTransition || node._textBucket === labelBucket || node._dead || !node._label || !node.target.active) continue; let visible = true; for (let n = node; n; n = n.parentNode) if (!n.target.visible) { visible = false; break; } if (!visible) continue; const desired = Math.max(2, Math.min(12, Math.ceil(effectivePixels(node)))); if (desired > node._textResolution) { for (let parent = node.parentNode; parent; parent = parent.parentNode) if (parent._cache) { parent._cache.dirty = true; if (!sharp) queueCache(parent, 0, 'content'); } node._textResolution = desired; node._label.setResolution(desired); } node._textBucket = labelBucket; }
+    for (const node of state.labels) {
+      if (node._dead || !node._label || !node.target.active) continue;
+      let pixels;
+      if (node._peerNameLabel) {
+        // Scale only the glyph, around its existing text anchor. Measuring
+        // the owning node excludes this child scale and cannot feed back.
+        pixels = effectivePixels(node);
+        const size = num(node._label.style.fontSize, 12), scale = Math.min(1, 16 / Math.max(.001, size * pixels / Math.max(.001, resolution)));
+        if (node._label.scaleX !== scale || node._label.scaleY !== scale) node._label.setScale(scale);
+      }
+      // Texture quality keeps its existing policy. The name size cap also
+      // applies during camera easing, before that quality work is deferred.
+      if (!sharp && scene._nativeViewTransition || node._textBucket === labelBucket) continue;
+      let visible = true; for (let n = node; n; n = n.parentNode) if (!n.target.visible) { visible = false; break; } if (!visible) continue;
+      const desired = Math.max(2, Math.min(12, Math.ceil(pixels == null ? effectivePixels(node) : pixels))); if (desired > node._textResolution) { for (let parent = node.parentNode; parent; parent = parent.parentNode) if (parent._cache) { parent._cache.dirty = true; if (!sharp) queueCache(parent, 0, 'content'); } node._textResolution = desired; node._label.setResolution(desired); } node._textBucket = labelBucket;
+    }
     const rebuildAt = performance.now(); if (!sharp) for (const [node, pending] of state.recaches) { if (node._dead || !nativeVisible(node)) { state.recaches.delete(node); continue; } if (node._cache && cacheValid(node) && !cacheRefreshNeeded(node) && pending.reason !== 'demote') { state.recaches.delete(node); continue; } if (scene._nativeViewTransition && node._cache && cacheCoversView(node)) continue; if (pending.due > rebuildAt || rebuildAt < (node._cacheRetryAfter || 0)) continue; const view = localView(node); if (view && !intersectBox(node.getBBox(), view)) { state.recaches.delete(node); continue; } if (!cacheAllowance(node, pending.recipe, false)) break; const before = state.captureCount || 0; cacheNative(node, { ...pending.recipe, demote: pending.reason === 'demote' }); if (node._cache && cacheValid(node)) state.recaches.delete(node); else pending.due = rebuildAt + 80; if ((state.captureCount || 0) > before || performance.now() - rebuildAt > 3) break; }
     let cached = 0; const began = performance.now(); if (!sharp) for (const node of state.actorCaches) { state.actorCaches.delete(node); if (!node._dead && node.isConnected) cacheNative(node, { staticOnly: true, quality: 2 }); if (++cached >= 2 || performance.now() - began > 4) break; }
     for (const node of state.animations) animateNode(node, time);
@@ -966,9 +991,9 @@ window.GardenNativeArt = (function () {
   function cacheNative(node, options) {
     if (node._dead) return;
     options = options || {};
-    if (options.staticOnly) { const counts = new Map(), inspect = n => { let count = n._graphics ? 1 : 0, childMoving = false; const ownMoving = !!(n._animations.length || n._nativeAnimating), paintMoving = n._animations.some(animation => animation.tracks.paintOpacity.length); for (const child of n.children) { const sub = inspect(child); count += sub.count; childMoving = childMoving || sub.moving; } const out = { count, ownMoving, paintMoving, childMoving, moving: ownMoving || childMoving }; counts.set(n, out); return out; }; inspect(node); const visit = n => { const state = counts.get(n); if (state.paintMoving) return; if (!state.childMoving && state.count >= 4) cacheNative(n, { ...options, staticOnly: false, partitioned: true, preserveOwnMotion: state.ownMoving }); else for (const child of n.children) visit(child); }; visit(node); return; }
+    if (options.staticOnly) { const counts = new Map(), inspect = n => { let count = n._graphics ? 1 : 0, childMoving = false; const ownMoving = !!(n._animations.length || n._nativeAnimating || n._peerNameLabel), paintMoving = n._animations.some(animation => animation.tracks.paintOpacity.length); for (const child of n.children) { const sub = inspect(child); count += sub.count; childMoving = childMoving || sub.moving; } const out = { count, ownMoving, paintMoving, childMoving, moving: ownMoving || childMoving }; counts.set(n, out); return out; }; inspect(node); const visit = n => { const state = counts.get(n); if (state.paintMoving) return; if (!state.childMoving && state.count >= 4) cacheNative(n, { ...options, staticOnly: false, partitioned: true, preserveOwnMotion: state.ownMoving }); else for (const child of n.children) visit(child); }; visit(node); return; }
     if (options.partitioned) {
-      const movingChildren = n => n.children.some(child => child._animations.length || child._nativeAnimating || movingChildren(child));
+      const movingChildren = n => n.children.some(child => child._animations.length || child._nativeAnimating || child._peerNameLabel || movingChildren(child));
       if (movingChildren(node) || node._animations.some(animation => animation.tracks.paintOpacity.length)) {
         const state = stateFor(node.scene); releaseCache(node, false); state.cacheTrackedNodes.delete(node); state.recaches.delete(node); delete node._cacheRecipe;
         cacheNative(node, { ...options, staticOnly: true }); return;

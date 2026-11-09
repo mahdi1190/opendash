@@ -56,10 +56,11 @@ function gardenLandFeatureInfo(id, mArg) {
     else if (sec && !m.areas.includes(sec.id)) why = sec.buy ? `Needs ${sec.name} (buy that land first)` : `Needs ${sec.name} to be open`;
   }
   let spot = '';
-  if (!built && def.x != null) for (const [x, y] of _gldFootprint(def)) { const c = m.occ.get(x + ',' + y); if (c && (c.plant || c.decor)) { const p = c.plant ? gardenPlantById(m, c.plant) : gardenDecorById(m, c.decor); spot = (p && p.def.name) || 'Something'; break; } }
+  if (GARDEN_WORLD.v < 3 && !built && def.x != null) for (const [x, y] of _gldFootprint(def)) { const c = m.occ.get(x + ',' + y); if (c && (c.plant || c.decor)) { const p = c.plant ? gardenPlantById(m, c.plant) : gardenDecorById(m, c.decor); spot = (p && p.def.name) || 'Something'; break; } }
   return { def, built, why, spot, cost: def.cost, afford: m.wallet.coins >= def.cost };
 }
 function gardenBuildFeature(id) {
+  if (!gardenWorldReady()) return _gdNo('The garden update needs to finish before you can build anything');
   { const v = _gdvAsk('land', { id }); if (v) return v; }
   const info = gardenLandFeatureInfo(id); if (!info) return _gdNo('That is not something you can build');
   if (info.built) return _gdNo('You have that already');
@@ -70,7 +71,7 @@ function gardenBuildFeature(id) {
   if (m.wallet.coins < pay) return _gdNo(`That costs ${pay} coins: you have ${m.wallet.coins}`);
   const lk = 'b.' + m.today + '.' + _gdUid(''), mark = _gdMark([['led', lk]]), d = info.def;
   _gdG().led[lk] = { d: m.today, k: 'b', c: _gdCost(pay), x: 10, i: Object.assign({ ['feat:' + id]: 1 }, rq && rq.i), n: 1 };
-  _gdEmit('land', { id, x: d.x == null ? 30 : d.x, y: d.y == null ? 11 : d.y, w: d.w || 3, h: d.h || 1 });
+  if (GARDEN_WORLD.v < 3) _gdEmit('land', { id, x: d.x == null ? 30 : d.x, y: d.y == null ? 11 : d.y, w: d.w || 3, h: d.h || 1 });
   const done = _gdDone(`${d.name}: done`, `building ${d.name.toLowerCase()}`, mark, { icon: d.icon });
   gardenModel();   // (it stands in the world from this moment)
   return done;
@@ -84,7 +85,7 @@ function gardenLandWaterExtra(g, today) {
 }
 /** When the spring rill last watered this plant: this morning at 06:00, or yesterday's. 0 when it does not reach. */
 function gardenLandRillAt(pl, fp, now) {
-  if (!gardenLandOwnsFeature('lf-rill')) return 0;
+  if (!gardenLandOwnsFeature('lf-rill') || !gardenFeatureIsSetOut('lf-rill')) return 0;
   const f = gardenLandFeature('lf-rill');
   if (pl.x + fp - 1 < f.x - f.r || pl.x > f.x + f.r || pl.y + fp - 1 < f.y - f.r || pl.y > f.y + f.r) return 0;
   const today = _gdDayOf(now);
@@ -378,8 +379,15 @@ function _gldBackToBag(g, uid, pl, today) {
   if (def && !g.led[key]) g.led[key] = { d: today, k: 'wv', i: { ['seed:' + def.id]: 1 } };
   delete g.plants[uid];
 }
+function gardenWorldReady() {
+  const g = _gdG();
+  return GARDEN_WORLD.v < 3 || !g.since || Number(g.seen.world) === GARDEN_WORLD.v && g.seen.worldLayout === GARDEN_WORLD.lh;
+}
 function gardenWorldCheck() {
   const g = _gdG(); if (!g.since) return;
+  // Island relocation is an explicit backed-up migration. Neither the old
+  // refund conversion nor its later worldAt deletion sweep may touch v3.
+  if (GARDEN_WORLD.v >= 3) { _gd.worldPending = !gardenWorldReady(); return; }
   if ((Number(g.seen.world) || 1) >= GARDEN_WORLD.v) {
     // (keep it cheap: once per change to the garden)
     if (_gd.worldRev === _gd.rev || !g.seen.worldAt) return;

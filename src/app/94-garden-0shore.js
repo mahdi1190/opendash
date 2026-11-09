@@ -156,6 +156,7 @@ function _gardenLakeBuild(guards) {
 /** Grid coordinates. Pass an existing model when drawing; predicates use the
  * same resident result. Never call gardenHere/gardenModel from this path. */
 function gardenLakeGeometry(model, options) {
+  if (gardenIslandActive()) return gardenIslandOceanGeometry();
   const context = _gardenLakeContext(), cache = _gardenLakeShape;
   if (options && options.detached) {
     const guards = _gardenLakeGuards(model, context), signature = guards.map(b => [b.x0, b.y0, b.x1, b.y1].join(',')).join(';'); let value = _gardenLakeSceneShapes.get(signature);
@@ -175,6 +176,10 @@ function gardenWaterContainsPoint(x, y) {
   if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
   if (x >= GARDEN_ROOM_X) { const w = typeof _grwByCell === 'function' ? _grwByCell(x, y) : null; if (!w) return false; const p = _grwRoomPt(w, x, y); return _grwIn(w, p.x, p.y); }
   const cx = Math.floor(x), cy = Math.floor(y);
+  if (gardenIslandActive()) {
+    if (x < 0 || y < 0 || x >= GARDEN_WORLD.cols || y >= GARDEN_WORLD.rows || gardenPropWalk(cx, cy)) return false;
+    return gardenIslandOceanContains(x, y) || typeof gardenOtherWaterContains === 'function' && gardenOtherWaterContains(x, y);
+  }
   if (x >= 12 && x < 40 && y >= 21 && y < 38) {
     const lake = gardenLakeGeometry(), land = typeof gardenLandWaterAt === 'function' ? gardenLandWaterAt(cx, cy) : null;
     if (gardenPropWalk(cx, cy) || lake.cellContains(cx, cy) && land === false) return false;

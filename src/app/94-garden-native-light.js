@@ -27,6 +27,7 @@ window.GardenNativeLight = (function () {
     let preview = null;
     let clockKey = '', clockState = null;
     const shadowPool = new Map(), actorShadowPool = new Map(), creatureRows = new WeakMap(), actorCasts = new WeakMap(), softKey = '__garden-soft-' + scene.sys.settings.key, weatherKey = '__garden-weather-' + scene.sys.settings.key, cloudKey = '__garden-cloud-' + scene.sys.settings.key;
+    const lightMembership = new Set();
     let visibleCloudLobes = 0, cloudTextureBuilds = 0;
     let creatureSerial = 0, visibleCreatures = 0;
     // A single native capture supplies soft, batchable penumbras. It is
@@ -76,7 +77,7 @@ window.GardenNativeLight = (function () {
     function effectState() { const owner = room || options.world, provider = room ? room.effectsState : options.world && options.world.effectsState; return typeof provider === 'function' ? provider.call(owner) : null; }
     function layer() { const parent = effects && effects.parent || room && room.root || options.world && options.world.rootNode && options.world.rootNode._inner; return parent && (parent._inner || parent.target || parent); }
     function setRoom(next) {
-      for (const light of pointLights.values()) light.destroy(); pointLights.clear();
+      for (const light of pointLights.values()) light.destroy(); pointLights.clear(); lightMembership.clear();
       for (const pool of [shadowPool, actorShadowPool]) { for (const image of pool.values()) image.destroy(); pool.clear(); }
       room = next || null; effects = effectState(); const parent = layer(); frame = 0;
       shadows.setDepth(room ? 50 : -9305); actorShadows.setDepth(room ? 75 : -9205);
@@ -161,14 +162,19 @@ window.GardenNativeLight = (function () {
     }
     function imageFor(pool, parent, key) {
       let image = pool.get(key);
-      if (!image) { image = scene.add.image(0, 0, softKey); parent.add(image); pool.set(key, image); }
-      image._gardenShadowFrame = frame; image.setTint(room ? 0x2c2835 : 0x233e35); return image;
+      if (!image) { image = scene.add.image(0, 0, softKey).setTint(room ? 0x2c2835 : 0x233e35); parent.add(image); pool.set(key, image); }
+      image._gardenShadowFrame = frame; if (!image.visible) image.setVisible(true); return image;
+    }
+    function hideUnusedShadows(pool) {
+      // A selected retained image stays visible through this pass. Hiding
+      // every image first needlessly toggled each active shadow twice.
+      for (const image of pool.values()) if (image._gardenShadowFrame !== frame && image.visible) image.setVisible(false);
     }
     function shadeShape(pool, parent, key, o, dx, dy, length, alpha, actor) {
       const x = Number(o.x) || 0, y = Number(o.y) || 0, w = Math.max(3, Number(o.w || o.width) || 20), footprint = actor ? clamp(Number(o.depth || o.h) || 7, 3, 12) : Math.max(2, Number(o.h || o.depth) || 7);
       const height = clamp(Number(o.tall || o.height) || 36, 8, 150), len = Math.min(85, height * length), sx = dx * len, sy = dy * len;
       const image = imageFor(pool, parent, key);
-      image.setVisible(true).setPosition(x + sx * .48, y + sy * .48 + 1).setDisplaySize(Math.max(5, w * (actor ? .95 : 1.2)), Math.max(7, footprint * (actor ? .7 : 1.5) + len * 1.1)).setRotation(Math.atan2(sy, sx) - Math.PI / 2).setAlpha(alpha);
+      image.setPosition(x + sx * .48, y + sy * .48 + 1).setDisplaySize(Math.max(5, w * (actor ? .95 : 1.2)), Math.max(7, footprint * (actor ? .7 : 1.5) + len * 1.1)).setRotation(Math.atan2(sy, sx) - Math.PI / 2).setAlpha(alpha);
     }
     function visible(source) { for (let node = source && (source.target || source); node; node = node.parentContainer) if (node.active === false || node.visible === false && !(node._nativeCacheHiddenBy && (!node._nativeNode || node._nativeNode._computedVisible !== false)) || node.alpha <= .025) return false; return true; }
     function sourceOpacity(source) { let amount = 1; for (let node = source && (source.target || source); node; node = node.parentContainer) amount *= node.alpha == null ? 1 : node.alpha; return amount; }
@@ -222,8 +228,7 @@ window.GardenNativeLight = (function () {
         const dx = o.x - lamp.x, dy = o.y - lamp.y, d = Math.hypot(dx, dy), radius = lamp.radius || 130;
         if (d < 8 || d > radius) continue;
         const amount = (room ? 1 : 1 - env.daylight) * (lamp.intensity == null ? 1 : lamp.intensity) * (1 - d / radius);
-        const candidate = { lamp, dx, dy, d, amount };
-        if (amount > best) { second = first; next = best; first = candidate; best = amount; } else if (amount > next) { second = candidate; next = amount; }
+        if (amount > best) { second = first; next = best; first = { lamp, dx, dy, d, amount }; best = amount; } else if (amount > next) { second = { lamp, dx, dy, d, amount }; next = amount; }
       }
       for (const candidate of [first, second]) {
         if (!candidate || candidate.amount < .015) continue;
@@ -234,7 +239,6 @@ window.GardenNativeLight = (function () {
       }
     }
     function paintShadows(env, v) {
-      for (const image of shadowPool.values()) image.setVisible(false);
       const list = occluders(), direction = Math.hypot(env.sunX, env.sunY) || 1, length = .2 + (1 - env.elevation) * .62, strength = room ? 0 : env.daylight * .15 * (1 - env.cloudCover * .78);
       for (let i = 0; i < list.length; i++) {
         const o = list[i], key = o.id == null ? 'static:' + i : String(o.id);
@@ -242,9 +246,9 @@ window.GardenNativeLight = (function () {
         if (strength > .004) shadeShape(shadowPool, shadows, key + ':sun', o, -env.sunX / direction, env.sunY / direction, length, strength, false);
         if (env.daylight < .65 || room) lampCasts(shadowPool, shadows, key, o, false, env);
       }
+      hideUnusedShadows(shadowPool);
     }
     function paintActors(env, v) {
-      for (const image of actorShadowPool.values()) image.setVisible(false);
       const primary = effects && effects.actors || [], creatures = creatureActors(primary), actors = primary.concat(creatures), direction = Math.hypot(env.sunX, env.sunY) || 1, strength = room ? 0 : env.daylight * .19 * (1 - env.cloudCover * .82);
       visibleCreatures = 0;
       visibleActors = 0;
@@ -253,15 +257,18 @@ window.GardenNativeLight = (function () {
         const key = actor.id == null ? 'actor:' + i : String(actor.id); visibleActors++; if (actor.kind === 'bug' || actor.kind === 'wildlife') visibleCreatures++;
         const lift = Math.max(0, Number(actor.altitude == null ? actor.lift : actor.altitude) || 0), softness = 1 / (1 + lift / 70), visibility = actor.opacity == null ? sourceOpacity(actor.source) : actor.opacity, opacity = visibility * (actor.shadowStrength == null ? 1 : actor.shadowStrength), scale = actor.shadowScale == null ? 1 : clamp(Number(actor.shadowScale), .25, 1.5);
         const source = actor.source && (actor.source.target || actor.source) || actor; let castActor = actorCasts.get(source); if (!castActor) { castActor = {}; actorCasts.set(source, castActor); }
-        Object.assign(castActor, actor, { x: Number.isFinite(actor.groundX) ? actor.groundX : actor.x, y: Number.isFinite(actor.groundY) ? actor.groundY : actor.y, tall: (actor.tall || 40) + lift, w: ((actor.w || 18) + lift * .16) * scale, opacity: visibility, shadowSoftness: softness });
+        const castX = Number.isFinite(actor.groundX) ? actor.groundX : actor.x, castY = Number.isFinite(actor.groundY) ? actor.groundY : actor.y, castTall = (actor.tall || 40) + lift, castWidth = ((actor.w || 18) + lift * .16) * scale;
+        Object.assign(castActor, actor);
+        castActor.x = castX; castActor.y = castY; castActor.tall = castTall; castActor.w = castWidth; castActor.opacity = visibility; castActor.shadowSoftness = softness;
         if (!actor.raisedPerch && (!actor.bakedContact || actor.airborne || lift > 8)) {
           const image = imageFor(actorShadowPool, actorShadows, key + ':contact');
-          image.setVisible(true).setPosition(castActor.x, castActor.y + 1).setRotation(0).setDisplaySize(Math.max(5, castActor.w || 18) * 1.12, clamp(Number(actor.h) || 6, 3, 12) * 1.2 * scale).setAlpha((room ? .16 : .14) * softness * opacity);
+          image.setPosition(castActor.x, castActor.y + 1).setRotation(0).setDisplaySize(Math.max(5, castActor.w || 18) * 1.12, clamp(Number(actor.h) || 6, 3, 12) * 1.2 * scale).setAlpha((room ? .16 : .14) * softness * opacity);
         }
         const castStrength = strength * softness * opacity * (actor.bakedContact ? clamp((1 - env.elevation) * 4) : 1);
         if (castStrength > .004) shadeShape(actorShadowPool, actorShadows, key + ':sun', castActor, -env.sunX / direction, env.sunY / direction, .18 + (1 - env.elevation) * .88, castStrength, true);
         if (env.daylight < .8 || room) lampCasts(actorShadowPool, actorShadows, key, castActor, true, env);
       }
+      hideUnusedShadows(actorShadowPool);
       if (frame % 120 === 0) for (const pool of [shadowPool, actorShadowPool]) for (const [key, image] of pool) if (!image.visible && frame - image._gardenShadowFrame > 180) { image.destroy(); pool.delete(key); }
     }
     function outdoorNightPresentation() { return !room && !!model && (model.tod === 'dusk' || model.tod === 'night'); }
@@ -312,8 +319,9 @@ window.GardenNativeLight = (function () {
       }
     }
     function paintGlows(time, env, v) {
-      const present = new Set(lamps.map(lamp => lamp.id || lamp.x + ',' + lamp.y));
-      for (const [key, light] of pointLights) if (!present.has(key)) { light.destroy(); pointLights.delete(key); }
+      lightMembership.clear();
+      for (const lamp of lamps) lightMembership.add(lamp.id || lamp.x + ',' + lamp.y);
+      for (const [key, light] of pointLights) if (!lightMembership.has(key)) { light.destroy(); pointLights.delete(key); }
       glow.clear(); for (const light of pointLights.values()) light.setVisible(false); if (!room && env.daylight >= .8) return;
       const amount = room ? 1 : 1 - env.daylight, t = time / 1000, warmNight = outdoorNightPresentation(), lightDepth = warmNight ? 80010 : 78000;
       for (const lamp of lamps) {
@@ -457,7 +465,7 @@ window.GardenNativeLight = (function () {
       paintGroundWeather(frozenAt == null ? dt : 0, env, v, motion);
       paintEffects(frozenAt == null ? dt : 0); if (window.GardenNativeArt && GardenNativeArt.environment) GardenNativeArt.environment(env);
     }
-    function destroy() { if (dead) return; dead = true; document.removeEventListener('visibilitychange', visibilityChanged); for (const object of objects) object.destroy(); shadowPool.clear(); actorShadowPool.clear(); for (const light of pointLights.values()) light.destroy(); pointLights.clear(); if (scene.textures.exists(softKey)) scene.textures.remove(softKey); if (scene.textures.exists(weatherKey)) scene.textures.remove(weatherKey); if (scene.textures.exists(cloudKey)) scene.textures.remove(cloudKey); particles.length = 0; burstGlyphs.length = 0; visibleBurstGlyphs = 0; }
+    function destroy() { if (dead) return; dead = true; document.removeEventListener('visibilitychange', visibilityChanged); for (const object of objects) object.destroy(); shadowPool.clear(); actorShadowPool.clear(); for (const light of pointLights.values()) light.destroy(); pointLights.clear(); lightMembership.clear(); if (scene.textures.exists(softKey)) scene.textures.remove(softKey); if (scene.textures.exists(weatherKey)) scene.textures.remove(weatherKey); if (scene.textures.exists(cloudKey)) scene.textures.remove(cloudKey); particles.length = 0; burstGlyphs.length = 0; visibleBurstGlyphs = 0; }
     function setPreview(next) { preview = next || null; staticKey = ''; screenKey = ''; fieldDirty = true; }
     setRoom(null);
     return { sync, setRoom, pauseAmbient, update, effect, destroy, ambientClock, preview: setPreview, environment: () => ({ ...environment, ambientTime, paused: frozenAt != null, reducedMotion: !lastMotion, room: !!room, ...clockStatus() }), status: () => ({ shadows: occluders().length, actorShadows: visibleActors, creatureShadows: visibleCreatures, shadowImages: shadowPool.size + actorShadowPool.size, lights: lamps.length, cloudCount: cloudList.length, cloudLobes: cloudImages.length, visibleCloudLobes, cloudTextureKey: cloudKey, cloudTextureSize: [cloudTextureWidth, cloudTextureHeight], cloudTextureBytes: cloudTextureWidth * cloudTextureHeight * 4, cloudTextureBuilds, precipitation: environment.rain ? Math.ceil(drops.length * environment.rain) : environment.snow ? Math.ceil(80 * environment.snow) : 0, precipitationKind: environment.snow ? 'snow' : environment.rain ? 'rain' : 'none', precipitationSprites: precipitationVisible, precipitationTextureBytes: 192 * 64 * 4, groundImpacts: impacts.filter(impact => impact.active).length, wetness: environment.wetness, outdoorWetness, particles: particles.length, burstPoolSize: burstGlyphs.length, visibleBurstGlyphs, burstPoolLimit, paused: frozenAt != null, reducedMotion: !lastMotion, ambientTime, windX: environment.windX, windY: environment.windY, gust: environment.gust, room: !!room, native: true, ...clockStatus() }) };

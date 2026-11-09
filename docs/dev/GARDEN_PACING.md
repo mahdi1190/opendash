@@ -9,7 +9,78 @@ This document describes current source behavior. Completed observations and
 their limits are recorded below. Earlier activity proofs alone do not establish
 that the new pacing, menus or visibility rules work.
 
+## Island space and owned content
+
+The canonical v3 island spreads the existing useful buildings around public
+routes, beach and harbour rather than extending the old single shopfront row.
+Its 52-by-56 world has five staged district entrances and connected sea around
+the mainland. All 128 land IDs and existing ownership/progression remain.
+The [map contract](GARDEN_PLAN.md#the-map) identifies the current gates and pools;
+older rectangular map coordinates are historical reference.
+
+The native view keeps empty owned growing sections grassy until they contain
+plants or ground decor. Their ownership and planting guides remain available;
+this does not pack possessions away or change where planting is allowed.
+Finer continuous walks, grass shoulders and small doorway forecourts leave more
+quiet space around the village. The full reserved routes and aprons remain
+clear for walking. Ocean surf follows the actual coast with retained, gently
+changing contours instead of adding beach objects or another activity.
+
+The next closed v3 entrance has a stone arch, timber leaves and a latch, while
+its requirement stays in deliberate inspection. The initial ordinary flow
+reached four public beaches, explained the closed level-6 gate and returned Home
+without captured app errors. Later ordinary play covered the smaller forecourts,
+south/east beaches and the gate aligned to its actual blocked crossing; normal
+inspection and Leave remained available without captured errors. A separate
+preview session covered keyboard walking and zoom controls. Canonical map
+fingerprint, collision authority,
+unlocks and earned progress remain unchanged.
+
+Existing possessions do not have to fill every new space. A displaced plant or
+decoration stays as its full original record in **Bag → Stored garden**. Choosing
+it opens the existing move ghost for a legal drop, preserving its age, care,
+variety, rotation and style. This recovery does not turn an aged plant back into
+a fresh seed or charge for a new object. A full or incompatible plot can still
+refuse the move through the normal rules.
+
+Built structures have a separate **Land → Your built structures** disclosure.
+**Set out nearby** needs clear legal ground and a reachable entrance; **Put away**
+keeps the earned ownership and progress. Structures start from deliberate
+placements rather than all appearing at their earlier coordinates. These
+controls do not replace the six optional Play workshops or their one-at-a-time
+selection. Visitors observe host placements and selection, with their existing
+permissions; they cannot unpack the owner's stored inventory themselves.
+
+Designer also avoids silently filling the island from an old layout. **Earlier
+layouts → Adapt to this island** keeps the complete archive and opens a working
+copy. Earlier objects can be placed through the ordinary guides, then kept;
+Cancel leaves the saved layout unchanged. Objects or paths that cannot safely
+project remain recoverable in the archive instead of being discarded.
+
+Isolated ordinary v3 play covered the encrypted visit, full-row Bag restoration,
+deliberate structure Set out / Put away / Undo and archived Designer Keep/Cancel.
+A modest level-3 walk reached four public beaches and received the closed
+level-6 gate explanation. These observations do not cover every gate or saved
+layout. Later ordinary 25-record paging and second-page bench restoration kept
+the metadata/other records, then returned to an unpaged 24-item list. The viewed
+full Classic photo includes woodland without the earlier horizontal sea edges.
+The local Update made full/exact backups, and genuine legacy saves were archived
+and deduplicated; the downloaded copy matched the archive. Current-client ACK
+refresh remains unplayed; no real-data migration is claimed.
+
 ## Optional activities
+
+Discovered landmarks that were packed away by the island layout are available
+through **Land → Your discovered places**. The disclosure starts closed.
+**Set out nearby** requires clear, reachable legal ground; **Put away** retains
+the place's identity, finds and room progress, and both changes support Undo.
+Fixed island landmarks keep their authored positions. Existing room opening
+conditions still apply, and visitors observe the host's placements.
+
+Shared-goal progress uses a compact chip. Contributions, the progress bar and
+host actions open only when requested; **Hide details** changes local presentation
+and **Skip this goal** remains a separate host action. Completion and shared
+progress stay visible without an automatic large card.
 
 `94-garden-0pacing.js` owns the six optional world activities. They start packed
 away when no selection has been saved. The garden owner chooses one through

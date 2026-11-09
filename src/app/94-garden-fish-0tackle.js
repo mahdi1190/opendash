@@ -53,6 +53,38 @@ function gardenBaitLikes(bait, def) {
   return likes.some(t => tags.includes(t));
 }
 
+/* Existing lake places follow the canonical coast; their IDs and rules stay.
+ * This runs once while the tables are assembled, never in the school clock. */
+let _gtIslandCoastalMemo = null;
+function _gtIslandCoastal() {
+  if (typeof gardenIslandActive !== 'function' || !gardenIslandActive()) return null;
+  if (_gtIslandCoastalMemo) return _gtIslandCoastalMemo;
+  const data = gardenIslandData(), W = GARDEN_WORLD, pier = data.static.find(p => p.id === 'pier'), boat = data.static.find(p => p.id === 'boat');
+  if (!pier || !boat) return null;
+  const end = Math.max(...data.static.filter(p => /^pier(?:-\d+)?$/.test(p.id)).map(p => p.y + p.h));
+  const targets = [
+    ['reed-bank', boat.x - 2, pier.y + 2, 30], ['lily-pads', pier.x + pier.w + 3, pier.y + 4, 30],
+    ['weed-bed', boat.x - 1, boat.y + 2, 90], ['sunken-log', pier.x + pier.w + 3, boat.y + 4, 90],
+    ['cold-spring', W.cols - 2, pier.y - 5, 90], ['drop-off', pier.x - 3, end + 2, 210], ['old-wreck', pier.x + pier.w + 3, end + 3, 210],
+  ], spots = {};
+  for (const [id, x, y, depth] of targets) {
+    let nearest = null;
+    for (const points of data.coast.land) {
+      let area = 0; for (let i = 0; i < points.length; i++) { const a = points[i], b = points[(i + 1) % points.length]; area += a[0] * b[1] - b[0] * a[1]; }
+      const side = area < 0 ? -1 : 1;
+      for (let i = 0; i < points.length; i++) {
+        const a = points[i], b = points[(i + 1) % points.length], ax = a[0] * W.cellW, ay = a[1] * W.cellH, dx = (b[0] - a[0]) * W.cellW, dy = (b[1] - a[1]) * W.cellH, length = Math.hypot(dx, dy); if (!length) continue;
+        const t = Math.max(0, Math.min(1, ((x * W.cellW - ax) * dx + (y * W.cellH - ay) * dy) / (length * length))), qx = ax + dx * t, qy = ay + dy * t, distance = Math.hypot(x * W.cellW - qx, y * W.cellH - qy);
+        if (!nearest || distance < nearest.distance) nearest = { distance, x: qx, y: qy, nx: dy / length * side, ny: -dx / length * side };
+      }
+    }
+    if (nearest) spots[id] = Object.freeze({ x: (nearest.x + nearest.nx * depth) / W.cellW, y: (nearest.y + nearest.ny * depth) / W.cellH });
+  }
+  return _gtIslandCoastalMemo = Object.freeze({ spots: Object.freeze(spots), rack: Object.freeze({ x: pier.x + pier.w + 1.2, y: pier.y - .1 }), boatIn: Object.freeze({ x: boat.x + boat.w / 2, y: boat.y + boat.h / 2 }), boatOut: Object.freeze({ x: boat.door.x + .5, y: boat.door.y + .5 }), bunting: Object.freeze({ x0: pier.x - pier.w * 1.5, x1: pier.x + pier.w * 2.5, y: pier.y - .5 }), thing: Object.freeze({ y0: end + 2, yN: 5, out: 6, secs: 90 }) });
+}
+function _gtIslandSpot(spot) { const coast = _gtIslandCoastal(); return coast && coast.spots[spot.id] ? { ...spot, ...coast.spots[spot.id] } : spot; }
+function _gtIslandCatchCell(id, original) { const coast = _gtIslandCoastal(); return coast && coast[id] || original; }
+
 /* ---------- spots ----------
    x, y, r in cells, in the lake. They are drawn where they are (gardenCatchWorldArt) and stand still, so you learn them. says: what the spot is good for, in words. */
 const GARDEN_SPOTS = Object.freeze([   // world cells
@@ -63,17 +95,17 @@ const GARDEN_SPOTS = Object.freeze([   // world cells
   { id: 'cold-spring', name: 'The cold spring', x: 35.4, y: 24.8, r: 1.3, zone: 'mid', says: 'Bubbles of cold clean water come up here. Trout come for it.' },
   { id: 'drop-off', name: 'The drop-off', x: 17.4, y: 26.8, r: 2.3, zone: 'deep', says: 'The bottom falls away here. Big fish patrol the edge.' },
   { id: 'old-wreck', name: 'The old wreck', x: 29.4, y: 30.4, r: 2.1, zone: 'deep', says: 'A boat that never came home. You need a boat, a long pier or a great rod to reach it.' },
-].map(Object.freeze));
+].map(s => Object.freeze(_gtIslandSpot(s))));
 const _GT_SPOT = new Map(GARDEN_SPOTS.map(s => [s.id, s]));
 /* Where the rest of it stands, all in one place. */
 const GARDEN_CATCH_CELLS = Object.freeze({   // world cells
-  rack: Object.freeze({ x: 28.6, y: 20.9 }),                 // today's catch, hung up by the pier
-  boatIn: Object.freeze({ x: 17.3, y: 22.2 }), boatOut: Object.freeze({ x: 17.5, y: 20.6 }),   // getting in and out of the rowing boat, by the mooring post
-  bunting: Object.freeze({ x0: 18, x1: 33, y: 20.5 }),        // the festival's flags, along the shore
-  thing: Object.freeze({ y0: 27, yN: 5, out: 6, secs: 90 }),  // the thing in the lake: its row, how many rows it may vary by, how far beyond the water it starts and ends, how long a pass takes
+  rack: Object.freeze(_gtIslandCatchCell('rack', { x: 28.6, y: 20.9 })),                 // today's catch, hung up by the pier
+  boatIn: Object.freeze(_gtIslandCatchCell('boatIn', { x: 17.3, y: 22.2 })), boatOut: Object.freeze(_gtIslandCatchCell('boatOut', { x: 17.5, y: 20.6 })),   // getting in and out of the rowing boat, by the mooring post
+  bunting: Object.freeze(_gtIslandCatchCell('bunting', { x0: 18, x1: 33, y: 20.5 })),        // the festival's flags, along the shore
+  thing: Object.freeze(_gtIslandCatchCell('thing', { y0: 27, yN: 5, out: 6, secs: 90 })),  // the thing in the lake: its row, how many rows it may vary by, how far beyond the water it starts and ends, how long a pass takes
 });
 /** The lake's water, from the areas table: {x, y, w, h}. */
-function gardenLakeWater() { const a = GARDEN_AREAS.find(q => q.water && q.fishing); return a ? a.water : { x: 0, y: 13, w: 28, h: 15 }; }
+function gardenLakeWater() { if (typeof gardenIslandActive === 'function' && gardenIslandActive()) return gardenIslandGeometry().oceanBounds; const a = GARDEN_AREAS.find(q => q.water && q.fishing); return a ? a.water : { x: 0, y: 13, w: 28, h: 15 }; }
 function gardenSpotDef(id) { return _GT_SPOT.get(String(id)) || null; }
 /** Which spot is this point in? '' if none. Up and down count for a little more: a cell is shorter than it is wide. */
 function gardenSpotAt(x, y) {

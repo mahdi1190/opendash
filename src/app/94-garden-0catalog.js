@@ -71,7 +71,7 @@ function _gdMovable(list) { return Object.freeze(list); }
    round the lake, south (94-garden-lands-0table.js). The wire carries cells 0..63, so it can grow to 64 x 64. v: a save or a snapshot from another world is moved over, or not drawn (94-garden-lands-1core.js). */
 /* Cells from this column on are not on the map: they are the waters inside the hidden rooms (94-garden-world-4rooms3water.js). They fit what the fish list and a cast already carry (x to 63, y to 31). */
 const GARDEN_ROOM_X = 53;
-const GARDEN_WORLD = _gdF({ v: 2, cols: 52, rows: 44, cellW: 48, cellH: 30, sky: 150, unit: 64, ox: 12, oy: 8, start: _gdF({ x: 22, y: 17 }) });
+const GARDEN_WORLD = _gdF(Object.assign({}, GardenIslandLayout.data.world, { start: _gdF(Object.assign({}, GardenIslandLayout.data.world.start)), lh: GardenIslandLayout.fingerprint }));
 
 const GARDEN_RARITY = _gdF({
   common: _gdF({ label: 'Common', col: '#7c8b6f', weight: 60 }),
@@ -572,7 +572,7 @@ const GARDEN_AREAS = _gdRows([
   { id: 'greenhouse', name: 'Greenhouse', lv: 9, x: 35, y: 14, w: 4, h: 3, tile: 'glasshouse', cats: _gdF(['exotic', 'succulent', 'veg', 'flower', 'herb', 'fruit', 'tree']), always: 1, icon: 'warehouse', blurb: 'Always summer inside: exotics, succulents and anything out of season.' },
   { id: 'meadow', name: 'Flower meadow', lv: 12, x: 23, y: 8, w: 11, h: 3, tile: 'long-grass', cats: _gdF(['wild', 'flower', 'tree']), icon: 'flower', blurb: 'Let it go wild: poppies, clover and the rarest orchid.' },
   { id: 'woods', name: 'Wild woods', lv: 4, x: 29, y: 12, w: 11, h: 7, tile: 'forest', cats: _gdF(['tree', 'wild', 'fruit', 'herb']), icon: 'trees', bugs: 1, blurb: 'Tall trees, logs and mushrooms: the best place to catch bugs.' },
-  { id: 'lake', name: 'The lake', lv: 1, x: 12, y: 21, w: 28, h: 17, tile: 'sand', water: _gdF({ x: 12, y: 21, w: 28, h: 17 }), cats: _gdF([]), icon: 'fish', fishing: 1, blurb: 'Cast a line from the shore or the pier. Deeper water, better fish.' },
+  { id: 'lake', name: 'The sea', lv: 1, x: 0, y: 0, w: GARDEN_WORLD.cols, h: GARDEN_WORLD.rows, tile: 'sand', water: _gdF({ x: 0, y: 0, w: GARDEN_WORLD.cols, h: GARDEN_WORLD.rows }), cats: _gdF([]), icon: 'fish', fishing: 1, blurb: 'Cast a line from the beach or the pier. Deeper water, better fish.' },
   // the four old plots, by name only: land is sold in sections now. buy: what one cost, to give it back to someone who had one. At most 12 rows: a friend's snapshot carries the open ones and the friends' schema checks that list's length.
   { id: 'hill', name: 'The north hill', lv: 2, buy: 150, look: 'meadow', x: 0, y: 0, w: 0, h: 0, tile: 'long-grass', cats: _gdF(['wild', 'flower', 'tree', 'herb']), icon: 'flower', blurb: 'Meadows and stones, up behind the village.' },
   { id: 'field', name: 'The west fields', lv: 3, buy: 300, look: 'veg', x: 0, y: 0, w: 0, h: 0, tile: 'tilled', cats: _gdF(['veg', 'herb', 'fruit']), icon: 'carrot', blurb: 'Long rows of good dark soil.' },
@@ -618,7 +618,7 @@ const GARDEN_PROPS = _gdMovable([
   // purpose: its box is the boat's own width, so the water beside it still casts a line.
   { id: 'boat', name: 'Rowing boat', kind: 'boat', x: 16.65, y: 21, w: 1.25, h: 1, walk: 0, col: 'none', door: _gdF({ x: 17, y: 20 }), act: 'sail', verb: 'climb in', tall: 0.5, blurb: 'Row over to a friend’s garden.' },
   { id: 'reed-bank', name: 'Reeds', kind: 'reeds', x: 34, y: 20, w: 3, h: 1, walk: 0, col: 'none', tall: 0.4, blurb: 'Dragonflies like it here.' },
-]);
+].map(gardenIslandStaticRow));
 const GARDEN_LAWN = _gdF({ id: 'lawn', name: 'Lawn', lv: 1, tile: 'grass', cats: _gdF([]), icon: 'fence', blurb: 'Room for paths, seats and everything else.' });
 const _GD_AREA = new Map(GARDEN_AREAS.map(a => [a.id, a]));
 
@@ -841,26 +841,28 @@ function gardenLockOf(def, ctx) {
 }
 /** The area a cell belongs to ('lawn' when no area claims it, or the area is not open yet at that level). */
 function gardenAreaAt(x, y, level) {
+  if (gardenIslandOceanCell(x, y)) return level != null && y >= gardenLakeOpenTo() && !gardenPropWalk(x, y) ? 'locked:' + gardenLakeZoneOfRow(y).id : 'lake';
   // the world is one map (94-garden-lands-0table.js). A trail, the lane and the mown green are lawn to everything else: you walk there, nothing grows there. The thicket is locked for good.
   if (typeof gardenLandCell === 'function') {
     const c = gardenLandCell(x, y);
+    if (c && c.id === 'lawn') { const bed = level != null && typeof gardenDesignBedAt === 'function' ? gardenDesignBedAt(x, y) : ''; return bed || 'lawn'; }
     if (c) { if (c.lane) { const zl = level != null ? gardenZoneLockAt(x, y) : ''; return zl ? 'locked:' + zl : 'lawn'; } if (c.solid) return 'locked:' + c.id; if (level != null && !_GD_LAND.has(c.id)) return 'locked:' + (c.zn && !_GD_LAND.has('zn-' + c.zn) ? 'zn-' + c.zn : c.id); if (c.trail && level != null) { const zl = gardenZoneLockAt(x, y); if (zl) return 'locked:' + zl; } if (c.green && level != null && typeof gardenDesignBedAt === 'function') { const b = gardenDesignBedAt(x, y); if (b) return b; } return c.trail || c.green ? 'lawn' : c.id; }   // (a bed plotted on the green grows like that area: the designer)
   }
-  if (level != null && typeof gardenLakeOpenTo === 'function' && y >= gardenLakeOpenTo() && y < 38 && x >= 12 && x < 40 && !_GD_WALK_EXTRA.has(x + ',' + y)) return 'locked:' + gardenLakeZoneOfRow(y).id;   // the far water: it opens with its zone
-  if (x >= 12 && x < 40 && y >= 21 && y < 38 && typeof gardenLakeGeometry === 'function') return gardenLakeGeometry().cellContains(x, y) ? 'lake' : 'lawn';
+
   for (const a of GARDEN_AREAS) if (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h) return level == null || (a.buy ? _GD_LAND.has(a.id) : (level || 1) >= a.lv) ? a.id : 'locked:' + a.id;
   return 'lawn';
 }
 /** Is this cell open water (the pond's or the lake's)? A pier stands over water but is not water to walk on. */
 function gardenIsWater(x, y) {
+  if (gardenIslandOceanCell(x, y) || gardenIslandFreshwaterCell(x, y)) return !gardenPropWalk(x, y);
   if (typeof gardenLandWaterAt === 'function') { const q = gardenLandWaterAt(x, y); if (q !== null) return q && !gardenPropWalk(x, y); }
-  if (x >= 12 && x < 40 && y >= 21 && y < 38 && typeof gardenLakeGeometry === 'function') return gardenLakeGeometry().cellContains(x, y) && !gardenPropWalk(x, y);
   for (const a of GARDEN_AREAS) { const w = a.water; if (w && x >= w.x && x < w.x + w.w && y >= w.y && y < w.y + w.h) return !gardenPropWalk(x, y); }
   return false;
 }
 /** Which water a cell is: '' (not water), 'pond', or the lake's depth: 'shallow', 'mid', 'deep' (by rows from the shore). */
 function gardenWaterZone(x, y) {
   if (x >= GARDEN_ROOM_X) return 'pond';   // a room's water
+  const islandZone = gardenIslandWaterZone(x, y); if (islandZone) return islandZone;
   if (typeof gardenLandWaterAt === 'function') { const q = gardenLandWaterAt(x, y); if (q !== null) return q ? 'pond' : ''; }
   for (const a of GARDEN_AREAS) {
     const w = a.water; if (!w || x < w.x || x >= w.x + w.w || y < w.y || y >= w.y + w.h) continue;
@@ -883,14 +885,14 @@ function gardenPropCol(p) { return !p ? 'none' : p.col === 'none' || p.col === '
 /* Cells over water you can stand on with no prop: the island, always; the stones and the moon road while they are open (94-garden-wonder-4isle.js). */
 const _GD_WALK_EXTRA = new Set();
 const _GD_ICE = new Set();   // the lake while it is frozen (94-garden-zz-2season.js): you can stand on it, nothing can be built on it
-function gardenIceAt(x, y) { const cx = Math.floor(x), cy = Math.floor(y); return _GD_ICE.has(cx + ',' + cy) && (!(cx >= 12 && cx < 40 && cy >= 21 && cy < 38) || typeof gardenLakeGeometry !== 'function' || gardenLakeGeometry().cellContains(cx, cy)); }
+function gardenIceAt(x, y) { const cx = Math.floor(x), cy = Math.floor(y); return _GD_ICE.has(cx + ',' + cy) && (!gardenIslandOceanCell(cx, cy) || gardenLakeGeometry().cellContains(cx, cy)); }
 function gardenPropWalk(x, y) { if (_GD_WALK_EXTRA.has(x + ',' + y) || _GD_ICE.has(x + ',' + y) && gardenIceAt(x, y)) return true; const p = gardenPropAt(x, y); return !!(p && p.walk); }
 /** Can this plant (or decoration) go at x, y (its top-left cell) at this level? '' = yes, else why not (one short line). */
 function gardenCellOk(def, x, y, level, kind) {
   const W = GARDEN_WORLD;
   const fw = kind === 'decor' ? def.w || 1 : def.fp || 1, fh = kind === 'decor' ? def.h || 1 : def.fp || 1;
   if (x < 0 || y < 0 || x + fw > W.cols || y + fh > W.rows) return 'Off the edge of the garden';
-  for (let dy = 0; dy < fh; dy++) for (let dx = 0; dx < fw; dx++) { const pr = gardenPropAt(x + dx, y + dy); if (pr) return `${pr.name} is there`; }
+  for (let dy = 0; dy < fh; dy++) for (let dx = 0; dx < fw; dx++) { const why = gardenIslandPlacementWhy(def, x + dx, y + dy, kind); if (why) return why; const pr = gardenPropAt(x + dx, y + dy); if (pr) return `${pr.name} is there`; }
   let area = null;
   for (let dy = 0; dy < fh; dy++) for (let dx = 0; dx < fw; dx++) {
     const a = gardenAreaAt(x + dx, y + dy, level);
@@ -898,7 +900,7 @@ function gardenCellOk(def, x, y, level, kind) {
     if (a.startsWith('locked:')) { const ar = gardenArea(a.slice(7)); return ar.solid ? 'Too thick to do anything with' : ar.buy ? `${ar.name}: buy this land first` : `${ar.name} opens at garden level ${ar.lv}`; }
     if (typeof gardenLandPathAt === 'function' && gardenLandPathAt(x + dx, y + dy) && !(kind === 'decor' && def.layer === 'ground')) return kind === 'decor' ? 'Keep the path clear' : 'That is a path: plants go in the beds';
     if (kind !== 'decor') {
-      if (area && a !== area) return 'Straddles two areas';
+      if (area && a !== area && !gardenIslandPlantAreasCompatible(def, area, a)) return 'Straddles two areas';
       area = a;
       const water = gardenIsWater(x + dx, y + dy);
       if (def.cat === 'water' && !water) return 'Pond plants grow in the water';
@@ -978,12 +980,13 @@ function gardenArtBox(kind, id) {
     heart: 0..6 (the old oak's size), at}. flags: 1 thirsty, 2 overgrown, 4 ripe. Ids only from these tables, numbers
    only within bounds: no names, no text, no times beyond `at`. gardenSnapshotClean drops anything else. */
 /** Is a snapshot from this world? One from another means nothing on this map, cell for cell. */
-function gardenSnapSameWorld(snap) { return !!snap && (Number(snap.wv) || 1) === GARDEN_WORLD.v; }
+function gardenSnapSameWorld(snap) { return !!snap && (Number(snap.wv) || 1) === GARDEN_WORLD.v && (GARDEN_WORLD.v < 3 || typeof GARDEN_WORLD.lh === 'string' && snap.lh === GARDEN_WORLD.lh); }
 const GARDEN_SNAPSHOT_MAX = _gdF({ plants: 400, decor: 300, bytes: 24000 });
 function gardenSnapshotClean(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const W = GARDEN_WORLD, int = (v, lo, hi) => { const n = Number(v); return Number.isInteger(n) && n >= lo && n <= hi ? n : null; };
   const out = { v: 1, wv: int(raw.wv, 1, 9) || 1, cv: int(raw.cv, 0, 9) || 0, lv: int(raw.lv, 1, 99) || 1, season: GARDEN_SEASONS.includes(raw.season) ? raw.season : 'summer', areas: [], plants: [], decor: [], heart: int(raw.heart, 0, 6) || 0, at: int(raw.at, 0, 8.64e15) || 0 };
+  if (typeof raw.lh === 'string' && /^[0-9a-f]{24}$/.test(raw.lh)) out.lh = raw.lh;
   { const pa = Number(raw.pa); if (Number.isInteger(pa) && pa > 0 && pa < 1e14) out.pa = pa; }   // their pet is away until then: 94-garden-play-1pet.js
   { const wx = int(raw.wx, 1, 2); if (wx) out.wx = wx; }   // 2.28: their rain (1) or snow (2) now
   { const ac = raw.ac; if (Array.isArray(ac) && ac.length === 2 && Number.isSafeInteger(ac[0]) && ac[0] >= 0 && ac[0] <= 8.64e15 && (ac[1] === 0 || ac[1] === 1)) out.ac = [ac[0], ac[1]]; }   // optional live ambient phase and canonical running state
@@ -1009,6 +1012,17 @@ function gardenSnapshotClean(raw) {
   }
   // 2.22: the showcase (the tank and the bug case): ids from the fish and bug tables, sizes in bounds (94-garden-fish-0catalog.js)
   if (typeof gardenLandsClean === 'function') gardenLandsClean(raw, out);   // the sections and features they have (94-garden-lands-0table.js); an older app drops these
+  if (Array.isArray(raw.fp) && typeof gardenLandFeature === 'function') {
+    const seen = new Set(), fp = [];
+    for (const row of raw.fp.slice(0, GARDEN_LAND_FEATURES.length)) {
+      if (!Array.isArray(row) || row.length !== 3 || seen.has(row[0])) continue;
+      const f = gardenLandFeature(row[0]), x = int(row[1], 0, W.cols - 1), y = int(row[2], 0, W.rows - 1);
+      if (!f || !(out.lf || []).includes(f.id) || x === null || y === null || x + (f.w || 1) > W.cols || y + (f.h || 1) > W.rows) continue;
+      seen.add(f.id); fp.push([f.id, x, y]);
+    }
+    if (fp.length) out.fp = fp;
+  }
+  if (out.wv >= 3 && typeof gardenSightPlacementsClean === 'function') { const rp = gardenSightPlacementsClean(raw.rp); if (rp.length) out.rp = rp; }
   if (raw.sh && typeof gardenShowClean === 'function') { const sh = gardenShowClean(raw.sh); if (sh) out.sh = sh; }
   if (raw.sp && typeof gardenSpecClean === 'function') { const sp = gardenSpecClean(raw.sp); if (sp) out.sp = sp; }   // their best specimens (94-garden-fish-0variants.js)
   if (raw.ca && typeof gardenCatchWireClean === 'function') { const ca = gardenCatchWireClean(raw.ca); if (ca) out.ca = ca; }   // the lake: what it shows to friends

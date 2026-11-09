@@ -154,6 +154,42 @@ function _gcWindow(now) { return Math.floor(now / 1200000); }   // 20 minutes: t
  * The bugs about right now (not yet caught): [{key, id, x, y (cells), hab}]. Seeded by the 20-minute window, so a reload shows
  * the same ones; a caught one stays gone until the window turns over. Where they live follows what you have grown.
  */
+/* A few existing bare-ground hunters also use the island's upper sand.
+ * This only chooses a home for an already eligible bug, within its old cap. */
+const _GC_BEACH_GROUND = new Set(['black-ant', 'red-ant', 'ground-beetle', 'rove-beetle']);
+const _gcBeachHabitat = { revision: null, allowed: null, points: [] };
+function _gcBeachCells() {
+  if (typeof gardenIslandActive !== 'function' || !gardenIslandActive()) return null;
+  const revision = gardenIslandGeometry().revision; if (_gcBeachHabitat.revision === revision) return _gcBeachHabitat;
+  const W = GARDEN_WORLD, allowed = new Uint8Array(W.cols * W.rows), candidates = [];
+  for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
+    const cell = gardenIslandBaseCell(x, y); if (!cell.land || !cell.beach || cell.reserved) continue;
+    let clear = true;
+    for (let dy = -1; dy <= 1 && clear; dy++) for (let dx = -1; dx <= 1; dx++) { const near = gardenIslandBaseCell(x + dx, y + dy); if (near && near.reserved) { clear = false; break; } }
+    if (!clear) continue;
+    allowed[y * W.cols + x] = 1;
+    if (gardenIslandCoastDistance(x + .5, y + .5) >= 16) candidates.push({ x: x + .5, y: y + .5, order: gardenHash('upper-beach|' + revision + '|' + x + ',' + y) });
+  }
+  candidates.sort((a, b) => a.order - b.order || a.y - b.y || a.x - b.x);
+  const points = [];
+  for (const p of candidates) if (points.every(q => Math.hypot((p.x - q.x) * W.cellW, (p.y - q.y) * W.cellH) >= 128)) points.push({ x: p.x, y: p.y });
+  _gcBeachHabitat.revision = revision; _gcBeachHabitat.allowed = allowed; _gcBeachHabitat.points = points;
+  return _gcBeachHabitat;
+}
+function gardenBugBeachCell(x, y) { const cells = _gcBeachCells(), W = GARDEN_WORLD; x = Math.floor(x); y = Math.floor(y); return !!(cells && x >= 0 && y >= 0 && x < W.cols && y < W.rows && cells.allowed[y * W.cols + x]); }
+function _gcBeachBugSpot(def, m, rnd, existing) {
+  if (!_GC_BEACH_GROUND.has(def.id) || def.rest !== 'crawl' || m.rain.now || m.rain.snow) return null;
+  const beach = _gcBeachCells(); if (!beach || !beach.points.length) return null;
+  const W = GARDEN_WORLD, start = Math.floor(rnd() * beach.points.length), props = gardenPropsNow();
+  for (let i = 0; i < beach.points.length; i++) {
+    const p = beach.points[(start + i) % beach.points.length], x = Math.floor(p.x), y = Math.floor(p.y);
+    if (m.occ.has(x + ',' + y) || gardenPropAt(x, y) || gardenIsWater(x, y) || gardenAreaAt(x, y, m.level.level).startsWith('locked:')) continue;
+    if (props.some(prop => prop.door && Math.hypot((p.x - prop.door.x - .5) * W.cellW, (p.y - prop.door.y - .5) * W.cellH) < 96)) continue;
+    if (existing.some(other => other && Math.hypot((p.x - other.x) * W.cellW, (p.y - other.y) * W.cellH) < 128)) continue;
+    return { x: p.x, y: p.y, beach: true };
+  }
+  return null;
+}
 const GARDEN_BUGS_MAX = 6;   // the most at once, in a big, late garden. The owner, 1 Nov 2026: start with very few, and more as the garden grows, but never many
 function gardenBugsNow(mArg) {
   const base = _gcBugsBase(mArg);
@@ -171,7 +207,8 @@ function _gcBugsBase(mArg) {
   const lights = m.decor.filter(d => d.def.effect && d.def.effect.kind === 'light');
   const hotels = m.decor.filter(d => d.def.effect && d.def.effect.kind === 'bugs').length;
   const woods = m.areas.includes('woods'), wet = !!m.rain.now;
-  const free = (x, y) => !m.occ.has(x + ',' + y) && !gardenPropAt(x, y) && !gardenIsWater(x, y), onFlower = new Set();
+  const island = typeof gardenIslandActive === 'function' && gardenIslandActive();
+  const free = (x, y) => !m.occ.has(x + ',' + y) && !gardenPropAt(x, y) && !gardenIsWater(x, y) && (!island || !gardenIslandBaseCell(x, y)?.beach), onFlower = new Set();
   const spot = (hab) => {
     const pick = (list) => list[Math.floor(rnd() * list.length)];
     switch (hab) {
@@ -196,16 +233,19 @@ function _gcBugsBase(mArg) {
   const n = Math.max(1, Math.min(cap, 1 + Math.floor(blooms.length / 8) + Math.floor(trees.length / 6) + (woods ? 1 : 0) + (m.tod === 'night' ? -1 : 0) + (wet ? -1 : 0)));
   const weights = pool.map(b => gardenBugWeight(b, ctx) * (typeof gardenBugHabitat === 'function' ? gardenBugHabitat(b, m) : 1));   // (habitats you built: a kind comes more often, never more bugs)
   rg.even(pool, weights);
-  const out = [];
+  const out = []; let beachUsed = false;
   for (let i = 0; i < n * 3 && out.length < n; i++) {
     let r = rnd() * weights.reduce((a, b) => a + b, 0), k = 0;
     for (; k < pool.length - 1; k++) { r -= weights[k]; if (r <= 0) break; }
-    const b = pool[k], habs = b.hab.filter(habOk), hab = habs[Math.floor(rnd() * habs.length)] || b.hab[0], want = b.needs && b.needs.plant ? blooms.find(p => p.def.id === b.needs.plant) : null, s = want ? { x: want.x + 0.5, y: want.y + 0.6 } : rg.away(b) ? rg.cell(b, rnd, free) : spot(hab);
+    const b = pool[k], habs = b.hab.filter(habOk), hab = habs[Math.floor(rnd() * habs.length)] || b.hab[0], want = b.needs && b.needs.plant ? blooms.find(p => p.def.id === b.needs.plant) : null;
+    const beach = !beachUsed && hab === 'ground' && !want && !rg.away(b) ? _gcBeachBugSpot(b, m, rnd, out) : null;
+    const s = beach || (want ? { x: want.x + 0.5, y: want.y + 0.6 } : rg.away(b) ? rg.cell(b, rnd, free) : spot(hab));
+    if (beach) beachUsed = true;
     if (!s) continue;
     const key = win + '.' + out.length;
     if (caught.has(key)) { out.push(null); continue; }   // keeps the numbering stable when one is caught
     const vb = typeof gardenSpecBugV === 'function' ? gardenSpecBugV(key, hab, m) : '';   // the same on every screen, like the bug itself
-    out.push(Object.assign({ key, id: b.id, x: s.x, y: s.y, hab, t: rnd() }, vb ? { v: vb } : {}));
+    out.push(Object.assign({ key, id: b.id, x: s.x, y: s.y, hab, t: rnd() }, beach ? { beach: true } : {}, vb ? { v: vb } : {}));
   }
   const kept = out.filter(Boolean);
   return typeof gardenSugarBug === 'function' ? gardenSugarBug(kept, m) : kept;   // (a tree you painted: the one that came to it, in place of another)

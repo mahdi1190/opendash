@@ -51,6 +51,11 @@ function gardenDesignLayer(sc) {
     for (const [st, line] of by) s += gardenDesignPathMarkup(GDZ_PATHS[st], line);
     s += _gdzJoinPads(d);
   }
+  if (s && typeof gardenIslandActive === 'function' && gardenIslandActive()) {
+    const W = GARDEN_WORLD, id = 'gdz-coast-' + W.lh;
+    const coast = gardenIslandGeometry().land.map(loop => loop.map((p, i) => `${i ? 'L' : 'M'}${p[0] * W.cellW} ${W.sky + p[1] * W.cellH}`).join('') + 'Z').join('');
+    return `<g class="gd-dz" pointer-events="none"><defs><clipPath id="${id}" clipPathUnits="userSpaceOnUse"><path d="${coast}" clip-rule="evenodd"/></clipPath></defs><g clip-path="url(#${id})">${s}</g></g>`;
+  }
   return `<g class="gd-dz" pointer-events="none">${s}</g>`;
 }
 

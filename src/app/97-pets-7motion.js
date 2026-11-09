@@ -44,7 +44,13 @@ function petGardenMotionStep(P, dt, t, dx, dy, stand) {
   if (distance > .005) state.heading = Math.atan2(dy * W.cellH, dx * W.cellW);
   const stride = Math.max(5, 44 * P.per.speed * profile.period * (P.run ? .9 : 1));
   state.cycles += distance / stride; state.phase = state.cycles % 1;
-  Object.assign(state, { family: profile.family, moving, wet: !!P.wet, airborne, altitude: stand.up, groundX: P.x * W.cellW, groundY: W.sky + P.y * W.cellH, feetY: W.sky + P.y * W.cellH - stand.up + stand.sink, stride, footprint: profile.footprint, shadowScale: Math.max(.35, 1 - stand.up / 110), track: profile.track, speed: distance / Math.max(.001, dt), profile });
+  const family = profile.family, wet = !!P.wet, altitude = stand.up;
+  const groundX = P.x * W.cellW, groundY = W.sky + P.y * W.cellH, feetY = W.sky + P.y * W.cellH - stand.up + stand.sink;
+  const footprint = profile.footprint, shadowScale = Math.max(.35, 1 - stand.up / 110), track = profile.track, speed = distance / Math.max(.001, dt);
+  state.family = family; state.moving = moving; state.wet = wet; state.airborne = airborne;
+  state.altitude = altitude; state.groundX = groundX; state.groundY = groundY; state.feetY = feetY;
+  state.stride = stride; state.footprint = footprint; state.shadowScale = shadowScale; state.track = track;
+  state.speed = speed; state.profile = profile;
   const beat = Math.floor(state.cycles * (profile.family === 'hop' ? 1 : 2));
   if (moving && !airborne && (P.wet || profile.track !== 'none') && _ptwMotion() && !_ptw.frozen && beat !== P.motionBeat && t - (P.motionFootAt || -100) > .14) {
     P.motionBeat = beat; P.motionFootAt = t;
@@ -120,14 +126,18 @@ function _ptMotionPaint(P, t, owner, environment) {
   if (state.airborne && profile.wing) { const flap = Math.sin(t * Math.PI * 2 / profile.wingPeriod + seed) * profile.wing; _ptMotionJoint(rig.wingN, 0, 0, flap, 1, 1); _ptMotionJoint(rig.wingB, 0, 0, -flap, 1, 1); }
   for (const joint of rig.shadow) joint.node.target.setAlpha(state.airborne ? 0 : state.wet ? joint.alpha * .2 : joint.alpha);
 }
+function _ptMotionPaintOnce(P, owner, t, environment, seen) {
+  if (!P || seen.has(P) || _ptwGone(P)) return;
+  seen.add(P); _ptMotionPaint(P, t, owner, environment);
+}
 /** Called after NativeArt's ambient pass by the same Phaser scene clock. */
 function petGardenVisualFrame(time) {
   if (!_ptwMotion() || _ptw.frozen) return;
   const light = window.GardenNative && GardenNative.lighting && GardenNative.lighting(), environment = light && light.environment ? light.environment() : null;
   if (environment && (environment.paused || environment.reducedMotion || environment.room)) return;
   const t = environment && Number.isFinite(environment.ambientTime) ? environment.ambientTime / 1000 : time / 1000;
-  const seen = new Set(), paint = (P, owner) => { if (!P || seen.has(P) || _ptwGone(P)) return; seen.add(P); _ptMotionPaint(P, t, owner, environment); };
-  for (const P of _ptw.pets) paint(P);
-  if (typeof _gll !== 'undefined') for (const A of _gll.actors.values()) if (!A.rm && !A.away) paint(A.pp, A);
-  if (typeof _gllRoams !== 'undefined') for (const R of _gllRoams) paint(R.P);
+  const seen = new Set();
+  for (const P of _ptw.pets) _ptMotionPaintOnce(P, undefined, t, environment, seen);
+  if (typeof _gll !== 'undefined') for (const A of _gll.actors.values()) if (!A.rm && !A.away) _ptMotionPaintOnce(A.pp, A, t, environment, seen);
+  if (typeof _gllRoams !== 'undefined') for (const R of _gllRoams) _ptMotionPaintOnce(R.P, undefined, t, environment, seen);
 }

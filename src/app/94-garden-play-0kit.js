@@ -101,13 +101,27 @@ function gpLoop(el, step) {
 function gpBest(key, v, low) { const b = gpGet('best.' + key); if (v != null && (b === undefined || (low ? v < b : v > b))) { gpSet('best.' + key, v); return true; } return false; }
 
 /* ---------- the panel ---------- */
-function gardenPlayTab(el) {
-  el.textContent = '';
-  const m = gardenHere(), selected = gardenActivitySelection(m), activity = gardenActivityRow(selected);
-  const shown = r => r.group !== 'world' || (m.visit ? r.id === selected : gardenActivityUnlocked(r.id, m));
-  const groups = GP_GROUPS.filter(([g]) => g === 'world' || _gpRows.some(r => r.group === g && shown(r))), nameOf = new Map(groups);
-  if (!groups.some(([g]) => g === _gp.group)) _gp.group = groups[0][0];
-  el.appendChild(_gdxChips(groups, _gp.group, (k) => { _gp.group = k; _gdxRepaintTab(); }));
+/** A routine model refresh must not detach a pressed game button. Keep the
+ * current page connected; a real group/list/page change still uses the pager. */
+function _gpPlayCardPatch(b, r, selected) {
+  let st = ''; try { st = r.status ? r.status() : ''; } catch (e) { st = ''; }
+  let fresh = false; try { fresh = !!(r.fresh && r.fresh()); } catch (e) { /* no */ }
+  const active = r.group === 'world' && selected === r.id, cls = 'gp-card' + (fresh ? ' is-fresh' : '') + (active ? ' is-selected' : '');
+  const html = `<span class="gp-ic">${icon(r.icon)}</span><span class="gp-t"><b>${esc(r.name)}</b>${active ? '<small class="gp-current">Set out · Return to it</small>' : ''}<span>${esc(r.blurb)}</span>${st ? `<em>${esc(st)}</em>` : ''}</span>`;
+  if (b.className !== cls) b.className = cls;
+  if (active) { if (b.getAttribute('aria-current') !== 'true') b.setAttribute('aria-current', 'true'); }
+  else if (b.hasAttribute('aria-current')) b.removeAttribute('aria-current');
+  if (b._gpPlayHtml !== html) { b.innerHTML = html; b._gpPlayHtml = html; }
+  return b;
+}
+function _gpPlayCard(r, selected) {
+  const b = gpEl('button'); b.type = 'button'; b.dataset.game = r.id;
+  b.onclick = () => { try { gardenPlayOpen(r.id); } catch (e) { console.error('[play]', e); toastError('open that', e); } };
+  return _gpPlayCardPatch(b, r, selected);
+}
+function _gpPlayHead(groups, m, selected, activity, next) {
+  const head = document.createDocumentFragment();
+  head.appendChild(_gdxChips(groups, _gp.group, (k) => { _gp.group = k; _gdxRepaintTab(); }));
   if (_gp.group === 'world') {
     const lead = gpEl('div', 'gp-head');
     lead.appendChild(gpEl('p', 'gp-lead', activity ? activity.name + ' is set out.' : m.visit ? 'Your host chooses what to set out here.' : 'Set out one activity when you feel like it. The rest stays packed away.'));
@@ -116,25 +130,39 @@ function gardenPlayTab(el) {
       back.dataset.activityReturn = selected; lead.appendChild(back);
     }
     if (activity && !m.visit) lead.appendChild(uiButton({ label: 'Put it away', icon: 'archive', size: 'sm', run: () => { gardenActivityChoose(''); _gdxRepaintTab(); } }));
-    el.appendChild(lead);
-    if (!m.visit) {
-      const next = GARDEN_WORLD_ACTIVITIES.find(r => !gardenActivityUnlocked(r.id, m));
-      if (next) el.appendChild(gpEl('p', 'muted', 'Next, at garden level ' + next.level + ': ' + next.name + '.'));
-    }
+    head.appendChild(lead);
+    if (next) head.appendChild(gpEl('p', 'muted', 'Next, at garden level ' + next.level + ': ' + next.name + '.'));
   } else if (_gp.group === 'stall') {
-    el.appendChild(gpEl('p', 'gp-lead', gpTickets() + ' tickets. Play games whenever you like; spend tickets here when something appeals.'));
+    head.appendChild(gpEl('p', 'gp-lead', gpTickets() + ' tickets. Play games whenever you like; spend tickets here when something appeals.'));
   }
-  const rows = _gpRows.filter(r => r.group === _gp.group && shown(r));
-  gardenPager(el, { key: 'play:' + _gp.group, items: rows, grid: 'gp-grid', row: 132, rowSm: 132, label: (r) => nameOf.get(r.group), draw: (r) => {
-    let st = ''; try { st = r.status ? r.status() : ''; } catch (e) { st = ''; }
-    let fresh = false; try { fresh = !!(r.fresh && r.fresh()); } catch (e) { /* no */ }
-    const active = r.group === 'world' && selected === r.id;
-    const b = gpEl('button', 'gp-card' + (fresh ? ' is-fresh' : '') + (active ? ' is-selected' : '')); b.type = 'button'; b.dataset.game = r.id;
-    if (active) b.setAttribute('aria-current', 'true');
-    b.innerHTML = `<span class="gp-ic">${icon(r.icon)}</span><span class="gp-t"><b>${esc(r.name)}</b>${active ? '<small class="gp-current">Set out · Return to it</small>' : ''}<span>${esc(r.blurb)}</span>${st ? `<em>${esc(st)}</em>` : ''}</span>`;
-    b.onclick = () => { try { gardenPlayOpen(r.id); } catch (e) { console.error('[play]', e); toastError('open that', e); } };
-    return b;
-  } });
+  return head;
+}
+function gardenPlayTab(el) {
+  const m = gardenHere(), selected = gardenActivitySelection(m), activity = gardenActivityRow(selected);
+  const shown = r => r.group !== 'world' || (m.visit ? r.id === selected : gardenActivityUnlocked(r.id, m));
+  const groups = GP_GROUPS.filter(([g]) => g === 'world' || _gpRows.some(r => r.group === g && shown(r))), nameOf = new Map(groups);
+  if (!groups.some(([g]) => g === _gp.group)) _gp.group = groups[0][0];
+  const rows = _gpRows.filter(r => r.group === _gp.group && shown(r)), ids = JSON.stringify(rows.map(r => r.id));
+  const next = _gp.group === 'world' && !m.visit ? GARDEN_WORLD_ACTIVITIES.find(r => !gardenActivityUnlocked(r.id, m)) : null;
+  const headKey = JSON.stringify([groups, _gp.group, _gp.group === 'world' ? [selected, activity && activity.name, !!m.visit, next && [next.id, next.level, next.name]] : _gp.group === 'stall' ? gpTickets() : null]);
+  const view = el._gpPlayView;
+  if (view && view.group === _gp.group && view.ids === ids && view.pager.root.parentNode === el && view.pager.root.isConnected && view.head.every(n => n.parentNode === el)) {
+    view.selected = selected; view.pager.items = rows;
+    const byId = new Map(rows.map(r => [r.id, r]));
+    for (const b of view.pager.page.querySelectorAll(':scope > .gp-card[data-game]')) { const r = byId.get(b.dataset.game); if (r) _gpPlayCardPatch(b, r, selected); }
+    if (view.headKey !== headKey) {
+      const head = _gpPlayHead(groups, m, selected, activity, next), nodes = [...head.childNodes];
+      for (const n of view.head) n.remove();
+      el.insertBefore(head, view.pager.root); view.head = nodes; view.headKey = headKey;
+      gardenPagerFit();   // a changed lead can change the real page capacity
+    }
+    return;
+  }
+  el.textContent = '';
+  const head = _gpPlayHead(groups, m, selected, activity, next), current = { group: _gp.group, ids, selected, headKey, head: [...head.childNodes], pager: null };
+  el.appendChild(head);
+  current.pager = gardenPager(el, { key: 'play:' + _gp.group, items: rows, grid: 'gp-grid', row: 132, rowSm: 132, label: (r) => nameOf.get(r.group), draw: (r) => _gpPlayCard(r, current.selected) });
+  el._gpPlayView = current;
 }
 function gardenPlayOpen(id) {
   const r = _gpRows.find(x => x.id === id); if (!r) return;

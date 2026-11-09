@@ -18,7 +18,7 @@ const _glh = { on: false, beatT: 0, lastGo: 0, watch: null, sent: new Map(), dif
 const _GLH_SEEN_KEY = 'opendash.gardenLive.seen.v1';
 function _glhSend(to, k, body) { return _gllPipe('/api/garden-live/host', { to, k, body, tab: _GLL_TAB }); }
 function _glhAmbientClock() { const native = window.GardenNative, light = native && native.active() && native.lighting(); return light && light.ambientClock ? light.ambientClock() : null; }
-function _glhHereBody(on) { const l = gardenLiveLook(); if (typeof _gw !== 'undefined') { l.x = Math.round(_gw.px * 10) / 10; l.y = Math.round(_gw.py * 10) / 10; } return { role: 'host', on, look: l, name: _gllMyName(), tab: _GLL_TAB, hidden: typeof document !== 'undefined' && !!document.hidden }; }
+function _glhHereBody(on) { const l = gardenLiveLook(); if (typeof _gw !== 'undefined') { l.x = Math.round(_gw.px * 10) / 10; l.y = Math.round(_gw.py * 10) / 10; } return { role: 'host', on, ...glWorldFields(), v: GL_V, look: l, name: _gllMyName(), tab: _GLL_TAB, hidden: typeof document !== 'undefined' && !!document.hidden }; }
 function _glhPerm(fid) { const v = _gll.view; const p = v && v.perms && v.perms[fid]; return p || { lv: 'none', touch: false, share: 'keeper' }; }
 
 /* ---------- you are here ---------- */
@@ -101,6 +101,7 @@ function gardenLiveHostGone() {
   _gllApi('/api/garden-live/here', { role: 'host', on: false, tab: _GLL_TAB }).catch(() => {});
   for (const S of _glh.sprites.values()) S.remove();
   _glh.sprites.clear(); _gll.actors.clear(); _glh.sent.clear();
+  if (typeof _grmChipCheck === 'function') _grmChipCheck();
   if (_glh.watch) { _glh.watch.remove(); _glh.watch = null; }
   if (typeof _glcHostStop === 'function') _glcHostStop();
   if (typeof _glgHostStop === 'function') _glgHostStop();
@@ -188,6 +189,7 @@ function _glhRemove(w) {
   const A = _gll.actors.get(w); if (A && typeof _gllPetDrop === 'function') _gllPetDrop(A);
   if (typeof _gllPhotoClear === 'function') _gllPhotoClear(A);
   _gll.actors.delete(w);
+  if (typeof _grmChipCheck === 'function') _grmChipCheck();
   _glhQuickSoon();
 }
 function _glhByName(fid) { try { const f = _gscFriend(fid); return f ? String(f.name || gardenSocialName(f)).split(/\s+/)[0].slice(0, 40) : 'A friend'; } catch (e) { return 'A friend'; } }
@@ -312,7 +314,7 @@ function _glhIntent(ev) {
   // (the server checked level and tables; the page checks them again with the same table)
   if (!g.glc) _glhSnapshotTake();
   const lv = _glhPermOf(ev).lv;
-  const no = glMayDo(lv, ev.t) || glIntentOk(ev) || (_glhCount(ev.f, ev.t) >= (GL_CAPS[ev.t] || 0) ? 'cap' : '') || (ev.away && !GL_QUEUE.acts.includes(ev.t) ? 'kind' : '');
+  const no = ev.away && !glSameWorld(ev) ? 'world' : glMayDo(lv, ev.t) || glIntentOk(ev) || (_glhCount(ev.f, ev.t) >= (GL_CAPS[ev.t] || 0) ? 'cap' : '') || (ev.away && !GL_QUEUE.acts.includes(ev.t) ? 'kind' : '');
   const why = no || _glhApply(ev, key);
   if (why) {
     if (ev.away) _glhQueueNo(ev, key, why);
@@ -355,7 +357,7 @@ function _glhQueueRun(d) {
   _glhSnapshotTake();   // (Put my garden back can undo this too)
   for (const q of list) {
     if (!_GL_ID_RE.test(String(q.i || ''))) continue;
-    _glhIntent({ k: 'do', away: pass, f: q.f, i: q.i, t: q.t, p: q.p, x: q.x, y: q.y, ...(q.r != null ? { r: q.r } : {}), lv: q.lv || 'none', touch: q.touch === true, share: q.share || 'keeper' });
+    _glhIntent({ k: 'do', away: pass, wv: q.wv, lh: q.lh, f: q.f, i: q.i, t: q.t, p: q.p, x: q.x, y: q.y, ...(q.r != null ? { r: q.r } : {}), lv: q.lv || 'none', touch: q.touch === true, share: q.share || 'keeper' });
     done.push(q.f + '.' + q.i);
   }
   _glhFlushPosts(); _glhDiffSoon(60); _glhHud();

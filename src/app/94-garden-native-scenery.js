@@ -21,7 +21,13 @@ window.GardenNativeScenery = (function () {
         // transform/alpha stays live, including sails turning through 360°.
         node.nativeBounds = node.getBBox(); cacheNodes.push(node);
       }
-      node.setAttribute('transform', `translate(${n(px)} ${n(py)})`); rootNode.appendChild(node); moving.push({ node, x: px, y: py, animate }); return node;
+      node.setAttribute('transform', `translate(${n(px)} ${n(py)})`); rootNode.appendChild(node);
+      // A retained part with a fixed authored pose needs no frame callback.
+      // In particular, a closed district gate's leaves never change until
+      // the normal model update replaces its handle with the open facade.
+      if (options && options.static) animate(node, clock, {}, false);
+      else moving.push({ node, x: px, y: py, animate });
+      return node;
     };
     let geometry = '', b, canopyOcclusion = null;
     if (kind === 'tree') {
@@ -72,20 +78,34 @@ window.GardenNativeScenery = (function () {
         + path('M25 -201L49 -190L66 -151L80 -108L95 -20L61 -1L49 -96Z', '#b3b59a')
         + path('M-90 -48L-60 -69L-43 -59L-53 -27L-71 -16Z', '#a1ad94')
         + path('M-39 -145L-17 -164L10 -160L30 -133L17 -121L-21 -125Z', '#c4c4a5')
-        + path('M-16 -188Q4 -195 23 -187L29 -137Q13 -123 -8 -131L-4 -80Q17 -65 28 -72L40 -7Q6 9 -32 -3L-30 -72L-37 -129Z', '#68aead', '#61978f', .8)
-        + path('M-9 -187Q2 -190 8 -185L10 -138L-7 -125L1 -76L15 -65L21 -8L-4 -3L-14 -73L-23 -129Z', '#bee2ce')
-        + path('M15 -185L17 -141L8 -128L17 -77L26 -69L32 -9', 'none', '#edf4da', 2.2)
+        + path('M-90 -45L-64 -85L-54 -114M-78 -92L-55 -96M47 -183L53 -157L69 -129M74 -85L84 -49L69 -30', 'none', '#647e73', 1.1)
+        + path('M-52 -125L-43 -105L-53 -82M62 -134L68 -110L79 -94', 'none', '#c1c5a7', 1.5)
+        + path('M-27 -190Q3 -201 32 -190L37 -136Q20 -118 -3 -124L4 -83Q25 -70 37 -78L49 -8Q9 13 -43 0L-40 -74L-48 -132Z', '#517f7b')
+        + path('M-21 -188Q4 -196 28 -187L33 -137Q16 -121 -8 -129L-2 -80Q19 -65 32 -72L44 -7Q6 10 -37 -3L-35 -73L-42 -130Z', '#67b3ad', '#4f918a', .8)
+        + path('M-9 -187Q2 -190 11 -185L14 -138L-7 -125L2 -76L19 -65L25 -8L-5 -3L-16 -73L-26 -129Z', '#b5dfcf')
+        + path('M19 -185L22 -141L11 -128L21 -77L30 -69L36 -9', 'none', '#e8f2dc', 1.6)
+        + path('M-18 -188Q4 -193 25 -187M-20 -130Q-3 -127 11 -134M1 -74Q15 -67 28 -72', 'none', '#e1efda', 1.5)
         + `<g opacity=".44">${path('M-45 6Q-34 -1 -19 1Q-8 -6 5 -2Q17 -5 29 0Q42 -1 48 7Q34 13 18 12Q3 17 -14 11Q-32 13 -45 6Z', '#c8e3d1')}</g>`;
       for (const [xx, yy, ww] of [[-64, -133, 27], [53, -151, 24], [-49, -53, 23], [66, -26, 28], [-17, -202, 25]]) geometry += ellipse(xx, yy, ww, 8, green) + ellipse(xx - 4, yy - 3, ww * .65, 5, '#a9b981', .8);
       const channel = [[0, 0], [.25, -2.5], [.34, -6.5], [.6, -3], [.69, 4], [1, 7]], channelX = progress => {
         let i = 0; while (i < channel.length - 2 && progress > channel[i + 1][0]) i++;
         const a = channel[i], b = channel[i + 1], t = Math.max(0, Math.min(1, (progress - a[0]) / (b[0] - a[0]))), smooth = t * t * (3 - 2 * t); return a[1] + (b[1] - a[1]) * smooth;
       };
-      for (let i = 0; i < 7; i++) {
+      // Three broad highlights read as a continuous falling sheet even at
+      // map scale. They replace three of the tiny streak nodes: retained
+      // geometry changes only its alpha on the same scenery clock.
+      const curtains = [
+        'M-10 -185Q0 -190 10 -185L13 -144Q5 -137 -9 -135L-17 -144Z',
+        'M-12 -124L-2 -129L3 -87Q10 -77 21 -74L12 -65L-2 -76Z',
+        'M10 -64L24 -69L34 -12Q19 -6 -1 -7L-5 -20L14 -23Z',
+      ];
+      for (let i = 0; i < curtains.length; i++) addMoving(`<g transform="scale(.62 1)">${path(curtains[i], '#e2f0dc')}</g>`, x, y,
+        (node, t, env, motion) => { const glint = motion ? .5 + .5 * Math.sin(t * 2.1 - i * 1.25) : .5; node.target.setAlpha(.13 + glint * .2); }, { cache: true });
+      for (let i = 0; i < 4; i++) {
         const source = path('M0 -5Q-1.5 0 .5 7', 'none', i % 2 ? '#f2f5e2' : '#b3dfd0', i % 3 ? 1.2 : 2) + (i % 3 === 0 ? path('M3 -2L3.7 3', 'none', '#e8f0dc', .65) : '');
         addMoving(source, x, y - 184, (node, t, env, motion) => {
           node.target.setVisible(motion); if (!motion) return;
-          const phase = (t * .54 + i / 7) % 1, progress = phase * .46 + phase * phase * .54, py = y - 184 + progress * 178, px = x + channelX(progress) + (i % 3 - 1) * 3.7, slope = channelX(Math.min(1, progress + .015)) - channelX(Math.max(0, progress - .015)), angle = -Math.atan2(slope, 178 * .03) * 180 / Math.PI;
+          const phase = (t * .54 + i / 4) % 1, progress = phase * .46 + phase * phase * .54, py = y - 184 + progress * 178, px = x + channelX(progress) + (i % 3 - 1) * 3.7, slope = channelX(Math.min(1, progress + .015)) - channelX(Math.max(0, progress - .015)), angle = -Math.atan2(slope, 178 * .03) * 180 / Math.PI;
           node.setAttribute('transform', `translate(${n(px)} ${n(py)}) rotate(${n(angle)}) scale(1 ${n(.65 + progress * .6)})`); node.target.setAlpha(Math.sin(phase * Math.PI) * .68);
         });
       }
@@ -141,17 +161,37 @@ window.GardenNativeScenery = (function () {
       b = { x: x - 88, y: y - 143, width: 181, height: 159 };
     } else if (kind === 'gate' && spec.major === false) {
       const side = !!(spec.gate && spec.gate.dx), span = spec.gate && spec.gate.h > 1 ? 31 : 25, px = xx => side ? xx * .55 : xx, py = xx => side ? xx * .42 : 0;
+      const islandGate = typeof gardenIslandActive === 'function' && gardenIslandActive(), postTop = islandGate ? -55 : -42;
       geometry = ellipse(0, 2, span + 9, 5, '#315640', .12);
-      for (const sgn of [-1, 1]) geometry += rect(sgn * span - 5, -42, 10, 44, stone, 2, ink) + rect(sgn * span - 7, -45, 14, 5, light, 1, shade) + path(`M${sgn * span - 3} -25H${sgn * span + 3}M${sgn * span - 3} -10H${sgn * span + 3}`, 'none', '#89967c', .8);
-      if (!spec.open && spec.showRequirement !== false) geometry += rect(-19, -53, 38, 12, cream, 3, wood) + `<text x="0" y="-44" font-family="Inter, sans-serif" font-size="7" font-weight="700" text-anchor="middle" fill="${woodDark}">${esc(spec.level ? 'Level ' + spec.level : 'Closed')}</text>`;
+      for (const sgn of [-1, 1]) geometry += rect(sgn * span - 5, postTop, 10, 2 - postTop, stone, 2, ink) + rect(sgn * span - 7, postTop - 3, 14, 5, light, 1, shade) + path(`M${sgn * span - 3} -25H${sgn * span + 3}M${sgn * span - 3} -10H${sgn * span + 3}`, 'none', '#89967c', .8);
+      if (islandGate) {
+        // Rise above the same gate feet; the narrow public route and its
+        // canonical collision stay untouched. The complete arch is retained
+        // in the existing body capture, with the two original moving leaves.
+        const arch = `M${-span} -56Q0 -82 ${span} -56`;
+        geometry += path(arch, 'none', ink, 8.5) + path(arch, 'none', stone, 6.4) + path(`M${-span} -58Q0 -84 ${span} -58`, 'none', light, 1.2)
+          + path('M-3 -69L-2 -64H2L3 -69Z', light, shade, .6);
+        for (const sgn of [-1, 1]) geometry += path(`M${sgn * span - 3} -47V-31M${sgn * span - 3} -40H${sgn * span + 3}`, 'none', '#89967c', .8) + ellipse(sgn * (span - 2), -54, 4.5, 2.3, green, .9);
+        if (!spec.open) geometry += rect(-4, -29, 8, 10, woodDark, 1.2) + path('M-2 -29V-32Q0 -36 2 -32V-29', 'none', '#cdbb86', 1.3) + rect(-2.5, -28, 5, 6, '#cdbb86', .7);
+      }
+      if (!spec.open && spec.showRequirement !== false) geometry += rect(-19, islandGate ? -55 : -53, 38, 12, cream, 3, wood) + `<text x="0" y="${islandGate ? -46 : -44}" font-family="Inter, sans-serif" font-size="7" font-weight="700" text-anchor="middle" fill="${woodDark}">${esc(spec.level ? 'Level ' + spec.level : 'Closed')}</text>`;
       for (const sgn of [-1, 1]) {
-        let source = rect(0, -31, span - 4, 4, wood, 1, woodDark) + rect(0, -14, span - 4, 4, wood, 1, woodDark) + path(`M2 -29L${span - 5} -12`, 'none', '#b99c6b', 2.2);
-        for (let i = 0; i < 3; i++) source += rect(3 + i * (span - 10) / 3, -35, 3, 27, '#a3895f', 1);
+        let source = '';
+        if (islandGate) {
+          source = rect(0, -40, span - 4, 33, woodDark, 1.6);
+          const width = (span - 6) / 3;
+          for (let i = 0; i < 3; i++) source += rect(1.2 + i * width, -39, width - .8, 31, wood, .8) + path(`M${2 + i * width} -37V-10`, 'none', '#bea16d', .65);
+          source += path(`M1 -34H${span - 5}M1 -14H${span - 5}M2 -32L${span - 6} -16`, 'none', woodDark, 2.5) + path(`M2 -35H${span - 6}`, 'none', '#d2bc87', .85);
+        } else {
+          source = rect(0, -31, span - 4, 4, wood, 1, woodDark) + rect(0, -14, span - 4, 4, wood, 1, woodDark) + path(`M2 -29L${span - 5} -12`, 'none', '#b99c6b', 2.2);
+          for (let i = 0; i < 3; i++) source += rect(3 + i * (span - 10) / 3, -35, 3, 27, '#a3895f', 1);
+        }
         if (side) source = `<g transform="matrix(.55 .42 0 1 0 0)">${source}</g>`;
-        addMoving(source, x + px(-sgn * span), y + py(-sgn * span), (node, t) => { const opened = spec.open ? .18 + Math.sin(t * .7) * .012 : 1; node.setAttribute('transform', `translate(${n(x + px(-sgn * span))} ${n(y + py(-sgn * span))}) scale(${n(sgn * opened)} 1) skewY(${spec.open ? sgn * -17 : 0})`); });
+        addMoving(source, x + px(-sgn * span), y + py(-sgn * span), (node, t) => { const opened = spec.open ? .18 + Math.sin(t * .7) * .012 : 1; node.setAttribute('transform', `translate(${n(x + px(-sgn * span))} ${n(y + py(-sgn * span))}) scale(${n(sgn * opened)} 1) skewY(${spec.open ? sgn * -17 : 0})`); }, { static: !spec.open });
       }
       if (side) geometry = `<g transform="matrix(.55 .42 0 1 0 0)">${geometry}</g>`;
-      b = { x: x - px(span) - 10, y: y - 58 - py(span), width: px(span) * 2 + 20, height: 67 + py(span) * 2 };
+      const rise = islandGate ? 80 : 58;
+      b = { x: x - px(span) - 10, y: y - rise - py(span), width: px(span) * 2 + 20, height: rise + 9 + py(span) * 2 };
     } else if (kind === 'gate') {
       const side = !!(spec.gate && spec.gate.dx), span = Math.max(side ? 48 : 55, Math.min(84, spec.width || 66)), top = -116, projectX = xx => side ? xx * .45 : xx, projectY = xx => side ? xx * .32 : 0;
       const stonePost = (xx, yy) => rect(xx - 8, yy - 77, 16, 78, stone, 3, ink) + rect(xx - 11, yy - 81, 22, 8, light, 2, shade) + path(`M${xx - 4} ${yy - 70}V${yy - 8}M${xx - 7} ${yy - 48}H${xx + 7}M${xx - 7} ${yy - 24}H${xx + 7}`, 'none', '#89967c', 1) + ellipse(xx, yy - 87, 6, 7, '#a6b28c');

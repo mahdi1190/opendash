@@ -84,13 +84,39 @@ window.GardenNativeWater = (function () {
     return true;
   }
   function mixColor(a, b, amount) { const p = clamp(amount), channel = shift => Math.round((a >> shift & 255) * (1 - p) + (b >> shift & 255) * p); return channel(16) << 16 | channel(8) << 8 | channel(0); }
+  function horizontalExtent(points, ellipses) {
+    let left = Infinity, right = -Infinity;
+    for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+      const a = points[j], b = points[i];
+      if (!Number.isFinite(a.x) || !Number.isFinite(a.y) || !Number.isFinite(b.x) || !Number.isFinite(b.y)) return null;
+      left = Math.min(left, a.x); right = Math.max(right, a.x);
+      if (a.y === b.y) continue;
+      // Include the actual interpolation's endpoint evaluations, not only
+      // vertex x. Finite IEEE operations are monotone over the active y band;
+      // this also encloses a rounded crossing just beyond a vertex extremum.
+      const slope = (b.x - a.x) / (b.y - a.y), lo = a.x + slope * (Math.min(a.y, b.y) - a.y), hi = a.x + slope * (Math.max(a.y, b.y) - a.y);
+      if (!Number.isFinite(lo) || !Number.isFinite(hi)) return null;
+      left = Math.min(left, lo, hi); right = Math.max(right, lo, hi);
+    }
+    for (const ellipse of ellipses) {
+      const lo = ellipse.x - ellipse.rx, hi = ellipse.x + ellipse.rx;
+      if (!Number.isFinite(lo) || !Number.isFinite(hi)) return null;
+      left = Math.min(left, lo); right = Math.max(right, hi);
+    }
+    // Holes only subtract water. Unknown/empty extents keep the original path.
+    return Number.isFinite(left) && Number.isFinite(right) && right >= left ? { left, right } : null;
+  }
   function normalizeRegion(region, index) {
     const point = p => ({ x: finite(Array.isArray(p) ? p[0] : p.x), y: finite(Array.isArray(p) ? p[1] : p.y) }), points = (region.points || []).map(point), holes = (region.holes || []).map(list => list.map(point));
     const ellipses = (region.ellipses || []).map(e => Array.isArray(e) ? { x: finite(e[0]), y: finite(e[1]), rx: Math.abs(finite(e[2])), ry: Math.abs(finite(e[3])) } : { x: finite(e.x), y: finite(e.y), rx: Math.abs(finite(e.rx)), ry: Math.abs(finite(e.ry)) }).filter(e => e.rx > 0 && e.ry > 0);
     const b = region.bounds || boundsOf(points.length ? points : ellipses.flatMap(e => [{ x: e.x - e.rx, y: e.y - e.ry }, { x: e.x + e.rx, y: e.y + e.ry }]));
     if (points.length > 2) polygonScan(points); for (const hole of holes) polygonScan(hole);
     const bounds = { x: finite(b.x), y: finite(b.y), width: finite(b.width, finite(b.w)), height: finite(b.height, finite(b.h)) };
-    return { id: region.id || index, points, holes, ellipses, holesCrossBoundary: !!region.holesCrossBoundary, bounds, frozen: !!region.frozen, lineEdges: lineEdgeIndex(points, holes, bounds) };
+    const reflectionY = [];
+    for (const p of points) reflectionY.push(p.y);
+    for (const hole of holes) for (const p of hole) reflectionY.push(p.y);
+    for (const e of ellipses) reflectionY.push(e.y - e.ry, e.y, e.y + e.ry);
+    return { id: region.id || index, ocean: !!region.ocean, points, holes, ellipses, reflectionY, intervalXBounds: horizontalExtent(points, ellipses), holesCrossBoundary: !!region.holesCrossBoundary, bounds, frozen: !!region.frozen, lineEdges: lineEdgeIndex(points, holes, bounds) };
   }
   function affine(container, m, quality) {
     const a = m.a * quality, b = m.b * quality, c = m.c * quality, d = m.d * quality, dot = a * c + b * d, inner = container._waterInner;
@@ -100,11 +126,13 @@ window.GardenNativeWater = (function () {
   }
   function create(scene, options) {
     options = options || {};
-    const root = scene.add.container(0, 0), reflections = scene.add.container(0, 0).setDepth(1), depth = scene.add.container(0, 0).setDepth(-1), spotLayer = scene.add.container(0, 0).setDepth(-.5), sheen = scene.add.graphics().setDepth(0), ripples = scene.add.graphics().setDepth(2);
-    root.add([depth, spotLayer, sheen, reflections, ripples]);
+    const root = scene.add.container(0, 0), reflections = scene.add.container(0, 0).setDepth(1), depth = scene.add.container(0, 0).setDepth(-1), spotLayer = scene.add.container(0, 0).setDepth(-.5), sheen = scene.add.graphics().setDepth(0), shore = scene.add.container(0, 0).setDepth(.5), ripples = scene.add.graphics().setDepth(2);
+    root.add([depth, spotLayer, sheen, shore, reflections, ripples]);
+    const surfLayers = [0, 1, 2].map(() => scene.add.graphics()); shore.add(surfLayers);
+    let surfSegments = 0;
     const rng = random(187731), records = new Map(), ringList = [], particles = [], actorWake = new Map(), spotImages = [];
     const intervalSlots = new Array(INTERVAL_CACHE_LIMIT);
-    let intervalCaches = new WeakMap(), intervalCursor = 0, intervalEntries = 0, intervalQueries = 0, intervalHits = 0, intervalMisses = 0, intervalEvictions = 0, intervalBypasses = 0, intervalOutside = 0, intervalInvalidations = 0;
+    let intervalCaches = new WeakMap(), intervalCursor = 0, intervalEntries = 0, intervalQueries = 0, intervalHits = 0, intervalMisses = 0, intervalEvictions = 0, intervalBypasses = 0, intervalOutside = 0, intervalInvalidations = 0, intervalEmptyBandQueriesSkipped = 0, intervalHorizontalRegionsSkipped = 0;
     let model = null, room = null, metadata = {}, regions = [], visibleRegions = [], regionRevision = null, regionSource = null, parent = null, dead = false, frame = 0, lastTime = 0, lastAmbient = 0, pauseAt = null, pauseOffset = 0, motion = true, lastMotion = true, fieldAt = -Infinity, ringAt = -Infinity, rainBudget = 0, captureBytes = 0, sequence = 0, captures = 0, captureErrors = 0, visibleReflections = 0, visibleBands = 0, sortDirty = false, snapshotTime = -Infinity, depthKey = '';
     let environment = { daylight: 1, rain: 0, snow: 0, windX: 1, windY: 0, gust: 0 }, currentView = { x: 0, y: 0, width: 960, height: 600, zoom: 1 };
     let spotNodes = [], spotsDirty = true, falloff = null, visibleSpots = 0, usedSpotBands = 0, subjectDiagnostics = [];
@@ -118,7 +146,7 @@ window.GardenNativeWater = (function () {
       const target = next.parent || room && (room.root || room.parent) || options.world && options.world.rootNode && options.world.rootNode._inner;
       if (target !== parent) { if (root.parentContainer) root.parentContainer.remove(root); if (target) target.add(root); parent = target; root.setDepth(room ? 54 : -9275); if (parent && parent.sort) parent.sort('depth'); if (options.world && options.world.depthChanged) options.world.depthChanged(); }
       const revision = next.revision == null ? next.regions : next.revision;
-      if (revision !== regionRevision || regionSource !== target) { clearIntervalCache(); regions = (next.regions || []).map(normalizeRegion); regionRevision = revision; regionSource = target; fieldAt = -Infinity; ringAt = -Infinity; depthKey = ''; spotsDirty = true; if (!depthPlane.rebuild(regions)) captureErrors++; }
+      if (revision !== regionRevision || regionSource !== target) { clearIntervalCache(); regions = (next.regions || []).map(normalizeRegion); regionRevision = revision; regionSource = target; fieldAt = -Infinity; ringAt = -Infinity; depthKey = ''; spotsDirty = true; if (!depthPlane.rebuild(regions)) captureErrors++; prepareSurf(); }
     }
     function view() { const camera = scene.cameras.main, a = camera.getWorldPoint(0, 0), b = camera.getWorldPoint(camera.width, camera.height); return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y), zoom: camera.zoom }; }
     function inside(region, x, y) { if (x < region.bounds.x || y < region.bounds.y || x > region.bounds.x + region.bounds.width || y > region.bounds.y + region.bounds.height) return false; if (region.ellipses.some(e => ((x - e.x) / e.rx) ** 2 + ((y - e.y) / e.ry) ** 2 <= 1)) return true; return region.points.length > 2 && insidePolygon(x, y, region.points) && !region.holes.some(points => insidePolygon(x, y, points)); }
@@ -143,12 +171,17 @@ window.GardenNativeWater = (function () {
       return intervals;
     }
     function waterIntervals(y, lo, hi, liquidOnly = false) {
-      const all = [], ice = [];
-      for (const region of visibleRegions) { const intervals = cachedRegionIntervals(region, y);
-        for (const interval of intervals) { const left = Math.max(lo, interval[0]), right = Math.min(hi, interval[1]); if (right > left) (liquidOnly && region.frozen ? ice : all).push([left, right]); }
+      const all = [], finiteRange = Number.isFinite(y) && Number.isFinite(lo) && Number.isFinite(hi) && hi >= lo;
+      let ice = null;
+      for (const region of visibleRegions) {
+        const extent = region.intervalXBounds;
+        if (finiteRange && extent && (hi <= extent.left || lo >= extent.right)) { intervalHorizontalRegionsSkipped++; continue; }
+        const intervals = cachedRegionIntervals(region, y);
+        for (const interval of intervals) { const left = Math.max(lo, interval[0]), right = Math.min(hi, interval[1]); if (right > left) (liquidOnly && region.frozen ? ice || (ice = []) : all).push([left, right]); }
       }
-      if (all.length < 2 && !ice.length) return all;
-      return liquidOnly ? subtractIntervals(mergeIntervals(all), mergeIntervals(ice)) : mergeIntervals(all);
+      // Ice exists only after a positive frozen span in a liquid-only query.
+      if (all.length < 2 && !ice) return all;
+      return ice ? subtractIntervals(mergeIntervals(all), mergeIntervals(ice)) : mergeIntervals(all);
     }
     function paintDepth() {
       depthPlane.setVisible(true);
@@ -170,7 +203,12 @@ window.GardenNativeWater = (function () {
       const ys = [b.y, b.y + b.height]; for (let i = 1; i < 12; i++) ys.push(b.y + b.height * i / 12);
       for (const region of visibleRegions) if (overlap(region.bounds, b)) { for (const p of [region.points, ...region.holes].flat()) if (p.y > b.y && p.y < b.y + b.height && ys.length < 48) ys.push(p.y); for (const e of region.ellipses) for (const yy of [e.y - e.ry, e.y, e.y + e.ry]) if (yy > b.y && yy < b.y + b.height && ys.length < 48) ys.push(yy); }
       ys.sort((a, b) => a - b);
-      for (let i = 1; i < ys.length && usedSpotBands < 96; i++) { const top = ys[i - 1], bottom = ys[i], epsilon = Math.min(.02, (bottom - top) * .1); if (bottom - top < .01) continue; let spans = waterIntervals(top + epsilon, b.x, b.x + b.width, true); spans = intersectIntervals(spans, waterIntervals((top + bottom) / 2, b.x, b.x + b.width, true)); spans = intersectIntervals(spans, waterIntervals(bottom - epsilon, b.x, b.x + b.width, true));
+      for (let i = 1; i < ys.length && usedSpotBands < 96; i++) { const top = ys[i - 1], bottom = ys[i], epsilon = Math.min(.02, (bottom - top) * .1); if (bottom - top < .01) continue; let spans = waterIntervals(top + epsilon, b.x, b.x + b.width, true);
+        // An empty intersection cannot regain water at the remaining samples.
+        if (!spans.length) { intervalEmptyBandQueriesSkipped += 2; continue; }
+        spans = intersectIntervals(spans, waterIntervals((top + bottom) / 2, b.x, b.x + b.width, true));
+        if (!spans.length) { intervalEmptyBandQueriesSkipped++; continue; }
+        spans = intersectIntervals(spans, waterIntervals(bottom - epsilon, b.x, b.x + b.width, true));
         for (const [left, right] of spans) { if (usedSpotBands >= 96) break; let image = spotImages[usedSpotBands++]; if (!image) { image = scene.add.image(0, 0, falloff.key).setOrigin(0, 0); spotLayer.add(image); spotImages.push(image); } image.setVisible(true).setPosition(b.x, b.y).setScale(b.width / 128, b.height / 128).setCrop((left - b.x) / b.width * 128, (top - b.y) / b.height * 128, (right - left) / b.width * 128, (bottom - top) / b.height * 128).setTint(color).setAlpha(alpha); }
       }
     }
@@ -188,9 +226,11 @@ window.GardenNativeWater = (function () {
         if (usedSpotBands > before) visibleSpots++;
       }
     }
-    function clipLine(a, b, callback, liquidOnly = true) {
+    function sheenSegment(a, b, c, d) { return sheen.lineBetween(a, b, c, d); }
+    function rippleSegment(a, b, c, d) { return ripples.lineBetween(a, b, c, d); }
+    function clipLine(a, b, callback, liquidOnly = true, clipRegions = visibleRegions) {
       const dx = b.x - a.x, dy = b.y - a.y, segmentBox = { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(dx), height: Math.abs(dy) }, cuts = [0, 1];
-      for (const region of visibleRegions) { if (!overlap(region.bounds, segmentBox, .01)) continue;
+      for (const region of clipRegions) { if (!overlap(region.bounds, segmentBox, .01)) continue;
         const index = region.lineEdges;
         if (++index.generation >= Number.MAX_SAFE_INTEGER) { index.generation = 1; for (const edge of index.edges) edge.generation = 0; }
         const x0 = Math.max(0, Math.floor((segmentBox.x - index.x) / index.size)), x1 = Math.min(index.cols - 1, Math.floor((segmentBox.x + segmentBox.width - index.x) / index.size)), y0 = Math.max(0, Math.floor((segmentBox.y - index.y) / index.size)), y1 = Math.min(index.rows - 1, Math.floor((segmentBox.y + segmentBox.height - index.y) / index.size));
@@ -216,15 +256,61 @@ window.GardenNativeWater = (function () {
     }
     function wavelet(x, y, length, bend, color, opacity, width) {
       sheen.lineStyle(width, color, opacity); let previous = { x: x - length / 2, y };
-      for (let i = 1; i <= 4; i++) { const t = i / 4, next = { x: x + (t - .5) * length, y: y + bend * 4 * t * (1 - t) }; clipLine(previous, next, (a, b, c, d) => sheen.lineBetween(a, b, c, d)); previous = next; }
+      for (let i = 1; i <= 4; i++) { const t = i / 4, next = { x: x + (t - .5) * length, y: y + bend * 4 * t * (1 - t) }; clipLine(previous, next, sheenSegment); previous = next; }
+    }
+    function prepareSurf() {
+      for (const layer of surfLayers) layer.clear(); surfSegments = 0;
+      // Only a real ocean's land holes have a surf line. The outer world
+      // extent and freshwater banks must never become a rectangular coast.
+      for (const region of regions) { if (!region.ocean || region.frozen) continue;
+        for (const points of region.holes) {
+          const normals = points.map((a, i) => {
+            const b = points[(i + 1) % points.length], dx = b.x - a.x, dy = b.y - a.y, length = Math.hypot(dx, dy); if (length < .01) return null;
+            let x = -dy / length, y = dx / length;
+            if (!lineRegionContains(region, (a.x + b.x) / 2 + x * 3, (a.y + b.y) / 2 + y * 3)) { x = -x; y = -y; }
+            return { x, y };
+          });
+          const offset = (i, distance) => {
+            const p = points[i], a = normals[(i + points.length - 1) % points.length], b = normals[i]; if (!a || !b) return p;
+            const reach = distance / Math.max(.6, 1 + a.x * b.x + a.y * b.y);
+            return { x: p.x + (a.x + b.x) * reach, y: p.y + (a.y + b.y) * reach };
+          };
+          for (let band = 0; band < surfLayers.length; band++) {
+            const layer = surfLayers[band], distance = 4 + band * 10;
+            for (let i = 0; i < points.length; i++) {
+              const seed = hash(region.id + ':' + i + ':' + band); if (seed % 5 > 1) continue;
+              const a = offset(i, distance), b = offset((i + 1) % points.length, distance), dx = b.x - a.x, dy = b.y - a.y;
+              const lo = .04 + (seed % 11) / 100, hi = .86 + (seed >>> 5) % 9 / 100;
+              const from = { x: a.x + dx * lo, y: a.y + dy * lo }, to = { x: a.x + dx * hi, y: a.y + dy * hi };
+              // Clip once when the canonical region changes. Concave coves,
+              // piers and any future land holes keep their exact water mask.
+              clipLine(from, to, (x, y, xx, yy) => {
+                layer.lineStyle(3.3 - band * .35, 0xc9e5d8, .13).lineBetween(x, y, xx, yy);
+                layer.lineStyle(1.1 - band * .1, 0xecf0dc, .44 - band * .07).lineBetween(x, y, xx, yy); surfSegments++;
+              }, true, regions);
+            }
+          }
+        }
+      }
+      shore.setVisible(surfSegments > 0);
+    }
+    function surfGlow(clock, daylight, wet) {
+      if (!surfSegments) return;
+      // The three retained water-only contours gently brighten toward shore;
+      // no geometry, captures or shoreline queries run on an ambient tick.
+      const light = .48 + daylight * .52, weather = .88 + wet * .12;
+      for (let band = 0; band < surfLayers.length; band++) {
+        const pulse = motion ? .5 + .5 * Math.sin(clock * .72 + band * .78) : .55;
+        surfLayers[band].setAlpha((.28 + pulse * pulse * .72) * light * weather);
+      }
     }
     function bankGlints(clock, daylight, zoom) {
       let count = 0;
-      for (const region of visibleRegions) { if (region.frozen) continue; if (!region.banks) region.banks = [region.points, ...region.holes, ...region.ellipses.map(e => Array.from({ length: 48 }, (_, i) => ({ x: e.x + Math.cos(i / 48 * TAU) * e.rx, y: e.y + Math.sin(i / 48 * TAU) * e.ry })))];
+      for (const region of visibleRegions) { if (region.frozen || region.ocean) continue; if (!region.banks) region.banks = [region.points, ...region.holes, ...region.ellipses.map(e => Array.from({ length: 48 }, (_, i) => ({ x: e.x + Math.cos(i / 48 * TAU) * e.rx, y: e.y + Math.sin(i / 48 * TAU) * e.ry })))];
         for (const points of region.banks) for (let i = 0; i < points.length && count < 60; i++) { if (i % 3) continue; const a = points[i], b = points[(i + 1) % points.length], dx = b.x - a.x, dy = b.y - a.y, length = Math.hypot(dx, dy); if (length < 1 || !overlap({ x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(dx), height: Math.abs(dy) }, currentView, 5)) continue;
           const x = (a.x + b.x) / 2, y = (a.y + b.y) / 2, nx = -dy / length * 2.4, ny = dx / length * 2.4; let side = contains(x + nx, y + ny, true) && !contains(x - nx, y - ny) ? 1 : contains(x - nx, y - ny, true) && !contains(x + nx, y + ny) ? -1 : 0; if (!side) continue;
           const alpha = (.065 + daylight * .09) * (motion ? .65 + .35 * Math.sin(clock * .75 + x * .02 + y * .01) : .8), span = Math.min(15, length * .72), ux = dx / length * span / 2, uy = dy / length * span / 2;
-          sheen.lineStyle(Math.max(.4, .75 / Math.sqrt(zoom)), 0xd8e8ce, alpha); clipLine({ x: x + nx * side - ux, y: y + ny * side - uy }, { x: x + nx * side + ux, y: y + ny * side + uy }, (a, b, c, d) => sheen.lineBetween(a, b, c, d)); count++;
+          sheen.lineStyle(Math.max(.4, .75 / Math.sqrt(zoom)), 0xd8e8ce, alpha); clipLine({ x: x + nx * side - ux, y: y + ny * side - uy }, { x: x + nx * side + ux, y: y + ny * side + uy }, sheenSegment); count++;
         }
       }
     }
@@ -239,13 +325,13 @@ window.GardenNativeWater = (function () {
         if (seed % 7 === 0 && daylight > .15) { const caustic = (.035 + daylight * .035) * (1 - clamp(finite(env.cloudCover)) * .55); wavelet(x + drift + 3, y + 5, length * .65, -bend * 1.4, 0xc0dfc9, caustic, Math.max(.5, 1 / Math.sqrt(zoom))); wavelet(x + drift - 3, y + 8, length * .45, bend, 0xc0dfc9, caustic * .8, Math.max(.4, .75 / Math.sqrt(zoom))); }
         count++;
       }
-      bankGlints(clock, daylight, zoom);
+      surfGlow(clock, daylight, wet); bankGlints(clock, daylight, zoom);
       for (const lamp of (metadata.lights || []).slice(0, 20)) { const x = finite(lamp.x), y = finite(lamp.groundY, finite(lamp.y)), radius = finite(lamp.radius, 100); if (!overlap({ x: x - radius, y, width: radius * 2, height: radius }, currentView, 20)) continue;
         const power = clamp(finite(lamp.intensity, .8)) * (room ? .12 : (1 - daylight) * .16); if (power < .01) continue;
-        for (let i = 0; i < 7; i++) { const yy = y + 5 + i * 6, width = 3 + i * 1.3, dx = motion ? Math.sin(clock * 1.2 + i * .9 + x * .02) * (1 + i * .25) : 0; sheen.lineStyle(Math.max(.5, (2 - i * .15) / Math.sqrt(zoom)), typeof lamp.color === 'number' ? lamp.color : 0xffdf9a, power * (1 - i / 8)); clipLine({ x: x - width + dx, y: yy }, { x: x + width + dx, y: yy }, (a, b, c, d) => sheen.lineBetween(a, b, c, d)); }
+        for (let i = 0; i < 7; i++) { const yy = y + 5 + i * 6, width = 3 + i * 1.3, dx = motion ? Math.sin(clock * 1.2 + i * .9 + x * .02) * (1 + i * .25) : 0; sheen.lineStyle(Math.max(.5, (2 - i * .15) / Math.sqrt(zoom)), typeof lamp.color === 'number' ? lamp.color : 0xffdf9a, power * (1 - i / 8)); clipLine({ x: x - width + dx, y: yy }, { x: x + width + dx, y: yy }, sheenSegment); }
       }
     }
-    function hideRecord(record) { for (const image of record.images) image.setVisible(false); record.usedImages = 0; }
+    function hideRecord(record) { for (const image of record.images) if (image.visible) image.setVisible(false); record.usedImages = 0; }
     function releaseSnapshot(record) { if (!record.snapshot) return; const snapshot = record.snapshot; record.snapshot = null; captureBytes = Math.max(0, captureBytes - snapshot.bytes); if (snapshot.rt && snapshot.rt.active) snapshot.rt.destroy(); if (scene.textures.exists(snapshot.key)) scene.textures.remove(snapshot.key); }
     function destroyRecord(record) { for (const image of record.images) image.destroy(); releaseSnapshot(record); records.delete(record.id); }
     function trimSources(time) { for (const record of [...records.values()]) if (!record.selected && (!record.source || !record.source.active || time - record.usedAt > 20000 || records.size > MAX_SOURCES)) destroyRecord(record); }
@@ -287,30 +373,39 @@ window.GardenNativeWater = (function () {
     function nearWater(box) { if (!visibleRegions.some(region => overlap(region.bounds, box))) return false; for (const fraction of [.02, .25, .5, .75, .98]) if (waterIntervals(box.y + box.height * fraction, box.x, box.x + box.width).length) return true; return false; }
     function reflectionImage(record, index) { let image = record.images[index]; if (!image) { image = scene.add.image(0, 0, record.snapshot.key).setOrigin(0, 0); reflections.add(image); record.images.push(image); sortDirty = true; } return image; }
     function paintReflection(record, item, time) {
-      const snapshot = record.snapshot; if (!snapshot) return; const captured = snapshot.bounds, current = item.bounds, dx = current.x - captured.x, dy = current.y - captured.y, line = finite(item.waterline, finite(item.groundY, finite(item.y, current.y + current.height))), compression = 1, top = line + (line - current.y - current.height) * compression, bottom = line + (line - current.y) * compression, physical = Math.max(.5, currentView.zoom), step = Math.max(2 / physical, Math.min(7, (bottom - top) / 12)), breaks = [Math.max(top, line), bottom];
-      if (!(bottom > breaks[0])) return;
+      record.usedImages = 0; const snapshot = record.snapshot; if (!snapshot) { hideRecord(record); return; } const captured = snapshot.bounds, current = item.bounds, dx = current.x - captured.x, dy = current.y - captured.y, line = finite(item.waterline, finite(item.groundY, finite(item.y, current.y + current.height))), compression = 1, top = line + (line - current.y - current.height) * compression, bottom = line + (line - current.y) * compression, physical = Math.max(.5, currentView.zoom), step = Math.max(2 / physical, Math.min(7, (bottom - top) / 12)), breaks = [Math.max(top, line), bottom];
+      if (!(bottom > breaks[0])) { hideRecord(record); return; }
       for (let y = breaks[0] + step; y < bottom && breaks.length < 28; y += step) breaks.push(y);
       // A strip never crosses a polygon vertex or ellipse extremum. Its safe
       // interval is the intersection at both edges and its centre, so source
       // pixels cannot leak onto an irregular bank or through an island.
-      for (const region of visibleRegions) if (overlap(region.bounds, { x: current.x, y: top, width: current.width, height: bottom - top })) { for (const p of [region.points, ...region.holes].flat()) if (p.y > breaks[0] && p.y < bottom && breaks.length < 54) breaks.push(p.y); for (const e of region.ellipses) for (const y of [e.y - e.ry, e.y, e.y + e.ry]) if (y > breaks[0] && y < bottom && breaks.length < 54) breaks.push(y); }
+      for (const region of visibleRegions) if (overlap(region.bounds, { x: current.x, y: top, width: current.width, height: bottom - top })) for (const y of region.reflectionY) if (y > breaks[0] && y < bottom && breaks.length < 54) breaks.push(y);
       breaks.sort((a, b) => a - b); const subject = item.kind === 'pet' || item.kind === 'actor' || item.kind === 'boat', frozen = !waterIntervals((Math.max(top, line) + bottom) / 2, current.x, current.x + current.width, true).length, strength = (subject ? .4 : .17) * (frozen ? .3 : 1) * (.85 + clamp(finite(environment.daylight, 1)) * .15), fadeIn = clamp((lastTime - record.firstReady) / 180), phase = record.phase;
       let used = 0;
       for (let i = 1; i < breaks.length && used < 64; i++) { const y0 = breaks[i - 1], y1 = breaks[i]; if (y1 - y0 < .01 || y1 < currentView.y || y0 > currentView.y + currentView.height) continue; const depth = clamp(((y0 + y1) / 2 - line) / Math.max(1, bottom - line)), drift = motion && !frozen ? Math.sin(time / 1000 * .9 + phase + i * .75) * (finite(environment.windX, 1) * .45 + finite(environment.gust) * .6 + .35) * (.2 + depth) : 0;
-        const left = current.x + drift, right = left + current.width, epsilon = Math.min(.04, (y1 - y0) * .1); let intervals = waterIntervals(y0 + epsilon, left, right); intervals = intersectIntervals(intervals, waterIntervals((y0 + y1) / 2, left, right)); intervals = intersectIntervals(intervals, waterIntervals(y1 - epsilon, left, right));
+        const left = current.x + drift, right = left + current.width, epsilon = Math.min(.04, (y1 - y0) * .1); let intervals = waterIntervals(y0 + epsilon, left, right);
+        // Keep all three exact shore samples for every surviving band.
+        if (!intervals.length) { intervalEmptyBandQueriesSkipped += 2; continue; }
+        intervals = intersectIntervals(intervals, waterIntervals((y0 + y1) / 2, left, right));
+        if (!intervals.length) { intervalEmptyBandQueriesSkipped++; continue; }
+        intervals = intersectIntervals(intervals, waterIntervals(y1 - epsilon, left, right));
         const sourceTop = clamp((line + (line - y1) / compression - dy - captured.y) / captured.height) * snapshot.height, sourceBottom = clamp((line + (line - y0) / compression - dy - captured.y) / captured.height) * snapshot.height;
         for (const interval of intervals) { const cropX = clamp((interval[0] - drift - dx - captured.x) / captured.width) * snapshot.width, cropRight = clamp((interval[1] - drift - dx - captured.x) / captured.width) * snapshot.width; if (cropRight - cropX < .1 || sourceBottom - sourceTop < .1) continue; const image = reflectionImage(record, used++);
-          image.setVisible(true).setPosition(captured.x + dx + drift, line + (line - captured.y - dy) * compression).setScale(captured.width / snapshot.width, -captured.height * compression / snapshot.height).setCrop(cropX, sourceTop, cropRight - cropX, sourceBottom - sourceTop).setTint(0xc5d3cb).setAlpha(strength * ((subject ? .44 : .28) + (subject ? .56 : .72) * (1 - depth) ** .8) * fadeIn);
+          if (!image.visible) image.setVisible(true); image.setPosition(captured.x + dx + drift, line + (line - captured.y - dy) * compression).setScale(captured.width / snapshot.width, -captured.height * compression / snapshot.height).setCrop(cropX, sourceTop, cropRight - cropX, sourceBottom - sourceTop).setTint(0xc5d3cb).setAlpha(strength * ((subject ? .44 : .28) + (subject ? .56 : .72) * (1 - depth) ** .8) * fadeIn);
           const order = Math.floor(line * 2); if (image.depth !== order) { image.setDepth(order); sortDirty = true; } visibleBands++;
         }
       }
-      for (let i = used; i < record.images.length; i++) record.images[i].setVisible(false); record.usedImages = used; if (used) visibleReflections++;
+      for (let i = used; i < record.images.length; i++) if (record.images[i].visible) record.images[i].setVisible(false); record.usedImages = used; if (used) visibleReflections++;
     }
     function updateReflections(time) {
-      for (const record of records.values()) { record.selected = false; hideRecord(record); }
+      // Selection and band clipping decide what to hide below. Keeping the bands
+      // that remain selected avoids toggling every visible reflection off/on
+      // inside the same engine update; the frame is drawn only afterward.
+      for (const record of records.values()) record.selected = false;
       visibleReflections = 0; visibleBands = 0;
       subjectDiagnostics = [];
-      const items = [], seenIds = new Set(), seenSources = new Set(); for (const raw of [...(metadata.actors || []), ...(metadata.creatures || []), ...(metadata.reflectables || [])]) {
+      const items = [], seenIds = new Set(), seenSources = new Set();
+      for (const group of [metadata.actors || [], metadata.creatures || [], metadata.reflectables || []]) for (const raw of group) {
         if (!raw || !raw.source || seenSources.has(raw.source) || raw.id != null && seenIds.has(raw.id)) continue;
         if (raw.id != null) seenIds.add(raw.id); seenSources.add(raw.source);
         const subject = raw.kind === 'actor' || raw.kind === 'pet' || raw.kind === 'wildlife' || raw.kind === 'boat', diagnostic = subject && subjectDiagnostics.length < 32 ? { id: raw.id, kind: raw.kind, ...(raw.kind === 'wildlife' ? { species: raw.species, medium: raw.medium, lift: raw.lift, sink: raw.sink } : {}), visible: raw.source.visible, logicalVisible: sourceVisible(raw.source), snapshot: false, bands: 0, reason: '' } : null; if (diagnostic) subjectDiagnostics.push(diagnostic);
@@ -332,7 +427,8 @@ window.GardenNativeWater = (function () {
       }
       pending.sort((a, b) => a.record.subjectPriority - b.record.subjectPriority || a.priority - b.priority || finite(a.record.capturedAt, -Infinity) - finite(b.record.capturedAt, -Infinity));
       if (pending.length && snapshotTime !== time) { const job = pending[0], resolution = finite(scene.game.renderer.resolution, finite(scene.game.config.resolution, 1)); if (!capture(job.record, job.item, Math.min(2, Math.max(.75, currentView.zoom * resolution * .7)))) job.record.retryAfter = time + (job.record.subjectPriority < 2 ? 250 : 1000); snapshotTime = time; }
-      for (const { item } of selected) { const id = (room ? 'room:' : 'world:') + String(item.id || item.source.name || hash(item.x + ':' + item.y)), record = records.get(id); if (record && record.snapshot) paintReflection(record, item, lastAmbient); if (item.diagnostic) { const snapshot = record && record.snapshot; item.diagnostic.snapshot = !!snapshot; item.diagnostic.snapshotKey = snapshot ? snapshot.key : ''; item.diagnostic.snapshotSize = snapshot ? [snapshot.width, snapshot.height] : null; item.diagnostic.captureBounds = snapshot ? snapshot.bounds : null; item.diagnostic.bands = record ? record.usedImages : 0; item.diagnostic.reason = !snapshot ? 'awaiting-capture' : record.usedImages ? 'drawn' : 'clipped'; } }
+      for (const { item } of selected) { const id = (room ? 'room:' : 'world:') + String(item.id || item.source.name || hash(item.x + ':' + item.y)), record = records.get(id); if (record) paintReflection(record, item, lastAmbient); if (item.diagnostic) { const snapshot = record && record.snapshot; item.diagnostic.snapshot = !!snapshot; item.diagnostic.snapshotKey = snapshot ? snapshot.key : ''; item.diagnostic.snapshotSize = snapshot ? [snapshot.width, snapshot.height] : null; item.diagnostic.captureBounds = snapshot ? snapshot.bounds : null; item.diagnostic.bands = record ? record.usedImages : 0; item.diagnostic.reason = !snapshot ? 'awaiting-capture' : record.usedImages ? 'drawn' : 'clipped'; } }
+      for (const record of records.values()) if (!record.selected) hideRecord(record);
       if (sortDirty) { reflections.sort('depth'); sortDirty = false; }
       if (frame % 90 === 0) trimSources(time);
     }
@@ -359,7 +455,7 @@ window.GardenNativeWater = (function () {
     function paintRipples() {
       ripples.clear(); const zoom = Math.max(.25, currentView.zoom);
       for (let i = ringList.length - 1; i >= 0; i--) { const ring = ringList[i], age = ((ring.ambient ? lastAmbient : lastTime) - ring.born) / 1000 - ring.delay; if (age >= ring.life) { ringList.splice(i, 1); continue; } if (age < 0) continue; const p = clamp(age / ring.life), radius = ring.scale * (motion ? 3 + p * 16 : 7), ry = radius * .32, b = { x: ring.x - radius, y: ring.y - ry, width: radius * 2, height: ry * 2 }; if (!overlap(b, currentView, 5)) continue;
-        ripples.lineStyle(Math.max(.4, .85 / Math.sqrt(zoom)), ring.color, ring.strength * (1 - p) ** 1.5); let previous = { x: ring.x + radius, y: ring.y }; for (let k = 1; k <= 28; k++) { const angle = k / 28 * TAU, next = { x: ring.x + Math.cos(angle) * radius, y: ring.y + Math.sin(angle) * ry }; clipLine(previous, next, (a, b, c, d) => ripples.lineBetween(a, b, c, d)); previous = next; }
+        ripples.lineStyle(Math.max(.4, .85 / Math.sqrt(zoom)), ring.color, ring.strength * (1 - p) ** 1.5); let previous = { x: ring.x + radius, y: ring.y }; for (let k = 1; k <= 28; k++) { const angle = k / 28 * TAU, next = { x: ring.x + Math.cos(angle) * radius, y: ring.y + Math.sin(angle) * ry }; clipLine(previous, next, rippleSegment); previous = next; }
       }
       for (let i = particles.length - 1; i >= 0; i--) { const p = particles[i], age = (lastTime - p.born) / 1000; if (age >= p.life) { particles.splice(i, 1); continue; } const x = p.x + p.vx * age, y = p.y + p.vy * age + 70 * age * age; if (x < currentView.x || x > currentView.x + currentView.width || y < currentView.y || y > currentView.y + currentView.height) continue; ripples.fillStyle(0xe4f3ed, (1 - age / p.life) * .6).fillEllipse(x, y, p.scale * 1.6, p.scale * 2.4); }
     }
@@ -377,7 +473,7 @@ window.GardenNativeWater = (function () {
       if (lastTime - ringAt >= 32 || delta === 0 || ringList.length || particles.length) { paintRipples(); ringAt = lastTime; }
     }
     function destroy() { if (dead) return; dead = true; clearIntervalCache(); for (const record of [...records.values()]) destroyRecord(record); fishingReflections.destroy(); depthPlane.destroy(); if (falloff) { falloff.rt.destroy(); if (scene.textures.exists(falloff.key)) scene.textures.remove(falloff.key); captureBytes = Math.max(0, captureBytes - falloff.bytes); falloff = null; } ringList.length = 0; particles.length = 0; actorWake.clear(); spotNodes.length = 0; root.destroy(true); }
-    function status() { const field = depthPlane.status(); return { native: true, regions: regions.length, visibleRegions: visibleRegions.length, reflections: visibleReflections, bands: visibleBands, subjects: subjectDiagnostics, ...fishingReflections.status(), depthTriangles: 0, depthQuads: field.quads, depthTextureBytes: field.textureBytes, depthMaskBuilds: field.builds, depthError: field.lastError, depthSpots: visibleSpots, spotBands: usedSpotBands, falloffBytes: falloff ? falloff.bytes : 0, captures, captureErrors, captureBytes, captureBudgetBytes: LIMIT_BYTES, cachedSources: records.size, intervalCache: { queries: intervalQueries, hits: intervalHits, misses: intervalMisses, outsideBounds: intervalOutside, bypasses: intervalBypasses, entries: intervalEntries, capacity: INTERVAL_CACHE_LIMIT, maxResultSpans: INTERVAL_CACHE_MAX_SPANS, evictions: intervalEvictions, invalidations: intervalInvalidations }, ripples: ringList.length, splashDrops: particles.length, paused: pauseAt != null, reducedMotion: !motion, room: !!room }; }
+    function status() { const field = depthPlane.status(); return { native: true, regions: regions.length, visibleRegions: visibleRegions.length, reflections: visibleReflections, bands: visibleBands, subjects: subjectDiagnostics, ...fishingReflections.status(), depthTriangles: 0, depthQuads: field.quads, depthTextureBytes: field.textureBytes, depthMaskBuilds: field.builds, depthError: field.lastError, depthSpots: visibleSpots, spotBands: usedSpotBands, surfSegments, falloffBytes: falloff ? falloff.bytes : 0, captures, captureErrors, captureBytes, captureBudgetBytes: LIMIT_BYTES, cachedSources: records.size, intervalCache: { queries: intervalQueries, hits: intervalHits, misses: intervalMisses, outsideBounds: intervalOutside, bypasses: intervalBypasses, entries: intervalEntries, capacity: INTERVAL_CACHE_LIMIT, maxResultSpans: INTERVAL_CACHE_MAX_SPANS, evictions: intervalEvictions, invalidations: intervalInvalidations, emptyBandQueriesSkipped: intervalEmptyBandQueriesSkipped, horizontalRegionsSkipped: intervalHorizontalRegionsSkipped }, ripples: ringList.length, splashDrops: particles.length, paused: pauseAt != null, reducedMotion: !motion, room: !!room }; }
     return { sync, setRoom, update, pauseAmbient, effect, containsWater: contains, destroy, status, root };
   }
   return Object.freeze({ create });

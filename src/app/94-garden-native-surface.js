@@ -44,6 +44,7 @@ window.GardenNativeSurface = (function () {
     const W = GARDEN_WORLD, root = scene.add.container(0, 0).setDepth(-9195), pools = scene.add.container(0, 0), marks = scene.add.graphics(), glints = scene.add.graphics(), breath = scene.add.graphics().setDepth(79200);
     root.add([pools, marks, glints]); (options.world.rootNode._inner || options.world.root).add([root, breath]); options.world.depthChanged();
     const contacts = [], rings = [], leaves = [], puffs = [], feet = new Map(), poolDrawings = new Map(), shoreBuckets = new Map(), rippleCuts = [];
+    let waterLoops = [];
     let model = options.model, day = surfaceDay(model), env = {}, puddles = [], key = '', room = false, paused = false, clock = 0, paintAt = -1, viewKey = '', rainAt = 0, sequence = 0, dead = false, puddleOpacity = 0, trackShoreGeneration = -1;
     let placementDirty = true, placementRaw = '', clearanceKey = '', clearance = new Uint8Array(W.cols * W.rows), clearanceGeneration = 0, shoreRevision = -1, shoreRegions = null, shoreFingerprint = '', shoreGeneration = 0, realm = '', frozenGround = null;
     let builds = 0, reuses = 0, syncs = 0, placementBuilds = 0, shoreBuilds = 0, retained = 0, rejectedBanks = 0, visiblePools = 0, visibleTracks = 0, visibleRings = 0, paints = 0, lastView = null;
@@ -59,12 +60,40 @@ window.GardenNativeSurface = (function () {
       shoreRevision = state.revision; shoreRegions = state.regions || []; placementDirty = true;
       const fingerprint = JSON.stringify(shoreRegions.map(r => [r.id, !!r.frozen, r.points.map(p => [p.x, p.y]), (r.holes || []).map(loop => loop.map(p => [p.x, p.y]))]));
       if (fingerprint === shoreFingerprint) return; shoreFingerprint = fingerprint; shoreGeneration++; shoreBuilds++; shoreBuckets.clear();
+      waterLoops = shoreRegions.map(region => ({ outer: waterLoopIndex(region.points), holes: (region.holes || []).map(waterLoopIndex) }));
       for (const region of shoreRegions) for (const points of [region.points, ...(region.holes || [])]) for (let i = 0; i < points.length; i++) {
         const a = points[i], b = points[(i + 1) % points.length], edge = { a, b, x0: Math.min(a.x, b.x), y0: Math.min(a.y, b.y), x1: Math.max(a.x, b.x), y1: Math.max(a.y, b.y) };
         for (let y = Math.floor(edge.y0 / 64); y <= Math.floor(edge.y1 / 64); y++) for (let x = Math.floor(edge.x0 / 64); x <= Math.floor(edge.x1 / 64); x++) { const k = x + ',' + y; let bucket = shoreBuckets.get(k); if (!bucket) { bucket = []; shoreBuckets.set(k, bucket); } bucket.push(edge); }
       }
     }
-    function waterAt(x, y) { return (shoreRegions || []).some(r => { const b = r.bounds; return x >= b.x && y >= b.y && x <= b.x + b.width && y <= b.y + b.height && containsPoint(r.points, x, y) && !(r.holes || []).some(hole => containsPoint(hole, x, y)); }); }
+    function waterLoopIndex(points) {
+      const bands = new Map();
+      // Keep the original edge order and arithmetic, including its strict
+      // vertex rule. The band only selects edges that could cross this y.
+      for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+        const a = points[i], b = points[j]; if (a.y === b.y) continue;
+        const edge = { a, b };
+        for (let band = Math.floor(Math.min(a.y, b.y) / 64), end = Math.floor(Math.max(a.y, b.y) / 64); band <= end; band++) {
+          let edges = bands.get(band); if (!edges) { edges = []; bands.set(band, edges); } edges.push(edge);
+        }
+      }
+      return bands;
+    }
+    function waterLoopContains(bands, x, y) {
+      const edges = bands.get(Math.floor(y / 64)); if (!edges) return false;
+      let inside = false;
+      for (const edge of edges) { const a = edge.a, b = edge.b; if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) inside = !inside; }
+      return inside;
+    }
+    function waterAt(x, y) {
+      for (let i = 0; i < waterLoops.length; i++) {
+        const region = shoreRegions[i], b = region.bounds, loops = waterLoops[i];
+        if (!(x >= b.x && y >= b.y && x <= b.x + b.width && y <= b.y + b.height) || !waterLoopContains(loops.outer, x, y)) continue;
+        let inHole = false; for (const hole of loops.holes) if (waterLoopContains(hole, x, y)) { inHole = true; break; }
+        if (!inHole) return true;
+      }
+      return false;
+    }
     function syncPlacement() {
       if (!placementDirty) return; placementDirty = false;
       const props = gardenPropsNow(), open = typeof _GD_LAND === 'undefined' ? [] : [..._GD_LAND].sort();
@@ -160,10 +189,28 @@ window.GardenNativeSurface = (function () {
     function currentView() {
       const camera = scene.cameras.main, zoomX = camera.zoomX || camera.zoom || 1, zoomY = camera.zoomY || camera.zoom || 1, cx = camera.scrollX + camera.width / 2, cy = camera.scrollY + camera.height / 2, w = camera.width / zoomX, h = camera.height / zoomY, cos = Math.cos(camera.rotation || 0), sin = Math.sin(camera.rotation || 0);
       const m = root.getWorldTransformMatrix(), det = m.a * m.d - m.b * m.c || 1, tx = m.tx == null ? m.e || 0 : m.tx, ty = m.ty == null ? m.f || 0 : m.ty;
-      const points = [[-w / 2, -h / 2], [w / 2, -h / 2], [-w / 2, h / 2], [w / 2, h / 2]].map(([x, y]) => { const px = cx + x * cos - y * sin - tx, py = cy + x * sin + y * cos - ty; return { x: (m.d * px - m.c * py) / det, y: (-m.b * px + m.a * py) / det }; });
-      return { ...pointBounds(points), scale: Math.max(zoomX, zoomY) };
+      // The same four corners and transform arithmetic, without temporary
+      // pair arrays/point objects or a second bounds pass on every update.
+      const x0 = -w / 2, x1 = w / 2, y0 = -h / 2, y1 = h / 2;
+      const ax = cx + x0 * cos - y0 * sin - tx, ay = cy + x0 * sin + y0 * cos - ty;
+      const bx = cx + x1 * cos - y0 * sin - tx, by = cy + x1 * sin + y0 * cos - ty;
+      const qx = cx + x0 * cos - y1 * sin - tx, qy = cy + x0 * sin + y1 * cos - ty;
+      const dx = cx + x1 * cos - y1 * sin - tx, dy = cy + x1 * sin + y1 * cos - ty;
+      const aX = (m.d * ax - m.c * ay) / det, aY = (-m.b * ax + m.a * ay) / det;
+      const bX = (m.d * bx - m.c * by) / det, bY = (-m.b * bx + m.a * by) / det;
+      const cX = (m.d * qx - m.c * qy) / det, cY = (-m.b * qx + m.a * qy) / det;
+      const dX = (m.d * dx - m.c * dy) / det, dY = (-m.b * dx + m.a * dy) / det;
+      const x = Math.min(aX, bX, cX, dX), y = Math.min(aY, bY, cY, dY);
+      // Keep this result independent: status() may retain a previous painted view.
+      return { x, y, width: Math.max(aX, bX, cX, dX) - x, height: Math.max(aY, bY, cY, dY) - y, scale: Math.max(zoomX, zoomY) };
     }
     function puddleLine(ax, ay, bx, by, p) {
+      const bounds = p.bounds, right = bounds.x + bounds.width, bottom = bounds.y + bounds.height;
+      // A straight segment beyond one bounds edge cannot enter this puddle.
+      // Touching edges and non-finite inputs keep the exact clipper below.
+      if (Number.isFinite(ax) && Number.isFinite(ay) && Number.isFinite(bx) && Number.isFinite(by)
+        && (ax < bounds.x && bx < bounds.x || ax > right && bx > right
+          || ay < bounds.y && by < bounds.y || ay > bottom && by > bottom)) return;
       rippleCuts.length = 0; rippleCuts.push(0, 1); const dx = bx - ax, dy = by - ay;
       for (let i = 0; i < p.points.length; i++) { const a = p.points[i], b = p.points[(i + 1) % p.points.length], ex = b.x - a.x, ey = b.y - a.y, cross = dx * ey - dy * ex; if (Math.abs(cross) < 1e-8) continue; const x = a.x - ax, y = a.y - ay, t = (x * ey - y * ex) / cross, u = (x * dy - y * dx) / cross; if (t > 0 && t < 1 && u >= 0 && u <= 1) rippleCuts.push(t); }
       rippleCuts.sort((a, b) => a - b);
@@ -201,7 +248,7 @@ window.GardenNativeSurface = (function () {
       const view = currentView(), nextView = [Math.floor(view.x / 24), Math.floor(view.y / 24), Math.round(view.width), Math.round(view.height), Math.round(view.scale * 20)].join('|');
       if (paintAt < 0 || clock - paintAt >= .05 || nextView !== viewKey) { paintAt = clock; viewKey = nextView; paint(view); }
     }
-    return { update, sync, step, puddleAt: inPuddle, puddles: () => puddles, setRoom(value) { const next = !!value; if (room === next) return; room = next; root.setVisible(!room); breath.setVisible(!room); puffs.length = 0; breath.clear(); feet.clear(); paintAt = -1; viewKey = ''; }, pauseAmbient(state) { paused = !!(state && (state.hush || state.frozen)); }, status: () => ({ puddles: puddles.length, tracks: contacts.length, rings: rings.length, leaves: leaves.length, breath: puffs.length, visiblePuddles: room ? 0 : visiblePools, visibleTracks: room ? 0 : visibleTracks, visibleRings: room ? 0 : visibleRings, puddleBuilds: builds, retainedPuddles: retained, puddleOpacity, syncs, reusedSyncs: reuses, placementBuilds, shoreBuilds, rejectedBanks, puddleShapes: poolDrawings.size, paints, clock, room, paused, view: lastView }), destroy() { if (dead) return; dead = true; for (const graphic of poolDrawings.values()) graphic.destroy(); poolDrawings.clear(); root.destroy(); breath.destroy(); contacts.length = rings.length = leaves.length = puffs.length = 0; feet.clear(); shoreBuckets.clear(); } };
+    return { update, sync, step, puddleAt: inPuddle, puddles: () => puddles, setRoom(value) { const next = !!value; if (room === next) return; room = next; root.setVisible(!room); breath.setVisible(!room); puffs.length = 0; breath.clear(); feet.clear(); paintAt = -1; viewKey = ''; }, pauseAmbient(state) { paused = !!(state && (state.hush || state.frozen)); }, status: () => ({ puddles: puddles.length, tracks: contacts.length, rings: rings.length, leaves: leaves.length, breath: puffs.length, visiblePuddles: room ? 0 : visiblePools, visibleTracks: room ? 0 : visibleTracks, visibleRings: room ? 0 : visibleRings, puddleBuilds: builds, retainedPuddles: retained, puddleOpacity, syncs, reusedSyncs: reuses, placementBuilds, shoreBuilds, rejectedBanks, puddleShapes: poolDrawings.size, paints, clock, room, paused, view: lastView }), destroy() { if (dead) return; dead = true; for (const graphic of poolDrawings.values()) graphic.destroy(); poolDrawings.clear(); root.destroy(); breath.destroy(); contacts.length = rings.length = leaves.length = puffs.length = 0; feet.clear(); shoreBuckets.clear(); waterLoops = []; } };
   }
   return { create };
 })();

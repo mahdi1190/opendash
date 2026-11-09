@@ -9,7 +9,7 @@
                             'auto' picks from the scene: rain or snow when it falls; else spring petals, sun rays
                             on summer days, autumn leaves, mist at a cold dawn, fireflies on summer nights.
                             Returns a <g> ('' for nothing).
-   gartLighting(tod, o)     the light of the hour over the garden (no gradients: soft stacked bands):
+   gartLighting(tod, o)     the light of the hour (older stacked bands; continuous island washes):
                             dawn a rosy haze low down, dusk a golden hour turning violet, night a cool
                             moonlit wash from the top. o {w, h, top, season}. '' by day.
 
@@ -140,7 +140,18 @@ function gartWeather(kind, o) {
 function gartLighting(tod, o) {
   const A = GART;
   o = Object.assign({ w: 960, h: 480, top: 150, season: 'summer' }, o || {});
-  const band = (y0, y1, col, op) => A.P(col, A.rect(0, y0, o.w, y1 - y0), op);
+  // The island's sea fills the canvas, so hard rectangular washes would
+  // show as horizon-wide stripes. Keep their colours/plateaux, feather only
+  // their authored edges; older garden pictures retain their original bands.
+  let serial = 0;
+  const band = (y0, y1, col, op) => {
+    if (!o.continuous) return A.P(col, A.rect(0, y0, o.w, y1 - y0), op);
+    const h = o.h, pad = Math.min(60, Math.max(16, (y1 - y0) * .12)), id = (o.uid || 'gd') + '-hour-' + tod + '-' + serial++;
+    const stops = y0 <= 0 ? [[0, op]] : [[0, 0], [Math.max(0, y0 - pad), 0], [Math.min(h, y0 + pad), op]];
+    if (y1 >= h) stops.push([h, op]);
+    else stops.push([Math.max(0, y1 - pad), op], [Math.min(h, y1 + pad), 0], [h, 0]);
+    return `<defs><linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="${h}">${stops.map(p => `<stop offset="${p[0] / h}" stop-color="${col}" stop-opacity="${p[1]}"/>`).join('')}</linearGradient></defs><rect x="0" y="0" width="${o.w}" height="${h}" fill="url(#${id})"/>`;
+  };
   if (tod === 'dawn') return `<g class="gart-light gart-light-dawn" aria-hidden="true">${band(o.top - 30, o.h, '#ffb48a', 0.08) + band(o.top + (o.h - o.top) * 0.5, o.h, '#f6c8d8', 0.08)}</g>`;
   if (tod === 'dusk') return `<g class="gart-light gart-light-dusk" aria-hidden="true">${band(0, o.h, '#ffb070', 0.08) + band(o.top - 20, o.top + (o.h - o.top) * 0.4, '#ffd08a', 0.08) + band(o.top + (o.h - o.top) * 0.6, o.h, '#6a3a7a', 0.1)}</g>`;
   if (tod === 'night') return `<g class="gart-light gart-light-night" aria-hidden="true">${band(o.top - 16, o.top + (o.h - o.top) * 0.35, '#a8c0f0', 0.06) + band(o.top + (o.h - o.top) * 0.7, o.h, '#0b1630', 0.1)}</g>`;

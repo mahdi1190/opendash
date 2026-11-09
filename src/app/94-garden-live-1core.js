@@ -105,7 +105,7 @@ function _gllDress(A, root) {
   if (A.hold) _gllEmote(A, A.hold, true);   // (and if they were sitting, they still are)
 }
 function _gllPaint(A) {
-  if (!A.inner) return;
+  if (!A.inner || A.inner._native && (A.inner._dead || !A.inner.target || !A.inner.target.active)) return;
   const motion = !_gllReduced(), now = Date.now();   // clock-ok: how long a pose lasts
   if (A.pose && now > A.poseUntil) A.pose = '';
   let pose = A.moving && motion ? 'walk' : A.pose || 'idle', dir = A.dir;
@@ -123,7 +123,7 @@ function _gllPaint(A) {
   const crouch = A.sneakUntil > Date.now() && A.moving ? 0.93 : 1;   // clock-ok: a creep (the net's creep up on a bug)
   A.inner.setAttribute('transform', `scale(${dir === 'e' && A.face < 0 ? -GL_ACT_SCALE : GL_ACT_SCALE} ${GL_ACT_SCALE * crouch})`);
 }
-function _gllPose(A, pose, ms) { A.pose = pose; A.poseUntil = Date.now() + (ms || 900); A.key = ''; _gllPaint(A); setTimeout(() => { if (A.inner) _gllPaint(A); }, (ms || 900) + 30); }  // clock-ok: how long a pose lasts
+function _gllPose(A, pose, ms) { A.pose = pose; A.poseUntil = Date.now() + (ms || 900); A.key = ''; _gllPaint(A); setTimeout(() => { if (_gll.actors.get(A.w) === A && A.inner && A.inner.isConnected) _gllPaint(A); }, (ms || 900) + 30); }  // clock-ok: how long a pose lasts
 /** Walk there. Destinations only: the walking is worked out on each side, or the host says which way round the beds (_gllWalkVia). */
 function _gllWalkTo(A, x, y, then) { if (typeof _gllPhotoClear === 'function') _gllPhotoClear(A); A.tx = x; A.ty = y; A.gx = x; A.gy = y; A.way = null; A.then = then || null; if (A.sit) { A.sit = false; _gllEmoteStop(A); } }
 /** The same with the turns on the way: [[x, y], ...], then there. What they were going to do on arrival still happens. */

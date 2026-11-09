@@ -21,7 +21,7 @@
      gardenLiveGoalSkip()          the host lets this one go
      _glgCount(w, c, n)            the host counts something somebody did (w is a slot, 0 the host)
    ============================================================ */
-const _glg = { cur: null, view: null, seen: new Set(), done: new Set(), lastC: '', endAt: 0, arriveAt: 0, tickT: 0, sendT: 0, sentAt: 0, started: { day: '', n: 0 }, hideT: 0, resendT: [], sig: '', paintT: 0, attention: null };
+const _glg = { cur: null, view: null, seen: new Set(), done: new Set(), lastC: '', endAt: 0, arriveAt: 0, tickT: 0, sendT: 0, sentAt: 0, started: { day: '', n: 0 }, hideT: 0, resendT: [], sig: '', paintT: 0, attention: null, details: '' };
 
 /* ---------- the host ---------- */
 function gardenLiveGoalsOn() { try { return ((_gdG().prefs || {}).glGoals) !== false; } catch (e) { return true; } }
@@ -285,7 +285,8 @@ function gardenLiveGoalSummary(el) {
   if (_gll.role === 'host' && v.st === 0) section.appendChild(_gdpBtn('Skip this shared goal', { kind: 'btn-ghost', run: () => { gardenLiveGoalSkip(); if (typeof gardenPopupRefresh === 'function') gardenPopupRefresh(); } }));
   el.appendChild(section);
 }
-/** The card: one element, kept, with its parts updated in place (so the bar slides and nothing replays). */
+/** A quiet progress chip; contributions and actions open only on request.
+ * Expansion is local to the currently visible goal and never changes its state. */
 function gardenLiveGoalPaint(boxArg) {
   const popup = typeof _gdp !== 'undefined' && _gdp.pop;
   if (popup && popup.tab === 'goals' && popup.el.isConnected && typeof gardenPopupRefresh === 'function') {
@@ -301,30 +302,51 @@ function gardenLiveGoalPaint(boxArg) {
   else if (!here && _glg.paintT) { clearInterval(_glg.paintT); _glg.paintT = 0; _glg.attention = null; }
   if (!box || !box.isConnected) return;
   let el = box.querySelector(':scope > .glg');
-  if (!here || !_glgRelevant(v)) { if (el) el.remove(); _glg.sig = ''; return; }
+  if (!here || !_glgRelevant(v)) { if (el) el.remove(); _glg.sig = ''; _glg.details = ''; return; }
+  const expanded = _glg.details === v.g;
   const me = _gll.role === 'host' ? 0 : _glv.w, nameOf = (w) => (w === me ? 'You' : String((_gll.actors.get(w) || {}).n || 'A friend').split(/\s+/)[0]);
   const parts = Object.entries(v.by).map(([w, n]) => [Number(w), n]).sort((a, b) => b[1] - a[1] || a[0] - b[0]);
-  const sig = [v.g, v.n, v.of, v.st, _gll.role, parts.map(([w, n]) => w + ':' + n + ':' + nameOf(w)).join(',')].join('|');
+  const sig = [v.g, v.n, v.of, v.st, _gll.role, expanded, parts.map(([w, n]) => w + ':' + n + ':' + nameOf(w)).join(',')].join('|');
   if (el && _glg.sig === sig) return;
   _glg.sig = sig;
   if (!el) {
     el = _gsvEl('div', 'glg');
     el.setAttribute('role', 'group');
-    const top = _gsvEl('div', 'glg-top'), ic = _gsvEl('span', 'glg-ic'), t = _gsvEl('b', 'glg-t'), n = _gsvEl('span', 'glg-n');
-    n.setAttribute('aria-live', 'polite');
-    const skip = _gsvBtn('', { icon: 'x', cls: 'glg-skip', kind: 'btn-ghost', aria: 'Skip this goal', tip: 'Skip this goal', run: () => gardenLiveGoalSkip() });
+    const top = _gsvEl('button', 'glg-top glg-toggle'), ic = _gsvEl('span', 'glg-ic'), t = _gsvEl('b', 'glg-t'), n = _gsvEl('span', 'glg-n'), chevron = _gsvEl('span', 'glg-chevron');
+    top.type = 'button'; ic.setAttribute('aria-hidden', 'true'); chevron.setAttribute('aria-hidden', 'true');
+    n.setAttribute('aria-live', 'polite'); n.setAttribute('aria-atomic', 'true');
+    const details = _gsvEl('div', 'glg-details');
+    const setExpanded = (show, restoreFocus) => {
+      if (!_glg.view || _glg.view.g !== el._goal) return;
+      const next = show ? el._goal : ''; if (_glg.details === next) return;
+      _glg.details = next; gardenLiveGoalPaint(box);
+      if (restoreFocus && top.isConnected) top.focus({ preventScroll: true });
+    };
+    top.onclick = (event) => { event.stopPropagation(); setExpanded(_glg.details !== el._goal, false); };
+    const hide = _gsvBtn('Hide details', { icon: 'chevron-up', cls: 'glg-collapse', kind: 'btn-ghost', aria: 'Hide shared goal details', run: () => setExpanded(false, true) });
+    const skip = _gsvBtn('Skip this goal', { cls: 'glg-skip', kind: 'btn-ghost', aria: 'Skip this shared goal', tip: 'Skip this shared goal', run: () => gardenLiveGoalSkip() });
     const bar = _gsvEl('div', 'glg-bar'), fill = _gsvEl('i');
     bar.setAttribute('role', 'progressbar'); bar.setAttribute('aria-valuemin', '0'); bar.appendChild(fill);
-    const who = _gsvEl('div', 'glg-who');
-    top.append(ic, t, n, skip); el.append(top, bar, who);
-    el._r = { ic, t, n, skip, bar, fill, who };
+    const who = _gsvEl('div', 'glg-who'), actions = _gsvEl('div', 'glg-actions');
+    actions.append(hide, skip); details.append(bar, who, actions);
+    top.append(ic, t, n, chevron); el.append(top, details);
+    el._r = { top, ic, t, n, chevron, details, skip, bar, fill, who };
     box.appendChild(el);
   }
   const r = el._r, done = v.st === 1, cap = glGoalCap(v.of);
+  el._goal = v.g;
   el.classList.toggle('is-done', done);
+  el.classList.toggle('is-expanded', expanded);
+  r.details.id = 'glg-details-' + v.g;
+  r.details.hidden = !expanded;
+  r.top.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+  r.top.setAttribute('aria-controls', r.details.id);
+  r.top.setAttribute('aria-label', 'Shared goal: ' + _glgText(def, v, done) + ', ' + v.n + ' of ' + v.of + ' together. ' + (done ? 'Complete. ' : '') + (expanded ? 'Hide details' : 'Show details'));
+  r.chevron.innerHTML = icon(expanded ? 'chevron-up' : 'chevron-down');
   r.ic.innerHTML = icon(def.icon);   // (a fixed icon name from the table)
   r.t.textContent = _glgText(def, v, done);
   r.n.textContent = v.n + '/' + v.of;
+  r.n.setAttribute('aria-label', v.n + ' of ' + v.of + ' together');
   r.skip.hidden = _gll.role !== 'host' || done;
   r.bar.setAttribute('aria-valuemax', String(v.of)); r.bar.setAttribute('aria-valuenow', String(v.n)); r.bar.setAttribute('aria-label', _glgText(def, v));
   r.fill.style.width = Math.round(v.n / v.of * 100) + '%';

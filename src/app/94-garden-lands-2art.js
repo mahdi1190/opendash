@@ -564,7 +564,53 @@ function _gldDraw(kind, p, sc, o) {
 }
 /* A physical boundary with stone posts and a wooden gate. Exact requirements
  * stay in its inspection panel. The way through is across the screen or up it. */
+function _gldIslandGateArt(g, sc, open) {
+  const A = GART, W = GARDEN_WORLD, St = GART_PAL.stone;
+  const winter = sc.season === 'winter', wood = winter ? ['#655a4b', '#958671', '#c4b69d'] : ['#705431', '#a18655', '#d1b780'];
+  const leaf = winter ? '#829383' : sc.season === 'autumn' ? '#a98048' : '#63875a';
+  const post = (x, y, k) => A.P('#25382b', A.ell(x + 3, y + 1, 9 * k, 3 * k), .18)
+    + A.P(St[0], A.rrect(x - 6 * k, y - 47 * k, 12 * k, 47 * k, 1.8))
+    + A.P(St[1], A.rrect(x - 4.6 * k, y - 46 * k, 8.6 * k, 44 * k, 1.2))
+    + A.P(St[2], A.rect(x - 4 * k, y - 44 * k, 2.2 * k, 41 * k), .8)
+    + A.S(St[0], .7, `M${_gwN(x - 4 * k)} ${_gwN(y - 16 * k)}h${_gwN(8 * k)}M${_gwN(x - 4 * k)} ${_gwN(y - 32 * k)}h${_gwN(8 * k)}`, .65)
+    + A.P(St[3], A.rrect(x - 8 * k, y - 51 * k, 16 * k, 5 * k, 1.5));
+  const arch = (a, b) => {
+    const ax = a.x, ay = a.y - 49 * a.k, bx = b.x, by = b.y - 49 * b.k, mx = (ax + bx) / 2, my = (ay + by) / 2 - 15;
+    const d = `M${_gwN(ax)} ${_gwN(ay)}Q${_gwN(mx)} ${_gwN(my)} ${_gwN(bx)} ${_gwN(by)}`;
+    return A.S(St[0], 8, d) + A.S(St[1], 5.8, d) + A.S(St[3], 1, `M${_gwN(ax)} ${_gwN(ay - 2)}Q${_gwN(mx)} ${_gwN(my - 2)} ${_gwN(bx)} ${_gwN(by - 2)}`, .85)
+      + A.P(leaf, A.leaf(ax + 2, ay - 1, .3, 8, 3) + A.leaf(bx - 3, by - 2, 2.4, 7, 2.5), .9);
+  };
+  const latch = (x, y) => A.P(wood[0], A.rrect(x - 5, y - 6, 10, 11, 1.4))
+    + A.S(wood[2], 1.5, `M${_gwN(x - 2.5)} ${_gwN(y - 2)}v-2.5a2.5 2.5 0 0 1 5 0v2.5`)
+    + A.P(wood[2], A.rrect(x - 3, y - 2.2, 6, 4.7, .8));
+  if (g.dx) {
+    const x = (g.dx > 0 ? g.x : g.x + 1) * W.cellW, by = W.sky + (g.y + g.h) * W.cellH - 2, skew = 7 + g.h * 5;
+    const a = { x: x - skew, y: by - g.h * W.cellH + 8, k: .84 }, b = { x: x + skew, y: by, k: 1 };
+    let s = post(a.x, a.y, a.k) + arch(a, b);
+    if (!open) {
+      let boards = '';
+      for (let i = 1, n = g.h * 5; i < n; i++) { const t = i / n, px = a.x + (b.x - a.x) * t, py = a.y + (b.y - a.y) * t; boards += A.rrect(px - 2.6, py - 28, 5.2, 28, .9); }
+      const rail = h => `M${_gwN(a.x)} ${_gwN(a.y - h * a.k)}L${_gwN(b.x)} ${_gwN(b.y - h)}`;
+      s += A.P(wood[1], boards) + A.S(wood[0], 3, rail(22) + rail(8)) + A.S(wood[2], .8, rail(23)) + latch((a.x + b.x) / 2, (a.y + b.y) / 2 - 16);
+    } else {
+      const dx = g.dx > 0 ? -20 : 20;
+      s += A.S(wood[0], 2.8, `M${_gwN(b.x)} ${_gwN(b.y - 22)}l${dx} -6M${_gwN(b.x)} ${_gwN(b.y - 8)}l${dx} -6`);
+    }
+    return s + post(b.x, b.y, b.k);
+  }
+  const x = (g.x + .5) * W.cellW, y = W.sky + (g.dy > 0 ? g.y : g.y + 1) * W.cellH - 1, hw = 19;
+  const a = { x: x - hw, y, k: 1 }, b = { x: x + hw, y, k: 1 };
+  let s = arch(a, b);
+  if (!open) {
+    let boards = '';
+    for (let i = -2; i <= 2; i++) boards += A.rrect(x + i * 6 - 2.6, y - 29 + Math.abs(i), 5.2, 28 - Math.abs(i), .9);
+    s += A.P(wood[1], boards) + A.S(wood[0], 3, `M${_gwN(x - hw)} ${_gwN(y - 22)}h38M${_gwN(x - hw)} ${_gwN(y - 8)}h38`)
+      + A.S(wood[2], .9, `M${_gwN(x - hw)} ${_gwN(y - 23)}h38`) + latch(x, y - 16);
+  } else s += A.S(wood[0], 2.8, `M${_gwN(x - hw)} ${_gwN(y - 22)}l-13 6M${_gwN(x - hw)} ${_gwN(y - 8)}l-13 6M${_gwN(x + hw)} ${_gwN(y - 22)}l13 6M${_gwN(x + hw)} ${_gwN(y - 8)}l13 6`);
+  return s + post(a.x, a.y, 1) + post(b.x, b.y, 1);
+}
 function _gldGateArt(g, sc, open) {
+  if (typeof gardenIslandActive === 'function' && gardenIslandActive()) return _gldIslandGateArt(g, sc, open);
   const A = GART, W = GARDEN_WORLD, St = GART_PAL.stone, wood = sc.season === 'winter' ? ['#6a5a48', '#8f7c66', '#b09c86'] : ['#6e4c2a', '#9a7244', '#c9a26c'], ivy = sc.season === 'winter' ? '#7c8c74' : sc.season === 'autumn' ? '#a4742e' : '#4f8a44';
   const post = (x, y, k) => `<path fill="#1a2a14" fill-opacity="0.2" d="${A.ell(x + 2, y + 1, 7 * k, 2.2 * k)}"/>` + A.P(St[1], A.rrect(x - 5 * k, y - 27 * k, 10 * k, 27 * k, 1.5)) + A.P(St[2], A.rrect(x - 3.4 * k, y - 25 * k, 3 * k, 23 * k, 1)) + A.P(St[3], A.rrect(x - 6.5 * k, y - 31 * k, 13 * k, 5 * k, 1.8)) + A.P(St[0], A.circ(x, y - 33 * k, 3 * k)) + A.P(ivy, A.leaf(x - 3 * k, y - 12 * k, 2.2, 6 * k, 2) + A.leaf(x + 3 * k, y - 20 * k, 0.6, 6 * k, 2) + A.leaf(x + 2 * k, y - 6 * k, 1.1, 6 * k, 2));
   if (g.dx) {   // the way through is across the screen: the gate runs up the screen, the far post behind
@@ -596,11 +642,11 @@ function _gldSiteArt(f) {
     + A.P('#d1c398', A.rect(cx - 8.5, by - 9, .9, 7) + A.rect(cx + 7.5, by - 9, .9, 7));
 }
 function gardenLandWorldProps(sc, o) {
-  const out = [], open = new Set(sc.areas || []), lv = sc.lv == null ? 1 : sc.lv;
+  const out = [], open = new Set(sc.areas || []), lv = sc.lv == null ? 1 : sc.lv, island = typeof gardenIslandActive === 'function' && gardenIslandActive(), physical = island ? new Map(gardenPropsNow().map(p => [p.id, p])) : null;
   const push = (cls, z, x, inner, key) => { if (inner) out.push({ cls, z, x, inner, key }); };
   push('gd-prop-lf gd-prop-click', GARDEN_LAND_OFFICE.y + 1, GARDEN_LAND_OFFICE.x, _gldDraw('office', GARDEN_LAND_OFFICE, sc, o), GARDEN_LAND_OFFICE.id);
-  if (open.has('finds') && !open.has('lf-museum')) push('gd-prop-lf gd-prop-click', GARDEN_LAND_FINDS.y + 1, GARDEN_LAND_FINDS.x, _gldDraw('finds', GARDEN_LAND_FINDS, sc, o), GARDEN_LAND_FINDS.id);
-  for (const d of GARDEN_LAND_SIGHTS) push('gd-prop-lf gd-prop-click', d.y + d.h, d.x, _gldDraw(d.art, d, sc, o), d.id);
+  if ((!physical || physical.has(GARDEN_LAND_FINDS.id)) && open.has('finds') && !open.has('lf-museum')) push('gd-prop-lf gd-prop-click', GARDEN_LAND_FINDS.y + 1, GARDEN_LAND_FINDS.x, _gldDraw('finds', GARDEN_LAND_FINDS, sc, o), GARDEN_LAND_FINDS.id);
+  for (const sourceSight of GARDEN_LAND_SIGHTS) { const d = physical ? physical.get(sourceSight.id) : sourceSight; if (d) push('gd-prop-lf gd-prop-click', d.y + d.h, d.x, _gldDraw(d.art, d, sc, o), d.id); }
   // Landmark arches describe the regions. Smaller functional gates mark only
   // the next reachable closed boundary; saved custom gate artwork is retained.
   for (const g of GARDEN_ZONE_GATES) {
@@ -611,8 +657,9 @@ function gardenLandWorldProps(sc, o) {
   const occ = new Set();
   for (const p of sc.plants || []) occ.add(p.x + ',' + p.y);
   for (const d of sc.decor || []) { const dd = gardenDecor(d.id); if (dd && dd.layer !== 'ground') occ.add(d.x + ',' + d.y); }
-  for (const f of GARDEN_LAND_FEATURES) {
-    if (f.x == null) continue;
+  for (const sourceFeature of GARDEN_LAND_FEATURES) {
+    const f = island ? typeof gardenFeatureRow === 'function' && gardenFeatureRow(sourceFeature) : sourceFeature;
+    if (!f || f.x == null) continue;
     if (open.has(f.id)) {
       if (f.does === 'maze') {
         for (const r of _gldMazeRects(f)) {
@@ -621,11 +668,11 @@ function gardenLandWorldProps(sc, o) {
         }
         continue;
       }
-      if (f.does === 'lamps') for (const x of GARDEN_LAND_LAMPS) push('gd-prop-lf', 19.3, x, _gldDraw('lamp', { x, y: 19, w: 1, h: 0.4 }, sc, o), 'lf-lamp-' + x);
+      if (!island && f.does === 'lamps') for (const x of GARDEN_LAND_LAMPS) push('gd-prop-lf', 19.3, x, _gldDraw('lamp', { x, y: 19, w: 1, h: 0.4 }, sc, o), 'lf-lamp-' + x);
       push('gd-prop-lf gd-prop-click', f.y + f.h, f.x, _gldDraw(f.art, f, sc, o), f.id);
       continue;
     }
-    if (!o.interactive || o.photo || o.readOnly || f.prize || (typeof gardenVisitOn === 'function' && gardenVisitOn())) continue;
+    if (island || !o.interactive || o.photo || o.readOnly || f.prize || (typeof gardenVisitOn === 'function' && gardenVisitOn())) continue;
     if (f.sec && !open.has(f.sec)) continue;
     { const n = gardenZoneOf(f.x, f.y); if (n && !open.has('zn-' + n)) continue; }   // only in a zone that is open
     if (occ.has(f.x + ',' + f.y) || f.lv > lv) continue;   // (a spot shows once you could build on it; the land office lists what comes later)
@@ -641,16 +688,19 @@ function gardenLandSiteProp(id) {
   return { id: 'site:' + f.id, name: f.name, x: f.x, y: f.y, w: f.w, h: f.h, col: 'none', act: 'lf', lf: f.id, site: 1, door: f.door };
 }
 function gardenLandLights(sc) {
-  const W = GARDEN_WORLD, open = new Set(sc.areas || []), out = [];
-  if (open.has('lf-lamps')) for (const x of GARDEN_LAND_LAMPS) out.push({ x: (x + 0.65) * W.cellW, y: W.sky + 19 * W.cellH - 8, r: 62 });
-  for (const d of GARDEN_LAND_SIGHTS) if (d.art === 'lamp' || d.art === 'lighthouse') out.push({ x: (d.x + 0.65) * W.cellW, y: W.sky + d.y * W.cellH - (d.art === 'lighthouse' ? 60 : 8), r: 62 });
-  if (open.has('lf-moon')) { const f = gardenLandFeature('lf-moon'); out.push({ x: (f.x + 0.5) * W.cellW, y: W.sky + f.y * W.cellH, r: 56 }); }
+  const W = GARDEN_WORLD, open = new Set(sc.areas || []), out = [], island = typeof gardenIslandActive === 'function' && gardenIslandActive(), physical = island ? new Map(gardenPropsNow().map(p => [p.id, p])) : null;
+  if (open.has('lf-lamps')) {
+    if (island) { const f = physical.has('lf-lamps') && gardenLandFeature('lf-lamps'); if (f) out.push({ x: (f.x + .5) * W.cellW, y: W.sky + (f.y + (f.h || 1)) * W.cellH - 8, r: 62 }); }
+    else for (const x of GARDEN_LAND_LAMPS) out.push({ x: (x + 0.65) * W.cellW, y: W.sky + 19 * W.cellH - 8, r: 62 });
+  }
+  for (const source of GARDEN_LAND_SIGHTS) { const d = physical ? physical.get(source.id) : source; if (d && (d.art === 'lamp' || d.art === 'lighthouse')) out.push({ x: (d.x + 0.65) * W.cellW, y: W.sky + d.y * W.cellH - (d.art === 'lighthouse' ? 60 : 8), r: 62 }); }
+  if (open.has('lf-moon') && (!physical || physical.has('lf-moon'))) { const f = gardenLandFeature('lf-moon'); out.push({ x: (f.x + 0.5) * W.cellW, y: W.sky + f.y * W.cellH, r: 56 }); }
   return out;
 }
 /** The land on the little map: open land in its colour, paths pale, closed land and thicket dark. Rows of cells joined up. */
 function gardenLandMini(open, season) {
   let s = '';
-  const colOf = (c, x, y) => (c.lane ? (gardenZoneOf(x, y) && !open.has('zn-' + gardenZoneOf(x, y)) ? 'rgba(40,40,30,.55)' : '#e3d3a2') : c.trail && gardenZoneOf(x, y) && !open.has('zn-' + gardenZoneOf(x, y)) ? 'rgba(40,40,30,.55)' : c.solid ? 'rgba(30,50,26,.75)' : !open.has(c.id) ? 'rgba(40,40,30,.55)' : c.trail ? '#efe2b4' : _gdrTileCol(c.tile, season));
+  const colOf = (c, x, y) => (c.lane ? (gardenZoneOf(x, y) && !open.has('zn-' + gardenZoneOf(x, y)) ? 'rgba(40,40,30,.55)' : '#e3d3a2') : c.trail && gardenZoneOf(x, y) && !open.has('zn-' + gardenZoneOf(x, y)) ? 'rgba(40,40,30,.55)' : c.solid ? 'rgba(30,50,26,.75)' : c.id !== 'lawn' && !open.has(c.id) ? 'rgba(40,40,30,.55)' : c.trail ? '#efe2b4' : _gdrTileCol(c.tile, season));
   for (let y = 0; y < GARDEN_WORLD.rows; y++) {
     let x = 0;
     while (x < GARDEN_WORLD.cols) {

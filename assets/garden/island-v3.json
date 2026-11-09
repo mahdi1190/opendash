@@ -1,0 +1,9714 @@
+{
+  "id": "island-v3-52x56",
+  "version": 3,
+  "world": {
+    "v": 3,
+    "cols": 52,
+    "rows": 56,
+    "cellW": 48,
+    "cellH": 30,
+    "sky": 150,
+    "unit": 64,
+    "ox": 12,
+    "oy": 8,
+    "start": {
+      "x": 22,
+      "y": 17
+    },
+    "roomX": 53
+  },
+  "anchors": {
+    "heart": {
+      "x": 16,
+      "y": 13
+    },
+    "bed": {
+      "x": 15,
+      "y": 13,
+      "w": 7,
+      "h": 4
+    },
+    "start": {
+      "x": 22,
+      "y": 17
+    }
+  },
+  "coast": {
+    "land": [
+      [
+        [
+          14,
+          3.625
+        ],
+        [
+          16,
+          3.375
+        ],
+        [
+          18,
+          3.25
+        ],
+        [
+          20,
+          3.25
+        ],
+        [
+          22,
+          3.375
+        ],
+        [
+          24,
+          3.625
+        ],
+        [
+          25.875,
+          3.75
+        ],
+        [
+          27.625,
+          3.75
+        ],
+        [
+          29.25,
+          3.625
+        ],
+        [
+          30.75,
+          3.375
+        ],
+        [
+          32.3125,
+          3.3125
+        ],
+        [
+          33.9375,
+          3.4375
+        ],
+        [
+          35.625,
+          3.75
+        ],
+        [
+          37.375,
+          4.25
+        ],
+        [
+          38.875,
+          4.8125
+        ],
+        [
+          40.125,
+          5.4375
+        ],
+        [
+          41.125,
+          6.125
+        ],
+        [
+          41.875,
+          6.875
+        ],
+        [
+          42.6875,
+          7.6875
+        ],
+        [
+          43.5625,
+          8.5625
+        ],
+        [
+          44.5,
+          9.5
+        ],
+        [
+          45.5,
+          10.5
+        ],
+        [
+          46.3125,
+          11.6875
+        ],
+        [
+          46.9375,
+          13.0625
+        ],
+        [
+          47.375,
+          14.625
+        ],
+        [
+          47.625,
+          16.375
+        ],
+        [
+          47.6875,
+          17.9375
+        ],
+        [
+          47.5625,
+          19.3125
+        ],
+        [
+          47.25,
+          20.5
+        ],
+        [
+          46.75,
+          21.5
+        ],
+        [
+          46.5,
+          22.5625
+        ],
+        [
+          46.5,
+          23.6875
+        ],
+        [
+          46.75,
+          24.875
+        ],
+        [
+          47.25,
+          26.125
+        ],
+        [
+          47.4375,
+          27.375
+        ],
+        [
+          47.3125,
+          28.625
+        ],
+        [
+          46.875,
+          29.875
+        ],
+        [
+          46.125,
+          31.125
+        ],
+        [
+          45.25,
+          32.1875
+        ],
+        [
+          44.25,
+          33.0625
+        ],
+        [
+          43.125,
+          33.75
+        ],
+        [
+          41.875,
+          34.25
+        ],
+        [
+          40.6875,
+          34.875
+        ],
+        [
+          39.5625,
+          35.625
+        ],
+        [
+          38.5,
+          36.5
+        ],
+        [
+          37.5,
+          37.5
+        ],
+        [
+          36.4375,
+          38.1875
+        ],
+        [
+          35.3125,
+          38.5625
+        ],
+        [
+          34.125,
+          38.625
+        ],
+        [
+          32.875,
+          38.375
+        ],
+        [
+          31.875,
+          37.8125
+        ],
+        [
+          31.125,
+          36.9375
+        ],
+        [
+          30.625,
+          35.75
+        ],
+        [
+          30.375,
+          34.25
+        ],
+        [
+          30.0625,
+          33
+        ],
+        [
+          29.6875,
+          32
+        ],
+        [
+          29.25,
+          31.25
+        ],
+        [
+          28.75,
+          30.75
+        ],
+        [
+          28.125,
+          30.375
+        ],
+        [
+          27.375,
+          30.125
+        ],
+        [
+          26.5,
+          30
+        ],
+        [
+          25.5,
+          30
+        ],
+        [
+          24.5625,
+          30.25
+        ],
+        [
+          23.6875,
+          30.75
+        ],
+        [
+          22.875,
+          31.5
+        ],
+        [
+          22.125,
+          32.5
+        ],
+        [
+          21.3125,
+          33.625
+        ],
+        [
+          20.4375,
+          34.875
+        ],
+        [
+          19.5,
+          36.25
+        ],
+        [
+          18.5,
+          37.75
+        ],
+        [
+          17.4375,
+          38.6875
+        ],
+        [
+          16.3125,
+          39.0625
+        ],
+        [
+          15.125,
+          38.875
+        ],
+        [
+          13.875,
+          38.125
+        ],
+        [
+          12.625,
+          37.5
+        ],
+        [
+          11.375,
+          37
+        ],
+        [
+          10.125,
+          36.625
+        ],
+        [
+          8.875,
+          36.375
+        ],
+        [
+          7.75,
+          35.9375
+        ],
+        [
+          6.75,
+          35.3125
+        ],
+        [
+          5.875,
+          34.5
+        ],
+        [
+          5.125,
+          33.5
+        ],
+        [
+          4.625,
+          32.4375
+        ],
+        [
+          4.375,
+          31.3125
+        ],
+        [
+          4.375,
+          30.125
+        ],
+        [
+          4.625,
+          28.875
+        ],
+        [
+          4.6875,
+          27.625
+        ],
+        [
+          4.5625,
+          26.375
+        ],
+        [
+          4.25,
+          25.125
+        ],
+        [
+          3.75,
+          23.875
+        ],
+        [
+          3.5,
+          22.625
+        ],
+        [
+          3.5,
+          21.375
+        ],
+        [
+          3.75,
+          20.125
+        ],
+        [
+          4.25,
+          18.875
+        ],
+        [
+          4.5625,
+          17.625
+        ],
+        [
+          4.6875,
+          16.375
+        ],
+        [
+          4.625,
+          15.125
+        ],
+        [
+          4.375,
+          13.875
+        ],
+        [
+          4.375,
+          12.6875
+        ],
+        [
+          4.625,
+          11.5625
+        ],
+        [
+          5.125,
+          10.5
+        ],
+        [
+          5.875,
+          9.5
+        ],
+        [
+          6.6875,
+          8.5
+        ],
+        [
+          7.5625,
+          7.5
+        ],
+        [
+          8.5,
+          6.5
+        ],
+        [
+          9.5,
+          5.5
+        ],
+        [
+          10.75,
+          4.6875
+        ],
+        [
+          12.25,
+          4.0625
+        ]
+      ]
+    ],
+    "oceanBounds": {
+      "x": 0,
+      "y": 0,
+      "w": 52,
+      "h": 56
+    },
+    "visualOceanBounds": {
+      "x": -12,
+      "y": -12,
+      "w": 76,
+      "h": 80
+    },
+    "beachWidthPx": 84
+  },
+  "freshwater": [
+    {
+      "id": "pond",
+      "area": {
+        "x": 34,
+        "y": 8,
+        "w": 6,
+        "h": 4
+      },
+      "wet": {
+        "x": 35,
+        "y": 9,
+        "w": 4,
+        "h": 2
+      },
+      "level": 7
+    },
+    {
+      "id": "allotment-pool",
+      "area": {
+        "x": 6,
+        "y": 26,
+        "w": 6,
+        "h": 5
+      },
+      "wet": {
+        "x": 7,
+        "y": 27,
+        "w": 4,
+        "h": 3
+      },
+      "level": 7,
+      "sectionIds": [
+        "ls-lily-pool",
+        "ls-deep-pool",
+        "ls-clear-pool",
+        "ls-moon-pool",
+        "ls-sedge-pool",
+        "ls-stone-pool"
+      ]
+    }
+  ],
+  "districts": [
+    {
+      "id": "garden-core",
+      "name": "Central growing garden",
+      "bounds": {
+        "x": 13,
+        "y": 13,
+        "w": 10,
+        "h": 10
+      },
+      "level": 1,
+      "kind": "grow",
+      "role": "Preserve starterbed15,13,7x4 and heartoak16,13. Public forest corridor is a reservation through the southern edge, not a second planted plot."
+    },
+    {
+      "id": "south-grow-common",
+      "name": "Southern growing common",
+      "bounds": {
+        "x": 15,
+        "y": 23,
+        "w": 20,
+        "h": 5
+      },
+      "level": 3,
+      "kind": "grow",
+      "role": "Open growing space south of the plaza; reserve the existing-width harbour route. Section IDs/categories/ownership are aliases of earned source entitlement, never new grants."
+    },
+    {
+      "id": "plaza-village",
+      "name": "Village green and northern shopfronts",
+      "bounds": {
+        "x": 9,
+        "y": 10,
+        "w": 34,
+        "h": 13
+      },
+      "areas": [
+        {
+          "x": 9,
+          "y": 10,
+          "w": 34,
+          "h": 6
+        },
+        {
+          "x": 23,
+          "y": 13,
+          "w": 13,
+          "h": 9
+        }
+      ],
+      "level": 1,
+      "kind": "public",
+      "role": "Buildings face south toward the central garden/plaza. Actual222px facades occupy a reserved rear envelope rather than growing plots; wide separated front aprons join a calm loop."
+    },
+    {
+      "id": "west-woods",
+      "name": "Quiet western woodland",
+      "bounds": {
+        "x": 6,
+        "y": 16,
+        "w": 7,
+        "h": 10
+      },
+      "level": 4,
+      "kind": "forest",
+      "role": "One woodland entry off the public loop; trees and one rest pocket, with public beach bypass. Existing category/ownership capacities must be resolved with the migration owner."
+    },
+    {
+      "id": "orchard-headland",
+      "name": "Eastern orchard walk",
+      "bounds": {
+        "x": 35,
+        "y": 14,
+        "w": 4,
+        "h": 10
+      },
+      "level": 5,
+      "kind": "orchard",
+      "role": "A narrow quiet growing district between central plaza and hall. Keep its route reservations distinct; capacity must preserve earned orchard sections, using other canonical legal orchard cells if necessary."
+    },
+    {
+      "id": "southwest-ruins",
+      "name": "Southwestern ruined lookout",
+      "bounds": {
+        "x": 8,
+        "y": 27,
+        "w": 10,
+        "h": 9
+      },
+      "level": 9,
+      "kind": "ruin",
+      "role": "One generous tower scene on the southwestern headland, separate from shops and forest. Approach the southern landing around, not through, the tower."
+    },
+    {
+      "id": "pond-grove",
+      "name": "Freshwater pond grove",
+      "bounds": {
+        "x": 34,
+        "y": 7,
+        "w": 9,
+        "h": 10
+      },
+      "level": 7,
+      "kind": "pond",
+      "role": "Retain existing freshwater wet cells35,9,4x2 and falls connection. Tackle shop is to the east; no fake grassy island or decorative sea connection."
+    },
+    {
+      "id": "east-hall",
+      "name": "Collection hall approach",
+      "bounds": {
+        "x": 39,
+        "y": 17,
+        "w": 6,
+        "h": 6
+      },
+      "level": 1,
+      "kind": "public",
+      "role": "Useful hall with its own clear apron, separated from the main shops."
+    },
+    {
+      "id": "east-mill",
+      "name": "Old mill coast",
+      "bounds": {
+        "x": 39,
+        "y": 25,
+        "w": 6,
+        "h": 8
+      },
+      "level": 7,
+      "kind": "mill",
+      "role": "One quiet work destination near the coast, approached along an open branch."
+    },
+    {
+      "id": "harbour-bay",
+      "name": "South-facing ocean harbour",
+      "bounds": {
+        "x": 20,
+        "y": 28,
+        "w": 13,
+        "h": 13
+      },
+      "level": 1,
+      "kind": "harbour",
+      "role": "The mainland curls around an open ocean bay; the main pier crosses the actual coast and reaches the same exterior ocean."
+    }
+  ],
+  "static": [
+    {
+      "id": "pier",
+      "x": 25,
+      "y": 28,
+      "w": 3,
+      "h": 5,
+      "col": "none",
+      "walk": 1,
+      "door": {
+        "x": 26,
+        "y": 27
+      },
+      "level": 1,
+      "needs": null,
+      "tall": null,
+      "district": "harbour-bay"
+    },
+    {
+      "id": "pier-2",
+      "x": 25,
+      "y": 33,
+      "w": 3,
+      "h": 4,
+      "col": "none",
+      "walk": 1,
+      "door": null,
+      "level": 3,
+      "needs": "pier-2",
+      "tall": null,
+      "district": "harbour-bay"
+    },
+    {
+      "id": "pier-3",
+      "x": 25,
+      "y": 37,
+      "w": 3,
+      "h": 4,
+      "col": "none",
+      "walk": 1,
+      "door": null,
+      "level": 7,
+      "needs": "pier-3",
+      "tall": null,
+      "district": "harbour-bay"
+    },
+    {
+      "id": "garden-shop",
+      "x": 10,
+      "y": 12,
+      "w": 3,
+      "h": 1,
+      "col": "full",
+      "walk": false,
+      "door": {
+        "x": 11,
+        "y": 13
+      },
+      "level": 1,
+      "needs": null,
+      "tall": 2.8,
+      "district": "plaza-village",
+      "apron": {
+        "x": 9,
+        "y": 13,
+        "w": 5,
+        "h": 3
+      },
+      "rearEnvelope": {
+        "x": 9.708333333333334,
+        "y": 5.333333333333333,
+        "w": 3.6666666666666665,
+        "h": 7.933333333333334
+      }
+    },
+    {
+      "id": "land-office",
+      "x": 23,
+      "y": 11,
+      "w": 3,
+      "h": 1,
+      "col": "full",
+      "walk": false,
+      "door": {
+        "x": 24,
+        "y": 12
+      },
+      "level": 1,
+      "needs": null,
+      "tall": 2.4,
+      "district": "plaza-village",
+      "apron": {
+        "x": 22,
+        "y": 12,
+        "w": 5,
+        "h": 3
+      },
+      "rearEnvelope": {
+        "x": 22.708333333333332,
+        "y": 4.333333333333333,
+        "w": 3.6666666666666665,
+        "h": 7.933333333333334
+      }
+    },
+    {
+      "id": "tackle-shop",
+      "x": 39,
+      "y": 12,
+      "w": 3,
+      "h": 1,
+      "col": "full",
+      "walk": false,
+      "door": {
+        "x": 40,
+        "y": 13
+      },
+      "level": 1,
+      "needs": null,
+      "tall": 3,
+      "district": "plaza-village",
+      "apron": {
+        "x": 38,
+        "y": 13,
+        "w": 5,
+        "h": 3
+      },
+      "rearEnvelope": {
+        "x": 38.708333333333336,
+        "y": 5.333333333333333,
+        "w": 3.6666666666666665,
+        "h": 7.933333333333334
+      }
+    },
+    {
+      "id": "market-stall",
+      "x": 8,
+      "y": 17,
+      "w": 2,
+      "h": 1,
+      "col": "full",
+      "walk": false,
+      "door": {
+        "x": 9,
+        "y": 18
+      },
+      "level": 1,
+      "needs": null,
+      "tall": 2,
+      "district": "plaza-village",
+      "apron": {
+        "x": 7,
+        "y": 18,
+        "w": 4,
+        "h": 3
+      },
+      "rearEnvelope": {
+        "x": 7.708333333333333,
+        "y": 13.248000000000001,
+        "w": 2.6666666666666665,
+        "h": 5.018666666666666
+      }
+    },
+    {
+      "id": "notice-board",
+      "x": 27,
+      "y": 12,
+      "w": 2,
+      "h": 1,
+      "col": "full",
+      "walk": false,
+      "door": {
+        "x": 28,
+        "y": 13
+      },
+      "level": 1,
+      "needs": null,
+      "tall": 1.9,
+      "district": "plaza-village",
+      "apron": {
+        "x": 26,
+        "y": 13,
+        "w": 4,
+        "h": 3
+      },
+      "rearEnvelope": {
+        "x": 26.708333333333332,
+        "y": 8.293333333333333,
+        "w": 2.6666666666666665,
+        "h": 4.973333333333333
+      }
+    },
+    {
+      "id": "craft-bench",
+      "x": 10,
+      "y": 23,
+      "w": 2,
+      "h": 1,
+      "col": "full",
+      "walk": false,
+      "door": {
+        "x": 11,
+        "y": 24
+      },
+      "level": 1,
+      "needs": null,
+      "tall": 1.5,
+      "district": "plaza-village",
+      "apron": {
+        "x": 9,
+        "y": 24,
+        "w": 4,
+        "h": 3
+      },
+      "rearEnvelope": {
+        "x": 9.708333333333334,
+        "y": 19.962666666666667,
+        "w": 2.6666666666666665,
+        "h": 4.304
+      }
+    },
+    {
+      "id": "lake-hall",
+      "x": 40,
+      "y": 18,
+      "w": 3,
+      "h": 1,
+      "col": "full",
+      "walk": false,
+      "door": {
+        "x": 41,
+        "y": 19
+      },
+      "level": 1,
+      "needs": null,
+      "tall": 3,
+      "district": "east-hall",
+      "apron": {
+        "x": 39,
+        "y": 19,
+        "w": 5,
+        "h": 3
+      },
+      "rearEnvelope": {
+        "x": 39.708333333333336,
+        "y": 11.333333333333334,
+        "w": 3.6666666666666665,
+        "h": 7.933333333333334
+      }
+    },
+    {
+      "id": "lake-board",
+      "x": 42,
+      "y": 23,
+      "w": 1,
+      "h": 1,
+      "col": "soft",
+      "walk": false,
+      "door": {
+        "x": 42,
+        "y": 24
+      },
+      "level": 1,
+      "needs": null,
+      "tall": 1.8,
+      "district": "east-hall"
+    },
+    {
+      "id": "field-journal",
+      "x": 29,
+      "y": 17,
+      "w": 1,
+      "h": 1,
+      "col": "soft",
+      "walk": false,
+      "door": {
+        "x": 29,
+        "y": 18
+      },
+      "level": 1,
+      "needs": null,
+      "tall": 1.4,
+      "district": "plaza-village"
+    },
+    {
+      "id": "camera-tripod",
+      "x": 19,
+      "y": 31,
+      "w": 1,
+      "h": 1,
+      "col": "soft",
+      "walk": false,
+      "door": {
+        "x": 19,
+        "y": 30
+      },
+      "level": 1,
+      "needs": null,
+      "tall": 1.6,
+      "district": "harbour-bay"
+    },
+    {
+      "id": "post-box",
+      "x": 31,
+      "y": 12,
+      "w": 1,
+      "h": 1,
+      "col": "soft",
+      "walk": false,
+      "door": {
+        "x": 31,
+        "y": 13
+      },
+      "level": 1,
+      "needs": null,
+      "tall": 1.5,
+      "district": "garden-core"
+    },
+    {
+      "id": "sundial",
+      "x": 31,
+      "y": 17,
+      "w": 1,
+      "h": 1,
+      "col": "soft",
+      "walk": false,
+      "door": {
+        "x": 31,
+        "y": 18
+      },
+      "level": 1,
+      "needs": null,
+      "tall": 1.4,
+      "district": "plaza-village"
+    },
+    {
+      "id": "smoker",
+      "x": 38,
+      "y": 29,
+      "w": 1,
+      "h": 1,
+      "col": "soft",
+      "walk": false,
+      "door": {
+        "x": 38,
+        "y": 30
+      },
+      "level": 1,
+      "needs": "smoker",
+      "tall": 1.5,
+      "district": "east-mill"
+    },
+    {
+      "id": "old-angler",
+      "x": 29,
+      "y": 29,
+      "w": 1,
+      "h": 1,
+      "col": "none",
+      "walk": false,
+      "door": {
+        "x": 29,
+        "y": 28.5
+      },
+      "level": 1,
+      "needs": null,
+      "tall": 1.4,
+      "district": "harbour-bay"
+    },
+    {
+      "id": "jetty-post",
+      "x": 24,
+      "y": 32,
+      "w": 1,
+      "h": 1,
+      "col": "none",
+      "walk": false,
+      "door": null,
+      "level": 1,
+      "needs": null,
+      "tall": 1,
+      "district": "harbour-bay"
+    },
+    {
+      "id": "boat",
+      "x": 23.5,
+      "y": 33,
+      "w": 1.25,
+      "h": 1,
+      "col": "none",
+      "walk": false,
+      "door": {
+        "x": 25,
+        "y": 32
+      },
+      "level": 1,
+      "needs": null,
+      "tall": 0.5,
+      "district": "harbour-bay"
+    },
+    {
+      "id": "reed-bank",
+      "x": 34,
+      "y": 10,
+      "w": 3,
+      "h": 1,
+      "col": "none",
+      "walk": false,
+      "door": null,
+      "level": 7,
+      "needs": null,
+      "tall": 0.4,
+      "district": "pond-grove"
+    },
+    {
+      "id": "ld-mill",
+      "x": 40,
+      "y": 28,
+      "w": 3,
+      "h": 1,
+      "col": "full",
+      "walk": false,
+      "door": {
+        "x": 43,
+        "y": 29
+      },
+      "level": 7,
+      "needs": null,
+      "tall": 1.9,
+      "district": "east-mill",
+      "apron": {
+        "x": 39,
+        "y": 29,
+        "w": 5,
+        "h": 3
+      }
+    },
+    {
+      "id": "ld-tower",
+      "x": 12,
+      "y": 31,
+      "w": 3,
+      "h": 1,
+      "col": "full",
+      "walk": false,
+      "door": {
+        "x": 13,
+        "y": 33
+      },
+      "level": 9,
+      "needs": null,
+      "tall": 2.4,
+      "district": "southwest-ruins",
+      "apron": {
+        "x": 11,
+        "y": 32,
+        "w": 5,
+        "h": 3
+      }
+    },
+    {
+      "id": "ld-falls",
+      "x": 38,
+      "y": 7,
+      "w": 2,
+      "h": 1,
+      "col": "full",
+      "walk": false,
+      "door": {
+        "x": 38,
+        "y": 8
+      },
+      "level": 7,
+      "needs": null,
+      "tall": 2,
+      "district": "pond-grove"
+    },
+    {
+      "id": "ld-lighthouse",
+      "x": 37,
+      "y": 35,
+      "w": 1,
+      "h": 1,
+      "col": "full",
+      "walk": false,
+      "door": {
+        "x": 37,
+        "y": 34
+      },
+      "level": 7,
+      "needs": null,
+      "tall": 3.2,
+      "district": "harbour-bay"
+    },
+    {
+      "id": "ld-hull",
+      "x": 15,
+      "y": 36,
+      "w": 2,
+      "h": 1,
+      "col": "full",
+      "walk": false,
+      "door": {
+        "x": 16,
+        "y": 35
+      },
+      "level": 1,
+      "needs": null,
+      "tall": 0.8,
+      "district": "harbour-bay"
+    },
+    {
+      "id": "ld-bench-a",
+      "x": 7,
+      "y": 22,
+      "w": 2,
+      "h": 1,
+      "col": "soft",
+      "walk": false,
+      "door": {
+        "x": 7,
+        "y": 23
+      },
+      "level": 1,
+      "needs": null,
+      "tall": 0.8,
+      "district": "west-woods"
+    },
+    {
+      "id": "ld-bench-b",
+      "x": 36,
+      "y": 22,
+      "w": 2,
+      "h": 1,
+      "col": "soft",
+      "walk": false,
+      "door": {
+        "x": 36,
+        "y": 21
+      },
+      "level": 1,
+      "needs": null,
+      "tall": 0.8,
+      "district": "plaza-village"
+    }
+  ],
+  "routes": [
+    {
+      "id": "plaza-loop",
+      "level": 1,
+      "widthCells": 3,
+      "points": [
+        [
+          23.5,
+          14.5
+        ],
+        [
+          34.5,
+          14.5
+        ],
+        [
+          34.5,
+          20.5
+        ],
+        [
+          23.5,
+          20.5
+        ],
+        [
+          23.5,
+          14.5
+        ]
+      ],
+      "public": true,
+      "zone": 0
+    },
+    {
+      "id": "garden-shop-apron-link",
+      "level": 1,
+      "widthCells": 3,
+      "points": [
+        [
+          11,
+          14.5
+        ],
+        [
+          13.5,
+          14.5
+        ],
+        [
+          13.5,
+          18.5
+        ],
+        [
+          23.5,
+          18.5
+        ]
+      ],
+      "public": true,
+      "notes": "Runs west then south of the preserved starterbed: verticalcorridor ends atx15 and horizontalcorridor beginsy17. The stall is west of this corridor. No path through the shop rear facade or starterplants.",
+      "zone": 0
+    },
+    {
+      "id": "office-apron-link",
+      "level": 1,
+      "widthCells": 3,
+      "points": [
+        [
+          24,
+          12
+        ],
+        [
+          24,
+          14.5
+        ]
+      ],
+      "public": true,
+      "zone": 0
+    },
+    {
+      "id": "tackle-apron-link",
+      "level": 1,
+      "widthCells": 3,
+      "points": [
+        [
+          40,
+          14.5
+        ],
+        [
+          34.5,
+          14.5
+        ]
+      ],
+      "public": true,
+      "zone": 0
+    },
+    {
+      "id": "garden-arrival",
+      "level": 1,
+      "widthCells": 3,
+      "points": [
+        [
+          22.5,
+          17.5
+        ],
+        [
+          23.5,
+          17.5
+        ]
+      ],
+      "public": true,
+      "zone": 0
+    },
+    {
+      "id": "harbour-walk",
+      "level": 1,
+      "widthCells": 3,
+      "points": [
+        [
+          26.5,
+          20.5
+        ],
+        [
+          26.5,
+          27.5
+        ]
+      ],
+      "public": true,
+      "zone": 0
+    },
+    {
+      "id": "hall-branch",
+      "level": 1,
+      "widthCells": 3,
+      "points": [
+        [
+          34.5,
+          20.5
+        ],
+        [
+          41.5,
+          20.5
+        ]
+      ],
+      "public": true,
+      "zone": 0
+    },
+    {
+      "id": "mill-branch",
+      "level": 7,
+      "widthCells": 3,
+      "points": [
+        [
+          34.5,
+          20.5
+        ],
+        [
+          37.5,
+          24
+        ],
+        [
+          38.5,
+          31.5
+        ],
+        [
+          43,
+          31.5
+        ]
+      ],
+      "public": true,
+      "zone": 2,
+      "gateId": "island-mill"
+    },
+    {
+      "id": "forest-spur",
+      "level": 4,
+      "widthCells": 2.5,
+      "points": [
+        [
+          23.5,
+          20.5
+        ],
+        [
+          15,
+          20
+        ],
+        [
+          6.5,
+          20
+        ],
+        [
+          6.5,
+          17
+        ]
+      ],
+      "public": false,
+      "zone": 1,
+      "gateId": "island-woods"
+    },
+    {
+      "id": "ruins-spur",
+      "level": 9,
+      "widthCells": 2.5,
+      "points": [
+        [
+          11,
+          25
+        ],
+        [
+          16.5,
+          25
+        ],
+        [
+          16.5,
+          34
+        ],
+        [
+          13,
+          34
+        ]
+      ],
+      "public": false,
+      "notes": "Approach the tower southern landing around its footprint; public coastal bypass remains outside the locked district.",
+      "zone": 3,
+      "gateId": "island-ruins"
+    },
+    {
+      "id": "coastal-walk",
+      "level": 1,
+      "widthCells": 2.5,
+      "geometry": "Inland offset of continuous canonical coast, with clear cliff/pond bypasses and district-spur joins.",
+      "public": true,
+      "notes": "Route reservation to resolve against the canonical geometry. No renderer-only stepping cells and no promise that every draft control point is already a legal in-engine route.",
+      "zone": 0
+    },
+    {
+      "id": "orchard-spur",
+      "level": 14,
+      "widthCells": 2.5,
+      "points": [
+        [
+          39.5,
+          22.5
+        ],
+        [
+          39.5,
+          24.5
+        ],
+        [
+          42.5,
+          26.5
+        ]
+      ],
+      "public": false,
+      "zone": 4,
+      "gateId": "island-orchard"
+    },
+    {
+      "id": "headland-spur",
+      "level": 18,
+      "widthCells": 1.6,
+      "points": [
+        [
+          30.5,
+          14.5
+        ],
+        [
+          30.5,
+          7.5
+        ]
+      ],
+      "public": false,
+      "zone": 5,
+      "gateId": "island-headland"
+    }
+  ],
+  "reservedSidePiers": [
+    {
+      "id": "reserved-west-pier",
+      "side": "west",
+      "level": 7,
+      "reserved": {
+        "x": 2,
+        "y": 33,
+        "w": 5,
+        "h": 2
+      },
+      "entry": {
+        "x": 7,
+        "y": 33
+      },
+      "apron": {
+        "x": 6,
+        "y": 31,
+        "w": 3,
+        "h": 3
+      },
+      "upgrades": "Reserve outward ocean length/width for later explicit construction; no default worksite marker, price or auto popup."
+    },
+    {
+      "id": "reserved-east-pier",
+      "side": "east",
+      "level": 12,
+      "reserved": {
+        "x": 44,
+        "y": 29,
+        "w": 6,
+        "h": 2
+      },
+      "entry": {
+        "x": 44,
+        "y": 30
+      },
+      "apron": {
+        "x": 41,
+        "y": 29,
+        "w": 3,
+        "h": 3
+      },
+      "upgrades": "Reserve clear seaward envelope; future optional upgrades use earned construction, not a new launch-time content pile."
+    }
+  ],
+  "beachHabitats": [
+    {
+      "id": "south-common-shore",
+      "level": 1,
+      "area": "harbour-bay / all public tideline",
+      "source": "Source catalogue shallow-water family and natural coast; do not add guaranteed arrivals or new rewards.",
+      "visibility": "Calm environmental art only; no marker/card on arrival."
+    },
+    {
+      "id": "west-rockpool",
+      "level": 3,
+      "area": "West beach near reserved-west-pier",
+      "sourceSpecies": "mud-crab",
+      "sourceRule": {
+        "zone": "shallow",
+        "level": 3,
+        "tod": [
+          "dusk",
+          "night"
+        ]
+      },
+      "note": "Existing caught-species rule, not a new terrestrial bug spawn."
+    },
+    {
+      "id": "west-summer-pool",
+      "level": 9,
+      "area": "Reserved west-pier beach after useful access opens",
+      "sourceSpecies": "fiddler-crab",
+      "sourceRule": {
+        "zone": "shallow",
+        "level": 9,
+        "seasons": [
+          "summer"
+        ],
+        "tod": [
+          "day"
+        ]
+      }
+    },
+    {
+      "id": "east-quiet-outershore",
+      "level": 12,
+      "area": "Reserved east-pier coast",
+      "source": "Place-based habitat reservation only; species/season catalogue rules must remain authoritative. No new species is created by this plan."
+    }
+  ],
+  "retainedSectionEntitlements": [
+    {
+      "id": "lc-front-bed",
+      "kind": "bed",
+      "fam": "bed",
+      "level": 1,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          16,
+          13
+        ],
+        [
+          17,
+          13
+        ],
+        [
+          18,
+          13
+        ],
+        [
+          19,
+          13
+        ],
+        [
+          20,
+          13
+        ],
+        [
+          21,
+          13
+        ],
+        [
+          22,
+          13
+        ],
+        [
+          16,
+          14
+        ],
+        [
+          17,
+          14
+        ],
+        [
+          18,
+          14
+        ],
+        [
+          19,
+          14
+        ],
+        [
+          20,
+          14
+        ],
+        [
+          21,
+          14
+        ],
+        [
+          22,
+          14
+        ]
+      ]
+    },
+    {
+      "id": "lc-cottage-bed",
+      "kind": "bed",
+      "fam": "bed",
+      "level": 1,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          15,
+          15
+        ],
+        [
+          16,
+          15
+        ],
+        [
+          17,
+          15
+        ],
+        [
+          18,
+          15
+        ],
+        [
+          19,
+          15
+        ],
+        [
+          20,
+          15
+        ],
+        [
+          21,
+          15
+        ],
+        [
+          15,
+          16
+        ],
+        [
+          16,
+          16
+        ],
+        [
+          17,
+          16
+        ],
+        [
+          18,
+          16
+        ],
+        [
+          19,
+          16
+        ],
+        [
+          20,
+          16
+        ]
+      ]
+    },
+    {
+      "id": "lc-rose-corner",
+      "kind": "bed",
+      "fam": "bed",
+      "level": 2,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          18,
+          11
+        ],
+        [
+          19,
+          11
+        ],
+        [
+          20,
+          11
+        ],
+        [
+          21,
+          11
+        ],
+        [
+          17,
+          12
+        ],
+        [
+          18,
+          12
+        ],
+        [
+          19,
+          12
+        ],
+        [
+          20,
+          12
+        ],
+        [
+          21,
+          12
+        ],
+        [
+          22,
+          12
+        ]
+      ]
+    },
+    {
+      "id": "lc-the-green",
+      "kind": "green",
+      "fam": "",
+      "level": 1,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          24,
+          13
+        ],
+        [
+          25,
+          13
+        ],
+        [
+          26,
+          13
+        ],
+        [
+          27,
+          13
+        ],
+        [
+          28,
+          13
+        ],
+        [
+          29,
+          13
+        ],
+        [
+          30,
+          13
+        ],
+        [
+          24,
+          14
+        ],
+        [
+          25,
+          14
+        ],
+        [
+          26,
+          14
+        ],
+        [
+          27,
+          14
+        ],
+        [
+          28,
+          14
+        ],
+        [
+          29,
+          14
+        ],
+        [
+          30,
+          14
+        ]
+      ]
+    },
+    {
+      "id": "lc-band-green",
+      "kind": "green",
+      "fam": "",
+      "level": 1,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          23,
+          16
+        ],
+        [
+          24,
+          16
+        ],
+        [
+          25,
+          16
+        ],
+        [
+          26,
+          16
+        ],
+        [
+          27,
+          16
+        ],
+        [
+          23,
+          17
+        ],
+        [
+          24,
+          17
+        ],
+        [
+          25,
+          17
+        ],
+        [
+          26,
+          17
+        ],
+        [
+          27,
+          17
+        ]
+      ]
+    },
+    {
+      "id": "lc-well-green",
+      "kind": "green",
+      "fam": "",
+      "level": 1,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          22,
+          10
+        ],
+        [
+          23,
+          10
+        ],
+        [
+          24,
+          10
+        ],
+        [
+          25,
+          10
+        ],
+        [
+          22,
+          11
+        ],
+        [
+          23,
+          11
+        ],
+        [
+          24,
+          11
+        ]
+      ]
+    },
+    {
+      "id": "lc-fountain-green",
+      "kind": "green",
+      "fam": "",
+      "level": 1,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          27,
+          11
+        ],
+        [
+          28,
+          11
+        ],
+        [
+          29,
+          11
+        ],
+        [
+          30,
+          11
+        ],
+        [
+          31,
+          11
+        ],
+        [
+          32,
+          11
+        ],
+        [
+          33,
+          11
+        ],
+        [
+          32,
+          12
+        ],
+        [
+          33,
+          12
+        ],
+        [
+          34,
+          12
+        ]
+      ]
+    },
+    {
+      "id": "lc-little-green",
+      "kind": "green",
+      "fam": "",
+      "level": 1,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          24,
+          15
+        ],
+        [
+          25,
+          15
+        ],
+        [
+          26,
+          15
+        ],
+        [
+          27,
+          15
+        ]
+      ]
+    },
+    {
+      "id": "lc-shore-green",
+      "kind": "green",
+      "fam": "",
+      "level": 1,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          33,
+          17
+        ],
+        [
+          34,
+          17
+        ],
+        [
+          35,
+          17
+        ],
+        [
+          36,
+          17
+        ],
+        [
+          33,
+          18
+        ],
+        [
+          34,
+          18
+        ],
+        [
+          35,
+          18
+        ],
+        [
+          36,
+          18
+        ]
+      ]
+    },
+    {
+      "id": "lc-shop-green",
+      "kind": "green",
+      "fam": "",
+      "level": 1,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          22,
+          18
+        ],
+        [
+          23,
+          18
+        ],
+        [
+          24,
+          18
+        ],
+        [
+          25,
+          18
+        ]
+      ]
+    },
+    {
+      "id": "lc-gate-patch",
+      "kind": "green",
+      "fam": "",
+      "level": 1,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          26,
+          18
+        ],
+        [
+          27,
+          18
+        ]
+      ]
+    },
+    {
+      "id": "lc-notice-green",
+      "kind": "green",
+      "fam": "",
+      "level": 1,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          29,
+          18
+        ],
+        [
+          30,
+          18
+        ],
+        [
+          31,
+          18
+        ],
+        [
+          32,
+          18
+        ]
+      ]
+    },
+    {
+      "id": "lc-bean-rows",
+      "kind": "patch",
+      "fam": "veg",
+      "level": 3,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          12,
+          12
+        ],
+        [
+          13,
+          12
+        ],
+        [
+          14,
+          12
+        ],
+        [
+          12,
+          13
+        ],
+        [
+          13,
+          13
+        ],
+        [
+          14,
+          13
+        ]
+      ]
+    },
+    {
+      "id": "lc-salad-patch",
+      "kind": "patch",
+      "fam": "veg",
+      "level": 3,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          12,
+          14
+        ],
+        [
+          13,
+          14
+        ],
+        [
+          12,
+          15
+        ],
+        [
+          13,
+          15
+        ]
+      ]
+    },
+    {
+      "id": "lc-cabbage-corner",
+      "kind": "patch",
+      "fam": "veg",
+      "level": 3,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          12,
+          17
+        ],
+        [
+          13,
+          17
+        ],
+        [
+          12,
+          18
+        ],
+        [
+          13,
+          18
+        ]
+      ]
+    },
+    {
+      "id": "lc-long-beds",
+      "kind": "patch",
+      "fam": "veg",
+      "level": 3,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          15,
+          17
+        ],
+        [
+          16,
+          17
+        ],
+        [
+          17,
+          17
+        ],
+        [
+          18,
+          17
+        ],
+        [
+          19,
+          17
+        ],
+        [
+          15,
+          18
+        ],
+        [
+          16,
+          18
+        ],
+        [
+          17,
+          18
+        ],
+        [
+          18,
+          18
+        ],
+        [
+          19,
+          18
+        ],
+        [
+          20,
+          18
+        ]
+      ]
+    },
+    {
+      "id": "lc-deer-corner",
+      "kind": "wood",
+      "fam": "woods",
+      "level": 4,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          38,
+          12
+        ],
+        [
+          39,
+          12
+        ],
+        [
+          38,
+          13
+        ],
+        [
+          39,
+          13
+        ],
+        [
+          39,
+          14
+        ],
+        [
+          39,
+          15
+        ]
+      ]
+    },
+    {
+      "id": "lc-bracken-dip",
+      "kind": "wood",
+      "fam": "woods",
+      "level": 4,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          32,
+          14
+        ],
+        [
+          33,
+          14
+        ],
+        [
+          32,
+          15
+        ],
+        [
+          33,
+          15
+        ]
+      ]
+    },
+    {
+      "id": "lc-old-logs",
+      "kind": "wood",
+      "fam": "woods",
+      "level": 4,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          29,
+          16
+        ],
+        [
+          30,
+          16
+        ],
+        [
+          31,
+          16
+        ],
+        [
+          32,
+          16
+        ],
+        [
+          33,
+          16
+        ],
+        [
+          34,
+          16
+        ],
+        [
+          29,
+          17
+        ],
+        [
+          30,
+          17
+        ],
+        [
+          31,
+          17
+        ],
+        [
+          32,
+          17
+        ]
+      ]
+    },
+    {
+      "id": "lc-badger-bank",
+      "kind": "wood",
+      "fam": "woods",
+      "level": 4,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          39,
+          16
+        ],
+        [
+          37,
+          17
+        ],
+        [
+          38,
+          17
+        ],
+        [
+          39,
+          17
+        ],
+        [
+          37,
+          18
+        ],
+        [
+          38,
+          18
+        ],
+        [
+          39,
+          18
+        ]
+      ]
+    },
+    {
+      "id": "lc-old-apple",
+      "kind": "orchard",
+      "fam": "orchard",
+      "level": 5,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          12,
+          8
+        ],
+        [
+          13,
+          8
+        ],
+        [
+          14,
+          8
+        ],
+        [
+          15,
+          8
+        ],
+        [
+          16,
+          8
+        ],
+        [
+          12,
+          9
+        ],
+        [
+          13,
+          9
+        ],
+        [
+          14,
+          9
+        ],
+        [
+          15,
+          9
+        ],
+        [
+          16,
+          9
+        ],
+        [
+          17,
+          9
+        ],
+        [
+          16,
+          10
+        ]
+      ]
+    },
+    {
+      "id": "lc-pear-corner",
+      "kind": "orchard",
+      "fam": "orchard",
+      "level": 5,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          18,
+          8
+        ],
+        [
+          19,
+          8
+        ],
+        [
+          20,
+          8
+        ],
+        [
+          21,
+          8
+        ],
+        [
+          18,
+          9
+        ],
+        [
+          19,
+          9
+        ],
+        [
+          20,
+          9
+        ]
+      ]
+    },
+    {
+      "id": "lc-plum-row",
+      "kind": "orchard",
+      "fam": "orchard",
+      "level": 5,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          12,
+          10
+        ],
+        [
+          13,
+          10
+        ],
+        [
+          14,
+          10
+        ],
+        [
+          15,
+          10
+        ],
+        [
+          12,
+          11
+        ],
+        [
+          13,
+          11
+        ],
+        [
+          14,
+          11
+        ],
+        [
+          15,
+          11
+        ]
+      ]
+    },
+    {
+      "id": "lc-pond",
+      "kind": "pondedge",
+      "fam": "pond",
+      "level": 7,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          34,
+          8
+        ],
+        [
+          35,
+          8
+        ],
+        [
+          36,
+          8
+        ],
+        [
+          37,
+          8
+        ],
+        [
+          38,
+          8
+        ],
+        [
+          39,
+          8
+        ],
+        [
+          34,
+          9
+        ],
+        [
+          35,
+          9
+        ],
+        [
+          36,
+          9
+        ],
+        [
+          37,
+          9
+        ],
+        [
+          38,
+          9
+        ],
+        [
+          39,
+          9
+        ],
+        [
+          34,
+          10
+        ],
+        [
+          35,
+          10
+        ],
+        [
+          36,
+          10
+        ],
+        [
+          37,
+          10
+        ],
+        [
+          38,
+          10
+        ],
+        [
+          39,
+          10
+        ],
+        [
+          34,
+          11
+        ],
+        [
+          35,
+          11
+        ],
+        [
+          36,
+          11
+        ],
+        [
+          37,
+          11
+        ],
+        [
+          38,
+          11
+        ],
+        [
+          39,
+          11
+        ]
+      ]
+    },
+    {
+      "id": "lc-glasshouse",
+      "kind": "glass",
+      "fam": "greenhouse",
+      "level": 9,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          35,
+          14
+        ],
+        [
+          36,
+          14
+        ],
+        [
+          37,
+          14
+        ],
+        [
+          38,
+          14
+        ],
+        [
+          35,
+          15
+        ],
+        [
+          36,
+          15
+        ],
+        [
+          37,
+          15
+        ],
+        [
+          38,
+          15
+        ],
+        [
+          35,
+          16
+        ],
+        [
+          36,
+          16
+        ],
+        [
+          37,
+          16
+        ],
+        [
+          38,
+          16
+        ]
+      ]
+    },
+    {
+      "id": "lc-poppy-bank",
+      "kind": "meadow",
+      "fam": "meadow",
+      "level": 12,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          24,
+          8
+        ],
+        [
+          25,
+          8
+        ],
+        [
+          26,
+          8
+        ],
+        [
+          23,
+          9
+        ],
+        [
+          24,
+          9
+        ],
+        [
+          25,
+          9
+        ],
+        [
+          26,
+          9
+        ]
+      ]
+    },
+    {
+      "id": "lc-long-meadow",
+      "kind": "meadow",
+      "fam": "meadow",
+      "level": 12,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          28,
+          8
+        ],
+        [
+          29,
+          8
+        ],
+        [
+          30,
+          8
+        ],
+        [
+          31,
+          8
+        ],
+        [
+          32,
+          8
+        ],
+        [
+          28,
+          9
+        ],
+        [
+          29,
+          9
+        ],
+        [
+          30,
+          9
+        ],
+        [
+          31,
+          9
+        ],
+        [
+          32,
+          9
+        ],
+        [
+          33,
+          9
+        ]
+      ]
+    },
+    {
+      "id": "lc-daisy-strip",
+      "kind": "meadow",
+      "fam": "meadow",
+      "level": 12,
+      "buy": 0,
+      "region": "core",
+      "cells": [
+        [
+          28,
+          10
+        ],
+        [
+          29,
+          10
+        ],
+        [
+          30,
+          10
+        ],
+        [
+          31,
+          10
+        ],
+        [
+          32,
+          10
+        ],
+        [
+          33,
+          10
+        ]
+      ]
+    },
+    {
+      "id": "ls-clover-corner",
+      "kind": "meadow",
+      "fam": "",
+      "level": 3,
+      "buy": 50,
+      "region": "north",
+      "cells": [
+        [
+          28,
+          7
+        ],
+        [
+          29,
+          7
+        ],
+        [
+          30,
+          7
+        ],
+        [
+          31,
+          7
+        ],
+        [
+          32,
+          7
+        ]
+      ]
+    },
+    {
+      "id": "ls-buttercup-bank",
+      "kind": "meadow",
+      "fam": "",
+      "level": 3,
+      "buy": 40,
+      "region": "north",
+      "cells": [
+        [
+          23,
+          7
+        ],
+        [
+          24,
+          7
+        ],
+        [
+          25,
+          7
+        ],
+        [
+          26,
+          7
+        ]
+      ]
+    },
+    {
+      "id": "ls-sunny-doorstep",
+      "kind": "herb",
+      "fam": "",
+      "level": 3,
+      "buy": 70,
+      "region": "north",
+      "cells": [
+        [
+          26,
+          5
+        ],
+        [
+          27,
+          5
+        ],
+        [
+          28,
+          5
+        ],
+        [
+          29,
+          5
+        ],
+        [
+          30,
+          5
+        ],
+        [
+          31,
+          5
+        ],
+        [
+          32,
+          5
+        ]
+      ]
+    },
+    {
+      "id": "ls-blackbird-corner",
+      "kind": "berry",
+      "fam": "",
+      "level": 3,
+      "buy": 60,
+      "region": "north",
+      "cells": [
+        [
+          21,
+          6
+        ],
+        [
+          22,
+          6
+        ],
+        [
+          23,
+          6
+        ],
+        [
+          24,
+          6
+        ],
+        [
+          21,
+          7
+        ],
+        [
+          22,
+          7
+        ]
+      ]
+    },
+    {
+      "id": "ls-foxglove-strip",
+      "kind": "dell",
+      "fam": "",
+      "level": 6,
+      "buy": 235,
+      "region": "north",
+      "cells": [
+        [
+          16,
+          5
+        ],
+        [
+          17,
+          5
+        ],
+        [
+          18,
+          5
+        ],
+        [
+          19,
+          5
+        ],
+        [
+          20,
+          5
+        ],
+        [
+          16,
+          6
+        ],
+        [
+          17,
+          6
+        ],
+        [
+          18,
+          6
+        ],
+        [
+          19,
+          6
+        ],
+        [
+          16,
+          7
+        ],
+        [
+          17,
+          7
+        ],
+        [
+          18,
+          7
+        ],
+        [
+          19,
+          7
+        ]
+      ]
+    },
+    {
+      "id": "ls-fern-hollow",
+      "kind": "dell",
+      "fam": "",
+      "level": 6,
+      "buy": 215,
+      "region": "north",
+      "cells": [
+        [
+          15,
+          4
+        ],
+        [
+          16,
+          4
+        ],
+        [
+          17,
+          4
+        ],
+        [
+          15,
+          5
+        ],
+        [
+          12,
+          6
+        ],
+        [
+          13,
+          6
+        ],
+        [
+          14,
+          6
+        ],
+        [
+          15,
+          6
+        ],
+        [
+          12,
+          7
+        ],
+        [
+          13,
+          7
+        ],
+        [
+          14,
+          7
+        ],
+        [
+          15,
+          7
+        ]
+      ]
+    },
+    {
+      "id": "ls-warm-stones",
+      "kind": "rock",
+      "fam": "",
+      "level": 3,
+      "buy": 50,
+      "region": "north",
+      "cells": [
+        [
+          28,
+          6
+        ],
+        [
+          29,
+          6
+        ],
+        [
+          30,
+          6
+        ],
+        [
+          31,
+          6
+        ],
+        [
+          32,
+          6
+        ]
+      ]
+    },
+    {
+      "id": "ls-thyme-terrace",
+      "kind": "herb",
+      "fam": "",
+      "level": 6,
+      "buy": 250,
+      "region": "north",
+      "cells": [
+        [
+          12,
+          2
+        ],
+        [
+          13,
+          2
+        ],
+        [
+          14,
+          2
+        ],
+        [
+          15,
+          2
+        ],
+        [
+          12,
+          3
+        ],
+        [
+          13,
+          3
+        ],
+        [
+          14,
+          3
+        ],
+        [
+          15,
+          3
+        ],
+        [
+          12,
+          4
+        ],
+        [
+          13,
+          4
+        ],
+        [
+          14,
+          4
+        ],
+        [
+          12,
+          5
+        ],
+        [
+          13,
+          5
+        ],
+        [
+          14,
+          5
+        ]
+      ]
+    },
+    {
+      "id": "ls-bee-bank",
+      "kind": "meadow",
+      "fam": "",
+      "level": 10,
+      "buy": 180,
+      "region": "north",
+      "cells": [
+        [
+          17,
+          2
+        ],
+        [
+          18,
+          2
+        ],
+        [
+          19,
+          2
+        ],
+        [
+          19,
+          3
+        ],
+        [
+          20,
+          3
+        ],
+        [
+          21,
+          3
+        ]
+      ]
+    },
+    {
+      "id": "ls-orchid-slope",
+      "kind": "meadow",
+      "fam": "",
+      "level": 10,
+      "buy": 300,
+      "region": "north",
+      "cells": [
+        [
+          24,
+          2
+        ],
+        [
+          25,
+          2
+        ],
+        [
+          22,
+          3
+        ],
+        [
+          23,
+          3
+        ],
+        [
+          24,
+          3
+        ],
+        [
+          25,
+          3
+        ],
+        [
+          22,
+          4
+        ],
+        [
+          23,
+          4
+        ],
+        [
+          24,
+          4
+        ],
+        [
+          25,
+          4
+        ]
+      ]
+    },
+    {
+      "id": "ls-rabbit-warren",
+      "kind": "meadow",
+      "fam": "",
+      "level": 10,
+      "buy": 330,
+      "region": "north",
+      "cells": [
+        [
+          31,
+          2
+        ],
+        [
+          32,
+          2
+        ],
+        [
+          26,
+          3
+        ],
+        [
+          27,
+          3
+        ],
+        [
+          28,
+          3
+        ],
+        [
+          29,
+          3
+        ],
+        [
+          30,
+          3
+        ],
+        [
+          31,
+          3
+        ],
+        [
+          32,
+          3
+        ],
+        [
+          33,
+          3
+        ],
+        [
+          34,
+          3
+        ]
+      ]
+    },
+    {
+      "id": "ls-skylark-top",
+      "kind": "meadow",
+      "fam": "",
+      "level": 10,
+      "buy": 360,
+      "region": "north",
+      "cells": [
+        [
+          12,
+          0
+        ],
+        [
+          13,
+          0
+        ],
+        [
+          14,
+          0
+        ],
+        [
+          15,
+          0
+        ],
+        [
+          16,
+          0
+        ],
+        [
+          17,
+          0
+        ],
+        [
+          18,
+          0
+        ],
+        [
+          19,
+          0
+        ],
+        [
+          12,
+          1
+        ],
+        [
+          13,
+          1
+        ],
+        [
+          14,
+          1
+        ],
+        [
+          15,
+          1
+        ]
+      ]
+    },
+    {
+      "id": "ls-long-view",
+      "kind": "rock",
+      "fam": "",
+      "level": 10,
+      "buy": 360,
+      "region": "north",
+      "cells": [
+        [
+          21,
+          0
+        ],
+        [
+          22,
+          0
+        ],
+        [
+          23,
+          0
+        ],
+        [
+          24,
+          0
+        ],
+        [
+          25,
+          0
+        ],
+        [
+          26,
+          0
+        ],
+        [
+          27,
+          0
+        ],
+        [
+          28,
+          0
+        ],
+        [
+          21,
+          1
+        ],
+        [
+          22,
+          1
+        ],
+        [
+          27,
+          1
+        ],
+        [
+          28,
+          1
+        ]
+      ]
+    },
+    {
+      "id": "ls-cowslip-rise",
+      "kind": "meadow",
+      "fam": "",
+      "level": 14,
+      "buy": 575,
+      "region": "north",
+      "cells": [
+        [
+          34,
+          4
+        ],
+        [
+          35,
+          4
+        ],
+        [
+          36,
+          4
+        ],
+        [
+          37,
+          4
+        ],
+        [
+          38,
+          4
+        ],
+        [
+          39,
+          4
+        ],
+        [
+          34,
+          5
+        ],
+        [
+          35,
+          5
+        ],
+        [
+          36,
+          5
+        ],
+        [
+          37,
+          5
+        ],
+        [
+          38,
+          5
+        ],
+        [
+          39,
+          5
+        ]
+      ]
+    },
+    {
+      "id": "ls-high-pasture",
+      "kind": "meadow",
+      "fam": "",
+      "level": 10,
+      "buy": 300,
+      "region": "north",
+      "cells": [
+        [
+          30,
+          0
+        ],
+        [
+          31,
+          0
+        ],
+        [
+          32,
+          0
+        ],
+        [
+          33,
+          0
+        ],
+        [
+          34,
+          0
+        ],
+        [
+          35,
+          0
+        ],
+        [
+          36,
+          0
+        ],
+        [
+          34,
+          1
+        ],
+        [
+          35,
+          1
+        ],
+        [
+          36,
+          1
+        ]
+      ]
+    },
+    {
+      "id": "ls-gate-pear",
+      "kind": "orchard",
+      "fam": "",
+      "level": 10,
+      "buy": 120,
+      "region": "east",
+      "cells": [
+        [
+          50,
+          17
+        ],
+        [
+          51,
+          17
+        ],
+        [
+          50,
+          18
+        ],
+        [
+          51,
+          18
+        ]
+      ]
+    },
+    {
+      "id": "ls-windfall",
+      "kind": "orchard",
+      "fam": "",
+      "level": 6,
+      "buy": 110,
+      "region": "east",
+      "cells": [
+        [
+          47,
+          16
+        ],
+        [
+          48,
+          16
+        ],
+        [
+          47,
+          17
+        ],
+        [
+          48,
+          17
+        ],
+        [
+          47,
+          18
+        ],
+        [
+          48,
+          18
+        ]
+      ]
+    },
+    {
+      "id": "ls-crab-row",
+      "kind": "orchard",
+      "fam": "",
+      "level": 6,
+      "buy": 110,
+      "region": "east",
+      "cells": [
+        [
+          44,
+          17
+        ],
+        [
+          45,
+          17
+        ],
+        [
+          46,
+          17
+        ],
+        [
+          44,
+          18
+        ],
+        [
+          45,
+          18
+        ],
+        [
+          46,
+          18
+        ]
+      ]
+    },
+    {
+      "id": "ls-old-plum",
+      "kind": "orchard",
+      "fam": "",
+      "level": 3,
+      "buy": 80,
+      "region": "east",
+      "cells": [
+        [
+          40,
+          16
+        ],
+        [
+          41,
+          16
+        ],
+        [
+          40,
+          17
+        ],
+        [
+          41,
+          17
+        ],
+        [
+          42,
+          17
+        ],
+        [
+          40,
+          18
+        ],
+        [
+          41,
+          18
+        ],
+        [
+          42,
+          18
+        ]
+      ]
+    },
+    {
+      "id": "ls-apple-row",
+      "kind": "orchard",
+      "fam": "",
+      "level": 6,
+      "buy": 180,
+      "region": "east",
+      "cells": [
+        [
+          44,
+          14
+        ],
+        [
+          45,
+          14
+        ],
+        [
+          43,
+          15
+        ],
+        [
+          44,
+          15
+        ],
+        [
+          45,
+          15
+        ],
+        [
+          46,
+          15
+        ],
+        [
+          47,
+          15
+        ],
+        [
+          44,
+          16
+        ],
+        [
+          45,
+          16
+        ],
+        [
+          46,
+          16
+        ]
+      ]
+    },
+    {
+      "id": "ls-medlar-strip",
+      "kind": "orchard",
+      "fam": "",
+      "level": 3,
+      "buy": 70,
+      "region": "east",
+      "cells": [
+        [
+          40,
+          13
+        ],
+        [
+          41,
+          13
+        ],
+        [
+          42,
+          13
+        ],
+        [
+          40,
+          14
+        ],
+        [
+          41,
+          14
+        ],
+        [
+          40,
+          15
+        ],
+        [
+          41,
+          15
+        ]
+      ]
+    },
+    {
+      "id": "ls-cherry-row",
+      "kind": "orchard",
+      "fam": "",
+      "level": 6,
+      "buy": 145,
+      "region": "east",
+      "cells": [
+        [
+          44,
+          13
+        ],
+        [
+          45,
+          13
+        ],
+        [
+          46,
+          13
+        ],
+        [
+          47,
+          13
+        ],
+        [
+          48,
+          13
+        ],
+        [
+          46,
+          14
+        ],
+        [
+          47,
+          14
+        ],
+        [
+          48,
+          14
+        ]
+      ]
+    },
+    {
+      "id": "ls-cider-nook",
+      "kind": "orchard",
+      "fam": "",
+      "level": 10,
+      "buy": 120,
+      "region": "east",
+      "cells": [
+        [
+          50,
+          15
+        ],
+        [
+          51,
+          15
+        ],
+        [
+          50,
+          16
+        ],
+        [
+          51,
+          16
+        ]
+      ]
+    },
+    {
+      "id": "ls-hazel-copse",
+      "kind": "wood",
+      "fam": "",
+      "level": 3,
+      "buy": 70,
+      "region": "east",
+      "cells": [
+        [
+          40,
+          11
+        ],
+        [
+          41,
+          11
+        ],
+        [
+          42,
+          11
+        ],
+        [
+          43,
+          11
+        ],
+        [
+          40,
+          12
+        ],
+        [
+          41,
+          12
+        ],
+        [
+          42,
+          12
+        ]
+      ]
+    },
+    {
+      "id": "ls-damson-dip",
+      "kind": "orchard",
+      "fam": "",
+      "level": 6,
+      "buy": 110,
+      "region": "east",
+      "cells": [
+        [
+          46,
+          10
+        ],
+        [
+          47,
+          10
+        ],
+        [
+          48,
+          10
+        ],
+        [
+          45,
+          11
+        ],
+        [
+          46,
+          11
+        ],
+        [
+          47,
+          11
+        ]
+      ]
+    },
+    {
+      "id": "ls-walnut-shade",
+      "kind": "wood",
+      "fam": "",
+      "level": 10,
+      "buy": 360,
+      "region": "east",
+      "cells": [
+        [
+          49,
+          8
+        ],
+        [
+          50,
+          8
+        ],
+        [
+          51,
+          8
+        ],
+        [
+          46,
+          9
+        ],
+        [
+          47,
+          9
+        ],
+        [
+          48,
+          9
+        ],
+        [
+          49,
+          9
+        ],
+        [
+          50,
+          9
+        ],
+        [
+          51,
+          9
+        ],
+        [
+          49,
+          10
+        ],
+        [
+          50,
+          10
+        ],
+        [
+          51,
+          10
+        ]
+      ]
+    },
+    {
+      "id": "ls-nursery",
+      "kind": "nursery",
+      "fam": "",
+      "level": 10,
+      "buy": 325,
+      "region": "east",
+      "cells": [
+        [
+          49,
+          11
+        ],
+        [
+          50,
+          11
+        ],
+        [
+          51,
+          11
+        ],
+        [
+          50,
+          12
+        ],
+        [
+          51,
+          12
+        ],
+        [
+          50,
+          13
+        ],
+        [
+          51,
+          13
+        ],
+        [
+          50,
+          14
+        ],
+        [
+          51,
+          14
+        ]
+      ]
+    },
+    {
+      "id": "ls-bluebell-wood",
+      "kind": "dell",
+      "fam": "",
+      "level": 6,
+      "buy": 160,
+      "region": "east",
+      "cells": [
+        [
+          40,
+          9
+        ],
+        [
+          41,
+          9
+        ],
+        [
+          42,
+          9
+        ],
+        [
+          43,
+          9
+        ],
+        [
+          44,
+          9
+        ],
+        [
+          40,
+          10
+        ],
+        [
+          41,
+          10
+        ],
+        [
+          42,
+          10
+        ],
+        [
+          43,
+          10
+        ]
+      ]
+    },
+    {
+      "id": "ls-ivy-corner",
+      "kind": "dell",
+      "fam": "",
+      "level": 6,
+      "buy": 110,
+      "region": "east",
+      "cells": [
+        [
+          40,
+          7
+        ],
+        [
+          41,
+          7
+        ],
+        [
+          42,
+          7
+        ],
+        [
+          40,
+          8
+        ],
+        [
+          41,
+          8
+        ],
+        [
+          42,
+          8
+        ]
+      ]
+    },
+    {
+      "id": "ls-espalier",
+      "kind": "berry",
+      "fam": "",
+      "level": 10,
+      "buy": 210,
+      "region": "east",
+      "cells": [
+        [
+          44,
+          7
+        ],
+        [
+          45,
+          7
+        ],
+        [
+          46,
+          7
+        ],
+        [
+          47,
+          7
+        ],
+        [
+          46,
+          8
+        ],
+        [
+          47,
+          8
+        ],
+        [
+          48,
+          8
+        ]
+      ]
+    },
+    {
+      "id": "ls-walled-garden",
+      "kind": "suntrap",
+      "fam": "",
+      "level": 10,
+      "buy": 865,
+      "region": "east",
+      "cells": [
+        [
+          47,
+          6
+        ],
+        [
+          48,
+          6
+        ],
+        [
+          49,
+          6
+        ],
+        [
+          50,
+          6
+        ],
+        [
+          51,
+          6
+        ],
+        [
+          48,
+          7
+        ],
+        [
+          49,
+          7
+        ],
+        [
+          50,
+          7
+        ],
+        [
+          51,
+          7
+        ]
+      ]
+    },
+    {
+      "id": "ls-owl-wood",
+      "kind": "wood",
+      "fam": "",
+      "level": 10,
+      "buy": 180,
+      "region": "east",
+      "cells": [
+        [
+          40,
+          4
+        ],
+        [
+          41,
+          4
+        ],
+        [
+          42,
+          4
+        ],
+        [
+          43,
+          4
+        ],
+        [
+          44,
+          4
+        ],
+        [
+          45,
+          4
+        ]
+      ]
+    },
+    {
+      "id": "ls-sun-terrace",
+      "kind": "suntrap",
+      "fam": "",
+      "level": 10,
+      "buy": 430,
+      "region": "east",
+      "cells": [
+        [
+          40,
+          5
+        ],
+        [
+          41,
+          5
+        ],
+        [
+          42,
+          5
+        ],
+        [
+          43,
+          5
+        ],
+        [
+          44,
+          5
+        ],
+        [
+          45,
+          5
+        ],
+        [
+          40,
+          6
+        ],
+        [
+          41,
+          6
+        ],
+        [
+          42,
+          6
+        ]
+      ]
+    },
+    {
+      "id": "ls-beech-top",
+      "kind": "wood",
+      "fam": "",
+      "level": 10,
+      "buy": 270,
+      "region": "east",
+      "cells": [
+        [
+          48,
+          4
+        ],
+        [
+          49,
+          4
+        ],
+        [
+          50,
+          4
+        ],
+        [
+          51,
+          4
+        ],
+        [
+          47,
+          5
+        ],
+        [
+          48,
+          5
+        ],
+        [
+          49,
+          5
+        ],
+        [
+          50,
+          5
+        ],
+        [
+          51,
+          5
+        ]
+      ]
+    },
+    {
+      "id": "ls-first-furrow",
+      "kind": "veg",
+      "fam": "",
+      "level": 10,
+      "buy": 180,
+      "region": "west",
+      "cells": [
+        [
+          0,
+          17
+        ],
+        [
+          1,
+          17
+        ],
+        [
+          2,
+          17
+        ],
+        [
+          0,
+          18
+        ],
+        [
+          1,
+          18
+        ],
+        [
+          2,
+          18
+        ]
+      ]
+    },
+    {
+      "id": "ls-allot-row",
+      "kind": "veg",
+      "fam": "",
+      "level": 6,
+      "buy": 215,
+      "region": "west",
+      "cells": [
+        [
+          4,
+          17
+        ],
+        [
+          5,
+          17
+        ],
+        [
+          6,
+          17
+        ],
+        [
+          7,
+          17
+        ],
+        [
+          8,
+          17
+        ],
+        [
+          9,
+          17
+        ],
+        [
+          4,
+          18
+        ],
+        [
+          5,
+          18
+        ],
+        [
+          6,
+          18
+        ],
+        [
+          7,
+          18
+        ],
+        [
+          8,
+          18
+        ],
+        [
+          9,
+          18
+        ]
+      ]
+    },
+    {
+      "id": "ls-bean-corner",
+      "kind": "veg",
+      "fam": "",
+      "level": 3,
+      "buy": 60,
+      "region": "west",
+      "cells": [
+        [
+          10,
+          16
+        ],
+        [
+          11,
+          16
+        ],
+        [
+          10,
+          17
+        ],
+        [
+          11,
+          17
+        ],
+        [
+          10,
+          18
+        ],
+        [
+          11,
+          18
+        ]
+      ]
+    },
+    {
+      "id": "ls-onion-bed",
+      "kind": "veg",
+      "fam": "",
+      "level": 10,
+      "buy": 120,
+      "region": "west",
+      "cells": [
+        [
+          0,
+          15
+        ],
+        [
+          1,
+          15
+        ],
+        [
+          0,
+          16
+        ],
+        [
+          1,
+          16
+        ]
+      ]
+    },
+    {
+      "id": "ls-salad-strip",
+      "kind": "veg",
+      "fam": "",
+      "level": 6,
+      "buy": 125,
+      "region": "west",
+      "cells": [
+        [
+          9,
+          15
+        ],
+        [
+          4,
+          16
+        ],
+        [
+          5,
+          16
+        ],
+        [
+          6,
+          16
+        ],
+        [
+          7,
+          16
+        ],
+        [
+          8,
+          16
+        ],
+        [
+          9,
+          16
+        ]
+      ]
+    },
+    {
+      "id": "ls-pumpkin-nook",
+      "kind": "rich",
+      "fam": "",
+      "level": 10,
+      "buy": 360,
+      "region": "west",
+      "cells": [
+        [
+          6,
+          14
+        ],
+        [
+          7,
+          14
+        ],
+        [
+          8,
+          14
+        ],
+        [
+          9,
+          14
+        ],
+        [
+          3,
+          15
+        ],
+        [
+          4,
+          15
+        ],
+        [
+          5,
+          15
+        ],
+        [
+          6,
+          15
+        ],
+        [
+          7,
+          15
+        ],
+        [
+          8,
+          15
+        ]
+      ]
+    },
+    {
+      "id": "ls-potato-ground",
+      "kind": "rich",
+      "fam": "",
+      "level": 10,
+      "buy": 250,
+      "region": "west",
+      "cells": [
+        [
+          0,
+          13
+        ],
+        [
+          1,
+          13
+        ],
+        [
+          2,
+          13
+        ],
+        [
+          3,
+          13
+        ],
+        [
+          4,
+          13
+        ],
+        [
+          0,
+          14
+        ],
+        [
+          1,
+          14
+        ]
+      ]
+    },
+    {
+      "id": "ls-seedling-rows",
+      "kind": "veg",
+      "fam": "",
+      "level": 10,
+      "buy": 240,
+      "region": "west",
+      "cells": [
+        [
+          6,
+          13
+        ],
+        [
+          7,
+          13
+        ],
+        [
+          8,
+          13
+        ],
+        [
+          9,
+          13
+        ],
+        [
+          10,
+          13
+        ],
+        [
+          11,
+          13
+        ],
+        [
+          10,
+          14
+        ],
+        [
+          11,
+          14
+        ]
+      ]
+    },
+    {
+      "id": "ls-bean-beds",
+      "kind": "veg",
+      "fam": "",
+      "level": 14,
+      "buy": 430,
+      "region": "west",
+      "cells": [
+        [
+          0,
+          11
+        ],
+        [
+          1,
+          11
+        ],
+        [
+          2,
+          11
+        ],
+        [
+          3,
+          11
+        ],
+        [
+          0,
+          12
+        ],
+        [
+          1,
+          12
+        ],
+        [
+          2,
+          12
+        ],
+        [
+          3,
+          12
+        ],
+        [
+          4,
+          12
+        ]
+      ]
+    },
+    {
+      "id": "ls-hop-garden",
+      "kind": "veg",
+      "fam": "",
+      "level": 14,
+      "buy": 430,
+      "region": "west",
+      "cells": [
+        [
+          9,
+          11
+        ],
+        [
+          10,
+          11
+        ],
+        [
+          11,
+          11
+        ],
+        [
+          6,
+          12
+        ],
+        [
+          7,
+          12
+        ],
+        [
+          8,
+          12
+        ],
+        [
+          9,
+          12
+        ],
+        [
+          10,
+          12
+        ],
+        [
+          11,
+          12
+        ]
+      ]
+    },
+    {
+      "id": "ls-herb-wall",
+      "kind": "herb",
+      "fam": "",
+      "level": 18,
+      "buy": 450,
+      "region": "west",
+      "cells": [
+        [
+          5,
+          9
+        ],
+        [
+          6,
+          9
+        ],
+        [
+          7,
+          9
+        ],
+        [
+          5,
+          10
+        ],
+        [
+          6,
+          10
+        ],
+        [
+          7,
+          10
+        ]
+      ]
+    },
+    {
+      "id": "ls-black-soil",
+      "kind": "rich",
+      "fam": "",
+      "level": 14,
+      "buy": 575,
+      "region": "west",
+      "cells": [
+        [
+          0,
+          9
+        ],
+        [
+          1,
+          9
+        ],
+        [
+          2,
+          9
+        ],
+        [
+          3,
+          9
+        ],
+        [
+          4,
+          9
+        ],
+        [
+          0,
+          10
+        ],
+        [
+          1,
+          10
+        ],
+        [
+          2,
+          10
+        ],
+        [
+          3,
+          10
+        ],
+        [
+          4,
+          10
+        ]
+      ]
+    },
+    {
+      "id": "ls-pea-sticks",
+      "kind": "veg",
+      "fam": "",
+      "level": 18,
+      "buy": 675,
+      "region": "west",
+      "cells": [
+        [
+          10,
+          7
+        ],
+        [
+          11,
+          7
+        ],
+        [
+          10,
+          8
+        ],
+        [
+          11,
+          8
+        ],
+        [
+          10,
+          9
+        ],
+        [
+          11,
+          9
+        ],
+        [
+          9,
+          10
+        ],
+        [
+          10,
+          10
+        ],
+        [
+          11,
+          10
+        ]
+      ]
+    },
+    {
+      "id": "ls-maze-ground",
+      "kind": "meadow",
+      "fam": "",
+      "level": 18,
+      "buy": 1050,
+      "region": "west",
+      "cells": [
+        [
+          0,
+          4
+        ],
+        [
+          1,
+          4
+        ],
+        [
+          2,
+          4
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          5,
+          4
+        ],
+        [
+          6,
+          4
+        ],
+        [
+          7,
+          4
+        ],
+        [
+          0,
+          5
+        ],
+        [
+          1,
+          5
+        ],
+        [
+          2,
+          5
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          5
+        ],
+        [
+          5,
+          5
+        ],
+        [
+          6,
+          5
+        ],
+        [
+          7,
+          5
+        ],
+        [
+          0,
+          6
+        ],
+        [
+          1,
+          6
+        ],
+        [
+          2,
+          6
+        ],
+        [
+          3,
+          6
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          5,
+          6
+        ],
+        [
+          6,
+          6
+        ],
+        [
+          7,
+          6
+        ],
+        [
+          0,
+          7
+        ],
+        [
+          1,
+          7
+        ],
+        [
+          2,
+          7
+        ],
+        [
+          3,
+          7
+        ],
+        [
+          4,
+          7
+        ],
+        [
+          5,
+          7
+        ],
+        [
+          6,
+          7
+        ],
+        [
+          7,
+          7
+        ],
+        [
+          0,
+          8
+        ],
+        [
+          1,
+          8
+        ],
+        [
+          2,
+          8
+        ],
+        [
+          3,
+          8
+        ],
+        [
+          4,
+          8
+        ],
+        [
+          5,
+          8
+        ],
+        [
+          6,
+          8
+        ],
+        [
+          7,
+          8
+        ]
+      ]
+    },
+    {
+      "id": "ls-market-beds",
+      "kind": "rich",
+      "fam": "",
+      "level": 18,
+      "buy": 630,
+      "region": "west",
+      "cells": [
+        [
+          10,
+          4
+        ],
+        [
+          11,
+          4
+        ],
+        [
+          10,
+          5
+        ],
+        [
+          11,
+          5
+        ],
+        [
+          9,
+          6
+        ],
+        [
+          10,
+          6
+        ],
+        [
+          11,
+          6
+        ]
+      ]
+    },
+    {
+      "id": "ls-giant-veg",
+      "kind": "rich",
+      "fam": "",
+      "level": 18,
+      "buy": 1170,
+      "region": "west",
+      "cells": [
+        [
+          3,
+          0
+        ],
+        [
+          4,
+          0
+        ],
+        [
+          5,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          3,
+          1
+        ],
+        [
+          4,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          2
+        ],
+        [
+          4,
+          2
+        ]
+      ]
+    },
+    {
+      "id": "ls-deep-loam",
+      "kind": "rich",
+      "fam": "",
+      "level": 18,
+      "buy": 720,
+      "region": "west",
+      "cells": [
+        [
+          9,
+          0
+        ],
+        [
+          10,
+          0
+        ],
+        [
+          11,
+          0
+        ],
+        [
+          10,
+          1
+        ],
+        [
+          11,
+          1
+        ],
+        [
+          9,
+          2
+        ],
+        [
+          10,
+          2
+        ],
+        [
+          11,
+          2
+        ]
+      ]
+    },
+    {
+      "id": "ls-prize-beds",
+      "kind": "rich",
+      "fam": "",
+      "level": 18,
+      "buy": 720,
+      "region": "west",
+      "cells": [
+        [
+          7,
+          0
+        ],
+        [
+          8,
+          0
+        ],
+        [
+          7,
+          1
+        ],
+        [
+          8,
+          1
+        ],
+        [
+          9,
+          1
+        ],
+        [
+          6,
+          2
+        ],
+        [
+          7,
+          2
+        ],
+        [
+          8,
+          2
+        ]
+      ]
+    },
+    {
+      "id": "ls-frog-steps",
+      "kind": "reed",
+      "fam": "",
+      "level": 10,
+      "buy": 240,
+      "region": "swest",
+      "cells": [
+        [
+          0,
+          21
+        ],
+        [
+          1,
+          21
+        ],
+        [
+          2,
+          21
+        ],
+        [
+          3,
+          21
+        ],
+        [
+          0,
+          22
+        ],
+        [
+          1,
+          22
+        ],
+        [
+          2,
+          22
+        ],
+        [
+          3,
+          22
+        ]
+      ]
+    },
+    {
+      "id": "ls-kingcup",
+      "kind": "reed",
+      "fam": "",
+      "level": 3,
+      "buy": 50,
+      "region": "swest",
+      "cells": [
+        [
+          10,
+          21
+        ],
+        [
+          11,
+          21
+        ],
+        [
+          11,
+          22
+        ],
+        [
+          11,
+          23
+        ],
+        [
+          11,
+          24
+        ]
+      ]
+    },
+    {
+      "id": "ls-strawberry-bank",
+      "kind": "berry",
+      "fam": "",
+      "level": 6,
+      "buy": 180,
+      "region": "swest",
+      "cells": [
+        [
+          4,
+          21
+        ],
+        [
+          5,
+          21
+        ],
+        [
+          6,
+          21
+        ],
+        [
+          7,
+          21
+        ],
+        [
+          8,
+          21
+        ],
+        [
+          4,
+          22
+        ],
+        [
+          5,
+          22
+        ],
+        [
+          6,
+          22
+        ],
+        [
+          7,
+          22
+        ],
+        [
+          8,
+          22
+        ]
+      ]
+    },
+    {
+      "id": "ls-rhubarb-patch",
+      "kind": "berry",
+      "fam": "",
+      "level": 6,
+      "buy": 90,
+      "region": "swest",
+      "cells": [
+        [
+          4,
+          23
+        ],
+        [
+          5,
+          23
+        ],
+        [
+          6,
+          23
+        ],
+        [
+          7,
+          23
+        ],
+        [
+          8,
+          23
+        ]
+      ]
+    },
+    {
+      "id": "ls-snipe-rough",
+      "kind": "reed",
+      "fam": "",
+      "level": 10,
+      "buy": 240,
+      "region": "swest",
+      "cells": [
+        [
+          0,
+          23
+        ],
+        [
+          1,
+          23
+        ],
+        [
+          2,
+          23
+        ],
+        [
+          3,
+          23
+        ],
+        [
+          0,
+          24
+        ],
+        [
+          1,
+          24
+        ],
+        [
+          2,
+          24
+        ],
+        [
+          3,
+          24
+        ]
+      ]
+    },
+    {
+      "id": "ls-willow-foot",
+      "kind": "reed",
+      "fam": "",
+      "level": 6,
+      "buy": 110,
+      "region": "swest",
+      "cells": [
+        [
+          9,
+          25
+        ],
+        [
+          10,
+          25
+        ],
+        [
+          11,
+          25
+        ],
+        [
+          9,
+          26
+        ],
+        [
+          10,
+          26
+        ],
+        [
+          11,
+          26
+        ]
+      ]
+    },
+    {
+      "id": "ls-lily-pool",
+      "kind": "pool",
+      "fam": "",
+      "level": 10,
+      "buy": 505,
+      "region": "swest",
+      "cells": [
+        [
+          0,
+          27
+        ],
+        [
+          1,
+          27
+        ],
+        [
+          2,
+          27
+        ],
+        [
+          3,
+          27
+        ],
+        [
+          4,
+          27
+        ],
+        [
+          5,
+          27
+        ],
+        [
+          0,
+          28
+        ],
+        [
+          1,
+          28
+        ],
+        [
+          2,
+          28
+        ],
+        [
+          3,
+          28
+        ],
+        [
+          4,
+          28
+        ],
+        [
+          5,
+          28
+        ]
+      ]
+    },
+    {
+      "id": "ls-dragonfly-bank",
+      "kind": "reed",
+      "fam": "",
+      "level": 10,
+      "buy": 270,
+      "region": "swest",
+      "cells": [
+        [
+          9,
+          27
+        ],
+        [
+          10,
+          27
+        ],
+        [
+          11,
+          27
+        ],
+        [
+          8,
+          28
+        ],
+        [
+          9,
+          28
+        ],
+        [
+          10,
+          28
+        ],
+        [
+          11,
+          28
+        ],
+        [
+          10,
+          29
+        ],
+        [
+          11,
+          29
+        ]
+      ]
+    },
+    {
+      "id": "ls-sedge-isle",
+      "kind": "reed",
+      "fam": "",
+      "level": 10,
+      "buy": 180,
+      "region": "swest",
+      "cells": [
+        [
+          10,
+          30
+        ],
+        [
+          11,
+          30
+        ],
+        [
+          10,
+          31
+        ],
+        [
+          11,
+          31
+        ],
+        [
+          10,
+          32
+        ],
+        [
+          11,
+          32
+        ]
+      ]
+    },
+    {
+      "id": "ls-alder-carr",
+      "kind": "wood",
+      "fam": "",
+      "level": 10,
+      "buy": 360,
+      "region": "swest",
+      "cells": [
+        [
+          0,
+          25
+        ],
+        [
+          1,
+          25
+        ],
+        [
+          2,
+          25
+        ],
+        [
+          3,
+          25
+        ],
+        [
+          4,
+          25
+        ],
+        [
+          5,
+          25
+        ],
+        [
+          6,
+          25
+        ],
+        [
+          0,
+          26
+        ],
+        [
+          1,
+          26
+        ],
+        [
+          2,
+          26
+        ],
+        [
+          3,
+          26
+        ],
+        [
+          4,
+          26
+        ]
+      ]
+    },
+    {
+      "id": "ls-tiny-isle",
+      "kind": "reed",
+      "fam": "",
+      "level": 14,
+      "buy": 480,
+      "region": "swest",
+      "cells": [
+        [
+          0,
+          31
+        ],
+        [
+          1,
+          31
+        ],
+        [
+          2,
+          31
+        ],
+        [
+          3,
+          31
+        ],
+        [
+          0,
+          32
+        ],
+        [
+          1,
+          32
+        ],
+        [
+          2,
+          32
+        ],
+        [
+          3,
+          32
+        ],
+        [
+          0,
+          33
+        ],
+        [
+          1,
+          33
+        ]
+      ]
+    },
+    {
+      "id": "ls-reed-isle",
+      "kind": "reed",
+      "fam": "",
+      "level": 10,
+      "buy": 180,
+      "region": "swest",
+      "cells": [
+        [
+          6,
+          30
+        ],
+        [
+          7,
+          30
+        ],
+        [
+          8,
+          30
+        ],
+        [
+          6,
+          31
+        ],
+        [
+          7,
+          31
+        ],
+        [
+          8,
+          31
+        ]
+      ]
+    },
+    {
+      "id": "ls-marigold-bank",
+      "kind": "reed",
+      "fam": "",
+      "level": 10,
+      "buy": 300,
+      "region": "swest",
+      "cells": [
+        [
+          0,
+          29
+        ],
+        [
+          1,
+          29
+        ],
+        [
+          2,
+          29
+        ],
+        [
+          3,
+          29
+        ],
+        [
+          4,
+          29
+        ],
+        [
+          5,
+          29
+        ],
+        [
+          0,
+          30
+        ],
+        [
+          1,
+          30
+        ],
+        [
+          2,
+          30
+        ],
+        [
+          3,
+          30
+        ]
+      ]
+    },
+    {
+      "id": "ls-otter-holt",
+      "kind": "wood",
+      "fam": "",
+      "level": 14,
+      "buy": 385,
+      "region": "swest",
+      "cells": [
+        [
+          8,
+          33
+        ],
+        [
+          9,
+          33
+        ],
+        [
+          10,
+          33
+        ],
+        [
+          11,
+          33
+        ],
+        [
+          8,
+          34
+        ],
+        [
+          9,
+          34
+        ],
+        [
+          10,
+          34
+        ],
+        [
+          11,
+          34
+        ]
+      ]
+    },
+    {
+      "id": "ls-deep-pool",
+      "kind": "pool",
+      "fam": "",
+      "level": 14,
+      "buy": 605,
+      "region": "swest",
+      "cells": [
+        [
+          2,
+          33
+        ],
+        [
+          3,
+          33
+        ],
+        [
+          4,
+          33
+        ],
+        [
+          5,
+          33
+        ],
+        [
+          6,
+          33
+        ],
+        [
+          2,
+          34
+        ],
+        [
+          3,
+          34
+        ],
+        [
+          4,
+          34
+        ],
+        [
+          5,
+          34
+        ]
+      ]
+    },
+    {
+      "id": "ls-heronry",
+      "kind": "wood",
+      "fam": "",
+      "level": 14,
+      "buy": 670,
+      "region": "swest",
+      "cells": [
+        [
+          0,
+          35
+        ],
+        [
+          1,
+          35
+        ],
+        [
+          2,
+          35
+        ],
+        [
+          3,
+          35
+        ],
+        [
+          4,
+          35
+        ],
+        [
+          5,
+          35
+        ],
+        [
+          0,
+          36
+        ],
+        [
+          1,
+          36
+        ],
+        [
+          2,
+          36
+        ],
+        [
+          3,
+          36
+        ],
+        [
+          4,
+          36
+        ],
+        [
+          0,
+          37
+        ],
+        [
+          1,
+          37
+        ],
+        [
+          2,
+          37
+        ],
+        [
+          3,
+          37
+        ],
+        [
+          4,
+          37
+        ]
+      ]
+    },
+    {
+      "id": "ls-clear-pool",
+      "kind": "pool",
+      "fam": "",
+      "level": 14,
+      "buy": 335,
+      "region": "swest",
+      "cells": [
+        [
+          6,
+          37
+        ],
+        [
+          7,
+          37
+        ],
+        [
+          8,
+          37
+        ],
+        [
+          9,
+          37
+        ],
+        [
+          10,
+          37
+        ]
+      ]
+    },
+    {
+      "id": "ls-moon-pool",
+      "kind": "pool",
+      "fam": "",
+      "level": 14,
+      "buy": 405,
+      "region": "swest",
+      "cells": [
+        [
+          7,
+          35
+        ],
+        [
+          8,
+          35
+        ],
+        [
+          9,
+          35
+        ],
+        [
+          7,
+          36
+        ],
+        [
+          8,
+          36
+        ],
+        [
+          9,
+          36
+        ]
+      ]
+    },
+    {
+      "id": "ls-bulrush-edge",
+      "kind": "reed",
+      "fam": "",
+      "level": 3,
+      "buy": 50,
+      "region": "seast",
+      "cells": [
+        [
+          43,
+          21
+        ],
+        [
+          44,
+          21
+        ],
+        [
+          42,
+          22
+        ],
+        [
+          43,
+          22
+        ],
+        [
+          44,
+          22
+        ]
+      ]
+    },
+    {
+      "id": "ls-gull-rest",
+      "kind": "rock",
+      "fam": "",
+      "level": 6,
+      "buy": 110,
+      "region": "seast",
+      "cells": [
+        [
+          46,
+          21
+        ],
+        [
+          47,
+          21
+        ],
+        [
+          48,
+          21
+        ],
+        [
+          47,
+          22
+        ],
+        [
+          48,
+          22
+        ],
+        [
+          48,
+          23
+        ]
+      ]
+    },
+    {
+      "id": "ls-otter-run",
+      "kind": "wood",
+      "fam": "",
+      "level": 6,
+      "buy": 145,
+      "region": "seast",
+      "cells": [
+        [
+          44,
+          23
+        ],
+        [
+          45,
+          23
+        ],
+        [
+          43,
+          24
+        ],
+        [
+          44,
+          24
+        ],
+        [
+          45,
+          24
+        ],
+        [
+          43,
+          25
+        ],
+        [
+          44,
+          25
+        ],
+        [
+          45,
+          25
+        ]
+      ]
+    },
+    {
+      "id": "ls-sandy-spit",
+      "kind": "rock",
+      "fam": "",
+      "level": 10,
+      "buy": 180,
+      "region": "seast",
+      "cells": [
+        [
+          43,
+          31
+        ],
+        [
+          44,
+          31
+        ],
+        [
+          45,
+          31
+        ],
+        [
+          43,
+          32
+        ],
+        [
+          44,
+          32
+        ],
+        [
+          45,
+          32
+        ]
+      ]
+    },
+    {
+      "id": "ls-lark-marsh",
+      "kind": "meadow",
+      "fam": "",
+      "level": 10,
+      "buy": 330,
+      "region": "seast",
+      "cells": [
+        [
+          48,
+          28
+        ],
+        [
+          49,
+          28
+        ],
+        [
+          50,
+          28
+        ],
+        [
+          51,
+          28
+        ],
+        [
+          48,
+          29
+        ],
+        [
+          49,
+          29
+        ],
+        [
+          50,
+          29
+        ],
+        [
+          51,
+          29
+        ],
+        [
+          49,
+          30
+        ],
+        [
+          50,
+          30
+        ],
+        [
+          51,
+          30
+        ]
+      ]
+    },
+    {
+      "id": "ls-hazel-isle",
+      "kind": "wood",
+      "fam": "",
+      "level": 14,
+      "buy": 480,
+      "region": "seast",
+      "cells": [
+        [
+          48,
+          32
+        ],
+        [
+          49,
+          32
+        ],
+        [
+          50,
+          32
+        ],
+        [
+          51,
+          32
+        ],
+        [
+          48,
+          33
+        ],
+        [
+          49,
+          33
+        ],
+        [
+          50,
+          33
+        ],
+        [
+          51,
+          33
+        ],
+        [
+          50,
+          34
+        ],
+        [
+          51,
+          34
+        ]
+      ]
+    },
+    {
+      "id": "ls-sedge-pool",
+      "kind": "pool",
+      "fam": "",
+      "level": 14,
+      "buy": 270,
+      "region": "seast",
+      "cells": [
+        [
+          44,
+          33
+        ],
+        [
+          45,
+          33
+        ],
+        [
+          44,
+          34
+        ],
+        [
+          45,
+          34
+        ]
+      ]
+    },
+    {
+      "id": "ls-moorhen-bank",
+      "kind": "reed",
+      "fam": "",
+      "level": 14,
+      "buy": 290,
+      "region": "seast",
+      "cells": [
+        [
+          43,
+          35
+        ],
+        [
+          44,
+          35
+        ],
+        [
+          45,
+          35
+        ],
+        [
+          43,
+          36
+        ],
+        [
+          44,
+          36
+        ],
+        [
+          45,
+          36
+        ]
+      ]
+    },
+    {
+      "id": "ls-bittern-reach",
+      "kind": "reed",
+      "fam": "",
+      "level": 14,
+      "buy": 385,
+      "region": "seast",
+      "cells": [
+        [
+          48,
+          36
+        ],
+        [
+          49,
+          36
+        ],
+        [
+          50,
+          36
+        ],
+        [
+          51,
+          36
+        ],
+        [
+          48,
+          37
+        ],
+        [
+          49,
+          37
+        ],
+        [
+          50,
+          37
+        ],
+        [
+          51,
+          37
+        ]
+      ]
+    },
+    {
+      "id": "ls-far-willows",
+      "kind": "wood",
+      "fam": "",
+      "level": 10,
+      "buy": 330,
+      "region": "seast",
+      "cells": [
+        [
+          48,
+          24
+        ],
+        [
+          49,
+          24
+        ],
+        [
+          50,
+          24
+        ],
+        [
+          51,
+          24
+        ],
+        [
+          48,
+          25
+        ],
+        [
+          49,
+          25
+        ],
+        [
+          50,
+          25
+        ],
+        [
+          51,
+          25
+        ],
+        [
+          49,
+          26
+        ],
+        [
+          50,
+          26
+        ],
+        [
+          51,
+          26
+        ]
+      ]
+    },
+    {
+      "id": "ls-stone-pool",
+      "kind": "pool",
+      "fam": "",
+      "level": 10,
+      "buy": 420,
+      "region": "seast",
+      "cells": [
+        [
+          44,
+          26
+        ],
+        [
+          45,
+          26
+        ],
+        [
+          44,
+          27
+        ],
+        [
+          45,
+          27
+        ],
+        [
+          43,
+          28
+        ],
+        [
+          44,
+          28
+        ],
+        [
+          45,
+          28
+        ],
+        [
+          43,
+          29
+        ],
+        [
+          44,
+          29
+        ],
+        [
+          45,
+          29
+        ]
+      ]
+    },
+    {
+      "id": "ls-boat-bank",
+      "kind": "reed",
+      "fam": "",
+      "level": 18,
+      "buy": 750,
+      "region": "south",
+      "cells": [
+        [
+          0,
+          38
+        ],
+        [
+          1,
+          38
+        ],
+        [
+          2,
+          38
+        ],
+        [
+          3,
+          38
+        ],
+        [
+          4,
+          38
+        ],
+        [
+          0,
+          39
+        ],
+        [
+          1,
+          39
+        ],
+        [
+          2,
+          39
+        ],
+        [
+          3,
+          39
+        ],
+        [
+          4,
+          39
+        ]
+      ]
+    },
+    {
+      "id": "ls-wader-flats",
+      "kind": "reed",
+      "fam": "",
+      "level": 18,
+      "buy": 975,
+      "region": "south",
+      "cells": [
+        [
+          6,
+          38
+        ],
+        [
+          7,
+          38
+        ],
+        [
+          8,
+          38
+        ],
+        [
+          9,
+          38
+        ],
+        [
+          10,
+          38
+        ],
+        [
+          11,
+          38
+        ],
+        [
+          12,
+          38
+        ],
+        [
+          13,
+          38
+        ],
+        [
+          9,
+          39
+        ],
+        [
+          10,
+          39
+        ],
+        [
+          11,
+          39
+        ],
+        [
+          12,
+          39
+        ],
+        [
+          13,
+          39
+        ]
+      ]
+    },
+    {
+      "id": "ls-cockle-bank",
+      "kind": "rock",
+      "fam": "",
+      "level": 18,
+      "buy": 1050,
+      "region": "south",
+      "cells": [
+        [
+          0,
+          40
+        ],
+        [
+          1,
+          40
+        ],
+        [
+          2,
+          40
+        ],
+        [
+          3,
+          40
+        ],
+        [
+          4,
+          40
+        ],
+        [
+          5,
+          40
+        ],
+        [
+          6,
+          40
+        ],
+        [
+          7,
+          40
+        ],
+        [
+          0,
+          41
+        ],
+        [
+          1,
+          41
+        ],
+        [
+          2,
+          41
+        ],
+        [
+          3,
+          41
+        ],
+        [
+          4,
+          41
+        ],
+        [
+          5,
+          41
+        ],
+        [
+          6,
+          41
+        ],
+        [
+          7,
+          41
+        ]
+      ]
+    },
+    {
+      "id": "ls-spit-end",
+      "kind": "rock",
+      "fam": "",
+      "level": 18,
+      "buy": 600,
+      "region": "south",
+      "cells": [
+        [
+          48,
+          38
+        ],
+        [
+          49,
+          38
+        ],
+        [
+          50,
+          38
+        ],
+        [
+          51,
+          38
+        ],
+        [
+          48,
+          39
+        ],
+        [
+          49,
+          39
+        ],
+        [
+          50,
+          39
+        ],
+        [
+          51,
+          39
+        ]
+      ]
+    },
+    {
+      "id": "ls-heron-isle",
+      "kind": "reed",
+      "fam": "",
+      "level": 18,
+      "buy": 600,
+      "region": "south",
+      "cells": [
+        [
+          17,
+          38
+        ],
+        [
+          18,
+          38
+        ],
+        [
+          19,
+          38
+        ],
+        [
+          20,
+          38
+        ],
+        [
+          21,
+          38
+        ],
+        [
+          22,
+          38
+        ],
+        [
+          22,
+          39
+        ],
+        [
+          23,
+          39
+        ]
+      ]
+    },
+    {
+      "id": "ls-iris-bed",
+      "kind": "reed",
+      "fam": "",
+      "level": 18,
+      "buy": 450,
+      "region": "south",
+      "cells": [
+        [
+          28,
+          38
+        ],
+        [
+          29,
+          38
+        ],
+        [
+          30,
+          38
+        ],
+        [
+          31,
+          38
+        ],
+        [
+          32,
+          38
+        ],
+        [
+          33,
+          38
+        ]
+      ]
+    },
+    {
+      "id": "ls-far-shore",
+      "kind": "meadow",
+      "fam": "",
+      "level": 18,
+      "buy": 1050,
+      "region": "south",
+      "cells": [
+        [
+          38,
+          38
+        ],
+        [
+          39,
+          38
+        ],
+        [
+          40,
+          38
+        ],
+        [
+          41,
+          38
+        ],
+        [
+          42,
+          38
+        ],
+        [
+          43,
+          38
+        ],
+        [
+          44,
+          38
+        ],
+        [
+          45,
+          38
+        ],
+        [
+          37,
+          39
+        ],
+        [
+          38,
+          39
+        ],
+        [
+          39,
+          39
+        ],
+        [
+          40,
+          39
+        ],
+        [
+          41,
+          39
+        ],
+        [
+          42,
+          39
+        ],
+        [
+          43,
+          39
+        ]
+      ]
+    },
+    {
+      "id": "ls-windy-flats",
+      "kind": "rock",
+      "fam": "",
+      "level": 18,
+      "buy": 675,
+      "region": "south",
+      "cells": [
+        [
+          36,
+          41
+        ],
+        [
+          37,
+          41
+        ],
+        [
+          38,
+          41
+        ],
+        [
+          39,
+          41
+        ],
+        [
+          40,
+          41
+        ],
+        [
+          41,
+          41
+        ],
+        [
+          42,
+          41
+        ],
+        [
+          43,
+          41
+        ],
+        [
+          44,
+          41
+        ]
+      ]
+    },
+    {
+      "id": "ls-ness-wood",
+      "kind": "wood",
+      "fam": "",
+      "level": 18,
+      "buy": 1050,
+      "region": "south",
+      "cells": [
+        [
+          45,
+          40
+        ],
+        [
+          46,
+          40
+        ],
+        [
+          47,
+          40
+        ],
+        [
+          48,
+          40
+        ],
+        [
+          49,
+          40
+        ],
+        [
+          50,
+          40
+        ],
+        [
+          51,
+          40
+        ],
+        [
+          45,
+          41
+        ],
+        [
+          46,
+          41
+        ],
+        [
+          47,
+          41
+        ],
+        [
+          48,
+          41
+        ],
+        [
+          49,
+          41
+        ],
+        [
+          50,
+          41
+        ],
+        [
+          51,
+          41
+        ]
+      ]
+    },
+    {
+      "id": "ls-mist-meadow",
+      "kind": "meadow",
+      "fam": "",
+      "level": 18,
+      "buy": 1050,
+      "region": "south",
+      "cells": [
+        [
+          15,
+          40
+        ],
+        [
+          16,
+          40
+        ],
+        [
+          17,
+          40
+        ],
+        [
+          18,
+          40
+        ],
+        [
+          19,
+          40
+        ],
+        [
+          20,
+          40
+        ],
+        [
+          12,
+          41
+        ],
+        [
+          13,
+          41
+        ],
+        [
+          14,
+          41
+        ],
+        [
+          15,
+          41
+        ],
+        [
+          16,
+          41
+        ],
+        [
+          17,
+          41
+        ],
+        [
+          18,
+          41
+        ],
+        [
+          19,
+          41
+        ],
+        [
+          20,
+          41
+        ]
+      ]
+    },
+    {
+      "id": "ls-silver-birches",
+      "kind": "wood",
+      "fam": "",
+      "level": 18,
+      "buy": 675,
+      "region": "south",
+      "cells": [
+        [
+          21,
+          41
+        ],
+        [
+          22,
+          41
+        ],
+        [
+          23,
+          41
+        ],
+        [
+          24,
+          41
+        ],
+        [
+          25,
+          41
+        ],
+        [
+          26,
+          41
+        ],
+        [
+          27,
+          41
+        ],
+        [
+          28,
+          41
+        ],
+        [
+          29,
+          41
+        ]
+      ]
+    },
+    {
+      "id": "ls-exotic-glade",
+      "kind": "exotic",
+      "fam": "",
+      "level": 18,
+      "buy": 1350,
+      "region": "south",
+      "cells": [
+        [
+          30,
+          40
+        ],
+        [
+          31,
+          40
+        ],
+        [
+          32,
+          40
+        ],
+        [
+          33,
+          40
+        ],
+        [
+          34,
+          40
+        ],
+        [
+          35,
+          40
+        ],
+        [
+          30,
+          41
+        ],
+        [
+          31,
+          41
+        ],
+        [
+          32,
+          41
+        ],
+        [
+          33,
+          41
+        ],
+        [
+          34,
+          41
+        ],
+        [
+          35,
+          41
+        ]
+      ]
+    },
+    {
+      "id": "ls-hermit-corner",
+      "kind": "exotic",
+      "fam": "",
+      "level": 18,
+      "buy": 340,
+      "region": "south",
+      "cells": [
+        [
+          8,
+          41
+        ],
+        [
+          9,
+          41
+        ],
+        [
+          10,
+          41
+        ]
+      ]
+    },
+    {
+      "id": "ls-sallow-carr",
+      "kind": "wood",
+      "fam": "",
+      "level": 18,
+      "buy": 675,
+      "region": "south",
+      "cells": [
+        [
+          19,
+          42
+        ],
+        [
+          20,
+          42
+        ],
+        [
+          21,
+          42
+        ],
+        [
+          22,
+          42
+        ],
+        [
+          23,
+          42
+        ],
+        [
+          24,
+          42
+        ],
+        [
+          25,
+          42
+        ],
+        [
+          26,
+          42
+        ],
+        [
+          27,
+          42
+        ]
+      ]
+    },
+    {
+      "id": "ls-ferny-way",
+      "kind": "dell",
+      "fam": "",
+      "level": 18,
+      "buy": 525,
+      "region": "south",
+      "cells": [
+        [
+          11,
+          43
+        ],
+        [
+          12,
+          43
+        ],
+        [
+          13,
+          43
+        ],
+        [
+          14,
+          43
+        ],
+        [
+          15,
+          43
+        ],
+        [
+          16,
+          43
+        ],
+        [
+          17,
+          43
+        ]
+      ]
+    },
+    {
+      "id": "ls-rush-hollow",
+      "kind": "reed",
+      "fam": "",
+      "level": 18,
+      "buy": 675,
+      "region": "south",
+      "cells": [
+        [
+          29,
+          43
+        ],
+        [
+          30,
+          43
+        ],
+        [
+          31,
+          43
+        ],
+        [
+          32,
+          43
+        ],
+        [
+          33,
+          43
+        ],
+        [
+          34,
+          43
+        ],
+        [
+          35,
+          43
+        ],
+        [
+          36,
+          43
+        ],
+        [
+          37,
+          43
+        ]
+      ]
+    },
+    {
+      "id": "ls-last-bank",
+      "kind": "reed",
+      "fam": "",
+      "level": 18,
+      "buy": 1050,
+      "region": "south",
+      "cells": [
+        [
+          0,
+          42
+        ],
+        [
+          1,
+          42
+        ],
+        [
+          2,
+          42
+        ],
+        [
+          3,
+          42
+        ],
+        [
+          4,
+          42
+        ],
+        [
+          5,
+          42
+        ],
+        [
+          6,
+          42
+        ],
+        [
+          7,
+          42
+        ],
+        [
+          8,
+          42
+        ],
+        [
+          9,
+          42
+        ],
+        [
+          10,
+          42
+        ],
+        [
+          5,
+          43
+        ],
+        [
+          6,
+          43
+        ],
+        [
+          7,
+          43
+        ],
+        [
+          8,
+          43
+        ],
+        [
+          9,
+          43
+        ],
+        [
+          10,
+          43
+        ]
+      ]
+    },
+    {
+      "id": "ls-otter-beach",
+      "kind": "rock",
+      "fam": "",
+      "level": 18,
+      "buy": 450,
+      "region": "south",
+      "cells": [
+        [
+          39,
+          42
+        ],
+        [
+          40,
+          42
+        ],
+        [
+          41,
+          42
+        ],
+        [
+          42,
+          42
+        ],
+        [
+          43,
+          42
+        ],
+        [
+          44,
+          42
+        ]
+      ]
+    },
+    {
+      "id": "ls-world-end",
+      "kind": "meadow",
+      "fam": "",
+      "level": 18,
+      "buy": 1050,
+      "region": "south",
+      "cells": [
+        [
+          45,
+          42
+        ],
+        [
+          46,
+          42
+        ],
+        [
+          47,
+          42
+        ],
+        [
+          48,
+          42
+        ],
+        [
+          49,
+          42
+        ],
+        [
+          50,
+          42
+        ],
+        [
+          51,
+          42
+        ],
+        [
+          45,
+          43
+        ],
+        [
+          46,
+          43
+        ],
+        [
+          47,
+          43
+        ],
+        [
+          48,
+          43
+        ],
+        [
+          49,
+          43
+        ],
+        [
+          50,
+          43
+        ],
+        [
+          51,
+          43
+        ]
+      ]
+    }
+  ],
+  "sectionZones": {
+    "lc-front-bed": 0,
+    "lc-cottage-bed": 0,
+    "lc-rose-corner": 0,
+    "lc-the-green": 0,
+    "lc-band-green": 0,
+    "lc-well-green": 0,
+    "lc-fountain-green": 0,
+    "lc-little-green": 0,
+    "lc-shore-green": 0,
+    "lc-shop-green": 0,
+    "lc-gate-patch": 0,
+    "lc-notice-green": 0,
+    "lc-bean-rows": 0,
+    "lc-salad-patch": 0,
+    "lc-cabbage-corner": 0,
+    "lc-long-beds": 0,
+    "lc-deer-corner": 0,
+    "lc-bracken-dip": 0,
+    "lc-old-logs": 0,
+    "lc-badger-bank": 0,
+    "lc-old-apple": 0,
+    "lc-pear-corner": 0,
+    "lc-plum-row": 0,
+    "lc-pond": 0,
+    "lc-glasshouse": 0,
+    "lc-poppy-bank": 0,
+    "lc-long-meadow": 0,
+    "lc-daisy-strip": 0,
+    "ls-clover-corner": 1,
+    "ls-buttercup-bank": 1,
+    "ls-sunny-doorstep": 1,
+    "ls-blackbird-corner": 1,
+    "ls-foxglove-strip": 2,
+    "ls-fern-hollow": 2,
+    "ls-warm-stones": 1,
+    "ls-thyme-terrace": 2,
+    "ls-bee-bank": 3,
+    "ls-orchid-slope": 3,
+    "ls-rabbit-warren": 3,
+    "ls-skylark-top": 3,
+    "ls-long-view": 3,
+    "ls-cowslip-rise": 4,
+    "ls-high-pasture": 3,
+    "ls-gate-pear": 3,
+    "ls-windfall": 2,
+    "ls-crab-row": 2,
+    "ls-old-plum": 1,
+    "ls-apple-row": 2,
+    "ls-medlar-strip": 1,
+    "ls-cherry-row": 2,
+    "ls-cider-nook": 3,
+    "ls-hazel-copse": 1,
+    "ls-damson-dip": 2,
+    "ls-walnut-shade": 3,
+    "ls-nursery": 3,
+    "ls-bluebell-wood": 2,
+    "ls-ivy-corner": 2,
+    "ls-espalier": 3,
+    "ls-walled-garden": 3,
+    "ls-owl-wood": 3,
+    "ls-sun-terrace": 3,
+    "ls-beech-top": 3,
+    "ls-first-furrow": 3,
+    "ls-allot-row": 2,
+    "ls-bean-corner": 1,
+    "ls-onion-bed": 3,
+    "ls-salad-strip": 2,
+    "ls-pumpkin-nook": 3,
+    "ls-potato-ground": 3,
+    "ls-seedling-rows": 3,
+    "ls-bean-beds": 4,
+    "ls-hop-garden": 4,
+    "ls-herb-wall": 5,
+    "ls-black-soil": 4,
+    "ls-pea-sticks": 5,
+    "ls-maze-ground": 5,
+    "ls-market-beds": 5,
+    "ls-giant-veg": 5,
+    "ls-deep-loam": 5,
+    "ls-prize-beds": 5,
+    "ls-frog-steps": 3,
+    "ls-kingcup": 1,
+    "ls-strawberry-bank": 2,
+    "ls-rhubarb-patch": 2,
+    "ls-snipe-rough": 3,
+    "ls-willow-foot": 2,
+    "ls-lily-pool": 3,
+    "ls-dragonfly-bank": 3,
+    "ls-sedge-isle": 3,
+    "ls-alder-carr": 3,
+    "ls-tiny-isle": 4,
+    "ls-reed-isle": 3,
+    "ls-marigold-bank": 3,
+    "ls-otter-holt": 4,
+    "ls-deep-pool": 4,
+    "ls-heronry": 4,
+    "ls-clear-pool": 4,
+    "ls-moon-pool": 4,
+    "ls-bulrush-edge": 1,
+    "ls-gull-rest": 2,
+    "ls-otter-run": 2,
+    "ls-sandy-spit": 3,
+    "ls-lark-marsh": 3,
+    "ls-hazel-isle": 4,
+    "ls-sedge-pool": 4,
+    "ls-moorhen-bank": 4,
+    "ls-bittern-reach": 4,
+    "ls-far-willows": 3,
+    "ls-stone-pool": 3,
+    "ls-boat-bank": 5,
+    "ls-wader-flats": 5,
+    "ls-cockle-bank": 5,
+    "ls-spit-end": 5,
+    "ls-heron-isle": 5,
+    "ls-iris-bed": 5,
+    "ls-far-shore": 5,
+    "ls-windy-flats": 5,
+    "ls-ness-wood": 5,
+    "ls-mist-meadow": 5,
+    "ls-silver-birches": 5,
+    "ls-exotic-glade": 5,
+    "ls-hermit-corner": 5,
+    "ls-sallow-carr": 5,
+    "ls-ferny-way": 5,
+    "ls-rush-hollow": 5,
+    "ls-last-bank": 5,
+    "ls-otter-beach": 5,
+    "ls-world-end": 5
+  },
+  "featurePolicy": {
+    "defaultStaticIds": [
+      "pier",
+      "pier-2",
+      "pier-3",
+      "garden-shop",
+      "land-office",
+      "tackle-shop",
+      "market-stall",
+      "notice-board",
+      "craft-bench",
+      "lake-hall",
+      "lake-board",
+      "field-journal",
+      "camera-tripod",
+      "post-box",
+      "sundial",
+      "smoker",
+      "old-angler",
+      "jetty-post",
+      "boat",
+      "reed-bank",
+      "ld-mill",
+      "ld-tower",
+      "ld-falls",
+      "ld-lighthouse",
+      "ld-hull",
+      "ld-bench-a",
+      "ld-bench-b"
+    ],
+    "preserveOwnedAndDiscoveryIds": true,
+    "unlistedDefault": "Shelved art and collision together; parent aligns earned/owned reveal before integration.",
+    "oldIsle": "Replace legacy grass/stepping override with a deliberate compatible coastal location; preserve discoveries.",
+    "optionalActivities": "Packed by default, one deliberately selected at a time; existing unlocks and progress retained."
+  },
+  "physicalContract": {
+    "coordinates": "cell",
+    "outline": "Closed simple polygon; final edge implicitly closes. Same continuous land boundary drives ocean paint/foot/fish/rod/reflection/ripple/visitor geometry.",
+    "ocean": "Logical ocean rectangle minus mainland polygon; separate freshwater pond remains inland. Render-only sea extends beyond logical bounds.",
+    "beach": "Inland distance to the canonical coast in48x30world-pixel metric; no independent collision shoreline.",
+    "walkCover": "Existing pier/bridge/work/ice walk-cover remains separate from underlying ocean. Do not erase water to draw deck.",
+    "cellRaster": "Cell-centre kind is a lookup aid only; continuous geometry is authoritative at coasts.",
+    "reservation": "Static footprint, doorway apron, rear art envelope and path are separately classified; rear art is not a new physical collider."
+  },
+  "gates": [
+    {
+      "id": "island-woods",
+      "name": "Woodland entrance",
+      "n": 1,
+      "x": 12,
+      "y": 20,
+      "dx": -1,
+      "dy": 0,
+      "h": 2.5,
+      "door": {
+        "x": 13,
+        "y": 20
+      },
+      "district": "west-woods"
+    },
+    {
+      "id": "island-mill",
+      "name": "Mill path",
+      "n": 2,
+      "x": 38,
+      "y": 25,
+      "dx": 0,
+      "dy": 1,
+      "h": 3,
+      "door": {
+        "x": 38,
+        "y": 24
+      },
+      "district": "east-mill"
+    },
+    {
+      "id": "island-ruins",
+      "name": "Ruins path",
+      "n": 3,
+      "x": 16,
+      "y": 29,
+      "dx": 0,
+      "dy": 1,
+      "h": 2.5,
+      "door": {
+        "x": 16,
+        "y": 28
+      },
+      "district": "southwest-ruins"
+    },
+    {
+      "id": "island-orchard",
+      "name": "Outer orchard path",
+      "n": 4,
+      "x": 39,
+      "y": 24,
+      "dx": 0,
+      "dy": 1,
+      "h": 2.5,
+      "door": {
+        "x": 39,
+        "y": 23
+      },
+      "district": "orchard-headland"
+    },
+    {
+      "id": "island-headland",
+      "name": "Northern headland",
+      "n": 5,
+      "x": 30,
+      "y": 8,
+      "dx": 0,
+      "dy": -1,
+      "h": 1.6,
+      "door": {
+        "x": 30,
+        "y": 9
+      },
+      "district": "north-headland"
+    }
+  ],
+  "sectionCells": {
+    "lc-front-bed": [
+      [
+        16,
+        13
+      ],
+      [
+        17,
+        13
+      ],
+      [
+        18,
+        13
+      ],
+      [
+        19,
+        13
+      ],
+      [
+        20,
+        13
+      ],
+      [
+        21,
+        13
+      ],
+      [
+        16,
+        14
+      ],
+      [
+        17,
+        14
+      ],
+      [
+        18,
+        14
+      ],
+      [
+        19,
+        14
+      ],
+      [
+        20,
+        14
+      ],
+      [
+        21,
+        14
+      ]
+    ],
+    "lc-cottage-bed": [
+      [
+        15,
+        15
+      ],
+      [
+        16,
+        15
+      ],
+      [
+        17,
+        15
+      ],
+      [
+        18,
+        15
+      ],
+      [
+        19,
+        15
+      ],
+      [
+        20,
+        15
+      ],
+      [
+        21,
+        15
+      ],
+      [
+        15,
+        16
+      ],
+      [
+        16,
+        16
+      ],
+      [
+        17,
+        16
+      ],
+      [
+        18,
+        16
+      ],
+      [
+        19,
+        16
+      ],
+      [
+        20,
+        16
+      ]
+    ],
+    "lc-rose-corner": [
+      [
+        18,
+        11
+      ],
+      [
+        19,
+        11
+      ],
+      [
+        20,
+        11
+      ],
+      [
+        21,
+        11
+      ],
+      [
+        17,
+        12
+      ],
+      [
+        18,
+        12
+      ],
+      [
+        19,
+        12
+      ],
+      [
+        20,
+        12
+      ],
+      [
+        21,
+        12
+      ]
+    ],
+    "lc-the-green": [
+      [
+        26,
+        10
+      ],
+      [
+        26,
+        11
+      ]
+    ],
+    "lc-band-green": [
+      [
+        25,
+        16
+      ],
+      [
+        26,
+        16
+      ],
+      [
+        27,
+        16
+      ],
+      [
+        25,
+        17
+      ],
+      [
+        26,
+        17
+      ],
+      [
+        27,
+        17
+      ]
+    ],
+    "lc-well-green": [
+      [
+        22,
+        10
+      ],
+      [
+        22,
+        11
+      ]
+    ],
+    "lc-fountain-green": [
+      [
+        29,
+        11
+      ],
+      [
+        31,
+        11
+      ],
+      [
+        32,
+        11
+      ],
+      [
+        33,
+        11
+      ],
+      [
+        32,
+        12
+      ],
+      [
+        33,
+        12
+      ],
+      [
+        34,
+        12
+      ]
+    ],
+    "lc-little-green": [
+      [
+        28,
+        16
+      ],
+      [
+        28,
+        17
+      ]
+    ],
+    "lc-shore-green": [
+      [
+        36,
+        17
+      ],
+      [
+        36,
+        18
+      ]
+    ],
+    "lc-shop-green": [
+      [
+        25,
+        18
+      ],
+      [
+        28,
+        18
+      ]
+    ],
+    "lc-gate-patch": [
+      [
+        26,
+        18
+      ],
+      [
+        27,
+        18
+      ]
+    ],
+    "lc-notice-green": [
+      [
+        29,
+        18
+      ],
+      [
+        30,
+        18
+      ],
+      [
+        31,
+        18
+      ],
+      [
+        32,
+        18
+      ]
+    ],
+    "lc-bean-rows": [
+      [
+        13,
+        12
+      ],
+      [
+        14,
+        12
+      ]
+    ],
+    "lc-salad-patch": [
+      [
+        24,
+        24
+      ],
+      [
+        24,
+        25
+      ]
+    ],
+    "lc-cabbage-corner": [
+      [
+        22,
+        26
+      ],
+      [
+        22,
+        27
+      ]
+    ],
+    "lc-long-beds": [
+      [
+        23,
+        26
+      ],
+      [
+        23,
+        27
+      ]
+    ],
+    "lc-deer-corner": [
+      [
+        38,
+        12
+      ],
+      [
+        12,
+        22
+      ],
+      [
+        13,
+        22
+      ],
+      [
+        12,
+        23
+      ],
+      [
+        13,
+        23
+      ]
+    ],
+    "lc-bracken-dip": [
+      [
+        7,
+        24
+      ],
+      [
+        8,
+        24
+      ],
+      [
+        7,
+        25
+      ],
+      [
+        8,
+        25
+      ]
+    ],
+    "lc-old-logs": [
+      [
+        29,
+        16
+      ],
+      [
+        30,
+        16
+      ],
+      [
+        31,
+        16
+      ],
+      [
+        32,
+        16
+      ],
+      [
+        30,
+        17
+      ],
+      [
+        32,
+        17
+      ],
+      [
+        14,
+        22
+      ],
+      [
+        15,
+        22
+      ],
+      [
+        14,
+        23
+      ],
+      [
+        15,
+        23
+      ]
+    ],
+    "lc-badger-bank": [
+      [
+        39,
+        16
+      ],
+      [
+        37,
+        17
+      ],
+      [
+        38,
+        17
+      ],
+      [
+        39,
+        17
+      ],
+      [
+        37,
+        18
+      ],
+      [
+        38,
+        18
+      ],
+      [
+        39,
+        18
+      ]
+    ],
+    "lc-old-apple": [
+      [
+        13,
+        8
+      ],
+      [
+        14,
+        8
+      ],
+      [
+        15,
+        8
+      ],
+      [
+        16,
+        8
+      ],
+      [
+        13,
+        9
+      ],
+      [
+        14,
+        9
+      ],
+      [
+        15,
+        9
+      ],
+      [
+        16,
+        9
+      ],
+      [
+        17,
+        9
+      ],
+      [
+        16,
+        10
+      ]
+    ],
+    "lc-pear-corner": [
+      [
+        18,
+        8
+      ],
+      [
+        19,
+        8
+      ],
+      [
+        20,
+        8
+      ],
+      [
+        21,
+        8
+      ],
+      [
+        18,
+        9
+      ],
+      [
+        19,
+        9
+      ],
+      [
+        20,
+        9
+      ]
+    ],
+    "lc-plum-row": [
+      [
+        13,
+        10
+      ],
+      [
+        14,
+        10
+      ],
+      [
+        15,
+        10
+      ],
+      [
+        13,
+        11
+      ],
+      [
+        14,
+        11
+      ],
+      [
+        15,
+        11
+      ]
+    ],
+    "lc-pond": [
+      [
+        35,
+        7
+      ],
+      [
+        36,
+        7
+      ],
+      [
+        34,
+        8
+      ],
+      [
+        35,
+        8
+      ],
+      [
+        36,
+        8
+      ],
+      [
+        37,
+        8
+      ],
+      [
+        38,
+        8
+      ],
+      [
+        34,
+        9
+      ],
+      [
+        35,
+        9
+      ],
+      [
+        36,
+        9
+      ],
+      [
+        37,
+        9
+      ],
+      [
+        38,
+        9
+      ],
+      [
+        37,
+        10
+      ],
+      [
+        38,
+        10
+      ],
+      [
+        34,
+        11
+      ],
+      [
+        35,
+        11
+      ],
+      [
+        36,
+        11
+      ],
+      [
+        37,
+        11
+      ],
+      [
+        38,
+        11
+      ]
+    ],
+    "lc-glasshouse": [
+      [
+        36,
+        16
+      ],
+      [
+        37,
+        16
+      ],
+      [
+        38,
+        16
+      ],
+      [
+        32,
+        22
+      ],
+      [
+        33,
+        22
+      ],
+      [
+        32,
+        23
+      ],
+      [
+        33,
+        23
+      ]
+    ],
+    "lc-poppy-bank": [
+      [
+        26,
+        8
+      ],
+      [
+        26,
+        9
+      ]
+    ],
+    "lc-long-meadow": [
+      [
+        29,
+        8
+      ],
+      [
+        31,
+        8
+      ],
+      [
+        32,
+        8
+      ],
+      [
+        29,
+        9
+      ],
+      [
+        31,
+        9
+      ],
+      [
+        32,
+        9
+      ],
+      [
+        33,
+        9
+      ]
+    ],
+    "lc-daisy-strip": [
+      [
+        29,
+        10
+      ],
+      [
+        31,
+        10
+      ],
+      [
+        32,
+        10
+      ],
+      [
+        33,
+        10
+      ]
+    ],
+    "ls-clover-corner": [
+      [
+        28,
+        7
+      ],
+      [
+        29,
+        7
+      ],
+      [
+        31,
+        7
+      ],
+      [
+        32,
+        7
+      ]
+    ],
+    "ls-buttercup-bank": [
+      [
+        26,
+        7
+      ],
+      [
+        27,
+        7
+      ]
+    ],
+    "ls-sunny-doorstep": [
+      [
+        23,
+        24
+      ],
+      [
+        23,
+        25
+      ]
+    ],
+    "ls-blackbird-corner": [
+      [
+        21,
+        6
+      ],
+      [
+        22,
+        6
+      ],
+      [
+        21,
+        7
+      ],
+      [
+        22,
+        7
+      ]
+    ],
+    "ls-foxglove-strip": [
+      [
+        16,
+        6
+      ],
+      [
+        17,
+        6
+      ],
+      [
+        18,
+        6
+      ],
+      [
+        19,
+        6
+      ],
+      [
+        16,
+        7
+      ],
+      [
+        17,
+        7
+      ],
+      [
+        18,
+        7
+      ],
+      [
+        19,
+        7
+      ]
+    ],
+    "ls-fern-hollow": [
+      [
+        14,
+        6
+      ],
+      [
+        15,
+        6
+      ],
+      [
+        13,
+        7
+      ],
+      [
+        14,
+        7
+      ],
+      [
+        15,
+        7
+      ]
+    ],
+    "ls-warm-stones": [
+      [
+        28,
+        6
+      ],
+      [
+        29,
+        6
+      ],
+      [
+        30,
+        6
+      ],
+      [
+        31,
+        6
+      ],
+      [
+        32,
+        6
+      ]
+    ],
+    "ls-thyme-terrace": [
+      [
+        15,
+        21
+      ],
+      [
+        16,
+        21
+      ]
+    ],
+    "ls-bee-bank": [
+      [
+        22,
+        8
+      ],
+      [
+        22,
+        9
+      ]
+    ],
+    "ls-orchid-slope": [
+      [
+        43,
+        12
+      ],
+      [
+        43,
+        13
+      ]
+    ],
+    "ls-rabbit-warren": [
+      [
+        24,
+        22
+      ],
+      [
+        24,
+        23
+      ]
+    ],
+    "ls-skylark-top": [
+      [
+        15,
+        13
+      ],
+      [
+        15,
+        14
+      ]
+    ],
+    "ls-long-view": [
+      [
+        33,
+        33
+      ],
+      [
+        33,
+        34
+      ]
+    ],
+    "ls-cowslip-rise": [
+      [
+        21,
+        9
+      ],
+      [
+        21,
+        10
+      ]
+    ],
+    "ls-high-pasture": [
+      [
+        19,
+        10
+      ],
+      [
+        20,
+        10
+      ]
+    ],
+    "ls-gate-pear": [
+      [
+        34,
+        26
+      ],
+      [
+        35,
+        26
+      ],
+      [
+        34,
+        27
+      ],
+      [
+        35,
+        27
+      ]
+    ],
+    "ls-windfall": [
+      [
+        33,
+        6
+      ],
+      [
+        34,
+        6
+      ],
+      [
+        33,
+        7
+      ],
+      [
+        34,
+        7
+      ]
+    ],
+    "ls-crab-row": [
+      [
+        44,
+        17
+      ],
+      [
+        45,
+        17
+      ],
+      [
+        44,
+        18
+      ],
+      [
+        45,
+        18
+      ]
+    ],
+    "ls-old-plum": [
+      [
+        32,
+        26
+      ],
+      [
+        33,
+        26
+      ],
+      [
+        32,
+        27
+      ],
+      [
+        33,
+        27
+      ]
+    ],
+    "ls-apple-row": [
+      [
+        44,
+        14
+      ],
+      [
+        43,
+        15
+      ],
+      [
+        44,
+        15
+      ],
+      [
+        45,
+        15
+      ],
+      [
+        44,
+        16
+      ],
+      [
+        45,
+        16
+      ]
+    ],
+    "ls-medlar-strip": [
+      [
+        28,
+        22
+      ],
+      [
+        29,
+        22
+      ],
+      [
+        28,
+        23
+      ],
+      [
+        29,
+        23
+      ]
+    ],
+    "ls-cherry-row": [
+      [
+        44,
+        13
+      ],
+      [
+        30,
+        22
+      ],
+      [
+        31,
+        22
+      ],
+      [
+        30,
+        23
+      ],
+      [
+        31,
+        23
+      ]
+    ],
+    "ls-cider-nook": [
+      [
+        32,
+        24
+      ],
+      [
+        33,
+        24
+      ],
+      [
+        32,
+        25
+      ],
+      [
+        33,
+        25
+      ]
+    ],
+    "ls-hazel-copse": [
+      [
+        18,
+        22
+      ],
+      [
+        19,
+        22
+      ],
+      [
+        18,
+        23
+      ],
+      [
+        19,
+        23
+      ]
+    ],
+    "ls-damson-dip": [
+      [
+        30,
+        24
+      ],
+      [
+        31,
+        24
+      ],
+      [
+        30,
+        25
+      ],
+      [
+        31,
+        25
+      ]
+    ],
+    "ls-walnut-shade": [
+      [
+        22,
+        22
+      ],
+      [
+        23,
+        22
+      ],
+      [
+        22,
+        23
+      ],
+      [
+        23,
+        23
+      ]
+    ],
+    "ls-nursery": [
+      [
+        34,
+        24
+      ],
+      [
+        35,
+        24
+      ],
+      [
+        34,
+        25
+      ],
+      [
+        35,
+        25
+      ]
+    ],
+    "ls-bluebell-wood": [
+      [
+        9,
+        22
+      ],
+      [
+        9,
+        23
+      ]
+    ],
+    "ls-ivy-corner": [
+      [
+        7,
+        26
+      ],
+      [
+        8,
+        26
+      ]
+    ],
+    "ls-espalier": [
+      [
+        22,
+        24
+      ],
+      [
+        22,
+        25
+      ]
+    ],
+    "ls-walled-garden": [
+      [
+        44,
+        19
+      ],
+      [
+        44,
+        20
+      ]
+    ],
+    "ls-owl-wood": [
+      [
+        20,
+        24
+      ],
+      [
+        21,
+        24
+      ],
+      [
+        20,
+        25
+      ],
+      [
+        21,
+        25
+      ]
+    ],
+    "ls-sun-terrace": [
+      [
+        43,
+        17
+      ],
+      [
+        43,
+        18
+      ]
+    ],
+    "ls-beech-top": [
+      [
+        12,
+        29
+      ],
+      [
+        13,
+        29
+      ],
+      [
+        12,
+        30
+      ],
+      [
+        13,
+        30
+      ]
+    ],
+    "ls-first-furrow": [
+      [
+        34,
+        30
+      ],
+      [
+        35,
+        30
+      ]
+    ],
+    "ls-allot-row": [
+      [
+        33,
+        30
+      ],
+      [
+        33,
+        31
+      ]
+    ],
+    "ls-bean-corner": [
+      [
+        10,
+        16
+      ],
+      [
+        11,
+        16
+      ],
+      [
+        10,
+        17
+      ],
+      [
+        11,
+        17
+      ],
+      [
+        11,
+        18
+      ]
+    ],
+    "ls-onion-bed": [
+      [
+        35,
+        28
+      ],
+      [
+        35,
+        29
+      ]
+    ],
+    "ls-salad-strip": [
+      [
+        35,
+        31
+      ],
+      [
+        35,
+        32
+      ]
+    ],
+    "ls-pumpkin-nook": [
+      [
+        6,
+        14
+      ],
+      [
+        7,
+        14
+      ],
+      [
+        6,
+        15
+      ],
+      [
+        7,
+        15
+      ]
+    ],
+    "ls-potato-ground": [
+      [
+        32,
+        30
+      ],
+      [
+        32,
+        31
+      ]
+    ],
+    "ls-seedling-rows": [
+      [
+        6,
+        13
+      ],
+      [
+        7,
+        13
+      ]
+    ],
+    "ls-bean-beds": [
+      [
+        34,
+        28
+      ],
+      [
+        34,
+        29
+      ]
+    ],
+    "ls-hop-garden": [
+      [
+        9,
+        11
+      ],
+      [
+        6,
+        12
+      ],
+      [
+        7,
+        12
+      ],
+      [
+        8,
+        12
+      ],
+      [
+        9,
+        12
+      ]
+    ],
+    "ls-herb-wall": [
+      [
+        17,
+        21
+      ],
+      [
+        18,
+        21
+      ]
+    ],
+    "ls-black-soil": [
+      [
+        30,
+        26
+      ],
+      [
+        31,
+        26
+      ]
+    ],
+    "ls-pea-sticks": [
+      [
+        9,
+        9
+      ],
+      [
+        9,
+        10
+      ]
+    ],
+    "ls-maze-ground": [
+      [
+        16,
+        11
+      ],
+      [
+        17,
+        11
+      ]
+    ],
+    "ls-market-beds": [
+      [
+        32,
+        28
+      ],
+      [
+        32,
+        29
+      ]
+    ],
+    "ls-giant-veg": [
+      [
+        31,
+        29
+      ],
+      [
+        31,
+        30
+      ]
+    ],
+    "ls-deep-loam": [
+      [
+        31,
+        27
+      ],
+      [
+        31,
+        28
+      ]
+    ],
+    "ls-prize-beds": [
+      [
+        33,
+        28
+      ],
+      [
+        33,
+        29
+      ]
+    ],
+    "ls-frog-steps": [
+      [
+        14,
+        26
+      ],
+      [
+        14,
+        27
+      ]
+    ],
+    "ls-kingcup": [
+      [
+        6,
+        26
+      ],
+      [
+        6,
+        27
+      ]
+    ],
+    "ls-strawberry-bank": [
+      [
+        5,
+        21
+      ],
+      [
+        6,
+        21
+      ],
+      [
+        7,
+        21
+      ],
+      [
+        8,
+        21
+      ],
+      [
+        5,
+        22
+      ],
+      [
+        6,
+        22
+      ]
+    ],
+    "ls-rhubarb-patch": [
+      [
+        6,
+        23
+      ],
+      [
+        7,
+        23
+      ],
+      [
+        8,
+        23
+      ]
+    ],
+    "ls-snipe-rough": [
+      [
+        28,
+        24
+      ],
+      [
+        28,
+        25
+      ]
+    ],
+    "ls-willow-foot": [
+      [
+        30,
+        27
+      ],
+      [
+        30,
+        28
+      ]
+    ],
+    "ls-lily-pool": [
+      [
+        7,
+        27
+      ],
+      [
+        8,
+        27
+      ]
+    ],
+    "ls-dragonfly-bank": [
+      [
+        11,
+        27
+      ],
+      [
+        11,
+        28
+      ],
+      [
+        11,
+        29
+      ]
+    ],
+    "ls-sedge-isle": [
+      [
+        10,
+        30
+      ],
+      [
+        11,
+        30
+      ],
+      [
+        10,
+        31
+      ],
+      [
+        11,
+        31
+      ],
+      [
+        10,
+        32
+      ]
+    ],
+    "ls-alder-carr": [
+      [
+        6,
+        25
+      ],
+      [
+        12,
+        27
+      ],
+      [
+        13,
+        27
+      ],
+      [
+        12,
+        28
+      ],
+      [
+        13,
+        28
+      ]
+    ],
+    "ls-tiny-isle": [
+      [
+        29,
+        26
+      ],
+      [
+        29,
+        27
+      ]
+    ],
+    "ls-reed-isle": [
+      [
+        6,
+        30
+      ],
+      [
+        7,
+        30
+      ],
+      [
+        8,
+        30
+      ]
+    ],
+    "ls-marigold-bank": [
+      [
+        18,
+        32
+      ],
+      [
+        18,
+        33
+      ]
+    ],
+    "ls-otter-holt": [
+      [
+        20,
+        22
+      ],
+      [
+        21,
+        22
+      ],
+      [
+        20,
+        23
+      ],
+      [
+        21,
+        23
+      ],
+      [
+        9,
+        33
+      ],
+      [
+        10,
+        33
+      ]
+    ],
+    "ls-deep-pool": [
+      [
+        9,
+        27
+      ],
+      [
+        10,
+        27
+      ]
+    ],
+    "ls-heronry": [
+      [
+        18,
+        26
+      ],
+      [
+        19,
+        26
+      ],
+      [
+        18,
+        27
+      ],
+      [
+        19,
+        27
+      ]
+    ],
+    "ls-clear-pool": [
+      [
+        7,
+        28
+      ],
+      [
+        8,
+        28
+      ]
+    ],
+    "ls-moon-pool": [
+      [
+        9,
+        28
+      ],
+      [
+        10,
+        28
+      ]
+    ],
+    "ls-bulrush-edge": [
+      [
+        44,
+        21
+      ],
+      [
+        42,
+        22
+      ],
+      [
+        43,
+        22
+      ],
+      [
+        44,
+        22
+      ]
+    ],
+    "ls-gull-rest": [
+      [
+        32,
+        32
+      ],
+      [
+        33,
+        32
+      ]
+    ],
+    "ls-otter-run": [
+      [
+        44,
+        23
+      ],
+      [
+        43,
+        24
+      ],
+      [
+        44,
+        24
+      ],
+      [
+        43,
+        25
+      ],
+      [
+        44,
+        25
+      ]
+    ],
+    "ls-sandy-spit": [
+      [
+        33,
+        35
+      ],
+      [
+        34,
+        35
+      ]
+    ],
+    "ls-lark-marsh": [
+      [
+        17,
+        10
+      ],
+      [
+        18,
+        10
+      ]
+    ],
+    "ls-hazel-isle": [
+      [
+        18,
+        24
+      ],
+      [
+        19,
+        24
+      ],
+      [
+        18,
+        25
+      ],
+      [
+        19,
+        25
+      ]
+    ],
+    "ls-sedge-pool": [
+      [
+        7,
+        29
+      ],
+      [
+        8,
+        29
+      ]
+    ],
+    "ls-moorhen-bank": [
+      [
+        19,
+        30
+      ],
+      [
+        20,
+        30
+      ]
+    ],
+    "ls-bittern-reach": [
+      [
+        9,
+        30
+      ],
+      [
+        9,
+        31
+      ]
+    ],
+    "ls-far-willows": [
+      [
+        16,
+        22
+      ],
+      [
+        17,
+        22
+      ],
+      [
+        16,
+        23
+      ],
+      [
+        17,
+        23
+      ]
+    ],
+    "ls-stone-pool": [
+      [
+        9,
+        29
+      ],
+      [
+        10,
+        29
+      ]
+    ],
+    "ls-boat-bank": [
+      [
+        14,
+        28
+      ],
+      [
+        14,
+        29
+      ]
+    ],
+    "ls-wader-flats": [
+      [
+        29,
+        24
+      ],
+      [
+        29,
+        25
+      ]
+    ],
+    "ls-cockle-bank": [
+      [
+        32,
+        33
+      ],
+      [
+        32,
+        34
+      ]
+    ],
+    "ls-spit-end": [
+      [
+        34,
+        31
+      ],
+      [
+        34,
+        32
+      ]
+    ],
+    "ls-heron-isle": [
+      [
+        14,
+        35
+      ],
+      [
+        15,
+        35
+      ]
+    ],
+    "ls-iris-bed": [
+      [
+        6,
+        28
+      ],
+      [
+        6,
+        29
+      ]
+    ],
+    "ls-far-shore": [
+      [
+        20,
+        6
+      ],
+      [
+        20,
+        7
+      ]
+    ],
+    "ls-windy-flats": [
+      [
+        35,
+        33
+      ],
+      [
+        35,
+        34
+      ]
+    ],
+    "ls-ness-wood": [
+      [
+        18,
+        28
+      ],
+      [
+        19,
+        28
+      ],
+      [
+        18,
+        29
+      ],
+      [
+        19,
+        29
+      ]
+    ],
+    "ls-mist-meadow": [
+      [
+        15,
+        12
+      ],
+      [
+        16,
+        12
+      ]
+    ],
+    "ls-silver-birches": [
+      [
+        20,
+        28
+      ],
+      [
+        21,
+        28
+      ],
+      [
+        20,
+        29
+      ],
+      [
+        21,
+        29
+      ]
+    ],
+    "ls-exotic-glade": [
+      [
+        36,
+        12
+      ],
+      [
+        37,
+        12
+      ]
+    ],
+    "ls-hermit-corner": [
+      [
+        41,
+        22
+      ],
+      [
+        41,
+        23
+      ]
+    ],
+    "ls-sallow-carr": [
+      [
+        20,
+        26
+      ],
+      [
+        21,
+        26
+      ],
+      [
+        20,
+        27
+      ],
+      [
+        21,
+        27
+      ]
+    ],
+    "ls-ferny-way": [
+      [
+        12,
+        21
+      ],
+      [
+        13,
+        21
+      ]
+    ],
+    "ls-rush-hollow": [
+      [
+        28,
+        26
+      ],
+      [
+        28,
+        27
+      ]
+    ],
+    "ls-last-bank": [
+      [
+        18,
+        30
+      ],
+      [
+        18,
+        31
+      ]
+    ],
+    "ls-otter-beach": [
+      [
+        34,
+        33
+      ],
+      [
+        34,
+        34
+      ]
+    ],
+    "ls-world-end": [
+      [
+        8,
+        10
+      ],
+      [
+        8,
+        11
+      ]
+    ]
+  },
+  "allotmentPolicy": {
+    "stableSectionIds": 128,
+    "minimumCells": 2,
+    "assignedCells": 448,
+    "remainingCommonCells": 40,
+    "originalCellsRetained": 217,
+    "treePriority": "Each orchard,wood,nursery,bed,pondedge andglass section has a real2x2 footprint. Meadow/reed improve where capacity permits; every originalcategory/family/price/needs/ownership remains.",
+    "sharedFootprints": "Larger plants may span adjoining open sections only when every section independently accepts the plant category and explicit family/area restriction. No overlap or ownership alias."
+  }
+}

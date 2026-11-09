@@ -30,7 +30,7 @@ export default function register(app) {
       try {
         const r = await store.write(text);
         if (r.written) log('note', `saved state (${r.taskCount} tasks)${r.backups.length ? ' + backup ' + r.backups.join('+') : ''}`);
-        return { ok: true, taskCount: r.taskCount, lastSave: r.lastSave, written: r.written };
+        return { ok: true, taskCount: r.taskCount, lastSave: r.lastSave, written: r.written, ...(r.gardenPreserved ? { gardenPreserved: true, gardenWorld: r.gardenWorld, gardenComponent: r.gardenComponent, ...(r.gardenArchive ? { gardenArchive: r.gardenArchive } : {}) } : {}) };
       } catch (e) {
         if (e.status === 409) return c.json(409, { error: e.message, lastSave: e.lastSave });
         throw e;

@@ -20,7 +20,7 @@ function gardenLiveVisitEnter(fid) {
   if (_glv.fid === fid && _gll.role === 'visit') return;
   _glvClear();
   _gll.role = 'visit'; _glv.fid = fid; _glv.state = 'knocking';
-  _gllApi('/api/garden-live/here', { role: 'visit', on: true, f: fid, look: gardenLiveLook() }).then(_glvTake).catch(() => { _glv.state = 'look'; _glv.why = 'quiet'; _glvHud(); });
+  _gllApi('/api/garden-live/here', { role: 'visit', on: true, ...glWorldFields(), v: GL_V, f: fid, look: gardenLiveLook() }).then(_glvTake).catch(() => { _glv.state = 'look'; _glv.why = 'quiet'; _glvHud(); });
   clearInterval(_glv.beatT);
   _glv.beatAt = Date.now();   // clock-ok: spacing
   _glv.beatT = setInterval(_glvBeat, 30000);
@@ -31,7 +31,7 @@ function _glvBeat() {
   if (!_glv.fid) return;
   const fid = _glv.fid;
   _glv.beatAt = Date.now();   // clock-ok: spacing
-  _gllApi('/api/garden-live/here', { role: 'visit', on: true, f: fid, look: _glvLook(), hidden: typeof document !== 'undefined' && !!document.hidden }).then(_glvTake).catch(() => {});
+  _gllApi('/api/garden-live/here', { role: 'visit', on: true, ...glWorldFields(), v: GL_V, f: fid, look: _glvLook(), hidden: typeof document !== 'undefined' && !!document.hidden }).then(_glvTake).catch(() => {});
 }
 // A page going away says so: unless it comes straight back (a reload), the visit is over soon.
 if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') window.addEventListener('pagehide', () => { if (!_glv.fid) return; try { fetch('/api/garden-live/here', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'visit', on: 'gone', f: _glv.fid }) }); } catch (e) { /* the server sees the silence */ } });
@@ -50,6 +50,7 @@ function _glvPeopleOut() {
   for (const A of _gll.actors.values()) if (typeof _gllPetDrop === 'function') _gllPetDrop(A);
   if (typeof _gllRoamClear === 'function') _gllRoamClear();
   _gll.actors.clear();
+  if (typeof _grmChipCheck === 'function') _grmChipCheck();
   for (const P of _glv.parcels.values()) if (P.sprite) P.sprite.remove();
   for (const B of _glv.bugs.values()) if (B.sprite) B.sprite.remove();
   _glv.parcels.clear(); _glv.bugs.clear();
@@ -309,6 +310,7 @@ function _glvActorGone(w) {
   const A = _gll.actors.get(w); if (A && typeof _gllPetDrop === 'function') _gllPetDrop(A);
   if (typeof _gllPhotoClear === 'function') _gllPhotoClear(A);
   _gll.actors.delete(w);
+  if (typeof _grmChipCheck === 'function') _grmChipCheck();
   if (_glv.follow === w) _glv.follow = null;
 }
 /* ---------- what you can say to someone ---------- */
@@ -347,7 +349,7 @@ function _glvGiveMenu(A) {
       const id = k === 'fish' ? it.def.id + '-' + it.q : it.id;
       const b = _gsvEl('button', 'gsv-gift'); b.type = 'button';
       const t = _gsvEl('span', 'gsv-gift-t'); t.appendChild(_gsvEl('b', null, it.def.name)); b.appendChild(t); b.appendChild(_gsvEl('span', 'gsv-gift-n', '×' + it.n));
-      b.onclick = () => { close(); const x = Math.max(0, Math.min(63, Math.floor(_gw.px))), y = Math.max(0, Math.min(40, Math.floor(_gw.py))); _glvIntent('drop', { k, item: id, to: A.w, x, y }, k + ':' + id); };
+      b.onclick = () => { close(); const x = Math.max(0, Math.min(63, Math.floor(_gw.px))), y = Math.max(0, Math.min(GARDEN_WORLD.rows - 1, Math.floor(_gw.py))); _glvIntent('drop', { k, item: id, to: A.w, x, y }, k + ':' + id); };
       box.appendChild(b);
     }
     if (!any) box.appendChild(_gsvEl('p', 'muted gsv-small', 'Your bag is empty for now.'));
@@ -363,6 +365,7 @@ const _GLV_NOTES = Object.freeze({
   old: 'Their Freeflo is older than yours, so this is the garden as they last shared it.',
   newer: 'Their Freeflo is newer than yours. Update yours to play together. This is the garden as they last shared it.',
   road: 'Live play needs a quick update of the relay you share. This is the garden as they last shared it.',
+  world: 'This garden uses a different island layout. Update Freeflo on both computers to visit.',
   quiet: 'No answer. Their Freeflo has to be open, on the latest version, for you to get in. This is the garden as they last shared it.',
   unsent: 'Your knock could not be sent just now. Check your connection to friends under Settings > Your connection to friends, then knock again. This is the garden as they last shared it.',
   limit: 'Their relay is turning your messages away for now (too many today). It opens again after midnight UTC, or at once when they press Update my connection under Settings > Your connection to friends. This is the garden as they last shared it.',
@@ -375,7 +378,7 @@ const _GLV_NOTES = Object.freeze({
 function _glvHud() { if (typeof _gdvTouch === 'function') _gdvTouch(); }
 function _glvKnockAgain() {
   _glv.state = 'knocking'; _glv.why = ''; _glvHud();
-  _gllApi('/api/garden-live/here', { role: 'visit', on: 'again', f: _glv.fid, look: _glvLook() }).then(_glvTake).catch(() => {});
+  _gllApi('/api/garden-live/here', { role: 'visit', on: 'again', ...glWorldFields(), v: GL_V, f: _glv.fid, look: _glvLook() }).then(_glvTake).catch(() => {});
 }
 /** The phrases anyone in a live garden can say: the host too (2.28), to everyone who is there. */
 function gardenLivePhrases(anchor) {

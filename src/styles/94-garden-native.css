@@ -87,7 +87,15 @@
   .gd-stagebox:has(> .gd-stage > .gd-native-stage) .gd-mmore::after { display: none; }
 }
 
-.grm-native-room { color: #ffeccd; cursor: default; }
+.grm-native-room {
+  color: #ffeccd;
+  cursor: default;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  box-sizing: border-box;
+  padding: max(64px, calc(env(safe-area-inset-top) + 56px)) max(12px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+}
 .grm-native-room > .ee-ui {
   top: max(12px, env(safe-area-inset-top));
   left: max(12px, env(safe-area-inset-left));
@@ -124,7 +132,70 @@
 .grm-native-room .ee-vol { min-width: 48px; width: 110px; max-width: 24vw; }
 .grm-native-room > .grm-bag { top: max(64px, calc(env(safe-area-inset-top) + 52px)); max-height: min(148px, 30%); }
 .grm-native-room > .grm-ask { width: min(620px, calc(100% - 24px)); }
-.grm-native-room > .grm-say { max-width: min(680px, calc(100% - 24px)); bottom: max(14px, env(safe-area-inset-bottom)); overflow-wrap: anywhere; }
+/* Narration and the live fishing pill share normal flow. The game's existing
+   [hidden] phase and removal rules collapse the pill row when it is absent. */
+.grm-native-room > .grm-say {
+  grid-area: 2 / 1;
+  position: static;
+  justify-self: center;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  min-width: 0;
+  max-width: min(680px, 100%);
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+.grm-native-room > .gd-fishhud {
+  grid-area: 3 / 1;
+  position: relative;
+  justify-self: center;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-top: 8px;
+  pointer-events: auto;
+  color: #ffeccd;
+  background: rgba(24, 19, 15, .94);
+  border-color: rgba(255, 220, 160, .45);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
+  animation-name: grm-native-status-in;
+}
+.grm-native-room > .gd-fishhud .gd-fishhud-b { color: #ffeccd; background: #493326; }
+.grm-native-room > .gd-fishhud .gd-fishhud-b:hover { color: #fff4df; background: #60472f; }
+.grm-native-room > .gd-fishhud .gd-fishhud-b:focus-visible { outline: 2px solid #ffd28a; outline-offset: 2px; }
+/* A reel uses the space above the caption, including when a short stage makes
+   its track smaller. Leave keeps its own clear row at the top of the overlay. */
+.grm-native-room > .gd-reel {
+  grid-area: 1 / 1;
+  position: relative;
+  justify-self: end;
+  align-self: center;
+  top: auto;
+  right: auto;
+  transform: none;
+  min-height: 0;
+  max-height: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  pointer-events: auto;
+  color: #ffeccd;
+  background: rgba(24, 19, 15, .94);
+  border-color: rgba(255, 220, 160, .45);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
+  animation-name: grm-native-status-in;
+}
+.grm-native-room > .gd-reel .gd-reel-hint { color: #ddc9aa; }
+.grm-native-room > .gd-reel .gd-reel-body { min-height: 0; flex-shrink: 1; }
+@keyframes grm-native-status-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .grm-native-room > .gd-fishhud, .grm-native-room > .gd-reel { animation: none; }
+}
+html[data-motion="reduced"] .grm-native-room > .gd-fishhud,
+html[data-motion="reduced"] .grm-native-room > .gd-reel { animation: none; }
 
 @media (max-width: 480px) {
   .grm-native-room > .ee-ui { gap: 8px; }

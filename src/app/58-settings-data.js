@@ -6,7 +6,7 @@
      reset (backup first, typed confirmation), diagnostics with no
      personal content.
    ============================================================ */
-let _sdInfo = null, _sdBackups = null, _sdShowAll = false, _sdDiag = null;
+let _sdInfo = null, _sdBackups = null, _sdGardenCopies = [], _sdShowAll = false, _sdDiag = null;
 
 async function _sdJson(url, opts) {
   const r = await fetch(url, Object.assign({ cache: 'no-store' }, opts || {}));
@@ -146,7 +146,7 @@ registerSettingsGroup({
   ],
   render(el) {
     if (!_sdInfo) { _sdJson('/api/settings/info').then(j => { _sdInfo = j; _sdRefresh(); }).catch(() => { _sdInfo = { error: true }; _sdRefresh(); }); }
-    if (!_sdBackups) { _sdJson('/api/settings/backups').then(j => { _sdBackups = j.backups || []; _sdRefresh(); }).catch(() => { _sdBackups = []; _sdRefresh(); }); }
+    if (!_sdBackups) { _sdJson('/api/settings/backups').then(j => { _sdBackups = j.backups || []; _sdGardenCopies = j.gardenCopies || []; _sdRefresh(); }).catch(() => { _sdBackups = []; _sdGardenCopies = []; _sdRefresh(); }); }
     const folder = document.createElement('div'); folder.className = 'set-path';
     const code = document.createElement('code'); code.textContent = _sdInfo && _sdInfo.dataDir ? _sdInfo.dataDir : (_sdInfo && _sdInfo.error ? 'Freeflo isn’t answering.' : 'Loading…');
     folder.appendChild(code);
@@ -190,6 +190,12 @@ registerSettingsGroup({
         body.appendChild(tbl);
         if (_sdBackups.length > 6) body.appendChild(_sdBtn(_sdShowAll ? 'Show fewer' : `Show all ${_sdBackups.length}`, null, 'ghost', () => { _sdShowAll = !_sdShowAll; _sdRefresh(); }));
       } else body.appendChild(emptyLine(_sdBackups ? 'No backups yet: the first one is made after your next change.' : 'Loading backups…'));
+      if (_sdGardenCopies.length) {
+        body.appendChild(secHead({ title: 'Preserved Garden copies' }));
+        const note = document.createElement('p'); note.className = 'muted'; note.textContent = 'Changes sent from an earlier or different Garden layout are kept here in full. Download a copy to retain its original plants, designs and history. It is a component copy, not a replacement for your current island.'; body.appendChild(note);
+        for (const copy of _sdGardenCopies) body.appendChild(_settingsRow(_sdWhen(copy.at), _sdSize(copy.size),
+          _sdLink('Download Garden copy', 'file-down', '/api/settings/backups/garden?name=' + encodeURIComponent(copy.name))));
+      }
     });
     el.appendChild(bk.card);
     if (typeof settingsOffsiteCard === 'function') settingsOffsiteCard(el);

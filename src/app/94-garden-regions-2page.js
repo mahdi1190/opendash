@@ -66,7 +66,7 @@ function _grgPrizeRow(R, step) {
 function _grgWays(R, m) {
   const out = _gdpEl('ul', 'gdb-how grg-ways'), add = (text, ok) => { const li = _gdpEl('li', ok ? 'is-ok' : 'is-no'); li.innerHTML = `<span class="gdb-how-i">${icon(ok ? 'check' : 'x', 'i-sm')}</span>`; li.appendChild(_gdpEl('span', null, text)); out.appendChild(li); };
   for (const t of R.parts) { const row = gardenLandRow(t); add(`${row.name}: garden level ${row.lv}`, m.areas.includes(t)); }
-  for (const w of GARDEN_REGION_WATERS) if (w.r === R.id) { const on = gardenRegionHomeOpen({ w: w.id }, m.areas); add(on ? `${w.name[0].toUpperCase()}${w.name.slice(1)}: open` : `${w.name[0].toUpperCase()}${w.name.slice(1)}: ${gardenRegionWaterNo(w.x, w.y, m.areas).split(': ').pop() || 'not open yet'}`, on); }
+  for (const w of GARDEN_REGION_WATERS) if (w.r === R.id) { const on = gardenRegionHomeOpen({ w: w.id }, m.areas); add(on ? `${w.name[0].toUpperCase()}${w.name.slice(1)}: open` : `${w.name[0].toUpperCase()}${w.name.slice(1)}: ${w.room ? _grgOpenWords({ w: w.id }) : gardenRegionWaterNo(w.x, w.y, m.areas).split(': ').pop() || 'not open yet'}`, on); }
   return out;
 }
 function _grgPage(el, m, R) {

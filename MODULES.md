@@ -96,6 +96,13 @@ Keep useful places and clear entrances, rather than a field of sales signs.
 Preserve owned objects and saved progress. Expansion candidates are ideas to
 curate, not a feature-count target. See `docs/dev/GARDEN_PACING.md`.
 
+Previously discovered shelved sights are deliberately placed through Land's
+Your discovered places disclosure. `94-garden-1stored.js` owns atomic sight
+placement, `lands-0table` derives physical sights, and the room/region/fish-book
+paths resolve their current doors at use time. Snapshot `rp` is cleaned by
+the shared catalog and `lib/friends/garden.mjs`; it does not replace saved room
+or collection progress. Shared-goal details remain a transient HUD disclosure.
+
 | Area | Files | Owner role |
 |---|---|---|
 | Garden habitats, discoveries and shared toys | `94-garden-life-2shelter.js` with Life definitions/director; `94-garden-wonder-b-listening.js` through `94-garden-wonder-g-shadows.js` for listening posts, kite, leaf boats, soap films, marble rails and the shadow courtyard, with existing wonder/live hooks; `97-pets-7routines.js`, `97-pets-7guides.js` and their `97-pets-tricks-0environment.js` / `0guides.js` clips for staged pet play and companion-led discoveries. `94-garden-0camera.js` supplies local activity subjects. Native ownership and play evidence: `docs/dev/GARDEN_ENGINE.md`; future concepts: `docs/dev/GARDEN_EXPANSION_IDEAS.json`. | Garden |
@@ -284,6 +291,57 @@ shell grid, top bar, countdown widgets, page header) · `10-sidebar` ·
 `80-sync-indicator` · `85-mobile` · `86-offline-banner` · `90-gating`. `motion.css` and the
 `src/finance/*.css` parts are appended after these by build.mjs; the Inter `@font-face` is generated in
 front of everything. See "Design system and app shell" below.
+
+### Garden island and recovery (world v3)
+
+The canonical island is 52 by 56 cells; the room sentinel remains at column 53.
+Layout identity is the world version plus the first 24 hex digits of SHA-256
+over the exact asset bytes. Keep the page, Node rules and migration on that
+same dataset; a successful build does not authorize a saved-data migration.
+
+| Responsibility | Source and contract |
+|---|---|
+| Canonical geometry | `assets/garden/island-v3.json` owns coast, waters, static positions, routes and cells for existing section IDs. `lib/garden-island.mjs` exports `gardenIsland` (`data`, `fingerprint`) and named aliases. `build.mjs` embeds frozen `window.GardenIslandLayout`; `lib/friends/garden.mjs` and `lib/agent-engine.mjs` inject **bare `GardenIslandLayout`**, without a browser `window`. Pure rules load `94-garden-0catalog.js`, `0island.js`, `0shore.js` and land tables in order. |
+| Stored placements and earned structures | `94-garden-1stored.js`, `1core.js`, `4page.js` and `world-2hud.js`: `_packed:3` retains complete plant/decor rows, UIDs, age/care, variants and rotation outside world models/snapshots. Bag restores through normal legality, move ghosts and Undo. Built features stay earned; only deliberate `garden.wd['feature.place.' + id] = [3,x,y]` placements add art/colliders. Land owns Set out nearby / Put away; bounded owned-feature `fp` snapshots carry positions. |
+| Earlier layouts | `94-garden-design-0rules.js`, `design-2tools.js`, `design-3panel.js` and the adapter archive whole named rows in atomic `wd['design.archive.v2.' + id + '.' + contentHash]` values. Raw `garden.dz` stays saved. Safe paths/paint may project; moved/made objects require deliberate adaptation with existing move/check/Keep/Cancel. Saving never overwrites the archive. Earned structures use Land placement. |
+| Return positions | `94-garden-world-0walk.js` uses version/layout-scoped keys, accepts legal legacy feet or records a canonical free-foot resolution, and retains the exact legacy `opendash.garden.pos` value. Visits/room sentinels do not become home positions. |
+| Friends and visits | `lib/friends/garden.mjs`, `lib/friends/live.mjs`, `94-garden-0catalog.js` and `94-garden-live-0rules.js` / `2visit.js` share rules. Live protocol 4 pins `wv`/`lh`; snapshots and durable spatial acts must match. Codec bounds derive from world dimensions. Earlier clients cannot silently use different maps. |
+| Same-user sync | `lib/garden-world-fence.mjs`, `server/state-store.mjs` and `04-core-persistence.js` fence only incompatible Garden writes. `lib/sync/model.mjs`, `engine.mjs` and `e2e.mjs` preserve register provenance (`gw`), including encrypted incremental payloads. World3 moves use internal `@xy:[x,y]`; dashboard rows retain `x`/`y`, independent care/harvest/storage fields, and `@alive` generation handling. Actual legacy world2 capture remains untagged and uses its established split-axis wire format until the deliberate update. Partial axes never invent coordinates; there is no public `lp` schema or whole-row move replacement. |
+| Island handover | `lib/garden-handover.mjs` bounds one immutable chunked `garden/island-handover.json`; `lib/sync/manifest.mjs` declares its encrypted-only file. Engine verifies the unique authenticated group creator, all member servers’ encrypted island capability, actual creator-written metadata/part registers and complete canonical baseline. `lib/garden-update.mjs` checks SHA-256/content and owns explicit publish/import, full backups and exact earlier-Garden archives. |
+| Local update | `server/routes/garden-update.mjs`: GET/POST `/api/garden/update`. `lib/garden-update.mjs` shares migration 100's planner/commit and the pending page's Update my garden action. It pins world/layout, state version and plan fingerprint, rechecks under the state lock, and emits a Garden-only transaction/SSE. Engine `gardenUpgradeState()` / `withGardenUpgrade()` use existing sync/key serialization, without a CLI subprocess. |
+
+Incompatible full-state saves preserve the incoming **complete Garden component**
+with `lib/garden-ui-archive.mjs` under
+`<data>/state/backups/garden-compat/garden-<content-sha256>.json` before
+acknowledging unrelated app edits. `server/routes/state.mjs` returns the accepted
+Garden component; `04-core-persistence.js` refreshes only that component when it
+has not changed again locally. Intervening edits remain pending for another
+normal archive/save. Settings > Data (`58-settings-data.js`) lists preserved
+copies through the existing backup routes. These downloads are Garden-only
+recovery records, not whole-state restores or an automatic merge/import UI.
+
+The deliberate update retains the standalone path. In encrypted multi-device
+history, only the unique current member whose authenticated membership records
+`via:created` can first choose the canonical island, after a fresh complete
+sync pass. Every current member must advertise matching `island:{v:1,wv,lh}`
+inside its encrypted device document; a plain app version or presence is not
+enough. Unknown, incomplete, incompatible or earlier-server histories remain
+blocked. Other members deliberately use the complete creator-published island
+after preserving their full earlier Garden, rather than independently laying
+out the map. Compatibility-copy downloads remain separate recovery records.
+
+Engine `withGardenUpgrade()` supplies an asynchronous probe and
+`prepareImport` / `finishImport` hooks. The full SHA-validated base is projected
+through received matching canonical registers, retaining their original HLCs.
+Before the Garden-only state commit, the engine saves a private
+`garden-import.pending.json` baseline journal. After commit it adopts that
+baseline and atomically records `meta.gardenImportApplied`; restart recovery
+runs before local capture and does not reapply an already adopted baseline.
+It never restamps the first snapshot over later source-device care or moves.
+Earlier-layout registers remain preserved: `gardenHeld` stays an attention
+condition, while matching island and other dashboard changes can still sync
+(or remain in Preview). The new two-device handover flow is pending ordinary
+observation; these are implementation boundaries, not a universal race claim.
 
 ### Rules for adding or changing modules
 
@@ -914,6 +972,10 @@ commits under the lock); a new state key must be added to
 nothing) until the apply switch. Encrypted sync: nothing unencrypted from the
 folder is taken in; a key, a private key or the recovery code never goes into
 the folder; the recovery code is shown once and never stored.
+
+Garden world tags, internal atomic move registers and preserved legacy writes
+are mapped in "Garden island and recovery" above. Held Garden registers keep
+their original provenance in sync storage; a status message never re-tags them.
 
 ### lib/fsutil.mjs - the only way to write user data
 - `atomicWrite(path, text)` / `writeJson(path, obj)`: temp file + rename,
@@ -1707,6 +1769,20 @@ Backups happen only when DATA changed: at most one rolling copy per 10 minutes
 - `node tools/migrate.mjs --auto` (run by the launchers and `npm start`) backs
   up the data folder and applies pending `auto` migrations. `001-data-dir` is
   `auto:false`: copying the old `state/` is a one-time step the user runs.
+- `100-garden-island-v3` is manual (`auto:false`). Its pure planner and Node
+  catalogue adapter are `lib/garden-island-plan.mjs` and
+  `lib/garden-island-adapter.mjs`; its explicit `contractReady` apply gate is
+  enabled after technical acceptance of isolated restoration/Designer/sync play,
+  separate from capacity counts or a successful build. It retains legal rows
+  where possible, deterministically resolves coast/reserved-anchor conflicts,
+  stores complete rows when no legal space remains, and archives earlier layouts. Unknown records
+  block apply rather than being guessed, removed or refunded. The normal local
+  Update action shares this plan and gate: the existing full-folder migration
+  backup plus exact pre-update state/Garden copies and a receipt precede the
+  locked Garden-only write, `_lastSave` bump, SSE and migration bookkeeping.
+  Re-running an already-current Garden is a no-op. Multi-device canonical-copy
+  selection/import and automatic restoration of compatibility downloads remain
+  outside this migration's scope.
 - Numbering: 001-009 data folder and config (A1); 010-019 schema moves (A1:
   010 streams/templates). Later agents: take the next free number in a band,
   e.g. 020+ tags, 030+ people, 040+ tasks/recurrence, 050+ countdowns/top bar

@@ -74,10 +74,15 @@ function gardenReadyButton(def) {
       if (!R.rows.length) list.appendChild(_gdpEl('li', 'is-ok', 'Anything will do.'));
       el.appendChild(list);
       if (R.where) el.appendChild(_gdpEl('p', 'gca-p', `Look at ${R.where.words}${R.when ? ', ' + R.when : ''}.`));
+      else if (R.reach) el.appendChild(_gdpEl('p', 'gca-p', R.reach));
       else if (R.when) el.appendChild(_gdpEl('p', 'gca-p', `Look ${R.when}.`));
       const f = _gdpEl('div', 'gd-card-f');
       if (R.rows.length) f.appendChild(_gdpBtn('Put it on', { icon: 'check', run: () => { const r = gardenReadyEquip(def); _gcpSay(r); close(); } }));
-      if (R.where && typeof _gw !== 'undefined' && _gw.on) f.appendChild(_gdpBtn('Take me there', { icon: 'footprints', kind: 'btn-primary', run: () => { close(); _gcpClose(); gardenFishClickPt({ x: R.where.x, y: R.where.y }, gardenHere()); } }));
+      if (R.where && typeof _gw !== 'undefined' && _gw.on) f.appendChild(_gdpBtn('Take me there', { icon: 'footprints', kind: 'btn-primary', run: () => {
+        const where = gardenReadyFor(def).where; if (!where) return; close(); _gcpClose();
+        if (where.room) { const room = GRM_ROOMS.find(row => row.id === where.room); if (room) gardenRoomGo(room); }
+        else gardenFishClickPt({ x: where.x, y: where.y }, gardenHere());
+      } }));
       const pinned = (_gca().pins || []).includes(def.id);
       f.appendChild(_gdpBtn(pinned ? 'Pinned' : 'Tell me when', { icon: 'bell', kind: 'btn-ghost', tip: 'A quiet word in the garden when it is about', run: () => { gardenPinToggle(def.id); close(); } }));
       el.appendChild(f);

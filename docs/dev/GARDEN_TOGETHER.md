@@ -4,6 +4,128 @@ The owner's words: "If I allow it, we should see what each other does: 100% of a
 
 Code: `lib/relay/space-room.mjs` (the relay's pass-through room), `lib/friends/live-room.mjs` (a client's socket to it), `lib/friends/live.mjs` (the service: sessions, permissions, checks), `server/routes/garden-live.mjs`, `src/app/94-garden-live-*.js` (0rules: pure, also evaluated by Node; 1core; 2visit: a visitor's world; 3host: the host's authority, diary and Undo; 7contest: contests, section 15; 7goal: shared goals, section 17; 7pals: playdates, section 18; 7snap: the group photo, section 19; 7trade: trading, section 16), `src/styles/94-garden-live.css`, `src/styles/94-garden-live-trade.css`.
 
+## Canonical island agreement (v3)
+
+Discovered places that the owner deliberately sets out are shared in the
+optional snapshot `rp`: bounded known sight IDs and integer cells. The browser
+and Node cleaners retain the same values. Visitors derive the host's physical
+sights and doors without copying those placements into their own garden.
+Putting a place away retains its discovery, room history and gifts.
+
+The shared-goal HUD starts as a compact progress chip. Expanding or hiding its
+details is local presentation; host Skip remains a separate action. Progress,
+contributions, completion and reward authority retain their existing protocol.
+
+One isolated encrypted visit used both pointer and normal Enter, Tab and Space
+inputs to expand and hide the same retained goal details. Focus returned to the
+toggle; neither account's goal, contributions or ledger changed, and Skip was
+not activated. The same pair completed a natural fishing wait, nibble and bite;
+that observation does not claim a landed catch.
+
+A room-follow invitation belongs to the exact current peer and room. It retires
+when that peer leaves or changes rooms, departs the visit, or loses the placed
+doorway. Go in too rechecks the same conditions before using normal room entry.
+Local entry and leaving the Garden also remove the transient invitation. Its
+existing maximum lifetime remains unchanged; no extra polling or messages run.
+
+An ordinary encrypted-pair route covered both cellar and den invitations. The
+visitor stayed outside while the host used Leave: the prompt disappeared with
+more than thirteen seconds of its original lifetime remaining and the peer's
+current room cleared. On reentry, a fresh Go in too still brought the visitor
+into the host's current room. Put away and Undo continued to preserve the
+original placement, discovery dates and each account's own progress.
+
+Saved and live spatial data must name the same island. `GARDEN_WORLD.v=3`
+and layout fingerprint `94f5b2dbe4dce765cafb2b40` identify the current canonical
+`assets/garden/island-v3.json`. Node and browser consume that same frozen
+asset. The live protocol is `GL_V=4`; entry supplies `wv` and `lh`, and
+the host requires exact agreement before accepting the live world. A mismatch
+is a reload/update boundary, never permission to interpret an old coordinate
+on the new coast. Snapshot admission and spatial saved-copy/queued actions use
+the same world check. Older social records remain preserved rather than being
+replayed at unrelated v3 locations.
+
+The host remains authoritative for ownership, unlocked land, placement,
+rewards and shared simulation. Canonical coast/reservations do not create new
+visitor permissions. The existing plant/decor snapshots omit records marked
+`_packed:3`; the owner's **Bag → Stored garden** recovery uses normal move
+authority, then the restored row can be published. Full records remain in the
+owner's state and same-user device sync; visitors receive only the existing
+display/simulation rows.
+
+Earned structures publish deliberate typed `fp` placements. A visitor follows
+the host's positions, not a locally chosen nearby fallback. Ownership alone
+does not make a packed structure appear. Host **Put away** removes its placement
+while preserving its entitlement/progress. The optional workshop selection
+still uses `wd.aw`, independently of structure positions.
+
+Outdoor position persistence is also keyed by world version/fingerprint, so a
+home foot from an earlier layout cannot silently become a v3 pier or room foot.
+Visiting does not overwrite the player's own saved home position. Earlier
+Designer archives stay complete on the owner; shared designs use the canonical
+compatible projection instead of replaying raw earlier coordinate overrides.
+
+Ordinary isolated v3 play completed an encrypted visit with matching world and
+layout, accepted visitor watering, stored aged plant/rotated decor recovery and
+normal leave/Home cleanup. Separate structure/Designer recovery retained earned
+state and full archives through ordinary Set out / Put away / Undo / Keep / Cancel.
+
+Same-user device sync is a separate path from live friend visits. In
+`lib/sync/model.mjs`, one internal `@xy:[x,y]` register prevents mixed-axis moves;
+care/harvest/storage fields remain independent. `lib/garden-world-fence.mjs`
+holds incompatible original registers, and `lib/sync/e2e.mjs` carries their `gw`
+provenance inside encrypted incremental payloads. An ordinary genuinely paired
+two-device move concurrent with watering converged on complete coordinates and
+care, with age/variant intact after normal reload. No virtual key entered the
+dashboard rows.
+
+A genuine physical local Update produced the canonical layout after full/exact
+backups. An actual older document's incompatible full Garden was preserved with
+its provenance; repeated identical input reused the immutable archive. That run
+completed its component download with the exact archived bytes. The current-client
+ACK refresh branch did not arise naturally and remains unplayed. A stale
+second-device Garden is not independently restamped or silently chosen as
+canonical; preserved component downloads are not automatic imports. The older tables below retain historical protocol-2/3 fields, which
+do not override current `GL_V=4` agreement. No cross-version live compatibility,
+complete historical migration coverage or universal reflection/visual result
+is claimed.
+
+### Choosing one island across the owner's computers
+
+The live visitor host and the owner’s other computers use different authority
+paths. For a first same-user island, only the unique current authenticated
+encrypted-group creator can run the deliberate relayout after a complete fresh
+sync pass. Every current member server must first advertise matching
+`island:{v:1,wv,lh}` inside its encrypted device document. A name, a plain app
+version or an online dot does not prove support; earlier servers and unknown
+or incomplete histories remain blocked before the canonical commit.
+
+The creator publishes one immutable full snapshot through the encrypted-only
+shared `garden/island-handover.json` file. Its bounded parts must be complete,
+their actual register writers must be that authenticated creator, and the Node
+service verifies the complete SHA-256 and world/layout content. Its immutable
+retry record republishes the first snapshot without rearranging current progress.
+
+Other computers choose **Use updated island** deliberately. They first retain
+full-folder/exact state backups and an immutable complete earlier-Garden copy;
+the transaction replaces only Garden. Currently held matching canonical changes
+are projected onto the complete snapshot with their original HLCs, so a later
+watering or move on the creator is not overwritten by restamping an earlier
+snapshot. The private pre-commit baseline journal and atomically applied ticket
+resume after a matching committed import before ordinary local capture. An
+already canonical computer never imports that first snapshot again.
+
+Legacy world2 local writes remain ordinary untagged split-axis changes until
+the explicit update; world3 moves use exact layout provenance and atomic
+`@xy` pairs. Earlier-layout registers stay preserved, with qualified attention
+copy explaining that matching island and other dashboard changes can still
+sync. Preserved component downloads are recovery records, not silent imports.
+An ordinary paired flow completed creator Update and deliberate import, kept
+the exact earlier Garden archive and retained newer watering performed before
+import. Later movement/care converged with original age/variant after reload
+and Leave, with no app errors. This does not cover every race, restart path or
+historical save variant.
+
 ## 1. The shape of it
 
 **The garden's owner's computer is the truth.** A visitor sends intents ("plant carrot at 4,5"). The host checks them with the same rules the owner's own clicks go through, applies them to the host's own garden, and tells everyone there what happened. Everyone animates that. No visitor ever writes the host's data. If the host is not in their garden, a visit is the saved copy, in the same world (section 10).
@@ -55,7 +177,7 @@ All are friends kinds with a strict schema (`lib/friends/live.mjs`): ids, cells 
 | `gl:perm` `gl:ask` | H to V, V to H | **not live**: `{lv, q}` what you may do in my garden, told when it changes and at a knock, so you know when I am out; `{v}` may I do more? It shows at the gate |
 | `gl:post` | H to V | `{id, why: crop\|back\|did\|trade, i?, d?: go\|x, items}`: **not live**: posted things (a crop, something handed back), queued like any friend message until it arrives, taken once by id. The id says what it is (`c<plant>-<pick>`, `b<intent>0`), so the same post made twice is one. Each friend has their own place for them: 120 waiting, 120 a day; nobody can push another friend's out |
 
-The protocol is `GL_V`, 2 since a visit became the world. A `v` that is not the host's gets `gl:no {why: 'old'}`, older or newer, and that visitor keeps the saved copy: an older app gets its old look-only page, a newer one the world, with a plain note in the tag. An app older than all this does not know these kinds and drops them: the knock is never answered.
+Historical protocol note (the current v3 island uses `GL_V=4` and exact world agreement above): the earlier protocol was `GL_V`, 2 since a visit became the world. A `v` that is not the host's gets `gl:no {why: 'old'}`, older or newer, and that visitor keeps the saved copy: an older app gets its old look-only page, a newer one the world, with a plain note in the tag. An app older than all this does not know these kinds and drops them: the knock is never answered.
 
 ## 4. How messages travel
 

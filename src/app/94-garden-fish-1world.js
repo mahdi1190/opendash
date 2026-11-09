@@ -341,7 +341,7 @@ function gardenWorldProps(sc, o) {
   if (typeof gardenCatchWorldArt === 'function') for (const r of gardenCatchWorldArt(sc, o)) { const it = wrap('gd-prop-work', r.z, r.x, r.svg, 'ca-' + r.key); if (r.wide) it.html = it.html.replace(/ data-x="[^"]*"/, ''); out.push(it); }   // spots, events, the rack: 94-garden-fish-9world.js
   // trees in the thickets, all over the map (94-garden-lands-0table.js): woodland is spread about, not a wall
   const pal = (GART_PAL.leaf[sc.season] || GART_PAL.leaf.summer);
-  if (typeof gardenLandTrees === 'function') for (const t of gardenLandTrees()) {
+  if (typeof gardenLandTrees === 'function') for (const t of gardenLandTrees(o)) {
     const rnd = gardenRand('tree|' + t.x + ',' + t.y), cx = (t.x + 0.5 + (rnd() - 0.5) * 0.7) * cw, by = base + (t.y + 1) * ch - 4, k = 0.8 + rnd() * 0.55;
     out.push(wrap('gd-prop-tree', t.y + 1, t.x, _gwTree(cx, by, k, pal, sc.season, rnd), 'fe' + t.x + '_' + t.y));
   }

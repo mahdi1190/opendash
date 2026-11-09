@@ -89,7 +89,7 @@ function _gdzRows() {
 }
 function gardenDesignRow(id) { return _gdzRows().get(String(id)) || null; }
 function gardenDesignBase(id) { _gdzRows(); return _gdzHold().base.get(String(id)) || null; }
-function gardenDesignMovable(id) { const r = gardenDesignRow(id); return !!r && !GDZ_FIXED.includes(r.id); }
+function gardenDesignMovable(id) { const r = gardenDesignRow(id); return !!r && !GDZ_FIXED.includes(r.id) && !(GARDEN_WORLD.v >= 3 && typeof GARDEN_LAND_FEATURES !== 'undefined' && GARDEN_LAND_FEATURES.some(f => f.id === id)); }
 
 /* ---------- a friend's, or anybody's, checked ---------- */
 /** Words as they may be shown: one short line with no control, direction or invisible marks. Set with textContent, always. */
@@ -147,10 +147,60 @@ function gardenDesignShow(d) {
 }
 /** A thing you made, by a key its drawing and its row share: it changes when the thing does, so the stage redraws just that. */
 function gardenDesignMadeKey(c, i) { return 'dzc' + i + '-' + gardenHash(JSON.stringify(c)).toString(36); }
+/* Earlier layouts remain full atomic archive values. Only a deliberate draft
+   can adapt their spatial overrides to the canonical island. */
+function gardenDesignArchives(g) {
+  const out = [];
+  for (const [key, value] of Object.entries(g && g.wd || {})) {
+    if (!key.startsWith('design.archive.v2.') || !value || typeof value.id !== 'string' || !value.layout || typeof value.layout !== 'object' || Array.isArray(value.layout)) continue;
+    out.push({ key, id: value.id, world: value.world, layout: value.layout });
+  }
+  return out.sort((a, b) => a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+}
+function gardenDesignIslandVersion(row) { return !!row && Array.isArray(row.island) && row.island[0] === GARDEN_WORLD.v && row.island[1] === GARDEN_WORLD.lh; }
+function gardenDesignIslandProjection(raw, level) {
+  const d = gardenDesignClean(raw) || gardenDesignEmpty(), W = GARDEN_WORLD, lv = level == null ? (typeof gardenWallet === 'function' ? gardenWallet().level.level : 1) : level;
+  const dry = (x, y) => {
+    if (x < 0 || y < 0 || x >= W.cols || y >= W.rows || gardenIsWater(x, y) || gardenAreaAt(x, y, lv).startsWith('locked:')) return false;
+    const c = typeof gardenIslandBaseCell === 'function' ? gardenIslandBaseCell(x, y) : null;
+    return !c || c.land;
+  };
+  const cells = new Map();
+  for (const row of d.g) for (let i = 1; i + 1 < row.length; i += 2) for (let n = row[i]; n < row[i] + row[i + 1]; n++) {
+    const x = n % W.cols, y = (n - x) / W.cols, prop = gardenPropAt(x, y), info = typeof gardenIslandBaseCell === 'function' ? gardenIslandBaseCell(x, y) : null;
+    let safe = dry(x, y) && !(prop && gardenPropCol(prop) === 'full') && !(info && info.reserved);
+    // A paint dot has a25px radius; keep its halo off coast/water and public
+    // routes too, rather than merely accepting its centre cell.
+    if (safe && typeof gardenIslandCoastDistance === 'function' && gardenIslandCoastDistance(x + .5, y + .5) <= 28) safe = false;
+    for (let dy = -1; safe && dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (!dry(x + dx, y + dy)) { safe = false; break; }
+    if (safe) cells.set(n, row[0]);
+  }
+  const by = new Map(); for (const [n, style] of cells) { if (!by.has(style)) by.set(style, []); by.get(style).push(n); }
+  const ground = [];
+  for (const [style, list] of by) { list.sort((a, b) => a - b); const row = [style]; for (let i = 0; i < list.length;) { let j = i + 1; while (j < list.length && list[j] === list[j - 1] + 1) j++; row.push(list[i], j - i); i = j; } ground.push(row); }
+  // The authored curves stay inside their control-point hull. Requiring the
+  // complete padded hull rectangle to be dry is deliberately conservative;
+  // rejected paths remain complete in the visible archive.
+  const paths = d.p.filter(row => {
+    let x = 0, y = 0, x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 1; i + 1 < row.length; i += 2) { x += row[i] / 10; y += row[i + 1] / 10; x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+    for (let cy = Math.floor(y0 - .7); cy <= Math.floor(y1 + .7); cy++) for (let cx = Math.floor(x0 - .45); cx <= Math.floor(x1 + .45); cx++) {
+      const prop = gardenPropAt(cx, cy); if (!dry(cx, cy) || prop && gardenPropCol(prop) === 'full') return false;
+    }
+    return true;
+  });
+  return { p: paths, g: ground, m: [], c: [] };
+}
+function gardenDesignLayoutDraft(z, id, g) {
+  const row = z && z.lay && z.lay[id]; if (!row || !row.d) return gardenDesignEmpty();
+  const archived = GARDEN_WORLD.v >= 3 && !gardenDesignIslandVersion(row) && gardenDesignArchives(g).some(a => a.id === id);
+  return archived ? gardenDesignIslandProjection(row.d) : gardenDesignClean(row.d) || gardenDesignEmpty();
+}
+
 /** Your own saved design (the one in use), or null. */
 function gardenDesignSaved(g) {
   const z = g && g.dz, l = z && z.lay && z.lay[z.cur];
-  return l && l.d ? gardenDesignClean(l.d) : null;
+  return l && l.d ? gardenDesignLayoutDraft(z, z.cur, g) : null;
 }
 /** What your own garden shows now: the draft while you are in the designer, else what is saved. */
 function gardenDesignOwn(g) { const H = _gdzHold(); return H.draftOf ? H.draftOf() : gardenDesignSaved(g); }

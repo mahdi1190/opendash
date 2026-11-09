@@ -12,6 +12,7 @@
 // Opened as a plain file (no server), everything still works from browser
 // storage and the file backend is skipped.
 
+function _gardenPersistEnvelope(payload) { const p = window.GardenIslandLayout; return p && /^[0-9a-f]{24}$/.test(p.fingerprint) ? { ...payload, _gardenClient: [p.data.world.v, p.fingerprint] } : payload; }
 const STATE_API = '/api/state';
 const HEALTH_API = '/api/health';
 let _serverAvailable = false;
@@ -87,13 +88,46 @@ async function serverStateLoad() {
   }
 }
 
+// A held component is acknowledged independently of unrelated app edits.
+async function _gardenPreservedRefresh(sentKey, response) {
+  const accepted = JSON.parse(sentKey);
+  let component = response.gardenComponent;
+  if (!component || typeof component.present !== 'boolean' || component.present && !Object.prototype.hasOwnProperty.call(component, 'value')) {
+    // Earlier fence servers returned only the flag. Keep the acknowledged
+    // version so a newer GET cannot bless unrelated stale app keys.
+    const current = await serverStateLoad();
+    if (!current) throw new Error('The garden was preserved, but its current copy could not be loaded. Your changes remain pending.');
+    component = { present: Object.prototype.hasOwnProperty.call(current, 'garden'), value: current.garden };
+  }
+  const hasGarden = Object.prototype.hasOwnProperty.call(state, 'garden'), sentHasGarden = Object.prototype.hasOwnProperty.call(accepted, 'garden');
+  const localGarden = hasGarden ? JSON.stringify(state.garden) : null, sentGarden = sentHasGarden ? JSON.stringify(accepted.garden) : null;
+  const canRefresh = hasGarden === sentHasGarden && localGarden === sentGarden;
+  if (component.present) accepted.garden = component.value; else delete accepted.garden;
+  const acceptedKey = _persistKey(accepted);
+  let changed = false;
+  if (canRefresh) {
+    changed = hasGarden !== component.present || localGarden !== (component.present ? JSON.stringify(component.value) : null);
+    if (changed) { if (component.present) state.garden = component.value; else delete state.garden; }
+  }
+  // An intervening Garden edit gets another normal write/archive before it
+  // can be replaced. No component is stamped, adapted or silently discarded.
+  _lastPersistedKey = acceptedKey;
+  state._localDirty = _persistKey(_stateForPersist()) !== acceptedKey;
+  if (state._localDirty) _persistAgain = true;
+  if (typeof _sdBackups !== 'undefined') _sdBackups = null;
+  if (changed && /^garden(?::|$)/.test(String(state.view || '')) && !(typeof gardenVisitOn === 'function' && gardenVisitOn())) {
+    if (typeof _liveRender === 'function') _liveRender(); else if (typeof render === 'function') render();
+  }
+  return acceptedKey;
+}
+
 async function serverStateWrite() {
   if (!_serverAvailable) return false;
   try {
     const payload = _stateForPersist();
     const key = _persistKey(payload);
     if (key === _lastPersistedKey) { state._localDirty = false; return true; }   // nothing new
-    const body = JSON.stringify(payload);
+    const body = JSON.stringify(_gardenPersistEnvelope(payload));
     if (!body || body.length < 10) return false;
     const r = await fetch(STATE_API, {
       method: 'PUT',
@@ -138,10 +172,11 @@ async function serverStateWrite() {
     let j = {};
     try { j = await r.json(); } catch (e) {}
     state._lastSave = Number(j.lastSave) || Date.now();
-    _lastPersistedKey = key;
+    const acceptedKey = j.gardenPreserved ? await _gardenPreservedRefresh(key, j) : key;
+    _lastPersistedKey = acceptedKey;
     _serverHasState = true;
     // Edits made while the request was in flight are still unsaved.
-    state._localDirty = _persistKey(_stateForPersist()) !== key;
+    state._localDirty = _persistKey(_stateForPersist()) !== acceptedKey;
     _serverLastError = null;
     return true;
   } catch (e) {
@@ -214,7 +249,7 @@ function flushPersistOnExit() {
     const payload = _stateForPersist();
     if (_persistKey(payload) === _lastPersistedKey) return;
     if (navigator.sendBeacon) {
-      navigator.sendBeacon(STATE_API, new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+      navigator.sendBeacon(STATE_API, new Blob([JSON.stringify(_gardenPersistEnvelope(payload))], { type: 'application/json' }));
     }
   } catch (e) { /* best effort */ }
 }

@@ -135,7 +135,7 @@ function gardenPopupRefresh() {
   const scroller = P.el, y = scroller.scrollTop, x = scroller.scrollLeft, focus = _gdpopFocusState(ae, scroller);
   if (P.tab === 'tricks') return;   // the book has its own stage: it paints itself
   const details = [...scroller.querySelectorAll('details')].map(el => ({ key: _gdpopPart(el), open: el.open }));
-  if (P.tab !== 'friends' && P.tab !== 'craft') scroller.textContent = '';
+  if (P.tab !== 'friends' && P.tab !== 'craft' && P.tab !== 'play') scroller.textContent = '';   // Play reconciles its connected keyed cards
   const def = _GDPOP[P.tab];
   if (P.tab === 'friends') { if (typeof gardenFriendsTabRepaint === 'function') gardenFriendsTabRepaint(); }
   else def.fill(scroller, gardenModel());

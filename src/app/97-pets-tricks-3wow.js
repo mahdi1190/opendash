@@ -186,8 +186,11 @@ function _fxGardenHost(P) {
   const lifts = [], paused = [];
   // A spectacle owns the scene it started on, including cleanup after remount.
   const sceneSvg = (typeof _gdp !== 'undefined' && _gdp.svg) || null;
+  const petNode = P.node, nativeScene = gardenVisualIsNative(petNode) ? petNode.scene : null;
+  const isCurrent = () => !!(petNode && !petNode._dead && petNode.isConnected && P.node === petNode && sceneSvg && sceneSvg.isConnected && typeof _gdp !== 'undefined' && _gdp.svg === sceneSvg && (!nativeScene || window.GardenNative && GardenNative.scene() === nativeScene));
   const svg = () => sceneSvg;
   const H = {
+    isCurrent,
     pos() { const m = P.node.getScreenCTM(), r = P.node.getBoundingClientRect(); return { x: m.e, y: m.f, h: Math.max(30, r.height * 0.8) }; },
     outline() { return P.root ? _fxOutlineOf(P.root) : []; },
     pet: {
@@ -226,7 +229,7 @@ function _fxGardenHost(P) {
         try { if (typeof gartEmoteRun === 'function') gartEmoteRun(clip === 'startled' ? 'startled' : clip === 'bow' ? 'bow' : 'cheer', { quiet: true }); } catch (e) { /* no gardener */ }
       },
     },
-    end() { for (const a of lifts) { try { a.cancel(); } catch (e) { /* gone */ } } H.pet.hide(false, 60); H.world.freeze(false); P.wow = false; if (!P.tx) { P.sit(); P.busy = 1; } const s = svg(); if (s) { s.classList.remove('gd-hush'); gardenVisualAmbientPause(s); } },
+    end() { for (const a of lifts) { try { a.cancel(); } catch (e) { /* gone */ } } H.pet.hide(false, 60); H.world.freeze(false); P.wow = false; if (isCurrent() && !P.tx) { P.sit(); P.busy = 1; } const s = svg(); if (s) { s.classList.remove('gd-hush'); gardenVisualAmbientPause(s); } },
   };
   return H;
 }

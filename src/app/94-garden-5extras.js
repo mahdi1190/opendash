@@ -394,7 +394,8 @@ function _gdxBag(el, m) {
 /* ---------- photo mode ---------- */
 function gardenPhotoOpen() {
   gardenEnsure();
-  const st = { tod: '', frame: 'none', crop: 'all', visitors: true };
+  const island = GARDEN_WORLD.v >= 3;
+  const st = { tod: '', frame: 'none', crop: island ? 'world' : 'all', visitors: true };
   openDialog({
     title: 'Photo mode', width: 980, resizeKey: 'garden-photo',
     body(el, close) {
@@ -410,7 +411,7 @@ function gardenPhotoOpen() {
         el.appendChild(frame);
         const ctl = _gdpEl('div', 'gd-photo-ctl');
         ctl.appendChild(_gdxSeg([['', 'Now'], ['dawn', 'Dawn'], ['day', 'Midday'], ['dusk', 'Golden hour'], ['night', 'Night']], st.tod, (k) => { st.tod = k; paint(); }));
-        ctl.appendChild(_gdxSeg([...(gardenCropFor(gardenModel().areas) === 'world' ? [['world', 'Everything']] : []), ['all', 'Whole garden'], ['wide', 'Closer'], ['bed', 'Front garden']], st.crop, (k) => { st.crop = k; paint(); }));
+        ctl.appendChild(_gdxSeg([...(island || gardenCropFor(gardenModel().areas) === 'world' ? [['world', island ? 'Whole island' : 'Everything']] : []), ['all', island ? 'Central garden' : 'Whole garden'], ['wide', 'Closer'], ['bed', 'Front garden']], st.crop, (k) => { st.crop = k; paint(); }));
         ctl.appendChild(_gdxSeg([['none', 'No frame'], ['polaroid', 'Polaroid'], ['postcard', 'Postcard']], st.frame, (k) => { st.frame = k; paint(); }));
         if (typeof gardenPoseOpen === 'function') ctl.appendChild(_gdpBtn('Pose with a catch', { icon: 'fish', run: () => { if (close) close(); gardenPoseOpen(); } }));   // (94-garden-zz-3pose.js)
         const vis = _gdpBtn(st.visitors ? 'Visitors on' : 'Visitors off', { icon: 'bird', run: () => { st.visitors = !st.visitors; paint(); } });

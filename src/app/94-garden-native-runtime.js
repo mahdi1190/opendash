@@ -193,6 +193,31 @@ window.GardenNative = (function () {
     const original = pointer.event || pointer, touch = original.changedTouches && original.changedTouches[0], box = live.box.getBoundingClientRect();
     return { clientX: touch ? touch.clientX : original.clientX == null ? pointer.x + box.left : original.clientX, clientY: touch ? touch.clientY : original.clientY == null ? pointer.y + box.top : original.clientY, button: original.button || 0, buttons: original.buttons, pointerId: pointer.id == null ? original.pointerId : pointer.id, pointerType: touch ? 'touch' : 'mouse', target: live.game.canvas, shiftKey: original.shiftKey, ctrlKey: original.ctrlKey, metaKey: original.metaKey, altKey: original.altKey, preventDefault() { if (original.cancelable) original.preventDefault(); }, stopPropagation() { if (original.stopPropagation) original.stopPropagation(); }, stopImmediatePropagation() { if (original.stopImmediatePropagation) original.stopImmediatePropagation(); } };
   }
+  function clearHover(s) {
+    s.hoverArmed = false;
+    _gdp.hoverSprite = null; _gdp.hoverUid = ''; _gw.hoverBug = '';
+    _gdpHighlight(null); gardenHoverCardHide();
+    if (typeof _gwtHide === 'function') _gwtHide();
+    const status = s.box.querySelector('.gd-status'); if (status) status.hidden = true;
+    s.box.dataset.hover = '';
+    // A gesture or placement owns its ghost and cursor. Retire only hover
+    // feedback; never cancel the gesture, change tools or close its bubble.
+    const owned = _gdp.press || _gdp.sweep || _gdp.carry || _gdp.moving || _gw.hold || _gw.netting || _gw.fishing && _gw.fishing.state !== 'idle' || _gdp.tool === 'seed' || _gdp.tool === 'decorate' || typeof gardenDesignOn === 'function' && gardenDesignOn();
+    if (!owned) gameCursor(s.box, '');
+  }
+  function hoverProjection(s, remember) {
+    if (!remember && !s.hoverArmed) return;
+    const cam = s.scene.cameras.main, zx = cam.zoomX || cam.zoom || 1, zy = cam.zoomY || cam.zoom || 1;
+    const left = cam.scrollX + cam.width / 2 - cam.width / zx / 2, top = cam.scrollY + cam.height / 2 - cam.height / zy / 2, right = left + cam.width / zx, bottom = top + cam.height / zy;
+    if (!(zx > 0 && zy > 0) || !Number.isFinite(left) || !Number.isFinite(top) || !Number.isFinite(right) || !Number.isFinite(bottom)) { clearHover(s); return; }
+    if (remember) {
+      s.hoverArmed = true; s.hoverCamera = cam; s.hoverLeft = left; s.hoverTop = top; s.hoverRight = right; s.hoverBottom = bottom; s.hoverWidth = cam.width; s.hoverHeight = cam.height; s.hoverX = cam.x; s.hoverY = cam.y; s.hoverRotation = cam.rotation;
+      return;
+    }
+    // Accumulate drift from the last physical hover, rather than resetting
+    // its baseline every frame. Ignore subpixel easing noise in a resting view.
+    if (cam !== s.hoverCamera || cam.width !== s.hoverWidth || cam.height !== s.hoverHeight || cam.x !== s.hoverX || cam.y !== s.hoverY || cam.rotation !== s.hoverRotation || Math.abs(left - s.hoverLeft) * zx > .125 || Math.abs(right - s.hoverRight) * zx > .125 || Math.abs(top - s.hoverTop) * zy > .125 || Math.abs(bottom - s.hoverBottom) * zy > .125) clearHover(s);
+  }
   function bindInput(s) {
     const touches = new Map(); let pinch = null, wheel = 0, wheelAt = 0;
     const designing = () => typeof gardenDesignOn === 'function' && gardenDesignOn();
@@ -203,7 +228,7 @@ window.GardenNative = (function () {
       if (touches.size === 2) { const [a, b] = [...touches.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); gardenHoldEnd(); _gdpDragCancel(_gdp.press); _gdp.press = null; return; }
       if (ev.button !== 0) return;
       const cell = _gdpCellOf(ev), it = _gdpPickItem(ev, cell), mode = _gdpMode(), tool = _gdpTool(), model = gardenHere();
-      const petHit = pick(ev.clientX, ev.clientY);
+      const petHit = typeof _ptwFreeHand === 'function' && _ptwFreeHand() ? pick(ev.clientX, ev.clientY) : null;
       if (petHit && petHit.kind === 'pet' && typeof _ptwClick === 'function') { _ptwClick({ ...ev, type: 'pointerdown', target: petHit.node }); _gdp.press = null; return; }
       _gdp.press = { x0: ev.clientX, y0: ev.clientY, it, cell, moved: false, id: pointer.id };
       if (_gh.bubble) gardenBubbleClose(); gardenSpotMark(null);
@@ -214,7 +239,7 @@ window.GardenNative = (function () {
       }
       if (!_gdp.sweep && !_gdp.moving && mode !== 'decorate' && tool !== 'seed') { const action = gardenWorldPick(it, cell, ev, model); if (action.kind === 'ground' && gardenHoldStart(ev)) _gdp.press.hold = true; }
     });
-    s.scene.input.on('pointermove', pointer => { if (!active() || designing()) return; const ev = normalizeEvent(pointer); if (inRoom()) { GardenNativeRooms.pointerMove(ev); return; } if (touches.has(pointer.id)) touches.set(pointer.id, { x: ev.clientX, y: ev.clientY }); if (pinch && touches.size > 1) { const [a, b] = [...touches.values()], distance = Math.hypot(a.x - b.x, a.y - b.y); if (distance > pinch * 1.12) { s.world.zoom(-1); pinch = distance; } else if (distance < pinch / 1.12) { s.world.zoom(1); pinch = distance; } return; } const pr = _gdp.press; if (pr && (Math.abs(ev.clientX - pr.x0) > 9 || Math.abs(ev.clientY - pr.y0) > 9)) pr.moved = true; if (pr && pr.hold) gardenHoldMove(ev); else if (pr && pr.moved) _gdpDragMove(ev); else _gdpHover(ev); });
+    s.scene.input.on('pointermove', pointer => { if (!active() || designing()) return; const ev = normalizeEvent(pointer); if (inRoom()) { GardenNativeRooms.pointerMove(ev); return; } if (touches.has(pointer.id)) touches.set(pointer.id, { x: ev.clientX, y: ev.clientY }); if (pinch && touches.size > 1) { const [a, b] = [...touches.values()], distance = Math.hypot(a.x - b.x, a.y - b.y); if (distance > pinch * 1.12) { s.world.zoom(-1); pinch = distance; } else if (distance < pinch / 1.12) { s.world.zoom(1); pinch = distance; } return; } const pr = _gdp.press; if (pr && (Math.abs(ev.clientX - pr.x0) > 9 || Math.abs(ev.clientY - pr.y0) > 9)) pr.moved = true; if (pr && pr.hold) gardenHoldMove(ev); else if (pr && pr.moved) _gdpDragMove(ev); else { _gdpHover(ev); hoverProjection(s, true); } });
     const release = pointer => { if (!active()) return; const ev = normalizeEvent(pointer); touches.delete(pointer.id); if (designing()) { touches.clear(); pinch = null; return; } if (touches.size < 2 && pinch) { pinch = null; _gdp.press = null; return; } if (inRoom()) { GardenNativeRooms.up(); return; } const pr = _gdp.press; _gdp.press = null; if (!pr) return; if (pr.hold) { gardenHoldEnd(); return; } if (_gdp.sweep) { if (pr.moved) { _gdpSweepEnd(); return; } _gdp.sweep = null; } if (pr.moved && pr.drag) _gdpDragDrop(ev, pr); else if (!pr.moved) _gdpClick(pr.it, pr.cell, ev); };
     s.scene.input.on('pointerup', release); s.scene.input.on('pointerupoutside', release);
     s.contextmenu = ev => {
@@ -227,8 +252,9 @@ window.GardenNative = (function () {
       if (decor) { _gdp.sel = decor.uid; _gdpPaintSel(model); gardenDecorBubble(decor, model); }
     };
     s.game.canvas.addEventListener('contextmenu', s.contextmenu);
-    s.blur = () => { _gw.keys.clear(); if (inRoom()) { _grm.keys.clear(); _ee.keys.clear(); GardenNativeRooms.up(); } gardenHoldEnd(); _gdpDragCancel(_gdp.press); _gdp.press = null; touches.clear(); pinch = null; _gwFishRelease(); if (_gdp.sweep) _gdpSweepEnd(); };
+    s.blur = () => { _gw.keys.clear(); if (inRoom()) { _grm.keys.clear(); _ee.keys.clear(); GardenNativeRooms.up(); } gardenHoldEnd(); _gdpDragCancel(_gdp.press); _gdp.press = null; touches.clear(); pinch = null; _gwFishRelease(); if (_gdp.sweep) _gdpSweepEnd(); clearHover(s); };
     window.addEventListener('blur', s.blur); s.game.canvas.addEventListener('pointercancel', s.blur);
+    s.hoverLeave = () => clearHover(s); s.game.canvas.addEventListener('pointerleave', s.hoverLeave);
     s.scene.input.on('wheel', (pointer, selected, dx, dy, dz, ev) => { if (!active() || designing() || inRoom() || _gdpPopOpen()) return; if (ev && ev.cancelable) ev.preventDefault(); wheel += dy; const now = performance.now(); if (Math.abs(wheel) >= 24 && now - wheelAt > 65) { s.world.zoom(wheel > 0 ? 1 : -1); wheel = 0; wheelAt = now; } void selected; void dx; void dz; });
     const key = (ev, down) => {
       if (!active() || ev.isComposing) return;
@@ -281,7 +307,17 @@ window.GardenNative = (function () {
         if (typeof gardenLightCheck === 'function') { try { gardenLightCheck(); } catch (error) { console.error('[garden]', error); } }
       }
       if (inRoom()) { GardenNativeRooms.update(time, dt); _gwFishFrame(dt); }
-      else { s.world.update(time, delta); _gwFishFrame(dt); _gwBugsFrame(dt); _gwPetFrame(dt); _gwSpritesFrame(dt); if (typeof gardenLifeVisitFrame === 'function') gardenLifeVisitFrame(time); if (typeof _ptw !== 'undefined' && _ptw.on) _ptwFrame(time, true); if (s.world.flushDepth) s.world.flushDepth(); gardenHudFrame(); if (typeof gardenPoseFrame === 'function') gardenPoseFrame(); }
+      else {
+        s.world.update(time, delta);
+        // World.update owns its movement memo and releases it on return. The
+        // remaining outdoor simulation also samples many feet; share one exact
+        // collision snapshot here rather than rebuilding its revision per probe.
+        _gw.frameActive = true; _gw.frameGrid = null; _gw.framePrefs = _gdpPrefs();
+        try {
+          _gwFishFrame(dt); _gwBugsFrame(dt); _gwPetFrame(dt); _gwSpritesFrame(dt); if (typeof gardenLifeVisitFrame === 'function') gardenLifeVisitFrame(time); if (typeof _ptw !== 'undefined' && _ptw.on) _ptwFrame(time, true); if (s.world.flushDepth) s.world.flushDepth(); gardenHudFrame(); if (typeof gardenPoseFrame === 'function') gardenPoseFrame();
+        } finally { _gw.frameActive = false; _gw.frameGrid = null; _gw.framePrefs = null; }
+      }
+      hoverProjection(s, false);
       s.lighting.update(time, delta); GardenNativeArt.updateAll(s.scene, time);
       if (!inRoom() && typeof petGardenVisualFrame === 'function') petGardenVisualFrame(time, delta);
       if (s.frontier) s.frontier.update(time, delta);
@@ -347,6 +383,7 @@ window.GardenNative = (function () {
   }
   function leaveRoom() { const s = live; if (!s || !inRoom()) return false; roomEffects(s, false); const result = GardenNativeRooms.leave(); s.box.classList.remove('gd-native-indoor'); return result; }
   function roomEffects(s, on) {
+    if (!!s.hoverRoom !== !!on) { s.hoverRoom = !!on; clearHover(s); }
     const room = on ? { ...GardenNativeRooms.lighting(), root: GardenNativeRooms.current().root, effectsState: GardenNativeRooms.effectsState } : null;
     if (s.lighting) s.lighting.setRoom(room); if (s.water) s.water.setRoom(room); if (s.frontier) s.frontier.setRoom(room); if (s.surface) s.surface.setRoom(room); s.waterFishing = '';
   }
@@ -491,9 +528,11 @@ window.GardenNative = (function () {
     const s = live; if (!s || !s.world || inRoom()) return null;
     const p = s.world.point(x, y), W = GARDEN_WORLD, hit = s.world.pick(p.x * W.cellW, W.sky + p.y * W.cellH);
     let pet = null;
-    for (const node of s.world.rootNode.querySelectorAll('.ptw')) {
-      if (!node.target.visible) continue; const b = node.getBoundingClientRect(), depth = node.target.depth;
-      if (x >= b.left && x <= b.right && y >= b.top && y <= b.bottom && (!hit || depth >= hit.depth) && (!pet || depth >= pet.depth)) pet = { kind: 'pet', node, depth };
+    if (typeof _ptwFreeHand === 'function' && _ptwFreeHand()) {
+      for (const node of s.world.rootNode.querySelectorAll('.ptw')) {
+        if (!node.target.visible) continue; const b = node.getBoundingClientRect(), depth = node.target.depth;
+        if (x >= b.left && x <= b.right && y >= b.top && y <= b.bottom && (!hit || depth >= hit.depth) && (!pet || depth >= pet.depth)) pet = { kind: 'pet', node, depth };
+      }
     }
     if (pet) return pet;
     return hit ? { ...hit, uid: hit.uid || hit.model && hit.model.uid, prop: hit.kind === 'prop' ? hit.id : null, land: hit.kind === 'land' ? hit.land || hit.id : null, ground: !!(hit.model && hit.model.def && hit.model.def.layer === 'ground'), node: hit.record && hit.record.node || hit.node || null } : null;
@@ -503,7 +542,7 @@ window.GardenNative = (function () {
     if (s.capturing) return Promise.reject(new Error('A garden photo is already being taken.'));
     return new Promise((resolve, reject) => {
       const size = { w: s.game.scale.width, h: s.game.scale.height }, cam = s.scene.cameras.main;
-      const hidden = [s.world.uiNode.target, ...s.world.rootNode.querySelectorAll('.gd-needs,.gd-locksign,.gd-pl-halo,.gll-name,.gll-say,.gll-fx').map(n => n.target), ...s.world.root.list.filter(n => n.depth === 89000)];
+      const hidden = [s.world.uiNode.target, ...s.world.rootNode.querySelectorAll('.gd-needs,.gd-need-ground,.gd-locksign,.gd-pl-halo,.gll-name,.gll-say,.gll-fx').map(n => n.target), ...s.world.root.list.filter(n => n.depth === 89000)];
       const visible = new Map(hidden.map(object => [object, object.visible])); let ghost = null, settled = false;
       s.capturing = true; openingVisibility(s); for (const object of hidden) object.setVisible(false); s.host.style.visibility = 'hidden';
       const restore = () => {
@@ -524,6 +563,7 @@ window.GardenNative = (function () {
   }
   function destroy() {
     const s = live; if (!s) return;
+    clearHover(s);
     if (typeof _fxS !== 'undefined' && _fxS.live) _fxS.live.stop(true);
     if (window.GardenNativeArt) GardenNativeArt.pauseAmbient({ hush: false, frozen: false });
     if (window.GardenNativeActions) GardenNativeActions.destroy();
@@ -531,6 +571,7 @@ window.GardenNative = (function () {
     if (s.openingObserver) s.openingObserver.disconnect();
     if (s.stopShaderPreparation) s.stopShaderPreparation();
     if (s.resize) s.resize.disconnect(); if (s.visibility) document.removeEventListener('visibilitychange', s.visibility); if (s.blur) window.removeEventListener('blur', s.blur);
+    if (s.hoverLeave && s.game) s.game.canvas.removeEventListener('pointerleave', s.hoverLeave);
     if (s.captureKey) { window.removeEventListener('keydown', s.captureKey, true); window.removeEventListener('keyup', s.captureKey, true); }
     roomEffects(s, false);
     if (window.GardenNativeRooms && GardenNativeRooms.current()) GardenNativeRooms.leave(); if (typeof _ptwStop === 'function') _ptwStop();

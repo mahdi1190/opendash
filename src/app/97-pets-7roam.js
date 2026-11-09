@@ -664,7 +664,18 @@ function _ptwFrame(now, rendererTick) {
   if (going) _ptw.raf = requestAnimationFrame(_ptwFrame);
   else if (_ptw.pets.length) _ptw.idleT = setTimeout(() => { _ptw.idleT = 0; if (_ptw.on && !_ptw.raf && !document.hidden) _ptw.raf = requestAnimationFrame(_ptwFrame); }, 110);
 }
+/** Tools, placements and active gestures keep their input beneath a pet. */
+function _ptwFreeHand() {
+  if (typeof _gdp === 'undefined' || typeof _gw === 'undefined' || !_gw.on || !_gdp.svg || !_gdp.svg.isConnected) return false;
+  if (typeof _gdpTool !== 'function' || _gdpTool() !== 'hand' || typeof _gdpMode !== 'function' || _gdpMode() === 'decorate') return false;
+  if (_gdp.carry || _gdp.moving || _gdp.sweep || _gdp.press || _gdp.pinch || _gw.hold || _gw.netting || _gw.reel) return false;
+  if (typeof _gwFishBusy === 'function' && _gwFishBusy() || typeof gardenDesignOn === 'function' && gardenDesignOn()) return false;
+  if (typeof _grm !== 'undefined' && _grm.on || typeof _ee !== 'undefined' && _ee.on || typeof _dialogClose === 'function') return false;
+  const pop = _gdp.pop;
+  return !(pop && pop.el && pop.el.isConnected);
+}
 function _ptwClick(ev) {
+  if (!_ptwFreeHand()) return;
   const visual = gardenWorldVisualPick(ev);
   const t = (ev.target && ev.target.closest ? ev.target.closest('.ptw') : null) || (visual && visual.node && visual.node.closest('.ptw'));
   if (!t) return;

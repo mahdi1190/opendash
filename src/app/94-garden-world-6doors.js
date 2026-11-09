@@ -8,8 +8,41 @@
    ============================================================ */
 const _GD = () => _grmA;
 const GRM_SYM = Object.freeze({
-  cellar() { const A = _GD(); return A.r(-20, -30, 40, 30, '#0a2a32', null, 2) + A.r(-16, -26, 32, 8, '#6a7a78') + A.r(-13, -18, 26, 8, '#55696a') + A.r(-10, -10, 20, 8, '#3f5560') + A.e(0, -2, 13, 3.4, '#1f8a8a') + A.s('M-6 -3q3 -2 6 0M1 -1q3 -1 5 0', '#c0fff0', 1, 0.8); },
-  den() { const A = _GD(); return A.r(-18, -22, 36, 22, '#5a4026', null, 2) + A.s('M-6 -22V0M6 -22V0', '#2a1c0e', 2) + `<circle cx="0" cy="-11" r="6.5" fill="none" stroke="#9a9aa8" stroke-width="2.6"/>` + A.r(-20, -38, 12, 16, '#a8a498', null, 3) + `<text x="-14" y="-26" text-anchor="middle" font-size="9" font-weight="800" fill="#3a3a32">0</text>`; },
+  // Ground-plane entrances: the near threshold is at the sprite's feet.
+  // Their original extents and registered door hit remain unchanged.
+  cellar() {
+    const A = _GD();
+    return A.p('M-17 -30H17L20 0H-20Z', '#526764')
+      + A.p('M-13 -26H13L16 -4H-16Z', '#0a2a32')
+      + A.p('M-13 -26L-16 -4H-12L-10 -24Z', '#2a464a')
+      + A.p('M13 -26L16 -4H12L10 -24Z', '#213b40')
+      + A.p('M-10 -23H10L11 -18H-11Z', '#3f5560')
+      + A.p('M-11 -18H11L12 -12H-12Z', '#55696a')
+      + A.p('M-12 -12H12L14 -5H-14Z', '#6a7a78')
+      + A.s('M-10 -18H10M-11 -12H11M-13 -5H13', '#a3b5ad', 1, .75)
+      + A.p('M-9 -25H9L10 -23H-10Z', '#1f8a8a')
+      + A.s('M-6 -24H-1M3 -24H6', '#c0e9db', .8, .7)
+      + A.p('M-20 -3H20V0H-20Z', '#778b80')
+      + A.s('M-17 -29H17M-18 -3H18', '#b2bdab', 1, .75)
+      + A.p('M-18 -27L-16 -28L-15 -25L-18 -24Z', '#6c8660', .8);
+  },
+  den() {
+    const A = _GD();
+    return A.e(0, -1.2, 17, 1.2, '#30291d', .24)
+      + A.p('M-18 -17L7 -22L18 -6L-9 0Z', '#35291d')
+      + A.p('M-15 -16L6 -20L15 -7L-8 -2Z', '#785535')
+      + A.p('M-15 -16L6 -20L7 -18L-14 -14Z', '#a18457')
+      + A.p('M-8 -2L15 -7L14 -9L-9 -4Z', '#5a4026')
+      + A.s('M-8 -17L0 -5M-1 -18L7 -7', '#49331f', 1.1)
+      + A.s('M-12 -13L-8 -7M4 -15L8 -10', '#b29668', .8, .55)
+      + A.p('M-11 -17L-7 -18L-5 -15L-9 -14ZM3 -20L6 -20L8 -17L5 -16Z', '#7f8580')
+      + A.e(0, -10, 4.5, 2.6, '#3b3329')
+      + '<ellipse cx="0" cy="-10" rx="4.5" ry="2.6" fill="none" stroke="#a8ada5" stroke-width="1.6"/>'
+      + A.s('M-3 -11Q0 -12.5 3 -11', '#d3d6c7', .75)
+      + A.p('M-20 -22V-33Q-20 -38 -14 -38Q-8 -38 -8 -33V-22Z', '#a8a498')
+      + A.p('M-18 -23V-33Q-18 -36 -15 -36V-23Z', '#c3c1ae', .7)
+      + '<text x="-14" y="-26" text-anchor="middle" font-size="9" font-weight="800" fill="#3a3a32">0</text>';
+  },
   boatloft() { const A = _GD(); return A.r(-16, -40, 32, 40, '#3a4a54', null, 2) + A.p('M-16 -40L0 -48L16 -40Z', '#27323a') + A.r(-11, -34, 22, 34, '#20282e') + A.p('M-10 -24H10Q7 -13 0 -11Q-7 -13 -10 -24Z', '#b8623a') + A.s('M-6 -34V-24M6 -34V-24', '#c8b488', 1); },
   lampcup() { const A = _GD(); return A.r(-7, -46, 14, 46, '#2a3040') + A.r(-5, -16, 10, 14, '#10121e', null, 1) + A.c(3, -9, 1.2, '#d8b24a') + A.p('M-9 -46H9L6 -56H-6Z', '#3a4254') + `<path class="grm-glowp" d="M0 -48Q-4 -52 0 -56Q4 -52 0 -48Z" fill="#ffc15a"/>` + A.c(0, -52, 9, '#ffc15a', 0.3); },
   nowhere() { const A = _GD(); return A.r(-2, -44, 4, 44, '#7a6a58') + A.p('M0 -42H22L28 -36L22 -30H0Z', '#efe6cc') + A.s('M-25 -6Q-13 -11 -1 -7T24 -8', '#eef4ec', 2.4, 0.28) + A.s('M-7 -14Q4 -18 15 -14T28 -15', '#eef4ec', 1.8, 0.24) + A.s('M-25 -22Q-14 -26 -3 -22T8 -23', '#eef4ec', 1.6, 0.2); },
@@ -50,6 +83,7 @@ function gardenRoomGo(R, here) {
 function _grmDoorProp(R) { try { return gardenPropsNow().find(p => p.lf === R.at && !p.site) || null; } catch (e) { return null; } }
 function _grmDoorPt(R) {
   const p = _grmDoorProp(R); if (!p) return null;
+  if (typeof gardenSightIsSetOut === 'function' && gardenSightIsSetOut(R.at) && p.door) return { x: p.door.x + .5, y: p.door.y + .5 };
   if (R.doorAt) return { x: R.doorAt[0], y: R.doorAt[1] };   // (its sight is hidden behind the shops: the steps are by the path round to it)
   // beside its sight: on the right if it can be, never in water or inside a building, where you could not see it or get to it
   const cx = p.x + p.w * 0.5, foot = p.y + p.h, spots = [[cx + 0.9, foot + 0.45], [cx - 0.9, foot + 0.45], [cx, foot + 1.45], [cx + 0.9, foot + 1.45]];
@@ -70,8 +104,9 @@ wdMod({
       if (S) { if (S.x !== P.x || S.y !== P.y - 0.3) { S.x = P.x; S.y = P.y - 0.3; S.z = P.y; S.tf = null; } continue; }
       _grd.list.set(R.id, wdSprite({ id: 'grm-door-' + R.id, x: P.x, y: P.y - 0.3, z: P.y, still: true, hit: 0.9, hitUp: 30, label: R.verb, cursor: 'hand', svg: `<g class="grm-wayin" transform="scale(.82)">${GRM_SYM[R.id]()}</g>`, onClick: () => gardenRoomGo(R) }));
     }
+    _grmChipCheck();   // putting away or locking its sight retires the old way to follow
   },
-  end() { for (const S of _grd.list.values()) S.remove(); _grd.list.clear(); },
+  end() { _grmChipClear(); for (const S of _grd.list.values()) S.remove(); _grd.list.clear(); },
 });
 
 /* ---------- the way out, inside ---------- */
@@ -126,20 +161,30 @@ function _gwtAt(x, y) {
   try { if (Math.abs(x - C.x) < 1.4 && y < C.y + 0.4 && y > C.y - 1.8) { const ca = gardenCatchHere(); if (ca.rk && ca.rk.length) return { key: 'rack', t: 'The drying rack', d: 'Today’s five best fish, hung up for everyone to see.' }; } } catch (e) { /* no rack */ }
   return null;
 }
+function _gwtHide() { if (_gwt.el) _gwt.el.hidden = true; }
 function _gwtShow(T, ev) {
   const box = _gw.box; if (!box) return;
   let c = _gwt.el; if (!c || !c.isConnected) { c = document.createElement('div'); c.className = 'grm-tip'; c.setAttribute('role', 'status'); box.appendChild(c); _gwt.el = c; }
   if (!T) { c.hidden = true; return; }
   if (c._k !== T.key) { c._k = T.key; c.innerHTML = `<b>${esc(T.t)}</b><span>${esc(T.d)}</span>`; }
   c.hidden = false;
-  const r = box.getBoundingClientRect(), w = c.offsetWidth, h = c.offsetHeight;
-  c.style.left = Math.max(8, Math.min(r.width - w - 8, ev.clientX - r.left + 14)) + 'px'; c.style.top = Math.max(8, Math.min(r.height - h - 8, ev.clientY - r.top + 16)) + 'px';
+  const r = box.getBoundingClientRect(), w = c.offsetWidth, h = c.offsetHeight, left = Math.max(8, Math.min(r.width - w - 8, ev.clientX - r.left + 14));
+  let ceiling = r.height - 8;
+  const tools = box.querySelector(':scope > .gd-toolbar');
+  if (tools && !tools.hidden) {
+    const t = tools.getBoundingClientRect();
+    if (t.width > 0 && t.height > 0 && r.left + left < t.right && r.left + left + w > t.left) ceiling = Math.min(ceiling, t.top - r.top - 8);
+  }
+  // A low pointer must not pin its full card across the visible hotbar.
+  const below = ev.clientY - r.top + 16, top = below + h <= ceiling ? below : Math.min(ev.clientY - r.top - h - 16, ceiling - h);
+  c.style.left = left + 'px'; c.style.top = Math.max(8, Math.min(r.height - h - 8, top)) + 'px';
 }
 wdMod({
   id: 'world-tip', fun: false, visit: true,
   begin() {
-    const on = (ev) => { if (!_gw.on || !_gw.svg || _gwFishBusy()) { _gwtShow(null); return; } const t = performance.now(); if (t - _gwt.at < 90) return; _gwt.at = t; const p = _gwPointAt(ev); _gwtShow(p ? _gwtAt(p.x, p.y) : null, ev); };
-    this.on = on; if (_gw.box) _gw.box.addEventListener('pointermove', on, { passive: true });
+    const on = (ev) => { if (!_gw.on || !_gw.svg || _grm.on || _ee.on || _gwFishBusy() || !_gdpStageContains(ev.target)) { _gwtHide(); return; } const t = performance.now(); if (t - _gwt.at < 90) return; _gwt.at = t; const p = _gwPointAt(ev); _gwtShow(p ? _gwtAt(p.x, p.y) : null, ev); };
+    this.on = on; this.leave = _gwtHide;
+    if (_gw.box) { _gw.box.addEventListener('pointermove', on, { passive: true }); _gw.box.addEventListener('pointerleave', this.leave); }
   },
   tick() {
     // Passing scenery is kept in Recent; the pointer tooltip remains available
@@ -147,5 +192,5 @@ wdMod({
     if (_grm.on) return;
     for (const s of GARDEN_SPOTS) if (!_gwt.said.has(s.id) && Math.hypot(_gw.px - s.x, (_gw.py - s.y) * 1.3) <= s.r + 1.6) { _gwt.said.add(s.id); gardenMessage(`${s.name}. ${s.says}`, { ambient: true, source: 'landmark:' + s.id, icon: 'map-pin' }); return; }
   },
-  end() { if (_gw.box && this.on) _gw.box.removeEventListener('pointermove', this.on); if (_gwt.el) { _gwt.el.remove(); _gwt.el = null; } },
+  end() { if (_gw.box) { if (this.on) _gw.box.removeEventListener('pointermove', this.on); if (this.leave) _gw.box.removeEventListener('pointerleave', this.leave); } if (_gwt.el) { _gwt.el.remove(); _gwt.el = null; } },
 });

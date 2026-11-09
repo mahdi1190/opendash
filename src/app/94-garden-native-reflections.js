@@ -46,31 +46,43 @@ window.GardenNativeFishingReflections = (function () {
         previous = next; previousPlane = plane;
       }
     }
+    function clipBoundary(points, axis, edge, sign) {
+      const next = []; if (!points.length) return next;
+      let previous = points[points.length - 1], was = (previous[axis] - edge) * sign >= -1e-8;
+      for (const p of points) { const inside = (p[axis] - edge) * sign >= -1e-8; if (inside !== was) { const k = (edge - previous[axis]) / (p[axis] - previous[axis]); next.push({ x: previous.x + (p.x - previous.x) * k, y: previous.y + (p.y - previous.y) * k }); } if (inside) next.push(p); previous = p; was = inside; }
+      return next;
+    }
     function clipRect(points, left, top, right, bottom) {
-      let out = points;
-      for (const [axis, edge, sign] of [['x', left, 1], ['x', right, -1], ['y', top, 1], ['y', bottom, -1]]) {
-        const next = []; if (!out.length) return next;
-        let previous = out[out.length - 1], was = (previous[axis] - edge) * sign >= -1e-8;
-        for (const p of out) { const inside = (p[axis] - edge) * sign >= -1e-8; if (inside !== was) { const k = (edge - previous[axis]) / (p[axis] - previous[axis]); next.push({ x: previous.x + (p.x - previous.x) * k, y: previous.y + (p.y - previous.y) * k }); } if (inside) next.push(p); previous = p; was = inside; }
-        out = next;
-      }
-      return out;
+      let out = clipBoundary(points, 'x', left, 1); if (!out.length) return out;
+      out = clipBoundary(out, 'x', right, -1); if (!out.length) return out;
+      out = clipBoundary(out, 'y', top, 1); if (!out.length) return out;
+      return clipBoundary(out, 'y', bottom, -1);
+    }
+    function clipBand(points, top, bottom) {
+      const out = clipBoundary(points, 'y', top, 1);
+      return out.length ? clipBoundary(out, 'y', bottom, -1) : out;
+    }
+    function spanIntersection(a, b) {
+      const out = []; for (const x of a) for (const yy of b) { const lo = Math.max(x[0], yy[0]), hi = Math.min(x[1], yy[1]); if (hi > lo) out.push([lo, hi]); } return out;
     }
     function filledTriangle(points, color, alpha, plane, height, view) {
-      const left = Math.min(...points.map(p => p.x)), right = Math.max(...points.map(p => p.x)), top = Math.max(plane, Math.min(...points.map(p => p.y))), bottom = Math.max(...points.map(p => p.y));
+      const a = points[0], b = points[1], c = points[2], left = Math.min(a.x, b.x, c.x), right = Math.max(a.x, b.x, c.x), top = Math.max(plane, Math.min(a.y, b.y, c.y)), bottom = Math.max(a.y, b.y, c.y);
+      const finiteX = Number.isFinite(left) && Number.isFinite(right);
       const margin = Math.abs(ripple.strength) * 1.2;
       if (bottom <= top || right + margin < view.x || left - margin > view.x + view.width || bottom < view.y || top > view.y + view.height) return;
       const step = Math.max(ripple.step, height / 15);
-      const intersection = (a, b) => { const out = []; for (const x of a) for (const yy of b) { const lo = Math.max(x[0], yy[0]), hi = Math.min(x[1], yy[1]); if (hi > lo) out.push([lo, hi]); } return out; };
       let y = top;
       while (y < bottom) {
-        const end = Math.min(bottom, (Math.floor(y / step + 1e-7) + 1) * step), e = Math.min(.02, (end - y) * .1), band = clipRect(points, left, y, right, end);
+        // The finite triangle already lies within its exact min/max x. The
+        // original first two clip planes copied all three points unchanged;
+        // only the y planes cut this band. Water spans below still use all four.
+        const end = Math.min(bottom, (Math.floor(y / step + 1e-7) + 1) * step), e = Math.min(.02, (end - y) * .1), band = finiteX ? clipBand(points, y, end) : clipRect(points, left, y, right, end);
         let bandLeft = Infinity, bandRight = -Infinity;
         const startDrift = driftAt(y, plane, height), endDrift = driftAt(end, plane, height);
         maxDrift = Math.max(maxDrift, Math.abs(startDrift), Math.abs(endDrift));
         for (let i = 0; i < band.length; i++) { const p = band[i], drift = startDrift + (endDrift - startDrift) * (p.y - y) / (end - y); band[i] = { x: p.x + drift, y: p.y }; bandLeft = Math.min(bandLeft, band[i].x); bandRight = Math.max(bandRight, band[i].x); }
         if (band.length >= 3 && bandRight > bandLeft) {
-          let spans = options.intervals((y + end) / 2, bandLeft, bandRight, true); spans = intersection(spans, options.intervals(y + e, bandLeft, bandRight, true)); spans = intersection(spans, options.intervals(end - e, bandLeft, bandRight, true));
+          let spans = options.intervals((y + end) / 2, bandLeft, bandRight, true); spans = spanIntersection(spans, options.intervals(y + e, bandLeft, bandRight, true)); spans = spanIntersection(spans, options.intervals(end - e, bandLeft, bandRight, true));
           for (const span of spans) { const polygon = clipRect(band, span[0], y, span[1], end); if (polygon.length < 3) continue; rippleBands++; graphics.fillStyle(color, alpha * fadeAt((y + end) / 2, plane, height)); for (let i = 2; i < polygon.length; i++) { graphics.fillTriangle(polygon[0].x, polygon[0].y, polygon[i - 1].x, polygon[i - 1].y, polygon[i].x, polygon[i].y); triangles++; } }
         }
         y = end;
@@ -94,7 +106,14 @@ window.GardenNativeFishingReflections = (function () {
       };
       walk(node); return commands;
     }
-    function pathNumbers(node) { return (String(node && node.getAttribute('d') || '').match(/[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:e[-+]?\d+)?/gi) || []).map(Number); }
+    function pathNumbers(node, record, key) {
+      const source = String(node && node.getAttribute('d') || ''), previous = record[key];
+      // A still rod or line often keeps exactly the same authored path. Keep
+      // its parsed numbers in this existing rig record until that string changes.
+      if (previous && previous.source === source) return previous.values;
+      const values = (source.match(/[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:e[-+]?\d+)?/gi) || []).map(Number);
+      record[key] = { source, values }; return values;
+    }
     function drawCommands(commands, plane, view, alpha) {
       let height = 1;
       for (const command of commands) {
@@ -106,7 +125,12 @@ window.GardenNativeFishingReflections = (function () {
       }
       for (const command of commands) {
         if (!command.drawn) continue; const points = command.world, opacity = command.opacity;
-        if (command.fill && command.indices) for (let i = 0; i < command.indices.length; i += 3) filledTriangle([points[command.indices[i]], points[command.indices[i + 1]], points[command.indices[i + 2]]], command.fill.color, alpha * opacity * command.fill.alpha * command.fillAlpha, plane, height, view);
+        if (command.fill && command.indices) {
+          // Reuse only this synchronous command's three-point input; every
+          // vertex still comes from the current world transform above.
+          const triangle = [null, null, null];
+          for (let i = 0; i < command.indices.length; i += 3) { triangle[0] = points[command.indices[i]]; triangle[1] = points[command.indices[i + 1]]; triangle[2] = points[command.indices[i + 2]]; filledTriangle(triangle, command.fill.color, alpha * opacity * command.fill.alpha * command.fillAlpha, plane, height, view); }
+        }
         if (command.stroke) { for (let i = 1; i < points.length; i++) clippedSegment(points[i - 1], points[i], command.stroke.color, command.width, alpha * opacity * command.stroke.alpha * command.strokeAlpha, plane, height); if (command.closed) clippedSegment(points[points.length - 1], points[0], command.stroke.color, command.width, alpha * opacity * command.stroke.alpha * command.strokeAlpha, plane, height); }
       }
     }
@@ -122,7 +146,7 @@ window.GardenNativeFishingReflections = (function () {
         if (!row || !row.rod || !row.line || !row.bob || !row.rod.target || !row.line.target || !row.bob.target || !visible(row.rod.target)) continue;
         keep.add(row.id); let record = records.get(row.id); if (!record || record.node !== row.bob || record.first !== row.bob.firstChild || record.count !== row.bob.children.length) { record = { node: row.bob, first: row.bob.firstChild, count: row.bob.children.length, commands: floatCommands(row.bob) }; records.set(row.id, record); }
         if (record.skin !== row.rodSkin) { record.skin = row.rodSkin; record.skinCommands = row.rodSkin ? floatCommands(row.rodSkin) : []; }
-        const before = segments + triangles, beforeBands = rippleBands, beforeDistorted = distortedSegments, foot = number(row.footY), water = number(row.waterY), plane = Number.isFinite(row.floatPlaneY) ? row.floatPlaneY : water, rodValues = pathNumbers(row.rod), lineValues = pathNumbers(row.line), rodMatrix = row.rod.target.getWorldTransformMatrix(), lineMatrix = row.line.target.getWorldTransformMatrix();
+        const before = segments + triangles, beforeBands = rippleBands, beforeDistorted = distortedSegments, foot = number(row.footY), water = number(row.waterY), plane = Number.isFinite(row.floatPlaneY) ? row.floatPlaneY : water, rodValues = pathNumbers(row.rod, record, 'rodPath'), lineValues = pathNumbers(row.line, record, 'linePath'), rodMatrix = row.rod.target.getWorldTransformMatrix(), lineMatrix = row.line.target.getWorldTransformMatrix();
         const mirror = (p, ground) => ({ x: p.x, y: ground * 2 - p.y }), rodPaint = paint(row.rod._styles && row.rod._styles.stroke, 0x806143), rodWidth = number(row.rod._styles && row.rod._styles['stroke-width']) || 2.2;
         const rodOpacity = row.rod._styles && row.rod._styles['stroke-opacity'];
         let rodHeight = 1;

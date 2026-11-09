@@ -203,6 +203,16 @@ function petStageMount(root, g, o) {
   actor.el.setAttribute('aria-label', `Pat ${petName(g)}`);
   actor.el.classList.add('is-me');
   const S = { actor, stage, floor, asleep: false, busy: false, dead: false, visible: true, t: 0 };
+  let napButton = null;
+  const paintNapButton = () => {
+    if (!napButton) return;
+    const label = S.asleep ? 'Wake up' : 'Nap';
+    napButton.setAttribute('aria-label', label);
+    napButton.setAttribute('data-tip', label);
+    napButton.setAttribute('title', label);
+    napButton.setAttribute('aria-pressed', String(S.asleep));
+  };
+  S.setNapButton = button => { napButton = button; paintNapButton(); };
 
   const moodNow = () => petMood() || {};
   const paintMood = () => {
@@ -222,16 +232,17 @@ function petStageMount(root, g, o) {
   /* what it does on its own */
   const nightOwl = actor.per.night;
   const shouldSleep = () => { const k = moodNow().key; return (k === 'sleepy' && !nightOwl) || k === 'dozy'; };
-  const goToBed = (then) => { S.busy = true; actor.walkTo(bedX(), { speed: 0.9 }, () => { S.asleep = true; S.busy = false; actor.dir = 1; actor.apply(); actor.draw('sleep', { eyes: 'closed', mouth: 'calm', extra: 'zzz' }); stage.classList.add('is-asleep'); if (then) then(); }); };
+  const goToBed = (then) => { S.busy = true; actor.walkTo(bedX(), { speed: 0.9 }, () => { S.asleep = true; S.busy = false; actor.dir = 1; actor.apply(); actor.draw('sleep', { eyes: 'closed', mouth: 'calm', extra: 'zzz' }); stage.classList.add('is-asleep'); paintNapButton(); if (then) then(); }); };
   const bedX = () => Math.max(size * 0.5, Math.min(w * 0.22, w - size)) ;
   const wakeUp = (then) => {
-    S.asleep = false; stage.classList.remove('is-asleep');
+    S.asleep = false; stage.classList.remove('is-asleep'); paintNapButton();
     petWake(90000);
     stand(); actor.play('stretch', 1500, () => { if (then) then(); });
   };
   const nextAct = () => {
     if (S.dead || !S.visible || !_ptaMotion()) return;
     if (S.busy || S.asleep || actor.moving) { later(3000); return; }
+    if (_ptCelebNext(S)) { later(15000); return; }
     const per = actor.per, r = Math.random();
     if (r < per.nap * 0.25 && !weather.rain) { goToBed(); later(9000); return; }
     if (r < 0.46) {
@@ -393,21 +404,52 @@ function petStageMount(root, g, o) {
   if (ro) ro.observe(stage);
   // the moment it leaves the page, everything stops
   const gone = setInterval(() => { if (!stage.isConnected) { S.stop(); } }, 2000);
-  S.stop = () => { S.dead = true; actor.stop(); clearInterval(gone); clearTimeout(S.thinkT); if (io) io.disconnect(); if (ro) ro.disconnect(); document.removeEventListener('visibilitychange', onVis); };
+  S.stop = () => { S.dead = true; napButton = null; actor.stop(); clearInterval(gone); clearTimeout(S.thinkT); if (io) io.disconnect(); if (ro) ro.disconnect(); document.removeEventListener('visibilitychange', onVis); };
   return S;
 }
 
 /* ---------- a new friend ---------- */
-const _ptCeleb = { q: [], open: false };
-function petCelebrate(id) {
+// Presentation queue only: ownership, journal and collection freshness stay in pet state.
+const _ptCeleb = { q: [], open: false, automaticReady: false };
+function petCelebrate(id, o) {
   if (!petSpecies(id)) return;
-  _ptCeleb.q.push(id);
+  const automatic = !!(o && o.automatic);
+  if (automatic) {
+    if (!_ptCeleb.q.some(row => row.id === id)) _ptCeleb.q.push({ id, automatic: true });
+  } else {
+    // A deliberate Collection request need not wait behind a deferred automatic party.
+    _ptCeleb.q = _ptCeleb.q.filter(row => row.id !== id);
+    _ptCeleb.q.unshift({ id, automatic: false });
+  }
   _ptCelebNext();
 }
-function _ptCelebNext() {
-  if (_ptCeleb.open || !_ptCeleb.q.length) return;
-  if (typeof _gw !== 'undefined' && _gw && _gw.reel) { setTimeout(_ptCelebNext, 4000); return; }   // never in the middle of landing a fish
-  const id = _ptCeleb.q.shift(), sp = petSpecies(id);
+/** Rearm once on genuine Pets entry; saves and ordinary page refreshes do not rearm. */
+function petCelebrationsResume() { _ptCeleb.automaticReady = true; }
+function _ptCelebCanShow() {
+  if (document.hidden || typeof _dialogClose === 'function') return false;
+  if (typeof state !== 'undefined' && /^garden(:|$)/.test(String(state.view || ''))) return false;
+  if (typeof gardenVisitOn === 'function' && gardenVisitOn() || typeof _gw !== 'undefined' && _gw && _gw.on) return false;
+  if (document.querySelector('.modal-overlay.open, [role="dialog"]:not([hidden]):not(#modal-card), dialog[open]')) return false;
+  const focus = document.activeElement;
+  if (focus && (focus.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(focus.tagName) || focus.closest('[aria-busy="true"]'))) return false;
+  const S = typeof _ptUI !== 'undefined' && _ptUI.stage;
+  if (S && !S.dead && S.stage.isConnected && (S.busy || S.actor.moving || S.actor.act || S.actor.svg && S.actor.svg._pcH)) return false;
+  return !(typeof _fxS !== 'undefined' && _fxS.live);
+}
+function _ptCelebNext(stage) {
+  if (_ptCeleb.open || !_ptCeleb.q.length) return false;
+  if (stage && (typeof _ptUI === 'undefined' || _ptUI.stage !== stage || stage.dead || !stage.stage.isConnected)) return false;
+  let at = _ptCeleb.q.findIndex(row => !row.automatic);
+  if (at < 0) at = 0;
+  const next = _ptCeleb.q[at], view = typeof state !== 'undefined' ? String(state.view || '') : '';
+  if (next.automatic) {
+    if (!_ptCeleb.automaticReady || _ptFun() === 'off') return false;
+    // Automatic parties use only Together's existing idle loop. Browsing stays clear.
+    if (!stage || !/^pet(?::together)?$/.test(view)) return false;
+  }
+  if (!_ptCelebCanShow()) return false;
+  const { id } = _ptCeleb.q.splice(at, 1)[0], sp = petSpecies(id);
+  _ptCeleb.automaticReady = false;
   _ptCeleb.open = true;
   const box = _ptEl('div', 'ptc' + (_ptMotionOk() ? ' is-live' : ''));
   box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', `New friend: ${sp.label}`);
@@ -423,7 +465,7 @@ function _ptCelebNext() {
   card.appendChild(_ptEl('div', 'ptc-rar', (PET_RARITY[sp.rar || 0] || PET_RARITY[0]).label));
   card.appendChild(_ptEl('h2', 'ptc-name', sp.label));
   const acts = _ptEl('div', 'ptc-acts');
-  const close = () => { clearTimeout(box._t); box.remove(); _ptCeleb.open = false; document.removeEventListener('keydown', onKey, true); setTimeout(_ptCelebNext, 260); };
+  const close = () => { clearTimeout(box._t); box.remove(); _ptCeleb.open = false; document.removeEventListener('keydown', onKey, true); };
   const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
   document.addEventListener('keydown', onKey, true);
   const be = uiButton({ label: 'Be with me', icon: 'heart', kind: 'primary', run: () => { petChoose(id); close(); if (/^pet(:|$)/.test(String(state.view || ''))) _ptRefresh(); } });
@@ -436,12 +478,12 @@ function _ptCelebNext() {
   be.focus();
   _ptCheer(card, { kind: 'unlock' });
   box._t = setTimeout(close, 14000);
+  return true;
 }
 if (typeof document !== 'undefined') {
   document.addEventListener('opendash:pet-new', () => {
     try {
-      if (_ptFun() === 'off') { petCelebrationsTake(); return; }
-      for (const id of petCelebrationsTake()) petCelebrate(id);
+      for (const id of petCelebrationsTake()) petCelebrate(id, { automatic: true });
     } catch (e) { console.error('[pets] celebration', e); }
   });
 }

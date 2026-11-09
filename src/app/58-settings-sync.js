@@ -72,6 +72,7 @@ function syncAgo(ms, nowMs) {
   return d + (d === 1 ? ' day ago' : ' days ago');
 }
 /** The status line of the screens before and around the summary: {tone: off|ok|busy|warn|err|idle, word, detail}. */
+function syncGardenWaitingDetail(st) { return 'Garden changes are preserved, waiting for matching island layouts and updated apps. ' + (st.apply ? 'Other dashboard changes can still sync.' : 'Other dashboard changes remain in Preview.'); }
 function syncStatusLine(st, nowMs) {
   if (!st) return { tone: 'idle', word: 'Checking…', detail: '' };
   if (!st.enabled) return { tone: 'off', word: 'Off', detail: 'Your data stays on this computer' };
@@ -79,6 +80,7 @@ function syncStatusLine(st, nowMs) {
   if (st.state === 'error') return { tone: 'err', word: 'Paused', detail: st.message || '' };
   if (st.state === 'locked') return e.reason === 'not-joined' ? { tone: 'busy', word: 'Setting up', detail: st.message || '' } : { tone: 'warn', word: 'Needs you', detail: e.reason === 'removed' ? 'This computer was removed from sync' : st.message || '' };
   if (!e.on) return { tone: 'warn', word: 'Needs you', detail: "Your synced data isn't encrypted yet" };
+  if (st.gardenHeld) return { tone: 'warn', word: 'Garden waiting', detail: syncGardenWaitingDetail(st) };
   if (st.mode === 'shadow') return { tone: 'idle', word: 'Previewing', detail: 'Changes from your other computers wait for you' };
   if (st.state === 'waiting' || !st.lastSyncAt) return { tone: 'busy', word: 'Setting up', detail: st.state === 'waiting' ? st.message || '' : '' };
   return { tone: 'ok', word: 'On', detail: 'last change ' + syncAgo(st.lastSyncAt, nowMs) };
@@ -239,6 +241,7 @@ function syncSummary(st, pres, health, nowMs, main) {
   if (!st.enabled) return { tone: 'off', word: 'Off', detail: 'Your data stays on this computer' };
   const need = syncNeedsYou(st, health);
   if (need) return { tone: need.err ? 'err' : 'warn', word: 'Needs you', detail: need.detail, fix: need.fix };
+  if (st.gardenHeld) return { tone: 'warn', word: 'Garden waiting', detail: syncGardenWaitingDetail(st) };
   if (!st.apply) return { tone: 'idle', word: 'Previewing', detail: 'Changes from your other computers wait for you (Advanced)' };
   if (st.state === 'waiting' || !st.lastSyncAt) return { tone: 'busy', word: 'Setting up', detail: st.state === 'waiting' && st.message ? st.message : '' };
   const rows = syncComputerRows(st, pres, nowMs || Date.now(), main).filter(r => !r.me && r.kind !== 'phone');
@@ -983,6 +986,7 @@ function _syncFace(card, st, showAdd) {
   const addComputer = () => { _syncJoinDismissed = null; _syncPost('/api/sync/code/start'); };
   let main = null;
   if (s.fix) main = { label: s.fix.label, run: () => _syncRunFix(s.fix) };
+  else if (st.gardenHeld && typeof gardenWorldReady === 'function' && !gardenWorldReady()) main = { label: 'Open Garden', run: () => setView('garden') };
   else if (s.word === 'Previewing') main = { label: 'Use them now', run: () => _syncSave({ apply: true }, 'Changes from your other computers are used now') };
   else if (showAdd) main = { label: 'Add a computer', run: addComputer };
   if (main) setAction(card, main.label, main.run, { disabled: _syncBusy });
@@ -1281,7 +1285,7 @@ function _syncCard(el) {
     if (!document.body.contains(watch)) { clearInterval(_syncTicker); _syncTicker = null; return; }
     if (typeof presenceLoad === 'function') presenceLoad(false);     // asleep or awake: the top bar's presence, kept fresh here
     _syncJson('/api/sync/status').then((s) => {
-      const key = (x) => JSON.stringify([syncScreen(x, _syncFlow), x && x.state, x && x.apply, _syncFeedKey(x), x && x.e2e && x.e2e.pairing, x && x.e2e && x.e2e.joinCode, x && x.e2e && x.e2e.requests, x && x.devices && x.devices.map(d => d.name), x && x.relay && [x.relay.state, x.relay.transport, x.relay.available, x.relay.link && x.relay.link.state, x.relay.autoAt, x.relay.missing, x.relay.person && x.relay.person.host], x && x.live && [x.live.on, x.live.internet]]);
+      const key = (x) => JSON.stringify([syncScreen(x, _syncFlow), x && x.state, x && x.apply, x && x.gardenHeld, _syncFeedKey(x), x && x.e2e && x.e2e.pairing, x && x.e2e && x.e2e.joinCode, x && x.e2e && x.e2e.requests, x && x.devices && x.devices.map(d => d.name), x && x.relay && [x.relay.state, x.relay.transport, x.relay.available, x.relay.link && x.relay.link.state, x.relay.autoAt, x.relay.missing, x.relay.person && x.relay.person.host], x && x.live && [x.live.on, x.live.internet]]);
       const before = key(_syncSt);
       _syncSt = s;
       if (before !== key(s) && !_syncBusy) _syncRefresh(); else paint();

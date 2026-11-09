@@ -25,6 +25,7 @@ import { queueStats } from '../../lib/claude-runner.mjs';
 import { financeAvailable } from '../../lib/finance.mjs';
 import { writeFakeData } from '../../tools/make-fake-data.mjs';
 import { HttpError } from '../http.mjs';
+import { listGardenUiArchives, readGardenUiArchive } from '../../lib/garden-ui-archive.mjs';
 
 const IMPORT_MAX = 300 * 1024 * 1024;
 
@@ -53,7 +54,11 @@ export default function register(app) {
     },
   });
 
-  app.route({ path: '/api/settings/backups', method: 'GET', handler: async () => ({ backups: await listBackups(paths) }) });
+  app.route({ path: '/api/settings/backups', method: 'GET', handler: async () => ({ backups: await listBackups(paths), gardenCopies: await listGardenUiArchives(paths.stateDir) }) });
+  app.route({ path: '/api/settings/backups/garden', method: 'GET', sameOrigin: true, handler: async (c) => {
+    const name = c.query.get('name'), record = await readGardenUiArchive(paths.stateDir, name);
+    c.send(200, JSON.stringify(record, null, 1), 'application/json; charset=utf-8', zipHeaders(name));
+  } });
   app.route({ path: '/api/settings/backups/info', method: 'GET', handler: async (c) => backupInfo(paths, c.query.get('name')) });
   app.route({
     path: '/api/settings/backups/now', method: 'POST', methodError: 'POST only',

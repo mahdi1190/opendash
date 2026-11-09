@@ -84,8 +84,13 @@ node tools/release-export.mjs --force          # replace a non-empty --out that 
 
 The file set is an **allowlist** (`tools/release-rules.mjs`):
 
-- folders: `src/`, `server/`, `lib/`, `mcp/`, `cloudflare/`, `tools/`, `vendor/`, `tests/`,
-  `docs/`, `.github/`, and `assets/brand/` only;
+- folders: `src/`, `server/`, `lib/`, `mcp/`, `cloudflare/`, `tools/`, `vendor/`,
+  `docs/`, and `.github/`;
+- selected asset folders: `assets/brand/`, `assets/brands/`, `assets/objects/`,
+  and `assets/garden/`. The Garden folder contains authored canonical layout
+  source, currently `island-v3.json`, required by `lib/garden-island.mjs` for
+  the page build and shared Garden rules;
+- selected shared skill: `.claude/skills/animation-pack/` only;
 - files: `README*.md`, `LICENSE`, `CHANGELOG`, `CONTRIBUTING`,
   `CODE_OF_CONDUCT`, `SECURITY`, `SUPPORT`, `THIRD_PARTY_NOTICES`,
   `MODULES.md`, `CLAUDE.md`, `package.json`, `build.mjs`, `serve.mjs`,

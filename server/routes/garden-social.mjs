@@ -68,7 +68,7 @@ export default function register(app) {
   route('/api/garden-social/friend', 'GET', (c) => gs.friendView(str(c.query.get('id'), 20)), { quiet: true });
   route('/api/garden-social/act', 'POST', async (c) => {
     const b = await body(c);
-    return gs.act({ to: str(b.to, 20), t: str(b.t, 10), p: str(b.p, 64), x: intOf(b.x), y: intOf(b.y), k: str(b.k, 8), item: str(b.item, 64), e: str(b.e, 20), txt: str(b.txt, 600) });
+    return gs.act({ wv: intOf(b.wv), lh: str(b.lh, 24), to: str(b.to, 20), t: str(b.t, 10), p: str(b.p, 64), x: intOf(b.x), y: intOf(b.y), k: str(b.k, 8), item: str(b.item, 64), e: str(b.e, 20), txt: str(b.txt, 600) });
   });
   route('/api/garden-social/ask', 'POST', async (c) => gs.ask({ to: str((await body(c)).to, 20) }), { quiet: true });
   route('/api/garden-social/applied', 'POST', async (c) => {

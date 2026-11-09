@@ -132,6 +132,8 @@ function gardenVisitModel() {
   // (a friend on an older version has no lake or woods in their areas: the lake is always there, the woods from level 4)
   const landOf = gardenLandsOfSnap(s), areas = landOf.areas; if (!areas.includes('lake')) areas.push('lake'); if (s.lv >= 4 && !areas.includes('woods')) areas.push('woods');
   gardenLandSet(landOf.land);
+  gardenFeatureSet(s.fp || []);
+  gardenSightSet(s.rp || []);
   gardenWorksSet(s.wk || []);
   if (typeof gardenDesignShow === 'function') gardenDesignShow(s.dz || null);   // their design decides where things stand and where you can walk. It stays in memory: nothing of it reaches your save
   if (typeof gardenBuildLooksSet === 'function') gardenBuildLooksSet(s.bk);   // how they have painted their buildings
@@ -297,7 +299,7 @@ function _gdvQueue(t, f, debit, target) {
 function _gdvQueueSend(i) {
   const e = _gdG().led['gl.o.' + i];
   if (!e || !e.q || e.qs || e.ok) return;
-  _gllApi('/api/garden-live/queue', { to: e.to, i, t: e.t, p: e.p, x: e.x, y: e.y, ...(e.r != null ? { r: e.r } : {}), at: e.at }).then((r) => {
+  _gllApi('/api/garden-live/queue', { ...glWorldFields(), to: e.to, i, t: e.t, p: e.p, x: e.x, y: e.y, ...(e.r != null ? { r: e.r } : {}), at: e.at }).then((r) => {
     const c = _gdG().led['gl.o.' + i];
     if (c && r && r.sent !== false) { c.qs = 1; if (typeof saveUI === 'function') saveUI(); }
   }).catch(() => { /* still in your record: it goes the next time a garden opens */ });
