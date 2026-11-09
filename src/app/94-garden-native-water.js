@@ -134,7 +134,10 @@ window.GardenNativeWater = (function () {
     const intervalSlots = new Array(INTERVAL_CACHE_LIMIT);
     let intervalCaches = new WeakMap(), intervalCursor = 0, intervalEntries = 0, intervalQueries = 0, intervalHits = 0, intervalMisses = 0, intervalEvictions = 0, intervalBypasses = 0, intervalOutside = 0, intervalInvalidations = 0, intervalEmptyBandQueriesSkipped = 0, intervalHorizontalRegionsSkipped = 0;
     let model = null, room = null, metadata = {}, regions = [], visibleRegions = [], regionRevision = null, regionSource = null, parent = null, dead = false, frame = 0, lastTime = 0, lastAmbient = 0, pauseAt = null, pauseOffset = 0, motion = true, lastMotion = true, fieldAt = -Infinity, ringAt = -Infinity, rainBudget = 0, captureBytes = 0, sequence = 0, captures = 0, captureErrors = 0, visibleReflections = 0, visibleBands = 0, sortDirty = false, snapshotTime = -Infinity, depthKey = '';
-    let environment = { daylight: 1, rain: 0, snow: 0, windX: 1, windY: 0, gust: 0 }, currentView = { x: 0, y: 0, width: 960, height: 600, zoom: 1 };
+    // Scene-private data only. A null prototype lets own enumerable snapshot
+    // keys (including __proto__) copy as data without inherited setters.
+    const environment = Object.assign(Object.create(null), { daylight: 1, rain: 0, snow: 0, windX: 1, windY: 0, gust: 0 });
+    let currentView = { x: 0, y: 0, width: 960, height: 600, zoom: 1 };
     let spotNodes = [], spotsDirty = true, falloff = null, visibleSpots = 0, usedSpotBands = 0, subjectDiagnostics = [];
     const depthPlane = GardenNativeWaterDepth.create(scene, { parent: depth, intervals: regionIntervals, subtract: subtractIntervals, merge: mergeIntervals, reserve(bytes) { if (!reserve(bytes, null)) return false; captureBytes += bytes; return true; }, release(bytes) { captureBytes = Math.max(0, captureBytes - bytes); } });
     const fishingReflections = GardenNativeFishingReflections.create(scene, { parent: reflections, clipLine, intervals: waterIntervals });
@@ -244,7 +247,16 @@ window.GardenNativeWater = (function () {
             if (t > 0 && t < 1 && u >= 0 && u <= 1) cuts.push(t);
           }
         }
-        for (const e of region.ellipses) { const x = (a.x - e.x) / e.rx, y = (a.y - e.y) / e.ry, vx = dx / e.rx, vy = dy / e.ry, aa = vx * vx + vy * vy, bb = 2 * (x * vx + y * vy), cc = x * x + y * y - 1, discriminant = bb * bb - 4 * aa * cc; if (discriminant >= 0 && aa > 1e-12) for (const t of [(-bb - Math.sqrt(discriminant)) / (2 * aa), (-bb + Math.sqrt(discriminant)) / (2 * aa)]) if (t > 0 && t < 1) cuts.push(t); }
+        for (const e of region.ellipses) {
+          const x = (a.x - e.x) / e.rx, y = (a.y - e.y) / e.ry, vx = dx / e.rx, vy = dy / e.ry, aa = vx * vx + vy * vy, bb = 2 * (x * vx + y * vy), cc = x * x + y * y - 1, discriminant = bb * bb - 4 * aa * cc;
+          if (discriminant >= 0 && aa > 1e-12) {
+            // The same exact roots, including both cuts at a tangent, without
+            // a two-element array or evaluating their shared square root twice.
+            const root = Math.sqrt(discriminant), denominator = 2 * aa, first = (-bb - root) / denominator, second = (-bb + root) / denominator;
+            if (first > 0 && first < 1) cuts.push(first);
+            if (second > 0 && second < 1) cuts.push(second);
+          }
+        }
       }
       cuts.sort((x, y) => x - y);
       for (let i = 1; i < cuts.length; i++) {
@@ -460,7 +472,7 @@ window.GardenNativeWater = (function () {
       for (let i = particles.length - 1; i >= 0; i--) { const p = particles[i], age = (lastTime - p.born) / 1000; if (age >= p.life) { particles.splice(i, 1); continue; } const x = p.x + p.vx * age, y = p.y + p.vy * age + 70 * age * age; if (x < currentView.x || x > currentView.x + currentView.width || y < currentView.y || y > currentView.y + currentView.height) continue; ripples.fillStyle(0xe4f3ed, (1 - age / p.life) * .6).fillEllipse(x, y, p.scale * 1.6, p.scale * 2.4); }
     }
     function update(time, delta, env) {
-      if (dead) return; lastTime = finite(time, performance.now()); frame++; if (env) environment = { ...environment, ...env }; metadata = readMetadata(); updateRegions(metadata); currentView = view(); visibleRegions = regions.filter(region => overlap(region.bounds, currentView, 180)); root.setVisible(visibleRegions.length > 0);
+      if (dead) return; lastTime = finite(time, performance.now()); frame++; if (env) Object.assign(environment, env); metadata = readMetadata(); updateRegions(metadata); currentView = view(); visibleRegions = regions.filter(region => overlap(region.bounds, currentView, 180)); root.setVisible(visibleRegions.length > 0);
       try { motion = typeof gardenMotionOn !== 'function' || gardenMotionOn(); } catch (e) { motion = true; }
       if (motion !== lastMotion) { fieldAt = -Infinity; ringAt = -Infinity; lastMotion = motion; } lastAmbient = (pauseAt == null ? lastTime : pauseAt) - pauseOffset;
       if (!visibleRegions.length) { visibleReflections = 0; visibleBands = 0; visibleSpots = 0; usedSpotBands = 0; subjectDiagnostics = []; fishingReflections.clear(); depthPlane.setVisible(false); sheen.clear(); ripples.clear(); depthKey = ''; for (const record of records.values()) { record.selected = false; hideRecord(record); } for (const image of spotImages) image.setVisible(false); trimSources(lastTime); return; }

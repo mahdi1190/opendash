@@ -81,6 +81,40 @@ left visible tracks and rings, reached two public dry beaches and returned Home
 without captured app errors. No weather, clock or surface state was forced
 after boot; the route used an isolated provider fixture.
 
+Native geometric animation interpolation blends scalar components directly,
+retaining a fresh result matrix without a temporary component object/key array
+per sample. Exact line/ellipse clipping shares its square root and denominator
+between the same ordered roots, preserving both tangent cuts and strict segment
+bounds. Neither change introduces memoized geometry or changes timing, quality,
+poses, water contours, public snapshot independence or lifecycle ownership.
+
+The subsequent ordinary paired shore visit retained the moving pets and players,
+rod/line/float reflections and natural wait, nibble and bite. A separate cellar
+cast reached a natural bite, accepted the normal strike and displayed its reel
+and current narration at two window sizes. Both completed normal departures
+and preserved the observed placement/discovery facts without captured errors.
+The shore visit did not land a catch; neither route measures frame-rate gains.
+
+Within a synchronous presentation pass, native surface and water share one
+fresh lighting snapshot. Water retains its own private data and copies supplied
+values into it without changing the caller's snapshot. The public lighting
+environment accessor still returns independent objects; capture/restore order,
+water-only sampling position, clocks, weather, room and motion rules stay intact.
+
+Native companion picking uses the existing rectangle/depth broad phase followed
+by a painted-art query through current transforms and clips. Layout-only bounds
+and transparent padding do not consume the click. This query belongs to the
+interactive pet parent, including its pointer-events-disabled art children;
+the ordinary NativeArt hit API and pet action policy remain unchanged.
+
+The recorded two-player failure showed a valid cellar doorway behind a pet's
+transparent layout rectangle; native input consumed the press as a pet hit.
+Replaying the original doorway points with painted picking entered on the first
+click for both players, then reached a natural cellar bite and reel. A separate
+ordinary shore visit kept the own-pet pat at one trusted action, with its menu,
+hearts and Escape cleanup. Both completed normal departures without captured
+app errors. The earlier failed runs remain separate observations.
+
 Phaser **4.2.1** is pinned in `vendor/phaser/` with its licence and source digest.
 The build verifies and embeds the bundle. `FreefloGameEngine.load()` loads it
 on demand without a runtime CDN request. Opening cinematics use their separate

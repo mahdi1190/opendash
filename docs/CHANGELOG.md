@@ -10,6 +10,16 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.64.9] - 2026-11-09
+
+### Fixed
+
+- Clicks in transparent space around a companion now reach the Garden beneath it. Clicking the visible companion keeps its normal pet interactions.
+
+### Changed
+
+- Reduced temporary memory allocation in native animation, lighting and water effects, while retaining current poses, weather, shoreline clipping and reduced-motion behavior.
+
 ## [2.64.7] - 2026-11-09
 
 ### Changed

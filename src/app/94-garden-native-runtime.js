@@ -321,8 +321,10 @@ window.GardenNative = (function () {
       s.lighting.update(time, delta); GardenNativeArt.updateAll(s.scene, time);
       if (!inRoom() && typeof petGardenVisualFrame === 'function') petGardenVisualFrame(time, delta);
       if (s.frontier) s.frontier.update(time, delta);
-      if (s.surface) s.surface.update(time, delta, s.lighting.environment());
-      if (s.water) { waterInteractions(s); s.water.update(time, delta, s.lighting.environment()); }
+      // Each synchronous presentation pass owns one fresh lighting snapshot.
+      let presentationEnvironment = null;
+      if (s.surface) s.surface.update(time, delta, presentationEnvironment = s.lighting.environment());
+      if (s.water) { waterInteractions(s); s.water.update(time, delta, presentationEnvironment || s.lighting.environment()); }
     }
     s.frames++; s.time = time;
   }
@@ -509,7 +511,7 @@ window.GardenNative = (function () {
           if (window.GardenNativeSurface) s.surface = GardenNativeSurface.create(this, { world: s.world, model: s.model });
           if (window.GardenNativeWater) s.water = GardenNativeWater.create(this, { world: s.world, model: s.model }); sync(s.model);
           if (s.world.prepareRender) s.world.prepareRender();
-          s.lighting.update(performance.now(), 16); GardenNativeArt.updateAll(s.scene, performance.now()); if (s.frontier) s.frontier.update(performance.now(), 0); if (s.surface) s.surface.update(performance.now(), 0, s.lighting.environment()); if (s.water) s.water.update(performance.now(), 0, s.lighting.environment());
+          s.lighting.update(performance.now(), 16); GardenNativeArt.updateAll(s.scene, performance.now()); if (s.frontier) s.frontier.update(performance.now(), 0); let presentationEnvironment = null; if (s.surface) s.surface.update(performance.now(), 0, presentationEnvironment = s.lighting.environment()); if (s.water) s.water.update(performance.now(), 0, presentationEnvironment || s.lighting.environment());
           prepareShaders(s, error => {
             if (error) { lastError = String(error && error.message || error); loading.textContent = 'The garden could not open: ' + lastError; console.error('[native garden]', error); return; }
             bindInput(s); _gwBuildCamUi(box); s.ready = true; s.loadMs = performance.now() - s.started; openingVisibility(s); host.style.visibility = ''; loading.remove(); box.focus({ preventScroll: true });
@@ -531,7 +533,12 @@ window.GardenNative = (function () {
     if (typeof _ptwFreeHand === 'function' && _ptwFreeHand()) {
       for (const node of s.world.rootNode.querySelectorAll('.ptw')) {
         if (!node.target.visible) continue; const b = node.getBoundingClientRect(), depth = node.target.depth;
-        if (x >= b.left && x <= b.right && y >= b.top && y <= b.bottom && (!hit || depth >= hit.depth) && (!pet || depth >= pet.depth)) pet = { kind: 'pet', node, depth };
+        if (x >= b.left && x <= b.right && y >= b.top && y <= b.bottom && (!hit || depth >= hit.depth) && (!pet || depth >= pet.depth)) {
+          const transform = matrix(node._inner.getWorldTransformMatrix());
+          if (Math.abs(transform.a * transform.d - transform.b * transform.c) < 1e-10) continue;
+          const local = GardenNativeArt.point(GardenNativeArt.inverse(transform), p.x * W.cellW, W.sky + p.y * W.cellH);
+          if (node.paintedHit(local.x, local.y)) pet = { kind: 'pet', node, depth };
+        }
       }
     }
     if (pet) return pet;
@@ -548,7 +555,7 @@ window.GardenNative = (function () {
       const restore = () => {
         if (s.dead) return; if (ghost) ghost.remove();
         s.game.scale.resize(size.w, size.h); for (const [object, value] of visible) if (object.active) object.setVisible(value);
-        s.world.resize(size.w, size.h); if (s.world.prepareRender) s.world.prepareRender(); GardenNativeArt.updateAll(s.scene, s.time || performance.now()); if (typeof petGardenVisualFrame === 'function') petGardenVisualFrame(s.time || performance.now()); if (s.surface) s.surface.update(s.time || performance.now(), 0, s.lighting.environment()); if (s.water) s.water.update(s.time || performance.now(), 0, s.lighting.environment());
+        s.world.resize(size.w, size.h); if (s.world.prepareRender) s.world.prepareRender(); GardenNativeArt.updateAll(s.scene, s.time || performance.now()); if (typeof petGardenVisualFrame === 'function') petGardenVisualFrame(s.time || performance.now()); let presentationEnvironment = null; if (s.surface) s.surface.update(s.time || performance.now(), 0, presentationEnvironment = s.lighting.environment()); if (s.water) s.water.update(s.time || performance.now(), 0, presentationEnvironment || s.lighting.environment());
         s.host.style.visibility = ''; s.capturing = false; openingVisibility(s);
       };
       const finish = (error, blob) => { if (settled) return; settled = true; clearTimeout(timer); restore(); if (error) reject(error); else resolve(blob); };
@@ -556,7 +563,7 @@ window.GardenNative = (function () {
       try {
         const w = 1600, h = Math.round(frame.h * w / frame.w); s.game.scale.resize(w, h); cam.setZoom(w / frame.w).centerOn(frame.x + frame.w / 2, frame.y + frame.h / 2);
         if (typeof gardenPhotoGhost === 'function') ghost = gardenPhotoGhost(s.world.rootNode, frame);
-        if (s.world.prepareRender) s.world.prepareRender(); GardenNativeArt.updateAll(s.scene, s.time || performance.now(), true); if (typeof petGardenVisualFrame === 'function') petGardenVisualFrame(s.time || performance.now()); s.lighting.update(s.time || performance.now(), 16); if (s.surface) s.surface.update(s.time || performance.now(), 0, s.lighting.environment()); if (s.water) s.water.update(s.time || performance.now(), 0, s.lighting.environment());
+        if (s.world.prepareRender) s.world.prepareRender(); GardenNativeArt.updateAll(s.scene, s.time || performance.now(), true); if (typeof petGardenVisualFrame === 'function') petGardenVisualFrame(s.time || performance.now()); s.lighting.update(s.time || performance.now(), 16); let presentationEnvironment = null; if (s.surface) s.surface.update(s.time || performance.now(), 0, presentationEnvironment = s.lighting.environment()); if (s.water) s.water.update(s.time || performance.now(), 0, presentationEnvironment || s.lighting.environment());
         s.game.renderer.snapshot(image => { if (settled) return; try { const parts = image.src.split(','); const bytes = Uint8Array.from(atob(parts[1]), c => c.charCodeAt(0)); finish(null, new Blob([bytes], { type: 'image/png' })); } catch (error) { finish(error); } }, 'image/png');
       } catch (error) { finish(error); }
     });

@@ -583,6 +583,44 @@ window.GardenNativeArt = (function () {
       }
       return null;
     }
+    // A pet owns the input for its otherwise pointer-events:none art subtree.
+    // Layout/nativeBounds boxes are broad phase only; cached originals still
+    // describe the paint represented by their visible cache tiles.
+    paintedHit(x, y) {
+      if (this._dead || DEFINITIONS.has(this.localName) || this.attrs.display === 'none' || this.attrs.visibility === 'hidden' || this._styles.display === 'none' || this._styles.visibility === 'hidden' || !paintedVisible(this.target) || !paintedVisible(this._inner)) return null;
+      for (let i = this.children.length - 1; i >= 0; i--) {
+        const child = this.children[i], m = child._matrix || ID;
+        if (Math.abs(m.a * m.d - m.b * m.c) < 1e-10) continue;
+        const p = point(inv(m), x, y), found = child.paintedHit(p.x, p.y); if (found) return found;
+      }
+      if (!this._geometry && !this._label) return null;
+      const clips = clippingFor(this); if (clips.some(union => !union.some(polygon => insidePolygon(x, y, polygon)))) return null;
+      if (this._label && paintedVisible(this._label) && this._label.text.trim()) {
+        const label = this._label, m = label.getLocalTransformMatrix();
+        if (Math.abs(m.a * m.d - m.b * m.c) >= 1e-10) {
+          const p = point(inv({ a: m.a, b: m.b, c: m.c, d: m.d, e: m.tx, f: m.ty }), x, y);
+          if (p.x >= -label.width * label.originX && p.x <= label.width * (1 - label.originX) && p.y >= -label.height * label.originY && p.y <= label.height * (1 - label.originY)) return this;
+        }
+      }
+      if (this._geometry) {
+        const style = this._styles, fillValue = resolve(style.fill == null ? '#000000' : style.fill, style), ref = /url\(['"]?#([^)'"\s]+)/.exec(fillValue), definition = ref && this.context.defs.get(ref[1]), fill = ref ? null : color(fillValue, style), stroke = color(style.stroke, style);
+        if (paintedVisible(this._graphics) && insideCompound(x, y, this._geometry, style['fill-rule'])) {
+          if (fill && fill.alpha > 0) return this;
+          if (definition && /gradient$/.test(definition.tag)) {
+            const sampler = gradientSampler(gradientDefinition(definition, this.context.defs), style, boxOf(this._geometry.flatMap(contour => contour.points)), viewportBox(this));
+            if (sampler.sample(point(sampler.inverse, x, y)).alpha > 0) return this;
+          }
+        }
+        const width = num(resolve(style['stroke-width'], style), 1), radius = width / 2 + 2;
+        if (paintedVisible(this._strokeGraphics) && stroke && stroke.alpha > 0 && alpha(style['stroke-opacity'], style) > 0 && width > 0) for (const contour of this._geometry) {
+          for (let i = 1; i < contour.points.length + (contour.closed ? 1 : 0); i++) {
+            const a = contour.points[(i - 1) % contour.points.length], c = contour.points[i % contour.points.length], dx = c.x - a.x, dy = c.y - a.y, t = Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / Math.max(.00001, dx * dx + dy * dy)));
+            if (Math.hypot(x - a.x - dx * t, y - a.y - dy * t) <= radius) return this;
+          }
+        }
+      }
+      return null;
+    }
     _compileAnimations() {
       const style = this._styles, key = Object.keys(style).filter(name => name.startsWith('animation') && name !== 'animation-play-state' || name.startsWith('--') || ['transform', 'transform-origin', 'transform-box', 'opacity', 'fill-opacity'].includes(name)).sort().map(name => name + ':' + style[name]).join(';');
       clockPause(this, 4, style['animation-play-state'] === 'paused', performance.now());
@@ -630,6 +668,12 @@ window.GardenNativeArt = (function () {
     const earcut = typeof Phaser !== 'undefined' && Phaser.Geom && Phaser.Geom.Polygon && Phaser.Geom.Polygon.Earcut;
     for (const group of groups) { const points = [...group.outer.points], holes = []; for (const hole of group.holes) { holes.push(points.length); points.push(...hole.points); } if (earcut) { const indices = earcut(points.flatMap(p => [p.x, p.y]), holes, 2); for (let i = 0; i < indices.length; i += 3) triangles.push([points[indices[i]], points[indices[i + 1]], points[indices[i + 2]]]); } else triangles.push(...scanlineFill([{ points: group.outer.points }, ...group.holes.map(hole => ({ points: hole.points }))], 'evenodd')); }
     return cached[rule] = triangles;
+  }
+  function paintedVisible(object) {
+    if (!object || object.active === false || object.alpha <= 0) return false;
+    if (object.visible !== false) return true;
+    const owner = object._nativeCacheHiddenBy;
+    return !!(owner && owner._cache && owner._cache.visible.get(object));
   }
   function localMatrix(node) { return presentationMatrix(node); }
   function assetMatrix(node) { const chain = []; for (let p = node; p; p = p.parentNode) chain.push(p); let out = ID; for (let i = chain.length - 1; i >= 0; i--) out = mul(out, localMatrix(chain[i])); return out; }
@@ -754,7 +798,15 @@ window.GardenNativeArt = (function () {
     return fn(p);
   }
   function decompose(m) { const sx = Math.hypot(m.a, m.b) || 1e-9, sy = (m.a * m.d - m.b * m.c) / sx, angle = Math.atan2(m.b, m.a), hint = m.rotationHint; return { x: m.e, y: m.f, sx, sy, angle: Number.isFinite(hint) && Math.abs(hint) > Math.PI ? angle + Math.round((hint - angle) / (Math.PI * 2)) * Math.PI * 2 : angle, skew: Math.abs(sy) > 1e-8 ? (m.a * m.c + m.b * m.d) / (sx * sy) : 0 }; }
-  function interpolate(a, b, p) { const v = {}; for (const key of ['x', 'y', 'sx', 'sy', 'angle', 'skew']) v[key] = a[key] * (1 - p) + b[key] * p; const c = Math.cos(v.angle), s = Math.sin(v.angle); return { a: c * v.sx, b: s * v.sx, c: (c * v.skew - s) * v.sy, d: (s * v.skew + c) * v.sy, e: v.x, f: v.y }; }
+  function interpolate(a, b, p) {
+    // Every animated geometric track samples here. Keep its fresh matrix,
+    // without a temporary component object and key array for each sample.
+    const q = 1 - p, x = a.x * q + b.x * p, y = a.y * q + b.y * p;
+    const sx = a.sx * q + b.sx * p, sy = a.sy * q + b.sy * p;
+    const angle = a.angle * q + b.angle * p, skew = a.skew * q + b.skew * p;
+    const c = Math.cos(angle), s = Math.sin(angle);
+    return { a: c * sx, b: s * sx, c: (c * skew - s) * sy, d: (s * skew + c) * sy, e: x, f: y };
+  }
   function animationsFor(node) {
     const s = node._styles, split = value => String(value || '').split(/,(?![^()]*\))/).map(v => v.trim()), shorthands = split(resolve(s.animation, s)), names = split(s['animation-name']), count = Math.max(shorthands.length, names.length), out = [];
     for (let index = 0; index < count; index++) {
