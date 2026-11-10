@@ -564,7 +564,7 @@ function gardenLandPropsReset() { _GLD_PROPS.key = null; }
 /** The land's prop on a cell, or null (gardenPropAt asks this first). */
 function gardenLandPropAt(x, y) { if (_GLD_PROPS.key === null) _gldPropsRebuild(); return _GLD_PROPS.at.get(x + ',' + y) || null; }
 /** Every prop there is now, for the code that goes through them all (the feet, the clicks, the fading): GARDEN_PROPS and the land's. */
-function gardenPropsNow() { return GARDEN_PROPS.concat(gardenLandProps()); }
+function gardenPropsNow() { return GARDEN_PROPS.concat(_gardenPierDecksNow().slice(1), gardenLandProps()); }
 
 /* ---------- water, paths, and how things grow ---------- */
 /** A cell of the land: is it water? null: the lake and the pond, which gardenIsWater knows from their own rectangles. */

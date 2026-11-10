@@ -199,6 +199,7 @@ function _gdcGearCard(d, m) {
 /** Why you cannot buy a rod or net yet ('' = you can). */
 function gardenGearBuyInfo(id, m) {
   const d = gardenGearDef(id); if (!d) return { why: 'Unknown' };
+  if (d.pierSide && !gardenSidePierMechanicsReady(m)) return { why: 'Update your garden before building a side pier' };
   if ((d.lv || 1) > m.level.level) return { why: 'Garden level ' + d.lv };
   const list = d.kind === 'rod' ? GARDEN_RODS : GARDEN_NETS, prev = d.kind === 'lake' ? (d.needs ? gardenGearDef(d.needs) : null) : list.find(x => x.tier === d.tier - 1);
   if (prev && !gardenGearOwned(prev.id)) return { why: 'Needs the ' + prev.name.toLowerCase() };
@@ -230,7 +231,8 @@ function _gdcTackle(el, m) {
   const kind = on[0], mine = (d) => (kind === 'float' ? gardenBobberOwned(d.id) : d.pack ? gardenHas('kit:' + d.id) > 0 : gardenGearOwned(d.id));
   const cmp = (a, b) => (mine(a) ? 0 : 1) - (mine(b) ? 0 : 1) || (a.price || 0) - (b.price || 0);
   const place = 'catch:tackle:' + kind;
-  gardenPager(el, { key: place, items: gardenPagerOrder(place, on[2], d => d.id, cmp), grid: 'gd-grid gdc-grid gpg-gear', row: 246, rowSm: 206, draw: (d) => on[3](d, m) });
+  const rows = on[2].filter(d => !d.pierSide || gardenSidePierMechanicsReady(m) && (gardenGearOwned(d.id) || m.level.level >= d.lv && (!d.needs || gardenGearOwned(d.needs))));
+  gardenPager(el, { key: place, items: gardenPagerOrder(place, rows, d => d.id, cmp), grid: 'gd-grid gdc-grid gpg-gear', row: 246, rowSm: 206, draw: (d) => on[3](d, m) });
 }
 
 /* ---------- the showcase ---------- */

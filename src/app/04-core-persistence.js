@@ -12,7 +12,13 @@
 // Opened as a plain file (no server), everything still works from browser
 // storage and the file backend is skipped.
 
-function _gardenPersistEnvelope(payload) { const p = window.GardenIslandLayout; return p && /^[0-9a-f]{24}$/.test(p.fingerprint) ? { ...payload, _gardenClient: [p.data.world.v, p.fingerprint] } : payload; }
+function _gardenPersistEnvelope(payload) {
+  const p=window.GardenIslandLayout,g=payload&&payload.garden,world=Number(g&&g.seen&&g.seen.world),layout=g&&g.seen&&g.seen.worldLayout;
+  // Claim the actual saved component, never the app's newer target on behalf
+  // of an older Garden. Unknown tags deliberately fail the server fence.
+  if(world>=3)return{...payload,_gardenClient:[world,typeof layout==='string'?layout:'']};
+  return p&&/^[0-9a-f]{24}$/.test(p.fingerprint)?{...payload,_gardenClient:[p.data.world.v,p.fingerprint]}:payload;
+}
 const STATE_API = '/api/state';
 const HEALTH_API = '/api/health';
 let _serverAvailable = false;

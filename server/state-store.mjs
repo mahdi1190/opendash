@@ -32,7 +32,7 @@ import { join } from 'node:path';
 import { atomicWrite, withLock, readJson, retryFs } from '../lib/fsutil.mjs';
 import { dataFingerprint, fullFingerprint } from '../lib/state-keys.mjs';
 import { HttpError } from './http.mjs';
-import { fenceGardenUiWrite, gardenWorldTag, sameGardenWorldTag } from '../lib/garden-world-fence.mjs';
+import { fenceGardenUiWrite, gardenWorldTag, sameGardenWorldTag, gardenTransitionMayCommit } from '../lib/garden-world-fence.mjs';
 import { gardenIslandLayout, gardenIslandFingerprint } from '../lib/garden-island.mjs';
 import { archiveGardenUiComponent } from '../lib/garden-ui-archive.mjs';
 
@@ -244,7 +244,7 @@ export function createStateStore({ stateDir, log = () => {}, now = () => Date.no
       if (!out || !out.next) return { version, written: false, result: out ? out.result : undefined, dataChanged: false };
       if (!Array.isArray(out.next.custom)) throw new HttpError(500, 'refusing to write: state has no task array');
       const currentWorld = Number(cur.garden?.seen?.world) || 1;
-      if (currentWorld >= 3 && !sameGardenWorldTag(gardenWorldTag(cur.garden), gardenWorldTag(out.next.garden))) out.next = { ...out.next, garden: cur.garden };
+      if (currentWorld >= 3 && !sameGardenWorldTag(gardenWorldTag(cur.garden), gardenWorldTag(out.next.garden)) && !(opts.source === 'garden-update' && gardenTransitionMayCommit(cur.garden,out.next.garden,opts.gardenTransition,[gardenIslandLayout.world.v,gardenIslandFingerprint]))) out.next = { ...out.next, garden: cur.garden };
       const c = await commit(prevText, prev, out.next);
       const info = { version: c.lastSave, written: c.written, result: out.result, dataChanged: c.dataChanged, prevVersion: version, ...(recoveredFrom ? { recoveredFrom } : {}) };
       if (c.written && opts.afterCommit) await opts.afterCommit(info);

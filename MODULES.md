@@ -296,8 +296,11 @@ front of everything. See "Design system and app shell" below.
 
 The canonical island is 52 by 56 cells; the room sentinel remains at column 53.
 Layout identity is the world version plus the first 24 hex digits of SHA-256
-over the exact asset bytes. Keep the page, Node rules and migration on that
-same dataset; a successful build does not authorize a saved-data migration.
+over the exact asset bytes. Mechanics revision 1 changes the identity to
+`c34545b986e497d5d9df5d51` by metadata only: coast, 128 section IDs and reserved
+locations stay unchanged. The known `94f5b2dbe4dce765cafb2b40` Garden remains
+playable on 2.65. **Garden > Menu > Update my garden** opens the deliberate
+update; installing or building the app does not run it.
 
 | Responsibility | Source and contract |
 |---|---|
@@ -305,10 +308,11 @@ same dataset; a successful build does not authorize a saved-data migration.
 | Stored placements and earned structures | `94-garden-1stored.js`, `1core.js`, `4page.js` and `world-2hud.js`: `_packed:3` retains complete plant/decor rows, UIDs, age/care, variants and rotation outside world models/snapshots. Bag restores through normal legality, move ghosts and Undo. Built features stay earned; only deliberate `garden.wd['feature.place.' + id] = [3,x,y]` placements add art/colliders. Land owns Set out nearby / Put away; bounded owned-feature `fp` snapshots carry positions. |
 | Earlier layouts | `94-garden-design-0rules.js`, `design-2tools.js`, `design-3panel.js` and the adapter archive whole named rows in atomic `wd['design.archive.v2.' + id + '.' + contentHash]` values. Raw `garden.dz` stays saved. Safe paths/paint may project; moved/made objects require deliberate adaptation with existing move/check/Keep/Cancel. Saving never overwrites the archive. Earned structures use Land placement. |
 | Return positions | `94-garden-world-0walk.js` uses version/layout-scoped keys, accepts legal legacy feet or records a canonical free-foot resolution, and retains the exact legacy `opendash.garden.pos` value. Visits/room sentinels do not become home positions. |
-| Friends and visits | `lib/friends/garden.mjs`, `lib/friends/live.mjs`, `94-garden-0catalog.js` and `94-garden-live-0rules.js` / `2visit.js` share rules. Live protocol 4 pins `wv`/`lh`; snapshots and durable spatial acts must match. Codec bounds derive from world dimensions. Earlier clients cannot silently use different maps. |
+| Friends and visits | `lib/friends/garden.mjs`, `lib/friends/live.mjs`, `94-garden-0catalog.js` and `94-garden-live-0rules.js` / `2visit.js` share rules. App capability is protocol 5; actual c345 sessions use 5 and known 94f sessions use 4. Entry, snapshots and spatial acts require exact actual `wv`/`lh` equality; supporting both tags does not make them interchangeable. Codec bounds derive from world dimensions. |
 | Same-user sync | `lib/garden-world-fence.mjs`, `server/state-store.mjs` and `04-core-persistence.js` fence only incompatible Garden writes. `lib/sync/model.mjs`, `engine.mjs` and `e2e.mjs` preserve register provenance (`gw`), including encrypted incremental payloads. World3 moves use internal `@xy:[x,y]`; dashboard rows retain `x`/`y`, independent care/harvest/storage fields, and `@alive` generation handling. Actual legacy world2 capture remains untagged and uses its established split-axis wire format until the deliberate update. Partial axes never invent coordinates; there is no public `lp` schema or whole-row move replacement. |
-| Island handover | `lib/garden-handover.mjs` bounds one immutable chunked `garden/island-handover.json`; `lib/sync/manifest.mjs` declares its encrypted-only file. Engine verifies the unique authenticated group creator, all member servers’ encrypted island capability, actual creator-written metadata/part registers and complete canonical baseline. `lib/garden-update.mjs` checks SHA-256/content and owns explicit publish/import, full backups and exact earlier-Garden archives. |
-| Local update | `server/routes/garden-update.mjs`: GET/POST `/api/garden/update`. `lib/garden-update.mjs` shares migration 100's planner/commit and the pending page's Update my garden action. It pins world/layout, state version and plan fingerprint, rechecks under the state lock, and emits a Garden-only transaction/SSE. Engine `gardenUpgradeState()` / `withGardenUpgrade()` use existing sync/key serialization, without a CLI subprocess. |
+| Island handover | `lib/garden-handover.mjs` bounds immutable chunked generation 2 `garden/island-handover-mechanics1.json`, including the previous Garden identity/hash. The generation 1 file remains intact. Encrypted membership, creator-written registers, complete baseline and SHA/content checks remain authoritative. `lib/garden-update.mjs` owns deliberate publish/import, full backups and exact earlier-Garden archives. |
+| Optional side piers | `94-garden-fish-0catalog.js` owns priced/level-gated works; `94-garden-0island.js` derives main plus owned side decks from the displayed Garden's actual tag/works. Walking, water/fish exclusions, minimap and art share those decks. `94-garden-native-world.js` caches/culls each deck independently under the pier layer; unbuilt sites add no deck art or default clutter. |
+| Local update | `server/routes/garden-update.mjs`: GET/POST `/api/garden/update`. `lib/garden-update.mjs` uses manual `101-garden-mechanics-side-piers-v1` (`auto:false`), reusing migration 100's planner/commit. The menu opens the existing update page. Version/plan/hash checks precede the locked Garden-only write. A divergent predecessor requires an explicit shared-Garden choice and a complete preserved earlier copy; the two Gardens are not merged. |
 
 Incompatible full-state saves preserve the incoming **complete Garden component**
 with `lib/garden-ui-archive.mjs` under
@@ -340,8 +344,8 @@ runs before local capture and does not reapply an already adopted baseline.
 It never restamps the first snapshot over later source-device care or moves.
 Earlier-layout registers remain preserved: `gardenHeld` stays an attention
 condition, while matching island and other dashboard changes can still sync
-(or remain in Preview). The new two-device handover flow is pending ordinary
-observation; these are implementation boundaries, not a universal race claim.
+(or remain in Preview). These implementation boundaries do not establish every
+handover generation, interruption or concurrent-edit outcome.
 
 ### Rules for adding or changing modules
 

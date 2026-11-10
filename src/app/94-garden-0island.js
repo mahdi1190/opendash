@@ -10,6 +10,43 @@ function gardenIslandStaticRow(row) {
   if (p.door) next.door = Object.freeze({ x: p.door.x, y: p.door.y });
   return next;
 }
+/** Optional decks use the displayed Garden's mechanics identity, never a visitor's ownership. */
+function gardenSidePierMechanicsReady(source) {
+  const data = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data, mechanics = data && data.mechanics;
+  if (!mechanics || mechanics.revision !== 1 || mechanics.contract !== 'optional-side-pier-walk-cover-v1' || mechanics.predecessorLayout !== '94f5b2dbe4dce765cafb2b40' || GardenIslandLayout.fingerprint !== 'c34545b986e497d5d9df5d51') return false;
+  if (source === undefined) source = typeof state !== 'undefined' && state ? state.garden : null;
+  if (!source || source.pending) return false;
+  const seen = source.seen, tag = source.visit && source.visit.snap || source;
+  return (seen ? Number(seen.world) : Number(tag.wv)) === 3 && (seen ? seen.worldLayout : tag.lh) === GardenIslandLayout.fingerprint;
+}
+function gardenSidePierLevel(side, extension) {
+  const site = gardenIslandActive() && gardenIslandData().reservedSidePiers.find(p => p.side === side);
+  return site && Number.isInteger(site.level) ? site.level + (extension ? 3 : 0) : 99;
+}
+/** Fresh main + owned side rectangles (at most three). Explicit works require an explicit source tag for side decks. */
+function gardenPierDecks(works, source) {
+  const resident = works === undefined, owned = resident ? _GD_WORKS : works, p = GARDEN_PROPS.find(p => p.id === 'pier');
+  const decks = p ? [Object.assign({}, p, { h: p.h + gardenPierMore(owned), side: 'south', col: 'none', walk: 1 })] : [];
+  const ready = resident ? _GD_WORKS_SIDE_READY : source !== undefined && gardenSidePierMechanicsReady(source);
+  if (!ready || !gardenIslandActive()) return decks;
+  for (const side of ['west', 'east']) {
+    const id = 'pier-' + side; if (!gardenWorkOwned(id, owned)) continue;
+    const site = gardenIslandData().reservedSidePiers.find(p => p.side === side), b = site && site.reserved;
+    if (!b || !(b.w >= 3) || !(b.h > 0)) continue;
+    const extended = gardenWorkOwned(id + '-2', owned), w = extended ? b.w : 3;
+    decks.push({ id, name: side === 'west' ? 'West pier' : 'East pier', side, stage: extended ? 2 : 1, x: side === 'west' ? b.x + b.w - w : b.x, y: b.y, w, h: b.h, col: 'none', walk: 1, needs: id, blurb: 'A quiet place to stand and cast from the shore.' });
+  }
+  return decks;
+}
+function _gardenPierDecksNow() { return _GD_PIER_DECKS || (_GD_PIER_DECKS = gardenPierDecks()); }
+/** Exact bounded footprint key; resident callers reuse it until the displayed works or mechanics change. */
+function gardenPierDeckSignature(works, source) {
+  if (works === undefined && _GD_PIER_SIGNATURE) return _GD_PIER_SIGNATURE;
+  const decks = works === undefined ? _gardenPierDecksNow() : gardenPierDecks(works, source);
+  const key = decks.map(p => [p.id, p.x, p.y, p.w, p.h].join(',')).join(';');
+  if (works === undefined) _GD_PIER_SIGNATURE = key;
+  return key;
+}
 function gardenIslandGeometry() {
   if (_gardenIslandDerived.geometry) return _gardenIslandDerived.geometry;
   const data = gardenIslandData();

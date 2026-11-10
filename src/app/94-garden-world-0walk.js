@@ -118,10 +118,10 @@ function _gwBuildGrid(m) {
 }
 function _gwRouteSetSame(a, b) { if (!a || a.size !== b.size) return false; for (const value of b) if (!a.has(value)) return false; return true; }
 function _gwRouteState() {
-  const old = _gw.routeState, way = typeof _wdi !== 'undefined' && !!_wdi.open;
+  const old = _gw.routeState, way = typeof _wdi !== 'undefined' && !!_wdi.open, decks = gardenPierDeckSignature();
   const land = old && _gwRouteSetSame(old.land, _GD_LAND), works = old && _gwRouteSetSame(old.works, _GD_WORKS), walk = old && _gwRouteSetSame(old.walk, _GD_WALK_EXTRA), ice = old && _gwRouteSetSame(old.ice, _GD_ICE);
-  if (old && land && works && walk && ice && old.way === way) return old;
-  return _gw.routeState = { land: land ? old.land : new Set(_GD_LAND), works: works ? old.works : new Set(_GD_WORKS), walk: walk ? old.walk : new Set(_GD_WALK_EXTRA), ice: ice ? old.ice : new Set(_GD_ICE), way };
+  if (old && land && works && walk && ice && old.way === way && old.decks === decks) return old;
+  return _gw.routeState = { land: land ? old.land : new Set(_GD_LAND), works: works ? old.works : new Set(_GD_WORKS), walk: walk ? old.walk : new Set(_GD_WALK_EXTRA), ice: ice ? old.ice : new Set(_GD_ICE), way, decks };
 }
 function _gwRouteArraySame(a, b) { if (a === b) return true; if (!a || !b || a.length !== b.length) return false; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false; return true; }
 function _gwRoutePointsSame(a, b) { if (a === b) return true; if (!a || !b || a.length !== b.length) return false; for (let i = 0; i < a.length; i++) if (a[i].x !== b[i].x || a[i].y !== b[i].y) return false; return true; }
@@ -170,7 +170,7 @@ function _gwRouteSourceInputs(m) {
 function _gwGrid(m, groundOnly) {
   if (_gw.boat && !groundOnly) return _gwContinuousBoatGrid(m);
   const mm = m || gardenHere(), shore = typeof gardenLakeGeometry === 'function' ? gardenLakeGeometry(mm) : null, otherShapes = typeof gardenOtherWaterShapes === 'function' ? gardenOtherWaterShapes(mm) : null, state = _gwRouteState();
-  const key = (mm.visit ? mm.visit.key : _gd.memoKey) + '|' + mm.level.level + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0) + '|' + (shore && shore.revision || 0) + '|' + gardenPierMore();
+  const key = (mm.visit ? mm.visit.key : _gd.memoKey) + '|' + mm.level.level + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0) + '|' + (shore && shore.revision || 0) + '|' + gardenPierDeckSignature();
   if (!_gw.grid || _gw.gridKey !== key || _gw.grid.model !== mm || _gw.grid.routeState !== state || _gw.grid.otherShapes !== otherShapes) {
     const saved = _gw.routeSnapshot, inputs = _gwRouteSourceInputs(mm);
     const stats = _gw.routeGridStats || (_gw.routeGridStats = { coarseBuilds: 0, preparations: 0, reused: 0, boatPreparations: 0, preflightChecks: 0, preflightReused: 0 }); stats.preflightChecks++;
@@ -248,17 +248,17 @@ function _gwGridNow(groundOnly) {
   // simulation step. Checking the clock and rebuilding its revision string for
   // every corner of every foot made route sampling needlessly expensive.
   if (_gw.boat && !groundOnly) return _gwContinuousBoatGrid(null);
-  if (_gw.frameActive && _gw.frameGrid && _gw.frameGrid === _gw.grid && _gw.frameRev === _gd.rev) return _gw.frameGrid;
+  if (_gw.frameActive && _gw.frameGrid && _gw.frameGrid === _gw.grid && _gw.frameRev === _gd.rev && _gw.frameWorks === _GD_WORKS_REV) return _gw.frameGrid;
   // Read the resident revision here; do not derive the shoreline for every
   // corner sampled by a route. _gwGrid resolves it when this memo expires.
   const shoreRev = typeof _gardenLakeShape !== 'undefined' && _gardenLakeShape.value ? _gardenLakeShape.value.revision : 0;
-  const t = performance.now(), rev = _gd.rev + '|' + _gdv.on + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0) + '|' + shoreRev + '|' + _GD_WALK_EXTRA.size + '|' + _GD_ICE.size + '|' + gardenPierMore();
+  const t = performance.now(), rev = _gd.rev + '|' + _gdv.on + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0) + '|' + shoreRev + '|' + _GD_WALK_EXTRA.size + '|' + _GD_ICE.size + '|' + gardenPierDeckSignature();
   if (_gw.gq && _gw.gq === _gw.grid && _gw.gqRev === rev && t - _gw.gqAt < 250) {
-    if (_gw.frameActive) { _gw.frameGrid = _gw.gq; _gw.frameRev = _gd.rev; }
+    if (_gw.frameActive) { _gw.frameGrid = _gw.gq; _gw.frameRev = _gd.rev; _gw.frameWorks = _GD_WORKS_REV; }
     return _gw.gq;
   }
   _gw.gq = _gwGrid(gardenHere(), true); _gw.gqRev = rev; _gw.gqAt = t;
-  if (_gw.frameActive) { _gw.frameGrid = _gw.gq; _gw.frameRev = _gd.rev; }
+  if (_gw.frameActive) { _gw.frameGrid = _gw.gq; _gw.frameRev = _gd.rev; _gw.frameWorks = _GD_WORKS_REV; }
   return _gw.gq;
 }
 /** Four corners use one map lookup, including when a route probes hundreds of points. */

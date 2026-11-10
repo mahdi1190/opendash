@@ -333,6 +333,7 @@ function gardenSceneFromModel(m) {
     plants: m.plants.map(x => ({ id: x.def.id, uid: x.uid, x: x.x, y: x.y, stage: x.stage, variant: x.variant, thirsty: x.thirsty, overgrown: x.overgrown, ripe: x.ripe, t: x.t, heart: x.heart, pend: x.pend })),
     dz: typeof gardenDesignShown === 'function' ? gardenDesignShown() : null,
     decor: (typeof gardenDesignDecorDraft === 'function' ? gardenDesignDecorDraft(m.decor) : m.decor).map(d => ({ id: d.def.id, uid: d.uid, x: d.x, y: d.y, r: d.r, v: d.v, t: (gardenHash(d.uid) % 100) / 100, pend: d.pend })),
+    works: [...(m.works || [])], wv: m.wv, lh: m.lh,
     areas: m.areas, season: m.season, tod: m.tod, rain: m.rain, visitors: m.visitors, lv: m.level.level, hour: Math.round(hour * 4) / 4, day: m.today,
     show: m.visit ? m.visit.sh : _gdrShowOf(), showSig: m.visit ? m.visit.shSig : _gdrShowSig(), landShow: m.visit ? gardenLandShowOf(m.visit.snap) : gardenLandShowMine(m),
   };
@@ -355,7 +356,7 @@ function _gdrSceneFromSnapshot(snap, o) {
   }
   // 2.22: a friend on an older version has no lake or woods in their areas: the lake is always there, the woods from level 4
   const areas = gardenLandsOfSnap(snap).areas; if (!areas.includes('lake')) areas.push('lake'); if (snap.lv >= 4 && !areas.includes('woods')) areas.push('woods');
-  return { pa: snap.pa || 0, dz: snap.dz || null, plants, decor, areas, season, tod, rain: { now: false, snow: false }, visitors, lv: snap.lv, hour: p.h + p.mi / 60, day, show: snap.sh || null, showSig: typeof gardenShowSig === 'function' ? gardenShowSig(snap.sh) : '', landShow: gardenLandShowOf(snap), ca: snap.ca || {} };
+  return { pa: snap.pa || 0, dz: snap.dz || null, works: [...(snap.wk || [])], wv: snap.wv, lh: snap.lh, plants, decor, areas, season, tod, rain: { now: false, snow: false }, visitors, lv: snap.lv, hour: p.h + p.mi / 60, day, show: snap.sh || null, showSig: typeof gardenShowSig === 'function' ? gardenShowSig(snap.sh) : '', landShow: gardenLandShowOf(snap), ca: snap.ca || {} };
 }
 /**
  * Draw anyone's garden into el, read-only. snapshot: from gardenSnapshot() or a friend (cleaned here).

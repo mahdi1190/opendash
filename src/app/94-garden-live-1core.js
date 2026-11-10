@@ -90,6 +90,10 @@ function _gllActorLook(A, ev) {
 }
 /** Fill a node with this person: the shadow, the figure, their name. The name goes in with textContent. */
 function _gllDress(A, root) {
+  // A roster/look repaint owns the figure, while the catch keeps its original
+  // lifetime. Detach the held overlay before the old figure is destroyed.
+  if (A.heldG && A.heldG._native && (A.heldG._dead || !A.heldG.target || !A.heldG.target.active)) A.heldG = null;
+  if (A.heldG && A.heldG.parentNode) A.heldG.parentNode.removeChild(A.heldG);
   while (root.firstChild) { const old = root.firstChild; root.removeChild(old); if (typeof old.destroy === 'function') old.destroy(); }
   root.classList.add('gll-actor');
   if (A.me) root.classList.add('is-me');

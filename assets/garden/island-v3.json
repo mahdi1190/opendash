@@ -1,6 +1,11 @@
 {
   "id": "island-v3-52x56",
   "version": 3,
+  "mechanics": {
+    "revision": 1,
+    "predecessorLayout": "94f5b2dbe4dce765cafb2b40",
+    "contract": "optional-side-pier-walk-cover-v1"
+  },
   "world": {
     "v": 3,
     "cols": 52,

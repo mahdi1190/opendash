@@ -584,10 +584,16 @@ const _GD_LAND = new Set();
 function gardenLandSet(ids) { _GD_LAND.clear(); for (const id of ids || []) _GD_LAND.add(id); if (typeof gardenLandPropsReset === 'function') gardenLandPropsReset(); }
 /* What has been built for the lake in the garden on screen (GARDEN_WORKS): yours, or on a visit your friend's (the snapshot's `wk`). */
 const _GD_WORKS = new Set();
-function gardenWorksSet(ids) { _GD_WORKS.clear(); for (const id of ids || []) _GD_WORKS.add(id); }
-function gardenWorkOwned(id) { return _GD_WORKS.has(id); }
-/** How many cells the pier has grown. */
-function gardenPierMore() { return _GD_WORKS.has('pier-3') ? 8 : _GD_WORKS.has('pier-2') ? 4 : 0; }
+let _GD_WORKS_SIDE_READY = false, _GD_WORKS_REV = 0, _GD_PIER_DECKS = null, _GD_PIER_SIGNATURE = '';
+function gardenWorksSet(ids, source) {
+  const next = new Set(ids || []), ready = gardenSidePierMechanicsReady(source);
+  if (ready === _GD_WORKS_SIDE_READY && next.size === _GD_WORKS.size && [...next].every(id => _GD_WORKS.has(id))) return;
+  _GD_WORKS.clear(); for (const id of next) _GD_WORKS.add(id);
+  _GD_WORKS_SIDE_READY = ready; _GD_WORKS_REV++; _GD_PIER_DECKS = null; _GD_PIER_SIGNATURE = '';
+}
+function gardenWorkOwned(id, works) { return works === undefined ? _GD_WORKS.has(id) : Array.isArray(works) ? works.includes(id) : works instanceof Set ? works.has(id) : false; }
+/** How many cells the main pier has grown (resident, or explicitly displayed works). */
+function gardenPierMore(works) { return gardenWorkOwned('pier-3', works) ? 8 : gardenWorkOwned('pier-2', works) ? 4 : 0; }
 /* Fixed things in the world (not in your bag, not movable): the pier you walk out on, the tackle shop. x, y, w, h in cells.
    walk: you can stand on it; door: the cell you stand on to knock; act: what the page does when you get there.
    col (2.28.1, what it does to your feet): 'full' (the default: its whole footprint is a wall: a shop, a stall, the bench), 'soft' (a small box at its base:
@@ -877,6 +883,7 @@ function gardenWaterZone(x, y) {
 function gardenPropAt(x, y) {
   if (typeof gardenLandPropAt === 'function') { const q = gardenLandPropAt(x, y); if (q) return q; }
   for (const p of GARDEN_PROPS) if (x >= p.x && x < p.x + p.w && y >= p.y && y < p.y + p.h && (!p.needs || _GD_WORKS.has(p.needs))) return p;
+  if (_GD_WORKS_SIDE_READY) { const decks = _gardenPierDecksNow(); for (let i = 1; i < decks.length; i++) { const p = decks[i]; if (x >= p.x && x < p.x + p.w && y >= p.y && y < p.y + p.h) return p; } }
   return null;
 }
 /** What a prop does to your feet: 'full', 'soft' or 'none' (see the table). */
@@ -980,7 +987,12 @@ function gardenArtBox(kind, id) {
     heart: 0..6 (the old oak's size), at}. flags: 1 thirsty, 2 overgrown, 4 ripe. Ids only from these tables, numbers
    only within bounds: no names, no text, no times beyond `at`. gardenSnapshotClean drops anything else. */
 /** Is a snapshot from this world? One from another means nothing on this map, cell for cell. */
-function gardenSnapSameWorld(snap) { return !!snap && (Number(snap.wv) || 1) === GARDEN_WORLD.v && (GARDEN_WORLD.v < 3 || typeof GARDEN_WORLD.lh === 'string' && snap.lh === GARDEN_WORLD.lh); }
+function gardenSnapSameWorld(snap) {
+ if(!snap||(Number(snap.wv)||1)!==GARDEN_WORLD.v)return false;
+ if(GARDEN_WORLD.v<3||snap.lh===GARDEN_WORLD.lh)return true;
+ const mechanics=typeof GardenIslandLayout!=='undefined'&&GardenIslandLayout.data.mechanics;
+ return GARDEN_WORLD.lh==='c34545b986e497d5d9df5d51'&&snap.lh==='94f5b2dbe4dce765cafb2b40'&&mechanics?.revision===1&&mechanics.predecessorLayout==='94f5b2dbe4dce765cafb2b40'&&mechanics.contract==='optional-side-pier-walk-cover-v1';
+}
 const GARDEN_SNAPSHOT_MAX = _gdF({ plants: 400, decor: 300, bytes: 24000 });
 function gardenSnapshotClean(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
@@ -995,7 +1007,7 @@ function gardenSnapshotClean(raw) {
   if (raw.wd && typeof raw.wd === 'object') { const wd = {}; if (Array.isArray(raw.wd.sk)) wd.sk = raw.wd.sk.slice(0, 24).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x)); if (Number.isInteger(raw.wd.st) && raw.wd.st > 0) wd.st = Math.min(999, raw.wd.st); if (raw.wd.w === 1) wd.w = 1; if (Number.isInteger(raw.wd.f) && raw.wd.f > 0) wd.f = Math.min(99, raw.wd.f); if (Number.isInteger(raw.wd.el) && raw.wd.el > 0 && raw.wd.el <= 15) wd.el = raw.wd.el; if (Array.isArray(raw.wd.sc) && raw.wd.sc.length === 9 && raw.wd.sc.every((n, i) => Number.isInteger(n) && n >= 0 && n <= [2, 2, 4, 7, 4, 7, 4, 7, 1][i])) wd.sc = raw.wd.sc.slice(); out.wd = wd; }   // docs/dev/HUNDRED_WORLD.md
   if (out.wd && Array.isArray(raw.wd.sa) && raw.wd.sa.length === 2 && raw.wd.sa.every((n, i) => Number.isInteger(n) && n >= 0 && n <= (i ? W.rows : W.cols) * 100)) out.wd.sa = raw.wd.sa.slice();   // the host courtyard's physical anchor
   if (out.wd && Number.isInteger(raw.wd.aw) && raw.wd.aw >= 0 && raw.wd.aw <= 6) out.wd.aw = raw.wd.aw;   // one owner-selected optional world activity; zero keeps the garden clear
-  if (Array.isArray(raw.wk)) out.wk = raw.wk.slice(0, 12).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x));   // 2.38: what they have built for the lake (ids; one this version does not know is ignored)
+  if (Array.isArray(raw.wk)) out.wk = raw.wk.slice(0, 13).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x));   // 2.38: what they have built for the lake (ids; one this version does not know is ignored)
   if (Array.isArray(raw.bk)) { const bk = raw.bk.slice(0, 12).filter(r => Array.isArray(r) && r.length === 8 && typeof r[0] === 'string' && /^[a-z0-9-]{1,32}$/.test(r[0]) && r.slice(1).every(n => Number.isInteger(n) && n >= 0 && n <= 31)); if (bk.length) out.bk = bk; }   // how they have painted their buildings, by building id; a number this version does not know draws as built
   if (Array.isArray(raw.tk)) out.tk = raw.tk.slice(0, 24).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x));   // 2.23: ids of tricks; the page ignores any it does not know
   if (Array.isArray(raw.plants)) for (const p of raw.plants.slice(0, GARDEN_SNAPSHOT_MAX.plants)) {

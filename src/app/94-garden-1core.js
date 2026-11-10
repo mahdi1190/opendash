@@ -520,7 +520,7 @@ function _gdAreasOpen(level) {
   for (const k of Object.keys(items)) if (items[k] > 0 && (k.startsWith('land:') || k.startsWith('feat:'))) own.push(k.slice(5));
   if (GARDEN_LAND_CURIOS.some(c => items['cur:' + c.id] > 0) || items['key:old'] > 0) own.push('finds');   // (the table they are laid out on)
   const openSet = gardenLandsOpen(level, own);
-  if (!(typeof gardenVisitOn === 'function' && gardenVisitOn())) { gardenLandSet(openSet); gardenFeatureSet(gardenFeatureWire()); gardenSightSet(gardenSightWire()); if (typeof gardenDesignShow === 'function') gardenDesignShow(gardenDesignOwn(_gdG())); if (typeof GARDEN_WORKS !== 'undefined') gardenWorksSet(GARDEN_WORKS.filter(d => gardenHas('gear:' + d.id) > 0).map(d => d.id)); }   // (on a visit the land on screen is your friend's)
+  if (!(typeof gardenVisitOn === 'function' && gardenVisitOn())) { gardenLandSet(openSet); gardenFeatureSet(gardenFeatureWire()); gardenSightSet(gardenSightWire()); if (typeof gardenDesignShow === 'function') gardenDesignShow(gardenDesignOwn(_gdG())); if (typeof GARDEN_WORKS !== 'undefined') gardenWorksSet(GARDEN_WORKS.filter(d => gardenHas('gear:' + d.id) > 0).map(d => d.id), _gdG()); }   // (on a visit the land on screen is your friend's)
   const base = GARDEN_AREAS.filter(a => !a.buy && level >= a.lv).map(a => a.id);
   return base.concat([...openSet].filter(id => !base.includes(id)));   // (the scene draws by these ids; a snapshot says it differently: gardenLandsWire)
 }
@@ -567,7 +567,7 @@ function _gardenModel(nowArg) {
   for (const p of plants) for (let dy = 0; dy < p.fp; dy++) for (let dx = 0; dx < p.fp; dx++) { const c = cell(p.x + dx, p.y + dy); if (!c.plant) c.plant = p.uid; }
   for (const d of decor) for (let dy = 0; dy < (d.def.h || 1); dy++) for (let dx = 0; dx < (d.def.w || 1); dx++) { const c = cell(d.x + dx, d.y + dy); if (d.def.layer === 'ground') { if (!c.ground) c.ground = d.uid; } else if (!c.decor) c.decor = d.uid; }
   const m = { now, today, season, south, tod, events, rain, level: wallet.level, areas: _gdAreasOpen(level), plants, decor, occ, blooms, ripe, thirsty, trees, cats,
-    heart: _gdHeartLevel(A, nowArg ? today : ''), wallet, totalDone: A.total };
+    heart: _gdHeartLevel(A, nowArg ? today : ''), wallet, totalDone: A.total, works: GARDEN_WORKS.filter(d => Math.floor(wallet.items['gear:' + d.id] || 0) > 0).map(d => d.id), wv: Number(g.seen.world), lh: g.seen.worldLayout };
   m.water = gardenWaterInfo(m);
   m.visitors = _gdVisitorsNow(m);
   if (!nowArg) { _gd.memo = m; _gd.memoKey = key; }
@@ -648,7 +648,7 @@ function gardenSnapshot() {
     const m = gardenModel();
     const plants = m.plants.slice(0, GARDEN_SNAPSHOT_MAX.plants).map(p => [p.def.id, p.x, p.y, p.stage, p.variant, (p.thirsty ? 1 : 0) | (p.overgrown ? 2 : 0) | (p.ripe ? 4 : 0)]);
     const decor = m.decor.slice(0, GARDEN_SNAPSHOT_MAX.decor).map(d => [d.def.id, d.x, d.y, d.r, d.v]);
-    const out = { v: 1, wv: GARDEN_WORLD.v, lh: GARDEN_WORLD.lh, cv: 1, lv: m.level.level, season: m.season, areas: m.areas.slice(), plants, decor, heart: m.heart, at: Math.floor(m.now) };
+    const out = { v: 1, wv: m.wv, lh: m.lh, cv: 1, lv: m.level.level, season: m.season, areas: m.areas.slice(), plants, decor, heart: m.heart, at: Math.floor(m.now) };
     { const L = gardenLandsWire(m); out.areas = L.areas; out.ls = L.ls; if (L.lf.length) out.lf = L.lf; if (L.lc.length) out.lc = L.lc; if (L.lz.length) out.lz = L.lz; if (L.lr) out.lr = L.lr; }   // the land: at most 12 plain areas for an older friend, the real answer beside them
     { const fp = gardenFeatureWire(); if (fp.length) out.fp = fp; }
     { const rp = gardenSightWire(); if (rp.length) out.rp = rp; }
@@ -899,6 +899,7 @@ function _gdUndoWhy(u, g) {
     const current = g[k] && g[k][id], value = current === undefined ? undefined : JSON.parse(JSON.stringify(current));
     if (!_gdUndoSame(expected, value)) return 'That changed after this step. It cannot be undone now.';
   }
+  if (typeof gardenPierUndoWhy === 'function') { const why = gardenPierUndoWhy(u, g); if (why) return why; }
   const restore = new Map(), changed = { plants: new Set(), decor: new Set() }, spatial = [];
   for (const row of u.mark) {
     const [k, id] = row; if (!changed[k]) continue;

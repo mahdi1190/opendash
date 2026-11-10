@@ -71,12 +71,15 @@ const _GH_MENU = Object.freeze([
 function _ghMenu(box, m) {
   const btn = ([id, label, ic]) => `<button type="button" class="gd-mbtn" data-menu="${id}">${icon(ic)}<span>${esc(label)}</span></button>`;
   const by = id => _GH_MENU.find(row => row[0] === id), group = (name, rows) => `<section class="gd-mgroup"><h3>${esc(name)}</h3><div>${rows.filter(Boolean).map(btn).join('')}</div></section>`;
+  const garden = ['shop', 'basket', 'craft', 'design'].map(by);
+  const own = !m.visit && _gdG(), predecessor = '94f5b2dbe4dce765cafb2b40';
+  if (own && own.since && GARDEN_WORLD.v === 3 && Number(own.seen.world) === 3 && own.seen.worldLayout === predecessor && GARDEN_WORLD.lh !== predecessor && gardenWorldReady()) garden.push(['update', 'Update my garden', 'sprout']);
   const together = ['play', 'tricks', 'friends', 'goals'].map(by).concat([['emote', 'Moves (Q)', 'smile']]);
   if (typeof gardenLiveCanSay === 'function' && gardenLiveCanSay(m)) together.push(['say', 'Say something', 'message-circle']);
   if (typeof gardenSnapCan === 'function' && gardenSnapCan()) together.push(['snap', 'Group photo', 'camera']);
   if (m.visit) together.push(['visit', 'Guestbook', 'feather']);
   const html = `<button type="button" class="gd-mbtn gd-mleave gd-mnav" data-menu="nav" aria-label="Show sidebar" title="Show sidebar">${icon('panel-left')}</button><button type="button" class="gd-mbtn gd-mmore" data-menu="more" aria-label="Garden menu" aria-expanded="false" aria-controls="gd-menu-panel">${icon('menu')}<span>Menu</span></button><div class="gd-mlist" id="gd-menu-panel">`
-    + group('Garden', ['shop', 'basket', 'craft', 'design'].map(by)) + group('Explore', ['lands', 'almanac', 'nature', 'wonder', 'catch'].map(by)) + group('Play & friends', together)
+    + group('Garden', garden) + group('Explore', ['lands', 'almanac', 'nature', 'wonder', 'catch'].map(by)) + group('Play & friends', together)
     + group('View & help', [['map', 'Map (M)', 'map'], ['view', 'View & controls', 'sliders-horizontal'], by('graphics'), by('help')])
     + `</div><button type="button" class="gd-mbtn gd-mleave" data-menu="leave" aria-label="${m.visit ? 'Back to your garden' : 'Leave the garden'}" data-tip="${m.visit ? 'Back to your garden' : 'Leave the garden'}">${icon('x')}</button>`;
   const el = _ghHost(box, 'gd-menu', 'nav');
@@ -96,6 +99,7 @@ function _ghMenu(box, m) {
       if (id === 'say') { if (typeof gardenLivePhrases === 'function') gardenLivePhrases(box.querySelector('.gd-mmore')); return; }
       if (id === 'snap') { if (typeof gardenSnapAsk === 'function') gardenSnapAsk(); return; }
       if (id === 'leave') { setView(typeof gardenVisitOn === 'function' && gardenVisitOn() ? 'garden' : 'home'); return; }
+      if (id === 'update') { setView('garden:update'); return; }
       if (id === 'help') { gardenGuideOpen(); return; }
       if (id === 'graphics') { gardenGraphicsOpen(); return; }
       if (id === 'design') { gardenDesignEnter(); return; }

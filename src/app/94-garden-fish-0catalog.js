@@ -789,6 +789,10 @@ const GARDEN_BOBBERS = Object.freeze([
 const GARDEN_WORKS = Object.freeze([
   _gfG('pier-2', 'lake', 2, 'Longer pier', 350, 3, { adds: 'Pier 4 cells longer' }, 'New planks out over the middle of the lake, towards the bigger fish.', { icon: 'waves' }),
   _gfG('pier-3', 'lake', 3, 'Deep-water pier', 900, 7, { adds: 'Pier 4 cells longer again' }, 'All the way out, to where the fins are.', { icon: 'waves', needs: 'pier-2' }),
+  _gfG('pier-west', 'lake', 1, 'West pier', 650, gardenSidePierLevel('west'), { adds: 'A short deck on the west shore' }, 'A quiet western landing, built only when you choose it.', { icon: 'waves', pierSide: 'west' }),
+  _gfG('pier-west-2', 'lake', 2, 'Longer west pier', 900, gardenSidePierLevel('west', true), { adds: 'West pier 2 cells further out' }, 'More planks towards the open water.', { icon: 'waves', pierSide: 'west', needs: 'pier-west' }),
+  _gfG('pier-east', 'lake', 1, 'East pier', 900, gardenSidePierLevel('east'), { adds: 'A short deck on the east shore' }, 'A second quiet landing on the eastern shore.', { icon: 'waves', pierSide: 'east' }),
+  _gfG('pier-east-2', 'lake', 2, 'Longer east pier', 1200, gardenSidePierLevel('east', true), { adds: 'East pier 3 cells further out' }, 'Room to stand farther out over the sea.', { icon: 'waves', pierSide: 'east', needs: 'pier-east' }),
   _gfG('fish-feeder', 'lake', 1, 'Fish feeder', 120, 2, { adds: 'One more fish in the shallows and open water' }, 'A little drum that scatters feed each morning.', { icon: 'fish' }),
   _gfG('reed-beds', 'lake', 1, 'Bed of reeds', 300, 4, { adds: 'One more fish in deep water, and shy fish come more readily' }, 'Somewhere for the big ones to feel safe.', { icon: 'leaf' }),
   _gfG('fishing-station', 'lake', 1, 'Fishing station', 500, 6, { adds: 'Bigger bar, and longer to strike' }, 'A proper seat, a rod rest and somewhere to put your tea.', { icon: 'armchair' }),

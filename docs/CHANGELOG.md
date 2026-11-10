@@ -10,6 +10,23 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.65.0] - 2026-11-10
+
+### Added
+
+- Optional west and east fishing piers, with extensions unlocked as your Garden grows. Build them from Tackle; unbuilt piers leave the coast clear.
+- A deliberate Garden update that keeps existing island placements and progress, with a backup before applying it. Earlier compatible Gardens remain playable while you choose when to update.
+
+### Changed
+
+- Built piers share the same walking, fishing and visit geometry. Each native deck has its own small drawing cache and camera visibility.
+- Multiplayer world checks reuse the saved world identity until the dashboard changes.
+
+### Fixed
+
+- A visitor's held catch survives appearance redraws when gear changes, without trying to reuse destroyed native artwork.
+- Completing a Garden update returns to the Garden even when the save notification redraws the update screen.
+
 ## [2.64.22] - 2026-11-10
 
 ### Fixed

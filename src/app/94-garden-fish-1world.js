@@ -48,37 +48,51 @@ function gardenLakeGround(sc, o) {
   return `<g transform="translate(${offsetX} 0)">${s}</g></g>`;
 }
 function gardenPierGround(sc, o) {
-  const W = GARDEN_WORLD, cw = W.cellW, ch = W.cellH, base = W.sky, p = GARDEN_PROPS.find(x => x.id === 'pier');
-  const x0 = p.x * cw, x1 = (p.x + p.w) * cw, y0 = base + p.y * ch, y1 = base + (p.y + p.h + gardenPierMore()) * ch, night = sc.tod === 'night' || sc.tod === 'dusk';
-  const pal = sc.season === 'winter' ? ['#c4b49a', '#b0a088', '#d0c2aa'] : ['#c49a64', '#b28650', '#d2ac78'], dark = '#6e4c2a', deep = '#4c3218';
-  const rnd = gardenRand('pier');
-  // its shadow on the water, thrown down and to the right, and the posts' reflections
-  let s = `<path d="M${x0 + 3} ${_gwN(y0 + ch * 1.4)}H${x1 + 8}V${y1 + 9}H${x0 + 3}z" fill="#08263e" fill-opacity="0.24"/>`;
-  // boards, each its own length of timber: three tones, a line of shade below each, a lit edge above, a nail at each end, grain
-  const tones = ['', '', ''];
-  let shade = '', lit = '', nails = '', grain = '';
-  for (let y = y0, i = 0; y < y1; y += 7.5, i++) {
-    const h = Math.min(7, y1 - y), jx = (rnd() - 0.5) * 1.6;
-    tones[Math.floor(rnd() * 3)] += `M${_gwN(x0 + jx)} ${_gwN(y)}H${_gwN(x1 + jx)}v${_gwN(h)}H${_gwN(x0 + jx)}z`;
-    shade += `M${_gwN(x0 + jx)} ${_gwN(y + h)}H${_gwN(x1 + jx)}`;
-    lit += `M${_gwN(x0 + jx + 1)} ${_gwN(y + 0.8)}H${_gwN(x1 + jx - 1)}`;
-    nails += `M${_gwN(x0 + 4 + jx)} ${_gwN(y + 3.4)}h0.1M${_gwN(x1 - 4 + jx)} ${_gwN(y + 3.4)}h0.1`;
-    for (let k = 0; k < 2; k++) grain += `M${_gwN(x0 + 8 + rnd() * (x1 - x0 - 26))} ${_gwN(y + 2 + rnd() * 3.4)}h${_gwN(6 + rnd() * 14)}`;
+  const W = GARDEN_WORLD, cw = W.cellW, ch = W.cellH, base = W.sky, decks = gardenPierDecks(sc.works || [], sc);
+  let out = '';
+  for (const p of decks) {
+    const x0 = p.x * cw, x1 = (p.x + p.w) * cw, y0 = base + p.y * ch, y1 = base + (p.y + p.h) * ch, night = sc.tod === 'night' || sc.tod === 'dusk';
+    const pal = sc.season === 'winter' ? ['#c4b49a', '#b0a088', '#d0c2aa'] : ['#c49a64', '#b28650', '#d2ac78'], dark = '#6e4c2a', deep = '#4c3218';
+    if (p.side !== 'south') {
+      const rnd = gardenRand(p.id), tones = ['', '', '']; let shade = '', lit = '', nails = '';
+      for (let x = x0 + 1, i = 0; x < x1 - 1; x += 7.5, i++) { const w = Math.min(7, x1 - 1 - x); tones[Math.floor(rnd() * 3)] += `M${_gwN(x)} ${y0 + 1}h${_gwN(w)}V${y1 - 1}h${_gwN(-w)}z`; shade += `M${_gwN(x + w)} ${y0 + 1}V${y1 - 1}`; lit += `M${_gwN(x + .8)} ${y0 + 3}V${y1 - 3}`; nails += `M${_gwN(x + 3.4)} ${y0 + 5}v.1M${_gwN(x + 3.4)} ${y1 - 5}v.1`; }
+      let deck = `<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" rx="2" fill="${deep}"/>`;
+      tones.forEach((d, i) => { deck += `<path d="${d}" fill="${pal[i]}"/>`; });
+      deck += `<path d="${shade}" stroke="${deep}" stroke-width="1.1" stroke-opacity=".62" fill="none"/><path d="${lit}" stroke="#ffeec8" stroke-width=".8" stroke-opacity=".4" fill="none"/><path d="${nails}" stroke="${deep}" stroke-width="1.5" stroke-linecap="round" fill="none"/>`;
+      const entrance = p.side === 'west' ? x1 - 6 : x0 + 6;
+      for (const py of [y0 + 6, y1 - 6]) deck += `<rect x="${entrance - 2.8}" y="${py - 5}" width="5.6" height="11" rx="2" fill="${dark}" stroke="${deep}" stroke-width=".8"/><ellipse cx="${entrance}" cy="${py - 5}" rx="3.3" ry="1.7" fill="${pal[2]}"/>`;
+      out += deck; continue;
+    }
+    const rnd = gardenRand('pier');
+    // its shadow on the water, thrown down and to the right, and the posts' reflections
+    let s = `<path d="M${x0 + 3} ${_gwN(y0 + ch * 1.4)}H${x1 + 8}V${y1 + 9}H${x0 + 3}z" fill="#08263e" fill-opacity="0.24"/>`;
+    // boards, each its own length of timber: three tones, a line of shade below each, a lit edge above, a nail at each end, grain
+    const tones = ['', '', ''];
+    let shade = '', lit = '', nails = '', grain = '';
+    for (let y = y0, i = 0; y < y1; y += 7.5, i++) {
+      const h = Math.min(7, y1 - y), jx = (rnd() - 0.5) * 1.6;
+      tones[Math.floor(rnd() * 3)] += `M${_gwN(x0 + jx)} ${_gwN(y)}H${_gwN(x1 + jx)}v${_gwN(h)}H${_gwN(x0 + jx)}z`;
+      shade += `M${_gwN(x0 + jx)} ${_gwN(y + h)}H${_gwN(x1 + jx)}`;
+      lit += `M${_gwN(x0 + jx + 1)} ${_gwN(y + 0.8)}H${_gwN(x1 + jx - 1)}`;
+      nails += `M${_gwN(x0 + 4 + jx)} ${_gwN(y + 3.4)}h0.1M${_gwN(x1 - 4 + jx)} ${_gwN(y + 3.4)}h0.1`;
+      for (let k = 0; k < 2; k++) grain += `M${_gwN(x0 + 8 + rnd() * (x1 - x0 - 26))} ${_gwN(y + 2 + rnd() * 3.4)}h${_gwN(6 + rnd() * 14)}`;
+    }
+    tones.forEach((d, i) => { s += `<path d="${d}" fill="${pal[i]}"/>`; });
+    s += `<path d="${shade}" stroke="${deep}" stroke-width="1.1" stroke-opacity="0.62" fill="none"/><path d="${lit}" stroke="#ffeec8" stroke-width="0.8" stroke-opacity="0.4" fill="none"/><path d="${grain}" stroke="${dark}" stroke-width="0.6" stroke-opacity="0.42" fill="none" stroke-linecap="round"/><path d="${nails}" stroke="${deep}" stroke-width="1.5" stroke-linecap="round" fill="none"/>`;
+    s += `<path d="M${x0} ${y0}V${y1}H${x1}V${y0}" fill="none" stroke="${deep}" stroke-width="1.5" stroke-linejoin="round"/>`;
+    // posts down both sides with their caps, and a rope swagged between them
+    let rope = '', posts = '', glow = '';
+    for (let y = y0 + 6; y <= y1 - 2; y += ch * 1.5) for (const px of [x0 - 2, x1 + 2]) {
+      posts += `<path d="M${_gwN(px - 2.8)} ${_gwN(y + 6)}V${_gwN(y - 5)}q2.8 -2.4 5.6 0V${_gwN(y + 6)}z" fill="${dark}" stroke="${deep}" stroke-width="0.8"/><path d="M${_gwN(px - 1.8)} ${_gwN(y + 5)}V${_gwN(y - 4)}h1.4V${_gwN(y + 5)}z" fill="#c49a64" fill-opacity="0.55"/>`;
+      if (y + ch * 1.5 <= y1 - 2) rope += `M${px} ${_gwN(y - 2)}Q${_gwN(px + (px < x0 ? -3.4 : 3.4))} ${_gwN(y + ch * 0.75)} ${px} ${_gwN(y + ch * 1.5 - 2)}`;
+      if (night) glow += `<circle cx="${px}" cy="${_gwN(y - 9)}" r="2.2" fill="#ffe9a8"/><circle cx="${px}" cy="${_gwN(y - 9)}" r="11" fill="#ffd98a" fill-opacity="0.24"/>`;
+    }
+    s += `<path d="${rope}" stroke="#e0d0a8" stroke-width="1.5" fill="none" stroke-linecap="round"/>${posts}${glow}`;
+    // a coil of rope at the end
+    s += `<ellipse cx="${x1 - 10}" cy="${y1 - 11}" rx="6.4" ry="3.4" fill="#d8c8a0" stroke="#8a7a54" stroke-width="0.9"/><ellipse cx="${x1 - 10}" cy="${y1 - 11}" rx="3.8" ry="1.9" fill="none" stroke="#8a7a54" stroke-width="0.7"/><ellipse cx="${x1 - 10}" cy="${y1 - 11}" rx="1.7" ry="0.8" fill="${deep}"/>`;
+    out += s;
   }
-  tones.forEach((d, i) => { s += `<path d="${d}" fill="${pal[i]}"/>`; });
-  s += `<path d="${shade}" stroke="${deep}" stroke-width="1.1" stroke-opacity="0.62" fill="none"/><path d="${lit}" stroke="#ffeec8" stroke-width="0.8" stroke-opacity="0.4" fill="none"/><path d="${grain}" stroke="${dark}" stroke-width="0.6" stroke-opacity="0.42" fill="none" stroke-linecap="round"/><path d="${nails}" stroke="${deep}" stroke-width="1.5" stroke-linecap="round" fill="none"/>`;
-  s += `<path d="M${x0} ${y0}V${y1}H${x1}V${y0}" fill="none" stroke="${deep}" stroke-width="1.5" stroke-linejoin="round"/>`;
-  // posts down both sides with their caps, and a rope swagged between them
-  let rope = '', posts = '', glow = '';
-  for (let y = y0 + 6; y <= y1 - 2; y += ch * 1.5) for (const px of [x0 - 2, x1 + 2]) {
-    posts += `<path d="M${_gwN(px - 2.8)} ${_gwN(y + 6)}V${_gwN(y - 5)}q2.8 -2.4 5.6 0V${_gwN(y + 6)}z" fill="${dark}" stroke="${deep}" stroke-width="0.8"/><path d="M${_gwN(px - 1.8)} ${_gwN(y + 5)}V${_gwN(y - 4)}h1.4V${_gwN(y + 5)}z" fill="#c49a64" fill-opacity="0.55"/>`;
-    if (y + ch * 1.5 <= y1 - 2) rope += `M${px} ${_gwN(y - 2)}Q${_gwN(px + (px < x0 ? -3.4 : 3.4))} ${_gwN(y + ch * 0.75)} ${px} ${_gwN(y + ch * 1.5 - 2)}`;
-    if (night) glow += `<circle cx="${px}" cy="${_gwN(y - 9)}" r="2.2" fill="#ffe9a8"/><circle cx="${px}" cy="${_gwN(y - 9)}" r="11" fill="#ffd98a" fill-opacity="0.24"/>`;
-  }
-  s += `<path d="${rope}" stroke="#e0d0a8" stroke-width="1.5" fill="none" stroke-linecap="round"/>${posts}${glow}`;
-  // a coil of rope at the end
-  s += `<ellipse cx="${x1 - 10}" cy="${y1 - 11}" rx="6.4" ry="3.4" fill="#d8c8a0" stroke="#8a7a54" stroke-width="0.9"/><ellipse cx="${x1 - 10}" cy="${y1 - 11}" rx="3.8" ry="1.9" fill="none" stroke="#8a7a54" stroke-width="0.7"/><ellipse cx="${x1 - 10}" cy="${y1 - 11}" rx="1.7" ry="0.8" fill="${deep}"/>`;
-  return s;
+  return out;
 }
 
 /* ---------- the woods ---------- */

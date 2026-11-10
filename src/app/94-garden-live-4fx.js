@@ -250,6 +250,7 @@ function _gllFireStep() {
 function _gllFxStep(A, dt) {
   _gllFireStep();
   if (typeof _glpStep === 'function') _glpStep();   // (2.32: two pets close for a moment play, 94-garden-live-7pals.js)
+  if (A.heldG && A.heldG._native && (A.heldG._dead || !A.heldG.target || !A.heldG.target.active)) A.heldG = null;
   if (A.heldG && A.root && !A.root.contains(A.heldG)) { A.root.appendChild(A.heldG); const tag = A.root.querySelector('.gll-name'); if (tag) tag.style.display = 'none'; }   // (a redraw gave them a new figure: what they caught stays held up)
   const F = A.fish;
   if (!F) return;

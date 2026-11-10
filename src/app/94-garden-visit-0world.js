@@ -134,7 +134,7 @@ function gardenVisitModel() {
   gardenLandSet(landOf.land);
   gardenFeatureSet(s.fp || []);
   gardenSightSet(s.rp || []);
-  gardenWorksSet(s.wk || []);
+  gardenWorksSet(s.wk || [], s);
   if (typeof gardenDesignShow === 'function') gardenDesignShow(s.dz || null);   // their design decides where things stand and where you can walk. It stays in memory: nothing of it reaches your save
   if (typeof gardenBuildLooksSet === 'function') gardenBuildLooksSet(s.bk);   // how they have painted their buildings
   const rows = _gdvRows(s), by = _gdvBy;
@@ -160,7 +160,7 @@ function gardenVisitModel() {
   for (const d of decor) for (let dy = 0; dy < (d.def.h || 1); dy++) for (let dx = 0; dx < (d.def.w || 1); dx++) { const c = cellOf(d.x + dx, d.y + dy); if (d.def.layer === 'ground') { if (!c.ground) c.ground = d.uid; } else if (!c.decor) c.decor = d.uid; }
   const cc = gardenSocialFriendCached(_gdv.fid), how = _gdvHow('water'), wleft = how === 'small' ? (cc ? _gsvLeft(cc, 'water') : 0) : how ? GL_CAPS.water : 0;
   const first = _gdvFirst();
-  const m = { now, today, season, south: _gdSouth(), tod, events: gardenEventsOn(today), rain, level: { level: s.lv }, areas, plants, decor, occ, blooms, ripe, thirsty, trees, cats, heart: s.heart, wallet: gardenWallet(), totalDone: 0, water: { cap: wleft, bonus: 0, used: 0, left: wleft, raining: false },
+  const m = { now, today, season, south: _gdSouth(), tod, events: gardenEventsOn(today), rain, level: { level: s.lv }, areas, plants, decor, occ, blooms, ripe, thirsty, trees, cats, heart: s.heart, wallet: gardenWallet(), totalDone: 0, works: (s.wk || []).slice(), wv: s.wv, lh: s.lh, water: { cap: wleft, bonus: 0, used: 0, left: wleft, raining: false },
     visit: { fid: _gdv.fid, f: _gdv.f, name: gardenSocialName(_gdv.fid), live: _glvLive(), lv: _glvLive() ? _glv.lv : (_gdvTheirs() || {}).lv || 'none', key, snap: s, sh: s.sh || null, shSig: typeof gardenShowSig === 'function' ? gardenShowSig(s.sh) : '', drawFriend: _glvLive() ? null : _gdv.f,
       no: { plant: _gdvHow('plant') ? '' : `${first} has not let you plant here yet`, decor: _gdvHow('place') ? '' : `${first} has not let you place things here yet` } } };
   m.visitors = _gdVisitorsNow(m);

@@ -744,11 +744,11 @@ function _gldIslandMini(open, season, level, model) {
     s += '<path d="' + pathOf(shape.points) + (shape.holes || []).map(pathOf).join('') + '" fill="' + water + '" fill-rule="evenodd"/>';
   }
   s += '</g><path d="' + land + '" fill="none" stroke="#c6ddd0" stroke-width=".18"/>';
-  // Only the main services and the actual built pier need map symbols.
+  // Main services and only the displayed built decks need map symbols.
+  for (const prop of gardenPierDecks(model && model.works || [], model || null)) s += '<rect x="' + prop.x + '" y="' + prop.y + '" width="' + prop.w + '" height="' + prop.h + '" fill="#bb9664" stroke="#66533b" stroke-width=".18"><title>' + esc(prop.name) + '</title></rect>';
   const places = new Set(['garden-shop', 'land-office', 'tackle-shop', 'market-stall', 'lake-hall']);
   for (const prop of gardenPropsNow()) {
-    if (prop.id === 'pier') s += '<rect x="' + prop.x + '" y="' + prop.y + '" width="' + prop.w + '" height="' + (prop.h + gardenPierMore()) + '" fill="#bb9664" stroke="#66533b" stroke-width=".18"><title>' + esc(prop.name) + '</title></rect>';
-    else if (places.has(prop.id)) s += '<g transform="translate(' + (prop.x + prop.w / 2) + ' ' + (prop.y + prop.h / 2) + ')"><title>' + esc(prop.name) + '</title><path d="M-1.2 0L0 -1.15 1.2 0V1.1H-1.2Z" fill="#ae7850" stroke="#fff0cf" stroke-width=".22" stroke-linejoin="round"/></g>';
+    if (places.has(prop.id)) s += '<g transform="translate(' + (prop.x + prop.w / 2) + ' ' + (prop.y + prop.h / 2) + ')"><title>' + esc(prop.name) + '</title><path d="M-1.2 0L0 -1.15 1.2 0V1.1H-1.2Z" fill="#ae7850" stroke="#fff0cf" stroke-width=".22" stroke-linejoin="round"/></g>';
   }
   return s;
 }

@@ -50,6 +50,7 @@ function gardenGearBuy(id) {
   const d = gardenGearDef(id); if (!d) return _gdNo('Unknown gear');
   if (d.tackle && typeof gardenTackleBuy === 'function') return gardenTackleBuy(d);   // reels, lines, hooks and the bug kit: 94-garden-fish-8catch.js
   const m = gardenModel(), w = m.wallet;
+  if (d.pierSide && !gardenSidePierMechanicsReady(m)) return _gdNo('Update your garden before building a side pier.');
   if (d.kind === 'bait') {
     if (d.own) return _gdNo('You always have those');
     if ((d.lv || 1) > m.level.level) return _gdNo('Garden level ' + d.lv);
@@ -72,6 +73,58 @@ function gardenGearBuy(id) {
   const g = _gdG(); if (d.kind !== 'lake') g.prefs[d.kind] = id;     // the new one goes straight in your hand
   _gdEmit('buy', { item: 'gear:' + id, n: 1 });
   return _gdDone(`Bought the ${d.name.toLowerCase()} for ${d.price} coins`, 'buying a ' + d.kind, mark, { icon: 'shopping-bag' });
+}
+
+/** Read-only removal preflight: deferred Undo retains its ledger rows, resources and stack entry. */
+function _gcPierSegmentHits(rects, ax, ay, bx, by, fx, fy) {
+  if (![ax, ay, bx, by].every(Number.isFinite)) return false;
+  for (const r of rects) {
+    let lo = 0, hi = 1, clear = false;
+    for (const [a, b, min, max] of [[ax, bx, r.x - fx, r.x + r.w + fx], [ay, by, r.y - fy, r.y + r.h + fy]]) {
+      const d = b - a;
+      if (!d) { if (a <= min || a >= max) { clear = true; break; } }
+      else { const t0 = (min - a) / d, t1 = (max - a) / d; lo = Math.max(lo, Math.min(t0, t1)); hi = Math.min(hi, Math.max(t0, t1)); if (lo > hi) { clear = true; break; } }
+    }
+    if (!clear && lo <= hi) return true;
+  }
+  return false;
+}
+function _gcPierWayHits(rects, x, y, points, fx, fy) {
+  if (_gcPierSegmentHits(rects, x, y, x, y, fx, fy)) return true;
+  for (const p of points || []) { const px = Array.isArray(p) ? p[0] : p.x, py = Array.isArray(p) ? p[1] : p.y; if (_gcPierSegmentHits(rects, x, y, px, py, fx, fy)) return true; x = px; y = py; }
+  return false;
+}
+function gardenPierUndoWhy(u, g) {
+  if (!gardenSidePierMechanicsReady(g)) return '';
+  const ids = ['pier-west', 'pier-west-2', 'pier-east', 'pier-east-2'], delta = new Map(), restore = new Map();
+  for (const row of u.mark) if (row[0] === 'led' || row[0] === 'bank') { const key = row[0] + '\0' + row[1]; if (!restore.has(key)) restore.set(key, row); }
+  for (const [map, id, old] of restore.values()) {
+    const current = g[map] && g[map][id];
+    for (const work of ids) { const item = 'gear:' + work, change = (Number(old && old.i && old.i[item]) || 0) - (Number(current && current.i && current.i[item]) || 0); if (change) delta.set(work, (delta.get(work) || 0) + change); }
+  }
+  if (!delta.size) return '';
+  const items = gardenWallet().items, owned = (id, change) => Math.floor(Math.max(0, (Number(items['gear:' + id]) || 0) + (change || 0))) > 0;
+  const before = ids.filter(id => owned(id)), after = ids.filter(id => owned(id, delta.get(id))), remaining = gardenPierDecks(after, g), lost = [];
+  for (const p of gardenPierDecks(before, g)) {
+    if (p.side === 'south') continue;
+    const next = remaining.find(q => q.id === p.id);
+    if (!next) lost.push(p);
+    else if (next.x > p.x) lost.push({ x: p.x, y: p.y, w: next.x - p.x, h: p.h });
+    else if (next.x + next.w < p.x + p.w) lost.push({ x: next.x + next.w, y: p.y, w: p.x + p.w - next.x - next.w, h: p.h });
+  }
+  if (!lost.length) return '';
+  if (typeof _gw === 'undefined' || !_gw.on || typeof gardenVisitOn === 'function' && gardenVisitOn()) return 'Open your own garden and step ashore before undoing this pier.';
+  const hosting = typeof _glh !== 'undefined' && _glh.on && typeof _gll !== 'undefined' && _gll.role === 'host';
+  if (!hosting && typeof _gll !== 'undefined' && _gll.view && _gll.view.host && _gll.view.host.here) return 'Undo this pier in the tab hosting your garden, after everyone has stepped ashore.';
+  const foot = typeof GW_FOOT !== 'undefined' ? GW_FOOT : { x: .2, y: .12 }, why = 'Step off the part of the pier being removed, and let visitors and pets step clear, before undoing it.';
+  if (_gcPierWayHits(lost, _gw.px, _gw.py, _gw.path, foot.x, foot.y)) return why;
+  if (_gw.pet && _gcPierWayHits(lost, _gw.pet.x, _gw.pet.y, null, .14, .14)) return why;
+  if (typeof _ptw !== 'undefined' && _ptw.on) for (const p of _ptw.pets) if (!(typeof _ptwGone === 'function' && _ptwGone(p)) && _gcPierWayHits(lost, p.x, p.y, p.tx == null ? null : [[p.tx, p.ty]], .14, .14)) return why;
+  if (hosting) for (const a of _gll.actors.values()) {
+    const points = a.tx == null ? null : [[a.tx, a.ty], ...(a.way || [])];
+    if (_gcPierWayHits(lost, a.x, a.y, points, foot.x, foot.y) || a.pet && _gcPierWayHits(lost, a.petX, a.petY, null, .14, .14)) return why;
+  }
+  return '';
 }
 
 /* ---------- casts ---------- */

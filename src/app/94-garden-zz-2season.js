@@ -35,11 +35,12 @@ function gardenIceSpot(b, near) {
 const _gtgWalkK0 = gardenLandWalkK;
 gardenLandWalkK = function () { const k = _gtgWalkK0(); return _gtgs.ice && typeof _gw !== 'undefined' && gardenIceAt(_gw.px, _gw.py) ? k * 1.3 : k; };
 /* ---------- what lies on the ground ---------- */
-function _gtgIceSvg() {
+function _gtgIceSvg(m) {
   const W = GARDEN_WORLD, L = gardenLakeWater(), cw = W.cellW, ch = W.cellH, x = L.x * cw, y = W.sky + L.y * ch, w = L.w * cw, h = L.h * ch, n = (v) => v.toFixed(1), rnd = gardenRand('tg-ice');
-  const p = GARDEN_PROPS.find(q => q.id === 'pier'), more = typeof gardenPierMore === 'function' ? gardenPierMore() : 0, px0 = p.x * cw - 2, px1 = (p.x + p.w) * cw + 2, py1 = W.sky + (p.y + p.h + more) * ch + 3;
+  let deckHoles = '';
+  for (const p of gardenPierDecks(m && m.works || [], m || null)) { const px0 = Math.max(x, p.x * cw - 2), px1 = Math.min(x + w, (p.x + p.w) * cw + 2), py0 = p.side === 'south' ? y : Math.max(y, W.sky + p.y * ch), py1 = Math.min(y + h, W.sky + (p.y + p.h) * ch + 3); if (px1 > px0 && py1 > py0) deckHoles += `M${px0} ${py0}H${px1}V${py1}H${px0}Z`; }
   let s = `<defs><linearGradient id="tg-ice-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eaf4f8"/><stop offset="0.5" stop-color="#cfe4ee"/><stop offset="1" stop-color="#b4d2e2"/></linearGradient></defs>`;
-  s += `<path fill-rule="evenodd" fill="url(#tg-ice-g)" fill-opacity="0.96" d="M${x} ${y}H${x + w}V${y + h}H${x}ZM${px0} ${y}H${px1}V${py1}H${px0}Z"/>`;
+  s += `<path fill-rule="evenodd" fill="url(#tg-ice-g)" fill-opacity="0.96" d="M${x} ${y}H${x + w}V${y + h}H${x}Z${deckHoles}"/>`;
   // snow blown into long drifts, cracks, and the marks of skates
   for (let i = 0; i < 26; i++) { const ex = x + rnd() * w, ey = y + 8 + rnd() * (h - 16), rx = 24 + rnd() * 80; s += `<ellipse cx="${n(ex)}" cy="${n(ey)}" rx="${n(rx)}" ry="${n(3 + rnd() * 6)}" fill="#ffffff" fill-opacity="${n(0.25 + rnd() * 0.35)}"/>`; }
   for (let i = 0; i < 16; i++) { let cx = x + 30 + rnd() * (w - 60), cy = y + 20 + rnd() * (h - 40), d = `M${n(cx)} ${n(cy)}`; for (let k = 0; k < 4; k++) { cx += (rnd() - 0.5) * 70; cy += (rnd() - 0.3) * 22; d += `L${n(cx)} ${n(cy)}`; } s += `<path d="${d}" fill="none" stroke="#7fa8bf" stroke-width="1" stroke-opacity="0.5"/>`; }
@@ -79,12 +80,12 @@ function _gtgFallSvg(season) {
 }
 function _gtgGround(m) {
   const svg = typeof _gw !== 'undefined' ? _gw.svg : null, objs = svg && svg.querySelector('.gd-objects'); if (!objs || !objs.parentNode) return;
-  const ice = m.season === 'winter', key = m.season + '|' + (typeof gardenPierMore === 'function' ? gardenPierMore() : 0) + '|' + gardenFun();
+  const ice = m.season === 'winter', key = m.season + '|' + gardenPierDecks(m.works || [], m).map(p => [p.id, p.x, p.y, p.w, p.h].join(',')).join(';') + '|' + gardenFun();
   let g = svg.querySelector('.tg-ground');
   if (!g || g._k !== key) {
     if (g) g.remove();
     g = gardenSceneElement('g'); g.setAttribute('class', 'tg-ground'); g.setAttribute('pointer-events', 'none'); g.setAttribute('aria-hidden', 'true');
-    g.innerHTML = '<g class="tg-ground-patches">' + _gtgPatchSvg(m.season, 'a') + '</g>' + (ice ? _gtgIceSvg() : '') + (gardenMotionOn() ? _gtgFallSvg(m.season) : ''); g._k = key;
+    g.innerHTML = '<g class="tg-ground-patches">' + _gtgPatchSvg(m.season, 'a') + '</g>' + (ice ? _gtgIceSvg(m) : '') + (gardenMotionOn() ? _gtgFallSvg(m.season) : ''); g._k = key;
     const school = svg.querySelector('.gd-school');
     objs.parentNode.insertBefore(g, school || objs);
     const patches = g.querySelector('.tg-ground-patches');

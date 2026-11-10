@@ -21,8 +21,27 @@ export default function register(app) {
   const root = (ctx.paths && ctx.paths.root) || ctx.dataDir;
   const sse = (event, data) => { const s = ctx.liveSync; if (s && typeof s.emit === 'function') s.emit(event, data); };
   let groupsAt = 0, groups = [];   // the friend's groups, a few seconds old at most: a message from a friend asks this
+  // The state store invalidates local writes synchronously; the existing live
+  // sync version also invalidates changes detected by its file watcher.
+  let worldEpoch=0,worldCachedEpoch=-1,worldCachedVersion=-1,worldCached=null,worldRead=null;
+  const unsubscribeWorld=ctx.store.onChange(()=>{worldEpoch++;});
+  app.onClose(unsubscribeWorld);
+  async function readHomeWorld(){
+    const version=ctx.liveSync?.version,epoch=worldEpoch;
+    const project=value=>value?.garden?{seen:{world:value.garden.seen?.world,worldLayout:value.garden.seen?.worldLayout}}:null;
+    if(!Number.isFinite(version))return project(await ctx.store.readObject());
+    if(worldCachedEpoch===epoch&&worldCachedVersion===version)return worldCached;
+    if(worldRead?.epoch===epoch&&worldRead.version===version)return worldRead.promise;
+    let promise;
+    promise=ctx.store.readObject().then(value=>{
+      if(epoch!==worldEpoch||version!==ctx.liveSync?.version){if(worldRead?.promise===promise)worldRead=null;return readHomeWorld();}
+      worldCached=project(value);worldCachedEpoch=epoch;worldCachedVersion=version;return worldCached;
+    }).finally(()=>{if(worldRead?.promise===promise)worldRead=null;});
+    worldRead={epoch,version,promise};return promise;
+  }
   const gl = createGardenLive({
     dataDir: root,
+    getGarden: readHomeWorld,
     friends: () => (ctx.friends && typeof ctx.friends.send === 'function' ? ctx.friends : null),
     emit: (data) => sse('garden', data),
     groupMember: async (id) => {

@@ -16,9 +16,21 @@
      GL_GOALS / GL_GOAL   shared goals (a joint quest in a live garden): the table, the pacing and the reward; glGoalOk(b) -> '' | why checks gl:goal, glGoalCap(of), glGoalSize(def, people)
      glAtLeast(lv, min)   glMayDo(lv, t) -> '' | why     glIntentOk(b) -> '' | why     glPostOk(p) -> '' | why
    ============================================================ */
-const GL_V = 4;   // 3: the world moved (GARDEN_WORLD.v 2): a cell means something else now, so an older peer keeps the saved copy. 2:                 // 2: what a visit can ask for grew (feed, turn), and what waits for the host. An older peer gets the saved copy
-function glWorldFields() { return { wv: GARDEN_WORLD.v, lh: GARDEN_WORLD.lh }; }
-function glSameWorld(body) { return !!body && body.wv === GARDEN_WORLD.v && typeof GARDEN_WORLD.lh === 'string' && body.lh === GARDEN_WORLD.lh; }
+const GL_V=5; // App capability; each actual old/new physical session pins4/5.
+const GL_WORLD_PREDECESSOR='94f5b2dbe4dce765cafb2b40',GL_WORLD_MECHANICS1='c34545b986e497d5d9df5d51';
+function glWorldFields(source){
+ if(source===undefined){
+  if(typeof _gdv!=='undefined'&&_gdv.on&&_gdv.clean)source=_gdv.clean;
+  else if(typeof state!=='undefined'&&state?.garden)source=state.garden;
+  else source={wv:GARDEN_WORLD.v,lh:GARDEN_WORLD.lh};
+ }
+ source=source?.visit?.snap||source;
+ const wv=Number(source?.seen?.world??source?.wv),lh=source?.seen?.worldLayout??source?.lh;
+ return{wv,lh};
+}
+function glWorldSupported(source){const w=glWorldFields(source);return w.wv===3&&(w.lh===GL_WORLD_PREDECESSOR||w.lh===GL_WORLD_MECHANICS1)}
+function glProtocolForWorld(source){const w=glWorldFields(source);return w.wv===3?w.lh===GL_WORLD_PREDECESSOR?4:w.lh===GL_WORLD_MECHANICS1?5:0:0}
+function glSameWorld(body,expected){const a=glWorldFields(body),b=glWorldFields(expected);return glWorldSupported(a)&&glWorldSupported(b)&&a.wv===b.wv&&a.lh===b.lh}
 const GL_PEOPLE = 8;              // everyone in a garden at once, the host included
 const GL_LEVELS = Object.freeze(['none', 'look', 'help', 'play']);
 const GL_LEVEL_NAMES = Object.freeze({ none: 'Not yet', look: 'Look', help: 'Help', play: 'Play' });

@@ -109,19 +109,20 @@ function _gdpMount(container, view) {
   if (tab !== 'garden') { _gdp.then = tab; setTimeout(() => { if (state.view === view) setView('garden'); }, 0); return; }
   _gdpWorldMount(container, view);
 }
-/** The pending view has one deliberate local action, never an automatic migration. */
+/** Normal update actions; only an actual predecessor mismatch has a review. */
 function _gdpPendingGarden(container) {
-  const root = mountEmptyState(container, { icon: 'sprout', title: 'Your garden update is pending' });
+  const root = mountEmptyState(container, { icon: 'sprout', title: 'Garden update' });
   const status = _gdpEl('div', 'es-text', 'Your saved garden is safe. Checking the local update...'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
+  const review = _gdpEl('div', 'es-text'); review.hidden = true; review.setAttribute('role', 'group'); review.setAttribute('aria-label', 'Review the shared Garden choice');
+  const earlier = _gdpEl('p'), shared = _gdpEl('p'), preservation = _gdpEl('p', '', 'Using the shared Garden replaces this computer’s active Garden. A full folder backup and a complete earlier Garden copy must be saved first. Find the earlier copy in Settings > Data > Preserved Garden copies. These two Gardens will not be merged.');
+  review.append(earlier, shared, preservation);
   const actions = _gdpEl('div', 'es-actions');
-  const update = _gdpBtn('Update my garden', { kind: 'btn-primary', icon: 'sprout', disabled: true });
-  update.dataset.gardenAction = 'update-local';
-  const sync = _gdpBtn('Open Sync', { icon: 'refresh-cw', run: () => setView('settings:sync') }); sync.hidden = true;
-  sync.dataset.gardenAction = 'update-sync';
-  const enter = _gdpBtn('Open garden', { icon: 'sprout', run: () => setView('garden') }); enter.hidden = true;
-  enter.dataset.gardenAction = 'update-enter';
-  actions.append(update, sync, enter); root.append(status, actions);
-  let running = false, admitted = false;
+  const update = _gdpBtn('Update my garden', { kind: 'btn-primary', icon: 'sprout', disabled: true }); update.dataset.gardenAction = 'update-local';
+  const sync = _gdpBtn('Open Sync', { icon: 'refresh-cw', run: () => setView('settings:sync') }); sync.hidden = true; sync.dataset.gardenAction = 'update-sync';
+  const keep = _gdpBtn('Keep earlier Garden', { run: () => { reviewedKey = null; if (gardenWorldReady()) setView('garden'); else if (lastInspection) paint(lastInspection); } }); keep.hidden = true; keep.dataset.gardenAction = 'update-keep-earlier';
+  const enter = _gdpBtn('Open garden', { icon: 'sprout', run: () => setView('garden') }); enter.hidden = true; enter.dataset.gardenAction = 'update-enter';
+  actions.append(update, sync, keep, enter); root.append(status, review, actions);
+  let running = false, admitted = false, lastInspection = null, reviewedKey = null;
   const mounted = () => root.isConnected && /^garden(?::|$)/.test(String(state.view || ''));
   const request = async (method, body) => {
     const r = await fetch('/api/garden/update', { method, cache: 'no-store', ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}) });
@@ -129,47 +130,66 @@ function _gdpPendingGarden(container) {
     if (!r.ok) throw new Error(typeof data.error === 'string' ? data.error : data.error?.message || 'The Garden update could not finish. Your saved Garden is preserved.');
     return data;
   };
+  const reviewKey = data => data?.status === 'predecessor-changed' && data.canReview === true && data.mode === 'import' && data.reconciliation ? JSON.stringify([data.wv, data.lh, data.version, data.planId, data.handoverId, data.reconciliation.choice, data.reconciliation.earlierGardenSha256, data.reconciliation.sharedGardenSha256, data.reconciliation.handoverSha256]) : null;
+  const countText = (label, counts) => label + ': ' + counts.retained + ' placed items, ' + counts.stored + ' complete items in its Bag.';
   const paint = data => {
     if (!mounted()) return;
+    lastInspection = data;
+    const key = reviewKey(data); if (reviewedKey !== key) reviewedKey = null;
+    const choosing = !!key && reviewedKey === key;
+    review.hidden = !choosing; keep.hidden = !choosing;
+    if (choosing) { earlier.textContent = countText('This computer’s earlier Garden', data.reconciliation.earlierCounts); shared.textContent = countText('Shared Garden to use', data.reconciliation.sharedCounts); }
     status.textContent = data.message || 'Your saved Garden is preserved.';
     if (data.canUpdate && data.counts && data.mode === 'migrate') status.textContent += ' ' + data.counts.retained + ' placements stay in place, ' + data.counts.relocated + ' move nearby, and ' + data.counts.stored + ' stay complete in your Bag.';
     if (data.canUpdate && data.counts && data.mode === 'import') status.textContent += ' The updated island has ' + data.counts.retained + ' placed items and ' + data.counts.stored + ' complete items in its Bag.';
     admitted = !!data.canUpdate;
-    update.querySelector('span').textContent = !admitted ? 'Check again' : data.mode === 'import' ? 'Use updated island' : data.mode === 'publish' ? 'Share updated island' : 'Update my garden';
-    update.disabled = running || data.status === 'current';
-    sync.hidden = data.status !== 'sync-blocked' && data.status !== 'host-blocked';
-    enter.hidden = data.status !== 'current' || !gardenWorldReady();
+    update.querySelector('span').textContent = choosing ? 'Use shared Garden and keep earlier copy' : key ? 'Review shared Garden' : !admitted ? 'Check again' : data.mode === 'import' ? 'Use updated island' : data.mode === 'publish' ? 'Share updated island' : 'Update my garden';
+    update.disabled = running || data.status === 'current'; sync.disabled = running; keep.disabled = running; enter.disabled = running;
+    sync.hidden = !key && data.status !== 'sync-blocked' && data.status !== 'host-blocked'; sync.querySelector('span').textContent = key ? 'Sync first' : 'Open Sync';
+    enter.hidden = !gardenWorldReady();
   };
   update.onclick = async () => {
     if (running || update.disabled) return;
-    const maySubmit = admitted;
-    running = true; update.disabled = true; root.setAttribute('aria-busy', 'true');
+    const maySubmit = admitted, chosenKey = reviewedKey;
+    running = true; update.disabled = true; sync.disabled = true; keep.disabled = true; enter.disabled = true; root.setAttribute('aria-busy', 'true');
     let submitted = false;
     try {
-      // Finish ordinary local saves first, preserving unrelated app changes.
+      // Finish ordinary local saves before inspecting the exact choice.
       if (_persistInFlight) status.textContent = 'Saving your latest changes...';
       for (let i = 0; i < 20 && _persistInFlight; i++) await new Promise(resolve => setTimeout(resolve, 100));
       if (!mounted()) return;
-      if (_persistInFlight) throw new Error('A save is finishing. Try Update my garden again in a moment.');
+      if (_persistInFlight) throw new Error('A save is finishing. Try the Garden action again in a moment.');
       if (state._localDirty || _persistTimer || _persistUITimer) await _persistFire();
-      if (state._localDirty || _persistInFlight) throw new Error('Your latest changes are still saving. Try Update my garden again when the save has finished.');
-      const inspected = await request('GET');
-      if (!maySubmit || !inspected.canUpdate) { paint(inspected); return; }
+      if (state._localDirty || _persistInFlight) throw new Error('Your latest changes are still saving. Try again when the save has finished.');
+      const inspected = await request('GET'), key = reviewKey(inspected);
+      let reconciliation;
+      if (key) {
+        if (!chosenKey) { reviewedKey = key; paint(inspected); return; }
+        if (chosenKey !== key) { reviewedKey = null; paint(inspected); status.textContent += ' The earlier or shared Garden changed; review the current copies again.'; return; }
+        const r = inspected.reconciliation;
+        reconciliation = { choice: r.choice, earlierGardenSha256: r.earlierGardenSha256, sharedGardenSha256: r.sharedGardenSha256, handoverSha256: r.handoverSha256 };
+      } else {
+        if (chosenKey) { reviewedKey = null; paint(inspected); status.textContent += ' The reviewed choice changed. Nothing was replaced.'; return; }
+        if (!maySubmit || !inspected.canUpdate) { paint(inspected); return; }
+      }
       if (!mounted()) return;
-      status.textContent = inspected.mode === 'publish' ? 'Sharing the saved updated island...' : inspected.mode === 'import' ? 'Keeping your earlier Garden and opening the updated island...' : 'Saving a backup and updating your Garden...';
+      status.textContent = reconciliation ? 'Saving the full backup and complete earlier Garden before using the shared Garden...' : inspected.mode === 'publish' ? 'Sharing the saved updated island...' : inspected.mode === 'import' ? 'Keeping your earlier Garden and opening the updated island...' : 'Saving a backup and updating your Garden...';
       submitted = true;
-      const result = await request('POST', { wv: inspected.wv, lh: inspected.lh, version: inspected.version, planId: inspected.planId, mode: inspected.mode, handoverId: inspected.handoverId });
+      const result = await request('POST', { wv: inspected.wv, lh: inspected.lh, version: inspected.version, planId: inspected.planId, mode: inspected.mode, handoverId: inspected.handoverId, ...(reconciliation ? { reconciliation } : {}) });
       if (result.status === 'publish-pending' && /^garden(?::|$)/.test(String(state.view || '')) && state.view !== 'garden:update') setView('garden:update');
-      // Use the normal live reconcile path; never replace all browser state
-      // with the route result or discard edits to another app component.
+      // Normal live reconcile retains unrelated browser component edits.
       if (typeof _liveOnRemote === 'function') await _liveOnRemote({ version: result.version, source: 'garden-update', client: 'Garden' });
+      // Reconciliation can remount this view before the request returns. The
+      // completed action still opens its exact accepted Garden in that view.
+      const savedWorld = state.garden && state.garden.seen;
+      if (result.status !== 'publish-pending' && state.view === 'garden:update' && gardenWorldReady() && savedWorld && Number(savedWorld.world) === result.wv && savedWorld.worldLayout === result.lh) { setView('garden'); return; }
       if (mounted()) {
         if (gardenWorldReady() && result.status !== 'publish-pending') { if (state.view === 'garden:update') setView('garden'); else render(); }
         else if (result.status === 'publish-pending') request('GET').then(paint).catch(() => {});
-        else status.textContent = 'Your Garden is updated. Finish saving any current edits, then return to Garden to load it.';
+        else status.textContent = result.message || 'Your Garden is updated. Finish saving any current edits, then return to Garden to load it.';
       }
     } catch (e) {
-      if (mounted()) { status.textContent = e.message || 'The update could not finish. Your saved Garden is preserved.'; update.disabled = false; }
+      if (mounted()) { reviewedKey = null; if (lastInspection) paint(lastInspection); status.textContent = e.message || 'The update could not finish. Your saved Garden is preserved.'; update.disabled = false; sync.disabled = false; keep.disabled = false; enter.disabled = false; review.hidden = true; keep.hidden = true; }
       else if (submitted && gardenWorldReady() && /^garden(?::|$)/.test(String(state.view || '')) && state.view !== 'garden:update') setView('garden:update');
     } finally {
       running = false; root.removeAttribute('aria-busy');

@@ -495,6 +495,17 @@ window.GardenPhaser = (function () {
       state.reset = false;
     }
   }
+  function syncPierMask(s) {
+    if (!s.school) return;
+    const decks = gardenPierDecks(), key = decks.map(p => [p.id, p.x, p.y, p.w, p.h].join(',')).join(';');
+    if (s.pierMaskKey === key) return; s.pierMaskKey = key;
+    const W = GARDEN_WORLD;
+    if (!s.pierMaskDrawing) s.pierMaskDrawing = s.scene.make.graphics();
+    s.pierMaskDrawing.clear().fillStyle(0xffffff);
+    for (const p of decks) s.pierMaskDrawing.fillRect(p.x * W.cellW - 3, W.sky + p.y * W.cellH, p.w * W.cellW + 6, p.h * W.cellH + 5);
+    if (!s.pierMask) { s.pierMask = s.school.filters.external.addMask(s.pierMaskDrawing, true, s.scene.cameras.main, 'world'); s.pierMask.autoUpdate = false; }
+    s.pierMask.needsUpdate = true;
+  }
   function geometry(r, s) {
     if (s.assets.has(r)) s.assetQueueDirty = true;
     const graph = compiledGraph(r.graph || graphNode(r.node, s), s);
@@ -509,9 +520,8 @@ window.GardenPhaser = (function () {
       // Phaser 4 uses filters for WebGL masks. Apply one shared world-space
       // cutout to the retained school, rather than one viewport filter per fish.
       if (!s.school) {
-        const W = GARDEN_WORLD, pier = GARDEN_PROPS.find(p => p.id === 'pier');
         s.school = s.scene.add.container(0, 0).setDepth(-9300).enableFilters();
-        if (pier) { s.pierMaskDrawing = s.scene.make.graphics(); s.pierMaskDrawing.fillStyle(0xffffff).fillRect(pier.x * W.cellW - 3, W.sky + pier.y * W.cellH, pier.w * W.cellW + 6, (pier.h + gardenPierMore()) * W.cellH + 5); s.pierMask = s.school.filters.external.addMask(s.pierMaskDrawing, true, s.scene.cameras.main, 'world'); s.pierMask.autoUpdate = false; }
+        syncPierMask(s);
       }
       const drawing = r.affineWrap || o; if (drawing.parentContainer !== s.school) s.school.add(drawing);
       s.schoolDirty = true;
@@ -1000,6 +1010,7 @@ window.GardenPhaser = (function () {
     for (const r of s.all) { invalidateGraph(r.node, s); s.transforms.add(r); }
   }
   function flushVisuals(s) {
+    syncPierMask(s);
     const cameraChanged = s.cameraDirty;
     if (cameraChanged) { readCamera(s); restoreSourceView(s); if (s.observer) { const changes = s.observer.takeRecords(); if (changes.length) mutations(changes, s); } }
     for (const r of s.transforms) geometry(r, s); s.transforms.clear();

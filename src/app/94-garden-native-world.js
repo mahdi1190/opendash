@@ -123,7 +123,7 @@ window.GardenNativeWorld = (function () {
     for (const cls of ['gd-hover', 'gd-sel']) ui.appendChild(element(scene, 'rect', { class: cls, width: 0, height: 0, rx: 4 }));
     ui.appendChild(element(scene, 'g', { class: 'gd-ghost' }));
     group('gd-weather', 79000); group('gd-nightlayer', 80000);
-    const drawings = new Map(), dynamic = new Map(), needRings = new Map(), markers = [], terrainObjects = [], terrainChunks = new Map(), terrainLabels = [], solidObjects = [], pointLights = [], fadingProps = [], cacheQueue = new Map(), terrainBaseQueue = new Map();
+    const drawings = new Map(), dynamic = new Map(), needRings = new Map(), markers = [], terrainObjects = [], terrainChunks = new Map(), pierDeckRecords = new Map(), terrainLabels = [], solidObjects = [], pointLights = [], fadingProps = [], cacheQueue = new Map(), terrainBaseQueue = new Map();
     const sceneryCache = { retainBase: true, baseQuality: 1, baseFromCapture: true, baseMaxBytes: 512 * 1024 };
     const mainDrawingGuard = 16;
     let mainExcludedDrawings = 0, mainExclusionCameraId = 0;
@@ -302,12 +302,19 @@ window.GardenNativeWorld = (function () {
       for (const item of m.decor || []) { const def = item.def || gardenDecor(item.id); if (def && def.layer === 'ground') remember(item, def.w || 1, def.h || 1); }
       return sections;
     }
-    function drawTerrain(m, sc, lake, cultivated) {
-      if (terrain._cache) terrain._uncache(); if (pierBoards._cache) pierBoards._uncache();
+    function clearPierDecks() {
+      cacheQueue.delete(pierBoards);
+      // Each native deck owns its Graphics and cached tiles. Removing the
+      // node releases both once; these Graphics never enter terrainObjects.
+      for (const record of pierDeckRecords.values()) { cacheQueue.delete(record.node); record.node.remove(); }
+      pierDeckRecords.clear(); pierBoards.nativeBounds = null;
+    }
+    function drawTerrain(m, sc, lake, cultivated, decks) {
+      if (terrain._cache) terrain._uncache(); clearPierDecks();
       for (const chunk of terrainChunks.values()) { cacheQueue.delete(chunk.node); chunk.node.remove(); } terrainChunks.clear(); terrainBaseQueue.clear();
       for (const old of terrainObjects) old.destroy(); terrainObjects.length = 0; terrainLabels.length = 0; markers.length = 0;
       waterRegions.length = 0; lockedRegions.length = 0; gateRows.length = 0; forestRows.length = 0; surfaceRevision++; frontierMetadata.revision = surfaceRevision;
-      terrain.nativeBounds = { x: 0, y: 0, width, height };
+      terrain.nativeBounds = { x: 0, y: 0, width, height }; pierBoards.nativeBounds = null;
       const island = typeof gardenIslandActive === 'function' && gardenIslandActive() ? gardenIslandGeometry() : null;
       const coast = island ? island.land.map(loop => loop.map(point => ({ x: point[0] * W.cellW, y: W.sky + point[1] * W.cellH }))) : [];
       const p = terrainPalette(sc.season), g = terrainPainter(0), cells = new Array(W.cols * W.rows), kinds = new Set(), level = m.level.level;
@@ -561,13 +568,26 @@ window.GardenNativeWorld = (function () {
         g.lineStyle(1.2, 0x537f60, .85).lineBetween(xx - 5, yy, xx - 8, yy - 15).lineBetween(xx, yy + 1, xx + 1, yy - 21).lineBetween(xx + 5, yy, xx + 9, yy - 13);
         g.fillStyle(0xc2c4a3, .86).fillEllipse(xx + 12, yy + 3, 9, 4).fillStyle(0x8b9c7e, .6).fillEllipse(xx + 14, yy + 4, 8, 3);
       }
-      const pier = gardenPropsNow().find(r => r.id === 'pier');
-      if (pier) {
-        const x = pier.x * W.cellW, y = W.sky + pier.y * W.cellH, w = pier.w * W.cellW, h = (pier.h + gardenPierMore()) * W.cellH, pg = scene.add.graphics();
-        pierBoards._inner.add(pg); terrainObjects.push(pg); pierBoards.nativeBounds = { x: x - 5, y, width: w + 18, height: h + 13 };
-        pg.fillStyle(0x315d54, .22).fillRoundedRect(x + 9, y + 11, w + 1, h, 5).fillStyle(0x796c51).fillRoundedRect(x - 4, y, w + 8, h, 4);
-        for (let yy = y + 3; yy < y + h - 3; yy += 14) { pg.fillStyle(Math.floor(yy / 14) % 3 ? 0xb19a71 : 0xbda77c).fillRect(x + 1, yy, w - 2, 12.5); pg.lineStyle(.8, 0xe6d5a8, .42).lineBetween(x + 7, yy + 2, x + w - 7, yy + 2); pg.fillStyle(0x68694e, .55).fillCircle(x + 7, yy + 8, .8).fillCircle(x + w - 7, yy + 8, .8); }
-        for (const xx of [x - 1, x + w + 1]) pg.fillStyle(0x716c50).fillRoundedRect(xx - 3, y + 4, 6, 16, 2).fillStyle(0xd0bd8c).fillEllipse(xx, y + 4, 7, 4);
+      for (const pier of decks) {
+        const x = pier.x * W.cellW, y = W.sky + pier.y * W.cellH, w = pier.w * W.cellW, h = pier.h * W.cellH;
+        const node = element(scene, 'g', { class: 'gd-pier-deck', 'data-pier': pier.id }), pg = scene.add.graphics();
+        const b = pier.side === 'south' ? { x: x - 6, y: y - 1, width: w + 17, height: h + 13 } : { x: x - 1, y: y - 5, width: w + 5, height: h + 9 };
+        node.nativeBounds = b; pierBoards.appendChild(node); node._inner.add(pg);
+        pierDeckRecords.set(pier.id, { node, bounds: b });
+        // The parent union is diagnostic only; caches and culling use each deck.
+        const old = pierBoards.nativeBounds;
+        pierBoards.nativeBounds = old ? { x: Math.min(old.x, b.x), y: Math.min(old.y, b.y), width: Math.max(old.x + old.width, b.x + b.width) - Math.min(old.x, b.x), height: Math.max(old.y + old.height, b.y + b.height) - Math.min(old.y, b.y) } : b;
+        if (pier.side === 'south') {
+          pg.fillStyle(0x315d54, .22).fillRoundedRect(x + 9, y + 11, w + 1, h, 5).fillStyle(0x796c51).fillRoundedRect(x - 4, y, w + 8, h, 4);
+          for (let yy = y + 3; yy < y + h - 3; yy += 14) { pg.fillStyle(Math.floor(yy / 14) % 3 ? 0xb19a71 : 0xbda77c).fillRect(x + 1, yy, w - 2, 12.5); pg.lineStyle(.8, 0xe6d5a8, .42).lineBetween(x + 7, yy + 2, x + w - 7, yy + 2); pg.fillStyle(0x68694e, .55).fillCircle(x + 7, yy + 8, .8).fillCircle(x + w - 7, yy + 8, .8); }
+          for (const xx of [x - 1, x + w + 1]) pg.fillStyle(0x716c50).fillRoundedRect(xx - 3, y + 4, 6, 16, 2).fillStyle(0xd0bd8c).fillEllipse(xx, y + 4, 7, 4);
+        } else {
+          // Side decks use transverse timber and two quiet entrance posts.
+          pg.fillStyle(0x315d54, .22).fillRoundedRect(x + 3, y + 3, w, h, 3).fillStyle(0x796c51).fillRoundedRect(x, y, w, h, 3);
+          for (let xx = x + 3; xx < x + w - 3; xx += 14) { const bw = Math.min(12.5, x + w - 3 - xx); pg.fillStyle(Math.floor(xx / 14) % 3 ? 0xb19a71 : 0xbda77c).fillRect(xx, y + 1, bw, h - 2); pg.lineStyle(.8, 0xe6d5a8, .42).lineBetween(xx + 2, y + 7, xx + 2, y + h - 7); pg.fillStyle(0x68694e, .55).fillCircle(xx + bw / 2, y + 7, .8).fillCircle(xx + bw / 2, y + h - 7, .8); }
+          const entrance = pier.side === 'west' ? x + w - 6 : x + 6;
+          for (const yy of [y + 6, y + h - 6]) pg.fillStyle(0x716c50).fillRoundedRect(entrance - 3, yy - 8, 6, 11, 2).fillStyle(0xd0bd8c).fillEllipse(entrance, yy - 8, 7, 4);
+        }
       }
       const entry = island && GardenIslandLayout.data.anchors.start;
       const cx = (entry ? entry.x : 22.5) * W.cellW, cy = W.sky + (entry ? entry.y : 20.5) * W.cellH;
@@ -596,7 +616,8 @@ window.GardenNativeWorld = (function () {
         gateRows.push({ id: gate.id, zone: gate.n, x, y, dx: gate.dx, dy: gate.dy, width: W.cellW, height: gate.h * W.cellH, open: (sc.areas || []).includes(zone.id), points, bounds: terrainBox(points), root: null });
       }
       // Land prices stay in deliberate ground inspection and the land office.
-      cacheQueue.delete(terrain); cacheQueue.set(pierBoards, { staticOnly: false, tileSize: 512 });
+      cacheQueue.delete(terrain);
+      for (const record of pierDeckRecords.values()) cacheQueue.set(record.node, { staticOnly: false, tileSize: 512 });
     }
     function gateCrossingFoot(gate) {
       if (!gate || typeof gardenIslandActive !== 'function' || !gardenIslandActive()) return null;
@@ -736,7 +757,8 @@ window.GardenNativeWorld = (function () {
       const m = next || gardenHere(), designRev = typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0;
       const lake = typeof gardenLakeGeometry === 'function' ? gardenLakeGeometry(m) : null;
       const surfaceKey = (typeof _GD_ICE === 'undefined' ? 0 : _GD_ICE.size) + ':' + (typeof _GD_WALK_EXTRA === 'undefined' ? 0 : _GD_WALK_EXTRA.size);
-      const key = (m.visit ? m.visit.key : _gd.memoKey || _gd.rev) + '|' + designRev + '|' + m.tod + '|' + m.season + '|' + surfaceKey + '|' + (lake && lake.revision || 0);
+      const decks = gardenPierDecks(m.works || [], m), deckKey = decks.map(p => [p.id, p.x, p.y, p.w, p.h].join(',')).join(';');
+      const key = (m.visit ? m.visit.key : _gd.memoKey || _gd.rev) + '|' + designRev + '|' + m.tod + '|' + m.season + '|' + surfaceKey + '|' + (lake && lake.revision || 0) + '|' + deckKey;
       if (model === m && modelKey === key) return;
       model = m; modelKey = key;
       const sc = gardenSceneFromModel(m), opts = { uid: 'gnative', size: 'l', crop: 'world', interactive: true, still: false, native: true, readOnly: !!m.visit, friend: m.visit && m.visit.drawFriend };
@@ -744,8 +766,8 @@ window.GardenNativeWorld = (function () {
       // Precipitation changes the live atmosphere. Actual ice and shoreline
       // geometry already participate through the surface and lake revisions.
       const cultivated = typeof gardenIslandActive === 'function' && gardenIslandActive() ? cultivatedSections(m) : null;
-      const tk = [sc.season, sc.tod, m.level.level, (sc.areas || []).join(','), designRev, surfaceKey, lake && lake.revision, cultivated && [...cultivated].sort().join(',')].join('|');
-      if (terrainKey !== tk) { terrainKey = tk; drawTerrain(m, sc, lake, cultivated); }
+      const tk = [sc.season, sc.tod, m.level.level, (sc.areas || []).join(','), designRev, surfaceKey, lake && lake.revision, cultivated && [...cultivated].sort().join(','), deckKey].join('|');
+      if (terrainKey !== tk) { terrainKey = tk; drawTerrain(m, sc, lake, cultivated, decks); }
       shorelineRevision = lake && lake.revision || 0;
       const keep = new Set(), modelPlants = new Map(m.plants.map(p => [p.uid, p])), modelDecor = new Map(m.decor.map(p => [p.uid, p]));
       const add = (id, html, metadata, depth, parent) => { if (!html) return; keep.add(id); return nodeDrawing(id, html, metadata, depth, parent); };
@@ -1044,9 +1066,16 @@ window.GardenNativeWorld = (function () {
         chunk.seen = visible;
       }
       for (const item of terrainLabels) item.node.target.setVisible(inCamera(item.bounds, 64, view));
-      const pierVisible = !!pierBoards.nativeBounds && inCamera(pierBoards.nativeBounds, 64, view), pierWasVisible = pierBoards.target.visible;
-      pierBoards.target.setVisible(pierVisible);
-      if (pierVisible && !pierBoards._cacheRecipe && !pierWasVisible) cacheQueue.set(pierBoards, { staticOnly: false, tileSize: 512 });
+      let pierVisible = false;
+      for (const record of pierDeckRecords.values()) {
+        const visible = inCamera(record.bounds, 64, view), wasVisible = record.node.target.visible;
+        if (wasVisible !== visible) record.node.target.setVisible(visible);
+        if (visible) {
+          pierVisible = true;
+          if (!record.node._cacheRecipe && !wasVisible) cacheQueue.set(record.node, { staticOnly: false, tileSize: 512 });
+        }
+      }
+      if (pierBoards.target.visible !== pierVisible) pierBoards.target.setVisible(pierVisible);
       for (const record of drawings.values()) {
         if (record.editorLifted) { drawingMainExclusion(record, false, mainExclusionCameraId); record.root.setVisible(true); continue; }
         const knownBounds = drawingBoundsKnown(record.bounds), visible = !knownBounds || inCamera(record.bounds, 96, view);
@@ -1257,7 +1286,7 @@ window.GardenNativeWorld = (function () {
       return { ready: terrainReady === terrainChunks.size && !pendingVisible && !pendingPlayerPoses, terrainReady, terrainTotal: terrainChunks.size, pendingVisible, pendingPlayerPoses };
     }
     function resize(w, h) { size = { w: Math.max(1, w), h: Math.max(1, h) }; _gw.size = { ...size }; _gw.sizeOk = true; _gw.cam.init = false; updateCamera(.016, true); }
-    function destroy() { if (dead) return; dead = true; designPreview(null); restoreCanopyAlpha(); for (const row of drawings.values()) row.handle.destroy(); for (const row of dynamic.values()) row.handle.destroy(); for (const record of specialMainActors.values()) drawingMainExclusion(record, false); specialMainActors.clear(); drawings.clear(); dynamic.clear(); needRings.clear(); cacheQueue.clear(); terrainBaseQueue.clear(); terrainChunks.clear(); rootNode.remove(); }
+    function destroy() { if (dead) return; dead = true; designPreview(null); restoreCanopyAlpha(); for (const row of drawings.values()) row.handle.destroy(); for (const row of dynamic.values()) row.handle.destroy(); for (const record of specialMainActors.values()) drawingMainExclusion(record, false); specialMainActors.clear(); drawings.clear(); dynamic.clear(); needRings.clear(); clearPierDecks(); cacheQueue.clear(); terrainBaseQueue.clear(); terrainChunks.clear(); rootNode.remove(); }
     function effectBounds(node, localBounds, worldMatrix) {
       const bounds = localBounds || node.getBBox(), matrix = worldMatrix || node.target.getWorldTransformMatrix();
       const ma = matrix.a, mb = matrix.b, mc = matrix.c, md = matrix.d, tx = matrix.tx == null ? matrix.e || 0 : matrix.tx, ty = matrix.ty == null ? matrix.f || 0 : matrix.ty;

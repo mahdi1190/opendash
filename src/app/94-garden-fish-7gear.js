@@ -57,6 +57,10 @@ function _gplSlung(gear, pose) {
 function gardenWorkArt(id, sc) {
   const night = !!sc && (sc.tod === 'night' || sc.tod === 'dusk');
   switch (id) {
+    case 'pier-west': case 'pier-west-2': case 'pier-east': case 'pier-east-2': {
+      const longer = id.endsWith('-2'), w = longer ? 44 : 30, x = -w / 2;
+      return '<path d="M' + x + ' -12h' + w + 'v8h-' + w + 'z" fill="#8a6238"/><path d="M' + x + ' -28h' + w + 'v16h-' + w + 'z" fill="#c49a64" stroke="#6e4c2a" stroke-width="1"/><path d="M' + x + ' -23h' + w + 'M' + x + ' -18h' + w + '" stroke="#8a6238" stroke-width="1"/><path d="M' + (x + 3) + ' -12V0M' + (-x - 3) + ' -12V0" stroke="#6e4c2a" stroke-width="3"/>';
+    }
     case 'pier-2': return '<path d="M-2 0V-16h4V0z" fill="#6e4c2a"/><ellipse cx="0" cy="-16" rx="4.4" ry="1.8" fill="#8a6238"/><path d="M-4.5 -10q4.5 3 9 0" fill="none" stroke="#e8dcb0" stroke-width="1.2"/>';
     case 'pier-3': return '<path d="M-1 0V-44h2V0z" fill="#6e4c2a"/><path d="M1 -44L19 -38L1 -32z" fill="#d8452a" stroke="#8a2a1a" stroke-width="0.6"/><path d="M1 -40L10 -38L1 -36z" fill="#fbf5e6"/>';
     case 'fish-feeder': return '<ellipse cx="0" cy="1" rx="14" ry="4" fill="#ffffff" fill-opacity="0.2"/><path d="M-1.6 1V-20h3.2V1z" fill="#6e4c2a"/><path d="M-9 -32V-23Q0 -19 9 -23V-32z" fill="#8a9298" stroke="#59636a" stroke-width="0.9"/><ellipse cx="0" cy="-32" rx="9" ry="3.4" fill="#b8c0c6" stroke="#59636a" stroke-width="0.9"/><path d="M-9 -27Q0 -23 9 -27" fill="none" stroke="#d8452a" stroke-width="1.6"/><circle cx="-7" cy="-3" r="1" fill="#e8c88a"/><circle cx="5" cy="-1" r="1" fill="#e8c88a"/><circle cx="9" cy="-5" r="0.9" fill="#e8c88a"/>';

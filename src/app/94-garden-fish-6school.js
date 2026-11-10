@@ -94,19 +94,23 @@ function _gfsArt(def, cm, v) {
   if (gardenFishFin(def)) { const h = Math.max(9, L * 0.2), w = h * 0.8; s2 += `<path d="M${n(-w * 0.6)} ${n(-ry * 0.4)}Q${n(-w * 0.1)} ${n(-ry * 0.4 - h)} ${n(w * 0.75)} ${n(-ry * 0.4 - h)}Q${n(w * 0.25)} ${n(-ry * 0.4 - h * 0.45)} ${n(w * 0.6)} ${n(-ry * 0.4)}Z" fill="${glow ? '#f4f8ff' : '#27455c'}" fill-opacity="0.92" stroke="#eaf4fa" stroke-opacity="0.5" stroke-width="0.8"/><path d="M${n(-w * 1.1)} ${n(-ry * 0.2)}h${n(w * 2.2)}" stroke="#ffffff" stroke-opacity="0.45" stroke-width="1" stroke-linecap="round"/>`; }
   return W ? W.under + s2 + W.over : s2;
 }
+function _gfsPierClip(svg, anchor) {
+  const W = GARDEN_WORLD, decks = gardenPierDecks(), key = decks.map(p => [p.id, p.x, p.y, p.w, p.h].join(',')).join(';');
+  let cp = svg.querySelector('#gd-school-clip'); if (cp && cp._gdPierKey === key) return;
+  if (!cp) { cp = _gwEl('clipPath', { id: 'gd-school-clip' }); cp.appendChild(_gwEl('path', { 'clip-rule': 'evenodd' })); anchor.parentNode.insertBefore(cp, anchor); }
+  let d = `M-200 -200H${W.cols * W.cellW + 200}V${W.sky + W.rows * W.cellH + 200}H-200Z`;
+  for (const p of decks) { const x0 = p.x * W.cellW - 3, x1 = (p.x + p.w) * W.cellW + 3, y0 = W.sky + p.y * W.cellH, y1 = W.sky + (p.y + p.h) * W.cellH + 5; d += `M${x0} ${y0}H${x1}V${y1}H${x0}Z`; }
+  cp.firstChild.setAttribute('d', d); cp._gdPierKey = key;
+}
 function _gfsLayer() {
-  if (_gfs.layer && _gfs.layer.isConnected && _gw.svg && _gfs.layer.ownerSVGElement === _gw.svg) return _gfs.layer;
   if (!_gw.svg) return null;
-  const objs = _gw.svg.querySelector('.gd-objects'); if (!objs || !objs.parentNode) return null;
   const native = window.GardenNative && GardenNative.active();
+  if (_gfs.layer && _gfs.layer.isConnected && _gfs.layer.ownerSVGElement === _gw.svg) { if (!native) _gfsPierClip(_gw.svg, _gfs.layer); return _gfs.layer; }
+  const objs = _gw.svg.querySelector('.gd-objects'); if (!objs || !objs.parentNode) return null;
   const g = _gwEl('g', Object.assign({ class: 'gd-school', 'pointer-events': 'none', 'aria-hidden': 'true' }, native ? {} : { 'clip-path': 'url(#gd-school-clip)' }));
   if (native && g.target) g.target.setDepth(-9300);
-  // the pier is drawn with the ground, so a fish is cut away where the planks are: it swims under them
-  if (!native && !_gw.svg.querySelector('#gd-school-clip')) {
-    const W = GARDEN_WORLD, p = GARDEN_PROPS.find(q => q.id === 'pier'), x0 = p.x * W.cellW - 3, x1 = (p.x + p.w) * W.cellW + 3, y0 = W.sky + p.y * W.cellH, y1 = W.sky + (p.y + p.h + gardenPierMore()) * W.cellH + 5;
-    const cp = _gwEl('clipPath', { id: 'gd-school-clip' }), path = _gwEl('path', { 'clip-rule': 'evenodd', d: `M-200 -200H${W.cols * W.cellW + 200}V${W.sky + W.rows * W.cellH + 200}H-200ZM${x0} ${y0}H${x1}V${y1}H${x0}Z` });
-    cp.appendChild(path); objs.parentNode.insertBefore(cp, objs);
-  }
+  // The same displayed decks cut fish shadows; the sea remains continuous.
+  if (!native) _gfsPierClip(_gw.svg, objs);
   objs.parentNode.insertBefore(g, objs);
   if (native && GardenNative.world()) GardenNative.world().depthChanged();
   _gfs.layer = g;
@@ -340,18 +344,37 @@ function _gfsRehome(f, band) {
 }
 function _gfsBands(m) {
   // only the lake that is open: past the line of floats nothing swims (the zones, 94-garden-lands-0table.js)
-  const to = gardenLakeOpenTo() - 0.4, out = GF_SCHOOL.bands.map((b, i) => Object.assign({ key: 'b' + i }, b, { y1: Math.min(b.y1, to) })).filter(b => b.y1 > b.y0);
+  // Built compatible side decks use the authored continuous ocean's X domain.
+  // Keep the existing three depth rows, keys, stocks, odds and timers.
+  const sideDeck = gardenPierDecks(m.works || [], m).some(p => p.side === 'west' || p.side === 'east');
+  const ocean = sideDeck ? gardenIslandOceanGeometry().bounds : null;
+  const to = gardenLakeOpenTo() - 0.4, out = GF_SCHOOL.bands.map((b, i) => Object.assign({ key: 'b' + i }, b, { x0: ocean ? ocean.x : b.x0, x1: ocean ? ocean.x + ocean.width : b.x1, y1: Math.min(b.y1, to) })).filter(b => b.y1 > b.y0);
   for (const a of GARDEN_AREAS) if (a.water && !a.fishing && m.areas.includes(a.id)) { const w = a.water; out.push({ key: 'a' + a.id, zone: 'pond', x0: w.x + 0.4, x1: w.x + w.w - 0.4, y0: w.y + 0.3, y1: w.y + w.h - 0.3, n: GF_SCHOOL.pond }); }
   out.push(...gardenRoomBands());   // a room's water, while somebody is in the room
   out.push(...gardenRegionBands(m.areas));   // the regions' waters, once they are open (94-garden-regions-0table.js)
   return out;
 }
-/** Somewhere in this water, clear of the pier. Near the pier a fish keeps to its own side, so it never swims under the planks in plain sight. */
+/** Keep destinations and proposed swim segments outside displayed deck margins. */
+function _gfsPierBlocks(decks, x, y, near) {
+  for (const p of decks) {
+    const x0 = p.x - .5, x1 = p.x + p.w + .5, y0 = p.y - .4, y1 = p.y + p.h + .4;
+    if (x > x0 && x < x1 && y > y0 && y < y1) return true;
+    if (!near || near.x > x0 && near.x < x1 && near.y > y0 && near.y < y1) continue; // an old margin position may leave it
+    let lo = 0, hi = 1, clear = false;
+    for (const [from, delta, min, max] of [[near.x, x - near.x, x0, x1], [near.y, y - near.y, y0, y1]]) {
+      if (delta === 0) { if (from <= min || from >= max) { clear = true; break; } }
+      else { const a = (min - from) / delta, b = (max - from) / delta; lo = Math.max(lo, Math.min(a, b)); hi = Math.min(hi, Math.max(a, b)); if (lo >= hi) { clear = true; break; } }
+    }
+    if (!clear && lo < hi && hi > 0 && lo < 1) return true;
+  }
+  return false;
+}
+/** Somewhere in the existing water/depth band, clear of every built deck. */
 function _gfsSpot(b0, near0) {
   if (b0 && b0.room) return gardenRoomSpot(b0, near0);
   if (b0 && b0.zone !== 'pond' && typeof gardenIceSpot === 'function') { const q = gardenIceSpot(b0, near0); if (q) return q; }   // a frozen lake: fish keep to the holes (94-garden-zz-2season.js)
   const b = b0 || GF_SCHOOL.bands[0], inX = (v) => Math.max(b.x0, Math.min(b.x1, v)), inY = (v) => Math.max(b.y0, Math.min(b.y1, v));
-  const near = near0 ? { x: inX(near0.x), y: inY(near0.y) } : null, lake = b.zone !== 'pond';   // (wherever it was asked to go, it stays in this water: a bolting fish once ran out over the farmland)
+  const near = near0 ? { x: inX(near0.x), y: inY(near0.y) } : null, lake = b.zone !== 'pond', decks = lake ? gardenPierDecks() : [];   // (wherever it was asked to go, it stays in this water: a bolting fish once ran out over the farmland)
   for (let i = 0; i < 12; i++) {
     const forward = near && near0.st === GF_ST.swim && near0.swimDX != null && i < 6, angle = forward ? Math.atan2(near0.swimDY / .45, near0.swimDX) + (Math.random() - .5) * 2.1 : 0, reach = forward ? 1.1 + Math.random() * 3 : 0;
     const x = near ? inX(near.x + (forward ? Math.cos(angle) * reach : (Math.random() - 0.5) * 8)) : b.x0 + Math.random() * (b.x1 - b.x0);
@@ -360,9 +383,7 @@ function _gfsSpot(b0, near0) {
     if (near && Math.hypot(x - near.x, (y - near.y) * .625) < .55) continue;
     if (i < 8 && !_gfsSpaced(b, x, y, near0)) continue;
     if (near && _gfsWaterAt(near.x, near.y) && !_gfsWaterSegment(near, { x, y }, _gfsWaterClear(near0, near.x, near.y) ? near0 : null)) continue;
-    const end = 25.4 + gardenPierMore();
-    if (lake && y < end && x > 23.5 && x < 26.5) continue;
-    if (lake && near && y < end && (x < 25) !== (near.x < 25)) continue;
+    if (lake && _gfsPierBlocks(decks, x, y, near)) continue;
     return { x, y };
   }
   return near && _gfsWaterClear(near0, near.x, near.y) ? near : null;

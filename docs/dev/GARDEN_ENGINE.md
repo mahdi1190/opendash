@@ -53,8 +53,8 @@ transitions recreate the relevant pools. These paths preserve weather, motion,
 pause, geometry, culling and update cadence.
 
 The canonical minimap follows the actual coast and inward beach, routes, inland
-water, locked-land shading and a few service markers. It shows the built pier's
-current upgraded length and uses the same cultivated-section footprints as
+water, locked-land shading and a few service markers. It shows only built piers
+at their current upgraded lengths and uses the same cultivated-section footprints as
 native terrain: plants and ground decor reveal soil; owned empty soil remains
 lawn. Ownership, planting rules, overlays and map/camera cell coordinates are
 unchanged.
@@ -209,12 +209,19 @@ after the opening. Wrapped cinematic captions have explicit line spacing.
 ## Canonical island and saved-world ownership (v3)
 
 The current island is authored once in `assets/garden/island-v3.json`.
-Its full SHA256 is `94f5b2dbe4dce765cafb2b404cfbf0db1c7c4b321f4d28bbf173df23fcc64eea`; the shared layout fingerprint is
-`94f5b2dbe4dce765cafb2b40`. `lib/garden-island.mjs` loads and freezes it for Node;
-the build embeds the same frozen data before the app. Node evaluators receive
-bare `GardenIslandLayout`, without a browser `window`. `GARDEN_WORLD` has
-version 3, 52 columns, 56 rows and room sentinel column 53. The main garden
-uses 48-by-30-pixel cells with the existing 150-pixel sky offset.
+Its full SHA256 is `c34545b986e497d5d9df5d51378e945dbbf288fe7dee48dfbb7ef814b566c518`;
+the shared layout fingerprint is `c34545b986e497d5d9df5d51`.
+`lib/garden-island.mjs` loads and freezes it for Node; the build embeds the
+same data. Node evaluators receive bare `GardenIslandLayout`.
+`GARDEN_WORLD` remains version 3, 52 columns, 56 rows and room sentinel column 53,
+with 48-by-30-pixel cells and the existing 150-pixel sky offset.
+
+Mechanics revision 1 adds metadata for optional side-pier walk/cover behavior;
+coast, all 128 section IDs and reserved locations are unchanged. The known
+`94f5b2dbe4dce765cafb2b40` predecessor remains playable on 2.65. Its optional
+**Garden > Menu > Update my garden** entry opens the existing deliberate update
+page. Migration `101-garden-mechanics-side-piers-v1` is `auto:false`; an app
+installation or normal startup does not update the saved Garden.
 
 `94-garden-0island.js` derives coast, reserved approaches, routes, section
 cells and water classification from that provider. The mainland contour is the
@@ -233,6 +240,44 @@ repeated zone crossings; see [the map contract](GARDEN_PLAN.md#the-map).
 Fishing depth/access progression remains authoritative even where the sea is
 visually continuous. Locked ocean cells do not become rectangular land-mist
 regions. Optional workshops and structures are not scattered across the coast.
+
+### Optional side piers (2.65.0)
+
+The existing lake works offer these deliberate purchases. Each extension needs
+its base pier. Purchases use normal work/Undo rules; host snapshots carry owned
+works.
+
+| Work | Garden level | Coins |
+| --- | ---: | ---: |
+| West pier | 7 | 650 |
+| Longer west pier | 10 | 900 |
+| East pier | 12 | 900 |
+| Longer east pier | 15 | 1200 |
+
+`gardenPierDecks(works, source)` derives the main deck plus owned optional decks
+from the displayed Garden's actual mechanics tag. Walking, water/fishing
+exclusions, minimap, Classic boards and native boards use those same rectangles.
+Unbuilt reservations add no boards or walking floor. No stalls, lamps or other
+default clutter accompany the works.
+
+NativeWorld gives each deck its own retained child, tight bounds, adaptive
+cache and camera culling record (at most three). The parent layer's union is
+diagnostic only and is never cached as one wide transparent strip. Rebuild and
+teardown remove each child's queue/cache/Graphics ownership together. Existing
+main-pier artwork, cache scheduling and vector sharpness fallback remain.
+
+Ordinary private two-player play on 2.65.0 bought all four works through
+Tackle, walked both players to each stage's tip and cast from all four stages.
+Host and visitor deck tuples agreed. Undo preserved the occupied extension,
+its transaction and coins; after the visitor stepped ashore, it removed that
+extension and refunded 1,200 coins. Both normal Leaves completed with no
+captured errors. This was an interaction observation, not an FPS measurement.
+
+A separate ordinary standalone update kept all five complete saved placement
+records, including two already stored in the Bag. The exact pre-update backup
+and resulting Garden agreed on every field outside the identity/transition
+markers, and the unrelated task stayed unchanged. No side pier was built by
+the update. Its earlier 94f Garden was playable before choosing the update.
 
 ### Native island finishing and route work
 
@@ -320,7 +365,8 @@ edge straddle/intersection arithmetic and region/hole rules, considering only
 edges that can cross the queried height. This removes repeated full mainland
 loop scans without approximating the water boundary or changing effect timing.
 
-An ordinary two-player island visit with these changes reached both piers,
+Before the optional side-pier works, an ordinary two-player island visit with
+the native finishing changes reached both piers,
 accepted visitor watering and showed a cast through natural waiting, nibbling
 and a bite. The rod, line and float were visible; actor, pet and fishing-rig
 reflection diagnostics were active. Both players left normally with no captured
@@ -353,9 +399,10 @@ Outdoor feet are stored under a version-and-fingerprint position key. A legacy
 point is accepted or relocated through the current coast, solid and access
 rules before it becomes a v3 position; the exact legacy key stays intact.
 Room-sentinel coordinates and visiting positions are not saved as home feet.
-Saved and live visits require the same world version and layout fingerprint;
-the live protocol is now `GL_V=4`. Incompatible coordinates are rejected rather
-than interpreted on another map. See [shared-world agreement](GARDEN_TOGETHER.md#canonical-island-agreement-v3).
+Saved and live visits require the same actual world version and layout tag.
+The app advertises `GL_V=5`; c345 sessions use protocol 5 and known 94f sessions
+use 4. Exact tag equality still gates entry, snapshots and spatial actions.
+See [shared-world agreement](GARDEN_TOGETHER.md#canonical-island-agreement-v3).
 
 Earlier Designer layouts remain complete atomic archives. **Designer → Layouts
 → Earlier layouts → Adapt to this island** opens a working copy: safe paths and
@@ -368,12 +415,10 @@ Same-user synchronization uses strict world provenance and an internal atomic
 `@xy` move register while retaining ordinary x/y and independent care fields in
 saved rows. Local Update, legacy-write preservation and the recovery boundaries
 are mapped in [MODULES](../../MODULES.md#garden-island-and-recovery-world-v3).
-The nonautomatic migration shares its planner with the deliberate
-**Update my garden** action. After technical acceptance of ordinary nursery,
-structure, Designer and encrypted-sync play, the adapter's `contractReady` gate
-is enabled; migration 100 remains `auto:false`. Multi-device histories use the
-explicit creator-selected handover below; unverified or incomplete histories
-cannot be independently restamped. Incompatible
+The current manual 101 migration reuses migration 100's planner/commit and the
+deliberate **Update my garden** action; migration 100 also remains nonautomatic.
+Multi-device histories use the explicit creator-selected handover below;
+unverified or incomplete histories cannot be independently restamped. Incompatible
 full Garden saves are archived before acknowledgement; their download is not
 an automatic import or whole-state restore.
 
@@ -430,18 +475,21 @@ earlier server cannot safely ingest the new world marker, so it must be updated
 before that first commit. Unknown origin, unreadable history, incomplete changes
 or another layout keep the original Gardens unchanged.
 
-The creator retains an exact immutable first snapshot and retry record. One
-encrypted shared file, `garden/island-handover.json`, carries bounded
-16,384-character parts plus metadata naming the group, creator, world/layout, snapshot ID,
-part count, exact text length and SHA-256. Only the creator publishes it; other
-members mirror it. Admission checks the actual creator-written root, metadata,
-parts container and every part register, the register reconstruction against
-the local file, all original canonical baseline paths, and the Node SHA/content
-check. A partial file never becomes a usable island.
+The creator retains an exact immutable first snapshot and retry record for
+each generation. Generation 2 uses encrypted
+`garden/island-handover-mechanics1.json`, with previous Garden identity/hash;
+the generation 1 `garden/island-handover.json` remains unchanged. Bounded parts,
+authenticated creator-written registers, complete baseline and Node SHA/content
+checks still precede admission. A partial file is not a usable island.
 
 Another computer explicitly chooses **Use updated island**. Full-folder and
 exact state/Garden backups and an immutable earlier-Garden component precede
-the Garden-only commit; unrelated app state stays intact. The engine projects
+the Garden-only commit; unrelated app state stays intact. If this predecessor
+has changes outside the shared Garden, **Review shared Garden** offers
+**Use shared Garden and keep earlier copy** or **Keep earlier Garden**. The
+choice pins the reviewed earlier/shared/handover hashes and is rechecked during
+commit. A complete earlier copy goes to **Settings > Data > Preserved Garden
+copies** before replacement; the two Gardens are not merged. The engine projects
 currently held matching canonical registers onto the complete first snapshot,
 retaining their original HLCs and ordinary care/deletion/coordinate rules.
 It does not publish the older snapshot as a new full local edit, which would
@@ -451,10 +499,12 @@ otherwise overwrite changes made later on the original computer.
 `finishImport` adopts that original-register baseline and atomically saves an
 applied ticket in sync metadata. If interrupted after state commit, the next
 ordinary sync mutation matches the journal to the committed world and
-`seen['world3.handoverId']` before any capture. An uncommitted legacy intent
+`seen['world3.mechanics1.handoverId']` for generation 2 before capture (generation 1
+retains `world3.handoverId`). An uncommitted legacy intent
 is discarded, and an already applied ticket never reapplies an older baseline.
 The first snapshot and pending publication retry never recapture a later
-Garden, and an already canonical computer never imports it again.
+Garden, and a computer already current for that generation does not import it
+again.
 
 Before migration, real world2 local changes continue through their ordinary
 untagged split-axis format instead of being dropped by the new server. After
@@ -463,7 +513,8 @@ incompatible registers remain preserved and keep a qualified attention state:
 matching island changes and other dashboard changes can still sync. No history
 is discarded merely to display Up to date.
 
-An ordinary paired two-device flow completed creator Update, encrypted transfer
+An earlier paired two-device flow for the initial v3 handover completed creator
+Update, encrypted transfer
 and deliberate import with the exact earlier Garden archived. Watering performed
 after publication but before import survived; subsequent movement and watering
 converged, retained original age/variant, and survived reload/Leave with no app
