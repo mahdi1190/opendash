@@ -91,12 +91,22 @@ capture; existing ancestor caches retain ownership. Ineligible optional leaves
 do not count as pending readiness work. The `radialLeaves` snapshot counts
 tracked leaves, caches and vector fallback presentation, not frame rate.
 
-Ordinary play with leaf caching covered fresh opening/loading resize, walking
-and zoom, paired shore and room fishing, rainy puddle contact and public pet
-selection during an encrypted visit without captured app errors. The current
-Cat reached both peers while native sessions continued. Room reels and captions
-remained exposed at 1280 and 1024 widths. These observations cover the recorded
-routes; cache activity and CPU samples do not establish a frame-rate gain.
+Animation compilation prepares ordered nonempty track descriptors, the existing
+fill predicates and paint-track presence. Frame sampling retains property and
+easing order, arithmetic, animation precedence and origin/box merging while
+avoiding temporary sampling closures and empty-track calls. Recompilation
+rebuilds those descriptors through the existing style key. Clocks, pause,
+motion guards and paint application retain their behavior. Cache visibility
+rejects hidden native ancestry before its pure scene-connection walk.
+
+Ordinary observations of leaf caching and sampling cover fresh opening/loading
+resize, walking and zoom, paired shore and room fishing, rain and public pet
+selection during an encrypted visit without captured app errors. Cat selection
+reached both peers while native sessions continued. Both room reel sizes were
+played; an earlier observation included captions at both widths. The subsequent
+1024 caption was fading, leaving that comparison unplayed, and its rainy walk
+did not establish puddle contact. These observations cover recorded routes;
+cache activity and CPU samples do not establish a frame-rate gain.
 
 Water retains source-art reflections rather than taking scene screenshots.
 Captures request Phaser's final even dimensions and can reuse one unexposed

@@ -770,8 +770,24 @@ window.GardenNativeArt = (function () {
     _compileAnimations() {
       const style = this._styles, key = Object.keys(style).filter(name => name.startsWith('animation') && name !== 'animation-play-state' || name.startsWith('--') || ['transform', 'transform-origin', 'transform-box', 'opacity', 'fill-opacity'].includes(name)).sort().map(name => name + ':' + style[name]).join(';');
       clockPause(this, 4, style['animation-play-state'] === 'paused', performance.now());
-      if (key !== this._animationKey) { const hadAnimation = this._animations.length; resetPaintOpacity(this); this._animationKey = key; this._lastNativeTime = NaN; this._inner.setAlpha(1); const state = stateFor(this.scene); state.animations.delete(this); clockPause(this, 2, state.motionOn === false, performance.now()); this._animations = animationsFor(this); if (hadAnimation || this._animations.length) this._uncache(!this._animations.some(animation => animation.tracks.paintOpacity.length), true); if (this._animations.length) state.animations.add(this); else if (hadAnimation && !this._nativeAnimating) { this._applyTransform(); this.target.setAlpha(alpha(style.opacity, style)); this._animatedTransform = this._animatedOpacity = this._animatedPaint = false; } }
-      if (this._animations.some(animation => animation.tracks.paintOpacity.length)) refreshPaintTargets(this);
+      if (key !== this._animationKey) {
+        const hadAnimation = this._animations.length; resetPaintOpacity(this); this._animationKey = key; this._lastNativeTime = NaN; this._inner.setAlpha(1);
+        const state = stateFor(this.scene); state.animations.delete(this); clockPause(this, 2, state.motionOn === false, performance.now()); this._animations = animationsFor(this);
+        // These predicates and nonempty tracks change with the compiled styles.
+        // Keep the sampler's property/easing order and the existing fill regexes.
+        this._animationHasPaintOpacity = false;
+        for (const animation of this._animations) {
+          animation.fillsBefore = /both|backwards/.test(animation.fill); animation.fillsAfter = /both|forwards/.test(animation.fill); animation.sampleTracks = [];
+          for (const property of ['transform', 'opacity', 'paintOpacity', 'translate', 'rotate', 'scale']) {
+            const frames = animation.tracks[property]; if (frames.length) animation.sampleTracks.push({ property, frames, geometric: property !== 'opacity' && property !== 'paintOpacity' });
+          }
+          if (animation.tracks.paintOpacity.length) this._animationHasPaintOpacity = true;
+        }
+        if (hadAnimation || this._animations.length) this._uncache(!this._animationHasPaintOpacity, true);
+        if (this._animations.length) state.animations.add(this);
+        else if (hadAnimation && !this._nativeAnimating) { this._applyTransform(); this.target.setAlpha(alpha(style.opacity, style)); this._animatedTransform = this._animatedOpacity = this._animatedPaint = false; }
+      }
+      if (this._animationHasPaintOpacity) refreshPaintTargets(this);
       if (this.localName === 'circle' || this.localName === 'ellipse') syncRadialLeafCache(this);
     }
     _uncache(skipSelf, remember) { this._bounds = null; const now = remember ? performance.now() : 0; for (let n = skipSelf ? this.parentNode : this; n; n = n.parentNode) { n._bounds = null; const state = stateFor(n.scene), pending = state.recaches.get(n); if (remember && (n._cache || pending)) state.recaches.set(n, { recipe: n._cache ? n._cache.recipe : pending.recipe, due: now + 150 }); releaseCache(n, false); } }
@@ -987,13 +1003,19 @@ window.GardenNativeArt = (function () {
     time = nodeClock(node, time);
     let transform = null, opacity = null, paintOpacity = null, properties = null;
     for (const animation of node._animations) {
-      let local = time - animation.started - animation.delay; if (local < 0 && !/both|backwards/.test(animation.fill)) continue;
-      const ended = local >= animation.duration * animation.iterations; if (ended && !/both|forwards/.test(animation.fill)) continue;
+      let local = time - animation.started - animation.delay; if (local < 0 && !animation.fillsBefore) continue;
+      const ended = local >= animation.duration * animation.iterations; if (ended && !animation.fillsAfter) continue;
       local = Math.max(0, local); const iteration = ended ? Math.max(0, Math.ceil(animation.iterations) - 1) : Math.floor(local / animation.duration); let p = ended ? animation.iterations > 0 ? animation.iterations % 1 || 1 : 0 : local / animation.duration % 1;
       if (animation.direction === 'reverse' || animation.direction === 'alternate' && iteration % 2 || animation.direction === 'alternate-reverse' && !(iteration % 2)) p = 1 - p;
-      const sample = property => { const frames = animation.tracks[property]; if (!frames.length) return null; let index = 0; while (index < frames.length - 2 && p > frames[index + 1].offset) index++; const a = frames[index], b = frames[index + 1] || a, f = timingEase(a.ease, Math.max(0, Math.min(1, (p - a.offset) / Math.max(.00001, b.offset - a.offset)))); return /^(transform|translate|rotate|scale)$/.test(property) ? interpolate(a[property], b[property], f) : a[property] * (1 - f) + b[property] * f; };
-      const nextTransform = sample('transform'), nextOpacity = sample('opacity'), nextPaint = sample('paintOpacity'); if (nextTransform) transform = nextTransform; if (nextOpacity != null) opacity = nextOpacity; if (nextPaint != null) paintOpacity = nextPaint;
-      for (const key of ['translate', 'rotate', 'scale']) { const value = sample(key); if (value) { if (!properties) properties = {}; properties[key] = value; } }
+      for (const track of animation.sampleTracks) {
+        const property = track.property, frames = track.frames; let index = 0; while (index < frames.length - 2 && p > frames[index + 1].offset) index++;
+        const a = frames[index], b = frames[index + 1] || a, f = timingEase(a.ease, Math.max(0, Math.min(1, (p - a.offset) / Math.max(.00001, b.offset - a.offset))));
+        const value = track.geometric ? interpolate(a[property], b[property], f) : a[property] * (1 - f) + b[property] * f;
+        if (property === 'transform') { if (value) transform = value; }
+        else if (property === 'opacity') { if (value != null) opacity = value; }
+        else if (property === 'paintOpacity') { if (value != null) paintOpacity = value; }
+        else if (value) { if (!properties) properties = {}; properties[property] = value; }
+      }
       if (animation.origin || animation.box) { if (!properties) properties = {}; if (animation.origin) properties.origin = animation.origin; if (animation.box) properties.box = animation.box; }
     }
     if (transform && /gda-sway|gart-wind|gart-swing|gart-cloud/.test(node.attrs.class || '')) { const wind = num(environmentState.windX) * .008 + num(environmentState.gust) * .018; if (node.classList.contains('gart-cloud')) transform = { ...transform, e: transform.e + num(environmentState.windX) * .2 }; else transform = mul(transform, { a: Math.cos(wind), b: Math.sin(wind), c: -Math.sin(wind), d: Math.cos(wind), e: 0, f: 0 }); }
@@ -1024,7 +1046,7 @@ window.GardenNativeArt = (function () {
   function intersectBox(a, b) { const x = Math.max(a.x, b.x), y = Math.max(a.y, b.y), right = Math.min(a.x + a.width, b.x + b.width), bottom = Math.min(a.y + a.height, b.y + b.height); return right > x && bottom > y ? { x, y, width: right - x, height: bottom - y } : null; }
   function containsBox(a, b, tolerance) { tolerance = tolerance || 0; return !b || a && b.x >= a.x - tolerance && b.y >= a.y - tolerance && b.x + b.width <= a.x + a.width + tolerance && b.y + b.height <= a.y + a.height + tolerance; }
   function expandedBox(b, x, y) { return { x: b.x - x, y: b.y - y, width: b.width + x * 2, height: b.height + y * 2 }; }
-  function nativeVisible(node) { if (node._dead || !node.target.active || !node.isConnected) return false; for (let n = node; n; n = n.parentNode) if (!n.target.visible) return false; return true; }
+  function nativeVisible(node) { if (node._dead || !node.target.active) return false; for (let n = node; n; n = n.parentNode) if (!n.target.visible) return false; return !!node.isConnected; }
   function localView(node) {
     const camera = node.scene.cameras && node.scene.cameras.main;
     if (!camera || !camera.getWorldPoint || !node._inner.getWorldTransformMatrix) return null;

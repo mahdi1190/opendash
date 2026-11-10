@@ -10,6 +10,13 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.64.20] - 2026-11-10
+
+### Changed
+
+- Garden animations prepare their active tracks when artwork changes, reducing repeated per-frame bookkeeping while preserving their timing and motion.
+- Hidden native artwork skips an unnecessary scene-connection walk during cache visibility checks.
+
 ## [2.64.19] - 2026-11-10
 
 ### Changed
