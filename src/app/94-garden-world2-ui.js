@@ -50,7 +50,16 @@ function gardenGraphicsOpen() {
       if (close) close();
       if (window.GardenNative && GardenNative.active()) GardenNative.destroy();
       if (window.GardenPhaser && typeof GardenPhaser.destroy === 'function') GardenPhaser.destroy();
-      if (typeof _gdpWorldView === 'function' && _gdpWorldView()) { _gdpWorldUnmount(true); renderMain(); }
+      if (typeof _gdpWorldView === 'function' && _gdpWorldView()) {
+        const view = state.view;
+        _gdpWorldUnmount(true); renderMain();
+        const box = _gdp.root && _gdp.root.querySelector('.gd-stagebox');
+        const blocked = [...document.querySelectorAll('[role="dialog"], .modal, .scrim, .gd-guide, .cmdk.is-open, .palette.is-open, #od-splash')]
+          .some(el => el.getClientRects().length && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden');
+        if (state.view === view && _gdpWorldView() && box && box.isConnected
+          && !blocked
+          && !_gdpPopOpen()) box.focus({ preventScroll: true });
+      }
       else setView('garden');
     } }],
   });

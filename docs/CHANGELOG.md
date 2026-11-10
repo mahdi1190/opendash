@@ -10,6 +10,16 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.65.5] - 2026-11-10
+
+### Fixed
+
+- The M Map shortcut works after changing Garden graphics.
+
+### Changed
+
+- Empty owned growing sections stay lawn in Classic and Photo until used by plants or ground decorations, matching native ground paint.
+
 ## [2.65.4] - 2026-11-10
 
 ### Fixed

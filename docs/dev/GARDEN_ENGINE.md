@@ -6,6 +6,10 @@ choice is saved. **Garden > Graphics** preserves an explicit Classic choice;
 saved garden. The native path replaces the earlier hidden-SVG rendering bridge;
 Photo retains its established Classic SVG presentation.
 
+After applying a Graphics change, the current Garden stage regains keyboard
+focus for shortcuts such as **M** for Map. Existing dialog and popover guards
+keep their focus ownership.
+
 Switching graphics rebuilds an unmounted visited world while retaining the
 current friend and live visit. Reuse requires the visitor's current world root
 and entry to match the mounted page.
@@ -328,11 +332,14 @@ and resulting Garden agreed on every field outside the identity/transition
 markers, and the unrelated task stayed unchanged. No side pier was built by
 the update. Its earlier 94f Garden was playable before choosing the update.
 
-### Native island finishing and route work
+### Island finishing and route work
 
-Empty owned soil sections use lawn paint until a plant or ground decoration
-cultivates that section. Plants and ground decor retain the soil underneath;
-hover, land inspection and planting guides keep the original section identity.
+Native, Classic and Photo island views use lawn paint for empty owned soil
+sections until a plant or ground decoration cultivates that section. Plant
+square footprints and ground-decoration footprints mark the same whole-section
+identities in each renderer. Only open or automatically level-open soil sections
+can receive that soil paint. Hover, land inspection, planting rules and the
+original section geometry remain unchanged.
 A sorted set of cultivated section IDs joins the native terrain cache key.
 Moving, planting or removing the last object in a section can repaint terrain;
 care or growth within the same sections keeps its retained terrain caches.

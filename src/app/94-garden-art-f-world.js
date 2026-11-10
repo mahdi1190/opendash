@@ -251,8 +251,12 @@ const _GARTW = (function () {
     for (const loop of loops) s += A.P(sand, path(loop)) + A.P(drySand, path(inset(loop, 10))) + A.P(A.mix(palette.lawn, '#d9c99f', .22), path(inset(loop, geo.beachWidthPx * .86))) + A.P(palette.lawn, path(inset(loop, geo.beachWidthPx)));
     // Floor details stay inside the same coast, rather than painting the old
     // rectangular world and hiding it with a second shoreline picture.
-    let floor = '', soil = ''; const open = new Set(sc.areas || []), soilKinds = new Set(['bed', 'patch', 'veg', 'rich', 'herb', 'berry']);
-    for (const section of GARDEN_LAND_SECTIONS) if (soilKinds.has(section.kind) && (open.has(section.id) || !section.buy && (sc.lv || 1) >= section.lv)) for (const [x, y] of section.cells) soil += `M${x * cw} ${W.sky + y * ch}h${cw}v${ch}h${-cw}Z`;
+    let floor = '', soil = ''; const open = new Set(sc.areas || []), soilKinds = new Set(['bed', 'patch', 'veg', 'rich', 'herb', 'berry']), cultivated = new Set();
+    // Match native terrain and the minimap: only planted or ground-decor footprints reveal soil.
+    const remember = (item, w, h) => { for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) { const row = gardenLandCell(item.x + dx, item.y + dy); if (row) cultivated.add(row.id); } };
+    for (const item of sc.plants || []) { const def = item.def || gardenPlant(item.id); if (def) remember(item, def.fp || 1, def.fp || 1); }
+    for (const item of sc.decor || []) { const def = item.def || gardenDecor(item.id); if (def && def.layer === 'ground') remember(item, def.w || 1, def.h || 1); }
+    for (const section of GARDEN_LAND_SECTIONS) if (soilKinds.has(section.kind) && cultivated.has(section.id) && (open.has(section.id) || !section.buy && (sc.lv || 1) >= section.lv)) for (const [x, y] of section.cells) soil += `M${x * cw} ${W.sky + y * ch}h${cw}v${ch}h${-cw}Z`;
     floor += A.P('#886b53', soil);
     for (const prop of data.static) if (prop.apron) { const p = prop.apron; floor += `<rect x="${p.x * cw}" y="${W.sky + p.y * ch}" width="${p.w * cw}" height="${p.h * ch}" rx="8" fill="#cec4a6"/>`; }
     for (const route of data.routes) if (route.points && route.points.length > 1) {
