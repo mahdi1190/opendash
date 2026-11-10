@@ -289,7 +289,7 @@ window.GardenNativeArt = (function () {
   function queueActorCache(node) {
     for (let root = node; root; root = root.parentNode) if (root.classList.contains('gd-sprite') || root.classList.contains('gd-bug')) { stateFor(node.scene).actorCaches.add(root); return; }
   }
-  function stateFor(scene) { let state = sceneStates.get(scene); if (!state) { const lowMemory = typeof navigator !== 'undefined' && Number(navigator.deviceMemory) > 0 && Number(navigator.deviceMemory) <= 4; state = { animations: new Set(), roots: new Set(), defs: new Map(), cachedNodes: new Set(), cacheTrackedNodes: new Set(), actorCaches: new Set(), recaches: new Map(), labels: new Set(), cacheBytes: 0, cacheBudget: (lowMemory ? 64 : 128) * 1024 * 1024, lowMemory, created: 0, shapes: 0, cachedTiles: 0, unknownImages: 0 }; sceneStates.set(scene, state); liveStates.add(state); if (scene.events && scene.events.once) scene.events.once('shutdown', () => { liveStates.delete(state); for (const node of state.animations) pausedAmbient.delete(node); state.animations.clear(); state.roots.clear(); state.cachedNodes.clear(); state.cacheTrackedNodes.clear(); state.actorCaches.clear(); state.recaches.clear(); state.labels.clear(); state.cacheBytes = 0; state.cachedTiles = 0; }); } return state; }
+  function stateFor(scene) { let state = sceneStates.get(scene); if (!state) { const lowMemory = typeof navigator !== 'undefined' && Number(navigator.deviceMemory) > 0 && Number(navigator.deviceMemory) <= 4; state = { animations: new Set(), roots: new Set(), defs: new Map(), cachedNodes: new Set(), cacheTrackedNodes: new Set(), actorCaches: new Set(), recaches: new Map(), labels: new Set(), cacheBytes: 0, cacheBudget: (lowMemory ? 64 : 128) * 1024 * 1024, lowMemory, created: 0, shapes: 0, cachedTiles: 0, unknownImages: 0 }; sceneStates.set(scene, state); liveStates.add(state); if (scene.events && scene.events.once) scene.events.once('shutdown', () => { liveStates.delete(state); for (const node of state.animations) pausedAmbient.delete(node); state.animations.clear(); state.roots.clear(); state.cachedNodes.clear(); state.cacheTrackedNodes.clear(); state.actorCaches.clear(); state.recaches.clear(); state.labels.clear(); state.cacheBytes = 0; state.cachedTiles = 0; state.triangleSubmitter = null; }); } return state; }
   function styleObject(node) { const values = node._styleValues; return new Proxy(values, { get(target, key) { if (key === 'setProperty') return (name, value) => { target[name] = String(value); node._styleChanged(name); }; if (key === 'removeProperty') return name => { const old = target[name]; delete target[name]; node._styleChanged(name); return old || ''; }; if (key === 'getPropertyValue') return name => target[name] || ''; if (key === 'cssText') return Object.entries(target).map(([k, v]) => k + ':' + v).join(';'); return target[String(key).replace(/[A-Z]/g, c => '-' + c.toLowerCase())] || ''; }, set(target, key, value) { const name = String(key).replace(/[A-Z]/g, c => '-' + c.toLowerCase()); if (name === 'css-text') { for (const k of Object.keys(target)) delete target[k]; Object.assign(target, declarations(value)); node.restyle(true); } else { target[name] = String(value); node._styleChanged(name); } return true; } }); }
   function clearPlayerBodies(owner) {
     const bodies = owner._nativePlayerBodies; if (!bodies) return;
@@ -434,6 +434,73 @@ window.GardenNativeArt = (function () {
     while (bodies.size > 8) { const key = bodies.keys().next().value, expired = bodies.get(key); if (expired === entry) break; bodies.delete(key); destroyPetBody(expired); }
     return true;
   }
+  function prepareNativeTriangleSubmission(graphics) {
+    const steps = graphics._renderSteps;
+    if (steps && steps[0] === renderNativeTriangleSubmission && typeof graphics._nativeTriangleSubmissionRenderer === 'function') steps[0] = graphics._nativeTriangleSubmissionRenderer;
+    graphics._nativeTriangleSubmission = null;
+    const engine = window.Phaser, webgl = engine && engine.Renderer && engine.Renderer.WebGL, nodes = webgl && webgl.RenderNodes;
+    if (!engine || engine.VERSION !== '4.2.1' || !nodes || !nodes.FillTri || !nodes.BatchHandlerTriFlat || !nodes.RenderNode || !Array.isArray(steps) || steps.length !== 1 || steps[0] !== graphics.renderWebGL && steps[0] !== renderNativeTriangleSubmission) return;
+    const buffer = graphics.commandBuffer, checks = []; let painted = false, triangles = 0;
+    for (let at = 0; at < buffer.length;) {
+      const code = buffer[at], size = code === 6 ? 4 : code === 7 ? 3 : code === 21 ? 9 : code === 10 ? 7 : 0;
+      if (!size || at + size > buffer.length || checks.length >= 8192) return;
+      checks.push(at, code);
+      if (code === 7 || code === 21) painted = true;
+      else if (code === 10 && (!painted || ++triangles > 2048)) return;
+      at += size;
+    }
+    if (triangles < 2) return;
+    const fill = nodes.FillTri.prototype, batch = nodes.BatchHandlerTriFlat.prototype, base = nodes.RenderNode.prototype, camera = engine.Cameras.Scene2D.Camera.prototype;
+    const state = stateFor(graphics.scene), counts = state.triangleSubmission || (state.triangleSubmission = { installed: 0, invocations: 0, directGraphics: 0, adapterCalls: 0, directTriangles: 0, genericCalls: 0, fallbacks: 0 });
+    graphics._nativeTriangleSubmission = { buffer, length: buffer.length, checks: new Uint32Array(checks), counts, FillTri: nodes.FillTri, Batch: nodes.BatchHandlerTriFlat, fillRun: fill.run, batchRun: batch.run, batchBatch: batch.batch, batchOptions: batch.updateRenderOptions, batchShader: batch.updateShaderConfig, batchUniforms: batch.setupUniforms, begin: base.onRunBegin, end: base.onRunEnd, cameraAdd: camera.addToRenderList };
+    if (steps[0] !== renderNativeTriangleSubmission) { counts.installed++; graphics._nativeTriangleSubmissionRenderer = steps[0]; steps[0] = renderNativeTriangleSubmission; }
+  }
+  function submitNativeTriangle(context, indices, positions, colors, lighting) {
+    const adapter = this, batch = adapter.target; adapter.calls++;
+    if (indices.length !== 3 || indices[0] !== 0 || indices[1] !== 1 || indices[2] !== 2) { adapter.genericCalls++; return batch.batch(context, indices, positions, colors, lighting); }
+    // Match the pinned handler's entry timing for every original FillTri call,
+    // including a different pending node and changed render-option flushes.
+    if (batch.instanceCount === 0) batch.manager.setCurrentBatchNode(batch, context);
+    batch.updateRenderOptions(lighting, context.alphaStrategy);
+    if (batch._renderOptionsChanged) { batch.run(context); batch.updateShaderConfig(); }
+    const capacity = batch.instancesPerBatch, stride = batch.vertexBufferLayout.layout.stride, perInstance = batch.verticesPerInstance, outputIndices = batch.indexBuffer.viewU16, buffer = batch.vertexBufferLayout.buffer, floats = buffer.viewF32, packed = buffer.viewU32;
+    let index = batch.instanceCount * batch.indicesPerInstance, output = batch.vertexCount * stride / floats.BYTES_PER_ELEMENT, vertex;
+    // Fixed independent indices [0,1,2] always append three vertices. Preserve
+    // each typed write and vertex-count increment, without generic m/y arrays.
+    floats[output++] = positions[0]; floats[output++] = positions[1]; packed[output++] = colors[0];
+    vertex = batch.vertexCount; batch.vertexCount++; outputIndices[index++] = vertex;
+    floats[output++] = positions[2]; floats[output++] = positions[3]; packed[output++] = colors[1];
+    vertex = batch.vertexCount; batch.vertexCount++; outputIndices[index++] = vertex;
+    floats[output++] = positions[4]; floats[output++] = positions[5]; packed[output++] = colors[2];
+    vertex = batch.vertexCount; batch.vertexCount++; outputIndices[index++] = vertex;
+    batch.instanceCount++; adapter.used += 3;
+    if (batch.instanceCount === capacity || index + perInstance >= outputIndices.length) batch.run(context);
+  }
+  function renderNativeTriangleSubmission(renderer, graphics, context, parent, step, displayList, index) {
+    const original = graphics._nativeTriangleSubmissionRenderer, plan = graphics._nativeTriangleSubmission, owner = graphics._nativeFillNode, steps = graphics._renderSteps, custom = graphics.customRenderNodes, defaults = graphics.defaultRenderNodes;
+    const fill = defaults && defaults.FillTri, batch = defaults && defaults.Submitter, manager = batch && batch.manager, layout = batch && batch.vertexBufferLayout, data = layout && layout.buffer, floats = data && data.viewF32, packed = data && data.viewU32, outputIndices = batch && batch.indexBuffer && batch.indexBuffer.viewU16, counts = plan && plan.counts;
+    if (counts) counts.invocations++;
+    // Unknown commands, layouts, custom/debug nodes and observable node hooks
+    // retain Phaser's original renderer before any role or buffer mutation.
+    const fallback = !plan || !owner || owner._graphics !== graphics || !steps || steps.length !== 1 || steps[0] !== renderNativeTriangleSubmission || graphics.commandBuffer !== plan.buffer || graphics.commandBuffer.length !== plan.length || !context || typeof context.useCanvas !== 'boolean' || !context.camera || context.camera.addToRenderList !== plan.cameraAdd || !custom || Object.getPrototypeOf(custom) !== Object.prototype || !Object.isExtensible(custom) || Object.keys(custom).length || custom.Submitter !== undefined || !(fill instanceof plan.FillTri) || !(batch instanceof plan.Batch) || fill.run !== plan.fillRun || fill.onRunBegin !== plan.begin || fill.onRunEnd !== plan.end || !fill._indexedTriangles || fill._indexedTriangles.length !== 3 || fill._indexedTriangles[0] !== 0 || fill._indexedTriangles[1] !== 1 || fill._indexedTriangles[2] !== 2 || batch.run !== plan.batchRun || batch.batch !== plan.batchBatch || batch.updateRenderOptions !== plan.batchOptions || batch.updateShaderConfig !== plan.batchShader || batch.setupUniforms !== plan.batchUniforms || batch.onRunBegin !== plan.begin || batch.onRunEnd !== plan.end || batch.verticesPerInstance !== 3 || batch.indicesPerInstance !== 3 || batch.topology !== 4 || !layout || !layout.layout || layout.layout.stride !== 12 || !(floats instanceof Float32Array) || !(packed instanceof Uint32Array) || !(outputIndices instanceof Uint16Array) || floats.buffer !== packed.buffer || floats.byteOffset !== packed.byteOffset || floats.byteLength !== packed.byteLength || !Number.isInteger(batch.instancesPerBatch) || batch.instancesPerBatch < 1 || !Number.isInteger(batch.instanceCount) || batch.instanceCount < 0 || batch.instanceCount >= batch.instancesPerBatch || batch.vertexCount !== batch.instanceCount * 3 || batch.vertexCount * 3 + 9 > floats.length || batch.instanceCount * 3 + 3 > outputIndices.length || !manager || manager.debug;
+    if (fallback) { if (counts) counts.fallbacks++; return original(renderer, graphics, context, parent, step, displayList, index); }
+    const buffer = plan.buffer, checks = plan.checks;
+    for (let i = 0; i < checks.length; i += 2) if (buffer[checks[i]] !== checks[i + 1]) { counts.fallbacks++; return original(renderer, graphics, context, parent, step, displayList, index); }
+    const state = stateFor(graphics.scene), adapter = state.triangleSubmitter || (state.triangleSubmitter = { inUse: false, target: null, calls: 0, used: 0, genericCalls: 0, batch: submitNativeTriangle });
+    if (adapter.inUse) { counts.fallbacks++; return original(renderer, graphics, context, parent, step, displayList, index); }
+    adapter.inUse = true; adapter.target = batch; adapter.calls = 0; adapter.used = 0; adapter.genericCalls = 0;
+    try {
+      custom.Submitter = adapter;
+      // Keep original style scratch, current alpha/gradients, matrix rounding,
+      // camera registration and FillTri calculations; only submission changes.
+      return original(renderer, graphics, context, parent, step, displayList, index);
+    } finally {
+      delete custom.Submitter;
+      if (adapter.used) counts.directGraphics++;
+      counts.adapterCalls += adapter.calls; counts.directTriangles += adapter.used / 3; counts.genericCalls += adapter.genericCalls;
+      adapter.inUse = false; adapter.target = null; adapter.calls = 0; adapter.used = 0; adapter.genericCalls = 0;
+    }
+  }
   let neutralInnerComponents = null;
   function installNeutralInnerRenderer(inner) {
     const engine = window.Phaser, steps = inner._renderSteps, components = engine && engine.GameObjects && engine.GameObjects.Components, container = engine && engine.GameObjects && engine.GameObjects.Container;
@@ -441,20 +508,17 @@ window.GardenNativeArt = (function () {
     // Unknown engines/components/layouts retain that original reference.
     if (!engine || engine.VERSION !== '4.2.1' || !components || !components.Alpha || !components.AlphaSingle || !components.ScrollFactor || !container || typeof container.prototype.setScrollFactor !== 'function' || !Array.isArray(steps) || steps.length !== 1 || steps[0] !== inner.renderWebGL) return;
     if (!neutralInnerComponents) neutralInnerComponents = { alpha: components.Alpha.setAlpha, alphaSingle: components.AlphaSingle.setAlpha, scroll: components.ScrollFactor.setScrollFactor, containerScroll: container.prototype.setScrollFactor };
-    const state = stateFor(inner.scene), counts = state.innerRender || (state.innerRender = { installed: 0, invocations: 0, neutralInvocations: 0, nativeChildren: 0, ordinaryChildren: 0, ownedNativeChildren: 0, nativeStepMismatchChildren: 0, nativeAlphaMismatchChildren: 0, nativeScrollMismatchChildren: 0, contextCanvasTrue: 0, contextCanvasFalse: 0, contextCanvasUnknown: 0, contextBlendNormal: 0, contextBlendOther: 0, innerBlendInherited: 0, innerBlendNormal: 0, innerBlendOther: 0, neutralInheritedBlend: 0, neutralFixedBlend: 0, noParentFallback: 0, stepFallback: 0, contextFallback: 0, contextShapeFallback: 0, contextBlendFallback: 0, innerBlendFallback: 0, transformFallback: 0, opacityFallback: 0, scrollFallback: 0, maskFallback: 0 });
+    const state = stateFor(inner.scene), counts = state.innerRender || (state.innerRender = { installed: 0, invocations: 0, neutralInvocations: 0, nativeChildren: 0, ordinaryChildren: 0, noParentFallback: 0, stepFallback: 0, contextFallback: 0, contextShapeFallback: 0, contextBlendFallback: 0, innerBlendFallback: 0, transformFallback: 0, opacityFallback: 0, scrollFallback: 0, maskFallback: 0 });
     counts.installed++; inner._nativeInnerRenderCounts = counts; inner._nativeInnerRenderer = steps[0]; steps[0] = renderNeutralInner;
   }
   function renderNeutralInner(renderer, container, context, parent, step, displayList, index) {
     const original = container._nativeInnerRenderer, counts = container._nativeInnerRenderCounts, steps = container._renderSteps; counts.invocations++;
     // useCanvas selects the main WebGL framebuffer, not the Canvas renderer.
     // Both main-canvas and texture DrawingContexts run this WebGL final step.
-    if (context && context.useCanvas === true) counts.contextCanvasTrue++; else if (context && context.useCanvas === false) counts.contextCanvasFalse++; else counts.contextCanvasUnknown++;
-    if (context && context.blendMode === 0) counts.contextBlendNormal++; else counts.contextBlendOther++;
-    if (container.blendMode === -1) counts.innerBlendInherited++; else if (container.blendMode === 0) counts.innerBlendNormal++; else counts.innerBlendOther++;
     const fallback = !parent ? 'noParentFallback' : !steps || steps.length !== 1 || steps[0] !== renderNeutralInner ? 'stepFallback' : !context || typeof context.useCanvas !== 'boolean' ? 'contextShapeFallback' : context.blendMode !== 0 ? 'contextBlendFallback' : container.blendMode !== -1 && container.blendMode !== 0 ? 'innerBlendFallback' : container.x !== 0 || container.y !== 0 || container.rotation !== 0 || container.scaleX !== 1 || container.scaleY !== 1 ? 'transformFallback' : container.alpha !== 1 ? 'opacityFallback' : container.scrollFactorX !== 1 || container.scrollFactorY !== 1 ? 'scrollFallback' : container.mask ? 'maskFallback' : null;
     if (fallback) { counts[fallback]++; if (fallback === 'contextShapeFallback' || fallback === 'contextBlendFallback' || fallback === 'innerBlendFallback') counts.contextFallback++; return original(renderer, container, context, parent, step, displayList, index); }
     counts.neutralInvocations++;
-    const fixedBlend = container.blendMode !== -1; if (fixedBlend) counts.neutralFixedBlend++; else counts.neutralInheritedBlend++;
+    const fixedBlend = container.blendMode !== -1;
     const camera = context.camera, children = container.list, count = children.length; camera.addToRenderList(container);
     if (!count) return;
     // The same matrix operations and main/texture render-list decisions apply.
@@ -466,7 +530,6 @@ window.GardenNativeArt = (function () {
       // Container's setter is distinct from Components.ScrollFactor. Its third
       // cascade argument defaults false; original renderer calls use two args.
       const neutralAlpha = nativeChild && (alpha === neutralInnerComponents.alpha || alpha === neutralInnerComponents.alphaSingle), neutralScroll = nativeChild && (scroll === neutralInnerComponents.containerScroll || scroll === neutralInnerComponents.scroll);
-      if (ownedNative) counts.ownedNativeChildren++; if (ownedNative && !nativeChild) counts.nativeStepMismatchChildren++; if (nativeChild && !neutralAlpha) counts.nativeAlphaMismatchChildren++; if (nativeChild && !neutralScroll) counts.nativeScrollMismatchChildren++;
       let topLeft, topRight, bottomLeft, bottomRight, scrollX, scrollY;
       if (!neutralAlpha) { if (child.alphaTopLeft !== undefined) { topLeft = child.alphaTopLeft; topRight = child.alphaTopRight; bottomLeft = child.alphaBottomLeft; bottomRight = child.alphaBottomRight; } else { topLeft = topRight = bottomLeft = bottomRight = child.alpha; } }
       if (!neutralScroll) { scrollX = child.scrollFactorX; scrollY = child.scrollFactorY; }
@@ -595,8 +658,8 @@ window.GardenNativeArt = (function () {
       if (this._dead) return;
       if (SHAPES.has(this.localName)) {
         if (!this._graphics) { this._graphics = this.scene.add.graphics(); this._graphics._nativeFillNode = this; this._inner.addAt(this._graphics, 0); stateFor(this.scene).shapes++; }
-        this._graphics.clear().setAlpha(alpha(this._styles['fill-opacity'], this._styles)); const contours = geometry(this.localName, this.attrs); this._geometry = contours; const style = this._styles, clips = clippingFor(this);
-        drawShape(this._graphics, contours, { ...style, 'fill-opacity': 1 }, this.context.defs, clips, this, true, false);
+        this._graphics._nativeTriangleSubmission = null; this._graphics.clear().setAlpha(alpha(this._styles['fill-opacity'], this._styles)); const contours = geometry(this.localName, this.attrs); this._geometry = contours; const style = this._styles, clips = clippingFor(this);
+        drawShape(this._graphics, contours, { ...style, 'fill-opacity': 1 }, this.context.defs, clips, this, true, false); prepareNativeTriangleSubmission(this._graphics);
         if (color(style.stroke, style)) { if (!this._strokeGraphics) { this._strokeGraphics = this.scene.add.graphics(); this._inner.addAt(this._strokeGraphics, 1); } this._strokeGraphics.clear(); drawShape(this._strokeGraphics, contours, style, this.context.defs, clips, this, false, true); }
         else if (this._strokeGraphics) { this._strokeGraphics.destroy(); this._strokeGraphics = null; }
       }
@@ -1152,7 +1215,7 @@ window.GardenNativeArt = (function () {
     } catch (e) { state.cacheFailures = (state.cacheFailures || 0) + 1; node._inner.setRotation(oldRotation).setScale(oldScaleX, oldScaleY).setAlpha(oldAlpha); for (const tile of tiles) tile.destroy(); if (previous && node._cache === previous) showCache(node, true); else { for (const original of originals) if (original.active) original.setVisible(visible.get(original)); restoreBase(node); } }
   }
   function element(scene, tag, attrs) { const node = new NativeNode(scene, tag, attrs, { defs: stateFor(scene).defs, options: {} }); stateFor(scene).roots.add(node); return node; }
-  function stats(scene) { const s = stateFor(scene), cacheQualities = {}; let croppedCaches = 0, pinnedBases = 0, pinnedBaseBytes = 0; for (const node of s.cacheTrackedNodes) { const base = node._cacheBase || node._cache && node._cache.recipe.retainBase && !node._cache.cropped && node._cache.quality === (node._cache.recipe.baseQuality || 1) && node._cache; if (base) { pinnedBases++; pinnedBaseBytes += base.bytes; } } for (const node of s.cachedNodes) if (node._cache) { cacheQualities[node._cache.quality] = (cacheQualities[node._cache.quality] || 0) + 1; if (node._cache.cropped) croppedCaches++; } return { created: s.created, shapes: s.shapes, animations: s.animations.size, motionOn: s.motionOn, roots: s.roots.size, labels: s.labels.size, cachedTiles: s.cachedTiles, cacheBytes: s.cacheBytes, cacheBudgetBytes: s.cacheBudget, cacheQualities, croppedCaches, trackedCaches: s.cacheTrackedNodes.size, pendingRecaches: s.recaches.size, capturesThisFrame: s.captureCount || 0, cacheEvictions: s.cacheEvictions || 0, cachePressureDeferrals: s.cachePressureDeferrals || 0, cacheFailures: s.cacheFailures || 0, pinnedBases, pinnedBaseBytes, staticBaseCopies: s.baseCopies || 0, unknownImages: s.unknownImages, innerRender: s.innerRender ? { ...s.innerRender } : null, parsedAssets: parsed.size, cachedPaths: paths.size, styleRules: rules.length, matchedStyleCache: matchedRules.size }; }
+  function stats(scene) { const s = stateFor(scene), cacheQualities = {}; let croppedCaches = 0, pinnedBases = 0, pinnedBaseBytes = 0; for (const node of s.cacheTrackedNodes) { const base = node._cacheBase || node._cache && node._cache.recipe.retainBase && !node._cache.cropped && node._cache.quality === (node._cache.recipe.baseQuality || 1) && node._cache; if (base) { pinnedBases++; pinnedBaseBytes += base.bytes; } } for (const node of s.cachedNodes) if (node._cache) { cacheQualities[node._cache.quality] = (cacheQualities[node._cache.quality] || 0) + 1; if (node._cache.cropped) croppedCaches++; } return { created: s.created, shapes: s.shapes, animations: s.animations.size, motionOn: s.motionOn, roots: s.roots.size, labels: s.labels.size, cachedTiles: s.cachedTiles, cacheBytes: s.cacheBytes, cacheBudgetBytes: s.cacheBudget, cacheQualities, croppedCaches, trackedCaches: s.cacheTrackedNodes.size, pendingRecaches: s.recaches.size, capturesThisFrame: s.captureCount || 0, cacheEvictions: s.cacheEvictions || 0, cachePressureDeferrals: s.cachePressureDeferrals || 0, cacheFailures: s.cacheFailures || 0, pinnedBases, pinnedBaseBytes, staticBaseCopies: s.baseCopies || 0, unknownImages: s.unknownImages, innerRender: s.innerRender ? { ...s.innerRender } : null, triangleSubmission: s.triangleSubmission ? { ...s.triangleSubmission } : null, parsedAssets: parsed.size, cachedPaths: paths.size, styleRules: rules.length, matchedStyleCache: matchedRules.size }; }
   function pauseAmbient(next) {
     next = { hush: !!(next && next.hush), frozen: !!(next && next.frozen) }; if (next.hush === ambientPause.hush && next.frozen === ambientPause.frozen) return;
     ambientPause = next; const now = performance.now();

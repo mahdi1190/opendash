@@ -61,6 +61,21 @@ ran; they do not measure a speed improvement. Stylesheet preparation separately
 reuses the exact private compiled selector-part count for its existing
 specificity formula, with the original fallback.
 
+Owned NativeArt fill streams can use the pinned flat handler's independent
+three-vertex case. The original Graphics and FillTri renderers still calculate
+styles, gradients, current alpha and transformed positions. Direct submission
+writes those same positions, packed tints and indices into the engine's existing
+buffers, retaining its render-option setup and capacity-flush timing. Unknown
+commands, custom hooks and unsupported layouts use the original renderer.
+Scene-private adapter state is released on shutdown; coarse diagnostics record
+actual submitted triangles and fallback activity.
+
+Ordinary observations exercised this path during walking, Map/Fit/Follow,
+wheel zoom, encrypted paired shore visits, natural fishing reels, pet actions,
+room visits and rain/puddle contact without captured app errors. The room
+reel's narration was fading, so caption-overlap comparisons remain unplayed.
+These observations and CPU samples do not establish a display-frame-rate gain.
+
 Water retains source-art reflections rather than taking scene screenshots.
 Captures request Phaser's final even dimensions and can reuse one unexposed
 spare per source only when dimensions and effective quality match exactly.

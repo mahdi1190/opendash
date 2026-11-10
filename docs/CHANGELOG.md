@@ -10,6 +10,13 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.64.17] - 2026-11-10
+
+### Changed
+
+- Compatible native artwork uses a dedicated triangle submission path in Phaser, retaining its colors, gradients, current transforms and drawing order.
+- Rendering keeps its useful activity and fallback counters while removing detailed diagnostic bookkeeping from each inner drawing pass.
+
 ## [2.64.16] - 2026-11-10
 
 ### Changed
