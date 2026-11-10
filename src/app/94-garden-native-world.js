@@ -571,7 +571,7 @@ window.GardenNativeWorld = (function () {
       for (const pier of decks) {
         const x = pier.x * W.cellW, y = W.sky + pier.y * W.cellH, w = pier.w * W.cellW, h = pier.h * W.cellH;
         const node = element(scene, 'g', { class: 'gd-pier-deck', 'data-pier': pier.id }), pg = scene.add.graphics();
-        const b = pier.side === 'south' ? { x: x - 6, y: y - 1, width: w + 17, height: h + 13 } : { x: x - 1, y: y - 5, width: w + 5, height: h + 9 };
+        const b = pier.side === 'south' ? { x: x - 6, y: y - 1, width: w + 17, height: h + 13 } : { x: x - 4, y: y - 5, width: w + 8, height: h + 14 };
         node.nativeBounds = b; pierBoards.appendChild(node); node._inner.add(pg);
         pierDeckRecords.set(pier.id, { node, bounds: b });
         // The parent union is diagnostic only; caches and culling use each deck.
@@ -582,9 +582,25 @@ window.GardenNativeWorld = (function () {
           for (let yy = y + 3; yy < y + h - 3; yy += 14) { pg.fillStyle(Math.floor(yy / 14) % 3 ? 0xb19a71 : 0xbda77c).fillRect(x + 1, yy, w - 2, 12.5); pg.lineStyle(.8, 0xe6d5a8, .42).lineBetween(x + 7, yy + 2, x + w - 7, yy + 2); pg.fillStyle(0x68694e, .55).fillCircle(x + 7, yy + 8, .8).fillCircle(x + w - 7, yy + 8, .8); }
           for (const xx of [x - 1, x + w + 1]) pg.fillStyle(0x716c50).fillRoundedRect(xx - 3, y + 4, 6, 16, 2).fillStyle(0xd0bd8c).fillEllipse(xx, y + 4, 7, 4);
         } else {
-          // Side decks use transverse timber and two quiet entrance posts.
-          pg.fillStyle(0x315d54, .22).fillRoundedRect(x + 3, y + 3, w, h, 3).fillStyle(0x796c51).fillRoundedRect(x, y, w, h, 3);
+          // Side decks retain a shallow timber edge and two water-end supports.
+          const waterEnd = pier.side === 'west' ? x + 3 : x + w - 3, endFace = pier.side === 'west' ? x - 3 : x + w - 1, endBevel = pier.side === 'west' ? x - .8 : x + w + .8;
+          const cap = sc.season === 'winter' ? 0xd0c2aa : 0xd2ac78;
+          pg.fillStyle(0x315d54, .22).fillRoundedRect(x + 3, y + 3, w, h + 4, 3);
+          for (const yy of [y + 6, y + h - 6]) {
+            pg.fillStyle(0x6e4c2a).fillRect(waterEnd - 2.8, yy, 5.6, 11).fillStyle(0x6e4c2a, .55).fillRect(waterEnd - 2.8, yy + 11, 5.6, 3);
+            pg.fillStyle(0xc49a64, .4).fillRect(waterEnd - 1.8, yy + 2, 1.2, 10);
+          }
+          pg.fillStyle(0x6e4c2a).fillRoundedRect(x, y + h - 1, w, 5, 1.5).fillRoundedRect(endFace, y + 2, 4, h + 2, 1);
+          pg.lineStyle(.7, 0xb28650, .45).lineBetween(x + 8, y + h + 1, x + w - 8, y + h + 1);
+          pg.lineStyle(.8, 0x4c3218, .55).lineBetween(x + 1, y + h + 3, x + w - 1, y + h + 3);
+          pg.lineStyle(.7, 0xd2ac78, .35).lineBetween(endBevel, y + 4, endBevel, y + h - 3);
+          pg.fillStyle(0x796c51).fillRoundedRect(x, y, w, h, 3);
           for (let xx = x + 3; xx < x + w - 3; xx += 14) { const bw = Math.min(12.5, x + w - 3 - xx); pg.fillStyle(Math.floor(xx / 14) % 3 ? 0xb19a71 : 0xbda77c).fillRect(xx, y + 1, bw, h - 2); pg.lineStyle(.8, 0xe6d5a8, .42).lineBetween(xx + 2, y + 7, xx + 2, y + h - 7); pg.fillStyle(0x68694e, .55).fillCircle(xx + bw / 2, y + 7, .8).fillCircle(xx + bw / 2, y + h - 7, .8); }
+          pg.lineStyle(.8, 0xe8d0a0, .55).lineBetween(x + 1, y + 1, x + w - 1, y + 1).lineBetween(x + 1, y + h - 1, x + w - 1, y + h - 1);
+          for (const yy of [y + 6, y + h - 6]) {
+            pg.fillStyle(cap).fillEllipse(waterEnd, yy, 7, 4);
+            pg.lineStyle(.65, 0x8a6238, .7).strokeEllipse(waterEnd, yy + .2, 4.4, 2.2);
+          }
           const entrance = pier.side === 'west' ? x + w - 6 : x + 6;
           for (const yy of [y + 6, y + h - 6]) pg.fillStyle(0x716c50).fillRoundedRect(entrance - 3, yy - 8, 6, 11, 2).fillStyle(0xd0bd8c).fillEllipse(entrance, yy - 8, 7, 4);
         }

@@ -56,9 +56,14 @@ function gardenPierGround(sc, o) {
     if (p.side !== 'south') {
       const rnd = gardenRand(p.id), tones = ['', '', '']; let shade = '', lit = '', nails = '';
       for (let x = x0 + 1, i = 0; x < x1 - 1; x += 7.5, i++) { const w = Math.min(7, x1 - 1 - x); tones[Math.floor(rnd() * 3)] += `M${_gwN(x)} ${y0 + 1}h${_gwN(w)}V${y1 - 1}h${_gwN(-w)}z`; shade += `M${_gwN(x + w)} ${y0 + 1}V${y1 - 1}`; lit += `M${_gwN(x + .8)} ${y0 + 3}V${y1 - 3}`; nails += `M${_gwN(x + 3.4)} ${y0 + 5}v.1M${_gwN(x + 3.4)} ${y1 - 5}v.1`; }
-      let deck = `<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" rx="2" fill="${deep}"/>`;
+      const waterEnd = p.side === 'west' ? x0 + 3 : x1 - 3, endFace = p.side === 'west' ? x0 - 3 : x1 - 1, endBevel = p.side === 'west' ? x0 - .8 : x1 + .8;
+      let deck = `<rect x="${x0 + 3}" y="${y0 + 3}" width="${x1 - x0}" height="${y1 - y0 + 4}" rx="3" fill="#315d54" fill-opacity=".22"/>`;
+      for (const py of [y0 + 6, y1 - 6]) deck += `<rect x="${waterEnd - 2.8}" y="${py}" width="5.6" height="11" fill="${dark}"/><rect x="${waterEnd - 2.8}" y="${py + 11}" width="5.6" height="3" fill="${dark}" fill-opacity=".55"/><rect x="${waterEnd - 1.8}" y="${py + 2}" width="1.2" height="10" fill="#c49a64" fill-opacity=".4"/>`;
+      deck += `<rect x="${x0}" y="${y1 - 1}" width="${x1 - x0}" height="5" rx="1.5" fill="${dark}"/><rect x="${endFace}" y="${y0 + 2}" width="4" height="${y1 - y0 + 2}" rx="1" fill="${dark}"/><path d="M${x0 + 8} ${y1 + 1}H${x1 - 8}" stroke="#b28650" stroke-width=".7" stroke-opacity=".45" fill="none"/><path d="M${x0 + 1} ${y1 + 3}H${x1 - 1}" stroke="${deep}" stroke-width=".8" stroke-opacity=".55" fill="none"/><path d="M${endBevel} ${y0 + 4}V${y1 - 3}" stroke="#d2ac78" stroke-width=".7" stroke-opacity=".35" fill="none"/><rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" rx="2" fill="${deep}"/>`;
       tones.forEach((d, i) => { deck += `<path d="${d}" fill="${pal[i]}"/>`; });
       deck += `<path d="${shade}" stroke="${deep}" stroke-width="1.1" stroke-opacity=".62" fill="none"/><path d="${lit}" stroke="#ffeec8" stroke-width=".8" stroke-opacity=".4" fill="none"/><path d="${nails}" stroke="${deep}" stroke-width="1.5" stroke-linecap="round" fill="none"/>`;
+      deck += `<path d="M${x0 + 1} ${y0 + 1}H${x1 - 1}M${x0 + 1} ${y1 - 1}H${x1 - 1}" stroke="#e8d0a0" stroke-width=".8" stroke-opacity=".55" fill="none"/>`;
+      for (const py of [y0 + 6, y1 - 6]) deck += `<ellipse cx="${waterEnd}" cy="${py}" rx="3.5" ry="2" fill="${pal[2]}"/><ellipse cx="${waterEnd}" cy="${py + .2}" rx="2.2" ry="1.1" stroke="#8a6238" stroke-width=".65" stroke-opacity=".7" fill="none"/>`;
       const entrance = p.side === 'west' ? x1 - 6 : x0 + 6;
       for (const py of [y0 + 6, y1 - 6]) deck += `<rect x="${entrance - 2.8}" y="${py - 5}" width="5.6" height="11" rx="2" fill="${dark}" stroke="${deep}" stroke-width=".8"/><ellipse cx="${entrance}" cy="${py - 5}" rx="3.3" ry="1.7" fill="${pal[2]}"/>`;
       out += deck; continue;

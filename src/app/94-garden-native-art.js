@@ -306,8 +306,12 @@ window.GardenNativeArt = (function () {
   function syncRadialLeafCache(node) {
     const state = stateFor(node.scene), oldRecipe = node._cacheRecipe;
     if (oldRecipe && !oldRecipe.radialLeaf) { node._radialLeafPaintKey = null; return; }
-    const gradient = radialLeafGradientKey(node), graphics = node._graphics, words = graphics && graphics.commandBuffer.length, b = gradient && node.getBBox();
-    const eligible = gradient && graphics && !node.nativeBounds && !node._label && !node._strokeGraphics && words >= 16384 && words <= 262144 && b && [b.x,b.y,b.width,b.height].every(Number.isFinite) && b.width > 0 && b.height > 0 && b.width <= 128 && b.height <= 128 && b.width * b.height <= 8192;
+    // Dense drawable paint is required before a gradient definition or local
+    // bounds can make this leaf eligible for the existing cache.
+    const graphics = node._graphics, words = graphics && graphics.commandBuffer.length;
+    const candidate = graphics && !node.nativeBounds && !node._label && !node._strokeGraphics && words >= 16384 && words <= 262144;
+    const gradient = candidate ? radialLeafGradientKey(node) : null, b = gradient && node.getBBox();
+    const eligible = gradient && b && [b.x,b.y,b.width,b.height].every(Number.isFinite) && b.width > 0 && b.height > 0 && b.width <= 128 && b.height <= 128 && b.width * b.height <= 8192;
     if (!eligible) {
       if (oldRecipe && oldRecipe.radialLeaf) { releaseCache(node, false); state.cacheTrackedNodes.delete(node); state.recaches.delete(node); delete node._cacheRecipe; }
       node._radialLeafPaintKey = null; return;

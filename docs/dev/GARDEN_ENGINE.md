@@ -275,6 +275,23 @@ diagnostic only and is never cached as one wide transparent strip. Rebuild and
 teardown remove each child's queue/cache/Graphics ownership together. Existing
 main-pier artwork, cache scheduling and vector sharpness fallback remain.
 
+Side-pier timber details add a shallow fascia, bevels and two water-end
+supports with flush end-grain caps. Native and SVG/Classic/photo paths share
+these additions. Each deck's paint bounds include the short shaft tails and
+offset shadow. Main-pier paint and the walking/fishing rectangles are unchanged.
+
+Native radial-leaf cache admission first checks the existing graphics, explicit
+bounds, label/stroke and command-count exclusions. Only candidates resolve the
+gradient definition and local bounds. Cache thresholds, invalidation, sharpness
+and scheduling are unchanged. This removes avoidable eligibility work; no
+frame-rate or measured net performance gain is claimed.
+
+Saved social snapshots forward the existing `lh`, `fp` and `rp` fields with
+`wv`. The publisher previously dropped those fields before schema cleaning,
+so a current island preview could be rejected as an older Garden and optional
+feature/sight positions could be lost from its saved presentation. Existing
+snapshot validation, actual-world admission and publication cadence remain.
+
 Ordinary private two-player play on 2.65.0 bought all four works through
 Tackle, walked both players to each stage's tip and cast from all four stages.
 Host and visitor deck tuples agreed. Undo preserved the occupied extension,

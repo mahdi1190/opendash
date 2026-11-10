@@ -10,6 +10,17 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.65.2] - 2026-11-10
+
+### Fixed
+
+- Shared Garden previews retain their island identity and optional place positions, so current Gardens can be recognized and shown correctly.
+
+### Changed
+
+- Optional side piers have shallow timber edges, bevels and water-end pilings with end-grain caps in native and Classic/photo views.
+- Native drawing skips gradient-cache eligibility work for shapes whose paint already makes them ineligible.
+
 ## [2.65.1] - 2026-11-10
 
 ### Changed
