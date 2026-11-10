@@ -35,6 +35,14 @@ pointer-events-disabled art children. Pointerdown shares one current scene hit
 between item mapping and free-hand pet handling. Other events and callers make
 their own picks; the ordinary hit API and pet action policy are unchanged.
 
+Retained pose reuse includes the parent's current clipping key alongside its
+selector, inherited-style and motion context. Detached poses keep their nodes,
+then use the existing deep restyle when reattached under changed clipping.
+This refreshes geometry previously compiled against a water clip without
+resetting poses or adding per-frame redraw work. A fresh shoreline observation
+included wet/dry pets, retained reuse and context restyles with matching active
+clip keys; the earlier pictured dry-Duck crop did not reproduce in that baseline.
+
 Native camera, transformed bounds and surface calculations retain their
 arithmetic while reusing private intermediate work. Public camera-controls and
 lighting snapshots remain independent objects. Surface and water share one

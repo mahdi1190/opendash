@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.64.22] - 2026-11-10
+
+### Fixed
+
+- Reused native poses now include inherited clipping in their drawing-context checks, so a pose prepared under a water clip is refreshed when that clip changes.
+
 ## [2.64.21] - 2026-11-10
 
 ### Changed

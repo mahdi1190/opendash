@@ -334,7 +334,7 @@ window.GardenNativeArt = (function () {
     return true;
   }
   function paintKey(node, clipKey) { if (!SHAPES.has(node.localName) && node.localName !== 'text' && node.localName !== 'tspan') return clipKey; const style = node._styles, keys = ['fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-dasharray', 'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin', 'font-size', 'font-family', 'font-weight', 'font-style', 'text-anchor', 'dominant-baseline', 'color']; return clipKey + '|' + keys.map(key => key + ':' + resolve(style[key], style)).join(';') + '|' + (SHAPES.has(node.localName) ? ['d', 'x', 'y', 'width', 'height', 'rx', 'ry', 'r', 'cx', 'cy', 'x1', 'y1', 'x2', 'y2', 'points'].map(key => node.attrs[key] || '').join('|') : [node.attrs.x || '', node.attrs.y || '', node.textContent].join('|')) + ((node.localName === 'circle' || node.localName === 'ellipse') ? '|radial:' + (radialLeafGradientKey(node) || '') : ''); }
-  function parentStyleKey(parent, context) { return (parent ? (parent._selectorKey || selectorKey(parent)) + '|' + parent._inheritedKey : '') + '|motion:' + (context.options.motion === false ? 0 : 1); }
+  function parentStyleKey(parent, context) { return (parent ? (parent._selectorKey || selectorKey(parent)) + '|' + parent._inheritedKey : '') + '|motion:' + (context.options.motion === false ? 0 : 1) + '|clip:' + (parent ? parent._clipKey || '' : ''); }
   function queueActorCache(node) {
     for (let root = node; root; root = root.parentNode) if (root.classList.contains('gd-sprite') || root.classList.contains('gd-bug')) { stateFor(node.scene).actorCaches.add(root); return; }
   }
