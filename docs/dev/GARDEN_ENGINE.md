@@ -121,6 +121,13 @@ rebuilds those descriptors through the existing style key. Clocks, pause,
 motion guards and paint application retain their behavior. Cache visibility
 rejects hidden native ancestry before its pure scene-connection walk.
 
+Native animated transforms retain their wind/cloud flags while the current
+class string is unchanged. A changed string recomputes the same regular-
+expression and class-token decisions. Wind arithmetic and order, animation
+precedence, clocks, visibility and reduced motion keep their existing paths.
+This avoids repeated class checks for an unchanged string; no frame-rate or
+measured net performance gain is claimed.
+
 Ordinary observations of leaf caching and sampling cover fresh opening/loading
 resize, walking and zoom, paired shore and room fishing, rain and public pet
 selection during an encrypted visit without captured app errors. Cat selection

@@ -1022,7 +1022,14 @@ window.GardenNativeArt = (function () {
       }
       if (animation.origin || animation.box) { if (!properties) properties = {}; if (animation.origin) properties.origin = animation.origin; if (animation.box) properties.box = animation.box; }
     }
-    if (transform && /gda-sway|gart-wind|gart-swing|gart-cloud/.test(node.attrs.class || '')) { const wind = num(environmentState.windX) * .008 + num(environmentState.gust) * .018; if (node.classList.contains('gart-cloud')) transform = { ...transform, e: transform.e + num(environmentState.windX) * .2 }; else transform = mul(transform, { a: Math.cos(wind), b: Math.sin(wind), c: -Math.sin(wind), d: Math.cos(wind), e: 0, f: 0 }); }
+    if (transform) {
+      const classes = String(node.attrs.class || '');
+      if (node._windClassKey !== classes) {
+        node._windClassKey = classes;
+        node._windClassFlags = /gda-sway|gart-wind|gart-swing|gart-cloud/.test(classes) ? node.classList.contains('gart-cloud') ? 3 : 1 : 0;
+      }
+      if (node._windClassFlags & 1) { const wind = num(environmentState.windX) * .008 + num(environmentState.gust) * .018; if (node._windClassFlags & 2) transform = { ...transform, e: transform.e + num(environmentState.windX) * .2 }; else transform = mul(transform, { a: Math.cos(wind), b: Math.sin(wind), c: -Math.sin(wind), d: Math.cos(wind), e: 0, f: 0 }); }
+    }
     if (transform || properties || node._animatedTransform) node._applyTransform(transform, properties); node._animatedTransform = !!(transform || properties);
     if (opacity != null) node.target.setAlpha(opacity); else if (node._animatedOpacity) node.target.setAlpha(alpha(node._styles.opacity, node._styles)); node._animatedOpacity = opacity != null;
     if (paintOpacity != null) applyPaintOpacity(node, paintOpacity); else if (node._animatedPaint) resetPaintOpacity(node); node._animatedPaint = paintOpacity != null;

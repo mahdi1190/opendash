@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.65.6] - 2026-11-10
+
+### Changed
+
+- Native Garden animation reuses wind and cloud class flags while the class string is unchanged.
+
 ## [2.65.5] - 2026-11-10
 
 ### Fixed
