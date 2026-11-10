@@ -102,11 +102,12 @@ rejects hidden native ancestry before its pure scene-connection walk.
 Ordinary observations of leaf caching and sampling cover fresh opening/loading
 resize, walking and zoom, paired shore and room fishing, rain and public pet
 selection during an encrypted visit without captured app errors. Cat selection
-reached both peers while native sessions continued. Both room reel sizes were
-played; an earlier observation included captions at both widths. The subsequent
-1024 caption was fading, leaving that comparison unplayed, and its rainy walk
-did not establish puddle contact. These observations cover recorded routes;
-cache activity and CPU samples do not establish a frame-rate gain.
+reached both peers while native sessions continued, followed by normal petting.
+Room reels and captions were observed together at both viewport sizes. Some
+earlier caption phases were fading; a rainy walk did not establish puddle
+contact, and one shore click selected a different pet than its preceding point
+probe. Those attempts retain their qualifications. These observations cover
+recorded routes; cache activity and CPU samples do not establish a frame-rate gain.
 
 Water retains source-art reflections rather than taking scene screenshots.
 Captures request Phaser's final even dimensions and can reuse one unexposed
@@ -129,6 +130,15 @@ while their tiles are hidden; `finally` restores exact prior visibility,
 including on failure. Ordinary internal ancestor caches still prune hidden
 branches. An inactive flag alone does not prune artwork Phaser can render. Status
 reports actual allocations, reuses, examined targets and stopped branches.
+
+Repeated finite queries with at least two visible water regions may reuse one
+horizontal region selection for the exact same endpoints. The selection resets
+after every visible-region refresh and geometry-cache invalidation. All-pass
+queries retain the existing region array; filtering allocates a private selection
+only at its first rejection. Each query still clips fresh pairs at its current
+height and reads current frozen flags before the existing merge/ice subtraction.
+`horizontalRangeHits` records selection reuse; horizontal skip counts retain
+their ordinary completed-query meaning.
 
 Canonical-world daily callers meet at role-related public landmarks with public
 fallbacks, checked against current foot clearance and a real player route.

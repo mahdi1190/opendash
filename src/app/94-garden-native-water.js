@@ -143,6 +143,7 @@ window.GardenNativeWater = (function () {
     let surfSegments = 0;
     const rng = random(187731), records = new Map(), ringList = [], particles = [], actorWake = new Map(), spotImages = [];
     const intervalSlots = new Array(INTERVAL_CACHE_LIMIT);
+    let intervalRangeSource = null, intervalRangeCandidates = null, intervalRangeLo = 0, intervalRangeHi = 0, intervalRangeSkipped = 0, intervalRangeHits = 0;
     let intervalCaches = new WeakMap(), intervalCursor = 0, intervalEntries = 0, intervalQueries = 0, intervalHits = 0, intervalMisses = 0, intervalEvictions = 0, intervalBypasses = 0, intervalOutside = 0, intervalInvalidations = 0, intervalEmptyBandQueriesSkipped = 0, intervalHorizontalRegionsSkipped = 0;
     let model = null, room = null, metadata = {}, regions = [], visibleRegions = [], regionRevision = null, regionSource = null, parent = null, dead = false, frame = 0, lastTime = 0, lastAmbient = 0, pauseAt = null, pauseOffset = 0, motion = true, lastMotion = true, fieldAt = -Infinity, ringAt = -Infinity, rainBudget = 0, captureBytes = 0, sequence = 0, captures = 0, captureErrors = 0, captureAllocations = 0, captureReuses = 0, captureSpareBytes = 0, captureRevealVisits = 0, captureRevealPrunes = 0, visibleReflections = 0, visibleBands = 0, sortDirty = false, snapshotTime = -Infinity, depthKey = '';
     let geometryPrepared = false;
@@ -177,7 +178,8 @@ window.GardenNativeWater = (function () {
     function view() { const camera = scene.cameras.main, a = camera.getWorldPoint(0, 0, viewOrigin), b = camera.getWorldPoint(camera.width, camera.height, viewCorner); return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y), zoom: camera.zoom }; }
     function inside(region, x, y) { if (x < region.bounds.x || y < region.bounds.y || x > region.bounds.x + region.bounds.width || y > region.bounds.y + region.bounds.height) return false; if (region.ellipses.some(e => ((x - e.x) / e.rx) ** 2 + ((y - e.y) / e.ry) ** 2 <= 1)) return true; return region.points.length > 2 && insidePolygon(x, y, region.points) && !region.holes.some(points => insidePolygon(x, y, points)); }
     function contains(x, y, liquidOnly = false) { if (liquidOnly && regions.some(region => region.frozen && inside(region, x, y))) return false; return regions.some(region => (!liquidOnly || !region.frozen) && inside(region, x, y)); }
-    function clearIntervalCache() { intervalCaches = new WeakMap(); intervalSlots.fill(null); intervalCursor = 0; intervalEntries = 0; intervalInvalidations++; }
+    function clearIntervalRange() { intervalRangeSource = null; intervalRangeCandidates = null; intervalRangeSkipped = 0; }
+    function clearIntervalCache() { intervalCaches = new WeakMap(); intervalSlots.fill(null); intervalCursor = 0; intervalEntries = 0; intervalInvalidations++; clearIntervalRange(); }
     function cachedRegionIntervals(region, y) {
       intervalQueries++;
       if (!Number.isFinite(y)) { intervalBypasses++; return regionIntervals(region, y); }
@@ -197,13 +199,33 @@ window.GardenNativeWater = (function () {
       return intervals;
     }
     function waterIntervals(y, lo, hi, liquidOnly = false) {
-      const all = [], finiteRange = Number.isFinite(y) && Number.isFinite(lo) && Number.isFinite(hi) && hi >= lo;
+      const all = [], finiteRange = Number.isFinite(y) && Number.isFinite(lo) && Number.isFinite(hi) && hi >= lo, sourceRegions = visibleRegions;
       let ice = null;
-      for (const region of visibleRegions) {
-        const extent = region.intervalXBounds;
-        if (finiteRange && extent && (hi <= extent.left || lo >= extent.right)) { intervalHorizontalRegionsSkipped++; continue; }
-        const intervals = cachedRegionIntervals(region, y);
-        for (const interval of intervals) { const left = Math.max(lo, interval[0]), right = Math.min(hi, interval[1]); if (right > left) (liquidOnly && region.frozen ? ice || (ice = []) : all).push([left, right]); }
+      if (!finiteRange || sourceRegions.length < 2) {
+        // No selection breadth to reuse: retain the original collection loop.
+        for (const region of sourceRegions) {
+          const extent = region.intervalXBounds;
+          if (finiteRange && extent && (hi <= extent.left || lo >= extent.right)) { intervalHorizontalRegionsSkipped++; continue; }
+          const intervals = cachedRegionIntervals(region, y);
+          for (const interval of intervals) { const left = Math.max(lo, interval[0]), right = Math.min(hi, interval[1]); if (right > left) (liquidOnly && region.frozen ? ice || (ice = []) : all).push([left, right]); }
+        }
+      } else {
+        // Reuse only horizontal selection; every y still makes fresh pairs.
+        const reuse = intervalRangeSource === sourceRegions && Object.is(lo, intervalRangeLo) && Object.is(hi, intervalRangeHi), candidates = reuse ? intervalRangeCandidates : sourceRegions;
+        let selected = null, skipped = 0;
+        if (reuse) { intervalRangeHits++; intervalHorizontalRegionsSkipped += intervalRangeSkipped; }
+        for (let i = 0; i < candidates.length; i++) {
+          const region = candidates[i];
+          if (!reuse) {
+            const extent = region.intervalXBounds;
+            if (extent && (hi <= extent.left || lo >= extent.right)) { intervalHorizontalRegionsSkipped++; skipped++; if (!selected) selected = sourceRegions.slice(0, i); continue; }
+            if (selected) selected.push(region);
+          }
+          const intervals = cachedRegionIntervals(region, y);
+          for (const interval of intervals) { const left = Math.max(lo, interval[0]), right = Math.min(hi, interval[1]); if (right > left) (liquidOnly && region.frozen ? ice || (ice = []) : all).push([left, right]); }
+        }
+        // All-pass queries retain the existing source array without a copy.
+        if (!reuse) { intervalRangeLo = lo; intervalRangeHi = hi; intervalRangeCandidates = selected || sourceRegions; intervalRangeSkipped = skipped; intervalRangeSource = sourceRegions; }
       }
       // Ice exists only after a positive frozen span in a liquid-only query.
       if (all.length < 2 && !ice) return all;
@@ -556,7 +578,7 @@ window.GardenNativeWater = (function () {
       for (let i = particles.length - 1; i >= 0; i--) { const p = particles[i], age = (lastTime - p.born) / 1000; if (age >= p.life) { particles.splice(i, 1); continue; } const x = p.x + p.vx * age, y = p.y + p.vy * age + 70 * age * age; if (x < currentView.x || x > currentView.x + currentView.width || y < currentView.y || y > currentView.y + currentView.height) continue; ripples.fillStyle(0xe4f3ed, (1 - age / p.life) * .6).fillEllipse(x, y, p.scale * 1.6, p.scale * 2.4); }
     }
     function update(time, delta, env) {
-      if (dead) return; lastTime = finite(time, performance.now()); frame++; if (env) Object.assign(environment, env); metadata = readMetadata(); updateRegions(metadata); currentView = view(); visibleRegions = regions.filter(region => overlap(region.bounds, currentView, 180)); root.setVisible(visibleRegions.length > 0);
+      if (dead) return; lastTime = finite(time, performance.now()); frame++; if (env) Object.assign(environment, env); metadata = readMetadata(); updateRegions(metadata); currentView = view(); visibleRegions = regions.filter(region => overlap(region.bounds, currentView, 180)); clearIntervalRange(); root.setVisible(visibleRegions.length > 0);
       try { motion = typeof gardenMotionOn !== 'function' || gardenMotionOn(); } catch (e) { motion = true; }
       if (motion !== lastMotion) { fieldAt = -Infinity; ringAt = -Infinity; lastMotion = motion; } lastAmbient = (pauseAt == null ? lastTime : pauseAt) - pauseOffset;
       if (!visibleRegions.length) { visibleReflections = 0; visibleBands = 0; visibleSpots = 0; usedSpotBands = 0; subjectDiagnostics = []; fishingReflections.clear(); depthPlane.setVisible(false); sheen.clear(); ripples.clear(); depthKey = ''; for (const record of records.values()) { record.selected = false; hideRecord(record); } for (const image of spotImages) image.setVisible(false); trimSources(lastTime); return; }
@@ -569,7 +591,7 @@ window.GardenNativeWater = (function () {
       if (lastTime - ringAt >= 32 || delta === 0 || ringList.length || particles.length) { paintRipples(); ringAt = lastTime; }
     }
     function destroy() { if (dead) return; dead = true; clearIntervalCache(); for (const record of [...records.values()]) destroyRecord(record); fishingReflections.destroy(); depthPlane.destroy(); if (falloff) { falloff.rt.destroy(); if (scene.textures.exists(falloff.key)) scene.textures.remove(falloff.key); captureBytes = Math.max(0, captureBytes - falloff.bytes); falloff = null; } ringList.length = 0; particles.length = 0; actorWake.clear(); spotNodes.length = 0; root.destroy(true); }
-    function status() { const field = depthPlane.status(); return { native: true, regions: regions.length, visibleRegions: visibleRegions.length, reflections: visibleReflections, bands: visibleBands, subjects: subjectDiagnostics, ...fishingReflections.status(), depthTriangles: 0, depthQuads: field.quads, depthTextureBytes: field.textureBytes, depthMaskBuilds: field.builds, depthError: field.lastError, depthSpots: visibleSpots, spotBands: usedSpotBands, surfSegments, falloffBytes: falloff ? falloff.bytes : 0, captures, captureErrors, captureAllocations, captureReuses, captureSpareBytes, captureRevealVisits, captureRevealPrunes, captureBytes, captureBudgetBytes: LIMIT_BYTES, cachedSources: records.size, intervalCache: { queries: intervalQueries, hits: intervalHits, misses: intervalMisses, outsideBounds: intervalOutside, bypasses: intervalBypasses, entries: intervalEntries, capacity: INTERVAL_CACHE_LIMIT, maxResultSpans: INTERVAL_CACHE_MAX_SPANS, evictions: intervalEvictions, invalidations: intervalInvalidations, emptyBandQueriesSkipped: intervalEmptyBandQueriesSkipped, horizontalRegionsSkipped: intervalHorizontalRegionsSkipped }, ripples: ringList.length, splashDrops: particles.length, paused: pauseAt != null, reducedMotion: !motion, room: !!room }; }
+    function status() { const field = depthPlane.status(); return { native: true, regions: regions.length, visibleRegions: visibleRegions.length, reflections: visibleReflections, bands: visibleBands, subjects: subjectDiagnostics, ...fishingReflections.status(), depthTriangles: 0, depthQuads: field.quads, depthTextureBytes: field.textureBytes, depthMaskBuilds: field.builds, depthError: field.lastError, depthSpots: visibleSpots, spotBands: usedSpotBands, surfSegments, falloffBytes: falloff ? falloff.bytes : 0, captures, captureErrors, captureAllocations, captureReuses, captureSpareBytes, captureRevealVisits, captureRevealPrunes, captureBytes, captureBudgetBytes: LIMIT_BYTES, cachedSources: records.size, intervalCache: { queries: intervalQueries, hits: intervalHits, misses: intervalMisses, outsideBounds: intervalOutside, bypasses: intervalBypasses, entries: intervalEntries, capacity: INTERVAL_CACHE_LIMIT, maxResultSpans: INTERVAL_CACHE_MAX_SPANS, evictions: intervalEvictions, invalidations: intervalInvalidations, emptyBandQueriesSkipped: intervalEmptyBandQueriesSkipped, horizontalRegionsSkipped: intervalHorizontalRegionsSkipped, horizontalRangeHits: intervalRangeHits }, ripples: ringList.length, splashDrops: particles.length, paused: pauseAt != null, reducedMotion: !motion, room: !!room }; }
     return { sync, setRoom, update, pauseAmbient, effect, containsWater: contains, destroy, status, root };
   }
   return Object.freeze({ create });

@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.64.21] - 2026-11-10
+
+### Changed
+
+- Repeated water-reflection queries can reuse their horizontal shoreline selection while retaining fresh clipping for each sample.
+
 ## [2.64.20] - 2026-11-10
 
 ### Changed
