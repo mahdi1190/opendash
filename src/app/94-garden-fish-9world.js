@@ -128,7 +128,9 @@ function _gcwHall(p, sc, o, ca) {
   return `<g transform="translate(${_gcwN(cx)} ${_gcwN(by)})">${b}</g>`;
 }
 function _gcwBoard(p, sc, o, ca) {
-  const [cx, by] = _gcwBase(p); let iso = ''; try { iso = gardenHere().today; } catch (e) { iso = '2026-01-01'; }
+  const [cx, by] = _gcwBase(p); let iso = sc.day || '';
+  // A detached scene already has its day; do not rebuild the resident model.
+  if (!iso) { try { iso = gardenHere().today; } catch (e) { iso = '2026-01-01'; } }
   const wanted = gardenWantedFor(_gdWeekFrom(iso)), hot = gardenHotSpot(iso), rec = (ca.rc || [])[0];
   let b = '<ellipse cx="0" cy="2" rx="24" ry="4" fill="#1a1208" fill-opacity=".2"/><path d="M-20 0V-52M20 0V-52" stroke="#6e4c2a" stroke-width="3.4"/><rect x="-28" y="-66" width="56" height="44" rx="2" fill="#8a6238" stroke="#5a3a20" stroke-width="1.4"/><path d="M-30 -66L0 -74L30 -66z" fill="#6a4a3a"/>';
   // the poster

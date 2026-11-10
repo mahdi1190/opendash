@@ -264,8 +264,26 @@ function _gdrNight(sc, o, lights) {
  * with what is on screen and parses only what changed.
  */
 function gardenSceneParts(sc, o) {
+  const context = sc.snapshotLandContext;
+  if (!context) return _gdrSceneParts(sc, o);
+  // Snapshot art borrows derived placement context only for this synchronous draw.
+  const previous = { land: [..._GD_LAND], feature: { ..._gardenFeaturePlacementState }, sight: { ..._gardenSightPlacementState }, props: { ..._GLD_PROPS } };
+  try {
+    gardenLandSet(context.land);
+    gardenFeatureSet(context.fp);
+    gardenSightSet(context.rp);
+    return _gdrSceneParts(sc, o);
+  } finally {
+    _GD_LAND.clear(); for (const id of previous.land) _GD_LAND.add(id);
+    Object.assign(_gardenFeaturePlacementState, previous.feature);
+    Object.assign(_gardenSightPlacementState, previous.sight);
+    Object.assign(_GLD_PROPS, previous.props);
+  }
+}
+function _gdrSceneParts(sc, o) {
   o = Object.assign({ size: 'm', crop: 'all', uid: 'gd' }, o || {});
-  const key = o.cacheKey ? o.cacheKey + '|' + [o.size, o.crop, o.still ? 1 : 0, o.photo ? 1 : 0, o.interactive ? 1 : 0, o.uid, o.fit || ''].join('|') : '';
+  const placementKey = o.cacheKey && sc.snapshotLandContext ? '|snapshot:' + JSON.stringify([sc.wv, sc.lh, sc.works, sc.snapshotLandContext.land, sc.snapshotLandContext.fp, sc.snapshotLandContext.rp]) : '';
+  const key = o.cacheKey ? o.cacheKey + '|' + [o.size, o.crop, o.still ? 1 : 0, o.photo ? 1 : 0, o.interactive ? 1 : 0, o.uid, o.fit || ''].join('|') + placementKey : '';
   if (key && _GDR.cache.has(key)) return _GDR.cache.get(key);
   const W = GARDEN_WORLD, ww = W.cols * W.cellW;
   const box = gardenCropBox(o.crop);
@@ -355,8 +373,8 @@ function _gdrSceneFromSnapshot(snap, o) {
     if (snap.decor.some(d => ['bird-bath', 'bird-feeder', 'bird-box'].includes(d[0]))) { const d = snap.decor.find(q => ['bird-bath', 'bird-feeder', 'bird-box'].includes(q[0])); visitors.push({ id: 'robin', x: d[1] + 0.5, y: d[2] + 0.8, lift: 0.7, motion: 'hop', t: rnd() }); }
   }
   // 2.22: a friend on an older version has no lake or woods in their areas: the lake is always there, the woods from level 4
-  const areas = gardenLandsOfSnap(snap).areas; if (!areas.includes('lake')) areas.push('lake'); if (snap.lv >= 4 && !areas.includes('woods')) areas.push('woods');
-  return { pa: snap.pa || 0, dz: snap.dz || null, works: [...(snap.wk || [])], wv: snap.wv, lh: snap.lh, plants, decor, areas, season, tod, rain: { now: false, snow: false }, visitors, lv: snap.lv, hour: p.h + p.mi / 60, day, show: snap.sh || null, showSig: typeof gardenShowSig === 'function' ? gardenShowSig(snap.sh) : '', landShow: gardenLandShowOf(snap), ca: snap.ca || {} };
+  const landOf = gardenLandsOfSnap(snap), areas = landOf.areas; if (!areas.includes('lake')) areas.push('lake'); if (snap.lv >= 4 && !areas.includes('woods')) areas.push('woods');
+  return { pa: snap.pa || 0, dz: snap.dz || null, works: [...(snap.wk || [])], wv: snap.wv, lh: snap.lh, snapshotLandContext: { land: landOf.land, fp: (snap.fp || []).map(row => row.slice()), rp: (snap.rp || []).map(row => row.slice()) }, plants, decor, areas, season, tod, rain: { now: false, snow: false }, visitors, lv: snap.lv, hour: p.h + p.mi / 60, day, show: snap.sh || null, showSig: typeof gardenShowSig === 'function' ? gardenShowSig(snap.sh) : '', landShow: gardenLandShowOf(snap), ca: snap.ca || {} };
 }
 /**
  * Draw anyone's garden into el, read-only. snapshot: from gardenSnapshot() or a friend (cleaned here).

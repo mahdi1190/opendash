@@ -10,6 +10,13 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.65.3] - 2026-11-10
+
+### Fixed
+
+- Shared Garden previews show the owner's placed structures and discovered places at their saved positions. Drawing a preview preserves the Garden currently in use.
+- Shared thumbnails refresh when the island, placed places or built piers change.
+
 ## [2.65.2] - 2026-11-10
 
 ### Fixed

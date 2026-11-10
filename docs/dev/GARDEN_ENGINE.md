@@ -286,6 +286,19 @@ gradient definition and local bounds. Cache thresholds, invalidation, sharpness
 and scheduling are unchanged. This removes avoidable eligibility work; no
 frame-rate or measured net performance gain is claimed.
 
+Saved Garden scene construction uses a temporary presentation context for
+the cleaned snapshot's land, feature and sight positions. Synchronous scene
+parts construction restores the previous land membership, placement maps and
+signatures, and physical prop cache in `finally`, including cache returns and
+failed/nested draws. Snapshot parts cache keys include the placement context.
+Normal model scenes retain their current path; saved state, active world
+physics and the native startup schedule are unchanged.
+
+The lake notice board uses the rendered scene's day before its legacy live
+fallback. This avoids a resident-model lookup that could replace borrowed
+placement context before land props were drawn. Shared thumbnail signatures
+also include world identity, feature/sight positions and built works.
+
 Saved social snapshots forward the existing `lh`, `fp` and `rp` fields with
 `wv`. The publisher previously dropped those fields before schema cleaning,
 so a current island preview could be rejected as an older Garden and optional
