@@ -381,7 +381,7 @@ const _GARTW = (function () {
   function night(sc, o, lights) {
     const W = GARDEN_WORLD, ww = W.cols * W.cellW, hh = W.sky + W.rows * W.cellH, top = W.sky - 16, u = o.uid;
     const island = typeof gardenIslandActive === 'function' && gardenIslandActive(), gradeTop = island ? 0 : top;
-    const tone = { night: ['#081440', 0.5], dusk: ['#34204e', 0.24], dawn: ['#4a2f60', 0.14] }[sc.tod];
+    const tone = { night: ['#081440', 0.43], dusk: ['#34204e', 0.24], dawn: ['#4a2f60', 0.14] }[sc.tod];
     if (!tone) return '';
     // the plants' and lamps' lights, and the lit windows of the buildings on the shore
     const props = [];

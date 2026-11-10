@@ -90,6 +90,12 @@ function _gllActorLook(A, ev) {
 }
 /** Fill a node with this person: the shadow, the figure, their name. The name goes in with textContent. */
 function _gllDress(A, root) {
+  // A new renderer/scene owns new visual handles; the actor and its source data stay live.
+  const native = gardenVisualIsNative(root);
+  const stale = node => node && (gardenVisualIsNative(node) !== native || native && (node._dead || node.scene !== root.scene));
+  if (A.pp && stale(A.pp.node)) _gllPetDrop(A);
+  if (stale(A.photoG)) { A.photoG.remove(); A.photoG = null; }
+  if (stale(A.heldG)) { A.heldG.remove(); A.heldG = null; }
   // A roster/look repaint owns the figure, while the catch keeps its original
   // lifetime. Detach the held overlay before the old figure is destroyed.
   if (A.heldG && A.heldG._native && (A.heldG._dead || !A.heldG.target || !A.heldG.target.active)) A.heldG = null;

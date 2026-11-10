@@ -519,7 +519,7 @@ window.GardenNative = (function () {
   }
   function mount(parent, box, model) {
     if (live && live.parent === parent && !live.dead) { sync(model); return; }
-    destroy(); if (window.GardenPhaser) GardenPhaser.destroy(); gardenWorldStop(); lastError = null;
+    destroy(); if (window.GardenPhaser) GardenPhaser.destroy(); gardenWorldStop(true); lastError = null;
     const s = live = { id: ++serial, parent, box, model, dead: false, ready: false, frames: 0, started: performance.now() };
     watchOpening(s);
     const host = s.host = document.createElement('div'); host.className = 'gd-native-stage'; host.style.cssText = 'position:absolute;inset:0;overflow:hidden;touch-action:none;visibility:hidden'; host.setAttribute('aria-label', 'Your garden'); parent.appendChild(host);

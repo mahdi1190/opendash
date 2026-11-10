@@ -285,7 +285,7 @@ window.GardenNativeLight = (function () {
         const ambient = room.ambient == null ? .8 : Number(room.ambient);
         night.fillStyle(0x253450, (1 - clamp(ambient)) * .3).fillRect(x, y, width, height);
       } else {
-        const darkness = outdoorDarkness(env);
+        const darkness = outdoorDarkness(env) - (1 - env.daylight) * .07;
         if (darkness > .01) night.fillStyle(outdoorNightPresentation() ? 0x223554 : 0x263855, darkness).fillRect(x, y, width, height);
         const dusk = 1 - Math.abs(env.daylight * 2 - 1);
         if (dusk > .1) atmosphere.fillStyle(env.hour < 12 ? 0xffd6ab : 0xefb397, dusk * .045).fillRect(x, y, width, height);

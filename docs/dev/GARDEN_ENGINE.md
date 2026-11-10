@@ -6,6 +6,16 @@ choice is saved. **Garden > Graphics** preserves an explicit Classic choice;
 saved garden. The native path replaces the earlier hidden-SVG rendering bridge;
 Photo retains its established Classic SVG presentation.
 
+Switching graphics rebuilds an unmounted visited world while retaining the
+current friend and live visit. Reuse requires the visitor's current world root
+and entry to match the mounted page.
+
+Graphics changes and native renderer takeover use the existing redraw-preserving
+world stop. A real Leave still ends presence. Remote actors recreate incompatible
+pet and overlay handles at the new renderer's dressing boundary while retaining
+their actor and shared source data. Incompatible transient held art can end when
+its renderer is destroyed; the catch record is separate.
+
 The default world stays quiet. Optional activities are set out deliberately
 through **Play → In the garden**, one at a time, and **Put it away** clears the
 setup. Map, status and extra controls open on demand; passive notes go to Recent.
@@ -1046,8 +1056,16 @@ window-bearing village signatures include it, so cached panes and their water
 captures change together. Outdoor night PointLights render above the cool
 night grade with transmission compensation and a small warm accent. Existing
 shop/tackle sources move to the window span at night; their count is unchanged.
-Day/dawn material, source and grade values, indoor presentation and custom
-light colors retain their prior branches.
+Day/dawn material and source branches, indoor presentation and custom light
+colors retain their prior paths.
+
+The native outdoor scene veil subtracts `.07 * (1 - daylight)` through the
+existing continuous daylight path, including nighttime and twilight. It keeps
+the original screen key and rain contribution. Classic night uses opacity
+.43 through its existing light-hole mask, vignette and hour washes; its dusk
+and dawn tones keep their prior values. Palette hues, native lamp transmission
+and intensity, shadows and rendering layers retain their existing paths. The
+two renderers keep their distinct lighting models.
 
 Windmill, shepherd hut and old mill panes retain their original glass nodes
 and day fills. Their native handles patch only those fills when the same

@@ -225,7 +225,7 @@ function _gdpWorldMount(container, view) {
   if (typeof gardenDesignResume === 'function') gardenDesignResume();
   if (_gdp.then) { const t = _gdp.then; _gdp.then = ''; setTimeout(() => { if (_gdp.root === root) gardenPopupOpen(t); }, 60); }
 }
-function _gdpWorldUnmount() { if (window.GardenNative && GardenNative.active()) GardenNative.destroy(); if (typeof gardenDesignAbort === 'function') gardenDesignAbort(); document.documentElement.classList.remove('gd-immersive'); if (typeof toastHeldFlush === 'function') toastHeldFlush(); gardenHudReset(); gardenGameStop(); if (typeof gardenPopupClose === 'function') gardenPopupClose(); if (typeof gardenWorldStop === 'function') gardenWorldStop(); _gdp.entry = ''; _gdp.root = null; _gdp.svg = null; _gdp.press = null; _gdp.sweep = null; _gdpCarryEnd(); }
+function _gdpWorldUnmount(keepOn) { if (window.GardenNative && GardenNative.active()) GardenNative.destroy(); if (typeof gardenDesignAbort === 'function') gardenDesignAbort(); document.documentElement.classList.remove('gd-immersive'); if (typeof toastHeldFlush === 'function') toastHeldFlush(); gardenHudReset(); gardenGameStop(); if (typeof gardenPopupClose === 'function') gardenPopupClose(); if (typeof gardenWorldStop === 'function') gardenWorldStop(keepOn); _gdp.entry = ''; _gdp.root = null; _gdp.svg = null; _gdp.press = null; _gdp.sweep = null; _gdpCarryEnd(); }
 /** Is the world what is on screen? Your garden, or a garden you are visiting. */
 function _gdpWorldView() { return state.view === 'garden' || (typeof gardenVisitOn === 'function' && gardenVisitOn()); }
 function _gdpBasketCount(m) { let n = 0; for (const [k, v] of Object.entries(m.wallet.items)) if (v > 0 && (k.startsWith('crop:') || k.startsWith('bq:') || k === 'honey')) n += v; return n; }

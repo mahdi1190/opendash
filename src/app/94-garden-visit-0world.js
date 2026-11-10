@@ -313,7 +313,7 @@ function gardenVisitQueueFlush() {
 /* ---------- the page ---------- */
 function gardenVisitMount(root, f, view) {
   const same = _gdv.on && _gdv.fid === f.id;
-  if (same && root.querySelector(':scope > .gd-tab-garden')) { _gdv.f = f; _gdvTouch(); return; }
+  if (same && _gdp.entry === view && _gdp.root && _gdp.root.isConnected && root.querySelector(':scope > .gd-tab-garden') === _gdp.root) { _gdv.f = f; _gdvTouch(); return; }
   if (!same) { if (typeof _gw !== 'undefined') _gw.placed = false; _gdv.undo0 = _gd.undo.length; _gdv.watered.clear(); _gdv.clean = null; if (typeof gardenLifeVisitStop === 'function') gardenLifeVisitStop(); }
   _gdv.on = true; _gdv.fid = f.id; _gdv.f = f; _gdv.tagKey = ''; _gdvTouch();
   root.textContent = ''; root.className = 'gsv-worldhost';

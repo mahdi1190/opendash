@@ -50,7 +50,7 @@ function gardenGraphicsOpen() {
       if (close) close();
       if (window.GardenNative && GardenNative.active()) GardenNative.destroy();
       if (window.GardenPhaser && typeof GardenPhaser.destroy === 'function') GardenPhaser.destroy();
-      if (typeof _gdpWorldView === 'function' && _gdpWorldView()) { _gdpWorldUnmount(); renderMain(); }
+      if (typeof _gdpWorldView === 'function' && _gdpWorldView()) { _gdpWorldUnmount(true); renderMain(); }
       else setView('garden');
     } }],
   });

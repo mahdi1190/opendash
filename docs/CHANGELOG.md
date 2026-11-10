@@ -10,6 +10,16 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.65.4] - 2026-11-10
+
+### Fixed
+
+- Switching Garden graphics during a visit rebuilds the visited scene while preserving the live visit.
+
+### Changed
+
+- Native Garden lighting uses a lighter cool veil through nighttime and twilight. Classic night views also use a lighter overlay.
+
 ## [2.65.3] - 2026-11-10
 
 ### Fixed
