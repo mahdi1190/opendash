@@ -10,6 +10,16 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.65.1] - 2026-11-10
+
+### Changed
+
+- Side-pier work thumbnails distinguish west/east shores and the longer extensions.
+
+### Fixed
+
+- Garden update notifications say "Garden updated" and keep clean notifications quiet while your own update is finishing. Conflict and error messages remain available.
+
 ## [2.65.0] - 2026-11-10
 
 ### Added

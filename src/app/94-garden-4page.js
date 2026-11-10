@@ -25,6 +25,7 @@ const GARDEN_TABS = Object.freeze([['garden', 'Garden', 'sprout'], ['catch', 'Ca
   ['friends', 'Friends', 'users']]);   // 'friends': ── garden-social ── friends' gardens, visits and your guestbook (94-garden-social-2visit.js)
 /* 2.23: what can be in your hand. The hand needs nothing else: it does what the thing in front of it needs. The rest are for when you want to choose (the hotbar, 94-garden-world-2hud.js). */
 const GARDEN_TOOLS_UI = Object.freeze(['hand', 'water', 'feed', 'trim', 'dig', 'seed', 'decorate']);
+let _gdpUpdateWrites = 0;
 const _gdp = { entry: '', root: null, svg: null, mode: '', tool: '', seed: '', decor: '', sel: '', hoverUid: '', hoverSprite: null, cur: null,
   press: null, sweep: null, carry: null, keyBound: false, burstT: 0, wasVisible: false };
 
@@ -174,7 +175,7 @@ function _gdpPendingGarden(container) {
       }
       if (!mounted()) return;
       status.textContent = reconciliation ? 'Saving the full backup and complete earlier Garden before using the shared Garden...' : inspected.mode === 'publish' ? 'Sharing the saved updated island...' : inspected.mode === 'import' ? 'Keeping your earlier Garden and opening the updated island...' : 'Saving a backup and updating your Garden...';
-      submitted = true;
+      submitted = true; _gdpUpdateWrites++;
       const result = await request('POST', { wv: inspected.wv, lh: inspected.lh, version: inspected.version, planId: inspected.planId, mode: inspected.mode, handoverId: inspected.handoverId, ...(reconciliation ? { reconciliation } : {}) });
       if (result.status === 'publish-pending' && /^garden(?::|$)/.test(String(state.view || '')) && state.view !== 'garden:update') setView('garden:update');
       // Normal live reconcile retains unrelated browser component edits.
@@ -192,6 +193,7 @@ function _gdpPendingGarden(container) {
       if (mounted()) { reviewedKey = null; if (lastInspection) paint(lastInspection); status.textContent = e.message || 'The update could not finish. Your saved Garden is preserved.'; update.disabled = false; sync.disabled = false; keep.disabled = false; enter.disabled = false; review.hidden = true; keep.hidden = true; }
       else if (submitted && gardenWorldReady() && /^garden(?::|$)/.test(String(state.view || '')) && state.view !== 'garden:update') setView('garden:update');
     } finally {
+      if (submitted) _gdpUpdateWrites = Math.max(0, _gdpUpdateWrites - 1);
       running = false; root.removeAttribute('aria-busy');
       if (mounted() && update.disabled) request('GET').then(paint).catch(() => {});
     }

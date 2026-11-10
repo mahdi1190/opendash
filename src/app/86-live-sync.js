@@ -235,6 +235,7 @@ function _liveSourceLabel(d) {
   if (!d) return 'outside this tab';
   if (d.source === 'mcp') return d.client ? d.client.replace(/\s+[\d.]+$/, '') : 'an MCP client';
   if (d.source === 'assistant') return 'the assistant';
+  if (d.source === 'garden-update') return 'the Garden update';
   if (d.source === 'script') return d.client ? d.client : 'a script';
   if (d.source === 'ui') return 'another tab';
   if (d.source === 'sync') return d.client ? d.client : 'another computer';   // Settings > Sync (lib/sync/engine.mjs)
@@ -444,7 +445,9 @@ async function _liveOnRemote(d) {
   if (!r.changed) return;                          // only another tab's view/selection moved
   // This tab's own assistant Apply/Undo: its card already says so (72-assistant.js).
   if (d.client === 'dashboard assistant' && typeof _asstOwnWrites === 'number' && _asstOwnWrites > 0) return;
-  const msg = `Updated by ${_liveSourceLabel(d)}${d.summary ? ': ' + d.summary : ''}`;
+  // The Garden action already shows its result; retain normal conflict feedback.
+  if (d.source === 'garden-update' && !r.conflicts && typeof _gdpUpdateWrites === 'number' && _gdpUpdateWrites > 0) return;
+  const msg = d.source === 'garden-update' ? 'Garden updated' : `Updated by ${_liveSourceLabel(d)}${d.summary ? ': ' + d.summary : ''}`;
   const canUndo = d.undo && (d.source === 'mcp' || d.source === 'assistant' || d.source === 'script');
   _liveToast(msg.length > 140 ? msg.slice(0, 139) + '...' : msg, {
     kind: 'info', icon: 'refresh-cw', timeout: 6000,

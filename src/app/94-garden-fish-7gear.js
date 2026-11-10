@@ -73,8 +73,23 @@ function gardenWorkArt(id, sc) {
     default: return '';
   }
 }
+/** Static shop thumbnails: shore on the land end, with one scale for base/longer decks. */
+function _gplSidePierIcon(id) {
+  const match = /^pier-(west|east)(-2)?$/.exec(id); if (!match) return '';
+  const east = match[1] === 'east', longer = !!match[2], cells = longer ? (east ? 6 : 5) : 3, width = cells * 8, tip = 54 - width;
+  const timber = ['#c49a64', '#b28650', '#d2ac78']; let boards = '', light = '', nails = '';
+  for (let x = tip + 1, i = 0; x < 53; x += 4, i++) {
+    const w = Math.min(3.5, 53 - x), added = longer && x < 30, color = added ? timber[i % 2 ? 2 : 0] : timber[i % 3];
+    boards += `<path d="M${x} 27h${w}v10h-${w}z" fill="${color}"/>`;
+    light += `M${x + .6} 28v8`;
+    nails += `M${x + w / 2} 28.5v.1M${x + w / 2} 35.4v.1`;
+  }
+  return `<g${east ? ' transform="translate(64 0) scale(-1 1)"' : ''}><rect x="4" y="8" width="56" height="48" rx="9" fill="#599f9d"/><path d="M10 19q4-2 8 0m4 0q3-1.5 6 0M11 47q4-2 8 0m6 1q3-1.5 6 0" fill="none" stroke="#c6ddd0" stroke-width="1.2" stroke-linecap="round" opacity=".65"/><path d="M47 8H51a9 9 0 0 1 9 9v30a9 9 0 0 1-9 9h-4C43 49 48 43 47 37S43 27 46 20 48 12 47 8Z" fill="#d9c99f"/><path d="M50 8H51a9 9 0 0 1 9 9v30a9 9 0 0 1-9 9h-1C46 49 51 43 50 37S46 27 49 20 51 12 50 8Z" fill="#7daa77"/><path d="M54 16l2 2M54 48l3-1" stroke="#a2c486" stroke-width="1" stroke-linecap="round"/><rect x="${tip + 2}" y="29" width="${width}" height="12" rx="2" fill="#315d54" opacity=".22"/><rect x="${tip}" y="26" width="${width}" height="12" rx="1.5" fill="#6e4c2a"/>${boards}<path d="${light}" fill="none" stroke="#ffeec8" stroke-width=".6" opacity=".45"/><path d="${nails}" fill="none" stroke="#4c3218" stroke-width=".8" stroke-linecap="round"/><path d="M${tip + 1} 27H53M${tip + 1} 37H53" fill="none" stroke="#e8d0a0" stroke-width=".6" opacity=".55"/><g fill="#6e4c2a"><rect x="49.5" y="23" width="3" height="6" rx=".9"/><rect x="49.5" y="35" width="3" height="6" rx=".9"/></g><g fill="#d2ac78" stroke="#6e4c2a" stroke-width=".6"><ellipse cx="51" cy="23" rx="2.3" ry="1.2"/><ellipse cx="51" cy="35" rx="2.3" ry="1.2"/></g></g>`;
+}
 /** A picture of one, for the shop and the moment you get it. */
 function gardenWorkSvg(id, px) {
+  const sidePier = _gplSidePierIcon(id);
+  if (sidePier) return `<svg class="gd-catch-ico" viewBox="0 0 64 64" width="${px}" height="${px}" aria-hidden="true" focusable="false">${sidePier}</svg>`;
   const art = gardenWorkArt(id, { tod: 'night' });
   return art ? `<svg class="gd-catch-ico" viewBox="-30 -60 60 66" width="${px}" height="${Math.round(px * 66 / 60)}" aria-hidden="true" focusable="false">${art}</svg>` : '';
 }

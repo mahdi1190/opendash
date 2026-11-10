@@ -223,6 +223,11 @@ coast, all 128 section IDs and reserved locations are unchanged. The known
 page. Migration `101-garden-mechanics-side-piers-v1` is `auto:false`; an app
 installation or normal startup does not update the saved Garden.
 
+Garden update notifications say **Garden updated**. The submitting tab keeps
+clean notifications quiet while its request and normal live reconciliation
+are active; a later event may still show that plain message. Conflict dialogs
+and update errors retain their normal paths.
+
 `94-garden-0island.js` derives coast, reserved approaches, routes, section
 cells and water classification from that provider. The mainland contour is the
 same authority used by walking, placement and rendering. Ocean is a connected
@@ -253,6 +258,10 @@ works.
 | Longer west pier | 10 | 900 |
 | East pier | 12 | 900 |
 | Longer east pier | 15 | 1200 |
+
+The Tackle thumbnails show the shore and water ends, mirrored for west/east,
+with one scale for the base and longer decks. Purchase moments reuse these
+static icons; physical pier art and geometry keep their existing paths.
 
 `gardenPierDecks(works, source)` derives the main deck plus owned optional decks
 from the displayed Garden's actual mechanics tag. Walking, water/fishing
