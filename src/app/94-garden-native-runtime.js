@@ -534,6 +534,7 @@ window.GardenNative = (function () {
           const position = _gwSavedPos(); if (position) { _gw.px = position.x; _gw.py = position.y; }
           _gw.root = _gdp.root; _gw.box = box; _gw.sizeOk = false;
           s.world = GardenNativeWorld.create(this, { model: s.model, box, root: _gdp.root }); _gdp.svg = s.world.rootNode; _gw.svg = s.world.rootNode;
+          GardenNativeArt.configure(null, this.sys.renderer);
           s.lighting = GardenNativeLight.create(this, { world: s.world, model: s.model });
           if (window.GardenNativeFrontier) s.frontier = GardenNativeFrontier.create(this, { world: s.world });
           if (window.GardenNativeSurface) s.surface = GardenNativeSurface.create(this, { world: s.world, model: s.model });

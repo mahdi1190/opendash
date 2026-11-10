@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.64.18] - 2026-11-10
+
+### Changed
+
+- Garden triangle rendering uses the existing Phaser renderer directly, removing per-object eligibility scans and covering dense filled artwork while preserving original drawing and flush order.
+
 ## [2.64.17] - 2026-11-10
 
 ### Changed

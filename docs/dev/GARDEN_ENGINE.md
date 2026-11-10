@@ -61,19 +61,24 @@ ran; they do not measure a speed improvement. Stylesheet preparation separately
 reuses the exact private compiled selector-part count for its existing
 specificity formula, with the original fallback.
 
-Owned NativeArt fill streams can use the pinned flat handler's independent
-three-vertex case. The original Graphics and FillTri renderers still calculate
-styles, gradients, current alpha and transformed positions. Direct submission
-writes those same positions, packed tints and indices into the engine's existing
-buffers, retaining its render-option setup and capacity-flush timing. Unknown
-commands, custom hooks and unsupported layouts use the original renderer.
-Scene-private adapter state is released on shutdown; coarse diagnostics record
-actual submitted triangles and fallback activity.
+NativeArt can specialize the Garden renderer's existing pinned flat-triangle
+handler after world creation. Graphics and FillTri still calculate styles,
+gradients, current alpha and transformed positions. The specialized case uses
+the existing independent `[0,1,2]` index array, a nonempty batch, the same drawing
+context, unchanged lighting/alpha options and matching native methods, hooks
+and buffer layout. It writes the same positions, packed tints and indices into
+the existing buffers and retains the native capacity-flush boundary. Empty
+batches, option changes and unsupported cases enter the original method before
+mutation. Stylesheet setup remains separate; per-object eligibility scans and
+submission adapters are no longer needed. Renderer-private activity snapshots
+count actual specialized triangles and do not measure display frame rate.
 
 Ordinary observations exercised this path during walking, Map/Fit/Follow,
-wheel zoom, encrypted paired shore visits, natural fishing reels, pet actions,
-room visits and rain/puddle contact without captured app errors. The room
-reel's narration was fading, so caption-overlap comparisons remain unplayed.
+wheel zoom, encrypted paired shore visits, natural fishing reels, pet actions
+and room visits without captured app errors. Cellar reels and captions were
+observed together at both viewport sizes, with exposed controls and retained
+geometry on peer departure. Fresh full-opening and early-Escape/loading-resize
+routes reached a visible Garden and continued through movement and zoom.
 These observations and CPU samples do not establish a display-frame-rate gain.
 
 Water retains source-art reflections rather than taking scene screenshots.
