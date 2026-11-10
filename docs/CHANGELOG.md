@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.64.19] - 2026-11-10
+
+### Changed
+
+- Eligible small radial-gradient artwork uses the existing adaptive cache instead of replaying dense geometry on every frame. Original vectors remain available for sharp zoom and reflection captures.
+
 ## [2.64.18] - 2026-11-10
 
 ### Changed

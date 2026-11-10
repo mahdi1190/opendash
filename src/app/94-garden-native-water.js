@@ -397,7 +397,7 @@ window.GardenNativeWater = (function () {
       if (record.spare && !captureMatches(record.spare, width, height, quality)) releaseSpare(record);
       if (!reserve(record.spare ? 0 : bytes, record)) return false;
       const originalParent = source.parentContainer, displayList = source.displayList, index = originalParent ? originalParent.getIndex(source) : displayList && displayList.getIndex ? displayList.getIndex(source) : -1, sourceState = { x: source.x, y: source.y, scaleX: source.scaleX, scaleY: source.scaleY, rotation: source.rotation, alpha: source.alpha, visible: source.visible };
-      let wrapper = null, inner = null, candidate = null, attached = false, reused = false; const visibility = [];
+      let wrapper = null, inner = null, candidate = null, attached = false, reused = false; const visibility = [], radialVisibility = [];
       try {
         if (record.spare) { candidate = record.spare; record.spare = null; captureSpareBytes = Math.max(0, captureSpareBytes - candidate.bytes); reused = true; }
         try {
@@ -413,6 +413,15 @@ window.GardenNativeWater = (function () {
             // Decide external-cache reveal first. A still-hidden ancestor
             // blocks its whole branch; internal cache tiles remain siblings.
             if (object.visible === false) { captureRevealPrunes++; return; }
+            // Only an exposed new leaf cache is replaced by its retained
+            // originals. A branch under an ordinary internal ancestor cache
+            // is still pruned above and retains that ancestor's own tile.
+            const native = object._nativeNode || object === source && object.parentContainer && object.parentContainer._nativeNode;
+            const leaf = native && native._cache;
+            if (leaf && leaf.recipe.radialLeaf && (object === native.target || object === source && object === native._inner)) {
+              for (const tile of leaf.tiles) if (tile.active && tile.visible !== false) { radialVisibility.push([tile, tile.visible]); tile.setVisible(false); }
+              for (const original of leaf.originals) { const visible = leaf.visible.get(original); if (original.active && original.visible !== visible) { radialVisibility.push([original, original.visible]); original.setVisible(visible); } }
+            }
             if (object.list) for (const child of object.list) reveal(child);
           }; reveal(source);
           attached = true; inner.add(source);
@@ -430,6 +439,7 @@ window.GardenNativeWater = (function () {
           if (!candidate.key) { candidate.key = '__garden-water-' + scene.sys.settings.key + '-' + (++sequence); candidate.rt.saveTexture(candidate.key); }
           if (!captureMatches(candidate, width, height, quality)) throw new Error('Reflection capture texture is unavailable');
         } finally {
+          for (let i = radialVisibility.length - 1; i >= 0; i--) { const [object, visible] = radialVisibility[i]; if (object.active) object.setVisible(visible); }
           for (const object of visibility) if (object.active) object.setVisible(false);
           if (attached && inner && source.active) inner.remove(source);
           if (source.active) { source.setPosition(sourceState.x, sourceState.y).setScale(sourceState.scaleX, sourceState.scaleY).setRotation(sourceState.rotation).setAlpha(sourceState.alpha).setVisible(sourceState.visible); if (attached) { if (originalParent && originalParent.active) originalParent.addAt(source, Math.max(0, Math.min(index, originalParent.list.length))); else if (displayList && displayList.addAt) displayList.addAt(source, Math.max(0, Math.min(index, displayList.list.length))); else if (!source.displayList && !source.parentContainer) scene.add.existing(source); } }

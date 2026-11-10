@@ -286,7 +286,54 @@ window.GardenNativeArt = (function () {
   function visualClasses(value) { return String(value || '').split(/\s+/).filter(c => c && c !== 'gd-hush').join(' '); }
   function selectorKey(node) { return (node.parentNode ? node.parentNode._selectorKey || selectorKey(node.parentNode) : '') + '/' + selectorOwnKey(node); }
   function transformKey(node) { const style = node._styles; return [style.transform == null ? '<attribute>' : resolve(style.transform, style), ...['translate', 'rotate', 'scale', 'transform-origin', 'transform-box'].map(key => resolve(style[key], style)), resolve(node.attrs.transform, style), node.localName === 'svg' ? [node.attrs.x, node.attrs.y, node.attrs.width, node.attrs.height, node.attrs.viewBox, node.attrs.preserveAspectRatio].join(',') : ''].join('|'); }
-  function paintKey(node, clipKey) { if (!SHAPES.has(node.localName) && node.localName !== 'text' && node.localName !== 'tspan') return clipKey; const style = node._styles, keys = ['fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-dasharray', 'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin', 'font-size', 'font-family', 'font-weight', 'font-style', 'text-anchor', 'dominant-baseline', 'color']; return clipKey + '|' + keys.map(key => key + ':' + resolve(style[key], style)).join(';') + '|' + (SHAPES.has(node.localName) ? ['d', 'x', 'y', 'width', 'height', 'rx', 'ry', 'r', 'cx', 'cy', 'x1', 'y1', 'x2', 'y2', 'points'].map(key => node.attrs[key] || '').join('|') : [node.attrs.x || '', node.attrs.y || '', node.textContent].join('|')); }
+  const radialLeafRecipe = Object.freeze({ radialLeaf: true, quality: 2, adaptive: true, crop: false, preserveOwnMotion: true });
+  function radialLeafGradientKey(node) {
+    if ((node.localName !== 'circle' && node.localName !== 'ellipse') || node.children.length) return null;
+    const style = node._styles, ref = /^url\(['"]?#([^)'"\s]+)['"]?\)$/.exec(resolve(style.fill, style));
+    const definition = ref && node.context.defs.get(ref[1]);
+    if (!definition || definition.tag !== 'radialgradient' || definition.children.length < 2 || definition.children.length > 8) return null;
+    const attrs = definition.attrs, numeric = value => value == null || /^[+-]?(?:\d*\.\d+|\d+\.?\d*)(?:e[+-]?\d+)?%?$/i.test(String(value).trim()) && Number.isFinite(num(value));
+    // Literal object-bbox gradients have no viewport, href, custom-property or
+    // inherited stop-color dependency. Unknown definitions keep their vectors.
+    for (const key of Object.keys(attrs)) if (!['id','cx','cy','r','fx','fy','fr','gradientUnits','spreadMethod'].includes(key)) return null;
+    if (attrs.gradientUnits != null && attrs.gradientUnits !== 'objectBoundingBox' || attrs.spreadMethod != null && attrs.spreadMethod !== 'pad' || !['cx','cy','r','fx','fy','fr'].every(key => numeric(attrs[key]))) return null;
+    for (const stop of definition.children) {
+      if (stop.tag !== 'stop' || stop.children.length || !/^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(stop.attrs['stop-color'] || '') || !numeric(stop.attrs.offset) || !numeric(stop.attrs['stop-opacity']) || stop.attrs['stop-opacity'] == null && style['stop-opacity'] != null) return null;
+      for (const key of Object.keys(stop.attrs)) if (!['offset','stop-color','stop-opacity'].includes(key)) return null;
+    }
+    return JSON.stringify([attrs, definition.children.map(stop => stop.attrs)]);
+  }
+  function syncRadialLeafCache(node) {
+    const state = stateFor(node.scene), oldRecipe = node._cacheRecipe;
+    if (oldRecipe && !oldRecipe.radialLeaf) { node._radialLeafPaintKey = null; return; }
+    const gradient = radialLeafGradientKey(node), graphics = node._graphics, words = graphics && graphics.commandBuffer.length, b = gradient && node.getBBox();
+    const eligible = gradient && graphics && !node.nativeBounds && !node._label && !node._strokeGraphics && words >= 16384 && words <= 262144 && b && [b.x,b.y,b.width,b.height].every(Number.isFinite) && b.width > 0 && b.height > 0 && b.width <= 128 && b.height <= 128 && b.width * b.height <= 8192;
+    if (!eligible) {
+      if (oldRecipe && oldRecipe.radialLeaf) { releaseCache(node, false); state.cacheTrackedNodes.delete(node); state.recaches.delete(node); delete node._cacheRecipe; }
+      node._radialLeafPaintKey = null; return;
+    }
+    node._radialLeafPaintKey = gradient;
+    node._cacheRecipe = oldRecipe || { ...radialLeafRecipe }; state.cacheTrackedNodes.add(node);
+    // Registration only: the existing shared scheduler owns every capture.
+    if (!node._cache) queueCache(node, 0, 'missing');
+  }
+  function radialLeafReady(node) {
+    const stamp = node._radialLeafPaintKey;
+    if (!stamp) return false;
+    const gradient = radialLeafGradientKey(node);
+    if (!gradient || gradient !== stamp) { node.restyle(false); return false; }
+    const graphics = node._graphics, steps = graphics && graphics._renderSteps, cache = node._cache, tiles = cache ? cache.tiles : [], list = node._inner.list;
+    if (node.children.length || node._animations.length || node._nativeAnimating || node._animatedPaint || !graphics || node._strokeGraphics || node._inner.scaleX !== 1 || node._inner.scaleY !== 1 || graphics.x !== 0 || graphics.y !== 0 || graphics.rotation !== 0 || graphics.scaleX !== 1 || graphics.scaleY !== 1 || graphics.scrollFactorX !== 1 || graphics.scrollFactorY !== 1 || graphics.mask || graphics.cameraFilter !== 0 || graphics.blendMode !== -1 && graphics.blendMode !== 0 || graphics._nativeCacheHiddenBy && graphics._nativeCacheHiddenBy !== node || graphics.alpha !== alpha(node._styles['fill-opacity'], node._styles) || !Array.isArray(steps) || steps.length !== 1 || steps[0] !== graphics.renderWebGL || list.length !== tiles.length + 1 || list[0] !== graphics || node.target.filterCamera || node._inner.filterCamera || graphics.filterCamera) return false;
+    for (let i = 0; i < tiles.length; i++) if (list[i + 1] !== tiles[i]) return false;
+    for (let parent = node; parent; parent = parent.parentNode) {
+      if (parent.target.blendMode !== -1 && parent.target.blendMode !== 0 || parent._inner.blendMode !== -1 && parent._inner.blendMode !== 0 || parent.target.scrollFactorX !== 1 || parent.target.scrollFactorY !== 1 || parent._inner.scrollFactorX !== 1 || parent._inner.scrollFactorY !== 1 || parent.target.mask || parent._inner.mask || parent.target.filterCamera || parent._inner.filterCamera || parent._animatedPaint || parent._animations.some(animation => animation.tracks.paintOpacity.length) || parent._styles['clip-path'] && parent._styles['clip-path'] !== 'none' || parent.attrs['clip-path'] && parent.attrs['clip-path'] !== 'none' || parent.localName === 'svg' && parent._styles.overflow !== 'visible' && parent.attrs.overflow !== 'visible') return false;
+      // Existing ancestor captures retain ownership and flatten children back
+      // to vectors themselves; avoid a second scheduled capture underneath.
+      if (parent !== node && (parent._cache || parent._cacheRecipe && stateFor(parent.scene).cacheTrackedNodes.has(parent))) return false;
+    }
+    return true;
+  }
+  function paintKey(node, clipKey) { if (!SHAPES.has(node.localName) && node.localName !== 'text' && node.localName !== 'tspan') return clipKey; const style = node._styles, keys = ['fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-dasharray', 'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin', 'font-size', 'font-family', 'font-weight', 'font-style', 'text-anchor', 'dominant-baseline', 'color']; return clipKey + '|' + keys.map(key => key + ':' + resolve(style[key], style)).join(';') + '|' + (SHAPES.has(node.localName) ? ['d', 'x', 'y', 'width', 'height', 'rx', 'ry', 'r', 'cx', 'cy', 'x1', 'y1', 'x2', 'y2', 'points'].map(key => node.attrs[key] || '').join('|') : [node.attrs.x || '', node.attrs.y || '', node.textContent].join('|')) + ((node.localName === 'circle' || node.localName === 'ellipse') ? '|radial:' + (radialLeafGradientKey(node) || '') : ''); }
   function parentStyleKey(parent, context) { return (parent ? (parent._selectorKey || selectorKey(parent)) + '|' + parent._inheritedKey : '') + '|motion:' + (context.options.motion === false ? 0 : 1); }
   function queueActorCache(node) {
     for (let root = node; root; root = root.parentNode) if (root.classList.contains('gd-sprite') || root.classList.contains('gd-bug')) { stateFor(node.scene).actorCaches.add(root); return; }
@@ -725,6 +772,7 @@ window.GardenNativeArt = (function () {
       clockPause(this, 4, style['animation-play-state'] === 'paused', performance.now());
       if (key !== this._animationKey) { const hadAnimation = this._animations.length; resetPaintOpacity(this); this._animationKey = key; this._lastNativeTime = NaN; this._inner.setAlpha(1); const state = stateFor(this.scene); state.animations.delete(this); clockPause(this, 2, state.motionOn === false, performance.now()); this._animations = animationsFor(this); if (hadAnimation || this._animations.length) this._uncache(!this._animations.some(animation => animation.tracks.paintOpacity.length), true); if (this._animations.length) state.animations.add(this); else if (hadAnimation && !this._nativeAnimating) { this._applyTransform(); this.target.setAlpha(alpha(style.opacity, style)); this._animatedTransform = this._animatedOpacity = this._animatedPaint = false; } }
       if (this._animations.some(animation => animation.tracks.paintOpacity.length)) refreshPaintTargets(this);
+      if (this.localName === 'circle' || this.localName === 'ellipse') syncRadialLeafCache(this);
     }
     _uncache(skipSelf, remember) { this._bounds = null; const now = remember ? performance.now() : 0; for (let n = skipSelf ? this.parentNode : this; n; n = n.parentNode) { n._bounds = null; const state = stateFor(n.scene), pending = state.recaches.get(n); if (remember && (n._cache || pending)) state.recaches.set(n, { recipe: n._cache ? n._cache.recipe : pending.recipe, due: now + 150 }); releaseCache(n, false); } }
     destroy() { if (this._dead) return; if (this.parentNode) this.parentNode.removeChild(this); this._uncache(); this._dead = true; stateFor(this.scene).animations.delete(this); stateFor(this.scene).roots.delete(this); stateFor(this.scene).actorCaches.delete(this); stateFor(this.scene).cacheTrackedNodes.delete(this); stateFor(this.scene).recaches.delete(this); stateFor(this.scene).labels.delete(this); pausedAmbient.delete(this); if (this._nativePlayerBodies) clearPlayerBodies(this); if (this._nativePetBodies) clearPetBodies(this); for (const child of [...this.children]) child.destroy(); this.children.length = 0; if (this.target && this.target.active) this.target.destroy(true); }
@@ -1097,7 +1145,7 @@ window.GardenNativeArt = (function () {
     return true;
   }
   function pendingCaches(scene) {
-    let count = 0; for (const node of stateFor(scene).cacheTrackedNodes) { if (!nativeVisible(node)) continue; const view = localView(node); if ((!view || intersectBox(node.getBBox(), view)) && !cacheValid(node)) count++; } return count;
+    let count = 0; for (const node of stateFor(scene).cacheTrackedNodes) { if (!nativeVisible(node) || node._cacheRecipe && node._cacheRecipe.radialLeaf && !radialLeafReady(node)) continue; const view = localView(node); if ((!view || intersectBox(node.getBBox(), view)) && !cacheValid(node)) count++; } return count;
   }
   function updateAll(scene, time, sharp) {
     const state = stateFor(scene); updateMotionState(scene, time);
@@ -1106,9 +1154,10 @@ window.GardenNativeArt = (function () {
     // rendering in the same frames that need a smooth camera transition.
     const now = performance.now();
     for (const node of state.cacheTrackedNodes) {
+      if (node._cacheRecipe && node._cacheRecipe.radialLeaf && !radialLeafReady(node)) { releaseCache(node, false); state.recaches.delete(node); continue; }
       if (!nativeVisible(node)) { state.recaches.delete(node); continue; }
       const view = localView(node); if (view && !intersectBox(node.getBBox(), view)) { state.recaches.delete(node); continue; }
-      if (node._cache && !cacheValid(node)) { const reason = !cacheCoversView(node) ? 'coverage' : node._cache.dirty ? 'content' : 'quality', vectors = sharp || reason === 'coverage' || !scene._nativeViewTransition && effectivePixels(node) > 12.24; showCache(node, !vectors); if (!sharp) queueCache(node, reason === 'quality' ? 80 : 0, reason); }
+      if (node._cache && !cacheValid(node)) { const reason = !cacheCoversView(node) ? 'coverage' : node._cache.dirty ? 'content' : 'quality', vectors = !!node._cache.recipe.radialLeaf || sharp || reason === 'coverage' || !scene._nativeViewTransition && effectivePixels(node) > 12.24; showCache(node, !vectors); if (!sharp) queueCache(node, reason === 'quality' ? 80 : 0, reason); }
       else if (!node._cache && now >= (node._cacheRetryAfter || 0)) queueCache(node, 0, 'missing');
       else if (node._cache) { showCache(node, true); node._cache.lastUsed = now; if (cacheRefreshNeeded(node)) queueCache(node, 0, 'coverage'); else if (!scene._nativeViewTransition && state.cacheBytes > state.cacheBudget * .7 && node._cache.bytes > 512 * 1024 && node._cache.quality > cacheQuality(node) * 1.5) queueCache(node, 150, 'demote'); }
     }
@@ -1132,6 +1181,8 @@ window.GardenNativeArt = (function () {
     const rebuildAt = performance.now(); if (!sharp) for (const [node, pending] of state.recaches) { if (node._dead || !nativeVisible(node)) { state.recaches.delete(node); continue; } if (node._cache && cacheValid(node) && !cacheRefreshNeeded(node) && pending.reason !== 'demote') { state.recaches.delete(node); continue; } if (scene._nativeViewTransition && node._cache && cacheCoversView(node)) continue; if (pending.due > rebuildAt || rebuildAt < (node._cacheRetryAfter || 0)) continue; const view = localView(node); if (view && !intersectBox(node.getBBox(), view)) { state.recaches.delete(node); continue; } if (!cacheAllowance(node, pending.recipe, false)) break; const before = state.captureCount || 0; cacheNative(node, { ...pending.recipe, demote: pending.reason === 'demote' }); if (node._cache && cacheValid(node)) state.recaches.delete(node); else pending.due = rebuildAt + 80; if ((state.captureCount || 0) > before || performance.now() - rebuildAt > 3) break; }
     let cached = 0; const began = performance.now(); if (!sharp) for (const node of state.actorCaches) { state.actorCaches.delete(node); if (!node._dead && node.isConnected) cacheNative(node, { staticOnly: true, quality: 2 }); if (++cached >= 2 || performance.now() - began > 4) break; }
     for (const node of state.animations) animateNode(node, time);
+    // Parent pose tracks can raise effective pixels after the scheduler pass.
+    for (const node of state.cachedNodes) if (node._cache.recipe.radialLeaf && !cacheValid(node)) { showCache(node, false); if (!sharp && nativeVisible(node)) queueCache(node, 80, 'quality'); }
   }
   function create(scene, markup, options) {
     options = options || {}; const defs = new Map(stateFor(scene).defs), context = { defs, options, building: true }, ast = parse((options.defs || '') + String(markup || '')); collectDefs(ast, defs); for (const [id, value] of defs) stateFor(scene).defs.set(id, value);
@@ -1142,6 +1193,7 @@ window.GardenNativeArt = (function () {
   function cacheNative(node, options) {
     if (node._dead) return;
     options = options || {};
+    if (options.radialLeaf && !radialLeafReady(node)) { releaseCache(node, false); stateFor(node.scene).recaches.delete(node); return; }
     if (options.staticOnly) { const counts = new Map(), inspect = n => { let count = n._graphics ? 1 : 0, childMoving = false; const ownMoving = !!(n._animations.length || n._nativeAnimating || n._peerNameLabel), paintMoving = n._animations.some(animation => animation.tracks.paintOpacity.length); for (const child of n.children) { const sub = inspect(child); count += sub.count; childMoving = childMoving || sub.moving; } const out = { count, ownMoving, paintMoving, childMoving, moving: ownMoving || childMoving }; counts.set(n, out); return out; }; inspect(node); const visit = n => { const state = counts.get(n); if (state.paintMoving) return; if (!state.childMoving && state.count >= 4) cacheNative(n, { ...options, staticOnly: false, partitioned: true, preserveOwnMotion: state.ownMoving }); else for (const child of n.children) visit(child); }; visit(node); return; }
     if (options.partitioned) {
       const movingChildren = n => n.children.some(child => child._animations.length || child._nativeAnimating || child._peerNameLabel || movingChildren(child));
@@ -1192,7 +1244,7 @@ window.GardenNativeArt = (function () {
     } catch (e) { state.cacheFailures = (state.cacheFailures || 0) + 1; node._inner.setRotation(oldRotation).setScale(oldScaleX, oldScaleY).setAlpha(oldAlpha); for (const tile of tiles) tile.destroy(); if (previous && node._cache === previous) showCache(node, true); else { for (const original of originals) if (original.active) original.setVisible(visible.get(original)); restoreBase(node); } }
   }
   function element(scene, tag, attrs) { const node = new NativeNode(scene, tag, attrs, { defs: stateFor(scene).defs, options: {} }); stateFor(scene).roots.add(node); return node; }
-  function stats(scene) { const s = stateFor(scene), triangleBatch = scene.sys && triangleBatchStates.get(scene.sys.renderer), cacheQualities = {}; let croppedCaches = 0, pinnedBases = 0, pinnedBaseBytes = 0; for (const node of s.cacheTrackedNodes) { const base = node._cacheBase || node._cache && node._cache.recipe.retainBase && !node._cache.cropped && node._cache.quality === (node._cache.recipe.baseQuality || 1) && node._cache; if (base) { pinnedBases++; pinnedBaseBytes += base.bytes; } } for (const node of s.cachedNodes) if (node._cache) { cacheQualities[node._cache.quality] = (cacheQualities[node._cache.quality] || 0) + 1; if (node._cache.cropped) croppedCaches++; } return { created: s.created, shapes: s.shapes, animations: s.animations.size, motionOn: s.motionOn, roots: s.roots.size, labels: s.labels.size, cachedTiles: s.cachedTiles, cacheBytes: s.cacheBytes, cacheBudgetBytes: s.cacheBudget, cacheQualities, croppedCaches, trackedCaches: s.cacheTrackedNodes.size, pendingRecaches: s.recaches.size, capturesThisFrame: s.captureCount || 0, cacheEvictions: s.cacheEvictions || 0, cachePressureDeferrals: s.cachePressureDeferrals || 0, cacheFailures: s.cacheFailures || 0, pinnedBases, pinnedBaseBytes, staticBaseCopies: s.baseCopies || 0, unknownImages: s.unknownImages, innerRender: s.innerRender ? { ...s.innerRender } : null, triangleBatch: triangleBatch ? { ...triangleBatch } : null, parsedAssets: parsed.size, cachedPaths: paths.size, styleRules: rules.length, matchedStyleCache: matchedRules.size }; }
+  function stats(scene) { const s = stateFor(scene), triangleBatch = scene.sys && triangleBatchStates.get(scene.sys.renderer), cacheQualities = {}; let croppedCaches = 0, pinnedBases = 0, pinnedBaseBytes = 0, radialLeaves = 0, radialLeafCaches = 0, radialLeafVectors = 0; for (const node of s.cacheTrackedNodes) { if (node._cacheRecipe && node._cacheRecipe.radialLeaf) { radialLeaves++; if (node._cache) { radialLeafCaches++; if (node._cache.showingVectors) radialLeafVectors++; } } const base = node._cacheBase || node._cache && node._cache.recipe.retainBase && !node._cache.cropped && node._cache.quality === (node._cache.recipe.baseQuality || 1) && node._cache; if (base) { pinnedBases++; pinnedBaseBytes += base.bytes; } } for (const node of s.cachedNodes) if (node._cache) { cacheQualities[node._cache.quality] = (cacheQualities[node._cache.quality] || 0) + 1; if (node._cache.cropped) croppedCaches++; } return { created: s.created, shapes: s.shapes, animations: s.animations.size, motionOn: s.motionOn, roots: s.roots.size, labels: s.labels.size, cachedTiles: s.cachedTiles, cacheBytes: s.cacheBytes, cacheBudgetBytes: s.cacheBudget, cacheQualities, croppedCaches, trackedCaches: s.cacheTrackedNodes.size, pendingRecaches: s.recaches.size, capturesThisFrame: s.captureCount || 0, cacheEvictions: s.cacheEvictions || 0, cachePressureDeferrals: s.cachePressureDeferrals || 0, cacheFailures: s.cacheFailures || 0, pinnedBases, pinnedBaseBytes, staticBaseCopies: s.baseCopies || 0, unknownImages: s.unknownImages, radialLeaves: { tracked: radialLeaves, cached: radialLeafCaches, showingVectors: radialLeafVectors }, innerRender: s.innerRender ? { ...s.innerRender } : null, triangleBatch: triangleBatch ? { ...triangleBatch } : null, parsedAssets: parsed.size, cachedPaths: paths.size, styleRules: rules.length, matchedStyleCache: matchedRules.size }; }
   function pauseAmbient(next) {
     next = { hush: !!(next && next.hush), frozen: !!(next && next.frozen) }; if (next.hush === ambientPause.hush && next.frozen === ambientPause.frozen) return;
     ambientPause = next; const now = performance.now();

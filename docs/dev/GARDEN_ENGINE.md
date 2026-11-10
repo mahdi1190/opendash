@@ -81,6 +81,23 @@ geometry on peer departure. Fresh full-opening and early-Escape/loading-resize
 routes reached a visible Garden and continued through movement and zoom.
 These observations and CPU samples do not establish a display-frame-rate gain.
 
+Small, dense circle/ellipse leaves with static local paint and supported literal
+radial gradients can use the existing bounded adaptive cache scheduler. Parent
+pose and opacity remain live. Missing or insufficient captures show sharp
+vectors during zoom and after parent motion changes the required quality.
+Gradient contents join normal paint invalidation. Own animation, inherited
+paint-opacity animation, clips and unsupported definitions exclude automatic
+capture; existing ancestor caches retain ownership. Ineligible optional leaves
+do not count as pending readiness work. The `radialLeaves` snapshot counts
+tracked leaves, caches and vector fallback presentation, not frame rate.
+
+Ordinary play with leaf caching covered fresh opening/loading resize, walking
+and zoom, paired shore and room fishing, rainy puddle contact and public pet
+selection during an encrypted visit without captured app errors. The current
+Cat reached both peers while native sessions continued. Room reels and captions
+remained exposed at 1280 and 1024 widths. These observations cover the recorded
+routes; cache activity and CPU samples do not establish a frame-rate gain.
+
 Water retains source-art reflections rather than taking scene screenshots.
 Captures request Phaser's final even dimensions and can reuse one unexposed
 spare per source only when dimensions and effective quality match exactly.
@@ -96,8 +113,11 @@ lights. Exact normalized geometry comparison retains water scans, intervals,
 surf and the uploaded depth mask only when unchanged; shape, bounds, freeze,
 parent and room changes retain full invalidation. Capture traversal reveals
 externally cached originals before checking visibility, then stops at branches
-that remain hidden. Internal-cache originals keep their visible sibling tiles;
-an inactive flag alone does not prune artwork that Phaser can render. Status
+that remain hidden. Ordinary internal caches retain their visible sibling tiles.
+Exposed automatic radial-leaf caches instead supply their current originals
+while their tiles are hidden; `finally` restores exact prior visibility,
+including on failure. Ordinary internal ancestor caches still prune hidden
+branches. An inactive flag alone does not prune artwork Phaser can render. Status
 reports actual allocations, reuses, examined targets and stopped branches.
 
 Canonical-world daily callers meet at role-related public landmarks with public
