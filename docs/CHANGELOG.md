@@ -10,6 +10,13 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.64.16] - 2026-11-10
+
+### Changed
+
+- Garden loading keeps the first and final warm render while skipping repeated full-world draws between preparation steps. Camera preparation, artwork captures and the full shader suite continue before play opens.
+- Loading responds to window size changes while retaining the correct final view.
+
 ## [2.64.15] - 2026-11-09
 
 ### Changed

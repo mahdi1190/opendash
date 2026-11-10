@@ -405,17 +405,35 @@ window.GardenNative = (function () {
   function prepareShaders(s, complete) {
     const renderer = s.game.renderer, nodes = renderer.renderNodes, started = performance.now();
     const report = s.shaderPreparation = { state: 'preparing', prepared: 0, compiled: 0, limit: 0, ms: 0 };
-    const cacheReport = s.cachePreparation = { state: 'preparing', frames: 0, terrainReady: 0, terrainTotal: 0, pendingVisible: 0, ms: 0 };
-    let jobs = null, index = 0, timer = null, finished = false, shaderState = null;
+    const cacheReport = s.cachePreparation = { state: 'preparing', frames: 0, terrainReady: 0, terrainTotal: 0, pendingVisible: 0, ms: 0, mainRenders: 0, hiddenTicks: 0, warmRenders: 0, renderState: 'first-render' };
+    let jobs = null, index = 0, timer = null, finished = false, shaderState = null, mainBit = 0, warm = null;
     const copy = config => ({ base: { ...config.base }, additions: config.additions.map(addition => ({ ...addition })), features: [...config.features] });
+    const mainRoot = s.world.root;
+    const releaseMain = () => { if (mainBit) { mainRoot.cameraFilter = (mainRoot.cameraFilter || 0) & ~mainBit; mainBit = 0; } };
+    const hideMain = () => {
+      const bit = s.scene.cameras.main.id | 0;
+      if (mainBit && mainBit !== bit) releaseMain();
+      // Own only a newly added main-camera bit. Logical visibility and the
+      // id-zero cameras used by explicit cache/water captures stay unchanged.
+      if (!bit || (bit & (bit - 1)) || !mainBit && ((mainRoot.cameraFilter || 0) & bit)) return;
+      mainRoot.cameraFilter = (mainRoot.cameraFilter || 0) | bit; mainBit = bit;
+    };
+    const sameWarmView = camera => warm.camera === camera && warm.x === camera.x && warm.y === camera.y && warm.width === camera.width && warm.height === camera.height && warm.scrollX === camera.scrollX && warm.scrollY === camera.scrollY && warm.zoomX === camera.zoomX && warm.zoomY === camera.zoomY && warm.rotation === camera.rotation && warm.originX === camera.originX && warm.originY === camera.originY && warm.syncFull === (s.syncFull || 0) && warm.syncReused === (s.syncReused || 0);
+    const warmMain = state => {
+      releaseMain();
+      const camera = s.scene.cameras.main;
+      warm = { state: state || 'ready', camera, x: camera.x, y: camera.y, width: camera.width, height: camera.height, scrollX: camera.scrollX, scrollY: camera.scrollY, zoomX: camera.zoomX, zoomY: camera.zoomY, rotation: camera.rotation, originX: camera.originX, originY: camera.originY, syncFull: s.syncFull || 0, syncReused: s.syncReused || 0 };
+      cacheReport.renderState = 'warming';
+    };
     const cleanup = () => {
+      releaseMain();
       clearTimeout(timer); s.game.events.off('postrender', advance); s.scene.events.off('shutdown', shutdown);
       s.game.canvas.removeEventListener('webglcontextlost', lost); s.stopShaderPreparation = null;
     };
     const finish = (error, state) => {
       if (finished) return; finished = true; cleanup();
       report.state = error ? 'failed' : state || 'ready'; report.ms = performance.now() - started;
-      cacheReport.ms = report.ms; if (error) cacheReport.state = 'failed';
+      cacheReport.ms = report.ms; cacheReport.renderState = error ? 'failed' : 'ready'; if (error) cacheReport.state = 'failed';
       if (!s.dead) complete(error);
     };
     const lost = () => finish(new Error('The graphics connection was interrupted. Reopen the garden to try again.'));
@@ -425,6 +443,15 @@ window.GardenNative = (function () {
       if (s.dead) { s.stopShaderPreparation(); return; }
       try {
         if (renderer.contextLost) { lost(); return; }
+        const camera = s.scene.cameras.main;
+        if (mainBit && mainBit === (camera.id | 0) && ((mainRoot.cameraFilter || 0) & mainBit)) cacheReport.hiddenTicks++;
+        else cacheReport.mainRenders++;
+        // The first real world render selects its actual shader configuration.
+        // A final real render warms the newly prepared image/composite paths.
+        // If loading resize, camera controls or a sync changed that view, run
+        // the unchanged preparation goals again before scheduling its warm draw.
+        if (warm && sameWarmView(camera)) { cacheReport.warmRenders++; finish(null, warm.state); return; }
+        warm = null;
         // Loading uses the same bounded capture scheduler as normal play.
         // Prepare fit-view terrain too, so the first zoom-out does not replay
         // uncached woodland. Game rules, movement and saves stay paused.
@@ -433,17 +460,17 @@ window.GardenNative = (function () {
         GardenNativeArt.updateAll(s.scene, now); if (s.water) s.water.update(now, 0, s.lighting.environment());
         const cacheDone = cache.ready || now - started >= 6000;
         if (cacheDone) cacheReport.state = cache.ready ? 'ready' : 'continuing';
-        if (shaderState) { if (cacheDone) finish(null, shaderState); return; }
+        if (shaderState) { if (cacheDone) warmMain(shaderState); return; }
         if (!jobs) {
           const quad = nodes && typeof nodes.getNode === 'function' && nodes.getNode('BatchHandlerQuad'), manager = quad && quad.programManager;
-          if (!manager || typeof quad.finalizeTextureCount !== 'function' || !renderer.shaderProgramFactory) { shaderState = 'unsupported'; if (cacheDone) finish(null, shaderState); return; }
+          if (!manager || typeof quad.finalizeTextureCount !== 'function' || !renderer.shaderProgramFactory) { shaderState = 'unsupported'; if (cacheDone) warmMain(shaderState); return; }
           // Read the suite used by the real first render, including its native
           // texture-coordinate/tint additions, rather than inventing shaders.
           const rendered = Object.values(manager.programs).map(suite => suite.config).find(standard);
           const source = rendered || (standard(manager.currentConfig) ? manager.currentConfig : null);
-          if (!source) { shaderState = 'unsupported'; if (cacheDone) finish(null, shaderState); return; }
+          if (!source) { shaderState = 'unsupported'; if (cacheDone) warmMain(shaderState); return; }
           report.limit = Math.floor(Math.min(16, renderer.maxTextures, quad.maxTexturesPerBatch || renderer.maxTextures));
-          if (!(report.limit >= 1)) { shaderState = 'unsupported'; if (cacheDone) finish(null, shaderState); return; }
+          if (!(report.limit >= 1)) { shaderState = 'unsupported'; if (cacheDone) warmMain(shaderState); return; }
           jobs = Array.from({ length: report.limit }, (_, count) => ({ manager, quad, count: count + 1, config: copy(source) }));
           const flat = nodes.getNode('BatchHandlerTriFlat'), flatManager = flat && flat.programManager;
           if (flatManager && flatManager.currentConfig.base.name === 'FLAT') jobs.push({ manager: flatManager, config: copy(flatManager.currentConfig) });
@@ -459,10 +486,11 @@ window.GardenNative = (function () {
         } finally { manager.currentConfig = previous; }
         if (!suite) return;
         report.prepared++; index++;
-        if (index === jobs.length) { shaderState = 'ready'; if (cacheDone) finish(); }
+        if (index === jobs.length) { shaderState = 'ready'; if (cacheDone) warmMain(); }
       } catch (error) { finish(error); }
+      finally { if (!finished && !warm) { hideMain(); cacheReport.renderState = 'preparing'; } }
     };
-    s.stopShaderPreparation = () => { if (finished) return; finished = true; cleanup(); report.state = 'cancelled'; report.ms = performance.now() - started; };
+    s.stopShaderPreparation = () => { if (finished) return; finished = true; cleanup(); report.state = 'cancelled'; report.ms = performance.now() - started; cacheReport.renderState = 'cancelled'; };
     s.scene.events.once('shutdown', shutdown); s.game.canvas.addEventListener('webglcontextlost', lost);
     timer = setTimeout(() => finish(new Error('The garden graphics took too long to open. Reopen the garden to try again.')), 10000);
     s.game.events.on('postrender', advance);
@@ -521,7 +549,7 @@ window.GardenNative = (function () {
       // Four texture slots keep the reachable shader suite small; preparation
       // still warms every native variant before the player takes control.
       s.game = new Phaser.Game({ type: Phaser.WEBGL, parent: host, width: Math.max(1, box.clientWidth), height: Math.max(1, box.clientHeight), backgroundColor: '#87aa78', antialias: true, resolution: Math.min(2, devicePixelRatio || 1), powerPreference: 'high-performance', maxTextures: 4, audio: { noAudio: true }, input: { keyboard: true, mouse: { preventDefaultWheel: true }, touch: true, activePointers: 3, gamepad: false }, scene: config, fps: { target: 60, min: 15, limit: 0, smoothStep: false }, banner: false });
-      s.resize = new ResizeObserver(() => { if (s.dead || !s.ready || s.capturing) return; const w = box.clientWidth, h = box.clientHeight; if (!w || !h) return; s.game.scale.resize(w, h); if (!inRoom()) s.world.resize(w, h); }); s.resize.observe(box);
+      s.resize = new ResizeObserver(() => { if (s.dead || !s.world || s.capturing) return; const w = box.clientWidth, h = box.clientHeight; if (!w || !h) return; s.game.scale.resize(w, h); if (!inRoom()) s.world.resize(w, h); }); s.resize.observe(box);
       s.visibility = () => { if (s.dead || !s.game) return; if (document.hidden) { if (s.blur) s.blur(); s.game.loop.sleep(); } else s.game.loop.wake(); }; document.addEventListener('visibilitychange', s.visibility);
     }).catch(error => { lastError = String(error && error.message || error); if (s.dead) return; loading.textContent = 'The garden could not open: ' + lastError; console.error('[native garden]', error); });
   }
