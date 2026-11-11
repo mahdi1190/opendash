@@ -385,7 +385,7 @@ function gardenRender(el, snapshot, o) {
   if (!el) return null;
   const snap = gardenSnapshotClean(snapshot);
   el.textContent = '';
-  if (snap && !gardenSnapSameWorld(snap)) { const p = document.createElement('p'); p.className = 'gd-empty muted'; p.textContent = 'This garden is from an older version of the app. It will show here once they update.'; el.appendChild(p); return null; }
+  if (snap && !gardenSnapSameWorld(snap)) { const p = document.createElement('p'); p.className = 'gd-empty muted'; p.textContent = (Number(snap.wv) || 1) > GARDEN_WORLD.v ? 'This garden is in a newer world. Update Freeflo to visit.' : 'Your friend needs to update to visit.'; el.appendChild(p); return null; }
   if (!snap) {
     const p = document.createElement('p'); p.className = 'gd-empty muted'; p.textContent = 'This garden could not be shown.';
     el.appendChild(p);

@@ -365,7 +365,7 @@ const _GLV_NOTES = Object.freeze({
   old: 'Their Freeflo is older than yours, so this is the garden as they last shared it.',
   newer: 'Their Freeflo is newer than yours. Update yours to play together. This is the garden as they last shared it.',
   road: 'Live play needs a quick update of the relay you share. This is the garden as they last shared it.',
-  world: 'This garden uses a different island layout. Update Freeflo on both computers to visit.',
+  world: 'Your friend needs to update to visit. Gardens are in Fleetwater Vale now, so both of you need the same version.',
   quiet: 'No answer. Their Freeflo has to be open, on the latest version, for you to get in. This is the garden as they last shared it.',
   unsent: 'Your knock could not be sent just now. Check your connection to friends under Settings > Your connection to friends, then knock again. This is the garden as they last shared it.',
   limit: 'Their relay is turning your messages away for now (too many today). It opens again after midnight UTC, or at once when they press Update my connection under Settings > Your connection to friends. This is the garden as they last shared it.',

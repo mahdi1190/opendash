@@ -16,6 +16,7 @@ export function commitGardenIslandUpdate(state,prepared){
  return applyGardenIslandPlan(state,prepared.plan,{contractReady:prepared.contractReady===true});
 }
 export async function run(ctx){
+ if(gardenIsland.data.world.v>=5)return{changed:false,notes:['Gardens start fresh in Fleetwater Vale; the app does it when the Garden opens. Nothing to relayout.']};
  const state=await ctx.state.read();if(!state?.garden?.since)return{changed:false,notes:['No existing garden to relayout.']};
  const prepared=prepareGardenIslandUpdate(state),{plan}=prepared;
  if(plan.status==='already-current')return{changed:false,notes:['This Garden already has the exact canonical island fingerprint.']};

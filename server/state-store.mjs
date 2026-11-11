@@ -200,6 +200,12 @@ export function createStateStore({ stateDir, log = () => {}, now = () => Date.no
       }
       const fenced = fenceGardenUiWrite(prev, parsed, gardenClaim, [gardenIslandLayout.world.v, gardenIslandFingerprint]);
       let gardenArchive = null;
+      // A fresh start in this world: keep a copy of the earlier-layout garden before it is replaced.
+      if (fenced.fresh && prev && prev.garden) gardenArchive = await archiveGardenUiComponent(stateDir, prev.garden, {
+        receivedAt: new Date(now()).toISOString(), source: opts.source || 'ui', client: opts.client || null,
+        requestVersion: base, keptVersion: prevSave, clientWorld: gardenClaim == null ? null : gardenClaim,
+        keptWorld: fenced.world || null, reason: 'garden-fresh-start-earlier-layout',
+      });
       if (fenced.held && Object.hasOwn(parsed, 'garden')) gardenArchive = await archiveGardenUiComponent(stateDir, parsed.garden, {
         receivedAt: new Date(now()).toISOString(), source: opts.source || 'ui', client: opts.client || null,
         requestVersion: base, keptVersion: prevSave, clientWorld: gardenClaim == null ? null : gardenClaim,
