@@ -562,6 +562,10 @@ window.GardenPaintedProps = (function () {
       // the rock step: big lobed masses lit from the upper left, darker in the cleft behind the water
       B.f(D().blob(r, 0, -H * .55, 112, H * .62, 12, .35), rock[1]);
       for (const [px, py, rx, ry] of [[-74, -40, 46, 44], [76, -46, 46, 48], [-58, -112, 44, 46], [62, -118, 46, 46], [-30, -H + 6, 44, 30], [34, -H + 2, 46, 30], [-86, -4, 30, 18], [90, -6, 30, 18]]) B.stone(r, px, py, rx, ry, rock, MOSS);
+      // ledges of the step: each a lit top face with a shadow under it, the strata of the scarp
+      for (const [ly, lw] of [[-H * .26, 96], [-H * .52, 104], [-H * .78, 92]]) for (const sgn of [-1, 1]) { const lx = sgn * (Wd / 2 + lw / 2 + 4); B.f(D().blob(r, lx, ly + 5, lw / 2, 5, 9, .3), rock[3], .45).f(D().blob(r, lx, ly, lw / 2, 4, 9, .3), rock[2], .85).f(D().blob(r, lx - sgn * 10, ly - 3, lw / 3, 3, 8, .4), MOSS[1], .75); }
+      // the rock darkens where the spray keeps it wet
+      for (const sgn of [-1, 1]) B.f(B.rect(sgn > 0 ? Wd / 2 + 2 : -Wd / 2 - 16, -H + 6, 14, H - 10), B.lin(0, -H, 0, 0, [[0, 'rgba(60,70,64,.15)'], [1, 'rgba(50,62,58,.55)']]));
       B.f(B.rect(-Wd / 2 - 6, -H, Wd + 12, H), '#3e4a4a');
       // trees and ferns crown the top; ivy hangs down the faces
       for (let i = 0; i < 6; i++) { const px = (i < 3 ? -1 : 1) * (Wd / 2 + 10 + (i % 3) * 16); B.s(`M${px} ${-H + 10}q${(r() - .5) * 8} 30 ${(r() - .5) * 4} ${40 + r() * 30}`, leafOf(season)[0], 2, .8); }
@@ -577,6 +581,8 @@ window.GardenPaintedProps = (function () {
     // trees on the scarp top are the library's own, like the planting round them
     for (const [id, v, hh, dx, dy] of [['tree.pine', 0, 150, -84, -H + 8], [season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 86, -H + 14], ['tree.pine', 1, 120, 30 + Wd / 2, -H - 6]]) h.add(libImage(scene, id, v, season, { h: hh }, x + dx, y + dy, false));
     h.add(image(scene, baseKey, x, y));
+    // ferns and bracken round the pool, the library's own plants
+    for (const [id, v, hh, dx, dy] of [['plant.fern', 0, 30, -96, 10], ['plant.fern', 1, 26, 98, 12], ['plant.bracken', 0, 34, -70, 24], ['plant.fern', 2, 24, 70, 26], ['plant.reed', 0, 34, -40, 30], ['plant.reed', 1, 30, 46, 30]]) h.add(libImage(scene, id, v, season, { h: hh }, x + dx, y + dy, false));
     // live: streaks running down the sheet (a tile sprite scrolls; nothing redraws)
     const streakKey = bake(scene, 'falls-streak|' + Wd, [0, 0, Wd, 64], B => {
       const cx = B.cx; for (let i = 0; i < 10; i++) { const px = 3 + (i * 4.6) % (Wd - 6), py = (i * 23) % 64, len = 14 + (i * 7) % 18; B.s(`M${px} ${py}v${len}`, i % 3 ? '#ffffff' : '#d6eeea', i % 2 ? 1.4 : 2.2, .55); if (py + len > 64) B.s(`M${px} ${py - 64}v${len}`, i % 3 ? '#ffffff' : '#d6eeea', i % 2 ? 1.4 : 2.2, .55); }
