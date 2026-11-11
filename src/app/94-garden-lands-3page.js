@@ -247,7 +247,7 @@ function gardenLandsTab(el, m) {
   const mp = _gdpEl('div', 'gld-mapbox'); mp.innerHTML = _gldMap(m); head.appendChild(mp);
   const txt = _gdpEl('div', 'gld-intro');
   txt.appendChild(_gdpEl('h3', null, `You have ${owned} of ${GARDEN_LAND_SECTIONS.filter(s => s.buy).length} pieces of land`));
-  txt.appendChild(_gdpEl('p', null, `Garden level ${lv} · ${_gdpNum(m.wallet.coins)} coins · ${built} of ${GARDEN_LAND_FEATURES.length} things built. The island has five large regions. Each route opens at its garden level, and land you already own keeps its approach open. On the map, gold is what you can buy now and grey is for later.`));
+  txt.appendChild(_gdpEl('p', null, `Garden level ${lv} · ${_gdpNum(m.wallet.coins)} coins · ${built} of ${GARDEN_LAND_FEATURES.length} things built. The island has five large regions. Each gate opens with something you find nearby (or by itself a little later), and land you already own keeps its approach open. On the map, gold is what you can buy now and grey is for later.`));
   head.appendChild(txt); box.appendChild(head);
   const sec = (title) => { box.appendChild(_gdpEl('h4', 'gld-h', title)); const d = _gdpEl('div', 'gld-list'); box.appendChild(d); return d; };
   const buyRow = (host, s) => { const i = gardenLandInfo(s.id, m), K = GARDEN_LAND_KINDS[s.kind]; _gldRow(host, { icon: s.icon, name: s.name, sub: `${K.name}, ${s.cells.length} squares: ${gardenLandGrowsLine(s)}. ${K.says || ''}`, btn: `${_gdpNum(s.buy)} coins`, off: !i.afford, run: (b) => { const r = gardenBuyLand(s.id); if (!r.ok) gameDenyOf(r, b); else gameCheer(b, { text: '-' + s.buy, tone: 'coin', sound: true }); }, ...gardenRewardBtn2(s.buy, m, () => gardenBuyLand(s.id)) }); };

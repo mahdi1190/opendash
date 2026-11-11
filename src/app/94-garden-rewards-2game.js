@@ -146,5 +146,5 @@ function gardenRewardLandRows(sec, m) {
   const rows = GARDEN_LAND_TRAILS.map(t => gardenRewardTrailInfo(t, m)).filter(I => I.early);
   if (!rows.length) return;
   const d = sec('Open a path early');
-  for (const I of rows) _gldRow(d, { icon: 'footprints', name: I.t.name, sub: `Its gate opens at level ${I.t.lv}. With survey pegs you can open it now, and buy the land along it ${GR_ECON.trailEarly} levels sooner. You have ${I.have}.`, btn: `${I.pegs} pegs`, off: I.have < I.pegs, run: (b) => { const r = gardenRewardOpenTrail(I.t.id); if (!r.ok) gameDenyOf(r, b); } });
+  for (const I of rows) _gldRow(d, { icon: 'footprints', name: I.t.name, sub: `This path opens at level ${I.t.lv}. With survey pegs you can open it now, and buy the land along it ${GR_ECON.trailEarly} levels sooner. You have ${I.have}.`, btn: `${I.pegs} pegs`, off: I.have < I.pegs, run: (b) => { const r = gardenRewardOpenTrail(I.t.id); if (!r.ok) gameDenyOf(r, b); } });
 }
