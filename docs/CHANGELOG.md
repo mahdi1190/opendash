@@ -10,6 +10,13 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.67.1] - 2026-11-11
+
+### Fixed
+
+- Sharing and receiving the expanded island use its complete third-generation handover validation. The earlier island handover format remains separate.
+- Cold expanded-island planning avoids scanning unrelated coast segments.
+
 ## [2.67.0] - 2026-11-11
 
 ### Added
