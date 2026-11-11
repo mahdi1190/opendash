@@ -3,7 +3,7 @@
 
 /* Nowhere: no walls, no floor you could swear to. Pearl, lilac and a warm white where the sun ought to be. */
 GRA_ROOMS.nowhere = {
-  plate: '#c4bedc', ambient: .95,
+  plate: '#c4bedc', ambient: .95, ownFront: true,
   lights: [],
   fx: { drift: [{ x: 200, y: 180, r: 260, c: '#ffffff', a: .14, dx: 80, sp: .05 }, { x: 700, y: 120, r: 300, c: '#fff8ff', a: .18, dx: 90, sp: .04 }, { x: 480, y: 330, r: 340, c: '#ffffff', a: .16, dx: 60, sp: .06 }], motes: [{ x0: 0, x1: 960, y0: 60, y1: 560, n: 18, c: '#ffffff', a: .5, rise: 2, wind: 3 }] },
   *paint(T) {

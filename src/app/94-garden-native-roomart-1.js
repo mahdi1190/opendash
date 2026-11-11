@@ -259,7 +259,7 @@ GRA_ROOMS.boatloft = {
 GRA_ROOMS.lampcup = {
   plate: '#05060e', ambient: .5,
   lights: [{ x: 480, y: 110, radius: 260, height: 120, color: '#d8e0ff', intensity: .3 }],
-  fx: { motes: [{ x0: 300, x1: 660, y0: 70, y1: 390, n: 14, c: '#dce4ff', a: .4, rise: 3 }] },
+  fx: { motes: [{ x0: 300, x1: 660, y0: 70, y1: 390, n: 14, c: '#dce4ff', a: .4, rise: 3 }], flicker: [{ x: 612, y: 388, r: 60, c: '#ffb050', a: .22, amt: .3 }] },
   *paint(T) {
     const { cx } = T;
     T.rect(0, 0, 960, 600, '#04050c');
@@ -292,6 +292,11 @@ GRA_ROOMS.lampcup = {
     T.fill('M0 392H220L60 600H0Z', '#06060e', .85); T.fill('M960 392H740L900 600H960Z', '#06060e', .85);
     T.skirt(394, .55);
     for (const x of [746, 796]) { T.soft(x + 17, 404, 26, 6, .5); T.rrect(x, 346, 34, 56, 4, T.lin(x, 0, x + 34, 0, [[0, '#8a8c98'], [.4, '#5e6068'], [1, '#2a2c34']])); T.stroke(`M${x + 34} 358l20 -16`, '#5e6068', 5); T.ell(x + 17, 346, 17, 5, '#9a9ca8'); }
+    // the lighter's long pole leaning in the corner, an oilskin on its hook, a lantern turned low, matches and a ledger
+    T.stroke('M716 396L664 70', '#3a2a1a', 5); T.stroke('M715 396L663 70', '#8a6a44', 1.2, .5); T.stroke('M664 70l-8 -14M664 70l10 -6', '#9a9aa8', 2.4);
+    T.ell(300, 92, 3, 3, '#6a6a78'); T.fill('M282 96Q300 86 318 96L326 186Q300 196 274 186Z', T.lin(274, 0, 326, 0, [[0, '#4a5a3a'], [.5, '#3a4a2c'], [1, '#1e2814']])); T.stroke('M300 96V188', '#1a2210', 1.5, .6); T.stroke('M284 120Q300 112 316 120', '#7a8a5a', 1.5, .35);
+    T.soft(612, 410, 26, 6, .5); T.rrect(598, 368, 28, 38, 4, '#2a2420'); T.rrect(602, 374, 20, 26, 3, '#ffcf6a', .55); T.ell(612, 366, 10, 4, '#2a2420'); T.stroke('M604 364Q612 352 620 364', '#3a3430', 2); T.glow(612, 388, 70, '#ffb050', .35);
+    T.rrect(420, 324, 60, 8, 2, '#d8ccb0'); T.rect(420, 324, 4, 8, '#8a2a20'); T.rrect(500, 326, 22, 6, 1, '#c8a050'); T.rect(500, 326, 6, 6, '#a83a2a');
     // door: the small iron door in the post, ajar, night outside
     T.rrect(34, 426, 66, 134, 8, T.lin(0, 426, 0, 560, [[0, '#0a1440'], [1, '#1a2a5a']])); T.ell(58, 458, 1.8, 1.8, '#fff'); T.ell(76, 486, 1.4, 1.4, '#fff'); T.ell(64, 510, 1.2, 1.2, '#fff', .7);
     T.poly([[34, 426], [14, 420], [14, 566], [34, 560]], T.lin(14, 0, 34, 0, [[0, '#2a3040'], [1, '#4a5468']]));

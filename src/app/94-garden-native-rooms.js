@@ -428,7 +428,7 @@ window.GardenNativeRooms = (function () {
       catch (e) { if (s.waterMask) { s.waterMask.destroy(); s.waterMask = null; } }
     }
     if (!music && room.waterTop) { s.waterTop = art(scene, room.waterTop(), s.root, 65); trimWaterSurface(s, s.waterTop); }
-    if (!music && room.front) { s.front = framedArt(s, room.front(), s.root, 9000); if (s.front.cache) s.front.cache({ staticOnly: true, tileSize: 1024 }); }
+    if (!music && room.front && !(s.paintSpec && s.paintSpec.ownFront)) { s.front = framedArt(s, room.front(), s.root, 9000); if (s.front.cache) s.front.cache({ staticOnly: true, tileSize: 1024 }); }
     if (!music && typeof gardenSceneElement === 'function') {
       s.gameNode = gardenSceneElement('g', { class: 'grm-game', transform: 'scale(' + GRW.k + ')' });
       const gameObject = unwrap(s.gameNode); if (gameObject && gameObject.setDepth) { gameObject.setDepth(9500); s.root.add(gameObject); }

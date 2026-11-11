@@ -15,7 +15,7 @@
 const GRA_ROOMS = {};
 window.GardenRoomArt = (function () {
   'use strict';
-  const K = 2, W = 960, H = 600, SLICE = 7, KEEP = 3;
+  const K = 2, W = 960, H = 600, SLICE = 10, KEEP = 3;
   const baked = new Map();                        // room id -> { key, canvas }
   let fxSerial = 0;
   function wanted(room) { try { return !!(room && GRA_ROOMS[room.id] && window.GardenNativePainted && GardenNativePainted.wanted()); } catch (e) { return false; } }
@@ -119,15 +119,18 @@ window.GardenRoomArt = (function () {
       /** flagstones on a floor, in perspective: rows deepen toward you, joints staggered */
       flags(y0, y1, o) {
         o = o || {}; const base = o.base || '#6a665e', vx = o.vx == null ? 480 : o.vx, spread = o.spread || 2.4;
-        T.rect(0, y0, W, y1 - y0, o.mortar || shade(base, -.5));
+        T.rect(0, y0, W, y1 - y0, o.mortar || shade(base, -.3));
         let y = y0, row = 0, h = o.h || 14;
         while (y < y1) {
-          const k = (y - y0) / (y1 - y0), sw = (o.w || 120) * (1 / spread + (1 - 1 / spread) * k), off = (row % 2) * sw * .5 + r() * sw * .3;
-          for (let x = -sw - off; x < W + sw; x += sw * (.8 + r() * .4)) {
-            const w = sw * (.85 + r() * .3), c = shade(base, (r() - .5) * (o.var || .18)), sx = vx + (x - vx) * (1 - .04 * (1 - k));
-            T.rrect(sx + 1.5, y + 1, w - 3, h - 2, Math.min(4, h * .25), c);
-            T.rect(sx + 3, y + 1.5, w - 8, Math.max(1, h * .1), shade(c, .2), .45);
-            if (r() < .3) T.ell(sx + r() * w, y + h * .5, w * .15, h * .2, shade(c, -.25), .35);
+          const k = (y - y0) / (y1 - y0), sw = (o.w || 120) * (1 / spread + (1 - 1 / spread) * k);
+          for (let x = -sw - r() * sw; x < W + sw;) {
+            const w = sw * (.55 + r() * .9), hh = h * (r() < .25 ? 2 : 1) - 2, c = shade(base, (r() - .5) * (o.var || .22)), sx = vx + (x - vx) * (1 - .04 * (1 - k)), jy = (r() - .5) * h * .12;
+            if (hh > h && y + hh > y1 + h) { x += w; continue; }
+            const d = `M${sx + 2 + r() * 3} ${y + 1 + jy}L${sx + w - 2 - r() * 3} ${y + 1 + jy + (r() - .5) * 2}L${sx + w - 1 - r() * 4} ${y + hh + jy}L${sx + 1 + r() * 4} ${y + hh + jy + (r() - .5) * 2}Z`;
+            T.fill(d, c); T.rect(sx + 4, y + 1.5 + jy, w - 10, Math.max(1, h * .1), shade(c, .18), .4);
+            if (r() < .35) T.ell(sx + r() * w, y + hh * .5, w * .18, hh * .2, shade(c, (r() - .5) * .5), .3);
+            if (r() < .12) T.stroke(`M${sx + w * .3} ${y + 2}l${w * .1} ${hh * .5}l${w * .15} ${hh * .4}`, shade(c, -.4), 1, .5);
+            x += w;
           }
           y += h; h *= o.grow || 1.16; row++;
         }
@@ -297,12 +300,16 @@ window.GardenRoomArt = (function () {
       if (status.cached) plate.setVisible(false);
     }
     if (job.done) show();
+    // The bake runs on its own short tasks between frames (never one long
+    // one), so it finishes in about its own cost even when frames are slow.
+    const pump = () => { if (dead || image) return; status.frames++; if (step(scene, room, job)) { show(); return; } setTimeout(pump, 0); };
+    if (!job.done) setTimeout(pump, 0);
     const handle = {
       root, node: { children: [] }, roomLayer: null, painted: true, status,
       queryAll: () => [], cache() {},
       update(t, dt) {
         if (dead) return;
-        if (!image) { status.frames++; if (step(scene, room, job)) show(); return; }
+        if (!image) return;
         if (images.length && images[0].alpha < 1) { fade += dt; const a = Math.min(1, fade / .35); for (const im of images) im.setAlpha(a); if (a >= 1) plate.setVisible(false); }
         fx.update(t, typeof gardenMotionOn !== 'function' || gardenMotionOn());
       },
