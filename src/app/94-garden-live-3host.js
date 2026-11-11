@@ -119,18 +119,23 @@ function _glhTurns(path) {
 }
 /** Someone here walks: this page knows the garden, so it works out the way (the same routes your own feet take) and tells everyone, the walker too. */
 function _glhWalk(A, ev) {
-  let way = null;
+  if (GARDEN_WORLD.v >= 4) {
+    const m = gardenHere();
+    if (!Number.isFinite(ev.x) || !Number.isFinite(ev.y) || ev.x < 0 || ev.y < 0 || ev.x >= GARDEN_WORLD.cols || ev.y >= GARDEN_WORLD.rows || gardenZoneLockOf(ev.x, ev.y, m.areas)) { _glhSend(A.f, 'go', { w: A.w, x: A.x, y: A.y }); return; }
+  }
+  let way = null, routeTried = false;
   const t = Date.now();   // clock-ok: spacing the sums
   // (a hidden tab draws nothing, so the figure is not where it was: it would be routed from an old place, and everyone would see it walk back)
   if (typeof document !== 'undefined' && document.hidden) { A.x = ev.x; A.y = ev.y; A.tx = null; A.way = null; }
   else if (typeof _gwRoute === 'function' && !(A.g && A.g.bt) && t - (A.routeAt || 0) >= 200) {   // (someone in a boat goes straight over the water)
-    A.routeAt = t;
+    A.routeAt = t; routeTried = true;
     try {
       const tgt = _gwFree(ev.x, ev.y) ? { x: ev.x, y: ev.y } : _gwNearestFreePt(ev.x, ev.y, 3);   // (a seat is on the bench itself: as near as the feet go, then there)
       way = tgt ? _gwRoute({ x: A.x, y: A.y }, tgt) : null;
       if (way && (tgt.x !== ev.x || tgt.y !== ev.y)) way = way.concat([{ x: ev.x, y: ev.y }]);
     } catch (e) { way = null; }
   }
+  if (GARDEN_WORLD.v >= 4 && routeTried && !way) { _glhSend(A.f, 'go', { w: A.w, x: A.x, y: A.y }); return; }
   const turns = _glhTurns(way);
   _gllWalkVia(A, turns.r, ev.x, ev.y);
   if (_gll.actors.size > 1) _glhSend('all', 'go', { w: ev.w, x: ev.x, y: ev.y, ...turns });   // (with nobody else here, nobody needs telling: the walker's own feet are their own)
@@ -830,7 +835,7 @@ function _glhPanel(el, v) {
 function _glhBulkFeedback(detail) {
   const rows = [], harvest = detail.kind === 'harvest', kind = harvest ? 'harvest' : 'water';
   for (const cell of detail.cells) {
-    if (!Array.isArray(cell) || !Number.isInteger(cell[0]) || !Number.isInteger(cell[1]) || cell[0] < 0 || cell[0] > 63 || cell[1] < 0 || cell[1] > 63) continue;
+    if (!Array.isArray(cell) || !Number.isInteger(cell[0]) || !Number.isInteger(cell[1]) || cell[0] < 0 || cell[0] >= GARDEN_WORLD.cols || cell[1] < 0 || cell[1] >= GARDEN_WORLD.rows) continue;
     const def = harvest && gardenPlant(cell[3]); if (harvest && !def) continue;
     rows.push({ x: cell[0], y: cell[1], fp: Math.max(1, Math.min(4, Math.round(Number(cell[2]) || def && def.fp || 1))), id: def && def.id, gold: harvest && cell[4] === true });
   }

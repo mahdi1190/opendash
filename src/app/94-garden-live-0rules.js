@@ -16,7 +16,7 @@
      GL_GOALS / GL_GOAL   shared goals (a joint quest in a live garden): the table, the pacing and the reward; glGoalOk(b) -> '' | why checks gl:goal, glGoalCap(of), glGoalSize(def, people)
      glAtLeast(lv, min)   glMayDo(lv, t) -> '' | why     glIntentOk(b) -> '' | why     glPostOk(p) -> '' | why
    ============================================================ */
-const GL_V=5; // App capability; each actual old/new physical session pins4/5.
+const GL_V=6; // Expanded island sessions use the exact authored world and layout.
 const GL_WORLD_PREDECESSOR='94f5b2dbe4dce765cafb2b40',GL_WORLD_MECHANICS1='c34545b986e497d5d9df5d51';
 function glWorldFields(source){
  if(source===undefined){
@@ -28,8 +28,8 @@ function glWorldFields(source){
  const wv=Number(source?.seen?.world??source?.wv),lh=source?.seen?.worldLayout??source?.lh;
  return{wv,lh};
 }
-function glWorldSupported(source){const w=glWorldFields(source);return w.wv===3&&(w.lh===GL_WORLD_PREDECESSOR||w.lh===GL_WORLD_MECHANICS1)}
-function glProtocolForWorld(source){const w=glWorldFields(source);return w.wv===3?w.lh===GL_WORLD_PREDECESSOR?4:w.lh===GL_WORLD_MECHANICS1?5:0:0}
+function glWorldSupported(source){const w=glWorldFields(source);return w.wv===GARDEN_WORLD.v&&w.lh===GARDEN_WORLD.lh}
+function glProtocolForWorld(source){return glWorldSupported(source)?GL_V:0}
 function glSameWorld(body,expected){const a=glWorldFields(body),b=glWorldFields(expected);return glWorldSupported(a)&&glWorldSupported(b)&&a.wv===b.wv&&a.lh===b.lh}
 const GL_PEOPLE = 8;              // everyone in a garden at once, the host included
 const GL_LEVELS = Object.freeze(['none', 'look', 'help', 'play']);
@@ -120,7 +120,7 @@ function glFxOk(b) {
   if (b.u != null && b.c !== 'petplay') return 'pet';
   if (b.c === 'petplay') {
     const match = /^(?:puddle-(cat|dog|duck|rabbit)|guide-(?:stop-)?(owl|otter|fox|rabbit))$/.exec(String(b.e || '')), species = match && (match[1] || match[2]);
-    if (!species || match[2] && !GL_FX_ID_RE.test(String(b.p || '')) || b.u != null && (!Number.isInteger(b.u) || b.u < 1 || b.u > 3 || b.i !== species) || b.u == null && b.i != null || !Array.isArray(b.pc) || b.pc.length !== 3 || !Number.isInteger(b.pc[0]) || b.pc[0] < 0 || b.pc[0] > 640 || !Number.isInteger(b.pc[1]) || b.pc[1] < 0 || b.pc[1] > GARDEN_WORLD.rows * 10 || b.pc[2] !== 0 && b.pc[2] !== 1) return 'pet';
+    if (!species || match[2] && !GL_FX_ID_RE.test(String(b.p || '')) || b.u != null && (!Number.isInteger(b.u) || b.u < 1 || b.u > 3 || b.i !== species) || b.u == null && b.i != null || !Array.isArray(b.pc) || b.pc.length !== 3 || !Number.isInteger(b.pc[0]) || b.pc[0] < 0 || b.pc[0] > GARDEN_WORLD.cols * 10 || !Number.isInteger(b.pc[1]) || b.pc[1] < 0 || b.pc[1] > GARDEN_WORLD.rows * 10 || b.pc[2] !== 0 && b.pc[2] !== 1) return 'pet';
     return '';
   }
   if (b.c === 'pose') {
@@ -217,9 +217,9 @@ function glPpOk(b, fromHost) {
     seen.add(r.u);
     if (r.u > 0 && !(fromHost && GL_FX_ID_RE.test(String(r.e || '')))) return 'pp';
     if (r.u === 0 && r.e != null) return 'pp';
-    if (!Number.isInteger(r.x) || r.x < 0 || r.x > 640 || !Number.isInteger(r.y) || r.y < 0 || r.y > GARDEN_WORLD.rows * 10) return 'pp';
+    if (!Number.isInteger(r.x) || r.x < 0 || r.x > GARDEN_WORLD.cols * 10 || !Number.isInteger(r.y) || r.y < 0 || r.y > GARDEN_WORLD.rows * 10) return 'pp';
     if ((r.gx == null) !== (r.gy == null)) return 'pp';
-    if (r.gx != null && !(Number.isInteger(r.gx) && r.gx >= 0 && r.gx <= 640 && Number.isInteger(r.gy) && r.gy >= 0 && r.gy <= 320)) return 'pp';
+    if (r.gx != null && !(Number.isInteger(r.gx) && r.gx >= 0 && r.gx <= GARDEN_WORLD.cols * 10 && Number.isInteger(r.gy) && r.gy >= 0 && r.gy <= GARDEN_WORLD.rows * 10)) return 'pp';
   }
   return '';
 }
@@ -252,7 +252,7 @@ const glGoalDef = (id) => GL_GOALS.find(g => g.id === id) || null;
 const glGoalCap = (of) => Math.max(1, Math.min(of - 1, Math.ceil(of * GL_GOAL.share)));
 /** How big a goal of this kind is for this many people here (the host, and then each guest), inside the row's range. */
 const glGoalSize = (def, people) => Math.max(def.n[0], Math.min(def.n[1], def.n[0] + def.per * Math.max(0, (people | 0) - 2)));
-const GL_COLS = 64;               // cells are 0..63 on the wire, as in a garden snapshot
+const GL_COLS = Math.max(GARDEN_WORLD.cols, GARDEN_WORLD.rows);
 const GL_ID_RE = /^[0-9a-z]{6,24}$/;   // an intent's id, as _gllNewId makes it: it ends up in synced records, so it can never look like a credential
 
 function glAtLeast(lv, min) { return GL_LEVELS.indexOf(lv) >= GL_LEVELS.indexOf(min) && GL_LEVELS.indexOf(min) >= 0; }

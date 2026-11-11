@@ -28,7 +28,7 @@ function gardenCatchWire() {
     rc: (Array.isArray(c.rec) ? c.rec : []).slice(0, 3).map(r => [String(r[0]), Math.max(1, Math.min(400, Math.round(Number(r[1]) || 1)))]) };
   const wk = _gdWeekFrom(today);
   if (c.wb && c.wb.w === wk) out.wb = [_gtDayNo(wk), lim(c.wb.cm, 400)];
-  if (c.sugar) { const pl = g.plants[c.sugar.uid]; if (pl && Number.isInteger(pl.x) && Number.isInteger(pl.y)) out.sg = [lim(pl.x, 63), lim(pl.y, 63)]; }   // the tree you painted
+  if (c.sugar) { const pl = g.plants[c.sugar.uid]; if (pl && Number.isInteger(pl.x) && Number.isInteger(pl.y)) out.sg = [lim(pl.x, GARDEN_WORLD.cols - 1), lim(pl.y, GARDEN_WORLD.rows - 1)]; }   // the tree you painted
   _gcaMemo.at = t; _gcaMemo.v = out;
   return out;
 }

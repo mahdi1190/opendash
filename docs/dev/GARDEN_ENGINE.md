@@ -6,6 +6,12 @@ choice is saved. **Garden > Graphics** preserves an explicit Classic choice;
 saved garden. The native path replaces the earlier hidden-SVG rendering bridge;
 Photo retains its established Classic SVG presentation.
 
+World 4 uses the shared 96-by-96 authored island, coast-clipped frontier
+regions and exact layout fingerprint. Region access, water contours and
+multiplayer coordinates use the same tables across both renderers and the
+server. The saved-world change remains an explicit backed-up update; an old
+world is never silently relabeled as the expanded island.
+
 After applying a Graphics change, the current Garden stage regains keyboard
 focus for shortcuts such as **M** for Map. Existing dialog and popover guards
 keep their focus ownership.

@@ -10,6 +10,17 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.66.0] - 2026-11-11
+
+### Changed
+
+- The island grows to 96 by 96 cells with open northern and southern seas, a spacious central village, larger freshwater basins, and substantial forest, valley, ruins, orchard and mountain regions.
+- Region boundaries consistently govern walking, land access and unlock requirements. Existing earned land and progression remain valid.
+- Organic region mist, larger gate spans, mountain landforms and staged regional scenery make the next routes clearer. Native mist uses retained visible tiles rather than one world-sized texture.
+- Freshwater drawing and foot clearance share authored smooth shorelines, and native paths retain continuous rounded bends.
+- The expanded layout uses a deliberate backed-up Garden update. Complete plant records, owned objects and earlier layouts are retained; stored places stay stored.
+- Shared player, companion, fishing and placement coordinates use the authored island dimensions and exact layout identity.
+
 ## [2.65.6] - 2026-11-10
 
 ### Changed

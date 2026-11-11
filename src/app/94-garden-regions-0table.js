@@ -37,14 +37,23 @@ const _GRG_WATER_ROWS = [
   { id: 'cellarpool', name: 'the flooded floor of the drowned cellar, under the sunken pool', r: 'garden', room: 1, at: 'ld-sunk', cap: 70, like: /^$/ },
 ];
 const _GRG_POOL_LIKE = Object.freeze({ 'ls-lily-pool': /lily|pipefish|reed|weed|sunfish|bluegill|crappie/, 'ls-deep-pool': /catfish|burbot|snakehead|bowfin|gar$|eel/, 'ls-clear-pool': /clear|pearl|silver|glass/, 'ls-moon-pool': /moon|night/, 'ls-sedge-pool': /pike|perch|sedge/, 'ls-stone-pool': /bass|stone|rock/ });
+function gardenIslandBasinHomeIds(id) {
+  const homes = { pond: ['pond', 'spring', 'falls', 'tarn'], 'allotment-pool': ['frogpool', 'race', 'brook', 'folly', 'light'], 'orchard-pool': ['cider', 'dip'] };
+  return homes[id] || [];
+}
+function _grgIslandBasin(id) { return (gardenIslandData().freshwater || []).find(pool => gardenIslandBasinHomeIds(pool.id).includes(id)) || null; }
+function _grgIslandHomeZone(home) { return ({ hill: 5, orchards: 4, fields: 2, marsh: 3, garden: 0, lake: 0 })[home.r] || 0; }
 const GARDEN_REGION_WATERS = _gdRows(_GRG_WATER_ROWS.map(w => {
+  if (GARDEN_WORLD.v >= 4 && !w.room) { const pool = _grgIslandBasin(w.id); if (pool) return Object.assign({}, w, pool.wet, { islandBasin: pool.id }); }
   if (w.area !== 'pond') return w;
   const p = gardenArea('pond').water;   // derived, so it stays with the pond
   return Object.assign({}, w, { x: p.x + p.w - 2, y: p.y, w: 2, h: p.h });
 }).concat(GARDEN_LAND_SECTIONS.filter(s => s.pool).map(s => ({ id: s.id, name: s.name.replace(/^The /, 'the '), r: 'marsh', sec: s.id, via: s.via, x: s.x, y: s.y, w: s.w, h: s.h, cap: 120, like: _GRG_POOL_LIKE[s.id] || /^$/ }))));
 /** The zone a water is in: how far out it lies, and never before the way to it. Open water only counts when its zone is open. */
 function _grgWaterZone(w) {
-  if (w.room || w.area) return 0;
+  if (w.room) return 0;
+  if (GARDEN_WORLD.v >= 4 && w.islandBasin) return gardenZoneOf(Math.floor(w.x + w.w / 2), Math.floor(w.y + w.h / 2));
+  if (w.area) return 0;
   if (w.sec) return (gardenLandRow(w.sec) || {}).zn || 0;
   return Math.max(gardenZoneOf(Math.floor(w.x + w.w / 2), Math.floor(w.y + w.h / 2)), (gardenLandRow(w.via) || {}).zn || 0);
 }
@@ -176,7 +185,8 @@ function gardenRegionKinds(id) { return _GRG_KINDS.get(String(id)) || []; }
 function gardenRegionHomeOpen(H, areas) {
   if (!H) return true;
   if (H.w) {
-    if (H.w === 'pond') return areas.includes('pond'); const w = gardenRegionWaterDef(H.w); if (!w) return false;
+    if (H.w === 'pond') return GARDEN_WORLD.v >= 4 ? true : areas.includes('pond'); const w = gardenRegionWaterDef(H.w); if (!w) return false;
+    if (GARDEN_WORLD.v >= 4 && w.islandBasin) return !gardenZoneLockOf(w.x + w.w / 2, w.y + w.h / 2, areas);
     if (w.room) {
       if (!w.entrance) return false; const zn = gardenZoneOf(Math.floor(w.entrance.x), Math.floor(w.entrance.y));
       return (!zn || areas.includes('zn-' + zn)) && (!w.via || areas.includes(w.via));
@@ -186,8 +196,9 @@ function gardenRegionHomeOpen(H, areas) {
   if (H.p && GARDEN_WORLD.v >= 3) {
     const s = gardenLandSightPhysical(H.p); if (!s) return false;
     const p = s.door || s, zn = gardenZoneOf(Math.floor(p.x), Math.floor(p.y)), t = _grgSightHomeTrail(s, !!H.room);
-    return (!zn || areas.includes('zn-' + zn)) && (!t || areas.includes(t));
+    return (!zn || areas.includes('zn-' + zn)) && (GARDEN_WORLD.v >= 4 || !t || areas.includes(t));
   }
+  if (GARDEN_WORLD.v >= 4 && H.t) { const zone = _grgIslandHomeZone(H); return !zone || areas.includes('zn-' + zone); }
   return !H.t || areas.includes(H.t);
 }
 /** Is this lake or pond kind one the lake holds? (what is "in stock" today comes from these) */
@@ -202,6 +213,17 @@ function _grgSightReachWords(id, inside) {
   return typeof gardenSightKnown === 'function' && gardenSightKnown(id) ? 'Set out ' + name + ' nearby from Land → Your discovered places.' : 'Find ' + name + (inside ? ' and its way inside.' : '.');
 }
 function _grgOpenWords(H) {
+  if (GARDEN_WORLD.v >= 4) {
+    if (H.p) return _grgSightReachWords(H.p, !!H.room);
+    if (H.w) {
+      const water = H.w === 'pond' ? null : gardenRegionWaterDef(H.w);
+      if (water && water.room && water.at) return _grgSightReachWords(water.at, true);
+      if (water && water.sec) { const section = gardenLandRow(water.sec), region = gardenIslandRegionForZone(section.zn); return (region ? 'Enter ' + region.name.toLowerCase() + ' at garden level ' + region.level + ', then ' : '') + 'buy ' + water.name + ' at the land office.'; }
+      const zone = water ? _grgWaterZone(water) : 0, region = gardenIslandRegionForZone(zone);
+      return region ? 'Enter ' + region.name.toLowerCase() + ' at garden level ' + region.level + '.' : 'The village lake is open from the beginning.';
+    }
+    if (H.t) { const region = gardenIslandRegionForZone(_grgIslandHomeZone(H)); return region ? 'Enter ' + region.name.toLowerCase() + ' at garden level ' + region.level + '.' : 'Look around the village.'; }
+  }
   if (H.w) {
     const w = H.w === 'pond' ? null : gardenRegionWaterDef(H.w);
     if (w && w.room && w.at) return _grgSightReachWords(w.at, true);
@@ -221,6 +243,7 @@ function gardenRegionWords(def) {
   if (def.cat === 'fish') {
     if (H.r === 'lake' || H.w === 'pond') return reach ? { reach } : null;
     const w = _GRG_WATER.get(H.w);
+    if (GARDEN_WORLD.v >= 4 && !w.room) { const basin = w.islandBasin && _grgIslandBasin(w.id), place = basin ? ({ pond: 'the village lake', 'allotment-pool': 'the ruined woodland pond', 'orchard-pool': 'the orchard pond' })[basin.id] : w.name; return { where: 'Lives in ' + place + '.', reach }; }
     return { where: `Lives in ${w.name}, ${R.on}, and nowhere else.`, reach };
   }
   const near = def.hab.map(h => _GF_HAB_WORDS[h] || h);
@@ -239,12 +262,18 @@ function gardenRegionShort(def) {
 /** What stops a cast at this cell of any water, the lake too. '' if nothing. */
 function gardenWaterNo(x, y, m) {
   const zone = gardenWaterZone(x, y); if (!zone) return '';
+  if (GARDEN_WORLD.v >= 4 && x < GARDEN_ROOM_X) {
+    const locked = gardenZoneLockOf(x, y, m.areas); if (!locked) return '';
+    const region = gardenIslandRegionForZone(Number(locked.slice(3))), row = gardenArea(locked);
+    return (region ? region.name : row.name) + ' opens at garden level ' + (region ? region.level : row.lv) + '.';
+  }
   if (zone === 'pond') return gardenRegionWaterNo(x, y, m.areas);
   return y >= gardenLakeOpenTo() ? `That far water is past the line of floats. It opens at garden level ${gardenLakeZoneOfRow(y).lv}.` : '';
 }
 /** What stops a cast here. '' if nothing. */
 function gardenRegionWaterNo(x, y, areas) {
   if (x >= GARDEN_ROOM_X) return '';   // you are standing beside it
+  if (GARDEN_WORLD.v >= 4) { const locked = gardenZoneLockOf(x, y, areas); return locked ? gardenArea(locked).name + ' opens at garden level ' + gardenArea(locked).lv + '.' : ''; }
   const w = _grgWaterOfCell(x, y);
   if (w && !w.area) return gardenRegionHomeOpen({ w: w.id }, areas) ? '' : `${w.name[0].toUpperCase()}${w.name.slice(1)}: ${_grgOpenWords({ w: w.id })[0].toLowerCase()}${_grgOpenWords({ w: w.id }).slice(1)}`;
   return areas.includes('pond') ? '' : 'The pond opens at garden level 7.';
@@ -257,13 +286,18 @@ function gardenRegionBands(areas) {
 }
 /** What may swim in a band: a lake or pond band keeps its own kinds and the finds; a region's water has only what lives there, worked out afresh as they are from other zones. */
 function gardenRegionOdds(odds, b, ctx) {
+  if (b.islandHomeWaters) {
+    const out = odds.filter(([id]) => gardenFishDef(id).cat !== 'fish');
+    for (const def of GARDEN_FISH_ONLY) { const home = gardenRegionHome(def); if (home && b.islandHomeWaters.includes(home.w) && gardenRegionHomeOpen(home, b.islandAreas) && gardenFishFits(def, Object.assign({}, ctx, { zone: def.zone[0] }))) out.push([def.id, gardenBugWeight(def, ctx)]); }
+    return out;
+  }
   if (!b.rw) { const pond = b.zone === 'pond'; return odds.filter(([id]) => { const d = gardenFishDef(id), H = gardenRegionHome(d); return !H || (pond ? H.w === 'pond' : H.r === 'lake'); }); }
   const out = [];
   for (const { kind, def } of gardenRegionKinds(_GRG_WATER.get(b.rw).r)) if (kind === 'fish' && _GRG_FISH_HOME.get(def.id).w === b.rw && gardenFishFits(def, Object.assign({}, ctx, { zone: def.zone[0] }))) out.push([def.id, gardenBugWeight(def, ctx)]);
   return out;
 }
 /** May this fish appear in this band? (the one that got away, a legend: they keep to where they live) */
-function gardenRegionBandHas(id, b) { const H = gardenRegionHome(gardenFishDef(id)); if (!H) return true; return b.rw ? H.w === b.rw : b.zone === 'pond' ? H.w === 'pond' : H.r === 'lake'; }
+function gardenRegionBandHas(id, b) { const H = gardenRegionHome(gardenFishDef(id)); if (!H) return true; if (b.islandHomeWaters) return b.islandHomeWaters.includes(H.w) && gardenRegionHomeOpen(H, b.islandAreas); return b.rw ? H.w === b.rw : b.zone === 'pond' ? H.w === 'pond' : H.r === 'lake'; }
 /** The cells a bug of this home may sit on, open or not: its trail and the sections off it, or round its place. Cached. */
 const _GRG_CELLS = new Map(), _GRG_CELL_PLACES = new Map();
 function _grgHomeCells(H) {
@@ -277,11 +311,11 @@ function _grgHomeCells(H) {
   c = [];
   if (H.p) {
     if (!s) { _GRG_CELLS.set(k, c); return c; } // Packed landmarks have no physical wildlife home.
-    for (let y = s.y - 3; y <= s.y + 3; y++) for (let x = s.x - 3; x <= s.x + 3 + (s.w || 1); x++) { const q = gardenLandCell(x, y); if (q && !q.solid && !q.lane) c.push({ x, y, id: q.id, far: 0 }); }
+    for (let y = s.y - 3; y <= s.y + 3; y++) for (let x = s.x - 3; x <= s.x + 3 + (s.w || 1); x++) { const q = gardenLandCell(x, y); if (q && !q.solid && !q.lane) c.push({ x, y, id: GARDEN_WORLD.v >= 4 && !q.plot ? 'zn-' + gardenZoneOf(x, y) : q.id, far: 0 }); }
     if (!c.some(q => q.id === H.t)) { const t = gardenLandRow(H.t), near = []; const W = GARDEN_WORLD; if (t) for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) if (gardenLandCell(x, y) === t) near.push({ x, y, id: t.id, d: Math.abs(x - s.x) + Math.abs(y - s.y) }); near.sort((a, b) => a.d - b.d); c.push(...near.slice(0, 5)); }
   } else {
-    const W = GARDEN_WORLD;
-    for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) { const q = gardenLandCell(x, y); if (q && !q.solid && (q.id === H.t || (q.plot && q.via === H.t))) c.push({ x, y, id: q.id }); }
+    const W = GARDEN_WORLD, island = W.v >= 4, zone = island ? _grgIslandHomeZone(H) : 0;
+    for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) { const q = gardenLandCell(x, y), base = island && gardenIslandBaseCell(x, y); if (island ? q && !q.solid && base.land && !base.reserved && !base.beach && !base.freshwater && base.regionZone === zone : q && !q.solid && (q.id === H.t || q.plot && q.via === H.t)) c.push({ x, y, id: island && !q.plot ? 'zn-' + zone : q.id }); }
   }
   _GRG_CELLS.set(k, c);
   return c;

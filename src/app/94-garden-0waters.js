@@ -83,6 +83,17 @@ const _gardenOtherWaters = (function () {
   }
   function build(bitmap, signature) {
     const W = GARDEN_WORLD, stage = loopsOf(bitmap), holes = stage.filter(loop => area(loop) <= 0), shapes = [];
+    if (W.v >= 4) {
+      // Paint and foot probes share the authored smooth shore. Boards and ice
+      // keep their independent walk cover; enclosed dry islands retain holes.
+      const basins = gardenIslandData().freshwater.filter(basin => Array.isArray(basin.boundary));
+      if (basins.length) {
+        stage.splice(0, stage.length, ...basins.map(basin => {
+          const ring = basin.boundary.map(p => ({ x: p[0] * W.cellW, y: W.sky + p[1] * W.cellH }));
+          return area(ring) < 0 ? ring.reverse() : ring;
+        }), ...holes);
+      }
+    }
     for (const outer of stage.filter(loop => area(loop) > 0)) {
       const points = outer.map(p => ({ x: p.x / W.cellW, y: (p.y - W.sky) / W.cellH })), inner = holes.filter(hole => inside(hole[0].x, hole[0].y, outer)).map(loop => loop.map(p => ({ x: p.x / W.cellW, y: (p.y - W.sky) / W.cellH }))), box = bounds(points);
       const shape = { id: 'other-water:' + Math.floor(box.x) + ':' + Math.floor(box.y), points, holes: inner, bounds: box, areas: [] };

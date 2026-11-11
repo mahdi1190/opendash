@@ -70,7 +70,7 @@ function _gdMovable(list) { return Object.freeze(list); }
 /* The world, version 2 (the owner, 1 Nov 2026: "the main bit is the center of the world, expand in all directions"). The old garden is in the middle, its old x, y now at x + ox, y + oy; land goes off north, east, west and,
    round the lake, south (94-garden-lands-0table.js). The wire carries cells 0..63, so it can grow to 64 x 64. v: a save or a snapshot from another world is moved over, or not drawn (94-garden-lands-1core.js). */
 /* Cells from this column on are not on the map: they are the waters inside the hidden rooms (94-garden-world-4rooms3water.js). They fit what the fish list and a cast already carry (x to 63, y to 31). */
-const GARDEN_ROOM_X = 53;
+const GARDEN_ROOM_X = GardenIslandLayout.data.world.roomX;
 const GARDEN_WORLD = _gdF(Object.assign({}, GardenIslandLayout.data.world, { start: _gdF(Object.assign({}, GardenIslandLayout.data.world.start)), lh: GardenIslandLayout.fingerprint }));
 
 const GARDEN_RARITY = _gdF({
@@ -847,6 +847,7 @@ function gardenLockOf(def, ctx) {
 }
 /** The area a cell belongs to ('lawn' when no area claims it, or the area is not open yet at that level). */
 function gardenAreaAt(x, y, level) {
+  if (level != null && GARDEN_WORLD.v >= 4) { const locked = gardenZoneLockAt(x, y); if (locked) return 'locked:' + locked; }
   if (gardenIslandOceanCell(x, y)) return level != null && y >= gardenLakeOpenTo() && !gardenPropWalk(x, y) ? 'locked:' + gardenLakeZoneOfRow(y).id : 'lake';
   // the world is one map (94-garden-lands-0table.js). A trail, the lane and the mown green are lawn to everything else: you walk there, nothing grows there. The thicket is locked for good.
   if (typeof gardenLandCell === 'function') {

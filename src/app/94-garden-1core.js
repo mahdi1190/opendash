@@ -1266,7 +1266,7 @@ function gardenLandInfo(id, m) {
   const def = gardenArea(id); if (!def || !def.buy || !def.plot || def.relayoutEmpty) return null;
   m = m || gardenModel();
   const owned = gardenHas('land:' + id) > 0;
-  return { def, owned, cost: def.buy, lvOk: m.level.level >= def.lv - (typeof gardenRewardEarly === 'function' ? gardenRewardEarly(def) : 0), afford: m.wallet.coins >= def.buy, reach: !def.via || m.areas.includes(def.via), keyOk: !def.needs || gardenHas(def.needs) > 0 };
+  return { def, owned, cost: def.buy, lvOk: m.level.level >= def.lv - (typeof gardenRewardEarly === 'function' ? gardenRewardEarly(def) : 0), afford: m.wallet.coins >= def.buy, reach: (!def.zn || m.areas.includes('zn-' + def.zn)) && (!def.via || m.areas.includes(def.via)), keyOk: !def.needs || gardenHas(def.needs) > 0 };
 }
 /** Buy a section with coins. One Undo; what grows on it stays where it is. */
 function gardenBuyLand(id) {

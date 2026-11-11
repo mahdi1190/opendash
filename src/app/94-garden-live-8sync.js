@@ -94,7 +94,7 @@ function _glyAtIn(A, ev) {
   if (typeof _gllWalkVia === 'function') _gllWalkVia(A, null, x, y);
 }
 function _glyAtBody() {
-  const F = _gw.fishing, b = { x: Math.max(0, Math.min(63, Math.floor(_gw.px))), y: Math.max(0, Math.min(63, Math.floor(_gw.py))), nw: typeof _pe !== 'undefined' && _pe.hold ? 3 : 1 };
+  const F = _gw.fishing, b = { x: Math.max(0, Math.min(GARDEN_WORLD.cols - 1, Math.floor(_gw.px))), y: Math.max(0, Math.min(GARDEN_WORLD.rows - 1, Math.floor(_gw.py))), nw: typeof _pe !== 'undefined' && _pe.hold ? 3 : 1 };
   if (F && F.state && F.state !== 'idle' && F.state !== 'land') { b.n = Math.floor(F.bx) + 1; b.tt = Math.floor(F.by) + 1; if (F.plan && F.plan.baitDef) b.i = F.plan.baitDef.id; }
   return b;
 }

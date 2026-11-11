@@ -3,6 +3,12 @@
    Everything says in plain words what is needed. On a friend's land you can look at things but not use them (the lookout you can climb).
    ============================================================ */
 const _gldp = { sprites: new Map() };
+function gardenLandRegionText(region) {
+  if (!region) return 'New land and water to explore.';
+  if (region.blurb) return region.blurb;
+  const text = { forest: 'A broad woodland with quiet growing space and hidden places.', woods: 'A broad woodland with quiet growing space and hidden places.', ruins: 'Old woodland ruins, a sheltered pond and space for discoveries.', valley: 'A wide valley with room to grow and restore the mill.', mill: 'A wide valley with room to grow and restore the mill.', orchard: 'An open orchard and a large pond for quiet fishing.', mountain: 'High mountain paths and a distant headland above the sea.', mountains: 'High mountain paths and a distant headland above the sea.', headland: 'High mountain paths and a distant headland above the sea.' };
+  return text[region.theme] || 'A large new district with growing space and places to discover.';
+}
 function gardenLandGrowsLine(s) { const names = s.cats.map(c => (GARDEN_CATS[c] || {}).label).filter(Boolean).map(n => n.toLowerCase()); return names.length ? 'grows ' + (names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] : names[0]) : ''; }
 /** After an action: the world answers, a red flash and the reason if it could not. */
 function _gldSay(r, b, ic) {
@@ -16,7 +22,11 @@ function _gldSay(r, b, ic) {
 function gardenLandPropOpen(p) {
   const id = p.lf, m = gardenHere();
   const at = { x: p.x + p.w / 2, y: p.y - 0.4 };
-  { const g = gardenZoneGate(id); if (g) { const z = gardenZone(g.n), isOpen = m.areas.includes(z.id), left = z.lv - m.level.level; gardenBubbleOpen(at, { title: z.name, sub: isOpen ? 'This gate is open.' : m.visit ? `This gate is still shut in this garden. It opens at garden level ${z.lv}.` : `This gate opens at garden level ${z.lv}. You are level ${m.level.level}: ${left} more to go. New land, new water and new things to catch are on the other side.`, items: [], cls: 'is-empty is-words' }); return; } }
+  { const gate = gardenZoneGate(id); if (gate) {
+    const zone = gardenZone(gate.n), region = gardenIslandRegionForZone(gate.n), isOpen = m.areas.includes(zone.id), left = Math.max(0, zone.lv - m.level.level);
+    const requirement = isOpen ? 'The route is open.' : m.visit ? 'This route opens at garden level ' + zone.lv + ' in this garden.' : 'Opens at garden level ' + zone.lv + '. Your garden is level ' + m.level.level + (left ? ': ' + left + ' more to go.' : '.');
+    gardenBubbleOpen(at, { title: zone.name, sub: requirement + ' ' + gardenLandRegionText(region), items: [], cls: 'is-empty is-words' }); return;
+  } }
   { const sd = gardenLandSight(id); if (sd && sd.door) { const n = gardenZoneOf(sd.door.x, sd.door.y); if (n && !m.areas.includes('zn-' + n)) { const z = gardenZone(n); gardenBubbleOpen(at, { title: sd.name, sub: m.visit ? 'Behind a gate that is still shut in this garden.' : `Behind a gate: ${z.name.toLowerCase()} opens at garden level ${z.lv}.`, items: [], cls: 'is-empty is-words' }); return; } } }
   if (gardenLandSight(id)) {
     const d = gardenLandSight(id), items = [], E = !m.visit && d.egg && !gardenLandEggFound(id) ? d.egg : null;
@@ -125,7 +135,7 @@ function _gldCartArt() {
 function gardenLandsPaint(m) {
   if (typeof _gw === 'undefined' || !_gw.on) return;
   { const g = _gdG();
-    if (!m.visit && g.seen.worldMoved && !g.seen.worldNoted && typeof openDialog === 'function') {
+    if (GARDEN_WORLD.v < 3 && !m.visit && g.seen.worldMoved && !g.seen.worldNoted && typeof openDialog === 'function') {
       g.seen.worldNoted = m.today; if (typeof saveUI === 'function') saveUI();
       openDialog({ title: 'We rearranged the garden', size: 'sm', body(el) { el.appendChild(_gdpEl('p', null, 'Your garden is now the middle of a bigger world, with land to find in every direction. Everything you had planted is back in your bag as seeds, and everything you had placed is in your bag too. Land and buildings you bought have been paid back in coins. Your coins, level, gear and books are as they were.')); } });
     }
@@ -158,6 +168,7 @@ function _gldFriendTab(el, m) {
   const head = _gdpEl('div', 'gld-head'), mp = _gdpEl('div', 'gld-mapbox'); mp.innerHTML = _gldMap(m); head.appendChild(mp);
   const txt = _gdpEl('div', 'gld-intro'); txt.appendChild(_gdpEl('h3', null, `${name}’s land`)); txt.appendChild(_gdpEl('p', null, `Garden level ${m.level.level} · ${secs.length} of ${GARDEN_LAND_SECTIONS.filter(q => q.buy).length} pieces of land · ${built.length} of ${GARDEN_LAND_FEATURES.length} things built${S.r ? ` · ${'★'.repeat(S.r)}` : ''}.`)); head.appendChild(txt); box.appendChild(head);
   const sec = (title) => { box.appendChild(_gdpEl('h4', 'gld-h', title)); const d = _gdpEl('div', 'gld-list'); box.appendChild(d); return d; };
+  if (GARDEN_WORLD.v >= 4) _gldRegionRows(box, m);
   if (built.length) { const d = sec('What they have built'); for (const f of built) _gldRow(d, { icon: f.icon, name: f.name, sub: f.blurb }); }
   if (S.c.length) { const d = sec('What they have dug up'); const g = _gdpEl('div', 'gld-chips'); for (const c of GARDEN_LAND_CURIOS) if (S.c.includes(c.id)) { const ch = _gdpEl('span', 'gld-chip is-on'); ch.innerHTML = gardenLandCurioSvg(c.id, 16); ch.appendChild(document.createTextNode(c.name)); g.appendChild(ch); } if (S.c.includes(GARDEN_LAND_KEY_ID)) { const ch = _gdpEl('span', 'gld-chip is-on'); ch.innerHTML = gardenLandCurioSvg(GARDEN_LAND_KEY_ID, 16); ch.appendChild(document.createTextNode('An old iron key')); g.appendChild(ch); } d.appendChild(g); }
   if (S.z.length) { const d = sec('Their star book'); const g = _gdpEl('div', 'gld-chips'); for (const c of GARDEN_LAND_SKY) if (S.z.includes(c.id)) g.appendChild(_gdpEl('span', 'gld-chip is-on', c.name)); d.appendChild(g); }
@@ -172,7 +183,48 @@ function _gldRow(host, o) {
   if (o.btn) { const b = _gdpEl('button', 'gld-buy' + (o.off ? ' is-off' : ''), o.btn); b.type = 'button'; b.onclick = () => o.run(b); r.appendChild(b); }
   host.appendChild(r);
 }
+function _gldIslandMap(m) {
+  const W = GARDEN_WORLD, data = gardenIslandData(), open = new Set(m.areas), parts = [];
+  const colour = (x, y) => {
+    const base = gardenIslandBaseCell(x, y), row = gardenLandCell(x, y); if (!base || base.ocean) return '';
+    if (gardenZoneLockOf(x, y, open)) return '#87978f';
+    if (base.solid) return '#676f66';
+    if (base.freshwater) return '#77aeb9';
+    if (base.beach) return '#e6d6aa';
+    if (base.route || base.reservation === 'apron') return '#d9cda9';
+    if (!row || !row.plot) return '#8aa074';
+    if (open.has(row.id)) return row.green ? '#8aa074' : _gdrTileCol(row.tile, m.season);
+    return m.level.level >= row.lv ? '#e0cd9c' : '#a7b49b';
+  };
+  // Horizontal runs keep the larger map small enough for an ordinary menu opening.
+  for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols;) {
+    const fill = colour(x, y); let end = x + 1; while (end < W.cols && colour(end, y) === fill) end++;
+    if (fill) parts.push('<rect x="' + x + '" y="' + y + '" width="' + (end - x + .02) + '" height="1.02" fill="' + fill + '"/>'); x = end;
+  }
+  for (const gate of data.gates) {
+    const shut = !open.has('zn-' + gate.n), region = gardenIslandRegionForZone(gate.n);
+    if (shut && !gardenLandGatePresented(gate, open, false)) continue;
+    parts.push('<g><title>' + esc((region && region.name || gardenZone(gate.n).name) + (shut ? ': garden level ' + gardenZone(gate.n).lv : ': open')) + '</title><circle cx="' + (gate.x + .5) + '" cy="' + (gate.y + .5) + '" r="1.4" fill="' + (shut ? '#595f68' : '#f4e7b7') + '" stroke="#fff6de" stroke-width=".35"/></g>');
+  }
+  for (const prop of data.static) parts.push('<rect x="' + prop.x + '" y="' + prop.y + '" width="' + prop.w + '" height="' + prop.h + '" rx=".4" fill="#6a7767"/>');
+  const me = typeof _gw !== 'undefined' ? _gw : null;
+  if (me && Number.isFinite(me.px) && Number.isFinite(me.py) && me.px < W.cols) parts.push('<circle cx="' + me.px.toFixed(1) + '" cy="' + me.py.toFixed(1) + '" r="1" fill="#c35a42" stroke="#fff" stroke-width=".4"/>');
+  return '<svg viewBox="0 0 ' + W.cols + ' ' + W.rows + '" class="gld-map" role="img" aria-label="Island map: sea north and south, forest and ruins west, valley, orchard and mountains east"><rect width="' + W.cols + '" height="' + W.rows + '" fill="#6096ab"/>' + parts.join('') + '</svg>';
+}
+function _gldRegionRows(box, m) {
+  const regions = gardenIslandData().regions || []; if (!regions.length) return;
+  const details = document.createElement('details'), summary = document.createElement('summary'), list = _gdpEl('div', 'gld-list');
+  summary.textContent = 'Explore the island'; details.append(summary, _gdpEl('p', 'gld-more', 'The central village and its north and south shores are open. Region routes open as the garden grows. Entering a region is free; individual growing plots keep their existing prices.'));
+  const open = new Set(m.areas);
+  for (const region of regions.slice().sort((a, b) => a.level - b.level)) {
+    const ready = gardenIslandRegionOpen(region, open), from = gardenIslandRegionForZone(region.fromZone);
+    const plots = GARDEN_LAND_SECTIONS.filter(row => row.zn === region.zone && !row.relayoutEmpty).length;
+    _gldRow(list, { icon: region.theme === 'mountains' || region.theme === 'headland' ? 'mountain' : 'map-pin', name: region.name, sub: gardenLandRegionText(region) + ' ' + plots + ' growing areas.' + (!ready && from ? ' Approach through ' + from.name.toLowerCase() + '.' : ''), tag: ready ? 'Open' : 'Level ' + region.level, dim: !ready });
+  }
+  details.appendChild(list); box.appendChild(details);
+}
 function _gldMap(m) {
+  if (GARDEN_WORLD.v >= 4) return _gldIslandMap(m);
   const W = GARDEN_WORLD, open = new Set(m.areas);
   let s = '';
   for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
@@ -193,11 +245,12 @@ function gardenLandsTab(el, m) {
   const mp = _gdpEl('div', 'gld-mapbox'); mp.innerHTML = _gldMap(m); head.appendChild(mp);
   const txt = _gdpEl('div', 'gld-intro');
   txt.appendChild(_gdpEl('h3', null, `You have ${owned} of ${GARDEN_LAND_SECTIONS.filter(s => s.buy).length} pieces of land`));
-  txt.appendChild(_gdpEl('p', null, `Garden level ${lv} · ${_gdpNum(m.wallet.coins)} coins · ${built} of ${GARDEN_LAND_FEATURES.length} things built. The further from the square, the higher the level and the price. Each gate opens at its level. On the map, gold is what you can buy now and grey is for later.`));
+  txt.appendChild(_gdpEl('p', null, `Garden level ${lv} · ${_gdpNum(m.wallet.coins)} coins · ${built} of ${GARDEN_LAND_FEATURES.length} things built. The island has five large regions. Each route opens at its garden level, and land you already own keeps its approach open. On the map, gold is what you can buy now and grey is for later.`));
   head.appendChild(txt); box.appendChild(head);
   const sec = (title) => { box.appendChild(_gdpEl('h4', 'gld-h', title)); const d = _gdpEl('div', 'gld-list'); box.appendChild(d); return d; };
   const buyRow = (host, s) => { const i = gardenLandInfo(s.id, m), K = GARDEN_LAND_KINDS[s.kind]; _gldRow(host, { icon: s.icon, name: s.name, sub: `${K.name}, ${s.cells.length} squares: ${gardenLandGrowsLine(s)}. ${K.says || ''}`, btn: `${_gdpNum(s.buy)} coins`, off: !i.afford, run: (b) => { const r = gardenBuyLand(s.id); if (!r.ok) gameDenyOf(r, b); else gameCheer(b, { text: '-' + s.buy, tone: 'coin', sound: true }); }, ...gardenRewardBtn2(s.buy, m, () => gardenBuyLand(s.id)) }); };
   const buildRow = (host, f, I) => _gldRow(host, { icon: f.icon, name: f.name, sub: f.blurb + (GARDEN_WORLD.v >= 3 ? ' Build it, then choose where to set it out.' : '') + (I.spot ? ` ${I.spot} is in the way.` : ''), btn: `${_gdpNum(f.cost)} coins`, off: !I.afford || !!I.spot, run: (b) => { const r = gardenBuildFeature(f.id); if (!r.ok) gameDenyOf(r, b); else gameCheer(b, { text: '-' + f.cost, tone: 'coin', sound: true }); }, ...(I.spot ? {} : gardenRewardBtn2(f.cost, m, () => gardenBuildFeature(f.id))) });
+  if (GARDEN_WORLD.v >= 4) _gldRegionRows(box, m);
   gardenRewardLandRows(sec, m);
   if (GARDEN_WORLD.v >= 3) {
     const structures = GARDEN_LAND_FEATURES.filter(f => f.x != null && gardenLandOwnsFeature(f.id));
@@ -244,7 +297,7 @@ function gardenLandsTab(el, m) {
   // next
   // past a gate there is nothing to choose yet: only the gate, and what is behind it in a line
   const later = [], zOpen = (n) => !n || m.areas.includes('zn-' + n);
-  for (const z of GARDEN_ZONES) { if (!z.n || zOpen(z.n)) continue; const n = GARDEN_LAND_SECTIONS.filter(s => s.zn === z.n && s.buy && !s.relayoutEmpty).length; later.push({ lv: z.lv, icon: 'map-pin', name: z.name, sub: `A gate opens: ${n} pieces of land and more water to fish`, tag: `Level ${z.lv}` }); }
+  for (const z of GARDEN_ZONES) { if (!z.n || zOpen(z.n)) continue; const n = GARDEN_LAND_SECTIONS.filter(s => s.zn === z.n && s.buy && !s.relayoutEmpty).length; later.push({ lv: z.lv, icon: 'map-pin', name: z.name, sub: gardenIslandRegionForZone(z.n) ? gardenLandRegionText(gardenIslandRegionForZone(z.n)) + ' ' + n + ' growing plots become available.' : `A gate opens: ${n} pieces of land and more water to fish`, tag: `Level ${z.lv}` }); }
   for (const t of GARDEN_LAND_TRAILS) if (!m.areas.includes(t.id) && zOpen(t.zn)) later.push({ lv: t.lv, icon: 'footprints', name: t.name, sub: 'A new path', tag: `Level ${t.lv}` });
   for (const s of GARDEN_LAND_SECTIONS) { if (s.relayoutEmpty || m.areas.includes(s.id) || !zOpen(s.zn)) continue; if (!s.buy) { later.push({ lv: s.lv, icon: s.icon, name: s.name, sub: GARDEN_LAND_KINDS[s.kind].name + ', free', tag: `Level ${s.lv}` }); continue; } const i = gardenLandInfo(s.id, m); if (i && i.lvOk && i.reach && i.keyOk) continue; const key = i && i.lvOk && i.reach && !i.keyOk; later.push({ lv: s.lv, icon: s.icon, name: s.name, sub: `${GARDEN_LAND_KINDS[s.kind].name}, ${_gdpNum(s.buy)} coins${key ? '. Behind a rusty gate: keep digging, somebody lost a key' : ''}`, tag: key ? 'Key' : `Level ${s.lv}` }); }
   for (const f of GARDEN_LAND_FEATURES) { const I = gardenLandFeatureInfo(f.id, m); if (I.built || !I.why || f.prize || (f.sec && !zOpen((gardenLandRow(f.sec) || {}).zn))) continue; later.push({ lv: f.lv, icon: f.icon, name: f.name, sub: `${f.blurb} ${_gdpNum(f.cost)} coins.${lv >= f.lv ? ' ' + I.why + '.' : ''}`, tag: lv >= f.lv ? 'Land first' : `Level ${f.lv}` }); }

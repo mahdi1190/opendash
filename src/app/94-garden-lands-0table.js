@@ -125,7 +125,7 @@ const GARDEN_ZONES = _gdRows([
   { n: 3, id: 'zn-3', name: 'Far land', lv: 10, far: 12, coin: 30, lake: 34, zone: 1, cats: _gdF([]) },
   { n: 4, id: 'zn-4', name: 'Wild land', lv: 14, far: 18, coin: 48, lake: 36, zone: 1, cats: _gdF([]) },
   { n: 5, id: 'zn-5', name: 'The world’s edge', lv: 18, far: 99, coin: 75, lake: 38, zone: 1, cats: _gdF([]) },
-]);
+].map(zone => { const region = gardenIslandRegionForZone(zone.n); return region ? Object.assign({}, zone, { name: region.name }) : zone; }));
 const GARDEN_ZONE_SQUARE = _gdF({ x0: 10, x1: 42, y0: 8, y1: 21 });   // (edges of cells: the lane's two rows and x 10 to 41 are in it)
 const GARDEN_ZONE_COST = _gdF({ most: 14, walled: 2, kinds: _gdF({ pool: 1.4, rich: 1.2, suntrap: 1.6, exotic: 1.5, nursery: 1.2 }) });
 function gardenZoneFar(x, y) { const Q = GARDEN_ZONE_SQUARE, dx = Math.max(Q.x0 - x, x - Q.x1, 0), dy = Math.max(Q.y0 - y, y - Q.y1, 0); return Math.hypot(dx, dy); }
@@ -160,13 +160,19 @@ function gardenZoneOf(x, y) { const zone = gardenIslandZoneAt(x, y); if (zone !=
 /** The zone's row, for a number. */
 function gardenZone(n) { return GARDEN_ZONES[Math.max(0, Math.min(GARDEN_ZONES.length - 1, n | 0))]; }
 /** What locks this path or lane cell, in the garden on screen: '' when it is open, else the zone's id. */
-function gardenZoneLockAt(x, y) { if (gardenIslandPublicCell(x, y)) return ''; const n = gardenZoneOf(x, y); return n && !_GD_LAND.has('zn-' + n) ? 'zn-' + n : ''; }
+function gardenZoneLockOf(x, y, open) {
+  if (gardenIslandPublicCell(x, y)) return '';
+  const n = gardenZoneOf(x, y), has = id => !!open && (open instanceof Set ? open.has(id) : Array.isArray(open) && open.includes(id));
+  return n && !has('zn-' + n) ? 'zn-' + n : '';
+}
+function gardenZoneLockAt(x, y) { return gardenZoneLockOf(x, y, _GD_LAND); }
 /** The lake is open down to this row, in the garden on screen: the open zones say, and a pier you have built always has water round it. */
 function gardenLakeOpenTo() {
   return gardenLakeOpenToOf(_GD_LAND);
 }
 /** The same from a set of what is open (the drawing, the page). */
 function gardenLakeOpenToOf(open) {
+  if (GARDEN_WORLD.v >= 4) return GARDEN_WORLD.rows;
   const caps = [36, 40, 44, 48, 52, 56], pier = GARDEN_PROPS.find(p => p.id === 'pier');
   let to = caps[0];
   for (const z of GARDEN_ZONES) if (open.has(z.id)) to = Math.max(to, caps[z.n]);
@@ -257,7 +263,8 @@ function gardenZoneGate(id) { return _GLD_GATE.get(String(id)) || null; }
 function gardenLandGatePresented(gate, open, customized) {
   if (!gate || !open) return false;
   if (customized) return true;
-  if (gate.n > 1 && !open.has('zn-' + (gate.n - 1))) return false;
+  const region = gardenIslandRegionForZone(gate.n), from = region ? region.fromZone : gate.n - 1;
+  if (from && !open.has('zn-' + from)) return false;
   if (open.has('zn-' + gate.n)) return false;
   const inner = gardenZoneOf(gate.door.x, gate.door.y);
   return !inner || open.has('zn-' + inner);
@@ -274,7 +281,8 @@ function gardenLandDoor(s) {
   const mx = s.x + s.w / 2, my = s.y + s.h / 2;
   for (const [x, y] of s.cells) for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
     const cx = x + dx, cy = y + dy, c = gardenLandCell(cx, cy);
-    if (!(s.via ? (c && c.id === s.via) : (c && c.lane))) continue;
+    const onWay = GARDEN_WORLD.v >= 4 ? c && (c.lane || c.id === 'lawn' || c.trail) && (!gardenZoneOf(cx, cy) || gardenZoneOf(cx, cy) === s.zn) && !gardenIsWater(cx, cy) : s.via ? c && c.id === s.via : c && c.lane;
+    if (!onWay) continue;
     if (GARDEN_PROPS.some(p => gardenPropCol(p) === 'full' && cx >= p.x && cx < p.x + p.w && cy >= p.y && cy < p.y + p.h)) continue;
     const d = Math.hypot(cx + 0.5 - mx, cy + 0.5 - my);
     if (d < bd) { bd = d; best = { x: cx, y: cy, fx: x, fy: y }; }
@@ -498,6 +506,19 @@ const GARDEN_LAND_WILD = _gdF(['meadow', 'dell', 'wood', 'orchard', 'reed']);   
  */
 function gardenLandsOpen(level, own) {
   const out = new Set(own || []);
+  if (GARDEN_WORLD.v >= 4 && Array.isArray(gardenIslandData().regions)) {
+    // Ownership opens only this region and its actual approach, not every lower-numbered district.
+    const openZone = n => { let guard = 0; while (n && guard++ < GARDEN_ZONES.length) { out.add('zn-' + n); const region = gardenIslandRegionForZone(n); n = region && region.fromZone || 0; } };
+    for (const z of GARDEN_ZONES) if ((level || 1) >= z.lv) openZone(z.n);
+    for (const id of own || []) {
+      const row = gardenLandRow(id), feature = gardenLandFeature(id), section = feature && feature.sec && gardenLandRow(feature.sec);
+      if (row) { openZone(row.zn); let trail = row.via || row.from, guard = 0; while (trail && guard++ < 9) { out.add(trail); const parent = gardenLandRow(trail); trail = parent && parent.from; } }
+      else if (section) openZone(section.zn);
+    }
+    for (const trail of GARDEN_LAND_TRAILS) if ((level || 1) >= trail.lv && (!trail.zn || out.has('zn-' + trail.zn)) && (!trail.from || out.has(trail.from))) out.add(trail.id);
+    for (const section of GARDEN_LAND_SECTIONS) if (!section.buy && (level || 1) >= section.lv && (!section.zn || out.has('zn-' + section.zn))) out.add(section.id);
+    return out;
+  }
   for (const z of GARDEN_ZONES) if ((level || 1) >= z.lv) out.add(z.id);
   for (const t of GARDEN_LAND_TRAILS) if ((level || 1) >= t.lv && (!t.from || out.has(t.from))) out.add(t.id);
   const walkBack = (id) => { let t = gardenLandRow(id), g = 0; while (t && g++ < 9) { out.add(t.id); t = t.from ? gardenLandRow(t.from) : null; } };
@@ -569,6 +590,7 @@ function gardenPropsNow() { return GARDEN_PROPS.concat(_gardenPierDecksNow().sli
 /* ---------- water, paths, and how things grow ---------- */
 /** A cell of the land: is it water? null: the lake and the pond, which gardenIsWater knows from their own rectangles. */
 function gardenLandWaterAt(x, y) {
+  if (GARDEN_WORLD.v >= 4) return gardenIslandOceanCell(x, y) || gardenIslandFreshwaterCell(x, y);
   if (gardenIslandOceanCell(x, y)) return true;
   if (gardenIslandFreshwaterCell(x, y)) return null;
   const c = gardenLandCell(x, y); if (!c) return null;

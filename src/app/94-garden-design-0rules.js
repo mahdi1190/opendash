@@ -104,7 +104,7 @@ function gardenDesignClean(raw) {
   if (Array.isArray(raw.p)) for (const r of raw.p.slice(0, L.paths)) {
     if (!Array.isArray(r) || r.length < 5 || int(r[0], 0, 31) === null) continue;
     let x = 0, y = 0, n = 0; const row = [r[0]];
-    for (let i = 1; i + 1 < r.length && n < L.pts; i += 2, n++) { const dx = int(r[i], -600, 600), dy = int(r[i + 1], -600, 600); if (dx === null || dy === null) break; x += dx; y += dy; if (x < 0 || y < 0 || x > W.cols * 10 || y > W.rows * 10) break; row.push(dx, dy); }
+    for (let i = 1; i + 1 < r.length && n < L.pts; i += 2, n++) { const dx = int(r[i], -Math.max(W.cols, W.rows) * 10, Math.max(W.cols, W.rows) * 10), dy = int(r[i + 1], -Math.max(W.cols, W.rows) * 10, Math.max(W.cols, W.rows) * 10); if (dx === null || dy === null) break; x += dx; y += dy; if (x < 0 || y < 0 || x > W.cols * 10 || y > W.rows * 10) break; row.push(dx, dy); }
     if (row.length >= 5) out.p.push(row);
   }
   if (Array.isArray(raw.g)) { let left = L.paint; for (const r of raw.g.slice(0, 12)) {
@@ -158,7 +158,17 @@ function gardenDesignArchives(g) {
   return out.sort((a, b) => a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
 }
 function gardenDesignIslandVersion(row) { return !!row && Array.isArray(row.island) && row.island[0] === GARDEN_WORLD.v && row.island[1] === GARDEN_WORLD.lh; }
-function gardenDesignIslandProjection(raw, level) {
+function gardenDesignIslandProjection(raw, level, fromWorld) {
+  if (GARDEN_WORLD.v >= 4 && Number(fromWorld) > 0 && Number(fromWorld) < 4) {
+    const sourceCols = Number(fromWorld) === 1 ? 28 : 52, dx = 26 + (Number(fromWorld) === 1 ? 12 : 0), dy = 36 + (Number(fromWorld) === 1 ? 8 : 0);
+    const paint = new Map();
+    for (const row of raw && raw.g || []) if (Array.isArray(row)) for (let i = 1; i + 1 < row.length; i += 2) {
+      if (!Number.isInteger(row[i]) || !Number.isInteger(row[i + 1]) || row[i + 1] < 0 || row[i + 1] > GDZ_LIMITS.paint) continue;
+      for (let n = row[i]; n < row[i] + row[i + 1]; n++) { const x = n % sourceCols + dx, y = Math.floor(n / sourceCols) + dy; if (x >= 0 && y >= 0 && x < GARDEN_WORLD.cols && y < GARDEN_WORLD.rows) paint.set(y * GARDEN_WORLD.cols + x, row[0]); }
+    }
+    const byStyle = new Map(); for (const [cell, style] of paint) { if (!byStyle.has(style)) byStyle.set(style, []); byStyle.get(style).push(cell); }
+    raw = { ...raw, g: [...byStyle].map(([style, cells]) => { const row = [style]; cells.sort((a, b) => a - b); for (let i = 0; i < cells.length;) { let j = i + 1; while (j < cells.length && cells[j] === cells[j - 1] + 1) j++; row.push(cells[i], j - i); i = j; } return row; }), p: (raw && raw.p || []).map(row => Array.isArray(row) && row.length >= 3 ? [row[0], row[1] + dx * 10, row[2] + dy * 10, ...row.slice(3)] : row) };
+  }
   const d = gardenDesignClean(raw) || gardenDesignEmpty(), W = GARDEN_WORLD, lv = level == null ? (typeof gardenWallet === 'function' ? gardenWallet().level.level : 1) : level;
   const dry = (x, y) => {
     if (x < 0 || y < 0 || x >= W.cols || y >= W.rows || gardenIsWater(x, y) || gardenAreaAt(x, y, lv).startsWith('locked:')) return false;
@@ -193,8 +203,8 @@ function gardenDesignIslandProjection(raw, level) {
 }
 function gardenDesignLayoutDraft(z, id, g) {
   const row = z && z.lay && z.lay[id]; if (!row || !row.d) return gardenDesignEmpty();
-  const archived = GARDEN_WORLD.v >= 3 && !gardenDesignIslandVersion(row) && gardenDesignArchives(g).some(a => a.id === id);
-  return archived ? gardenDesignIslandProjection(row.d) : gardenDesignClean(row.d) || gardenDesignEmpty();
+  const archive = GARDEN_WORLD.v >= 3 && !gardenDesignIslandVersion(row) && gardenDesignArchives(g).find(a => a.id === id);
+  return archive ? gardenDesignIslandProjection(row.d, undefined, row.island && row.island[0] || archive.world) : gardenDesignClean(row.d) || gardenDesignEmpty();
 }
 
 /** Your own saved design (the one in use), or null. */

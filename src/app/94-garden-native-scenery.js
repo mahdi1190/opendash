@@ -159,6 +159,17 @@ window.GardenNativeScenery = (function () {
       for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5; geometry += path(`M53 -32L${n(53 + Math.cos(a) * 30)} ${n(-32 + Math.sin(a) * 30)}`, 'none', '#b39768', 3); }
       geometry += ellipse(53, -32, 7, 7, woodDark) + ellipse(52, -33, 3, 3, '#c7b083');
       b = { x: x - 88, y: y - 143, width: 181, height: 159 };
+    } else if (kind === 'gate' && spec.major === false && spec.gate && spec.gate.crossSpan) {
+      const frame = _gldIslandGateFrame(spec.gate), leaf = _gldIslandGateLeaf(frame.span, spec), px = frame.span * frame.ux, py = frame.span * frame.uy;
+      geometry = _gldIslandGateBody(frame, spec);
+      if (!spec.open) geometry += rect(-4, -47, 8, 12, '#dbc897', 1.5) + path('M-3 -47V-52Q0 -58 3 -52V-47', 'none', '#dbc897', 2);
+      for (const side of [-1, 1]) addMoving(leaf, x + side * px, y + side * py, (node, t) => {
+        const opened = spec.open ? .14 + Math.sin(t * .65 + side) * .008 : 1;
+        node.setAttribute('transform', `matrix(${n(-side * frame.ux * opened)} ${n(-side * frame.uy * opened)} 0 1 ${n(x + side * px)} ${n(y + side * py)})`);
+      }, { static: !spec.open, cache: true });
+      // Tall posts keep their own upright width even on a vertical crossing;
+      // only the leaf's ground axis follows the physical cross-span.
+      b = { x: x - Math.abs(px) - 23, y: y - Math.abs(py) - frame.rise - 64, width: Math.abs(px) * 2 + 46, height: Math.abs(py) * 2 + frame.rise + 77 };
     } else if (kind === 'gate' && spec.major === false) {
       const side = !!(spec.gate && spec.gate.dx), span = spec.gate && spec.gate.h > 1 ? 31 : 25, px = xx => side ? xx * .55 : xx, py = xx => side ? xx * .42 : 0;
       const islandGate = typeof gardenIslandActive === 'function' && gardenIslandActive(), postTop = islandGate ? -55 : -42;

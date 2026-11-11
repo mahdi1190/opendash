@@ -6,7 +6,32 @@ Tables: `src/app/94-garden-lands-0table.js`. Engine: `94-garden-lands-1core.js`.
 
 ## The map
 
-The current v3 world is a 52-by-56-cell island surrounded by connected ocean.
+The current expanded world is `assets/garden/island-v4.json`, a 96-by-96-cell
+island with unchanged 48-by-30 cell pixels and actor scale. Its exact fingerprint
+is `cbc9629edd7fb57272e9d21b`. The village is centered at (48,53), with the
+starter bed at (40,48), size 7 by 4, and the heart oak at (41,48).
+
+Sea continues north and south of the land. Five coast-clipped regions open
+through the existing levels 3, 6, 10, 14 and 18: western woods, mill valley,
+woodland ruins, orchard and mountains. A region includes its beaches, paths
+and doorways; those surfaces do not bypass a closed gate. Existing owned
+sections and features retain their entitlement and open the required parent
+route. Individual plots retain their stable IDs and prices.
+
+Three authored smooth freshwater boundaries cover a 14-by-9 central lake,
+an 8-by-5 sheltered ruins pond, and a 10-by-7 orchard pool. The same contours
+govern drawing, foot clearance, fishing and reflections. Sparse physical
+landforms match their visible footprints; useful routes and entrances stay clear.
+
+Migration 102 is deliberate and nonautomatic. It retains complete records,
+relocates placements to legal owned ground or keeps them in storage, archives
+earlier explicit structure positions and named layouts, and never opens
+previously stored optional places. Linked devices use a separate complete
+encrypted handover generation, preserving both earlier generations.
+
+### Earlier island reference
+
+The earlier v3 world is a 52-by-56-cell island surrounded by connected ocean.
 The canonical file is `assets/garden/island-v3.json`, fingerprint
 `94f5b2dbe4dce765cafb2b40`. Its coast, public paths, building approaches, five gates,
 freshwater basins and explicit `sectionCells` are shared by the browser,

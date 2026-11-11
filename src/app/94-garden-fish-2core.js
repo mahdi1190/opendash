@@ -243,6 +243,24 @@ function _gcBeachBugSpot(def, m, rnd, existing) {
   }
   return null;
 }
+const _gcIslandGround = { revision: '', rows: [] };
+function _gcIslandBugSpot(hab, m, rnd, free) {
+  const revision = gardenIslandGeometry().revision;
+  if (_gcIslandGround.revision !== revision) {
+    const W = GARDEN_WORLD, rows = [];
+    for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) { const base = gardenIslandBaseCell(x, y); if (base.land && !base.solid && !base.reserved && !base.beach && !base.freshwater) rows.push({ x, y, zone: base.regionZone }); }
+    _gcIslandGround.rows = rows; _gcIslandGround.revision = revision;
+  }
+  if (hab === 'water') {
+    const pools = gardenIslandData().freshwater.filter(pool => !gardenZoneLockOf(pool.wet.x + pool.wet.w / 2, pool.wet.y + pool.wet.h / 2, m.areas));
+    if (!pools.length) return null;
+    for (let n = 0; n < 16; n++) { const pool = pools[Math.floor(rnd() * pools.length)], x = pool.wet.x + rnd() * pool.wet.w, y = pool.wet.y + rnd() * pool.wet.h; if (gardenIslandFreshwaterCell(x, y) && !gardenWaterNo(x, y, m)) return { x, y }; }
+    return null;
+  }
+  const rows = _gcIslandGround.rows.filter(point => hab === 'woods' ? point.zone === 1 : hab === 'lawn' ? point.zone === 0 : true);
+  for (let n = 0; n < 24 && rows.length; n++) { const point = rows[Math.floor(rnd() * rows.length)]; if (free(point.x, point.y) && !gardenAreaAt(point.x, point.y, m.level.level).startsWith('locked:')) return { x: point.x + .5, y: point.y + .5 }; }
+  return null;
+}
 const GARDEN_BUGS_MAX = 6;   // the most at once, in a big, late garden. The owner, 1 Nov 2026: start with very few, and more as the garden grows, but never many
 function gardenBugsNow(mArg) {
   const base = _gcBugsBase(mArg);
@@ -259,10 +277,11 @@ function _gcBugsBase(mArg) {
   const trees = m.plants.filter(p => p.def.cat === 'tree' && p.stage >= 3);
   const lights = m.decor.filter(d => d.def.effect && d.def.effect.kind === 'light');
   const hotels = m.decor.filter(d => d.def.effect && d.def.effect.kind === 'bugs').length;
-  const woods = m.areas.includes('woods'), wet = !!m.rain.now;
+  const woods = GARDEN_WORLD.v >= 4 ? m.areas.includes('zn-1') : m.areas.includes('woods'), wet = !!m.rain.now;
   const island = typeof gardenIslandActive === 'function' && gardenIslandActive();
-  const free = (x, y) => !m.occ.has(x + ',' + y) && !gardenPropAt(x, y) && !gardenIsWater(x, y) && (!island || !gardenIslandBaseCell(x, y)?.beach), onFlower = new Set();
+  const free = (x, y) => !m.occ.has(x + ',' + y) && !gardenPropAt(x, y) && !gardenIsWater(x, y) && !gardenAreaAt(x, y, m.level.level).startsWith('locked:') && (!island || !gardenIslandBaseCell(x, y)?.beach), onFlower = new Set();
   const spot = (hab) => {
+    if (W.v >= 4 && ['water', 'woods', 'ground', 'lawn'].includes(hab)) return _gcIslandBugSpot(hab, m, rnd, free);
     const pick = (list) => list[Math.floor(rnd() * list.length)];
     switch (hab) {
       case 'flower': { if (!blooms.length) return null; const p = pick(blooms); if (onFlower.has(p.uid)) return null; onFlower.add(p.uid); return { x: p.x + 0.5 + (rnd() - 0.5) * 0.5, y: p.y + 0.6 }; }   // one to a flower: a single daisy with three bees on it is a crowd

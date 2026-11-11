@@ -243,7 +243,7 @@ const _GARTW = (function () {
   function islandGround(sc, o) {
     const W = GARDEN_WORLD, data = gardenIslandData(), geo = gardenIslandGeometry(), cw = W.cellW, ch = W.cellH, width = W.cols * cw, height = W.sky + W.rows * ch;
     const palette = sc.season === 'winter' ? { lawn: '#9db8a4', water: '#76a8ad' } : sc.season === 'autumn' ? { lawn: '#83a875', water: '#5b9b9a' } : { lawn: '#7daa77', water: '#599f9d' };
-    const sand = sc.season === 'winter' ? '#d4d1b5' : '#d9c99f', drySand = sc.season === 'winter' ? '#dedcc5' : '#e4d6b2', uid = (o.uid || 'gd') + '-island-v3', landClip = uid + '-land', seaClip = uid + '-sea';
+    const sand = sc.season === 'winter' ? '#d4d1b5' : '#d9c99f', drySand = sc.season === 'winter' ? '#dedcc5' : '#e4d6b2', uid = (o.uid || 'gd') + '-island-' + GardenIslandLayout.fingerprint, landClip = uid + '-land', seaClip = uid + '-sea';
     const stage = p => [p[0] * cw, W.sky + p[1] * ch], loops = geo.land.map(loop => loop.map(stage)), path = points => points.map((p, i) => (i ? 'L' : 'M') + p[0] + ' ' + p[1]).join('') + 'Z';
     const inset = (points, distance) => points.map((p, i) => { const a = points[(i + points.length - 1) % points.length], b = points[(i + 1) % points.length], al = Math.hypot(p[0] - a[0], p[1] - a[1]) || 1, bl = Math.hypot(b[0] - p[0], b[1] - p[1]) || 1, ax = -(p[1] - a[1]) / al, ay = (p[0] - a[0]) / al, bx = -(b[1] - p[1]) / bl, by = (b[0] - p[0]) / bl, reach = distance / Math.max(.25, 1 + ax * bx + ay * by); return [p[0] + (ax + bx) * reach, p[1] + (ay + by) * reach]; });
     const landPath = loops.map(path).join(''), b = geo.visualOceanBounds, seaOuter = [[b.x * cw, W.sky + b.y * ch], [(b.x + b.w) * cw, W.sky + b.y * ch], [(b.x + b.w) * cw, W.sky + (b.y + b.h) * ch], [b.x * cw, W.sky + (b.y + b.h) * ch]], seaPath = path(seaOuter) + loops.map(loop => path(loop.slice().reverse())).join('');
@@ -257,6 +257,10 @@ const _GARTW = (function () {
     for (const item of sc.plants || []) { const def = item.def || gardenPlant(item.id); if (def) remember(item, def.fp || 1, def.fp || 1); }
     for (const item of sc.decor || []) { const def = item.def || gardenDecor(item.id); if (def && def.layer === 'ground') remember(item, def.w || 1, def.h || 1); }
     for (const section of GARDEN_LAND_SECTIONS) if (soilKinds.has(section.kind) && cultivated.has(section.id) && (open.has(section.id) || !section.buy && (sc.lv || 1) >= section.lv)) for (const [x, y] of section.cells) soil += `M${x * cw} ${W.sky + y * ch}h${cw}v${ch}h${-cw}Z`;
+    if (typeof _gldIslandRegionFloor === 'function') {
+      const inlandClip = uid + '-inland';
+      floor += `<defs><clipPath id="${inlandClip}"><path d="${loops.map(loop => path(inset(loop, geo.beachWidthPx + 2))).join('')}"/></clipPath></defs><g clip-path="url(#${inlandClip})">${_gldIslandRegionFloor(sc)}</g>`;
+    }
     floor += A.P('#886b53', soil);
     for (const prop of data.static) if (prop.apron) { const p = prop.apron; floor += `<rect x="${p.x * cw}" y="${W.sky + p.y * ch}" width="${p.w * cw}" height="${p.h * ch}" rx="8" fill="#cec4a6"/>`; }
     for (const route of data.routes) if (route.points && route.points.length > 1) {

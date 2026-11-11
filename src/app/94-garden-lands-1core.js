@@ -382,10 +382,10 @@ function _gldBackToBag(g, uid, pl, today) {
 function gardenWorldReady() {
   const g = _gdG();
   if(GARDEN_WORLD.v<3||!g.since)return true;
-  if(Number(g.seen.world)!==3)return false;
+  if(Number(g.seen.world)!==GARDEN_WORLD.v)return false;
   if(g.seen.worldLayout===GARDEN_WORLD.lh)return true;
   const mechanics=typeof GardenIslandLayout!=='undefined'&&GardenIslandLayout.data.mechanics;
-  return GARDEN_WORLD.lh==='c34545b986e497d5d9df5d51'&&g.seen.worldLayout==='94f5b2dbe4dce765cafb2b40'&&mechanics?.revision===1&&mechanics.predecessorLayout==='94f5b2dbe4dce765cafb2b40'&&mechanics.contract==='optional-side-pier-walk-cover-v1';
+  return GARDEN_WORLD.v===3&&GARDEN_WORLD.lh==='c34545b986e497d5d9df5d51'&&g.seen.worldLayout==='94f5b2dbe4dce765cafb2b40'&&mechanics?.revision===1&&mechanics.predecessorLayout==='94f5b2dbe4dce765cafb2b40'&&mechanics.contract==='optional-side-pier-walk-cover-v1';
 }
 function gardenWorldCheck() {
   const g = _gdG(); if (!g.since) return;

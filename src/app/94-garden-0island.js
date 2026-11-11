@@ -2,7 +2,7 @@
  * no model construction, renderer, save mutation or owner-specific coast. */
 const _gardenIslandDerived = { geometry: null, base: null, ocean: null, sectionZones: null };
 function gardenIslandData() { return GardenIslandLayout.data; }
-function gardenIslandActive() { return typeof GardenIslandLayout !== 'undefined' && !!(GardenIslandLayout.data && GardenIslandLayout.data.version === 3); }
+function gardenIslandActive() { return typeof GardenIslandLayout !== 'undefined' && !!(GardenIslandLayout.data && GardenIslandLayout.data.version >= 3); }
 function gardenIslandStaticRow(row) {
   const data = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data, p = data && data.static.find(p => p.id === row.id);
   if (!p) return row;
@@ -13,11 +13,11 @@ function gardenIslandStaticRow(row) {
 /** Optional decks use the displayed Garden's mechanics identity, never a visitor's ownership. */
 function gardenSidePierMechanicsReady(source) {
   const data = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data, mechanics = data && data.mechanics;
-  if (!mechanics || mechanics.revision !== 1 || mechanics.contract !== 'optional-side-pier-walk-cover-v1' || mechanics.predecessorLayout !== '94f5b2dbe4dce765cafb2b40' || GardenIslandLayout.fingerprint !== 'c34545b986e497d5d9df5d51') return false;
+  if (!mechanics || mechanics.revision !== 2 || GardenIslandLayout.fingerprint !== 'cbc9629edd7fb57272e9d21b') return false;
   if (source === undefined) source = typeof state !== 'undefined' && state ? state.garden : null;
   if (!source || source.pending) return false;
   const seen = source.seen, tag = source.visit && source.visit.snap || source;
-  return (seen ? Number(seen.world) : Number(tag.wv)) === 3 && (seen ? seen.worldLayout : tag.lh) === GardenIslandLayout.fingerprint;
+  return (seen ? Number(seen.world) : Number(tag.wv)) === GARDEN_WORLD.v && (seen ? seen.worldLayout : tag.lh) === GardenIslandLayout.fingerprint;
 }
 function gardenSidePierLevel(side, extension) {
   const site = gardenIslandActive() && gardenIslandData().reservedSidePiers.find(p => p.side === side);
@@ -60,7 +60,15 @@ function _gardenIslandInLoop(x, y, points) {
 function gardenIslandLandContains(x, y) { return Number.isFinite(x) && Number.isFinite(y) && gardenIslandGeometry().land.some(points => _gardenIslandInLoop(x, y, points)); }
 function gardenIslandOceanContains(x, y) { const W = GARDEN_WORLD; return Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 && x < W.cols && y < W.rows && !gardenIslandLandContains(x, y); }
 function _gardenIslandRect(x, y, r) { return x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h; }
-function gardenIslandFreshwaterCell(x, y) { return gardenIslandGeometry().freshwater.some(p => _gardenIslandRect(Math.floor(x) + .5, Math.floor(y) + .5, p.wet)); }
+function gardenIslandFreshwaterCell(x, y) { const cx = Math.floor(x) + .5, cy = Math.floor(y) + .5; return gardenIslandGeometry().freshwater.some(p => p.boundary ? _gardenIslandInLoop(cx, cy, p.boundary) : _gardenIslandRect(cx, cy, p.wet)); }
+/** Authored frontier regions share the same contours with drawing, walking and visits. */
+function gardenIslandRegionForZone(zone) { return (gardenIslandData().regions || []).find(region => region.zone === Number(zone)) || null; }
+function gardenIslandRegionAt(x, y) {
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !gardenIslandLandContains(x, y)) return null;
+  return (gardenIslandData().regions || []).find(region => (region.polygons || []).some(points => _gardenIslandInLoop(x, y, points))) || null;
+}
+/** Explicit host/open sets keep visitor and server access independent of the local owner. */
+function gardenIslandRegionOpen(region, open) { return !region || !region.zone || !!open && (open instanceof Set ? open.has('zn-' + region.zone) : Array.isArray(open) && open.includes('zn-' + region.zone)); }
 function gardenIslandCoastDistance(x, y) {
   const W = GARDEN_WORLD; let distance = Infinity;
   for (const points of gardenIslandGeometry().land) for (let i = 0; i < points.length; i++) { const a = points[i], b = points[(i + 1) % points.length], ax = a[0] * W.cellW, ay = a[1] * W.cellH, dx = (b[0] - a[0]) * W.cellW, dy = (b[1] - a[1]) * W.cellH, t = Math.max(0, Math.min(1, ((x * W.cellW - ax) * dx + (y * W.cellH - ay) * dy) / (dx * dx + dy * dy || 1))); distance = Math.min(distance, Math.hypot(x * W.cellW - ax - dx * t, y * W.cellH - ay - dy * t)); }
@@ -81,17 +89,20 @@ function _gardenIslandBase() {
     const apron = land && data.static.find(p => p.apron && _gardenIslandRect(cx, cy, p.apron)), rear = land && data.static.find(p => p.rearEnvelope && _gardenIslandRect(cx, cy, p.rearEnvelope));
     const side = data.reservedSidePiers.find(p => _gardenIslandRect(cx, cy, p.reserved) || _gardenIslandRect(cx, cy, p.apron));
     const district = land && data.districts.find(d => (d.areas || [d.bounds]).some(b => _gardenIslandRect(cx, cy, b)));
-    const reservation = prop ? 'static' : apron ? 'apron' : route ? 'route' : rear ? 'facade' : side ? 'future-pier' : '';
-    cells[y * W.cols + x] = Object.freeze({ inside: true, land, ocean, freshwater, beach, route: route && route.id || '', routePublic: !!(route && route.public), routeLevel: route && route.level || 1, routeZone: route && route.zone || 0, gateId: route && route.gateId || '', reserved: !!reservation, reservation, staticId: prop && prop.id || '', reason: prop ? prop.id + ' stands here' : apron ? 'Keep the doorway clear' : route ? 'Keep the path clear' : rear ? 'Keep the space behind the building clear' : side ? 'Reserved for a later pier' : '', district: district && district.id || '', districtLevel: district && district.level || 1 });
+    const region = land && gardenIslandRegionAt(cx, cy), landform = land && (data.landforms || []).find(form => form.polygon && _gardenIslandInLoop(cx, cy, form.polygon));
+    const reservation = landform ? 'landform' : prop ? 'static' : apron ? 'apron' : route ? 'route' : rear ? 'facade' : side ? 'future-pier' : '';
+    cells[y * W.cols + x] = Object.freeze({ inside: true, land, ocean, freshwater, beach, region: region && region.id || '', regionZone: region && region.zone || 0, solid: !!(landform && landform.col === 'full'), landformId: landform && landform.id || '', route: route && route.id || '', routePublic: !!(route && route.public), routeLevel: route && route.level || 1, routeZone: route && route.zone || 0, gateId: route && route.gateId || '', reserved: !!reservation, reservation, staticId: prop && prop.id || '', reason: landform ? landform.name || 'A rocky outcrop stands here' : prop ? prop.id + ' stands here' : apron ? 'Keep the doorway clear' : route ? 'Keep the path clear' : rear ? 'Keep the space behind the building clear' : side ? 'Reserved for a later pier' : '', district: district && district.id || '', districtLevel: district && district.level || 1 });
   }
   return _gardenIslandDerived.base = cells;
 }
 function gardenIslandBaseCell(x, y) { const W = GARDEN_WORLD; x = Math.floor(x); y = Math.floor(y); return Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 && x < W.cols && y < W.rows ? _gardenIslandBase()[y * W.cols + x] : null; }
 function gardenIslandOceanCell(x, y) { const cell = gardenIslandBaseCell(x, y); return !!(cell && cell.ocean); }
 function _gardenIslandRouteZone(cell, x, y) { const gate = cell.gateId && gardenIslandData().gates.find(g => g.id === cell.gateId); return gate && ((x - gate.x - .5) * gate.dx + (y - gate.y - .5) * gate.dy < 0) ? 0 : cell.routeZone; }
-function gardenIslandPublicCell(x, y) { const cell = gardenIslandBaseCell(x, y); return !!(cell && cell.land && (cell.beach || cell.route && _gardenIslandRouteZone(cell, x + .5, y + .5) === 0 || cell.reservation === 'apron' || cell.reservation === 'facade')); }
+function gardenIslandPublicCell(x, y) { const cell = gardenIslandBaseCell(x, y); return !!(cell && cell.land && !cell.regionZone && !cell.solid && (cell.beach || cell.route && _gardenIslandRouteZone(cell, x + .5, y + .5) === 0 || cell.reservation === 'apron' || cell.reservation === 'facade')); }
 function gardenIslandZoneAt(x, y) {
   const cell = gardenIslandBaseCell(x, y); if (!cell) return null;
+  // A whole region stays closed, including its beaches, water, paths and doorways.
+  if (gardenIslandData().version >= 4 && Array.isArray(gardenIslandData().regions)) return cell.regionZone;
   if (cell.beach) return 0;
   if (cell.route) return _gardenIslandRouteZone(cell, x + .5, y + .5);
   if (cell.reservation === 'apron' || cell.reservation === 'facade') return 0;
@@ -101,11 +112,18 @@ function gardenIslandZoneAt(x, y) {
 function gardenIslandSectionRow(row) {
   const authored = gardenIslandData().sectionCells, cells = authored && authored[row.id] ? authored[row.id].slice() : row.cells.filter(([x, y]) => { const cell = gardenIslandBaseCell(x, y); return cell && cell.land && !cell.beach && !cell.reserved; });
   const next = Object.assign({}, row, { cells: Object.freeze(cells), originalCellCount: row.cells.length, relayoutEmpty: !cells.length });
+  if (gardenIslandData().version >= 4) {
+    const zone = (gardenIslandData().sectionZones || {})[row.id], region = gardenIslandRegionForZone(zone);
+    // Old path characters describe the earlier map. New plots approach the authored open ground.
+    next.zn = Number.isInteger(zone) ? zone : 0; next.via = '';
+    next.lv = Math.max(row.lv || 1, region && region.level || 1);
+  }
   if (cells.length) { const xs = cells.map(c => c[0]), ys = cells.map(c => c[1]); next.x = Math.min(...xs); next.y = Math.min(...ys); next.w = Math.max(...xs) - next.x + 1; next.h = Math.max(...ys) - next.y + 1; }
   return next;
 }
 function gardenIslandLandRow(x, y, original, lane, lawn) {
   const cell = gardenIslandBaseCell(x, y); if (!cell || cell.ocean) return null;
+  if (cell.solid) return GARDEN_LAND_THICKET;
   if (cell.route || cell.reservation === 'apron') return lane;
   return cell.beach || cell.reserved || !original || original.solid || original.trail || original.lane ? lawn : original;
 }
@@ -114,7 +132,7 @@ function gardenIslandCellInfo(x, y, options) {
   const cell = gardenIslandBaseCell(x, y); if (!cell) return { inside: false, land: false, ocean: false, freshwater: false, beach: false, reserved: true, reason: 'Off the edge of the garden', sectionId: '', areaId: '', fam: '', cats: [], owned: false, locked: true, route: '' };
   const row = typeof gardenLandCell === 'function' ? gardenLandCell(Math.floor(x), Math.floor(y)) : null, model = options.model, level = model && model.level && model.level.level || 1, areas = model && model.areas;
   const owns = id => areas ? areas instanceof Set ? areas.has(id) : areas.includes(id) : typeof _GD_LAND !== 'undefined' && _GD_LAND.has(id);
-  const section = row && row.plot ? row : null, owned = !section || owns(section.id) || !section.buy && level >= section.lv, zone = gardenIslandZoneAt(Math.floor(x), Math.floor(y)), locked = section ? !owned : !!(zone && !owns('zn-' + zone));
+  const section = row && row.plot ? row : null, owned = !section || owns(section.id) || !section.buy && level >= section.lv, zone = gardenIslandZoneAt(Math.floor(x), Math.floor(y)), locked = !!cell.solid || !!(zone && !owns('zn-' + zone)) || !!section && !owned;
   return Object.assign({}, cell, { sectionId: section && section.id || '', areaId: section && section.id || (cell.ocean ? 'lake' : cell.freshwater ? 'pond' : 'lawn'), fam: section && section.fam || '', cats: section && section.cats || [], owned, locked, reason: cell.reason || (locked ? section ? 'This land is not open' : 'This path is not open' : '') });
 }
 function gardenIslandOceanGeometry() {

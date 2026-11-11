@@ -209,9 +209,9 @@ function gardenLivePets(pets) {
       if (!due) continue;
       const forced = L.force;
       L.force = false; L.at = t; L.mv = mv; L.stopT = 0; L.tx = P.tx; L.ty = P.ty;
-      const row = { u, x: _gllClamp(P.x * 10, 640), y: _gllClamp(P.y * 10, GARDEN_WORLD.rows * 10) };
+      const row = { u, x: _gllClamp(P.x * 10, GARDEN_WORLD.cols * 10), y: _gllClamp(P.y * 10, GARDEN_WORLD.rows * 10) };
       if (!mine) row.e = P.look.species;
-      if (mv && P.ty != null) { row.gx = _gllClamp(P.tx * 10, 640); row.gy = _gllClamp(P.ty * 10, GARDEN_WORLD.rows * 10); if (P.run) row.r = 1; }
+      if (mv && P.ty != null) { row.gx = _gllClamp(P.tx * 10, GARDEN_WORLD.cols * 10); row.gy = _gllClamp(P.ty * 10, GARDEN_WORLD.rows * 10); if (P.run) row.r = 1; }
       if (P.dir < 0) row.f = 1;
       const sig = JSON.stringify(row);
       if (!forced && sig === L.wireSig && t - (L.wireAt || 0) < GL_PP.idle) { _gllPp.sameSkipped = (_gllPp.sameSkipped || 0) + 1; continue; }

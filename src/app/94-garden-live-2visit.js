@@ -349,7 +349,7 @@ function _glvGiveMenu(A) {
       const id = k === 'fish' ? it.def.id + '-' + it.q : it.id;
       const b = _gsvEl('button', 'gsv-gift'); b.type = 'button';
       const t = _gsvEl('span', 'gsv-gift-t'); t.appendChild(_gsvEl('b', null, it.def.name)); b.appendChild(t); b.appendChild(_gsvEl('span', 'gsv-gift-n', '×' + it.n));
-      b.onclick = () => { close(); const x = Math.max(0, Math.min(63, Math.floor(_gw.px))), y = Math.max(0, Math.min(GARDEN_WORLD.rows - 1, Math.floor(_gw.py))); _glvIntent('drop', { k, item: id, to: A.w, x, y }, k + ':' + id); };
+      b.onclick = () => { close(); const x = Math.max(0, Math.min(GARDEN_WORLD.cols - 1, Math.floor(_gw.px))), y = Math.max(0, Math.min(GARDEN_WORLD.rows - 1, Math.floor(_gw.py))); _glvIntent('drop', { k, item: id, to: A.w, x, y }, k + ':' + id); };
       box.appendChild(b);
     }
     if (!any) box.appendChild(_gsvEl('p', 'muted gsv-small', 'Your bag is empty for now.'));
