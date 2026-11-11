@@ -230,9 +230,9 @@ html[data-theme="dark"] .scrim:has(+ .modal.gd-popup) { background: rgba(8, 6, 3
 .modal.gd-popup .gd-chips .chip { height: 32px; padding: 0 13px; font-size: 13.5px; }
 
 /* PAGER */
-.modal.gd-popup .gpg-bar { height: 48px; gap: 16px; }
+.modal.gd-popup .gpg-bar { height: 44px; margin-top: 2px; gap: 16px; }
 .modal.gd-popup .gpg-mid { font-size: 15px; color: var(--gu-ink); }
-.modal.gd-popup .gpg-arrow { width: 48px; height: 44px; color: var(--gu-wood-ink); background: var(--gu-wood); border: 0; border-radius: 999px; box-shadow: inset 0 -3px 0 var(--gu-wood-2); }
+.modal.gd-popup .gpg-arrow { width: 52px; height: 42px; color: var(--gu-wood-ink); background: var(--gu-wood); border: 0; border-radius: 999px; box-shadow: inset 0 -3px 0 var(--gu-wood-2); }
 .modal.gd-popup .gpg-arrow.is-off { color: var(--gu-ink-2); background: var(--gu-paper-2); box-shadow: none; opacity: .7; }
 .modal.gd-popup .gpg-arrow:not(.is-off):hover { filter: none; background: var(--gu-wood-2); }
 
@@ -303,3 +303,5 @@ html[data-theme="dark"] .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .wd-talk-n
 .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .wd-talk .btn-primary { color: var(--gu-leaf-ink); background: var(--gu-leaf); border: 0; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .2); }
 .gd-page .gd-stagebox.gd-stagebox.gd-stagebox:has(.wd-talk) > .gd-walkhint { display: none; }
 @container (max-width: 760px) { .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .wd-talk { bottom: 84px; } }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-bub-btn.has-label { position: relative; overflow: visible; min-width: 66px; max-width: none; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-bub-btn.has-label .gd-slotn { position: absolute; top: -7px; right: -7px; bottom: auto; min-width: 20px; height: 20px; font-size: 12px; line-height: 17px; color: var(--gu-wood-ink); background: var(--gu-wood-2); border: 1.5px solid var(--gu-card); border-radius: 999px; }
