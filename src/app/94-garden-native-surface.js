@@ -60,7 +60,8 @@ window.GardenNativeSurface = (function () {
       shoreRevision = state.revision; shoreRegions = state.regions || []; placementDirty = true;
       const fingerprint = JSON.stringify(shoreRegions.map(r => [r.id, !!r.frozen, r.points.map(p => [p.x, p.y]), (r.holes || []).map(loop => loop.map(p => [p.x, p.y]))]));
       if (fingerprint === shoreFingerprint) return; shoreFingerprint = fingerprint; shoreGeneration++; shoreBuilds++; shoreBuckets.clear();
-      waterLoops = shoreRegions.map(region => ({ outer: waterLoopIndex(region.points), holes: (region.holes || []).map(waterLoopIndex) }));
+      // (the world refills its regions array in place when the land or season changes: each loop keeps its own bounds, so a step between that and the next sync reads a matching set)
+      waterLoops = shoreRegions.map(region => ({ bounds: region.bounds, outer: waterLoopIndex(region.points), holes: (region.holes || []).map(waterLoopIndex) }));
       for (const region of shoreRegions) for (const points of [region.points, ...(region.holes || [])]) for (let i = 0; i < points.length; i++) {
         const a = points[i], b = points[(i + 1) % points.length], edge = { a, b, x0: Math.min(a.x, b.x), y0: Math.min(a.y, b.y), x1: Math.max(a.x, b.x), y1: Math.max(a.y, b.y) };
         for (let y = Math.floor(edge.y0 / 64); y <= Math.floor(edge.y1 / 64); y++) for (let x = Math.floor(edge.x0 / 64); x <= Math.floor(edge.x1 / 64); x++) { const k = x + ',' + y; let bucket = shoreBuckets.get(k); if (!bucket) { bucket = []; shoreBuckets.set(k, bucket); } bucket.push(edge); }
@@ -87,7 +88,8 @@ window.GardenNativeSurface = (function () {
     }
     function waterAt(x, y) {
       for (let i = 0; i < waterLoops.length; i++) {
-        const region = shoreRegions[i], b = region.bounds, loops = waterLoops[i];
+        const loops = waterLoops[i], b = loops.bounds;
+        if (!b) continue;
         if (!(x >= b.x && y >= b.y && x <= b.x + b.width && y <= b.y + b.height) || !waterLoopContains(loops.outer, x, y)) continue;
         let inHole = false; for (const hole of loops.holes) if (waterLoopContains(hole, x, y)) { inHole = true; break; }
         if (!inHole) return true;
