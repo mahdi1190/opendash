@@ -74,7 +74,9 @@ function animNewCardShow(force) {
     return true;
   } catch (e) { return false; }
 }
-if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+// Retired as an automatic card (sweep, Nov 2026): it announced 2.2, which is long past, and it popped up for
+// brand-new users on top of the first-run notices. animNewCardShow(true) still shows it on request.
+if (false && typeof window !== 'undefined' && typeof document !== 'undefined') {
   // After the opening (350 ms + up to 2.3 s); wait while the brief, a story or a dialog is up.
   window.addEventListener('load', () => {
     let tries = 0;
