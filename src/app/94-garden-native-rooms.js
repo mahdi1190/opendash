@@ -387,7 +387,7 @@ window.GardenNativeRooms = (function () {
     // Same capped catch-up as the outdoor world: slow frames run up to five
     // 50 ms movement sub-steps, so rooms do not play in slow motion.
     const frameDt = Math.min(.25, Math.max(0, delta > 1 ? delta / 1000 : delta || 1 / 60)), steps = Math.max(1, Math.ceil(frameDt / .05 - 1e-9)), dt = frameDt / steps;
-    s.now = time; resize(s);
+    s.now = time; resize(s); if (s.paintSpec && s.background.update) s.background.update(s.time, frameDt);
     for (let i = 0; i < steps; i++) {
       s.time += dt;
       if (s.music) { _ee.t = s.time; _eeLevel(s.time); }
@@ -408,14 +408,19 @@ window.GardenNativeRooms = (function () {
     s.previousCamera = { zoom: scene.cameras.main.zoom, x: scene.cameras.main.midPoint.x, y: scene.cameras.main.midPoint.y, background: scene.cameras.main.backgroundColor && scene.cameras.main.backgroundColor.rgba, bounded: scene.cameras.main.useBounds, bounds: scene.cameras.main._bounds ? { ...scene.cameras.main._bounds } : null };
     if (scene.cameras.main.removeBounds) scene.cameras.main.removeBounds();
     scene.cameras.main.setBackgroundColor(room.bg || '#101b19');
-    s.background = framedArt(s, music ? _eeArt() + _eeStand(436, 366) + '<g class="ee-beams"><path class="ee-beam ee-b1" d="M150 36L330 380L90 380Z" fill="url(#eebeam)"/><path class="ee-beam ee-b2" d="M810 36L870 380L630 380Z" fill="url(#eebeam)"/></g>' : room.art() + _grmDoorArt(room), s.root, 0);
-    if (!music && room.id === 'den') {
+    s.paintSpec = !music && window.GardenRoomArt && GardenRoomArt.wanted(room) ? GardenRoomArt.spec(room) : null;
+    if (s.paintSpec) {
+      // Painted village style: the room's own painting, baked in slices (94-garden-native-roomart-*.js); the way-out badge stays live.
+      s.background = GardenRoomArt.create(s, room); s.doorMark = framedArt(s, '<g class="ee-door"><title>Way out</title>' + _grmOutMark() + '</g>', s.root, 5);
+      if (s.paintSpec.lights) s.lights = s.paintSpec.lights.map(light => Object.assign({}, light));
+    } else s.background = framedArt(s, music ? _eeArt() + _eeStand(436, 366) + '<g class="ee-beams"><path class="ee-beam ee-b1" d="M150 36L330 380L90 380Z" fill="url(#eebeam)"/><path class="ee-beam ee-b2" d="M810 36L870 380L630 380Z" fill="url(#eebeam)"/></g>' : room.art() + _grmDoorArt(room), s.root, 0);
+    if (!music && room.id === 'den' && !s.paintSpec) {
       // The lamp itself stays in the authored art. The engine supplies its
       // continuous falloff instead of caching a tessellated radial halo.
       for (const node of s.background.queryAll('ellipse')) if (node.getAttribute('fill') === 'url(#dl)') node.remove();
       s.lights = [{ id: 'den-desk-lamp', x: 846, y: 350, radius: 210, height: 90, color: '#ffdda0', intensity: 1.15 }];
     }
-    trimWaterSurface(s, s.background); backgroundSources(s);
+    if (!s.paintSpec) { trimWaterSurface(s, s.background); backgroundSources(s); }
     if (s.background.cache) s.background.cache({ staticOnly: true, tileSize: 1024 });
     if (s.water) {
       s.fishLayer = scene.add.container(0, 0).setDepth(60); s.root.add(s.fishLayer);
@@ -455,7 +460,7 @@ window.GardenNativeRooms = (function () {
     if (s.context.onInteract) s.context.onInteract({ kind: 'room-leave', room: s.R });
     if (s.music) { _eeSendAt(0, 0, 'out'); _ee.on = false; _ee.closing = false; _eeSongStop(); _ee.root = _ee.svg = _ee.actors = _ee.notes = _ee.me = null; _ee.m.clear(); _ee.keys.clear(); _ee.pawns = []; }
     else { _grmSend(0, 0, 'out'); const S = _grm.S; if (S && S.leave) S.leave(); _grm.on = false; _grm.closing = false; clearTimeout(_grm.sayT); clearTimeout(_grm.howT); _grm.root = _grm.svg = _grm.props = _grm.game = _grm.actors = _grm.school = _grm.bugL = _grm.me = _grm.R = _grm.S = null; _grm.m.clear(); _grm.keys.clear(); _grm.carry = ''; _grm.fu = false; _grwa.w = null; }
-    s.dead = true; live = null; clearTimeout(s.howTimer); for (const [M, N] of s.people) { clearPeerFishing(M); for (const handle of N.poses.values()) removeHandle(handle); } for (const item of s.spots.values()) removeHandle(item.art); for (const handle of s.fishArts.values()) removeHandle(handle); for (const handle of s.bugArts.values()) removeHandle(handle); for (const item of s.effects) removeHandle(item.art); removeHandle(s.background); removeHandle(s.front); removeHandle(s.band); removeHandle(s.waterTop); s.root.destroy(); if (s.waterMask) s.waterMask.destroy(); s.ui.remove();
+    s.dead = true; live = null; clearTimeout(s.howTimer); for (const [M, N] of s.people) { clearPeerFishing(M); for (const handle of N.poses.values()) removeHandle(handle); } for (const item of s.spots.values()) removeHandle(item.art); for (const handle of s.fishArts.values()) removeHandle(handle); for (const handle of s.bugArts.values()) removeHandle(handle); for (const item of s.effects) removeHandle(item.art); removeHandle(s.background); removeHandle(s.doorMark); removeHandle(s.front); removeHandle(s.band); removeHandle(s.waterTop); s.root.destroy(); if (s.waterMask) s.waterMask.destroy(); s.ui.remove();
     if (s.context.world && s.context.world.root) s.context.world.root.setVisible(true);
     if (s.context.box) s.context.box.classList.remove('gd-native-indoor');
     const cam = s.context.scene.cameras.main; if (s.previousCamera.bounded && s.previousCamera.bounds) { const b = s.previousCamera.bounds; cam.setBounds(b.x, b.y, b.width, b.height); } if (s.previousCamera.background) cam.setBackgroundColor(s.previousCamera.background); cam.setZoom(s.previousCamera.zoom); cam.centerOn(s.previousCamera.x, s.previousCamera.y);
@@ -496,6 +501,6 @@ window.GardenNativeRooms = (function () {
     }
     state.revision = s.serial + ':' + s.effectRevision; state.lights = roomLights(s); return state;
   }
-  function lighting() { const s = current(); if (!s) return null; return { indoor: true, room: s.R.id, background: s.R.bg, width: GRM.W, height: GRM.H, ambient: s.music ? .38 : /cellar|cave|grotto/.test(s.R.id) ? .42 : .58, lights: roomLights(s), occluders: s.spotList.filter(q => !q.still && q.w > 30 && q.h > 60).map(q => ({ x: q.x - q.w * .35, y: q.y - 12, width: q.w * .7, height: 12, tall: q.h })) }; }
+  function lighting() { const s = current(); if (!s) return null; return { indoor: true, room: s.R.id, background: s.R.bg, width: GRM.W, height: GRM.H, ambient: s.music ? .38 : s.paintSpec && s.paintSpec.ambient != null ? s.paintSpec.ambient : /cellar|cave|grotto/.test(s.R.id) ? .42 : .58, lights: roomLights(s), occluders: s.spotList.filter(q => !q.still && q.w > 30 && q.h > 60).map(q => ({ x: q.x - q.w * .35, y: q.y - 12, width: q.w * .7, height: 12, tall: q.h })) }; }
   return { current, enter, leave, update, paint, query, point, pick, pointer, pointerMove, key, filterKey, controlsOpen, controlsClose, focusScene, up, water, cell, roomPoint, front, castAt, addActor, fishingAnchor, poseActor: M => { const s = current(); if (s) poseActor(s, M); }, bugs, float, swing, got, lighting, effectsState };
 })();
