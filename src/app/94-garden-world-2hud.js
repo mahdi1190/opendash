@@ -49,7 +49,7 @@ function _ghHud(box, m) {
   const w = m.wallet, lv = w.level, wi = m.water, sky = _gdpSkyChip(m), treats = _ghTreats();
   const pct = Math.round(lv.pct * 100);
   const stat = (cls, ic, val, tip) => `<span class="gd-stat ${cls}" data-tip="${escAttr(tip)}">${ic}<b>${esc(String(val))}</b></span>`;
-  const html = `<button type="button" class="gd-hud-summary" data-hud-details aria-label="Garden status: level ${lv.level}, ${escAttr(_gdpNum(w.coins))} coins. Show details" aria-expanded="false" aria-controls="gd-status-details"><span class="gd-hud-n">${lv.level}</span>${stat('is-coins', _GH_GLYPH.coin, _gdpNum(w.coins), 'Coins')}${icon('chevron-down')}</button><div class="gd-status-details" id="gd-status-details" hidden><div class="gd-hud-lv"><b>Level ${lv.level} · ${esc(lv.title)}</b><span class="gd-hud-bar" role="progressbar" aria-label="Garden level progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></span></div><small>${esc(_gdpNum(lv.into))} / ${esc(_gdpNum(lv.need))} XP</small>`
+  const html = `<button type="button" class="gd-hud-summary" data-hud-details aria-label="Garden status: level ${lv.level}, ${escAttr(_gdpNum(w.coins))} coins. Show details" aria-expanded="false" aria-controls="gd-status-details"><span class="gd-hud-n">${lv.level}</span>${stat('is-coins', _GH_GLYPH.coin, _gdpNum(w.coins), 'Coins')}${icon('chevron-down')}</button><div class="gd-status-details" id="gd-status-details" hidden><div class="gd-hud-lv"><b>Level ${lv.level} · ${esc(lv.title)}</b><span class="gd-hud-bar" role="progressbar" aria-label="Garden level progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></span></div><small>${esc(_gdpNum(lv.into))} of ${esc(_gdpNum(lv.need))} points to level ${lv.level + 1}</small>`
     + '<div class="gd-hud-stats">'
     + stat('is-coins', _GH_GLYPH.coin, _gdpNum(w.coins), 'Coins: earned by focusing on tasks and finishing them')
     + (treats != null ? stat('is-treats', icon('cookie'), treats, 'Treats for your pet') : '')
@@ -74,13 +74,13 @@ function _ghMenu(box, m) {
   const garden = ['shop', 'basket', 'craft', 'design'].map(by);
   const own = !m.visit && _gdG(), predecessor = '94f5b2dbe4dce765cafb2b40';
   if (own && own.since && (gardenWorldIsLegacy() || GARDEN_WORLD.v === 3 && Number(own.seen.world) === 3 && own.seen.worldLayout === predecessor && GARDEN_WORLD.lh !== predecessor) && gardenWorldReady()) garden.push(['update', 'Update my garden', 'sprout']);
-  const together = ['play', 'tricks', 'friends', 'goals'].map(by).concat([['emote', 'Wave & dance (Q)', 'smile']]);
+  const together = ['play', 'tricks', 'friends', 'goals'].map(by).concat([['emote', 'Dance (Q)', 'smile']]);
   if (typeof gardenLiveCanSay === 'function' && gardenLiveCanSay(m)) together.push(['say', 'Say something', 'message-circle']);
   if (typeof gardenSnapCan === 'function' && gardenSnapCan()) together.push(['snap', 'Group photo', 'camera']);
   if (m.visit) together.push(['visit', 'Guestbook', 'feather']);
   const html = `<button type="button" class="gd-mbtn gd-mleave gd-mnav" data-menu="nav" aria-label="Show sidebar" title="Show sidebar">${icon('panel-left')}</button><button type="button" class="gd-mbtn gd-mmore" data-menu="more" aria-label="Garden menu" aria-expanded="false" aria-controls="gd-menu-panel">${icon('menu')}<span>Menu</span></button><div class="gd-mlist" id="gd-menu-panel">`
     + group('Garden', garden) + group('Explore', ['lands', 'almanac', 'nature', 'wonder', 'catch'].map(by)) + group('Play & friends', together)
-    + group('View & help', [['map', 'Map (M)', 'map'], ['view', 'Camera & keys', 'sliders-horizontal'], by('graphics'), by('help')])
+    + group('View & help', [['map', 'Map (M)', 'map'], ['view', 'Camera', 'sliders-horizontal'], by('graphics'), by('help')])
     + `</div><button type="button" class="gd-mbtn gd-mleave" data-menu="leave" aria-label="${m.visit ? 'Back to your garden' : 'Leave the garden'}" data-tip="${m.visit ? 'Back to your garden' : 'Leave the garden'}">${icon('x')}</button>`;
   const el = _ghHost(box, 'gd-menu', 'nav');
   el.classList.toggle('is-open', !!_gh.menuOpen);
