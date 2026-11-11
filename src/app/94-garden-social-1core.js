@@ -169,10 +169,11 @@ function _gscSnapBody() {
   if (!s || !Array.isArray(s.plants)) return null;
   const v = _gsc.data && _gsc.data.tally ? _gsc.data.tally : null;
   const body = { v: 1, lv: Math.max(1, Math.min(999, Number(s.lv) || 1)), season: s.season, areas: s.areas.slice(0, 12), plants: s.plants, decor: s.decor, heart: Math.max(0, Math.min(6, Number(s.heart) || 0)), at: Math.floor(Number(s.at) || _gscNow()) };
-  for (const k of ['wv', 'lh', 'fp', 'rp', 'ls', 'lf', 'lc', 'lz', 'lr', 'wk', 'sh', 'tk', 'wd', 'dz', 'bk', 'rf', 'tg', 'ca', 'tz', 'sr', 'ss', 'wx', 'pa']) if (s[k] !== undefined) body[k] = s[k];   // Preserve the island identity and optional placements alongside the land, lake works, showcase and pet tricks in the saved copy.
+  for (const k of ['wv', 'lh', 'fp', 'rp', 'ls', 'lf', 'lc', 'lz', 'lr', 'wk', 'sh', 'tk', 'wd', 'dz', 'bk', 'rf', 'tg', 'ca', 'tz', 'sr', 'ss', 'wx', 'pa', 'jn']) if (s[k] !== undefined) body[k] = s[k];   // Preserve the island identity and optional placements alongside the land, lake works, showcase and pet tricks in the saved copy.
   if (v && Number(v['in.like']) > 0) body.hearts = Math.min(1e7, Number(v['in.like']));
   for (const k of ['cv', 'sp']) if (s[k] != null) body[k] = s[k];   // the saved copy too: can they take a catch, and their best specimens
-  if (JSON.stringify(body).length > _GSC_BYTES) delete body.ca;   // (what the lake shows goes before anything in the garden)
+  if (JSON.stringify(body).length > _GSC_BYTES) delete body.ca;
+  if (JSON.stringify(body).length > _GSC_BYTES) delete body.jn;   // (then the journal: friends can still visit)   // (what the lake shows goes before anything in the garden)
   if (typeof gardenDesignSnapTrim === 'function') gardenDesignSnapTrim(body, _GSC_BYTES);   // a design gives up its ground and paths before anyone's decorations go
   let json = JSON.stringify(body);
   if (json.length > _GSC_BYTES) {

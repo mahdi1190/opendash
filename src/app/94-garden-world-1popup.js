@@ -8,7 +8,7 @@
    unchanged (gardenShopTab, gardenAlmanacTab, gardenBasketTab, gardenFriendsTab, gardenCatchTab fill any element), and they are still
    routes (#view=garden:shop ...) for the palette, the Home card and the sidebar.
 
-     gardenPopupOpen(tab, o)    tab: 'shop' | 'basket' | 'almanac' | 'friends' | 'catch'; o {title, sub (a Catch page: bag, fish, bugs, tackle, show)}
+     gardenPopupOpen(tab, o)    tab: 'shop' | 'basket' | 'almanac' | 'friends' | 'catch' | 'journal' (the old 'nature', 'wonder', 'goals' and the Catch books open the journal); o {title, sub (a Catch page: bag, fish, bugs, tackle, show)}
      gardenPopupClose()
      gardenGoPage(view)         a link between the garden's pages: a pop-up while you are in the garden, a page elsewhere
      gardenPopupRefresh()       the pop-up's content again (the garden calls it after every change)
@@ -18,10 +18,8 @@ const _GDPOP = Object.freeze({
   basket: { title: 'Market stall', icon: 'shopping-basket', fill: (el, m) => gardenBasketTab(el, m) },
   almanac: { title: 'Notice board', icon: 'book-open', fill: (el, m) => gardenAlmanacTab(el, m) },
   friends: { title: 'Friends', icon: 'users', fill: (el, m) => gardenFriendsTab(el, m) },
-  catch: { title: 'Fish & bugs', icon: 'fish', fill: (el, m) => gardenCatchTab(el, m) },
-  nature: { title: 'Nature book', icon: 'leaf', fill: (el, m) => gardenLifeBookTab(el, m) },
-  wonder: { title: 'Keepsakes', icon: 'mail', fill: (el, m) => gardenWonderBox(el, m) },
-  goals: { title: 'Goals', icon: 'target', fill: (el, m) => gardenGoalsPanel(el, m) },
+  catch: { title: 'Bag & tackle', icon: 'fish', fill: (el, m) => gardenCatchTab(el, m) },
+  journal: { title: 'Field Journal', icon: 'book-open', fill: (el, m) => gardenJournalTab(el, m) },   // the one book for everything found (94-garden-journal-1core.js)
   sail: { title: 'Where to?', icon: 'ship', fill: (el) => gardenSailTab(el) },
   visit: { title: 'Guestbook', icon: 'feather', fill: (el) => gardenVisitNotes(el) },
   lands: { title: 'Buy land', icon: 'map-pin', fill: (el, m) => gardenLandsTab(el, m) },
@@ -49,6 +47,9 @@ function gardenSailTab(el) {
 function _gdpopInGarden() { return typeof _gdp !== 'undefined' && !!_gdp.root && _gdp.root.isConnected && _gdpWorldView(); }
 function gardenPopupOpen(tab, o) {
   o = o || {};
+  // the old books are pages of the Field Journal now: their ways in open it
+  if (tab === 'nature' || tab === 'wonder' || tab === 'goals') { if (typeof _gj !== 'undefined') _gj.sec = tab === 'wonder' ? 'stories' : 'creatures'; tab = 'journal'; o = { title: 'Field Journal' }; }
+  if (tab === 'catch' && ['fish', 'bugs', 'best', 'map'].includes(o.sub)) { if (typeof _gj !== 'undefined') { _gj.sec = o.sub === 'best' ? 'photos' : 'creatures'; if (o.sub === 'bugs') _gj.kind = 'bug'; else if (o.sub === 'fish') _gj.kind = 'fish'; } tab = 'journal'; o = { title: 'Field Journal' }; }
   const def = _GDPOP[tab];
   if (!def) return;
   if (!gardenEnsure()) return;
@@ -153,7 +154,7 @@ function gardenPopupRefresh() {
 }
 /** A link between the garden's own pages: in the garden it is a pop-up, anywhere else the page. */
 function gardenGoPage(view) {
-  const mm = /^garden:(shop|almanac|basket|friends|catch|sail|craft)$/.exec(String(view || ''));
+  const mm = /^garden:(shop|almanac|basket|friends|catch|journal|sail|craft)$/.exec(String(view || ''));
   if (mm && _gdpopInGarden()) { gardenPopupOpen(mm[1]); return; }
   if (view === 'garden' && _gdp.pop) { gardenPopupClose(); return; }
   setView(view);

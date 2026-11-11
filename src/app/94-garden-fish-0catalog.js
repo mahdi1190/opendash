@@ -822,7 +822,7 @@ const _GV_FISH = [
   ['cod', 'Cod', 'mountains', 'c:headland', 'c', [40, 90], 4, 'sinker', ['winter', 'autumn'], ['day', 'dusk'], { sea: ['mid', 'deep'] }, 'The cold cove, in the cold months.', 'wick', 'A big-headed cold-water fish with a beard and a very serious face.', { s: 'torpedo', c: '#8a8a5a', c2: '#e4dcc0', c3: '#4a4a2a', p: 'speckle', k: [1.05, 0.95] }],
   ['vendace', 'Vendace', 'mountains', 'tarn', 'u', [15, 30], 4, 'dart', ['autumn', 'winter'], ['dusk'], {}, 'The middle of the tarn at dusk, late in the year.', 'wick', 'One of the rarest fish in the land, and it would rather you didn’t make a fuss.'],
   ['lumpsucker', 'Lumpsucker', 'mountains', 'c:headland', 'u', [25, 45], 4, 'sinker', ['spring'], ['day'], { sea: ['shallow', 'mid'] }, 'Stuck to the cove rocks in spring.', 'wick', 'Sticks itself to a rock by its belly, like a lost button.', { s: 'round', c: '#5a7a4a', c2: '#c8d0a0', c3: '#2a3a1a', p: 'spots', k: [0.9, 1.15] }],
-  ['blind-loach', 'Blind loach', 'mountains', 'cavepool', 'u', [6, 14], 3, 'dart', [], [], {}, 'In the grotto’s cave pool, further in than your arm.', 'wick', 'Has never seen the sun and doesn’t miss it.'],
+  ['blind-loach', 'Blind loach', 'mountains', 'cavepool', 'u', [6, 14], 3, 'dart', [], [], { needs: { room: 'cave' } }, 'In the grotto’s cave pool, further in than your arm.', 'wick', 'Has never seen the sun and doesn’t miss it.'],
   ['arctic-char', 'Arctic char', 'mountains', 'tarn', 'r', [40, 75], 7, 'dart', ['winter'], ['dawn'], {}, 'Red-bellied in the tarn, at a winter dawn.', 'wick', 'Left behind by the ice. Red-bellied in winter, as if it is keeping warm on purpose.'],
   ['the-frost-maiden', 'The tarn maiden', 'mountains', 'tarn', 'L', [60, 110], 9, 'floater', ['winter'], ['dawn'], { needs: { rain: true, chance: 14 } }, 'Where the river starts, at dawn, when it snows.', 'wick', 'A pale char with fins like a veil. Wick says she is where the river starts thinking.'],
   ['mackerel', 'Mackerel', 'sea', 'c:north', 'c', [25, 40], 3, 'dart', ['summer', 'spring'], ['day'], { sea: ['shallow', 'mid'] }, 'Off the pier end in summer. They make the water boil.', 'angler', 'Striped like the sea in a breeze. Their shoals make the water boil.', { s: 'torpedo', c: '#3a7a8a', c2: '#e8eef0', c3: '#1a3a4a', p: 'bars', k: [1, 0.8] }],
@@ -926,6 +926,14 @@ const _GF_BUG = new Map(_GB_ALL.map(b => [b.id, b]).concat(GARDEN_BUGS.map(b => 
 const _GV_IN = new Set(GARDEN_FISH.map(f => f.id).concat(GARDEN_BUGS.map(b => b.id)));
 /** Is this kind one of the vale's (it spawns and has a journal page)? */
 function gardenValeKind(id) { return _GV_IN.has(String(id)); }
+/** A friend's journal in a snapshot (jn: {f: [[fish id, best cm]], b: [bug ids]}): only the vale's kinds, sizes in bounds, each once. */
+function gardenJournalSnapClean(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const f = [], b = [], seen = new Set();
+  if (Array.isArray(raw.f)) for (const r of raw.f.slice(0, 70)) { if (!Array.isArray(r) || r.length !== 2) continue; const d = _GF_FISH.get(String(r[0])), n = Number(r[1]); if (!d || d.cat !== 'fish' || !d.page || seen.has(d.id) || !Number.isInteger(n) || n < 1 || n > 999) continue; seen.add(d.id); f.push([d.id, n]); }
+  if (Array.isArray(raw.b)) for (const id of raw.b.slice(0, 70)) { const d = _GF_BUG.get(String(id)); if (!d || !d.page || seen.has(d.id)) continue; seen.add(d.id); b.push(d.id); }
+  return f.length || b.length ? { f, b } : null;
+}
 
 /* ---------- gear ---------- */
 function _gfG(id, kind, tier, name, price, lv, st, blurb, more) { return Object.freeze(Object.assign({ id, kind, tier, name, price, lv, st: Object.freeze(st), blurb }, more || {})); }

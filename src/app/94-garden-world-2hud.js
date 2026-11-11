@@ -66,7 +66,7 @@ const _GH_MENU = Object.freeze([
   ['graphics', 'Graphics', 'monitor'],
   ['lands', 'Buy land', 'map-pin'],
   ['design', 'Design', 'paintbrush'],
-  ['shop', 'Shop', 'store'], ['basket', 'Market stall', 'shopping-basket'], ['craft', 'Crafting', 'hammer'], ['tricks', 'Pet tricks', 'wand-sparkles'], ['almanac', 'Notice board', 'book-open'], ['nature', 'Nature book', 'leaf'], ['wonder', 'Keepsakes', 'mail'], ['catch', 'Fish & bugs', 'fish'], ['friends', 'Friends', 'users'], ['goals', 'Goals', 'target'], ['help', 'Help', 'circle-help'],
+  ['shop', 'Shop', 'store'], ['basket', 'Market stall', 'shopping-basket'], ['craft', 'Crafting', 'hammer'], ['tricks', 'Pet tricks', 'wand-sparkles'], ['almanac', 'Notice board', 'clipboard-list'], ['journal', 'Field Journal (J)', 'book-open'], ['catch', 'Bag & tackle', 'fish'], ['friends', 'Friends', 'users'], ['help', 'Help', 'circle-help'],
 ]);
 function _ghMenu(box, m) {
   const btn = ([id, label, ic]) => `<button type="button" class="gd-mbtn" data-menu="${id}">${icon(ic)}<span>${esc(label)}</span></button>`;
@@ -74,12 +74,12 @@ function _ghMenu(box, m) {
   const garden = ['shop', 'basket', 'craft', 'design'].map(by);
   const own = !m.visit && _gdG(), predecessor = '94f5b2dbe4dce765cafb2b40';
   if (own && own.since && (gardenWorldIsLegacy() || GARDEN_WORLD.v === 3 && Number(own.seen.world) === 3 && own.seen.worldLayout === predecessor && GARDEN_WORLD.lh !== predecessor) && gardenWorldReady()) garden.push(['update', 'Update my garden', 'sprout']);
-  const together = ['play', 'tricks', 'friends', 'goals'].map(by).concat([['emote', 'Dance (Q)', 'smile']]);
+  const together = ['play', 'tricks', 'friends'].map(by).concat([['emote', 'Dance (Q)', 'smile']]);
   if (typeof gardenLiveCanSay === 'function' && gardenLiveCanSay(m)) together.push(['say', 'Say something', 'message-circle']);
   if (typeof gardenSnapCan === 'function' && gardenSnapCan()) together.push(['snap', 'Group photo', 'camera']);
   if (m.visit) together.push(['visit', 'Guestbook', 'feather']);
   const html = `<button type="button" class="gd-mbtn gd-mleave gd-mnav" data-menu="nav" aria-label="Show sidebar" title="Show sidebar">${icon('panel-left')}</button><button type="button" class="gd-mbtn gd-mmore" data-menu="more" aria-label="Garden menu" aria-expanded="false" aria-controls="gd-menu-panel">${icon('menu')}<span>Menu</span></button><div class="gd-mlist" id="gd-menu-panel">`
-    + group('Garden', garden) + group('Explore', ['lands', 'almanac', 'nature', 'wonder', 'catch'].map(by)) + group('Play & friends', together)
+    + group('Garden', garden) + group('Explore', ['journal', 'lands', 'almanac', 'catch'].map(by)) + group('Play & friends', together)
     + group('View & help', [['map', 'Map (M)', 'map'], ['view', 'Camera', 'sliders-horizontal'], by('graphics'), by('help')])
     + `</div><button type="button" class="gd-mbtn gd-mleave" data-menu="leave" aria-label="${m.visit ? 'Back to your garden' : 'Leave the garden'}" data-tip="${m.visit ? 'Back to your garden' : 'Leave the garden'}">${icon('x')}</button>`;
   const el = _ghHost(box, 'gd-menu', 'nav');

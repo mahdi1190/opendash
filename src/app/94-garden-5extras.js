@@ -227,50 +227,13 @@ function _gdxSellRow(k, n, each, note) {
 }
 
 /* ---------- the almanac ---------- */
+/** The notice board: today's lake (forecast, the wanted poster, the records). The collections it used to hold are the Field Journal's. */
 function gardenAlmanacTab(el, m) {
-  const g = _gdG();
-  const plantsFound = GARDEN_PLANTS.filter(p => g.disc[p.id]).length, visFound = GARDEN_VISITORS.filter(v => g.disc[v.id]).length, decFound = GARDEN_DECOR.filter(d => g.disc[d.id]).length;
-  const ribs = gardenRibbonRows(m), ribDone = ribs.filter(r => r.earned).length;
   const top = _gdpEl('div', 'gd-alm-top');
-  top.appendChild(_gdxSeg([['plants', `Plants ${plantsFound}/${GARDEN_PLANTS.length}`, 'flower-2'], ['visitors', `Visitors ${visFound}/${GARDEN_VISITORS.length}`, 'bird'], ['decor', `Decorations ${decFound}/${GARDEN_DECOR.length}`, 'armchair'], ['ribbons', `Ribbons ${ribDone}/${ribs.length}`, 'award'], ...(typeof gardenLifeBookTab === 'function' ? [['nature', 'Nature book', 'leaf']] : [])], _gdx.alm, (k) => { _gdx.alm = k; _gdx.almCat = ''; _gdxRepaintTab(); }, 'gd-alm-seg'));
+  top.appendChild(_gdpBtn('Open the Field Journal', { icon: 'book-open', kind: 'btn-primary', run: () => gardenJournalOpen() }));
   el.appendChild(top);
-  if (_gdx.alm === 'nature' && typeof gardenLifeBookTab === 'function') { gardenLifeBookTab(el, m); return; }   // the creatures and the surprises: 94-garden-life-6book.js
-  if (_gdx.alm === 'ribbons') {
-    // the ones nearest to being earned first, what you have earned after them
-    const cmp = (x, y) => (x.earned ? 1 : 0) - (y.earned ? 1 : 0) || y.n / y.of - x.n / x.of || String(x.def.label).localeCompare(y.def.label);
-    gardenPager(el, { key: 'alm:ribbons', items: gardenPagerOrder('alm:ribbons', ribs, r => r.def.label, cmp), grid: 'gd-ribbons', row: 126, draw: (r) => {
-      const c = _gdpEl('div', 'gd-ribbon' + (r.earned ? ' is-earned' : ''));
-      c.innerHTML = `<span class="gd-rib-ic">${icon(r.def.icon)}</span>`;
-      const t = _gdpEl('div', 'gd-rib-t');
-      t.appendChild(_gdpEl('b', null, r.def.label));
-      t.appendChild(_gdpEl('small', 'muted', r.def.hint));
-      const bar = _gdpEl('span', 'gd-xpbar'); const fill = _gdpEl('i'); fill.style.width = Math.round(r.n / r.of * 100) + '%'; bar.appendChild(fill); t.appendChild(bar);
-      const rw = r.def.reward, items = rw.i ? Object.keys(rw.i).map(_gdxItemName).join(', ') : '';
-      t.appendChild(_gdpEl('small', 'gd-rib-rw', r.earned ? `Earned ${r.earned} · ${rw.c} coins${items ? ' and ' + items : ''}` : `${r.n} of ${r.of} · reward: ${rw.c} coins${items ? ' and ' + items : ''}`));
-      c.appendChild(t);
-      return c;
-    } });
-    return;
-  }
-  const kind = _gdx.alm === 'visitors' ? 'visitor' : _gdx.alm === 'decor' ? 'decor' : 'plant';
-  let list = kind === 'plant' ? GARDEN_PLANTS : kind === 'visitor' ? GARDEN_VISITORS : GARDEN_DECOR;
-  // by family (the chips jump to one), and inside a family what you have found comes first
-  const cats = kind === 'plant' ? GARDEN_CAT_ORDER : kind === 'decor' ? GARDEN_DECOR_CAT_ORDER : null, names = kind === 'plant' ? GARDEN_CATS : GARDEN_DECOR_CATS;
-  if (cats) { el.appendChild(_gdxChips([['', 'All'], ...cats.map(c => [c, names[c].label])], _gdx.almCat, (k) => { _gdx.almCat = k; _gdxRepaintTab(); })); if (_gdx.almCat) list = list.filter(p => p.cat === _gdx.almCat); }
-  const rarities = Object.keys(GARDEN_RARITY), rank = (d) => Math.max(0, rarities.indexOf(d.rarity));
-  const cmp = (a, b) => (cats ? cats.indexOf(a.cat) - cats.indexOf(b.cat) : 0) || (g.disc[a.id] ? 0 : 1) - (g.disc[b.id] ? 0 : 1) || rank(a) - rank(b) || String(a.name).localeCompare(b.name);
-  const place = `alm:${kind}:${_gdx.almCat}`;
-  gardenPager(el, { key: place, items: gardenPagerOrder(place, list, d => d.id, cmp), grid: 'gd-grid gd-alm-grid gpg-book', row: 146, rowSm: 126, label: cats ? (d) => names[d.cat].label : null, draw: (d) => {
-    const found = !!g.disc[d.id];
-    const c = _gdpEl('button', 'gd-almcard' + (found ? '' : ' is-unknown') + (d.rarity ? ' gd-r-' + d.rarity : '')); c.type = 'button';
-    const art = _gdpEl('div', 'gd-card-art');
-    art.innerHTML = kind === 'plant' ? gardenIconSvg(d.id, { kind: 'plant', stage: 4, season: (d.seasons || ['summer'])[0], silhouette: !found, ripe: true, heart: d.special === 'heart' ? Math.min(6, m.heart) : undefined, px: 64 }) : gardenIconSvg(d.id, { kind, silhouette: !found, px: 64 });
-    c.appendChild(art);
-    c.appendChild(_gdpEl('b', null, found ? d.name : '???'));
-    c.appendChild(_gdpEl('small', 'muted', found ? (kind === 'plant' ? GARDEN_CATS[d.cat].one + ' · ' + GARDEN_RARITY[d.rarity].label.toLowerCase() : kind === 'visitor' ? GARDEN_RARITY[d.rarity].label + ' · ' + d.when.tod.join(', ') : GARDEN_DECOR_CATS[d.cat].label) : _gdxHint(d, kind, m)));
-    c.onclick = () => _gdxAlmDetail(d, kind, found, m);
-    return c;
-  } });
+  const cards = _gdpEl('div', 'gpg-cards'); el.appendChild(cards);
+  if (typeof gardenLakeTab === 'function') gardenLakeTab(cards, m);
 }
 function _gdxHint(d, kind, m) {
   if (kind === 'plant') { const why = gardenLockOf(d, gardenUnlockCtx(m)); return why ? why : 'In the shop: plant one to discover it'; }

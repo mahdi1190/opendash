@@ -409,7 +409,7 @@ const GRM_ROOMS = Object.freeze([
   /* ---------- open from the start, and hidden ---------- */
   { id: 'cellar', at: 'ld-sunk', doorAt: [28.4, 19.8], name: 'The drowned cellar', verb: 'Feel for a fourth step', door: 'steps', bg: '#071c24', edge: ['#16505a', '#07202a'], say: 'There are three steps. Then, if you keep going, a fourth. Then a cellar nobody has needed for years, with the pool for a ceiling.', how: 'Open two jars at a time and find the pairs. Something swims in the flood too: click the water to cast.',
     art: GRM_ART.cellar, floor: { x0: 44, x1: 930, y0: 410, y1: 586 }, spawn: { x: 170, y: 490 },
-    water: { room: 'cellar', cy: 10, kinds: ['jar-minnow', 'cellar-eel', 'barrel-carp'], e: [[620, 500, 290, 60]] },
+    water: { room: 'cellar', cy: 10, kinds: [], e: [[620, 500, 290, 60]] },
     play: 'pairs', gift: { ticket: 1, 'mat:reed': 1 }, doneLine: 'You have sorted today’s jars. The water will have moved things by tomorrow.', gotLine: 'The last pair, and under the wax of the last jar, dry as the day it was sealed: a bundle of reeds and a ticket someone meant to use.',
     miss: ['Pickled something. It looks back.', 'Not a pair. Buttons, all of them odd.', 'A smell of 1911, and no match.', 'Sand. Just sand. You check twice.'],
     jars: [[320, 236], [428, 236], [536, 236], [644, 236], [320, 356], [428, 356], [536, 356], [644, 356]] },
@@ -460,7 +460,7 @@ const GRM_ROOMS = Object.freeze([
 
   { id: 'grotto', at: 'ld-grotto', name: 'The back of the grotto', verb: 'Go further in than your arm', door: 'cave', bg: '#050d0a', edge: ['#050d0a', '#0e1c14'], say: 'The cold breath comes from here: a low green room, one drip of water, and a pool that goes down further than it should. Shadows move in it. The bare rock would like some moss, too.', how: 'Click the pool near a shadow to cast, just as you would at the lake. Or pick up some moss and press it onto the rock.',
     art: GRM_ART.grotto, floor: { x0: 44, x1: 934, y0: 412, y1: 586 }, spawn: { x: 170, y: 500 },
-    water: { room: 'cave', cy: 0, kinds: ['blind-loach', 'moss-chub', 'drip-pearl'], e: [[630, 494, 282, 66]] },
+    water: { room: 'cave', cy: 0, kinds: ['blind-loach'], e: [[630, 494, 282, 66]] },
     front() { const A = _GRM_Q; let s = '<g class="grm-front">' + A.p('M0 0H960V36Q800 90 690 36Q600 70 500 30Q400 76 300 32Q180 84 90 34Q40 60 0 34Z', '#030806'); for (const [x, l, w] of [[60, 120, 34], [160, 70, 22], [310, 92, 26], [440, 60, 18], [540, 110, 28], [700, 78, 22], [820, 128, 36], [910, 76, 24]]) s += A.p(`M${x - w} 26Q${x - w * 0.3} ${l * 0.5} ${x} ${l}Q${x + w * 0.3} ${l * 0.5} ${x + w} 26Z`, '#040a08'); s += A.p('M0 600V540Q120 560 200 600Z', '#040a08') + A.p('M960 600V530Q860 570 780 600Z', '#040a08') + A.fern(40, 590, 1.1, '#17301f') + A.fern(930, 590, 1.2, '#17301f', 1); return s + '</g>'; },
     play: 'mossGrow', tip: 'Press on a tuft of moss', goal: 7, max: 14, gift: { 'mat:stone': 1, ticket: 1 }, holdLine: 'Tufts will come up on the rock. Press five of them in before they dry.', doneLine: 'Moss will only go so fast. Come back tomorrow, and it will have taken.', end: { items: { 'decor:rw-ground-moss': 4 }, say: 'The rock is green all over, and comes away in neat pieces at the edge. You take four squares for home.' },
     tufts: [[232, 342], [298, 286], [372, 340], [262, 262], [338, 250], [412, 322]],
@@ -520,7 +520,7 @@ const GRM_ROOMS = Object.freeze([
 
   { id: 'hothouse', furnish: true, at: 'ld-statue', name: 'The old hothouse', verb: 'Follow his stare, round the back', door: 'glass', bg: '#2e2a1e', edge: ['#e0f4d8', '#2e2a1e'], say: 'He has been glaring at it for years, and this is why: a whole glasshouse the greenhouse was built to replace. Still warm. It is always summer in here, and things live here that live nowhere else.', how: 'Click a bug and you creep up on it with your net, as outside. Run at it and it is gone.',
     art: GRM_ART.hothouse, floor: { x0: 44, x1: 916, y0: 404, y1: 586 },
-    play: 'net', bugRoom: 'hothouse', tip: 'Net this one', kinds: ['jewel-beetle', 'orchid-hopper', 'old-vine-bee'], perch: [{ x: 300, y: 450 }, { x: 560, y: 480 }, { x: 800, y: 440 }], gift: { ticket: 2, 'mat:reed': 1 }, gotLine: 'A good one. There is reed cut for the taking along the pipes.', goneLine: 'That is everyone for today. There will be others in the morning.' },
+    play: 'net', bugRoom: 'hothouse', tip: 'Net this one', kinds: ['peacock-butterfly', 'long-tailed-blue', 'elephant-hawk-moth'], perch: [{ x: 300, y: 450 }, { x: 560, y: 480 }, { x: 800, y: 440 }], gift: { ticket: 2, 'mat:reed': 1 }, gotLine: 'A good one. There is reed cut for the taking along the pipes.', goneLine: 'That is everyone for today. There will be others in the morning.' },
 
   { id: 'capfloor', at: 'lf-windmill', name: 'Up in the windmill’s cap', verb: 'Climb up to the wheel', door: 'cap', bg: '#1a1006', edge: ['#2a1c0e', '#403020'], say: 'The great wheel turns in the dark, tooth by tooth. The brake is the old way of doing it: catch the mark as it comes under the pointer, three times running, and the stones grind true.', how: 'Pull the brake when the gold tooth comes under the gold pointer. Three times running.',
     art: GRM_ART.capfloor, floor: { x0: 44, x1: 916, y0: 404, y1: 576 },

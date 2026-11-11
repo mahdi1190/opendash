@@ -2,14 +2,14 @@
    GARDEN, the Catch page (2.22): #view=garden:catch, with five pages of its own.
      Bag and market   what you carry (sell one or the lot, give a catch to a friend, pin it), the market's appetite today,
                       and the order board: three requests a day, paid in coins and goods
-     Fish book, Bug book  the dictionary (94-garden-fish-4book.js)
+     (the fish and bug books, the best catches and the map are pages of the Field Journal now: 94-garden-journal-1core.js)
      Tackle           rods, nets, bait and floats: buy, equip, see what each one does
      Showcase         your tank (6 fish) and bug case (9 bugs): what the aquarium, the case and the trophy board in your garden
                       show, and what friends see when they visit
    Also the little card in the garden's side panel (gardenCatchSideCard): your rod, your bait, the casts you have left, the bugs about.
    ============================================================ */
 const _gdc = { zone: '', found: '', bag: 'bag', bagKind: '', tackle: 'now' };
-const GDC_TABS = Object.freeze([['bag', 'Bag and market', 'shopping-basket'], ['fish', 'Fish book', 'fish'], ['bugs', 'Bug book', 'bug'], ['tackle', 'Tackle', 'store'], ['show', 'Showcase', 'trophy'], ['best', 'My best catches', 'award'], ['map', 'The map', 'map'], ['lake', 'The lake', 'waves'], ['hall', 'The lake hall', 'landmark']]);
+const GDC_TABS = Object.freeze([['bag', 'Bag and market', 'shopping-basket'], ['tackle', 'Tackle', 'store'], ['show', 'Showcase', 'trophy'], ['lake', 'The lake', 'waves'], ['hall', 'The lake hall', 'landmark']]);
 function _gdcTab() { const t = _gdG().prefs.catchTab; return GDC_TABS.some(x => x[0] === t) ? t : 'bag'; }
 function _gdcSetTab(t) { const a = document.activeElement; if (a && a.classList && a.classList.contains('gdb-search')) a.blur(); _gdG().prefs.catchTab = t; if (typeof saveUI === 'function') saveUI(); _gdc.pick = null; _gdc.q = ''; _gdxRepaintTab(); }
 function _gdcRar(r) { return GARDEN_RARITY[r] || GARDEN_RARITY.common; }
@@ -40,11 +40,7 @@ function gardenCatchTab(el, m) {
   if (tab === 'bag' && _gdc.bag === 'market') top.appendChild(sum);   // (the books and the catches say their own counts: a line here would only take room from the page)
   el.appendChild(top);
   if (tab === 'bag') _gdcBag(el, m, bag);
-  else if (tab === 'fish') _gdcBook(el, m, 'fish');
-  else if (tab === 'bugs') _gdcBook(el, m, 'bug');
-  else if (tab === 'map') gardenRegionTab(el, m);
   else if (tab === 'tackle') _gdcTackle(el, m);
-  else if (tab === 'best') gardenSpecTab(el);
   else if (tab === 'lake') { const cards = _gdpEl('div', 'gpg-cards'); el.appendChild(cards); gardenLakeTab(cards, m); }
   else if (tab === 'hall') gardenHallTab(el, m);
   else _gdcShow(el, m);
