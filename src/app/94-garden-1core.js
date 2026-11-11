@@ -523,7 +523,7 @@ function _gdAreasOpen(level) {
   // 2.23: land you bought is yours for good (its row is in your ledger as an item, 'land:<id>', so it syncs and banks like everything else)
   // the land's own items: the whole plots, the sections and what is built (94-garden-lands-0table.js says what that opens)
   const items = gardenWallet().items, own = [];
-  for (const k of Object.keys(items)) if (items[k] > 0 && (k.startsWith('land:') || k.startsWith('feat:'))) own.push(k.slice(5));
+  for (const k of Object.keys(items)) if (items[k] > 0 && (k.startsWith('land:') || k.startsWith('feat:'))) own.push(k.slice(5)); else if (items[k] > 0 && k.startsWith('gate:')) own.push(k);   // (a gate opened with a find: 94-garden-lands-0gates.js)
   if (GARDEN_LAND_CURIOS.some(c => items['cur:' + c.id] > 0) || items['key:old'] > 0) own.push('finds');   // (the table they are laid out on)
   const openSet = gardenLandsOpen(level, own);
   if (!(typeof gardenVisitOn === 'function' && gardenVisitOn())) { gardenLandSet(openSet); gardenFeatureSet(gardenFeatureWire()); gardenSightSet(gardenSightWire()); if (typeof gardenDesignShow === 'function') gardenDesignShow(gardenDesignOwn(_gdG())); if (typeof GARDEN_WORKS !== 'undefined') gardenWorksSet(GARDEN_WORKS.filter(d => gardenHas('gear:' + d.id) > 0).map(d => d.id), _gdG()); }   // (on a visit the land on screen is your friend's)

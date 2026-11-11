@@ -422,6 +422,9 @@ function gardenBubbleOpen(at, o) {
   const box = _ghBox(); if (!box) return null;
   const el = document.createElement('div'); el.className = 'gd-bubble' + (o.cls ? ' ' + o.cls : ''); el.setAttribute('role', 'menu'); el.setAttribute('aria-label', o.title || 'What you can do here');
   if (o.title) { const h = _gdpEl('div', 'gd-bub-h'); h.appendChild(_gdpEl('b', null, o.title)); if (o.sub) h.appendChild(_gdpEl('small', null, o.sub)); el.appendChild(h); }
+  if (o.need) { const n = _gdpEl('div', 'gd-bub-need' + (o.need.have ? ' is-have' : '')), pic = _gdpEl('span', 'gd-bub-need-pic'); pic.innerHTML = o.need.svg || ''; n.append(pic, _gdpEl('span', 'gd-bub-need-t', (o.need.have ? 'You have: ' : 'Needs: ') + o.need.name)); el.appendChild(n); }   // what a gate needs, with its picture (94-garden-wonder-7gates.js)
+  if (o.hint) el.appendChild(_gdpEl('p', 'gd-bub-hint', o.hint));
+  if (o.foot) el.appendChild(_gdpEl('p', 'gd-bub-foot', o.foot));
   const row = _gdpEl('div', 'gd-bub-row'); el.appendChild(row);
   for (const it of o.items || []) {
     const b = _gdpEl('button', 'gd-bub-btn' + (it.cls ? ' ' + it.cls : '')); b.type = 'button'; b.setAttribute('role', 'menuitem');
@@ -502,6 +505,7 @@ function gardenLandClick(id, ev) {
   if (a.solid) { gameDeny(null, { at, say: 'Too thick to walk through.' }); return; }
   const m = gardenHere();
   if (m.visit) { gameDeny(null, { kind: 'lock', at, say: 'That land is not open in this garden.' }); return; }
+  { const gate = /^zn-[1-9]$/.test(id) && typeof gardenGateOf === 'function' ? gardenGateOf(Number(id.slice(3))) : null; if (gate && gardenGateRule(gate) && typeof gardenGatePrompt === 'function') { const D = gate.door; if (!gardenWalkToPoint({ x: D.x + 0.5, y: D.y + 0.5 }, () => gardenGatePrompt(gate, { x: D.x + 0.5, y: D.y - 0.4 }, gardenHere()), { radius: 2 })) gardenGatePrompt(gate, { x: D.x + 0.5, y: D.y - 0.4 }, m); return; } }   // a shut region: walk to its gate, which says what it needs
   if (!a.buy) { gameDeny(null, { kind: 'lock', badge: 'Lv ' + a.lv, at, say: `${a.name} opens at garden level ${a.lv}.` }); return; }
   if (m.level.level < a.lv) { gameDeny(null, { kind: 'lock', badge: 'Lv ' + a.lv, at, say: `${a.name} can be bought from garden level ${a.lv}.` }); return; }
   const info = gardenLandInfo(id, m), D = gardenLandDoor(a);

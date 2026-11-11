@@ -6,7 +6,7 @@ function gardenRewardNext(m) {
   const out = [], lv = m.level.level;
   const t = GARDEN_LAND_TRAILS.map(x => gardenRewardTrailInfo(x, m)).filter(I => !I.open && I.fromOk).sort((a, b) => a.t.lv - b.t.lv)[0];
   if (t) {
-    if (t.early) { const need = t.pegs - t.have; out.push({ ic: 'footprints', text: need > 0 ? `${need} more finished task${need === 1 ? '' : 's'} and you can open ${t.t.name}` : `You have the pegs to open ${t.t.name}`, pct: Math.min(1, t.have / t.pegs) }); }
+    if (t.early) { const need = t.pegs - t.have; out.push({ ic: 'footprints', text: need > 0 ? `Pegs from your work will open ${t.t.name} early` : `You have the pegs to open ${t.t.name}` }); }   // (no count of tasks and no bar: FUN_PLAN 3.5)
     else if (lv < t.opensAt) out.push({ ic: 'footprints', text: `At garden level ${t.opensAt} you can open ${t.t.name} early` });
   }
   const land = GARDEN_LAND_SECTIONS.filter(s => { const i = gardenLandInfo(s.id, m); return i && !i.owned && i.lvOk && i.reach && i.keyOk; }).sort((a, b) => a.buy - b.buy)[0];

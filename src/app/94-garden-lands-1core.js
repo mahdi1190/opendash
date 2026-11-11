@@ -33,7 +33,8 @@ function gardenLandsWire(m) {
   for (const s of GARDEN_LAND_SECTIONS) if (gardenHas('land:' + s.id) > 0) { ls.push(s.id); plots.add(s.plot); }
   for (const f of GARDEN_LAND_FEATURES) if (f.x != null && gardenLandOwnsFeature(f.id)) lf.push(f.id);
   if (typeof gardenRewardTrailsWire === 'function') ls.push(...gardenRewardTrailsWire(m));   // a path opened early with pegs: friends see it open too
-  const areas = GARDEN_AREAS.filter(a => (a.buy ? plots.has(a.id) : m.areas.includes(a.id))).map(a => a.id);
+  const gates = (typeof GARDEN_ZONE_GATES !== 'undefined' ? GARDEN_ZONE_GATES : []).filter(g => gardenHas('gate:' + g.id) > 0).map(g => 'zn-' + g.n);   // gates opened with a find go first, so the 12-id cap never drops one: a friend sees them open (gardenLandsOfSnap)
+  const areas = gates.concat(GARDEN_AREAS.filter(a => (a.buy ? plots.has(a.id) : m.areas.includes(a.id))).map(a => a.id));
   const S = gardenLandShowMine(m);
   return { areas, ls, lf, lc: S.c, lz: S.z, lr: S.r };
 }
@@ -345,7 +346,13 @@ function gardenLandCartBuy(key) {
 /* ---------- level ups ---------- */
 /** New level: the trails it opens, and one line about what you can now buy. */
 function gardenLandsTick(was, lv, moments) {
-  for (const z of GARDEN_ZONES) if (z.lv > was && z.lv <= lv) moments.push({ kind: 'area', text: `A gate has opened: ${z.name.toLowerCase()}`, icon: 'map-pin', area: z.id });
+  for (const z of GARDEN_ZONES) {
+    const at = typeof gardenZoneOpenLv === 'function' ? gardenZoneOpenLv(z) : z.lv; if (!(at > was && at <= lv)) continue;
+    const gate = typeof gardenGateOf === 'function' ? gardenGateOf(z.n) : null, rule = gate && gardenGateRule(gate);
+    if (gate && gardenHas('gate:' + gate.id) > 0) continue;   // (opened already, with its find)
+    const who = rule && typeof WD_FOLK_ROW !== 'undefined' && WD_FOLK_ROW.get(rule.who);
+    moments.push({ kind: 'area', text: who ? `${who.name} ${rule.help}: ${z.name} is open` : `A gate has opened: ${z.name.toLowerCase()}`, icon: 'map-pin', area: z.id });
+  }
   for (const t of GARDEN_LAND_TRAILS) if (!t.zn && t.lv > was && t.lv <= lv) moments.push({ kind: 'area', text: `${t.name} is open`, icon: 'footprints', area: t.id });
   const n = GARDEN_LAND_SECTIONS.filter(s => s.buy && s.lv > was && s.lv <= lv).length + GARDEN_LAND_FEATURES.filter(f => f.lv > was && f.lv <= lv && !f.prize).length;
   if (n) moments.push({ kind: 'grant', text: `${n} new thing${n === 1 ? '' : 's'} at the land office`, icon: 'map-pin' });
