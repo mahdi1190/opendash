@@ -261,7 +261,7 @@ function _gsAmbStop(A, t) {
   if (!A) return;
   for (const n of A.nodes) { try { n.stop(t); } catch (e) { /* stopped */ } }
 }
-const GS_AMB_GAIN = Object.freeze({ wind: 0.09, sea: 0.5, lap: 0.55, falls: 0.16, rain: 0.08, crick: 0.012, room: 0.12 });
+const GS_AMB_GAIN = Object.freeze({ wind: 0.09, sea: 0.25, lap: 0.28, falls: 0.08, rain: 0.04, crick: 0.012, room: 0.12 });   // (water and rain sit about 6 dB under the steps and tools)
 
 /** What is around you, about once a second: {sea, seaPan, lap, lapPan, falls, fallsPan, woods, high} 0..1 */
 function _gsNear(px, py) {
