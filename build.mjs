@@ -126,6 +126,17 @@ export function financeSources(root = HERE) {
 const readExtras = (root, list, ext) => list.map(rel => readExtra(root, rel, ext)).filter(s => s != null);
 const scriptBlock = (code) => `<script>\n${code.replace(/<\/script/gi, '<\\/script')}\n</script>\n`;
 
+// The garden's Pixel village art (vendor/art/kenney-roguelike, CC0): one small
+// atlas inlined as inert JSON so the page stays one offline file (data: image).
+export const GARDEN_ART_DIR = 'vendor/art/kenney-roguelike';
+function gardenArtBlock(root) {
+  const png = join(root, GARDEN_ART_DIR, 'garden-atlas.png'), atlas = join(root, GARDEN_ART_DIR, 'garden-atlas.json');
+  if (!existsSync(png) || !existsSync(atlas)) return '';
+  const data = JSON.stringify({ pack: 'kenney-roguelike', atlas: JSON.parse(readFileSync(atlas, 'utf8')), png: readFileSync(png).toString('base64') });
+  // Base64 and the atlas names hold no '<', so nothing can close the tag.
+  return `<script id="freeflo-garden-art" type="application/json">${data}</script>\n`;
+}
+
 /** Everything build needs, as strings, without writing anything. */
 export function collectSources(root = HERE) {
   const app = concatDir(join(root, 'src', 'app'), '.js');
@@ -156,6 +167,7 @@ export function collectSources(root = HERE) {
     raster,
     sceneVersion: sceneHash.digest('hex').slice(0, 24),
     gameEngineJs: engineBytes.toString('utf8'),
+    gardenArtBlock: gardenArtBlock(root),
     gameEngineBlock: `<script id="freeflo-game-engine" type="application/octet-stream" data-version="${GAME_ENGINE_VERSION}">${engineBytes.toString('base64')}</script>\n`,
     islandJs: gardenIslandScript(root),
     beforeJs: readExtras(root, EXTRA_JS_BEFORE, '.js'),
@@ -179,7 +191,7 @@ ${s.css}
 </style>
 </head>
 <body>
-${s.sprite}${s.body.replace(ORB_MARKER, () => (s.orbJs ? scriptBlock(s.orbJs) : ''))}${s.raster}${s.gameEngineBlock}${s.beforeJs.map(scriptBlock).join('')}${scriptBlock(s.islandJs)}<script>
+${s.sprite}${s.body.replace(ORB_MARKER, () => (s.orbJs ? scriptBlock(s.orbJs) : ''))}${s.raster}${s.gardenArtBlock}${s.gameEngineBlock}${s.beforeJs.map(scriptBlock).join('')}${scriptBlock(s.islandJs)}<script>
 ${s.appJs.replace(/<\/script/gi, '<\\/script')}
 </script>
 ${s.afterJs.map(scriptBlock).join('')}</body>
