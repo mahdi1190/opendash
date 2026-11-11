@@ -11,10 +11,11 @@
      Bramble         badger, Millwater valley (the mill yard). Maps everything, rubs things out, "it is always the same corner that is wrong".
      Quince          hare, High orchard (the cider square). Bees, weather sayings she admits she made up, counts the stair and gets a different answer.
      Wick            owl, Cloudbreak mountains (the hut, the cairn). Dry, tries to be mysterious and keeps being found out. "Look up. It’s free."
+     Hollin          the woodcutter, the old woodland (a resident in 94-garden-wonder-1tales.js, found at home, never calling).
      Perpetua        snail, the post (94-garden-wonder-2post.js). Slow and proud of it; carries the letter at the end of the story.
 
-   THE THREAD (WK_THREAD): one piece at a time, at most one a day, each when a region opens; the teller comes that day, whatever the hour, and waits at home.
-   Each piece hints at what is past the next gate. It ends with the mill turning (the gates' 'mill' find, the mill's first mending, or the orchard open), then two short pieces after.
+   THE STORIES are data (94-garden-wonder-1tales.js; engine 94-garden-wonder-1tale.js; docs/dev/STORIES.md). The main line’s next teller comes that day, whatever the hour,
+   and waits at home; this file adds their voice around it: the day’s line, wrong notes (WK_WRONG), the story setting (_wkDeep) and the care note (WK_CARE).
 
    THE GATES (WK_GATES, keyed by gate id: island-woods, island-mill, island-ruins, island-orchard, island-headland; items shears, plank, lantern, cog/mill, rope,
    the same ids as feat/find-gates' GARDEN_GATE_RULES / GARDEN_GATE_ITEMS). Who hints, in their own voice, plus a second voice (said in three places: the gate, the rumour, a caller).
@@ -22,7 +23,7 @@
    The fallback giver: one level past a gate's own level, with its find still not found, the hinter hands it over in person (gardenGateTake, when that exists).
 
    SAVED (garden.wd, per player, local; nothing new in the snapshot): fh.<id> friendship points, fhl.<id> the level last thanked, fy.<id> the day of today's line,
-   fq.<id> {d, k, done} a favour asked, th.<step> the day you heard a piece, tg.<id> the day of a gate hint, ledger 'wk.<id>.<n>' / 'wkq.<id>.<day>' for gifts.
+   fq.<id> {d, k, done} a favour asked, fw.<id> a wrong note said, tg.<id> the day of a gate hint, ledger 'wk.<id>.<n>' / 'wkq.<id>.<day>' for gifts.
    ============================================================ */
 const WK_HEARTS = Object.freeze([0, 3, 8, 15, 26]);
 const WK_HEART_WORDS = Object.freeze(['', 'on nodding terms', 'friends', 'good friends', 'old friends']);
@@ -235,6 +236,8 @@ function _wkAnchor(id) {
   const d = row.door; return d && Number.isFinite(d.x) ? { x: d.x + 0.5, y: d.y + 0.5 } : { x: row.x + (row.w || 1) / 2, y: row.y + (row.h || 1) + 0.6 };
 }
 function _wkRegionZone(id) { try { const r = (gardenIslandData().regions || []).find(x => x.id === id); return r ? r.zone : null; } catch (e) { return null; } }
+/** Are you near this one’s home (heavy moments are told at home, never in the village square)? */
+function wdKinAtHome(who) { const H = WK_HOMES[who] || (typeof WD_TALE_RESIDENTS !== "undefined" && WD_TALE_RESIDENTS.get(who) || {}).home; if (!H || typeof _gw === "undefined") return false; for (const id of H.near) { const p = _wkAnchor(id); if (p && wdNear(p.x, p.y, 8)) return true; } return false; }
 function wdKinHome(row) {
   const H = WK_HOMES[row.id]; if (!H || GARDEN_WORLD.v < 3) return null;
   const m = gardenModel(); if (m.visit) return null;

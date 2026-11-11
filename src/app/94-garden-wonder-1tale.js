@@ -9,7 +9,7 @@
      who     a caller id (tam, bramble, pip, thistle, wick, quince), 'angler' (the pier), a resident (wdTaleResident: hollin),
              'place' (said as you walk by: `near` anchor ids, `r` cells), 'catch' (comes up on your line or net), 'post' (a letter from `from`).
      when    {after: 'story.beat' | [...], days (since the last of those), open: [zone numbers], heart: n (with who) or {who: n}, season: [], tod: [],
-              dry: 1, rain: 1, flag: {k: v}, noflag: [k], item: 'id' (in your bag), level: n, deep: 1 (only in the full telling), fish: [ids] (for 'catch')}
+              dry: 1, rain: 1, flag: {k: v}, noflag: [k], item: 'id' (in your bag), level: n, home: 1 (only at their home: heavy moments are told there), deep: 1 (only in the full telling), fish: [ids] (for 'catch')}
      lines   strings, or {t, soft, flag, noflag} (soft '' leaves it out of the gentle telling; flag/noflag: only when those flags are, or are not, set)
      choice  [{label, t, set: {flag: value}, mood: {who: n}}]: what you can say. No choice is the right one, and none pays.
      set     flags set when the beat is heard; give {item: n} (a small gift, once); heavy: 1 (the care note once before, and the quiet link beside it);
@@ -48,6 +48,7 @@ function _wtWhen(w, m, who) {
   if (w.rain && !(m.rain && m.rain.now)) return false;
   if (w.flag) for (const [k, v] of Object.entries(w.flag)) if (v === true ? !wdTaleFlag(k) : wdTaleFlag(k) !== v) return false;
   for (const k of list(w.noflag)) if (wdTaleFlag(k)) return false;
+  if (w.home && !(typeof wdKinAtHome === 'function' && wdKinAtHome(who))) return false;
   if (w.item && !(typeof gardenHas === 'function' && gardenHas(w.item) > 0)) return false;
   if (typeof w.test === 'function') { try { if (!w.test(m)) return false; } catch (e) { return false; } }
   return true;

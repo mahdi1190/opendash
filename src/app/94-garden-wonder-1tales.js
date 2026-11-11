@@ -80,21 +80,21 @@ wdTaleAdd({ id: 'signs', kind: 'small', title: 'Things noticed', journal: 'Small
 /* ---------- CHARACTER ARCS (optional; opened by friendship) ---------- */
 wdTaleAdd({ id: 'thistle', kind: 'arc', title: 'The old house', journal: 'Mother Thistle, and the door she learned to watch.', gentle: 'skip', steps: [
   { id: 'jump', who: 'thistle', when: { heart: 2, after: 'mill.brambles', deep: 1 }, lines: ['Don’t mind me jumping, dear. Old habit. Doors, mostly. And men who shout. Not you. You don’t shout.'] },
-  { id: 'door', who: 'thistle', heavy: 1, when: { heart: 3, tod: ['dusk', 'night'], dry: 1, deep: 1, days: 2, after: 'thistle.jump' }, lines: [
+  { id: 'door', who: 'thistle', heavy: 1, when: { heart: 3, tod: ['dusk', 'night'], dry: 1, deep: 1, days: 2, after: 'thistle.jump', home: 1 }, lines: [
     'A branch cracks behind you both, and Mother Thistle jumps. Then she laughs. Then she doesn’t.',
     'Sorry, dear. I was married once, up in the old house at the top of the woods. He was not a kind man.',
     'He hurt me. For years. I got very good at watching a door. “I watched it not happen,” I say. That’s where it comes from.',
     'One winter night I took the soup pot and walked until the woods were between us. Best soup I ever made, and I made it with nothing.',
     'He’s long gone. I’m still here. That’s the whole of my revenge, and it’s plenty.'],
     sit: 'You sit. The frogs start up. After a while she pats your hand. “There. That’s better than talking. Most things are.”' },
-  { id: 'cup', who: 'thistle', when: { heart: 4, days: 3 }, lines: [
+  { id: 'cup', who: 'thistle', when: { heart: 4, days: 3, home: 1 }, lines: [
     'Will you walk up to the old house with me one day? My mother’s teacup is still there, on the shelf. I left it. I’d like it back.',
     'Not today. But one day. It helps, knowing someone would come.'], sit: 'You sit together a while. She hums something with no tune at all.' },
   // later beats (STORY_BIBLE §3): the walk to the old house (ld-house), soup in the teacup, and the raised voice she still can’t bear
 ] });
 wdTaleAdd({ id: 'quince', kind: 'arc', title: 'Telling the bees', journal: 'Quince, the cider fair, and what she told the bees.', gentle: 'skip', steps: [
   { id: 'arch', who: 'quince', when: { heart: 2, deep: 1 }, lines: ['Bees don’t go past the ruined arch in the old woodland. Neither do I. No reason. Lovely weather, isn’t it.'] },
-  { id: 'fair', who: 'quince', heavy: 1, when: { heart: 4, after: 'mill.bees', tod: ['dawn', 'day'], dry: 1, deep: 1, days: 2 }, lines: [
+  { id: 'fair', who: 'quince', heavy: 1, when: { heart: 4, after: 'mill.bees', tod: ['dawn', 'day'], dry: 1, deep: 1, days: 2, home: 1 }, lines: [
     'The fair poster’s up in the square. I always go quiet when it goes up. You’ve noticed. You notice things.',
     'When I was nineteen, at the cider fair, a man raped me. I’ve said it now. That’s the word for it, and I’m done being polite about it.',
     'I told my mother. She said hush. So I told the bees. You tell bees everything, the old way. They didn’t say hush.',
@@ -132,7 +132,7 @@ wdTaleAdd({ id: 'hollin', kind: 'arc', title: 'What the woods keep', journal: 'H
   // later (STORY_BIBLE §3): the village divides over a seat at the mill’s reopening and the harvest festival; the hut empty in spring; the note on the door
 ] });
 wdTaleAdd({ id: 'pip', kind: 'arc', title: 'Up both ways', journal: 'Why Pip never stays.', gentle: 'soft', steps: [
-  { id: 'boat', who: 'pip', when: { heart: 3, after: 'mill.wheel' }, lines: [
+  { id: 'boat', who: 'pip', when: { heart: 3, after: 'mill.wheel', home: 1 }, lines: [
     'I found a boat once. A little one. In the river, a long time ago. I gave it to the reeds to look after. I don’t know why I told you that.',
     { t: 'I dived and dived that night. That’s all that came up. A little boat. I keep going up the river, and down it. Looking. I know. I know.', soft: 'I keep going up the river, and down it. I always think there’s something round the next bend. There never is. There’s always another bend.' }],
     sit: 'You sit on the bank. Pip sits too, which Pip never does, and is quiet for nearly a whole minute.' },
