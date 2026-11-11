@@ -283,6 +283,7 @@ function gardenEnsure() {
   g.since = today;
   g.seen.world = GARDEN_WORLD.v;   // (a new garden starts in this world: nothing to move over)
   if (GARDEN_WORLD.v >= 3) g.seen.worldLayout = GARDEN_WORLD.lh;
+  if (_gd.freshMark === GARDEN_WORLD.lh) g.seen.fresh = GARDEN_WORLD.lh;   // (a garden from an earlier layout, started fresh: gardenFreshStart)
   // the old oak: back left of the front garden, at its 2.16 size (it keeps growing with every task)
   g.plants.heart = { p: 'heart-oak', x: GARDEN_LAND_HEART.x, y: GARDEN_LAND_HEART.y, t: now - 30 * _GD_DAY, w: now, v: 0 };
   // the last two weeks' plants, as 2.16 drew them, along the front of the bed

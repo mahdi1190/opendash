@@ -38,6 +38,13 @@ const _GRG_WATER_ROWS = [
 ];
 const _GRG_POOL_LIKE = Object.freeze({ 'ls-lily-pool': /lily|pipefish|reed|weed|sunfish|bluegill|crappie/, 'ls-deep-pool': /catfish|burbot|snakehead|bowfin|gar$|eel/, 'ls-clear-pool': /clear|pearl|silver|glass/, 'ls-moon-pool': /moon|night/, 'ls-sedge-pool': /pike|perch|sedge/, 'ls-stone-pool': /bass|stone|rock/ });
 function gardenIslandBasinHomeIds(id) {
+  // Fleetwater Vale (v5) gives the waters their own places along the river; v4 kept them in three basins.
+  if (GARDEN_WORLD.v >= 5) {
+    const pres = gardenIslandData().presentation || {}, race = pres.millRace || '';
+    const homes = { pond: ['pond', 'falls'], tarn: ['tarn'], spring: ['spring'], 'brook-2': ['brook'], 'allotment-pool': ['frogpool', 'folly', 'light'], 'orchard-pool': ['cider', 'dip'] };
+    if (race) homes[race] = ['race'];
+    return homes[id] || [];
+  }
   const homes = { pond: ['pond', 'spring', 'falls', 'tarn'], 'allotment-pool': ['frogpool', 'race', 'brook', 'folly', 'light'], 'orchard-pool': ['cider', 'dip'] };
   return homes[id] || [];
 }
@@ -60,7 +67,8 @@ function gardenIslandFishingReach(x, y) {
   if (!nearest) return { id: 'south', zone: 0, distance: Infinity };
   const dx = nearest.x - x, dy = nearest.y - y, length = Math.hypot(dx, dy) || 1; let region = null;
   for (const inset of [.25, .6, 1]) { const px = nearest.x + dx / length * inset, py = nearest.y + dy / length * inset; if (gardenIslandLandContains(px, py)) { region = gardenIslandRegionAt(px, py); break; } }
-  const zone = region && region.zone || 0, id = ({ 1: 'forest', 2: 'valley', 3: 'ruins', 4: 'orchard', 5: 'headland' })[zone] || (y < nearest.y ? 'north' : 'south');
+  // v5: the village faces only the sea to the south; the strand west of the quay keeps the 'north' fish.
+  const zone = region && region.zone || 0, id = ({ 1: 'forest', 2: 'valley', 3: 'ruins', 4: 'orchard', 5: 'headland' })[zone] || (GARDEN_WORLD.v >= 5 ? (nearest.x < 46 ? 'north' : 'south') : y < nearest.y ? 'north' : 'south');
   return { id, zone, distance: Math.sqrt(distance2) };
 }
 function gardenIslandFishCoastHint(def) {
@@ -77,6 +85,9 @@ function gardenIslandFishCoastOdds(odds, band) {
 }
 function gardenIslandBasinPatchHomes(pool, centre) {
   const mx = pool.wet.x + pool.wet.w / 2, my = pool.wet.y + pool.wet.h / 2;
+  // v5: the plunge pool under Fleet Falls is the Mere's north-west corner; the rest is the Mere.
+  if (GARDEN_WORLD.v >= 5 && pool.id === 'pond') return centre.x < mx - 2 && centre.y < my ? ['falls', 'pond'] : ['pond'];
+  if (GARDEN_WORLD.v >= 5 && pool.id === 'allotment-pool') return centre.x < mx ? ['frogpool'] : ['folly', 'light'];
   if (pool.id === 'pond') return ['pond'].concat(centre.y < my ? ['spring', 'tarn'] : [], centre.x >= mx ? ['falls'] : []);
   if (pool.id === 'allotment-pool') return centre.x < mx ? ['frogpool', 'race', 'brook'] : ['folly', 'light'];
   if (pool.id === 'orchard-pool') return centre.y < my ? ['dip'] : ['cider'];

@@ -396,10 +396,39 @@ function gardenWorldReady() {
   const mechanics=typeof GardenIslandLayout!=='undefined'&&GardenIslandLayout.data.mechanics;
   return GARDEN_WORLD.v===3&&GARDEN_WORLD.lh==='c34545b986e497d5d9df5d51'&&g.seen.worldLayout==='94f5b2dbe4dce765cafb2b40'&&mechanics?.revision===1&&mechanics.predecessorLayout==='94f5b2dbe4dce765cafb2b40'&&mechanics.contract==='optional-side-pier-walk-cover-v1';
 }
+/** The garden starts fresh in this world, keyed on its layout identity, so it happens once and two devices agree:
+ * after it the saved tag is this world's, and the server accepts the change only with the fresh mark (lib/garden-world-fence.mjs).
+ * Pets, profile and tasks are not garden state and stay. The server keeps a copy of the earlier garden in its archive. */
+function gardenFreshStart() {
+  // Only the page does this: Node readers (MCP, agents) never write the garden.
+  if (typeof document === 'undefined' || typeof state === 'undefined' || !state) return false;
+  const g = _gdG(); if (!g.since || gardenWorldReady() || _gd.freshFor === GARDEN_WORLD.lh) return false;
+  _gd.freshFor = GARDEN_WORLD.lh;
+  state.garden = { v: 1 }; _gd.freshMark = GARDEN_WORLD.lh;
+  try { gardenEnsure(); } finally { _gd.freshMark = ''; }
+  const n = _gdG(); if (!n.since) return false;
+  n.seen.fresh = GARDEN_WORLD.lh; _gd.undo = [];
+  if (typeof _gw !== 'undefined') { _gw.placed = false; _gw.px = GARDEN_WORLD.start.x + 0.5; _gw.py = GARDEN_WORLD.start.y + 0.5; _gw.path = []; }
+  if (typeof GW_POS_KEY !== 'undefined') { try { localStorage.removeItem(GW_POS_KEY); } catch (e) { /* private mode */ } }
+  _gdSave();
+  gardenFreshNote();
+  return true;
+}
+/** One short note per device, the first time it shows a garden that started fresh here. */
+function gardenFreshNote() {
+  const g = _gdG(), key = 'gd-fresh-note:' + GARDEN_WORLD.lh;
+  if (_gd.freshNoted || typeof document === 'undefined' || !g.seen || g.seen.fresh !== GARDEN_WORLD.lh) return;
+  _gd.freshNoted = true;
+  try { if (localStorage.getItem(key)) return; localStorage.setItem(key, '1'); } catch (e) { /* private mode: once per page */ }
+  if (typeof toast === 'function') toast('Your garden has a new home in Fleetwater Vale. Gardens start fresh in this version.', { icon: 'sprout' });
+}
 function gardenWorldCheck() {
   const g = _gdG(); if (!g.since) return;
   // Island relocation is an explicit backed-up migration. Neither the old
   // refund conversion nor its later worldAt deletion sweep may touch v3.
+  // Fleetwater Vale (v5): a garden saved on an earlier layout is not moved; it starts fresh here, once.
+  if (GARDEN_WORLD.v >= 5 && !gardenWorldReady() && gardenReady()) gardenFreshStart();
+  else if (GARDEN_WORLD.v >= 5 && g.seen.fresh) gardenFreshNote();   // (it started fresh on another of your devices)
   if (GARDEN_WORLD.v >= 3) { _gd.worldPending = !gardenWorldReady(); return; }
   if ((Number(g.seen.world) || 1) >= GARDEN_WORLD.v) {
     // (keep it cheap: once per change to the garden)
