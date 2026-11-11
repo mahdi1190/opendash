@@ -191,8 +191,8 @@ function gardenLevelUpCard(d) {
     if (c) c.remove();
     c = document.createElement('div'); c.className = 'gd-levelup'; c.setAttribute('role', 'status');
     c.innerHTML = `<div class="gd-lu-ic">${icon('sparkles')}</div><b></b><p></p><ul></ul><button type="button" class="btn btn-primary btn-sm">Lovely</button>`;
-    c.querySelector('b').textContent = `Garden level ${d.level}`;
-    c.querySelector('p').textContent = d.text.replace(/^Garden level \d+:\s*/, '');
+    c.querySelector('b').textContent = 'Something new';   // (no level numbers: your title comes from the Field Journal's pages)
+    c.querySelector('p').textContent = 'More of the vale has opened up. Have a look around.';
     c.querySelector('button').onclick = () => c.remove();
     { const top = gardenMessageHost() || _gdp.root; top.insertBefore(c, top.querySelector(':scope > .gd-msg')); }   // (over the message line, never on top of it)
     // It closes itself after 9 s, but not under the pointer, and the next moment's world click is swallowed: a click
