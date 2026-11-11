@@ -63,7 +63,8 @@ read from the source tables and current Land panel, not the old estimates below.
 
 The v3 asset explicitly authors five entrances, each using an existing zone.
 The level shown below is that zone's ordinary level; existing land ownership
-continues to open the access it already entitles the player to.
+continues to open the access it already entitles the player to. Since 11 Nov 2026 a gate opens with
+a find, and its zone opens by itself only two levels later (next section).
 
 | Entrance | Stable ID | Ordinary garden level | Anchor cell |
 | --- | --- | --- | --- |
@@ -80,6 +81,43 @@ the existing requirement and price. Ocean is not covered with a rectangular
 locked-land fog strip: normal fishing access checks and refusal feedback still
 apply. The zone fishing-row caps are 36, 40, 44, 48, 52 and 56; owned pier length
 continues to guarantee the existing minimum usable water beyond its end.
+
+## Gates you open with a find
+
+Owner, 11 Nov 2026 (FUN_PLAN #2): each gate opens with something you find; level
+is only the fallback. Tables and rule: `src/app/94-garden-lands-0gates.js`;
+the finds, the gate prompt and the rumour line: `94-garden-wonder-7gates.js`.
+
+| Gate | Needs | Where it is | Who hints | Shows from | Opens anyway |
+| --- | --- | --- | --- | --- | --- |
+| `island-woods` | garden shears | glint on the reed-bank bench (`reed-bank`) | Mother Thistle | lv 1 | lv 5 |
+| `island-mill` | a stout plank | Pip by the old angler (`old-angler`), for any fish | Pip | lv 4 | lv 8 |
+| `island-ruins` | an old lantern | Tam at the old stump (`ld-stump`) | Tam | lv 8 | lv 12 |
+| `island-orchard` | the mill turning | a cog at the boathouse (`ld-boathouse`), fitted at the mill (`ld-mill`) | Bramble | lv 12 | lv 16 |
+| `island-headland` | a coil of rope | glint on the orchard wall (`ld-barrels`) | Wick | lv 16 | lv 20 |
+
+- **Fallback**: a zone opens by itself at its level + `GARDEN_GATE_MARGIN` (2),
+  and the level-up line says the character did it ("Pip laid a plank across the
+  causeway for you"). A find shows from its level − `GARDEN_GATE_EARLY` (2).
+- **Saves**: ledger lines `gk.<item>` (item `gk:<item>`) and `gt.<gate>` (item
+  `gate:<gate id>`), so per player and synced. `gardenLandsOpen` treats
+  `gate:<id>` in `own` as that zone open.
+- **Friends**: `gardenLandsWire` puts `zn-<n>` for each gate opened with a find
+  first in the snapshot's `areas` (already in the schema, cap 12), and
+  `gardenLandsOfSnap` reads them back. No new snapshot field.
+
+**What Fleetwater Vale must provide.** Nothing in these tables is a cell.
+1. Gates in `gates[]` with `id`, `n`, `door` and `district` (the region id).
+   A rule is found by gate id, then by region id, so new gate ids still work if
+   the region ids are kept. If a gate id changes, add the new id to
+   `GARDEN_GATE_RULES` (or rely on `region`).
+2. Each find's `near` anchor ids in `placementAnchors.sights` / `.features` or
+   `static`. Anchors are tried in order. With none, the find goes to the middle
+   of its `region`. For the vale's places, add their anchor ids to the front of
+   `near`: the bench with the falls view, the quay, the Great Oak clearing, the
+   mill yard boathouse and mill, the cider square.
+3. Keep each find on the near side of its gate, so it is seen before the land
+   it opens can be reached.
 
 ## Saved gardens and recoverable layouts
 
