@@ -18,7 +18,7 @@
 const _glc = { ghosts: new Map(), gpicks: new Map(), picks: new Map(), sig: '', sentAt: 0, tickT: 0, scareAt: new Map(), petAt: new Map(), greetAt: new Map(), fishT: 150, pu: 0, bpend: new Map(), spr: null, gspr: null };
 const _GLC_ID = /^[A-Za-z0-9_-]{1,64}$/;
 const _GLC_PICK_MS = 100000;   // a pick-up lies about this long
-function gardenLiveActorAt(slot) { const A = _gll.actors.get(slot); return A ? { x: A.x, y: A.y } : null; }
+function gardenLiveActorAt(slot) { return gardenLiveActorPosition(_gll.actors.get(slot)); }
 /** The host says something about a creature to everyone (nothing when nobody is there). */
 function gardenLiveCr(e, id, o) { if (_gll.role === 'host' && _glh.on && _glhAnyone() && _GLC_ID.test(String(id))) _glhSend('all', 'fx', Object.assign({ c: 'cr', e, i: String(id) }, o || {})); }
 function gardenLiveEgg(id) { if (_gll.role === 'host' && _glh.on && _glhAnyone() && _GLC_ID.test(String(id))) _glhSend('all', 'fx', { c: 'egg', e: 'fire', i: String(id) }); }

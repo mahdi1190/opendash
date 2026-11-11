@@ -11,12 +11,22 @@ that the new pacing, menus or visibility rules work.
 
 ## Island space and owned content
 
-The canonical v3 island spreads the existing useful buildings around public
+The canonical v4 island spreads the existing useful buildings around public
 routes, beach and harbour rather than extending the old single shopfront row.
-Its 52-by-56 world has five staged district entrances and connected sea around
-the mainland. All 128 land IDs and existing ownership/progression remain.
+Its 96-by-96 world has five staged regional entrances, large freshwater basins
+and open northern and southern seas. All 128 land IDs and existing
+ownership/progression remain. Known earlier v3 gardens retain their own
+geometry while the explicit backed-up layout update waits for linked devices.
 The [map contract](GARDEN_PLAN.md#the-map) identifies the current gates and pools;
 older rectangular map coordinates are historical reference.
+
+The harbour-to-village promenade is wider than the smaller garden paths and
+uses their existing clear reservations. One travelling visitor at a time
+arrives, pauses and departs; conversation and book links are deliberate.
+Opened outer regions have a few low natural trail stops. Their short puzzles
+remember existing hidden places without automatically furnishing the island,
+awarding currency or bypassing room keys and opening hours. Nearby clues go
+to Recent rather than interrupting the chosen action.
 
 The native view keeps empty owned growing sections grassy until they contain
 plants or ground decor. Their ownership and planting guides remain available;

@@ -12,6 +12,28 @@ multiplayer coordinates use the same tables across both renderers and the
 server. The saved-world change remains an explicit backed-up update; an old
 world is never silently relabeled as the expanded island.
 
+The page embeds both known earlier v3 layouts as preserved geometry. The
+server supplies only the saved physical-world tag at page bootstrap; a known
+earlier save selects its matching catalogue before Garden constants are made.
+The server and linked-device capability remain canonical v4. Earlier local
+gardens defer spatial presence until their ordinary layout update completes;
+that update reloads the page into the matching v4 catalogue. Unknown tags keep
+the existing pending-update behavior.
+
+Road drawing, map lines and travelling visitors share one sampled rounded
+centreline. The main harbour route uses its existing reserved width, with
+static paving joints retained in ground art. Travellers share the existing
+host ambient clock and actor rendering; they add no network fields or timers.
+Fish stocks are derived from connected water bodies and local coastal reaches,
+with nearby coverage allocated by the existing host decision clock and limits.
+
+Crafted building, paving and bank materials are shared vector builders retained
+with the existing scene and chunks. They do not add physical objects or move
+reserved paths, growing plots or water boundaries. Native water chooses a mask
+resolution within its existing cache allowance and derives shoreline depth with
+a linear distance transform on geometry rebuild. Reflection captures retain
+their separate share of the same cache; no additional animation loop is used.
+
 After applying a Graphics change, the current Garden stage regains keyboard
 focus for shortcuts such as **M** for Map. Existing dialog and popover guards
 keep their focus ownership.

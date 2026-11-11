@@ -185,13 +185,14 @@ function _gldRow(host, o) {
 }
 function _gldIslandMap(m) {
   const W = GARDEN_WORLD, data = gardenIslandData(), open = new Set(m.areas), parts = [];
+  const mainRoads = new Set(data.routes.filter(route => typeof gardenIslandRoadStyle === 'function' && gardenIslandRoadStyle(route).main).map(route => route.id));
   const colour = (x, y) => {
     const base = gardenIslandBaseCell(x, y), row = gardenLandCell(x, y); if (!base || base.ocean) return '';
     if (gardenZoneLockOf(x, y, open)) return '#87978f';
     if (base.solid) return '#676f66';
     if (base.freshwater) return '#77aeb9';
     if (base.beach) return '#e6d6aa';
-    if (base.route || base.reservation === 'apron') return '#d9cda9';
+    if (base.route || base.reservation === 'apron') return mainRoads.has(base.route) ? '#d4ba87' : '#d9cda9';
     if (!row || !row.plot) return '#8aa074';
     if (open.has(row.id)) return row.green ? '#8aa074' : _gdrTileCol(row.tile, m.season);
     return m.level.level >= row.lv ? '#e0cd9c' : '#a7b49b';
@@ -219,7 +220,8 @@ function _gldRegionRows(box, m) {
   for (const region of regions.slice().sort((a, b) => a.level - b.level)) {
     const ready = gardenIslandRegionOpen(region, open), from = gardenIslandRegionForZone(region.fromZone);
     const plots = GARDEN_LAND_SECTIONS.filter(row => row.zn === region.zone && !row.relayoutEmpty).length;
-    _gldRow(list, { icon: region.theme === 'mountains' || region.theme === 'headland' ? 'mountain' : 'map-pin', name: region.name, sub: gardenLandRegionText(region) + ' ' + plots + ' growing areas.' + (!ready && from ? ' Approach through ' + from.name.toLowerCase() + '.' : ''), tag: ready ? 'Open' : 'Level ' + region.level, dim: !ready });
+    const trail = ready && typeof GARDEN_EXPLORATION_STOPS !== 'undefined' ? GARDEN_EXPLORATION_STOPS.find(row => row.zone === region.zone) : null;
+    _gldRow(list, { icon: region.theme === 'mountains' || region.theme === 'headland' ? 'mountain' : 'map-pin', name: region.name, sub: gardenLandRegionText(region) + ' ' + plots + ' growing areas.' + (trail ? ' ' + trail.hint : '') + (!ready && from ? ' Approach through ' + from.name.toLowerCase() + '.' : ''), tag: ready ? 'Open' : 'Level ' + region.level, dim: !ready });
   }
   details.appendChild(list); box.appendChild(details);
 }
@@ -275,7 +277,7 @@ function gardenLandsTab(el, m) {
     if (known.length) {
       const details = document.createElement('details'), summary = document.createElement('summary'), list = _gdpEl('div', 'gld-list');
       details.dataset.discoveredPlaces = '1'; summary.textContent = 'Your discovered places (' + known.length + ')';
-      details.append(summary, _gdpEl('p', 'gld-more', 'Bring back a place you already found, one at a time. Its discoveries stay saved when it is put away; usual opening conditions still apply.'));
+      details.append(summary, _gdpEl('p', 'gld-more', 'Bring back a place you already found, one at a time. Field-stop discoveries are remembered here too; nothing is set out automatically. Finds stay saved when put away, and usual opening conditions still apply.'));
       for (const row of known) {
         const setOut = gardenSightIsSetOut(row.id);
         _gldRow(list, { icon: 'door-open', name: row.name, sub: setOut ? 'In the garden' : 'Put away', btn: setOut ? 'Put away' : 'Set out nearby', run: button => {

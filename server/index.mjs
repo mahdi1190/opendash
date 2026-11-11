@@ -45,6 +45,7 @@ import { createLogger } from './log.mjs';
 import { createStateStore } from './state-store.mjs';
 import { send, hostAllowed } from './http.mjs';
 import { createAppShell } from './app-shell.mjs';
+import { gardenWorldTag } from '../lib/garden-world-fence.mjs';
 import { EXIT, initLifecycle, lastStopFromLog, readTail } from './lifecycle.mjs';
 
 export async function main(argv = process.argv.slice(2)) {
@@ -174,7 +175,10 @@ export async function main(argv = process.argv.slice(2)) {
         const file = join(REPO_ROOT, 'index.html');
         if (!existsSync(file)) return send(res, 500, 'index.html is missing: run node build.mjs');
         // X-Dashboard-App: the offline-page worker (src/sw.js) keeps only a page with this mark.
-        return await shell.respond(req, res, { ...publicConfig(config), pageKey: ctx.pageKey });
+        // Only the physical-world tag is bootstrapped. The state and all
+        // progress still load through the ordinary versioned state routes.
+        const saved = await store.readObject();
+        return await shell.respond(req, res, { ...publicConfig(config), pageKey: ctx.pageKey, gardenSavedWorld: gardenWorldTag(saved?.garden) });
       }
       if (url.pathname === '/favicon.ico') return send(res, 204, '');
       return send(res, 404, 'not found');

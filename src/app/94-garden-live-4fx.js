@@ -197,6 +197,7 @@ function _gllFishFx(A, e, ev) {
   if (e === 'cast') {
     const bx = ev.x + 0.5, by = ev.y + 0.5;
     if (GARDEN_WORLD.v >= 4 && bx < GARDEN_ROOM_X && gardenWaterNo(bx, by, gardenHere())) return;
+    _gllStationaryAt(A, Number.isFinite(A.gx) ? A.gx : A.x, Number.isFinite(A.gy) ? A.gy : A.y, 'cast');
     if (A.fish && A.fish.bx === bx && A.fish.by === by) { A.fish.at = t; return; }   // (told again: the line that is out stays out)
     // (a figure still on its way finishes the walk, then the line goes out: stopping it here left it short of where they really stand)
     const fx = A.tx != null ? (A.gx != null ? A.gx : A.tx) : A.x;

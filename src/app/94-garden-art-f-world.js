@@ -155,6 +155,7 @@ const _GARTW = (function () {
     for (let g = 1; g < a.w; g++) { const lx = x + g * cw, t = ry + (top - ry) * (1 - Math.abs(g / a.w - 0.5) * 2); bars += `M${f1(lx)} ${f1(t)}V${f1(y + 2)}`; }
     s += A.S(fd, 4.2, bars, 0.75) + A.S(frame, 2.6, bars);
     s += A.P(frame, A.circ(mid, top - 3, 3)) + A.S(fd, 0.8, A.circ(mid, top - 3, 3));
+    if (typeof gardenCraftGlasshouse === 'function') s += gardenCraftGlasshouse(x, y, w, top, ry, sc.season);
     return s;
   }
   /* ---------- the lake ---------- */
@@ -264,8 +265,9 @@ const _GARTW = (function () {
     floor += A.P('#886b53', soil);
     for (const prop of data.static) if (prop.apron) { const p = prop.apron; floor += `<rect x="${p.x * cw}" y="${W.sky + p.y * ch}" width="${p.w * cw}" height="${p.h * ch}" rx="8" fill="#cec4a6"/>`; }
     for (const route of data.routes) if (route.points && route.points.length > 1) {
-      const d = route.points.map((p, i) => (i ? 'L' : 'M') + p[0] + ' ' + p[1]).join(''), visible = route.public || (sc.lv || 1) >= route.level || open.has('zn-' + route.zone);
-      floor += `<g transform="translate(0 ${W.sky}) scale(${cw} ${ch})"><path d="${d}" fill="none" stroke="#cec4a6" stroke-width="${route.widthCells}" stroke-linejoin="round" stroke-linecap="round" opacity="${visible ? 1 : .4}"/></g>`;
+      const style = gardenIslandRoadStyle(route), sampled = gardenIslandRoutePath(route).points, d = sampled.map((p, i) => (i ? 'L' : 'M') + p.x + ' ' + p.y).join(''), visible = route.public || (sc.lv || 1) >= route.level || open.has('zn-' + route.zone);
+      const joints = gardenIslandRoadJoints(route).map(j => 'M' + j.a.x + ' ' + j.a.y + 'L' + j.b.x + ' ' + j.b.y).join('');
+      floor += `<g transform="translate(0 ${W.sky}) scale(${cw} ${ch})" opacity="${visible ? 1 : .4}"><path d="${d}" fill="none" stroke="${style.main ? '#a49a79' : '#a6af89'}" stroke-width="${style.edgeRadius * 2}" stroke-linejoin="round" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${style.main ? '#d4c8a6' : '#cec4a6'}" stroke-width="${style.radius * 2}" stroke-linejoin="round" stroke-linecap="round"/>${joints ? `<path d="${joints}" fill="none" stroke="#8c8165" stroke-width=".02" stroke-opacity=".25"/>` : ''}</g>`;
     }
     s += `<g clip-path="url(#${landClip})">${floor}</g>`;
     for (const loop of loops) s += `<path d="${path(inset(loop, -20)) + path(loop.slice().reverse())}" fill="${A.mix(palette.water, '#9ac1ad', .3)}" fill-rule="evenodd"/><path d="${path(loop)}" fill="none" stroke="#c6ddd0" stroke-opacity=".42" stroke-width="1.15"/>`;
@@ -275,6 +277,7 @@ const _GARTW = (function () {
       const contour = _gdrWaterShapePath(water), frozen = sc.season === 'winter' && sc.rain && sc.rain.snow;
       s += `<path d="${contour}" fill="${frozen ? '#b9d4d1' : palette.water}" fill-rule="evenodd"/><path d="${contour}" fill="none" stroke="#9ac1ad" stroke-opacity=".3" stroke-width="5"/>`;
     }
+    if (typeof gardenCraftSurfaceRows === 'function') for (const row of gardenCraftSurfaceRows(sc)) s += row.html;
     const entry = data.anchors.start, ex = entry.x * cw, ey = W.sky + entry.y * ch;
     s += `<ellipse cx="${ex}" cy="${ey}" rx="65" ry="26" fill="#b8b491" stroke="#7f9270" stroke-width="1.1"/><ellipse cx="${ex}" cy="${ey}" rx="56" ry="21" fill="none" stroke="#e2dcb9" stroke-opacity=".65" stroke-width=".8"/>`;
     const pierGround = typeof gardenPierGround === 'function' ? gardenPierGround(sc, o) : '';

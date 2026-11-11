@@ -79,7 +79,7 @@ function _glyAtIn(A, ev) {
   if (!A || !Number.isInteger(ev.x) || !Number.isInteger(ev.y)) return;
   const told = (Number(ev.nw) & 1) === 1, t = Date.now();   // clock-ok: how long a line has been quiet
   if (told) {
-    const bx = Number(ev.n) - 1, by = Number(ev.tt) - 1, line = Number.isInteger(ev.n) && Number.isInteger(ev.tt) && bx >= 0 && bx < 64 && by >= 0 && by < 64;
+    const bx = Number(ev.n) - 1, by = Number(ev.tt) - 1, line = Number.isInteger(ev.n) && Number.isInteger(ev.tt) && bx >= 0 && bx < GARDEN_ROOM_X + 24 && by >= 0 && by < GARDEN_WORLD.rows;
     if (line) {
       const F = A.fish;
       if (F && Math.floor(F.bx) === bx && Math.floor(F.by) === by) F.at = t;
@@ -87,6 +87,7 @@ function _glyAtIn(A, ev) {
     } else if (A.fish && A.fish.state !== 'land' && t - A.fish.at > 4000) { A.fish = null; A.key = ''; if (typeof _gllFxClear === 'function') _gllFxClear(A); }   // (a line I never heard come in)
     if (!A.moving) { if ((Number(ev.nw) & 2) && !A.sit) _gllEmote(A, 'sit', true); else if (!(Number(ev.nw) & 2) && A.sit) { A.sit = false; _gllEmoteStop(A); A.key = ''; } }
   }
+  if (A.fish || A.sit || !A.moving && A.tx == null) _gllStationaryAt(A, ev.x + .5, ev.y + .5, 'cell');
   if (A.moving) return;
   const x = ev.x + 0.5, y = ev.y + 0.5;
   if (Math.hypot(A.x - x, A.y - y) <= GL_SYNC.near) return;

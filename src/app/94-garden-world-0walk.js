@@ -1444,6 +1444,7 @@ function gardenWorldInteract() {
   const px = Math.floor(_gw.px), py = Math.floor(_gw.py);
   for (const p of gardenPropsNow()) if (p.act && p.door && Math.abs(p.door.x - px) <= 1 && Math.abs(p.door.y - py) <= 1) { _gwOpenProp(p); return; }
   if (_gh.bubble) { const b = _gh.bubble.el.querySelector('.gd-bub-btn'); if (b) b.click(); return; }
+  if (typeof gardenTravellerInteract === 'function' && gardenTravellerInteract()) return;
   if (_gw.bugs && _gw.bugs.size && typeof gardenNetSwing === 'function') { for (const b of _gw.bugs.values()) if (Math.hypot(b.x - _gw.px, (b.y - _gw.py) * 1.4) < gardenNet().st.reach * 1.35) { gardenNetSwing(null); return; } }
   const fx = px + (_gw.face > 0 ? 1 : -1), fy = py;
   const cells = [[fx, fy], [px, py + 1], [px, py - 1], [px + 1, py], [px - 1, py], [fx, fy + 1], [fx, fy - 1]];
@@ -1515,6 +1516,7 @@ function gardenWorldAdd(sprite) {
 }
 const _gwSprites = new Set();
 function _gwSpritesFrame(dt) {
+  if (typeof gardenTravellersFrame === 'function') gardenTravellersFrame(dt);
   if (!_gwSprites.size || !_gw.svg) return;
   const W = GARDEN_WORLD;
   for (const S of _gwSprites) {
@@ -1591,6 +1593,7 @@ function _gwDocKeyDown(ev) {
 function _gwDocKeyUp(ev) { if (_gw.on) gardenWorldKey(ev, false); }
 function _gwBlur() { _gw.keys.clear(); _gw.hold = null; if (typeof _gwFishRelease === 'function') _gwFishRelease(); }
 function gardenWorldStop(keepOn) {
+  if (typeof gardenTravellersStop === 'function') gardenTravellersStop(!!keepOn);
   if (!keepOn && window.GardenNative && GardenNative.active()) GardenNative.destroy();
   if (!keepOn && window.GardenPhaser) GardenPhaser.destroy();
   if (_gw.raf) cancelAnimationFrame(_gw.raf);

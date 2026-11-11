@@ -41,6 +41,47 @@ function gardenIslandBasinHomeIds(id) {
   const homes = { pond: ['pond', 'spring', 'falls', 'tarn'], 'allotment-pool': ['frogpool', 'race', 'brook', 'folly', 'light'], 'orchard-pool': ['cider', 'dip'] };
   return homes[id] || [];
 }
+/** Existing kinds have preferred coast habitats, not additional unlock tokens. */
+const GARDEN_ISLAND_FISH_COASTS = _gdRows([
+  { id: 'north', zone: 0, name: 'the north shore', like: /herring|mackerel|pollock|cod|haddock|whiting|sprat|smelt|flounder|plaice/ },
+  { id: 'south', zone: 0, name: 'the south shore and harbour', like: /bass|mullet|bream|goby|blenny|sardine|anchov|wrasse|sole|dab/ },
+  { id: 'forest', zone: 1, name: 'the wooded west coast', like: /eel|perch|pike|tench|carp|wood|moss|shade|stickle|loach/ },
+  { id: 'valley', zone: 2, name: 'the valley estuary', like: /mullet|bream|flounder|eel|shad|salmon|trout|barbel|dace/ },
+  { id: 'ruins', zone: 3, name: 'the rocky ruined coast', like: /crab|rock|stone|goby|blenny|sculpin|shrimp|mussel|oyster|bass/ },
+  { id: 'orchard', zone: 4, name: 'the sunny orchard coast', like: /mackerel|sardine|anchov|bream|mullet|sun|gold|wrasse|pompano/ },
+  { id: 'headland', zone: 5, name: 'the cold mountain headland', like: /cod|herring|haddock|pollock|char|salmon|arctic|frost|ice|sturgeon|halibut|ling|wolffish|lumpfish/ },
+]);
+function gardenIslandFishingReach(x, y) {
+  const W = GARDEN_WORLD; let nearest = null, distance2 = Infinity;
+  for (const loop of gardenIslandGeometry().land) for (let i = 0; i < loop.length; i++) {
+    const a = loop[i], b = loop[(i + 1) % loop.length], dx = (b[0] - a[0]) * W.cellW, dy = (b[1] - a[1]) * W.cellH, t = Math.max(0, Math.min(1, ((x - a[0]) * W.cellW * dx + (y - a[1]) * W.cellH * dy) / (dx * dx + dy * dy || 1))), px = a[0] + (b[0] - a[0]) * t, py = a[1] + (b[1] - a[1]) * t, d2 = ((px - x) * W.cellW) ** 2 + ((py - y) * W.cellH) ** 2;
+    if (d2 < distance2) { distance2 = d2; nearest = { x: px, y: py }; }
+  }
+  if (!nearest) return { id: 'south', zone: 0, distance: Infinity };
+  const dx = nearest.x - x, dy = nearest.y - y, length = Math.hypot(dx, dy) || 1; let region = null;
+  for (const inset of [.25, .6, 1]) { const px = nearest.x + dx / length * inset, py = nearest.y + dy / length * inset; if (gardenIslandLandContains(px, py)) { region = gardenIslandRegionAt(px, py); break; } }
+  const zone = region && region.zone || 0, id = ({ 1: 'forest', 2: 'valley', 3: 'ruins', 4: 'orchard', 5: 'headland' })[zone] || (y < nearest.y ? 'north' : 'south');
+  return { id, zone, distance: Math.sqrt(distance2) };
+}
+function gardenIslandFishCoastHint(def) {
+  if (!def || def.cat !== 'fish') return null;
+  const matches = GARDEN_ISLAND_FISH_COASTS.filter(coast => coast.like.test(def.id));
+  // More specific later regions explain a journey, while the species remains catchable elsewhere.
+  return matches.findLast ? matches.findLast(coast => coast.zone > 0) || matches[0] || null : matches.slice().reverse().find(coast => coast.zone > 0) || matches[0] || null;
+}
+function gardenIslandFishCoastOdds(odds, band) {
+  if (!band.islandOcean || !band.coastHabitat) return odds;
+  const coast = GARDEN_ISLAND_FISH_COASTS.find(row => row.id === band.coastHabitat), open = !coast?.zone || band.islandAreas.includes('zn-' + coast.zone);
+  if (!coast || !open) return odds;
+  return odds.map(([id, weight]) => { const def = gardenFishDef(id); return [id, def && def.cat === 'fish' && coast.like.test(id) ? weight * 2.4 : weight]; });
+}
+function gardenIslandBasinPatchHomes(pool, centre) {
+  const mx = pool.wet.x + pool.wet.w / 2, my = pool.wet.y + pool.wet.h / 2;
+  if (pool.id === 'pond') return ['pond'].concat(centre.y < my ? ['spring', 'tarn'] : [], centre.x >= mx ? ['falls'] : []);
+  if (pool.id === 'allotment-pool') return centre.x < mx ? ['frogpool', 'race', 'brook'] : ['folly', 'light'];
+  if (pool.id === 'orchard-pool') return centre.y < my ? ['dip'] : ['cider'];
+  return gardenIslandBasinHomeIds(pool.id).slice();
+}
 function _grgIslandBasin(id) { return (gardenIslandData().freshwater || []).find(pool => gardenIslandBasinHomeIds(pool.id).includes(id)) || null; }
 function _grgIslandHomeZone(home) { return ({ hill: 5, orchards: 4, fields: 2, marsh: 3, garden: 0, lake: 0 })[home.r] || 0; }
 const GARDEN_REGION_WATERS = _gdRows(_GRG_WATER_ROWS.map(w => {
@@ -241,9 +282,14 @@ function gardenRegionWords(def) {
   const H = gardenRegionHome(def); if (!H) return null;
   const R = gardenRegion(H.r), reach = _grgOpenWords(H);
   if (def.cat === 'fish') {
+    if (GARDEN_WORLD.v >= 4 && H.r === 'lake') {
+      const coast = gardenIslandFishCoastHint(def), region = coast && gardenIslandRegionForZone(coast.zone);
+      return { where: coast ? 'Coastal water, especially ' + coast.name + '. Other open coasts can hold it too.' : 'Open coastal water around the island, north and south as well as the main pier.', reach: region ? region.name + ' opens at garden level ' + region.level + '; its shore favours this kind.' : 'Explore either public shore. Fish gather near people without requiring the main pier.' };
+    }
+    if (GARDEN_WORLD.v >= 4 && H.w === 'pond') return { where: 'The village lake, along its different banks.', reach: 'The village lake is open from the beginning. Spring-fed fish favour the north bank; the falls feed its east side.' };
     if (H.r === 'lake' || H.w === 'pond') return reach ? { reach } : null;
     const w = _GRG_WATER.get(H.w);
-    if (GARDEN_WORLD.v >= 4 && !w.room) { const basin = w.islandBasin && _grgIslandBasin(w.id), place = basin ? ({ pond: 'the village lake', 'allotment-pool': 'the ruined woodland pond', 'orchard-pool': 'the orchard pond' })[basin.id] : w.name; return { where: 'Lives in ' + place + '.', reach }; }
+    if (GARDEN_WORLD.v >= 4 && !w.room) { const basin = w.islandBasin && _grgIslandBasin(w.id), place = basin ? ({ pond: 'the village lake', 'allotment-pool': 'the ruined woodland pond', 'orchard-pool': 'the orchard pond' })[basin.id] : w.name; const bank = ({ spring: 'the spring-fed north bank', tarn: 'the cooler north bank', falls: 'the eastern falls', frogpool: 'the reed-lined west bank', race: 'the west inlet', brook: 'the west inlet', folly: 'the quiet east bank', light: 'the eastern rocks', dip: 'the shaded north bank', cider: 'the sunny south bank' })[H.w]; return { where: 'Lives in ' + place + (bank ? ', near ' + bank : '') + '.', reach }; }
     return { where: `Lives in ${w.name}, ${R.on}, and nowhere else.`, reach };
   }
   const near = def.hab.map(h => _GF_HAB_WORDS[h] || h);
@@ -291,7 +337,7 @@ function gardenRegionOdds(odds, b, ctx) {
     for (const def of GARDEN_FISH_ONLY) { const home = gardenRegionHome(def); if (home && b.islandHomeWaters.includes(home.w) && gardenRegionHomeOpen(home, b.islandAreas) && gardenFishFits(def, Object.assign({}, ctx, { zone: def.zone[0] }))) out.push([def.id, gardenBugWeight(def, ctx)]); }
     return out;
   }
-  if (!b.rw) { const pond = b.zone === 'pond'; return odds.filter(([id]) => { const d = gardenFishDef(id), H = gardenRegionHome(d); return !H || (pond ? H.w === 'pond' : H.r === 'lake'); }); }
+  if (!b.rw) { const pond = b.zone === 'pond', local = odds.filter(([id]) => { const d = gardenFishDef(id), H = gardenRegionHome(d); return !H || (pond ? H.w === 'pond' : H.r === 'lake'); }); return gardenIslandFishCoastOdds(local, b); }
   const out = [];
   for (const { kind, def } of gardenRegionKinds(_GRG_WATER.get(b.rw).r)) if (kind === 'fish' && _GRG_FISH_HOME.get(def.id).w === b.rw && gardenFishFits(def, Object.assign({}, ctx, { zone: def.zone[0] }))) out.push([def.id, gardenBugWeight(def, ctx)]);
   return out;

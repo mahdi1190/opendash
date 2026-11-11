@@ -134,8 +134,22 @@ function _gllPaint(A) {
   A.inner.setAttribute('transform', `scale(${dir === 'e' && A.face < 0 ? -GL_ACT_SCALE : GL_ACT_SCALE} ${GL_ACT_SCALE * crouch})`);
 }
 function _gllPose(A, pose, ms) { A.pose = pose; A.poseUntil = Date.now() + (ms || 900); A.key = ''; _gllPaint(A); setTimeout(() => { if (_gll.actors.get(A.w) === A && A.inner && A.inner.isConnected) _gllPaint(A); }, (ms || 900) + 30); }  // clock-ok: how long a pose lasts
+/** Current stationary positions come from existing ordered cast/current-cell messages.
+ * They are gameplay facts; a visible figure may still be finishing its interpolation. */
+function gardenLiveActorPosition(A) {
+  if (!A) return null; const point = A.stationaryPosition;
+  return point && Number.isFinite(point.x) && Number.isFinite(point.y) ? { x: point.x, y: point.y } : Number.isFinite(A.x) && Number.isFinite(A.y) ? { x: A.x, y: A.y } : null;
+}
+function _gllStationaryAt(A, x, y, source) {
+  const W = GARDEN_WORLD; if (!A || !Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x >= W.cols || y >= W.rows) return;
+  const previous = A.stationaryPosition;
+  if (source === 'cell' && previous && Math.floor(previous.x) === Math.floor(x) && Math.floor(previous.y) === Math.floor(y)) return;
+  A.stationaryPosition = { x, y, source };
+  // There is no visible walk to preserve when both ends of an already-complete pose are culled.
+  if (typeof _gwInView === 'function' && !_gwInView(A.x, A.y, 1.5) && !_gwInView(x, y, 1.5)) { A.x = x; A.y = y; A.tx = null; A.ty = null; A.way = null; A.pace = 0; A.moving = false; A.key = ''; }
+}
 /** Walk there. Destinations only: the walking is worked out on each side, or the host says which way round the beds (_gllWalkVia). */
-function _gllWalkTo(A, x, y, then) { if (typeof _gllPhotoClear === 'function') _gllPhotoClear(A); A.tx = x; A.ty = y; A.gx = x; A.gy = y; A.way = null; A.then = then || null; if (A.sit) { A.sit = false; _gllEmoteStop(A); } }
+function _gllWalkTo(A, x, y, then) { A.stationaryPosition = null; if (typeof _gllPhotoClear === 'function') _gllPhotoClear(A); A.tx = x; A.ty = y; A.gx = x; A.gy = y; A.way = null; A.then = then || null; if (A.sit) { A.sit = false; _gllEmoteStop(A); } }
 /** The same with the turns on the way: [[x, y], ...], then there. What they were going to do on arrival still happens. */
 function _gllWalkVia(A, turns, x, y) { const then = A.then; _gllWalkTo(A, x, y, then); const way = (turns || []).map(p => [p[0], p[1]]).concat([[x, y]]); const n = way.shift(); A.tx = n[0]; A.ty = n[1]; A.way = way; }
 /** Keys and holding send a walk as it goes, a place at a time: the figure takes each at the pace they come in, so it neither arrives early and stands nor falls behind. A destination (a click) walks at the walker's own speed. */

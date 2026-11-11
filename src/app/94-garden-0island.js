@@ -1,8 +1,52 @@
 /* Canonical island geometry and physical reservations. Pure derived data:
  * no model construction, renderer, save mutation or owner-specific coast. */
-const _gardenIslandDerived = { geometry: null, base: null, ocean: null, sectionZones: null };
+const _gardenIslandDerived = { geometry: null, base: null, ocean: null, sectionZones: null, arrivalRoad: null, routePaths: new WeakMap(), roadJoints: new WeakMap() };
 function gardenIslandData() { return GardenIslandLayout.data; }
 function gardenIslandActive() { return typeof GardenIslandLayout !== 'undefined' && !!(GardenIslandLayout.data && GardenIslandLayout.data.version >= 3); }
+function gardenCanonicalWorld() { const island = typeof GardenIslandCanonicalLayout !== 'undefined' ? GardenIslandCanonicalLayout : GardenIslandLayout; return { wv: island.data.world.v, lh: island.fingerprint }; }
+function gardenWorldIsLegacy() { const current = gardenCanonicalWorld(); return GARDEN_WORLD.v !== current.wv || GARDEN_WORLD.lh !== current.lh; }
+/** Presentation stays inside the existing broad road reservations. */
+function gardenIslandRoadStyle(route) {
+  const main = gardenIslandData().version >= 4 && !!route && (route.id === 'harbour-walk' || route.id === 'plaza-loop'), width = Math.max(.5, Number(route && route.widthCells) || 2);
+  return { main, name: main ? 'Arrival promenade' : 'Garden path', radius: Math.min(width * (main ? .42 : .24), main ? 1.18 : .64), edgeRadius: Math.min(width * (main ? .47 : .29), main ? 1.3 : .78) };
+}
+function gardenIslandRoadJoints(route) {
+  if (_gardenIslandDerived.roadJoints.has(route)) return _gardenIslandDerived.roadJoints.get(route);
+  const style = gardenIslandRoadStyle(route), points = gardenIslandRoutePath(route).points, joints = [];
+  if (style.main) for (let i = 4; i < points.length - 1; i += 7) {
+    const p = points[i], a = points[i - 1], b = points[i + 1], length = Math.hypot(b.x - a.x, b.y - a.y) || 1, nx = -(b.y - a.y) / length * style.radius * .8, ny = (b.x - a.x) / length * style.radius * .8;
+    joints.push(Object.freeze({ x: p.x, y: p.y, a: Object.freeze({ x: p.x + nx, y: p.y + ny }), b: Object.freeze({ x: p.x - nx, y: p.y - ny }) }));
+  }
+  const result = Object.freeze(joints); _gardenIslandDerived.roadJoints.set(route, result); return result;
+}
+/** One rounded centreline for both renderers; no route or collider is moved. */
+function gardenIslandRoutePath(route) {
+  if (_gardenIslandDerived.routePaths.has(route)) return _gardenIslandDerived.routePaths.get(route);
+  const input = route.points.map(([x, y]) => ({ x, y })), closed = input.length > 2 && input[0].x === input[input.length - 1].x && input[0].y === input[input.length - 1].y;
+  if (closed) input.pop();
+  const smooth = [];
+  for (let i = 0; i < input.length; i++) {
+    const p = input[i], a = input[(i + input.length - 1) % input.length], b = input[(i + 1) % input.length];
+    if (!closed && (i === 0 || i === input.length - 1)) { smooth.push(p); continue; }
+    const da = Math.hypot(a.x - p.x, a.y - p.y) || 1, db = Math.hypot(b.x - p.x, b.y - p.y) || 1, r = Math.min(.72, da * .32, db * .32);
+    const from = { x: p.x + (a.x - p.x) * r / da, y: p.y + (a.y - p.y) * r / da }, to = { x: p.x + (b.x - p.x) * r / db, y: p.y + (b.y - p.y) * r / db };
+    for (let j = 0; j <= 5; j++) { const t = j / 5, u = 1 - t; smooth.push({ x: u * u * from.x + 2 * u * t * p.x + t * t * to.x, y: u * u * from.y + 2 * u * t * p.y + t * t * to.y }); }
+  }
+  if (closed) smooth.push(smooth[0]);
+  const points = [];
+  for (let i = 1; i < smooth.length; i++) { const a = smooth[i - 1], b = smooth[i], steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / .3)); for (let j = 0; j < steps; j++) points.push(Object.freeze({ x: a.x + (b.x - a.x) * j / steps, y: a.y + (b.y - a.y) * j / steps })); }
+  if (smooth.length) points.push(Object.freeze(smooth[smooth.length - 1]));
+  const result = Object.freeze({ points: Object.freeze(points), closed }); _gardenIslandDerived.routePaths.set(route, result); return result;
+}
+/** Visitors arrive at the real wharf and follow the existing village road. */
+function gardenIslandArrivalRoad() {
+  if (_gardenIslandDerived.arrivalRoad) return _gardenIslandDerived.arrivalRoad;
+  const data = gardenIslandData(), harbour = data.routes.find(route => route.id === 'harbour-walk'), plaza = data.routes.find(route => route.id === 'plaza-loop'), pier = data.static.find(prop => prop.id === 'pier');
+  if (data.version < 4 || !harbour || !plaza || !pier) return null;
+  const entry = Object.freeze({ x: pier.x + pier.w / 2, y: pier.y + pier.h - .75 }), village = Object.freeze({ x: plaza.points[0][0], y: data.world.start.y + 2.5 });
+  const points = [[entry.x, entry.y], ...harbour.points.slice().reverse().map(point => point.slice()), [village.x, harbour.points[0][1]], [village.x, village.y]].map(point => Object.freeze(point));
+  return _gardenIslandDerived.arrivalRoad = Object.freeze({ id: 'arrival-promenade', name: 'Arrival promenade', widthCells: 2.4, points: Object.freeze(points), entry, village });
+}
 function gardenIslandStaticRow(row) {
   const data = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data, p = data && data.static.find(p => p.id === row.id);
   if (!p) return row;
@@ -13,7 +57,9 @@ function gardenIslandStaticRow(row) {
 /** Optional decks use the displayed Garden's mechanics identity, never a visitor's ownership. */
 function gardenSidePierMechanicsReady(source) {
   const data = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data, mechanics = data && data.mechanics;
-  if (!mechanics || mechanics.revision !== 2 || GardenIslandLayout.fingerprint !== 'cbc9629edd7fb57272e9d21b') return false;
+  const current = mechanics && mechanics.revision === 2 && GardenIslandLayout.fingerprint === 'cbc9629edd7fb57272e9d21b';
+  const earlier = mechanics && mechanics.revision === 1 && mechanics.contract === 'optional-side-pier-walk-cover-v1' && mechanics.predecessorLayout === '94f5b2dbe4dce765cafb2b40' && GardenIslandLayout.fingerprint === 'c34545b986e497d5d9df5d51';
+  if (!current && !earlier) return false;
   if (source === undefined) source = typeof state !== 'undefined' && state ? state.garden : null;
   if (!source || source.pending) return false;
   const seen = source.seen, tag = source.visit && source.visit.snap || source;

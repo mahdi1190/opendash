@@ -10,6 +10,28 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.67.0] - 2026-11-11
+
+### Added
+
+- A broad arrival promenade connects the harbour to the village. Travelling visitors follow it into the garden, pause for a conversation and leave along the same route.
+- Opened regions have quiet natural trail stops with short observation puzzles. Discoveries use the existing places book and deliberate placement controls.
+
+### Changed
+
+- Existing village buildings gain layered roof tiles, timber, recessed windows and plinth detail. Worn promenade stonework, composed verge plants and bank materials add detail to the existing landscape.
+- Water depth follows the actual shoreline, with clearer marine shelves, silty pond margins and deeper blue-green water.
+- Coastal reaches and freshwater banks maintain local fish stocks. Nearby fishers receive coverage before spare fish gather at a busy spot, with existing host authority and fish limits retained.
+- Fish habitat hints describe useful regional shores, and deep-water fish use distance from the coast rather than a north-to-south row assumption.
+- App updates can keep either known earlier island playable until its explicit backed-up Garden update is ready. The expanded layout remains a deliberate update and reloads into its matching catalogue after completion.
+
+### Fixed
+
+- The expanded island's water depth mask fits the shared water memory allowance, leaving room for reflections instead of failing to draw the depth layer.
+- Remote fishing and nearby interactions use the player's confirmed stationary position while their figure finishes moving. Completed off-screen positions settle without drawing hidden actors.
+- A distant or unreachable fish no longer counts as covering a waiting float. Fish approach the float with their mouth while keeping their body in valid water.
+- Fishing heartbeat coordinates follow the island dimensions, including the relocated southern pier.
+
 ## [2.66.0] - 2026-11-11
 
 ### Changed

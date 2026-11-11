@@ -333,52 +333,160 @@ function _gfsWaterClear(fish, x, y) {
   const r = Math.max(.27, Math.min(.7, _gfsLen(fish.cm) * .35 / GARDEN_WORLD.cellW)), ry = r * GARDEN_WORLD.cellW / GARDEN_WORLD.cellH;
   return _gfsWaterAt(x - r, y) && _gfsWaterAt(x + r, y) && _gfsWaterAt(x, y - ry) && _gfsWaterAt(x, y + ry);
 }
-function _gfsWaterSegment(a, b, fish) { const steps = Math.max(2, Math.min(24, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) * 3))); for (let i = 1; i < steps; i++) { const k = i / steps; if (!_gfsWaterClear(fish, a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k)) return false; } return true; }
+function _gfsWaterSegment(a, b, fish) { if (GARDEN_WORLD.v >= 4 && a.x < GARDEN_ROOM_X && b.x < GARDEN_ROOM_X) { const first = _gfsIslandComponentAt(a.x, a.y), last = _gfsIslandComponentAt(b.x, b.y); if (!first || !last || first.id !== last.id || !_gfsIslandShapeSegment(first.shape, a, b) || !_gfsWaterClear(fish, a.x, a.y) || !_gfsWaterClear(fish, b.x, b.y)) return false; } const steps = Math.max(2, Math.min(24, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) * 3))); for (let i = 1; i < steps; i++) { const k = i / steps; if (!_gfsWaterClear(fish, a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k)) return false; } return true; }
+/** The logical contact point becomes the mouth anchor as a fish reaches a float.
+ * Validate its body behind that mouth, using the same pure art geometry as contact drawing. */
+function _gfsLineBodyPoint(fish, line) {
+  const W = GARDEN_WORLD, dx = (line.x - fish.x) * W.cellW, dy = (line.y - fish.y) * W.cellH, distance = Math.hypot(dx, dy) || 1, c = dx / distance, s = dy / distance, plan = gardenFishShadowMotion(fish.def, _gfsLen(fish.cm)), scale = 1 - Math.max(0, Math.min(.055, (line.y - 23) * .004));
+  return { x: line.x - (c * plan.mouthX - s * plan.mouthY) * scale / W.cellW, y: line.y - (s * plan.mouthX + c * plan.mouthY) * scale / W.cellH };
+}
+function _gfsLineApproachClear(fish, line) {
+  if (!fish || !fish.def || !_gfsWaterAt(line.x, line.y)) return false;
+  if (fish.x >= GARDEN_ROOM_X || line.x >= GARDEN_ROOM_X) return _gfsWaterSegment(fish, line, fish);
+  const body = _gfsLineBodyPoint(fish, line);
+  return _gfsWaterClear(fish, body.x, body.y) && _gfsWaterSegment(fish, body, fish) && _gfsWaterSegment(body, line, null);
+}
+function _gfsLineStandOff(fish, line, band) {
+  if (line.x >= GARDEN_ROOM_X) { const point = { x: Math.max(band.x0, Math.min(band.x1, line.x + (fish.x < line.x ? -1.1 : 1.1))), y: Math.max(band.y0, Math.min(band.y1, line.y)) }; return _gfsWaterClear(fish, point.x, point.y) && _gfsWaterSegment(fish, point, fish) && _gfsWaterSegment(point, line, fish) ? point : null; }
+  const dx = fish.x - line.x, dy = fish.y - line.y, length = Math.hypot(dx, dy) || 1;
+  for (const distance of [1.25, 1.8, 2.1]) { const point = { x: line.x + dx / length * distance, y: line.y + dy / length * distance }; if (_gfsBandContains(band, point.x, point.y) && _gfsWaterClear(fish, point.x, point.y) && _gfsWaterSegment(fish, point, fish) && _gfsLineApproachClear(Object.assign({}, fish, point), line)) return point; }
+  return null;
+}
 /** A reshaped shore can strand an old idle fish. Only the deciding host
  * moves it to the nearest valid cell in its existing water/depth band. */
 function _gfsRehome(f, band) {
   if (!band) return false; let best = null, distance = Infinity;
   for (let y = Math.floor(band.y0); y < Math.ceil(band.y1); y++) for (let x = Math.floor(band.x0); x < Math.ceil(band.x1); x++) {
     const px = Math.max(band.x0 + .05, Math.min(band.x1 - .05, x + .5)), py = Math.max(band.y0 + .05, Math.min(band.y1 - .05, y + .5)), d = (px - f.x) ** 2 + ((py - f.y) * .625) ** 2;
-    if (d >= distance || !_gfsWaterClear(f, px, py)) continue; best = { x: px, y: py }; distance = d;
+    if (d >= distance || !_gfsWaterClear(f, px, py) || !_gfsBandContains(band, px, py)) continue; best = { x: px, y: py }; distance = d;
   }
   if (!best) return false;
   f.x = f.sx = f.tx = best.x; f.y = f.sy = f.ty = best.y; f.heading = null; f.anchorBlend = 0; f.drawTransform = ''; _gfs.dirty = true; return true;
 }
-const _gfsIslandHabitat = { revision: '', bands: [] };
-function _gfsIslandBands(m) {
-  const revision = gardenIslandGeometry().revision;
-  if (_gfsIslandHabitat.revision !== revision) {
-    const W = GARDEN_WORLD, ocean = ['shallow', 'mid', 'deep'].map((zone, i) => ({ key: 'b' + i, zone, islandOcean: true, sampleCells: [], nearCache: { key: '', value: null }, x0: 0, x1: W.cols, y0: 0, y1: W.rows, n: GF_SCHOOL.bands[i].n }));
-    const fresh = gardenIslandData().freshwater.map(pool => ({ key: 'i:' + pool.id, zone: 'pond', islandWater: pool, islandHomeWaters: gardenIslandBasinHomeIds(pool.id).slice(), sampleCells: [], nearCache: { key: '', value: null }, x0: pool.wet.x, x1: pool.wet.x + pool.wet.w, y0: pool.wet.y, y1: pool.wet.y + pool.wet.h, n: GF_SCHOOL.pond }));
-    for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
-      const base = gardenIslandBaseCell(x, y), px = x + .5, py = y + .5;
-      if (base.ocean) { const zone = gardenIslandWaterZone(px, py), band = ocean.find(row => row.zone === zone); if (band) band.sampleCells.push([px, py]); }
-      else if (base.freshwater) { const band = fresh.find(row => row.islandWater.boundary ? _gardenIslandInLoop(px, py, row.islandWater.boundary) : _gardenIslandRect(px, py, row.islandWater.wet)); if (band) band.sampleCells.push([px, py]); }
-    }
-    for (const band of fresh) for (const water of GARDEN_REGION_WATERS) if (water.sec && water.x >= band.x0 && water.x < band.x1 && water.y >= band.y0 && water.y < band.y1) band.islandHomeWaters.push(water.id);
-    _gfsIslandHabitat.bands = ocean.concat(fresh).filter(band => band.sampleCells.length); _gfsIslandHabitat.revision = revision;
+/** Static water components and local stocks are derived once from the shared coast/pond contours. */
+const _gfsIslandHabitat = { revision: '', bands: [], byKey: new Map(), cells: null, components: [], spatial: new Map(), elapsed: 0 };
+function _gfsIslandShapeContains(shape, x, y) { return shape.ocean ? gardenIslandOceanContains(x, y) : shape.pool.boundary ? _gardenIslandInLoop(x, y, shape.pool.boundary) : _gardenIslandRect(x, y, shape.pool.wet); }
+function _gfsIslandShapeSegment(shape, a, b) {
+  if (!_gfsIslandShapeContains(shape, a.x, a.y) || !_gfsIslandShapeContains(shape, b.x, b.y)) return false;
+  const wet = shape.pool && shape.pool.wet, loops = shape.ocean ? gardenIslandGeometry().land : [shape.pool.boundary || [[wet.x, wet.y], [wet.x + wet.w, wet.y], [wet.x + wet.w, wet.y + wet.h], [wet.x, wet.y + wet.h]]].concat(shape.pool.holes || []), rx = b.x - a.x, ry = b.y - a.y;
+  for (const loop of loops) for (let i = 0; i < loop.length; i++) {
+    const c = loop[i], d = loop[(i + 1) % loop.length], sx = d[0] - c[0], sy = d[1] - c[1], qx = c[0] - a.x, qy = c[1] - a.y, cross = rx * sy - ry * sx;
+    if (Math.abs(cross) < 1e-9) continue;
+    const t = (qx * sy - qy * sx) / cross, u = (qx * ry - qy * rx) / cross;
+    if (t > 1e-7 && t < 1 - 1e-7 && u >= -1e-7 && u <= 1 + 1e-7) return false;
   }
-  return _gfsIslandHabitat.bands.filter(band => band.islandOcean || !gardenZoneLockOf(band.sampleCells[0][0], band.sampleCells[0][1], m.areas)).map(band => Object.assign({}, band, { islandAreas: m.areas })).concat(gardenRoomBands());
+  return true;
+}
+function _gfsIslandGeometry() {
+  const H = _gfsIslandHabitat, revision = gardenIslandGeometry().revision; if (H.revision === revision) return H;
+  const W = GARDEN_WORLD, size = W.cols * W.rows, shapes = [{ id: 'sea', ocean: true }].concat(gardenIslandData().freshwater.map(pool => ({ id: pool.id, pool }))), source = new Int16Array(size).fill(-1), cells = new Int32Array(size).fill(-1), coasts = new Array(size), components = [], groups = new Map();
+  for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) { const base = gardenIslandBaseCell(x, y), at = y * W.cols + x; if (base.ocean) { source[at] = 0; coasts[at] = gardenIslandFishingReach(x + .5, y + .5); } else if (base.freshwater) { const index = shapes.findIndex(shape => !shape.ocean && _gfsIslandShapeContains(shape, x + .5, y + .5)); if (index >= 0) source[at] = index; } }
+  for (let start = 0; start < size; start++) {
+    if (source[start] < 0 || cells[start] >= 0) continue;
+    const shape = shapes[source[start]], component = { id: shape.id + ':' + start, index: components.length, shape }, queue = [start]; cells[start] = component.index; components.push(component);
+    for (let head = 0; head < queue.length; head++) {
+      const at = queue[head], x = at % W.cols, y = Math.floor(at / W.cols), px = x + .5, py = y + .5;
+      for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) { const nx = x + dx, ny = y + dy, next = ny * W.cols + nx; if (nx < 0 || ny < 0 || nx >= W.cols || ny >= W.rows || cells[next] >= 0 || source[next] !== source[start]) continue; const clearInterior = shape.ocean && coasts[at].distance > W.cellW && coasts[next].distance > W.cellW; if (!clearInterior && !_gfsIslandShapeSegment(shape, { x: px, y: py }, { x: nx + .5, y: ny + .5 })) continue; cells[next] = component.index; queue.push(next); }
+      const reach = shape.ocean ? coasts[at] : null, zone = shape.ocean ? reach.distance <= 60 ? 'shallow' : reach.distance <= 120 ? 'mid' : 'deep' : 'pond', span = shape.ocean ? 12 : 6, gx = Math.floor(x / span), gy = Math.floor(y / span), key = 'i4:' + component.id + ':' + gx + ',' + gy + ':' + zone;
+      let band = groups.get(key);
+      if (!band) { band = { key, zone, bodyId: component.id, component, islandOcean: !!shape.ocean, islandWater: shape.pool || null, sampleCells: [], nearCache: new Map(), coastCounts: new Map(), x0: gx * span, x1: Math.min(W.cols, (gx + 1) * span), y0: gy * span, y1: Math.min(W.rows, (gy + 1) * span), n: 1 }; groups.set(key, band); }
+      band.sampleCells.push([px, py]); if (reach) band.coastCounts.set(reach.id, (band.coastCounts.get(reach.id) || 0) + 1);
+    }
+  }
+  const bands = [...groups.values()], spatial = new Map();
+  for (const band of bands) {
+    if (band.islandOcean) band.coastHabitat = [...band.coastCounts].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))[0]?.[0] || 'south';
+    else {
+      const centre = band.sampleCells.reduce((sum, point) => ({ x: sum.x + point[0] / band.sampleCells.length, y: sum.y + point[1] / band.sampleCells.length }), { x: 0, y: 0 });
+      band.islandHomeWaters = gardenIslandBasinPatchHomes(band.islandWater, centre); band.regionZone = gardenZoneOf(centre.x, centre.y);
+      for (const water of GARDEN_REGION_WATERS) if (water.sec) { const section = gardenLandRow(water.sec); if (section && section.cells.some(([x, y]) => x + .5 >= band.x0 && x + .5 < band.x1 && y + .5 >= band.y0 && y + .5 < band.y1 && _gfsIslandShapeContains(band.component.shape, x + .5, y + .5))) band.islandHomeWaters.push(water.id); }
+    }
+    const occupied = new Set(band.sampleCells.map(point => Math.floor(point[0] / 12) + ',' + Math.floor(point[1] / 12)));
+    for (const key of occupied) { if (!spatial.has(key)) spatial.set(key, []); spatial.get(key).push(band.key); }
+    delete band.coastCounts;
+  }
+  H.bands = bands; H.byKey = new Map(bands.map(band => [band.key, band])); H.cells = cells; H.components = components; H.spatial = spatial; H.revision = revision; H.elapsed = 0; return H;
+}
+function _gfsIslandComponentAt(x, y) {
+  const H = _gfsIslandGeometry(), W = GARDEN_WORLD, cx = Math.floor(x), cy = Math.floor(y); if (cx < 0 || cy < 0 || cx >= W.cols || cy >= W.rows) return null;
+  const candidates = [];
+  for (const [dx, dy] of [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1]]) { const nx = cx + dx, ny = cy + dy; if (nx < 0 || ny < 0 || nx >= W.cols || ny >= W.rows) continue; const index = H.cells[ny * W.cols + nx], component = H.components[index]; if (!component) continue; candidates.push({ component, x: nx + .5, y: ny + .5 }); }
+  for (const candidate of candidates) if (_gfsIslandShapeSegment(candidate.component.shape, { x, y }, candidate)) return candidate.component;
+  return null;
+}
+function _gfsIslandBands(m) {
+  return _gfsIslandGeometry().bands.filter(band => band.islandOcean || !band.regionZone || m.areas.includes('zn-' + band.regionZone)).map(band => Object.assign({}, band, { islandAreas: m.areas })).concat(gardenRoomBands());
 }
 function _gfsBandContains(band, x, y) {
-  if (band.islandOcean) return gardenIslandOceanContains(x, y) && gardenIslandWaterZone(x, y) === band.zone;
-  if (band.islandWater) { const pool = band.islandWater; return pool.boundary ? _gardenIslandInLoop(x, y, pool.boundary) : _gardenIslandRect(x, y, pool.wet); }
+  if (band.sampleCells) { const component = _gfsIslandComponentAt(x, y); return !!component && component.id === band.bodyId && x >= band.x0 && x < band.x1 && y >= band.y0 && y < band.y1 && (!band.islandOcean || gardenIslandWaterZone(x, y) === band.zone); }
   return x >= band.x0 - 1 && x <= band.x1 + 1 && y >= band.y0 - .3 && y <= band.y1 + .3;
 }
-/** Only a failed bounded sample searches cached cells; the frame loop keeps its existing clocks. */
+/** Weighted reservoir sampling and small jitter avoid repeated cell centres and nearest-point clumps. */
 function _gfsIslandSpot(band, origin, decks) {
-  const samples = band.sampleCells, choices = []; if (!samples || !samples.length) return null;
-  const seed = samples[Math.floor(Math.random() * samples.length)], wanted = origin || { x: seed[0], y: seed[1] };
+  const samples = band.sampleCells; if (!samples || !samples.length) return null;
+  let selected = null, total = 0;
   for (const point of samples) {
-    const dx = point[0] - wanted.x, dy = (point[1] - wanted.y) * .625, distance = dx * dx + dy * dy;
-    if (choices.length >= 16 && distance >= choices[choices.length - 1].distance) continue;
-    if (!_gfsWaterClear(origin, point[0], point[1]) || _gfsPierBlocks(decks, point[0], point[1], origin)) continue;
-    if (origin && origin.def && !_gfsWaterSegment(origin, { x: point[0], y: point[1] }, origin)) continue;
-    let index = choices.length; while (index > 0 && distance < choices[index - 1].distance) index--;
-    choices.splice(index, 0, { point, distance }); if (choices.length > 16) choices.pop();
+    const dx = origin ? point[0] - origin.x : 0, dy = origin ? (point[1] - origin.y) * .625 : 0, distance2 = dx * dx + dy * dy;
+    if (origin && (origin.def ? distance2 > 25 : distance2 > GF_SCHOOL.near ** 2) || origin?.stockLine && (distance2 < 1.05 ** 2 || Math.hypot(dx, origin.y - point[1]) > (origin.stockReach || GF_SCHOOL.reach) - .1)) continue;
+    if (!_gfsWaterClear(origin, point[0], point[1]) || _gfsPierBlocks(decks, point[0], point[1], origin) || !_gfsSpaced(band, point[0], point[1], origin)) continue;
+    if (origin && (origin.def || origin.stockLine) && !_gfsWaterSegment(origin, { x: point[0], y: point[1] }, origin.def ? origin : null)) continue;
+    const weight = origin ? 1 / (1 + distance2 / (origin.stockLine ? 5 : 20)) : 1; total += weight;
+    if (Math.random() * total < weight) selected = { x: point[0], y: point[1] };
   }
-  const pick = choices[Math.floor(Math.random() * choices.length)]; return pick ? { x: pick.point[0], y: pick.point[1] } : null;
+  if (!selected) return null;
+  for (let attempt = 0; attempt < 4; attempt++) { const point = { x: selected.x + (Math.random() - .5) * .7, y: selected.y + (Math.random() - .5) * .7 }; if (_gfsBandContains(band, point.x, point.y) && _gfsWaterClear(origin, point.x, point.y) && _gfsSpaced(band, point.x, point.y, origin) && !_gfsPierBlocks(decks, point.x, point.y, origin) && (!origin || !(origin.def || origin.stockLine) || _gfsWaterSegment(origin, point, origin.def ? origin : null))) return point; }
+  return selected;
+}
+function _gfsIslandNearby(person, byKey) {
+  const H = _gfsIslandGeometry(), found = new Set(), rows = [], radius = Math.ceil(GF_SCHOOL.near / 12), cx = Math.floor(person.x / 12), cy = Math.floor(person.y / 12);
+  for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) for (const key of H.spatial.get((cx + dx) + ',' + (cy + dy)) || []) found.add(key);
+  for (const key of found) { const band = byKey.get(key); if (!band) continue; const distance = Math.hypot(Math.max(band.x0 - person.x, person.x - band.x1, 0), Math.max(band.y0 - person.y, person.y - band.y1, 0)); if (distance > GF_SCHOOL.near) continue; const nearest = _gfsBandNear(band, [person]); if (nearest.far <= GF_SCHOOL.near) rows.push({ band, distance: nearest.far }); }
+  rows.sort((a, b) => a.distance - b.distance || a.band.key.localeCompare(b.band.key)); return rows;
+}
+/** First coverage goes to each person/line before any local extras. All stocks share the old cap. */
+function _gfsIslandPopulate(dt, m, bands, byKey, lines, folk, cap, fast, contest) {
+  const E = GF_SCHOOL, H = _gfsIslandHabitat; H.elapsed += dt;
+  const pinned = [..._gfs.list.values()].filter(fish => fish.to != null), people = new Map();
+  for (const person of folk) if (person.x < GARDEN_ROOM_X) people.set(String(person.slot), { key: String(person.slot), point: person, slot: person.slot, line: lines.get(person.slot) || null });
+  for (const [slot, line] of lines) { const row = people.get(String(slot)) || { key: String(slot), point: line, slot }; row.line = line; people.set(String(slot), row); }
+  for (const band of bands) if (band.room) people.set('room:' + band.key, { key: 'room:' + band.key, point: { x: (band.x0 + band.x1) / 2, y: (band.y0 + band.y1) / 2 }, roomBand: band });
+  for (const [slot, line] of lines) { const key = line.x + ',' + line.y, old = _gfs.lineWait.get(slot); if (!old || old.key !== key || pinned.some(fish => fish.to === slot)) _gfs.lineWait.set(slot, { key, t: 0 }); else old.t += dt; }
+  for (const slot of [..._gfs.lineWait.keys()]) if (!lines.has(slot)) _gfs.lineWait.delete(slot);
+  const rows = [];
+  for (const row of people.values()) {
+    row.candidates = row.roomBand ? [{ band: row.roomBand, distance: 0 }] : _gfsIslandNearby(row.line || row.point, byKey);
+    if (row.line) { const exact = row.candidates.findIndex(candidate => _gfsBandContains(candidate.band, row.line.x, row.line.y)); if (exact > 0) row.candidates.unshift(row.candidates.splice(exact, 1)[0]); }
+    if (!row.candidates.length) continue;
+    row.pinned = pinned.filter(fish => fish.to === row.slot).length; row.wait = row.line ? _gfs.lineWait.get(row.slot)?.t || 0 : 0;
+    const base = _gfsWant(row.candidates[0].band, m) + (row.roomBand ? 0 : 2); row.quota = contest ? Math.min(cap, base * E.contestMore) : base + (_gfsFrenzy() ? E.frenzy.more : 0); rows.push(row);
+  }
+  rows.sort((a, b) => Number(!!b.line) - Number(!!a.line) || b.wait - a.wait || a.key.localeCompare(b.key));
+  const rotateGroup = group => { const rotate = group.length ? Math.floor(H.elapsed / E.nearGap[1]) % group.length : 0; return group.slice(rotate).concat(group.slice(0, rotate)); }, ordered = rotateGroup(rows.filter(row => row.line)).concat(rotateGroup(rows.filter(row => !row.line))), targets = [];
+  for (let round = 0; round < cap && targets.length + pinned.length < cap; round++) for (const row of ordered) {
+    if (round < row.pinned || round >= row.quota) continue; const candidate = row.candidates[round % row.candidates.length];
+    if (round >= row.candidates.length && !row.roomBand && row.candidates.length > 1) continue;
+    const point = row.line && round === 0 ? { x: row.line.x, y: row.line.y, stockLine: true, stockReach: E.reach + (row.line.bait.st.lure || 0) * E.lureReach } : row.point;
+    targets.push({ owner: row.key, round, band: candidate.band, point, line: row.line && round === 0 ? row.line : null, wait: row.wait, timer: candidate.band.key + '@' + row.key + ':' + round });
+    if (targets.length + pinned.length >= cap) break;
+  }
+  const idle = [..._gfs.list.values()].filter(fish => fish.st === GF_ST.swim && fish.to == null), assigned = new Set();
+  for (const fish of idle) if (fish.x < GARDEN_ROOM_X && _gfsFar(fish.x, fish.y, folk) > E.near + 4) { _gfsDrop(fish); _gfs.dirty = true; }
+  for (const target of targets) {
+    let best = null, distance = Infinity;
+    for (const fish of idle) { if (!_gfs.list.has(fish.u) || assigned.has(fish.u) || fish.band !== target.band.key) continue; const d = Math.hypot(fish.x - target.point.x, fish.y - target.point.y); if (target.line && !_gfsLineApproachClear(fish, target.line)) continue; if (d < distance) { best = fish; distance = d; } }
+    if (best && distance <= (target.line ? E.reach + (target.line.bait.st.lure || 0) * E.lureReach : E.near)) { assigned.add(best.u); target.fish = best; }
+  }
+  let added = 0;
+  for (const target of targets) {
+    if (target.fish) continue;
+    let timer = _gfs.band.has(target.timer) ? _gfs.band.get(target.timer) - dt : _gfs.band.size ? E.nearGap[0] : 0;
+    if (target.line && target.wait >= E.lineWait) timer = 0;
+    _gfs.band.set(target.timer, timer); if (timer > 0 || added >= 2) continue;
+    if (_gfs.list.size >= cap) { let surplus = null, distance = -1; for (const fish of idle) { if (!_gfs.list.has(fish.u) || assigned.has(fish.u) || fish.to != null) continue; const d = Math.hypot(fish.x - target.point.x, fish.y - target.point.y); if (d > distance) { surplus = fish; distance = d; } } if (!surplus) continue; _gfsDrop(surplus); _gfs.dirty = true; }
+    const before = _gfs.list.size; _gfsSpawn(target.band, m, null, { near: target.point, plain: !!target.line });
+    if (_gfs.list.size > before) { added++; if (target.line) { const waiting = _gfs.lineWait.get(Number(target.owner)); if (waiting) waiting.t = 0; } }
+    _gfs.band.set(target.timer, (E.nearGap[0] + Math.random() * (E.nearGap[1] - E.nearGap[0])) * fast * (target.band.room ? GRW.gap : 1));
+  }
 }
 function _gfsBands(m) {
   if (GARDEN_WORLD.v >= 4) return _gfsIslandBands(m);
@@ -411,9 +519,10 @@ function _gfsPierBlocks(decks, x, y, near) {
 /** Somewhere in the existing water/depth band, clear of every built deck. */
 function _gfsSpot(b0, near0) {
   if (b0 && b0.room) return gardenRoomSpot(b0, near0);
-  if (b0 && b0.zone !== 'pond' && typeof gardenIceSpot === 'function') { const q = gardenIceSpot(b0, near0); if (q) return q; }   // a frozen lake: fish keep to the holes (94-garden-zz-2season.js)
+  if (b0 && b0.zone !== 'pond' && typeof gardenIceSpot === 'function') { const q = gardenIceSpot(b0, near0); if (q && (GARDEN_WORLD.v < 4 || _gfsBandContains(b0, q.x, q.y) && _gfsWaterClear(near0, q.x, q.y))) return q; }   // a frozen lake: fish keep to the holes (94-garden-zz-2season.js)
   const b = b0 || GF_SCHOOL.bands[0], inX = (v) => Math.max(b.x0, Math.min(b.x1, v)), inY = (v) => Math.max(b.y0, Math.min(b.y1, v));
-  const near = near0 ? { x: inX(near0.x), y: inY(near0.y) } : null, lake = b.zone !== 'pond', decks = lake ? gardenPierDecks() : [];   // (wherever it was asked to go, it stays in this water: a bolting fish once ran out over the farmland)
+  const near = near0 ? { x: inX(near0.x), y: inY(near0.y) } : null, lake = b.zone !== 'pond', decks = lake ? gardenPierDecks() : [];
+  if (b.sampleCells && !near0?.def) return _gfsIslandSpot(b, near0, decks);   // (wherever it was asked to go, it stays in this water: a bolting fish once ran out over the farmland)
   for (let i = 0; i < 12; i++) {
     const forward = near && near0.st === GF_ST.swim && near0.swimDX != null && i < 6, angle = forward ? Math.atan2(near0.swimDY / .45, near0.swimDX) + (Math.random() - .5) * 2.1 : 0, reach = forward ? 1.1 + Math.random() * 3 : 0;
     const x = near ? inX(near.x + (forward ? Math.cos(angle) * reach : (Math.random() - 0.5) * 8)) : b.x0 + Math.random() * (b.x1 - b.x0);
@@ -432,7 +541,8 @@ function _gfsSpot(b0, near0) {
  * per-frame flock solver or by a guest deciding its own fishing rules. */
 function _gfsSpaced(b, x, y, origin) {
   for (const other of _gfs.list.values()) {
-    if (other === origin || other.band !== b.key) continue;
+    if (other === origin) continue;
+    if (GARDEN_WORLD.v >= 4 && b.bodyId) { const source = _gfsIslandHabitat.byKey.get(other.band); if (!source || source.bodyId !== b.bodyId) continue; } else if (other.band !== b.key) continue;
     const radius = Math.min(1.5, .45 + (_gfsLen(origin && origin.cm) + _gfsLen(other.cm)) * .004);
     if (Math.hypot(x - other.x, (y - other.y) * .625) < radius) return false;
   }
@@ -441,8 +551,8 @@ function _gfsSpaced(b, x, y, origin) {
 /** A new fish in this water. at: right there (chum, or a line waiting: o.plain says it is no special treat). o.near: the person to come near, in water as big as the lake. */
 function _gfsSpawn(b, m, at, o) {
   const plus = typeof gardenCatchSpawnPlan === 'function' ? gardenCatchSpawnPlan(b, m, at) : null, near = o && o.near;   // spots, events and what you have done raise the odds: 94-garden-fish-8catch.js
-  const plusP = plus && plus.p && plus.p.y <= b.y1 + 0.3 && (!near || b.zone === 'pond' || Math.hypot(plus.p.x - near.x, plus.p.y - near.y) <= GF_SCHOOL.near) ? plus.p : null;   // (a favourite spot past the floats, or a long way off: not now)
-  let p = at && _gfsWaterAt(at.x, at.y) && _gfsBandContains(b, at.x, at.y) ? at : plusP && _gfsWaterAt(plusP.x, plusP.y) && _gfsBandContains(b, plusP.x, plusP.y) ? plusP : _gfsSpot(b, near && b.zone !== 'pond' ? near : null); if (!p || !_gfsWaterAt(p.x, p.y) || !_gfsBandContains(b, p.x, p.y)) return;
+  const plusP = plus && plus.p && plus.p.y <= b.y1 + 0.3 && (!near || !b.sampleCells && b.zone === 'pond' || Math.hypot(plus.p.x - near.x, plus.p.y - near.y) <= (near.stockLine ? (near.stockReach || GF_SCHOOL.reach) - .1 : GF_SCHOOL.near)) ? plus.p : null;   // (a favourite spot past the floats, or a long way off: not now)
+  let p = at && _gfsWaterAt(at.x, at.y) && _gfsBandContains(b, at.x, at.y) ? at : plusP && _gfsWaterAt(plusP.x, plusP.y) && _gfsBandContains(b, plusP.x, plusP.y) ? plusP : _gfsSpot(b, near && (b.sampleCells || b.zone !== 'pond') ? near : null); if (!p || !_gfsWaterAt(p.x, p.y) || !_gfsBandContains(b, p.x, p.y)) return;
   const ctx = { zone: b.zone, tod: m.tod, season: m.season, rain: !!(m.rain && m.rain.now), level: m.level.level, moon: gardenMoonPhase(m.today), decor: (id) => m.decor.some(d => d.def.id === id) || gardenWorkOwned(id), caught: (id) => !!_gdG().fl[id] };
   if (b.room) ctx.room = b.room;
   if (typeof gardenPlaceHas === 'function') ctx.home = gardenPlaceHas;
@@ -450,7 +560,7 @@ function _gfsSpawn(b, m, at, o) {
   if (typeof gardenSpotAt === 'function') ctx.spot = gardenSpotAt(p.x, p.y) || null;
   // mostly real fish: a find (a boot, a pearl) is the odd small shadow, and water too deep for this garden's level still has what can live in it
   // further out the rare ones are likelier: the far end of the deep water is where the fins are
-  const outward = b.zone === 'deep' ? 1 + Math.max(0, p.y - 17) / 2.5 : 1;
+  const coastDistance = b.islandOcean ? gardenIslandCoastDistance(p.x, p.y) : 0, outward = b.zone === 'deep' ? b.islandOcean ? 1 + Math.min(1.5, coastDistance / 300) : 1 + Math.max(0, p.y - 17) / 2.5 : 1;
   let odds = gardenFishOdds(ctx).map(([k, w]) => { const d0 = gardenFishDef(k); return [k, d0.cat !== 'fish' ? w * GF_SCHOOL.finds : d0.rarity === 'common' ? w : w * outward]; });
   if (b.zone === 'deep' && !odds.some(([k]) => gardenFishDef(k).cat === 'fish')) odds = odds.concat(gardenFishOdds(Object.assign({}, ctx, { zone: 'mid' })).filter(([k]) => gardenFishDef(k).cat === 'fish'));
   odds = b.kinds ? b.kinds.map(gardenFishDef).filter(d => d && gardenFishFits(d, ctx)).map(d => [d.id, gardenBugWeight(d, ctx)]) : gardenRegionOdds(odds, b, ctx); if (!odds.length) return;   // only what lives in this water
@@ -459,7 +569,7 @@ function _gfsSpawn(b, m, at, o) {
   if (forced && (b.kinds || !gardenRegionBandHas(forced.id, b))) forced = null;   // the one that got away, a legend, a fish you let go
   const id = forced ? forced.id : gardenFishPick(odds, Math.random), def = gardenFishDef(id); if (!def) return;
   // further out is bigger, in the same kind as well as in the kinds that live there
-  const out = b.zone === 'pond' ? 0.05 : Math.max(0, Math.min(0.55, (p.y - 13) / 24));
+  const out = b.zone === 'pond' ? 0.05 : b.islandOcean ? Math.min(.55, coastDistance / 600) : Math.max(0, Math.min(0.55, (p.y - 13) / 24));
   const cm0 = forced && forced.cm ? forced.cm : def.cat === 'fish' ? gardenFishSize(def, Math.random, out) : Math.round((def.cm[0] + def.cm[1]) / 2);
   const sv = forced && forced.cm ? { v: '', cm: cm0 } : typeof gardenVariantSpawn === 'function' ? gardenVariantSpawn(def, cm0, b, m, { chum: !!at && !(o && o.plain), frenzy: _gfsFrenzy(), room: b.room || '' }) : { v: '', cm: cm0 }, cm = sv.cm;   // what it is, decided here and now: everyone sees the same one
   const footprint = { x: p.x, y: p.y, def, cm };
@@ -482,8 +592,8 @@ function _gfsLinesNow() {
 }
 /** Who the fish should be near: you, and on a host, everyone in the garden. */
 function _gfsFolk() {
-  const out = [typeof _grm !== 'undefined' && _grm.me && typeof gardenRoomMeCell === 'function' ? gardenRoomMeCell() : { x: _gw.px, y: _gw.py }];   // (in a hidden room you are at its water)
-  if (typeof _gll !== 'undefined' && _gll.role === 'host') for (const A of _gll.actors.values()) if (Number.isFinite(A.x) && Number.isFinite(A.y)) out.push({ x: A.x, y: A.y });
+  const out = [Object.assign({ slot: _gfsSlot() }, typeof _grm !== 'undefined' && _grm.me && typeof gardenRoomMeCell === 'function' ? gardenRoomMeCell() : { x: _gw.px, y: _gw.py })];   // (in a hidden room you are at its water)
+  if (typeof _gll !== 'undefined' && _gll.role === 'host') for (const A of _gll.actors.values()) if (!A.me && A.w !== _gfsSlot()) { const point = gardenLiveActorPosition(A); if (point) out.push({ x: point.x, y: point.y, slot: A.w }); }
   return out;
 }
 function _gfsFar(x, y, folk) { let best = 1e9; for (const q of folk) { const d = Math.hypot(x - q.x, y - q.y); if (d < best) best = d; } return best; }
@@ -492,10 +602,10 @@ function _gfsBandNear(b, folk) {
   if (b.room) return { far: 0, who: { x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2 } };   // (it exists only while someone is in the room: they are right there)
   let best = 1e9, who = folk[0];
   if (b.sampleCells) {
-    const key = folk.map(person => Math.round(person.x * 2) + ',' + Math.round(person.y * 2)).join('|');
-    if (b.nearCache.key === key && b.nearCache.value) return b.nearCache.value;
+    const key = folk.map(person => person.slot + ':' + Math.round(person.x * 2) + ',' + Math.round(person.y * 2)).join('|');
+    if (b.nearCache.has(key)) return b.nearCache.get(key);
     for (const person of folk) for (const point of b.sampleCells) { const dx = person.x - point[0], dy = person.y - point[1], distance = dx * dx + dy * dy; if (distance < best) { best = distance; who = person; } }
-    const value = { far: Math.sqrt(best), who }; b.nearCache.key = key; b.nearCache.value = value; return value;
+    const value = { far: Math.sqrt(best), who }; if (b.nearCache.size >= 16) b.nearCache.clear(); b.nearCache.set(key, value); return value;
   }
   for (const q of folk) { const d = Math.hypot(Math.max(b.x0 - q.x, q.x - b.x1, 0), Math.max(b.y0 - q.y, q.y - b.y1, 0)); if (d < best) { best = d; who = q; } }
   return { far: best, who };
@@ -561,7 +671,7 @@ function _gfsRun(dt) {
       for (const [slot, Q] of lines) {
         if (taken.has(slot)) continue;
         const d = Math.hypot(f.x - Q.x, f.y - Q.y), reach = E.reach + (Q.bait.st.lure || 0) * E.lureReach;
-        if (d >= reach || d >= bd) continue;
+        if (d >= reach || d >= bd || GARDEN_WORLD.v >= 4 && !_gfsLineApproachClear(f, Q)) continue;
         const lacks = f.def.needs ? gardenFishLacks(f.def, Q.setup) : null;   // you can see it, but it ignores a line without what it wants
         if (lacks && lacks.length) { if (Q.me) _gfs.refused = { at: performance.now(), name: f.def.name, why: lacks[0] }; continue; }
         bd = d; best = { slot, Q };
@@ -572,7 +682,9 @@ function _gfsRun(dt) {
         for (const [slot, Q] of lines) {
           if (taken.has(slot) || !B0 || f.drawn === Q.x + ',' + Q.y || Math.hypot(f.x - Q.x, f.y - Q.y) >= E.draw) continue;
           if (Q.x < B0.x0 - 1 || Q.x > B0.x1 + 1 || Q.y < B0.y0 - 2 || Q.y > B0.y1 + 2) continue;
-          f.drawn = Q.x + ',' + Q.y; f.tx = Math.max(B0.x0, Math.min(B0.x1, Q.x + (f.x < Q.x ? -1.1 : 1.1))); f.ty = Math.max(B0.y0, Math.min(B0.y1, Q.y)); f.rest = false; _gfs.dirty = true;
+          const destination = GARDEN_WORLD.v >= 4 ? _gfsLineStandOff(f, Q, B0) : { x: Math.max(B0.x0, Math.min(B0.x1, Q.x + (f.x < Q.x ? -1.1 : 1.1))), y: Math.max(B0.y0, Math.min(B0.y1, Q.y)) };
+          if (!destination) continue;
+          f.drawn = Q.x + ',' + Q.y; f.tx = destination.x; f.ty = destination.y; f.rest = false; _gfs.dirty = true;
           break;
         }
         continue;
@@ -607,6 +719,7 @@ function _gfsRun(dt) {
   // fill the water up again, one at a time
   if (!contest && !_gfsFrenzy() && Math.random() < E.frenzy.chance * dt) { _gfs.frenzyUntil = performance.now() + E.frenzy.secs * 1000; gardenMessage('The fish are feeding! For a little while there are more about.', { ambient: true, source: 'fish-feeding', icon: 'fish' }); }
   const fast = contest ? E.contestGap : _gfsFrenzy() ? E.frenzy.gap : m.rain && m.rain.now ? 0.7 : 1;
+  if (GARDEN_WORLD.v >= 4) { _gfsIslandPopulate(dt, m, bands, byKey, lines, folk, cap, fast, contest); return; }
   // the water nearest to people first: with only a few fish in all, a far pool must not take them while the water you stand at stays empty. In the lake only the fish near someone count: the lake is too big to call one water
   const count = new Map(), distant = new Map();
   for (const f of _gfs.list.values()) { const b = byKey.get(f.band); if (b && b.zone !== 'pond' && f.st === GF_ST.swim && f.to == null && _gfsFar(f.x, f.y, folk) > E.near) { if (!distant.has(f.band)) distant.set(f.band, f); continue; } count.set(f.band, (count.get(f.band) || 0) + 1); }
@@ -701,7 +814,7 @@ function _gfsSay2(text) { if (typeof _gllFeed === 'function') _gllFeed(text); }
 function _gfsStomps() {
   const out = [], t = Date.now();   // clock-ok: how long a creep lasts
   if (_gw.moving && !_gw.sneak && !_gw.boat && !_gw.keys.has('shift')) out.push({ x: _gw.px, y: _gw.py, me: true });
-  if (typeof _gll !== 'undefined' && _gll.role === 'host') for (const A of _gll.actors.values()) if (A.moving && !(A.sneakUntil > t)) out.push({ x: A.x, y: A.y });
+  if (typeof _gll !== 'undefined' && _gll.role === 'host') for (const A of _gll.actors.values()) if (A.moving && !A.stationaryPosition && !(A.sneakUntil > t)) { const point = gardenLiveActorPosition(A); if (point) out.push(point); }
   return out;
 }
 function _gfsStompSaid() { if (_gfs.stompSaid) return; _gfs.stompSaid = true; _gfsSay2('Your footsteps scared a fish. Hold Shift to creep near the water.'); }

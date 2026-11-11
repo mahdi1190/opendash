@@ -951,7 +951,7 @@ function gardenCatchNeedsRows(def) {
   const n = def.needs || {}, rows = [], add = (k, label, text) => rows.push({ k, label, text }), bug = def.cat === 'bug';
   const tod = _gfList(n.tod).length ? _gfList(n.tod) : def.tod, sea = _gfList(n.season).length ? _gfList(n.season) : def.seasons;
   if (bug) add('where', 'Where', 'Look near ' + _gfOr(def.hab.map(h => _GF_HAB_WORDS[h] || h)) + '.');
-  else if (def.cat === 'fish') add('where', 'Where', _gfOr(def.zone.map(z => (GARDEN_FISH_ZONES[z] || {}).label || z)) + (def.zone.includes('deep') ? ': far out, past the end of the pier.' : def.zone.includes('mid') ? ': cast a little way out.' : def.zone.includes('pond') ? ' (it opens at garden level 7).' : ': close to the shore.'));
+  else if (def.cat === 'fish') add('where', 'Where', _gfOr(def.zone.map(z => (GARDEN_FISH_ZONES[z] || {}).label || z)) + (def.zone.includes('deep') ? GARDEN_WORLD.v >= 4 ? ': deeper coastal water around the island.' : ': far out, past the end of the pier.' : def.zone.includes('mid') ? ': cast a little way out.' : def.zone.includes('pond') ? GARDEN_WORLD.v >= 4 ? ' in the village lake and other open ponds.' : ' (it opens at garden level 7).' : ': close to the shore.'));
   else { add('where', 'Where', 'It can turn up in any water, at any time.'); return rows; }
   { const rg = typeof gardenRegionWords === 'function' ? gardenRegionWords(def) : null; if (rg) { if (rg.where) rows[0].text = rg.where; if (rg.reach) add('home', 'Getting there', rg.reach); } }   // its home on the map (94-garden-regions-0table.js)
   if (n.home) rows[0].text = 'Each garden has a few kinds found only there, and this is one of them. If yours does not have it, visit your friends’ gardens, or trade with someone who has caught it.';

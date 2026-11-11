@@ -10,8 +10,8 @@
    ============================================================ */
 const _glv = { fid: '', state: '', why: '', lv: 'none', w: null, road: null, touch: false, mode: 'normal', snap: null, beatT: 0, goAt: 0, goT: 0, lastGo: 0, goX: 0, goY: 0, watch: null, pending: new Map(), follow: null, followGo: false, parcels: new Map(), bugs: new Map(), sprites: new Map(), doQ: [], doT: 0, doAt: 0, selfName: '', ver: 0 };
 function _glvLive() { return _glv.state === 'live'; }
-function _glvAmbientClock(ac) { return !!(window.GardenNativeLight && GardenNativeLight.receiveClock(ac, _glv.fid, [_glv.fid, _glv.boot, _glv.gen].join('|'))); }
-function _glvAmbientClear() { if (window.GardenNativeLight) GardenNativeLight.clearClock(); }
+function _glvAmbientClock(ac) { const session = [_glv.fid, _glv.boot, _glv.gen].join('|'), traveller = typeof gardenTravellerReceiveClock === 'function' && gardenTravellerReceiveClock(ac, _glv.fid, session), native = window.GardenNativeLight && GardenNativeLight.receiveClock(ac, _glv.fid, session); return !!(native || traveller); }
+function _glvAmbientClear() { if (window.GardenNativeLight) GardenNativeLight.clearClock(); if (typeof gardenTravellerClearClock === 'function') gardenTravellerClearClock(); }
 function _glvFriend() { return _gscFriend(_glv.fid); }
 function _glvSend(k, body) { return _gllPipe('/api/garden-live/send', { k, body, f: _glv.fid, gen: _glv.gen, boot: _glv.boot }); }
 function _glvLookSig(l) { return JSON.stringify([l.a || null, l.g || null, l.pet || null]); }

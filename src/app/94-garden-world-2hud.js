@@ -73,7 +73,7 @@ function _ghMenu(box, m) {
   const by = id => _GH_MENU.find(row => row[0] === id), group = (name, rows) => `<section class="gd-mgroup"><h3>${esc(name)}</h3><div>${rows.filter(Boolean).map(btn).join('')}</div></section>`;
   const garden = ['shop', 'basket', 'craft', 'design'].map(by);
   const own = !m.visit && _gdG(), predecessor = '94f5b2dbe4dce765cafb2b40';
-  if (own && own.since && GARDEN_WORLD.v === 3 && Number(own.seen.world) === 3 && own.seen.worldLayout === predecessor && GARDEN_WORLD.lh !== predecessor && gardenWorldReady()) garden.push(['update', 'Update my garden', 'sprout']);
+  if (own && own.since && (gardenWorldIsLegacy() || GARDEN_WORLD.v === 3 && Number(own.seen.world) === 3 && own.seen.worldLayout === predecessor && GARDEN_WORLD.lh !== predecessor) && gardenWorldReady()) garden.push(['update', 'Update my garden', 'sprout']);
   const together = ['play', 'tricks', 'friends', 'goals'].map(by).concat([['emote', 'Moves (Q)', 'smile']]);
   if (typeof gardenLiveCanSay === 'function' && gardenLiveCanSay(m)) together.push(['say', 'Say something', 'message-circle']);
   if (typeof gardenSnapCan === 'function' && gardenSnapCan()) together.push(['snap', 'Group photo', 'camera']);

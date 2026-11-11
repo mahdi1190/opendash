@@ -17,12 +17,14 @@
 const _glh = { on: false, beatT: 0, lastGo: 0, watch: null, sent: new Map(), diffT: 0, hud: null, panel: false, unseen: 0, seenAt: 0, drops: new Map(), bugT: 0, bugs: new Map(), posting: false, sprites: new Map(), hoverBound: null };
 const _GLH_SEEN_KEY = 'opendash.gardenLive.seen.v1';
 function _glhSend(to, k, body) { return _gllPipe('/api/garden-live/host', { to, k, body, tab: _GLL_TAB }); }
-function _glhAmbientClock() { const native = window.GardenNative, light = native && native.active() && native.lighting(); return light && light.ambientClock ? light.ambientClock() : null; }
+function _glhIsLegacyWorld() { return typeof gardenWorldIsLegacy === 'function' && gardenWorldIsLegacy(); }
+function _glhAmbientClock() { const native = window.GardenNative, light = native && native.active() && native.lighting(), clock = light && light.ambientClock ? light.ambientClock() : null; return clock || (typeof gardenTravellerAmbientClock === 'function' ? gardenTravellerAmbientClock() : null); }
 function _glhHereBody(on) { const l = gardenLiveLook(); if (typeof _gw !== 'undefined') { l.x = Math.round(_gw.px * 10) / 10; l.y = Math.round(_gw.py * 10) / 10; } return { role: 'host', on, ...glWorldFields(), v: GL_V, look: l, name: _gllMyName(), tab: _GLL_TAB, hidden: typeof document !== 'undefined' && !!document.hidden }; }
 function _glhPerm(fid) { const v = _gll.view; const p = v && v.perms && v.perms[fid]; return p || { lv: 'none', touch: false, share: 'keeper' }; }
 
 /* ---------- you are here ---------- */
 function gardenLiveHostPainted(m) {
+  if (_glhIsLegacyWorld()) { clearTimeout(_glh.retryT); _glh.retryT = 0; gardenLiveHostGone(); return; }
   if (typeof _gw === 'undefined' || !_gw.on) return;
   if (!_glh.on) {
     if (_gll.role === 'visit') return;
@@ -37,6 +39,7 @@ function gardenLiveHostPainted(m) {
 }
 /** Ask the server to be the host. Two tabs on the garden would each apply what a visitor asks, so the other one waits and says so. */
 function _glhClaim() {
+  if (_glhIsLegacyWorld()) { clearTimeout(_glh.claimT); _glh.claimT = 0; return; }
   if (_glh.claiming || _glh.claimT) return;
   _glh.claiming = true;
   const later = () => { _glh.claimT = setTimeout(() => { _glh.claimT = 0; _glhClaim(); }, 30000); };
@@ -48,6 +51,7 @@ function _glhClaim() {
   }).catch(() => { _glh.claiming = false; later(); });
 }
 function _glhStart() {
+  if (_glhIsLegacyWorld()) return;
   _glh.on = true; _gll.role = 'host';
   if (typeof gardenKiteHostStart === 'function') gardenKiteHostStart();
   if (typeof gardenSoapHostStart === 'function') gardenSoapHostStart();
@@ -70,6 +74,7 @@ function _glhStart() {
 }
 /** I am still here. Also from the fish's clock (94-garden-live-8sync.js), which a hidden tab does not slow. */
 function _glhBeat() {
+  if (_glhIsLegacyWorld()) { gardenLiveHostGone(); return; }
   if (!_glh.on) return;
   _glh.beatAt = Date.now();   // clock-ok: spacing
   if (typeof _gw === 'undefined' || !_gw.on || state.view !== 'garden') { gardenLiveHostGone(); return; }

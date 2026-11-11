@@ -209,6 +209,7 @@ function _gwHouse(p, sc, o, th) {
   if (th.awnKind) s += gardenBuildAwning(th.awnKind, th.awn, ax0, ay, aw);
   else for (let i = 0; i < n; i++) { const c = i % 2 ? th.awn[1] : th.awn[0]; s += `<path fill="${c}" stroke="${_gdaShade(th.awn[0], -0.34)}" stroke-width="0.7" d="M${f(ax0 + i * aw / n)} ${f(ay)}h${f(aw / n)}l${f((i + 1 - n / 2) * 0.5)} 11q${f(-aw / (2 * n))} 5 ${f(-aw / n - 0.5)} 0z"/>`; }
   if (!th.awnKind) s += A.P('#3a2a18', A.rect(ax0, ay, aw, 2), 0.3) + A.P('#ffffff', A.rect(ax0, ay + 2, aw, 1.6), 0.26) + A.P('#1a1208', `M${f(ax0 + 2)} ${f(ay + 15)}h${f(aw - 4)}v3.6h${f(-aw + 4)}z`, 0.14);
+  if (typeof gardenCraftBuildingSkin === 'function') s += gardenCraftBuildingSkin(p, sc, { left: L, right: R, eave: wTop + 3, peak: ridge, foot: by, roofLeft: eL, roofRight: eR, roof, wood: plank, roofKind: th.roofKind || 'shingle', windows: [{ x: wx, y: wy, w: ww, h: 18 }], door: { x: dx - 9, y: dT + 6, w: 18, h: by - dT - 6 } });
   // the hanging sign
   const sx = dx > cx ? L + 20 : R - 20;
   s += `<g transform="translate(${f(sx)} ${f(by - 66)})"><path d="M-8 -7v-5M8 -7v-5" stroke="${inkW}" stroke-width="1.1"/>${th.signKind ? gardenBuildSign(th.signKind, inkW) : `<rect x="-14" y="-8" width="28" height="17" rx="3" fill="${_gdaShade(plank, -0.1)}"/><rect x="-13" y="-9" width="26" height="16" rx="3" fill="#efe4c8" stroke="${inkW}" stroke-width="1.1"/>`}${th.signKind ? gardenBuildSignIcon(th.icon, p.id) : _gwSignIcon(th.icon, o)}</g>`;

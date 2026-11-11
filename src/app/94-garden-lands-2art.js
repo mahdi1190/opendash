@@ -546,7 +546,7 @@ const _GLD_PROP_ART = {
   moon(sc) { const A = GART, St = GART_PAL.stone, night = sc.tod === 'night'; return A.P(St[0], 'M-9 0Q-11 -24 0 -34Q11 -24 9 0z') + A.P(St[2], 'M-6 -2Q-8 -22 0 -30Q-2 -14 -1 -2z', 0.7) + A.P(night ? '#cfe8ff' : '#8aa0b8', A.circ(0, -18, 3.500)) + (night ? `<g class="gda-glow">${A.P('#cfe8ff', A.circ(0, -18, 9), 0.25)}</g>` : ''); },
   circle(sc) { const A = GART, St = GART_PAL.stone; let s = ''; for (const [x, h, k] of [[-52, 26, 1], [-26, 32, 1.1], [0, 36, 1.2], [26, 30, 1], [52, 26, 0.95]]) s += A.P(St[1], `M${x - 7 * k} 0L${x - 5 * k} ${-h}Q${x} ${-h - 3} ${x + 5 * k} ${-h}L${x + 7 * k} 0z`) + A.P(St[3], `M${x - 5 * k} -2L${x - 3.500 * k} ${-h + 2}H${x - 1 * k}L${x - 2 * k} -2z`, 0.7); return s + (sc.season === 'winter' ? '' : A.S('#7fa85a', 1, 'M-60 1q2 -4 3 0M60 1q2 -4 3 0', 0.8)); },
   chest() { const A = GART, Wd = GART_PAL.wood; return A.P(Wd[1], A.rrect(-11, -13, 22, 13, 2)) + A.P(Wd[3], 'M-12 -13Q-12 -21 0 -21Q12 -21 12 -13z') + A.S('#c8a02e', 1.6, 'M-12 -13H12M-8 -20V0M8 -20V0') + A.P('#f2c432', A.rrect(-2, -15, 4, 5, 1)); },
-  office(sc, o) { const A = GART, Wd = GART_PAL.wood, snow = sc.season === 'winter', night = sc.tod === 'night' || sc.tod === 'dusk'; return A.P('#d8c490', A.rrect(-52, -48, 104, 48, 3)) + A.S(Wd[0], 1, 'M-52 -36H52M-52 -24H52M-52 -12H52', 0.3) + A.P(Wd[1], A.rrect(-9, -32, 18, 32, 2)) + A.P(Wd[3], A.circ(5, -15, 1.400)) + A.P(night ? '#ffe08a' : '#a8c8d8', A.rrect(-40, -36, 20, 16, 2)) + A.P(night ? '#ffe08a' : '#a8c8d8', A.rrect(20, -36, 20, 16, 2)) + A.S(Wd[0], 1.2, 'M-30 -36V-20M-40 -28H-20M30 -36V-20M20 -28H40') + A.P('#7a5a3a', 'M-60 -46Q-30 -78 0 -80Q30 -78 60 -46Q0 -56 -60 -46z') + A.P('#a07a50', 'M-54 -48Q-30 -72 -6 -76Q-22 -62 -28 -50z', 0.7) + (snow ? A.P(GART_PAL.snow, 'M-58 -47Q-30 -78 0 -80Q30 -78 58 -47Q0 -66 -58 -47z') : '') + `<g transform="translate(0 -60)">${A.P('#f8ecc8', A.rrect(-11, -8, 22, 15, 3))}${A.S('#6a8a4a', 1.6, 'M-7 3Q-3 -5 0 -1T7 -4')}${A.P('#c8352a', A.circ(3, -3, 1.700))}</g>`; },
+  office(sc, o) { const A = GART, Wd = GART_PAL.wood, snow = sc.season === 'winter', night = sc.tod === 'night' || sc.tod === 'dusk'; return A.P('#d8c490', A.rrect(-52, -48, 104, 48, 3)) + A.S(Wd[0], 1, 'M-52 -36H52M-52 -24H52M-52 -12H52', 0.3) + A.P(Wd[1], A.rrect(-9, -32, 18, 32, 2)) + A.P(Wd[3], A.circ(5, -15, 1.400)) + A.P(night ? '#ffe08a' : '#a8c8d8', A.rrect(-40, -36, 20, 16, 2)) + A.P(night ? '#ffe08a' : '#a8c8d8', A.rrect(20, -36, 20, 16, 2)) + A.S(Wd[0], 1.2, 'M-30 -36V-20M-40 -28H-20M30 -36V-20M20 -28H40') + A.P('#7a5a3a', 'M-60 -46Q-30 -78 0 -80Q30 -78 60 -46Q0 -56 -60 -46z') + A.P('#a07a50', 'M-54 -48Q-30 -72 -6 -76Q-22 -62 -28 -50z', 0.7) + (snow ? A.P(GART_PAL.snow, 'M-58 -47Q-30 -78 0 -80Q30 -78 58 -47Q0 -66 -58 -47z') : '') + (typeof gardenCraftBuildingSkin === 'function' ? gardenCraftBuildingSkin({ id: 'land-office' }, sc, { left: -52, right: 52, eave: -47, peak: -80, foot: 0, roofLeft: -60, roofRight: 60, roof: '#7a5a3a', wood: Wd[1], windows: [{ x: -40, y: -36, w: 20, h: 16 }, { x: 20, y: -36, w: 20, h: 16 }], door: { x: -9, y: -32, w: 18, h: 32 } }) : '') + `<g transform="translate(0 -60)">${A.P('#f8ecc8', A.rrect(-11, -8, 22, 15, 3))}${A.S('#6a8a4a', 1.6, 'M-7 3Q-3 -5 0 -1T7 -4')}${A.P('#c8352a', A.circ(3, -3, 1.700))}</g>`; },
   lamp(sc) { const A = GART, on = sc.tod === 'night' || sc.tod === 'dusk'; return A.S('#2f3438', 2.2, 'M0 0V-28M0 -28Q6 -32 7 -28') + A.P('#2f3438', A.rrect(3.400, -28, 7, 3, 1)) + A.P(on ? '#ffd36a' : '#d8d4c4', A.rrect(4, -25, 6, 7, 1.500)) + (on ? A.P('#ffd36a', A.circ(7, -22, 8), 0.22) : ''); },
 };
 function _gldHedgeRow(p, sc) {
@@ -718,13 +718,17 @@ function _gldIslandUnderstoryRows(sc) {
     // Ten-cell chunks keep each retained native drawing small and cullable.
     const mask = chunk.cells.map(([x,y]) => `M${f(x*W.cellW)} ${f(W.sky+y*W.cellH)}h${W.cellW}v${W.cellH}h${-W.cellW}Z`).join('');
     const mass = _GLD_ART.loops(chunk.cells, 'common-' + chunk.id, 5, 0).map(_GLD_ART.dOf).join('');
-    let shade = '', leaves = '', tips = '', stems = '', stones = '', stoneLight = '';
+    let shade = '', leaves = '', tips = '', stems = '', stones = '', stoneLight = '', crafted = ''; 
     for (const [x, y] of chunk.cells) {
       const r = A.rng(A.hash('common-foliage|' + chunk.region.id + '|' + x + ':' + y)), px = (x+.5)*W.cellW, py = W.sky+(y+.53)*W.cellH;
       // Broad irregular patches leave breathing room. Repeating the same
       // cluster in every legal cell makes the clear ground look cultivated.
       const patch = Math.sin(x * .53 + y * .31) + Math.cos(x * .29 - y * .61);
-      if (patch < .35 || r() > .58) continue;
+      if (patch < .48 || r() > (forest ? .42 : .31)) continue;
+      if (typeof gardenCraftUnderstoryClump === 'function') {
+        crafted += gardenCraftUnderstoryClump((x + .5) * W.cellW + (r() - .5) * 3, W.sky + (y + .82) * W.cellH, A.hash('crafted-clump|' + x + ':' + y), theme, sc.season);
+        continue;
+      }
       if (valley) {
         for (let i=0;i<4;i++) { const xx=px-14+r()*28, yy=py+4+r()*5, h=6+r()*6, lean=r()*4-2; stems += `M${f(xx)} ${f(yy)}q${f(lean-2)} ${f(-h*.5)} ${f(lean)} ${f(-h)}M${f(xx+2)} ${f(yy)}q1 ${f(-h*.4)} 4 ${f(-h*.7)}`; }
         if (!winter && (A.hash(x+':'+y) % 5 === 0)) tips += A.circ(px-4+r()*8,py-2,1.5);
@@ -746,7 +750,7 @@ function _gldIslandUnderstoryRows(sc) {
       }
     }
     const html = `<defs><clipPath id="${clip}"><path d="${mask}"/></clipPath></defs><g clip-path="url(#${clip})">`
-      + A.P(colors[0], mass, forest ? .06 : .045)
+      + A.P(colors[0], mass, forest ? .035 : .025) + crafted
       + A.P(colors[0], shade, .42) + A.P(colors[1], leaves, .48) + A.P(colors[2], tips, .38)
       + A.S(colors[0], .9, stems, .77) + A.P(winter ? '#aeb8a6' : '#9b9f88', stones, .82) + A.P(winter ? '#d0d5c7' : '#c2c4a9', stoneLight, .77) + '</g>';
     const xs=chunk.cells.map(p=>p[0]),ys=chunk.cells.map(p=>p[1]);
@@ -945,7 +949,7 @@ function gardenLandWorldProps(sc, o) {
     for (const row of _gldIslandUnderstoryRows(sc)) push('gd-island-understory', -30, 0, row.html, 'understory:' + row.id);
     for (const row of _gldIslandLandformRows(sc)) push('gd-island-landform', (row.foot.y - GARDEN_WORLD.sky) / GARDEN_WORLD.cellH, row.x, row.html, row.id);
     const pal = GART_PAL.leaf[sc.season] || GART_PAL.leaf.summer;
-    for (const tree of _gldIslandRegionStands()) push('gd-island-tree', tree.cellY, tree.cellX, _gwTree(tree.x, tree.y, tree.height / 72, pal, sc.season, GART.rng(tree.seed)), tree.id);
+    for (const tree of _gldIslandRegionStands()) push('gd-island-tree', tree.cellY, tree.cellX, _gwTree(tree.x, tree.y, tree.height / 72, pal, sc.season, GART.rng(tree.seed)) + (typeof gardenCraftTreeDetail === 'function' ? gardenCraftTreeDetail(tree, sc.season) : ''), tree.id);
     push('gd-island-mist', GARDEN_WORLD.rows + 1, 0, _gldIslandRegionMist(sc, o), 'island-region-mist');
   }
   const occ = new Set();
@@ -972,6 +976,7 @@ function gardenLandWorldProps(sc, o) {
     if (occ.has(f.x + ',' + f.y) || f.lv > lv) continue;   // (a spot shows once you could build on it; the land office lists what comes later)
     push('gd-prop-lf gd-prop-click', f.y + f.h, f.x, _gldSiteArt(f, sc, lv), 'site:' + f.id);
   }
+  if (island && typeof gardenExploreDetailRows === 'function') for (const row of gardenExploreDetailRows(sc)) push('gd-island-explore-detail', row.y + .01, row.x, row.html, row.id);
   return out;
 }
 /** A marker for building, as a prop the click code can use (the id is on the drawing). */
@@ -1030,7 +1035,10 @@ function _gldIslandMini(open, season, level, model) {
       x = end;
     }
   }
-  for (const route of data.routes) if (route.points && route.points.length > 1) s += '<path d="' + route.points.map((p, i) => (i ? 'L' : 'M') + p[0] + ' ' + p[1]).join('') + '" fill="none" stroke="#cec4a6" stroke-width="' + route.widthCells + '" stroke-linecap="round" stroke-linejoin="round"/>';
+  for (const route of data.routes) if (route.points && route.points.length > 1) {
+    const style = typeof gardenIslandRoadStyle === 'function' ? gardenIslandRoadStyle(route) : null, main = !!(style && style.main);
+    s += '<path d="' + route.points.map((p, i) => (i ? 'L' : 'M') + p[0] + ' ' + p[1]).join('') + '" fill="none" stroke="' + (main ? '#d4ba87' : '#cec4a6') + '" stroke-width="' + (style ? style.radius * 2 : route.widthCells * .62) + '" stroke-linecap="round" stroke-linejoin="round"/>';
+  }
   s += lockedLand;
   for (const region of data.regions || []) if (region.zone && !open.has('zn-' + region.zone)) for (const polygon of region.polygons) s += '<path d="' + loopPath(polygon, 1, 1) + '" fill="#3c594d" fill-opacity=".67"/>';
   for (const form of data.landforms || []) s += '<path d="' + loopPath(form.polygon, 1, 1) + '" fill="#889583" stroke="#d3d2ad" stroke-width=".15"/>';

@@ -70,6 +70,14 @@ function _gdMovable(list) { return Object.freeze(list); }
 /* The world, version 2 (the owner, 1 Nov 2026: "the main bit is the center of the world, expand in all directions"). The old garden is in the middle, its old x, y now at x + ox, y + oy; land goes off north, east, west and,
    round the lake, south (94-garden-lands-0table.js). The wire carries cells 0..63, so it can grow to 64 x 64. v: a save or a snapshot from another world is moved over, or not drawn (94-garden-lands-1core.js). */
 /* Cells from this column on are not on the map: they are the waters inside the hidden rooms (94-garden-world-4rooms3water.js). They fit what the fish list and a cast already carry (x to 63, y to 31). */
+// An app update can keep a known earlier Garden playable until its deliberate
+// backed-up layout update. Node catalogues always retain canonical authority.
+if (typeof window !== 'undefined' && typeof GardenIslandLegacyLayouts !== 'undefined') {
+  const tagged = typeof APP_CONFIG !== 'undefined' && Object.prototype.hasOwnProperty.call(APP_CONFIG, 'gardenSavedWorld');
+  const saved = tagged ? APP_CONFIG.gardenSavedWorld : typeof state !== 'undefined' && state.garden && [Number(state.garden.seen && state.garden.seen.world), state.garden.seen && state.garden.seen.worldLayout];
+  const legacy = Array.isArray(saved) && saved[0] === 3 && Object.prototype.hasOwnProperty.call(GardenIslandLegacyLayouts, saved[1]) && GardenIslandLegacyLayouts[saved[1]];
+  if (legacy) window.GardenIslandLayout = legacy;
+}
 const GARDEN_ROOM_X = GardenIslandLayout.data.world.roomX;
 const GARDEN_WORLD = _gdF(Object.assign({}, GardenIslandLayout.data.world, { start: _gdF(Object.assign({}, GardenIslandLayout.data.world.start)), lh: GardenIslandLayout.fingerprint }));
 

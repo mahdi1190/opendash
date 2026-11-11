@@ -183,6 +183,16 @@ function _gdpPendingGarden(container) {
       // Reconciliation can remount this view before the request returns. The
       // completed action still opens its exact accepted Garden in that view.
       const savedWorld = state.garden && state.garden.seen;
+      const canonical = gardenCanonicalWorld();
+      if (gardenWorldIsLegacy() && savedWorld && Number(savedWorld.world) === canonical.wv && savedWorld.worldLayout === canonical.lh && result.wv === canonical.wv && result.lh === canonical.lh) {
+        // The new save was committed by the ordinary backed-up update. Reload
+        // its matching catalogue before allowing any new spatial action.
+        if (state._localDirty || _persistTimer || _persistUITimer) await _persistFire();
+        for (let i = 0; i < 20 && _persistInFlight; i++) await new Promise(resolve => setTimeout(resolve, 100));
+        if (state._localDirty || _persistInFlight) { if (mounted()) status.textContent = 'Your Garden is updated. Finish saving current changes, then reload Freeflo to open its matching island.'; return; }
+        const next = result.status === 'publish-pending' ? 'garden:update' : /^garden(?::|$)/.test(String(state.view || '')) ? 'garden' : state.view || 'home';
+        location.hash = 'view=' + encodeURIComponent(next); location.reload(); return;
+      }
       if (result.status !== 'publish-pending' && state.view === 'garden:update' && gardenWorldReady() && savedWorld && Number(savedWorld.world) === result.wv && savedWorld.worldLayout === result.lh) { setView('garden'); return; }
       if (mounted()) {
         if (gardenWorldReady() && result.status !== 'publish-pending') { if (state.view === 'garden:update') setView('garden'); else render(); }

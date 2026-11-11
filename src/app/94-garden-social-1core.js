@@ -189,6 +189,7 @@ function _gscPubSave(m) { try { localStorage.setItem(_GSC_PUB_KEY, JSON.stringif
 function _gscPublishSoon(ms) { clearTimeout(_gsc.pubT); _gsc.pubT = setTimeout(() => { _gscPublish(false).catch(() => {}); }, ms == null ? 90000 : ms); }
 /** Publish your garden when it changed (not more than every 15 minutes), or once in 12 hours so friends see it is current. */
 async function _gscPublish(force) {
+  if (typeof gardenWorldIsLegacy === 'function' && gardenWorldIsLegacy()) return;
   if (_gsc.pubBusy || !_gscServer()) return;
   if (!_gscFriendList().length) return;
   const body = _gscSnapBody();

@@ -136,7 +136,7 @@ function gardenSightKnown(id) {
   if (!GARDEN_SIGHT_PLACE_IDS.includes(id)) return false;
   const seen = _gdG().seen;
   const room = GARDEN_ROOM_SIGHT_ROOMS[id];
-  return !!seen['lde.' + id] || !!(room && seen['pl.rm.' + room + '.f']);
+  return !!seen['lde.' + id] || !!seen['pl.explore.' + id] || !!(room && seen['pl.rm.' + room + '.f']);
 }
 function gardenSightWire() {
   if (GARDEN_WORLD.v < 3) return [];
