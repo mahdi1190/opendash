@@ -171,7 +171,7 @@ window.GardenNativePainted = (function () {
     cx.globalCompositeOperation = 'source-over';
     const key = TEX + '-ground-' + (++groundSerial);
     if (cachedGround && scene.textures.exists(cachedGround.key)) scene.textures.remove(cachedGround.key);
-    scene.textures.addCanvas(key, c); cachedGround = { key, sig }; groundMs = Math.round(performance.now() - started);
+    scene.textures.addCanvas(key, c); cachedGround = { key, sig, box: B, low: false }; groundMs = Math.round(performance.now() - started);
     return show(scene, parent, B, key);
   }
   function show(scene, parent, B, key) {
@@ -216,10 +216,20 @@ window.GardenNativePainted = (function () {
 
   /* ---------- planting: groves, shrubs and reeds in deliberate groups ---------- */
   const GROVE = { summer: ['tree.green-oak', 'tree.green-birch', 'tree.green-chestnut', 'tree.hawthorn', 'tree.green-alder'], autumn: ['tree.green-oak', 'tree.green-birch', 'tree.green-chestnut', 'tree.hawthorn', 'tree.cherry'] };
-  const SHRUB = ['plant.hedge', 'plant.azalea', 'plant.holly', 'plant.gorse', 'plant.hedgerow-blackberry'];
+  const SHRUB = ['plant.holly', 'plant.gorse', 'plant.hedge', 'plant.fern', 'plant.bracken'];
   function planting(scene, parent, info) {
     const W = info.W, made = [], season = info.season || 'summer', trees = GROVE[season] || GROVE.summer; spotCounts = {};
-    const add = (id, v, size, x, y) => { if (!sceneObj(id)) return; const im = objectImage(scene, id, v, season, size, x, y, false); if (!im) return; im.setDepth(y); parent.add(im); made.push(im); };
+    // Trees stay sprites (the player walks behind them); low shrubs and reeds
+    // are painted straight into the cached ground, so a frame never pays for them.
+    const g = cachedGround && scene.textures.exists(cachedGround.key) ? cachedGround : null, gc = g && scene.textures.get(g.key).getSourceImage(), gx = gc && gc.getContext('2d'), paintLow = !!(gx && !g.low);
+    const add = (id, v, size, x, y) => {
+      if (!sceneObj(id)) return;
+      if (size.h && size.h < 50 && gx) {
+        if (!paintLow) return; const o = ok(() => objectCanvas(id, v, season, size)); if (!o) return;
+        const k = K / OBJ_K; gx.drawImage(o.c, (x - g.box.x) * K - o.ox * k, (y - g.box.y) * K - o.oy * k, o.c.width * k, o.c.height * k); return;
+      }
+      const im = objectImage(scene, id, v, season, size, x, y, false); if (!im) return; im.setDepth(y); parent.add(im); made.push(im);
+    };
     for (let cy = info.box.y0; cy <= info.box.y1; cy++) for (let cx = info.box.x0; cx <= info.box.x1; cx++) {
       const spot = info.spot(cx, cy); spotCounts[spot || 'none'] = (spotCounts[spot || 'none'] || 0) + 1; if (!spot) continue;
       const h = (a, b, k) => { let n = Math.imul(a * 374761393 + b * 668265263 + k * 1442695041, 1) >>> 0; n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0; return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
@@ -229,6 +239,7 @@ window.GardenNativePainted = (function () {
       else if ((spot === 'tree' && cluster > .3 || spot === 'edge' && cluster > .35 || spot === 'wild' && r > .4) && r > .3) add(SHRUB[Math.floor(r * 53) % SHRUB.length], Math.floor(r * 7) % 3, { h: 26 + r * 16 }, px, py);
       else if (spot === 'shore' && r > .45) add(r > .75 ? 'plant.bulrush' : 'plant.reed', Math.floor(r * 5) % 3, { h: 30 + r * 14 }, px, py);
     }
+    if (paintLow) { g.low = true; scene.textures.get(g.key).refresh(); }
     lastPlanting = made;
     return { destroy() { for (const im of made) im.destroy(); made.length = 0; }, count: made.length };
   }
