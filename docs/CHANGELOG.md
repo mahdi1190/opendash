@@ -10,6 +10,13 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.67.5] - 2026-11-11
+
+### Changed
+
+- The garden's menus, shop, bag, map and messages now share one warm paper-and-wood look, with bigger labels and plain names, and a word under every bubble button.
+- On small windows nothing covers anything else, and only one message shows at a time.
+
 ## [2.67.4] - 2026-11-11
 
 ### Fixed
