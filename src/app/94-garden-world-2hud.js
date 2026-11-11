@@ -427,7 +427,8 @@ function gardenBubbleOpen(at, o) {
     const b = _gdpEl('button', 'gd-bub-btn' + (it.cls ? ' ' + it.cls : '')); b.type = 'button'; b.setAttribute('role', 'menuitem');
     b.setAttribute('aria-label', it.label); b.setAttribute('data-tip', it.label);
     b.innerHTML = (it.svg || (it.ic ? icon(it.ic) : '')) + (it.n != null ? `<i class="gd-slotn">${esc(String(it.n))}</i>` : '');
-    if (it.text) { b.classList.add('has-text'); b.appendChild(document.createTextNode(it.text)); }   // (words on the button, where a picture would not say it)
+    if (it.text) { b.classList.add('has-text'); b.appendChild(document.createTextNode(it.text)); }
+    else if (it.label) { b.classList.add('has-label'); b.appendChild(_gdpEl('span', 'gd-bub-l', String(it.label).split(':')[0])); }   // (a word under the picture: not everyone reads a picture)   // (words on the button, where a picture would not say it)
     b.onclick = (ev) => { ev.stopPropagation(); if (!it.keep) gardenBubbleClose(); it.run(b); };
     row.appendChild(b);
   }

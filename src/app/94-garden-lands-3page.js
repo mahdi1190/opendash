@@ -137,7 +137,7 @@ function gardenLandsPaint(m) {
   { const g = _gdG();
     if (GARDEN_WORLD.v < 3 && !m.visit && g.seen.worldMoved && !g.seen.worldNoted && typeof openDialog === 'function') {
       g.seen.worldNoted = m.today; if (typeof saveUI === 'function') saveUI();
-      openDialog({ title: 'We rearranged the garden', size: 'sm', body(el) { el.appendChild(_gdpEl('p', null, 'Your garden is now the middle of a bigger world, with land to find in every direction. Everything you had planted is back in your bag as seeds, and everything you had placed is in your bag too. Land and buildings you bought have been paid back in coins. Your coins, level, gear and books are as they were.')); } });
+      openDialog({ title: 'We rearranged the garden', size: 'sm', className: 'gd-popup', body(el) { el.appendChild(_gdpEl('p', null, 'Your garden is now the middle of a bigger world, with land to find in every direction. Everything you had planted is back in your bag as seeds, and everything you had placed is in your bag too. Land and buildings you bought have been paid back in coins. Your coins, level, gear and books are as they were.')); } });
     }
   }
   const want = new Map();
