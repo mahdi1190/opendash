@@ -727,7 +727,7 @@ function openQuickStart() {
 /* ---------- once, after updating (or the quick start after the welcome) ---------- */
 function _wnBusy() {
   return document.hidden || !!document.querySelector('.ap-opening:not(.anim-scene), .modal, .story, .bf-overlay, .ob-card, .anew-card, .wn-ring, .scrim')
-    || document.documentElement.classList.contains('story-open') || (document.documentElement.classList.contains('gd-immersive') || document.documentElement.classList.contains('gsv-immersive'));   // not over the garden
+    || document.documentElement.classList.contains('story-open') || (typeof state !== 'undefined' && state && state.view === 'garden') || (document.documentElement.classList.contains('gd-immersive') || document.documentElement.classList.contains('gsv-immersive'));   // not over the garden
 }
 function _wnAuto(tries) {
   if (typeof _uiSharedBooted !== 'undefined' && !_uiSharedBooted) { if (tries > 0) setTimeout(() => _wnAuto(tries - 1), 1000); return; }   // the state file first: it holds the seen flag

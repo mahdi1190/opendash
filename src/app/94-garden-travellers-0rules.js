@@ -14,6 +14,10 @@ function gardenTravellerRoadPath(road) {
   const shared = typeof gardenIslandRoutePath === 'function' ? gardenIslandRoutePath(road) : road;
   const points = (shared.points || []).map(p => Array.isArray(p) ? { x: p[0], y: p[1] } : { x: p.x, y: p.y });
   if (points.length < 2 || points.some(p => !Number.isFinite(p.x) || !Number.isFinite(p.y))) return null;
+  // The road ends where you arrive, by the post box, where the gnome and the visiting folk stand too: step aside
+  // to the right before lingering so the traveller does not stand on top of them (or you, when you start).
+  // Fixed offset, not a collision check, so host and visitors work out the same walk.
+  { const end = points[points.length - 1]; points.push({ x: end.x + 1.6, y: end.y + 0.35 }); }
   const segments = [], W = GARDEN_WORLD; let distance = 0;
   for (let i=1;i<points.length;i++) { const a=points[i-1],b=points[i],length=Math.hypot((b.x-a.x)*W.cellW,(b.y-a.y)*W.cellH); if(length>.001){segments.push(Object.freeze({a,b,start:distance,length}));distance+=length;} }
   if (!segments.length) return null;
