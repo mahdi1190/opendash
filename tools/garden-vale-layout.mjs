@@ -78,7 +78,8 @@ function ribbon(line, hw, wobble = 0) {
     const w = hw * (1 + wobble * Math.sin(i * 1.7)) ;
     left.push([r2(L[i][0] + nx * w), r2(L[i][1] + ny * w)]); right.push([r2(L[i][0] - nx * w), r2(L[i][1] - ny * w)]);
   }
-  return left.concat(right.reverse());
+  const loop = left.concat(right.reverse()); let area = 0; for (let i = 0; i < loop.length; i++) { const p = loop[i], q = loop[(i + 1) % loop.length]; area += p[0] * q[1] - q[0] * p[1]; }
+  return area < 0 ? loop.reverse() : loop;   // every basin winds the same way
 }
 // Split a polyline at gap points; returns sub-polylines with the gap cut out.
 function splitAt(line, gaps) {
@@ -289,9 +290,10 @@ const reservedSidePiers = [
 ];
 
 /* ------------------------------------------------------------ the cell raster (same rules as 94-garden-0island.js) */
-const land = [COAST];
-const landAt = (x, y) => inLoop(x, y, COAST);
-const coastD = (x, y) => { let d = Infinity; for (let i = 0; i < COAST.length; i++) { const a = COAST[i], b = COAST[(i + 1) % COAST.length], ax = a[0] * W.cellW, ay = a[1] * W.cellH, dx = (b[0] - a[0]) * W.cellW, dy = (b[1] - a[1]) * W.cellH, t = Math.max(0, Math.min(1, ((x * W.cellW - ax) * dx + (y * W.cellH - ay) * dy) / (dx * dx + dy * dy || 1))); d = Math.min(d, Math.hypot(x * W.cellW - ax - dx * t, y * W.cellH - ay - dy * t)); } return d; };
+const signedArea = l => { let a = 0; for (let i = 0; i < l.length; i++) { const p = l[i], q = l[(i + 1) % l.length]; a += p[0] * q[1] - q[0] * p[1]; } return a / 2; };
+const landLoop = smoothLoop(COAST, 4).map(p => p.map(r2)), land = [signedArea(landLoop) > 0 ? landLoop : landLoop.reverse()];   // the same winding as v4's coast
+const landAt = (x, y) => inLoop(x, y, land[0]);
+const coastD = (x, y) => { let d = Infinity; for (let i = 0; i < land[0].length; i++) { const a = land[0][i], b = land[0][(i + 1) % land[0].length], ax = a[0] * W.cellW, ay = a[1] * W.cellH, dx = (b[0] - a[0]) * W.cellW, dy = (b[1] - a[1]) * W.cellH, t = Math.max(0, Math.min(1, ((x * W.cellW - ax) * dx + (y * W.cellH - ay) * dy) / (dx * dx + dy * dy || 1))); d = Math.min(d, Math.hypot(x * W.cellW - ax - dx * t, y * W.cellH - ay - dy * t)); } return d; };
 const inRect = (x, y, r) => r && x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h;
 const onRoute = (x, y, r) => lineD(x, y, r.points) <= r.widthCells / 2;
 const cells = [];
