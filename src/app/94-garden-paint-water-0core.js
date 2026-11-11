@@ -233,10 +233,11 @@ window.GardenPaintWater = (function () {
         const westBank = kind === 'mere' && a.x < all.x + all.w * .32 && a.y > all.y + all.h * .35, estuary = kind === 'river' && a.y > W.sky + 74 * W.cellH;
         const bed = field(i) > bedAt - (westBank || estuary ? .3 : 0) && !(kind === 'mere' && nn.y < -.5 && a.x > all.x + all.w * .3 && a.x < all.x + all.w * .55);
         if (!bed && r() > .06) continue;
-        const clump = [], cnt = bed ? 6 + Math.floor(r() * 6) : 3, mixIds = estuary ? ['plant.proof-fleet-reed', 'plant.proof-fleet-reed', 'plant.yg-reedbed', 'plant.bulrush'] : westBank ? ['plant.proof-fleet-reed', 'plant.bulrush', 'plant.proof-fleet-rush', 'plant.canal-view-loosestrife'] : ['plant.proof-fleet-reed', 'plant.proof-fleet-rush', 'plant.reed', 'plant.bulrush'];
-        for (let k = 0; k < cnt; k++) { const o = (r() - .62) * 22, along = (r() - .5) * 24, id = mixIds[Math.floor(r() * mixIds.length)]; clump.push([a.x + nn.x * o - nn.y * along, a.y + nn.y * o + nn.x * along, id, Math.floor(r() * 3), (id === 'plant.yg-reedbed' ? 26 : 30) + r() * (bed ? 26 : 14)]); }
+        const clump = [], cnt = bed ? 6 + Math.floor(r() * 6) : 3, mixIds = estuary ? ['plant.reed', 'plant.reed', 'plant.proof-fleet-reed', 'plant.bulrush'] : westBank ? ['plant.reed', 'plant.bulrush', 'plant.proof-fleet-rush', 'plant.canal-view-loosestrife'] : ['plant.reed', 'plant.proof-fleet-rush', 'plant.reed', 'plant.bulrush'];
+        for (let k = 0; k < cnt; k++) { const o = (r() - .62) * 22, along = (r() - .5) * 24, id = mixIds[Math.floor(r() * mixIds.length)]; clump.push([a.x + nn.x * o - nn.y * along, a.y + nn.y * o + nn.x * along, id, Math.floor(r() * 3), 24 + r() * (bed ? 22 : 12)]); }
         clump.sort((p, q) => p[1] - q[1]);
         add({ x: a.x - 50, y: a.y - 80, w: 100, h: 110 }, (cx, C, ctx) => { for (const [x, y, id, v, h] of clump) ctx.stamp(id, v, h, x, y); });
+        out[out.length - 1].needs = clump.map(q => [q[2], q[3], q[4]]);
       }
     }
     return out;
@@ -244,6 +245,7 @@ window.GardenPaintWater = (function () {
 
   /* ---------- library stamps (reeds, lilies) through the Painted village baker ---------- */
   const stamps = new Map();
+  const stampKey = (id, v, season, h) => id + '|' + v + '|' + season + '|' + Math.max(12, Math.round(h / 12) * 12);
   function stampCanvas(id, v, season, h) {
     const hq = Math.max(12, Math.round(h / 12) * 12), key = id + '|' + v + '|' + season + '|' + hq; if (stamps.has(key)) return stamps.get(key);
     const GP = window.GardenNativePainted; let s = null;
@@ -268,13 +270,19 @@ window.GardenPaintWater = (function () {
   }
   function stepJob(job, budget) {
     const S = state, t0 = performance.now(), C = S.P, cx = job.cx;
-    const ctx = { stamp(id, v, h, x, y) { const s = stampCanvas(id, v, S.season, h); if (!s) return; const k = (h / s.hq) / (s.k || 2); cx.drawImage(s.c, x - s.ox * k, y - s.oy * k, s.c.width * k, s.c.height * k); } };
-    while (job.i < job.list.length && performance.now() - t0 < budget) { const f = job.list[job.i++]; ok(() => f.draw(cx, C, ctx)); cx.globalAlpha = 1; }
+    const ctx = { stamp(id, v, h, x, y) { const s = stampCanvas(id, v, S.season, h); if (!s) return; const k = (h / s.hq) / 2; cx.drawImage(s.c, x - s.ox * k, y - s.oy * k, s.c.width * k, s.c.height * k); } };
+    while (job.i < job.list.length && performance.now() - t0 < budget) {
+      const f = job.list[job.i];
+      // a library stamp not yet drawn costs a frame of its own
+      const miss = f.needs && f.needs.find(q => !stamps.has(stampKey(q[0], q[1], S.season, q[2])));
+      if (miss) { if (performance.now() - t0 > .5) break; stampCanvas(miss[0], miss[1], S.season, miss[2]); break; }
+      job.i++; ok(() => f.draw(cx, C, ctx)); cx.globalAlpha = 1;
+    }
     job.ms += performance.now() - t0;
     if (job.i < job.list.length) return false;
     const ch = job.ch, B = ch.box, key = TEX + '-' + ch.key + '-' + (++S.serial), u0 = performance.now();
     S.scene.textures.addCanvas(key, job.c); ch.tex = key; ch.bytes = job.c.width * job.c.height * 4;
-    ch.image = S.scene.add.image(B.x, B.y, key).setOrigin(0, 0).setScale(1 / K).setDepth(-9590); S.parent.add(ch.image); S.sortParent = true;
+    ch.image = S.scene.add.image(B.x, B.y, key).setOrigin(0, 0).setDisplaySize(B.w + 1, B.h + 1).setDepth(-9590); S.parent.add(ch.image); S.sortParent = true;
     job.ms += performance.now() - u0; bakeMs += job.ms; bakes++; worstBake = Math.max(worstBake, performance.now() - t0);
     return true;
   }

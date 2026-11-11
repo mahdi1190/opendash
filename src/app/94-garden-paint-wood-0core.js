@@ -37,7 +37,7 @@ window.GardenPaintWood = (function () {
     'west-woods': { name: 'Whispering woodland', mood: 'light', density: .5, trees: [['tree.pool-birch', 3, 150], ['tree.green-birch', 3, 140], ['tree.green-chestnut', 3, 190], ['tree.green-oak', 2, 200], ['tree.canal-oak', 2, 210], ['tree.hawthorn', 1, 110]], under: [['plant.fern', 3], ['plant.bracken', 2], ['plant.holly', 1]], floor: { litter: '#7d7a4a', shade: '#3f5232', moss: '#6f8a42', sun: '#e9e0a0', leaf: ['#9a8a4e', '#b39a5a', '#6f6a3c'] } },
     'southwest-ruins': { name: 'The old woodland', mood: 'old', density: .58, trees: [['tree.canal-oak', 3, 240], ['tree.wyv-far-oak', 2, 230], ['tree.proof-yew', 2, 170], ['tree.green-oak', 2, 220], ['tree.wyv-snag', 1, 170]], under: [['plant.fern', 3], ['plant.holly', 2], ['plant.bracken', 1]], floor: { litter: '#5f6a3e', shade: '#2c3c28', moss: '#5f7f3a', sun: '#d8dca0', leaf: ['#6f6a3c', '#857a44', '#4f5a32'] } },
   };
-  const SEASON_TONE = { autumn: { litter: '#9a7a40', leaf: ['#b8763a', '#d09a48', '#8a5a2c'] }, winter: { litter: '#8a8670', leaf: ['#8f8a74', '#a49e86', '#6f6b5a'] } };
+  const SEASON_TONE = { autumn: { litter: '#857a46', leaf: ['#a8703a', '#c08c44', '#7a5a30'] }, winter: { litter: '#8a8670', leaf: ['#8f8a74', '#a49e86', '#6f6b5a'] } };
 
   function build(info, cellAt) {
     const W = info.W, data = info.data, out = { trees: [], floors: [], lights: [], shafts: [], W };
@@ -111,10 +111,25 @@ window.GardenPaintWood = (function () {
       for (const [x, y] of f.land) {
         const X = x * W.cellW + W.cellW / 2, Y = W.sky + y * W.cellH + W.cellH / 2; if (X < view.x || X > view.x + view.w || Y < view.y || Y > view.y + view.h) continue;
         const g = noise(x, y, 5, hash(f.region) & 1023), rr = rng(hash(f.region) ^ (x * 977 + y * 131));
-        cx.globalAlpha = .8; cx.fillStyle = F.litter; cx.fill(new Path2D(sceneDraw.blob(rr, X, Y, W.cellW * .78, W.cellH * .8, 8, .3)));
-        // canopy shade where the groves are thick, sunlit floor in the glades
-        if (g > .45) { cx.globalAlpha = Math.min(.42, (g - .45) * 1.1); cx.fillStyle = F.shade; cx.fill(new Path2D(sceneDraw.blob(rr, X + (rr() - .5) * 20, Y, W.cellW * .9, W.cellH * .85, 9, .4))); }
-        else if (g < .34) { cx.globalAlpha = (.34 - g) * 1.3; cx.fillStyle = F.sun; cx.fill(new Path2D(sceneDraw.blob(rr, X, Y, W.cellW * .7, W.cellH * .6, 9, .45))); }
+        // one opaque union of big jittered lobes: the floor's colour with an organic edge, no cell pattern
+        cx.globalAlpha = 1; cx.fillStyle = F.litter; cx.fill(new Path2D(sceneDraw.blob(rr, X + (rr() - .5) * 16, Y + (rr() - .5) * 10, W.cellW * (.8 + rr() * .3), W.cellH * (.85 + rr() * .3), 9, .3)));
+      }
+      // broad drifts of tone over the union, from smooth fields: canopy shade under
+      // the groves, sun in the glades, green moss and grass where it is damp
+      for (const [x, y] of f.land) {
+        if ((x + y * 3) % 2) continue; const X = x * W.cellW + W.cellW / 2, Y = W.sky + y * W.cellH + W.cellH / 2; if (X < view.x || X > view.x + view.w || Y < view.y || Y > view.y + view.h) continue;
+        const g = noise(x, y, 5, hash(f.region) & 1023), m = noise(x, y, 3.3, 501), rr = rng(hash(f.region + 'd') ^ (x * 613 + y * 271));
+        const blob = (a, col, sx, sy) => { cx.globalAlpha = a; cx.fillStyle = col; cx.fill(new Path2D(sceneDraw.blob(rr, X + (rr() - .5) * 30, Y + (rr() - .5) * 18, W.cellW * sx, W.cellH * sy, 10, .45))); };
+        if (g > .5) blob(Math.min(.34, (g - .5) * 1.2), F.shade, 1.5, 1.4);
+        else if (g < .36) blob((.36 - g) * 1.4, F.sun, 1.3, 1.1);
+        if (m > .58) blob((m - .58) * 1.6, F.moss, 1.2, 1);
+        else if (m < .3) blob((.3 - m) * 1.2, F.leaf[x % 3], 1.1, .9);
+      }
+      cx.globalAlpha = 1;
+      // fine detail last, so no lobe covers it: litter flecks, moss, spring bluebells
+      for (const [x, y] of f.land) {
+        const X = x * W.cellW + W.cellW / 2, Y = W.sky + y * W.cellH + W.cellH / 2; if (X < view.x || X > view.x + view.w || Y < view.y || Y > view.y + view.h) continue;
+        const g = noise(x, y, 5, hash(f.region) & 1023), rr = rng(hash(f.region + 'f') ^ (x * 977 + y * 131));
         // leaf litter flecks and moss
         for (let i = 0; i < 6; i++) { cx.globalAlpha = .45; cx.fillStyle = F.leaf[i % 3]; const lx = X + (rr() - .5) * W.cellW, ly = Y + (rr() - .5) * W.cellH; cx.beginPath(); cx.ellipse(lx, ly, 1.6 + rr() * 1.6, .9 + rr() * .7, rr() * 3, 0, Math.PI * 2); cx.fill(); }
         if (rr() < (f.def.mood === 'old' ? .5 : .25)) { cx.globalAlpha = .5; cx.fillStyle = F.moss; cx.fill(new Path2D(sceneDraw.blob(rr, X + (rr() - .5) * 20, Y + (rr() - .5) * 10, 8 + rr() * 10, 4 + rr() * 4, 7, .5))); }
@@ -125,13 +140,13 @@ window.GardenPaintWood = (function () {
     }
     for (const f of S.M.floors) {
       if (f.kind !== 'stamp' || f.x < view.x || f.x > view.x + view.w || f.y < view.y || f.y > view.y + view.h) continue;
-      const s = stampCanvas(f.id, f.v, season, f.h); if (!s) continue; const k = (f.h / s.hq) / (s.k || 2); cx.drawImage(s.c, f.x - s.ox * k, f.y - s.oy * k, s.c.width * k, s.c.height * k);
+      const s = stampCanvas(f.id, f.v, season, f.h); if (!s) continue; const k = (f.h / s.hq) / 2; cx.drawImage(s.c, f.x - s.ox * k, f.y - s.oy * k, s.c.width * k, s.c.height * k);
     }
     // each tree's soft contact shadow on the floor, under the sprite
     for (const t of S.M.trees) { if (t.x < view.x || t.x > view.x + view.w || t.y < view.y || t.y > view.y + view.h) continue; const g = cx.createRadialGradient(t.x + 6, t.y, 0, t.x + 6, t.y, t.h * .28); g.addColorStop(0, 'rgba(30,40,24,.32)'); g.addColorStop(1, 'rgba(30,40,24,0)'); cx.fillStyle = g; cx.save(); cx.translate(t.x + 6, t.y); cx.scale(1, .32); cx.translate(-t.x - 6, -t.y); cx.beginPath(); cx.arc(t.x + 6, t.y, t.h * .28, 0, Math.PI * 2); cx.fill(); cx.restore(); }
     const key = TEX + '-' + ch.key + '-' + (++S.serial);
     S.scene.textures.addCanvas(key, c); ch.tex = key; ch.bytes = c.width * c.height * 4;
-    ch.image = S.scene.add.image(B.x, B.y, key).setOrigin(0, 0).setScale(1 / K).setDepth(-9594); S.root.add(ch.image); S.sortRoot = true;
+    ch.image = S.scene.add.image(B.x, B.y, key).setOrigin(0, 0).setDisplaySize(B.w + 1, B.h + 1).setDepth(-9594); S.root.add(ch.image); S.sortRoot = true;
     const ms = performance.now() - t0; bakes++; bakeMs += ms; worstBake = Math.max(worstBake, ms);
   }
   function dropChunk(ch) { if (ch.image) ch.image.destroy(); if (ch.tex && state.scene.textures.exists(ch.tex)) state.scene.textures.remove(ch.tex); ch.image = null; ch.tex = null; ch.bytes = 0; }
