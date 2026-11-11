@@ -302,7 +302,7 @@ window.GardenRoomArt = (function () {
     if (job.done) show();
     // The bake runs on its own short tasks between frames (never one long
     // one), so it finishes in about its own cost even when frames are slow.
-    const pump = () => { if (dead || image) return; status.frames++; if (step(scene, room, job)) { show(); return; } setTimeout(pump, 0); };
+    const pump = () => { if (dead || image) return; status.frames++; if (step(scene, room, job)) { show(); return; } if (job.band >= BANDS) requestAnimationFrame(pump); else setTimeout(pump, 0); };   // (one strip upload a frame)
     if (!job.done) setTimeout(pump, 0);
     const handle = {
       root, node: { children: [] }, roomLayer: null, painted: true, status,

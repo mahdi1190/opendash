@@ -198,7 +198,7 @@ GRA_ROOMS.barnloft = {
     T.floorBoards(392, 600, { base: '#7a5a30', n: 14 });
     T.rect(0, 392, 960, 208, T.lin(0, 392, 0, 600, [[0, '#c8a050', .55], [1, '#8a6a30', .4]]));
     cx.lineCap = 'round';
-    for (let i = 0; i < 1400; i++) { const x = T.r() * 960, y = 396 + T.r() * 204, l = 6 + T.r() * 14, a = (T.r() - .5) * 1.2; cx.strokeStyle = T.pick(['#e8c870', '#b8903a', '#f4dc90', '#8a6428']); cx.globalAlpha = .55; cx.lineWidth = .9 + T.r(); cx.beginPath(); cx.moveTo(x, y); cx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l * .4); cx.stroke(); }
+    for (let i = 0; i < 1400; i++) { if (i === 700) { T.alpha(1); yield; } const x = T.r() * 960, y = 396 + T.r() * 204, l = 6 + T.r() * 14, a = (T.r() - .5) * 1.2; cx.strokeStyle = T.pick(['#e8c870', '#b8903a', '#f4dc90', '#8a6428']); cx.globalAlpha = .55; cx.lineWidth = .9 + T.r(); cx.beginPath(); cx.moveTo(x, y); cx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l * .4); cx.stroke(); }
     T.alpha(1); T.skirt(396, .45);
     T.shaft([[404, 176], [556, 176], [764, 600], [196, 600]], '#fff0b8', .32, 176, 600);
     T.ell(480, 520, 260, 60, '#fff4c8', .12);

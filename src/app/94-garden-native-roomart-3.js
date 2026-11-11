@@ -193,12 +193,12 @@ GRA_ROOMS.icehouse = {
     T.rect(0, 0, 960, 600, '#121c24');
     const dome = 'M30 392Q30 0 480 0Q930 0 930 392Z';
     T.fill(dome, '#3e5a6c');
-    T.clip(dome, () => {
-      // the dome's brick rings, each course a ring of bricks
-      for (let i = 1; i < 10; i++) {
+    // the dome's brick rings, each course a ring of bricks (three rings a step)
+    for (let i0 = 1; i0 < 10; i0 += 3) { T.clip(dome, () => { for (let i = i0; i < Math.min(10, i0 + 3); i++) {
         const rx = 30 + i * 48, ry = 22 + i * 44, n = 10 + i * 6;
         for (let k = 0; k < n; k++) { const a0 = Math.PI + k / n * Math.PI, a1 = Math.PI + (k + .92) / n * Math.PI, c = T.shade('#6a8a9c', (T.r() - .5) * .3 - i * .02); cx.beginPath(); cx.ellipse(480, 392, rx, ry, 0, a0, a1); cx.ellipse(480, 392, rx + 44, ry + 42, 0, a1, a0, true); cx.closePath(); cx.fillStyle = c; cx.fill(); }
-      }
+      } }); yield; }
+    T.clip(dome, () => {
       T.rect(30, 0, 900, 392, T.rad(480, 40, 560, [[0, '#f0faff', .45], [.4, '#a8d0e4', .12], [1, '#0a1820', .7]]));
     });
     yield;
