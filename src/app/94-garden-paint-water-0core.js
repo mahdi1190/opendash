@@ -223,14 +223,20 @@ window.GardenPaintWater = (function () {
     //    banks (never in rows), thickest where the design asks (the Mere's west
     //    reed bank, the brook mouth, the estuary).
     if (kind !== 'gorge' && kind !== 'spring') {
-      const want = kind === 'mere' ? .17 : kind === 'river' ? .1 : .12;
+      // beds, not a sprinkle: runs of the bank (picked by a smooth field along
+      // it) carry dense reeds standing in the shallows, with rushes and
+      // loosestrife mixed in; between the beds a single clump now and then.
+      const seed = hash(f.id) & 1023, field = i => { const u = i / 9, k = Math.floor(u), t = u - k, s = t * t * (3 - 2 * t), h = j => ((Math.imul((j + seed) * 374761393, 668265263) >>> 0) % 1000) / 1000; return h(k) * (1 - s) + h(k + 1) * s; };
+      const bedAt = kind === 'mere' ? .5 : kind === 'river' ? .58 : kind === 'brook' ? .6 : .55;
       for (let i = 0; i < n; i++) {
         const a = pts[i], nn = norm(i);
-        const westBank = kind === 'mere' && a.x < all.x + all.w * .3, estuary = kind === 'river' && a.y > W.sky + 76 * W.cellH;
-        if (r() > want * (westBank || estuary ? 2.4 : 1)) continue;
-        const clump = [], cnt = 3 + Math.floor(r() * 5), ids = r() < .5 ? ['plant.proof-fleet-reed', 'plant.reed'] : r() < .5 ? ['plant.bulrush', 'plant.proof-fleet-rush'] : ['plant.proof-fleet-reed', 'plant.canal-view-loosestrife'];
-        for (let k = 0; k < cnt; k++) { const o = (r() - .35) * 14, along = (r() - .5) * 26; clump.push([a.x + nn.x * o - nn.y * along, a.y + nn.y * o + nn.x * along, ids[k % ids.length], Math.floor(r() * 3), 22 + r() * 18]); }
-        add({ x: a.x - 40, y: a.y - 60, w: 80, h: 80 }, (cx, C, ctx) => { for (const [x, y, id, v, h] of clump) ctx.stamp(id, v, h, x, y); });
+        const westBank = kind === 'mere' && a.x < all.x + all.w * .32 && a.y > all.y + all.h * .35, estuary = kind === 'river' && a.y > W.sky + 74 * W.cellH;
+        const bed = field(i) > bedAt - (westBank || estuary ? .3 : 0) && !(kind === 'mere' && nn.y < -.5 && a.x > all.x + all.w * .3 && a.x < all.x + all.w * .55);
+        if (!bed && r() > .06) continue;
+        const clump = [], cnt = bed ? 6 + Math.floor(r() * 6) : 3, mixIds = estuary ? ['plant.proof-fleet-reed', 'plant.proof-fleet-reed', 'plant.yg-reedbed', 'plant.bulrush'] : westBank ? ['plant.proof-fleet-reed', 'plant.bulrush', 'plant.proof-fleet-rush', 'plant.canal-view-loosestrife'] : ['plant.proof-fleet-reed', 'plant.proof-fleet-rush', 'plant.reed', 'plant.bulrush'];
+        for (let k = 0; k < cnt; k++) { const o = (r() - .62) * 22, along = (r() - .5) * 24, id = mixIds[Math.floor(r() * mixIds.length)]; clump.push([a.x + nn.x * o - nn.y * along, a.y + nn.y * o + nn.x * along, id, Math.floor(r() * 3), (id === 'plant.yg-reedbed' ? 26 : 30) + r() * (bed ? 26 : 14)]); }
+        clump.sort((p, q) => p[1] - q[1]);
+        add({ x: a.x - 50, y: a.y - 80, w: 100, h: 110 }, (cx, C, ctx) => { for (const [x, y, id, v, h] of clump) ctx.stamp(id, v, h, x, y); });
       }
     }
     return out;
@@ -372,7 +378,7 @@ window.GardenPaintWater = (function () {
     // rafts drifting out into the Mere, spray and mist rising off it.
     const F = pres.falls;
     if (F) {
-      const lipX = cx(F.x + F.w / 2), lipY = cy(F.y + (F.h || 3) * .6), pool = F.pool ? { x: cx(F.pool[0]), y: cy(F.pool[1]) } : { x: lipX, y: lipY + 60 }, r = rng(hash('falls-pool'));
+      const lipX = cx(F.x + F.w / 2), lipY = cy(F.y + (F.h || 3) * .6), fs = (data.static || []).find(s => s.id === 'ld-falls'), pool = fs ? { x: cx(fs.x + fs.w / 2), y: cy(fs.y + (fs.h || 1)) + 8 } : F.pool ? { x: cx(F.pool[0]), y: cy(F.pool[1]) } : { x: lipX, y: lipY + 60 }, r = rng(hash('falls-pool'));
       const width = F.w * W.cellW * .55, rafts = []; for (let i = 0; i < 22; i++) { const a = r() * Math.PI, d = 20 + r() * 90; rafts.push([pool.x + Math.cos(a) * d * 1.3 * (r() < .5 ? -1 : 1), pool.y + Math.sin(a) * d * .45 + 8, 3 + r() * 8, r()]); }
       extras.push({ b: { x: pool.x - 200, y: pool.y - 120, w: 400, h: 260 }, draw(c, C) {
         const w = M.waters.find(w => w.kind === 'mere'); if (w) { const p = new Path2D(); p.moveTo(w.pts[0].x, w.pts[0].y); for (const z of w.pts) p.lineTo(z.x, z.y); p.closePath(); c.save(); c.clip(p); }
