@@ -57,3 +57,53 @@ wdTaleAdd({ id: 'jam', kind: 'small', title: 'The jam', journal: 'Who took Mothe
 - Heavy pasts stay in the past and off screen. They are never a reward, a puzzle or a shock. Survivors are whole people, the blame belongs to whoever did the harm, and nobody is owed forgiveness.
 - Gore belongs only to the mill mystery, and only implied.
 - The story bible (themes, cast, acts, clue table, endings) is kept with the design notes outside the repo; ask for it before writing a main-line or arc beat.
+
+## Files
+
+| File | What |
+|---|---|
+| `94-garden-wonder-1tale.js` | the engine; also `wdTaleDrop(id)` and `wdTaleBeat(storyId, beat, afterId)` |
+| `94-garden-wonder-1tales.js` | the main line (the mill: Acts I to VII), things noticed, Pip's arc, ten small stories, and Hollin as a resident |
+| `94-garden-wonder-1tales2-*.js` | files that load after the main line and may add beats to it: `-thistle` ("The old house"), `-quince` ("Telling the bees"), `-woods` (Hollin's "What the woods keep", Quince's "The woods back", the woodcutter's surface story, and the mill supper and toast), and `-v` (forty small `v-` stories). Drafts: `C:/tmp/stories/*.md` |
+
+New story files go in as `94-garden-wonder-1tales2-<topic>.js`.
+
+## Decisions (story lead, 11 Nov 2026)
+
+- **Gentle telling.**
+  - Thistle's and Quince's own arcs are `soft`: their everyday lives stay, and the heavy lines carry soft words with no abuse in them.
+  - Hollin's arc and "The woods back" are `skip`.
+  - The woodcutter's surface story (`woods`) is `keep`, so every player meets him.
+- **Heavy moments.** At most one a day, never on a day the main line moved, and only at the person's home (`home: 1`). Thistle's are never told in winter, when she is under the leaves.
+- **Place beats** are narration only: no choices and no sitting. When a place should lead to a conversation, it sets a flag, and a person's beat picks that up.
+- **The angler's Hollin line** moved from `mill.truth` to the mill supper and toast after Act VII (`mill.supper`, `mill.toast`), as the woodsman draft proposed.
+- **`hollin.seat` and `mill.seat`** take `yes`, `no` or `apart`, where `apart` is a stool at the edge, by the trees.
+- **The cider fair** falls on the Saturdays of the last full week of September (`season` autumn, `weekday: 6`, helper `_wqFairDay` in `-quince`).
+- **Does he stay?** There is no fixed good ending. He leaves ten days after the harvest supper. A later beat may let him stay only if Quince never objected (no `quince.no`) and the village made room (`hollin.seat` is `yes`), and even then it is uneasy, and Thistle still won't lay his place.
+- **Fog** stands in as a damp or cold dawn (`fog: 1`) until the weather has fog.
+- **Travellers** speak like places at the quay (`who: 'traveller'`) until they walk the arrival road.
+
+## To do (for whoever continues)
+
+1. **Anchors the layout must provide.** The vale's `static` / `placementAnchors` ids, with a fallback already listed after each one in the stories:
+   - `ld-woodhut`: Hollin's hut, in the old woodland, off the ruins circuit
+   - `ld-oldhouse`: Thistle's old house at the top of the woods. `ld-house` is the marsh summer house
+   - `ld-ruined-arch`
+   - `ld-falls-cave`
+   - `ld-lamp-room`
+   - `ld-mill-office`
+   - `ld-hothouse`
+   - `ld-terrace-bench`
+   - `ld-lighthouse`
+   - `ld-hull`
+
+   Home and plaza ids (`great-oak-clearing`, `mill-yard`, `ruin-court`, `cider-square`, `summit-cairn`) come from `presentation.plazas`.
+2. **Rewards the drafts propose but the engine can't give yet:** keepsakes (Fen's two bottles, the teacup), and recipes (Quince's cider cake, Thistle's nothing soup). Search the drafts for `reward (proposed)`.
+3. **The Journal** (`C:/tmp/journal/JOURNAL.md`): the Stories tab under Keepsakes is a first version and should become the Field Journal's story pages.
+4. **More small stories for the orchard (zone 4) and Cloudbreak (zone 5).** The forty `v-` stories lean to the village and the woods. Region notes are in `C:/tmp/regions/*.md`.
+5. **Hollin's figure** (painted figures). He uses the folk's default art for now.
+6. **Beats waiting on systems that don't exist yet:**
+   - the harvest supper as a world event
+   - the market stall
+   - the walk with Thistle to the old house (a follow-me path)
+   - the bell at the fair
