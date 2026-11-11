@@ -314,7 +314,10 @@ window.GardenNativeWorld = (function () {
     // are shared; outside its feathered box the island keeps this painting.
     let packGround = null, packPlanting = null;
     function packOn() { const on = !!(window.GardenNativePainted && GardenNativePainted.wanted() && GardenNativePainted.ready() && typeof gardenIslandActive === 'function' && gardenIslandActive()); if (on) GardenNativePainted.overLayer = rootNode._inner; return on; }
-    function clearPack() { if (packGround) packGround.destroy(); if (packPlanting) packPlanting.destroy(); packGround = packPlanting = null; }
+    function clearPack() { if (packGround) packGround.destroy(); if (packPlanting) packPlanting.destroy(); packGround = packPlanting = null; if (window.GardenPaintNature) GardenPaintNature.clear(); }
+    // Painted nature (94-garden-paint-*.js): the vale's water and woods, drawn from the layout.
+    function natureLayers(sc, cellAt) { if (window.GardenPaintNature) try { GardenPaintNature.paint(scene, rootNode._inner, objects._inner || objects.target, { W, data: GardenIslandLayout.data, season: sc.season, tod: sc.tod, cellAt }); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); } }
+    function natureTick(time) { if (!window.GardenPaintNature) return; const cam = scene.cameras.main, zx = cam.zoomX || cam.zoom || 1, zy = cam.zoomY || cam.zoom || 1; GardenPaintNature.tick(time, { x: cam.scrollX + cam.width / 2 - cam.width / zx / 2, y: cam.scrollY + cam.height / 2 - cam.height / zy / 2, w: cam.width / zx, h: cam.height / zy }); }
     function packLayers(m, sc, island, cellAt, cultivatedNow, cells) {
       if (!island || !packOn()) return false;
       const D = GardenIslandLayout.data, start = D.anchors.start;
@@ -359,6 +362,7 @@ window.GardenNativeWorld = (function () {
         return near(x, y, 2, isPath) ? 'edge' : 'tree';
       };
       try { packPlanting = GardenNativePainted.planting(scene, objects._inner || objects.target, { W, box: cbox, spot, season: sc.season }); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); }
+      natureLayers(sc, cellAt);
       sorted = true;
       return true;
     }
@@ -1349,7 +1353,7 @@ window.GardenNativeWorld = (function () {
         if (editorPaint) { const paint = editorPaint; editorPaint = null; paint(); }
         for (let i = 0; i < steps; i++) { _gw.t = (_gw.t || 0) + dt; move(dt); }
         drawPlayer(time); updateCamera(frameDt, !_gw.cam.init); drawRoute(); for (const row of dynamic.values()) if (typeof row.update === 'function') row.update(frameDt, row);
-        cullAndCache();
+        cullAndCache(); natureTick(time);
         const lighting = window.GardenNative && GardenNative.lighting(), environment = lighting && lighting.environment ? lighting.environment() : {};
         for (const row of drawings.values()) if (row.handle.kind && row.handle.update) row.handle.update(time, environment);
         sortObjects();
