@@ -84,7 +84,7 @@ function _gpAwaySvg() {
 }
 /** Somewhere clear near the gate, the same each time. */
 function _gpAwaySpot(m) {
-  const S = { x: 24, y: 15 };   // the green by the square: near where you come in, and clear of the shops' roofs
+  const S = typeof gardenStarterCell === 'function' ? gardenStarterCell(24, 15) : { x: 24, y: 15 };   // near where you come in (a v3 cell: on the island it maps beside the start, else it fell in the locked woods)
   for (let r = 0; r <= 9; r++) for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [-1, -1], [1, -1], [0, 1], [-1, 1], [1, 1]]) {
     const x = S.x + dx * r, y = S.y + dy * r; let ok = true;
     for (const [a, b] of [[0, 0], [1, 0]]) { const k = (x + a) + ',' + (y + b); if (m.occ.has(k) || gardenPropAt(x + a, y + b) || !gardenWalkable(x + a, y + b) || gardenLandPathAt(x + a, y + b)) ok = false; }
