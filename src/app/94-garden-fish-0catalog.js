@@ -34,7 +34,7 @@ function _gfJ(id, name, cat, price, look, blurb, more) {
 }
 /* zone: 'pond' the garden pond; 'shallow', 'mid', 'deep' the lake by rows from the shore (gardenWaterZone).
    diff 1..10 how hard the fish is to hold; beh how it swims in the reel (smooth, dart, floater, sinker, mixed). */
-const GARDEN_FISH = Object.freeze([
+const _GF_ALL = Object.freeze([   // every fish row ever drawn: the art and the old ids (the vale's own list is GARDEN_FISH, below the bugs)
   /* --- the pond --- */
   _gfF('goldfish', 'Goldfish', ['pond'], 'common', 2, 'smooth', [8, 22], 5, { s: 'fancy', c: '#f08a2a', c2: '#ffc15a', c3: '#d85a1a', p: 'none' }, { blurb: 'Round, orange and unbothered.' }),
   _gfF('bitterling', 'Bitterling', ['pond'], 'common', 2, 'dart', [4, 9], 4, { s: 'slim', c: '#9ab4c8', c2: '#e8d8c8', c3: '#d85a6a', p: 'stripe' }, { blurb: 'Tiny and shimmery, with a rosy flush.' }),
@@ -381,8 +381,6 @@ const GARDEN_FISH = Object.freeze([
   _gfJ('coin-purse', 'Coin purse', 'treasure', 0, { s: 'purse', c: '#a8743a', c2: '#e8c24a' }, 'It clinks. Open it for the coins.', { opens: 1 }),
   _gfJ('message-bottle', 'Message in a bottle', 'treasure', 0, { s: 'bottle', c: '#7ab48a', c2: '#f4ecd0' }, 'A note and a seed packet. Open it.', { opens: 1 }),
 ]);
-const _GF_FISH = new Map(GARDEN_FISH.map(f => [f.id, f]));
-const GARDEN_FISH_ONLY = Object.freeze(GARDEN_FISH.filter(f => f.cat === 'fish'));
 const GARDEN_FISH_ZONES = Object.freeze({
   pond: Object.freeze({ label: 'The pond', icon: 'waves', blurb: 'Still water behind the flowers.' }),
   shallow: Object.freeze({ label: 'Lake shallows', icon: 'waves', blurb: 'Clear water close to the shore.' }),
@@ -404,7 +402,7 @@ function _gbB(id, name, shape, rarity, hab, skit, rest, price, look, more) {
   const m = more || {};
   return Object.freeze(Object.assign({ id, name, cat: 'bug', shape, rarity, hab: Object.freeze(hab), skit, rest, price, look: Object.freeze(Object.assign({ s: shape }, look)), tod: Object.freeze(m.tod || ['dawn', 'day', 'dusk']), seasons: Object.freeze(m.seasons || []), rain: m.rain || 0, lv: m.lv || 1, size: m.size || 1, blurb: m.blurb || '' }, m.needs ? { needs: Object.freeze(m.needs) } : {}));
 }
-const GARDEN_BUGS = Object.freeze([
+const _GB_ALL = Object.freeze([   // every bug row ever drawn (the vale's own list is GARDEN_BUGS, below)
   /* butterflies and bees */
   _gbB('cabbage-white', 'Cabbage white', 'butterfly', 'common', ['flower', 'lawn'], 2, 'perch', 4, { c: '#f4f4ea', c2: '#2a2a2a', c3: '#e8e4c8', p: 'dots' }, { seasons: ['spring', 'summer', 'autumn'], blurb: 'A white flutter over the veg patch.' }),
   _gbB('small-tortoiseshell', 'Small tortoiseshell', 'butterfly', 'common', ['flower'], 2, 'perch', 6, { c: '#e8782a', c2: '#2a1a14', c3: '#2f5aa8', p: 'edge' }, { seasons: ['spring', 'summer', 'autumn'], blurb: 'Orange with blue beads along its edges.' }),
@@ -688,7 +686,7 @@ const GARDEN_BUGS = Object.freeze([
   _gbB('lantern-bug', 'Lantern bug', 'mite', 'uncommon', ['light'], 1, 'crawl', 14, { c: '#f0a12d', c2: '#1d1221', c3: '#ffdc96', p: 'ring' }, { tod: ['night'], seasons: ['summer', 'autumn'], lv: 7, size: 0.71, needs: { decor: 'lantern' }, blurb: 'A tiny speck with a tiny lamp.' }),
   _gbB('fairy-light-fly', 'Fairy-light fly', 'fly', 'uncommon', ['light'], 3, 'hover', 15, { c: '#69a7d7', c2: '#e0e9d8', c3: '#a9c6dd', p: 'ring' }, { tod: ['night'], lv: 8, size: 0.82, needs: { decor: 'string-lights' }, blurb: 'Comes for your string lights and stays till morning.' }),
   _gbB('toadstool-sprite', 'Toadstool sprite', 'ant', 'rare', ['light', 'woods'], 2, 'crawl', 52, { c: '#5fc28b', c2: '#c21302', c3: '#b3cfc8', p: 'ring' }, { tod: ['night'], lv: 11, size: 0.84, needs: { decor: 'toadstool-lamps' }, blurb: 'Lives by the toadstool lamps, and glows green.' }),
-  _gbB('jewel-beetle', 'Hothouse jewel beetle', 'beetle', 'uncommon', ['flower'], 2, 'crawl', 30, { c: '#2a9a6a', c2: '#0c2a1e', c3: '#7ae0b0', p: 'ring' }, { tod: ['dawn', 'day', 'dusk', 'night'], lv: 2, needs: { room: 'hothouse' }, blurb: 'Somebody brought it in on a palm, a very long time ago.' }),
+  _gbB('hothouse-jewel-beetle', 'Hothouse jewel beetle', 'beetle', 'uncommon', ['flower'], 2, 'crawl', 30, { c: '#2a9a6a', c2: '#0c2a1e', c3: '#7ae0b0', p: 'ring' }, { tod: ['dawn', 'day', 'dusk', 'night'], lv: 2, needs: { room: 'hothouse' }, blurb: 'Somebody brought it in on a palm, a very long time ago.' }),
   _gbB('orchid-hopper', 'Orchid hopper', 'hopper', 'rare', ['flower'], 2, 'perch', 52, { c: '#d88ac0', c2: '#f4dcec', c3: '#8a4a7a' }, { tod: ['dawn', 'day', 'dusk', 'night'], lv: 4, needs: { room: 'hothouse' }, blurb: 'It is pretending to be a petal, and it is very good at it.' }),
   _gbB('old-vine-bee', 'Old vine bee', 'bee', 'epic', ['flower'], 3, 'hover', 110, { c: '#6a4a8a', c2: '#e8c84a', c3: '#2a1a3a' }, { tod: ['day'], lv: 6, needs: { room: 'hothouse' }, blurb: 'One hive, one vine, and no idea there is an outside.' }),
   _gbB('glowcap-beetle', 'Glowcap beetle', 'beetle', 'rare', ['flower'], 2, 'crawl', 42, { c: '#6fbc9c', c2: '#010c00', c3: '#add9c0', p: 'ring' }, { tod: ['night'], lv: 5, size: 1.12, needs: { plant: 'glowcap' }, blurb: 'It smells a glowcap from a long way off.' }),
@@ -738,7 +736,196 @@ const GARDEN_BUGS = Object.freeze([
   _gbB('sn-frost-gnat', 'Frost gnat', 'fly', 'rare', ['lawn', 'ground'], 2, 'hover', 32, { c: '#a8c8d8', c2: '#f0f8fc', c3: '#5a7a8a' }, { seasons: ['winter'], needs: { season: 'winter', map: true, chance: 2 }, blurb: 'Dances over the ice on still days, and only then.' }),
   /*@end-bugs*/
 ]);
-const _GF_BUG = new Map(GARDEN_BUGS.map(b => [b.id, b]));
+/* ---------- Fleetwater Vale: the creature list (the Field Journal; design: creatures.md) ----------
+   60 fish and 61 bugs, each with one home placed by hand: a journal page (a region of the vale) and, for a fish, the water it lives in
+   (a water id of GARDEN_REGION_WATERS, the same in the island and the vale) or the coast it keeps to (`c:` a GARDEN_ISLAND_FISH_COASTS id).
+   Bugs live on their page's land (the zone), or come to your own garden (`g`). Every kind has ONE clue, said by someone, and a note.
+   Only these spawn and fill the journal. The rows above stay for the art of anything else that still names a kind (a bag, a gift, a friend's
+   old showcase): gardenFishDef / gardenBugDef still find them, nothing casts or nets them. */
+const GARDEN_JOURNAL_PAGES = Object.freeze([
+  Object.freeze({ id: 'village', zone: 0, name: 'The Mere & Fleet Falls', short: 'Village & Mere', where: 'lake, plunge pool, cottage ponds', by: 'pip', byName: 'Pip', color: '#6a8a4a',
+    line: 'Where everyone starts: the Mere, the falls, and the lanes between the cottages.', glimpse: 'rings spreading under Fleet Falls at dusk, and a thin line of smoke past the Forest arch.',
+    reward: 'When this page is full, Pip carves your name on the post by the plunge pool, and a fish flag of your own is yours to set by any pool in your garden.', prize: 'fish-flag' }),
+  Object.freeze({ id: 'woodland', zone: 1, name: 'The Whispering Woodland', short: 'Woodland', where: 'brook, Foxglove spring, Wren cove', by: 'thistle', byName: 'Thistle', color: '#4f7a46',
+    line: 'Oak and foxglove, a brook under a footbridge, and a cove that still has Wren’s name.', glimpse: 'the mill’s still wheel through the trees, and a heron standing in the race.',
+    reward: 'When this page is full, Thistle gives you a stone frog for your garden, to sit by the pond and keep an eye on things.', prize: 'stone-frog' }),
+  Object.freeze({ id: 'valley', zone: 2, name: 'Millwater Valley', short: 'Millwater', where: 'mill race, river, marsh', by: 'bramble', byName: 'Bramble', color: '#6f8fa8',
+    line: 'The mill, its race and its pool, the allotments, and the marsh past the bird hide.', glimpse: 'old stones under ivy on the far bank, and a bell tower with no bell.',
+    reward: 'When this page is full, Bramble sets millstone stepping stones in your garden, and inks your name on the marsh map.', prize: 'stepping-stones', prizeN: 12 }),
+  Object.freeze({ id: 'oldwood', zone: 3, name: 'The Old Woodland', short: 'past the arch', where: 'lily pool, stone pool, ruined shore', by: 'tam', byName: 'Tam', color: '#7a6a4a',
+    line: 'Yews, a fallen chapel, a pool with coins in it, and a rocky shore below the ruins.', glimpse: 'blossom on the terraces above, and a stair cut into the hill.',
+    reward: 'When this page is full, Tam brings you a lantern for your gate. It lights itself at dusk.', prize: 'lantern' }),
+  Object.freeze({ id: 'orchard', zone: 4, name: 'The High Orchard', short: 'up the stair', where: 'cider pond, moon pool, east beach', by: 'quince', byName: 'Quince', color: '#b07a3a',
+    line: 'Terraces of apple and pear, the cider square, and a warm beach facing east.', glimpse: 'snow on the pass, and a beacon on the far ridge.',
+    reward: 'When this page is full, Quince gives you a straw skep of your own: bees will visit your flowers.', prize: 'bee-skep' }),
+  Object.freeze({ id: 'mountains', zone: 5, name: 'The Cloudbreak Mountains', short: 'over the pass', where: 'source tarn, grotto, cold cove', by: 'wick', byName: 'Wick', color: '#7a8aa0',
+    line: 'Heather, scree and the source tarn, where the river starts. A grotto, and a cold cove below.', glimpse: 'the whole vale, the river silver all the way down to the sea.',
+    reward: 'When this page is full, Wick sets a sundial on a stand in your garden, to count your sunny hours.', prize: 'sundial' }),
+  Object.freeze({ id: 'sea', zone: 0, sea: 1, name: 'Sea & Estuary', short: 'Sea & estuary', where: 'the pier, the strand, the estuary', by: 'angler', byName: 'the old angler', color: '#4a7a98',
+    line: 'Off the pier, along the strand and up the estuary’s mud. The open water past the ferry.', glimpse: 'a fin far out past the ferry, there and then not.',
+    reward: 'When this page is full, the old angler gives you the ship’s wheel from the wreck, for your garden.', prize: 'ship-wheel' }),
+]);
+const _GJ_PAGE = new Map(GARDEN_JOURNAL_PAGES.map(p => [p.id, p]));
+function gardenJournalPage(id) { return _GJ_PAGE.get(String(id)) || null; }
+const _GV_RAR = Object.freeze({ c: 'common', u: 'uncommon', r: 'rare', L: 'legendary' });
+const _GV_SEA = Object.freeze(['shallow', 'mid']), _GV_DEEP = Object.freeze(['mid', 'deep']);
+/* [id, name, page, home, rarity c|u|r|L, [cm], diff, swim, seasons, times, more, clue, who said it, the journal note, look (new kinds only)]
+   home: a water id, or 'c:<coast>'. more: rain (1: doubled in the wet), needs, sea (a zone list), lv. */
+const _GV_FISH = [
+  ['minnow', 'Minnow', 'village', 'pond', 'c', [5, 10], 1, 'dart', [], ['day', 'dawn'], {}, 'By your feet in the warm shallows. You can’t miss them.', 'pip', 'A silver flicker by your feet. Everyone’s first fish, and nobody’s last.'],
+  ['roach', 'Roach', 'village', 'pond', 'c', [12, 30], 2, 'smooth', [], ['day', 'dusk'], {}, 'In the reeds by the terrace steps, any old day.', 'pip', 'Red-eyed and agreeable. The Mere’s most reliable neighbour.'],
+  ['perch', 'Perch', 'village', 'pond', 'c', [15, 40], 3, 'mixed', [], ['day'], {}, 'Under the jetty. Stripes, and an attitude.', 'pip', 'Striped like a deckchair and twice as stubborn.'],
+  ['goldfish', 'Goldfish', 'village', 'pond', 'c', [8, 22], 2, 'smooth', [], [], {}, 'Someone let one go years ago. Now look.', 'perpetua', 'Round, orange and unbothered. Someone let one go years ago, and now there are dozens.'],
+  ['rudd', 'Rudd', 'village', 'pond', 'u', [15, 35], 4, 'smooth', ['spring', 'summer'], ['day'], { needs: { rain: false } }, 'Only on the sunny side of the Mere. Never in the rain.', 'pip', 'Gold flanks and red fins. It likes the warm side of everything.'],
+  ['tench', 'Tench', 'village', 'pond', 'u', [30, 60], 5, 'sinker', ['summer'], ['dawn', 'dusk'], {}, 'Green as a bottle. Lily pads, first light.', 'pip', 'The doctor fish: green as a bottle and slow as a Sunday.'],
+  ['brown-trout', 'Brown trout', 'village', 'falls', 'u', [30, 70], 5, 'dart', ['spring', 'summer', 'autumn'], ['dawn', 'dusk'], {}, 'Speckled ones in the plunge pool, when the light is low.', 'pip', 'Speckled like a thrush’s egg. It eats whatever the falls bring down.'],
+  ['eel', 'Eel', 'village', 'pond', 'u', [45, 100], 5, 'mixed', ['summer', 'autumn'], ['night'], { rain: 1 }, 'Comes out of the outlet on wet nights.', 'pip', 'It swam here from the Sargasso Sea and isn’t telling you how.'],
+  ['grayling', 'Grayling', 'village', 'falls', 'r', [30, 50], 6, 'floater', ['autumn', 'winter'], ['day'], { needs: { rain: false } }, 'The lady of the stream. Cold, clear days at the falls.', 'pip', 'A sail on her back like a little flag. She only lives where the water is clean and cold.'],
+  ['pike', 'Pike', 'village', 'pond', 'r', [50, 120], 7, 'dart', ['autumn', 'winter', 'spring'], ['day'], { rain: 1 }, 'A long shadow in the weed beds on a grey day.', 'pip', 'All teeth and patience. The ducklings have opinions.'],
+  ['old-whiskers', 'Old Whiskers', 'village', 'falls', 'L', [180, 300], 9, 'mixed', [], ['dusk'], { needs: { chance: 10 } }, 'Something big rolls under the falls at dusk.', 'pip', 'The shadow you saw on your first day. It has rolled under the falls since before the mill.'],
+  ['stickleback', 'Stickleback', 'woodland', 'brook', 'c', [4, 8], 1, 'dart', ['spring', 'summer'], ['day'], {}, 'Under the footbridge, the brave little ones.', 'thistle', 'Three spines, and the courage of a far bigger fish. The father builds the nest.'],
+  ['dace', 'Dace', 'woodland', 'brook', 'c', [10, 22], 2, 'dart', [], ['day', 'dawn'], {}, 'In the riffles, where the brook talks loudest.', 'thistle', 'Quick as a rumour. It gets there before you’ve finished casting.'],
+  ['stone-loach', 'Stone loach', 'woodland', 'brook', 'c', [6, 12], 2, 'sinker', [], ['dusk', 'night'], {}, 'Under the stone you just stood on, after dark.', 'thistle', 'Lives under the stone you just stood on. It forgives you.'],
+  ['smooth-newt', 'Smooth newt', 'woodland', 'spring', 'c', [6, 11], 1, 'floater', ['spring', 'summer'], [], {}, 'Foxglove spring is full of them. Not fish, mind.', 'thistle', 'Not a fish, says Thistle, but the journal isn’t fussy and neither is the newt.'],
+  ['signal-crayfish', 'White-clawed crayfish', 'woodland', 'brook', 'u', [8, 14], 4, 'sinker', ['summer', 'autumn'], ['night'], {}, 'Pale claws under the footbridge, only at night.', 'thistle', 'The native one: small and shy, with pale claws held up as if it is asking a question.'],
+  ['great-crested-newt', 'Great crested newt', 'woodland', 'spring', 'r', [10, 16], 6, 'mixed', ['spring', 'summer'], ['dusk', 'night'], { rain: 1 }, 'A little dragon in the spring, after rain.', 'thistle', 'A small dragon with a crest like a cockscomb. Thistle has named it, and she won’t say what.'],
+  ['ballan-wrasse', 'Ballan wrasse', 'woodland', 'c:forest', 'u', [25, 50], 5, 'sinker', ['summer'], ['day'], { sea: ['shallow', 'mid'] }, 'Off the rocks at Wren cove, in summer.', 'thistle', 'Painted like a stained-glass window, and grumpy about it.', { s: 'chunky', c: '#3f7a5a', c2: '#d88a4a', c3: '#1f4a3a', p: 'spots', k: [0.95, 0.9] }],
+  ['sprite-of-the-shallows', 'The Foxglove sprite', 'woodland', 'spring', 'L', [10, 16], 8, 'dart', ['spring'], ['dawn'], { needs: { rain: true, chance: 14 } }, 'In the deepest cup of the spring, the first rain after dry days.', 'thistle', 'A tiny upright fish no book believes in. Thistle believes in it, and that’s enough.'],
+  ['gudgeon', 'Gudgeon', 'valley', 'race', 'c', [8, 16], 1, 'smooth', [], ['day'], {}, 'Gravel below the bridge. Whiskers and freckles.', 'bramble', 'Whiskers, freckles and no ambition. The river’s best-loved small fish.'],
+  ['chub', 'Chub', 'valley', 'race', 'c', [25, 55], 3, 'mixed', [], ['day', 'dusk'], {}, 'Under the willows by the bridge. Watch your sandwich.', 'bramble', 'Will eat anything, including your sandwich if you look away.'],
+  ['bullhead', 'Miller’s thumb', 'valley', 'race', 'c', [6, 12], 2, 'smooth', [], ['dusk'], {}, 'Under the stones in the race, at dusk.', 'bramble', 'Named for a miller’s thumb, broad from testing flour. Bramble says there’s been no miller’s thumb at the mill for years.'],
+  ['bream', 'Bream', 'valley', 'frogpool', 'c', [25, 55], 3, 'smooth', ['summer'], ['dusk', 'day'], {}, 'They come up in shoals in the still water at dusk.', 'bramble', 'Slimy, bronze and as broad as a tea tray. They come up in shoals at dusk.'],
+  ['crucian-carp', 'Crucian carp', 'valley', 'frogpool', 'u', [10, 35], 4, 'floater', ['summer'], ['day'], {}, 'The allotment keepers argue over the little gold one.', 'bramble', 'A little golden carp of old ponds. The allotment keepers argue about whose it is.'],
+  ['weather-loach', 'Weather loach', 'valley', 'frogpool', 'u', [15, 28], 4, 'mixed', [], [], { needs: { rain: true } }, 'It comes up when the rain does. Better than a barometer.', 'bramble', 'It wriggles up to the surface before a storm. Bramble checks it instead of the barometer.'],
+  ['barbel', 'Barbel', 'valley', 'race', 'u', [40, 90], 6, 'dart', ['summer', 'autumn'], ['dusk', 'night'], {}, 'Four whiskers in the fast water, late on.', 'bramble', 'Built for fast water: four whiskers and no fear of currents.'],
+  ['atlantic-salmon', 'Atlantic salmon', 'valley', 'race', 'r', [50, 110], 7, 'dart', ['autumn'], [], { needs: { rain: true } }, 'They run up the race after a good autumn rain.', 'bramble', 'Up from the sea after the first autumn flood, leaping the weir as if it’s late for something.'],
+  ['burbot', 'Burbot', 'valley', 'race', 'r', [30, 70], 6, 'sinker', ['winter'], ['night'], {}, 'Deep under the bridge on the coldest nights.', 'bramble', 'The only freshwater cod. It loves the coldest, darkest nights, and nobody else does.'],
+  ['old-log-barbel', 'The wheel barbel', 'valley', 'race', 'L', [80, 140], 9, 'dart', ['summer'], ['night'], { needs: { chance: 10 } }, 'Leave that one be. It waits under the wheel.', 'angler', 'Holds in the race under the wheel, as if it’s waiting for it to turn.'],
+  ['carp', 'Common carp', 'oldwood', 'folly', 'c', [35, 90], 4, 'smooth', ['summer', 'spring'], ['day'], {}, 'Monks kept them in the lily pool. The carp stayed.', 'tam', 'Monks kept carp in ponds like this one. The carp have outlasted the monks.'],
+  ['silver-bream', 'Silver bream', 'oldwood', 'folly', 'c', [12, 28], 2, 'smooth', [], ['day', 'dawn'], {}, 'Round the pond margins, any day you like.', 'tam', 'Smaller and shinier than a bream, and touchier about it.'],
+  ['ruffe', 'Ruffe', 'oldwood', 'light', 'c', [8, 15], 2, 'smooth', [], ['dusk', 'night'], {}, 'The stone pool, as the light goes.', 'tam', 'A small perch covered in slime and good intentions.'],
+  ['mud-crab', 'Shore crab', 'oldwood', 'c:ruins', 'c', [5, 10], 1, 'sinker', ['spring', 'summer', 'autumn'], [], { sea: ['shallow'] }, 'Under the ruined shore, sideways.', 'tam', 'Walks sideways out of every argument.'],
+  ['shanny', 'Shanny', 'oldwood', 'c:ruins', 'u', [8, 16], 4, 'smooth', [], ['day'], { sea: ['shallow'] }, 'In the rock pools below the ruins, by day.', 'tam', 'Can live out of water for hours, and often does, out of stubbornness.', { s: 'goby', c: '#6a6a3a', c2: '#c8c090', c3: '#3a3a1a', p: 'speckle' }],
+  ['wishing-fish', 'Wishing fish', 'oldwood', 'light', 'r', [15, 30], 5, 'smooth', [], ['night', 'dusk'], { needs: { moon: ['waxing', 'full'] } }, 'Make a wish at the stone pool when the moon is fat.', 'tam', 'Whatever you wish, it looks at you as if it has heard that one before.'],
+  ['lantern-minnow', 'Lantern minnow', 'oldwood', 'light', 'r', [6, 12], 5, 'dart', ['summer', 'autumn'], ['night'], {}, 'Little lights in the pond, at night.', 'tam', 'Glows faintly, as if it swallowed a candle and is too polite to mention it.'],
+  ['old-gran', 'Old Gran', 'oldwood', 'folly', 'L', [80, 120], 9, 'smooth', ['autumn'], ['dawn'], { needs: { chance: 12 } }, 'The oldest carp. Dawn, in autumn, under the yew.', 'tam', 'The oldest carp in the vale. Tam says she was old when the chapel was new.'],
+  ['ide', 'Ide', 'orchard', 'cider', 'c', [25, 45], 3, 'dart', [], ['day'], {}, 'In the orchard pond, plain as you like.', 'quince', 'The plain sister of the golden orfe, and far better company.'],
+  ['golden-orfe', 'Golden orfe', 'orchard', 'cider', 'u', [20, 45], 4, 'dart', ['summer'], ['day'], {}, 'Glints gold in the cider pond in summer.', 'quince', 'The cider square’s show-off. It glints gold every time someone lifts a glass.'],
+  ['mirror-carp', 'Mirror carp', 'orchard', 'dip', 'u', [40, 95], 5, 'smooth', ['summer'], ['dusk'], {}, 'The deep pool, on a summer evening.', 'quince', 'A few huge scales like mirrors, and none in the places you’d expect.'],
+  ['berry-roach', 'Berry roach', 'orchard', 'dip', 'c', [15, 30], 3, 'smooth', [], ['day', 'dawn'], {}, 'Pink as a blackberry in the clear pool.', 'quince', 'Pink-flushed in blackberry season. Quince swears it’s the fruit.'],
+  ['silver-mullet', 'Grey mullet', 'orchard', 'c:orchard', 'u', [25, 55], 5, 'dart', ['summer'], ['day'], { sea: ['shallow'] }, 'Grazing the warm shallows off the east beach.', 'quince', 'Grazes the shallows like a sheep, and is impossible to fool.'],
+  ['moon-gazer', 'Moon-gazer', 'orchard', 'dip', 'r', [25, 45], 5, 'smooth', [], ['night'], { needs: { moon: ['waxing', 'full'] } }, 'It looks up at the moon from the moon pool.', 'quince', 'Rises only to look at the moon, then sinks again, satisfied.'],
+  ['sea-bass', 'Sea bass', 'orchard', 'c:orchard', 'r', [40, 80], 7, 'dart', ['summer', 'autumn'], [], { sea: ['mid', 'deep'], needs: { rain: true } }, 'In off the surf with the rough weather.', 'quince', 'The silver wolf of the surf. It comes in with the rough weather.', { s: 'torpedo', c: '#7a8a98', c2: '#e4eaee', c3: '#3a4a58', p: 'belly', k: [0.95, 0.8] }],
+  ['the-duchess', 'The Duchess', 'orchard', 'cider', 'L', [70, 110], 9, 'smooth', ['spring'], ['dusk'], { needs: { chance: 12 } }, 'Put in the cider pond for luck, years ago. Spring evenings.', 'quince', 'A white-and-gold carp put in the cider pond for luck. She has been lucky ever since.'],
+  ['whitefish', 'Schelly', 'mountains', 'tarn', 'c', [30, 55], 3, 'dart', [], ['day'], {}, 'Shoals turn the tarn silver by day.', 'wick', 'The freshwater herring. Shoals of them turn the tarn silver.'],
+  ['golden-trout', 'Gorge trout', 'mountains', 'tarn', 'c', [25, 50], 4, 'dart', ['summer', 'spring'], ['day', 'dawn'], {}, 'Painted little trout where the tarn spills.', 'wick', 'Small, wild and painted, living in pools no bigger than a bath.'],
+  ['cod', 'Cod', 'mountains', 'c:headland', 'c', [40, 90], 4, 'sinker', ['winter', 'autumn'], ['day', 'dusk'], { sea: ['mid', 'deep'] }, 'The cold cove, in the cold months.', 'wick', 'A big-headed cold-water fish with a beard and a very serious face.', { s: 'torpedo', c: '#8a8a5a', c2: '#e4dcc0', c3: '#4a4a2a', p: 'speckle', k: [1.05, 0.95] }],
+  ['vendace', 'Vendace', 'mountains', 'tarn', 'u', [15, 30], 4, 'dart', ['autumn', 'winter'], ['dusk'], {}, 'The middle of the tarn at dusk, late in the year.', 'wick', 'One of the rarest fish in the land, and it would rather you didn’t make a fuss.'],
+  ['lumpsucker', 'Lumpsucker', 'mountains', 'c:headland', 'u', [25, 45], 4, 'sinker', ['spring'], ['day'], { sea: ['shallow', 'mid'] }, 'Stuck to the cove rocks in spring.', 'wick', 'Sticks itself to a rock by its belly, like a lost button.', { s: 'round', c: '#5a7a4a', c2: '#c8d0a0', c3: '#2a3a1a', p: 'spots', k: [0.9, 1.15] }],
+  ['blind-loach', 'Blind loach', 'mountains', 'cavepool', 'u', [6, 14], 3, 'dart', [], [], {}, 'In the grotto’s cave pool, further in than your arm.', 'wick', 'Has never seen the sun and doesn’t miss it.'],
+  ['arctic-char', 'Arctic char', 'mountains', 'tarn', 'r', [40, 75], 7, 'dart', ['winter'], ['dawn'], {}, 'Red-bellied in the tarn, at a winter dawn.', 'wick', 'Left behind by the ice. Red-bellied in winter, as if it is keeping warm on purpose.'],
+  ['the-frost-maiden', 'The tarn maiden', 'mountains', 'tarn', 'L', [60, 110], 9, 'floater', ['winter'], ['dawn'], { needs: { rain: true, chance: 14 } }, 'Where the river starts, at dawn, when it snows.', 'wick', 'A pale char with fins like a veil. Wick says she is where the river starts thinking.'],
+  ['mackerel', 'Mackerel', 'sea', 'c:north', 'c', [25, 40], 3, 'dart', ['summer', 'spring'], ['day'], { sea: ['shallow', 'mid'] }, 'Off the pier end in summer. They make the water boil.', 'angler', 'Striped like the sea in a breeze. Their shoals make the water boil.', { s: 'torpedo', c: '#3a7a8a', c2: '#e8eef0', c3: '#1a3a4a', p: 'bars', k: [1, 0.8] }],
+  ['plaice', 'Plaice', 'sea', 'c:south', 'c', [25, 50], 2, 'sinker', [], ['day', 'dawn', 'dusk'], { sea: ['shallow', 'mid'] }, 'Flat on the strand’s sand, any day.', 'angler', 'Orange spots, and both eyes on one side, which it considers an advantage.', { s: 'flat', c: '#8a7a5a', c2: '#d8c8a8', c3: '#e8782a', p: 'spots' }],
+  ['flounder', 'Flounder', 'sea', 'c:valley', 'u', [25, 45], 4, 'sinker', ['autumn', 'winter'], [], { sea: ['shallow', 'mid'] }, 'Up the estuary mud in the cold half of the year.', 'angler', 'Swims up the estuary on one tide and back down on the next, never quite deciding.', { s: 'flat', c: '#6a6048', c2: '#c8bca0', c3: '#3a3420', p: 'speckle' }],
+  ['sea-trout', 'Sea trout', 'sea', 'c:valley', 'r', [40, 80], 7, 'dart', ['summer'], ['night'], { sea: ['shallow', 'mid'], rain: 1 }, 'In the estuary channel, on summer nights.', 'angler', 'A brown trout that went to sea and came back silver. The angler: “Went away and came back changed. They say that about people.”'],
+  ['conger', 'Conger eel', 'sea', 'c:north', 'r', [100, 200], 7, 'mixed', [], ['night'], { sea: ['mid', 'deep'] }, 'In the old wreck by the lighthouse, after dark.', 'angler', 'Lives in the old wreck and has never paid rent.', { s: 'eel', c: '#4a5058', c2: '#9aa4a8', c3: '#22282c', p: 'none', k: [1.2, 0.9] }],
+  ['old-sun', 'Old Sun', 'sea', 'c:south', 'L', [180, 300], 9, 'floater', ['summer'], ['day'], { sea: ['deep'], needs: { rain: false, chance: 14 } }, 'Lying on its side off the pier, on a flat calm summer day.', 'angler', 'A sunfish lying on its side, sunbathing. It has done this for a hundred years and sees no reason to stop.'],
+  ['great-grey-ghost', 'The great grey ghost', 'sea', 'c:south', 'L', [240, 380], 10, 'mixed', ['summer'], ['day'], { sea: ['deep'], needs: { rain: false, chance: 14 } }, 'As long as the ferry, far out, on a calm summer day.', 'angler', 'A basking shark as long as the ferry, mouth wide open, eating nothing bigger than a full stop.'],
+];
+/* bugs: [id, name, page, g (1: comes to your own garden), rarity, [mm], seasons, times, more, clue, who, note, look (new only)] */
+const _GV_BUGS = [
+  ['cabbage-white', 'Cabbage white', 'village', 1, 'c', [45, 60], ['spring', 'summer', 'autumn'], ['day'], {}, 'Over anyone’s veg patch, all summer.', 'pip', 'A white flutter over the veg patch. Your cabbages have been warned.'],
+  ['bumblebee', 'Bumblebee', 'village', 1, 'c', [15, 22], ['spring', 'summer', 'autumn'], ['day'], {}, 'Wherever there’s a flower open.', 'pip', 'Too heavy to fly, according to nobody who has met one.'],
+  ['ladybird', 'Seven-spot ladybird', 'village', 1, 'c', [5, 8], ['spring', 'summer', 'autumn'], ['day'], {}, 'On the roses on the green. Count the spots.', 'perpetua', 'Counts to seven on its back and stops there.'],
+  ['pond-skater', 'Pond skater', 'village', 1, 'c', [8, 10], ['spring', 'summer', 'autumn'], ['day'], { hab: ['water'] }, 'Walking on the Mere’s margins.', 'pip', 'Walks on water and makes nothing of it.'],
+  ['garden-spider', 'Garden spider', 'village', 1, 'c', [10, 18], ['summer', 'autumn'], ['dawn', 'day'], {}, 'The lane hedges at dawn. The mist shows her webs.', 'perpetua', 'Rebuilds her web every morning and never once complains.'],
+  ['banded-snail', 'Banded snail', 'village', 1, 'c', [18, 25], [], ['dawn', 'day', 'dusk', 'night'], { rain: 1 }, 'Out in the lanes when it rains.', 'perpetua', 'Every shell is striped differently. Bring a lens and a free afternoon.'],
+  ['peacock-butterfly', 'Peacock butterfly', 'village', 1, 'u', [55, 60], ['spring', 'summer', 'autumn'], ['day'], {}, 'The buddleia by the post office, on a sunny day.', 'perpetua', 'Four painted eyes to stare down a bird. It works on people too.'],
+  ['elephant-hawk-moth', 'Elephant hawk-moth', 'village', 1, 'u', [45, 60], ['summer'], ['dusk', 'night'], {}, 'Round the lamp on the terrace, summer nights.', 'pip', 'Pink and olive, like a fancy cake that learned to fly.'],
+  ['long-tailed-blue', 'Long-tailed blue', 'village', 1, 'r', [30, 36], ['summer', 'autumn'], ['day'], {}, 'It loves the sweet peas in the cottage gardens.', 'moss', 'A tiny blue with tails, and a taste for sweet peas.'],
+  ['emperor-dragonfly', 'Emperor dragonfly', 'village', 1, 'r', [75, 80], ['summer'], ['day'], { hab: ['water'] }, 'Patrolling the Mere reeds on hot days.', 'pip', 'The Mere’s air force. It patrols the reeds as if it owns them, and it does.'],
+  ['camberwell-beauty', 'Camberwell beauty', 'village', 1, 'L', [60, 70], ['autumn'], ['day'], { needs: { chance: 10 } }, 'Blown in from over the sea, once in a long while.', 'perpetua', 'Blown in from across the sea. Nobody posted it.'],
+  ['speckled-wood', 'Speckled wood', 'woodland', 0, 'c', [45, 50], ['spring', 'summer', 'autumn'], ['day'], {}, 'Guarding a sunspot on the woodland loop.', 'thistle', 'Defends a single patch of sunlight with tremendous seriousness.'],
+  ['woodlouse', 'Woodlouse', 'woodland', 0, 'c', [10, 15], [], ['dawn', 'day', 'dusk', 'night'], {}, 'Under any rotten log. Mind your fingers.', 'thistle', 'Fourteen legs, a coat of armour and a deep love of damp.'],
+  ['violet-ground-beetle', 'Violet ground beetle', 'woodland', 0, 'c', [20, 30], [], ['night', 'dusk'], {}, 'Running under the logs after dark.', 'thistle', 'Purple-edged and in a hurry, like a very shiny bus.'],
+  ['mayfly', 'Mayfly', 'woodland', 0, 'c', [15, 25], ['spring'], ['dusk', 'day'], {}, 'Dancing over the spring in May.', 'thistle', 'Lives one day as a grown-up and spends it dancing.'],
+  ['red-ant', 'Wood ant', 'woodland', 0, 'c', [5, 9], ['spring', 'summer', 'autumn'], ['day'], {}, 'The ant hill by the Great Oak.', 'thistle', 'Builds a hill of pine needles and defends it like a city.'],
+  ['banded-demoiselle', 'Banded demoiselle', 'woodland', 0, 'u', [60, 70], ['summer'], ['day'], {}, 'Fluttering along the brook in the sun.', 'thistle', 'Flutters like a butterfly and shines like a beetle, and can’t decide which it is.'],
+  ['oak-bush-cricket', 'Oak bush-cricket', 'woodland', 0, 'u', [12, 17], ['summer', 'autumn'], ['night'], {}, 'Drumming in the oaks at night. It likes a lit window.', 'thistle', 'Drums on leaves with one foot, and comes to lit windows to see what’s on.'],
+  ['glow-worm', 'Glow-worm', 'woodland', 0, 'u', [15, 25], ['summer'], ['night'], {}, 'A little light on the verge, warm summer nights.', 'thistle', 'Really a beetle. The light is hers, and she’s waiting for someone.'],
+  ['purple-emperor', 'Purple emperor', 'woodland', 0, 'r', [70, 80], ['summer'], ['day'], {}, 'At the top of the Great Oak. It comes down at noon on hot days.', 'thistle', 'Lives at the top of the oak and comes down only for puddles and other things in poor taste.'],
+  ['the-walking-branch', 'The walking branch', 'woodland', 0, 'L', [150, 250], ['autumn'], ['night'], { needs: { moon: ['new'], chance: 10 } }, 'A twig that walks at the Great Oak, on a moonless night.', 'thistle', 'A twig that walked away while you were looking at it. Thistle says it was at the oak before she was.'],
+  ['meadow-brown', 'Meadow brown', 'valley', 0, 'c', [40, 50], ['summer'], ['day'], {}, 'The water meadows, even when it’s cloudy.', 'bramble', 'It flies when every other butterfly has given up on the weather.'],
+  ['field-grasshopper', 'Field grasshopper', 'valley', 0, 'c', [15, 24], ['summer', 'autumn'], ['day'], {}, 'Fiddling in the hay meadow on sunny days.', 'bramble', 'Sings by rubbing its leg on its wing, like a fiddler who lost the bow.'],
+  ['honeybee', 'Honeybee', 'valley', 0, 'c', [12, 15], ['spring', 'summer', 'autumn'], ['day'], {}, 'Busy round the allotments and the bee boles.', 'bramble', 'Brings nectar home from three miles away, and never once a postcard.'],
+  ['common-darter', 'Common darter', 'valley', 0, 'c', [55, 60], ['summer', 'autumn'], ['day'], {}, 'On the same stick by the marsh boardwalk. Every time.', 'bramble', 'Perches on the same stick, darts off and comes back. Every time. Every time.'],
+  ['field-cricket', 'Field cricket', 'valley', 0, 'u', [18, 23], ['summer'], ['dusk'], {}, 'Singing from a burrow on the allotment banks at dusk.', 'bramble', 'Sings from the mouth of its burrow, then goes very quiet when you arrive.'],
+  ['old-lady', 'Old lady', 'valley', 0, 'u', [60, 70], ['summer'], ['night'], {}, 'Asleep in the barn rafters, summer nights.', 'bramble', 'Big, brown and as soft as a dressing gown. Sleeps in the barn rafters.'],
+  ['raft-spider', 'Raft spider', 'valley', 0, 'r', [15, 22], ['summer'], ['day'], {}, 'Toes on the water by the bird hide.', 'bramble', 'Sits with its toes on the water, listening for the footsteps of flies.'],
+  ['great-diving-beetle', 'Great diving beetle', 'valley', 0, 'r', [27, 35], [], ['night'], {}, 'The frog stone pool, after dark.', 'bramble', 'A beetle that carries its own air bubble and a very poor attitude.'],
+  ['swallowtail', 'Swallowtail', 'valley', 0, 'r', [75, 90], ['summer'], ['day'], {}, 'Sailing over the fen by the hide, sunny days.', 'bramble', 'The grandest butterfly in the land, and it only lives in a marsh like this one.'],
+  ['silver-mayfly', 'Silver mayfly', 'valley', 0, 'r', [20, 30], ['summer', 'spring'], ['dusk'], {}, 'One evening the mill pool fills with silver.', 'pip', 'One evening a year, the mill pool fills with silver. Pip calls it the mill’s own snow.'],
+  ['the-dragon-king', 'The dragon king', 'valley', 0, 'L', [100, 120], ['summer'], ['dawn'], { needs: { moon: ['full'], chance: 10 } }, 'Bramble drew it at the hide. Dawn, at the full moon.', 'bramble', 'As long as your hand, green and gold. Bramble drew it on the marsh map before anyone had seen it.'],
+  ['centipede', 'Centipede', 'oldwood', 0, 'c', [20, 30], [], ['night', 'dusk'], {}, 'Under the chapel’s fallen stones, at night.', 'tam', 'Has nowhere near a hundred legs, and is a bit embarrassed about it.'],
+  ['glass-snail', 'Glass snail', 'oldwood', 0, 'c', [5, 8], [], ['dawn', 'day', 'dusk', 'night'], { rain: 1 }, 'In the yew roots when it’s damp.', 'tam', 'A shell so thin you can see it thinking.'],
+  ['lesser-stag', 'Lesser stag beetle', 'oldwood', 0, 'c', [18, 32], ['summer'], ['dusk', 'day'], {}, 'The dead beech in the ruin court, at dusk.', 'tam', 'The stag beetle’s plain cousin. It didn’t get the antlers and is fine about it.'],
+  ['minotaur-beetle', 'Minotaur beetle', 'oldwood', 0, 'u', [12, 20], ['spring', 'autumn'], ['day'], {}, 'Digging in the chapel lane, spring and autumn.', 'tam', 'Three horns, rolls dung for its children, and has never once been thanked.'],
+  ['frost-beetle', 'Frost beetle', 'oldwood', 0, 'u', [8, 12], ['winter'], ['dawn', 'day'], {}, 'Wherever it’s coldest, on a frosty morning.', 'tam', 'Lives wherever it’s coldest and keeps very still. Tam won’t go in to look.'],
+  ['emperor-moth', 'Emperor moth', 'oldwood', 0, 'r', [60, 85], ['spring'], ['day'], {}, 'The only big moth that flies by day. On the heath, in spring.', 'tam', 'The only big moth here that flies by day. It has four eyes, and all of them are on you.'],
+  ['stag-beetle', 'Stag beetle', 'oldwood', 0, 'r', [35, 75], ['summer'], ['dusk'], {}, 'The old stump by the hut, on warm evenings.', 'hollin', 'Six years underground as a grub, six weeks as a knight. Hollin showed you where.'],
+  ['ice-worm', 'Ice worm', 'oldwood', 0, 'r', [10, 20], ['winter'], ['dawn'], {}, 'In the cold and the dark, in winter.', 'tam', 'Lives in the cold and the dark, and glows a little when nobody is looking.'],
+  ['king-stag', 'The king stag', 'oldwood', 0, 'L', [70, 90], ['summer'], ['night'], { needs: { moon: ['new'], chance: 10 } }, 'It lets you look, once. A moonless summer night.', 'hollin', 'Jaws like antlers. Hollin says it lets you look, once.'],
+  ['red-admiral', 'Red admiral', 'orchard', 0, 'c', [55, 65], ['summer', 'autumn'], ['day'], {}, 'Tipsy on the windfall apples.', 'quince', 'Drinks from fallen cider apples and flies home a little crooked.'],
+  ['comma', 'Comma', 'orchard', 0, 'c', [45, 50], ['spring', 'summer', 'autumn'], ['day'], {}, 'On the terrace walls, signed with a white comma.', 'quince', 'A ragged wing with a white comma on it, as if it had been signed.'],
+  ['common-wasp', 'Common wasp', 'orchard', 0, 'c', [12, 17], ['summer', 'autumn'], ['day'], {}, 'At the cider square, after the cider.', 'quince', 'Arrives for the cider and stays for the argument.'],
+  ['brimstone', 'Brimstone', 'orchard', 0, 'u', [55, 60], ['spring'], ['day'], {}, 'The first warm day of spring, on the terraces.', 'quince', 'The first butterfly of the year, the colour of butter, which may be where the word came from.'],
+  ['cockchafer', 'Cockchafer', 'orchard', 0, 'u', [25, 30], ['spring'], ['dusk', 'night'], {}, 'Bumbling into the square’s lamps in May.', 'quince', 'The May bug. It bumbles into lit windows and apologises to no one.'],
+  ['hornet', 'Hornet', 'orchard', 0, 'u', [25, 35], ['summer', 'autumn'], ['dawn', 'day', 'dusk'], {}, 'By the cider barrels. Better manners than wasps.', 'quince', 'A huge wasp with far nicer manners than the small ones.'],
+  ['ruby-tailed-wasp', 'Ruby-tailed wasp', 'orchard', 0, 'r', [7, 12], ['summer'], ['day'], {}, 'A jewel on the sunny walls by the folly.', 'quince', 'A jewel with a sting it doesn’t use.'],
+  ['honey-queen', 'Honey queen', 'orchard', 0, 'r', [18, 20], ['spring', 'summer'], ['day'], {}, 'In Quince’s skeps. She allows you to write her down.', 'quince', 'Quince’s queen. She allows you to write her down.'],
+  ['singing-cicada-queen', 'The bell cicada', 'orchard', 0, 'L', [30, 40], ['summer'], ['dusk'], { needs: { chance: 10 } }, 'One long note in the ring of trees, a summer dusk.', 'quince', 'Sings one long note, like a bell still ringing after the hand has let go.'],
+  ['small-heath', 'Small heath', 'mountains', 0, 'c', [30, 35], ['spring', 'summer'], ['day'], {}, 'Low over the heather moor, wind or no wind.', 'wick', 'Small, tawny and never more than a foot off the ground, wind or no wind.'],
+  ['wolf-spider', 'Wolf spider', 'mountains', 0, 'c', [5, 10], ['spring', 'summer'], ['day'], {}, 'Running on the scree with her babies on her back.', 'wick', 'Carries her babies up the scree on her back. You have no excuse.'],
+  ['snow-flea', 'Snow flea', 'mountains', 0, 'c', [1, 2], ['winter'], ['day'], {}, 'Hopping on the snowfields by the pass.', 'wick', 'They hop on the snow in their thousands, like pepper with somewhere to be.'],
+  ['green-hairstreak', 'Green hairstreak', 'mountains', 0, 'u', [25, 30], ['spring'], ['day'], {}, 'On the gorse in spring. It vanishes when it lands.', 'wick', 'Green underneath and brown on top, so it disappears every time it lands.'],
+  ['marbled-white', 'Marbled white', 'mountains', 0, 'u', [45, 55], ['summer'], ['day'], {}, 'In the grass by my hut. Black and white like the paper.', 'wick', 'Black and white like a newspaper. Wick reads it.'],
+  ['glowcap-beetle', 'Grotto glow-beetle', 'mountains', 0, 'r', [6, 10], [], ['dawn', 'day', 'dusk', 'night'], {}, 'They dot the grotto roof like a second sky.', 'wick', 'They dot the grotto roof like a second sky. Count them and you’ll get a different number each time.'],
+  ['ghost-moth', 'Ghost moth', 'mountains', 0, 'r', [45, 55], ['summer'], ['dusk'], { needs: { moon: ['waxing', 'full'] } }, 'Hovering by the standing stones at dusk, moon up.', 'wick', 'The males hover over the grass like little ghosts, waiting to be chosen.'],
+  ['the-moonlit-bride', 'The moonlit bride', 'mountains', 0, 'L', [100, 120], ['summer'], ['night'], { needs: { moon: ['full'], chance: 10 } }, 'She circles the beacon flame, at the full moon.', 'wick', 'Pale green, with long tails. Wick says she comes because someone once kept a light lit for her.'],
+  ['sand-hopper', 'Sand hopper', 'sea', 1, 'c', [10, 20], [], ['night', 'dusk'], { hab: ['ground'] }, 'Lift the seaweed on the strand at night.', 'angler', 'Leaps out of the seaweed like popcorn when you lift it.', { s: 'hopper', c: '#c8b48a', c2: '#e8dcc0', c3: '#7a6a4a' }],
+  ['sea-slater', 'Sea slater', 'sea', 1, 'c', [20, 30], [], ['night'], { hab: ['ground'] }, 'On the quay walls after dark. Quick, mind.', 'angler', 'A seaside woodlouse the size of a thumbnail, and twice as quick.', { s: 'woodlouse', c: '#6a6a70', c2: '#a8a8b0', c3: '#3a3a40' }],
+  ['fog-moth', 'Fog moth', 'sea', 1, 'r', [40, 50], [], ['dawn', 'day', 'dusk', 'night'], { hab: ['light', 'ground'], needs: { event: 'fog' } }, 'Round the lighthouse lamp, only in a fog.', 'angler', 'Only flies in fog, as if the fog had the idea first.'],
+];
+/* the birds and beasts each page has (Nature book creatures, noted by saying hello: gardenLifeFound('c', id)). Seen, never caught. */
+const GARDEN_JOURNAL_SEEN = Object.freeze({ village: Object.freeze(['robin', 'blackbird', 'blue-tit', 'hen', 'mallard', 'hedgehog', 'frog']), woodland: Object.freeze(['squirrel', 'fox', 'rabbit']), valley: Object.freeze(['otter', 'bat']), oldwood: Object.freeze(['white-stag']), orchard: Object.freeze([]), mountains: Object.freeze([]), sea: Object.freeze([]) });
+const GARDEN_JOURNAL_LEGEND_SEEN = Object.freeze(['white-stag']);
+function _gvLook(look, base, shape) { return Object.freeze(look ? Object.assign({}, shape ? { s: shape } : {}, look) : base.look); }
+function _gvFishDef(r, i, n) {
+  const [id, name, page, home, rar, cm, diff, beh, seasons, tod, more, clue, by, note, look] = r, base = _GF_ALL.find(f => f.id === id) || null, m = more || {};
+  const sea = home.startsWith('c:'), legend = rar === 'L';
+  const needs = m.needs ? Object.freeze(Object.assign({}, m.needs)) : null;
+  return Object.freeze(Object.assign({}, base || {}, { id, name, cat: 'fish', zone: Object.freeze(sea ? (m.sea || _GV_SEA) : ['pond']), rarity: _GV_RAR[rar], diff, beh, cm: Object.freeze(cm.slice()), price: base ? base.price : Math.round(4 + diff * diff * 1.6), look: _gvLook(look, base), tod: Object.freeze(tod.slice()), seasons: Object.freeze(seasons.slice()), rain: m.rain || 0, lv: 1, blurb: note },
+    { page, home: sea ? Object.freeze({ r: page, sea: 1, c: home.slice(2) }) : Object.freeze({ r: page, w: home }), n, clue, by, legend: legend ? 1 : 0 }, needs ? { needs } : { needs: undefined }));
+}
+function _gvBugDef(r, n) {
+  const [id, name, page, g, rar, mm, seasons, tod, more, clue, by, note, look] = r, base = _GB_ALL.find(b => b.id === id) || null, m = more || {};
+  const needs = m.needs ? Object.freeze(Object.assign({}, m.needs)) : null, legend = rar === 'L';
+  const hab = Object.freeze((m.hab || (base ? base.hab : ['ground'])).slice());
+  return Object.freeze(Object.assign({}, base || {}, { id, name, cat: 'bug', shape: look ? look.s : base.shape, rarity: _GV_RAR[rar], hab, skit: base ? base.skit : 3, rest: base ? base.rest : 'crawl', price: base ? base.price : 6, look: _gvLook(look, base), tod: Object.freeze(tod.slice()), seasons: Object.freeze(seasons.slice()), rain: m.rain || 0, lv: 1, size: base ? base.size : 1, blurb: note },
+    { page, home: Object.freeze(g ? { r: page, g: 1 } : { r: page }), n, mm: Object.freeze(mm.slice()), clue, by, legend: legend ? 1 : 0 }, needs ? { needs } : { needs: undefined }));
+}
+/* numbered page by page, as the journal shows them: the legends last on their page, as 'L' */
+function _gvNumber(rows, at) { const n = new Map(); for (const p of GARDEN_JOURNAL_PAGES) { let k = 0; for (const r of rows) if (r[2] === p.id && r[at] !== 'L') n.set(r[0], ++k); } return n; }
+const _GV_FN = _gvNumber(_GV_FISH, 4), _GV_BN = _gvNumber(_GV_BUGS, 4);
+const GARDEN_FISH_ONLY = Object.freeze(_GV_FISH.map((r, i) => _gvFishDef(r, i, _GV_FN.get(r[0]) || 0)));
+const GARDEN_FISH = Object.freeze(GARDEN_FISH_ONLY.concat(_GF_ALL.filter(f => f.cat !== 'fish')));   // the vale's fish, and the finds (junk and treasure) that turn up on any line
+const GARDEN_BUGS = Object.freeze(_GV_BUGS.map(r => _gvBugDef(r, _GV_BN.get(r[0]) || 0)));
+const _GF_FISH = new Map(_GF_ALL.map(f => [f.id, f]).concat(GARDEN_FISH.map(f => [f.id, f])));
+const _GF_BUG = new Map(_GB_ALL.map(b => [b.id, b]).concat(GARDEN_BUGS.map(b => [b.id, b])));
+const _GV_IN = new Set(GARDEN_FISH.map(f => f.id).concat(GARDEN_BUGS.map(b => b.id)));
+/** Is this kind one of the vale's (it spawns and has a journal page)? */
+function gardenValeKind(id) { return _GV_IN.has(String(id)); }
 
 /* ---------- gear ---------- */
 function _gfG(id, kind, tier, name, price, lv, st, blurb, more) { return Object.freeze(Object.assign({ id, kind, tier, name, price, lv, st: Object.freeze(st), blurb }, more || {})); }
