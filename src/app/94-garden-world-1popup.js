@@ -58,6 +58,7 @@ function gardenPopupOpen(tab, o) {
   if (typeof _gwFishBusy === 'function' && _gwFishBusy()) _gwFishCancel('');
   _gdpGhostClear();
   gardenPagerFresh();
+  if (typeof gardenSfx === 'function') gardenSfx('open');
   openDialog({
     // a panel is as big as what is in it; the long lists keep a steady height so paging through them does not jump
     title: o.title || def.title, size: tab === 'goals' ? 'md' : 'xl', fixed: !['goals', 'basket'].includes(tab), height: ['goals', 'basket'].includes(tab) ? '' : '82vh', className: 'gd-popup gd-popup-' + tab, keepOnOutside: false,
@@ -68,6 +69,7 @@ function gardenPopupOpen(tab, o) {
     },
     onClose() {
       _gdp.pop = null;
+      if (typeof gardenSfx === 'function') gardenSfx('close');
       if (_gdp.root && _gdp.root.isConnected) { const box = _gdp.root.querySelector('.gd-stagebox'); if (box) box.focus({ preventScroll: true }); _gdpRepaintSoon(); }
     },
   });

@@ -1247,6 +1247,7 @@ function _gwOpenProp(p) {
     lands: () => gardenPopupOpen('lands'),
     lf: () => gardenLandPropOpen(p),
   }[p.act];
+  if (go && p.door && typeof gardenSfx === 'function') gardenSfx('door');
   if (go) go();
 }
 /** Walk to a building's door and go in. */

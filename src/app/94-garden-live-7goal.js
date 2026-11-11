@@ -45,6 +45,7 @@ function _glgHostStop() {
 }
 /** Somebody has come in: if a goal is going they are told at once; if they are the first, the next goal waits a little for them to settle. */
 function _glgJoin(fid) {
+  if (typeof gardenSfx === 'function') gardenSfx('friend');
   if (_gll.actors.size <= 1) _glg.arriveAt = Date.now();   // clock-ok: pacing
   if (_glg.cur) _glgSendNow(fid);
 }

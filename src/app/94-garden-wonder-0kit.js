@@ -156,7 +156,7 @@ function wdSound(list) {
     for (const [f, d, type, peak, at] of list) {
       const o = ac.createOscillator(), v = ac.createGain(), s = t0 + (at || 0);
       o.type = type || 'sine'; o.frequency.value = f; v.gain.setValueAtTime(0, s); v.gain.linearRampToValueAtTime(peak, s + 0.015); v.gain.exponentialRampToValueAtTime(0.0001, s + d);
-      o.connect(v); v.connect(ac.destination); o.start(s); o.stop(s + d + 0.05);
+      o.connect(v); v.connect(typeof gardenSoundOut === 'function' ? gardenSoundOut(ac) : ac.destination); o.start(s); o.stop(s + d + 0.05);
     }
   } catch (e) { /* no sound, no matter */ }
 }

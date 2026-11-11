@@ -192,6 +192,7 @@ function gardenLevelUpCard(d) {
     c = document.createElement('div'); c.className = 'gd-levelup'; c.setAttribute('role', 'status');
     c.innerHTML = `<div class="gd-lu-ic">${icon('sparkles')}</div><b></b><p></p><ul></ul><button type="button" class="btn btn-primary btn-sm">Lovely</button>`;
     c.querySelector('b').textContent = `Garden level ${d.level}`;
+    if (typeof gardenSfx === 'function') gardenSfx('level');
     c.querySelector('p').textContent = d.text.replace(/^Garden level \d+:\s*/, '');
     c.querySelector('button').onclick = () => c.remove();
     { const top = gardenMessageHost() || _gdp.root; top.insertBefore(c, top.querySelector(':scope > .gd-msg')); }   // (over the message line, never on top of it)
