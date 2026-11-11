@@ -130,7 +130,7 @@ GRA_ROOMS.cellar = {
     yield;
     // the flood on the floor: stone flags under water, the pool where things swim
     T.rect(0, 392, 960, 208, T.lin(0, 392, 0, 600, [[0, '#14505a'], [1, '#07202a']]));
-    T.stones(0, 400, 960, 600, { base: '#1a4a52', mortar: '#123a42', h: 30, w: 110, var: .1 });
+    T.flags(394, 600, { base: '#1e5058', mortar: '#0c2a30', h: 14, w: 150, var: .16 });
     T.rect(0, 392, 960, 208, T.lin(0, 392, 0, 600, [[0, '#2a8a8a', .45], [1, '#06161c', .35]]));
     T.skirt(394, .45, '#031014');
     T.soft(620, 502, 330, 76, .5, '#020c10');

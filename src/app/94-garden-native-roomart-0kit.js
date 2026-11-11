@@ -116,6 +116,23 @@ window.GardenRoomArt = (function () {
           T.blob(mx - light * w * .1, my + hh * .18, w * .36, hh * .2, shade(c, -.25), .5, 6, .3);
         }
       },
+      /** flagstones on a floor, in perspective: rows deepen toward you, joints staggered */
+      flags(y0, y1, o) {
+        o = o || {}; const base = o.base || '#6a665e', vx = o.vx == null ? 480 : o.vx, spread = o.spread || 2.4;
+        T.rect(0, y0, W, y1 - y0, o.mortar || shade(base, -.5));
+        let y = y0, row = 0, h = o.h || 14;
+        while (y < y1) {
+          const k = (y - y0) / (y1 - y0), sw = (o.w || 120) * (1 / spread + (1 - 1 / spread) * k), off = (row % 2) * sw * .5 + r() * sw * .3;
+          for (let x = -sw - off; x < W + sw; x += sw * (.8 + r() * .4)) {
+            const w = sw * (.85 + r() * .3), c = shade(base, (r() - .5) * (o.var || .18)), sx = vx + (x - vx) * (1 - .04 * (1 - k));
+            T.rrect(sx + 1.5, y + 1, w - 3, h - 2, Math.min(4, h * .25), c);
+            T.rect(sx + 3, y + 1.5, w - 8, Math.max(1, h * .1), shade(c, .2), .45);
+            if (r() < .3) T.ell(sx + r() * w, y + h * .5, w * .15, h * .2, shade(c, -.25), .35);
+          }
+          y += h; h *= o.grow || 1.16; row++;
+        }
+        T.rect(0, y0, W, y1 - y0, T.lin(0, y0, 0, y1, [[0, '#000', .3], [.4, '#000', .08], [1, '#000', .15]]));
+      },
       /** brick courses with soft lime mortar */
       bricks(x0, y0, x1, y1, o) {
         o = o || {}; const base = o.base || '#8a4a32', bh = o.h || 16, bw = o.w || 40;
@@ -163,7 +180,7 @@ window.GardenRoomArt = (function () {
     const spec = GRA_ROOMS[room.id], have = baked.get(room.id);
     if (have && scene.textures.exists(have.key)) { baked.delete(room.id); baked.set(room.id, have); return { spec, key: have.key, done: true, ms: 0 }; }
     const c = document.createElement('canvas'); c.width = W * K; c.height = H * K;
-    const cx = c.getContext('2d'); cx.setTransform(K, 0, 0, K, 0, 0);
+    const cx = c.getContext('2d', { willReadFrequently: true }); cx.setTransform(K, 0, 0, K, 0, 0);
     const T = kit(cx, 'room|' + room.id), info = { room, water: typeof _grwOf === 'function' ? _grwOf(room) : null, floor: room.floor || GRM.floor, door: GRM.door };
     return { spec, canvas: c, gen: spec.paint(T, info), done: false, ms: 0 };
   }
@@ -171,12 +188,15 @@ window.GardenRoomArt = (function () {
   function step(scene, room, job) {
     if (job.done) return true;
     const t0 = performance.now();
-    try { while (performance.now() - t0 < SLICE) { const n = job.gen.next(); if (n.done) { job.done = true; break; } } }
+    // Canvas work is recorded lazily; reading one pixel makes each slice pay
+    // for its own drawing here, not all at once when the texture is uploaded.
+    const cx = job.canvas.getContext('2d', { willReadFrequently: true });
+    try { while (performance.now() - t0 < SLICE) { const n = job.gen.next(); cx.getImageData(0, 0, 1, 1); if (n.done) { job.done = true; break; } } }
     catch (e) { job.done = true; job.failed = String(e && e.stack || e); if (window.GardenNativePainted) GardenNativePainted.lastError = job.failed; }
-    job.ms += performance.now() - t0;
+    const spent = performance.now() - t0; job.ms += spent; job.maxSlice = Math.max(job.maxSlice || 0, spent);
     if (!job.done) return false;
-    const key = 'gdroom-' + room.id + '-' + (++fxSerial);
-    scene.textures.addCanvas(key, job.canvas); baked.set(room.id, { key });
+    const key = 'gdroom-' + room.id + '-' + (++fxSerial), t1 = performance.now();
+    scene.textures.addCanvas(key, job.canvas); baked.set(room.id, { key }); job.uploadMs = performance.now() - t1;
     while (baked.size > KEEP) { const [id, old] = baked.entries().next().value; baked.delete(id); if (scene.textures.exists(old.key)) scene.textures.remove(old.key); }
     job.key = key; job.canvas = null; return true;
   }
@@ -258,7 +278,7 @@ window.GardenRoomArt = (function () {
     const status = { id: room.id, bakeMs: 0, frames: 0, cached: job.done };
     function show() {
       image = scene.add.image(0, 0, job.key).setOrigin(0, 0).setScale(1 / K).setAlpha(status.cached ? 1 : 0); root.add(image);
-      fx = live(scene, s.root, spec); status.fx = fx.count; status.bakeMs = Math.round(job.ms);
+      fx = live(scene, s.root, spec); status.fx = fx.count; status.bakeMs = Math.round(job.ms); status.maxSliceMs = Math.round(job.maxSlice || 0); status.uploadMs = Math.round(job.uploadMs || 0);
       if (status.cached) plate.setVisible(false);
     }
     if (job.done) show();
