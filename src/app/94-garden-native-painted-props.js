@@ -612,6 +612,17 @@ window.GardenPaintedProps = (function () {
     const pool = h.over(image(scene, key, x, y + 4)); pool.setScale(w / 256, w * .42 / 256).setAlpha(.34);
     if (haloY != null) { const halo = h.over(image(scene, key, x, haloY)); halo.setScale(.3).setAlpha(.5); h.move(halo, (node, t, motion) => { if (motion) node.setAlpha(.46 + Math.sin(t * 2.3 + x) * .04); }); }
   }
-  function status() { return { baked, bakeMs: Math.round(bakeMs), lastError, gates: [...gateSeen.entries()] }; }
-  return { glowPool, prop, signature, decor, decorSignature, decorKnown, gate, gateSignature, gateKind, falls, poolKey, image, status, get lastError() { return lastError; } };
+  function memory(scene) { let bytes = 0, n = 0; if (scene) for (const key of scene.textures.getTextureKeys()) if (key.startsWith(TEX + '|')) { const c = scene.textures.get(key).getSourceImage(); bytes += (c.width || 0) * (c.height || 0) * 4; n++; } return { propBytes: bytes, propTextures: n }; }
+  function status(scene) { return Object.assign({ baked, bakeMs: Math.round(bakeMs), lastError, gates: [...gateSeen.entries()] }, scene ? memory(scene) : {}); }
+  /* The kit API, for the painted scenery kits (terrain, water, forests):
+   *   kit.brush(ctx)                  the scene-style brush (f, s, lin, rad, post, beam, stone, crown, tufts, flowers, shadow, text)
+   *   kit.bake(scene, key, box, fn)   draw once into a supersampled canvas texture keyed by what it shows; returns the texture key
+   *   kit.image(scene, key, x, y)     that texture as an image anchored at its (0, 0)
+   *   kit.libImage(scene, id, v, season, size, x, y, night)  a 70-scene-lib object (trees, rocks, plants) as an image
+   *   kit.handle(scene, o, id, {kind}) and kit.finish(h, bounds, foot)  a world drawing handle: h.add(im), h.move(im, fn(im, t, motion)), h.over(im) (above the night grade), h.lights
+   *   kit.glowPool(scene, h, x, y, w, haloY)  a soft light pool and halo at dusk and night
+   *   kit.paintIntoGround(scene, fn(ctx, {box, meadow, palette, rng, path}))  paint straight into the composed ground picture
+   *   kit.falls(scene, {id, x, y, width, season}, o)  the village waterfall (rock step, sheet, streaks, spray, ripples) */
+  const kit = Object.freeze({ brush, bake, image, libImage, handle, finish, glowPool, poolKey, rng, hash, leafOf, PALETTE: { WOOD, OAK, STONE, SLATE, IRON, MOSS, LEAF }, falls: (...a) => falls(...a), paintIntoGround: (scene, fn) => !!(window.GardenNativePainted && GardenNativePainted.paintIntoGround(scene, fn)) });
+  return { kit, memory, glowPool, prop, signature, decor, decorSignature, decorKnown, gate, gateSignature, gateKind, falls, poolKey, image, status, get lastError() { return lastError; } };
 })();

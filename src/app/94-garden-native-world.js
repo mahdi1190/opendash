@@ -943,6 +943,12 @@ window.GardenNativeWorld = (function () {
       if (typeof gardenDesignLayer === 'function') add('ground:design', gardenDesignLayer(sc), { kind: 'ground' }, -9350, design);
       if (typeof gardenDesignPainted === 'function') gardenDesignPainted(rootNode, sc.dz);
       for (const [id, record] of drawings) if (!keep.has(id)) { record.handle.destroy(); drawings.delete(id); sorted = true; }
+      // Painted village: every standing thing is composed into the ground picture (shadow, foundation planting, worn door)
+      if (packGround && window.GardenNativePainted && GardenNativePainted.compose) {
+        const items = []; for (const record of drawings.values()) { const meta = record.metadata, foot = meta.foot || record.handle.foot, b = record.bounds; if (!record.handle.painted || !foot || !b || meta.kind === 'decor' || meta.kind === 'ground') continue; items.push({ id: record.id, x: foot.x, y: foot.y, w: Math.min(220, b.width * .8), door: !!(meta.prop && meta.prop.door) }); }
+        try { GardenNativePainted.compose(scene, items); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); }
+        if (typeof window !== 'undefined') window.__gardenPaintedScene = scene;
+      }
       restoreCanopyAlpha();
       solidObjects.length = 0; pointLights.length = 0; fadingProps.length = 0; reflectedScenery.length = 0; landmarkRows.length = 0; canopyOccluders.length = 0; effectFrame = -1;
       for (const record of drawings.values()) {

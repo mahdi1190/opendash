@@ -30,7 +30,7 @@ window.GardenNativePainted = (function () {
   PAL.spring = Object.assign({}, PAL.summer, { lawn: '#8fb35f', lawnLo: '#78a04e', lawnHi: '#a8c66f' });
   const palette = season => PAL[season] || PAL.summer;
   const ok = (f) => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
-  let overLayer = null, lastError = null, groundMs = 0, lastPlanting = [], spotCounts = {}, cachedGround = null, groundSerial = 0;
+  let lastInfo = null, overLayer = null, lastError = null, groundMs = 0, lastPlanting = [], spotCounts = {}, cachedGround = null, groundSerial = 0;
 
   /* ---------- library objects as baked sprites ---------- */
   const paths = new Map();
@@ -83,7 +83,7 @@ window.GardenNativePainted = (function () {
   function ground(scene, parent, info) {
     const started = performance.now();
     const B = info.box, P = palette(info.season), sig = info.sig + '|' + info.season;
-    K = Math.min(KMAX, 4096 / Math.max(B.w, B.h));
+    K = Math.min(KMAX, 4096 / Math.max(B.w, B.h)); lastInfo = info;
     if (cachedGround && cachedGround.sig === sig && scene.textures.exists(cachedGround.key)) { groundMs = Math.round(performance.now() - started); return show(scene, parent, B, cachedGround.key); }
     const c = document.createElement('canvas'); c.width = Math.ceil(B.w * K); c.height = Math.ceil(B.h * K);
     const cx = c.getContext('2d'); cx.setTransform(K, 0, 0, K, -B.x * K, -B.y * K);
@@ -242,7 +242,7 @@ window.GardenNativePainted = (function () {
     if (night && window.GardenPaintedProps) { const pk = GardenPaintedProps.poolKey(scene); if (pk) { const pool = scene.add.image(cx, foot + 10, pk).setOrigin(.5, .5).setScale(def.w * 1.1 / 256, def.w * .3 / 256).setAlpha(.3), layer = overLayer; if (layer) { layer.add(pool); pool.setDepth(80005); } else node._inner.add(pool); poolImages.push(pool); } }
     const top = foot - main.displayHeight * main.originY, b = { x: cx - main.displayWidth / 2 - 10, y: top - 4, width: main.displayWidth + 20, height: foot - top + 26 };
     node.nativeBounds = b;
-    return { root: node.target, rootNode: node, bounds: b, painted: true, update() {}, setLitWindows(on) { for (const [im, id, v, size] of parts) { const o = objectKey(scene, id, v, season, size, !!on); if (o && im.texture.key !== o.key) im.setTexture(o.key).setOrigin(o.meta.ox, o.meta.oy); } }, destroy() { for (const im of poolImages) im.destroy(); node.remove(); } };
+    return { root: node.target, rootNode: node, bounds: b, painted: true, foot: { x: cx, y: foot }, update() {}, setLitWindows(on) { for (const [im, id, v, size] of parts) { const o = objectKey(scene, id, v, season, size, !!on); if (o && im.texture.key !== o.key) im.setTexture(o.key).setOrigin(o.meta.ox, o.meta.oy); } }, destroy() { for (const im of poolImages) im.destroy(); node.remove(); } };
   }
 
   /* ---------- planting: groves, shrubs and reeds in deliberate groups ---------- */
@@ -274,6 +274,47 @@ window.GardenNativePainted = (function () {
     lastPlanting = made;
     return { destroy() { for (const im of made) im.destroy(); made.length = 0; }, count: made.length };
   }
-  function status() { return { wanted: wanted(), ready: ready(), groundMs, planted: lastPlanting.length, spots: spotCounts, lastError }; }
-  return { wanted, ready, preload, ground, building, planting, status, objectImage, objectCanvas, get lastError() { return lastError; }, set lastError(v) { lastError = v; }, set overLayer(v) { overLayer = v; } };
+  /* ---------- composition: the props painted into the one ground picture ----------
+   * Everything that stands in the village casts its soft shadow across the
+   * ground, sits in a fringe of grass and flowers at its foundation and wears
+   * the ground at its door; painted into the cached ground canvas (no sprite,
+   * no frame cost) and redone only when the set of footprints changes. Kits
+   * use paintIntoGround(scene, fn) to add their own composed detail the same way. */
+  function paintIntoGround(scene, fn) {
+    const g = cachedGround && scene.textures.exists(cachedGround.key) ? cachedGround : null; if (!g) return false;
+    const c = scene.textures.get(g.key).getSourceImage(), cx = c.getContext('2d'), B = g.box;
+    cx.save(); cx.setTransform(K, 0, 0, K, -B.x * K, -B.y * K);
+    try { fn(cx, { box: B, meadow: lastInfo && lastInfo.meadow || (() => true), palette: palette(lastInfo && lastInfo.season), rng, path }); } catch (e) { lastError = String(e && e.stack || e); }
+    cx.restore(); scene.textures.get(g.key).refresh(); return true;
+  }
+  function hash32(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  let composeMs = 0;
+  function compose(scene, items) {
+    const g = cachedGround; if (!g || !items.length) return;
+    const key = items.map(i => [i.id, Math.round(i.x), Math.round(i.y), Math.round(i.w)].join(':')).sort().join('|');
+    if (g.composed === key) return; const t0 = performance.now();
+    paintIntoGround(scene, (cx, kit) => {
+      const P = kit.palette, r = rng(hash32(key)), meadow = kit.meadow, B = kit.box;
+      for (const it of items) {
+        if (it.x < B.x - 40 || it.x > B.x + B.w + 40 || it.y < B.y - 40 || it.y > B.y + B.h + 40) continue;
+        // a long soft shadow thrown to the lower right (light from the upper left)
+        cx.save(); cx.translate(it.x + it.w * .14, it.y + 3); cx.scale(1, .22); const rad = it.w * .62 + 10, gr = cx.createRadialGradient(0, 0, 0, 0, 0, rad);
+        gr.addColorStop(0, 'rgba(48,56,30,.26)'); gr.addColorStop(.7, 'rgba(48,56,30,.1)'); gr.addColorStop(1, 'rgba(48,56,30,0)'); cx.fillStyle = gr; cx.beginPath(); cx.arc(0, 0, rad, 0, Math.PI * 2); cx.fill(); cx.restore();
+        // worn ground where feet stop: at a door, in front of a bench or a board
+        if (it.door) { cx.globalAlpha = .38; cx.fillStyle = P.pathWear; cx.fill(path(sceneDraw.blob(r, it.x, it.y + 12, Math.max(14, it.w * .2), 7, 8, .5))); cx.globalAlpha = .25; cx.fillStyle = P.pathEdge; cx.fill(path(sceneDraw.blob(r, it.x + 2, it.y + 14, Math.max(8, it.w * .12), 4, 7, .5))); cx.globalAlpha = 1; }
+        // planting growing round the foundation, thicker at the corners
+        for (let k = 0, n = Math.round(6 + it.w / 10); k < n; k++) {
+          const side = k % 2 ? 1 : -1, x = it.x + side * (it.w / 2 - 2 + r() * 12) + (r() - .5) * 6, y = it.y - 1 + r() * 5; if (!meadow(x, y)) continue;
+          cx.globalAlpha = .8; cx.fillStyle = r() < .5 ? P.lawnLo : '#5e7e3c'; cx.fill(path(sceneDraw.blob(r, x, y, 4 + r() * 4, 2 + r() * 2, 6, .5)));
+          for (let b = 0; b < 4; b++) { cx.strokeStyle = b % 2 ? P.lawnHi : '#6f8a40'; cx.lineWidth = 1; cx.beginPath(); cx.moveTo(x + b - 2, y); cx.quadraticCurveTo(x + b - 2 + (b - 1.5), y - 4, x + (b - 1.5) * 2.2, y - 6 - r() * 4); cx.stroke(); }
+          if (r() < .45) { cx.globalAlpha = 1; cx.fillStyle = ['#f2f0e8', '#e8c84a', '#c86aa0', '#9a7ad0'][Math.floor(r() * 4)]; cx.beginPath(); cx.arc(x + (r() - .5) * 6, y - 4 - r() * 3, 1.3, 0, Math.PI * 2); cx.fill(); }
+          cx.globalAlpha = 1;
+        }
+      }
+    });
+    g.composed = key; composeMs = Math.round(performance.now() - t0);
+  }
+  function memory(scene) { let bytes = 0, n = 0; if (cachedGround && scene && scene.textures.exists(cachedGround.key)) { const c = scene.textures.get(cachedGround.key).getSourceImage(); bytes += c.width * c.height * 4; n++; } return { groundBytes: bytes, groundTextures: n }; }
+  function status() { return { wanted: wanted(), ready: ready(), groundMs, composeMs, K, planted: lastPlanting.length, spots: spotCounts, lastError }; }
+  return { wanted, ready, preload, ground, building, planting, status, objectImage, objectCanvas, paintIntoGround, compose, memory, get lastError() { return lastError; }, set lastError(v) { lastError = v; }, set overLayer(v) { overLayer = v; } };
 })();
