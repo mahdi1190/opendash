@@ -31,11 +31,11 @@ function _gtrArt(def) {
 }
 function _gtrPose(dt,S) {
   if(!S.node)return;
-  if(S.partsNode!==S.node){S.partsNode=S.node;S.parts={};for(const key of ['body','face','leg-a','leg-b','arm'])S.parts[key]=S.node.querySelector('[data-traveller-part="'+key+'"]');S.poseKey='';}
+  if(S.partsNode!==S.node){S.partsNode=S.node;S.hip=null;S.parts={};for(const key of ['body','face','leg-a','leg-b','arm'])S.parts[key]=S.node.querySelector('[data-traveller-part="'+key+'"]');S.poseKey='';}
   const sample=_gtr.current;if(!sample)return;
   const motion=typeof gardenMotionOn!=='function'||gardenMotionOn(),held=_gtr.paused,walk=sample.moving&&motion,step=walk?Math.sin(sample.phase/145):0;
   const values=[sample.face,Math.round(step*10)/10,Math.round((walk?Math.abs(step)*.75:0)*10)/10,sample.alpha.toFixed(2)].join('|');if(held&&S.poseKey)return;if(values===S.poseKey)return;S.poseKey=values;
-  S.parts.face?.setAttribute('transform','scale('+sample.face+' 1)');S.parts.body?.setAttribute('transform','translate(0 '+(-Math.abs(step)*.75).toFixed(2)+')');S.parts['leg-a']?.setAttribute('transform','rotate('+(step*8).toFixed(2)+' -4 -15)');S.parts['leg-b']?.setAttribute('transform','rotate('+(-step*8).toFixed(2)+' 5 -15)');S.parts.arm?.setAttribute('transform','rotate('+(-step*9).toFixed(2)+' -10 -35)');S.node.setAttribute('opacity',motion?sample.alpha.toFixed(3):'1');
+  S.parts.face?.setAttribute('transform','scale('+sample.face+' 1)');S.parts.body?.setAttribute('transform','translate(0 '+(-Math.abs(step)*.75).toFixed(2)+')');const hip=S.hip!=null?S.hip:(S.hip=Number((S.node.querySelector('[data-hip]')||{getAttribute:()=>null}).getAttribute('data-hip'))||0),painted=hip<0,hy=painted?hip:-15;S.parts['leg-a']?.setAttribute('transform','rotate('+(step*(painted?20:8)).toFixed(2)+' '+(painted?3.2:-4)+' '+hy+')');S.parts['leg-b']?.setAttribute('transform','rotate('+(-step*(painted?20:8)).toFixed(2)+' '+(painted?-3.6:5)+' '+hy+')');S.parts.arm?.setAttribute('transform','rotate('+(-step*(painted?16:9)).toFixed(2)+' '+(painted?'7 -43':'-10 -35')+')');S.node.setAttribute('opacity',motion?sample.alpha.toFixed(3):'1');
 }
 function _gtrDrop() { if(_gtr.sprite){_gtr.sprite.remove();_gtr.sprite=null;} _gtr.current=null; }
 function gardenTravellersStop(keepPhase) { _gtrDrop();_gtr.phase=null;if(!keepPhase){_gtr.context='';_gtr.road=null;_gtr.path=null;_gtr.received=null;} }
@@ -69,7 +69,7 @@ function gardenTravellersFrame(dt) {
   const seed=gardenHash('island-travellers-v1|'+m.lh+'|'+road.id),sample=gardenTravellerSample(_gtr.phase,seed,_gtr.path);
   if(!sample){_gtrDrop();return;}
   const motion=typeof gardenMotionOn!=='function'||gardenMotionOn();if(!motion){const at=gardenTravellerPoint(_gtr.path,1,false);sample.x=at.x;sample.y=at.y;sample.face=at.face;sample.moving=false;sample.alpha=1;sample.stage='lingering';}
-  if(!_gtr.sprite||_gtr.sprite.id!==sample.id){_gtrDrop();const def=sample.def;_gtr.sprite=gardenWorldAdd({id:sample.id,kind:'road-traveller',svg:typeof gardenFigurePaintOn==='function'&&gardenFigurePaintOn()?'<g transform="scale(.8)">'+gardenFigurePaint(_gtrArt(def),'npc')+'</g>':_gtrArt(def),x:sample.x,y:sample.y,ground:false,lift:0,hit:.55,hitUp:28,label:def.name+' · '+def.title+' (island traveller)',cursor:'hand',nodeAttrs:{'data-traveller':def.id},update:_gtrPose,onClick:()=>gardenTravellerTalk(sample.id)});}
+  if(!_gtr.sprite||_gtr.sprite.id!==sample.id){_gtrDrop();const def=sample.def;_gtr.sprite=gardenWorldAdd({id:sample.id,kind:'road-traveller',svg:typeof gardenFigurePaintOn==='function'&&gardenFigurePaintOn()?'<g transform="scale(.84)">'+(typeof gardenTravellerSvg==='function'&&gardenTravellerSvg(def)||gardenFigurePaint(_gtrArt(def),'npc'))+'</g>':_gtrArt(def),x:sample.x,y:sample.y,ground:false,lift:0,hit:.55,hitUp:28,label:def.name+' · '+def.title+' (island traveller)',cursor:'hand',nodeAttrs:{'data-traveller':def.id},update:_gtrPose,onClick:()=>gardenTravellerTalk(sample.id)});}
   _gtr.current=sample;const S=_gtr.sprite;S.x=sample.x;S.y=sample.y;S.hit=sample.stage==='lingering'?.55:0;
   if(S.node&&S.node.getAttribute('visibility')==='hidden')S.node.removeAttribute('visibility');
 }

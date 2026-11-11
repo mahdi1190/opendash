@@ -297,3 +297,44 @@ function gardenCastWalkSync(S) {
   try { svg = _wdFolkMarkup(S.row, String(S.svg || '').indexOf('wd-mark') >= 0); } catch (e) { svg = ''; } finally { _GCA.walkNow = false; }
   if (svg && typeof wdArt === 'function') wdArt(S, svg);
 }
+/**
+ * A road traveller (94-garden-travellers-0rules.js: the seed courier, the travelling angler, the naturalist), redrawn as one of the vale's
+ * people in the scene kit's proportions: legs half their height, a coat with its shade side and lit edge, a small modelled head, their own
+ * hat, hair and what they carry. Their colours are the row's (coat, trim, hat, skin, hair, bag), so each is still themselves. The runtime's
+ * part hooks are kept (data-traveller-part body, face, leg-a, leg-b, arm) and data-hip tells it where the legs turn.
+ */
+function gardenTravellerSvg(def) {
+  if (!def) return '';
+  const key = 'trav|' + def.id + def.coat + def.skin;
+  const hit = _GCA.cache.get(key); if (hit != null) return hit;
+  let s = '';
+  try {
+    const K = _gcaKit('trav' + def.id), { A, P, S, form, strokes, eye } = K, angler = def.id === 'travelling-angler', nat = def.id === 'naturalist';
+    const ct = K.T(def.coat), sk = K.T(def.skin), hy = -27, trou = A.mix(def.coat, '#3a3a34', 0.6);
+    const leg = (x, part, far) => `<g data-traveller-part="${part}">` + K.limb(x, hy, Math.PI + (far ? 0.03 : -0.03), -hy - 2.4, 4.6, 3.8, far ? A.mix(trou, '#2c3424', 0.2) : trou).d + P(A.mix('#4a4036', '#2c3424', far ? 0.2 : 0), `M${K.f(x - 2.6)} -3.4h5.4q3 0.6 3.6 3.6h-9z`) + '</g>';
+    let body = form(def.coat, 'M-10 -24C-11 -36 -9 -46 0 -47C9 -47 11 -36 10 -24C5 -21 -5 -21 -10 -24z', 'M-9.4 -25C-10.4 -36 -8.4 -45.4 -0.4 -46C8.4 -46 9.6 -36 9.2 -25.2C4.6 -22.6 -4.6 -22.6 -9.4 -25z', 'M-8.4 -27C-9.4 -35 -7.6 -42 -3.6 -44.6C-5.6 -38 -6.2 -32 -6 -26.4z', 0.5);
+    body += S(def.trim, 1.3, 'M1.6 -46L2.6 -23', 0.9) + P(ct[3], A.circ(4.6, -38, 0.7) + A.circ(4.8, -32, 0.7)) + strokes(0, -34, 8, 10, 18, 1.6, 0.1, ct[2], 0.45, 0.22) + P(def.trim, 'M-6 -46C-2 -43 4 -43 7 -46L6 -43C2 -41 -2 -41 -5 -43z');
+    const arF = K.limb(-7, -43, Math.PI * 0.94, 16, 4, 3.4, A.mix(def.coat, '#2c3424', 0.22));
+    const farArm = arF.d + P(sk[1], A.ell(arF.tip[0], arF.tip[1] + 0.8, 1.8, 2.2));
+    const arN = K.limb(7, -43, Math.PI * 0.9, 15, 4.2, 3.6, def.coat);
+    let carried = '';
+    if (angler) carried = S('#6b7256', 1.4, 'M9 -26L26 -80', 1) + S('#c2cdb8', 0.4, 'M26 -80Q31 -50 23 -22', 0.7);
+    else if (nat) carried = P('#d7d5b9', 'M9 -32L19 -30V-18L9 -20z') + P('#b8b496', 'M9 -32L11 -32V-20L9 -20z') + S('#80916a', 0.6, 'M11.6 -28l5 1M11.6 -25l5 1', 0.9);
+    else carried = P(K.T(def.bag)[1], A.rrect(8, -28, 10, 13, 2)) + P(def.bag, A.rrect(8.4, -28, 9, 12, 1.8)) + P('#e0d4af', 'M10 -28l5 -4l3 3l-5 3z') + S('#776448', 0.9, 'M-6 -45L12 -27', 0.9);
+    const nearArm = `<g data-traveller-part="arm">${arN.d}${P(sk[0], A.ell(arN.tip[0], arN.tip[1] + 0.8, 1.9, 2.3))}</g>`;
+    // the head: modelled, turned a little toward the way they go
+    let head = P(sk[1], 'M-2.6 -47V-50H3V-47z') + form(def.skin, A.ell(1, -54, 6.6, 7.2), A.ell(0.5, -54.6, 5.9, 6.5), 'M-3.6 -58C-1.6 -60.4 2 -60.6 4 -59.4C1 -59.4 -1.4 -58.4 -3 -56.4z', 0.55);
+    head += P(sk[1], 'M6.6 -53.6C7.8 -53.6 8 -52 7.2 -51.4L6.4 -51.6z') + eye(4.2, -55, 0.75) + S(A.mix(def.hair, '#000000', 0.2), 0.6, 'M2.8 -57q1.4 -0.8 2.8 -0.2', 0.9) + S('#84614d', 0.5, 'M3.4 -50.2q1.6 0.8 3 0', 0.9) + P('#e09080', A.ell(4.4, -52.2, 1.4, 0.8), 0.32);
+    const hr = K.T(def.hair);
+    head += P(hr[1], 'M-6 -55C-6.6 -61 -2 -62.6 2 -62.4C6 -62.2 8 -60 7.6 -57.6C4 -59 0 -58.6 -2 -57C-3 -54 -3.6 -51 -5.4 -50C-6 -52 -6 -53.6 -6 -55z') + P(hr[0], 'M-5.4 -55.4C-5.8 -60.4 -1.8 -61.6 2 -61.4C5.4 -61.2 7 -59.6 6.8 -58C3.6 -59.4 0 -58.8 -2.4 -57.4C-3.4 -55 -4 -52.6 -5 -51.6C-5.4 -53 -5.4 -54.4 -5.4 -55.4z') + S(hr[2], 0.45, 'M-4 -58q3 -3 7 -2.4', 0.6);
+    const ht = K.T(def.hat);
+    if (angler) head += P(ht[1], 'M-9 -58.6C-8 -60.4 8 -60.8 11 -58.8C8 -57.4 -6 -57.2 -9 -58.6z') + P(ht[0], 'M-5 -59.6C-5 -64 -1 -65.4 2.4 -65.2C6 -65 7.6 -63 7.4 -59.8C3 -59.2 -1 -59.2 -5 -59.6z') + P(ht[2], 'M-4 -60.6C-3.6 -63.4 -1 -64.4 1.6 -64.4C-0.4 -63.4 -1.8 -62.2 -2.2 -60.4z', 0.6) + P(def.trim, 'M-5 -60.2C-1 -59.6 3.4 -59.6 7.4 -60.2V-61.4C3.4 -60.8 -1 -60.8 -5 -61.4z');
+    else if (!nat) head += P(ht[1], 'M-6.4 -59C-6 -64 -1 -65.6 3 -65.2C7 -64.8 8.6 -62 8 -59.4z') + P(ht[0], 'M-5.8 -59.6C-5.4 -63.6 -1 -64.8 2.6 -64.6C6.2 -64.2 7.4 -62 7 -60z') + P(ht[3], 'M5 -60.2C8 -60.4 11.6 -59.8 12.4 -59C11 -58.2 8 -58.2 5 -58.8z') + P(ht[2], 'M-4.6 -61.6C-3 -63.6 0 -64 2.4 -63.8C-0.4 -63.2 -2.6 -62.6 -4.6 -61.6z', 0.6);
+    if (nat) head += S('#65715b', 0.6, 'M2.6 -55a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M6.2 -55L7.4 -54.6', 0.95) + P('#ffffff', A.ell(3.8, -55.6, 0.7, 0.4), 0.35);
+    const shadow = typeof gardenFigureShadowSvg === 'function' ? gardenFigureShadowSvg(11, 3) : '';
+    s = `<g class="gd-traveller-art gca-trav" data-hip="${hy}">${shadow}<g data-traveller-part="body"><g data-traveller-part="face">${leg(-3.6, 'leg-b', true)}${farArm}${leg(3.2, 'leg-a', false)}${body}${head}${carried}${nearArm}</g></g></g>`;
+  } catch (e) { s = ''; }
+  if (_GCA.cache.size > 40) _GCA.cache.clear();
+  _GCA.cache.set(key, s);
+  return s;
+}
