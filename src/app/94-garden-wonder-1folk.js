@@ -6,6 +6,7 @@
    Saved: fv.<id> (the day they last called), fn.<id> (how many times you have spoken), fs.<id>.<line> (said), fd ({d, id, done}: today's), fg.<id>.<n> ({i, d, name}: what you gave them).
    ============================================================ */
 function _wdFolkArt(r, o) {
+  if (typeof gardenCastOn === 'function' && gardenCastOn()) { const painted = gardenCastSvg(r.id, o); if (painted) return painted; }   // the Painted village draws the cast in the scene kit's hand (94-garden-art-g-cast.js)
   const A = GART, f = r.fur, c = r.coat, k = r.kind;
   let s = A.P('#000000', A.ell(0, 0.5, 11, 3), 0.18);
   if (k === 'owl') {
@@ -223,7 +224,7 @@ function _wdFolkSpawn(row) {
   };
   _wdf.S = wdSprite(spec); _wdf.row = row; _wdf.S.home = from;
 }
-function _wdFolkMarkup(row, mark) { return _wdFolkArt(row) + (mark ? '<g class="wd-mark" transform="translate(0 -56)"><rect x="-9" y="-6" width="18" height="11" rx="5.5" fill="#fffdf4" stroke="#6a5a44" stroke-width="0.6"/><circle cx="-4" cy="-0.5" r="1.1" fill="#6a5a44"/><circle cy="-0.5" r="1.1" fill="#6a5a44"/><circle cx="4" cy="-0.5" r="1.1" fill="#6a5a44"/></g>' : ''); }
+function _wdFolkMarkup(row, mark) { return _wdFolkArt(row) + (mark ? '<g class="wd-mark" transform="translate(0 ' + (typeof gardenCastOn === 'function' && gardenCastOn() ? -gardenCastTop(row.id) - 6 : -56) + ')"><rect x="-9" y="-6" width="18" height="11" rx="5.5" fill="#fffdf4" stroke="#6a5a44" stroke-width="0.6"/><circle cx="-4" cy="-0.5" r="1.1" fill="#6a5a44"/><circle cy="-0.5" r="1.1" fill="#6a5a44"/><circle cx="4" cy="-0.5" r="1.1" fill="#6a5a44"/></g>' : ''); }
 function _wdFolkLeave(S) {
   if (S.gone) return;
   S.gone = true; S.hold = false; S.hit = 0;
