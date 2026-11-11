@@ -373,7 +373,7 @@ function _locCheckBadges() {
 /* ---------- the first-time notice ---------- */
 function _locMaybeNotice() {
   if (!_loc.data || _loc.data.prefs.noticeAt) return;
-  const busy = (typeof _obOpen !== 'undefined' && _obOpen) || (typeof storyIsOpen === 'function' && storyIsOpen()) || document.querySelector('.modal, .scrim')
+  const busy = (typeof _obOpen !== 'undefined' && _obOpen) || (typeof storyIsOpen === 'function' && storyIsOpen()) || document.querySelector('.modal, .scrim, .anew-card, .ob-card, .wn-qs')
     || (typeof state !== 'undefined' && state && state.view === 'garden')   // includes the waking-up view before the world mounts
     || (document.documentElement.classList.contains('gd-immersive') || document.documentElement.classList.contains('gsv-immersive'));   // not over the garden
   if (busy || document.hidden) { setTimeout(_locMaybeNotice, 20000); return; }

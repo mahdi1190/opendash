@@ -10,6 +10,14 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.67.2] - 2026-11-11
+
+### Fixed
+
+- New users no longer get the old "New in 2.2" card, and first-run tips wait their turn instead of appearing together.
+- The quick-start card no longer covers the garden's Map and View buttons.
+- Island travellers no longer stand on top of the gnome and you by the post box.
+
 ## [2.67.1] - 2026-11-11
 
 ### Fixed
