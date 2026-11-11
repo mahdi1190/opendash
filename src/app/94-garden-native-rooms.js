@@ -384,12 +384,18 @@ window.GardenNativeRooms = (function () {
   }
   function update(time, delta) {
     const s = current(); if (!s || document.hidden) return;
-    const dt = Math.min(.05, Math.max(0, delta > 1 ? delta / 1000 : delta || 1 / 60)); s.now = time; s.time += dt; resize(s);
-    if (s.music) { _ee.t = s.time; _eeLevel(s.time); }
-    else { _grm.t = s.time; _grm.dtNow = dt; }
-    move(s, dt, time); if (s.dead) return;
+    // Same capped catch-up as the outdoor world: slow frames run up to five
+    // 50 ms movement sub-steps, so rooms do not play in slow motion.
+    const frameDt = Math.min(.25, Math.max(0, delta > 1 ? delta / 1000 : delta || 1 / 60)), steps = Math.max(1, Math.ceil(frameDt / .05 - 1e-9)), dt = frameDt / steps;
+    s.now = time; resize(s);
+    for (let i = 0; i < steps; i++) {
+      s.time += dt;
+      if (s.music) { _ee.t = s.time; _eeLevel(s.time); }
+      else { _grm.t = s.time; _grm.dtNow = dt; }
+      move(s, dt, time); if (s.dead) return;
+    }
     if (s.music) { for (let i = 0; i < s.pawns.length; i++) { const pawn = s.pawns[i]; _eePawnFrame(EE_BAND[i], pawn, s.time); const obj = unwrap(pawn.pawn); if (obj && obj.setDepth) obj.setDepth(1000 + pawn.cy); } if (gardenMotionOn() && _ee.lvlRaw > .4 && s.time > (s.nextNote || 0)) { s.nextNote = s.time + .2 + Math.random() * .4; const pawn = s.pawns[Math.floor(Math.random() * Math.max(1, s.pawns.length))]; if (pawn) { const note = s.context.scene.add.text(pawn.cx, pawn.cy - 120, Math.random() < .5 ? '♪' : '♫', { fontFamily: 'serif', fontSize: '24px', color: '#ffe7a8' }).setDepth(10000); s.root.add(note); s.context.scene.tweens.add({ targets: note, x: note.x + Math.random() * 50 - 25, y: note.y - 80, alpha: 0, duration: 1600, onComplete: () => note.destroy() }); } } }
-    else { const P = GRM_PLAY[s.R.play]; if (P.frame) P.frame(s.R, _grm.S, dt); _grmExtraFrame(time); fish(dt); peerFishingFrame(s, dt); }
+    else { const P = GRM_PLAY[s.R.play]; if (P.frame) P.frame(s.R, _grm.S, frameDt); _grmExtraFrame(time); fish(frameDt); peerFishingFrame(s, frameDt); }
     for (const item of s.effects) if (item.until <= time) { removeHandle(item.art); if (item.onEnd) item.onEnd(); } s.effects = s.effects.filter(item => item.until > time);
     if (s.root.sort) s.root.sort('depth');
   }

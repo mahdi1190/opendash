@@ -47,8 +47,9 @@ function _wdgOpen() {
 function _wdgPlace(m) {
   if (_wdg.S || !GARDEN_EARLY_GIFT.on || !_gdG().since || gardenEarlyGiftTaken()) return;
   const open = ([x, y]) => gardenWorldFree(x, y, 0.3) && !m.occ.has(Math.floor(x) + ',' + Math.floor(y)) && (typeof gardenAreaOpenAt !== 'function' || gardenAreaOpenAt(x, y));
-  let c = GARDEN_EARLY_GIFT.spots.find(open);
-  if (!c) { const f = _gwNearestFreePt(GARDEN_WORLD.start.x + 2, GARDEN_WORLD.start.y + 1, 4); if (!f) return; c = [f.x, f.y]; }
+  // (spots are v3 cells: moved onto this island first; the traveller lingers just right of the arrival, so a spot is kept clear of that)
+  let c = GARDEN_EARLY_GIFT.spots.map(([x, y]) => { const p = gardenStarterCell(x, y, 'start'); return [p.x, p.y]; }).find(open);
+  if (!c) { const f = _gwNearestFreePt(GARDEN_WORLD.start.x - 2, GARDEN_WORLD.start.y + 1, 4); if (!f) return; c = [f.x, f.y]; }   // (left of the arrival: the traveller lingers to its right)
   _wdg.at = { x: c[0], y: c[1] };
   _wdg.S = wdSprite({ id: 'wd-early-gift', x: c[0], y: c[1], still: true, hit: 1, hitUp: 8, label: 'A present, with your name on it', cursor: 'hand', svg: _wdgArt(), onClick: _wdgOpen });
   _wdg.hintT = 4;
