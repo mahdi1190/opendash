@@ -10,6 +10,35 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.67.5] - 2026-11-11
+
+### Changed
+
+- The garden's menus, shop, bag, map and messages now share one warm paper-and-wood look, with bigger labels and plain names, and a word under every bubble button.
+- On small windows nothing covers anything else, and only one message shows at a time.
+
+## [2.67.4] - 2026-11-11
+
+### Fixed
+
+- Seasons change without freezing the garden.
+- A new day no longer pulls you out of the garden.
+- A friend you let in comes straight in.
+- Escape stops a walk to the water.
+- Adopting a pet shows it at once.
+- The morning story closes with the mouse.
+- The pet-away basket shows by the gate.
+
+## [2.67.3] - 2026-11-11
+
+### Fixed
+
+- The garden keeps real speed on slow computers instead of moving in slow motion.
+- New gardens start with the oak and sprouts in the front bed, not on a far beach.
+- The old angler fishes at the water.
+- Placing a decoration no longer leaves you standing inside it.
+- Clicking just as the level-up card closes no longer plants under you.
+
 ## [2.67.2] - 2026-11-11
 
 ### Fixed

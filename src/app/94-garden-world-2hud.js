@@ -49,7 +49,7 @@ function _ghHud(box, m) {
   const w = m.wallet, lv = w.level, wi = m.water, sky = _gdpSkyChip(m), treats = _ghTreats();
   const pct = Math.round(lv.pct * 100);
   const stat = (cls, ic, val, tip) => `<span class="gd-stat ${cls}" data-tip="${escAttr(tip)}">${ic}<b>${esc(String(val))}</b></span>`;
-  const html = `<button type="button" class="gd-hud-summary" data-hud-details aria-label="Garden status: level ${lv.level}, ${escAttr(_gdpNum(w.coins))} coins. Show details" aria-expanded="false" aria-controls="gd-status-details"><span class="gd-hud-n">${lv.level}</span>${stat('is-coins', _GH_GLYPH.coin, _gdpNum(w.coins), 'Coins')}${icon('chevron-down')}</button><div class="gd-status-details" id="gd-status-details" hidden><div class="gd-hud-lv"><b>Level ${lv.level} · ${esc(lv.title)}</b><span class="gd-hud-bar" role="progressbar" aria-label="Garden level progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></span></div><small>${esc(_gdpNum(lv.into))} / ${esc(_gdpNum(lv.need))} XP</small>`
+  const html = `<button type="button" class="gd-hud-summary" data-hud-details aria-label="Garden status: level ${lv.level}, ${escAttr(_gdpNum(w.coins))} coins. Show details" aria-expanded="false" aria-controls="gd-status-details"><span class="gd-hud-n">${lv.level}</span>${stat('is-coins', _GH_GLYPH.coin, _gdpNum(w.coins), 'Coins')}${icon('chevron-down')}</button><div class="gd-status-details" id="gd-status-details" hidden><div class="gd-hud-lv"><b>Level ${lv.level} · ${esc(lv.title)}</b><span class="gd-hud-bar" role="progressbar" aria-label="Garden level progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></span></div><small>${esc(_gdpNum(lv.into))} of ${esc(_gdpNum(lv.need))} points to level ${lv.level + 1}</small>`
     + '<div class="gd-hud-stats">'
     + stat('is-coins', _GH_GLYPH.coin, _gdpNum(w.coins), 'Coins: earned by focusing on tasks and finishing them')
     + (treats != null ? stat('is-treats', icon('cookie'), treats, 'Treats for your pet') : '')
@@ -64,9 +64,9 @@ function _ghHud(box, m) {
 const _GH_MENU = Object.freeze([
   ['play', 'Play', 'gamepad-2'],
   ['graphics', 'Graphics', 'monitor'],
-  ['lands', 'Land', 'map'],
+  ['lands', 'Buy land', 'map-pin'],
   ['design', 'Design', 'paintbrush'],
-  ['shop', 'Shop', 'store'], ['basket', 'Basket', 'shopping-basket'], ['craft', 'Crafting', 'hammer'], ['tricks', 'Tricks', 'wand-sparkles'], ['almanac', 'Almanac', 'book-open'], ['nature', 'Nature', 'leaf'], ['wonder', 'Keepsakes', 'mail'], ['catch', 'Catch', 'fish'], ['friends', 'Friends', 'users'], ['goals', 'Goals', 'target'], ['help', 'Help', 'circle-help'],
+  ['shop', 'Shop', 'store'], ['basket', 'Market stall', 'shopping-basket'], ['craft', 'Crafting', 'hammer'], ['tricks', 'Pet tricks', 'wand-sparkles'], ['almanac', 'Notice board', 'book-open'], ['nature', 'Nature book', 'leaf'], ['wonder', 'Keepsakes', 'mail'], ['catch', 'Fish & bugs', 'fish'], ['friends', 'Friends', 'users'], ['goals', 'Goals', 'target'], ['help', 'Help', 'circle-help'],
 ]);
 function _ghMenu(box, m) {
   const btn = ([id, label, ic]) => `<button type="button" class="gd-mbtn" data-menu="${id}">${icon(ic)}<span>${esc(label)}</span></button>`;
@@ -74,13 +74,13 @@ function _ghMenu(box, m) {
   const garden = ['shop', 'basket', 'craft', 'design'].map(by);
   const own = !m.visit && _gdG(), predecessor = '94f5b2dbe4dce765cafb2b40';
   if (own && own.since && (gardenWorldIsLegacy() || GARDEN_WORLD.v === 3 && Number(own.seen.world) === 3 && own.seen.worldLayout === predecessor && GARDEN_WORLD.lh !== predecessor) && gardenWorldReady()) garden.push(['update', 'Update my garden', 'sprout']);
-  const together = ['play', 'tricks', 'friends', 'goals'].map(by).concat([['emote', 'Moves (Q)', 'smile']]);
+  const together = ['play', 'tricks', 'friends', 'goals'].map(by).concat([['emote', 'Dance (Q)', 'smile']]);
   if (typeof gardenLiveCanSay === 'function' && gardenLiveCanSay(m)) together.push(['say', 'Say something', 'message-circle']);
   if (typeof gardenSnapCan === 'function' && gardenSnapCan()) together.push(['snap', 'Group photo', 'camera']);
   if (m.visit) together.push(['visit', 'Guestbook', 'feather']);
   const html = `<button type="button" class="gd-mbtn gd-mleave gd-mnav" data-menu="nav" aria-label="Show sidebar" title="Show sidebar">${icon('panel-left')}</button><button type="button" class="gd-mbtn gd-mmore" data-menu="more" aria-label="Garden menu" aria-expanded="false" aria-controls="gd-menu-panel">${icon('menu')}<span>Menu</span></button><div class="gd-mlist" id="gd-menu-panel">`
     + group('Garden', garden) + group('Explore', ['lands', 'almanac', 'nature', 'wonder', 'catch'].map(by)) + group('Play & friends', together)
-    + group('View & help', [['map', 'Map (M)', 'map'], ['view', 'View & controls', 'sliders-horizontal'], by('graphics'), by('help')])
+    + group('View & help', [['map', 'Map (M)', 'map'], ['view', 'Camera', 'sliders-horizontal'], by('graphics'), by('help')])
     + `</div><button type="button" class="gd-mbtn gd-mleave" data-menu="leave" aria-label="${m.visit ? 'Back to your garden' : 'Leave the garden'}" data-tip="${m.visit ? 'Back to your garden' : 'Leave the garden'}">${icon('x')}</button>`;
   const el = _ghHost(box, 'gd-menu', 'nav');
   el.classList.toggle('is-open', !!_gh.menuOpen);
@@ -427,7 +427,8 @@ function gardenBubbleOpen(at, o) {
     const b = _gdpEl('button', 'gd-bub-btn' + (it.cls ? ' ' + it.cls : '')); b.type = 'button'; b.setAttribute('role', 'menuitem');
     b.setAttribute('aria-label', it.label); b.setAttribute('data-tip', it.label);
     b.innerHTML = (it.svg || (it.ic ? icon(it.ic) : '')) + (it.n != null ? `<i class="gd-slotn">${esc(String(it.n))}</i>` : '');
-    if (it.text) { b.classList.add('has-text'); b.appendChild(document.createTextNode(it.text)); }   // (words on the button, where a picture would not say it)
+    if (it.text) { b.classList.add('has-text'); b.appendChild(document.createTextNode(it.text)); }
+    else if (it.label) { b.classList.add('has-label'); b.appendChild(_gdpEl('span', 'gd-bub-l', String(it.label).split(':')[0])); }   // (a word under the picture: not everyone reads a picture)   // (words on the button, where a picture would not say it)
     b.onclick = (ev) => { ev.stopPropagation(); if (!it.keep) gardenBubbleClose(); it.run(b); };
     row.appendChild(b);
   }
