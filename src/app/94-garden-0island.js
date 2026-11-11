@@ -52,6 +52,12 @@ function gardenIslandStaticRow(row) {
   if (!p) return row;
   const next = Object.assign({}, row, { x: p.x, y: p.y, w: p.w, h: p.h, col: p.col, walk: p.walk ? 1 : 0 });
   if (p.door) next.door = Object.freeze({ x: p.door.x, y: p.door.y });
+  // The authored v4 layout seats the old angler three cells up the bank, so his
+  // line ended on grass. The layout file is hash-pinned (it is the saved-world
+  // identity), so only where he is drawn and talked to moves: to the last land
+  // cell east of the pier, with his line in the water. His original cell keeps
+  // its reservation; he has no collision ('none'), so nothing else changes.
+  if (row.id === 'old-angler' && p.x === 52 && p.y === 76) { next.x = 55; next.y = 78; next.door = Object.freeze({ x: 55, y: 77.5 }); }
   return next;
 }
 /** Optional decks use the displayed Garden's mechanics identity, never a visitor's ownership. */

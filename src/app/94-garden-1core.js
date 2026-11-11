@@ -292,15 +292,21 @@ function gardenEnsure() {
     const id = _GD_216_KINDS[pl.kind % _GD_216_KINDS.length] || 'daisy', def = gardenPlant(id);
     const stage = pl.stage >= 3 ? 4 : pl.stage === 2 ? 3 : 1;
     const t = now - Math.ceil(gardenHoursFor(def, stage) / 0.8 + 1) * _GD_H;
-    g.plants['m' + (i + 1)] = { p: id, x: cells[i][0], y: cells[i][1], t, w: now, v: (gardenHash(pl.iso) % ((def.look.v || [0]).length)) };
+    const c = gardenStarterCell(cells[i][0], cells[i][1], 'bed');
+    g.plants['m' + (i + 1)] = { p: id, x: c.x, y: c.y, t, w: now, v: (gardenHash(pl.iso) % ((def.look.v || [0]).length)) };
   });
   if (!plots.length) {   // someone new: two sprouts to say hello
-    g.plants.m1 = { p: 'daisy', x: 18, y: 15, t: now - 3 * _GD_H, w: now, v: 0 };
-    g.plants.m2 = { p: 'sunflower', x: 20, y: 14, t: now - 4 * _GD_H, w: now, v: 0 };
+    const a = gardenStarterCell(18, 15, 'bed'), b = gardenStarterCell(20, 14, 'bed');
+    g.plants.m1 = { p: 'daisy', x: a.x, y: a.y, t: now - 3 * _GD_H, w: now, v: 0 };
+    g.plants.m2 = { p: 'sunflower', x: b.x, y: b.y, t: now - 4 * _GD_H, w: now, v: 0 };
   }
-  // a few stones and a sign so it looks lived in (world cells: on the green, beside the heart path)
-  for (let x = 28; x <= 30; x++) g.decor['p' + x] = { d: 'stepping-stones', x, y: 14, r: 0, v: 0, at: now };
-  g.decor.sign = { d: 'welcome-sign', x: 30, y: 13, r: 0, v: 0, at: now };
+  // a few stones and a sign so it looks lived in (v3 cells by the arrival, moved onto this island; the bag keeps any that do not fit)
+  { const lv = gardenLevelOf(0).level, fits = (id, c) => { const def = gardenDecor(id); return !!def && !gardenCellOk(def, c.x, c.y, lv, 'decor'); };
+    // (v4: the mapped cells are a building's doorway, so the stones go on the green just above the arrival instead)
+    const S = GARDEN_WORLD.start, stones = [28, 29, 30].map(x => gardenStarterCell(x, 14, 'start')), spare = [0, 1, 2, 3, 4, 5].map(i => ({ x: S.x + 2 + i, y: S.y - 1 }));
+    const row = stones.every(c => fits('stepping-stones', c)) ? stones : spare.filter(c => fits('stepping-stones', c)).slice(0, 3);
+    row.forEach((c, i) => { g.decor['p' + (28 + i)] = { d: 'stepping-stones', x: c.x, y: c.y, r: 0, v: 0, at: now }; });
+    const c = gardenStarterCell(30, 13, 'start'); if (fits('welcome-sign', c)) g.decor.sign = { d: 'welcome-sign', x: c.x, y: c.y, r: 0, v: 0, at: now }; }
   const coins = 60 + Math.min(500, total) + 10 * Math.min(30, streak);
   const xp = Math.min(500, Math.round(total * 1.5));
   // the starter path and sign come with the grant, so your bag balances (placed = owned)
