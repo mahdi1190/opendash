@@ -282,10 +282,17 @@ GRA_ROOMS.hothouse = {
     T.skirt(398, .3);
     for (let i = 0; i < 12; i++) T.ell(T.rnd(40, 920), T.rnd(450, 590), T.rnd(30, 70), T.rnd(4, 8), '#e8f6dc', .2);
     cx.save(); cx.translate(700, 520); T.soft(0, 2, 34, 6, .4); T.rrect(-22, -30, 44, 30, 5, T.lin(-22, 0, 22, 0, [[0, '#7aaac0'], [1, '#3a6a80']])); T.stroke('M22 -24L50 -40', '#5a8aa0', 6); T.stroke('M-22 -24q-16 -4 -14 16', '#3f6a80', 4); T.rect(46, -46, 12, 10, '#3f6a80'); cx.restore();
+    // sun through the old glass, grime at the panes' feet, condensation running
+    T.shaft([[200, 0], [360, 0], [560, 400], [300, 400]], '#fff8c8', .2, 0, 400); T.shaft([[600, 0], [700, 0], [820, 400], [640, 400]], '#fff8c8', .14, 0, 400);
+    for (let x = 0; x < 960; x += 24) T.rect(x, 200, 24, 46, T.lin(0, 200, 0, 246, [[0, '#5a6a3a', 0], [1, '#5a6a3a', .22]]));
+    for (let i = 0; i < 40; i++) { const x = T.rnd(0, 960), y = T.rnd(100, 300); T.stroke(`M${x} ${y}q${T.rnd(-2, 2)} ${T.rnd(10, 30)} ${T.rnd(-1, 1)} ${T.rnd(30, 60)}`, '#ffffff', 1, .35); }
+    // big leaves hanging into the room at the corners, in shadow, close to you
+    for (const [x, y, a0, flip] of [[-20, -10, .5, 1], [980, -20, 2.6, -1]]) for (let i = 0; i < 7; i++) { const ang = a0 + i * .16 * flip, len = T.rnd(160, 240); T.fill(sceneDraw.leaf(x, y, ang, len, len * .16), T.pick(['#1e4a2a', '#24583a', '#183e22']), .95); T.stroke(`M${x} ${y}L${x + Math.cos(ang) * len * .9} ${y + Math.sin(ang) * len * .9}`, '#3a7a4a', 1.5, .5); }
+    T.soft(480, 404, 520, 14, .45);
     // door: the glass door, misted, the garden behind
     T.rect(14, 396, 96, 164, '#e8e8dc'); T.rect(22, 404, 80, 148, T.lin(0, 404, 0, 552, [[0, '#c8e8c8'], [1, '#88b890']])); T.stroke('M62 404V552M22 470H102', '#e8e8dc', 5);
     T.blob(50, 520, 24, 14, '#5a9a5a', .7); T.rect(22, 404, 80, 148, '#ffffff', .25); T.ell(96, 480, 3, 3, '#8a6a3a');
-    T.finish({ vignette: .3, vcol: '#1a2a14' });
+    T.finish({ vignette: .42, vcol: '#0e1a0a' });
   },
 };
 

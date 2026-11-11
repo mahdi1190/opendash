@@ -179,10 +179,10 @@ window.GardenRoomArt = (function () {
   }
 
   /* ---------- baking, in slices ----------
-   * The picture is painted in BANDS horizontal strips, each its own small
+   * The picture is painted in BANDS (8) horizontal strips, each its own small
    * canvas: the painter runs once per strip, clipped to it, so a step pays
    * for a sixth of its pixels; each strip is uploaded on its own frame. */
-  const BANDS = 6, BH = H / BANDS;
+  const BANDS = 8, BH = H / BANDS;
   function begin(scene, room) {
     const spec = GRA_ROOMS[room.id], have = baked.get(room.id);
     if (have && have.keys.every(k => scene.textures.exists(k))) { baked.delete(room.id); baked.set(room.id, have); return { spec, keys: have.keys, done: true, ms: 0 }; }
