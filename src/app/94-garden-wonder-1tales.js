@@ -44,8 +44,7 @@ wdTaleAdd({ id: 'mill', kind: 'main', title: 'The still wheel', journal: 'Why di
     { t: 'The river brought him down to the race. I saw something in the water and stopped the wheel. Too late. I took the cog out so it would never turn again.', soft: 'I stopped the wheel the day we quarrelled. If the mill couldn’t hum, I wouldn’t have to hear what I’d said.' },
     { t: 'I let them say I was careless. Better me than her. She had to live in that garden.', soft: 'She wrote that he came back, grey. Maybe he did. I never asked her.' },
     // coloured by what you did in Hollin’s story (the second place his arc touches the main line)
-    { t: 'Hollin mends my nets. I know what he did. You know too, now. I can’t forgive myself, and it turns out I can’t do it for him either. It isn’t mine.', flag: { 'hollin.told': true } },
-    { t: 'Hollin mends my nets. Good hands. Never says much. Nor do I. We’re a pair.', noflag: ['hollin.told'] },
+    'Hollin mends my nets. Good hands. Never says much. Nor do I. We’re a pair.',   // (what he did colours the mill supper after Act VII instead: 94-garden-wonder-1tales2-woods.js)
     { t: 'She wrote that he came back. He didn’t. What do we do with that, do you think?', soft: 'What do we do with an old story like that, do you think?' }],
     choice: [
       { k: 'name', label: 'Say his name', set: { 'mill.end': 'name' }, t: 'Then we’ll go up to the chapel. Both of us. I haven’t been in forty years. I’ll carve it. T, O, M, A, S. My hands still know how.' },
@@ -77,60 +76,7 @@ wdTaleAdd({ id: 'signs', kind: 'small', title: 'Things noticed', journal: 'Small
   { id: 'ice', who: 'place', free: 1, near: ['ld-icehouse'], when: { after: 'mill.icehouse' }, lines: ['The ice house door is ajar. Cold comes out of it like a held breath.'] },
   { id: 'shoe', who: 'catch', free: 1, when: { after: 'mill.wheel', tod: ['dusk'], deep: 1 }, lines: ['Something else came up with it, tangled in weed: a child’s shoe, very old. You put it on the bank, carefully.'] },
 ] });
-/* ---------- CHARACTER ARCS (optional; opened by friendship) ---------- */
-wdTaleAdd({ id: 'thistle', kind: 'arc', title: 'The old house', journal: 'Mother Thistle, and the door she learned to watch.', gentle: 'skip', steps: [
-  { id: 'jump', who: 'thistle', when: { heart: 2, after: 'mill.brambles', deep: 1 }, lines: ['Don’t mind me jumping, dear. Old habit. Doors, mostly. And men who shout. Not you. You don’t shout.'] },
-  { id: 'door', who: 'thistle', heavy: 1, when: { heart: 3, tod: ['dusk', 'night'], dry: 1, deep: 1, days: 2, after: 'thistle.jump', home: 1 }, lines: [
-    'A branch cracks behind you both, and Mother Thistle jumps. Then she laughs. Then she doesn’t.',
-    'Sorry, dear. I was married once, up in the old house at the top of the woods. He was not a kind man.',
-    'He hurt me. For years. I got very good at watching a door. “I watched it not happen,” I say. That’s where it comes from.',
-    'One winter night I took the soup pot and walked until the woods were between us. Best soup I ever made, and I made it with nothing.',
-    'He’s long gone. I’m still here. That’s the whole of my revenge, and it’s plenty.'],
-    sit: 'You sit. The frogs start up. After a while she pats your hand. “There. That’s better than talking. Most things are.”' },
-  { id: 'cup', who: 'thistle', when: { heart: 4, days: 3, home: 1 }, lines: [
-    'Will you walk up to the old house with me one day? My mother’s teacup is still there, on the shelf. I left it. I’d like it back.',
-    'Not today. But one day. It helps, knowing someone would come.'], sit: 'You sit together a while. She hums something with no tune at all.' },
-  // later beats (STORY_BIBLE §3): the walk to the old house (ld-house), soup in the teacup, and the raised voice she still can’t bear
-] });
-wdTaleAdd({ id: 'quince', kind: 'arc', title: 'Telling the bees', journal: 'Quince, the cider fair, and what she told the bees.', gentle: 'skip', steps: [
-  { id: 'arch', who: 'quince', when: { heart: 2, deep: 1 }, lines: ['Bees don’t go past the ruined arch in the old woodland. Neither do I. No reason. Lovely weather, isn’t it.'] },
-  { id: 'fair', who: 'quince', heavy: 1, when: { heart: 4, after: 'mill.bees', tod: ['dawn', 'day'], dry: 1, deep: 1, days: 2, home: 1 }, lines: [
-    'The fair poster’s up in the square. I always go quiet when it goes up. You’ve noticed. You notice things.',
-    'When I was nineteen, at the cider fair, a man raped me. I’ve said it now. That’s the word for it, and I’m done being polite about it.',
-    'I told my mother. She said hush. So I told the bees. You tell bees everything, the old way. They didn’t say hush.',
-    'I count the stair because counting keeps my feet on things. That’s all it is. And I’d still win the apple race, if I entered. Which I don’t. But I would.'],
-    choice: [{ k: 'believe', label: 'I believe you', t: 'I know. I could tell you would. That’s why I said it.' }],
-    set: { 'quince.told': 1 },
-    sit: 'You sit. The bees go about their business around you both. “They like you,” she says. “That’s practically a hug.”' },
-  { id: 'him', who: 'quince', when: { flag: { 'hollin.told': true }, days: 3 }, lines: [
-    'You’ve been to the hut. I can tell. You’ve got that face.',
-    'I know he’s there. I’ve known for years. I don’t want anything from him. Not sorry. Not anything. I want the woods back.',
-    'That’s all. Now. Honey. I’ve too much of it. Take a jar or I’ll be cross.'], give: { honey: 1 } },
-  // later: the bell at the fair; the walk to the ruined arch, for herself; once the hut is empty, a quince planted by the brook
-] });
-wdTaleAdd({ id: 'hollin', kind: 'arc', title: 'What the woods keep', journal: 'Hollin the woodcutter, and what he did.', gentle: 'skip', steps: [
-  { id: 'meet', who: 'hollin', when: { open: [3] }, lines: [
-    'Lost? No. You’ve got the look of someone who wants to be. That’s different. Mind the axe.',
-    'Your net’s torn. Give it here. Takes me a minute. Took me forty years to learn, so call it a bargain.'] },
-  { id: 'wren', who: 'hollin', when: { heart: 1, days: 1 }, lines: [
-    'I carved you a wren. It doesn’t look like a wren. It looks like what a wren would look like if it had a hard week.',
-    'I mend the old angler’s nets on Thursdays. We don’t talk. It’s the best conversation I have all week.'], give: { fertiliser: 1 } },
-  { id: 'beetles', who: 'hollin', when: { heart: 2, tod: ['dusk', 'night'] }, lines: ['Stag beetles are on the old oak by the brook, after dark. Don’t tell the owl I told you. He likes to be the one who knows.'] },
-  { id: 'wrong', who: 'hollin', when: { heart: 2, season: ['autumn', 'winter'], deep: 1, days: 2 }, lines: [
-    'You’ve seen the ribbon on my door. You’re wondering.',
-    'I did something, a long time ago. I won’t pretend it was anything other than what it was. Not today. Maybe not ever. That’s yours to decide, not mine.'] },
-  { id: 'truth', who: 'hollin', heavy: 1, when: { after: 'quince.fair', days: 2, deep: 1 }, lines: [
-    'You’ve been up at the orchard. She told you. Good. She should get to say it first.',
-    'At the cider fair, forty years ago, I raped a woman. She was nineteen. She did nothing to bring it on. I did it.',
-    'I keep away from her. I wrote it down, signed it, and left it at the chapel. Not with her. She doesn’t owe me reading it.',
-    'I’m not asking you for anything. You can go. Most should.'],
-    set: { 'hollin.told': 1 },
-    choice: [
-      { k: 'listen', label: 'Listen', set: { 'hollin.view': 'listen' }, t: 'He nods, and goes back to the net. His hands are shaking. He doesn’t ask you to stay, and he doesn’t ask you to go.' },
-      { k: 'say', label: 'Tell him what you think of it', set: { 'hollin.view': 'condemn' }, mood: { hollin: -4 }, t: 'He hears all of it. He doesn’t argue. “Yes,” he says. “That’s right. All of that is right.”' },
-      { k: 'leave', label: 'Leave', set: { 'hollin.view': 'leave' }, mood: { hollin: -6 }, t: 'You walk away. Behind you, the axe starts again, slow, the same rhythm as before.' }] },
-  // later (STORY_BIBLE §3): the village divides over a seat at the mill’s reopening and the harvest festival; the hut empty in spring; the note on the door
-] });
+/* ---------- CHARACTER ARCS (optional; opened by friendship). Thistle, Quince and Hollin: 94-garden-wonder-1tales2-*.js ---------- */
 wdTaleAdd({ id: 'pip', kind: 'arc', title: 'Up both ways', journal: 'Why Pip never stays.', gentle: 'soft', steps: [
   { id: 'boat', who: 'pip', when: { heart: 3, after: 'mill.wheel', home: 1 }, lines: [
     'I found a boat once. A little one. In the river, a long time ago. I gave it to the reeds to look after. I don’t know why I told you that.',
@@ -184,5 +130,5 @@ wdTaleAdd({ id: 'perpetua-late', kind: 'small', title: 'Late', journal: 'Perpetu
 const WK_HOLLIN_ROW = Object.freeze({ id: 'hollin', name: 'Hollin', kind: 'stoat', fur: '#8a7058', coat: '#4e5a46', snout: '#d8c8b0', hat: 'cap', hatc: '#5a4a38', prop: 'bag', likes: 'fish' });
 wdTaleResident({ id: 'hollin', name: 'Hollin', home: { region: 'southwest-ruins', near: ['ld-woodhut', 'ld-labyrinth', 'ld-tower'] }, art: () => _wdFolkArt(WK_HOLLIN_ROW),
   here: (m) => !(wdTaleFlag('hollin.gone')),
-  quiet: 'He nods, and goes on with the net.',
+  quiet: 'He nods, and goes on with the net.', dayRows: () => typeof WK_DAY_HOLLIN !== 'undefined' ? WK_DAY_HOLLIN : null,
   day: ['Wood’s dry. Good splitting weather. You can tell by the sound.', 'Owl was round. Said nothing useful. Owls don’t.', 'Mended the angler’s nets. He said “Ta.” Longest speech he’s made this year.', 'I talk to the trees. They’re good listeners. Bad at answers.', 'Mind the yews. They’re older than the chapel and they know it.'] });

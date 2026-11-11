@@ -289,11 +289,14 @@ function _wkFacts(F, m) {
 }
 function _wkDayLine(id, F, today) {
   const W = _wdG(); if (W['fy.' + id] === today) return '';
-  const pool = (WK_DAY[id] || []).filter(l => { try { return !l.if || !!l.if(F); } catch (e) { return false; } }); if (!pool.length) return '';
+  const t = _wkDayPick(id, WK_DAY[id] || [], F, today); if (t) W['fy.' + id] = today; return t;
+}
+/** One line from a pool for today: what is true now wins most days. Rows: {if(F), t, soft, deep} (deep: only in the full telling, unless it has soft words). */
+function _wkDayPick(id, rows, F, today) {
+  const deep = _wkDeep(), pool = rows.filter(l => { if (l.deep && !deep && l.soft === undefined) return false; try { return !l.if || !!l.if(F); } catch (e) { return false; } }); if (!pool.length) return '';
   const cond = pool.filter(l => l.if), list = cond.length && gardenHash('wkc|' + today + id) % 3 ? cond : pool;   // what is true today wins, most days
-  const l = list[gardenHash('wk|' + today + '|' + id) % list.length];
-  W['fy.' + id] = today;
-  return typeof l.t === 'function' ? l.t(F) : l.t;
+  const l = list[gardenHash('wk|' + today + '|' + id) % list.length], t = !deep && l.soft !== undefined ? l.soft : l.t;
+  return typeof t === 'function' ? t(F) : t;
 }
 function _wkFresh(row, F) { const ok = (l) => { try { return !l.if || !!l.if(F); } catch (e) { return false; } }; return (WD_LINES[row.id] || []).some(l => !l.again && !_wdGet(`fs.${row.id}.${l.k}`) && ok(l)); }
 /** Everything someone says when you walk up: the story first, then their news, today's line, a gate, a favour, friendship. {lines, actions, name}. */

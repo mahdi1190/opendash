@@ -9,7 +9,7 @@
      who     a caller id (tam, bramble, pip, thistle, wick, quince), 'angler' (the pier), a resident (wdTaleResident: hollin),
              'place' (said as you walk by: `near` anchor ids, `r` cells), 'catch' (comes up on your line or net), 'post' (a letter from `from`).
      when    {after: 'story.beat' | [...], days (since the last of those), open: [zone numbers], heart: n (with who) or {who: n}, season: [], tod: [],
-              dry: 1, rain: 1, flag: {k: v}, noflag: [k], item: 'id' (in your bag), level: n, home: 1 (only at their home: heavy moments are told there), deep: 1 (only in the full telling), fish: [ids] (for 'catch')}
+              dry: 1, rain: 1, flag: {k: v}, noflag: [k], item: 'id' (in your bag), level: n, home: 1 (only at their home: heavy moments are told there), deep: 1 (only in the full telling), fish: [ids] (for 'catch'), weekday: [0-6], fog: 1 (a damp or cold dawn, for now)}
      lines   strings, or {t, soft, flag, noflag} (soft '' leaves it out of the gentle telling; flag/noflag: only when those flags are, or are not, set)
      choice  [{label, t, set: {flag: value}, mood: {who: n}}]: what you can say. No choice is the right one, and none pays.
      set     flags set when the beat is heard; give {item: n} (a small gift, once); heavy: 1 (the care note once before, and the quiet link beside it);
@@ -20,6 +20,10 @@
 const WD_TALES = [];
 const WD_TALE_BY = new Map();
 /** Add a story (any later file may). */
+/** Take a story out (a later file replacing an earlier draft). */
+function wdTaleDrop(id) { const s = WD_TALE_BY.get(id); if (!s) return; WD_TALE_BY.delete(id); WD_TALES.splice(WD_TALES.indexOf(s), 1); }
+/** Add a beat to a story already added: at the end, or after the beat with id 'after'. */
+function wdTaleBeat(storyId, beat, after) { const s = WD_TALE_BY.get(storyId); if (!s || !beat || s.steps.some(b => b.id === beat.id)) return; const i = after ? s.steps.findIndex(b => b.id === after) : -1; if (i >= 0) s.steps.splice(i + 1, 0, beat); else s.steps.push(beat); }
 function wdTaleAdd(story) { if (!story || !story.id || WD_TALE_BY.has(story.id)) return; story.steps = (story.steps || []).filter(Boolean); WD_TALES.push(story); WD_TALE_BY.set(story.id, story); }
 const WD_TALE_RESIDENTS = new Map();
 /** A resident who lives at a place and is found there (not a caller): {id, name, art (svg), home: {region, near: [anchor ids]}, deep, day: [lines]}. */
@@ -43,6 +47,8 @@ function _wtWhen(w, m, who) {
   if (w.days && last && _wdDaysBetween(last, today) < w.days) return false;
   if (w.heart != null) { const H = typeof w.heart === 'object' ? w.heart : { [who]: w.heart }; for (const [k, n] of Object.entries(H)) if (_wtHeart(k) < n) return false; }
   if (w.season && !list(w.season).includes(m.season)) return false;
+  if (w.weekday != null && !list(w.weekday).includes(new Date(m.today + 'T12:00:00').getDay())) return false;   // 0 Sunday … 6 Saturday
+  if (w.fog && !(m.tod === 'dawn' && ((m.rain && m.rain.now) || m.season === 'autumn' || m.season === 'winter'))) return false;   // no fog in the weather yet: a damp or cold dawn stands in
   if (w.tod && !list(w.tod).includes(m.tod)) return false;
   if (w.dry && m.rain && m.rain.now) return false;
   if (w.rain && !(m.rain && m.rain.now)) return false;
@@ -63,12 +69,13 @@ function _wtNext(s, m, who) {
     const b = s.steps[i]; if (W[`sx.${s.id}.${b.id}`]) continue;   // (in order: the first beat not yet heard and not free is the only one that can come)
     if (heardToday && !b.free) return null;
     if (who && b.who !== who) { if (!b.free) return null; continue; }
-    if (b.heavy && _wtHeavyToday()) { if (!b.free) return null; continue; }
+    if (b.heavy && (_wtHeavyToday() || _wtMainToday())) { if (!b.free) return null; continue; }   // one heavy moment a day, and never on a day the main line moved
     if (!_wtWhen(b.when, m, b.who)) { if (!b.free) return null; continue; }
     return b;
   }
   return null;
 }
+function _wtMainToday() { const W = _wtW(), t = _wdToday(); for (const s of WD_TALES) if (s.kind === "main") for (const b of s.steps) if (W[`sx.${s.id}.${b.id}`] === t) return true; return false; }
 function _wtHeavyToday() { const W = _wtW(); return W.hv === _wdToday(); }
 const _WT_RANK = { main: 0, arc: 1, small: 2 };
 /** The beat this speaker would tell now, with its story: main line first, then arcs, then small stories. */
@@ -108,7 +115,7 @@ const _wt = { near: new Set(), res: new Map() };
 function _wtAnchorPt(ids) { for (const id of ids || []) { const p = typeof _wkAnchor === 'function' ? _wkAnchor(id) : null; if (p) return p; } return null; }
 function _wtPlaces(m) {
   for (const s of WD_TALES) {
-    const b = _wtNext(s, m, 'place'); if (!b || _wt.near.has(s.id + b.id)) continue;
+    const b = _wtNext(s, m, 'place') || _wtNext(s, m, 'traveller'); if (!b || _wt.near.has(s.id + b.id)) continue;   // (a traveller speaks at the quay as a place does, until travellers walk the arrival road)
     const p = _wtAnchorPt(b.near); if (!p || !wdNear(p.x, p.y, b.r || 3)) continue;
     _wt.near.add(s.id + b.id);
     const t = wdTaleTell(s, b).lines.join(' '); if (t) wdAmbient(t, 11000, 'story');
@@ -148,7 +155,7 @@ function _wtResTalk(r, S) {
   const m = gardenModel(), W = _wtW(), today = m.today, F = wdFacts(m, r.id), lines = [], actions = [];
   const t = wdTaleFor(r.id, m);
   if (t) { const o = wdTaleTell(t.s, t.b); lines.push(...o.lines); actions.push(...o.actions); }
-  else if (W['fy.' + r.id] !== today && r.day) { W['fy.' + r.id] = today; lines.push(r.day[gardenHash('wt|' + today + r.id) % r.day.length]); }
+  else if (W['fy.' + r.id] !== today && (r.dayRows || r.day)) { const rows = r.dayRows ? r.dayRows() : null, d = rows && typeof _wkDayPick === 'function' ? _wkDayPick(r.id, rows, _wkFacts(F, m), today) : r.day ? r.day[gardenHash('wt|' + today + r.id) % r.day.length] : ''; W['fy.' + r.id] = today; if (d) lines.push(d); }
   if (F.last !== today && typeof _wkAdd === 'function') _wkAdd(r.id, 1);
   W['fv.' + r.id] = today; W['fn.' + r.id] = F.talks + 1; _wdSave();
   wdTalk({ name: r.name, art: r.art(), lines: lines.length ? lines : [r.quiet || '…'], actions, at: { x: S.x, y: S.y }, bye: 'Goodbye' });
