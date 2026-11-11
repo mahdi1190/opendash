@@ -70,8 +70,8 @@ window.GardenPaintWood = (function () {
           let pick = h3(x, y, 13) * total, sp = species[0]; for (const s of species) { if ((pick -= s[1]) <= 0) { sp = s; break; } }
           // birches gather in their own drifts in the light wood
           if (def.mood === 'light' && grove < .5 && h3(x, y, 21) < .6) sp = species.find(s => /birch/.test(s[0])) || sp;
-          const size = Math.floor(h3(x, y, 17) * 3), hgt = sp[2] * (.82 + size * .14), jitter = [(h3(x, y, 2) - .5) * 26, (h3(x, y, 3) - .5) * 12];
-          out.trees.push({ id: sp[0], v: Math.floor(h3(x, y, 5) * 3), size, h: Math.round(hgt / 10) * 10, x: px(x + .5) + jitter[0], y: py(y + 1) - 4 + jitter[1], flip: h3(x, y, 6) < .5, scale: .9 + h3(x, y, 7) * .2, region: region.id, cx: x, cy: y });
+          const size = h3(x, y, 17) < .5 ? 0 : 1, hgt = sp[2] * (.88 + size * .2), jitter = [(h3(x, y, 2) - .5) * 26, (h3(x, y, 3) - .5) * 12];
+          out.trees.push({ id: sp[0], v: h3(x, y, 5) < .5 ? 0 : 1, size, h: Math.round(hgt / 10) * 10, x: px(x + .5) + jitter[0], y: py(y + 1) - 4 + jitter[1], flip: h3(x, y, 6) < .5, scale: .86 + h3(x, y, 7) * .28, region: region.id, cx: x, cy: y });
         } else if (!pathNear && roll < p + .2 && h3(x, y, 31) < .5) {
           const u = def.under[Math.floor(h3(x, y, 33) * def.under.length)];
           out.floors.push({ kind: 'stamp', id: u[0], v: Math.floor(h3(x, y, 34) * 3), h: 26 + h3(x, y, 35) * 16, x: px(x + .5) + (h3(x, y, 36) - .5) * 30, y: py(y + 1) - 6 });
@@ -94,9 +94,10 @@ window.GardenPaintWood = (function () {
   /* ---------- the floor, baked in chunks ---------- */
   const stamps = new Map();
   function stampCanvas(id, v, season, h) {
-    const key = id + '|' + v + '|' + season + '|' + Math.round(h / 4); if (stamps.has(key)) return stamps.get(key);
+    const hq = Math.max(12, Math.round(h / 12) * 12), key = id + '|' + v + '|' + season + '|' + hq; if (stamps.has(key)) return stamps.get(key);
     const GP = window.GardenNativePainted; let s = null;
-    if (GP && GP.objectCanvas && typeof sceneObj === 'function' && sceneObj(id)) s = ok(() => GP.objectCanvas(id, v, season, { h: Math.round(h / 4) * 4 }));
+    if (GP && GP.objectCanvas && typeof sceneObj === 'function' && sceneObj(id)) s = ok(() => GP.objectCanvas(id, v, season, { h: hq }));
+    if (s) s.hq = hq;
     if (stamps.size > 160) stamps.clear(); stamps.set(key, s); return s;
   }
   function bakeChunk(ch) {
@@ -124,7 +125,7 @@ window.GardenPaintWood = (function () {
     }
     for (const f of S.M.floors) {
       if (f.kind !== 'stamp' || f.x < view.x || f.x > view.x + view.w || f.y < view.y || f.y > view.y + view.h) continue;
-      const s = stampCanvas(f.id, f.v, season, f.h); if (!s) continue; const k = 1 / (s.k || 2); cx.drawImage(s.c, f.x - s.ox * k, f.y - s.oy * k, s.c.width * k, s.c.height * k);
+      const s = stampCanvas(f.id, f.v, season, f.h); if (!s) continue; const k = (f.h / s.hq) / (s.k || 2); cx.drawImage(s.c, f.x - s.ox * k, f.y - s.oy * k, s.c.width * k, s.c.height * k);
     }
     // each tree's soft contact shadow on the floor, under the sprite
     for (const t of S.M.trees) { if (t.x < view.x || t.x > view.x + view.w || t.y < view.y || t.y > view.y + view.h) continue; const g = cx.createRadialGradient(t.x + 6, t.y, 0, t.x + 6, t.y, t.h * .28); g.addColorStop(0, 'rgba(30,40,24,.32)'); g.addColorStop(1, 'rgba(30,40,24,0)'); cx.fillStyle = g; cx.save(); cx.translate(t.x + 6, t.y); cx.scale(1, .32); cx.translate(-t.x - 6, -t.y); cx.beginPath(); cx.arc(t.x + 6, t.y, t.h * .28, 0, Math.PI * 2); cx.fill(); cx.restore(); }
@@ -166,9 +167,9 @@ window.GardenPaintWood = (function () {
     const night = S.tod === 'night', dusk = S.tod === 'dusk' || S.tod === 'dawn';
     S.light = []; const add = (im, d) => { im.setDepth(d); root.add(im); return im; };
     if (!night) {
-      for (const l of S.M.lights) S.light.push({ im: add(scene.add.image(l.x, l.y, S.tex.dapple).setBlendMode('ADD').setAlpha(0).setScale(l.k), -9593), d: l, kind: 'dapple', b: { x: l.x - 60, y: l.y - 40, w: 120, h: 80 } });
-      for (const s of S.M.shafts) { const r = rng(hash('shaft' + s.x)); for (let i = 0; i < s.n; i++) { const x = s.x + (r() - .5) * 120, y = s.y + (r() - .5) * 40; S.light.push({ im: add(scene.add.image(x, y, S.tex.shaft).setOrigin(.5, 1).setBlendMode('ADD').setAlpha(0).setRotation(-.32).setScale(.9 + r() * .8, 1 + r() * .6), 0), d: { x, y, ph: r() * 6.28, sp: .12 + r() * .1, k: dusk ? .55 : .35 }, kind: 'shaft', b: { x: x - 160, y: y - 300, w: 320, h: 320 } }); }
-        for (let i = 0; i < s.n * 3; i++) { const x = s.x + (r() - .5) * 140, y = s.y - r() * 120; S.light.push({ im: add(scene.add.image(x, y, S.tex.mote).setBlendMode('ADD').setAlpha(0), 90000 - 10), d: { x, y, ph: r() * 6.28, sp: .3 + r() * .5 }, kind: 'mote', b: { x: x - 80, y: y - 80, w: 160, h: 160 } }); } }
+      for (const l of S.M.lights) S.light.push({ im: add(scene.add.image(l.x, l.y, S.tex.dapple).setAlpha(0).setScale(l.k), -9593), d: l, kind: 'dapple', b: { x: l.x - 60, y: l.y - 40, w: 120, h: 80 } });
+      for (const s of S.M.shafts) { const r = rng(hash('shaft' + s.x)); for (let i = 0; i < s.n; i++) { const x = s.x + (r() - .5) * 120, y = s.y + (r() - .5) * 40; S.light.push({ im: add(scene.add.image(x, y, S.tex.shaft).setOrigin(.5, 1).setAlpha(0).setRotation(-.32).setScale(.9 + r() * .8, 1 + r() * .6), 0), d: { x, y, ph: r() * 6.28, sp: .12 + r() * .1, k: dusk ? .55 : .35 }, kind: 'shaft', b: { x: x - 160, y: y - 300, w: 320, h: 320 } }); }
+        for (let i = 0; i < s.n * 3; i++) { const x = s.x + (r() - .5) * 140, y = s.y - r() * 120; S.light.push({ im: add(scene.add.image(x, y, S.tex.mote).setAlpha(0), 90000 - 10), d: { x, y, ph: r() * 6.28, sp: .3 + r() * .5 }, kind: 'mote', b: { x: x - 80, y: y - 80, w: 160, h: 160 } }); } }
     }
     for (const l of S.light) if (l.kind === 'shaft') l.im.setDepth(l.d.y + 40);
     S.buildMs = Math.round(performance.now() - t0);
@@ -194,8 +195,9 @@ window.GardenPaintWood = (function () {
     const pl = typeof _gw !== 'undefined' ? { x: _gw.px * S.W.cellW, y: S.W.sky + _gw.py * S.W.cellH } : null;
     for (const b of S.buckets.values()) {
       const vis = hit(b.box, view);
-      if (vis && !b.made) { if (budget <= 0) continue; budget--; for (const t of b.trees) makeTree(t); b.made = true; b.vis = true; S.sortObjects = true; }
-      if (b.made && vis !== b.vis) { b.vis = vis; for (const t of b.trees) if (t.im) t.im.setVisible(vis); }
+      // a new tree texture costs a bake: at most one a frame; trees whose texture exists are free
+      if (vis && !b.made) { let all = true; for (const t of b.trees) { if (t.im || t.failed) continue; const key = 'gdpaint|' + t.id + '|' + t.v + '|' + S.season + '|0x' + t.h; if (!S.scene.textures.exists(key)) { if (budget <= 0) { all = false; continue; } budget--; } if (!makeTree(t)) t.failed = true; S.sortObjects = true; } if (all) { b.made = true; b.vis = true; } }
+      if (b.made && vis !== b.vis && !(vis && !b.made)) { b.vis = vis; for (const t of b.trees) if (t.im) t.im.setVisible(vis); }
       // a crown you are under fades, so you can always see yourself
       if (vis && pl) for (const t of b.trees) { if (!t.im) continue; const under = pl.y < t.y - 4 && pl.y > t.y - t.h * t.scale * .95 && Math.abs(pl.x - t.x) < t.h * t.scale * .34; const a = under ? .5 : 1; if (t.im.alpha !== a) t.im.setAlpha(t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8 || 1)); }
     }

@@ -245,27 +245,38 @@ window.GardenPaintWater = (function () {
   /* ---------- library stamps (reeds, lilies) through the Painted village baker ---------- */
   const stamps = new Map();
   function stampCanvas(id, v, season, h) {
-    const key = id + '|' + v + '|' + season + '|' + Math.round(h / 4); if (stamps.has(key)) return stamps.get(key);
+    const hq = Math.max(12, Math.round(h / 12) * 12), key = id + '|' + v + '|' + season + '|' + hq; if (stamps.has(key)) return stamps.get(key);
     const GP = window.GardenNativePainted; let s = null;
-    if (GP && GP.objectCanvas && typeof sceneObj === 'function' && sceneObj(id)) s = ok(() => GP.objectCanvas(id, v, season, { h: Math.round(h / 4) * 4 }));
+    if (GP && GP.objectCanvas && typeof sceneObj === 'function' && sceneObj(id)) s = ok(() => GP.objectCanvas(id, v, season, { h: hq }));
+    if (s) s.hq = hq;
     if (stamps.size > 200) stamps.clear(); stamps.set(key, s); return s;
   }
 
   /* ---------- chunks ---------- */
-  function bakeChunk(ch) {
-    const t0 = performance.now(), S = state, B = ch.box, c = document.createElement('canvas'); c.width = Math.ceil(B.w * K); c.height = Math.ceil(B.h * K);
+  // A chunk is baked as a job that resumes across frames: it draws features
+  // until its slice of the frame (SLICE ms) is used, and becomes a texture only
+  // when it is complete, so no single frame pays for a whole chunk.
+  const SLICE = 7;
+  function startJob(ch) {
+    const S = state, B = ch.box, c = document.createElement('canvas'); c.width = Math.ceil(B.w * K); c.height = Math.ceil(B.h * K);
     const cx = c.getContext('2d'); cx.setTransform(K, 0, 0, K, -B.x * K, -B.y * K);
-    const C = S.P, ctx = { stamp(id, v, h, x, y) { const s = stampCanvas(id, v, S.season, h); if (!s) return; const k = 1 / (s.k || 2); cx.drawImage(s.c, x - s.ox * k, y - s.oy * k, s.c.width * k, s.c.height * k); } };
-    const view = { x: B.x - 70, y: B.y - 70, w: B.w + 140, h: B.h + 140 };
-    // the order matters: every water's banks first, then the waters, so a river
-    // mouth's bank never paints over the lake it runs into
-    const layers = [[], []]; for (const w of ch.list) w.feats.forEach((f, i) => layers[i < 1 + bankCount(w) ? 0 : 1].push(f));
-    for (const list of layers) for (const f of list) if (hit(f.b, view)) { ok(() => f.draw(cx, C, ctx)); cx.globalAlpha = 1; }
-    for (const extra of S.extras) if (hit(extra.b, view)) { ok(() => extra.draw(cx, C, ctx)); cx.globalAlpha = 1; }
-    const key = TEX + '-' + ch.key + '-' + (++S.serial);
-    S.scene.textures.addCanvas(key, c); ch.tex = key; ch.bytes = c.width * c.height * 4;
+    const view = { x: B.x - 70, y: B.y - 70, w: B.w + 140, h: B.h + 140 }, list = [];
+    // every water's banks first, then the waters, so a river mouth's bank never paints over the lake it runs into
+    const later = []; for (const w of ch.list) w.feats.forEach((f, i) => { if (hit(f.b, view)) (i < 1 + bankCount(w) ? list : later).push(f); });
+    for (const e of S.extras) if (hit(e.b, view)) later.push(e);
+    return { ch, c, cx, list: list.concat(later), i: 0, ms: 0 };
+  }
+  function stepJob(job, budget) {
+    const S = state, t0 = performance.now(), C = S.P, cx = job.cx;
+    const ctx = { stamp(id, v, h, x, y) { const s = stampCanvas(id, v, S.season, h); if (!s) return; const k = (h / s.hq) / (s.k || 2); cx.drawImage(s.c, x - s.ox * k, y - s.oy * k, s.c.width * k, s.c.height * k); } };
+    while (job.i < job.list.length && performance.now() - t0 < budget) { const f = job.list[job.i++]; ok(() => f.draw(cx, C, ctx)); cx.globalAlpha = 1; }
+    job.ms += performance.now() - t0;
+    if (job.i < job.list.length) return false;
+    const ch = job.ch, B = ch.box, key = TEX + '-' + ch.key + '-' + (++S.serial), u0 = performance.now();
+    S.scene.textures.addCanvas(key, job.c); ch.tex = key; ch.bytes = job.c.width * job.c.height * 4;
     ch.image = S.scene.add.image(B.x, B.y, key).setOrigin(0, 0).setScale(1 / K).setDepth(-9590); S.parent.add(ch.image); S.sortParent = true;
-    const ms = performance.now() - t0; bakeMs += ms; bakes++; worstBake = Math.max(worstBake, ms);
+    job.ms += performance.now() - u0; bakeMs += job.ms; bakes++; worstBake = Math.max(worstBake, performance.now() - t0);
+    return true;
   }
   function bankCount(w) { if (w._banks != null) return w._banks; let k = 0; for (let i = 1; i < w.feats.length; i++) { if (w.feats[i].b === w.feats[0].b) break; k++; } return (w._banks = k); }
   function dropChunk(ch) { if (ch.image) ch.image.destroy(); if (ch.tex && state.scene.textures.exists(ch.tex)) state.scene.textures.remove(ch.tex); ch.image = null; ch.tex = null; ch.bytes = 0; }
@@ -295,7 +306,7 @@ window.GardenPaintWater = (function () {
       if (!(s1 > s0)) continue; void seg;
       const count = Math.min(60, Math.round((s1 - s0) / (w.kind === 'gorge' ? 18 : 26)));
       for (let i = 0; i < count; i++) {
-        const im = add(scene.add.image(0, 0, T.glint)).setBlendMode('ADD').setTint(tint).setAlpha(0);
+        const im = add(scene.add.image(0, 0, T.glint)).setTint(tint).setAlpha(0);
         list.push({ im, s: s0 + r() * (s1 - s0), lat: (r() - .5) * 1.25, life: r(), span: .6 + r() * 1.4, k: .4 + r() * .7, sp: .75 + r() * .5 });
       }
       out.push({ b, list, kind: 'flow', L, s0, s1, w, speed: FLOW[w.kind], update(dt, t) {
@@ -312,7 +323,7 @@ window.GardenPaintWater = (function () {
       if (FLOW[w.kind]) continue;
       const b = w.bounds, r = rng(hash(w.id + 't')), big = w.kind === 'mere' || w.kind === 'tarn', list = [], rings = [];
       const pick = () => { for (let k = 0; k < 30; k++) { const x = b.x + r() * b.w, y = b.y + r() * b.h; if (inside(x, y, w.pts) && edgeDist(x, y, w.pts) > 20) return { x, y }; } return null; };
-      for (let i = 0; i < (big ? 46 : 8); i++) { const p = pick(); if (!p) continue; const sp = r() < .4; list.push({ im: add(scene.add.image(p.x, p.y, sp ? T.spark : T.glint)).setBlendMode('ADD').setTint(tint).setAlpha(0), x: p.x, y: p.y, ph: r() * 6.28, f: .5 + r() * 1.3, k: .3 + r() * .6, sp }); }
+      for (let i = 0; i < (big ? 46 : 8); i++) { const p = pick(); if (!p) continue; const sp = r() < .4; list.push({ im: add(scene.add.image(p.x, p.y, sp ? T.spark : T.glint)).setTint(tint).setAlpha(0), x: p.x, y: p.y, ph: r() * 6.28, f: .5 + r() * 1.3, k: .3 + r() * .6, sp }); }
       for (let i = 0; i < (big ? 4 : 1); i++) { const p = pick(); if (p) rings.push({ im: add(scene.add.image(p.x, p.y, T.ring)).setAlpha(0), x: p.x, y: p.y, ph: r(), period: 4 + r() * 5 }); }
       out.push({ b, list, rings, kind: 'still', update(dt, t) {
         for (const g of this.list) { const s = Math.sin(t * g.f + g.ph); g.im.setPosition(g.x + Math.sin(t * .15 + g.ph) * 6, g.y).setScale(g.sp ? g.k * .9 : g.k, g.k * .7).setAlpha(Math.max(0, s) ** 3 * (night ? .45 : .6)); }
@@ -427,8 +438,9 @@ window.GardenPaintWater = (function () {
     S.frame = (S.frame || 0) + 1;
     const near = { x: view.x - CH * .5, y: view.y - CH * .5, w: view.w + CH, h: view.h + CH };
     let todo = null, resident = 0;
-    for (const ch of S.M.chunks.values()) { if (ch.image) { resident++; if (hit(ch.box, view)) ch.used = S.frame; } else if (!todo && hit(ch.box, near)) todo = ch; }
-    if (todo) { ok(() => bakeChunk(todo)); todo.used = S.frame; resident++; }
+    for (const ch of S.M.chunks.values()) { if (ch.image) { resident++; if (hit(ch.box, view)) ch.used = S.frame; } else if (!todo && hit(ch.box, near) && !(S.job && S.job.ch === ch)) todo = ch; }
+    if (!S.job && todo) S.job = ok(() => startJob(todo));
+    if (S.job) { const done = ok(() => stepJob(S.job, SLICE)); if (done !== false) { if (S.job.ch) S.job.ch.used = S.frame; S.job = null; resident++; } }
     if (resident > MAX_CHUNKS) { const far = [...S.M.chunks.values()].filter(c => c.image && !hit(c.box, near)).sort((a, b) => a.used - b.used); for (const c of far.slice(0, resident - MAX_CHUNKS)) dropChunk(c); }
     if (S.sortParent && S.parent.sort) { S.parent.sort('depth'); S.sortParent = false; }
     const pad = { x: view.x - 60, y: view.y - 60, w: view.w + 120, h: view.h + 120 };
