@@ -316,7 +316,7 @@ window.GardenPaintedProps = (function () {
       } else {
         const [id, v, size] = LIB[k], im = h.add(libImage(scene, id, v, season, size, fx, foot, night)); if (!im) { h.destroy(); return null; }
         const top = foot - im.displayHeight * im.originY; b = { x: fx - im.displayWidth / 2 - 6, y: top - 4, width: im.displayWidth + 12, height: foot - top + 12 };
-        if (k === 'lamp' || k === 'lampbox') h.lights.push({ x: fx, y: top + 14, radius: 120, pool: true });
+        if (k === 'lamp' || k === 'lampbox') { h.lights.push({ x: fx, y: top + 14, radius: 120, pool: true }); if (night) glowPool(scene, h, fx, foot, 110, top + 12); }
       }
     } else {
       const P = PAINT[which], key = bake(scene, which + '|' + season + '|' + (night ? 'n' : 'd'), P.box, B => P.draw(B, { season, night }));
@@ -337,6 +337,7 @@ window.GardenPaintedProps = (function () {
     'picket-fence': ['paint', 'picket'], 'wattle-fence': ['paint', 'wattle'], 'stone-wall': ['paint', 'drywall'], 'iron-railings': ['paint', 'railings'], 'box-hedge': ['lib', 'plant.hedge', 0, { h: 34 }],
     'bird-bath': ['paint', 'birdbath'], 'wishing-well': ['paint', 'well'], fountain: ['paint', 'fountain'], sundial: ['paint', 'sundial'], signpost: ['paint', 'sign'], letterbox: ['paint', 'postbox'],
     'planter-box': ['lib', 'plant.planter', 1, { w: 70 }], 'terracotta-pots': ['lib', 'plant.planter', 0, { w: 40 }], 'stone-urn': ['paint', 'urn'], 'rw-orn-cairn': ['paint', 'cairn'], 'dc-old-wall': ['paint', 'drywall'], 'dc-ruin-arch': ['paint', 'ruinarch'],
+    gnome: ['paint', 'gnome'], wheelbarrow: ['paint', 'barrow'], 'water-butt': ['paint', 'butt'], 'bird-feeder': ['paint', 'feeder'], 'rose-arch': ['paint', 'rosearch'], 'bird-box': ['paint', 'birdbox'], 'compost-bin': ['paint', 'compost'],
     'log-pile': ['paint', 'logs'], 'rw-orn-logs': ['paint', 'logs'], 'hay-bale': ['paint', 'hay'], beehive: ['paint', 'hive'], 'bee-skep': ['paint', 'skep'],
   };
   Object.assign(PAINT, {
@@ -353,6 +354,13 @@ window.GardenPaintedProps = (function () {
     logs: { box: [-26, -26, 26, 6], draw(B) { B.shadow(0, 1, 24, 4, .26); for (const [x, y] of [[-12, -5], [0, -5], [12, -5], [-6, -14], [6, -14], [0, -23]]) B.f(B.circ(x, y, 5.6), WOOD[1]).f(B.circ(x, y, 4.4), '#d8b888').s(`M${x} ${y}m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0`, '#a8844e', .6); } },
     hay: { box: [-26, -32, 26, 6], draw(B) { B.shadow(1, 1, 24, 4, .26).f(B.rr(-22, -24, 44, 24, 4), '#d4b45a').f(B.rr(-22, -24, 44, 6, 4), '#e8cc78').f(B.rect(10, -24, 12, 24), '#b8963e', .5); for (let i = 0; i < 12; i++) B.s(`M${-20 + i * 3.6} -2v-${6 + (i % 3) * 4}`, '#b8963e', .6, .6); B.s('M-8 -24v24M8 -24v24', '#8a6a3a', 1); } },
     hive: { box: [-20, -50, 20, 6], draw(B) { B.shadow(1, 1, 14, 4, .26).post(-8, -8, 0, 3, WOOD).post(8, -8, 0, 3, WOOD); for (let i = 0; i < 3; i++) B.f(B.rect(-12, -18 - i * 10, 24, 10), i % 2 ? '#f2eee2' : '#e8e2d0').f(B.rect(-12, -18 - i * 10, 4, 10), '#ffffff', .6); B.f(B.poly([[-15, -38], [0, -46], [15, -38]]), '#8a949a').f(B.rect(-4, -12, 8, 2), '#3a3028'); } },
+    gnome: { box: [-16, -46, 16, 6], draw(B, o) { const r = rng(23); B.shadow(1, 1, 11, 3.4, .26); B.f(B.rr(-7, -4, 6, 4, 1.6), '#4a3a2c').f(B.rr(1, -4, 6, 4, 1.6), '#4a3a2c'); B.f('M-8 -4q0 -12 8 -14q8 2 8 14z', B.lin(-8, 0, 8, 0, [[0, '#5a8ac8'], [1, '#3a5a90']])).f(B.rect(-8, -8, 16, 2), '#6a4a2a'); B.f('M-6 -15q6 12 12 0q-2 -6 -6 -6q-4 0 -6 6z', '#f4f2ec').f(B.circ(0, -21, 5), '#f0c8a8').f(B.circ(0, -19.6, 1.4), '#e09a8a'); B.f('M-7 -23q7 -26 9 -20q5 5 5 2q-6 -4 -14 18z', '#c8402e').f('M-7 -23q4 -14 7 -19l1 2q-3 6 -5 17z', '#e0624a', .8).f(B.ell(0, -23, 7.4, 2), '#a8342a'); B.f(B.circ(-2, -21.6, .7), '#3a2a20').f(B.circ(2, -21.6, .7), '#3a2a20'); B.tufts(r, 0, 2, 18, 6, o.season); } },
+    barrow: { box: [-30, -32, 30, 6], draw(B) { B.shadow(0, 1, 24, 4, .26); B.f(B.circ(-16, -6, 6), '#3a3e40').f(B.circ(-16, -6, 2.4), '#8a9094'); B.s('M-10 -10L24 -4M24 -4l4 -2', WOOD[1], 2.6).s('M8 -10v10M14 -9v9', IRON[1], 1.6); B.f('M-22 -24h34l-6 14h-24z', '#5a8a6a').f('M-22 -24h34l-1 3h-33z', '#7aaa8a').f(B.ell(-5, -24, 16, 3), '#6a5034'); B.f(D().blob(rng(2), -8, -27, 9, 4, 7, .4), '#5e8a44').f(B.circ(-10, -29, 1.6), '#e0b040').f(B.circ(-4, -28, 1.6), '#c84a5a'); } },
+    butt: { box: [-16, -46, 16, 6], draw(B) { B.shadow(1, 1, 12, 3.6, .26).f(B.rect(-10, -38, 20, 38), B.lin(-10, 0, 10, 0, [[0, '#6a8a70'], [.4, '#58785e'], [1, '#3e5a44']])).f(B.ell(0, -38, 10, 3), '#4a6a50').f(B.ell(0, -38, 8, 2.2), '#3a5a6a'); for (const y of [-30, -12]) B.f(B.rect(-10, y, 20, 2), '#46664c'); B.f(B.rect(6, -8, 6, 2), '#9aa4a8').s('M10 -38v-8h-8', '#7a8488', 2); } },
+    feeder: { box: [-16, -60, 16, 6], draw(B) { B.shadow(0, 1, 8, 2.6, .24).post(0, -46, 0, 3, WOOD); B.f(B.poly([[-12, -46], [0, -54], [12, -46]]), '#8a5a3a').f(B.rect(-8, -46, 16, 10), '#c8a870').f(B.rect(-9, -36, 18, 2), WOOD[1]); for (let i = 0; i < 6; i++) B.f(B.circ(-6 + i * 2.4, -38, .9), '#e8d4a0'); B.f(B.ell(8, -39, 3.4, 2.4), '#6a8ab8').f(B.circ(10, -41, 2), '#6a8ab8').f(B.ell(8, -38.4, 2, 1.2), '#f0e0a0'); } },
+    birdbox: { box: [-14, -60, 14, 6], draw(B) { B.shadow(0, 1, 7, 2.4, .24).post(0, -38, 0, 3, WOOD).f(B.rect(-8, -52, 16, 16), '#b08c5e').f(B.rect(-8, -52, 4, 16), '#c8a878', .7).f(B.poly([[-11, -51], [0, -58], [11, -51]]), '#6a5034').f(B.circ(0, -45, 2.4), '#2a2016').f(B.rect(-1, -41, 2, 2), WOOD[1]); } },
+    compost: { box: [-24, -36, 24, 6], draw(B) { B.shadow(0, 1, 20, 4, .26); B.f(B.rect(-18, -26, 36, 26), WOOD[1]); for (let i = 0; i < 4; i++) B.beam(-18, -26 + i * 6.6, 36, 5.4, WOOD); B.f(D().blob(rng(4), 0, -27, 16, 5, 8, .5), '#5a4030').f(D().blob(rng(5), -4, -29, 6, 2.4, 6, .5), '#7a9a48'); } },
+    rosearch: { box: [-56, -110, 56, 8], draw(B, o) { const r = rng(29); B.shadow(0, 2, 48, 6, .24); B.s('M-38 0v-62q0 -36 38 -36q38 0 38 36v62', WOOD[1], 4).s('M-34 0v-62q0 -32 34 -32q34 0 34 32v62', WOOD[2], 1.2, .6); for (let i = 0; i < 16; i++) { const t = i / 15, a = Math.PI * (1 - t), x = Math.cos(a) * 38, y = t < .2 || t > .8 ? -10 - (t < .2 ? t : 1 - t) * 260 : -62 - Math.sin(a) * 36; B.f(D().blob(r, x, y, 9, 7, 7, .5), leafOf(o.season)[1], .95).f(D().blob(r, x - 2, y - 2, 5, 3.4, 6, .5), leafOf(o.season)[2], .9); if (o.season !== 'winter' && i % 2 === 0) B.f(B.circ(x + 3, y + 1, 2.4), i % 4 ? '#e06a8a' : '#f4c0d0').f(B.circ(x + 2.4, y + .4, 1), '#fff0f4', .7); } } },
     skep: { box: [-18, -34, 18, 6], draw(B) { B.shadow(1, 1, 13, 4, .26); for (let i = 0; i < 6; i++) B.f(B.ell(0, -4 - i * 4.4, 13 - i * 1.6, 3), i % 2 ? '#c8a050' : '#d8b868'); B.f(B.ell(0, -4, 3.4, 2.2), '#3a2a18'); } },
   });
   function decorSignature(item, sc, night) { const d = DECOR[item.id]; return d ? 'painted-decor-2|' + item.id + '|' + item.x + ',' + item.y + '|' + (item.flip ? 'f' : '') + '|' + sc.season + (night ? '|n' : '') : null; }
@@ -365,7 +373,7 @@ window.GardenPaintedProps = (function () {
     else { const P = PAINT[d[1]]; im = h.add(image(scene, bake(scene, d[1] + '|' + season + '|' + (o.night ? 'n' : 'd'), P.box, B => P.draw(B, { season, night: o.night })), fx, foot)); if (d[1] === 'fountain') addDrops(scene, h, fx, foot - 52, 16); }
     if (!im) { h.destroy(); return null; }
     if (item.flip) im.setFlipX(true);
-    if (item.id === 'lantern' || item.id === 'solar-lights') h.lights.push({ x: fx, y: foot - (item.id === 'lantern' ? 56 : 18), radius: item.id === 'lantern' ? 90 : 50, pool: true });
+    if ((item.id === 'lantern' || item.id === 'solar-lights') && o.night) glowPool(scene, h, fx, foot, item.id === 'lantern' ? 90 : 60, item.id === 'lantern' ? foot - 58 : null);
     const top = foot - im.displayHeight * im.originY;
     return finish(h, { x: fx - im.displayWidth / 2 - 4, y: top - 2, width: im.displayWidth + 8, height: foot - top + 10 }, { x: fx, y: foot });
   }
@@ -402,26 +410,28 @@ window.GardenPaintedProps = (function () {
   /** One gate as base art + (closed) a blocker + its sign. side: the span runs down the screen (you cross left to right). */
   function gateArt(kind, g, frame, season, open) {
     const side = Math.abs(frame.uy) > Math.abs(frame.ux), half = Math.max(46, Math.min(80, frame.span * .62)), r = rng(hash(g.id + kind));
-    const L = leafOf(season);
+    const L = leafOf(season), art = { S: frame.span * .9 };
+    const oak = season === 'winter' ? 'tree.oak' : 'tree.green-oak';
+    // library objects standing in the crossing: [id, variant, size, dx, dy, 'back' | 'front']
+    art.lib = kind === 'arch' ? (side ? [[oak, 0, { h: 150 }, 0, -art.S, 'back'], [oak, 1, { h: 140 }, 0, art.S, 'front']] : [[oak, 0, { h: 150 }, -art.S, 0, 'back'], [oak, 1, { h: 145 }, art.S, 0, 'back']])
+      : kind === 'stair' ? [['tree.cherry', 0, { h: 104 }, -(side ? 30 : half * 1.15) - 52, -40, 'back'], ['tree.cherry', 1, { h: 96 }, (side ? 30 : half * 1.15) + 52, -36, 'back']]
+      : kind === 'pass' ? (side ? [['tree.pine', 0, { h: 170 }, 34, -art.S - 20, 'back'], ['rock.boulder', 0, { w: 96 }, 0, -art.S * .8, 'back'], ['rock.boulder', 1, { w: 110 }, 0, art.S * .8 + 6, 'front']] : [['tree.pine', 0, { h: 170 }, -half - 50, -16, 'back'], ['rock.boulder', 0, { w: 100 }, -half, 2, 'back'], ['rock.boulder', 1, { w: 110 }, half, 4, 'back']])
+      : kind === 'ruin' ? [['tree.proof-yew', 0, { h: 130 }, side ? 40 : half + 52, side ? -art.S : -6, 'back']] : [];
     // the box of the drawing round the crossing's centre
     const box = side ? [-70, -170 - half * .9, 70, half * .9 + 22] : [-half - 64, -170, half + 64, 24];
     const base = (B) => {
       if (kind === 'arch') {
-        // two old oaks leaning together over the lane
-        const feet = side ? [[0, -half * .82], [0, half * .82]] : [[-half, 0], [half, 0]];
-        for (const [i, [fx, fy]] of feet.entries()) {
-          const lean = side ? (i ? -1 : 1) : (i ? -1 : 1);
-          B.shadow(fx + 8, fy + 2, 24, 7, .3);
-          B.f(`M${fx - 9} ${fy}q-2 -40 ${lean * 16} -96l10 2q${-lean * 14} 50 ${lean * -4 + 8} 94z`, OAK[1]).f(`M${fx - 7} ${fy - 2}q-1 -36 ${lean * 14} -88l3 1q${-lean * 12} 48 -12 87z`, OAK[2], .55);
-          B.f(`M${fx - 13} ${fy}q4 -6 8 -4q4 -2 10 0q4 -2 8 4z`, OAK[3], .8);
-          B.s(`M${fx + lean * 10} ${fy - 70}q${lean * 14} -6 ${lean * 26} -22`, OAK[1], 4).s(`M${fx + lean * 6} ${fy - 50}q${-lean * 12} -10 ${-lean * 20} -14`, OAK[1], 3);
-          B.f(D().blob(r, fx - 3, fy - 30, 4, 7, 6, .5), MOSS[0], .7);
+        // the two old oaks are library trees (lib below); their boughs meet overhead here
+        const S = art.S;
+        if (side) {
+          B.s(`M-4 ${-S - 84}q-34 ${S * .9} -4 ${S * 2 - 6}`, OAK[1], 7).s(`M-4 ${-S - 84}q-34 ${S * .9} -4 ${S * 2 - 6}`, OAK[2], 1.6, .5).s(`M2 ${-S - 70}q-20 ${S * .6} 4 ${S * 1.4}`, OAK[1], 4);
+          for (let i = 0; i <= 5; i++) { const t = i / 5, y = -S - 96 + t * (S * 2 + 6), x = -16 - Math.sin(t * Math.PI) * 16; B.crown(r, x, y, 30, 22, season, 4); }
+        } else {
+          B.s(`M${-S + 10} -96q${S - 10} -60 ${S * 2 - 20} 0`, OAK[1], 7).s(`M${-S + 10} -96q${S - 10} -60 ${S * 2 - 20} 0`, OAK[2], 1.6, .5);
+          for (let i = 0; i <= 6; i++) { const t = i / 6, x = (t - .5) * (S * 2 - 30), y = -110 - Math.sin(t * Math.PI) * 30; B.crown(r, x, y, 32, 22, season, 4); }
         }
-        // the canopy meets overhead as one arch of leaves
-        const top = side ? -128 : -136;
-        for (let i = 0; i <= 6; i++) { const t = i / 6, x = side ? (t - .5) * 26 : (t - .5) * half * 2.4, y = top + (side ? (t - .5) * half * 1.6 : 0) - Math.sin(t * Math.PI) * 18; B.crown(r, x, y, 34, 26, season, 4); }
-        B.s(side ? `M-4 ${-half * .7}q-30 -90 4 -120` : `M${-half + 4} -64q${half} -70 ${half * 2 - 8} 0`, L[0], 2, .4);
-        if (open) for (let i = 0; i < 5; i++) B.f(B.circ((r() - .5) * 40, 2 + (r() - .5) * 6, 1.4), ['#e8c84a', '#f2f0e8', '#c86aa0'][i % 3]);
+        for (let i = 0; i < 6; i++) B.s(`M${side ? -12 + (r() - .5) * 20 : (r() - .5) * S * 1.4} ${side ? (r() - .5) * S * 1.6 - 70 : -96}q${(r() - .5) * 6} 16 ${(r() - .5) * 4} ${20 + r() * 18}`, L[0], 1.4, .8);
+        if (open) for (let i = 0; i < 9; i++) B.f(B.circ((r() - .5) * (side ? 30 : S * 1.4), (side ? (r() - .5) * S * 1.6 : 2 + (r() - .5) * 8), 1.5), ['#e8c84a', '#f2f0e8', '#c86aa0'][i % 3]);
       } else if (kind === 'bridge') {
         // a stone hump bridge: the arch below, the deck, two parapets with copings
         const len = side ? 74 : half * 1.1, w = side ? half * .8 : 30;
@@ -457,7 +467,7 @@ window.GardenPaintedProps = (function () {
       } else {
         // the pass: boulders either side of the col, scree, heather, a cairn of stacked stones
         const rock = ['#a8a698', '#848274', '#cfccbe', '#666456'], o = side ? [[0, -half * .8], [0, half * .8]] : [[-half, 0], [half, 0]];
-        for (const [x, y] of o) { B.shadow(x + 6, y + 2, 34, 9, .3); B.stone(r, x, y - 18, 30, 24, rock, null).stone(r, x + 16, y - 6, 16, 12, rock, null); B.f(D().blob(r, x - 6, y - 40, 16, 5, 8, .5), '#8a6a8a', .8).f(D().blob(r, x + 2, y - 42, 9, 3, 7, .5), '#b090b0', .8); if (season === 'winter') B.f(D().blob(r, x - 6, y - 40, 22, 6, 8, .4), '#f4f6f8', .95); }
+        for (const [x, y] of o) { B.shadow(x + 6, y + 2, 44, 10, .3); for (let i = 0; i < 6; i++) B.f(D().blob(r, x + (r() - .5) * 70, y + 6 + r() * 8, 9, 3.4, 7, .5), i % 2 ? '#8a6a8a' : '#a884a8', .85); }
         for (let i = 0; i < 14; i++) B.stone(r, (r() - .5) * (side ? 40 : half * 1.6), (side ? (r() - .5) * half * 1.4 : 4 + r() * 6), 2.6 + r() * 2, 1.8 + r(), rock, null);
         const cxx = side ? 26 : half + 36, cyy = side ? half * .2 : -2; let y = cyy;
         for (const [w, h] of [[13, 6], [11, 5.4], [9, 5], [7, 4.4], [5, 3.8], [3.6, 3]]) { B.stone(r, cxx + (r() - .5) * 2, y, w, h, rock, null); y -= h * 1.5; }
@@ -468,7 +478,7 @@ window.GardenPaintedProps = (function () {
       if (kind === 'arch') {
         // a tangle of fallen branches and brambles, a hurdle tied across
         const y0 = side ? 0 : 0; B.shadow(0, 2, side ? 26 : half * .9, 8, .24);
-        if (side) { for (let i = 0; i < 4; i++) B.post(0, -26 - i * 2, half * .7 - i * half * .45, 4, WOOD); B.beam(-6, -half * .7, 12, half * 1.4, WOOD); }
+        if (side) { const S = art.S * .72, n = 5, pt = i => [(-S + i * 2 * S / (n - 1)) * .28, -S + i * 2 * S / (n - 1)]; for (let i = 0; i < n; i++) { const [x, y] = pt(i); B.post(x, y - 30, y, 3.6, WOOD); } for (const hh of [6, 14, 22]) { const [xa, ya] = pt(0), [xb, yb] = pt(n - 1); B.s(`M${xa} ${ya - hh}L${xb} ${yb - hh}`, hh === 14 ? WOOD[2] : WOOD[0], 3); } }
         else { for (const x of [-half * .7, -half * .25, half * .25, half * .7]) B.post(x, -30, 0, 3.6, WOOD); for (let i = 0; i < 4; i++) B.s(`M${-half * .78} ${-6 - i * 7}q${half * .4} ${i & 1 ? 3 : -3} ${half * .78} 0q${half * .4} ${i & 1 ? -3 : 3} ${half * .78} 0`, i & 1 ? WOOD[0] : WOOD[2], 3.6); }
         for (let i = 0; i < 9; i++) { const x = (r() - .5) * (side ? 30 : half * 1.6), y = y0 - r() * 30 + (side ? (r() - .5) * half : 0); B.f(D().blob(r, x, y, 9, 6, 7, .55), L[0], .9).f(D().blob(r, x - 2, y - 2, 5, 3, 6, .5), L[1], .9); B.f(B.circ(x + 3, y - 3, 1.4), '#5a2a3a').f(B.circ(x - 4, y + 1, 1.2), '#7a2a3a'); }
       } else if (kind === 'bridge') {
@@ -495,7 +505,7 @@ window.GardenPaintedProps = (function () {
         for (const p of [a, b2]) B.post(p[0], p[1] - 4, p[1] + 34, 3, WOOD);
       }
     };
-    return { box, base, blocker, side, half };
+    return Object.assign(art, { box, base, blocker, side, half });
   }
   function gateSignature(g, open, sc) { return 'painted-gate-3|' + g.id + '|' + gateKind(g) + '|' + (open ? 'open' : 'shut') + '|' + sc.season + '|' + (g.crossSpan || []).join(';'); }
   /** A gate as a handle. open: the region beyond is yours. */
@@ -506,7 +516,10 @@ window.GardenPaintedProps = (function () {
     const art = gateArt(kind, g, frame, season, open), stem = 'gate|' + g.id + '|' + kind + '|' + season + '|' + (art.side ? 's' : 'f');
     const h = handle(scene, o, g.id, { cls: 'gate', kind: open ? 'paintedgate' : 'gate' });
     const baseKey = bake(scene, stem + '|base|' + (open ? 'o' : 'c'), art.box, B => art.base(B));
+    const lib = layer => { for (const [id, v, size, dx, dy, where] of art.lib) if (where === layer) h.add(libImage(scene, id, v, season, size, frame.x + dx, frame.y + dy, false)); };
+    lib('back');
     if (!h.add(image(scene, baseKey, frame.x, frame.y))) { h.destroy(); return null; }
+    lib('front');
     const was = gateSeen.get(g.id); gateSeen.set(g.id, !!open);
     const blockKey = bake(scene, stem + '|block', art.box, B => art.blocker(B));
     const signBox = [-30, -30, 30, 26], signKey = bake(scene, 'gatesign|' + (lv || 0), signBox, B => needSign(B, 0, 0, lv));
@@ -528,9 +541,9 @@ window.GardenPaintedProps = (function () {
 
   /* ---------- Fleet Falls: rock step, falling sheet, spray, plunge pool ---------- */
   function falls(scene, spec, o) {
-    const season = spec.season || 'summer', x = spec.x, y = spec.y, H = 176, Wd = 46, r = rng(hash(spec.id || 'falls'));
+    const season = spec.season || 'summer', x = spec.x, y = spec.y, H = 176, Wd = Math.round(Math.max(40, Math.min(110, (spec.width || 96) * .55))), r = rng(hash(spec.id || 'falls'));
     const h = handle(scene, o, spec.id, { cls: 'falls', kind: 'falls' });
-    const rock = ['#8e9688', '#6c7468', '#b4baa8', '#545a50'];
+    const rock = ['#a39a86', '#7e7664', '#cbc3ad', '#5e584a'];
     const box = [-120, -H - 50, 120, 40];
     const baseKey = bake(scene, 'falls|' + season + '|' + Wd, box, B => {
       // the plunge pool and its pale lip
@@ -540,7 +553,6 @@ window.GardenPaintedProps = (function () {
       for (const [px, py, rx, ry] of [[-74, -40, 46, 44], [76, -46, 46, 48], [-58, -112, 44, 46], [62, -118, 46, 46], [-30, -H + 6, 44, 30], [34, -H + 2, 46, 30], [-86, -4, 30, 18], [90, -6, 30, 18]]) B.stone(r, px, py, rx, ry, rock, MOSS);
       B.f(B.rect(-Wd / 2 - 6, -H, Wd + 12, H), '#3e4a4a');
       // trees and ferns crown the top; ivy hangs down the faces
-      B.crown(r, -78, -H - 12, 40, 26, season, 5).crown(r, 74, -H - 18, 44, 28, season, 5).crown(r, -8, -H - 30, 30, 18, season, 4);
       for (let i = 0; i < 6; i++) { const px = (i < 3 ? -1 : 1) * (Wd / 2 + 10 + (i % 3) * 16); B.s(`M${px} ${-H + 10}q${(r() - .5) * 8} 30 ${(r() - .5) * 4} ${40 + r() * 30}`, leafOf(season)[0], 2, .8); }
       // the falling sheet: a pale gradient, brightest at the lip, a green-blue core
       B.f(`M${-Wd / 2} ${-H}h${Wd}l4 ${H - 8}q${-Wd / 2 - 4} 10 ${-Wd - 8} 0z`, B.lin(0, -H, 0, 0, [[0, '#e8f4ee'], [.12, '#b6dcd8'], [.6, '#8cc4c4'], [1, '#d8eeea']]));
@@ -551,6 +563,8 @@ window.GardenPaintedProps = (function () {
       // reeds and stones round the pool
       for (let i = 0; i < 8; i++) { const a = Math.PI * (.08 + .84 * r()), px = Math.cos(a) * 92 * (r() < .5 ? -1 : 1), py = 14 + Math.sin(a) * 14; B.stone(r, px, py, 7 + r() * 5, 4 + r() * 2, STONE, r() < .5 ? MOSS : null); }
     });
+    // trees on the scarp top are the library's own, like the planting round them
+    for (const [id, v, hh, dx, dy] of [['tree.pine', 0, 150, -84, -H + 8], [season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 86, -H + 14], ['tree.pine', 1, 120, 30 + Wd / 2, -H - 6]]) h.add(libImage(scene, id, v, season, { h: hh }, x + dx, y + dy, false));
     h.add(image(scene, baseKey, x, y));
     // live: streaks running down the sheet (a tile sprite scrolls; nothing redraws)
     const streakKey = bake(scene, 'falls-streak|' + Wd, [0, 0, Wd, 64], B => {
@@ -575,6 +589,12 @@ window.GardenPaintedProps = (function () {
     return bake(scene, 'lightpool', [-64, -64, 64, 64], B => { const cx = B.cx; cx.fillStyle = B.rad(0, 0, 64, [[0, 'rgba(255,226,160,.95)'], [.25, 'rgba(255,214,140,.55)'], [.55, 'rgba(255,200,120,.2)'], [.8, 'rgba(255,190,110,.06)'], [1, 'rgba(255,190,110,0)']]); cx.fillRect(-64, -64, 128, 128); });
   }
 
+  /** At dusk and night: a soft warm pool on the ground (and a halo at the lamp), added light, no hard edge. */
+  function glowPool(scene, h, x, y, w, haloY) {
+    const key = poolKey(scene); if (!key) return;
+    const pool = h.add(image(scene, key, x, y + 4), true); pool.setScale(w / 256, w * .42 / 256).setAlpha(.5).setBlendMode('ADD');
+    if (haloY != null) { const halo = h.add(image(scene, key, x, haloY)); halo.setScale(.3).setAlpha(.55).setBlendMode('ADD'); h.move(halo, (node, t, motion) => { if (motion) node.setAlpha(.5 + Math.sin(t * 2.3 + x) * .04); }); }
+  }
   function status() { return { baked, bakeMs: Math.round(bakeMs), lastError, gates: [...gateSeen.entries()] }; }
-  return { prop, signature, decor, decorSignature, decorKnown, gate, gateSignature, gateKind, falls, poolKey, image, status, get lastError() { return lastError; } };
+  return { glowPool, prop, signature, decor, decorSignature, decorKnown, gate, gateSignature, gateKind, falls, poolKey, image, status, get lastError() { return lastError; } };
 })();

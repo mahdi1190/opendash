@@ -329,13 +329,18 @@ window.GardenNativeWorld = (function () {
       const lawn = coast.map(l => insetTerrainContour(l, island.beachWidthPx));
       const lakes = outlines(cells.map((c, i) => ({ material: inBox(i % W.cols, Math.floor(i / W.cols)) && wet(c) && c.material !== 'ocean' ? 'water' : '' })), 'water', W);
       const pathLoops = outlines(mark((c, x, y) => inBox(x, y) && c.material === 'path'), 'm', W, true).map(l => insetTerrainContour(l, -2));
+      // Owned beds: soil where something grows, a dug edge round an empty owned plot,
+      // so plantable land always reads as plantable on the painted lawn.
+      const soilSet = new Set(['bed', 'patch', 'veg', 'rich', 'herb', 'berry']);
+      const soil = outlines(mark((c, x, y) => inBox(x, y) && soilSet.has(c.material)), 'm', W, true).map(l => insetTerrainContour(l, 2));
+      const owned = outlines(mark((c, x, y) => inBox(x, y) && c.row && c.row.plot && !c.locked && !soilSet.has(c.material)), 'm', W, true).map(l => insetTerrainContour(l, 3));
       const pt = p => ({ x: p.x * W.cellW, y: W.sky + p.y * W.cellH });
       const routes = D.routes.filter(r => r.points && r.points.length > 1).map(r => { const st = gardenIslandRoadStyle(r); return { main: st.main, width: st.main ? 40 : 26, points: gardenIslandRoutePath(r).points.map(pt) }; });
       const pc = pt({ x: start.x + .5, y: start.y + .5 }), pw = 250, ph = 130;
       const plaza = { centre: pc, bounds: { x: pc.x - pw / 2, y: pc.y - ph / 2, w: pw, h: ph }, points: terrainRoundedRect(pc.x - pw / 2, pc.y - ph / 2, pw, ph, 40) };
       const meadow = (px, py) => { const c = cellAt(Math.floor(px / W.cellW), Math.floor((py - W.sky) / W.cellH)); return !!c && !wet(c) && !['beach', 'path'].includes(c.material) && Math.hypot((px - pc.x) / pw, (py - pc.y) / ph) > .62; };
       const sig = [cbox.x0, cbox.y0, (sc.areas || []).join(','), cultivatedNow ? [...cultivatedNow].sort().join(',') : '', lakes.length, pathLoops.length].join('|');
-      try { packGround = GardenNativePainted.ground(scene, rootNode._inner, { W, box, coast, lawn, lakes, paths: pathLoops, routes, plaza, meadow, season: sc.season, sig }); }
+      try { packGround = GardenNativePainted.ground(scene, rootNode._inner, { W, box, coast, lawn, lakes, paths: pathLoops, routes, plaza, meadow, soil, owned, season: sc.season, sig: sig + '|' + soil.length + ':' + owned.length }); }
       catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); return false; }
       const blocked = new Set(); for (const p of D.static) { const boxes = [p, p.apron].filter(Boolean); for (const b of boxes) for (let y = Math.floor(b.y) - 1; y <= b.y + b.h; y++) for (let x = Math.floor(b.x) - 1; x <= b.x + b.w; x++) blocked.add(x + ',' + y); }
       // Planting keeps clear of every path, doorway, owned plot and saved
@@ -895,7 +900,7 @@ window.GardenNativeWorld = (function () {
           const gateRow = typeof gardenZoneGate === 'function' ? gardenZoneGate(prop.id) : null, meta = { kind: prop.act ? 'prop' : 'scenery', id, prop, model: prop };
           let rec = null;
           if (gateRow && gateRow.crossSpan) { const open = (sc.areas || []).includes('zn-' + gateRow.n); rec = paintedRecord(key, GardenPaintedProps.gateSignature(gateRow, open, sc), () => GardenPaintedProps.gate(scene, gateRow, sc, paintOpts), meta, 76000, rootNode); }
-          else if (sceneryKind(prop) === 'falls') rec = paintedRecord(key, 'painted-falls-2|' + prop.id + '|' + [prop.x, prop.y, prop.w, prop.h, sc.season].join(','), () => GardenPaintedProps.falls(scene, { id: prop.id, x: (prop.x + prop.w / 2) * W.cellW, y: W.sky + (prop.y + prop.h) * W.cellH - 4, season: sc.season }, paintOpts), meta, W.sky + row.z * W.cellH);
+          else if (sceneryKind(prop) === 'falls') rec = paintedRecord(key, 'painted-falls-2|' + prop.id + '|' + [prop.x, prop.y, prop.w, prop.h, sc.season].join(','), () => GardenPaintedProps.falls(scene, { id: prop.id, width: prop.w * W.cellW, x: (prop.x + prop.w / 2) * W.cellW, y: W.sky + (prop.y + prop.h) * W.cellH - 4, season: sc.season }, paintOpts), meta, W.sky + row.z * W.cellH);
           else { const sig = GardenPaintedProps.signature(prop, sc, nightMaterials); if (sig) rec = paintedRecord(key, sig, () => GardenPaintedProps.prop(scene, prop, sc, paintOpts), meta, W.sky + row.z * W.cellH); }
           if (rec) { keep.add(key); continue; }
         }
