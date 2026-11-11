@@ -1244,14 +1244,18 @@ window.GardenNativeWorld = (function () {
       const end = points[points.length - 1]; route.lineStyle(1.5 / camera.scale, 0xfff4cf, .8).strokeEllipse(end.x * W.cellW, W.sky + end.y * W.cellH, 16, 8);
     }
     function update(time, delta) {
-      if (dead) return; const dt = Math.min(.055, Math.max(0, delta / 1000 || .016)); _gw.t = (_gw.t || 0) + dt;
+      // Frame-rate independence: a slow frame (under ~18 fps) is simulated as
+      // up to five equal sub-steps of at most 55 ms, so walking keeps real
+      // speed instead of slowing down. At normal frame rates this is one step.
+      if (dead) return; const frameDt = Math.min(.25, Math.max(0, delta / 1000 || .016)), steps = Math.max(1, Math.ceil(frameDt / .055 - 1e-9)), dt = frameDt / steps;
       // Old-version lines can briefly preserve a shoreline cove without a
       // dashboard repaint. Ordinary swimming keeps this resident revision.
       if (model && typeof gardenLakeGeometry === 'function' && gardenLakeGeometry(model).revision !== shorelineRevision) sync(model);
       _gw.frameActive = true; _gw.frameGrid = null; _gw.framePrefs = _gdpPrefs();
       try {
         if (editorPaint) { const paint = editorPaint; editorPaint = null; paint(); }
-        move(dt); drawPlayer(time); updateCamera(dt, !_gw.cam.init); drawRoute(); for (const row of dynamic.values()) if (typeof row.update === 'function') row.update(dt, row);
+        for (let i = 0; i < steps; i++) { _gw.t = (_gw.t || 0) + dt; move(dt); }
+        drawPlayer(time); updateCamera(frameDt, !_gw.cam.init); drawRoute(); for (const row of dynamic.values()) if (typeof row.update === 'function') row.update(frameDt, row);
         cullAndCache();
         const lighting = window.GardenNative && GardenNative.lighting(), environment = lighting && lighting.environment ? lighting.environment() : {};
         for (const row of drawings.values()) if (row.handle.kind && row.handle.update) row.handle.update(time, environment);
