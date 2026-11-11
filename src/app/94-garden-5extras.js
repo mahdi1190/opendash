@@ -288,7 +288,7 @@ function _gdxHint(d, kind, m) {
 function _gdxAlmDetail(d, kind, found, m) {
   const back = _gdp.pop && _gdp.pop.tab;   // closing an entry goes back to the page of the book you were on
   openDialog({
-    title: found ? d.name : 'Not discovered yet', width: 520, onClose: back ? () => setTimeout(() => gardenPopupOpen(back), 0) : undefined,
+    title: found ? d.name : 'Not discovered yet', width: 520, className: 'gd-popup', onClose: back ? () => setTimeout(() => gardenPopupOpen(back), 0) : undefined,
     body(el) {
       el.classList.add('gd-almdlg');
       const art = _gdpEl('div', 'gd-almdlg-art');
