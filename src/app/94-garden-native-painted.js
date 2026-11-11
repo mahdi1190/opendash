@@ -30,7 +30,7 @@ window.GardenNativePainted = (function () {
   PAL.spring = Object.assign({}, PAL.summer, { lawn: '#8fb35f', lawnLo: '#78a04e', lawnHi: '#a8c66f' });
   const palette = season => PAL[season] || PAL.summer;
   const ok = (f) => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
-  let lastError = null, groundMs = 0, lastPlanting = [], spotCounts = {}, cachedGround = null, groundSerial = 0;
+  let overLayer = null, lastError = null, groundMs = 0, lastPlanting = [], spotCounts = {}, cachedGround = null, groundSerial = 0;
 
   /* ---------- library objects as baked sprites ---------- */
   const paths = new Map();
@@ -130,7 +130,8 @@ window.GardenNativePainted = (function () {
       for (let y = sy0; y < sy1; y += 7.5) { cx.globalAlpha = .45; cx.strokeStyle = '#5a3e28'; cx.lineWidth = 1.6; cx.beginPath(); cx.moveTo(sx0, y); cx.lineTo(sx1, y); cx.stroke(); cx.globalAlpha = .35; cx.strokeStyle = '#a07c58'; cx.lineWidth = 1; cx.beginPath(); cx.moveTo(sx0, y - 2); cx.lineTo(sx1, y - 2); cx.stroke(); }
       cx.globalAlpha = 1; cx.restore(); strokeLoops(info.soil, '#a8845a', 1.4, .8);
     }
-    if (info.owned && info.owned.length) { cx.setLineDash([6, 4]); strokeLoops(info.owned, '#7d5d40', 2.4, .55); cx.setLineDash([]); strokeLoops(info.owned, '#c8b07e', 1, .35); }
+    // an empty owned plot: the grass a touch shorter inside and a soft dug edge (no dashes, no grid)
+    if (info.owned && info.owned.length) { cx.save(); clipLoops(info.owned); strokeLoops(info.owned, '#7d6a44', 7, .16); strokeLoops(info.owned, '#8a6a46', 2.2, .28); cx.restore(); fillLoops(info.owned, 'rgba(190,200,120,.07)'); }
     // Inland water: a damp bank, the pond, its shallow rim and lap line.
     if (info.lakes.length) {
       strokeLoops(info.lakes, P.sandWet, 14, .9); fillLoops(info.lakes, P.water);
@@ -227,7 +228,7 @@ window.GardenNativePainted = (function () {
     const node = element(scene, 'g', { class: 'gd-it gd-prop gd-prop-' + prop.kind + ' gd-painted', 'data-prop': prop.id, 'data-z': prop.y + prop.h, 'data-x': prop.x });
     const cx = (prop.x + prop.w / 2) * W.cellW, foot = W.sky + (prop.y + prop.h) * W.cellH - 2;
     const shadow = scene.add.graphics(); shadow.fillStyle(0x3a4a2a, .2).fillEllipse(cx + 8, foot + 1, def.w * 1.08, 18); node._inner.add(shadow);
-    const parts = [];
+    const parts = [], poolImages = [];
     const main = objectImage(scene, def.obj, def.v, season, { w: def.w }, cx, foot, night); if (!main) { node.remove(); return null; }
     node._inner.add(main); parts.push([main, def.obj, def.v, { w: def.w }]);
     for (const [id, v, dx, dy, w, h] of def.extra || []) { if (!sceneObj(id)) continue; const im = objectImage(scene, id, v, season, w ? { w } : { h }, cx + dx, foot + dy, night); if (im) { node._inner.addAt(im, dy > 0 ? node._inner.list.length : 1); parts.push([im, id, v, w ? { w } : { h }]); } }
@@ -238,10 +239,10 @@ window.GardenNativePainted = (function () {
       node._inner.add(scene.add.text(cx, sy - 1.5, def.sign, { fontFamily: 'Georgia, serif', fontSize: '10px', color: '#4a3b26', resolution: 3 }).setOrigin(.5, .5));
     }
     // lit windows spill a soft warm pool on the ground in front (added light, feathered: no disc)
-    if (night && window.GardenPaintedProps) { const pk = GardenPaintedProps.poolKey(scene); if (pk) { const pool = scene.add.image(cx, foot + 10, pk).setOrigin(.5, .5).setScale(def.w * 1.1 / 256, def.w * .3 / 256).setAlpha(.42).setBlendMode('ADD'); node._inner.add(pool); } }
+    if (night && window.GardenPaintedProps) { const pk = GardenPaintedProps.poolKey(scene); if (pk) { const pool = scene.add.image(cx, foot + 10, pk).setOrigin(.5, .5).setScale(def.w * 1.1 / 256, def.w * .3 / 256).setAlpha(.3), layer = overLayer; if (layer) { layer.add(pool); pool.setDepth(80005); } else node._inner.add(pool); poolImages.push(pool); } }
     const top = foot - main.displayHeight * main.originY, b = { x: cx - main.displayWidth / 2 - 10, y: top - 4, width: main.displayWidth + 20, height: foot - top + 26 };
     node.nativeBounds = b;
-    return { root: node.target, rootNode: node, bounds: b, painted: true, update() {}, setLitWindows(on) { for (const [im, id, v, size] of parts) { const o = objectKey(scene, id, v, season, size, !!on); if (o && im.texture.key !== o.key) im.setTexture(o.key).setOrigin(o.meta.ox, o.meta.oy); } }, destroy() { node.remove(); } };
+    return { root: node.target, rootNode: node, bounds: b, painted: true, update() {}, setLitWindows(on) { for (const [im, id, v, size] of parts) { const o = objectKey(scene, id, v, season, size, !!on); if (o && im.texture.key !== o.key) im.setTexture(o.key).setOrigin(o.meta.ox, o.meta.oy); } }, destroy() { for (const im of poolImages) im.destroy(); node.remove(); } };
   }
 
   /* ---------- planting: groves, shrubs and reeds in deliberate groups ---------- */
@@ -274,5 +275,5 @@ window.GardenNativePainted = (function () {
     return { destroy() { for (const im of made) im.destroy(); made.length = 0; }, count: made.length };
   }
   function status() { return { wanted: wanted(), ready: ready(), groundMs, planted: lastPlanting.length, spots: spotCounts, lastError }; }
-  return { wanted, ready, preload, ground, building, planting, status, objectImage, objectCanvas, get lastError() { return lastError; }, set lastError(v) { lastError = v; } };
+  return { wanted, ready, preload, ground, building, planting, status, objectImage, objectCanvas, get lastError() { return lastError; }, set lastError(v) { lastError = v; }, set overLayer(v) { overLayer = v; } };
 })();

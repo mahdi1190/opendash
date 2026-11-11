@@ -95,11 +95,13 @@ window.GardenPaintedProps = (function () {
   /* ---------- the handle every painter returns ---------- */
   function handle(scene, o, id, extra) {
     const node = o.element(scene, 'g', { class: 'gd-it gd-prop gd-painted gd-painted-' + (extra.cls || 'prop'), 'data-prop': id });
-    const parts = [], moving = [];
+    const parts = [], moving = [], over = [];
     let dead = false, clock = 0, last = null, paused = false;
     const add = (im, under) => { if (!im) return null; if (under) node._inner.addAt(im, 0); else node._inner.add(im); parts.push(im); return im; };
     const h = {
       root: node.target, rootNode: node, painted: true, cacheNodes: [], bounds: null, lights: [], kind: extra.kind || undefined, dynamic: false,
+      // above the night grade (light, not paint): soft pools and halos
+      over(im) { if (!im) return null; const layer = o.layer; if (layer && layer.add) { layer.add(im); im.setDepth(80005); over.push(im); } else node._inner.add(im); return im; },
       add, move(im, fn) { if (im) { moving.push({ im, fn }); h.dynamic = true; if (!h.kind) h.kind = 'painted'; } return im; },
       update(time) {
         if (dead || !moving.length) return; const dt = last == null ? 0 : Math.min(.08, Math.max(0, (time - last) / 1000)); last = time;
@@ -109,7 +111,7 @@ window.GardenPaintedProps = (function () {
       },
       pauseAmbient(state) { paused = !!(state && (state.hush || state.frozen)); },
       setLitWindows() {},
-      destroy() { if (dead) return; dead = true; node.remove(); },
+      destroy() { if (dead) return; dead = true; for (const im of over) im.destroy(); over.length = 0; node.remove(); },
     };
     return h;
   }
@@ -418,7 +420,7 @@ window.GardenPaintedProps = (function () {
       : kind === 'pass' ? (side ? [['tree.pine', 0, { h: 170 }, 34, -art.S - 20, 'back'], ['rock.boulder', 0, { w: 96 }, 0, -art.S * .8, 'back'], ['rock.boulder', 1, { w: 110 }, 0, art.S * .8 + 6, 'front']] : [['tree.pine', 0, { h: 170 }, -half - 50, -16, 'back'], ['rock.boulder', 0, { w: 100 }, -half, 2, 'back'], ['rock.boulder', 1, { w: 110 }, half, 4, 'back']])
       : kind === 'ruin' ? [['tree.proof-yew', 0, { h: 130 }, side ? 40 : half + 52, side ? -art.S : -6, 'back']] : [];
     // the box of the drawing round the crossing's centre
-    const box = side ? [-70, -170 - half * .9, 70, half * .9 + 22] : [-half - 64, -170, half + 64, 24];
+    const box = side ? [-100, -170 - half * .9, 100, half * .9 + 22] : [-half - 64, -170, half + 64, 24];
     const base = (B) => {
       if (kind === 'arch') {
         // the two old oaks are library trees (lib below); their boughs meet overhead here
@@ -436,10 +438,19 @@ window.GardenPaintedProps = (function () {
         // a stone hump bridge: the arch below, the deck, two parapets with copings
         const len = side ? 74 : half * 1.1, w = side ? half * .8 : 30;
         if (side) {
-          B.f(`M${-len} ${w + 6}q${len} -46 ${len * 2} 0v10h${-len * 2}z`, STONE[1]).f(`M${-len * .5} ${w + 16}q${len * .5} -34 ${len} 0z`, '#3e5a5e', .85).f(`M${-len * .46} ${w + 16}q${len * .46} -30 ${len * .92} 0`, '#6e9aa0', .5);
-          B.f(`M${-len} ${-w}q${len} -30 ${len * 2} 0v${w * 2}q${-len} -30 ${-len * 2} 0z`, '#d6cdb6').f(`M${-len} ${-w}q${len} -30 ${len * 2} 0v4q${-len} -30 ${-len * 2} 0z`, STONE[3], .35);
-          for (let i = 0; i < 9; i++) B.s(`M${-len + i * len / 4} ${-w + 4}v${w * 2 - 8}`, STONE[1], .7, .45);
-          for (const s of [-1, 1]) { const y = s * w; B.f(`M${-len - 4} ${y}q${len + 4} -30 ${len * 2 + 8} 0v-14q${-len - 4} -30 ${-len * 2 - 8} 0z`, s > 0 ? STONE[0] : STONE[1]).f(`M${-len - 4} ${y - 14}q${len + 4} -30 ${len * 2 + 8} 0v-3q${-len - 4} -30 ${-len * 2 - 8} 0z`, STONE[2]); for (let i = 1; i < 8; i++) B.s(`M${-len - 4 + i * (len * 2 + 8) / 8} ${y - 14 - Math.sin(i / 8 * Math.PI) * 15}v13`, STONE[3], .7, .5); }
+          // seen from the south in profile: the near face with its arch, the deck behind a low near parapet, the far parapet beyond
+          const N = 24, hump = x => -18 * (1 - (x / len) * (x / len)), xs = Array.from({ length: N + 1 }, (_, i) => -len + i * 2 * len / N), band = (top, bot) => B.poly(xs.map(x => [x, top(x)]).concat(xs.slice().reverse().map(x => [x, bot(x)])));
+          const d = 10;                                         // how much of the deck the 3/4 view shows
+          B.shadow(0, 14, len + 10, 8, .28);
+          B.f(band(x => hump(x) - d - 12, x => hump(x) - d), STONE[1]).f(band(x => hump(x) - d - 12, x => hump(x) - d - 9.5), STONE[2]);
+          for (let i = 1; i < 10; i++) { const x = -len + i * len / 5; B.s(`M${x} ${hump(x) - d - 9}v8`, STONE[3], .7, .5); }
+          B.f(band(x => hump(x) - d, x => hump(x)), '#d8cba6');
+          for (let i = 0; i < 22; i++) { const x = (r() - .5) * len * 1.8; B.f(B.rect(x - 3, hump(x) - d + 1 + r() * (d - 4), 6, 2.6), r() < .5 ? '#c4b690' : '#e6dbbb', .8); }
+          B.f(band(x => hump(x), x => 16), STONE[0]).f(`M${-len * .42} 16q${len * .42} -34 ${len * .84} 0z`, '#344c50').f(`M${-len * .36} 16q${len * .36} -26 ${len * .72} 0z`, '#4e7478', .7);
+          for (let row = 0; row < 3; row++) for (let i = 0; i < 9; i++) { const x = -len + 4 + i * len / 4.4 + (row & 1) * 6, y = hump(x) + 3 + row * 5; if (Math.abs(x) < len * .44 && y > 16 - Math.sqrt(Math.max(0, 1 - (x / (len * .42)) ** 2)) * 30) continue; B.f(B.rect(x, y, len / 5, 4), r() < .5 ? STONE[2] : STONE[1], .5); }
+          for (let i = 0; i < 9; i++) { const a = Math.PI * (i / 8), x = -Math.cos(a) * len * .44, y = 16 - Math.sin(a) * 31; B.f(B.rr(x - 3.6, y - 3, 7.2, 6, 1), STONE[2], .9); }
+          B.f(band(x => hump(x) - 5, x => hump(x) + 1), STONE[1]).f(band(x => hump(x) - 5, x => hump(x) - 3.4), STONE[2]);
+          B.f(D().blob(r, -len + 4, 12, 12, 5, 7, .5), MOSS[0], .85).f(D().blob(r, len - 6, 10, 10, 4, 7, .5), MOSS[1], .85).f(B.ell(0, 20, len * .4, 3), '#9cc4c8', .45);
         } else {
           B.f(`M${-len} 0q${len} -40 ${len * 2} 0z`, '#3e5a5e', .5);
           for (const s of [-1, 1]) B.f(B.rr(s * len - (s > 0 ? 14 : 0), -42, 14, 42, 2), STONE[0]).f(B.rect(s * len - (s > 0 ? 14 : 0), -42, 4, 42), STONE[2], .6);
@@ -480,13 +491,12 @@ window.GardenPaintedProps = (function () {
         const y0 = side ? 0 : 0; B.shadow(0, 2, side ? 26 : half * .9, 8, .24);
         if (side) { const S = art.S * .72, n = 5, pt = i => [(-S + i * 2 * S / (n - 1)) * .28, -S + i * 2 * S / (n - 1)]; for (let i = 0; i < n; i++) { const [x, y] = pt(i); B.post(x, y - 30, y, 3.6, WOOD); } for (const hh of [6, 14, 22]) { const [xa, ya] = pt(0), [xb, yb] = pt(n - 1); B.s(`M${xa} ${ya - hh}L${xb} ${yb - hh}`, hh === 14 ? WOOD[2] : WOOD[0], 3); } }
         else { for (const x of [-half * .7, -half * .25, half * .25, half * .7]) B.post(x, -30, 0, 3.6, WOOD); for (let i = 0; i < 4; i++) B.s(`M${-half * .78} ${-6 - i * 7}q${half * .4} ${i & 1 ? 3 : -3} ${half * .78} 0q${half * .4} ${i & 1 ? -3 : 3} ${half * .78} 0`, i & 1 ? WOOD[0] : WOOD[2], 3.6); }
-        for (let i = 0; i < 9; i++) { const x = (r() - .5) * (side ? 30 : half * 1.6), y = y0 - r() * 30 + (side ? (r() - .5) * half : 0); B.f(D().blob(r, x, y, 9, 6, 7, .55), L[0], .9).f(D().blob(r, x - 2, y - 2, 5, 3, 6, .5), L[1], .9); B.f(B.circ(x + 3, y - 3, 1.4), '#5a2a3a').f(B.circ(x - 4, y + 1, 1.2), '#7a2a3a'); }
+        for (let i = 0; i < 18; i++) { const x = (r() - .5) * (side ? 40 : half * 1.7), y = y0 - r() * 26 + (side ? (r() - .5) * art.S * 1.5 : 0); B.f(D().blob(r, x, y, 13, 9, 8, .6), '#3e5a30', .95).f(D().blob(r, x - 3, y - 3, 7, 4.4, 6, .5), '#5e7e40', .95); B.s(`M${x - 12} ${y + 2}q8 -14 22 -6`, '#6a4a3a', 1.2, .9); B.f(B.circ(x + 3, y - 3, 1.6), '#4a1a30').f(B.circ(x - 4, y + 1, 1.4), '#7a2a3a').f(B.circ(x + 6, y + 2, 1.3), '#c84a5a'); }
       } else if (kind === 'bridge') {
         // a barrier pole across the deck, on a post, with a chain
-        const len = side ? 70 : half; B.post(side ? -len + 4 : -len + 8, -38, side ? half * .4 : 0, 5, OAK);
-        B.beam(side ? -len + 2 : -len + 6, side ? -10 : -36, side ? 12 : len * 2 - 12, side ? half * .8 : 6, ['#e8e0cc', '#b8ae98', '#ffffff']);
-        if (!side) for (let x = -len + 14; x < len - 10; x += 16) B.f(B.rect(x, -36, 8, 6), '#c84a3a');
-        else for (let y = -6; y < half * .7; y += 14) B.f(B.rect(side ? -len + 2 : 0, y, 12, 7), '#c84a3a');
+        const len = side ? 74 : half;
+        if (side) { const x = -len * .55, y = -18 * (1 - .3) - 4; B.post(x - 6, y - 30, y + 2, 4, OAK).post(x + 6, y - 40, y - 10, 4, OAK); B.s(`M${x - 6} ${y - 22}L${x + 6} ${y - 34}`, '#f2ece0', 4.4); for (let i = 0; i < 3; i++) B.s(`M${x - 6 + i * 4} ${y - 22 - i * 4}l2 -2`, '#c84a3a', 4.4); }
+        else { B.post(-len + 8, -38, 0, 5, OAK); B.beam(-len + 6, -36, len * 2 - 12, 6, ['#e8e0cc', '#b8ae98', '#ffffff']); for (let x = -len + 14; x < len - 10; x += 16) B.f(B.rect(x, -36, 8, 6), '#c84a3a'); }
       } else if (kind === 'ruin') {
         // a heap of fallen stones in the gap
         B.shadow(0, 2, side ? 30 : half * .8, 9, .3);
@@ -509,7 +519,8 @@ window.GardenPaintedProps = (function () {
   }
   function gateSignature(g, open, sc) { return 'painted-gate-3|' + g.id + '|' + gateKind(g) + '|' + (open ? 'open' : 'shut') + '|' + sc.season + '|' + (g.crossSpan || []).join(';'); }
   /** A gate as a handle. open: the region beyond is yours. */
-  function gate(scene, g, sc, o) {
+  function gate(scene, g, sc, o, open) {
+    open = !!open;
     if (typeof _gldIslandGateFrame !== 'function') return null;
     const frame = g.crossSpan ? _gldIslandGateFrame(g) : null; if (!frame) return null;
     const kind = gateKind(g), season = sc.season || 'summer', zone = typeof gardenZone === 'function' ? gardenZone(g.n) : null, lv = zone && zone.lv;
@@ -523,15 +534,15 @@ window.GardenPaintedProps = (function () {
     const was = gateSeen.get(g.id); gateSeen.set(g.id, !!open);
     const blockKey = bake(scene, stem + '|block', art.box, B => art.blocker(B));
     const signBox = [-30, -30, 30, 26], signKey = bake(scene, 'gatesign|' + (lv || 0), signBox, B => needSign(B, 0, 0, lv));
-    const sx = frame.x + (art.side ? 0 : 0), sy = frame.y - (kind === 'arch' ? 62 : kind === 'stair' ? 106 : kind === 'ruin' ? 74 : 60) + (art.side && kind !== 'stair' ? -art.half * .2 : 0);
+    const sx = frame.x + (art.side ? 0 : 0), sy = frame.y - (kind === 'arch' ? 78 : kind === 'stair' ? 116 : kind === 'ruin' ? 84 : 70) + (art.side && kind !== 'stair' ? -art.half * .2 : 0);
     if (!open) {
       h.add(image(scene, blockKey, frame.x, frame.y));
-      const sign = h.add(image(scene, signKey, sx, sy));
+      const sign = h.add(image(scene, signKey, sx, sy)); sign.setScale(1.7 / K);
       // the sign sways on its hooks, barely
       h.move(sign, (node, t, motion) => { if (motion) node.setRotation(Math.sin(t * 1.3) * .03); });
     } else if (was === false) {
       // it has just opened: the barrier goes and the sign drops away
-      const block = h.add(image(scene, blockKey, frame.x, frame.y)), sign = h.add(image(scene, signKey, sx, sy));
+      const block = h.add(image(scene, blockKey, frame.x, frame.y)), sign = h.add(image(scene, signKey, sx, sy)); sign.setScale(1.7 / K);
       h.move(block, (node, t) => { const f = Math.min(1, t / 1.6); node.setAlpha(1 - f * f).setPosition(frame.x + (art.side ? 0 : f * 18), frame.y + f * 8); return f < 1; });
       h.move(sign, (node, t) => { const f = Math.min(1, t / 1.2); node.setAlpha(1 - f).setPosition(sx, sy + f * f * 40).setRotation(f * .6); return f < 1; });
     }
@@ -592,8 +603,8 @@ window.GardenPaintedProps = (function () {
   /** At dusk and night: a soft warm pool on the ground (and a halo at the lamp), added light, no hard edge. */
   function glowPool(scene, h, x, y, w, haloY) {
     const key = poolKey(scene); if (!key) return;
-    const pool = h.add(image(scene, key, x, y + 4), true); pool.setScale(w / 256, w * .42 / 256).setAlpha(.5).setBlendMode('ADD');
-    if (haloY != null) { const halo = h.add(image(scene, key, x, haloY)); halo.setScale(.3).setAlpha(.55).setBlendMode('ADD'); h.move(halo, (node, t, motion) => { if (motion) node.setAlpha(.5 + Math.sin(t * 2.3 + x) * .04); }); }
+    const pool = h.over(image(scene, key, x, y + 4)); pool.setScale(w / 256, w * .42 / 256).setAlpha(.34);
+    if (haloY != null) { const halo = h.over(image(scene, key, x, haloY)); halo.setScale(.3).setAlpha(.5); h.move(halo, (node, t, motion) => { if (motion) node.setAlpha(.46 + Math.sin(t * 2.3 + x) * .04); }); }
   }
   function status() { return { baked, bakeMs: Math.round(bakeMs), lastError, gates: [...gateSeen.entries()] }; }
   return { glowPool, prop, signature, decor, decorSignature, decorKnown, gate, gateSignature, gateKind, falls, poolKey, image, status, get lastError() { return lastError; } };

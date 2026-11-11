@@ -313,7 +313,7 @@ window.GardenNativeWorld = (function () {
     // kit's painting baked over the village and start area. Cells and walking
     // are shared; outside its feathered box the island keeps this painting.
     let packGround = null, packPlanting = null;
-    function packOn() { return !!(window.GardenNativePainted && GardenNativePainted.wanted() && GardenNativePainted.ready() && typeof gardenIslandActive === 'function' && gardenIslandActive()); }
+    function packOn() { const on = !!(window.GardenNativePainted && GardenNativePainted.wanted() && GardenNativePainted.ready() && typeof gardenIslandActive === 'function' && gardenIslandActive()); if (on) GardenNativePainted.overLayer = rootNode._inner; return on; }
     function clearPack() { if (packGround) packGround.destroy(); if (packPlanting) packPlanting.destroy(); packGround = packPlanting = null; }
     function packLayers(m, sc, island, cellAt, cultivatedNow, cells) {
       if (!island || !packOn()) return false;
@@ -883,7 +883,7 @@ window.GardenNativeWorld = (function () {
       const add = (id, html, metadata, depth, parent) => { if (!html) return; keep.add(id); return nodeDrawing(id, html, metadata, depth, parent); };
       if (typeof gardenCraftSurfaceRows === 'function' && !packGround) for (const row of gardenCraftSurfaceRows(sc)) add('ground:craft:' + row.id, row.html, { kind: 'ground', id: row.id }, -9370);
       for (const item of sc.plants || []) add('plant:' + item.uid, _gdrItem('plant', item, sc, opts), { kind: 'plant', uid: item.uid, id: item.id, model: modelPlants.get(item.uid) }, W.sky + (item.y + (gardenPlant(item.id).fp || 1)) * W.cellH);
-      const paintOpts = { element, W, night: nightMaterials };
+      const paintOpts = { element, W, night: nightMaterials, layer: rootNode._inner };
       for (const item of sc.decor || []) { const def = gardenDecor(item.id), ground = def && def.layer === 'ground';
         if (!ground && paintedOn() && GardenPaintedProps.decorKnown(item.id) && !(typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf('decor:' + item.uid) || {}).some(Boolean))) {
           const key = 'decor:' + item.uid, rec = paintedRecord(key, GardenPaintedProps.decorSignature(item, sc, nightMaterials), () => GardenPaintedProps.decor(scene, item, sc, paintOpts), { kind: 'decor', uid: item.uid, id: item.id, model: modelDecor.get(item.uid) }, W.sky + (item.y + (def && def.h || 1)) * W.cellH);
@@ -899,7 +899,7 @@ window.GardenNativeWorld = (function () {
         if (prop && paintedOn() && !(typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(prop.id)).some(Boolean))) {
           const gateRow = typeof gardenZoneGate === 'function' ? gardenZoneGate(prop.id) : null, meta = { kind: prop.act ? 'prop' : 'scenery', id, prop, model: prop };
           let rec = null;
-          if (gateRow && gateRow.crossSpan) { const open = (sc.areas || []).includes('zn-' + gateRow.n); rec = paintedRecord(key, GardenPaintedProps.gateSignature(gateRow, open, sc), () => GardenPaintedProps.gate(scene, gateRow, sc, paintOpts), meta, 76000, rootNode); }
+          if (gateRow && gateRow.crossSpan) { const open = (sc.areas || []).includes('zn-' + gateRow.n); rec = paintedRecord(key, GardenPaintedProps.gateSignature(gateRow, open, sc), () => GardenPaintedProps.gate(scene, gateRow, sc, paintOpts, open), meta, 76000, rootNode); }
           else if (sceneryKind(prop) === 'falls') rec = paintedRecord(key, 'painted-falls-2|' + prop.id + '|' + [prop.x, prop.y, prop.w, prop.h, sc.season].join(','), () => GardenPaintedProps.falls(scene, { id: prop.id, width: prop.w * W.cellW, x: (prop.x + prop.w / 2) * W.cellW, y: W.sky + (prop.y + prop.h) * W.cellH - 4, season: sc.season }, paintOpts), meta, W.sky + row.z * W.cellH);
           else { const sig = GardenPaintedProps.signature(prop, sc, nightMaterials); if (sig) rec = paintedRecord(key, sig, () => GardenPaintedProps.prop(scene, prop, sc, paintOpts), meta, W.sky + row.z * W.cellH); }
           if (rec) { keep.add(key); continue; }
@@ -920,7 +920,7 @@ window.GardenNativeWorld = (function () {
       // bridge, the arch, the stair are part of the land, now open.
       if (paintedOn() && typeof gardenIslandActive === 'function' && gardenIslandActive()) for (const g of gardenIslandData().gates || []) {
         const key = 'prop:' + g.id; if (keep.has(key) || !g.crossSpan || !(sc.areas || []).includes('zn-' + g.n) || typeof _gldIslandGateFrame !== 'function') continue;
-        const frame = _gldIslandGateFrame(g), rec = paintedRecord(key, GardenPaintedProps.gateSignature(g, true, sc), () => GardenPaintedProps.gate(scene, g, sc, paintOpts), { kind: 'scenery', id: g.id, model: { id: g.id, kind: 'gate-open', x: frame.x / W.cellW - .5, y: (frame.y - W.sky) / W.cellH - 1, w: 1, h: 1 } }, frame.y + 2);
+        const frame = _gldIslandGateFrame(g), rec = paintedRecord(key, GardenPaintedProps.gateSignature(g, true, sc), () => GardenPaintedProps.gate(scene, g, sc, paintOpts, true), { kind: 'scenery', id: g.id, model: { id: g.id, kind: 'gate-open', x: frame.x / W.cellW - .5, y: (frame.y - W.sky) / W.cellH - 1, w: 1, h: 1 } }, frame.y + 2);
         if (rec) keep.add(key);
       }
       if (typeof gardenIslandActive === 'function' && gardenIslandActive() && (gardenIslandData().regions || []).length) {
