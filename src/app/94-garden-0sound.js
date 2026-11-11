@@ -36,7 +36,7 @@ function _gsSet(patch) {
 }
 
 /* ---------- the context and its buses ---------- */
-function _gsCtx() {
+function _gsnCtx() {
   const ac = typeof gardenAudioContext === 'function' ? gardenAudioContext(true) : null;
   if (!ac) return null;
   if (_gsn.ac !== ac || !_gsn.g) { _gsn.ac = ac; _gsn.g = _gsGraph(ac); _gsn.amb = null; _gsApply(); }
@@ -93,7 +93,7 @@ function _gsTone(c, out, t, o) {
 function _gsHiss(c, out, t, o) {
   const s = c.createBufferSource(), f = c.createBiquadFilter(), v = c.createGain(), d = o.d || 0.1, a = Math.min(o.a || 0.004, d * 0.6);
   s.buffer = _gsNoise(c); s.playbackRate.value = o.rate || 1;
-  f.type = o.type || 'bandpass'; f.frequency.setValueAtTime(o.f, t); if (o.f2) f.frequency.exponentialRampToValueAtTime(o.f2, t + d); f.Q.value = o.q || 0.8;
+  f.type = o.type || 'bandpass'; f.frequency.value = o.f; f.Q.value = o.q || 0.8; if (o.f2) { f.frequency.setValueAtTime(o.f, t); f.frequency.exponentialRampToValueAtTime(o.f2, t + d); }   // (set before it starts: a filter that jumps mid-signal can spike)
   v.gain.setValueAtTime(0.0001, t); v.gain.linearRampToValueAtTime(o.peak, t + a); v.gain.exponentialRampToValueAtTime(0.0001, t + d);
   s.connect(f); f.connect(v); v.connect(_gsPan(c, out, o.pan));
   s.start(t, Math.random() * 2); s.stop(t + d + 0.03);
@@ -218,7 +218,7 @@ function gardenSfx(name, o) {
     if ((name === 'open' || name === 'close') && now < _gsn.uiQuiet) return true;
     _gsn.last[name] = now;
     if (name === 'door' || name === 'gate') _gsn.uiQuiet = now + 450;
-    const c = _gsCtx(); if (!c || !_gsn.g) return false;
+    const c = _gsnCtx(); if (!c || !_gsn.g) return false;
     fn(c, _gsn.g.fx, c.currentTime + 0.01 + (o.at || 0), Math.random, o);
     _gsLog(name);
     gardenSoundWake();
@@ -380,7 +380,7 @@ function _gsSleep() {
 }
 function _gsTick() {
   if (!_gsShowing() || !_gsAllowed()) { _gsSleep(); return; }
-  const c = _gsCtx(); if (!c || c.state !== 'running') return;
+  const c = _gsnCtx(); if (!c || c.state !== 'running') return;
   _gsn.n++;
   try { _gsFeet(c); } catch (e) { /* a step missed */ }
   try { _gsReel(c); } catch (e) { /* the reel */ }
@@ -452,14 +452,14 @@ function _gsOnClick(ev) {
   if (b) gardenSfx('tab');
 }
 function _gsArm() {
-  if (!_gsn.armed) { _gsn.armed = true; if (_gsPrefs().on) _gsCtx(); }
+  if (!_gsn.armed) { _gsn.armed = true; if (_gsPrefs().on) _gsnCtx(); }
   if (_gsn.iv) return;
   gardenSoundWake();
   clearTimeout(_gsn.wakeT); _gsn.wakeT = setTimeout(gardenSoundWake, 1500);   // (a click that opens the garden: it shows a moment later)
 }
 function _gsOnVisible() {
   const c = _gsn.ac; if (!c) return;
-  try { if (document.hidden) { _gsSleep(); if (c.state === 'running') c.suspend(); } else if (_gsShowing() && _gsAllowed()) { _gsCtx(); gardenSoundWake(); } } catch (e) { /* fine */ }
+  try { if (document.hidden) { _gsSleep(); if (c.state === 'running') c.suspend(); } else if (_gsShowing() && _gsAllowed()) { _gsnCtx(); gardenSoundWake(); } } catch (e) { /* fine */ }
 }
 
 /* ---------- the Sound panel (Garden menu > View & help > Sound) ---------- */
