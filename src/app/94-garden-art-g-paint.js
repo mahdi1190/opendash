@@ -6,9 +6,10 @@
    its own drawing and id, and a friend sees exactly the same figure:
 
      gardenFigurePaint(svg, kind)   -> the same SVG fragment, painted: kind 'actor' (people), 'pet', 'fish' (side on), 'bug' (from above), 'npc'
-       - every opaque flat fill becomes a soft linear gradient across its own box (objectBoundingBox): sunlit at the upper left, the base
-         colour through the middle, a shade toward the lower right. The shade is the scenes' own warm-green shadow, never black, so a figure
-         picks up the ground it stands on (the kit's tone4: light, base, shade, deep)
+       - every opaque flat fill becomes a soft linear gradient: sunlit at the upper left, the base colour through the middle, a shade toward
+         the lower right in the scenes' own warm-green shadow (never black), so a figure picks up the ground it stands on. A person is one
+         light field over the whole figure (userSpaceOnUse, carried through every piece's transform), because the kit cuts a person into
+         many overlapping pieces and a gradient per piece shows every seam; a pet, a fish or a bug is shaded piece by piece (objectBoundingBox)
        - colours are graded into the scene's key: a little less saturation and a touch of the low sun, so a pure navy or a red is not louder
          than the painting round it
        - an ink outline on a filled shape (the creature art and the villagers have them) becomes a gentle one: the shape's own deep tone,
@@ -30,22 +31,14 @@ const _GFP = Object.freeze({
   kinds: {
     // People are built of many overlapping pieces (a sleeve over a cuff over a hand), so their light is gentler and mostly from above:
     // a strong diagonal on every piece reads as blotches. Skin keeps its flat tone (a face shaded per piece looks dirty).
-    actor: { lit: 0.1, dk: 0.17, sat: 0.9, key: 0.05, x1: 0.32, y1: 0, x2: 0.56, y2: 1, skin: true },
-    npc: { lit: 0.1, dk: 0.18, sat: 0.86, key: 0.07, x1: 0.32, y1: 0, x2: 0.56, y2: 1, skin: true },
+    actor: { lit: 0.16, dk: 0.24, sat: 0.9, key: 0.05, mid: 0.42, field: [-16, -74, 12, 2] },
+    npc: { lit: 0.16, dk: 0.26, sat: 0.86, key: 0.07, mid: 0.42, field: [-16, -62, 12, 2] },
     pet: { lit: 0.15, dk: 0.22, sat: 0.94, key: 0.04, x1: 0.1, y1: 0, x2: 0.62, y2: 1 },
     fish: { lit: 0.14, dk: 0.2, sat: 0.95, key: 0.03, x1: 0.3, y1: 0, x2: 0.5, y2: 1 },
     bug: { lit: 0.13, dk: 0.2, sat: 0.95, key: 0.03, x1: 0.1, y1: 0.05, x2: 0.8, y2: 0.95 },
   },
 });
 const _gfpCache = new Map();
-let _gfpSkin = null;
-/** The avatar kit's skin tones (and the villagers' own): a face keeps its flat tone. */
-function _gfpSkinSet() {
-  if (_gfpSkin) return _gfpSkin;
-  _gfpSkin = new Set(['#e8b890', '#f0c8a0', '#d8a47c', '#c08860', '#8a5a3a']);
-  try { if (typeof PF_SKIN !== 'undefined') for (const k of Object.keys(PF_SKIN)) _gfpSkin.add(String(PF_SKIN[k].hex).toLowerCase()); } catch (e) { /* the kit is not in this build */ }
-  return _gfpSkin;
-}
 function _gfpRgb(c) {
   let h = String(c).trim().slice(1);
   if (h.length === 3) h = h.replace(/./g, ch => ch + ch);
@@ -70,6 +63,36 @@ function gardenFigureShadowSvg(rx, ry) {
   return `<ellipse cx="0" cy="0.8" rx="${f(x * 1.35)}" ry="${f(y * 1.45)}" fill="#34402b" fill-opacity="0.1"/><ellipse cx="0" cy="0.8" rx="${f(x)}" ry="${f(y)}" fill="#34402b" fill-opacity="0.13"/><ellipse cx="0" cy="0.6" rx="${f(x * 0.62)}" ry="${f(y * 0.6)}" fill="#2a3322" fill-opacity="0.16"/>`;
 }
 const _GFP_SHAPE = /^(path|rect|circle|ellipse|polygon|polyline|g|use)$/;
+const _GFP_VOID = /^(path|rect|circle|ellipse|polygon|polyline|line|stop|use|image|animateTransform|animate|set)$/i;
+const _GFP_ID = Object.freeze([1, 0, 0, 1, 0, 0]);
+function _gfpMul(m, n) { return [m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1], m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3], m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]]; }
+function _gfpInv(m) { const z = m[0] * m[3] - m[1] * m[2]; if (Math.abs(z) < 1e-9) return _GFP_ID; return [m[3] / z, -m[1] / z, -m[2] / z, m[0] / z, (m[2] * m[5] - m[3] * m[4]) / z, (m[1] * m[4] - m[0] * m[5]) / z]; }
+function _gfpPt(m, x, y) { return [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]]; }
+/** An SVG transform list as a matrix (matrix, translate, scale, rotate, skewX/Y). */
+function _gfpTf(t) {
+  let M = _GFP_ID;
+  for (const m of String(t).matchAll(/(matrix|translate|scale|rotate|skewX|skewY)\s*\(([^)]*)\)/g)) {
+    const v = (m[2].match(/-?\d*\.?\d+(?:e-?\d+)?/gi) || []).map(Number); let n = _GFP_ID;
+    if (m[1] === 'matrix' && v.length >= 6) n = v.slice(0, 6);
+    else if (m[1] === 'translate') n = [1, 0, 0, 1, v[0] || 0, v[1] || 0];
+    else if (m[1] === 'scale') n = [v[0] == null ? 1 : v[0], 0, 0, v[1] == null ? (v[0] == null ? 1 : v[0]) : v[1], 0, 0];
+    else if (m[1] === 'rotate') { const r = (v[0] || 0) * Math.PI / 180, c = Math.cos(r), s = Math.sin(r), cx = v[1] || 0, cy = v[2] || 0; n = [c, s, -s, c, cx - c * cx + s * cy, cy - s * cx - c * cy]; }
+    else if (m[1] === 'skewX') n = [1, 0, Math.tan((v[0] || 0) * Math.PI / 180), 1, 0, 0];
+    else if (m[1] === 'skewY') n = [1, Math.tan((v[0] || 0) * Math.PI / 180), 0, 1, 0, 0];
+    M = _gfpMul(M, n);
+  }
+  return M;
+}
+function _gfpKey(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
+/** An ink line: a stroke darker than its fill and of the fill's own hue (or no hue). A coloured ring on a pale disc (a net) is the drawing, not ink. */
+function _gfpInk(s, f) {
+  const lum = c => c[0] * 0.3 + c[1] * 0.59 + c[2] * 0.11, sat = c => { const mx = Math.max(...c), mn = Math.min(...c); return mx ? (mx - mn) / mx : 0; };
+  if (lum(s) > Math.min(120, lum(f) * 0.8)) return false;
+  if (sat(s) < 0.3 || sat(f) < 0.12 && sat(s) < 0.3) return true;
+  const hue = c => { const [r, g, b] = c, mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn || 1; return mx === r ? ((g - b) / d + 6) % 6 * 60 : mx === g ? ((b - r) / d + 2) * 60 : ((r - g) / d + 4) * 60; };
+  if (sat(f) < 0.12) return false;
+  const dh = Math.abs(hue(s) - hue(f)); return Math.min(dh, 360 - dh) < 40;
+}
 function _gfpAttr(attrs, name) { const m = new RegExp('(?:^|\\s)' + name + '="([^"]*)"').exec(attrs); return m ? m[1] : null; }
 function _gfpSet(attrs, name, value) {
   const re = new RegExp('((?:^|\\s)' + name + '=")([^"]*)(")');
@@ -77,12 +100,17 @@ function _gfpSet(attrs, name, value) {
 }
 function gardenFigurePaint(svg, kind) {
   if (!svg || typeof svg !== 'string') return svg || '';
+  if (svg.startsWith('<!--gfp-->')) return svg;   // already painted (a figure inside a figure: a pet held, a fish held up)
   const K = _GFP.kinds[kind] || _GFP.kinds.actor, ck = (kind || 'actor') + '|' + svg;
   const hit = _gfpCache.get(ck); if (hit != null) return hit;
-  const grads = new Map(), gk = (kind || 'actor').slice(0, 2);
+  const grads = new Map(), gk = (kind || 'actor').slice(0, 2), stack = [_GFP_ID];
   let out = '';
   try {
-    out = svg.replace(/<([a-zA-Z]+)(\s[^<>]*?)?(\/?)>/g, (whole, tag, attrs, close) => {
+    out = svg.replace(/<(\/?)([a-zA-Z]+)(\s[^<>]*?)?(\/?)>/g, (whole, end, tag, attrs, close) => {
+      // The transform stack: a person's light is one field over the whole figure (see K.field), so each piece needs its place in it.
+      if (end) { if (!_GFP_VOID.test(tag) && stack.length > 1) stack.pop(); return whole; }
+      const own = attrs ? _gfpAttr(attrs, 'transform') : null, M = own ? _gfpMul(stack[stack.length - 1], _gfpTf(own)) : stack[stack.length - 1];
+      if (!close && !_GFP_VOID.test(tag)) stack.push(M);
       if (!_GFP_SHAPE.test(tag) || !attrs) return whole;
       let a = attrs;
       const fill = _gfpAttr(a, 'fill'), stroke = _gfpAttr(a, 'stroke'), op = Number(_gfpAttr(a, 'opacity') || 1), fop = Number(_gfpAttr(a, 'fill-opacity') || 1);
@@ -90,18 +118,24 @@ function gardenFigurePaint(svg, kind) {
       let base = null;
       if (fRgb) {
         base = _gfpGrade(fRgb, K);
-        if (op >= 0.95 && fop >= 0.95 && tag !== 'use' && !(K.skin && _gfpSkinSet().has(fill.toLowerCase()))) {
-          const id = 'gfp' + gk + _gfpHex(base).slice(1);
-          if (!grads.has(id)) {
-            const lit = _gfpMix(base, _GFP.sun, K.lit), dk = _gfpMix(base, _GFP.shade, K.dk);
-            grads.set(id, `<linearGradient id="${id}" gradientUnits="objectBoundingBox" x1="${K.x1}" y1="${K.y1}" x2="${K.x2}" y2="${K.y2}"><stop offset="0" stop-color="${_gfpHex(lit)}"/><stop offset="0.5" stop-color="${_gfpHex(base)}"/><stop offset="1" stop-color="${_gfpHex(dk)}"/></linearGradient>`);
-          }
+        if (op >= 0.95 && fop >= 0.95 && tag !== 'use' && tag !== 'g') {
+          const lit = _gfpMix(base, _GFP.sun, K.lit), dk = _gfpMix(base, _GFP.shade, K.dk);
+          let id, geo;
+          if (K.field) {
+            // One light over the whole person, in the figure's own units (feet at 0, crown near -70): the sun at the upper left, the
+            // shade gathering toward the feet. Each piece samples the same field through its own transform, so a sleeve, a cuff and a
+            // hand meet without a seam however the kit cut them.
+            const I = _gfpInv(M), p1 = _gfpPt(I, K.field[0], K.field[1]), p2 = _gfpPt(I, K.field[2], K.field[3]), r = v => Math.round(v * 10) / 10;
+            geo = `gradientUnits="userSpaceOnUse" x1="${r(p1[0])}" y1="${r(p1[1])}" x2="${r(p2[0])}" y2="${r(p2[1])}"`;
+            id = 'gfp' + gk + _gfpHex(base).slice(1) + _gfpKey(geo);
+          } else { geo = `gradientUnits="objectBoundingBox" x1="${K.x1}" y1="${K.y1}" x2="${K.x2}" y2="${K.y2}"`; id = 'gfp' + gk + _gfpHex(base).slice(1); }
+          if (!grads.has(id)) grads.set(id, `<linearGradient id="${id}" ${geo}><stop offset="0" stop-color="${_gfpHex(lit)}"/><stop offset="${K.mid || 0.5}" stop-color="${_gfpHex(base)}"/><stop offset="1" stop-color="${_gfpHex(dk)}"/></linearGradient>`);
           a = _gfpSet(a, 'fill', `url(#${id})`);
         } else a = _gfpSet(a, 'fill', _gfpHex(base));
       }
       if (sRgb) {
         const filled = fill && fill !== 'none';
-        if (filled && tag !== 'g') {
+        if (filled && tag !== 'g' && _gfpInk(sRgb, fRgb || sRgb)) {
           // An ink outline round a filled shape: the shape's own deep tone, thinner and softer (the kit has none; a figure keeps a whisper of one to read at 40 px).
           const own = base || _gfpGrade(sRgb, K), w = Number(_gfpAttr(a, 'stroke-width') || 1);
           a = _gfpSet(a, 'stroke', _gfpHex(_gfpMix(own, _GFP.deep, 0.42)));
@@ -115,7 +149,7 @@ function gardenFigurePaint(svg, kind) {
       }
       return '<' + tag + a + close + '>';
     });
-    if (grads.size) out = `<defs>${[...grads.values()].join('')}</defs>` + out;
+    out = '<!--gfp-->' + (grads.size ? `<defs>${[...grads.values()].join('')}</defs>` : '') + out;
   } catch (e) { out = svg; }
   if (_gfpCache.size > 160) _gfpCache.delete(_gfpCache.keys().next().value);
   _gfpCache.set(ck, out);
