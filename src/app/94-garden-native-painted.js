@@ -1,214 +1,237 @@
-/* The "Pixel village" art style: the outdoor ground, village buildings and
- * planting drawn from one CC0 tile pack (Kenney's Roguelike/RPG pack, vendored
- * in vendor/art/kenney-roguelike with its licence). Only rendering changes:
- * cells, walking, picking and saved rows are untouched. The atlas is inlined
- * by build.mjs as inert data (#freeflo-garden-art), so it works offline and
- * needs nothing beyond the page's existing data: image policy. */
-window.GardenNativePack = (function () {
+/* The "Painted village" art style: the village and start area drawn with the
+ * opening scenes' own kit (the scene library objects of 70-scene-lib-*.js
+ * through sceneObjShapes, and sceneDraw for lobed natural shapes), in their
+ * flat-vector house style: soft shading lit from the upper left, no outlines,
+ * curved organic shapes, trees in clumps.
+ *
+ * Top-down adaptation: the scenes are side views on a perspective ground, the
+ * garden is a 3/4 top-down island. Upright things (trees, shrubs, buildings,
+ * lamps, benches, reeds) are the library objects as they are, since the garden
+ * also shows them from the front; the ground (meadow, sand, water, paths,
+ * plaza) is painted flat here with the same palette and soft lobed shading.
+ * Everything static is baked once into canvases that become Phaser textures;
+ * only the game's own moving things stay live. Only rendering changes: cells,
+ * walking, picking and saved rows are untouched. */
+window.GardenNativePainted = (function () {
   'use strict';
-  const TEX = 'gdpack', T = 16, S = 2, TS = T * S;
-  let meta = null, image = null, state = 'idle', sandWater = null;
-  const waiting = new Set();
-  function wanted() { try { return typeof _gdpPrefs === 'function' && _gdpPrefs().artStyle === 'pixel' && _gdpPrefs().renderEngine !== 'standard'; } catch (e) { return false; } }
-  function readData() {
-    if (meta) return meta;
-    const tag = typeof document !== 'undefined' && document.getElementById('freeflo-garden-art'); if (!tag) return null;
-    try { meta = JSON.parse(tag.textContent); } catch (e) { meta = null; } return meta;
-  }
-  function ready() { return state === 'ready'; }
-  // Decode once per page. Callers redraw when it lands (one terrain rebuild).
-  function preload(then) {
-    if (state === 'ready') { if (then) then(); return true; }
-    if (then) waiting.add(then);
-    if (state === 'loading') return false;
-    const data = readData(); if (!data) { state = 'missing'; return false; }
-    state = 'loading'; image = new Image();
-    image.onload = () => { prepareSandWater(); state = 'ready'; const list = [...waiting]; waiting.clear(); for (const fn of list) try { fn(); } catch (e) { console.warn('pack redraw', e); } };
-    image.onerror = () => { state = 'missing'; waiting.clear(); };
-    image.src = 'data:image/png;base64,' + data.png; return false;
-  }
-  function src(block, lx, ly) {
-    const f = meta.atlas.frames[block]; if (!f) return null;
-    const i = f.i[(ly || 0) * f.w + (lx || 0)]; if (i == null) return null;
-    const P = T + 2; return { x: (i % meta.atlas.cols) * P + 1, y: Math.floor(i / meta.atlas.cols) * P + 1 };
-  }
-  function blit(ctx, block, lx, ly, dx, dy, from) {
-    const s = src(block, lx, ly); if (!s) return;
-    ctx.drawImage(from || image, s.x, s.y, T, T, dx, dy, T, T);
-  }
-  // Water bordered by beach: the pack's shore tiles carry a meadow border, so a
-  // copy swaps those meadow pixels for the pack's own sand, pixel for pixel.
-  function prepareSandWater() {
-    const c = document.createElement('canvas'); c.width = image.width; c.height = image.height;
-    const ctx = c.getContext('2d'); ctx.drawImage(image, 0, 0);
-    const sand = src('sand', 0, 0), sandPx = ctx.getImageData(sand.x, sand.y, T, T).data;
-    for (const block of ['waterIn', 'waterOut']) {
-      const f = meta.atlas.frames[block];
-      for (let k = 0; k < f.i.length; k++) {
-        const s = src(block, k % f.w, Math.floor(k / f.w)), img = ctx.getImageData(s.x, s.y, T, T), d = img.data;
-        for (let p = 0; p < d.length; p += 4) { const r = d[p], g = d[p + 1], b = d[p + 2]; if (g > r + 12 && g > b + 12) { d[p] = sandPx[p]; d[p + 1] = sandPx[p + 1]; d[p + 2] = sandPx[p + 2]; } }
-        ctx.putImageData(img, s.x, s.y);
-      }
-    }
-    sandWater = c;
-    const w = src('waterOut', 1, 1), d = ctx.getImageData(w.x, w.y, T, T).data; let r = 0, g = 0, b = 0;
-    for (let p = 0; p < d.length; p += 4) { r += d[p]; g += d[p + 1]; b += d[p + 2]; }
-    const n = d.length / 4; waterTone = (Math.round(r / n) << 16) | (Math.round(g / n) << 8) | Math.round(b / n);
-  }
-  const hash = (x, y, k) => { let n = Math.imul(x * 374761393 + y * 668265263 + (k || 0) * 2246822519, 1) >>> 0; n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0; return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
-  // Corner autotiling. A tile's four corners say which quarter is covered;
-  // the pack's 3x3 outer and 2x2 inner sets give every case.
-  function wang(ctx, block, tl, tr, bl, br, dx, dy, from) {
-    const n = tl + tr + bl + br; if (!n) return false;
-    const out = block + 'Out', inn = block + 'In';
-    let b = out, x = 1, y = 1;
-    if (n === 4) { x = 1; y = 1; }
-    else if (n === 3) { b = inn; if (!br) { x = 0; y = 0; } else if (!bl) { x = 1; y = 0; } else if (!tr) { x = 0; y = 1; } else { x = 1; y = 1; } }
-    else if (n === 1) { b = out; if (br) { x = 0; y = 0; } else if (bl) { x = 2; y = 0; } else if (tr) { x = 0; y = 2; } else { x = 2; y = 2; } }
-    else { if (bl && br) { x = 1; y = 0; } else if (tl && tr) { x = 1; y = 2; } else if (tr && br) { x = 0; y = 1; } else if (tl && bl) { x = 2; y = 1; } else { x = 1; y = 1; } }
-    blit(ctx, b, x, y, dx, dy, from); return true;
-  }
-  /* Ground for the whole outdoor world, one canvas at the pack's own pixels,
-   * shown at 2x with nearest filtering. info.material(cx, cy) is the cell's
-   * render material; info.kind(px, py) classifies a world point. */
-  function ground(scene, parent, info) {
-    const W = info.W, width = W.cols * W.cellW, height = W.rows * W.cellH, NX = Math.ceil(width / TS), NY = Math.ceil(height / TS);
-    const vx = NX + 1, kinds = new Uint8Array(vx * (NY + 1));
-    // 0 grass, 1 water, 2 sand, 3 path (stone), 4 plaza, 5 dirt path
-    for (let j = 0; j <= NY; j++) for (let i = 0; i <= NX; i++) kinds[j * vx + i] = info.kind(Math.min(width - 1, i * TS), Math.min(height - 1, j * TS));
-    const at = (i, j) => kinds[Math.max(0, Math.min(NY, j)) * vx + Math.max(0, Math.min(NX, i))];
-    const c = document.createElement('canvas'); c.width = NX * T; c.height = NY * T; const ctx = c.getContext('2d'); ctx.imageSmoothingEnabled = false;
-    const is = (k, set) => set.includes(k) ? 1 : 0, details = [];
-    for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
-      const dx = i * T, dy = j * T, q = [at(i, j), at(i + 1, j), at(i, j + 1), at(i + 1, j + 1)];
-      const r = hash(i, j);
-      blit(ctx, 'grass', 0, r < .5 ? 0 : 1, dx, dy);
-      const sand = q.map(k => is(k, [1, 2])), water = q.map(k => is(k, [1]));
-      if (water.some(Boolean)) {
-        const beach = q.some(k => k === 2);
-        if (!wang(ctx, 'water', ...water, dx, dy, beach ? sandWater : null)) {}
-        if (!water.every(Boolean) && !beach) { /* meadow shore */ }
-        continue;
-      }
-      if (sand.some(Boolean)) wang(ctx, 'sand', ...sand, dx, dy);
-      const dirt = q.map(k => is(k, [5])), stone = q.map(k => is(k, [3, 4]));
-      if (dirt.some(Boolean)) wang(ctx, 'dirt', ...dirt, dx, dy);
-      if (stone.some(Boolean)) wang(ctx, 'stone', ...stone, dx, dy);
-      if (q.every(k => k === 4)) blit(ctx, 'pave', 1, (i + j + (r < .5 ? 1 : 0)) % 2, dx, dy);
-      else if (!sand.some(Boolean) && !dirt.some(Boolean) && !stone.some(Boolean) && info.meadow(i * TS + TS / 2, j * TS + TS / 2)) {
-        // Meadow details: a few loose flowers and stones in drifts, never noise.
-        const m = hash(Math.floor(i / 4), Math.floor(j / 3), 7), d = hash(i, j, 3), ox = Math.floor(hash(i, j, 4) * 9) - 4, oy = Math.floor(hash(i, j, 5) * 7) - 3;
-        if (m > .58 && d > .35) { details.push(['flowers', Math.floor(m * 40) % 4, dx + ox, dy + oy]); if (d > .7) details.push(['flowers', Math.floor(d * 400) % 4, dx + 8 - ox, dy + 7 - oy]); }
-        else if (d > .965) details.push(['misc', d > .985 ? 2 : 0, dx + ox, dy + oy, d > .985 ? 0 : 1]);
-      }
-    }
-    // Loose flowers and tufts go on after every tile, so a drift can cross a
-    // tile edge instead of sitting on the grid.
-    for (const [b, lx, x, y, ly] of details) blit(ctx, b, lx, ly || 0, x, y);
-    const key = TEX + '-ground-' + (++groundSerial);
-    if (scene.textures.exists(key)) scene.textures.remove(key);
-    scene.textures.addCanvas(key, c); scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
-    const img = scene.add.image(0, W.sky, key).setOrigin(0, 0).setScale(S).setDepth(-9600);
-    parent.add(img); parent.sort('depth');
-    return { image: img, destroy() { img.destroy(); if (scene.textures.exists(key)) scene.textures.remove(key); }, water: averageWater() };
-  }
-  let groundSerial = 0;
-  let waterTone = 0x5fb0c0;
-  function averageWater() { return waterTone; }
-  /* Compositions: [block, localX, localY, tileX, tileY]; '$name' slots are
-   * filled per building so each shop is its own house, not a recolour. */
-  function house(gables) {
-    const L = [];
-    for (let x = 0; x < gables * 2; x++) L.push(['$wall', 5, 3, x, 2], ['$wall', 4, 4, x, 3]);
-    for (let g = 0; g < gables; g++) { const x = g * 2; L.push(['$roof', 0, 0, x, 0], ['$roof', 1, 0, x + 1, 0], ['$roof', 0, 1, x, 1], ['$roof', 1, 1, x + 1, 1], ['$roof', 0, 2, x, 2], ['$roof', 1, 2, x + 1, 2]); }
-    return L;
-  }
-  const houseRow = (cells) => cells.map((slot, x) => [slot, 0, 0, x, 3]);
-  const shifted = (layers, by) => layers.map(([b, lx, ly, x, y]) => [b, lx, ly, x + by, y]);
-  const BUILD = {
-    // Seed & Stem: warm clay roof, shrubs and a barrel of bulbs either side.
-    'garden-shop': { w: 6, h: 4, slots: { $roof: ['roofBrown', 0, 0], $wall: ['wallBeige', 0, 0], $win: ['windows', 0, 4], $door: ['doors', 0, 0] }, layers: shifted(house(2).concat(houseRow(['$win', '$door', '$win', '$win'])), 1).concat([['bush', 0, 0, 0, 3], ['misc', 2, 0, 0, 2], ['barrels', 0, 0, 5, 3], ['misc', 4, 0, 5, 2]]), sign: 'SEED & STEM' },
-    // Land office: slate roof, the island's teal shields on both gables.
-    'land-office': { w: 4, h: 4, slots: { $roof: ['roofGrey', 0, 0], $wall: ['wallBeige', 0, 0], $win: ['windows', 2, 4], $door: ['doors', 1, 0] }, layers: house(2).concat(houseRow(['$win', '$win', '$door', '$win'])).concat([['banners', 2, 3, 0, 2], ['banners', 2, 3, 3, 2]]), sign: 'LAND OFFICE' },
-    // Tackle & Tide: timber roof, a drying net and creels outside.
-    'tackle-shop': { w: 6, h: 4, slots: { $roof: ['roofWood', 0, 0], $wall: ['wallBeige', 0, 0], $win: ['windows', 0, 0], $door: ['doors', 4, 0] }, layers: shifted(house(2).concat(houseRow(['$win', '$door', '$win', '$win'])), 1).concat([['netpost', 0, 0, 5, 2], ['netpost', 0, 2, 5, 3], ['crates', 0, 0, 0, 3], ['barrels', 2, 0, 0, 2]]), sign: 'TACKLE & TIDE' },
-    'market-stall': { w: 3, h: 3, layers: [['awning', 0, 0, 0, 0], ['awning', 0, 0, 1, 0], ['awning', 0, 0, 2, 0], ['awning', 0, 2, 0, 1], ['awning', 0, 2, 1, 1], ['awning', 0, 2, 2, 1], ['counter', 0, 0, 0, 2], ['counter', 1, 0, 1, 2], ['counter', 2, 0, 2, 2], ['counter', 1, 1, 1, 1], ['counter', 2, 2, 2, 1]] },
-    'notice-board': { w: 2, h: 2, layers: [['boards', 0, 0, 0, 1], ['boards', 0, 0, 1, 1], ['books', 0, 3, 0, 1], ['books', 3, 3, 1, 1], ['banners', 4, 6, 0, 0], ['banners', 4, 3, 1, 0]] },
-    'craft-bench': { w: 4, h: 2, layers: [['crafts', 1, 0, 0, 1], ['crafts', 3, 0, 1, 1], ['crates', 0, 0, 2, 1], ['barrels', 0, 0, 3, 1], ['barrels', 2, 0, 3, 0]] },
+  const TEX = 'gdpaint', K = 1.5;            // ground bake: canvas pixels per world pixel
+  const OBJ_K = 2;                            // object sprites: supersampled for close zoom
+  function wanted() { try { return typeof _gdpPrefs === 'function' && _gdpPrefs().artStyle === 'painted' && _gdpPrefs().renderEngine !== 'standard'; } catch (e) { return false; } }
+  function ready() { return typeof sceneObjShapes === 'function' && typeof sceneDraw !== 'undefined' && typeof Path2D === 'function'; }
+  function preload(then) { if (then && ready()) then(); return ready(); }
+  // A small seeded generator, the scenes' habit: the same island paints the same.
+  function rng(seed) { let s = (seed >>> 0) % 2147483647 || 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
+  const PAL = {
+    summer: { lawn: '#93ad5f', lawnLo: '#7c9a4e', lawnHi: '#a9bf6c', sand: '#e3d2a2', sandWet: '#c8b483', water: '#6d9fb0', shallow: '#93bfbd', deep: '#5a8aa0', foam: '#eef2e2', path: '#d7c294', pathEdge: '#b29a6b', pathWear: '#e5d5ab', shadow: '#4d5a36', stone: '#d6cdb6', stoneLo: '#bdb299', stoneHi: '#e6dfcb', kerb: '#a59a80' },
+    autumn: { lawn: '#9aa65a', lawnLo: '#848f49', lawnHi: '#b2b66a', sand: '#e1cf9f', sandWet: '#c6b282', water: '#6a9aab', shallow: '#90b9b6', deep: '#57869b', foam: '#eef0e0', path: '#d6c090', pathEdge: '#ae9566', pathWear: '#e3d2a6', shadow: '#55542f', stone: '#d4cab2', stoneLo: '#bbaf95', stoneHi: '#e4dcc7', kerb: '#a3977c' },
+    winter: { lawn: '#a6b29a', lawnLo: '#929f87', lawnHi: '#bcc5b0', sand: '#ddd3b6', sandWet: '#c4b897', water: '#7a9fab', shallow: '#a2bec0', deep: '#668a9a', foam: '#f2f4ee', path: '#d2c6a6', pathEdge: '#ad9f80', pathWear: '#e0d6bc', shadow: '#5e6658', stone: '#d6d0c2', stoneLo: '#bdb6a6', stoneHi: '#e8e4da', kerb: '#a49d8c' },
   };
-  // The lake hall grows with the collection (gardenHallTier): a tent, a hut,
-  // then a hall of two and three gables.
-  const HALL = [
-    { w: 2, h: 2, layers: [['tents', 2, 0, 0, 0], ['tents', 3, 0, 1, 0], ['tents', 2, 1, 0, 1], ['tents', 3, 1, 1, 1]] },
-    { w: 2, h: 4, slots: { $roof: ['roofWood', 0, 0], $wall: ['wallWood', 0, 0], $win: ['windows', 4, 4], $door: ['doors', 0, 0] }, layers: house(1).concat(houseRow(['$win', '$door'])), sign: 'LAKE HALL' },
-    { w: 4, h: 4, slots: { $roof: ['roofBrown', 0, 0], $wall: ['wallBeige', 0, 0], $win: ['windows', 4, 4], $door: ['doors', 0, 0] }, layers: house(2).concat(houseRow(['$win', '$door', '$win', '$win'])), sign: 'LAKE HALL' },
-    { w: 6, h: 4, slots: { $roof: ['roofBrown', 0, 0], $wall: ['wallBeige', 0, 0], $win: ['windows', 4, 4], $door: ['doors', 0, 0] }, layers: house(3).concat(houseRow(['$win', '$win', '$door', '$win', '$win', '$win'])), sign: 'LAKE HALL' },
-  ];
-  function hallTier(sc) { try { const ca = sc.ca || (typeof gardenCatchHere === 'function' ? gardenCatchHere() : null) || {}; return typeof gardenHallTier === 'function' ? Math.max(0, Math.min(3, gardenHallTier(Number(ca.ha) || 0))) : 0; } catch (e) { return 0; } }
-  // Night swaps the glazed windows for the pack's own lamp-lit panes.
-  function nightSlot(slot) { return slot && slot[0] === 'windows' && slot[2] >= 4 ? ['windows', slot[1], 6] : slot && slot[0] === 'windows' ? ['windows', slot[1], 6] : slot; }
-  function stamp(scene, id, def, night) {
-    const key = TEX + '-b-' + id + (night ? '-n' : '');
-    if (scene.textures.exists(key)) return key;
-    const c = document.createElement('canvas'); c.width = def.w * T; c.height = def.h * T; const ctx = c.getContext('2d'); ctx.imageSmoothingEnabled = false;
-    for (const [b0, lx0, ly0, dx, dy] of def.layers) {
-      let b = b0, lx = lx0, ly = ly0;
-      if (b.startsWith('$')) { let slot = def.slots[b]; if (night && b === '$win') slot = nightSlot(slot); b = slot[0]; lx += slot[1]; ly += slot[2]; }
-      blit(ctx, b, lx, ly, dx * T, dy * T);
+  PAL.spring = Object.assign({}, PAL.summer, { lawn: '#8fb35f', lawnLo: '#78a04e', lawnHi: '#a8c66f' });
+  const palette = season => PAL[season] || PAL.summer;
+  const ok = (f) => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
+  let lastError = null, groundMs = 0, lastPlanting = [], spotCounts = {}, cachedGround = null, groundSerial = 0;
+
+  /* ---------- library objects as baked sprites ---------- */
+  const paths = new Map();
+  const path = d => { let p = paths.get(d); if (!p) { if (paths.size > 20000) paths.clear(); p = new Path2D(d); paths.set(d, p); } return p; };
+  function paint(cx, p) {
+    if (typeof p === 'string') return p;
+    const stops = p.lin || p.rad, g = p.lin ? cx.createLinearGradient(p.x1 || 0, p.y1 || 0, p.x2 || 0, p.y2 != null ? p.y2 : 1) : cx.createRadialGradient(p.cx || 0, p.cy || 0, 0, p.cx || 0, p.cy || 0, p.r || 1);
+    for (const [off, c, op] of stops) { const rgb = typeof _scHex === 'function' ? _scHex(c) : [0, 0, 0]; g.addColorStop(Math.max(0, Math.min(1, off)), op == null || op === 1 ? c : `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${op})`); }
+    return g;
+  }
+  function drawShapes(cx, list, glow) {
+    for (const sh of list) {
+      if (sh.img) continue;                       // raster objects are not used here
+      if (sh.m) { cx.save(); cx.transform(sh.m[0], sh.m[1], sh.m[2], sh.m[3], sh.m[4], sh.m[5]); }
+      cx.globalAlpha = sh.op == null ? 1 : sh.op;
+      const pth = path(sh.d);
+      if (glow && sh.glow) { cx.fillStyle = sh.glow === 'lamp' ? '#ffe2a0' : '#ffd98a'; cx.globalAlpha = 1; cx.fill(pth); }
+      else { if (sh.f) { cx.fillStyle = paint(cx, sh.f); cx.fill(pth); } if (sh.s) { cx.strokeStyle = paint(cx, sh.s); cx.lineWidth = sh.w || 1; cx.lineCap = sh.cap || 'butt'; cx.stroke(pth); } }
+      if (sh.m) cx.restore();
     }
-    scene.textures.addCanvas(key, c); scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST); return key;
+    cx.globalAlpha = 1;
   }
-  function frameKey(scene, block, lx, ly, w, h) {
-    const key = TEX + '-f-' + block + '-' + lx + '-' + ly + '-' + (w || 1) + 'x' + (h || 1);
-    if (scene.textures.exists(key)) return key;
-    const c = document.createElement('canvas'); c.width = (w || 1) * T; c.height = (h || 1) * T; const ctx = c.getContext('2d'); ctx.imageSmoothingEnabled = false;
-    for (let y = 0; y < (h || 1); y++) for (let x = 0; x < (w || 1); x++) blit(ctx, block, lx + x, ly + y, x * T, y * T);
-    scene.textures.addCanvas(key, c); scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST); return key;
+  /** One library object as a canvas at a given world size: { c, ox, oy } with (ox, oy) its foot in canvas px. */
+  function objectCanvas(id, v, season, size, night) {
+    const sh = sceneObjShapes(id, v, season); if (!sh) return null;
+    const names = (sh.still || sh.order.filter(p => p !== 'lit')).concat(night && sh.parts.lit ? ['lit'] : []);
+    const [x0, y0, x1, y1] = sh.box, k = (size.w ? size.w / (x1 - x0) : size.h / (y1 - y0)) * OBJ_K;
+    const pad = 4, w = Math.ceil((x1 - x0) * k) + pad * 2, h = Math.ceil((y1 - y0) * k) + pad * 2;
+    if (w > 4096 || h > 4096 || w < 2 || h < 2) return null;
+    const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d');
+    cx.setTransform(k, 0, 0, k, pad - x0 * k, pad - y0 * k);
+    for (const n of names) drawShapes(cx, sh.parts[n] || [], night && n !== 'lit');
+    return { c, ox: pad - x0 * k, oy: pad - y0 * k, k };
   }
-  /* A village building as a native node: same handle shape as the painted
-   * buildings, anchored on the same foot so doors, picking and depth hold. */
+  function objectKey(scene, id, v, season, size, night) {
+    const key = TEX + '|' + id + '|' + v + '|' + season + '|' + Math.round(size.w || 0) + 'x' + Math.round(size.h || 0) + (night ? '|n' : '');
+    if (scene.textures.exists(key)) return { key, meta: scene.textures.get(key).customData && scene.textures.get(key).customData.gdpaint };
+    const made = ok(() => objectCanvas(id, v, season, size, night)); if (!made) return null;
+    const tex = scene.textures.addCanvas(key, made.c); const meta = { ox: made.ox / made.c.width, oy: made.oy / made.c.height };
+    tex.customData = Object.assign(tex.customData || {}, { gdpaint: meta }); return { key, meta };
+  }
+  function objectImage(scene, id, v, season, size, x, y, night) {
+    const o = objectKey(scene, id, v, season, size, night); if (!o) return null;
+    return scene.add.image(x, y, o.key).setOrigin(o.meta.ox, o.meta.oy).setScale(1 / OBJ_K);
+  }
+
+  /* ---------- the painted ground ---------- */
+  // info: { W, box: {x, y, w, h} world px, water, sand, paths: loops (world px), routes: [{main, width, points px}],
+  //         plaza: [points], meadow(px, py), season }
+  function ground(scene, parent, info) {
+    const started = performance.now();
+    const B = info.box, P = palette(info.season), sig = info.sig + '|' + info.season;
+    if (cachedGround && cachedGround.sig === sig && scene.textures.exists(cachedGround.key)) { groundMs = Math.round(performance.now() - started); return show(scene, parent, B, cachedGround.key); }
+    const c = document.createElement('canvas'); c.width = Math.ceil(B.w * K); c.height = Math.ceil(B.h * K);
+    const cx = c.getContext('2d'); cx.setTransform(K, 0, 0, K, -B.x * K, -B.y * K);
+    const r = rng(9137), loop = (pts) => { cx.moveTo(pts[0].x, pts[0].y); for (let i = 1; i < pts.length; i++) cx.lineTo(pts[i].x, pts[i].y); cx.closePath(); };
+    const fillLoops = (loops, style) => { cx.beginPath(); for (const l of loops) loop(l); cx.fillStyle = style; cx.fill('evenodd'); };
+    const clipLoops = (loops) => { cx.beginPath(); for (const l of loops) loop(l); cx.clip('evenodd'); };
+    const strokeLoops = (loops, style, width, alpha) => { cx.beginPath(); for (const l of loops) loop(l); cx.strokeStyle = style; cx.lineWidth = width; cx.globalAlpha = alpha == null ? 1 : alpha; cx.lineJoin = 'round'; cx.stroke(); cx.globalAlpha = 1; };
+    const blob = (x, y, rx, ry, n, rag, style, alpha) => { cx.globalAlpha = alpha; cx.fillStyle = style; cx.fill(path(sceneDraw.blob(r, x, y, rx, ry, n, rag))); cx.globalAlpha = 1; };
+    // 1. The sea first: deep, then a paler shallow shelf along the coast.
+    cx.fillStyle = P.water; cx.fillRect(B.x, B.y, B.w, B.h);
+    for (let i = 0; i < 70; i++) { const x = B.x + r() * B.w, y = B.y + r() * B.h; blob(x, y, 50 + r() * 70, 12 + r() * 20, 8, .4, P.deep, .14); }
+    strokeLoops(info.coast, P.shallow, 70, .35); strokeLoops(info.coast, P.shallow, 34, .55);
+    // 2. The beach: sand inside the coast, a wet band where it meets the sea
+    //    and a thin bright lap line; soft drifts of paler and damper sand.
+    strokeLoops(info.coast, P.sandWet, 10, 1); fillLoops(info.coast, P.sand);
+    cx.save(); clipLoops(info.coast); for (let i = 0; i < 200; i++) { const x = B.x + r() * B.w, y = B.y + r() * B.h; blob(x, y, 14 + r() * 30, 6 + r() * 12, 7, .5, r() < .5 ? P.sandWet : '#efe3bf', .16); } strokeLoops(info.coast, P.sandWet, 12, .7); cx.restore();
+    strokeLoops(info.coast, P.foam, 2.2, .7);
+    // 3. The meadow: one quiet base with broad soft light and shade in lobed
+    //    drifts (light from the upper left), never a stripe or a tile.
+    cx.save(); clipLoops(info.lawn);
+    cx.fillStyle = P.lawn; cx.fillRect(B.x, B.y, B.w, B.h);
+    for (let i = 0; i < B.w * B.h / 5200; i++) { const x = B.x + r() * B.w, y = B.y + r() * B.h, s = 30 + r() * 70; blob(x, y, s, s * .55, 9, .5, r() < .5 ? P.lawnLo : P.lawnHi, .22 + r() * .18); }
+    for (let i = 0; i < B.w * B.h / 160; i++) { const x = B.x + r() * B.w, y = B.y + r() * B.h; if (!info.meadow(x, y)) continue; cx.globalAlpha = .35; cx.strokeStyle = r() < .5 ? P.lawnLo : P.lawnHi; cx.lineWidth = 1.1; cx.beginPath(); cx.moveTo(x, y); cx.quadraticCurveTo(x + 1.5, y - 3, x + (r() - .5) * 4, y - 4 - r() * 3); cx.stroke(); }
+    cx.globalAlpha = 1; strokeLoops(info.lawn, P.lawnLo, 5, .5); cx.restore();
+    // Inland water: a damp bank, the pond, its shallow rim and lap line.
+    if (info.lakes.length) {
+      strokeLoops(info.lakes, P.sandWet, 14, .9); fillLoops(info.lakes, P.water);
+      cx.save(); clipLoops(info.lakes); strokeLoops(info.lakes, P.shallow, 40, .5); strokeLoops(info.lakes, P.shallow, 18, .6); cx.restore();
+      strokeLoops(info.lakes, P.foam, 2, .7);
+    }
+    // 4. Paths: a soft cast shadow, the worn edge, the gravel and a paler
+    //    centre where feet go, clipped to the path the game walks.
+    cx.save(); if (info.paths.length) clipLoops(info.paths);
+    const stroke = (pts, style, width, alpha, dx, dy) => { if (pts.length < 2) return; cx.beginPath(); cx.moveTo(pts[0].x + (dx || 0), pts[0].y + (dy || 0)); for (let i = 1; i < pts.length; i++) cx.lineTo(pts[i].x + (dx || 0), pts[i].y + (dy || 0)); cx.strokeStyle = style; cx.lineWidth = width; cx.globalAlpha = alpha; cx.lineJoin = 'round'; cx.lineCap = 'round'; cx.stroke(); cx.globalAlpha = 1; };
+    for (const rt of info.routes) stroke(rt.points, P.shadow, rt.width + 6, .22, 2, 4);
+    for (const rt of info.routes) stroke(rt.points, rt.main ? P.kerb : P.pathEdge, rt.width + 5, 1);
+    for (const rt of info.routes) stroke(rt.points, rt.main ? P.stone : P.path, rt.width, 1);
+    for (const rt of info.routes) stroke(rt.points, rt.main ? P.stoneHi : P.pathWear, rt.width * .42, .55);
+    for (const rt of info.routes) for (let i = 1; i < rt.points.length; i++) {
+      const a = rt.points[i - 1], b = rt.points[i], L = Math.hypot(b.x - a.x, b.y - a.y), nx = -(b.y - a.y) / (L || 1), ny = (b.x - a.x) / (L || 1);
+      for (let t = 0; t < L; t += rt.main ? 6 : 9) { const u = t / L, o = (r() - .5) * rt.width * .9, x = a.x + (b.x - a.x) * u + nx * o, y = a.y + (b.y - a.y) * u + ny * o; cx.globalAlpha = .45; cx.fillStyle = r() < .5 ? (rt.main ? P.stoneLo : P.pathEdge) : (rt.main ? P.stoneHi : P.pathWear); cx.fill(path(rt.main ? sceneDraw.rect(x - 3, y - 2, 6 + r() * 3, 4) : sceneDraw.ell(x, y, 1 + r() * 1.6, .8 + r()))); }
+    }
+    cx.globalAlpha = 1; cx.restore();
+    // 5. The plaza: laid setts in courses with a kerb, a rose at its heart.
+    if (info.plaza) {
+      const pz = info.plaza;
+      cx.save(); cx.beginPath(); loop(pz.points); cx.fillStyle = P.shadow; cx.globalAlpha = .2; cx.translate(2, 4); cx.fill(); cx.restore();
+      cx.save(); cx.beginPath(); loop(pz.points); cx.fillStyle = P.stone; cx.fill(); cx.clip();
+      const b = pz.bounds;
+      for (let y = b.y, row = 0; y < b.y + b.h; y += 9, row++) for (let x = b.x - (row % 2) * 7; x < b.x + b.w; x += 14) { cx.globalAlpha = .55; cx.fillStyle = r() < .33 ? P.stoneLo : r() < .5 ? P.stoneHi : P.stone; cx.fill(path(sceneDraw.rect(x + .8, y + .8, 12.4, 7.4))); }
+      cx.globalAlpha = 1;
+      const ccx = pz.centre.x, ccy = pz.centre.y;
+      for (const [rx, col] of [[46, P.kerb], [42, P.stoneHi], [30, P.stoneLo], [26, P.stone]]) { cx.fillStyle = col; cx.beginPath(); cx.ellipse(ccx, ccy, rx, rx * .55, 0, 0, Math.PI * 2); cx.fill(); }
+      cx.fillStyle = P.kerb; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, l = i % 2 ? 14 : 24; cx.beginPath(); cx.moveTo(ccx + Math.cos(a) * l, ccy + Math.sin(a) * l * .55); cx.lineTo(ccx + Math.cos(a + 1.3) * 4, ccy + Math.sin(a + 1.3) * 2.2); cx.lineTo(ccx + Math.cos(a - 1.3) * 4, ccy + Math.sin(a - 1.3) * 2.2); cx.fill(); }
+      cx.restore();
+      cx.beginPath(); loop(pz.points); cx.strokeStyle = P.kerb; cx.lineWidth = 4; cx.stroke();
+    }
+    // 6. Flower drifts and low growth in the meadow: library plants, stamped
+    //    flat into the ground bake in clumps (no one-per-tile sprinkle).
+    const stamps = [['plant.wildflowers', 0], ['plant.daisies', 1], ['plant.wildflowers', 2], ['plant.daisies', 0], ['plant.grass', 1], ['plant.wildflowers', 3]];
+    const stampC = new Map();
+    for (let n = 0; n < B.w * B.h / 9000; n++) {
+      const gx = B.x + r() * B.w, gy = B.y + r() * B.h; if (!info.meadow(gx, gy)) continue;
+      const kind = stamps[Math.floor(r() * stamps.length)], count = 4 + Math.floor(r() * 7);
+      for (let i = 0; i < count; i++) {
+        const x = gx + (r() - .5) * 70, y = gy + (r() - .5) * 34; if (!info.meadow(x, y)) continue;
+        const key = kind.join(':'); let s = stampC.get(key);
+        if (s === undefined) { s = ok(() => objectCanvas(kind[0], kind[1], info.season, { h: kind[0] === 'plant.grass' ? 12 : 10 })); stampC.set(key, s); }
+        if (!s) continue; const k = (.7 + r() * .5) / OBJ_K; cx.drawImage(s.c, x - s.ox * k, y - s.oy * k, s.c.width * k, s.c.height * k);
+      }
+    }
+    // Low verges along every path: tufts and flowers at its edges, in runs.
+    for (const rt of info.routes) for (let i = 1; i < rt.points.length; i++) {
+      const a = rt.points[i - 1], b = rt.points[i], L = Math.hypot(b.x - a.x, b.y - a.y), nx = -(b.y - a.y) / (L || 1), ny = (b.x - a.x) / (L || 1);
+      for (let t = 0; t < L; t += 14) {
+        if (r() < .45) continue; const side = r() < .5 ? -1 : 1, o = (rt.width / 2 + 5 + r() * 6) * side, x = a.x + (b.x - a.x) * t / L + nx * o, y = a.y + (b.y - a.y) * t / L + ny * o;
+        if (!info.meadow(x, y)) continue; const kind = stamps[Math.floor(r() * stamps.length)], key = kind.join(':'); let s = stampC.get(key);
+        if (s === undefined) { s = ok(() => objectCanvas(kind[0], kind[1], info.season, { h: kind[0] === 'plant.grass' ? 12 : 10 })); stampC.set(key, s); }
+        if (s) { const k = (.6 + r() * .4) / OBJ_K; cx.drawImage(s.c, x - s.ox * k, y - s.oy * k, s.c.width * k, s.c.height * k); }
+      }
+    }
+    // A feathered edge, so the painted village fades into the island around it.
+    cx.setTransform(1, 0, 0, 1, 0, 0);
+    const mask = document.createElement('canvas'); mask.width = c.width; mask.height = c.height; const mx = mask.getContext('2d'), fw = 90 * K;
+    mx.fillStyle = '#000'; mx.filter = 'blur(' + Math.round(fw / 2.4) + 'px)'; mx.fillRect(fw, fw, c.width - fw * 2, c.height - fw * 2);
+    cx.globalCompositeOperation = 'destination-in'; cx.drawImage(mask, 0, 0);
+    cx.globalCompositeOperation = 'source-over';
+    const key = TEX + '-ground-' + (++groundSerial);
+    if (cachedGround && scene.textures.exists(cachedGround.key)) scene.textures.remove(cachedGround.key);
+    scene.textures.addCanvas(key, c); cachedGround = { key, sig }; groundMs = Math.round(performance.now() - started);
+    return show(scene, parent, B, key);
+  }
+  function show(scene, parent, B, key) {
+    const img = scene.add.image(B.x, B.y, key).setOrigin(0, 0).setScale(1 / K).setDepth(-9600);
+    parent.add(img); parent.sort('depth');
+    return { image: img, destroy() { img.destroy(); } };
+  }
+
+  /* ---------- the village buildings ---------- */
+  // Library buildings, each its own kind, sized to the old footprint so doors,
+  // aprons, picking and depth stay where they were.
+  const BUILD = {
+    'garden-shop': { obj: 'building.green-cottage', v: 0, w: 150, sign: 'Seed & Stem', extra: [['plant.planter', 1, -84, 0, 26], ['plant.planter', 0, 84, 0, 26], ['plant.rph-flower-tub', 1, -60, 8, 18]] },
+    'land-office': { obj: 'building.cottage', v: 1, w: 140, sign: 'Land Office', extra: [['street.lamp', 0, -78, 4, 0, 70]] },
+    'tackle-shop': { obj: 'building.fpv-sailing-hut', v: 0, w: 150, sign: 'Tackle & Tide', extra: [['street.mqn-lifebuoy', 0, 80, 2, 0, 30]] },
+    'market-stall': { obj: 'structure.mcr-market-chalet', v: 1, w: 104 },
+    'notice-board': { obj: 'street.noticeboard', v: 0, w: 46 },
+  };
+  const HALL = [{ obj: 'structure.wp-bivvy', v: 0, w: 96 }, { obj: 'building.kiosk', v: 0, w: 110, sign: 'Lake Hall' }, { obj: 'building.thatched-cottage', v: 1, w: 150, sign: 'Lake Hall' }, { obj: 'building.church', v: 0, w: 170, sign: 'Lake Hall' }];
+  function hallTier(sc) { try { const ca = sc.ca || (typeof gardenCatchHere === 'function' ? gardenCatchHere() : null) || {}; return typeof gardenHallTier === 'function' ? Math.max(0, Math.min(3, gardenHallTier(Number(ca.ha) || 0))) : 0; } catch (e) { return 0; } }
   function building(scene, prop, sc, element, W) {
     if (!ready()) return null;
-    const tier = prop.id === 'lake-hall' ? hallTier(sc) : -1, def = tier >= 0 ? HALL[tier] : BUILD[prop.id]; if (!def) return null;
-    const stampId = tier >= 0 ? prop.id + '-' + tier : prop.id;
-    const node = element(scene, 'g', { class: 'gd-it gd-prop gd-prop-' + prop.kind + ' gd-pack', 'data-prop': prop.id, 'data-z': prop.y + prop.h, 'data-x': prop.x });
-    const cx = (prop.x + prop.w / 2) * W.cellW, foot = W.sky + (prop.y + prop.h) * W.cellH + 2, pw = def.w * TS, ph = def.h * TS;
-    const shadow = scene.add.graphics(); shadow.fillStyle(0x1f3a2a, .22).fillEllipse(cx + 4, foot - 2, pw + 10, 16); node._inner.add(shadow);
-    const night = sc.tod === 'dusk' || sc.tod === 'night';
-    const img = scene.add.image(cx, foot, stamp(scene, stampId, def, night)).setOrigin(.5, 1).setScale(S); node._inner.add(img);
+    const tier = prop.id === 'lake-hall' ? hallTier(sc) : -1, def = tier >= 0 ? HALL[tier] : BUILD[prop.id]; if (!def || !sceneObj(def.obj)) return null;
+    const season = sc.season || 'summer', night = sc.tod === 'dusk' || sc.tod === 'night';
+    const node = element(scene, 'g', { class: 'gd-it gd-prop gd-prop-' + prop.kind + ' gd-painted', 'data-prop': prop.id, 'data-z': prop.y + prop.h, 'data-x': prop.x });
+    const cx = (prop.x + prop.w / 2) * W.cellW, foot = W.sky + (prop.y + prop.h) * W.cellH - 2;
+    const shadow = scene.add.graphics(); shadow.fillStyle(0x3a4a2a, .2).fillEllipse(cx + 8, foot + 1, def.w * 1.08, 18); node._inner.add(shadow);
+    const parts = [];
+    const main = objectImage(scene, def.obj, def.v, season, { w: def.w }, cx, foot, night); if (!main) { node.remove(); return null; }
+    node._inner.add(main); parts.push([main, def.obj, def.v, { w: def.w }]);
+    for (const [id, v, dx, dy, w, h] of def.extra || []) { if (!sceneObj(id)) continue; const im = objectImage(scene, id, v, season, w ? { w } : { h }, cx + dx, foot + dy, night); if (im) { node._inner.addAt(im, dy > 0 ? node._inner.list.length : 1); parts.push([im, id, v, w ? { w } : { h }]); } }
     if (def.sign) {
-      const board = scene.add.graphics(), sy = foot - TS * 2 + 6;
-      const bw = Math.min(88, def.w * TS - 6) / 2; board.fillStyle(0x6b4a2c).fillRect(cx - bw, sy - 9, bw * 2, 17).fillStyle(0xc89a62).fillRect(cx - bw + 2, sy - 7, bw * 2 - 4, 13);
-      node._inner.add(board);
-      const label = scene.add.text(cx, sy, def.sign, { fontFamily: 'Georgia, serif', fontSize: def.w < 4 ? '7px' : '10px', fontStyle: 'bold', color: '#3b2614', resolution: 3 }).setOrigin(.5, .5); node._inner.add(label);
+      const g = scene.add.graphics(), sy = foot + 12, tw = Math.max(54, def.sign.length * 6.4) / 2;
+      g.fillStyle(0x3d3424, .22).fillRoundedRect(cx - tw + 2, sy - 7, tw * 2, 15, 4).fillStyle(0xf3ead2).fillRoundedRect(cx - tw, sy - 9, tw * 2, 15, 4).lineStyle(1, 0xb9a57c, 1).strokeRoundedRect(cx - tw, sy - 9, tw * 2, 15, 4);
+      node._inner.add(g);
+      node._inner.add(scene.add.text(cx, sy - 1.5, def.sign, { fontFamily: 'Georgia, serif', fontSize: '10px', color: '#4a3b26', resolution: 3 }).setOrigin(.5, .5));
     }
-    const b = { x: cx - pw / 2 - 6, y: foot - ph - 4, width: pw + 12, height: ph + 12 }; node.nativeBounds = b;
-    return { root: node.target, rootNode: node, bounds: b, pack: true, update() {}, setLitWindows(on) { const k = stamp(scene, stampId, def, !!on); if (img.texture.key !== k) img.setTexture(k); }, destroy() { node.remove(); } };
+    const top = foot - main.displayHeight * main.originY, b = { x: cx - main.displayWidth / 2 - 10, y: top - 4, width: main.displayWidth + 20, height: foot - top + 26 };
+    node.nativeBounds = b;
+    return { root: node.target, rootNode: node, bounds: b, painted: true, update() {}, setLitWindows(on) { for (const [im, id, v, size] of parts) { const o = objectKey(scene, id, v, season, size, !!on); if (o && im.texture.key !== o.key) im.setTexture(o.key).setOrigin(o.meta.ox, o.meta.oy); } }, destroy() { node.remove(); } };
   }
-  /* Planting composed around the village: trees, hedges, bushes and props in
-   * deliberate groups, only where nobody walks (the game's own free test). */
-  const TREES = [['trees', 0, 1, 1, 2], ['trees', 2, 1, 1, 2], ['trees', 3, 1, 1, 2], ['trees', 5, 1, 1, 2], ['trees', 0, 0, 1, 1], ['trees', 2, 0, 1, 1], ['misc', 1, 1, 1, 2]];
-  const BUSHES = [['bush', 0, 0, 1, 1], ['bush', 2, 0, 1, 1], ['misc', 2, 0, 1, 1], ['misc', 3, 0, 1, 1], ['misc', 2, 1, 1, 1], ['misc', 4, 0, 1, 1]];
+
+  /* ---------- planting: groves, shrubs and reeds in deliberate groups ---------- */
+  const GROVE = { summer: ['tree.green-oak', 'tree.green-birch', 'tree.green-chestnut', 'tree.hawthorn', 'tree.green-alder'], autumn: ['tree.green-oak', 'tree.green-birch', 'tree.green-chestnut', 'tree.hawthorn', 'tree.cherry'] };
+  const SHRUB = ['plant.hedge', 'plant.azalea', 'plant.holly', 'plant.gorse', 'plant.hedgerow-blackberry'];
   function planting(scene, parent, info) {
-    const W = info.W, made = []; spotCounts = {};
-    const add = (spec, x, y, scale) => {
-      const img = scene.add.image(x, y, frameKey(scene, spec[0], spec[1], spec[2], spec[3], spec[4])).setOrigin(.5, 1).setScale(S * (scale || 1)).setDepth(y);
-      parent.add(img); made.push(img); return img;
-    };
+    const W = info.W, made = [], season = info.season || 'summer', trees = GROVE[season] || GROVE.summer; spotCounts = {};
+    const add = (id, v, size, x, y) => { if (!sceneObj(id)) return; const im = objectImage(scene, id, v, season, size, x, y, false); if (!im) return; im.setDepth(y); parent.add(im); made.push(im); };
     for (let cy = info.box.y0; cy <= info.box.y1; cy++) for (let cx = info.box.x0; cx <= info.box.x1; cx++) {
       const spot = info.spot(cx, cy); spotCounts[spot || 'none'] = (spotCounts[spot || 'none'] || 0) + 1; if (!spot) continue;
-      const r = hash(cx, cy, 11), cluster = hash(Math.floor(cx / 3), Math.floor(cy / 2), 5);
-      const px = (cx + .5) * W.cellW + (hash(cx, cy, 2) - .5) * 18, py = W.sky + (cy + 1) * W.cellH - 3;
-      // Groups, not a sprinkle: a grove where the cluster field is high, a
-      // shrub or two at its fringe, open meadow (ground flowers) elsewhere.
-      if (spot === 'tree' && cluster > .42) add(TREES[Math.floor(r * 97) % (cluster > .75 ? 4 : TREES.length)], px, py);
-      else if ((spot === 'tree' && cluster > .3 || spot === 'edge' && cluster > .35) && r > .45) add(BUSHES[Math.floor(r * 53) % BUSHES.length], px, py);
-      else if (spot === 'wild' && (cluster > .5 ? r > .25 : r > .8)) add(cluster > .8 && r > .7 ? TREES[Math.floor(r * 31) % TREES.length] : BUSHES[Math.floor(r * 53) % BUSHES.length], px, py);
+      const h = (a, b, k) => { let n = Math.imul(a * 374761393 + b * 668265263 + k * 1442695041, 1) >>> 0; n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0; return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
+      const r = h(cx, cy, 11), cluster = h(Math.floor(cx / 3), Math.floor(cy / 2), 5), px = (cx + .5) * W.cellW + (h(cx, cy, 2) - .5) * 22, py = W.sky + (cy + 1) * W.cellH - 4 + (h(cx, cy, 3) - .5) * 8;
+      // A grove where the cluster field is high (one species leads it), shrubs at its fringe.
+      if (spot === 'tree' && cluster > .42) add(trees[Math.floor((cluster * 7 + r * 2) % trees.length)], Math.floor(r * 3), { h: 84 + r * 40 }, px, py);
+      else if ((spot === 'tree' && cluster > .3 || spot === 'edge' && cluster > .35 || spot === 'wild' && r > .4) && r > .3) add(SHRUB[Math.floor(r * 53) % SHRUB.length], Math.floor(r * 7) % 3, { h: 26 + r * 16 }, px, py);
+      else if (spot === 'shore' && r > .45) add(r > .75 ? 'plant.bulrush' : 'plant.reed', Math.floor(r * 5) % 3, { h: 30 + r * 14 }, px, py);
     }
     lastPlanting = made;
-    return { destroy() { for (const img of made) img.destroy(); made.length = 0; }, count: made.length };
+    return { destroy() { for (const im of made) im.destroy(); made.length = 0; }, count: made.length };
   }
-  let lastPlanting = [], spotCounts = {};
-  function status() { return { wanted: wanted(), state, planted: lastPlanting.length, spots: spotCounts, plantedVisible: lastPlanting.filter(i => i.visible && i.active && i.parentContainer).length, sample: lastPlanting[0] ? [lastPlanting[0].x, lastPlanting[0].y, lastPlanting[0].depth, lastPlanting[0].alpha] : null, atlas: meta ? { w: image && image.width, h: image && image.height } : null }; }
-  return { wanted, ready, preload, ground, building, planting, status, scale: S, tile: TS };
+  function status() { return { wanted: wanted(), ready: ready(), groundMs, planted: lastPlanting.length, spots: spotCounts, lastError }; }
+  return { wanted, ready, preload, ground, building, planting, status, get lastError() { return lastError; }, set lastError(v) { lastError = v; } };
 })();

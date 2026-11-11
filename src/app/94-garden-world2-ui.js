@@ -19,14 +19,14 @@ function gardenGraphicsOpen() {
     name.textContent = label; hint.textContent = detail; text.append(name, hint); row.append(input, text); group.appendChild(row); inputs.push(input);
   }
   body.appendChild(group);
-  // The art style is separate from the renderer: Pixel village needs Phaser.
+  // The art style is separate from the renderer: the Painted village needs Phaser.
   const styleGroup = document.createElement('fieldset');
   const styleLegend = document.createElement('legend'); styleLegend.textContent = 'Art style'; styleGroup.appendChild(styleLegend);
   const styleInputs = [];
-  for (const [value, label, detail] of [['painted', 'Painted', 'The hand-drawn island.'], ['pixel', 'Pixel village', 'A cosy pixel-art village from one matching art pack (Phaser only). The other regions keep the painted look for now.']]) {
+  for (const [value, label, detail] of [['classic', 'Classic', 'The original island drawing.'], ['painted', 'Painted village', 'The village and start area painted in the style of the opening scenes (Phaser only). The other regions keep the classic look for now.']]) {
     const row = document.createElement('label'); row.className = 'gd-graphics-choice';
     const input = document.createElement('input'); input.type = 'radio'; input.name = 'garden-art-style'; input.value = value;
-    input.checked = value === (prefs.artStyle === 'pixel' ? 'pixel' : 'painted');
+    input.checked = value === (prefs.artStyle === 'painted' ? 'painted' : 'classic');
     const text = document.createElement('span'), name = document.createElement('strong'), hint = document.createElement('small');
     name.textContent = label; hint.textContent = detail; text.append(name, hint); row.append(input, text); styleGroup.appendChild(row); styleInputs.push(input);
   }
@@ -51,7 +51,7 @@ function gardenGraphicsOpen() {
       if (applying) return false;
       const selected = inputs.find(i => i.checked), mode = selected ? selected.value : 'standard';
       const currentMode = _gdpPrefs().renderEngine === 'standard' ? 'standard' : 'phaser';
-      const styleChoice = styleInputs.find(i => i.checked), style = styleChoice ? styleChoice.value : 'painted', styleChanged = style !== (_gdpPrefs().artStyle === 'pixel' ? 'pixel' : 'painted');
+      const styleChoice = styleInputs.find(i => i.checked), style = styleChoice ? styleChoice.value : 'classic', styleChanged = style !== (_gdpPrefs().artStyle === 'painted' ? 'painted' : 'classic');
       if (styleChanged) _gdpSetPref('artStyle', style);
       if (mode === currentMode && !styleChanged && (mode !== 'phaser' || window.GardenNative && GardenNative.status().ready)) { if (close) close(); return; }
       applying = true;
