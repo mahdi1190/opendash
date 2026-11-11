@@ -32,7 +32,7 @@ const _GFP = Object.freeze({
     // People are built of many overlapping pieces (a sleeve over a cuff over a hand), so their light is gentler and mostly from above:
     // a strong diagonal on every piece reads as blotches. Skin keeps its flat tone (a face shaded per piece looks dirty).
     actor: { lit: 0.16, dk: 0.24, sat: 0.9, key: 0.05, mid: 0.42, field: [-16, -74, 12, 2] },
-    npc: { lit: 0.16, dk: 0.26, sat: 0.86, key: 0.07, mid: 0.42, field: [-16, -62, 12, 2] },
+    npc: { lit: 0.14, dk: 0.24, sat: 0.94, key: 0.04, mid: 0.42, field: [-16, -62, 12, 2] },
     pet: { lit: 0.15, dk: 0.22, sat: 0.94, key: 0.04, x1: 0.1, y1: 0, x2: 0.62, y2: 1 },
     fish: { lit: 0.14, dk: 0.2, sat: 0.95, key: 0.03, x1: 0.3, y1: 0, x2: 0.5, y2: 1 },
     bug: { lit: 0.13, dk: 0.2, sat: 0.95, key: 0.03, x1: 0.1, y1: 0.05, x2: 0.8, y2: 0.95 },

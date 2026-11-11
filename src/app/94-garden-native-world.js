@@ -144,7 +144,9 @@ window.GardenNativeWorld = (function () {
     let model = null, modelKey = '', terrainKey = '', shorelineRevision = 0, sorted = false, dead = false, routeKey = '', fishZoom = 1, wasFishing = false, fishViewMode = '', playerViewKey = '', playerProfile = null, playerWardrobe = null, visibleStatic = 0, visibleTerrain = 0, cacheQuality = 0, terrainBaseQuality = 1, terrainBaseReady = 0;
     let camera = { x: 0, y: 0, w: 800, h: 600, scale: 1, left: 0, top: 0 }, zoomInputAt = 0, activityCamera = null, cameraUiMode = '', cameraUiZoomIn = null, cameraUiZoomOut = null, size = { w: options.width || scene.scale.width || 1000, h: options.height || scene.scale.height || 700 };
     const playerNode = element(scene, 'g', { class: 'gd-player', 'data-live': '1' });
-    playerNode.innerHTML = '<g class="gd-pl-sh"><ellipse class="gd-pl-halo" cx="0" cy="1" rx="17" ry="6" fill="#f1df9e" opacity=".36"/><ellipse cx="0" cy="1" rx="12" ry="3.4" fill="#253c2b" opacity=".2"/></g><g class="gd-pl-bob"><g class="gd-pl-in"></g></g>';
+    // The Painted village stands the figure in the scenes' soft contact shadow; the pale halo read as a sticker's edge (94-garden-art-g-paint.js).
+    const paintedFigure = typeof gardenFigurePaintStyle === 'function' && gardenFigurePaintStyle() && typeof gardenFigureShadowSvg === 'function';
+    playerNode.innerHTML = '<g class="gd-pl-sh">' + (paintedFigure ? gardenFigureShadowSvg(11, 3.2) : '<ellipse class="gd-pl-halo" cx="0" cy="1" rx="17" ry="6" fill="#f1df9e" opacity=".36"/><ellipse cx="0" cy="1" rx="12" ry="3.4" fill="#253c2b" opacity=".2"/>') + '</g><g class="gd-pl-bob"><g class="gd-pl-in"></g></g>';
     objects.appendChild(playerNode);
     const playerInner = playerNode.querySelector('.gd-pl-in'), playerBob = playerNode.querySelector('.gd-pl-bob');
     let playerPosePreparation = null;
