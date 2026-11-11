@@ -4,11 +4,11 @@
 /* Nowhere: no walls, no floor you could swear to. Pearl, lilac and a warm white where the sun ought to be. */
 GRA_ROOMS.nowhere = {
   plate: '#c4bedc', ambient: .95,
-  lights: [{ x: 600, y: 240, radius: 520, height: 200, color: '#fff8f0', intensity: .5 }],
+  lights: [],
   fx: { drift: [{ x: 200, y: 180, r: 260, c: '#ffffff', a: .14, dx: 80, sp: .05 }, { x: 700, y: 120, r: 300, c: '#fff8ff', a: .18, dx: 90, sp: .04 }, { x: 480, y: 330, r: 340, c: '#ffffff', a: .16, dx: 60, sp: .06 }], motes: [{ x0: 0, x1: 960, y0: 60, y1: 560, n: 18, c: '#ffffff', a: .5, rise: 2, wind: 3 }] },
   *paint(T) {
     T.rect(0, 0, 960, 600, T.lin(0, 0, 0, 600, [[0, '#f2f0f8'], [.45, '#dcd6ec'], [.75, '#cbc2de'], [1, '#bab0d2']]));
-    T.glow(600, 250, 420, '#fffaf0', .3, 'source-over');
+    T.glow(600, 250, 420, '#fffaf0', .14, 'source-over');
     yield;
     // banks of cloud, lobed, lit from the upper right
     for (let i = 0; i < 26; i++) { const x = T.rnd(-80, 1040), y = T.rnd(60, 420), rx = T.rnd(90, 220), ry = rx * T.rnd(.18, .3), tone = T.mix('#f4f0fa', '#b8aed0', y / 480); T.blob(x, y + ry * .3, rx, ry, T.shade(tone, -.12), .35, 11, .5); T.blob(x + rx * .08, y, rx * .9, ry * .85, tone, .55, 11, .5); T.blob(x + rx * .2, y - ry * .25, rx * .5, ry * .45, '#ffffff', .35, 9, .5); }
@@ -42,7 +42,7 @@ GRA_ROOMS.nowhere = {
 /* Inside the hollow oak: everything curves, rings on the wall, a moon through a knot-hole, one candle and old books. */
 GRA_ROOMS.owl = {
   plate: '#140a04', ambient: .62,
-  lights: [{ x: 759, y: 320, radius: 260, height: 80, color: '#ffcf80', intensity: .9 }, { x: 490, y: 220, radius: 260, height: 160, color: '#b8c8f0', intensity: .35 }],
+  lights: [{ x: 759, y: 320, radius: 260, height: 80, color: '#ffcf80', intensity: .5 }, { x: 490, y: 220, radius: 260, height: 160, color: '#b8c8f0', intensity: .19 }],
   fx: { motes: [{ x0: 340, x1: 640, y0: 120, y1: 390, n: 16, c: '#ffe2a0', a: .45 }], flicker: [{ x: 759, y: 326, r: 90, c: '#ffbe6a', a: .3, amt: .25 }, { x: 250, y: 138, r: 26, c: '#e8f07a', a: .4, amt: .5 }] },
   *paint(T) {
     const { cx } = T;
@@ -98,7 +98,7 @@ GRA_ROOMS.owl = {
 /* The back of the grotto: black-green rock, glow-worms for a sky, one shaft of day, a pool deeper than it should be. */
 GRA_ROOMS.grotto = {
   plate: '#050d0a', ambient: .5,
-  lights: [{ x: 330, y: 300, radius: 260, height: 200, color: '#e8ffd8', intensity: .6 }, { x: 630, y: 470, radius: 300, height: 60, color: '#62e0c0', intensity: .35 }],
+  lights: [{ x: 330, y: 300, radius: 260, height: 200, color: '#e8ffd8', intensity: .33 }, { x: 630, y: 470, radius: 300, height: 60, color: '#62e0c0', intensity: .19 }],
   fx: { motes: [{ x0: 200, x1: 440, y0: 40, y1: 410, n: 22, c: '#e8ffd0', a: .55, rise: 4 }], glints: [{ x0: 360, x1: 900, y0: 438, y1: 552, n: 10, c: '#c8fff0', a: .7, inside: (x, y) => ((x - 630) / 272) ** 2 + ((y - 494) / 60) ** 2 < 1 }, { x0: 70, x1: 900, y0: 30, y1: 190, n: 14, c: '#7ff0d0', a: .9 }] },
   *paint(T) {
     const { cx } = T;
@@ -148,7 +148,7 @@ GRA_ROOMS.grotto = {
 /* Behind the falls: the whole back wall is moving water lit gold by the low sun, everything wet and shining. */
 GRA_ROOMS.falls = {
   plate: '#10181c', ambient: .82,
-  lights: [{ x: 120, y: 120, radius: 520, height: 200, color: '#ffe0a0', intensity: .7 }],
+  lights: [{ x: 120, y: 120, radius: 520, height: 200, color: '#ffe0a0', intensity: .39 }],
   fx: { streaks: [{ x: 110, y: 30, w: 740, h: 362, a: .2, speed: 220, tint: '#d8f0ff' }, { x: 110, y: 30, w: 740, h: 362, a: .12, speed: 120 }], motes: [{ x0: 90, x1: 880, y0: 300, y1: 400, n: 30, c: '#ffffff', a: .6, rise: 14 }], glints: [{ x0: 40, x1: 920, y0: 410, y1: 590, n: 14, c: '#ffffff', a: .7 }] },
   *paint(T) {
     const { cx } = T;
@@ -156,10 +156,10 @@ GRA_ROOMS.falls = {
     const sheet = 'M90 392V30Q480 -20 880 30V392Z';
     T.fill(sheet, T.lin(0, 0, 0, 392, [[0, '#b8dcea'], [.45, '#5e9ab8'], [1, '#2e6680']]));
     T.clip(sheet, () => {
-      T.rect(90, 0, 790, 392, T.lin(90, 0, 880, 0, [[0, '#ffd27a', .35], [.45, '#ffd27a', .08], [1, '#1a3a50', .25]]));
+      T.rect(90, 0, 790, 392, T.lin(90, 0, 880, 0, [[0, '#ffd27a', .22], [.45, '#ffd27a', .05], [1, '#1a3a50', .25]]));
       for (let i = 0; i < 70; i++) { const x = T.rnd(80, 890), w = T.rnd(2, 12); T.rect(x, -40, w, 470, T.lin(0, 0, 0, 400, [[0, '#e8f6fa', T.rnd(.06, .22)], [.7, '#e8f6fa', T.rnd(.1, .3)], [1, '#ffffff', .05]])); }
       for (let i = 0; i < 50; i++) T.rect(T.rnd(80, 890), -40, T.rnd(3, 10), 470, '#1a4a64', T.rnd(.08, .22));
-      T.glow(110, 60, 260, '#fff0b8', .28);
+      T.glow(110, 60, 220, '#fff0b8', .16);
       for (let i = 0; i < 46; i++) T.blob(T.rnd(90, 880), T.rnd(366, 404), T.rnd(18, 44), T.rnd(6, 14), T.pick(['#ffffff', '#d8eef6']), .45, 9, .6);
     });
     yield;
@@ -187,7 +187,7 @@ GRA_ROOMS.falls = {
 /* The lamp room: the top of the world at night, all glass and brass round the great lamp, the black lake below. */
 GRA_ROOMS.lamproom = {
   plate: '#050a1e', ambient: .6,
-  lights: [{ x: 480, y: 270, radius: 360, height: 120, color: '#fff2c0', intensity: .7 }],
+  lights: [{ x: 480, y: 270, radius: 360, height: 120, color: '#fff2c0', intensity: .39 }],
   fx: { glints: [{ x0: 0, x1: 960, y0: 6, y1: 280, n: 18, c: '#ffffff', a: .9 }, { x0: 0, x1: 960, y0: 310, y1: 388, n: 10, c: '#a8c8f0', a: .6 }] },
   *paint(T) {
     const { cx } = T;
@@ -227,7 +227,7 @@ GRA_ROOMS.lamproom = {
 /* The ringing chamber: tall, cold and holy. Everything points up into the dark; the only colour is the window, and it stains the dust. */
 GRA_ROOMS.ringers = {
   plate: '#050508', ambient: .6,
-  lights: [{ x: 480, y: 220, radius: 360, height: 200, color: '#ffe2b0', intensity: .55 }],
+  lights: [{ x: 480, y: 220, radius: 360, height: 200, color: '#ffe2b0', intensity: .3 }],
   fx: { motes: [{ x0: 300, x1: 660, y0: 140, y1: 560, n: 30, c: '#ffe8c0', a: .55, rise: 3 }] },
   *paint(T) {
     const { cx } = T;

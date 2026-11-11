@@ -175,30 +175,43 @@ window.GardenRoomArt = (function () {
     return T;
   }
 
-  /* ---------- baking, in slices ---------- */
+  /* ---------- baking, in slices ----------
+   * The picture is painted in BANDS horizontal strips, each its own small
+   * canvas: the painter runs once per strip, clipped to it, so a step pays
+   * for a sixth of its pixels; each strip is uploaded on its own frame. */
+  const BANDS = 6, BH = H / BANDS;
   function begin(scene, room) {
     const spec = GRA_ROOMS[room.id], have = baked.get(room.id);
-    if (have && scene.textures.exists(have.key)) { baked.delete(room.id); baked.set(room.id, have); return { spec, key: have.key, done: true, ms: 0 }; }
-    const c = document.createElement('canvas'); c.width = W * K; c.height = H * K;
-    const cx = c.getContext('2d', { willReadFrequently: true }); cx.setTransform(K, 0, 0, K, 0, 0);
-    const T = kit(cx, 'room|' + room.id), info = { room, water: typeof _grwOf === 'function' ? _grwOf(room) : null, floor: room.floor || GRM.floor, door: GRM.door };
-    return { spec, canvas: c, gen: spec.paint(T, info), done: false, ms: 0 };
+    if (have && have.keys.every(k => scene.textures.exists(k))) { baked.delete(room.id); baked.set(room.id, have); return { spec, keys: have.keys, done: true, ms: 0 }; }
+    return { spec, band: -1, keys: [], canvases: [], gen: null, cx: null, done: false, ms: 0, uploads: 0 };
   }
-  /** Run the bake for at most SLICE ms. True when the picture is ready. */
+  function nextBand(room, job) {
+    job.band++; if (job.band >= BANDS) return false;
+    const c = document.createElement('canvas'); c.width = W * K; c.height = (BH + 2) * K;
+    const cx = c.getContext('2d', { willReadFrequently: true });
+    cx.setTransform(K, 0, 0, K, 0, -(job.band * BH - 1) * K); cx.save(); cx.beginPath(); cx.rect(0, job.band * BH - 1, W, BH + 2); cx.clip();
+    job.canvases.push(c); job.cx = cx;
+    job.gen = job.spec.paint(kit(cx, 'room|' + room.id), { room, floor: room.floor || GRM.floor, door: GRM.door });
+    return true;
+  }
+  /** Run the bake for at most SLICE ms (one strip upload a frame). True when the picture is ready. */
   function step(scene, room, job) {
     if (job.done) return true;
     const t0 = performance.now();
-    // Canvas work is recorded lazily; reading one pixel makes each slice pay
-    // for its own drawing here, not all at once when the texture is uploaded.
-    const cx = job.canvas.getContext('2d', { willReadFrequently: true });
-    try { while (performance.now() - t0 < SLICE) { const n = job.gen.next(); cx.getImageData(0, 0, 1, 1); if (n.done) { job.done = true; break; } } }
-    catch (e) { job.done = true; job.failed = String(e && e.stack || e); if (window.GardenNativePainted) GardenNativePainted.lastError = job.failed; }
+    try {
+      if (job.band < BANDS) {
+        if (!job.gen && !nextBand(room, job)) job.band = BANDS;
+        // Canvas work is recorded lazily; reading one pixel makes each step
+        // pay for its own drawing now, not all at once at upload.
+        while (job.gen && performance.now() - t0 < SLICE) { const n = job.gen.next(); job.cx.getImageData(0, 0, 1, 1); if (n.done) { job.cx.restore(); job.gen = null; if (!nextBand(room, job)) { job.band = BANDS; break; } } }
+      } else {
+        const i = job.keys.length, key = 'gdroom-' + room.id + '-' + (++fxSerial);
+        scene.textures.addCanvas(key, job.canvases[i]); job.keys.push(key); job.canvases[i] = null;
+        if (job.keys.length === BANDS) { job.done = true; baked.set(room.id, { keys: job.keys }); while (baked.size > KEEP) { const [id, old] = baked.entries().next().value; baked.delete(id); for (const k of old.keys) if (scene.textures.exists(k)) scene.textures.remove(k); } }
+      }
+    } catch (e) { job.failed = String(e && e.stack || e); job.done = true; job.keys = []; if (window.GardenNativePainted) GardenNativePainted.lastError = job.failed; }
     const spent = performance.now() - t0; job.ms += spent; job.maxSlice = Math.max(job.maxSlice || 0, spent);
-    if (!job.done) return false;
-    const key = 'gdroom-' + room.id + '-' + (++fxSerial), t1 = performance.now();
-    scene.textures.addCanvas(key, job.canvas); baked.set(room.id, { key }); job.uploadMs = performance.now() - t1;
-    while (baked.size > KEEP) { const [id, old] = baked.entries().next().value; baked.delete(id); if (scene.textures.exists(old.key)) scene.textures.remove(old.key); }
-    job.key = key; job.canvas = null; return true;
+    return job.done;
   }
 
   /* ---------- the few live things ---------- */
@@ -276,9 +289,11 @@ window.GardenRoomArt = (function () {
     const plate = scene.add.rectangle(0, 0, W, H, parseInt(String(spec.plate || room.bg || '#101010').replace('#', ''), 16)).setOrigin(0, 0); root.add(plate);
     let job = begin(scene, room), image = null, fx = null, fade = 0, dead = false;
     const status = { id: room.id, bakeMs: 0, frames: 0, cached: job.done };
+    const images = [];
     function show() {
-      image = scene.add.image(0, 0, job.key).setOrigin(0, 0).setScale(1 / K).setAlpha(status.cached ? 1 : 0); root.add(image);
-      fx = live(scene, s.root, spec); status.fx = fx.count; status.bakeMs = Math.round(job.ms); status.maxSliceMs = Math.round(job.maxSlice || 0); status.uploadMs = Math.round(job.uploadMs || 0);
+      for (let i = 0; i < job.keys.length; i++) { const im = scene.add.image(0, i * BH - 1, job.keys[i]).setOrigin(0, 0).setScale(1 / K).setAlpha(status.cached ? 1 : 0); root.add(im); images.push(im); }
+      image = images[0] || plate;
+      fx = live(scene, s.root, spec); status.fx = fx.count; status.bakeMs = Math.round(job.ms); status.maxSliceMs = Math.round(job.maxSlice || 0); status.failed = job.failed || null;
       if (status.cached) plate.setVisible(false);
     }
     if (job.done) show();
@@ -288,7 +303,7 @@ window.GardenRoomArt = (function () {
       update(t, dt) {
         if (dead) return;
         if (!image) { status.frames++; if (step(scene, room, job)) show(); return; }
-        if (image.alpha < 1) { fade += dt; image.setAlpha(Math.min(1, fade / .35)); if (image.alpha >= 1) plate.setVisible(false); }
+        if (images.length && images[0].alpha < 1) { fade += dt; const a = Math.min(1, fade / .35); for (const im of images) im.setAlpha(a); if (a >= 1) plate.setVisible(false); }
         fx.update(t, typeof gardenMotionOn !== 'function' || gardenMotionOn());
       },
       destroy() { dead = true; if (fx) fx.destroy(); root.destroy(); },

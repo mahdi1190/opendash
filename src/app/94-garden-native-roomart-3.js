@@ -4,7 +4,7 @@
 /* The parlour: a mouse family's home in a stump. Everything is something you know at the wrong size; candle-orange, polished wood. */
 GRA_ROOMS.parlour = {
   plate: '#3a2010', ambient: .78,
-  lights: [{ x: 837, y: 220, radius: 360, height: 120, color: '#ffc06a', intensity: .9 }, { x: 480, y: 160, radius: 240, height: 140, color: '#d8f0ff', intensity: .3 }],
+  lights: [{ x: 837, y: 220, radius: 360, height: 120, color: '#ffc06a', intensity: .5 }, { x: 480, y: 160, radius: 240, height: 140, color: '#d8f0ff', intensity: .17 }],
   fx: { flicker: [{ x: 837, y: 214, r: 150, c: '#ffb050', a: .28, amt: .25 }], motes: [{ x0: 640, x1: 940, y0: 120, y1: 400, n: 12, c: '#ffd890', a: .5 }] },
   *paint(T) {
     const { cx } = T;
@@ -80,7 +80,7 @@ GRA_ROOMS.parlour = {
 /* The shepherd's hut: a real wind outside and a warm stove in. Curved tin roof, grey-green hills through the window, a coat that smells of sheep. */
 GRA_ROOMS.hut = {
   plate: '#222822', ambient: .72,
-  lights: [{ x: 480, y: 340, radius: 300, height: 60, color: '#ff9a4a', intensity: .8 }, { x: 274, y: 166, radius: 260, height: 140, color: '#e8f0f8', intensity: .45 }],
+  lights: [{ x: 480, y: 340, radius: 300, height: 60, color: '#ff9a4a', intensity: .44 }, { x: 274, y: 166, radius: 260, height: 140, color: '#e8f0f8', intensity: .25 }],
   fx: { flicker: [{ x: 480, y: 372, r: 160, c: '#ff8a3a', a: .22, amt: .3 }], motes: [{ x0: 180, x1: 520, y0: 120, y1: 400, n: 14, c: '#f0f4ff', a: .4 }], drift: [{ x: 240, y: 132, r: 30, c: '#ffffff', a: .55, dx: 40, dy: 2, sp: .15, depth: 1 }] },
   *paint(T) {
     const { cx } = T;
@@ -134,7 +134,7 @@ GRA_ROOMS.hut = {
 /* The treehouse: a child built it. Dappled green light, crooked planks in a hundred browns, the trunk coming up through the floor. */
 GRA_ROOMS.treehouse = {
   plate: '#3f7a38', ambient: .92,
-  lights: [{ x: 480, y: 120, radius: 520, height: 220, color: '#fff8d0', intensity: .6 }],
+  lights: [{ x: 480, y: 120, radius: 520, height: 220, color: '#fff8d0', intensity: .33 }],
   fx: { drift: [{ x: 200, y: 280, r: 60, c: '#fff8c0', a: .18, dx: 30, sp: .3 }, { x: 420, y: 330, r: 50, c: '#fff8c0', a: .15, dx: 24, sp: .25 }, { x: 640, y: 300, r: 70, c: '#fff8c0', a: .15, dx: 30, sp: .2 }, { x: 300, y: 480, r: 80, c: '#fff8c0', a: .14, dx: 40, sp: .18 }, { x: 680, y: 500, r: 70, c: '#fff8c0', a: .13, dx: 30, sp: .22 }], motes: [{ x0: 0, x1: 960, y0: 20, y1: 380, n: 16, c: '#fffbe0', a: .5, rise: -2, wind: 6 }] },
   *paint(T) {
     const { cx } = T;
@@ -186,7 +186,7 @@ GRA_ROOMS.treehouse = {
 /* Down the ice house: a brick dome going up to one small round of daylight; blue on everything, straw on the floor. */
 GRA_ROOMS.icehouse = {
   plate: '#16222c', ambient: .78,
-  lights: [{ x: 480, y: 200, radius: 420, height: 260, color: '#e8f8ff', intensity: .6 }],
+  lights: [{ x: 480, y: 200, radius: 420, height: 260, color: '#e8f8ff', intensity: .33 }],
   fx: { motes: [{ x0: 300, x1: 660, y0: 60, y1: 400, n: 22, c: '#ffffff', a: .6, rise: -3 }], glints: [{ x0: 40, x1: 920, y0: 260, y1: 400, n: 12, c: '#ffffff', a: .9 }] },
   *paint(T) {
     const { cx } = T;
@@ -235,7 +235,7 @@ GRA_ROOMS.icehouse = {
 /* The old hothouse: green, wet and too warm. White-and-rust ironwork, sun through old glass, palms pressing on the roof, steam. */
 GRA_ROOMS.hothouse = {
   plate: '#2e2a1e', ambient: .9,
-  lights: [{ x: 320, y: 60, radius: 620, height: 260, color: '#fff8c8', intensity: .6 }],
+  lights: [{ x: 320, y: 60, radius: 620, height: 260, color: '#fff8c8', intensity: .33 }],
   fx: { drift: [{ x: 160, y: 404, r: 90, c: '#ffffff', a: .2, dx: 50, sp: .12 }, { x: 460, y: 400, r: 110, c: '#ffffff', a: .18, dx: 60, sp: .1 }, { x: 780, y: 404, r: 90, c: '#ffffff', a: .2, dx: 50, sp: .14 }], motes: [{ x0: 100, x1: 700, y0: 60, y1: 400, n: 22, c: '#fffbe0', a: .5, rise: 5 }] },
   *paint(T) {
     const { cx } = T;
@@ -292,7 +292,7 @@ GRA_ROOMS.hothouse = {
 /* Up in the windmill's cap: all machine. Great timbers, the brake wheel taller than you, flour hanging in a bar of light from the slit. */
 GRA_ROOMS.capfloor = {
   plate: '#1a1006', ambient: .66,
-  lights: [{ x: 855, y: 220, radius: 420, height: 160, color: '#fff4d0', intensity: .7 }],
+  lights: [{ x: 855, y: 220, radius: 420, height: 160, color: '#fff4d0', intensity: .39 }],
   fx: { motes: [{ x0: 560, x1: 950, y0: 140, y1: 520, n: 46, c: '#fff8e0', a: .7, rise: 2, wind: -3 }] },
   *paint(T) {
     const { cx } = T;

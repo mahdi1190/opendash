@@ -5,7 +5,7 @@
 /* The den: one green-shaded lamp in the corner, sepia paper on every wall, low black beams, a warm rug. */
 GRA_ROOMS.den = {
   plate: '#20140a', ambient: .72,
-  lights: [{ id: 'den-desk-lamp', x: 846, y: 350, radius: 240, height: 90, color: '#ffdda0', intensity: .8 }],
+  lights: [{ id: 'den-desk-lamp', x: 846, y: 350, radius: 240, height: 90, color: '#ffdda0', intensity: .44 }],
   fx: { motes: [{ x0: 640, x1: 940, y0: 180, y1: 420, n: 16, c: '#ffe2a0', a: .55 }], flicker: [{ x: 846, y: 344, r: 110, c: '#ffcf80', a: .08, amt: .08 }] },
   *paint(T) {
     const { cx } = T;
@@ -91,7 +91,7 @@ GRA_ROOMS.den = {
 /* The drowned cellar: underwater light from the pool above, wet brick vaults going back, a flood on the floor. */
 GRA_ROOMS.cellar = {
   plate: '#071c24', ambient: .6,
-  lights: [{ x: 480, y: 300, radius: 380, height: 140, color: '#a8ffe8', intensity: .7 }],
+  lights: [{ x: 480, y: 300, radius: 380, height: 140, color: '#a8ffe8', intensity: .39 }],
   fx: {
     motes: [{ x0: 120, x1: 860, y0: 60, y1: 390, n: 22, c: '#c8fff0', a: .45, rise: 10 }],
     drift: [{ x: 150, y: 250, r: 120, c: '#a8ffe8', a: .07, dx: 30, sp: .2 }, { x: 480, y: 260, r: 160, c: '#a8ffe8', a: .08, dx: 40 }, { x: 800, y: 250, r: 120, c: '#a8ffe8', a: .07, dx: 30, sp: .15 }],
@@ -154,7 +154,7 @@ GRA_ROOMS.cellar = {
 /* Up in the barn: afternoon gold, heavy A-frames, sun pouring from the high door onto the hay. */
 GRA_ROOMS.barnloft = {
   plate: '#2a180c', ambient: .8,
-  lights: [{ x: 480, y: 300, radius: 420, height: 160, color: '#ffe8b0', intensity: .85 }],
+  lights: [{ x: 480, y: 300, radius: 420, height: 160, color: '#ffe8b0', intensity: .47 }],
   fx: { motes: [{ x0: 260, x1: 720, y0: 180, y1: 520, n: 40, c: '#fff0b8', a: .7, rise: 3, wind: 4 }] },
   *paint(T) {
     const { cx } = T;
@@ -213,7 +213,7 @@ GRA_ROOMS.barnloft = {
 /* The boat loft: dark tarred roof, a dusk slot of sky at the gable end, nets and floats, rope on the boards. */
 GRA_ROOMS.boatloft = {
   plate: '#101820', ambient: .68,
-  lights: [{ x: 480, y: 280, radius: 360, height: 160, color: '#f4c07a', intensity: .7 }],
+  lights: [{ x: 480, y: 280, radius: 360, height: 160, color: '#f4c07a', intensity: .39 }],
   fx: { motes: [{ x0: 300, x1: 660, y0: 120, y1: 460, n: 18, c: '#f8d8a0', a: .45, rise: 4 }] },
   *paint(T) {
     const { cx } = T;
@@ -258,7 +258,7 @@ GRA_ROOMS.boatloft = {
 /* The lamplighter's cupboard: narrow and black, a moon in a slot, brass catching what light there is. */
 GRA_ROOMS.lampcup = {
   plate: '#05060e', ambient: .5,
-  lights: [{ x: 480, y: 110, radius: 260, height: 120, color: '#d8e0ff', intensity: .55 }],
+  lights: [{ x: 480, y: 110, radius: 260, height: 120, color: '#d8e0ff', intensity: .3 }],
   fx: { motes: [{ x0: 300, x1: 660, y0: 70, y1: 390, n: 14, c: '#dce4ff', a: .4, rise: 3 }] },
   *paint(T) {
     const { cx } = T;
