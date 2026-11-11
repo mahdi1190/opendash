@@ -15,6 +15,7 @@ uniform vec2 uSize;
 uniform vec2 uOrigin;
 uniform float uPadding;
 uniform float uTime;
+uniform float uFade;
 #pragma phaserTemplate(outVariables)
 #pragma phaserTemplate(fragmentHeader)
 void main () {
@@ -34,7 +35,7 @@ void main () {
   float core = smoothstep(12.0, 112.0, distance + billow) * coreFade * step(0.5, land.g);
   float edge = smoothstep(-28.0, 8.0, distance) * (1.0 - smoothstep(22.0, 72.0, distance));
   float fringe = edge * smoothstep(0.36, 0.74, b * 0.35 + c * 0.65) * 0.055;
-  float alpha = (core * (0.40 + density * 0.25) + fringe * (1.0 - core)) * land.b;
+  float alpha = (core * (0.40 + density * 0.25) + fringe * (1.0 - core)) * land.b * uFade;
   if (alpha < 0.002) discard;
   vec3 deep = mix(vec3(0.105, 0.17, 0.18), vec3(0.31, 0.41, 0.39), density);
   vec3 color = mix(vec3(0.57, 0.68, 0.62), deep, smoothstep(0.02, 0.5, core));
@@ -83,18 +84,22 @@ void main () {
     for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) { const i = (y * 128 + x) * 4; for (let c = 0; c < 3; c++) data.data[i + c] = Math.round(255 * (value(x / 32, y / 32, 4, 17 + c * 13) * .6 + value(x / 16, y / 16, 8, 83 + c * 7) * .28 + value(x / 8, y / 8, 16, 41 + c) * .12)); data.data[i + 3] = 255; }
     ctx.putImageData(data, 0, 0); noise.refresh();
     const reduced = matchMedia('(prefers-reduced-motion: reduce)'), tiles = new Map(), parent = options.world.rootNode._inner || options.world.root;
-    let regions = null, revision = -1, boundary = null, count = 0, districtGate = '', room = false, paused = false, elapsed = 0, dead = false, builds = 0, buildMs = 0, reuses = 0, visible = 0;
+    let fading = [], gen = 0, regions = null, revision = -1, boundary = null, count = 0, districtGate = '', room = false, paused = false, elapsed = 0, dead = false, builds = 0, buildMs = 0, reuses = 0, visible = 0;
     function clearTiles() {
-      for (const tile of tiles.values()) { if (tile.shader) tile.shader.destroy(); if (tile.texture) scene.textures.remove(tile.key); }
-      tiles.clear(); visible = 0;
+      for (const tile of [...tiles.values(), ...fading]) { if (tile.shader) tile.shader.destroy(); if (tile.texture) scene.textures.remove(tile.key); }
+      tiles.clear(); fading = []; visible = 0;
     }
-    function rebuild(state, presentation) {
-      clearTiles(); regions = state.lockedRegions || []; revision = state.revision; count = presentation.regions.length; districtGate = presentation.gate && presentation.gate.id || '';
+    // A gate opened: the old mist fades out over the opened land while the new one fades in, so the mist rolls back instead of vanishing (94-garden-wonder-7gates.js)
+    const ROLL = 1.8;
+    function rebuild(state, presentation, roll) {
+      if (roll) { for (const tile of tiles.values()) if (tile.shader) { tile.fade = tile.fade == null ? 1 : tile.fade; fading.push(tile); } else if (tile.texture) scene.textures.remove(tile.key); tiles.clear(); visible = 0; gen++; }
+      else clearTiles();
+      regions = state.lockedRegions || []; revision = state.revision; count = presentation.regions.length; districtGate = presentation.gate && presentation.gate.id || '';
       for (const region of presentation.regions) {
         const b = region.bounds, x0 = Math.max(0, Math.floor((b.x - 30) / tileSize)), y0 = Math.max(0, Math.floor((b.y - 30) / tileSize)), x1 = Math.min(Math.ceil(width / tileSize) - 1, Math.floor((b.x + b.width + 30) / tileSize)), y1 = Math.min(Math.ceil(height / tileSize) - 1, Math.floor((b.y + b.height + 30) / tileSize));
         for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
           const id = cx + ':' + cy; let tile = tiles.get(id);
-          if (!tile) { tile = { x: cx * tileSize, y: cy * tileSize, key: prefix + '-land-' + id, regions: [], texture: null, shader: null, built: false }; tiles.set(id, tile); }
+          if (!tile) { tile = { x: cx * tileSize, y: cy * tileSize, key: prefix + '-land-' + gen + '-' + id, regions: [], texture: null, shader: null, built: false, fade: roll ? 0 : 1 }; tiles.set(id, tile); }
         }
       }
       // Include every contour within the distance-field padding, even if that
@@ -119,20 +124,22 @@ void main () {
         pixels[at] = Math.round((Math.max(-192, Math.min(192, distance)) / 384 + .5) * 255); pixels[at + 1] = bits[i] * 255; pixels[at + 2] = 255; pixels[at + 3] = 255;
       }
       c.putImageData(image, 0, 0); mask.refresh(); tile.texture = mask;
-      tile.shader = scene.add.shader({ name: 'GardenFrontierMist', fragmentSource: fragment, setupUniforms(set) { set('uLand', 0); set('uMist', 1); set('uSize', [tileSize, tileSize]); set('uOrigin', [tile.x, tile.y]); set('uPadding', padding); set('uTime', elapsed); } }, tile.x + tileSize / 2, tile.y + tileSize / 2, tileSize, tileSize, [tile.key, noiseKey]).setDepth(75000).setVisible(false);
+      tile.shader = scene.add.shader({ name: 'GardenFrontierMist', fragmentSource: fragment, setupUniforms(set) { set('uLand', 0); set('uMist', 1); set('uSize', [tileSize, tileSize]); set('uOrigin', [tile.x, tile.y]); set('uPadding', padding); set('uTime', elapsed); set('uFade', tile.fade == null ? 1 : tile.fade); } }, tile.x + tileSize / 2, tile.y + tileSize / 2, tileSize, tileSize, [tile.key, noiseKey]).setDepth(75000).setVisible(false);
       parent.add(tile.shader); options.world.depthChanged(); builds++; buildMs = performance.now() - started;
     }
     function update(time, delta) {
       if (dead) return; const state = typeof options.world.frontierState === 'function' ? options.world.frontierState() : options.world.effectsState();
       if (state && (state.lockedRegions !== regions || state.revision !== revision)) {
         const next = state.lockedRegions || [], presentation = islandPresentation(options.world, next), fingerprint = boundaryFingerprint(presentation.regions) + '|' + presentation.key;
-        if (fingerprint !== boundary) { rebuild(state, presentation); boundary = fingerprint; }
+        if (fingerprint !== boundary) { rebuild(state, presentation, boundary !== null && presentation.regions.length < count && !reduced.matches); boundary = fingerprint; }
         else { regions = next; revision = state.revision; reuses++; }
       }
       if (!paused && !reduced.matches && (typeof gardenMotionOn !== 'function' || gardenMotionOn())) elapsed += Math.min(80, Math.max(0, delta || 0)) / 1000;
       const view = options.world.camera(), overlaps = (tile, margin) => tile.x + tileSize >= view.x - margin && tile.x <= view.x + view.w + margin && tile.y + tileSize >= view.y - margin && tile.y <= view.y + view.h + margin;
       visible = 0; let prepared = false;
+      if (fading.length) { const step = Math.min(80, Math.max(0, delta || 0)) / 1000 / ROLL; fading = fading.filter(tile => { tile.fade -= step; if (tile.fade > 0) return true; tile.shader.destroy(); if (tile.texture) scene.textures.remove(tile.key); return false; }); }
       for (const tile of tiles.values()) {
+        if (tile.fade < 1) tile.fade = Math.min(1, tile.fade + Math.min(80, Math.max(0, delta || 0)) / 1000 / ROLL);
         const on = !room && overlaps(tile, 16);
         // Visible fields are prepared together. While walking, warm
         // one nearby field on the shared clock before it enters the camera.

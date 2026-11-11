@@ -108,10 +108,10 @@ function gardenGateRumour(m) {
     const region = gardenIslandRegionForZone(gate.n), from = region ? region.fromZone : 0; if (from && !m.areas.includes('zn-' + from)) continue;
     const who = _wgtWho(rule.who), it = GARDEN_GATE_ITEMS[rule.key], zone = gardenZone(gate.n), D = gate.door;
     const walk = { label: 'Walk to the gate', run: () => gardenWalkToPoint({ x: D.x + 0.5, y: D.y + 0.5 }, () => gardenGatePrompt(gate, { x: D.x + 0.5, y: D.y - 0.4 }, gardenHere()), { radius: 2 }) };
-    if (gardenGateHas(rule.key)) return { icon: 'map-pin', title: `${it.name} for ${zone.name.toLowerCase()}`, text: 'You have it. The gate is waiting.', target: null, btn: walk, key: 'gate-have' + gate.id };
+    if (gardenGateHas(rule.key)) return { icon: 'map-pin', title: `You have ${it.name.replace(/^(A|An) /, 'the ').toLowerCase()} for ${zone.name}`, text: 'The gate is waiting.', target: null, btn: walk, key: 'gate-have' + gate.id };
     if (m.level.level < gardenGateFindLv(gate)) continue;
     const f = GARDEN_GATE_FINDS.find(r => r.gate === gate.id && !gardenGateHas(r.gives) && (!r.needs || !r.needs.item || gardenGateHas(r.needs.item)));
-    return { icon: 'message-circle', title: who ? `${who.name} says…` : zone.name, text: f && f.needs && f.needs.item ? f.ask : rule.hint, target: null, btn: walk, key: 'gate-hint' + gate.id + (f ? f.id : '') };
+    return { icon: 'message-circle', title: who ? `${who.name} has a tip about ${zone.name}` : zone.name, text: f && f.needs && f.needs.item ? f.ask : rule.hint, target: null, btn: walk, key: 'gate-hint' + gate.id + (f ? f.id : '') };
   }
   return null;
 }
