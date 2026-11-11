@@ -153,9 +153,9 @@ async function _gtgoShoot() {
     const blob = await _gtgoDevelop(shot, filter, _gtgo.frame, hold ? hold.d.name : m.visit ? `${_gscFirst(m.visit.fid)}’s` : '');
     await memPhotoKeep(blob, { iso: _gdToday(), ts: Clock.now(), kind: 'garden', at: m.visit ? String(m.visit.fid || '') : '' });
     try { if (typeof gardenLiveCheer === 'function') gardenLiveCheer('photo'); } catch (e) { /* only a moment */ }
-    const paid = _grGive('did.pose', { ticket: 2, x: 1 });
-    gardenToast(paid ? 'Kept in your Memories. 2 tickets' : 'Kept in your Memories', { icon: 'camera', kind: 'ok', timeout: 6000, action: { label: 'See it', run: () => setView('memories:photos') } });
-    if (_gtgGhostIn(frame, m)) { if (gpGrant('tg-ghost', { ticket: 15, 'mat:stone': 3 })) setTimeout(() => wdWhisper('There is someone in that photograph. She was not there. 15 tickets, and three stones she left.', 9000), 1800); }
+    const paid = _grGive('did.pose', { x: 1 });
+    gardenToast('Kept in your Memories', { icon: 'camera', kind: 'ok', timeout: 6000, action: { label: 'See it', run: () => setView('memories:photos') } });
+    if (_gtgGhostIn(frame, m)) { if (gpGrant('tg-ghost', { 'mat:stone': 3 })) setTimeout(() => wdWhisper('There is someone in that photograph. She was not there. Three stones she left.', 9000), 1800); }
   } catch (e) { gardenToast('The photo could not be kept.', { icon: 'camera', kind: 'err', timeout: 5000, retry: _gtgoShoot }); }
 }
 gardenPlayAdd({ id: 'tg-pose', name: 'Photo mode', icon: 'camera', group: 'secret', blurb: 'Hold up something you caught, frame the shot, pick a filter, and keep it in Memories. A photo a day gives a couple of tickets.', open: () => { if (typeof gardenPopupClose === 'function') gardenPopupClose(); setTimeout(gardenPoseOpen, 60); } });

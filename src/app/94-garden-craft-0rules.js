@@ -111,7 +111,7 @@ function gardenCraftItemName(key) {
   if (kind === 'bq') { const b = GARDEN_BOUQUETS.find(x => x.id === id); return b ? b.name : id; }
   if (kind === 'seed') { const p = gardenPlant(id); return p ? p.name + ' seed' : id; }
   if (kind === 'decor') { const d = gardenDecor(id); return d ? d.name : id; }
-  return { honey: 'Honey', clover: 'Four-leaf clover', fertiliser: 'Fertiliser' }[key] || key;
+  return { honey: 'Honey', clover: 'Four-leaf clover', fertiliser: 'Compost' }[key] || key;
 }
 function _grValue(key, m) {
   if (key.startsWith('fish:')) { try { return gardenCatchEach(key + '-0'); } catch (e) { return 0; } }

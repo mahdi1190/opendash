@@ -75,7 +75,7 @@ function wdLetterPage(r) {
   _wdLetterRead(r);
   wdPage({ title: r.card ? 'A postcard from ' + r.from : 'A letter from ' + r.from, art: r.card ? `<svg viewBox="0 0 280 130" class="wd-card" role="img" aria-label="A picture on the front of the card">${_WD_CARDS[r.card]}</svg>` : '', text: r.text, sign: r.sign, foot: fresh && r.got ? `There was something in the envelope: ${_wdItemWords(r.got)}. It is in your bag.` : '' });
 }
-function _wdItemWords(item) { if (item === 'fertiliser') return 'a bag of fertiliser'; const p = item.startsWith('seed:') ? gardenPlant(item.slice(5)) : null; return p ? 'a ' + p.name.toLowerCase().replace(/ tree$/, '') + ' seed' : 'something small'; }
+function _wdItemWords(item) { if (item === 'fertiliser') return 'a bag of compost'; const p = item.startsWith('seed:') ? gardenPlant(item.slice(5)) : null; return p ? 'a ' + p.name.toLowerCase().replace(/ tree$/, '') + ' seed' : 'something small'; }
 function _wdLettersHad() { const W = _wdG(), all = [...WD_LETTERS, ..._wdGiftLetters()]; return all.filter(r => W['l.' + r.id]).sort((a, b) => String(W['l.' + b.id]).localeCompare(String(W['l.' + a.id]))); }
 function _wdUnread() { const W = _wdG(); return _wdLettersHad().filter(r => !W['lr.' + r.id]).length; }
 function gardenWonderBadge() { try { return _wdUnread(); } catch (e) { return 0; } }

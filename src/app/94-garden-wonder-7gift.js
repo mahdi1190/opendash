@@ -5,7 +5,7 @@
    ============================================================ */
 const GARDEN_EARLY_GIFT = Object.freeze({
   on: true, coins: 50000, xp: 9500,                // 9500 is what garden level 20 takes (gardenLevelOf)
-  mats: Object.freeze({ peg: 40, timber: 80, stone: 80, reed: 80 }), tickets: 50, treats: 40,
+  mats: Object.freeze({ timber: 120, stone: 80 }), treats: 40,
   gear: Object.freeze(['rod-2', 'rod-3', 'rod-4', 'net-2', 'net-3']),   // the golden ones are still there to earn
   bait: 25, seeds: 5, seedKinds: 24,               // of each bait on sale; of each of this many kinds of seed
   spots: Object.freeze([[13.5, 14.5], [12.5, 17.5], [23.5, 12.5], [26.5, 14.5], [14.5, 18.5], [26.5, 18.5]]),   // world cells: tucked around the front garden, the first that is free
@@ -14,7 +14,7 @@ const _wdg = { S: null, at: null, hintT: 0 };
 let _wdgHinted = false;
 function gardenEarlyGiftTaken() { const g = _gdG(); return !!(g.led['plg.early'] || g.seen['pl.gr.early']); }
 function _wdgItems() {
-  const G = GARDEN_EARLY_GIFT, i = { ticket: G.tickets, ptreat: G.treats };
+  const G = GARDEN_EARLY_GIFT, i = { ptreat: G.treats };
   for (const [id, n] of Object.entries(G.mats)) i['mat:' + id] = n;
   for (const id of G.gear) i['gear:' + id] = 1;
   for (const b of GARDEN_BAITS) if (b.price > 0) i['bait:' + b.id] = G.bait;
@@ -41,7 +41,7 @@ function _wdgOpen() {
   _glFx(a.x, a.y, 'sparkle', { lift: 14 }); _glSound('twinkle');
   wdTalk({ name: 'A note on the ribbon', at: a, art: _wdgArt(), bye: 'Thank you', lines: [
     'Thank you for being one of the first people here. This is for you, so you can try everything.',
-    `${G.coins.toLocaleString('en-GB')} coins, and enough experience for garden level 20. Timber, stone, reeds and survey pegs for building. Better rods and nets, bait, seeds, tickets and pet treats. It is all in your bag.`,
+    `${G.coins.toLocaleString('en-GB')} coins, and enough experience for garden level 20. Timber and stone for building. Better rods and nets, bait, seeds and pet treats. It is all in your bag.`,
   ] });
 }
 function _wdgPlace(m) {

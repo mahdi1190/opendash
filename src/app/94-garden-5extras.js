@@ -94,7 +94,7 @@ function _gdxShopBody(el, m, kind) {
   for (const d of m.decor) kept.add('decor:' + d.def.id);
   const shown = item => { const pr = gardenPriceOf(item, m); return future || kept.has(item) || pr.price != null && !pr.why; };
   if (kind === 'tools') {
-    const tools = GARDEN_TOOLS.filter(t => shown(t.id) && _gdxMatch(t.name, t.blurb, 'tool'));
+    const tools = GARDEN_TOOLS.filter(t => !t.noShop && t.kind !== 'can' && shown(t.id) && _gdxMatch(t.name, t.blurb, 'tool'));
     if (!tools.length) { none(); return; }
     gardenPager(el, { key: 'shop:tools:' + (future ? 'future' : 'current') + (searching ? '?' : ''), sig: searching ? _gdx.q : '', items: tools, grid: 'gd-grid gd-shop-grid', row: GDX_TILE_ROW, draw: (t) => _gdxCard({ id: t.id, item: t.id, name: t.name, art: () => gardenIconSvg(t.id, { kind: 'tool', px: 56 }), have: t.kind === 'consumable' ? gardenHas('fertiliser') : 0, owned: t.kind !== 'consumable' && _gdOwnsTool(t.id), retained: kept.has(t.id), facts: [t.blurb], blurb: t.blurb }, m) });
     return;
@@ -206,7 +206,7 @@ function _gdxItemName(k) {
   if (kind === 'bq') { const b = GARDEN_BOUQUETS.find(x => x.id === id); return b ? b.name : id; }
   if (kind === 'decor') { const d = gardenDecor(id); return d ? d.name : id; }
   if (kind === 'seed') { const p = gardenPlant(id); return p ? p.name + ' seeds' : id; }
-  return { honey: 'Honey', fertiliser: 'Fertiliser', clover: 'Four-leaf clover' }[k] || k;
+  return { honey: 'Honey', fertiliser: 'Compost', clover: 'Four-leaf clover' }[k] || k;
 }
 function _gdxItemIcon(k, px) {
   const [kind, id] = k.split(':');

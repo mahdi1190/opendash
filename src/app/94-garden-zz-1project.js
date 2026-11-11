@@ -4,8 +4,8 @@
    MERGING. Each person writes only their own part: wd['tg.pa.<friend>.<uid>'] = {p, t, s, d}, one entry per time they add, so their own two devices add up. Your snapshot says your part (`tg.pj` [mark, kind, pegs, timber, stone, tenths of a percent]). What you see is your part plus theirs,
    so two people adding at the same moment both count. If that goes over what the thing needs, the one whose friend id sorts last takes back the extra, once, so nobody loses materials and it cannot happen twice. A friend's number is never above what the project needs. You are thanked only if your own part is real (GTG_PJ.minShare).
    ============================================================ */
-const GTG_PJ = Object.freeze({ stages: 5, minShare: 0.1, stageGift: Object.freeze({ ticket: 8 }), doneGift: Object.freeze({ ticket: 40, 'mat:timber': 6, 'mat:stone': 6 }) });
-const _GTG_MATS = Object.freeze([['p', 'mat:peg', 'Survey pegs'], ['t', 'mat:timber', 'Timber'], ['s', 'mat:stone', 'Field stone']]);
+const GTG_PJ = Object.freeze({ stages: 5, minShare: 0.1, stageGift: Object.freeze({ 'mat:timber': 1 }), doneGift: Object.freeze({ 'mat:timber': 6, 'mat:stone': 6 }) });
+const _GTG_MATS = Object.freeze([['p', 'mat:timber', 'Timber (pegs)'], ['t', 'mat:timber', 'Timber'], ['s', 'mat:stone', 'Stone']]);
 /* What can be built. cost is for the two of you together. Ids are stable. */
 const GTG_PROJECTS = Object.freeze([
   Object.freeze({ id: 'bridge', name: 'A bridge between gardens', short: 'bridge', icon: 'landmark', x: 15.5, y: 21.4, cost: Object.freeze({ p: 40, t: 110, s: 60 }), blurb: 'Stone piers and a timber deck, going out over your lake towards theirs. When it is done, you can walk across.', go: 'Walk across' }),   // world cells
@@ -90,7 +90,7 @@ function _gtgpTick() {
     if (!S.real) continue;
     for (let st = 1; st <= S.stage; st++) {
       const done = st === GTG_PJ.stages;
-      if (gpGrant(`tg-pj-${P.fid}-${P.row.id}-${st}`, done ? Object.assign({}, GTG_PJ.doneGift) : Object.assign({}, GTG_PJ.stageGift))) gpNote(done ? `The ${P.row.short} is finished, you and ${_gscFirst(P.fid)}. 40 tickets, and timber and stone` : `The ${P.row.short} has grown. ${GTG_PJ.stageGift.ticket} tickets`);
+      if (gpGrant(`tg-pj-${P.fid}-${P.row.id}-${st}`, done ? Object.assign({}, GTG_PJ.doneGift) : Object.assign({}, GTG_PJ.stageGift))) gpNote(done ? `The ${P.row.short} is finished, you and ${_gscFirst(P.fid)}. Timber and stone, to build with` : `The ${P.row.short} has grown. A piece of timber`);
     }
   }
 }
@@ -171,7 +171,7 @@ function _gtgpCard(P, repaint) {
     line.appendChild(gpEl('small', 'muted', `${have} in your bag`));
     body.appendChild(line);
   }
-  body.appendChild(gpEl('p', 'muted tg-pj-say', S.real ? 'Each step of it gives you both tickets. Pegs come from finished tasks, timber from focus, stone from finished tasks and digs.' : 'Add a little of your own and each step of it gives you tickets too. Pegs come from finished tasks, timber from focus, stone from finished tasks and digs.'));
+  body.appendChild(gpEl('p', 'muted tg-pj-say', S.real ? 'Each step of it gives you both timber. Timber comes from focus, stone from finished tasks and digs.' : 'Add a little of your own and each step of it gives you timber too. Timber comes from focus, stone from finished tasks and digs.'));
   if (S.done) body.appendChild(_gdpBtn(row.go, { kind: 'btn-primary', icon: 'footprints', run: () => setView('garden:visit:' + P.fid) }));
   else body.appendChild(_gdpBtn('Stop building this', { kind: 'btn-ghost', run: () => { const was = _gtgW()['tg.pj.' + P.fid]; _gtgpLeave(P); gardenToast(`Stopped the ${row.short}. What you added stays on it.`, { timeout: 6000, action: { label: 'Undo', run: () => { _gtgW()['tg.pj.' + P.fid] = was; _gdSave(); gtgPublishSoon(); _gtgpDraw(gardenHere()); } } }); repaint(); } }));
   card.append(art, body);

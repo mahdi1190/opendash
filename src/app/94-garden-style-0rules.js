@@ -13,7 +13,7 @@
    IDS AND TABLE ORDER ARE SAVED: never rename a row, reorder a table or reuse a number. New ones go at the end.
    Tables and sums only, no DOM at load.
    ============================================================ */
-const _gsR = (kind, id, name, cost, how, more) => Object.freeze(Object.assign({ kind, id, name, cost: Object.freeze(cost), how }, more || {}));
+const _gsR = (kind, id, name, cost, how, more) => Object.freeze(Object.assign({ kind, id, name, cost: gardenCostNow(cost), how }, more || {}));
 const _gsRod = (id, name, cost, how, more) => _gsR('rod', id, name, cost, how, more);
 const _gsNet = (id, name, cost, how, more) => _gsR('net', id, name, cost, how, more);
 const _gsHeld = (id, name, cost, how, more) => _gsR('held', id, name, cost, how, more);
@@ -89,7 +89,6 @@ function _gsCanPay(cost, m) {
 }
 function _gsCostWord(k, n) {
   if (k === 'c') return `${n} coin${n === 1 ? '' : 's'}`;
-  if (k === 'ticket') return `${n} ticket${n === 1 ? '' : 's'}`;
   const r = GR_MATERIALS.find(x => 'mat:' + x.id === k);
   return `${n} ${r ? (n === 1 ? r.one : r.name.toLowerCase()) : k}`;
 }
@@ -141,13 +140,13 @@ const GARDEN_BUILD_AWNS = Object.freeze([_gsP('Stripes'), _gsP('Plain'), _gsP('W
 const GARDEN_BUILD_SIGNS = Object.freeze([_gsP('Board'), _gsP('Round'), _gsP('Shield'), _gsP('Scroll'), _gsP('Fish', null, c => c.fish >= 5, 'Catch 5 kinds of fish'), _gsP('Gilded', null, c => c.ribbons >= 3, 'Win 3 ribbons')]);
 /* What each part costs to change. Going back to how it was built is free. */
 const GARDEN_BUILD_PARTS = Object.freeze([
-  Object.freeze({ k: 'w', name: 'Walls', opts: GARDEN_BUILD_PAINTS, cost: Object.freeze({ 'mat:timber': 1, 'mat:reed': 1 }) }),
-  Object.freeze({ k: 'r', name: 'Roof colour', opts: GARDEN_BUILD_PAINTS, cost: Object.freeze({ 'mat:stone': 1, 'mat:reed': 1 }) }),
+  Object.freeze({ k: 'w', name: 'Walls', opts: GARDEN_BUILD_PAINTS, cost: gardenCostNow({ 'mat:timber': 1, 'mat:reed': 1 }, { drop: 1 }) }),
+  Object.freeze({ k: 'r', name: 'Roof colour', opts: GARDEN_BUILD_PAINTS, cost: gardenCostNow({ 'mat:stone': 1, 'mat:reed': 1 }, { drop: 1 }) }),
   Object.freeze({ k: 'd', name: 'Door', opts: GARDEN_BUILD_PAINTS, cost: Object.freeze({ 'mat:timber': 1 }) }),
-  Object.freeze({ k: 'a', name: 'Awning colour', opts: GARDEN_BUILD_PAINTS, cost: Object.freeze({ 'mat:reed': 1 }) }),
-  Object.freeze({ k: 'ak', name: 'Awning', opts: GARDEN_BUILD_AWNS, cost: Object.freeze({ 'mat:reed': 1, ticket: 2 }) }),
+  Object.freeze({ k: 'a', name: 'Awning colour', opts: GARDEN_BUILD_PAINTS, cost: gardenCostNow({ 'mat:reed': 1 }, { drop: 1 }) }),
+  Object.freeze({ k: 'ak', name: 'Awning', opts: GARDEN_BUILD_AWNS, cost: gardenCostNow({ 'mat:reed': 1, ticket: 2 }, { drop: 1 }) }),
   Object.freeze({ k: 'rk', name: 'Roof', opts: GARDEN_BUILD_ROOFS, cost: Object.freeze({ 'mat:stone': 2 }) }),
-  Object.freeze({ k: 's', name: 'Sign', opts: GARDEN_BUILD_SIGNS, cost: Object.freeze({ 'mat:timber': 1, ticket: 2 }) }),
+  Object.freeze({ k: 's', name: 'Sign', opts: GARDEN_BUILD_SIGNS, cost: gardenCostNow({ 'mat:timber': 1, ticket: 2 }, { drop: 1 }) }),
 ]);
 const _GS_KEYS = Object.freeze(GARDEN_BUILD_PARTS.map(p => p.k));
 /* swap: the colours in a drawing that are not built from a theme (a house is: gardenBuildTheme). parts: what can be changed on it. */

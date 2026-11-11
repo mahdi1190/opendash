@@ -6,7 +6,7 @@ function gardenRewardNext(m) {
   const out = [], lv = m.level.level;
   const t = GARDEN_LAND_TRAILS.map(x => gardenRewardTrailInfo(x, m)).filter(I => !I.open && I.fromOk).sort((a, b) => a.t.lv - b.t.lv)[0];
   if (t) {
-    if (t.early) { const need = t.pegs - t.have; out.push({ ic: 'footprints', text: need > 0 ? `${need} more finished task${need === 1 ? '' : 's'} and you can open ${t.t.name}` : `You have the pegs to open ${t.t.name}`, pct: Math.min(1, t.have / t.pegs) }); }
+    if (t.early) { const need = t.pegs - t.have; out.push({ ic: 'footprints', text: need > 0 ? `${need} more timber and you can open ${t.t.name}` : `You have the timber to open ${t.t.name}`, pct: Math.min(1, t.have / t.pegs) }); }
     else if (lv < t.opensAt) out.push({ ic: 'footprints', text: `At garden level ${t.opensAt} you can open ${t.t.name} early` });
   }
   const land = GARDEN_LAND_SECTIONS.filter(s => { const i = gardenLandInfo(s.id, m); return i && !i.owned && i.lvOk && i.reach && i.keyOk; }).sort((a, b) => a.buy - b.buy)[0];
@@ -43,7 +43,7 @@ registerHomeWidget({
     card.className = 'card home-card grw-home';
     card.innerHTML = `<div class="card-h">${icon('footprints')}<h3>Garden: what’s next</h3></div><div class="card-b"></div>`;
     const b = card.querySelector('.card-b');
-    if (!live) { b.appendChild(_gdpEl('p', 'muted', 'Finished tasks bring survey pegs. Pegs open new paths in your garden.')); el.appendChild(card); return true; }
+    if (!live) { b.appendChild(_gdpEl('p', 'muted', 'Focus time brings timber, finished tasks bring stone. Timber opens new paths in your garden.')); el.appendChild(card); return true; }
     const m = gardenModel(), lines = gardenRewardNext(m).slice(0, ctx.size === 'm' ? 3 : 2);
     if (!lines.length) b.appendChild(_gdpEl('p', 'muted', 'All is calm in the garden.'));
     for (const n of lines) {

@@ -643,7 +643,7 @@ const GARDEN_TOOLS = _gdRows(([
   { id: 'can-4', name: 'Golden watering can', kind: 'can', n: 6, price: 400, lv: 12, needs: 'can-3', icon: 'droplets', blurb: 'The finest can there is: six more a day.' },
   { id: 'hose', name: 'Garden hose', kind: 'hose', price: 120, lv: 6, icon: 'waves', blurb: 'Water a whole row with one click.' },
   { id: 'golden-shears', name: 'Golden shears', kind: 'shears', price: 200, lv: 10, icon: 'scissors', blurb: 'Pruning finds a cutting twice as often.' },
-  { id: 'fertiliser', name: 'Fertiliser', kind: 'consumable', price: 6, lv: 1, icon: 'flask-conical', blurb: 'A feed gives a plant half a day’s growth.' },
+  { id: 'fertiliser', name: 'Compost', kind: 'consumable', price: 6, lv: 1, icon: 'flask-conical', noShop: 1, blurb: 'Weeds and leaves from the compost bin. A feed gives a plant half a day’s growth.' },   // (made, never sold: JOURNAL.md section 9)
 ]).map(x => Object.assign({}, x, { price: _gdUp(x.price) })));
 const _GD_TOOL = new Map(GARDEN_TOOLS.map(t => [t.id, t]));
 /* Bouquets: the first style whose rule the chosen flowers meet (gardenBouquetOf). n = how many stems at least. */
