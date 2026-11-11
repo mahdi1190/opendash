@@ -131,7 +131,7 @@ function _ghBar(box, m) {
   const on = (s) => (s.seed ? tool === 'seed' && _gdp.seed === s.seed : s.tool === tool);
   const parts = slots.map((s, i) => {
     if (s.seed && !on(s)) return '';   // seeds remain in the bag and keep their number-key bindings
-    const count = s.seed ? s.n : s.k === 'feed' ? fert : s.k === 'water' ? (m.water.raining ? '' : m.water.left) : '';
+    const count = s.seed ? s.n : s.k === 'feed' ? fert : s.k === 'water' ? (m.water.raining || m.water.free ? '' : m.water.left) : '';
     const empty = s.k === 'feed' && !fert;
     return `<button type="button" class="gd-slot${s.seed ? ' is-seed' : ''}${empty ? ' is-empty' : ''}" data-slot="${escAttr(s.k)}"${s.tool ? ` data-tool="${s.tool}"` : ''} aria-pressed="${on(s) ? 'true' : 'false'}" aria-label="${escAttr(s.tip)}" data-tip="${escAttr(s.tip)}"><kbd>${i + 1}</kbd>${_ghSlotArt(s)}${count !== '' ? `<i class="gd-slotn">${count}</i>` : ''}</button>${i === 4 ? '<span class="gd-slotgap"></span>' : ''}`;
   });

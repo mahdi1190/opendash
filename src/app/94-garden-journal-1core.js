@@ -158,7 +158,7 @@ function _gjCreatures(left, right, m) {
   }
   const S = gardenJournalPageState(p.id);
   const tally = left.appendChild(_gjEl('div', 'gj-tally'));
-  tally.innerHTML = `<span>Fish <b>${S.fish[0]}</b> of ${S.fish[1]} ${_gjPips(S.fish[0], S.fish[1])}</span><span>Bugs <b>${S.bugs[0]}</b> of ${S.bugs[1]} ${_gjPips(S.bugs[0], S.bugs[1])}</span><span>Legend ${_gjPips(S.legends, 2, true)}</span>`;
+  tally.innerHTML = `<span>Fish <b>${S.fish[0]}</b> of ${S.fish[1]} ${_gjPips(S.fish[0], S.fish[1])}</span><span>Bugs <b>${S.bugs[0]}</b> of ${S.bugs[1]} ${_gjPips(S.bugs[0], S.bugs[1])}</span><span>Legend ${_gjPips(S.legends, _gjKinds(p.id, 'fish').concat(_gjKinds(p.id, 'bug')).filter(d => d.legend).length, true)}</span>`;
   const chips = left.appendChild(_gjEl('div', 'gj-chips'));
   for (const [k, label] of [['fish', 'Fish'], ['bug', 'Bugs'], ['seen', 'Birds & beasts'], ['plant', 'Plants here']]) {
     const b = chips.appendChild(_gjEl('button', 'gj-chip' + (_gj.kind === k ? ' is-on' : ''), label)); b.type = 'button'; b.dataset.gjKind = k; b.setAttribute('aria-pressed', String(_gj.kind === k));

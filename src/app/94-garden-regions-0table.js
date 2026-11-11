@@ -264,7 +264,7 @@ function gardenRegionOdds(odds, b, ctx) {
     const mine = GARDEN_FISH_ONLY.filter(def => { const home = gardenRegionHome(def); return home && b.islandHomeWaters.includes(home.w) && gardenRegionHomeOpen(home, b.islandAreas); });
     for (const def of mine) if (gardenFishFits(def, Object.assign({}, ctx, { zone: def.zone[0] }))) out.push([def.id, gardenBugWeight(def, ctx)]);
     // a water is never empty: when none of its own is about at this hour or season, its commons still bite, at half the odds
-    if (!out.some(([id]) => gardenFishDef(id).cat === 'fish')) for (const def of mine) if (def.rarity === 'common' && gardenFishFits(Object.assign({}, def, { tod: [], seasons: [] }), Object.assign({}, ctx, { zone: def.zone[0] }))) out.push([def.id, gardenBugWeight(def, ctx) * 0.5]);
+    if (!out.some(([id]) => gardenFishDef(id).cat === 'fish')) for (const def of mine.some(d => d.rarity === 'common') ? mine.filter(d => d.rarity === 'common') : mine.filter(d => !d.legend)) if (gardenFishFits(Object.assign({}, def, { tod: [], seasons: [] }), Object.assign({}, ctx, { zone: def.zone[0] }))) out.push([def.id, gardenBugWeight(def, ctx) * 0.5]);
     return out;
   }
   if (!b.rw) { const pond = b.zone === 'pond', local = odds.filter(([id]) => { const d = gardenFishDef(id), H = gardenRegionHome(d); return !H || (pond ? H.w === 'pond' : !!H.sea); }); return gardenIslandFishCoastOdds(local, b); }
