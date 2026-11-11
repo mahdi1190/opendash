@@ -111,9 +111,12 @@ window.GardenRoomArt = (function () {
         T.rect(x0, y0, x1 - x0, y1 - y0, o.mortar || shade(base, -.45));
         for (let y = y0, row = 0; y < y1; y += ch, row++) for (let x = x0 - (row % 2) * cw / 2 - r() * 10; x < x1; x += cw * (.75 + r() * .5)) {
           const w = cw * (.7 + r() * .4), hh = ch * (.82 + r() * .14), c = shade(base, (r() - .5) * (o.var || .26)), mx = x + w / 2, my = y + hh / 2;
-          T.blob(mx, my, w / 2 - 2, hh / 2 - 1.5, c, 1, 7, .18);
-          T.blob(mx + light * w * .12, my - hh * .14, w * .3, hh * .26, shade(c, .18), .55, 6, .3);
-          T.blob(mx - light * w * .1, my + hh * .18, w * .36, hh * .2, shade(c, -.25), .5, 6, .3);
+          // dressed stone: a squared block with worn corners, its top and lit side catching the light
+          const bx = mx - w / 2 + 1.5, by = my - hh / 2 + 1, bw = w - 3, bh = hh - 2;
+          T.rrect(bx, by, bw, bh, 2 + r() * 4, c);
+          T.rect(bx + 2, by + 1, bw - 4, 2.5, shade(c, .22), .55); T.rect(light < 0 ? bx + 1 : bx + bw - 3.5, by + 2, 2.5, bh - 4, shade(c, .14), .45);
+          T.rect(bx + 2, by + bh - 3, bw - 4, 3, shade(c, -.3), .5);
+          if (r() < .4) T.ell(bx + r() * bw, by + r() * bh, bw * .2, bh * .18, shade(c, (r() - .5) * .4), .3);
         }
       },
       /** flagstones on a floor, in perspective: rows deepen toward you, joints staggered */
