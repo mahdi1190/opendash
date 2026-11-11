@@ -54,7 +54,8 @@ const WD_AT = Object.freeze({   // world cells
 });
 /* ---------- Settings: each kind can be turned down ---------- */
 const WD_PREFS = Object.freeze([
-  ['folk', 'People who call by', 'Six characters, one at a time, who come to your garden and remember what you have done.'],
+  ['folk', 'People who call by', 'The vale’s folk, one at a time, who come to your garden, remember what you have done, and have stories of their own.'],
+  ['story', 'Darker turns in the story', 'The vale’s story has some sad and serious parts. Turn this off for a gentler telling.'],
   ['post', 'The snail post', 'Letters and postcards, brought slowly by a snail.'],
   ['days', 'Small days in the calendar', 'A lantern on the lake, a supper, a fire: a few days a year, in the world.'],
   ['weather', 'Weather you can feel', 'Footprints in snow and after rain, and whatever else leaves them.'],

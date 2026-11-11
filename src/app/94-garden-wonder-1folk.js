@@ -20,6 +20,7 @@ function _wdFolkArt(r, o) {
   if (r.spines) s += A.P(A.dk(f, 0.4), 'M-12 -30L-15 -36L-10 -36L-12 -42L-6 -40L-6 -46L-1 -42L2 -46L4 -41L9 -43L8 -37C4 -30 -6 -24 -12 -30z');
   const hx = 1, hy = -34;
   if (k === 'mole') s += A.P(f, A.ell(hx, hy, 10, 8.5));
+  else if (k === 'hare') s += A.P(f, A.ell(hx, hy, 9, 8) + 'M-6 -40C-9 -52 -7 -58 -4 -58C-1 -56 -1 -48 -2 -40zM2 -41C2 -53 5 -58 8 -57C10 -54 8 -47 5 -40z') + A.P(r.ear || f, 'M-5 -42C-7 -51 -6 -55 -4.4 -55C-3 -53 -3 -47 -3.4 -42zM3.4 -42C4 -51 6 -55 7 -54C8 -51 6 -46 4.6 -42z');
   else s += A.P(f, A.ell(hx, hy, 9, 8)) + A.P(r.ear || f, A.circ(hx - 7, hy - 7, 3) + A.circ(hx + 5, hy - 8, 3));
   if (r.stripe) s += A.P('#f2f0ea', 'M-1 -42C-2 -36 2 -31 8 -30C9 -33 6 -40 3 -42z') + A.P('#26211f', 'M3 -42C6 -38 8 -34 9 -31L11 -33C10 -37 7 -41 5 -42z');
   s += A.P(r.snout || f, A.ell(hx + 7.5, hy + 2, 4.2, 3.2)) + A.P('#26211f', A.circ(hx + 11, hy + 1, 1.5));
@@ -30,6 +31,7 @@ function _wdFolkArt(r, o) {
   if (r.hat === 'scarf') s += A.P(r.hatc, A.rrect(-8, -28, 17, 3.4, 1.6) + A.rect(-7, -26, 3.4, 8));
   if (r.prop === 'roll') s += A.P('#efe4c8', A.rrect(10, -18, 5, 13, 1.6)) + A.S('#b09a6a', 0.6, 'M10 -12h5');
   if (r.prop === 'spade') s += A.S('#7a5a38', 1.4, 'M12 -14L12 -2') + A.P('#8e9aa0', 'M9.4 -2h5.2l-1 5h-3.2z');
+  if (r.prop === 'jar') s += A.P('#e8b040', A.rrect(9, -12, 7, 8, 2)) + A.P('#f6d878', A.rect(10.4, -10, 4, 3)) + A.P('#8a6a44', A.rrect(9, -13, 7, 2, 0.8));
   if (r.prop === 'bag') s += A.P('#b08a5a', A.rrect(-14, -18, 8, 9, 2)) + A.S('#7a5a38', 0.9, 'M-12 -18L0 -26');
   void o;
   return `<g class="wd-flip">${s}</g>`;
@@ -50,6 +52,9 @@ const WD_FOLK = Object.freeze([
   { id: 'wick', name: 'Wick', kind: 'owl', fur: '#8a6a44', coat: '#e4d4b8', chance: 60, gap: 2, likes: 'bug',
     when: (m) => m.tod === 'night' && !m.rain.now,
     thanks: (n) => [`The ${n}. Thank you. I was going to pretend I had caught it myself, but the others have stopped believing me.`, 'I found this while I was looking at something else. I am always looking at something else.'], back: 'seed' },
+  { id: 'quince', name: 'Quince', kind: 'hare', fur: '#b8926a', coat: '#d8b84a', snout: '#f0e2cc', ear: '#e8b8a8', hat: 'wide', hatc: '#c8b890', prop: 'jar', chance: 50, gap: 3, likes: 'crop',
+    when: (m) => ['dawn', 'day'].includes(m.tod) && !m.rain.snow,
+    thanks: (n) => [`I gave the ${n} to the bees. They went over it twice, very slowly, the way they do with things they approve of. One of them is still on it.`, 'Honey money, my mother called this. Go on, take it.'], back: 'seed' },
 ]);
 const WD_FOLK_ROW = new Map(WD_FOLK.map(r => [r.id, r]));
 /* ---------- what has really happened ---------- */
@@ -140,6 +145,13 @@ const WD_LINES = Object.freeze({
     { k: 'many', if: F => F.stars >= 6, t: 'You are getting good at this. I am not used to it. I shall need to think of something else to be mysterious about.' },
     { k: 'plain', again: 1, t: 'Look up. It’s free.' },
   ],
+  quince: [
+    { k: 'hello', t: 'Quince! Bees, orchard, the top of a very long stair. I come down for the post and to complain about the stair. Lovely to meet you. Must dash. I never dash.' },
+    { k: 'blooms', if: F => F.blooms >= 3, t: 'You have flowers out! The bees told me. Well. They didn’t tell me. They all went one way at once, and I followed them.' },
+    { k: 'new', if: F => F.newPlant, t: F => `New ${F.newPlant.toLowerCase()}, I see. A garden is only a long argument with the weather. You seem to be winning, just about.` },
+    { k: 'count', if: F => F.talks >= 2, t: 'I counted the steps up to the orchard once. Two hundred and twelve. Then I counted them down. Two hundred and nine. I don’t like to think about the three.' },
+    { k: 'plain', again: 1, t: 'Red sky at night, bees in by eight. I made that one up. It is mostly true.' },
+  ],
 });
 function _wdLinesFor(row, F) {
   const said = (k) => !!_wdGet(`fs.${row.id}.${k}`), list = WD_LINES[row.id] || [], ok = (l) => { try { return !l.if || !!l.if(F); } catch (e) { return false; } };
@@ -155,7 +167,9 @@ function _wdLinesFor(row, F) {
 const _wdf = { S: null, row: null };
 function _wdFolkPick(m) {
   const today = m.today, fd = _wdGet('fd');
-  if (fd && fd.d === today) { if (fd.done) return null; const r = WD_FOLK_ROW.get(fd.id); return r && r.when(m) ? r : null; }
+  if (fd && fd.d === today) { if (fd.done) return null; const r = WD_FOLK_ROW.get(fd.id); return r && (fd.stay || r.when(m)) ? r : null; }
+  const told = typeof wdKinPick === 'function' ? wdKinPick(m) : null;   // someone has the next piece of the vale's story: they come today, at any hour (94-garden-wonder-1kin.js)
+  if (told) { _wdSet('fd', { d: today, id: told.id, stay: 1 }); return told; }
   const ever = WD_FOLK.some(r => _wdGet('fv.' + r.id));
   const rows = WD_FOLK.filter(r => { const l = _wdGet('fv.' + r.id); return r.when(m) && (!l || _wdDaysBetween(l, today) >= r.gap); }).sort((a, b) => gardenHash(today + a.id) - gardenHash(today + b.id));
   for (const r of rows) if (!ever || gardenHash('wd-folk|' + today + '|' + r.id) % 100 < r.chance) { _wdSet('fd', { d: today, id: r.id }); return r; }
@@ -169,9 +183,11 @@ const WD_FOLK_MEET = Object.freeze({
   pip: Object.freeze(['tackle-shop', -1.6, 1.1]),
   thistle: Object.freeze(['post-box', 1.6, 1.1]),
   wick: Object.freeze(['sundial', -1.6, 1.1]),
+  quince: Object.freeze(['sundial', 1.6, 1.1]),
 });
 const WD_FOLK_MEET_FALLBACKS = Object.freeze([Object.freeze(['notice-board', -1.6, 1.1]), Object.freeze(['post-box', 1.6, 1.1])]);
 function _wdFolkMeeting(row) {
+  const home = typeof wdKinHome === 'function' ? wdKinHome(row) : null; if (home) return home;   // their own place in the vale, once you have met
   const preferred = WD_FOLK_MEET[row.id], choices = preferred ? [preferred, ...WD_FOLK_MEET_FALLBACKS] : WD_FOLK_MEET_FALLBACKS;
   for (let i = 0; i < choices.length; i++) {
     const at = choices[i]; if (i && preferred && at[0] === preferred[0]) continue;
@@ -216,7 +232,7 @@ function _wdFolkSpawn(row) {
       const fl = S.node && S.node.querySelector('.wd-flip');
       if (fl && S.fk !== S.face + '' + S.node.childElementCount) { S.fk = S.face + '' + S.node.childElementCount; fl.setAttribute('transform', `scale(${S.face} 1)`); }
       if (!S.gone && !S.hold && S.t > 480) _wdFolkLeave(S);
-      else if (!S.gone && !S.hold && S.t > 8 && Math.floor(S.t) !== S.chk) { S.chk = Math.floor(S.t); if (!S.row.when(gardenHere())) _wdFolkLeave(S); }
+      else if (!S.gone && !S.hold && S.t > 8 && Math.floor(S.t) !== S.chk) { S.chk = Math.floor(S.t); if (!S.row.when(gardenHere()) && !(_wdGet('fd') || {}).stay) _wdFolkLeave(S); }
     },
     onAim(S) { S.hold = true; },
     onClick: (S) => _wdFolkTalk(S),
@@ -233,7 +249,8 @@ function _wdFolkLeave(S) {
 }
 function _wdFolkTalk(S) {
   const row = S.row, m = gardenModel(), F = wdFacts(m, row.id), W = _wdG();
-  const lines = _wdLinesFor(row, F), acts = [];
+  const kin = typeof wdKinTalk === 'function' ? wdKinTalk(row, F, m, S) : null;   // the vale's story, today's line, a gate hint, a small favour (94-garden-wonder-1kin.js)
+  const lines = kin ? kin.lines : _wdLinesFor(row, F), acts = kin ? kin.actions : [];
   W['fn.' + row.id] = F.talks + 1; W['fv.' + row.id] = m.today;
   wdArt(S, _wdFolkMarkup(row, false));
   const extra = typeof wdFolkExtra === 'function' ? wdFolkExtra(row, F, S) : null;   // a map, an invitation to look up
@@ -241,7 +258,7 @@ function _wdFolkTalk(S) {
   if (extra && extra.actions) acts.push(...extra.actions);
   if (!S.gave) acts.push({ label: 'Give something', run: (T) => _wdFolkGive(S, T) });
   _wdSave();
-  wdTalk({ name: row.name, art: _wdFolkArt(row), lines, actions: acts, at: { x: S.x, y: S.y }, onClose: () => _wdFolkLeave(S), closeQuiet: true });
+  wdTalk({ name: kin && kin.name || row.name, art: _wdFolkArt(row), lines, actions: acts, at: { x: S.x, y: S.y }, onClose: () => _wdFolkLeave(S), closeQuiet: true });
 }
 /* ---------- give something: a letter comes later about what became of it (94-garden-wonder-2post.js) ---------- */
 function _wdBagFor() {
@@ -253,6 +270,7 @@ function _wdBagFor() {
     try {
       if (k === 'crop') { const d = gardenPlant(id); if (!d) continue; name = d.name.replace(/ tree$/i, ''); art = gardenIconSvg(id, { kind: 'plant', stage: 4, px: 28 }); }
       else if (k === 'fish') { const d = GARDEN_FISH.find(x => id.startsWith(x.id + '-')); if (!d) continue; name = d.name; art = gardenCatchSvg('fish', d.id, 28, { uid: 'wdb' + d.id }); }
+      else if (k === 'bug') { const d = typeof GARDEN_BUGS !== 'undefined' && GARDEN_BUGS.find(x => x.id === id); if (!d) continue; name = d.name; art = gardenCatchSvg('bug', d.id, 28, { uid: 'wdb' + d.id }); }
       else continue;
     } catch (e) { continue; }
     out.push({ item, name, art });
@@ -273,6 +291,8 @@ function _wdFolkGive(S, T) {
       const key = _gdLed('wd', { i: { [b.item]: -1 }, n: 1 }), r = S.row, W = _wdG(), n = Number(W['fgn.' + r.id] || 0) + 1, gk = `fg.${r.id}.${n}`;
       W['fgn.' + r.id] = n; W[gk] = { i: b.item, d: _wdToday(), name: b.name };
       S.gave = true; _gdSave();
+      const said = typeof wdKinGave === 'function' ? wdKinGave(r, b) : null;   // a favour they asked for, and friendship (94-garden-wonder-1kin.js)
+      if (said) { T.say(said, []); return; }
       T.say(r.likes === b.item.slice(0, b.item.indexOf(':')) ? `A ${b.name.toLowerCase()}! Oh, you shouldn’t have. I mean that. I shall be thinking about this.` : `A ${b.name.toLowerCase()}. Well now. I shall find something to do with that.`, [{ label: 'Take it back', run: (T2) => { const G = _gdG(); delete G.led[key]; delete G.wd[gk]; G.wd['fgn.' + r.id] = n - 1; S.gave = false; _gdSave(); T2.say('Quite right. Keep it.', []); } }]);
     };
     row.appendChild(x);
