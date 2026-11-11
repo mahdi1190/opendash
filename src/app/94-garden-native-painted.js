@@ -243,5 +243,5 @@ window.GardenNativePainted = (function () {
     return { destroy() { for (const im of made) im.destroy(); made.length = 0; }, count: made.length };
   }
   function status() { return { wanted: wanted(), ready: ready(), groundMs, planted: lastPlanting.length, spots: spotCounts, lastError }; }
-  return { wanted, ready, preload, ground, building, planting, status, get lastError() { return lastError; }, set lastError(v) { lastError = v; } };
+  return { wanted, ready, preload, ground, building, planting, status, objectImage, objectCanvas, get lastError() { return lastError; }, set lastError(v) { lastError = v; } };
 })();
