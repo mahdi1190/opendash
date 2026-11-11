@@ -126,7 +126,7 @@ function gardenLifeBookTab(el) {
 function _glbDetail(kind, d, day) {
   const back = _gdp.pop && _gdp.pop.tab;   // closing an entry goes back to the page of the book you were on
   openDialog({
-    title: day ? d.name : 'Not found yet', width: 480, onClose: back ? () => setTimeout(() => gardenPopupOpen(back), 0) : undefined,
+    title: day ? d.name : 'Not found yet', width: 480, className: 'gd-popup', onClose: back ? () => setTimeout(() => gardenPopupOpen(back), 0) : undefined,
     body(el) {
       el.classList.add('gd-almdlg');
       const art = _gdpEl('div', 'gd-almdlg-art' + (day ? '' : ' gl-silhouette')); art.innerHTML = _glbArt(kind, d, 128); el.appendChild(art); _glbFit(art);
