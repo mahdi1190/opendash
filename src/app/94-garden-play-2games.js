@@ -1,6 +1,6 @@
 /* ============================================================
    PLAY: the games. Today's riddle, skipping stones, pet agility, four in a row, birdsong and tunes, the patchwork map. docs/dev/HUNDRED_PLAY.md 5, 12-16, 22.
-   Each is a dialog with its own small loop, which stops when the dialog goes (gpLoop). They pay tickets, never coins.
+   Each is a dialog with its own small loop, which stops when the dialog goes (gpLoop). They pay a little XP, never coins: the game is the reward.
    ============================================================ */
 
 /* ---------- today's riddle ---------- */

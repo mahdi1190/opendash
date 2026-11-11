@@ -1,6 +1,6 @@
 /* ============================================================
    PLAY: the dig, and fossil skeletons. docs/dev/HUNDRED_PLAY.md 10-11. A patch of old ground: the brush is gentle, the pick is quick, and every tap cracks the wall.
-   One free dig a day, then 3 tickets each. Pieces are items (fos:<skeleton>-<part>), and a full set gives you the skeleton, a decoration anyone can see. Pure rules at the top.
+   One free dig a day; days you missed wait for you, up to 3. Pieces are items (fos:<skeleton>-<part>), and a full set gives you the skeleton, a decoration anyone can see. Pure rules at the top.
    ============================================================ */
 const GP_DIG = Object.freeze({ W: 11, H: 8, crack: 34, wait: 3 });   // one free dig a day; days you missed wait for you, up to 3 (like the fossils in a certain island game)
 /** Digs you can have now: today's, and one for each of the last GP_DIG.wait days you did not dig on (used: that day is marked -1). */
