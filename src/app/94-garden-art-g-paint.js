@@ -31,11 +31,13 @@ const _GFP = Object.freeze({
   kinds: {
     // People are built of many overlapping pieces (a sleeve over a cuff over a hand), so their light is gentler and mostly from above:
     // a strong diagonal on every piece reads as blotches. Skin keeps its flat tone (a face shaded per piece looks dirty).
-    actor: { lit: 0.16, dk: 0.24, sat: 0.9, key: 0.05, mid: 0.42, field: [-16, -74, 12, 2] },
-    npc: { lit: 0.14, dk: 0.24, sat: 0.94, key: 0.04, mid: 0.42, field: [-16, -62, 12, 2] },
-    pet: { lit: 0.15, dk: 0.22, sat: 0.94, key: 0.04, x1: 0.1, y1: 0, x2: 0.62, y2: 1 },
-    fish: { lit: 0.14, dk: 0.2, sat: 0.95, key: 0.03, x1: 0.3, y1: 0, x2: 0.5, y2: 1 },
-    bug: { lit: 0.13, dk: 0.2, sat: 0.95, key: 0.03, x1: 0.1, y1: 0.05, x2: 0.8, y2: 0.95 },
+    // tone: the scene kit's own form shading, per piece (see _gfpTone): ts how much of the piece the lit body covers (the rest is its shade rim,
+    // thickest at the lower right), td how deep the shade is, tl the light glaze; tmin the smallest piece (in the walker's units) that gets it.
+    actor: { lit: 0.16, dk: 0.24, sat: 0.9, key: 0.05, mid: 0.42, field: [-16, -74, 12, 2], tone: { ts: 0.9, td: 0.26, tl: 0.3, tmin: 2.4 } },
+    npc: { lit: 0.14, dk: 0.24, sat: 0.94, key: 0.04, mid: 0.42, field: [-16, -62, 12, 2], tone: { ts: 0.9, td: 0.26, tl: 0.3, tmin: 2.4 } },
+    pet: { lit: 0.15, dk: 0.22, sat: 0.94, key: 0.04, x1: 0.1, y1: 0, x2: 0.62, y2: 1, tone: { ts: 0.88, td: 0.28, tl: 0.32, tmin: 2.4 } },
+    fish: { lit: 0.14, dk: 0.2, sat: 0.95, key: 0.03, x1: 0.3, y1: 0, x2: 0.5, y2: 1, tone: { ts: 0.86, td: 0.3, tl: 0.36, tmin: 3, ay: 0.22 } },
+    bug: { lit: 0.13, dk: 0.2, sat: 0.95, key: 0.03, x1: 0.1, y1: 0.05, x2: 0.8, y2: 0.95, tone: { ts: 0.86, td: 0.3, tl: 0.4, tmin: 2.2 } },
   },
 });
 const _gfpCache = new Map();
@@ -98,6 +100,45 @@ function _gfpSet(attrs, name, value) {
   const re = new RegExp('((?:^|\\s)' + name + '=")([^"]*)(")');
   return re.test(attrs) ? attrs.replace(re, (_, a, __, c) => a + value + c) : attrs + ' ' + name + '="' + value + '"';
 }
+/** A shape's box in its own units (an ellipse, a circle, a rect, or a path of absolute commands), or null. */
+function _gfpBox(tag, a) {
+  const n = (k) => Number(_gfpAttr(a, k) || 0);
+  if (tag === 'ellipse') { const rx = n('rx'), ry = n('ry'); return rx > 0 && ry > 0 ? [n('cx') - rx, n('cy') - ry, 2 * rx, 2 * ry] : null; }
+  if (tag === 'circle') { const r = n('r'); return r > 0 ? [n('cx') - r, n('cy') - r, 2 * r, 2 * r] : null; }
+  if (tag === 'rect') { const w = n('width'), h = n('height'); return w > 0 && h > 0 ? [n('x'), n('y'), w, h] : null; }
+  if (tag !== 'path') return null;
+  const d = _gfpAttr(a, 'd') || '';
+  if (!d || /[a-y]|[AHV]/.test(d.replace(/e-?\d/gi, ''))) return null;   // relative commands, arcs and lone axes: no cheap box (the piece keeps its gradient)
+  const v = (d.match(/-?\d*\.?\d+(?:e-?\d+)?/gi) || []).map(Number);
+  if (v.length < 6) return null;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let i = 0; i + 1 < v.length; i += 2) { x0 = Math.min(x0, v[i]); x1 = Math.max(x1, v[i]); y0 = Math.min(y0, v[i + 1]); y1 = Math.max(y1, v[i + 1]); }
+  return x1 > x0 && y1 > y0 ? [x0, y0, x1 - x0, y1 - y0] : null;
+}
+/**
+ * The scene kit's form shading on one opaque piece (70-scene-lib-animals-cat.js: "the haunch in shade, the lit side of the body, the light
+ * along the back"): the piece in its shade, its lit body over it scaled toward a point up and left of its middle (so the shade is a rim,
+ * thickest at the lower right, away from the sun), and on a big enough piece a light glaze up at the upper left. Three flat paints, no seams
+ * of gradient. Returns null for a piece too small or of a shape whose box is unknown.
+ */
+function _gfpTone(tag, a, base, K, M) {
+  const T = K.tone; if (!T) return null;
+  const b = _gfpBox(tag, a); if (!b) return null;
+  const k = Math.sqrt(Math.abs(M[0] * M[3] - M[1] * M[2])) || 1, w = b[2] * k, h = b[3] * k;
+  if (Math.min(w, h) < T.tmin) return null;
+  const r = v => Math.round(v * 1000) / 1000, own = _gfpAttr(a, 'transform');
+  const at = (s, fx, fy) => { const ax = b[0] + b[2] * fx, ay = b[1] + b[3] * fy; return `${own ? own + ' ' : ''}matrix(${r(s)} 0 0 ${r(s)} ${r(ax * (1 - s))} ${r(ay * (1 - s))})`; };
+  // the rim is a fixed width in the walker's units (about 0.9), however big the piece: a big coat and a small cuff shade alike
+  const s = Math.max(T.ts, 1 - 1.5 / Math.max(1, Math.min(w, h))), sh = _gfpHex(_gfpMix(base, _GFP.shade, T.td));
+  const drop = (x) => x.replace(/\s(stroke|stroke-width|stroke-opacity|stroke-linecap|stroke-linejoin|class|style|id)="[^"]*"/g, '');
+  const plain = drop(a);
+  let out = '<' + tag + _gfpSet(plain, 'fill', sh) + '/>' + '<' + tag + _gfpSet(_gfpSet(plain, 'fill', _gfpHex(base)), 'transform', at(s, 0.34, T.ay != null ? T.ay : 0.28)) + '/>';
+  const curvy = tag === 'ellipse' || tag === 'circle' || tag === 'path' && ((_gfpAttr(a, 'd') || '').match(/[CQST]/g) || []).length >= 3;   // a boxy piece takes no glaze (it would read as a pale block)
+  if (curvy && Math.min(w, h) >= 4.4) out += '<' + tag + _gfpSet(_gfpSet(_gfpSet(plain, 'fill', _gfpHex(_gfpMix(base, _GFP.sun, T.tl))), 'transform', at(0.4, 0.1, 0.08)), 'fill-opacity', '0.28') + '/>';
+  // what the piece had besides its fill (an edge drawn on it) goes on top, unchanged
+  const strokeOnly = /\sstroke="(?!none)[^"]*"/.test(a) ? '<' + tag + _gfpSet(a, 'fill', 'none') + '/>' : '';
+  return out + strokeOnly;
+}
 function gardenFigurePaint(svg, kind) {
   if (!svg || typeof svg !== 'string') return svg || '';
   if (svg.startsWith('<!--gfp-->')) return svg;   // already painted (a figure inside a figure: a pet held, a fish held up)
@@ -118,6 +159,10 @@ function gardenFigurePaint(svg, kind) {
       let base = null;
       if (fRgb) {
         base = _gfpGrade(fRgb, K);
+        if (op >= 0.95 && fop >= 0.95 && close && tag !== 'use' && tag !== 'g' && !/\sclip-path=|\smask=/.test(a)) {
+          const toned = _gfpTone(tag, a, base, K, M);
+          if (toned) return toned;
+        }
         if (op >= 0.95 && fop >= 0.95 && tag !== 'use' && tag !== 'g') {
           const lit = _gfpMix(base, _GFP.sun, K.lit), dk = _gfpMix(base, _GFP.shade, K.dk);
           let id, geo;

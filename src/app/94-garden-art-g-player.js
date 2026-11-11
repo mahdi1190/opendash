@@ -176,6 +176,20 @@ function _gplBackPack(a, fo, T) {
 /** From behind, a scarf's hanging end is on the far side: only the wrap at the neck shows. */
 function _gplClipUp(s, uid) { return s ? `<clipPath id="${uid}u"><rect x="0" y="60" width="100" height="23"/></clipPath><g clip-path="url(#${uid}u)">${s}</g>` : ''; }
 
+/** The Painted village's modelling of the portrait's face (its units: the head egg spans x 31 to 69, y 20 to 64; eyes at 42 and 58, y 46; lit from the upper left). */
+function _gplPaintFace(a) {
+  const sk = pfTone(_pfHexOf('skin', a.skin, '#e2b08c')), hcol = _pfHexOf('hair', a.hairCol, '#4a3324'), E = (x, y, rx, ry, c, op) => _pfE(x, y, rx, ry, c, op), P = (d, c, op) => _pfP(d, c, op);
+  const bald = a.hair === 'bald' || a.hair === 'norwood7' || a.hair === 'buzz';
+  const skull = P('M60.4 30 C67.4 37 69 50 62.4 60.6 C59 63.6 55 64.6 51 64.6 C57 61.6 62.4 56 64 48 C65 41 63.6 35 60.4 30 Z', sk[1], 0.42)   // the jaw and the far cheek turned from the sun
+    + P('M36 50 C36.6 56 40 60.6 45 63 C40.6 62.4 35.6 58.6 34 52 Z', sk[1], 0.2)
+    + E(40.4, 33.4, 7.4, 4.4, sk[2], 0.32) + (bald ? E(42, 26.6, 5.4, 2.6, '#fffaf0', 0.32) : '');   // the lit brow; a bare crown takes a shine
+  const under = E(42, 42.8, 4.4, 1.6, sk[1], 0.2) + E(58.4, 43, 4.4, 1.6, sk[1], 0.26)   // the eye sockets, under the brow
+    + P('M51 46.4 C51.2 50 51.8 52.4 53.6 53.6 C52 54.6 49.6 54.6 48.6 53.6 C49.6 53 50.4 50 51 46.4 Z', sk[1], 0.45)   // the nose's shaded side
+    + E(38.6, 51.4, 4.2, 2.6, sk[2], 0.3) + E(50, 61.6, 2.8, 0.9, sk[1], 0.36) + E(49.6, 63.6, 3.6, 0.8, sk[3], 0.12);   // the lit cheek, the lower lip's shadow, the chin's underside
+  const over = E(49.6, 52.2, 0.9, 0.6, '#fffaf0', 0.55) + E(37.8, 50, 1.6, 0.7, '#fffaf0', 0.22) + _pfS('M41.4 64 C45 65.6 55 65.6 58.6 64', _pfMix(sk[1], hcol, 0.2), 0.6, 0.0);
+  return { skull, under, over };
+}
+
 /* -- the whole person -- */
 function _gplDraw(a, dir, pose, o) {
   const fo = profileFigureOpts(a), PP = _pfSP;
@@ -196,6 +210,10 @@ function _gplDraw(a, dir, pose, o) {
   const slung = o.gear && typeof _gplSlung === 'function' ? _gplSlung(o.gear, pose) : '';
   const held = o.gear && o.gear.hd && typeof gardenLookHeldTool === 'function' ? gardenLookHeldTool(o.gear.hd) : null;   // an umbrella, a balloon: in the hand when it is free
   const side = dir === 'e', back = dir === 'n';
+  // The Painted village (94-garden-art-g-cast.js, -g-paint.js): the head a little smaller on the body, as the scene kit's people are in proportion,
+  // and the face modelled: eye sockets, the shaded side of the nose and jaw, the lit cheek, a lit nose tip (_gplPaintFace). Every wardrobe piece stays.
+  const HK = o.painted ? 0.84 : 1, yN = _gplY(63), hs = (m) => (HK === 1 ? m : `translate(0 ${_gplN(yN)}) scale(${HK}) translate(0 ${_gplN(-yN)}) ${m}`);
+  if (o.painted) { const pf = _gplPaintFace(a); L.face = pf.under + L.face + pf.over; L.skull = L.skull + pf.skull; }
   const hipY = PP.HIP * KY * S, headO = `transform-origin:0px ${_gplN(_gplY(66))}px`;
   const P = _gplPoseArms(pose, side, Tools, o.stageRod);
   let legs = '', upper = '';   // the legs under the body: a hem or a hand always lies over a thigh
@@ -208,9 +226,9 @@ function _gplDraw(a, dir, pose, o) {
     // the head turned the way it walks: the face slides over the egg, the ears the other way; what hangs behind goes behind (a ponytail trails)
     const t = _GPL_TURN;
     const head = _gplG(`translate(${_gplN(-t * 0.7)} 0)`, L.ears) + L.skull + `<clipPath id="${uid}h"><path d="${PF_HEAD_D}"/><rect x="20" y="60" width="45" height="70"/></clipPath><g clip-path="url(#${uid}h)">${_gplG(`translate(${t} 0)`, L.face)}</g>` + _gplG(`translate(${_gplN(t * 0.22)} 0)`, L.hair) + _gplG(`translate(${t} 0)`, L.glasses) + _gplG(`translate(${_gplN(t * 0.22)} 0)`, L.hat) + L.phones + L.extra;
-    upper = `<g class="gpl-hd" style="${headO}">${_gplG(_gplPort(), `<g transform="translate(100 0) scale(-1 1)">${L.hairback}</g>`)}</g>`
-      + _gplG(fig, F.back) + armFar + _gplG(_gplPort(), L.neck) + _gplG(fig, F.mid) + _gplG(_gplPort(), L.strands + L.scarf) + armNear
-      + `<g class="gpl-hd" style="${headO}">${_gplG(_gplPort(), head)}</g>`;
+    upper = `<g class="gpl-hd" style="${headO}">${_gplG(hs(_gplPort()), `<g transform="translate(100 0) scale(-1 1)">${L.hairback}</g>`)}</g>`
+      + _gplG(fig, F.back) + armFar + _gplG(_gplPort(), L.neck) + _gplG(fig, F.mid) + _gplG(hs(_gplPort()), L.strands) + _gplG(_gplPort(), L.scarf) + armNear
+      + `<g class="gpl-hd" style="${headO}">${_gplG(hs(_gplPort()), head)}</g>`;
   } else {
     const kb = _GPL_BUST[a.build] || 0.8, port = _gplPort(), bust = _gplPort(kb);
     const KXF = 3.0, dx = 9.4 * (kb / 0.8) * S;
@@ -226,12 +244,12 @@ function _gplDraw(a, dir, pose, o) {
     const lower = _gplG(bust, _gplLower(a, fo, T, uid, back)), cape = a.outer === 'cape';   // a cape lies over the arms
     if (back) {
       upper = lower + _gplG(bust, _gplBackBust(a, fo, uid) + _gplHipBag(a, true)) + left + right + _gplG(bust, L.neck)
-        + `<g class="gpl-hd" style="${headO}">${_gplG(port, L.back + (a.outer === 'cape' ? '' : L.outerback) + L.hairback + L.strands)}</g>` + _gplG(bust, _gplClipUp(L.scarf, uid) + _gplBackPack(a, fo, T))
-        + `<g class="gpl-hd" style="${headO}">${_gplG(port, _gplBackHead(a, L))}</g>`;
+        + `<g class="gpl-hd" style="${headO}">${_gplG(port, L.back + (a.outer === 'cape' ? '' : L.outerback)) + _gplG(hs(port), L.hairback + L.strands)}</g>` + _gplG(bust, _gplClipUp(L.scarf, uid) + _gplBackPack(a, fo, T))
+        + `<g class="gpl-hd" style="${headO}">${_gplG(hs(port), _gplBackHead(a, L))}</g>`;
     } else {
-      upper = `<g class="gpl-hd" style="${headO}">${_gplG(port, L.back + L.outerback + L.hairback)}</g>` + lower + (cape ? left + right : '') + _gplG(bust, L.neck + L.body + _gplHipBag(a, false) + (cape ? _gplCapeFront(fo) : '')) + (cape ? '' : left + right)
-        + _gplG(port, L.strands) + _gplG(bust, L.scarf)
-        + `<g class="gpl-hd" style="${headO}">${_gplG(port, L.ears + L.skull + L.face + L.hair + L.glasses + L.hat + L.phones + L.extra)}</g>`;
+      upper = `<g class="gpl-hd" style="${headO}">${_gplG(port, L.back + L.outerback) + _gplG(hs(port), L.hairback)}</g>` + lower + (cape ? left + right : '') + _gplG(bust, L.neck + L.body + _gplHipBag(a, false) + (cape ? _gplCapeFront(fo) : '')) + (cape ? '' : left + right)
+        + _gplG(hs(port), L.strands) + _gplG(bust, L.scarf)
+        + `<g class="gpl-hd" style="${headO}">${_gplG(hs(port), L.ears + L.skull + L.face + L.hair + L.glasses + L.hat + L.phones + L.extra)}</g>`;
     }
   }
   return `<g class="gpl gpl-${pose} gpl-d${dir}"><g class="gpl-root" style="transform-origin:0px 0px">${legs}<g class="gpl-up" style="transform-origin:0px ${_gplN(hipY)}px">${back ? '' : slung}${upper}${back ? slung : ''}</g></g></g>${o.gear && o.gear.bt && typeof gardenBoatOnFigure === 'function' ? gardenBoatOnFigure() : ''}`;
@@ -244,7 +262,8 @@ function gartPlayerSvg(avatar, o) {
   const pose = GPL_POSES.includes(o.pose) ? o.pose : 'idle';
   let a;
   try { a = profileAvatarNormalize(avatar); } catch (e) { return ''; }
-  const key = JSON.stringify(a) + dir + pose + (o.motion ? 'm' : '') + (o.stageRod ? 'r' : '') + (o.gear ? JSON.stringify(o.gear) : '');
+  if (o.painted == null) o = Object.assign({}, o, { painted: !o.flat && typeof gardenFigurePaintOn === 'function' && gardenFigurePaintOn() });
+  const key = JSON.stringify(a) + dir + pose + (o.painted ? 'p' : '') + (o.motion ? 'm' : '') + (o.stageRod ? 'r' : '') + (o.gear ? JSON.stringify(o.gear) : '');
   let s = _GPL.cache.get(key);
   if (s == null) { try { s = _gplDraw(a, dir, pose, o); } catch (e) { s = ''; } if (_GPL.cache.size > 40) _GPL.cache.clear(); _GPL.cache.set(key, s); }
   return s && !o.flat && typeof gardenFigurePaintIf === 'function' ? gardenFigurePaintIf(s, 'actor') : s;   // the Painted village paints the figure into the scene's light (94-garden-art-g-paint.js)
