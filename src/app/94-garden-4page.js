@@ -620,6 +620,8 @@ function _gdpBindStage(box) {
 function _gdpAct(r) { if (r && !r.ok) _gdpSay(r); return r; }
 function _gdpRefreshChromeSoon() { if (_gdp.root) gardenHudPaint(gardenHere()); }
 function _gdpClick(it, cell, ev) {
+  // A card that just closed by itself (the level-up card) swallows the click that was on its way to its button.
+  if (_gdp.swallowUntil && performance.now() < _gdp.swallowUntil) return;   // clock-ok: a short input guard
   const m = gardenHere(), mode = _gdpMode(), tool = _gdpTool();
   const at = ev && ev.clientX != null ? { x: ev.clientX, y: ev.clientY } : null;
   // something carried: it goes down here, or it says no
@@ -635,7 +637,10 @@ function _gdpClick(it, cell, ev) {
       const r = gardenPlaceDecor(_gdp.decor, cell.x, cell.y, 0);
       if (!r.ok) { gameDenyOf(r, null, { at }); return; }
       gameCheer(null, { at });
-      gardenWalkToPoint({ x: cell.x + 0.5, y: cell.y + 1.3 }, null, { radius: 3 });
+      // Walk up beside it, on your side of it, and only when it is not already within reach: walking onto the
+      // spot itself left you standing inside a fence or bench you had just put down.
+      { const def = gardenDecor(_gdp.decor), w = (def && def.w) || 1, h = (def && def.h) || 1, cx = cell.x + w / 2, cy = cell.y + h / 2, dx = _gw.px - cx, dy = (_gw.py - cy) * 1.6, d = Math.hypot(dx, dy), stand = Math.max(w, h * 1.6) / 2 + 0.9;
+        if (d > stand + 1.6) { const k = stand / (d || 1); gardenWalkToPoint({ x: cx + dx * k, y: cy + dy * k / 1.6 }, null, { radius: 3 }); } }
       if (gardenHas('decor:' + _gdp.decor) < 1) { _gdp.decor = ''; _gdpPickTool('hand'); } else gardenHudPaint(gardenHere());
       return;
     }
@@ -812,6 +817,8 @@ function _gdpKey(ev) {
   if (ev.target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(ev.target.tagName)) return;
   if (_gdpPopOpen()) return;   // a pop-up is open: its own keys
   if (ev.key === 'Escape' && typeof _gwFishBusy === 'function' && (_gwFishBusy() || _gw.netting)) { ev.preventDefault(); ev.stopPropagation(); if (_gwFishBusy()) _gwFishCancel(); _gw.netting = null; return; }
+  // Esc on the way to a cast (or any walk with something to do at the end) stops there: the walk's action must not run after it
+  if (ev.key === 'Escape' && typeof _gw !== 'undefined' && _gw.then && _gw.path && _gw.path.length) { ev.preventDefault(); ev.stopPropagation(); const nw = window.GardenNative && GardenNative.active() && GardenNative.world && GardenNative.world(); if (nw && nw.stopMoving) nw.stopMoving(); else { _gw.path = []; _gw.then = null; _gw.hold = null; _gw.spd = 0; } return; }
   if (typeof gardenWorldKey === 'function' && gardenWorldKey(ev, true, _gdpMode() === 'decorate')) return;   // 2.22: you walk, the camera zooms (while decorating only the arrows walk: R, S and Delete are yours)
   const m = gardenHere(), mode = _gdpMode();
   if (ev.key === 'Enter') { ev.preventDefault(); gardenWorldInteract(); return; }

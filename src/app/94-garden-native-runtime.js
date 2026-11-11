@@ -297,7 +297,9 @@ window.GardenNative = (function () {
     if (s.dead || !s.world || document.hidden) return;
     if (!s.box.isConnected || !wanted()) { destroy(); return; }
     if (!s.ready) return;
-    const dt = Math.min(.055, Math.max(.001, delta / 1000 || .016));
+    // Fixed sub-steps with capped catch-up (see world.update): one step at
+    // normal frame rates, up to five 55 ms steps for a slow frame.
+    const frameDt = Math.min(.25, Math.max(.001, delta / 1000 || .016)), steps = Math.max(1, Math.ceil(frameDt / .055 - 1e-9)), dt = frameDt / steps;
     if (!s.capturing) {
       // The Classic slow heartbeat finds DOM SVG stages, which native mode
       // does not mount. Keep its canonical weather/time check on this clock,
@@ -306,7 +308,7 @@ window.GardenNative = (function () {
         s.lightCheckAt = time;
         if (typeof gardenLightCheck === 'function') { try { gardenLightCheck(); } catch (error) { console.error('[garden]', error); } }
       }
-      if (inRoom()) { GardenNativeRooms.update(time, dt); _gwFishFrame(dt); }
+      if (inRoom()) { GardenNativeRooms.update(time, frameDt); for (let i = 0; i < steps; i++) _gwFishFrame(dt); }
       else {
         s.world.update(time, delta);
         // World.update owns its movement memo and releases it on return. The
@@ -314,7 +316,7 @@ window.GardenNative = (function () {
         // collision snapshot here rather than rebuilding its revision per probe.
         _gw.frameActive = true; _gw.frameGrid = null; _gw.framePrefs = _gdpPrefs();
         try {
-          _gwFishFrame(dt); _gwBugsFrame(dt); _gwPetFrame(dt); _gwSpritesFrame(dt); if (typeof gardenLifeVisitFrame === 'function') gardenLifeVisitFrame(time); if (typeof _ptw !== 'undefined' && _ptw.on) _ptwFrame(time, true); if (s.world.flushDepth) s.world.flushDepth(); gardenHudFrame(); if (typeof gardenPoseFrame === 'function') gardenPoseFrame();
+          for (let i = 0; i < steps; i++) { _gwFishFrame(dt); _gwBugsFrame(dt); _gwPetFrame(dt); _gwSpritesFrame(dt); } if (typeof gardenLifeVisitFrame === 'function') gardenLifeVisitFrame(time); if (typeof _ptw !== 'undefined' && _ptw.on) _ptwFrame(time, true); if (s.world.flushDepth) s.world.flushDepth(); gardenHudFrame(); if (typeof gardenPoseFrame === 'function') gardenPoseFrame();
         } finally { _gw.frameActive = false; _gw.frameGrid = null; _gw.framePrefs = null; }
       }
       hoverProjection(s, false);
