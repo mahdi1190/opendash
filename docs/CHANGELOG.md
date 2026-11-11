@@ -10,6 +10,18 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.67.4] - 2026-11-11
+
+### Fixed
+
+- Seasons change without freezing the garden.
+- A new day no longer pulls you out of the garden.
+- A friend you let in comes straight in.
+- Escape stops a walk to the water.
+- Adopting a pet shows it at once.
+- The morning story closes with the mouse.
+- The pet-away basket shows by the gate.
+
 ## [2.67.3] - 2026-11-11
 
 ### Fixed

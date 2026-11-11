@@ -384,7 +384,15 @@ function gardenLiveOnEvent(d) {
   const ev = d && d.ev;
   if (!ev || typeof ev !== 'object') return;
   if (ev.k === 'post') { gardenLiveLoad(true).catch(() => {}); return; }
-  if (ev.k === 'theirs') { gardenLiveLoad(true).then(() => { if (typeof _gdvTouch === 'function') _gdvTouch(); }).catch(() => {}); return; }
+  if (ev.k === 'theirs') {
+    gardenLiveLoad(true).then(() => {
+      if (typeof _gdvTouch === 'function') _gdvTouch();
+      // The host just let me in (a tap at their gate) while I stand outside in the copy: knock again now, instead of waiting for me to find the Knock button
+      const t = _gll.view && _gll.view.theirs && _gll.view.theirs[ev.f];
+      if (_gll.role === 'visit' && ev.f === _glv.fid && _glv.state === 'look' && _glv.why !== 'home' && t && t.lv && t.lv !== 'none' && typeof _glvKnockAgain === 'function') _glvKnockAgain();
+    }).catch(() => {});
+    return;
+  }
   if (_gll.role === 'visit' && typeof _glvEvent === 'function') { try { _glvEvent(ev); } catch (e) { console.error('[garden-live]', e); } }
   else if (_gll.role === 'host' && typeof _glhEvent === 'function') { try { _glhEvent(ev); } catch (e) { console.error('[garden-live]', e); } }
 }

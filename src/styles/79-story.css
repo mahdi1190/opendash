@@ -228,8 +228,8 @@ html.story-open body > :not(.story) .bf-sky * { animation-play-state: paused !im
 .st-attrib { position: absolute; z-index: 3; right: 18px; bottom: 10px; margin: 0; font-size: var(--text-2xs); opacity: 0.55; }
 
 /* Before Play (and while loading): the poster. Controls wait. */
-.st-poster { position: absolute; z-index: 4; inset: 0; display: grid; place-items: center; padding: 8vh 6vw; transition: opacity 0.5s var(--st-ease), visibility 0.5s; }
-.st-poster-in { display: grid; justify-items: center; gap: var(--space-3); text-align: center; max-width: min(900px, 88vw); }
+.st-poster { position: absolute; z-index: 4; inset: 0; display: grid; place-items: center; padding: 8vh 6vw; transition: opacity 0.5s var(--st-ease), visibility 0.5s; pointer-events: none; }   /* it covers the whole stage: the top bar (Close) under it must still take clicks */
+.st-poster-in { pointer-events: auto; display: grid; justify-items: center; gap: var(--space-3); text-align: center; max-width: min(900px, 88vw); }
 .st-poster-scene .anim-scene.sz-hero { --as-size: clamp(120px, 20vmin, 220px); border-radius: 26%; box-shadow: var(--st-shadow); }
 .st-poster-h { margin: 0; font-size: clamp(30px, min(6vw, 11vh), 92px); line-height: 1.02; font-weight: 760; letter-spacing: -0.04em; text-wrap: balance; }
 .st-poster-sub { margin: 0; font-size: clamp(15px, 1.4vw, 19px); opacity: 0.75; }

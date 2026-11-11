@@ -779,6 +779,8 @@ async function briefMaybeAutoOpen() {
   if (!APP_CONFIG.onboardedAt && !getAllItems().length) return;       // the welcome set-up comes first
   const today = todayStr();
   if (seenDay('brief', today)) return;   // seen today here or on another computer
+  // Playing in the garden (a room, a line out, a shop open): a new day must not pull you out to Home. Look again in a minute.
+  if (typeof state !== 'undefined' && /^garden(:|$)/.test(String(state.view || ''))) { clearTimeout(_bf.autoT); _bf.autoT = setTimeout(briefMaybeAutoOpen, 60000); return; }
   try {
     const j = await _bfJson('/api/brief/day?date=' + today);
     if (j && j.brief && j.brief.seen) { seenMarkDay('brief', today); return; }
