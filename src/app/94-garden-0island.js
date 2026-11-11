@@ -1,6 +1,6 @@
 /* Canonical island geometry and physical reservations. Pure derived data:
  * no model construction, renderer, save mutation or owner-specific coast. */
-const _gardenIslandDerived = { geometry: null, base: null, ocean: null, sectionZones: null, arrivalRoad: null, routePaths: new WeakMap(), roadJoints: new WeakMap() };
+const _gardenIslandDerived = { geometry: null, base: null, beachCells: null, ocean: null, sectionZones: null, arrivalRoad: null, routePaths: new WeakMap(), roadJoints: new WeakMap() };
 function gardenIslandData() { return GardenIslandLayout.data; }
 function gardenIslandActive() { return typeof GardenIslandLayout !== 'undefined' && !!(GardenIslandLayout.data && GardenIslandLayout.data.version >= 3); }
 function gardenCanonicalWorld() { const island = typeof GardenIslandCanonicalLayout !== 'undefined' ? GardenIslandCanonicalLayout : GardenIslandLayout; return { wv: island.data.world.v, lh: island.fingerprint }; }
@@ -109,9 +109,10 @@ function _gardenIslandRect(x, y, r) { return x >= r.x && y >= r.y && x < r.x + r
 function gardenIslandFreshwaterCell(x, y) { const cx = Math.floor(x) + .5, cy = Math.floor(y) + .5; return gardenIslandGeometry().freshwater.some(p => p.boundary ? _gardenIslandInLoop(cx, cy, p.boundary) : _gardenIslandRect(cx, cy, p.wet)); }
 /** Authored frontier regions share the same contours with drawing, walking and visits. */
 function gardenIslandRegionForZone(zone) { return (gardenIslandData().regions || []).find(region => region.zone === Number(zone)) || null; }
+function _gardenIslandRegionForKnownLand(x, y) { return (gardenIslandData().regions || []).find(region => (region.polygons || []).some(points => _gardenIslandInLoop(x, y, points))) || null; }
 function gardenIslandRegionAt(x, y) {
   if (!Number.isFinite(x) || !Number.isFinite(y) || !gardenIslandLandContains(x, y)) return null;
-  return (gardenIslandData().regions || []).find(region => (region.polygons || []).some(points => _gardenIslandInLoop(x, y, points))) || null;
+  return _gardenIslandRegionForKnownLand(x, y);
 }
 /** Explicit host/open sets keep visitor and server access independent of the local owner. */
 function gardenIslandRegionOpen(region, open) { return !region || !region.zone || !!open && (open instanceof Set ? open.has('zn-' + region.zone) : Array.isArray(open) && open.includes('zn-' + region.zone)); }
@@ -126,16 +127,35 @@ function _gardenIslandOnRoute(x, y, route) {
   for (let i = 1; i < route.points.length; i++) { const a = route.points[i - 1], b = route.points[i], dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy || 1))); if ((x - a[0] - dx * t) ** 2 + (y - a[1] - dy * t) ** 2 <= radius2) return true; }
   return false;
 }
+/** Exact cell-centre beach membership, prepared once from every coast segment.
+ * Bounding boxes only select candidates. The final anisotropic pixel distance
+ * and <= boundary comparison are identical to gardenIslandCoastDistance. */
+function _gardenIslandBeachCells() {
+  if (_gardenIslandDerived.beachCells) return _gardenIslandDerived.beachCells;
+  const W = GARDEN_WORLD, radius = gardenIslandData().coast.beachWidthPx, cells = new Uint8Array(W.cols * W.rows);
+  for (const points of gardenIslandGeometry().land) for (let i = 0; i < points.length; i++) {
+    const a = points[i], b = points[(i + 1) % points.length], ax = a[0] * W.cellW, ay = a[1] * W.cellH, bx = b[0] * W.cellW, by = b[1] * W.cellH, dx = (b[0] - a[0]) * W.cellW, dy = (b[1] - a[1]) * W.cellH;
+    // Keep the bounds conservative: boundary and winding never decide membership here.
+    const x0 = Math.max(0, Math.floor((Math.min(ax, bx) - radius) / W.cellW)), x1 = Math.min(W.cols - 1, Math.ceil((Math.max(ax, bx) + radius) / W.cellW));
+    const y0 = Math.max(0, Math.floor((Math.min(ay, by) - radius) / W.cellH)), y1 = Math.min(W.rows - 1, Math.ceil((Math.max(ay, by) + radius) / W.cellH));
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      const index = y * W.cols + x; if (cells[index]) continue;
+      const cx = x + .5, cy = y + .5, t = Math.max(0, Math.min(1, ((cx * W.cellW - ax) * dx + (cy * W.cellH - ay) * dy) / (dx * dx + dy * dy || 1)));
+      if (Math.hypot(cx * W.cellW - ax - dx * t, cy * W.cellH - ay - dy * t) <= radius) cells[index] = 1;
+    }
+  }
+  return _gardenIslandDerived.beachCells = cells;
+}
 function _gardenIslandBase() {
   if (_gardenIslandDerived.base) return _gardenIslandDerived.base;
-  const W = GARDEN_WORLD, data = gardenIslandData(), cells = new Array(W.cols * W.rows);
+  const W = GARDEN_WORLD, data = gardenIslandData(), cells = new Array(W.cols * W.rows), beachCells = _gardenIslandBeachCells();
   for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
-    const cx = x + .5, cy = y + .5, land = gardenIslandLandContains(cx, cy), ocean = !land, freshwater = land && gardenIslandFreshwaterCell(x, y), beach = land && !freshwater && gardenIslandCoastDistance(cx, cy) <= data.coast.beachWidthPx;
+    const cx = x + .5, cy = y + .5, land = gardenIslandLandContains(cx, cy), ocean = !land, freshwater = land && gardenIslandFreshwaterCell(x, y), beach = land && !freshwater && !!beachCells[y * W.cols + x];
     const route = land && data.routes.find(r => _gardenIslandOnRoute(cx, cy, r)), prop = data.static.find(p => _gardenIslandRect(cx, cy, p));
     const apron = land && data.static.find(p => p.apron && _gardenIslandRect(cx, cy, p.apron)), rear = land && data.static.find(p => p.rearEnvelope && _gardenIslandRect(cx, cy, p.rearEnvelope));
     const side = data.reservedSidePiers.find(p => _gardenIslandRect(cx, cy, p.reserved) || _gardenIslandRect(cx, cy, p.apron));
     const district = land && data.districts.find(d => (d.areas || [d.bounds]).some(b => _gardenIslandRect(cx, cy, b)));
-    const region = land && gardenIslandRegionAt(cx, cy), landform = land && (data.landforms || []).find(form => form.polygon && _gardenIslandInLoop(cx, cy, form.polygon));
+    const region = land && _gardenIslandRegionForKnownLand(cx, cy), landform = land && (data.landforms || []).find(form => form.polygon && _gardenIslandInLoop(cx, cy, form.polygon));
     const reservation = landform ? 'landform' : prop ? 'static' : apron ? 'apron' : route ? 'route' : rear ? 'facade' : side ? 'future-pier' : '';
     cells[y * W.cols + x] = Object.freeze({ inside: true, land, ocean, freshwater, beach, region: region && region.id || '', regionZone: region && region.zone || 0, solid: !!(landform && landform.col === 'full'), landformId: landform && landform.id || '', route: route && route.id || '', routePublic: !!(route && route.public), routeLevel: route && route.level || 1, routeZone: route && route.zone || 0, gateId: route && route.gateId || '', reserved: !!reservation, reservation, staticId: prop && prop.id || '', reason: landform ? landform.name || 'A rocky outcrop stands here' : prop ? prop.id + ' stands here' : apron ? 'Keep the doorway clear' : route ? 'Keep the path clear' : rear ? 'Keep the space behind the building clear' : side ? 'Reserved for a later pier' : '', district: district && district.id || '', districtLevel: district && district.level || 1 });
   }
