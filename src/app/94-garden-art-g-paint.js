@@ -35,9 +35,9 @@ const _GFP = Object.freeze({
     // thickest at the lower right), td how deep the shade is, tl the light glaze; tmin the smallest piece (in the walker's units) that gets it.
     actor: { lit: 0.16, dk: 0.24, sat: 0.9, key: 0.05, mid: 0.42, field: [-16, -74, 12, 2], tone: { ts: 0.9, td: 0.26, tl: 0.3, tmin: 2.4 } },
     npc: { lit: 0.14, dk: 0.24, sat: 0.94, key: 0.04, mid: 0.42, field: [-16, -62, 12, 2], tone: { ts: 0.9, td: 0.26, tl: 0.3, tmin: 2.4 } },
-    pet: { lit: 0.15, dk: 0.22, sat: 0.94, key: 0.04, x1: 0.1, y1: 0, x2: 0.62, y2: 1, tone: { ts: 0.88, td: 0.28, tl: 0.32, tmin: 2.4 } },
-    fish: { lit: 0.14, dk: 0.2, sat: 0.95, key: 0.03, x1: 0.3, y1: 0, x2: 0.5, y2: 1, tone: { ts: 0.86, td: 0.3, tl: 0.36, tmin: 3, ay: 0.22 } },
-    bug: { lit: 0.13, dk: 0.2, sat: 0.95, key: 0.03, x1: 0.1, y1: 0.05, x2: 0.8, y2: 0.95, tone: { ts: 0.86, td: 0.3, tl: 0.4, tmin: 2.2 } },
+    pet: { lit: 0.15, dk: 0.22, sat: 0.94, key: 0.04, x1: 0.1, y1: 0, x2: 0.62, y2: 1, tone: { ts: 0.88, td: 0.28, tl: 0.32, tmin: 2.4 }, ink: [0.5, 0.6] },
+    fish: { lit: 0.14, dk: 0.2, sat: 0.95, key: 0.03, x1: 0.3, y1: 0, x2: 0.5, y2: 1, tone: { ts: 0.86, td: 0.3, tl: 0.36, tmin: 3, ay: 0.22 }, ink: [0.5, 0.6] },
+    bug: { lit: 0.13, dk: 0.2, sat: 0.95, key: 0.03, x1: 0.1, y1: 0.05, x2: 0.8, y2: 0.95, tone: { ts: 0.86, td: 0.3, tl: 0.4, tmin: 2.2 }, ink: [0.42, 0.5] },
   },
 });
 const _gfpCache = new Map();
@@ -108,6 +108,8 @@ function _gfpBox(tag, a) {
   if (tag === 'rect') { const w = n('width'), h = n('height'); return w > 0 && h > 0 ? [n('x'), n('y'), w, h] : null; }
   if (tag !== 'path') return null;
   const d = _gfpAttr(a, 'd') || '';
+  const el = /^M(-?[\d.]+)[ ,](-?[\d.]+)a(-?[\d.]+)[ ,](-?[\d.]+) 0 1 0 (-?[\d.]+) 0a[^z]*z$/.exec(d);   // an ellipse written as two arcs (the pets' and the scenes' own helper)
+  if (el) { const x = +el[1], y = +el[2], rx = +el[3], ry = +el[4]; return rx > 0 && ry > 0 ? [x, y - ry, 2 * rx, 2 * ry] : null; }
   if (!d || /[a-y]|[AHV]/.test(d.replace(/e-?\d/gi, ''))) return null;   // relative commands, arcs and lone axes: no cheap box (the piece keeps its gradient)
   const v = (d.match(/-?\d*\.?\d+(?:e-?\d+)?/gi) || []).map(Number);
   if (v.length < 6) return null;
@@ -156,14 +158,12 @@ function gardenFigurePaint(svg, kind) {
       let a = attrs;
       const fill = _gfpAttr(a, 'fill'), stroke = _gfpAttr(a, 'stroke'), op = Number(_gfpAttr(a, 'opacity') || 1), fop = Number(_gfpAttr(a, 'fill-opacity') || 1);
       const fRgb = fill && fill[0] === '#' ? _gfpRgb(fill) : null, sRgb = stroke && stroke[0] === '#' ? _gfpRgb(stroke) : null;
-      let base = null;
+      let base = null, toneIt = false;
       if (fRgb) {
         base = _gfpGrade(fRgb, K);
-        if (op >= 0.95 && fop >= 0.95 && close && tag !== 'use' && tag !== 'g' && !/\sclip-path=|\smask=/.test(a)) {
-          const toned = _gfpTone(tag, a, base, K, M);
-          if (toned) return toned;
-        }
-        if (op >= 0.95 && fop >= 0.95 && tag !== 'use' && tag !== 'g') {
+        if (op >= 0.95 && fop >= 0.95 && close && tag !== 'use' && tag !== 'g' && !/\sclip-path=|\smask=/.test(a) && K.tone) { const bx = _gfpBox(tag, a), k = Math.sqrt(Math.abs(M[0] * M[3] - M[1] * M[2])) || 1; toneIt = !!bx && Math.min(bx[2], bx[3]) * k >= K.tone.tmin; }   // the kit's tone shading (after the stroke is softened, below)
+        if (toneIt) a = _gfpSet(a, 'fill', _gfpHex(base));
+        else if (op >= 0.95 && fop >= 0.95 && tag !== 'use' && tag !== 'g') {
           const lit = _gfpMix(base, _GFP.sun, K.lit), dk = _gfpMix(base, _GFP.shade, K.dk);
           let id, geo;
           if (K.field) {
@@ -184,14 +184,16 @@ function gardenFigurePaint(svg, kind) {
           // An ink outline round a filled shape: the shape's own deep tone, thinner and softer (the kit has none; a figure keeps a whisper of one to read at 40 px).
           const own = base || _gfpGrade(sRgb, K), w = Number(_gfpAttr(a, 'stroke-width') || 1);
           a = _gfpSet(a, 'stroke', _gfpHex(_gfpMix(own, _GFP.deep, 0.42)));
-          a = _gfpSet(a, 'stroke-width', String(Math.round(w * 0.62 * 100) / 100));
-          a = _gfpSet(a, 'stroke-opacity', String(Math.round(Number(_gfpAttr(a, 'stroke-opacity') || 1) * 0.72 * 100) / 100));
+          const ik = K.ink || [0.62, 0.72];   // the creatures' ink nearly goes: the scene kit's animals have none
+          a = _gfpSet(a, 'stroke-width', String(Math.round(w * ik[0] * 100) / 100));
+          a = _gfpSet(a, 'stroke-opacity', String(Math.round(Number(_gfpAttr(a, 'stroke-opacity') || 1) * ik[1] * 100) / 100));
         } else {
           // A stroke that is part of the drawing: graded; a near-black line is lifted to a deep warm brown.
           const L = sRgb[0] * 0.3 + sRgb[1] * 0.59 + sRgb[2] * 0.11;
           a = _gfpSet(a, 'stroke', _gfpHex(L < 40 ? _gfpMix(sRgb, [58, 50, 40], 0.6) : _gfpGrade(sRgb, K)));
         }
       }
+      if (toneIt) { const toned = _gfpTone(tag, a, base, K, M); if (toned) return toned; }
       return '<' + tag + a + close + '>';
     });
     out = '<!--gfp-->' + (grads.size ? `<defs>${[...grads.values()].join('')}</defs>` : '') + out;
