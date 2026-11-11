@@ -10,6 +10,16 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.67.3] - 2026-11-11
+
+### Fixed
+
+- The garden keeps real speed on slow computers instead of moving in slow motion.
+- New gardens start with the oak and sprouts in the front bed, not on a far beach.
+- The old angler fishes at the water.
+- Placing a decoration no longer leaves you standing inside it.
+- Clicking just as the level-up card closes no longer plants under you.
+
 ## [2.67.2] - 2026-11-11
 
 ### Fixed

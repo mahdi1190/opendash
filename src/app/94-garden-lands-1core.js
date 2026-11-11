@@ -373,7 +373,16 @@ function gardenLandEgg(id) {
    Coins, level, XP, the books, gear and everything that is not a position stay. A short note says so.
    Two devices: every refund has its own ledger key, the same on both, so doing it twice adds nothing, and `seen.world` and `seen.worldAt` sync. What another device's copy brings back later (a plant from
    before the move, by its date, or one on a cell where nothing can grow now) goes back to the bag the same way, by the same key. */
-const GARDEN_LAND_HEART = _gdF({ x: 16, y: 13 });   // world cells: the old oak, at the back of the front bed
+/* Starter cells (the oak, the first sprouts, the stones and sign, the early gift) were authored on the v3 island, whose bed
+   starts at (15, 13) and whose arrival is (22, 17). gardenStarterCell moves one onto the island in use: a bed cell keeps its
+   place in the bed (v4: + 25, + 35), anything else keeps its place from the arrival (v4: + 26, + 36, the same projection the
+   node migration adapter uses for old saves, lib/garden-island-adapter.mjs). On the v3 island both offsets are zero. */
+const _GD_STARTER_V3 = _gdF({ bed: _gdF({ x: 15, y: 13 }), start: _gdF({ x: 22, y: 17 }) });
+function gardenStarterCell(x, y, from) {
+  const A = GardenIslandLayout.data.anchors || {}, to = from === 'bed' ? A.bed : A.start, base = _GD_STARTER_V3[from === 'bed' ? 'bed' : 'start'];
+  return to ? { x: x - base.x + to.x, y: y - base.y + to.y } : { x, y };
+}
+const GARDEN_LAND_HEART = _gdF((GardenIslandLayout.data.anchors && GardenIslandLayout.data.anchors.heart) ? { x: GardenIslandLayout.data.anchors.heart.x, y: GardenIslandLayout.data.anchors.heart.y } : { x: 16, y: 13 });   // world cells: the old oak, at the back of the front bed (the island's own anchor)
 function _gldBackToBag(g, uid, pl, today) {
   const def = gardenPlant(pl.p), key = 'wv2.p.' + uid;
   if (def && !g.led[key]) g.led[key] = { d: today, k: 'wv', i: { ['seed:' + def.id]: 1 } };
