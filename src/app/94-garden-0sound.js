@@ -80,6 +80,7 @@ function _gsPan(c, out, pan) {
 /** A tone: {f, f2 (glide to), fm (a middle pitch), type, a (attack), d (length), peak, pan, lp (a lowpass), bp/q (a bandpass)} */
 function _gsTone(c, out, t, o) {
   const osc = c.createOscillator(), v = c.createGain(), d = o.d || 0.2, a = Math.min(o.a || 0.005, d * 0.5);
+  v.gain.value = 0;   // (silent until it starts: a gain left at 1 lets a click through)
   osc.type = o.type || 'sine'; osc.frequency.setValueAtTime(o.f, t);
   if (o.fm) { osc.frequency.exponentialRampToValueAtTime(o.fm, t + d * 0.45); if (o.f2) osc.frequency.exponentialRampToValueAtTime(o.f2, t + d); }
   else if (o.f2) osc.frequency.exponentialRampToValueAtTime(o.f2, t + (o.glide || d));
@@ -91,7 +92,8 @@ function _gsTone(c, out, t, o) {
 }
 /** A breath of filtered noise: {type ('bandpass' | 'lowpass' | 'highpass'), f, f2, q, a, d, peak, pan, rate} */
 function _gsHiss(c, out, t, o) {
-  const s = c.createBufferSource(), f = c.createBiquadFilter(), v = c.createGain(), d = o.d || 0.1, a = Math.min(o.a || 0.004, d * 0.6);
+  const s = c.createBufferSource(), f = c.createBiquadFilter(), v = c.createGain(), d = Math.max(0.012, o.d || 0.1), a = Math.min(o.a || 0.004, d * 0.6);
+  v.gain.value = 0;
   s.buffer = _gsNoise(c); s.playbackRate.value = o.rate || 1;
   f.type = o.type || 'bandpass'; f.frequency.value = o.f; f.Q.value = o.q || 0.8; if (o.f2) { f.frequency.setValueAtTime(o.f, t); f.frequency.exponentialRampToValueAtTime(o.f2, t + d); }   // (set before it starts: a filter that jumps mid-signal can spike)
   v.gain.setValueAtTime(0.0001, t); v.gain.linearRampToValueAtTime(o.peak, t + a); v.gain.exponentialRampToValueAtTime(0.0001, t + d);
