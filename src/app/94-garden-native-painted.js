@@ -188,7 +188,6 @@ window.GardenNativePainted = (function () {
     'land-office': { obj: 'building.cottage', v: 1, w: 140, sign: 'Land Office', extra: [['street.lamp', 0, -78, 4, 0, 70]] },
     'tackle-shop': { obj: 'building.fpv-sailing-hut', v: 0, w: 150, sign: 'Tackle & Tide', extra: [['street.mqn-lifebuoy', 0, 80, 2, 0, 30]] },
     'market-stall': { obj: 'structure.mcr-market-chalet', v: 1, w: 104 },
-    'notice-board': { obj: 'street.noticeboard', v: 0, w: 46 },
   };
   const HALL = [{ obj: 'structure.wp-bivvy', v: 0, w: 96 }, { obj: 'building.kiosk', v: 0, w: 110, sign: 'Lake Hall' }, { obj: 'building.thatched-cottage', v: 1, w: 150, sign: 'Lake Hall' }, { obj: 'building.church', v: 0, w: 170, sign: 'Lake Hall' }];
   function hallTier(sc) { try { const ca = sc.ca || (typeof gardenCatchHere === 'function' ? gardenCatchHere() : null) || {}; return typeof gardenHallTier === 'function' ? Math.max(0, Math.min(3, gardenHallTier(Number(ca.ha) || 0))) : 0; } catch (e) { return 0; } }
