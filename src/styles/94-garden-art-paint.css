@@ -36,4 +36,11 @@
 @keyframes gca-earw { from { transform: rotate(-3deg); } to { transform: rotate(4deg); } }
 .gca-wick.gca-walk .gca-ar { animation: gca-flap .46s ease-in-out infinite alternate; }
 @keyframes gca-flap { from { transform: rotate(-4deg); } to { transform: rotate(6deg); } }
-@media (prefers-reduced-motion: reduce) { .gca *, .gfg *, .gpf * { animation: none !important; } }
+/* the gardener's hair and scarf (94-garden-art-g-player.js, painted): a slow drift standing, a lag on every step walking */
+.gpl .gpl-hair { animation: gpl-hair 4.4s ease-in-out infinite alternate; }
+@keyframes gpl-hair { from { transform: rotate(-1deg); } to { transform: rotate(1.4deg); } }
+.gpl .gpl-cloth { animation: gpl-hair 3.6s ease-in-out -1.2s infinite alternate; }
+.gpl-walk .gpl-hair { animation: gpl-hairw .25s ease-in-out -.09s infinite alternate; }
+.gpl-walk .gpl-cloth { animation: gpl-hairw .25s ease-in-out -.05s infinite alternate; }
+@keyframes gpl-hairw { from { transform: rotate(-2.4deg) translateY(0); } to { transform: rotate(2.2deg) translateY(.6px); } }
+@media (prefers-reduced-motion: reduce) { .gca *, .gpl .gpl-hair, .gpl .gpl-cloth { animation: none !important; } }

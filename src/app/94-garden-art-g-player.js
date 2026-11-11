@@ -214,6 +214,10 @@ function _gplDraw(a, dir, pose, o) {
   // and the face modelled: eye sockets, the shaded side of the nose and jaw, the lit cheek, a lit nose tip (_gplPaintFace). Every wardrobe piece stays.
   const HK = o.painted ? 0.84 : 1, yN = _gplY(63), hs = (m) => (HK === 1 ? m : `translate(0 ${_gplN(yN)}) scale(${HK}) translate(0 ${_gplN(-yN)}) ${m}`);
   if (o.painted) { const pf = _gplPaintFace(a); L.face = pf.under + L.face + pf.over; L.skull = L.skull + pf.skull; }
+  if (o.painted) {   // secondary motion: long hair and a scarf's ends lag the body (94-garden-art-paint.css); a still look keeps them still
+    const sway = (cls, x, y, inner) => (inner ? `<g class="${cls}" style="transform-origin:${x}px ${y}px">${inner}</g>` : '');
+    L.hairback = sway('gpl-hair', 50, 34, L.hairback); L.strands = sway('gpl-hair', 50, 34, L.strands); L.scarf = sway('gpl-cloth', 50, 66, L.scarf);
+  }
   const hipY = PP.HIP * KY * S, headO = `transform-origin:0px ${_gplN(_gplY(66))}px`;
   const P = _gplPoseArms(pose, side, Tools, o.stageRod);
   let legs = '', upper = '';   // the legs under the body: a hem or a hand always lies over a thigh
