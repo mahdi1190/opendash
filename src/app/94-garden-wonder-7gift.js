@@ -23,7 +23,7 @@ function _wdgItems() {
   for (const id of G.tools) if (typeof _GD_TOOL === 'undefined' || _GD_TOOL.has(id)) i['tool:' + id] = 1;
   for (const id of G.gear) i['gear:' + id] = 1;
   if (G.fert) i.fertiliser = G.fert;
-  const quick = GARDEN_PLANTS.filter(p => p.price > 0 && !p.unlock && p.rarity === 'common' && p.lv <= 1).sort((a, b) => _wdgPace(a) - _wdgPace(b) || a.price - b.price);
+  const quick = GARDEN_PLANTS.filter(p => p.price > 0 && !p.unlock && p.rarity === 'common' && p.lv <= 1 && p.cat === 'flower' && p.id !== G.keepsake).sort((a, b) => _wdgPace(a) - _wdgPace(b) || a.price - b.price);
   for (const p of quick.slice(0, G.seedKinds)) i['seed:' + p.id] = G.seeds;
   return i;
 }

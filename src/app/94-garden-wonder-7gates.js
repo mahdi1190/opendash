@@ -69,7 +69,7 @@ function _wgtClick(f, S) {
   if (!gardenGateTake(f.gives)) return;
   _wgtDrop(f.id);
   _glFx(at.x, at.y, 'sparkle', { lift: 14 }); _glSound('twinkle');
-  const tail = rule && rule.key === f.gives ? `Take it to ${gardenZone(gate.n).name.toLowerCase()}: the gate is waiting.` : rule ? `Now: ${GARDEN_GATE_ITEMS[rule.key].name.toLowerCase()}.` : '';
+  const tail = rule && rule.key === f.gives ? `Take it to the way into ${gardenZone(gate.n).name}: the gate is waiting.` : rule ? `Now: ${GARDEN_GATE_ITEMS[rule.key].name.toLowerCase()}.` : '';
   wdTalk({ name: who ? who.name : it.name, at, art: who ? art : `<g transform="translate(0 -6)">${art}</g>`, lines: f.lines.concat([`${it.name}: in your bag. ${tail}`]), bye: 'Thank you' });
 }
 /* ---------- the gate ---------- */
