@@ -115,10 +115,18 @@ const _wt = { near: new Set(), res: new Map() };
 function _wtAnchorPt(ids) { for (const id of ids || []) { const p = typeof _wkAnchor === 'function' ? _wkAnchor(id) : null; if (p) return p; } return null; }
 function _wtPlaces(m) {
   for (const s of WD_TALES) {
-    const b = _wtNext(s, m, 'place') || _wtNext(s, m, 'traveller'); if (!b || _wt.near.has(s.id + b.id)) continue;   // (a traveller speaks at the quay as a place does, until travellers walk the arrival road)
-    const p = _wtAnchorPt(b.near); if (!p || !wdNear(p.x, p.y, b.r || 3)) continue;
-    _wt.near.add(s.id + b.id);
-    const t = wdTaleTell(s, b).lines.join(' '); if (t) wdAmbient(t, 11000, 'story');
+    if (!_wtStoryOn(s)) continue;
+    const W = _wtW(), next = _wtNext(s, m, '');
+    for (const b of s.steps) {
+      // every free place beat that is ready, and the story's next beat if it is a place (a traveller speaks at the quay as a place does, for now)
+      if ((b.who !== 'place' && b.who !== 'traveller') || W[`sx.${s.id}.${b.id}`] || _wt.near.has(s.id + b.id) || !(b.free || b === next)) continue;
+      if (b.heavy && (_wtHeavyToday() || _wtMainToday())) continue;
+      if (!_wtWhen(b.when, m, b.who)) continue;
+      const p = _wtAnchorPt(b.near); if (!p || !wdNear(p.x, p.y, b.r || 3)) continue;
+      _wt.near.add(s.id + b.id);
+      const t = wdTaleTell(s, b).lines.join(' '); if (t) wdAmbient(t, 11000, 'story');
+      return;   // one thing noticed at a time
+    }
   }
 }
 document.addEventListener('opendash:garden', (e) => {
