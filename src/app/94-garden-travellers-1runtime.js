@@ -69,7 +69,7 @@ function gardenTravellersFrame(dt) {
   const seed=gardenHash('island-travellers-v1|'+m.lh+'|'+road.id),sample=gardenTravellerSample(_gtr.phase,seed,_gtr.path);
   if(!sample){_gtrDrop();return;}
   const motion=typeof gardenMotionOn!=='function'||gardenMotionOn();if(!motion){const at=gardenTravellerPoint(_gtr.path,1,false);sample.x=at.x;sample.y=at.y;sample.face=at.face;sample.moving=false;sample.alpha=1;sample.stage='lingering';}
-  if(!_gtr.sprite||_gtr.sprite.id!==sample.id){_gtrDrop();const def=sample.def;_gtr.sprite=gardenWorldAdd({id:sample.id,kind:'road-traveller',svg:_gtrArt(def),x:sample.x,y:sample.y,ground:false,lift:0,hit:.55,hitUp:28,label:def.name+' · '+def.title+' (island traveller)',cursor:'hand',nodeAttrs:{'data-traveller':def.id},update:_gtrPose,onClick:()=>gardenTravellerTalk(sample.id)});}
+  if(!_gtr.sprite||_gtr.sprite.id!==sample.id){_gtrDrop();const def=sample.def;_gtr.sprite=gardenWorldAdd({id:sample.id,kind:'road-traveller',svg:typeof gardenFigurePaintOn==='function'&&gardenFigurePaintOn()?'<g transform="scale(.8)">'+gardenFigurePaint(_gtrArt(def),'npc')+'</g>':_gtrArt(def),x:sample.x,y:sample.y,ground:false,lift:0,hit:.55,hitUp:28,label:def.name+' · '+def.title+' (island traveller)',cursor:'hand',nodeAttrs:{'data-traveller':def.id},update:_gtrPose,onClick:()=>gardenTravellerTalk(sample.id)});}
   _gtr.current=sample;const S=_gtr.sprite;S.x=sample.x;S.y=sample.y;S.hit=sample.stage==='lingering'?.55:0;
   if(S.node&&S.node.getAttribute('visibility')==='hidden')S.node.removeAttribute('visibility');
 }

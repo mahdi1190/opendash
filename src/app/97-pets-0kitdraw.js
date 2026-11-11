@@ -452,7 +452,9 @@ function petSvg(pet, o) {
  * The same drawing as a <g> string with its feet at (0, 0) in the caller's units: o {h (the pet's height there, default 24),
  * pose, mood, face (1 right, -1 left), shadow, cls}. For the garden (petGardenSprite) and other SVG scenes of the page.
  */
-function petSvgGroup(pet, o) {
+/** The garden sprite; in the Painted village it is painted into the scene's light (94-garden-art-g-paint.js), elsewhere the drawing as it is. */
+function petSvgGroup(pet, o) { const s = _petSvgGroupRaw(pet, o); return s && !(o && o.flat) && typeof gardenFigurePaintIf === 'function' ? gardenFigurePaintIf(s, 'pet') : s; }
+function _petSvgGroupRaw(pet, o) {
   o = o || {};
   const A = petArt(pet, o.pose || 'walk', o.mood);
   if (!A) return '';

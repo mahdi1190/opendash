@@ -247,7 +247,7 @@ function gartPlayerSvg(avatar, o) {
   const key = JSON.stringify(a) + dir + pose + (o.motion ? 'm' : '') + (o.stageRod ? 'r' : '') + (o.gear ? JSON.stringify(o.gear) : '');
   let s = _GPL.cache.get(key);
   if (s == null) { try { s = _gplDraw(a, dir, pose, o); } catch (e) { s = ''; } if (_GPL.cache.size > 40) _GPL.cache.clear(); _GPL.cache.set(key, s); }
-  return s;
+  return s && !o.flat && typeof gardenFigurePaintIf === 'function' ? gardenFigurePaintIf(s, 'actor') : s;   // the Painted village paints the figure into the scene's light (94-garden-art-g-paint.js)
 }
 /** The same person as an <svg>, standing, front on: anywhere outside the walker (a friend's garden). */
 function gartPlayerFigureSvg(avatar, o) {
