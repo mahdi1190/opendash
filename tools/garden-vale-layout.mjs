@@ -8,6 +8,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const v4 = JSON.parse(readFileSync(join(root, 'assets/garden/island-v4.json'), 'utf8'));
@@ -457,7 +458,14 @@ const out = {
   placementAnchors: { policy: v4.placementAnchors.policy, features: {}, sights: {} },
   presentation,
 };
-writeFileSync(join(root, 'assets/garden/island-v5.json'), JSON.stringify(out));
+const text = JSON.stringify(out);
+writeFileSync(join(root, 'assets/garden/island-v5.json'), text);
+{ // the identity pins follow the file (lib/garden-island.mjs, lib/garden-island-identity.mjs)
+  const sha = createHash('sha256').update(text).digest('hex'), pin = (file, re, value) => { const f = join(root, file), t = readFileSync(f, 'utf8'); if (!re.test(t)) throw Error('pin not found in ' + file); writeFileSync(f, t.replace(re, value)); };
+  pin('lib/garden-island.mjs', /GARDEN_VALE_SHA256='[0-9a-f]{64}'/, `GARDEN_VALE_SHA256='${sha}'`);
+  pin('lib/garden-island-identity.mjs', /GARDEN_EXPANDED_WORLD=Object\.freeze\(\[5,'[0-9a-f]{24}'\]\)/, `GARDEN_EXPANDED_WORLD=Object.freeze([5,'${sha.slice(0, 24)}'])`);
+  console.log('island-v5', sha.slice(0, 24));
+}
 const byZone = {}; for (const [id, z] of Object.entries(sectionZones)) byZone[z] = (byZone[z] || 0) + (sectionCells[id].length ? 1 : 0);
 console.log('sections placed per zone', JSON.stringify(byZone), 'statics', S.length, 'routes', routes.length, 'basins', freshwater.length, 'landforms', landforms.length);
 for (const z of [0, 1, 2, 3, 4, 5]) console.log('zone', z, 'land cells', cells.filter(c => c.land && c.zone === z).length, 'free', cells.filter(c => c.land && c.zone === z && !c.fw && !c.reserved && !c.beach).length);
