@@ -17,7 +17,7 @@
  * Only rendering: nothing here changes a cell. Nothing runs at load. */
 window.GardenPaintedTerrain = (function () {
   'use strict';
-  const KIT = () => window.GardenPaintTerrainKit;
+  const KIT = () => window.GardenPaintTerrainKit, D2 = () => sceneDraw;
   const K = 1.5, CHUNK = 256, DEPTH = -9350;
   const GORGE_WATER = true;                // the gorge's water is painted with its walls; false leaves a hole for the water painter
   let current = null, sprites = [], lastError = null, stats = {};
@@ -264,13 +264,17 @@ window.GardenPaintedTerrain = (function () {
       // the near lip: a lit rim with a dark undercut into the water and boulders at the edge
       B.s(B.line(nearIn), P.rockDk, 4, .32).s(B.line(near), P.rockLo, 3.6, .95).s(B.line(near.map(p => ({ x: p.x, y: p.y - 1.4 }))), snowy ? P.snow : P.rockHi, 1.8, .9);
       for (let i = 0; i < near.length; i += 3) { const p = near[i]; if (r() < .5) B.stone(r, p.x + (r() - .5) * 6, p.y, 3 + r() * 4, 2 + r() * 2, P, snowy ? 'snow' : P.lichen); }
+      // the lip stones: a line of flat-topped boulders across the river just above the drop
+      { const k = Math.floor(mid.length * .86), p = mid[k], a = far[k], b = near[k];
+        for (let j = 0; j < 6; j++) { const t = (j + .5) / 6, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t + 2, rr = kit.rng(8801 + j);
+          B.s(`M${x - 8} ${y + 3}q8 3 16 0`, P.foam, 1.4, .8); B.boulder(rr, x, y + 2, 9 + rr() * 4, 5 + rr() * 2, Object.assign({}, P, { rock: '#8c8578', rockLo: '#625c54', rockHi: '#bdb4a2' }), snowy); } void p; }
       // white water: short foam strokes in the channel, more towards the falls
       for (let i = 2; i < mid.length - 1; i++) { const t = i / mid.length, p = mid[i], q = farIn[i]; if (r() < .35 + t * .4) { const x = (p.x + q.x) / 2 + (r() - .5) * 8, y = (p.y + q.y) / 2 + 4 + (r() - .5) * 6; B.s(`M${x} ${y}q4 -1.4 8 0`, P.foam, 1.2, .75); } }
     });
     const xs = (L.D.presentation.crossings || []).filter(c => c.over === 'gorge');
     for (const c of xs) { const p = L.cpt(c.x, c.y); add([p.x - 60, p.y - 50, p.x + 60, p.y + 50], 131, (B, r) => {
       const i = mid.reduce((bi, q, k) => Math.hypot(q.x - p.x, q.y - p.y) < Math.hypot(mid[bi].x - p.x, mid[bi].y - p.y) ? k : bi, 0), seg = mid.slice(Math.max(0, i - 5), i + 6);
-      B.s(B.line(seg), P.rockLo, hw * 2 * W.cellH * .95, .9).s(B.line(seg), P.water, hw * 2 * W.cellH * .8, 1).s(B.line(seg), P.shallow, hw * W.cellH * .9, .7);
+      B.s(B.line(seg), '#7fb0b8', hw * W.cellH * .7, .35); void seg;
       for (let k = 0; k < 4; k++) { const q = mid[Math.max(0, Math.min(mid.length - 1, i))], a = (k - 1.5) * 12; B.f(B.ell(q.x - 8 + a * .9 + 2, q.y - a * .55 + 2, 7, 3.6), P.rockDk, .45).f(B.blob(r, q.x - 8 + a * .9, q.y - a * .55, 7, 3.6, 7, .25), P.rock).f(B.ell(q.x - 10 + a * .9, q.y - a * .55 - 1, 3.5, 1.4), P.rockHi, .8).s(`M${q.x - 14 + a * .9} ${q.y - a * .55 + 2}q6 2 12 0`, P.foam, 1, .7); }
     }); }
   }
@@ -492,6 +496,19 @@ window.GardenPaintedTerrain = (function () {
     for (let k = 0; k < 4; k++) B.boulder(r, (r() - .5) * w * 1.3, 3 + r() * 6, 6 + r() * 7, 4 + r() * 4, Object.assign({}, P, { rock: G.mid, rockLo: G.shade, rockHi: G.hi }), snowy);
     for (let k = 0; k < 10; k++) B.stone(r, (r() - .5) * w * 1.4, 2 + r() * 8, 1.2 + r() * 2.4, .8 + r() * 1.4, P, snowy && r() < .5 ? 'snow' : null);
   }
+  // a rowan on the gorge lip: a slender grey trunk, a light feathery crown; autumn turns it red, winter leaves only berries
+  function rowanArt(B, h, P, seed, season) {
+    const kit = KIT(), r = kit.rng(seed), leaf = { spring: ['#5f8a44', '#86ad5c', '#b4cf84'], summer: ['#4f7a3c', '#6f9a4c', '#9cbf6c'], autumn: ['#a8442a', '#d0652e', '#eaa04a'], winter: null }[season];
+    B.shadow(8, 1, 18, 4, .3);
+    B.s(`M0 0Q-2 ${-h * .25} 1 ${-h * .45}`, '#7d7a72', 3).s(`M-.8 0Q-2.6 ${-h * .25} .2 ${-h * .45}`, '#b6b2a6', 1, .7);
+    const forks = [[1, -h * .4, -15, -h * .72], [1, -h * .42, 14, -h * .76], [1, -h * .45, 0, -h * .95]];
+    for (const [x0, y0, x1, y1] of forks) B.s(`M${x0} ${y0}Q${(x0 + x1) / 2} ${(y0 + y1) / 2 - 4} ${x1} ${y1}`, '#7d7a72', 1.6);
+    if (leaf) for (let k = 0; k < 13; k++) { const x = (r() - .5) * 38, y = -h * (.5 + r() * .45), rx = 8 + r() * 5;
+      B.f(B.blob(r, x + 1.5, y + 2, rx, rx * .6, 8, .5), leaf[0]).f(B.blob(r, x, y, rx * .85, rx * .5, 8, .5), leaf[1]).f(B.blob(r, x - 2, y - 2, rx * .4, rx * .25, 6, .5), leaf[2], .85); }
+    else B.s(D2().twigs ? D2().twigs(r, forks.map(([a, b, x, y]) => [x, y, -Math.PI / 2 + (x > 0 ? .5 : -.5), 9]), 2, .6) : '', '#6e6a62', .8, .8);
+    if (season === 'autumn' || season === 'winter') for (let k = 0; k < 6; k++) { const x = (r() - .5) * 32, y = -h * (.7 + (r() - .5) * .3); for (let j = 0; j < 6; j++) B.f(B.circ(x + (r() - .5) * 4, y + (r() - .5) * 3, 1.2), '#c42a22', .95); }
+    if (season === 'spring') for (let k = 0; k < 5; k++) B.f(B.blob(r, (r() - .5) * 24, -h * (.8 + (r() - .5) * .14), 3, 2, 6, .5), '#f4f0e2', .95);
+  }
   function pineArt(B, h, P, seed, snowy) {
     const kit = KIT(), r = kit.rng(seed), lean = 6 + r() * 8;
     B.shadow(8, 1, 16, 4, .3);
@@ -516,6 +533,9 @@ window.GardenPaintedTerrain = (function () {
       const sd = kit.hash(Math.round(end.lip.x), Math.round(end.lip.y), 3), w = 40 + sd % 18, h = 58 + sd % 26;
       out.push({ key: sig + '|crag|' + sd, box: [-w, -h * 1.5 - 10, w, 16], x: end.lip.x + (end.lip.x < c.x ? -w * .3 : w * .3), y: end.foot.y - 2, draw: B => cragArt(B, w, h, P, sd, snowy, false) });
     }
+    // rowans on the gorge's far lip, where the river runs down to the falls
+    if (L.gorge && L.gorge.line) for (const [t, sd] of [[.5, 1], [.84, 2]]) { const ln = L.gorge.line, i = Math.floor((ln.length - 1) * t), a = ln[i], b = ln[Math.min(ln.length - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l, s2 = ny < 0 ? 1 : -1, hw = (L.gorge.halfWidth || .85) + .22, p = L.pt([a[0] + nx * s2 * hw, a[1] + ny * s2 * hw]), h = 50 + sd * 6;
+      out.push({ key: sig + '|rowan|' + sd, box: [-30, -h - 16, 34, 8], x: p.x, y: p.y, draw: B => rowanArt(B, h, P, 77 + sd, season) }); }
     for (const op of ops) for (const p of op.pines || []) out.push({ key: sig + '|pine|' + p.seed, box: [-24, -p.h - 14, 44, 8], x: p.x, y: p.y, draw: B => pineArt(B, p.h, P, p.seed, snowy) });
     return out;
   }
