@@ -56,13 +56,16 @@ window.GardenPaintedDecor = (function () {
   };
 
   /* ---------- in the world ---------- */
+  // SC: the drawing's scale in the world (painters draw a little large for a crisp icon)
   const ANIM = {
     spin: (a) => (n, t, m) => { if (m) n.setRotation(t * (a.speed || 1.6)); },
     sway: (a, ph) => (n, t, m) => { if (m) n.setRotation(Math.sin(t * (a.speed || 1.2) + ph) * (a.amp || .05)); },
-    bob: (a, ph, y0) => (n, t, m) => { if (m) n.y = y0 + Math.sin(t * (a.speed || 1.4) + ph) * (a.amp || 2); },
-    flutter: (a, ph) => (n, t, m) => { if (m) n.setScale((1 + Math.sin(t * (a.speed || 5) + ph) * (a.amp || .06)) / 2, 1 / 2); },
+    bob: (a, ph, y0, sc) => (n, t, m) => { if (m) n.y = y0 + Math.sin(t * (a.speed || 1.4) + ph) * (a.amp || 2) * sc; },
+    flutter: (a, ph, y0, sc) => (n, t, m) => { if (m) n.setScale((1 + Math.sin(t * (a.speed || 5) + ph) * (a.amp || .06)) * sc / 2, sc / 2); },
     flicker: (a, ph) => (n, t, m) => { if (m) n.setAlpha(.82 + Math.sin(t * (a.speed || 7) + ph) * .1 + Math.sin(t * 13.1 + ph) * .06); },
   };
+  // fences stay full size so a row of them meets; everything else sits at the scale of the village's props
+  const scaleOf = R => R.scale || (R.family === 'fences' ? 1 : .8);
   // Textures of another season or time of day are let go a little after the
   // village moves on (every decoration is redrawn then), so memory stays bounded.
   let lastMood = null;
@@ -70,26 +73,43 @@ window.GardenPaintedDecor = (function () {
     if (lastMood === mood) return; const was = lastMood; lastMood = mood; if (was == null) return;
     setTimeout(() => { try { if (!scene.textures) return; for (const key of scene.textures.getTextureKeys()) if (key.startsWith('gpp|dec|') && !key.endsWith('|' + lastMood)) scene.textures.remove(key); } catch (e) { lastError = String(e); } }, 4000);
   }
+  // Baking is spread out: a redraw that would bake many new pictures at once
+  // (a friend's garden, thirty things placed) bakes about 10 ms of them and
+  // lets the rest appear over the next frames, so no task runs long.
+  const queue = []; let tickAt = 0, tickMs = 0, pumping = false, deferred = 0;
+  function budget() { const now = performance.now(); if (now - tickAt > 30) { tickAt = now; tickMs = 0; } return tickMs < 10; }
+  function pump() {
+    if (pumping) return; pumping = true;
+    const run = () => { const t0 = performance.now(); while (queue.length && performance.now() - t0 < 10) { const job = queue.shift(); try { job(); } catch (e) { lastError = String(e && e.stack || e); } } if (queue.length) setTimeout(run, 16); else pumping = false; };
+    setTimeout(run, 16);
+  }
   function world(scene, item, sc, o) {
     const K = kit(), R = ROWS[item.id], def = typeof gardenDecor === 'function' ? gardenDecor(item.id) : null; if (!K || !R || !def) return null;
     const W = o.W, season = sc.season || 'summer', night = !!o.night, mood = season + '|' + (night ? 'n' : 'd');
     const fx = (item.x + (def.w || 1) / 2) * W.cellW, foot = W.sky + (item.y + (def.h || 1)) * W.cellH - 4;
-    const side = sideOf(R, item.r), v = vOf(R, item.v), P = partOf(R, side), flip = !!item.flip;
+    const side = sideOf(R, item.r), v = vOf(R, item.v), P = partOf(R, side), flip = !!item.flip, SC = scaleOf(R);
     if (!P || !P.draw) return null;
-    sweep(scene, mood);
+    sweep(scene, mood); warmSoon();
     const h = K.handle(scene, o, 'decor:' + item.uid, { cls: 'decor' });
-    const key = K.bake(scene, 'dec|' + item.id + '|' + v + (side ? '|s' : '') + '|' + mood, P.box, B => P.draw(B, opts(K, item.id, season, night, v, side)));
-    const im = h.add(K.image(scene, key, fx, foot)); if (!im) { h.destroy(); return null; }
-    if (flip) im.setFlipX(true);
-    (P.anim || []).forEach((a, i) => {
-      const ak = K.bake(scene, 'dec|' + item.id + '|' + a.id + '|' + v + '|' + mood, a.box, B => a.draw(B, opts(K, item.id, season, night, v, side)));
-      const x = fx + (flip ? -a.x : a.x), y = foot + a.y, ai = h.add(K.image(scene, ak, x, y)); if (!ai) return;
-      if (flip) ai.setFlipX(true);
-      const fn = (ANIM[a.kind] || ANIM.sway)(a, i * 1.7 + item.x * .3, y); h.move(ai, fn);
-    });
-    if (P.glow) { const hy = P.glow.halo == null ? null : foot + P.glow.halo; h.lights.push({ x: fx, y: hy == null ? foot - 10 : hy, radius: P.glow.radius || 90, pool: true }); if (night) K.glowPool(scene, h, fx, foot, P.glow.w || 70, hy); }
-    const [x0, y0, x1, y1] = P.box, bx0 = flip ? -x1 : x0, bx1 = flip ? -x0 : x1;
-    return K.finish(h, { x: fx + bx0, y: foot + y0, width: bx1 - bx0, height: y1 - y0 + 6 }, { x: fx, y: foot });
+    let gone = false; const destroy = h.destroy; h.destroy = () => { gone = true; destroy(); };
+    const mainKey = 'dec|' + item.id + '|' + v + (side ? '|s' : '') + '|' + mood;
+    const paint = () => {
+      if (gone) return; const t0 = performance.now();
+      const key = K.bake(scene, mainKey, P.box, B => P.draw(B, opts(K, item.id, season, night, v, side)));
+      const im = h.add(K.image(scene, key, fx, foot)); if (!im) return;
+      im.setScale(SC / 2); if (flip) im.setFlipX(true);
+      (P.anim || []).forEach((a, i) => {
+        const ak = K.bake(scene, 'dec|' + item.id + '|' + a.id + '|' + v + '|' + mood, a.box, B => a.draw(B, opts(K, item.id, season, night, v, side)));
+        const x = fx + (flip ? -a.x : a.x) * SC, y = foot + a.y * SC, ai = h.add(K.image(scene, ak, x, y)); if (!ai) return;
+        ai.setScale(SC / 2); if (flip) ai.setFlipX(true);
+        h.move(ai, (ANIM[a.kind] || ANIM.sway)(a, i * 1.7 + item.x * .3, y, SC));
+      });
+      tickMs += performance.now() - t0;
+    };
+    if (scene.textures.exists('gpp|' + mainKey) || budget()) paint(); else { deferred++; queue.push(paint); pump(); }
+    if (P.glow) { const hy = P.glow.halo == null ? null : foot + P.glow.halo * SC; h.lights.push({ x: fx, y: hy == null ? foot - 10 : hy, radius: P.glow.radius || 90, pool: true }); if (night) K.glowPool(scene, h, fx, foot, (P.glow.w || 70) * SC, hy); }
+    const [x0, y0, x1, y1] = P.box, bx0 = (flip ? -x1 : x0) * SC, bx1 = (flip ? -x0 : x1) * SC;
+    return K.finish(h, { x: fx + bx0, y: foot + y0 * SC, width: bx1 - bx0, height: (y1 - y0) * SC + 6 }, { x: fx, y: foot });
   }
   function signature(item, sc, night) { const R = ROWS[item.id]; return R ? 'painted-decor-3|' + item.id + '|' + item.x + ',' + item.y + '|' + vOf(R, item.v) + (sideOf(R, item.r) ? 's' : '') + (item.flip ? 'f' : '') + '|' + sc.season + (night ? '|n' : '') : null; }
 
@@ -116,7 +136,7 @@ window.GardenPaintedDecor = (function () {
       return fit(m.c, m.c.getContext('2d'), c, cx, true);
     }
     // draw at a generous size, then crop to what was painted so small icons fill their tile
-    const [x0, y0, x1, y1] = src.box, k = Math.min(S * 2 / (x1 - x0), S * 2 / (y1 - y0)), tw = Math.ceil((x1 - x0) * k), th = Math.ceil((y1 - y0) * k);
+    const [x0, y0, x1, y1] = src.box, k = Math.min(S * 1.5 / (x1 - x0), S * 1.5 / (y1 - y0)), tw = Math.ceil((x1 - x0) * k), th = Math.ceil((y1 - y0) * k);
     const t = document.createElement('canvas'); t.width = tw; t.height = th; const tx = t.getContext('2d', { willReadFrequently: true });
     tx.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
     // a patch of lawn under its foot, so pale things (white pickets, glass, snow) read on the paper
@@ -134,21 +154,41 @@ window.GardenPaintedDecor = (function () {
     cx.imageSmoothingQuality = 'high'; cx.drawImage(t, mx, my, w, h, (S - w * k) / 2, stand ? S - 2 - h * k : (S - h * k) / 2, w * k, h * k);
     return c;
   }
+  // Icons are made while a 12 ms slice of the current task lasts; past that a
+  // tile is handed out empty and filled a moment later (and every icon is
+  // made ahead in idle time once one is asked for), so a full shop never
+  // holds the page up.
+  let iconTick = 0, iconTickMs = 0; const waiting = new Map();
+  function iconBudget() { const now = performance.now(); if (now - iconTick > 40) { iconTick = now; iconTickMs = 0; } return iconTickMs < 12; }
+  function make(key, fn) { const t0 = performance.now(); let url = ''; try { const c = fn(); url = c ? c.toDataURL('image/png') : ''; } catch (e) { lastError = String(e && e.stack || e); } if (ICON.size >= ICON_MAX) ICON.delete(ICON.keys().next().value); ICON.set(key, url); const ms = performance.now() - t0; iconMs += ms; iconTickMs += ms; icons++; return url; }
+  function later(key, fn) {
+    if (!waiting.has(key)) waiting.set(key, fn);
+    if (waiting.size === 1) setTimeout(function fill() {
+      const t0 = performance.now();
+      for (const [k, f] of waiting) { if (performance.now() - t0 > 12) break; waiting.delete(k); const url = ICON.has(k) ? ICON.get(k) : make(k, f); for (const el of document.querySelectorAll('svg[data-gpdi="' + CSS.escape(k) + '"] image')) { if (url) el.setAttribute('href', url); else el.closest('svg').style.visibility = 'hidden'; } }
+      if (waiting.size) setTimeout(fill, 20);
+    }, 0);
+  }
+  const shell = (key, url, px, cls) => `<svg class="${cls}" viewBox="0 0 ${S} ${S}" width="${px}" height="${px}" preserveAspectRatio="xMidYMax meet" aria-hidden="true" focusable="false"${url ? '' : ` data-gpdi="${key.replace(/"/g, '')}"`}><image href="${url || ''}" x="0" y="0" width="${S}" height="${S}"/></svg>`;
   /** An item as a small standalone <svg> holding its painted picture, or '' when it has none. */
   function icon(id, o) {
     o = Object.assign({}, o); if (o.silhouette) return '';
+    if (!ROWS[id] && !(window.GardenPaintedProps && GardenPaintedProps.decorTable && GardenPaintedProps.decorTable[id])) return '';
     o.v = (o.v | 0) || (o.variant | 0);   // the mill's stage and the marble jar's count come as the variant
-    const px = o.px || 48, key = id + '|' + o.v + '|' + (o.season || 'summer');
+    const px = o.px || 48, key = id + '|' + o.v + '|' + (o.season || 'summer'), fn = () => iconCanvas(id, o);
     let url = ICON.get(key);
-    if (url === undefined) {
-      const t0 = performance.now(); let c = null;
-      try { c = iconCanvas(id, o); } catch (e) { lastError = String(e && e.stack || e); c = null; }
-      url = c ? c.toDataURL('image/png') : '';
-      if (ICON.size >= ICON_MAX) ICON.delete(ICON.keys().next().value);
-      ICON.set(key, url); iconMs += performance.now() - t0; icons++;
-    }
-    if (!url) return '';
-    return `<svg class="gd-ico gd-ico-painted" viewBox="0 0 ${S} ${S}" width="${px}" height="${px}" preserveAspectRatio="xMidYMax meet" aria-hidden="true" focusable="false"><image href="${url}" x="0" y="0" width="${S}" height="${S}"/></svg>`;
+    if (url === undefined) { if (iconBudget()) url = make(key, fn); else later(key, fn); }
+    if (url === '') return '';
+    warmSoon();
+    return shell(key, url, px, 'gd-ico gd-ico-painted');
+  }
+  // make every decoration's icon ahead, a few at a time when the page is idle
+  let warmed = false;
+  function warmSoon() {
+    if (warmed) return; warmed = true;
+    const ids = Object.keys(ROWS).concat(Object.keys(window.GardenPaintedProps && GardenPaintedProps.decorTable || {})), idle = window.requestIdleCallback || (f => setTimeout(() => f({ timeRemaining: () => 8 }), 50));
+    let i = 0; const step = (d) => { const t0 = performance.now(); while (i < ids.length && performance.now() - t0 < Math.min(10, Math.max(4, d.timeRemaining()))) { const id = ids[i++], key = id + '|0|summer'; if (!ICON.has(key)) make(key, () => iconCanvas(id, { v: 0 })); } if (i < ids.length) idle(step, { timeout: 2000 }); };
+    setTimeout(() => idle(step, { timeout: 2000 }), 1500);
   }
   /** A painted icon of anything with a painter of its own (crafted things that are not decorations). */
   const EXTRA = Object.create(null);
@@ -156,14 +196,10 @@ window.GardenPaintedDecor = (function () {
   function extraIcon(id, px, cls) {
     const p = EXTRA[id], K = kit(); if (!p || !K) return '';
     const key = 'x|' + id; let url = ICON.get(key);
-    if (url === undefined) {
-      let c = null;
-      try { c = document.createElement('canvas'); c.width = S; c.height = S; const [x0, y0, x1, y1] = p.box, k = Math.min(S * 2 / (x1 - x0), S * 2 / (y1 - y0)), t = document.createElement('canvas'); t.width = Math.ceil((x1 - x0) * k); t.height = Math.ceil((y1 - y0) * k); const tx = t.getContext('2d', { willReadFrequently: true }); tx.setTransform(k, 0, 0, k, -x0 * k, -y0 * k); p.draw(K.brush(tx), opts(K, id, 'summer', false, 0, false, true)); c = fit(t, tx, c, c.getContext('2d'), false); } catch (e) { lastError = String(e && e.stack || e); c = null; }
-      url = c ? c.toDataURL('image/png') : ''; if (ICON.size >= ICON_MAX) ICON.delete(ICON.keys().next().value); ICON.set(key, url);
-    }
+    if (url === undefined) url = make(key, () => { const c = document.createElement('canvas'); c.width = S; c.height = S; const [x0, y0, x1, y1] = p.box, k = Math.min(S * 1.5 / (x1 - x0), S * 1.5 / (y1 - y0)), t = document.createElement('canvas'); t.width = Math.ceil((x1 - x0) * k); t.height = Math.ceil((y1 - y0) * k); const tx = t.getContext('2d', { willReadFrequently: true }); tx.setTransform(k, 0, 0, k, -x0 * k, -y0 * k); p.draw(K.brush(tx), opts(K, id, 'summer', false, 0, false, true)); return fit(t, tx, c, c.getContext('2d'), false); });
     return url ? `<svg class="${cls || 'gcr-art'} gd-ico-painted" viewBox="0 0 ${S} ${S}" width="${px}" height="${px}" aria-hidden="true" focusable="false"><image href="${url}" x="0" y="0" width="${S}" height="${S}"/></svg>` : '';
   }
-  function status() { return { rows: Object.keys(ROWS).length, icons, iconMs: Math.round(iconMs), cached: ICON.size, lastError }; }
+  function status() { return { rows: Object.keys(ROWS).length, deferred, queued: queue.length, icons, iconMs: Math.round(iconMs), cached: ICON.size, lastError }; }
   return { opts, add, row, has: id => !!ROWS[id] && !ROWS[id].iconOnly,   // iconOnly: painted in the shop and bag, drawn live in the world (the aquarium shows your own fish)
      ids: () => Object.keys(ROWS), world, signature, icon, addIcon, extraIcon, iconCanvas, status, get lastError() { return lastError; } };
 })();
