@@ -357,11 +357,12 @@ window.GardenNativeRooms = (function () {
   }
   function fish(dt) {
     const s = current(), w = water(); if (!s || !w || typeof _gfs === 'undefined') return;
-    const keep = new Set(), motion = gardenMotionOn();
+    const keep = new Set(), motion = gardenMotionOn(); let built = 0;
     for (const f of _gfs.list.values()) {
       if (f.x < GARDEN_ROOM_X || f.y < w.cy || f.y >= w.cy + GRW.rows) continue;
       keep.add(f.u); let item = s.fishArts.get(f.u);
-      if (!item) { item = art(s.context.scene, _gfsArt(f.def, f.cm, f.v), s.fishLayer || s.root, 60); s.fishArts.set(f.u, item); }
+      // one new fish drawing a frame: a stocked pool fills in over a few frames, not one long one
+      if (!item) { if (built++) continue; item = art(s.context.scene, _gfsArt(f.def, f.cm, f.v), s.fishLayer || s.root, 60); s.fishArts.set(f.u, item); }
       _gfsVisualStep(f, item, dt, s.time, motion);
       const p = _gwPx(item.sx, item.sy); _gfsVisualProject(f, item, p[0], p[1]);
       const angle = item.angle == null ? item.heading || 0 : item.angle, scale = GRW.k * (item.size || 1);
