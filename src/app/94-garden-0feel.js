@@ -65,6 +65,7 @@ function _gfFlash(el) {
 function gardenAudioContext(prepare) {
   try {
     if (typeof _gmG !== 'function' || !_gmG().prefs.sounds || document.hidden || typeof gameOn === 'function' && !gameOn()) return null;
+    if (!prepare && typeof gardenSoundFxOn === 'function' && !gardenSoundFxOn()) return null;   // the Sound panel's effects switch (94-garden-0sound.js)
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
     // Share small garden effects and prepare their device before movement.
     // A prepared context stays suspended until playback is actually requested.
@@ -78,6 +79,7 @@ function gardenAudioPrepare() { return gardenAudioContext(true); }
 function _gfSound(kind) {
   // only when Sounds is on (the game's own setting); never more than a few a second
   try {
+    if (typeof gardenSfx === 'function' && gardenSfx(kind === 'deny' ? 'cant' : 'cheer')) return;   // the garden's own sounds (94-garden-0sound.js)
     if (performance.now() - _gfel.soundT < 180) return; _gfel.soundT = performance.now();
     if (typeof _gmG !== 'function' || !_gmG().prefs.sounds || document.hidden) return;
     if (typeof gameOn === 'function' && !gameOn()) return;
