@@ -33,7 +33,7 @@ window.GardenPaintVale = (function () {
 
   const BASE = {
     sand: '#e3d2a2', sandWet: '#c8b483', sandDk: '#a8946a', shallow: '#93c4bf', sea: '#6d9fb0', seaDk: '#4f8296', foam: '#f2f5ea',
-    path: '#d7c294', pathEdge: '#b29a6b', pathWear: '#e5d5ab', stone: '#d6cdb6', stoneLo: '#bdb299', stoneHi: '#e6dfcb', kerb: '#a59a80', grout: '#8e8670',
+    path: '#d7c294', pathEdge: '#b29a6b', pathWear: '#e5d5ab', stone: '#dcc8a0', stoneLo: '#bea47b', stoneHi: '#eddcb6', kerb: '#9f8560', grout: '#76664d',
     wall: '#b8ae96', wallLo: '#8f866f', wallHi: '#d8cfb6', wallDk: '#5e584a', moss: '#7d8f4e', mossHi: '#a3b06a', ivy: '#3f5e34', ivyHi: '#5f8446',
     wood: '#9a7a54', woodLo: '#6e5438', woodHi: '#c4a478', woodDk: '#4a3a2c', iron: '#2f3336', rope: '#c9b07a',
     river: '#7f93ae', riverDk: '#617796', riverHi: '#c4d3e2', bank: '#8a7a58', soil: '#7d5d40',
@@ -130,8 +130,12 @@ window.GardenPaintVale = (function () {
       for (let x = Math.floor(bb[0] / w0) * w0 - rr() * w0; x < bb[2]; ) {
         const w = w0 * (.7 + rr() * .7), tone = rr();
         if (o.broken && rr() < o.broken) { B.f(B.rect(x, y, w, rowH), P.lawnLo, .55); B.tufts(rr, x + w / 2, y + rowH - 2, w * .7, 3, [P.lawnLo, P.lawnHi], 5); x += w; continue; }
-        if (tone < .3 || tone > .82) B.f(B.rect(x + .6, y + .6, w - 1.2, rowH - 1.8), tone < .3 ? P.stoneLo : P.stoneHi, .45);
-        B.f(B.rect(x + 1, y + .8, w - 2, 1.1), P.stoneHi, .5).f(B.rect(x - .5, y, 1, rowH), o.grout || P.grout, .38);
+        // each stone its own warm tone (honey, buff, a rosy one now and then), lit along the top, shaded along the foot,
+        // with a little grain: laid stone, not flat slabs
+        const warmTones = [P.stone, P.stoneLo, P.stoneHi, '#d4b688', '#d8bca4', '#c9b38c'];
+        B.f(B.rect(x + .6, y + .6, w - 1.2, rowH - 1.8), warmTones[Math.floor(tone * warmTones.length) % warmTones.length], .7);
+        B.f(B.rect(x + 1, y + .8, w - 2, 1.1), P.stoneHi, .55).f(B.rect(x + 1, y + rowH - 2.4, w - 2, 1.3), P.stoneLo, .55).f(B.rect(x - .5, y, 1.1, rowH), o.grout || P.grout, .5);
+        for (let k = 0; k < 3; k++) B.f(B.rect(x + 2 + rr() * (w - 4), y + 2 + rr() * (rowH - 5), 1.2, 1), rr() < .5 ? P.stoneLo : P.stoneHi, .5);
         if (rr() < .08) B.s(`M${x + w * .3} ${y + 2}l${w * .2} ${rowH * .5}l${w * .15} ${rowH * .3}`, P.grout, .7, .45);
         if (o.moss && rr() < o.moss) B.f(B.blob(rr, x, y + rowH - 1, 4 + rr() * 5, 1.6, 6, .5), P.moss, .55);
         x += w;

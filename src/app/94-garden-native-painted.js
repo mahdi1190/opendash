@@ -23,8 +23,8 @@ window.GardenNativePainted = (function () {
   // A small seeded generator, the scenes' habit: the same island paints the same.
   function rng(seed) { let s = (seed >>> 0) % 2147483647 || 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
   const PAL = {
-    summer: { lawn: '#93ad5f', lawnLo: '#7c9a4e', lawnHi: '#a9bf6c', sand: '#e3d2a2', sandWet: '#c8b483', water: '#6d9fb0', shallow: '#93bfbd', deep: '#5a8aa0', foam: '#eef2e2', path: '#d7c294', pathEdge: '#b29a6b', pathWear: '#e5d5ab', shadow: '#4d5a36', stone: '#d6cdb6', stoneLo: '#bdb299', stoneHi: '#e6dfcb', kerb: '#a59a80' },
-    autumn: { lawn: '#9aa65a', lawnLo: '#848f49', lawnHi: '#b2b66a', sand: '#e1cf9f', sandWet: '#c6b282', water: '#6a9aab', shallow: '#90b9b6', deep: '#57869b', foam: '#eef0e0', path: '#d6c090', pathEdge: '#ae9566', pathWear: '#e3d2a6', shadow: '#55542f', stone: '#d4cab2', stoneLo: '#bbaf95', stoneHi: '#e4dcc7', kerb: '#a3977c' },
+    summer: { lawn: '#93ad5f', lawnLo: '#7c9a4e', lawnHi: '#a9bf6c', sand: '#e3d2a2', sandWet: '#c8b483', water: '#6d9fb0', shallow: '#93bfbd', deep: '#5a8aa0', foam: '#eef2e2', path: '#d7c294', pathEdge: '#b29a6b', pathWear: '#e5d5ab', shadow: '#4d5a36', stone: '#dcc8a0', stoneLo: '#bea47b', stoneHi: '#eddcb6', kerb: '#9f8560' },
+    autumn: { lawn: '#9aa65a', lawnLo: '#848f49', lawnHi: '#b2b66a', sand: '#e1cf9f', sandWet: '#c6b282', water: '#6a9aab', shallow: '#90b9b6', deep: '#57869b', foam: '#eef0e0', path: '#d6c090', pathEdge: '#ae9566', pathWear: '#e3d2a6', shadow: '#55542f', stone: '#d9c39a', stoneLo: '#bba076', stoneHi: '#eadab2', kerb: '#9c825c' },
     winter: { lawn: '#a6b29a', lawnLo: '#929f87', lawnHi: '#bcc5b0', sand: '#ddd3b6', sandWet: '#c4b897', water: '#7a9fab', shallow: '#a2bec0', deep: '#668a9a', foam: '#f2f4ee', path: '#d2c6a6', pathEdge: '#ad9f80', pathWear: '#e0d6bc', shadow: '#5e6658', stone: '#d6d0c2', stoneLo: '#bdb6a6', stoneHi: '#e8e4da', kerb: '#a49d8c' },
   };
   PAL.spring = Object.assign({}, PAL.summer, { lawn: '#8fb35f', lawnLo: '#78a04e', lawnHi: '#a8c66f' });
@@ -161,7 +161,7 @@ window.GardenNativePainted = (function () {
       cx.save(); cx.beginPath(); loop(pz.points); cx.fillStyle = P.shadow; cx.globalAlpha = .2; cx.translate(2, 4); cx.fill(); cx.restore();
       cx.save(); cx.beginPath(); loop(pz.points); cx.fillStyle = P.stone; cx.fill(); cx.clip();
       const b = pz.bounds;
-      for (let y = b.y, row = 0; y < b.y + b.h; y += 9, row++) for (let x = b.x - (row % 2) * 7; x < b.x + b.w; x += 14) { cx.globalAlpha = .55; cx.fillStyle = r() < .33 ? P.stoneLo : r() < .5 ? P.stoneHi : P.stone; cx.fill(path(sceneDraw.rect(x + .8, y + .8, 12.4, 7.4))); }
+      for (let y = b.y, row = 0; y < b.y + b.h; y += 9, row++) for (let x = b.x - (row % 2) * 7; x < b.x + b.w; x += 14) { const tone = r(); cx.globalAlpha = .75; cx.fillStyle = tone < .25 ? P.stoneLo : tone < .45 ? P.stoneHi : tone < .6 ? '#d4b688' : tone < .7 ? '#d8bca4' : P.stone; cx.fill(path(sceneDraw.rect(x + .8, y + .8, 12.4, 7.4))); cx.globalAlpha = .5; cx.fillStyle = P.stoneHi; cx.fill(path(sceneDraw.rect(x + 1.4, y + 1, 11.2, 1.1))); cx.fillStyle = P.kerb; cx.globalAlpha = .4; cx.fill(path(sceneDraw.rect(x + 1.2, y + 6.6, 11.6, 1.2))); }
       cx.globalAlpha = 1;
       const ccx = pz.centre.x, ccy = pz.centre.y;
       for (const [rx, col] of [[46, P.kerb], [42, P.stoneHi], [30, P.stoneLo], [26, P.stone]]) { cx.fillStyle = col; cx.beginPath(); cx.ellipse(ccx, ccy, rx, rx * .55, 0, 0, Math.PI * 2); cx.fill(); }

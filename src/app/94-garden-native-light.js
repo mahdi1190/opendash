@@ -28,6 +28,14 @@ window.GardenNativeLight = (function () {
     let clockKey = '', clockState = null;
     const shadowPool = new Map(), actorShadowPool = new Map(), creatureRows = new WeakMap(), actorCasts = new WeakMap(), softKey = '__garden-soft-' + scene.sys.settings.key, weatherKey = '__garden-weather-' + scene.sys.settings.key, cloudKey = '__garden-cloud-' + scene.sys.settings.key;
     const lightMembership = new Set();
+    // one colour grade on the camera: daylight clear, warm and rich (the painted world is pale on its own); calmer at night
+    let gradeFx = null; try { gradeFx = scene.cameras.main.filters.internal.addColorMatrix(); } catch (e) { gradeFx = null; }
+    function paintGrade(env) {
+      if (!gradeFx || !gradeFx.colorMatrix) return;
+      const m = gradeFx.colorMatrix, d = room ? .5 : clamp(env.daylight);
+      m.reset(); m.saturate(.06 + .17 * d); m.contrast(.025 + .045 * d, true);
+      if (d > .3) m.multiply([1 + .032 * d, 0, 0, 0, 0, 0, 1 + .004 * d, 0, 0, 0, 0, 0, 1 - .05 * d, 0, 0, 0, 0, 0, 1, 0], true);
+    }
     let visibleCloudLobes = 0, cloudTextureBuilds = 0;
     let creatureSerial = 0, visibleCreatures = 0;
     // A single native capture supplies soft, batchable penumbras. It is
@@ -280,14 +288,19 @@ window.GardenNativeLight = (function () {
       const W = typeof GARDEN_WORLD === 'undefined' ? { cols: 80, cellW: 48, rows: 50, cellH: 30, sky: 150 } : GARDEN_WORLD;
       const x = -3000, y = -3000, width = W.cols * W.cellW + 6000, height = W.sky + W.rows * W.cellH + 6000;
       sky.clear().fillStyle(skyColor, 1).fillRect(x, y, width, height);
+      paintGrade(env);
       night.clear(); atmosphere.clear();
       if (room) {
         const ambient = room.ambient == null ? .8 : Number(room.ambient);
-        night.fillStyle(0x253450, (1 - clamp(ambient)) * .3).fillRect(x, y, width, height);
+        night.setBlendMode(Phaser.BlendModes.NORMAL).fillStyle(0x253450, (1 - clamp(ambient)) * .3).fillRect(x, y, width, height);
       } else {
-        const darkness = outdoorDarkness(env) - (1 - env.daylight) * .07;
-        if (darkness > .01) night.fillStyle(outdoorNightPresentation() ? 0x223554 : 0x263855, darkness).fillRect(x, y, width, height);
-        const dusk = 1 - Math.abs(env.daylight * 2 - 1);
+        // The outdoor grade multiplies (it never paints a pale wash over the scene, which read as a flat grey haze):
+        // deep blue at night, rose and amber at dusk and dawn, nothing at all by day.
+        const darkness = outdoorDarkness(env) - (1 - env.daylight) * .07, dusk = 1 - Math.abs(env.daylight * 2 - 1);
+        const t = clamp(darkness / .4), warm = clamp(dusk) * (1 - t * .55), eve = env.hour >= 12;
+        const night0 = outdoorNightPresentation() ? [.5, .58, .8] : [.56, .63, .82], warm0 = eve ? [1, .84, .72] : [1, .9, .8];
+        const mul = [0, 1, 2].map(i => (1 + (night0[i] - 1) * t) * (1 + (warm0[i] - 1) * warm * .6));
+        if (t > .01 || warm > .04) night.setBlendMode(Phaser.BlendModes.MULTIPLY).fillStyle(mul.reduce((n, c) => n * 256 + Math.round(clamp(c) * 255), 0), 1).fillRect(x, y, width, height);
         if (dusk > .1) atmosphere.fillStyle(env.hour < 12 ? 0xffd6ab : 0xefb397, dusk * .045).fillRect(x, y, width, height);
         if (env.wetness > .04) atmosphere.fillStyle(0x73969d, env.wetness * .022).fillRect(x, y, width, height);
         if (env.snow) atmosphere.fillStyle(0xe5eff1, env.snow * .018).fillRect(x, y, width, height);
@@ -465,7 +478,7 @@ window.GardenNativeLight = (function () {
       paintGroundWeather(frozenAt == null ? dt : 0, env, v, motion);
       paintEffects(frozenAt == null ? dt : 0); if (window.GardenNativeArt && GardenNativeArt.environment) GardenNativeArt.environment(env);
     }
-    function destroy() { if (dead) return; dead = true; document.removeEventListener('visibilitychange', visibilityChanged); for (const object of objects) object.destroy(); shadowPool.clear(); actorShadowPool.clear(); for (const light of pointLights.values()) light.destroy(); pointLights.clear(); lightMembership.clear(); if (scene.textures.exists(softKey)) scene.textures.remove(softKey); if (scene.textures.exists(weatherKey)) scene.textures.remove(weatherKey); if (scene.textures.exists(cloudKey)) scene.textures.remove(cloudKey); particles.length = 0; burstGlyphs.length = 0; visibleBurstGlyphs = 0; }
+    function destroy() { if (dead) return; dead = true; try { if (gradeFx) scene.cameras.main.filters.internal.remove(gradeFx); } catch (e) {} gradeFx = null; document.removeEventListener('visibilitychange', visibilityChanged); for (const object of objects) object.destroy(); shadowPool.clear(); actorShadowPool.clear(); for (const light of pointLights.values()) light.destroy(); pointLights.clear(); lightMembership.clear(); if (scene.textures.exists(softKey)) scene.textures.remove(softKey); if (scene.textures.exists(weatherKey)) scene.textures.remove(weatherKey); if (scene.textures.exists(cloudKey)) scene.textures.remove(cloudKey); particles.length = 0; burstGlyphs.length = 0; visibleBurstGlyphs = 0; }
     function setPreview(next) { preview = next || null; staticKey = ''; screenKey = ''; fieldDirty = true; }
     setRoom(null);
     return { sync, setRoom, pauseAmbient, update, effect, destroy, ambientClock, preview: setPreview, environment: () => ({ ...environment, ambientTime, paused: frozenAt != null, reducedMotion: !lastMotion, room: !!room, ...clockStatus() }), status: () => ({ shadows: occluders().length, actorShadows: visibleActors, creatureShadows: visibleCreatures, shadowImages: shadowPool.size + actorShadowPool.size, lights: lamps.length, cloudCount: cloudList.length, cloudLobes: cloudImages.length, visibleCloudLobes, cloudTextureKey: cloudKey, cloudTextureSize: [cloudTextureWidth, cloudTextureHeight], cloudTextureBytes: cloudTextureWidth * cloudTextureHeight * 4, cloudTextureBuilds, precipitation: environment.rain ? Math.ceil(drops.length * environment.rain) : environment.snow ? Math.ceil(80 * environment.snow) : 0, precipitationKind: environment.snow ? 'snow' : environment.rain ? 'rain' : 'none', precipitationSprites: precipitationVisible, precipitationTextureBytes: 192 * 64 * 4, groundImpacts: impacts.filter(impact => impact.active).length, wetness: environment.wetness, outdoorWetness, particles: particles.length, burstPoolSize: burstGlyphs.length, visibleBurstGlyphs, burstPoolLimit, paused: frozenAt != null, reducedMotion: !lastMotion, ambientTime, windX: environment.windX, windY: environment.windY, gust: environment.gust, room: !!room, native: true, ...clockStatus() }) };
