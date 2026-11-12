@@ -27,7 +27,7 @@ window.GardenPaintedDecor = (function () {
   const vOf = (R, v) => R && R.v ? ((v | 0) % R.v + R.v) % R.v : 0;
   const sideOf = (R, r) => !!(R && R.side && ((r | 0) % 2 === 1));
   const partOf = (R, side) => side ? R.side : R;
-  function opts(K, id, season, night, v, side, icon) { return { season: season || 'summer', night: !!night, v, side, r: K.rng(K.hash(id) + v * 31 + 1), K, D: sceneDraw, H, P: K.PALETTE, icon: !!icon }; }
+  function opts(K, id, season, night, v, side, icon, tile) { return { season: season || 'summer', night: !!night, v, side, tile: tile | 0, r: K.rng(K.hash(id) + v * 31 + (tile | 0) * 97 + 1), K, D: sceneDraw, H, P: K.PALETTE, icon: !!icon }; }
 
   /* ---------- shared touches, so each family keeps one look (o.H) ---------- */
   const shade = (hex, f) => { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const t = f < 0 ? 0 : 255, p = Math.abs(f); r = Math.round((t - r) * p + r); g = Math.round((t - g) * p + g); b = Math.round((t - b) * p + b); return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1); };
@@ -86,16 +86,17 @@ window.GardenPaintedDecor = (function () {
   function world(scene, item, sc, o) {
     const K = kit(), R = ROWS[item.id], def = typeof gardenDecor === 'function' ? gardenDecor(item.id) : null; if (!K || !R || !def) return null;
     const W = o.W, season = sc.season || 'summer', night = !!o.night, mood = season + '|' + (night ? 'n' : 'd');
-    const fx = (item.x + (def.w || 1) / 2) * W.cellW, foot = W.sky + (item.y + (def.h || 1)) * W.cellH - 4;
-    const side = sideOf(R, item.r), v = vOf(R, item.v), P = partOf(R, side), flip = !!item.flip, SC = scaleOf(R);
+    const flat = !!R.ground, fx = (item.x + (def.w || 1) / 2) * W.cellW, foot = W.sky + (item.y + (def.h || 1)) * W.cellH - (flat ? 0 : 4);
+    // paths and ground covers lie flat; tile is a position variant so a run of them does not repeat
+    const side = sideOf(R, item.r), v = vOf(R, item.v), P = partOf(R, side), flip = !flat && !!item.flip, SC = flat ? 1 : scaleOf(R), tile = R.tiles ? ((item.x * 7 + item.y * 13) % R.tiles + R.tiles) % R.tiles : 0;
     if (!P || !P.draw) return null;
     sweep(scene, mood); warmSoon();
     const h = K.handle(scene, o, 'decor:' + item.uid, { cls: 'decor' });
     let gone = false; const destroy = h.destroy; h.destroy = () => { gone = true; destroy(); };
-    const mainKey = 'dec|' + item.id + '|' + v + (side ? '|s' : '') + '|' + mood;
+    const mainKey = 'dec|' + item.id + '|' + v + (side ? '|s' : '') + (tile ? '|t' + tile : '') + '|' + mood;
     const paint = () => {
       if (gone) return; const t0 = performance.now();
-      const key = K.bake(scene, mainKey, P.box, B => P.draw(B, opts(K, item.id, season, night, v, side)));
+      const key = K.bake(scene, mainKey, P.box, B => P.draw(B, opts(K, item.id, season, night, v, side, false, tile)));
       const im = h.add(K.image(scene, key, fx, foot)); if (!im) return;
       im.setScale(SC / 2); if (flip) im.setFlipX(true);
       (P.anim || []).forEach((a, i) => {
@@ -111,6 +112,7 @@ window.GardenPaintedDecor = (function () {
     const [x0, y0, x1, y1] = P.box, bx0 = (flip ? -x1 : x0) * SC, bx1 = (flip ? -x0 : x1) * SC;
     return K.finish(h, { x: fx + bx0, y: foot + y0 * SC, width: bx1 - bx0, height: (y1 - y0) * SC + 6 }, { x: fx, y: foot });
   }
+  function ground(id) { const R = ROWS[id]; return !!(R && R.ground && !R.iconOnly); }
   function signature(item, sc, night) { const R = ROWS[item.id]; return R ? 'painted-decor-3|' + item.id + '|' + item.x + ',' + item.y + '|' + vOf(R, item.v) + (sideOf(R, item.r) ? 's' : '') + (item.flip ? 'f' : '') + '|' + sc.season + (night ? '|n' : '') : null; }
 
   /* ---------- icons: the shop, the bag, the crafting bench ---------- */
@@ -201,5 +203,5 @@ window.GardenPaintedDecor = (function () {
   }
   function status() { return { rows: Object.keys(ROWS).length, deferred, queued: queue.length, icons, iconMs: Math.round(iconMs), cached: ICON.size, lastError }; }
   return { opts, add, row, has: id => !!ROWS[id] && !ROWS[id].iconOnly,   // iconOnly: painted in the shop and bag, drawn live in the world (the aquarium shows your own fish)
-     ids: () => Object.keys(ROWS), world, signature, icon, addIcon, extraIcon, iconCanvas, status, get lastError() { return lastError; } };
+     ids: () => Object.keys(ROWS), ground, world, signature, icon, addIcon, extraIcon, iconCanvas, status, get lastError() { return lastError; } };
 })();

@@ -885,8 +885,8 @@ window.GardenNativeWorld = (function () {
       for (const item of sc.plants || []) add('plant:' + item.uid, _gdrItem('plant', item, sc, opts), { kind: 'plant', uid: item.uid, id: item.id, model: modelPlants.get(item.uid) }, W.sky + (item.y + (gardenPlant(item.id).fp || 1)) * W.cellH);
       const paintOpts = { element, W, night: nightMaterials, layer: rootNode._inner };
       for (const item of sc.decor || []) { const def = gardenDecor(item.id), ground = def && def.layer === 'ground';
-        if (!ground && paintedOn() && GardenPaintedProps.decorKnown(item.id) && !(typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf('decor:' + item.uid) || {}).some(Boolean))) {
-          const key = 'decor:' + item.uid, rec = paintedRecord(key, GardenPaintedProps.decorSignature(item, sc, nightMaterials), () => GardenPaintedProps.decor(scene, item, sc, paintOpts), { kind: 'decor', uid: item.uid, id: item.id, model: modelDecor.get(item.uid) }, W.sky + (item.y + (def && def.h || 1)) * W.cellH);
+        if ((!ground || (window.GardenPaintedDecor && GardenPaintedDecor.ground(item.id))) && paintedOn() && GardenPaintedProps.decorKnown(item.id) && !(typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf('decor:' + item.uid) || {}).some(Boolean))) {
+          const key = 'decor:' + item.uid, rec = paintedRecord(key, GardenPaintedProps.decorSignature(item, sc, nightMaterials), () => GardenPaintedProps.decor(scene, item, sc, paintOpts), { kind: 'decor', uid: item.uid, id: item.id, model: modelDecor.get(item.uid) }, ground ? -9200 : W.sky + (item.y + (def && def.h || 1)) * W.cellH, ground ? design : undefined);   // painted paths lie in the design layer, under everything
           if (rec) { keep.add(key); continue; }
         }
         add('decor:' + item.uid, _gdrItem('decor', item, sc, opts), { kind: 'decor', uid: item.uid, id: item.id, model: modelDecor.get(item.uid) }, ground ? -9200 : W.sky + (item.y + (def && def.h || 1)) * W.cellH, ground ? design : objects); }
