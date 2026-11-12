@@ -21,7 +21,7 @@
  * Nothing here runs at load. */
 window.GardenPaintWood = (function () {
   'use strict';
-  const K = 1, CH = 512, MAX_CHUNKS = 14, TEX = 'gpwd';
+  const K = 1, CH = 256, MAX_CHUNKS = 56, TEX = 'gpwd';
   let state = null, lastError = null, bakes = 0, bakeMs = 0, worstBake = 0, tickWorst = 0;
   const ok = f => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
   function rng(seed) { let s = (seed >>> 0) % 2147483647 || 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
@@ -135,8 +135,8 @@ window.GardenPaintWood = (function () {
         const rr = rng(hash(f.region + 'glade' + gl.x)), lawn = season === 'autumn' ? '#9aa65a' : season === 'winter' ? '#a6b29a' : '#93ad5f';
         for (const [k, a] of [[1.25, .35], [1.1, .55], [.95, .9], [.8, 1]]) { cx.globalAlpha = a; cx.fillStyle = lawn; cx.fill(new Path2D(sceneDraw.blob(rr, gl.x, gl.y, gl.rx * k, gl.ry * k, 12, .35))); }
         const g = cx.createRadialGradient(gl.x - gl.rx * .2, gl.y - gl.ry * .2, 0, gl.x, gl.y, gl.rx); g.addColorStop(0, 'rgba(255,244,190,.4)'); g.addColorStop(1, 'rgba(255,244,190,0)'); cx.globalAlpha = 1; cx.fillStyle = g; cx.save(); cx.translate(gl.x, gl.y); cx.scale(1, gl.ry / gl.rx); cx.translate(-gl.x, -gl.y); cx.beginPath(); cx.arc(gl.x, gl.y, gl.rx, 0, Math.PI * 2); cx.fill(); cx.restore();
-        for (let i = 0; i < 160; i++) { const a = rr() * 6.28, d = Math.sqrt(rr()) * .9, x = gl.x + Math.cos(a) * gl.rx * d, y = gl.y + Math.sin(a) * gl.ry * d; cx.globalAlpha = .5; cx.strokeStyle = rr() < .5 ? '#7c9a4e' : '#b4c878'; cx.lineWidth = 1; cx.beginPath(); cx.moveTo(x, y); cx.quadraticCurveTo(x + 1, y - 2.5, x + (rr() - .5) * 3, y - 4); cx.stroke(); }
-        if (season !== 'winter') for (let i = 0; i < 26; i++) { const a = rr() * 6.28, d = Math.sqrt(rr()) * .85, x = gl.x + Math.cos(a) * gl.rx * d, y = gl.y + Math.sin(a) * gl.ry * d; const s = stampCanvas(rr() < .5 ? 'plant.wildflowers' : 'plant.daisies', Math.floor(rr() * 2), season, 12); if (s) { const k = (12 / s.hq) / 2; cx.globalAlpha = 1; cx.drawImage(s.c, x - s.ox * k, y - s.oy * k, s.c.width * k, s.c.height * k); } }
+        yield; for (let i = 0; i < 160; i++) { const a = rr() * 6.28, d = Math.sqrt(rr()) * .9, x = gl.x + Math.cos(a) * gl.rx * d, y = gl.y + Math.sin(a) * gl.ry * d; cx.globalAlpha = .5; cx.strokeStyle = rr() < .5 ? '#7c9a4e' : '#b4c878'; cx.lineWidth = 1; cx.beginPath(); cx.moveTo(x, y); cx.quadraticCurveTo(x + 1, y - 2.5, x + (rr() - .5) * 3, y - 4); cx.stroke(); }
+        yield; if (season !== 'winter') for (let i = 0; i < 26; i++) { const a = rr() * 6.28, d = Math.sqrt(rr()) * .85, x = gl.x + Math.cos(a) * gl.rx * d, y = gl.y + Math.sin(a) * gl.ry * d; const s = stampCanvas(rr() < .5 ? 'plant.wildflowers' : 'plant.daisies', Math.floor(rr() * 2), season, 12); if (s) { const k = (12 / s.hq) / 2; cx.globalAlpha = 1; cx.drawImage(s.c, x - s.ox * k, y - s.oy * k, s.c.width * k, s.c.height * k); } }
         cx.globalAlpha = 1;
       }
       // fine detail last, so no lobe covers it: litter flecks, moss, spring bluebells
@@ -156,7 +156,8 @@ window.GardenPaintWood = (function () {
       const s = stampCanvas(f.id, f.v, season, f.h); if (!s) continue; const k = (f.h / s.hq) / 2; cx.drawImage(s.c, f.x - s.ox * k, f.y - s.oy * k, s.c.width * k, s.c.height * k);
     }
     // each tree's soft contact shadow on the floor, under the sprite
-    for (const t of S.M.trees) { if (t.x < view.x || t.x > view.x + view.w || t.y < view.y || t.y > view.y + view.h) continue; const g = cx.createRadialGradient(t.x + 6, t.y, 0, t.x + 6, t.y, t.h * .28); g.addColorStop(0, 'rgba(30,40,24,.32)'); g.addColorStop(1, 'rgba(30,40,24,0)'); cx.fillStyle = g; cx.save(); cx.translate(t.x + 6, t.y); cx.scale(1, .32); cx.translate(-t.x - 6, -t.y); cx.beginPath(); cx.arc(t.x + 6, t.y, t.h * .28, 0, Math.PI * 2); cx.fill(); cx.restore(); }
+    for (const t of S.M.trees) { if (t.x < view.x || t.x > view.x + view.w || t.y < view.y || t.y > view.y + view.h) continue; yield; const g = cx.createRadialGradient(t.x + 6, t.y, 0, t.x + 6, t.y, t.h * .28); g.addColorStop(0, 'rgba(30,40,24,.32)'); g.addColorStop(1, 'rgba(30,40,24,0)'); cx.fillStyle = g; cx.save(); cx.translate(t.x + 6, t.y); cx.scale(1, .32); cx.translate(-t.x - 6, -t.y); cx.beginPath(); cx.arc(t.x + 6, t.y, t.h * .28, 0, Math.PI * 2); cx.fill(); cx.restore(); }
+    yield 'up';   // the upload gets a frame of its own
     const key = TEX + '-' + ch.key + '-' + (++S.serial);
     S.scene.textures.addCanvas(key, c); ch.tex = key; ch.bytes = c.width * c.height * 4;
     ch.image = S.scene.add.image(B.x, B.y, key).setOrigin(0, 0).setDisplaySize(B.w + 1, B.h + 1).setDepth(-9594); S.root.add(ch.image); S.sortRoot = true;
@@ -216,12 +217,12 @@ window.GardenPaintWood = (function () {
     const S = state; if (!S || !view) return; const t0 = performance.now();
     const dt = S.last == null ? 0 : Math.min(.08, Math.max(0, (time - S.last) / 1000)); S.last = time;
     const motion = typeof gardenMotionOn !== 'function' || gardenMotionOn(); if (motion) S.clock += dt; S.frame++;
-    const near = { x: view.x - CH * .5, y: view.y - CH * .5, w: view.w + CH, h: view.h + CH };
+    const near = { x: view.x - 384, y: view.y - 384, w: view.w + 768, h: view.h + 768 };
     let todo = null, resident = 0;
     for (const ch of S.chunks.values()) { if (ch.image) { resident++; if (hit(ch.box, view)) ch.used = S.frame; } else if (!todo && hit(ch.box, near) && !(S.job && S.job.ch === ch)) todo = ch; }
     let budget = 1;
     if (!S.job && todo) { S.job = { ch: todo, gen: bakeChunk(todo) }; }
-    if (S.job) { const j0 = performance.now(); let done = false; try { while (performance.now() - j0 < 7) { if (S.job.gen.next().done) { done = true; break; } } } catch (e) { lastError = String(e && e.stack || e); done = true; } budget = 0; if (done) { S.job.ch.used = S.frame; S.job = null; resident++; } }
+    if (S.job) { const j0 = performance.now(); let done = false; try { while (performance.now() - j0 < 7) { const st = S.job.gen.next(); if (st.done) { done = true; break; } if (st.value === 'up') break; } } catch (e) { lastError = String(e && e.stack || e); done = true; } budget = 0; if (done) { S.job.ch.used = S.frame; S.job = null; resident++; } }
     const tBake = performance.now() - t0; S.tw = S.tw || { bake: 0, trees: 0, sort: 0, light: 0 }; S.tw.bake = Math.max(S.tw.bake, tBake);
     if (resident > MAX_CHUNKS) { const far = [...S.chunks.values()].filter(c => c.image && !hit(c.box, near)).sort((a, b) => a.used - b.used); for (const c of far.slice(0, resident - MAX_CHUNKS)) dropChunk(c); }
     if (S.sortRoot && S.root.sort) { S.root.sort('depth'); S.sortRoot = false; }

@@ -22,7 +22,7 @@
  * here runs at load. */
 window.GardenPaintWater = (function () {
   'use strict';
-  const K = 1.25, CH = 512, MAX_CHUNKS = 18, TEX = 'gpw';
+  const K = 1.25, CH = 256, MAX_CHUNKS = 72, TEX = 'gpw';   // 256 px chunks: each upload is small enough for one frame
   let state = null, lastError = null, bakeMs = 0, bakes = 0, worstBake = 0, tickWorst = 0;
   const ok = f => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
   function rng(seed) { let s = (seed >>> 0) % 2147483647 || 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
@@ -49,6 +49,8 @@ window.GardenPaintWater = (function () {
     const T = TOD[tod] || TOD.day, S = SEASON[season] || SEASON.summer, P = Object.assign({}, T, S);
     if (season === 'winter') { P.water = mix(P.water, '#a6b4ba', .35); P.shallow = mix(P.shallow, '#cdd8d8', .35); P.refl = mix(P.refl, '#5d665c', .5); }
     if (season === 'autumn') P.refl = mix(P.refl, '#7a6236', .45);
+    // at dawn and dusk the sky's warm light lies on still water more strongly
+    P.warm = tod === 'dusk' || tod === 'dawn' ? 1.6 : 1;
     return P;
   }
 
@@ -179,7 +181,7 @@ window.GardenPaintWater = (function () {
       for (let i = 0; i < (big ? 46 : 10); i++) {
         let x = 0, y = 0, tries = 0; do { x = all.x + r() * all.w; y = all.y + r() * all.h; tries++; } while (tries < 30 && !(inside(x, y, pts) && edgeDist(x, y, pts) > 18));
         if (tries >= 30) continue; const rx = 18 + r() * (big ? 80 : 30), ry = .9 + r() * 1.6, hi = r() < .3;
-        add({ x: x - rx, y: y - 4, w: rx * 2, h: 8 }, (cx, C) => { cx.save(); cx.clip(P); cx.globalAlpha = hi ? .5 : .32; cx.fillStyle = hi ? C.skyHi : C.sky; cx.beginPath(); cx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); cx.fill(); cx.restore(); });
+        add({ x: x - rx, y: y - 4, w: rx * 2, h: 8 }, (cx, C) => { cx.save(); cx.clip(P); cx.globalAlpha = (hi ? .5 : .32) * (C.warm || 1); cx.fillStyle = hi ? C.skyHi : C.sky; cx.beginPath(); cx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); cx.fill(); cx.restore(); });
       }
       // a broad pale sky sheen in the open middle (the brightest thing in the picture)
       const c0 = { x: all.x + all.w * .45, y: all.y + all.h * .5 };
@@ -285,11 +287,12 @@ window.GardenPaintWater = (function () {
       const f = job.list[job.i];
       // a library stamp not yet drawn costs a frame of its own
       const miss = f.needs && f.needs.find(q => !stamps.has(stampKey(q[0], q[1], S.season, q[2])));
-      if (miss) { if (performance.now() - t0 > .5) break; stampCanvas(miss[0], miss[1], S.season, miss[2]); break; }
+      if (miss) { stampCanvas(miss[0], miss[1], S.season, miss[2]); continue; }
       job.i++; ok(() => f.draw(cx, C, ctx)); cx.globalAlpha = 1;
     }
     job.ms += performance.now() - t0;
     if (job.i < job.list.length) return false;
+    if (budget !== Infinity && !job.ready) { job.ready = true; return false; }   // the upload gets a frame of its own
     const ch = job.ch, B = ch.box, key = TEX + '-' + ch.key + '-' + (++S.serial), u0 = performance.now();
     S.scene.textures.addCanvas(key, job.c); ch.tex = key; ch.bytes = job.c.width * job.c.height * 4;
     ch.image = S.scene.add.image(B.x, B.y, key).setOrigin(0, 0).setDisplaySize(B.w + 1, B.h + 1).setDepth(-9590); S.parent.add(ch.image); S.sortParent = true;
@@ -385,7 +388,7 @@ window.GardenPaintWater = (function () {
       const half = river.hw * Math.hypot(nx * W.cellW, ny * W.cellH) * 1.05, r = rng(hash('weir'));
       const span = (k) => ({ x: q.x + nx * half * k, y: q.y + ny * half * k });
       const a = span(-1), b = span(1), stones = []; for (let i = 0; i <= 10; i++) { const t = i / 10, p = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }; stones.push([p.x, p.y, 7 + r() * 3, r()]); }
-      const up = 16, down = 22, box = { x: Math.min(a.x, b.x) - 60, y: Math.min(a.y, b.y) - 60, w: Math.abs(b.x - a.x) + 120, h: Math.abs(b.y - a.y) + 120 };
+      const up = 16, down = 34, box = { x: Math.min(a.x, b.x) - 60, y: Math.min(a.y, b.y) - 60, w: Math.abs(b.x - a.x) + 120, h: Math.abs(b.y - a.y) + 120 };
       const clipW = () => { const w = M.waters.find(w => w.id === 'river-3') || M.waters.find(w => w.kind === 'river' && inside(q.x, q.y, w.pts)); return w ? (() => { const p = new Path2D(); p.moveTo(w.pts[0].x, w.pts[0].y); for (const z of w.pts) p.lineTo(z.x, z.y); p.closePath(); return p; })() : null; };
       let clip = null;
       extras.push({ b: box, draw(c, C) {
@@ -401,7 +404,7 @@ window.GardenPaintWater = (function () {
         // the sill: dressed stones lit from the upper left, a dark wet face downstream
         for (const [x, y, rr, t] of stones) { c.fillStyle = '#5c584c'; c.beginPath(); c.ellipse(x + 2, y + 3, rr, rr * .6, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = t < .5 ? '#b3ab94' : '#a39b85'; c.beginPath(); c.ellipse(x, y, rr, rr * .55, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = '#d8d0b8'; c.globalAlpha = .8; c.beginPath(); c.ellipse(x - rr * .3, y - rr * .2, rr * .5, rr * .22, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; if (t > .6) { c.fillStyle = C.moss; c.globalAlpha = .7; c.beginPath(); c.ellipse(x + rr * .2, y - rr * .3, rr * .4, rr * .18, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; } }
       } });
-      foams.push({ x: q.x + q.tx * 14, y: q.y + q.ty * 14, w: half * 2.2, h: 18, ang: ang + Math.PI / 2, speed: 22, puffs: 7, drift: 26 });
+      foams.push({ x: q.x + q.tx * 16, y: q.y + q.ty * 16, w: half * 2.2, h: 26, ang: ang + Math.PI / 2, speed: 26, puffs: 12, drift: 34 });
       mists.push({ x: q.x + q.tx * 26, y: q.y + q.ty * 26, rx: half * .6, ry: 8, n: 3, a: .22, speed: .06, drift: 18, rise: 10 });
       S.weir = { x: q.x, y: q.y, ang, half };
     }
@@ -468,7 +471,7 @@ window.GardenPaintWater = (function () {
     const dt = S.last == null ? 0 : Math.min(.08, Math.max(0, (time - S.last) / 1000)); S.last = time;
     const motion = typeof gardenMotionOn !== 'function' || gardenMotionOn(); if (motion) S.clock += dt;
     S.frame = (S.frame || 0) + 1;
-    const near = { x: view.x - CH * .5, y: view.y - CH * .5, w: view.w + CH, h: view.h + CH };
+    const near = { x: view.x - 384, y: view.y - 384, w: view.w + 768, h: view.h + 768 };
     let todo = null, resident = 0;
     for (const ch of S.M.chunks.values()) { if (ch.image) { resident++; if (hit(ch.box, view)) ch.used = S.frame; } else if (!todo && hit(ch.box, near) && !(S.job && S.job.ch === ch)) todo = ch; }
     if (!S.job && todo) S.job = ok(() => startJob(todo));
