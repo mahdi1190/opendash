@@ -660,6 +660,7 @@ function _gwBugTaken(b) {
 /** Open the book / tackle shop on a tab of the catch page. */
 function gardenCatchOpen(tab) {
   if (_grm.on) gardenRoomLeave();   // (the page opens behind a room)
+  if (['fish', 'bugs', 'best', 'map'].includes(tab) && typeof gardenJournalOpen === 'function') { gardenJournalOpen({ sec: tab === 'best' ? 'photos' : 'creatures', kind: tab === 'bugs' ? 'bug' : tab === 'fish' ? 'fish' : '' }); return; }   // the books are the Field Journal now
   if (tab) { try { _gdG().prefs.catchTab = tab; } catch (e) { /* fine */ } }
   gardenGoPage('garden:catch');   // a pop-up while you are in the garden, the page elsewhere
 }

@@ -51,7 +51,7 @@ registerPage({
   label: 'Garden', icon: 'sprout', area: 'life', tab: true, order: 20, since: '2.18', ownTabs: true,
   desc: 'Plants, visitors, the shop and the almanac',
   keywords: 'garden plants grow flowers seeds water harvest shop almanac basket decorations visitors friends visit guestbook',
-  sections: () => [['garden', 'Garden'], ['garden:shop', 'Shop'], ['garden:almanac', 'Almanac'], ['garden:basket', 'Basket']]
+  sections: () => [['garden', 'Garden'], ['garden:shop', 'Shop'], ['garden:journal', 'Field Journal'], ['garden:basket', 'Basket']]
     .concat(_lifeHasSection('garden-visit') ? [['garden:friends', 'Friends’ gardens']] : []),
   available: () => _lifeHasSection('garden'),
   off: lifeFunOffState,

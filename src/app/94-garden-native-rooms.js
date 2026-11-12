@@ -446,7 +446,7 @@ window.GardenNativeRooms = (function () {
       _grm.root = s.ui; _grm.svg = null; _grm.props = { native: true }; _grm.actors = null; _grm.game = s.gameNode || null; _grm.school = null; _grm.bugL = null; _grwa.w = s.water;
       _grm.R = room; _grm.S = {}; _grm.fu = false; _grm.carry = ''; _grm.icons = null; _grm.fuKey = ''; _grm.fuAt = 0; _grm.m.clear(); _grm.keys.clear(); _grm.t = 0; _grm.last = 0; _grm.closing = false;
       GRM_PLAY[room.play].begin(room, _grm.S); const spawn = room.spawn || GRM.spawn, p = _grmClamp(spawn.x, spawn.y); _grm.me = { w: -1, n: 'You', a: typeof profileGet === 'function' ? profileGet().avatar : null, x: p.x, y: p.y, tx: null, ty: null, face: 1, dir: 'e', moving: false, me: true, ph: 0 }; _grm.on = true; nativeActor(s, _grm.me); poseActor(s, _grm.me); paint(); _grwStock(room);
-      const first = _grmMarkFound(room); _grmSay(room.say + (first ? ' You have not been here before: you find 3 tickets on the way in.' : ''), 9000); if (room.how) s.howTimer = setTimeout(() => { if (current() === s) _grmSay(room.how, 9000); }, 9200); _grmSend(_grm.me.x, _grm.me.y, 'in');
+      const first = _grmMarkFound(room); _grmSay(room.say, 9000); if (room.how) s.howTimer = setTimeout(() => { if (current() === s) _grmSay(room.how, 9000); }, 9200); _grmSend(_grm.me.x, _grm.me.y, 'in');
     }
     if (context.onEnter) context.onEnter(room);
     if (context.box && context.box.focus) context.box.focus({ preventScroll: true });

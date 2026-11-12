@@ -128,7 +128,7 @@ function _gldItemName(k) {
   const [kind, id] = String(k).split(':');
   if (kind === 'seed') { const p = gardenPlant(id); return p ? `a ${p.name.toLowerCase()} seed` : 'a seed'; }
   if (kind === 'crop') { const p = gardenPlant(id); return p ? p.name.toLowerCase() : 'something'; }
-  if (k === 'fertiliser') return 'a bag of fertiliser';
+  if (k === 'fertiliser') return 'a bag of compost';
   if (k === 'honey') return 'a jar of honey';
   if (kind === 'decor') { const d = gardenDecor(id); return d ? d.name.toLowerCase() : 'a decoration'; }
   return 'something';
@@ -297,7 +297,7 @@ function gardenLandDig() {
   const cur = r < 0.3 ? _gldNextCurio('dig|' + m.today) : null;
   if (cur) return _gldPay('digging', `You dug up ${cur.name.toLowerCase()}. ${cur.blurb}`, { i: { ['cur:' + cur.id]: 1 }, x: 6 }, seen, 'gift');
   if (r < 0.55) { const i = _gdResolve({ 'seed:*': 1 }, 'dig|' + m.today); return _gldPay('digging', `You dug up ${_gldItemName(Object.keys(i)[0])}`, { i, x: 3 }, seen, 'sprout'); }
-  if (r < 0.65) return _gldPay('digging', 'You dug up a bag of fertiliser', { i: { fertiliser: 1 }, x: 3 }, seen, 'gift');
+  if (r < 0.65) return _gldPay('digging', 'You dug up a bag of good compost', { i: { fertiliser: 1 }, x: 3 }, seen, 'gift');
   const c = 5 + Math.floor(rnd() * 11);
   return _gldPay('digging', `You dug up ${c} coins`, { c, x: 3 }, seen, 'coins');
 }

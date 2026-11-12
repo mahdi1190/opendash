@@ -287,7 +287,7 @@ function _gpKnackGift(kind) {
   if (kind === 'crop') { const pool = GARDEN_PLANTS.filter(p => p.yield && p.yield.sell && p.rarity === 'common'); const p = pool[h % pool.length]; return { items: { ['crop:' + p.id]: 1 }, what: `a ${p.name}` }; }
   if (kind === 'bug') { const pool = GARDEN_BUGS.filter(b => b.rarity === 'common'); const b = pool[h % pool.length]; return { items: { ['bug:' + b.id]: 1 }, what: `a ${b.name}` }; }
   if (kind === 'fish') { const pool = GARDEN_FISH.filter(f => f.cat === 'fish' && f.rarity === 'common'); const f = pool[h % pool.length]; return { items: { [`fish:${f.id}-0`]: 1 }, what: `a small ${f.name}` }; }
-  return { items: { ticket: 4 }, what: 'four tickets, from who knows where' };
+  return { items: { 'mat:stone': 1 }, what: 'a smooth stone, from who knows where' };
 }
 function _gpKnackGo() {
   const pet = gpPet(); if (!pet) { gpStage('Your pet’s knack', gpNeedPet); return; }

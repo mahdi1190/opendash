@@ -229,7 +229,7 @@ function gardenVisitAct(t, a) {
       if (!p) return _gdNo('Nothing to feed there');
       if (p.def.special === 'heart') return _gdNo('The old oak grows with its owner’s work, not with feed');
       if (!gardenVisitMay('feed', p)) return _gdvDeny('feed', node);
-      if (gardenHas('fertiliser') < 1) return _gdNo('No fertiliser: the shop or a compost bin has some');
+      if (gardenHas('fertiliser') < 1) return _gdNo('No compost: put weeds and leaves in a compost bin');
       return _gdvDo('feed', { p: p.def.id, x: p.x, y: p.y }, 'fertiliser', node);
     case 'harvest':
       if (!p) return _gdNo('Nothing to harvest there');

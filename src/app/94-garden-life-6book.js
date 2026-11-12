@@ -64,7 +64,7 @@ function _glbShow(kind, def, o) {
   // could later interrupt a fishing bite or another activity the player chose.
   // A picked-up keepsake has its existing catch presentation as the main reply.
   const explicit = !!(o && o.userAction) && kind !== 'k';
-  gardenMessage(text, { ambient: !explicit, source: 'nature:' + kind + ':' + def.id, icon: 'book-open', ...(explicit ? { action: { label: 'Nature book', run: () => { _glb.shelf = _glbShelfOf(kind, def); gardenPopupOpen('nature'); } } } : {}) });
+  gardenMessage(text, { ambient: !explicit, source: 'nature:' + kind + ':' + def.id, icon: 'book-open', ...(explicit ? { action: { label: 'Field Journal', run: () => gardenJournalOpen({ sec: kind === 'k' ? 'keep' : 'creatures', kind: 'seen' }) } } : {}) });
 }
 function _glbShelfOf(kind, def) { return kind === 'e' ? 'surprise' : kind === 'k' ? 'keep' : def.group; }
 /** A picture for the book: the creature's kit art at rest, in an svg of its own, framed by its real size. */

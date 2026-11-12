@@ -3,7 +3,7 @@
    THE GNOME. Everyone has one by the post box. Take it on a visit and leave it there: it stands in their garden for three days, friends who call there see it, and a photo of it goes in your Memories. Then it comes home with a pennant on its hat. wd['tg.gn'] = {at: friend, d}; pennants wd['tg.gp.<friend>'] = day. The snapshot says where it stays only as gtgPair, which only the two of you can match, and how many pennants (`gb`). A garden lists the gnomes staying with it as colour numbers (`gs`), so its visitors see them.
    THE BOTTLE. Pick a friend and a line from the book (never free text: GTG_BOTTLE_LINES, the index goes on the wire) and it sets off. Three days later it is bobbing in their lake (frozen in, in winter). Snapshot `bt` [[mark, line, day sent]], the last three; `bw` how many wait unread, so a visitor sees them too.
    ============================================================ */
-const GTG_GN = Object.freeze({ days: 3, hostTicket: 3, homeTicket: 6, at3: Object.freeze({ ticket: 15 }), at6: Object.freeze({ ticket: 25, 'mat:stone': 5 }) });
+const GTG_GN = Object.freeze({ days: 3, hostTicket: 3, homeTicket: 6, at3: Object.freeze({ 'mat:stone': 2 }), at6: Object.freeze({ 'mat:stone': 5 }) });
 const GTG_GN_AT = Object.freeze(Object.assign(_wdPt('post-box', 1.1, 0.5), { guest: _wdPt('notice-board', -3.4, 0.5) }));   // world cells: yours at home; those staying with you stand in a row from here
 const GTG_BOTTLE_AT = Object.freeze([[19, 23.4], [31.5, 22.6], [23, 26.6]]);   // world cells: where a bottle comes to rest
 const GTG_BOTTLE = Object.freeze({ days: 3, keep: 3, read: 3, send: 1 });
@@ -37,7 +37,7 @@ function _gtgnHomeTick(m) {
   if (_wdDaysBetween(a.d, m.today) < GTG_GN.days) return;
   const W = _gtgW(), n0 = _gtgnStamps(), first = !W['tg.gp.' + a.at], who = _gscFirst(a.at);
   W['tg.gp.' + a.at] = m.today; W['tg.gn'] = { d: m.today };
-  gpGrant(`tg-gn-${a.at}-${a.d}`, { ticket: GTG_GN.homeTicket });
+  gpGrant(`tg-gn-${a.at}-${a.d}`, { 'mat:stone': 1 });
   const n = _gtgnStamps();
   if (first && n >= 3 && n0 < 3) gpGrant('tg-gn-3', Object.assign({}, GTG_GN.at3));
   if (first && n >= 6 && n0 < 6) gpGrant('tg-gn-6', Object.assign({}, GTG_GN.at6));
@@ -100,9 +100,9 @@ function _gtgbDraw(m) {
     gtgSprite('bt-' + i, { x, y, z: y, hit: 0.9, hitUp: 2, label: 'A bottle in the water', svg: _gtgbSvg(), onClick: () => {
       if (!B) { wdTalk({ lines: ['A bottle. It is not for you, and you leave it where it is.'], bye: 'Leave it' }); return; }
       const W = _gtgW(); W[`tg.br.${B.fid}.${B.dn}`] = m.today; _gdSave();
-      const paid = gpGrant(`tg-bt-${B.fid}-${B.dn}`, { ticket: GTG_BOTTLE.read });
+      const paid = gpGrant(`tg-bt-${B.fid}-${B.dn}`, { 'mat:stone': 1 });
       gtgPublishSoon();
-      wdTalk({ lines: [`A bottle from ${B.name}. It has been in the water ${GTG_BOTTLE.days} days.`, `"${GTG_BOTTLE_LINES[B.l]}"${paid ? `  There were ${GTG_BOTTLE.read} tickets rolled up with the note.` : ''}`], actions: [{ label: 'Send one back', primary: true, run: () => { wdTalkClose(true); gardenBottlePostOpen(B.fid); } }], bye: 'Keep it', onClose: () => _gtgbDraw(gardenHere()), closeQuiet: true });
+      wdTalk({ lines: [`A bottle from ${B.name}. It has been in the water ${GTG_BOTTLE.days} days.`, `"${GTG_BOTTLE_LINES[B.l]}"${paid ? `  A smooth stone was in the bottle with the note.` : ''}`], actions: [{ label: 'Send one back', primary: true, run: () => { wdTalkClose(true); gardenBottlePostOpen(B.fid); } }], bye: 'Keep it', onClose: () => _gtgbDraw(gardenHere()), closeQuiet: true });
       _gtgbDraw(gardenHere());
     } });
   });
@@ -123,8 +123,8 @@ function gardenBottlePostOpen(to) {
         if (W[key]) { gardenToast(`One bottle a day to ${_gscFirst(fid)}: the next can go tomorrow.`, { icon: 'waves', timeout: 4000 }); return; }
         W[key] = { l: i }; _gdSave();
         try { if (typeof _gscPublish === 'function') _gscPublish(true).catch(() => {}); } catch (e) { /* the next check tells them */ }
-        const paid = _grGive('did.bottle', { ticket: GTG_BOTTLE.send });
-        gardenToast(`It floats off towards ${_gscFirst(fid)}. Three days.${paid ? ' 1 ticket' : ''}`, { icon: 'waves', kind: 'ok', timeout: 5000 });
+        const paid = _grGive('did.bottle', { x: 1 });
+        gardenToast(`It floats off towards ${_gscFirst(fid)}. Three days.${paid ? '' : ''}`, { icon: 'waves', kind: 'ok', timeout: 5000 });
         if (typeof gardenPopupClose === 'function') gardenPopupClose();
         document.querySelector('.tg-panel')?.closest('[role=dialog]')?.querySelector('.dlg-close, [aria-label="Close"]')?.click();
       };

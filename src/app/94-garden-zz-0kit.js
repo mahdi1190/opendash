@@ -89,7 +89,7 @@ function _gtgPlaceTick(m) {
   const g = _gdG();
   for (const d of _GTG_HOME_FISH.concat(_GTG_HOME_BUGS)) {
     if (!(d.cat === 'bug' ? g.bl : g.fl)[d.id]) continue;
-    if (gpGrant('tg-home-' + d.id, { ticket: GTG_PLACE.ticket })) gpNote(`${d.name}: not every garden has one. ${GTG_PLACE.ticket} tickets`);
+    if (gpGrant('tg-home-' + d.id, { 'mat:stone': 1 })) gpNote(`${d.name}: not every garden has one. A stone to remember it by`);
   }
   if (!m.visit) return;
   const fid = m.visit.fid, key = 'tg.vw.' + fid, W = _gtgW();

@@ -21,7 +21,7 @@
    W water all, H harvest all, R / S / Delete in Decorate, Esc clears. Every action has Undo;
    nothing asks "are you sure". Text from the catalogue goes in with textContent or esc().
    ============================================================ */
-const GARDEN_TABS = Object.freeze([['garden', 'Garden', 'sprout'], ['catch', 'Catch', 'fish'], ['shop', 'Shop', 'store'], ['almanac', 'Almanac', 'book-open'], ['basket', 'Basket', 'shopping-basket'],
+const GARDEN_TABS = Object.freeze([['garden', 'Garden', 'sprout'], ['catch', 'Bag & tackle', 'fish'], ['journal', 'Field Journal', 'book-open'], ['shop', 'Shop', 'store'], ['almanac', 'Notice board', 'clipboard-list'], ['basket', 'Basket', 'shopping-basket'],
   ['friends', 'Friends', 'users']]);   // 'friends': ── garden-social ── friends' gardens, visits and your guestbook (94-garden-social-2visit.js)
 /* 2.23: what can be in your hand. The hand needs nothing else: it does what the thing in front of it needs. The rest are for when you want to choose (the hotbar, 94-garden-world-2hud.js). */
 const GARDEN_TOOLS_UI = Object.freeze(['hand', 'water', 'feed', 'trim', 'dig', 'seed', 'decorate']);
@@ -58,7 +58,7 @@ function _gdpSay(r, target) {
 
 /* ---------- the section, the sidebar, the palette ---------- */
 registerSection('garden', {
-  match: v => v === 'garden' || /^garden:(shop|almanac|basket|friends|catch|update)$/.test(String(v || '')),
+  match: v => v === 'garden' || /^garden:(shop|almanac|basket|friends|catch|journal|update)$/.test(String(v || '')),
   title: () => 'Garden',
   crumb: v => (_gdpTab(v) === 'garden' ? [] : [GARDEN_TABS.find(t => t[0] === _gdpTab(v))[1]]),
   group: 'home', layout: 'bare', hashable: true, taskControls: false, icon: 'sprout',
@@ -87,7 +87,7 @@ registerCommand({ id: 'garden-open', group: 'Go to', label: 'Garden', icon: 'spr
 registerCommand({ id: 'garden-water', label: 'Water the garden', icon: 'droplets', keywords: 'garden water plants can thirsty', run: () => { gardenEnsure(); const r = gardenWaterAll(); _gdpSay(r); } });
 registerCommand({ id: 'garden-harvest', label: 'Harvest everything that is ready', icon: 'shopping-basket', keywords: 'garden harvest pick ripe fruit veg flowers basket', run: () => { gardenEnsure(); _gdpSay(gardenHarvestAll()); } });
 registerCommand({ id: 'garden-shop', label: 'Garden shop', icon: 'store', keywords: 'garden shop seeds decorations buy tools', run: () => setView('garden:shop') });
-registerCommand({ id: 'garden-almanac', label: 'Garden almanac and ribbons', icon: 'book-open', keywords: 'garden almanac collection plants visitors ribbons discovered', run: () => setView('garden:almanac') });
+registerCommand({ id: 'garden-journal', label: 'Field Journal', icon: 'book-open', keywords: 'garden journal field book fish bugs creatures collection plants keepsakes letters stories almanac nature', run: () => setView('garden:journal') });
 registerCommand({ id: 'garden-basket', label: 'Garden basket and bouquets', icon: 'shopping-basket', keywords: 'garden basket harvest sell market bouquet', run: () => setView('garden:basket') });
 registerCommand({ id: 'garden-photo', label: 'Take a photo of the garden', icon: 'camera', keywords: 'garden photo picture image png', run: () => { gardenEnsure(); if (typeof gardenPhotoOpen === 'function') gardenPhotoOpen(); } });
 registerCommand({ id: 'garden-timelapse', label: 'Garden time-lapse', icon: 'film', keywords: 'garden time lapse history growth replay', run: () => { gardenEnsure(); if (typeof gardenTimelapseOpen === 'function') gardenTimelapseOpen(); } });

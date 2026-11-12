@@ -9,8 +9,8 @@
    A friend is not pulled in. They see you go, with a button to follow, and from then on you see each other walk.
    SAVES: nothing new. Marks are gpSet ('rm.<room>.<what>'), gifts are ledger lines: _grGive once a day per room (inside GP_ECON and GR_ECON.matDay), gpGrant once ever. Never coins. As a guest nothing is saved and nothing is paid: it is your friend's.
    ============================================================ */
-const GRM = Object.freeze({ W: 960, H: 600, U: 16, speed: 200, floor: Object.freeze({ x0: 44, x1: 916, y0: 400, y1: 556 }), door: Object.freeze({ x: 66, y: 540, x0: 14, x1: 112, y0: 396, y1: 560 }), spawn: Object.freeze({ x: 160, y: 500 }), firstFind: Object.freeze({ ticket: 3 }) });
-const GRM_WORDS = Object.freeze({ ticket: 'tickets', 'mat:peg': 'survey pegs', 'mat:timber': 'timber', 'mat:stone': 'field stone', 'mat:reed': 'reeds' });
+const GRM = Object.freeze({ W: 960, H: 600, U: 16, speed: 200, floor: Object.freeze({ x0: 44, x1: 916, y0: 400, y1: 556 }), door: Object.freeze({ x: 66, y: 540, x0: 14, x1: 112, y0: 396, y1: 560 }), spawn: Object.freeze({ x: 160, y: 500 }), firstFind: Object.freeze({ 'mat:stone': 1 }) });
+const GRM_WORDS = Object.freeze({ 'mat:timber': 'timber', 'mat:stone': 'stone' });
 const _grm = { on: false, closing: false, R: null, S: null, root: null, svg: null, actors: null, props: null, game: null, school: null, bugL: null, raf: 0, last: 0, t: 0, m: new Map(), me: null, keys: new Set(), sentAt: 0, sayT: 0, chipT: 0, chip: null };
 
 /* ---------- marks and gifts ---------- */
@@ -41,7 +41,7 @@ function _grmPay(R, say, gift) {
   if (gpVisiting()) { _grmSay(say + ' It is your friend’s, so you leave it where it is.'); return false; }
   _grmP(R, 'p', _gdToday());
   const G = Object.assign({}, gift || R.gift); let listed = false;
-  try { const A = _gdAct(), t = _gdToday(); if (A.days.has(t) && A.days.get(t).n > 0) { G.ticket = (G.ticket || 0) + 1; listed = true; } } catch (e) { /* no list here */ }   // you got something done on your list today: one more ticket
+  try { const A = _gdAct(), t = _gdToday(); if (A.days.has(t) && A.days.get(t).n > 0) { G['mat:stone'] = (G['mat:stone'] || 0) + 1; listed = true; } } catch (e) { /* no list here */ }   // you got something done on your list today: one more ticket
   const got = _grGive('room.' + R.id, G);
   if (got) { try { _glSound('twinkle'); gardenTickSoon(); } catch (e) { /* no sound, no matter */ } }
   const w = _grmGiftWords(G);
@@ -503,7 +503,7 @@ function gardenRoomEnter(R) {
   document.addEventListener('visibilitychange', _grmStartLoop);
   requestAnimationFrame(() => root.classList.add('is-on'));
   const first = _grmMarkFound(R);
-  _grmSay(R.say + (first ? ' You have not been here before: you find 3 tickets on the way in.' : ''), 9000);
+  _grmSay(R.say, 9000);
   if (R.how) { clearTimeout(_grm.howT); _grm.howT = setTimeout(() => { if (_grm.R === R && !_gwFishBusy()) _grmSay(R.how, 9000); }, 9200); }
   _grmStartLoop();
   clearTimeout(_grm.hideT); _grm.hideT = setTimeout(() => { if (_grm.on) _gwIndoors(true); }, 760);   // (once the room has faded in: .7s, .ee-room)
