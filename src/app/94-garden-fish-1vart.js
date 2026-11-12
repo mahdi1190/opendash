@@ -84,7 +84,7 @@ function gardenVariantArt(kind, id, o) {
   const def = kind === 'fish' ? gardenFishDef(id) : gardenBugDef(id), V = def ? gardenVariantFor(kind, def, o.v) : null;
   if (!V || !def.look) return '';
   const L = V.look, look = _gvaLook(def.look, V), uid = _gfaUid(o, id) + 'v', rnd = _gfaRng('variant|' + V.id + '|' + id), B = _gvaFrame(kind, def, look);
-  const inner = (kind === 'fish' ? gardenFishArt : gardenBugArt)(id, Object.assign({}, o, { v: '', look, uid }));
+  const inner = (kind === 'fish' ? _gardenFishArtRaw : _gardenBugArtRaw)(id, Object.assign({}, o, { v: '', look, uid }));
   let back = '', skin = '', front = '';
   for (const word of L.fx || []) {
     const [name, a, b] = String(word).split(':');

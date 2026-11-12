@@ -36,6 +36,8 @@ function _ptMix(a, b, t) { const A = _ptHx(a), B = _ptHx(b); return '#' + A.map(
 /** A colour as four tones: [base, shade, light, deep]. */
 function _ptTone(c) { c = /^#[0-9a-f]{6}$/i.test(String(c)) ? c : '#999999'; return [c, _ptMix(c, '#1a1420', 0.24), _ptMix(c, '#ffffff', 0.32), _ptMix(c, '#1a1420', 0.48)]; }
 function _ptLum(c) { const [r, g, b] = _ptHx(c); return (0.299 * r + 0.587 * g + 0.114 * b) / 255; }
+/** Set only while the garden's Painted village draws a pet (petSvgGroup): its proportions, fur and the side-on duck (97-pets-0kitpaint.js). */
+const _PT_PAINT = { on: false };
 const _pE = (cx, cy, rx, ry) => `M${_ptR(cx - rx)} ${_ptR(cy)}a${_ptR(rx)} ${_ptR(ry)} 0 1 0 ${_ptR(2 * rx)} 0a${_ptR(rx)} ${_ptR(ry)} 0 1 0 ${_ptR(-2 * rx)} 0z`;
 const _pC = (cx, cy, r) => _pE(cx, cy, r, r);
 /** A path from points [[x, y], ...] (M L ... Z). */
@@ -378,7 +380,8 @@ function petArt(pet0, pose, mood) {
   mood = Object.assign({}, mood && typeof mood === 'object' ? mood : {});
   if (pose === 'sleep') { mood.eyes = 'closed'; mood.mouth = 'calm'; }
   const X = _ptPal(pet);
-  const fn = typeof _ptArtFor === 'function' ? _ptArtFor(petSpecies(pet.species) || PET_SPECIES[0]) : null;   // its own drawing, or the kit its row names; never a hole
+  const spRow = petSpecies(pet.species) || PET_SPECIES[0];
+  const fn = (_PT_PAINT.on && typeof _ptPaintedArt === 'function' && _ptPaintedArt(spRow)) || (typeof _ptArtFor === 'function' ? _ptArtFor(spRow) : null);   // its own drawing, or the kit its row names; never a hole
   if (!fn) return null;
   const A = fn(pet, pose, mood, X);
   const acc = _ptAccs(pet, X, A.acc || {}, _ptWornItems(pet, pet0));
@@ -452,7 +455,12 @@ function petSvg(pet, o) {
  * The same drawing as a <g> string with its feet at (0, 0) in the caller's units: o {h (the pet's height there, default 24),
  * pose, mood, face (1 right, -1 left), shadow, cls}. For the garden (petGardenSprite) and other SVG scenes of the page.
  */
+/** The garden sprite; in the Painted village it is painted into the scene's light (94-garden-art-g-paint.js), elsewhere the drawing as it is. */
 function petSvgGroup(pet, o) {
+  const painted = o && o.painted != null ? !!o.painted : !(o && o.flat) && typeof gardenFigurePaintOn === 'function' && gardenFigurePaintOn();
+  let s; _PT_PAINT.on = painted; try { s = _petSvgGroupRaw(pet, o); } finally { _PT_PAINT.on = false; }
+  return s && !(o && o.flat) && typeof gardenFigurePaintIf === 'function' ? gardenFigurePaintIf(s, 'pet') : s; }
+function _petSvgGroupRaw(pet, o) {
   o = o || {};
   const A = petArt(pet, o.pose || 'walk', o.mood);
   if (!A) return '';

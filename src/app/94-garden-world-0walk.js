@@ -711,7 +711,9 @@ function _gwMakeNode() {
   const NS = 'http://www.w3.org/2000/svg';
   const g = gardenSceneElement('g');
   g.setAttribute('class', 'gd-player'); g.setAttribute('data-live', '1'); g.setAttribute('data-z', String(_gw.py));
-  g.innerHTML = '<g class="gd-pl-sh"><ellipse class="gd-pl-halo" cx="0" cy="1" rx="17" ry="6"/><ellipse cx="0" cy="1" rx="12" ry="3.4" fill="#1a2a14" fill-opacity="0.2"/></g><g class="gd-pl-bob"><g class="gd-pl-in"></g></g>';
+  // The Painted village stands the figure in the scenes' soft contact shadow, without the pale halo (94-garden-art-g-paint.js).
+  const painted = typeof gardenFigurePaintStyle === 'function' && gardenFigurePaintStyle() && typeof gardenFigureShadowSvg === 'function';
+  g.innerHTML = '<g class="gd-pl-sh">' + (painted ? gardenFigureShadowSvg(11, 3.2) : '<ellipse class="gd-pl-halo" cx="0" cy="1" rx="17" ry="6"/><ellipse cx="0" cy="1" rx="12" ry="3.4" fill="#1a2a14" fill-opacity="0.2"/>') + '</g><g class="gd-pl-bob"><g class="gd-pl-in"></g></g>';
   return g;
 }
 

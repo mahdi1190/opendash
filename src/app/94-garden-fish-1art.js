@@ -84,7 +84,9 @@ function _gfaPattern(look, S, rnd) {
   }
   return s;
 }
-function gardenFishArt(id, o) {
+/** The fish as drawn, painted into the scene's light in the Painted village (94-garden-art-g-paint.js); o.flat: always the plain drawing (the book, cards). */
+function gardenFishArt(id, o) { const s = _gardenFishArtRaw(id, o); return s && !(o && o.flat) && typeof gardenFigurePaintIf === 'function' ? gardenFigurePaintIf(s, 'fish') : s; }
+function _gardenFishArtRaw(id, o) {
   o = o || {};
   const f = gardenFishDef(id);
   if (!f) return '';
@@ -195,7 +197,8 @@ function _gfaWing(c, c2, c3, p, e, fore, w) {
   s += `<path d="M-1 -5C-2 -10 -4 -14 -8 -16" stroke="#ffffff" stroke-opacity="0.32" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
   return s;
 }
-function gardenBugArt(id, o) {
+function gardenBugArt(id, o) { const s = _gardenBugArtRaw(id, o); return s && !(o && o.flat) && typeof gardenFigurePaintIf === 'function' ? gardenFigurePaintIf(s, 'bug') : s; }
+function _gardenBugArtRaw(id, o) {
   o = o || {};
   const b = gardenBugDef(id);
   if (!b) return '';
@@ -331,7 +334,7 @@ function gardenGearArt(kind, id, o) {
 function _gfaReal(kind, def, o, art) { if (!o.real) return art; const k = gardenCreatureSizeK(kind, def); return k >= 1 ? art : `<g transform="scale(${k.toFixed(2)})">${art}</g>`; }
 /** Any of them as a standalone <svg>. kind: 'fish' | 'bug' | 'rod' | 'net' | 'bait' | 'bobber'. */
 function gardenCatchSvg(kind, id, px, o) {
-  o = Object.assign({ uid: 'ci' + (gardenHash(kind + id) % 99999).toString(36) }, o || {});
+  o = Object.assign({ uid: 'ci' + (gardenHash(kind + id) % 99999).toString(36) }, o || {}, { flat: true });
   px = px || 48;
   if (o.v && (kind === 'fish' || kind === 'bug') && typeof gardenVariantSvg === 'function') { const vs = gardenVariantSvg(kind, id, px, o); if (vs) return vs; }
   if (kind === 'fish') {

@@ -125,6 +125,7 @@ function gardenWonderStop() {
 }
 /* ---------- things in the world ---------- */
 function wdSprite(spec) {
+  if (spec.row && typeof gardenCastWalkSync === 'function') { const up = spec.update; spec.update = function (dt, S) { const out = up ? up.call(this, dt, S) : undefined; gardenCastWalkSync(S); return out; }; }   // the painted cast walk when they walk
   const S = gardenWorldAdd(Object.assign({ lift: 0, ground: false }, spec)), rm = S.remove;
   _wd.sprites.add(S);
   S.remove = () => { _wd.sprites.delete(S); rm(); };
