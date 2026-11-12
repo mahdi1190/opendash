@@ -33,7 +33,7 @@ window.GardenNativeLight = (function () {
     function paintGrade(env) {
       if (!gradeFx || !gradeFx.colorMatrix) return;
       const m = gradeFx.colorMatrix, d = room ? .5 : clamp(env.daylight);
-      m.reset(); m.saturate(.06 + .17 * d); m.contrast(.025 + .045 * d, true);
+      m.reset(); m.saturate(.06 + .22 * d); m.contrast(.03 + .06 * d, true);
       if (d > .3) m.multiply([1 + .032 * d, 0, 0, 0, 0, 0, 1 + .004 * d, 0, 0, 0, 0, 0, 1 - .05 * d, 0, 0, 0, 0, 0, 1, 0], true);
     }
     let visibleCloudLobes = 0, cloudTextureBuilds = 0;
