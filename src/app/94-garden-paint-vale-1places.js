@@ -270,7 +270,9 @@
     const inner = loop.map(q => ({ x: cx0 + (q.x - cx0) * .9, y: cy0 + (q.y - cy0) * .86 })), bb = kit.bboxOf(loop, 20), seed = kit.hashStr('the-green');
     const flowers = C.season === 'winter' ? ['#f4f6f2', '#e8ecef'] : C.season === 'autumn' ? ['#e8dcc0', '#d8a040', '#a8503a', '#e0c070'] : ['#f4f0e0', '#f0d24a', '#c79ac0', '#e88a8a', '#8ab0e0'];
     add(bb, seed, (B, r) => {
-      const path = new Path2D(B.poly(inner)); B.cx.save(); B.cx.clip(path);
+      // the sward, less the paved circle at the green's foot (the village ground's compass stone: about 8 by 6.6 cells)
+      const path = new Path2D(B.poly(inner)), pad = L.cpt(pz.x + .9, pz.y + 3.3), cut = new Path2D(); cut.rect(bb[0] - 40, bb[1] - 40, bb[2] - bb[0] + 80, bb[3] - bb[1] + 80); cut.addPath(new Path2D(B.rr ? B.rr(pad.x - 4 * L.cw, pad.y - 3.3 * L.ch, 8 * L.cw, 6.6 * L.ch, 40) : B.rect(pad.x - 4 * L.cw, pad.y - 3.3 * L.ch, 8 * L.cw, 6.6 * L.ch)));
+      B.cx.save(); B.cx.clip(path); B.cx.clip(cut, 'evenodd');
       // a richer, greener sward than the ground round it
       B.f(B.poly(inner), C.season === 'winter' ? '#b8c2aa' : C.season === 'autumn' ? '#a4ae62' : '#9cba62', .55);
       // mown stripes, broad and soft, running across the green

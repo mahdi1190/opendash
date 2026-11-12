@@ -120,7 +120,7 @@
     const rows = W.sky + W.rows * ch, haze = kit.rgba(P.haze, 0), hz = a => kit.rgba(P.haze, a);
     if (C.thing) {
       C.thing({ key: 'mainland-haze-w', x: 0, y: rows, depth: 89990, K: .25, box: [-300, -rows - 800, 260, 0], draw: B => { B.f(B.rect(-300, -rows - 800, 560, rows + 800), B.lin(-300, 0, 260, 0, [[0, haze], [.42, hz(.5)], [.58, hz(.42)], [1, haze]])); } });
-      C.thing({ key: 'mainland-haze-n', x: 0, y: 420, depth: 89991, K: .25, box: [-300, -640, W.cols * cw + 300, 0], draw: B => { B.f(B.rect(-300, -640, W.cols * cw + 600, 640), B.lin(0, -640, 0, 0, [[0, hz(.15)], [.4, hz(.5)], [.62, hz(.38)], [1, haze]])); } });
+      C.thing({ key: 'mainland-haze-n', x: 0, y: 420, depth: 89991, K: .2, box: [-2400, -1400, W.cols * cw + 2400, 0], draw: B => { B.f(B.rect(-2400, -1400, W.cols * cw + 4800, 1400), B.lin(0, -1400, 0, 0, [[0, haze], [.55, hz(.4)], [.73, hz(.5)], [.84, hz(.38)], [1, haze]])); } });
     }
   }
   function B0(pts) { return 'M' + pts.map(p => p.x.toFixed(1) + ' ' + p.y.toFixed(1)).join('L') + 'Z'; }

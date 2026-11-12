@@ -169,9 +169,9 @@ window.GardenPaintVale = (function () {
     if (main.length) handles.push(kit.chunked(scene, root, main, { key: sig + '|m', box: worldBox, K: .35, chunk: 512, depth: MAIN_DEPTH, budgetMB: 6, lazy: true, slice: 10 }));
     // Standing things and the crossings' water: a texture already baked is shown at once; a new one waits in a queue
     // that tick() bakes nearest the camera first, a few milliseconds a frame (so a repaint never freezes a frame).
-    const sprites = [], queue = [];
+    const sprites = [], queue = [], tall = [];
     const make = (o, isUnder) => {
-      if (o.make) { const im = ok(() => o.make(scene)); if (im) { im.setDepth(o.y); (objects || root).add(im); sprites.push(im); } return; }
+      if (o.make) { const im = ok(() => o.make(scene)); if (im) { im.setDepth(o.y); (objects || root).add(im); sprites.push(im); if (im.displayHeight > 60) tall.push(im); } return; }   // (a tall one, a tree: it fades when you stand under it)
       const im = kit.sprite(scene, isUnder ? root : objects || root, sig + (isUnder ? '|u|' : '|t|') + o.key, o.box, o.draw, o.x, o.y, o.K || (isUnder ? 1.25 : 1.5)); if (!im) return;
       im.setDepth(isUnder ? UNDER : o.depth != null ? o.depth : o.y); sprites.push(im); stats.spritePx = (stats.spritePx || 0) + (im._gptPx || 0);
       if (isUnder && root.sort) root.sort('depth');
@@ -180,10 +180,15 @@ window.GardenPaintVale = (function () {
     for (const u of under) (scene.textures.exists(sig + '|u|' + u.key) ? make(u, true) : queue.push([u, true]));
     for (const o of things) (o.make || scene.textures.exists(sig + '|t|' + o.key) ? make(o, false) : queue.push([o, false]));
     if (root.sort) root.sort('depth'); if (objects && objects.sort) objects.sort('depth');
-    cur = { sig, handles, sprites, scene, queue, make, objects, root };
+    cur = { sig, handles, sprites, scene, queue, make, objects, root, tall, W };
     stats.buildMs = Math.round(performance.now() - t0);
   }
   function tick(time, view) {
+    if (cur && cur.tall.length && typeof _gw !== 'undefined') {
+      // a tree you stand under fades, so you can always see yourself (as in the woods and the village)
+      const W = cur.W, x = _gw.px * W.cellW, y = W.sky + _gw.py * W.cellH;
+      for (const im of cur.tall) { if (!im.active) continue; const top = im.y - im.displayHeight * im.originY, under = y < im.y - 4 && y > top + 6 && Math.abs(x - im.x) < im.displayWidth * .46, a = under ? .22 : 1; if (im.alpha !== a) im.setAlpha(Math.abs(a - im.alpha) < .03 ? a : im.alpha + (a - im.alpha) * .25); }
+    }
     if (!cur || !cur.queue.length) return;
     const t0 = performance.now(), cx = view ? view.x + view.w / 2 : 0, cy = view ? view.y + view.h / 2 : 0;
     cur.queue.sort((a, b) => Math.hypot(a[0].x - cx, a[0].y - cy) - Math.hypot(b[0].x - cx, b[0].y - cy));
