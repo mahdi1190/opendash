@@ -191,7 +191,7 @@ function _ppQuad(pet, pose, mood, X, S) {
   _ppTail(parts.tail, S.tail || { t: 'long' }, pose, tailRoot, A, B, C, X, m, seed, S);
   // ---- the head in profile
   const Hd = _ppHead(parts, pet, pose, mood, X, S, hx, hy, hr, A, B, C, m, seed, headTilt);
-  const top = Math.min(Hd.top, 20);
+  const top = S.fill ? Hd.top : Math.min(Hd.top, 20);   // as before: a pet the old rig drew stands a little under its height; one that had its own drawing (S.fill) fills it
   return {
     parts, order: _PP_ORDER.slice(),
     piv: { tail: tailRoot, head: neckPiv, eyes: [Hd.ex, Hd.ey], ears: Hd.earPiv, paw: pose === 'walk' ? [xc - L * 0.22, by] : [hx, G], legsN: pose === 'walk' ? [xr + L * 0.32, by] : [45, G - 6], legsF: pose === 'walk' ? [xr + L * 0.32 + 3, by - 1] : [50, G - 10], legsG: pose === 'walk' ? [xc - L * 0.22 + 3, by - 1] : null, wingB: Hd.wing || null, wingN: Hd.wing || null, body: [50, 90] },
@@ -479,7 +479,7 @@ function _ppBird(pet, pose, mood, X, S) {
     parts, order: _PP_ORDER.slice(),
     piv: { head: [hx - hr * 0.3, hy + hr * 0.7], eyes: [ex, ey], paw: wa, legsN: R(len * 0.05, dep * 0.6), legsF: R(len * 0.05 + 2, dep * 0.6), tail: R(-len * 0.7, 0), wingB: wa, wingN: wa, ears: [hx, hy - hr], body: [50, 90] },
     acc: { hc: [hx, hy, hr], neck: S.neck > 2 ? { x: (nb[0] + hx) / 2, y: (nb[1] + hy) / 2 + 2, w: hr * 0.95, rot: -10 } : { x: hx - hr * 0.2, y: hy + hr * 0.92, w: hr * 1.05, rot: -10 }, top: [hx - hr * 0.1, hy - hr * 0.82, hr * 1.15, -6], eyes: [ex, ex, ey, Math.max(1.6, er * 1.3)], ear: [hx - hr * 0.5, hy - hr * 0.6, hr * 0.26] },
-    top: Math.min(topY, 20), bird: true, flap: S.flap || null,
+    top: topY, bird: true, flap: S.flap || null,
   };
 }
 
@@ -661,7 +661,7 @@ function _ppOwn(fn) { return fn; }
 function _ppPack(parts, o) {
   return { parts, order: _PP_ORDER.slice(), piv: Object.assign({ head: [o.hx, o.hy + 3], eyes: [o.ex, o.ey], paw: [o.hx, 88], legsN: [45, 84], legsF: [48, 84], legsG: null, tail: [30, 80], ears: [o.hx, o.hy - 4], wingB: o.wing || [45, 70], wingN: o.wing || [45, 70], body: [50, 90] }, o.piv || {}),
     acc: { hc: [o.hx, o.hy, o.hr], neck: o.neck || { x: o.hx - o.hr * 0.2, y: o.hy + o.hr * 0.9, w: o.hr, rot: -8 }, top: [o.hx - o.hr * 0.1, o.hy - o.hr * 0.85, o.hr * 1.15, -6], eyes: [o.ex, o.ex, o.ey, 1.8], ear: [o.hx - o.hr * 0.4, o.hy - o.hr * 0.6, o.hr * 0.26] },
-    top: Math.min(o.top, 20), flap: o.flap || null, long: o.long };
+    top: o.top, flap: o.flap || null, long: o.long };
 }
 const _PP_OWN = {
   tortoise(pet, pose, mood, X) {
@@ -682,12 +682,12 @@ const _PP_OWN = {
     return _ppPack(P, { hx, hy, hr, ex: hx + 1.6, ey: hy - 1.2, top: cy - 22, long: true, piv: { legsN: [31, cy + 4], paw: [54, cy + 4], legsF: [36, cy + 3], legsG: [59, cy + 3] } });
   },
   hedgehog(pet, pose, mood, X) {
-    const S = { L: 12, D: 7, leg: 3, lw: 2.4, hr: 5, sl: 4, sd: 2.4, ear: { t: 'tiny', s: 1 }, tail: { t: 'none' }, neck: [0.5, 20, 6], nose: '#2a2224', faceT: (X2) => X2.b, muzzle: false, noFur: true, legT: (X2) => X2.b,
+    const S = { fill: true, L: 12, D: 7, leg: 3, lw: 3.2, hr: 5.6, sl: 4, sd: 2.4, ear: { t: 'tiny', s: 1 }, tail: { t: 'none' }, neck: [0.5, 20, 6], nose: '#2a2224', faceT: (X2) => X2.b, muzzle: false, noFur: true, legT: (X2) => X2.b,
       extra: (c) => _ppSpines(c, 'quills'), headExtra: (c) => { if (c.m === 'mask') c.H.push(_pF(_pE(c.ex, c.ey + 0.4, c.er * 3, c.er * 2), c.C[1], 0.7)); } };
     return _ppQuad(pet, pose, mood, Object.assign({}, X, { a: X.b }), S);
   },
   axolotl(pet, pose, mood, X) {
-    const S = { L: 15, D: 5, leg: 4, lw: 2, hr: 6, sl: 1.6, sd: 3.4, hw: 1.1, ear: { t: 'none' }, tail: { t: 'flat', s: 1.1 }, neck: [0.5, 10, 5.6], nose: '#2a2224', noseKind: 'none', muzzle: false, noFur: true, long: true, es: 0.1,
+    const S = { fill: true, L: 15, D: 5, leg: 4, lw: 2.6, hr: 6, sl: 1.6, sd: 3.4, hw: 1.1, ear: { t: 'none' }, tail: { t: 'flat', s: 1.1 }, neck: [0.5, 10, 5.6], nose: '#2a2224', noseKind: 'none', muzzle: false, noFur: true, long: true, es: 0.1,
       extra: (c) => { if (c.m !== 'plain') { const r = GART.rng('axo' + c.seed), b = c.body; for (let i = 0; i < 12; i++) { const x = c.pose === 'walk' ? b.bx + (r() - 0.5) * b.L * 1.6 : c.pose === 'sit' ? b.hcx + (r() - 0.3) * 10 : b.cx + (r() - 0.5) * b.rx * 1.4; const y = c.pose === 'walk' ? b.by + (r() - 0.6) * b.D : c.pose === 'sit' ? b.hcy - r() * 6 : b.cy - r() * b.ry * 0.6; c.parts.body.push(_pF(_pC(x, y, c.m === 'freckles' ? 0.5 : 0.8), c.X.c[0], 0.75)); } } },
       headExtra: (c) => { for (let i = 0; i < 3; i++) { const a = -0.6 - i * 0.55, x0 = c.hx - c.hr * 0.6, y0 = c.hy - c.hr * 0.2 + i * 1.6; const d = _pP`M${x0} ${y0}q${Math.cos(a + Math.PI) * 4} ${Math.sin(a) * 4} ${Math.cos(a + Math.PI) * 6.4} ${Math.sin(a) * 6 - 1}`; c.EA.push(_pL(d, c.X.c[1], 1.6), _pL(d, c.X.c[0], 0.9)); for (let j = 1; j < 4; j++) c.EA.push(_pL(_pP`M${x0 + Math.cos(a + Math.PI) * 1.6 * j} ${y0 + Math.sin(a) * 1.5 * j}l-0.4 -1.2`, c.X.c[0], 0.5, 0.8)); }
         c.H.push(_pL(_pP`M${c.hx + c.hr * 0.4} ${c.hy + c.hr * 0.45}q${c.hr * 0.5} ${c.hr * 0.2} ${c.hr * 0.9} -${c.hr * 0.1}`, c.X.a[3], 0.6, 0.7)); } };
@@ -915,16 +915,27 @@ const _PP_UPRIGHT = {
 };
 /** Moosh's face sits on the stalk under the cap; its eye anchors there. */
 
+const _PP_FILL = new Set(['hamster', 'guinea', 'hedgehog', 'mole', 'axolotl', 'mouse', 'squirrel']);   // drawn on their own before: they keep filling their height
 /** The scene kit's animals stand on sturdy legs with a readable head: every row is drawn a little stockier than its numbers. */
-function _ppSturdy(S) { return Object.assign({}, S, { lw: S.lw * 1.38, hr: S.hr * 1.12, D: S.D * 1.08, sd: S.sd != null ? S.sd * 1.1 : S.sd }); }
+function _ppSturdy(S, id) { return Object.assign({}, S, { fill: _PP_FILL.has(id), lw: S.lw * 1.38, hr: S.hr * 1.12, D: S.D * 1.08, sd: S.sd != null ? S.sd * 1.1 : S.sd }); }
 /** The Painted village's drawing of a species: its own, its body plan's, or null (the rig's). */
 function _ppArtFor(sp) {
   const id = sp && sp.id;
-  if (!id) return null;
-  if (id === 'duck') return null;
-  if (_PP_OWN[id]) return _PP_OWN[id];
-  if (_PP_SPEC[id]) return (pet, pose, mood, X) => _ppQuad(pet, pose, mood, X, _ppSturdy(_PP_SPEC[id](pet)));
-  if (_PP_BIRDS[id]) return (pet, pose, mood, X) => _ppBird(pet, pose, mood, X, _PP_BIRDS[id]);
-  if (_PP_UPRIGHT[id]) return (pet, pose, mood, X) => _ppUpright(pet, pose, mood, X, _PP_UPRIGHT[id]);
-  return null;
+  if (!id || id === 'duck') return null;
+  const fn = _PP_OWN[id] || (_PP_SPEC[id] && ((pet, pose, mood, X) => _ppQuad(pet, pose, mood, X, _ppSturdy(_PP_SPEC[id](pet), id))))
+    || (_PP_BIRDS[id] && ((pet, pose, mood, X) => _ppBird(pet, pose, mood, X, _PP_BIRDS[id]))) || (_PP_UPRIGHT[id] && ((pet, pose, mood, X) => _ppUpright(pet, pose, mood, X, _PP_UPRIGHT[id])));
+  return fn ? _ppSized(id, fn) : null;
+}
+/** Every pose is scaled by the species' standing height (the garden sprite fits the drawing's top to the pet's height), so a pet is as big
+ *  sitting or asleep as it was before, and a hamster stays hamster-sized beside a pony. Remembered per species and breed (bounded: a few dozen). */
+const _PP_TOP = new Map();
+function _ppSized(id, fn) {
+  return (pet, pose, mood, X) => {
+    const A = fn(pet, pose, mood, X), k = id + '|' + (pet.breed || '');
+    let t = pose === 'walk' ? A.top : _PP_TOP.get(k);
+    if (t == null) t = fn(pet, 'walk', {}, X).top;
+    if (_PP_TOP.size < 200) _PP_TOP.set(k, t);
+    A.top = t;
+    return A;
+  };
 }
