@@ -365,8 +365,10 @@ window.GardenPaintedProps = (function () {
     rosearch: { box: [-56, -110, 56, 8], draw(B, o) { const r = rng(29); B.shadow(0, 2, 48, 6, .24); B.s('M-38 0v-62q0 -36 38 -36q38 0 38 36v62', WOOD[1], 4).s('M-34 0v-62q0 -32 34 -32q34 0 34 32v62', WOOD[2], 1.2, .6); for (let i = 0; i < 16; i++) { const t = i / 15, a = Math.PI * (1 - t), x = Math.cos(a) * 38, y = t < .2 || t > .8 ? -10 - (t < .2 ? t : 1 - t) * 260 : -62 - Math.sin(a) * 36; B.f(D().blob(r, x, y, 9, 7, 7, .5), leafOf(o.season)[1], .95).f(D().blob(r, x - 2, y - 2, 5, 3.4, 6, .5), leafOf(o.season)[2], .9); if (o.season !== 'winter' && i % 2 === 0) B.f(B.circ(x + 3, y + 1, 2.4), i % 4 ? '#e06a8a' : '#f4c0d0').f(B.circ(x + 2.4, y + .4, 1), '#fff0f4', .7); } } },
     skep: { box: [-18, -34, 18, 6], draw(B) { B.shadow(1, 1, 13, 4, .26); for (let i = 0; i < 6; i++) B.f(B.ell(0, -4 - i * 4.4, 13 - i * 1.6, 3), i % 2 ? '#c8a050' : '#d8b868'); B.f(B.ell(0, -4, 3.4, 2.2), '#3a2a18'); } },
   });
-  function decorSignature(item, sc, night) { const d = DECOR[item.id]; return d ? 'painted-decor-2|' + item.id + '|' + item.x + ',' + item.y + '|' + (item.flip ? 'f' : '') + '|' + sc.season + (night ? '|n' : '') : null; }
+  const PD = () => window.GardenPaintedDecor && GardenPaintedDecor.has ? GardenPaintedDecor : null;   // the decorations' own painters (94-garden-native-painted-decor-*.js) come first
+  function decorSignature(item, sc, night) { const pd = PD(); if (pd && pd.has(item.id)) return pd.signature(item, sc, night); const d = DECOR[item.id]; return d ? 'painted-decor-2|' + item.id + '|' + item.x + ',' + item.y + '|' + (item.flip ? 'f' : '') + '|' + sc.season + (night ? '|n' : '') : null; }
   function decor(scene, item, sc, o) {
+    const pd = PD(); if (pd && pd.has(item.id)) return pd.world(scene, item, sc, o);
     const d = DECOR[item.id], def = typeof gardenDecor === 'function' ? gardenDecor(item.id) : null; if (!d || !def) return null;
     const W = o.W, season = sc.season || 'summer', fx = (item.x + (def.w || 1) / 2) * W.cellW, foot = W.sky + (item.y + (def.h || 1)) * W.cellH - 4;
     const h = handle(scene, o, 'decor:' + item.uid, { cls: 'decor' });
@@ -379,7 +381,7 @@ window.GardenPaintedProps = (function () {
     const top = foot - im.displayHeight * im.originY;
     return finish(h, { x: fx - im.displayWidth / 2 - 4, y: top - 2, width: im.displayWidth + 8, height: foot - top + 10 }, { x: fx, y: foot });
   }
-  function decorKnown(id) { return !!DECOR[id]; }
+  function decorKnown(id) { const pd = PD(); return !!DECOR[id] || !!(pd && pd.has(id)); }
 
   /* ---------- gates: the natural crossings ---------- */
   // gate id -> its crossing. The ids are kept by the Fleetwater Vale, so each
@@ -625,5 +627,5 @@ window.GardenPaintedProps = (function () {
    *   kit.paintIntoGround(scene, fn(ctx, {box, meadow, palette, rng, path}))  paint straight into the composed ground picture
    *   kit.falls(scene, {id, x, y, width, season}, o)  the village waterfall (rock step, sheet, streaks, spray, ripples) */
   const kit = Object.freeze({ brush, bake, image, libImage, handle, finish, glowPool, poolKey, rng, hash, leafOf, PALETTE: { WOOD, OAK, STONE, SLATE, IRON, MOSS, LEAF }, falls: (...a) => falls(...a), paintIntoGround: (scene, fn) => !!(window.GardenNativePainted && GardenNativePainted.paintIntoGround(scene, fn)) });
-  return { kit, memory, glowPool, prop, signature, decor, decorSignature, decorKnown, gate, gateSignature, gateKind, falls, poolKey, image, status, get lastError() { return lastError; } };
+  return { kit, decorTable: DECOR, paintTable: PAINT, memory, glowPool, prop, signature, decor, decorSignature, decorKnown, gate, gateSignature, gateKind, falls, poolKey, image, status, get lastError() { return lastError; } };
 })();

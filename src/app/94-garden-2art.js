@@ -648,6 +648,7 @@ function _gdArt(id, o) {
 /** An item as a small standalone <svg> (shop, almanac, basket, seed tray). o: art options + {px}. */
 function gardenIconSvg(id, o) {
   o = Object.assign({ kind: 'plant', stage: 4, size: 's', season: 'summer', tod: 'day' }, o || {});
+  if (o.kind === 'decor' && window.GardenPaintedDecor) { const painted = GardenPaintedDecor.icon(id, o); if (painted) return painted; }   // the painted picture (94-garden-native-painted-decor-0kit.js)
   const box = ['plant', 'decor'].includes(o.kind) ? gardenArtBox(o.kind, id) : { x: -32, y: -60, w: 64, h: 66 };
   const px = o.px || 48;
   const frag = _gdArt(id, o);

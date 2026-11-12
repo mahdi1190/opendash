@@ -15,7 +15,7 @@
 .gcr-card.is-sel { border-color: #6a8a4a; box-shadow: 0 0 0 3px rgba(106, 138, 74, .25); }
 .gcr-card.is-can { background: #fffef8; border-color: #c8d8a0; }
 .gcr-card.is-can::after { content: ''; position: absolute; top: 7px; right: 7px; width: 10px; height: 10px; border-radius: 50%; background: #6cbf4a; box-shadow: 0 0 0 2px #fff; }
-.gcr-card.is-miss .gcr-card-art { filter: grayscale(.85) opacity(.55); }
+.gcr-card.is-miss .gcr-card-art { filter: saturate(.6) opacity(.85);   /* still reads on the paper: a recipe you cannot make yet is quieter, not gone */ }
 .gcr-card.is-miss .gcr-card-n { color: #a89a80; }
 .gcr-card.is-unknown { background: #f4ecda; border-style: dashed; color: #b8a888; }
 .gcr-card-art { display: grid; place-items: center; width: 64px; height: 64px; overflow: hidden; }
