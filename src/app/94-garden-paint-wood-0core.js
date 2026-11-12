@@ -157,7 +157,6 @@ window.GardenPaintWood = (function () {
     }
     // each tree's soft contact shadow on the floor, under the sprite
     for (const t of S.M.trees) { if (t.x < view.x || t.x > view.x + view.w || t.y < view.y || t.y > view.y + view.h) continue; yield; const g = cx.createRadialGradient(t.x + 6, t.y, 0, t.x + 6, t.y, t.h * .28); g.addColorStop(0, 'rgba(30,40,24,.32)'); g.addColorStop(1, 'rgba(30,40,24,0)'); cx.fillStyle = g; cx.save(); cx.translate(t.x + 6, t.y); cx.scale(1, .32); cx.translate(-t.x - 6, -t.y); cx.beginPath(); cx.arc(t.x + 6, t.y, t.h * .28, 0, Math.PI * 2); cx.fill(); cx.restore(); }
-    yield 'up';   // the upload gets a frame of its own
     const key = TEX + '-' + ch.key + '-' + (++S.serial);
     S.scene.textures.addCanvas(key, c); ch.tex = key; ch.bytes = c.width * c.height * 4;
     ch.image = S.scene.add.image(B.x, B.y, key).setOrigin(0, 0).setDisplaySize(B.w + 1, B.h + 1).setDepth(-9594); S.root.add(ch.image); S.sortRoot = true;
@@ -218,11 +217,14 @@ window.GardenPaintWood = (function () {
     const dt = S.last == null ? 0 : Math.min(.08, Math.max(0, (time - S.last) / 1000)); S.last = time;
     const motion = typeof gardenMotionOn !== 'function' || gardenMotionOn(); if (motion) S.clock += dt; S.frame++;
     const near = { x: view.x - 384, y: view.y - 384, w: view.w + 768, h: view.h + 768 };
-    let todo = null, resident = 0;
-    for (const ch of S.chunks.values()) { if (ch.image) { resident++; if (hit(ch.box, view)) ch.used = S.frame; } else if (!todo && hit(ch.box, near) && !(S.job && S.job.ch === ch)) todo = ch; }
-    let budget = 1;
-    if (!S.job && todo) { S.job = { ch: todo, gen: bakeChunk(todo) }; }
-    if (S.job) { const j0 = performance.now(); let done = false; try { while (performance.now() - j0 < 7) { const st = S.job.gen.next(); if (st.done) { done = true; break; } if (st.value === 'up') break; } } catch (e) { lastError = String(e && e.stack || e); done = true; } budget = 0; if (done) { S.job.ch.used = S.frame; S.job = null; resident++; } }
+    let resident = 0, budget = 1; const vx = view.x + view.w / 2, vy = view.y + view.h / 2, pick = () => { let best = null, bd = Infinity; for (const ch of S.chunks.values()) { if (ch.image || !hit(ch.box, near) || (S.job && S.job.ch === ch)) continue; const d = Math.hypot(ch.box.x + CH / 2 - vx, (ch.box.y + CH / 2 - vy) * 1.4) - (hit(ch.box, view) ? 1e6 : 0); if (d < bd) { bd = d; best = ch; } } return best; };
+    for (const ch of S.chunks.values()) if (ch.image) { resident++; if (hit(ch.box, view)) ch.used = S.frame; }
+    const j0 = performance.now();
+    for (let n = 0; n < 6 && performance.now() - j0 < 7; n++) {
+      if (!S.job) { const todo = pick(); if (!todo) break; S.job = { ch: todo, gen: bakeChunk(todo) }; }
+      let done = false; try { while (performance.now() - j0 < 7) { const st = S.job.gen.next(); if (st.done) { done = true; break; } } } catch (e) { lastError = String(e && e.stack || e); done = true; }
+      budget = 0; if (!done) break; S.job.ch.used = S.frame; S.job = null; resident++;
+    }
     const tBake = performance.now() - t0; S.tw = S.tw || { bake: 0, trees: 0, sort: 0, light: 0 }; S.tw.bake = Math.max(S.tw.bake, tBake);
     if (resident > MAX_CHUNKS) { const far = [...S.chunks.values()].filter(c => c.image && !hit(c.box, near)).sort((a, b) => a.used - b.used); for (const c of far.slice(0, resident - MAX_CHUNKS)) dropChunk(c); }
     if (S.sortRoot && S.root.sort) { S.root.sort('depth'); S.sortRoot = false; }

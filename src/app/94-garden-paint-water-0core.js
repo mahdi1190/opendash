@@ -292,7 +292,6 @@ window.GardenPaintWater = (function () {
     }
     job.ms += performance.now() - t0;
     if (job.i < job.list.length) return false;
-    if (budget !== Infinity && !job.ready) { job.ready = true; return false; }   // the upload gets a frame of its own
     const ch = job.ch, B = ch.box, key = TEX + '-' + ch.key + '-' + (++S.serial), u0 = performance.now();
     S.scene.textures.addCanvas(key, job.c); ch.tex = key; ch.bytes = job.c.width * job.c.height * 4;
     ch.image = S.scene.add.image(B.x, B.y, key).setOrigin(0, 0).setDisplaySize(B.w + 1, B.h + 1).setDepth(-9590); S.parent.add(ch.image); S.sortParent = true;
@@ -472,10 +471,14 @@ window.GardenPaintWater = (function () {
     const motion = typeof gardenMotionOn !== 'function' || gardenMotionOn(); if (motion) S.clock += dt;
     S.frame = (S.frame || 0) + 1;
     const near = { x: view.x - 384, y: view.y - 384, w: view.w + 768, h: view.h + 768 };
-    let todo = null, resident = 0;
-    for (const ch of S.M.chunks.values()) { if (ch.image) { resident++; if (hit(ch.box, view)) ch.used = S.frame; } else if (!todo && hit(ch.box, near) && !(S.job && S.job.ch === ch)) todo = ch; }
-    if (!S.job && todo) S.job = ok(() => startJob(todo));
-    if (S.job) { const done = ok(() => stepJob(S.job, SLICE)); if (done !== false) { if (S.job.ch) S.job.ch.used = S.frame; S.job = null; resident++; } }
+    let resident = 0; const vx = view.x + view.w / 2, vy = view.y + view.h / 2, pick = () => { let best = null, bd = Infinity; for (const ch of S.M.chunks.values()) { if (ch.image || !hit(ch.box, near) || (S.job && S.job.ch === ch)) continue; const d = Math.hypot(ch.box.x + CH / 2 - vx, (ch.box.y + CH / 2 - vy) * 1.4) - (hit(ch.box, view) ? 1e6 : 0); if (d < bd) { bd = d; best = ch; } } return best; };
+    for (const ch of S.M.chunks.values()) if (ch.image) { resident++; if (hit(ch.box, view)) ch.used = S.frame; }
+    // nearest first (what you can see before the ring round it), several a frame while the slice lasts
+    const j0 = performance.now();
+    for (let n = 0; n < 6 && performance.now() - j0 < SLICE; n++) {
+      if (!S.job) { const todo = pick(); if (!todo) break; S.job = ok(() => startJob(todo)); if (!S.job) break; }
+      const done = ok(() => stepJob(S.job, SLICE - (performance.now() - j0))); if (done === false) break; if (S.job.ch) S.job.ch.used = S.frame; S.job = null; resident++;
+    }
     if (resident > MAX_CHUNKS) { const far = [...S.M.chunks.values()].filter(c => c.image && !hit(c.box, near)).sort((a, b) => a.used - b.used); for (const c of far.slice(0, resident - MAX_CHUNKS)) dropChunk(c); }
     if (S.sortParent && S.parent.sort) { S.parent.sort('depth'); S.sortParent = false; }
     if (S.sortObjects && S.objects && S.objects.sort) { S.objects.sort('depth'); S.sortObjects = false; }
