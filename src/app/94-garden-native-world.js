@@ -319,7 +319,10 @@ window.GardenNativeWorld = (function () {
     function terrainOwns(kind) { return !!(packTerrain && GardenPaintedTerrain.owns(kind)); }
     function terrainOwnsRegion(id) { return !!(packTerrain && GardenPaintedTerrain.ownsRegion(id)); }
     function packOn() { const on = !!(window.GardenNativePainted && GardenNativePainted.wanted() && GardenNativePainted.ready() && typeof gardenIslandActive === 'function' && gardenIslandActive()); if (on) GardenNativePainted.overLayer = rootNode._inner; return on; }
-    function clearPack() { if (packGround) packGround.destroy(); if (packPlanting) packPlanting.destroy(); if (packTerrain) packTerrain.destroy(); packGround = packPlanting = packTerrain = null; }
+    function clearPack() { if (packGround) packGround.destroy(); if (packPlanting) packPlanting.destroy(); if (packTerrain) packTerrain.destroy(); packGround = packPlanting = packTerrain = null; if (window.GardenPaintNature) GardenPaintNature.clear(); }
+    // Painted nature (94-garden-paint-*.js): the vale's water and woods, drawn from the layout.
+    function natureLayers(sc, cellAt) { if (window.GardenPaintNature) try { GardenPaintNature.paint(scene, rootNode._inner, objects._inner || objects.target, { W, data: GardenIslandLayout.data, season: sc.season, tod: sc.tod, cellAt }); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); } }
+    function natureTick(time) { if (!window.GardenPaintNature) return; const cam = scene.cameras.main, zx = cam.zoomX || cam.zoom || 1, zy = cam.zoomY || cam.zoom || 1; GardenPaintNature.tick(time, { x: cam.scrollX + cam.width / 2 - cam.width / zx / 2, y: cam.scrollY + cam.height / 2 - cam.height / zy / 2, w: cam.width / zx, h: cam.height / zy }); }
     function packLayers(m, sc, island, cellAt, cultivatedNow, cells) {
       if (!island || !packOn()) return false;
       paintTerrain(sc);
@@ -365,6 +368,7 @@ window.GardenNativeWorld = (function () {
         return near(x, y, 2, isPath) ? 'edge' : 'tree';
       };
       try { packPlanting = GardenNativePainted.planting(scene, objects._inner || objects.target, { W, box: cbox, spot, season: sc.season }); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); }
+      natureLayers(sc, cellAt);
       sorted = true;
       return true;
     }
@@ -934,6 +938,7 @@ window.GardenNativeWorld = (function () {
         for (const row of _gldIslandLandformRows(sc)) if (!terrainOwns(row.landformKind)) add('landform:' + row.id, row.html, { kind: 'scenery', id: row.id, model: { id: row.id, kind: row.kind, x: row.x, y: row.y, w: row.w, h: row.h }, foot: row.foot }, row.foot.y - 2);
       }
       for (const spec of forestRows) {
+        if (window.GardenPaintNature && GardenPaintNature.covers(W, spec.x, spec.y)) continue;   // painted woods stand there
         const id = spec.id, signature = 'native-forest-crafted-8|' + id + '|' + sc.season; keep.add(id);
         if (drawings.get(id)?.source === signature) continue;
         const old = drawings.get(id); if (old) old.handle.destroy();
@@ -1361,7 +1366,7 @@ window.GardenNativeWorld = (function () {
         if (editorPaint) { const paint = editorPaint; editorPaint = null; paint(); }
         for (let i = 0; i < steps; i++) { _gw.t = (_gw.t || 0) + dt; move(dt); }
         drawPlayer(time); updateCamera(frameDt, !_gw.cam.init); drawRoute(); for (const row of dynamic.values()) if (typeof row.update === 'function') row.update(frameDt, row);
-        cullAndCache();
+        cullAndCache(); natureTick(time);
         const lighting = window.GardenNative && GardenNative.lighting(), environment = lighting && lighting.environment ? lighting.environment() : {};
         for (const row of drawings.values()) if (row.handle.kind && row.handle.update) row.handle.update(time, environment);
         sortObjects();
