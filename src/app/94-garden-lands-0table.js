@@ -509,8 +509,11 @@ function gardenLandsOpen(level, own) {
   if (GARDEN_WORLD.v >= 4 && Array.isArray(gardenIslandData().regions)) {
     // Ownership opens only this region and its actual approach, not every lower-numbered district.
     const openZone = n => { let guard = 0; while (n && guard++ < GARDEN_ZONES.length) { out.add('zn-' + n); const region = gardenIslandRegionForZone(n); n = region && region.fromZone || 0; } };
-    for (const z of GARDEN_ZONES) if ((level || 1) >= z.lv) openZone(z.n);
+    // A gate opens with its find ('gate:<id>' in own; 'zn-<n>' from a friend's snapshot), or by level a little past its own (94-garden-lands-0gates.js)
+    for (const z of GARDEN_ZONES) if ((level || 1) >= (typeof gardenZoneOpenLv === 'function' ? gardenZoneOpenLv(z) : z.lv)) openZone(z.n);
     for (const id of own || []) {
+      if (typeof id === 'string' && id.startsWith('gate:')) { const gate = typeof gardenGateOf === 'function' && gardenGateOf(id.slice(5)); if (gate) openZone(gate.n); continue; }
+      if (typeof id === 'string' && /^zn-[1-9]$/.test(id)) { openZone(Number(id.slice(3))); continue; }
       const row = gardenLandRow(id), feature = gardenLandFeature(id), section = feature && feature.sec && gardenLandRow(feature.sec);
       if (row) { openZone(row.zn); let trail = row.via || row.from, guard = 0; while (trail && guard++ < 9) { out.add(trail); const parent = gardenLandRow(trail); trail = parent && parent.from; } }
       else if (section) openZone(section.zn);
@@ -534,7 +537,7 @@ function gardenLandsOpen(level, own) {
 }
 /** A snapshot's land: {areas (for the scene and the walking: GARDEN_AREAS rows, sections, trails, features), land (what goes in gardenLandSet)}. */
 function gardenLandsOfSnap(snap) {
-  const areas = (snap.areas || []).filter(id => { const a = gardenArea(id); return a && !gardenLandRow(id) && !a.buy; }), own = (snap.ls || []).concat(snap.lf || []);
+  const areas = (snap.areas || []).filter(id => { const a = gardenArea(id); return a && !gardenLandRow(id) && !a.buy; }), own = (snap.ls || []).concat(snap.lf || [], (snap.areas || []).filter(id => /^zn-[1-9]$/.test(id)));   // (zn-<n>: a gate they opened with a find)
   if (Array.isArray(snap.lc) && snap.lc.length) own.push('finds');
   const open = gardenLandsOpen(snap.lv, own);
   return { areas: [...new Set(areas.concat([...open]))], land: [...open] };

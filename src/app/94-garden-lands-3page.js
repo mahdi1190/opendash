@@ -22,12 +22,12 @@ function _gldSay(r, b, ic) {
 function gardenLandPropOpen(p) {
   const id = p.lf, m = gardenHere();
   const at = { x: p.x + p.w / 2, y: p.y - 0.4 };
-  { const gate = gardenZoneGate(id); if (gate) {
+  { const gate = gardenZoneGate(id); if (gate && typeof gardenGatePrompt === 'function' && gardenGatePrompt(gate, at, m)) return; if (gate) {
     const zone = gardenZone(gate.n), region = gardenIslandRegionForZone(gate.n), isOpen = m.areas.includes(zone.id), left = Math.max(0, zone.lv - m.level.level);
     const requirement = isOpen ? 'The route is open.' : m.visit ? 'This route opens at garden level ' + zone.lv + ' in this garden.' : 'Opens at garden level ' + zone.lv + '. Your garden is level ' + m.level.level + (left ? ': ' + left + ' more to go.' : '.');
     gardenBubbleOpen(at, { title: zone.name, sub: requirement + ' ' + gardenLandRegionText(region), items: [], cls: 'is-empty is-words' }); return;
   } }
-  { const sd = gardenLandSight(id); if (sd && sd.door) { const n = gardenZoneOf(sd.door.x, sd.door.y); if (n && !m.areas.includes('zn-' + n)) { const z = gardenZone(n); gardenBubbleOpen(at, { title: sd.name, sub: m.visit ? 'Behind a gate that is still shut in this garden.' : `Behind a gate: ${z.name.toLowerCase()} opens at garden level ${z.lv}.`, items: [], cls: 'is-empty is-words' }); return; } } }
+  { const sd = gardenLandSight(id); if (sd && sd.door) { const n = gardenZoneOf(sd.door.x, sd.door.y); if (n && !m.areas.includes('zn-' + n)) { const z = gardenZone(n), gi = gardenGateNeedWords(n); gardenBubbleOpen(at, { title: sd.name, sub: m.visit ? 'Behind a gate that is still shut in this garden.' : gi ? `Behind a gate: ${z.name}. ${gi.line}` : `Behind a gate: ${z.name.toLowerCase()} opens at garden level ${z.lv}.`, items: [], cls: 'is-empty is-words' }); return; } } }
   if (gardenLandSight(id)) {
     const d = gardenLandSight(id), items = [], E = !m.visit && d.egg && !gardenLandEggFound(id) ? d.egg : null;
     if (E) items.push({ ic: 'sparkles', label: E.verb, cls: 'is-go', run: (b) => _gldSay(gardenLandEgg(id), b, 'sparkles') });
@@ -221,7 +221,7 @@ function _gldRegionRows(box, m) {
     const ready = gardenIslandRegionOpen(region, open), from = gardenIslandRegionForZone(region.fromZone);
     const plots = GARDEN_LAND_SECTIONS.filter(row => row.zn === region.zone && !row.relayoutEmpty).length;
     const trail = ready && typeof GARDEN_EXPLORATION_STOPS !== 'undefined' ? GARDEN_EXPLORATION_STOPS.find(row => row.zone === region.zone) : null;
-    _gldRow(list, { icon: region.theme === 'mountains' || region.theme === 'headland' ? 'mountain' : 'map-pin', name: region.name, sub: gardenLandRegionText(region) + ' ' + plots + ' growing areas.' + (trail ? ' ' + trail.hint : '') + (!ready && from ? ' Approach through ' + from.name.toLowerCase() + '.' : ''), tag: ready ? 'Open' : 'Level ' + region.level, dim: !ready });
+    _gldRow(list, { icon: region.theme === 'mountains' || region.theme === 'headland' ? 'mountain' : 'map-pin', name: region.name, sub: gardenLandRegionText(region) + ' ' + plots + ' growing areas.' + (trail ? ' ' + trail.hint : '') + (!ready && from ? ' Approach through ' + from.name.toLowerCase() + '.' : ''), tag: ready ? 'Open' : (gardenGateNeedWords(region.zone) || { tag: 'Level ' + region.level }).tag, dim: !ready });
   }
   details.appendChild(list); box.appendChild(details);
 }
@@ -247,7 +247,7 @@ function gardenLandsTab(el, m) {
   const mp = _gdpEl('div', 'gld-mapbox'); mp.innerHTML = _gldMap(m); head.appendChild(mp);
   const txt = _gdpEl('div', 'gld-intro');
   txt.appendChild(_gdpEl('h3', null, `You have ${owned} of ${GARDEN_LAND_SECTIONS.filter(s => s.buy).length} pieces of land`));
-  txt.appendChild(_gdpEl('p', null, `Garden level ${lv} · ${_gdpNum(m.wallet.coins)} coins · ${built} of ${GARDEN_LAND_FEATURES.length} things built. The island has five large regions. Each route opens at its garden level, and land you already own keeps its approach open. On the map, gold is what you can buy now and grey is for later.`));
+  txt.appendChild(_gdpEl('p', null, `Garden level ${lv} · ${_gdpNum(m.wallet.coins)} coins · ${built} of ${GARDEN_LAND_FEATURES.length} things built. The island has five large regions. Each gate opens with something you find nearby (or by itself a little later), and land you already own keeps its approach open. On the map, gold is what you can buy now and grey is for later.`));
   head.appendChild(txt); box.appendChild(head);
   const sec = (title) => { box.appendChild(_gdpEl('h4', 'gld-h', title)); const d = _gdpEl('div', 'gld-list'); box.appendChild(d); return d; };
   const buyRow = (host, s) => { const i = gardenLandInfo(s.id, m), K = GARDEN_LAND_KINDS[s.kind]; _gldRow(host, { icon: s.icon, name: s.name, sub: `${K.name}, ${s.cells.length} squares: ${gardenLandGrowsLine(s)}. ${K.says || ''}`, btn: `${_gdpNum(s.buy)} coins`, off: !i.afford, run: (b) => { const r = gardenBuyLand(s.id); if (!r.ok) gameDenyOf(r, b); else gameCheer(b, { text: '-' + s.buy, tone: 'coin', sound: true }); }, ...gardenRewardBtn2(s.buy, m, () => gardenBuyLand(s.id)) }); };
@@ -299,7 +299,7 @@ function gardenLandsTab(el, m) {
   // next
   // past a gate there is nothing to choose yet: only the gate, and what is behind it in a line
   const later = [], zOpen = (n) => !n || m.areas.includes('zn-' + n);
-  for (const z of GARDEN_ZONES) { if (!z.n || zOpen(z.n)) continue; const n = GARDEN_LAND_SECTIONS.filter(s => s.zn === z.n && s.buy && !s.relayoutEmpty).length; later.push({ lv: z.lv, icon: 'map-pin', name: z.name, sub: gardenIslandRegionForZone(z.n) ? gardenLandRegionText(gardenIslandRegionForZone(z.n)) + ' ' + n + ' growing plots become available.' : `A gate opens: ${n} pieces of land and more water to fish`, tag: `Level ${z.lv}` }); }
+  for (const z of GARDEN_ZONES) { if (!z.n || zOpen(z.n)) continue; const n = GARDEN_LAND_SECTIONS.filter(s => s.zn === z.n && s.buy && !s.relayoutEmpty).length; const gi = gardenGateNeedWords(z.n); later.push({ lv: z.lv, icon: 'map-pin', name: z.name, sub: (gardenIslandRegionForZone(z.n) ? gardenLandRegionText(gardenIslandRegionForZone(z.n)) + ' ' + n + ' growing plots become available.' : `A gate opens: ${n} pieces of land and more water to fish`) + (gi ? ' ' + gi.line : ''), tag: gi ? gi.tag : `Level ${z.lv}` }); }
   for (const t of GARDEN_LAND_TRAILS) if (!m.areas.includes(t.id) && zOpen(t.zn)) later.push({ lv: t.lv, icon: 'footprints', name: t.name, sub: 'A new path', tag: `Level ${t.lv}` });
   for (const s of GARDEN_LAND_SECTIONS) { if (s.relayoutEmpty || m.areas.includes(s.id) || !zOpen(s.zn)) continue; if (!s.buy) { later.push({ lv: s.lv, icon: s.icon, name: s.name, sub: GARDEN_LAND_KINDS[s.kind].name + ', free', tag: `Level ${s.lv}` }); continue; } const i = gardenLandInfo(s.id, m); if (i && i.lvOk && i.reach && i.keyOk) continue; const key = i && i.lvOk && i.reach && !i.keyOk; later.push({ lv: s.lv, icon: s.icon, name: s.name, sub: `${GARDEN_LAND_KINDS[s.kind].name}, ${_gdpNum(s.buy)} coins${key ? '. Behind a rusty gate: keep digging, somebody lost a key' : ''}`, tag: key ? 'Key' : `Level ${s.lv}` }); }
   for (const f of GARDEN_LAND_FEATURES) { const I = gardenLandFeatureInfo(f.id, m); if (I.built || !I.why || f.prize || (f.sec && !zOpen((gardenLandRow(f.sec) || {}).zn))) continue; later.push({ lv: f.lv, icon: f.icon, name: f.name, sub: `${f.blurb} ${_gdpNum(f.cost)} coins.${lv >= f.lv ? ' ' + I.why + '.' : ''}`, tag: lv >= f.lv ? 'Land first' : `Level ${f.lv}` }); }

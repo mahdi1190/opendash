@@ -238,7 +238,7 @@ function _gdgFreeSpot(m, def) {
   return null;
 }
 function gardenNextStep(m) {
-  const seeds = _gdpSeedList(), w = m.wallet, wi = m.water;
+  const seeds = _gdpSeedList(), w = m.wallet;
   const go = (label, run) => ({ label, run });
   // 1. something is ready
   const ripe = m.plants.find(p => p.ripe && p.def.yield);
@@ -249,9 +249,7 @@ function gardenNextStep(m) {
     const cheap = GARDEN_PLANTS.filter(p => p.price > 0 && !p.unlock && p.lv <= 1).sort((a, b) => a.price - b.price)[0];
     return { icon: 'store', title: 'Your plot is empty', text: `Seeds start at ${cheap ? cheap.price : 6} coins in the shop. Coins come from time spent on tasks.`, target: null, btn: go('Walk to the shop', () => gardenGoToAct('shop')), key: 'empty' };
   }
-  // 3. thirsty
-  const dry = m.plants.filter(p => p.thirsty && p.def.thirst && p.def.special !== 'heart');
-  if (dry.length && wi.left > 0 && !m.rain.now) { const p = dry[0]; return { icon: 'droplet', title: dry.length > 1 ? `${dry.length} plants are thirsty` : `Your ${p.def.name.toLowerCase()} is thirsty`, text: 'Click them: they never die, they just wait.', target: { x: p.x, y: p.y, w: p.fp, h: p.fp }, btn: go(dry.length > 1 ? 'Water them all' : 'Water it', () => _gdpAct(dry.length > 1 ? gardenWaterAll() : gardenWater(p.uid))), key: 'dry' + p.uid }; }
+  // (thirst is not a chore any more: a drooping plant says it. FUN_PLAN #11, 11 Nov 2026)
   // 4. a seed to plant
   if (seeds.length && nPlants < 4) {
     const s = seeds[0], spot = _gdgFreeSpot(m, s.def);
@@ -262,12 +260,10 @@ function gardenNextStep(m) {
   if (buy) return { icon: 'store', title: `You have ${_gdpNum(w.coins)} coins`, text: `The shop has a ${buy.name.toLowerCase()} seed for ${buy.price}: a plant you have not grown yet.`, target: null, btn: go('Walk to the shop', () => gardenGoToAct('shop')), key: 'buy' + buy.id };
   // 6. a seed to plant, any time
   if (seeds.length) { const s = seeds[0], spot = _gdgFreeSpot(m, s.def); if (spot) return { icon: 'sprout', title: 'Seeds in your bag', text: `${s.n} ${s.def.name.toLowerCase()} seed${s.n === 1 ? '' : 's'} waiting. Choose where you would like it to grow.`, target: { x: spot.x, y: spot.y, w: 1, h: 1 }, btn: go('Plant it here', () => { _gdp.seed = s.id; _gdpAct(gardenPlantAt(s.id, spot.x, spot.y)); _gdpPickTool('seed'); }), key: 'plant2' + s.id }; }
-  // 7. a daily goal
-  const goal = gardenDailyTasks(m).find(t => !t.done);
-  if (goal) return { icon: goal.def.icon || 'target', title: 'Today’s goal: ' + goal.label, text: `${Math.min(goal.have, goal.n)} of ${goal.n} done. It pays ${gardenDailyCoins(goal.def)} coins.`, target: null, btn: null, key: 'goal' + goal.id };
-  // 8. earn
-  const tid = typeof gameFocusNextTask === 'function' ? gameFocusNextTask() : null;
-  return { icon: 'timer', title: 'Earn coins by working', text: 'Focus on a task with the timer: about 12 coins an hour, plus a bonus when you finish it.', target: null, btn: tid && typeof gameFocusStart === 'function' ? go('Start a focus timer', () => { gameFocusStart(tid); gardenToast('Focus timer started. Coins arrive as the minutes add up.', { icon: 'timer' }); }) : go('Open my tasks', () => setView('list')), key: 'earn' };
+  // 7. a rumour, not a chore: what someone has said about the next shut gate (FUN_PLAN #11). The garden never asks for work.
+  const rumour = typeof gardenGateRumour === 'function' ? gardenGateRumour(m) : null;
+  if (rumour) return rumour;
+  return { icon: 'footprints', title: 'Have a wander', text: 'Walk, fish, or see who is about. Time on your real tasks quietly fills your purse.', target: null, btn: null, key: 'wander' };
 }
 /* ---------- today's income ---------- */
 function gardenEconCard(m) {

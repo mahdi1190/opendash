@@ -15,6 +15,7 @@ uniform vec2 uSize;
 uniform vec2 uOrigin;
 uniform float uPadding;
 uniform float uTime;
+uniform float uFade;
 #pragma phaserTemplate(outVariables)
 #pragma phaserTemplate(fragmentHeader)
 void main () {
@@ -34,7 +35,7 @@ void main () {
   float core = smoothstep(12.0, 112.0, distance + billow) * coreFade * step(0.5, land.g);
   float edge = smoothstep(-28.0, 8.0, distance) * (1.0 - smoothstep(22.0, 72.0, distance));
   float fringe = edge * smoothstep(0.36, 0.74, b * 0.35 + c * 0.65) * 0.055;
-  float alpha = (core * (0.40 + density * 0.25) + fringe * (1.0 - core)) * land.b;
+  float alpha = (core * (0.40 + density * 0.25) + fringe * (1.0 - core)) * land.b * uFade;
   if (alpha < 0.002) discard;
   vec3 deep = mix(vec3(0.105, 0.17, 0.18), vec3(0.31, 0.41, 0.39), density);
   vec3 color = mix(vec3(0.57, 0.68, 0.62), deep, smoothstep(0.02, 0.5, core));
@@ -106,13 +107,13 @@ void main () {
     const TINT = { day: [.9, .92, .9], dawn: [.92, .88, .86], dusk: [.86, .8, .8], night: [.44, .5, .58] };
     function retire(tile) { if (tile.shader) tile.shader.destroy(); if (tile.texture) scene.textures.remove(tile.key); }
     function clearTiles() {
-      for (const tile of tiles.values()) { if (tile.shader) tile.shader.destroy(); if (tile.texture) scene.textures.remove(tile.key); }
-      tiles.clear(); visible = 0;
+      for (const tile of [...tiles.values(), ...leaving]) retire(tile);
+      tiles.clear(); leaving.length = 0; visible = 0;
     }
-    function rebuild(state, presentation) {
-      // Painted: a region that has just opened keeps its old mist a moment
+    function rebuild(state, presentation, roll) {
+      // A region that has just opened keeps its old mist a moment
       // while it rolls back; the remaining mist fades in on its new tiles.
-      const opening = painted && regions && presentation.regions.length < count && tiles.size;
+      const opening = !!roll && regions && tiles.size;
       if (opening) { const now = performance.now(); for (const tile of tiles.values()) if (tile.shader) { tile.leaveAt = now; leaving.push(tile); } else if (tile.texture) scene.textures.remove(tile.key); tiles.clear(); visible = 0; }
       else clearTiles();
       gen++; regions = state.lockedRegions || []; revision = state.revision; count = presentation.regions.length; districtGate = presentation.gate && presentation.gate.id || '';
@@ -145,21 +146,21 @@ void main () {
         pixels[at] = Math.round((Math.max(-192, Math.min(192, distance)) / 384 + .5) * 255); pixels[at + 1] = bits[i] * 255; pixels[at + 2] = 255; pixels[at + 3] = 255;
       }
       c.putImageData(image, 0, 0); mask.refresh(); tile.texture = mask;
-      tile.shader = scene.add.shader({ name: painted ? 'GardenFrontierMistPainted' : 'GardenFrontierMist', fragmentSource: painted ? paintedFragment : fragment, setupUniforms(set) { set('uLand', 0); set('uMist', 1); set('uSize', [tileSize, tileSize]); set('uOrigin', [tile.x, tile.y]); set('uPadding', padding); set('uTime', elapsed); if (painted) { set('uRetreat', tile.retreat); set('uFade', tile.fade); set('uTint', tint); } } }, tile.x + tileSize / 2, tile.y + tileSize / 2, tileSize, tileSize, [tile.key, noiseKey]).setDepth(75000).setVisible(false);
+      tile.shader = scene.add.shader({ name: painted ? 'GardenFrontierMistPainted' : 'GardenFrontierMist', fragmentSource: painted ? paintedFragment : fragment, setupUniforms(set) { set('uLand', 0); set('uMist', 1); set('uSize', [tileSize, tileSize]); set('uOrigin', [tile.x, tile.y]); set('uPadding', padding); set('uTime', elapsed); set('uFade', tile.fade == null ? 1 : tile.fade); if (painted) { set('uRetreat', tile.retreat); set('uTint', tint); } } }, tile.x + tileSize / 2, tile.y + tileSize / 2, tileSize, tileSize, [tile.key, noiseKey]).setDepth(75000).setVisible(false);
       parent.add(tile.shader); options.world.depthChanged(); builds++; buildMs = performance.now() - started;
     }
     function update(time, delta) {
       if (dead) return; const state = typeof options.world.frontierState === 'function' ? options.world.frontierState() : options.world.effectsState();
       if (state && (state.lockedRegions !== regions || state.revision !== revision)) {
         const next = state.lockedRegions || [], presentation = islandPresentation(options.world, next), fingerprint = boundaryFingerprint(presentation.regions) + '|' + presentation.key;
-        if (fingerprint !== boundary) { rebuild(state, presentation); boundary = fingerprint; }
+        if (fingerprint !== boundary) { rebuild(state, presentation, boundary !== null && presentation.regions.length < count && !reduced.matches); boundary = fingerprint; }
         else { regions = next; revision = state.revision; reuses++; }
       }
       if (!paused && !reduced.matches && (typeof gardenMotionOn !== 'function' || gardenMotionOn())) elapsed += Math.min(80, Math.max(0, delta || 0)) / 1000;
-      if (painted) {
+      if (painted || leaving.length) {
         // the mist takes the light of the hour (read twice a second, not per frame)
         const now = performance.now();
-        if (now - tintAt > 500) { tintAt = now; const m = typeof options.world.model === 'function' ? options.world.model() : null, t = TINT[m && m.tod] || TINT.day; tint = t; }
+        if (painted && now - tintAt > 500) { tintAt = now; const m = typeof options.world.model === 'function' ? options.world.model() : null, t = TINT[m && m.tod] || TINT.day; tint = t; }
         for (let i = leaving.length - 1; i >= 0; i--) { const tile = leaving[i], f = Math.min(1, (now - tile.leaveAt) / 2600); tile.retreat = f * f * (3 - 2 * f); tile.fade = 1 - f * f; if (f >= 1) { retire(tile); leaving.splice(i, 1); } }
         for (const tile of tiles.values()) if (tile.bornAt) { const f = Math.min(1, (now - tile.bornAt) / 2600); tile.fade = f; if (f >= 1) tile.bornAt = 0; }
       }
