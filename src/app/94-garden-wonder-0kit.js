@@ -195,7 +195,7 @@ function wdAmbient(text, ms, source) { gardenMessage(text, { ms, ambient: true, 
 /** A page to read, or something found: the kit's own dialog, since you asked to see it. */
 function wdPage(o) {
   openDialog({
-    title: o.title, width: o.width || 480, className: 'wd-pagedlg',
+    title: o.title, width: o.width || 480, className: 'wd-pagedlg gd-popup',
     body(el) {
       if (o.art) { const a = _gdpEl('div', 'wd-page-art'); a.innerHTML = o.art; el.appendChild(a); }
       for (const t of o.text || []) el.appendChild(_gdpEl('p', 'wd-page-p', t));
