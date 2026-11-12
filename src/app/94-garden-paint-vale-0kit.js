@@ -143,7 +143,7 @@ window.GardenPaintVale = (function () {
     const s = o.size || 7;
     for (let y = Math.floor(bb[1] / s) * s, row = 0; y < bb[3] + s; y += s * .8, row++) for (let x = Math.floor(bb[0] / s) * s - (row % 2) * s * .5; x < bb[2] + s; x += s) {
       const rr = KIT().rng(KIT().hash(Math.round(x * 3), Math.round(y * 3), o.salt || 2)), tone = rr(), col = o.cols ? o.cols[Math.floor(tone * o.cols.length)] : tone < .35 ? P.stoneLo : tone < .8 ? P.stone : P.stoneHi;
-      B.f(B.ell(x + (rr() - .5), y + (rr() - .5), s * .44, s * .34), col).f(B.ell(x - s * .12, y - s * .1, s * .2, s * .12), '#fff', .22);
+      B.f(B.rr(x - s * .45 + (rr() - .5), y - s * .33, s * .9, s * .66, s * .22), col).f(B.rect(x - s * .3, y - s * .28, s * .5, s * .12), '#fff', .16);
     }
   }
 
@@ -160,18 +160,30 @@ window.GardenPaintVale = (function () {
     const handles = [];
     if (ground.length) handles.push(kit.chunked(scene, root, ground, { key: sig + '|g', box: gBox, K: 1.25, chunk: 256, depth: DEPTH, budgetMB: 22, lazy: true, slice: 10 }));
     if (main.length) handles.push(kit.chunked(scene, root, main, { key: sig + '|m', box: worldBox, K: .5, chunk: 512, depth: MAIN_DEPTH, budgetMB: 8, lazy: true, slice: 10 }));
-    const sprites = []; let spritePx = 0;
-    for (const u of under) { const im = kit.sprite(scene, root, sig + '|u|' + u.key, u.box, u.draw, u.x, u.y, u.K || 1.25); if (im) { im.setDepth(UNDER); sprites.push(im); spritePx += im._gptPx || 0; } }
-    for (const o of things) {
-      if (o.make) { const im = ok(() => o.make(scene)); if (im) { im.setDepth(o.y); (objects || root).add(im); sprites.push(im); } continue; }
-      const im = kit.sprite(scene, objects || root, sig + '|t|' + o.key, o.box, o.draw, o.x, o.y, o.K || 1.5); if (!im) continue;
-      im.setDepth(o.depth != null ? o.depth : o.y); sprites.push(im); spritePx += im._gptPx || 0;
-    }
+    // Standing things and the crossings' water: a texture already baked is shown at once; a new one waits in a queue
+    // that tick() bakes nearest the camera first, a few milliseconds a frame (so a repaint never freezes a frame).
+    const sprites = [], queue = [];
+    const make = (o, isUnder) => {
+      if (o.make) { const im = ok(() => o.make(scene)); if (im) { im.setDepth(o.y); (objects || root).add(im); sprites.push(im); } return; }
+      const im = kit.sprite(scene, isUnder ? root : objects || root, sig + (isUnder ? '|u|' : '|t|') + o.key, o.box, o.draw, o.x, o.y, o.K || (isUnder ? 1.25 : 1.5)); if (!im) return;
+      im.setDepth(isUnder ? UNDER : o.depth != null ? o.depth : o.y); sprites.push(im); stats.spritePx = (stats.spritePx || 0) + (im._gptPx || 0);
+      if (isUnder && root.sort) root.sort('depth');
+    };
+    stats = { sig, ground: ground.length, mainland: main.length, under: under.length, things: things.length, spritePx: 0 };
+    for (const u of under) (scene.textures.exists(sig + '|u|' + u.key) ? make(u, true) : queue.push([u, true]));
+    for (const o of things) (o.make || scene.textures.exists(sig + '|t|' + o.key) ? make(o, false) : queue.push([o, false]));
     if (root.sort) root.sort('depth'); if (objects && objects.sort) objects.sort('depth');
-    cur = { sig, handles, sprites, scene };
-    stats = { sig, ground: ground.length, mainland: main.length, under: under.length, things: things.length, buildMs: Math.round(performance.now() - t0), spritePx };
+    cur = { sig, handles, sprites, scene, queue, make, objects, root };
+    stats.buildMs = Math.round(performance.now() - t0);
   }
-  function tick() {}
+  function tick(time, view) {
+    if (!cur || !cur.queue.length) return;
+    const t0 = performance.now(), cx = view ? view.x + view.w / 2 : 0, cy = view ? view.y + view.h / 2 : 0;
+    cur.queue.sort((a, b) => Math.hypot(a[0].x - cx, a[0].y - cy) - Math.hypot(b[0].x - cx, b[0].y - cy));
+    while (cur.queue.length && performance.now() - t0 < 6) { const [o, u] = cur.queue.shift(), s0 = performance.now(); ok(() => cur.make(o, u)); const ms = performance.now() - s0; if (ms > (stats.slowMs || 0)) { stats.slowMs = Math.round(ms); stats.slow = o.key || 'tree'; } }
+    for (const c of [cur.objects, cur.root]) if (c && c.sort) c.sort('depth');
+    stats.queueWorstMs = Math.max(stats.queueWorstMs || 0, Math.round(performance.now() - t0));
+  }
   function clear() {
     if (!cur) return;
     for (const h of cur.handles) ok(() => h.destroy(true));   // textures are kept for the next paint with the same picture
