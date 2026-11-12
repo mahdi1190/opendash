@@ -85,12 +85,13 @@
       if (part === 2 && cb[1] < 0) {
         const fell = C.season === 'winter' ? '#b4b2a0' : C.season === 'autumn' ? '#a89a6a' : '#a2a66e';
         B.f(B.rect(cb[0], cb[1], cb[2] - cb[0], Math.min(0, cb[3]) - cb[1]), B.lin(0, -400, 0, 120, [[0, fell], [1, 'rgba(162,166,110,0)']]));
-        for (let ridge = 0; ridge < 4; ridge++) {
-          const base = -150 - ridge * 260, col = kit.mix(fell, P.far, Math.min(1, .25 + ridge * .25)), rr = kit.rng(900 + ridge), pts = [];
+        for (let ridge = 3; ridge >= 0; ridge--) {   // the farthest first, so each nearer ridge stands in front of the ones behind it
+          const base = -150 - ridge * 260, col = ridge === 0 ? kit.mix(fell, '#6a6440', .3) : ridge === 3 ? kit.mix(P.far, P.haze, .3) : kit.mix(fell, P.far, ridge === 1 ? .42 : .7), rr = kit.rng(900 + ridge), pts = [];
           for (let x = Math.floor(cb[0] / 160) * 160 - 160; x <= cb[2] + 160; x += 160) { const r2 = kit.rng(kit.hash(x, ridge, 84)); pts.push({ x, y: base - 80 - r2() * 170 - (ridge > 1 ? r2() * 120 : 0) }); }
           const poly = pts.concat([{ x: pts[pts.length - 1].x, y: base + 260 }, { x: pts[0].x, y: base + 260 }]);
           B.f(B.poly(poly), col);
-          for (let i = 0; i < pts.length - 1; i++) { const a = pts[i], b = pts[i + 1]; const hi = a.y < b.y ? a : b; B.f(B.poly([hi, { x: hi.x - 50, y: hi.y + 120 }, { x: hi.x + 10, y: hi.y + 130 }]), '#fff', .12); if ((C.season === 'winter' || C.season === 'spring' || ridge > 1) && hi.y < base - 150) B.f(B.poly([hi, { x: hi.x - 26, y: hi.y + 30 }, { x: hi.x + 4, y: hi.y + 22 }, { x: hi.x + 24, y: hi.y + 32 }]), '#f4f6f6', .85); }
+          V.strokePts(B, pts, kit.mix(col, '#3c3a2a', .35), 5 - ridge, .45);   // the crest, a shade darker, so each ridge reads against the one behind
+          for (let i = 0; i < pts.length - 1; i++) { const a = pts[i], b = pts[i + 1]; const hi = a.y < b.y ? a : b; if ((C.season === 'winter' || C.season === 'spring' || ridge > 1) && hi.y < base - 150) B.f(B.poly([hi, { x: hi.x - 26, y: hi.y + 30 }, { x: hi.x + 4, y: hi.y + 22 }, { x: hi.x + 24, y: hi.y + 32 }]), '#f4f6f6', .85); }
           void rr;
         }
       }
@@ -120,7 +121,7 @@
     const rows = W.sky + W.rows * ch, haze = kit.rgba(P.haze, 0), hz = a => kit.rgba(P.haze, a);
     if (C.thing) {
       C.thing({ key: 'mainland-haze-w', x: 0, y: rows, depth: 89990, K: .25, box: [-300, -rows - 800, 260, 0], draw: B => { B.f(B.rect(-300, -rows - 800, 560, rows + 800), B.lin(-300, 0, 260, 0, [[0, haze], [.42, hz(.5)], [.58, hz(.42)], [1, haze]])); } });
-      C.thing({ key: 'mainland-haze-n', x: 0, y: 420, depth: 89991, K: .2, box: [-2400, -1400, W.cols * cw + 2400, 0], draw: B => { B.f(B.rect(-2400, -1400, W.cols * cw + 4800, 1400), B.lin(0, -1400, 0, 0, [[0, haze], [.55, hz(.4)], [.73, hz(.5)], [.84, hz(.38)], [1, haze]])); } });
+      C.thing({ key: 'mainland-haze-n', x: 0, y: 420, depth: 89991, K: .2, box: [-2400, -1400, W.cols * cw + 2400, 0], draw: B => { B.f(B.rect(-2400, -1400, W.cols * cw + 4800, 1400), B.lin(0, -1400, 0, 0, [[0, haze], [.55, hz(.26)], [.73, hz(.34)], [.84, hz(.26)], [1, haze]])); } });
     }
   }
   function B0(pts) { return 'M' + pts.map(p => p.x.toFixed(1) + ' ' + p.y.toFixed(1)).join('L') + 'Z'; }
