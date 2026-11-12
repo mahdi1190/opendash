@@ -261,7 +261,7 @@ window.GardenNativePainted = (function () {
       }
       const im = objectImage(scene, id, v, season, size, x, y, false); if (!im) return; im.setDepth(y); parent.add(im); made.push(im);
     };
-    const gates = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data && GardenIslandLayout.data.gates || [], byGate = (x, y) => gates.some(g => Math.abs(x - g.x) <= 3 && y - g.y >= -2 && y - g.y <= 5);
+    const gates = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data && GardenIslandLayout.data.gates || [], fl = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data && (GardenIslandLayout.data.presentation || {}).falls, byGate = (x, y) => gates.some(g => Math.abs(x - g.x) <= 3 && y - g.y >= -2 && y - g.y <= 5) || !!(fl && x >= fl.x - 3 && x <= fl.x + (fl.w || 3) + 2 && y >= fl.y - 1 && y <= fl.y + (fl.h || 3) + 4);   // (nor over Fleet Falls)
     for (let cy = info.box.y0; cy <= info.box.y1; cy++) for (let cx = info.box.x0; cx <= info.box.x1; cx++) {
       const spot = info.spot(cx, cy); spotCounts[spot || 'none'] = (spotCounts[spot || 'none'] || 0) + 1; if (!spot) continue;
       if (spot === 'tree' && byGate(cx, cy)) continue;   // (a gate stays in view: no tree crown over the arch)

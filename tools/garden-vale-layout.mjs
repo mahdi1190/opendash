@@ -235,7 +235,7 @@ stat('pier', 49, 79, { h: 5, door: { x: 50, y: 78 } });
 stat('pier-2', 49, 84, { h: 4, door: null });
 stat('pier-3', 49, 88, { h: 4, door: null });
 stat('tackle-shop', 52, 74, { district: 'harbour-bay' });
-stat('old-angler', 56, 79, { door: { x: 56, y: 78.5 }, district: 'harbour-bay' });
+stat('old-angler', 56, 79, { door: { x: 54.6, y: 78.8 }, district: 'harbour-bay' });   // (you stand beside him, not on him)
 stat('jetty-post', 48, 81, { door: null, district: 'harbour-bay' });
 stat('boat', 47.25, 82, { door: { x: 49, y: 81 }, district: 'harbour-bay' });
 stat('camera-tripod', 46, 76, { door: { x: 46, y: 77 }, district: 'harbour-bay' });
