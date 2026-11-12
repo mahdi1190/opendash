@@ -6,6 +6,12 @@
    gentle: 'soft'. In the gentle telling there is no husband: the old house was a cold, lonely place she left one winter, and the steps become simple kind ones.
    (If the story lead keeps gentle: 'skip', see thistle.md §9: the light steps 1 and 4 then need to move to a 'keep' story.) */
 const _wtGentle = () => !_wtDeep();
+wdTaleKeep({ id: 'bramble-jam', name: 'A jar of bramble jam', text: 'From Mother Thistle. “Nobody needs to steal this one.”' });
+wdTaleKeep({ id: 'odd-teacup', name: 'A small blue teacup', text: { t: 'From Mother Thistle. A chip off the handle the shape of a thumb. It holds four spoonfuls of soup, exactly.', soft: 'From Mother Thistle. It holds four spoonfuls of soup, exactly.' } });
+wdTaleRecipe({ id: 'nothing-soup', name: 'Nothing soup', from: 'Mother Thistle’s, as told at the Great Oak', text: [
+  'Snow, or rain if there is no snow. One old onion. Whatever is green and not rude.',
+  'Boil it under a tree, with frogs if you can get them, to listen. Stir with the spoon you happened to be holding.',
+  '“Best soup I ever made, dear. It was the walking that seasoned it.”'] });
 wdTaleAdd({ id: 'thistle', kind: 'arc', title: 'The old house', journal: 'Mother Thistle, and the door she learned to watch.', gentle: 'soft', steps: [
 
   // 1. nodding terms: the first bowl. A favour, told as a story: the first time she feeds you.
@@ -82,7 +88,7 @@ wdTaleAdd({ id: 'thistle', kind: 'arc', title: 'The old house', journal: 'Mother
     set: { 'thistle.walking': 1 } },
 
   // 7b. the old house. Said when you reach it. She is at the gate, out of breath, “not waiting”.
-  { id: 'house', who: 'place', near: ['ld-oldhouse', 'ld-hollow'], r: 3, heavy: 1, when: { after: 'thistle.ready', tod: ['dawn', 'day'], dry: 1 }, lines: [
+  { id: 'house', who: 'place', name: 'Mother Thistle', near: ['ld-oldhouse', 'ld-hollow'], r: 3, heavy: 1, when: { after: 'thistle.ready', tod: ['dawn', 'day'], dry: 1 }, lines: [
     'Mother Thistle is at the gate of the old house, a bit out of breath. “I wasn’t waiting,” she says. She was.',
     'The house is small, and the roof has come down at the back. Moss on the step. A rowan has grown up through the woodshed. It looks like a house that gave up a long time ago.',
     { t: '“It’s smaller than I remember. They always are, aren’t they. He made it feel enormous. It’s just a house. It’s just a cold little house.”',
@@ -102,7 +108,7 @@ wdTaleAdd({ id: 'thistle', kind: 'arc', title: 'The old house', journal: 'Mother
     { t: '“The pot stays by the door. Some habits are just sense. But I don’t need to be holding it any more. Not every day.”',
       soft: '“The pot stays by the door. It’s been there forty years. It’d sulk if I moved it.”' },
     '“Everyone who sits on this bench gets a bowl. You’re not a visitor any more, so you get a cup. Your own. Take it home. Put soup in it. Or a frog. Your choice.”'],
-    give: { 'decor:odd-teacup': 1 },
+    give: { 'decor:odd-teacup': 1, 'recipe:nothing-soup': 1 },
     sit: 'You sit and drink your four spoonfuls. They are very good spoonfuls. Norman starts up, and for once she doesn’t say anything about the key he’s in.',
     note: 'decor:odd-teacup is new: a small blue cup, chipped handle, for the garden. If there is no new decor, 1 rare seed (the arc’s only “big” gift, and still small).' },
 ] });
@@ -121,10 +127,11 @@ wdTaleAdd({ id: 'thistle-echo', kind: 'arc', title: 'He can have the woods', jou
     sit: 'You sit. She goes back to shelling peas, a little harder than peas need.' },
 
   // the mill supper (bible: next 20, #1, “The seat at the mill”). Thistle cooks it. Coloured by hollin.seat; values proposed: 'set' (a place was set for him), 'none'.
-  { id: 'supper', who: 'thistle', free: 1, when: { after: 'mill.truth', days: 2, flag: { 'hollin.seat': true }, deep: 1 }, lines: [
+  { id: 'supper', who: 'thistle', free: 1, when: { after: 'mill.toast', days: 1, flag: { 'mill.seat': true }, deep: 1, home: 1 }, lines: [
     'I did the soup for the mill supper. Forty bowls. Pip had three and said it was “mostly fine”. Pip is barred.',
-    { t: 'They set a place for him at the far end. I put my bowl at the other end. I’m allowed. Setting a place is the vale’s business. Where I sit is mine.', flag: { 'hollin.seat': 'set' } },
-    { t: 'There was no place for him. Somebody asked me if I was glad. I said I was busy with the soup. That’s true, and it’s all they’re getting.', flag: { 'hollin.seat': 'none' } },
+    { t: 'They set a place for him at the far end. I put my bowl at the other end. I’m allowed. Setting a place is the vale’s business. Where I sit is mine.', flag: { 'mill.seat': 'yes' } },
+    { t: 'There was no place for him. Somebody asked me if I was glad. I said I was busy with the soup. That’s true, and it’s all they’re getting.', flag: { 'mill.seat': 'no' } },
+    { t: 'Bramble put a stool for him by the trees. Not at the table. I took my soup round the other side of the wheel. Nobody asked me to. Nobody needed to.', flag: { 'mill.seat': 'apart' } },
     'Quince didn’t come down. I took her a bowl up the stair after. Two hundred and something steps, with soup. That’s friendship, dear. That’s what it looks like. Wet sleeves.'] },
 ] });
 

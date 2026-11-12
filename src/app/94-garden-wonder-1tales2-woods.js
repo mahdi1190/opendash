@@ -160,12 +160,12 @@ wdTaleAdd({ id: 'woods', kind: 'small', title: 'The woodcutter', journal: 'Holli
     'I carved you a wren. It doesn’t look like a wren. It looks like a wren that’s had a hard week.',
     'Lime wood. Keep it out of the wet. Put it where you’ll see it going out. That’s where I keep mine.',
     { t: 'Don’t thank me. I’d only not know what to do with it.', soft: 'Don’t thank me. I’ve a shelf of them. They were getting ideas.' }],
-    give: { 'decor:carved-wren': 1 } /* NEW decor; was fertiliser */ },
+    give: { 'keep:carved-wren': 1 } },
   { id: 'beetles', who: 'hollin', when: { heart: 2, tod: ['dusk', 'night'], home: 1 }, lines: [
     'Stag beetles are on the old oak by the brook, after dark. Not the big oak. The leaning one. Big oak’s all show.',
     'Don’t tell the owl I told you. He likes to be the one who knows.'], set: { 'woods.beetles': 1 } },
-  { id: 'nets', who: 'angler', when: { heart: { hollin: 2 }, after: 'woods.beetles', days: 1 }, lines: [
-    'Hollin says you’ve been down his way. He mends my nets on Thursdays. Has done for, oh. A long time.',
+  { id: 'nets', who: 'angler', when: { heart: { hollin: 2 }, after: 'woods.beetles', days: 1, weekday: 4 }, lines: [   // Thursday: the nets are out on the pier
+    'Thursday. Nets day. Hollin says you’ve been down his way. He mends my nets on Thursdays. Has done for, oh. A long time.',
     'We don’t talk. He sits there, I sit here, the nets go between us. Best company I’ve had in years.',
     { t: 'We each carry something. We’ve never once asked. I think that’s why it works.', soft: 'Two old men and a pile of string. Don’t laugh. It’s a very good pile of string.' },
     'Come Thursday, if you like. Bring a torn one. He likes a torn one. Gives his hands something to say.'] },
@@ -176,7 +176,7 @@ wdTaleAdd({ id: 'woods', kind: 'small', title: 'The woodcutter', journal: 'Holli
     choice: [
       { k: 'bird', label: 'A bird', set: { 'woods.carved': 'bird' }, t: 'A bird. Everyone’s first is a bird. Mine was a bird. It looked like a potato with opinions. Yours looks like a bird. Huh.' },
       { k: 'fish', label: 'A fish', set: { 'woods.carved': 'fish' }, t: 'A fish. That’s harder than it looks, a fish. It’s all one curve. You found it, mostly. The angler will want one now.' }],
-    give: { 'decor:carved-bird': 1 },
+    give: { 'keep:carved-bird': 1 },
     sit: 'You carve in silence. Shavings pile up between your feet. Every so often he reaches over and turns your hand a little, without a word.' },
   { id: 'trees', who: 'hollin', when: { heart: 3, after: 'woods.carve', days: 2, tod: ['day', 'dusk'] }, lines: [
     'Walk with me. You keep asking where things are. I’ll show you once. I’ll not show you twice.',
@@ -188,7 +188,7 @@ wdTaleAdd({ id: 'woods', kind: 'small', title: 'The woodcutter', journal: 'Holli
     'Here. Netting needle. Yew. My father’s. No, his father’s. Someone’s father’s.',
     'You can mend your own now. You’ve watched enough. Don’t bring them to me any more.',
     { t: 'I’d like to think of it being used after I’m not about.', soft: 'Go on. I’ve another. I’ve always another.' }],
-    give: { 'decor:net-rack': 1 } },
+    give: { 'keep:netting-needle': 1 } },
 ] });
 
 wdTaleAdd({ id: 'hollin', kind: 'arc', title: 'What the woods keep', journal: 'Hollin the woodcutter, what he did, and what the vale does about it.', gentle: 'skip', steps: [
@@ -213,7 +213,7 @@ wdTaleAdd({ id: 'hollin', kind: 'arc', title: 'What the woods keep', journal: 'H
     set: { 'hollin.island': 1 } },
 
   /* ---- the wrong note (kept from the current file; needs good friends now) ---- */
-  { id: 'wrong', who: 'hollin', when: { heart: 3, season: ['autumn', 'winter'], deep: 1, days: 2, after: 'hollin.ribbon', home: 1 }, care: 1 /* NEW: show the care note here if it hasn't been shown */, lines: [
+  { id: 'wrong', who: 'hollin', when: { heart: 3, season: ['autumn', 'winter'], deep: 1, days: 2, after: 'hollin.ribbon', home: 1 }, care: 1, set: { 'hollin.wrong': 1 }, lines: [
     'You’ve seen the ribbon on my door. You’re wondering. You’ve been wondering a while.',
     'I won it, carving. First prize. The same day I did something. A long time ago.',
     'I won’t pretend it was anything other than what it was. I won’t tell you today. Maybe not ever. It isn’t mine to say first.'] },
@@ -263,7 +263,7 @@ wdTaleAdd({ id: 'hollin', kind: 'arc', title: 'What the woods keep', journal: 'H
       { k: 'yes', label: 'Give him the stall', set: { 'hollin.stall': 'yes' }, mood: { bramble: -1, thistle: -1, pip: 1 }, t: 'Right. Far end, by the drain. I’ll put it on the map. In pencil. Don’t expect me to buy a bird.' },
       { k: 'no', label: 'Don’t give him one', set: { 'hollin.stall': 'no' }, mood: { pip: -1 }, t: 'Right. I’ll tell him myself. To his face. He’ll take it. That’s almost the worst part.' },
       { k: 'ask', label: 'Ask Quince first', set: { 'hollin.stall': 'asked' }, t: 'Ask her if you like. I’ll wait. I’ve a feeling I know what she’ll say, and it isn’t yes or no.' }] },
-  { id: 'stall2', who: 'bramble', when: { after: 'quince-woods.notvote', flag: { 'hollin.stall': 'asked' }, home: 1 }, lines: [
+  { id: 'stall2', who: 'bramble', free: 1, when: { after: 'quince-woods.notvote', flag: { 'hollin.stall': 'asked' }, home: 1 }, lines: [
     'She told you not to make her the vote. I know. She told me the same, years ago, louder. So it’s you and me again.'],
     choice: [
       { k: 'yes', label: 'Give him the stall', set: { 'hollin.stall': 'yes' }, mood: { bramble: -1, thistle: -1, pip: 1 }, t: 'Far end. By the drain. Pencil.' },
@@ -312,7 +312,7 @@ wdTaleAdd({ id: 'quince-woods', kind: 'arc', title: 'The woods back', journal: '
       { k: 'thanks', label: 'Thank you for telling me', t: 'Don’t thank me. I didn’t do it for you. Well. A bit for you. Mostly for me. That’s allowed.' }],
     set: { 'quince.told': 1 },
     sit: 'You sit. The bees go about their business around you both. “They like you,” she says. “That’s practically a hug.”' },
-  { id: 'him', who: 'quince', when: { flag: { 'hollin.told': true }, days: 3, home: 1 }, lines: [
+  { id: 'him', who: 'quince', when: { after: 'hollin.truth', flag: { 'hollin.told': true }, days: 3, home: 1 }, lines: [
     'You’ve been to the hut. I can tell. You’ve got that face.',
     'Yes. Him. I know he’s there. I’ve known for years. I don’t want anything from him. Not sorry. Not anything. I want the woods back.',
     { t: 'You sat with him, I expect. You’re allowed. I’m not your conscience. I’m a hare with a lot of bees.', flag: { 'hollin.view': 'listen' } },
@@ -321,7 +321,7 @@ wdTaleAdd({ id: 'quince-woods', kind: 'arc', title: 'The woods back', journal: '
     { t: 'You walked off. I can see it on you. Don’t do it on my account. Do it on yours, if you do it.', flag: { 'hollin.view': 'leave' } },
     'That’s all. That’s all there is about him, from me. Now. Honey. I’ve too much of it. Take a jar or I’ll be cross.'], give: { honey: 1 } },
   /* if you asked her about the stall */
-  { id: 'notvote', who: 'quince', when: { flag: { 'hollin.stall': 'asked' }, home: 1 }, lines: [
+  { id: 'notvote', who: 'quince', free: 1, when: { flag: { 'hollin.stall': 'asked' }, home: 1 }, lines: [
     'Bramble sent you up the stair to ask me about a stall. Didn’t Bramble. Or you came on your own. That’s worse. That’s kind.',
     'Don’t make me the vote. I’ve been the reason for enough. I decided what happens to me, years ago, and I’m still deciding it, every morning. What happens to him, that’s the vale’s. Not mine.',
     'I’ll be selling honey either way. Thursdays and Saturdays. He’ll know that already, I expect. Off you go. Mind the stair. Two hundred and twelve today.'] },
@@ -370,9 +370,13 @@ wdTaleAdd({ id: 'quince-woods', kind: 'arc', title: 'The woods back', journal: '
 ] });
 
 // Quince's own arc (94-garden-wonder-1tales2-quince.js) tells the arch, the fair and the bell; this one keeps only her side of the woods.
-{ const s = WD_TALE_BY.get('quince-woods'); if (s) s.steps = s.steps.filter(b => !['arch', 'fair', 'bell'].includes(b.id)); }
+// (the apple race and the walk to the arch are hers too: quince.race and quince.far)
+{ const s = WD_TALE_BY.get('quince-woods'); if (s) s.steps = s.steps.filter(b => !['arch', 'fair', 'bell', 'apples', 'walk'].includes(b.id)); }
+wdTaleKeep({ id: 'carved-wren', name: 'A carved wren', text: 'Lime wood, from Hollin. It looks like a wren that’s had a hard week. Keep it out of the wet.' });
+wdTaleKeep({ id: 'carved-bird', name: 'Your first carving', text: 'A bird, or a fish, carved at Hollin’s step. Everyone’s first is a bird, he says.' });
+wdTaleKeep({ id: 'netting-needle', name: 'A yew netting needle', text: 'Hollin’s. Someone’s father’s. You can mend your own nets now.' });
 // the rope for the pass: his
-wdTaleBeat('hollin', { id: 'rope', who: 'hollin', when: { heart: 2, item: 'rope', home: 1, deep: 1 }, lines: [
+wdTaleBeat('hollin', { id: 'rope', who: 'hollin', free: 1, when: { heart: 2, item: 'rope', home: 1, deep: 1 }, lines: [
   'That rope on the orchard wall. Mine. Good hemp. You needed it for the pass, the owl said, so I gave it him.',
   'He took it up. I don’t go up there. I’ll go as far as the wall in my head and no further, and I don’t go as far as the wall.'] });
 // the mill's reopening supper and the angler's toast: the main line, after Act VII
@@ -385,14 +389,14 @@ wdTaleBeat('hollin', { id: 'rope', who: 'hollin', when: { heart: 2, item: 'rope'
   choice: [
     { k: 'yes', label: 'Lay him a place', set: { 'mill.seat': 'yes' }, t: 'Far end. Pencil. There.' },
     { k: 'no', label: 'Don’t', set: { 'mill.seat': 'no' }, t: 'Right. I’ll not, then.' },
-    { k: 'pass', label: 'It’s not mine to say', set: { 'mill.seat': 'pass' }, t: 'Isn’t it? Hm. Then I’ll do what the vale always does. Watch.' }] },
+    { k: 'apart', label: 'It’s not mine to say', set: { 'mill.seat': 'apart' }, t: 'Isn’t it? Hm. Then I’ll do what the vale always does. A stool by the trees. Watch.' }] },
 { id: 'toast', who: 'angler', when: { after: 'mill.supper', days: 1 }, lines: [
   'Some supper. I came. Sat with my face to the wheel, all night. Haven’t done that in forty years.',
   /* what happened about the seat */
   { t: 'Bramble laid Hollin a place at the far end. He came. Sat with his cap on his knee, drank one cup of tea, and was gone before the speeches. Pip passed him the sugar. That was the whole of it.', flag: { 'mill.seat': 'yes' } },
   { t: 'Thistle moved her chair up a bit when he sat down. She didn’t make a show of it. She didn’t have to.', flag: { 'mill.seat': 'yes', 'hollin.told': true }, soft: '' },
   { t: 'No place for Hollin. He stood at the back by the trees, the way he does, and listened to the wheel. When the speeches started he’d gone.', flag: { 'mill.seat': 'no' } },
-  { t: 'Bramble couldn’t decide, so Bramble put a chair by the trees. Not at the table. Not not at it. Hollin sat on it a while. That’s the vale for you.', flag: { 'mill.seat': 'pass' } },
+  { t: 'Bramble couldn’t decide, so Bramble put a chair by the trees. Not at the table. Not not at it. Hollin sat on it a while. That’s the vale for you.', flag: { 'mill.seat': 'apart' } },
   /* the toast, coloured by what you know and what you said */
   { t: 'They made me stand up. I said thank you for the wheel. I said Hollin carved the cog. He went red to the ears. Good hands. Never says much. Nor do I.', noflag: ['hollin.told', 'hollin.wrong'] },
   { t: 'They made me stand up. I said thank you for the wheel, and I said Hollin carved the cog. There’s a thing about him you’ve not been told. It isn’t mine to tell. Ask him, or don’t.', flag: { 'hollin.wrong': true }, noflag: ['hollin.told'], soft: '' },

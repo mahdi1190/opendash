@@ -277,6 +277,7 @@ const WK_HEART_LINES = Object.freeze({
 /* ---------- facts for today ---------- */
 function _wkFacts(F, m) {
   F.heart = wdKinHeart(F.id);
+  try { F.fog = typeof wdTaleFog === 'function' && wdTaleFog(m); } catch (e) { F.fog = false; }
   try {
     const g = _gdG(), today = m.today, recent = (d) => d && _wdDaysBetween(d, today) <= 1;
     let fish = null, bug = null;
@@ -293,7 +294,7 @@ function _wkDayLine(id, F, today) {
 }
 /** One line from a pool for today: what is true now wins most days. Rows: {if(F), t, soft, deep} (deep: only in the full telling, unless it has soft words). */
 function _wkDayPick(id, rows, F, today) {
-  const deep = _wkDeep(), pool = rows.filter(l => { if (l.deep && !deep && l.soft === undefined) return false; try { return !l.if || !!l.if(F); } catch (e) { return false; } }); if (!pool.length) return '';
+  const deep = _wkDeep(), pool = rows.filter(l => { if (!deep && (l.soft === '' || (l.deep && l.soft === undefined))) return false; try { return !l.if || !!l.if(F); } catch (e) { return false; } }); if (!pool.length) return '';
   const cond = pool.filter(l => l.if), list = cond.length && gardenHash('wkc|' + today + id) % 3 ? cond : pool;   // what is true today wins, most days
   const l = list[gardenHash('wk|' + today + '|' + id) % list.length], t = !deep && l.soft !== undefined ? l.soft : l.t;
   return typeof t === 'function' ? t(F) : t;

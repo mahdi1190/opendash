@@ -9,7 +9,7 @@ wdTaleAdd({ id: 'v-bottle', kind: 'small', title: 'The bottle', journal: 'Someon
     'Wedged in the rocks at Wren cove, another bottle. Same handwriting, only bigger and more slanted.',
     '“I am forty-one. I am still bored. It is still raining. If you found the first one, hello again. If you didn’t, hello. — Fen.”'],
     give: { 'decor:play-sv-sea': 1 } },
-  // reward (proposed): keepsake 'Fen’s two bottles' on the Keepsakes shelf, side by side.
+  { id: 'c', who: 'place', free: 1, near: ['west-rockpool', 'ls-otter-beach'], when: { after: 'v-bottle.b' }, lines: ['You set Fen’s two bottles side by side. Thirty years between them, and the same rain.'], give: { 'keep:fen-bottles': 1 } },
 ] });
 
 wdTaleAdd({ id: 'v-gerald', kind: 'small', title: 'Gerald', journal: 'The duck census, and its most loyal entry.', gentle: 'keep', steps: [
@@ -60,8 +60,8 @@ wdTaleAdd({ id: 'v-hats', kind: 'small', title: 'Where hats go', journal: 'Pip�
     'Eleven, at least. All Pip’s size.'], set: { 'v-hats.pile': 1 } },
   { id: 'c', who: 'pip', when: { flag: { 'v-hats.pile': 1 } }, lines: [
     'ELEVEN? Behind the falls? So that’s where they go! I thought they were going to sea. I was quite proud of them.',
-    'You have one. No, have the good one. The green one. It’s been through a waterfall. It’s had a more interesting life than most hats.'] },
-  // reward (proposed): wardrobe hat 'Pip’s green hat (damp)'.
+    'You have one. No, have the good one. The green one. It’s been through a waterfall. It’s had a more interesting life than most hats.'], give: { 'keep:pip-hat': 1 } },
+
 ] });
 
 wdTaleAdd({ id: 'v-scarecrow', kind: 'small', title: 'I am a heron', journal: 'Bramble’s scarecrow, and its sign.', gentle: 'keep', steps: [
@@ -80,8 +80,8 @@ wdTaleAdd({ id: 'v-weather', kind: 'small', title: 'To the Weather', journal: 'A
     'I can’t deliver it. I don’t know where the weather lives. I am sending it to you, because you get about.'] },
   { id: 'b', who: 'wick', when: { open: [5], days: 2 }, lines: [
     'I got a letter for the weather. I’m the nearest thing up here. I wrote back.',
-    '“Dear Disappointed. Noted. Try Thursdays. — The Weather (per W.)” Don’t tell them it’s me. It’s the most important I’ve felt in years.'] },
-  // reward (proposed): keepsake letter pair 'Dear Weather / Dear Disappointed'.
+    '“Dear Disappointed. Noted. Try Thursdays. — The Weather (per W.)” Don’t tell them it’s me. It’s the most important I’ve felt in years.'], give: { 'keep:weather-letters': 1 } },
+
 ] });
 
 wdTaleAdd({ id: 'v-under-bench', kind: 'small', title: 'Under the bench', journal: 'An old insult, and an old answer.', gentle: 'keep', steps: [
@@ -94,9 +94,9 @@ wdTaleAdd({ id: 'v-under-bench', kind: 'small', title: 'Under the bench', journa
 ] });
 
 wdTaleAdd({ id: 'v-fog-bell', kind: 'small', title: 'The fog bell', journal: 'A bell over the Mere, rung for one boat.', gentle: 'keep', steps: [
-  { id: 'a', who: 'place', near: ['tackle-shop', 'jetty-post', 'reed-bank'], when: { tod: ['dawn'], rain: 1 }, lines: [ // wants: fog
+  { id: 'a', who: 'place', near: ['tackle-shop', 'jetty-post', 'reed-bank'], when: { fog: 1 }, lines: [
     'A bell rings out over the grey water, slowly, every so often. The tackle shop’s shutter is up. A badger in a cardigan rings a ship’s bell on the step, and peers.'] },
-  { id: 'b', who: 'place', near: ['tackle-shop', 'jetty-post'], when: { tod: ['dawn', 'day'], rain: 1, days: 1 }, lines: [ // wants: fog
+  { id: 'b', who: 'place', near: ['tackle-shop', 'jetty-post'], when: { fog: 1, days: 1 }, lines: [
     'A rowing boat noses out of the murk and bumps the jetty. A second badger climbs out with a flask. “I know where the shop is, Len. I’ve lived across the Mere for thirty-one years.”',
     '“I know you do,” says Len, and rings it once more, for luck. She takes his arm. Neither of them mentions that the fog has already lifted.'],
     give: { 'decor:wind-chimes': 1 } },
@@ -154,7 +154,7 @@ wdTaleAdd({ id: 'v-heron', kind: 'small', title: 'One spot', journal: 'The heron
 ] });
 
 wdTaleAdd({ id: 'v-map-home', kind: 'small', title: 'The map comes home', journal: 'One of Bramble’s father’s maps, back over the hills.', gentle: 'keep', steps: [
-  { id: 'a', who: 'place', near: ['jetty-post', 'harbour-walk'], when: { after: 'bramble-sister.a', days: 3 }, lines: [
+  { id: 'a', who: 'traveller', name: 'A tall hare with a rucksack', look: { kind: 'hare', fur: '#a08868', coat: '#5a6a4a', hat: 'cap', hatc: '#4a4a3a' }, near: ['ld-quay'], when: { after: 'bramble-sister.a', days: 3 }, lines: [
     'A tall hare with a rucksack is waiting on the quay with a flat parcel. “Excuse me. Is there someone called Bramble here? My grandfather bought this from a woman, years ago. I think it should come home. Could you take it? I don’t want to make a fuss.”',
     'The parcel is a map of the vale in brown ink. The signature in the corner is not Bramble’s, but the handwriting is very like it.'], set: { 'v-map-home.have': 1 } },
   { id: 'b', who: 'bramble', when: { flag: { 'v-map-home.have': 1 }, heart: 3 }, lines: [
@@ -171,8 +171,8 @@ wdTaleAdd({ id: 'v-less-salt', kind: 'small', title: 'Less salt', journal: 'A re
     'Lower, in different pencil, years later: “I put too much. It was right.”'] },
   { id: 'b', who: 'thistle', when: { season: ['autumn', 'winter'], days: 1 }, lines: [
     'You’ve got Marigold’s book. She sold it on when she moved. Here, give it me, dear. I know that soup.',
-    'Her mother and her used to fight about the salt every Sunday for twenty years. Then it was just her, and she put too much in, and cried, and said it was perfect. I’ll make you some. I’ll put too much in.'] },
-  // reward (proposed): recipe 'Mum’s soup (too much salt)' in the cookbook.
+    'Her mother and her used to fight about the salt every Sunday for twenty years. Then it was just her, and she put too much in, and cried, and said it was perfect. I’ll make you some. I’ll put too much in.'], give: { 'recipe:less-salt': 1 } },
+
 ] });
 
 wdTaleAdd({ id: 'v-lead', kind: 'small', title: 'The lead on the hook', journal: 'A walk that still happens.', gentle: 'keep', steps: [
@@ -195,7 +195,7 @@ wdTaleAdd({ id: 'v-ring', kind: 'small', title: 'Always', journal: 'A ring the M
 ] });
 
 wdTaleAdd({ id: 'v-walker-stone', kind: 'small', title: 'The walker’s stone', journal: 'A stone carried up a mountain for someone.', gentle: 'keep', steps: [
-  { id: 'a', who: 'place', near: ['jetty-post', 'harbour-walk'], when: { open: [5], dry: 1 }, lines: [
+  { id: 'a', who: 'traveller', name: 'A grey goat in good boots', look: { kind: 'goat', fur: '#9a9890', coat: '#6a4e3a', hat: 'wide', hatc: '#4e4438' }, near: ['ld-quay'], when: { open: [5], dry: 1 }, lines: [
     'A grey goat in good boots asks the way to the summit. In her hand, a flat garden stone with a painted blue stripe.',
     '“My brother and I didn’t speak for nine years. Something about our father’s house. He died in the spring. This is from his garden. The top of Cloudbreak was the only place we both ever liked.”'],
     choice: [{ k: 'walk', label: 'Offer to walk with her', set: { 'v-walker-stone.walk': 1 }, t: '“Would you? Only to the pass. I’d like to do the last bit on my own.”' }, { k: 'way', label: 'Show her the way', t: '“Thank you. I’ll manage. I’ve been carrying it this far.”' }] },
@@ -210,8 +210,8 @@ wdTaleAdd({ id: 'v-sheaf', kind: 'small', title: 'The last sheaf', journal: 'A c
     'Last sheaf of the year. You plait it into a dolly and keep it over the door till spring, and then it goes back in the ground. That’s the luck. I made the luck up. The dolly’s real.',
     'My mother taught me. Over, under, and pull. She was good at the hands of things. Less good at other things. Hold this end.'],
     choice: [{ k: 'plait', label: 'Help plait it', mood: { quince: 1 }, t: 'Over, under, pull. Too tight. Good. Tight’s better than loose. She’d have said that. She did say that.' }, { k: 'watch', label: 'Watch her hands', t: 'Fourteen crossings. I count them. Of course I count them. There.' }],
-    give: { 'decor:rw-orn-sheaf': 1 } },
-  // reward (proposed): keepsake 'Corn dolly', which goes back in the ground in spring (it vanishes from the shelf on 1 March and a poppy comes up at the cider square).
+    give: { 'decor:rw-orn-sheaf': 1, 'keep:corn-dolly': 1 } },
+
 ] });
 
 wdTaleAdd({ id: 'v-swallows', kind: 'small', title: 'Swallows', journal: 'Perpetua, and the quick ones.', gentle: 'keep', steps: [
@@ -222,7 +222,7 @@ wdTaleAdd({ id: 'v-swallows', kind: 'small', title: 'Swallows', journal: 'Perpet
 ] });
 
 wdTaleAdd({ id: 'v-knitter', kind: 'small', title: 'The knitter', journal: 'Small jumpers, posted every autumn.', gentle: 'soft', steps: [
-  { id: 'a', who: 'place', near: ['jetty-post', 'harbour-walk'], when: { after: 'mill.brambles', season: ['autumn'] }, lines: [
+  { id: 'a', who: 'traveller', name: 'A sheep, knitting', look: { kind: 'sheep', fur: '#ece4d4', coat: '#5a8a5a', hat: 'scarf', hatc: '#c84a4a' }, near: ['ld-quay'], when: { after: 'mill.brambles', season: ['autumn'] }, lines: [
     'A sheep sits on a bollard on the quay, knitting very fast, waiting for the boat. She nods at the needles. “Jumpers. For children. I knit for half the coast.”',
     '“I used to send one here every autumn. To a W. Green, always green. A little bigger each year. She’d write back, very proper: it fits; he says it itches; he says thank you.”',
     { t: '“Then one October she wrote: no more, thank you. Nothing else. I always wondered. You don’t like to ask.”', soft: '“Then one year she wrote: no more, thank you, he’s gone to sea. I always wondered if he took the jumper.”' },
@@ -316,7 +316,7 @@ wdTaleAdd({ id: 'v-sorry-box', kind: 'small', title: 'The sorry box', journal: '
 ] });
 
 wdTaleAdd({ id: 'v-apologiser', kind: 'small', title: 'The man who apologises', journal: 'A list of sorries, and who took them.', gentle: 'keep', steps: [
-  { id: 'a', who: 'place', near: ['lc-the-green', 'notice-board'], when: { level: 6, dry: 1 }, lines: [
+  { id: 'a', who: 'traveller', name: 'A grey badger with a list', look: { kind: 'badger', fur: '#8c8a86', coat: '#3a4a5a', stripe: 1, hat: 'cap', hatc: '#3a3a3a' }, near: ['lc-the-green', 'notice-board', 'ld-quay'], when: { level: 6, dry: 1 }, lines: [
     'A grey badger with a list is knocking on doors round the green. “I stayed here one summer as a boy. I broke a window, ate a whole row of strawberries, and pushed a girl in the Mere. I’m saying sorry to everyone I can find.”',
     'He ticks off the strawberries. “She laughed. Said they were sour that year anyway.”'] },
   { id: 'b', who: 'bramble', when: { open: [2], days: 2 }, lines: [
@@ -399,3 +399,9 @@ wdTaleAdd({ id: 'v-frog-key', kind: 'small', title: 'The key under the frog', jo
     choice: [{ k: 'stay', label: 'Stay for soup', mood: { thistle: 1 }, t: 'Good. Sit. No, the other chair. That one’s the frog’s.' }, { k: 'later', label: 'Say you’ll come back', t: 'Course you will. The frog’s not going anywhere. Neither am I.' }],
     give: { 'decor:lantern': 1 } },
 ] });
+/* keepsakes and recipes the small stories give (the drafts' "reward (proposed)" lines) */
+wdTaleKeep({ id: 'fen-bottles', name: 'Fen’s two bottles', text: 'Eleven and bored; forty-one and bored. Side by side on the shelf.' });
+wdTaleKeep({ id: 'pip-hat', name: 'Pip’s green hat (damp)', text: 'Found behind the falls with all the others. Pip says keep it. Pip has a new one. Pip always has a new one.' });
+wdTaleKeep({ id: 'weather-letters', name: 'Dear Weather, and Dear Disappointed', text: 'Two letters: one to the weather, and the weather’s answer, in Wick’s handwriting.' });
+wdTaleKeep({ id: 'corn-dolly', name: 'A corn dolly', text: 'Fourteen crossings, over, under and pull. It goes back in the ground in spring. That’s the luck.' });
+wdTaleRecipe({ id: 'less-salt', name: 'Mum’s soup (too much salt)', from: 'from the market stall', text: ['Leek and potato, from Marigold’s cookbook, with Mother Thistle’s say-so. Leeks, potatoes, an onion, water.', 'In pencil: “Mum’s. Less salt. She always said I’d put too much.” Lower, years later: “I put too much. It was right.”'] });
