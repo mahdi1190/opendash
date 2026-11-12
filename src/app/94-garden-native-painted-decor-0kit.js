@@ -7,7 +7,8 @@
  *   row = { box: [x0, y0, x1, y1], draw(B, o),    world px round the foot (0, 0)
  *           v: n variants, side: { box, draw }    the view along a fence run (rot 1, 3)
  *           glow: { w, halo }                     a light pool at dusk and night (halo: y of the lamp)
- *           anim: [{ id, box, draw, x, y, kind: 'spin'|'sway'|'bob'|'flutter'|'flicker', speed, amp }] }
+ *           anim: [{ id, box, draw, x, y, kind: 'spin'|'sway'|'bob'|'flutter'|'flicker', speed, amp }],
+ *           iconOnly: true }                     only the shop and bag picture (the world keeps a live drawing)
  *   o = { season, night, v, side, r (seeded random), K (the props kit), D (sceneDraw), icon }
  *
  * The world drawing is baked once into a texture keyed by what it shows (the
@@ -96,7 +97,10 @@ window.GardenPaintedDecor = (function () {
   const ICON = new Map(), ICON_MAX = 320, S = 112;
   // what to draw for an id: a registry row, an older painted prop, or a library object
   function source(id, v, side) {
-    const R = ROWS[id]; if (R) { const P = partOf(R, false); return P && P.draw ? { box: P.box, draw: P.draw, v: vOf(R, v) } : null; }
+    const R = ROWS[id]; if (R) { const P = partOf(R, false); if (!P || !P.draw) return null;
+      // the moving parts are drawn too, where they rest, and the box grows to hold them
+      const box = P.box.slice(); for (const a of P.anim || []) { box[0] = Math.min(box[0], a.x + a.box[0]); box[1] = Math.min(box[1], a.y + a.box[1]); box[2] = Math.max(box[2], a.x + a.box[2]); box[3] = Math.max(box[3], a.y + a.box[3]); }
+      return { box, draw: (B, o) => { P.draw(B, o); for (const a of P.anim || []) { B.cx.save(); B.cx.translate(a.x, a.y); a.draw(B, o); B.cx.restore(); } }, v: vOf(R, v) }; }
     const PP = window.GardenPaintedProps; if (!PP || !PP.decorTable) return null;
     const d = PP.decorTable[id]; if (!d) return null;
     if (d[0] === 'paint') { const P = PP.paintTable[d[1]]; return P ? { box: P.box, draw: (B, o) => P.draw(B, o), v: 0 } : null; }
@@ -115,7 +119,10 @@ window.GardenPaintedDecor = (function () {
     const [x0, y0, x1, y1] = src.box, k = Math.min(S * 2 / (x1 - x0), S * 2 / (y1 - y0)), tw = Math.ceil((x1 - x0) * k), th = Math.ceil((y1 - y0) * k);
     const t = document.createElement('canvas'); t.width = tw; t.height = th; const tx = t.getContext('2d', { willReadFrequently: true });
     tx.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
-    src.draw(K.brush(tx), opts(K, id, o.season, false, src.v, false, true));
+    // a patch of lawn under its foot, so pale things (white pickets, glass, snow) read on the paper
+    const B = K.brush(tx), gr = K.rng(K.hash(id)), gw = Math.min(46, Math.max(16, (x1 - x0) * .42)), L = K.leafOf(o.season || 'summer');
+    B.f(sceneDraw.blob(gr, 0, 1.6, gw, 5.4, 9, .3), L[0], .55).f(sceneDraw.blob(gr, -gw * .1, .4, gw * .86, 4, 9, .3), L[1], .55).f(sceneDraw.blob(gr, -gw * .3, -.6, gw * .4, 1.8, 7, .4), L[2], .45);
+    src.draw(B, opts(K, id, o.season, false, src.v, false, true));
     return fit(t, tx, c, cx, true);
   }
   // copy the painted part of t into the square c: centred, standing on the bottom edge
@@ -129,8 +136,9 @@ window.GardenPaintedDecor = (function () {
   }
   /** An item as a small standalone <svg> holding its painted picture, or '' when it has none. */
   function icon(id, o) {
-    o = o || {}; if (o.silhouette) return '';
-    const px = o.px || 48, key = id + '|' + (o.v | 0) + '|' + (o.season || 'summer');
+    o = Object.assign({}, o); if (o.silhouette) return '';
+    o.v = (o.v | 0) || (o.variant | 0);   // the mill's stage and the marble jar's count come as the variant
+    const px = o.px || 48, key = id + '|' + o.v + '|' + (o.season || 'summer');
     let url = ICON.get(key);
     if (url === undefined) {
       const t0 = performance.now(); let c = null;
@@ -156,5 +164,6 @@ window.GardenPaintedDecor = (function () {
     return url ? `<svg class="${cls || 'gcr-art'} gd-ico-painted" viewBox="0 0 ${S} ${S}" width="${px}" height="${px}" aria-hidden="true" focusable="false"><image href="${url}" x="0" y="0" width="${S}" height="${S}"/></svg>` : '';
   }
   function status() { return { rows: Object.keys(ROWS).length, icons, iconMs: Math.round(iconMs), cached: ICON.size, lastError }; }
-  return { opts, add, row, has: id => !!ROWS[id], ids: () => Object.keys(ROWS), world, signature, icon, addIcon, extraIcon, iconCanvas, status, get lastError() { return lastError; } };
+  return { opts, add, row, has: id => !!ROWS[id] && !ROWS[id].iconOnly,   // iconOnly: painted in the shop and bag, drawn live in the world (the aquarium shows your own fish)
+     ids: () => Object.keys(ROWS), world, signature, icon, addIcon, extraIcon, iconCanvas, status, get lastError() { return lastError; } };
 })();
