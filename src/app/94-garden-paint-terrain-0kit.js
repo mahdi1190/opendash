@@ -153,27 +153,33 @@ window.GardenPaintTerrainKit = (function () {
       const mine = ops.filter(o => meets(o.bb, bb)); if (!mine.length || mine.every(o => o.decor)) continue;
       list.push({ i, j, bb, ops: mine, key: opts.key + '|' + i + ',' + j, image: null });
     }
-    const bakeOne = (ch) => {
+    // A chunk bakes in slices: its ops run into its canvas a few milliseconds at a time (slice > 0), so no single task
+    // is long; the image appears when the last op is done. slice 0 bakes it whole (the scene build).
+    const bakeOne = (ch, slice) => {
       const s = performance.now();
       if (!scene.textures.exists(ch.key)) {
-        const w = Math.ceil((ch.bb[2] - ch.bb[0]) * K), h = Math.ceil((ch.bb[3] - ch.bb[1]) * K);
-        const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d');
-        cx.setTransform(K, 0, 0, K, -ch.bb[0] * K, -ch.bb[1] * K);
-        const B = brush(cx);
-        for (const o of ch.ops) ok(() => { cx.save(); if (o.clip) { cx.clip(o.clip, 'evenodd'); } o.draw(B, rng(o.seed || 1), ch.bb); cx.restore(); cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over'; cx.filter = 'none'; });
-        scene.textures.addCanvas(ch.key, c); bakedPx += w * h; ch.px = w * h;
-        const ms = performance.now() - s; worst = Math.max(worst, ms); bakeMs += ms; baked++; times.push(Math.round(ms));
+        if (!ch.job) { const w = Math.ceil((ch.bb[2] - ch.bb[0]) * K), h = Math.ceil((ch.bb[3] - ch.bb[1]) * K), c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d'); cx.setTransform(K, 0, 0, K, -ch.bb[0] * K, -ch.bb[1] * K); ch.job = { c, cx, B: brush(cx), next: 0, ms: 0 }; }
+        const J = ch.job, cx = J.cx;
+        while (J.next < ch.ops.length) {
+          const o = ch.ops[J.next++];
+          ok(() => { cx.save(); if (o.clip) { cx.clip(o.clip, 'evenodd'); } o.draw(J.B, rng(o.seed || 1), ch.bb); cx.restore(); cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over'; cx.filter = 'none'; });
+          if (slice && performance.now() - s > slice) break;
+        }
+        J.ms += performance.now() - s; sliceWorst = Math.max(sliceWorst, performance.now() - s);
+        if (J.next < ch.ops.length) return false;
+        scene.textures.addCanvas(ch.key, J.c); bakedPx += J.c.width * J.c.height; ch.px = J.c.width * J.c.height; ch.job = null;
+        const ms = J.ms; worst = Math.max(worst, ms); bakeMs += ms; baked++; times.push(Math.round(ms));
       } else if (!ch.px) { const src = scene.textures.get(ch.key).getSourceImage(); ch.px = src.width * src.height; bakedPx += ch.px; }
       if (!ch.image) { ch.image = scene.add.image(ch.bb[0], ch.bb[1], ch.key).setOrigin(0, 0).setScale(1 / K).setDepth(opts.depth); parent.add(ch.image); }
-      ch.live = true;
+      ch.live = true; return true;
     };
-    const evict = (ch) => { if (ch.image) ch.image.destroy(); ch.image = null; if (scene.textures.exists(ch.key)) scene.textures.remove(ch.key); bakedPx -= ch.px || 0; ch.px = 0; ch.live = false; evicted++; };
+    const evict = (ch) => { ch.job = null; if (ch.image) ch.image.destroy(); ch.image = null; if (scene.textures.exists(ch.key)) scene.textures.remove(ch.key); bakedPx -= ch.px || 0; ch.px = 0; ch.live = false; evicted++; };
     // Streaming: what the camera sees (and a margin round it) is painted; far chunks are let go past a memory budget.
     const cam = scene.cameras && scene.cameras.main, budget = (opts.budgetMB || 28) * 1048576 / 4;
     const viewBox = (grow) => { const v = cam && cam.worldView; if (!v || !v.width) return null; const gx = v.width * grow, gy = v.height * grow; return [v.x - gx, v.y - gy, v.x + v.width + gx, v.y + v.height + gy]; };
     const dist = (ch, v) => Math.hypot((ch.bb[0] + ch.bb[2]) / 2 - (v[0] + v[2]) / 2, (ch.bb[1] + ch.bb[3]) / 2 - (v[1] + v[3]) / 2);
-    let baked = 0, evicted = 0; const times = [];
-    { const v = viewBox(.05); for (const ch of list) if (v ? meets(ch.bb, v) : false) bakeOne(ch); if (parent.sort) parent.sort('depth'); }
+    let baked = 0, evicted = 0, sliceWorst = 0; const times = [];
+    { const v = viewBox(.05); for (const ch of list) if (v ? meets(ch.bb, v) : false) bakeOne(ch, 0); if (parent.sort) parent.sort('depth'); }
     let dead = false;
     const tick = () => {
       if (dead) return;
@@ -181,12 +187,12 @@ window.GardenPaintTerrainKit = (function () {
       // one chunk per tick: first what is on screen, then the margin round it; each bake is small (a 256 px chunk)
       let best = null, bd = Infinity;
       for (const ch of list) if (!ch.live && meets(ch.bb, near)) { const d = dist(ch, v) - (meets(ch.bb, v) ? 1e6 : 0); if (d < bd) { bd = d; best = ch; } }
-      if (best) { bakeOne(best); if (parent.sort) parent.sort('depth'); }
+      if (best && bakeOne(best, 12) && parent.sort) parent.sort('depth');
       if (bakedPx > budget) { let far = null, fd = -1; for (const ch of list) if (ch.live && !meets(ch.bb, keep)) { const d = dist(ch, v); if (d > fd) { fd = d; far = ch; } } if (far) evict(far); }
     };
-    const timer = setInterval(() => ok(tick), 50);
+    const timer = setInterval(() => ok(tick), 34);
     return {
-      chunks: list.length, get pending() { return list.filter(c => !c.live).length; }, get worstMs() { return Math.round(worst); }, get bakeMs() { return Math.round(bakeMs); }, buildMs: Math.round(performance.now() - t0),
+      chunks: list.length, get pending() { return list.filter(c => !c.live).length; }, get worstMs() { return Math.round(worst); }, get sliceWorstMs() { return Math.round(sliceWorst); }, get bakeMs() { return Math.round(bakeMs); }, buildMs: Math.round(performance.now() - t0),
       get texturePx() { return bakedPx; }, get p95() { const t = times.slice(-200).sort((a, b) => a - b); return t.length ? t[Math.floor(t.length * .95)] : 0; }, get median() { const t = times.slice(-200).sort((a, b) => a - b); return t.length ? t[t.length >> 1] : 0; }, get baked() { return baked; }, get evicted() { return evicted; }, get live() { return list.filter(c => c.live).length; },
       destroy(keepTextures) { dead = true; clearInterval(timer); for (const ch of list) { if (ch.image) ch.image.destroy(); ch.image = null; ch.live = false; if (!keepTextures && scene.textures.exists(ch.key)) scene.textures.remove(ch.key); } },
     };

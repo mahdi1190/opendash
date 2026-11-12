@@ -27,7 +27,7 @@ window.GardenPaintedTerrain = (function () {
   const PAL = {
     summer: Object.assign({}, BASE, { fell: '#a6b276', fellLo: '#8c9a5e', fellHi: '#c2c78e', bleach: '#d6cfa8', heather: '#8d6a92', heatherHi: '#b07ab8', heatherLo: '#5f4a62', bloom: '#b98cc0', bracken: '#7f8c48', far: ['#a9b5bd', '#93a3ad', '#7f919c'], farSnow: 0 }),
     spring: Object.assign({}, BASE, { fell: '#a2b672', fellLo: '#86a05a', fellHi: '#bccb88', bleach: '#cfcba0', heather: '#7e6478', heatherHi: '#9a7e92', heatherLo: '#56445a', bloom: null, bracken: '#8a9050', far: ['#adb8c0', '#97a6b0', '#83959f'], farSnow: .45 }),
-    autumn: Object.assign({}, BASE, { fell: '#b0a670', fellLo: '#948a58', fellHi: '#c8bd88', bleach: '#d6cb9a', heather: '#7e6258', heatherHi: '#987460', heatherLo: '#5a4640', bloom: null, bracken: '#a8683c', far: ['#b1b6b8', '#9ba2a6', '#878f95'], farSnow: .2 }),
+    autumn: Object.assign({}, BASE, { fell: '#b0a670', fellLo: '#948a58', fellHi: '#c8bd88', bleach: '#d6cb9a', heather: '#7e6258', heatherHi: '#987460', heatherLo: '#5a4640', bloom: null, bracken: '#9c7046', far: ['#b1b6b8', '#9ba2a6', '#878f95'], farSnow: .2 }),
     winter: Object.assign({}, BASE, { fell: '#a8a78e', fellLo: '#8e8d76', fellHi: '#c0bfa6', bleach: '#cfcab0', heather: '#7a5a4a', heatherHi: '#8e6e5a', heatherLo: '#54403a', bloom: null, bracken: '#8a5a3a', far: ['#b9c2ca', '#a2aeb8', '#8e9ba6'], farSnow: .85 }),
   };
   let HP = null;                                                            // heather on the pasture: softer, nearer the turf
@@ -133,7 +133,7 @@ window.GardenPaintedTerrain = (function () {
           if (pick < .7 && wet) { B.f(B.blob(r, x, y, 5 + sz * 4, 2.6 + sz * 2, 7, .5), P.fellLo, .7); B.tufts(r, x, y - 1, 9, 7, ['#6f7f48', P.bleach], 7); if (season !== 'winter' && season !== 'autumn') for (let i = 0; i < 4; i++) B.f(B.circ(x + (r() - .5) * 10, y - 6 - r() * 4, 1.3), '#f6f4ec', .95); continue; }
           if (pick < .78 && x > 46 * cw && m < .2) { const L2 = 16 + sz * 26; B.s(`M${x} ${y}q${L2 / 2} ${-2 - r() * 3} ${L2} ${(r() - .5) * 3}`, P.fellLo, 1.4, .55).s(`M${x} ${y - 1.2}q${L2 / 2} ${-2 - r() * 3} ${L2} ${(r() - .5) * 3}`, P.fellHi, .8, .5); continue; }
           if (pick < .8 && m > .4 && drift > .58) { const w = 8 + sz * 10; B.f(B.blob(r, x + 1, y + 2.4, w, w * .26, 8, .4), P.peat, .85).f(B.blob(r, x - .5, y - .6, w * .92, w * .2, 8, .45), P.heatherLo, .85).f(B.blob(r, x - w * .2, y - 1.2, w * .45, w * .1, 7, .5), P.heather, .7); continue; }
-          if (fern > .63 && pick < .92 && season !== 'winter' && (m > .15 || row > 16)) { for (let f = 0; f < 4; f++) { const a = -Math.PI / 2 + (f - 1.5) * .55 + (r() - .5) * .3, l = 6 + r() * 4, ex = x + Math.cos(a) * l, ey = y + Math.sin(a) * l * .8; B.s(`M${x} ${y}Q${(x + ex) / 2 + 1.5} ${(y + ey) / 2 - 1} ${ex} ${ey}`, P.bracken, 1.1, .85); for (let k = 1; k < 4; k++) { const t = k / 4, px = x + (ex - x) * t, py = y + (ey - y) * t; B.s(`M${px} ${py}l${2.6 - t * 1.4} ${1 - t}M${px} ${py}l${-2.4 + t * 1.2} ${1.2 - t}`, P.bracken, .8, .8); } } continue; }
+          if (fern > .7 && pick < .9 && season !== 'winter' && (m > .15 || row > 16)) { for (let f = 0; f < 4; f++) { const a = -Math.PI / 2 + (f - 1.5) * .55 + (r() - .5) * .3, l = 6 + r() * 4, ex = x + Math.cos(a) * l, ey = y + Math.sin(a) * l * .8; B.s(`M${x} ${y}Q${(x + ex) / 2 + 1.5} ${(y + ey) / 2 - 1} ${ex} ${ey}`, P.bracken, 1, .6); for (let k = 1; k < 4; k++) { const t = k / 4, px = x + (ex - x) * t, py = y + (ey - y) * t; B.s(`M${px} ${py}l${2.6 - t * 1.4} ${1 - t}M${px} ${py}l${-2.4 + t * 1.2} ${1.2 - t}`, P.bracken, .8, .55); } } continue; }
         }
       });
     });
@@ -352,9 +352,9 @@ window.GardenPaintedTerrain = (function () {
     const kit = KIT(), c = L.cpt(g.x + .5, g.y + .9);
     add([c.x - 90, c.y - 60, c.x + 90, c.y + 50], 451, (B, r) => {
       // a low rock step across the trail, with an iron ring leaded into it
-      const top = [], bot = []; for (let x = -50; x <= 50; x += 4) { const yy = c.y - 5 + Math.sin(x / 14) * 1.5; top.push({ x: c.x + x, y: yy }); bot.push({ x: c.x + x + 1, y: yy + 8 }); }
+      const top = [], bot = []; for (let x = -50; x <= 50; x += 4) { const yy = c.y - 5 + Math.sin(x / 14) * 1.5; top.push({ x: c.x + x, y: yy }); bot.push({ x: c.x + x + 1, y: yy + 13 }); }
       B.f(B.poly(top.map(p => ({ x: p.x, y: p.y - 3 })).concat(top.slice().reverse())), snowy ? P.snow : P.fellHi, .9);
-      kit.rockBand(B, top, bot, top.map((_, i) => i), (i, k) => kit.rng(4511 + i * 31 + k), { lit: '#ada08a', mid: '#8a7f6e', shade: '#625a50', deep: '#3a342e', hi: '#d2c6ae', damp: '#5d6a48', moss: P.moss, heather: P.heather, snow: P.snow }, { snowy, size: .6, tiers: [[.4, 1]] });
+      kit.rockBand(B, top, bot, top.map((_, i) => i), (i, k) => kit.rng(4511 + i * 31 + k), { lit: '#ada08a', mid: '#8a7f6e', shade: '#625a50', deep: '#3a342e', hi: '#d2c6ae', damp: '#5d6a48', moss: P.moss, heather: P.heather, snow: P.snow }, { snowy, size: .8, tiers: [[.45, 1]] });
       B.s(B.circ(c.x + 14, c.y + 1, 2.4), '#2c2a26', 1.3, .9).f(B.circ(c.x + 14, c.y - 1.4, .9), '#2c2a26', .9);
       // wind-flattened grass streaks across the col
       if (!snowy) for (let k = 0; k < 26; k++) { const x = c.x + (r() - .5) * 150, y = c.y - 40 + r() * 70; B.s(`M${x} ${y}q8 -1.5 16 0`, r() < .5 ? P.bleach : P.fellHi, 1.2, .55); }
@@ -562,7 +562,7 @@ window.GardenPaintedTerrain = (function () {
   function ownsRegion(id) { if (!wanted()) return false; const r = (gardenIslandData().regions || []).find(x => x.id === id); return !!(r && r.theme === 'mountain'); }
   function status() {
     const h = current && current.handle, px = (h && h.texturePx || 0) + (stats.spritePx || 0);
-    return Object.assign({}, stats, { wanted: wanted(), pending: h ? h.pending : null, live: h ? h.live : null, baked: h ? h.baked : null, evicted: h ? h.evicted : null, worstChunkMs: h ? h.worstMs : null, p95ChunkMs: h ? h.p95 : null, medianChunkMs: h ? h.median : null, bakeMs: h ? h.bakeMs : null, textureMB: Math.round(px * 4 / 1048576 * 10) / 10, lastError: lastError || (KIT() && KIT().lastError) });
+    return Object.assign({}, stats, { wanted: wanted(), pending: h ? h.pending : null, live: h ? h.live : null, baked: h ? h.baked : null, evicted: h ? h.evicted : null, worstChunkMs: h ? h.worstMs : null, worstSliceMs: h ? h.sliceWorstMs : null, p95ChunkMs: h ? h.p95 : null, medianChunkMs: h ? h.median : null, bakeMs: h ? h.bakeMs : null, textureMB: Math.round(px * 4 / 1048576 * 10) / 10, lastError: lastError || (KIT() && KIT().lastError) });
   }
   return { wanted, build, paintTo, profile, owns, ownsRegion, status, compose, readLayout, PAL };
 })();

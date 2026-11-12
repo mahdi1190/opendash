@@ -549,7 +549,7 @@ window.GardenNativeWorld = (function () {
             }
             const copper = sc.season === 'autumn' && seed % 7 === 0, unplantable = cell.locked || cell.row && cell.row.solid, rx = (unplantable ? 71 : 49) + (seed >>> 7) % 19, ry = (unplantable ? 61 : 43) + (seed >>> 11) % 18;
             paintCrown(cx + (seed >>> 15) % 15 - 7, foot - (unplantable ? 91 : 54) - seed % 13, rx, ry, seed, copper ? 0xa18e57 : seed % 3 === 0 ? sc.season === 'winter' ? 0x89ab95 : 0x73935e : p.leaf);
-            if (unplantable && front && forestRows.length < 22) forestRows.push({ id: 'forest:' + x + ':' + y, x: cx, y: foot, height: 162 + seed % 41, width: 66 + (seed >>> 7) % 24, seed, kind: 'tree' });
+            if (unplantable && front && forestRows.length < 22 && !terrainOwnsRegion(cell.region || (gardenIslandBaseCell(x, y) || {}).region)) forestRows.push({ id: 'forest:' + x + ':' + y, x: cx, y: foot, height: 162 + seed % 41, width: 66 + (seed >>> 7) % 24, seed, kind: 'tree' });
           } else if (!interior && woodland(x, y - 1) && seed % 11 === 0) {
             const cx = px + 22 + seed % 6, foot = py + 25;
             g.lineStyle(2.2, 0x73744e).lineBetween(cx, foot + 2, cx - 1, foot - 25).lineStyle(1.2, 0x73744e).lineBetween(cx, foot - 14, cx - 9, foot - 28);
