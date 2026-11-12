@@ -178,7 +178,7 @@ window.GardenPaintTerrainKit = (function () {
         scene.textures.addImage(ch.key, J.c); bakedPx += J.c.width * J.c.height; ch.px = J.c.width * J.c.height; ch.job = null;
         const ms = J.ms; worst = Math.max(worst, ms); bakeMs += ms; baked++; times.push(Math.round(ms));
       } else if (!ch.px) { const src = scene.textures.get(ch.key).getSourceImage(); ch.px = src.width * src.height; bakedPx += ch.px; }
-      if (!ch.image) { const src = scene.textures.get(ch.key).getSourceImage(), p = Math.round(PAD * K); ch.image = scene.add.image(ch.bb[0], ch.bb[1], ch.key).setOrigin(0, 0).setScale(1 / K).setDepth(opts.depth).setCrop(p, p, src.width - 2 * p, src.height - 2 * p); parent.add(ch.image); }
+      if (!ch.image) { const src = scene.textures.get(ch.key).getSourceImage(), p = PAD * K; /* (exact, not rounded: rounded up it cut past the bleed and left a hairline of sea between chunks at the whole-map zoom; rounded down a see-through layer doubled in the overlap and a pale line showed) */ ch.image = scene.add.image(ch.bb[0], ch.bb[1], ch.key).setOrigin(0, 0).setScale(1 / K).setDepth(opts.depth).setCrop(p, p, src.width - 2 * p, src.height - 2 * p); parent.add(ch.image); }
       ch.live = true; return true;
     };
     const evict = (ch) => { ch.job = null; if (ch.image) ch.image.destroy(); ch.image = null; if (scene.textures.exists(ch.key)) scene.textures.remove(ch.key); bakedPx -= ch.px || 0; ch.px = 0; ch.live = false; evicted++; };

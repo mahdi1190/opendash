@@ -1,3 +1,11 @@
+/** A tree's crown covers the player (world px): the player's middle inside the crown's own oval, not just anywhere in the tree's box.
+ * Only those crowns fade, and not to a ghost: a few crisp crowns fade, never a wide pale veil of every tree near you. */
+const GARDEN_CROWN_FADE = 0.34;
+function gardenCrownCovers(px, py, tx, ty, H, w) {
+  if (!(py < ty - 4)) return false;   // (the tree stands behind you: it is drawn under you anyway)
+  const cy = ty - H * .66, ry = H * .36, rx = Math.max(H * .26, w * .42), dx = (px - tx) / rx, dy = (py - 28 - cy) / ry;
+  return dx * dx + dy * dy < 1;
+}
 /* The "Painted village" art style: the village and start area drawn with the
  * opening scenes' own kit (the scene library objects of 70-scene-lib-*.js
  * through sceneObjShapes, and sceneDraw for lobed natural shapes), in their
@@ -131,7 +139,8 @@ window.GardenNativePainted = (function () {
       cx.globalAlpha = 1; cx.restore(); strokeLoops(info.soil, '#a8845a', 1.4, .8);
     }
     // an empty owned plot: the grass a touch shorter inside and a soft dug edge (no dashes, no grid)
-    if (info.owned && info.owned.length) { cx.save(); clipLoops(info.owned); strokeLoops(info.owned, '#7d6a44', 7, .16); strokeLoops(info.owned, '#8a6a46', 2.2, .28); cx.restore(); fillLoops(info.owned, 'rgba(190,200,120,.07)'); }
+    // (soft: blurred, round-cornered shade, so a plot reads as worked ground, not a ruled rectangle or a seam between tiles)
+    if (info.owned && info.owned.length) { cx.save(); clipLoops(info.owned); cx.filter = 'blur(3px)'; strokeLoops(info.owned, '#7d6a44', 9, .13); cx.filter = 'none'; cx.restore(); fillLoops(info.owned, 'rgba(190,200,120,.06)'); }
     // Inland water: a damp bank, the pond, its shallow rim and lap line.
     if (info.lakes.length) {
       strokeLoops(info.lakes, P.sandWet, 14, .9); fillLoops(info.lakes, P.water);
@@ -257,7 +266,7 @@ window.GardenNativePainted = (function () {
     if (!plantingTall.length || typeof _gw === 'undefined' || !lastInfo) return;
     const W = lastInfo.W, dt = fadeLast ? Math.min(.1, Math.max(0, (time - fadeLast) / 1000)) : .016; fadeLast = time;
     const x = _gw.px * W.cellW, y = W.sky + _gw.py * W.cellH;
-    for (const t of plantingTall) { if (!t.im.active) continue; const under = y < t.y - 4 && y > t.y - t.h * .95 && Math.abs(x - t.x) < Math.max(t.h * .34, t.im.displayWidth * .46), a = under ? .22 : 1; if (t.im.alpha !== a) t.im.setAlpha(Math.abs(a - t.im.alpha) < .02 ? a : t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8)); }
+    for (const t of plantingTall) { if (!t.im.active) continue; const under = gardenCrownCovers(x, y, t.x, t.y, t.h, t.im.displayWidth), a = under ? GARDEN_CROWN_FADE : 1; if (t.im.alpha !== a) t.im.setAlpha(Math.abs(a - t.im.alpha) < .02 ? a : t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8)); }
   }
   function planting(scene, parent, info) {
     const W = info.W, made = [], season = info.season || 'summer', trees = GROVE[season] || GROVE.summer; spotCounts = {};

@@ -17,7 +17,8 @@
     // the mainland's own outline, in cells: it overlaps the island (the island is cut out), and ends in two headlands
     const big = [[-60, -70], [120, -70], [112, -40], [100, -22], [92, -10], [84, 1], [60, 6], [20, 8], [6, 12], [3, 34], [4, 56], [2, 66], [-5, 72.5], [-14, 77], [-28, 81], [-46, 83], [-60, 84]].map(p => cp(p[0], p[1]));
     const bigP = new Path2D(B0(big)), coastP = V.loopPath(L.coast);
-    const outGrid = new Path2D(); outGrid.rect(-6000, -6000, gw + 12000, 16000); outGrid.rect(0, 0, gw, 9000);
+    const SEAM = W.sky + 30, FADE = 70;   // the mainland reaches a little over the island's west edge and its sky strip, then fades out, so no edge shows
+    const outGrid = new Path2D(); outGrid.rect(-6000, -6000, gw + 12000, 16000); outGrid.rect(FADE, SEAM, gw - FADE, 9000);
     const outCoast = new Path2D(); outCoast.rect(-6000, -6000, gw + 12000, 16000); outCoast.addPath(coastP);
     const shoreS = [[2, 66], [-5, 72.5], [-14, 77], [-28, 81], [-46, 83], [-60, 84]].map(p => cp(p[0], p[1])), shoreE = [[84, 1], [92, -10], [100, -22], [112, -40], [120, -70]].map(p => cp(p[0], p[1]));
     const road = [cp(2.4, 52.6), cp(-6, 51.4), cp(-14, 53.6), cp(-22, 51), cp(-31, 47.6), cp(-40, 49.8), cp(-52, 46)];
@@ -67,33 +68,47 @@
 
     // in parts, so a chunk bakes in short slices (the kit slices between ops)
     const paintLand = (B, r, cb, part) => {
-      if (part === 0) B.f(B.rect(cb[0], cb[1], cb[2] - cb[0], cb[3] - cb[1]), P.mainField[0]);
+      if (part === 0) B.f(B.rect(cb[0] - 6, cb[1] - 6, cb[2] - cb[0] + 12, cb[3] - cb[1] + 12), P.mainField[0]);
       if (part === 0)
       // fields: an old patchwork, not a grid. Each field is the patch of ground nearest one of a scatter of
       // farm points (a warped lattice), so fields come in odd sizes and slant every way; their shared edges wobble
       // the same for both neighbours and carry the hedgerows, with hedgerow trees, gates and the odd farmstead.
       fieldsIn(B, cb);
+      // the island's west woods run on past the grid: a woodland floor that deepens toward the edge, so fields give way to wood, not to a line
+      if (part === 1 && cb[0] < 0) { const x0 = Math.max(cb[0], -520), floor = kit.mix(P.floor || P.leaf[0], P.leaf[0], .35); B.f(B.rect(x0, Math.max(cb[1], 0), Math.min(0, cb[2]) + 40 - x0, Math.max(0, cb[3] - Math.max(cb[1], 0))), B.lin(-520, 0, -60, 0, [[0, kit.rgba(floor, 0)], [.6, kit.rgba(floor, .7)], [1, kit.rgba(floor, .95)]])); }
       // woods: the west woods run on, and copses dot the farmland
       if (part === 1) kit.tiles(cb, 90, 40, 82, (tx, ty, rr) => {
         for (let k = 0; k < 5; k++) {
           const x = tx + rr() * 90, y = ty + rr() * 90, nearWest = x > -420 && y > W.sky + 4 * ch && y < W.sky + 74 * ch ? 1 - Math.max(0, -x) / 420 : 0;
-          const n = kit.fbm(x / 520, y / 460, 83) + nearWest * .4 * kit.fbm(x / 200, y / 200, 87) + nearWest * nearWest * .5; if (n < .54) continue;
+          const n = kit.fbm(x / 520, y / 460, 83) + nearWest * .4 * kit.fbm(x / 200, y / 200, 87) + nearWest * nearWest * .8; if (n < .54) continue;
           const s = 22 + rr() * 16; B.f(B.blob(rr, x + 6, y + 8, s, s * .7, 9, .35), P.leaf[0]).f(B.blob(rr, x, y, s * .86, s * .6, 9, .35), P.leaf[1]).f(B.blob(rr, x - s * .3, y - s * .25, s * .4, s * .28, 7, .4), P.leaf[2], .9);
         }
       });
-      // fells rising to the north: brown moor, contour rises, then ridges in haze
-      if (part === 2 && cb[1] < 0) {
-        const fell = C.season === 'winter' ? '#b4b2a0' : C.season === 'autumn' ? '#a89a6a' : '#a2a66e';
-        B.f(B.rect(cb[0], cb[1], cb[2] - cb[0], Math.min(0, cb[3]) - cb[1]), B.lin(0, -400, 0, 120, [[0, fell], [1, 'rgba(162,166,110,0)']]));
-        for (let ridge = 3; ridge >= 0; ridge--) {   // the farthest first, so each nearer ridge stands in front of the ones behind it
-          const base = -150 - ridge * 260, col = ridge === 0 ? kit.mix(fell, '#6a6440', .3) : ridge === 3 ? kit.mix(P.far, P.haze, .3) : kit.mix(fell, P.far, ridge === 1 ? .42 : .7), rr = kit.rng(900 + ridge), pts = [];
-          for (let x = Math.floor(cb[0] / 160) * 160 - 160; x <= cb[2] + 160; x += 160) { const r2 = kit.rng(kit.hash(x, ridge, 84)); pts.push({ x, y: base - 80 - r2() * 170 - (ridge > 1 ? r2() * 120 : 0) }); }
-          const poly = pts.concat([{ x: pts[pts.length - 1].x, y: base + 260 }, { x: pts[0].x, y: base + 260 }]);
-          B.f(B.poly(poly), col);
-          V.strokePts(B, pts, kit.mix(col, '#3c3a2a', .35), 5 - ridge, .45);   // the crest, a shade darker, so each ridge reads against the one behind
-          for (let i = 0; i < pts.length - 1; i++) { const a = pts[i], b = pts[i + 1]; const hi = a.y < b.y ? a : b; if ((C.season === 'winter' || C.season === 'spring' || ridge > 1) && hi.y < base - 150) B.f(B.poly([hi, { x: hi.x - 26, y: hi.y + 30 }, { x: hi.x + 4, y: hi.y + 22 }, { x: hi.x + 24, y: hi.y + 32 }]), '#f4f6f6', .85); }
-          void rr;
-        }
+      // fells rising to the north, seen from far off: a sky first, then ridges far to near, each paler and bluer the
+      // farther it is (aerial perspective) and misted at its foot, with organic crests and lit and shaded faces, so they read
+      // as hills in haze, never flat slabs or bands; the nearest is moor, heather and copses, softening down into the island's fells
+      if (part === 2 && cb[1] < SEAM) {
+        const fell = C.season === 'winter' ? '#b8b8a8' : C.season === 'autumn' ? '#a99c70' : '#a3a874', sky = C.season === 'winter' ? '#dfe6ea' : '#d6e4ea';
+        const top = Math.min(SEAM, cb[3]), dy = W.sky - 40;   // (the ridges sit down over the island's sky strip)
+        B.f(B.rect(cb[0] - 6, cb[1] - 6, cb[2] - cb[0] + 12, Math.min(top, dy - 60) - cb[1] + 6), B.lin(0, -1300, 0, -80, [[0, kit.mix(sky, '#a8c4d4', .35)], [.6, sky], [1, kit.mix(sky, P.haze, .5)]]));
+        for (let k = Math.floor(cb[0] / 400) - 1; k <= Math.ceil(cb[2] / 400); k++) { const rr = kit.rng(kit.hash(k, 7, 92)), x = k * 400 + rr() * 400, y = -560 - rr() * 500; B.f(B.blob(rr, x, y, 120 + rr() * 160, 18 + rr() * 16, 10, .3), '#f4f8fa', .45); }   // high soft cloud
+        const ridges = [{ base: -330 + dy, amp: 150, col: kit.mix(P.far, sky, .5) }, { base: -230 + dy, amp: 120, col: kit.mix(P.far, sky, .22) }, { base: -130 + dy, amp: 95, col: kit.mix(fell, P.far, .55) }, { base: -40 + dy, amp: 70, col: kit.mix(fell, P.far, .25) }];
+        ridges.forEach((R, ri) => {
+          const pts = [], step = 24, x0 = Math.floor(cb[0] / step) * step - step * 2;
+          for (let x = x0; x <= cb[2] + step * 2; x += step) { const n = kit.fbm(x / 520, ri * 3.1, 840 + ri) * .75 + kit.fbm(x / 140, ri * 1.7, 850 + ri) * .25; pts.push({ x, y: R.base - Math.pow(n, 1.6) * R.amp * 1.6 }); }
+          const foot = R.base + 70, poly = pts.concat([{ x: pts[pts.length - 1].x, y: foot }, { x: pts[0].x, y: foot }]);
+          // the body: the ridge's own tone at the crest, misted into the haze at its foot
+          B.f(B.poly(poly), B.lin(0, R.base - R.amp, 0, foot, [[0, R.col], [.55, kit.mix(R.col, sky, .25)], [1, kit.mix(R.col, P.haze, .7)]]));
+          // faces: each rise lit on its west side, shaded on its east (light from the upper left), with gullies running down
+          B.cx.save(); B.cx.clip(new Path2D(B.poly(poly)));
+          for (let i = 1; i < pts.length - 1; i++) { const a = pts[i - 1], b = pts[i], c = pts[i + 1]; if (b.y < a.y && b.y <= c.y) { const rr = kit.rng(kit.hash(Math.round(b.x), ri, 93)), w = 40 + rr() * 60, h = R.base - b.y + 50; B.f(B.poly([b, { x: b.x + w, y: b.y + h }, { x: b.x + w * .2, y: b.y + h }]), kit.mix(R.col, '#3c4048', .14), .3).f(B.poly([b, { x: b.x - w * .8, y: b.y + h }, { x: b.x - w * .1, y: b.y + h }]), kit.mix(R.col, '#fffbe8', .16), .28); if ((C.season === 'winter' || ri < 2) && R.base - b.y > R.amp * .7) B.f(B.poly([b, { x: b.x - 16, y: b.y + 14 }, { x: b.x + 3, y: b.y + 10 }, { x: b.x + 15, y: b.y + 16 }]), '#f6f8f8', .7); } }
+          if (ri >= 2) for (let tx = Math.floor(cb[0] / 120) * 120 - 120; tx < cb[2] + 120; tx += 120) { const rr = kit.rng(kit.hash(tx, ri, 94)); for (let k = 0; k < 4; k++) { const x = tx + rr() * 120, y = R.base - rr() * R.amp * .8; B.f(B.blob(rr, x, y, 10 + rr() * 22, 3 + rr() * 5, 7, .5), rr() < .5 ? kit.mix(R.col, '#7a5a48', .25) : kit.mix(R.col, '#5f6e3c', .25), .35); } }   // heather and bracken on the near moor
+          if (ri === 3) for (let tx = Math.floor(cb[0] / 140) * 140 - 140; tx < cb[2] + 140; tx += 140) { const rr = kit.rng(kit.hash(tx, 3, 95)); for (let k = 0; k < 2; k++) { const x = tx + rr() * 140, y = R.base + 10 - rr() * 40, s0 = 8 + rr() * 8; B.f(B.blob(rr, x, y, s0, s0 * .7, 8, .35), kit.mix(P.leaf[0], P.far, .35), .8).f(B.blob(rr, x - s0 * .3, y - s0 * .3, s0 * .45, s0 * .3, 6, .4), kit.mix(P.leaf[2], P.far, .3), .7); } }   // copses in the near folds
+          B.cx.restore();
+          V.strokePts(B, pts, kit.mix(R.col, '#fffbe8', .3), 1.6, .5);   // a lit crest line, not a dark outline
+        });
+        // the foot of the fells fades into the haze where the island's own fells begin, so there is no line at the grid's edge
+        if (cb[2] > 0) B.f(B.rect(Math.max(cb[0], 0), Math.max(cb[1], dy - 80), cb[2] - Math.max(cb[0], 0), top - Math.max(cb[1], dy - 80)), B.lin(0, dy - 80, 0, SEAM, [[0, kit.rgba(P.haze, 0)], [1, kit.rgba(P.haze, .5)]]));
       }
       // the long road, leaving from the milestone
       if (part !== 3) return;
@@ -103,17 +118,21 @@
       if (cb[1] < 0) B.f(B.rect(cb[0], cb[1], cb[2] - cb[0], Math.min(0, cb[3]) - cb[1]), B.lin(0, -250, 0, -1300, [[0, kit.rgba(P.haze, 0)], [1, kit.rgba(P.haze, .55)]]));
     };
     const bb = (pts, pad) => kit.bboxOf(pts, pad);
-    const bandW = [-1800, -1200, 30, W.sky + 86 * ch], bandN = [-1800, -1200, cp(118, 0).x, 30];
+    const bandW = [-1800, SEAM, FADE + 10, W.sky + 86 * ch], bandN = [-1800, -1200, cp(118, 0).x, SEAM];   // (disjoint: where both painted, the haze went on twice and a pale box showed)
     for (const [i, band] of [bandW, bandN].entries()) {
       // beaches and foam where the mainland meets the sea
       main(band, 86 + i, (B) => { for (const sh of [shoreS, shoreE]) { V.strokePts(B, sh, P.shallow, 120, .3); V.strokePts(B, sh, P.sand, 60, 1); V.strokePts(B, sh, P.sandWet, 22, .5, 0, 18); B.cx.setLineDash([16, 8]); V.strokePts(B, sh, P.foam, 3, .7, 0, 32); B.cx.setLineDash([]); } });
       for (let part = 0; part < 4; part++) {
-        main(band, 90 + i * 10 + part, (B, r, cb) => { B.cx.clip(bigP); B.cx.clip(outGrid, 'evenodd'); paintLand(B, r, cb, part); });
+        main(band, 90 + i * 10 + part, (B, r, cb) => { B.cx.clip(new Path2D(i ? B.rect(-6000, -6000, gw + 12000, SEAM + 6000) : B.rect(-6000, SEAM, 6000 + band[2], 9000))); B.cx.clip(bigP); B.cx.clip(outGrid, 'evenodd'); paintLand(B, r, cb, part); });
         // inside the grid's corners, only where the island's coast leaves sea
         main(band, 120 + i * 10 + part, (B, r, cb) => { if (cb[0] > 0 && cb[1] > 0) return; B.cx.clip(bigP); B.cx.clip(outCoast, 'evenodd'); B.cx.clip(new Path2D(B.rect(0, 0, gw, 9000))); paintLand(B, r, cb, part); });
       }
       // a soft seam at the grid edge: the island's woods and fells fade into the mainland
-      main(band, 140 + i, (B, r, cb) => { B.cx.clip(bigP); const g1 = B.lin(-60, 0, 0, 0, [[0, 'rgba(0,0,0,0)'], [1, kit.rgba(P.leaf[0], .18)]]); B.f(B.rect(-60, cb[1], 60, cb[3] - cb[1]), g1); });
+      // the part over the island fades out: west across the woods' edge, north down over the sky strip into the island's own fells
+      main(band, 140 + i, (B, r, cb) => { B.cx.globalCompositeOperation = 'destination-out';
+        if (i === 0) B.f(B.rect(-FADE, Math.max(cb[1], SEAM), FADE * 2 + 10, cb[3] - Math.max(cb[1], SEAM)), B.lin(-FADE, 0, FADE, 0, [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,1)']]));
+        else if (cb[2] > 0) B.f(B.rect(Math.max(cb[0], 0), W.sky - 90, cb[2] - Math.max(cb[0], 0), 130), B.lin(0, W.sky - 90, 0, SEAM - 6, [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,1)']]));
+        B.cx.globalCompositeOperation = 'source-over'; });
     }
     void bb;
     // a soft bank of haze over the island's west and north edges, above the woods: the island's ground and the

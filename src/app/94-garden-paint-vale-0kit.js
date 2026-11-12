@@ -191,7 +191,7 @@ window.GardenPaintVale = (function () {
     if (cur && cur.tall.length && typeof _gw !== 'undefined') {
       // a tree you stand under fades, so you can always see yourself (as in the woods and the village)
       const W = cur.W, x = _gw.px * W.cellW, y = W.sky + _gw.py * W.cellH;
-      for (const im of cur.tall) { if (!im.active) continue; const top = im.y - im.displayHeight * im.originY, under = y < im.y - 4 && y > top + 6 && Math.abs(x - im.x) < im.displayWidth * .46, a = under ? .22 : 1; if (im.alpha !== a) im.setAlpha(Math.abs(a - im.alpha) < .03 ? a : im.alpha + (a - im.alpha) * .25); }
+      for (const im of cur.tall) { if (!im.active) continue; const under = gardenCrownCovers(x, y, im.x, im.y, im.displayHeight * im.originY, im.displayWidth), a = under ? GARDEN_CROWN_FADE : 1; if (im.alpha !== a) im.setAlpha(Math.abs(a - im.alpha) < .03 ? a : im.alpha + (a - im.alpha) * .25); }
     }
     if (!cur || !cur.queue.length) return;
     const t0 = performance.now(), cx = view ? view.x + view.w / 2 : 0, cy = view ? view.y + view.h / 2 : 0;
