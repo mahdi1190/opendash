@@ -258,5 +258,48 @@
     for (let k = 0; k < 4; k++) B.f(B.rect(-18 + k * 9, 2 + (k % 2) * 3, 6, 2.2), '#c8a878', .9);
   }
 
-  V.parts.push({ id: 'crossings', compose: crossings }, { id: 'ruins', compose: ruins }, { id: 'plazas', compose: plazas }, { id: 'homes', compose: homes });
+  /* ---------- the village green: the heart of the village ----------
+   * Inside the loop path: a well-kept common, mown in broad stripes, daisies and clover in the sward, a ring of
+   * cottage flowers just inside the path, a worn line where everyone cuts across, and on the free ground the
+   * maypole with its ribbons and a bench under it. Ground only where the plots are, so nothing gets in the way. */
+  function green(C) {
+    const { L, P, add, kit, thing } = C, pz = (L.pres.plazas || []).find(p => p.id === 'the-green'); if (!pz) return;
+    const loop = L.routePts(pz.route); if (loop.length < 6) return;
+    const c = L.cpt(pz.x, pz.y), cx0 = loop.reduce((s, q) => s + q.x, 0) / loop.length, cy0 = loop.reduce((s, q) => s + q.y, 0) / loop.length;
+    // the sward: the loop pulled in from the path's edge
+    const inner = loop.map(q => ({ x: cx0 + (q.x - cx0) * .9, y: cy0 + (q.y - cy0) * .86 })), bb = kit.bboxOf(loop, 20), seed = kit.hashStr('the-green');
+    const flowers = C.season === 'winter' ? ['#f4f6f2', '#e8ecef'] : C.season === 'autumn' ? ['#e8dcc0', '#d8a040', '#a8503a', '#e0c070'] : ['#f4f0e0', '#f0d24a', '#c79ac0', '#e88a8a', '#8ab0e0'];
+    add(bb, seed, (B, r) => {
+      const path = new Path2D(B.poly(inner)); B.cx.save(); B.cx.clip(path);
+      // a richer, greener sward than the ground round it
+      B.f(B.poly(inner), C.season === 'winter' ? '#b8c2aa' : C.season === 'autumn' ? '#a4ae62' : '#9cba62', .55);
+      // mown stripes, broad and soft, running across the green
+      const w = bb[2] - bb[0], h = bb[3] - bb[1];
+      for (let k = -2; k < 16; k++) { const x = bb[0] + k * 34; B.f(`M${x} ${bb[1]}l34 0l${-h * .35} ${h}l-34 0z`, k % 2 ? '#ffffff' : '#2e4a20', k % 2 ? .07 : .06); }
+      // the worn line across the middle where everyone cuts over
+      V.strokePts(B, [{ x: bb[0] + w * .16, y: cy0 + h * .18 }, { x: cx0 - w * .1, y: cy0 + 4 }, { x: cx0 + w * .14, y: cy0 - 6 }, { x: bb[2] - w * .14, y: cy0 - h * .2 }], '#b8a878', 10, .22);
+      // daisies and clover in the sward
+      for (let k = 0; k < w * h / 260; k++) { const x = bb[0] + r() * w, y = bb[1] + r() * h; if (r() < .6) B.f(B.circ(x, y, 1.2), C.season === 'winter' ? '#f4f6f2' : r() < .8 ? '#f6f2e4' : '#f0d24a', .9); else B.f(B.blob(r, x, y, 3.4, 2.2, 6, .4), '#5e8a44', .5); }
+      B.cx.restore();
+      // a ring of cottage flowers just inside the path
+      const leafy = C.season === 'winter' ? '#7a8a6e' : '#5e8040';
+      for (const q of V.walk(inner.concat([inner[0]]), 11)) { if (q.y > cy0 && Math.abs(q.x - cx0) < w * .21) continue;   // (not across the paved circle at the green's foot)
+        const o = 3 + r() * 6, x = q.x - q.ty * o, y = q.y + q.tx * o; B.f(B.blob(r, x, y, 6, 3.6, 7, .4), leafy, .85); for (let j = 0; j < 3; j++) B.f(B.circ(x + (r() - .5) * 9, y - 2 + (r() - .5) * 4, 1.6), flowers[Math.floor(r() * flowers.length)], .95); }
+    });
+    // the maypole: on free ground near the middle (never on a plot or a house)
+    const ok = (x, y) => L.free(x, y) && !L.plot(x, y) && L.kind(x, y) === 'grass';
+    let spot = null; for (const [dx, dy] of [[0, -.6], [-1, -.6], [1, -.6], [0, .4], [-2, 0], [2, 0], [-1, 1], [1, 1], [-3, .6], [3, .6]]) if (ok(pz.x + dx, pz.y + dy)) { spot = L.cpt(pz.x + dx, pz.y + dy); break; }
+    if (spot) thing({ key: 'maypole|' + C.season, x: spot.x, y: spot.y, box: [-46, -150, 46, 14], draw: B => {
+      const rr = kit.rng(seed + 3), cols = ['#c84a3a', '#e8c84a', '#3a7ac0', '#f2f0e8', '#5e9a54', '#c86aa0'];
+      B.shadow(0, 2, 26, 6, .3);
+      for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2, ex = Math.cos(a) * 34, ey = Math.sin(a) * 9 + 2; B.s(`M0 -128Q${ex * .6} ${-60 + ey} ${ex} ${ey}`, cols[k], 1.6, .9).f(B.circ(ex, ey, 1.6), '#6a5034'); }
+      B.post(0, -134, 2, 5, ['#e8dcc0', '#b8a888', '#ffffff']);
+      for (let k = 0; k < 7; k++) B.s(`M-2.4 ${-120 + k * 16}l4.8 -6`, cols[k % cols.length], 2, .9);
+      B.f(B.ell(0, -128, 9, 4), '#5e8a44').f(B.circ(-5, -130, 2), cols[0]).f(B.circ(2, -131, 2), cols[1]).f(B.circ(6, -128, 2), cols[5]).f(B.circ(-1, -126, 1.6), cols[3]);
+      B.f(B.poly([[-3, -134], [0, -142], [3, -134]]), '#d8b040');
+      void rr;
+    } });
+  }
+
+  V.parts.push({ id: 'crossings', compose: crossings }, { id: 'ruins', compose: ruins }, { id: 'plazas', compose: plazas }, { id: 'homes', compose: homes }, { id: 'green', compose: green });
 })();

@@ -21,7 +21,7 @@
  * Nothing here runs at load. */
 window.GardenPaintWood = (function () {
   'use strict';
-  const K = 1, CH = 256, MAX_CHUNKS = 56, TEX = 'gpwd';
+  const K = 1, CH = 256, MAX_CHUNKS = 56, TEX = 'gpwd', BLEED = 2;
   const slowStep = { ms: 0, at: '' };
   let state = null, lastError = null, bakes = 0, bakeMs = 0, worstBake = 0, tickWorst = 0;
   const ok = f => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
@@ -46,6 +46,9 @@ window.GardenPaintWood = (function () {
     const W = info.W, data = info.data, out = { trees: [], floors: [], lights: [], shafts: [], W };
     const pres = data.presentation || {}, plazas = (pres.plazas || []).filter(p => p.rx || /clearing|court/.test(p.id));
     // round every landmark, and four rows in front of it: a crown there would hide the house, its door and whoever stands at it (Thistle's old house was lost in the canopy)
+    // a story house in the woods (Hollin's hut, Thistle's old house) stands in a small glade, open to the south so the canopy never hides it
+    const houses = (data.static || []).filter(s => /^ld-(woodhut|oldhouse)$/.test(s.id));
+    for (const h of houses) plazas.push({ id: h.id + '-glade', x: h.x + (h.w || 1) / 2, y: h.y + 2.4, rx: 2.8, ry: 3, house: true });
     const statics = new Set(); for (const s of data.static || []) for (const b of [s, s.apron].filter(Boolean)) for (let y = Math.floor(b.y) - 1; y <= b.y + (b.h || 1) + 4; y++) for (let x = Math.floor(b.x) - (y > b.y + (b.h || 1) ? 2 : 1); x <= b.x + (b.w || 1) + (y > b.y + (b.h || 1) ? 1 : 0); x++) statics.add(x + ',' + y);
     const wet = c => !c || c.water || ['ocean', 'water', 'pool', 'lake', 'ice', 'beach'].includes(c.material);
     const isPath = c => c && c.material === 'path';
@@ -96,6 +99,8 @@ window.GardenPaintWood = (function () {
       // the light wood also gets shafts over its biggest glades (low grove field, many land cells)
       if (def.mood === 'light') for (const [x, y] of land) if (x % 7 === 0 && y % 6 === 0 && noise(x, y, 5, hash(region.id) & 1023) < .28 && !clear(x, y)) out.shafts.push({ x: px(x + .5), y: py(y + .5), n: 2, region: region.id });
     }
+    // a crown that still reaches over a story house fades as you come near it (tick)
+    for (const h of houses) { const hx = (h.x + (h.w || 1) / 2) * W.cellW, hy = W.sky + (h.y + .5) * W.cellH; for (const t of out.trees) { const H = t.h * t.scale; if (hy < t.y && hy > t.y - H * .95 && Math.abs(hx - t.x) < H * .5) t.hides = { x: hx, y: hy }; } }
     return out;
   }
 
@@ -109,8 +114,8 @@ window.GardenPaintWood = (function () {
     if (stamps.size > 160) stamps.clear(); stamps.set(key, s); return s;
   }
   function* bakeChunk(ch) {   // a generator: it yields between cells, so a bake spreads over frames
-    const t0 = performance.now(), S = state, B = ch.box, W = S.W, c = document.createElement('canvas'); c.width = Math.ceil(B.w * K); c.height = Math.ceil(B.h * K);
-    const cx = c.getContext('2d'); cx.setTransform(K, 0, 0, K, -B.x * K, -B.y * K);
+    const t0 = performance.now(), S = state, B = ch.box, W = S.W, c = document.createElement('canvas'), E = BLEED; c.width = Math.ceil((B.w + 2 * E) * K); c.height = Math.ceil((B.h + 2 * E) * K);
+    const cx = c.getContext('2d'); cx.setTransform(K, 0, 0, K, -(B.x - E) * K, -(B.y - E) * K);
     const view = { x: B.x - 80, y: B.y - 80, w: B.w + 160, h: B.h + 160 }, season = S.season;
     for (const f of S.M.floors) {
       if (f.kind !== 'floor') continue;
@@ -163,8 +168,10 @@ window.GardenPaintWood = (function () {
     // each tree's soft contact shadow on the floor, under the sprite
     for (const t of S.M.trees) { if (t.x < view.x || t.x > view.x + view.w || t.y < view.y || t.y > view.y + view.h) continue; yield; const g = cx.createRadialGradient(t.x + 6, t.y, 0, t.x + 6, t.y, t.h * .28); g.addColorStop(0, 'rgba(30,40,24,.32)'); g.addColorStop(1, 'rgba(30,40,24,0)'); cx.fillStyle = g; cx.save(); cx.translate(t.x + 6, t.y); cx.scale(1, .32); cx.translate(-t.x - 6, -t.y); cx.beginPath(); cx.arc(t.x + 6, t.y, t.h * .28, 0, Math.PI * 2); cx.fill(); cx.restore(); }
     const key = TEX + '-' + ch.key + '-' + (++S.serial);
-    S.scene.textures.addImage(key, c); ch.tex = key;   // (never redrawn: no pixel read-back) ch.bytes = c.width * c.height * 4;
-    ch.image = S.scene.add.image(B.x, B.y, key).setOrigin(0, 0).setDisplaySize(B.w, B.h)   /* (exact: a 1 px overlap of two soft floors drew a dark line at every chunk edge) */.setDepth(-9594); S.root.add(ch.image); S.sortRoot = true;
+    S.scene.textures.addImage(key, c); ch.tex = key; ch.bytes = c.width * c.height * 4;   // (never redrawn: no pixel read-back)
+    // the canvas runs BLEED px past the chunk and shows only the chunk (a crop): edges meet exactly, and the edge
+    // texels filter against real floor, so no line shows where chunks meet (an overlap drew a dark line, a bare edge a thin one)
+    ch.image = S.scene.add.image(B.x - E, B.y - E, key).setOrigin(0, 0).setScale(1 / K).setCrop(E * K, E * K, B.w * K, B.h * K).setDepth(-9594); S.root.add(ch.image); S.sortRoot = true;
     const ms = performance.now() - t0; bakes++; bakeMs += ms; worstBake = Math.max(worstBake, ms);
   }
   function dropChunk(ch) { if (ch.image) ch.image.destroy(); if (ch.tex && state.scene.textures.exists(ch.tex)) state.scene.textures.remove(ch.tex); ch.image = null; ch.tex = null; ch.bytes = 0; }
@@ -242,8 +249,9 @@ window.GardenPaintWood = (function () {
       // a new tree texture costs a bake: at most one a frame; trees whose texture exists are free
       if (vis && !b.made) { let all = true; for (const t of b.trees) { if (t.im || t.failed) continue; const key = 'gdpaint|' + t.id + '|' + t.v + '|' + S.season + '|0x' + t.h; if (!S.scene.textures.exists(key)) { if (budget <= 0) { all = false; continue; } budget--; } if (!makeTree(t)) t.failed = true; S.sortObjects = true; } if (all) { b.made = true; b.vis = true; } }
       if (b.made && vis !== b.vis && !(vis && !b.made)) { b.vis = vis; for (const t of b.trees) if (t.im) t.im.setVisible(vis); }
-      // a crown you are under fades, so you can always see yourself
-      if (vis && pl) for (const t of b.trees) { if (!t.im) continue; const under = pl.y < t.y - 4 && pl.y > t.y - t.h * t.scale * .95 && Math.abs(pl.x - t.x) < t.h * t.scale * .34; const a = under ? .5 : 1; if (t.im.alpha !== a) t.im.setAlpha(t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8 || 1)); }
+      // a crown you are under fades, so you can always see yourself (a wide crown by its own width); so does a crown over a
+      // story house (Hollin's hut) once you are near it
+      if (vis && pl) for (const t of b.trees) { if (!t.im) continue; const under = pl.y < t.y - 4 && pl.y > t.y - t.h * t.scale * .95 && Math.abs(pl.x - t.x) < Math.max(t.h * t.scale * .34, t.im.displayWidth * .46), near = t.hides && Math.hypot((pl.x - t.hides.x) / S.W.cellW, (pl.y - t.hides.y) / S.W.cellH) < 6; const a = near ? .22 : under ? .38 : 1; if (t.im.alpha !== a) t.im.setAlpha(t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8 || 1)); }
     }
     const tTrees = performance.now(); S.tw.trees = Math.max(S.tw.trees, tTrees - t0 - tBake);
     if (S.sortObjects && S.objects.sort) { S.objects.sort('depth'); S.sortObjects = false; }

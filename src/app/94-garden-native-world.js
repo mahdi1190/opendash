@@ -1104,7 +1104,12 @@ window.GardenNativeWorld = (function () {
       if (fishing && !fit) {
         const f = _gw.fishing, fx = _gw.px * W.cellW, fy = W.sky + _gw.py * W.cellH - 25, bx = f.bx * W.cellW, by = W.sky + f.by * W.cellH;
         vh = Math.max(190, Math.abs(by - fy) + 130, (Math.abs(bx - fx) + 170) / ar) * fishZoom; vw = vh * ar; x = (fx + bx) / 2 - vw / 2; y = (fy + by) / 2 - vh / 2;
-      } else if (fit) { x = (width - vw) / 2; y = (height - vh) / 2; }
+      } else if (fit) {
+        // the whole map takes in the painted mainland too: the fells to the north (and so a strip of the fields west)
+        let north = 0; try { north = window.GardenPaintVale && GardenPaintVale.wanted() && GardenIslandLayout.data && (GardenIslandLayout.data.presentation || {}).mainland ? 520 : 0; } catch (e) { north = 0; }
+        if (north) { vh = Math.max(height + north, width / ar); vw = vh * ar; }
+        x = (width - vw) / 2; y = (height - vh) / 2 - north / 2;
+      }
       else if (activity) {
         const framed = GardenActivityCamera.frame(activity, { x: _gw.px * W.cellW, y: W.sky + _gw.py * W.cellH }, size, vh, activityCamera.zoom);
         x = framed.x; y = framed.y; vw = framed.w; vh = framed.h;

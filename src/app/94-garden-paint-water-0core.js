@@ -90,13 +90,28 @@ window.GardenPaintWater = (function () {
     // thin points closer than 5 px, so features stay cheap
     const out = [q[0]]; for (const z of q) { const l = out[out.length - 1]; if (Math.hypot(z.x - l.x, z.y - l.y) >= 5) out.push(z); } return out;
   }
+  // The woodland brook's water cells stop at every crossing and short of the Mere, so its pieces drew as
+  // separate pools (a glassy oval at its mouth). It is drawn whole instead: one ribbon along its line,
+  // from the spring to a little way into the Mere, the crossings' bridges and stones standing over it.
+  function brookWhole(W, list, riv) {
+    const parts = list.filter(f => /^brook/.test(f.id)); if (!riv || !riv.line || riv.line.length < 2 || !parts.length) return list;
+    const L = riv.line, hw = riv.halfWidth || .6, cw = W.cellW, ch = W.cellH, left = [], right = [];
+    const a = L[L.length - 2], b = L[L.length - 1], tl = Math.hypot((b[0] - a[0]) * cw, (b[1] - a[1]) * ch) || 1;
+    const go = 2.4 * cw / tl, line = L.concat([[b[0] + (b[0] - a[0]) * go, b[1] + (b[1] - a[1]) * go]]);   // on into the Mere (2.4 cells' width)
+    for (let i = 0; i < line.length; i++) {
+      const p = line[Math.max(0, i - 1)], q = line[Math.min(line.length - 1, i + 1)], dx = (q[0] - p[0]) * cw, dy = (q[1] - p[1]) * ch, n = Math.hypot(dx, dy) || 1;
+      const k = hw * (cw + ch) / 2 * (1 + .1 * Math.sin(i * 1.7)) * (i === 0 ? .8 : 1), nx = -dy / n * k, ny = dx / n * k, c = line[i];
+      left.push([c[0] + nx / cw, c[1] + ny / ch]); right.push([c[0] - nx / cw, c[1] - ny / ch]);
+    }
+    return [Object.assign({}, parts[0], { id: 'brook', river: 'brook', boundary: left.concat(right.reverse()) })].concat(list.filter(f => !/^brook/.test(f.id)));   // first, so the Mere is drawn over its mouth
+  }
   function build(W, data) {
     const cx = c => c * W.cellW, cy = c => W.sky + c * W.cellH, pt = q => ({ x: cx(q[0]), y: cy(q[1]) });
     const pres = data.presentation || {}, rivers = pres.rivers || {};
     const lines = {};
     for (const [id, r] of Object.entries(rivers)) if (r && r.line && r.line.length > 1) lines[id] = Object.assign(line(r.line.map(pt)), { hw: r.halfWidth || 1, cells: r.line, id });
     const waters = [];
-    for (const f of data.freshwater || []) {
+    for (const f of brookWhole(W, data.freshwater || [], rivers.brook)) {
       if (!f.boundary || f.boundary.length < 3) continue;
       const pts = smooth(f.boundary.map(pt)), kind = kindOf(f), b = boundsOf(pts, 64), r = rng(hash(f.id));
       const ccw = signedArea(pts) > 0, river = lines[f.river || (kind === 'gorge' ? 'gorge' : kind === 'river' ? 'river' : kind === 'brook' ? 'brook' : '')] || null;
@@ -300,7 +315,7 @@ window.GardenPaintWater = (function () {
     job.ms += performance.now() - t0;
     if (job.i < job.list.length) return false;
     const ch = job.ch, B = ch.box, key = TEX + '-' + ch.key + '-' + (++S.serial), u0 = performance.now();
-    S.scene.textures.addImage(key, job.c); ch.tex = key;   // (addImage: a baked chunk is never redrawn, and addCanvas reads every pixel back first: a quarter-second stall) ch.bytes = job.c.width * job.c.height * 4;
+    S.scene.textures.addImage(key, job.c); ch.tex = key; ch.bytes = job.c.width * job.c.height * 4;   // (addImage: a baked chunk is never redrawn, and addCanvas reads every pixel back first: a quarter-second stall)
     ch.image = S.scene.add.image(B.x, B.y, key).setOrigin(0, 0).setDisplaySize(B.w + 1, B.h + 1).setDepth(-9590); S.parent.add(ch.image); S.sortParent = true;
     job.ms += performance.now() - u0; bakeMs += job.ms; bakes++; worstBake = Math.max(worstBake, performance.now() - t0);
     return true;

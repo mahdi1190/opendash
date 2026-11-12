@@ -150,11 +150,14 @@ window.GardenPaintTerrainKit = (function () {
   /* ---------- the chunked baker ---------- */
   // ops: [{ bb: [x0, y0, x1, y1] world px, seed, clip: Path2D-able loops or null, draw(B, r, chunkBB) }]
   // opts: { key, box: {x, y, w, h}, K, chunk (world px), depth }
+  const PAD = 2;
   function chunked(scene, parent, ops, opts) {
     const K = opts.K || 1.5, size = opts.chunk || 512, box = opts.box, cols = Math.ceil(box.w / size), rows = Math.ceil(box.h / size), list = [];
     const t0 = performance.now(); let worst = 0, bakedPx = 0, bakeMs = 0;
     for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
-      const bb = [box.x + i * size, box.y + j * size, Math.min(box.x + box.w, box.x + (i + 1) * size), Math.min(box.y + box.h, box.y + (j + 1) * size)];
+      // each chunk bakes a bleed of PAD world px past its edges and shows only its own box (a crop): the edge texels
+      // filter against real picture, never against nothing, so no hairline shows where chunks meet
+      const bb = [box.x + i * size - PAD, box.y + j * size - PAD, Math.min(box.x + box.w, box.x + (i + 1) * size) + PAD, Math.min(box.y + box.h, box.y + (j + 1) * size) + PAD];
       const mine = ops.filter(o => meets(o.bb, bb)); if (!mine.length || mine.every(o => o.decor)) continue;
       list.push({ i, j, bb, ops: mine, key: opts.key + '|' + i + ',' + j, image: null });
     }
@@ -175,7 +178,7 @@ window.GardenPaintTerrainKit = (function () {
         scene.textures.addImage(ch.key, J.c); bakedPx += J.c.width * J.c.height; ch.px = J.c.width * J.c.height; ch.job = null;
         const ms = J.ms; worst = Math.max(worst, ms); bakeMs += ms; baked++; times.push(Math.round(ms));
       } else if (!ch.px) { const src = scene.textures.get(ch.key).getSourceImage(); ch.px = src.width * src.height; bakedPx += ch.px; }
-      if (!ch.image) { ch.image = scene.add.image(ch.bb[0], ch.bb[1], ch.key).setOrigin(0, 0).setScale(1 / K).setDepth(opts.depth); parent.add(ch.image); }
+      if (!ch.image) { const src = scene.textures.get(ch.key).getSourceImage(), p = Math.round(PAD * K); ch.image = scene.add.image(ch.bb[0], ch.bb[1], ch.key).setOrigin(0, 0).setScale(1 / K).setDepth(opts.depth).setCrop(p, p, src.width - 2 * p, src.height - 2 * p); parent.add(ch.image); }
       ch.live = true; return true;
     };
     const evict = (ch) => { ch.job = null; if (ch.image) ch.image.destroy(); ch.image = null; if (scene.textures.exists(ch.key)) scene.textures.remove(ch.key); bakedPx -= ch.px || 0; ch.px = 0; ch.live = false; evicted++; };

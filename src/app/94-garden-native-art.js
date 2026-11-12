@@ -1273,7 +1273,7 @@ window.GardenNativeArt = (function () {
     const oldRotation = node._inner.rotation, oldScaleX = node._inner.scaleX, oldScaleY = node._inner.scaleY, oldAlpha = node._inner.alpha;
     try {
       node._inner.setRotation(0).setScale(quality).setAlpha(1);
-      for (let y = Math.floor(b.y); y < b.y + b.height; y += tileSize) for (let x = Math.floor(b.x); x < b.x + b.width; x += tileSize) { const width = Math.min(tileSize, b.x + b.width - x) * quality, height = Math.min(tileSize, b.y + b.height - y) * quality, tile = captureTile(node, x, y, width, height); tiles.push(tile); tile.draw(node._inner, -x * quality, -y * quality); tile.render(); tile.setScale(1 / quality); }
+      for (let y = Math.floor(b.y); y < b.y + b.height; y += tileSize) for (let x = Math.floor(b.x); x < b.x + b.width; x += tileSize) { const pad = 2 / quality, width = (Math.min(tileSize, b.x + b.width - x) + (x + tileSize < b.x + b.width ? pad : 0)) * quality, height = (Math.min(tileSize, b.y + b.height - y) + (y + tileSize < b.y + b.height ? pad : 0)) * quality,   /* (each tile runs two texels into the next: no hairline where they meet) */ tile = captureTile(node, x, y, width, height); tiles.push(tile); tile.draw(node._inner, -x * quality, -y * quality); tile.render(); tile.setScale(1 / quality); }
       node._inner.setRotation(oldRotation).setScale(oldScaleX, oldScaleY).setAlpha(oldAlpha);
       const bytes = tiles.reduce((sum, tile) => sum + tile.width * tile.height * 4, 0);
       if (!cacheRoom(node, bytes, background, replacementBytes)) { for (const tile of tiles) tile.destroy(); if (previous) showCache(node, true); return; }
