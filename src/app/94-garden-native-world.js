@@ -584,7 +584,7 @@ window.GardenNativeWorld = (function () {
           for (const loop of loops) for (let i = 0; i < loop.length; i++) { const a = loop[i], b = loop[(i + 1) % loop.length], light = b.x - a.x > b.y - a.y; g.lineStyle(light ? .9 : 1.1, light ? p.soilLight : p.soilDark, light ? .34 : .28).lineBetween(a.x, a.y, b.x, b.y); }
         }
       }
-      if (authoredRegions.length) forestRows.push(..._gldIslandRegionStands().filter(sp => !terrainOwnsRegion((gardenIslandBaseCell(sp.x / W.cellW, (sp.y - W.sky) / W.cellH) || {}).region)));
+      if (authoredRegions.length) forestRows.push(..._gldIslandRegionStands().filter(sp => !terrainOwnsRegion(sp.region || (gardenIslandBaseCell(sp.x / W.cellW, (sp.y - W.sky) / W.cellH) || {}).region)));
       const smallWaters = waterRegions.filter(region => !region.frozen && !region.ocean && !region.id.startsWith('lake:'));
       const withinWater = (x, y, region) => insidePolygon({ x, y }, region.points) && !region.holes.some(hole => insidePolygon({ x, y }, hole));
       const occupiedBank = (x, y) => {
