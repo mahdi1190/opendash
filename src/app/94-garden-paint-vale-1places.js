@@ -165,7 +165,17 @@
         if (style !== 'litter') { B.cx.filter = 'blur(3px)'; B.f(path, '#2e3420', .2); B.cx.filter = 'none'; }
         B.cx.save(); B.cx.clip(path);
         if (style === 'setts') { V.setts(B, r, P, bb, { size: 11, salt: seed, grout: '#a8987a', cols: ['#c9b994', '#c2b28c', '#d2c5a2', '#bcac86'] }); for (let k = 0; k < 18; k++) B.f(B.blob(r, bb[0] + r() * (bb[2] - bb[0]), bb[1] + r() * (bb[3] - bb[1]), 14 + r() * 20, 4 + r() * 5, 7, .5), r() < .5 ? '#e0d4b2' : '#9c8c68', .25); }
-        else if (style === 'yard') { V.setts(B, r, P, bb, { size: 11, salt: seed, grout: '#968e7a', cols: ['#b4ac98', '#aca490', '#bcb4a0', '#a49c88'] }); for (const o of [-9, 9]) V.strokePts(B, [{ x: a.x - 60, y: a.y + o + 8 }, { x: (a.x + b.x) / 2, y: a.y + o + 2 }, { x: b.x + 70, y: b.y + o - 10 }], '#6e6450', 4, .35); for (let k = 0; k < 14; k++) B.f(B.blob(r, a.x + (r() - .3) * (b.x - a.x + 80), a.y + (r() - .5) * 60, 10 + r() * 16, 3 + r() * 4, 7, .5), '#f4f0e4', .35); for (let k = 0; k < 40; k++) { const x = bb[0] + r() * (bb[2] - bb[0]), y = bb[1] + r() * (bb[3] - bb[1]); B.s(`M${x} ${y}l${(r() - .5) * 8} ${(r() - .5) * 3}`, '#d8b860', 1, .7); } }
+        else if (style === 'yard') {   // warm, worn and busy: honey setts like the plaza's, cart ruts, flour by the door, straw, moss in the joints
+          const bw = bb[2] - bb[0], bh = bb[3] - bb[1], rx = () => bb[0] + r() * bw, ry = () => bb[1] + r() * bh;
+          V.setts(B, r, P, bb, { size: 11, salt: seed, grout: '#9a8460', cols: ['#d2b88c', '#c6aa7e', '#dcc69e', '#bfa178', '#cfae84', '#c9b48e'] });
+          for (let k = 0; k < 16; k++) B.f(B.blob(r, rx(), ry(), 16 + r() * 24, 5 + r() * 7, 7, .5), r() < .55 ? '#e6d2a6' : '#a08458', .24);   // sun and wear in broad patches
+          for (let k = 0; k < 26; k++) B.f(B.blob(r, rx(), ry(), 3 + r() * 5, 1.2 + r(), 5, .5), r() < .6 ? '#7d8a44' : '#96a052', .5);   // moss and weeds in the joints
+          for (const o of [-9, 9]) { const pts = [{ x: a.x - 60, y: a.y + o + 8 }, { x: (a.x + b.x) / 2, y: a.y + o + 2 }, { x: b.x + 70, y: b.y + o - 10 }]; V.strokePts(B, pts, '#7a5c3c', 5, .32); V.strokePts(B, pts, '#e8d6ae', 1.2, .3); }   // cart ruts, polished on their lips
+          for (let k = 0; k < 16; k++) B.f(B.blob(r, a.x + (r() - .3) * (b.x - a.x + 80), a.y + (r() - .5) * 60, 10 + r() * 16, 3 + r() * 4, 7, .5), '#fbf4e2', .42);   // flour, thick by the door
+          for (let k = 0; k < 70; k++) { const x = rx(), y = ry(); B.s(`M${x} ${y}l${(r() - .5) * 9} ${(r() - .5) * 3}`, r() < .7 ? '#e2bc5a' : '#c89a3c', 1.1, .8); }   // spilt straw
+          for (let k = 0; k < 18; k++) B.f(B.ell(rx(), ry(), 1.8 + r() * 1.4, 1.1 + r() * .6), ['#b0682a', '#d38f3a', '#8a5a2c', '#7d8f4e'][Math.floor(r() * 4)], .75);   // a few blown leaves
+          for (let k = 0; k < 3; k++) { const x = rx(), y = ry(); B.f(B.blob(r, x, y, 12 + r() * 10, 4 + r() * 2, 8, .4), '#7e6a4a', .35).f(B.blob(r, x - 2, y - 1, 8 + r() * 6, 2.4, 8, .4), '#b6cbd0', .5); }   // rain puddles in the low setts
+        }
         else if (style === 'broken') { B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), P.lawnLo); V.flags(B, r, Object.assign({}, P, { stone: '#bdb8a4', stoneLo: '#a29e8a', stoneHi: '#d2cebc', grout: '#7d7a68' }), bb, { row: 13, w: 24, salt: seed, broken: .2, moss: .3 }); }
         else if (style === 'flags') V.flags(B, r, P, bb, { row: 14, w: 26, salt: seed, moss: .04 });
         else { // the clearing under the oak: leaf litter, moss, roots running out from the trunk

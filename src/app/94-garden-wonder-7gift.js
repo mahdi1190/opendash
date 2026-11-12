@@ -56,6 +56,13 @@ function _wdgOpen() {
     'The rest is out there. Every gate opens with something you find, so have a look around.',
   ] });
 }
+/** The welcome on arrival: a real note over the garden (an ambient line is only logged, never shown), naming the kit and the first thing to do. */
+function _wdgWelcome() {
+  const a = _wdg.at; if (!a) return;
+  const near = _wdLandmark(a.x, a.y), go = () => { if (_wdg.at && typeof gardenWalkToPoint === 'function') gardenWalkToPoint({ x: _wdg.at.x, y: _wdg.at.y }, _wdgOpen, { radius: 1.2 }); };
+  if (!gardenMessage(`Welcome to Fleetwater Vale! A starter kit with your name on it is waiting near ${near}: a watering can, a rod, compost and seeds. Tap the little blue present to open it.`, { icon: 'gift', ms: 16000, action: { label: 'Take me there', run: go } }))
+    wdAmbient(`Something is glinting near ${near}.`, 8000, 'gift');
+}
 function _wdgPlace(m) {
   if (_wdg.S || !GARDEN_EARLY_GIFT.on || !_gdG().since || gardenEarlyGiftTaken()) return;
   const open = ([x, y]) => gardenWorldFree(x, y, 0.3) && !m.occ.has(Math.floor(x) + ',' + Math.floor(y)) && (typeof gardenAreaOpenAt !== 'function' || gardenAreaOpenAt(x, y));
@@ -72,7 +79,7 @@ wdMod({
   tick(m) {
     if (gardenEarlyGiftTaken()) { _wdgDrop(); return; }   // (opened on another device)
     _wdgPlace(m);
-    if (_wdg.S && !_wdgHinted && (_wdg.hintT -= 1) <= 0) { _wdgHinted = true; wdAmbient(`Something is glinting near ${_wdLandmark(_wdg.at.x, _wdg.at.y)}.`, 8000, 'gift'); }
+    if (_wdg.S && !_wdgHinted && (_wdg.hintT -= 1) <= 0 && gardenShownNow()) { _wdgHinted = true; _wdgWelcome(); }
   },
   end() { _wdgDrop(); },
 });

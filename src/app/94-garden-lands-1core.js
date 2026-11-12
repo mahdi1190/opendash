@@ -422,6 +422,11 @@ function gardenFreshStart() {
   gardenFreshNote();
   return true;
 }
+/** The garden is drawn and nothing is over it (the opening splash, a loading note): a note shown now is seen. */
+function gardenShownNow() {
+  const sp = typeof document !== 'undefined' && document.getElementById('od-splash'), covered = sp && sp.isConnected && !sp.classList.contains('is-out') && !sp.classList.contains('is-skip');
+  return !covered && typeof GardenNative !== 'undefined' && !!(GardenNative.isReady ? GardenNative.isReady() : GardenNative.status().ready);
+}
 /** One short note per device, the first time it shows a garden that started fresh here. */
 function gardenFreshNote() {
   const g = _gdG(), key = 'gd-fresh-note:' + GARDEN_WORLD.lh;
@@ -432,10 +437,7 @@ function gardenFreshNote() {
   // still be opening, so wait for it a little; anywhere else, the app's own toast.
   const msg = 'Your garden has a new home in Fleetwater Vale. Gardens start fresh in this version.';
   let tries = 0;
-  const shown = () => {   // the garden drawn and nothing over it (the opening splash, a loading note)
-    const sp = typeof document !== 'undefined' && document.getElementById('od-splash'), covered = sp && sp.isConnected && !sp.classList.contains('is-out') && !sp.classList.contains('is-skip');
-    return !covered && typeof GardenNative !== 'undefined' && (GardenNative.isReady ? GardenNative.isReady() : GardenNative.status().ready);
-  };
+  const shown = gardenShownNow;
   const say = () => {
     if (shown() && typeof gardenMessage === 'function' && gardenMessage(msg, { icon: 'sprout', ms: 12000, log: true })) return;
     const opening = typeof state !== 'undefined' && state && state.view === 'garden' || typeof _gdOnPage === 'function' && _gdOnPage();
