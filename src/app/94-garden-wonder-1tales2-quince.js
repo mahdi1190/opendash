@@ -4,9 +4,15 @@
    ============================================================ */
 /* The stair count for today’s lines: 201 to 214, by day, never 209 (that number is Act VI’s: “He always got two hundred and nine”). */
 const _wqStair = (F) => { const n = 201 + gardenHash('stair|' + _wdToday()) % 14; return n === 209 ? 211 : n; };
-/* The cider fair. Proposed: a fair day in the vale’s calendar (FUN_PLAN: festivals on the green). Until there is one, the poster is up in late summer and the fair is the first Saturday of autumn. */
-const _wqPoster = (m) => { try { return typeof wdFairPoster === 'function' ? wdFairPoster(m, 'cider') : m.season === 'summer' || m.season === 'autumn'; } catch (e) { return false; } };
-const _wqFairDay = (m) => { try { return typeof wdFairDay === 'function' ? wdFairDay(m, 'cider') : m.season === 'autumn'; } catch (e) { return false; } };
+/* The cider fair (decided 12 Nov): the last Saturday of the first month of autumn (September in the north, March in the south). The poster goes up on the first day
+   of the last month of summer and comes down after the fair, so it is up for seven or eight weeks a year. A calendar of festivals (wdFairDay) wins when there is one. */
+function _wqFairDate(today) {
+  const y = Number(String(today).slice(0, 4)), south = typeof _gdSouth === 'function' && _gdSouth(), mon = south ? 2 : 8;
+  const last = new Date(Date.UTC(y, mon + 1, 0)), back = (last.getUTCDay() + 1) % 7;   // back to Saturday
+  return new Date(Date.UTC(y, mon + 1, -back)).toISOString().slice(0, 10);
+}
+const _wqPoster = (m) => { try { if (typeof wdFairPoster === 'function') return wdFairPoster(m, 'cider'); const f = _wqFairDate(m.today), d = _wdDaysBetween(m.today, f); return d >= 0 && m.today >= f.slice(0, 5) + String(Number(f.slice(5, 7)) - 1).padStart(2, '0') + '-01'; } catch (e) { return false; } };
+const _wqFairDay = (m) => { try { return typeof wdFairDay === 'function' ? wdFairDay(m, 'cider') : m.today === _wqFairDate(m.today); } catch (e) { return false; } };
 const _wqGentle = () => !_wtDeep();
 
 /* ---------- Quince: Telling the bees (STORY_BIBLE §3 and Act VI; C:/tmp/stories/quince.md) ----------
@@ -60,7 +66,7 @@ wdTaleAdd({ id: 'quince', kind: 'arc', title: 'Telling the bees', journal: 'Quin
     '“And I’d still win the apple race, if I entered. Which I don’t. But I would. Write that down somewhere.”',
     '“Now. These windfalls. The wasps’ll have them if we don’t. Grab the other handle.”'],
     choice: [
-      { k: 'believe', label: 'I believe you', soft: 'It isn’t silly',
+      { k: 'believe', label: 'I believe you', softLabel: 'It isn’t silly',
         t: { t: '“I know. I could tell you would. That’s why I said it.”', soft: '“No. I suppose it isn’t. Thank you.”' } },
       { k: 'thanks', label: 'Thank you for telling me',
         t: { t: '“Don’t thank me. Thank the bees. They’ve been practising me for forty years.”', soft: '“Don’t thank me. Thank the bees. They’ve heard it so often they could tell you themselves.”' } }],
@@ -83,11 +89,11 @@ wdTaleAdd({ id: 'quince', kind: 'arc', title: 'Telling the bees', journal: 'Quin
     { t: 'I forgave her. Took me twenty years. I don’t think she was owed it. I wanted to, that’s all. That was mine to do, so I did it.',
       soft: 'I forgave her. Took me twenty years, which is silly for a hush. I wanted to, that’s all. That was mine to do, so I did it.' },
     'Here. I’ve copied it out for you. It’s a good recipe. She was better at cider than at saying things. Most people are.'],
-    give: { 'recipe:cider': 1 },
+    give: { 'recipe:quince-cider': 1, honey: 1 },
     note: 'This is the bible’s next-20 #16, “The cider recipe”, folded into the arc. If there is no recipe item, it goes in the Field Journal as a page (“Quince’s mother’s cider”) and gives 1 honey.' },
 
   // 7. what heals: the bell. She rings it on fair day from the orchard, which she has never done. She still doesn’t go down.
-  { id: 'bell', who: 'quince', when: { after: 'quince.recipe', days: 2, tod: ['dawn', 'day'], home: 1, test: _wqFairDay }, lines: [
+  { id: 'bell', who: 'quince', when: { after: 'quince.recipe', days: 2, tod: ['dawn', 'day'], weekday: 6, home: 1, test: _wqFairDay }, lines: [
     'Fair day. You can hear the green from up here: the band tuning, Pip shouting, somebody’s goose.',
     'Quince is standing under the orchard bell with the rope in both hands. It’s rung for the start of the fair since before the mill. Nobody up here has rung it in forty years. They ring a handbell down on the green instead, and everyone pretends it’s the same.',
     '“I’ve never rung it. Not once. My mother did, and her mother.” She looks at the rope. “Right.”',
@@ -208,3 +214,16 @@ WK_DAY.quince.push(...[
 ]);   // more of today's lines
 // Her side of the woods is told once, in the woodsman's file (quince-woods), so this file's echo of it steps aside.
 wdTaleDrop('quince-echo');
+// The gentle telling's ending (it was in quince-echo, which the gentle telling skips): after the arch, in spring, she plants a quince past it anyway. Free, so it never holds the arc.
+wdTaleBeat('quince', { id: 'tree-g', who: 'quince', free: 1, when: { after: 'quince.far', days: 7, season: ['spring'], dry: 1, test: _wqGentle, home: 1 }, lines: [
+  'Quince has a quince sapling in a pot and a spade over her shoulder. “I’m planting it past the arch. Don’t ask why. I don’t know why. It feels right.”',
+  'She walks through the ruined arch, counting. She stops counting at twelve and keeps walking anyway, down to the brook.',
+  'She plants it on the soft bank in the sun, and treads it in. A bee comes and looks at it, and stays.',
+  '“There. Now the bees have somewhere to go on this side. They’ll thank me. They won’t. They’ll hum.”'],
+  set: { 'quince.tree': 1 } });
+wdTaleRecipe({ id: 'quince-cider', name: 'Quince’s mother’s cider', from: 'copied out by Quince, from the tin with the buttons', text: [
+  'Windfalls and pickers, half and half. Sweet ones for the body, sharp ones for the talk.',
+  'Mill them, press them, and put the juice in the barrel with the good lid. Leave it alone till the first frost. Leaving it alone is most of the recipe.',
+  'Rack it off at midwinter and wassail the trees. Sing, even if you can’t.',
+  { t: 'On the back, small: “Hush was for me, not for you. I was frightened. I’m sorry. Mum.”', soft: 'On the back, small: “I should have listened at the fair. I’m sorry. Mum.”' }] });
+wdTaleKeep({ id: 'toffee-apple', name: 'Half a toffee apple', text: 'From the fair, for the bell-ringer. Mostly stick. Quince gave you the better half, she says.' });
