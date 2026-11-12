@@ -1355,7 +1355,13 @@ function gardenWorldClick(it, cell, ev, m) {
   const k = gardenWorldPick(it, cell, ev, m);
   if (k.kind === 'decor' && tool === 'hand' && typeof gardenBackStep === 'function' && gardenBackStep(k.decor, m || gardenHere())) return true;
   // 1. a building, a board or a box: walk to its door and go in
-  if (k.kind === 'prop') { _gwGoToProp(k.prop); return true; }
+  // (a tall drawing, a lamp or a roof, stands over the ground behind it: a click there, on ground you can stand on behind the
+  // footprint, walks you there instead of to the door; the land office and the terrace lamps used to stop you at their doors)
+  if (k.kind === 'prop') {
+    const P = k.prop, pt = _gwPointAt(ev), lift = Math.max(1, P.tall || 1);
+    if (pt && pt.y < P.y - lift && _gwFree(pt.x, pt.y)) { if (!gardenWalkToPoint(pt, null, { radius: 8 })) gameDeny(null, { at, say: 'You cannot get there.' }); return true; }
+    _gwGoToProp(P); return true;
+  }
   if (k.kind === 'seed') return false;   // planting is its own click
   // 2. a bug: creep up on it
   if (k.kind === 'bug') { _gwNetChase(k.bug); return true; }
