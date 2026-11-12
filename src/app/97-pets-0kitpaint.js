@@ -123,4 +123,4 @@ function _ptPaintScale(A, k, cx, cy, topMin) {
   return A;
 }
 /** The Painted village's own drawing of a species, or null (the rig's drawing, in painted proportions). */
-function _ptPaintedArt(sp) { return sp && sp.id === 'duck' ? _ptDuckPainted : null; }
+function _ptPaintedArt(sp) { return sp && sp.id === 'duck' ? _ptDuckPainted : (typeof _ppArtFor === 'function' ? _ppArtFor(sp) : null); }   // every other species: 97-pets-0kitpaint2.js
