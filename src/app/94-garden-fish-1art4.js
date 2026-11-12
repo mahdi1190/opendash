@@ -62,6 +62,7 @@ function _gcbWingMarks(p, W, uid, tag, c, c2, c3, e, rnd, fore) {
 }
 /** A butterfly or a moth. Both wings on each side, mirrored; the wing shape is the species' first and loudest feature. */
 function _gcbFlier(b, L, uid, rnd) {
+  if (typeof _gfaPaintOn === 'function' && _gfaPaintOn()) return _gcbFlierPainted(b, L, uid, rnd);   // the Painted village's own drawing (94-garden-fish-1art6.js)
   const moth = b.shape === 'moth', kind = _gcbWingKind(b), c = L.c, c2 = L.c2, c3 = L.c3 || c2, e = _gfaDk(c, 0.5), p = L.p || (moth ? ['', 'speckle', 'band', 'stripe'][Math.floor(rnd() * 4)] : ''), n = _gfaN, line = `stroke="${e}" stroke-width="1" stroke-linejoin="round"`, k = 0.92 + rnd() * 0.14, K = _GCB_WINGS[kind];
   const bodyC = _gfaDk(c2 === c ? '#3a2a1a' : c2, 0.35), mothC = _gfaLt(c, 0.25);
   if (kind === 'tent') {   // a moth at rest, wings folded along its back
