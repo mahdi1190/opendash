@@ -99,7 +99,7 @@ function gardenGatePrompt(gate, at, m) {
   if (isOpen) { gardenBubbleOpen(at, { title: zone.name, sub: 'The way is open.', items: [], cls: 'is-empty is-words gd-gate' }); return true; }
   if (m.visit) { gardenBubbleOpen(at, { title: zone.name, sub: rule.block + ' This way is still shut in your friend’s garden.', items: [], cls: 'is-empty is-words gd-gate' }); return true; }
   const have = gardenGateHas(rule.key), lv = m.level.level, findLv = gardenGateFindLv(gate), openLv = gardenZoneOpenLv(zone);
-  const said = _wgtHint(gate, rule, m), hint = !said ? '' : lv < findLv && !(typeof wdFolkGateHint === 'function') ? `${said.name} is still looking for it. Ask again at garden level ${findLv}.` : `${said.name}: “${said.line}”`;
+  const said = _wgtHint(gate, rule, m), soon = `${said && said.name || 'Someone'} will have it at garden level ${findLv}: plant, water and fish to grow as a gardener.`, hint = !said ? '' : lv < findLv && !(typeof wdFolkGateHint === 'function') ? soon : `${said.name}: “${said.line}”` + (lv < findLv ? ' ' + soon : '');   // (an early hint said only "ask me later": now it says when, and how to get there)
   const need = { svg: gardenGateItemSvg(rule.key, 44), name: item.name, have };
   const items = have ? [{ svg: gardenGateItemSvg(rule.key, 22), label: rule.verb, text: rule.verb, cls: 'is-go gd-gate-use', run: (b) => { const r = gardenGateOpen(gate.id); if (!r.ok && typeof gameDenyOf === 'function') gameDenyOf({ ok: false, msg: r.msg }, b); } }] : [];
   gardenBubbleOpen(at, { title: zone.name, sub: rule.block, need, hint: have ? '' : hint, foot: have ? '' : `Still missing at garden level ${openLv}? ${who ? who.name + ' ' + rule.will : 'It opens by itself'}.`, items, cls: 'is-words gd-gate' + (items.length ? '' : ' is-empty') });

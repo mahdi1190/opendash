@@ -53,7 +53,7 @@ function _wdgOpen() {
   wdTalk({ name: 'A note on the ribbon', at: a, art: _wdgArt(), bye: 'Thank you', lines: [
     'Welcome to the garden. A few things to start you off.',
     _wdgKitWords() + ' It is all in your bag.',
-    'The rest is out there. Every gate opens with something you find, so have a look around.',
+    'The rest is out there. Every gate opens with something you find. Start with the Forest arch, just west of here: it needs garden shears, and Mother Thistle left hers by the reed bank, where you can hear the falls.',
   ] });
 }
 /** The welcome on arrival: a real note over the garden (an ambient line is only logged, never shown), naming the kit and the first thing to do. */
