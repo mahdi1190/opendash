@@ -22,7 +22,8 @@
     add(rb, 91, (B, r, cb) => {
       B.cx.clip(regP); B.cx.clip(coastP);
       V.lawn(B, r, L, P, cb, (x, y) => grass(x, y), null, { salt: 91, base: kit.mix(P.lawn, '#b8c47a', season === 'winter' ? 0 : .25) });
-      for (let y = Math.floor(cb[1] / 22) * 22; y < cb[3]; y += 22) { if (((y / 22) | 0) % 2) continue; for (let x = Math.floor(cb[0] / 40) * 40; x < cb[2]; x += 40) { const cx = (x + 20) / cw, cy = (y + 11 - W.sky) / ch; if (!grass(Math.floor(cx), Math.floor(cy))) continue; B.f(B.rect(x, y, 40, 22), season === 'winter' ? '#c4cab8' : '#c2cc84', .16); } }
+      // mown strips: soft horizontal bands, one lobe per grass cell on every other row, so they stop softly at paths
+      { const x0 = Math.floor(cb[0] / cw) - 1, x1 = Math.ceil(cb[2] / cw) + 1, y0 = Math.floor((cb[1] - W.sky) / ch) - 1, y1 = Math.ceil((cb[3] - W.sky) / ch) + 1; for (let y = y0; y <= y1; y++) { if (y % 2) continue; for (let x = x0; x <= x1; x++) if (grass(x, y)) B.f(B.ell((x + .5) * cw, W.sky + (y + .5) * ch, cw * .78, ch * .36), season === 'winter' ? '#c4cab8' : '#c2cc84', .2); } }
       kit.tiles(cb, 100, 20, 92, (tx, ty, rr) => { for (let k = 0; k < 8; k++) { const x = tx + rr() * 100, y = ty + rr() * 100, cx = x / cw, cy = (y - W.sky) / ch; if (!grass(Math.floor(cx), Math.floor(cy))) continue;
         if (cy < 25 && cx > 69 && cx < 79) { B.heather(rr, x, y, 7 + rr() * 5, { heather: '#8d6a92', heatherLo: '#5f4a62', heatherHi: '#b07ab8' }, season === 'summer' ? '#c79ac0' : null); continue; }
         if (cx > 81.5 && cy > 33.5 && cy < 39.5) { if (season === 'spring' || season === 'summer') for (let f = 0; f < 5; f++) B.f(B.circ(x + (rr() - .5) * 14, y + (rr() - .5) * 6, 1.6), f % 3 ? '#f0d24a' : '#f8f4e8', .95); B.tufts(rr, x, y, 10, 4, [P.lawnLo, '#9a9a52'], 7); continue; }

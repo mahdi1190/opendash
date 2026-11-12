@@ -42,8 +42,9 @@
         const shape = B.poly(strip);
         B.cx.filter = 'blur(2px)'; B.f(shape, P.bank, .8); B.cx.filter = 'none';
         B.cx.save(); B.cx.translate(0, 0); B.s(shape, P.bank, 9, .7); B.s(shape, '#6a6048', 3, .5); B.cx.restore();
-        B.f(shape, P.river); B.cx.save(); B.cx.clip(new Path2D(shape));
-        V.strokePts(B, centre, P.riverDk, hw * Math.min(cw, ch) * 1.1, .35);
+        const teal = c.over !== 'river', body = teal ? '#86b8bc' : P.river, deep = teal ? '#5f949c' : P.riverDk;
+        B.f(shape, body); B.cx.save(); B.cx.clip(new Path2D(shape));
+        V.strokePts(B, centre, deep, hw * Math.min(cw, ch) * 1.1, .35);
         const r = C.kit.rng(C.kit.hashStr(c.id));
         for (const q of V.walk(centre, 9)) { const o = (r() - .5) * hw * ch * 1.4; B.s(`M${q.x - q.ty * o} ${q.y + q.tx * o}l${q.tx * (6 + r() * 10)} ${q.ty * (6 + r() * 10)}`, r() < .7 ? P.riverHi : '#e8f0f4', 1 + r(), .35 + r() * .3); }
         B.cx.restore();
@@ -117,13 +118,13 @@
     for (const i of segs) {
       const p = C2[i], q = C2[i + 1], L = Math.hypot(q.x - p.x, q.y - p.y) || 1, nx = -(q.y - p.y) / L * T, ny = (q.x - p.x) / L * T * .6, h0 = H[i], h1 = H[i + 1];
       const foot = [{ x: p.x + nx, y: p.y + ny }, { x: q.x + nx, y: q.y + ny }, { x: q.x - nx, y: q.y - ny }, { x: p.x - nx, y: p.y - ny }], hs = [h0, h1, h1, h0];
-      const up = (v, k) => ({ x: v.x, y: v.y - hs[k] });
+      const up = (v, k) => ({ x: v.x - hs[k] * .32, y: v.y - hs[k] });   // a touch of oblique, so walls running north-south show their east face
       for (let e = 0; e < 4; e++) {
         const v0 = foot[e], v1 = foot[(e + 1) % 4], ex = v1.x - v0.x, ey = v1.y - v0.y, onx = ey, ony = -ex;   // outward normal for a clockwise loop
         const cx = (foot[0].x + foot[2].x) / 2, cy = (foot[0].y + foot[2].y) / 2, mx = (v0.x + v1.x) / 2 - cx, my = (v0.y + v1.y) / 2 - cy, s = Math.sign(onx * mx + ony * my) || 1, outY = ony * s, outX = onx * s;
-        if (outY <= 0) continue;   // faces turned away from the camera are hidden
-        const face = [v0, v1, up(v1, (e + 1) % 4), up(v0, e)], lit = outX < 0 ? 1 : 0;
-        B.f(B.poly(face), B.lin(0, Math.min(face[2].y, face[3].y), 0, Math.max(v0.y, v1.y), [[0, lit ? RUIN.hi : RUIN.body], [.75, lit ? RUIN.body : RUIN.lo], [1, RUIN.dk]]));
+        if (outY <= 0 && outX <= 0) continue;   // faces turned away from the camera are hidden
+        const face = [v0, v1, up(v1, (e + 1) % 4), up(v0, e)], lit = outY > Math.abs(outX) ? 1 : 0;
+        B.f(B.poly(face), B.lin(0, Math.min(face[2].y, face[3].y), 0, Math.max(v0.y, v1.y), [[0, lit ? RUIN.body : RUIN.lo], [.75, lit ? RUIN.lo : '#6a685a'], [1, RUIN.dk]]));
         B.cx.save(); B.cx.clip(new Path2D(B.poly(face)));
         const len = Math.hypot(ex, ey), hh = Math.max(hs[e], hs[(e + 1) % 4]);
         for (let y = 0; y < hh; y += 6.5) for (let t = (Math.round(y / 6.5) % 2) * 5; t < len; t += 10 + r() * 5) { const x0 = v0.x + ex * t / len, y0 = v0.y + ey * t / len - y - 3; if (r() < .3) continue; B.f(B.ell(x0, y0, 4.4 + r() * 2.4, 2.5), r() < .4 ? RUIN.lo : r() < .8 ? RUIN.body : RUIN.hi, .75).f(B.rect(x0 - 4, y0 + 2.3, 8, .9), RUIN.dk, .35); }

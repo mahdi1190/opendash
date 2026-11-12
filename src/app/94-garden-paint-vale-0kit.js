@@ -28,6 +28,7 @@ window.GardenPaintVale = (function () {
   const DEPTH = -9346, UNDER = -9592, MAIN_DEPTH = -9268;
   const parts = [];
   let cur = null, lastError = null, stats = {};
+  const memo = new Map();
   const ok = f => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
 
   const BASE = {
@@ -152,9 +153,15 @@ window.GardenPaintVale = (function () {
     clear(); if (!wanted() || !info || !info.data || window.__gpvOff) return;
     const t0 = performance.now(), kit = KIT(), W = info.W, season = info.season || 'summer', P = PAL[season] || PAL.summer;
     const L = readLayout(W, info.data, info.cellAt), sig = 'gpv-1|' + season + '|' + (GardenIslandLayout.fingerprint || '');
-    const ground = [], main = [], under = [], things = [];
-    const ctx = { L, P, season, tod: info.tod, kit, W, sig, add: (bb, seed, draw, extra) => ground.push(Object.assign({ bb, seed, draw }, extra || {})), main: (bb, seed, draw) => main.push({ bb, seed, draw }), under: o => under.push(o), thing: o => things.push(o) };
-    for (const p of parts) ok(() => p.compose(ctx));
+    // the composition is the same for the same picture: compose once, then a repaint (a gate opening) only places it
+    let comp = memo.get(sig);
+    if (!comp) {
+      comp = { ground: [], main: [], under: [], things: [] };
+      const ctx = { L, P, season, tod: info.tod, kit, W, sig, add: (bb, seed, draw, extra) => comp.ground.push(Object.assign({ bb, seed, draw }, extra || {})), main: (bb, seed, draw) => comp.main.push({ bb, seed, draw }), under: o => comp.under.push(o), thing: o => comp.things.push(o) };
+      for (const p of parts) ok(() => p.compose(ctx));
+      memo.clear(); memo.set(sig, comp);
+    }
+    const { ground, main, under, things } = comp;
     const worldBox = { x: -1800, y: -1200, w: W.cols * W.cellW + 4800, h: W.sky + W.rows * W.cellH + 2600 };
     const gBox = { x: 0, y: 0, w: W.cols * W.cellW, h: W.sky + W.rows * W.cellH };
     const handles = [];
