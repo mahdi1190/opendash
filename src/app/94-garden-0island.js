@@ -107,7 +107,15 @@ function _gardenIslandInLoop(x, y, points) {
 function gardenIslandLandContains(x, y) { return Number.isFinite(x) && Number.isFinite(y) && gardenIslandGeometry().land.some(points => _gardenIslandInLoop(x, y, points)); }
 function gardenIslandOceanContains(x, y) { const W = GARDEN_WORLD; return Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 && x < W.cols && y < W.rows && !gardenIslandLandContains(x, y); }
 function _gardenIslandRect(x, y, r) { return x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h; }
-function gardenIslandFreshwaterCell(x, y) { const cx = Math.floor(x) + .5, cy = Math.floor(y) + .5; return gardenIslandGeometry().freshwater.some(p => p.boundary ? _gardenIslandInLoop(cx, cy, p.boundary) : _gardenIslandRect(cx, cy, p.wet)); }
+function _gardenIslandFreshwaterTest(G, cx, cy) { return G.freshwater.some(p => p.boundary ? _gardenIslandInLoop(cx, cy, p.boundary) : _gardenIslandRect(cx, cy, p.wet)); }
+/** Is a cell's centre in a lake or pond? Answered once per cell and kept (a gate opening asks for every cell several times over). */
+function gardenIslandFreshwaterCell(x, y) {
+  const G = gardenIslandGeometry(), W = GARDEN_WORLD, ix = Math.floor(x), iy = Math.floor(y);
+  if (!(ix >= 0 && iy >= 0 && ix < W.cols && iy < W.rows)) return _gardenIslandFreshwaterTest(G, ix + .5, iy + .5);
+  let c = _gardenIslandDerived.freshCells; if (!c || c.g !== G || c.cols !== W.cols || c.m.length !== W.cols * W.rows) c = _gardenIslandDerived.freshCells = { g: G, cols: W.cols, m: new Uint8Array(W.cols * W.rows) };
+  const i = iy * W.cols + ix; let v = c.m[i]; if (!v) v = c.m[i] = _gardenIslandFreshwaterTest(G, ix + .5, iy + .5) ? 1 : 2;
+  return v === 1;
+}
 /** Authored frontier regions share the same contours with drawing, walking and visits. */
 function gardenIslandRegionForZone(zone) { return (gardenIslandData().regions || []).find(region => region.zone === Number(zone)) || null; }
 function _gardenIslandRegionForKnownLand(x, y) { return (gardenIslandData().regions || []).find(region => (region.polygons || []).some(points => _gardenIslandInLoop(x, y, points))) || null; }

@@ -201,7 +201,10 @@ window.GardenNativePainted = (function () {
     cx.globalCompositeOperation = 'source-over';
     const key = TEX + '-ground-' + (++groundSerial);
     if (cachedGround && scene.textures.exists(cachedGround.key)) scene.textures.remove(cachedGround.key);
-    scene.textures.addCanvas(key, c); cachedGround = { key, sig, box: B, low: false }; groundMs = Math.round(performance.now() - started);
+    // addImage, not addCanvas: a CanvasTexture reads every pixel of this big canvas back from the GPU first (over a second);
+    // the few later touches (paintIntoGround, the low detail) re-upload through refresh() below.
+    { const t = scene.textures.addImage(key, c); if (t && typeof t.refresh !== 'function') t.refresh = function () { for (const src of this.source) src.update(); return this; }; }
+    cachedGround = { key, sig, box: B, low: false }; groundMs = Math.round(performance.now() - started);
     return show(scene, parent, B, key);
   }
   function show(scene, parent, B, key) {

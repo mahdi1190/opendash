@@ -169,7 +169,7 @@ window.GardenPaintTerrainKit = (function () {
         }
         J.ms += performance.now() - s; sliceWorst = Math.max(sliceWorst, performance.now() - s);
         if (J.next < ch.ops.length) return false;
-        scene.textures.addCanvas(ch.key, J.c); bakedPx += J.c.width * J.c.height; ch.px = J.c.width * J.c.height; ch.job = null;
+        scene.textures.addImage(ch.key, J.c); bakedPx += J.c.width * J.c.height; ch.px = J.c.width * J.c.height; ch.job = null;
         const ms = J.ms; worst = Math.max(worst, ms); bakeMs += ms; baked++; times.push(Math.round(ms));
       } else if (!ch.px) { const src = scene.textures.get(ch.key).getSourceImage(); ch.px = src.width * src.height; bakedPx += ch.px; }
       if (!ch.image) { ch.image = scene.add.image(ch.bb[0], ch.bb[1], ch.key).setOrigin(0, 0).setScale(1 / K).setDepth(opts.depth); parent.add(ch.image); }

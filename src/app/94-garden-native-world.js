@@ -321,7 +321,7 @@ window.GardenNativeWorld = (function () {
     function terrainOwns(kind) { return !!(packTerrain && GardenPaintedTerrain.owns(kind)); }
     function terrainOwnsRegion(id) { return !!(packTerrain && GardenPaintedTerrain.ownsRegion(id)); }
     function packOn() { const on = !!(window.GardenNativePainted && GardenNativePainted.wanted() && GardenNativePainted.ready() && typeof gardenIslandActive === 'function' && gardenIslandActive()); if (on) GardenNativePainted.overLayer = rootNode._inner; return on; }
-    function clearPack() { if (packGround) packGround.destroy(); if (packPlanting) packPlanting.destroy(); if (packTerrain) packTerrain.destroy(); packGround = packPlanting = packTerrain = null; if (window.GardenPaintNature) GardenPaintNature.clear(); }
+    function clearPack(repaint) { if (packGround) packGround.destroy(); if (packPlanting) packPlanting.destroy(); if (packTerrain) packTerrain.destroy(); packGround = packPlanting = packTerrain = null; if (window.GardenPaintNature) { if (repaint && GardenPaintNature.release) GardenPaintNature.release(); else GardenPaintNature.clear(); } }
     // Painted nature (94-garden-paint-*.js): the vale's water and woods, drawn from the layout.
     function natureLayers(sc, cellAt) { if (window.GardenPaintNature) try { GardenPaintNature.paint(scene, rootNode._inner, objects._inner || objects.target, { W, data: GardenIslandLayout.data, season: sc.season, tod: sc.tod, cellAt }); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); } }
     function natureTick(time) { if (!window.GardenPaintNature) return; const cam = scene.cameras.main, zx = cam.zoomX || cam.zoom || 1, zy = cam.zoomY || cam.zoom || 1; GardenPaintNature.tick(time, { x: cam.scrollX + cam.width / 2 - cam.width / zx / 2, y: cam.scrollY + cam.height / 2 - cam.height / zy / 2, w: cam.width / zx, h: cam.height / zy }); }
@@ -350,8 +350,11 @@ window.GardenNativeWorld = (function () {
       const pc = pt({ x: start.x + .5, y: start.y + .5 }), pw = 250, ph = 130;
       const plaza = { centre: pc, bounds: { x: pc.x - pw / 2, y: pc.y - ph / 2, w: pw, h: ph }, points: terrainRoundedRect(pc.x - pw / 2, pc.y - ph / 2, pw, ph, 40) };
       const meadow = (px, py) => { const c = cellAt(Math.floor(px / W.cellW), Math.floor((py - W.sky) / W.cellH)); return !!c && !wet(c) && !['beach', 'path'].includes(c.material) && Math.hypot((px - pc.x) / pw, (py - pc.y) / ph) > .62; };
-      // (a gate opening is not a reason to repaint the village: the regions past the gates lie outside its box, under the mist; a 1 s bake would freeze the mist rolling back)
-      const sig = [cbox.x0, cbox.y0, (sc.areas || []).filter(a => !/^(zn-|gate:)/.test(a)).join(','), cultivatedNow ? [...cultivatedNow].sort().join(',') : '', lakes.length, pathLoops.length].join('|');
+      // The village ground is keyed by what lies in its own box (each village cell's material and whether it is an open plot; cells of the zones past the gates are the mist's), never by
+      // the open areas as a whole: a gate opening, or the woodland's plots opening with it, lies outside the box, and a 1 s bake
+      // would freeze the mist rolling back.
+      let boxSig = 0; for (let y = cbox.y0 - 2; y <= cbox.y1 + 2; y++) for (let x = cbox.x0 - 2; x <= cbox.x1 + 2; x++) { if (typeof gardenZoneOf === 'function' && gardenZoneOf(x, y)) continue; const c = cellAt(x, y), t = c ? (c.material || '') + (c.row && c.row.plot && !c.locked ? '+' : '') : '-'; for (let i = 0; i < t.length; i++) boxSig = (Math.imul(boxSig, 31) + t.charCodeAt(i)) | 0; boxSig = (Math.imul(boxSig, 31) + 59) | 0; }
+      const sig = [cbox.x0, cbox.y0, boxSig, cultivatedNow ? [...cultivatedNow].sort().join(',') : '', lakes.length, pathLoops.length].join('|');
       try { packGround = GardenNativePainted.ground(scene, rootNode._inner, { W, box, coast, lawn, lakes, paths: pathLoops, routes, plaza, meadow, soil, owned, season: sc.season, sig: sig + '|' + soil.length + ':' + owned.length }); }
       catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); return false; }
       const blocked = new Set(); for (const p of D.static) { const boxes = [p, p.apron].filter(Boolean); for (const b of boxes) for (let y = Math.floor(b.y) - 1; y <= b.y + b.h; y++) for (let x = Math.floor(b.x) - 1; x <= b.x + b.w; x++) blocked.add(x + ',' + y); }
@@ -376,7 +379,7 @@ window.GardenNativeWorld = (function () {
       return true;
     }
     function drawTerrain(m, sc, lake, cultivated, decks) {
-      if (terrain._cache) terrain._uncache(); clearPierDecks(); clearPack();
+      if (terrain._cache) terrain._uncache(); clearPierDecks(); clearPack(true);
       for (const chunk of terrainChunks.values()) { cacheQueue.delete(chunk.node); chunk.node.remove(); } terrainChunks.clear(); terrainBaseQueue.clear();
       for (const old of terrainObjects) old.destroy(); terrainObjects.length = 0; terrainLabels.length = 0; markers.length = 0;
       waterRegions.length = 0; lockedRegions.length = 0; gateRows.length = 0; forestRows.length = 0; surfaceRevision++; frontierMetadata.revision = surfaceRevision;
@@ -688,7 +691,8 @@ window.GardenNativeWorld = (function () {
       }
       const entry = island && GardenIslandLayout.data.anchors.start;
       const cx = (entry ? entry.x : 22.5) * W.cellW, cy = W.sky + (entry ? entry.y : 20.5) * W.cellH;
-      if (packLayers(m, sc, island, cellAt, cultivated, cells)) { /* the pack's plaza replaces the painted arrival disc */ } else g.fillStyle(0xb8b491).fillEllipse(cx, cy, 65, 26).lineStyle(1.1, 0x7f9270, .8).strokeEllipse(cx, cy, 65, 26).lineStyle(.8, 0xe2dcb9, .65).strokeEllipse(cx, cy, 56, 21);
+      const packed = packLayers(m, sc, island, cellAt, cultivated, cells); if (window.GardenPaintNature && GardenPaintNature.settle) GardenPaintNature.settle();
+      if (packed) { /* the pack's plaza replaces the painted arrival disc */ } else g.fillStyle(0xb8b491).fillEllipse(cx, cy, 65, 26).lineStyle(1.1, 0x7f9270, .8).strokeEllipse(cx, cy, 65, 26).lineStyle(.8, 0xe2dcb9, .65).strokeEllipse(cx, cy, 56, 21);
       g.fillStyle(0x788d6c, .8).fillTriangle(cx, cy - 7, cx + 3, cy + 1, cx - 3, cy + 1).fillTriangle(cx, cy + 7, cx + 2, cy - 1, cx - 2, cy - 1);
       if (island) {
         // One connected ocean clips every cell-derived floor at the exact

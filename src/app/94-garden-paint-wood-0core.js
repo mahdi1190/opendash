@@ -161,7 +161,7 @@ window.GardenPaintWood = (function () {
     // each tree's soft contact shadow on the floor, under the sprite
     for (const t of S.M.trees) { if (t.x < view.x || t.x > view.x + view.w || t.y < view.y || t.y > view.y + view.h) continue; yield; const g = cx.createRadialGradient(t.x + 6, t.y, 0, t.x + 6, t.y, t.h * .28); g.addColorStop(0, 'rgba(30,40,24,.32)'); g.addColorStop(1, 'rgba(30,40,24,0)'); cx.fillStyle = g; cx.save(); cx.translate(t.x + 6, t.y); cx.scale(1, .32); cx.translate(-t.x - 6, -t.y); cx.beginPath(); cx.arc(t.x + 6, t.y, t.h * .28, 0, Math.PI * 2); cx.fill(); cx.restore(); }
     const key = TEX + '-' + ch.key + '-' + (++S.serial);
-    S.scene.textures.addCanvas(key, c); ch.tex = key; ch.bytes = c.width * c.height * 4;
+    S.scene.textures.addImage(key, c); ch.tex = key;   // (never redrawn: no pixel read-back) ch.bytes = c.width * c.height * 4;
     ch.image = S.scene.add.image(B.x, B.y, key).setOrigin(0, 0).setDisplaySize(B.w + 1, B.h + 1).setDepth(-9594); S.root.add(ch.image); S.sortRoot = true;
     const ms = performance.now() - t0; bakes++; bakeMs += ms; worstBake = Math.max(worstBake, ms);
   }

@@ -300,7 +300,7 @@ window.GardenPaintWater = (function () {
     job.ms += performance.now() - t0;
     if (job.i < job.list.length) return false;
     const ch = job.ch, B = ch.box, key = TEX + '-' + ch.key + '-' + (++S.serial), u0 = performance.now();
-    S.scene.textures.addCanvas(key, job.c); ch.tex = key; ch.bytes = job.c.width * job.c.height * 4;
+    S.scene.textures.addImage(key, job.c); ch.tex = key;   // (addImage: a baked chunk is never redrawn, and addCanvas reads every pixel back first: a quarter-second stall) ch.bytes = job.c.width * job.c.height * 4;
     ch.image = S.scene.add.image(B.x, B.y, key).setOrigin(0, 0).setDisplaySize(B.w + 1, B.h + 1).setDepth(-9590); S.parent.add(ch.image); S.sortParent = true;
     job.ms += performance.now() - u0; bakeMs += job.ms; bakes++; worstBake = Math.max(worstBake, performance.now() - t0);
     return true;
