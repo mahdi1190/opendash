@@ -169,12 +169,17 @@ window.GardenPaintedTerrain = (function () {
     // 5. Snow above the snow line: a white blanket with a ragged edge, blue shade in the south-east falls, rock and heather through it.
     if (snowRow > -5) add(fellBB, 41, (B, r0, cb) => {
       clipFell(B);
-      if (snowRow > 90) { B.f(B.rect(cb[0] - 2, Math.max(cb[1] - 2, W.sky - 4), cb[2] - cb[0] + 4, cb[3] - cb[1] + 4), P.snow, 1); }
-      kit.tiles(cb, 40, 30, 9, (tx, ty, r) => {
-        if (snowRow > 90) return;
-        for (let k = 0; k < 3; k++) { const x = tx + r() * 40, y = ty + r() * 40, s = snowAt(x, y); if (s <= 0 || y < W.sky - 4) continue; const R = 18 + r() * 22; B.f(B.blob(r, x, y, R, R * .55, 8, .4), P.snow, s >= 1 ? 1 : s * .9); }
-      });
-      tops.forEach(([x, y, rx, ry, n], hi) => { const c = L.cpt(x, y); for (let k = 0; k < n; k++) { const s = 1 - k / (n + .4), rr = kit.rng(900 + hi * 31 + k), cx0 = c.x - k * 5, cy0 = c.y - k * ry * ch * .18; if (snowAt(cx0, cy0) <= .2) continue; const d = B.blob(rr, cx0, cy0, rx * cw * s, ry * ch * s, 11, .32); B.cx.save(); B.cx.translate(rx * cw * s * .06 + 3, ry * ch * s * .12 + 3); B.f(d, P.snowSh, .55); B.cx.restore(); B.f(d, P.snow, .85); } });
+      if (snowRow > 90) B.f(B.rect(cb[0] - 2, Math.max(cb[1] - 2, W.sky - 4), cb[2] - cb[0] + 4, cb[3] - cb[1] + 4), P.snow, 1);
+      else {
+        // one crisp, lobed snow line (north of it white), lingering drifts below it in the hollows, bare tussock islands above
+        const edge = []; for (let x = cb[0] - 24; x <= cb[2] + 24; x += 6) edge.push({ x, y: W.sky + (snowRow + (kit.fbm(x / 140, 3.1, 41) - .5) * 4.5) * ch + Math.sin(x / 9) * 2.2 + (kit.noise(x / 23, 1, 7) - .5) * 9 });
+        B.f(B.poly([{ x: cb[0] - 24, y: W.sky - 6 }].concat(edge, [{ x: cb[2] + 24, y: W.sky - 6 }])), P.snow, 1);
+        B.s(B.line(edge.map(p => ({ x: p.x + 1, y: p.y + 1.5 }))), P.snowSh, 2.2, .7);
+        kit.tiles(cb, 36, 24, 9, (tx, ty, r) => { for (let k = 0; k < 4; k++) { const x = tx + r() * 36, y = ty + r() * 36, s = snowAt(x, y); if (y < W.sky) continue;
+          if (s > .02 && s < .98 && r() < .5) { const R = 4 + r() * 9; B.f(B.blob(r, x + 1, y + 1.4, R, R * .42, 8, .45), P.snowSh, .8).f(B.blob(r, x, y, R, R * .4, 8, .45), P.snow, .97); }
+          else if (s >= .98 && r() < .18) { const R = 3 + r() * 6; B.f(B.blob(r, x, y, R, R * .45, 7, .5), moor(x) > .4 ? P.heatherLo : P.fellLo, .8).f(B.blob(r, x - R * .2, y - 1, R * .6, R * .2, 6, .5), P.bleach, .6); } } });
+      }
+      if (snowRow > 90) tops.forEach(([x, y, rx, ry, n], hi) => { const c = L.cpt(x, y); for (let k = 0; k < n; k++) { const s = 1 - k / (n + .4), rr = kit.rng(900 + hi * 31 + k), cx0 = c.x - k * 5, cy0 = c.y - k * ry * ch * .18; if (snowAt(cx0, cy0) <= .2) continue; const d = B.blob(rr, cx0, cy0, rx * cw * s, ry * ch * s, 11, .32); B.cx.save(); B.cx.translate(rx * cw * s * .06 + 3, ry * ch * s * .12 + 3); B.f(d, P.snowSh, .55); B.cx.restore(); B.f(d, P.snow, .85); } });
       kit.tiles(cb, 56, 10, 13, (tx, ty, r) => {
         for (let k = 0; k < 6; k++) { const x = tx + r() * 56, y = ty + r() * 56, s = snowAt(x, y); if (s < .6 || !fellAt(x, y)) continue; const p = r();
           if (p < .14) B.f(B.blob(r, x, y, 14 + r() * 18, 2 + r() * 2.4, 7, .5), P.snowSh, .5);
