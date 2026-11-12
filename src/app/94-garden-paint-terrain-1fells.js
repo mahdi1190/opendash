@@ -604,7 +604,7 @@ window.GardenPaintedTerrain = (function () {
     out.sort((a, b) => b.ms - a.ms); return { chunks: out.length, worst: out.slice(0, 8), mean: Math.round(out.reduce((s, o) => s + o.ms, 0) / out.length) };
   }
   /** The kinds of landform and region this kit paints (the world skips its own art for them). */
-  function owns(kind) { return wanted() && (kind === 'mountain' || kind === 'rock-wall' || kind === 'terrace-wall'); }
+  function owns(kind) { return wanted() && (kind === 'mountain' || kind === 'rock-wall' || kind === 'terrace-wall' || !!(window.GardenPaintVale && GardenPaintVale.owns(kind))); }
   function ownsRegion(id) { if (!wanted()) return false; const r = (gardenIslandData().regions || []).find(x => x.id === id); return !!(r && r.theme === 'mountain'); }
   function status() {
     const h = current && current.handle, px = (h && h.texturePx || 0) + (stats.spritePx || 0);

@@ -6,14 +6,14 @@
 window.GardenPaintNature = (function () {
   'use strict';
   let lastError = null, on = false;
-  const parts = () => [window.GardenPaintWater, window.GardenPaintWood].filter(Boolean);
+  const parts = () => [window.GardenPaintWater, window.GardenPaintWood, window.GardenPaintVale].filter(Boolean);   // the vale: quay, ruins, crossings, plazas, orchard, mainland (94-garden-paint-vale-*.js)
   function paint(scene, root, objects, info) {
     clear(); on = !!(window.GardenPaintWater && GardenPaintWater.wanted()) && !window.__gpnOff; if (!on) return;
     for (const p of parts()) try { p.paint(scene, root, info, objects); } catch (e) { lastError = String(e && e.stack || e); }
   }
   function tick(time, view) { if (!on) return; for (const p of parts()) try { p.tick(time, view); } catch (e) { lastError = String(e && e.stack || e); } }
   function clear() { for (const p of parts()) try { p.clear(); } catch (e) { lastError = String(e && e.stack || e); } on = false; }
-  function status() { return { on, water: window.GardenPaintWater ? GardenPaintWater.status() : null, wood: window.GardenPaintWood ? GardenPaintWood.status() : null, lastError }; }
+  function status() { return { on, water: window.GardenPaintWater ? GardenPaintWater.status() : null, wood: window.GardenPaintWood ? GardenPaintWood.status() : null, vale: window.GardenPaintVale ? GardenPaintVale.status() : null, lastError }; }
   /** The world asks before drawing its own forest tree at world px (x, y). */
   function covers(W, x, y) { try { return !!(window.GardenPaintWood && window.GardenPaintWater && GardenPaintWater.wanted() && GardenPaintWood.covers(x / W.cellW, (y - W.sky) / W.cellH)); } catch (e) { return false; } }
   return { paint, tick, clear, status, covers };
