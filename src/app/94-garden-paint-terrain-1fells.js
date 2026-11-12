@@ -400,10 +400,10 @@ window.GardenPaintedTerrain = (function () {
   // scree fans spilling from the gully feet onto a skirt of fell that melts into the ground.
   function peakArt(B, w, d, H, snowShare, P, seed, sharp) {
     const kit = KIT(), r = kit.rng(seed), cx = B.cx;
-    const C = { lit: '#bcae96', litHi: '#d9ccb2', mid: '#998d7e', shade: '#6f6a6e', shadeDk: '#55525a', deep: '#3e3c40' };
+    const C = { lit: '#bcae96', litHi: '#d9ccb2', mid: '#998d7e', shade: '#7a7478', shadeDk: '#625e66', deep: '#3e3c40' };
     const sx = (sharp ? -.06 : .04) * w, summits = sharp ? [[sx, 1]] : [[sx - w * .1, .94], [sx + w * .12, 1]];
     const prof = [];
-    for (let i = 0; i <= 40; i++) { const x = -w / 2 + w * i / 40; let y = 0; for (const [px, ph] of summits) { const u = Math.abs(x - px) / (x < px ? w / 2 + px : w / 2 - px); y = Math.max(y, ph * Math.pow(Math.max(0, 1 - u), sharp ? 1.1 : .85)); }
+    for (let i = 0; i <= 40; i++) { const x = -w / 2 + w * i / 40; let y = 0; for (const [px, ph] of summits) { const u = Math.abs(x - px) / (x < px ? w / 2 + px : w / 2 - px); y = Math.max(y, ph * Math.pow(Math.max(0, 1 - u), sharp ? .95 : .8)); }
       y += (kit.noise(i / 2.6, seed, 2) - .5) * .1 * y + (sharp ? 0 : Math.max(0, .14 - Math.abs(x - w * .3) / w) * .8); prof.push({ x, y: -Math.max(d * .3, H * y) }); }
     const base = []; for (let i = 0; i <= 12; i++) { const t = i / 12, x = w / 2 - w * t; base.push({ x, y: -d * .3 * Math.pow(Math.abs(t - .5) * 2, 2) + (kit.noise(t * 6, seed, 5) - .5) * 6 }); }
     const sil = prof.concat(base), silP = new Path2D(B.poly(sil)), topP = prof.reduce((m, p) => p.y < m.y ? p : m, prof[0]);
@@ -413,13 +413,16 @@ window.GardenPaintedTerrain = (function () {
     // faces between spurs
     const feet = [-.5, -.32, -.14, .04, .2, .36, .5].map(f => ({ x: w * f + (r() - .5) * w * .05, y: 4 }));
     const tops = summits.map(([px]) => prof.reduce((m, p) => Math.abs(p.x - px) < Math.abs(m.x - px) ? p : m, prof[0]));
-    for (let k = 0; k < feet.length - 1; k++) {
-      const a = feet[k], b = feet[k + 1], tp = tops.reduce((m, t) => Math.abs(t.x - (a.x + b.x) / 2) < Math.abs(m.x - (a.x + b.x) / 2) ? t : m, tops[0]);
-      const facing = ((a.x + b.x) / 2 - tp.x) / (w / 2), col = facing < -.3 ? C.lit : facing < .05 ? kit.mix(C.lit, C.mid, .55) : facing < .3 ? C.shade : C.shadeDk;
-      const bend = (p, q, t) => ({ x: p.x + (q.x - p.x) * t + (r() - .5) * 14, y: p.y + (q.y - p.y) * t });
-      B.f(B.poly([tp, bend(tp, a, .5), a, b, bend(tp, b, .5)]), col, .95);
-      // the spur's own crest line: lit on its west side
-      B.s(B.line([tp, bend(tp, a, .35), bend(tp, a, .7), a]), facing < 0 ? C.litHi : C.mid, 1.6, .55);
+    // each spur climbs from its foot to the ridge above it (not all to the summit), wandering a little on the way
+    const ridgeAt = x => prof.reduce((m, p) => Math.abs(p.x - x) < Math.abs(m.x - x) ? p : m, prof[0]);
+    const spurs = feet.map(f => { const tp0 = tops.reduce((m, t) => Math.abs(t.x - f.x) < Math.abs(m.x - f.x) ? t : m, tops[0]), rp = ridgeAt(tp0.x + (f.x - tp0.x) * (.25 + r() * .25)), pts = [rp];
+      for (let j = 1; j < 4; j++) { const t = j / 4; pts.push({ x: rp.x + (f.x - rp.x) * t + (r() - .5) * w * .05, y: rp.y + (f.y - rp.y) * Math.pow(t, .85) }); } pts.push(f); return pts; });
+    for (let k = 0; k < spurs.length - 1; k++) {
+      const A = spurs[k], Bq = spurs[k + 1], mx = (A[0].x + Bq[0].x) / 2, tp = tops.reduce((m, t) => Math.abs(t.x - mx) < Math.abs(m.x - mx) ? t : m, tops[0]);
+      const ridge = prof.filter(p => p.x >= Math.min(A[0].x, Bq[0].x) && p.x <= Math.max(A[0].x, Bq[0].x));
+      const facing = ((A[A.length - 1].x + Bq[Bq.length - 1].x) / 2 - tp.x) / (w / 2), col = facing < -.3 ? C.lit : facing < .05 ? kit.mix(C.lit, C.mid, .55) : facing < .3 ? C.shade : C.shadeDk;
+      B.f(B.poly(A.slice().reverse().concat(ridge, Bq)), col, .95);
+      B.s(B.line(A), facing < 0 ? C.litHi : C.mid, 1.5, .5);
     }
     // the light on the west flank, the shade on the east, both soft-edged
     B.f(B.poly(prof.filter(p => p.x < topP.x).concat([{ x: topP.x - w * .08, y: 0 }, { x: -w / 2, y: 0 }])), C.litHi, .22);

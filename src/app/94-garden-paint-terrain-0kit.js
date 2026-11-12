@@ -100,6 +100,8 @@ window.GardenPaintTerrainKit = (function () {
     const size = o.size || 1, tiers = o.tiers || [[.3, 1], [.74, .75]];
     // the lit upper band: the rock's top catches the light from above
     B.f(B.poly(idx.map(i => top[i]).concat(idx.slice().reverse().map(i => at(.32, i)))), G.lit, .35);
+    // broad facets: buttresses lit on their west side and clefts in shade, under the masses, so the face reads as a cliff
+    { let i = idx[0] - 30; i -= ((i % 30) + 30) % 30; for (; i <= idx[idx.length - 1]; ) { const rr = R(i, 400), w = 8 + Math.floor(rr() * 10); const a0 = Math.max(0, i), a1 = Math.min(N - 1, i + w); if (a1 > a0) { const half = Math.max(a0 + 1, Math.min(a1, a0 + Math.round(w * (.4 + rr() * .3)))); const strip = (b0, b1, col, op) => { const T = [], Bt = []; for (let k = b0; k <= b1; k++) { T.push(at(.04, k)); Bt.push(at(1, k)); } B.f(B.poly(T.concat(Bt.reverse())), col, op); }; strip(a0, half, G.lit, .28); strip(half, a1, G.deep, .26); B.s(B.line([at(.05, half), at(.5, Math.min(N - 1, half + (rr() < .5 ? 1 : 0))), at(1, half)]), G.deep, 1.4, .5); } i += w; } }
     for (let tI = 0; tI < tiers.length; tI++) {
       const [t, sc] = tiers[tI];
       // slabs: wide weathered masses at hashed gaps along the whole line, so neighbours agree
