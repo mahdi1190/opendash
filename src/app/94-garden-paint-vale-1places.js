@@ -96,8 +96,12 @@
         // a ruined profile: high runs and tumbled gaps, never the same twice
         let h = 28 + rr() * 14; for (let i = 0; i < mid.length; i++) { h += (rr() - .5) * 12; if (rr() < .1) h = 7 + rr() * 6; if (rr() < .12) h = 32 + rr() * 16; h = Math.max(6, Math.min(48, h)); H.push(h); }
         for (let k = 0; k < 2; k++) for (let i = 1; i < H.length - 1; i++) H[i] = (H[i - 1] + H[i] * 2 + H[i + 1]) / 4;
-        const C2 = mid.map(p => ({ x: p.x - foot.x, y: p.y - foot.y })), bb = kit.bboxOf(C2);
-        thing({ key: 'ruin2|' + f.id, x: foot.x, y: foot.y, box: [bb[0] - 30, bb[1] - 64, bb[2] + 30, bb[3] + 20], K: 1.25, draw: B => ruinWall(B, kit.rng(seed + 1), C2, H, C.P, C.season) });
+        // in pieces of six stretches: each bakes quickly and sorts by its own foot
+        for (let g = 0; g < mid.length - 1; g += 6) {
+          const sub = mid.slice(g, g + 7), hs = H.slice(g, g + 7); let ft = sub[0]; for (const p of sub) if (p.y > ft.y) ft = p;
+          const C2 = sub.map(p => ({ x: p.x - ft.x, y: p.y - ft.y })), bb = kit.bboxOf(C2);
+          thing({ key: 'ruin3|' + f.id + '|' + g, x: ft.x, y: ft.y, box: [bb[0] - 30, bb[1] - 64, bb[2] + 30, bb[3] + 20], K: 1.1, draw: B => ruinWall(B, kit.rng(seed + 1 + g), C2, hs, C.P, C.season) });
+        }
       } else if (f.kind === 'ruin') {
         const loop = f.polygon.map(L.pt), bb = kit.bboxOf(loop, 30);
         add(bb, kit.hashStr(f.id), (B, r) => foundation(B, r, loop, C.P, C.season));
@@ -122,13 +126,13 @@
         B.f(B.poly(face), B.lin(0, Math.min(face[2].y, face[3].y), 0, Math.max(v0.y, v1.y), [[0, lit ? RUIN.hi : RUIN.body], [.75, lit ? RUIN.body : RUIN.lo], [1, RUIN.dk]]));
         B.cx.save(); B.cx.clip(new Path2D(B.poly(face)));
         const len = Math.hypot(ex, ey), hh = Math.max(hs[e], hs[(e + 1) % 4]);
-        for (let y = 0; y < hh; y += 6) for (let t = (y / 6 % 2) * 4; t < len; t += 8 + r() * 4) { const x0 = v0.x + ex * t / len, y0 = v0.y + ey * t / len - y - 3; if (r() < .2) continue; B.f(B.blob(r, x0, y0, 4 + r() * 2.4, 2.4, 6, .3), r() < .4 ? RUIN.lo : r() < .8 ? RUIN.body : RUIN.hi, .75).f(B.rect(x0 - 4, y0 + 2.2, 8, .9), RUIN.dk, .35); }
+        for (let y = 0; y < hh; y += 6.5) for (let t = (Math.round(y / 6.5) % 2) * 5; t < len; t += 10 + r() * 5) { const x0 = v0.x + ex * t / len, y0 = v0.y + ey * t / len - y - 3; if (r() < .3) continue; B.f(B.ell(x0, y0, 4.4 + r() * 2.4, 2.5), r() < .4 ? RUIN.lo : r() < .8 ? RUIN.body : RUIN.hi, .75).f(B.rect(x0 - 4, y0 + 2.3, 8, .9), RUIN.dk, .35); }
         B.f(B.poly([v0, v1, { x: v1.x, y: v1.y - 7 }, { x: v0.x, y: v0.y - 7 }]), RUIN.moss, .4);
         if (r() < .5) { const t = r(), x = v0.x + ex * t, yTop = v0.y + ey * t - Math.min(hs[e], hs[(e + 1) % 4]), d = 8 + r() * 16; B.f(`M${x - 6} ${yTop}Q${x - 8} ${yTop + d * .7} ${x} ${yTop + d}Q${x + 8} ${yTop + d * .6} ${x + 7} ${yTop}Z`, RUIN.ivy, .92); for (let k = 0; k < 5; k++) B.f(B.blob(r, x + (r() - .5) * 11, yTop + r() * d, 2.6, 2, 6, .5), r() < .5 ? RUIN.ivyHi : RUIN.ivy, .95); }
         B.cx.restore();
       }
       const top = foot.map((v, k) => up(v, k));
-      B.f(B.poly(top), RUIN.hi).f(B.poly(top), season === 'winter' ? '#f4f6f2' : RUIN.moss, season === 'winter' ? .9 : .55);
+      B.f(B.poly(top), RUIN.body).f(B.poly(top), season === 'winter' ? '#f4f6f2' : RUIN.moss, season === 'winter' ? .9 : .55);
       if (season !== 'winter' && r() < .35) B.tufts(r, (top[0].x + top[2].x) / 2, (top[0].y + top[2].y) / 2 + 2, 10, 4, [RUIN.mossHi, '#8a9a58'], 6);
     }
     // tumbled stones and ferns at the foot

@@ -11,11 +11,11 @@
  * (each adds its painters to GardenPaintVale.parts).
  *
  * Layers, all baked once and cached (nothing redraws while walking):
- *   ground   chunked (GardenPaintTerrainKit.chunked, 256 px, K 1.25), at -9346:
+ *   ground   chunked (GardenPaintTerrainKit.chunked, 256 px, K 1.1, 20 MB budget), at -9346:
  *            over the village ground and the painted water, under every prop;
  *   under    the water in the crossings' gaps, small sprites at -9592, under the
  *            painted rivers (their own banks overlap it, so there is no seam);
- *   mainland chunked at K 0.5 (it is seen far off), at -9268 over the sea;
+ *   mainland chunked at K 0.35, 512 px (it is seen far off; 6 MB budget), at -9268 over the sea;
  *   things   sprites that stand up (walls, boats, crates, trees) in the object
  *            layer, depth = their base line, so the player walks behind them.
  * Chunks bake lazily, a slice of at most 10 ms at a time, nearest the camera
@@ -155,11 +155,11 @@ window.GardenPaintVale = (function () {
     const ground = [], main = [], under = [], things = [];
     const ctx = { L, P, season, tod: info.tod, kit, W, sig, add: (bb, seed, draw, extra) => ground.push(Object.assign({ bb, seed, draw }, extra || {})), main: (bb, seed, draw) => main.push({ bb, seed, draw }), under: o => under.push(o), thing: o => things.push(o) };
     for (const p of parts) ok(() => p.compose(ctx));
-    const worldBox = { x: -2400, y: -1600, w: W.cols * W.cellW + 4800, h: W.sky + W.rows * W.cellH + 2600 };
+    const worldBox = { x: -1800, y: -1200, w: W.cols * W.cellW + 4800, h: W.sky + W.rows * W.cellH + 2600 };
     const gBox = { x: 0, y: 0, w: W.cols * W.cellW, h: W.sky + W.rows * W.cellH };
     const handles = [];
-    if (ground.length) handles.push(kit.chunked(scene, root, ground, { key: sig + '|g', box: gBox, K: 1.25, chunk: 256, depth: DEPTH, budgetMB: 22, lazy: true, slice: 10 }));
-    if (main.length) handles.push(kit.chunked(scene, root, main, { key: sig + '|m', box: worldBox, K: .5, chunk: 512, depth: MAIN_DEPTH, budgetMB: 8, lazy: true, slice: 10 }));
+    if (ground.length) handles.push(kit.chunked(scene, root, ground, { key: sig + '|g', box: gBox, K: 1.1, chunk: 256, depth: DEPTH, budgetMB: 20, lazy: true, slice: 10 }));
+    if (main.length) handles.push(kit.chunked(scene, root, main, { key: sig + '|m', box: worldBox, K: .35, chunk: 512, depth: MAIN_DEPTH, budgetMB: 6, lazy: true, slice: 10 }));
     // Standing things and the crossings' water: a texture already baked is shown at once; a new one waits in a queue
     // that tick() bakes nearest the camera first, a few milliseconds a frame (so a repaint never freezes a frame).
     const sprites = [], queue = [];

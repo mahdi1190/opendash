@@ -25,20 +25,20 @@
     const paintLand = (B, r, cb) => {
       B.f(B.rect(cb[0], cb[1], cb[2] - cb[0], cb[3] - cb[1]), P.mainField[0]);
       // fields: hashed tiles, each a patch of crop or pasture with a hedge and a hedgerow tree or two
-      kit.tiles(cb, 200, 60, 81, (tx, ty, rr) => {
-        const x = tx + rr() * 30, y = ty + rr() * 20, w = 170 + rr() * 40, h = 120 + rr() * 50, col = P.mainField[Math.floor(rr() * P.mainField.length)];
-        const q = [[x, y], [x + w, y + (rr() - .5) * 20], [x + w + (rr() - .5) * 20, y + h], [x + (rr() - .5) * 20, y + h + (rr() - .5) * 16]];
+      kit.tiles(cb, 240, 80, 81, (tx, ty, rr) => {
+        const x = tx + (rr() - .5) * 60, y = ty + (rr() - .5) * 50, w = 200 + rr() * 90, h = 150 + rr() * 90, col = P.mainField[Math.floor(rr() * P.mainField.length)];
+        const q = [[x, y], [x + w, y + (rr() - .5) * 60], [x + w + (rr() - .5) * 60, y + h], [x + (rr() - .5) * 60, y + h + (rr() - .5) * 50]];
         B.f(B.poly(q), col, .85);
         if (rr() < .4) for (let k = 0; k < 6; k++) B.s(`M${x + 8} ${y + 12 + k * h / 7}L${x + w - 8} ${y + 10 + k * h / 7}`, kit.mix(col, '#6a7a3a', .25), 2, .35);
-        B.s(B.poly(q), '#4f6a34', 5, .75);
+        B.s(B.poly(q), '#5a7238', 3.4, .6);
         for (let k = 0; k < 4; k++) { const e = Math.floor(rr() * 4), a = q[e], b = q[(e + 1) % 4], t = rr(); B.f(B.blob(rr, a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - 4, 9 + rr() * 8, 7 + rr() * 5, 8, .4), P.leaf[Math.floor(rr() * 2)], .95); }
         if (rr() < .12) { const fx = x + w * .5, fy = y + h * .5; B.f(B.rect(fx - 9, fy - 8, 18, 10), '#d8ccb0').f(`M${fx - 11} ${fy - 8}L${fx} ${fy - 16}L${fx + 11} ${fy - 8}Z`, '#8a5a44'); }
       });
       // woods: the west woods run on, and copses dot the farmland
       kit.tiles(cb, 90, 40, 82, (tx, ty, rr) => {
         for (let k = 0; k < 5; k++) {
-          const x = tx + rr() * 90, y = ty + rr() * 90, nearWest = x > -700 && y > W.sky + 6 * ch && y < W.sky + 70 * ch ? 1 - Math.max(0, -x) / 700 : 0;
-          const n = kit.fbm(x / 700, y / 600, 83) + nearWest * .35; if (n < .6) continue;
+          const x = tx + rr() * 90, y = ty + rr() * 90, nearWest = x > -260 && y > W.sky + 6 * ch && y < W.sky + 70 * ch ? 1 - Math.max(0, -x) / 260 : 0;
+          const n = kit.fbm(x / 520, y / 460, 83) + nearWest * .22 * kit.fbm(x / 200, y / 200, 87); if (n < .6) continue;
           const s = 22 + rr() * 16; B.f(B.blob(rr, x + 6, y + 8, s, s * .7, 9, .35), P.leaf[0]).f(B.blob(rr, x, y, s * .86, s * .6, 9, .35), P.leaf[1]).f(B.blob(rr, x - s * .3, y - s * .25, s * .4, s * .28, 7, .4), P.leaf[2], .9);
         }
       });
@@ -58,11 +58,11 @@
       // the long road, leaving from the milestone
       V.strokePts(B, road, '#9c8a66', 20, .7); V.strokePts(B, road, '#dccca2', 14, .95); V.strokePts(B, road, '#efe2bf', 5, .5);
       // haze: the farther, the paler and bluer
-      if (cb[0] < 0) B.f(B.rect(cb[0], Math.max(cb[1], 0), Math.min(0, cb[2]) - cb[0], Math.max(0, cb[3] - Math.max(cb[1], 0))), B.lin(0, 0, -1600, 0, [[0, kit.rgba(P.haze, 0)], [1, kit.rgba(P.haze, .8)]]));
-      if (cb[1] < 0) B.f(B.rect(cb[0], cb[1], cb[2] - cb[0], Math.min(0, cb[3]) - cb[1]), B.lin(0, 0, 0, -1600, [[0, kit.rgba(P.haze, 0)], [1, kit.rgba(P.haze, .8)]]));
+      if (cb[0] < 0) B.f(B.rect(cb[0], Math.max(cb[1], 0), Math.min(0, cb[2]) - cb[0], Math.max(0, cb[3] - Math.max(cb[1], 0))), B.lin(-200, 0, -1700, 0, [[0, kit.rgba(P.haze, 0)], [1, kit.rgba(P.haze, .72)]]));
+      if (cb[1] < 0) B.f(B.rect(cb[0], cb[1], cb[2] - cb[0], Math.min(0, cb[3]) - cb[1]), B.lin(0, -150, 0, -1300, [[0, kit.rgba(P.haze, 0)], [1, kit.rgba(P.haze, .72)]]));
     };
     const bb = (pts, pad) => kit.bboxOf(pts, pad);
-    const bandW = [-2400, -1700, 30, W.sky + 86 * ch], bandN = [-2400, -1700, cp(122, 0).x, 30];
+    const bandW = [-1800, -1200, 30, W.sky + 86 * ch], bandN = [-1800, -1200, cp(118, 0).x, 30];
     for (const [i, band] of [bandW, bandN].entries()) {
       // beaches and foam where the mainland meets the sea
       main(band, 86 + i, (B, r, cb) => {
