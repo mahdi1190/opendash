@@ -71,7 +71,7 @@ function _ppQuad(pet, pose, mood, X, S) {
   const legT = S.legT ? S.legT(X, m) : (m === 'socks' || S.socks) ? B : pts ? C : A;
   const L = S.L, D = S.D, legH = S.leg, lw = S.lw;
   const nk = S.neck || [6, 55, D * 1.1];
-  const sleep = pose === 'sleep', sit = pose === 'sit';
+  const lie = pose === 'sit' && !!S.hoof, sleep = pose === 'sleep' || lie, sit = pose === 'sit' && !lie;   // a hoofed pet 'sits' the way it really rests: lying down, head up
   const seed = pet.species + (pet.coat || '') + (pet.breed || '') + pose;
   let hx, hy, hr = S.hr, headTilt = 0, tailRoot, neckPiv, collar;
   const bx = 47, by = G - legH - D * 0.55;
@@ -169,13 +169,23 @@ function _ppQuad(pet, pose, mood, X, S) {
     parts.body.push(_pF(_pE(cx - rx * 0.45, cy + ry * 0.05, ry * 0.75, ry * 0.75), A[1], 0.35));
     if (!S.noFur) _ppFur(parts.body, seed + 'z1', cx - rx * 0.05, cy - ry * 0.35, rx * 0.8, ry * 0.45, 22, S.furLen || 2.6, 1.9, furLit, 0.7, 0.4);
     parts.paw.push(_pF(_pE(cx + rx * 0.85, G - lw * 0.4, lw * 1.25, lw * 0.5), legT[1]), _pF(_pE(cx + rx * 0.82, G - lw * 0.52, lw * 1.05, lw * 0.36), legT[0]));
+    if (lie) {
+      // legs folded under, the head carried up on its neck
+      parts.paw.push(_pF(_pE(cx + rx * 0.55, G - lw * 0.5, lw * 1.6, lw * 0.55), legT[1]));
+      hx = cx + rx * 0.75 + hr * 0.4; hy = cy - ry * 0.9 - hr * 0.6 - nk[0] * 0.55;
+      const nb = [cx + rx * 0.5, cy - ry * 0.4], nt = [hx - hr * 0.3, hy + hr * 0.2], nd = _ppTaper(nb, nt, nk[2] * 1.2, hr * 1.25, -0.8);
+      parts.neck.push(_pF(nd, A[0]), _pF(nd, A[1], 0.4, [0.9, 0, 0, 0.9, (nb[0] + nt[0]) / 2 * 0.1 + 1.2, (nb[1] + nt[1]) / 2 * 0.1 + 1.0]));
+      neckPiv = [hx - hr * 0.2, hy + hr * 0.9]; collar = { x: nt[0] + 0.8, y: nt[1] + (nb[1] - nt[1]) * 0.35, w: Math.max(nk[2] * 0.62, hr * 0.85), rot: -6 };
+      if (S.mane) S.mane(parts, { pose: 'sit', nb, nt, hx, hy, hr, X, A, B, C, m, seed, D, L });
+    } else {
     hr = hr * 0.98; hx = cx + rx * 0.82; hy = G - hr * 0.95; headTilt = 1;
     neckPiv = [hx - hr * 0.5, hy + hr * 0.4];
     collar = { x: hx - hr * 0.7, y: hy + hr * 0.4, w: hr * 0.9, rot: 60 };
+    }
     tailRoot = [cx - rx * 0.9, G - 3];
-    if (S.extra) S.extra({ parts, X, A, B, C, m, pose, body: { cx, cy, rx, ry }, seed, S, pet });
-    _ppMarks(parts, { pose, m, brs, A, B, C, X, S, cx, cy, rx, ry, D, L, seed });
-    if (S.mane) S.mane(parts, { pose, hx, hy, hr, X, A, B, C, m, seed, cx, cy, rx, ry });
+    if (S.extra) S.extra({ parts, X, A, B, C, m, pose: 'sleep', body: { cx, cy, rx, ry }, seed, S, pet });
+    _ppMarks(parts, { pose: 'sleep', m, brs, A, B, C, X, S, cx, cy, rx, ry, D, L, seed });
+    if (S.mane && !lie) S.mane(parts, { pose, hx, hy, hr, X, A, B, C, m, seed, cx, cy, rx, ry });
   }
   // ---- the tail
   _ppTail(parts.tail, S.tail || { t: 'long' }, pose, tailRoot, A, B, C, X, m, seed, S);
