@@ -57,3 +57,27 @@ function _gcbAntPainted(x, col, moth) {
   if (moth) { const f = (m) => `M${x} ${m * 1}Q${x + 5} ${m * 5} ${x + 7} ${m * 10}M${x + 2.2} ${m * 2.6}l1.6 -1.2M${x + 3.8} ${m * 4.6}l1.6 -1.2M${x + 5.2} ${m * 6.8}l1.4 -1M${x + 2.2} ${m * 2.6}l-.4 1.8M${x + 3.8} ${m * 4.6}l-.6 1.8M${x + 5.2} ${m * 6.8}l-.8 1.6`; return `<path class="gcp-ant" d="${f(-1)}${f(1)}" stroke="${col}" stroke-width=".55" fill="none" stroke-linecap="round"/>`; }
   return `<g class="gcp-ant"><path d="M${x} -1Q${x + 6} -4 ${x + 10} -10M${x} 1Q${x + 6} 4 ${x + 10} 10" stroke="${col}" stroke-width=".55" fill="none" stroke-linecap="round"/><ellipse cx="${x + 10.2}" cy="-10.3" rx="1" ry=".7" fill="${col}"/><ellipse cx="${x + 10.2}" cy="10.3" rx="1" ry=".7" fill="${col}"/></g>`;
 }
+
+/** A dragonfly or a damselfly from above, painted: four long clear wings with a net of veins and a dark spot near each tip (amber at the
+ *  root on a darter, a dark band on a demoiselle), the thorax lit and striped, the abdomen in rings, two big glossy eyes that meet. */
+function _gcbDragonPainted(x) {
+  const { c, c2, c3, n, r, L } = x, slim = L.w === 'slim' || L.p === 'slim', band = L.p === 'band', big = L.p === 'big' || L.w === 'big';
+  const len = slim ? 22 : 18 + r() * 3, wl = slim ? 12 : big ? 17 : 15, ww = slim ? 2.6 : 3.8, deep = _gfaDk(c, 0.5), membrane = _gfaMix('#eef4f2', c3, 0.25);
+  const a = slim ? [-126, -140] : [-82, -100], amber = /darter|chaser|skimmer/.test(x.b.id);
+  const W = (y, ang, k) => {
+    const l = wl * k, d = `M0 0C${n(l * 0.2)} ${n(-ww * 1.1)} ${n(l * 0.8)} ${n(-ww)} ${n(l)} ${n(-ww * 0.25)}C${n(l * 1.02)} ${n(ww * 0.4)} ${n(l * 0.7)} ${n(ww * 0.9)} ${n(l * 0.3)} ${n(ww * 0.75)}C${n(l * 0.15)} ${n(ww * 0.6)} 0 ${n(ww * 0.3)} 0 0Z`;
+    let v = `M0 0L${n(l * 0.98)} ${n(-ww * 0.3)}M0 0Q${n(l * 0.5)} ${n(ww * 0.1)} ${n(l * 0.9)} ${n(ww * 0.3)}M${n(l * 0.1)} ${n(ww * 0.3)}Q${n(l * 0.5)} ${n(ww * 0.6)} ${n(l * 0.7)} ${n(ww * 0.65)}`;
+    for (let i = 1; i < 7; i++) { const t = i / 7; v += `M${n(l * t)} ${n(-ww * 0.85)}l${n(0.4)} ${n(ww * 1.5)}`; }
+    return `<g transform="translate(4 ${y}) rotate(${ang})"><path d="${d}" fill="${membrane}" fill-opacity=".38" stroke="${_gfaDk(c3, 0.3)}" stroke-width=".35" stroke-opacity=".6"/>`
+      + (amber ? `<path d="M0 0C${n(l * 0.1)} ${n(-ww * 0.8)} ${n(l * 0.25)} ${n(-ww * 0.7)} ${n(l * 0.28)} 0C${n(l * 0.2)} ${n(ww * 0.6)} ${n(l * 0.1)} ${n(ww * 0.5)} 0 0Z" fill="#d89a3a" fill-opacity=".45"/>` : '')
+      + (band ? `<ellipse cx="${n(l * 0.6)}" cy="${n(-ww * 0.05)}" rx="${n(l * 0.24)}" ry="${n(ww * 0.8)}" fill="${c}" fill-opacity=".7"/>` : '')
+      + `<path d="${v}" stroke="${_gfaDk(c3, 0.45)}" stroke-width=".25" stroke-opacity=".55" fill="none"/><path d="M${n(l * 0.84)} ${n(-ww * 0.7)}l${n(l * 0.08)} ${n(ww * 0.1)}" stroke="#2a2420" stroke-width="${n(ww * 0.35)}" stroke-opacity=".75"/></g>`;
+  };
+  let rings = ''; for (let i = 1; i < 8; i++) rings += `M${n(-i * len / 8)} ${slim ? -0.9 : -1.4}v${slim ? 1.8 : 2.8}`;
+  const aw = slim ? 1.5 : 2.4;
+  return `<g class="gba-wings gcp-df">${W(-1.4, a[0], 1)}${W(1.4, -a[0], 1)}${W(-0.6, a[1], 0.94)}${W(0.6, -a[1], 0.94)}</g><g class="gcp-df-body">`
+    + `<path d="M3 0L${n(-len)} 0" stroke="${_gfaDk(c, 0.3)}" stroke-width="${n(aw * 1.25)}" stroke-linecap="round"/><path d="M3 -0.3L${n(-len)} -0.3" stroke="${c}" stroke-width="${n(aw)}" stroke-linecap="round"/><path d="M2 ${n(-aw * 0.35)}L${n(-len * 0.9)} ${n(-aw * 0.35)}" stroke="#fff4d6" stroke-width=".45" stroke-opacity=".45" stroke-linecap="round"/><path d="${rings}" stroke="${_gfaDk(c2 === c ? c : c2, 0.25)}" stroke-width=".7" stroke-opacity=".8"/>`
+    + `<ellipse cx="5" rx="4.6" ry="3.2" fill="${_gfaDk(c, 0.15)}"/><ellipse cx="4.6" cy="-0.5" rx="4" ry="2.4" fill="${c}"/><path d="M2 -2.6l4.6 1.2M2 2.4l4.6 -1" stroke="${c2}" stroke-width=".8" stroke-opacity=".8"/>`
+    + `<ellipse cx="10.6" cy="-2.6" rx="3" ry="3.2" fill="${_gfaDk(c2, 0.25)}"/><ellipse cx="10.6" cy="2.6" rx="3" ry="3.2" fill="${_gfaDk(c2, 0.25)}"/><ellipse cx="10.2" cy="-3" rx="2.4" ry="2.5" fill="${c2}"/><ellipse cx="10.2" cy="2.2" rx="2.4" ry="2.5" fill="${c2}"/>`
+    + `<circle cx="9.4" cy="-4" r=".8" fill="#ffffff" fill-opacity=".75"/><circle cx="9.4" cy="1.4" r=".7" fill="#ffffff" fill-opacity=".6"/><path d="M8.4 -0.2h4" stroke="${deep}" stroke-width=".4" stroke-opacity=".6"/></g>`;
+}
