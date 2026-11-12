@@ -459,6 +459,7 @@ function petSvg(pet, o) {
 function petSvgGroup(pet, o) {
   const painted = o && o.painted != null ? !!o.painted : !(o && o.flat) && typeof gardenFigurePaintOn === 'function' && gardenFigurePaintOn();
   let s; _PT_PAINT.on = painted; try { s = _petSvgGroupRaw(pet, o); } finally { _PT_PAINT.on = false; }
+  if (s && painted) { const sp = petSpecies(petNormalize(pet).species); if (sp && (sp.id === 'duck' || (typeof _ppArtFor === 'function' && _ppArtFor(sp)))) s = s.replace('class="pt-g ', 'class="pt-g pt-pp '); }   // redrawn: the painter adds no second shading
   return s && !(o && o.flat) && typeof gardenFigurePaintIf === 'function' ? gardenFigurePaintIf(s, 'pet') : s; }
 function _petSvgGroupRaw(pet, o) {
   o = o || {};

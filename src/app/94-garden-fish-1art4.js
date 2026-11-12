@@ -62,6 +62,7 @@ function _gcbWingMarks(p, W, uid, tag, c, c2, c3, e, rnd, fore) {
 }
 /** A butterfly or a moth. Both wings on each side, mirrored; the wing shape is the species' first and loudest feature. */
 function _gcbFlier(b, L, uid, rnd) {
+  if (typeof _gfaPaintOn === 'function' && _gfaPaintOn()) return _gcbFlierPainted(b, L, uid, rnd);   // the Painted village's own drawing (94-garden-fish-1art6.js)
   const moth = b.shape === 'moth', kind = _gcbWingKind(b), c = L.c, c2 = L.c2, c3 = L.c3 || c2, e = _gfaDk(c, 0.5), p = L.p || (moth ? ['', 'speckle', 'band', 'stripe'][Math.floor(rnd() * 4)] : ''), n = _gfaN, line = `stroke="${e}" stroke-width="1" stroke-linejoin="round"`, k = 0.92 + rnd() * 0.14, K = _GCB_WINGS[kind];
   const bodyC = _gfaDk(c2 === c ? '#3a2a1a' : c2, 0.35), mothC = _gfaLt(c, 0.25);
   if (kind === 'tent') {   // a moth at rest, wings folded along its back
@@ -141,7 +142,11 @@ function _gcbBugArt(b, L, uid) {
   const c = L.c, c2 = L.c2 || _gfaLt(c, 0.4), c3 = L.c3 || c2, e = _gfaDk(c, 0.5), draw = _GCB[fam];
   if (!draw) return '';
   const paint = typeof gardenFigurePaintStyle === 'function' && gardenFigurePaintStyle() ? _gcbPaint(fam, b, c, c2, _gfaRng('paint|' + b.id)) : '';   // the Painted village's brushwork, over the family's drawing
-  return `<g class="gba-bug gcb gcb-${fam}">${draw({ b, L, c, c2, c3, e, r: rnd, n: _gfaN, line: `stroke="${e}" stroke-width="1.1" stroke-linejoin="round"` })}${paint}</g>`;
+  const pOn = typeof _gfaPaintOn === 'function' && _gfaPaintOn(), x = { b, L, c, c2, c3, e, r: rnd, n: _gfaN, line: pOn ? `stroke="${_gfaDk(c, 0.35)}" stroke-width=".45" stroke-opacity=".55" stroke-linejoin="round"` : `stroke="${e}" stroke-width="1.1" stroke-linejoin="round"` };   // the Painted village: no ink outline
+  if (pOn && fam === 'dragonfly') return `<g class="gba-bug gcb gcb-${fam} gcb-painted">${_gcbDragonPainted(x)}</g>`;   // 94-garden-fish-1art6.js
+  let drawn = draw(x);
+  if (pOn) drawn = drawn.replace(/fill-opacity="\.(5[0-9]|6[0-9]|7[0-9])" stroke="[^"]*" stroke-width="\.[0-9]+"/g, `fill-opacity=".36" stroke="${_gfaDk(c3, 0.35)}" stroke-width=".35" stroke-opacity=".6"`);   // clear wings, not outlined panes
+  return `<g class="gba-bug gcb gcb-${fam}">${drawn}${paint}</g>`;
 }
 /**
  * The Painted village's brushwork on the commonest bug families, seen from above with the sun at the upper left (the shell's own

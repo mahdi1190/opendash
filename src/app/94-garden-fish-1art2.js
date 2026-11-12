@@ -7,7 +7,7 @@
      _gbaMore(...)             the bugs that have their own body: ant, wasp, fly, crane fly, earwig, woodlouse, centipede, slug, worm,
                                weevil, longhorn, rhinoceros beetle, scarab, shield bug, boatman, lacewing, mayfly, scorpion, leaf insect, katydid, roach, mite
    ============================================================ */
-function _gfaEye1(x, y, r, e) { return `<circle cx="${_gfaN(x)}" cy="${_gfaN(y)}" r="${_gfaN(r)}" fill="#fbf8ee" stroke="${e}" stroke-width="0.8"/><circle cx="${_gfaN(x + r * 0.2)}" cy="${_gfaN(y + r * 0.06)}" r="${_gfaN(r * 0.66)}" fill="#1a1712"/><circle cx="${_gfaN(x + r * 0.44)}" cy="${_gfaN(y - r * 0.26)}" r="${_gfaN(r * 0.24)}" fill="#ffffff"/>`; }
+function _gfaEye1(x, y, r, e) { if (typeof _gfaPaintOn === 'function' && _gfaPaintOn()) return _gfaEyePainted(x, y, Math.max(1.4, r * 0.66), '#c4c6c0'); return `<circle cx="${_gfaN(x)}" cy="${_gfaN(y)}" r="${_gfaN(r)}" fill="#fbf8ee" stroke="${e}" stroke-width="0.8"/><circle cx="${_gfaN(x + r * 0.2)}" cy="${_gfaN(y + r * 0.06)}" r="${_gfaN(r * 0.66)}" fill="#1a1712"/><circle cx="${_gfaN(x + r * 0.44)}" cy="${_gfaN(y - r * 0.26)}" r="${_gfaN(r * 0.24)}" fill="#ffffff"/>`; }
 /** Marks scattered in an oval, for the shapes that have no clipped body. */
 function _gfaOvalMarks(p, cx, cy, rx, ry, rnd, look) {
   const mark = look.c3 || _gfaDk(look.c, 0.4), light = look.c2 || _gfaLt(look.c, 0.4);
