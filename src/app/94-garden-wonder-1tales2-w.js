@@ -134,7 +134,7 @@ wdTaleAdd({ id: 'v-world-end', kind: 'small', title: 'The edge of the map', jour
 
 wdTaleAdd({ id: 'v-cloud-sea', kind: 'small', title: 'Above the cloud', journal: 'A morning when the whole vale went under, and the post came anyway.', gentle: 'keep', steps: [
   { id: 'a', who: 'place', near: ['ls-long-view', 'summit-cairn', 'ld-hut'], when: { open: [5], fog: 1 }, lines: [
-    'From the Long View this morning there is no vale. Only cloud, white and flat to the sea, with the sun on it. The top of the folly sticks out of it like a cork. Somewhere under it, very faint, the mill wheel is humming.'],
+    'From the Long View this morning there is no vale. Only cloud, white and flat to the sea, with the sun on it. The top of the folly sticks out of it like a cork. Somewhere under it, very faint, Pip is shouting at a heron.'],
     sit: 'You sit on the ledge with your feet over the cloud. It moves very slowly, like a sheet on a line. After a while the church weathervane comes up through it, then a roof, then the Mere, shining, and the vale is back, as if it had only gone to fetch something.' },
   { id: 'b', who: 'post', from: 'Perpetua', sign: 'Perpetua, Post (in the fog)', when: { days: 1 }, lines: [
     'Yesterday the cloud came down to the Mere and I could not see my own foot. I delivered everything. By feel.',

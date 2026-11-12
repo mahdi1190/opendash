@@ -263,7 +263,7 @@ wdTaleAdd({ id: 'hollin', kind: 'arc', title: 'What the woods keep', journal: 'H
       { k: 'yes', label: 'Give him the stall', set: { 'hollin.stall': 'yes' }, mood: { bramble: -1, thistle: -1, pip: 1 }, t: 'Right. Far end, by the drain. I’ll put it on the map. In pencil. Don’t expect me to buy a bird.' },
       { k: 'no', label: 'Don’t give him one', set: { 'hollin.stall': 'no' }, mood: { pip: -1 }, t: 'Right. I’ll tell him myself. To his face. He’ll take it. That’s almost the worst part.' },
       { k: 'ask', label: 'Ask Quince first', set: { 'hollin.stall': 'asked' }, t: 'Ask her if you like. I’ll wait. I’ve a feeling I know what she’ll say, and it isn’t yes or no.' }] },
-  { id: 'stall2', who: 'bramble', free: 1, when: { after: 'quince-woods.notvote', flag: { 'hollin.stall': 'asked' }, home: 1 }, lines: [
+  { id: 'stall2', who: 'bramble', free: 1, when: { after: 'quince-woods.notvote', days: 1, flag: { 'hollin.stall': 'asked' }, home: 1 }, lines: [
     'She told you not to make her the vote. I know. She told me the same, years ago, louder. So it’s you and me again.'],
     choice: [
       { k: 'yes', label: 'Give him the stall', set: { 'hollin.stall': 'yes' }, mood: { bramble: -1, thistle: -1, pip: 1 }, t: 'Far end. By the drain. Pencil.' },
@@ -321,7 +321,7 @@ wdTaleAdd({ id: 'quince-woods', kind: 'arc', title: 'The woods back', journal: '
     { t: 'You walked off. I can see it on you. Don’t do it on my account. Do it on yours, if you do it.', flag: { 'hollin.view': 'leave' } },
     'That’s all. That’s all there is about him, from me. Now. Honey. I’ve too much of it. Take a jar or I’ll be cross.'], give: { honey: 1 } },
   /* if you asked her about the stall */
-  { id: 'notvote', who: 'quince', free: 1, when: { flag: { 'hollin.stall': 'asked' }, home: 1 }, lines: [
+  { id: 'notvote', who: 'quince', free: 1, when: { after: 'hollin.stall', days: 1, flag: { 'hollin.stall': 'asked' }, home: 1 }, lines: [
     'Bramble sent you up the stair to ask me about a stall. Didn’t Bramble. Or you came on your own. That’s worse. That’s kind.',
     'Don’t make me the vote. I’ve been the reason for enough. I decided what happens to me, years ago, and I’m still deciding it, every morning. What happens to him, that’s the vale’s. Not mine.',
     'I’ll be selling honey either way. Thursdays and Saturdays. He’ll know that already, I expect. Off you go. Mind the stair. Two hundred and twelve today.'] },
@@ -357,7 +357,7 @@ wdTaleAdd({ id: 'quince-woods', kind: 'arc', title: 'The woods back', journal: '
     'Thistle passed me the bread before I asked for it. Pip told the heron joke and it had an end this time. I won the apple bob. I’m not apologising.'],
     sit: 'You sit with her on the bench by the terrace steps. The lanterns are still up on the green. She counts them, gets thirty-one, counts again, gets thirty-one. “Same twice,” she says. “Look at that.”' },
   /* after the hut is empty: the brook */
-  { id: 'brook', who: 'quince', when: { after: 'hollin.gone', days: 5, home: 1, deep: 1 }, lines: [
+  { id: 'brook', who: 'quince', when: { after: ['hollin.gone', 'quince.far'], days: 5, home: 1, deep: 1 }, lines: [   // after her own walk through the arch
     'I know the hut’s empty. Nobody told me. Nobody had to. The woods sound different from up here. Like a room after a clock’s stopped.',
     'I went down. All the way. Past the arch, on my own. I didn’t go near the hut. I went to the brook.',
     'There’s a quince by the brook now. I planted it. Little thing, on a stick. I dug the hole with my hands because I forgot a spade, which tells you how much I’d planned it.',
