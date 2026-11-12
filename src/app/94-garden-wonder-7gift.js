@@ -29,7 +29,7 @@ function _wdgItems() {
 }
 function _wdgKitWords() {
   const G = GARDEN_EARLY_GIFT, seeds = Object.keys(_wdgItems()).filter(k => k.startsWith('seed:')).map(k => (gardenPlant(k.slice(5)) || {}).name).filter(Boolean).map(n => n.toLowerCase());
-  return `A bigger watering can, a better rod, ${G.fert} feeds for your plants, and ${G.seeds} seeds each of ${seeds.length > 1 ? seeds.slice(0, -1).join(', ') + ' and ' + seeds[seeds.length - 1] : seeds[0] || 'something quick'}. And a four-leaf clover, pressed in the card, for luck.`;
+  return `A bigger watering can, a better rod, ${G.fert} bags of compost for your plants, and ${G.seeds} seeds each of ${seeds.length > 1 ? seeds.slice(0, -1).join(', ') + ' and ' + seeds[seeds.length - 1] : seeds[0] || 'something quick'}. And a four-leaf clover, pressed in the card, for luck.`;
 }
 /** Opens it. False if it has been opened already, here or on another device. */
 function gardenEarlyGiftOpen() {

@@ -48,7 +48,7 @@ void main () {
   // its edge is feathered along the region's own border, and it rolls back
   // (uRetreat) and fades (uFade) when a gate opens, on the same tiles.
   const paintedFragment = fragment
-    .replace('uniform float uTime;', 'uniform float uTime;\nuniform float uRetreat;\nuniform float uFade;\nuniform vec3 uTint;')
+    .replace('uniform float uTime;', 'uniform float uTime;\nuniform float uRetreat;\nuniform vec3 uTint;')   // (uFade is in the base mist already)
     .replace(/float coreFade[\s\S]*?gl_FragColor = fragColor;/, `float coreFade = smoothstep(-6.0, 30.0, distance - uRetreat * 220.0);
   float core = smoothstep(2.0, 96.0, distance + billow * 1.25 - uRetreat * 260.0) * coreFade * step(0.5, land.g);
   float edge = smoothstep(-34.0, 6.0, distance - uRetreat * 220.0) * (1.0 - smoothstep(18.0, 80.0, distance));

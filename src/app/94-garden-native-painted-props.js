@@ -400,14 +400,14 @@ window.GardenPaintedProps = (function () {
     if (!open) return;
   }
   function needSign(B, x, y, lv, name) {
-    // a hanging sign anyone reads at a glance: a padlock and the level it opens at, the HUD's gold badge
+    // a hanging sign anyone reads at a glance: a padlock and what opens it (the find), else the level it opens at, the HUD's gold badge
     B.s(`M${x - 13} ${y - 22}L${x - 11} ${y - 12}M${x + 13} ${y - 22}L${x + 11} ${y - 12}`, '#8a7a5a', 1);
     B.f(B.rr(x - 21, y - 13, 42, 26, 3), 'rgba(40,30,20,.25)').f(B.rr(x - 22, y - 14, 42, 26, 3), '#6a5034').f(B.rr(x - 20, y - 12, 38, 22, 2.4), '#efe4c6').f(B.rect(x - 20, y - 12, 38, 1.6), '#fff8e6');
     // the padlock
     B.s(`M${x - 13} ${y - 3}v-3a4 4 0 0 1 8 0v3`, '#6a6e70', 1.8).f(B.rr(x - 15.4, y - 3.4, 12.8, 10, 1.8), '#c89a3a').f(B.rect(x - 15.4, y - 3.4, 12.8, 2.4), '#e8c060').f(B.circ(x - 9, y + 1.4, 1.4), '#5a4020');
     // the gold level badge, like the one at the top of the screen
-    B.f(B.circ(x + 7, y - 1, 8), '#6a5034').f(B.circ(x + 7, y - 1, 7), '#e8b530').f(B.circ(x + 5.6, y - 2.6, 3.8), '#f6d468', .6).text(String(lv || '?'), x + 7, y - .6, lv >= 10 ? 8 : 9.5, '#4a3010', 'Inter, sans-serif', '800');
-    B.text('Level ' + (lv || '?'), x - 1, y + 16.5, 7, '#f4ecd8', 'Inter, sans-serif', '700');
+    if (!name) B.f(B.circ(x + 7, y - 1, 8), '#6a5034').f(B.circ(x + 7, y - 1, 7), '#e8b530').f(B.circ(x + 5.6, y - 2.6, 3.8), '#f6d468', .6).text(String(lv || '?'), x + 7, y - .6, lv >= 10 ? 8 : 9.5, '#4a3010', 'Inter, sans-serif', '800');
+    B.text(name ? 'Needs ' + name : 'Level ' + (lv || '?'), x - 1, y + 16.5, 7, '#f4ecd8', 'Inter, sans-serif', '700');
   }
   /** One gate as base art + (closed) a blocker + its sign. side: the span runs down the screen (you cross left to right). */
   function gateArt(kind, g, frame, season, open) {
@@ -533,7 +533,8 @@ window.GardenPaintedProps = (function () {
     lib('front');
     const was = gateSeen.get(g.id); gateSeen.set(g.id, !!open);
     const blockKey = bake(scene, stem + '|block', art.box, B => art.blocker(B));
-    const signBox = [-30, -30, 30, 26], signKey = bake(scene, 'gatesign|' + (lv || 0), signBox, B => needSign(B, 0, 0, lv));
+    const rule = typeof gardenGateRule === 'function' ? gardenGateRule(g) : null, item = rule && typeof GARDEN_GATE_ITEMS !== 'undefined' && GARDEN_GATE_ITEMS[rule.key], need = item ? item.name.replace(/^(A|An|The) /, '').replace(/^(coil|bag) of /, '').replace(/^mill turning$/, 'the mill').toLowerCase() : '';   // (feat/find-gates: the gate opens with a find)
+    const signBox = [-40, -30, 40, 26], signKey = bake(scene, 'gatesign|' + (lv || 0) + '|' + need, signBox, B => needSign(B, 0, 0, lv, need));
     const sx = frame.x + (art.side ? 0 : 0), sy = frame.y - (kind === 'arch' ? 78 : kind === 'stair' ? 116 : kind === 'ruin' ? 84 : 70) + (art.side && kind !== 'stair' ? -art.half * .2 : 0);
     if (!open) {
       h.add(image(scene, blockKey, frame.x, frame.y));
