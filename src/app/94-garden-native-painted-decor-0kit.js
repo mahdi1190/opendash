@@ -76,14 +76,16 @@ window.GardenPaintedDecor = (function () {
   // Baking is spread out: a redraw that would bake many new pictures at once
   // (a friend's garden, thirty things placed) bakes about 10 ms of them and
   // lets the rest appear over the next frames, so no task runs long.
-  const queue = []; let tickAt = 0, tickMs = 0, pumping = false, deferred = 0;
+  const queue = []; let tickAt = 0, tickMs = 0, pumping = false, deferred = 0;   // (worldMs, worldMax below: time spent drawing decorations, for status())
   function budget() { const now = performance.now(); if (now - tickAt > 30) { tickAt = now; tickMs = 0; } return tickMs < 10; }
   function pump() {
     if (pumping) return; pumping = true;
     const run = () => { const t0 = performance.now(); while (queue.length && performance.now() - t0 < 10) { const job = queue.shift(); try { job(); } catch (e) { lastError = String(e && e.stack || e); } } if (queue.length) setTimeout(run, 16); else pumping = false; };
     setTimeout(run, 16);
   }
-  function world(scene, item, sc, o) {
+  let worldMs = 0, worldMax = 0;
+  function world(scene, item, sc, o) { const t0 = performance.now(); try { return worldNow(scene, item, sc, o); } finally { const ms = performance.now() - t0; worldMs += ms; if (ms > worldMax) worldMax = ms; } }
+  function worldNow(scene, item, sc, o) {
     const K = kit(), R = ROWS[item.id], def = typeof gardenDecor === 'function' ? gardenDecor(item.id) : null; if (!K || !R || !def) return null;
     const W = o.W, season = sc.season || 'summer', night = !!o.night, mood = season + '|' + (night ? 'n' : 'd');
     const flat = !!R.ground, fx = (item.x + (def.w || 1) / 2) * W.cellW, foot = W.sky + (item.y + (def.h || 1)) * W.cellH - (flat ? 0 : 4);
@@ -108,7 +110,7 @@ window.GardenPaintedDecor = (function () {
       tickMs += performance.now() - t0;
     };
     if (scene.textures.exists('gpp|' + mainKey) || budget()) paint(); else { deferred++; queue.push(paint); pump(); }
-    if (P.glow) { const hy = P.glow.halo == null ? null : foot + P.glow.halo * SC; h.lights.push({ x: fx, y: hy == null ? foot - 10 : hy, radius: P.glow.radius || 90, pool: true }); if (night) K.glowPool(scene, h, fx, foot, (P.glow.w || 70) * SC, hy); }
+    if (P.glow && night) { const hy = P.glow.halo == null ? null : foot + P.glow.halo * SC; K.glowPool(scene, h, fx, foot, Math.min(90, (P.glow.w || 70) * SC), hy); }   // like the village's lanterns: a pool and a halo, no extra light source (a cluster of them would wash the night out)
     const [x0, y0, x1, y1] = P.box, bx0 = (flip ? -x1 : x0) * SC, bx1 = (flip ? -x0 : x1) * SC;
     return K.finish(h, { x: fx + bx0, y: foot + y0 * SC, width: bx1 - bx0, height: (y1 - y0) * SC + 6 }, { x: fx, y: foot });
   }
@@ -201,7 +203,7 @@ window.GardenPaintedDecor = (function () {
     if (url === undefined) url = make(key, () => { const c = document.createElement('canvas'); c.width = S; c.height = S; const [x0, y0, x1, y1] = p.box, k = Math.min(S * 1.5 / (x1 - x0), S * 1.5 / (y1 - y0)), t = document.createElement('canvas'); t.width = Math.ceil((x1 - x0) * k); t.height = Math.ceil((y1 - y0) * k); const tx = t.getContext('2d', { willReadFrequently: true }); tx.setTransform(k, 0, 0, k, -x0 * k, -y0 * k); p.draw(K.brush(tx), opts(K, id, 'summer', false, 0, false, true)); return fit(t, tx, c, c.getContext('2d'), false); });
     return url ? `<svg class="${cls || 'gcr-art'} gd-ico-painted" viewBox="0 0 ${S} ${S}" width="${px}" height="${px}" aria-hidden="true" focusable="false"><image href="${url}" x="0" y="0" width="${S}" height="${S}"/></svg>` : '';
   }
-  function status() { return { rows: Object.keys(ROWS).length, deferred, queued: queue.length, icons, iconMs: Math.round(iconMs), cached: ICON.size, lastError }; }
+  function status() { return { rows: Object.keys(ROWS).length, worldMs: Math.round(worldMs), worldMax: +worldMax.toFixed(1), deferred, queued: queue.length, icons, iconMs: Math.round(iconMs), cached: ICON.size, lastError }; }
   return { opts, add, row, has: id => !!ROWS[id] && !ROWS[id].iconOnly,   // iconOnly: painted in the shop and bag, drawn live in the world (the aquarium shows your own fish)
      ids: () => Object.keys(ROWS), ground, world, signature, icon, addIcon, extraIcon, iconCanvas, status, get lastError() { return lastError; } };
 })();
