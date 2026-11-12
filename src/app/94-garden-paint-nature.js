@@ -14,5 +14,7 @@ window.GardenPaintNature = (function () {
   function tick(time, view) { if (!on) return; for (const p of parts()) try { p.tick(time, view); } catch (e) { lastError = String(e && e.stack || e); } }
   function clear() { for (const p of parts()) try { p.clear(); } catch (e) { lastError = String(e && e.stack || e); } on = false; }
   function status() { return { on, water: window.GardenPaintWater ? GardenPaintWater.status() : null, wood: window.GardenPaintWood ? GardenPaintWood.status() : null, lastError }; }
-  return { paint, tick, clear, status };
+  /** The world asks before drawing its own forest tree at world px (x, y). */
+  function covers(W, x, y) { try { return !!(window.GardenPaintWood && window.GardenPaintWater && GardenPaintWater.wanted() && GardenPaintWood.covers(x / W.cellW, (y - W.sky) / W.cellH)); } catch (e) { return false; } }
+  return { paint, tick, clear, status, covers };
 })();

@@ -932,6 +932,7 @@ window.GardenNativeWorld = (function () {
         for (const row of _gldIslandLandformRows(sc)) add('landform:' + row.id, row.html, { kind: 'scenery', id: row.id, model: { id: row.id, kind: row.kind, x: row.x, y: row.y, w: row.w, h: row.h }, foot: row.foot }, row.foot.y - 2);
       }
       for (const spec of forestRows) {
+        if (window.GardenPaintNature && GardenPaintNature.covers(W, spec.x, spec.y)) continue;   // painted woods stand there
         const id = spec.id, signature = 'native-forest-crafted-8|' + id + '|' + sc.season; keep.add(id);
         if (drawings.get(id)?.source === signature) continue;
         const old = drawings.get(id); if (old) old.handle.destroy();

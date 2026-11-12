@@ -304,6 +304,8 @@ window.GardenPaintWater = (function () {
   }
   function emitters(S) {
     const scene = S.scene, T = S.tex, out = [], W = S.W, layer = S.parent, add = im => { im.setDepth(-9585); layer.add(im); return im; };
+    // a set piece that must stand in front of a sprite (the falls) goes in the object layer at its own depth
+    const put = (im, over) => { if (over != null && S.objects) { S.objects.add(im); im.setDepth(over); S.sortObjects = true; return im; } return add(im); };
     const night = S.tod === 'night', dusk = S.tod === 'dusk' || S.tod === 'dawn', tint = night ? 0xc8d6ff : dusk ? 0xffe0bc : 0xffffff;
     // Glints riding the current down each river's centre line.
     for (const w of S.M.waters) {
@@ -340,9 +342,9 @@ window.GardenPaintWater = (function () {
     }
     // Foam strips: the weir and the falls' landing (scrolling white water).
     for (const fx of S.foams) {
-      const ts = add(scene.add.tileSprite(fx.x, fx.y, fx.w, 32, T.strip)).setRotation(fx.ang).setScale(1, fx.h / 32).setAlpha(.85);
+      const ts = put(scene.add.tileSprite(fx.x, fx.y, fx.w, 32, T.strip), fx.over).setRotation(fx.ang).setScale(1, fx.h / 32).setAlpha(.85);
       const puffs = []; const r = rng(hash('foam' + fx.x));
-      for (let i = 0; i < fx.puffs; i++) puffs.push({ im: add(scene.add.image(fx.x, fx.y, T.foam)).setAlpha(0), ph: r(), off: (r() - .5) * fx.w * .9 });
+      for (let i = 0; i < fx.puffs; i++) puffs.push({ im: put(scene.add.image(fx.x, fx.y, T.foam), fx.over).setAlpha(0), ph: r(), off: (r() - .5) * fx.w * .9 });
       out.push({ b: { x: fx.x - fx.w, y: fx.y - fx.w, w: fx.w * 2, h: fx.w * 2 }, list: [{ im: ts }].concat(puffs), kind: 'foam', update(dt, t) {
         ts.tilePositionX = -t * fx.speed; ts.setAlpha(.7 + Math.sin(t * 3.1) * .12);
         const c = Math.cos(fx.ang), s = Math.sin(fx.ang);
@@ -352,7 +354,7 @@ window.GardenPaintWater = (function () {
     // Mist: soft puffs drifting over the falls' pool, and at dawn and dusk over the Mere.
     for (const m of S.mists) {
       const list = [], r = rng(hash('mist' + m.x));
-      for (let i = 0; i < m.n; i++) list.push({ im: add(scene.add.image(m.x, m.y, T.mist)).setAlpha(0).setDepth(m.depth || -9584), ph: r(), dx: (r() - .5) * m.rx * 2, dy: (r() - .5) * m.ry * 2, k: .7 + r() * .9, rise: m.rise || 0 });
+      for (let i = 0; i < m.n; i++) list.push({ im: (m.over != null ? put(scene.add.image(m.x, m.y, T.mist), m.over) : add(scene.add.image(m.x, m.y, T.mist)).setDepth(m.depth || -9584)).setAlpha(0), ph: r(), dx: (r() - .5) * m.rx * 2, dy: (r() - .5) * m.ry * 2, k: .7 + r() * .9, rise: m.rise || 0 });
       out.push({ b: { x: m.x - m.rx - 160, y: m.y - m.ry - 120, w: m.rx * 2 + 320, h: m.ry * 2 + 240 }, list, kind: 'mist', update(dt, t) {
         for (const p of this.list) { const f = (t * m.speed + p.ph) % 1; p.im.setPosition(m.x + p.dx + Math.sin(t * .2 + p.ph * 6) * 20 + f * m.drift, m.y + p.dy - f * p.rise).setScale(p.k * (1 + f * .6), p.k * (1 + f * .3)).setAlpha(Math.sin(f * Math.PI) * m.a); }
       } });
@@ -410,8 +412,11 @@ window.GardenPaintWater = (function () {
         c.globalAlpha = 1; c.fillStyle = g2; c.save(); c.translate(pool.x, pool.y - 6); c.scale(1, .45); c.beginPath(); c.arc(0, 0, width * .9, 0, Math.PI * 2); c.fill(); c.restore();
         if (w) c.restore(); c.globalAlpha = 1;
       } });
-      foams.push({ x: pool.x, y: pool.y - 4, w: width * 1.1, h: 22, ang: 0, speed: 38, puffs: 9, drift: 16 });
-      mists.push({ x: pool.x, y: pool.y - 20, rx: width * .7, ry: 16, n: 7, a: .42, speed: .09, drift: 0, rise: 60, depth: -9583 });
+      foams.push({ x: pool.x, y: pool.y - 4, w: width * 1.1, h: 22, ang: 0, speed: 38, puffs: 9, drift: 16, over: pool.y + 30 });
+      // spray boiling up off the pool in front of the sheet, a veil drifting up its face, and a low mist lying out over the water
+      mists.push({ x: pool.x, y: pool.y - 14, rx: width * .6, ry: 10, n: 7, a: .5, speed: .11, drift: 0, rise: 70, over: pool.y + 40 });
+      mists.push({ x: pool.x, y: pool.y - 90, rx: width * .55, ry: 50, n: 5, a: .22, speed: .05, drift: 0, rise: 80, over: pool.y + 41 });
+      mists.push({ x: pool.x + 30, y: pool.y + 30, rx: width * 1.6, ry: 18, n: 6, a: .26, speed: .03, drift: 70, rise: 4, depth: -9583 });
       S.fallsPool = pool;
     }
     // Morning and evening mist lying on the Mere.
@@ -419,17 +424,20 @@ window.GardenPaintWater = (function () {
     return { extras, foams, mists };
   }
 
+  function startView(W) { if (typeof _gw === 'undefined' || !Number.isFinite(_gw.px)) return null; const x = _gw.px * W.cellW, y = W.sky + _gw.py * W.cellH; return { x: x - 700, y: y - 460, w: 1400, h: 920 }; }
   /* ---------- the public face ---------- */
   function wanted() { const GP = window.GardenNativePainted; return !!(GP && GP.wanted && GP.wanted() && GP.ready && GP.ready() && typeof Path2D === 'function' && typeof sceneDraw !== 'undefined'); }
   /** Paint the vale's waters. info: { W, data, season, tod } . parent: the world's root layer (ground lives at depth -9600). */
-  function paint(scene, parent, info) {
+  function paint(scene, parent, info, objects) {
     clear();
     if (!info || !info.data || !info.data.freshwater) return null;
     const t0 = performance.now();
-    const S = state = { scene, parent, W: info.W, data: info.data, season: info.season || 'summer', tod: info.tod || 'day', serial: 0, clock: 0, last: null, sortParent: false };
+    const S = state = { scene, parent, objects: objects || null, W: info.W, data: info.data, season: info.season || 'summer', tod: info.tod || 'day', serial: 0, clock: 0, last: null, sortParent: false };
     S.P = palette(S.tod, S.season); S.M = ok(() => build(info.W, info.data)); if (!S.M) { state = null; return null; }
     const sp = ok(() => setPieces(S)) || { extras: [], foams: [], mists: [] }; S.extras = sp.extras; S.foams = sp.foams; S.mists = sp.mists;
     S.tex = liveTextures(scene); S.em = ok(() => emitters(S)) || [];
+    // the chunks round where you stand are baked now, with the ground, so the first frame has its water
+    const here = startView(info.W); if (here) for (const ch of S.M.chunks.values()) if (hit(ch.box, here)) { const job = ok(() => startJob(ch)); if (job) ok(() => stepJob(job, Infinity)); }
     S.buildMs = Math.round(performance.now() - t0);
     return { destroy: clear };
   }
@@ -451,6 +459,7 @@ window.GardenPaintWater = (function () {
     if (S.job) { const done = ok(() => stepJob(S.job, SLICE)); if (done !== false) { if (S.job.ch) S.job.ch.used = S.frame; S.job = null; resident++; } }
     if (resident > MAX_CHUNKS) { const far = [...S.M.chunks.values()].filter(c => c.image && !hit(c.box, near)).sort((a, b) => a.used - b.used); for (const c of far.slice(0, resident - MAX_CHUNKS)) dropChunk(c); }
     if (S.sortParent && S.parent.sort) { S.parent.sort('depth'); S.sortParent = false; }
+    if (S.sortObjects && S.objects && S.objects.sort) { S.objects.sort('depth'); S.sortObjects = false; }
     const pad = { x: view.x - 60, y: view.y - 60, w: view.w + 120, h: view.h + 120 };
     for (const e of S.em) {
       const vis = hit(e.b, pad);
@@ -467,5 +476,5 @@ window.GardenPaintWater = (function () {
     const S = state; let sprites = 0, visible = 0; if (S) for (const e of S.em) { sprites += e.list.length + (e.rings || []).length; if (e.vis) visible += e.list.length + (e.rings || []).length; }
     return { on: !!S, tod: S && S.tod, waters: S ? S.M.waters.length : 0, buildMs: S && S.buildMs, bakes, bakeMs: Math.round(bakeMs), worstBake: Math.round(worstBake), tickWorst: +tickWorst.toFixed(1), sprites, visible, memory: memory(), weir: S && S.weir ? [Math.round(S.weir.x), Math.round(S.weir.y)] : null, lastError };
   }
-  return { wanted, paint, tick, clear, status, memory, palette, get lastError() { return lastError; } };
+  return { wanted, paint, tick, clear, status, memory, palette, startView, get lastError() { return lastError; } };
 })();
