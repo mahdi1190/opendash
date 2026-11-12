@@ -160,12 +160,8 @@ window.GardenPaintWater = (function () {
       void seg;
     }
     // shallows: wide soft strokes of the shallow colour inside the edge, then a sandy bed showing through
-    add(all, (cx, C) => {
-      cx.save(); cx.clip(P); cx.lineJoin = 'round';
-      cx.strokeStyle = C.shallow; for (const [w, a] of river_ ? [[30, .3], [14, .45]] : [[90, .2], [44, .32], [18, .5]]) { cx.globalAlpha = a; cx.lineWidth = w; cx.stroke(P); }
-      cx.strokeStyle = C.bed; cx.globalAlpha = .22; cx.lineWidth = river_ ? 8 : 12; cx.stroke(P);
-      cx.globalAlpha = 1; cx.restore();
-    });
+    // one stroke per feature, so a bake can stop between them
+    for (const [w, a, bed] of (river_ ? [[30, .3], [14, .45]] : [[90, .2], [44, .32], [18, .5]]).concat([[river_ ? 8 : 12, .22, true]])) add(all, (cx, C) => { cx.save(); cx.clip(P); cx.lineJoin = 'round'; cx.strokeStyle = bed ? C.bed : C.shallow; cx.globalAlpha = a; cx.lineWidth = w; cx.stroke(P); cx.globalAlpha = 1; cx.restore(); });
     // 3. The far bank's reflection: wherever the shore lies above the water, its
     //    trees and reeds hang down into it in dark lobes (light from the sky between).
     for (let i = 0, acc = 0; i < n; i++) { acc += Math.hypot(pts[(i + 1) % n].x - pts[i].x, pts[(i + 1) % n].y - pts[i].y); if (acc < (river_ ? 14 : 20)) continue; acc = 0;
