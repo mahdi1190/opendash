@@ -315,6 +315,7 @@ window.GardenNativeWorld = (function () {
     let packGround = null, packPlanting = null, packTerrain = null;
     // High ground in the same style (94-garden-paint-terrain-*.js): the fells, the Edge, the gorge, peaks and terraces.
     function paintTerrain(sc) { if (!window.GardenPaintedTerrain) return; try { packTerrain = GardenPaintedTerrain.build(scene, rootNode._inner, sc); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); } }
+    function terrainMark(prop, sc) { if (!window.GardenPaintedMarks || !GardenPaintedMarks.knows(prop.id) || !packOn() || typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(prop.id)).some(Boolean)) return null; try { return GardenPaintedMarks.landmark(scene, prop, sc, element, W); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); return null; } }
     function terrainOwns(kind) { return !!(packTerrain && GardenPaintedTerrain.owns(kind)); }
     function terrainOwnsRegion(id) { return !!(packTerrain && GardenPaintedTerrain.ownsRegion(id)); }
     function packOn() { return !!(window.GardenNativePainted && GardenNativePainted.wanted() && GardenNativePainted.ready() && typeof gardenIslandActive === 'function' && gardenIslandActive()); }
@@ -876,12 +877,12 @@ window.GardenNativeWorld = (function () {
         const paneMaterialKey = prop && ['windmill', 'shepherd', 'mill'].includes(sceneryKind(prop)) ? '|panes:' + (nightMaterials ? 'warm' : 'day') : '';
         const signature = prop && 'native-landscape-crafted-9' + (packOn() ? '-painted' : '') + '|' + prop.id + '|' + [prop.x, prop.y, prop.w, prop.h, sc.season, sceneryKind(prop) === 'gate' ? (sc.areas || []).join('.') : ''].join(',') + (windowed ? '|windows:' + (nightMaterials ? 'warm' : 'day') : '');
         const old = drawings.get(key), standardLook = (villageStyle(prop) || sceneryKind(prop)) && !(typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(prop.id)).some(Boolean));
-        if (standardLook && old && old.source === signature) {
+        if ((standardLook || window.GardenPaintedMarks && GardenPaintedMarks.knows(id) && packOn()) && old && old.source === signature) {
           keep.add(key); old.metadata = { kind: prop.act ? 'prop' : 'scenery', id, prop, model: prop, foot: old.handle.foot };
           if (old.handle.setLitWindows) { old.handle.setLitWindows(nightMaterials); old.materialKey = paneMaterialKey; }
           continue;
         }
-        const custom = prop && (sceneryBuilding(prop, sc) || villageBuilding(prop, sc));
+        const custom = prop && (terrainMark(prop, sc) || sceneryBuilding(prop, sc) || villageBuilding(prop, sc));
         if (custom) {
           if (custom.setLitWindows) custom.setLitWindows(nightMaterials);
           keep.add(key); if (old) old.handle.destroy(); (custom.kind === 'gate' ? rootNode : objects).appendChild(custom.rootNode); custom.root.setDepth(custom.kind === 'gate' ? 76000 : W.sky + row.z * W.cellH); const record = { id: key, source: signature, materialKey: custom.setLitWindows ? paneMaterialKey : '', handle: custom, root: custom.root, node: custom.rootNode, metadata: { kind: prop.act ? 'prop' : 'scenery', id, prop, model: prop, foot: custom.foot }, depth: custom.kind === 'gate' ? 76000 : W.sky + row.z * W.cellH, bounds: custom.bounds }; drawings.set(key, record); queueDrawing(record); sorted = true;

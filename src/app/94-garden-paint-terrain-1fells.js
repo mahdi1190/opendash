@@ -25,7 +25,7 @@ window.GardenPaintedTerrain = (function () {
 
   const BASE = { rock: '#a49a8c', rockLo: '#7d7468', rockHi: '#c9c1b0', rockDk: '#4e473f', lichen: '#c9c48a', moss: '#7d8f4e', peat: '#5a4636', path: '#c4b089', pathLo: '#9c8a66', pathHi: '#dccfac', snow: '#fbfbf7', snowSh: '#c8d6e6', snowDk: '#a9bccf', pine: '#3c5a3a', pineHi: '#58784a', bark: '#b06a3a', water: '#6d9fb0', shallow: '#93bfbd', foam: '#eef2e2', cave: '#1d2224' };
   const PAL = {
-    summer: Object.assign({}, BASE, { fell: '#a6b276', fellLo: '#8c9a5e', fellHi: '#c2c78e', bleach: '#d6cfa8', heather: '#8d6a92', heatherHi: '#b07ab8', heatherLo: '#5f4a62', bloom: '#c48ad0', bracken: '#7f8c48', far: ['#a9b5bd', '#93a3ad', '#7f919c'], farSnow: 0 }),
+    summer: Object.assign({}, BASE, { fell: '#a6b276', fellLo: '#8c9a5e', fellHi: '#c2c78e', bleach: '#d6cfa8', heather: '#8d6a92', heatherHi: '#b07ab8', heatherLo: '#5f4a62', bloom: '#b98cc0', bracken: '#7f8c48', far: ['#a9b5bd', '#93a3ad', '#7f919c'], farSnow: 0 }),
     spring: Object.assign({}, BASE, { fell: '#a2b672', fellLo: '#86a05a', fellHi: '#bccb88', bleach: '#cfcba0', heather: '#7e6478', heatherHi: '#9a7e92', heatherLo: '#56445a', bloom: null, bracken: '#8a9050', far: ['#adb8c0', '#97a6b0', '#83959f'], farSnow: .45 }),
     autumn: Object.assign({}, BASE, { fell: '#b0a670', fellLo: '#948a58', fellHi: '#c8bd88', bleach: '#d6cb9a', heather: '#7e6258', heatherHi: '#987460', heatherLo: '#5a4640', bloom: null, bracken: '#a8683c', far: ['#b1b6b8', '#9ba2a6', '#878f95'], farSnow: .2 }),
     winter: Object.assign({}, BASE, { fell: '#a8a78e', fellLo: '#8e8d76', fellHi: '#c0bfa6', bleach: '#cfcab0', heather: '#7a5a4a', heatherHi: '#8e6e5a', heatherLo: '#54403a', bloom: null, bracken: '#8a5a3a', far: ['#b9c2ca', '#a2aeb8', '#8e9ba6'], farSnow: .85 }),
@@ -87,10 +87,10 @@ window.GardenPaintedTerrain = (function () {
       clipFell(B);
       B.f(B.rect(cb[0] - 2, cb[1] - 2, cb[2] - cb[0] + 4, cb[3] - cb[1] + 4), B.lin(0, top, 0, rb[3], [[0, P.fellHi], [.45, P.fell], [1, P.fellLo]]));
       kit.tiles(cb, 150, 90, 3, (tx, ty, r) => {
-        for (let k = 0; k < 3; k++) {
+        for (let k = 0; k < (moor(tx) > .5 ? 6 : 3); k++) {
           const x = tx + r() * 150, y = ty + r() * 150, m = moor(x), n = kit.fbm(x / 420, y / 300, 5), s = 40 + r() * 70;
           const col = m > .5 && r() < .85 ? (r() < .5 ? P.heather : P.heatherLo) : n > .55 ? P.fellHi : n < .4 ? P.fellLo : r() < .3 ? P.bleach : P.fell;
-          B.f(B.blob(r, x, y, s, s * .5, 9, .55), col, m > .5 ? .4 : .13 + r() * .12);
+          B.f(B.blob(r, x, y, s * (m > .5 ? .7 : 1), s * (m > .5 ? .36 : .5), 9, .6), col, m > .5 ? .24 : .13 + r() * .12);
         }
       });
     });
@@ -127,12 +127,12 @@ window.GardenPaintedTerrain = (function () {
           const x = tx + r() * 64, y = ty + r() * 64, pick = r(), sz = r(); if (!fellAt(x, y)) continue;
           const m = moor(x), row = (y - W.sky) / ch, tarnNear = Math.hypot(x / cw - 31, row - 11) < 7.5, wet = tarnNear || Math.hypot(x / cw - 73, row - 18) < 4.2;
           const drift = kit.fbm(x / 230, y / 150, 77), fern = kit.fbm(x / 210, y / 130, 91);
-          if ((m > .25 ? drift > .62 - m * .3 : drift > .74) && pick < .6) { B.cx.globalAlpha = 1; B.heather(r, x, y, 6 + sz * 7, m > .25 ? P : HP, P.bloom && drift > .62 && r() < .7 ? P.bloom : null); continue; }
+          if ((m > .25 ? drift > .62 - m * .3 : drift > .74) && pick < .6) { B.cx.globalAlpha = 1; B.heather(r, x, y, 4 + sz * 5, m > .25 ? P : HP, P.bloom && drift > .62 && r() < .7 ? P.bloom : null); continue; }
           if (pick < .5) { B.tufts(r, x, y, 10, 4 + Math.floor(sz * 4), [P.fellLo, P.fellHi, P.bleach], 5); continue; }
           if (pick < .62 && (peakNear(x, y) || row < 11 && x > 44 * cw && x < 56 * cw || r() < .25)) { B.stone(r, x, y, 2 + sz * 4, 1.2 + sz * 2.2, P); continue; }
           if (pick < .7 && wet) { B.f(B.blob(r, x, y, 5 + sz * 4, 2.6 + sz * 2, 7, .5), P.fellLo, .7); B.tufts(r, x, y - 1, 9, 7, ['#6f7f48', P.bleach], 7); if (season !== 'winter' && season !== 'autumn') for (let i = 0; i < 4; i++) B.f(B.circ(x + (r() - .5) * 10, y - 6 - r() * 4, 1.3), '#f6f4ec', .95); continue; }
           if (pick < .78 && x > 46 * cw && m < .2) { const L2 = 16 + sz * 26; B.s(`M${x} ${y}q${L2 / 2} ${-2 - r() * 3} ${L2} ${(r() - .5) * 3}`, P.fellLo, 1.4, .55).s(`M${x} ${y - 1.2}q${L2 / 2} ${-2 - r() * 3} ${L2} ${(r() - .5) * 3}`, P.fellHi, .8, .5); continue; }
-          if (pick < .84 && m > .4 && drift > .55) { const w = 10 + sz * 14; B.f(B.blob(r, x, y + 2, w, w * .28, 8, .4), P.peat, .7).f(B.blob(r, x - 1, y - 1, w * .95, w * .26, 8, .4), P.heather, .9); continue; }
+          if (pick < .8 && m > .4 && drift > .58) { const w = 8 + sz * 10; B.f(B.blob(r, x + 1, y + 2.4, w, w * .26, 8, .4), P.peat, .85).f(B.blob(r, x - .5, y - .6, w * .92, w * .2, 8, .45), P.heatherLo, .85).f(B.blob(r, x - w * .2, y - 1.2, w * .45, w * .1, 7, .5), P.heather, .7); continue; }
           if (fern > .63 && pick < .92 && season !== 'winter' && (m > .15 || row > 16)) { for (let f = 0; f < 4; f++) { const a = -Math.PI / 2 + (f - 1.5) * .55 + (r() - .5) * .3, l = 6 + r() * 4, ex = x + Math.cos(a) * l, ey = y + Math.sin(a) * l * .8; B.s(`M${x} ${y}Q${(x + ex) / 2 + 1.5} ${(y + ey) / 2 - 1} ${ex} ${ey}`, P.bracken, 1.1, .85); for (let k = 1; k < 4; k++) { const t = k / 4, px = x + (ex - x) * t, py = y + (ey - y) * t; B.s(`M${px} ${py}l${2.6 - t * 1.4} ${1 - t}M${px} ${py}l${-2.4 + t * 1.2} ${1.2 - t}`, P.bracken, .8, .8); } } continue; }
         }
       });
@@ -374,7 +374,7 @@ window.GardenPaintedTerrain = (function () {
     add(bb, 500 + t.id.length * 7, (B, r) => {
       const face = B.poly(upper.concat(lower.slice().reverse()));
       B.cx.filter = 'blur(4px)'; B.f(B.poly(lower.map(p => ({ x: p.x + 3, y: p.y - 3 })).concat(lower.slice().reverse().map(p => ({ x: p.x + 9, y: p.y + 12 })))), '#2e3420', .22); B.cx.filter = 'none';
-      B.f(face, '#8a8270');
+      B.f(face, B.lin(0, bb[1], 0, bb[3], [[0, '#9c9480'], [1, '#6e6858']]));
       B.cx.save(); B.cx.clip(new Path2D(face));
       // courses of irregular stones, a through-stone now and then
       const U = kit.resample(upper, 5), Lw = kit.resample(lower, 5), m = Math.min(U.length, Lw.length), rows = along ? 4 : 2;
@@ -386,7 +386,7 @@ window.GardenPaintedTerrain = (function () {
       B.cx.restore();
       // cope: a row of upright stones on top, lit from the left; moss and turf from the terrace above
       const top = kit.resample(upper, 3.4);
-      for (const p of top) { const h = 3 + r() * 2.4; B.f(B.rect(p.x - 1.4, p.y - h, 2.8, h + 1), '#9c937e').f(B.rect(p.x - 1.4, p.y - h, 1, h + 1), '#d6cfb8', .8); }
+      for (let i = 0; i < top.length; i += 2) { const p = top[i], h = 3.6 + r() * 2.4, w = 3.2 + r() * 2; B.f(`M${p.x - w / 2} ${p.y + 1}L${p.x - w / 2} ${p.y - h + 1.4}Q${p.x} ${p.y - h - .6} ${p.x + w / 2} ${p.y - h + 1.2}L${p.x + w / 2} ${p.y + 1}Z`, r() < .5 ? '#a39a84' : '#8f8672').f(B.rect(p.x - w / 2, p.y - h + 1.4, w * .35, h - .4), '#d6cfb8', .7).f(B.rect(p.x + w / 2 - w * .25, p.y - h + 1.6, w * .25, h - .6), '#5e574a', .5); }
       for (let i = 0; i < top.length; i += 2) { const p = top[i]; if (r() < .4) B.f(B.blob(r, p.x, p.y - 3, 3 + r() * 3, 1.2 + r(), 6, .5), snowy ? P.snow : r() < .5 ? P.moss : '#8fa860', .9); }
       if (snowy) B.s(B.line(top.map(p => ({ x: p.x, y: p.y - 4.5 }))), P.snow, 2.6, .9);
       B.s(B.line(kit.resample(lower, 6)), '#4a463a', 1.8, .45);

@@ -74,8 +74,10 @@ window.GardenPaintTerrainKit = (function () {
       // a heather clump: dark mound, mid lobes, lit lobes, bloom specks
       heather(r, x, y, rx, P, bloom) {
         const ry = rx * .55;
-        B.f(D().blob(r, x + rx * .1, y + ry * .15, rx, ry, 8, .5), P.heatherLo, .9).f(D().blob(r, x - rx * .05, y - ry * .1, rx * .82, ry * .78, 8, .5), P.heather).f(D().blob(r, x - rx * .3, y - ry * .35, rx * .4, ry * .32, 7, .5), P.heatherHi, .7);
-        if (bloom) for (let i = 0; i < 5; i++) B.f(B.circ(x + (r() - .6) * rx * 1.3, y + (r() - .7) * ry, .9 + r() * .6), bloom, .85);
+        B.f(D().blob(r, x + rx * .1, y + ry * .15, rx, ry, 9, .7), P.heatherLo, .5).f(D().blob(r, x - rx * .05, y - ry * .1, rx * .82, ry * .78, 9, .7), P.heather, .65);
+        // the sprigs: short upright strokes, dark at the root, lit at the tip, so a clump has texture and no outline
+        for (let i = 0; i < 6; i++) { const px = x + (r() - .5) * rx * 1.5, py = y + (r() - .5) * ry * .9, h = 2 + r() * 2.6; B.s(`M${px} ${py}l${(r() - .5) * 1.4} ${-h}`, r() < .5 ? P.heatherLo : P.heatherHi, .9, .8); }
+        if (bloom) for (let i = 0; i < 7; i++) B.f(B.circ(x + (r() - .5) * rx * 1.4, y + (r() - .7) * ry, .5 + r() * .5), bloom, .75);
         return B;
       },
       text(t, x, y, size, color) { cx.font = size + 'px Georgia, serif'; cx.fillStyle = color; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(t, x, y); return B; },
