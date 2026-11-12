@@ -54,9 +54,9 @@ function _gfpGrade(rgb, K) {
   const grey = rgb[0] * 0.3 + rgb[1] * 0.59 + rgb[2] * 0.11, s = _gfpMix([grey, grey, grey], rgb, K.sat);
   return _gfpMix(s, _GFP.grade, K.key);
 }
-/** The Painted village style is chosen (and the Phaser renderer, which is the only one that draws it). */
+/** The Painted village style is on: it is the vale's only style, drawn wherever the Phaser renderer is. */
 function gardenFigurePaintStyle() {
-  try { if (typeof _gdpPrefs !== 'function') return false; const p = _gdpPrefs(); return !!p && p.artStyle === 'painted' && p.renderEngine !== 'standard'; } catch (e) { return false; }
+  try { if (typeof _gdpPrefs !== 'function') return false; const p = _gdpPrefs(); return !!p && p.renderEngine !== 'standard'; } catch (e) { return false; }
 }
 function gardenFigurePaintOn() { return gardenFigurePaintStyle() && typeof _gw !== 'undefined' && !!_gw.on; }
 function gardenFigureShadowSvg(rx, ry) {

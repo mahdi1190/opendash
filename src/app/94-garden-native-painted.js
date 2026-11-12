@@ -17,7 +17,7 @@ window.GardenNativePainted = (function () {
   const TEX = 'gdpaint', KMAX = 2;           // ground bake: canvas pixels per world pixel (as sharp as one 4096 texture allows)
   let K = KMAX;
   const OBJ_K = 2;                            // object sprites: supersampled for close zoom
-  function wanted() { try { return typeof _gdpPrefs === 'function' && _gdpPrefs().artStyle === 'painted' && _gdpPrefs().renderEngine !== 'standard'; } catch (e) { return false; } }
+  function wanted() { try { return typeof _gdpPrefs === 'function' && _gdpPrefs().renderEngine !== 'standard'; } catch (e) { return false; } }   // (the vale's one style: on wherever Phaser draws; the old artStyle pref is ignored)
   function ready() { return typeof sceneObjShapes === 'function' && typeof sceneDraw !== 'undefined' && typeof Path2D === 'function'; }
   function preload(then) { if (then && ready()) then(); return ready(); }
   // A small seeded generator, the scenes' habit: the same island paints the same.

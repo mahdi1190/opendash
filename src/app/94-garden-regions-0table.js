@@ -35,7 +35,7 @@ function gardenIslandBasinHomeIds(id) {
   // Fleetwater Vale (v5) gives the waters their own places along the river; v4 kept them in three basins.
   if (GARDEN_WORLD.v >= 5) {
     const pres = gardenIslandData().presentation || {}, race = pres.millRace || '';
-    const homes = { pond: ['pond', 'falls'], tarn: ['tarn'], spring: ['spring'], 'brook-2': ['brook'], 'allotment-pool': ['frogpool', 'folly', 'light'], 'orchard-pool': ['cider', 'dip'] };
+    const homes = { pond: ['pond', 'falls'], tarn: ['tarn'], spring: ['spring'], 'brook-2': ['brook'], 'allotment-pool': ['folly', 'light'], 'river-4': ['frogpool'], 'orchard-pool': ['cider', 'dip'] };   // (the frog pool's kinds are on the Field Journal's Millwater page: the marsh below the bird hide)
     if (race) homes[race] = ['race'];
     return homes[id] || [];
   }
@@ -90,7 +90,7 @@ function gardenIslandBasinPatchHomes(pool, centre) {
   const mx = pool.wet.x + pool.wet.w / 2, my = pool.wet.y + pool.wet.h / 2;
   // v5: the plunge pool under Fleet Falls is the Mere's north-west corner; the rest is the Mere.
   if (GARDEN_WORLD.v >= 5 && pool.id === 'pond') return centre.x < mx - 2 && centre.y < my ? ['falls', 'pond'] : ['pond'];
-  if (GARDEN_WORLD.v >= 5 && pool.id === 'allotment-pool') return centre.x < mx ? ['frogpool'] : ['folly', 'light'];
+  if (GARDEN_WORLD.v >= 5 && pool.id === 'allotment-pool') return centre.x < mx ? ['folly'] : ['folly', 'light'];   // (the frog pool's kinds live in the valley marsh, river-4: the journal's Millwater page)
   if (pool.id === 'pond') return ['pond'].concat(centre.y < my ? ['spring', 'tarn'] : [], centre.x >= mx ? ['falls'] : []);
   if (pool.id === 'allotment-pool') return centre.x < mx ? ['frogpool', 'race', 'brook'] : ['folly', 'light'];
   if (pool.id === 'orchard-pool') return centre.y < my ? ['dip'] : ['cider'];

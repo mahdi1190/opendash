@@ -63,6 +63,7 @@ function gardenGateIsOpen(gate, open) { return !!gate && !!open && (open instanc
 function gardenGateAnchor(id) {
   const D = _gggData(); if (!D) return null;
   const pa = D.placementAnchors || {}, row = (pa.sights || {})[id] || (pa.features || {})[id] || (D.static || []).find(s => s.id === id);
+  if (!row) { const p = D.presentation && D.presentation.storyAnchors && D.presentation.storyAnchors[id]; if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) return { x: p.x, y: p.y }; }   // (the layout's story points)
   if (!row || !Number.isFinite(row.x) || !Number.isFinite(row.y)) return null;
   return { x: row.x + (row.w || 1) / 2, y: row.y + (row.h || 1) + 0.6 };
 }

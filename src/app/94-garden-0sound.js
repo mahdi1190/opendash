@@ -301,6 +301,13 @@ function _gsSources() {
       if (fall || mill) list.push({ x: p.x + (p.w || 1) / 2, y: p.y + (p.h || 1) / 2, r: fall ? 16 : 9, k: fall ? 1 : 0.45 });
     }
   } catch (e) { /* none */ }
+  // Fleetwater Vale names its own: Fleet Falls into the Mere, and the weir below the mill wheel (the layout's presentation; 94-garden-paint-water-0core.js draws them)
+  try {
+    const D = typeof gardenIslandActive === 'function' && gardenIslandActive() && typeof GardenIslandLayout !== 'undefined' ? GardenIslandLayout.data : null, pres = D && D.presentation || {};
+    if (pres.falls && Number.isFinite(pres.falls.x)) list.push({ x: pres.falls.x + (pres.falls.w || 1) / 2, y: pres.falls.y + (pres.falls.h || 1) / 2, r: 20, k: 1 });
+    const mill = D && (D.static || []).find(s => s.id === 'ld-mill');
+    if (mill) list.push({ x: mill.x + mill.w / 2, y: mill.y + 2.6, r: 11, k: 0.7 });
+  } catch (e) { /* no vale */ }
   _gsn.src = list; _gsn.srcAt = now;
   return list;
 }

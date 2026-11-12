@@ -18,6 +18,11 @@ function gardenGateItemSvg(key, px) { const it = GARDEN_GATE_ITEMS[key], d = it 
 function gardenGateHas(key) { return typeof gardenHas === 'function' && gardenHas('gk:' + key) > 0; }
 function _wgtFishKinds() { try { return Object.keys(_gdG().fl || {}).filter(id => gardenFishDef(id)).length; } catch (e) { return 0; } }
 function _wgtWho(id) { return typeof WD_FOLK_ROW !== 'undefined' && WD_FOLK_ROW.get(id) || null; }
+/** The hint at a gate in the hinter's own voice (94-garden-wonder-1kin.js, wdFolkGateHint), else this table's plain line. {name, line} or null. */
+function _wgtHint(gate, rule, m) {
+  if (typeof wdFolkGateHint === 'function') { try { const h = wdFolkGateHint(gate.id, m); if (h && h.line) return { name: h.name || (_wgtWho(rule.who) || {}).name || '', line: h.line }; } catch (e) {} }
+  const who = _wgtWho(rule.who); return who ? { name: who.name, line: rule.hint } : null;
+}
 /** What a closed zone needs, in words, for the land office and its map: {tag, line}, or null when it opens by level only. */
 function gardenGateNeedWords(n) {
   const gate = gardenGateOf(Number(n)), rule = gate && gardenGateRule(gate), item = rule && GARDEN_GATE_ITEMS[rule.key]; if (!item) return null;
@@ -94,7 +99,7 @@ function gardenGatePrompt(gate, at, m) {
   if (isOpen) { gardenBubbleOpen(at, { title: zone.name, sub: 'The way is open.', items: [], cls: 'is-empty is-words gd-gate' }); return true; }
   if (m.visit) { gardenBubbleOpen(at, { title: zone.name, sub: rule.block + ' This way is still shut in your friend’s garden.', items: [], cls: 'is-empty is-words gd-gate' }); return true; }
   const have = gardenGateHas(rule.key), lv = m.level.level, findLv = gardenGateFindLv(gate), openLv = gardenZoneOpenLv(zone);
-  const hint = !who ? '' : lv < findLv ? `${who.name} is still looking for it. Ask again at garden level ${findLv}.` : `${who.name}: “${rule.hint}”`;
+  const said = _wgtHint(gate, rule, m), hint = !said ? '' : lv < findLv && !(typeof wdFolkGateHint === 'function') ? `${said.name} is still looking for it. Ask again at garden level ${findLv}.` : `${said.name}: “${said.line}”`;
   const need = { svg: gardenGateItemSvg(rule.key, 44), name: item.name, have };
   const items = have ? [{ svg: gardenGateItemSvg(rule.key, 22), label: rule.verb, text: rule.verb, cls: 'is-go gd-gate-use', run: (b) => { const r = gardenGateOpen(gate.id); if (!r.ok && typeof gameDenyOf === 'function') gameDenyOf({ ok: false, msg: r.msg }, b); } }] : [];
   gardenBubbleOpen(at, { title: zone.name, sub: rule.block, need, hint: have ? '' : hint, foot: have ? '' : `Still missing at garden level ${openLv}? ${who ? who.name + ' ' + rule.will : 'It opens by itself'}.`, items, cls: 'is-words gd-gate' + (items.length ? '' : ' is-empty') });
@@ -111,7 +116,8 @@ function gardenGateRumour(m) {
     if (gardenGateHas(rule.key)) return { icon: 'map-pin', title: `You have ${it.name.replace(/^(A|An) /, 'the ').toLowerCase()} for ${zone.name}`, text: 'The gate is waiting.', target: null, btn: walk, key: 'gate-have' + gate.id };
     if (m.level.level < gardenGateFindLv(gate)) continue;
     const f = GARDEN_GATE_FINDS.find(r => r.gate === gate.id && !gardenGateHas(r.gives) && (!r.needs || !r.needs.item || gardenGateHas(r.needs.item)));
-    return { icon: 'message-circle', title: who ? `${who.name} has a tip about ${zone.name}` : zone.name, text: f && f.needs && f.needs.item ? f.ask : rule.hint, target: null, btn: walk, key: 'gate-hint' + gate.id + (f ? f.id : '') };
+    const said = _wgtHint(gate, rule, m);
+    return { icon: 'message-circle', title: who ? `${who.name} has a tip about ${zone.name}` : zone.name, text: f && f.needs && f.needs.item ? f.ask : said ? said.line : rule.hint, target: null, btn: walk, key: 'gate-hint' + gate.id + (f ? f.id : '') };
   }
   return null;
 }

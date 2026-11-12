@@ -279,9 +279,17 @@ const SIGHTS = [
   ['ld-beacon', 52, 8, 1, 'north-headland', { x: 52, y: 9 }], ['ld-cairn', 48, 8, 1, 'north-headland', { x: 48, y: 9 }], ['ld-stones', 44, 9, 4, 'north-headland', { x: 45, y: 11 }],
   ['ld-hut', 59, 17, 1, 'north-headland', { x: 59, y: 18 }], ['ld-grotto', 65, 13, 2, 'north-headland', { x: 65, y: 14 }], ['ld-warren', 30, 4, 1, 'north-headland', { x: 30, y: 5 }],
   ['ld-mile', 2, 52, 1, 'west-woods', { x: 3, y: 52 }],
+  // the folk's story places (docs/dev/STORIES.md, "Anchors the layout must provide"): Hollin's hut off the ruins circuit,
+  // Thistle's old house at the top of the woods, the great stump where Tam digs (feat/find-gates' lantern)
+  ['ld-woodhut', 13, 76, 2, 'southwest-ruins', { x: 14, y: 77 }], ['ld-oldhouse', 22, 26, 2, 'west-woods', { x: 23, y: 27 }], ['ld-stump', 21, 44, 1, 'west-woods', { x: 21, y: 45 }],
 ];
 for (const [id, x, y, w, district, door, col] of SIGHTS) stat(id, x, y, Object.assign(sightRow(id), { w, district, door: door === undefined ? undefined : door, col: col || 'full' }));
 for (const p of S) if (p.door === undefined) p.door = { x: p.x, y: p.y + 1 };
+// the story places that are part of something already drawn: points only, no art and no footprint (read by 94-garden-wonder-1kin.js _wkAnchor and the gates' finds)
+const storyAnchors = {
+  'ld-ruined-arch': { x: 19.5, y: 67, of: 'island-ruins' }, 'ld-falls-cave': { x: 42.2, y: 26.4, of: 'fleet-falls' }, 'ld-lamp-room': { x: 61.5, y: 83.6, of: 'ld-lighthouse' },
+  'ld-mill-office': { x: 76.5, y: 64.6, of: 'ld-mill' }, 'ld-hothouse': { x: 39.5, y: 63.5, of: 'lc-glasshouse' }, 'ld-terrace-bench': { x: 47.5, y: 43.6, of: 'lakeside-terrace' },
+};
 
 /* ------------------------------------------------------------ side piers (lv 10 ruins shore, lv 14 orchard beach) */
 const reservedSidePiers = [
@@ -385,6 +393,8 @@ const sectionZones = Object.fromEntries(RSE.map(s => [s.id, zoneOfSection[s.id]]
 /* ------------------------------------------------------------ checks */
 for (const r of routes) for (let i = 1; i < r.points.length; i++) { const a = r.points[i - 1], b = r.points[i], n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / .25); for (let k = 0; k <= n; k++) { const x = a[0] + (b[0] - a[0]) * k / n, y = a[1] + (b[1] - a[1]) * k / n; if (!landAt(x, y)) { warn.push(`route ${r.id} leaves land at ${r2(x)},${r2(y)}`); break; } const c = C(Math.floor(x), Math.floor(y)); if (c && (c.fw || c.lf)) { warn.push(`route ${r.id} crosses ${c.fw ? 'water' : c.lf} at cell ${c.x},${c.y}`); k = n; i = r.points.length; } } }
 for (const p of S) { if (p.walk || p.col === 'none' || p.id === 'ld-falls') continue; for (let y = Math.floor(p.y); y < p.y + p.h; y++) for (let x = Math.floor(p.x); x < p.x + p.w; x++) { const c = C(x, y); if (!c || !c.land || c.fw) { warn.push(`static ${p.id} cell ${x},${y} is on water`); } else if (c.lf) warn.push(`static ${p.id} on ${c.lf}`); } if (p.door) { const c = C(Math.floor(p.door.x), Math.floor(p.door.y)); if (!c || !c.land || c.fw || c.lf) warn.push(`static ${p.id} door ${p.door.x},${p.door.y} is not on land`); else if (regionMeta[c.reg].zone !== (regionMeta[regionOf(p.x + p.w / 2, p.y + .5)] || {}).zone) warn.push(`static ${p.id} door is in another region`); } }
+for (const p of S) { const c = C(Math.floor(p.x), Math.floor(p.y)); if (p.district && regionMeta[p.district] && c && c.reg !== p.district) warn.push(`static ${p.id} lies in ${c.reg}, not ${p.district}`); }
+for (const [id, a] of Object.entries(storyAnchors)) { const c = C(Math.floor(a.x), Math.floor(a.y)); if (!c || !c.land || c.fw) warn.push(`story anchor ${id} is not on land`); }
 for (const g of gates) { const c = C(g.x, g.y), d = C(g.door.x, g.door.y); if (!c || c.zone !== g.n) warn.push(`gate ${g.id} cell is in zone ${c && c.zone}`); if (!d || d.zone !== g.fromZone) warn.push(`gate ${g.id} door is in zone ${d && d.zone}`); if (c && !c.route) warn.push(`gate ${g.id} is not on a path`); }
 const start = { x: 48, y: 54 }; { const c = C(start.x, start.y); if (!c || c.zone !== 0 || c.fw || c.lf || c.st) warn.push('start is not on open village ground'); }
 
@@ -407,6 +417,7 @@ const regions = v4.regions.map(r => Object.assign({}, r, { polygons: [REG[r.id]]
 /* ------------------------------------------------------------ what the painter reads (presentation only, no collision) */
 const presentation = {
   name: 'Fleetwater Vale',
+  storyAnchors,
   mainland: { note: 'Past the west and north edges the land runs on as backdrop: hills and fells in haze. No cells, nothing to walk or save.', edges: ['west', 'north'] },
   rivers: Object.fromEntries(Object.entries(ribbons).map(([id, [line, hw]]) => [id, { name: riverNames[id][0], halfWidth: hw, line: smooth(line, 4).map(p => [r2(p[0]), r2(p[1])]) }])),
   falls: { id: 'fleet-falls', name: 'Fleet Falls', x: 44, y: 24.6, w: 3, h: 3, pool: [45.4, 28.4], caveStair: [42.2, 25.9], note: 'Drops off the scarp into the NW corner of the Mere; the cave stair runs behind it on the west side.' },

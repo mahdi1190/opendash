@@ -9,7 +9,7 @@ function gardenGraphicsOpen() {
   body.appendChild(lead);
   const group = document.createElement('fieldset');
   const legend = document.createElement('legend'); legend.textContent = 'Garden graphics'; group.appendChild(legend);
-  const choices = [['standard', 'Classic', 'The original garden artwork and browser renderer.'], ['phaser', 'Phaser', 'The redesigned garden and indoor rooms, drawn as a native game scene with lighting and weather.']];
+  const choices = [['standard', 'Classic', 'The original garden artwork and browser renderer.'], ['phaser', 'Painted', 'The vale and its rooms painted as a game scene, with light and weather. The usual choice.']];
   const inputs = [];
   for (const [value, label, detail] of choices) {
     const row = document.createElement('label'); row.className = 'gd-graphics-choice';
@@ -19,18 +19,7 @@ function gardenGraphicsOpen() {
     name.textContent = label; hint.textContent = detail; text.append(name, hint); row.append(input, text); group.appendChild(row); inputs.push(input);
   }
   body.appendChild(group);
-  // The art style is separate from the renderer: the Painted village needs Phaser.
-  const styleGroup = document.createElement('fieldset');
-  const styleLegend = document.createElement('legend'); styleLegend.textContent = 'Art style'; styleGroup.appendChild(styleLegend);
-  const styleInputs = [];
-  for (const [value, label, detail] of [['classic', 'Classic', 'The original island drawing.'], ['painted', 'Painted village', 'The village and start area painted in the style of the opening scenes (Phaser only). The other regions keep the classic look for now.']]) {
-    const row = document.createElement('label'); row.className = 'gd-graphics-choice';
-    const input = document.createElement('input'); input.type = 'radio'; input.name = 'garden-art-style'; input.value = value;
-    input.checked = value === (prefs.artStyle === 'painted' ? 'painted' : 'classic');
-    const text = document.createElement('span'), name = document.createElement('strong'), hint = document.createElement('small');
-    name.textContent = label; hint.textContent = detail; text.append(name, hint); row.append(input, text); styleGroup.appendChild(row); styleInputs.push(input);
-  }
-  body.appendChild(styleGroup);
+  // Fleetwater Vale has one art style, the Painted village, drawn by Phaser (no style choice: the vale is not drawn in the classic island art).
   const note = document.createElement('p'); note.className = 'muted';
   note.textContent = 'Your plants, belongings and progress are kept when you switch.'; body.appendChild(note);
   const status = document.createElement('p'); status.className = 'muted'; status.setAttribute('role', 'status');
@@ -51,8 +40,7 @@ function gardenGraphicsOpen() {
       if (applying) return false;
       const selected = inputs.find(i => i.checked), mode = selected ? selected.value : 'standard';
       const currentMode = _gdpPrefs().renderEngine === 'standard' ? 'standard' : 'phaser';
-      const styleChoice = styleInputs.find(i => i.checked), style = styleChoice ? styleChoice.value : 'classic', styleChanged = style !== (_gdpPrefs().artStyle === 'painted' ? 'painted' : 'classic');
-      if (styleChanged) _gdpSetPref('artStyle', style);
+      const styleChanged = false;
       if (mode === currentMode && !styleChanged && (mode !== 'phaser' || window.GardenNative && GardenNative.status().ready)) { if (close) close(); return; }
       applying = true;
       if (mode === 'phaser') {

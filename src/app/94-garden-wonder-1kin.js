@@ -230,6 +230,8 @@ function _wkAnchor(id) {
   if (D) {
     const pa = D.placementAnchors || {}; row = (pa.sights || {})[id] || (pa.features || {})[id] || (D.static || []).find(s => s.id === id) || null;
     if (!row && D.presentation && Array.isArray(D.presentation.plazas)) { const p = D.presentation.plazas.find(s => s.id === id); if (p) return { x: p.x, y: p.y }; }
+    if (!row && D.presentation && D.presentation.storyAnchors && D.presentation.storyAnchors[id]) { const p = D.presentation.storyAnchors[id]; return { x: p.x, y: p.y }; }   // (points on things already drawn)
+    if (!row && D.sectionCells && Array.isArray(D.sectionCells[id]) && D.sectionCells[id].length) { const cs = D.sectionCells[id]; return { x: cs.reduce((s, c) => s + c[0], 0) / cs.length + 0.5, y: cs.reduce((s, c) => s + c[1], 0) / cs.length + 0.5 }; }   // (a land section: its middle)
   }
   if (!row && typeof GARDEN_PROPS !== 'undefined') row = GARDEN_PROPS.find(p => p.id === id) || null;
   if (!row || !Number.isFinite(row.x) || !Number.isFinite(row.y)) return null;

@@ -399,6 +399,8 @@ const GARDEN_LAND_SIGHTS = _gdMovable([
   // east: the orchards
   { id: 'ld-chapel', art: 'chapel', name: 'The ruined chapel', x: 43, y: 2, w: 3, col: 'full', tall: 2.4, say: 'No roof, and apple trees in the aisle.', egg: { verb: 'Pull the old rope', c: 8, found: 'The bell has not rung for a hundred years, and does not ring now. Eight coins fall out of it.' } },
   { id: 'ld-stump', art: 'stump', name: 'A great stump', x: 47, y: 2, col: 'full', tall: 0.7, say: 'It must have been the biggest tree for miles. There is a very small door in it.', egg: { verb: 'Knock on the small door', c: 7, found: 'A very small voice says “not today, thank you”. Seven very small coins are pushed out.' } },
+  { id: 'ld-woodhut', art: 'smoke', name: 'The woodcutter’s hut', x: 49, y: 2, w: 2, col: 'full', tall: 1.5, say: 'A low hut among the yews, with a stack of split logs under the eaves. Somebody keeps the step swept.' },   // (Hollin's home: docs/dev/STORIES.md)
+  { id: 'ld-oldhouse', art: 'summer', name: 'The old house', x: 2, y: 28, w: 2, col: 'full', tall: 1.5, say: 'Ivy to the eaves and a door that has not been opened in years. The garden still comes up through the step.' },   // (Mother Thistle's old house)
   { id: 'ld-orchard-wall', art: 'wall', name: 'The orchard wall', x: 45, y: 12, w: 2, col: 'full', tall: 0.6, say: 'Dry stone, and older than the trees.', egg: { verb: 'Look on top', c: 3, found: 'One sock, and three coins in the sock. Nobody has come back for it.' } },
   { id: 'ld-arch-e', art: 'gate', name: 'The orchard gate', x: 43, y: 18, col: 'none', tall: 1.9, say: 'The way up into the orchards.' },
   // west: the fields

@@ -351,7 +351,8 @@ function gardenLandsTick(was, lv, moments) {
     const gate = typeof gardenGateOf === 'function' ? gardenGateOf(z.n) : null, rule = gate && gardenGateRule(gate);
     if (gate && gardenHas('gate:' + gate.id) > 0) continue;   // (opened already, with its find)
     const who = rule && typeof WD_FOLK_ROW !== 'undefined' && WD_FOLK_ROW.get(rule.who);
-    moments.push({ kind: 'area', text: who ? `${who.name} ${rule.help}: ${z.name} is open` : `A gate has opened: ${z.name.toLowerCase()}`, icon: 'map-pin', area: z.id });
+    const said = gate && typeof wdFolkGateHelpLine === 'function' ? wdFolkGateHelpLine(gate.id) : '';   // (the helper's own words: 94-garden-wonder-1kin.js)
+    moments.push({ kind: 'area', text: who ? (said ? `${who.name}: “${said}” ${z.name} is open.` : `${who.name} ${rule.help}: ${z.name} is open`) : `A gate has opened: ${z.name.toLowerCase()}`, icon: 'map-pin', area: z.id });
   }
   for (const t of GARDEN_LAND_TRAILS) if (!t.zn && t.lv > was && t.lv <= lv) moments.push({ kind: 'area', text: `${t.name} is open`, icon: 'footprints', area: t.id });
   const n = GARDEN_LAND_SECTIONS.filter(s => s.buy && s.lv > was && s.lv <= lv).length + GARDEN_LAND_FEATURES.filter(f => f.lv > was && f.lv <= lv && !f.prize).length;
