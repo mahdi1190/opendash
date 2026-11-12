@@ -24,7 +24,7 @@ function _ppMass(out, d, T, cx, cy, o) {
   o = o || {};
   out.push(_pF(d, T[1], o.op));
   out.push(_pF(d, T[0], o.op, _ppLitM(cx, cy, Math.max(o.k || 0.88, 0.93), o.up, o.left)));
-  if (o.soft !== false) out.push(_pF(d, _ptMix(T[0], T[2], 0.35), (o.op || 1) * 0.3, _ppLitM(cx, cy - (o.hiUp || 0), 0.66, (o.up || 1) * 2.2, (o.left == null ? 0.5 : o.left) * 2.4)));
+  if (o.soft) out.push(_pF(d, _ptMix(T[0], T[2], 0.35), (o.op || 1) * 0.18, _ppLitM(cx, cy - (o.hiUp || 0), 0.66, (o.up || 1) * 2.2, (o.left == null ? 0.5 : o.left) * 2.4)));
   if (o.hi) out.push(_pF(o.hi, _ptMix(T[2], '#fff6e0', 0.15), o.hiOp || 0.5));
 }
 /** A limb: a thick shade stroke and a thinner lit one along the same points, toward the light. */
@@ -95,7 +95,7 @@ function _ppQuad(pet, pose, mood, X, S) {
       else out.push(_pF(_pE(f[0] + w * 0.3, f[1] - w * 0.25, w * 0.78, w * 0.5), T[1]), _pF(_pE(f[0] + w * 0.22, f[1] - w * 0.38, w * 0.6, w * 0.34), T[0]));
       if (S.claws && !S.hoof) out.push(_pL(_pP`M${f[0] + w * 0.8} ${f[1] - 0.2}l${w * 0.5} 0.3`, '#efe6d8', 0.5, 0.8));
     };
-    const farT = [legT[1], legT[3], legT[1], legT[3]];
+    const farT = [legT[3], _ptMix(legT[3], '#1a1420', 0.25), legT[1], legT[3]];
     // far legs: behind the body, a step out of phase, in shade
     const fh = hind(3.2, -1.2, farT, lw, 1.2); _ppLimb(parts.legsF, [[hipX + 2, hipY - 3], fh[1]], lw * 1.25, farT); drawLeg(parts.legsF, fh, farT, lw * 0.92);
     const ff = fore(3.2, -1.2, -1.4); _ppLimb(parts.legsG, [ff[0], ff[1]], lw * 1.1, farT); drawLeg(parts.legsG, ff, farT, lw * 0.92, true);
@@ -103,8 +103,8 @@ function _ppQuad(pet, pose, mood, X, S) {
     _ppMass(parts.body, body, A, bx, by, { k: 0.9, up: 1.4, hi: _pE(bx - L * 0.1, by - D * 0.62, L * 0.55, D * 0.16) });
     if (S.belly !== false) parts.body.push(_pF(_pP`M${xr + L * 0.5} ${yb - 1.2}C${bx} ${yb + 0.6} ${xc - L * 0.3} ${yb} ${xc} ${by + D * 0.4}C${xc - L * 0.2} ${by + D * 0.4} ${bx} ${by + D * 0.45} ${xr + L * 0.5} ${yb - 1.2}z`, B[0], S.bellyOp || 0.75));
     if (!S.noFur) {
-      _ppFur(parts.body, seed + 'b1', bx - L * 0.05, by - D * 0.45, L * 0.82, D * 0.38, Math.round(L * 1.2), S.furLen || 2.6, 1.95, furLit, 0.7, 0.42);
-      _ppFur(parts.body, seed + 'b2', bx, by + D * 0.45, L * 0.8, D * 0.3, Math.round(L * 0.8), (S.furLen || 2.6) * 0.9, 2.7, A[1], 0.7, 0.4);
+      _ppFur(parts.body, seed + 'b1', bx - L * 0.05, by - D * 0.45, L * 0.82, D * 0.38, Math.round(L * 0.9), S.furLen || 2.6, 1.95, furLit, 0.7, 0.3);
+      _ppFur(parts.body, seed + 'b2', bx, by + D * 0.45, L * 0.8, D * 0.3, Math.round(L * 0.6), (S.furLen || 2.6) * 0.9, 2.7, A[1], 0.7, 0.3);
     }
     // the haunch, the thigh into the near hind leg
     { const ch = S.ch || 1, th = _pP`M${hipX - D * 0.7 * ch} ${hipY - D * 0.5}C${hipX - D * 0.6 * ch} ${hipY - D * 1.05} ${hipX + D * 0.5 * ch} ${hipY - D * 1.0} ${hipX + D * 0.62 * ch} ${hipY - D * 0.2}C${hipX + D * 0.7 * ch} ${hipY + D * 0.5} ${hipX + lw * 0.9} ${hipY + D * 1.2} ${hipX + lw * 0.3} ${hipY + D * 1.5}C${hipX - lw} ${hipY + D * 1.2} ${hipX - D * 0.8 * ch} ${hipY + D * 0.4} ${hipX - D * 0.7 * ch} ${hipY - D * 0.5}z`;
@@ -137,7 +137,7 @@ function _ppQuad(pet, pose, mood, X, S) {
     parts.legsF.push(_pF(_pE(shX + 4.2, G - lw * 0.35, lw * 0.75, lw * 0.45), legT[1]));
     _ppMass(parts.body, torso, A, (hcx + shX) / 2, (hcy + shY) / 2, { k: 0.88, up: 1.2 });
     // the haunch, folded
-    _ppMass(parts.body, _pE(hcx, hcy, hrx, hry), A, hcx, hcy, { k: 0.86, up: 1.4, hi: _pE(hcx - hrx * 0.2, hcy - hry * 0.6, hrx * 0.55, hry * 0.2) });
+    _ppMass(parts.body, _pE(hcx, hcy, hrx, hry), A, hcx, hcy, { soft: true, k: 0.86, up: 1.4, hi: _pE(hcx - hrx * 0.2, hcy - hry * 0.6, hrx * 0.55, hry * 0.2) });
     // the chest, lit, and the belly where it shows
     if (S.belly !== false) parts.body.push(_pF(_pP`M${chX - 0.6} ${shY + D * 0.2}C${chX + 0.4} ${shY + D * 1.4} ${shX + 1} ${G - H * 0.3} ${shX - 0.4} ${G - 3}L${shX - 3} ${G - 4}C${shX - 2} ${G - H * 0.4} ${chX - 2.4} ${shY + D * 1.2} ${chX - 0.6} ${shY + D * 0.2}z`, B[0], S.bellyOp || 0.8));
     if (!S.noFur) {
@@ -165,7 +165,7 @@ function _ppQuad(pet, pose, mood, X, S) {
     // ---- asleep: a loaf, the head laid down along the front paws, the tail round
     const rx = Math.min(L * 1.08, 24), ry = Math.min(D * 1.15, 16), cx = 45, cy = G - ry;
     const loaf = _pP`M${cx - rx} ${G - 0.5}C${cx - rx * 1.05} ${cy - ry * 0.7} ${cx - rx * 0.4} ${cy - ry * 1.05} ${cx} ${cy - ry}C${cx + rx * 0.55} ${cy - ry * 0.95} ${cx + rx} ${cy - ry * 0.4} ${cx + rx} ${G - 0.5}z`;
-    _ppMass(parts.body, loaf, A, cx, cy, { k: 0.95, up: 0.7, hi: _pE(cx - rx * 0.15, cy - ry * 0.65, rx * 0.5, ry * 0.18) });
+    _ppMass(parts.body, loaf, A, cx, cy, { soft: true, k: 0.95, up: 0.7, hi: _pE(cx - rx * 0.15, cy - ry * 0.65, rx * 0.5, ry * 0.18) });
     parts.body.push(_pF(_pE(cx - rx * 0.45, cy + ry * 0.05, ry * 0.75, ry * 0.75), A[1], 0.35));
     if (!S.noFur) _ppFur(parts.body, seed + 'z1', cx - rx * 0.05, cy - ry * 0.35, rx * 0.8, ry * 0.45, 22, S.furLen || 2.6, 1.9, furLit, 0.7, 0.4);
     parts.paw.push(_pF(_pE(cx + rx * 0.85, G - lw * 0.4, lw * 1.25, lw * 0.5), legT[1]), _pF(_pE(cx + rx * 0.82, G - lw * 0.52, lw * 1.05, lw * 0.36), legT[0]));
@@ -905,13 +905,15 @@ const _PP_UPRIGHT = {
 };
 /** Moosh's face sits on the stalk under the cap; its eye anchors there. */
 
+/** The scene kit's animals stand on sturdy legs with a readable head: every row is drawn a little stockier than its numbers. */
+function _ppSturdy(S) { return Object.assign({}, S, { lw: S.lw * 1.38, hr: S.hr * 1.12, D: S.D * 1.08, sd: S.sd != null ? S.sd * 1.1 : S.sd }); }
 /** The Painted village's drawing of a species: its own, its body plan's, or null (the rig's). */
 function _ppArtFor(sp) {
   const id = sp && sp.id;
   if (!id) return null;
   if (id === 'duck') return null;
   if (_PP_OWN[id]) return _PP_OWN[id];
-  if (_PP_SPEC[id]) return (pet, pose, mood, X) => _ppQuad(pet, pose, mood, X, _PP_SPEC[id](pet));
+  if (_PP_SPEC[id]) return (pet, pose, mood, X) => _ppQuad(pet, pose, mood, X, _ppSturdy(_PP_SPEC[id](pet)));
   if (_PP_BIRDS[id]) return (pet, pose, mood, X) => _ppBird(pet, pose, mood, X, _PP_BIRDS[id]);
   if (_PP_UPRIGHT[id]) return (pet, pose, mood, X) => _ppUpright(pet, pose, mood, X, _PP_UPRIGHT[id]);
   return null;

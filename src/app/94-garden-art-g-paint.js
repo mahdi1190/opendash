@@ -144,7 +144,8 @@ function _gfpTone(tag, a, base, K, M) {
 function gardenFigurePaint(svg, kind) {
   if (!svg || typeof svg !== 'string') return svg || '';
   if (svg.startsWith('<!--gfp-->')) return svg;   // already painted (a figure inside a figure: a pet held, a fish held up)
-  const K = _GFP.kinds[kind] || _GFP.kinds.actor, ck = (kind || 'actor') + '|' + svg;
+  let K = _GFP.kinds[kind] || _GFP.kinds.actor; const ck = (kind || 'actor') + '|' + svg;
+  if (/(pt-pp|gcp-painted|gcb-painted)/.test(svg)) K = Object.assign({}, K, { tone: null });   // redrawn in the kit's way (97-pets-0kitpaint2.js, 94-garden-fish-1art5/6.js): its form shading is in the drawing, so only the grade
   const hit = _gfpCache.get(ck); if (hit != null) return hit;
   const grads = new Map(), gk = (kind || 'actor').slice(0, 2), stack = [_GFP_ID];
   let out = '';
