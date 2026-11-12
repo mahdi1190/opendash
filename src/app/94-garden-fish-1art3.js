@@ -184,6 +184,7 @@ function _gcpPaintScales(P, c, c2, c3, e, fam) {
   return out;
 }
 function _gcpSideFish(def, look, fam, uid) {
+  if (typeof _gfaPaintOn === 'function' && _gfaPaintOn()) return _gcpSideFishPainted(def, look, fam, uid);   // the Painted village's own drawing (94-garden-fish-1art5.js)
   const P = _gcpPlan(def, look, fam), { R, L, H, x0, x1, yT, yB, rnd, ex, ey, er, tail, tl } = P, c = look.c, c2 = look.c2 || _gfaLt(c, 0.4), c3 = look.c3 || _gfaDk(c, 0.4), e = _gcpEdge(c), n = _gfaN;
   const fin = R.red ? _gfaMix(c3, '#d8542a', 0.45) : _gfaMix(c, c3, 0.5), ray = _gfaDk(fin, 0.35), line = `stroke="${e}" stroke-width="1" stroke-linejoin="round"`, finH = 0.76 + rnd() * 0.5;
   let back = '', s = '';
