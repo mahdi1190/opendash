@@ -121,6 +121,9 @@
     put([[38.6, 80.6], [39.4, 80.2], [37.6, 81.6]], ['beach', 'grass'], 'net', [-42, -60, 44, 8], drawNet(P));
     put([[38.4, 83.6], [37.4, 84.4], [42.6, 81.2]], ['beach'], 'boat-sand', [-46, -26, 48, 10], drawBoat(P, '#3f6f8a', false));
     put([[53.2, 76.1], [46.6, 77.9]], ['path', 'beach'], 'crate1', [-16, -24, 18, 6], drawCrates(P, 0));
+    put([[53.4, 78.55], [46.2, 78.6]], ['path', 'beach'], 'bench', [-30, -30, 30, 6], drawBench(P));
+    put([[44.7, 78.7], [56.4, 76.4]], ['path', 'beach', 'grass'], 'anchor', [-22, -40, 22, 6], drawAnchor(P));
+    put([[48.3, 78.6], [52.9, 77.2]], ['path', 'beach'], 'fishbox', [-16, -16, 18, 5], drawFishBox(P));
     // boats at their moorings and two buoys, out on the bay
     for (const [x, y, col, k] of [[45.6, 83.6, '#a8402e', 'boat-a'], [54.4, 84.6, '#2f6a5a', 'boat-b'], [42.4, 86.8, '#d8c890', 'boat-c']]) { const b = L.base(x, y); if (b && b.ocean) { const p = atCell(x, y); thing({ key: k, box: [-46, -26, 48, 12], x: p.x, y: p.y, draw: drawBoat(P, col, true) }); } }
     for (const [x, y] of [[47.2, 87.4], [56.8, 86.6], [43.4, 84.6]]) { const b = L.base(x, y); if (b && b.ocean) { const p = atCell(x, y); thing({ key: 'buoy', box: [-8, -14, 8, 5], x: p.x, y: p.y, draw: drawBuoy(P) }); } }
@@ -167,6 +170,9 @@
     B.s('M-24 -10L30 -3', P.woodLo, 2.2, .95).s('M-22 -4L32 -10', P.woodLo, 2.2, .9);
     if (afloat) B.f('M-40 -2Q-40 4 -26 6L26 6Q42 4 44 -2Z', '#3f7a8c', .45);
   };
+  const drawBench = P => B => { B.shadow(2, 1, 26, 4, .28); for (const x of [-20, 18]) B.f(B.rect(x - 1.6, -12, 3.2, 12), P.iron); B.f(B.rect(-24, -14, 48, 4), P.wood).f(B.rect(-24, -14, 48, 1.4), P.woodHi, .8).f(B.rect(-24, -26, 48, 3.4), P.wood).f(B.rect(-24, -21, 48, 3.4), P.woodLo).s('M-21 -26v12M19 -26v12', P.iron, 2.2); };
+  const drawAnchor = P => B => { B.shadow(2, 1, 18, 4, .28); B.s('M0 -36V-2', '#3e4448', 4).s('M-16 -10Q0 6 16 -10', '#3e4448', 4).s('M-9 -30H9', '#3e4448', 3.4).s(B.ell(0, -38, 3.4, 3.4), '#3e4448', 2).s('M-2 -34V-4', '#7a8286', 1.2, .7); B.f('M-19 -14L-14 -8L-12 -14Z', '#3e4448').f('M19 -14L14 -8L12 -14Z', '#3e4448'); B.s('M0 -38q14 4 10 18q-4 14 8 22', P.rope, 1.6, .9); };
+  const drawFishBox = P => B => { B.shadow(1, 1, 14, 3, .3); crate(B, -12, 0, 22, 9, P, 1); for (let k = 0; k < 4; k++) B.f(B.ell(-8 + k * 5, -10, 2.6, 1.2), '#c8d4dc').f(B.ell(-8 + k * 5, -10.4, 1.6, .5), '#fff', .7); };
   const drawBuoy = P => B => { B.f(B.ell(0, 2, 8, 2.4), '#2e5a6a', .25); B.f(B.circ(0, -4, 5.4), '#c8402e').f(B.rect(-5.4, -5, 10.8, 2.2), '#f4efe2').f(B.circ(-1.8, -6, 1.6), '#fff', .5); B.s('M0 -9.4v-4', P.iron, 1.2); };
 
   V.parts.push({ id: 'harbour', compose });

@@ -175,9 +175,20 @@
         B.cx.restore();
         if (style === 'setts' || style === 'flags' || style === 'yard') B.s(path, P.kerb, 3, .8);
       });
+      // dressing by job: the cider square's press, bell and lanterns; the mill yard's millstone and sacks; the court's fallen column
+      const spot = (x, y) => L.free(x, y) && ['grass', 'path'].includes(L.kind(x, y));
+      const put = (cands, key, box, draw) => { for (const [x, y] of cands) if (spot(x, y)) { const p = L.cpt(x, y); thing({ key, box, x: p.x, y: p.y, draw }); return; } };
+      if (pz.id === 'cider-square') { put([[80.2, 36.4], [79.6, 35.4], [75.4, 37.6]], 'press', [-26, -50, 28, 6], drawPress(P)); put([[79.6, 38.3], [80.4, 38.6]], 'bell', [-14, -64, 16, 5], drawBell(P)); put([[76.9, 38.6], [78.2, 38.9]], 'baskets', [-24, -18, 26, 5], drawBaskets(P, C.season)); }
+      if (pz.id === 'mill-yard') { put([[76.6, 64.6], [77.2, 65.2], [76.9, 66.8]], 'millstone', [-22, -40, 24, 6], drawMillstone(P)); put([[77.3, 66.9], [73.6, 67.4], [76.8, 67.6]], 'sacks', [-22, -24, 24, 5], drawSacks(P)); }
+      if (pz.id === 'ruin-court') { const c = L.cpt(pz.x + 1.4, pz.y + .9); add([c.x - 60, c.y - 30, c.x + 60, c.y + 30], 75, (B, r) => { B.shadow(4, 6, 46, 8, .3); B.f(B.rr(c.x - 44, c.y - 7, 80, 14, 7), RUIN.body).f(B.rr(c.x - 44, c.y - 7, 80, 5, 2.5), RUIN.hi, .8).f(B.ell(c.x + 38, c.y, 6, 7), RUIN.lo).f(B.ell(c.x + 38, c.y, 3.4, 4), RUIN.dk, .3); for (let k = -36; k < 34; k += 9) B.s(`M${c.x + k} ${c.y - 6}v12`, RUIN.lo, .8, .5); B.f(B.blob(r, c.x - 10, c.y - 6, 22, 3, 7, .5), RUIN.moss, .8); fern(B, r, c.x - 50, c.y + 6, C.season); fern(B, r, c.x + 20, c.y + 9, C.season); }); }
       if (style === 'litter') { const o = oakAt(L, pz); thing({ key: 'great-oak|' + C.season, x: o.x, y: o.y, box: [-250, -360, 250, 40], K: 1, draw: B => greatOak(B, kit.rng(seed + 9), P, C.season) }); }
     }
   }
+  const drawPress = P => B => { B.shadow(4, 2, 24, 5, .3); B.f(B.rr(-18, -16, 36, 16, 3), P.wood).f(B.rect(-18, -16, 36, 3), P.woodHi, .7); for (const x of [-14, 12]) B.post(x, -46, -14, 5, [P.wood, P.woodLo, P.woodHi]); B.f(B.rect(-18, -50, 36, 6), P.woodLo).s('M0 -44V-20', P.iron, 3).s('M-10 -30H10', P.iron, 2.2).f(B.ell(0, -18, 12, 3), '#c8a04a', .8); };
+  const drawBell = P => B => { B.shadow(2, 1, 8, 2.4, .3); B.post(0, -58, 0, 4, [P.wood, P.woodLo, P.woodHi]); B.s('M0 -56H10', P.woodLo, 2.6); B.f('M4 -54Q4 -46 2 -42H18Q16 -46 16 -54Q10 -58 4 -54Z', '#b08a3a').f('M5 -53Q5 -47 3 -43H8Q7 -48 8 -54Z', '#e0c070', .7).f(B.circ(10, -41, 1.6), '#5a4a2a'); };
+  const drawBaskets = (P, season) => B => { B.shadow(2, 1, 22, 4, .3); for (const x of [-12, 10]) { B.f(`M${x - 10} -12L${x + 10} -12L${x + 8} 0L${x - 8} 0Z`, '#a8844e').s(`M${x - 9} -8H${x + 9}M${x - 8.5} -4H${x + 8.5}`, '#7a5e34', .8, .8); for (let k = 0; k < 5; k++) B.f(B.circ(x - 7 + k * 3.5, -13 - (k % 2) * 1.6, 2.6), season === 'autumn' ? (k % 2 ? '#c8402e' : '#e0b23a') : '#9cbc4a'); } };
+  const drawMillstone = P => B => { B.shadow(6, 2, 20, 5, .3); B.f(B.ell(0, -18, 12, 18), '#8e8a7c').f(B.ell(-2, -19, 11, 17), '#b4ae9c').f(B.ell(-2, -19, 3.4, 5), '#5e5a4e'); for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; B.s(`M${-2 + Math.cos(a) * 4} ${-19 + Math.sin(a) * 6}L${-2 + Math.cos(a + .3) * 10} ${-19 + Math.sin(a + .3) * 15}`, '#7a7668', 1, .7); } };
+  const drawSacks = P => B => { B.shadow(2, 1, 22, 5, .3); for (const [x, y, s] of [[-10, 0, 1], [9, 0, .95], [0, -11, .9]]) { B.f(`M${x - 9 * s} ${y}Q${x - 11 * s} ${y - 12 * s} ${x - 5 * s} ${y - 16 * s}L${x + 5 * s} ${y - 16 * s}Q${x + 11 * s} ${y - 12 * s} ${x + 9 * s} ${y}Z`, '#e4dcc4').f(`M${x - 8 * s} ${y}Q${x - 10 * s} ${y - 11 * s} ${x - 5 * s} ${y - 15 * s}L${x - 2 * s} ${y - 15 * s}Q${x - 6 * s} ${y - 10 * s} ${x - 4 * s} ${y}Z`, '#fff', .5).s(`M${x - 4 * s} ${y - 16 * s}l${8 * s} 0`, '#a08a5a', 1.4); } };
   const oakAt = (L, pz) => L.cpt(pz.x + .4, pz.y - 1.9);
   function greatOak(B, r, P, season) {
     B.shadow(10, 6, 200, 34, .3);

@@ -3,7 +3,7 @@
  * fields and hedgerows, the long road leaves from the milestone and winds away
  * into the haze, and to the north the fells rise into ridges, blue with
  * distance, snow on them in winter. No cells: nothing to walk or save. It is
- * seen from far off, so it is baked at half a canvas pixel per world pixel and
+ * seen from far off, so it is baked at a third of a canvas pixel per world pixel and
  * hazes out with distance; where it meets the sea it has a beach and foam.
  * See 94-garden-paint-vale-0kit.js for the layers. */
 (function () {
