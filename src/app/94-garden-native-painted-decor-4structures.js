@@ -107,9 +107,9 @@ GardenPaintedDecor.add('structures', (function () {
       B.s('M0 0v-46', '#7a6a5a', 2.6).s('M-.6 0v-46', '#a89a8a', .8, .7);
       B.f('M-9 -42v-14l9 -8l9 8v14z', H.lit(B, -9, 9, WHITE[0])).f('M-11 -55l11 -10l11 10l-2 1l-9 -8l-9 8z', '#d83a3a').f(B.rr(-3, -50, 6, 8, 2), '#3a6fc4').f(B.rect(-9, -43, 18, 2), '#a8a294');
       B.tufts(r, 0, 2, 16, 6, o.season);
-    }, anim: [{ id: 'sails', x: 6, y: -54, kind: 'spin', speed: 1.8, box: [-20, -20, 20, 20], draw(B, o) {
+    }, anim: [{ id: 'sails', x: 6, y: -54, kind: 'spin', speed: 1.8, box: [-25, -25, 25, 25], draw(B, o) {
       const blue = ['#3a6fc4', '#f2b33a'][o.v];
-      for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; B.cx.save(); B.cx.rotate(a); B.f('M0 -1.2L17 -2.4L17 4.6L3 3z', i % 2 ? '#d83a3a' : blue).f('M0 -1.2L17 -2.4L17 -.6L1 0z', '#ffffff', .4); B.cx.restore(); }
+      for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; B.cx.save(); B.cx.rotate(a); B.f('M0 -1.4L23 -3L23 6L3 3.6z', i % 2 ? '#d83a3a' : blue).f('M0 -1.4L23 -3L23 -.8L1 0z', '#ffffff', .4).s('M4 1L22 1.4', '#ffffff', .5, .5); B.cx.restore(); }
       B.f(B.circ(0, 0, 2.6), '#2f3438').f(B.circ(-.6, -.6, .9), '#8a9094');
     } }] },
     'weather-vane': { box: [-24, -104, 24, 6], draw(B, o) {
@@ -121,7 +121,8 @@ GardenPaintedDecor.add('structures', (function () {
       B.text('W', -19, -72, 6, IRONP[0], 'Georgia, serif', 'bold').text('E', 19, -72, 6, IRONP[0], 'Georgia, serif', 'bold');
       B.f(B.circ(0, -88, 2), '#c98a12');
       B.tufts(r, 0, 2, 20, 6, o.season);
-    }, anim: [{ id: 'cock', x: 0, y: -90, kind: 'sway', speed: .7, amp: .12, box: [-20, -18, 20, 2], draw(B) {
+    }, anim: [{ id: 'cock', x: 0, y: -90, kind: 'sway', speed: .7, amp: .12, box: [-36, -32, 32, 4], draw(B) {
+      B.cx.scale(1.7, 1.7);   // big enough to read as a cockerel at garden distance
       // a gilded cockerel on its arrow, lit upper left
       const G = ['#c98a12', '#9a6a0e', '#f0c060'];
       B.s('M-18 -1h34', G[1], 1.4).f('M16 -1l-5 -3v6z', G[0]).f('M-18 -1l-3 -3h4l2 3l-2 3h-4z', G[0]);
