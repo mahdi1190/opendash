@@ -137,6 +137,24 @@ window.GardenPaintedTerrain = (function () {
         }
       });
     });
+    // 3b. Outcrops (flat gritstone slabs breaking the turf, ground-level: you walk over them) and the old sheepfolds of the high pasture.
+    const routeNear = (x, y, d) => L.routes.some(rt => rt.points.some((p, i) => i % 3 === 0 && Math.abs(p.x - x) < d && Math.abs(p.y - y) < d * .7));
+    const crops = []; { const rr = kit.rng(5150); for (let k = 0; k < 60 && crops.length < 22; k++) { const x = (4 + rr() * 74) * cw, y = W.sky + (3 + rr() * 16) * ch; if (fellAt(x, y) && !routeNear(x, y, 60) && !L.peaks.some(pk => { const b = kit.bboxOf(pk.pts, 40); return x > b[0] && x < b[2] && y > b[1] && y < b[3]; })) crops.push({ x, y, n: 3 + Math.floor(rr() * 5), s: .7 + rr() * .8 }); } }
+    for (const c of crops) add([c.x - 70, c.y - 40, c.x + 70, c.y + 40], 170 + Math.round(c.x), (B, r) => {
+      clipFell(B); const sn = snowAt(c.x, c.y) > .6;
+      for (let k = 0; k < c.n; k++) { const x = c.x + (r() - .5) * 80 * c.s, y = c.y + (r() - .5) * 30 * c.s, rx = (8 + r() * 14) * c.s, ry = rx * (.34 + r() * .14);
+        B.f(B.blob(r, x + 2, y + 2.4, rx, ry, 8, .3), P.rockDk, .45).f(B.blob(r, x, y, rx, ry, 8, .3), P.rockLo).f(B.blob(r, x - rx * .12, y - ry * .3, rx * .86, ry * .66, 8, .3), P.rock).f(B.blob(r, x - rx * .3, y - ry * .45, rx * .4, ry * .25, 6, .4), sn ? P.snow : P.rockHi, .8);
+        B.s(`M${x - rx * .2} ${y - ry * .6}l${rx * .15} ${ry * 1.1}`, P.rockDk, .9, .5);
+        if (!sn) { if (r() < .5) B.f(B.blob(r, x + rx * .3, y - ry * .2, rx * .25, ry * .2, 6, .5), P.lichen, .6); B.tufts(r, x, y + ry * .8, rx * 1.6, 5, [P.fellLo, P.bleach], 5); if (moor(x) > .3) B.heather(r, x + rx * .9, y + ry * .5, 4 + r() * 3, P, P.bloom); } }
+    });
+    for (const [fx, fy, frx] of [[57.4, 18.6, 1.6], [54.6, 15.8, 1.2]]) { const c = L.cpt(fx, fy), RX = frx * cw, RY = frx * ch * .95;
+      add([c.x - RX - 20, c.y - RY - 20, c.x + RX + 20, c.y + RY + 24], 190 + fx, (B, r) => {
+        clipFell(B); const sn = snowAt(c.x, c.y) > .6, ring = []; for (let k = 0; k <= 40; k++) { const a = k / 40 * Math.PI * 2; if (k > 33 && k < 37) { ring.push(null); continue; } ring.push({ x: c.x + Math.cos(a) * RX, y: c.y + Math.sin(a) * RY }); }
+        // the fold's turf is greener (sheltered), then the wall: a shaded outer face to the south, the stones, the cope
+        B.f(B.ell(c.x, c.y, RX * .92, RY * .9), sn ? P.snowSh : P.fellHi, .45);
+        let seg = []; const flush = () => { if (seg.length > 1) { const fine = kit.resample(seg, 3.4); B.s(B.line(seg.map(p => ({ x: p.x + 2, y: p.y + 4.5 }))), '#3e3a32', 10, .3).s(B.line(seg), '#7d7464', 9, 1); for (const off of [2.2, -2.2]) for (const p of fine) B.stone(r, p.x + (r() - .5) * 2.4, p.y - 1 + off * .6 + (r() - .5) * 1.5, 2.6 + r() * 2.4, 1.8 + r() * 1.3, P, sn ? 'snow' : r() < .25 ? P.lichen : null); for (let i = 0; i < fine.length; i += 3) { const p = fine[i]; B.f(B.rect(p.x - 2, p.y - 6.5, 4, 3.2), r() < .5 ? '#a39a84' : '#bdb39c', .9); } } seg = []; };
+        for (const p of ring) { if (!p) { flush(); continue; } seg.push(p); } flush();
+      }); }
     // 4. The far fells beyond the north edge (backdrop only): three ranges of real peaks going into haze, each peak lit on
     //    its west flank and shaded on its east, snow on the far tops by season; the near range is fell-coloured and meets the fell.
     add([-60, top - 40, Math.min(worldW, 84 * cw), W.sky + 40], 31, (B) => {
