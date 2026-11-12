@@ -1,6 +1,6 @@
 /* ============================================================
    THE PRIZE VEGETABLE (docs/dev/HUNDRED_PLAY.md row 35, built here; docs/dev/GARDEN_TOGETHER.md section 24). Pick one, tend it once a day, and it really gets huge: your real work that day decides how much it puts on. It stands in the garden at its true size, and friends see it, with its weight on a label.
-   After a week it can go on the scales: tickets for its weight and a record that friends can see. Then start again. Fat days, thin days: a day off costs nothing but a little size.
+   After a week it can go on the scales: stone for its weight and a record that friends can see. Then start again. Fat days, thin days: a day off costs nothing but a little size.
    SAVES: wd['tg.pv'] = {k, d}; wd['tg.pt.<day>'] = hundred-gram units put on that day, one entry a day, so two devices cannot tend it twice over; wd['tg.pb'] the best ever (hundred-gram units).
    ============================================================ */
 const GTG_VEG = Object.freeze({ min: 7, tickets: 60, perDay: 8, focus: 30, kinds: Object.freeze([{ id: 'pumpkin', name: 'Pumpkin', c: '#e8882a', c2: '#c8681a', stem: '#5a7a3a' }, { id: 'marrow', name: 'Marrow', c: '#6a9a4a', c2: '#4a7a3a', stem: '#7a8a3a' }, { id: 'turnip', name: 'Turnip', c: '#e8d8e8', c2: '#a86ab4', stem: '#4a8a3a' }]) });
@@ -27,7 +27,7 @@ function gtgVegSvg(i, units) {
 function _gtgvWeigh() {
   const u = _gtgvUnits(), best = _gtgvBest(), kg = u / 10, W = _gtgW(), P = _gtgvGet(); if (!P) return;
   const t = Math.min(GTG_VEG.tickets, Math.max(5, Math.round(kg))), g = _gdG();
-  g.led['pl.' + gtgToday() + '.' + _gdUid('').toLowerCase()] = { d: gtgToday(), k: 'pl', i: { ticket: t, 'mat:stone': kg >= 40 ? 2 : 1 }, x: 5, n: 1, w: 'veg' };
+  g.led['pl.' + gtgToday() + '.' + _gdUid('').toLowerCase()] = { d: gtgToday(), k: 'pl', i: { 'mat:stone': kg >= 40 ? 2 : 1 }, x: 5, n: 1, w: 'veg' };
   if (u > best) W['tg.pb'] = u;
   for (const k of Object.keys(W)) if (k.startsWith('tg.pt.')) W[k] = 0;   // (nothing is left on the scales: it counts from zero for the next)
   W['tg.pv'] = { x: gtgToday() };   // (an entry, not a deletion: the other device must hear it is over)
@@ -55,7 +55,7 @@ function gardenVegOpen() {
         el.appendChild(tend);
         el.appendChild(gpEl('p', 'muted', `Today so far: ${t.tasks} finished task${t.tasks === 1 ? '' : 's'}, ${t.focus} minutes of focus. Tend it later and it will take more of that in.`));
         const weigh = gpEl('button', 'btn btn-ghost', days >= GTG_VEG.min ? 'Put it on the scales' : `${GTG_VEG.min - days} more day${GTG_VEG.min - days === 1 ? '' : 's'} until the scales`); weigh.type = 'button'; weigh.disabled = days < GTG_VEG.min;
-        weigh.onclick = () => { const r = _gtgvWeigh(); if (!r) return; gardenToast(`${r.kg.toFixed(1)} kg${r.record ? ', your best yet' : ''}. ${r.t} tickets`, { icon: 'trophy', kind: 'ok', timeout: 6000 }); _gtgvDraw(gardenHere()); paint(); };
+        weigh.onclick = () => { const r = _gtgvWeigh(); if (!r) return; gardenToast(`${r.kg.toFixed(1)} kg${r.record ? ', your best yet' : ''}. Stone for the scales`, { icon: 'trophy', kind: 'ok', timeout: 6000 }); _gtgvDraw(gardenHere()); paint(); };
         el.appendChild(weigh);
       }
       const best = _gtgvBest();

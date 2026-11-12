@@ -643,7 +643,7 @@ const GARDEN_TOOLS = _gdRows(([
   { id: 'can-4', name: 'Golden watering can', kind: 'can', n: 6, price: 400, lv: 12, needs: 'can-3', icon: 'droplets', blurb: 'The finest can there is: six more a day.' },
   { id: 'hose', name: 'Garden hose', kind: 'hose', price: 120, lv: 6, icon: 'waves', blurb: 'Water a whole row with one click.' },
   { id: 'golden-shears', name: 'Golden shears', kind: 'shears', price: 200, lv: 10, icon: 'scissors', blurb: 'Pruning finds a cutting twice as often.' },
-  { id: 'fertiliser', name: 'Fertiliser', kind: 'consumable', price: 6, lv: 1, icon: 'flask-conical', blurb: 'A feed gives a plant half a day’s growth.' },
+  { id: 'fertiliser', name: 'Compost', kind: 'consumable', price: 6, lv: 1, icon: 'flask-conical', noShop: 1, blurb: 'Weeds and leaves from the compost bin. A feed gives a plant half a day’s growth.' },   // (made, never sold: JOURNAL.md section 9)
 ]).map(x => Object.assign({}, x, { price: _gdUp(x.price) })));
 const _GD_TOOL = new Map(GARDEN_TOOLS.map(t => [t.id, t]));
 /* Bouquets: the first style whose rule the chosen flowers meet (gardenBouquetOf). n = how many stems at least. */
@@ -1046,6 +1046,7 @@ function gardenSnapshotClean(raw) {
   if (out.wv >= 3 && typeof gardenSightPlacementsClean === 'function') { const rp = gardenSightPlacementsClean(raw.rp); if (rp.length) out.rp = rp; }
   if (raw.sh && typeof gardenShowClean === 'function') { const sh = gardenShowClean(raw.sh); if (sh) out.sh = sh; }
   if (raw.sp && typeof gardenSpecClean === 'function') { const sp = gardenSpecClean(raw.sp); if (sp) out.sp = sp; }   // their best specimens (94-garden-fish-0variants.js)
+  if (raw.jn && typeof gardenJournalSnapClean === 'function') { const jn = gardenJournalSnapClean(raw.jn); if (jn) out.jn = jn; }   // what they have caught for the Field Journal: vale ids, best sizes (94-garden-fish-0catalog.js)
   if (raw.ca && typeof gardenCatchWireClean === 'function') { const ca = gardenCatchWireClean(raw.ca); if (ca) out.ca = ca; }   // the lake: what it shows to friends
   { const tg = gardenTogetherClean(raw.tg); if (tg) out.tg = tg; }   // 94-garden-zz-*.js: ids and numbers only
   if (raw.rf && typeof raw.rf === 'object' && !Array.isArray(raw.rf)) {   // what they have put in their hidden rooms: {room: [[decor, x, y]]} (94-garden-world-4rooms2.js); an older app drops it

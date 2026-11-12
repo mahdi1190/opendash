@@ -1,8 +1,11 @@
 /* ============================================================
    PLAY: the dig, and fossil skeletons. docs/dev/HUNDRED_PLAY.md 10-11. A patch of old ground: the brush is gentle, the pick is quick, and every tap cracks the wall.
-   One free dig a day, then 3 tickets each. Pieces are items (fos:<skeleton>-<part>), and a full set gives you the skeleton, a decoration anyone can see. Pure rules at the top.
+   One free dig a day; days you missed wait for you, up to 3. Pieces are items (fos:<skeleton>-<part>), and a full set gives you the skeleton, a decoration anyone can see. Pure rules at the top.
    ============================================================ */
-const GP_DIG = Object.freeze({ W: 11, H: 8, crack: 34, extra: 3 });
+const GP_DIG = Object.freeze({ W: 11, H: 8, crack: 34, wait: 3 });   // one free dig a day; days you missed wait for you, up to 3 (like the fossils in a certain island game)
+/** Digs you can have now: today's, and one for each of the last GP_DIG.wait days you did not dig on (used: that day is marked -1). */
+function _gpDigBank(day) { const out = []; for (let k = 1; k <= GP_DIG.wait; k++) { const d = _gdAddDays(day, -k); if (!Number(gpGet('dg.' + d, 0))) out.push(d); } return out; }
+function _gpDigsLeft(day) { return (Number(gpGet('dg.' + day, 0)) > 0 ? 0 : 1) + _gpDigBank(day).length; }
 const GP_FOSSILS = Object.freeze([
   { id: 'raptor', name: 'Raptor', parts: [['skull', 'Raptor skull', [[0, 0], [1, 0], [0, 1]]], ['ribs', 'Raptor ribs', [[0, 0], [1, 0], [2, 0], [1, 1]]], ['claw', 'Raptor claw', [[0, 0], [0, 1]]], ['tail', 'Raptor tail', [[0, 0], [1, 0], [2, 0]]]] },
   { id: 'turtle', name: 'Giant turtle', parts: [['shell', 'Turtle shell', [[0, 0], [1, 0], [0, 1], [1, 1]]], ['head', 'Turtle head', [[0, 0], [1, 0]]], ['flip', 'Turtle flipper', [[0, 0], [1, 1], [1, 0]]], ['tail', 'Turtle tail', [[0, 0]]]] },
@@ -30,8 +33,9 @@ function _gpDigOpen() {
     const intro = () => {
       el.textContent = '';
       el.appendChild(gpEl('p', 'gp-lead', 'Old ground, with old things in it. Clear the soil to get them out. The brush takes one layer and hardly hurts the wall. The pick takes more, in a wider patch, but the wall cracks faster. When the wall gives way, you keep only what is fully clear.'));
-      el.appendChild(uiButton({ label: done ? `Dig again (${GP_DIG.extra} tickets)` : 'Start today’s dig', icon: 'shovel', kind: 'primary', disabled: done > 0 && gpTickets() < GP_DIG.extra, run: () => {
-        const nd = Number(gpGet('dg.' + day, 0)); if (nd > 0) { if (gpTickets() < GP_DIG.extra) return; gpSpend('a dig', { ticket: -GP_DIG.extra }, 'A new patch of ground'); }
+      const left = _gpDigsLeft(day);
+      el.appendChild(uiButton({ label: !left ? 'Back tomorrow' : done ? `Dig again (${left} waiting)` : 'Start today’s dig', icon: 'shovel', kind: 'primary', disabled: !left, run: () => {
+        const nd = Number(gpGet('dg.' + day, 0)); if (nd > 0) { const bank = _gpDigBank(day); if (!bank.length) return; gpSet('dg.' + bank[bank.length - 1], -1); }   // a missed day's dig, the oldest first
         gpSet('dg.' + day, nd + 1); play(gpDigMake(`gpdig|${day}|${nd}|${Math.random()}`, _gpPiecesLeft()));
       } }));
       _gpFossilShelf(el);

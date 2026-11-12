@@ -147,8 +147,13 @@ const GRM_DOOR = Object.freeze({
   cap(D, A) { const mx = (D.x0 + D.x1) / 2; let s = A.p(`M${D.x0 + 2} ${D.y1}L${D.x0 + 14} ${D.y0 + 60}H${D.x1 - 14}L${D.x1 - 2} ${D.y1}Z`, '#1a1006') + A.p(`M${D.x0 + 14} ${D.y0 + 60}L${D.x0 + 2} ${D.y0 - 34}H${D.x1 - 2}L${D.x1 - 14} ${D.y0 + 60}Z`, '#6e5230') + A.s(`M${mx - 26} ${D.y0 - 24}L${mx - 22} ${D.y0 + 52}M${mx + 26} ${D.y0 - 24}L${mx + 22} ${D.y0 + 52}`, '#3a2814', 5) + A.c(mx, D.y0 + 2, 9, '#3a3a42') + A.c(mx, D.y0 + 2, 4, '#6e5230'); for (let i = 0; i < 5; i++) { const y = D.y0 + 74 + i * 20, ins = 22 - i * 3.4; s += A.r(D.x0 + ins, y, D.x1 - D.x0 - ins * 2, 12, i % 2 ? '#94703e' : '#a88048') + A.r(D.x0 + ins, y, D.x1 - D.x0 - ins * 2, 2.4, '#fff8e0', 0.5); } return s; },
 });
 function _grmDoorArt(R) {
-  const D = GRM.door, A = _grmA, f = GRM_DOOR[R.door] || GRM_DOOR.plank, mx = (D.x0 + D.x1) / 2, badgeY = D.y0 - 56;
-  return `<g class="ee-door"><title>Way out</title>${f(D, A)}<g class="grm-outmark" transform="translate(${mx} ${badgeY})"><circle r="19" fill="#0e1a12" stroke="#ffe9a8" stroke-width="2.5"/><path d="M-9 0H6M0 -8L8 0L0 8" fill="none" stroke="#ffe9a8" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" transform="rotate(180)"/></g></g>`;
+  const D = GRM.door, A = _grmA, f = GRM_DOOR[R.door] || GRM_DOOR.plank;
+  return `<g class="ee-door"><title>Way out</title>${f(D, A)}${_grmOutMark()}</g>`;
+}
+/** The way-out badge over the door (the Painted rooms paint their own door and keep this). */
+function _grmOutMark() {
+  const D = GRM.door, mx = (D.x0 + D.x1) / 2, badgeY = D.y0 - 56;
+  return `<g class="grm-outmark" transform="translate(${mx} ${badgeY})"><circle r="19" fill="#0e1a12" stroke="#ffe9a8" stroke-width="2.5"/><path d="M-9 0H6M0 -8L8 0L0 8" fill="none" stroke="#ffe9a8" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" transform="rotate(180)"/></g>`;
 }
 
 /* ---------- things out on the land that say what they are when you go up to them ---------- */

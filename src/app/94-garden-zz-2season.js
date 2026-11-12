@@ -138,7 +138,7 @@ function _gtgSeasonApply(m) {
 }
 function _gtgOnIceTick(m) {
   if (!_gtgs.ice || typeof _gw === 'undefined' || !gardenIceAt(_gw.px, _gw.py)) return;
-  if (gpGrant('tg-ice-walk', { ticket: 5, 'mat:reed': 1 })) gpNote('You are standing on the lake. 5 tickets, and a bundle of frozen reeds');
+  if (gpGrant('tg-ice-walk', { 'mat:timber': 1 })) gpNote('You are standing on the lake. A frozen branch, good timber');
   void m;
 }
 wdMod({ id: 'tg-season', fun: false, visit: true,

@@ -7,7 +7,8 @@ function gardenCanonicalWorld() { const island = typeof GardenIslandCanonicalLay
 function gardenWorldIsLegacy() { const current = gardenCanonicalWorld(); return GARDEN_WORLD.v !== current.wv || GARDEN_WORLD.lh !== current.lh; }
 /** Presentation stays inside the existing broad road reservations. */
 function gardenIslandRoadStyle(route) {
-  const main = gardenIslandData().version >= 4 && !!route && (route.id === 'harbour-walk' || route.id === 'plaza-loop'), width = Math.max(.5, Number(route && route.widthCells) || 2);
+  // Fleetwater Vale tags each route: main road and plazas are cobbles; lanes and trails are garden paths.
+  const main = gardenIslandData().version >= 4 && !!route && (route.tier === 'main' || route.tier === 'plaza' || route.id === 'harbour-walk' || route.id === 'plaza-loop'), width = Math.max(.5, Number(route && route.widthCells) || 2);
   return { main, name: main ? 'Arrival promenade' : 'Garden path', radius: Math.min(width * (main ? .42 : .24), main ? 1.18 : .64), edgeRadius: Math.min(width * (main ? .47 : .29), main ? 1.3 : .78) };
 }
 function gardenIslandRoadJoints(route) {
@@ -52,18 +53,12 @@ function gardenIslandStaticRow(row) {
   if (!p) return row;
   const next = Object.assign({}, row, { x: p.x, y: p.y, w: p.w, h: p.h, col: p.col, walk: p.walk ? 1 : 0 });
   if (p.door) next.door = Object.freeze({ x: p.door.x, y: p.door.y });
-  // The authored v4 layout seats the old angler three cells up the bank, so his
-  // line ended on grass. The layout file is hash-pinned (it is the saved-world
-  // identity), so only where he is drawn and talked to moves: to the last land
-  // cell east of the pier, with his line in the water. His original cell keeps
-  // its reservation; he has no collision ('none'), so nothing else changes.
-  if (row.id === 'old-angler' && p.x === 52 && p.y === 76) { next.x = 55; next.y = 78; next.door = Object.freeze({ x: 55, y: 77.5 }); }
   return next;
 }
 /** Optional decks use the displayed Garden's mechanics identity, never a visitor's ownership. */
 function gardenSidePierMechanicsReady(source) {
   const data = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data, mechanics = data && data.mechanics;
-  const current = mechanics && mechanics.revision === 2 && GardenIslandLayout.fingerprint === 'cbc9629edd7fb57272e9d21b';
+  const current = mechanics && (data.version >= 5 && mechanics.revision >= 3 || mechanics.revision === 2 && GardenIslandLayout.fingerprint === 'cbc9629edd7fb57272e9d21b');
   const earlier = mechanics && mechanics.revision === 1 && mechanics.contract === 'optional-side-pier-walk-cover-v1' && mechanics.predecessorLayout === '94f5b2dbe4dce765cafb2b40' && GardenIslandLayout.fingerprint === 'c34545b986e497d5d9df5d51';
   if (!current && !earlier) return false;
   if (source === undefined) source = typeof state !== 'undefined' && state ? state.garden : null;
@@ -112,7 +107,15 @@ function _gardenIslandInLoop(x, y, points) {
 function gardenIslandLandContains(x, y) { return Number.isFinite(x) && Number.isFinite(y) && gardenIslandGeometry().land.some(points => _gardenIslandInLoop(x, y, points)); }
 function gardenIslandOceanContains(x, y) { const W = GARDEN_WORLD; return Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 && x < W.cols && y < W.rows && !gardenIslandLandContains(x, y); }
 function _gardenIslandRect(x, y, r) { return x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h; }
-function gardenIslandFreshwaterCell(x, y) { const cx = Math.floor(x) + .5, cy = Math.floor(y) + .5; return gardenIslandGeometry().freshwater.some(p => p.boundary ? _gardenIslandInLoop(cx, cy, p.boundary) : _gardenIslandRect(cx, cy, p.wet)); }
+function _gardenIslandFreshwaterTest(G, cx, cy) { return G.freshwater.some(p => p.boundary ? _gardenIslandInLoop(cx, cy, p.boundary) : _gardenIslandRect(cx, cy, p.wet)); }
+/** Is a cell's centre in a lake or pond? Answered once per cell and kept (a gate opening asks for every cell several times over). */
+function gardenIslandFreshwaterCell(x, y) {
+  const G = gardenIslandGeometry(), W = GARDEN_WORLD, ix = Math.floor(x), iy = Math.floor(y);
+  if (!(ix >= 0 && iy >= 0 && ix < W.cols && iy < W.rows)) return _gardenIslandFreshwaterTest(G, ix + .5, iy + .5);
+  let c = _gardenIslandDerived.freshCells; if (!c || c.g !== G || c.cols !== W.cols || c.m.length !== W.cols * W.rows) c = _gardenIslandDerived.freshCells = { g: G, cols: W.cols, m: new Uint8Array(W.cols * W.rows) };
+  const i = iy * W.cols + ix; let v = c.m[i]; if (!v) v = c.m[i] = _gardenIslandFreshwaterTest(G, ix + .5, iy + .5) ? 1 : 2;
+  return v === 1;
+}
 /** Authored frontier regions share the same contours with drawing, walking and visits. */
 function gardenIslandRegionForZone(zone) { return (gardenIslandData().regions || []).find(region => region.zone === Number(zone)) || null; }
 function _gardenIslandRegionForKnownLand(x, y) { return (gardenIslandData().regions || []).find(region => (region.polygons || []).some(points => _gardenIslandInLoop(x, y, points))) || null; }

@@ -4,7 +4,7 @@
      A water      a row with `water`: the real fishing game (94-garden-world-4rooms3water.js). Its fish have needs.room, so they are in no other water. The book says where (gardenRegionWords, gardenCatchNeedsRows).
      Odds         ctx.room is one more condition for a variant: {room: 'cave'} in its `more`, and gardenVariantHow says it in words.
    ============================================================ */
-const GRM_FURN = Object.freeze({ slots: 12, x0: 40, x1: 920, y0: 170, y1: 556, px: 96, firstGift: Object.freeze({ ticket: 3 }) });
+const GRM_FURN = Object.freeze({ slots: 12, x0: 40, x1: 920, y0: 170, y1: 556, px: 96, firstGift: Object.freeze({ 'mat:stone': 1 }) });
 
 /* ---------- what can be clicked, all together ---------- */
 function _grmAllSpots(R, S) {
@@ -71,7 +71,7 @@ function _grmCarryClick(ev) {
   const x = Math.round(Math.max(GRM_FURN.x0, Math.min(GRM_FURN.x1, p.x))), y = Math.round(Math.max(GRM_FURN.y0, Math.min(GRM_FURN.y1, p.y)));
   _gdLed('pl', { i: { ['decor:' + id]: -1 }, n: 1, w: 'room' });
   _grmP(R, 'fu.' + slot, `${id}|${x}|${y}`);
-  if (_grmOnce(R, 'fu', GRM_FURN.firstGift)) _grmSay('It looks better already. You find 3 tickets behind where it went.');
+  if (_grmOnce(R, 'fu', GRM_FURN.firstGift)) _grmSay('It looks better already. You find a good stone behind where it went.');
   _gdSave(); _grmFurnChanged();
   return true;
 }

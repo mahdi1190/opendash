@@ -114,7 +114,7 @@ function _ptwSpots() {
   _ptwS.at = t;
   let m = null; try { m = gardenHere(); } catch (e) { return _ptwS; }
   const key = [m.visit ? m.visit.key : 'me', m.plants.length, m.decor.length, m.areas.length, gardenLakeOpenTo(), typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0, gardenPierMore(), _GD_WALK_EXTRA.size, _GD_ICE.size].join('|');
-  if (_ptwS.water && _ptwS.key === key && t - _ptwS.built < 30000) return _ptwS;
+  if (_ptwS.water && _ptwS.key === key && t - _ptwS.built < 300000) return _ptwS;   // the scan is a 150 ms task on a big island: redo it when the garden changes (the key), else only every five minutes, not every 30 s while walking
   _ptwS.key = key; _ptwS.built = t;
   const G = GARDEN_WORLD, water = new Uint8Array(G.cols * G.rows), shore = [], perch = [], seat = [], drink = [], warm = [], shade = [], top = new Map(), zoneOk = (x, y) => { const n = gardenZoneOf(Math.floor(x), Math.floor(y)); return !n || m.areas.includes('zn-' + n); };
   for (let y = 0; y < G.rows; y++) for (let x = 0; x < G.cols; x++) if (gardenIsWater(x, y) && !_GD_ICE.has(x + ',' + y) && !gardenWaterNo(x, y, m)) water[y * G.cols + x] = 1;

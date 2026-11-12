@@ -45,15 +45,18 @@ function _ghTreats() {
   try { if (typeof petTreats === 'function' && typeof petGet === 'function' && petGet()) { const t = petTreats(); if (t && Number.isFinite(t.have)) return t.have; } } catch (e) { /* no pets here */ }
   return null;
 }
+/** Your title: read from the Field Journal's pages, never a number (JOURNAL.md section 9). */
+const GH_TITLES = Object.freeze(['New in the vale', 'Keeper of the Mere', 'Friend of the woods', 'Walker of the Millwater', 'Keeper of the old ways', 'Orchard hand', 'Of the high places', 'Naturalist of Fleetwater']);
+function _ghTitle() { let n = 0; try { if (typeof gardenJournalPageState === 'function') for (const p of GARDEN_JOURNAL_PAGES) if (gardenJournalPageState(p.id).done) n++; } catch (e) { n = 0; } return GH_TITLES[Math.min(GH_TITLES.length - 1, n)]; }
 function _ghHud(box, m) {
   const w = m.wallet, lv = w.level, wi = m.water, sky = _gdpSkyChip(m), treats = _ghTreats();
   const pct = Math.round(lv.pct * 100);
   const stat = (cls, ic, val, tip) => `<span class="gd-stat ${cls}" data-tip="${escAttr(tip)}">${ic}<b>${esc(String(val))}</b></span>`;
-  const html = `<button type="button" class="gd-hud-summary" data-hud-details aria-label="Garden status: level ${lv.level}, ${escAttr(_gdpNum(w.coins))} coins. Show details" aria-expanded="false" aria-controls="gd-status-details"><span class="gd-hud-n">${lv.level}</span>${stat('is-coins', _GH_GLYPH.coin, _gdpNum(w.coins), 'Coins')}${icon('chevron-down')}</button><div class="gd-status-details" id="gd-status-details" hidden><div class="gd-hud-lv"><b>Level ${lv.level} · ${esc(lv.title)}</b><span class="gd-hud-bar" role="progressbar" aria-label="Garden level progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></span></div><small>${esc(_gdpNum(lv.into))} of ${esc(_gdpNum(lv.need))} points to level ${lv.level + 1}</small>`
+  const html = `<button type="button" class="gd-hud-summary" data-hud-details aria-label="Garden status: ${escAttr(_ghTitle())}, ${escAttr(_gdpNum(w.coins))} coins. Show details" aria-expanded="false" aria-controls="gd-status-details">${stat('is-coins', _GH_GLYPH.coin, _gdpNum(w.coins), 'Coins')}${icon('chevron-down')}</button><div class="gd-status-details" id="gd-status-details" hidden><div class="gd-hud-lv"><b>${esc(_ghTitle())}</b></div><small>Your title grows as the Field Journal’s pages fill.</small>`
     + '<div class="gd-hud-stats">'
     + stat('is-coins', _GH_GLYPH.coin, _gdpNum(w.coins), 'Coins: earned by focusing on tasks and finishing them')
     + (treats != null ? stat('is-treats', icon('cookie'), treats, 'Treats for your pet') : '')
-    + stat('is-water', icon('droplet'), wi.raining ? '∞' : wi.left, wi.raining ? 'The rain is watering everything' : 'Water left in the can today')
+    + stat('is-timber', icon('trees'), _gdpNum(gardenHas('mat:timber')), 'Timber: for land, building, fences and paths') + stat('is-stone', icon('mountain'), _gdpNum(gardenHas('mat:stone')), 'Stone: for land, building, paths and ornaments')
     + '</div>'
     + `<div class="gd-hud-sky" data-tip="${escAttr(_gdpWeatherNote(m) || sky.text)}">${icon(sky.ic)}<span>${esc(sky.text)}</span></div></div>`;
   const el = _ghHost(box, 'gd-hud'); el.setAttribute('aria-label', 'Garden status');
@@ -66,7 +69,7 @@ const _GH_MENU = Object.freeze([
   ['graphics', 'Graphics', 'monitor'],
   ['lands', 'Buy land', 'map-pin'],
   ['design', 'Design', 'paintbrush'],
-  ['shop', 'Shop', 'store'], ['basket', 'Market stall', 'shopping-basket'], ['craft', 'Crafting', 'hammer'], ['tricks', 'Pet tricks', 'wand-sparkles'], ['almanac', 'Notice board', 'book-open'], ['nature', 'Nature book', 'leaf'], ['wonder', 'Keepsakes', 'mail'], ['catch', 'Fish & bugs', 'fish'], ['friends', 'Friends', 'users'], ['goals', 'Goals', 'target'], ['help', 'Help', 'circle-help'],
+  ['shop', 'Shop', 'store'], ['basket', 'Market stall', 'shopping-basket'], ['craft', 'Crafting', 'hammer'], ['tricks', 'Pet tricks', 'wand-sparkles'], ['almanac', 'Notice board', 'clipboard-list'], ['journal', 'Field Journal (J)', 'book-open'], ['catch', 'Bag & tackle', 'fish'], ['friends', 'Friends', 'users'], ['help', 'Help', 'circle-help'],
 ]);
 function _ghMenu(box, m) {
   const btn = ([id, label, ic]) => `<button type="button" class="gd-mbtn" data-menu="${id}">${icon(ic)}<span>${esc(label)}</span></button>`;
@@ -74,13 +77,13 @@ function _ghMenu(box, m) {
   const garden = ['shop', 'basket', 'craft', 'design'].map(by);
   const own = !m.visit && _gdG(), predecessor = '94f5b2dbe4dce765cafb2b40';
   if (own && own.since && (gardenWorldIsLegacy() || GARDEN_WORLD.v === 3 && Number(own.seen.world) === 3 && own.seen.worldLayout === predecessor && GARDEN_WORLD.lh !== predecessor) && gardenWorldReady()) garden.push(['update', 'Update my garden', 'sprout']);
-  const together = ['play', 'tricks', 'friends', 'goals'].map(by).concat([['emote', 'Dance (Q)', 'smile']]);
+  const together = ['play', 'tricks', 'friends'].map(by).concat([['emote', 'Dance (Q)', 'smile']]);
   if (typeof gardenLiveCanSay === 'function' && gardenLiveCanSay(m)) together.push(['say', 'Say something', 'message-circle']);
   if (typeof gardenSnapCan === 'function' && gardenSnapCan()) together.push(['snap', 'Group photo', 'camera']);
   if (m.visit) together.push(['visit', 'Guestbook', 'feather']);
   const html = `<button type="button" class="gd-mbtn gd-mleave gd-mnav" data-menu="nav" aria-label="Show sidebar" title="Show sidebar">${icon('panel-left')}</button><button type="button" class="gd-mbtn gd-mmore" data-menu="more" aria-label="Garden menu" aria-expanded="false" aria-controls="gd-menu-panel">${icon('menu')}<span>Menu</span></button><div class="gd-mlist" id="gd-menu-panel">`
-    + group('Garden', garden) + group('Explore', ['lands', 'almanac', 'nature', 'wonder', 'catch'].map(by)) + group('Play & friends', together)
-    + group('View & help', [['map', 'Map (M)', 'map'], ['view', 'Camera', 'sliders-horizontal'], by('graphics'), by('help')])
+    + group('Garden', garden) + group('Explore', ['journal', 'lands', 'almanac', 'catch'].map(by)) + group('Play & friends', together)
+    + group('View & help', [['map', 'Map (M)', 'map'], ['view', 'Camera', 'sliders-horizontal'], by('graphics'), ['sound', 'Sound', 'music'], by('help')])
     + `</div><button type="button" class="gd-mbtn gd-mleave" data-menu="leave" aria-label="${m.visit ? 'Back to your garden' : 'Leave the garden'}" data-tip="${m.visit ? 'Back to your garden' : 'Leave the garden'}">${icon('x')}</button>`;
   const el = _ghHost(box, 'gd-menu', 'nav');
   el.classList.toggle('is-open', !!_gh.menuOpen);
@@ -102,6 +105,7 @@ function _ghMenu(box, m) {
       if (id === 'update') { setView('garden:update'); return; }
       if (id === 'help') { gardenGuideOpen(); return; }
       if (id === 'graphics') { gardenGraphicsOpen(); return; }
+      if (id === 'sound') { gardenSoundOpen(); return; }
       if (id === 'design') { gardenDesignEnter(); return; }
       gardenPopupOpen(id);
     });
@@ -128,7 +132,7 @@ function _ghBar(box, m) {
   const on = (s) => (s.seed ? tool === 'seed' && _gdp.seed === s.seed : s.tool === tool);
   const parts = slots.map((s, i) => {
     if (s.seed && !on(s)) return '';   // seeds remain in the bag and keep their number-key bindings
-    const count = s.seed ? s.n : s.k === 'feed' ? fert : s.k === 'water' ? (m.water.raining ? '' : m.water.left) : '';
+    const count = s.seed ? s.n : s.k === 'feed' ? fert : s.k === 'water' ? (m.water.raining || m.water.free ? '' : m.water.left) : '';
     const empty = s.k === 'feed' && !fert;
     return `<button type="button" class="gd-slot${s.seed ? ' is-seed' : ''}${empty ? ' is-empty' : ''}" data-slot="${escAttr(s.k)}"${s.tool ? ` data-tool="${s.tool}"` : ''} aria-pressed="${on(s) ? 'true' : 'false'}" aria-label="${escAttr(s.tip)}" data-tip="${escAttr(s.tip)}"><kbd>${i + 1}</kbd>${_ghSlotArt(s)}${count !== '' ? `<i class="gd-slotn">${count}</i>` : ''}</button>${i === 4 ? '<span class="gd-slotgap"></span>' : ''}`;
   });
@@ -422,6 +426,9 @@ function gardenBubbleOpen(at, o) {
   const box = _ghBox(); if (!box) return null;
   const el = document.createElement('div'); el.className = 'gd-bubble' + (o.cls ? ' ' + o.cls : ''); el.setAttribute('role', 'menu'); el.setAttribute('aria-label', o.title || 'What you can do here');
   if (o.title) { const h = _gdpEl('div', 'gd-bub-h'); h.appendChild(_gdpEl('b', null, o.title)); if (o.sub) h.appendChild(_gdpEl('small', null, o.sub)); el.appendChild(h); }
+  if (o.need) { const n = _gdpEl('div', 'gd-bub-need' + (o.need.have ? ' is-have' : '')), pic = _gdpEl('span', 'gd-bub-need-pic'); pic.innerHTML = o.need.svg || ''; n.append(pic, _gdpEl('span', 'gd-bub-need-t', (o.need.have ? 'You have: ' : 'Needs: ') + o.need.name)); el.appendChild(n); }   // what a gate needs, with its picture (94-garden-wonder-7gates.js)
+  if (o.hint) el.appendChild(_gdpEl('p', 'gd-bub-hint', o.hint));
+  if (o.foot) el.appendChild(_gdpEl('p', 'gd-bub-foot', o.foot));
   const row = _gdpEl('div', 'gd-bub-row'); el.appendChild(row);
   for (const it of o.items || []) {
     const b = _gdpEl('button', 'gd-bub-btn' + (it.cls ? ' ' + it.cls : '')); b.type = 'button'; b.setAttribute('role', 'menuitem');
@@ -446,7 +453,7 @@ function gardenPlantBubble(p, m) {
   const items = [];
   if (p.ripe) items.push({ svg: _GH_GLYPH.hand, label: 'Pick', cls: 'is-go', run: () => _ghDoTo(p.uid, gardenHarvest(p.uid)) });
   if (def.thirst) items.push({ svg: _GH_GLYPH.water, label: p.thirsty ? 'Water: it is thirsty' : 'Water', cls: p.thirsty ? 'is-go' : '', run: () => _ghDoTo(p.uid, gardenWater(p.uid)) });
-  items.push({ svg: _GH_GLYPH.feed, label: 'Fertilise: half a day of growth', n: gardenHas('fertiliser'), cls: gardenHas('fertiliser') ? '' : 'is-off', run: (b) => { const r = gardenFeed(p.uid); if (r && !r.ok) gameDenyOf(r, b); } });
+  items.push({ svg: _GH_GLYPH.feed, label: 'Compost: half a day of growth', n: gardenHas('fertiliser'), cls: gardenHas('fertiliser') ? '' : 'is-off', run: (b) => { const r = gardenFeed(p.uid); if (r && !r.ok) gameDenyOf(r, b); } });
   if (p.stage >= 3) items.push({ svg: _GH_GLYPH.trim, label: 'Trim', cls: p.overgrown ? 'is-go' : '', run: () => _ghDoTo(p.uid, gardenPrune(p.uid)) });
   items.push({ ic: 'move', label: 'Move', run: () => gardenMoveStart(p.uid, 'plant') });
   items.push({ svg: _GH_GLYPH.dig, label: 'Dig up', run: () => { _ghDoTo(p.uid, gardenDig(p.uid)); _gdp.sel = ''; } });
@@ -503,6 +510,7 @@ function gardenLandClick(id, ev) {
   if (a.solid) { gameDeny(null, { at, say: 'Too thick to walk through.' }); return; }
   const m = gardenHere();
   if (m.visit) { gameDeny(null, { kind: 'lock', at, say: 'That land is not open in this garden.' }); return; }
+  { const gate = /^zn-[1-9]$/.test(id) && typeof gardenGateOf === 'function' ? gardenGateOf(Number(id.slice(3))) : null; if (gate && gardenGateRule(gate) && typeof gardenGatePrompt === 'function') { const D = gate.door; if (!gardenWalkToPoint({ x: D.x + 0.5, y: D.y + 0.5 }, () => gardenGatePrompt(gate, { x: D.x + 0.5, y: D.y - 0.4 }, gardenHere()), { radius: 2 })) gardenGatePrompt(gate, { x: D.x + 0.5, y: D.y - 0.4 }, m); return; } }   // a shut region: walk to its gate, which says what it needs
   if (!a.buy) { gameDeny(null, { kind: 'lock', badge: 'Lv ' + a.lv, at, say: `${a.name} opens at garden level ${a.lv}.` }); return; }
   if (m.level.level < a.lv) { gameDeny(null, { kind: 'lock', badge: 'Lv ' + a.lv, at, say: `${a.name} can be bought from garden level ${a.lv}.` }); return; }
   const info = gardenLandInfo(id, m), D = gardenLandDoor(a);

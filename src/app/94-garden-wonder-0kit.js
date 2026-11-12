@@ -54,7 +54,8 @@ const WD_AT = Object.freeze({   // world cells
 });
 /* ---------- Settings: each kind can be turned down ---------- */
 const WD_PREFS = Object.freeze([
-  ['folk', 'People who call by', 'Six characters, one at a time, who come to your garden and remember what you have done.'],
+  ['folk', 'People who call by', 'The vale’s folk, one at a time, who come to your garden, remember what you have done, and have stories of their own.'],
+  ['story', 'Darker turns in the story', 'The vale’s story has some sad and serious parts. Turn this off for a gentler telling.'],
   ['post', 'The snail post', 'Letters and postcards, brought slowly by a snail.'],
   ['days', 'Small days in the calendar', 'A lantern on the lake, a supper, a fire: a few days a year, in the world.'],
   ['weather', 'Weather you can feel', 'Footprints in snow and after rain, and whatever else leaves them.'],
@@ -125,6 +126,7 @@ function gardenWonderStop() {
 }
 /* ---------- things in the world ---------- */
 function wdSprite(spec) {
+  if (spec.row && typeof gardenCastWalkSync === 'function') { const up = spec.update; spec.update = function (dt, S) { const out = up ? up.call(this, dt, S) : undefined; gardenCastWalkSync(S); return out; }; }   // the painted cast walk when they walk
   const S = gardenWorldAdd(Object.assign({ lift: 0, ground: false }, spec)), rm = S.remove;
   _wd.sprites.add(S);
   S.remove = () => { _wd.sprites.delete(S); rm(); };
@@ -156,7 +158,7 @@ function wdSound(list) {
     for (const [f, d, type, peak, at] of list) {
       const o = ac.createOscillator(), v = ac.createGain(), s = t0 + (at || 0);
       o.type = type || 'sine'; o.frequency.value = f; v.gain.setValueAtTime(0, s); v.gain.linearRampToValueAtTime(peak, s + 0.015); v.gain.exponentialRampToValueAtTime(0.0001, s + d);
-      o.connect(v); v.connect(ac.destination); o.start(s); o.stop(s + d + 0.05);
+      o.connect(v); v.connect(typeof gardenSoundOut === 'function' ? gardenSoundOut(ac) : ac.destination); o.start(s); o.stop(s + d + 0.05);
     }
   } catch (e) { /* no sound, no matter */ }
 }
@@ -186,7 +188,8 @@ function wdTalk(o) {
   box.appendChild(el); show();
   return T;
 }
-function wdTalkClose(quiet) { const T = _wd.talk; if (!T) return; _wd.talk = null; T.el.remove(); if (T.o.onClose && !quiet) { try { T.o.onClose(); } catch (e) { console.error('[garden wonder]', e); } } else if (T.o.onClose && quiet === true && T.o.closeQuiet) T.o.onClose(); }
+function wdTalkClose(quiet) { const T = _wd.talk; if (!T) return; _wd.talk = null; const had = T.el.contains(document.activeElement); T.el.remove(); if (had) { try { const b = typeof _gw !== 'undefined' && _gw.box && _gw.box.isConnected ? _gw.box : _wdBox(); if (b && b.focus) b.focus({ preventScroll: true }); } catch (e) { /* no stage */ } }   // (the keys go back to the garden: M, E and walking work at once)
+  if (T.o.onClose && !quiet) { try { T.o.onClose(); } catch (e) { console.error('[garden wonder]', e); } } else if (T.o.onClose && quiet === true && T.o.closeQuiet) T.o.onClose(); }
 /** Walked away from whoever you were talking to: they stop. */
 function _wdTalkCheck() { const T = _wd.talk; if (!T) return; const a = T.o.at; if (a && !wdNear(a.x, a.y, 6)) wdTalkClose(); else if (!T.el.isConnected) { const box = _wdBox(); if (box) box.appendChild(T.el); } }
 function wdWhisper(text, ms) { gardenMessage(text, { ms }); }

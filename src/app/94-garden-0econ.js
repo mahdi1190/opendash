@@ -84,3 +84,16 @@ function gardenEconLine(e) {
   if (e.taskN) bits.push(`${e.taskN} task${e.taskN === 1 ? '' : 's'} finished`);
   return `Today: ${e.coins} coin${e.coins === 1 ? '' : 's'}${bits.length ? ' from ' + bits.join(' and ') : ''} (cap ${e.cap})`;
 }
+/* ---------- the purse: coins, timber and stone (JOURNAL.md section 9) ----------
+   Eleven currencies became three. A price written before the cut still reads right: reeds and survey pegs are asked for as timber,
+   and tickets as coins (two a ticket). The wallet does the same for anything an old ledger line gives (gardenWallet). */
+const GARDEN_PURSE = Object.freeze({ into: Object.freeze({ 'mat:reed': 'mat:timber', 'mat:peg': 'mat:timber' }), ticketCoins: 2 });
+function gardenCostNow(need, o) {
+  const out = {};
+  for (const [k, v] of Object.entries(need || {})) {
+    const n = Number(v) || 0; if (!n) continue;
+    if (k === 'ticket') { if (!(o && o.drop)) out.c = (out.c || 0) + n * GARDEN_PURSE.ticketCoins; continue; }   // o.drop: a table that takes materials only
+    const to = GARDEN_PURSE.into[k] || k; out[to] = (out[to] || 0) + n;
+  }
+  return Object.freeze(out);
+}

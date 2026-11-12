@@ -40,7 +40,7 @@ window.GardenPlazaArt = (function () {
   function openOf(m, sc) {
     const open = new Set(sc.areas || m && m.areas || []);
     const level = Number(sc.lv || m && m.level && (m.level.level || m.level) || 1);
-    for (const zone of GARDEN_ZONES) if (level >= zone.lv) open.add(zone.id);
+    for (const zone of GARDEN_ZONES) if (level >= (typeof gardenZoneOpenLv === 'function' ? gardenZoneOpenLv(zone) : zone.lv)) open.add(zone.id);
     if (!open.has('zn-0')) open.add('zn-0');
     return open;
   }
@@ -310,7 +310,7 @@ window.GardenPlazaArt = (function () {
       let sign = rect(1, 1, sw - 2, sh - 2, '#f2e7cc', 5, ' stroke="#82735b" stroke-width="1.2"');
       sign += rect(4, 4, sw - 8, sh - 8, 'none', 3, ' stroke="#c8b899" stroke-width=".7"');
       sign += text(sw / 2, 13.5, zone.name, 8.6, '#4d5144', ' font-weight="600"');
-      sign += text(sw / 2, 25, 'Requires level ' + zone.lv, 7.7, '#676453');
+      { const rule = typeof gardenGateRule === 'function' ? gardenGateRule(g) : null, item = rule && GARDEN_GATE_ITEMS[rule.key]; sign += text(sw / 2, 25, item ? 'Needs ' + item.name.replace(/^(A|An|The) /, '').toLowerCase() : 'Requires level ' + zone.lv, 7.7, '#676453'); }   // what opens it (94-garden-lands-0gates.js)
       const signX = across ? gx - g.dx * 64 - sw / 2 : gx + 28;
       out.push(layer('gate-sign-' + g.id, signX, gy - sh - 12, sw, sh, sign, gy + .3, { replacesProp: g.id, land: 'zn-' + g.n }));
     }

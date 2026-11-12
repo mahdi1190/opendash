@@ -67,7 +67,7 @@ function gardenReelStep(R, dt) {
   R.f += step;
   if (R.mv === 'leap' && R.leapAt && R.t >= R.leapAt) {   // out of the water: a splash in the lake itself
     R.leapAt = 0; if (F && gardenMotionOn()) { const [x, y] = _gwPx(F.bx, F.by); _gwRing(x, y, 1.6); _gwRing(x + 10, y + 2, 1); }
-    if (typeof _fxSound === 'function') _fxSound('splash');
+    if (!(typeof gardenSfx === 'function' && gardenSfx('splash')) && typeof _fxSound === 'function') _fxSound('splash');
   }
   // the meter
   const inBar = R.f >= R.b - 0.015 && R.f <= R.b + barH + 0.015;
@@ -105,7 +105,7 @@ function gardenReelStep(R, dt) {
 function _gcrSnap(R) {
   const F = _gw.fishing, weak = (gardenGearDef((R.plan.tackle || {}).line) || GARDEN_LINES[0]).tier < 3;
   if (typeof gardenCatchGotAway === 'function') gardenCatchGotAway(R.plan, 'snap');
-  if (typeof _fxSound === 'function') _fxSound('splash');
+  if (!(typeof gardenSfx === 'function' && gardenSfx('splash')) && typeof _fxSound === 'function') _fxSound('splash');
   _gfsSay('free', F.fu);
   _gwFishLost(weak ? 'Snap! Your line broke. Let go when it runs, or try a stronger line.' : 'Snap! Let go when it runs.');
 }

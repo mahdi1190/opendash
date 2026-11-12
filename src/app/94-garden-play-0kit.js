@@ -3,7 +3,7 @@
    One place for things to do beyond catching: Play in the garden's menu. A game is one row, gardenPlayAdd({id, name, icon, group, blurb, open(), status?()}).
 
      gpGet(key, dflt), gpSet(key, value)     one saved value (g.seen under 'pl.'): latest wins per key, no sync change, an old save has none
-     gpPay(why, {tickets, xp, items})        a ledger line of kind 'pl'; tickets at most GP_ECON.ticketsDay a day, XP at most GP_ECON.xpDay. Games never pay coins
+     gpPay(why, {xp, items})                 a ledger line of kind 'pl'; XP at most GP_ECON.xpDay. Games never pay coins, and pay no tickets: tickets are gone (JOURNAL.md section 9)
      gpSpend(label, items, msg)              things out of (or into) the bag as one ledger line, with the garden's Undo
      gpGrant(key, items)                     once ever, by key (a ledger key, so two devices give it once)
      gpStage(title, build, o)                a dialog for a game, with Back to Play
@@ -28,17 +28,17 @@ function gpToday() {
   for (const e of Object.values(g.led)) if (e && e.k === 'pl' && e.d === d) { const n = e.i && Number(e.i.ticket); if (n > 0) t += n; if (e.x > 0) x += Number(e.x); }
   return { tickets: t, xp: x };
 }
-function gpTickets() { return gardenHas('ticket'); }
+function gpTickets() { return 0; }   // (tickets are gone)
 function gpPay(why, o) {
   o = o || {};
-  const day = gpToday(), n = Math.max(0, Math.min(Math.floor(o.tickets || 0), GP_ECON.ticketsDay - day.tickets)), x = Math.max(0, Math.min(Math.floor(o.xp || 0), GP_ECON.xpDay - day.xp));
+  const day = gpToday(), n = 0, x = Math.max(0, Math.min(Math.floor(o.xp || 0), GP_ECON.xpDay - day.xp));
   const items = Object.assign({}, o.items || {}); if (n) items.ticket = n;
-  if (!n && !x && !Object.keys(items).length) return { tickets: 0, full: !!o.tickets };
+  if (!x && !Object.keys(items).length) return { tickets: 0, full: false };
   _gdLed('pl', { i: items, x, n: 1, w: String(why || '').slice(0, 16) });
   _gdSave(); gardenTickSoon();
-  return { tickets: n, full: !!o.tickets && n < o.tickets };
+  return { tickets: 0, full: false };
 }
-function gpPaidLine(r) { return r.tickets ? `${r.tickets} ticket${r.tickets === 1 ? '' : 's'}` + (r.full ? ' (that is all the tickets for today)' : '') : r.full ? 'No more tickets today, but the game is yours to play' : ''; }
+function gpPaidLine(r) { void r; return ''; }   // (games paid tickets once; now the game is the reward)
 function gpSpend(label, items, msg) {
   const key = 'pl.' + _gdToday() + '.' + _gdUid(''), mark = _gdMark([['led', key]]);
   _gdG().led[key] = { d: _gdToday(), k: 'pl', i: items, n: 1 };
@@ -133,7 +133,7 @@ function _gpPlayHead(groups, m, selected, activity, next) {
     head.appendChild(lead);
     if (next) head.appendChild(gpEl('p', 'muted', 'Next, at garden level ' + next.level + ': ' + next.name + '.'));
   } else if (_gp.group === 'stall') {
-    head.appendChild(gpEl('p', 'gp-lead', gpTickets() + ' tickets. Play games whenever you like; spend tickets here when something appeals.'));
+    head.appendChild(gpEl('p', 'gp-lead', 'Play whenever you like. The prize stall has one thing a day for you, free.'));
   }
   return head;
 }
@@ -198,15 +198,17 @@ function _gpStall() {
   gpStage('Prize stall', (el) => {
     const paint = () => {
       el.textContent = '';
-      el.appendChild(gpEl('p', 'gp-lead', `You have ${gpTickets()} tickets. Everything here goes in your bag, to put where you like, and friends can see it.`));
+      const took = gpGet('pz.' + _gdToday());
+      el.appendChild(gpEl('p', 'gp-lead', took ? 'You have had today’s prize. Come back tomorrow for another.' : 'One prize a day, free: pick the one you like. It goes in your bag, to put where you like, and friends can see it.'));
       const grid = gpEl('div', 'gp-prizes');
       for (const [id, cost] of GP_PRIZES) {
         const d = gardenDecor(id); if (!d) continue;
         const c = gpEl('div', 'gp-prize');
         c.innerHTML = `<div class="gp-prize-art">${gardenIconSvg(id, { kind: 'decor', px: 72 })}</div><b>${esc(d.name)}</b><span class="muted">${esc(d.blurb || '')}</span>`;
-        c.appendChild(uiButton({ label: `${cost} tickets`, icon: 'ticket', size: 'sm', disabled: gpTickets() < cost, tip: gpTickets() < cost ? `You need ${cost - gpTickets()} more` : '', run: () => {
-          if (gpTickets() < cost) return;
-          gpSpend('a prize', { ticket: -cost, ['decor:' + id]: 1 }, `${d.name}: it is in your bag`); paint();
+        void cost;
+        c.appendChild(uiButton({ label: took ? 'Tomorrow' : 'Take this one', icon: 'gift', size: 'sm', disabled: !!took, run: () => {
+          if (gpGet('pz.' + _gdToday())) return;
+          gpSpend('a prize', { ['decor:' + id]: 1 }, `${d.name}: it is in your bag`); gpSet('pz.' + _gdToday(), id); paint();
           gardenToast(`${d.name} is in your bag`, { icon: 'gift', action: { label: 'Undo', run: () => { gardenUndo(); paint(); } } });
         } }));
         grid.appendChild(c);
@@ -216,4 +218,4 @@ function _gpStall() {
     paint();
   });
 }
-gardenPlayAdd({ id: 'stall', name: 'Prize stall', icon: 'ticket', group: 'stall', blurb: 'Tickets buy silly things that stand in your garden.', status: () => `${gpTickets()} tickets`, open: _gpStall });
+gardenPlayAdd({ id: 'stall', name: 'Prize stall', icon: 'ticket', group: 'stall', blurb: 'A silly thing a day for your garden, free.', status: () => gpGet('pz.' + _gdToday()) ? 'Come back tomorrow' : 'Today’s prize is waiting', open: _gpStall });

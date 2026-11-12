@@ -9,14 +9,8 @@
 
    Reaching the land is what unlocks a kind: if its home is not open, it is not there.
    ============================================================ */
-const GARDEN_REGIONS = _gdRows([
-  { id: 'garden', name: 'The main garden', on: 'in the main garden', icon: 'flower-2', color: '#8fbf6a', parts: _gdF([]), half: _gdF({ c: 100, decor: 'flower-barrow' }), full: _gdF({ c: 250, feat: 'lf-rg-garden', ribbon: 'region-garden' }), blurb: 'The kinds that come to whatever you grow. Everyone starts here.' },
-  { id: 'lake', name: 'The lake', on: 'in the lake', icon: 'fish', color: '#6fb4d8', parts: _gdF([]), half: _gdF({ c: 150, decor: 'fish-flag' }), full: _gdF({ c: 400, feat: 'lf-rg-lake', ribbon: 'region-lake' }), blurb: 'From the shore to the far end of the deep water. Everything big lives here.' },
-  { id: 'hill', name: 'The north hill', on: 'on the north hill', icon: 'flower', color: '#c8c67a', parts: _gdF(['lt-bramble', 'lt-foxglove', 'lt-ridge', 'lt-link']), half: _gdF({ c: 150, decor: 'hare-statue' }), full: _gdF({ c: 400, feat: 'lf-rg-hill', ribbon: 'region-hill' }), blurb: 'Meadow butterflies, a spring, a high tarn and the pool below the falls.' },
-  { id: 'orchards', name: 'The east orchards', on: 'in the east orchards', icon: 'trees', color: '#d89a6a', parts: _gdF(['lt-apple', 'lt-cider', 'lt-pear', 'lt-wall']), half: _gdF({ c: 150, decor: 'apple-crate' }), full: _gdF({ c: 400, feat: 'lf-rg-orchards', ribbon: 'region-orchards' }), blurb: 'Stag beetles, old trees, the cider pond and a dip behind the wall.' },
-  { id: 'fields', name: 'The west fields', on: 'in the west fields', icon: 'carrot', color: '#b8a25a', parts: _gdF(['lt-carrot', 'lt-bean', 'lt-cabbage', 'lt-deep']), half: _gdF({ c: 150, decor: 'hay-bale' }), full: _gdF({ c: 400, feat: 'lf-rg-fields', ribbon: 'region-fields' }), blurb: 'Crickets, ground beetles and the bees at the old boles. No water out here.' },
-  { id: 'marsh', name: 'The south marsh', on: 'in the south marsh', icon: 'waves', color: '#7ab8a0', parts: _gdF(['lt-furrow', 'lt-board', 'lt-reed', 'lt-heron', 'lt-willow']), half: _gdF({ c: 150, decor: 'driftwood-seat' }), full: _gdF({ c: 400, feat: 'lf-rg-marsh', ribbon: 'region-marsh' }), blurb: 'Dragonflies, the frog pool, the mill race and the pools you can buy.' },
-]);
+/* The journal's pages (GARDEN_JOURNAL_PAGES, 94-garden-fish-0catalog.js): one region of the vale each, the sea as the seventh. */
+const GARDEN_REGIONS = _gdRows(GARDEN_JOURNAL_PAGES.map(p => ({ id: p.id, name: p.name, on: p.sea ? 'in the sea and the estuary' : 'in ' + p.name.replace(/^The /, 'the '), icon: p.sea ? 'waves' : 'map-pin', color: p.color, zone: p.zone, sea: p.sea || 0, parts: _gdF([]), blurb: p.line })));
 const _GRG_REGION = new Map(GARDEN_REGIONS.map(r => [r.id, r]));
 function gardenRegion(id) { return _GRG_REGION.get(String(id)) || null; }
 
@@ -38,6 +32,13 @@ const _GRG_WATER_ROWS = [
 ];
 const _GRG_POOL_LIKE = Object.freeze({ 'ls-lily-pool': /lily|pipefish|reed|weed|sunfish|bluegill|crappie/, 'ls-deep-pool': /catfish|burbot|snakehead|bowfin|gar$|eel/, 'ls-clear-pool': /clear|pearl|silver|glass/, 'ls-moon-pool': /moon|night/, 'ls-sedge-pool': /pike|perch|sedge/, 'ls-stone-pool': /bass|stone|rock/ });
 function gardenIslandBasinHomeIds(id) {
+  // Fleetwater Vale (v5) gives the waters their own places along the river; v4 kept them in three basins.
+  if (GARDEN_WORLD.v >= 5) {
+    const pres = gardenIslandData().presentation || {}, race = pres.millRace || '';
+    const homes = { pond: ['pond', 'falls'], tarn: ['tarn'], spring: ['spring'], 'brook-2': ['brook'], 'allotment-pool': ['folly', 'light'], 'river-4': ['frogpool'], 'orchard-pool': ['cider', 'dip'] };   // (the frog pool's kinds are on the Field Journal's Millwater page: the marsh below the bird hide)
+    if (race) homes[race] = ['race'];
+    return homes[id] || [];
+  }
   const homes = { pond: ['pond', 'spring', 'falls', 'tarn'], 'allotment-pool': ['frogpool', 'race', 'brook', 'folly', 'light'], 'orchard-pool': ['cider', 'dip'] };
   return homes[id] || [];
 }
@@ -60,11 +61,13 @@ function gardenIslandFishingReach(x, y) {
   if (!nearest) return { id: 'south', zone: 0, distance: Infinity };
   const dx = nearest.x - x, dy = nearest.y - y, length = Math.hypot(dx, dy) || 1; let region = null;
   for (const inset of [.25, .6, 1]) { const px = nearest.x + dx / length * inset, py = nearest.y + dy / length * inset; if (gardenIslandLandContains(px, py)) { region = gardenIslandRegionAt(px, py); break; } }
-  const zone = region && region.zone || 0, id = ({ 1: 'forest', 2: 'valley', 3: 'ruins', 4: 'orchard', 5: 'headland' })[zone] || (y < nearest.y ? 'north' : 'south');
+  // v5: the village faces only the sea to the south; the strand west of the quay keeps the 'north' fish.
+  const zone = region && region.zone || 0, id = ({ 1: 'forest', 2: 'valley', 3: 'ruins', 4: 'orchard', 5: 'headland' })[zone] || (GARDEN_WORLD.v >= 5 ? (nearest.x < 46 ? 'north' : 'south') : y < nearest.y ? 'north' : 'south');
   return { id, zone, distance: Math.sqrt(distance2) };
 }
 function gardenIslandFishCoastHint(def) {
   if (!def || def.cat !== 'fish') return null;
+  if (def.home && def.home.c) return GARDEN_ISLAND_FISH_COASTS.find(coast => coast.id === def.home.c) || null;   // the vale: its own coast
   const matches = GARDEN_ISLAND_FISH_COASTS.filter(coast => coast.like.test(def.id));
   // More specific later regions explain a journey, while the species remains catchable elsewhere.
   return matches.findLast ? matches.findLast(coast => coast.zone > 0) || matches[0] || null : matches.slice().reverse().find(coast => coast.zone > 0) || matches[0] || null;
@@ -72,18 +75,29 @@ function gardenIslandFishCoastHint(def) {
 function gardenIslandFishCoastOdds(odds, band) {
   if (!band.islandOcean || !band.coastHabitat) return odds;
   const coast = GARDEN_ISLAND_FISH_COASTS.find(row => row.id === band.coastHabitat), open = !coast?.zone || band.islandAreas.includes('zn-' + coast.zone);
-  if (!coast || !open) return odds;
-  return odds.map(([id, weight]) => { const def = gardenFishDef(id); return [id, def && def.cat === 'fish' && coast.like.test(id) ? weight * 2.4 : weight]; });
+  if (!coast || !open) return odds.filter(([id]) => { const d = gardenFishDef(id); return !(d && d.cat === 'fish' && d.home && d.home.c) || d.rarity === 'common'; });
+  // a sea fish keeps to its own coast (def.home.c); the commons wander along any open coast, at a quarter of the odds
+  const out = [];
+  for (const [id, weight] of odds) {
+    const def = gardenFishDef(id), H = def && def.cat === 'fish' ? def.home : null;
+    if (!H || !H.c) { out.push([id, weight]); continue; }
+    const home = GARDEN_ISLAND_FISH_COASTS.find(row => row.id === H.c), homeOpen = !home || !home.zone || band.islandAreas.includes('zn-' + home.zone);
+    if (H.c === coast.id) out.push([id, weight * 2.4]); else if (def.rarity === 'common' && homeOpen) out.push([id, weight * 0.25]);
+  }
+  return out;
 }
 function gardenIslandBasinPatchHomes(pool, centre) {
   const mx = pool.wet.x + pool.wet.w / 2, my = pool.wet.y + pool.wet.h / 2;
+  // v5: the plunge pool under Fleet Falls is the Mere's north-west corner; the rest is the Mere.
+  if (GARDEN_WORLD.v >= 5 && pool.id === 'pond') return centre.x < mx - 2 && centre.y < my ? ['falls', 'pond'] : ['pond'];
+  if (GARDEN_WORLD.v >= 5 && pool.id === 'allotment-pool') return centre.x < mx ? ['folly'] : ['folly', 'light'];   // (the frog pool's kinds live in the valley marsh, river-4: the journal's Millwater page)
   if (pool.id === 'pond') return ['pond'].concat(centre.y < my ? ['spring', 'tarn'] : [], centre.x >= mx ? ['falls'] : []);
   if (pool.id === 'allotment-pool') return centre.x < mx ? ['frogpool', 'race', 'brook'] : ['folly', 'light'];
   if (pool.id === 'orchard-pool') return centre.y < my ? ['dip'] : ['cider'];
   return gardenIslandBasinHomeIds(pool.id).slice();
 }
 function _grgIslandBasin(id) { return (gardenIslandData().freshwater || []).find(pool => gardenIslandBasinHomeIds(pool.id).includes(id)) || null; }
-function _grgIslandHomeZone(home) { return ({ hill: 5, orchards: 4, fields: 2, marsh: 3, garden: 0, lake: 0 })[home.r] || 0; }
+function _grgIslandHomeZone(home) { const p = gardenJournalPage(home.r); return p ? p.zone : 0; }
 const GARDEN_REGION_WATERS = _gdRows(_GRG_WATER_ROWS.map(w => {
   if (GARDEN_WORLD.v >= 4 && !w.room) { const pool = _grgIslandBasin(w.id); if (pool) return Object.assign({}, w, pool.wet, { islandBasin: pool.id }); }
   if (w.area !== 'pond') return w;
@@ -110,47 +124,7 @@ function gardenRegionWaterDef(id) {
 }
 function _grgWaterOfCell(x, y) { for (const w of GARDEN_REGION_WATERS) if (x >= w.x && x < w.x + w.w && y >= w.y && y < w.y + w.h && (w.area || (w.sec ? gardenLandCell(x, y) === gardenLandRow(w.sec) : _GRG_WET.has(x + ',' + y)))) return w; return null; }
 
-/* ---------- the hand-placed ones: a few kinds at one place only ---------- */
-const _GRG_FISH_HAND = Object.freeze({
-  spring: ['ninespine', 'common-goby', 'pumpkinseed', 'signal-crayfish'],
-  falls: ['grayling', 'brown-trout'],
-  tarn: ['arctic-char'],
-  frogpool: ['great-crested-newt', 'axolotl', 'terrapin', 'mud-puppy', 'frog-mouth', 'snapping-turtle', 'musk-turtle'],
-  light: ['lantern-minnow', 'lantern-angler'],
-  cavepool: ['blind-loach', 'moss-chub', 'drip-pearl'],
-  cellarpool: ['jar-minnow', 'cellar-eel', 'barrel-carp'],
-  'ls-moon-pool': ['moonfish', 'moon-gazer', 'new-moon-bream'],
-  'ls-stone-pool': ['wishing-fish'],
-  'ls-lily-pool': ['pearl-gourami'],
-});
-/* [the sight (GARDEN_LAND_SIGHTS, so wherever it stands), its region, the bugs that live only there] */
-const _GRG_BUG_HAND = Object.freeze([
-  ['ld-chapel', 'orchards', ['minotaur-beetle', 'violin-beetle']],
-  ['ld-stump', 'orchards', ['stag-beetle', 'king-stag']],
-  ['ld-ring', 'orchards', ['golden-stag', 'the-walking-branch']],
-  ['ld-hollow', 'orchards', ['acorn-weevil', 'musk-beetle']],
-  ['ld-clamp', 'orchards', ['ember-beetle', 'sawyer-beetle']],
-  ['ld-treehouse', 'orchards', ['yule-moth']],
-  ['ld-barrels', 'orchards', ['ruby-tailed-wasp', 'hornet']],
-  ['ld-boles', 'fields', ['honey-queen', 'queen-of-the-hive', 'orchid-bee', 'golden-bee']],
-  ['ld-hay', 'fields', ['scarecrows-friend', 'leaf-pile-earwig']],
-  ['ld-pump', 'fields', ['fountain-fly']],
-  ['ld-barn', 'fields', ['old-lady']],
-  ['ld-beacon', 'hill', ['the-moonlit-bride', 'starlit-firefly']],
-  ['ld-tower', 'hill', ['emperor-moth']],
-  ['ld-grotto', 'hill', ['toadstool-sprite', 'glowcap-beetle']],
-  ['ld-hut', 'hill', ['marbled-white']],
-  ['ld-lighthouse', 'marsh', ['lantern-moth', 'fog-moth', 'comet-moth']],
-  ['ld-frog', 'marsh', ['raft-spider', 'great-diving-beetle']],
-  ['ld-mill', 'marsh', ['silver-mayfly', 'giant-water-bug']],
-  ['ld-hide', 'marsh', ['the-dragon-king', 'norfolk-hawker']],
-  ['ld-icehouse', 'marsh', ['ice-worm', 'frost-beetle', 'snow-queen']],
-  ['ld-wish', 'marsh', ['well-spider']],
-  ['ld-driftwood', 'marsh', ['antlion']],
-  ['ld-temple', 'marsh', ['rainbow-scarab', 'sun-scarab']],
-  ['ld-house', 'marsh', ['the-old-snail']],
-  ['ld-statue', 'garden', ['jewel-beetle', 'orchid-hopper', 'old-vine-bee'], 'the old hothouse'],
-]);
+/* ---------- every kind's home is placed by hand, in its own row (def.home: {r: page, w: water} | {r, sea, c: coast} | {r} | {r, g: 1}) ---------- */
 /** What you have to open to stand at a sight's door (a hidden room's door is there). */
 function _grgDoorCell(s) { const c = gardenLandCell(s.door.x, s.door.y); return c && !c.lane && !c.solid ? c.id : _grgSightTrail(s); }
 /** A sight's way in: the trail cell nearest to it. */
@@ -172,45 +146,8 @@ function _grgSightTrail(s) {
   return best;
 }
 
-/* ---------- every other home, generated from the kind itself ---------- */
-const _GRG_BUG_HABS = Object.freeze({ flower: ['hill', 'garden', 'hill'], lawn: ['fields', 'hill', 'garden'], ground: ['fields', 'fields', 'orchards'], tree: ['orchards', 'orchards', 'garden'], woods: ['orchards', 'marsh', 'hill'], light: ['marsh', 'hill', 'garden'], water: ['marsh', 'marsh', 'marsh'] });
-const _GRG_RANK = Object.freeze({ common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 });
-const _GRG_FISH_STAY = /koi|goldfish|moor|fantail|comet|shubunkin|lionhead/;   // fancy ones belong to someone's pond
 function _grgHash(id) { return gardenHash('rg|' + id) >>> 0; }
-function _grgFishPlain(f) { return f.zone.includes('pond') && f.zone.length === 1 ? { r: 'garden', w: 'pond' } : { r: 'lake' }; }
-function _grgFishFree(f) { return !(f.needs && (f.needs.spot || f.needs.decor || f.needs.plant || f.needs.home || f.needs.map)) && !(f.rarity === 'common' && f.lv <= 3); }
-function _grgFishHomes() {
-  const out = new Map(), small = GARDEN_REGION_WATERS;
-  for (const [w, ids] of Object.entries(_GRG_FISH_HAND)) for (const id of ids) if (gardenFishDef(id)) out.set(id, { r: _GRG_WATER.get(w).r, w });
-  for (const f of GARDEN_FISH_ONLY) {
-    if (out.has(f.id)) continue;
-    const plain = _grgFishPlain(f);
-    if (!_grgFishFree(f) || _GRG_FISH_STAY.test(f.id)) { out.set(f.id, plain); continue; }
-    const fit = small.filter(w => f.cm[1] <= w.cap && w.like.test(f.id));
-    out.set(f.id, fit.length ? (w => ({ r: w.r, w: w.id }))(fit[_grgHash(f.id) % fit.length]) : plain);
-  }
-  // every water keeps a few that live there at any hour, from the day it opens, so nobody casts into an empty pool
-  const open = (w) => { const t = w.area === 'pond' ? 7 : gardenLandRow(w.sec || w.via).lv; return t; };
-  for (const w of small) {
-    if (w.room) continue;   // only its own
-    const easy = (f) => !f.tod.length && !f.seasons.length && !f.needs && f.lv <= open(w) && f.cm[1] <= w.cap, here = () => GARDEN_FISH_ONLY.filter(f => out.get(f.id).w === w.id && easy(f)).length;
-    const spare = GARDEN_FISH_ONLY.filter(f => easy(f) && _grgFishFree(f) && (out.get(f.id).r === 'lake' || out.get(f.id).w === 'pond') && !_GRG_FISH_STAY.test(f.id)).sort((a, b) => _grgHash(w.id + a.id) - _grgHash(w.id + b.id));
-    while (here() < 3 && spare.length) { const f = spare.shift(); out.set(f.id, { r: w.r, w: w.id }); }
-  }
-  return out;
-}
-function _grgBugHomes() {
-  const out = new Map();
-  for (const [sight, r, ids, room] of _GRG_BUG_HAND) { const s = gardenLandSight(sight); if (s) for (const id of ids) if (gardenBugDef(id)) out.set(id, Object.assign({ r, p: sight, t: room ? _grgDoorCell(s) : _grgSightTrail(s) }, room ? { room } : {})); }
-  for (const b of GARDEN_BUGS) {
-    if (out.has(b.id)) continue;
-    if ((b.rarity === 'common' && b.lv <= 3) || (b.needs && (b.needs.plant || b.needs.decor || b.needs.home || b.needs.map))) { out.set(b.id, { r: 'garden' }); continue; }   // near the start, or it comes to what you grow
-    const h = _grgHash(b.id), hab = b.hab.includes('water') ? 'water' : b.hab[h % b.hab.length], r = _GRG_BUG_HABS[hab][(h >>> 3) % 3], parts = gardenRegion(r).parts;
-    out.set(b.id, parts.length ? { r, t: parts[Math.min(parts.length - 1, _GRG_RANK[b.rarity] + ((h >>> 6) % 3 === 0 ? 1 : 0))] } : { r });
-  }
-  return out;
-}
-const _GRG_FISH_HOME = _grgFishHomes(), _GRG_BUG_HOME = _grgBugHomes();
+const _GRG_FISH_HOME = new Map(GARDEN_FISH_ONLY.map(f => [f.id, f.home])), _GRG_BUG_HOME = new Map(GARDEN_BUGS.map(b => [b.id, b.home]));
 /** Where this kind lives, or null for a find (a boot turns up in any water). */
 function gardenRegionHome(def) {
   const H = !def ? null : def.cat === 'bug' ? _GRG_BUG_HOME.get(def.id) || null : def.cat === 'fish' ? _GRG_FISH_HOME.get(def.id) || null : null;
@@ -239,11 +176,12 @@ function gardenRegionHomeOpen(H, areas) {
     const p = s.door || s, zn = gardenZoneOf(Math.floor(p.x), Math.floor(p.y)), t = _grgSightHomeTrail(s, !!H.room);
     return (!zn || areas.includes('zn-' + zn)) && (GARDEN_WORLD.v >= 4 || !t || areas.includes(t));
   }
-  if (GARDEN_WORLD.v >= 4 && H.t) { const zone = _grgIslandHomeZone(H); return !zone || areas.includes('zn-' + zone); }
+  if (H.sea) { const coast = GARDEN_ISLAND_FISH_COASTS.find(row => row.id === H.c); return !coast || !coast.zone || areas.includes('zn-' + coast.zone); }
+  if (GARDEN_WORLD.v >= 4 && (H.t || !H.g)) { const zone = _grgIslandHomeZone(H); return !zone || areas.includes('zn-' + zone); }
   return !H.t || areas.includes(H.t);
 }
 /** Is this lake or pond kind one the lake holds? (what is "in stock" today comes from these) */
-function gardenRegionInLake(f) { const H = gardenRegionHome(f); return !H || H.r === 'lake'; }
+function gardenRegionInLake(f) { const H = gardenRegionHome(f); return !H || !!H.sea; }
 
 /* ---------- the plain words: these are what the book says ---------- */
 function _grgTrailWords(id) { const t = gardenLandRow(id); if (!t) return ''; const n = t.name; return n.startsWith('The ') ? 't' + n.slice(1) : n.startsWith('Over ') ? n : 'the ' + n[0].toLowerCase() + n.slice(1); }
@@ -282,25 +220,25 @@ function gardenRegionWords(def) {
   const H = gardenRegionHome(def); if (!H) return null;
   const R = gardenRegion(H.r), reach = _grgOpenWords(H);
   if (def.cat === 'fish') {
-    if (GARDEN_WORLD.v >= 4 && H.r === 'lake') {
+    if (GARDEN_WORLD.v >= 4 && H.sea) {
       const coast = gardenIslandFishCoastHint(def), region = coast && gardenIslandRegionForZone(coast.zone);
       return { where: coast ? 'Coastal water, especially ' + coast.name + '. Other open coasts can hold it too.' : 'Open coastal water around the island, north and south as well as the main pier.', reach: region ? region.name + ' opens at garden level ' + region.level + '; its shore favours this kind.' : 'Explore either public shore. Fish gather near people without requiring the main pier.' };
     }
-    if (GARDEN_WORLD.v >= 4 && H.w === 'pond') return { where: 'The village lake, along its different banks.', reach: 'The village lake is open from the beginning. Spring-fed fish favour the north bank; the falls feed its east side.' };
-    if (H.r === 'lake' || H.w === 'pond') return reach ? { reach } : null;
+    if (GARDEN_WORLD.v >= 4 && H.w === 'pond') return GARDEN_WORLD.v >= 5 ? { where: 'The Mere, along its different banks.', reach: 'The Mere is open from the beginning. Fleet Falls drops into its north-west corner, where the plunge pool is.' } : { where: 'The village lake, along its different banks.', reach: 'The village lake is open from the beginning. Spring-fed fish favour the north bank; the falls feed its east side.' };
+    if (H.sea || H.w === 'pond') return reach ? { reach } : null;
     const w = _GRG_WATER.get(H.w);
-    if (GARDEN_WORLD.v >= 4 && !w.room) { const basin = w.islandBasin && _grgIslandBasin(w.id), place = basin ? ({ pond: 'the village lake', 'allotment-pool': 'the ruined woodland pond', 'orchard-pool': 'the orchard pond' })[basin.id] : w.name; const bank = ({ spring: 'the spring-fed north bank', tarn: 'the cooler north bank', falls: 'the eastern falls', frogpool: 'the reed-lined west bank', race: 'the west inlet', brook: 'the west inlet', folly: 'the quiet east bank', light: 'the eastern rocks', dip: 'the shaded north bank', cider: 'the sunny south bank' })[H.w]; return { where: 'Lives in ' + place + (bank ? ', near ' + bank : '') + '.', reach }; }
+    if (GARDEN_WORLD.v >= 4 && !w.room) { const basin = w.islandBasin && _grgIslandBasin(w.id), place = basin ? (GARDEN_WORLD.v >= 5 ? ({ pond: 'the Mere', 'allotment-pool': 'the woodland pond in the old woods', 'orchard-pool': 'the orchard pond', 'river-4': 'the marsh below the bird hide', tarn: 'the source tarn', spring: 'Foxglove spring', 'brook-2': 'the woodland brook' })[basin.id] || basin.name || w.name : ({ pond: 'the village lake', 'allotment-pool': 'the ruined woodland pond', 'orchard-pool': 'the orchard pond' })[basin.id]) : w.name; const bank = GARDEN_WORLD.v >= 5 ? ({ falls: 'the plunge pool under Fleet Falls' })[H.w] : ({ spring: 'the spring-fed north bank', tarn: 'the cooler north bank', falls: 'the eastern falls', frogpool: 'the reed-lined west bank', race: 'the west inlet', brook: 'the west inlet', folly: 'the quiet east bank', light: 'the eastern rocks', dip: 'the shaded north bank', cider: 'the sunny south bank' })[H.w]; return { where: 'Lives in ' + place + (bank ? ', near ' + bank : '') + '.', reach }; }
     return { where: `Lives in ${w.name}, ${R.on}, and nowhere else.`, reach };
   }
   const near = def.hab.map(h => _GF_HAB_WORDS[h] || h);
   if (H.room) return { where: `Lives in ${H.room}, behind ${_grgPlaceName(H)}, and nowhere else.`, reach };
   if (H.p) return { where: `Lives at ${_grgPlaceName(H)}, ${R.on}, and nowhere else.`, reach };
-  if (H.r === 'garden') return null;
+  if (H.g) return null;
   return { where: `Lives ${R.on}. Look near ${_gfOr(near)}.`, reach };
 }
 /** A word or two for a card. '': the card's own words will do. */
 function gardenRegionShort(def) {
-  const H = gardenRegionHome(def); if (!H || H.r === 'lake' || H.w === 'pond' || H.r === 'garden') return '';
+  const H = gardenRegionHome(def); if (!H || H.sea || H.w === 'pond' || H.g) return '';
   if (H.p) return _grgPlaceName(H);
   if (H.w) return _GRG_WATER.get(H.w).name;
   return gardenRegion(H.r).name.replace(/^The /, 'the ');
@@ -334,20 +272,23 @@ function gardenRegionBands(areas) {
 function gardenRegionOdds(odds, b, ctx) {
   if (b.islandHomeWaters) {
     const out = odds.filter(([id]) => gardenFishDef(id).cat !== 'fish');
-    for (const def of GARDEN_FISH_ONLY) { const home = gardenRegionHome(def); if (home && b.islandHomeWaters.includes(home.w) && gardenRegionHomeOpen(home, b.islandAreas) && gardenFishFits(def, Object.assign({}, ctx, { zone: def.zone[0] }))) out.push([def.id, gardenBugWeight(def, ctx)]); }
+    const mine = GARDEN_FISH_ONLY.filter(def => { const home = gardenRegionHome(def); return home && b.islandHomeWaters.includes(home.w) && gardenRegionHomeOpen(home, b.islandAreas); });
+    for (const def of mine) if (gardenFishFits(def, Object.assign({}, ctx, { zone: def.zone[0] }))) out.push([def.id, gardenBugWeight(def, ctx)]);
+    // a water is never empty: when none of its own is about at this hour or season, its commons still bite, at half the odds
+    if (!out.some(([id]) => gardenFishDef(id).cat === 'fish')) for (const def of mine.some(d => d.rarity === 'common') ? mine.filter(d => d.rarity === 'common') : mine.filter(d => !d.legend)) if (gardenFishFits(Object.assign({}, def, { tod: [], seasons: [] }), Object.assign({}, ctx, { zone: def.zone[0] }))) out.push([def.id, gardenBugWeight(def, ctx) * 0.5]);
     return out;
   }
-  if (!b.rw) { const pond = b.zone === 'pond', local = odds.filter(([id]) => { const d = gardenFishDef(id), H = gardenRegionHome(d); return !H || (pond ? H.w === 'pond' : H.r === 'lake'); }); return gardenIslandFishCoastOdds(local, b); }
+  if (!b.rw) { const pond = b.zone === 'pond', local = odds.filter(([id]) => { const d = gardenFishDef(id), H = gardenRegionHome(d); return !H || (pond ? H.w === 'pond' : !!H.sea); }); return gardenIslandFishCoastOdds(local, b); }
   const out = [];
-  for (const { kind, def } of gardenRegionKinds(_GRG_WATER.get(b.rw).r)) if (kind === 'fish' && _GRG_FISH_HOME.get(def.id).w === b.rw && gardenFishFits(def, Object.assign({}, ctx, { zone: def.zone[0] }))) out.push([def.id, gardenBugWeight(def, ctx)]);
+  for (const def of GARDEN_FISH_ONLY) if (_GRG_FISH_HOME.get(def.id).w === b.rw && gardenFishFits(def, Object.assign({}, ctx, { zone: def.zone[0] }))) out.push([def.id, gardenBugWeight(def, ctx)]);
   return out;
 }
 /** May this fish appear in this band? (the one that got away, a legend: they keep to where they live) */
-function gardenRegionBandHas(id, b) { const H = gardenRegionHome(gardenFishDef(id)); if (!H) return true; if (b.islandHomeWaters) return b.islandHomeWaters.includes(H.w) && gardenRegionHomeOpen(H, b.islandAreas); return b.rw ? H.w === b.rw : b.zone === 'pond' ? H.w === 'pond' : H.r === 'lake'; }
+function gardenRegionBandHas(id, b) { const H = gardenRegionHome(gardenFishDef(id)); if (!H) return true; if (b.islandHomeWaters) return b.islandHomeWaters.includes(H.w) && gardenRegionHomeOpen(H, b.islandAreas); return b.rw ? H.w === b.rw : b.zone === 'pond' ? H.w === 'pond' : !!H.sea; }
 /** The cells a bug of this home may sit on, open or not: its trail and the sections off it, or round its place. Cached. */
 const _GRG_CELLS = new Map(), _GRG_CELL_PLACES = new Map();
 function _grgHomeCells(H) {
-  const k = H.p || H.t, s = H.p ? gardenLandSightPhysical(H.p) : null;
+  const k = H.p || H.t || 'r:' + H.r, s = H.p ? gardenLandSightPhysical(H.p) : null;
   if (s && GARDEN_WORLD.v >= 3) H = Object.assign({}, H, { t: _grgSightHomeTrail(s, !!H.room) });
   if (H.p) {
     const signature = s ? [s.x, s.y, s.w || 1, s.h || 1, _grgSightHomeTrail(s, !!H.room)].join('|') : 'packed';

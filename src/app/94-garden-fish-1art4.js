@@ -62,6 +62,7 @@ function _gcbWingMarks(p, W, uid, tag, c, c2, c3, e, rnd, fore) {
 }
 /** A butterfly or a moth. Both wings on each side, mirrored; the wing shape is the species' first and loudest feature. */
 function _gcbFlier(b, L, uid, rnd) {
+  if (typeof _gfaPaintOn === 'function' && _gfaPaintOn()) return _gcbFlierPainted(b, L, uid, rnd);   // the Painted village's own drawing (94-garden-fish-1art6.js)
   const moth = b.shape === 'moth', kind = _gcbWingKind(b), c = L.c, c2 = L.c2, c3 = L.c3 || c2, e = _gfaDk(c, 0.5), p = L.p || (moth ? ['', 'speckle', 'band', 'stripe'][Math.floor(rnd() * 4)] : ''), n = _gfaN, line = `stroke="${e}" stroke-width="1" stroke-linejoin="round"`, k = 0.92 + rnd() * 0.14, K = _GCB_WINGS[kind];
   const bodyC = _gfaDk(c2 === c ? '#3a2a1a' : c2, 0.35), mothC = _gfaLt(c, 0.25);
   if (kind === 'tent') {   // a moth at rest, wings folded along its back
@@ -140,5 +141,33 @@ function _gcbBugArt(b, L, uid) {
   if (fam === 'butterfly' || fam === 'moth') return _gcbFlier(b, L, uid, rnd);
   const c = L.c, c2 = L.c2 || _gfaLt(c, 0.4), c3 = L.c3 || c2, e = _gfaDk(c, 0.5), draw = _GCB[fam];
   if (!draw) return '';
-  return `<g class="gba-bug gcb gcb-${fam}">${draw({ b, L, c, c2, c3, e, r: rnd, n: _gfaN, line: `stroke="${e}" stroke-width="1.1" stroke-linejoin="round"` })}</g>`;
+  const paint = typeof gardenFigurePaintStyle === 'function' && gardenFigurePaintStyle() ? _gcbPaint(fam, b, c, c2, _gfaRng('paint|' + b.id)) : '';   // the Painted village's brushwork, over the family's drawing
+  const pOn = typeof _gfaPaintOn === 'function' && _gfaPaintOn(), x = { b, L, c, c2, c3, e, r: rnd, n: _gfaN, line: pOn ? `stroke="${_gfaDk(c, 0.35)}" stroke-width=".45" stroke-opacity=".55" stroke-linejoin="round"` : `stroke="${e}" stroke-width="1.1" stroke-linejoin="round"` };   // the Painted village: no ink outline
+  if (pOn && fam === 'dragonfly') return `<g class="gba-bug gcb gcb-${fam} gcb-painted">${_gcbDragonPainted(x)}</g>`;   // 94-garden-fish-1art6.js
+  let drawn = draw(x);
+  if (pOn) drawn = drawn.replace(/fill-opacity="\.(5[0-9]|6[0-9]|7[0-9])" stroke="[^"]*" stroke-width="\.[0-9]+"/g, `fill-opacity=".36" stroke="${_gfaDk(c3, 0.35)}" stroke-width=".35" stroke-opacity=".6"`);   // clear wings, not outlined panes
+  return `<g class="gba-bug gcb gcb-${fam}">${drawn}${paint}</g>`;
+}
+/**
+ * The Painted village's brushwork on the commonest bug families, seen from above with the sun at the upper left (the shell's own
+ * colours): a ladybird's or a beetle's wing cases get the shade turning away from the sun, a long curved gloss and a reflected rim; a
+ * bee gets its fur in short strokes and veined wings. Other families keep their drawing with the figure pass's modelling.
+ */
+function _gcbPaint(fam, b, c, c2, r) {
+  const n = _gfaN, dk = _gfaDk(c, 0.42), lt = _gfaLt(c, 0.55);
+  if (fam === 'ladybird') return `<path d="M-1 10.4C6 10 10.4 5 10.6 -1C11 4 8 9.6 1 11.2C-4 11.8 -8 10.4 -10 8C-7 9.8 -4 10.6 -1 10.4z" fill="${dk}" fill-opacity=".5"/>`
+    + `<path d="M-8.6 -3.6C-7.6 -7.4 -4 -9.6 0 -9.4C-3.6 -8.4 -6.4 -6.4 -7.4 -3z" fill="#fffaf0" fill-opacity=".7"/><path d="M-8 3.4C-7 6 -5 7.6 -2.6 8.4" stroke="${lt}" stroke-width=".9" stroke-opacity=".6" fill="none" stroke-linecap="round"/><circle cx="-3.4" cy="-7" r=".7" fill="#fff" fill-opacity=".8"/>`;
+  if (fam === 'beetle' || fam === 'stag') {
+    const cx = fam === 'stag' ? -5 : -3;
+    let d = ''; for (let i = 0; i < 4; i++) d += `M${n(cx - 8 + i * 0.6)} ${n(-1.6 - i * 1.2)}Q${n(cx)} ${n(-2.4 - i * 1.4)} ${n(cx + 7 - i)} ${n(-1.4 - i * 1.1)}`;
+    return `<path d="${d}" stroke="${_gfaLt(c2 === c ? c : c2, 0.5)}" stroke-width=".55" stroke-opacity=".55" fill="none" stroke-linecap="round"/>`
+      + `<path d="M${n(cx - 8)} -3.4Q${n(cx - 2)} -6.6 ${n(cx + 5)} -4.4Q${n(cx - 2)} -5.4 ${n(cx - 8)} -3.4z" fill="#fffaf0" fill-opacity=".55"/>`
+      + `<path d="M${n(cx - 9)} 3.6Q${n(cx)} 7.6 ${n(cx + 8)} 3.2Q${n(cx)} 6 ${n(cx - 9)} 3.6z" fill="${dk}" fill-opacity=".45"/>`;
+  }
+  if (fam === 'bee') {
+    let fur = '', furD = ''; for (let i = 0; i < 64; i++) { const t = r() * Math.PI * 2, q = Math.sqrt(r()), onThorax = i % 3 === 0, x = onThorax ? 5 + Math.cos(t) * 3.6 * q : -3 + Math.cos(t) * 9 * q, y = Math.sin(t) * (onThorax ? 3.6 : 6.4) * q, a = Math.atan2(y, x - (onThorax ? 5 : -3)); const seg = `M${n(x)} ${n(y)}l${n(Math.cos(a) * 0.8)} ${n(Math.sin(a) * 0.8)}`; if (y < 0) fur += seg; else furD += seg; }
+    return `<path d="${fur}" stroke="${lt}" stroke-width=".45" stroke-opacity=".5" fill="none" stroke-linecap="round"/><path d="${furD}" stroke="${dk}" stroke-width=".55" stroke-opacity=".5" fill="none" stroke-linecap="round"/>`
+      + `<path d="M-10 -3Q-4 -6.6 2 -4.6" stroke="#fffaf0" stroke-opacity=".5" stroke-width="1.1" fill="none" stroke-linecap="round"/>`;
+  }
+  return '';
 }

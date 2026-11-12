@@ -52,8 +52,8 @@ function gardenEveningOpen() {
     out.type = 'button'; out.disabled = !!done;
     out.onclick = () => {
       _gtgW()['tg.ev.' + today] = 1; _gdSave(); gtgPublishSoon();
-      const paid = _grGive('did.evening', { ticket: 2, x: 1 });
-      out.textContent = paid ? 'Goodnight. 2 tickets' : 'Goodnight'; out.disabled = true;
+      const paid = _grGive('did.evening', { x: 1 });
+      void paid; out.textContent = 'Goodnight'; out.disabled = true;
       _gtgeDraw(gardenHere());
     };
     go.appendChild(out); el.appendChild(go);

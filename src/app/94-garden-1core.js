@@ -283,6 +283,7 @@ function gardenEnsure() {
   g.since = today;
   g.seen.world = GARDEN_WORLD.v;   // (a new garden starts in this world: nothing to move over)
   if (GARDEN_WORLD.v >= 3) g.seen.worldLayout = GARDEN_WORLD.lh;
+  if (_gd.freshMark === GARDEN_WORLD.lh) g.seen.fresh = GARDEN_WORLD.lh;   // (a garden from an earlier layout, started fresh: gardenFreshStart)
   // the old oak: back left of the front garden, at its 2.16 size (it keeps growing with every task)
   g.plants.heart = { p: 'heart-oak', x: GARDEN_LAND_HEART.x, y: GARDEN_LAND_HEART.y, t: now - 30 * _GD_DAY, w: now, v: 0 };
   // the last two weeks' plants, as 2.16 drew them, along the front of the bed
@@ -433,6 +434,9 @@ function _gdGameQuestsByDay() {
   } catch (e) { /* no game */ }
   return out;
 }
+/** What is no longer in anyone's purse: a grant of these (an old ledger line, a gift written before the cut) adds nothing. */
+const GARDEN_GONE_ITEMS = Object.freeze(['ticket', 'mat:peg', 'mat:reed']);
+const GARDEN_WATER_FREE = 9999;
 function gardenWallet() {
   const g = _gdG(), A = _gdAct();
   const key = _gd.rev + '|' + _gd.actKey + '|' + Object.keys(g.led).length + (g.inf === 1 ? '|i' : '');
@@ -459,7 +463,7 @@ function gardenWallet() {
         if (typeof gardenRewardWorkDay === 'function') _gdAddItems(items, gardenRewardWorkDay(EI.get(d), t, d));   // real work also earns pegs, timber, tickets (94-garden-rewards-0rules.js)
       }
       coins += c; earned += c;
-      for (let k = 0; k < packets; k++) { const id = pool[gardenHash('gd-packet|' + d + '|' + k) % pool.length]; items['seed:' + id] = (items['seed:' + id] || 0) + 1; }
+      void packets; void pool;   // (free seed packets are gone: seeds are real things now, bought, dropped by plants, or a surprise)
     }
   }
   // the ledger and the bank
@@ -483,6 +487,7 @@ function gardenWallet() {
   // decorations placed are not in your bag (never below none: a copy synced from elsewhere may lead the ledger)
   for (const d of Object.values(g.decor)) if (d && !d.own && gardenDecor(d.d)) items['decor:' + d.d] = (items['decor:' + d.d] || 0) - 1;   // (own: a friend's, from their bag: docs/dev/GARDEN_TOGETHER.md)
   for (const k of Object.keys(items)) if (items[k] < 0) items[k] = 0;
+  for (const k of GARDEN_GONE_ITEMS) { const n = items[k] || 0; delete items[k]; const to = GARDEN_PURSE.into[k]; if (to && n > 0) items[to] = (items[to] || 0) + n; }   // the purse holds coins, timber and stone: reeds and pegs count as timber, tickets are no more (JOURNAL.md section 9)
   const lv = gardenLevelOf(xp);
   _gd.wallet = { coins: g.inf === 1 ? Infinity : Math.max(0, Math.round(coins)), xp: Math.max(0, xp), level: lv, items, n, earned, econToday: econToday || gardenEconDay({ sessions: [], done: [] }), econFrom: _gdEconFrom(g) };
   _gd.walletKey = key;
@@ -515,7 +520,8 @@ function gardenWaterInfo(model) {
   const wal = gardenWallet(), bonus = today >= wal.econFrom ? wal.econToday.water : Math.min(10, 2 * doneToday);
   const used = Object.keys(g.wl[today] || {}).length;
   const rain = model ? model.rain : _gdRain(now);
-  return { cap, bonus, used, left: Math.max(0, cap + bonus - used), raining: !!rain.now };
+  void cap; void bonus;   // water is free: refill the can at the pump or the Mere. A thirsty plant droops; nothing is counted
+  return { cap: GARDEN_WATER_FREE, bonus: 0, used, left: GARDEN_WATER_FREE, raining: !!rain.now, free: true };
 }
 
 /* ---------- the model ---------- */
@@ -523,7 +529,7 @@ function _gdAreasOpen(level) {
   // 2.23: land you bought is yours for good (its row is in your ledger as an item, 'land:<id>', so it syncs and banks like everything else)
   // the land's own items: the whole plots, the sections and what is built (94-garden-lands-0table.js says what that opens)
   const items = gardenWallet().items, own = [];
-  for (const k of Object.keys(items)) if (items[k] > 0 && (k.startsWith('land:') || k.startsWith('feat:'))) own.push(k.slice(5));
+  for (const k of Object.keys(items)) if (items[k] > 0 && (k.startsWith('land:') || k.startsWith('feat:'))) own.push(k.slice(5)); else if (items[k] > 0 && k.startsWith('gate:')) own.push(k);   // (a gate opened with a find: 94-garden-lands-0gates.js)
   if (GARDEN_LAND_CURIOS.some(c => items['cur:' + c.id] > 0) || items['key:old'] > 0) own.push('finds');   // (the table they are laid out on)
   const openSet = gardenLandsOpen(level, own);
   if (!(typeof gardenVisitOn === 'function' && gardenVisitOn())) { gardenLandSet(openSet); gardenFeatureSet(gardenFeatureWire()); gardenSightSet(gardenSightWire()); if (typeof gardenDesignShow === 'function') gardenDesignShow(gardenDesignOwn(_gdG())); if (typeof GARDEN_WORKS !== 'undefined') gardenWorksSet(GARDEN_WORKS.filter(d => gardenHas('gear:' + d.id) > 0).map(d => d.id), _gdG()); }   // (on a visit the land on screen is your friend's)
@@ -669,6 +675,7 @@ function gardenSnapshot() {
       if (Number.isFinite(up) && Number.isFinite(dn) && up >= 0 && up < 1440 && dn >= 0 && dn < 1440) { out.sr = up; out.ss = dn; }
     } catch (e) { /* their own clock then */ }
     try { const sh = typeof gardenShowWire === 'function' ? gardenShowWire() : null; if (sh) out.sh = sh; } catch (e) { /* the showcase is optional */ }   // 2.22: the tank and the case
+    try { const jn = typeof gardenJournalSnap === 'function' ? gardenJournalSnap() : null; if (jn) out.jn = jn; } catch (e) { /* the journal is optional */ }   // what friends may read of your Field Journal: caught ids and best sizes
     try { const sp = typeof gardenSpecWire === 'function' ? gardenSpecWire() : null; if (sp) out.sp = sp; } catch (e) { /* specimens are optional */ }   // your best few, for friends: ids and numbers, an older app drops the field
     try { const ca = typeof gardenCatchWire === 'function' ? gardenCatchWire() : null; if (ca) out.ca = ca; } catch (e) { /* the lake is optional */ }   // the lake: its hall, its rack, its records
     try { const tk = typeof petBookWire === 'function' ? petBookWire() : null; if (tk && tk.length) out.tk = tk; } catch (e) { /* tricks are optional */ }   // 2.23: ids of what your pet can do, for friends who visit
@@ -1091,7 +1098,7 @@ function gardenFeed(uid) {
   const m = gardenModel(), p = gardenPlantById(m, uid);
   if (!p) return _gdNo('Nothing to feed there');
   if (p.def.special === 'heart') return _gdNo('The old oak grows with your work, not with feed');
-  if (gardenHas('fertiliser') < 1) return _gdNo('No fertiliser: the shop or a compost bin has some');
+  if (gardenHas('fertiliser') < 1) return _gdNo('No compost: put weeds and leaves in a compost bin');
   const g = _gdG(), pl = g.plants[uid];
   if (pl.f && _gdDayOf(pl.f) === m.today) return _gdNo('Fed today already: tomorrow it can have more');
   if (p.stage >= 4 && !p.def.yield) return _gdNo('Fully grown: save the feed for something younger');
@@ -1387,7 +1394,7 @@ function gardenCollect(uid) {
   if (!info.ready) return _gdNo(info.soon);
   const g = _gdG(), mark = _gdMark([['led', info.key]]);
   let msg = '';
-  if (info.kind === 'compost') { g.led[info.key] = { d: m.today, k: 'cp', i: { fertiliser: 1 }, n: 1 }; msg = 'One bag of fertiliser from the compost'; }
+  if (info.kind === 'compost') { g.led[info.key] = { d: m.today, k: 'cp', i: { fertiliser: 1 }, n: 1 }; msg = 'A bag of compost from the bin'; }
   else if (info.kind === 'coop') { g.led[info.key] = { d: m.today, k: 'pl', i: { egg: 2 }, x: 1, n: 1 }; msg = 'Two eggs, still warm'; }
   else if (info.kind === 'hive') { g.led[info.key] = { d: m.today, k: 'hy', i: { honey: 1 }, x: 2, n: 1 }; msg = 'A jar of honey from the hive'; }
   else {

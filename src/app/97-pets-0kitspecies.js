@@ -51,6 +51,7 @@ function _ptQuadGeo(pose, k) {
  * pawCol, legCol, tailFront (in front of the legs when sitting), fluff (a fluffier outline).
  */
 function _ptQuad(pet, pose, mood, X, k) {
+  if (_PT_PAINT.on && typeof _ptPaintK === 'function') k = _ptPaintK(k);   // the Painted village's proportions (97-pets-0kitpaint.js)
   const g = _ptQuadGeo(pose, k), fur = k.fur || X.a, legT = k.legT || fur, pawCol = k.pawCol || null;
   const ctx = { pet, pose, mood, X, g, k, fur };
   const parts = { wingB: [], legsF: [], legsG: [], tail: [], body: [], legsN: [], paw: [], wingN: [], neck: [], ears: [], head: [], eyes: [], fx: [] };
@@ -96,6 +97,7 @@ function _ptQuad(pet, pose, mood, X, k) {
   parts.head.push(...(H.head || []));
   parts.eyes.push(...(H.eyes || []));
   parts.head.push(...(H.front || []));
+  if (_PT_PAINT.on && typeof _ptPaintFur === 'function') _ptPaintFur(parts, g, fur, pose, pet.species + (pet.coat || '') + pose);
   const order = pose === 'sit' && k.tailFront ? ['wingB', 'legsF', 'body', 'legsN', 'paw', 'tail', 'wingN', 'neck', 'ears', 'head', 'eyes', 'fx'] : ['wingB', 'legsF', 'legsG', 'tail', 'body', 'legsN', 'paw', 'wingN', 'neck', 'ears', 'head', 'eyes', 'fx'];
   const tr0 = k.tailPiv ? k.tailPiv(ctx) : g.tailRoot;
   return {

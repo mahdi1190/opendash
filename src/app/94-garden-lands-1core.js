@@ -33,7 +33,8 @@ function gardenLandsWire(m) {
   for (const s of GARDEN_LAND_SECTIONS) if (gardenHas('land:' + s.id) > 0) { ls.push(s.id); plots.add(s.plot); }
   for (const f of GARDEN_LAND_FEATURES) if (f.x != null && gardenLandOwnsFeature(f.id)) lf.push(f.id);
   if (typeof gardenRewardTrailsWire === 'function') ls.push(...gardenRewardTrailsWire(m));   // a path opened early with pegs: friends see it open too
-  const areas = GARDEN_AREAS.filter(a => (a.buy ? plots.has(a.id) : m.areas.includes(a.id))).map(a => a.id);
+  const gates = (typeof GARDEN_ZONE_GATES !== 'undefined' ? GARDEN_ZONE_GATES : []).filter(g => gardenHas('gate:' + g.id) > 0).map(g => 'zn-' + g.n);   // gates opened with a find go first, so the 12-id cap never drops one: a friend sees them open (gardenLandsOfSnap)
+  const areas = gates.concat(GARDEN_AREAS.filter(a => (a.buy ? plots.has(a.id) : m.areas.includes(a.id))).map(a => a.id));
   const S = gardenLandShowMine(m);
   return { areas, ls, lf, lc: S.c, lz: S.z, lr: S.r };
 }
@@ -127,7 +128,7 @@ function _gldItemName(k) {
   const [kind, id] = String(k).split(':');
   if (kind === 'seed') { const p = gardenPlant(id); return p ? `a ${p.name.toLowerCase()} seed` : 'a seed'; }
   if (kind === 'crop') { const p = gardenPlant(id); return p ? p.name.toLowerCase() : 'something'; }
-  if (k === 'fertiliser') return 'a bag of fertiliser';
+  if (k === 'fertiliser') return 'a bag of compost';
   if (k === 'honey') return 'a jar of honey';
   if (kind === 'decor') { const d = gardenDecor(id); return d ? d.name.toLowerCase() : 'a decoration'; }
   return 'something';
@@ -296,7 +297,7 @@ function gardenLandDig() {
   const cur = r < 0.3 ? _gldNextCurio('dig|' + m.today) : null;
   if (cur) return _gldPay('digging', `You dug up ${cur.name.toLowerCase()}. ${cur.blurb}`, { i: { ['cur:' + cur.id]: 1 }, x: 6 }, seen, 'gift');
   if (r < 0.55) { const i = _gdResolve({ 'seed:*': 1 }, 'dig|' + m.today); return _gldPay('digging', `You dug up ${_gldItemName(Object.keys(i)[0])}`, { i, x: 3 }, seen, 'sprout'); }
-  if (r < 0.65) return _gldPay('digging', 'You dug up a bag of fertiliser', { i: { fertiliser: 1 }, x: 3 }, seen, 'gift');
+  if (r < 0.65) return _gldPay('digging', 'You dug up a bag of good compost', { i: { fertiliser: 1 }, x: 3 }, seen, 'gift');
   const c = 5 + Math.floor(rnd() * 11);
   return _gldPay('digging', `You dug up ${c} coins`, { c, x: 3 }, seen, 'coins');
 }
@@ -345,7 +346,14 @@ function gardenLandCartBuy(key) {
 /* ---------- level ups ---------- */
 /** New level: the trails it opens, and one line about what you can now buy. */
 function gardenLandsTick(was, lv, moments) {
-  for (const z of GARDEN_ZONES) if (z.lv > was && z.lv <= lv) moments.push({ kind: 'area', text: `A gate has opened: ${z.name.toLowerCase()}`, icon: 'map-pin', area: z.id });
+  for (const z of GARDEN_ZONES) {
+    const at = typeof gardenZoneOpenLv === 'function' ? gardenZoneOpenLv(z) : z.lv; if (!(at > was && at <= lv)) continue;
+    const gate = typeof gardenGateOf === 'function' ? gardenGateOf(z.n) : null, rule = gate && gardenGateRule(gate);
+    if (gate && gardenHas('gate:' + gate.id) > 0) continue;   // (opened already, with its find)
+    const who = rule && typeof WD_FOLK_ROW !== 'undefined' && WD_FOLK_ROW.get(rule.who);
+    const said = gate && typeof wdFolkGateHelpLine === 'function' ? wdFolkGateHelpLine(gate.id) : '';   // (the helper's own words: 94-garden-wonder-1kin.js)
+    moments.push({ kind: 'area', text: who ? (said ? `${who.name}: “${said}” ${z.name} is open.` : `${who.name} ${rule.help}: ${z.name} is open`) : `A gate has opened: ${z.name.toLowerCase()}`, icon: 'map-pin', area: z.id });
+  }
   for (const t of GARDEN_LAND_TRAILS) if (!t.zn && t.lv > was && t.lv <= lv) moments.push({ kind: 'area', text: `${t.name} is open`, icon: 'footprints', area: t.id });
   const n = GARDEN_LAND_SECTIONS.filter(s => s.buy && s.lv > was && s.lv <= lv).length + GARDEN_LAND_FEATURES.filter(f => f.lv > was && f.lv <= lv && !f.prize).length;
   if (n) moments.push({ kind: 'grant', text: `${n} new thing${n === 1 ? '' : 's'} at the land office`, icon: 'map-pin' });
@@ -396,10 +404,55 @@ function gardenWorldReady() {
   const mechanics=typeof GardenIslandLayout!=='undefined'&&GardenIslandLayout.data.mechanics;
   return GARDEN_WORLD.v===3&&GARDEN_WORLD.lh==='c34545b986e497d5d9df5d51'&&g.seen.worldLayout==='94f5b2dbe4dce765cafb2b40'&&mechanics?.revision===1&&mechanics.predecessorLayout==='94f5b2dbe4dce765cafb2b40'&&mechanics.contract==='optional-side-pier-walk-cover-v1';
 }
+/** The garden starts fresh in this world, keyed on its layout identity, so it happens once and two devices agree:
+ * after it the saved tag is this world's, and the server accepts the change only with the fresh mark (lib/garden-world-fence.mjs).
+ * Pets, profile and tasks are not garden state and stay. The server keeps a copy of the earlier garden in its archive. */
+function gardenFreshStart() {
+  // Only the page does this: Node readers (MCP, agents) never write the garden.
+  if (typeof document === 'undefined' || typeof state === 'undefined' || !state) return false;
+  const g = _gdG(); if (!g.since || gardenWorldReady() || _gd.freshFor === GARDEN_WORLD.lh) return false;
+  _gd.freshFor = GARDEN_WORLD.lh;
+  state.garden = { v: 1 }; _gd.freshMark = GARDEN_WORLD.lh;
+  try { gardenEnsure(); } finally { _gd.freshMark = ''; }
+  const n = _gdG(); if (!n.since) return false;
+  n.seen.fresh = GARDEN_WORLD.lh; _gd.undo = [];
+  if (typeof _gw !== 'undefined') { _gw.placed = false; _gw.px = GARDEN_WORLD.start.x + 0.5; _gw.py = GARDEN_WORLD.start.y + 0.5; _gw.path = []; }
+  if (typeof GW_POS_KEY !== 'undefined') { try { localStorage.removeItem(GW_POS_KEY); } catch (e) { /* private mode */ } }
+  _gdSave();
+  gardenFreshNote();
+  return true;
+}
+/** The garden is drawn and nothing is over it (the opening splash, a loading note): a note shown now is seen. */
+function gardenShownNow() {
+  const sp = typeof document !== 'undefined' && document.getElementById('od-splash'), covered = sp && sp.isConnected && !sp.classList.contains('is-out') && !sp.classList.contains('is-skip');
+  return !covered && typeof GardenNative !== 'undefined' && !!(GardenNative.isReady ? GardenNative.isReady() : GardenNative.status().ready);
+}
+/** One short note per device, the first time it shows a garden that started fresh here. */
+function gardenFreshNote() {
+  const g = _gdG(), key = 'gd-fresh-note:' + GARDEN_WORLD.lh;
+  if (_gd.freshNoted || typeof document === 'undefined' || !g.seen || g.seen.fresh !== GARDEN_WORLD.lh) return;
+  _gd.freshNoted = true;
+  try { if (localStorage.getItem(key)) return; localStorage.setItem(key, '1'); } catch (e) { /* private mode: once per page */ }
+  // Over the garden when it is open (an app toast sits under the full-screen garden and is never seen); the garden may
+  // still be opening, so wait for it a little; anywhere else, the app's own toast.
+  const msg = 'Your garden has a new home in Fleetwater Vale. Gardens start fresh in this version.';
+  let tries = 0;
+  const shown = gardenShownNow;
+  const say = () => {
+    if (shown() && typeof gardenMessage === 'function' && gardenMessage(msg, { icon: 'sprout', ms: 12000, log: true })) return;
+    const opening = typeof state !== 'undefined' && state && state.view === 'garden' || typeof _gdOnPage === 'function' && _gdOnPage();
+    if (opening && ++tries < 240) { setTimeout(say, 500); return; }   // (a first open can take a while: up to two minutes, then the app's toast)
+    if (typeof toast === 'function') toast(msg, { icon: 'sprout' });
+  };
+  say();
+}
 function gardenWorldCheck() {
   const g = _gdG(); if (!g.since) return;
   // Island relocation is an explicit backed-up migration. Neither the old
   // refund conversion nor its later worldAt deletion sweep may touch v3.
+  // Fleetwater Vale (v5): a garden saved on an earlier layout is not moved; it starts fresh here, once.
+  if (GARDEN_WORLD.v >= 5 && !gardenWorldReady() && gardenReady()) gardenFreshStart();
+  else if (GARDEN_WORLD.v >= 5 && g.seen.fresh) gardenFreshNote();   // (it started fresh on another of your devices)
   if (GARDEN_WORLD.v >= 3) { _gd.worldPending = !gardenWorldReady(); return; }
   if ((Number(g.seen.world) || 1) >= GARDEN_WORLD.v) {
     // (keep it cheap: once per change to the garden)

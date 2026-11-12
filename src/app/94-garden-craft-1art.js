@@ -55,6 +55,7 @@ const _GC_TREAT_ART = Object.freeze({ 'berry-biscuit': 'strawberry', 'veg-stew':
 const _GC_ICON_T = ['#c8a24a', '#a8823a', '#e8c86a', '#7a5a2a'];
 function gardenCraftArt(r, px) {
   const mk = r.make;
+  if ((mk.wear || mk.emote) && window.GardenPaintedDecor) { const painted = GardenPaintedDecor.extraIcon('craft:' + r.id, px); if (painted) return painted; }   // painted, so it reads on the paper (94-garden-native-painted-decor-0kit.js)
   try {
     if (mk.wear) {
       if (mk.wear[0] === 'hat') return `<svg class="gcr-art" viewBox="${['flowercrown', 'wildcirclet', 'leafwreath'].includes(mk.wear[1]) ? '24 14 52 30' : '10 2 80 52'}" width="${px}" height="${px}" aria-hidden="true" focusable="false">${_pfHatMore(mk.wear[1], _GC_ICON_T, false)}</svg>`;

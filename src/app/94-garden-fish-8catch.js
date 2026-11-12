@@ -289,6 +289,7 @@ function gardenCatchAfterBug(def) {
 /** Lost in the fight, not on the strike: remember it. A fish of any size that took real work; the commonest ones are not worth a grudge. */
 function gardenCatchGotAway(plan, how) {
   const def = plan.def; if (!def || def.cat !== 'fish' || plan.contest) return;
+  if (typeof gardenJournalGlimpse === 'function') gardenJournalGlimpse(def.id);   // it shows in the Field Journal as glimpsed
   const c = _gca(), today = _gdToday(), fd = _gcFd(_gdG(), today), J = fd.j && typeof fd.j === 'object' ? fd.j : (fd.j = {});
   J.lost = (Number(J.lost) || 0) + 1;
   c.run = 0;

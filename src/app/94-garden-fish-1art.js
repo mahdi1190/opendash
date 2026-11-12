@@ -84,7 +84,9 @@ function _gfaPattern(look, S, rnd) {
   }
   return s;
 }
-function gardenFishArt(id, o) {
+/** The fish as drawn, painted into the scene's light in the Painted village (94-garden-art-g-paint.js); o.flat: always the plain drawing (the book, cards). */
+function gardenFishArt(id, o) { const s = _gfaDarkEyes(_gardenFishArtRaw(id, o)); return s && !(o && o.flat) && typeof gardenFigurePaintIf === 'function' ? gardenFigurePaintIf(s, 'fish') : s; }
+function _gardenFishArtRaw(id, o) {
   o = o || {};
   const f = gardenFishDef(id);
   if (!f) return '';
@@ -165,7 +167,7 @@ function _gfaFind(f, uid) {
 
 /* ---------- bugs (2.23: seen from above, chunky and cute: they draw small in the garden, so no thin line anywhere) ---------- */
 /** Big eyes on a round head at (x, 0), radius r, looking the way the bug faces (right). */
-function _gfaEyes(x, r, e) { const R = r * 0.42, y = r * 0.52; return `<circle cx="${_gfaN(x + r * 0.34)}" cy="${_gfaN(-y)}" r="${_gfaN(R)}" fill="#fbf8ee" stroke="${e}" stroke-width="0.5"/><circle cx="${_gfaN(x + r * 0.34)}" cy="${_gfaN(y)}" r="${_gfaN(R)}" fill="#fbf8ee" stroke="${e}" stroke-width="0.5"/><circle cx="${_gfaN(x + r * 0.46)}" cy="${_gfaN(-y)}" r="${_gfaN(R * 0.62)}" fill="#1a1712"/><circle cx="${_gfaN(x + r * 0.46)}" cy="${_gfaN(y)}" r="${_gfaN(R * 0.62)}" fill="#1a1712"/>`; }
+function _gfaEyes(x, r, e) { if (typeof _gfaPaintOn === 'function' && _gfaPaintOn()) return _gfaEyesPainted(x, r); const R = r * 0.42, y = r * 0.52; return `<circle cx="${_gfaN(x + r * 0.34)}" cy="${_gfaN(-y)}" r="${_gfaN(R)}" fill="#fbf8ee" stroke="${e}" stroke-width="0.5"/><circle cx="${_gfaN(x + r * 0.34)}" cy="${_gfaN(y)}" r="${_gfaN(R)}" fill="#fbf8ee" stroke="${e}" stroke-width="0.5"/><circle cx="${_gfaN(x + r * 0.46)}" cy="${_gfaN(-y)}" r="${_gfaN(R * 0.62)}" fill="#1a1712"/><circle cx="${_gfaN(x + r * 0.46)}" cy="${_gfaN(y)}" r="${_gfaN(R * 0.62)}" fill="#1a1712"/>`; }
 /** Two short, thick feelers with a knob, from a head at x. */
 function _gfaFeel(x, e, r, k) { const K = k || 1; return `<path d="M${_gfaN(x)} ${_gfaN(-r * 0.5)}q${_gfaN(3 * K)} ${_gfaN(-2.4 * K)} ${_gfaN(5 * K)} ${_gfaN(-4.2 * K)}M${_gfaN(x)} ${_gfaN(r * 0.5)}q${_gfaN(3 * K)} ${_gfaN(2.4 * K)} ${_gfaN(5 * K)} ${_gfaN(4.2 * K)}" stroke="${e}" stroke-width="1.5" stroke-linecap="round" fill="none"/><circle cx="${_gfaN(x + 5 * K)}" cy="${_gfaN(-r * 0.5 - 4.2 * K)}" r="1.3" fill="${e}"/><circle cx="${_gfaN(x + 5 * K)}" cy="${_gfaN(r * 0.5 + 4.2 * K)}" r="1.3" fill="${e}"/>`; }
 /** Six short legs, mirrored. pts: pairs of [x, y, dx, dy]. */
@@ -195,7 +197,9 @@ function _gfaWing(c, c2, c3, p, e, fore, w) {
   s += `<path d="M-1 -5C-2 -10 -4 -14 -8 -16" stroke="#ffffff" stroke-opacity="0.32" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
   return s;
 }
-function gardenBugArt(id, o) {
+function _gfaDarkEyes(s) { return s && _gfaPaintOn() ? s.replace(/<circle([^>]*?)fill="#fbf8ee"/g, '<circle$1fill="#24201f"') : s; }   // the Painted village: no googly eyes
+function gardenBugArt(id, o) { const s = _gfaDarkEyes(_gardenBugArtRaw(id, o)); return s && !(o && o.flat) && typeof gardenFigurePaintIf === 'function' ? gardenFigurePaintIf(s, 'bug') : s; }
+function _gardenBugArtRaw(id, o) {
   o = o || {};
   const b = gardenBugDef(id);
   if (!b) return '';
@@ -331,7 +335,7 @@ function gardenGearArt(kind, id, o) {
 function _gfaReal(kind, def, o, art) { if (!o.real) return art; const k = gardenCreatureSizeK(kind, def); return k >= 1 ? art : `<g transform="scale(${k.toFixed(2)})">${art}</g>`; }
 /** Any of them as a standalone <svg>. kind: 'fish' | 'bug' | 'rod' | 'net' | 'bait' | 'bobber'. */
 function gardenCatchSvg(kind, id, px, o) {
-  o = Object.assign({ uid: 'ci' + (gardenHash(kind + id) % 99999).toString(36) }, o || {});
+  o = Object.assign({ uid: 'ci' + (gardenHash(kind + id) % 99999).toString(36) }, o || {}, { flat: true });
   px = px || 48;
   if (o.v && (kind === 'fish' || kind === 'bug') && typeof gardenVariantSvg === 'function') { const vs = gardenVariantSvg(kind, id, px, o); if (vs) return vs; }
   if (kind === 'fish') {

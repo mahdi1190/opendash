@@ -154,7 +154,37 @@ function _gcpTraits(def, look, x, y, top, len, e, rnd) {
   if (/iron|knight|ironclad/.test(id)) { let d = ''; for (let i = 0; i < 4; i++) d += `M${n(x - len * (0.2 + i * 0.2))} -7a3 7 0 0 1 0 14`; over += `<path d="${d}" stroke="#d8dce0" stroke-width="1.2" stroke-opacity=".75" fill="none"/>`; }
   return { back, over };
 }
+/**
+ * The Painted village's brushwork on a side-on fish (inside its body's clip): rows of scales as small arcs, lit toward the back and the
+ * head, darker toward the belly and tail; the lateral line; a warm light along the back from the upper left; the belly's underside in
+ * shade. Scaleless families (catfish, eels, loaches) get the skin's mottling instead. Every fish of a family shares it, in its own colours.
+ */
+function _gcpPaintScales(P, c, c2, c3, e, fam) {
+  const { L, H, x0, x1, yT, yB } = P, n = _gfaN, r = _gfaRng('paint|' + fam + c);
+  const bare = /cat|eel|loach|lamprey|sturgeon|shark|ray|oar|wels|newt/.test(fam);
+  let lit = '', dk = '', out = '';
+  if (bare) {
+    for (let i = 0; i < 28; i++) { const t = 0.08 + r() * 0.8, x = x0 + L * t, y = yT(t) + (yB(t) - yT(t)) * (0.15 + r() * 0.55), w = 1 + r() * 1.6; const seg = `M${n(x)} ${n(y)}h${n(w)}`; if (r() < 0.55) dk += seg; else lit += seg; }
+  } else {
+    const rows = Math.max(3, Math.min(6, Math.round(H / 2.6))), cols = Math.max(6, Math.min(16, Math.round(L / 3.6)));
+    for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+      const t = 0.12 + (i + (j % 2) * 0.5) / cols * 0.66; if (t > 0.8) continue;
+      const top = yT(t), bot = yB(t), y = top + (bot - top) * (0.14 + j / rows * 0.74), x = x0 + L * t, w = Math.min(2.6, L / cols * 0.62);
+      const arc = `M${n(x - w)} ${n(y - w * 0.6)}Q${n(x + w * 0.5)} ${n(y)} ${n(x - w)} ${n(y + w * 0.6)}`;
+      if (j / rows < 0.45) lit += arc; else dk += arc;
+    }
+  }
+  out += `<path d="${lit}" stroke="${_gfaLt(c, 0.45)}" stroke-width=".55" stroke-opacity=".55" fill="none" stroke-linecap="round"/><path d="${dk}" stroke="${_gfaDk(c, 0.35)}" stroke-width=".55" stroke-opacity=".45" fill="none" stroke-linecap="round"/>`;
+  // the lateral line, from the gill to the tail
+  out += `<path d="M${n(x1 - L * 0.24)} ${n(-H * 0.12)}Q${n(x0 + L * 0.5)} ${n(-H * 0.02)} ${n(x0 + L * 0.06)} ${n(H * 0.04)}" stroke="${_gfaDk(c, 0.3)}" stroke-width=".6" stroke-opacity=".5" fill="none"/>`;
+  // the warm light along the back, the shade gathering under the belly and toward the tail
+  out += `<path d="M${n(x0 + L * 0.1)} ${n(-H * 0.55)}Q${n(x0 + L * 0.45)} ${n(-H * 1.05)} ${n(x1 - L * 0.12)} ${n(-H * 0.62)}Q${n(x0 + L * 0.45)} ${n(-H * 0.7)} ${n(x0 + L * 0.1)} ${n(-H * 0.55)}z" fill="#fff4d6" fill-opacity=".28"/>`;
+  out += `<path d="M${n(x0 - 2)} ${n(H * 0.62)}Q${n(x0 + L * 0.5)} ${n(H * 0.7)} ${n(x1 + 2)} ${n(H * 0.36)}V${n(H * 1.5)}H${n(x0 - 2)}z" fill="${_gfaDk(c2, 0.32)}" fill-opacity=".35"/>`;
+  out += `<path d="M${n(x0 - 2)} ${n(-H * 1.2)}H${n(x0 + L * 0.2)}V${n(H * 1.5)}H${n(x0 - 2)}z" fill="${_gfaDk(c, 0.3)}" fill-opacity=".22"/>`;
+  return out;
+}
 function _gcpSideFish(def, look, fam, uid) {
+  if (typeof _gfaPaintOn === 'function' && _gfaPaintOn()) return _gcpSideFishPainted(def, look, fam, uid);   // the Painted village's own drawing (94-garden-fish-1art5.js)
   const P = _gcpPlan(def, look, fam), { R, L, H, x0, x1, yT, yB, rnd, ex, ey, er, tail, tl } = P, c = look.c, c2 = look.c2 || _gfaLt(c, 0.4), c3 = look.c3 || _gfaDk(c, 0.4), e = _gcpEdge(c), n = _gfaN;
   const fin = R.red ? _gfaMix(c3, '#d8542a', 0.45) : _gfaMix(c, c3, 0.5), ray = _gfaDk(fin, 0.35), line = `stroke="${e}" stroke-width="1" stroke-linejoin="round"`, finH = 0.76 + rnd() * 0.5;
   let back = '', s = '';
@@ -181,6 +211,7 @@ function _gcpSideFish(def, look, fam, uid) {
   s += `<path d="M${n(x0 - 2)} ${n(H * 0.26)}Q${n(x0 + L * 0.5)} ${n(H * 0.3)} ${n(x1 + 2)} ${n(H * 0.1)}V${n(H * 1.5)}H${n(x0 - 2)}z" fill="${c2}"/>`;
   s += `<path d="M${n(x0 + L * 0.3)} ${n(yT(0.3) * 0.68)}Q${n(x0 + L * 0.5)} ${n(yT(0.5) * 0.8)} ${n(x0 + L * 0.72)} ${n(yT(0.72) * 0.7)}" stroke="#fff" stroke-opacity=".5" stroke-width="2" fill="none" stroke-linecap="round"/>`;
   if (R.gills) { let d = ''; for (let i = 0; i < 4; i++) d += `M${n(x0 + L * (0.7 + i * 0.03))} ${n(-H * 0.3)}q-1 ${n(H * 0.32)} 0 ${n(H * 0.62)}`; s += `<path d="${d}" stroke="${e}" stroke-width=".9" stroke-opacity=".7" fill="none"/>`; }
+  if (typeof gardenFigurePaintStyle === 'function' && gardenFigurePaintStyle()) s += _gcpPaintScales(P, c, c2, c3, e, fam);   // the Painted village: scales, the lateral line, a lit back, the belly in shade
   s += '</g>';
   if (R.scutes) { let d = ''; const count = 7; for (let i = 0; i < count; i++) { const t = 0.2 + i * 0.09, x = x0 + L * t; d += `M${n(x - 2.8)} ${n(yT(t) + 1.4)}l2.8 -4 2.8 4zM${n(x - 2.4)} ${n(-1)}l2.4 -2.4 2.4 2.4 -2.4 2.4z`; } s += `<path d="${d}" fill="${_gfaLt(c3, 0.3)}" stroke="${e}" stroke-width=".7" stroke-linejoin="round"/>`; }
   if (R.paddle) { const pl = 20 + rnd() * 4; s += `<path d="M${n(x1 - 2)} ${n(-H * 0.26)}C${n(x1 + pl * 0.5)} ${n(-H * 0.24)} ${n(x1 + pl * 0.8)} ${n(-H * 0.64)} ${n(x1 + pl)} ${n(-H * 0.5)}C${n(x1 + pl + 2)} ${n(-H * 0.3)} ${n(x1 + pl * 0.6)} ${n(H * 0.1)} ${n(x1 - 2)} ${n(H * 0.18)}Z" fill="${_gfaMix(c, c2, 0.3)}" stroke="${e}" stroke-width="1"/>`; }
@@ -211,6 +242,7 @@ function _gcpChain(n, l, widthAt, c, e, seg) {
   return one(false, 1.8) + one(true, 0);
 }
 function _gcpEel(def, look, fam, uid, rnd) {
+  if (fam === 'eel' && typeof _gfaPaintOn === 'function' && _gfaPaintOn()) return _gcpEelPainted(def, look, fam, uid, rnd);   // 94-garden-fish-1art7.js
   const c = look.c, c2 = look.c2 || _gfaLt(c, 0.4), c3 = look.c3 || _gfaDk(c, 0.4), e = _gcpEdge(c), id = def.id, n = _gfaN, big = Math.min(1.25, 0.85 + (def.cm[1] / 300) * 0.5);
   const W = (fam === 'oar' ? 8 : 10) * big * (0.86 + rnd() * 0.28), segs = fam === 'oar' ? 8 : 7, l = 74 / segs, p = look.p, hx = 30;
   const seg = (i, w) => {
@@ -254,6 +286,7 @@ function _gcpPuffer(def, look, rnd) {
 }
 function _gcpOwn(def, look, fam, uid, rnd) {
   const c = look.c, c2 = look.c2 || _gfaLt(c, 0.4), c3 = look.c3 || _gfaDk(c, 0.4), e = _gcpEdge(c), n = _gfaN, A = `stroke="${e}" stroke-width="1.2" stroke-linejoin="round"`, p = look.p, big = Math.min(1, (def.cm[1] || 10) / 200);
+  if (typeof _gfaPaintOn === 'function' && _gfaPaintOn()) { if (fam === 'newt') return _gcpNewtPainted(def, look, rnd); if (fam === 'crayfish') return _gcpCrayPainted(def, look); if (fam === 'crab') return _gcpCrabPainted(def, look, rnd); }   // 94-garden-fish-1art7.js
   switch (fam) {
     case 'eel': case 'oar': case 'lamprey': return _gcpEel(def, look, fam, uid, rnd);
     case 'koi': return _gcpKoi(def, look, uid, rnd);

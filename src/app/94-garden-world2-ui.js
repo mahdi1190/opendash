@@ -9,7 +9,7 @@ function gardenGraphicsOpen() {
   body.appendChild(lead);
   const group = document.createElement('fieldset');
   const legend = document.createElement('legend'); legend.textContent = 'Garden graphics'; group.appendChild(legend);
-  const choices = [['standard', 'Classic', 'The original garden artwork and browser renderer.'], ['phaser', 'Phaser', 'The redesigned garden and indoor rooms, drawn as a native game scene with lighting and weather.']];
+  const choices = [['standard', 'Classic', 'The original garden artwork and browser renderer.'], ['phaser', 'Painted', 'The vale and its rooms painted as a game scene, with light and weather. The usual choice.']];
   const inputs = [];
   for (const [value, label, detail] of choices) {
     const row = document.createElement('label'); row.className = 'gd-graphics-choice';
@@ -19,6 +19,7 @@ function gardenGraphicsOpen() {
     name.textContent = label; hint.textContent = detail; text.append(name, hint); row.append(input, text); group.appendChild(row); inputs.push(input);
   }
   body.appendChild(group);
+  // Fleetwater Vale has one art style, the Painted village, drawn by Phaser (no style choice: the vale is not drawn in the classic island art).
   const note = document.createElement('p'); note.className = 'muted';
   note.textContent = 'Your plants, belongings and progress are kept when you switch.'; body.appendChild(note);
   const status = document.createElement('p'); status.className = 'muted'; status.setAttribute('role', 'status');
@@ -39,7 +40,8 @@ function gardenGraphicsOpen() {
       if (applying) return false;
       const selected = inputs.find(i => i.checked), mode = selected ? selected.value : 'standard';
       const currentMode = _gdpPrefs().renderEngine === 'standard' ? 'standard' : 'phaser';
-      if (mode === currentMode && (mode !== 'phaser' || window.GardenNative && GardenNative.status().ready)) { if (close) close(); return; }
+      const styleChanged = false;
+      if (mode === currentMode && !styleChanged && (mode !== 'phaser' || window.GardenNative && GardenNative.status().ready)) { if (close) close(); return; }
       applying = true;
       if (mode === 'phaser') {
         status.textContent = 'Loading Phaser…';

@@ -711,7 +711,9 @@ function _gwMakeNode() {
   const NS = 'http://www.w3.org/2000/svg';
   const g = gardenSceneElement('g');
   g.setAttribute('class', 'gd-player'); g.setAttribute('data-live', '1'); g.setAttribute('data-z', String(_gw.py));
-  g.innerHTML = '<g class="gd-pl-sh"><ellipse class="gd-pl-halo" cx="0" cy="1" rx="17" ry="6"/><ellipse cx="0" cy="1" rx="12" ry="3.4" fill="#1a2a14" fill-opacity="0.2"/></g><g class="gd-pl-bob"><g class="gd-pl-in"></g></g>';
+  // The Painted village stands the figure in the scenes' soft contact shadow, without the pale halo (94-garden-art-g-paint.js).
+  const painted = typeof gardenFigurePaintStyle === 'function' && gardenFigurePaintStyle() && typeof gardenFigureShadowSvg === 'function';
+  g.innerHTML = '<g class="gd-pl-sh">' + (painted ? gardenFigureShadowSvg(11, 3.2) : '<ellipse class="gd-pl-halo" cx="0" cy="1" rx="17" ry="6"/><ellipse cx="0" cy="1" rx="12" ry="3.4" fill="#1a2a14" fill-opacity="0.2"/>') + '</g><g class="gd-pl-bob"><g class="gd-pl-in"></g></g>';
   return g;
 }
 
@@ -1237,16 +1239,17 @@ function _gwPropAtPt(wx, wy, ev) {
 function _gwOpenProp(p) {
   if (!p) return;
   const go = {
-    tackle: () => gardenPopupOpen('catch', { sub: 'tackle', title: 'Tackle shop' }), journal: () => gardenPopupOpen('catch', { sub: 'fish', title: 'Field journal' }),
+    tackle: () => gardenPopupOpen('catch', { sub: 'tackle', title: 'Tackle shop' }), journal: () => gardenJournalOpen(),
     shop: () => gardenPopupOpen('shop'), basket: () => gardenPopupOpen('basket'), almanac: () => gardenPopupOpen('almanac'), friends: () => gardenPopupOpen('friends'),
     photo: () => { if (typeof gardenPhotoOpen === 'function') gardenPhotoOpen(); }, timelapse: () => { if (typeof gardenTimelapseOpen === 'function') gardenTimelapseOpen(); },
     sail: () => { if (typeof gardenBoatAsk === 'function' && gardenBoatAsk()) return; gardenPopupOpen('sail'); },
     hall: () => gardenPopupOpen('catch', { sub: 'hall', title: 'The lake hall' }), lake: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The lake' }),
-    angler: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The old angler' }), smoker: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The smoker' }),
+    angler: () => { if (typeof wdAnglerTalk === 'function' && wdAnglerTalk(p)) return; gardenPopupOpen('catch', { sub: 'lake', title: 'The old angler' }); },   // he talks first, once a day (94-garden-wonder-1kin.js) smoker: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The smoker' }),
     craft: () => gardenPopupOpen('craft'),
     lands: () => gardenPopupOpen('lands'),
     lf: () => gardenLandPropOpen(p),
   }[p.act];
+  if (go && p.door && typeof gardenSfx === 'function') gardenSfx('door');
   if (go) go();
 }
 /** Walk to a building's door and go in. */
@@ -1352,7 +1355,13 @@ function gardenWorldClick(it, cell, ev, m) {
   const k = gardenWorldPick(it, cell, ev, m);
   if (k.kind === 'decor' && tool === 'hand' && typeof gardenBackStep === 'function' && gardenBackStep(k.decor, m || gardenHere())) return true;
   // 1. a building, a board or a box: walk to its door and go in
-  if (k.kind === 'prop') { _gwGoToProp(k.prop); return true; }
+  // (a tall drawing, a lamp or a roof, stands over the ground behind it: a click there, on ground you can stand on behind the
+  // footprint, walks you there instead of to the door; the land office and the terrace lamps used to stop you at their doors)
+  if (k.kind === 'prop') {
+    const P = k.prop, pt = _gwPointAt(ev), lift = Math.max(1, P.tall || 1);
+    if (pt && pt.y < P.y - lift && _gwFree(pt.x, pt.y)) { if (!gardenWalkToPoint(pt, null, { radius: 8 })) gameDeny(null, { at, say: 'You cannot get there.' }); return true; }
+    _gwGoToProp(P); return true;
+  }
   if (k.kind === 'seed') return false;   // planting is its own click
   // 2. a bug: creep up on it
   if (k.kind === 'bug') { _gwNetChase(k.bug); return true; }
@@ -1433,6 +1442,7 @@ function gardenWorldKey(ev, down, arrowsOnly) {
   if (k === 'f' || k === 'F') { gardenCamSet(gardenCamMode() === 'fit' ? 'follow' : 'fit'); ev.preventDefault(); return true; }
   if (k === 'c' || k === 'C') { gardenCamSet('follow'); ev.preventDefault(); return true; }
   if (k === 'q' || k === 'Q') { if (typeof gartEmoteWheel === 'function') gartEmoteWheel(); ev.preventDefault(); return true; }
+  if ((k === 'j' || k === 'J') && !ev.ctrlKey && !ev.metaKey && !ev.altKey) { if (typeof gardenJournalOpen === 'function') gardenJournalOpen(); ev.preventDefault(); return true; }   // the Field Journal
   if (arrowsOnly) return false;
   if (k === ' ' || k === 'e' || k === 'E') { if (ev.repeat) { ev.preventDefault(); return true; } gardenWorldInteract(); ev.preventDefault(); return true; }
   return false;

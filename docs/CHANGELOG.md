@@ -10,6 +10,22 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.68.0] - 2026-11-12
+
+### Added
+
+- **Fleetwater Vale, a new world.** A coastal valley with the sea to the south and east, woods and mountains running on into the mainland, and a river from the mountain tarn over Fleet Falls into the Mere and down past the mill to the sea. Six regions open in turn: the village, Whispering woodland, Millwater valley, the old woodland, the high orchard and the Cloudbreak mountains, with shortcuts that open later.
+- **Gardens start fresh in the vale.** Your pet, profile and tasks stay; a copy of your old garden is kept on this computer.
+- **A painted world** in the style of the opening scenes: the village and its green, the quay and harbour, Fleet Falls, the Mere, the river and weir, woods, ruins, orchard terraces, fells and the pass. Painted decorations, rooms and room games, and redrawn characters, pets, fish and butterflies.
+- **The vale's folk**: Mother Thistle, Quince, Pip, Tam, Bramble, Wick, the old angler and someone in the woods, with daily chats, favours and friendship, and a story that unfolds as the vale opens. Settings has a gentler telling.
+- **Gates open with something you find**, with a hint from someone in the vale. You start with a small starter kit.
+- **One Field Journal** replaces the separate books: 60 fish and 61 bugs, each with a home and a clue.
+- **Sound**: birds, wind, water, rain, footsteps, fishing, tools and menus, with a Sound panel in the Garden menu.
+
+### Changed
+
+- Coins, timber and stone are the only things to spend; water is free.
+
 ## [2.67.5] - 2026-11-11
 
 ### Changed

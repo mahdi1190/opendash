@@ -791,7 +791,7 @@ function _gldIslandLandformRows(sc) {
       if (!wall) art += A.S(shade, 15, `M${f(x0 + w * .125)} ${f(y1 - tall + 5)}Q${f(cx)} ${f(y1 - tall - 55)} ${f(x1 - w * .125)} ${f(y1 - tall + 5)}`, .9) + A.S(stone, 10, `M${f(x0 + w * .125)} ${f(y1 - tall + 3)}Q${f(cx)} ${f(y1 - tall - 53)} ${f(x1 - w * .125)} ${f(y1 - tall + 3)}`);
       art += A.P(winter ? '#8ca18a' : '#62835b', A.ell(x0 + w * .2, y1 - h * .1, w * .15, 7) + A.ell(x1 - w * .17, y1 - h * .22, w * .12, 6), .9);
     }
-    out.push({ id: form.id, kind: 'landform', html: `<g class="gd-island-landform" pointer-events="none">${art}</g>`, x: x0 / W.cellW, y: (y0 - W.sky) / W.cellH, w: w / W.cellW, h: h / W.cellH, foot: { x: cx, y: y1 }, bounds: { x: x0 - 8, y: y0 - tall - 40, width: w + 16, height: h + tall + 54 } });
+    out.push({ id: form.id, kind: 'landform', landformKind: String(form.kind || ''), html: `<g class="gd-island-landform" pointer-events="none">${art}</g>`, x: x0 / W.cellW, y: (y0 - W.sky) / W.cellH, w: w / W.cellW, h: h / W.cellH, foot: { x: cx, y: y1 }, bounds: { x: x0 - 8, y: y0 - tall - 40, width: w + 16, height: h + tall + 54 } });
   }
   _GLD_ISLAND_REGIONS.artKey = key; return _GLD_ISLAND_REGIONS.art = out;
 }
