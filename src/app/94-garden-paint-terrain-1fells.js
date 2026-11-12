@@ -95,7 +95,7 @@ window.GardenPaintedTerrain = (function () {
       });
     });
     // 2. The tops: contour-ringed rises, each ring a lit north-west rim and a shaded south-east fall, so height reads from above.
-    const tops = [[50, 9.6, 8, 4.6, 6], [43.5, 15, 4.6, 2.6, 4], [31, 3.6, 6.4, 1.9, 3], [60, 15.4, 4, 1.8, 3], [21, 15, 6, 2.6, 3], [9, 16, 5, 2.2, 3], [74, 12.5, 3.6, 2, 3], [36.5, 7.5, 3.2, 1.6, 3]];
+    const tops = [[50, 9.6, 8, 4.6, 6], [43.5, 15, 4.6, 2.6, 4], [31, 3.6, 6.4, 1.9, 3], [60, 15.4, 4, 1.8, 3], [21, 15, 6, 2.6, 3], [9, 16, 5, 2.2, 3], [74, 12.5, 3.6, 2, 3], [36.5, 7.5, 3.2, 1.6, 3], [67.4, 18.4, 3.2, 1.7, 4], [75.4, 17.2, 3.4, 1.9, 4]];
     tops.forEach(([x, y, rx, ry, n], hi) => {
       const c = L.cpt(x, y), RX = rx * cw, RY = ry * ch;
       add([c.x - RX - 30, c.y - RY - 40, c.x + RX + 30, c.y + RY + 30], 100 + hi, (B) => {
@@ -139,7 +139,7 @@ window.GardenPaintedTerrain = (function () {
     });
     // 3b. Outcrops (flat gritstone slabs breaking the turf, ground-level: you walk over them) and the old sheepfolds of the high pasture.
     const routeNear = (x, y, d) => L.routes.some(rt => rt.points.some((p, i) => i % 3 === 0 && Math.abs(p.x - x) < d && Math.abs(p.y - y) < d * .7));
-    const crops = []; { const rr = kit.rng(5150); for (let k = 0; k < 60 && crops.length < 22; k++) { const x = (4 + rr() * 74) * cw, y = W.sky + (3 + rr() * 16) * ch; if (fellAt(x, y) && !routeNear(x, y, 60) && !L.peaks.some(pk => { const b = kit.bboxOf(pk.pts, 40); return x > b[0] && x < b[2] && y > b[1] && y < b[3]; })) crops.push({ x, y, n: 3 + Math.floor(rr() * 5), s: .7 + rr() * .8 }); } }
+    const crops = [[67.2, 18.2, 6, 1.2], [75.6, 16.8, 6, 1.3], [68.8, 19.6, 4, .9], [73.6, 19.2, 4, .8]].map(([x, y, n, sc]) => ({ x: x * cw, y: W.sky + y * ch, n, s: sc })); { const rr = kit.rng(5150); for (let k = 0; k < 60 && crops.length < 26; k++) { const x = (4 + rr() * 74) * cw, y = W.sky + (3 + rr() * 16) * ch; if (fellAt(x, y) && !routeNear(x, y, 60) && !L.peaks.some(pk => { const b = kit.bboxOf(pk.pts, 40); return x > b[0] && x < b[2] && y > b[1] && y < b[3]; })) crops.push({ x, y, n: 3 + Math.floor(rr() * 5), s: .7 + rr() * .8 }); } }
     for (const c of crops) add([c.x - 70, c.y - 40, c.x + 70, c.y + 40], 170 + Math.round(c.x), (B, r) => {
       clipFell(B); const sn = snowAt(c.x, c.y) > .6;
       for (let k = 0; k < c.n; k++) { const x = c.x + (r() - .5) * 80 * c.s, y = c.y + (r() - .5) * 30 * c.s, rx = (8 + r() * 14) * c.s, ry = rx * (.34 + r() * .14);
