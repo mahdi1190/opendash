@@ -251,6 +251,14 @@ window.GardenNativePainted = (function () {
   /* ---------- planting: groves, shrubs and reeds in deliberate groups ---------- */
   const GROVE = { summer: ['tree.green-oak', 'tree.green-birch', 'tree.green-chestnut', 'tree.hawthorn', 'tree.green-alder'], autumn: ['tree.green-oak', 'tree.green-birch', 'tree.green-chestnut', 'tree.hawthorn', 'tree.cherry'] };
   const SHRUB = ['plant.holly', 'plant.gorse', 'plant.hedge', 'plant.fern', 'plant.bracken'];
+  /** Once a frame: a village crown you stand under fades, so you can always see yourself (as in the woods). */
+  let plantingTall = [], fadeLast = 0;
+  function fadeUnder(time) {
+    if (!plantingTall.length || typeof _gw === 'undefined' || !lastInfo) return;
+    const W = lastInfo.W, dt = fadeLast ? Math.min(.1, Math.max(0, (time - fadeLast) / 1000)) : .016; fadeLast = time;
+    const x = _gw.px * W.cellW, y = W.sky + _gw.py * W.cellH;
+    for (const t of plantingTall) { if (!t.im.active) continue; const under = y < t.y - 4 && y > t.y - t.h * .95 && Math.abs(x - t.x) < t.h * .34, a = under ? .5 : 1; if (t.im.alpha !== a) t.im.setAlpha(Math.abs(a - t.im.alpha) < .02 ? a : t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8)); }
+  }
   function planting(scene, parent, info) {
     const W = info.W, made = [], season = info.season || 'summer', trees = GROVE[season] || GROVE.summer; spotCounts = {};
     // Trees stay sprites (the player walks behind them); low shrubs and reeds
@@ -263,7 +271,9 @@ window.GardenNativePainted = (function () {
         const k = K / OBJ_K; gx.drawImage(o.c, (x - g.box.x) * K - o.ox * k, (y - g.box.y) * K - o.oy * k, o.c.width * k, o.c.height * k); return;
       }
       const im = objectImage(scene, id, v, season, size, x, y, false); if (!im) return; im.setDepth(y); parent.add(im); made.push(im);
+      if (size.h >= 50) tall.push({ im, x, y, h: size.h });
     };
+    const tall = plantingTall = [];
     const gates = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data && GardenIslandLayout.data.gates || [], fl = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data && (GardenIslandLayout.data.presentation || {}).falls, byGate = (x, y) => gates.some(g => Math.abs(x - g.x) <= 3 && y - g.y >= -2 && y - g.y <= 5) || !!(fl && x >= fl.x - 3 && x <= fl.x + (fl.w || 3) + 2 && y >= fl.y - 1 && y <= fl.y + (fl.h || 3) + 4);   // (nor over Fleet Falls)
     for (let cy = info.box.y0; cy <= info.box.y1; cy++) for (let cx = info.box.x0; cx <= info.box.x1; cx++) {
       const spot = info.spot(cx, cy); spotCounts[spot || 'none'] = (spotCounts[spot || 'none'] || 0) + 1; if (!spot) continue;
@@ -277,7 +287,7 @@ window.GardenNativePainted = (function () {
     }
     if (paintLow) { g.low = true; scene.textures.get(g.key).refresh(); }
     lastPlanting = made;
-    return { destroy() { for (const im of made) im.destroy(); made.length = 0; }, count: made.length };
+    return { destroy() { for (const im of made) im.destroy(); made.length = 0; if (plantingTall === tall) plantingTall = []; }, count: made.length };
   }
   /* ---------- composition: the props painted into the one ground picture ----------
    * Everything that stands in the village casts its soft shadow across the
@@ -321,5 +331,5 @@ window.GardenNativePainted = (function () {
   }
   function memory(scene) { let bytes = 0, n = 0; if (cachedGround && scene && scene.textures.exists(cachedGround.key)) { const c = scene.textures.get(cachedGround.key).getSourceImage(); bytes += c.width * c.height * 4; n++; } return { groundBytes: bytes, groundTextures: n }; }
   function status() { return { wanted: wanted(), ready: ready(), groundMs, composeMs, K, planted: lastPlanting.length, spots: spotCounts, lastError }; }
-  return { wanted, ready, preload, ground, building, planting, status, objectImage, objectCanvas, paintIntoGround, compose, memory, get lastError() { return lastError; }, set lastError(v) { lastError = v; }, set overLayer(v) { overLayer = v; } };
+  return { wanted, ready, preload, ground, building, planting, fadeUnder, status, objectImage, objectCanvas, paintIntoGround, compose, memory, get lastError() { return lastError; }, set lastError(v) { lastError = v; }, set overLayer(v) { overLayer = v; } };
 })();
