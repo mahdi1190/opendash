@@ -42,7 +42,7 @@ window.GardenPaintVale = (function () {
   const PAL = {
     summer: Object.assign({}, BASE, { lawn: '#93ad5f', lawnLo: '#7c9a4e', lawnHi: '#a9bf6c', floor: '#7f8a4e', leaf: ['#3f6534', '#557e40', '#7aa255', '#a5c26e'], flower: ['#f4f0e0', '#f0d24a', '#c79ac0', '#e88a8a'], mainField: ['#a8b86c', '#94ab5c', '#b9c47c', '#c9c48a'] }),
     spring: Object.assign({}, BASE, { lawn: '#8fb35f', lawnLo: '#78a04e', lawnHi: '#a8c66f', floor: '#7d8c4c', leaf: ['#456c36', '#5e8a44', '#86b058', '#b4d27e'], flower: ['#fff8f0', '#f0d24a', '#f4c6d2', '#ffffff'], mainField: ['#a6c06a', '#8fb05a', '#bccb7c', '#d6d68a'] }),
-    autumn: Object.assign({}, BASE, { lawn: '#9aa65a', lawnLo: '#848f49', lawnHi: '#b2b66a', floor: '#8a7a46', leaf: ['#6e5a2c', '#9a6a2e', '#c4883a', '#e2b45a'], flower: ['#e8dcc0', '#d8a040', '#a8503a', '#e0c070'], mainField: ['#b4ae6a', '#a09a58', '#c8b878', '#c2a060'] }),
+    autumn: Object.assign({}, BASE, { lawn: '#9aa65a', lawnLo: '#848f49', lawnHi: '#b2b66a', floor: '#8a7a46', leaf: ['#6e5a2c', '#9a6a2e', '#c4883a', '#e2b45a'], flower: ['#e8dcc0', '#d8a040', '#a8503a', '#e0c070'], mainField: ['#a8a860', '#98a050', '#b4b070', '#8e9a50', '#c2a868'] }),
     winter: Object.assign({}, BASE, { lawn: '#a6b29a', lawnLo: '#929f87', lawnHi: '#bcc5b0', floor: '#8e8e7c', leaf: ['#4e5e4c', '#66766a', '#8a9888', '#b4c0b4'], flower: ['#f4f6f2', '#e8ecef', '#d8dee2', '#ffffff'], mainField: ['#b2baa6', '#a2ab96', '#c4cab8', '#d6dace'], sand: '#ddd3b6', sandWet: '#c4b897', shallow: '#a2c4c4', sea: '#7a9fab' }),
   };
 
