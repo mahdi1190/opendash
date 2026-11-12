@@ -350,7 +350,8 @@ window.GardenNativeWorld = (function () {
       const pc = pt({ x: start.x + .5, y: start.y + .5 }), pw = 250, ph = 130;
       const plaza = { centre: pc, bounds: { x: pc.x - pw / 2, y: pc.y - ph / 2, w: pw, h: ph }, points: terrainRoundedRect(pc.x - pw / 2, pc.y - ph / 2, pw, ph, 40) };
       const meadow = (px, py) => { const c = cellAt(Math.floor(px / W.cellW), Math.floor((py - W.sky) / W.cellH)); return !!c && !wet(c) && !['beach', 'path'].includes(c.material) && Math.hypot((px - pc.x) / pw, (py - pc.y) / ph) > .62; };
-      const sig = [cbox.x0, cbox.y0, (sc.areas || []).join(','), cultivatedNow ? [...cultivatedNow].sort().join(',') : '', lakes.length, pathLoops.length].join('|');
+      // (a gate opening is not a reason to repaint the village: the regions past the gates lie outside its box, under the mist; a 1 s bake would freeze the mist rolling back)
+      const sig = [cbox.x0, cbox.y0, (sc.areas || []).filter(a => !/^(zn-|gate:)/.test(a)).join(','), cultivatedNow ? [...cultivatedNow].sort().join(',') : '', lakes.length, pathLoops.length].join('|');
       try { packGround = GardenNativePainted.ground(scene, rootNode._inner, { W, box, coast, lawn, lakes, paths: pathLoops, routes, plaza, meadow, soil, owned, season: sc.season, sig: sig + '|' + soil.length + ':' + owned.length }); }
       catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); return false; }
       const blocked = new Set(); for (const p of D.static) { const boxes = [p, p.apron].filter(Boolean); for (const b of boxes) for (let y = Math.floor(b.y) - 1; y <= b.y + b.h; y++) for (let x = Math.floor(b.x) - 1; x <= b.x + b.w; x++) blocked.add(x + ',' + y); }
