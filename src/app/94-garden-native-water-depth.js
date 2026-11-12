@@ -49,10 +49,12 @@ void main () {
   // Keep room in the existing water cache for the player, pet, rod and scenery
   // reflections. A fixed half-scale field outgrows that cache on a large island.
   const MASK_BYTES = 3 * 1024 * 1024;
-  function shoreDistance(pixels, width, height, scaleX, scaleY) {
+  /** The exact separable squared distance transform, as a job that runs in
+   * slices: columns first, then rows. step(budget) returns true when done. */
+  function shoreDistanceJob(pixels, width, height, scaleX, scaleY) {
     const distances = new Float32Array(width * height), count = Math.max(width, height), input = new Float64Array(count), output = new Float64Array(count), vertices = new Int32Array(count), limits = new Float64Array(count + 1), far = 1e12;
-    // Exact separable squared distance transform. Its work is linear in the
-    // retained mask, with no shoreline search or geometry work during frames.
+    // Its work is linear in the retained mask, with no shoreline search or
+    // geometry work during frames.
     function transform(length, spacing) {
       let k = 0; vertices[0] = 0; limits[0] = -far; limits[1] = far;
       for (let q = 1; q < length; q++) {
@@ -63,17 +65,28 @@ void main () {
       k = 0;
       for (let q = 0; q < length; q++) { while (limits[k + 1] < q) k++; const delta = q - vertices[k]; output[q] = spacing * delta * delta + input[vertices[k]]; }
     }
-    for (let x = 0; x < width; x++) { for (let y = 0; y < height; y++) input[y] = pixels[(y * width + x) * 4 + 3] ? far : 0; transform(height, 1 / (scaleY * scaleY)); for (let y = 0; y < height; y++) distances[y * width + x] = output[y]; }
-    for (let y = 0; y < height; y++) { const start = y * width; for (let x = 0; x < width; x++) input[x] = distances[start + x]; transform(width, 1 / (scaleX * scaleX)); for (let x = 0; x < width; x++) distances[start + x] = output[x]; }
-    return distances;
+    let x = 0, y = 0;
+    return {
+      distances,
+      step(until) {
+        for (; x < width; x++) { if ((x & 15) === 0 && performance.now() > until) return false; for (let r = 0; r < height; r++) input[r] = pixels[(r * width + x) * 4 + 3] ? far : 0; transform(height, 1 / (scaleY * scaleY)); for (let r = 0; r < height; r++) distances[r * width + x] = output[r]; }
+        for (; y < height; y++) { if ((y & 15) === 0 && performance.now() > until) return false; const start = y * width; for (let c = 0; c < width; c++) input[c] = distances[start + c]; transform(width, 1 / (scaleX * scaleX)); for (let c = 0; c < width; c++) distances[start + c] = output[c]; }
+        return true;
+      },
+    };
   }
+  // Finished masks by exact geometry: walking back out of a room puts the
+  // garden's own mask back at once instead of measuring every shore again.
+  const KEEP_MASKS = 3, SLICE_MS = 6;
   function create(scene, options) {
     const W = GARDEN_WORLD, width = W.cols * W.cellW, height = W.sky + W.rows * W.cellH, scale = Math.min(.5, Math.sqrt(MASK_BYTES / (width * height * 4)));
     const pixelWidth = Math.max(1, Math.floor(width * scale)), pixelHeight = Math.max(1, Math.floor(height * scale)), scaleX = pixelWidth / width, scaleY = pixelHeight / height, textureBytes = pixelWidth * pixelHeight * 4, key = '__garden-water-depth-' + scene.sys.settings.key;
     const top = [0, 0, 0], bottom = [0, 0, 0], alpha = [.11, .09], fieldBounds = [0, 0, width, height], maskSize = [width, height], ocean = [0, 0];
-    let mask = null, shader = null, reserved = false, dead = false, active = false, visible = true, builds = 0, lastError = null;
+    let mask = null, shader = null, reserved = false, dead = false, active = false, visible = true, builds = 0, lastError = null, job = null;
+    const masks = new Map();
     function release() {
       if (shader) { shader.destroy(); shader = null; }
+      if (job) { job.dead = true; job = null; }
       if (mask) { if (scene.textures.exists(key)) scene.textures.remove(key); mask = null; }
       if (reserved) { reserved = false; if (options.release) options.release(textureBytes); }
     }
@@ -97,31 +110,59 @@ void main () {
       ocean[0] = b ? 1 : 0; fieldBounds[0] = b ? b.x : 0; fieldBounds[1] = b ? b.y : 0; fieldBounds[2] = b ? b.width : width; fieldBounds[3] = b ? b.height : height;
       if (!ensure()) return false;
       shader.setPosition(fieldBounds[0] + fieldBounds[2] / 2, fieldBounds[1] + fieldBounds[3] / 2).setSize(fieldBounds[2], fieldBounds[3]);
-      const context = mask.context, image = context.createImageData(pixelWidth, pixelHeight), pixels = image.data;
-      for (let row = 0; row < pixelHeight; row++) {
-        const y = (row + .5) / scaleY, spans = [], ice = options.merge(frozen.flatMap(region => options.intervals(region, y)));
-        for (const region of liquid) {
-          const bounds = region.bounds; if (y < bounds.y || y >= bounds.y + bounds.height) continue;
-          const intervals = options.subtract(options.intervals(region, y), ice);
-          for (const [left, right] of intervals) spans.push({ left: Math.max(0, left * scaleX), right: Math.min(pixelWidth, right * scaleX), marine: region.ocean ? 255 : 0 });
+      const shape = maskKey(liquid, frozen), hit = masks.get(shape);
+      if (job) { job.dead = true; job = null; }
+      if (hit) { masks.delete(shape); masks.set(shape, hit); mask.context.putImageData(hit, 0, 0); mask.refresh(); builds++; shader.setVisible(visible && active); return true; }
+      // A new shape is measured in short slices between frames (never one long
+      // task); the old mask stays hidden until the new one is ready.
+      shader.setVisible(false);
+      const context = mask.context, image = context.createImageData(pixelWidth, pixelHeight), pixels = image.data, me = { dead: false };
+      job = me; let row = 0, distance = null, i = 0;
+      const halfPixel = .5 / Math.max(scaleX, scaleY);
+      const pump = () => {
+        if (me.dead || dead) return;
+        const until = performance.now() + SLICE_MS;
+        for (; row < pixelHeight; row++) {
+          if ((row & 7) === 0 && performance.now() > until) { setTimeout(pump, 0); return; }
+          fillRow(row, pixels, liquid, frozen);
         }
-        spans.sort((a, b) => a.left - b.left); let coveredTo = -Infinity;
-        for (const span of spans) {
-          const left = Math.max(span.left, coveredTo), right = span.right; if (right <= left) continue;
-          coveredTo = right; const from = Math.floor(left), to = Math.ceil(right);
-          for (let x = from; x < to; x++) {
-            const coverage = Math.min(right, x + 1) - Math.max(left, x), at = (row * pixelWidth + x) * 4, previous = pixels[at + 3] / 255, amount = previous + coverage;
-            pixels[at + 1] = Math.round((pixels[at + 1] * previous + span.marine * coverage) / amount); pixels[at + 3] = Math.round(Math.min(1, amount) * 255);
-          }
+        if (!distance) distance = shoreDistanceJob(pixels, pixelWidth, pixelHeight, scaleX, scaleY);
+        if (!distance.step(until)) { setTimeout(pump, 0); return; }
+        const distances = distance.distances;
+        for (; i < distances.length; i++) {
+          if ((i & 32767) === 0 && performance.now() > until) { setTimeout(pump, 0); return; }
+          const at = i * 4; if (!pixels[at + 3]) continue;
+          const range = pixels[at + 1] > 127 ? 210 : 112, depth = Math.max(0, Math.min(1, (Math.sqrt(distances[i]) - halfPixel) / range));
+          pixels[at] = Math.round(depth * 255);
+        }
+        job = null; masks.set(shape, image); while (masks.size > KEEP_MASKS) masks.delete(masks.keys().next().value);
+        // the upload gets its own task
+        setTimeout(() => { if (me.dead || dead || !mask) return; context.putImageData(image, 0, 0); mask.refresh(); builds++; shader.setVisible(visible && active); }, 0);
+      };
+      pump();
+      return true;
+    }
+    function fillRow(row, pixels, liquid, frozen) {
+      const y = (row + .5) / scaleY, spans = [], ice = options.merge(frozen.flatMap(region => options.intervals(region, y)));
+      for (const region of liquid) {
+        const bounds = region.bounds; if (y < bounds.y || y >= bounds.y + bounds.height) continue;
+        const intervals = options.subtract(options.intervals(region, y), ice);
+        for (const [left, right] of intervals) spans.push({ left: Math.max(0, left * scaleX), right: Math.min(pixelWidth, right * scaleX), marine: region.ocean ? 255 : 0 });
+      }
+      spans.sort((a, b) => a.left - b.left); let coveredTo = -Infinity;
+      for (const span of spans) {
+        const left = Math.max(span.left, coveredTo), right = span.right; if (right <= left) continue;
+        coveredTo = right; const from = Math.floor(left), to = Math.ceil(right);
+        for (let x = from; x < to; x++) {
+          const coverage = Math.min(right, x + 1) - Math.max(left, x), at = (row * pixelWidth + x) * 4, previous = pixels[at + 3] / 255, amount = previous + coverage;
+          pixels[at + 1] = Math.round((pixels[at + 1] * previous + span.marine * coverage) / amount); pixels[at + 3] = Math.round(Math.min(1, amount) * 255);
         }
       }
-      const distances = shoreDistance(pixels, pixelWidth, pixelHeight, scaleX, scaleY), halfPixel = .5 / Math.max(scaleX, scaleY);
-      for (let i = 0; i < distances.length; i++) {
-        const at = i * 4; if (!pixels[at + 3]) continue;
-        const range = pixels[at + 1] > 127 ? 210 : 112, depth = Math.max(0, Math.min(1, (Math.sqrt(distances[i]) - halfPixel) / range));
-        pixels[at] = Math.round(depth * 255);
-      }
-      context.putImageData(image, 0, 0); mask.refresh(); builds++; shader.setVisible(visible && active); return true;
+    }
+    function maskKey(liquid, frozen) {
+      const r = n => Math.round(n * 10) / 10, loop = points => (points || []).map(p => r(p.x) + ',' + r(p.y)).join(' ');
+      const one = region => [region.ocean ? 'o' : 'f', (region.ellipses || []).map(e => [e.x, e.y, e.rx, e.ry].map(r).join(',')).join(';'), loop(region.points), (region.holes || []).map(loop).join('|')].join('/');
+      return liquid.map(one).join('#') + '!' + frozen.map(one).join('#');
     }
     function colors(topColor, bottomColor, baseAlpha) {
       for (let i = 0; i < 3; i++) { const shift = (2 - i) * 8; top[i] = (topColor >> shift & 255) / 255; bottom[i] = (bottomColor >> shift & 255) / 255; }
@@ -129,7 +170,7 @@ void main () {
     }
     return {
       rebuild, colors,
-      setVisible(value) { visible = !!value; if (shader) shader.setVisible(visible && active); },
+      setVisible(value) { visible = !!value; if (shader) shader.setVisible(visible && active && !job); },
       status() { return { textureBytes: reserved ? textureBytes : 0, quads: shader && shader.visible ? 1 : 0, builds, lastError, maskScale: [scaleX, scaleY], shoreDepth: true }; },
       destroy() { if (dead) return; dead = true; release(); },
     };
