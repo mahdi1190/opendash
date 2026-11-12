@@ -243,7 +243,7 @@ window.GardenPaintWater = (function () {
         const bed = field(arc / 60) > bedAt - (westBank || estuary ? .3 : 0) && !(kind === 'mere' && nn.y < -.5 && a.x > all.x + all.w * .3 && a.x < all.x + all.w * .55);
         if (!bed && r() > .06) continue;
         const clump = [], cnt = bed ? 6 + Math.floor(r() * 6) : 3, mixIds = estuary ? ['plant.reed', 'plant.reed', 'plant.proof-fleet-reed', 'plant.bulrush'] : westBank ? ['plant.reed', 'plant.bulrush', 'plant.proof-fleet-rush', 'plant.canal-view-loosestrife'] : ['plant.reed', 'plant.proof-fleet-rush', 'plant.reed', 'plant.bulrush'];
-        for (let k = 0; k < cnt; k++) { const o = (r() - .62) * 22, along = (r() - .5) * 24, id = mixIds[Math.floor(r() * mixIds.length)]; clump.push([a.x + nn.x * o - nn.y * along, a.y + nn.y * o + nn.x * along, id, Math.floor(r() * 3), 24 + r() * (bed ? 22 : 12)]); }
+        for (let k = 0; k < cnt; k++) { const o = (r() - .62) * 22, along = (r() - .5) * 24, id = mixIds[Math.floor(r() * mixIds.length)]; clump.push([a.x + nn.x * o - nn.y * along, a.y + nn.y * o + nn.x * along, id, r() < .5 ? 0 : 1, 24 + r() * (bed ? 22 : 12)]); }
         clump.sort((p, q) => p[1] - q[1]);
         add({ x: a.x - 50, y: a.y - 80, w: 100, h: 110 }, (cx, C, ctx) => { for (const [x, y, id, v, h] of clump) ctx.stamp(id, v, h, x, y); });
         out[out.length - 1].needs = clump.map(q => [q[2], q[3], q[4]]);
@@ -449,6 +449,8 @@ window.GardenPaintWater = (function () {
     S.P = palette(S.tod, S.season); S.M = ok(() => build(info.W, info.data)); if (!S.M) { state = null; return null; }
     const sp = ok(() => setPieces(S)) || { extras: [], foams: [], mists: [] }; S.extras = sp.extras; S.foams = sp.foams; S.mists = sp.mists;
     S.tex = liveTextures(scene); S.em = ok(() => emitters(S)) || [];
+    // every reed stamp is drawn now, with the ground, so walking never pays for one
+    { const w0 = performance.now(), need = new Set(); for (const w of S.M.waters) for (const f of w.feats) if (f.needs) for (const q of f.needs) need.add(stampKey(q[0], q[1], S.season, q[2]) + '#' + q.join('#')); for (const k of need) { const q = k.split('#').slice(1); stampCanvas(q[0], +q[1], S.season, +q[2]); } S.warmMs = Math.round(performance.now() - w0); S.warmCount = need.size; }
     // the chunks round where you stand are baked now, with the ground, so the first frame has its water
     const here = startView(info.W); if (here) for (const ch of S.M.chunks.values()) if (hit(ch.box, here)) { const job = ok(() => startJob(ch)); if (job) ok(() => stepJob(job, Infinity)); }
     S.buildMs = Math.round(performance.now() - t0);
@@ -487,7 +489,7 @@ window.GardenPaintWater = (function () {
   }
   function status() {
     const S = state; let sprites = 0, visible = 0; if (S) for (const e of S.em) { sprites += e.list.length + (e.rings || []).length; if (e.vis) visible += e.list.length + (e.rings || []).length; }
-    return { on: !!S, tod: S && S.tod, waters: S ? S.M.waters.length : 0, buildMs: S && S.buildMs, bakes, bakeMs: Math.round(bakeMs), worstBake: Math.round(worstBake), tickWorst: +tickWorst.toFixed(1), sprites, visible, memory: memory(), weir: S && S.weir ? [Math.round(S.weir.x), Math.round(S.weir.y)] : null, lastError };
+    return { warm: S ? [S.warmCount, S.warmMs] : null, on: !!S, tod: S && S.tod, waters: S ? S.M.waters.length : 0, buildMs: S && S.buildMs, bakes, bakeMs: Math.round(bakeMs), worstBake: Math.round(worstBake), tickWorst: +tickWorst.toFixed(1), sprites, visible, memory: memory(), weir: S && S.weir ? [Math.round(S.weir.x), Math.round(S.weir.y)] : null, lastError };
   }
   return { wanted, paint, tick, clear, status, memory, palette, startView, get lastError() { return lastError; } };
 })();
