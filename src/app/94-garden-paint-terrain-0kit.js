@@ -83,6 +83,48 @@ window.GardenPaintTerrainKit = (function () {
     return B;
   }
 
+  /* ---------- a rock face between two lines (the Edge, a gorge wall, a crag's side) ----------
+   * top[i], bot[i]: matching points (the lip and the foot) in world px; idx: the indices this call paints (a piece of a
+   * longer face: masses are placed by their index on the whole line, so pieces meet without a seam); R(i, k): a seeded
+   * generator for index i; G: { lit, mid, shade, deep, hi, damp, moss, snow }; o: { snowy, size }.
+   * Painted as weathered gritstone: a ground that darkens to the foot, rounded masses in two or three tiers, each lit
+   * on its upper left with a dark crevice below and right, moss and heather on the tops, drip stains, damp at the foot. */
+  function rockBand(B, top, bot, idx, R, G, o) {
+    o = o || {}; const N = top.length, at = (t, i) => ({ x: top[i].x + (bot[i].x - top[i].x) * t, y: top[i].y + (bot[i].y - top[i].y) * t });
+    const face = B.poly(idx.map(i => top[i]).concat(idx.slice().reverse().map(i => bot[i])));
+    const ys = idx.map(i => top[i].y), y0 = Math.min(...ys), y1 = Math.max(...idx.map(i => bot[i].y));
+    B.f(face, B.lin(0, y0, 0, y1, [[0, G.mid], [.55, G.shade], [1, G.deep]]));
+    B.cx.save(); B.cx.clip(new Path2D(face));
+    const size = o.size || 1, tiers = o.tiers || [[.3, 1], [.74, .75]];
+    // the lit upper band: the rock's top catches the light from above
+    B.f(B.poly(idx.map(i => top[i]).concat(idx.slice().reverse().map(i => at(.32, i)))), G.lit, .35);
+    for (let tI = 0; tI < tiers.length; tI++) {
+      const [t, sc] = tiers[tI];
+      // slabs: wide weathered masses at hashed gaps along the whole line, so neighbours agree
+      let i = idx[0] - 40; { const rr0 = R(Math.floor(i / 40), 300 + tI); i += Math.floor(rr0() * 6); }
+      while (i <= idx[idx.length - 1] + 6) {
+        const rr = R(i, 200 + tI), gap = Math.round((tI ? 7 : 5) + rr() * (tI ? 9 : 6));
+        if (i >= 0 && i < N && rr() > (tI ? .35 : .08)) {
+          const p = at(t + (rr() - .5) * .08, i), h = Math.hypot(bot[i].x - top[i].x, bot[i].y - top[i].y), rx = (12 + rr() * 16) * size * sc, ry = Math.max(3.5, h * (tI ? .2 : .27) * (.8 + rr() * .4));
+          const tone = rr(), body = tone < .45 ? G.mid : tone < .8 ? G.lit : G.shade;
+          B.f(B.blob(rr, p.x + rx * .12, p.y + ry * .25, rx * 1.04, ry * 1.06, 9, .2), G.deep, .75);
+          B.f(B.blob(rr, p.x, p.y, rx, ry, 9, .2), B.lin(p.x - rx, p.y - ry, p.x + rx * .6, p.y + ry, [[0, body], [1, G.shade]]));
+          B.f(B.blob(rr, p.x - rx * .3, p.y - ry * .38, rx * .5, ry * .36, 7, .3), G.hi, tone < .8 ? .55 : .3);
+          for (let c = 0; c < 2; c++) if (rr() < .55) { const cx = p.x + (rr() - .5) * rx * 1.2; B.s(`M${cx} ${p.y - ry * .8}l${(rr() - .5) * 2} ${ry * 1.6}`, G.deep, 1 + rr() * .8, .55); }
+          if (tI === 0 && rr() < .5) B.f(B.blob(rr, p.x - rx * .1, p.y - ry * .86, rx * .55, ry * .22, 7, .5), o.snowy ? G.snow : rr() < .6 ? G.moss : G.heather, .95);
+          if (rr() < .25) B.s(`M${p.x + (rr() - .5) * rx} ${p.y + ry * .7}q${(rr() - .5) * 2} ${h * .15} ${(rr() - .5) * 3} ${h * (.2 + rr() * .25)}`, '#2a2622', 1.6 + rr() * 2.6, .3);
+          if (!o.snowy && tI === tiers.length - 1 && rr() < .35) B.f(B.blob(rr, p.x, p.y + ry * .6, rx * .7, ry * .3, 6, .5), G.damp, .4);
+          if (o.snowy && rr() < .6) B.f(B.blob(rr, p.x - rx * .1, p.y - ry * .78, rx * .75, ry * .26, 7, .4), G.snow, .95);
+        }
+        i += gap;
+      }
+    }
+    // the roof under the lip: a shade that says the top overhangs
+    B.s(B.line(idx.map(i => at(.06, i))), G.deep, 3, .4);
+    B.cx.restore();
+    B.s(B.line(idx.map(i => bot[i])), G.deep, 2.2, .5);
+  }
+
   /* ---------- polylines in world px ---------- */
   function resample(pts, step) {
     const out = [pts[0]];
@@ -116,34 +158,35 @@ window.GardenPaintTerrainKit = (function () {
         const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d');
         cx.setTransform(K, 0, 0, K, -ch.bb[0] * K, -ch.bb[1] * K);
         const B = brush(cx);
-        for (const o of ch.ops) ok(() => { cx.save(); if (o.clip) { cx.clip(o.clip, 'evenodd'); } o.draw(B, rng(o.seed || 1), ch.bb); cx.restore(); cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over'; });
-        scene.textures.addCanvas(ch.key, c); bakedPx += w * h;
-      }
-      ch.image = scene.add.image(ch.bb[0], ch.bb[1], ch.key).setOrigin(0, 0).setScale(1 / K).setDepth(opts.depth);
-      parent.add(ch.image);
-      const ms = performance.now() - s; worst = Math.max(worst, ms); bakeMs += ms;
+        for (const o of ch.ops) ok(() => { cx.save(); if (o.clip) { cx.clip(o.clip, 'evenodd'); } o.draw(B, rng(o.seed || 1), ch.bb); cx.restore(); cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over'; cx.filter = 'none'; });
+        scene.textures.addCanvas(ch.key, c); bakedPx += w * h; ch.px = w * h;
+        const ms = performance.now() - s; worst = Math.max(worst, ms); bakeMs += ms; baked++; times.push(Math.round(ms));
+      } else if (!ch.px) { const src = scene.textures.get(ch.key).getSourceImage(); ch.px = src.width * src.height; bakedPx += ch.px; }
+      if (!ch.image) { ch.image = scene.add.image(ch.bb[0], ch.bb[1], ch.key).setOrigin(0, 0).setScale(1 / K).setDepth(opts.depth); parent.add(ch.image); }
+      ch.live = true;
     };
-    // the chunks the camera sees now are painted at once (this is the scene build, not a walk), the rest a slice per frame
-    const cam = scene.cameras && scene.cameras.main, view = cam && cam.worldView, near = ch => view && meets(ch.bb, [view.x - 64, view.y - 64, view.x + view.width + 64, view.y + view.height + 64]);
-    const queue = list.slice(), centre = view ? [view.centerX, view.centerY] : [box.x + box.w / 2, box.y + box.h / 2];
-    queue.sort((a, b) => Math.hypot((a.bb[0] + a.bb[2]) / 2 - centre[0], (a.bb[1] + a.bb[3]) / 2 - centre[1]) - Math.hypot((b.bb[0] + b.bb[2]) / 2 - centre[0], (b.bb[1] + b.bb[3]) / 2 - centre[1]));
-    for (let k = queue.length - 1; k >= 0; k--) if (near(queue[k])) { bakeOne(queue[k]); queue.splice(k, 1); }
-    if (parent.sort) parent.sort('depth');
+    const evict = (ch) => { if (ch.image) ch.image.destroy(); ch.image = null; if (scene.textures.exists(ch.key)) scene.textures.remove(ch.key); bakedPx -= ch.px || 0; ch.px = 0; ch.live = false; evicted++; };
+    // Streaming: what the camera sees (and a margin round it) is painted; far chunks are let go past a memory budget.
+    const cam = scene.cameras && scene.cameras.main, budget = (opts.budgetMB || 28) * 1048576 / 4;
+    const viewBox = (grow) => { const v = cam && cam.worldView; if (!v || !v.width) return null; const gx = v.width * grow, gy = v.height * grow; return [v.x - gx, v.y - gy, v.x + v.width + gx, v.y + v.height + gy]; };
+    const dist = (ch, v) => Math.hypot((ch.bb[0] + ch.bb[2]) / 2 - (v[0] + v[2]) / 2, (ch.bb[1] + ch.bb[3]) / 2 - (v[1] + v[3]) / 2);
+    let baked = 0, evicted = 0; const times = [];
+    { const v = viewBox(.05); for (const ch of list) if (v ? meets(ch.bb, v) : false) bakeOne(ch); if (parent.sort) parent.sort('depth'); }
     let dead = false;
     const tick = () => {
-      if (dead || !queue.length) return;
-      const s = performance.now();
-      // nearest to the camera first; at most one chunk a frame, and none while the frame is already late
-      const v = cam && cam.worldView; if (v) { const c = [v.centerX, v.centerY]; let bi = 0, bd = Infinity; for (let k = 0; k < queue.length; k++) { const q = queue[k], d = Math.hypot((q.bb[0] + q.bb[2]) / 2 - c[0], (q.bb[1] + q.bb[3]) / 2 - c[1]); if (d < bd) { bd = d; bi = k; } } const [ch] = queue.splice(bi, 1); bakeOne(ch); }
-      else bakeOne(queue.shift());
-      if (parent.sort) parent.sort('depth');
-      void s;
+      if (dead) return;
+      const v = viewBox(.05), near = viewBox(.45), keep = viewBox(1.3); if (!v) return;
+      // one chunk per tick: first what is on screen, then the margin round it; each bake is small (a 256 px chunk)
+      let best = null, bd = Infinity;
+      for (const ch of list) if (!ch.live && meets(ch.bb, near)) { const d = dist(ch, v) - (meets(ch.bb, v) ? 1e6 : 0); if (d < bd) { bd = d; best = ch; } }
+      if (best) { bakeOne(best); if (parent.sort) parent.sort('depth'); }
+      if (bakedPx > budget) { let far = null, fd = -1; for (const ch of list) if (ch.live && !meets(ch.bb, keep)) { const d = dist(ch, v); if (d > fd) { fd = d; far = ch; } } if (far) evict(far); }
     };
-    const timer = setInterval(() => { if (!dead) ok(tick); if (!queue.length) clearInterval(timer); }, 60);
+    const timer = setInterval(() => ok(tick), 50);
     return {
-      chunks: list.length, get pending() { return queue.length; }, get worstMs() { return Math.round(worst); }, get bakeMs() { return Math.round(bakeMs); }, buildMs: Math.round(performance.now() - t0),
-      get texturePx() { return bakedPx; },
-      destroy(keepTextures) { dead = true; clearInterval(timer); for (const ch of list) { if (ch.image) ch.image.destroy(); ch.image = null; if (!keepTextures && scene.textures.exists(ch.key)) scene.textures.remove(ch.key); } },
+      chunks: list.length, get pending() { return list.filter(c => !c.live).length; }, get worstMs() { return Math.round(worst); }, get bakeMs() { return Math.round(bakeMs); }, buildMs: Math.round(performance.now() - t0),
+      get texturePx() { return bakedPx; }, get p95() { const t = times.slice(-200).sort((a, b) => a - b); return t.length ? t[Math.floor(t.length * .95)] : 0; }, get median() { const t = times.slice(-200).sort((a, b) => a - b); return t.length ? t[t.length >> 1] : 0; }, get baked() { return baked; }, get evicted() { return evicted; }, get live() { return list.filter(c => c.live).length; },
+      destroy(keepTextures) { dead = true; clearInterval(timer); for (const ch of list) { if (ch.image) ch.image.destroy(); ch.image = null; ch.live = false; if (!keepTextures && scene.textures.exists(ch.key)) scene.textures.remove(ch.key); } },
     };
   }
 
@@ -162,5 +205,5 @@ window.GardenPaintTerrainKit = (function () {
     parent.add(im); im._gptPx = px; return im;
   }
 
-  return { rng, hash, hashStr, noise, fbm, brush, resample, normals, bboxOf, meets, tiles, chunked, sprite, mix, rgba, P2, get lastError() { return lastError; }, set lastError(v) { lastError = v; } };
+  return { rng, hash, hashStr, noise, fbm, brush, rockBand, resample, normals, bboxOf, meets, tiles, chunked, sprite, mix, rgba, P2, get lastError() { return lastError; }, set lastError(v) { lastError = v; } };
 })();
