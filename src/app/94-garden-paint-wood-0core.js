@@ -202,6 +202,8 @@ window.GardenPaintWood = (function () {
     for (const l of S.light) if (l.kind === 'shaft') l.im.setDepth(l.d.y + 40);
     // every distinct tree texture is made now, with the ground, so walking never pays for one
     { const GP = window.GardenNativePainted, seen = new Set(); const w0 = performance.now(); for (const t of S.M.trees) { const k = t.id + '|' + t.v + '|' + t.h; if (seen.has(k)) continue; seen.add(k); if (GP && GP.objectImage) ok(() => { const im = GP.objectImage(scene, t.id, t.v, S.season, { h: t.h }, 0, 0, false); if (im) im.destroy(); }); } S.warmMs = Math.round(performance.now() - w0); S.warmCount = seen.size; }
+    // and every floor stamp (ferns, bracken, holly, grasses, the clearing's flowers)
+    { const w0 = performance.now(); for (const f of S.M.floors) if (f.kind === 'stamp') stampCanvas(f.id, f.v, S.season, f.h); if (S.season !== 'winter') for (const id of ['plant.wildflowers', 'plant.daisies']) for (const v of [0, 1]) stampCanvas(id, v, S.season, 12); S.warmMs += Math.round(performance.now() - w0); }
     const here = window.GardenPaintWater && GardenPaintWater.startView ? GardenPaintWater.startView(S.W) : null;
     if (here) for (const ch of S.chunks.values()) if (hit(ch.box, here)) ok(() => { const g = bakeChunk(ch); while (!g.next().done); });
     S.buildMs = Math.round(performance.now() - t0);
