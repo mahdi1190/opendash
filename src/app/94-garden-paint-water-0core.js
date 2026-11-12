@@ -78,6 +78,15 @@ window.GardenPaintWater = (function () {
   }
   function nearestOn(L, x, y) { let best = null; for (let i = 0; i < L.pts.length; i++) { const d = Math.hypot(L.pts[i].x - x, L.pts[i].y - y); if (!best || d < best.d) best = { d, s: L.cum[i] }; } return best; }
 
+  // The layout's basins follow the cells, so a river's edge steps; a closed
+  // moving average then two rounds of corner cutting turn the steps into a bank.
+  function smooth(p) {
+    let q = p; const n = q.length; if (n < 6) return q;
+    for (let pass = 0; pass < 3; pass++) { const o = []; for (let i = 0; i < q.length; i++) { const a = q[(i - 1 + q.length) % q.length], b = q[i], c = q[(i + 1) % q.length]; o.push({ x: (a.x + b.x * 2 + c.x) / 4, y: (a.y + b.y * 2 + c.y) / 4 }); } q = o; }
+    for (let pass = 0; pass < 2; pass++) { const o = []; for (let i = 0; i < q.length; i++) { const a = q[i], b = q[(i + 1) % q.length]; o.push({ x: a.x * .75 + b.x * .25, y: a.y * .75 + b.y * .25 }, { x: a.x * .25 + b.x * .75, y: a.y * .25 + b.y * .75 }); } q = o; }
+    // thin points closer than 5 px, so features stay cheap
+    const out = [q[0]]; for (const z of q) { const l = out[out.length - 1]; if (Math.hypot(z.x - l.x, z.y - l.y) >= 5) out.push(z); } return out;
+  }
   function build(W, data) {
     const cx = c => c * W.cellW, cy = c => W.sky + c * W.cellH, pt = q => ({ x: cx(q[0]), y: cy(q[1]) });
     const pres = data.presentation || {}, rivers = pres.rivers || {};
@@ -86,7 +95,7 @@ window.GardenPaintWater = (function () {
     const waters = [];
     for (const f of data.freshwater || []) {
       if (!f.boundary || f.boundary.length < 3) continue;
-      const pts = f.boundary.map(pt), kind = kindOf(f), b = boundsOf(pts, 64), r = rng(hash(f.id));
+      const pts = smooth(f.boundary.map(pt)), kind = kindOf(f), b = boundsOf(pts, 64), r = rng(hash(f.id));
       const ccw = signedArea(pts) > 0, river = lines[f.river || (kind === 'gorge' ? 'gorge' : kind === 'river' ? 'river' : kind === 'brook' ? 'brook' : '')] || null;
       waters.push({ id: f.id, kind, pts, bounds: b, ccw, river, feats: features(W, f, pts, kind, ccw, river, r, pres) });
     }
@@ -116,7 +125,7 @@ window.GardenPaintWater = (function () {
     add(all, (cx, C) => { cx.lineJoin = 'round'; cx.strokeStyle = C.bank; cx.globalAlpha = .28; cx.lineWidth = river_ ? 22 : 30; cx.stroke(P); cx.globalAlpha = .5; cx.lineWidth = river_ ? 12 : 16; cx.stroke(P); cx.globalAlpha = .55; cx.strokeStyle = mix(C.bank, '#3e3626', .45); cx.lineWidth = 5; cx.stroke(P); cx.globalAlpha = 1; });
     // pebbles and grass lobes on the land side of the waterline
     for (let i = 0; i < n; i += 1) {
-      const a = pts[i], nn = norm(i), steps = Math.max(1, Math.round(Math.hypot(pts[(i + 1) % n].x - a.x, pts[(i + 1) % n].y - a.y) / 12));
+      const a = pts[i], nn = norm(i), seg = Math.hypot(pts[(i + 1) % n].x - a.x, pts[(i + 1) % n].y - a.y), steps = Math.max(1, Math.round(seg / 12)); if (seg < 12 && r() > seg / 12) continue;
       for (let k = 0; k < steps; k++) {
         const t = k / steps, b = pts[(i + 1) % n], x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, roll = r();
         if (roll < .34) { const o = 4 + r() * 8, sx = x + nn.x * o, sy = y + nn.y * o, rx = 1.6 + r() * 2.6, d = D().blob(r, sx, sy, rx, rx * .62, 6, .3), d2 = D().ell(sx - rx * .3, sy - rx * .25, rx * .45, rx * .25); const tone = r(); add({ x: sx - 6, y: sy - 6, w: 12, h: 12 }, (cx, C) => { cx.fillStyle = tone < .5 ? '#a49b86' : '#bcb39c'; cx.fill(P2(d)); cx.fillStyle = '#ddd6c2'; cx.globalAlpha = .7; cx.fill(P2(d2)); cx.globalAlpha = 1; }); }
@@ -157,7 +166,7 @@ window.GardenPaintWater = (function () {
     });
     // 3. The far bank's reflection: wherever the shore lies above the water, its
     //    trees and reeds hang down into it in dark lobes (light from the sky between).
-    for (let i = 0; i < n; i++) {
+    for (let i = 0, acc = 0; i < n; i++) { acc += Math.hypot(pts[(i + 1) % n].x - pts[i].x, pts[(i + 1) % n].y - pts[i].y); if (acc < (river_ ? 14 : 20)) continue; acc = 0;
       const nn = norm(i); if (nn.y > -.35) continue; const a = pts[i];
       if (r() < (river_ ? .45 : .2)) continue;
       const deep = (river_ ? 10 : 16) + r() * (river_ ? 14 : 34), rx = (river_ ? 10 : 16) + r() * (river_ ? 10 : 22), x = a.x + (r() - .5) * 8, y = a.y + deep * .55;
@@ -177,7 +186,7 @@ window.GardenPaintWater = (function () {
       add(all, (cx, C) => { cx.save(); cx.clip(P); const g = cx.createRadialGradient(c0.x, c0.y, 0, c0.x, c0.y, all.w * .42); g.addColorStop(0, C.sky); g.addColorStop(1, 'rgba(255,255,255,0)'); cx.globalAlpha = .28; cx.fillStyle = g; cx.save(); cx.translate(c0.x, c0.y); cx.scale(1, .5); cx.translate(-c0.x, -c0.y); cx.fillRect(all.x, all.y - all.h, all.w, all.h * 3); cx.restore(); cx.restore(); });
     } else if (river) {
       for (let s = r() * 30; s < river.len; s += 16 + r() * 22) {
-        const q = at(river, s), lat = (r() - .5) * 1.3 * river.hw, x = q.x - q.ty * lat * W.cellW * .9, y = q.y + q.tx * lat * W.cellH * .9, len = 6 + r() * 14, ang = Math.atan2(q.ty, q.tx), hi = r() < .35;
+        const q = at(river, s), lat = (r() - .5) * 1.3 * river.hw, x = q.x - q.ty * lat * W.cellW * .9, y = q.y + q.tx * lat * W.cellH * .9, len = 4 + r() * 8, ang = Math.atan2(q.ty, q.tx), hi = r() < .35;
         add({ x: x - len, y: y - len, w: len * 2, h: len * 2 }, (cx, C) => { cx.save(); cx.clip(P); cx.translate(x, y); cx.rotate(ang); cx.globalAlpha = hi ? .5 : .3; cx.fillStyle = hi ? C.skyHi : C.sky; cx.beginPath(); cx.ellipse(0, 0, len, .9, 0, 0, Math.PI * 2); cx.fill(); cx.restore(); });
       }
     }
@@ -228,10 +237,10 @@ window.GardenPaintWater = (function () {
       // loosestrife mixed in; between the beds a single clump now and then.
       const seed = hash(f.id) & 1023, field = i => { const u = i / 9, k = Math.floor(u), t = u - k, s = t * t * (3 - 2 * t), h = j => ((Math.imul((j + seed) * 374761393, 668265263) >>> 0) % 1000) / 1000; return h(k) * (1 - s) + h(k + 1) * s; };
       const bedAt = kind === 'mere' ? .5 : kind === 'river' ? .58 : kind === 'brook' ? .6 : .55;
-      for (let i = 0; i < n; i++) {
+      for (let i = 0, acc = 0, arc = 0; i < n; i++) { const step = Math.hypot(pts[(i + 1) % n].x - pts[i].x, pts[(i + 1) % n].y - pts[i].y); acc += step; arc += step; if (acc < 26) continue; acc = 0;
         const a = pts[i], nn = norm(i);
         const westBank = kind === 'mere' && a.x < all.x + all.w * .32 && a.y > all.y + all.h * .35, estuary = kind === 'river' && a.y > W.sky + 74 * W.cellH;
-        const bed = field(i) > bedAt - (westBank || estuary ? .3 : 0) && !(kind === 'mere' && nn.y < -.5 && a.x > all.x + all.w * .3 && a.x < all.x + all.w * .55);
+        const bed = field(arc / 60) > bedAt - (westBank || estuary ? .3 : 0) && !(kind === 'mere' && nn.y < -.5 && a.x > all.x + all.w * .3 && a.x < all.x + all.w * .55);
         if (!bed && r() > .06) continue;
         const clump = [], cnt = bed ? 6 + Math.floor(r() * 6) : 3, mixIds = estuary ? ['plant.reed', 'plant.reed', 'plant.proof-fleet-reed', 'plant.bulrush'] : westBank ? ['plant.reed', 'plant.bulrush', 'plant.proof-fleet-rush', 'plant.canal-view-loosestrife'] : ['plant.reed', 'plant.proof-fleet-rush', 'plant.reed', 'plant.bulrush'];
         for (let k = 0; k < cnt; k++) { const o = (r() - .62) * 22, along = (r() - .5) * 24, id = mixIds[Math.floor(r() * mixIds.length)]; clump.push([a.x + nn.x * o - nn.y * along, a.y + nn.y * o + nn.x * along, id, Math.floor(r() * 3), 24 + r() * (bed ? 22 : 12)]); }
@@ -400,13 +409,17 @@ window.GardenPaintWater = (function () {
     const F = pres.falls;
     if (F) {
       const lipX = cx(F.x + F.w / 2), lipY = cy(F.y + (F.h || 3) * .6), fs = (data.static || []).find(s => s.id === 'ld-falls'), pool = fs ? { x: cx(fs.x + fs.w / 2), y: cy(fs.y + (fs.h || 1)) + 8 } : F.pool ? { x: cx(F.pool[0]), y: cy(F.pool[1]) } : { x: lipX, y: lipY + 60 }, r = rng(hash('falls-pool'));
-      const width = F.w * W.cellW * .55, rafts = []; for (let i = 0; i < 22; i++) { const a = r() * Math.PI, d = 20 + r() * 90; rafts.push([pool.x + Math.cos(a) * d * 1.3 * (r() < .5 ? -1 : 1), pool.y + Math.sin(a) * d * .45 + 8, 3 + r() * 8, r()]); }
+      const width = F.w * W.cellW * .55, rafts = []; for (let i = 0; i < 46; i++) { const a = r() * Math.PI, d = 20 + r() * 100; rafts.push([pool.x + Math.cos(a) * d * 1.3 * (r() < .5 ? -1 : 1), pool.y + Math.sin(a) * d * .45 + 8, 3 + r() * 8, r()]); }
       extras.push({ b: { x: pool.x - 200, y: pool.y - 120, w: 400, h: 260 }, draw(c, C) {
         const w = M.waters.find(w => w.kind === 'mere'); if (w) { const p = new Path2D(); p.moveTo(w.pts[0].x, w.pts[0].y); for (const z of w.pts) p.lineTo(z.x, z.y); p.closePath(); c.save(); c.clip(p); }
         // the deep green-black of the plunge pool, then rings of churned foam
         const g = c.createRadialGradient(pool.x, pool.y, 0, pool.x, pool.y, 120); g.addColorStop(0, mix(C.deep, '#1e3a40', .45)); g.addColorStop(.6, C.deep); g.addColorStop(1, 'rgba(0,0,0,0)');
         c.save(); c.translate(pool.x, pool.y); c.scale(1.35, .55); c.translate(-pool.x, -pool.y); c.globalAlpha = .6; c.fillStyle = g; c.beginPath(); c.arc(pool.x, pool.y, 120, 0, Math.PI * 2); c.fill(); c.restore();
-        c.globalAlpha = 1; for (const [x, y, rr, t] of rafts) { c.globalAlpha = .25 + t * .45; c.fillStyle = C.foam; c.beginPath(); c.ellipse(x, y, rr * 1.6, rr * .5, 0, 0, Math.PI * 2); c.fill(); }
+        // foam spreading out from the landing: broken arcs of bubbles drifting away, thinning with distance
+        c.globalAlpha = 1; c.strokeStyle = C.foam; c.fillStyle = C.foam; c.lineCap = 'round';
+        for (const [x, y, rr, t] of rafts) { const d = Math.hypot((x - pool.x) / 1.3, (y - pool.y) / .45) / 120, a0 = Math.atan2((y - pool.y) / .45, (x - pool.x) / 1.3), span = .12 + t * .3, R = Math.max(18, d * 120);
+          c.globalAlpha = Math.max(.08, .55 - d * .45); c.lineWidth = 1 + t * 1.4; c.beginPath(); c.ellipse(pool.x, pool.y + 6, R * 1.3, R * .45, 0, a0 - span, a0 + span); c.stroke();
+          for (let k = 0; k < 4; k++) { const a = a0 + (k / 3 - .5) * span * 2, rx = pool.x + Math.cos(a) * R * 1.3 * (1 + (t - .5) * .08), ry = pool.y + 6 + Math.sin(a) * R * .45; c.beginPath(); c.arc(rx, ry + (k % 2) * 2, .8 + t, 0, Math.PI * 2); c.fill(); } }
         c.globalAlpha = .8; c.strokeStyle = C.foam; c.lineWidth = 2; for (const k of [.45, .75, 1.05]) { c.globalAlpha = .5 / k; c.beginPath(); c.ellipse(pool.x, pool.y + 4, width * k * 1.2, width * k * .38, 0, 0, Math.PI * 2); c.stroke(); }
         const g2 = c.createRadialGradient(pool.x, pool.y - 6, 0, pool.x, pool.y - 6, width * .9); g2.addColorStop(0, 'rgba(255,255,255,.95)'); g2.addColorStop(.6, 'rgba(245,250,248,.5)'); g2.addColorStop(1, 'rgba(245,250,248,0)');
         c.globalAlpha = 1; c.fillStyle = g2; c.save(); c.translate(pool.x, pool.y - 6); c.scale(1, .45); c.beginPath(); c.arc(0, 0, width * .9, 0, Math.PI * 2); c.fill(); c.restore();
