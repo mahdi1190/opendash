@@ -318,7 +318,7 @@ window.GardenNativeWorld = (function () {
     function terrainMark(prop, sc) { if (!window.GardenPaintedMarks || !GardenPaintedMarks.knows(prop.id) || !packOn() || typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(prop.id)).some(Boolean)) return null; try { return GardenPaintedMarks.landmark(scene, prop, sc, element, W); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); return null; } }
     function terrainOwns(kind) { return !!(packTerrain && GardenPaintedTerrain.owns(kind)); }
     function terrainOwnsRegion(id) { return !!(packTerrain && GardenPaintedTerrain.ownsRegion(id)); }
-    function packOn() { return !!(window.GardenNativePainted && GardenNativePainted.wanted() && GardenNativePainted.ready() && typeof gardenIslandActive === 'function' && gardenIslandActive()); }
+    function packOn() { const on = !!(window.GardenNativePainted && GardenNativePainted.wanted() && GardenNativePainted.ready() && typeof gardenIslandActive === 'function' && gardenIslandActive()); if (on) GardenNativePainted.overLayer = rootNode._inner; return on; }
     function clearPack() { if (packGround) packGround.destroy(); if (packPlanting) packPlanting.destroy(); if (packTerrain) packTerrain.destroy(); packGround = packPlanting = packTerrain = null; }
     function packLayers(m, sc, island, cellAt, cultivatedNow, cells) {
       if (!island || !packOn()) return false;
@@ -335,13 +335,18 @@ window.GardenNativeWorld = (function () {
       const lawn = coast.map(l => insetTerrainContour(l, island.beachWidthPx));
       const lakes = outlines(cells.map((c, i) => ({ material: inBox(i % W.cols, Math.floor(i / W.cols)) && wet(c) && c.material !== 'ocean' ? 'water' : '' })), 'water', W);
       const pathLoops = outlines(mark((c, x, y) => inBox(x, y) && c.material === 'path'), 'm', W, true).map(l => insetTerrainContour(l, -2));
+      // Owned beds: soil where something grows, a dug edge round an empty owned plot,
+      // so plantable land always reads as plantable on the painted lawn.
+      const soilSet = new Set(['bed', 'patch', 'veg', 'rich', 'herb', 'berry']);
+      const soil = outlines(mark((c, x, y) => inBox(x, y) && soilSet.has(c.material)), 'm', W, true).map(l => insetTerrainContour(l, 2));
+      const owned = outlines(mark((c, x, y) => inBox(x, y) && c.row && c.row.plot && !c.locked && !soilSet.has(c.material)), 'm', W, true).map(l => insetTerrainContour(l, 3));
       const pt = p => ({ x: p.x * W.cellW, y: W.sky + p.y * W.cellH });
       const routes = D.routes.filter(r => r.points && r.points.length > 1).map(r => { const st = gardenIslandRoadStyle(r); return { main: st.main, width: st.main ? 40 : 26, points: gardenIslandRoutePath(r).points.map(pt) }; });
       const pc = pt({ x: start.x + .5, y: start.y + .5 }), pw = 250, ph = 130;
       const plaza = { centre: pc, bounds: { x: pc.x - pw / 2, y: pc.y - ph / 2, w: pw, h: ph }, points: terrainRoundedRect(pc.x - pw / 2, pc.y - ph / 2, pw, ph, 40) };
       const meadow = (px, py) => { const c = cellAt(Math.floor(px / W.cellW), Math.floor((py - W.sky) / W.cellH)); return !!c && !wet(c) && !['beach', 'path'].includes(c.material) && Math.hypot((px - pc.x) / pw, (py - pc.y) / ph) > .62; };
       const sig = [cbox.x0, cbox.y0, (sc.areas || []).join(','), cultivatedNow ? [...cultivatedNow].sort().join(',') : '', lakes.length, pathLoops.length].join('|');
-      try { packGround = GardenNativePainted.ground(scene, rootNode._inner, { W, box, coast, lawn, lakes, paths: pathLoops, routes, plaza, meadow, season: sc.season, sig }); }
+      try { packGround = GardenNativePainted.ground(scene, rootNode._inner, { W, box, coast, lawn, lakes, paths: pathLoops, routes, plaza, meadow, soil, owned, season: sc.season, sig: sig + '|' + soil.length + ':' + owned.length }); }
       catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); return false; }
       const blocked = new Set(); for (const p of D.static) { const boxes = [p, p.apron].filter(Boolean); for (const b of boxes) for (let y = Math.floor(b.y) - 1; y <= b.y + b.h; y++) for (let x = Math.floor(b.x) - 1; x <= b.x + b.w; x++) blocked.add(x + ',' + y); }
       // Planting keeps clear of every path, doorway, owned plot and saved
@@ -728,6 +733,21 @@ window.GardenNativeWorld = (function () {
       if (handle && foot) handle.foot = foot;
       if (handle && ambientPause) handle.pauseAmbient(ambientPause); return handle;
     }
+    // The Painted village's props, gates, falls and decorations
+    // (94-garden-native-painted-props.js): baked images in a plain handle,
+    // kept while their signature (what they show) is unchanged.
+    function paintedRecord(key, signature, make, metadata, depth, parent) {
+      const old = drawings.get(key);
+      if (old && old.source === signature) { old.metadata = Object.assign(metadata, { foot: old.handle.foot }); return old; }
+      let made = null; try { made = make(); } catch (e) { if (window.GardenNativePainted) GardenNativePainted.lastError = String(e && e.stack || e); }
+      if (!made) return null;
+      if (old) old.handle.destroy();
+      (parent || objects).appendChild(made.rootNode); made.root.setDepth(depth); if (ambientPause && made.pauseAmbient) made.pauseAmbient(ambientPause);
+      metadata.foot = made.foot;
+      const record = { id: key, source: signature, handle: made, root: made.root, node: made.rootNode, metadata, depth, bounds: made.bounds };
+      drawings.set(key, record); sorted = true; return record;
+    }
+    function paintedOn() { return packOn() && !!window.GardenPaintedProps; }
     function villageBuilding(prop, sc) {
       if (prop && packOn() && GardenNativePainted.ready() && !(typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(prop.id)).some(Boolean))) { const packed = GardenNativePainted.building(scene, prop, sc, element, W); if (packed) return packed; }
       if (!villageStyle(prop)) return null;
@@ -869,13 +889,27 @@ window.GardenNativeWorld = (function () {
       const add = (id, html, metadata, depth, parent) => { if (!html) return; keep.add(id); return nodeDrawing(id, html, metadata, depth, parent); };
       if (typeof gardenCraftSurfaceRows === 'function' && !packGround) for (const row of gardenCraftSurfaceRows(sc)) add('ground:craft:' + row.id, row.html, { kind: 'ground', id: row.id }, -9370);
       for (const item of sc.plants || []) add('plant:' + item.uid, _gdrItem('plant', item, sc, opts), { kind: 'plant', uid: item.uid, id: item.id, model: modelPlants.get(item.uid) }, W.sky + (item.y + (gardenPlant(item.id).fp || 1)) * W.cellH);
-      for (const item of sc.decor || []) { const def = gardenDecor(item.id), ground = def && def.layer === 'ground'; add('decor:' + item.uid, _gdrItem('decor', item, sc, opts), { kind: 'decor', uid: item.uid, id: item.id, model: modelDecor.get(item.uid) }, ground ? -9200 : W.sky + (item.y + (def && def.h || 1)) * W.cellH, ground ? design : objects); }
+      const paintOpts = { element, W, night: nightMaterials, layer: rootNode._inner };
+      for (const item of sc.decor || []) { const def = gardenDecor(item.id), ground = def && def.layer === 'ground';
+        if (!ground && paintedOn() && GardenPaintedProps.decorKnown(item.id) && !(typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf('decor:' + item.uid) || {}).some(Boolean))) {
+          const key = 'decor:' + item.uid, rec = paintedRecord(key, GardenPaintedProps.decorSignature(item, sc, nightMaterials), () => GardenPaintedProps.decor(scene, item, sc, paintOpts), { kind: 'decor', uid: item.uid, id: item.id, model: modelDecor.get(item.uid) }, W.sky + (item.y + (def && def.h || 1)) * W.cellH);
+          if (rec) { keep.add(key); continue; }
+        }
+        add('decor:' + item.uid, _gdrItem('decor', item, sc, opts), { kind: 'decor', uid: item.uid, id: item.id, model: modelDecor.get(item.uid) }, ground ? -9200 : W.sky + (item.y + (def && def.h || 1)) * W.cellH, ground ? design : objects); }
       const props = new Map(gardenPropsNow().map(p => [p.id, p]));
       for (const row of gardenWorldProps(sc, opts)) {
         const id = attribute(row.html, 'data-prop'), prop = props.get(id) || (typeof gardenLandSiteProp === 'function' ? gardenLandSiteProp(id) : null), key = 'prop:' + id;
         const windowed = prop && ['shop', 'tackle', 'lf-office'].includes(prop.kind);
         const paneMaterialKey = prop && ['windmill', 'shepherd', 'mill'].includes(sceneryKind(prop)) ? '|panes:' + (nightMaterials ? 'warm' : 'day') : '';
         const signature = prop && 'native-landscape-crafted-9' + (packOn() ? '-painted' : '') + '|' + prop.id + '|' + [prop.x, prop.y, prop.w, prop.h, sc.season, sceneryKind(prop) === 'gate' ? (sc.areas || []).join('.') : ''].join(',') + (windowed ? '|windows:' + (nightMaterials ? 'warm' : 'day') : '');
+        if (prop && paintedOn() && !(typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(prop.id)).some(Boolean))) {
+          const gateRow = typeof gardenZoneGate === 'function' ? gardenZoneGate(prop.id) : null, meta = { kind: prop.act ? 'prop' : 'scenery', id, prop, model: prop };
+          let rec = null;
+          if (gateRow && gateRow.crossSpan) { const open = (sc.areas || []).includes('zn-' + gateRow.n); rec = paintedRecord(key, GardenPaintedProps.gateSignature(gateRow, open, sc), () => GardenPaintedProps.gate(scene, gateRow, sc, paintOpts, open), meta, 76000, rootNode); }
+          else if (sceneryKind(prop) === 'falls') rec = paintedRecord(key, 'painted-falls-2|' + prop.id + '|' + [prop.x, prop.y, prop.w, prop.h, sc.season].join(','), () => GardenPaintedProps.falls(scene, { id: prop.id, width: prop.w * W.cellW, x: (prop.x + prop.w / 2) * W.cellW, y: W.sky + (prop.y + prop.h) * W.cellH - 4, season: sc.season }, paintOpts), meta, W.sky + row.z * W.cellH);
+          else { const sig = GardenPaintedProps.signature(prop, sc, nightMaterials); if (sig) rec = paintedRecord(key, sig, () => GardenPaintedProps.prop(scene, prop, sc, paintOpts), meta, W.sky + row.z * W.cellH); }
+          if (rec) { keep.add(key); continue; }
+        }
         const old = drawings.get(key), standardLook = (villageStyle(prop) || sceneryKind(prop)) && !(typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(prop.id)).some(Boolean));
         if ((standardLook || window.GardenPaintedMarks && GardenPaintedMarks.knows(id) && packOn()) && old && old.source === signature) {
           keep.add(key); old.metadata = { kind: prop.act ? 'prop' : 'scenery', id, prop, model: prop, foot: old.handle.foot };
@@ -887,6 +921,13 @@ window.GardenNativeWorld = (function () {
           if (custom.setLitWindows) custom.setLitWindows(nightMaterials);
           keep.add(key); if (old) old.handle.destroy(); (custom.kind === 'gate' ? rootNode : objects).appendChild(custom.rootNode); custom.root.setDepth(custom.kind === 'gate' ? 76000 : W.sky + row.z * W.cellH); const record = { id: key, source: signature, materialKey: custom.setLitWindows ? paneMaterialKey : '', handle: custom, root: custom.root, node: custom.rootNode, metadata: { kind: prop.act ? 'prop' : 'scenery', id, prop, model: prop, foot: custom.foot }, depth: custom.kind === 'gate' ? 76000 : W.sky + row.z * W.cellH, bounds: custom.bounds }; drawings.set(key, record); queueDrawing(record); sorted = true;
         } else add(key, row.html, { kind: prop && prop.act ? 'prop' : attribute(row.html, 'data-land') ? 'land' : 'scenery', id, prop, land: attribute(row.html, 'data-land'), model: prop }, W.sky + row.z * W.cellH);
+      }
+      // Painted crossings stay standing once their region is yours: the
+      // bridge, the arch, the stair are part of the land, now open.
+      if (paintedOn() && typeof gardenIslandActive === 'function' && gardenIslandActive()) for (const g of gardenIslandData().gates || []) {
+        const key = 'prop:' + g.id; if (keep.has(key) || !g.crossSpan || !(sc.areas || []).includes('zn-' + g.n) || typeof _gldIslandGateFrame !== 'function') continue;
+        const frame = _gldIslandGateFrame(g), rec = paintedRecord(key, GardenPaintedProps.gateSignature(g, true, sc), () => GardenPaintedProps.gate(scene, g, sc, paintOpts, true), { kind: 'scenery', id: g.id, model: { id: g.id, kind: 'gate-open', x: frame.x / W.cellW - .5, y: (frame.y - W.sky) / W.cellH - 1, w: 1, h: 1 } }, frame.y + 2);
+        if (rec) keep.add(key);
       }
       if (typeof gardenIslandActive === 'function' && gardenIslandActive() && (gardenIslandData().regions || []).length) {
         for (const row of _gldIslandUnderstoryRows(sc)) if (!terrainOwnsRegion(row.region)) add('ground:understory:' + row.id, row.html, { kind: 'ground', id: row.id }, -9340);
@@ -908,6 +949,12 @@ window.GardenNativeWorld = (function () {
       if (typeof gardenDesignLayer === 'function') add('ground:design', gardenDesignLayer(sc), { kind: 'ground' }, -9350, design);
       if (typeof gardenDesignPainted === 'function') gardenDesignPainted(rootNode, sc.dz);
       for (const [id, record] of drawings) if (!keep.has(id)) { record.handle.destroy(); drawings.delete(id); sorted = true; }
+      // Painted village: every standing thing is composed into the ground picture (shadow, foundation planting, worn door)
+      if (packGround && window.GardenNativePainted && GardenNativePainted.compose) {
+        const items = []; for (const record of drawings.values()) { const meta = record.metadata, foot = meta.foot || record.handle.foot, b = record.bounds; if (!record.handle.painted || !foot || !b || meta.kind === 'decor' || meta.kind === 'ground') continue; items.push({ id: record.id, x: foot.x, y: foot.y, w: Math.min(220, b.width * .8), door: !!(meta.prop && meta.prop.door) }); }
+        try { GardenNativePainted.compose(scene, items); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); }
+        if (typeof window !== 'undefined') window.__gardenPaintedScene = scene;
+      }
       restoreCanopyAlpha();
       solidObjects.length = 0; pointLights.length = 0; fadingProps.length = 0; reflectedScenery.length = 0; landmarkRows.length = 0; canopyOccluders.length = 0; effectFrame = -1;
       for (const record of drawings.values()) {
@@ -918,6 +965,7 @@ window.GardenNativeWorld = (function () {
           const gate = gateRows.find(g => g.id === meta.id); if (gate) { gate.root = record.root; gate.bounds = record.bounds; gate.depth = 76000; }
         }
         if (meta.prop && meta.prop.kind) fadingProps.push(record);
+        if (record.handle.painted && record.handle.lights) record.handle.lights.forEach((l, i) => pointLights.push({ id: record.id + ':pl' + i, x: l.x, y: l.y, radius: l.radius, color: nightMaterials ? 0xffc17a : 0xffd88e, intensity: .8 }));
         if (record.handle.canopyOcclusion) {
           const crown = record.handle.canopyOcclusion;
           canopyOccluders.push({ id: record.id, record, node: crown.node, polygons: crown.polygons, bounds: terrainBox(crown.polygons.flat()), normalAlpha: crown.node.target.alpha, faded: false });
