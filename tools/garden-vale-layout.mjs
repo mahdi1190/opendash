@@ -289,6 +289,7 @@ for (const p of S) if (p.door === undefined) p.door = { x: p.x, y: p.y + 1 };
 const storyAnchors = {
   'ld-ruined-arch': { x: 19.5, y: 67, of: 'island-ruins' }, 'ld-falls-cave': { x: 42.2, y: 26.4, of: 'fleet-falls' }, 'ld-lamp-room': { x: 61.5, y: 83.6, of: 'ld-lighthouse' },
   'ld-mill-office': { x: 76.5, y: 64.6, of: 'ld-mill' }, 'ld-hothouse': { x: 39.5, y: 63.5, of: 'lc-glasshouse' }, 'ld-terrace-bench': { x: 47.5, y: 43.6, of: 'lakeside-terrace' },
+  'lc-the-green': { x: 48.5, y: 53, of: 'the-green' },   // (the stories mean the village green, not the land section of that name)
 };
 
 /* ------------------------------------------------------------ side piers (lv 10 ruins shore, lv 14 orchard beach) */

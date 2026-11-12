@@ -59,7 +59,7 @@ function gardenLifeSettle(save) {
 /* ---------- discovery feedback: keep the book, not a parade of automatic cards ---------- */
 function _glbShow(kind, def, o) {
   const r = _glReward(kind, def), paid = !!_gdG().disc['lp.' + kind + '.' + def.id];
-  const text = `New in your Nature book: ${def.name}.` + (paid ? ` ${r.c} coin${r.c === 1 ? '' : 's'} and ${r.x} XP.` : ' Its reward will be paid on a later day.');
+  const text = `New in your Field Journal: ${def.name}.` + (paid ? ` ${r.c} coin${r.c === 1 ? '' : 's'} and ${r.x} XP.` : ' Its reward will be paid on a later day.');
   // The sighting and payment already happened above. Do not defer a card that
   // could later interrupt a fishing bite or another activity the player chose.
   // A picked-up keepsake has its existing catch presentation as the main reply.
