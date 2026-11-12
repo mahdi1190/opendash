@@ -23,6 +23,7 @@
 window.GardenPaintWater = (function () {
   'use strict';
   const K = 1.25, CH = 256, MAX_CHUNKS = 72, TEX = 'gpw';   // 256 px chunks: each upload is small enough for one frame
+  const slowest = { ms: 0, what: '' };
   let state = null, lastError = null, bakeMs = 0, bakes = 0, worstBake = 0, tickWorst = 0;
   const ok = f => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
   function rng(seed) { let s = (seed >>> 0) % 2147483647 || 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
@@ -116,7 +117,7 @@ window.GardenPaintWater = (function () {
   // choices are made here, once per water, so every chunk paints the same thing.
   function features(W, f, pts, kind, ccw, river, r, pres) {
     const out = [], loop = pts, n = pts.length;
-    const add = (b, draw) => out.push({ b, draw });
+    let tag = 'bank'; const add = (b, draw) => out.push({ b, draw, tag });
     const all = boundsOf(pts, 40);
     // outward normal at each boundary vertex (screen px)
     const norm = i => { const a = pts[(i - 1 + n) % n], b = pts[(i + 1) % n], dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1; return ccw ? { x: dy / L, y: -dx / L } : { x: -dy / L, y: dx / L }; };
@@ -134,12 +135,14 @@ window.GardenPaintWater = (function () {
         else if (roll < .62) { const o = 10 + r() * 10, sx = x + nn.x * o, sy = y + nn.y * o, d = D().blob(r, sx, sy, 7 + r() * 9, 3 + r() * 3, 7, .5), light = r() < .5; add({ x: sx - 18, y: sy - 8, w: 36, h: 16 }, (cx, C) => { cx.globalAlpha = .55; cx.fillStyle = light ? mix(C.grass, '#c8d08a', .25) : C.grass; cx.fill(P2(d)); cx.globalAlpha = 1; }); }
       }
     }
+    tag = 'fill';
     // 2. The water: base colour, then depth (paler shallows round the edge, a darker core).
     add(all, (cx, C) => {
       cx.save(); cx.clip(P);
       cx.fillStyle = C.water; cx.fillRect(all.x, all.y, all.w, all.h);
       cx.restore();
     });
+    tag = 'deep';
     // the deep: lobed darker water away from the shore
     if (!river_) {
       for (let i = 0; i < (big ? 26 : 8); i++) {
@@ -148,6 +151,7 @@ window.GardenPaintWater = (function () {
         add({ x: x - rx, y: y - rx, w: rx * 2, h: rx * 2 }, (cx, C) => { cx.save(); cx.clip(P); cx.globalAlpha = .22; cx.fillStyle = C.deep; cx.fill(P2(d)); cx.restore(); });
       }
     }
+    tag = 'channel';
     // a river's channel: the deep line down its middle, wandering a little
     if (river_ && river) {
       const L = river, seg = [], hwx = river.hw * W.cellW * (kind === 'gorge' ? .55 : .5);
@@ -160,8 +164,10 @@ window.GardenPaintWater = (function () {
       void seg;
     }
     // shallows: wide soft strokes of the shallow colour inside the edge, then a sandy bed showing through
+    tag = 'shallow';
     // one stroke per feature, so a bake can stop between them
     for (const [w, a, bed] of (river_ ? [[30, .3], [14, .45]] : [[90, .2], [44, .32], [18, .5]]).concat([[river_ ? 8 : 12, .22, true]])) add(all, (cx, C) => { cx.save(); cx.clip(P); cx.lineJoin = 'round'; cx.strokeStyle = bed ? C.bed : C.shallow; cx.globalAlpha = a; cx.lineWidth = w; cx.stroke(P); cx.globalAlpha = 1; cx.restore(); });
+    tag = 'refl';
     // 3. The far bank's reflection: wherever the shore lies above the water, its
     //    trees and reeds hang down into it in dark lobes (light from the sky between).
     for (let i = 0, acc = 0; i < n; i++) { acc += Math.hypot(pts[(i + 1) % n].x - pts[i].x, pts[(i + 1) % n].y - pts[i].y); if (acc < (river_ ? 14 : 20)) continue; acc = 0;
@@ -171,6 +177,7 @@ window.GardenPaintWater = (function () {
       const d = D().blob(r, x, y, rx, deep * .62, 8, .45), d2 = D().blob(r, x + (r() - .5) * rx * .5, y - deep * .2, rx * .55, deep * .4, 7, .4);
       add({ x: x - rx - 4, y: a.y - 6, w: rx * 2 + 8, h: deep * 1.4 + 12 }, (cx, C) => { cx.save(); cx.clip(P); cx.globalAlpha = .38; cx.fillStyle = C.refl; cx.fill(P2(d)); cx.globalAlpha = .3; cx.fillStyle = C.reflDeep; cx.fill(P2(d2)); cx.restore(); });
     }
+    tag = 'sky';
     // 4. Sky streaks: on still water long horizontal wind lines, on running water
     //    short pale dashes along the current.
     if (!river_) {
@@ -188,6 +195,7 @@ window.GardenPaintWater = (function () {
         add({ x: x - len, y: y - len, w: len * 2, h: len * 2 }, (cx, C) => { cx.save(); cx.clip(P); cx.translate(x, y); cx.rotate(ang); cx.globalAlpha = hi ? .5 : .3; cx.fillStyle = hi ? C.skyHi : C.sky; cx.beginPath(); cx.ellipse(0, 0, len, .9, 0, 0, Math.PI * 2); cx.fill(); cx.restore(); });
       }
     }
+    tag = 'riffle';
     // 5. Riffles and stones on running water: pale chevrons across the current
     //    where it runs shallow, with mossy stones breaking it (more in the gorge).
     if (river_ && river) {
@@ -206,6 +214,7 @@ window.GardenPaintWater = (function () {
         });
       }
     }
+    tag = 'lily';
     // 6. Lily pads where the water is warm and still (the Mere's east bank, the pools).
     if (kind === 'mere' || kind === 'pool') {
       const cxm = all.x + all.w * (kind === 'mere' ? .78 : .5);
@@ -224,8 +233,10 @@ window.GardenPaintWater = (function () {
         });
       }
     }
+    tag = 'lap';
     // 7. The lap line: a thin bright line just inside the water, a wet dark line just outside.
     add(all, (cx, C) => { cx.lineJoin = 'round'; cx.save(); cx.clip(P); cx.strokeStyle = C.foam; cx.globalAlpha = .55; cx.lineWidth = 3; cx.stroke(P); cx.globalAlpha = .25; cx.lineWidth = 8; cx.stroke(P); cx.restore(); cx.globalAlpha = 1; });
+    tag = 'reeds';
     // 8. Reed beds: clumps of the library's reeds and rushes along still and slow
     //    banks (never in rows), thickest where the design asks (the Mere's west
     //    reed bank, the brook mouth, the estuary).
@@ -284,7 +295,7 @@ window.GardenPaintWater = (function () {
       // a library stamp not yet drawn costs a frame of its own
       const miss = f.needs && f.needs.find(q => !stamps.has(stampKey(q[0], q[1], S.season, q[2])));
       if (miss) { stampCanvas(miss[0], miss[1], S.season, miss[2]); continue; }
-      job.i++; ok(() => f.draw(cx, C, ctx)); cx.globalAlpha = 1;
+      job.i++; const f0 = performance.now(); ok(() => f.draw(cx, C, ctx)); cx.globalAlpha = 1; const fd = performance.now() - f0; if (fd > slowest.ms) { slowest.ms = +fd.toFixed(1); slowest.what = (f.tag || 'feature') + '@' + job.ch.key; }
     }
     job.ms += performance.now() - t0;
     if (job.i < job.list.length) return false;
@@ -492,7 +503,7 @@ window.GardenPaintWater = (function () {
   }
   function status() {
     const S = state; let sprites = 0, visible = 0; if (S) for (const e of S.em) { sprites += e.list.length + (e.rings || []).length; if (e.vis) visible += e.list.length + (e.rings || []).length; }
-    return { warm: S ? [S.warmCount, S.warmMs] : null, on: !!S, tod: S && S.tod, waters: S ? S.M.waters.length : 0, buildMs: S && S.buildMs, bakes, bakeMs: Math.round(bakeMs), worstBake: Math.round(worstBake), tickWorst: +tickWorst.toFixed(1), sprites, visible, memory: memory(), weir: S && S.weir ? [Math.round(S.weir.x), Math.round(S.weir.y)] : null, lastError };
+    return { slowest, warm: S ? [S.warmCount, S.warmMs] : null, on: !!S, tod: S && S.tod, waters: S ? S.M.waters.length : 0, buildMs: S && S.buildMs, bakes, bakeMs: Math.round(bakeMs), worstBake: Math.round(worstBake), tickWorst: +tickWorst.toFixed(1), sprites, visible, memory: memory(), weir: S && S.weir ? [Math.round(S.weir.x), Math.round(S.weir.y)] : null, lastError };
   }
   return { wanted, paint, tick, clear, status, memory, palette, startView, get lastError() { return lastError; } };
 })();
