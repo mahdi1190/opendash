@@ -46,7 +46,7 @@ function gardenGraphicsOpen() {
   };
   refreshStatus();
   body.appendChild(status);
-  close = openDialog({ title: 'Garden graphics', icon: 'monitor', size: 'md', body: el => el.appendChild(body),
+  close = openDialog({ title: 'Garden graphics', icon: 'monitor', size: 'md', className: 'gd-popup', body: el => el.appendChild(body),
     actions: [{ label: 'Cancel', run: () => close && close() }, { label: 'Use these graphics', primary: true, run: async () => {
       if (applying) return false;
       const selected = inputs.find(i => i.checked), mode = selected ? selected.value : 'standard';

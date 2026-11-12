@@ -817,6 +817,8 @@ function _gdpKey(ev) {
   if (ev.target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(ev.target.tagName)) return;
   if (_gdpPopOpen()) return;   // a pop-up is open: its own keys
   if (ev.key === 'Escape' && typeof _gwFishBusy === 'function' && (_gwFishBusy() || _gw.netting)) { ev.preventDefault(); ev.stopPropagation(); if (_gwFishBusy()) _gwFishCancel(); _gw.netting = null; return; }
+  // Esc on the way to a cast (or any walk with something to do at the end) stops there: the walk's action must not run after it
+  if (ev.key === 'Escape' && typeof _gw !== 'undefined' && _gw.then && _gw.path && _gw.path.length) { ev.preventDefault(); ev.stopPropagation(); const nw = window.GardenNative && GardenNative.active() && GardenNative.world && GardenNative.world(); if (nw && nw.stopMoving) nw.stopMoving(); else { _gw.path = []; _gw.then = null; _gw.hold = null; _gw.spd = 0; } return; }
   if (typeof gardenWorldKey === 'function' && gardenWorldKey(ev, true, _gdpMode() === 'decorate')) return;   // 2.22: you walk, the camera zooms (while decorating only the arrows walk: R, S and Delete are yours)
   const m = gardenHere(), mode = _gdpMode();
   if (ev.key === 'Enter') { ev.preventDefault(); gardenWorldInteract(); return; }

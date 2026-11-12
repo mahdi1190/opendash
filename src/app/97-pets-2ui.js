@@ -118,7 +118,7 @@ function _ptAdopt(root) {
       const nm = petRandomName(sp.id, _ptHash(sp.id + Date.now()));   // clock-ok: a seed for a name idea
       petAdopt(Object.assign({}, look, { name: nm }));
       toast(`${nm} the ${sp.label.toLowerCase()} came home: three treats are waiting in the jar`, { icon: 'heart', timeout: 8000, action: { label: 'Rename', run: () => { setView('pet:wardrobe'); setTimeout(() => { const i = document.querySelector('.pt-name-in'); if (i) i.focus(); }, 80); } } });
-      setView('pet');
+      if (state.view === 'pet') render(); else setView('pet');   // already on Pets: setView would do nothing and leave the adopt grid up
     };
     grid.appendChild(card);
   }
