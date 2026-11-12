@@ -8,7 +8,7 @@ window.GardenPaintNature = (function () {
   let lastError = null, on = false;
   const parts = () => [window.GardenPaintWater, window.GardenPaintWood].filter(Boolean);
   function paint(scene, root, objects, info) {
-    clear(); on = !!(window.GardenPaintWater && GardenPaintWater.wanted()); if (!on) return;
+    clear(); on = !!(window.GardenPaintWater && GardenPaintWater.wanted()) && !window.__gpnOff; if (!on) return;
     for (const p of parts()) try { p.paint(scene, root, info, objects); } catch (e) { lastError = String(e && e.stack || e); }
   }
   function tick(time, view) { if (!on) return; for (const p of parts()) try { p.tick(time, view); } catch (e) { lastError = String(e && e.stack || e); } }

@@ -80,7 +80,7 @@ window.GardenPaintWood = (function () {
           out.floors.push({ kind: 'stamp', id: u[0], v: Math.floor(h3(x, y, 34) * 3), h: 26 + h3(x, y, 35) * 16, x: px(x + .5) + (h3(x, y, 36) - .5) * 30, y: py(y + 1) - 6 });
         }
       }
-      out.floors.push({ kind: 'floor', region: region.id, def, land, season, poly });
+      out.floors.push({ kind: 'floor', region: region.id, def, land, season, poly, glades: def.mood === 'meadow' ? [] : plazas.filter(p => inside(p.x, p.y, poly)).map(p => ({ x: px(p.x), y: py(p.y), rx: ((p.rx || 3.2) + 1.2) * W.cellW, ry: ((p.ry || 2.4) + 1) * W.cellH })) });
       // light: dapples on the floor wherever the canopy is broken, shafts over glades and clearings
       const r = rng(hash(region.id + 'light'));
       for (const [x, y] of land) {
@@ -129,6 +129,16 @@ window.GardenPaintWood = (function () {
         else if (m < .3) blob((.3 - m) * 1.2, F.leaf[x % 3], 1.1, .9);
       }
       cx.globalAlpha = 1;
+      // the clearing: a sunlit lawn of short grass opening in the litter, soft at its edge, flowers in the light
+      for (const gl of f.glades || []) {
+        if (!hit({ x: gl.x - gl.rx * 1.3, y: gl.y - gl.ry * 1.3, w: gl.rx * 2.6, h: gl.ry * 2.6 }, view)) continue; yield;
+        const rr = rng(hash(f.region + 'glade' + gl.x)), lawn = season === 'autumn' ? '#9aa65a' : season === 'winter' ? '#a6b29a' : '#93ad5f';
+        for (const [k, a] of [[1.25, .35], [1.1, .55], [.95, .9], [.8, 1]]) { cx.globalAlpha = a; cx.fillStyle = lawn; cx.fill(new Path2D(sceneDraw.blob(rr, gl.x, gl.y, gl.rx * k, gl.ry * k, 12, .35))); }
+        const g = cx.createRadialGradient(gl.x - gl.rx * .2, gl.y - gl.ry * .2, 0, gl.x, gl.y, gl.rx); g.addColorStop(0, 'rgba(255,244,190,.4)'); g.addColorStop(1, 'rgba(255,244,190,0)'); cx.globalAlpha = 1; cx.fillStyle = g; cx.save(); cx.translate(gl.x, gl.y); cx.scale(1, gl.ry / gl.rx); cx.translate(-gl.x, -gl.y); cx.beginPath(); cx.arc(gl.x, gl.y, gl.rx, 0, Math.PI * 2); cx.fill(); cx.restore();
+        for (let i = 0; i < 160; i++) { const a = rr() * 6.28, d = Math.sqrt(rr()) * .9, x = gl.x + Math.cos(a) * gl.rx * d, y = gl.y + Math.sin(a) * gl.ry * d; cx.globalAlpha = .5; cx.strokeStyle = rr() < .5 ? '#7c9a4e' : '#b4c878'; cx.lineWidth = 1; cx.beginPath(); cx.moveTo(x, y); cx.quadraticCurveTo(x + 1, y - 2.5, x + (rr() - .5) * 3, y - 4); cx.stroke(); }
+        if (season !== 'winter') for (let i = 0; i < 26; i++) { const a = rr() * 6.28, d = Math.sqrt(rr()) * .85, x = gl.x + Math.cos(a) * gl.rx * d, y = gl.y + Math.sin(a) * gl.ry * d; const s = stampCanvas(rr() < .5 ? 'plant.wildflowers' : 'plant.daisies', Math.floor(rr() * 2), season, 12); if (s) { const k = (12 / s.hq) / 2; cx.globalAlpha = 1; cx.drawImage(s.c, x - s.ox * k, y - s.oy * k, s.c.width * k, s.c.height * k); } }
+        cx.globalAlpha = 1;
+      }
       // fine detail last, so no lobe covers it: litter flecks, moss, spring bluebells
       for (const [x, y] of f.land) { yield;
         const X = x * W.cellW + W.cellW / 2, Y = W.sky + y * W.cellH + W.cellH / 2; if (X < view.x || X > view.x + view.w || Y < view.y || Y > view.y + view.h) continue;
@@ -212,6 +222,7 @@ window.GardenPaintWood = (function () {
     let budget = 1;
     if (!S.job && todo) { S.job = { ch: todo, gen: bakeChunk(todo) }; }
     if (S.job) { const j0 = performance.now(); let done = false; try { while (performance.now() - j0 < 7) { if (S.job.gen.next().done) { done = true; break; } } } catch (e) { lastError = String(e && e.stack || e); done = true; } budget = 0; if (done) { S.job.ch.used = S.frame; S.job = null; resident++; } }
+    const tBake = performance.now() - t0; S.tw = S.tw || { bake: 0, trees: 0, sort: 0, light: 0 }; S.tw.bake = Math.max(S.tw.bake, tBake);
     if (resident > MAX_CHUNKS) { const far = [...S.chunks.values()].filter(c => c.image && !hit(c.box, near)).sort((a, b) => a.used - b.used); for (const c of far.slice(0, resident - MAX_CHUNKS)) dropChunk(c); }
     if (S.sortRoot && S.root.sort) { S.root.sort('depth'); S.sortRoot = false; }
     // trees: make a bucket's sprites once, when it comes near (one bucket a frame, and not on a bake frame)
@@ -224,7 +235,9 @@ window.GardenPaintWood = (function () {
       // a crown you are under fades, so you can always see yourself
       if (vis && pl) for (const t of b.trees) { if (!t.im) continue; const under = pl.y < t.y - 4 && pl.y > t.y - t.h * t.scale * .95 && Math.abs(pl.x - t.x) < t.h * t.scale * .34; const a = under ? .5 : 1; if (t.im.alpha !== a) t.im.setAlpha(t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8 || 1)); }
     }
+    const tTrees = performance.now(); S.tw.trees = Math.max(S.tw.trees, tTrees - t0 - tBake);
     if (S.sortObjects && S.objects.sort) { S.objects.sort('depth'); S.sortObjects = false; }
+    S.tw.sort = Math.max(S.tw.sort, performance.now() - tTrees);
     const pad = { x: view.x - 40, y: view.y - 40, w: view.w + 80, h: view.h + 80 }, t = S.clock;
     for (const l of S.light) {
       const vis = hit(l.b, pad); if (vis !== l.vis) { l.vis = vis; l.im.setVisible(vis); } if (!vis) continue;
@@ -237,7 +250,7 @@ window.GardenPaintWood = (function () {
   }
   function memory() { const S = state; if (!S) return null; let bytes = 0, resident = 0; for (const c of S.chunks.values()) if (c.image) { bytes += c.bytes; resident++; } return { chunks: S.chunks.size, resident, mb: +(bytes / 1048576).toFixed(1), capMb: +(MAX_CHUNKS * CH * CH * K * K * 4 / 1048576).toFixed(1) }; }
   function treeTextures() { const S = state; if (!S) return null; const keys = new Set(); let bytes = 0; for (const t of S.M.trees) if (t.im && t.im.texture && !keys.has(t.im.texture.key)) { keys.add(t.im.texture.key); const src = t.im.texture.getSourceImage(); bytes += (src.width || 0) * (src.height || 0) * 4; } return { textures: keys.size, mb: +(bytes / 1048576).toFixed(1) }; }
-  function status() { const S = state; return { treeTex: treeTextures(), warm: S ? [S.warmCount, S.warmMs] : null, on: !!S, trees: S ? S.M.trees.length : 0, made: S ? S.M.trees.filter(t => t.im).length : 0, lights: S ? S.light.length : 0, buildMs: S && S.buildMs, bakes, bakeMs: Math.round(bakeMs), worstBake: Math.round(worstBake), tickWorst: +tickWorst.toFixed(1), memory: memory(), lastError }; }
+  function status() { const S = state; return { tw: S && S.tw, treeTex: treeTextures(), warm: S ? [S.warmCount, S.warmMs] : null, on: !!S, trees: S ? S.M.trees.length : 0, made: S ? S.M.trees.filter(t => t.im).length : 0, lights: S ? S.light.length : 0, buildMs: S && S.buildMs, bakes, bakeMs: Math.round(bakeMs), worstBake: Math.round(worstBake), tickWorst: +tickWorst.toFixed(1), memory: memory(), lastError }; }
   /** True where a painted wood stands (the world then leaves out its own forest trees there). Cell units. */
   function covers(cx, cy) { const D = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data; if (!D || !D.regions) return false; for (const r of D.regions) { const def = WOODS[r.id]; if (def && def.mood !== 'meadow' && inside(cx, cy, r.polygons[0])) return true; } return false; }
   return { paint, tick, clear, status, memory, covers, WOODS, get lastError() { return lastError; } };
