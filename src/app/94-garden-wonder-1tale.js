@@ -126,7 +126,8 @@ function _wtGiveOne(item, salt) {
   if (kind === 'food') return keep(id);
   const real = item === 'seed' ? _wkSeed('wt|' + salt) : item;
   if (!_wkGrant('wt.' + salt, real)) return '';
-  return `(${typeof _wkItemWords === 'function' ? _wkItemWords(real) : 'Something'}: in your bag.)`.replace(/^\((.)/, (x, c) => '(' + c.toUpperCase());
+  const words = real === 'honey' ? 'a jar of honey' : typeof _wkItemWords === 'function' ? _wkItemWords(real) : 'something';
+  return `(${words}: in your bag.)`.replace(/^\((.)/, (x, c) => '(' + c.toUpperCase());
 }
 /** Hear a beat: {lines, actions}. Marks it heard, sets its flags, gives its gift once. */
 function wdTaleTell(s, b, o) {
@@ -272,11 +273,12 @@ function _wtTravellers(m) {
   const to = wdFreeNear(p.x, p.y, 2); if (!to) return;
   if (typeof gardenAreaOpenAt === 'function' && !gardenAreaOpenAt(Math.floor(to.x), Math.floor(to.y))) return;
   const look = Object.assign({ id: 'traveller' }, WD_TALE_TRAVELLER_LOOK, t.b.look || {}), name = t.b.name || 'A traveller';
-  const S = wdSprite({ id: 'wt-trav', x: to.x, y: to.y, still: true, hit: 0.75, hitUp: 16, label: name, cursor: 'hand', svg: _wdFolkArt(look), onClick: () => {
-    if (_wtNext(t.s, gardenModel(), 'traveller') !== t.b) return;
+  const open = () => {
+    if (W[`sx.${t.s.id}.${t.b.id}`]) return;   // heard already (it goes at the next tick)
     const o = wdTaleTell(t.s, t.b); wdTalk({ name, art: _wdFolkArt(look), lines: o.lines, actions: o.actions, at: { x: S.x, y: S.y }, bye: 'Goodbye' });
-  } });
-  _wt.trav = { key: t.s.id + '.' + t.b.id, S };
+  };
+  const W = _wtW(), S = wdSprite({ id: 'wt-trav', x: to.x, y: to.y, still: true, hit: 0.75, hitUp: 16, label: name, cursor: 'hand', svg: _wdFolkArt(look), onClick: open });
+  _wt.trav = { key: t.s.id + '.' + t.b.id, S, open };
 }
 /* ---------- residents: found at home, never calling ---------- */
 function _wtResPlace(r, m) {
