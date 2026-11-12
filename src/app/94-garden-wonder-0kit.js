@@ -188,7 +188,8 @@ function wdTalk(o) {
   box.appendChild(el); show();
   return T;
 }
-function wdTalkClose(quiet) { const T = _wd.talk; if (!T) return; _wd.talk = null; T.el.remove(); if (T.o.onClose && !quiet) { try { T.o.onClose(); } catch (e) { console.error('[garden wonder]', e); } } else if (T.o.onClose && quiet === true && T.o.closeQuiet) T.o.onClose(); }
+function wdTalkClose(quiet) { const T = _wd.talk; if (!T) return; _wd.talk = null; const had = T.el.contains(document.activeElement); T.el.remove(); if (had) { try { const b = typeof _gw !== 'undefined' && _gw.box && _gw.box.isConnected ? _gw.box : _wdBox(); if (b && b.focus) b.focus({ preventScroll: true }); } catch (e) { /* no stage */ } }   // (the keys go back to the garden: M, E and walking work at once)
+  if (T.o.onClose && !quiet) { try { T.o.onClose(); } catch (e) { console.error('[garden wonder]', e); } } else if (T.o.onClose && quiet === true && T.o.closeQuiet) T.o.onClose(); }
 /** Walked away from whoever you were talking to: they stop. */
 function _wdTalkCheck() { const T = _wd.talk; if (!T) return; const a = T.o.at; if (a && !wdNear(a.x, a.y, 6)) wdTalkClose(); else if (!T.el.isConnected) { const box = _wdBox(); if (box) box.appendChild(T.el); } }
 function wdWhisper(text, ms) { gardenMessage(text, { ms }); }

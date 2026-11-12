@@ -272,7 +272,8 @@ window.GardenNative = (function () {
       const target = ev.target;
       if (target && target.closest) {
         if (target.closest('input,textarea,select,[contenteditable="true"]') && ev.key !== 'Escape') return;
-        if (target.closest('button,a') && (ev.key === ' ' || ev.key === 'Enter')) return;
+        // (a line out or a fish on: Space strikes and reels even with a tool button still focused from the click that picked the rod)
+        if (target.closest('button,a') && (ev.key === ' ' || ev.key === 'Enter') && !(ev.key === ' ' && (_gw.fishing || _gw.reel) && !target.closest('[role="dialog"],.modal,.wd-talk'))) return;
         const dialog = target.closest('[role="dialog"],[role="menu"]');
         if (dialog && !dialog.classList.contains('grm-native-room')) return;
       }
@@ -526,6 +527,16 @@ window.GardenNative = (function () {
     watchOpening(s);
     const host = s.host = document.createElement('div'); host.className = 'gd-native-stage'; host.style.cssText = 'position:absolute;inset:0;overflow:hidden;touch-action:none;visibility:hidden'; host.setAttribute('aria-label', 'Your garden'); parent.appendChild(host);
     const loading = s.loading = document.createElement('div'); loading.className = 'gd-renderer-preparing'; loading.setAttribute('role', 'status'); loading.textContent = 'Opening the garden…'; loading.style.cssText = 'position:absolute;inset:45% 20% auto;text-align:center;z-index:30;color:var(--fg,#293c30);padding:16px;background:var(--surface,#f6f5ed);border-radius:16px'; box.appendChild(loading);
+    // every wait has a way out: still opening after a while (a dropped server, a slow first start), offer to try again or go back
+    const retry = (text) => {
+      if (s.dead || s.ready) return; loading.textContent = text; const row = document.createElement('div'); row.style.cssText = 'display:flex;gap:8px;justify-content:center;margin-top:10px';
+      const btn = (label, run) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm'; b.textContent = label; b.addEventListener('click', run); row.appendChild(b); };
+      btn('Try again', () => { const m = s.model; destroy(); mount(parent, box, m); });
+      if (typeof setView === 'function') btn('Back to Home', () => { destroy(); setView('home'); });
+      loading.appendChild(row);
+    };
+    s.slowTimer = setTimeout(() => retry('Still opening the garden. It may have lost the connection to this computer’s app.'), 15000);
+    s.retry = retry;
     FreefloGameEngine.load().then(Phaser => {
       if (s.dead) return; installComponents(); if (typeof gardenAudioPrepare === 'function') gardenAudioPrepare();
       if (!stylesConfigured) { const css = [...document.querySelectorAll('style')].map(node => node.textContent.replace(/@font-face\s*\{[^}]*\}/g, '')).join('\n'); GardenNativeArt.configure(css); stylesConfigured = true; }
@@ -544,8 +555,8 @@ window.GardenNative = (function () {
           if (s.world.prepareRender) s.world.prepareRender();
           s.lighting.update(performance.now(), 16); GardenNativeArt.updateAll(s.scene, performance.now()); if (s.frontier) s.frontier.update(performance.now(), 0); let presentationEnvironment = null; if (s.surface) s.surface.update(performance.now(), 0, presentationEnvironment = s.lighting.environment()); if (s.water) s.water.update(performance.now(), 0, presentationEnvironment || s.lighting.environment());
           prepareShaders(s, error => {
-            if (error) { lastError = String(error && error.message || error); loading.textContent = 'The garden could not open: ' + lastError; console.error('[native garden]', error); return; }
-            bindInput(s); _gwBuildCamUi(box); s.ready = true; s.loadMs = performance.now() - s.started; openingVisibility(s); host.style.visibility = ''; loading.remove(); box.focus({ preventScroll: true });
+            if (error) { lastError = String(error && error.message || error); clearTimeout(s.slowTimer); retry('The garden could not open: ' + lastError); console.error('[native garden]', error); return; }
+            bindInput(s); _gwBuildCamUi(box); s.ready = true; clearTimeout(s.slowTimer); s.loadMs = performance.now() - s.started; openingVisibility(s); host.style.visibility = ''; loading.remove(); box.focus({ preventScroll: true });
           });
         } catch (error) { lastError = String(error && error.message || error); loading.textContent = 'The garden could not open: ' + lastError; throw error; }
       }, update(time, delta) { step(s, time, delta); } };
@@ -554,7 +565,7 @@ window.GardenNative = (function () {
       s.game = new Phaser.Game({ type: Phaser.WEBGL, parent: host, width: Math.max(1, box.clientWidth), height: Math.max(1, box.clientHeight), backgroundColor: '#87aa78', antialias: true, resolution: Math.min(2, devicePixelRatio || 1), powerPreference: 'high-performance', maxTextures: 4, audio: { noAudio: true }, input: { keyboard: true, mouse: { preventDefaultWheel: true }, touch: true, activePointers: 3, gamepad: false }, scene: config, fps: { target: 60, min: 15, limit: 0, smoothStep: false }, banner: false });
       s.resize = new ResizeObserver(() => { if (s.dead || !s.world || s.capturing) return; const w = box.clientWidth, h = box.clientHeight; if (!w || !h) return; s.game.scale.resize(w, h); if (!inRoom()) s.world.resize(w, h); }); s.resize.observe(box);
       s.visibility = () => { if (s.dead || !s.game) return; if (document.hidden) { if (s.blur) s.blur(); s.game.loop.sleep(); } else s.game.loop.wake(); }; document.addEventListener('visibilitychange', s.visibility);
-    }).catch(error => { lastError = String(error && error.message || error); if (s.dead) return; loading.textContent = 'The garden could not open: ' + lastError; console.error('[native garden]', error); });
+    }).catch(error => { lastError = String(error && error.message || error); if (s.dead) return; clearTimeout(s.slowTimer); retry('The garden could not open: ' + lastError); console.error('[native garden]', error); });
   }
   function point(x, y) { const s = live; if (!s || !s.world) return null; return inRoom() ? GardenNativeRooms.point(x, y) : s.world.point(x, y); }
   function pick(x, y) {
@@ -620,5 +631,5 @@ window.GardenNative = (function () {
   function setAmbientPaused(state) { if (typeof _gfs !== 'undefined') _gfs.ambientPaused = !!(state && (state.hush || state.frozen)); if (!live) return; if (GardenNativeArt.pauseAmbient) GardenNativeArt.pauseAmbient(state); if (window.GardenNativeActions) GardenNativeActions.pauseAmbient(state); if (live.lighting && live.lighting.pauseAmbient) live.lighting.pauseAmbient(state); if (live.water && live.water.pauseAmbient) live.water.pauseAmbient(state); if (live.world && live.world.pauseAmbient) live.world.pauseAmbient(state); if (live.frontier) live.frontier.pauseAmbient(state); if (live.surface) live.surface.pauseAmbient(state); }
   function setPhotoFilter(filter) { if (live && live.host) live.host.style.filter = String(filter || ''); }
   function float(text, x, y) { if (!scene() || !text) return; const object = scene().add.text(x, y, String(text), { fontFamily: 'Inter, sans-serif', fontSize: '17px', fontStyle: 'bold', color: '#fff5cc', stroke: '#344130', strokeThickness: 3, resolution: 3 }).setOrigin(.5, 1).setDepth(91000); scene().tweens.add({ targets: object, y: y - 38, alpha: 0, duration: 1450, ease: 'Sine.easeOut', onComplete: () => object.destroy() }); }
-  return { active, scene, root, world, wanted, mount, sync, point, pick, capture, destroy, status, enterRoom, leaveRoom, inRoom, animate, matrix, setAmbientPaused, setPhotoFilter, float, lighting: () => live && live.lighting, water: () => live && live.water, surface: () => live && live.surface };
+  return { active, isReady: () => !!(live && live.ready && !live.dead), scene, root, world, wanted, mount, sync, point, pick, capture, destroy, status, enterRoom, leaveRoom, inRoom, animate, matrix, setAmbientPaused, setPhotoFilter, float, lighting: () => live && live.lighting, water: () => live && live.water, surface: () => live && live.surface };
 })();

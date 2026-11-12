@@ -193,7 +193,7 @@ function gardenLevelUpCard(d) {
     c.innerHTML = `<div class="gd-lu-ic">${icon('sparkles')}</div><b></b><p></p><ul></ul><button type="button" class="btn btn-primary btn-sm">Lovely</button>`;
     c.querySelector('b').textContent = 'Something new';   // (no level numbers: your title comes from the Field Journal's pages)
     if (typeof gardenSfx === 'function') gardenSfx('level');
-    c.querySelector('p').textContent = 'More of the vale has opened up. Have a look around.';
+    c.querySelector('p').textContent = 'You have grown as a gardener.';   // (it says more of the vale opened only when an area comes in below)
     c.querySelector('button').onclick = () => c.remove();
     { const top = gardenMessageHost() || _gdp.root; top.insertBefore(c, top.querySelector(':scope > .gd-msg')); }   // (over the message line, never on top of it)
     // It closes itself after 9 s, but not under the pointer, and the next moment's world click is swallowed: a click
@@ -202,6 +202,7 @@ function gardenLevelUpCard(d) {
     setTimeout(shut, 9000);
   } else if (c && d.kind === 'area') {
     const li = document.createElement('li'); li.textContent = d.text; c.querySelector('ul').appendChild(li);
+    c.querySelector('p').textContent = 'More of the vale has opened up. Have a look around.';
   }
 }
 

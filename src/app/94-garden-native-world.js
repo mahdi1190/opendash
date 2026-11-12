@@ -358,6 +358,10 @@ window.GardenNativeWorld = (function () {
       try { packGround = GardenNativePainted.ground(scene, rootNode._inner, { W, box, coast, lawn, lakes, paths: pathLoops, routes, plaza, meadow, soil, owned, season: sc.season, sig: sig + '|' + soil.length + ':' + owned.length }); }
       catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); return false; }
       const blocked = new Set(); for (const p of D.static) { const boxes = [p, p.apron].filter(Boolean); for (const b of boxes) for (let y = Math.floor(b.y) - 1; y <= b.y + b.h; y++) for (let x = Math.floor(b.x) - 1; x <= b.x + b.w; x++) blocked.add(x + ',' + y); }
+      // and the gates stay readable: no village tree in front of an arch or bridge (the canopy rises up the screen over it)
+      for (const g of D.gates || []) for (let y = g.y - 2; y <= g.y + 5; y++) for (let x = g.x - 3; x <= g.x + 3; x++) blocked.add(x + ',' + y);
+      // the gates' finds lie in the open, not under a tree (the shears' glint on the reed-bank bench was behind two birches)
+      if (typeof GARDEN_GATE_FINDS !== 'undefined' && typeof gardenGateFindPoint === 'function') for (const f of GARDEN_GATE_FINDS) { const q = gardenGateFindPoint(f); if (q) for (let y = Math.floor(q.y) - 3; y <= Math.floor(q.y) + 2; y++) for (let x = Math.floor(q.x) - 2; x <= Math.floor(q.x) + 2; x++) blocked.add(x + ',' + y); }
       // Planting keeps clear of every path, doorway, owned plot and saved
       // plant or decoration; land not yet bought grows wild until it is.
       const taken = new Set(); for (const item of (m.plants || []).concat(m.decor || [])) for (let y = item.y - 1; y <= item.y + 2; y++) for (let x = item.x - 1; x <= item.x + 2; x++) taken.add(x + ',' + y);

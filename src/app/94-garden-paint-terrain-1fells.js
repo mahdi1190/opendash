@@ -552,7 +552,8 @@ window.GardenPaintedTerrain = (function () {
       out.push({ key: sig + '|crag|' + sd, box: [-w, -h * 1.5 - 10, w, 16], x: end.lip.x + (end.lip.x < c.x ? -w * .3 : w * .3), y: end.foot.y - 2, draw: B => cragArt(B, w, h, P, sd, snowy, false) });
     }
     // rowans on the gorge's far lip, where the river runs down to the falls
-    if (L.gorge && L.gorge.line) for (const [t, sd] of [[.5, 1], [.84, 2]]) { const ln = L.gorge.line, i = Math.floor((ln.length - 1) * t), a = ln[i], b = ln[Math.min(ln.length - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l, s2 = ny < 0 ? 1 : -1, hw = (L.gorge.halfWidth || .85) + .22, p = L.pt([a[0] + nx * s2 * hw, a[1] + ny * s2 * hw]), h = 50 + sd * 6;
+    // (the second stands back from the lip of Fleet Falls: at .84 it grew out of the falling water)
+    if (L.gorge && L.gorge.line) for (const [t, sd] of [[.5, 1], [.68, 2]]) { const ln = L.gorge.line, i = Math.floor((ln.length - 1) * t), a = ln[i], b = ln[Math.min(ln.length - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l, s2 = ny < 0 ? 1 : -1, hw = (L.gorge.halfWidth || .85) + .22, p = L.pt([a[0] + nx * s2 * hw, a[1] + ny * s2 * hw]), h = 50 + sd * 6;
       out.push({ key: sig + '|rowan|' + sd, box: [-30, -h - 16, 34, 8], x: p.x, y: p.y, draw: B => rowanArt(B, h, P, 77 + sd, season) }); }
     for (const op of ops) for (const p of op.pines || []) out.push({ key: sig + '|pine|' + p.seed, box: [-24, -p.h - 14, 44, 8], x: p.x, y: p.y, draw: B => pineArt(B, p.h, P, p.seed, snowy) });
     return out;

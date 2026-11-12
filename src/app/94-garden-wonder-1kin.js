@@ -373,6 +373,7 @@ function wdKinGave(row, b) {
 /* ---------- the old angler, at the pier: he talks once a day before the lake book ---------- */
 const WK_ANGLER = Object.freeze({ id: 'angler', name: 'The old angler', likes: 'bug' });
 function _wkAnglerArt() {
+  if (typeof gardenCastOn === 'function' && gardenCastOn() && typeof gardenCastSvg === 'function') { const painted = gardenCastSvg('angler'); if (painted) return painted; }   // the talk box shows the figure the world shows
   const A = GART;
   return `<g>${A.P('#000000', A.ell(0, 0.5, 11, 3), 0.18)}${A.P('#4a4a3e', A.rrect(-6, -10, 5, 10, 1.6) + A.rrect(1, -10, 5, 10, 1.6))}${A.P('#5f6e4e', 'M-10 -8C-11 -22 -8 -30 0 -30C8 -30 11 -22 10 -8C5 -6 -5 -6 -10 -8z')}${A.P('#e0b894', A.ell(0, -36, 7, 7))}${A.P('#e8e4dc', 'M-6 -34C-6 -27 6 -27 6 -34C3 -31 -3 -31 -6 -34z')}${A.P('#7a6a48', A.ell(0, -42, 11, 2.4) + 'M-6 -42C-6 -48 6 -48 6 -42z')}${A.P('#1c1512', A.circ(-2.6, -37, 0.9) + A.circ(2.6, -37, 0.9))}${A.S('#8a6a44', 1.2, 'M9 -18L20 -46')}</g>`;
 }
