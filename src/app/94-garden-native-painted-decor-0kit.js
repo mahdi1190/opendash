@@ -1,0 +1,160 @@
+/* The Painted village's decorations, the ones people buy, craft or win, in the
+ * opening scenes' house style (docs/dev/SCENE_LESSONS.md): soft shading lit
+ * from the upper left, no outlines, lobed natural shapes, a contact shadow.
+ *
+ * One registry for every family file (94-garden-native-painted-decor-1*.js):
+ *   GardenPaintedDecor.add(family, { id: row })   at load, plain data only
+ *   row = { box: [x0, y0, x1, y1], draw(B, o),    world px round the foot (0, 0)
+ *           v: n variants, side: { box, draw }    the view along a fence run (rot 1, 3)
+ *           glow: { w, halo }                     a light pool at dusk and night (halo: y of the lamp)
+ *           anim: [{ id, box, draw, x, y, kind: 'spin'|'sway'|'bob'|'flutter'|'flicker', speed, amp }] }
+ *   o = { season, night, v, side, r (seeded random), K (the props kit), D (sceneDraw), icon }
+ *
+ * The world drawing is baked once into a texture keyed by what it shows (the
+ * props kit's bake), so a redraw reuses it; only the anim parts move. Icons
+ * for the shop, the bag and the crafting bench come from the same painters,
+ * drawn at icon size into a small canvas, kept in a bounded cache. Nothing
+ * here runs at load except the registry itself, so a family file may call
+ * add() at load (it sorts after this file). */
+window.GardenPaintedDecor = (function () {
+  'use strict';
+  const ROWS = Object.create(null);
+  let lastError = null, iconMs = 0, icons = 0;
+  function add(family, rows) { for (const id of Object.keys(rows)) ROWS[id] = Object.assign({ family }, rows[id]); }
+  const row = id => ROWS[id] || null;
+  const kit = () => window.GardenPaintedProps && GardenPaintedProps.kit;
+  const vOf = (R, v) => R && R.v ? ((v | 0) % R.v + R.v) % R.v : 0;
+  const sideOf = (R, r) => !!(R && R.side && ((r | 0) % 2 === 1));
+  const partOf = (R, side) => side ? R.side : R;
+  function opts(K, id, season, night, v, side, icon) { return { season: season || 'summer', night: !!night, v, side, r: K.rng(K.hash(id) + v * 31 + 1), K, D: sceneDraw, H, P: K.PALETTE, icon: !!icon }; }
+
+  /* ---------- shared touches, so each family keeps one look (o.H) ---------- */
+  const shade = (hex, f) => { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const t = f < 0 ? 0 : 255, p = Math.abs(f); r = Math.round((t - r) * p + r); g = Math.round((t - g) * p + g); b = Math.round((t - b) * p + b); return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1); };
+  const H = {
+    shade,
+    // a colour as a lit-from-the-upper-left trio [base, shade, light, deep]
+    pal: c => [c, shade(c, -.22), shade(c, .28), shade(c, -.45)],
+    // a body of colour, lit across: light at the left, deeper at the right
+    lit: (B, x0, x1, c) => B.lin(x0, 0, x1, 0, [[0, shade(c, .22)], [.4, c], [1, shade(c, -.28)]]),
+    // a plank with a lit top edge, a shade below and a little grain
+    plank(B, x, y, w, h, pal, r) { B.beam(x, y, w, h, pal); if (r && w > 10) for (let i = 0; i < Math.max(1, w / 16); i++) { const gx = x + 3 + r() * (w - 8); B.s(`M${gx} ${y + h * .45}h${3 + r() * 5}`, pal[1], .5, .5); } return B; },
+    // glass: a pale fill and a bright streak to the upper left
+    glass(B, d, x, y, w, h, op) { B.f(d, 'rgba(206,232,236,' + (op == null ? .5 : op) + ')').f(B.poly([[x + w * .12, y + h * .9], [x + w * .3, y + h * .9], [x + w * .5, y + h * .08], [x + w * .32, y + h * .08]]), '#ffffff', .45); return B; },
+    // a flame in three tones (bright core), for fires, candles and lanterns
+    flame(B, x, y, s, op) { B.f(`M${x - 5 * s} ${y}q${-1 * s} ${-7 * s} ${5 * s} ${-14 * s}q${6 * s} ${7 * s} ${5 * s} ${14 * s}z`, '#e8742a', op == null ? .95 : op).f(`M${x - 3 * s} ${y}q0 ${-5 * s} ${3 * s} ${-9 * s}q${3 * s} ${4 * s} ${3 * s} ${9 * s}z`, '#f8b440').f(`M${x - 1.5 * s} ${y}q0 ${-3 * s} ${1.5 * s} ${-5 * s}q${1.5 * s} ${2 * s} ${1.5 * s} ${5 * s}z`, '#fff0b8'); return B; },
+    // a bulb or lamp: a soft halo when lit, a bright core
+    bulb(B, x, y, rr, col, lit) { if (lit) B.f(B.circ(x, y, rr * 2.4), B.rad(x, y, rr * 2.4, [[0, 'rgba(255,226,150,.55)'], [1, 'rgba(255,226,150,0)']])); B.f(B.circ(x, y, rr), lit ? shade(col, .35) : shade(col, -.1)).f(B.circ(x - rr * .3, y - rr * .3, rr * .4), '#ffffff', lit ? .85 : .5); return B; },
+    // a cluster of round blooms over a leafy base (pots, baskets, barrows)
+    blooms(B, r, x, y, w, h, cols, season) { const L = B.cx && (window.GardenPaintedProps ? GardenPaintedProps.kit.leafOf(season) : null) || ['#46703a', '#5e8a44', '#82aa58', '#a9c674']; B.f(sceneDraw.blob(r, x, y, w * .55, h * .5, 9, .4), L[0]).f(sceneDraw.blob(r, x - w * .08, y - h * .1, w * .45, h * .38, 8, .4), L[1]).f(sceneDraw.blob(r, x - w * .2, y - h * .25, w * .2, h * .16, 6, .4), L[2], .9); if (season === 'winter') return B; const n = Math.round(w * h / 40) + 3; for (let i = 0; i < n; i++) { const px = x + (r() - .5) * w * .95, py = y + (r() - .6) * h * .8, c = cols[i % cols.length], rr = 1.6 + r() * 1.4; B.f(B.circ(px, py, rr), c).f(B.circ(px - rr * .3, py - rr * .3, rr * .45), '#ffffff', .4); } return B; },
+    // a rope or cord, slightly darker under a pale top
+    cord(B, d, w, c) { B.s(d, shade(c || '#c8b48a', -.3), (w || 1.4) + .6, .9).s(d, c || '#c8b48a', w || 1.4); return B; },
+    // fabric with stripes across it (deckchairs, awnings, hammocks)
+    stripes(B, clip, x0, y0, x1, y1, a, b, n) { const cx = B.cx; cx.save(); cx.clip(new Path2D(clip)); B.f(B.rect(x0, y0, x1 - x0, y1 - y0), a); const sw = (x1 - x0) / (n * 2); for (let i = 0; i < n; i++) B.f(B.rect(x0 + (i * 2 + 1) * sw, y0, sw, y1 - y0), b); B.f(B.rect(x0, y0, x1 - x0, y1 - y0), B.lin(x0, 0, x1, 0, [[0, 'rgba(255,255,255,.18)'], [.5, 'rgba(255,255,255,0)'], [1, 'rgba(40,30,20,.22)']])); cx.restore(); return B; },
+    // painted stone: base, a light face upper left, a mossy cap when old
+    carved(B, d, x0, x1, pal) { B.f(d, B.lin(x0, 0, x1, 0, [[0, pal[2]], [.45, pal[0]], [1, pal[3] || pal[1]]])); return B; },
+  };
+
+  /* ---------- in the world ---------- */
+  const ANIM = {
+    spin: (a) => (n, t, m) => { if (m) n.setRotation(t * (a.speed || 1.6)); },
+    sway: (a, ph) => (n, t, m) => { if (m) n.setRotation(Math.sin(t * (a.speed || 1.2) + ph) * (a.amp || .05)); },
+    bob: (a, ph, y0) => (n, t, m) => { if (m) n.y = y0 + Math.sin(t * (a.speed || 1.4) + ph) * (a.amp || 2); },
+    flutter: (a, ph) => (n, t, m) => { if (m) n.setScale((1 + Math.sin(t * (a.speed || 5) + ph) * (a.amp || .06)) / 2, 1 / 2); },
+    flicker: (a, ph) => (n, t, m) => { if (m) n.setAlpha(.82 + Math.sin(t * (a.speed || 7) + ph) * .1 + Math.sin(t * 13.1 + ph) * .06); },
+  };
+  // Textures of another season or time of day are let go a little after the
+  // village moves on (every decoration is redrawn then), so memory stays bounded.
+  let lastMood = null;
+  function sweep(scene, mood) {
+    if (lastMood === mood) return; const was = lastMood; lastMood = mood; if (was == null) return;
+    setTimeout(() => { try { if (!scene.textures) return; for (const key of scene.textures.getTextureKeys()) if (key.startsWith('gpp|dec|') && !key.endsWith('|' + lastMood)) scene.textures.remove(key); } catch (e) { lastError = String(e); } }, 4000);
+  }
+  function world(scene, item, sc, o) {
+    const K = kit(), R = ROWS[item.id], def = typeof gardenDecor === 'function' ? gardenDecor(item.id) : null; if (!K || !R || !def) return null;
+    const W = o.W, season = sc.season || 'summer', night = !!o.night, mood = season + '|' + (night ? 'n' : 'd');
+    const fx = (item.x + (def.w || 1) / 2) * W.cellW, foot = W.sky + (item.y + (def.h || 1)) * W.cellH - 4;
+    const side = sideOf(R, item.r), v = vOf(R, item.v), P = partOf(R, side), flip = !!item.flip;
+    if (!P || !P.draw) return null;
+    sweep(scene, mood);
+    const h = K.handle(scene, o, 'decor:' + item.uid, { cls: 'decor' });
+    const key = K.bake(scene, 'dec|' + item.id + '|' + v + (side ? '|s' : '') + '|' + mood, P.box, B => P.draw(B, opts(K, item.id, season, night, v, side)));
+    const im = h.add(K.image(scene, key, fx, foot)); if (!im) { h.destroy(); return null; }
+    if (flip) im.setFlipX(true);
+    (P.anim || []).forEach((a, i) => {
+      const ak = K.bake(scene, 'dec|' + item.id + '|' + a.id + '|' + v + '|' + mood, a.box, B => a.draw(B, opts(K, item.id, season, night, v, side)));
+      const x = fx + (flip ? -a.x : a.x), y = foot + a.y, ai = h.add(K.image(scene, ak, x, y)); if (!ai) return;
+      if (flip) ai.setFlipX(true);
+      const fn = (ANIM[a.kind] || ANIM.sway)(a, i * 1.7 + item.x * .3, y); h.move(ai, fn);
+    });
+    if (P.glow) { const hy = P.glow.halo == null ? null : foot + P.glow.halo; h.lights.push({ x: fx, y: hy == null ? foot - 10 : hy, radius: P.glow.radius || 90, pool: true }); if (night) K.glowPool(scene, h, fx, foot, P.glow.w || 70, hy); }
+    const [x0, y0, x1, y1] = P.box, bx0 = flip ? -x1 : x0, bx1 = flip ? -x0 : x1;
+    return K.finish(h, { x: fx + bx0, y: foot + y0, width: bx1 - bx0, height: y1 - y0 + 6 }, { x: fx, y: foot });
+  }
+  function signature(item, sc, night) { const R = ROWS[item.id]; return R ? 'painted-decor-3|' + item.id + '|' + item.x + ',' + item.y + '|' + vOf(R, item.v) + (sideOf(R, item.r) ? 's' : '') + (item.flip ? 'f' : '') + '|' + sc.season + (night ? '|n' : '') : null; }
+
+  /* ---------- icons: the shop, the bag, the crafting bench ---------- */
+  const ICON = new Map(), ICON_MAX = 320, S = 112;
+  // what to draw for an id: a registry row, an older painted prop, or a library object
+  function source(id, v, side) {
+    const R = ROWS[id]; if (R) { const P = partOf(R, false); return P && P.draw ? { box: P.box, draw: P.draw, v: vOf(R, v) } : null; }
+    const PP = window.GardenPaintedProps; if (!PP || !PP.decorTable) return null;
+    const d = PP.decorTable[id]; if (!d) return null;
+    if (d[0] === 'paint') { const P = PP.paintTable[d[1]]; return P ? { box: P.box, draw: (B, o) => P.draw(B, o), v: 0 } : null; }
+    if (d[0] === 'lib') return { lib: d };
+    return null;
+  }
+  function iconCanvas(id, o) {
+    const K = kit(), src = K && source(id, o.v); if (!src) return null;
+    const c = document.createElement('canvas'); c.width = S; c.height = S; const cx = c.getContext('2d');
+    if (src.lib) {
+      const GP = window.GardenNativePainted; if (!GP || !GP.objectCanvas || typeof sceneObj !== 'function' || !sceneObj(src.lib[1])) return null;
+      const m = GP.objectCanvas(src.lib[1], src.lib[2], o.season || 'summer', src.lib[3], false); if (!m) return null;
+      return fit(m.c, m.c.getContext('2d'), c, cx, true);
+    }
+    // draw at a generous size, then crop to what was painted so small icons fill their tile
+    const [x0, y0, x1, y1] = src.box, k = Math.min(S * 2 / (x1 - x0), S * 2 / (y1 - y0)), tw = Math.ceil((x1 - x0) * k), th = Math.ceil((y1 - y0) * k);
+    const t = document.createElement('canvas'); t.width = tw; t.height = th; const tx = t.getContext('2d', { willReadFrequently: true });
+    tx.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
+    src.draw(K.brush(tx), opts(K, id, o.season, false, src.v, false, true));
+    return fit(t, tx, c, cx, true);
+  }
+  // copy the painted part of t into the square c: centred, standing on the bottom edge
+  function fit(t, tx, c, cx, stand) {
+    const { width: tw, height: th } = t, a = tx.getImageData(0, 0, tw, th).data; let mx = tw, my = th, Mx = -1, My = -1;
+    for (let y = 0; y < th; y += 2) for (let x = 0; x < tw; x += 2) if (a[(y * tw + x) * 4 + 3] > 40) { if (x < mx) mx = x; if (x > Mx) Mx = x; if (y < my) my = y; if (y > My) My = y; }
+    if (Mx < 0) return null; mx = Math.max(0, mx - 2); my = Math.max(0, my - 2); Mx = Math.min(tw, Mx + 3); My = Math.min(th, My + 3);
+    const w = Mx - mx, h = My - my, k = Math.min(S * .92 / w, S * .92 / h);
+    cx.imageSmoothingQuality = 'high'; cx.drawImage(t, mx, my, w, h, (S - w * k) / 2, stand ? S - 2 - h * k : (S - h * k) / 2, w * k, h * k);
+    return c;
+  }
+  /** An item as a small standalone <svg> holding its painted picture, or '' when it has none. */
+  function icon(id, o) {
+    o = o || {}; if (o.silhouette) return '';
+    const px = o.px || 48, key = id + '|' + (o.v | 0) + '|' + (o.season || 'summer');
+    let url = ICON.get(key);
+    if (url === undefined) {
+      const t0 = performance.now(); let c = null;
+      try { c = iconCanvas(id, o); } catch (e) { lastError = String(e && e.stack || e); c = null; }
+      url = c ? c.toDataURL('image/png') : '';
+      if (ICON.size >= ICON_MAX) ICON.delete(ICON.keys().next().value);
+      ICON.set(key, url); iconMs += performance.now() - t0; icons++;
+    }
+    if (!url) return '';
+    return `<svg class="gd-ico gd-ico-painted" viewBox="0 0 ${S} ${S}" width="${px}" height="${px}" preserveAspectRatio="xMidYMax meet" aria-hidden="true" focusable="false"><image href="${url}" x="0" y="0" width="${S}" height="${S}"/></svg>`;
+  }
+  /** A painted icon of anything with a painter of its own (crafted things that are not decorations). */
+  const EXTRA = Object.create(null);
+  function addIcon(id, p) { EXTRA[id] = p; }
+  function extraIcon(id, px, cls) {
+    const p = EXTRA[id], K = kit(); if (!p || !K) return '';
+    const key = 'x|' + id; let url = ICON.get(key);
+    if (url === undefined) {
+      let c = null;
+      try { c = document.createElement('canvas'); c.width = S; c.height = S; const [x0, y0, x1, y1] = p.box, k = Math.min(S * 2 / (x1 - x0), S * 2 / (y1 - y0)), t = document.createElement('canvas'); t.width = Math.ceil((x1 - x0) * k); t.height = Math.ceil((y1 - y0) * k); const tx = t.getContext('2d', { willReadFrequently: true }); tx.setTransform(k, 0, 0, k, -x0 * k, -y0 * k); p.draw(K.brush(tx), opts(K, id, 'summer', false, 0, false, true)); c = fit(t, tx, c, c.getContext('2d'), false); } catch (e) { lastError = String(e && e.stack || e); c = null; }
+      url = c ? c.toDataURL('image/png') : ''; if (ICON.size >= ICON_MAX) ICON.delete(ICON.keys().next().value); ICON.set(key, url);
+    }
+    return url ? `<svg class="${cls || 'gcr-art'} gd-ico-painted" viewBox="0 0 ${S} ${S}" width="${px}" height="${px}" aria-hidden="true" focusable="false"><image href="${url}" x="0" y="0" width="${S}" height="${S}"/></svg>` : '';
+  }
+  function status() { return { rows: Object.keys(ROWS).length, icons, iconMs: Math.round(iconMs), cached: ICON.size, lastError }; }
+  return { opts, add, row, has: id => !!ROWS[id], ids: () => Object.keys(ROWS), world, signature, icon, addIcon, extraIcon, iconCanvas, status, get lastError() { return lastError; } };
+})();
