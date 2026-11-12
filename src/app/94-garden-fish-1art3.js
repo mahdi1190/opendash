@@ -242,6 +242,7 @@ function _gcpChain(n, l, widthAt, c, e, seg) {
   return one(false, 1.8) + one(true, 0);
 }
 function _gcpEel(def, look, fam, uid, rnd) {
+  if (fam === 'eel' && typeof _gfaPaintOn === 'function' && _gfaPaintOn()) return _gcpEelPainted(def, look, fam, uid, rnd);   // 94-garden-fish-1art7.js
   const c = look.c, c2 = look.c2 || _gfaLt(c, 0.4), c3 = look.c3 || _gfaDk(c, 0.4), e = _gcpEdge(c), id = def.id, n = _gfaN, big = Math.min(1.25, 0.85 + (def.cm[1] / 300) * 0.5);
   const W = (fam === 'oar' ? 8 : 10) * big * (0.86 + rnd() * 0.28), segs = fam === 'oar' ? 8 : 7, l = 74 / segs, p = look.p, hx = 30;
   const seg = (i, w) => {
@@ -285,6 +286,7 @@ function _gcpPuffer(def, look, rnd) {
 }
 function _gcpOwn(def, look, fam, uid, rnd) {
   const c = look.c, c2 = look.c2 || _gfaLt(c, 0.4), c3 = look.c3 || _gfaDk(c, 0.4), e = _gcpEdge(c), n = _gfaN, A = `stroke="${e}" stroke-width="1.2" stroke-linejoin="round"`, p = look.p, big = Math.min(1, (def.cm[1] || 10) / 200);
+  if (typeof _gfaPaintOn === 'function' && _gfaPaintOn()) { if (fam === 'newt') return _gcpNewtPainted(def, look, rnd); if (fam === 'crayfish') return _gcpCrayPainted(def, look); if (fam === 'crab') return _gcpCrabPainted(def, look, rnd); }   // 94-garden-fish-1art7.js
   switch (fam) {
     case 'eel': case 'oar': case 'lamprey': return _gcpEel(def, look, fam, uid, rnd);
     case 'koi': return _gcpKoi(def, look, uid, rnd);
