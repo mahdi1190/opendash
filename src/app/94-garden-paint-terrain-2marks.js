@@ -66,6 +66,17 @@ window.GardenPaintedMarks = (function () {
       B.f(B.ell(2, 2, 12, 2.4), 'rgba(110,170,180,.45)');
     } },
   };
+  // the Ring (High orchard): eight old perry pears stand round it (94-garden-paint-vale-1orchard.js); at its heart a low
+  // stone with a carved ring, from a wedding nobody remembers, and windfalls in the mown grass
+  ART['ld-ring'] = { box: [-40, -34, 44, 10], draw(B, o) {
+    const kit = KIT(), r = kit.rng(53), S = { rock: '#b4aa94', rockLo: '#8c8270', rockHi: '#d8cfb8', rockDk: '#4e483e', lichen: '#d8c86a' };
+    B.shadow(4, 2, 26, 6, .3);
+    B.f('M-16 0L-15 -16Q-14 -24 0 -24Q14 -24 15 -16L16 0Z', S.rockLo).f('M-16 0L-15 -16Q-14 -24 0 -24L0 0Z', S.rock).f('M-13 -15Q-12 -22 0 -22L0 -18Q-9 -18 -10 -13Z', S.rockHi, .8);
+    B.s(B.ell(0, -12, 6.5, 6.5), S.rockDk, 1.6, .6).s(B.ell(.6, -11.4, 6.5, 6.5), S.rockHi, .8, .5);
+    B.f(B.blob(r, -6, -22, 6, 2, 6, .5), o.season === 'winter' ? '#f4f6f2' : S.lichen, .8);
+    if (o.season === 'autumn') for (let k = 0; k < 7; k++) B.f(B.ell(-34 + r() * 70, 2 + r() * 6, 2.2, 1.8), '#c8b84a', .95);
+    if (o.season === 'spring') for (let k = 0; k < 16; k++) B.f(B.circ(-36 + r() * 74, -2 + r() * 10, 1.2), '#fdfaf2', .9);
+  } };
   function knows(id) { return !!ART[id]; }
   /** A painted landmark as a world handle (the same shape the village's painted buildings return). */
   function landmark(scene, prop, sc, element, W) {

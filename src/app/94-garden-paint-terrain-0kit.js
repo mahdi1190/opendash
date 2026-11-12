@@ -80,6 +80,9 @@ window.GardenPaintTerrainKit = (function () {
         if (bloom) for (let i = 0; i < 7; i++) B.f(B.circ(x + (r() - .5) * rx * 1.4, y + (r() - .7) * ry, .5 + r() * .5), bloom, .75);
         return B;
       },
+      rr(x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); return `M${x + r} ${y}h${w - 2 * r}q${r} 0 ${r} ${r}v${h - 2 * r}q0 ${r} ${-r} ${r}h${-(w - 2 * r)}q${-r} 0 ${-r} ${-r}v${-(h - 2 * r)}q0 ${-r} ${r} ${-r}z`; },
+      // an upright timber or stone member lit from the upper left: pal [body, shade, light]
+      post(x, top, bottom, w, pal) { B.f(B.rect(x - w / 2, top, w, bottom - top), pal[0]).f(B.rect(x - w / 2, top, Math.max(1, w * .28), bottom - top), pal[2], .55).f(B.rect(x + w / 2 - w * .3, top, w * .3, bottom - top), pal[1], .7); return B; },
       text(t, x, y, size, color) { cx.font = size + 'px Georgia, serif'; cx.fillStyle = color; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(t, x, y); return B; },
     };
     return B;
@@ -181,7 +184,8 @@ window.GardenPaintTerrainKit = (function () {
     const viewBox = (grow) => { const v = cam && cam.worldView; if (!v || !v.width) return null; const gx = v.width * grow, gy = v.height * grow; return [v.x - gx, v.y - gy, v.x + v.width + gx, v.y + v.height + gy]; };
     const dist = (ch, v) => Math.hypot((ch.bb[0] + ch.bb[2]) / 2 - (v[0] + v[2]) / 2, (ch.bb[1] + ch.bb[3]) / 2 - (v[1] + v[3]) / 2);
     let baked = 0, evicted = 0, sliceWorst = 0; const times = [];
-    { const v = viewBox(.05); for (const ch of list) if (v ? meets(ch.bb, v) : false) bakeOne(ch, 0); if (parent.sort) parent.sort('depth'); }
+    // opts.lazy: nothing bakes now; the on-screen chunks come in slices on the next ticks (a repaint never freezes a frame)
+    if (!opts.lazy) { const v = viewBox(.05); for (const ch of list) if (v ? meets(ch.bb, v) : false) bakeOne(ch, 0); if (parent.sort) parent.sort('depth'); }
     let dead = false;
     const tick = () => {
       if (dead) return;
@@ -189,7 +193,7 @@ window.GardenPaintTerrainKit = (function () {
       // one chunk per tick: first what is on screen, then the margin round it; each bake is small (a 256 px chunk)
       let best = null, bd = Infinity;
       for (const ch of list) if (!ch.live && meets(ch.bb, near)) { const d = dist(ch, v) - (meets(ch.bb, v) ? 1e6 : 0); if (d < bd) { bd = d; best = ch; } }
-      if (best && bakeOne(best, 12) && parent.sort) parent.sort('depth');
+      if (best && bakeOne(best, opts.slice || 12) && parent.sort) parent.sort('depth');
       if (bakedPx > budget) { let far = null, fd = -1; for (const ch of list) if (ch.live && !meets(ch.bb, keep)) { const d = dist(ch, v); if (d > fd) { fd = d; far = ch; } } if (far) evict(far); }
     };
     const timer = setInterval(() => ok(tick), 34);
