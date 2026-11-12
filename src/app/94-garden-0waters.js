@@ -126,7 +126,37 @@ const _gardenOtherWaters = (function () {
     else Object.assign(resident, { key, source, bundle: result });
     return result;
   }
-  return { shapes: (model, options) => bundle(model, options).shapes, loops: (model, options) => bundle(model, options).loops };
+  /** While the garden is out of sight (inside a room), measure its other waters
+   * again in short slices after a save, so coming back out finds them ready
+   * instead of scanning every cell in one long task. */
+  let warm = null;
+  function homeKey() { return ['home', typeof _gd !== 'undefined' ? _gd.rev : 0, typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0, setKey(typeof _GD_WORKS === 'undefined' ? null : _GD_WORKS), setKey(typeof _GD_WALK_EXTRA === 'undefined' ? null : _GD_WALK_EXTRA), setKey(typeof _GD_ICE === 'undefined' ? null : _GD_ICE)].join('|'); }
+  function prepare() {
+    if (typeof _gdv !== 'undefined' && _gdv.on) return;
+    const source = typeof state !== 'undefined' && state ? state.garden : null, key = homeKey();
+    if (resident.bundle && resident.key === key && resident.source === source || warm && warm.key === key && warm.source === source) return;
+    const W = GARDEN_WORLD, job = warm = { key, source, y: 0, bitmap: new Uint8Array(W.cols * W.rows), signature: '', island: typeof gardenIslandActive === 'function' && gardenIslandActive() };
+    const step = () => {
+      if (warm !== job) return;
+      if (homeKey() !== job.key || (typeof state !== 'undefined' && state ? state.garden : null) !== job.source) { warm = null; return; }
+      const until = performance.now() + 5;
+      for (; job.y < W.rows; job.y++) {
+        if (performance.now() > until) { setTimeout(step, 0); return; }
+        const y = job.y;
+        for (let x = 0; x < W.cols; x++) {
+          const land = typeof gardenLandWaterAt === 'function' ? gardenLandWaterAt(x, y) : null;
+          if (job.island ? gardenIslandOceanCell(x, y) : x >= 12 && x < 40 && y >= 21 && y < 38 && land === null) continue;
+          if (gardenIsWater(x, y)) { const index = y * W.cols + x; job.bitmap[index] = 1; job.signature += index + ','; }
+        }
+      }
+      warm = null;
+      let result = resident.bundle && resident.bundle.signature === job.signature ? resident.bundle : variants.get(job.signature);
+      if (!result) { result = build(job.bitmap, job.signature); variants.set(job.signature, result); if (variants.size > 12) variants.delete(variants.keys().next().value); }
+      Object.assign(resident, { key: job.key, source: job.source, bundle: result });
+    };
+    setTimeout(step, 0);
+  }
+  return { shapes: (model, options) => bundle(model, options).shapes, loops: (model, options) => bundle(model, options).loops, prepare };
 })();
 function gardenOtherWaterShapes(model, options) { return _gardenOtherWaters.shapes(model, options); }
 function gardenOtherWaterLoops(model, options) { return _gardenOtherWaters.loops(model, options); }

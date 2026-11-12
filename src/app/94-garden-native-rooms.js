@@ -229,7 +229,7 @@ window.GardenNativeRooms = (function () {
     const s = current(); if (!s || s.music || !_grm.R || !_grm.S) return;
     const next = _grmAllSpots(s.R, _grm.S), keep = new Set(), occurrences = new Map(), stats = s.spotStats || (s.spotStats = { built: 0, patched: 0, moved: 0 });
     for (let i = 0; i < next.length; i++) {
-      const q = next[i], id = String(q.id), occurrence = occurrences.get(id) || 0, key = id + '|' + occurrence, source = '<g class="' + escText(q.cls || '') + '">' + q.art + '</g>';
+      const q = next[i], id = String(q.id), occurrence = occurrences.get(id) || 0, key = id + '|' + occurrence, painted = s.paintSpec && window.GardenRoomPieces ? GardenRoomPieces.art(s, q) : null, source = '<g class="' + escText(q.cls || '') + '">' + (painted == null ? q.art : painted) + '</g>';
       occurrences.set(id, occurrence + 1);
       keep.add(key); let item = s.spots.get(key);
       let changed = false;
@@ -396,7 +396,9 @@ window.GardenNativeRooms = (function () {
       move(s, dt, time); if (s.dead) return;
     }
     if (s.music) { for (let i = 0; i < s.pawns.length; i++) { const pawn = s.pawns[i]; _eePawnFrame(EE_BAND[i], pawn, s.time); const obj = unwrap(pawn.pawn); if (obj && obj.setDepth) obj.setDepth(1000 + pawn.cy); } if (gardenMotionOn() && _ee.lvlRaw > .4 && s.time > (s.nextNote || 0)) { s.nextNote = s.time + .2 + Math.random() * .4; const pawn = s.pawns[Math.floor(Math.random() * Math.max(1, s.pawns.length))]; if (pawn) { const note = s.context.scene.add.text(pawn.cx, pawn.cy - 120, Math.random() < .5 ? '♪' : '♫', { fontFamily: 'serif', fontSize: '24px', color: '#ffe7a8' }).setDepth(10000); s.root.add(note); s.context.scene.tweens.add({ targets: note, x: note.x + Math.random() * 50 - 25, y: note.y - 80, alpha: 0, duration: 1600, onComplete: () => note.destroy() }); } } }
-    else { const P = GRM_PLAY[s.R.play]; if (P.frame) P.frame(s.R, _grm.S, frameDt); _grmExtraFrame(time); fish(frameDt); peerFishingFrame(s, frameDt); }
+    else { const P = GRM_PLAY[s.R.play]; if (P.frame) P.frame(s.R, _grm.S, frameDt); _grmExtraFrame(time); kicksFrame(s); fish(frameDt); peerFishingFrame(s, frameDt); }
+    // the garden outside gets its waters measured again while you are in here (94-garden-0waters.js)
+    if (time - (s.warmAt || 0) > 900 && typeof _gardenOtherWaters !== 'undefined' && _gardenOtherWaters.prepare) { s.warmAt = time; try { _gardenOtherWaters.prepare(); } catch (e) { /* measured on the way out instead */ } }
     for (const item of s.effects) if (item.until <= time) { removeHandle(item.art); if (item.onEnd) item.onEnd(); } s.effects = s.effects.filter(item => item.until > time);
     if (s.root.sort) s.root.sort('depth');
   }
@@ -409,11 +411,13 @@ window.GardenNativeRooms = (function () {
     s.previousCamera = { zoom: scene.cameras.main.zoom, x: scene.cameras.main.midPoint.x, y: scene.cameras.main.midPoint.y, background: scene.cameras.main.backgroundColor && scene.cameras.main.backgroundColor.rgba, bounded: scene.cameras.main.useBounds, bounds: scene.cameras.main._bounds ? { ...scene.cameras.main._bounds } : null };
     if (scene.cameras.main.removeBounds) scene.cameras.main.removeBounds();
     scene.cameras.main.setBackgroundColor(room.bg || '#101b19');
-    s.paintSpec = !music && window.GardenRoomArt && GardenRoomArt.wanted(room) ? GardenRoomArt.spec(room) : null;
+    s.paintSpec = window.GardenRoomArt && GardenRoomArt.wanted(room) ? GardenRoomArt.spec(room) : null;
     if (s.paintSpec) {
       // Painted village style: the room's own painting, baked in slices (94-garden-native-roomart-*.js); the way-out badge stays live.
       s.background = GardenRoomArt.create(s, room); s.doorMark = framedArt(s, '<g class="ee-door"><title>Way out</title>' + _grmOutMark() + '</g>', s.root, 5);
       if (s.paintSpec.lights) s.lights = s.paintSpec.lights.map(light => Object.assign({}, light));
+      // the room behind the garden keeps its live stand and coloured beams over the painting
+      if (music) s.musicTop = framedArt(s, '<defs><linearGradient id="eebeam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0c4" stop-opacity=".5"/><stop offset="1" stop-color="#fff0c4" stop-opacity="0"/></linearGradient></defs>' + _eeStand(436, 366) + '<g class="ee-beams"><path class="ee-beam ee-b1" d="M150 36L330 380L90 380Z" fill="url(#eebeam)"/><path class="ee-beam ee-b2" d="M810 36L870 380L630 380Z" fill="url(#eebeam)"/></g>', s.root, 6);
     } else s.background = framedArt(s, music ? _eeArt() + _eeStand(436, 366) + '<g class="ee-beams"><path class="ee-beam ee-b1" d="M150 36L330 380L90 380Z" fill="url(#eebeam)"/><path class="ee-beam ee-b2" d="M810 36L870 380L630 380Z" fill="url(#eebeam)"/></g>' : room.art() + _grmDoorArt(room), s.root, 0);
     if (!music && room.id === 'den' && !s.paintSpec) {
       // The lamp itself stays in the authored art. The engine supplies its
@@ -442,7 +446,7 @@ window.GardenNativeRooms = (function () {
       const band = art(scene, _eeBand(), s.root); s.band = band;
       s.pawns = band.queryAll('.ee-pawn').map(pawn => ({ pawn, pb: pawn.querySelector('.ee-pb'), sh: pawn.querySelector('.ee-sh'), mc: pawn.querySelector('.ee-mc'), mo: pawn.querySelector('.ee-mo'), gt: pawn.querySelector('.ee-gt'), open: false, cx: 0, cy: 0 })); _ee.pawns = s.pawns; for (const pawn of s.pawns) s.root.add(unwrap(pawn.pawn));
       for (let i = 0; i < s.pawns.length; i++) { const pawn = s.pawns[i]; pawn.cx = EE_BAND[i].x; pawn.cy = EE_BAND[i].y; pawn.effect = physicalSource(s, pawn.pb, 'room:' + s.serial + ':band:' + EE_BAND[i].id, 'actor', true); }
-      s.ui.querySelector('.ee-snd').onclick = _eeMute; const vol = s.ui.querySelector('.ee-vol'); vol.oninput = () => { _ee.volv = Number(vol.value) || 0; if (_ee.mute && _ee.volv > 0) _ee.mute = false; _eeGainApply(); _eeSoundSync(); }; vol.onchange = () => { try { localStorage.setItem(EE_VOL_KEY, String(_ee.volv)); } catch (e) { /* optional preference */ } }; _eeSoundSync(); _eeSongStart(); _eeSendAt(_ee.me.x, _ee.me.y, 'in');
+      s.ui.querySelector('.ee-snd').onclick = _eeMute; const vol = s.ui.querySelector('.ee-vol'); vol.oninput = () => { _ee.volv = Number(vol.value) || 0; if (_ee.mute && _ee.volv > 0) _ee.mute = false; _eeGainApply(); _eeSoundSync(); }; vol.onchange = () => { try { localStorage.setItem(EE_VOL_KEY, String(_ee.volv)); } catch (e) { /* optional preference */ } }; _eeSoundSync(); setTimeout(() => { if (current() === s) _eeSongStart(); }, 0); _eeSendAt(_ee.me.x, _ee.me.y, 'in');
     } else {
       _grm.root = s.ui; _grm.svg = null; _grm.props = { native: true }; _grm.actors = null; _grm.game = s.gameNode || null; _grm.school = null; _grm.bugL = null; _grwa.w = s.water;
       _grm.R = room; _grm.S = {}; _grm.fu = false; _grm.carry = ''; _grm.icons = null; _grm.fuKey = ''; _grm.fuAt = 0; _grm.m.clear(); _grm.keys.clear(); _grm.t = 0; _grm.last = 0; _grm.closing = false;
@@ -461,7 +465,7 @@ window.GardenNativeRooms = (function () {
     if (s.context.onInteract) s.context.onInteract({ kind: 'room-leave', room: s.R });
     if (s.music) { _eeSendAt(0, 0, 'out'); _ee.on = false; _ee.closing = false; _eeSongStop(); _ee.root = _ee.svg = _ee.actors = _ee.notes = _ee.me = null; _ee.m.clear(); _ee.keys.clear(); _ee.pawns = []; }
     else { _grmSend(0, 0, 'out'); const S = _grm.S; if (S && S.leave) S.leave(); _grm.on = false; _grm.closing = false; clearTimeout(_grm.sayT); clearTimeout(_grm.howT); _grm.root = _grm.svg = _grm.props = _grm.game = _grm.actors = _grm.school = _grm.bugL = _grm.me = _grm.R = _grm.S = null; _grm.m.clear(); _grm.keys.clear(); _grm.carry = ''; _grm.fu = false; _grwa.w = null; }
-    s.dead = true; live = null; clearTimeout(s.howTimer); for (const [M, N] of s.people) { clearPeerFishing(M); for (const handle of N.poses.values()) removeHandle(handle); } for (const item of s.spots.values()) removeHandle(item.art); for (const handle of s.fishArts.values()) removeHandle(handle); for (const handle of s.bugArts.values()) removeHandle(handle); for (const item of s.effects) removeHandle(item.art); removeHandle(s.background); removeHandle(s.doorMark); removeHandle(s.front); removeHandle(s.band); removeHandle(s.waterTop); s.root.destroy(); if (s.waterMask) s.waterMask.destroy(); s.ui.remove();
+    s.dead = true; live = null; clearTimeout(s.howTimer); for (const [M, N] of s.people) { clearPeerFishing(M); for (const handle of N.poses.values()) removeHandle(handle); } for (const item of s.spots.values()) removeHandle(item.art); for (const handle of s.fishArts.values()) removeHandle(handle); for (const handle of s.bugArts.values()) removeHandle(handle); for (const item of s.effects) removeHandle(item.art); removeHandle(s.background); removeHandle(s.doorMark); removeHandle(s.musicTop); removeHandle(s.front); removeHandle(s.band); removeHandle(s.waterTop); s.root.destroy(); if (s.waterMask) s.waterMask.destroy(); s.ui.remove();
     if (s.context.world && s.context.world.root) s.context.world.root.setVisible(true);
     if (s.context.box) s.context.box.classList.remove('gd-native-indoor');
     const cam = s.context.scene.cameras.main; if (s.previousCamera.bounded && s.previousCamera.bounds) { const b = s.previousCamera.bounds; cam.setBounds(b.x, b.y, b.width, b.height); } if (s.previousCamera.background) cam.setBackgroundColor(s.previousCamera.background); cam.setZoom(s.previousCamera.zoom); cam.centerOn(s.previousCamera.x, s.previousCamera.y);
@@ -476,6 +480,43 @@ window.GardenNativeRooms = (function () {
     const ms = gardenMomentMs(spec); Q.pose = 'hold'; Q.until = Date.now() + ms; Q.dir = 's'; Q.heldG = handle;
     s.effects.push({ art: handle, until: s.now + ms, onEnd: () => { if (Q.heldG === handle) Q.heldG = null; } });
     if (typeof _fxSound === 'function') _fxSound('sparkle'); return true;
+  }
+  /** Feedback when you use a thing: it gives a little (squash and settle at its
+   * foot) and lets off a few sparks. burst(): the day's prize, round you. */
+  function sparkTexture(scene) {
+    const key = 'gdpiece-spark'; if (scene.textures.exists(key)) return key;
+    const c = document.createElement('canvas'); c.width = c.height = 32; const cx = c.getContext('2d'), g = cx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.35, 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)'); cx.fillStyle = g; cx.fillRect(0, 0, 32, 32);
+    scene.textures.addCanvas(key, c); return key;
+  }
+  function sparks(s, x, y, n, tint, spread) {
+    if (!gardenMotionOn()) return;
+    const scene = s.context.scene, key = sparkTexture(scene);
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI / 2 + (Math.random() - .5) * (spread || 2.4), d = 26 + Math.random() * 40, im = scene.add.image(x, y, key).setTint(tint || 0xfff0b8).setBlendMode(Phaser.BlendModes.ADD).setScale(.35 + Math.random() * .35).setDepth(9800).setAlpha(.95);
+      s.root.add(im); scene.tweens.add({ targets: im, x: x + Math.cos(a) * d, y: y + Math.sin(a) * d * .8, alpha: 0, scale: .1, duration: 420 + Math.random() * 380, ease: 'Cubic.easeOut', onComplete: () => im.destroy() });
+    }
+  }
+  function kick(id) {
+    const s = current(); if (!s || s.music) return;
+    const q = s.spotList.find(row => String(row.id) === String(id) && !row.still); if (!q) return;
+    (s.kicks || (s.kicks = new Map())).set(String(id), s.time);
+    sparks(s, q.x, q.y - Math.min(q.h, 160) * .55, 5, 0xfff0c0);
+  }
+  function burst() {
+    const s = current(), M = _grm.me; if (!s || s.music || !M) return;
+    sparks(s, M.x, M.y - 70, 16, 0xffe08a, 6.2);
+    setTimeout(() => { if (current() === s) sparks(s, M.x, M.y - 90, 10, 0xfff8d8, 6.2); }, 180);
+  }
+  function kicksFrame(s) {
+    if (!s.kicks || !s.kicks.size) return;
+    for (const [id, t0] of s.kicks) {
+      let item = null; for (const it of s.spots.values()) if (String(it.q.id) === id && !it.q.still) { item = it; break; }
+      const age = s.time - t0;
+      if (!item || age > .5 || !gardenMotionOn()) { if (item) item.art.root.setScale(1); s.kicks.delete(id); continue; }
+      const k = age / .5, w = Math.sin(k * Math.PI * 2.4) * (1 - k) ** 2;
+      item.art.root.setScale(1 + .08 * w, 1 - .1 * w);
+    }
   }
   function float(text) { const s = current(), M = s && (s.music ? _ee.me : _grm.me); if (!M) return; const object = s.context.scene.add.text(M.x, M.y - 84, String(text), { fontFamily: 'Inter, sans-serif', fontSize: '20px', color: '#fff2b8', stroke: '#30220f', strokeThickness: 3 }).setOrigin(.5, 1).setDepth(10000); s.root.add(object); s.context.scene.tweens.add({ targets: object, y: object.y - 40, alpha: 0, duration: 1500, onComplete: () => object.destroy() }); }
   function effectsState() {
@@ -502,6 +543,6 @@ window.GardenNativeRooms = (function () {
     }
     state.revision = s.serial + ':' + s.effectRevision; state.lights = roomLights(s); return state;
   }
-  function lighting() { const s = current(); if (!s) return null; return { indoor: true, room: s.R.id, background: s.R.bg, width: GRM.W, height: GRM.H, ambient: s.music ? .38 : s.paintSpec && s.paintSpec.ambient != null ? s.paintSpec.ambient : /cellar|cave|grotto/.test(s.R.id) ? .42 : .58, lights: roomLights(s), occluders: s.spotList.filter(q => !q.still && q.w > 30 && q.h > 60).map(q => ({ x: q.x - q.w * .35, y: q.y - 12, width: q.w * .7, height: 12, tall: q.h })) }; }
-  return { current, enter, leave, update, paint, query, point, pick, pointer, pointerMove, key, filterKey, controlsOpen, controlsClose, focusScene, up, water, cell, roomPoint, front, castAt, addActor, fishingAnchor, poseActor: M => { const s = current(); if (s) poseActor(s, M); }, bugs, float, swing, got, lighting, effectsState };
+  function lighting() { const s = current(); if (!s) return null; return { indoor: true, room: s.R.id, background: s.R.bg, width: GRM.W, height: GRM.H, ambient: s.paintSpec && s.paintSpec.ambient != null ? s.paintSpec.ambient : s.music ? .38 : /cellar|cave|grotto/.test(s.R.id) ? .42 : .58, lights: roomLights(s), occluders: s.spotList.filter(q => !q.still && q.w > 30 && q.h > 60).map(q => ({ x: q.x - q.w * .35, y: q.y - 12, width: q.w * .7, height: 12, tall: q.h })) }; }
+  return { current, enter, leave, update, paint, kick, burst, query, point, pick, pointer, pointerMove, key, filterKey, controlsOpen, controlsClose, focusScene, up, water, cell, roomPoint, front, castAt, addActor, fishingAnchor, poseActor: M => { const s = current(); if (s) poseActor(s, M); }, bugs, float, swing, got, lighting, effectsState };
 })();

@@ -337,7 +337,7 @@ window.GardenNativeArt = (function () {
     }
     return true;
   }
-  function paintKey(node, clipKey) { if (!SHAPES.has(node.localName) && node.localName !== 'text' && node.localName !== 'tspan') return clipKey; const style = node._styles, keys = ['fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-dasharray', 'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin', 'font-size', 'font-family', 'font-weight', 'font-style', 'text-anchor', 'dominant-baseline', 'color']; return clipKey + '|' + keys.map(key => key + ':' + resolve(style[key], style)).join(';') + '|' + (SHAPES.has(node.localName) ? ['d', 'x', 'y', 'width', 'height', 'rx', 'ry', 'r', 'cx', 'cy', 'x1', 'y1', 'x2', 'y2', 'points'].map(key => node.attrs[key] || '').join('|') : [node.attrs.x || '', node.attrs.y || '', node.textContent].join('|')) + ((node.localName === 'circle' || node.localName === 'ellipse') ? '|radial:' + (radialLeafGradientKey(node) || '') : ''); }
+  function paintKey(node, clipKey) { if (node.localName === 'image') return clipKey + '|image:' + ['href', 'xlink:href', 'x', 'y', 'width', 'height'].map(key => node.attrs[key] || '').join('|'); if (!SHAPES.has(node.localName) && node.localName !== 'text' && node.localName !== 'tspan') return clipKey; const style = node._styles, keys = ['fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-dasharray', 'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin', 'font-size', 'font-family', 'font-weight', 'font-style', 'text-anchor', 'dominant-baseline', 'color']; return clipKey + '|' + keys.map(key => key + ':' + resolve(style[key], style)).join(';') + '|' + (SHAPES.has(node.localName) ? ['d', 'x', 'y', 'width', 'height', 'rx', 'ry', 'r', 'cx', 'cy', 'x1', 'y1', 'x2', 'y2', 'points'].map(key => node.attrs[key] || '').join('|') : [node.attrs.x || '', node.attrs.y || '', node.textContent].join('|')) + ((node.localName === 'circle' || node.localName === 'ellipse') ? '|radial:' + (radialLeafGradientKey(node) || '') : ''); }
   function parentStyleKey(parent, context) { return (parent ? (parent._selectorKey || selectorKey(parent)) + '|' + parent._inheritedKey : '') + '|motion:' + (context.options.motion === false ? 0 : 1) + '|clip:' + (parent ? parent._clipKey || '' : ''); }
   function queueActorCache(node) {
     for (let root = node; root; root = root.parentNode) if (root.classList.contains('gd-sprite') || root.classList.contains('gd-bug')) { stateFor(node.scene).actorCaches.add(root); return; }
@@ -679,7 +679,7 @@ window.GardenNativeArt = (function () {
         if (node._paintChanged && (node.localName === 'text' || node.localName === 'tspan')) node._draw();
       }
       for (let i = nodes.length - 1; i >= 0; i--) { const node = nodes[i]; if (node._transformChanged || node._paintChanged) node._applyTransform(); node._visibility(); if (node._alphaChanged) { node._computedAlpha = alpha(node._styles.opacity, node._styles); node.target.setAlpha(node._computedAlpha); } }
-      for (const node of nodes) if (node._paintChanged && SHAPES.has(node.localName)) node._draw();
+      for (const node of nodes) if (node._paintChanged && (SHAPES.has(node.localName) || node.localName === 'image')) node._draw();
       for (const node of nodes) node._compileAnimations();
     }
     _draw() {
@@ -690,6 +690,13 @@ window.GardenNativeArt = (function () {
         drawShape(this._graphics, contours, { ...style, 'fill-opacity': 1 }, this.context.defs, clips, this, true, false);
         if (color(style.stroke, style)) { if (!this._strokeGraphics) { this._strokeGraphics = this.scene.add.graphics(); this._inner.addAt(this._strokeGraphics, 1); } this._strokeGraphics.clear(); drawShape(this._strokeGraphics, contours, style, this.context.defs, clips, this, false, true); }
         else if (this._strokeGraphics) { this._strokeGraphics.destroy(); this._strokeGraphics = null; }
+      }
+      else if (this.localName === 'image') {
+        // A texture already in the scene (a baked painting), named by href.
+        const key = String(this.attrs.href || this.attrs['xlink:href'] || ''), textures = this.scene.textures;
+        if (this._image && (this._image.texture.key !== key || !this._image.active)) { this._image.destroy(); this._image = null; }
+        if (!this._image && key && textures.exists(key)) { this._image = this.scene.add.image(0, 0, key).setOrigin(0, 0); this._inner.addAt(this._image, 0); }
+        if (this._image) this._image.setPosition(num(this.attrs.x), num(this.attrs.y)).setDisplaySize(Math.max(.01, num(this.attrs.width, this._image.width)), Math.max(.01, num(this.attrs.height, this._image.height)));
       }
       else if (this.localName === 'text' || this.localName === 'tspan') {
         if (this.parentNode && this.parentNode.localName === 'text' && this.localName === 'tspan') return;
@@ -704,6 +711,7 @@ window.GardenNativeArt = (function () {
       if (this.nativeBounds) return { ...this.nativeBounds };
       if (this._bounds) return { ...this._bounds };
       const points = []; if (this._geometry) for (const contour of this._geometry) points.push(...contour.points);
+      if (this.localName === 'image') { const x = num(this.attrs.x), y = num(this.attrs.y); points.push({ x, y }, { x: x + num(this.attrs.width), y: y + num(this.attrs.height) }); }
       if (this._label) { const x = this._label.x - this._label.width * this._label.originX, y = this._label.y - this._label.height * this._label.originY; points.push({ x, y }, { x: x + this._label.width, y: y + this._label.height }); }
       for (const child of this.children) { if (DEFINITIONS.has(child.localName)) continue; const b = child.getBBox(), m = child._matrix || ID; for (const p of [point(m, b.x, b.y), point(m, b.x + b.width, b.y), point(m, b.x, b.y + b.height), point(m, b.x + b.width, b.y + b.height)]) points.push(p); }
       return this._bounds = boxOf(points, num(this._styles['stroke-width']) / 2);

@@ -163,7 +163,9 @@ function _eeSynth(ctx, dest) {
 async function _eeSongStart() {
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC || _ee.ac) return;
-  const ctx = new AC(), gain = ctx.createGain(), an = ctx.createAnalyser();
+  // One context for the whole session, asleep between visits: making a new
+  // one is slow, and walking back in should not pay for it every time.
+  const ctx = _ee.keep && _ee.keep.state !== 'closed' ? _ee.keep : new AC(), gain = ctx.createGain(), an = ctx.createAnalyser(); _ee.keep = ctx;
   an.fftSize = 256; an.smoothingTimeConstant = 0.55; gain.gain.value = 0; gain.connect(ctx.destination); gain.connect(an);
   const A = { ctx, gain, an, bins: new Uint8Array(an.frequencyBinCount), stop: null };
   _ee.ac = A;
@@ -173,7 +175,7 @@ async function _eeSongStart() {
     const r = await fetch('/api/garden/room-sound', { cache: 'force-cache' });
     if (r.ok) { const buf = await ctx.decodeAudioData(await r.arrayBuffer()); src = ctx.createBufferSource(); src.buffer = buf; src.loop = true; src.connect(gain); }
   } catch (e) { src = null; }
-  if (_ee.ac !== A) { try { ctx.close(); } catch (e) { /* gone */ } return; }   // you have left already
+  if (_ee.ac !== A) { try { gain.disconnect(); if (!_ee.ac) ctx.suspend(); } catch (e) { /* gone */ } return; }   // you have left already
   if (src) { src.start(); A.stop = () => { try { src.stop(); } catch (e) { /* done */ } }; } else A.stop = _eeSynth(ctx, gain);
   gain.gain.linearRampToValueAtTime(_eeGain(), ctx.currentTime + 1.4);
 }
@@ -197,7 +199,7 @@ function _eeSongStop() {
   const A = _ee.ac; _ee.ac = null;
   if (!A) return;
   try { A.gain.gain.cancelScheduledValues(A.ctx.currentTime); A.gain.gain.setTargetAtTime(0, A.ctx.currentTime, 0.12); } catch (e) { /* closing anyway */ }
-  setTimeout(() => { try { if (A.stop) A.stop(); A.ctx.close(); } catch (e) { /* gone */ } }, 600);
+  setTimeout(() => { try { if (A.stop) A.stop(); A.gain.disconnect(); if (!_ee.ac) A.ctx.suspend(); } catch (e) { /* gone */ } }, 600);
 }
 function _eeLevel(t) {
   const A = _ee.ac;

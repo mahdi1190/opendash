@@ -43,6 +43,7 @@ function _grmPay(R, say, gift) {
   const G = Object.assign({}, gift || R.gift); let listed = false;
   try { const A = _gdAct(), t = _gdToday(); if (A.days.has(t) && A.days.get(t).n > 0) { G.ticket = (G.ticket || 0) + 1; listed = true; } } catch (e) { /* no list here */ }   // you got something done on your list today: one more ticket
   const got = _grGive('room.' + R.id, G);
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) GardenNativeRooms.burst();
   if (got) { try { _glSound('twinkle'); gardenTickSoon(); } catch (e) { /* no sound, no matter */ } }
   const w = _grmGiftWords(G);
   _grmSay(say + (got && w ? ` You take away ${w}${listed ? ', one of them for what you got done on your list today' : ''}.` : ' Your pockets are full for today, but it will all be here tomorrow.'));
@@ -256,6 +257,7 @@ function _grmPaint() {
 function _grmSpot(id) { return _grmAllSpots(_grm.R, _grm.S).find(q => String(q.id) === String(id) && !q.still) || null; }
 function _grmAct(id) {
   if (_grmExtraAct(id)) return;
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) GardenNativeRooms.kick(id);
   const n = /^\d+$/.test(String(id)) ? Number(id) : id;
   try { GRM_PLAY[_grm.R.play].act(_grm.R, _grm.S, n); } catch (e) { console.error('[garden rooms]', e); }
 }
