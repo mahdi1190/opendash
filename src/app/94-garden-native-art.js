@@ -564,7 +564,7 @@ window.GardenNativeArt = (function () {
       // Pinned fixed containers keep their incoming context; only inherited
       // containers change it for a child's blend mode. Nonzero incoming
       // contexts fall back above, preserving the original reset/clone branch.
-      if (!fixedBlend && child.blendMode !== current.blendMode && child.blendMode !== -1) { current = context.getClone().setBlendMode(child.blendMode); current.use(); }
+      if (!fixedBlend && child.blendMode !== current.blendMode && child.blendMode !== -1) { current = context.getClone(); current.setBlendMode(child.blendMode); current.use(); }
       if (!neutralScroll && child.setScrollFactor) child.setScrollFactor(scrollX * container.scrollFactorX, scrollY * container.scrollFactorY);
       if (!neutralAlpha && child.setAlpha) child.setAlpha(topLeft * container.alpha, topRight * container.alpha, bottomLeft * container.alpha, bottomRight * container.alpha);
       if (neutralAlpha && neutralScroll) counts.nativeChildren++; else counts.ordinaryChildren++;
