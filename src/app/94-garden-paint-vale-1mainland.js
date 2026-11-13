@@ -120,12 +120,18 @@
     const bb = (pts, pad) => kit.bboxOf(pts, pad);
     const bandW = [-1800, SEAM, FADE + 10, W.sky + 86 * ch], bandN = [-1800, -1200, cp(118, 0).x, SEAM];   // (disjoint: where both painted, the haze went on twice and a pale box showed)
     for (const [i, band] of [bandW, bandN].entries()) {
+      // Every branch is clipped to the same disjoint band. A feature's bounds
+      // select chunks; they do not clip its drawing. Without this clip the
+      // corner branch filled the whole last chunk beyond the feathered seam.
+      const bandClip = new Path2D();
+      if (i) bandClip.rect(-6000, -6000, gw + 12000, SEAM + 6000);
+      else bandClip.rect(-6000, SEAM, 6000 + band[2], 9000);
       // beaches and foam where the mainland meets the sea
       main(band, 86 + i, (B) => { for (const sh of [shoreS, shoreE]) { V.strokePts(B, sh, P.shallow, 120, .3); V.strokePts(B, sh, P.sand, 60, 1); V.strokePts(B, sh, P.sandWet, 22, .5, 0, 18); B.cx.setLineDash([16, 8]); V.strokePts(B, sh, P.foam, 3, .7, 0, 32); B.cx.setLineDash([]); } });
       for (let part = 0; part < 4; part++) {
-        main(band, 90 + i * 10 + part, (B, r, cb) => { B.cx.clip(new Path2D(i ? B.rect(-6000, -6000, gw + 12000, SEAM + 6000) : B.rect(-6000, SEAM, 6000 + band[2], 9000))); B.cx.clip(bigP); B.cx.clip(outGrid, 'evenodd'); paintLand(B, r, cb, part); });
+        main(band, 90 + i * 10 + part, (B, r, cb) => { B.cx.clip(bandClip); B.cx.clip(bigP); B.cx.clip(outGrid, 'evenodd'); paintLand(B, r, cb, part); });
         // inside the grid's corners, only where the island's coast leaves sea
-        main(band, 120 + i * 10 + part, (B, r, cb) => { if (cb[0] > 0 && cb[1] > 0) return; B.cx.clip(bigP); B.cx.clip(outCoast, 'evenodd'); B.cx.clip(new Path2D(B.rect(0, 0, gw, 9000))); paintLand(B, r, cb, part); });
+        main(band, 120 + i * 10 + part, (B, r, cb) => { if (cb[0] > 0 && cb[1] > 0) return; B.cx.clip(bandClip); B.cx.clip(bigP); B.cx.clip(outCoast, 'evenodd'); B.cx.clip(new Path2D(B.rect(0, 0, gw, 9000))); paintLand(B, r, cb, part); });
       }
       // a soft seam at the grid edge: the island's woods and fells fade into the mainland
       // the part over the island fades out: west across the woods' edge, north down over the sky strip into the island's own fells

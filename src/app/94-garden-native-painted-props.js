@@ -103,6 +103,23 @@ window.GardenPaintedProps = (function () {
       // above the night grade (light, not paint): soft pools and halos
       over(im) { if (!im) return null; const layer = o.layer; if (layer && layer.add) { layer.add(im); im.setDepth(80005); over.push(im); } else node._inner.add(im); return im; },
       add, move(im, fn) { if (im) { moving.push({ im, fn }); h.dynamic = true; if (!h.kind) h.kind = 'painted'; } return im; },
+      // Bounds include transparent canvas padding and soft ground shadows.
+      // Only the opaque painted parts own a visual hit; canonical feet and
+      // doors are handled separately by the world's picking rules.
+      hitPoint(x, y) {
+        if (dead || !node.target.visible || !node.target.active) return false;
+        for (let i = parts.length - 1; i >= 0; i--) {
+          const im = parts[i], frame = im.frame;
+          if (!im.active || !im.visible || im.alpha <= .025 || !frame || !im.texture) continue;
+          const m = im.getWorldTransformMatrix(); if (Math.abs(m.a * m.d - m.b * m.c) < 1e-10) continue;
+          const p = m.applyInverse(x, y), width = frame.realWidth, height = frame.realHeight;
+          let px = Math.floor(p.x + im.displayOriginX), py = Math.floor(p.y + im.displayOriginY);
+          if (px < 0 || py < 0 || px >= width || py >= height) continue;
+          if (im.flipX) px = width - px - 1; if (im.flipY) py = height - py - 1;
+          if (scene.textures.getPixelAlpha(px, py, im.texture.key, frame.name) >= 96) return true;
+        }
+        return false;
+      },
       update(time) {
         if (dead || !moving.length) return; const dt = last == null ? 0 : Math.min(.08, Math.max(0, (time - last) / 1000)); last = time;
         const motion = !paused && (typeof gardenMotionOn !== 'function' || gardenMotionOn()); if (motion) clock += dt;

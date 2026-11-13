@@ -21,7 +21,7 @@
  * Nothing here runs at load. */
 window.GardenPaintWood = (function () {
   'use strict';
-  const K = 1, CH = 256, MAX_CHUNKS = 56, TEX = 'gpwd', BLEED = 2;
+  const K = 1, CH = 256, MAX_CHUNKS = 56, TEX = 'gpwd', BLEED = 2, FLOOR_REACH = 128;
   const slowStep = { ms: 0, at: '' };
   let state = null, lastError = null, bakes = 0, bakeMs = 0, worstBake = 0, tickWorst = 0;
   const ok = f => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
@@ -54,6 +54,17 @@ window.GardenPaintWood = (function () {
     const isPath = c => c && c.material === 'path';
     const near = (x, y, r, test) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (test(cellAt(x + dx, y + dy))) return true; return false; };
     const px = x => x * W.cellW, py = y => W.sky + y * W.cellH;
+    // Centre-cell eligibility chooses the planting, not the edge of its broad
+    // painted drift. Keep those drifts off the actual coast, beach and water.
+    const loops = rows => { const p = new Path2D(); for (const row of rows) { if (!row || row.length < 3) continue; p.moveTo(px(row[0][0]), py(row[0][1])); for (let i = 1; i < row.length; i++) p.lineTo(px(row[i][0]), py(row[i][1])); p.closePath(); } return p; };
+    const coast = data.coast && data.coast.land || [];
+    out.floorClip = { land: coast.length ? loops(coast) : null, water: (data.freshwater || []).filter(w => w.boundary && w.boundary.length >= 3).map(w => loops([w.boundary])), beach: Math.max(0, data.coast && data.coast.beachWidthPx || 0), routes: [] };
+    for (const route of data.routes || []) {
+      if (!route.points || route.points.length < 2) continue;
+      const pts = gardenIslandRoutePath(route).points, p = new Path2D(); if (pts.length < 2) continue;
+      p.moveTo(px(pts[0].x), py(pts[0].y)); for (let i = 1; i < pts.length; i++) p.lineTo(px(pts[i].x), py(pts[i].y));
+      out.floorClip.routes.push({ path: p, width: gardenIslandRoadStyle(route).main ? 40 : 26 });
+    }
     for (const region of data.regions || []) {
       const def = WOODS[region.id]; if (!def) continue;
       const poly = region.polygons[0], season = info.season || 'summer';
@@ -116,12 +127,12 @@ window.GardenPaintWood = (function () {
   function* bakeChunk(ch) {   // a generator: it yields between cells, so a bake spreads over frames
     const t0 = performance.now(), S = state, B = ch.box, W = S.W, c = document.createElement('canvas'), E = BLEED; c.width = Math.ceil((B.w + 2 * E) * K); c.height = Math.ceil((B.h + 2 * E) * K);
     const cx = c.getContext('2d'); cx.setTransform(K, 0, 0, K, -(B.x - E) * K, -(B.y - E) * K);
-    const view = { x: B.x - 80, y: B.y - 80, w: B.w + 160, h: B.h + 160 }, season = S.season;
-    for (const f of S.M.floors) {
-      if (f.kind !== 'floor') continue;
+    const view = { x: B.x - FLOOR_REACH, y: B.y - FLOOR_REACH, w: B.w + FLOOR_REACH * 2, h: B.h + FLOOR_REACH * 2 }, season = S.season;
+    if (S.M.floorClip.land) cx.clip(S.M.floorClip.land, 'evenodd');
+    for (const [f, land] of ch.floors) {
       const F = Object.assign({}, f.def.floor, (f.def.mood === 'meadow' ? MEADOW_TONE : SEASON_TONE)[season] || {}), r = rng(hash(f.region + ch.key));
       // soft lobed cells of litter (they overlap, so the edge of the wood is organic, never square)
-      for (const [x, y] of f.land) { yield;
+      for (const [x, y] of land) { yield;
         const X = x * W.cellW + W.cellW / 2, Y = W.sky + y * W.cellH + W.cellH / 2; if (X < view.x || X > view.x + view.w || Y < view.y || Y > view.y + view.h) continue;
         const g = noise(x, y, 5, hash(f.region) & 1023), rr = rng(hash(f.region) ^ (x * 977 + y * 131));
         // one opaque union of big jittered lobes: the floor's colour with an organic edge, no cell pattern
@@ -129,7 +140,7 @@ window.GardenPaintWood = (function () {
       }
       // broad drifts of tone over the union, from smooth fields: canopy shade under
       // the groves, sun in the glades, green moss and grass where it is damp
-      for (const [x, y] of f.land) { yield;
+      for (const [x, y] of land) { yield;
         if ((x + y * 3) % 2) continue; const X = x * W.cellW + W.cellW / 2, Y = W.sky + y * W.cellH + W.cellH / 2; if (X < view.x || X > view.x + view.w || Y < view.y || Y > view.y + view.h) continue;
         const g = noise(x, y, 5, hash(f.region) & 1023), m = noise(x, y, 3.3, 501), rr = rng(hash(f.region + 'd') ^ (x * 613 + y * 271));
         const blob = (a, col, sx, sy) => { cx.globalAlpha = a; cx.fillStyle = col; cx.fill(new Path2D(sceneDraw.blob(rr, X + (rr() - .5) * 30, Y + (rr() - .5) * 18, W.cellW * sx, W.cellH * sy, 10, .45))); };
@@ -150,7 +161,7 @@ window.GardenPaintWood = (function () {
         cx.globalAlpha = 1;
       }
       // fine detail last, so no lobe covers it: litter flecks, moss, spring bluebells
-      for (const [x, y] of f.land) { yield;
+      for (const [x, y] of land) { yield;
         const X = x * W.cellW + W.cellW / 2, Y = W.sky + y * W.cellH + W.cellH / 2; if (X < view.x || X > view.x + view.w || Y < view.y || Y > view.y + view.h) continue;
         const g = noise(x, y, 5, hash(f.region) & 1023), rr = rng(hash(f.region + 'f') ^ (x * 977 + y * 131));
         // leaf litter flecks and moss
@@ -161,12 +172,21 @@ window.GardenPaintWood = (function () {
       }
       cx.globalAlpha = 1; void r;
     }
-    for (const f of S.M.floors) { yield;
-      if (f.kind !== 'stamp' || f.x < view.x || f.x > view.x + view.w || f.y < view.y || f.y > view.y + view.h) continue;
+    for (const f of ch.stamps) { yield;
       const s = stampCanvas(f.id, f.v, season, f.h); if (!s) continue; const k = (f.h / s.hq) / 2; cx.drawImage(s.c, f.x - s.ox * k, f.y - s.oy * k, s.c.width * k, s.c.height * k);
     }
     // each tree's soft contact shadow on the floor, under the sprite
-    for (const t of S.M.trees) { if (t.x < view.x || t.x > view.x + view.w || t.y < view.y || t.y > view.y + view.h) continue; yield; const g = cx.createRadialGradient(t.x + 6, t.y, 0, t.x + 6, t.y, t.h * .28); g.addColorStop(0, 'rgba(30,40,24,.32)'); g.addColorStop(1, 'rgba(30,40,24,0)'); cx.fillStyle = g; cx.save(); cx.translate(t.x + 6, t.y); cx.scale(1, .32); cx.translate(-t.x - 6, -t.y); cx.beginPath(); cx.arc(t.x + 6, t.y, t.h * .28, 0, Math.PI * 2); cx.fill(); cx.restore(); }
+    for (const t of ch.shadows) { yield; const g = cx.createRadialGradient(t.x + 6, t.y, 0, t.x + 6, t.y, t.h * .28); g.addColorStop(0, 'rgba(30,40,24,.32)'); g.addColorStop(1, 'rgba(30,40,24,0)'); cx.fillStyle = g; cx.save(); cx.translate(t.x + 6, t.y); cx.scale(1, .32); cx.translate(-t.x - 6, -t.y); cx.beginPath(); cx.arc(t.x + 6, t.y, t.h * .28, 0, Math.PI * 2); cx.fill(); cx.restore(); }
+    // Remove only this texture's paint: the shared sand, water and road below
+    // stay visible. This follows the continuous authored boundaries, rather
+    // than cutting the litter into a staircase of beach or river cells.
+    cx.globalAlpha = 1; cx.globalCompositeOperation = 'destination-out';
+    cx.fillStyle = '#000'; cx.strokeStyle = '#000'; cx.lineJoin = 'round'; cx.lineCap = 'round';
+    const clip = S.M.floorClip;
+    if (clip.land && clip.beach) { cx.lineWidth = clip.beach * 2; cx.stroke(clip.land); }
+    for (const water of clip.water) cx.fill(water);
+    for (const rt of clip.routes) { cx.lineWidth = rt.width + 4; cx.stroke(rt.path); }
+    cx.globalCompositeOperation = 'source-over';
     const key = TEX + '-' + ch.key + '-' + (++S.serial);
     S.scene.textures.addImage(key, c); ch.tex = key; ch.bytes = c.width * c.height * 4;   // (never redrawn: no pixel read-back)
     // the canvas runs BLEED px past the chunk and shows only the chunk (a crop): edges meet exactly, and the edge
@@ -198,9 +218,26 @@ window.GardenPaintWood = (function () {
     const t0 = performance.now();
     const S = state = { scene, root, objects, W: info.W, season: info.season || 'summer', tod: info.tod || 'day', serial: 0, clock: 0, last: null, frame: 0 };
     S.M = ok(() => build(info, info.cellAt)); if (!S.M) { state = null; return null; }
-    // chunks over every wood's land
+    // A lobe can cross a chunk even when no land-cell origin lies inside it.
+    // Reserve every touched chunk, and bucket its contributors now: streaming
+    // no longer walks a whole region three times to bake one small picture.
     S.chunks = new Map(); const W = S.W;
-    for (const f of S.M.floors) if (f.kind === 'floor') for (const [x, y] of f.land) { const X = Math.floor(x * W.cellW / CH), Y = Math.floor((W.sky + y * W.cellH) / CH), k = X + ',' + Y; if (!S.chunks.has(k)) S.chunks.set(k, { key: k, box: { x: X * CH, y: Y * CH, w: CH, h: CH }, image: null, used: 0 }); }
+    const touch = (x0, y0, x1, y1, add) => {
+      const cx0 = Math.max(0, Math.floor((x0 - BLEED) / CH)), cy0 = Math.max(0, Math.floor((y0 - BLEED) / CH)), cx1 = Math.min(Math.ceil(W.cols * W.cellW / CH) - 1, Math.floor((x1 + BLEED) / CH)), cy1 = Math.min(Math.ceil((W.sky + W.rows * W.cellH) / CH) - 1, Math.floor((y1 + BLEED) / CH));
+      for (let Y = cy0; Y <= cy1; Y++) for (let X = cx0; X <= cx1; X++) {
+        const k = X + ',' + Y; let ch = S.chunks.get(k);
+        if (!ch) { ch = { key: k, box: { x: X * CH, y: Y * CH, w: CH, h: CH }, floors: new Map(), stamps: [], shadows: [], image: null, used: 0 }; S.chunks.set(k, ch); }
+        add(ch);
+      }
+    };
+    const floorRows = (ch, f) => { let rows = ch.floors.get(f); if (!rows) { rows = []; ch.floors.set(f, rows); } return rows; };
+    for (const f of S.M.floors) {
+      if (f.kind === 'floor') {
+        for (const row of f.land) { const x = (row[0] + .5) * W.cellW, y = W.sky + (row[1] + .5) * W.cellH; touch(x - FLOOR_REACH, y - FLOOR_REACH, x + FLOOR_REACH, y + FLOOR_REACH, ch => floorRows(ch, f).push(row)); }
+        for (const gl of f.glades || []) touch(gl.x - gl.rx * 1.7, gl.y - gl.ry * 1.7, gl.x + gl.rx * 1.7, gl.y + gl.ry * 1.7, ch => floorRows(ch, f));
+      } else if (f.kind === 'stamp') touch(f.x - FLOOR_REACH, f.y - FLOOR_REACH, f.x + FLOOR_REACH, f.y + FLOOR_REACH, ch => ch.stamps.push(f));
+    }
+    for (const t of S.M.trees) { const r = t.h * .28; touch(t.x + 6 - r, t.y - r * .32, t.x + 6 + r, t.y + r * .32, ch => ch.shadows.push(t)); }
     // trees bucketed by chunk, made the first time their chunk is near the view
     S.buckets = new Map(); for (const t of S.M.trees) { const k = Math.floor(t.x / CH) + ',' + Math.floor(t.y / CH); if (!S.buckets.has(k)) S.buckets.set(k, { box: { x: Math.floor(t.x / CH) * CH - 140, y: Math.floor(t.y / CH) * CH - 300, w: CH + 280, h: CH + 320 }, trees: [], made: false, vis: false }); S.buckets.get(k).trees.push(t); }
     S.tex = liveTextures(scene);

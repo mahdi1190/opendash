@@ -133,6 +133,14 @@ void main () {
       const started = performance.now(), mask = scene.textures.createCanvas(tile.key, maskSize, maskSize), c = mask.context;
       c.setTransform(scale, 0, 0, scale, (padding - tile.x) * scale, (padding - tile.y) * scale); c.fillStyle = '#fff';
       for (const region of tile.regions) { c.beginPath(); for (const loop of [region.points, ...(region.holes || [])]) { if (!loop.length) continue; c.moveTo(loop[0].x, loop[0].y); for (let i = 1; i < loop.length; i++) c.lineTo(loop[i].x, loop[i].y); c.closePath(); } c.fill('evenodd'); }
+      // Vale region borders continue into the mainland and across the sea.
+      // Only land belongs to their mist; the coast supplies its visible edge.
+      const coast = typeof gardenIslandActive === 'function' && gardenIslandActive() ? gardenIslandData().coast.land : null;
+      if (coast && coast.length) {
+        c.globalCompositeOperation = 'destination-in'; c.beginPath();
+        for (const loop of coast) { if (!loop.length) continue; c.moveTo(loop[0][0] * W.cellW, W.sky + loop[0][1] * W.cellH); for (let i = 1; i < loop.length; i++) c.lineTo(loop[i][0] * W.cellW, W.sky + loop[i][1] * W.cellH); c.closePath(); }
+        c.fill(); c.globalCompositeOperation = 'source-over';
+      }
       c.setTransform(1, 0, 0, 1, 0, 0);
       const image = c.getImageData(0, 0, maskSize, maskSize), pixels = image.data, bits = new Uint8Array(maskSize * maskSize); let occupied = 0;
       for (let i = 0; i < bits.length; i++) {
@@ -143,7 +151,11 @@ void main () {
       const toOpen = distanceField(bits, maskSize, maskSize, 0), toLocked = distanceField(bits, maskSize, maskSize, 1);
       for (let i = 0; i < bits.length; i++) {
         const distance = (bits[i] ? Math.max(0, Math.sqrt(toOpen[i]) - .5) : -Math.max(0, Math.sqrt(toLocked[i]) - .5)) / scale, at = i * 4;
-        pixels[at] = Math.round((Math.max(-192, Math.min(192, distance)) / 384 + .5) * 255); pixels[at + 1] = bits[i] * 255; pixels[at + 2] = 255; pixels[at + 3] = 255;
+        // Fade into the painted mainland at the finite map's outer edge.
+        // The same world-space ramp in each padded tile keeps joins continuous.
+        const x = tile.x - padding + (i % maskSize + .5) / scale, y = tile.y - padding + (Math.floor(i / maskSize) + .5) / scale;
+        const edge = Math.max(0, Math.min(1, Math.min(x, y, width - x, height - y) / 96));
+        pixels[at] = Math.round((Math.max(-192, Math.min(192, distance)) / 384 + .5) * 255); pixels[at + 1] = bits[i] * 255; pixels[at + 2] = Math.round(255 * edge * edge * (3 - 2 * edge)); pixels[at + 3] = 255;
       }
       c.putImageData(image, 0, 0); mask.refresh(); tile.texture = mask;
       tile.shader = scene.add.shader({ name: painted ? 'GardenFrontierMistPainted' : 'GardenFrontierMist', fragmentSource: painted ? paintedFragment : fragment, setupUniforms(set) { set('uLand', 0); set('uMist', 1); set('uSize', [tileSize, tileSize]); set('uOrigin', [tile.x, tile.y]); set('uPadding', padding); set('uTime', elapsed); set('uFade', tile.fade == null ? 1 : tile.fade); if (painted) { set('uRetreat', tile.retreat); set('uTint', tint); } } }, tile.x + tileSize / 2, tile.y + tileSize / 2, tileSize, tileSize, [tile.key, noiseKey]).setDepth(75000).setVisible(false);
