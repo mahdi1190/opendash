@@ -456,8 +456,9 @@ window.GardenNative = (function () {
         if (warm && sameWarmView(camera)) { cacheReport.warmRenders++; finish(null, warm.state); return; }
         warm = null;
         // Loading uses the same bounded capture scheduler as normal play.
-        // Prepare fit-view terrain too, so the first zoom-out does not replay
-        // uncached woodland. Game rules, movement and saves stay paused.
+        // Ready the current view and its guard first; offscreen fit-view
+        // caches keep warming in that scheduler after input is available.
+        // Game rules, movement and saves stay paused during preparation.
         const now = performance.now(), cache = s.world.prepareCaches ? s.world.prepareCaches() : { ready: true };
         Object.assign(cacheReport, cache); cacheReport.frames++; cacheReport.ms = now - started;
         GardenNativeArt.updateAll(s.scene, now); if (s.water) s.water.update(now, 0, s.lighting.environment());
