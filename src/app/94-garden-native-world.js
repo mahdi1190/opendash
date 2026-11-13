@@ -308,6 +308,22 @@ window.GardenNativeWorld = (function () {
       for (const item of m.decor || []) { const def = item.def || gardenDecor(item.id); if (def && def.layer === 'ground') remember(item, def.w || 1, def.h || 1); }
       return sections;
     }
+    // Paint only: the narrow authored road may round the bare shoulder of
+    // an unowned core plot. Buying, planting, walking and route finding never
+    // read this allowance. Regional locks and physical surfaces still win.
+    function routePaintAllowance(cells, sc, cultivated) {
+      const open = new Set(sc.areas || []), allowed = new Uint8Array(cells.length);
+      for (let i = 0; i < cells.length; i++) {
+        const cell = cells[i], x = i % W.cols, y = Math.floor(i / W.cols), row = cell && cell.row;
+        if (!cell || cell.water || ['ocean', 'beach', 'water', 'pool', 'lake', 'ice'].includes(cell.material) || row && row.solid) continue;
+        const base = gardenIslandBaseCell(x, y), zone = gardenIslandZoneAt(x, y);
+        if (!base || !base.land || base.solid || base.staticId || zone && !open.has('zn-' + zone)) continue;
+        const bareCore = !!(row && row.plot === 'core' && !open.has(row.id) && !(cultivated && cultivated.has(row.id)));
+        if (row && row.plot && !bareCore || cell.locked && !bareCore) continue;
+        allowed[i] = 1;
+      }
+      return allowed;
+    }
     function clearPierDecks() {
       cacheQueue.delete(pierBoards);
       // Each native deck owns its Graphics and cached tiles. Removing the
@@ -329,7 +345,7 @@ window.GardenNativeWorld = (function () {
     // Painted nature (94-garden-paint-*.js): the vale's water and woods, drawn from the layout.
     function natureLayers(sc, cellAt) { if (window.GardenPaintNature) try { GardenPaintNature.paint(scene, rootNode._inner, objects._inner || objects.target, { W, data: GardenIslandLayout.data, season: sc.season, tod: sc.tod, cellAt }); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); } }
     function natureTick(time) { if (window.GardenNativePainted && GardenNativePainted.fadeUnder) try { GardenNativePainted.fadeUnder(time); } catch (e) { /* a frame without the fade */ } if (!window.GardenPaintNature) return; const cam = scene.cameras.main, zx = cam.zoomX || cam.zoom || 1, zy = cam.zoomY || cam.zoom || 1; GardenPaintNature.tick(time, { x: cam.scrollX + cam.width / 2 - cam.width / zx / 2, y: cam.scrollY + cam.height / 2 - cam.height / zy / 2, w: cam.width / zx, h: cam.height / zy }); }
-    function packLayers(m, sc, island, cellAt, cultivatedNow, cells) {
+    function packLayers(m, sc, island, cellAt, cultivatedNow, cells, routePaint) {
       if (!island || !packOn()) return false;
       paintTerrain(sc);
       const D = GardenIslandLayout.data, start = D.anchors.start;
@@ -343,7 +359,9 @@ window.GardenNativeWorld = (function () {
       const coast = island.land.map(l => l.map(q => ({ x: q[0] * W.cellW, y: W.sky + q[1] * W.cellH })));
       const lawn = coast.map(l => insetTerrainContour(l, island.beachWidthPx));
       const lakes = outlines(cells.map((c, i) => ({ material: inBox(i % W.cols, Math.floor(i / W.cols)) && wet(c) && c.material !== 'ocean' ? 'water' : '' })), 'water', W);
-      const pathLoops = outlines(mark((c, x, y) => inBox(x, y) && c.material === 'path'), 'm', W, true).map(l => insetTerrainContour(l, -2));
+      // Both ground painters use this same exact allowance. The curved
+      // stroke owns the visible width, not a staircase of path-cell centres.
+      const pathLoops = outlines(mark((c, x, y) => inBox(x, y) && !!routePaint[y * W.cols + x]), 'm', W, true);
       // Owned beds: soil where something grows, a dug edge round an empty owned plot,
       // so plantable land always reads as plantable on the painted lawn.
       const soilSet = new Set(['bed', 'patch', 'veg', 'rich', 'herb', 'berry']);
@@ -357,7 +375,15 @@ window.GardenNativeWorld = (function () {
       // The village ground is keyed by what lies in its own box (each village cell's material and whether it is an open plot; cells of the zones past the gates are the mist's), never by
       // the open areas as a whole: a gate opening, or the woodland's plots opening with it, lies outside the box, and a 1 s bake
       // would freeze the mist rolling back.
-      let boxSig = 0; for (let y = cbox.y0 - 2; y <= cbox.y1 + 2; y++) for (let x = cbox.x0 - 2; x <= cbox.x1 + 2; x++) { if (typeof gardenZoneOf === 'function' && gardenZoneOf(x, y)) continue; const c = cellAt(x, y), t = c ? (c.material || '') + (c.row && c.row.plot && !c.locked ? '+' : '') : '-'; for (let i = 0; i < t.length; i++) boxSig = (Math.imul(boxSig, 31) + t.charCodeAt(i)) | 0; boxSig = (Math.imul(boxSig, 31) + 59) | 0; }
+      let boxSig = 0;
+      for (let y = cbox.y0 - 2; y <= cbox.y1 + 2; y++) for (let x = cbox.x0 - 2; x <= cbox.x1 + 2; x++) {
+        const paint = x >= 0 && y >= 0 && x < W.cols && y < W.rows ? routePaint[y * W.cols + x] : 0;
+        boxSig = (Math.imul(boxSig, 31) + paint) | 0;
+        if (typeof gardenZoneOf === 'function' && gardenZoneOf(x, y)) continue;
+        const c = cellAt(x, y), t = c ? (c.material || '') + (c.row && c.row.plot && !c.locked ? '+' : '') : '-';
+        for (let i = 0; i < t.length; i++) boxSig = (Math.imul(boxSig, 31) + t.charCodeAt(i)) | 0;
+        boxSig = (Math.imul(boxSig, 31) + 59) | 0;
+      }
       const sig = [cbox.x0, cbox.y0, boxSig, cultivatedNow ? [...cultivatedNow].sort().join(',') : '', lakes.length, pathLoops.length].join('|');
       try { packGround = GardenNativePainted.ground(scene, rootNode._inner, { W, box, coast, lawn, lakes, paths: pathLoops, routes, plaza, meadow, soil, owned, season: sc.season, sig: sig + '|' + soil.length + ':' + owned.length }); }
       catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); return false; }
@@ -423,6 +449,7 @@ window.GardenNativeWorld = (function () {
         if (island && row && soilKinds.has(row.kind) && (locked || !cultivated.has(row.id))) material = 'green';
         cells[y * W.cols + x] = { material, locked, area, row, water }; kinds.add(material);
       }
+      const routePaint = island ? routePaintAllowance(cells, sc, cultivated) : null;
       const lakeHoles = lake && !island ? outlines(cells.map((c, index) => ({ material: lake.cellContains(index % W.cols, Math.floor(index / W.cols)) && (!c.water || c.material === 'ice') ? 'hole' : '' })), 'hole', W, true).filter(loop => polygonArea(loop) > 0).map(loop => loop.slice().reverse()) : [];
       const frozenLake = lake && kinds.has('ice') && !kinds.has('lake');
       const cellAt = (x, y) => x >= 0 && y >= 0 && x < W.cols && y < W.rows ? cells[y * W.cols + x] : null;
@@ -495,11 +522,10 @@ window.GardenNativeWorld = (function () {
               // Another public apron can overlap this closed branch. Keep its
               // clear ground without painting an isolated route beyond the gate.
               if (closed && (x - gate.x) * gate.dx + (y - gate.y) * gate.dy >= 0) continue;
-              const cell = cellAt(x, y);
-              // Rounded authored bends can pass through the clear shoulder of
-              // a path cell. Clipping them to centre-classified path cells
-              // cuts square notches into an otherwise continuous curve.
-              if (!cell || cell.locked || cell.water || cell.row && (cell.row.plot || cell.row.solid) || cell.material === 'beach' || cell.material === 'ocean') continue;
+              // The same paint allowance clips the village bake. It lets a
+              // bend cross a bare unowned core shoulder while the region,
+              // cultivated plots, solid footprints and wet surfaces stay clear.
+              if (!routePaint[y * W.cols + x]) continue;
               const clipped = clipTerrainPolygon(quad, { x, y, width: 1, height: 1 });
               if (clipped.length > 2 && Math.abs(polygonArea(clipped)) > 1e-8) g.fillPoints(clipped.map(pointOf));
             }
@@ -512,8 +538,8 @@ window.GardenNativeWorld = (function () {
         // They share its retained ground batch and add no interactive objects.
         g.lineStyle(.65, 0x8c8165, .25);
         for (const route of routes) for (const joint of gardenIslandRoadJoints(route)) {
-          const cell = cellAt(Math.floor(joint.x), Math.floor(joint.y));
-          if (!cell || cell.locked || cell.water || cell.row && cell.row.plot) continue;
+          const x = Math.floor(joint.x), y = Math.floor(joint.y);
+          if (x < 0 || y < 0 || x >= W.cols || y >= W.rows || !routePaint[y * W.cols + x]) continue;
           const a = pointOf(joint.a), b = pointOf(joint.b); g.lineBetween(a.x, a.y, b.x, b.y);
         }
         // A doorway gets a small rounded forecourt, not a painted rectangle
@@ -699,7 +725,7 @@ window.GardenNativeWorld = (function () {
       }
       const entry = island && GardenIslandLayout.data.anchors.start;
       const cx = (entry ? entry.x : 22.5) * W.cellW, cy = W.sky + (entry ? entry.y : 20.5) * W.cellH;
-      const packed = packLayers(m, sc, island, cellAt, cultivated, cells); if (window.GardenPaintNature && GardenPaintNature.settle) GardenPaintNature.settle();
+      const packed = packLayers(m, sc, island, cellAt, cultivated, cells, routePaint); if (window.GardenPaintNature && GardenPaintNature.settle) GardenPaintNature.settle();
       if (packed) { /* the pack's plaza replaces the painted arrival disc */ } else g.fillStyle(0xb8b491).fillEllipse(cx, cy, 65, 26).lineStyle(1.1, 0x7f9270, .8).strokeEllipse(cx, cy, 65, 26).lineStyle(.8, 0xe2dcb9, .65).strokeEllipse(cx, cy, 56, 21);
       g.fillStyle(0x788d6c, .8).fillTriangle(cx, cy - 7, cx + 3, cy + 1, cx - 3, cy + 1).fillTriangle(cx, cy + 7, cx + 2, cy - 1, cx - 2, cy - 1);
       if (island) {
