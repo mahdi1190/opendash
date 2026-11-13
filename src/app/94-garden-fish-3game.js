@@ -118,18 +118,25 @@ function _gwFx() {
   _gw.fx = fx;
   return fx;
 }
-function _gwFishHand(fx) {
-  if (!fx || !fx.layer._native || !window.GardenNativeArt) return null;
-  if (!fx.hand || !fx.hand.isConnected) {
-    const room = _grm.on && window.GardenNativeRooms ? GardenNativeRooms.current() : null;
-    const person = room && room.people.get(_grm.me), body = person && person.active;
-    fx.hand = (body ? body.rootNode : _gw.node)?.querySelector('.gpl-fs');
+/** Project the current drawn hand into this rig's coordinates, for owner and
+ * peers alike. A retained but hidden earlier pose must never own the grip. */
+function gardenFishHandAnchor(fx, owner, layer) {
+  if (!fx || !owner || !layer || !layer._native || !window.GardenNativeArt) return null;
+  const body = owner._nativePlayerCurrent && owner._nativePlayerCurrent.node || owner;
+  if (fx.handBody !== body || !fx.hand || !fx.hand.isConnected) {
+    fx.handBody = body; fx.hand = body.querySelector('.gpl-fs');
     const origin = fx.hand && /transform-origin:\s*([\d.-]+)px\s+([\d.-]+)px/.exec(fx.hand.getAttribute('style') || '');
     fx.handPoint = origin ? { x: Number(origin[1]) + Math.sin(70 * Math.PI / 180) * 19.1 * _GPL_KY * _GPL_S, y: Number(origin[2]) + Math.cos(70 * Math.PI / 180) * 19.1 * _GPL_KY * _GPL_S } : null;
   }
-  if (!fx.handPoint || !fx.hand || !fx.hand._inner || !fx.layer._inner) return null;
+  if (!fx.handPoint || !fx.hand || !fx.hand._inner || !layer._inner) return null;
   const A = GardenNativeArt, p = A.point(fx.hand._inner.getWorldTransformMatrix(), fx.handPoint.x, fx.handPoint.y);
-  return A.point(A.inverse(fx.layer._inner.getWorldTransformMatrix()), p.x, p.y);
+  return A.point(A.inverse(layer._inner.getWorldTransformMatrix()), p.x, p.y);
+}
+function _gwFishHand(fx) {
+  const room = _grm.on && window.GardenNativeRooms ? GardenNativeRooms.current() : null;
+  const person = room && room.people.get(_grm.me), body = person && person.active;
+  const owner = body ? body.rootNode : _gw.node && (_gw.node.querySelector('.gd-pl-in') || _gw.node);
+  return gardenFishHandAnchor(fx, owner, fx && fx.layer);
 }
 function _gwRodPoints(fx) {
   // the hand and the tip of the rod, in stage units, for how the player is standing

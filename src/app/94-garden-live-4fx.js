@@ -278,22 +278,24 @@ function _gllFxStep(A, dt) {
   }
   const e = A.fxe, W = GARDEN_WORLD, f = A.face < 0 ? -1 : 1, motion = !_gllReduced(), contactFish = _gfsFishForSlot(A.w), contact = _gfsFloatContact(contactFish);
   const tx = (F.bx - (I ? I.x : A.x)) * W.cellW, ty = (F.by - (I ? I.y : A.y)) * W.cellH;
-  let tipX = f * 34, tipY = -62, bx = tx, by = ty, sag = 8;
+  const hand = typeof gardenFishHandAnchor === 'function' ? gardenFishHandAnchor(e, I ? I.handRoot : A.inner, A.fxg) : null;
+  const hx = hand && Number.isFinite(hand.x) ? hand.x : f * 8, hy = hand && Number.isFinite(hand.y) ? hand.y : -30, handDX = hx - f * 8, handDY = hy + 30;
+  let tipX = f * 34 + handDX, tipY = -62 + handDY, bx = tx, by = ty, sag = 8;
   if (F.state === 'cast') {
-    const u = Math.min(1, F.t / 0.28); tipX = f * (-18 + 52 * u); tipY = -(78 - 16 * u);
+    const u = Math.min(1, F.t / 0.28); tipX = f * (-18 + 52 * u) + handDX; tipY = -(78 - 16 * u) + handDY;
     const k = Math.max(0, Math.min(1, (F.t - 0.22) / 0.5));
     if (F.t >= 0.22 && !e.castFrom) e.castFrom = { x: tipX, y: tipY };
     const from = e.castFrom || { x: tipX, y: tipY }, arc = Math.max(16, Math.min(46, Math.hypot(tx - from.x, ty - from.y) * 0.18));
     bx = from.x + (tx - from.x) * k; by = from.y + (ty - from.y) * k - Math.sin(k * Math.PI) * (motion ? arc : 0); sag = 2 + 6 * k;
     if (F.t >= 0.75) { F.state = 'wait'; F.t = 0; _gllRing(A, F, 1); if (typeof _fxSound === 'function') _fxSound('splash'); }
   }
-  else if (F.state === 'wait') { tipX = f * 38; tipY = -56; by = ty + (motion ? Math.sin(F.t * 2.6) * 0.65 : 0); sag = 6; const fsh = contactFish; if (fsh && fsh.st === GF_ST.nibble && fsh.n !== F.nibN) { F.nibN = fsh.n; F.dip = 0.35; } if (F.dip > 0) { F.dip -= dt; if (!contact) by += motion ? Math.sin(F.dip * 28) * 1.2 : 0; } }
-  else if (F.state === 'bite') { tipX = f * 38; tipY = -56 + (motion ? Math.sin(F.t * 22) * 1.1 : 0); by = ty + 3.4 + (motion ? Math.sin(F.t * 20) * 1.15 : 0); sag = 2; }
-  else if (F.state === 'reel') { tipX = f * 30; tipY = -68 + (motion ? Math.sin(F.t * 12) * 0.8 : 0); by = ty + (motion ? Math.sin(F.t * 12) * 0.9 : 0); bx = tx + (motion ? Math.sin(F.t * 9) * 1.2 : 0); sag = 0.6; }
-  else if (F.state === 'land') { const t = Math.min(1, F.t / 0.5), u = 1 - (1 - t) * (1 - t); tipX = f * 30; tipY = -68 + (motion ? Math.sin(F.t * 12) * 0.8 : 0); bx = tx + (tipX - tx) * u; by = ty + (tipY - ty) * u - Math.sin(u * Math.PI) * (motion ? 20 : 0); sag = 0.8; if (F.t >= 0.6) { A.fish = null; A.key = ''; _gllFxClear(A); return; } }
+  else if (F.state === 'wait') { tipX = f * 38 + handDX; tipY = -56 + handDY; by = ty + (motion ? Math.sin(F.t * 2.6) * 0.65 : 0); sag = 6; const fsh = contactFish; if (fsh && fsh.st === GF_ST.nibble && fsh.n !== F.nibN) { F.nibN = fsh.n; F.dip = 0.35; } if (F.dip > 0) { F.dip -= dt; if (!contact) by += motion ? Math.sin(F.dip * 28) * 1.2 : 0; } }
+  else if (F.state === 'bite') { tipX = f * 38 + handDX; tipY = -56 + handDY + (motion ? Math.sin(F.t * 22) * 1.1 : 0); by = ty + 3.4 + (motion ? Math.sin(F.t * 20) * 1.15 : 0); sag = 2; }
+  else if (F.state === 'reel') { tipX = f * 30 + handDX; tipY = -68 + handDY + (motion ? Math.sin(F.t * 12) * 0.8 : 0); by = ty + (motion ? Math.sin(F.t * 12) * 0.9 : 0); bx = tx + (motion ? Math.sin(F.t * 9) * 1.2 : 0); sag = 0.6; }
+  else if (F.state === 'land') { const t = Math.min(1, F.t / 0.5), u = 1 - (1 - t) * (1 - t); tipX = f * 30 + handDX; tipY = -68 + handDY + (motion ? Math.sin(F.t * 12) * 0.8 : 0); bx = tx + (tipX - tx) * u; by = ty + (tipY - ty) * u - Math.sin(u * Math.PI) * (motion ? 20 : 0); sag = 0.8; if (F.t >= 0.6) { A.fish = null; A.key = ''; _gllFxClear(A); return; } }
   if (contact && ['wait', 'bite', 'reel'].includes(F.state)) { bx = tx + (motion ? contact.tugX : 0); by = ty + contact.dip + (motion ? contact.tugY + (F.state === 'wait' ? Math.sin(F.t * 2.6) * .45 * (1 - contact.pulse) : 0) : 0); }
-  const rod = `M${(f * 8).toFixed(1)} -30L${tipX.toFixed(1)} ${tipY.toFixed(1)}`;
-  if (e.rod.getAttribute('d') !== rod) { e.rod.setAttribute('d', rod); if (e.skin) gardenLookRodSkinAt(e.skin, f * 8, -30, tipX, tipY); }
+  const rod = `M${hx.toFixed(1)} ${hy.toFixed(1)}L${tipX.toFixed(1)} ${tipY.toFixed(1)}`;
+  if (e.rod.getAttribute('d') !== rod) { e.rod.setAttribute('d', rod); if (e.skin) gardenLookRodSkinAt(e.skin, hx, hy, tipX, tipY); }
   const tilt = motion ? contact && ['wait', 'bite', 'reel'].includes(F.state) ? contact.tilt + (F.state === 'wait' ? Math.sin(F.t * 2.6) * 1.5 * (1 - contact.pulse) : 0) : F.state === 'bite' ? Math.sin(F.t * 20) * 9 : F.state === 'reel' ? Math.sin(F.t * 9) * 7 : F.state === 'wait' ? Math.sin(F.t * 2.6) * 3 : 0 : 0;
   _gllFxAttr(e.line, 'd', `M${tipX.toFixed(1)} ${tipY.toFixed(1)}Q${((tipX + bx) / 2).toFixed(1)} ${((tipY + by - 7) / 2 + sag).toFixed(1)} ${(bx + Math.sin(tilt * Math.PI / 180) * 7).toFixed(1)} ${(by - Math.cos(tilt * Math.PI / 180) * 7).toFixed(1)}`);
   _gllFxAttr(e.bob, 'transform', `translate(${bx.toFixed(1)} ${by.toFixed(1)}) rotate(${tilt.toFixed(1)})`);

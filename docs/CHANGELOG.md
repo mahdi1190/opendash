@@ -10,6 +10,13 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.68.3] - 2026-11-13
+
+### Fixed
+
+- The two ground painters share one road-paint allowance, so curves can round bare plot shoulders while water, structures, planted ground and locked regions stay protected.
+- Fishing rods follow the current animated hand for you and friends, including inside rooms. Rod skins and lines stay attached as the character turns or changes pose.
+
 ## [2.68.2] - 2026-11-13
 
 ### Fixed

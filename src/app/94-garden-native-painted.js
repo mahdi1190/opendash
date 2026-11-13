@@ -152,8 +152,9 @@ window.GardenNativePainted = (function () {
       strokeLoops(info.lakes, P.foam, 2, .7);
     }
     // 4. Paths: a soft cast shadow, the worn edge, the gravel and a paler
-    //    centre where feet go, clipped to the path the game walks.
-    cx.save(); if (info.paths.length) clipLoops(info.paths);
+    //    centre, clipped to the shared paint allowance from the world.
+    // An empty allowance paints no route, rather than dropping the clip.
+    cx.save(); clipLoops(info.paths);
     const stroke = (pts, style, width, alpha, dx, dy) => { if (pts.length < 2) return; cx.beginPath(); cx.moveTo(pts[0].x + (dx || 0), pts[0].y + (dy || 0)); for (let i = 1; i < pts.length; i++) cx.lineTo(pts[i].x + (dx || 0), pts[i].y + (dy || 0)); cx.strokeStyle = style; cx.lineWidth = width; cx.globalAlpha = alpha; cx.lineJoin = 'round'; cx.lineCap = 'round'; cx.stroke(); cx.globalAlpha = 1; };
     for (const rt of info.routes) stroke(rt.points, P.shadow, rt.width + 6, .22, 2, 4);
     for (const rt of info.routes) stroke(rt.points, rt.main ? P.kerb : P.pathEdge, rt.width + 5, 1);

@@ -191,7 +191,8 @@ window.GardenNativeRooms = (function () {
     if (Q.fxr.getAttribute('transform') !== transform) Q.fxr.setAttribute('transform', transform);
     const at = _grwCell(s.water, Q.x, Q.y), face = F.bx >= at.x ? 1 : -1, turned = Q.face !== face;
     A.face = face; Q.face = face; if (turned) poseActor(s, Q);
-    return { root: Q.fxr, x: at.x, y: at.y, native: true };
+    const person = s.people.get(Q), body = person && person.active;
+    return { root: Q.fxr, x: at.x, y: at.y, native: true, handRoot: body && body.rootNode };
   }
   function peerFishingFrame(s, dt) {
     // The outdoor sprites sleep while a native room is active. Advance each
