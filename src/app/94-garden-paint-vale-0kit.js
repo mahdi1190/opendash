@@ -178,6 +178,7 @@ window.GardenPaintVale = (function () {
       if (o.make) { const im = ok(() => o.make(scene)); if (im) { im.setDepth(o.y); (objects || root).add(im); sprites.push(im); if (im.displayHeight > 60) tall.push(im); } return; }   // (a tall one, a tree: it fades when you stand under it)
       const im = kit.sprite(scene, isUnder ? root : objects || root, sig + (isUnder ? '|u|' : '|t|') + o.key, o.box, o.draw, o.x, o.y, o.K || (isUnder ? 1.25 : 1.5)); if (!im) return;
       im.setDepth(isUnder ? UNDER : o.depth != null ? o.depth : o.y); sprites.push(im); stats.spritePx = (stats.spritePx || 0) + (im._gptPx || 0);
+      if (!isUnder && o.crown) { im._gpvCrown = o.crown; tall.push(im); }
       if (isUnder && root.sort) root.sort('depth');
     };
     stats = { sig, ground: ground.length, mainland: main.length, under: under.length, things: things.length, spritePx: 0 };
@@ -191,7 +192,7 @@ window.GardenPaintVale = (function () {
     if (cur && cur.tall.length && typeof _gw !== 'undefined') {
       // a tree you stand under fades, so you can always see yourself (as in the woods and the village)
       const W = cur.W, x = _gw.px * W.cellW, y = W.sky + _gw.py * W.cellH;
-      for (const im of cur.tall) { if (!im.active) continue; const under = gardenCrownCovers(x, y, im.x, im.y, im.displayHeight * im.originY, im.displayWidth), a = under ? GARDEN_CROWN_FADE : 1; if (im.alpha !== a) im.setAlpha(Math.abs(a - im.alpha) < .03 ? a : im.alpha + (a - im.alpha) * .25); }
+      for (const im of cur.tall) { if (!im.active) continue; const c = im._gpvCrown, under = c ? y < im.y - 4 && ((x - im.x - c.x) / c.rx) ** 2 + ((y - 28 - im.y - c.y) / c.ry) ** 2 < 1 : gardenCrownCovers(x, y, im.x, im.y, im.displayHeight * im.originY, im.displayWidth), a = under ? GARDEN_CROWN_FADE : 1; if (im.alpha !== a) im.setAlpha(Math.abs(a - im.alpha) < .03 ? a : im.alpha + (a - im.alpha) * .25); }
     }
     if (!cur || !cur.queue.length) return;
     const t0 = performance.now(), cx = view ? view.x + view.w / 2 : 0, cy = view ? view.y + view.h / 2 : 0;

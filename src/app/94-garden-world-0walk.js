@@ -82,6 +82,14 @@ function _gwBuildSolids(m) {
     const cx = p.x + p.w / 2, foot = p.y + p.h - 0.08, bw = Math.min(p.w, 2) * 0.5, d = 0.28;
     add(cx - bw / 2, foot - d, cx + bw / 2, foot);   // a lectern, a camera, a post box: a small box at the base, so there is room beside it
   }
+  // The authored landmark oak is painted scenery rather than a planted row.
+  // Give only its bole a small foot box; its roots and crown remain walkable.
+  const island = typeof gardenIslandActive === 'function' && gardenIslandActive() ? gardenIslandData() : null;
+  const oak = island && island.version >= 5 && island.presentation && (island.presentation.plazas || []).find(p => p.id === 'great-oak-clearing');
+  if (oak) {
+    const W = GARDEN_WORLD, scale = 1.75, x = oak.x + 2.9, y = oak.y - 1.5;
+    add(x - 20 * scale / W.cellW, y - 8 * scale / W.cellH, x + 20 * scale / W.cellW, y + 2 * scale / W.cellH);
+  }
   return { list, at };
 }
 /** Do feet (half width fx, half depth fy, in cells) at x, y touch one of the boxes? */
@@ -1354,14 +1362,10 @@ function gardenWorldClick(it, cell, ev, m) {
   if (_gw.netting && _gw.netting.state === 'chase') _gw.netting = null;
   const k = gardenWorldPick(it, cell, ev, m);
   if (k.kind === 'decor' && tool === 'hand' && typeof gardenBackStep === 'function' && gardenBackStep(k.decor, m || gardenHere())) return true;
-  // 1. a building, a board or a box: walk to its door and go in
-  // (a tall drawing, a lamp or a roof, stands over the ground behind it: a click there, on ground you can stand on behind the
-  // footprint, walks you there instead of to the door; the land office and the terrace lamps used to stop you at their doors)
-  if (k.kind === 'prop') {
-    const P = k.prop, pt = _gwPointAt(ev), lift = Math.max(1, P.tall || 1);
-    if (pt && pt.y < P.y - lift && _gwFree(pt.x, pt.y)) { if (!gardenWalkToPoint(pt, null, { radius: 8 })) gameDeny(null, { at, say: 'You cannot get there.' }); return true; }
-    _gwGoToProp(P); return true;
-  }
+  // 1. a building, a board or a box: walk to its door and go in.
+  // Picking already distinguishes its painted shape from transparent lawn;
+  // use that same answer for hover, press and click, including a roof click.
+  if (k.kind === 'prop') { _gwGoToProp(k.prop); return true; }
   if (k.kind === 'seed') return false;   // planting is its own click
   // 2. a bug: creep up on it
   if (k.kind === 'bug') { _gwNetChase(k.bug); return true; }

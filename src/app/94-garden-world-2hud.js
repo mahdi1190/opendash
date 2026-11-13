@@ -290,7 +290,7 @@ function _ghMini(box, m) {
       const r = svg.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * W.cols, y = (ev.clientY - r.top) / r.height * W.rows;
       const a = gardenAreaAt(Math.floor(x), Math.floor(y), gardenHere().level.level);
       if (a.startsWith('locked:')) { gardenLandClick(a.slice(7), { clientX: ev.clientX, clientY: ev.clientY }); return; }
-      if (!gardenWalkToPoint({ x, y }, null, { radius: 4 })) gameDeny(el, { at: { x: ev.clientX, y: ev.clientY } });
+      if (!gardenWalkToPoint({ x, y }, null, { radius: 8 })) gameDeny(el, { at: { x: ev.clientX, y: ev.clientY }, say: 'There is no clear path to that spot. Try a nearby path or entrance.' });
       else { _ghClosePanels(box); _ghFocusStage(box); }
     });
   }
@@ -439,8 +439,10 @@ function gardenBubbleOpen(at, o) {
     b.onclick = (ev) => { ev.stopPropagation(); if (!it.keep) gardenBubbleClose(); it.run(b); };
     row.appendChild(b);
   }
+  el.style.boxSizing = 'border-box'; el.style.overflowY = 'auto'; el.style.overscrollBehavior = 'contain';
+  const head = el.querySelector('.gd-bub-h'); if (head) head.style.whiteSpace = 'normal';
   box.appendChild(el);
-  _gh.bubble = { el, at, w: el.offsetWidth, h: el.offsetHeight, key: '' };
+  _gh.bubble = { el, at, w: el.offsetWidth, h: el.offsetHeight, preferredWidth: parseFloat(getComputedStyle(el).maxWidth) || Infinity, key: '' };
   gardenHudFrame(true);
   return el;
 }
@@ -615,7 +617,32 @@ function gardenHudFrame(force) {
   if (B) {
     const p = _ghProject(B.at.x, B.at.y);
     if (p) {
-      const s = _gw.size, x = Math.round(Math.max(6, Math.min(s.w - B.w - 6, p.x - B.w / 2))), y = Math.round(Math.max(60, Math.min(s.h - B.h - 92, p.y - B.h - 10)));
+      const s = _gw.size;
+      // Measure the actual controls once on entry/resize, not every camera
+      // frame. A long gate hint scrolls within the space that is really free.
+      if (force || !B.layout || B.layout.w !== s.w || B.layout.h !== s.h) {
+        const maxWidth = Math.max(1, Math.min(B.preferredWidth, s.w - 12)), r = box.getBoundingClientRect(), sx = s.w / (r.width || s.w || 1), sy = s.h / (r.height || s.h || 1);
+        B.el.style.maxWidth = maxWidth + 'px'; B.el.style.minWidth = Math.min(92, maxWidth) + 'px';
+        B.w = B.el.offsetWidth;
+        const regions = [];
+        for (const el of box.querySelectorAll(':scope > .gd-hud,:scope > .gd-menu,:scope > .gd-toolbar,:scope > .gd-quick,:scope > .gd-viewtools,:scope > .gd-camui')) {
+          if (el.hidden || !el.getClientRects().length) continue;
+          const b = el.getBoundingClientRect(); if (!b.width || !b.height) continue;
+          regions.push({ left: (b.left - r.left) * sx, right: (b.right - r.left) * sx, top: (b.top - r.top) * sy, bottom: (b.bottom - r.top) * sy });
+        }
+        B.layout = { w: s.w, h: s.h, regions }; B.maxHeight = null;
+      }
+      const x = Math.round(Math.max(6, Math.min(s.w - B.w - 6, p.x - B.w / 2)));
+      let top = 6, bottom = Math.max(7, s.h - 14);
+      for (const r of B.layout.regions) {
+        if (x + B.w <= r.left - 6 || x >= r.right + 6) continue;
+        if (r.top < s.h * .25) top = Math.max(top, r.bottom + 6);
+        else if (r.bottom > s.h * .75) bottom = Math.min(bottom, r.top - 6);
+      }
+      top = Math.min(top, bottom - 1);
+      const maxHeight = Math.max(1, Math.floor(bottom - top));
+      if (B.maxHeight !== maxHeight) { B.maxHeight = maxHeight; B.el.style.maxHeight = maxHeight + 'px'; B.h = B.el.offsetHeight; }
+      const y = Math.round(Math.max(top, Math.min(bottom - B.h, p.y - B.h - 10)));
       const tail = Math.round(Math.max(12, Math.min(B.w - 12, p.x - x)));
       const key = x + ',' + y + ',' + tail;
       if (force || B.key !== key) { B.key = key; B.el.style.transform = `translate(${x}px, ${y}px)`; B.el.style.setProperty('--tail', tail + 'px'); }

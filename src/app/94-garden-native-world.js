@@ -1010,8 +1010,9 @@ window.GardenNativeWorld = (function () {
     function walkTo(pt, then, opts) {
       opts = opts || {}; if (!pt || !Number.isFinite(pt.x) || !Number.isFinite(pt.y)) return false;
       const target = _gwFree(pt.x, pt.y) ? { x: pt.x, y: pt.y } : _gwNearestFreePt(pt.x, pt.y, opts.radius || 3);
-      if (!target) return false;
-      const path = _gwRoute({ x: _gw.px, y: _gw.py }, target); if (path == null) return false;
+      if (!target) { _gw.path = []; _gw.then = null; _gw.goal = null; return false; }
+      const path = _gwRoute({ x: _gw.px, y: _gw.py }, target);
+      if (path == null) { _gw.path = []; _gw.then = null; _gw.goal = null; return false; }
       _gw.path = path; _gw.goal = target; _gw.then = then || null; _gw.sneak = !!opts.sneak; _gw.replan = false; _gw.repaths = 0; _gw.blockT = 0;
       if (!opts.net) _gw.netting = null;
       if (typeof gardenLiveWalked === 'function') gardenLiveWalked(target);
@@ -1325,7 +1326,15 @@ window.GardenNativeWorld = (function () {
     }
     function pick(worldX, worldY) {
       const candidates = [], pt = { x: worldX / W.cellW, y: (worldY - W.sky) / W.cellH }, designing = typeof gardenDesignOn === 'function' && gardenDesignOn();
-      for (const row of drawings.values()) { const made = designing && /^dzc\d+-/.test(row.metadata.id || ''), fixed = designing && row.metadata.id && gardenDesignRow(row.metadata.id); if (!['plant', 'decor', 'prop', 'land'].includes(row.metadata.kind) && !made && !fixed) continue; const b = row.bounds, owns = row.metadata.kind === 'prop' && row.metadata.prop && _gwPropOwnsPoint(row.metadata.prop, pt); if (owns || worldX >= b.x && worldX <= b.x + b.width && worldY >= b.y && worldY <= b.y + b.height) candidates.push({ ...row.metadata, kind: made || fixed ? 'prop' : row.metadata.kind, depth: row.depth, record: row }); }
+      for (const row of drawings.values()) {
+        const made = designing && /^dzc\d+-/.test(row.metadata.id || ''), fixed = designing && row.metadata.id && gardenDesignRow(row.metadata.id);
+        if (!['plant', 'decor', 'prop', 'land'].includes(row.metadata.kind) && !made && !fixed) continue;
+        if (!row.root.visible || !row.root.active || row.root.alpha <= .025) continue;
+        const b = row.bounds, owns = row.metadata.kind === 'prop' && row.metadata.prop && _gwPropOwnsPoint(row.metadata.prop, pt);
+        const bounded = worldX >= b.x && worldX <= b.x + b.width && worldY >= b.y && worldY <= b.y + b.height;
+        if (!owns && (!bounded || !designing && row.handle.hitPoint && !row.handle.hitPoint(worldX, worldY))) continue;
+        candidates.push({ ...row.metadata, kind: made || fixed ? 'prop' : row.metadata.kind, depth: row.depth, record: row });
+      }
       for (const row of dynamic.values()) if (row.hit || row.onClick) { const b = bounds(row.id); if (b && worldX >= b.left && worldX <= b.right && worldY >= b.top && worldY <= b.bottom) candidates.push({ kind: row.kind || 'sprite', id: row.id, model: row, depth: row.root.depth }); }
       for (const row of markers) if (worldX >= row.x && worldX <= row.x + row.width && worldY >= row.y && worldY <= row.y + row.height) candidates.push(row);
       candidates.sort((a, b) => b.depth - a.depth);

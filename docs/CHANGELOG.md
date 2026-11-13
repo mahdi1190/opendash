@@ -10,6 +10,16 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.68.1] - 2026-11-13
+
+### Fixed
+
+- Ground clicks beside painted buildings no longer hit their transparent corners; clicking the roof still opens the building. Failed routes stop the previous walk, and the map explains when a spot cannot be reached.
+- The Great Oak has a solid trunk with room to walk around its roots. Its crown fades when it covers the player, and gaps show the world through them.
+- River banks use one smooth outline for walking, fishing and painting. Water ripples stay on the water, and woodland ground keeps clear of beaches, rivers and paths.
+- Closed-region mist follows the coastline and softens into the mainland. Mainland painting stays inside its own bands.
+- Long gate hints stay within the screen and clear of the garden controls.
+
 ## [2.68.0] - 2026-11-12
 
 ### Added

@@ -111,9 +111,15 @@ window.GardenPaintWater = (function () {
     const lines = {};
     for (const [id, r] of Object.entries(rivers)) if (r && r.line && r.line.length > 1) lines[id] = Object.assign(line(r.line.map(pt)), { hw: r.halfWidth || 1, cells: r.line, id });
     const waters = [];
-    for (const f of brookWhole(W, data.freshwater || [], rivers.brook)) {
+    // Vale's shared banks already include the river pieces. Crossings paint
+    // the connecting water below their boards or stones; no second ribbon is
+    // invented across dry land here.
+    const basins = data.version >= 5 ? data.freshwater || [] : brookWhole(W, data.freshwater || [], rivers.brook);
+    for (const f of basins) {
       if (!f.boundary || f.boundary.length < 3) continue;
-      const pts = smooth(f.boundary.map(pt)), kind = kindOf(f), b = boundsOf(pts, 64), r = rng(hash(f.id));
+      // The same frozen derived contour supplies water cells, feet, fish,
+      // reflections and this picture. Never smooth it again in the painter.
+      const boundary = f.boundary.map(pt), pts = data.version >= 5 ? boundary : smooth(boundary), kind = kindOf(f), b = boundsOf(pts, 64), r = rng(hash(f.id));
       const ccw = signedArea(pts) > 0, river = lines[f.river || (kind === 'gorge' ? 'gorge' : kind === 'river' ? 'river' : kind === 'brook' ? 'brook' : '')] || null;
       waters.push({ id: f.id, kind, pts, bounds: b, ccw, river, feats: features(W, f, pts, kind, ccw, river, r, pres) });
     }
@@ -368,10 +374,16 @@ window.GardenPaintWater = (function () {
       const b = w.bounds, r = rng(hash(w.id + 't')), big = w.kind === 'mere' || w.kind === 'tarn', list = [], rings = [];
       const pick = () => { for (let k = 0; k < 30; k++) { const x = b.x + r() * b.w, y = b.y + r() * b.h; if (inside(x, y, w.pts) && edgeDist(x, y, w.pts) > 20) return { x, y }; } return null; };
       for (let i = 0; i < (big ? 46 : 8); i++) { const p = pick(); if (!p) continue; const sp = r() < .4; list.push({ im: add(scene.add.image(p.x, p.y, sp ? T.spark : T.glint)).setTint(tint).setAlpha(0), x: p.x, y: p.y, ph: r() * 6.28, f: .5 + r() * 1.3, k: .3 + r() * .6, sp }); }
-      for (let i = 0; i < (big ? 4 : 1); i++) { const p = pick(); if (p) rings.push({ im: add(scene.add.image(p.x, p.y, T.ring)).setAlpha(0), x: p.x, y: p.y, ph: r(), period: 4 + r() * 5 }); }
+      for (let i = 0; i < (big ? 4 : 1); i++) { const p = pick(); if (p) rings.push({ im: add(scene.add.image(p.x, p.y, T.ring)).setAlpha(0), x: p.x, y: p.y, ph: r(), period: 4 + r() * 5, cycle: -1 }); }
       out.push({ b, list, rings, kind: 'still', update(dt, t) {
         for (const g of this.list) { const s = Math.sin(t * g.f + g.ph); g.im.setPosition(g.x + Math.sin(t * .15 + g.ph) * 6, g.y).setScale(g.sp ? g.k * .9 : g.k, g.k * .7).setAlpha(Math.max(0, s) ** 3 * (night ? .45 : .6)); }
-        for (const q of this.rings) { const f = ((t / q.period) + q.ph) % 1; if (f < .02) { q.x += (r() - .5) * 30; } q.im.setPosition(q.x, q.y).setScale(.15 + f * .9, .15 + f * .8).setAlpha(f < .7 ? (1 - f / .7) * .45 : 0); }
+        for (const q of this.rings) {
+          const phase = t / q.period + q.ph, cycle = Math.floor(phase), f = phase - cycle;
+          // Start each ripple at a fresh wet point once per cycle. Repeatedly
+          // adding an offset near phase zero made its centre wander onto land.
+          if (cycle !== q.cycle) { const p = pick(); if (p) { q.x = p.x; q.y = p.y; } q.cycle = cycle; }
+          q.im.setPosition(q.x, q.y).setScale(.15 + f * .9, .15 + f * .8).setAlpha(f < .7 ? (1 - f / .7) * .45 : 0);
+        }
       } });
     }
     // Foam strips: the weir and the falls' landing (scrolling white water).
