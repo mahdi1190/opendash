@@ -129,7 +129,7 @@ window.GardenNativeWorld = (function () {
     let mainExcludedDrawings = 0, mainExclusionCameraId = 0;
     const specialMainActors = new Map(), specialMainClasses = new WeakMap();
     const specialMainCounts = { tracked: 0, stones: 0, dragonflies: 0, excludedStones: 0, excludedDragonflies: 0, unknownBounds: 0 };
-    const canopyOccluders = [], coveringCanopies = [];
+    const canopyOccluders = [], coveringCanopies = [], externalCanopies = [];
     let playerOcclusionHeight = 60;
     const waterRegions = [], reflectedScenery = [], lockedRegions = [], gateRows = [], landmarkRows = [], forestRows = [];
     const containsWater = (x, y) => waterRegions.some(r => !r.frozen && x >= r.bounds.x && x <= r.bounds.x + r.bounds.width && y >= r.bounds.y && y <= r.bounds.y + r.bounds.height && insidePolygon({ x, y }, r.points) && !r.holes.some(hole => insidePolygon({ x, y }, hole)));
@@ -150,7 +150,11 @@ window.GardenNativeWorld = (function () {
     objects.appendChild(playerNode);
     const playerInner = playerNode.querySelector('.gd-pl-in'), playerBob = playerNode.querySelector('.gd-pl-bob');
     let playerPosePreparation = null;
-    const xray = element(scene, 'g', { class: 'gd-pl-xray' }); xray.appendChild(element(scene, 'g')); xray.target.setVisible(false); ui.appendChild(xray);
+    const xray = element(scene, 'g', { class: 'gd-pl-xray', 'pointer-events': 'none' }); xray.appendChild(element(scene, 'g')); xray.target.setVisible(false); xray.style.opacity = '.46'; ui.appendChild(xray);
+    const silhouetteNode = xray.firstChild, silhouetteInk = scene.add.graphics(), silhouetteBodies = new Map();
+    silhouetteNode._inner.add(silhouetteInk);
+    let silhouetteSource = null, silhouetteVisible = false, silhouetteBuilds = 0;
+    const silhouetteWorldBounds = { x: 0, y: 0, width: 0, height: 0 };
     _gw.node = playerNode; _gw.bobEl = playerBob; _gw.xr = xray; _gw.z = -1;
 
     function nodeDrawing(id, source, metadata, depth, parent) {
@@ -1087,7 +1091,58 @@ window.GardenNativeWorld = (function () {
         if (covered) coveringCanopies.push(crown.id);
       }
     }
-    function restoreCanopyAlpha() { for (const crown of canopyOccluders) { if (crown.node.target.active) crown.node.target.setAlpha(crown.normalAlpha); crown.faded = false; } coveringCanopies.length = 0; }
+    function restoreCanopyAlpha() { for (const crown of canopyOccluders) { if (crown.node.target.active) crown.node.target.setAlpha(crown.normalAlpha); crown.faded = false; } coveringCanopies.length = 0; externalCanopies.length = 0; silhouetteVisible = false; xray.target.setVisible(false); }
+    function silhouetteBody(source, body) {
+      const known = silhouetteBodies.get(source);
+      if (known) { silhouetteBodies.delete(source); silhouetteBodies.set(source, known); return known; }
+      const polygons = [], all = [], identity = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }; silhouetteBuilds++;
+      // Read the retained pose's compiled contours. No second avatar tree,
+      // animation clock, pixel read-back or synchronous texture capture.
+      const visit = (node, parent) => {
+        if (node._dead || node._computedVisible === false) return;
+        const matrix = GardenNativeArt.multiply(parent, node._matrix || identity), style = node._styles || {};
+        const alpha = (style.opacity == null ? 1 : Number(style.opacity)) * (style['fill-opacity'] == null ? 1 : Number(style['fill-opacity']));
+        if (node._geometry && style.fill !== 'none' && alpha >= .25) for (const contour of node._geometry) {
+          if (contour.points.length < 3) continue;
+          const points = contour.points.map(p => GardenNativeArt.point(matrix, p.x, p.y));
+          if (points.every(p => Number.isFinite(p.x) && Number.isFinite(p.y))) { polygons.push(points); all.push(...points); }
+        }
+        for (const child of node.children) visit(child, matrix);
+      };
+      visit(body, identity);
+      const made = { polygons, bounds: all.length ? terrainBox(all) : { x: -12, y: -60, width: 24, height: 60 } };
+      silhouetteBodies.set(source, made);
+      while (silhouetteBodies.size > 6) silhouetteBodies.delete(silhouetteBodies.keys().next().value);
+      return made;
+    }
+    function updatePlayerCanopySilhouette() {
+      externalCanopies.length = 0;
+      const x = _gw.px * W.cellW, y = W.sky + _gw.py * W.cellH;
+      for (const owner of [window.GardenNativePainted, window.GardenPaintWood, window.GardenPaintVale]) {
+        const covering = owner && owner.playerCanopies ? owner.playerCanopies() : null;
+        if (covering) for (const im of covering) if (im.active && im.visible && im.depth > y + .01) externalCanopies.push(im);
+      }
+      // A single faded crown stays natural. Only overlapping foreground
+      // canopies need this subtle position cue, never roofs or empty ground.
+      const show = root.visible && playerNode.target.visible && externalCanopies.length > 0 && externalCanopies.length + coveringCanopies.length >= 2 && !(typeof gardenDesignOn === 'function' && gardenDesignOn());
+      if (!show) { silhouetteVisible = false; xray.target.setVisible(false); return; }
+      const current = playerInner._nativePlayerCurrent, body = current ? current.node : playerInner.firstChild;
+      if (!body) { silhouetteVisible = false; xray.target.setVisible(false); return; }
+      const source = current ? current.source : playerInner.innerHTML;
+      if (silhouetteSource !== source) {
+        silhouetteSource = source; const shape = silhouetteBody(source, body);
+        silhouetteNode._uncache(false, true); silhouetteInk.clear().fillStyle(0xfff4d5, 1);
+        for (const points of shape.polygons) silhouetteInk.fillPoints(points, true, true);
+        silhouetteNode.nativeBounds = shape.bounds;
+        // The existing native cache queue admits one small capture when its
+        // usual frame budget allows; ordinary walking never captures it here.
+        cacheQueue.set(silhouetteNode, { staticOnly: false, quality: 2, adaptive: true, crop: false, tileSize: 256, viewBounds: silhouetteWorldBounds, visibleRoot: xray.target });
+      }
+      xray.setAttribute('transform', playerNode.getAttribute('transform') || '');
+      silhouetteNode.setAttribute('transform', (playerBob.getAttribute('transform') || '') + ' ' + (playerInner.getAttribute('transform') || ''));
+      Object.assign(silhouetteWorldBounds, { x: x - 80, y: y - playerOcclusionHeight - 16, width: 160, height: playerOcclusionHeight + 32 });
+      silhouetteVisible = true; xray.target.setVisible(true);
+    }
     function activitySubject() {
       const subject = window.GardenActivityCamera && GardenActivityCamera.current();
       if (!subject) { activityCamera = null; return null; }
@@ -1278,14 +1333,19 @@ window.GardenNativeWorld = (function () {
         if (scene._nativeViewTransition && node._cache) continue;
         if (capture(node, opts)) break;
       }
-      // One bounded background capture follows visible work. It also demotes
-      // hidden close-view caches to the quality needed by the whole-map view.
+      // One bounded background capture follows visible work. Warm the guard
+      // round this view before distant map corners, using the same retained
+      // fit-view cache and capture limits as normal play.
       if (count || scene._nativeViewTransition || performance.now() - started >= 2) return;
+      let nextBase = null, nextQuality = 0, nearestBase = Infinity;
       for (const [node, quality] of terrainBaseQueue) {
         if (node._dead) { terrainBaseQueue.delete(node); continue; }
-        terrainBaseQueue.delete(node);
-        GardenNativeArt.cache(node, { staticOnly: false, quality, adaptive: false, background: true, baseCapture: true, crop: false, retainBase: true, baseQuality: quality, tileSize: 512, preparing: !!preparing });
-        break;
+        const b = node.nativeBounds, dx = Math.max(view.x - b.x - b.width, b.x - view.x - view.w, 0), dy = Math.max(view.y - b.y - b.height, b.y - view.y - view.h, 0), distance = dx * dx + dy * dy;
+        if (distance < nearestBase) { nextBase = node; nextQuality = quality; nearestBase = distance; }
+      }
+      if (nextBase) {
+        terrainBaseQueue.delete(nextBase);
+        GardenNativeArt.cache(nextBase, { staticOnly: false, quality: nextQuality, adaptive: false, background: true, baseCapture: true, crop: false, retainBase: true, baseQuality: nextQuality, tileSize: 512, preparing: !!preparing });
       }
     }
     function point(clientX, clientY, local) {
@@ -1391,7 +1451,7 @@ window.GardenNativeWorld = (function () {
         if (editorPaint) { const paint = editorPaint; editorPaint = null; paint(); }
         for (let i = 0; i < steps; i++) { _gw.t = (_gw.t || 0) + dt; move(dt); }
         drawPlayer(time); updateCamera(frameDt, !_gw.cam.init); drawRoute(); for (const row of dynamic.values()) if (typeof row.update === 'function') row.update(frameDt, row);
-        cullAndCache(); natureTick(time);
+        cullAndCache(); natureTick(time); updatePlayerCanopySilhouette();
         const lighting = window.GardenNative && GardenNative.lighting(), environment = lighting && lighting.environment ? lighting.environment() : {};
         for (const row of drawings.values()) if (row.handle.kind && row.handle.update) row.handle.update(time, environment);
         sortObjects();
@@ -1454,7 +1514,7 @@ window.GardenNativeWorld = (function () {
       return preparation.poses.length - preparation.next;
     }
     function prepareCaches() {
-      if (dead) return { ready: true, terrainReady: 0, terrainTotal: 0, pendingVisible: 0, pendingPlayerPoses: 0 };
+      if (dead) return { ready: true, terrainReady: 0, terrainTotal: 0, terrainRequired: 0, terrainRequiredReady: 0, terrainDeferred: 0, pendingVisible: 0, pendingPlayerPoses: 0 };
       const started = performance.now();
       // Only loading calls this method. Compile one current-avatar pose per
       // engine frame without advancing movement, actions or the pose state.
@@ -1463,20 +1523,24 @@ window.GardenNativeWorld = (function () {
       // keeps its single-capture limit, while opening avoids idle frame waits.
       for (let i = 0; i < 6; i++) { cullAndCache(null, false, true); if (performance.now() - started >= 5) break; }
       sortObjects();
-      let terrainReady = 0, pendingVisible = GardenNativeArt.pendingCaches(scene);
+      let terrainReady = 0, terrainRequired = 0, terrainRequiredReady = 0, pendingVisible = GardenNativeArt.pendingCaches(scene);
       for (const chunk of terrainChunks.values()) {
-        const cache = chunk.node._cache;
-        if (chunk.node._cacheBase || cache && !cache.cropped && cache.quality >= terrainBaseQuality) terrainReady++;
+        const cache = chunk.node._cache, ready = !!chunk.node._cacheBase || !!cache && !cache.cropped && cache.quality >= terrainBaseQuality;
+        if (ready) terrainReady++;
         else if (!inCamera(chunk.bounds, 0)) terrainBaseQueue.set(chunk.node, terrainBaseQuality);
+        // Keep the actual viewport and its existing cull guard ready before
+        // input. Far fit-view caches continue in the normal background queue;
+        // their retained vectors remain available if the camera exposes them.
+        if (inCamera(chunk.bounds, 64)) { terrainRequired++; if (ready) terrainRequiredReady++; }
       }
       for (const [node, opts] of cacheQueue) {
         if (node._dead || !node.target.visible || opts.visibleRoot && !opts.visibleRoot.visible) continue;
         if (inCamera(opts.viewBounds || node.nativeBounds || node.getBBox(), 0)) pendingVisible++;
       }
-      return { ready: terrainReady === terrainChunks.size && !pendingVisible && !pendingPlayerPoses, terrainReady, terrainTotal: terrainChunks.size, pendingVisible, pendingPlayerPoses };
+      return { ready: terrainRequiredReady === terrainRequired && !pendingVisible && !pendingPlayerPoses, terrainReady, terrainTotal: terrainChunks.size, terrainRequired, terrainRequiredReady, terrainDeferred: terrainChunks.size - terrainRequired, pendingVisible, pendingPlayerPoses };
     }
     function resize(w, h) { size = { w: Math.max(1, w), h: Math.max(1, h) }; _gw.size = { ...size }; _gw.sizeOk = true; _gw.cam.init = false; updateCamera(.016, true); }
-    function destroy() { if (dead) return; dead = true; clearPack(); designPreview(null); restoreCanopyAlpha(); for (const row of drawings.values()) row.handle.destroy(); for (const row of dynamic.values()) row.handle.destroy(); for (const record of specialMainActors.values()) drawingMainExclusion(record, false); specialMainActors.clear(); drawings.clear(); dynamic.clear(); needRings.clear(); clearPierDecks(); cacheQueue.clear(); terrainBaseQueue.clear(); terrainChunks.clear(); rootNode.remove(); }
+    function destroy() { if (dead) return; dead = true; silhouetteBodies.clear(); clearPack(); designPreview(null); restoreCanopyAlpha(); for (const row of drawings.values()) row.handle.destroy(); for (const row of dynamic.values()) row.handle.destroy(); for (const record of specialMainActors.values()) drawingMainExclusion(record, false); specialMainActors.clear(); drawings.clear(); dynamic.clear(); needRings.clear(); clearPierDecks(); cacheQueue.clear(); terrainBaseQueue.clear(); terrainChunks.clear(); rootNode.remove(); }
     function effectBounds(node, localBounds, worldMatrix) {
       const bounds = localBounds || node.getBBox(), matrix = worldMatrix || node.target.getWorldTransformMatrix();
       const ma = matrix.a, mb = matrix.b, mc = matrix.c, md = matrix.d, tx = matrix.tx == null ? matrix.e || 0 : matrix.tx, ty = matrix.ty == null ? matrix.f || 0 : matrix.ty;
@@ -1569,7 +1633,7 @@ window.GardenNativeWorld = (function () {
       return { revision: surfaceRevision, parent: rootNode._inner, regions: waterRegions, lockedRegions, gates: gateRows, landmarks: landmarkRows, containsWater, actors: effectActorRows, creatures: effectCreatureRows, fishingRigs: effectsState.fishingRigs || [], reflectables: effectHeldRows.length ? reflectedScenery.concat(effectHeldRows) : reflectedScenery, lights: pointLights };
     }
     function occluders() { return solidObjects.concat([{ id: 'player', x: _gw.px * W.cellW, y: W.sky + _gw.py * W.cellH, w: 19, h: 8, height: 51, kind: 'actor', root: playerNode.target }]); }
-    function playerOcclusionState() { return { active: coveringCanopies.length > 0, occluders: coveringCanopies.slice(), tracked: canopyOccluders.length, outline: false, treeRootAlphaUnchanged: true, fadedCrowns: canopyOccluders.filter(crown => crown.faded).map(crown => ({ id: crown.id, alpha: crown.node.target.alpha, normalAlpha: crown.normalAlpha })) }; }
+    function playerOcclusionState() { return { active: coveringCanopies.length + externalCanopies.length > 0, occluders: coveringCanopies.slice(), tracked: canopyOccluders.length, externalCoverage: externalCanopies.length, overlapping: externalCanopies.length > 0 && externalCanopies.length + coveringCanopies.length >= 2, silhouetteVisible, silhouetteBuilds, outline: silhouetteVisible, silhouetteBodies: silhouetteBodies.size, treeRootAlphaUnchanged: true, fadedCrowns: canopyOccluders.filter(crown => crown.faded).map(crown => ({ id: crown.id, alpha: crown.node.target.alpha, normalAlpha: crown.normalAlpha })) }; }
     const api = { root, rootNode, objectsNode: objects, actorsNode: actors, petsNode: pets, uiNode: ui, effectsNode: effects, playerNode, sync, update, prepareRender, prepareCaches, walkTo, actor, spawn: spec => actor(spec.id, spec.svg || '', spec.x, spec.y, spec), remove, point, project, pick, bounds, resize, cameraSet, cameraControls, zoom: step => cameraSet(null, step), camera: () => ({ ...camera }), model: () => model, playerState: () => ({ x: _gw.px, y: _gw.py, face: _gw.face, moving: _gw.moving }), entities: drawings, dynamic, occluders, lightSources: () => pointLights, renderStats: () => ({ staticObjects: drawings.size, visibleStatic, terrainChunks: terrainChunks.size, visibleTerrain, cacheQuality, terrainBaseQuality, terrainBaseReady, queuedTerrainBase: terrainBaseQueue.size, queuedCaches: cacheQueue.size, needGroundRings: needRings.size, mainCameraCull: { cameraId: mainExclusionCameraId, guardWorldPx: mainDrawingGuard, excludedDrawings: mainExcludedDrawings, specialActors: specialMainStatus() }, playerOcclusion: playerOcclusionState() }), setVisible: value => root.setVisible(value), depthChanged: () => { sorted = true; }, flushDepth: sortObjects, stopMoving: () => { _gw.path = []; _gw.then = null; _gw.hold = null; _gw.keys.clear(); _gw.spd = 0; }, destroy };
     api.effectsState = effectsState;
     api.frontierState = () => frontierMetadata;

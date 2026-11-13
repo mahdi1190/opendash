@@ -10,6 +10,13 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.68.2] - 2026-11-13
+
+### Fixed
+
+- A subtle silhouette keeps your position visible beneath overlapping tree crowns. It follows your current character and disappears on open ground and indoors.
+- Opening the Garden prepares nearby terrain first, then warms distant ground in the background. The whole-map view still prepares the terrain it shows.
+
 ## [2.68.1] - 2026-11-13
 
 ### Fixed

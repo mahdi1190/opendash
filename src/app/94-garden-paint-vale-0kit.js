@@ -185,14 +185,15 @@ window.GardenPaintVale = (function () {
     for (const u of under) (scene.textures.exists(sig + '|u|' + u.key) ? make(u, true) : queue.push([u, true]));
     for (const o of things) (o.make || scene.textures.exists(sig + '|t|' + o.key) ? make(o, false) : queue.push([o, false]));
     if (root.sort) root.sort('depth'); if (objects && objects.sort) objects.sort('depth');
-    cur = { sig, handles, sprites, scene, queue, make, objects, root, tall, W };
+    cur = { sig, handles, sprites, scene, queue, make, objects, root, tall, W, covering: [] };
     stats.buildMs = Math.round(performance.now() - t0);
   }
   function tick(time, view) {
+    if (cur) cur.covering.length = 0;
     if (cur && cur.tall.length && typeof _gw !== 'undefined') {
       // a tree you stand under fades, so you can always see yourself (as in the woods and the village)
       const W = cur.W, x = _gw.px * W.cellW, y = W.sky + _gw.py * W.cellH;
-      for (const im of cur.tall) { if (!im.active) continue; const c = im._gpvCrown, under = c ? y < im.y - 4 && ((x - im.x - c.x) / c.rx) ** 2 + ((y - 28 - im.y - c.y) / c.ry) ** 2 < 1 : gardenCrownCovers(x, y, im.x, im.y, im.displayHeight * im.originY, im.displayWidth), a = under ? GARDEN_CROWN_FADE : 1; if (im.alpha !== a) im.setAlpha(Math.abs(a - im.alpha) < .03 ? a : im.alpha + (a - im.alpha) * .25); }
+      for (const im of cur.tall) { if (!im.active) continue; const c = im._gpvCrown, under = c ? y < im.y - 4 && ((x - im.x - c.x) / c.rx) ** 2 + ((y - 28 - im.y - c.y) / c.ry) ** 2 < 1 : gardenCrownCovers(x, y, im.x, im.y, im.displayHeight * im.originY, im.displayWidth), a = under ? GARDEN_CROWN_FADE : 1; if (under && im.visible) cur.covering.push(im); if (im.alpha !== a) im.setAlpha(Math.abs(a - im.alpha) < .03 ? a : im.alpha + (a - im.alpha) * .25); }
     }
     if (!cur || !cur.queue.length) return;
     const t0 = performance.now(), cx = view ? view.x + view.w / 2 : 0, cy = view ? view.y + view.h / 2 : 0;
@@ -222,5 +223,5 @@ window.GardenPaintVale = (function () {
   }
   /** Landform kinds painted here (the world skips its own art for them). */
   function owns(kind) { return (kind === 'ruin-wall' || kind === 'ruin') && wanted(); }
-  return { parts, PAL, wanted, paint, tick, clear, status, paintTo, owns, readLayout, loopPath, strokePts, walk, lobe, capsule, hull, lawn, flags, setts, ok, get lastError() { return lastError; } };
+  return { parts, PAL, wanted, paint, tick, clear, playerCanopies: () => cur ? cur.covering : null, status, paintTo, owns, readLayout, loopPath, strokePts, walk, lobe, capsule, hull, lawn, flags, setts, ok, get lastError() { return lastError; } };
 })();

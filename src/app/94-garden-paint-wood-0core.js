@@ -216,7 +216,7 @@ window.GardenPaintWood = (function () {
   function paint(scene, root, info, objects) {
     clear(); if (!info || !info.data || !info.cellAt || !objects) return null;
     const t0 = performance.now();
-    const S = state = { scene, root, objects, W: info.W, season: info.season || 'summer', tod: info.tod || 'day', serial: 0, clock: 0, last: null, frame: 0 };
+    const S = state = { scene, root, objects, W: info.W, season: info.season || 'summer', tod: info.tod || 'day', serial: 0, clock: 0, last: null, frame: 0, covering: [] };
     S.M = ok(() => build(info, info.cellAt)); if (!S.M) { state = null; return null; }
     // A lobe can cross a chunk even when no land-cell origin lies inside it.
     // Reserve every touched chunk, and bucket its contributors now: streaming
@@ -264,7 +264,7 @@ window.GardenPaintWood = (function () {
     for (const t of S.M.trees) if (t.im) t.im.destroy(); for (const l of S.light) l.im.destroy();
   }
   function tick(time, view) {
-    const S = state; if (!S || !view) return; const t0 = performance.now();
+    const S = state; if (S) S.covering.length = 0; if (!S || !view) return; const t0 = performance.now();
     const dt = S.last == null ? 0 : Math.min(.08, Math.max(0, (time - S.last) / 1000)); S.last = time;
     const motion = typeof gardenMotionOn !== 'function' || gardenMotionOn(); if (motion) S.clock += dt; S.frame++;
     const near = { x: view.x - 384, y: view.y - 384, w: view.w + 768, h: view.h + 768 };
@@ -288,7 +288,7 @@ window.GardenPaintWood = (function () {
       if (b.made && vis !== b.vis && !(vis && !b.made)) { b.vis = vis; for (const t of b.trees) if (t.im) t.im.setVisible(vis); }
       // a crown you are under fades, so you can always see yourself (a wide crown by its own width); so does a crown over a
       // story house (Hollin's hut) once you are near it
-      if (vis && pl) for (const t of b.trees) { if (!t.im) continue; const under = gardenCrownCovers(pl.x, pl.y, t.x, t.y, t.h * t.scale, t.im.displayWidth), near = t.hides && Math.hypot((pl.x - t.hides.x) / S.W.cellW, (pl.y - t.hides.y) / S.W.cellH) < 3.5; const a = near || under ? GARDEN_CROWN_FADE : 1; if (t.im.alpha !== a) t.im.setAlpha(t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8 || 1)); }
+      if (vis && pl) for (const t of b.trees) { if (!t.im) continue; const under = gardenCrownCovers(pl.x, pl.y, t.x, t.y, t.h * t.scale, t.im.displayWidth), near = t.hides && Math.hypot((pl.x - t.hides.x) / S.W.cellW, (pl.y - t.hides.y) / S.W.cellH) < 3.5; const a = near || under ? GARDEN_CROWN_FADE : 1; if (under && t.im.active && t.im.visible) S.covering.push(t.im); if (t.im.alpha !== a) t.im.setAlpha(t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8 || 1)); }
     }
     const tTrees = performance.now(); S.tw.trees = Math.max(S.tw.trees, tTrees - t0 - tBake);
     if (S.sortObjects && S.objects.sort) { S.objects.sort('depth'); S.sortObjects = false; }
@@ -308,5 +308,5 @@ window.GardenPaintWood = (function () {
   function status() { const S = state; return { slowStep, tw: S && S.tw, treeTex: treeTextures(), warm: S ? [S.warmCount, S.warmMs] : null, on: !!S, trees: S ? S.M.trees.length : 0, made: S ? S.M.trees.filter(t => t.im).length : 0, lights: S ? S.light.length : 0, buildMs: S && S.buildMs, bakes, bakeMs: Math.round(bakeMs), worstBake: Math.round(worstBake), tickWorst: +tickWorst.toFixed(1), memory: memory(), lastError }; }
   /** True where a painted wood stands (the world then leaves out its own forest trees there). Cell units. */
   function covers(cx, cy) { const D = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data; if (!D || !D.regions) return false; for (const r of D.regions) { const def = WOODS[r.id]; if (def && def.mood !== 'meadow' && inside(cx, cy, r.polygons[0])) return true; } return false; }
-  return { paint, tick, clear, status, memory, covers, WOODS, get lastError() { return lastError; } };
+  return { paint, tick, clear, playerCanopies: () => state ? state.covering : null, status, memory, covers, WOODS, get lastError() { return lastError; } };
 })();
