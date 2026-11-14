@@ -456,7 +456,8 @@ const WORLD_LAMP_LIGHT_COL = '#ffd59a';
 /**
  * How much lamp light falls on a ground point (x, z): the sum over the pools of a point light h above the ground,
  * 0.55 (1 + (rho / h)^2)^-1.5, eased to nothing at the pool's reach, capped at 0.6 and in steps of 0.1 (sprite caches).
- * pools: [{ x, z, r, h }] (worldLights' pools, lit ones). -> { k }.
+ * pools: [{ x, z, r, h }] (worldLights' pools, lit ones). -> { k, kc } (kc: the same light before its rounding, continuous: a mover is
+ * drawn as the blend of the two steps it lies between, 79-world-5shade.js).
  */
 function worldLocalLight(pools, x, z) {
   let k = 0;
@@ -468,7 +469,8 @@ function worldLocalLight(pools, x, z) {
     const h = Math.max(1, P.h || 4), u = rho / r, e = Math.pow(1 + (rho / h) * (rho / h), -1.5) * (1 - u * u * (3 - 2 * u));
     k += 0.55 * e;
   }
-  return { k: Math.round(Math.min(0.6, k) * 10) / 10 };
+  const kc = Math.min(0.6, k);
+  return { k: Math.round(kc * 10) / 10, kc };
 }
 /** The 8-bit mask of a generated building's lit pane buckets now (0: none lit). */
 function worldBuildingGlassMask(key, alt, share, murky, hour) {

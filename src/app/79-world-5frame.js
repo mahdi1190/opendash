@@ -347,6 +347,8 @@ function _wfrDrawDissolve(env, S, ctx, rOld, rNew, k, tau, ga) {
  * The blits of one mover drawing at scene time tau (the compositor draws exactly these; worldFrameFigures measures them):
  * { blits: [{ part ('*', 'rest:a,b' or a part), M (device matrix), a (the part's own opacity) }], moved }. hooks: its animation hooks
  * (_wfrHooks); vs: device px a scene unit (the LOD: a figure under WORLD_FRAME_LOD_PX device px is one blit that bobs); M: its rest matrix.
+ * A mover whose lamp light lies between two of the sprite cache's steps has each blit followed by a blend blit (interface C4: its part
+ * prefixed WORLD_SHADE_BLEND, the same matrix, its share of the alpha: 79-world-5shade.js), which _wfrSpriteOf draws at the other step.
  */
 function _wfrPosePlan(r, hooks, tau, L, vs, M, o) {
   // a far mover (a few pixels tall): the swing of a leg is under a pixel, so its rest art is one blit instead of the body and four limbs.
@@ -362,15 +364,20 @@ function _wfrPosePlan(r, hooks, tau, L, vs, M, o) {
     hooks = hooks.filter(h => h.kind !== 'walk' && h.kind !== 'paddle');
   }
   const out = [];
+  // (each return goes through _wshBlend, 79-world-5shade.js: a mover between two lamp steps gets each part's blit at the other step too, C4)
+  const blend = (plan) => (typeof _wshBlend === 'function' ? _wshBlend(r, tau, plan, L) : plan);
   if (!hooks.length) {
     if (lodBob) { const MB = M.slice(); MB[5] += lodBob; out.push({ part: '*', M: MB, a: 1 }); } else out.push({ part: '*', M, a: 1 });
-    return { blits: out, moved: null };
+    return blend({ blits: out, moved: null });
   }
   const whole = hooks.find(h => _wfrParts(h)[0] === '*'), moved = [...new Set(hooks.filter(h => _wfrParts(h)[0] !== '*').flatMap(_wfrParts))];
   let bob = 0, sway = 0;
   for (const h of hooks) if (h.kind === 'walk') { try { const P = sceneAnimPose(h, tau, L, r.x); bob = P.bob || 0; sway = P.sway || 0; } catch (e) { bob = 0; } break; }
   let W0 = null;
-  if (whole) { try { W0 = sceneAnimPose(whole, tau, L, r.x).m; } catch (e) { W0 = null; } }
+  // a plant's sway (_wwdPose, 79-world-6wind.js): the wind's strength eased across a change of the light's wind, a reed's parting laid over
+  // its sway instead of replacing it (the 'turn' to 'sway' handover moved the reed in one frame)
+  const pose = (h) => (r.static && typeof _wwdPose === 'function' ? _wwdPose(r, h, tau, L) : null) || sceneAnimPose(h, tau, L, r.x);
+  if (whole) { try { W0 = pose(whole).m; } catch (e) { W0 = null; } }
   const MR = W0 ? _wfrMul(M, W0) : M.slice();
   if (bob) MR[5] += bob * vs * r.s;
   if (sway) MR[4] += sway * vs * r.s * (MR[0] < 0 ? -1 : 1);
@@ -380,12 +387,12 @@ function _wfrPosePlan(r, hooks, tau, L, vs, M, o) {
     if (h === whole) continue;
     const parts = _wfrParts(h);
     if (parts[0] === '*') continue;
-    let pose = null;
-    try { pose = sceneAnimPose(h, tau, L, r.x); } catch (e) { pose = null; }
-    if (!pose) continue;
-    parts.forEach((p, j) => out.push({ part: p, M: _wfrMul(MR, j === 1 && pose.m2 ? pose.m2 : pose.m), a: pose.alphas ? pose.alphas[j] * pose.alpha : pose.alpha }));
+    let P = null;
+    try { P = pose(h); } catch (e) { P = null; }
+    if (!P) continue;
+    parts.forEach((p, j) => out.push({ part: p, M: _wfrMul(MR, j === 1 && P.m2 ? P.m2 : P.m), a: P.alphas ? P.alphas[j] * P.alpha : P.alpha }));
   }
-  return { blits: out, moved };
+  return blend({ blits: out, moved });
 }
 /**
  * What the compositor draws of each agent at scene time t, without drawing (the tools' measure of the drawn figures: tools/lib/world/
@@ -1094,20 +1101,29 @@ function _wfrSpriteOf(env, S, r, part, x) {
   // a mover asks for the same sprites every frame (its rest art and each moving part at its scale bucket): remembered on what outlives
   // the frame (an agent's memory, a live static's record) against exactly what the sprite depends on, so the key string, the material
   // key and the shared cache are not walked per part per frame (the sprite lookups were a fifth of a crowded frame)
-  const h = r.mem || (r.live ? r : null), bk = x && x.bucket ? x.bucket : r.s, p = part || '*';
-  // a mover drawn without a holder (the checker's own records, a capture) takes the same lamp light as in the frame
-  const mc = h ? _wfrMcOf(S, r, h) : !r.ent.static && S.localLights && S.localLights.length && typeof worldLocalLight === 'function' ? _wfrMcLamp(S, _wfrMc(S, r.ent), worldLocalLight(S.localLights, r.ent.x || 0, r.ent.z || 0).k) : _wfrMc(S, r.ent);
+  const h = r.mem || (r.live ? r : null), bk = x && x.bucket ? x.bucket : r.s, mk = part || '*';
+  // a blend blit of the pose plan (C4, 79-world-5shade.js: WORLD_SHADE_BLEND + the part): the same part at the other lamp step
+  // (WORLD_SHADE_GLOW + the part: the part with a vehicle's lamps in their state before the night switch, laid over the new one as it fades)
+  const other = mk.charCodeAt(0) === 126 && typeof WORLD_SHADE_BLEND === 'string' && mk.startsWith(WORLD_SHADE_BLEND);
+  const glow = !other && mk.charCodeAt(0) === 126 && typeof WORLD_SHADE_GLOW === 'string' && mk.startsWith(WORLD_SHADE_GLOW);
+  const p = other ? mk.slice(WORLD_SHADE_BLEND.length) : glow ? mk.slice(WORLD_SHADE_GLOW.length) : mk;
+  if (glow) x = Object.assign({}, x || {}, { litGlow: !(x && x.litGlow) });
+  if (h) h._shS = S;
+  // a mover's context: its haze at its 0.01 step and the lamp light at its step (the base, or the other one of a blend: 5shade, continuous on
+  // screen); a mover drawn without a holder (the checker's own records, a capture) takes the base step of the frame's light. A static's as before
+  const mc = !r.ent.static && typeof _wshMcOf === 'function' ? _wshMcOf(S, r, h, other) : h ? _wfrMcOf(S, r, h)
+    : !r.ent.static && S.localLights && S.localLights.length && typeof worldLocalLight === 'function' ? _wfrMcLamp(S, _wfrMc(S, r.ent), worldLocalLight(S.localLights, r.ent.x || 0, r.ent.z || 0).k) : _wfrMc(S, r.ent);
   let memo = null;
   if (h && mc) {
     memo = h._spm;
     if (!memo || memo.S !== S) memo = h._spm = { S, m: new Map() };
-    const e = memo.m.get(p);
+    const e = memo.m.get(mk);
     if (e && e.bk === bk && e.mc === mc && e.o === r.o && e.v === r.v && e.season === r.season && e.glow === !!(x && x.litGlow) && e.outfit === r.ent.outfit) return e.sp;
   }
   const sc = _wfrBucket(bk) * env.vs;
   const outfit = !r.ent.static && r.ent.outfit != null && /^person\./.test(String(r.o || '')) ? r.ent.outfit : 0;
   const sp = _wfrSprite(env, S, r.o, r.v, p, sc, mc, Object.assign({ haze: mc ? 0 : _wfrHaze(env, r.ent), cls: r.ent.cls || null, season: r.season || null, outfit }, x || {}));
-  if (memo) memo.m.set(p, { bk, mc, o: r.o, v: r.v, season: r.season, glow: !!(x && x.litGlow), outfit: r.ent.outfit, sp });
+  if (memo) memo.m.set(mk, { bk, mc, o: r.o, v: r.v, season: r.season, glow: !!(x && x.litGlow), outfit: r.ent.outfit, sp });
   return sp;
 }
 /** The material context of a mover, remembered per 2 m of distance on its holder (the key string was built on every call). */

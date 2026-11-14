@@ -12,6 +12,11 @@
                                          golden hour), key (a short cache key: the sun's coarse bucket, 45 degrees by 15; only the chunks that
                                          hold a generated building carry it, so a change of time inside a band still reuses the rest) } or null
      worldSunTone(hex, n, sun)       -> '#rrggbb': the colour of a face of normal n = [x, y, z] under that sun (hex itself when n or sun is missing)
+
+   The face's light (n . sun) is taken in steps of 1 / WORLD_SUNTONE_STEPS (96: under 1 % of brightness a step) and the colour is the one OF
+   its step. Until 14 Nov it was keyed in twelfths and memoised with whatever exact value came first: a face of a hull that turns or rocks
+   (registered models are drawn every frame with their normals) brightened in steps of up to 7 %, and two faces in one twelfth took the
+   colour of whichever was drawn first (docs/dev/WORLD_SHADE.md 4).
    ============================================================ */
 const _wstD2R = Math.PI / 180;
 const _wstClamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -28,10 +33,11 @@ function worldSunLight(sky, cam) {
 }
 const _wstRgb = (hex) => { let s = String(hex).replace('#', ''); if (s.length === 3) s = s.replace(/./g, '$&$&'); const n = parseInt(s, 16) || 0; return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
 const _wstMemo = new Map();
+const WORLD_SUNTONE_STEPS = 96;
 function worldSunTone(hex, n, sun) {
   if (!sun || !Array.isArray(n) || typeof hex !== 'string' || hex[0] !== '#') return hex;
-  const d = n[0] * sun.v[0] + n[1] * sun.v[1] + n[2] * sun.v[2], lit = _wstClamp(d, 0, 1);
-  const key = hex + '|' + Math.round(lit * 12) + '|' + Math.round(sun.k * 12) + '|' + Math.round(sun.warm * 8);
+  const d = n[0] * sun.v[0] + n[1] * sun.v[1] + n[2] * sun.v[2], li = Math.round(_wstClamp(d, 0, 1) * WORLD_SUNTONE_STEPS), lit = li / WORLD_SUNTONE_STEPS;
+  const key = hex + '|' + li + '|' + Math.round(sun.k * 100) + '|' + Math.round(sun.warm * 100);
   const hit = _wstMemo.get(key);
   if (hit) return hit;
   // brightness: a lit face up to a quarter brighter, a face turned from the sun up to a third darker (at full directional light)
