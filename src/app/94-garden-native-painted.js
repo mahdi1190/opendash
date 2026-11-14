@@ -229,11 +229,17 @@ window.GardenNativePainted = (function () {
   const BUILD = {
     'garden-shop': { obj: 'building.green-cottage', v: 0, w: 150, wallWidth: 150, sign: 'Seed & Stem', extra: [['plant.planter', 1, -84, 0, 26], ['plant.planter', 0, 84, 0, 26], ['plant.rph-flower-tub', 1, -60, 8, 18]] },
     'land-office': { obj: 'building.cottage', v: 1, w: 140, wallWidth: 160, sign: 'Land Office', extra: [['street.lamp', 0, -78, 4, 0, 70]] },
-    'tackle-shop': { obj: 'building.fpv-sailing-hut', v: 0, w: 150, sign: 'Tackle & Tide', extra: [['street.mqn-lifebuoy', 0, 80, 2, 0, 30]] },
+    'tackle-shop': { obj: 'building.fpv-sailing-hut', v: 0, w: 150, wallWidth: 376, wallCenterX: -8, wallFootY: 14, sign: 'Tackle & Tide', extra: [['street.mqn-lifebuoy', 0, 80, 2, 0, 30]] },
     'market-stall': { obj: 'structure.mcr-market-chalet', v: 1, w: 104, wallWidth: 200 },
   };
-  const HALL = [{ obj: 'structure.wp-bivvy', v: 0, w: 96 }, { obj: 'building.kiosk', v: 0, w: 110, sign: 'Lake Hall' }, { obj: 'building.thatched-cottage', v: 1, w: 150, sign: 'Lake Hall' }, { obj: 'building.church', v: 0, w: 170, sign: 'Lake Hall' }];
-  function hallTier(sc) { try { const ca = sc.ca || (typeof gardenCatchHere === 'function' ? gardenCatchHere() : null) || {}; return typeof gardenHallTier === 'function' ? Math.max(0, Math.min(3, gardenHallTier(Number(ca.ha) || 0))) : 0; } catch (e) { return 0; } }
+  const HALL = [
+    { obj: 'structure.wp-bivvy', v: 0, w: 96, wallWidth: 150, wallCenterX: 5 },
+    { obj: 'building.vale-hall-small', v: 0, w: 144, wallWidth: 160, sign: 'Lake Hall' },
+    { obj: 'building.thatched-cottage', v: 1, w: 150, wallWidth: 216, sign: 'Lake Hall' },
+    { obj: 'building.vale-hall-large', v: 0, w: 144, wallWidth: 240, sign: 'Lake Hall' },
+    { obj: 'building.vale-hall-large', v: 1, w: 144, wallWidth: 240, sign: 'Lake Hall' },
+  ];
+  function hallTier(sc) { try { const ca = sc.ca || (typeof gardenCatchHere === 'function' ? gardenCatchHere() : null) || {}; return typeof gardenHallTier === 'function' ? Math.max(0, Math.min(HALL.length - 1, gardenHallTier(Number(ca.ha) || 0))) : 0; } catch (e) { return 0; } }
   function building(scene, prop, sc, element, W) {
     if (!ready()) return null;
     const tier = prop.id === 'lake-hall' ? hallTier(sc) : -1, def = tier >= 0 ? HALL[tier] : BUILD[prop.id]; if (!def || !sceneObj(def.obj)) return null;
@@ -242,11 +248,12 @@ window.GardenNativePainted = (function () {
     const cx = (prop.x + prop.w / 2) * W.cellW, foot = W.sky + (prop.y + prop.h) * W.cellH - 2;
     const shadow = scene.add.graphics(); shadow.fillStyle(0x3a4a2a, .2).fillEllipse(cx + 8, foot + 1, def.w * 1.08, 18); node._inner.add(shadow);
     const parts = [], poolImages = [];
-    // These authored walls end symmetrically at their ground anchor. Match
-    // that wall span to the protected footprint, not the roof/garden bounds.
+    // Match the authored standing span to the protected footprint. Roofs,
+    // rods and flags do not define its width or its ground anchor.
     const shape = def.wallWidth ? sceneObjShapes(def.obj, def.v, season) : null;
-    const size = { w: shape ? prop.w * W.cellW * (shape.box[2] - shape.box[0]) / def.wallWidth : def.w };
-    const main = objectImage(scene, def.obj, def.v, season, size, cx, foot, night); if (!main) { node.remove(); return null; }
+    const scale = shape ? prop.w * W.cellW / def.wallWidth : 1;
+    const size = { w: shape ? (shape.box[2] - shape.box[0]) * scale : def.w };
+    const main = objectImage(scene, def.obj, def.v, season, size, cx - (def.wallCenterX || 0) * scale, foot - (def.wallFootY || 0) * scale, night); if (!main) { node.remove(); return null; }
     node._inner.add(main); parts.push([main, def.obj, def.v, size]);
     for (const [id, v, dx, dy, w, h] of def.extra || []) { if (!sceneObj(id)) continue; const im = objectImage(scene, id, v, season, w ? { w } : { h }, cx + dx, foot + dy, night); if (im) { node._inner.addAt(im, dy > 0 ? node._inner.list.length : 1); parts.push([im, id, v, w ? { w } : { h }]); } }
     if (def.sign) {
@@ -257,7 +264,7 @@ window.GardenNativePainted = (function () {
     }
     // lit windows spill a soft warm pool on the ground in front (added light, feathered: no disc)
     if (night && window.GardenPaintedProps) { const pk = GardenPaintedProps.poolKey(scene); if (pk) { const pool = scene.add.image(cx, foot + 10, pk).setOrigin(.5, .5).setScale(def.w * 1.1 / 256, def.w * .3 / 256).setAlpha(.3), layer = overLayer; if (layer) { layer.add(pool); pool.setDepth(80005); } else node._inner.add(pool); poolImages.push(pool); } }
-    const top = foot - main.displayHeight * main.originY, b = { x: cx - main.displayWidth / 2 - 10, y: top - 4, width: main.displayWidth + 20, height: foot - top + 26 };
+    const top = main.y - main.displayHeight * main.originY, b = { x: main.x - main.displayWidth * main.originX - 10, y: top - 4, width: main.displayWidth + 20, height: foot - top + 26 };
     node.nativeBounds = b;
     return { root: node.target, rootNode: node, bounds: b, painted: true, foot: { x: cx, y: foot }, update() {}, setLitWindows(on) { for (const [im, id, v, size] of parts) { const o = objectKey(scene, id, v, season, size, !!on); if (o && im.texture.key !== o.key) im.setTexture(o.key).setOrigin(o.meta.ox, o.meta.oy); } }, destroy() { for (const im of poolImages) im.destroy(); node.remove(); } };
   }

@@ -1567,7 +1567,10 @@ window.GardenNativeWorld = (function () {
         if (node._dead || !node.target.visible || opts.visibleRoot && !opts.visibleRoot.visible) continue;
         if (inCamera(opts.viewBounds || node.nativeBounds || node.getBBox(), 0)) pendingVisible++;
       }
-      return { ready: terrainRequiredReady === terrainRequired && !pendingVisible && !pendingPlayerPoses, terrainReady, terrainTotal: terrainChunks.size, terrainRequired, terrainRequiredReady, terrainDeferred: terrainChunks.size - terrainRequired, pendingVisible, pendingPlayerPoses };
+      // Lazy Vale ground is part of the visible picture too. Let its existing
+      // sliced streamer finish this view before opening (the runtime timeout stays).
+      const pendingGround = window.GardenPaintVale && GardenPaintVale.pendingGround ? GardenPaintVale.pendingGround() : 0;
+      return { ready: terrainRequiredReady === terrainRequired && !pendingVisible && !pendingPlayerPoses && !pendingGround, terrainReady, terrainTotal: terrainChunks.size, terrainRequired, terrainRequiredReady, terrainDeferred: terrainChunks.size - terrainRequired, pendingVisible, pendingPlayerPoses, pendingGround };
     }
     function resize(w, h) { size = { w: Math.max(1, w), h: Math.max(1, h) }; _gw.size = { ...size }; _gw.sizeOk = true; _gw.cam.init = false; updateCamera(.016, true); }
     function destroy() { if (dead) return; dead = true; silhouetteBodies.clear(); clearPack(); designPreview(null); restoreCanopyAlpha(); for (const row of drawings.values()) row.handle.destroy(); for (const row of dynamic.values()) row.handle.destroy(); for (const record of specialMainActors.values()) drawingMainExclusion(record, false); specialMainActors.clear(); drawings.clear(); dynamic.clear(); needRings.clear(); clearPierDecks(); cacheQueue.clear(); terrainBaseQueue.clear(); terrainChunks.clear(); rootNode.remove(); }

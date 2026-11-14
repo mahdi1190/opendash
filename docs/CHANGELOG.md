@@ -10,6 +10,15 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.68.5] - 2026-11-14
+
+### Fixed
+
+- Lake Hall has purpose-built artwork for its wooden hut and advanced upgrades, with doors centred on their actual approach. The great hall now has its own final appearance.
+- Tackle & Tide, the starter tent and the thatched hall line up with their protected ground. Asymmetric artwork keeps its proper bounds.
+- The village notice board lines up with its protected width, boat wakes keep their rounded edges, and the fallen ruin column has its shadow beneath it.
+- Opening the Garden includes visible village ground in its readiness check, so preparing scenery does not finish early while nearby ground is still being painted.
+
 ## [2.68.4] - 2026-11-14
 
 ### Fixed

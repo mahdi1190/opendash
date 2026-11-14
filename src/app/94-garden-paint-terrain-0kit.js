@@ -201,6 +201,8 @@ window.GardenPaintTerrainKit = (function () {
     };
     const timer = setInterval(() => ok(tick), 34);
     return {
+      // Readiness follows the same current-view margin as the existing streamer.
+      pendingInView() { const v = viewBox(.05); if (dead || !v) return 0; let count = 0; for (const ch of list) if (!ch.live && meets(ch.bb, v)) count++; return count; },
       chunks: list.length, get pending() { return list.filter(c => !c.live).length; }, get worstMs() { return Math.round(worst); }, get sliceWorstMs() { return Math.round(sliceWorst); }, get bakeMs() { return Math.round(bakeMs); }, buildMs: Math.round(performance.now() - t0),
       get texturePx() { return bakedPx; }, get p95() { const t = times.slice(-200).sort((a, b) => a - b); return t.length ? t[Math.floor(t.length * .95)] : 0; }, get median() { const t = times.slice(-200).sort((a, b) => a - b); return t.length ? t[t.length >> 1] : 0; }, get baked() { return baked; }, get evicted() { return evicted; }, get live() { return list.filter(c => c.live).length; },
       destroy(keepTextures) { dead = true; clearInterval(timer); for (const ch of list) { if (ch.image) ch.image.destroy(); ch.image = null; ch.live = false; if (!keepTextures && scene.textures.exists(ch.key)) scene.textures.remove(ch.key); } },
