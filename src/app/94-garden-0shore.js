@@ -9,10 +9,15 @@ const _gardenShoreEdges = new WeakMap();
 function gardenShorePrepared(shape) {
   let prepared = _gardenShoreEdges.get(shape); if (prepared) return prepared;
   const cells = new Map(), edges = [];
-  for (const points of [shape.points, ...(shape.holes || [])]) for (let i = 0; i < points.length; i++) {
-    const a = points[i], b = points[(i + 1) % points.length], edge = { ax: a.x, ay: a.y, bx: b.x, by: b.y };
+  const addEdge = edge => {
     const index = edges.push(edge) - 1;
-    for (let y = Math.floor(Math.min(a.y, b.y)); y <= Math.floor(Math.max(a.y, b.y)); y++) for (let x = Math.floor(Math.min(a.x, b.x)); x <= Math.floor(Math.max(a.x, b.x)); x++) { const key = x + ',' + y; let list = cells.get(key); if (!list) { list = []; cells.set(key, list); } list.push(index); }
+    for (let y = Math.floor(Math.min(edge.ay, edge.by)); y <= Math.floor(Math.max(edge.ay, edge.by)); y++) for (let x = Math.floor(Math.min(edge.ax, edge.bx)); x <= Math.floor(Math.max(edge.ax, edge.bx)); x++) { const key = x + ',' + y; let list = cells.get(key); if (!list) { list = []; cells.set(key, list); } list.push(index); }
+  };
+  // Decks meeting a bank supply their clipped wet boundary, not a closed
+  // island ring extending across dry land. All probes use these same edges.
+  if (shape.edges) for (const edge of shape.edges) addEdge(edge);
+  else for (const points of [shape.points, ...(shape.holes || [])]) for (let i = 0; i < points.length; i++) {
+    const a = points[i], b = points[(i + 1) % points.length]; addEdge({ ax: a.x, ay: a.y, bx: b.x, by: b.y });
   }
   const W = GARDEN_WORLD, reference = new Uint8Array(W.cols * W.rows), bounds = shape.bounds;
   for (let y = Math.max(0, Math.floor(bounds.y)); y <= Math.min(W.rows - 1, Math.floor(bounds.y + bounds.height)); y++) for (let x = Math.max(0, Math.floor(bounds.x)); x <= Math.min(W.cols - 1, Math.floor(bounds.x + bounds.width)); x++) reference[y * W.cols + x] = shape.contains(x + .500000123, y + .500000321) ? 1 : 0;

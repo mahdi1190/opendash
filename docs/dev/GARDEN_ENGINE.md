@@ -6,6 +6,43 @@ choice is saved. **Garden > Graphics** preserves an explicit Classic choice;
 saved garden. The native path replaces the earlier hidden-SVG rendering bridge;
 Photo retains its established Classic SVG presentation.
 
+Vale crossing water and dry bridge/stone support come from
+`gardenIslandCrossingGeometry`, shared by shore clearance, route links, water
+admission, fish habitats and crossing paint. Movement sweeps the whole step;
+route-edge clearance is reused until the physical grid changes. Public water
+does not inherit a neighbouring growing plot's planting lock. Exact water
+clicks choose a nearby cell-centred float within the same open body and region,
+without crossing dry supports; the multiplayer float format stays unchanged.
+The fixed brook landmark retains its story interaction on the actual boards,
+while the crossing painter owns its single visible bridge.
+
+NativeArt keeps the hidden-original marker consistent with vector fallback,
+resets presentation state when restoring a retained base, and preserves source
+visibility across replacement captures. This corrects disappearing artwork
+without raising the shared texture allowance. Ordinary private play after the
+change travelled from the outlet through the brook, estuary, both woodland
+crossings, north gorge and mill bridge. Terrain and complete player/pet art
+remained visible where the earlier run had lost them. Outlet and east-brook
+casts entered the normal fishing wait state, and bridge-edge movement stayed
+on the visible support. The fictional preboot save had all regional gates
+already open; this does not claim those unlocks were earned in that session.
+Fleet Falls, the complete log-stack roof and wheel zoom were also viewed.
+The log stack now shares its hut-relative anchor and ground contact between
+paint and player/pet collisions; Classic supplies a matching depth-sorted
+picture. Ordinary map walking stopped outside its base, and a held movement
+key could not pass through it. Switching to Classic displayed the same stack.
+The little bridge's click and nearby E interaction opened its normal story
+after its approach moved onto the shared deck. Explicitly removed Vale doors
+also clear inherited pre-island coordinates, including the boathouse.
+An ordinary click at the current boathouse opened its story at the harbour.
+An isolated, previously paired fictional host and visitor then connected over
+the actual relay with Play permission and open SSE streams. Both walked to the
+outlet crossing and observed the other's rounded network position. The host's
+normal wait-state float and rod appeared on the visitor, and a visitor cast
+arrived at the host with the same cell-centred float. The visitor returned to
+their own ready Garden through Leave. These observations had no captured app
+exceptions; they are not a catch, latency or broad performance claim.
+
 World 4 uses the shared 96-by-96 authored island, coast-clipped frontier
 regions and exact layout fingerprint. Region access, water contours and
 multiplayer coordinates use the same tables across both renderers and the

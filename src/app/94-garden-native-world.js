@@ -948,6 +948,18 @@ window.GardenNativeWorld = (function () {
       const props = new Map(gardenPropsNow().map(p => [p.id, p]));
       for (const row of gardenWorldProps(sc, opts)) {
         const id = attribute(row.html, 'data-prop'), prop = props.get(id) || (typeof gardenLandSiteProp === 'function' ? gardenLandSiteProp(id) : null), key = 'prop:' + id;
+        // Vale's physical plank crossing owns this fixed bridge's picture.
+        // Keep its story interaction on the actual boards, without a second arch.
+        if (prop && prop.id === 'ld-bridge' && paintedOn() && window.GardenPaintVale && GardenPaintVale.status().on && typeof gardenIslandCrossingGeometry === 'function' && !(typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(prop.id) || {}).some(Boolean))) {
+          const fixed = (gardenIslandData().static || []).find(p => p.id === prop.id), crossing = gardenIslandCrossingGeometry().find(c => c.crossing.id === 'falls-footbridge');
+          if (fixed && crossing && prop.x === fixed.x && prop.y === fixed.y && prop.w === fixed.w && prop.h === fixed.h) {
+            const support = crossing.support.map(p => ({ x: p.x * W.cellW, y: W.sky + p.y * W.cellH })), b = terrainBox(support), foot = crossing.deckPoint(.5, 0);
+            const html = '<g class="gd-prop" data-prop="ld-bridge"><rect x="' + b.x + '" y="' + b.y + '" width="' + b.width + '" height="' + b.height + '" opacity="0"/></g>';
+            const rec = add(key, html, { kind: 'prop', id, prop, model: prop, foot, crossingSupport: support }, foot.y);
+            rec.bounds = b; rec.handle.hitPoint = (x, y) => insidePolygon({ x, y }, support);
+            continue;
+          }
+        }
         const windowed = prop && ['shop', 'tackle', 'lf-office'].includes(prop.kind);
         const paneMaterialKey = prop && ['windmill', 'shepherd', 'mill'].includes(sceneryKind(prop)) ? '|panes:' + (nightMaterials ? 'warm' : 'day') : '';
         const signature = prop && 'native-landscape-crafted-9' + (packOn() ? '-painted' : '') + '|' + prop.id + '|' + [prop.x, prop.y, prop.w, prop.h, sc.season, sceneryKind(prop) === 'gate' ? (sc.areas || []).join('.') : ''].join(',') + (windowed ? '|windows:' + (nightMaterials ? 'warm' : 'day') : '');
@@ -1009,6 +1021,7 @@ window.GardenNativeWorld = (function () {
       solidObjects.length = 0; pointLights.length = 0; fadingProps.length = 0; reflectedScenery.length = 0; landmarkRows.length = 0; canopyOccluders.length = 0; effectFrame = -1;
       for (const record of drawings.values()) {
         const meta = record.metadata, source = meta.model, def = source && (source.def || source), captureKey = record.materialKey ? record.source + record.materialKey : record.source;
+        if (meta.crossingSupport) continue;   // interaction proxy: no second shadow, reflection or occluder
         if (record.handle.kind) {
           const foot = meta.foot || { x: (source.x + (source.w || 1) / 2) * W.cellW, y: W.sky + (source.y + (source.h || 1)) * W.cellH };
           landmarkRows.push({ id: record.id, kind: record.handle.kind, source: record.root, body: record.handle.body, bounds: record.bounds, x: foot.x, y: foot.y, tall: foot.y - record.bounds.y, dynamic: record.handle.dynamic, captureKey });
@@ -1420,7 +1433,7 @@ window.GardenNativeWorld = (function () {
         const made = designing && /^dzc\d+-/.test(row.metadata.id || ''), fixed = designing && row.metadata.id && gardenDesignRow(row.metadata.id);
         if (!['plant', 'decor', 'prop', 'land'].includes(row.metadata.kind) && !made && !fixed) continue;
         if (!row.root.visible || !row.root.active || row.root.alpha <= .025) continue;
-        const b = row.bounds, owns = row.metadata.kind === 'prop' && row.metadata.prop && _gwPropOwnsPoint(row.metadata.prop, pt);
+        const b = row.bounds, owns = row.metadata.crossingSupport ? insidePolygon({ x: worldX, y: worldY }, row.metadata.crossingSupport) : row.metadata.kind === 'prop' && row.metadata.prop && _gwPropOwnsPoint(row.metadata.prop, pt);
         const bounded = worldX >= b.x && worldX <= b.x + b.width && worldY >= b.y && worldY <= b.y + b.height;
         if (!owns && (!bounded || !designing && row.handle.hitPoint && !row.handle.hitPoint(worldX, worldY))) continue;
         candidates.push({ ...row.metadata, kind: made || fixed ? 'prop' : row.metadata.kind, depth: row.depth, record: row });

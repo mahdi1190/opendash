@@ -1096,10 +1096,16 @@ window.GardenNativeArt = (function () {
     return !cache.cropped || containsBox(cache.coverage, intersectBox(node.getBBox(), localView(node) || node.getBBox()), .25 / cache.quality);
   }
   function cacheCoversView(node) { const cache = node._cache; return !!cache && (!cache.cropped || containsBox(cache.coverage, intersectBox(node.getBBox(), localView(node) || node.getBBox()), .25 / cache.quality)); }
-  function showCache(node, cached) {
-    const cache = node._cache; if (!cache || cache.showingVectors === !cached) return;
+  function showCache(node, cached, force) {
+    const cache = node._cache; if (!cache || !force && cache.showingVectors === !cached) return;
     cache.showingVectors = !cached;
-    for (const child of cache.originals) if (child && child.active) child.setVisible(cached ? false : cache.visible.get(child));
+    // The marker describes hidden originals, not cache ownership while
+    // vectors are exposed. Restyling an exposed actor must keep it visible.
+    for (const child of cache.originals) if (child && child.active) {
+      if (cached) child._nativeCacheHiddenBy = node;
+      else if (child._nativeCacheHiddenBy === node) delete child._nativeCacheHiddenBy;
+      child.setVisible(cached ? false : cache.visible.get(child));
+    }
     for (const tile of cache.tiles) tile.setVisible(cached);
   }
   function releaseCache(node, keepBase) {
@@ -1122,6 +1128,9 @@ window.GardenNativeArt = (function () {
     const cache = node._cacheBase; if (!cache) return;
     for (const child of cache.originals) if (child && child.active) { child._nativeCacheHiddenBy = node; child.setVisible(false); }
     for (const tile of cache.tiles) { node._inner.add(tile); tile.setVisible(true); }
+    // Retention exposed vectors before detaching these tiles. Restoring
+    // the tiles must restore that presentation flag as well.
+    cache.showingVectors = false;
     node._cache = cache; node._cacheBase = null; stateFor(node.scene).cachedNodes.add(node);
   }
   function capturePixels(size) { return Math.max(2, Math.ceil(size / 2) * 2); }
@@ -1263,13 +1272,17 @@ window.GardenNativeArt = (function () {
     // Retain the previous capture until every replacement tile has rendered.
     // Allocation or rendering failures restore its presentation atomically.
     const previous = node._cache;
-    if (previous) showCache(node, false);
+    // A capture must reassert its source visibility even after a retained
+    // base or a restyle changed presentation since the last mode switch.
+    if (previous) showCache(node, false, true);
     // Flatten previously captured descendants back to their retained vectors.
     // Recapturing a lower-resolution child texture would bake its blur into
     // the sharper parent and retain both allocations unnecessarily.
     for (const child of [...state.cachedNodes]) if (child !== node && node.contains(child)) releaseCache(child, false);
     const prepareLabels = n => { if (n._label) { const desired = Math.max(2, Math.min(12, Math.ceil(effectivePixels(n)))); if (desired > n._textResolution) { n._textResolution = desired; n._label.setResolution(desired); } } for (const child of n.children) prepareLabels(child); }; prepareLabels(node);
-    const originals = previous ? previous.originals : [...node._inner.list], visible = new Map(originals.map(n => [n, n.visible])), tiles = [];
+    // Preserve authored visibility across replacements; transient cache
+    // hiding must never become the next capture's fallback visibility.
+    const originals = previous ? previous.originals : [...node._inner.list], visible = previous ? new Map(previous.visible) : new Map(originals.map(n => [n, n.visible])), tiles = [];
     const oldRotation = node._inner.rotation, oldScaleX = node._inner.scaleX, oldScaleY = node._inner.scaleY, oldAlpha = node._inner.alpha;
     try {
       node._inner.setRotation(0).setScale(quality).setAlpha(1);

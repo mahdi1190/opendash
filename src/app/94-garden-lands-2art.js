@@ -931,6 +931,17 @@ function _gldSiteArt(f) {
     + A.P('#8c7755', A.rrect(cx - 9, by - 10, 2.6, 11, .7) + A.rrect(cx + 7, by - 10, 2.6, 11, .7))
     + A.P('#d1c398', A.rect(cx - 8.5, by - 9, .9, 7) + A.rect(cx + 7.5, by - 9, .9, 7));
 }
+function _gldIslandLogStackArt(logs) {
+  const A = GART, W = GARDEN_WORLD;
+  let art = A.P('#1a2a14', A.ell(4, 1, 40, 6), .3);
+  for (const x of [-34, 34]) art += A.P('#4a3a2c', A.rect(x - 2, -40, 4, 40));
+  for (let row = 0; row < 5; row++) for (let k = 0; k < 7; k++) {
+    const x = -29 + k * 9.6 + (row % 2) * 4.8, y = -5 - row * 8.4; if (x > 30) continue;
+    art += A.P('#8a6a46', A.circ(x, y, 4.6)) + A.P('#d8b884', A.circ(x - .4, y - .4, 3.6)) + A.P('#b8925e', A.circ(x - .4, y - .4, 1.6), .8);
+  }
+  art += A.P('#5e5040', 'M-40 -42L0 -52L42 -42L40 -38L0 -47L-38 -38Z');
+  return '<g pointer-events="none" transform="translate(' + _gwN(logs.x * W.cellW) + ' ' + _gwN(W.sky + logs.y * W.cellH) + ')">' + art + '</g>';
+}
 function gardenLandWorldProps(sc, o) {
   const out = [], open = new Set(sc.areas || []), lv = sc.lv == null ? 1 : sc.lv, island = typeof gardenIslandActive === 'function' && gardenIslandActive(), physical = island ? new Map(gardenPropsNow().map(p => [p.id, p])) : null;
   const push = (cls, z, x, inner, key) => { if (inner) out.push({ cls, z, x, inner, key }); };
@@ -944,6 +955,11 @@ function gardenLandWorldProps(sc, o) {
     if (!gardenLandGatePresented(g, open, custom)) continue;
     const gateZ = g.crossSpan ? Math.max(...g.crossSpan.map(p => p[1])) + .15 : g.y + g.h;
     push('gd-prop-lf gd-zonegate' + (isOpen ? '' : ' gd-prop-click'), gateZ, g.x, _gldGateArt(g, sc, isOpen), g.id);
+  }
+  // Vale owns the native sprite; Classic uses the same physical anchor.
+  if (island && !o.native) {
+    const logs = gardenIslandLogStack();
+    if (logs) push('gd-island-logstack', logs.y, logs.x, _gldIslandLogStackArt(logs), 'island-logstack');
   }
   if (island && !o.native && (gardenIslandData().regions || []).length) {
     for (const row of _gldIslandUnderstoryRows(sc)) push('gd-island-understory', -30, 0, row.html, 'understory:' + row.id);

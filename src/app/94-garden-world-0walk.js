@@ -90,6 +90,8 @@ function _gwBuildSolids(m) {
     const W = GARDEN_WORLD, scale = 1.75, x = oak.x + 2.9, y = oak.y - 1.5;
     add(x - 20 * scale / W.cellW, y - 8 * scale / W.cellH, x + 20 * scale / W.cellW, y + 2 * scale / W.cellH);
   }
+  const logs = typeof gardenIslandLogStack === 'function' ? gardenIslandLogStack(island) : null;
+  if (logs) { const f = logs.foot; add(f.x0, f.y0, f.x1, f.y1); }
   return { list, at };
 }
 /** Do feet (half width fx, half depth fy, in cells) at x, y touch one of the boxes? */
@@ -236,6 +238,16 @@ function _gwWaterProbe(grid, x, y, fx, fy) {
   return result;
 }
 function _gwPrepareRouteGrid(grid) {
+  // Only cells touched by a continuous shoreline need extra edge clearance.
+  // Two dry cell centres can still have a wet bank tip between them.
+  const shoreCells = grid.shoreCells = new Uint8Array(grid.length);
+  // Eight directed neighbour links per cell; reset with physical preparation.
+  // Grid reuse already compares solid boxes, shores, cover and wonder state.
+  grid.shoreEdgeClear = new Uint8Array(grid.length * 8);
+  for (const shape of [grid.shore, ...(grid.otherShapes || [])]) if (shape) for (const key of gardenShorePrepared(shape).cells.keys()) {
+    const [x, y] = key.split(',').map(Number);
+    if (x >= 0 && y >= 0 && x < GARDEN_WORLD.cols && y < GARDEN_WORLD.rows) shoreCells[y * GARDEN_WORLD.cols + x] = 1;
+  }
   const W = GARDEN_WORLD, candidate = (x, y) => _gwGridFeet(grid, x, y, GW_FOOT.x, GW_FOOT.y) && !_gwSolidHit(x, y, GW_FOOT.x, GW_FOOT.y) && (grid.liquid || gardenWonderWalkFine(x, y, GW_FOOT.y));
   const offsets = [.5, .25, .75, .08, .92];
   for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
@@ -250,6 +262,23 @@ function _gwPrepareRouteGrid(grid) {
   }
 }
 function _gwCellPoint(cell, grid) { grid = grid || _gwGridNow(); return grid.anchors && grid.anchors.get(cell.y * GARDEN_WORLD.cols + cell.x) || { x: cell.x + .5, y: cell.y + .5 }; }
+/** Neighbour links near banks use the same feet as the eventual walk. */
+function _gwRouteEdgeClear(a, b, grid, forceFine) {
+  const W = GARDEN_WORLD, anchors = grid.anchors;
+  let fine = forceFine || anchors && (anchors.has(a.y * W.cols + a.x) || anchors.has(b.y * W.cols + b.x));
+  if (!fine && grid.shoreCells) for (let y = Math.min(a.y, b.y); y <= Math.max(a.y, b.y) && !fine; y++) for (let x = Math.min(a.x, b.x); x <= Math.max(a.x, b.x); x++) if (grid.shoreCells[y * W.cols + x]) { fine = true; break; }
+  if (!fine) return true;
+  const dx = b.x - a.x, dy = b.y - a.y, adjacent = Number.isInteger(dx) && Number.isInteger(dy) && Math.abs(dx) <= 1 && Math.abs(dy) <= 1 && (dx || dy), slot = (dy + 1) * 3 + dx + 1;
+  const memo = adjacent && grid.shoreEdgeClear, key = (a.y * W.cols + a.x) * 8 + slot - (slot > 4 ? 1 : 0);
+  if (memo && memo[key]) return memo[key] === 1;
+  const from = _gwCellPoint(a, grid), to = _gwCellPoint(b, grid), n = Math.max(1, Math.ceil(Math.hypot((to.x - from.x) * W.cellW, (to.y - from.y) * W.cellH) / 3));
+  for (let i = 1; i <= n; i++) {
+    const t = i / n, x = from.x + (to.x - from.x) * t, y = from.y + (to.y - from.y) * t;
+    if (!_gwGridFeet(grid, x, y, GW_FOOT.x, GW_FOOT.y) || _gwSolidHit(x, y, GW_FOOT.x, GW_FOOT.y) || !grid.liquid && !gardenWonderWalkFine(x, y, GW_FOOT.y)) { if (memo) memo[key] = 2; return false; }
+  }
+  if (memo) memo[key] = 1;
+  return true;
+}
 /** The grid, without working out the garden for every point tested (a walk tests hundreds a frame; this was a tenth of a core): the same one until the garden saves, the designer moves something, or a moment has passed. */
 function _gwGridNow(groundOnly) {
   // A walk, a route and every creature share the same collision snapshot for a
@@ -288,6 +317,7 @@ function _gwReach() {
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= C || ny >= R) continue;
       const j = ny * C + nx; if (seen[j] || grid[j]) continue;
+      if (!_gwRouteEdgeClear({ x, y }, { x: nx, y: ny }, grid)) continue;
       seen[j] = 1; stack.push(j);
     }
   }
@@ -363,11 +393,20 @@ function _gwMoveBy(dx, dy) {
  * tangent. Obstacles keep their old box handling; no axis jitter at a curve. */
 function _gwShoreSlide(x, y, dx, dy, fx, fy, free, grid, out) {
   out = out || {}; out.x = x; out.y = y; out.moved = false; out.shore = false; out.blockedCorner = false;
-  if ((!grid.shore && !grid.otherShapes) || free(x + dx, y + dy) || !free(x, y)) return out;
-  const probe = _gwWaterProbe(grid, x + dx, y + dy, fx, fy);
-  if (probe.free) return out;
-  if (!probe.edge && grid.waterCover[Math.floor(y) * GARDEN_WORLD.cols + Math.floor(x)]) return out;
+  if ((!grid.shore && !grid.otherShapes) || !free(x, y)) return out;
   const W = GARDEN_WORLD, count = Math.max(1, Math.ceil(Math.hypot(dx * W.cellW, dy * W.cellH) / 3)), vx = dx / count, vy = dy / count, skin = .025;
+  // Dry endpoints can still straddle a curved bank or a narrow river tip.
+  // Use the same spacing as route clearance before choosing the shore sweep;
+  // keyboard movement and grounded companions must not skip that contact.
+  let probe = null;
+  for (let step = 1; step <= count; step++) {
+    const px = x + vx * step, py = y + vy * step;
+    if (free(px, py)) continue;
+    const water = _gwWaterProbe(grid, px, py, fx, fy);
+    if (!water.free) { probe = water; break; }
+  }
+  if (!probe) return out;
+  if (!probe.edge && grid.waterCover[Math.floor(y) * W.cols + Math.floor(x)]) return out;
   let px = x, py = y, blocked = false; out.shore = true;
   for (let step = 0; step < count; step++) {
     if (free(px + vx, py + vy)) { px += vx; py += vy; continue; }
@@ -493,7 +532,7 @@ function gardenPath(from, to, raw) {
       if (!free(nx, ny)) continue;
       if (dx && dy && (!free(cx + dx, cy) || !free(cx, cy + dy))) continue;   // no corner cutting
       const ni = idx(nx, ny); if (closed[ni]) continue;
-      if (grid.anchors && (grid.anchors.has(cur) || grid.anchors.has(ni)) && !_gwLos(_gwCellPoint({ x: cx, y: cy }, grid), _gwCellPoint({ x: nx, y: ny }, grid))) continue;
+      if (!_gwRouteEdgeClear({ x: cx, y: cy }, { x: nx, y: ny }, grid)) continue;
       const step = Math.hypot(dx * W.cellW, dy * W.cellH) / 40, ng = gs[cur] + step;
       if (ng < gs[ni]) { gs[ni] = ng; came[ni] = cur; f[ni] = ng + hcost(nx, ny); open.lower(ni); }
     }
@@ -512,13 +551,13 @@ function gardenPath(from, to, raw) {
   return out;
 }
 function _gwLineClear(a, b, grid) {
-  if (grid.anchors && grid.anchors.size) return _gwLos(_gwCellPoint(a, grid), _gwCellPoint(b, grid));
+  if (grid.anchors && grid.anchors.size) return _gwRouteEdgeClear(a, b, grid, true);
   const W = GARDEN_WORLD, n = Math.ceil(Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y)) * 4);
   for (let i = 1; i < n; i++) {
     const t = i / n, x = Math.floor(a.x + 0.5 + (b.x - a.x) * t), y = Math.floor(a.y + 0.5 + (b.y - a.y) * t);
     if (x < 0 || y < 0 || x >= W.cols || y >= W.rows || grid[y * W.cols + x]) return false;
   }
-  return true;
+  return _gwRouteEdgeClear(a, b, grid);
 }
 /** The way from one point to another: [waypoints] ending exactly at `to`, as straight as it can be, or null. */
 function _gwRoute(from, to) {
@@ -1274,10 +1313,24 @@ function _gwOpenProp(p) {
   if (go && p.door && typeof gardenSfx === 'function') gardenSfx('door');
   if (go) go();
 }
+/** The actual standing point for a prop, in continuous world cells. */
+function _gwPropApproachPoint(p, fallback = true) {
+  // The fixed little bridge shares the Vale crossing's boards. Its old
+  // catalogue doorway was not moved by the layout's explicit null door.
+  if (p.id === 'ld-bridge' && GARDEN_WORLD.v >= 5 && typeof gardenIslandCrossingGeometry === 'function' && !(typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(p.id) || {}).some(Boolean))) {
+    const fixed = (gardenIslandData().static || []).find(row => row.id === p.id);
+    if (fixed && p.x === fixed.x && p.y === fixed.y && p.w === fixed.w && p.h === fixed.h) {
+      const crossing = gardenIslandCrossingGeometry().find(c => c.crossing.id === 'falls-footbridge');
+      if (crossing) { const point = crossing.deckPoint(.5, 0), W = GARDEN_WORLD; return { x: point.x / W.cellW, y: (point.y - W.sky) / W.cellH }; }
+    }
+  }
+  if (!p.door && !fallback) return null;
+  const d = p.door || { x: Math.floor(p.x + p.w / 2), y: p.y + p.h };
+  return { x: d.x + .5, y: d.y + .5 };
+}
 /** Walk to a building's door and go in. */
 function _gwGoToProp(p) {
-  const d = p.door || { x: Math.floor(p.x + p.w / 2), y: p.y + p.h };
-  const door = { x: d.x + 0.5, y: d.y + 0.5 };
+  const door = _gwPropApproachPoint(p);
   if (Math.hypot((door.x - _gw.px) * GARDEN_WORLD.cellW, (door.y - _gw.py) * GARDEN_WORLD.cellH) < 56) { _gw.path = []; _gwOpenProp(p); return; }
   if (!gardenWalkToPoint(door, () => _gwOpenProp(p), { radius: 1.5 })) gameDeny(_gdp.svg && _gdp.svg.querySelector(`.gd-prop[data-prop="${p.id}"]`), { say: 'You cannot get to the door.' });
 }
@@ -1338,10 +1391,16 @@ function gardenWorldPick(it, cell, ev, m) {
   if (bug) return { kind: 'bug', bug, pt };
   const decor = it && it.kind === 'decor' && (!it.ground || _gdpTool() === 'dig') ? gardenDecorById(m, it.uid) : null;   // you walk over a path, but the spade lifts it
   if (plant || decor) return { kind: plant ? 'plant' : 'decor', plant, decor, pt, cell: c };
+  // Island rivers share cells with growing-plot edges. Water follows region
+  // permissions, not the neighbouring plot's planting unlock.
+  if (WD.v >= 4 && typeof gardenWaterContainsPoint === 'function' && gardenWaterContainsPoint(pt.x, pt.y)) {
+    const locked = gardenZoneLockOf(pt.x, pt.y, m.areas);
+    return locked ? { kind: 'land', land: locked, pt, cell: c } : { kind: 'water', pt, cell: c };
+  }
   const area = gardenAreaAt(c.x, c.y, m.level.level);
   if (area.startsWith('locked:')) return { kind: 'land', land: area.slice(7), pt, cell: c };
   { const sign = ev && ev.target && ev.target.closest ? ev.target.closest('.gd-locksign[data-land]') : null; if (sign) return { kind: 'land', land: sign.getAttribute('data-land'), pt, cell: c }; }   // (a sign stands on the path, in front of what it is about)
-  if (gardenIsWater(c.x, c.y)) return { kind: 'water', pt, cell: c };
+  if (typeof gardenWaterContainsPoint === 'function' ? gardenWaterContainsPoint(pt.x, pt.y) : gardenIsWater(c.x, c.y)) return { kind: 'water', pt, cell: c };
   const def = gardenArea(area), oc = m.occ.get(c.x + ',' + c.y);
   if (_gdpTool() === 'hand' && def && def.cats && def.cats.length && !oc && !(m.visit && m.visit.no.plant)) return { kind: 'spot', pt, cell: c };   // an empty spot in a bed: it offers planting right there
   return { kind: 'ground', pt, cell: c };
@@ -1470,7 +1529,7 @@ function gardenWorldInteract() {
   if (typeof _gwFishBusy === 'function' && _gwFishBusy()) { if (typeof _gwFishPress === 'function') _gwFishPress(); return; }
   const m = gardenHere(), W = GARDEN_WORLD;
   const px = Math.floor(_gw.px), py = Math.floor(_gw.py);
-  for (const p of gardenPropsNow()) if (p.act && p.door && Math.abs(p.door.x - px) <= 1 && Math.abs(p.door.y - py) <= 1) { _gwOpenProp(p); return; }
+  for (const p of gardenPropsNow()) if (p.act) { const door = _gwPropApproachPoint(p, false); if (door && Math.abs(door.x - .5 - px) <= 1 && Math.abs(door.y - .5 - py) <= 1) { _gwOpenProp(p); return; } }
   if (_gh.bubble) { const b = _gh.bubble.el.querySelector('.gd-bub-btn'); if (b) b.click(); return; }
   if (typeof gardenTravellerInteract === 'function' && gardenTravellerInteract()) return;
   if (_gw.bugs && _gw.bugs.size && typeof gardenNetSwing === 'function') { for (const b of _gw.bugs.values()) if (Math.hypot(b.x - _gw.px, (b.y - _gw.py) * 1.4) < gardenNet().st.reach * 1.35) { gardenNetSwing(null); return; } }
@@ -1481,7 +1540,11 @@ function gardenWorldInteract() {
     const c = m.occ.get(cx + ',' + cy), p = c && c.plant ? gardenPlantById(m, c.plant) : null;
     if (p) { _gdpActOn(p.uid); return; }
   }
-  if (typeof gardenFishFront === 'function') { for (let r = 1; r <= gardenRod().st.range; r++) for (const dy of [1, 0, -1]) { const x = px + _gw.face * r, y = py + dy; if (x >= 0 && x < W.cols && y >= 0 && y < W.rows && gardenIsWater(x, y)) { gardenFishFront(); return; } } for (let r = 1; r <= gardenRod().st.range; r++) if (py + r < W.rows && gardenIsWater(px, py + r)) { gardenFishFront(); return; } }
+  if (typeof gardenFishFront === 'function') {
+    const wet = (x, y) => typeof gardenWaterContainsPoint === 'function' ? gardenWaterContainsPoint(x + .5, y + .5) : gardenIsWater(x, y);
+    for (let r = 1; r <= gardenRod().st.range; r++) for (const dy of [1, 0, -1]) { const x = px + _gw.face * r, y = py + dy; if (x >= 0 && x < W.cols && y >= 0 && y < W.rows && wet(x, y)) { gardenFishFront(); return; } }
+    for (let r = 1; r <= gardenRod().st.range; r++) if (py + r < W.rows && wet(px, py + r)) { gardenFishFront(); return; }
+  }
   { const s = _ghProject(_gw.px, _gw.py - 1.4), r = _gw.box && _gw.box.getBoundingClientRect(); gameDeny(null, { at: s && r ? { x: r.left + s.x, y: r.top + s.y } : null, silent: true, say: 'Nothing in reach.' }); }
 }
 

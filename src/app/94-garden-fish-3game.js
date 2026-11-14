@@ -241,15 +241,38 @@ function _gwFishLost(msg) {
   _gdpRefreshChromeSoon();
 }
 
-/** Click water (with any tool): cast at its cell centre. If the rod does not reach from where you stand, you walk to the nearest place it does and cast from there. */
+/** Keep river clicks and their cell-centred floats in the same open water. */
+function _gwFishTarget(pt, m) {
+  const cell = { x: Math.floor(pt.x), y: Math.floor(pt.y) }, centre = { x: cell.x + .5, y: cell.y + .5 };
+  if (typeof gardenWaterContainsPoint !== 'function') return centre;
+  if (GARDEN_WORLD.v < 4 || pt.x >= GARDEN_ROOM_X || typeof _gfsIslandComponentAt !== 'function') return gardenWaterContainsPoint(centre.x, centre.y) ? centre : null;
+  // A wet centre can still lie beyond a bridge or a closed regional boundary.
+  // Give it the same body, access and clear-segment checks as nearby centres.
+  const body = _gfsIslandComponentAt(pt.x, pt.y), region = gardenZoneOf(pt.x, pt.y);
+  if (!body) return null;
+  const candidates = [];
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const q = { x: centre.x + dx, y: centre.y + dy }, d = Math.hypot(q.x - pt.x, q.y - pt.y);
+    if (d > 1.5 || !gardenWaterContainsPoint(q.x, q.y) || gardenZoneOf(q.x, q.y) !== region || gardenWaterNo(q.x, q.y, m)) continue;
+    const other = _gfsIslandComponentAt(q.x, q.y);
+    if (!other || other.id !== body.id || !_gfsIslandShapeSegment(body.shape, pt, q)) continue;
+    // The contour check keeps the segment in this basin; point checks also exclude live supports/ice.
+    let clear = true;
+    for (let i = 1; i < 16; i++) if (!gardenWaterContainsPoint(pt.x + (q.x - pt.x) * i / 16, pt.y + (q.y - pt.y) * i / 16)) { clear = false; break; }
+    if (clear) candidates.push({ x: q.x, y: q.y, d });
+  }
+  candidates.sort((a, b) => a.d - b.d);
+  return candidates[0] || null;
+}
+
+/** Click water (with any tool): cast at its nearest usable cell centre. If the rod does not reach from where you stand, you walk to the nearest place it does and cast from there. */
 function gardenFishClickPt(pt, m) {
   const cell = { x: Math.floor(pt.x), y: Math.floor(pt.y) };
-  if (!gardenIsWater(cell.x, cell.y)) return false;
-  if (typeof gardenWaterContainsPoint === 'function' && !gardenWaterContainsPoint(pt.x, pt.y)) return false;
+  if (typeof gardenWaterContainsPoint === 'function' ? !gardenWaterContainsPoint(pt.x, pt.y) : !gardenIsWater(cell.x, cell.y)) return false;
   const zone = gardenWaterZone(cell.x, cell.y);
   { const no = gardenWaterNo(cell.x, cell.y, m); if (no) { _gdpSay({ ok: false, msg: no }); return true; } }
-  pt = { x: cell.x + 0.5, y: cell.y + 0.5 };   // plan the walk for the same cell-centred float everyone sees
-  if (typeof gardenWaterContainsPoint === 'function' && !gardenWaterContainsPoint(pt.x, pt.y)) { _gdpSay({ ok: false, msg: 'Too close to the bank. Try a little farther into the water.' }); return true; }
+  pt = _gwFishTarget(pt, m);   // plan the walk for the same cell-centred float everyone sees
+  if (!pt) { _gdpSay({ ok: false, msg: 'Too close to the bank. Try a little farther into the water.' }); return true; }
   const rod = gardenRod(), reach = rod.st.range, W = GARDEN_WORLD;
   const dist = (x, y) => Math.hypot(x - pt.x, y - pt.y);
   const d0 = dist(_gw.px, _gw.py);
@@ -292,7 +315,7 @@ function _gwFishCast(pt0) {
 /** Space / E with a rod and nothing out: cast at the water in front of you. */
 function gardenFishFront() {
   const W = GARDEN_WORLD, m = gardenHere(), px = Math.floor(_gw.px), py = Math.floor(_gw.py), rod = gardenRod();
-  const wet = (x, y) => x >= 0 && x < W.cols && y >= 0 && y < W.rows && gardenIsWater(x, y) && !gardenWaterNo(x, y, m);   // (only water that is open: shut water is not "in front of you")
+  const wet = (x, y) => x >= 0 && x < W.cols && y >= 0 && y < W.rows && (typeof gardenWaterContainsPoint === 'function' ? gardenWaterContainsPoint(x + .5, y + .5) : gardenIsWater(x, y)) && !gardenWaterNo(x, y, m);   // (only water that is open: shut water is not "in front of you")
   for (let r = 2; r <= rod.st.range; r++) {
     const x = px + _gw.face * r, y = py + 1;
     if (wet(x, y)) { gardenFishClick({ x, y }, m); return; }

@@ -53,7 +53,17 @@ function gardenIslandStaticRow(row) {
   if (!p) return row;
   const next = Object.assign({}, row, { x: p.x, y: p.y, w: p.w, h: p.h, col: p.col, walk: p.walk ? 1 : 0 });
   if (p.door) next.door = Object.freeze({ x: p.door.x, y: p.door.y });
+  else if (data.version >= 5 && p.door === null) next.door = null;   // an explicit removal must not retain a pre-island doorway
   return next;
+}
+/** The woodpile's authored anchor and ground contact, shared by paint and feet. */
+function gardenIslandLogStack(data) {
+  data = data || (gardenIslandActive() ? gardenIslandData() : null);
+  const hut = data && data.version >= 5 && (data.static || []).find(p => p.id === 'ld-woodhut');
+  if (!hut) return null;
+  const W = data.world, x = hut.x + hut.w / 2 + 2.2, y = hut.y + hut.h + .4;
+  // The posts and lowest logs occupy the base; the roof is safe to walk behind.
+  return { x, y, foot: { x0: x - 36 / W.cellW, y0: y - 8 / W.cellH, x1: x + 36 / W.cellW, y1: y + 2 / W.cellH } };
 }
 /** Optional decks use the displayed Garden's mechanics identity, never a visitor's ownership. */
 function gardenSidePierMechanicsReady(source) {
@@ -108,12 +118,80 @@ function gardenIslandLandContains(x, y) { return Number.isFinite(x) && Number.is
 function gardenIslandOceanContains(x, y) { const W = GARDEN_WORLD; return Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 && x < W.cols && y < W.rows && !gardenIslandLandContains(x, y); }
 function _gardenIslandRect(x, y, r) { return x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h; }
 function _gardenIslandFreshwaterTest(G, cx, cy) { return G.freshwater.some(p => p.boundary ? _gardenIslandInLoop(cx, cy, p.boundary) : _gardenIslandRect(cx, cy, p.wet)); }
+/** Retained river water and the precise standing surfaces crossing it. */
+function gardenIslandCrossingGeometry() {
+  if (_gardenIslandDerived.crossings) return _gardenIslandDerived.crossings;
+  const D = gardenIslandData(), W = GARDEN_WORLD, pres = D.presentation || {}, result = [];
+  if (D.version < 5) return _gardenIslandDerived.crossings = result;
+  const cell = p => ({ x: p.x / W.cellW, y: (p.y - W.sky) / W.cellH });
+  for (const c of pres.crossings || []) {
+    const river = pres.rivers && pres.rivers[c.over]; if (!river || !river.line || river.line.length < 2) continue;
+    const cells = river.line, cum = [0]; for (let i = 1; i < cells.length; i++) cum.push(cum[i - 1] + Math.hypot(cells[i][0] - cells[i - 1][0], cells[i][1] - cells[i - 1][1]));
+    const Ln = { cells, cum, len: cum[cum.length - 1] };
+    const at = s => { s = Math.max(0, Math.min(Ln.len, s)); let i = 1; while (i < cum.length - 1 && cum[i] < s) i++; const a = cells[i - 1], b = cells[i], len = cum[i] - cum[i - 1] || 1, t = (s - cum[i - 1]) / len; return { x: a[0] + (b[0] - a[0]) * t, y: a[1] + (b[1] - a[1]) * t, tx: (b[0] - a[0]) / len, ty: (b[1] - a[1]) / len }; };
+    let n0 = null; for (let s = 0; s <= Ln.len; s += .1) { const p = at(s), d = Math.hypot(p.x - c.x, p.y - c.y); if (!n0 || d < n0.d) n0 = { s, d }; }
+    // Read the original basin centres, not the augmented base-cell table.
+    const wet = s => { const p = at(s), x = Math.floor(p.x) + .5, y = Math.floor(p.y) + .5; return gardenIslandLandContains(x, y) && _gardenIslandFreshwaterTest(gardenIslandGeometry(), x, y); };
+    let s0 = n0.s, s1 = n0.s; for (let k = 0; k < 40 && s0 > 0 && !wet(s0); k++) s0 -= .15; for (let k = 0; k < 40 && s1 < Ln.len && !wet(s1); k++) s1 += .15;
+    s0 = Math.max(0, s0 - .7); s1 = Math.min(Ln.len, s1 + .7);
+    const hw = river.halfWidth || 1, left = [], right = [];
+    for (let s = s0; s <= s1 + 1e-6; s += .2) { const p = at(s), k = hw * (1 + .06 * Math.sin(s * 3.1)); left.push({ x: p.x - p.ty * k, y: p.y + p.tx * k }); right.push({ x: p.x + p.ty * k, y: p.y - p.tx * k }); }
+    const mid = at(n0.s), span = c.kind === 'footbridge' ? hw + .7 : hw + .15;
+    const a = { x: (mid.x - mid.ty * span) * W.cellW, y: W.sky + (mid.y + mid.tx * span) * W.cellH }, b = { x: (mid.x + mid.ty * span) * W.cellW, y: W.sky + (mid.y - mid.tx * span) * W.cellH };
+    const length = Math.hypot(b.x - a.x, b.y - a.y), ux = (b.x - a.x) / length, uy = (b.y - a.y) / length, halfWidth = c.kind === 'footbridge' ? 17 : 14;
+    const deckPoint = (t, s) => ({ x: a.x + (b.x - a.x) * t - uy * s, y: a.y + (b.y - a.y) * t + ux * s - (c.kind === 'footbridge' ? Math.sin(Math.PI * t) * 7 : 0) });
+    let support;
+    if (c.kind === 'hump-bridge') {
+      const gate = (D.gates || []).find(g => g.id === c.gateId), ends = gate && gate.crossSpan;
+      const depth = ends && ends.length === 2 ? Math.hypot((ends[1][0] - ends[0][0]) * W.cellW, (ends[1][1] - ends[0][1]) * W.cellH) / 2 : 0;
+      if (!depth) continue;
+      support = [{ x: c.x - 74 / W.cellW, y: c.y - depth / W.cellH }, { x: c.x + 74 / W.cellW, y: c.y - depth / W.cellH }, { x: c.x + 74 / W.cellW, y: c.y + depth / W.cellH }, { x: c.x - 74 / W.cellW, y: c.y + depth / W.cellH }];
+    } else {
+      const n = c.kind === 'footbridge' ? Math.max(1, Math.ceil(length / 4)) : 1, edge = side => Array.from({ length: n + 1 }, (_, i) => cell(deckPoint(i / n, side * halfWidth)));
+      support = edge(-1).concat(edge(1).reverse());
+    }
+    const count = Math.max(3, Math.round(length / 26)), points = left.concat(right.reverse());
+    result.push({ id: 'crossing-water:' + c.id, crossing: c, over: c.over, kind: c.kind, points, support, holes: [support], mid, span: { Ln, n0, s0, s1 }, a, b, length, halfWidth, deckPoint, stones: { count, alongRadius: .8 * length / count, acrossRadius: 20 } });
+  }
+  return _gardenIslandDerived.crossings = result;
+}
+function gardenIslandInPolygon(x, y, points) {
+  let on = false; for (let i = 0, j = points.length - 1; i < points.length; j = i++) { const a = points[i], b = points[j]; if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) on = !on; } return on;
+}
+function gardenIslandFreshwaterContains(x, y) {
+  const crossings = gardenIslandCrossingGeometry();
+  if (crossings.some(c => gardenIslandInPolygon(x, y, c.support))) return false;
+  return _gardenIslandFreshwaterTest(gardenIslandGeometry(), x, y) || crossings.some(c => gardenIslandInPolygon(x, y, c.points));
+}
+/** Boundary of water minus support, including supports which meet the bank.
+ * Clip boundary segments at every crossing; an open-ended deck is not an
+ * enclosed island, so its landward edges must never become water collisions. */
+function gardenIslandWaterEdges(points, holes) {
+  const loops = [points, ...holes], result = [], wet = (x, y) => gardenIslandInPolygon(x, y, points) && !holes.some(h => gardenIslandInPolygon(x, y, h));
+  for (let li = 0; li < loops.length; li++) { const loop = loops[li];
+    for (let i = 0; i < loop.length; i++) {
+      const a = loop[i], b = loop[(i + 1) % loop.length], dx = b.x - a.x, dy = b.y - a.y, ts = [0, 1];
+      for (let lj = 0; lj < loops.length; lj++) if (lj !== li) { const other = loops[lj]; for (let j = 0; j < other.length; j++) {
+        const c = other[j], d = other[(j + 1) % other.length], ex = d.x - c.x, ey = d.y - c.y, den = dx * ey - dy * ex; if (Math.abs(den) < 1e-12) continue;
+        const t = ((c.x - a.x) * ey - (c.y - a.y) * ex) / den, u = ((c.x - a.x) * dy - (c.y - a.y) * dx) / den;
+        if (t > 0 && t < 1 && u >= 0 && u <= 1) ts.push(t);
+      } }
+      ts.sort((a, b) => a - b);
+      const len = Math.hypot(dx, dy); if (!len) continue;
+      for (let k = 1; k < ts.length; k++) { const lo = ts[k - 1], hi = ts[k]; if (hi - lo < 1e-10) continue; const t = (lo + hi) / 2, x = a.x + dx * t, y = a.y + dy * t, nx = -dy / len * 1e-7, ny = dx / len * 1e-7;
+        if (wet(x + nx, y + ny) === wet(x - nx, y - ny)) continue;
+        result.push({ ax: a.x + dx * lo, ay: a.y + dy * lo, bx: a.x + dx * hi, by: a.y + dy * hi });
+      }
+    }
+  }
+  return result;
+}
 /** Is a cell's centre in a lake or pond? Answered once per cell and kept (a gate opening asks for every cell several times over). */
 function gardenIslandFreshwaterCell(x, y) {
   const G = gardenIslandGeometry(), W = GARDEN_WORLD, ix = Math.floor(x), iy = Math.floor(y);
-  if (!(ix >= 0 && iy >= 0 && ix < W.cols && iy < W.rows)) return _gardenIslandFreshwaterTest(G, ix + .5, iy + .5);
+  if (!(ix >= 0 && iy >= 0 && ix < W.cols && iy < W.rows)) return gardenIslandFreshwaterContains(ix + .5, iy + .5);
   let c = _gardenIslandDerived.freshCells; if (!c || c.g !== G || c.cols !== W.cols || c.m.length !== W.cols * W.rows) c = _gardenIslandDerived.freshCells = { g: G, cols: W.cols, m: new Uint8Array(W.cols * W.rows) };
-  const i = iy * W.cols + ix; let v = c.m[i]; if (!v) v = c.m[i] = _gardenIslandFreshwaterTest(G, ix + .5, iy + .5) ? 1 : 2;
+  const i = iy * W.cols + ix; let v = c.m[i]; if (!v) v = c.m[i] = gardenIslandFreshwaterContains(ix + .5, iy + .5) ? 1 : 2;
   return v === 1;
 }
 /** Authored frontier regions share the same contours with drawing, walking and visits. */
@@ -215,7 +293,7 @@ function gardenIslandOceanGeometry() {
   const W = GARDEN_WORLD, cells = _gardenIslandBase(), points = [{ x: 0, y: 0 }, { x: W.cols, y: 0 }, { x: W.cols, y: W.rows }, { x: 0, y: W.rows }], holes = gardenIslandGeometry().land.map(loop => loop.map(p => ({ x: p[0], y: p[1] })).reverse());
   return _gardenIslandDerived.ocean = Object.freeze({ revision: GardenIslandLayout.fingerprint, points, holes, bounds: { x: 0, y: 0, width: W.cols, height: W.rows }, contains: gardenIslandOceanContains, cellContains(x, y) { x = Math.floor(x); y = Math.floor(y); return x >= 0 && y >= 0 && x < W.cols && y < W.rows && cells[y * W.cols + x].ocean; } });
 }
-function gardenIslandWaterZone(x, y) { if (gardenIslandOceanContains(x, y)) { const d = gardenIslandCoastDistance(x, y); return d <= 60 ? 'shallow' : d <= 120 ? 'mid' : 'deep'; } return gardenIslandFreshwaterCell(x, y) ? 'pond' : ''; }
+function gardenIslandWaterZone(x, y) { if (gardenIslandOceanContains(x, y)) { const d = gardenIslandCoastDistance(x, y); return d <= 60 ? 'shallow' : d <= 120 ? 'mid' : 'deep'; } return gardenIslandFreshwaterContains(x, y) ? 'pond' : ''; }
 function gardenIslandPlacementWhy(def, x, y, kind) {
   const cell = gardenIslandBaseCell(x, y); if (!cell) return 'Off the edge of the garden';
   if (cell.reserved && !(kind === 'decor' && def.layer === 'ground' && cell.reservation === 'route')) return cell.reason;
