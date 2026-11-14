@@ -54,6 +54,9 @@ function gardenIslandStaticRow(row) {
   const next = Object.assign({}, row, { x: p.x, y: p.y, w: p.w, h: p.h, col: p.col, walk: p.walk ? 1 : 0 });
   if (p.door) next.door = Object.freeze({ x: p.door.x, y: p.door.y });
   else if (data.version >= 5 && p.door === null) next.door = null;   // an explicit removal must not retain a pre-island doorway
+  // The v5 well moved to the village but retained a doorway ten cells east.
+  // Repair only that authored row; later Designer placements keep their own doors.
+  if (data.version === 5 && p.id === 'ld-wish' && p.x === 33 && p.y === 58 && p.w === 1 && p.h === 1 && p.door && p.door.x === 43 && p.door.y === 58) next.door = Object.freeze({ x: p.x, y: p.y + p.h });
   return next;
 }
 /** The woodpile's authored anchor and ground contact, shared by paint and feet. */

@@ -160,6 +160,10 @@ window.GardenPaintWater = (function () {
       ring(neighbour.pts, false); for (const hole of neighbour.holes || []) ring(hole, true);
       return cut;
     });
+    // Bank garnish belongs to its shoreline root. Reject roots inside joined
+    // water after their random choices, so reed tops cannot survive as clipped
+    // fragments and true outer-bank details keep their existing placement.
+    const shoreCovered = (x, y) => (neighbours || []).some(neighbour => inside(x, y, neighbour.pts) && !(neighbour.holes || []).some(hole => inside(x, y, hole)));
     let tag = 'bank'; const add = (b, draw) => {
       const mask = shoreClips.length && (tag === 'bank' || tag === 'shallow' || tag === 'lap');
       out.push({ b, tag, draw: mask ? (cx, C, ctx) => { cx.save(); for (const cut of shoreClips) cx.clip(cut); draw(cx, C, ctx); cx.restore(); } : draw });
@@ -204,8 +208,8 @@ window.GardenPaintWater = (function () {
       const a = pts[i], nn = norm(i), seg = Math.hypot(pts[(i + 1) % n].x - a.x, pts[(i + 1) % n].y - a.y), steps = Math.max(1, Math.round(seg / 12)); if (seg < 12 && r() > seg / 12) continue;
       for (let k = 0; k < steps; k++) {
         const t = k / steps, b = pts[(i + 1) % n], x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, roll = r();
-        if (roll < .34) { const o = 4 + r() * 8, sx = x + nn.x * o, sy = y + nn.y * o, rx = 1.6 + r() * 2.6, d = D().blob(r, sx, sy, rx, rx * .62, 6, .3), d2 = D().ell(sx - rx * .3, sy - rx * .25, rx * .45, rx * .25); const tone = r(); if (!mouths.has(i)) add({ x: sx - 6, y: sy - 6, w: 12, h: 12 }, (cx, C) => { cx.fillStyle = tone < .5 ? '#a49b86' : '#bcb39c'; cx.fill(P2(d)); cx.fillStyle = '#ddd6c2'; cx.globalAlpha = .7; cx.fill(P2(d2)); cx.globalAlpha = 1; }); }
-        else if (roll < .62) { const o = 10 + r() * 10, sx = x + nn.x * o, sy = y + nn.y * o, d = D().blob(r, sx, sy, 7 + r() * 9, 3 + r() * 3, 7, .5), light = r() < .5; if (!mouths.has(i)) add({ x: sx - 18, y: sy - 8, w: 36, h: 16 }, (cx, C) => { cx.globalAlpha = .55; cx.fillStyle = light ? mix(C.grass, '#c8d08a', .25) : C.grass; cx.fill(P2(d)); cx.globalAlpha = 1; }); }
+        if (roll < .34) { const o = 4 + r() * 8, sx = x + nn.x * o, sy = y + nn.y * o, rx = 1.6 + r() * 2.6, d = D().blob(r, sx, sy, rx, rx * .62, 6, .3), d2 = D().ell(sx - rx * .3, sy - rx * .25, rx * .45, rx * .25); const tone = r(); if (!mouths.has(i) && !shoreCovered(x, y)) add({ x: sx - 6, y: sy - 6, w: 12, h: 12 }, (cx, C) => { cx.fillStyle = tone < .5 ? '#a49b86' : '#bcb39c'; cx.fill(P2(d)); cx.fillStyle = '#ddd6c2'; cx.globalAlpha = .7; cx.fill(P2(d2)); cx.globalAlpha = 1; }); }
+        else if (roll < .62) { const o = 10 + r() * 10, sx = x + nn.x * o, sy = y + nn.y * o, d = D().blob(r, sx, sy, 7 + r() * 9, 3 + r() * 3, 7, .5), light = r() < .5; if (!mouths.has(i) && !shoreCovered(x, y)) add({ x: sx - 18, y: sy - 8, w: 36, h: 16 }, (cx, C) => { cx.globalAlpha = .55; cx.fillStyle = light ? mix(C.grass, '#c8d08a', .25) : C.grass; cx.fill(P2(d)); cx.globalAlpha = 1; }); }
       }
     }
     tag = 'fill';
@@ -248,7 +252,7 @@ window.GardenPaintWater = (function () {
       if (r() < (river_ ? .45 : .2)) continue;
       const deep = (river_ ? 10 : 16) + r() * (river_ ? 14 : 34), rx = (river_ ? 10 : 16) + r() * (river_ ? 10 : 22), x = a.x + (r() - .5) * 8, y = a.y + deep * .55;
       const d = D().blob(r, x, y, rx, deep * .62, 8, .45), d2 = D().blob(r, x + (r() - .5) * rx * .5, y - deep * .2, rx * .55, deep * .4, 7, .4);
-      if (!mouths.has(i)) add({ x: x - rx - 4, y: a.y - 6, w: rx * 2 + 8, h: deep * 1.4 + 12 }, (cx, C) => { cx.save(); cx.clip(P); cx.globalAlpha = .38; cx.fillStyle = C.refl; cx.fill(P2(d)); cx.globalAlpha = .3; cx.fillStyle = C.reflDeep; cx.fill(P2(d2)); cx.restore(); });
+      if (!mouths.has(i) && !shoreCovered(a.x, a.y)) add({ x: x - rx - 4, y: a.y - 6, w: rx * 2 + 8, h: deep * 1.4 + 12 }, (cx, C) => { cx.save(); cx.clip(P); cx.globalAlpha = .38; cx.fillStyle = C.refl; cx.fill(P2(d)); cx.globalAlpha = .3; cx.fillStyle = C.reflDeep; cx.fill(P2(d2)); cx.restore(); });
     }
     tag = 'sky';
     // 4. Sky streaks: on still water long horizontal wind lines, on running water
@@ -328,7 +332,7 @@ window.GardenPaintWater = (function () {
         const clump = [], cnt = bed ? 6 + Math.floor(r() * 6) : 3, mixIds = estuary ? ['plant.reed', 'plant.reed', 'plant.proof-fleet-reed', 'plant.bulrush'] : westBank ? ['plant.reed', 'plant.bulrush', 'plant.proof-fleet-rush', 'plant.canal-view-loosestrife'] : ['plant.reed', 'plant.proof-fleet-rush', 'plant.reed', 'plant.bulrush'];
         for (let k = 0; k < cnt; k++) { const o = (r() - .62) * 22, along = (r() - .5) * 24, id = mixIds[Math.floor(r() * mixIds.length)]; clump.push([a.x + nn.x * o - nn.y * along, a.y + nn.y * o + nn.x * along, id, r() < .5 ? 0 : 1, 24 + r() * (bed ? 22 : 12)]); }
         clump.sort((p, q) => p[1] - q[1]);
-        if (!mouths.has(i)) {
+        if (!mouths.has(i) && !shoreCovered(a.x, a.y)) {
           add({ x: a.x - 50, y: a.y - 80, w: 100, h: 110 }, (cx, C, ctx) => { for (const [x, y, id, v, h] of clump) ctx.stamp(id, v, h, x, y); });
           out[out.length - 1].needs = clump.map(q => [q[2], q[3], q[4]]);
         }

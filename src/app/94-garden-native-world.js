@@ -89,6 +89,22 @@ window.GardenNativeWorld = (function () {
     }
     return out;
   }
+  // Intersect two convex pieces without turning a coast or region into cells.
+  // Their triangulated pieces keep this work in the existing terrain batches.
+  function clipTerrainConvex(points, clip) {
+    let out = points; const direction = polygonArea(clip) < 0 ? -1 : 1;
+    for (let edge = 0; edge < clip.length && out.length; edge++) {
+      const a = clip[edge], b = clip[(edge + 1) % clip.length];
+      const side = p => direction * ((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x));
+      const input = out; out = [];
+      for (let i = 0; i < input.length; i++) {
+        const p = input[i], q = input[(i + 1) % input.length], ps = side(p), qs = side(q), pin = ps >= 0, qin = qs >= 0;
+        if (pin) out.push(p);
+        if (pin !== qin) { const t = ps / (ps - qs); out.push({ x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t }); }
+      }
+    }
+    return out;
+  }
   function terrainBox(points) { const xs = points.map(p => p.x), ys = points.map(p => p.y), x = Math.min(...xs), y = Math.min(...ys); return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y }; }
   function terrainEllipse(x, y, w, h) { return Array.from({ length: 40 }, (_, i) => ({ x: x + Math.cos(i * Math.PI / 20) * w / 2, y: y + Math.sin(i * Math.PI / 20) * h / 2 })); }
   function terrainRoundedRect(x, y, w, h, radius) {
@@ -466,18 +482,34 @@ window.GardenNativeWorld = (function () {
         const loops = outlines(lockedCells, id, W, true), holes = loops.filter(loop => polygonArea(loop) < 0);
         for (const points of loops.filter(loop => polygonArea(loop) > 0)) lockedRegions.push({ id: id + ':' + lockedRegions.length, area: id, zone: /^zn-/.test(id) ? Number(id.slice(3)) : null, points, holes: holes.filter(hole => insidePolygon(hole[0], points)), bounds: terrainBox(points) });
       }
-      // Regional ground follows the authored coast, but the shared beach
-      // band, water and paths keep their own materials. Chunked paint owns
-      // these broad, quiet tones just like ordinary terrain.
+      // A beach cell can straddle the continuous lawn edge. Cutting this tint
+      // by cell material exposed rectangular steps in the coastal verge.
+      // Intersect the authored regions with the same inset used by the lawn;
+      // water, cultivated soil and the narrower roads still paint above it.
       if (authoredRegions.length) {
-        const regionFloor = cells.map((cell, index) => {
-          if (['ocean', 'beach', 'water', 'pool', 'lake', 'ice', 'path'].includes(cell.material)) return { material: '' };
-          const region = gardenIslandRegionAt(index % W.cols + .5, Math.floor(index / W.cols) + .5);
-          return { material: region ? region.id : '' };
-        });
-        for (const region of gardenIslandData().regions) {
-          const tone = parseInt(_gldIslandRegionTone(region, sc.season).slice(1), 16);
-          fillOutlines(g, outlines(regionFloor, region.id, W), woodlandFloorTone(p.lawn, tone, .42));
+        const lawnPieces = [];
+        fillOutlines({ fillStyle() {}, fillTriangle(ax, ay, bx, by, cx, cy) {
+          const points = [{ x: ax, y: ay }, { x: bx, y: by }, { x: cx, y: cy }];
+          lawnPieces.push({ points, bounds: terrainBox(points) });
+        } }, coast.map(loop => insetTerrainContour(loop, island.beachWidthPx)), 0);
+        const regionPaint = {
+          fillStyle(color) { g.fillStyle(color); },
+          fillTriangle(ax, ay, bx, by, cx, cy) {
+            const points = [{ x: ax, y: ay }, { x: bx, y: by }, { x: cx, y: cy }], bounds = terrainBox(points);
+            for (const piece of lawnPieces) {
+              const b = piece.bounds;
+              if (bounds.x >= b.x + b.width || bounds.x + bounds.width <= b.x || bounds.y >= b.y + b.height || bounds.y + bounds.height <= b.y) continue;
+              const clipped = clipTerrainConvex(points, piece.points);
+              for (let i = 1; i + 1 < clipped.length; i++) {
+                const a = clipped[0], b = clipped[i], c = clipped[i + 1];
+                g.fillTriangle(a.x, a.y, b.x, b.y, c.x, c.y);
+              }
+            }
+          },
+        };
+        for (const region of authoredRegions) {
+          const tone = parseInt(_gldIslandRegionTone(region.region, sc.season).slice(1), 16);
+          fillOutlines(regionPaint, [region.points], woodlandFloorTone(p.lawn, tone, .42));
         }
       }
       const borders = new Map();
