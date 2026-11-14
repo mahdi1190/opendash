@@ -19,6 +19,14 @@ function rngOf(seed) { let a = (Number(seed) || 7) * 2654435761 >>> 0; return ()
 // the drawn width of an object: a tree's sprite canopy is about 0.9 of its library spread (measured on the Yateley Green drafts: a
 // horse chestnut at 9 m placed by its full spread showed only its corner; by 0.6 of it, at 11 m, it covered half the frame)
 const widthOf = (E, obj, d = 8) => { let w = d; try { const i = E && E.worldObjectInfo ? E.worldObjectInfo(obj) : null; if (i && i.size && Number.isFinite(i.size.w)) w = i.size.w; } catch { w = d; } return /^tree\./.test(obj) ? w * 0.9 : w; };
+/** The height of a landmark brief in metres (to keep its top inside the frame): a model by its size, a generated great church by its plan. */
+function heightOf(E, Lm) {
+  if (!Lm) return 20;
+  if (Lm.obj) { let h = 20; try { const i = E && E.worldObjectInfo ? E.worldObjectInfo(Lm.obj) : null; if (i && i.size && Number.isFinite(i.size.h)) h = i.size.h; } catch { h = 20; } return h * ((Lm.model && Number(Lm.model.size)) || 1) * (Lm.model && Lm.model.opts && Lm.model.opts.crown === 'spire' ? 1.3 : 1); }
+  const k = Math.max(0.45, Math.min(2.2, (Number(Lm.w) || 34) / 30));
+  if ((Lm.style || 'gothic-minster') === 'gothic-minster') return ({ 'central-spire': 90, 'west-tower': 54 }[Lm.crown] || 78) * k;
+  return (Number(Lm.storeys) || 4) * 4.2 + (Lm.crown ? 22 : 2);
+}
 /** An organic outline round a centre: n points, radii rx/rz, a seeded wobble. */
 function blob(cx, cz, rx, rz, n, rnd, wob = 0.14) { const out = []; for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, k = 1 - wob + rnd() * wob * 2; out.push([r1(cx + Math.cos(a) * rx * k), r1(cz + Math.sin(a) * rz * k)]); } return out; }
 
@@ -223,9 +231,11 @@ function canalBasin(b, E) {
     { id: 'green', kind: 'grass', poly: t.map(p => [r1(p[0] - qs * 4), p[1]]).concat([[r1(-qs * 90), 420], [r1(-qs * 90), 6]]) },
     { id: 'basin', kind: 'water', water: 'canal', shallow: 0.6, poly: basin },
   ];
-  // the footbridge on the mid band: a deck across the basin (bridge-deck over water), the subject of the view
+  // the bridge on the mid band, the subject of the view: a hump-backed brick canal bridge (the library's elevation, seen face-on up the
+  // basin) with its deck raised to the hump. A bare bridge-deck surface at the water's level had walkers crossing as if on the water,
+  // and the subject read as 3 % of the frame (trial basin, 14 Nov)
   const bw = W(bz) + 3;
-  surfaces.push({ id: 'bridge', kind: 'bridge-deck', path: [[r1(cl(bz) - bw), bz], [r1(cl(bz) + bw), bz]], width: 2.6, over: 'water' });
+  surfaces.push({ id: 'bridge', kind: 'bridge-deck', path: [[r1(cl(bz) - bw), bz], [r1(cl(bz) + bw), bz]], width: 2.6, over: 'water', y: 2.4 });
   // warehouses along the quay's back edge (a line 9 m out from the water)
   const back = q.map(p => [r1(p[0] + qs * 9.5), p[1]]);
   surfaces.push({ id: 'quay-back', kind: 'pavement', path: back, width: 1.6 });
@@ -240,28 +250,33 @@ function canalBasin(b, E) {
   // the viaduct across the far band
   if (b.viaduct !== false && b.viaduct !== 'false') ent.push({ id: 'viaduct', obj: 'structure.viaduct', at: [r1(cl(170)), 170], facing: 90, attach: 'water', model: { livery: 'soot-grey', seed: b.seed, size: 2.4, opts: { kind: 'arcade' } } });
   // framing: a plane tree on the towpath side close in, a lamp and bollards on the quay side
-  const fz = 9, tw = widthOf(E, 'tree.plane-avenue', 23);
-  const fp = at(cam, { frame: s > 0 ? 'right' : 'left', z: fz, w: tw, reach: 0.18 });
+  // (on land: the basin is ~28 m wide at the wharf, so a tree framed at 9 m stood on its water; the trunk goes 3 m beyond the towpath)
+  const fz = 16, tw = widthOf(E, 'tree.plane-avenue', 23), edgeAt = (z) => cl(z) + (s > 0 ? 1 : -1) * W(z);
+  const fp0 = at(cam, { frame: s > 0 ? 'right' : 'left', z: fz, w: tw, reach: 0.18 });
+  const fp = [r1(s > 0 ? Math.max(fp0[0], edgeAt(fz) + 7) : Math.min(fp0[0], edgeAt(fz) - 7)), fz];
   ent.push({ id: 'frame-tree', obj: 'tree.plane-avenue', at: fp, framed: true }); framing.push('frame-tree');
   const lp = at(cam, { frame: s > 0 ? 'left' : 'right', z: 7, w: 1, show: 0.9 });
   ent.push({ id: 'frame-lamp', obj: 'street.lamppost', at: lp, framed: true }); framing.push('frame-lamp');
   for (const z of [30, 60, 90]) ent.push({ obj: 'tree.plane-avenue', at: [r1(t[zs.findIndex(v => v >= z)][0] - qs * 6), z] });
-  for (let i = 0; i < 4; i++) ent.push({ obj: 'street.bollard', at: [r1(q[1][0] + qs * 1 + (rnd() - 0.5)), r1(12 + i * 7)] });
+  // quay bollards 1 m back from the quay edge AT their own depth (the edge at 20 m put the first one on the water)
+  for (let i = 0; i < 4; i++) { const z = 12 + i * 7; ent.push({ obj: 'street.bollard', at: [r1(cl(z) + qs * (W(z) + 1) + (rnd() - 0.5) * 0.4), z] }); }
   // the wharf's edge: bollards along the water, a planter and a bench (the near band of a basin is stone, dressed, not bare)
-  for (let x = -12; x <= 12; x += 6) ent.push({ obj: 'street.bollard', at: [r1(x + (rnd() - 0.5)), 7.6] });
+  // (none on the centre line: a 1 m post there was a dark blob in the middle of the near band, SCENE_LESSONS K; Gas Street draft 2)
+  for (let x = -12; x <= 12; x += 6) { const bx = x + (rnd() - 0.5); if (Math.abs(bx) > 4) ent.push({ obj: 'street.bollard', at: [r1(bx), 7.6] }); }
   ent.push({ obj: 'structure.mcr-planter', at: [r1(qs * 14), 5], variant: 0 }, { obj: 'street.bench', at: [r1(qs * 9), 6.2], facing: 0 });
   ent.push({ obj: 'street.bench', at: [r1(-qs * 8), 4], facing: 0 }, { cluster: 'plant.grass-long', on: 'green', n: 30, seed: b.seed + 9 }, { cluster: 'ground.leaf-litter', on: 'tow', n: 10, seed: b.seed + 10 });
   const life = [
     { id: 'walkers', who: 'walkers', on: 'tow', rate: '6/min', mix: { stroll: 0.4, 'dog-walker': 0.2, jogger: 0.15, couple: 0.25 }, edges: ['S', 'N'] },
     { id: 'quayside', who: 'walkers', on: 'quay', rate: '4/min', mix: { stroll: 0.5, commuter: 0.3, couple: 0.2 }, edges: ['S', 'N'] },
     { id: 'far', who: 'walkers', on: 'bridge', rate: '5/min', mix: { stroll: 0.6, commuter: 0.4 } },
-    { id: 'boat', who: 'narrowboat-cruising', count: 1, on: 'basin' },
+    // no boat under way: the one cruising narrowboat passed at the lens and filled 40 % of the frame (Gas Street draft 1); the moored boats are the basin's
     { who: 'mallard', count: 4, on: 'basin' }, { who: 'mute-swan', count: 2, on: 'basin', group: 'pair' }, { who: 'gulls', count: 3 },
   ];
   // the urban kit (stone quays, no reed fringe in the basin); 'canal' is the towpath-in-fields kit
   const spec = { v: 3, place: { lat: b.lat, lon: b.lon, alt: b.alt, region: b.region, style: b.kit || 'river-city' }, camera: cam0, surfaces, buildings, entities: ent, life,
     backdrop: { style: b.backdrop || 'city-victorian' }, seed: b.seed };
-  return { spec, plan: { subject: { id: 'bridge', kind: 'surface' }, lead: zs.map(z => [cl(z), z]), framing, far: 'far', near: ['walkers', 'quayside'] }, notes };
+  spec.landmarks = [{ id: 'bridge-arch', obj: b.bridgeObj || 'structure.bridge-brick', at: [r1(cl(bz)), bz], facing: 90, attach: 'water', src: b.bridgeSrc || `${b.place}: the bridge across the basin` }];
+  return { spec, plan: { subject: { id: 'bridge-arch', kind: 'landmark' }, lead: zs.map(z => [cl(z), z]), framing, far: 'far', near: ['walkers', 'quayside'] }, notes };
 }
 
 /* ============================================================
@@ -272,11 +287,14 @@ function canalBasin(b, E) {
    street's style (default georgian); tram: false for buses on a road; side: the landmark on the 'right' (default) or 'left' third.
    ============================================================ */
 function civicSquare(b, E) {
-  const rnd = rngOf(b.seed), s = mirror(b.side), cam0 = { eye: 1.65, fov: 72, horizon: 600, heading: b.heading == null ? 52 : b.heading };
+  // Albert Square's own camera (horizon 660 of 900, a 76 degree lens): the trial's horizon at 600 left 0.22 of sky against the gold's 0.39
+  const rnd = rngOf(b.seed), s = mirror(b.side), cam0 = { eye: 1.65, fov: 76, horizon: 660, heading: b.heading == null ? 52 : b.heading };
   const cam = frameCam(cam0), notes = [];
   const Lm = b.landmark && typeof b.landmark === 'object' ? b.landmark : {};
-  // the landmark across the right third at 85-110 m, turned 35 degrees so its front is seen at three-quarters
-  const c = at(cam, { third: s > 0 ? 'right' : 'left', z: Lm.z || 140 });
+  // the landmark on the third, turned 35 degrees so its front is seen at three-quarters, far enough that its top keeps 8 % of the
+  // frame above it (the trial minster at 140 m ran its towers into the top of the frame)
+  const zL = r1(Math.max(Number(Lm.z) || 120, cam.f * (heightOf(E, Lm) - cam0.eye) / (cam0.horizon - 72)));
+  const c = at(cam, { third: s > 0 ? 'right' : 'left', z: zL });
   const w = Lm.w || 44, d = Lm.d || 24, a = -35 * s * Math.PI / 180;
   const rot = ([x, z]) => [r1(c[0] + x * Math.cos(a) - z * Math.sin(a)), r1(c[1] + x * Math.sin(a) + z * Math.cos(a))];
   const foot = [[-w / 2, 0], [w / 2, 0], [w / 2, d], [-w / 2, d]].map(rot);
@@ -287,21 +305,34 @@ function civicSquare(b, E) {
   // the receding street on the other side: its building line is the leading line to the far end of the square
   const sx = (z) => r1(-s * (14 + z * 0.18));
   const street = [[sx(4), 4], [sx(60), 60], [sx(140), 140], [sx(240), 240]];
+  // the square: paving (a civic square) or a lawn (a cathedral close: `ground: grass`), out to the far side's line
+  const tz = r1(Math.min(112, zL - 30)), lawn = b.ground === 'grass';
   const surfaces = [
-    { id: 'square', kind: 'plaza', poly: [[-60, 0.5], [60, 0.5], [70, 108], [-70, 108]] },
+    // (a lawn only out to the side street's pavement: a 130 x 108 m lawn's fill cost 735 statics and a 1.8 s build, Salisbury draft 1)
+    { id: 'square', kind: lawn ? 'grass' : 'plaza', poly: lawn ? [[r1(sx(0.5) + s * 3), 0.5], [r1(s * 60), 0.5], [r1(s * 66), r1(tz - 4)], [r1(sx(tz) + s * 3), r1(tz - 4)]] : [[-60, 0.5], [60, 0.5], [70, r1(tz - 4)], [-70, r1(tz - 4)]] },
     { id: 'pave', kind: 'pavement', path: street, width: 4 },
     { id: 'front', kind: 'pavement', poly: [foot[0], foot[1], [r1(foot[1][0] + 6 * Math.sin(a)), r1(foot[1][1] - 6 * Math.cos(a))], [r1(foot[0][0] + 6 * Math.sin(a)), r1(foot[0][1] - 6 * Math.cos(a))]] },
   ];
-  buildings.push({ id: 'street', along: 'pave', side: s > 0 ? 'left' : 'right', style: b.houses || 'georgian', storeys: [4, 6], from: 6, to: 236, depth: [14, 20], shops: true });
-  // the tram (or bus) line across the far side of the square
-  const tz = 112, far = b.tram === false || b.tram === 'false' ? 'buses' : 'tram';
+  const hs = typeof b.rows === 'string' && /^\d+-\d+$/.test(b.rows) ? b.rows.split('-').map(Number) : [4, 6];
+  buildings.push({ id: 'street', along: 'pave', side: s > 0 ? 'left' : 'right', style: b.houses || 'georgian', storeys: hs, from: 6, to: lawn ? 140 : 236, depth: [14, 20], shops: !lawn });
+  // the tram (or the buses, or the cars of a close) along the far side of the square
+  const far = b.far === 'cars' ? 'cars' : b.tram === false || b.tram === 'false' || b.far === 'buses' ? 'buses' : 'tram';
   surfaces.push({ id: 'line', kind: far === 'tram' ? 'tram' : 'road', path: [[-260, tz + 8], [260, tz - 8]], width: 9 }, { id: 'pave-far', kind: 'pavement', path: [[-260, tz + 2], [260, tz - 14]], width: 3.4 });
   // statue framing one side, lamp the other; tree pits with benches and bins down the square
   const ent = [], framing = [];
-  ent.push({ id: 'frame-statue', obj: 'street.mcr-statue', at: at(cam, { frame: s > 0 ? 'left' : 'right', z: 6, w: 2.6, show: 0.85 }), framed: true }); framing.push('frame-statue');
+  if (b.frame === 'tree') { const tw = widthOf(E, 'tree.green-oak', 20); ent.push({ id: 'frame-statue', obj: 'tree.green-oak', at: at(cam, { frame: s > 0 ? 'left' : 'right', z: 12, w: tw, reach: 0.14 }), framed: true }); }
+  else ent.push({ id: 'frame-statue', obj: 'street.mcr-statue', at: at(cam, { frame: s > 0 ? 'left' : 'right', z: 6, w: 2.6, show: 0.85 }), framed: true });
+  framing.push('frame-statue');
   ent.push({ id: 'frame-lamp', obj: 'street.lamppost', at: at(cam, { frame: s > 0 ? 'right' : 'left', z: 6.5, w: 2, show: 0.9 }), framed: true }); framing.push('frame-lamp');
   const pits = [];
-  for (const z of [20, 35, 50]) {
+  // a lawn has a path across it from the frame's foot to the landmark's front (the visitors' way, a second leading line) and two
+  // specimen trees; the tree pits are a paved square's (on a lawn they made a wall of foliage over the side street, Salisbury draft 1)
+  if (lawn) {
+    const fm = [r1((foot[0][0] + foot[1][0]) / 2 - 8 * Math.sin(a)), r1((foot[0][1] + foot[1][1]) / 2 + 8 * Math.cos(a))];
+    surfaces.push({ id: 'walk', kind: 'path', path: [[r1(-s * 2), -2], [r1(-s * 1), 8], [r1(fm[0] * 0.35), r1(fm[1] * 0.35)], [r1(fm[0] * 0.7), r1(fm[1] * 0.7)], fm], width: 2.4 });
+    ent.push({ obj: 'tree.green-oak', at: [r1(s * 52), 88] });   // (a chestnut on the street side hid the houses with the framing oak)
+  }
+  for (const z of lawn ? [] : [20, 35, 50]) {
     const x = r1(sx(z) + s * 8);
     pits.push({ id: 'pit-' + z, kind: 'grass', poly: rect(r1(x - 1), z - 1, r1(x + 1), z + 1) });
     ent.push({ obj: 'tree.plane-avenue', at: [x, z] }, { obj: 'street.bench', at: [r1(x + s * 3), z], facing: s > 0 ? 90 : 270 }, { obj: 'street.mcr-bin', at: [r1(x + s * 2), r1(z + 3)] });
@@ -310,16 +341,385 @@ function civicSquare(b, E) {
   for (const z of [30, 70, 110]) ent.push({ obj: 'street.lamppost', at: [r1(c[0] - s * 30 + (rnd() - 0.5) * 6), z] });
   ent.push({ obj: 'street.bollard', at: [-3, 40] }, { obj: 'street.bollard', at: [-1.5, 40.6] }, { obj: 'street.bollard', at: [0, 41.2] }, { cluster: 'ground.leaves', on: 'square', n: 14, seed: b.seed + 2 });
   const life = [
-    { id: 'walkers', who: 'walkers', on: 'square', rate: '10/min', mix: { stroll: 0.3, commuter: 0.2, shopper: 0.15, student: 0.1, couple: 0.1, family: 0.05, buggy: 0.05, 'elderly-walker': 0.05 } },
+    lawn ? { id: 'walkers', who: 'walkers', on: 'walk', rate: '8/min', mix: { stroll: 0.4, couple: 0.2, family: 0.15, elderly: 0.15, 'dog-walker': 0.1 }, edges: ['S'] }
+      : { id: 'walkers', who: 'walkers', on: 'square', rate: '10/min', mix: { stroll: 0.3, commuter: 0.2, shopper: 0.15, student: 0.1, couple: 0.1, family: 0.05, buggy: 0.05, 'elderly-walker': 0.05 } },
+    lawn ? { id: 'lookers', who: 'visit', on: 'walk', rate: '1/min', mix: { stroll: 0.5, couple: 0.5 }, edges: ['S'], goals: [{ go: [r1(s * 6), 26] }, { do: 'look', for: [20, 60] }, { leave: 'S' }] } : undefined,
     { id: 'street', who: 'walkers', on: 'pave', rate: '5/min' },
-    { id: 'far', who: far, on: 'line', every: far === 'tram' ? '3min' : undefined, rate: far === 'buses' ? '2/min' : undefined },
+    { id: 'far', who: far, on: 'line', every: far === 'tram' ? '3min' : undefined, rate: far === 'buses' ? '2/min' : far === 'cars' ? '3/min' : undefined },
     { id: 'farwalk', who: 'walkers', on: 'pave-far', rate: '4/min' },
-    { who: 'pigeons', count: 8, on: 'square' },
-  ].map(l => { for (const k of Object.keys(l)) if (l[k] === undefined) delete l[k]; return l; });
+    lawn ? undefined : { who: 'pigeons', count: 8, on: 'square' },
+  ].filter(Boolean).map(l => { for (const k of Object.keys(l)) if (l[k] === undefined) delete l[k]; return l; });
   const spec = { v: 3, place: { lat: b.lat, lon: b.lon, alt: b.alt, region: b.region, style: 'civic-square' }, camera: cam0, surfaces, buildings, entities: ent, life,
     backdrop: { style: b.backdrop || 'city-victorian' }, seed: b.seed };
   if (landmarks.length) spec.landmarks = landmarks;
-  return { spec, plan: { subject, lead: street, framing, far: 'far', near: ['walkers'] }, notes };
+  notes.push(`the landmark ${zL} m out on the ${s > 0 ? 'right' : 'left'} third (its top inside the frame); the square ${lawn ? 'a lawn' : 'paved'}, ${far} on its far side`);
+  return { spec, plan: { subject, lead: street, framing, far: 'far', near: lawn ? ['walkers', 'lookers'] : ['walkers'] }, notes };
+}
+
+/* ============================================================
+   medieval-lane (gold: Norwich, Elm Hill; York, the Shambles). A cobbled lane between rows of old fronts that lean over it, climbing
+   to its head, where a great church stands above the roofs. What the gold lanes lacked is fixed here: the camera is turned off the
+   lane's axis (bearing to a third), so the vista gap and the landmark in it stand on a THIRD, not dead centre, and the near row on the
+   far side of the turn frames the view; the lane kinks a little in the middle (no ruler-straight lane); the head opens onto a cross
+   street with its own walkers (the far mover) and the landmark beyond, turned to show its front at three-quarters; visitors stop at the
+   shop windows in the near-mid band.
+   brief: side: the landmark on the 'right' (default) or 'left' third; landmark { style (gothic-minster), crown (twin-towers |
+   central-spire | west-tower), w, d, storeys, z (its distance), turn (degrees) } or { obj, model, facing } (a church model);
+   houses: a style or a list of styles mixed along the rows (timber-framed); rise: metres the lane climbs (6); length: the lane (m, 100);
+   width (m, 6); kit: cobbled-lane | old-town-lane; backdrop (town-low).
+   ============================================================ */
+function medievalLane(b, E) {
+  const s = mirror(b.side), cam0 = { eye: 1.7, fov: 60, horizon: 600, heading: b.heading == null ? 0 : b.heading };
+  const cam = frameCam(cam0), notes = [];
+  // a short lane (70 m) opening into a square: in a 100 m lane the landmark at the head was a slot of one tower (Steep Hill drafts 2, 3)
+  const L = Math.max(45, Math.min(160, Number(b.length) || 70)), W = Math.max(4, Math.min(9, Number(b.width) || 6)), rise = Number.isFinite(Number(b.rise)) ? Number(b.rise) : 6;
+  // the lane's axis: the bearing of the landmark's third (so the vista gap and the landmark stand on the third)
+  const beta = s * Math.atan((3200 / 3 - 800) / cam.f), d = [Math.sin(beta), Math.cos(beta)], n = [Math.cos(beta), -Math.sin(beta)];
+  const P = (u, v) => [r1(u * d[0] + v * n[0]), r1(u * d[1] + v * n[1])];
+  // the lane: a slight kink away from the landmark in its middle (back on the axis at the head)
+  const kink = -s * Math.min(1.6, W * 0.25);
+  const us = [-8, 0, L * 0.2, L * 0.4, L * 0.6, L * 0.8, L];
+  const lane = us.map(u => P(u, u <= 0 ? 0 : kink * Math.sin(Math.PI * u / L)));
+  const cross = [P(L, -90), P(L, 90)];
+  const Lm = b.landmark && typeof b.landmark === 'object' ? b.landmark : {};
+  // far enough that its top clears the frame's top by 8 % (a first Steep Hill draft at 190 m cut both west towers at the top); its body
+  // turned outward (toward the frame's edge), so the front stands on the third and the nave recedes behind the row
+  const Dtop = cam.f * (heightOf(E, Lm) + rise - cam0.eye) / (cam0.horizon - 72);
+  const D = Math.max(L + 40, Number(Lm.z) || L + 100, Dtop), turn = Number.isFinite(Number(Lm.turn)) ? Number(Lm.turn) : s * 12;
+  const c = P(D, 0), theta = beta * 180 / Math.PI + turn, a = -theta * Math.PI / 180;
+  // the lane widens into a little square at its head (a market place before the gate), its houses lower: the vista gap opens there
+  // so the whole front of the landmark shows above the roofs (Steep Hill draft 2: one tower in a 6 m slot, the other behind the row)
+  const uh = r1(L * 0.62), headW = W + Math.max(0, Number.isFinite(Number(b.head)) ? Number(b.head) : 8);
+  const headPath = [P(uh, kink * Math.sin(Math.PI * uh / L)), P(L, 0)];
+  const surfaces = [
+    { id: 'lane', kind: 'plaza', path: lane, width: W },
+    { id: 'head', kind: 'plaza', path: headPath, width: headW },
+    { id: 'cross', kind: 'pavement', path: cross, width: 6 },
+    // the open ground at the head (a close, a churchyard, a green) between the cross street and the landmark
+    { id: 'close', kind: 'grass', poly: [P(L + 4, -70), P(L + 4, 70), P(D + 90, 70), P(D + 90, -70)] },
+    { id: 'close-walk', kind: 'path', path: [P(L + 3, 0), P(D - 30, 0)], width: 3 },
+  ];
+  const buildings = [], landmarks = [], ent = [];
+  let subject;
+  if (Lm.obj) {
+    landmarks.push({ id: 'landmark', obj: Lm.obj, at: c, facing: Number.isFinite(Number(Lm.facing)) ? Number(Lm.facing) : r1(theta + 90), src: Lm.src || `${b.place}: the church at the head of the lane`, model: Lm.model });
+    subject = { id: 'landmark', kind: 'landmark' };
+  } else {
+    const w = Lm.w || 34, dd = Lm.d || 110;
+    const rot = ([x, z]) => [r1(c[0] + x * Math.cos(a) - z * Math.sin(a)), r1(c[1] + x * Math.sin(a) + z * Math.cos(a))];
+    buildings.push({ id: 'landmark', foot: [[-w / 2, 0], [w / 2, 0], [w / 2, dd], [-w / 2, dd]].map(rot), storeys: Lm.storeys || 4, style: Lm.style || 'gothic-minster', crown: Lm.crown || 'twin-towers', landmark: true, front: 0, src: Lm.src || `${b.place}: the great church at the head of the lane` });
+    subject = { id: 'landmark', kind: 'building' };
+  }
+  // the rows: each side in runs of 10-26 m, the styles mixed along it; the first fronts are shops (A-boards and baskets come with them)
+  const styles = Array.isArray(b.houses) ? b.houses : typeof b.houses === 'string' ? b.houses.split(',').map(x => x.trim()).filter(Boolean) : ['timber-framed'];
+  const rnd = rngOf(b.seed);
+  // at the lens only the RICH lane fronts (jettied timber, colour-washed plaster, thatch: shops, signs, baskets); a stone or brick front
+  // there is a plain wall the height of the frame (Steep Hill draft 3: honey stone at the lens, 41 % of the frame one blank house)
+  const RICH = ['timber-framed', 'tudor-colourwash', 'tudor-thatch'], rich = styles.filter(x => RICH.includes(x));
+  const LANE_SHOPS = Array.isArray(b.shops) ? b.shops : ['books', 'gift', 'tea', 'cheese', 'antiques', 'bakery', 'florist', 'clothes'];
+  for (const side of ['left', 'right']) {
+    let u = 0.5, k = 0;
+    while (u < uh - 3) {
+      // narrow plots at the lens (one house there filled 43 % of the frame), longer runs beyond
+      const run = Math.min(uh - 1 - u, k === 0 ? 7 : 10 + Math.floor(rnd() * 16));
+      const st = u < L * 0.3 && rich.length ? rich[(k + (side === 'left' ? 0 : 1)) % rich.length] : styles[(k + (side === 'left' ? 0 : 1)) % styles.length];
+      if (run < 5) break;
+      // the first fronts are the lane's shops (wares behind the glass, a sign over the door); then houses
+      buildings.push({ id: `${side[0]}-${k}`, along: 'lane', side, style: st, storeys: [2, 3], from: r1(u), to: r1(u + run), gap: -0.55, shops: k < 2 ? LANE_SHOPS : false });
+      u += run + 0.6; k++;
+    }
+    // round the little square at the head: lower houses (two storeys)
+    buildings.push({ id: `${side[0]}-head`, along: 'head', side, style: styles[(k + 1) % styles.length], storeys: [2, 2], from: 1, to: r1(L - uh - 2), gap: -0.55, shops: false });
+  }
+  // the cross street's far side, broken for the vista (the landmark shows through)
+  const gapV = Math.max(headW / 2 + 4, (Lm.w || 34) * 0.5 * L / D + 6);
+  buildings.push({ id: 'end-a', along: 'cross', side: 'left', style: styles[0], storeys: [2, 3], from: 0, to: r1(90 - gapV), depth: [8, 10] },
+    { id: 'end-b', along: 'cross', side: 'left', style: styles[styles.length - 1], storeys: [2, 3], from: r1(90 + gapV), to: 180, depth: [8, 10] });
+  // trees in the close behind the cross street (the head is green, not a wall), a lantern post at the gate
+  for (const [u, v] of [[L + 22, -26], [L + 30, 24], [L + 50, -40], [L + 46, 38]]) ent.push({ obj: 'tree.green-oak', at: P(u, v) });
+  // a visitor stops at a shop window on the side the eye passes first
+  const shopAt = P(L * 0.22, -s * (W / 2 - 0.8));
+  const life = [
+    { id: 'walkers', who: 'walkers', on: 'lane', rate: '8/min', mix: { stroll: 0.45, couple: 0.25, family: 0.1, elderly: 0.1, chat: 0.1 }, edges: ['S', 'N'] },
+    { id: 'browser', who: 'visit', on: 'lane', rate: '1/min', mix: { stroll: 0.5, couple: 0.5 }, edges: ['S'], goals: [{ go: shopAt }, { do: 'look', for: [15, 40] }, { leave: 'N' }] },
+    { id: 'far', who: 'walkers', on: 'cross', rate: '4/min', mix: { stroll: 0.5, 'dog-walker': 0.2, couple: 0.3 }, edges: ['W', 'E'] },
+    { id: 'close', who: 'walkers', on: 'close-walk', rate: '2/min', mix: { stroll: 0.6, couple: 0.4 } },
+  ];
+  const spec = { v: 3, place: { lat: b.lat, lon: b.lon, alt: b.alt, region: b.region, style: b.kit || 'cobbled-lane' }, camera: cam0,
+    ground: { features: [{ id: 'hill', kind: 'slope', path: lane.slice(1), width: 360, h: rise, fade: 40 }] },
+    surfaces, buildings, entities: ent, life, backdrop: { style: b.backdrop || 'town-low' }, seed: b.seed };
+  if (!rise) delete spec.ground;
+  if (landmarks.length) spec.landmarks = landmarks;
+  notes.push(`the lane is turned ${r1(beta * 180 / Math.PI)} degrees off the view axis (the vista on the ${s > 0 ? 'right' : 'left'} third); the landmark ${r1(D)} m ahead`);
+  return { spec, plan: { subject, lead: lane.slice(1), framing: [], far: 'far', near: ['walkers', 'browser'] }, notes };
+}
+
+/* ============================================================
+   harbour-under-cliff (gold: Whitby harbour, the town stacked up the cliff with the abbey on top). Whitby's own frame is frontal: the
+   far shore a band across the view, no leading line, a lamp on one side only, the near band a bare quay. Fixed here: the camera
+   stands at the inner corner of a harbour basin between two quays; the LEFT quay's edge (or the right, mirrored) runs from the frame's
+   foot to the far shore (the leading line), fishing boats moored along it, its harbour-front houses framing that side; a short quay
+   finger on the other side carries a lamp and a moored yacht (framing); across the water the beach or quay, the far shore's houses,
+   then the cliff (a rock face with a cliff-top terrace, or a green slope with lanes of houses stepping up it) and the landmark on the
+   cliff top on a THIRD; walkers on the far beach are the far mover; the near quay is dressed and lived in.
+   brief: side: the landmark on the 'right' (default) or 'left' third; cliff: 'rock' (a face with houses on top; default) | 'slope'
+   (lanes stepping up a green bank); h: the cliff (m, 14-40); rock: limestone | sandstone | granite | slate | chalk; houses: the quay
+   and lane style (pantile-cottage); top: the cliff-top terrace style (seafront-regency); landmark { obj, model, facing } (default the
+   parish-church model with a spire) or { style, crown, storeys, w, d }; far: m to the far shore (90-170); beach: false for a quay.
+   ============================================================ */
+function harbourUnderCliff(b, E) {
+  const s = mirror(b.side), cam0 = { eye: 3, fov: 64, horizon: 470, heading: b.heading == null ? 0 : b.heading, water: -2.4 };
+  const cam = frameCam(cam0), notes = [], rnd = rngOf(b.seed);
+  const zf = Math.max(90, Math.min(170, Number(b.far) || 120)), H = Math.max(14, Math.min(40, Number(b.h) || 22));
+  const slope = b.cliff === 'slope', beach = b.beach !== false && b.beach !== 'false';
+  const X = (x) => r1(x * s);   // authored for the quay on the LEFT of a right-hand landmark (s = 1); mirrored for 'left'
+  // the leading quay edge: from the frame's foot just right of centre to the far shore left of centre
+  const edge = (z) => 1.2 - (z - 8) * 0.2;
+  const ez = [0.5, 8, 20, 35, 55, 75, r1(zf - 14)];
+  const quayEdge = ez.map(z => [r1(edge(z)), z]);
+  const quay = quayEdge.concat([[-240, r1(zf - 14)], [-240, 0.5]]);
+  // the finger quay on the other side, at the frame's edge (its lamp and its yacht frame the view)
+  const fx0 = 6.2, fz1 = 24;
+  const finger = [[fx0, 0.5], [60, 0.5], [60, 6], [fx0 + 5.5, 6], [fx0 + 5.5, fz1], [fx0, fz1]];
+  const wl = r1(zf - (beach ? 12 : 2));
+  const harbour = [[r1(edge(8)), 6.4], [fx0, 6.4], [fx0, fz1 + 1], [fx0 + 5.5, fz1 + 1], [fx0 + 5.5, 6], [400, 6], [400, wl], [r1(edge(wl)), wl]].concat(quayEdge.filter(p => p[1] > 8 && p[1] < wl).reverse().map(p => [r1(p[0] + 0.2), p[1]]));
+  const surfaces = [
+    { id: 'quay', kind: 'plaza', poly: quay.map(p => [X(p[0]), p[1]]) },
+    { id: 'finger', kind: 'plaza', poly: finger.map(p => [X(p[0]), p[1]]) },
+    { id: 'harbour', kind: 'water', water: 'harbour', shallow: 1.2, poly: harbour.map(p => [X(p[0]), p[1]]) },
+  ];
+  if (beach) surfaces.push({ id: 'beach', kind: 'sand', poly: [[X(r1(edge(wl))), wl], [X(400), wl], [X(400), r1(zf + 1)], [X(-240), r1(zf + 1)], [X(-240), wl]] });
+  // the harbour-front houses along the back of the leading quay (they face the water and frame that side of the view)
+  const back = ez.slice(1).map(z => [X(r1(edge(z) - 13)), z]);
+  surfaces.push({ id: 'quay-back', kind: 'pavement', path: back, width: 2 });
+  const style = b.houses || 'pantile-cottage', top = b.top || 'seafront-regency';
+  const buildings = [{ id: 'quay-row', along: 'quay-back', side: s > 0 ? 'left' : 'right', style, storeys: [2, 3], from: 4, to: 400, depth: [7, 10], shops: ['cafe', 'gift', 'fishmonger', 'ice_cream'] }];
+  // the far shore: the street along the foot of the cliff, its houses; the cliff; the cliff-top lane and its terrace
+  const zs = r1(zf + 3);
+  surfaces.push({ id: 'shore-st', kind: 'pavement', path: [[X(-260), zs], [X(-60), r1(zs + 1.5)], [X(80), r1(zs - 1)], [X(320), zs]], width: 5 });
+  const ground = { features: [] };
+  const zc = r1(zf + 18), zt = r1(zc + 10);
+  if (slope) {
+    ground.features.push({ id: 'bank', kind: 'embankment', path: [[X(-320), r1(zc + 70)], [X(320), r1(zc + 70)]], width: 150, h: H });
+    surfaces.push({ id: 'cliff', kind: 'grass', poly: [[X(-320), r1(zc - 2)], [X(320), r1(zc - 2)], [X(320), r1(zc + 160)], [X(-320), r1(zc + 160)]] });
+  } else {
+    ground.features.push({ id: 'cliff', kind: 'cliff', path: [[X(-340), r1(zc + 6)], [X(-120), zc], [X(40), r1(zc + 3)], [X(200), r1(zc - 2)], [X(360), r1(zc + 4)]], h: H, high: 'far', rock: b.rock || 'limestone', rough: 1.1, scree: { w: 6, h: 2 }, rim: { w: 2, h: 0.8 }, fade: 30 });
+    surfaces.push({ id: 'cliff-top', kind: 'grass', poly: [[X(-340), r1(zc + 14)], [X(360), r1(zc + 14)], [X(360), r1(zc + 220)], [X(-340), r1(zc + 220)]] });
+  }
+  // rows only across the frame's width at their depth, plus a margin (600 m rows built 189 houses, most out of view: 1.8 s)
+  const span = (z, x0) => { const half = z * 800 / cam.f + 36; return [r1(Math.max(0, -x0 - half)), r1(-x0 + half)]; };
+  const [sf, st] = span(zs, -260);
+  buildings.push({ id: 'shore-row', along: 'shore-st', side: s > 0 ? 'left' : 'right', style, storeys: [2, 3], from: sf, to: st, depth: [7, 9], shops: false });
+  // the yards between the shore houses and the cliff foot are paved (on grass the fill planted a wood there, over the houses)
+  surfaces.push({ id: 'shore-yards', kind: 'plaza', poly: [[X(-260), r1(zs + 3)], [X(320), r1(zs + 3)], [X(320), r1(zc + 1)], [X(-260), r1(zc + 1)]] });
+  // the landmark on the cliff top on the landmark's third, behind the terrace (its tower or spire above the roofs)
+  const Lm = b.landmark && typeof b.landmark === 'object' ? b.landmark : { obj: 'structure.parish-church', model: { livery: 'grey-limestone', size: 1.25, seed: 5, opts: { crown: 'spire', era: 'perpendicular' } } };
+  const zl = r1(zc + (slope ? 58 : 40)), lp = at(cam, { third: s > 0 ? 'right' : 'left', z: zl });
+  // lanes up the slope (Whitby) or the terrace along the cliff top (Tenby); each row broken in front of the landmark (a terrace there
+  // hid all but its spire: the build demoted it to scenery, C4)
+  const lanes = slope ? [12, 26, 40] : [16], gapHalf = Lm.obj ? 24 : (Lm.w || 30) / 2 + 8;
+  lanes.forEach((dz, i) => {
+    const z = r1(zc + dz), id = 'lane-' + i, x0 = X(-300), cut = Math.abs(lp[0] - x0), [lf, lt] = span(z, -300);
+    surfaces.push({ id, kind: 'path', path: [[X(-300), z], [X(-100), r1(z + 1.5)], [X(100), r1(z - 1)], [X(300), z]], width: 2.6 });
+    const row = { along: id, side: s > 0 ? 'left' : 'right', style: slope ? style : top, storeys: slope ? [2, 3] : [3, 4], depth: slope ? [5, 7] : [9, 12], shops: false };
+    buildings.push(Object.assign({ id: id + '-a', from: lf, to: r1(cut - gapHalf) }, row), Object.assign({ id: id + '-b', from: r1(cut + gapHalf), to: lt }, row));
+  });
+  const landmarks = [], ent = [], framing = [];
+  let subject;
+  if (Lm.obj) { landmarks.push({ id: 'landmark', obj: Lm.obj, at: lp, facing: Number.isFinite(Number(Lm.facing)) ? Number(Lm.facing) : 90, src: Lm.src || `${b.place}: the church above the harbour`, model: Lm.model }); subject = { id: 'landmark', kind: 'landmark' }; }
+  else { const w = Lm.w || 30, d = Lm.d || 14; buildings.push({ id: 'landmark', foot: rect(r1(lp[0] - w / 2), lp[1], r1(lp[0] + w / 2), r1(lp[1] + d)), storeys: Lm.storeys || 1, h: Lm.h, style: Lm.style || 'gothic-ruin', crown: Lm.crown || 'abbey', landmark: true, src: Lm.src || `${b.place}: the landmark on the cliff` }); subject = { id: 'landmark', kind: 'building' }; }
+  // the lamp on the finger quay (framing), its yacht; the fishing boats along the leading quay; dinghies on their moorings
+  ent.push({ id: 'frame-lamp', obj: 'street.lamppost', at: [X(fx0 + 1.2), 13], framed: true }); framing.push('frame-lamp');
+  // the yacht alongside the finger near the lens (off its end the engine laid it broadside across the end), the fishing boats from 32 m
+  ent.push({ id: 'yacht', obj: 'boat.yacht', at: [X(fx0 - 2.2), 14], facing: 0, attach: 'water', model: { seed: b.seed + 3 } });
+  [[32, 0], [50, 1], [70, 2]].forEach(([z, i]) => ent.push({ id: 'moored-' + i, obj: 'boat.fishing-boat', at: [X(r1(edge(z) + 3.2)), z], facing: s > 0 ? 348 : 12, attach: 'water', model: { seed: b.seed + 11 * i } }));
+  // dinghies on their moorings, at least 7 m apart
+  const moor = [];
+  for (let i = 0, tries = 0; moor.length < 5 && tries < 60; tries++, i++) { const p = [r1(10 + rnd() * 60), r1(40 + rnd() * (wl - 50))]; if (moor.every(q => Math.hypot(q[0] - p[0], q[1] - p[1]) > 7)) moor.push(p); }
+  moor.forEach((p, i) => ent.push({ obj: 'boat.dinghy', at: [X(p[0]), p[1]], facing: r1(rnd() * 360), attach: 'water', model: { seed: b.seed + 40 + i } }));
+  // the near quay's dressing: a bench facing the water, bollards along the edge, a lifebuoy
+  ent.push({ id: 'bench-q', obj: 'street.bench', at: [X(r1(edge(16) - 3.5)), 16], facing: s > 0 ? 80 : 280 });
+  for (const z of [12, 20, 30, 38]) ent.push({ obj: 'street.bollard', at: [X(r1(edge(z) - 0.8)), z] });
+  ent.push({ obj: 'street.bollard', at: [X(fx0 + 0.8), 18] }, { obj: 'street.bollard', at: [X(fx0 + 0.8), 9] });
+  const life = [
+    { id: 'walkers', who: 'walkers', on: 'quay', rate: '12/min', mix: { stroll: 0.4, family: 0.2, couple: 0.2, 'dog-walker': 0.1, chat: 0.1 }, edges: ['S', 'N'] },
+    { id: 'sitter', who: 'visit', on: 'quay', rate: '1/2min', mix: { elderly: 0.6, couple: 0.4 }, edges: ['S'], goals: [{ sit: 'bench-q', for: [40, 120] }, { leave: 'S' }] },
+    { id: 'far', who: 'walkers', on: beach ? 'beach' : 'shore-st', rate: '3/min', mix: { stroll: 0.4, family: 0.3, 'dog-walker': 0.3 }, edges: ['W', 'E'] },
+    { id: 'shore', who: 'walkers', on: 'shore-st', rate: '2/min', mix: { stroll: 0.6, couple: 0.4 }, edges: ['W', 'E'] },
+    { who: 'gulls', count: 6 },
+  ];
+  const spec = { v: 3, place: { lat: b.lat, lon: b.lon, alt: b.alt, region: b.region, style: 'quayside' }, camera: cam0, ground, surfaces, buildings, entities: ent, life,
+    backdrop: { style: b.backdrop || 'town-low' }, seed: b.seed };
+  if (landmarks.length) spec.landmarks = landmarks;
+  notes.push(`the leading quay runs from the frame's foot to the ${slope ? 'slope' : 'cliff'} at ${zf} m; the landmark ${zl} m out on the ${s > 0 ? 'right' : 'left'} third`);
+  return { spec, plan: { subject, lead: quayEdge.slice(1).map(p => [X(p[0]), p[1]]), framing, far: 'far', near: ['walkers', 'sitter'] }, notes };
+}
+
+/* ============================================================
+   waterfront-civic (gold: Liverpool, the Pier Head). A promenade along the water's edge seen along its length: the river wall and its
+   railing run from the frame's foot into the distance (the leading line Liverpool's frame missed: its wall entered at 60 % of the
+   height), the water and its boats on one side, the civic frontage receding on the other, fanned out by the turn of the view; the
+   landmark (a lighthouse, a tower, the great civic building) on the land-side THIRD, sized so its top stays in the frame; a lamp
+   standard on the river wall and a plane tree on the plaza frame the two sides close in (Liverpool had neither); benches facing the
+   water and tubs dress the near band; people stop at the railing to look out, sit, cross; buses on the road are the far mover. An
+   optional BANK raises the land side behind the promenade into a terrace (a hoe, an esplanade on a cliff) with the landmark on its top.
+   brief: side: the land and the landmark on the 'right' (default) or 'left'; landmark { obj, model, z } (default the lighthouse model)
+   or { style, crown, storeys, w, d, z }; houses: the frontage style (baroque-civic) or a list; storeys: [a, b] of the frontage;
+   back: m from the river wall to the frontage (70); bank: m the land rises behind the promenade (0); ground: plaza | grass (the land
+   between); boats: yachts | ferries; water: estuary | sea | river | harbour; backdrop (estuary).
+   ============================================================ */
+function waterfrontCivic(b, E) {
+  const s = mirror(b.side), cam0 = { eye: 1.7, fov: 74, horizon: 520, heading: b.heading == null ? 0 : b.heading, water: -2.4 };
+  const cam = frameCam(cam0), notes = [], rnd = rngOf(b.seed);
+  const X = (x) => r1(x * s);   // authored with the water on the LEFT (s = 1)
+  const wall = (z) => r1(-1.6 - z * 0.09);   // the river wall: from the frame's foot just left of centre, receding a little to the left
+  const bank = Math.max(0, Math.min(30, Number(b.bank) || 0)), back = Math.max(40, Math.min(160, Number(b.back) || 70));
+  // to 420 m (the wall is 4 px above the horizon there); to 700 m the fill of the land and the water cost 0.7 s of a 1 s build
+  const zsW = [-60, 0.5, 6, 20, 60, 140, 260, 420];
+  const wpts = zsW.map(z => [wall(z), z]);
+  const surfaces = [
+    { id: 'water', kind: 'water', water: b.water || 'estuary', shallow: 2, poly: [[X(-1400), -60]].concat(wpts.map(p => [X(p[0]), p[1]]), [[X(-1400), 420]]) },
+    { id: 'prom', kind: 'pavement', poly: wpts.map(p => [X(p[0]), p[1]]).concat(wpts.slice().reverse().map(p => [X(r1(p[0] + 9)), p[1]])) },
+    { id: 'land', kind: b.ground === 'grass' ? 'grass' : 'plaza', poly: wpts.map(p => [X(r1(p[0] + 9)), p[1]]).concat(wpts.slice().reverse().map(p => [X(r1(p[0] + back - 8)), p[1]])) },
+  ];
+  // the road in front of the frontage (its buses are the far mover) and the frontage's pavement
+  const road = [[X(r1(wall(-60) + back - 4)), -60], [X(r1(wall(420) + back - 4)), 420]], pave = [[X(r1(wall(-60) + back + 3)), -60], [X(r1(wall(420) + back + 3)), 420]];
+  surfaces.push({ id: 'road', kind: 'road', path: road, width: 8 }, { id: 'pave', kind: 'pavement', path: pave, width: 4 });
+  const ground = { features: [] };
+  // the bank: a broad flat-topped ridge whose near ramp (a quarter of its width) climbs from the promenade's back to the terrace
+  if (bank > 0) { const ramp = Math.max(30, back * 0.6), cx = (z) => r1(wall(z) + 10 + ramp * 2); ground.features.push({ id: 'bank', kind: 'embankment', path: [[X(cx(-200)), -200], [X(cx(900)), 900]], width: r1(ramp * 4), h: bank }); }
+  // the frontage: grand buildings along the road, receding (the fan)
+  const styles = Array.isArray(b.houses) ? b.houses : typeof b.houses === 'string' ? b.houses.split(',').map(x => x.trim()).filter(Boolean) : ['baroque-civic'];
+  const st = Array.isArray(b.storeys) ? b.storeys : [4, 6];
+  const buildings = [];
+  let u = 70;
+  // about 250 m of frontage (beyond that a house is a few pixels; 600 m of rows built 87 houses: 1.95 s)
+  styles.forEach((style, i) => { const len = i === styles.length - 1 ? Math.max(60, 250 - (u - 70)) : 60 + Math.floor(rnd() * 40); buildings.push({ id: 'front-' + i, along: 'pave', side: s > 0 ? 'right' : 'left', style, storeys: st, from: u, to: u + len, depth: [14, 22], shops: false }); u += len + 6; });
+  // the landmark on the land side's third, far enough that its top keeps 8 % of the frame above it. The default lighthouse has no
+  // keeper's cottage (a tower on a promenade stands alone): the model draws one unless u('cottage') >= 0.8 of the seed it hashes from
+  // the entity id 'landmark' and model.seed (79-world-4models.js), which seed 23 gives
+  const Lm = b.landmark && typeof b.landmark === 'object' ? b.landmark : { obj: 'structure.lighthouse', model: { livery: 'white-red', size: 1, seed: 23 } };
+  const zl0 = Number(Lm.z) || 80, zl = r1(Math.max(zl0, cam.f * (heightOf(E, Lm) + bank - cam0.eye) / (cam0.horizon - 72)));
+  const lp = at(cam, { third: s > 0 ? 'right' : 'left', z: zl });
+  const landmarks = [], ent = [], framing = [];
+  let subject;
+  if (Lm.obj) { landmarks.push({ id: 'landmark', obj: Lm.obj, at: lp, facing: Number.isFinite(Number(Lm.facing)) ? Number(Lm.facing) : r1(270 * s), src: Lm.src || `${b.place}: the landmark on the waterfront`, model: Lm.model }); subject = { id: 'landmark', kind: 'landmark' }; }
+  else { const w = Lm.w || 50, d = Lm.d || 40; buildings.push({ id: 'landmark', foot: rect(r1(lp[0] - w / 2), lp[1], r1(lp[0] + w / 2), r1(lp[1] + d)), storeys: Lm.storeys || 7, style: Lm.style || 'baroque-civic', crown: Lm.crown || 'great-dome', landmark: true, src: Lm.src || `${b.place}: the civic landmark` }); subject = { id: 'landmark', kind: 'building' }; }
+  // the river wall's railing (open nowhere: the promenade has no steps here)
+  const lines = [{ id: 'rail', kind: 'railing', path: zsW.slice(1).map(z => [X(r1(wall(z) + 0.5)), z]) }];
+  // framing: on the water side a yacht moored broadside at the frame's edge, its mast just inside it (a lamp on the wall cannot reach the
+  // edge: at 6 m it stood at 40 % of the width, a pole down the middle of the frame); a lamp standard on the wall further along (thin);
+  // a plane tree on the land side
+  ent.push({ id: 'frame-yacht', obj: 'boat.yacht', at: at(cam, { frame: s > 0 ? 'left' : 'right', z: 15, w: 9, show: 0.62 }), facing: 90, attach: 'water', framed: true, model: { seed: b.seed + 5 } }); framing.push('frame-yacht');
+  ent.push({ id: 'wall-lamp', obj: 'street.lamppost', at: [X(r1(wall(16) + 1.2)), 16] });
+  ent.push({ id: 'frame-tree', obj: 'tree.plane-avenue', at: at(cam, { frame: s > 0 ? 'right' : 'left', z: 13, w: widthOf(E, 'tree.plane-avenue', 23), reach: 0.14 }), framed: true }); framing.push('frame-tree');
+  // benches facing the water along the promenade's back, a bin, tubs; the lookout point at the railing
+  for (const [z, id] of [[11, 'bench-1'], [24, 'bench-2']]) ent.push({ id, obj: 'street.bench', at: [X(r1(wall(z) + 7.6)), z], facing: r1(270 * s) });
+  ent.push({ obj: 'street.mcr-bin', at: [X(r1(wall(15) + 8)), 15] }, { obj: 'plant.rph-flower-tub', at: [X(r1(wall(9) + 8.4)), 9] }, { obj: 'plant.rph-flower-tub', at: [X(r1(wall(30) + 8.4)), 30] });
+  const look = [X(r1(wall(17) + 1.3)), 17];
+  // boats on the water: yachts on their moorings, or ferries under way far out
+  const boats = b.boats === 'ferries' ? [['boat.trip-boat', -60, 160], ['boat.river-ferry', -140, 320]] : [['boat.yacht', -40, 90], ['boat.yacht', -70, 150], ['boat.yacht', -30, 210], ['boat.trip-boat', -110, 260]];
+  boats.forEach(([obj, dx, z], i) => ent.push({ obj, at: [X(r1(wall(z) + dx)), z], facing: r1((rnd() - 0.5) * 60 + (i % 2 ? 180 : 0)), attach: 'water', model: { seed: b.seed + 9 * i } }));
+  const life = [
+    { id: 'walkers', who: 'walkers', on: 'prom', rate: '16/min', mix: { stroll: 0.4, couple: 0.2, family: 0.15, 'dog-walker': 0.1, jogger: 0.15 }, edges: ['S', 'N'] },
+    { id: 'lookers', who: 'visit', on: 'prom', rate: '1/min', mix: { stroll: 0.5, couple: 0.5 }, edges: ['S'], goals: [{ go: look }, { do: 'look', for: [20, 50] }, { leave: 'N' }] },
+    { id: 'sitter', who: 'visit', on: 'prom', rate: '1/2min', mix: { elderly: 0.6, couple: 0.4 }, edges: ['S'], goals: [{ sit: 'bench-2', for: [40, 120] }, { leave: 'S' }] },
+    { id: 'land', who: 'walkers', on: 'land', rate: '3/min', mix: { stroll: 0.5, family: 0.3, couple: 0.2 } },
+    { id: 'far', who: 'buses', on: 'road', rate: '2/min' }, { who: 'cars', on: 'road', rate: '4/min' },
+    { who: 'gulls', count: 6 },
+  ];
+  const spec = { v: 3, place: { lat: b.lat, lon: b.lon, alt: b.alt, region: b.region, style: 'waterfront-city' }, camera: cam0, surfaces, lines, buildings, entities: ent, life,
+    backdrop: { style: b.backdrop || 'estuary' }, seed: b.seed };
+  if (bank) spec.ground = ground;
+  if (landmarks.length) spec.landmarks = landmarks;
+  notes.push(`the river wall leads from the frame's foot into the vista; the landmark ${zl} m out on the ${s > 0 ? 'right' : 'left'} third${bank ? `, on a ${bank} m bank` : ''}`);
+  return { spec, plan: { subject, lead: wpts.slice(1).map(p => [X(p[0]), p[1]]), framing, far: 'far', near: ['walkers', 'lookers', 'sitter'] }, notes };
+}
+
+/* ============================================================
+   edge-over-valley (gold: Stanage Edge above the Hope Valley). On the top of a moor at the shoulder of a valley: the rock (a tor of
+   stacked blocks, or a crag) on the right THIRD with a path through the heather leading to it, the land falling away on the left into
+   a valley of walled fields with a hamlet and its church tower, the far side rising to a ridge; boulders and a lone thorn frame the
+   two sides; ponies or sheep graze the near-mid band, walkers go to the rock and on along the moor (the far mover), a buzzard turns
+   over the valley. Stanage's valley expanded to a 710 KB spec and a 4-5 s build; this one asks the same generator for less (six rows
+   of larger fields, walls only on the near slope, eight woods, a hamlet of nine), authors its near carpet, and turns the fill off.
+   brief: tor: m (the mound under the stacked blocks, 3-8); torZ: m (40-90); drop: m to the valley floor
+   (120-300); grazers: ponies | sheep | cattle; houses: the hamlet's style (stone-cottage); church: false to leave the hamlet's
+   church out; trees: the lone tree beside the path (tree.hawthorn); backdrop (upland). The valley falls to the LEFT (side 'right' only).
+   ============================================================ */
+function edgeOverValley(b, E) {
+  const s = 1, cam0 = { eye: 1.7, fov: 68, horizon: 420, heading: b.heading == null ? 0 : b.heading };
+  const cam = frameCam(cam0), notes = [], rnd = rngOf(b.seed);
+  if (b.side === 'left') notes.push('edge-over-valley: side left is not built yet (the valley generator falls to the left); drawn with the rock on the right');
+  const torH = Math.max(3, Math.min(8, Number(b.tor) || 4)), torZ = Math.max(40, Math.min(90, Number(b.torZ) || 55));
+  const drop = Math.max(120, Math.min(300, Number(b.drop) || 190));
+  const T = at(cam, { third: 'right', z: torZ });
+  // the valley (worldValley, expanded by the build): s metres downhill to the LEFT, u along the contour (ahead). The slope starts at the lens
+  // (shoulder 0): with a 70 m shoulder the eye 1.7 m up saw a sliver of fields at the horizon and nothing of the valley (draft 1)
+  // the contours run 22 degrees right of the view (bearing 22: the valley falls to their left, so ahead-left): straight ahead the far side lay
+  // off the frame's left edge (a flat plain beyond the slope, draft 4); at -22 the land fell left and BACK (draft 5, the valley hidden)
+  const vb = Number.isFinite(Number(b.bearing)) ? Number(b.bearing) : 22, th = vb * Math.PI / 180, vc = [Math.sin(th), Math.cos(th)], vf = [-vc[1], vc[0]];
+  const vat = (sv, u) => [r1(sv * vf[0] + u * vc[0]), r1(sv * vf[1] + u * vc[1])];
+  const valley = {
+    seed: b.seed % 997, bearing: vb, drop, fall: 900, floor: 520, shoulder: 0, noise: 0.8, far: { rise: r1(drop * 1.1), run: 1000 },
+    fields: { from: 160, to: 2600, u: [-500, 3200], rows: 6, cell: 420, wallsTo: 900, cross: false },
+    woods: { n: 8, s: [300, 1900], u: [0, 3000], size: [70, 200], obj: ['tree.far-broad', 'tree.distant', 'tree.far-birch'], density: 0.0003 },
+    farms: { n: 4, lamps: 2 }, lanes: true,
+    hamlet: { at: [1180, 1500], houses: 9, spread: 60, style: b.houses || 'stone-cottage', lamps: 3 },
+  };
+  // the tor: a low mound with big jointed blocks stacked on it (the block model's 'stack' and 'block' forms, set 10 m apart so no two
+  // footprints meet); a crag arc read as one smooth boulder (draft 1)
+  const ground = { features: [{ id: 'tor-mound', kind: 'bank', path: [[r1(T[0] - 14), r1(T[1] + 3)], [r1(T[0] + 14), r1(T[1] + 3)]], width: 40, h: torH }] };
+  const surfaces = [
+    { id: 'moor', kind: 'heath', poly: [vat(40, -400), vat(40, 4000), vat(-1200, 4000), vat(-1200, -400)] },
+    // the near carpet in the frame's two bottom corners, the mid moor between the lens and the tor (where the grazers are)
+    { id: 'near-l', kind: 'heath', poly: [[-9, 0.5], [-1.4, 0.5], [-1.4, 10], [-9, 10]] },
+    { id: 'near-r', kind: 'heath', poly: [[3, 0.5], [13, 0.5], [13, 11], [3, 11]] },
+    { id: 'mid', kind: 'heath', poly: [[-26, 12], [34, 12], [40, 46], [-30, 46]] },
+    // ONE path from behind the lens past the tor's foot and on along the moor beyond the walk grid's far edge (300 m): a population on a
+    // path enters and leaves where it meets the frame's edges, and a path that stopped at the tor (with the ridge a second surface) gave
+    // its walkers one edge only: they spawned and left on the spot (draft 3, no far mover)
+    { id: 'path', kind: 'path', path: [[0.6, -4], [0.8, 4], [2.6, 14], [r1(T[0] * 0.55), r1(torZ * 0.55)], [r1(T[0] - 6), r1(torZ - 14)], [r1(T[0] - 12), r1(torZ + 25)], [r1(T[0] - 16), r1(torZ + 110)], [r1(T[0] - 20), 290], [r1(T[0] - 24), 420]], width: 1.6 },
+  ];
+  const ent = [], framing = [], taken = [];
+  const blk = (id, x, z, size, seed, livery, form, framed, facing) => {
+    const e = { obj: 'rock.gritstone-block', at: [r1(x), r1(z)], facing: facing == null ? r1(rnd() * 360) : facing, model: { size, seed, livery } };
+    if (form) e.model.opts = { form };
+    if (id) e.id = id;
+    if (framed) { e.framed = true; framing.push(id); }
+    ent.push(e); taken.push([x, z, 1.6 * size]);
+  };
+  const free = (x, z, r) => taken.every(([a, c, q]) => Math.hypot(a - x, c - z) > q + r);
+  const tor = [[0, 0, 4.2, 'stack'], [-12, 1, 3.2, 'stack'], [12, 1.5, 3.0, 'block'], [-6, 11, 3.4, 'block'], [6.5, 11.5, 3.6, 'stack']];
+  tor.forEach(([dx, dz, sz, form], i) => blk(i ? null : 'tor-top', T[0] + dx, T[1] + dz, sz, 31 + i * 7, i % 2 ? 'buff' : 'weathered', form, false, r1((rnd() - 0.5) * 30 + (i % 2) * 180)));
+  // clitter: fallen blocks on the mound's slopes and below it, never touching
+  for (let i = 0, k = 0; i < 40 && k < 10; i++) { const x = T[0] + (rnd() - 0.5) * 50, z = T[1] - 8 - rnd() * 14, sz = 0.5 + rnd() * 0.6; if (free(x, z, 1.6 * sz)) { blk(null, x, z, sz, 80 + i, rnd() < 0.5 ? 'weathered' : 'buff'); k++; } }
+  // framing: a big boulder cut by the right edge close in; a lone wind-bent thorn on the valley side
+  // (a 1.6 block at 8 m stayed below the frame's middle: no frame; a 2.6 'stack' at 7 m rises past it)
+  const fr = at(cam, { frame: 'right', z: 7, w: 6.5, show: 0.5 });
+  blk('frame-r', fr[0], fr[1], 2.6, 5, 'weathered', 'stack', true);
+  const thorn = b.trees || 'tree.hawthorn';
+  ent.push({ id: 'frame-l', obj: thorn, at: at(cam, { frame: 'left', z: 9, w: widthOf(E, thorn, 7), reach: 0.2 }), framed: true }); framing.push('frame-l');
+  // the carpets (authored: the fill is off)
+  for (const [id, k] of [['near-l', 0], ['near-r', 1]]) ent.push({ cluster: 'plant.ling-heather', on: id, n: 46, seed: b.seed + 51 + k, gap: 0.22 }, { cluster: 'plant.bilberry', on: id, n: 14, seed: b.seed + 53 + k, gap: 0.4 },
+    { cluster: 'plant.grass-long', on: id, n: 10, seed: b.seed + 55 + k, gap: 0.6 }, { cluster: 'plant.rph-short-grass', on: id, n: 70, seed: b.seed + 57 + k, gap: 0.1 });
+  ent.push({ cluster: 'plant.ling-heather', on: 'mid', n: 90, seed: b.seed + 61, gap: 1.1 }, { cluster: 'plant.bracken', on: 'mid', n: 34, seed: b.seed + 62, gap: 1.8 }, { cluster: 'plant.grass-long', on: 'mid', n: 30, seed: b.seed + 63, gap: 1.4 },
+    { cluster: 'plant.bracken', on: 'moor', n: 30, seed: b.seed + 58, gap: 5 }, { cluster: 'plant.ling-heather', on: 'moor', n: 40, seed: b.seed + 59, gap: 4 });
+  const landmarks = [];
+  if (b.church !== false && b.church !== 'false') landmarks.push({ id: 'church', obj: 'structure.parish-church', at: vat(1180, 1560), facing: 90, src: `${b.place}: the church tower in the valley below`, model: { livery: 'grey-limestone', size: 1.3, opts: { crown: 'parapet', era: 'perpendicular' } } });
+  const graze = b.grazers || 'ponies';
+  const life = [
+    { id: 'walkers', who: 'walkers', on: 'path', rate: '2/min', mix: { stroll: 0.3, brisk: 0.3, couple: 0.2, 'dog-walker': 0.2 }, edges: ['near', 'far'] },
+    { id: 'visit', who: 'visit', on: 'path', rate: '1/2min', mix: { stroll: 0.5, couple: 0.5 }, edges: ['near'], goals: [{ go: [r1(T[0] - 7), r1(torZ - 14)] }, { do: 'look', for: [20, 50] }, { leave: 'near' }] },
+    { id: 'far', who: 'walkers', on: 'path', rate: '2/min', mix: { brisk: 0.5, couple: 0.3, 'dog-walker': 0.2 }, edges: ['far', 'near'] },
+    { id: 'grazers', who: graze, count: graze === 'sheep' ? 6 : 5, on: 'mid' },
+    { who: 'bird.buzzard-flight', count: 1 }, { who: 'bird.small-flight', count: 2 },
+  ];
+  const spec = { v: 3, place: { lat: b.lat, lon: b.lon, alt: b.alt || 380, region: b.region, style: 'moor' }, camera: cam0, valley, ground, surfaces, entities: ent, life,
+    backdrop: { style: b.backdrop || 'upland' }, fill: false, seed: b.seed };
+  if (landmarks.length) spec.landmarks = landmarks;
+  notes.push(`the tor (blocks on a ${torH} m mound) at ${torZ} m on the right third; the valley falls ${drop} m on the left from the lens`);
+  return { spec, plan: { subject: { id: 'tor-top', kind: 'entity' }, lead: surfaces[4].path.slice(1, 6), framing, far: 'far', near: ['walkers', 'visit', 'grazers'] }, notes };
 }
 
 export const ARCHETYPES = Object.freeze({
@@ -337,8 +737,24 @@ export const ARCHETYPES = Object.freeze({
     checks: { sky: [0.1, 0.45], lead: true, framing: 2, farMover: 40, nearLife: 1 } },
   'civic-square-facade': { id: 'civic-square-facade', gold: 'greater-manchester-manchester-centre-1-w3', goldPlan: { subject: { kind: 'landmark' } }, kit: 'civic-square', build: civicSquare,
     summary: 'a square corner-on: the landmark facade at three-quarters on a third, a receding street, statue and lamp framing, tree pits, a tram across the far side',
-    brief: { side: 'right | left (the landmark third)', landmark: '{ style, crown, storeys, w, d } or { obj, model }', houses: 'the side street style (georgian)', tram: 'false for buses' },
+    brief: { side: 'right | left (the landmark third)', landmark: '{ style, crown, storeys, w, d, z } or { obj, model }', houses: 'the side street style (georgian)', rows: "the side street's storeys 'a-b' (4-6)", tram: 'false for buses', far: 'tram | buses | cars', ground: 'plaza | grass (a close)', frame: 'statue | tree' },
     checks: { sky: [0.1, 0.45], lead: true, framing: 2, farMover: 60, nearLife: 2 } },
+  'medieval-lane': { id: 'medieval-lane', gold: 'norwich-elm-hill-1-w3', goldPlan: { subject: { kind: 'landmark' } }, kit: 'cobbled-lane', build: medievalLane,
+    summary: 'a cobbled lane between leaning old fronts, climbing to a great church above the roofs on a third; visitors at the windows, walkers across the head',
+    brief: { side: 'right | left (the landmark third)', landmark: '{ style: gothic-minster, crown: twin-towers | central-spire | west-tower, w, d, storeys, z, turn } or { obj, model, facing }', houses: 'a style or styles, comma separated (timber-framed)', rise: 'm the lane climbs (6)', length: 'm (100)', width: 'm (6)', kit: 'cobbled-lane | old-town-lane' },
+    checks: { sky: [0.02, 0.3], lead: true, framing: 2, farMover: 60, nearLife: 2 } },
+  'harbour-under-cliff': { id: 'harbour-under-cliff', gold: 'whitby-harbour-1-w3', goldPlan: { subject: { kind: 'building', id: 'st-marys' } }, kit: 'quayside', build: harbourUnderCliff,
+    summary: 'a harbour basin from its inner corner: a quay edge leading to the far shore, boats along it, the town and its cliff across the water, the landmark on the cliff top on a third',
+    brief: { side: 'right | left (the landmark third)', cliff: 'rock | slope', h: 'm (14-40)', rock: 'limestone | sandstone | granite | slate | chalk', houses: 'quay and shore style (pantile-cottage)', top: 'cliff-top terrace style (seafront-regency)', landmark: '{ obj, model, facing } or { style, crown, storeys, w, d }', far: 'm to the far shore (90-170)', beach: 'false for a quay' },
+    checks: { sky: [0.1, 0.5], lead: true, framing: 2, farMover: 60, nearLife: 2 } },
+  'waterfront-civic': { id: 'waterfront-civic', gold: 'liverpool-pier-head-1-w3', goldPlan: { subject: { kind: 'building', id: 'liver' } }, kit: 'waterfront-city', build: waterfrontCivic,
+    summary: 'a promenade along the water seen along its length: the river wall leading in, boats on the water, the civic frontage fanned out, the landmark on the land-side third, a lamp and a plane tree framing',
+    brief: { side: 'right | left (the land and the landmark)', landmark: '{ obj, model, z } or { style, crown, storeys, w, d, z }', houses: 'frontage style(s) (baroque-civic)', storeys: '[a, b]', back: 'm wall to frontage (70)', bank: 'm the land rises (0)', ground: 'plaza | grass', boats: 'yachts | ferries', water: 'estuary | sea | river | harbour' },
+    checks: { sky: [0.15, 0.55], lead: true, framing: 2, farMover: 60, nearLife: 2 } },
+  'edge-over-valley': { id: 'edge-over-valley', gold: 'peak-stanage-edge-1-w3', goldPlan: { subject: { kind: 'entity', id: 'cap-1' } }, kit: 'moor', build: edgeOverValley,
+    summary: 'on a moor at the shoulder of a valley: a tor on the right third with a path to it, the valley of walled fields, a hamlet and church below on the left, grazers and walkers, a buzzard',
+    brief: { tor: 'm the mound under the stacked blocks (3-8)', torZ: 'm (40-90)', bearing: 'degrees the contours run right of the view (22: the valley opens ahead-left)', drop: 'm (120-300)', grazers: 'ponies | sheep | cattle', houses: "the hamlet's style (stone-cottage)", church: 'false', trees: 'the lone tree (tree.hawthorn)', backdrop: 'upland' },
+    checks: { sky: [0.15, 0.6], lead: true, framing: 2, farMover: 60, nearLife: 1 } },
 });
 export function archetypeList() { return Object.values(ARCHETYPES).map(a => ({ id: a.id, gold: a.gold, summary: a.summary, brief: a.brief })); }
 

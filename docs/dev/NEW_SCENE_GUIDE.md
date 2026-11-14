@@ -5,8 +5,13 @@
 > **Start with the scene factory (14 Nov): `docs/dev/SCENE_FACTORY.md`.** `node tools/world.mjs new <slug> --archetype <a> ...`
 > builds a DRAFT from an archetype distilled from the gold scenes (Fleet Pond 2, Albert Square, Castlefield Basin) and renders a
 > review sheet beside the gold in 13-34 s; `accept` writes the scene file; `promote` puts it in the opening rotation. The `--setting`
-> scaffold below is the older route: use it only for a kind of place no archetype covers yet (the coast, the street and open
-> families). Its green family is superseded by the `village-green` archetype.
+> scaffold below is the older route: use it only for a kind of place no archetype covers yet (a seaside promenade, open farmland).
+> Its green family is superseded by the `village-green` archetype.
+>
+> **Which archetype (eight, 14 Nov):** a wetland walk `boardwalk-wetland`; a green with its church `village-green`; a canal basin to a
+> bridge `canal-basin`; a square or a cathedral close corner-on `civic-square-facade`; an old lane to a great church `medieval-lane`; a
+> harbour under a cliff town `harbour-under-cliff`; a river or sea promenade with its landmark `waterfront-civic`; a moor's edge over a
+> valley `edge-over-valley`. `node tools/world.mjs archetypes` prints each brief.
 
 The goal (the user, 16 Oct): "make sure we can generate new scenes fast". A new place takes a short description and a few minutes to a
 good first render, with no engine work, at the quality of Whitby, York and Malham. The layout only has to be plausible (not map
@@ -144,7 +149,14 @@ The `street`, `water-edge` and `open` families are validated but not rendered in
 - A new scene is a world-test item only (gallery). To play it as an opening, `node tools/world.mjs promote <id>` (SCENE_FACTORY.md 2):
   it takes over the registered view of the same place by ref (pins and the rotation keep working) or joins the `uk-world` pack.
 - The street family's `pub` had no slot (`P.pub` undefined): the pub building, its forecourt and its sign were invalid and dropped
-  with no note. Use `--archetype village-green` for a green with its church; a street pub waits for the `medieval-lane` archetype.
+  with no note. Use `--archetype village-green` for a green with its church. `medieval-lane` (14 Nov) has the lane's shops but no inn
+  sign yet: a pub on a lane is still a hand edit after `accept` (a `street.pub-sign` entity by the door).
+- To take over a hand-drawn opening of the same place, promote with `--supersedes=<pack/ref>` (the four `uk-south-west` county views
+  taken over on 14 Nov: Smeaton's Tower, the Dartmoor tor, Salisbury Cathedral). The item keeps its caption, so the scene must show
+  what the caption names.
+- A walkers' path must reach two edges of the walk grid (behind the lens; the far edge at 300 m, or a side) or its walkers spawn and
+  leave on the spot. A model's seeded options (a lighthouse's cottage, a block's form) are hashed with the entity id: pick the seed
+  for the id you give it.
 - The fill's lighting rule (L4) stands a lamp post 6 m from the lens when no lamp lights the near 45 m: put one lamp of your own on a
   path (the archetypes do), or the frame gets a pole from top to bottom at its edge.
 - A framing element should carry `framed: true`: then the fill's C3 framing leaves that side alone.

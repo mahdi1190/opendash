@@ -54,6 +54,10 @@ function subjectBox(E, world, cam, plan, spec) {
   const sobj = plan && plan.subject ? plan.subject.obj : null;
   const e = (world.entities || []).find(x => (sobj && x.obj === sobj) || (sid && x.id === sid) || (!sid && !sobj && x.landmark));
   if (e) return { id: e.id || e.obj, box: boxOf(E, cam, e) };
+  // a landmark the build demoted (rule C4: too little of its face in view) is still in the world, without its landmark flag
+  const lmIds = new Set((spec.landmarks || []).map(l => l.id).filter(Boolean));
+  const dem = (world.entities || []).find(x => x.id && lmIds.has(x.id));
+  if (dem) return { id: dem.id + ' (demoted by C4)', box: boxOf(E, cam, dem) };
   if (sid || (spec.landmarks || []).length) return { id: sid || (spec.landmarks[0].id || spec.landmarks[0].obj), box: null, lost: true };
   const lb = (world.buildings || []).find(x => x.landmark);
   if (lb) return { id: lb.id, box: buildingBox(E, cam, lb, world.season || 'summer') };
@@ -173,7 +177,8 @@ export function goldChecks(E, spec, o = {}) {
   add('nearLife', 'life near-mid', ls.error ? null : ls.nearLife >= (C.nearLife || 1), ls.error ? ls.error : `${ls.nearLife} in 12 s`, `>= ${C.nearLife || 1} people or animals at 3-40 m`);
   // landmarks kept; no static people
   const lmWant = (spec.landmarks || []).length, lmHave = (world.entities || []).filter(e => e.landmark).length;
-  add('landmarks', 'landmarks kept', lmHave >= lmWant, `${lmHave} of ${lmWant}`, 'all');
+  const lmIds2 = new Set((spec.landmarks || []).map(l => l.id).filter(Boolean)), lmDem = (world.entities || []).filter(e => !e.landmark && e.id && lmIds2.has(e.id)).length;
+  add('landmarks', 'landmarks kept', lmHave >= lmWant, `${lmHave} of ${lmWant}${lmDem ? `, ${lmDem} demoted to scenery (C4: too little of its face in view)` : ''}`, 'all');
   const stat = (spec.entities || []).filter(e => /^person\./.test(String(e.obj || ''))).length;
   add('statics', 'no static people', stat === 0, stat, '0 (people come from populations with goals)');
   const log = Array.isArray(world.log) ? world.log : [];

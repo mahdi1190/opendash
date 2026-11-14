@@ -20,6 +20,8 @@ const WORLD_OPENING_ON = true;
   const OPENING = {
     // @opening-begin  (one line a promoted world scene, sorted; written by `node tools/world.mjs promote <id>`, removed by `demote <id>`)
     'cotswold-green-1-w3': {"county":"gloucestershire","ukTown":"Bibury","ukPlace":"cotswold-green","ukView":"green","ukLat":51.76,"ukLon":-1.835},
+    'devon-dartmoor-tor-1-w3': {"supersedes":["uk-south-west/devon-dartmoor-tor"]},
+    'devon-plymouth-hoe-1-w3': {"supersedes":["uk-south-west/devon-smeatons-tower"]},
     'fleet-canal-1-w3': {"supersedes":["uk-south-east/hampshire-fleet-canal-1-spring","uk-south-east/hampshire-fleet-canal-1","uk-south-east/hampshire-fleet-canal-1-autumn","uk-south-east/hampshire-fleet-canal-1-winter"]},
     'fleet-canal-2-w3': {"supersedes":["uk-south-east/hampshire-fleet-canal-2-spring","uk-south-east/hampshire-fleet-canal-2","uk-south-east/hampshire-fleet-canal-2-autumn","uk-south-east/hampshire-fleet-canal-2-winter"]},
     'fleet-canal-3-w3': {"supersedes":["uk-south-east/hampshire-fleet-canal-3-spring","uk-south-east/hampshire-fleet-canal-3-summer","uk-south-east/hampshire-fleet-canal-3","uk-south-east/hampshire-fleet-canal-3-winter"]},
@@ -37,10 +39,12 @@ const WORLD_OPENING_ON = true;
     'hampshire-wyndhams-pool-1-w3': {"supersedes":["uk-south-east/hampshire-wyndhams-pool-1-spring","uk-south-east/hampshire-wyndhams-pool-1","uk-south-east/hampshire-wyndhams-pool-1-autumn","uk-south-east/hampshire-wyndhams-pool-1-winter"]},
     'hampshire-wyndhams-pool-dusk-w3': {"supersedes":["proof-wyndhams-pool/hampshire-wyndhams-pool-dusk"]},
     'hampshire-yateley-green-1-w3': {"supersedes":["uk-south-east/hampshire-yateley-green-1-spring","uk-south-east/hampshire-yateley-green-1","uk-south-east/hampshire-yateley-green-1-autumn","uk-south-east/hampshire-yateley-green-1-winter"]},
+    'kent-canterbury-mercery-lane-1-w3': {"county":"kent","ukTown":"Canterbury","ukPlace":"kent-canterbury-mercery-lane","ukView":"medieval-lane","ukLat":51.2795,"ukLon":1.0807},
     'liverpool-pier-head-1-w3': {"county":"merseyside","ukTown":"Liverpool","ukPlace":"liverpool-pier-head","ukView":"world","ukLat":53.4064,"ukLon":-2.9958},
     'malham-cove-1-w3': {"county":"north-yorkshire","ukTown":"Malham","ukPlace":"malham-cove","ukView":"world","ukLat":54.0715,"ukLon":-2.165},
     'manchester-castlefield-1-w3': {"county":"greater-manchester","ukTown":"Manchester","ukPlace":"manchester-castlefield","ukView":"basin-world","ukLat":53.4773,"ukLon":-2.2554},
     'norwich-elm-hill-1-w3': {"county":"norfolk","ukTown":"Norwich","ukPlace":"norwich-elm-hill","ukView":"world","ukLat":52.6314,"ukLon":1.2918},
+    'pembrokeshire-tenby-harbour-1-w3': {"county":"pembrokeshire","ukTown":"Tenby","ukPlace":"pembrokeshire-tenby-harbour","ukView":"harbour-under-cliff","ukLat":51.6727,"ukLon":-4.6996},
     'sheffield-centre-1-w3': {"supersedes":["uk-north-sheffield-centre/south-yorkshire-sheffield-centre-1"]},
     'sheffield-centre-3-w3': {"supersedes":["uk-north-sheffield-centre/south-yorkshire-sheffield-centre-3"]},
     'sheffield-kelham-1-w3': {"supersedes":["uk-north-sheffield-kelham/south-yorkshire-sheffield-kelham-1"]},
@@ -49,7 +53,9 @@ const WORLD_OPENING_ON = true;
     'sheffield-parks-2-w3': {"supersedes":["uk-north-sheffield-parks/south-yorkshire-sheffield-parks-2"]},
     'sheffield-parks-4-w3': {"supersedes":["uk-north-sheffield-parks/south-yorkshire-sheffield-parks-4"]},
     'sheffield-winter-garden-1-w3': {"supersedes":["uk-north-sheffield-centre/south-yorkshire-sheffield-centre-2"]},
+    'west-midlands-gas-street-basin-1-w3': {"county":"west-midlands","ukTown":"Birmingham","ukPlace":"west-midlands-gas-street-basin","ukView":"canal-basin","ukLat":52.477,"ukLon":-1.907},
     'whitby-harbour-1-w3': {"county":"north-yorkshire","ukTown":"Whitby","ukPlace":"whitby-harbour","ukView":"world","ukLat":54.4858,"ukLon":-0.6133},
+    'wiltshire-salisbury-close-1-w3': {"supersedes":["uk-south-west/wiltshire-salisbury-spire"]},
     'york-shambles-1-w3': {"county":"north-yorkshire","ukTown":"York","ukPlace":"york-shambles","ukView":"world","ukLat":53.959,"ukLon":-1.0815},
     // @opening-end
   };

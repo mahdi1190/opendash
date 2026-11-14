@@ -114,6 +114,15 @@ export function specOf(E, r) {
   const c = convertRef(r, { root, E, critic: false });
   return { spec: c.spec, id: c.meta.id, ref: c.ref, converted: true, report: c.report };
 }
+/** A factory scene's archetype and brief, read back from the header `accept` wrote (factory.mjs draftSource), or null. */
+function factoryMadeOf(id) {
+  try {
+    const f = join(root, 'src', 'app', `79-world-zscene-${String(id || '').replace(/-w3$/, '')}.js`);
+    if (!existsSync(f)) return null;
+    const head = readFileSync(f, 'utf8').slice(0, 4000), m = /archetype '([a-z-]+)'[^\n]*\n\s*(\{.*\})\n/.exec(head);
+    return m ? { archetype: m[1], brief: JSON.parse(m[2]) } : null;
+  } catch { return null; }
+}
 /** The page source of a ref for the browser tools: a registered item by ref, else the spec through the host. */
 const pageSrcOf = (s) => ({ spec: s.spec, id: s.id, ref: s.ref });
 
@@ -689,8 +698,12 @@ async function main() {
     const { goldChecks, goldText } = await import('./lib/world/goldcheck.mjs');
     const { ARCHETYPES } = await import('./lib/world/archetypes.mjs');
     const s = specOf(E, ref);
-    const arch = ARCHETYPES[typeof flags.archetype === 'string' ? flags.archetype : (s.draft && s.draft.archetype) || ''] || null;
-    const plan = s.draft ? s.draft.plan : null;
+    // an accepted factory scene keeps its archetype and brief in its file's header (factory.mjs draftSource): the plan (the subject, the
+    // leading line) is rebuilt from them, so `gold <accepted scene>` measures what its review sheet measured instead of guessing
+    const made = s.draft ? null : factoryMadeOf(s.id);
+    const arch = ARCHETYPES[typeof flags.archetype === 'string' ? flags.archetype : (s.draft && s.draft.archetype) || (made && made.archetype) || ''] || null;
+    let plan = s.draft ? s.draft.plan : null;
+    if (!plan && made && arch && made.archetype === arch.id) { try { const { archetypeSpec } = await import('./lib/world/archetypes.mjs'); plan = archetypeSpec(arch.id, Object.assign({}, made.brief, { slug: s.id.replace(/-\d+-w3$/, '') }), E).plan; } catch (e) { out('  (the plan could not be rebuilt from the brief: ' + e.message + ')'); } }
     const r = goldChecks(E, s.spec, { plan: plan || (arch && arch.gold === s.id ? arch.goldPlan : null), checks: arch ? arch.checks : undefined });
     let g = null;
     if (arch && arch.gold !== s.id && !flags['no-gold']) { const gs = specOf(E, arch.gold); g = goldChecks(E, gs.spec, { checks: arch.checks, plan: arch.goldPlan }); }

@@ -1,7 +1,7 @@
 /* ============================================================
    WORLD SCENE (format v3) world-test / hampshire-yateley-green-1-w3: Yateley Green — the path across the green to St Peter's, the pond and the oaks.
-   Made by the scene factory: archetype 'village-green' (tools/lib/world/archetypes.mjs; gold cotswold-green-1-w3), from the brief
-     {"place":"Yateley Green, Hampshire","site":"Yateley Green — the path across the green to St Peter's, the pond and the oaks","lat":51.3427,"lon":-0.8301,"county":"hampshire","town":"Yateley","heading":32,"houses":"victorian-terrace","landmark":{"stone":"flint","crown":"spire"},"alt":60,"seed":19,"region":"uk","side":"right"}
+   Made by the scene factory: archetype 'village-green' (tools/lib/world/archetypes.mjs; gold hampshire-yateley-green-1-w3), from the brief
+     {"place":"Yateley Green, Hampshire","site":"Yateley Green — the path across the green to St Peter's, the pond and the oaks","lat":51.3427,"lon":-0.8301,"county":"hampshire","town":"Yateley","heading":32,"houses":"victorian-terrace","seed":19,"landmark":{"stone":"flint","crown":"spire"},"alt":60,"region":"uk","side":"right"}
    then reviewed on its sheet (summer noon, autumn golden hour, winter night beside the gold) and accepted with
    `node tools/world.mjs accept <draft.json>`. Edit the lists below by hand to improve it; docs/dev/SCENE_FACTORY.md.
    PURE. Registered in 'world-test'; it plays as an opening only once promoted (`node tools/world.mjs promote hampshire-yateley-green-1-w3`).
@@ -28,14 +28,13 @@
       {"id":"far-2","along":"lane","side":"left","style":"victorian-terrace","storeys":[1,2],"from":234.5,"to":380,"shops":false,"depth":[6,9]}
     ],
     entities: [
-      {"id":"frame-l","obj":"tree.horse-chestnut","at":[-11.1,11],"framed":true},
-      {"id":"frame-r","obj":"tree.green-oak","at":[13.7,16],"framed":true},
+      {"id":"frame-l","obj":"tree.horse-chestnut","at":[-15.9,12],"framed":true},
+      {"id":"frame-r","obj":"tree.green-oak","at":[17.1,16],"framed":true},
       {"obj":"tree.green-birch","at":[-12.9,62]},
       {"obj":"tree.green-oak","at":[-110,70]},
       {"obj":"tree.green-chestnut","at":[120,64]},
       {"obj":"tree.green-birch","at":[60,58]},
       {"id":"path-lamp","obj":"street.lamppost","at":[11,38]},
-      {"id":"bench-1","obj":"street.bench","at":[6.9,23.9],"facing":270},
       {"id":"bench-2","obj":"street.bench","at":[10,56.2],"facing":90},
       {"cluster":"plant.grass-long","on":"green","n":30,"seed":22},
       {"cluster":"plant.daisies","on":"green","n":40,"seed":23},
