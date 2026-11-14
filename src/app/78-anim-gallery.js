@@ -159,6 +159,11 @@ function animGalleryRender(el) {
     packs.appendChild(_settingsRow('Regional animations (UK)', 'Uses your weather or travel location offline. Backgrounds rotate among places within about 25 km. The title stays your location; the corner names the scene. Nothing is sent anywhere.' + now,
       _settingsSwitch(look.ukRegional, 'Regional animations (UK)', (v) => { animLookSave({ ukRegional: v }); if (v) animUkCheck({ first: true }); render(); })));
   }
+  // Painted (world) scenes on the Garden's engine (79-world-7stage-*): on by default; off draws them with the canvas renderer.
+  if (typeof worldStageOffAll === 'function') {
+    packs.appendChild(_settingsRow('Painted scenes use the graphics card', 'Painted scenes, such as the UK openings drawn as worlds, play on the Garden’s engine for smoother motion. Turn this off if they look wrong or run slowly on this computer: they then draw the previous way.',
+      _settingsSwitch(look.stage, 'Painted scenes use the graphics card', (v) => { animLookSave({ stage: v }); if (!v) worldStageOffAll('turned off in Settings'); render(); })));
+  }
   preferences.appendChild(packs);
 
   // My animations (v2.2 wave 6, 78-anim-make.js): describe one, the assistant draws it.

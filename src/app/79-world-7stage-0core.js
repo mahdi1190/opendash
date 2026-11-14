@@ -48,6 +48,8 @@ function worldStageOn() {
   if (typeof window === 'undefined' || typeof document === 'undefined' || window.__sceneStageOff) return false;
   const so = window.__sceneOpts;
   if (so && so.renderer && so.renderer !== 'stage') return false;
+  // the user's switch (Settings > Animations, 'Painted scenes use the graphics card'; tool pages choose for themselves above)
+  if (!(so && so.renderer === 'stage')) { try { if (typeof animLook === 'function' && animLook().stage === false) return false; } catch (e) { /* the default: on */ } }
   try { if (/(?:[?&#]|^)stage=0(?:&|$)/.test(String(location.search || '') + '&' + String(location.hash || '').replace(/^#/, ''))) return false; } catch (e) { /* no address */ }
   if (typeof FreefloGameEngine === 'undefined' || typeof sceneRendererCreate !== 'function') return false;
   return !_wsgNoGl;
@@ -491,6 +493,10 @@ function _wsgShaders(st) {
   finally { rep.ms = Math.round((_wsgNow() - a) * 10) / 10; }
 }
 /** Hand over to the canvas: the baker plays on the host's canvas (no second bake); the game is disposed. */
+/** Hand every playing stage to its canvas renderer now (the user turned the stage off): the scenes keep playing, drawn the previous way. */
+function worldStageOffAll(why) {
+  for (const st of _wsgLive.slice()) { try { _wsgFall(st, why || 'turned off'); } catch (e) { /* the next one */ } }
+}
 function _wsgFall(st, why) {
   if (st.fell || st.dead) return;
   st.fell = true; st.why = why || 'unknown';

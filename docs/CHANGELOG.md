@@ -14,22 +14,27 @@ upgrades it.
 
 ### Added
 
-- **Painted world openings.** 45 UK openings now play in the painted world style of Manchester and Fleet Pond: people who walk, stand, chat, queue and sit, light that follows the time of day, and the season outside. 35 of them replace the older drawings of the same views in Manchester, Sheffield, Fleet, Yateley, Reepham and the South West.
-- **New places**: Mercery Lane in Canterbury, Tenby harbour, Gas Street Basin in Birmingham, Bibury's green, Liverpool's Pier Head, Malham Cove, Whitby harbour, the Shambles in York, Elm Hill in Norwich and Castlefield basin in Manchester, plus new views of Plymouth Hoe, Dartmoor and Salisbury Cathedral.
-- **Manchester's Christmas market** in Albert Square, with the Town Hall, plays until 22 December.
-- **Openings use the Garden's engine.** Where the graphics card can run it, an opening draws with the same engine as the Garden. If it runs slowly, it lowers its own detail step by step and, if needed, goes back to the previous way of drawing. It never removes people.
+- **Painted UK openings.** With Regional animations (UK) on (Settings > Animations), 45 UK openings near you now play as painted worlds: people who walk, stand, chat, queue and sit, light that follows the time of day, and the season outside. 35 of them redraw existing openings in Manchester and Salford (including Albert Square's Christmas market, until 22 December), Sheffield, Fleet, Yateley, Reepham and the South West, where Plymouth Hoe, Dartmoor and Salisbury Cathedral get full-screen views in place of their small drawings.
+- **New openings near these places**: Mercery Lane in Canterbury, Tenby harbour and Gas Street Basin in Birmingham. A Cotswold village green near Bibury, Liverpool's Pier Head, Malham Cove, Whitby harbour, the Shambles in York, Elm Hill in Norwich and a second view of Castlefield basin in Manchester, until now only in the Animations gallery, play as openings too.
+- **Painted scenes use the Garden's engine.** Where the graphics card can run it, a painted scene (as an opening, in the gallery or on Home) plays on the same engine as the Garden. If it runs slowly, it lowers its own detail step by step and, if needed, goes back to the previous way of drawing. It never removes people to keep up. To draw painted scenes the previous way, turn off **Painted scenes use the graphics card** in Settings > Animations.
 
 ### Changed
 
-- **Openings appear sooner.** The next opening's first picture shows behind the Freeflo logo while Freeflo starts, and a view you have seen before comes back from a copy kept in your browser instead of being drawn again. Kept copies use at most 300 MB and are removed after 30 days unused.
-- Yateley Green's opening has more sky and one bench instead of two.
+- **Painted scenes are kept between visits.** A painted view you have seen before comes back from a copy kept in your browser instead of being drawn again. Once Freeflo has prepared it in a quiet moment, the next opening's first picture shows behind the Freeflo logo while Freeflo starts. Kept copies use at most 300 MB and are removed after 30 days unused.
+- The first time a painted view plays, it can take a few seconds longer to appear than the older drawing did, and painted scenes use more memory and graphics power.
+- In the painted scenes, people near the front step round each other instead of passing through as see-through ghosts.
 
 ### Fixed
 
-- People in openings no longer walk through benches, walls, rocks or buildings, walk on the spot, or slide while standing or sitting down.
-- Flicker in openings: people no longer jump back when the welcome appears, turn see-through or pop between drawings, street lamps no longer glow at noon, walkers change colour smoothly under lamps and into the distance, and tall trees no longer twinkle in front of lit windows.
-- Walkers on narrow boardwalks keep their distance instead of bunching up, and cars no longer vanish halfway along Yateley Green's lane.
+- In the painted scenes, people no longer walk through benches, rocks or buildings, stride on the spot, or glide along while standing, sitting down or getting up.
+- Flicker in the painted scenes: people no longer pop when their drawing changes, street lamps no longer glow at noon, walkers change colour smoothly under lamps and into the distance, and tall trees twinkle far less in front of lit windows.
+- Walkers on narrow boardwalks no longer bunch up.
 - Winter horse chestnuts no longer look as if they bear conkers.
+
+### Known issues
+
+- The other openings keep their previous drawings and walkers.
+- In a few painted openings people can still cross a drawn fence, gate or dry-stone wall, and cars fade out where a road ends in view.
 
 ## [2.68.13] - 2026-11-14
 

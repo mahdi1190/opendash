@@ -20,7 +20,9 @@ are `tools/stage.mjs`, and `tools/lib/scene-page.mjs` takes `renderer: 'stage'`.
 - the host is at least 360 x 200 css px (tiles keep the canvas renderer);
 - the garden's own game is not running (`GardenNative.active()`);
 - WebGL has not already failed on this page;
-- the stage is not switched off (`?stage=0` in the address, `window.__sceneStageOff`).
+- the stage is not switched off: the user's switch (Settings > Animations > Preferences, 'Painted scenes use the graphics
+  card', `animLook().stage`, on by default; turning it off hands every playing stage to its canvas at once through
+  `worldStageOffAll`), `?stage=0` in the address or `window.__sceneStageOff`.
 
 A tool page asks for the stage with `window.__sceneOpts.renderer === 'stage'`. Any other renderer
 keeps tool pages as they were.
@@ -62,9 +64,9 @@ keeps tool pages as they were.
 
   `stats().stage.why` says which. The host's `sc-ready` comes from whichever player is ready.
 - **While the baker bakes**, the game's loop sleeps (it has nothing to draw); the baker's ready wakes it.
-- **No persistent cache.** The baker gets no `cache`. Its kept still is captured by a frame at t = 0 that
-  steps the world's clock back (the clock-restart finding). Once that capture no longer moves the clock,
-  passing `cache: ref` brings back the kept still on reload.
+- **The persistent cache** (WORLD_LOAD.md 2, interface C2): the baker gets the host's own cache options (`o.cache`, else
+  `sceneHostCacheOpts(el)`), so a world scene on the stage restores its bake and shows its kept still on reload as on the
+  canvas. Its kept still is a capture, which never moves the world's clock.
 
 ## 3. One game, one clock, ready
 

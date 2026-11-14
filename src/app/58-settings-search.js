@@ -122,6 +122,7 @@ const SETTINGS_SEARCH_CATALOG = {
     ['A different theme each day', 'Rotate through animation themes.'],
     ['Your birthday', 'Play a birthday opening and sky on your birthday.'],
     ['Regional animations (UK)', 'Use nearby places for regional backgrounds.'],
+    ['Painted scenes use the graphics card', 'Play painted scenes on the Garden’s engine, or draw them the previous way.', 'gpu webgl engine smooth slow performance'],
     { label: 'My animations', description: 'Describe and create your own animations.', selector: '.apg-mine' },
     ['Animate anyway', 'Override this device’s reduced-motion request.'],
     ['Intensity', 'Off, subtle, standard or playful motion.'],

@@ -274,6 +274,7 @@ function animLookNormalize(raw) {
     fav: refs(r.fav), block: refs(r.block), pin,
     packsOff: Array.isArray(r.packsOff) ? r.packsOff.filter(x => typeof x === 'string' && x !== 'core').slice(0, 100) : [],
     ukRegional: !!r.ukRegional,   // the UK regional packs (v2.2 wave 3), opt-in
+    stage: r.stage !== false,     // painted (world) scenes on the Garden's engine (79-world-7stage-*); off: the canvas renderer draws them
     opening: ANIM_OPENING_MODES.includes(r.opening) ? r.opening : 'daily',   // the opening sequence: every load, the first load of the day, or off
   };
 }

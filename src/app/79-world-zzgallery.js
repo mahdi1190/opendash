@@ -111,13 +111,13 @@ const WORLD_OPENING_ON = true;
     });
   });
   try {
-    if (own.length) animRegisterPack({ id: 'uk-world', name: 'UK: places on the world engine', version: '1.0.0', movedFrom: ['world-preview'],
-      description: 'Places drawn on the world engine (format v3) that have no older scene: they play as the opening near the place, in its months.',
+    if (own.length) animRegisterPack({ id: 'uk-world', name: 'UK: painted places', version: '1.0.0', movedFrom: ['world-preview'],
+      description: 'Painted views of places that had no opening of their own. With Regional animations (UK) on, each plays as the opening near its place.',
       items: own });
   } catch (e) { /* a promotion must never break the app: these stay out of the rotation */ }
   try {
-    if (items.length) animRegisterPack({ id: 'world-preview', name: 'World engine preview (gallery only)', version: '0.1.0',
-      description: 'Test scenes on the new world engine (format v3), shown in the gallery for review. They never play in the rotation.',
+    if (items.length) animRegisterPack({ id: 'world-preview', name: 'Painted scene previews (gallery only)', version: '0.1.0',
+      description: 'Painted scenes still being worked on, shown in the gallery for review. They never play as an opening.',
       items });
   } catch (e) { /* a preview must never break the app */ }
 })();
