@@ -77,8 +77,8 @@ function _gfsPlaceKey() { return typeof _gll === 'undefined' ? 'own' : _gll.role
 
 /* ---------- the shadows ---------- */
 function _gfsLen(cm) { return 10 + 5.2 * Math.sqrt(Math.max(1, Number(cm) || 1)); }   // stage units: a 5 cm minnow about 22 (half a cell), a 1 m carp 62, a 2.8 m sturgeon 97
-/** Does it show a fin above the water? The rarest do, and the great long hunters. */
-function gardenFishFin(def) { return !!def && def.cat === 'fish' && (def.rarity === 'epic' || def.rarity === 'legendary' || (['pike', 'sturgeon', 'cat', 'shark'].includes(def.look.s) && def.cm[1] >= 120)); }
+/** The raised, swept dorsal overlay belongs to large sharks. Other families keep their own shadow anatomy. */
+function gardenFishFin(def) { return !!def && def.cat === 'fish' && def.look.s === 'shark' && def.cm[1] >= 120; }
 function _gfsArt(def, cm, v) {
   const L = _gfsLen(cm), s = def.look.s, long = ['eel', 'pike', 'sturgeon', 'needle', 'paddle', 'shark', 'loach'].includes(s), deep = ['round', 'flat', 'fancy', 'disc', 'tall', 'puffer', 'hump', 'mola', 'chunky'].includes(s);
   const rx = L * (long ? 0.5 : 0.42), ry = L * (long ? 0.1 : deep ? 0.25 : 0.18), glow = def.look.p === 'glow' || def.look.p === 'ghost' || /^ghost-/.test(def.id);
@@ -645,7 +645,8 @@ function _gfsRun(dt) {
   }
   for (const slot of [..._gfs.seen.keys()]) if (!lines.has(slot)) _gfs.seen.delete(slot);
   const stomps = _gfsStomps();
-  const fins = [..._gfs.list.values()].filter(f => gardenFishFin(f.def));
+  // Keep the established small-fish fright behavior independent of the visual dorsal overlay.
+  const fins = [..._gfs.list.values()].filter(f => f.def.cat === 'fish' && (f.def.rarity === 'epic' || f.def.rarity === 'legendary' || (['pike', 'sturgeon', 'cat', 'shark'].includes(f.def.look.s) && f.def.cm[1] >= 120)));
   const taken = new Set(); for (const f of _gfs.list.values()) if (f.to != null) taken.add(f.to);
   for (const f of [..._gfs.list.values()]) {
     if (String(f.band).startsWith('R:') && !byKey.has(f.band)) { _gfsDrop(f); _gfs.dirty = true; continue; }   // everyone has left that room

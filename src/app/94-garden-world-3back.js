@@ -128,10 +128,13 @@ function _eeMove(M, dt, speed) {
   M.moving = false;
   if (M.tx == null) return;
   const dx = M.tx - M.x, dy = M.ty - M.y, d = Math.hypot(dx, dy), step = speed * dt;
-  if (d <= Math.max(step, 1)) { M.x = M.tx; M.y = M.ty; M.tx = M.ty = null; if (M.me && M.leave) _eeLeave(); return; }
+  // Arrival uses this frame's travel budget and keeps its final heading.
+  if (d > 0) {
+    if (Math.abs(dx) > 1) M.face = dx > 0 ? 1 : -1;
+    M.dir = Math.abs(dx) >= Math.abs(dy) * 0.8 ? 'e' : dy > 0 ? 's' : 'n';
+  }
+  if (d <= step) { M.x = M.tx; M.y = M.ty; M.tx = M.ty = null; if (M.me && M.leave) _eeLeave(); return; }
   M.x += dx / d * step; M.y += dy / d * step; M.moving = true;
-  if (Math.abs(dx) > 1) M.face = dx > 0 ? 1 : -1;
-  M.dir = Math.abs(dx) >= Math.abs(dy) * 0.8 ? 'e' : dy > 0 ? 's' : 'n';
 }
 function _eePaint(M, t) {
   if (window.GardenNativeRooms && GardenNativeRooms.current()) { GardenNativeRooms.poseActor(M); return; }

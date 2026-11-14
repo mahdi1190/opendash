@@ -171,21 +171,29 @@ function _gllStep(A, dt, quiet) {
     // their own feet run while the whole way is long, turns or no turns, and so does this: a figure that fell behind would not be there when they cast or sat down
     let rem = d;
     if (A.way && A.way.length) { let ax = A.tx, ay = A.ty; for (const p of A.way) { rem += Math.hypot((p[0] - ax) * W.cellW, (p[1] - ay) * W.cellH); ax = p[0]; ay = p[1]; } }
-    const step = (A.pace || (rem > 170 ? GL_ACT_RUN : GL_ACT_SPEED)) * dt * (A.sneakUntil > Date.now() ? 0.45 : 1);   // clock-ok: a creep
-    if (d <= Math.max(step, 1.5)) {
-      A.x = A.tx; A.y = A.ty;
-      if (A.way && A.way.length) { const n = A.way.shift(); A.tx = n[0]; A.ty = n[1]; moving = true; }
-      else {
-        A.tx = null; A.ty = null; A.way = null; A.pace = 0;
-        A.stopAt = Date.now() + 170;   // clock-ok: the next step of a walk sent as it goes is on its way: no standing pose for a moment
-        const th = A.then; A.then = null;
-        if (th) { try { th(); } catch (e) { console.error('[garden-live]', e); } }
+    let step = (A.pace || (rem > 170 ? GL_ACT_RUN : GL_ACT_SPEED)) * dt * (A.sneakUntil > Date.now() ? 0.45 : 1);   // clock-ok: a creep
+    // A route turn uses only its distance, leaving the rest of this frame
+    // for the next segment. Keep the existing small arrival tolerance.
+    while (A.tx != null) {
+      const dx = (A.tx - A.x) * W.cellW, dy = (A.ty - A.y) * W.cellH, d = Math.hypot(dx, dy);
+      if (d <= Math.max(step, 1.5)) {
+        A.x = A.tx; A.y = A.ty; step = Math.max(0, step - d);
+        if (A.way && A.way.length) {
+          const n = A.way.shift(); A.tx = n[0]; A.ty = n[1]; moving = true;
+          if (step > 0) continue;
+        } else {
+          A.tx = null; A.ty = null; A.way = null; A.pace = 0; moving = false;
+          A.stopAt = Date.now() + 170;   // clock-ok: the next step of a walk sent as it goes is on its way: no standing pose for a moment
+          const th = A.then; A.then = null;
+          if (th) { try { th(); } catch (e) { console.error('[garden-live]', e); } }
+        }
+      } else {
+        A.x += dx / d * step / W.cellW; A.y += dy / d * step / W.cellH; moving = true;
+        const dir = Math.abs(dx) >= Math.abs(dy) * 0.8 ? 'e' : dy > 0 ? 's' : 'n';
+        if (Math.abs(dx) > 1) A.face = dx > 0 ? 1 : -1;
+        if (dir !== A.dir) { A.dir = dir; A.key = ''; }
       }
-    } else {
-      A.x += dx / d * step / W.cellW; A.y += dy / d * step / W.cellH; moving = true;
-      const dir = Math.abs(dx) >= Math.abs(dy) * 0.8 ? 'e' : dy > 0 ? 's' : 'n';
-      if (Math.abs(dx) > 1) A.face = dx > 0 ? 1 : -1;
-      if (dir !== A.dir) { A.dir = dir; A.key = ''; }
+      break;   // arrival callbacks can start another action; it gets its own frame
     }
   }
   if (!moving && A.moving && A.tx == null && Date.now() < (A.stopAt || 0)) moving = true;   // clock-ok: as above

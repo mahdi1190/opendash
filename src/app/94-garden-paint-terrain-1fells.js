@@ -349,6 +349,7 @@ window.GardenPaintedTerrain = (function () {
   }
 
   /* ---------- the falls cave stair and the cave mouth ---------- */
+  function caveMouthAt(L, at) { const c = L.cpt(at[0], at[1]); return { x: c.x + 26, y: c.y + .9 * L.W.cellH - 2 }; }
   function caveStairOps(L, P, add, at, season, snowy) {
     const kit = KIT(), c = L.cpt(at[0], at[1]), W = L.W, top = c.y - 1.5 * W.cellH, bottom = c.y + .9 * W.cellH, sx = c.x;
     add([sx - 80, top - 30, sx + 90, bottom + 30], 401, (B, r) => {
@@ -362,7 +363,7 @@ window.GardenPaintedTerrain = (function () {
         B.f(B.rect(sx - w / 2, y, w, sh), P.rockLo).f(B.rect(sx - w / 2, y, w, sh * .55), snowy ? P.snow : P.rockHi).f(B.ell(sx - 1, y + sh * .3, w * .22, sh * .2), snowy ? P.snowSh : P.pathHi, .7)
           .s(`M${sx - w / 2} ${y + sh * .55}h${w}`, P.rockDk, 1, .6).f(B.rect(sx + w / 2 - 6, y, 6, sh), '#3f4a48', .35); }
       // the cave mouth in the east cheek, beside the falls: a dark arch with green light from behind the water
-      const mx = sx + 26, my = bottom - 2, mw = 26, mh = 30;
+      const mouth = caveMouthAt(L, at), mx = mouth.x, my = mouth.y, mw = 26, mh = 30;
       B.f(B.blob(r, mx + 2, my - mh * .45, mw * .72, mh * .62, 9, .22), P.rockDk, .8);
       B.f(`M${mx - mw / 2} ${my}Q${mx - mw / 2} ${my - mh} ${mx} ${my - mh}Q${mx + mw / 2} ${my - mh} ${mx + mw / 2} ${my}Z`, B.rad(mx, my - mh * .35, mh * .8, [[0, '#2f4a44'], [.45, '#1f2a2a'], [1, P.cave]]));
       B.f(`M${mx - mw * .3} ${my}Q${mx - mw * .2} ${my - mh * .6} ${mx + mw * .1} ${my - mh * .62}Q${mx + mw * .3} ${my - mh * .5} ${mx + mw * .32} ${my}Z`, 'rgba(120,180,160,.18)');
@@ -562,7 +563,7 @@ window.GardenPaintedTerrain = (function () {
     const t0 = performance.now(), kit = KIT(); if (!kit || !wanted()) return null;
     const W = GARDEN_WORLD, L = readLayout(W); if (!L) return null;
     const season = sc.season || 'summer', sig = 'gpt-2|' + season + '|' + (GardenIslandLayout.fingerprint || '');
-    const old = current; if (old) { old.handle.destroy(old.sig === sig); for (const s of sprites) s.destroy(); sprites = []; if (old.sig !== sig) for (const k of old.spriteKeys) if (scene.textures.exists(k)) scene.textures.remove(k); }
+    const old = current; if (old) { old.roomEntrances = null; old.handle.destroy(old.sig === sig); for (const s of sprites) s.destroy(); sprites = []; if (old.sig !== sig) for (const k of old.spriteKeys) if (scene.textures.exists(k)) scene.textures.remove(k); }
     const ops = ok(() => compose(L, season)); if (!ops) return null;
     const rb = kit.bboxOf(L.regionLoops.flat().concat(L.terraces.flatMap(t => t.pts)));
     const box = { x: 0, y: W.sky - 150, w: W.cols * W.cellW, h: Math.min(W.sky + W.rows * W.cellH, rb[3] + 80) - (W.sky - 150) };
@@ -570,9 +571,9 @@ window.GardenPaintedTerrain = (function () {
     const keys = []; let spritePx = 0;
     for (const o of occluders(L, ops, season, sig)) { const im = kit.sprite(scene, parent, o.key, o.box, o.draw, o.x, o.y, o.K); if (im) { sprites.push(im); keys.push(o.key); spritePx += im._gptPx || 0; } }
     if (parent.sort) parent.sort('depth');
-    current = { sig, handle, spriteKeys: keys };
+    current = { sig, handle, spriteKeys: keys, roomEntrances: L.falls && L.falls.caveStair ? { falls: caveMouthAt(L, L.falls.caveStair) } : {} };
     stats = { sig, chunks: handle.chunks, buildMs: Math.round(performance.now() - t0), sprites: sprites.length, spritePx };
-    return { destroy() { handle.destroy(true); for (const s of sprites) s.destroy(); sprites = []; current = current && current.handle === handle ? Object.assign(current, { handle: { destroy() {} } }) : current; } };
+    return { destroy() { handle.destroy(true); for (const s of sprites) s.destroy(); sprites = []; current = current && current.handle === handle ? Object.assign(current, { handle: { destroy() {} }, roomEntrances: null }) : current; } };
   }
   /**
    * The showcase: paint a box of the high ground straight into a 2D context (no scene needed), the ground then the
@@ -611,5 +612,6 @@ window.GardenPaintedTerrain = (function () {
     const h = current && current.handle, px = (h && h.texturePx || 0) + (stats.spritePx || 0);
     return Object.assign({}, stats, { wanted: wanted(), pending: h ? h.pending : null, live: h ? h.live : null, baked: h ? h.baked : null, evicted: h ? h.evicted : null, worstChunkMs: h ? h.worstMs : null, worstSliceMs: h ? h.sliceWorstMs : null, p95ChunkMs: h ? h.p95 : null, medianChunkMs: h ? h.median : null, bakeMs: h ? h.bakeMs : null, textureMB: Math.round(px * 4 / 1048576 * 10) / 10, lastError: lastError || (KIT() && KIT().lastError) });
   }
-  return { wanted, build, paintTo, profile, owns, ownsRegion, status, compose, readLayout, PAL };
+  function roomEntrance(id) { return current && current.roomEntrances && current.roomEntrances[id] || null; }
+  return { wanted, build, paintTo, profile, owns, ownsRegion, status, compose, readLayout, roomEntrance, PAL };
 })();

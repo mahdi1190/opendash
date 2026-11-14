@@ -20,7 +20,7 @@
     const SEAM = W.sky + 30, FADE = 70;   // the mainland reaches a little over the island's west edge and its sky strip, then fades out, so no edge shows
     const outGrid = new Path2D(); outGrid.rect(-6000, -6000, gw + 12000, 16000); outGrid.rect(FADE, SEAM, gw - FADE, 9000);
     const outCoast = new Path2D(); outCoast.rect(-6000, -6000, gw + 12000, 16000); outCoast.addPath(coastP);
-    const shoreS = [[2, 66], [-5, 72.5], [-14, 77], [-28, 81], [-46, 83], [-60, 84]].map(p => cp(p[0], p[1])), shoreE = [[84, 1], [92, -10], [100, -22], [112, -40], [120, -70]].map(p => cp(p[0], p[1]));
+    const shoreS = [[2, 66], [-5, 72.5], [-14, 77], [-28, 81], [-46, 83], [-60, 84]].map(p => cp(p[0], p[1]));
     const road = [cp(2.4, 52.6), cp(-6, 51.4), cp(-14, 53.6), cp(-22, 51), cp(-31, 47.6), cp(-40, 49.8), cp(-52, 46)];
     const FS = 250;   // the farm lattice, world px
     const site = (i, j) => { const r = kit.rng(kit.hash(i, j, 181)), wx = (kit.fbm(i * .37, j * .37, 182) - .5) * FS * .9, wy = (kit.fbm(i * .37 + 9, j * .37, 183) - .5) * FS * .7; return { x: i * FS + FS * .5 + (r() - .5) * FS * .7 + wx, y: j * FS * .8 + FS * .4 + (r() - .5) * FS * .6 + wy, i, j }; };
@@ -126,8 +126,8 @@
       const bandClip = new Path2D();
       if (i) bandClip.rect(-6000, -6000, gw + 12000, SEAM + 6000);
       else bandClip.rect(-6000, SEAM, 6000 + band[2], 9000);
-      // beaches and foam where the mainland meets the sea
-      main(band, 86 + i, (B) => { for (const sh of [shoreS, shoreE]) { V.strokePts(B, sh, P.shallow, 120, .3); V.strokePts(B, sh, P.sand, 60, 1); V.strokePts(B, sh, P.sandWet, 22, .5, 0, 18); B.cx.setLineDash([16, 8]); V.strokePts(B, sh, P.foam, 3, .7, 0, 32); B.cx.setLineDash([]); } });
+      // Keep the western mainland beach; the northern backdrop needs no bright diagonal ribbon.
+      main(band, 86 + i, (B) => { B.cx.clip(bandClip); for (const sh of [shoreS]) { V.strokePts(B, sh, P.shallow, 120, .3); V.strokePts(B, sh, P.sand, 60, 1); V.strokePts(B, sh, P.sandWet, 22, .5, 0, 18); B.cx.setLineDash([16, 8]); V.strokePts(B, sh, P.foam, 3, .7, 0, 32); B.cx.setLineDash([]); } });
       for (let part = 0; part < 4; part++) {
         main(band, 90 + i * 10 + part, (B, r, cb) => { B.cx.clip(bandClip); B.cx.clip(bigP); B.cx.clip(outGrid, 'evenodd'); paintLand(B, r, cb, part); });
         // inside the grid's corners, only where the island's coast leaves sea
