@@ -23,6 +23,10 @@
    Optional warmFrameSlice(env, t, sliceMs) prepares only the exact unseen frame about to be drawn; false asks for another slice.
    Optional layerSteps(env, layer, gx, when) is a generator for an expensive layer hook; the renderer yields between its steps.
    A pass that throws is reported once (console.warn) and skipped for the rest of that bake: a bad pass never blanks a scene.
+   The env a stage receives also says WHY a frame is drawn (docs/dev/WORLD_FLICKER.md 1): env.warming (an unseen warm-up frame),
+   env.capture ('still': the still kept with a bake, the base moment; 'snap': a snapshot at the moment the clock is at; both drawn into
+   another canvas), env.background (a renderer that only prepares a bake to keep), env.rid (the renderer, the same across its bakes).
+   A pass that keeps shared state (a world's clock, its life) must not move it on any of those frames.
    v1 scenes: no pass applies unless the scene opts in (C.fx), so the v1 bake and frame paths are untouched.
    ============================================================ */
 const _scpsPasses = [];

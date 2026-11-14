@@ -42,6 +42,7 @@ function sceneCanvasSupported() {
   return _sccSupported;
 }
 const SCENE_SPRITE_CAP_BYTES = 384 * 1024 * 1024, SCENE_BACKING_MAX = [3840, 2160], SCENE_SLICE_MS = 8;
+const SCENE_SWAP_MS = 1000;   // a re-bake of a scene on show cross-fades from the old bake over this (docs/dev/WORLD_FLICKER.md 6)
 const _SCC_PAD = 2;
 // Bake canvases (sprites, layer bitmaps) rasterise on the CPU: the bake forces their pending work in its own idle slices
 // with a 1-pixel read, which on a GPU canvas would stall on a read-back. The main canvas stays GPU-backed where it can be.
@@ -188,6 +189,9 @@ function sceneRendererCreate(canvas, src, o) {
   let S = null;            // the live baked state (bitmaps, draw lists); replaced whole by a re-bake
   let pending = null;      // a re-bake in progress { gen, target }
   let raf = 0, running = false, destroyed = false, t0 = _sccNow(), warming = false, warmed = null, shown = false;
+  // swap: a re-bake's old state fading out over the new one (docs/dev/WORLD_FLICKER.md 6); forceNext: the next loop frame draws whatever
+  // the frame cap says (a resized canvas is cleared, a warm-up upload went onto the visible one); cadence: the last loop frame's interval
+  let swap = null, swapping = false, forceNext = false, cadence = 0, lastDrawTs = null;
   const frameInterval = Number.isFinite(o.maxFps) && o.maxFps > 0 ? 1000 / Math.min(240, o.maxFps) : 0;
   let frameAt = null;
   const prof = {}, drawTimes = [], dynTimes = [], st = { bakeMs: 0, firstBakeMs: 0, bakes: 0, blitPx: 0, animatedDraws: 0 };
@@ -198,6 +202,9 @@ function sceneRendererCreate(canvas, src, o) {
   let tl0 = 0;
   const tl = (label) => { (ph.tl || (ph.tl = [])).push(label + '@' + Math.round(_sccNow() - tl0)); };
   const timeFn = o.time || (() => (_sccNow() - t0) / 1000), rid = ++_sccRid;
+  // a renderer that prepares a bake to keep (o.background, or a cold one with no warm-up: the host's idle prepare, the prebake tool): its
+  // frames never move a world's shared clock (WORLD_FLICKER.md 1)
+  const background = o.background != null ? !!o.background : o.warm === false && !o.still;
   // prebaked scenes (78-scene-player.js): o.restore(W, H, job) -> Promise<R | null> gives the bake's bitmaps (no compile cache, no
   // static drawing); o.spriteVs: the device scale the build rasterised the frame sprites at (sprite keys and scales use it, so the
   // pre-rasterised sprites are found at any screen size); MX: the second light key's bitmaps blended over (setMix)
@@ -379,7 +386,7 @@ function sceneRendererCreate(canvas, src, o) {
     // keep: a sprite a frame draws (the warm-up sends it to the raster); keepStatic: one only the bake draws (into a bitmap)
     const keep = (sp) => { if (sp && sp.c) { out.sprites.add(sp); out.frameSprites.add(sp); } return sp; };
     const keepStatic = (sp) => { if (sp && sp.c) out.sprites.add(sp); return sp; };
-    const env = v2 ? _sccEnv({ C, L: Lx, W, H, vs, ox, oy, T, out, keep, placeM, lod, still: !!o.still, profile: !!o.profile, governor: o.governor, restoring: !!R,
+    const env = v2 ? _sccEnv({ C, L: Lx, W, H, vs, ox, oy, T, out, keep, placeM, lod, still: !!o.still, profile: !!o.profile, governor: o.governor, restoring: !!R, rid, background,
       sprite: (req) => sprite(Lx, lk, req.o, req.v || 0, req.season || C.season, req.part || '*', req.haze || 0, req.tint || null, req.scale, !!req.litGlow, !!req.withLit, req.plain ? null : { env, flip: req.flip, lift: req.lift || 0, cls: req.cls, i: req.i }),
       // the very sprite item i is drawn with (the shadow and water passes reuse it: no extra rasterising)
       itemSprite: (i) => { const it = C.items[i]; return keepStatic(sprite(Lx, lk, it.o, it.v, it.season, '*', v2Haze(i, it, hz(it.layer)), it.tint, bucket(it.s) * vs, false, false, { env, flip: it.flip, lift: v2Lift(i), cls: it.cls, i })); } }) : null;
@@ -723,7 +730,7 @@ function sceneRendererCreate(canvas, src, o) {
   // movers into its own canvas, and skips every bitmap blit; null: one canvas as always
   function frame(t) {
     const LY = !warming && S && typeof o.layers === 'function' ? o.layers() : null, c0 = ctx;
-    if (!LY) { frameBody(t, null); return; }
+    if (!LY) { frameBody(t, null); if (swap && !warming) drawSwap(t); return; }
     for (const c of [LY.sky].concat(LY.groups)) if (c) { c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, c.canvas.width, c.canvas.height); }
     ctx = LY.sky;
     try { frameBody(t, LY); } finally { ctx = c0; }
@@ -933,13 +940,43 @@ function sceneRendererCreate(canvas, src, o) {
     if (F) flush();
     mark('weather');
     if (P) P.frames = (P.frames || 0) + 1;
-    if (warming) { warmFrameProfile = Object.fromEntries(Object.entries(WP).map(([k, v]) => [k, Math.round(v * 10) / 10])); return; }   // no frame stats or governor; diagnostics never force a read-back
+    if (warming || swapping) { if (warming) warmFrameProfile = Object.fromEntries(Object.entries(WP).map(([k, v]) => [k, Math.round(v * 10) / 10])); return; }   // no frame stats or governor; diagnostics never force a read-back
     const total = _sccNow() - tStart;
     drawTimes.push(total); dynTimes.push(Math.max(0, total - blit));
     if (drawTimes.length > 900) { drawTimes.splice(0, 300); dynTimes.splice(0, 300); }
     st.blitPx = blitPx; st.animatedDraws = draws; st.occDraws = occDraws;
     st.movers = recs || undefined;
-    if (env && !o.still && t > 0) _sccGovern(env, Math.max(0, total - blit), o);
+    if (env && !o.still && t > 0) _sccGovern(env, Math.max(0, total - blit), o, { cadence, interval: frameInterval, total });
+    cadence = 0;
+  }
+  /**
+   * A re-bake's old state over the new one, fading out over SCENE_SWAP_MS (WORLD_FLICKER.md 6: a light-key re-bake swapped every colour,
+   * shadow and light of the scene in one frame). The old state is drawn live at the same time t when frames are cheap (its people move with
+   * the new ones), else once and held.
+   */
+  function drawSwap(t) {
+    const sw = swap;
+    if (!sw) return;
+    if (sw.t0 == null) sw.t0 = _sccNow();
+    const k = (_sccNow() - sw.t0) / SCENE_SWAP_MS;
+    if (k >= 1 || !S || destroyed || sw.old.W !== S.W || sw.old.H !== S.H) { endSwap(); return; }
+    if (!sw.c) { try { sw.c = _sccCanvas(S.W, S.H); sw.cx = sw.c.getContext('2d', { alpha: false }); } catch (e) { endSwap(); return; } }
+    if (sw.live || !sw.drawn) {
+      const keepCx = ctx, keepS = S;
+      ctx = sw.cx; S = sw.old; swapping = true;
+      try { frameBody(t, null); } catch (e) { /* the new state alone */ } finally { ctx = keepCx; S = keepS; swapping = false; }
+      sw.drawn = true;
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1 - k;
+    ctx.drawImage(sw.c, 0, 0);
+    ctx.globalAlpha = 1;
+  }
+  function endSwap() {
+    const sw = swap;
+    swap = null;
+    if (!sw) return;
+    if (sw.c) _sccFree(sw.c);
+    if (sw.old && sw.old !== S) _sccFreeState(sw.old);
   }
 
   /* ---------- bake runners ---------- */
@@ -1011,9 +1048,12 @@ function sceneRendererCreate(canvas, src, o) {
     const uploadSlice = (q, early) => {
       const a = _sccNow(); let bytes = 0, count = 0;
       // Warm the very GPU context used by the unseen frame, without painting
-      // temporary sprite uploads onto an already visible live canvas.
-      if (early && !_sccWarmCx) _sccWarmCx = _sccCanvas(1, 1).getContext('2d', { alpha: false });
-      const target = early ? _sccWarmCx : ctx;
+      // temporary sprite uploads onto an already visible live canvas: a canvas that is not playing (no loop frame follows to cover them)
+      // never takes them; a playing one does, and its next loop frame draws whatever the frame cap says (WORLD_FLICKER.md 8)
+      const quiet = early || !running || destroyed;
+      if (quiet && !_sccWarmCx) _sccWarmCx = _sccCanvas(1, 1).getContext('2d', { alpha: false });
+      const target = quiet ? _sccWarmCx : ctx;
+      if (!quiet) forceNext = true;
       target.setTransform(1, 0, 0, 1, 0, 0); target.globalAlpha = 1; target.globalCompositeOperation = 'source-over';
       while (q.index < q.canvases.length && bytes < _SCC_WARM_BYTES && _sccNow() - a < SCENE_SLICE_MS) {
         const c = q.canvases[q.index++];
@@ -1127,7 +1167,9 @@ function sceneRendererCreate(canvas, src, o) {
   }
   let rasterRetry = 0, rasterBake = false;
   function adopt(next, W, H) {
-    if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+    const resized = canvas.width !== W || canvas.height !== H;
+    // (a new size clears the canvas: the next loop frame draws whatever the frame cap says, so a cleared canvas is never shown)
+    if (resized) { canvas.width = W; canvas.height = H; forceNext = true; }
     const old = S;
     S = next;
     // raster objects decode lazily: when an image was not ready, bake again once every pending image has decoded (a few tries)
@@ -1135,7 +1177,13 @@ function sceneRendererCreate(canvas, src, o) {
       rasterRetry++; rasterBake = true;
       sceneRasterWhenReady().then(() => { rasterBake = false; if (!destroyed && S === next) bakeLater(next.W, next.H); });
     }
-    if (old) _sccFreeState(old);
+    // a re-bake of a scene on show at the same size (a new light key, the season, a decoded image): the old state fades out over the new
+    // (drawSwap) instead of every colour, shadow and light changing in one frame
+    if (swap) endSwap();
+    if (old && !resized && shown && running && !o.still && typeof o.layers !== 'function' && old.W === next.W && old.H === next.H) {
+      const med = _sccStat(drawTimes).median || 0;
+      swap = { old, t0: null, c: null, cx: null, drawn: false, live: med > 0 && med < 12 };
+    } else if (old) _sccFreeState(old);
   }
   /**
    * Re-bake in idle slices (8 ms or less each) into new bitmaps; the old ones draw until the swap. eager: the slices back to
@@ -1265,11 +1313,15 @@ function sceneRendererCreate(canvas, src, o) {
     };
     return { meta: rec.meta, get, all };
   }
-  /** The first frame (t = 0) drawn into another canvas (the still kept with a bake). */
-  function frameInto(state, c, t) {
-    const keepCx = ctx, keepWarm = warming, keepS = S;
+  /**
+   * A frame drawn into another canvas: the still kept with a bake (capture 'still': the base moment) or a snapshot (capture 'snap': the
+   * moment the clock is at). env.capture reaches the passes, so a capture never moves (or, until 14 Nov, restarted) a live world's clock.
+   */
+  function frameInto(state, c, t, capture) {
+    const keepCx = ctx, keepWarm = warming, keepS = S, env = state && state.env, keepCap = env ? env.capture : undefined;
     ctx = c.getContext('2d', { alpha: false }); warming = true; S = state;
-    try { frame(t || 0); } finally { ctx = keepCx; warming = keepWarm; S = keepS; }
+    if (env) env.capture = capture || 'still';
+    try { frame(t || 0); } finally { ctx = keepCx; warming = keepWarm; S = keepS; if (env) env.capture = keepCap; }
   }
   /**
    * What a restore needs of a baked state: { names, list (canvases), meta: { W, H, lk, groups: [{ x, y, w, h, opaqueY, strips }] } }
@@ -1318,10 +1370,14 @@ function sceneRendererCreate(canvas, src, o) {
     raf = 0;
     if (!running || destroyed) return;
     // o.hideUntilReady (the host: its canvas shows from onReady): the first warm-up is not held back by unseen full frames
-    if (S && !(o.hideUntilReady && !shown) && (!frameInterval || frameAt == null || ts - frameAt >= frameInterval - 0.5)) {
+    if (S && !(o.hideUntilReady && !shown) && (forceNext || !frameInterval || frameAt == null || ts - frameAt >= frameInterval - 0.5)) {
       // Skip redundant compositions on high-refresh screens. Scene time still
       // comes from its clock, so movement and animation never run in slow motion.
       frameAt = !frameInterval || frameAt == null ? ts : ts - Math.max(0, ts - frameAt) % frameInterval;
+      forceNext = false;
+      // the real cadence of drawn frames (the governor of a world scene judges it, not CPU time: WORLD_FLICKER.md 7)
+      cadence = lastDrawTs != null && ts - lastDrawTs < 1000 ? ts - lastDrawTs : 0;
+      lastDrawTs = ts;
       frame(timeFn());
     }
     if (running && !destroyed) raf = requestAnimationFrame(loop);
@@ -1360,7 +1416,7 @@ function sceneRendererCreate(canvas, src, o) {
     setSeason(s) { if (!s || s === season) return; season = s; if (S) bakeLater(S.W, S.H); },
     setLod(k) { if (k == null || k === lod) return; lod = k; if (S) bakeLater(S.W, S.H); },
     start() { if (running || destroyed) return; if (!S && !pending) api.resize(cssW, cssH); running = true; frameAt = null; raf = requestAnimationFrame(loop); },
-    stop() { running = false; if (raf) cancelAnimationFrame(raf); raf = 0; },
+    stop() { running = false; if (raf) cancelAnimationFrame(raf); raf = 0; lastDrawTs = null; if (swap) endSwap(); },
     get running() { return running; },
     /** Draw one frame at time t (seconds). The still (reduced motion, tiles) is frame(0). */
     frame(t) { if (!S && !pending) api.resize(cssW, cssH); if (S) frame(t || 0); },
@@ -1381,7 +1437,7 @@ function sceneRendererCreate(canvas, src, o) {
       if (S || pending) bakeLater(W, H);
     },
     /** The frame at t (seconds) drawn into a new canvas of the backing size (tools and tests), or null before the first bake. */
-    snapshot(t) { if (!S) return null; const c = _sccCanvas(S.W, S.H); frameInto(S, c, t || 0); return c; },
+    snapshot(t) { if (!S) return null; const c = _sccCanvas(S.W, S.H); frameInto(S, c, t || 0, 'snap'); return c; },
     /** Move this renderer to another canvas (a re-mounted host with the same key keeps its bitmaps). */
     attach(c2) {
       if (!c2 || c2 === canvas) return;
@@ -1403,6 +1459,7 @@ function sceneRendererCreate(canvas, src, o) {
     resetStats() { drawTimes.length = 0; dynTimes.length = 0; for (const k in prof) delete prof[k]; if (S && S.env) for (const k in S.env.passStats) { const p = S.env.passStats[k]; p.frameMs = 0; p.frames = 0; } },
     destroy() {
       api.stop(); destroyed = true;
+      if (swap) endSwap();
       if (pending) pending.cancel = true;
       if (S) { _sccFreeState(S); S = null; }
     },
@@ -1767,7 +1824,9 @@ function _sccEnv(a) {
   const so = typeof window !== 'undefined' && window.__sceneOpts ? window.__sceneOpts : {};
   const byLayer = C.layers.map(() => []);
   C.items.forEach((it, i) => byLayer[it.layer] && byLayer[it.layer].push(i));
-  return { C, L, Lnow: L, W: a.W, H: a.H, vs: a.vs, ox: a.ox, oy: a.oy, T: a.T, lod: a.lod, still: a.still, restoring: !!a.restoring, cam: sceneRenderCam(C),
+  // rid: the renderer (a pass keeps per-renderer state across its bakes: the world's agent draw memory); background: a renderer that only
+  // prepares a bake to keep (never moves a shared clock: docs/dev/WORLD_FLICKER.md 1)
+  return { C, L, Lnow: L, W: a.W, H: a.H, vs: a.vs, ox: a.ox, oy: a.oy, T: a.T, lod: a.lod, still: a.still, restoring: !!a.restoring, cam: sceneRenderCam(C), rid: a.rid, background: !!a.background,
     groups: a.out.groups, plan, layerOfGroup, byLayer, out: a.out,
     bitmapOf: (layer) => a.out.groups[layerOfGroup[layer]] || null,
     sprite: a.sprite, itemSprite: a.itemSprite, keep: a.keep, slice: () => {}, placeM: a.placeM,
@@ -1905,17 +1964,30 @@ function _sccFace(a, t, p, cam) {
  * The quality governor (V2 13.2 item 9; never in stills, captures or o.governor === false): when the median dynMs over the
  * last 2 s passes 6 ms (x 1.75 under software raster) it steps down one level (1 ripple at 7.5 Hz, 2 rings off, 3 projected
  * actor shadows become blobs, 4 flows x 0.7: env.flowK); after 10 s under 4 ms it steps back up. Each step is logged once.
+ * A WORLD scene (the world compositor draws it: env._wfr) is judged by the real cadence of its frames instead (f.cadence, the loop's
+ * interval between drawn frames; docs/dev/WORLD_FLICKER.md 7): its dynamic time holds every chunk blit of the compositor, so 6 ms of it
+ * stepped a scene drawn at a steady 60 fps down to level 4 in four seconds. It steps down while the median cadence misses its target (the
+ * frame cap's interval, at least 60 Hz) by over a third AND its own frames cost over 6 ms (another tab's or the page's work is not its
+ * fault), and up after 10 s within 15 % of it. The world compositor answers with detail, never with fewer people (5frame: S.lodK).
  */
-function _sccGovern(env, dyn, o) {
+function _sccGovern(env, dyn, o, f) {
   const g = env.gov;
   if (!g.enabled) return;
   const now = _sccNow();
-  g.hist.push([now, dyn]);
+  const world = !!env._wfr, cad = f && f.cadence > 0 ? f.cadence : 0;
+  if (world && !cad) return;   // (a frame drawn outside the loop: no cadence to judge)
+  g.hist.push([now, world ? cad : dyn, dyn]);
   while (g.hist.length && now - g.hist[0][0] > 2000) g.hist.shift();
   if (now - g.since < 1000 || g.hist.length < 20) return;
-  const v = g.hist.map(h => h[1]).sort((a, b) => a - b), med = v[Math.floor(v.length / 2)], lim = 6 * (o.flush || g.sw ? 1.75 : 1);
-  if (med > lim && g.level < 4) { g.level++; g.since = now; g.calm = 0; g.hist.length = 0; g.log.push({ level: g.level, dir: 'down', medianMs: Math.round(med * 100) / 100 }); }
-  else if (g.level > 0 && med < 4) { if (!g.calm) g.calm = now; else if (now - g.calm > 10000) { g.level--; g.calm = 0; g.since = now; g.log.push({ level: g.level, dir: 'up', medianMs: Math.round(med * 100) / 100 }); } }
+  const v = g.hist.map(h => h[1]).sort((a, b) => a - b), med = v[Math.floor(v.length / 2)];
+  let down, up;
+  if (world) {
+    const target = Math.max(1000 / 60, f && f.interval > 0 ? f.interval : 0), d2 = g.hist.map(h => h[2]).sort((a, b) => a - b), dmed = d2[Math.floor(d2.length / 2)];
+    down = med > target * 1.34 && dmed > 6 * (o.flush || g.sw ? 1.75 : 1);
+    up = med < target * 1.15;
+  } else { down = med > 6 * (o.flush || g.sw ? 1.75 : 1); up = med < 4; }
+  if (down && g.level < 4) { g.level++; g.since = now; g.calm = 0; g.hist.length = 0; g.log.push({ level: g.level, dir: 'down', medianMs: Math.round(med * 100) / 100, by: world ? 'cadence' : 'dyn' }); }
+  else if (g.level > 0 && up) { if (!g.calm) g.calm = now; else if (now - g.calm > 10000) { g.level--; g.calm = 0; g.since = now; g.log.push({ level: g.level, dir: 'up', medianMs: Math.round(med * 100) / 100, by: world ? 'cadence' : 'dyn' }); } }
   else g.calm = 0;
   env.flowK = g.level >= 4 ? 0.7 : 1;
   env.governor = { level: g.level, flowMax: env.flowK };

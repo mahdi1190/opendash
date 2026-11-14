@@ -321,10 +321,19 @@ function worldHostDriver(world, o) {
   const d = { kind: R ? (own ? 'run' : 'run+sim') : 'sim', runner: R, sim, nav: world.nav || (sim && sim.nav) || null, hz, step: 1 / hz, ticks: 0, simTicks: 0, tickMs: [], error: null };
   const lifeOf = () => (own ? lifeOfWorld() : sim && sim.life);
   d.snapshot = () => {
+    let list;
     try {
-      if (own) return worldAgents(lifeOfWorld()) || [];   // fresh records on every call
-      return sim ? sim.snapshot() : [];
+      if (own) list = worldAgents(lifeOfWorld()) || [];   // fresh records on every call
+      else list = sim ? sim.snapshot() : [];
     } catch (e) { d.error = String(e && e.message || e); return []; }
+    // the opacity without the ghost pass (the draw floors a visible figure's ghost at 0.85, never its fade: WORLD_FLICKER.md 3)
+    const gk = typeof WORLD_LIFE_GHOST === 'object' && WORLD_LIFE_GHOST && Number.isFinite(WORLD_LIFE_GHOST.fade) ? WORLD_LIFE_GHOST.fade : 0.55;
+    for (const a of list) {
+      if (!a || !Number.isFinite(a.alpha)) continue;
+      const g = a.ghost > 0 ? 1 - gk * a.ghost : 1;
+      a.alphaNoGhost = a.ghost > 0 && a.alpha >= g - 1e-9 ? 1 : a.alpha;
+    }
+    return list;
   };
   d.tick = () => {
     const a = _wh5Now();
@@ -342,13 +351,28 @@ function worldHostDriver(world, o) {
   d.life = lifeOf;
   d.base = d.snapshot();
   d.tau = 0; d.prev = d.base; d.cur = d.base; d.done = 0;
-  // the next tick count for scene time t: one ahead of floor(t * hz), so t lies between prev and cur
-  d.at = (t) => {
+  // the life's own steps (WORLD_FLICKER.md 3): the life sim steps at 15 Hz inside the 30 Hz ticks, so what it alone sets (opacity,
+  // velocity, the gait, the state) changes every other tick. Those are presented from the last two LIFE steps, never from two ticks
+  // (two ticks of one step held the opacity still, then it jumped by a fifteenth of a fade); positions are the life's own interpolation.
+  const lifeT = () => { try { const L = lifeOf(); return L && Number.isFinite(L.t) ? L.t : null; } catch (e) { return null; } };
+  d.step = { lt: lifeT(), T0: null, T1: 0, S0: null, S1: _wh5ById(d.base) };
+  const stepOf = (snap) => {
+    const lt = lifeT();
+    if (lt == null || lt === d.step.lt) return;
+    const st = d.step;
+    st.lt = lt; st.T0 = st.T1; st.T1 = d.done / d.hz; st.S0 = st.S1; st.S1 = _wh5ById(snap);
+  };
+  // the next tick count for scene time t: one ahead of floor(t * hz), so t lies between prev and cur. o.cap: at most this many ticks now
+  // (a live frame: WORLD_HOST_SUBSTEPS; the scene time then waits for the life, it never jumps); d.tau is the time shown
+  d.at = (t, o) => {
     t = Math.max(0, Number(t) || 0);
-    const k = t * d.hz, need = Math.floor(k + 1e-9) + 1;
-    while (d.done < need) { d.prev = d.cur; d.tick(); d.cur = d.snapshot(); d.done++; }
+    const cap = o && o.cap > 0 ? o.cap : Infinity;
+    let k = t * d.hz, need = Math.floor(k + 1e-9) + 1, n = 0;
+    while (d.done < need && n < cap) { d.prev = d.cur; d.tick(); d.cur = d.snapshot(); d.done++; n++; stepOf(d.cur); }
+    if (d.done < need) { t = Math.max(d.tau, (d.done - 1e-3) / d.hz); k = t * d.hz; need = d.done; }
     d.tau = t;
-    return _wh5Lerp(d.prev, d.cur, Math.max(0, Math.min(1, k - (need - 1))));
+    const out = _wh5Lerp(d.prev, d.cur, Math.max(0, Math.min(1, k - (need - 1))));
+    return _wh5Steps(out, d.step, t, 1 / d.hz);
   };
   /** The date and time of the time context (a new light in the app; T2). */
   d.setTime = (ms) => { if (R && typeof R.setTime === 'function' && Number.isFinite(ms)) { try { R.setTime(ms); } catch (e) { /* keep */ } } };
@@ -356,31 +380,80 @@ function worldHostDriver(world, o) {
   return d;
 }
 /**
- * Agents between two snapshots by id (alpha 0: the previous positions): POSITIONS are interpolated, everything else (velocity,
- * state, clip, view) is always the latest tick's, which is what the systems (the animation) have already read. A frame on a tick
- * boundary (alpha 0) must not show last tick's state beside this tick's animation. One that only exists in cur is drawn where it
- * is (it just spawned).
+ * Agents between two snapshots by id (al 0: the previous tick, 1: the latest): interface I3 (docs/dev/WORLD_FLICKER.md 3). Every
+ * presented scalar is interpolated (positions, height on one layer, velocity, speed, opacity, the gait weight walkK; headings, facing and
+ * phases the short way round); the DISCRETE fields (state, pose, clip, view, loco, layer, host ...) come from the tick nearer in time, so a
+ * frame never shows one tick's state beside the other tick's position. One that only exists in cur is drawn where it is (it just
+ * spawned; its opacity comes up from 0 over the life step: _wh5Steps).
  */
-const _wh5LerpMemo = { prev: null, cur: null, out: null, P: null };   // the clones of one pair of ticks live for every frame between them
+const _wh5LerpMemo = { prev: null, cur: null, outC: null, outP: null, P: null };   // the clones of one pair of ticks live for every frame between them
+// scalars interpolated as they are, and the angles and phases interpolated the short way round (period)
+const _WH5_LERP = ['vx', 'vz', 'speed', 'alpha', 'alphaNoGhost', 'ghost', 'walkK'];
+const _WH5_WRAP = [['heading', 2 * Math.PI], ['facing', 360], ['phase', 1], ['gaitPhase', 1]];
+function _wh5Mix(p, c, al, period) {
+  if (!Number.isFinite(p)) return c;
+  if (!Number.isFinite(c)) return p;
+  if (!period) return p + (c - p) * al;
+  let d = (c - p) % period;
+  if (d > period / 2) d -= period; else if (d < -period / 2) d += period;
+  const v = (p + d * al) % period;
+  return v < 0 ? v + period : v;
+}
 function _wh5Lerp(prev, cur, al) {
   if (prev === cur) return cur.map(a => ({ ...a }));
   // the objects are made once per pair of ticks (a crowd of 60 cloned 45 fields each frame was the biggest cost of Kelham's frame after the sprites)
-  // and only their positions move from frame to frame
+  // and only their scalars move from frame to frame: the clones of cur (al >= 0.5) and of prev (al < 0.5, by cur's order) for the discrete fields
   const M = _wh5LerpMemo;
-  if (!(M.prev === prev && M.cur === cur && M.out && M.out.length === cur.length)) {
-    M.prev = prev; M.cur = cur; M.out = cur.map(c => ({ ...c })); M.P = new Map(); for (const q of prev) M.P.set(q.id, q);
+  if (!(M.prev === prev && M.cur === cur && M.outC && M.outC.length === cur.length)) {
+    M.prev = prev; M.cur = cur; M.P = new Map(); for (const q of prev) M.P.set(q.id, q);
+    M.outC = cur.map(c => ({ ...c })); M.outP = new Array(cur.length);   // (prev's clones: made when a frame first needs them)
+    const c0 = cur[0] || {};
+    M.keys = _WH5_LERP.filter(k => k in c0); M.wrap = _WH5_WRAP.filter(([k]) => k in c0);
   }
-  const out = M.out, P = M.P;
+  const P = M.P, near = al >= 0.5, out = new Array(cur.length), keys = M.keys, wrap = M.wrap;
   for (let i = 0; i < cur.length; i++) {
-    const c = cur[i], a = out[i], p = P.get(c.id);
+    const c = cur[i], p = P.get(c.id);
+    let a = M.outC[i];
+    if (!near && p) a = M.outP[i] || (M.outP[i] = { ...p });
+    out[i] = a;
     if (p && Number.isFinite(p.x) && Number.isFinite(p.z)) {
       a.x = p.x + (c.x - p.x) * al; a.z = p.z + (c.z - p.z) * al;
       // the height only between two ticks on one layer: a bird that lands (air -> walk) is drawn on the ground in its walk pose,
       // never hovering half-way down in it (the real-frame run's 'floating' pigeons of the Pier Head, merge of 15 Oct)
-      if (Number.isFinite(p.y) && Number.isFinite(c.y) && p.layer === c.layer) a.y = p.y + (c.y - p.y) * al; else a.y = c.y;
+      if (Number.isFinite(p.y) && Number.isFinite(c.y) && p.layer === c.layer) a.y = p.y + (c.y - p.y) * al; else a.y = near ? c.y : p.y;
+      for (let j = 0; j < keys.length; j++) { const k = keys[j]; a[k] = _wh5Mix(p[k], c[k], al, 0); }
+      for (let j = 0; j < wrap.length; j++) { const k = wrap[j][0]; a[k] = _wh5Mix(p[k], c[k], al, wrap[j][1]); }
       // the footprint moves with the body: two long vehicles passing within a tick are ordered by where they are drawn, not where they were
-      if (Array.isArray(c.foot)) { const dx = a.x - c.x, dz = a.z - c.z; a.foot = c.foot.map(q => (Array.isArray(q) ? [q[0] + dx, q[1] + dz] : q)); }
+      const f = near ? c.foot : p.foot || c.foot, fx = near ? c.x : p.x, fz = near ? c.z : p.z;
+      if (Array.isArray(f)) { const dx = a.x - fx, dz = a.z - fz; a.foot = f.map(q => (Array.isArray(q) ? [q[0] + dx, q[1] + dz] : q)); }
     } else { a.x = c.x; a.z = c.z; a.y = c.y; if (Array.isArray(c.foot)) a.foot = c.foot; }
+  }
+  return out;
+}
+function _wh5ById(list) { const m = new Map(); for (const a of list || []) if (a && a.id != null) m.set(a.id, a); return m; }
+// what the life sim alone sets at its own steps (15 Hz): presented from the last two life steps (_wh5Steps), the discrete ones with them
+const _WH5_STEP_LERP = ['alpha', 'alphaNoGhost', 'ghost', 'walkK', 'vx', 'vz', 'speed'];
+const _WH5_STEP_WRAP = [['gaitPhase', 1], ['heading', 2 * Math.PI], ['facing', 360], ['phase', 1]];
+const _WH5_STEP_DISCRETE = ['state', 'pose', 'clip', 'view', 'mirror', 'loco', 'gait', 'gaitName', 'lookAt', 'stepping', 'squeeze', 'wants', 'intent', 'leaving'];
+/**
+ * The life's step-level scalars of the agents a frame draws (WORLD_FLICKER.md 3): the life sim steps every other tick of the runner, so
+ * the scalars it alone sets would hold for one tick and then jump. They are laid on a line through the two last life steps, late by one
+ * tick less than a step (so the line is always between two KNOWN steps and continuous across them): u = (t - T1 + 1 tick) / step. The
+ * discrete fields of those steps switch at u = 0.5 with them. A new agent (not in the earlier step) comes up from opacity 0 over the
+ * step. st: the driver's { T0, T1, S0, S1 }; tick: the driver's tick (s).
+ */
+function _wh5Steps(out, st, t, tick) {
+  if (!st || !st.S0 || !st.S1 || !(st.T1 > st.T0)) return out;
+  const step = st.T1 - st.T0, u = Math.max(0, Math.min(1, (t - st.T1 + tick) / step));
+  if (u >= 1) return out;
+  for (const a of out) {
+    const s1 = st.S1.get(a.id);
+    if (!s1) continue;
+    const s0 = st.S0.get(a.id);
+    if (!s0) { if (Number.isFinite(s1.alpha)) a.alpha = s1.alpha * u; continue; }
+    for (const k of _WH5_STEP_LERP) if (Number.isFinite(s1[k]) && Number.isFinite(s0[k])) a[k] = s0[k] + (s1[k] - s0[k]) * u;
+    for (const [k, per] of _WH5_STEP_WRAP) if (Number.isFinite(s1[k]) && Number.isFinite(s0[k])) a[k] = _wh5Mix(s0[k], s1[k], u, per);
+    if (u < 0.5) for (const k of _WH5_STEP_DISCRETE) if (k in s0) a[k] = s0[k];
   }
   return out;
 }
@@ -452,19 +525,24 @@ const WORLD_HOST_CATCHUP = 2 / 30;
  * The scene clock of a live world: scene seconds (tau) since the scene was first SHOWN. frame(key, t, flags) takes the host
  * time t of a frame (seconds; key: the renderer's bake) and returns tau:
  *   - flags.still: 0 (a still is the base moment, the clock is untouched);
- *   - flags.warming / flags.hidden (hidden preparation, a hidden tab): the clock neither starts nor moves (R5, M8);
+ *   - flags.warming / flags.hidden / flags.capture (hidden preparation, a hidden tab, a still or snapshot drawn into another canvas):
+ *     the clock neither starts nor moves (R5, M8);
  *   - the first visible frame starts it at 0; each next one moves it by the host's step;
  *   - a step over WORLD_HOST_MAX_DT is a pause (offscreen, held, a background tab): one nominal frame, no jump (M8);
  *   - a step over WORLD_HOST_CATCHUP (a slow frame) moves the scene by WORLD_HOST_CATCHUP only (slower than real time, never a spiral);
- *   - a step back (the host restarted its clock: the scene is shown now) restarts it at 0 (R5);
- *   - another renderer drawing the same world at once only shows the moment (one clock per world, G10).
+ *   - a step back (the host restarted ITS clock: the opening's welcome, the bake cache's still at t = 0) REBASES: the scene time goes
+ *     on from where it is (WORLD_FLICKER.md 1). Until 14 Nov it restarted at 0 and the life went back to its base, so every person
+ *     jumped back to where they stood seconds before and froze while the life was built again;
+ *   - another renderer drawing the same world at once only shows the moment (one clock per world, G10); a renderer that draws after
+ *     the owner stopped takes the clock over where it is (rebased, never a jump).
+ * The clock never runs backwards on its own: only pin() sets an earlier time (tools), and worldHostAt then resets the life for real.
  * pin(t): tools and captures put the clock at t; frames drawn at t confirm it, frames at any other host time leave it alone (R4).
  * o: { now } (tests).
  */
 function worldHostClock(o) {
   o = o || {};
   const now = typeof o.now === 'function' ? o.now : _wh5Now;
-  const c = { tau: 0, started: false, owner: null, lastT: 0, lastWall: -1e12, restarts: 0, pauses: 0, pinned: false };
+  const c = { tau: 0, started: false, owner: null, lastT: 0, lastWall: -1e12, restarts: 0, rebases: 0, pauses: 0, pinned: false };
   c.frame = (key, t, f) => {
     f = f || {};
     if (f.still) return 0;
@@ -473,14 +551,18 @@ function worldHostClock(o) {
     // host at ITS time (a relight, a resize, a media-query change redraws at t = 0) never moves the clock, so it can never send the
     // life back to its base in the middle of a capture
     if (c.pinned) { if (Math.abs(t - c.pinT) < 1e-6) c.tau = Math.max(0, t); c.started = true; return c.tau; }
-    if (f.warming || f.hidden) return c.tau;
+    if (f.warming || f.hidden || f.capture) return c.tau;
     const w = now();
     if (!c.started) { c.started = true; c.owner = key; c.lastT = t; c.lastWall = w; c.tau = 0; return 0; }
     const d = t - c.lastT;
-    // another bake key drawing while the owner draws: the same renderer after a re-bake (its time runs on: it takes over), or
-    // another renderer of the same world (its own host time: it shows the moment and never moves the clock twice)
-    if (key !== c.owner && w - c.lastWall < 500 && Math.abs(d) > WORLD_HOST_MAX_DT) return c.tau;
-    if (d < -WORLD_HOST_MAX_DT) { c.tau = 0; c.restarts++; }
+    if (key !== c.owner) {
+      // another bake key: the same renderer after a re-bake (its host time runs on: it takes over and moves the clock), another renderer
+      // of the same world while the owner draws (its own host time: it shows the moment and never moves the clock twice), or one that
+      // draws after the owner stopped (it takes the clock over where it is: rebased)
+      if (w - c.lastWall < 500 && Math.abs(d) > WORLD_HOST_MAX_DT) return c.tau;
+      if (w - c.lastWall >= 500) { c.owner = key; c.lastT = t; c.lastWall = w; c.rebases++; return c.tau; }
+    }
+    if (d < -WORLD_HOST_MAX_DT) { c.restarts++; c.rebases++; }   // the host restarted its clock: rebased (the scene time goes on)
     else if (d > WORLD_HOST_MAX_DT) { c.tau += 1 / 60; c.pauses++; }
     else if (d > 0) c.tau += d > WORLD_HOST_CATCHUP ? WORLD_HOST_CATCHUP : d;
     c.owner = key; c.lastT = t; c.lastWall = w;
@@ -490,6 +572,9 @@ function worldHostClock(o) {
   c.unpin = () => { c.pinned = false; };
   return c;
 }
+// a live frame advances the life by at most this many whole ticks (WORLD_ENGINE.md 11.3): a driver behind its clock catches up over a few
+// frames and the clock waits for it (slower for a moment, never a jump of the whole crowd)
+const WORLD_HOST_SUBSTEPS = 8;
 
 /* ---------- the live worlds the passes draw (keyed by the derived data's id) ---------- */
 const _wh5Live = new Map();
@@ -526,15 +611,43 @@ function worldHostData(spec, o) {
   const world = worldHostWorld(spec, o);
   const comp = _wh5Compositor() && !world.minimal;
   const data = worldHostV2Data(spec, Object.assign({}, o, { id, world, statics: !comp }));
-  const rec = { id, spec, world, data, compositor: comp, driver: null, clock: worldHostClock(), resetting: null, frame: {},
+  const rec = { id, spec, world, data, compositor: comp, driver: null, clock: worldHostClock(), resetting: null, frame: {}, noLife: o.sim === 'none', lastUsed: _wh5Now(),
     stats: { agents: 0, draws: 0, frames: 0, tickMs: 0, governor: 0, simInitMs: 0, resets: 0 } };
   _wh5Live.set(id, rec);
-  // the life (nav + populations + the warm-up) is built OFF the cold-load path in a page: the statics bake and show first,
-  // the movers are there when it is ready (o.sync: now, for stills, captures, tools and Node)
-  if (o.sim === 'none') { /* statics only */ }
+  // the life (nav + populations + the warm-up) is built OFF the cold-load path in a page. With the compositor it is built inside the
+  // world bake's hidden slices (79-world-5frame.js: worldHostEnsureLife), so a scene is never ready without its people and they never pop
+  // in all at once after it shows (WORLD_FLICKER.md 1); idle time builds it only if no bake has by then. Without the compositor: idle
+  // time, as before. (o.sync: now, for stills, captures, tools and Node)
+  if (rec.noLife) { /* statics only */ }
   else if (o.sync || typeof document === 'undefined') _wh5Init(rec);
-  else _wh5Idle(() => _wh5Init(rec), 1500);
+  else _wh5Idle(() => _wh5Init(rec), comp ? 4000 : 1500);
+  _wh5Sweep();
   return data;
+}
+/**
+ * Build the life of a live record now if it has none (the world bake calls it in a hidden slice; a renderer that has no bake of its own
+ * may call it before its first frame). Returns whether the record has a driver. rec: a live record or its data id.
+ */
+function worldHostEnsureLife(rec) {
+  if (typeof rec === 'string') rec = _wh5Live.get(rec);
+  if (!rec || rec.noLife) return !!(rec && rec.driver);
+  if (!rec.driver) _wh5Init(rec);
+  return !!rec.driver;
+}
+// live records nobody drew for this long let go of their bake products (a renderer that still holds a bake keeps its own; the next bake
+// of an idle one rebuilds them): a page that showed many openings over a day no longer keeps every one's bitmaps (WORLD_FLICKER.md 8)
+const WORLD_HOST_IDLE_MS = 10 * 60000;
+let _wh5SweptAt = 0;
+function _wh5Sweep() {
+  const now = _wh5Now();
+  if (now - _wh5SweptAt < 30000) return;
+  _wh5SweptAt = now;
+  for (const r of _wh5Live.values()) {
+    if (!(now - (r.lastUsed || 0) > WORLD_HOST_IDLE_MS) || !r.frame) continue;
+    if (r.frame.cache && r.frame.cache.size) r.frame.cache.clear();
+    _wh5ClearMem(r);
+    r.frame.groundPlan = null;
+  }
 }
 function _wh5SameSpec(a, b) {
   if (a === b) return true;
@@ -542,16 +655,42 @@ function _wh5SameSpec(a, b) {
 }
 const _wh5Idle = (fn, timeout) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: timeout || 1000 }) : setTimeout(fn, 50));
 function _wh5Init(rec, nav) {
-  if (_wh5Live.get(rec.id) !== rec || (rec.driver && !nav)) return;
+  if (_wh5Live.get(rec.id) !== rec || (rec.driver && !nav) || rec.noLife) return;
   const a = _wh5Now();
+  // a driver built again over the same world (a reset) needs the world's life state gone first, or the life systems' init keeps the old
+  // life (its init returns early on world._wlfLife) and the 'reset' only re-labels the present as the base
+  if (rec.driver || rec.lifeBuilt) worldHostResetLife(rec.world);
   try { rec.driver = worldHostDriver(rec.world, { nav: nav || null }); } catch (e) { rec.driver = null; rec.stats.simError = String(e && e.message || e); }
+  rec.lifeBuilt = true;
   rec.stats.simInitMs = Math.round(_wh5Now() - a);
 }
 function worldHostLive(id) { return _wh5Live.get(id) || null; }
+/** Forget the agents' draw memory of a live record (every renderer's: 79-world-5frame.js _wfrMemOf). */
+function _wh5ClearMem(rec) {
+  const f = rec && rec.frame;
+  if (!f) return;
+  if (f.agents) f.agents.clear();
+  if (f.mems) for (const m of f.mems.values()) m.clear();
+}
+// the state the systems runner and its systems keep on a world (79-world-0sys.js _wsySlot, the life, wind, particles, light and attach
+// systems); the world's own build (entities, surfaces, nav, camera, time) is left alone
+const _WH5_LIFE_KEYS = ['_wlfLife', 'sim', 'agents', 'runner', 'bus', '_wsyRng', '_wsyAttach', '_wsyLod', '_wsyTimeS', '_wpt', '_wwd', '_wlLight'];
+/**
+ * A REAL reset of a world's life (WORLD_FLICKER.md 1): everything the runner and the life systems keep on the world is dropped (the life,
+ * its agents, the systems' rngs and attach links, wind, particles, the light system, appearance's per-world animation state), so the next
+ * driver starts from the seed exactly as the first one did (R4). Its nav (static) is kept. Returns the world.
+ */
+function worldHostResetLife(world) {
+  if (!world || typeof world !== 'object') return world;
+  for (const k of _WH5_LIFE_KEYS) { try { delete world[k]; } catch (e) { try { world[k] = undefined; } catch (e2) { /* frozen */ } } }
+  world.t = 0; world.tick = 0;
+  try { if (typeof _wanWorlds !== 'undefined' && _wanWorlds && typeof _wanWorlds.delete === 'function') _wanWorlds.delete(world); } catch (e) { /* no animation state */ }
+  return world;
+}
 /**
  * Tools and captures: put a live world back at its base moment NOW (its life again from its seed, the clock pinned at 0), so the
- * next frames at t = 0, 0.5, 1 ... run the same loop from the start on every cell (R4). A page does this in idle time on its own
- * when the clock restarts; a capture cannot wait for that. Returns whether the driver is there.
+ * next frames at t = 0, 0.5, 1 ... run the same loop from the start on every cell (R4). A page never does this on its own (its
+ * clock never runs backwards); a capture does. Returns whether the driver is there.
  */
 function worldHostRewind(id) {
   const rec = typeof id === 'string' ? _wh5Live.get(id) : id;
@@ -559,44 +698,53 @@ function worldHostRewind(id) {
   const nav = (rec.driver && rec.driver.nav) || rec.world.nav || null;
   try { if (rec.driver && typeof rec.driver.stop === 'function') rec.driver.stop(); } catch (e) { /* gone */ }
   rec.driver = null; rec.resetting = null;
+  worldHostResetLife(rec.world);
   _wh5Init(rec, nav);
+  _wh5ClearMem(rec);   // the draw memory of the old life (views, scale buckets, dissolves)
   if (rec.clock && typeof rec.clock.pin === 'function') rec.clock.pin(0);
   return !!rec.driver;
 }
 
 /**
  * The agents a frame draws (the passes call it). rec: a live record (or its data id); t: the host's frame time (seconds);
- * flags: { key (the renderer's bake), warming, hidden, still, sync (a reset is built now) }. Returns { tau, agents, ready }.
- * A restart of the clock puts the life back at its base (deterministic): built now in Node, in idle time in a page, the base
- * moment held meanwhile (R5).
+ * flags: { key (the renderer's bake), warming, hidden, still, capture ('still': a still kept with a bake or a background renderer's frame:
+ * the base moment, the clock untouched; true / 'snap': a snapshot drawn into another canvas: the moment the clock is at, the clock
+ * untouched), sync (build the life now if there is none) }. Returns { tau, agents, ready }.
+ * The clock never runs backwards on its own (worldHostClock), so a live frame never resets the life. Only a tool that pins an earlier
+ * time does: the life is then reset for real and run to that time at once (R4).
  */
 function worldHostAt(rec, t, f) {
   f = f || {};
   if (typeof rec === 'string') rec = _wh5Live.get(rec);
   if (!rec) return { tau: 0, agents: [], ready: false };
+  rec.lastUsed = _wh5Now();
+  _wh5Sweep();
   const hidden = !!f.hidden || (f.hidden == null && typeof document !== 'undefined' && !!document.hidden);
-  let tau = rec.clock.frame(f.key || 'k', t, { warming: f.warming, hidden, still: f.still });
+  const still = !!f.still || f.capture === 'still';
+  if (!rec.driver && f.sync && !rec.noLife) _wh5Init(rec);
+  let tau = rec.clock.frame(f.key || 'k', t, { warming: f.warming, hidden, still, capture: !!f.capture });
   const d = rec.driver;
-  if (!d) return { tau, agents: [], ready: false };
-  if (f.still) return { tau: 0, agents: d.base.map(a => ({ ...a })), ready: true };
-  if (rec.resetting) { rec.clock.tau = 0; return { tau: 0, agents: d.base.map(a => ({ ...a })), ready: false }; }
+  if (!d) return { tau, agents: [], ready: !!rec.noLife };
+  if (still) return { tau: 0, agents: d.base.map(a => ({ ...a })), ready: true };
+  rec.resetting = null;
   if (tau + 1e-9 < d.tau) {
-    // back to an earlier moment: the life again from its base (the same world, nav and seed: the same base)
-    rec.stats.resets++;
-    rec.stats.lastReset = { tau: tau, driverTau: d.tau, t: t, still: !!f.still, warming: !!f.warming, key: typeof f.key === 'object' ? 'env' : String(f.key), pinned: !!rec.clock.pinned };   // why (tools read it)
-    const nav = d.nav || null;
-    if (f.sync || typeof document === 'undefined') { rec.driver = null; _wh5Init(rec, nav); }
-    else {
-      rec.resetting = { at: tau };
-      _wh5Idle(() => { if (_wh5Live.get(rec.id) !== rec) return; const old = rec.driver; rec.driver = null; _wh5Init(rec, nav); if (!rec.driver) rec.driver = old; rec.resetting = null; rec.clock.tau = 0; }, 300);
-      rec.clock.tau = 0;
-      return { tau: 0, agents: d.base.map(a => ({ ...a })), ready: false };
-    }
+    if (rec.clock.pinned || f.sync || typeof document === 'undefined') {
+      // a tool put the clock at an earlier moment: the life again from its seed (a real reset), run to tau now
+      rec.stats.resets++;
+      rec.stats.lastReset = { tau: tau, driverTau: d.tau, t: t, warming: !!f.warming, key: typeof f.key === 'object' ? 'env' : String(f.key), pinned: !!rec.clock.pinned };   // why (tools read it)
+      const nav = d.nav || null;
+      try { if (typeof d.stop === 'function') d.stop(); } catch (e) { /* gone */ }
+      rec.driver = null; worldHostResetLife(rec.world); _wh5Init(rec, nav);
+      _wh5ClearMem(rec);
+    } else { tau = d.tau; rec.clock.tau = tau; }   // (cannot happen on a live clock; if it ever does, the life is shown where it is)
   }
   const D = rec.driver;
   if (!D) return { tau, agents: [], ready: false };
   let agents = [];
-  try { agents = D.at(tau); } catch (e) { agents = []; rec.stats.simError = String(e && e.message || e); }
+  // a live frame runs at most WORLD_HOST_SUBSTEPS ticks; a pinned clock (tools: an exact moment) and a sync frame run all of them
+  const cap = rec.clock.pinned || f.sync || typeof document === 'undefined' ? 0 : WORLD_HOST_SUBSTEPS;
+  try { agents = D.at(tau, cap ? { cap } : undefined); } catch (e) { agents = []; rec.stats.simError = String(e && e.message || e); }
+  if (D.tau + 1e-9 < tau && !rec.clock.pinned) { tau = D.tau; rec.clock.tau = tau; rec.stats.held = (rec.stats.held || 0) + 1; }   // the clock waits for the life
   rec.stats.agents = agents.length; rec.stats.frames++;
   rec.stats.tickMs = D.tickMs && D.tickMs.length ? D.tickMs.reduce((x, y) => x + y, 0) / D.tickMs.length : 0;
   return { tau, agents, ready: true };
@@ -620,11 +768,11 @@ if (typeof sceneRenderPassDefine === 'function') {
     if (!rec) return null;
     if (env._wh5t === t && env._wh5now) return env._wh5now;
     env._wh5t = t;
-    const st = worldHostAt(rec, t, { key: env, warming: !!env.warming, still: !!env.still });
-    let list = worldHostAgents(st.agents, env.cam || env.C.cam, { layers: (env.C.layers || []).length });
-    const lvl = env.gov ? env.gov.level : 0;
-    if (lvl >= 4) list = list.filter((a, i) => (i % 10) < 7);
-    rec.stats.govern = lvl;
+    const st = worldHostAt(rec, t, { key: env, warming: !!env.warming, still: !!env.still, capture: env.capture || (env.background ? 'still' : undefined) });
+    const list = worldHostAgents(st.agents, env.cam || env.C.cam, { layers: (env.C.layers || []).length });
+    // (the governor never thins the people here: until 14 Nov level 4 dropped every tenth by its place in the list, which shifts whenever
+    // anyone arrives or leaves, so people popped in and out; WORLD_FLICKER.md 7)
+    rec.stats.govern = env.gov ? env.gov.level : 0;
     env._wh5now = list;
     return list;
   };

@@ -480,6 +480,18 @@ function worldBuildingGlassMask(key, alt, share, murky, hour) {
   return m;
 }
 /**
+ * Is the light MURKY (fog, or deep overcast with the sun low): every lamp and every window comes on (worldGlowOn's murky). was: the last
+ * answer for this scene (undefined: none). With hysteresis (docs/dev/WORLD_FLICKER.md 4): it turns murky at fog 0.3 or overcast 0.85 under
+ * 8 degrees, and clears only below fog 0.24 and overcast 0.8 or above 9 degrees, so a sky hovering at the line never switches a whole
+ * street's lamps on and off at each relight. Pure.
+ */
+function worldMurky(sky, alt, was) {
+  if (!sky) return false;
+  const fog = Number(sky.fog) || 0, oc = Number(sky.overcast) || 0, a = Number.isFinite(alt) ? alt : sky.sun && Number.isFinite(sky.sun.alt) ? sky.sun.alt : 90;
+  if (was) return fog > 0.24 || (oc > 0.8 && a < 9);
+  return fog > 0.3 || (oc > 0.85 && a < 8);
+}
+/**
  * Every light source of the world, ONLY from the library's glow parts: an entity with no glow part never lights.
  * o: { sky (worldSkyOf: the sun's elevation decides), night (bool: the old switch; true = deep night, false = noon), L, share
  * (lit share of windows at deep night; default from the hour), season, agents, wet }.
@@ -494,7 +506,8 @@ function worldLights(world, o) {
   const sky = o.sky && o.sky.__sky ? o.sky : null;
   const alt = sky ? sky.sun.alt : o.night != null ? (o.night ? -20 : 40) : o.L && Number.isFinite(o.L.alt) ? o.L.alt : (o.L && o.L.dark > 0.5 ? -20 : 40);
   const share = o.share != null ? o.share : sky ? sky.windowShare : o.night ? WORLD_WINDOW_SHARE : o.L && Number.isFinite(o.L.windowShare) && o.L.windowShare > 0 ? o.L.windowShare : WORLD_WINDOW_SHARE;
-  const murky = sky ? (sky.fog > 0.3 || (sky.overcast > 0.85 && alt < 8)) : false, wetDim = sky ? sky.rain || sky.fog > 0.3 : !!o.wet;
+  // o.murky: the caller's murk (the compositor keeps it with hysteresis: worldMurky)
+  const murky = o.murky != null ? !!o.murky : sky ? worldMurky(sky, alt) : false, wetDim = sky ? sky.rain || sky.fog > 0.3 : !!o.wet;
   const out = [];
   const one = (e, agent) => {
     if (!e || !e.obj) return;
@@ -717,13 +730,15 @@ function worldDrawShadows(ctx, plan, o) {
       ctx.clip('evenodd');
     }
     ctx.globalAlpha = s.op; ctx.fillStyle = col;
-    const sp = s.sil && o.spriteOf ? o.spriteOf(s.ref) : null, sil = sp && sp.c ? _wlSilhouette(sp.c, col) : null;
+    // (sp.sil: a silhouette the caller made this frame, sp.silW x sp.silH of it used: an agent's posed figure, 79-world-5frame.js; never memoised)
+    const sp = s.sil && o.spriteOf ? o.spriteOf(s.ref) : null, sil = sp && sp.sil ? sp.sil : sp && sp.c ? _wlSilhouette(sp.c, col) : null;
     if (sil && o.cam && o.sun && typeof sceneShadowMatrix === 'function') {
       // the sprite's SILHOUETTE in the shadow colour (drawing the sprite itself laid its own colours on the ground: a green ghost
       // of every tree across a boardwalk at golden hour)
       const fz = Math.max(0.5, (s.poly[0] && s.poly[0][1]) || 1), M = sceneShadowMatrix(o.cam, { X: sp.X, Y: sp.Y, x: sp.x, d: sp.d || fz }, sp.s || 1, -(sp.top || sp.y0 || -1), sp.flip, o.sun, vs, ox, oy);
       ctx.setTransform(M[0], M[1], M[2], M[3], M[4], M[5]);
-      ctx.drawImage(sil, sp.x0, sp.y0, sp.w, sp.h);
+      if (sp.sil && sp.silW > 0 && sp.silH > 0) ctx.drawImage(sil, 0, 0, sp.silW, sp.silH, sp.x0, sp.y0, sp.w, sp.h);
+      else ctx.drawImage(sil, sp.x0, sp.y0, sp.w, sp.h);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
     } else { ctx.beginPath(); path(s.scr); ctx.fill(); }
     if (cut) ctx.restore();
@@ -781,7 +796,8 @@ function _wlRgba(hex, a) { const c = _wlRgb(hex); return `rgba(${c[0]},${c[1]},$
  */
 function worldDrawLights(ctx, lights, cam, o) {
   o = o || {};
-  const vs = o.vs || 1, ox = o.ox || 0, oy = o.oy || 0;
+  // o.alpha: the share of the light shown (a lamp coming on or going off fades: WORLD_FLICKER.md 4)
+  const vs = o.vs || 1, ox = o.ox || 0, oy = o.oy || 0, ka = Number.isFinite(o.alpha) ? Math.max(0, Math.min(1, o.alpha)) : 1;
   const list = o.only ? (lights || []).filter(L => o.only.has(L.ref)) : lights;
   let n = 0;
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
@@ -792,17 +808,17 @@ function worldDrawLights(ctx, lights, cam, o) {
       ctx.save(); ctx.translate(d.X * vs + ox, d.Y * vs + oy); ctx.scale(1, d.ry / d.rx);
       const R = d.rx * vs, g = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
       for (const u of [0, 0.1, 0.22, 0.36, 0.5, 0.65, 0.8, 1]) { const e = Math.pow(1 + (u / d.h) * (u / d.h), -1.5) * (1 - u * u * (3 - 2 * u)); g.addColorStop(u, _wlRgba(d.col, d.a * e)); }
-      ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(-R, -R, 2 * R, 2 * R);
+      ctx.globalAlpha = ka; ctx.fillStyle = g; ctx.fillRect(-R, -R, 2 * R, 2 * R);
       ctx.restore();
     } else if (d.kind === 'beam') {
       const [A, B, Cc] = d.pts, mx = (B[0] + Cc[0]) / 2, my = (B[1] + Cc[1]) / 2;
       const g = ctx.createLinearGradient ? ctx.createLinearGradient(A[0] * vs + ox, A[1] * vs + oy, mx * vs + ox, my * vs + oy) : null;
-      if (g) { g.addColorStop(0, _wlRgba(d.col, d.a)); g.addColorStop(1, _wlRgba(d.col, 0)); ctx.fillStyle = g; ctx.globalAlpha = 1; } else { ctx.fillStyle = d.col; ctx.globalAlpha = d.a * 0.5; }
+      if (g) { g.addColorStop(0, _wlRgba(d.col, d.a)); g.addColorStop(1, _wlRgba(d.col, 0)); ctx.fillStyle = g; ctx.globalAlpha = ka; } else { ctx.fillStyle = d.col; ctx.globalAlpha = d.a * 0.5 * ka; }
       ctx.beginPath(); ctx.moveTo(A[0] * vs + ox, A[1] * vs + oy); ctx.lineTo(B[0] * vs + ox, B[1] * vs + oy); ctx.lineTo(Cc[0] * vs + ox, Cc[1] * vs + oy); ctx.closePath(); ctx.fill();
     } else {
       const cx = d.X * vs + ox, cy = d.Y * vs + oy, r = d.rx * vs, g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
       g.addColorStop(0, _wlRgba(d.col, d.a)); g.addColorStop(0.18, _wlRgba(d.col, d.a * 0.42)); g.addColorStop(0.45, _wlRgba(d.col, d.a * 0.12)); g.addColorStop(1, _wlRgba(d.col, 0));
-      ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(cx - r, cy - r, 2 * r, 2 * r);
+      ctx.globalAlpha = ka; ctx.fillStyle = g; ctx.fillRect(cx - r, cy - r, 2 * r, 2 * r);
     }
     n++;
   }
