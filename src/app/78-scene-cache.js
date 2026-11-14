@@ -12,22 +12,33 @@
                still of the scene's first frame (the first paint while the live canvas restores)
 
    The version is the build's scene-content hash, so unrelated app changes keep their prepared scenes. Older builds and
-   standalone scene tools fall back to hashing the app script. The light key carries the season, the quantised light and every pass's own key, exactly
-   what the renderer re-bakes on, so a restored bake is the bake the renderer would make. Entries are evicted least recently
-   used past SCENE_STORE_MAX_BYTES and after SCENE_STORE_MAX_AGE_MS. Encoding runs in a worker where the page allows one
-   (CSP worker-src blob:), else in the browser's own async encoder; decoding is createImageBitmap (off the main thread).
+   standalone scene tools fall back to hashing the app script. A world scene (v3) is keyed by its OWN content instead (its spec and
+   the world engine's hash: 79-world-5persist.js worldPersistId), so editing one scene, a v2 pack or the registry keeps every other
+   world scene's bake. The light key carries the season, the quantised light and every pass's own key, exactly what the renderer
+   re-bakes on, so a restored bake is the bake the renderer would make. Entries are evicted LEAST RECENTLY USED (the use time is
+   touched on every read, at most once an hour) once the store is over SCENE_STORE_MAX_BYTES, and an entry nobody used for
+   SCENE_STORE_MAX_IDLE_MS goes too: a scene opened every day is never evicted for its age (until 14 Nov entries expired 4 days
+   after they were stored, however often they were used: docs/dev/WORLD_LOAD.md 3). The world engine also keeps its own records
+   here ('W|...': the built world, the ground plan, its bake's bitmaps, the kept stills; 79-world-5persist.js). Encoding runs in a
+   worker where the page allows one (CSP worker-src blob:), else in the browser's own async encoder; decoding is createImageBitmap
+   (off the main thread).
 
      sceneStoreOn()                       IndexedDB, createImageBitmap and canvas encoding are there (and not switched off)
      sceneStoreVersion()                  Promise<string>
      sceneStoreGet(key)                   Promise<record | null>   (touches its use time)
+     sceneStoreGetMany(keys)              Promise<(record | null)[]> in one transaction (touches their use times)
+     sceneStoreHas(keys)                  Promise<Set<key>>         which of these keys are kept (reads the small meta store only)
      sceneStorePut(record, bytes)         Promise<boolean>         record: { k, ... }; evicts afterwards
+     sceneStoreDelete(key)                Promise<boolean>
      sceneStoreEncode(canvases)           Promise<Blob[]>          PNG blobs of canvases (a worker where it can)
      sceneStoreDecode(blobs)              Promise<ImageBitmap[]>
      sceneStoreClear()  sceneStoreStats() Promise
    window.__sceneStoreOff = true (tests, tools) turns it off for the page.
    ============================================================ */
 const SCENE_STORE_DB = 'opendash-scenes', SCENE_STORE_FORMAT = 1;
-const SCENE_STORE_MAX_BYTES = 480 * 1024 * 1024, SCENE_STORE_MAX_AGE_MS = 4 * 24 * 3600 * 1000;
+// the budget on disk (the least recently used go first past it) and the longest an entry may go unused; SCENE_STORE_MAX_AGE_MS is kept
+// for older callers (it now means unused for that long, never stored that long ago)
+const SCENE_STORE_MAX_BYTES = 300 * 1024 * 1024, SCENE_STORE_MAX_IDLE_MS = 30 * 24 * 3600 * 1000, SCENE_STORE_MAX_AGE_MS = SCENE_STORE_MAX_IDLE_MS;
 let _scstVer = null, _scstDbP = null, _scstWk = undefined, _scstWkId = 0;
 const _scstWkJobs = new Map();
 
@@ -89,17 +100,51 @@ function _scstDb() {
 /** A record by key, or null. Its use time is touched (at most once an hour) for the LRU. */
 async function sceneStoreGet(key) {
   if (!sceneStoreOn()) return null;
+  return (await sceneStoreGetMany([key]))[0];
+}
+/** Records by key, in order (null for a missing one), read in ONE transaction; their use times are touched (at most once an hour). */
+async function sceneStoreGetMany(keys) {
+  const out = (keys || []).map(() => null);
+  if (!sceneStoreOn() || !out.length) return out;
   try {
     const db = await _scstDb();
-    if (!db) return null;
-    const tx = db.transaction(['data', 'meta'], 'readonly');
-    const [rec, meta] = await Promise.all([_scstReq(tx.objectStore('data').get(key)), _scstReq(tx.objectStore('meta').get(key))]);
-    if (!rec || !meta) return null;
-    const now = Date.now();
-    if (now - meta.at > SCENE_STORE_MAX_AGE_MS) return null;
-    if (now - meta.used > 3600000) { try { const t2 = db.transaction('meta', 'readwrite'); t2.objectStore('meta').put(Object.assign({}, meta, { used: now })); } catch (e) { /* next time */ } }
-    return rec;
-  } catch (e) { return null; }
+    if (!db) return out;
+    const tx = db.transaction(['data', 'meta'], 'readonly'), ds = tx.objectStore('data'), ms = tx.objectStore('meta');
+    const got = await Promise.all(keys.map(k => Promise.all([_scstReq(ds.get(k)), _scstReq(ms.get(k))])));
+    const now = Date.now(), touch = [];
+    got.forEach(([rec, meta], i) => {
+      if (!rec || !meta || now - (meta.used || meta.at || 0) > SCENE_STORE_MAX_IDLE_MS) return;
+      out[i] = rec;
+      if (now - (meta.used || 0) > 3600000) touch.push(Object.assign({}, meta, { used: now }));
+    });
+    if (touch.length) { try { const t2 = db.transaction('meta', 'readwrite'), m2 = t2.objectStore('meta'); for (const m of touch) m2.put(m); } catch (e) { /* next time */ } }
+    return out;
+  } catch (e) { return out; }
+}
+/** Which of these keys are kept (the small meta store only: no record is read). */
+async function sceneStoreHas(keys) {
+  const out = new Set();
+  if (!sceneStoreOn() || !keys || !keys.length) return out;
+  try {
+    const db = await _scstDb();
+    if (!db) return out;
+    const ms = db.transaction('meta', 'readonly').objectStore('meta'), now = Date.now();
+    const got = await Promise.all(keys.map(k => _scstReq(ms.get(k))));
+    got.forEach((m, i) => { if (m && now - (m.used || m.at || 0) <= SCENE_STORE_MAX_IDLE_MS) out.add(keys[i]); });
+  } catch (e) { /* none */ }
+  return out;
+}
+/** Forget one record. */
+async function sceneStoreDelete(key) {
+  if (!sceneStoreOn() || !key) return false;
+  try {
+    const db = await _scstDb();
+    if (!db) return false;
+    const tx = db.transaction(['data', 'meta'], 'readwrite');
+    tx.objectStore('data').delete(key); tx.objectStore('meta').delete(key);
+    await _scstDone(tx);
+    return true;
+  } catch (e) { return false; }
 }
 /** Store a record ({ k, ... }; bytes: its size on disk, for the eviction). */
 async function sceneStorePut(rec, bytes) {
@@ -117,15 +162,15 @@ async function sceneStorePut(rec, bytes) {
 }
 let _scstEvictT = 0;
 function _scstEvictSoon() { if (_scstEvictT) return; _scstEvictT = setTimeout(() => { _scstEvictT = 0; _scstEvict().catch(() => {}); }, 4000); }
-/** Drop entries older than the max age, then the least recently used until the store fits. */
+/** Drop entries nobody used for SCENE_STORE_MAX_IDLE_MS, then the least recently used until the store fits its budget. */
 async function _scstEvict() {
   const db = await _scstDb();
   if (!db) return 0;
   const all = await _scstReq(db.transaction('meta', 'readonly').objectStore('meta').index('used').getAll());
   const now = Date.now(), drop = [];
   let total = all.reduce((n, m) => n + (m.bytes || 0), 0);
-  for (const m of all) {   // oldest use first (the index order)
-    if (now - m.at > SCENE_STORE_MAX_AGE_MS || total > SCENE_STORE_MAX_BYTES) { drop.push(m.k); total -= m.bytes || 0; }
+  for (const m of all) {   // least recently used first (the index order)
+    if (now - (m.used || m.at || 0) > SCENE_STORE_MAX_IDLE_MS || total > SCENE_STORE_MAX_BYTES) { drop.push(m.k); total -= m.bytes || 0; }
   }
   if (!drop.length) return 0;
   const tx = db.transaction(['data', 'meta'], 'readwrite');

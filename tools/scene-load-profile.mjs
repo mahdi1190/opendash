@@ -10,24 +10,29 @@
 //   node tools/scene-load-profile.mjs [--refs=pack/id,...] [--w=3440 --h=1440 --dpr=1] [--at=ISO] [--gpu] [--runs=cold,warm,reopen]
 //        [--throttle=4] (CDP CPU throttling: an average machine) [--repeat=N] [--check] [--gaps]
 //        [--cpuprofile=<dir>] (a .cpuprofile of each cold load, plus the top self-time functions) [--json=<file>]
+//        [--stage] (world scenes on the world stage, Phaser 4: software WebGL here, so its frame rate means nothing; its load does)
+// Also reports the longest main-thread task from the request to 3 s after ready, and for a world scene what the persistent store gave
+// back (79-world-5persist.js: hits, misses, made, readMs, the ground plan) and the world builds the page ran (worldHostBuilds).
 // Headless Chrome here runs without a GPU (software raster): the numbers are a pessimistic bound; --gpu lets Chrome use one.
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChrome } from './release-chrome.mjs';
-import { scenePageHtml } from './lib/scene-page.mjs';
+import { scenePageHtml, stageChromeArgs } from './lib/scene-page.mjs';
 
 const flags = Object.fromEntries(process.argv.slice(2).filter(a => a.startsWith('--')).map(a => { const i = a.indexOf('='); return i < 0 ? [a.slice(2), true] : [a.slice(2, i), a.slice(i + 1)]; }));
 const W = Number(flags.w) || 3440, H = Number(flags.h) || 1440, DPR = Number(flags.dpr) || 1;
 const AT = flags.at || '2026-10-09T14:30:00Z';
 const PACKS = ['proof-fleet-pond', 'proof-yateley-green', 'proof-wyndhams-pool'];
 const RUNS = String(flags.runs || 'cold,warm,reopen').split(',');
-const chromeOpts = flags.gpu ? { extraArgs: ['--enable-gpu', '--ignore-gpu-blocklist'] } : {};
+const chromeOpts = { extraArgs: [...(flags.gpu ? ['--enable-gpu', '--ignore-gpu-blocklist'] : []), ...(flags.stage ? stageChromeArgs : [])] };
 
 // the page: every scene source, no host yet (the measurement inserts it)
 // --check: the governor stays off (its level is frame state: a janky cold load may step it down, a smooth restore not)
-const page = scenePageHtml({ refs: [], size: { w: W, h: H }, dpr: DPR, governor: flags.check ? false : undefined }).replace('<div id="sp-root">', `<div id="sp-root"><div class="sp-row"><div class="sp-box" id="lp-box" data-scene-key="load-profile"></div></div>`);
+// --no-world-persist: a world scene keeps nothing of its own between loads (79-world-5persist.js off: the v2 base layers only, as before)
+const page = scenePageHtml({ refs: [], size: { w: W, h: H }, dpr: DPR, governor: flags.check ? false : undefined, renderer: flags.stage ? 'stage' : undefined }).replace('<div id="sp-root">', `<div id="sp-root"><div class="sp-row"><div class="sp-box" id="lp-box" data-scene-key="load-profile"></div></div>`)
+  .replace('<head>', flags['no-world-persist'] ? '<head><script>window.__worldPersistOff = true;</script>' : '<head>');
 
 /** In the page: open ref now; resolve once it is ready + 3 s with the timings. */
 const OPEN = (ref, at, keepMs) => `(async () => {
@@ -71,6 +76,9 @@ const OPEN = (ref, at, keepMs) => `(async () => {
     longAfterReady: ready ? gaps.filter(g => g[0] > ready && g[0] <= ready + 3000 && g[1] > 25).map(g => [Math.round(g[0] - ready), Math.round(g[1])]).slice(0, 8) : [],
     longTasks: longs.filter(x => x[0] >= t0).map(x => [Math.round(x[0] - (ready || t0)), Math.round(x[1])]),
     longLoad: gaps.filter(g => g[0] > t0 && g[0] <= (ready || t0 + 3000) && g[1] > 40).map(g => [Math.round(g[0] - t0), Math.round(g[1])]).slice(0, 12),
+    longestTask: Math.round(longs.filter(x => x[0] >= t0 && x[0] <= (ready || t0) + 3000).reduce((m, x) => Math.max(m, x[1]), 0)),
+    world: st.passes && st.passes['world-frame'] ? (({ persist, persistWaitMs, groundPlanMs, chunksRestored, chunksMade, chunksKept, waterKept, lifeMs, bakeMs, maxPrepareSliceMs, maxStep }) => ({ persist, persistWaitMs, groundPlanMs, chunksRestored, chunksMade, chunksKept, waterKept, lifeMs, bakeMs, maxPrepareSliceMs, maxStep }))(st.passes['world-frame']) : null,
+    builds: typeof worldHostBuilds === 'function' ? worldHostBuilds().filter(b => b.at >= t0 - 50) : null, engine: st.engine || null,
     bakeMs: st.bakeMs, bakeWallMs: st.bakeWallMs, warmWallMs: st.warmWallMs, maxSliceMs: st.maxSliceMs, phases: st.phases, sprites: st.sprites, spriteBytes: st.spriteBytes,
     newSprites: st.newSprites, newSpriteBytes: st.newSpriteBytes, bitmaps: st.bitmaps, placements: st.placements, size: st.size, restored: st.restored || null,
     passes: st.passes ? Object.fromEntries(Object.entries(st.passes).map(([k, v]) => [k, v.bakeMs])) : null };
@@ -115,8 +123,9 @@ function topSelf(prof, n = 25) {
 
 const results = [];
 // the check: a restored scene draws the same pixels as the fresh bake (frame 0 against the still the bake kept)
+// (a world scene: both at the base moment, 'still': its people move with the clock, the kept still has them where they start)
 const CHECK0 = `(async () => {
-        const snap = window.__sceneSnapshot ? window.__sceneSnapshot(0) : null, st = (window.__sceneStats() || [])[0] || {};
+        const snap = window.__sceneSnapshot ? window.__sceneSnapshot(0, 'still') : null, st = (window.__sceneStats() || [])[0] || {};
         if (!snap || (!st.restored && !${!!flags.history})) return { checked: false };
         const keys = (await sceneStoreStats()).keys.filter(k => k.startsWith('B|'));
         const rec = await sceneStoreGet(keys[0]);
@@ -156,12 +165,14 @@ for (let rep = 0; rep < REPEAT; rep++) for (const ref of refs) {
     }
     // the bake is kept in idle time after it is ready (encoded off the main thread): wait for it before loading again
     row.stored = await chrome.evaluate(`(async () => { if (typeof sceneStoreStats !== 'function') return null; const t0 = performance.now(); let s = null;
-      while (performance.now() - t0 < 20000) { s = await sceneStoreStats(); if (s.keys && s.keys.some(k => k.startsWith('B|'))) break; await new Promise(r => setTimeout(r, 250)); }
+      // (a world scene keeps its own products a few seconds after it shows, in idle time: 79-world-5persist.js; wait for its manifest too)
+      const world = !!(animItem(${JSON.stringify(ref)}) || {}).world && !window.__worldPersistOff;
+      while (performance.now() - t0 < 30000) { s = await sceneStoreStats(); if (s.keys && s.keys.some(k => k.startsWith('B|')) && (!world || (s.keys.some(k => k.startsWith('W|') && k.split('|')[2] === 'm') && !(typeof worldPersistBusy === 'function' && worldPersistBusy())))) break; await new Promise(r => setTimeout(r, 250)); }
       return s ? { entries: s.entries, MB: Math.round(s.bytes / 1048576 * 10) / 10, waitedMs: Math.round(performance.now() - t0) } : null; })()`);
     if (RUNS.includes('warm')) {
       await loadPage(chrome);
-      const CHECK = CHECK0; const _unused = `(async () => {
-        const snap = window.__sceneSnapshot ? window.__sceneSnapshot(0) : null, st = (window.__sceneStats() || [])[0] || {};
+      const CHECK = `(async () => {
+        const snap = window.__sceneSnapshot ? window.__sceneSnapshot(0, 'still') : null, st = (window.__sceneStats() || [])[0] || {};
         if (!snap || (!st.restored && !${!!flags.history})) return { checked: false };
         const keys = (await sceneStoreStats()).keys.filter(k => k.startsWith('B|'));
         const rec = await sceneStoreGet(keys[0]);
@@ -199,7 +210,7 @@ for (let rep = 0; rep < REPEAT; rep++) for (const ref of refs) {
           const sky = almSceneLight(Date.parse(${JSON.stringify(AT)}), lat, lon, 'UTC'), d = document.createElement('div');
           d.innerHTML = animItemHtml(it, { size: 'fill', live: true, sky, tod: sky.tod });
           const h = d.firstElementChild, t0 = performance.now();
-          const r = await sceneHostPrepare([{ ref: ${JSON.stringify(ref)}, w: ${W / DPR}, h: ${H / DPR}, lod: Number(h.getAttribute('data-sc-lod')) || 1, sky: h.getAttribute('data-sc-sky') }]);
+          const r = await sceneHostPrepare([{ ref: ${JSON.stringify(ref)}, w: ${W}, h: ${H}, lod: Number(h.getAttribute('data-sc-lod')) || 1, sky: h.getAttribute('data-sc-sky') }]);
           return { ms: Math.round(performance.now() - t0), r };
         })()`);
         row.prepared = await fresh.evaluate(OPEN(ref, AT, 0));
@@ -222,6 +233,7 @@ for (const r of (REPEAT > 1 && !flags.verbose ? [] : results)) for (const k of R
   console.log(`${r.ref.padEnd(44)}${k.padEnd(8)}${f(x.readyMs).padStart(6)} ${f(x.firstPaintMs).padStart(6)} ${f(x.worstGapLoad).padStart(12)} ${f(x.worstGapAfterReady).padStart(19)} ${(f(x.bakeMs) + '/' + f(x.bakeWallMs)).padStart(15)} ${f(x.warmWallMs).padStart(11)} ${(x.sprites + '(' + x.newSprites + ')').padStart(13)} ${(((x.spriteBytes || 0) / 1048576).toFixed(0) + '(' + ((x.newSpriteBytes || 0) / 1048576).toFixed(0) + ')').padStart(8)}`);
   if (flags.verbose || k === 'cold') console.log('    phases', JSON.stringify(x.phases), ' passes', JSON.stringify(x.passes), x.restored ? ' restored ' + JSON.stringify(x.restored) : '');
   else if (x.restored) console.log('    restored', JSON.stringify(x.restored), ' phases', JSON.stringify(x.phases));
+  if (x.world) console.log('    world', JSON.stringify(x.world), ' builds', JSON.stringify(x.builds), ' longest task', x.longestTask, x.engine ? ' engine ' + x.engine : '');
   if (flags.gaps) console.log('    long gaps (load: ms after request, gap)', JSON.stringify(x.longLoad), ' after ready', JSON.stringify(x.longAfterReady), ' long tasks (ms from ready, ms)', JSON.stringify(x.longTasks));
   if (k === 'cold' && r.stored) console.log('    stored', JSON.stringify(r.stored));
   if (k === 'prepared' && r.prep) console.log('    prepared in idle time first', JSON.stringify(r.prep));
@@ -238,12 +250,12 @@ const med = (a) => { const s = a.filter(v => v != null).sort((x, y) => x - y); r
 const mx = (a) => { const s = a.filter(v => v != null); return s.length ? Math.max(...s) : null; };
 console.log(`
 summary over ${REPEAT} run(s): median (worst) ms`);
-console.log('scene                    run      ready           first paint     animating       worst frame, load   frames>33ms(3s)  worst frame, 3 s after ready');
+console.log('scene                    run      ready           first paint     animating       worst frame, load   frames>33ms(3s)  worst frame, 3 s after ready  longest task');
 for (const ref of refs) for (const k of RUNS) {
   const xs = results.filter(r => r.ref === ref && r[k] && !r[k].error).map(r => r[k]);
   if (!xs.length) continue;
   const cell = (key) => (f(med(xs.map(x => x[key]))) + ' (' + f(mx(xs.map(x => x[key]))) + ')').padEnd(16);
-  console.log(`${ref.split('/')[1].padEnd(25)}${k.padEnd(9)}${cell('readyMs')}${cell('firstPaintMs')}${cell('animMs')}${cell('worstGapLoad').padEnd(20)}${cell('over33').padEnd(17)}${cell('worstGapAfterReady')}`);
+  console.log(`${ref.split('/')[1].padEnd(25)}${k.padEnd(9)}${cell('readyMs')}${cell('firstPaintMs')}${cell('animMs')}${cell('worstGapLoad').padEnd(20)}${cell('over33').padEnd(17)}${cell('worstGapAfterReady').padEnd(30)}${cell('longestTask')}`);
   for (const x of xs) if (x.pbtl) console.log('    prebaked timeline (ms after the player started):', x.pbtl.join(' '), ' player frame ms', JSON.stringify(x.pbFrame), ' renderer dyn ms', JSON.stringify(x.dyn), ' passes frame ms/frames', JSON.stringify(x.passFrame));
 }
 if (flags.json) writeFileSync(flags.json, JSON.stringify(results, null, 2));

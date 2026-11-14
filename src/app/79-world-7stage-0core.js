@@ -142,11 +142,16 @@ function worldStageCreate(el, canvas, data, o) {
     gov: { tier: 0, base: 1, zoom: 1, iv: [], missFor: 0, okFor: 0, evalAt: 0, lastStep: 0, lastUp: -1e9, upWait: WORLD_STAGE_GOV.upS * 1000, steps: [], median: 0, target: 0, off: false },
     lastStepAt: 0, lodK: 1 };
   // the baker: the v2 renderer on a detached canvas, frames into a 1 x 1 context while the stage plays (o.layers), the host's
-  // canvas once it falls back. No persistent cache (its kept still is captured by a frame that moves the world's clock)
+  // canvas once it falls back. The persistent cache (interface C2, docs/dev/WORLD_LOAD.md 2): the host's own options (o.cache, else
+  // sceneHostCacheOpts(el): the cache id, the scene's own version, the size buckets, the kept still shown under the stage while it restores,
+  // the clock restarted when the live scene starts from that still). Its kept still is a capture ('still': the base moment), which never
+  // moves the world's clock (WORLD_FLICKER.md 1)
   const det = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(1, 1) : document.createElement('canvas');
-  st.baker = sceneRendererCreate(det, data, { lod: o.lod, still: false, season: o.season, L: o.L, maxFps: o.maxFps, time: o.time, flush: o.flush, profile: o.profile, hideUntilReady: true,
+  let kept = null;
+  try { kept = o.cache !== undefined ? { cache: o.cache, cacheVersion: o.cacheVersion, sizeBuckets: o.sizeBuckets, onStill: o.onStill, onLive: o.onLive, onStillKept: o.onStillKept } : typeof sceneHostCacheOpts === 'function' ? sceneHostCacheOpts(el) : null; } catch (e) { kept = null; }
+  st.baker = sceneRendererCreate(det, data, Object.assign({ lod: o.lod, still: false, season: o.season, L: o.L, maxFps: o.maxFps, time: o.time, flush: o.flush, profile: o.profile, hideUntilReady: true,
     layers: () => (st.fell ? null : _wsgTiny()),
-    onReady: () => _wsgBakerReady(st), onError: (e) => { if (o.onError) o.onError(e); } });
+    onReady: () => _wsgBakerReady(st), onError: (e) => { if (o.onError) o.onError(e); } }, kept || {}));
   _wsgLive.push(st);
   const B = st.baker;
   const api = {

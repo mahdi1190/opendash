@@ -43,18 +43,33 @@ const _WH5_R = (v) => Math.round(v * 100) / 100;
  * `at`, landmarks), enough to draw the statics. Then the hedge dressing (a hedge surface nothing dresses gets its hedge,
  * logged). o: { season }.
  */
-const _wh5WorldMemo = new Map();   // spec text + season -> the built world (three kept): the second mount of a scene (G12: warm load) clones it, never rebuilds it
-function _wh5Sig(spec, season) { try { return String(season || '') + '|' + JSON.stringify(spec); } catch (e) { return null; } }
+const _wh5WorldMemo = new Map();   // spec text + season -> the built world (WORLD_HOST_WORLD_MEMO kept): the second mount of a scene (G12: warm load) clones it, never rebuilds it
+const WORLD_HOST_WORLD_MEMO = 6;
+// (a spec's signature is its text: memoised per spec object, so a lazy spec is read and stringified once a season, not at every call)
+const _wh5SigMemo = new WeakMap();
+function _wh5Sig(spec, season) {
+  let t = spec && typeof spec === 'object' ? _wh5SigMemo.get(spec) : null;
+  if (t == null) { try { t = JSON.stringify(spec); } catch (e) { return null; } if (spec && typeof spec === 'object') _wh5SigMemo.set(spec, t); }
+  return String(season || '') + '|' + t;
+}
+function _wh5MemoSet(sig, world) {
+  _wh5WorldMemo.delete(sig);
+  _wh5WorldMemo.set(sig, world);
+  while (_wh5WorldMemo.size > WORLD_HOST_WORLD_MEMO) _wh5WorldMemo.delete(_wh5WorldMemo.keys().next().value);
+}
 function worldHostWorld(spec, o) {
   o = o || {};
   let world = null;
   if (typeof worldBuild === 'function') {
     const sig = typeof structuredClone === 'function' ? _wh5Sig(spec, o.season) : null, memo = sig ? _wh5WorldMemo.get(sig) : null;
-    if (memo) { try { world = structuredClone(memo); } catch (e) { world = null; } }
+    if (memo) { try { world = structuredClone(memo); _wh5MemoSet(sig, memo); } catch (e) { world = null; } }
     if (!world) {
+      const a = _wh5Now();
       try { world = worldBuild(spec, { season: o.season }) || null; } catch (e) { world = null; }
+      _wh5BuildLog.push({ ms: Math.round(_wh5Now() - a), season: o.season || null, idle: !!_wh5InIdle, at: Math.round(a) }); if (_wh5BuildLog.length > 40) _wh5BuildLog.shift();
       if (world && sig) {
-        try { _wh5WorldMemo.set(sig, structuredClone(world)); while (_wh5WorldMemo.size > 3) _wh5WorldMemo.delete(_wh5WorldMemo.keys().next().value); } catch (e) { /* not cloneable: built each time */ }
+        // kept in memory, and between page loads (79-world-5persist.js: the next load restores it instead of building it again)
+        try { const keep = structuredClone(world); _wh5MemoSet(sig, keep); if (typeof worldPersistWorldPut === 'function') worldPersistWorldPut(spec, o.season, keep); } catch (e) { /* not cloneable: built each time */ }
       }
     }
   }
@@ -71,6 +86,70 @@ function worldHostWorld(spec, o) {
   if (!world.minimal) { try { _wh5Hedges(world); } catch (e) { /* no dressing: the hedge strip stays plain */ } }
   return world;
 }
+
+/* ---------- never building a world on the main thread's critical path (docs/dev/WORLD_LOAD.md 1) ---------- */
+const _wh5BuildLog = [];           // the world builds of this page (tools: worldHostBuilds())
+let _wh5InIdle = false;
+const _wh5Preparing = new Map();   // signature -> Promise (one restore or build at a time per world)
+/** Is the world of this spec and season in memory now (worldHostWorld then costs a clone, never a build)? */
+function worldHostWorldReady(spec, season) {
+  if (typeof worldBuild !== 'function' || typeof structuredClone !== 'function') return true;
+  const sig = _wh5Sig(spec, season);
+  return !!(sig && _wh5WorldMemo.has(sig));
+}
+/** Take a world built elsewhere (restored from the persistent store) into the memo. */
+function worldHostWorldAdopt(spec, season, world) {
+  const sig = world && typeof structuredClone === 'function' ? _wh5Sig(spec, season) : null;
+  if (sig) _wh5MemoSet(sig, world);
+  return !!sig;
+}
+/**
+ * Make the world of a spec and season ready without blocking the page: the memo, else the persistent store (79-world-5persist.js; read
+ * and decoded off the critical path), else built in an idle period (o.build === false: never built here). Resolves to true when the
+ * world is in memory. One at a time per world.
+ */
+function worldHostWorldPrepare(spec, o) {
+  o = o || {};
+  const season = o.season;
+  if (worldHostWorldReady(spec, season)) return Promise.resolve(true);
+  const sig = _wh5Sig(spec, season);
+  if (!sig) return Promise.resolve(false);
+  if (_wh5Preparing.has(sig)) return _wh5Preparing.get(sig);
+  const p = (async () => {
+    let world = null;
+    try { world = typeof worldPersistWorldGet === 'function' ? await worldPersistWorldGet(spec, season) : null; } catch (e) { world = null; }
+    if (worldHostWorldReady(spec, season)) return true;
+    if (world) { worldHostWorldAdopt(spec, season, world); return true; }
+    if (o.build === false) return false;
+    // built in an idle period (one task: worldBuild has no steps; a returning load never gets here, it restores)
+    await new Promise((res) => _wh5Idle(() => {
+      _wh5InIdle = true;
+      try { if (!worldHostWorldReady(spec, season)) worldHostWorld(spec, { season }); } catch (e) { /* the mount builds it */ } finally { _wh5InIdle = false; }
+      res();
+    }, o.timeout || 1200));
+    return worldHostWorldReady(spec, season);
+  })().finally(() => _wh5Preparing.delete(sig));
+  _wh5Preparing.set(sig, p);
+  return p;
+}
+/**
+ * The world id of an item's live data (a worldItem's id; a superseded item draws `supersededBy`'s), and whether its live data is
+ * there already (the item's scene can be read now without a build).
+ */
+function worldHostItemId(item) { return item ? String(item.supersededBy || item.id || '') : ''; }
+function worldHostItemReady(item) {
+  if (!item || item.world !== 3 || !item.worldSpec) return true;
+  const live = _wh5Live.get(worldHostItemId(item) + '~w3');
+  if (live && _wh5SameSpec(live.spec, item.worldSpec)) return true;
+  return worldHostWorldReady(item.worldSpec, undefined);
+}
+/** Prepare an item's live world (worldHostWorldPrepare with the live season). */
+function worldHostItemPrepare(item, o) {
+  if (worldHostItemReady(item)) return Promise.resolve(true);
+  return worldHostWorldPrepare(item.worldSpec, Object.assign({}, o || {}, { season: undefined }));
+}
+/** Tools: the world builds this page ran ({ ms, season, idle, at }). */
+function worldHostBuilds() { return _wh5BuildLog.slice(); }
 
 /**
  * A hedge surface is solid ground drawn as a hedge (1.4). Where nothing in the world already stands on it (the fill may
@@ -649,7 +728,7 @@ function worldHostData(spec, o) {
   // time, as before. (o.sync: now, for stills, captures, tools and Node)
   if (rec.noLife) { /* statics only */ }
   else if (o.sync || typeof document === 'undefined') _wh5Init(rec);
-  else _wh5Idle(() => _wh5Init(rec), comp ? 4000 : 1500);
+  else setTimeout(() => _wh5LifeIdle(rec), comp ? 4000 : 1500);
   _wh5Sweep();
   return data;
 }
@@ -662,6 +741,57 @@ function worldHostEnsureLife(rec) {
   if (!rec || rec.noLife) return !!(rec && rec.driver);
   if (!rec.driver) _wh5Init(rec);
   return !!rec.driver;
+}
+/** The life of a record no bake has built: in idle periods, a few ms at a time (worldHostLifeSteps), never one long task when C1 is there. */
+function _wh5LifeIdle(rec) {
+  if (rec.driver || rec.noLife || _wh5Live.get(rec.id) !== rec || rec.lifeIdle) return;
+  rec.lifeIdle = worldHostLifeSteps(rec, 6);
+  const run = (dl) => {
+    const it = rec.lifeIdle;
+    if (!it) return;
+    const a = _wh5Now();
+    let r = { done: false };
+    try { do r = it.next(); while (!r.done && _wh5Now() - a < 8 && !(dl && typeof dl.timeRemaining === 'function' && dl.timeRemaining() < 1)); } catch (e) { r = { done: true }; }
+    if (r.done || rec.driver) { rec.lifeIdle = null; if (!rec.driver) _wh5Init(rec, rec.world.nav || null); return; }
+    _wh5Idle(run, 1000);
+  };
+  _wh5Idle(run, 1000);
+}
+/**
+ * The same in steps (a generator; the world bake's step 0 runs it in its slices): the life package's own build in slices (interface C1:
+ * worldLifeBuildJob(world, { nav }) -> { step(budgetMs) -> done }: the nav, the populations, the 90 s warm-up and the dwellers, with the
+ * end state of the one-shot build), then the driver over the life it left on the world (worldHostDriver adopts world._wlfLife and
+ * world.nav; nothing is built twice). Without C1: the one-shot build in one step, as before.
+ */
+function worldHostLifeSteps(rec, sliceMs) {
+  if (typeof rec === 'string') rec = _wh5Live.get(rec);
+  if (!rec) return [][Symbol.iterator]();
+  // one build per record: the bake and the idle builder share these steps (whoever runs a step advances it for both)
+  if (!rec.lifeSteps) rec.lifeSteps = _wh5LifeStepsGen(rec, sliceMs);
+  return rec.lifeSteps;
+}
+function* _wh5LifeStepsGen(rec, sliceMs) {
+  try { yield* _wh5LifeStepsBody(rec, sliceMs); } finally { rec.lifeSteps = null; }
+}
+function* _wh5LifeStepsBody(rec, sliceMs) {
+  if (rec.noLife || rec.driver) return;
+  if (typeof worldLifeBuildJob === 'function' && !rec.lifeBuilt && _wh5Live.get(rec.id) === rec) {
+    let job = null;
+    const a = _wh5Now();
+    try { job = worldLifeBuildJob(rec.world, { nav: rec.world.nav || null }); } catch (e) { job = null; rec.stats.lifeJobError = String(e && e.message || e); }
+    if (job && typeof job.step === 'function') {
+      for (let n = 0; n < 20000; n++) {
+        let done = true;
+        try { done = !!job.step(sliceMs || 6); } catch (e) { rec.stats.lifeJobError = String(e && e.message || e); done = true; }
+        if (done || rec.driver) break;
+        yield;
+      }
+      rec.stats.lifeJobMs = Math.round(_wh5Now() - a);
+      if (!rec.world.nav && job.nav) rec.world.nav = job.nav;
+    }
+    yield;
+  }
+  if (!rec.driver) _wh5Init(rec, rec.world.nav || null);
 }
 // live records nobody drew for this long let go of their bake products (a renderer that still holds a bake keeps its own; the next bake
 // of an idle one rebuilds them): a page that showed many openings over a day no longer keeps every one's bitmaps (WORLD_FLICKER.md 8)

@@ -83,6 +83,19 @@ function _sccCanvas(w, h) {
   const c = document.createElement('canvas'); c.width = w; c.height = h; return c;
 }
 const _sccNow = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+/**
+ * A device size snapped to a bucket (a kept bake's key: docs/dev/WORLD_LOAD.md 3): the width to the nearest of SCENE_SIZE_BUCKETS at or
+ * above it (or within 6 % below it: drawn a little soft rather than baked again), the height at the same aspect, rounded to 8 px.
+ * Sizes under 960 px wide (cards, tiles) keep their own size.
+ */
+const SCENE_SIZE_BUCKETS = [960, 1280, 1600, 1920, 2240, 2560, 2880, 3440, 3840];
+function sceneSizeBucket(W, H) {
+  if (!(W >= 960) || !(H > 0)) return [W, H];
+  let b = SCENE_SIZE_BUCKETS.find(x => x * 1.06 >= W) || W;
+  if (b > W * 1.25) b = W;
+  const k = b / W, H2 = Math.max(8, Math.round(H * k / 8) * 8);
+  return [b, H2];
+}
 /** A context that draws nothing (a restored bitmap's own drawing code runs for its side effects only: the stars' places). */
 const _sccNullGrad = { addColorStop() {} };
 const _sccNullCx = typeof Proxy === 'function' ? new Proxy({}, { get: (t, k) => (k === 'createLinearGradient' || k === 'createRadialGradient' || k === 'createConicGradient' ? () => _sccNullGrad : () => {}), set: () => true }) : null;
@@ -229,7 +242,10 @@ function sceneRendererCreate(canvas, src, o) {
     let W = Math.max(1, Math.round(w * dpr)), H = Math.max(1, Math.round(h * dpr));
     // capped by pixel count, not by width, so ultrawide (21:9, 32:9) screens draw at their real resolution
     const k = Math.min(1, Math.sqrt((SCENE_BACKING_MAX[0] * SCENE_BACKING_MAX[1]) / (W * H)));
-    return [Math.max(1, Math.round(W * k)), Math.max(1, Math.round(H * k))];
+    const out = [Math.max(1, Math.round(W * k)), Math.max(1, Math.round(H * k))];
+    // o.sizeBuckets (a kept scene: the host's live library scenes): the width snapped to a bucket and the height to 8 px at the same
+    // aspect, so a window a few pixels different restores the same bake (the css box scales it; docs/dev/WORLD_LOAD.md 3)
+    return o.sizeBuckets ? sceneSizeBucket(out[0], out[1]) : out;
   };
 
   /* ---------- sprites ---------- */
@@ -386,7 +402,7 @@ function sceneRendererCreate(canvas, src, o) {
     // keep: a sprite a frame draws (the warm-up sends it to the raster); keepStatic: one only the bake draws (into a bitmap)
     const keep = (sp) => { if (sp && sp.c) { out.sprites.add(sp); out.frameSprites.add(sp); } return sp; };
     const keepStatic = (sp) => { if (sp && sp.c) out.sprites.add(sp); return sp; };
-    const env = v2 ? _sccEnv({ C, L: Lx, W, H, vs, ox, oy, T, out, keep, placeM, lod, still: !!o.still, profile: !!o.profile, governor: o.governor, restoring: !!R, rid, background,
+    const env = v2 ? _sccEnv({ C, L: Lx, W, H, vs, ox, oy, T, out, keep, placeM, lod, still: !!o.still, profile: !!o.profile, governor: o.governor, restoring: !!R, rid, background, cacheId: cacheOn() ? o.cache : null,
       sprite: (req) => sprite(Lx, lk, req.o, req.v || 0, req.season || C.season, req.part || '*', req.haze || 0, req.tint || null, req.scale, !!req.litGlow, !!req.withLit, req.plain ? null : { env, flip: req.flip, lift: req.lift || 0, cls: req.cls, i: req.i }),
       // the very sprite item i is drawn with (the shadow and water passes reuse it: no extra rasterising)
       itemSprite: (i) => { const it = C.items[i]; return keepStatic(sprite(Lx, lk, it.o, it.v, it.season, '*', v2Haze(i, it, hz(it.layer)), it.tint, bucket(it.s) * vs, false, false, { env, flip: it.flip, lift: v2Lift(i), cls: it.cls, i })); } }) : null;
@@ -1252,7 +1268,10 @@ function sceneRendererCreate(canvas, src, o) {
    * While the bitmaps decode, the kept still of the first frame goes to the host (o.onStill(blob)) when nothing is shown yet.
    */
   async function cacheLookup(W, H, job) {
-    const ver = await sceneStoreVersion();
+    // the version: the scene's own (o.cacheVersion: a world scene's spec and engine hash, 79-world-5persist.js), else the build's scene version
+    let ver = null;
+    if (o.cacheVersion) { try { ver = await (typeof o.cacheVersion === 'function' ? o.cacheVersion() : o.cacheVersion); } catch (e) { ver = null; } }
+    if (!ver) ver = await sceneStoreVersion();
     tl('ver');
     if (job.cancel || destroyed || ver === 'none') return null;
     let C = typeof sceneCompileMemo === 'function' ? sceneCompileMemo(data, season, lod) : null;
@@ -1358,6 +1377,7 @@ function sceneRendererCreate(canvas, src, o) {
       const { names, list, meta } = ex;
       let still = null;
       try { still = _sccCanvas(state.W, state.H); frameInto(state, still); } catch (e) { still = null; }
+      if (still && o.onStillKept) { try { o.onStillKept(still, { W: state.W, H: state.H, lk: state.lk, season: state.C && state.C.season }); } catch (e) { /* the host's business */ } }
       sceneStoreEncode(still ? list.concat([still]) : list).then((blobs) => {
         const sb = still ? blobs.pop() : null;
         if (still) _sccFree(still);
@@ -1437,7 +1457,7 @@ function sceneRendererCreate(canvas, src, o) {
       if (S || pending) bakeLater(W, H);
     },
     /** The frame at t (seconds) drawn into a new canvas of the backing size (tools and tests), or null before the first bake. */
-    snapshot(t) { if (!S) return null; const c = _sccCanvas(S.W, S.H); frameInto(S, c, t || 0, 'snap'); return c; },
+    snapshot(t, capture) { if (!S) return null; const c = _sccCanvas(S.W, S.H); frameInto(S, c, t || 0, capture === 'still' ? 'still' : 'snap'); return c; },
     /** Move this renderer to another canvas (a re-mounted host with the same key keeps its bitmaps). */
     attach(c2) {
       if (!c2 || c2 === canvas) return;
@@ -1826,7 +1846,8 @@ function _sccEnv(a) {
   C.items.forEach((it, i) => byLayer[it.layer] && byLayer[it.layer].push(i));
   // rid: the renderer (a pass keeps per-renderer state across its bakes: the world's agent draw memory); background: a renderer that only
   // prepares a bake to keep (never moves a shared clock: docs/dev/WORLD_FLICKER.md 1)
-  return { C, L, Lnow: L, W: a.W, H: a.H, vs: a.vs, ox: a.ox, oy: a.oy, T: a.T, lod: a.lod, still: a.still, restoring: !!a.restoring, cam: sceneRenderCam(C), rid: a.rid, background: !!a.background,
+  // cacheId: the renderer keeps its bakes in the persistent store under this id (a world bake keeps its own products too: 79-world-5persist.js)
+  return { C, L, Lnow: L, W: a.W, H: a.H, vs: a.vs, ox: a.ox, oy: a.oy, T: a.T, lod: a.lod, still: a.still, restoring: !!a.restoring, cam: sceneRenderCam(C), rid: a.rid, background: !!a.background, cacheId: a.cacheId || null,
     groups: a.out.groups, plan, layerOfGroup, byLayer, out: a.out,
     bitmapOf: (layer) => a.out.groups[layerOfGroup[layer]] || null,
     sprite: a.sprite, itemSprite: a.itemSprite, keep: a.keep, slice: () => {}, placeM: a.placeM,

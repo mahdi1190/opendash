@@ -449,7 +449,9 @@ function animItemHtml(x, o) {
   // detail (about a fifth of the nodes, a quarter of the frame cost) while still filling its box and moving.
   const ao = it.rich && o.detail === 'tile' && (o.size === 'fill' || o.size === 'hero') ? Object.assign({}, o, { size: 'lg' }) : o;
   // the body is drawn only on the SVG path (a composed scene on the canvas never renders its SVG still)
-  const bodyOf = () => reduced ? (it.reduced === 'static' ? it.svg(ao) : it.reduced(ao)) : it.svg(ao);
+  // (a world scene's still never builds its world here: 79-world-5persist.js worldStillSvg draws a placeholder and replaces it later)
+  const svgOf = (a) => (it.world === 3 && it.worldSpec && typeof worldStillSvg === 'function' ? worldStillSvg(it, a) : it.svg(a));
+  const bodyOf = () => reduced ? (it.reduced === 'static' ? svgOf(ao) : it.reduced(ao)) : svgOf(ao);
   const cls = ['anim-scene', 'ap-art', 'c-' + it.colour, 'sz-' + (o.size || 'md'), 'ap-' + it.slot];
   // A rich scene (thousands of nodes, hundreds of loops) never loops in a small tile: every frame of an SVG
   // animation repaints the whole drawing on the main thread, so a 22-px badge cost as much as the full screen.

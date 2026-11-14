@@ -1447,13 +1447,30 @@ function* _wfrBakeJob(env, S) {
   // once after it shows), the plan below is made with its nav (standing rows, the occluders movers pass behind), and no idle build follows.
   // (A background renderer builds it too: the still it keeps shows the base moment's people, and the live record keeps the life for the
   // opening that mounts it later.)
+  // (sliced when the life package offers its build in steps (interface C1, worldLifeBuildJob through 79-world-5host.js worldHostLifeSteps):
+  // never one long task; meanwhile the products this bake can reuse are read from the persistent store: worldPersistPrefetch, prebake)
+  S.phase = 'life';
   if (!rec.driver && typeof worldHostEnsureLife === 'function') {
     yield;
     const a = _wfrNow();
-    try { worldHostEnsureLife(rec); } catch (e) { S.stats.errors.push('life: ' + (e && e.message)); }
+    try {
+      if (typeof worldHostLifeSteps === 'function') { for (const w of worldHostLifeSteps(rec, 6)) yield w; }
+      if (!rec.driver) worldHostEnsureLife(rec);
+    } catch (e) { S.stats.errors.push('life: ' + (e && e.message)); }
     S.stats.lifeMs = Math.round(_wfrNow() - a);
     yield;
   }
+  // the kept products (79-world-5persist.js), waited for at the first one this bake does not have in memory, at most WORLD_PERSIST_WAIT_MS
+  // ('wait' ends the slice: the reads and the decoding run off the main thread meanwhile); a bake that has everything never waits
+  const need = function* () {
+    if (!S.persist || !S.persist.pending) return;
+    const a = _wfrNow();
+    while (S.persist.pending && _wfrNow() - a < (typeof WORLD_PERSIST_WAIT_MS === 'number' ? WORLD_PERSIST_WAIT_MS : 2500)) yield 'wait';
+    S.stats.persistWaitMs = (S.stats.persistWaitMs || 0) + Math.round(_wfrNow() - a);
+  };
+  const keep = (key, kind, v, x) => { if (S.persist && typeof worldPersistRemember === 'function') worldPersistRemember(S, key, kind, v, x); };
+  const kept = (key, o) => (S.persist && typeof worldPersistTake === 'function' ? worldPersistTake(S, key, o) : undefined);
+  S.phase = 'context';
   // 1. the context: time (T2: the light's moment), the sky with the v2 light's grade, the materials, the water regions
   const ms = L && Number.isFinite(L.ms) ? L.ms : null;
   S.tctx = _wfrTimeCtx(world, ms, { L, season: S.season });
@@ -1471,9 +1488,20 @@ function* _wfrBakeJob(env, S) {
   S.paths = _wfrPathScr(world, cam);
   // the ground detail (look, 79-world-4ground.js): every visible surface textured, the channel walls dressed; the plan is kept
   // per world (the camera does not move), the two layers per light band and material key
+  yield;   // (the context: the water plan, the wet outlines, the material context: a step of its own)
+  S.phase = 'ground';
   if (typeof worldGroundDetail === 'function' && typeof worldGroundDetailDraw === 'function') {
     try {
-      const gplan = rec.frame.groundPlan || (rec.frame.groundPlan = worldGroundDetail(world, cam, { W: 1600, H: 900 }));
+      // the plan: in memory, else kept (W|..|gplan), else made in steps (1.9 s on Albert Square in one piece before 14 Nov)
+      if (!rec.frame.groundPlan) yield* need();
+      if (!rec.frame.groundPlan && S.persist && S.persist.gplan) { rec.frame.groundPlan = S.persist.gplan; S.persist.gplan = null; S.stats.groundPlanKept = true; }
+      if (!rec.frame.groundPlan) {
+        const a = _wfrNow();
+        rec.frame.groundPlan = typeof worldGroundDetailSteps === 'function' ? yield* worldGroundDetailSteps(world, cam, { W: 1600, H: 900 }) : worldGroundDetail(world, cam, { W: 1600, H: 900 });
+        S.stats.groundPlanMs = Math.round(_wfrNow() - a);
+        if (S.persist) S.persist.gplanMade = true;
+      }
+      const gplan = rec.frame.groundPlan;
       let gk = '';
       if (S.mctx) { try { gk = worldMaterialKey(S.mctx); } catch (e) { gk = ''; } }
       const geoG = W + 'x' + H + '|' + Math.round(vs * 1e4) + '|' + Math.round(ox) + ',' + Math.round(oy);
@@ -1483,6 +1511,7 @@ function* _wfrBakeJob(env, S) {
         const key = 'gd|' + part + '|' + geoG + '|' + S.season + '|' + S.band + '|' + _wfrHashStr(gk + lk0);
         used.add(key);
         let lay = cache.get(key);
+        if (!lay) { yield* need(); lay = kept(key); if (lay) { cache.set(key, lay); yield; } }
         if (!lay) {
           const list = part === 'marks' ? gplan.groups.map(g => g.clip) : [].concat(...gplan.walls.map(w => w.runs.map(r => r.scr)));
           let X0 = Infinity, Y0 = Infinity, X1 = -Infinity, Y1 = -Infinity;
@@ -1490,22 +1519,31 @@ function* _wfrBakeJob(env, S) {
           const bx = Math.max(0, Math.floor(X0) - 1), by = Math.max(0, Math.floor(Y0) - 1), bw = Math.min(W, Math.ceil(X1) + 1) - bx, bh = Math.min(H, Math.ceil(Y1) + 1) - by;
           lay = { c: null, x: 0, y: 0 };
           if (list.length && bw > 0 && bh > 0) {
-            const c = _wfrCanvas(bw, bh), cx = c.getContext('2d', _WFR_CPU);
-            worldGroundDetailDraw(cx, gplan, { part, vs, ox: ox - bx, oy: oy - by, colour, light: day });
+            const c = _wfrCanvas(bw, bh), cx = c.getContext('2d', _WFR_CPU), go = { part, vs, ox: ox - bx, oy: oy - by, colour, light: day };
+            if (typeof worldGroundDetailDrawSteps === 'function') yield* worldGroundDetailDrawSteps(cx, gplan, go); else worldGroundDetailDraw(cx, gplan, go);
+            try { cx.getImageData(0, 0, 1, 1); } catch (e) { /* drawn on first use */ }
             lay = { c, x: bx, y: by };
           }
           cache.set(key, lay);
         }
+        keep(key, 'layer', lay);
         S[part === 'marks' ? 'groundMarks' : 'groundWalls'] = lay.c ? lay : null;
       }
     } catch (e) { S.stats.errors.push('ground: ' + (e && e.message)); }
   }
   yield;
+  S.phase = 'plan';
   // 2. the plan: draw records and D's chunks (kept per world, season and nav: the camera does not move)
   const ab = _wfrAbsent(world, S.tctx && Number.isFinite(S.tctx.ms) ? S.tctx : null);
   const pk = 'plan|' + S.season + '|' + (rec.driver && rec.driver.nav ? 'n' : '-') + '|' + ab.key + '|' + _wfrFormKey(S.tctx);
   let plan = rec.frame.plan && rec.frame.planKey === pk ? rec.frame.plan : null;
-  if (!plan) { plan = worldFramePlan(world, { season: S.season, nav: rec.driver && rec.driver.nav, agents: rec.driver && rec.driver.base, regions: S.regions, absent: ab.set, ctx: S.tctx }); rec.frame.plan = plan; rec.frame.planKey = pk; }
+  // (0.2-0.5 s in one piece at the Fleet Pond in a browser: when the plan offers steps, worldFramePlanSteps(world, o) a generator returning the
+  // same plan, the bake runs them in its slices; docs/dev/WORLD_LOAD.md 1)
+  if (!plan) {
+    const po = { season: S.season, nav: rec.driver && rec.driver.nav, agents: rec.driver && rec.driver.base, regions: S.regions, absent: ab.set, ctx: S.tctx };
+    plan = typeof worldFramePlanSteps === 'function' ? yield* worldFramePlanSteps(world, po) : worldFramePlan(world, po);
+    rec.frame.plan = plan; rec.frame.planKey = pk;
+  }
   S.plan = plan;
   S.hasRockingLive = plan.live.some(r => r.rocks);
   // the wind system moves only what is drawn live (the rest is baked: its sway is read by nothing in a frame)
@@ -1513,6 +1551,7 @@ function* _wfrBakeJob(env, S) {
   // the decks of walkways drawn in perspective lie over the water like deck surfaces (planks; the water does not show through)
   if (S.wet && Array.isArray(plan.decks)) for (const D of plan.decks) { S.wet.decks.push(D); S.wet.over.push(D.scr); }
   yield;
+  S.phase = 'chunks';
   // 3. the chunks: each its own bitmap, clipped to its box, integer-snapped, 1 px bleed; the lit windows of each member are drawn
   // over its own sprite inside the chunk (so whatever is nearer in the chunk still hides them), keyed by the chunk's lit set
   const geo = W + 'x' + H + '|' + Math.round(vs * 1e4) + '|' + Math.round(ox) + ',' + Math.round(oy);
@@ -1534,25 +1573,29 @@ function* _wfrBakeJob(env, S) {
       S.draw.set(r.id, { sp: null, M: r.prim ? null : _wfrM(env, r) });
     }
     const bx = Math.max(0, Math.floor(x0) - 1), by = Math.max(0, Math.floor(y0) - 1), bx1 = Math.min(W, Math.ceil(x1) + 1), by1 = Math.min(H, Math.ceil(y1) + 1);
-    for (const r of ch.ents) if (!r.prim) S.draw.get(r.id).sp = _wfrSpriteOf(env, S, r, '*');
+    // every member's sprite, made when something first asks for it (an occluder redraw, the mirror, the shadows, a chunk drawn now): a
+    // chunk restored whole from memory or the store makes none (docs/dev/WORLD_LOAD.md 2)
+    for (const r of ch.ents) if (!r.prim) _wfrLazySprite(S.draw.get(r.id), () => _wfrSpriteOf(env, S, r, '*'));
     if (bx1 <= bx || by1 <= by) continue;
     out.base = 'ch|' + geo + '|' + S.season + '|' + S.band + '|' + _wfrHashStr(mk + lk) + '|' + _wfrHashStr(ch.ents.map(r => r.id).join(','));
     out.lit = _wfrChunkLit(S, ch, S.lightNow);
     const key = out.base + '|' + out.lit;
     used.add(key);
-    const kept = cache.get(key);
-    if (kept) { Object.assign(out, kept); S.stats.chunksKept++; continue; }
+    let had = cache.get(key);
+    if (!had) { yield* need(); had = kept(key); if (had && had.c) { cache.set(key, had); S.stats.chunksRestored = (S.stats.chunksRestored || 0) + 1; yield; } else had = null; }
+    if (had) { Object.assign(out, had); S.stats.chunksKept++; keep(key, 'layer', had); continue; }
     const c = _wfrCanvas(bx1 - bx, by1 - by), cx = c.getContext('2d', _WFR_CPU);
     let n = 0;
     for (const r of ch.ents) {
       const d = S.draw.get(r.id);
       S.stats.spritesDrawn += _wfrDrawRec(cx, env, S, r, d, bx, by, 1) ? 1 : 0;
       if (out.lit !== '-') _wfrDrawGlass(cx, env, S, r, bx, by, S.lightNow);
-      if (++n % 8 === 0) yield;
+      if (++n % 2 === 0) yield;   // (a member's sprite is made on first use, here: two a step)
     }
     try { cx.getImageData(0, 0, 1, 1); } catch (e) { /* drawn on first use */ }
     Object.assign(out, { c, x: bx, y: by, w: bx1 - bx, h: by1 - by });
     cache.set(key, { c, x: bx, y: by, w: bx1 - bx, h: by1 - by });
+    keep(key, 'layer', cache.get(key));
     S.stats.chunksMade++;
     yield;
   }
@@ -1560,16 +1603,26 @@ function* _wfrBakeJob(env, S) {
   S.chunkByRef = new Map(S.chunks.map(o => [o.ch, o]));
   S.lowDeckClips = ((S.wet && S.wet.decks) || []).filter(D => !Number.isFinite(D.s.y) || D.s.y < 0.6).map(D => D.scr);
   for (const r of plan.live) S.draw.set(r.id, { sp: null, M: _wfrM(env, r) });
+  S.phase = 'occl';
   // the statics movers pass behind (I2): drawn on their own every frame, from this drawing (a prim: its bitmap, made here, not in a frame)
   for (const r of plan.occl || []) {
     const d = { sp: r.prim ? null : _wfrSpriteOf(env, S, r, '*'), M: r.prim ? null : _wfrM(env, r) };
     S.draw.set(r.id, d);
     if (r.prim) { d.off = _wfrOffCanvas(r, env); if (!d.off) _wfrPrimCache(env, S, r, d, true); }
+    yield;   // (each a sprite to rasterise or a piece drawn whole: a slice may end between them)
   }
   S.stats.occl = (plan.occl || []).length;
   yield;
-  // the static night lights (look: library glow parts only; per-window seeded thresholds), before the water: lit windows reflect
+  // the static night lights (look: library glow parts only; per-window seeded thresholds), before the water: lit windows reflect.
+  // Kept light layers go into the cache first (keyed as _wfrLightsPlan keys them), so it finds the one it needs
+  S.phase = 'lights';
+  if (S.persist && S.lightNow && (S.lightNow.alt < 3 || S.lightNow.murky)) yield* need();   // (lights only when they are on)
+  if (S.persist) for (const k of [...S.persist.got.keys()]) if (k.startsWith('li|') && !cache.has(k)) { const v = kept(k, { chunks: plan.chunks }); if (v) cache.set(k, v); }
+  const usedBefore = new Set(used);
   _wfrLightsPlan(env, S);
+  if (S.lights && S.persist) for (const k of used) if (!usedBefore.has(k) && k.startsWith('li|') && cache.get(k) === S.lights) keep(k, 'lights', S.lights);
+  yield;
+  S.phase = 'shadows';
   // 4. the static shadows on the ground (look), one layer under every chunk (shadows lie on the ground; never on water)
   const sunOn = S.sky ? S.sky.sun.alt > 0 && S.sky.dark < 0.6 : !!(L && (L.alt || 0) > 0 && !(L.dark > 0.6));
   if (typeof worldShadowPlan === 'function' && typeof worldDrawShadows === 'function' && sunOn) {
@@ -1577,6 +1630,7 @@ function* _wfrBakeJob(env, S) {
     const sk = 'sh|' + geo + '|' + S.season + '|' + Math.round((sa.alt || 0) * 2) + '|' + Math.round((sa.az || 0) * 2) + '|' + Math.round(((S.sky && S.sky.cover) || L.cover || 0) * 10);
     used.add(sk);
     let lay = cache.get(sk);
+    if (!lay) { yield* need(); lay = kept(sk); if (lay) { cache.set(sk, lay); yield; } }
     if (!lay) {
       try {
         // only what is DRAWN casts (audit 15 Oct, bug 17: a bramble with no winter art left its dark footprint prism on the grass):
@@ -1600,17 +1654,24 @@ function* _wfrBakeJob(env, S) {
       } catch (e) { lay = { c: null, plan: [] }; S.stats.errors.push('shadows: ' + (e && e.message)); }
       cache.set(sk, lay);
     }
+    if (lay.c) keep(sk, 'shadow', lay);
     S.shadow = lay.c ? lay : null;
     S.shade = (lay.plan || []).filter(s => s.holesScr && s.holesScr.length).flatMap(s => s.holesScr.map(h => ({ scr: h, op: s.op })));
   }
   yield;
+  S.phase = 'water';
   // 5. the water and the mirror of the statics (look: from the water surface, each pixel about its owner's contact row; H1)
   if (S.regions.length && typeof worldWaterComposite === 'function' && typeof worldWaterMirror === 'function' && typeof worldWaterContact === 'function') {
     let mk = '';
     if (S.mctx) { try { mk = worldMaterialKey(S.mctx); } catch (e) { mk = ''; } }
-    const wk = 'wa|' + geo + '|' + S.band + '|' + (S.sky ? Math.round(S.sky.sun.alt * 2) + ',' + Math.round(S.sky.sun.az * 2) : '') + '|' + _wfrHashStr(lk + mk);
+    // the sun's part of the key: 1 degree of elevation and 4 of azimuth, none once it is 12 degrees down (the water and its mirror follow the
+    // sky's colours, which barely move then): a kept water is found again a few minutes later, or at the same time the next day
+    // (half-degree buckets until 14 Nov: a night bake two minutes later missed it; docs/dev/WORLD_LOAD.md 2)
+    const sunK = !S.sky ? '' : S.sky.sun.alt < -12 ? 'n' : Math.round(S.sky.sun.alt) + ',' + Math.round(S.sky.sun.az / 4);
+    const wk = 'wa|' + geo + '|' + S.band + '|' + sunK + '|' + _wfrHashStr(lk + mk);
     used.add(wk);
     let kept = cache.get(wk);
+    if (!kept && S.persist && typeof worldPersistTake === 'function') { yield* need(); const v = worldPersistTake(S, wk, { regions: S.regions }); if (v && v.length) { kept = v; cache.set(wk, kept); S.stats.waterKept = true; yield; } }
     if (!kept) {
       kept = [];
       const farToNear = plan.recs.slice().sort((a, b) => b.z - a.z || (a.id < b.id ? -1 : 1));
@@ -1632,14 +1693,17 @@ function* _wfrBakeJob(env, S) {
             if (img) draws.push({ id: r.id, z: r.z, contact: _wfrContact(R, r, cam), img: img.img, x: img.x, y: img.y });
             if (draws.length % 16 === 0) yield;
           }
-          const cmp = worldWaterComposite(R, draws, { vs, ox, oy, top: 0, W, H });
-          const res = worldWaterMirror(null, R, cmp.comp, cmp.owner, { vs, ox, oy, W, H, sky: S.sky || undefined, L, base: true, ripple: false, shade: S.shade || [], t: 0 });
+          // (in steps: the composite and the mirror are pixel loops of 0.6 s and more at the Fleet Pond in one piece before 14 Nov)
+          const co = { vs, ox, oy, top: 0, W, H }, mo = { vs, ox, oy, W, H, sky: S.sky || undefined, L, base: true, ripple: false, shade: S.shade || [], t: 0 };
+          const cmp = typeof worldWaterCompositeSteps === 'function' ? yield* worldWaterCompositeSteps(R, draws, co) : worldWaterComposite(R, draws, co);
+          const res = typeof worldWaterMirrorSteps === 'function' ? yield* worldWaterMirrorSteps(null, R, cmp.comp, cmp.owner, mo) : worldWaterMirror(null, R, cmp.comp, cmp.owner, mo);
           kept.push({ R, res });
         } catch (e) { S.stats.errors.push('water: ' + (e && e.message)); }
         yield;
       }
       cache.set(wk, kept);
     }
+    if (kept.length) keep(wk, 'water', kept);
     S.water = kept;
     if (typeof worldWaterFalls === 'function') { try { S.falls = worldWaterFalls(world, cam, S.regions) || []; } catch (e) { S.falls = []; } }
   }
@@ -1663,7 +1727,22 @@ function* _wfrBakeJob(env, S) {
       S.stats.baseWaterOff = true;
     }
   } catch (e) { /* the base water keeps rippling */ }
+  // what this bake made is kept for the next load (in idle time, a few seconds after it shows: 79-world-5persist.js)
+  if (S.persist) {
+    S.stats.persist = { hits: S.persist.hits, misses: S.persist.misses, made: S.persist.made.size, readMs: S.persist.readMs, plan: !!S.stats.groundPlanKept, missed: (S.persist.missed || []).slice(0, 8) };
+    if (typeof worldPersistSaveSoon === 'function') worldPersistSaveSoon(env, S);
+  }
   S.ready = true;
+}
+/** A draw record's sprite made on first use (a getter; a later assignment replaces it). */
+function _wfrLazySprite(d, make) {
+  if (!d) return;
+  let v, done = false;
+  try {
+    Object.defineProperty(d, 'sp', { configurable: true, enumerable: true,
+      get() { if (!done) { done = true; try { v = make(); } catch (e) { v = null; } } return v; },
+      set(x) { done = true; v = x; } });
+  } catch (e) { d.sp = make(); }
 }
 const WORLD_FRAME_CACHE_BYTES = 160 * 1048576;   // a live world's kept bake products (chunks, layers, water), at most about this
 /** The bytes a cache entry holds (its canvases and pixel arrays, a few levels down; an estimate). */
@@ -1907,8 +1986,14 @@ function _wfrRun(S, ms) {
   if (!S.job || S.ready) return;
   const a = _wfrNow();
   try {
-    let r = S.job.next();
-    while (!r.done && _wfrNow() - a < ms) r = S.job.next();
+    // (the longest single step and the bake's phase then: S.stats.maxStep, docs/dev/WORLD_LOAD.md 1: no step should take more than ~10 ms)
+    const M = S.stats.maxStep || (S.stats.maxStep = { ms: 0, phase: '' });
+    let b = a, r = S.job.next(), e = _wfrNow();
+    if (e - b > M.ms) { M.ms = Math.round((e - b) * 10) / 10; M.phase = S.phase || ''; }
+    while (!r.done && r.value !== 'wait' && e - a < ms) {
+      b = e; r = S.job.next(); e = _wfrNow();
+      if (e - b > M.ms) { M.ms = Math.round((e - b) * 10) / 10; M.phase = S.phase || ''; }
+    }
     if (r.done) S.ready = true;
   } catch (e) { S.ready = true; S.failed = String(e && e.message || e); S.stats.errors.push('bake: ' + S.failed); }
   const took = _wfrNow() - a;
@@ -2636,6 +2721,8 @@ if (typeof sceneRenderPassDefine === 'function') {
         stats: { bakeMs: 0, chunksMade: 0, chunksKept: 0, chunkPx: 0, spritesDrawn: 0, frames: 0, agents: 0, redraws: 0, orderMs: 0, frameMs: 0, tau: 0, errors: [] } };
       env._wfr = S;
       rec.frame.last = S;   // the latest bake of this world (tools and tests read its state)
+      // what a kept bake of this scene can give back (79-world-5persist.js: renderers with a cache id only), read while the life is built
+      if (typeof worldPersistPrefetch === 'function') { try { worldPersistPrefetch(env, S); } catch (e) { S.persist = null; } }
       S.job = _wfrBakeJob(env, S);
       _wfrRun(S, env.still ? Infinity : 6);
     },
@@ -2666,8 +2753,10 @@ if (typeof sceneRenderPassDefine === 'function') {
       const s = S.stats;
       return { ready: S.ready, chunks: S.chunks.filter(o => o.c).length, chunkSizes: S.chunks.filter(o => o.c).map(o => o.w + 'x' + o.h + '@' + o.x + ',' + o.y + ':' + o.ch.ents.length), chunkPx: s.chunkPx, chunksMade: s.chunksMade, chunksKept: s.chunksKept, statics: S.plan ? S.plan.recs.length : 0, live: S.plan ? S.plan.live.length : 0,
         occl: S.plan && S.plan.occl ? S.plan.occl.length : 0, staticItems: s.staticItems || 0, lifeMs: s.lifeMs || 0, baseWaterOff: !!s.baseWaterOff, cacheMB: s.cacheMB || 0,
+        // what the persistent store gave back (79-world-5persist.js; docs/dev/WORLD_LOAD.md 2): hits, misses, made, readMs, plan (the ground plan kept)
+        persist: s.persist || null, persistWaitMs: s.persistWaitMs || 0, groundPlanMs: s.groundPlanMs || 0, chunksRestored: s.chunksRestored || 0, waterKept: !!s.waterKept,
         agents: s.agents, redraws: s.redraws, occDraws: s.redraws, orderMs: Math.round(s.orderMs * 1000) / 1000, frameMs: Math.round(s.frameMs * 100) / 100, bakeMs: Math.round(s.bakeMs),
-        maxPrepareSliceMs: Math.round((s.maxPrepareSliceMs || 0) * 100) / 100,
+        maxPrepareSliceMs: Math.round((s.maxPrepareSliceMs || 0) * 100) / 100, maxStep: s.maxStep || null,
         prof: s.prof ? Object.fromEntries(Object.entries(s.prof).filter(([k]) => k !== 'n').map(([k, v]) => [k, Math.round(v / Math.max(1, s.prof.n) * 100) / 100])) : null,
         materials: !!S.mat, shadows: !!S.shadow, water: (S.water || []).length, lights: S.lights ? S.lights.n : 0, tau: Math.round(s.tau * 100) / 100, errors: s.errors.slice(0, 5) };
     },
