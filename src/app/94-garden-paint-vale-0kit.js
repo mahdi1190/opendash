@@ -158,6 +158,9 @@ window.GardenPaintVale = (function () {
     clear(); if (!wanted() || !info || !info.data || window.__gpvOff) return;
     const t0 = performance.now(), kit = KIT(), W = info.W, season = info.season || 'summer', P = PAL[season] || PAL.summer;
     const L = readLayout(W, info.data, info.cellAt), sig = 'gpv-1|' + season + '|' + (GardenIslandLayout.fingerprint || '');
+    // Only crossing water uses the four water-light palettes. Keep the ground
+    // and standing-object caches unchanged when that discrete bucket changes.
+    const waterTod = ['dawn', 'dusk', 'night'].includes(info.tod) ? info.tod : 'day', underSig = sig + '|u|' + waterTod + '|';
     // the composition is the same for the same picture: compose once, then a repaint (a gate opening) only places it
     let comp = memo.get(sig);
     if (!comp) {
@@ -177,13 +180,14 @@ window.GardenPaintVale = (function () {
     const sprites = [], queue = [], tall = [];
     const make = (o, isUnder) => {
       if (o.make) { const im = ok(() => o.make(scene)); if (im) { im.setDepth(o.y); (objects || root).add(im); sprites.push(im); if (im.displayHeight > 60) tall.push(im); } return; }   // (a tall one, a tree: it fades when you stand under it)
-      const im = kit.sprite(scene, isUnder ? root : objects || root, sig + (isUnder ? '|u|' : '|t|') + o.key, o.box, o.draw, o.x, o.y, o.K || (isUnder ? 1.25 : 1.5)); if (!im) return;
+      const key = (isUnder ? underSig : sig + '|t|') + o.key, draw = isUnder ? B => o.draw(B, waterTod) : o.draw;
+      const im = kit.sprite(scene, isUnder ? root : objects || root, key, o.box, draw, o.x, o.y, o.K || (isUnder ? 1.25 : 1.5)); if (!im) return;
       im.setDepth(isUnder ? UNDER : o.depth != null ? o.depth : o.y); sprites.push(im); stats.spritePx = (stats.spritePx || 0) + (im._gptPx || 0);
       if (!isUnder && o.crown) { im._gpvCrown = o.crown; tall.push(im); }
       if (isUnder && root.sort) root.sort('depth');
     };
     stats = { sig, ground: ground.length, mainland: main.length, under: under.length, things: things.length, spritePx: 0 };
-    for (const u of under) (scene.textures.exists(sig + '|u|' + u.key) ? make(u, true) : queue.push([u, true]));
+    for (const u of under) (scene.textures.exists(underSig + u.key) ? make(u, true) : queue.push([u, true]));
     for (const o of things) (o.make || scene.textures.exists(sig + '|t|' + o.key) ? make(o, false) : queue.push([o, false]));
     if (root.sort) root.sort('depth'); if (objects && objects.sort) objects.sort('depth');
     cur = { sig, handles, groundHandle, sprites, scene, queue, make, objects, root, tall, W, covering: [] };

@@ -10,6 +10,17 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.68.9] - 2026-11-14
+
+### Fixed
+
+- Curved coastal paths keep their inland shoulders where a beach tile straddles the lawn edge.
+- River crossings use the same channel shading and time-of-day water palette as the surrounding river.
+- Water effects stay off stepping-stone faces and dry bridge supports, and reflected fishing strokes follow their rod's scale.
+- Casts near stepping stones choose a nearby clear water centre instead of placing the float on an overhanging stone face.
+- Settled floats draw at their water position, so a float behind a player no longer covers their body.
+- Room entrances follow the doorway accepted when a landmark is moved in the Designer.
+
 ## [2.68.8] - 2026-11-14
 
 ### Fixed

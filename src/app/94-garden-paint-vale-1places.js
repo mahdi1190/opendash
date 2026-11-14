@@ -49,13 +49,20 @@
       if (left.length < 2) continue;
       const strip = deck ? deck.points.map(p => px(p.x, p.y)) : left.concat(right.slice().reverse()), bb = V.hull(strip.map(q => ({ x: q.x, y: q.y }))).reduce((b, q) => [Math.min(b[0], q.x), Math.min(b[1], q.y), Math.max(b[2], q.x), Math.max(b[3], q.y)], [1e9, 1e9, -1e9, -1e9]);
       // the water under the crossing: drawn under the painted river, so its banks lap over the ends
-      under({ key: 'cross-water|' + c.id, x: anchor.x, y: anchor.y, box: [bb[0] - 16, bb[1] - 16, bb[2] + 16, bb[3] + 16], draw: B => {
+      under({ key: 'cross-water|' + c.id, x: anchor.x, y: anchor.y, box: [bb[0] - 16, bb[1] - 16, bb[2] + 16, bb[3] + 16], draw: (B, tod) => {
         const shape = B.poly(strip);
         B.cx.filter = 'blur(2px)'; B.f(shape, P.bank, .8); B.cx.filter = 'none';
         B.cx.save(); B.cx.translate(0, 0); B.s(shape, P.bank, 9, .7); B.s(shape, '#6a6048', 3, .5); B.cx.restore();
-        const water = window.GardenPaintWater && GardenPaintWater.palette(C.tod, C.season), teal = c.over !== 'river', body = water ? water.water : teal ? '#86b8bc' : P.river, deep = water ? water.deep : teal ? '#5f949c' : P.riverDk;
+        const water = window.GardenPaintWater && GardenPaintWater.palette(tod, C.season), teal = c.over !== 'river', body = water ? water.water : teal ? '#86b8bc' : P.river, deep = water ? water.deep : teal ? '#5f949c' : P.riverDk;
         B.f(shape, body); B.cx.save(); B.cx.clip(new Path2D(shape));
-        V.strokePts(B, centre, deep, hw * Math.min(cw, ch) * 1.1, .35);
+        // Match the basin painter's channel through the retained crossing
+        // outline. Its single narrow stroke made every basin cap a shade seam.
+        if (water) {
+          const channel = riv.line.map(p => px(p[0], p[1])), gorge = c.over === 'gorge', hwx = hw * cw * (gorge ? .55 : .5);
+          V.strokePts(B, channel, deep, hwx * 2.2, gorge ? .45 : .28);
+          V.strokePts(B, channel, deep, hwx * 1.2, gorge ? .4 : .26);
+          V.strokePts(B, channel, C.kit.mix(deep, '#203040', .3), hwx * .5, .2);
+        } else V.strokePts(B, centre, deep, hw * Math.min(cw, ch) * 1.1, .35);
         if (water) for (const side of [left, right]) { V.strokePts(B, side, water.shallow, 30, .3); V.strokePts(B, side, water.shallow, 14, .45); V.strokePts(B, side, water.bed, 8, .22); }
         const r = C.kit.rng(C.kit.hashStr(c.id));
         for (const q of V.walk(centre, 9)) { const o = (r() - .5) * hw * ch * 1.4; B.s(`M${q.x - q.ty * o} ${q.y + q.tx * o}l${q.tx * (6 + r() * 10)} ${q.ty * (6 + r() * 10)}`, r() < .7 ? P.riverHi : '#e8f0f4', 1 + r(), .35 + r() * .3); }

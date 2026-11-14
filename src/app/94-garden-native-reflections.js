@@ -121,6 +121,9 @@ window.GardenNativeFishingReflections = (function () {
         let opacity = 1; for (let object = command.node.target; object; object = object.parentContainer) opacity *= object.alpha == null ? 1 : object.alpha;
         command.opacity = opacity;
         const matrix = command.node.target.getWorldTransformMatrix();
+        // Fishing parts use uniform scale: their strokes need the same world
+        // scale as their points, including the shortened rod skin and room stage.
+        command.worldWidth = command.width * Math.hypot(matrix.a, matrix.b);
         for (let i = 0; i < command.points.length; i++) { const p = command.points[i], point = command.world[i]; point.x = matrix.a * p.x + matrix.c * p.y + (matrix.tx == null ? matrix.e || 0 : matrix.tx); point.y = plane * 2 - (matrix.b * p.x + matrix.d * p.y + (matrix.ty == null ? matrix.f || 0 : matrix.ty)); height = Math.max(height, point.y - plane); }
       }
       for (const command of commands) {
@@ -131,7 +134,7 @@ window.GardenNativeFishingReflections = (function () {
           const triangle = [null, null, null];
           for (let i = 0; i < command.indices.length; i += 3) { triangle[0] = points[command.indices[i]]; triangle[1] = points[command.indices[i + 1]]; triangle[2] = points[command.indices[i + 2]]; filledTriangle(triangle, command.fill.color, alpha * opacity * command.fill.alpha * command.fillAlpha, plane, height, view); }
         }
-        if (command.stroke) { for (let i = 1; i < points.length; i++) clippedSegment(points[i - 1], points[i], command.stroke.color, command.width, alpha * opacity * command.stroke.alpha * command.strokeAlpha, plane, height); if (command.closed) clippedSegment(points[points.length - 1], points[0], command.stroke.color, command.width, alpha * opacity * command.stroke.alpha * command.strokeAlpha, plane, height); }
+        if (command.stroke) { for (let i = 1; i < points.length; i++) clippedSegment(points[i - 1], points[i], command.stroke.color, command.worldWidth, alpha * opacity * command.stroke.alpha * command.strokeAlpha, plane, height); if (command.closed) clippedSegment(points[points.length - 1], points[0], command.stroke.color, command.worldWidth, alpha * opacity * command.stroke.alpha * command.strokeAlpha, plane, height); }
       }
     }
     function update(rows, view, environment, time, motion) {
@@ -147,14 +150,14 @@ window.GardenNativeFishingReflections = (function () {
         keep.add(row.id); let record = records.get(row.id); if (!record || record.node !== row.bob || record.first !== row.bob.firstChild || record.count !== row.bob.children.length) { record = { node: row.bob, first: row.bob.firstChild, count: row.bob.children.length, commands: floatCommands(row.bob) }; records.set(row.id, record); }
         if (record.skin !== row.rodSkin) { record.skin = row.rodSkin; record.skinCommands = row.rodSkin ? floatCommands(row.rodSkin) : []; }
         const before = segments + triangles, beforeBands = rippleBands, beforeDistorted = distortedSegments, foot = number(row.footY), water = number(row.waterY), plane = Number.isFinite(row.floatPlaneY) ? row.floatPlaneY : water, rodValues = pathNumbers(row.rod, record, 'rodPath'), lineValues = pathNumbers(row.line, record, 'linePath'), rodMatrix = row.rod.target.getWorldTransformMatrix(), lineMatrix = row.line.target.getWorldTransformMatrix();
-        const mirror = (p, ground) => ({ x: p.x, y: ground * 2 - p.y }), rodPaint = paint(row.rod._styles && row.rod._styles.stroke, 0x806143), rodWidth = number(row.rod._styles && row.rod._styles['stroke-width']) || 2.2;
+        const mirror = (p, ground) => ({ x: p.x, y: ground * 2 - p.y }), rodPaint = paint(row.rod._styles && row.rod._styles.stroke, 0x806143), rodWidth = (number(row.rod._styles && row.rod._styles['stroke-width']) || 2.2) * Math.hypot(rodMatrix.a, rodMatrix.b);
         const rodOpacity = row.rod._styles && row.rod._styles['stroke-opacity'];
         let rodHeight = 1;
         if (rodValues.length >= 4) { const a = mirror(transform(rodMatrix, { x: rodValues[0], y: rodValues[1] }), foot), b = mirror(transform(rodMatrix, { x: rodValues[2], y: rodValues[3] }), foot); rodHeight = Math.max(1, a.y - foot, b.y - foot); if (rodPaint && (rodOpacity == null || number(rodOpacity) > 0)) clippedSegment(a, b, rodPaint.color, rodWidth, alpha * .95, foot, rodHeight); }
         if (record.skin && visible(record.skin.target)) drawCommands(record.skinCommands, foot, view, alpha);
         if (lineValues.length >= 6 && visible(row.line.target)) {
-          const a = transform(lineMatrix, { x: lineValues[0], y: lineValues[1] }), b = transform(lineMatrix, { x: lineValues[2], y: lineValues[3] }), c = transform(lineMatrix, { x: lineValues[4], y: lineValues[5] }), color = paint(row.line._styles && row.line._styles.stroke, 0xe1e9d8), count = Math.min(24, Math.max(10, Math.ceil(Math.hypot(c.x - a.x, c.y - a.y) * view.zoom / 28))); let previous = mirror(a, foot), previousPlane = foot;
-          if (color) for (let i = 1; i <= count; i++) { const t = i / count, u = 1 - t, ground = foot + (plane - foot) * t, next = mirror({ x: u * u * a.x + 2 * t * u * b.x + t * t * c.x, y: u * u * a.y + 2 * t * u * b.y + t * t * c.y }, ground); drawLineSection(previous, next, previousPlane, ground, color.color, number(row.line._styles && row.line._styles['stroke-width']) || .85, alpha * .8, rodHeight); previous = next; previousPlane = ground; }
+          const a = transform(lineMatrix, { x: lineValues[0], y: lineValues[1] }), b = transform(lineMatrix, { x: lineValues[2], y: lineValues[3] }), c = transform(lineMatrix, { x: lineValues[4], y: lineValues[5] }), color = paint(row.line._styles && row.line._styles.stroke, 0xe1e9d8), lineWidth = (number(row.line._styles && row.line._styles['stroke-width']) || .85) * Math.hypot(lineMatrix.a, lineMatrix.b), count = Math.min(24, Math.max(10, Math.ceil(Math.hypot(c.x - a.x, c.y - a.y) * view.zoom / 28))); let previous = mirror(a, foot), previousPlane = foot;
+          if (color) for (let i = 1; i <= count; i++) { const t = i / count, u = 1 - t, ground = foot + (plane - foot) * t, next = mirror({ x: u * u * a.x + 2 * t * u * b.x + t * t * c.x, y: u * u * a.y + 2 * t * u * b.y + t * t * c.y }, ground); drawLineSection(previous, next, previousPlane, ground, color.color, lineWidth, alpha * .8, rodHeight); previous = next; previousPlane = ground; }
         }
         if (visible(row.bob.target)) drawCommands(record.commands, plane, view, alpha);
         diagnostics.push({ id: row.id, drawn: segments + triangles > before, segments: segments + triangles - before, bands: rippleBands - beforeBands, distortedSegments: distortedSegments - beforeDistorted, motion: ripple.motion, footY: foot, waterY: water, floatPlaneY: plane });
