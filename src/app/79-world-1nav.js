@@ -19,7 +19,7 @@
 // both layers, the height interpolated along them) and, for decks within 1.2 m of the ground beside them, by landings
 // (a step aboard a moored boat). `bridge-deck` surfaces never cut what is beneath them.
 //
-//   worldNavBuild(world, o?) -> Nav
+//   worldNavBuild(world, o?) -> Nav;  worldNavBuildSteps(world, o?) -> the same build as a generator (sliced; its return value is the Nav)
 //   worldNavLayer(nav, layer) -> Layer { layer, cell, w, h, ox, oz (the near grid), far, N0, N, data, clear, nearZ, seam, y }
 //                                | { layer: 'rail', lines }
 //   worldNavOk(nav, layer, x, z, r, framed) -> bool          (the one legality test; everything else uses it)
@@ -183,10 +183,15 @@ function _wnavSoftCore(e) {
  * band (the lowest 12 %) of its drawn outline (appearance's worldArtHull) at its real scale, unprojected at its anchor depth, a box from just
  * in front of the anchor to its depth behind. null when it is not a pinned drawing or its art is not known.
  */
+// sprites whose class footprint is not what is drawn (wave 2 audit over the promoted scenes): a boulder drawn 1.9 m wide on a 0.7 m disc;
+// walkers stepped into its drawn sides, so a rock is solid where it is drawn too (only solids reach here). Not fences, gates or hedges: a
+// fence laid along the line of sight is drawn as a front view 3.9 m ACROSS it (the sprite ignores its facing), and its drawn band cut the
+// Fleet canal towpath (a fifth fewer people in view); hedges likewise narrowed it. They follow their facing until the art does
+const WORLD_NAV_DRAWN_CLS = { rock: 1 };
 function _wnavDrawnFoot(e) {
   if (!e || e.static === false || typeof worldObjectInfo !== 'function' || typeof sceneObj !== 'function') return null;
   const info = worldObjectInfo(e.obj);
-  if (!info || (info.src !== 'gap' && info.src !== 'auto')) return null;
+  if (!info || (info.src !== 'gap' && info.src !== 'auto' && !WORLD_NAV_DRAWN_CLS[info.cls])) return null;
   const def = sceneObj(e.obj);
   if (!def || !Array.isArray(def.size) || !(def.size[1] > 0)) return null;
   const hull = typeof worldArtHull === 'function' ? worldArtHull(e.obj, Number.isInteger(e.variant) ? e.variant : 0, 'summer', '*') : null;
@@ -206,7 +211,9 @@ function _wnavDrawnFoot(e) {
   const h = e.height || (info.size && info.size.h) || def.size[1], k = h / def.size[1], mirror = !!e.mirror;
   const xa = e.x + (mirror ? -u1 : u0) * k, xb = e.x + (mirror ? -u0 : u1) * k;
   if (!(xb - xa > 1)) return null;                                                          // no wider than its corner: the corner's own footprint
-  const za = e.z - 0.3, zb = e.z + Math.max(1.2, (info.size && info.size.d) || 1.2);
+  // (a pinned drawing stands back from its anchor; a boulder, a fence or a hedge is centred on it, as deep as it is)
+  const pinned = info.src === 'gap' || info.src === 'auto', dd = Math.max(0.3, (info.size && info.size.d) || 0.6);
+  const za = pinned ? e.z - 0.3 : e.z - dd / 2, zb = pinned ? e.z + Math.max(1.2, (info.size && info.size.d) || 1.2) : e.z + dd / 2;
   return [[xa, za], [xb, za], [xb, zb], [xa, zb]];
 }
 function _wnavAttachKind(e) { const s = String(e.attach || ''); const i = s.indexOf(':'); return i < 0 ? s : s.slice(0, i); }
@@ -356,17 +363,26 @@ function _wnavSolidDist(shapes, g, ax, az) {
  * (later wins) or a `costs` map], extra: [{ shape, costs, y }] painted on top WITHOUT changing the owner (low decks, overhead
  * decks), solids: { ground: [shapes], wet: [shapes] }, shallow(owner) -> metres, levelY(owner) -> y }.
  */
-function _wnavFamily(G, spec, cam) {
+/** The painter run whole (the builder steps through _wnavFamilySteps). */
+function _wnavFamily(G, spec, cam) { return _wnavRun(_wnavFamilySteps(G, spec, cam)); }
+/** Run a nav build generator to its end; its value. */
+function _wnavRun(it) { let r = it.next(); while (!r.done) r = it.next(); return r.value; }
+function* _wnavFamilySteps(G, spec, cam) {
   const grids = [G.near, G.far].filter(Boolean), N = G.N;
   const own = new Int16Array(N).fill(-1), xown = new Int16Array(N).fill(-1);
+  // the cells a ROAD covers, whoever owns them after it: a footpath painted across a road is a crossing, not a cut in the road (a car on the
+  // Yateley Green lane met the path to the lychgate mid-frame, its lane ended there and it faded out in the middle of the road)
+  const roadAt = spec.layers.indexOf('drive') >= 0 && spec.owners.some(s => s.kind === 'road') ? new Uint8Array(N) : null;
   const anchorX = G.far ? new Float32Array(G.far.w * G.far.h) : null, anchorZ = G.far ? new Float32Array(G.far.w * G.far.h) : null;
   const rL = 0.4;                                                           // anchors keep this far inside a path's band
   for (const g of grids) {
     const isFar = g === G.far;
     if (isFar) for (let q = 0; q < g.w * g.h; q++) { anchorX[q] = g.ox + (q % g.w + 0.5) * g.cell; anchorZ[q] = g.oz + (Math.floor(q / g.w) + 0.5) * g.cell; }
     spec.owners.forEach((s, si) => {
+      const road = roadAt && s.kind === 'road';
       const put = (q) => {
         own[g.off + q] = si;
+        if (road) roadAt[g.off + q] = 1;
         if (isFar) {
           const cx = g.ox + (q % g.w + 0.5) * g.cell, cz = g.oz + (Math.floor(q / g.w) + 0.5) * g.cell;
           if (s.path) {
@@ -384,6 +400,7 @@ function _wnavFamily(G, spec, cam) {
       _wnavFill(x.shape, g, put);
       if (isFar && x.shape.path) _wnavSuper(x.shape.path, g, put);
     });
+    yield;
   }
   // a far cell near a small solid (a bench on a towpath) anchors where it is clearest of it, inside its own surface
   if (G.far) {
@@ -404,6 +421,7 @@ function _wnavFamily(G, spec, cam) {
       }
       anchorX[q] = bx; anchorZ[q] = bz;
     }
+    yield;
   }
   const sdG = {}, sdW = {}, wat = {};
   for (const g of grids) {
@@ -417,6 +435,7 @@ function _wnavFamily(G, spec, cam) {
     for (let q = 0; q < n; q++) { const o = own[g.off + q]; f[q] = o >= 0 && spec.owners[o].kind === 'water' ? 1e20 : 0; }
     _wnavEDT(f, g.w, g.h);
     wat[key] = f;
+    yield;
   }
   const layers = {};
   for (const Ln of spec.layers) {
@@ -430,6 +449,8 @@ function _wnavFamily(G, spec, cam) {
         if (o >= 0) {
           const s = spec.owners[o], kd = s.costs || _WNAV_KIND[s.kind];
           if (kd && kd[Ln]) d[q] = kd[Ln];
+          else if (Ln === 'drive' && roadAt && roadAt[off + q] && _WNAV_WALKKINDS[s.kind]) d[q] = 10;   // a path over a road: the road goes on
+
           if (Ln === 'wade' && s.kind === 'water') {
             const sh = spec.shallow(s);
             if (Math.sqrt(wat[key][q]) * cell - cell / 2 <= sh) d[q] = 10;
@@ -463,6 +484,7 @@ function _wnavFamily(G, spec, cam) {
         const c = Math.max(0, Ln === 'wade' ? inner : Math.min(inner, edge));
         data[k] = d[q]; clear[k] = c;
       }
+      yield;
     }
     layers[Ln] = { data, clear, y, farSol: G.far ? _wnavFarSolids(G.far, (Ln === 'swim' || Ln === 'wade') ? spec.solids.wet : spec.solids.ground) : null };
   }
@@ -510,7 +532,10 @@ function _wnavOnLayerAt(L, x, z, fam) {
   }
   if (top < 0) return false;
   const S = L.shapes[top], kd = S.costs || _WNAV_KIND[S.kind];
-  return !!(kd && kd[fam]);
+  if (kd && kd[fam]) return true;
+  // a path painted across a road: the road goes on under it (as in _wnavFamily)
+  if (fam === 'drive' && _WNAV_WALKKINDS[S.kind]) for (let o = 0; o < top; o++) if (L.shapes[o] && L.shapes[o].kind === 'road' && _wnavContains(L.shapes[o], x, z)) return true;
+  return false;
 }
 /**
  * The verdict for a point in a far cell, remembered (a small direct-mapped cache per layer): the walkers' step tests the point it
@@ -558,7 +583,12 @@ function _wnavLayerRec(name, G, data, clear, y, cam, extra) {
 }
 
 /** Build the navigation map of a World (section 3.1). o: { single: true } = one 0.5 m grid (tests of small worlds only). */
-function worldNavBuild(world, o) {
+function worldNavBuild(world, o) { return _wnavRun(worldNavBuildSteps(world, o)); }
+/**
+ * The same build in steps (a generator; interface C1's sliced life build steps it): each next() runs one phase or one layer of the
+ * painter (a few to a few tens of ms on a city square in Node), its value at the end is the nav worldNavBuild returns, identical.
+ */
+function* worldNavBuildSteps(world, o) {
   o = o || {};
   const cam = _wnavCam(world);
   const surfaces = (world.surfaces || []).filter(s => s && ((Array.isArray(s.poly) && s.poly.length >= 3) || (Array.isArray(s.path) && s.path.length >= 2)));
@@ -597,6 +627,7 @@ function worldNavBuild(world, o) {
     if (dy <= step || (tot && over / tot >= 0.5)) { lowHosts.add(e); extra.push({ shape, costs: { walk: 10 }, y: Number.isFinite(e.deck.y) ? e.deck.y : null, id: 'deck:' + (e.id || e.obj), host: e.id || null }); }
     else { const lv = { id: e.id || e.obj, kind: 'deck', shapes: [shape], y: e.deck.y, dy, host: e }; levels.push(lv); raisedHosts.set(e, lv); }
   }
+  yield;
   // solids
   const ground = [], wet = [], onLevel = new Map();
   for (const e of ents) {
@@ -650,12 +681,13 @@ function worldNavBuild(world, o) {
     if (s.kind === 'weir') wet.push({ poly: s.poly, path: s.path, width: s.width });
   }
 
+  yield;
   // ---- ground grids ----
   let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
   for (const s of owners.concat(extra.map(x => x.shape))) { const b = _wnavBBox(s); x0 = Math.min(x0, b[0]); z0 = Math.min(z0, b[1]); x1 = Math.max(x1, b[2]); z1 = Math.max(z1, b[3]); }
   if (!isFinite(x0)) { x0 = -1; x1 = 1; z0 = 0; z1 = 1; }
   const G = _wnavMakeGrids([x0, z0, x1, Math.max(z1, z0 + 1)], cam, o);
-  const fam = _wnavFamily(G, {
+  const fam = yield* _wnavFamilySteps(G, {
     layers: ['walk', 'graze', 'swim', 'wade', 'drive'], owners, extra,
     solids: { ground, wet: wet.length === ground.length && wet.every((w, i) => w === ground[i]) ? ground : wet },
     shallow: s => (s.shallow == null ? 0.5 : s.shallow),
@@ -679,6 +711,7 @@ function worldNavBuild(world, o) {
   // wade y and swim y where there is no owner level: the base water level
   for (const Ln of ['swim', 'wade']) { const L = layers[Ln], b = waterLevel(null); for (let k = 0; k < L.N; k++) if (L.data[k] && !(L.y[k] === L.y[k])) L.y[k] = b; }
 
+  yield;
   // ---- raised levels ----
   const levelRecs = [{ layer: 'walk', y: null, id: 'ground' }];
   levels.forEach((lv, li) => {
@@ -738,6 +771,7 @@ function worldNavBuild(world, o) {
     _wnavCells(L, p.surface, k => { const x = _wnavCX(L, k), z = _wnavCZ(L, k); if (worldNavOk({ layers }, p.a, x, z) && worldNavOk({ layers }, p.b, x, z)) pairs.push([x, z, x, z]); });
     p.pairs = pairs;
   }
+  yield;
   // a slot one body wide costs more to walk (SCENE_LESSONS J): two cannot pass in it, so routes and flow fields go round by the open ground
   // when that is not much longer (the quay's lifebuoy left 0.5 m between itself and the near band: walkers met in it)
   for (const Ln of Object.keys(layers)) if (/^walk(@|$)/.test(Ln) && layers[Ln] && layers[Ln].data && layers[Ln].N0) _wnavSlotCost(layers[Ln]);
@@ -1341,7 +1375,7 @@ function worldSpawnCells(nav, layer, r) {
     let a0 = Infinity, a1 = -Infinity, zf = 0, zn = Infinity, x0 = Infinity, x1 = -Infinity;
     for (const p of s.poly) { const a = Math.atan2(p[0], Math.max(0.01, p[1])); a0 = Math.min(a0, a); a1 = Math.max(a1, a); zf = Math.max(zf, p[1]); zn = Math.min(zn, p[1]); x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); }
     const pad = (a1 - a0) * 0.1;
-    return { a0: a0 + pad, a1: a1 - pad, zf, zn, ht, wide: Math.max(x1 - x0, zf - zn) };
+    return { a0: a0 + pad, a1: a1 - pad, zf, zn, ht, wide: Math.max(x1 - x0, zf - zn), e };
   }).filter(c => c.ht >= 1.2 && c.a1 > c.a0 && c.wide >= 1.5 && c.zn > 0.5);
   let zMax = 0;
   for (let k = 0; k < L.N; k++) if (ok[k]) zMax = Math.max(zMax, _wnavGZ(L, k));
@@ -1360,7 +1394,7 @@ function worldSpawnCells(nav, layer, r) {
     else if (gz >= zFar && _wnavEndsAway(L, ok, x, gz, cell)) { edge = 'N'; hidden = cam.f * hm / z < 12; }
     else {
       const a = Math.atan2(x, z);
-      for (const c of covers) if (a > c.a0 && a < c.a1 && z > c.zf + r && z < c.zf + 15 && (c.ht - eye) / c.zn >= (hm - eye) / z) { edge = 'cover'; break; }
+      for (const c of covers) if (a > c.a0 && a < c.a1 && z > c.zf + r && z < c.zf + 15 && (c.ht - eye) / c.zn >= (hm - eye) / z && _wnavCoverDrawn(cam, c, x, z, hm)) { edge = 'cover'; break; }
     }
     if (edge) out.push({ x, z, i: k, edge, hidden });
   }
@@ -1379,6 +1413,37 @@ function worldSpawnCells(nav, layer, r) {
   }
   nav.spawnCache.set(key, out);
   return out;
+}
+/**
+ * Does the cover's DRAWING hide a whole mover standing at (x, z)? The four corners of the mover's screen box (shoulders 0.3 m either side,
+ * feet to head hm) lie inside the outline the cover is drawn with (worldArtHull at its drawn scale and anchor). The footprint's angles
+ * and its height were only an estimate: a cover drawn lower or narrower than its footprint (a planter's soil, a see-through rail) let a
+ * figure step out of a solid face in plain view (wave 1's open issue). Without art to measure the estimate stands; with no drawing, no cover.
+ */
+function _wnavCoverDrawn(cam, c, x, z, hm) {
+  // the cover's screen outline, once per cover (c.drawn: the polygon, true when there is nothing to measure, false when it is not drawn)
+  if (c.drawn === undefined) c.drawn = _wnavCoverOutline(cam, c.e);
+  if (c.drawn === true || c.drawn === false) return c.drawn;
+  let Q = null;
+  try { Q = sceneProject(cam.raw, x, Math.max(0.3, z), null); } catch (err) { return true; }
+  if (!Q || !Number.isFinite(Q.X)) return true;
+  const w = cam.f * 0.3 / z, H = cam.f * hm / z, poly = c.drawn;
+  return _wnavInPoly(poly, Q.X - w, Q.Y) && _wnavInPoly(poly, Q.X + w, Q.Y) && _wnavInPoly(poly, Q.X - w, Q.Y - H) && _wnavInPoly(poly, Q.X + w, Q.Y - H);
+}
+/** A cover entity's drawn outline on screen ([[X, Y]...], from worldArtHull at its drawn scale), true (no art to measure: trust the estimate) or false (not drawn). */
+function _wnavCoverOutline(cam, e) {
+  if (!e || !cam || !cam.raw || typeof sceneProject !== 'function' || typeof sceneObj !== 'function' || typeof worldArtHull !== 'function') return true;
+  let def = null, hull = null;
+  try { def = sceneObj(e.obj); hull = worldArtHull(e.obj, Number.isInteger(e.variant) ? e.variant : 0, 'summer', '*'); } catch (err) { return true; }
+  if (!def || !Array.isArray(def.size) || !(def.size[1] > 0)) return true;
+  if (!hull || !hull.pts || hull.pts.length < 6) return false;
+  const h = e.height || (e.size && e.size.h) || def.size[1], ez = Math.max(0.3, e.z), m = e.mirror ? -1 : 1;
+  let P = null;
+  try { P = sceneProject(cam.raw, e.x, ez, Number.isFinite(e.y) ? e.y : null); } catch (err) { return true; }
+  if (!P || !Number.isFinite(P.X)) return true;
+  const sc = (cam.f / ez) * h / def.size[1], poly = [];
+  for (let i = 0; i + 1 < hull.pts.length; i += 2) poly.push([P.X + m * hull.pts[i] * sc, P.Y + hull.pts[i + 1] * sc]);
+  return poly;
 }
 /** Does the layer end just beyond this cell (away from the camera)? */
 function _wnavEndsAway(L, ok, x, gz, cell) { const k = _wnavIdx(L, x, gz + cell); return k < 0 || !ok[k]; }

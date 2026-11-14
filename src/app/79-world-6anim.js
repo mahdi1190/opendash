@@ -698,7 +698,11 @@ function _wanSecondary(world, agents, dt, S) {
         if (d > 1.2) continue;
         const ra = r.anim || (r.anim = _wanStatic(r)), amp = 1 - d / 1.2;
         const dir = (r.x - a.x) * r.z - (r.z - a.z) * r.x >= 0 ? 1 : -1;   // away from the mover, sideways on screen
-        if (!ra.sec.part || ra.sec.part.amp < amp) ra.sec.part = { dir, amp: _wanR(amp, 3), t: S.t };
+        // (the bend eases toward its target, _wanStatics: it never springs over in one frame; the side it leans to changes only while
+        // it is nearly upright, so a second mover from the other side never flips it)
+        const P = ra.sec.part;
+        if (!P) ra.sec.part = { dir, amp: 0, target: _wanR(amp, 3), t: S.t };
+        else { if (!(P.target >= amp)) P.target = _wanR(amp, 3); if (P.amp < 0.1) P.dir = dir; P.t = S.t; }
         S.active = S.active || new Set(); S.active.add(r);
       }
     }
@@ -711,7 +715,13 @@ function _wanStatics(world, dt, S) {
     if (r.anim) r.anim.t = S.t;
     const sec = r.anim && r.anim.sec;
     if (!sec) { S.active.delete(r); continue; }
-    if (sec.part) { sec.part.amp = _wanR(sec.part.amp * Math.exp(-dt / 0.9), 4); if (sec.part.amp < 0.02) delete sec.part; }
+    if (sec.part) {
+      // the bend follows its target over 0.15 s (in) and the target dies away over 0.9 s (the reeds close behind); upright again, the wind's
+      // sway comes back over 1.2 s from nothing (worldAnimHooks) instead of from the bend in one frame
+      const P = sec.part; P.target = _wanR((P.target != null ? P.target : P.amp) * Math.exp(-dt / 0.9), 4);
+      P.amp = _wanR(P.amp + (P.target - P.amp) * (1 - Math.exp(-dt / 0.15)), 4);
+      if (P.amp < 0.02 && P.target < 0.02) { delete sec.part; sec.swayIn = S.t; }
+    }
     if (sec.rock) { const live = sec.rock.waves.filter(w => S.t - w.t0 < 12); sec.rock.waves = live; if (!live.length) delete sec.rock; }
     if (!sec.part && !sec.rock) S.active.delete(r);
   }
@@ -940,9 +950,11 @@ function worldAnimHooks(ent, t, o) {
   if (isStatic || an.state === 'moored') {
     for (const h of base) {
       if (h.kind === 'sway') {
-        const part = an.sec && an.sec.part;
-        if (part && part.amp > 0.05) out.push(Object.assign({}, h, { kind: 'turn', deg: (h.deg || 2) * 6 * part.dir * part.amp, period: 1e9, phase: 0.5, hold: 0 }));
-        else out.push(Object.assign({}, h));
+        // parted by a mover: a bend that follows the parting's amplitude (eased, _wanStatics), from 0; after it, the wind's sway fades back in
+        // over 1.2 s (until wave 2 a bend of 0.6 degrees switched to the full sway, up to 2 degrees the other way, in one frame)
+        const part = an.sec && an.sec.part, sin = an.sec && _wanNum(an.sec.swayIn) ? _wanClamp((T - an.sec.swayIn) / 1.2, 0, 1) : 1;
+        if (part) out.push(Object.assign({}, h, { kind: 'turn', deg: (h.deg || 2) * 6 * part.dir * part.amp, period: 1e9, phase: 0.5, hold: 0 }));
+        else out.push(sin < 1 ? Object.assign({}, h, { k: (h.k == null ? 1 : h.k) * sin * sin * (3 - 2 * sin) }) : Object.assign({}, h));
       } else if (h.kind === 'flicker' && /smoke|steam|flame|fire|glow|lit/.test(String(h.part || (h.parts || []).join(' ')))) out.push(Object.assign({}, h, { phase: _wanFrac((h.phase || 0) + an.phase) }));
       else if (h.kind === 'spin' && /wind|mill|turbine/.test(String(obj))) out.push(Object.assign({}, h));
       else if (h.kind === 'bob' && an.state === 'moored') {

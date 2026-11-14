@@ -6,7 +6,8 @@ How people (and dogs) in world-engine scenes move, stand and avoid things, and w
 `79-world-0kits.js` (standing shares), `79-world-4extrude.js` and `79-world-1place.js` (they read gaps through core).
 
 The user's complaints this answers: people walking through walls, people walking when they should be standing, people
-striding on the spot or sliding.
+striding on the spot or sliding. Wave 2 adds: narrow ways (section 7), long views (section 8), the sliced life build
+(section 9), traffic that never vanishes mid-frame (section 10), and seated figures that never move (section 3).
 
 ## 1. Locomotion: one state machine per body (interface I4)
 
@@ -103,8 +104,12 @@ cell CONNECTED to its last legal point (`worldNavRescue(nav, layer, x, z, r, fro
 **Seat anchors.** Each seat of a bench (`_wlfSeats`) has S (the seat, where the sitter is drawn), A (0.3 m in front of it),
 N (the first nav point in front of A whose step in touches no solid but this bench), and the facing. A seat with no clear
 front is never used. Sitting is a chain of short anchored steps (`_wlfSeatStep`): `in` (N to A, walking), `turn` (to the
-seat's facing), `down` (A to S, 0.3 m, loco `sit-down`), seated, `up` (S to A, the seated pose for the first 60 %), `out`
-(A to N, walking). Only the sitter's own bench is ever crossed. A seat a static sitter occupies is taken for good.
+seat's facing), `back` (A to S, 0.3 m, a short step back STANDING, facing out, legs by odometry), `down` (at S, in place, loco
+`sit-down`; the seated pose from the tick after the step back ended), seated, `up` (at S, in place: the seated pose for its
+first 60 %, then standing; the body leaves the seated state here), `fwd` (S to A, standing, facing out), `out` (A to N,
+walking). The body moves only while it is drawn standing: until wave 2 the sit and the stand covered the 0.3 m themselves and
+a figure drawn seated slid (about 80 frames in 2 min on Stevenson Square, and wave 1's `out` step was drawn seated too, the
+state still 'sit'). Only the sitter's own bench is ever crossed. A seat a static sitter occupies is taken for good.
 
 **No ghost passes in the near and mid bands.** Strangers may pass through each other only when both are drawn under
 `WORLD_LIFE_GHOST.px` (30 px) tall; nearer, they steer, yield and queue.
@@ -113,7 +118,14 @@ seat's facing), `down` (A to S, 0.3 m, loco `sit-down`), seated, `up` (S to A, t
 
 - Doors spawn only where a building DECLARES one (kb `doors`); the guessed middle of a front face is gone.
 - Every arrival on foot fades in over 0.6 s, hidden cell or not (a hidden cell is an estimate).
-- Cover is still the nav's angular estimate (not verified against the drawn silhouette: see open issues).
+- Cover (1nav `worldSpawnCells`, edge 'cover'): the angular estimate from the cover's footprint and height, then the DRAWING:
+  the four corners of the mover's screen box (shoulders 0.3 m either side, feet to head) must lie inside the outline the cover is
+  drawn with (`worldArtHull` at its drawn scale and anchor; `_wnavCoverDrawn`, the outline once per cover). Over the promoted
+  scenes this kept 10,129 of 22,063 cover cells; the others had a figure step out of a solid face in view (a planter drawn
+  lower than its footprint, a cover drawn narrower).
+- Fades are read at the PRESENTED moment (`worldAgents`: `tp = life.t - (1 - alpha) x step`, the moment the interpolated
+  position shows), so they are continuous between steps; a fade out runs over 0.6 s less one step and ends at 0 on the last
+  step the leaver is drawn in. The ghost pass's value is interpolated the same way (`pGhost`).
 
 ## 5. Measuring (one-off diagnostics, never a gate: CLAUDE.md)
 
@@ -134,3 +146,79 @@ seat's facing), `down` (A to S, 0.3 m, loco `sit-down`), seated, `up` (S to A, t
   watch, queue, solo).
 - `world.dwellers` holds the scenery people life brought alive; a renderer with no life (statics only) can draw them as
   statics from there.
+- Records carry `brollyLag` (0..12 s, the walker's own, from its id): put its umbrella up (or down) that long after the rain
+  starts (or stops), never every walker's in one frame. The wardrobe choice is the renderer's (`_wfrRec`'s `~wet` / `~dry`
+  form in 79-world-5frame.js, from the draw's light): see the merge notes of wave 2.
+- Reeds parted by a mover (6anim `_wanCtx` / `_wanStatics`): the bend eases toward its target (0.15 s) and dies away (0.9 s),
+  its side changes only while it is nearly upright, and the wind's sway fades back in over 1.2 s after it (`sec.swayIn`);
+  until wave 2 a bend of 0.6 degrees switched to the full sway in one frame.
+
+## 7. Narrow ways (WORLD_LIFE_NARROW)
+
+A narrow way is walk cells about 3.2 m across or less: the widest clearance within 2.5 m of a cell (near grid; 2 m in the far
+grid) is at most 1.6 m (`_wlfNarrowMask`, cached per layer; `worldLifeNarrowAt(life, layer, x, z)` for the tools: 0 or the
+way's half width). A boardwalk with rails, a towpath between a wall and the water, a lane between buildings; not a path across
+open grass (the grass is walkable). On one, for people on foot (not followers in a group, not dogs):
+
+- **No stops**: a stroll's pause, a wander's look and a dweller's place never fall on a narrow way (they wait for the platform
+  or the end of the way).
+- **Admission**: an arrival onto a narrow way needs nobody within 5 m of its spawn point and fewer people on the way than
+  its length allows (`_wlfNarrowSpawnOk`: length / spacing, 5 m a person on a 2.4 m boardwalk to 3.5 m on a 3.2 m lane); a
+  walker about to step on waits at its mouth (6 s at most) while the way is full or the one ahead has not got clear.
+- **Following**: a follower keeps the leader's pace a following distance back (`gap` 1.3 m between bodies: speed =
+  leader's + 0.8 x the gap error) instead of closing to a shoulder's width; it overtakes only where the way is two bodies wide
+  (half width 1 m or more), nobody is coming within 8 m, and the one ahead is much slower (under 0.65 of its pace).
+- **Meeting**: the keep-left and the sidestep pass two single file; no overtaking shuffle where there is no passing.
+- Far off (figures under 30 px) only the stops apply: the ghost pass lets people by, and holding them only formed platoons.
+
+Measured (one-off, 120 s, people in view at the host's default moment; close = strangers on narrow ways nearer than 1.2 m,
+clump = 3 or more within 2.5 m): Fleet Pond 2 close frames 337 -> 19, clump frames 207 -> 0; Wyndham's Pool 404 -> 0,
+257 -> 0; York Shambles 102 -> 0, 430 -> 11 (people in view 14.3 -> 9.1: the lane is narrow all along); Fleet canal 2 within
+45 m 22 -> 26, 18 -> 7.
+
+## 8. Long views: the dwellers turn over (_wlfDwellKeep)
+
+The gallery stage and the Home card show a scene for minutes. Every 3 to 6 s (`WORLD_LIFE_DWELL.keep`) the keeper:
+
+- **Queues** (`life.dwQueues`: kiosks, food vans, stalls in view with room; seeded before the chat rings now): the one at the
+  front is served after 12 to 35 s and goes on its way, the others step up a place (each walks the 0.8 m: a dweller on its way
+  walks at once, never held by a still state's timer); a passer-by may join at the back.
+- **Rings** (goal key `ring`): a member chats only with another there; alone (the other on the way, or gone) it stands and
+  looks about, and leaves 6 s after its partner went (25 s if none ever came). Rings last 120 to 300 s.
+- **Dwellers leave**: a seeded stander (90 to 240 s, a second spot for one with legs), a watcher (120 to 360 s) and a sitter
+  (150 to 420 s) end with a leave; authored scenery people stay for good. A seeded dweller gives back the room it took
+  (`life.max`).
+- **New dwellers**: while the people in view stand less than the kit's share, one at a time (at most 8 in place and 4 on
+  their way): a passer-by in view and near enough to read (a single walker, or a couple or a family or a dog walker as one)
+  stops at a free place 4 to 20 m off (a stander), two stop to chat, one sits on a free bench, one joins a queue; with nobody
+  passing near the places to stand (a square seen deep), one of the scene's own streams sends somebody (`_wlfDwellArrival`).
+  A passer-by keeps its own look and its way: the dwell goes in front of its goals, and it carries on after.
+- `life.dwellPlan.keep` counts what the keeper did (looks, full, formed by kind, arrivals, failures) for the tools.
+
+Measured over 7 min on Manchester centre 1: mean standing share of people in view 0.177 (wave 1, dwellers for good) -> 0.172,
+37 passers-by stopped and 32 dwellers left. A kiosk queue in a trial square served 7 in 4 min, each stepping up.
+
+## 9. The sliced life build (interface C1)
+
+`worldLifeBuildJob(world, opts) -> { step(budgetMs) -> done, nav, life, phase, ms, steps, error }` runs exactly what the
+one-shot build does (the systems runner's life init: the nav, the populations, the 90 s warm-up, the dwellers) in slices:
+the nav through `worldNavBuildSteps(world)` (a generator over the builder's phases and the painter's layers; `worldNavBuild`
+runs it whole), then `_wlfInitBegin`, `_wlfInitPops` (one population a step), `_wlfInitWarm` (0.25 s steps up to the
+deadline) and `_wlfInitEnd` (the dwellers). A new step starts only in the first half of a slice. At the end it leaves
+`world.nav`, `world._wlfLife`, `world.sim` and `world.agents` as the runner's init would, so `worldRun` / `worldHostDriver`
+adopt them. The time context is the one the runner's time system starts from (`worldTimeCtx` at opts.ms / world.ms / the
+default moment). Checked once: Fleet Pond 2, Manchester centre 1 and Stevenson Square give the same agents and positions at
+the build and after 20 s of ticks. Slices at 6 ms: the longest is a whole population's placement or the dwellers (20 to 76 ms
+on Manchester), against one 0.8 to 1.3 s block before. (The runner's event handlers are not on the world's bus during a
+sliced warm-up; the life is the same.) `worldLifeInit` is the same phases back to back.
+
+## 10. Traffic never vanishes mid-frame
+
+- A road under a footpath goes on: a walk surface painted across a road keeps the road's drive layer (1nav `_wnavFamily`'s
+  `roadAt` and the far grid's exact test), and it is a crossing (2traffic: cars give way to whoever is on the carriageway
+  there). The Yateley Green and Cotswold green lanes ended at the path to the lychgate and their cars faded out mid-frame at
+  23 px (FACTORY's 'vanished mid-frame').
+- A solid blocks a lane only within 1.0 m of its line (a car is 1.8 m wide): a kerbside tree at 1.16 m took the Cotswold
+  lane's whole direction and moorland walls a Ringinglow road's.
+- Still faded in view (spec, not engine): Manchester centre 4's Deansgate and Stevenson Square's Lever Street end in the
+  frame; Sheffield centre 3's 14 m cross street is all in view; Ringinglow's road starts at the lens (see open issues).

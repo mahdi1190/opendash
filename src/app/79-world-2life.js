@@ -345,6 +345,15 @@ function _wlfMakeBus(life) {
 
 /* ---------- init ---------- */
 function worldLifeInit(world, nav, t0, opts) {
+  // the one-shot build: the same phases the sliced build (worldLifeBuildJob) runs, back to back
+  var life = _wlfInitBegin(world, nav, t0, opts);
+  _wlfInitPops(life, Infinity);
+  while (!_wlfInitWarm(life, Infinity)) { /* the warm-up, whole */ }
+  _wlfInitEnd(life);
+  return life;
+}
+/** The life before its populations (the traffic, the bus); life._init holds the build's progress (the populations, then the warm-up). */
+function _wlfInitBegin(world, nav, t0, opts) {
   opts = opts || {};
   var seed = ((world && world.seed) | 0);
   var life = {
@@ -365,26 +374,53 @@ function worldLifeInit(world, nav, t0, opts) {
   if (typeof worldTraffic === 'function' && nav) { try { life.traffic = worldTraffic(world, nav); } catch (e) { life.traffic = null; _wlfProblem(life, { pop: -1, rule: 'traffic', msg: String(e && e.message || e) }); } }
   _wlfBusHandlers(life);
   if (world && typeof world === 'object' && !world._wlfLife) { world.sim = life; world.agents = life.agents; }
-  var pops = (world && world.life) || [];
-  for (var p = 0; p < pops.length; p++) {
+  var warm = opts.warm !== false;
+  life._init = { p: 0, warm: warm, w: warm ? (opts.warmSecs != null ? opts.warmSecs : WORLD_LIFE_WARM.secs) : 0, s: 0, heat: null, vc: null };
+  return life;
+}
+/** Place the populations (one at a time, until done: true, or past `deadline`: false), then make ready for the warm-up. */
+function _wlfInitPops(life, deadline) {
+  var I = life._init; if (!I || I.p < 0) return true;
+  var pops = (life.world && life.world.life) || [], n = 0;
+  for (; I.p < pops.length; I.p++) {
+    if (n++ && deadline !== Infinity && _wlfNowMs() >= deadline) return false;
+    var p = I.p;
     try { _wlfPopInit(life, pops[p], p); } catch (e) { _wlfProblem(life, { pop: p, rule: 'error', msg: String(e && e.message || e) }); }
   }
-  if (opts.warm !== false) {
-    var w = opts.warmSecs != null ? opts.warmSecs : WORLD_LIFE_WARM.secs;
+  I.p = -1;
+  if (I.warm) {
     // (no ghost pass in the warm-up: nobody is drawn, its 0.25 s steps are too coarse to ease a fade, and the shown loop then starts
     // from the same moment as before the ghost pass existed)
     life.warming = true;
     // (the warm-up also learns where the walkers go, life._heat: dwellers never stand in a walking line; and how many people are in view
     // over its last 20 s: the dwellers bring the standing share to the scene's)
-    var heat = life._heat = new Map(), vc = { walking: 0, still: 0, n: 0 };
-    for (var s = 0; s < w; s += WORLD_LIFE_WARM.step) {
-      worldLifeStep(life, WORLD_LIFE_WARM.step);
-      for (var hi = 0; hi < life.agents.length; hi++) { var ha = life.agents[hi]; if (!ha.dead && ha.kind === 'walker' && ha.layer === 'walk' && worldLifeMoving(ha)) { var hk = Math.floor(ha.x / 2) * 8192 + Math.floor(ha.z / 2); heat.set(hk, (heat.get(hk) || 0) + 1); } }
-      if (s >= w - 20) { var vcn = _wlfViewCount(life); vc.walking += vcn.walking; vc.still += vcn.still; vc.n++; }
-    }
-    var hsum = 0, hcnt = 0; heat.forEach(function (v) { hsum += v; hcnt++; });
+    I.heat = life._heat = new Map(); I.vc = { walking: 0, still: 0, n: 0 };
+  }
+  return true;
+}
+/** Run the warm-up's 0.25 s steps until it is done (true) or the clock (performance.now / Date.now) passes `deadline` (false). */
+function _wlfInitWarm(life, deadline) {
+  var I = life._init; if (!I || !I.warm) return true;
+  if (I.p >= 0) _wlfInitPops(life, Infinity);
+  var w = I.w, heat = I.heat, vc = I.vc, n = 0;
+  for (; I.s < w; I.s += WORLD_LIFE_WARM.step) {
+    if (n++ && deadline !== Infinity && _wlfNowMs() >= deadline) return false;
+    var s = I.s;
+    worldLifeStep(life, WORLD_LIFE_WARM.step);
+    for (var hi = 0; hi < life.agents.length; hi++) { var ha = life.agents[hi]; if (!ha.dead && ha.kind === 'walker' && ha.layer === 'walk' && worldLifeMoving(ha)) { var hk = Math.floor(ha.x / 2) * 8192 + Math.floor(ha.z / 2); heat.set(hk, (heat.get(hk) || 0) + 1); } }
+    if (s >= w - 20) { var vcn = _wlfViewCount(life); vc.walking += vcn.walking; vc.still += vcn.still; vc.n++; }
+  }
+  return true;
+}
+/** After the warm-up: the dwellers, and the shown loop's clean start. */
+function _wlfInitEnd(life) {
+  var I = life._init || { warm: false };
+  life._init = null;
+  if (I.warm) {
+    var hsum = 0, hcnt = 0; I.heat.forEach(function (v) { hsum += v; hcnt++; });
     life._heatK = hcnt ? 1 / Math.max(1, hsum / hcnt) : 0;
     life.warming = false;
+    var vc = I.vc;
     try { _wlfDwellInit(life, vc.n ? { walking: vc.walking / vc.n, still: vc.still / vc.n } : null); } catch (e) { _wlfProblem(life, { pop: -2, rule: 'error', msg: 'dwellers: ' + String(e && e.message || e) }); }
   } else {
     try { _wlfDwellInit(life, null); } catch (e) { _wlfProblem(life, { pop: -2, rule: 'error', msg: 'dwellers: ' + String(e && e.message || e) }); }
@@ -393,6 +429,76 @@ function worldLifeInit(world, nav, t0, opts) {
   life.ghostLinks = 0; life.ghostEnds = 0; life.ghostLog.length = 0;   // the tools count the ghost passes of the shown loop, not of the warm-up
   for (var k = 0; k < life.agents.length; k++) { var a = life.agents[k]; a.px = a.x; a.pz = a.z; }
   return life;
+}
+function _wlfNowMs() { return typeof performance !== 'undefined' && performance && typeof performance.now === 'function' ? performance.now() : Date.now(); }   // slicing only, never scene time
+/**
+ * The life build in slices (interface C1, for the world bake and idle time: no long task). worldLifeBuildJob(world, opts) -> job:
+ *   job.step(budgetMs) -> true when done: runs about budgetMs of the build each call (the nav map, the populations, the 90 s
+ *   warm-up in its 0.25 s steps, the dwellers), then leaves on the world exactly what the systems runner's own life init would
+ *   (world.nav, world._wlfLife, world.sim, world.agents), so worldRun / worldHostDriver adopt it and build nothing twice.
+ * The end state is the one-shot build's for the same world and seed: it runs the same code in the same order, only with pauses.
+ * opts: { nav (a built nav to reuse), ctx (the time context; default: what the runner's time system starts from, worldTimeCtx at
+ * opts.ms / world.ms / the default moment), ms, t0 }. The job also carries { nav, life, done, error, phase, steps, ms: { nav, init,
+ * pops, warm, end } }. A slice that throws ends the job (done, error set, nothing half-built left on the world): the one-shot build
+ * (the runner's own init) then takes over.
+ * (The runner's handlers are not on the world's bus yet during a sliced warm-up: a wake a boat made in it is not replayed; the
+ * life is the same.)
+ */
+function worldLifeBuildJob(world, opts) {
+  opts = opts || {};
+  var job = { world: world, nav: opts.nav || (world && world.nav) || null, life: null, done: false, error: null, phase: 'nav', ms: { nav: 0, init: 0, pops: 0, warm: 0, end: 0 }, steps: 0 };
+  var navGen = null;
+  var finish = function () {
+    job.done = true; job.phase = 'done';
+    if (world && job.life && !world._wlfLife) { world._wlfLife = job.life; world.sim = job.life; world.agents = job.life.agents; }
+    return true;
+  };
+  job.step = function (budgetMs) {
+    if (job.done) return true;
+    var a = _wlfNowMs(), deadline = a + (budgetMs > 0 ? budgetMs : 8);
+    job.steps++;
+    try {
+      if (world && world._wlfLife && !job.life) { job.life = world._wlfLife; job.nav = world.nav || job.nav; return finish(); }   // built meanwhile: adopt it
+      do {
+        var p0 = _wlfNowMs(), ph = job.phase;
+        if (ph === 'nav') {
+          if (!job.nav) {
+            if (!navGen && typeof worldNavBuildSteps === 'function') navGen = worldNavBuildSteps(world);
+            if (navGen) { var r = navGen.next(); while (!r.done && _wlfNowMs() < deadline) r = navGen.next(); if (r.done) job.nav = r.value; }
+            else job.nav = worldNavBuild(world);
+          }
+          if (job.nav) { if (world && !world.nav) world.nav = job.nav; job.phase = 'init'; }
+        } else if (ph === 'init') {
+          var ctx = opts.ctx || (world && world.time) || null;
+          if (!ctx && typeof worldTimeCtx === 'function') {
+            // what the runner's time system starts from (worldRun: o.ms, else world.ms, else the default moment)
+            var ms = [opts.ms, world && world.ms].find(function (v) { return Number.isFinite(v); });
+            try { ctx = worldTimeCtx(world, Number.isFinite(ms) ? ms : (typeof WORLD_TIME_DEFAULT_MS === 'number' ? WORLD_TIME_DEFAULT_MS : Date.now()), { ms: ms }); } catch (e) { ctx = null; }
+          }
+          if (!ctx && world) ctx = world.ctx || null;
+          job.life = _wlfInitBegin(world, job.nav, Number.isFinite(opts.t0) ? opts.t0 : (world && Number.isFinite(world.t0) ? world.t0 : 0), { ctx: ctx });
+          job.phase = 'pops';
+        } else if (ph === 'pops') {
+          if (_wlfInitPops(job.life, deadline)) job.phase = 'warm';
+        } else if (ph === 'warm') {
+          if (_wlfInitWarm(job.life, deadline)) job.phase = 'end';
+        } else if (ph === 'end') {
+          _wlfInitEnd(job.life);
+          job.ms.end += _wlfNowMs() - p0;
+          return finish();
+        }
+        job.ms[ph] += _wlfNowMs() - p0;
+      } while (_wlfNowMs() < deadline - (deadline - a) / 2);   // a new step only in the first half of the slice (some steps are whole: a population, the dwellers)
+    } catch (e) {
+      job.error = String(e && e.message || e);
+      // a failed slice: the one-shot build takes over (the runner's own init); nothing half-built is left on the world
+      if (world && job.life && world.sim === job.life && !world._wlfLife) { world.sim = null; world.agents = null; }
+      job.life = null; job.done = true; job.phase = 'failed';
+      return true;
+    }
+    return false;
+  };
+  return job;
 }
 /** A new time context (weather, hour): rate populations re-read their density (A1); residents and traffic stay as they are. */
 function worldLifeRetime(life, ctx) {
@@ -770,6 +876,7 @@ function _wlfArrive(life, pop, entry, o) {
     if (!_wlfCrowded(life, b.layer, c.x, c.z, Math.max(b.r * 3 + 0.6, b.kind === 'walker' || b.kind === 'runner' ? 3 : 0))) sp = c;
   }
   if (!sp) { life.heldArrival = true; return null; }
+  if (b.kind === 'walker' && !_wlfNarrowSpawnOk(life, b.layer, sp)) { life.heldArrival = true; return null; }
   var id = 'p' + pop.idx + '-' + (pop.ord++);
   var a = _wlfNewAgent(life, pop, entry, sp.x, sp.z, id, { edge: sp.edge, state: _wlfStateAlias(b, spec.state) });
   if (b.kind === 'boat') a.r = _wlfBoatR(entry);
@@ -918,8 +1025,12 @@ function _wlfGoalsNorm(goals) {
   return out;
 }
 function _wlfGoal(a) { return a.goals ? a.goals[a.gi] || null : null; }
-function _wlfNextGoal(life, a) { a.gi++; a.gt = 0; a.route = null; a.fails = 0; a.lookAt = null; a.gdur = null; }
-function _wlfLeave(life, a, edge) { a.goals = [{ leave: edge || 'any' }]; a.gi = 0; a.gt = 0; a.route = null; a.leaving = true; a.fails = 0; a.lookAt = null; a.gdur = null; }
+function _wlfNextGoal(life, a) {
+  a.gi++; a.gt = 0; a.route = null; a.fails = 0; a.lookAt = null; a.gdur = null;
+  // (a dweller's kind lasts as long as it dwells: on to anything but a dwell or a seat, it is a passer-by again)
+  if (a.dwellKind && a.dwellKind !== 'authored') { var ng = a.goals ? a.goals[a.gi] : null; if (!(ng && (ng.dwell != null || ng.sit != null))) a.dwellKind = null; }
+}
+function _wlfLeave(life, a, edge) { a.goals = [{ leave: edge || 'any' }]; a.gi = 0; a.gt = 0; a.route = null; a.leaving = true; a.fails = 0; a.lookAt = null; a.gdur = null; if (a.dwellKind && a.dwellKind !== 'authored') a.dwellKind = null; }
 /** A failed route: stand and back off 2-8 s (never a search every tick); after three, give the goal up. */
 function _wlfFail(life, a) {
   a.fails++; a.route = null;
@@ -1191,6 +1302,8 @@ function _wlfBrain(life, a, dt) {
     // nobody stops IN a one-body way (a boardwalk, a gap between a bollard and a bench): whoever is behind or coming the other way
     // would stand there until the stop ended (a birdwatcher's look is up to 30 s); the stop waits for the next wider place
     if (b.states[nx] && !b.states[nx].speed && a.kind === 'walker' && _wlfInSlot(life, a)) nx = b.states.walk ? 'walk' : nx;
+    // ... nor on a narrow way (a boardwalk, a towpath): it waits for the platform or the end of the way (WORLD_LIFE_NARROW)
+    if (b.states[nx] && !b.states[nx].speed && _wlfNarrowPerson(a) && !a.leader && _wlfNarrowAt(life, a.layer, a.x, a.z) > 0) nx = b.states.walk ? 'walk' : nx;
     if (a.kind === 'wader' && nx === 'freeze') a.lookAt = _wlfWaterAhead(life, a);
     if (a.kind === 'wader' && nx === 'strike') { var wp = a.lookAt || _wlfWaterAhead(life, a); if (wp) life.bus.emit('strike', { id: a.id, x: wp[0], z: wp[1], t: life.t }); }
     _wlfEnter(life, a, nx);
@@ -1243,7 +1356,7 @@ function _wlfBrain(life, a, dt) {
       if (rr === 'fail') { _wlfFail(life, a); return; }
     }
     var res2 = _wlfPathTo(life, a, a.route.px, a.route.pz);
-    if (res2 === 'here') { a.route = null; if (g.far) { _wlfEnter(life, a, b.states.look ? 'look' : _wlfStillState(a)); a.lookAt = [a.x + Math.sin(a.heading) * 20, a.z + Math.cos(a.heading) * 20]; } return; }
+    if (res2 === 'here') { a.route = null; if (g.far && !(_wlfNarrowPerson(a) && _wlfNarrowAt(life, a.layer, a.x, a.z) > 0)) { _wlfEnter(life, a, b.states.look ? 'look' : _wlfStillState(a)); a.lookAt = [a.x + Math.sin(a.heading) * 20, a.z + Math.cos(a.heading) * 20]; } return; }
     if (res2 === 'fail') { _wlfFail(life, a); return; }
     return;
   }
@@ -1274,6 +1387,7 @@ function _wlfDespawnAt(life, a) {
 function _wlfDespawn(life, a) {
   if (a.dead) return;
   a.dead = true; _wlfReleaseSeat(life, a);
+  if (a.dwMax) { a.dwMax = false; life.max = Math.max(1, life.max - 1); }
   if (a.layer !== 'air') _wlfAddSpawnPoint(life, a.layer, a.x, a.z);
   _wlfEvent(life, a.boarded ? 'board' : 'leave', a);
   // the group goes with its leader when it is at the edge too
@@ -1393,9 +1507,13 @@ function _wlfSitGoal(life, a, g, dt) {
  * The anchored transitions of a seat (docs/dev/WORLD_MOVEMENT.md 3), one after another, each a short eased step the brain waits on:
  *   in    N -> A: a real step or two toward the bench (walking: the legs follow the ground covered), facing it
  *   turn  at A: about to the seat's facing (still)
- *   down  A -> S (0.3 m): the sit, the pose follows the transition (loco sit-down)
- *   up    S -> A (0.3 m): the stand (loco stand-up)
+ *   back  A -> S (0.3 m): a short step back to the seat, STANDING, facing out (the legs follow the ground covered)
+ *   down  at S: the sit, in place (loco sit-down); the seated pose never moves
+ *   up    at S: the stand, in place (loco stand-up): the seated pose for its first 60 %, then standing
+ *   fwd   S -> A (0.3 m): a short step forward off the seat, standing, facing out
  *   out   A -> N: a step or two away from the bench, facing the way the seat faces; then free on the nav
+ * (Until wave 2 the sit and the stand themselves covered the 0.3 m: a figure drawn seated slid 0.3 m in a second, about 80 frames
+ * in 2 min on Stevenson Square. Now the body moves only while it is drawn standing, with its legs.)
  * Only the sitter's own bench is ever crossed (it is hosted by it from 'in' to 'out'); N was chosen so the step in touches no other solid.
  */
 function _wlfSeatStep(life, a, kind) {
@@ -1403,8 +1521,10 @@ function _wlfSeatStep(life, a, kind) {
   var x0 = a.x, z0 = a.z, x1 = x0, z1 = z0, dur = 0.5, o = { t0: life.t, x0: x0, z0: z0, layer: a.layer, kind: kind };
   if (kind === 'in') { x1 = S.ax; z1 = S.az; dur = Math.max(0.35, Math.hypot(x1 - x0, z1 - z0) / 0.7); o.walk = true; }
   else if (kind === 'turn') { var turn = Math.abs(_wlfAng(S.facing - a.heading)); dur = Math.max(0.3, turn / (Math.PI / a.brain.turn)); }
-  else if (kind === 'down') { x1 = S.x; z1 = S.z; dur = 1.1; o.sit = a.host; }
-  else if (kind === 'up') { x1 = S.ax; z1 = S.az; dur = 1.0; o.stand = true; }
+  else if (kind === 'back') { x1 = S.x; z1 = S.z; dur = Math.max(0.5, Math.hypot(x1 - x0, z1 - z0) / 0.4); o.walk = true; o.face = true; }
+  else if (kind === 'down') { x1 = S.x; z1 = S.z; dur = 0.45; o.sit = a.host; }
+  else if (kind === 'up') { x1 = x0; z1 = z0; dur = 0.6; o.stand = true; o.stay = true; }
+  else if (kind === 'fwd') { x1 = S.ax; z1 = S.az; dur = Math.max(0.5, Math.hypot(x1 - x0, z1 - z0) / 0.45); o.walk = true; o.face = true; }
   else if (kind === 'out') { x1 = S.nx; z1 = S.nz; dur = Math.max(0.35, Math.hypot(x1 - x0, z1 - z0) / 0.7); o.walk = true; }
   o.x1 = x1; o.z1 = z1; o.dur = dur;
   a.step = o; a.dir = null;
@@ -1547,7 +1667,10 @@ function _wlfViewGoal(life, a, g, dt) {
  *   solo       stands, looks about, phones; a dweller with legs to walk on moves a few metres to another spot now and then
  * At most `max` are added (the care rules: a few anonymous figures, never a crowd). WORLD_LIFE_DWELL.off: true turns it off.
  */
-var WORLD_LIFE_DWELL = { max: 8, gap: 2.4, zMin: 6, zMax: 130, minPx: 18, ring: 0.62, chatShare: 0.4, sitShare: 0.3, off: false };
+var WORLD_LIFE_DWELL = { max: 8, gap: 2.4, zMin: 6, zMax: 130, minPx: 18, ring: 0.62, chatShare: 0.4, sitShare: 0.3, off: false,
+  // longer views (_wlfDwellKeep): how often the keeper looks (s), a queue's service, how long a stander, a ring, a sitter and a watcher stay,
+  // and how far off a passer-by may be to become a dweller (m)
+  keep: [3, 6], serve: [12, 35], soloFor: [90, 240], chatFor: [120, 300], sitFor: [150, 420], watchFor: [120, 360], recruitR: 18, going: 4 };
 var _WLF_DWELL_SOLO = ['person.phone-idler', 'person.walker', 'person.shopper', 'person.commuter', 'person.phone-idler', 'person.student', 'person.elderly-walker'];
 var _WLF_DWELL_CHAT = ['person.walker', 'person.shopper', 'person.commuter', 'person.student', 'person.walker'];
 /** The share of people in view this scene aims to have standing or seated (its kit's, from the ground it has when no kit says). */
@@ -1574,6 +1697,7 @@ function _wlfDwellOk(life, x, z, cl) {
   if (x < -z * cam.tanL0 + 1.4 || x > z * cam.tanR0 - 1.4) return false;
   if (!worldLifeOk(life, 'walk', x, z, cl || 0.3)) return false;
   if (typeof worldNavSlot === 'function' && worldNavSlot(life.nav, 'walk', x, z)) return false;
+  if (_wlfNarrowAt(life, 'walk', x, z) > 0) return false;      // nobody stands about on a boardwalk or a towpath (WORLD_LIFE_NARROW)
   return true;
 }
 /** Candidate places to stand, scored: by something (a clearance of 0.6-2.4 m: beside a lamp, a planter, a wall), the middle distance, away
@@ -1582,14 +1706,17 @@ function _wlfDwellSpots(life) {
   if (life._dwSpots) return life._dwSpots;
   var L = worldLifeGrid(life, 'walk'), out = [];
   if (!L || !L.data) return (life._dwSpots = out);
-  var cells = _wlfCells(life, 'walk', 0.3, null), heat = life._heat, hk = life._heatK || 0;
+  var cells = _wlfCells(life, 'walk', 0.3, null), heat = life._heat, hk = life._heatK || 0, aroundC = new Map();
   for (var c = 0; c < cells.length; c += 2) {
     var x = cells[c], z = cells[c + 1], k = worldNavCell(life.nav, 'walk', x, z);
     if (k < 0 || !_wlfDwellOk(life, x, z)) continue;
     // its own cell's traffic (a walking line: never stand in it) and its neighbourhood's (people pass near: a place people are; a dweller
     // alone in an empty corner reads as placed)
     var cx = Math.floor(x / 2), cz = Math.floor(z / 2), own = heat ? (heat.get(cx * 8192 + cz) || 0) * hk : 0, around = 0;
-    if (heat) for (var ix = -3; ix <= 3; ix++) for (var iz = -3; iz <= 3; iz++) if (ix || iz) around += (heat.get((cx + ix) * 8192 + cz + iz) || 0) * hk;
+    // (the neighbourhood's traffic once per 2 m bucket: sixteen cells share it)
+    var bkey = cx * 8192 + cz, bsum = aroundC.get(bkey);
+    if (bsum === undefined) { bsum = 0; if (heat) for (var ix = -3; ix <= 3; ix++) for (var iz = -3; iz <= 3; iz++) if (ix || iz) bsum += (heat.get((cx + ix) * 8192 + cz + iz) || 0) * hk; aroundC.set(bkey, bsum); }
+    around = bsum;
     var cl = L.clear[k], px = life.nav.cam.f * 1.7 / z;
     var score = (cl >= 0.6 && cl <= 2.4 ? 1 : 0.35) + (px >= 30 && px <= 140 ? 0.6 : 0.1) + Math.min(1, around / 12) - Math.min(2, own * 1.5);
     out.push({ x: x, z: z, k: k, clear: cl, score: score });
@@ -1622,6 +1749,7 @@ function _wlfDweller(life, obj, x, z, o) {
   if (a.variant == null) a.variant = 0;
   a.heading = o.heading != null ? o.heading : a.heading;
   a.goals = o.goals; a.gi = 0; a.pinned = !!o.pinned; a.dwellKind = o.kind || 'solo';
+  a.dwMax = true;                                      // (it raised life.max by one: given back when it leaves)
   if (o.group) a.group = o.group;
   // can it walk somewhere (its art has legs)? a figure drawn without legs (a phone idler, a photographer) stays put for good
   var canWalk = false;
@@ -1716,12 +1844,35 @@ function _wlfDwellInit(life, avg) {
     for (var si = 0; si < B.seats.length; si++) if (B.seats[si].ok && !B.seats[si].by) { seat = B.seats[si]; break; }
     if (!seat) continue;
     var bid = ent.id || ent.obj, so = rng() < 0.4 ? 'person.elderly-walker' : 'person.walker';
-    var sa = _wlfDweller(life, so, seat.x, seat.z, { heading: seat.facing, kind: 'sit', state: 'idle', loco: 'sit', goals: [{ sit: bid, 'for': [120, 400] }, { wander: null, 'for': [15, 40] }] });
+    var sa = _wlfDweller(life, so, seat.x, seat.z, { heading: seat.facing, kind: 'sit', state: 'idle', loco: 'sit', goals: [{ sit: bid, 'for': WORLD_LIFE_DWELL.sitFor }, { leave: 'any' }] });
     if (!sa) continue;
     sa.host = bid; sa.seat = seat; seat.by = sa.id; sa.bs = 'sitting'; sa.pose = 'sit'; sa.state = 'sit';
     taken.push([seat.x, seat.z]); added++;
   }
-  // 4. a chat ring (or two)
+  // 4. a queue at a kiosk, a food van or a stall (when one stands in view with room in front; before the rings: a queue that moves is the
+  // clearest sign of life over a long view, _wlfDwellKeep)
+  var kiosks = (W.entities || []).filter(function (e) { return e && e.static !== false && /kiosk|food-van|ice-cream|coffee|stall|ticket/.test(String(e.obj || '')) && !/sign|board/.test(String(e.obj || '')); });
+  for (var ki = 0; ki < kiosks.length && added + 2 <= need; ki++) {
+    var K = kiosks[ki], toCam = Math.atan2(-K.x, -K.z), line = [];
+    var fq = Number.isFinite(K.facing) && Math.abs(_wlfAng(K.facing * Math.PI / 180 - toCam)) < Math.PI / 2 ? K.facing * Math.PI / 180 : toCam;
+    var hw = Math.max(1.2, ((K.size && K.size.d) || 1.2) / 2 + 0.9);
+    // (four places in line: three are filled now, the fourth is for one who joins; the queue moves, _wlfDwellKeep)
+    var slots = [];
+    for (var qn = 0; qn < 4; qn++) {
+      var qx = K.x + Math.sin(fq) * (hw + 0.8 * qn), qz = K.z + Math.cos(fq) * (hw + 0.8 * qn);
+      if (!_wlfDwellOk(life, qx, qz, 0.25) || !free(qx, qz, 0.7)) break;
+      slots.push([qx, qz]);
+    }
+    for (var qs = 0; qs < Math.min(3, slots.length) && added + line.length < need; qs++) line.push(slots[qs]);
+    if (line.length < 2) continue;
+    var Qrec = { id: 'queue-' + ki, at: [K.x, K.z], slots: slots, members: [], serveT: null };
+    for (var ql = 0; ql < line.length; ql++) {
+      var qa = _wlfDweller(life, _WLF_DWELL_CHAT[Math.floor(rng() * _WLF_DWELL_CHAT.length)], line[ql][0], line[ql][1], { heading: _wlfAng(fq + Math.PI), kind: 'queue', state: 'wait', group: 'queue-' + ki, loco: 'queue', goals: [{ dwell: line[ql], at: [K.x, K.z], act: 'wait', queue: Qrec.id, kind: 'queue', 'for': Infinity }, { leave: 'any' }] });
+      if (qa) { taken.push(line[ql]); added++; Qrec.members.push(qa.id); }
+    }
+    if (Qrec.members.length) (life.dwQueues || (life.dwQueues = [])).push(Qrec);
+  }
+  // 5. a chat ring (or two)
   var nChat = need - added >= 3 ? (need - added >= 6 ? 2 : 1) : 0;
   for (var ci = 0; ci < nChat && added + 2 <= need; ci++) {
     var c = pick(WORLD_LIFE_DWELL.gap + 1, function (s) { return s.clear >= 1.1; });
@@ -1733,11 +1884,11 @@ function _wlfDwellInit(life, avg) {
     if (ok.length < 2) continue;
     for (var mi = 0; mi < ok.length && added < need; mi++) {
       var hx = Math.atan2(c.x - ok[mi][0], c.z - ok[mi][1]);
-      var ca = _wlfDweller(life, _WLF_DWELL_CHAT[Math.floor(rng() * _WLF_DWELL_CHAT.length)], ok[mi][0], ok[mi][1], { heading: hx, kind: 'chat', state: 'chat', group: gid, goals: [{ dwell: ok[mi], at: [c.x, c.z], act: 'chat', 'for': Infinity }] });
+      var ca = _wlfDweller(life, _WLF_DWELL_CHAT[Math.floor(rng() * _WLF_DWELL_CHAT.length)], ok[mi][0], ok[mi][1], { heading: hx, kind: 'chat', state: 'chat', group: gid, goals: [{ dwell: ok[mi], at: [c.x, c.z], act: 'chat', ring: gid, kind: 'chat', 'for': WORLD_LIFE_DWELL.chatFor }, { leave: 'any' }] });
       if (ca) { taken.push(ok[mi]); added++; }
     }
   }
-  // 5. a watcher at a point of interest (a landmark, a statue; the water of a pond or a canal)
+  // 6. a watcher at a point of interest (a landmark, a statue; the water of a pond or a canal)
   var pois = _wlfPois(life);
   if (added < need) {
     var poi = null, wspot = null;
@@ -1749,25 +1900,8 @@ function _wlfDwellInit(life, avg) {
     if (wspot) {
       wspot.used = true;
       var wo = W.surfaces && W.surfaces.some(function (s) { return s && s.kind === 'water'; }) && life.placeType !== 'city' ? 'person.birdwatcher' : 'person.photographer';
-      var wa = _wlfDweller(life, wo, wspot.x, wspot.z, { heading: Math.atan2(poi[0] - wspot.x, poi[1] - wspot.z), kind: 'watch', state: 'look', goals: [{ dwell: [wspot.x, wspot.z], at: poi, act: 'look', 'for': Infinity }] });
+      var wa = _wlfDweller(life, wo, wspot.x, wspot.z, { heading: Math.atan2(poi[0] - wspot.x, poi[1] - wspot.z), kind: 'watch', state: 'look', goals: [{ dwell: [wspot.x, wspot.z], at: poi, act: 'look', kind: 'watch', 'for': WORLD_LIFE_DWELL.watchFor }, { leave: 'any' }] });
       if (wa) { taken.push([wspot.x, wspot.z]); added++; }
-    }
-  }
-  // 6. a queue at a kiosk, a food van or a stall (when one stands in view with room in front)
-  var kiosks = (W.entities || []).filter(function (e) { return e && e.static !== false && /kiosk|food-van|ice-cream|coffee|stall|ticket/.test(String(e.obj || '')) && !/sign|board/.test(String(e.obj || '')); });
-  for (var ki = 0; ki < kiosks.length && added + 2 <= need; ki++) {
-    var K = kiosks[ki], toCam = Math.atan2(-K.x, -K.z), line = [];
-    var fq = Number.isFinite(K.facing) && Math.abs(_wlfAng(K.facing * Math.PI / 180 - toCam)) < Math.PI / 2 ? K.facing * Math.PI / 180 : toCam;
-    var hw = Math.max(1.2, ((K.size && K.size.d) || 1.2) / 2 + 0.9);
-    for (var qn = 0; qn < 3 && added + line.length < need; qn++) {
-      var qx = K.x + Math.sin(fq) * (hw + 0.8 * qn), qz = K.z + Math.cos(fq) * (hw + 0.8 * qn);
-      if (!_wlfDwellOk(life, qx, qz, 0.25) || !free(qx, qz, 0.7)) break;
-      line.push([qx, qz]);
-    }
-    if (line.length < 2) continue;
-    for (var ql = 0; ql < line.length; ql++) {
-      var qa = _wlfDweller(life, _WLF_DWELL_CHAT[Math.floor(rng() * _WLF_DWELL_CHAT.length)], line[ql][0], line[ql][1], { heading: _wlfAng(fq + Math.PI), kind: 'queue', state: 'wait', group: 'queue-' + ki, loco: 'queue', goals: [{ dwell: line[ql], at: [K.x, K.z], act: 'wait', 'for': Infinity }] });
-      if (qa) { taken.push(line[ql]); added++; }
     }
   }
   // 7. the rest stand alone: waiting, phoning, looking about; one with legs to walk on moves to a second spot now and then
@@ -1777,31 +1911,217 @@ function _wlfDwellInit(life, avg) {
     // on to the eye (a figure seen side-on or three-quarter reads best), never square to the lens
     var obj = _WLF_DWELL_SOLO[Math.floor(rng() * _WLF_DWELL_SOLO.length)], ts = _wlfTowardSolid(life, s1.x, s1.z);
     var face = ts != null && rng() < 0.75 ? ts + (rng() - 0.5) * 0.5 : Math.atan2(-s1.x, -s1.z) + (rng() < 0.5 ? 1 : -1) * (0.9 + rng() * 0.9);
-    var goals = [{ dwell: [s1.x, s1.z], face: face, act: ts != null || rng() < 0.3 ? 'look' : 'idle', 'for': [30, 120] }];
+    var goals = [{ dwell: [s1.x, s1.z], face: face, act: ts != null || rng() < 0.3 ? 'look' : 'idle', kind: 'solo', 'for': WORLD_LIFE_DWELL.soloFor }];
     var s2 = null;
     for (var s2i = 0; s2i < spots.length && !s2; s2i++) { var q = spots[s2i], dq = Math.hypot(q.x - s1.x, q.z - s1.z); if (!q.used && dq > 5 && dq < 14 && free(q.x, q.z, WORLD_LIFE_DWELL.gap)) s2 = q; }
-    if (s2) goals.push({ dwell: [s2.x, s2.z], face: face + (rng() - 0.5), act: 'idle', 'for': [30, 120] });
+    if (s2) goals.push({ dwell: [s2.x, s2.z], face: face + (rng() - 0.5), act: 'idle', kind: 'solo', 'for': WORLD_LIFE_DWELL.soloFor });
+    goals.push({ leave: 'any' });
     var sa2 = _wlfDweller(life, obj, s1.x, s1.z, { heading: face, kind: 'solo', state: 'idle', goals: goals });
     if (!sa2) continue;
-    if (!sa2.canWalk) sa2.goals = [goals[0]];
+    // (a figure drawn without legs stays at its one spot, then leaves in its walking stand-in, _wlfWalkArt)
+    if (!sa2.canWalk) sa2.goals = [goals[0], { leave: 'any' }];
     else if (s2) s2.used = true;
-    sa2.goals[0]['for'] = sa2.canWalk ? [30, 120] : Infinity;
     taken.push([s1.x, s1.z]); added++;
   }
   life.dwellPlan.added = added;
+}
+/**
+ * Longer views (the gallery stage and the Home card show a scene for minutes): the dwellers turn over. Every few seconds (WORLD_LIFE_DWELL.keep)
+ *  - a queue moves: the one at the front is served and goes on its way, the others step up a place; a passer-by may join the back;
+ *  - a chat ring breaks up when its time is out (its members leave one by one, each on its own time), and a new pair forms elsewhere;
+ *  - dwellers whose time is out leave the scene (their dwell goal ends in a leave), and passers-by become new dwellers (a solo stander, a
+ *    pair who stop to chat, someone who sits on a free bench, one more in a queue), so the people in view keep the kit's standing share.
+ * A passer-by who stops keeps its own look and its own way: the dwell goes in front of its goals, and it carries on where it was going.
+ */
+function _wlfDwellKeep(life) {
+  var D = WORLD_LIFE_DWELL;
+  if (D.off || !life.dwellPlan || life.warming || !worldBrains.dweller) return;
+  if (life.t < (life.dwKeepT || 0)) return;
+  var rng = life.dwKeepRng || (life.dwKeepRng = _wlfStream(life, 'dwell-keep'));
+  life.dwKeepT = life.t + D.keep[0] + rng() * (D.keep[1] - D.keep[0]);
+  // 1. the queues: the front one is served, the rest step up
+  var Q = life.dwQueues || [];
+  for (var qi = 0; qi < Q.length; qi++) {
+    var q = Q[qi];
+    q.members = q.members.filter(function (id) { var m = life.byId.get(id); var g = m && !m.dead && m.goals ? m.goals[m.gi] : null; return !!(g && g.queue === q.id); });
+    if (q.members.length && q.serveT == null) q.serveT = life.t + worldLifeRange(rng, D.serve);
+    if (q.members.length && life.t >= q.serveT) {
+      var head = life.byId.get(q.members[0]);
+      // (the head arrived at the front: served; it turns away and goes on with whatever it was doing, or leaves)
+      if (head && Math.hypot(head.x - q.slots[0][0], head.z - q.slots[0][1]) < 0.6) {
+        q.members.shift(); _wlfDwellEnd(life, head);
+        for (var mi = 0; mi < q.members.length; mi++) { var mm = life.byId.get(q.members[mi]), mg = mm && mm.goals ? mm.goals[mm.gi] : null; if (mg && mg.queue === q.id) { mg.dwell = q.slots[mi]; mm.gdur = null; mm.route = null; } }
+        q.serveT = life.t + worldLifeRange(rng, D.serve);
+      } else q.serveT = life.t + 2;
+    }
+  }
+  // 2. the chat rings whose time is out break up (each member leaves on its own time: a ring is a group, its members' goals end apart)
+  // 3. the share: one new dweller (or a pair) at a time, from the passers-by, while the people in view stand less than the kit's share
+  var share = life.dwellPlan.share, vc = _wlfViewCount(life), need = Math.round(share / Math.max(0.05, 1 - share) * vc.walking - vc.still);
+  // (the dwellers in place count against the cap; the ones still on their way only against a small cap of their own: a turnover where
+  // every newcomer first walks to its place would otherwise leave the scene a few standers short all the time)
+  var active = 0, going = 0;
+  for (var i = 0; i < life.agents.length; i++) {
+    var a = life.agents[i], ag = a.goals ? a.goals[a.gi] : null;
+    if (a.dead || !a.dwellKind || a.dwellKind === 'authored' || !ag || (ag.dwell == null && ag.sit == null)) continue;
+    if (a.host || (ag.dwell && a.gdur != null)) active++; else going++;   // (gdur: its dwell began, it is in its place)
+  }
+  var K = life.dwellPlan.keep || (life.dwellPlan.keep = { looks: 0, full: 0, enough: 0, formed: {}, failed: 0 });   // (for the tools)
+  K.looks++; if (K.series) K.series.push([Math.round(life.t), active, going, vc.still, need]);
+  if (need < 1) { K.enough++; return; }
+  if (active >= D.max || going >= D.going) { K.full++; if (going >= D.going) K.fullGoing = (K.fullGoing || 0) + 1; return; }
+  var kinds = [], freeQ = Q.filter(function (q2) { return q2.members.length < 3; });
+  if (freeQ.length) kinds.push('queue');
+  if (need >= 2 && active + 2 <= D.max) kinds.push('chat', 'chat');
+  kinds.push('solo', 'solo', 'sit');
+  for (var tries = 0; tries < 5; tries++) {
+    var kind = kinds[Math.floor(rng() * kinds.length)], ok = false;
+    if (kind === 'queue') ok = _wlfDwellRecruitQueue(life, freeQ[Math.floor(rng() * freeQ.length)], rng);
+    else if (kind === 'chat') ok = _wlfDwellRecruitChat(life, rng);
+    else if (kind === 'sit') ok = _wlfDwellRecruitSit(life, rng);
+    else ok = _wlfDwellRecruitSolo(life, rng);
+    if (ok) { K.formed[kind] = (K.formed[kind] || 0) + 1; return; }
+  }
+  K.failed++;
+}
+/** A passer-by near (x, z) who may stop: one on foot alone (not a group, not a dog walker), walking, in view, not leaving by fading, never one
+ *  that dwelt already; the nearest within WORLD_LIFE_DWELL.recruitR. skip: ids to leave out. */
+function _wlfDwellPasser(life, x, z, skip, only, groups) {
+  var best = null, bd = WORLD_LIFE_DWELL.recruitR, cam = life.nav && life.nav.cam;
+  for (var i = 0; i < (only ? 1 : life.agents.length); i++) {
+    var a = only || life.agents[i];
+    // (groups: a couple, a family or a dog walker may stop as one: its members keep their places round it and stop with it)
+    if (a.dead || a.kind !== 'walker' || a.layer !== 'walk' || a.fadeOut || a.leader || (!groups && a.members && a.members.length) || a.dwellKind || a.dwelt || a.host || a.step || a.seat || a.cls === 'dweller' || a.pinned) continue;   // (a resident wanderer may stop too: it wanders on after)
+    if (!/^person\./.test(String(a.obj || '')) || /cyclist|jogger|runner/.test(String(a.obj) + ' ' + a.cls) || !worldLifeMoving(a) || (skip && skip.indexOf(a.id) >= 0)) continue;
+    // (in view, and near enough to read as somebody: the places to stand are there, WORLD_LIFE_DWELL.zMin..zMax)
+    if (cam && !(a.z > WORLD_LIFE_DWELL.zMin - 2 && a.z < WORLD_LIFE_DWELL.zMax && cam.f * 1.7 / a.z >= WORLD_LIFE_DWELL.minPx && a.x > -a.z * cam.tanL0 + 1 && a.x < a.z * cam.tanR0 - 1)) continue;
+    var d = Math.hypot(a.x - x, a.z - z); if (d < bd) { bd = d; best = a; }
+  }
+  return best;
+}
+/** Make a passer-by a dweller: the dwell goal (g) in front of what it was doing; kind: chat, queue, sit, solo. */
+function _wlfDwellTake(life, a, g, kind) {
+  var rest = a.goals ? a.goals.slice(a.gi) : [];
+  if (!rest.length) rest = [{ leave: 'any' }];
+  a.goals = [g].concat(rest); a.gi = 0; a.gt = 0; a.gdur = null; a.route = null; a.lookAt = null; a.fails = 0;
+  a.dwellKind = kind; a.dwelt = true;
+}
+/** A dweller's dwell is over: it goes on with the goals after it (or leaves). */
+function _wlfDwellEnd(life, a) {
+  if (!a || a.dead) return;
+  a.queueing = false; a.lookAt = null; a.faceT = null; a.gdur = null; a.dwellKind = null;
+  if (a.goals && a.goals[a.gi] && a.goals[a.gi].dwell != null) _wlfNextGoal(life, a);
+  if (!_wlfGoal(a)) _wlfLeave(life, a, null);
+}
+function _wlfDwellFree(life, x, z, d) {
+  for (var j = 0; j < life.agents.length; j++) { var o = life.agents[j]; if (!o.dead && o.layer !== 'air' && Math.hypot(o.x - x, o.z - z) < d) return false; }
+  for (var k = 0; k < life.agents.length; k++) { var p = life.agents[k], g = p.goals && p.goals[p.gi]; if (!p.dead && g && g.dwell && Math.hypot(g.dwell[0] - x, g.dwell[1] - z) < d) return false; }
+  return true;
+}
+/** A free place to stand near passer-by a (4 to 20 m off, among the best few scored there; a null: anywhere), or null. */
+function _wlfDwellSpotFor(life, rng, a, test) {
+  var spots = _wlfDwellSpots(life), pool = [];
+  for (var i = 0; i < spots.length && pool.length < 4; i++) {
+    var s = spots[i], d = a ? Math.hypot(s.x - a.x, s.z - a.z) : 10;
+    if (d >= 4 && d <= 20 && _wlfDwellFree(life, s.x, s.z, WORLD_LIFE_DWELL.gap) && (!test || test(s))) pool.push(s);
+  }
+  return pool.length ? pool[Math.floor(rng() * pool.length)] : null;
+}
+/** One passer-by in view, at random (the keeper's next dweller): see _wlfDwellPasser. */
+function _wlfDwellAnyPasser(life, rng, groups) {
+  var c = [];
+  for (var i = 0; i < life.agents.length; i++) { var a = life.agents[i]; if (_wlfDwellPasser(life, a.x, a.z, null, a, groups)) c.push(a); }
+  return c.length ? c[Math.floor(rng() * c.length)] : null;
+}
+function _wlfDwellRecruitSolo(life, rng) {
+  var K = life.dwellPlan && life.dwellPlan.keep, a = _wlfDwellAnyPasser(life, rng, true), s = null;
+  if (a) s = _wlfDwellSpotFor(life, rng, a);
+  else {
+    // nobody passing near the places to stand (a square seen deep, its walkers far off): one arrives for it, from an edge as anybody does,
+    // and walks to a free place (the best few), stands, then goes on its way
+    s = _wlfDwellSpotFor(life, rng, null);
+    a = s ? _wlfDwellArrival(life, rng) : null;
+    if (a && K) K.arrived = (K.arrived || 0) + 1;
+  }
+  if (!a) { if (K) K.noPasser = (K.noPasser || 0) + 1; return false; }
+  if (!s) { if (K) K.noSpot = (K.noSpot || 0) + 1; return false; }
+  var ts = _wlfTowardSolid(life, s.x, s.z), face = ts != null && rng() < 0.75 ? ts + (rng() - 0.5) * 0.5 : Math.atan2(-s.x, -s.z) + (rng() < 0.5 ? 1 : -1) * (0.9 + rng() * 0.9);
+  _wlfDwellTake(life, a, { dwell: [s.x, s.z], face: face, act: ts != null || rng() < 0.3 ? 'look' : 'idle', 'for': WORLD_LIFE_DWELL.soloFor }, 'solo');
+  return true;
+}
+/** A newcomer on foot for the keeper: one arrival of one of the scene's own streams of people (a rate population of people on the walk
+ *  layer, one alone: no group, no cyclist), or null when none can arrive now. */
+function _wlfDwellArrival(life, rng) {
+  var P = [];
+  for (var i = 0; i < life.pops.length; i++) {
+    var pop = life.pops[i]; if (!pop.rate || !pop.entries) continue;
+    for (var j = 0; j < pop.entries.length; j++) {
+      var e = pop.entries[j], b = e && e.m ? worldBrains[e.m.cls] : null;
+      if (b && b.kind === 'walker' && b.layer === 'walk' && !b.group && /^person\./.test(String(e.m.obj || '')) && !/cyclist|jogger|runner/.test(String(e.m.obj) + ' ' + e.m.cls)) P.push([pop, e]);
+    }
+  }
+  if (!P.length) return null;
+  var pick = P[Math.floor(rng() * P.length)];
+  life.heldArrival = false;
+  var a = _wlfArrive(life, pick[0], pick[1]);
+  return a && !a.dead && a.kind === 'walker' ? a : null;
+}
+function _wlfDwellRecruitChat(life, rng) {
+  var p1 = _wlfDwellAnyPasser(life, rng); if (!p1) return false;
+  var c = _wlfDwellSpotFor(life, rng, p1, function (s) { return s.clear >= 1.1; }); if (!c) return false;
+  var R = WORLD_LIFE_DWELL.ring, a0 = Math.atan2(-c.x, c.z) + (rng() - 0.5) * 0.5, pts = [];
+  for (var m = 0; m < 2; m++) { var an = a0 + m * Math.PI, mx = c.x + Math.cos(an) * R, mz = c.z + Math.sin(an) * R; if (worldLifeOk(life, 'walk', mx, mz, 0.25)) pts.push([mx, mz]); }
+  if (pts.length < 2) return false;
+  var p2 = _wlfDwellPasser(life, c.x, c.z, [p1.id]); if (!p2) return false;
+  var gid = 'chat-k' + (life.dwRing = (life.dwRing || 0) + 1), dur = WORLD_LIFE_DWELL.chatFor;
+  _wlfDwellTake(life, p1, { dwell: pts[0], at: [c.x, c.z], act: 'chat', ring: gid, 'for': dur }, 'chat');
+  _wlfDwellTake(life, p2, { dwell: pts[1], at: [c.x, c.z], act: 'chat', ring: gid, 'for': dur }, 'chat');
+  return true;
+}
+function _wlfDwellRecruitQueue(life, q, rng) {
+  if (!q || q.members.length >= q.slots.length) return false;
+  var s = q.slots[q.members.length];
+  var a = _wlfDwellPasser(life, s[0], s[1]); if (!a) return false;
+  _wlfDwellTake(life, a, { dwell: s, at: q.at, act: 'wait', queue: q.id, 'for': Infinity }, 'queue');
+  q.members.push(a.id);
+  return true;
+}
+function _wlfDwellRecruitSit(life, rng) {
+  var W = life.world || {}, cam = life.nav.cam, cand = [];
+  var benches = life._dwBenches || (life._dwBenches = (W.entities || []).filter(function (e) { return e && e.static !== false && _wlfIsBench(e) && e.z > WORLD_LIFE_DWELL.zMin && e.z < WORLD_LIFE_DWELL.zMax && e.x > -e.z * cam.tanL0 + 1.8 && e.x < e.z * cam.tanR0 - 1.8; }));
+  for (var i = 0; i < benches.length; i++) { var B = _wlfSeats(life, benches[i]); if (B.seats.some(function (q) { return q.ok && !q.by; }) && !B.queue.length) cand.push(benches[i]); }
+  if (!cand.length) return false;
+  var ent = cand[Math.floor(rng() * cand.length)], a = _wlfDwellPasser(life, ent.x, ent.z); if (!a) return false;
+  _wlfDwellTake(life, a, { sit: ent.id || ent.obj, 'for': WORLD_LIFE_DWELL.sitFor }, 'sit');
+  return true;
 }
 /** The dwell goal: to its spot (a walk on the nav), then it stands there: its act's state (idle, look, chat, wait), facing its point of
  *  interest, its ring's middle or its own way (turning a little now and then), for the goal's time (Infinity: for good). */
 function _wlfDwellGoal(life, a, g, dt) {
   var p = g.dwell, d = Math.hypot(p[0] - a.x, p[1] - a.z), S = a.brain.states;
-  a.dwellKind = a.dwellKind || g.act || 'solo';
+  a.dwellKind = g.kind || a.dwellKind || g.act || 'solo';
   if (d > 0.45 && !a.pinned) {
     var r = _wlfPathTo(life, a, p[0], p[1]);
-    if (r === 'go') { a.gdur = null; a.queueing = false; _wlfKeepMoving(life, a); return; }
+    // (on its way it walks now: a still state's timer (a wait of up to a minute) held a queue that should step up where it stood)
+    if (r === 'go') { a.gdur = null; a.queueing = false; if (S.walk && !(S[a.bs] && S[a.bs].speed)) _wlfEnter(life, a, 'walk'); _wlfKeepMoving(life, a); return; }
     if (r === 'fail') { _wlfFail(life, a); return; }
   }
   a.dir = null;
   var want = g.act === 'chat' ? 'chat' : g.act === 'wait' ? 'wait' : g.act === 'look' ? 'look' : null;
+  // a chat ring talks only with somebody there: alone (the other on the way, or gone) it stands and looks about; left alone after a
+  // talk, it goes too (6 s), and alone too long before one (25 s), it gives up
+  if (g.ring) {
+    var mate = null;
+    for (var ri = 0; ri < life.agents.length && !mate; ri++) { var o = life.agents[ri], og = o !== a && !o.dead && o.goals ? o.goals[o.gi] : null; if (og && og.ring === g.ring && og.dwell && Math.hypot(o.x - og.dwell[0], o.z - og.dwell[1]) < 0.6) mate = o; }
+    if (mate) { a.ringHad = true; a.ringAlone = null; }
+    else {
+      if (a.ringAlone == null) a.ringAlone = life.t;
+      want = 'idle';
+      if (life.t - a.ringAlone > (a.ringHad ? 6 : 25)) { a.ringAlone = null; a.ringHad = false; _wlfDwellEnd(life, a); return; }
+    }
+    if (want !== 'chat' && a.bs === 'chat') _wlfEnter(life, a, S.idle ? 'idle' : _wlfStillState(a));
+    else if (want === 'chat' && a.bs !== 'chat' && a.gdur != null && S.chat) _wlfEnter(life, a, 'chat');
+  }
   if (a.gdur == null) {
     a.gdur = g['for'] === Infinity ? Infinity : worldLifeRange(a.rng, g['for'] != null ? g['for'] : [30, 90]); a.gt = 0;
     if (want && S[want]) _wlfEnter(life, a, want); else if (!S[a.bs] || S[a.bs].speed) _wlfEnter(life, a, S.idle ? 'idle' : _wlfStillState(a));
@@ -1809,8 +2129,8 @@ function _wlfDwellGoal(life, a, g, dt) {
   if (a.st <= 0) {
     var st = S[a.bs], nx = st && st.next ? worldLifePick(a.rng, st.next) : 'idle';
     if (!S[nx] || S[nx].speed) nx = 'idle';
-    if (want === 'chat' && nx !== 'look') nx = 'chat';
-    if (want === 'wait') nx = 'wait';
+    if (want === 'chat' && nx !== 'look' && S.chat) nx = 'chat';
+    if (want === 'wait' && S.wait) nx = 'wait';   // (a passer-by who joined a queue has no wait state of its own: it idles)
     _wlfEnter(life, a, nx);
   }
   a.queueing = g.act === 'wait';
@@ -1819,7 +2139,7 @@ function _wlfDwellGoal(life, a, g, dt) {
     if (a.faceT == null || life.t > a.faceT) { a.faceT = life.t + 8 + a.rng() * 20; a.faceH = (g.face != null ? g.face : a.heading) + (a.rng() - 0.5) * (g.face != null ? 0.9 : 1.4); }
     a.lookAt = [a.x + Math.sin(a.faceH) * 10, a.z + Math.cos(a.faceH) * 10];
   }
-  if (a.gt > a.gdur) { a.gdur = null; a.lookAt = null; a.queueing = false; a.faceT = null; _wlfNextGoal(life, a); }
+  if (a.gt > a.gdur) { a.gdur = null; a.lookAt = null; a.queueing = false; a.faceT = null; a.dwellKind = null; a.ringHad = false; a.ringAlone = null; _wlfNextGoal(life, a); }
 }
 /** Group members keep their slot round the leader; they stop when it stops and look where it looks (A7). */
 function _wlfFollowBrain(life, a, dt) {
@@ -2237,7 +2557,8 @@ function _wlfMove(life, a, dt) {
   if (a.step) { _wlfStepMove(life, a, dt); _wlfShownV(a, dt); _wlfFace(life, a); return; }
   if (a.hop) { _wlfHopMove(life, a, dt); _wlfShownV(a, dt); _wlfFace(life, a); return; }
   if (a.fadeOut) {
-    if (life.t - a.fadeOut >= 0.6) { _wlfDespawn(life, a); return; }
+    // (gone one step after its 0.6 s fade: it is drawn through the step its fade reaches 0, worldAgents, never vanishing from a tenth)
+    if (life.t - a.fadeOut >= 0.6 + life.step - 1e-6) { _wlfDespawn(life, a); return; }
     a.vx = 0; a.vz = 0; a.speed = 0; _wlfFace(life, a); return;
   }
   var dir = a.dir, b = a.brain;
@@ -2498,6 +2819,8 @@ function _wlfSteer0(life, a, dir, spd) {
   // right and dead ahead): the walker queues behind it instead of shuffling from side to side on the spot
   if (a.sideV > 0 && !hitOnc && wallL && wallR) a.sideV = 0;
   if (a.sideV > 0) { if (a.sideHoldT > life.t && a.sideKeep) a.sideDir = a.sideKeep; else { a.sideKeep = a.sideDir; a.sideHoldT = life.t + 0.6; } }
+  a.sideOnc = hitOnc;
+  if (a.kind === 'walker') _wlfNarrowSteer(life, a, dir, spd);
   if (!n && !ns && !nk) return dir;
   var nx = dir[0] + ax * 1.5 + sx * 0.8 + kx, nz = dir[1] + az * 1.5 + sz * 0.8 + kz, l = Math.hypot(nx, nz);
   if (l < 1e-6) return dir;
@@ -2635,15 +2958,19 @@ function _wlfStepMove(life, a, dt) {
   var from = worldNavY(life.nav, a.layer, s.x0, s.z0), to = worldNavY(life.nav, s.layer, s.x1, s.z1);
   a.y = from + (to - from) * e;
   a.vx = (a.x - ox) / dt; a.vz = (a.z - oz) / dt; a.speed = Math.hypot(a.vx, a.vz); a.v = a.speed;
-  var seatTurn = s.kind === 'turn' || s.kind === 'down' || s.kind === 'up';
+  var seatTurn = s.kind === 'turn' || s.kind === 'down' || s.kind === 'up' || s.face;
   if (seatTurn && a.seat) { var df = _wlfAng(a.seat.facing - a.heading), mx2 = Math.PI / a.brain.turn * dt; a.heading = _wlfAng(a.heading + _wlfClamp(df, -mx2, mx2)); }
   else if (!seatTurn && (s.x1 !== s.x0 || s.z1 !== s.z0)) { var des = Math.atan2(s.x1 - s.x0, s.z1 - s.z0); if (!s.sit && !s.stand) { var dd = _wlfAng(des - a.heading), mx = Math.PI / a.brain.turn * dt; a.heading = _wlfAng(a.heading + _wlfClamp(dd, -mx, mx)); } }
   if (t >= 1) {
     a.step = null; a.stepEnd = life.t;
     if (s.kind === 'in') { _wlfSeatStep(life, a, 'turn'); return; }
-    if (s.kind === 'turn') { _wlfSeatStep(life, a, 'down'); return; }
-    if (s.kind === 'up') { _wlfSeatStep(life, a, 'out'); return; }
-    if (s.kind === 'out') { a.host = null; _wlfReleaseSeat(life, a); _wlfEnter(life, a, a.brain.start); _wlfNextGoal(life, a); a.y = worldLifeY(life, a); a.route = null; return; }
+    if (s.kind === 'turn') { _wlfSeatStep(life, a, 'back'); return; }
+    if (s.kind === 'back') { _wlfSeatStep(life, a, 'down'); return; }
+    // (stood up: no longer in the seated state, or the loco and the drawn pose stayed 'sit' through the steps away: a seated figure
+    // carried 0.6 m from the bench, wave 1's 'out' step included)
+    if (s.kind === 'up') { _wlfEnter(life, a, a.brain.start); _wlfSeatStep(life, a, 'fwd'); return; }
+    if (s.kind === 'fwd') { _wlfSeatStep(life, a, 'out'); return; }
+    if (s.kind === 'out') { a.host = null; _wlfReleaseSeat(life, a); _wlfEnter(life, a, a.brain.start); _wlfNextGoal(life, a); a.y = worldLifeY(life, a); a.route = null; if (a.dwellKind === 'sit') a.dwellKind = null; return; }
     if (s.sit) { a.x = s.x1; a.z = s.z1; a.bs = 'sitting'; a.gdur = null; return; }      // the sit goal takes it from here
     if (s.stand) { a.host = null; _wlfReleaseSeat(life, a); _wlfEnter(life, a, a.brain.start); _wlfNextGoal(life, a); a.y = worldLifeY(life, a); return; }
     a.layer = s.layer; a.host = null; a.route = null;
@@ -2731,6 +3058,129 @@ function _wlfOneBodyAt(life, a, x, z, dir) {
   var lx = -dir[1], lz = dir[0], w = (a.r || 0.25) * 2 + 0.25;
   for (var sg = -1; sg <= 1; sg += 2) if (_wlfOk(life, a, x + lx * w * sg, z + lz * w * sg)) return false;
   return true;
+}
+/* ---------- narrow ways (docs/dev/WORLD_MOVEMENT.md 3): a boardwalk, a towpath, a footpath between rails or walls ---------- */
+/**
+ * A way of walk cells no more than about 3.2 m across (the widest clearance within 1.5 m of a cell is at most 1.6 m). On one, people go
+ * as people do on a boardwalk: a newcomer steps on only with headway (and never past what the way's length holds), a follower keeps a
+ * following distance at the pace of the one ahead, two meeting pass single file (keep left), one overtakes only where it is two bodies
+ * wide and nobody is coming, and nobody stops for a look or stands about on it. Until wave 2 four or five walkers clumped in one blob on
+ * the Fleet Pond boardwalk (2.4 m): every follower closed to a shoulder's gap behind the one ahead and its stops were honoured there.
+ */
+var WORLD_LIFE_NARROW = { maxClear: 1.6, win: 5, gap: 1.3, pass: 1.0, look: 8, spacing: [5, 3.5], holdS: 6, spawnR: 5, near: 12, off: false };
+/** The room a person takes on a narrow way of half width hw (m along it): 5 m on a 2.4 m boardwalk, 3.5 m on a 3.2 m lane. */
+function _wlfNarrowSpacing(hw) { var S = WORLD_LIFE_NARROW.spacing; return _wlfClamp(S[0] - (hw - 1.2) * (S[0] - S[1]) / 0.4, S[1], S[0]); }
+/** May somebody arrive on foot at spawn point sp? On a narrow way only with headway (nobody within 5 m) and room on the way. */
+function _wlfNarrowSpawnOk(life, layer, sp) {
+  if (!(_wlfNarrowAt(life, layer, sp.x, sp.z) > 0)) return true;
+  if (_wlfGhostFar(life, { z: sp.z, hStand: 1.7 })) return true;     // (far off, under 30 px: the ghost pass lets people by; no admission there)
+  var N = WORLD_LIFE_NARROW, len = 0;
+  for (var d = 0; d < 4; d++) len = Math.max(len, _wlfNarrowLen(life, layer, sp.x, sp.z, [[0, 1], [0, -1], [1, 0], [-1, 0]][d]));
+  if (_wlfNarrowCount(life, null, layer, sp.x, sp.z, N.spawnR) > 0) return false;
+  for (var i = 0; i < life.agents.length; i++) { var o = life.agents[i]; if (!o.dead && o.layer === layer && o.kind === 'walker' && Math.hypot(o.x - sp.x, o.z - sp.z) < N.spawnR) return false; }
+  return _wlfNarrowCount(life, null, layer, sp.x, sp.z, len + 1) < Math.max(1, Math.floor((len + 1.5) / _wlfNarrowSpacing(_wlfNarrowAt(life, layer, sp.x, sp.z))));
+}
+/** The narrow mask of a walk layer (its near grid, and its far grid beyond the seam: a towpath far off): per cell 0 (not narrow) or the
+ *  widest clearance near it in 5 cm steps (1..32); cached. */
+function _wlfNarrowMask(life, layer) {
+  var M = life._narrow || (life._narrow = {});
+  if (M[layer] !== undefined) return M[layer];
+  if (WORLD_LIFE_NARROW.off) return (M[layer] = null);
+  var L = String(layer).split('@')[0] === 'walk' ? worldLifeGrid(life, layer) : null;
+  if (!L || !L.data || !L.clear || !L.N0 || !(L.w > 0)) return (M[layer] = null);
+  var mx = WORLD_LIFE_NARROW.maxClear, any = false;
+  // one grid: a max filter of the clearance over a (2r+1)^2 window (1.5 m either side near, 2 m far), narrow where that is <= maxClear
+  var pass = function (off, w, h, r) {
+    var N = w * h, A = new Float32Array(N), B = new Float32Array(N), out = new Uint8Array(N), i, j, d, m;
+    for (var k = 0; k < N; k++) A[k] = L.data[off + k] ? L.clear[off + k] : 0;
+    for (j = 0; j < h; j++) for (i = 0; i < w; i++) { m = 0; for (d = -r; d <= r; d++) { var ii = i + d; if (ii >= 0 && ii < w && A[j * w + ii] > m) m = A[j * w + ii]; } B[j * w + i] = m; }
+    for (j = 0; j < h; j++) for (i = 0; i < w; i++) {
+      var q = j * w + i; if (!L.data[off + q] || !(L.clear[off + q] > 0)) continue;
+      m = 0; for (d = -r; d <= r; d++) { var jj = j + d; if (jj >= 0 && jj < h && B[jj * w + i] > m) m = B[jj * w + i]; }
+      if (m <= mx) { out[q] = Math.max(1, Math.min(32, Math.round(m / 0.05))); any = true; }
+    }
+    return out;
+  };
+  var w = L.w, h = Math.min(L.hLive || L.h, Math.floor(L.N0 / w)), F = L.far;
+  var R = { L: L, w: w, h: h, m: pass(0, w, h, WORLD_LIFE_NARROW.win), fm: null };
+  if (F && F.w > 0 && F.h > 0) R.fm = pass(F.off, F.w, F.h, 1);
+  return (M[layer] = any ? R : null);
+}
+/** 0 off a narrow way, else the half width of the way there (m, its widest clearance nearby). */
+function _wlfNarrowAt(life, layer, x, z) {
+  var R = _wlfNarrowMask(life, layer); if (!R) return 0;
+  var L = R.L, F = L.far;
+  if (F && R.fm && z >= L.seam) {
+    var fi = Math.floor((x - F.ox) / F.cell), fj = Math.floor((z - F.oz) / F.cell);
+    return fi < 0 || fj < 1 || fi >= F.w || fj >= F.h ? 0 : R.fm[fj * F.w + fi] * 0.05;
+  }
+  var i = Math.floor((x - L.ox) / L.cell), j = Math.floor((z - L.oz) / L.cell);
+  if (i < 0 || j < 0 || i >= R.w || j >= R.h) return 0;
+  return R.m[j * R.w + i] * 0.05;
+}
+/** For the tools: is (x, z) on a narrow way of a life's walk layer? 0 if not, else the way's half width there (m). */
+function worldLifeNarrowAt(life, layer, x, z) { return life ? _wlfNarrowAt(life, layer || 'walk', x, z) : 0; }
+function _wlfNarrowPerson(a) {
+  if (a.kind !== 'walker' || a.dead || a.host || a.step || a.layer === 'air') return false;
+  if (a._npObj !== a.obj) { a._npObj = a.obj; a._np = /^person\./.test(String(a.obj || '')); }   // (the test once per object, not per tick)
+  return a._np;
+}
+/** The people on narrow ways within R of (x, z) on a layer (not a, not its group). */
+function _wlfNarrowCount(life, a, layer, x, z, R) {
+  var n = 0;
+  for (var i = 0; i < life.agents.length; i++) {
+    var o = life.agents[i];
+    if (o === a || !_wlfNarrowPerson(o) || o.layer !== layer || o.fadeOut || (a && (o.leader === a || a.leader === o || (a.group && o.group === a.group)))) continue;
+    if (Math.hypot(o.x - x, o.z - z) <= R && _wlfNarrowAt(life, layer, o.x, o.z) > 0) n++;
+  }
+  return n;
+}
+/** How long the narrow way runs on ahead of (x, z) along dir (m, up to 30): its capacity is that over the spacing. */
+function _wlfNarrowLen(life, layer, x, z, dir) {
+  var s = 0, miss = 0;
+  for (var t = 0.5; t <= 30; t += 0.5) { if (_wlfNarrowAt(life, layer, x + dir[0] * t, z + dir[1] * t) > 0) { s = t; miss = 0; } else if (++miss > 4) break; }
+  return s;
+}
+/**
+ * The narrow-way rules for one walker (from the steering, after its own neighbour pass): may lower a.slow (follow, hold at the entry)
+ * and drop the overtaking sidestep. dir: where it wants to go; spd: its wanted pace.
+ */
+function _wlfNarrowSteer(life, a, dir, spd) {
+  if (!_wlfNarrowPerson(a) || a.leader || !(spd > 0)) { a.narrow = 0; return; }
+  var N = WORLD_LIFE_NARROW, here = _wlfNarrowAt(life, a.layer, a.x, a.z), ahead = here ? here : _wlfNarrowAt(life, a.layer, a.x + dir[0] * 1.5, a.z + dir[1] * 1.5);
+  a.narrow = here;
+  if (!here && !ahead) { a.narrowHold = null; return; }
+  var rgx = dir[1], rgz = -dir[0], lead = null, leadF = Infinity, onc = false;
+  for (var i = 0; i < life.agents.length; i++) {
+    var o = life.agents[i];
+    if (o === a || o.dead || o.layer !== a.layer || o.layer === 'air' || o.leader === a || a.leader === o || (a.group && o.group === a.group) || o.kind === 'lane' || o.kind === 'rail') continue;
+    var rx = o.x - a.x, rz = o.z - a.z, fwd = rx * dir[0] + rz * dir[1], lat = rx * rgx + rz * rgz;
+    if (fwd <= 0 || fwd > N.look + 4 || Math.abs(lat) > 1.6) continue;
+    var ovx = o.dir && o.spd > 0.2 && !o.step ? o.dir[0] * o.spd : o.vx || 0, ovz = o.dir && o.spd > 0.2 && !o.step ? o.dir[1] * o.spd : o.vz || 0;
+    var along = ovx * dir[0] + ovz * dir[1];
+    if (along < -0.2) { if (fwd < N.look && _wlfNarrowPerson(o)) onc = true; continue; }
+    if (Math.abs(lat) < 1.0 && fwd < leadF && (o.kind === 'walker' || o.kind === 'runner')) { lead = o; leadF = fwd; }
+  }
+  // the entry: step on only when the way ahead holds fewer than its length allows (a short wait at its mouth, 6 s at most)
+  if (!here && !_wlfGhostFar(life, a)) {
+    var len = _wlfNarrowLen(life, a.layer, a.x + dir[0] * 1.5, a.z + dir[1] * 1.5, dir), cap = Math.max(1, Math.floor((len + 1.5) / _wlfNarrowSpacing(ahead)));
+    var full = _wlfNarrowCount(life, a, a.layer, a.x + dir[0] * (1.5 + len / 2), a.z + dir[1] * (1.5 + len / 2), len / 2 + 2) >= cap;
+    if (full || (lead && leadF < a.r + lead.r + N.gap + 1.5)) {
+      if (a.narrowHold == null) a.narrowHold = life.t;
+      if (life.t - a.narrowHold < N.holdS) { a.slow = 0; return; }
+    } else a.narrowHold = null;
+  } else a.narrowHold = null;
+  // (the following distance is for the figures one can see as people: under 30 px the ghost pass lets them by, and a follower held there
+  // only formed platoons on a far towpath)
+  if (!lead || _wlfGhostFar(life, a)) return;
+  // follow at the leader's pace a following distance back, or overtake where it is two bodies wide, nobody is coming and the one ahead
+  // is much slower (a stander, an elderly walker)
+  var lv = Math.max(0, lead.speed || 0), gap = leadF - a.r - lead.r - N.gap;
+  var pass = lv < 0.65 * spd && !onc && Math.min(here || ahead, _wlfNarrowAt(life, a.layer, lead.x, lead.z) || 99) >= N.pass;
+  if (pass) return;
+  var sl = _wlfClamp((lv + 0.8 * gap) / spd, 0, 1);
+  if (sl < a.slow) a.slow = sl;
+  if (a.sideV > 0 && !a.sideOnc) a.sideV = 0;   // no shuffle out to pass where there is no passing
 }
 /**
  * A gap two people cannot pass in (a one-body gap: a bollard and a bench 1.6 m apart, a doorway, a boardwalk): when a person is
@@ -3085,7 +3535,8 @@ function _wlfPresent(life, a) {
   if (a.kind === 'lane' || a.kind === 'rail') state = moving ? (a.bs === 'stopped' ? _wlfMovingState(a) : a.bs) : 'stopped';
   else if (a.kind === 'moored') state = 'moored';
   else if (a.hop) state = 'fly';
-  else if (a.step && a.step.sit) state = 'sit';
+  // (seated from the tick after the step back ended: the body's last centimetres of that step are drawn standing)
+  else if (a.step && a.step.sit && life.t > a.step.t0) state = 'sit';
   // (standing up: the seated pose while the hips come forward off the seat, then standing: the pose follows the transition, never a slide)
   else if (a.step && a.step.stand) state = (life.t - a.step.t0) / Math.max(0.01, a.step.dur) < 0.6 ? 'sit' : 'idle';
   else if (moving && !st.speed && a.bs !== 'fly' && a.bs !== 'dive') state = _wlfMovingState(a);
@@ -3170,7 +3621,7 @@ function _wlfTrafficPass(life, dt) {
       if (v.s >= v.span.s1) {
         v.s = v.span.s1; _wlfLanePlace(life, v);
         if (v.span.fadeOut && !v.fadeOut) v.fadeOut = life.t;
-        if (!v.span.fadeOut || life.t - v.fadeOut >= 0.6) { _wlfAddSpawnPoint(life, v.layer, v.x, v.z); _wlfDespawn(life, v); }
+        if (!v.span.fadeOut || life.t - v.fadeOut >= 0.6 + life.step - 1e-6) { _wlfAddSpawnPoint(life, v.layer, v.x, v.z); _wlfDespawn(life, v); }
       }
     }
   }
@@ -3336,12 +3787,13 @@ function _wlfHashBuild(life) {
 function _wlfPassBrain(life, dt) {
   life.t += dt;
   _wlfSpawnPass(life, dt);
+  if (!life.warming) _wlfDwellKeep(life);
   _wlfHashBuild(life);
   _wlfReactions(life, dt);
   var A = life.agents;
   for (var i = 0; i < A.length; i++) {
     var a = A[i]; if (a.dead) continue;
-    a.px = a.x; a.pz = a.z; a.pOdo = a.gOdo; a.pWalkK = a.walkK;
+    a.px = a.x; a.pz = a.z; a.pOdo = a.gOdo; a.pWalkK = a.walkK; a.pGhost = a.ghost > 0 ? a.ghost : 0;
     a.phase = (a.phase + dt * (0.5 + (a.speed || 0))) % 1;
     try { _wlfBrain(life, a, dt); } catch (e) { a.dir = null; _wlfProblem(life, { pop: a.pop, rule: 'error', msg: a.id + ': ' + (e && e.message) }); }
   }
@@ -3394,6 +3846,9 @@ function worldLifeTick(life, dt) {
 /* ---------- the agent records ---------- */
 function worldAgents(life) {
   var out = [], al = life.alpha;
+  // the PRESENTED moment: the records sit between the last two steps (alpha), so the fades and the ghost pass are read at that moment too,
+  // continuous between steps (until wave 2 they came from the step's own clock, life.t: an arrival brightened in 15 Hz stairs)
+  var tp = life.t - (1 - (al >= 0 && al <= 1 ? al : 1)) * life.step;
   for (var i = 0; i < life.agents.length; i++) {
     var a = life.agents[i];
     var x = a.px + (a.x - a.px) * al, z = a.pz + (a.z - a.pz) * al, ga = al;
@@ -3404,9 +3859,10 @@ function worldAgents(life) {
     var st = a.brain.states[a.bs] || {};
     var state = a.state, pose = a.pose;
     var alpha = 1;
-    if (a.fadeIn) alpha = Math.min(alpha, _wlfClamp((life.t - a.born) / a.fadeIn, 0, 1));
-    if (a.fadeOut) alpha = Math.min(alpha, _wlfClamp(1 - (life.t - a.fadeOut) / 0.6, 0, 1));
-    var ghost = a.ghost > 0 ? a.ghost : 0;
+    if (a.fadeIn) alpha = Math.min(alpha, _wlfClamp((tp - a.born) / a.fadeIn, 0, 1));
+    // (out over 0.6 s, a ninth a step: a leaver is kept one step longer, so the last step it is drawn in ends at 0)
+    if (a.fadeOut) alpha = Math.min(alpha, _wlfClamp(1 - (tp - a.fadeOut) / 0.6, 0, 1));
+    var g1 = a.ghost > 0 ? a.ghost : 0, ghost = a.pGhost != null ? a.pGhost + (g1 - a.pGhost) * ga : g1;
     if (ghost) alpha = Math.min(alpha, 1 - WORLD_LIFE_GHOST.fade * ghost);   // a ghost pass: never under 0.45
     var deg = ((a.heading * 180 / Math.PI) % 360 + 360) % 360;
     var shown = a.svx != null && a.kind !== 'lane' && a.kind !== 'rail';
@@ -3422,7 +3878,10 @@ function worldAgents(life) {
       wants: !!(a.dir && a.spd > 0), ghost: ghost, ghostWith: (a.gl && a.gl.length) || (a.glR && a.glR.length) ? (a.gl || []).concat(a.glR || []).map(function (q) { return q.id; }) : null,
       // I4: the locomotion state, the stride weight (0..1) and the gait phase (0..1, odometry: distance covered / stride)
       loco: a.loco || null, walkK: wk == null ? null : Math.round(wk * 1000) / 1000, gaitPhase: go == null ? null : go - Math.floor(go),
-      seat: a.seat && a.host ? { facing: a.seat.facing * 180 / Math.PI, fdeg: a.seat.facing * 180 / Math.PI } : null, dwell: a.dwellKind || null });
+      seat: a.seat && a.host ? { facing: a.seat.facing * 180 / Math.PI, fdeg: a.seat.facing * 180 / Math.PI } : null, dwell: a.dwellKind || null,
+      // the seconds after the rain starts (or stops) that this one puts its umbrella up (or down): 0..12, its own (the renderer staggers the
+      // wardrobe change with it: never every walker's umbrella in one frame)
+      brollyLag: a.brollyLag != null ? a.brollyLag : (a.brollyLag = Math.round((_wlfHash(a.id + ':brolly') % 1000) * 12) / 1000) });
   }
   return out;
 }
