@@ -10,6 +10,27 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.69.0] - 2026-11-14
+
+### Added
+
+- **Painted world openings.** 45 UK openings now play in the painted world style of Manchester and Fleet Pond: people who walk, stand, chat, queue and sit, light that follows the time of day, and the season outside. 35 of them replace the older drawings of the same views in Manchester, Sheffield, Fleet, Yateley, Reepham and the South West.
+- **New places**: Mercery Lane in Canterbury, Tenby harbour, Gas Street Basin in Birmingham, Bibury's green, Liverpool's Pier Head, Malham Cove, Whitby harbour, the Shambles in York, Elm Hill in Norwich and Castlefield basin in Manchester, plus new views of Plymouth Hoe, Dartmoor and Salisbury Cathedral.
+- **Manchester's Christmas market** in Albert Square, with the Town Hall, plays until 22 December.
+- **Openings use the Garden's engine.** Where the graphics card can run it, an opening draws with the same engine as the Garden. If it runs slowly, it lowers its own detail step by step and, if needed, goes back to the previous way of drawing. It never removes people.
+
+### Changed
+
+- **Openings appear sooner.** The next opening's first picture shows behind the Freeflo logo while Freeflo starts, and a view you have seen before comes back from a copy kept in your browser instead of being drawn again. Kept copies use at most 300 MB and are removed after 30 days unused.
+- Yateley Green's opening has more sky and one bench instead of two.
+
+### Fixed
+
+- People in openings no longer walk through benches, walls, rocks or buildings, walk on the spot, or slide while standing or sitting down.
+- Flicker in openings: people no longer jump back when the welcome appears, turn see-through or pop between drawings, street lamps no longer glow at noon, walkers change colour smoothly under lamps and into the distance, and tall trees no longer twinkle in front of lit windows.
+- Walkers on narrow boardwalks keep their distance instead of bunching up, and cars no longer vanish halfway along Yateley Green's lane.
+- Winter horse chestnuts no longer look as if they bear conkers.
+
 ## [2.68.13] - 2026-11-14
 
 ### Fixed
