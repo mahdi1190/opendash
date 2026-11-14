@@ -118,7 +118,7 @@ Until 14 Nov entries expired 4 days after they were stored, however often they w
 960, 1280, 1600, 1920, 2240, 2560, 2880, 3440, 3840):
 
 - the nearest bucket at or above the width, or within 6 % below it;
-- the height follows at the same aspect, rounded to 8 px;
+- the height follows at the same aspect, rounded to 8 px, except that a width already on a bucket keeps its own height (rounding 900 to 904 made a 1600 x 900 screen soft and put the stage a fraction of a pixel off the canvas);
 - the css box scales the canvas;
 - sizes under 960 wide (cards, tiles) keep their own size.
 

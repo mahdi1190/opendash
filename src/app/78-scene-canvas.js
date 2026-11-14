@@ -85,7 +85,8 @@ function _sccCanvas(w, h) {
 const _sccNow = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 /**
  * A device size snapped to a bucket (a kept bake's key: docs/dev/WORLD_LOAD.md 3): the width to the nearest of SCENE_SIZE_BUCKETS at or
- * above it (or within 6 % below it: drawn a little soft rather than baked again), the height at the same aspect, rounded to 8 px.
+ * above it (or within 6 % below it: drawn a little soft rather than baked again), the height at the same aspect, rounded to 8 px (a width
+ * already on a bucket keeps its own height).
  * Sizes under 960 px wide (cards, tiles) keep their own size.
  */
 const SCENE_SIZE_BUCKETS = [960, 1280, 1600, 1920, 2240, 2560, 2880, 3440, 3840];
@@ -93,6 +94,9 @@ function sceneSizeBucket(W, H) {
   if (!(W >= 960) || !(H > 0)) return [W, H];
   let b = SCENE_SIZE_BUCKETS.find(x => x * 1.06 >= W) || W;
   if (b > W * 1.25) b = W;
+  // a width already on a bucket keeps its exact height: rounding 900 to 904 stretched a 1600 x 900 screen's picture by half a percent
+  // (soft everywhere) and put the stage, which caps at the window's own size, a fraction of a pixel off the canvas
+  if (b === W) return [W, H];
   const k = b / W, H2 = Math.max(8, Math.round(H * k / 8) * 8);
   return [b, H2];
 }
