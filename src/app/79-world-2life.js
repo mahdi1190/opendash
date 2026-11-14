@@ -374,8 +374,20 @@ function worldLifeInit(world, nav, t0, opts) {
     // (no ghost pass in the warm-up: nobody is drawn, its 0.25 s steps are too coarse to ease a fade, and the shown loop then starts
     // from the same moment as before the ghost pass existed)
     life.warming = true;
-    for (var s = 0; s < w; s += WORLD_LIFE_WARM.step) worldLifeStep(life, WORLD_LIFE_WARM.step);
+    // (the warm-up also learns where the walkers go, life._heat: dwellers never stand in a walking line; and how many people are in view
+    // over its last 20 s: the dwellers bring the standing share to the scene's)
+    var heat = life._heat = new Map(), vc = { walking: 0, still: 0, n: 0 };
+    for (var s = 0; s < w; s += WORLD_LIFE_WARM.step) {
+      worldLifeStep(life, WORLD_LIFE_WARM.step);
+      for (var hi = 0; hi < life.agents.length; hi++) { var ha = life.agents[hi]; if (!ha.dead && ha.kind === 'walker' && ha.layer === 'walk' && worldLifeMoving(ha)) { var hk = Math.floor(ha.x / 2) * 8192 + Math.floor(ha.z / 2); heat.set(hk, (heat.get(hk) || 0) + 1); } }
+      if (s >= w - 20) { var vcn = _wlfViewCount(life); vc.walking += vcn.walking; vc.still += vcn.still; vc.n++; }
+    }
+    var hsum = 0, hcnt = 0; heat.forEach(function (v) { hsum += v; hcnt++; });
+    life._heatK = hcnt ? 1 / Math.max(1, hsum / hcnt) : 0;
     life.warming = false;
+    try { _wlfDwellInit(life, vc.n ? { walking: vc.walking / vc.n, still: vc.still / vc.n } : null); } catch (e) { _wlfProblem(life, { pop: -2, rule: 'error', msg: 'dwellers: ' + String(e && e.message || e) }); }
+  } else {
+    try { _wlfDwellInit(life, null); } catch (e) { _wlfProblem(life, { pop: -2, rule: 'error', msg: 'dwellers: ' + String(e && e.message || e) }); }
   }
   life.events.length = 0;
   life.ghostLinks = 0; life.ghostEnds = 0; life.ghostLog.length = 0;   // the tools count the ghost passes of the shown loop, not of the warm-up
@@ -761,7 +773,9 @@ function _wlfArrive(life, pop, entry, o) {
   var id = 'p' + pop.idx + '-' + (pop.ord++);
   var a = _wlfNewAgent(life, pop, entry, sp.x, sp.z, id, { edge: sp.edge, state: _wlfStateAlias(b, spec.state) });
   if (b.kind === 'boat') a.r = _wlfBoatR(entry);
-  a.fadeIn = sp.hidden ? 0 : 0.6;
+  // every arrival on foot fades in (0.6 s: an alpha step of 0.11 a tick, the ghost pass's gentlest), hidden or not: a spawn cell's 'hidden' is an estimate (behind cover, a door) and a figure that pops in
+  // at full opacity beside a wall reads as stepping out of it (docs/dev/WORLD_MOVEMENT.md 4)
+  a.fadeIn = a.kind === 'walker' || !sp.hidden ? 0.6 : 0;
   // A11: no clones side by side (the last few arrivals of this population)
   _wlfVariant(life, a, pop.recent.map(function (q) { return q.variant; }));
   pop.recent.push(a); if (pop.recent.length > 3) pop.recent.shift();
@@ -1062,29 +1076,58 @@ function _wlfWanderTarget(life, a, on, far) {
   return best;
 }
 
-/* ---------- benches (sit, capacity, queue) ---------- */
+/* ---------- benches (sit, capacity, queue): SEAT ANCHORS (docs/dev/WORLD_MOVEMENT.md 3) ---------- */
+/** The ground solids of the nav near a segment, by a 4 m grid (built once a life). */
+function _wlfSolidGrid(life) {
+  if (life._solG) return life._solG;
+  var G = new Map(), S = (life.nav && life.nav.solids) || [];
+  for (var i = 0; i < S.length; i++) {
+    var b = typeof _wnavBBox === 'function' ? _wnavBBox(S[i]) : null; if (!b) continue;
+    for (var gx = Math.floor(b[0] / 4); gx <= Math.floor(b[2] / 4); gx++) for (var gz = Math.floor(b[1] / 4); gz <= Math.floor(b[3] / 4); gz++) {
+      var k = gx * 100003 + gz, L = G.get(k); if (!L) G.set(k, L = []); L.push(S[i]);
+    }
+  }
+  return (life._solG = G);
+}
+/** Does a body of radius r on the segment a -> b touch any ground solid other than skip's (an entity: the bench it sits on)? Exact shapes. */
+function _wlfSegSolid(life, ax, az, bx, bz, r, skip) {
+  if (typeof _wnavShapeDist !== 'function') return false;
+  var G = _wlfSolidGrid(life), D = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(D / 0.05)), seen = new Set();
+  for (var i = 0; i <= n; i++) {
+    var x = ax + (bx - ax) * i / n, z = az + (bz - az) * i / n, L = G.get(Math.floor(x / 4) * 100003 + Math.floor(z / 4)) || [];
+    for (var j = 0; j < L.length; j++) { var s = L[j]; if (s.soft || (skip && s.ent === skip)) continue; seen.add(s); if (_wnavShapeDist(s, x, z) < r) return true; }
+  }
+  return false;
+}
+/**
+ * A bench's seats, each with its ANCHORS: S the seat (where the sitter is drawn), A the approach point 0.3 m in front of it (the sitter stands
+ * there with its back to the seat and sits straight down: the body moves 0.3 m, never more), N the first point on the nav in front of A
+ * whose short step in to A touches no solid but this bench, and the facing. Approached from the front only (never from behind or beside:
+ * the old stand-up spot was searched all round, and sitters rose through the backrest). A seat with no clear front is never used.
+ */
 function _wlfSeats(life, ent) {
   var k = ent.id || ent.obj;
   if (life.seats.has(k)) return life.seats.get(k);
   var kb = _wlfKb(ent.obj), sz = ent.size || (_wlfInfo(ent.obj) || {}).size || { w: 1.8, d: 0.6, h: 0.85 };
   var n = kb && Number.isFinite(kb.seats) ? kb.seats : kb && Number.isFinite(kb.capacity) ? kb.capacity : Math.max(1, Math.min(4, Math.round((sz.w || 1.8) / 0.6)));
   var f = (Number.isFinite(ent.facing) ? ent.facing : 180) * Math.PI / 180, fx = Math.sin(f), fz = Math.cos(f), ax = fz, az = -fx;
-  var span = Math.max(0.5, (sz.w || 1.8) - 0.5), seats = [];
+  var span = Math.max(0.5, (sz.w || 1.8) - 0.5), seats = [], R = 0.25;
   for (var i = 0; i < n; i++) {
     var u = n === 1 ? 0 : -span / 2 + span * i / (n - 1);
-    var sx = ent.x + ax * u, sz2 = ent.z + az * u, off = (sz.d || 0.6) / 2 + 0.45, stand = [sx + fx * off, sz2 + fz * off];
-    // where one stands up to is a legal spot (a bench on a quay edge faces the water: the stand-up step walked the sitter into the harbour);
-    // else behind the bench, else beside it
-    if (typeof worldNavOk === 'function' && life.nav && !worldNavOk(life.nav, 'walk', stand[0], stand[1], 0.28)) {
-      // the nearest legal spot round the seat, in front first, then behind, then to the sides, outward to 2.2 m (a bench's solid ring is about 1 m)
-      var dirs = [[fx, fz], [-fx, -fz], [ax, az], [-ax, -az], [fx + ax, fz + az], [fx - ax, fz - az], [-fx + ax, -fz + az], [-fx - ax, -fz - az]], found = null;
-      for (var rr = off; rr <= 2.2 && !found; rr += 0.25) for (var q = 0; q < dirs.length && !found; q++) {
-        var dl = Math.hypot(dirs[q][0], dirs[q][1]) || 1, cx = sx + dirs[q][0] / dl * rr, cz = sz2 + dirs[q][1] / dl * rr;
-        if (worldNavOk(life.nav, 'walk', cx, cz, 0.28)) found = [cx, cz];
-      }
-      if (found) stand = found;
+    var sx = ent.x + ax * u, sz2 = ent.z + az * u, Ax = sx + fx * 0.3, Az = sz2 + fz * 0.3, N = null;
+    for (var t = 0.35; t <= 2.0 && !N; t += 0.1) {
+      var cx = sx + fx * t, cz = sz2 + fz * t;
+      if (typeof worldNavOk === 'function' && life.nav && worldNavOk(life.nav, 'walk', cx, cz, 0.28) && !_wlfSegSolid(life, cx, cz, Ax, Az, R * 0.8, ent)) N = [cx, cz];
     }
-    seats.push({ i: i, x: sx, z: sz2, ax: stand[0], az: stand[1], by: null, facing: f });
+    // the seat itself and its approach clear of every other solid (a bench pushed against a planter, a wall: no room to sit there)
+    var ok = !!N && !_wlfSegSolid(life, Ax, Az, sx, sz2, 0.15, ent);
+    seats.push({ i: i, x: sx, z: sz2, ax: Ax, az: Az, nx: N ? N[0] : Ax, nz: N ? N[1] : Az, ok: ok, by: null, facing: f, fdeg: f * 180 / Math.PI });
+  }
+  // a seat a scenery figure already sits on (a static bench sitter) is taken for good
+  var ents = (life.world && life.world.entities) || [];
+  for (var e = 0; e < ents.length; e++) {
+    var q = ents[e]; if (!q || q.static === false || !/^person\./.test(String(q.obj || ''))) continue;
+    for (var s2 = 0; s2 < seats.length; s2++) if (Math.hypot(seats[s2].x - q.x, seats[s2].z - q.z) < 0.5) seats[s2].by = 'static';
   }
   var rec = { ent: ent, seats: seats, queue: [] };
   life.seats.set(k, rec);
@@ -1136,12 +1179,13 @@ function _wlfBrain(life, a, dt) {
   }
   // a goal that owns the state (seated, queuing, fishing, feeding, viewing, waiting at a stop) is never interrupted by the
   // state machine; on the way to it, the state machine gives only short pauses
-  var owned = !!a.host || a.bs === 'wait' || a.bs === 'fish' || a.bs === 'feed' || ((g.sit != null || g.view != null) && !(b.states[a.bs] && b.states[a.bs].speed) && a.gdur != null);
+  var owned = !!a.host || g.dwell != null || a.bs === 'wait' || a.bs === 'fish' || a.bs === 'feed' || ((g.sit != null || g.view != null) && !(b.states[a.bs] && b.states[a.bs].speed) && a.gdur != null);
   if (a.st <= 0 && !owned) {
     var st = b.states[a.bs], nx = st && st.next ? worldLifePick(a.rng, st.next) : b.start;
     if (a.bs === 'chat' || a.bs === 'sit') nx = b.states.walk ? 'walk' : b.start;
     var directed = g.wander === undefined && g['do'] == null;
-    if (directed && b.states[nx] && !b.states[nx].speed && a.rng() > 0.25) nx = _wlfMovingState(a);
+    // (a stop on the way to somewhere is HONOURED: until 14 Nov three in four were turned back into walking and the rest cut to 2.5 s, so
+    // nobody on a directed goal ever stood; docs/dev/WORLD_MOVEMENT.md 2. The edge zones and one-body ways below still keep it walking)
     // C2: nobody stops in the edge zones (the near row, the frame sides) unless the goal says so
     if (b.states[nx] && !b.states[nx].speed && (_wlfGroupEdge(life, a) || a.leaving)) nx = b.states.walk ? 'walk' : b.states.swim ? 'swim' : b.states.stalk ? 'stalk' : b.states.ride ? 'ride' : nx;
     // nobody stops IN a one-body way (a boardwalk, a gap between a bollard and a bench): whoever is behind or coming the other way
@@ -1150,8 +1194,9 @@ function _wlfBrain(life, a, dt) {
     if (a.kind === 'wader' && nx === 'freeze') a.lookAt = _wlfWaterAhead(life, a);
     if (a.kind === 'wader' && nx === 'strike') { var wp = a.lookAt || _wlfWaterAhead(life, a); if (wp) life.bus.emit('strike', { id: a.id, x: wp[0], z: wp[1], t: life.t }); }
     _wlfEnter(life, a, nx);
-    if (directed && b.states[a.bs] && !b.states[a.bs].speed) a.st = Math.min(a.st, 2.5);
+    if (directed && b.states[a.bs] && !b.states[a.bs].speed) a.st = Math.min(a.st, 8);
   }
+  if (g.dwell != null) return _wlfDwellGoal(life, a, g, dt);
   if (g.sit != null) return _wlfSitGoal(life, a, g, dt);
   if (g.wait != null || g.board != null) return _wlfWaitGoal(life, a, g, dt);
   if (g.enter != null) return _wlfEnterGoal(life, a, g);
@@ -1296,48 +1341,73 @@ function _wlfSitGoal(life, a, g, dt) {
   if (!ent || !_wlfIsBench(ent)) { var r0 = _wlfFlowTo(life, a, g.sit); if (r0 === 'here') { _wlfNextGoal(life, a); } else if (r0 === 'fail') _wlfFail(life, a); else _wlfKeepMoving(life, a); return; }
   var B = _wlfSeats(life, ent), bid = ent.id || ent.obj;
   if (a.host === bid && a.seat) {
-    // seated: the bench's facing, no leg motion, for the goal's time; then stand up off the bench (eased)
+    // seated: the bench's facing, no leg motion, for the goal's time; then stand up (S -> A, 0.3 m) and step back out to the nav (A -> N)
     if (a.bs !== 'sit') { _wlfEnter(life, a, a.brain.states.sit ? 'sit' : 'idle'); a.bs = 'sit'; a.gdur = worldLifeRange(a.rng, g['for'] != null ? g['for'] : [20, 60]); a.st = a.gdur; life.bus.emit('sit', { id: a.id, x: a.x, z: a.z, bench: ent.id }); }
     a.lookAt = [a.x + Math.sin(a.seat.facing) * 10, a.z + Math.cos(a.seat.facing) * 10];
-    if (a.st <= 0 && _wlfSpotBusy(life, a, a.seat.ax, a.seat.az, 0.6) && (a.standWait = (a.standWait || 0) + dt) < 3) return;   // somebody stands where I would step: a moment more
-    if (a.st <= 0) { a.standWait = 0; a.step = { t0: life.t, dur: Math.max(0.6, Math.hypot(a.seat.ax - a.x, a.seat.az - a.z) / 1.1), x0: a.x, z0: a.z, x1: a.seat.ax, z1: a.seat.az, layer: a.layer, stand: true }; life.bus.emit('stand', { id: a.id, x: a.x, z: a.z }); }
+    if (a.st <= 0 && _wlfSpotBusy(life, a, a.seat.nx, a.seat.nz, 0.6) && (a.standWait = (a.standWait || 0) + dt) < 3) return;   // somebody stands where I would step: a moment more
+    if (a.st <= 0) { a.standWait = 0; _wlfSeatStep(life, a, 'up'); life.bus.emit('stand', { id: a.id, x: a.x, z: a.z }); }
     return;
   }
   if (!a.seat) {
     // far away: walk to the bench; a seat is taken only on arrival (first come, first seated)
     if (Math.hypot(a.x - ent.x, a.z - ent.z) > 6) { var rf = _wlfFlowTo(life, a, g.sit); if (rf === 'fail') _wlfFail(life, a); else if (rf === 'go') _wlfKeepMoving(life, a); return; }
-    var free = B.seats.filter(function (q) { return !q.by; });
+    var free = B.seats.filter(function (q) { return !q.by && q.ok; });
     if (!free.length) {
-      // full: queue standing beside the bench for a while, then give up (Y4 queues)
+      // full (or no seat with a clear front): queue standing in front of the bench for a while, then give up (Y4 queues)
+      if (!B.seats.some(function (q) { return q.ok; })) { _wlfNextGoal(life, a); return; }
       if (B.queue.indexOf(a.id) < 0) { B.queue.push(a.id); a.queueT = life.t; }
-      if (life.t - a.queueT > 20) { B.queue.splice(B.queue.indexOf(a.id), 1); _wlfNextGoal(life, a); return; }
+      if (life.t - a.queueT > 20) { B.queue.splice(B.queue.indexOf(a.id), 1); a.queueing = false; _wlfNextGoal(life, a); return; }
       var qi = B.queue.indexOf(a.id), fx = Math.sin(B.seats[0].facing), fz = Math.cos(B.seats[0].facing);
       var qx = ent.x + fx * 1.8 + fz * (qi + 1) * 0.9, qz = ent.z + fz * 1.8 - fx * (qi + 1) * 0.9;
       if (!a.qcells || a.qi !== qi) { a.qcells = _wlfNearCells(life, a.layer, _wlfFlowR(a), qx, qz, 2); a.qi = qi; }
       var rq = a.qcells.length ? _wlfFlowTo(life, a, { key: 'benchq:' + bid + ':' + qi, cells: a.qcells }) : 'here';
       if (rq === 'go') { _wlfKeepMoving(life, a); return; }
-      a.dir = null; a.lookAt = [ent.x, ent.z];
+      a.dir = null; a.lookAt = [ent.x, ent.z]; a.queueing = true;
       if (a.brain.states[a.bs] && a.brain.states[a.bs].speed) _wlfEnter(life, a, _wlfStillState(a));
       a.bs = 'wait'; a.st = Math.max(a.st, 1);
       return;
     }
     var qpos = B.queue.indexOf(a.id); if (qpos >= 0) B.queue.splice(qpos, 1);
-    free.sort(function (p, q) { return Math.hypot(p.ax - a.x, p.az - a.z) - Math.hypot(q.ax - a.x, q.az - a.z); });
+    a.queueing = false;
+    free.sort(function (p, q) { return Math.hypot(p.nx - a.x, p.nz - a.z) - Math.hypot(q.nx - a.x, q.nz - a.z); });
     a.seat = free[0]; a.seat.by = a.id; a.qcells = null;
     if (a.bs === 'wait') _wlfEnter(life, a, a.brain.start);
   }
+  // to N (the nav point in front of the seat) on the nav, then the short step in to A, the turn, and the sit (_wlfSeatStep)
   var sk = 'seat:' + bid + ':' + a.seat.i;
-  if (!a.seat.cells) a.seat.cells = _wlfNearCells(life, a.layer, _wlfFlowR(a), a.seat.ax, a.seat.az, 1.6);
-  var res = a.seat.cells.length ? _wlfFlowTo(life, a, { key: sk, cells: a.seat.cells }) : _wlfFlowTo(life, a, g.sit);
-  if (res === 'here' || Math.hypot(a.seat.ax - a.x, a.seat.az - a.z) < 0.5) {
-    if ((_wlfSpotBusy(life, a, a.x, a.z, 0.45) || _wlfSpotBusy(life, a, a.seat.x, a.seat.z, 0.5)) && (a.sitWait = (a.sitWait || 0) + dt) < 3) { a.dir = null; return; }   // two stepping on one spot are drawn through each other
+  if (!a.seat.cells) a.seat.cells = _wlfNearCells(life, a.layer, _wlfFlowR(a), a.seat.nx, a.seat.nz, 1.6);
+  var dN = Math.hypot(a.seat.nx - a.x, a.seat.nz - a.z);
+  var res = dN < 1.2 ? _wlfPathTo(life, a, a.seat.nx, a.seat.nz) : a.seat.cells.length ? _wlfFlowTo(life, a, { key: sk, cells: a.seat.cells }) : _wlfFlowTo(life, a, g.sit);
+  if (res === 'here' && dN > 0.45) res = _wlfPathTo(life, a, a.seat.nx, a.seat.nz);
+  if (res === 'here' || dN < 0.3) {
+    if (_wlfSpotBusy(life, a, a.seat.ax, a.seat.az, 0.5) && (a.sitWait = (a.sitWait || 0) + dt) < 3) { a.dir = null; return; }   // two stepping on one spot are drawn through each other
     a.sitWait = 0;
-    a.step = { t0: life.t, dur: Math.max(0.6, Math.hypot(a.seat.x - a.x, a.seat.z - a.z) / 1.1), x0: a.x, z0: a.z, x1: a.seat.x, z1: a.seat.z, layer: a.layer, sit: bid };
     a.host = bid;
+    _wlfSeatStep(life, a, 'in');
     return;
   }
   if (res === 'fail') { _wlfReleaseSeat(life, a); _wlfFail(life, a); return; }
   _wlfKeepMoving(life, a);
+}
+/**
+ * The anchored transitions of a seat (docs/dev/WORLD_MOVEMENT.md 3), one after another, each a short eased step the brain waits on:
+ *   in    N -> A: a real step or two toward the bench (walking: the legs follow the ground covered), facing it
+ *   turn  at A: about to the seat's facing (still)
+ *   down  A -> S (0.3 m): the sit, the pose follows the transition (loco sit-down)
+ *   up    S -> A (0.3 m): the stand (loco stand-up)
+ *   out   A -> N: a step or two away from the bench, facing the way the seat faces; then free on the nav
+ * Only the sitter's own bench is ever crossed (it is hosted by it from 'in' to 'out'); N was chosen so the step in touches no other solid.
+ */
+function _wlfSeatStep(life, a, kind) {
+  var S = a.seat; if (!S) return;
+  var x0 = a.x, z0 = a.z, x1 = x0, z1 = z0, dur = 0.5, o = { t0: life.t, x0: x0, z0: z0, layer: a.layer, kind: kind };
+  if (kind === 'in') { x1 = S.ax; z1 = S.az; dur = Math.max(0.35, Math.hypot(x1 - x0, z1 - z0) / 0.7); o.walk = true; }
+  else if (kind === 'turn') { var turn = Math.abs(_wlfAng(S.facing - a.heading)); dur = Math.max(0.3, turn / (Math.PI / a.brain.turn)); }
+  else if (kind === 'down') { x1 = S.x; z1 = S.z; dur = 1.1; o.sit = a.host; }
+  else if (kind === 'up') { x1 = S.ax; z1 = S.az; dur = 1.0; o.stand = true; }
+  else if (kind === 'out') { x1 = S.nx; z1 = S.nz; dur = Math.max(0.35, Math.hypot(x1 - x0, z1 - z0) / 0.7); o.walk = true; }
+  o.x1 = x1; o.z1 = z1; o.dur = dur;
+  a.step = o; a.dir = null;
 }
 function _wlfStopById(life, id) {
   var T = life.traffic; if (!T) return null;
@@ -1462,6 +1532,294 @@ function _wlfViewGoal(life, a, g, dt) {
   if (a.bs !== 'look' || a.gdur == null) { _wlfEnter(life, a, a.brain.states.look ? 'look' : _wlfStillState(a)); a.gdur = worldLifeRange(a.rng, g['for'] != null ? g['for'] : [10, 40]); a.st = a.gdur; a.viewPoi = p; }
   a.lookAt = a.viewPoi || p;
   if (a.st <= 0) { a.viewAt = null; a.viewPoi = null; a.gdur = null; _wlfEnter(life, a, a.brain.start); _wlfNextGoal(life, a); }
+}
+/* ---------- DWELLERS (docs/dev/WORLD_MOVEMENT.md 2): people who are HERE, not passing through ---------- */
+/**
+ * Standing is behaviour, not a pause in walking (movement finding B1): a city square is people waiting, chatting, phoning and watching,
+ * with others crossing between them. Each scene aims for the standing share of its kit (WORLD_KIT_STAND: civic square about 0.42, a
+ * towpath 0.2, a wetland boardwalk 0.28) and STARTS with it in place: after the warm-up, dwellers are put where people stand (by things,
+ * out of the walking lines the warm-up's traffic drew, inside the frame) until the share of people in view who stand or sit reaches it.
+ *   authored   the scene's own standing figures (world.dwellers, core): live where they were placed, facing as they faced, for good
+ *   chat       a ring of 2-3 facing its middle (the chat clip), for good
+ *   watch      a watcher or a photographer 4-9 m from a landmark, a statue or the water, looking at it
+ *   queue      2-3 in a line at a kiosk, facing it
+ *   sit        on a free seat with a clear front (the seat anchors), up after a few minutes
+ *   solo       stands, looks about, phones; a dweller with legs to walk on moves a few metres to another spot now and then
+ * At most `max` are added (the care rules: a few anonymous figures, never a crowd). WORLD_LIFE_DWELL.off: true turns it off.
+ */
+var WORLD_LIFE_DWELL = { max: 8, gap: 2.4, zMin: 6, zMax: 130, minPx: 18, ring: 0.62, chatShare: 0.4, sitShare: 0.3, off: false };
+var _WLF_DWELL_SOLO = ['person.phone-idler', 'person.walker', 'person.shopper', 'person.commuter', 'person.phone-idler', 'person.student', 'person.elderly-walker'];
+var _WLF_DWELL_CHAT = ['person.walker', 'person.shopper', 'person.commuter', 'person.student', 'person.walker'];
+/** The share of people in view this scene aims to have standing or seated (its kit's, from the ground it has when no kit says). */
+function _wlfStandShare(life) {
+  var w = life.world || {}, share = null, S = w.surfaces || [], plaza = 0, board = false, tow = false;
+  if (typeof worldKitStandShare === 'function') share = worldKitStandShare(w.style) || worldKitStandShare(w.backdrop && w.backdrop.style) || worldKitStandShare(w.place && w.place.style);
+  for (var i = 0; i < S.length; i++) {
+    var s = S[i]; if (!s) continue;
+    if (s.kind === 'plaza' && Array.isArray(s.poly) && s.poly.length >= 3) { var A = 0, p = s.poly; for (var j = 0, k = p.length - 1; j < p.length; k = j++) A += (p[k][0] + p[j][0]) * (p[k][1] - p[j][1]); plaza += Math.abs(A / 2); }
+    if (s.kind === 'boardwalk' || s.kind === 'platform' || s.kind === 'deck') board = true;
+    if (s.kind === 'towpath') tow = true;
+  }
+  if (share == null) share = ({ city: 0.35, town: 0.3, park: 0.28, rural: 0.2 })[life.placeType] || 0.25;
+  if (plaza > 1500) share = Math.max(share, 0.4);       // an open square: people wait and meet there
+  if (board) share = Math.max(share, 0.25);             // a boardwalk: watchers at its rail and platform
+  if (tow && !(plaza > 1500)) share = Math.min(share, 0.22);
+  return share;
+}
+/** Is a point of the walk layer a place to stand: wholly in the frame, beyond the near band, room for a body, not a one-body way? */
+function _wlfDwellOk(life, x, z, cl) {
+  var L = worldLifeGrid(life, 'walk'), cam = life.nav && life.nav.cam;
+  if (!L || !L.data || !cam) return false;
+  if (z < Math.max(WORLD_LIFE_DWELL.zMin, L.nearZ + 2.5) || z > WORLD_LIFE_DWELL.zMax || cam.f * 1.7 / z < WORLD_LIFE_DWELL.minPx) return false;   // (big enough to read as somebody)
+  if (x < -z * cam.tanL0 + 1.4 || x > z * cam.tanR0 - 1.4) return false;
+  if (!worldLifeOk(life, 'walk', x, z, cl || 0.3)) return false;
+  if (typeof worldNavSlot === 'function' && worldNavSlot(life.nav, 'walk', x, z)) return false;
+  return true;
+}
+/** Candidate places to stand, scored: by something (a clearance of 0.6-2.4 m: beside a lamp, a planter, a wall), the middle distance, away
+ *  from the lines the warm-up's walkers wore (life._heat). */
+function _wlfDwellSpots(life) {
+  if (life._dwSpots) return life._dwSpots;
+  var L = worldLifeGrid(life, 'walk'), out = [];
+  if (!L || !L.data) return (life._dwSpots = out);
+  var cells = _wlfCells(life, 'walk', 0.3, null), heat = life._heat, hk = life._heatK || 0;
+  for (var c = 0; c < cells.length; c += 2) {
+    var x = cells[c], z = cells[c + 1], k = worldNavCell(life.nav, 'walk', x, z);
+    if (k < 0 || !_wlfDwellOk(life, x, z)) continue;
+    // its own cell's traffic (a walking line: never stand in it) and its neighbourhood's (people pass near: a place people are; a dweller
+    // alone in an empty corner reads as placed)
+    var cx = Math.floor(x / 2), cz = Math.floor(z / 2), own = heat ? (heat.get(cx * 8192 + cz) || 0) * hk : 0, around = 0;
+    if (heat) for (var ix = -3; ix <= 3; ix++) for (var iz = -3; iz <= 3; iz++) if (ix || iz) around += (heat.get((cx + ix) * 8192 + cz + iz) || 0) * hk;
+    var cl = L.clear[k], px = life.nav.cam.f * 1.7 / z;
+    var score = (cl >= 0.6 && cl <= 2.4 ? 1 : 0.35) + (px >= 30 && px <= 140 ? 0.6 : 0.1) + Math.min(1, around / 12) - Math.min(2, own * 1.5);
+    out.push({ x: x, z: z, k: k, clear: cl, score: score });
+  }
+  out.sort(function (p, q) { return q.score - p.score; });
+  return (life._dwSpots = out);
+}
+/** People on foot in view now: { walking, still } (static scenery people included as still). */
+function _wlfViewCount(life) {
+  var cam = life.nav && life.nav.cam, w = 0, s = 0;
+  if (!cam) return { walking: 0, still: 0 };
+  var inView = function (x, z) { return z > 3 && cam.f * 1.7 / z >= 6 && x > -z * cam.tanL0 && x < z * cam.tanR0; };
+  for (var i = 0; i < life.agents.length; i++) {
+    var a = life.agents[i];
+    if (a.dead || a.kind !== 'walker' || !/^person\./.test(String(a.obj || '')) || !inView(a.x, a.z)) continue;
+    if (worldLifeMoving(a) || (a.speed || 0) > 0.3) w++; else s++;
+  }
+  if (!life._statPpl) { var ents = (life.world && life.world.entities) || []; life._statPpl = ents.filter(function (e) { return e && e.static !== false && /^person\./.test(String(e.obj || '')); }); }
+  for (var j = 0; j < life._statPpl.length; j++) { var e = life._statPpl[j]; if (inView(e.x, e.z)) s++; }
+  return { walking: w, still: s };
+}
+/** A dweller agent at (x, z): resident, its dwell goals, its look (variant, outfit) from the stream like any other. */
+function _wlfDweller(life, obj, x, z, o) {
+  if (!worldBrains.dweller || !_wlfObjOk(obj)) return null;
+  var P = life.dwellPop || (life.dwellPop = { spec: {}, idx: -2, rng: _wlfStream(life, 'dwell'), ord: 0, entries: [], recent: [] });
+  var id = 'dw-' + (o.key || P.ord++);
+  if (life.byId.has(id)) return null;
+  var a = _wlfNewAgent(life, P, { key: 'dweller', m: { cls: 'dweller', obj: obj } }, x, z, id, { resident: true, state: o.state || 'idle' });
+  if (o.variant != null) a.variant = o.variant; else _wlfVariant(life, a, o.avoid || null);
+  if (a.variant == null) a.variant = 0;
+  a.heading = o.heading != null ? o.heading : a.heading;
+  a.goals = o.goals; a.gi = 0; a.pinned = !!o.pinned; a.dwellKind = o.kind || 'solo';
+  if (o.group) a.group = o.group;
+  // can it walk somewhere (its art has legs)? a figure drawn without legs (a phone idler, a photographer) stays put for good
+  var canWalk = false;
+  try { var sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(obj, a.variant | 0, 'summer') : null; canWalk = !!(sh && Array.isArray(sh.anim) && sh.anim.some(function (h) { return h.kind === 'walk' && /leg/.test(String(h.part || '') + ' ' + (h.parts || []).join(' ')); })); } catch (e) { canWalk = false; }
+  a.canWalk = canWalk;
+  a.loco = o.loco || 'stand'; a.walkK = 0; a.locoT = life.t;
+  _wlfAdd(life, a);
+  life.max += 1;
+  return a;
+}
+/** The points of interest a watcher looks at: landmarks, statues, memorials, fountains, buskers, murals, a clock; [{ x, z, id }]. */
+function _wlfPois(life) {
+  var out = [], ents = (life.world && life.world.entities) || [];
+  for (var i = 0; i < ents.length; i++) {
+    var e = ents[i]; if (!e || e.static === false) continue;
+    if (e.landmark || /statue|memorial|fountain|busker|mural|clock|sculpture|bandstand|monument/.test(String(e.obj || ''))) out.push({ x: e.x, z: e.z, id: e.id || null });
+  }
+  return out;
+}
+/** The way to the nearest thing beside a spot (down the nav's clearance: a shop window, a wall, a railing): a heading, or null in the open. */
+function _wlfTowardSolid(life, x, z) {
+  var L = worldLifeGrid(life, 'walk'); if (!L || !L.data) return null;
+  var cl = function (px, pz) { var k = worldNavCell(life.nav, 'walk', px, pz); return k >= 0 && L.data[k] ? L.clear[k] : 0; };
+  var c0 = cl(x, z); if (!(c0 < 1.6)) return null;
+  var gx = cl(x + 0.5, z) - cl(x - 0.5, z), gz = cl(x, z + 0.5) - cl(x, z - 0.5);
+  return Math.hypot(gx, gz) > 0.05 ? Math.atan2(-gx, -gz) : null;
+}
+/** The nearest open water within R m of a point (a pond's watchers look at it), or null. */
+function _wlfWaterNear(life, x, z, R) {
+  for (var rr = 2; rr <= R; rr += 2) for (var q = 0; q < 12; q++) { var an = q * Math.PI / 6, wx = x + Math.sin(an) * rr, wz = z + Math.cos(an) * rr; if (worldLifeOk(life, 'swim', wx, wz, 0.1)) return [wx, wz]; }
+  return null;
+}
+/** Put the dwellers in place (after the warm-up; see WORLD_LIFE_DWELL). share/avg: the warm-up's mean counts of people in view. */
+function _wlfDwellInit(life, avg) {
+  if (WORLD_LIFE_DWELL.off || !worldBrains.dweller || !life.nav) return;
+  var W = life.world || {}, rng = _wlfStream(life, 'dwell-place'), taken = [];
+  var free = function (x, z, d) {
+    for (var i = 0; i < taken.length; i++) if (Math.hypot(taken[i][0] - x, taken[i][1] - z) < d) return false;
+    for (var j = 0; j < life.agents.length; j++) { var o = life.agents[j]; if (!o.dead && o.layer !== 'air' && Math.hypot(o.x - x, o.z - z) < 1.2) return false; }
+    return true;
+  };
+  // 1. the scene's own standing figures: alive where they were placed, for good
+  var D = Array.isArray(W.dwellers) ? W.dwellers : [];
+  for (var di = 0; di < D.length; di++) {
+    var d = D[di], h = (Number.isFinite(d.facing) ? d.facing : 180) * Math.PI / 180, ob = String(d.obj);
+    var act = /photograph|birdwatch|busker/.test(ob) ? 'look' : 'idle';
+    var a = _wlfDweller(life, d.obj, d.x, d.z, { key: 'a' + di, variant: d.variant, heading: h, pinned: true, kind: 'authored', goals: [{ dwell: [d.x, d.z], face: h, act: act, 'for': Infinity }] });
+    if (a) { a.y = Number.isFinite(d.y) ? d.y : a.y; taken.push([d.x, d.z]); }
+    // placed a little into something (a bike hoop, a planter's corner: the static's footprint was passable): the nearest legal point within
+    // 0.6 m of where the author put it, before the first frame (never glided in view)
+    if (a && !worldLifeOk(life, 'walk', a.x, a.z, _wlfNavR(a)) && typeof worldNavRescue === 'function') {
+      var fx2 = worldNavRescue(life.nav, 'walk', a.x, a.z, _wlfNavR(a), null, false, 0.6);
+      if (fx2 && Math.hypot(fx2[0] - a.x, fx2[1] - a.z) <= 0.6) { a.x = a.px = fx2[0]; a.z = a.pz = fx2[1]; a.goals[0].dwell = [a.x, a.z]; }
+    }
+    // a group figure drawn walking (a couple, a family: one of them is drawn mid-stride) never stands: it strolls to and fro on its patch
+    // (to a spot 6-14 m off along the ground it stands on and back), turning at the ends; a figure drawn standing stays put
+    if (a && /couple|family/.test(ob) && a.canWalk) {
+      var cs = _wlfCells(life, 'walk', 0.3, null), best = null, bs = -Infinity;
+      for (var cc = 0; cc < cs.length; cc += 2) {
+        var dd2 = Math.hypot(cs[cc] - d.x, cs[cc + 1] - d.z); if (dd2 < 6 || dd2 > 14) continue;
+        var sc2 = -Math.abs(dd2 - 10) - Math.abs(cs[cc + 1] - d.z) * 0.3 + rng() * 2;   // mostly across the view (seen side-on)
+        if (sc2 > bs && _wlfDwellOk(life, cs[cc], cs[cc + 1])) { bs = sc2; best = [cs[cc], cs[cc + 1]]; }
+      }
+      // (it is already walking at the first frame: under way to the far end, legs going; never seen standing in its stride)
+      if (best) {
+        a.pinned = false; a.dwellKind = 'stroll'; a.goals = [{ dwell: best, act: 'idle', 'for': [0, 0] }, { dwell: [d.x, d.z], face: h, act: 'idle', 'for': [0, 0] }];
+        a.heading = Math.atan2(best[0] - d.x, best[1] - d.z); _wlfEnter(life, a, 'walk'); a.v = 0.9 * a.gait; a.loco = 'walk'; a.walkK = 1;
+      }
+    }
+  }
+  // 2. how many more stand or sit, to the scene's share of the people in view
+  var share = _wlfStandShare(life), Wk = avg ? avg.walking : 0, St = (avg ? avg.still : 0) + D.length;
+  var need = Math.round(share / Math.max(0.05, 1 - share) * Wk - St);
+  life.dwellPlan = { share: share, walking: Wk, still: St, need: need, added: 0 };
+  if (need <= 0) return;
+  need = Math.min(need, WORLD_LIFE_DWELL.max);
+  var spots = _wlfDwellSpots(life), added = 0;
+  var pick = function (minGap, test) {
+    // among the best few free spots, one at random (never a grid of the best scores)
+    var pool = [];
+    for (var i = 0; i < spots.length && pool.length < 6; i++) { var s = spots[i]; if (!s.used && free(s.x, s.z, minGap) && (!test || test(s))) pool.push(s); }
+    if (!pool.length) return null;
+    var c = pool[Math.floor(rng() * pool.length)]; c.used = true; return c;
+  };
+  // 3. seated: free seats with a clear front, in view
+  var benches = (W.entities || []).filter(function (e) { return e && e.static !== false && _wlfIsBench(e); });
+  var nSit = Math.min(Math.ceil(need * WORLD_LIFE_DWELL.sitShare), need);
+  for (var bi = 0; bi < benches.length && added < nSit; bi++) {
+    var ent = benches[bi], cam = life.nav.cam;
+    if (!(ent.z > WORLD_LIFE_DWELL.zMin && ent.z < WORLD_LIFE_DWELL.zMax && ent.x > -ent.z * cam.tanL0 + 1.8 && ent.x < ent.z * cam.tanR0 - 1.8)) continue;   // (a sitter's legs reach out: well inside the frame)
+    var B = _wlfSeats(life, ent), seat = null;
+    for (var si = 0; si < B.seats.length; si++) if (B.seats[si].ok && !B.seats[si].by) { seat = B.seats[si]; break; }
+    if (!seat) continue;
+    var bid = ent.id || ent.obj, so = rng() < 0.4 ? 'person.elderly-walker' : 'person.walker';
+    var sa = _wlfDweller(life, so, seat.x, seat.z, { heading: seat.facing, kind: 'sit', state: 'idle', loco: 'sit', goals: [{ sit: bid, 'for': [120, 400] }, { wander: null, 'for': [15, 40] }] });
+    if (!sa) continue;
+    sa.host = bid; sa.seat = seat; seat.by = sa.id; sa.bs = 'sitting'; sa.pose = 'sit'; sa.state = 'sit';
+    taken.push([seat.x, seat.z]); added++;
+  }
+  // 4. a chat ring (or two)
+  var nChat = need - added >= 3 ? (need - added >= 6 ? 2 : 1) : 0;
+  for (var ci = 0; ci < nChat && added + 2 <= need; ci++) {
+    var c = pick(WORLD_LIFE_DWELL.gap + 1, function (s) { return s.clear >= 1.1; });
+    if (!c) break;
+    var n = Math.min(need - added, rng() < 0.6 ? 2 : 3), R = WORLD_LIFE_DWELL.ring, a0 = rng() * Math.PI * 2, gid = 'chat-' + ci, ok = [];
+    // two face each other side-on to the eye (across the line of sight); three stand in a triangle
+    if (n === 2) a0 = Math.atan2(-c.x, c.z) + (rng() - 0.5) * 0.5;   // (the angle of (c.z, -c.x): square to the line of sight)
+    for (var m = 0; m < n; m++) { var an = a0 + m * Math.PI * 2 / n, mx = c.x + Math.cos(an) * R, mz = c.z + Math.sin(an) * R; if (worldLifeOk(life, 'walk', mx, mz, 0.25) && _wlfSweepOk(life, { layer: 'walk', r: 0.25, kind: 'walker' }, c.x, c.z, mx, mz)) ok.push([mx, mz]); }
+    if (ok.length < 2) continue;
+    for (var mi = 0; mi < ok.length && added < need; mi++) {
+      var hx = Math.atan2(c.x - ok[mi][0], c.z - ok[mi][1]);
+      var ca = _wlfDweller(life, _WLF_DWELL_CHAT[Math.floor(rng() * _WLF_DWELL_CHAT.length)], ok[mi][0], ok[mi][1], { heading: hx, kind: 'chat', state: 'chat', group: gid, goals: [{ dwell: ok[mi], at: [c.x, c.z], act: 'chat', 'for': Infinity }] });
+      if (ca) { taken.push(ok[mi]); added++; }
+    }
+  }
+  // 5. a watcher at a point of interest (a landmark, a statue; the water of a pond or a canal)
+  var pois = _wlfPois(life);
+  if (added < need) {
+    var poi = null, wspot = null;
+    for (var pi = 0; pi < spots.length && !wspot; pi++) {
+      var sp = spots[pi]; if (sp.used || !free(sp.x, sp.z, WORLD_LIFE_DWELL.gap)) continue;
+      for (var pj = 0; pj < pois.length; pj++) { var dd = Math.hypot(pois[pj].x - sp.x, pois[pj].z - sp.z); if (dd > 4 && dd < 12) { poi = [pois[pj].x, pois[pj].z]; wspot = sp; break; } }
+      if (!wspot && pi < 40) { var wn = _wlfWaterNear(life, sp.x, sp.z, 8); if (wn) { poi = wn; wspot = sp; } }
+    }
+    if (wspot) {
+      wspot.used = true;
+      var wo = W.surfaces && W.surfaces.some(function (s) { return s && s.kind === 'water'; }) && life.placeType !== 'city' ? 'person.birdwatcher' : 'person.photographer';
+      var wa = _wlfDweller(life, wo, wspot.x, wspot.z, { heading: Math.atan2(poi[0] - wspot.x, poi[1] - wspot.z), kind: 'watch', state: 'look', goals: [{ dwell: [wspot.x, wspot.z], at: poi, act: 'look', 'for': Infinity }] });
+      if (wa) { taken.push([wspot.x, wspot.z]); added++; }
+    }
+  }
+  // 6. a queue at a kiosk, a food van or a stall (when one stands in view with room in front)
+  var kiosks = (W.entities || []).filter(function (e) { return e && e.static !== false && /kiosk|food-van|ice-cream|coffee|stall|ticket/.test(String(e.obj || '')) && !/sign|board/.test(String(e.obj || '')); });
+  for (var ki = 0; ki < kiosks.length && added + 2 <= need; ki++) {
+    var K = kiosks[ki], toCam = Math.atan2(-K.x, -K.z), line = [];
+    var fq = Number.isFinite(K.facing) && Math.abs(_wlfAng(K.facing * Math.PI / 180 - toCam)) < Math.PI / 2 ? K.facing * Math.PI / 180 : toCam;
+    var hw = Math.max(1.2, ((K.size && K.size.d) || 1.2) / 2 + 0.9);
+    for (var qn = 0; qn < 3 && added + line.length < need; qn++) {
+      var qx = K.x + Math.sin(fq) * (hw + 0.8 * qn), qz = K.z + Math.cos(fq) * (hw + 0.8 * qn);
+      if (!_wlfDwellOk(life, qx, qz, 0.25) || !free(qx, qz, 0.7)) break;
+      line.push([qx, qz]);
+    }
+    if (line.length < 2) continue;
+    for (var ql = 0; ql < line.length; ql++) {
+      var qa = _wlfDweller(life, _WLF_DWELL_CHAT[Math.floor(rng() * _WLF_DWELL_CHAT.length)], line[ql][0], line[ql][1], { heading: _wlfAng(fq + Math.PI), kind: 'queue', state: 'wait', group: 'queue-' + ki, loco: 'queue', goals: [{ dwell: line[ql], at: [K.x, K.z], act: 'wait', 'for': Infinity }] });
+      if (qa) { taken.push(line[ql]); added++; }
+    }
+  }
+  // 7. the rest stand alone: waiting, phoning, looking about; one with legs to walk on moves to a second spot now and then
+  for (var guard = 0; added < need && guard < need * 3; guard++) {
+    var s1 = pick(WORLD_LIFE_DWELL.gap); if (!s1) break;
+    // beside a shop window, a wall or a railing it looks at it (window shopping, a view over the rail); in the open it stands three-quarter
+    // on to the eye (a figure seen side-on or three-quarter reads best), never square to the lens
+    var obj = _WLF_DWELL_SOLO[Math.floor(rng() * _WLF_DWELL_SOLO.length)], ts = _wlfTowardSolid(life, s1.x, s1.z);
+    var face = ts != null && rng() < 0.75 ? ts + (rng() - 0.5) * 0.5 : Math.atan2(-s1.x, -s1.z) + (rng() < 0.5 ? 1 : -1) * (0.9 + rng() * 0.9);
+    var goals = [{ dwell: [s1.x, s1.z], face: face, act: ts != null || rng() < 0.3 ? 'look' : 'idle', 'for': [30, 120] }];
+    var s2 = null;
+    for (var s2i = 0; s2i < spots.length && !s2; s2i++) { var q = spots[s2i], dq = Math.hypot(q.x - s1.x, q.z - s1.z); if (!q.used && dq > 5 && dq < 14 && free(q.x, q.z, WORLD_LIFE_DWELL.gap)) s2 = q; }
+    if (s2) goals.push({ dwell: [s2.x, s2.z], face: face + (rng() - 0.5), act: 'idle', 'for': [30, 120] });
+    var sa2 = _wlfDweller(life, obj, s1.x, s1.z, { heading: face, kind: 'solo', state: 'idle', goals: goals });
+    if (!sa2) continue;
+    if (!sa2.canWalk) sa2.goals = [goals[0]];
+    else if (s2) s2.used = true;
+    sa2.goals[0]['for'] = sa2.canWalk ? [30, 120] : Infinity;
+    taken.push([s1.x, s1.z]); added++;
+  }
+  life.dwellPlan.added = added;
+}
+/** The dwell goal: to its spot (a walk on the nav), then it stands there: its act's state (idle, look, chat, wait), facing its point of
+ *  interest, its ring's middle or its own way (turning a little now and then), for the goal's time (Infinity: for good). */
+function _wlfDwellGoal(life, a, g, dt) {
+  var p = g.dwell, d = Math.hypot(p[0] - a.x, p[1] - a.z), S = a.brain.states;
+  a.dwellKind = a.dwellKind || g.act || 'solo';
+  if (d > 0.45 && !a.pinned) {
+    var r = _wlfPathTo(life, a, p[0], p[1]);
+    if (r === 'go') { a.gdur = null; a.queueing = false; _wlfKeepMoving(life, a); return; }
+    if (r === 'fail') { _wlfFail(life, a); return; }
+  }
+  a.dir = null;
+  var want = g.act === 'chat' ? 'chat' : g.act === 'wait' ? 'wait' : g.act === 'look' ? 'look' : null;
+  if (a.gdur == null) {
+    a.gdur = g['for'] === Infinity ? Infinity : worldLifeRange(a.rng, g['for'] != null ? g['for'] : [30, 90]); a.gt = 0;
+    if (want && S[want]) _wlfEnter(life, a, want); else if (!S[a.bs] || S[a.bs].speed) _wlfEnter(life, a, S.idle ? 'idle' : _wlfStillState(a));
+  }
+  if (a.st <= 0) {
+    var st = S[a.bs], nx = st && st.next ? worldLifePick(a.rng, st.next) : 'idle';
+    if (!S[nx] || S[nx].speed) nx = 'idle';
+    if (want === 'chat' && nx !== 'look') nx = 'chat';
+    if (want === 'wait') nx = 'wait';
+    _wlfEnter(life, a, nx);
+  }
+  a.queueing = g.act === 'wait';
+  if (g.at) a.lookAt = g.at;
+  else {
+    if (a.faceT == null || life.t > a.faceT) { a.faceT = life.t + 8 + a.rng() * 20; a.faceH = (g.face != null ? g.face : a.heading) + (a.rng() - 0.5) * (g.face != null ? 0.9 : 1.4); }
+    a.lookAt = [a.x + Math.sin(a.faceH) * 10, a.z + Math.cos(a.faceH) * 10];
+  }
+  if (a.gt > a.gdur) { a.gdur = null; a.lookAt = null; a.queueing = false; a.faceT = null; _wlfNextGoal(life, a); }
 }
 /** Group members keep their slot round the leader; they stop when it stops and look where it looks (A7). */
 function _wlfFollowBrain(life, a, dt) {
@@ -1725,10 +2083,153 @@ function _wlfAirBrain(life, a, dt) {
   }
 }
 
+/* ---------- locomotion: ONE state machine per body, read by life AND the animation (docs/dev/WORLD_MOVEMENT.md 1; interface I4) ---------- */
+/**
+ * loco: stand | start | walk | stop | sit-down | sit | stand-up | queue (a still body in a queue). WALK is entered when the body's measured
+ * ground speed over `win` seconds reaches `walkIn` m/s and left below `walkOut` (people and dogs; a slow stalker by its own pace); START
+ * eases the stride in over `start` s, STOP out over `stop` s (the nearest foot plants: the stride weight falls to 0 while the body comes to
+ * rest). walkK (0..1) is the stride weight the legs are drawn with; gaitPhase (0..1) is ODOMETRY: it advances by the distance the body
+ * really covered over its stride, never by wall time, so a figure can never stride on the spot (no distance, no phase) nor slide at walking
+ * pace (any distance moves the legs by exactly that much). A standing body is kinematic: a push under ~0.1 m in the window is absorbed,
+ * a larger one is taken as a step (the window's speed starts a short walk).
+ * minWalk: a body that walks at all walks at least this fast (people never creep at a tenth of a pace: they wait, then step on).
+ */
+var WORLD_LIFE_LOCO = { win: 0.3, walkIn: 0.35, walkOut: 0.2, start: 0.3, stop: 0.35, minWalk: 0.45 };
+var _WLF_LOCO_MOVING = { start: 1, walk: 1, stop: 1 };
+/** A body with legs on the ground that the locomotion drives (people, dogs, grazers, ground birds; not in the air, not mid-hop). */
+function _wlfLocoBody(a) { return a.kind === 'walker' && a.layer !== 'air' && !a.hop; }
+/** The one 'is it moving' test (life's presented state and the animation both read loco). */
+function worldLifeMoving(a) { return !!a && !!_WLF_LOCO_MOVING[a.loco]; }
+/** A body's walk thresholds: people and dogs 0.35 / 0.2 m/s; a body whose own walking pace is slower (a heron stalking at 0.08 m/s, a
+ *  goose at 0.2) by six tenths of its slowest pace. */
+function _wlfLocoTh(a) {
+  if (a._lth && a._lthB === a.brain) return a._lth;
+  var S = a.brain.states, mv = S.walk || S.stalk || S.ride || null, sp = mv && mv.speed ? (Array.isArray(mv.speed) ? mv.speed[0] : +mv.speed) : 1;
+  var k = Math.min(1, Math.max(0.05, sp * 0.6) / WORLD_LIFE_LOCO.walkIn);
+  a._lthB = a.brain;
+  return (a._lth = { inS: WORLD_LIFE_LOCO.walkIn * k, outS: WORLD_LIFE_LOCO.walkOut * k });
+}
+/** Metres a full gait cycle (two steps) covers at a speed: appearance's own step (_wanStep, the kb's stride when it has one). */
+function _wlfStride(a, sp) {
+  var h = a.hStand || 1.7, s = null;
+  // (the body kind and the kb's stride once per object: asked every tick of every body)
+  if (a._sdO !== a.obj) { a._sdO = a.obj; a._sdK = typeof _wanKind === 'function' ? _wanKind(a) : null; a._sdS = typeof _wanKbStride === 'function' ? _wanKbStride(a.obj) : null; }
+  if (a._sdK && typeof _wanStep === 'function') { try { s = 2 * _wanStep(a._sdK, h, sp, a._sdS); } catch (e) { s = null; } }
+  if (!(s > 0.05)) s = 2 * h * _wlfClamp(0.26 + 0.11 * sp, 0.22, 0.75);
+  return s * (a.strideMul || 1);
+}
+/**
+ * The art a person is drawn in while it WALKS when its own has no legs to walk with (a birdwatcher with binoculars, a photographer, a phone
+ * idler: their art stands; walking, it slid along at walking pace, 492 frames in two minutes on Fleet Pond's boardwalk): a walking figure of
+ * the same build, the outfit kept; the renderer cross-fades the change like a view change. null: its own art walks (or it rides, rolls or
+ * scoots: those glide by nature).
+ */
+function _wlfWalkArt(life, a) {
+  if (a._waO === a.obj) return a._wa;
+  a._waO = a.obj; a._wa = null;
+  var o = String(a.obj || '');
+  if (!/^person\./.test(o) || /cyclist|scooter|skate|wheelchair|buggy|kayak|rower|paddle|sail|surf/.test(o) || typeof sceneObjShapes !== 'function') return null;
+  var legs = false;
+  try { var sh = sceneObjShapes(o, a.variant | 0, 'summer'); legs = !!(sh && Array.isArray(sh.anim) && sh.anim.some(function (h) { return h.kind === 'walk' && /leg/.test(String(h.part || '') + ' ' + (h.parts || []).join(' ')); })); } catch (e) { legs = true; }
+  if (legs) return null;
+  // (person.walker: the walking figure drawn from the front and the back too; a side-only stand-in walking down the line of sight read as walking on the spot)
+  var w = 'person.walker';
+  return (a._wa = _wlfObjOk(w) ? w : null);
+}
+/** One tick of a body's locomotion, after everything moved it (the move, the separation, the leash): loco, walkK, gaitPhase (gOdo). */
+function _wlfLocoTick(life, a, dt) {
+  if (a.dead) return;
+  var x = a.x, z = a.z;
+  if (a.lpX == null || a.lpL !== a.layer) { a.lpX = x; a.lpZ = z; a.lpL = a.layer; }
+  var d = Math.hypot(x - a.lpX, z - a.lpZ); a.lpX = x; a.lpZ = z;
+  var H = a.lh || (a.lh = []);
+  H.push(life.t, x, z);
+  while (H.length > 6 && life.t - H[3] >= WORLD_LIFE_LOCO.win - 1e-6) H.splice(0, 3);
+  var span = life.t - H[0], ws = span > 1e-6 ? Math.hypot(x - H[1], z - H[2]) / span : 0;
+  a.ws = ws;
+  if (a.gOdo == null) a.gOdo = a.phase || 0;
+  if (!a.strideMul) a.strideMul = 0.94 + 0.12 * ((_wlfHash(a.id + ':stride') % 1000) / 1000);
+  var was = a.loco || 'stand', L = was, T = _wlfLocoTh(a), s = a.step;
+  if (s && (s.sit || s.kind === 'down')) L = 'sit-down';
+  else if (s && (s.stand || s.kind === 'up')) L = 'stand-up';
+  else if (s && s.kind === 'turn') L = 'stand';
+  else if (a.host && a.seat && a.bs !== 'wait' && (a.bs === 'sit' || a.bs === 'sitting')) L = 'sit';
+  else if (!_wlfLocoBody(a)) L = ws >= 0.05 ? 'walk' : 'stand';
+  else {
+    // a body that WANTS to walk and is commanded to (its eased speed) starts at once: it has moved a few centimetres, not a metre, when the legs go
+    var go = ws >= T.inS || (a.dir && (a.v || 0) >= T.inS && d > 0.25 * T.inS * dt) || (s && s.walk);
+    var still = a.bs === 'wait' || a.queueing ? 'queue' : 'stand';
+    if (L === 'stand' || L === 'queue' || L === 'sit' || L === 'sit-down' || L === 'stand-up') L = go ? 'start' : still;
+    else if (L === 'start') { if (life.t - a.locoT >= WORLD_LIFE_LOCO.start) L = ws >= T.outS || go ? 'walk' : 'stop'; }
+    else if (L === 'walk') { if (ws < T.outS && !(s && s.walk)) L = 'stop'; }
+    else if (L === 'stop') { if (ws >= T.inS) L = 'walk'; else if (life.t - a.locoT >= WORLD_LIFE_LOCO.stop) L = still; }
+    else L = still;
+  }
+  if (L !== was || a.locoT == null) a.locoT = life.t;
+  a.loco = L;
+  var k = a.walkK || 0, want = L === 'start' || L === 'walk' ? 1 : 0;
+  if (want > k) k = Math.min(1, k + dt / WORLD_LIFE_LOCO.start);
+  else if (want < k) k = Math.max(0, k - dt / (L === 'stop' ? WORLD_LIFE_LOCO.stop : 0.25));
+  a.walkK = k;
+  // odometry: the phase moves by the ground covered (a jump of over 2 m is a layer change or a spawn, not a step)
+  if (d > 0 && d < 2) a.gOdo += d / _wlfStride(a, Math.max(ws, 0.6));
+  // the last legal point (the rescue's way back)
+  if (a.layer !== 'air' && !a.host && !a.step && a.kind !== 'lane' && a.kind !== 'rail' && a.kind !== 'moored' && _wlfOk(life, a, x, z)) { a.okX = x; a.okZ = z; a.okL = a.layer; }
+}
+/** Is the straight move (x0, z0) -> (x1, z1) legal all the way (every 0.1 m), not only at its end? */
+function _wlfSweepOk(life, a, x0, z0, x1, z1) {
+  if (a.layer === 'air') return true;
+  var D = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.ceil(D / 0.1));
+  for (var i = 1; i <= n; i++) if (!_wlfOk(life, a, x0 + (x1 - x0) * i / n, z0 + (z1 - z0) * i / n)) return false;
+  return true;
+}
+/**
+ * The ONE way a body is moved outside the steering's own step (docs/dev/WORLD_MOVEMENT.md 3): the separation, the sidestep, the leash, the
+ * steps, the rescue and spawn placement all come here. It sweeps the segment in 0.1 m sub-steps against the nav and, at the first contact,
+ * slides along the free axis (as the garden's _gwShoreSlide), so nothing is ever moved through a wall, a bench or a fence. Returns whether
+ * the body moved. why: a word for the debug log (life.moveLog, when a tool sets it).
+ */
+function _wlfMoveTo(life, a, x, z, why) {
+  if (a.layer === 'air' || a.kind === 'lane' || a.kind === 'rail') { a.x = x; a.z = z; return true; }
+  var x0 = a.x, z0 = a.z, dx = x - x0, dz = z - z0, D = Math.hypot(dx, dz);
+  if (!(D > 1e-9)) return false;
+  if (!_wlfOk(life, a, x0, z0)) { _wlfRescue(life, a); return false; }
+  var n = Math.max(1, Math.ceil(D / 0.1)), sx = dx / n, sz = dz / n, cx = x0, cz = z0;
+  for (var i = 0; i < n; i++) {
+    if (_wlfOk(life, a, cx + sx, cz + sz)) { cx += sx; cz += sz; }
+    else if (sx && _wlfOk(life, a, cx + sx, cz)) cx += sx;
+    else if (sz && _wlfOk(life, a, cx, cz + sz)) cz += sz;
+    else break;
+  }
+  a.x = cx; a.z = cz;
+  if (life.moveLog && life.moveLog.length < 2000) life.moveLog.push({ t: life.t, id: a.id, why: why || '', from: [x0, z0], to: [cx, cz] });
+  return cx !== x0 || cz !== z0;
+}
+/** A body found on an illegal point (pushed into a solid, a level change): it glides (at most 1.5 m/s) to the nearest legal cell CONNECTED to
+ *  its last legal point (the nav's breadth-first search), never a jump and never through to the far side of a wall. */
+function _wlfRescue(life, a) {
+  if (a.rescue || a.layer === 'air' || a.host || a.step || typeof worldNavRescue !== 'function') return;
+  var from = a.okX != null && a.okL === a.layer ? [a.okX, a.okZ] : null, p = null;
+  try { p = worldNavRescue(life.nav, a.layer, a.x, a.z, _wlfNavR(a), from, false, 4); } catch (e) { p = null; }
+  if (p) a.rescue = { x: p[0], z: p[1], t0: life.t };
+}
+/** The rescue's glide (in _wlfMove): straight to the legal point at up to 1.5 m/s, facing the way it goes. true while it lasts. */
+function _wlfRescueMove(life, a, dt) {
+  var R = a.rescue; if (!R) return false;
+  var dx = R.x - a.x, dz = R.z - a.z, d = Math.hypot(dx, dz), s = Math.min(d, 1.5 * dt);
+  if (d < 0.02 || life.t - R.t0 > 4) { a.rescue = null; return false; }
+  a.x += dx / d * s; a.z += dz / d * s; a.heading = Math.atan2(dx, dz); a.v = s / dt;
+  return true;
+}
+
 /* ---------- the move pass ---------- */
 function _wlfMove(life, a, dt) {
   var ox = a.x, oz = a.z;
   if (a.kind === 'lane' || a.kind === 'rail') return;                            // traffic moves these
+  // a body on an illegal point glides out first (never stepped on from inside a solid)
+  if (a.rescue || (_wlfLocoBody(a) && !a.host && !a.step && !a.pinned && !a.fadeOut && a.layer !== 'air' && !_wlfOk(life, a, a.x, a.z) && (_wlfRescue(life, a), a.rescue))) {
+    if (_wlfRescueMove(life, a, dt)) { a.vx = (a.x - ox) / dt; a.vz = (a.z - oz) / dt; a.speed = Math.hypot(a.vx, a.vz); a.mvX = ox; a.mvZ = oz; _wlfShownV(a, dt); a.y = worldLifeY(life, a); _wlfFace(life, a); return; }
+  }
   if (a.kind === 'moored') { a.vx = 0; a.vz = 0; a.speed = 0; _wlfFace(life, a); return; }
   // every path that moves a mover keeps the SHOWN velocity (what the records and the animation read): a bird in a hop, a flight or a step
   // aboard was drawn flying while its shown velocity was still the 0 of the moment before (pigeons 'flying' while still)
@@ -1762,6 +2263,13 @@ function _wlfMove(life, a, dt) {
     want *= qf;
   }
   if (dir && want > 0 && a.kind === 'walker' && _wlfPinchYield(life, a, dir)) { want = 0; a.slow = 0; }   // waits at the mouth of a gap for the one coming through it
+  // a person or a dog WALKS or STANDS, never creeps (docs/dev/WORLD_MOVEMENT.md 1): a wanted pace under minWalk is raised to it while it
+  // walks (or to start a real step), else it stands and waits; hysteresis on the commanded pace (a stander sets off only at walkIn, a
+  // walker drops out only at three quarters of walkOut), so a follower catching its slot or a queue easing off never strides on the spot
+  if (dir && want > 0 && a.kind === 'walker' && (a.cls === 'dog' || /^person\./.test(String(a.obj || '')))) {
+    var mw = WORLD_LIFE_LOCO.minWalk, T0 = _wlfLocoTh(a);
+    if (want < mw) { if (worldLifeMoving(a) ? want >= T0.outS * 0.75 : want >= T0.inS) want = mw; else { want = 0; a.held = life.t; } }
+  }
   // the walker steps aside for a ringing cyclist (keeps to its left)
   if (dir && a.yieldT > life.t) { var lx = -dir[1], lz = dir[0], nx0 = dir[0] + lx * 0.6 * a.yieldSide, nz0 = dir[1] + lz * 0.6 * a.yieldSide, nl = Math.hypot(nx0, nz0) || 1; dir = [nx0 / nl, nz0 / nl]; }
   // turn rate: 180 degrees in brain.turn seconds; slow down while turning (no instant turns)
@@ -1958,7 +2466,9 @@ function _wlfSteer0(life, a, dir, spd) {
       if (fwd > 0 && fwd < rs + 1.6 && Math.abs(lat) < rs + 0.35 && fwd < hitF && (onc || (o.speed || 0) < spd * 0.8)) {
         hitF = fwd; hitOnc = onc;
         a.sideDir = lat > 0.15 ? -1 : lat < -0.15 ? 1 : onc ? -1 : 1;                       // -1 = to my left, +1 = to my right
-        a.sideV = Math.min(0.9, (rs + 0.35 - Math.abs(lat)) * 1.6 + 0.2);
+        // (at most 0.3 m/s: a faster sideways shuffle with no forward way on it read as crab-walking, finding B4; the heading change of
+        // the velocity obstacle and the lane habit do the rest of the avoiding)
+        a.sideV = Math.min(0.3, (rs + 0.35 - Math.abs(lat)) * 1.6 + 0.2);
         a.sideX = rgx; a.sideZ = rgz;
       }
       // keep left: an oncoming mover in my way (within a body or so of my line, up to 8 m ahead) is passed on my left side
@@ -2017,10 +2527,13 @@ function _wlfWatchdog(life, a) {
 var WORLD_LIFE_BODY = 1.2;           // the floor between two unrelated people is 1.2 x the sum of their radii (shoulder room)
 var WORLD_LIFE_PUSH_MAX = 0.2;       // metres a mover is pushed in one pass
 function _wlfMass(a) {
-  if (a.step || a.bs === 'sitting' || a.bs === 'freeze' || a.bs === 'strike' || a.bs === 'fish') return Infinity;
+  if (a.step || a.pinned || a.bs === 'sitting' || a.bs === 'freeze' || a.bs === 'strike' || a.bs === 'fish') return Infinity;
+  // a standing person (a dweller, a queue, a chat) is hardly pushed: the walker gives way round it (its push would be a slide, or a step)
+  if (a.loco && !worldLifeMoving(a) && /^person\./.test(String(a.obj || ''))) return 6;
   return (a.speed || 0) > 0.25 ? 1 : 2.2;
 }
-function _wlfTryAt(life, a, x, z) { if (_wlfOk(life, a, x, z)) { a.x = x; a.z = z; return true; } return false; }
+/** All or nothing: a push or a shuffle to (x, z) when the whole way there is legal (swept every 0.1 m: never through a thin wall or a bench). */
+function _wlfTryAt(life, a, x, z) { if (_wlfSweepOk(life, a, a.x, a.z, x, z)) { a.x = x; a.z = z; return true; } return false; }
 function _wlfRelated(a, o) { return a.leader === o || o.leader === a || (a.group && (a.group === o.id || a.group === o.group)) || (o.group && o.group === a.id); }
 /** One pair: returns 1 when something moved. */
 function _wlfPair(life, a, o) {
@@ -2079,7 +2592,7 @@ function _wlfSeparate(life) {
     var a = A[i];
     // (a walker standing up from its seat is on the ground's floor: an immovable body, _wlfMass, that the others are pushed off; until
     // 20 Oct nobody saw it and it rose into a passer-by or a dog 0.3 m away: Whitby, Castlefield)
-    var rising = a.step && a.step.stand && a.kind === 'walker';
+    var rising = a.step && (a.step.stand || a.step.walk || a.step.kind === 'turn') && a.kind === 'walker';
     if (a.dead || a.layer === 'air' || a.kind === 'lane' || a.kind === 'rail' || a.kind === 'boat' || a.kind === 'moored' || a.hop || (a.host && !_wlfOnDeck(a) && !rising)) continue;
     a._si = L.length; L.push(a);
     k = (Math.floor(a.x / 2) + 4096) * 8192 + (Math.floor(a.z / 2) + 4096);
@@ -2107,29 +2620,34 @@ function _wlfLeash(life, a, dt) {
   var pull = Math.min(d - len * 0.97, 6 * dt), ux = -dx / d, uz = -dz / d, np = null;
   if (typeof worldStep === 'function') { np = worldStep(life.nav, a.layer, [a.x, a.z], [ux * pull / dt, uz * pull / dt], _wlfNavR(a), dt); if (np && _wlfOk(life, a, np[0], np[1])) { a.x = np[0]; a.z = np[1]; } }
   else _wlfTryAt(life, a, a.x + ux * pull, a.z + uz * pull);
-  // still past the end of its lead (blocked): the walker waits (taut lead, _wlfMove), the dog is not snapped; only a dog that is far past
-  // it (an obstacle the step cannot slide round) is put on the nearest open point of the lead, never onto its walker
+  // still past the end of its lead (blocked): the walker waits (taut lead, _wlfMove) and the dog is routed round (its follow brain). It is
+  // never snapped onto the lead's line: that put a dog through a railing or a fence (docs/dev/WORLD_MOVEMENT.md 3). Only when the way along
+  // the lead is open all the way does a dog far past its lead come in along it (swept, at the pull's pace)
   dx = a.x - L.x; dz = a.z - L.z; d = Math.hypot(dx, dz) || 1;
-  if (d > len * 1.6) {
-    var cands = [len * 0.97, len * 0.85, len * 0.7, len * 0.55];
-    for (var k = 0; k < cands.length; k++) { var x = L.x + dx / d * cands[k], z = L.z + dz / d * cands[k]; if (_wlfOk(life, a, x, z)) { a.x = x; a.z = z; break; } }
-  }
+  if (d > len * 1.6) { var pl = Math.min(d - len * 0.97, 6 * dt); _wlfMoveTo(life, a, a.x - dx / d * pl, a.z - dz / d * pl, 'leash'); }
 }
-/** A step aboard, a step off, sitting down and standing up: eased over the step's time, with the layer and host switched. */
+/** A step aboard, a step off, and a seat's anchored transitions (_wlfSeatStep): eased over the step's time, with the layer and host switched. */
 function _wlfStepMove(life, a, dt) {
-  var s = a.step, t = Math.min(1, (life.t - s.t0) / s.dur), e = t * t * (3 - 2 * t), ox = a.x, oz = a.z;
+  var s = a.step, t = Math.min(1, (life.t - s.t0) / s.dur), ox = a.x, oz = a.z;
+  // a walking step (in, out) moves at an even pace with a short ease at its ends (the legs follow the ground covered); the rest ease in and out
+  var e = s.walk ? (t < 0.2 ? 2.5 * t * t : t > 0.8 ? 1 - 2.5 * (1 - t) * (1 - t) : 0.1 + (t - 0.2) * (0.8 / 0.6)) : t * t * (3 - 2 * t);
   a.x = s.x0 + (s.x1 - s.x0) * e; a.z = s.z0 + (s.z1 - s.z0) * e;
   var from = worldNavY(life.nav, a.layer, s.x0, s.z0), to = worldNavY(life.nav, s.layer, s.x1, s.z1);
   a.y = from + (to - from) * e;
-  a.vx = (a.x - ox) / dt; a.vz = (a.z - oz) / dt; a.speed = Math.hypot(a.vx, a.vz);
-  if (s.x1 !== s.x0 || s.z1 !== s.z0) { var des = Math.atan2(s.x1 - s.x0, s.z1 - s.z0); if (!s.sit && !s.stand) { var dd = _wlfAng(des - a.heading), mx = Math.PI / a.brain.turn * dt; a.heading = _wlfAng(a.heading + _wlfClamp(dd, -mx, mx)); } }
-  if (s.sit && a.seat) { var df = _wlfAng(a.seat.facing - a.heading), mx2 = Math.PI / a.brain.turn * dt; a.heading = _wlfAng(a.heading + _wlfClamp(df, -mx2, mx2)); }
+  a.vx = (a.x - ox) / dt; a.vz = (a.z - oz) / dt; a.speed = Math.hypot(a.vx, a.vz); a.v = a.speed;
+  var seatTurn = s.kind === 'turn' || s.kind === 'down' || s.kind === 'up';
+  if (seatTurn && a.seat) { var df = _wlfAng(a.seat.facing - a.heading), mx2 = Math.PI / a.brain.turn * dt; a.heading = _wlfAng(a.heading + _wlfClamp(df, -mx2, mx2)); }
+  else if (!seatTurn && (s.x1 !== s.x0 || s.z1 !== s.z0)) { var des = Math.atan2(s.x1 - s.x0, s.z1 - s.z0); if (!s.sit && !s.stand) { var dd = _wlfAng(des - a.heading), mx = Math.PI / a.brain.turn * dt; a.heading = _wlfAng(a.heading + _wlfClamp(dd, -mx, mx)); } }
   if (t >= 1) {
     a.step = null; a.stepEnd = life.t;
+    if (s.kind === 'in') { _wlfSeatStep(life, a, 'turn'); return; }
+    if (s.kind === 'turn') { _wlfSeatStep(life, a, 'down'); return; }
+    if (s.kind === 'up') { _wlfSeatStep(life, a, 'out'); return; }
+    if (s.kind === 'out') { a.host = null; _wlfReleaseSeat(life, a); _wlfEnter(life, a, a.brain.start); _wlfNextGoal(life, a); a.y = worldLifeY(life, a); a.route = null; return; }
     if (s.sit) { a.x = s.x1; a.z = s.z1; a.bs = 'sitting'; a.gdur = null; return; }      // the sit goal takes it from here
     if (s.stand) { a.host = null; _wlfReleaseSeat(life, a); _wlfEnter(life, a, a.brain.start); _wlfNextGoal(life, a); a.y = worldLifeY(life, a); return; }
     a.layer = s.layer; a.host = null; a.route = null;
-    if (!_wlfOk(life, a, a.x, a.z)) { var p = worldStep(life.nav, a.layer, [a.x, a.z], [0, 0], _wlfNavR(a), dt); a.x = p[0]; a.z = p[1]; }
+    if (!_wlfOk(life, a, a.x, a.z)) { var p = worldStep(life.nav, a.layer, [a.x, a.z], [0, 0], _wlfNavR(a), dt, false, { from: [s.x0, s.z0] }); a.x = p[0]; a.z = p[1]; }
     a.y = worldLifeY(life, a);
   }
 }
@@ -2291,7 +2809,13 @@ var WORLD_LIFE_GHOST_RANGE = 4.5;
  *           at 15 Hz: no popping).
  */
 var WORLD_LIFE_GHOST = { horizon: 2.5, comfy: 0.9, close: 0.3, overtake: 0.6, range: WORLD_LIFE_GHOST_RANGE, arrive: 1.2, hold: 1.0, full: 0.4, none: 0.8, lead: 0.2,
-  tauIn: 0.25, tauOut: 0.25, rate: 2.9, minRate: 1.5, fade: 0.55, maxAge: 8, knot: 3, group: 4, jam: 1.5, jamGoal: 4, softPush: 0.025, drift: WORLD_LIFE_GHOST_DRIFT };
+  tauIn: 0.25, tauOut: 0.25, rate: 2.9, minRate: 1.5, fade: 0.55, maxAge: 8, knot: 3, group: 4, jam: 1.5, jamGoal: 4, softPush: 0.025, drift: WORLD_LIFE_GHOST_DRIFT, px: 30 };
+/** Is this body drawn small enough (under WORLD_LIFE_GHOST.px tall at its depth) that a ghost pass cannot be read as one body walking through
+ *  another? Only such far figures may ghost (docs/dev/WORLD_MOVEMENT.md 3). */
+function _wlfGhostFar(life, a) {
+  var cam = life.world && life.world.cam, f = cam && cam.f > 0 ? cam.f : 800;
+  return f * (a.hStand || 1.7) / Math.max(0.5, a.z) < WORLD_LIFE_GHOST.px;
+}
 /** A body that may walk through another as a ghost: a person on foot or a dog (never a cyclist, a pigeon, a goose or grazing stock). */
 function _wlfGhostBody(a) {
   if (a._gbO !== a.obj) { a._gbO = a.obj; a._gb = a.kind === 'walker' && a.cls !== 'cyclist' && (a.cls === 'dog' || /^person\./.test(String(a.obj || ''))); }   // (cached: asked per neighbour per tick)
@@ -2326,7 +2850,9 @@ function _wlfGhostEligible(life, a, o) {
 function _wlfGhostSelf(life, a) {
   if (a._gsT === life.t) return a._gs;
   a._gsT = life.t;
-  a._gs = !a.dead && _wlfGhostBody(a) && (a.layer === 'walk' || String(a.layer).indexOf('walk@') === 0) && !_wlfFading(life, a) && !_wlfJammed(life, a) && !_wlfArriving(a) && !(a._crowd > WORLD_LIFE_GHOST.knot);
+  // (and only a FAR figure, drawn under WORLD_LIFE_GHOST.px tall: in the near and mid bands nobody walks through anybody; they steer, yield and
+  // queue instead. docs/dev/WORLD_MOVEMENT.md 3; the user, 14 Nov: "people walking through walls" covers people walking through people)
+  a._gs = !a.dead && _wlfGhostBody(a) && (a.layer === 'walk' || String(a.layer).indexOf('walk@') === 0) && _wlfGhostFar(life, a) && !_wlfFading(life, a) && !_wlfJammed(life, a) && !_wlfArriving(a) && !(a._crowd > WORLD_LIFE_GHOST.knot);
   return a._gs;
 }
 /** The bodies one pass takes along: a mover's whole group (its leader and the leader's members, or its own members). */
@@ -2553,12 +3079,15 @@ function _wlfMovingState(a) {
  * still state; seated movers sit; vehicles drive or stand. Sets a.state, a.pose, a.h, a.clip, a.facing.
  */
 function _wlfPresent(life, a) {
-  var S = a.brain.states, st = S[a.bs] || {}, moving = (a.speed || 0) > 0.05, state;
+  // ONE 'is it moving' test (docs/dev/WORLD_MOVEMENT.md 1): a body with legs on the ground reads its locomotion state (the animation reads
+  // the same); the rest (swimmers, boats, traffic, birds in the air) their speed
+  var S = a.brain.states, st = S[a.bs] || {}, moving = _wlfLocoBody(a) && a.loco ? worldLifeMoving(a) : (a.speed || 0) > 0.05, state;
   if (a.kind === 'lane' || a.kind === 'rail') state = moving ? (a.bs === 'stopped' ? _wlfMovingState(a) : a.bs) : 'stopped';
   else if (a.kind === 'moored') state = 'moored';
   else if (a.hop) state = 'fly';
   else if (a.step && a.step.sit) state = 'sit';
-  else if (a.step && a.step.stand) state = 'idle';
+  // (standing up: the seated pose while the hips come forward off the seat, then standing: the pose follows the transition, never a slide)
+  else if (a.step && a.step.stand) state = (life.t - a.step.t0) / Math.max(0.01, a.step.dur) < 0.6 ? 'sit' : 'idle';
   else if (moving && !st.speed && a.bs !== 'fly' && a.bs !== 'dive') state = _wlfMovingState(a);
   else if (!moving && st.speed && a.layer !== 'air') state = _wlfStillState(a);
   else state = a.bs;
@@ -2812,7 +3341,7 @@ function _wlfPassBrain(life, dt) {
   var A = life.agents;
   for (var i = 0; i < A.length; i++) {
     var a = A[i]; if (a.dead) continue;
-    a.px = a.x; a.pz = a.z;
+    a.px = a.x; a.pz = a.z; a.pOdo = a.gOdo; a.pWalkK = a.walkK;
     a.phase = (a.phase + dt * (0.5 + (a.speed || 0))) % 1;
     try { _wlfBrain(life, a, dt); } catch (e) { a.dir = null; _wlfProblem(life, { pop: a.pop, rule: 'error', msg: a.id + ': ' + (e && e.message) }); }
   }
@@ -2840,6 +3369,8 @@ function _wlfPassMove(life, dt) {
   // so a walker pressed back by the one in front kept the velocity of the step it never made and its legs strode on the spot (18 Oct,
   // Whitby: "pushedBack" walkers). The shown velocity and the presented state are corrected by the difference.
   for (var vi = 0; vi < A.length; vi++) { var av = A[vi]; _wlfTrueV(life, av, dt); if (!av.dead && av.kind === 'walker' && av.layer !== 'air' && !av.hop && !av.step) _wlfShownCap(av, dt); else av.lpv = null; }
+  // the locomotion of every body from where it really ended up this tick (loco, walkK, gaitPhase; I4), then what it is shown doing from it
+  for (var lo = 0; lo < A.length; lo++) { var al = A[lo]; if (al.dead || al.kind === 'lane' || al.kind === 'rail' || al.kind === 'moored') continue; var l0 = al.loco; _wlfLocoTick(life, al, dt); if (al.loco !== l0 && _wlfLocoBody(al)) _wlfPresent(life, al); }
   _wlfTrafficPass(life, dt);
   var w = 0;
   for (var k = 0; k < A.length; k++) { if (!A[k].dead) A[w++] = A[k]; else life.byId.delete(A[k].id); }
@@ -2865,8 +3396,11 @@ function worldAgents(life) {
   var out = [], al = life.alpha;
   for (var i = 0; i < life.agents.length; i++) {
     var a = life.agents[i];
-    var x = a.px + (a.x - a.px) * al, z = a.pz + (a.z - a.pz) * al;
-    if (a.layer !== 'air' && !a.host && a.kind !== 'lane' && a.kind !== 'rail' && !worldLifeOk(life, a.layer, x, z)) { x = a.x; z = a.z; }
+    var x = a.px + (a.x - a.px) * al, z = a.pz + (a.z - a.pz) * al, ga = al;
+    if (a.layer !== 'air' && !a.host && a.kind !== 'lane' && a.kind !== 'rail' && !worldLifeOk(life, a.layer, x, z)) { x = a.x; z = a.z; ga = 1; }
+    // the gait on the PRESENTED position (I4): the odometry between the two ticks exactly as the position, the stride weight likewise
+    var go = a.gOdo != null ? (a.pOdo != null ? a.pOdo + (a.gOdo - a.pOdo) * ga : a.gOdo) : null;
+    var wk = a.walkK != null ? (a.pWalkK != null ? a.pWalkK + (a.walkK - a.pWalkK) * ga : a.walkK) : null;
     var st = a.brain.states[a.bs] || {};
     var state = a.state, pose = a.pose;
     var alpha = 1;
@@ -2876,13 +3410,19 @@ function worldAgents(life) {
     if (ghost) alpha = Math.min(alpha, 1 - WORLD_LIFE_GHOST.fade * ghost);   // a ghost pass: never under 0.45
     var deg = ((a.heading * 180 / Math.PI) % 360 + 360) % 360;
     var shown = a.svx != null && a.kind !== 'lane' && a.kind !== 'rail';
-    out.push({ id: a.id, cls: a.cls, who: a.who, obj: a.obj, variant: a.variant == null ? null : a.variant, x: x, y: a.y, z: z, vx: shown ? a.svx : a.vx, vz: shown ? a.svz : a.vz,
+    // walking in art that has no legs: its walking stand-in (_wlfWalkArt), a variant of it by its own
+    var wa = _WLF_LOCO_MOVING[a.loco] && (wk == null || wk > 0.05) ? _wlfWalkArt(life, a) : null, obj = wa || a.obj, variant = a.variant == null ? null : a.variant;
+    if (wa) { var wi = _wlfInfo(wa), nv = wi && wi.variants ? wi.variants : 1; variant = (variant | 0) % nv; }
+    out.push({ id: a.id, cls: a.cls, who: a.who, obj: obj, variant: variant, x: x, y: a.y, z: z, vx: shown ? a.svx : a.vx, vz: shown ? a.svz : a.vz,
       heading: a.heading, facing: deg, speed: shown ? Math.hypot(a.svx, a.svz) : a.speed || 0, state: state, pose: pose, age: a.age, h: a.h, layer: a.layer,
       level: a.layer.indexOf('@') > 0 ? +a.layer.split('@')[1] : 0, host: a.host, group: a.group, lookAt: a.lookAt, view: a.view, mirror: a.mirror,
       born: a.born, leaving: a.leaving || false, alpha: alpha, clip: a.clip || st.clip, phase: a.phase, kind: a.kind, lead: a.lead, edge: a.edge,
       outfit: a.outfit == null ? null : a.outfit, breed: a.breed || null, gait: a.gait, gaitName: a.gaitName || null, len: a.len || null, framed: false,
       r: a.r, intent: _wlfIntent(a), squeeze: !!(a.squeeze > life.t), stepping: !!a.step || (a.stepEnd != null && life.t - a.stepEnd < 0.6), leader: a.leader ? a.leader.id : null, resident: !!a.resident,
-      wants: !!(a.dir && a.spd > 0), ghost: ghost, ghostWith: (a.gl && a.gl.length) || (a.glR && a.glR.length) ? (a.gl || []).concat(a.glR || []).map(function (q) { return q.id; }) : null });
+      wants: !!(a.dir && a.spd > 0), ghost: ghost, ghostWith: (a.gl && a.gl.length) || (a.glR && a.glR.length) ? (a.gl || []).concat(a.glR || []).map(function (q) { return q.id; }) : null,
+      // I4: the locomotion state, the stride weight (0..1) and the gait phase (0..1, odometry: distance covered / stride)
+      loco: a.loco || null, walkK: wk == null ? null : Math.round(wk * 1000) / 1000, gaitPhase: go == null ? null : go - Math.floor(go),
+      seat: a.seat && a.host ? { facing: a.seat.facing * 180 / Math.PI, fdeg: a.seat.facing * 180 / Math.PI } : null, dwell: a.dwellKind || null });
   }
   return out;
 }

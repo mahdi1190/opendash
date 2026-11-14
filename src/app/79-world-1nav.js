@@ -127,6 +127,8 @@ function _wnavCentroid(s) { const b = _wnavBBox(s); return [(b[0] + b[2]) / 2, (
 /** An entity's footprint polygon: its derived `foot`, else a box / disc from its size, rotated by facing. */
 function _wnavFoot(e) {
   if (Array.isArray(e.foot) && e.foot.length >= 3) return e.foot;
+  // core's own footprint of the descriptor (the box below put the width along the heading: a quarter turn from core's, finding A10)
+  if (typeof _wcFoot === 'function' && typeof worldObjectInfo === 'function' && e.obj) { try { const info = worldObjectInfo(e.obj); if (info) return _wcFoot(info, e.x, e.z, e.facing); } catch (err) { /* the box below */ } }
   const sz = e.size || {}, w = sz.w || e.w || 0.6, d = sz.d || e.d || w;
   const a = (e.facing || 0) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
   return [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].map(([u, v]) => [e.x + u * c + v * s, e.z - u * s + v * c]);
@@ -135,7 +137,77 @@ function _wnavIsGate(e) { return e.cls === 'gate' || /(^|[.\-])gate([.\-]|$)/.te
 function _wnavIsSolid(e) {
   if (e.static === false) return false;
   if (_wnavIsGate(e)) return e.open !== true;
+  if (_wnavStaticPerson(e)) return true;                                                  // a scenery figure is a body: nobody walks through it
   return e.solidity === 'solid';
+}
+/** A scenery figure standing or seated on the ground (docs/dev/WORLD_MOVEMENT.md 3): a full disc, never passable (walkers went through
+ *  a static photographer and a child with a ball: Ancoats, Manchester centre). One aboard a boat or up on a deck is its host's business. */
+function _wnavStaticPerson(e) {
+  if (!e || e.static === false || !/^person\./.test(String(e.obj || '')) || /cyclist|kayak|rower|paddleboard|sailor|surfer/.test(String(e.obj))) return false;
+  const ak = _wnavAttachKind(e);
+  return !ak || ak === 'ground';
+}
+/** The disc of a scenery figure: r 0.3 m (0.45 m for a pair or a group figure), centred where it stands. */
+function _wnavPersonDisc(e) {
+  const w = e.size && Number.isFinite(e.size.w) ? e.size.w : 0.5, r = _wnavClamp(w / 2, 0.3, 0.6), out = [];
+  for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5; out.push([e.x + r * Math.cos(a), e.z + r * Math.sin(a)]); }
+  return out;
+}
+/**
+ * SOFT tier (docs/dev/WORLD_MOVEMENT.md 3): an opaque plant 0.9 m tall or more (a shrub, a bush) is passable at its fringe but its core is
+ * solid: nobody is drawn walking through the middle of a bush they cannot see through. The core: a disc of 0.35 x its smaller spread,
+ * 0.25 to 0.6 m. Ground layers only (a heron still wades through reeds and cover). null when it is not soft.
+ */
+function _wnavSoftCore(e) {
+  if (!e || e.static === false || e.solidity === 'solid' || e.solidity === 'overhead' || e.solidity === 'walkable' || e.decal) return null;
+  const cls = String(e.cls || ''), h = e.height || (e.size && e.size.h) || 0;
+  const ak = _wnavAttachKind(e);
+  if (ak && ak !== 'ground') return null;
+  const sz = e.size || {};
+  // a thin street thing 0.9 m tall or more (a sign post, a slim bollard, a pole the class guess left passable for being under 0.3 m wide): its
+  // own thin disc is solid
+  if (cls === 'street' && h >= 0.9 && !/^person\./.test(String(e.obj || ''))) {
+    const rr = _wnavClamp(0.5 * Math.min(sz.w || 0.2, sz.d || sz.w || 0.2), 0.08, 0.3), o2 = [];
+    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; o2.push([e.x + rr * Math.cos(a), e.z + rr * Math.sin(a)]); }
+    return o2;
+  }
+  if (!(cls === 'shrub' || cls === 'cover' || /^plant\.(shrub|bush|holly|gorse|rhodo|box|laurel|privet|bramble|buddleia)/.test(String(e.obj || ''))) || !(h >= 0.9)) return null;
+  const sp = Math.min(sz.w || 1, sz.d || sz.w || 1), r = _wnavClamp(0.35 * sp, 0.25, 0.6), out = [];
+  for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; out.push([e.x + r * Math.cos(a), e.z + r * Math.sin(a)]); }
+  return out;
+}
+/**
+ * The ground a PINNED perspective drawing stands on (docs/dev/WORLD_MOVEMENT.md 3; movement finding A3): a drawing pinned at one corner of
+ * what it shows (WORLD_SIZE_GAPS / WORLD_SIZE_AUTO: a painted kiosk, a mural gable, a library front drawn for one camera) has the footprint of
+ * its pinned corner only, while it is drawn tens of metres wide, so people walked into the drawn facade. Its real ground row: the bottom
+ * band (the lowest 12 %) of its drawn outline (appearance's worldArtHull) at its real scale, unprojected at its anchor depth, a box from just
+ * in front of the anchor to its depth behind. null when it is not a pinned drawing or its art is not known.
+ */
+function _wnavDrawnFoot(e) {
+  if (!e || e.static === false || typeof worldObjectInfo !== 'function' || typeof sceneObj !== 'function') return null;
+  const info = worldObjectInfo(e.obj);
+  if (!info || (info.src !== 'gap' && info.src !== 'auto')) return null;
+  const def = sceneObj(e.obj);
+  if (!def || !Array.isArray(def.size) || !(def.size[1] > 0)) return null;
+  const hull = typeof worldArtHull === 'function' ? worldArtHull(e.obj, Number.isInteger(e.variant) ? e.variant : 0, 'summer', '*') : null;
+  if (!hull || !hull.pts || hull.pts.length < 6) return null;
+  let y0 = Infinity, y1 = -Infinity;
+  for (let i = 1; i < hull.pts.length; i += 2) { y0 = Math.min(y0, hull.pts[i]); y1 = Math.max(y1, hull.pts[i]); }
+  const band = y1 - (y1 - y0) * 0.12;
+  let u0 = Infinity, u1 = -Infinity;
+  const P = hull.pts, n = P.length / 2;
+  // the outline's crossings of the band's top row, and every outline point inside the band
+  for (let i = 0; i < n; i++) {
+    const ax = P[2 * i], ay = P[2 * i + 1], bx = P[2 * ((i + 1) % n)], by = P[2 * ((i + 1) % n) + 1];
+    if (ay >= band) { u0 = Math.min(u0, ax); u1 = Math.max(u1, ax); }
+    if ((ay - band) * (by - band) < 0) { const t = (band - ay) / (by - ay), x = ax + (bx - ax) * t; u0 = Math.min(u0, x); u1 = Math.max(u1, x); }
+  }
+  if (!(u1 > u0)) return null;
+  const h = e.height || (info.size && info.size.h) || def.size[1], k = h / def.size[1], mirror = !!e.mirror;
+  const xa = e.x + (mirror ? -u1 : u0) * k, xb = e.x + (mirror ? -u0 : u1) * k;
+  if (!(xb - xa > 1)) return null;                                                          // no wider than its corner: the corner's own footprint
+  const za = e.z - 0.3, zb = e.z + Math.max(1.2, (info.size && info.size.d) || 1.2);
+  return [[xa, za], [xb, za], [xb, zb], [xa, zb]];
 }
 function _wnavAttachKind(e) { const s = String(e.attach || ''); const i = s.indexOf(':'); return i < 0 ? s : s.slice(0, i); }
 function _wnavAttachRef(e) { const s = String(e.attach || ''); const i = s.indexOf(':'); return i < 0 ? null : s.slice(i + 1); }
@@ -535,10 +607,16 @@ function worldNavBuild(world, o) {
       const ref = _wnavAttachRef(e), lv = levels.find(l => l.host && (l.host.id === ref));
       if (lv) { if (!onLevel.has(lv)) onLevel.set(lv, []); onLevel.get(lv).push({ poly: _wnavFoot(e), ent: e }); continue; }
     }
-    const sh = { poly: _wnavFoot(e), ent: e };
+    const sh = { poly: _wnavStaticPerson(e) ? _wnavPersonDisc(e) : _wnavFoot(e), ent: e };
     wet.push(sh);
     if (!lowHosts.has(e)) ground.push(sh);                                                 // a low deck replaces its host's solid for walkers
+    // a pinned perspective drawing is solid where it is DRAWN standing, not only at its pinned corner
+    let df = null;
+    try { df = _wnavDrawnFoot(e); } catch (err) { df = null; }
+    if (df && !lowHosts.has(e)) { const sd = { poly: df, ent: e, drawn: true }; wet.push(sd); ground.push(sd); }
   }
+  // the soft tier: the core of a tall opaque plant (walkers brush its fringe, never walk through its middle); ground layers only
+  for (const e of ents) { const core = _wnavSoftCore(e); if (core) ground.push({ poly: core, ent: e, soft: true }); }
   // an overhead body on solid legs (a viaduct: the deck and the arches pass over everything, its piers do not): each leg cuts the ground
   for (const e of ents) if (Array.isArray(e.legs)) for (const poly of e.legs) { const sh = { poly, ent: e }; wet.push(sh); ground.push(sh); }
   // extruded buildings are solid to everything that walks, swims or drives: their footprints cut the ground like any solid (a house standing proud
@@ -1041,7 +1119,9 @@ function worldFlowDist(field, x, z) {
  * -> [[[x, z], ...]] (each part a polyline of at least two points).
  */
 function _wnavLineParts(l) {
-  const gaps = (Array.isArray(l.gaps) ? l.gaps : []).map(g => Array.isArray(g) ? { at: [g[0], g[1]], w: g[2] } : g).filter(g => g && Array.isArray(g.at) && Number.isFinite(g.w) && g.w > 0);
+  // core's one gap normaliser: the same solid runs the extruder draws (an authored gate is open in the art and the nav, or in neither)
+  if (typeof worldLineParts === 'function') { try { return worldLineParts(l); } catch (e) { /* the reader below */ } }
+  const gaps =(Array.isArray(l.gaps) ? l.gaps : []).map(g => Array.isArray(g) ? { at: [g[0], g[1]], w: g[2] } : g).filter(g => g && Array.isArray(g.at) && Number.isFinite(g.w) && g.w > 0);
   if (!gaps.length) return [l.path];
   const out = [];
   for (let i = 1; i < l.path.length; i++) {
@@ -1158,7 +1238,7 @@ function worldPath(nav, layer, from, to, r, framed) {
  * slides along the edge (x only, then z only) or stays put. Long steps are sub-stepped. If `pos` itself is illegal (should not
  * happen), the nearest legal cell within 3 m is returned.
  */
-function worldStep(nav, layer, pos, vel, r, dt, framed) {
+function worldStep(nav, layer, pos, vel, r, dt, framed, o) {
   const L = nav.layers[layer];
   if (layer === 'rail') {
     const n = _wnavRailNear(L.lines, pos[0] + vel[0] * dt, pos[1] + vel[1] * dt);
@@ -1169,8 +1249,9 @@ function worldStep(nav, layer, pos, vel, r, dt, framed) {
   let x = pos[0], z = pos[1];
   const okAt = (px, pz) => { const k = _wnavIdx(L, px, pz); return k >= 0 && _wnavCellOk(L, k, r, framed) && (k < L.N0 || _wnavFarPointOk(L, k, px, pz, r)); };
   if (!okAt(x, z)) {
-    const c = _wnavNearestOk(L, _wnavOkMask(L, r, framed), x, z, 3)[0];
-    return c == null ? [x, z] : [_wnavCX(L, c), _wnavCZ(L, c)];
+    // the rescue: o.from (the last legal point) -> the nearest legal cell CONNECTED to it (never the far side of a thin wall); else the nearest
+    const c = o && Array.isArray(o.from) ? worldNavRescue(nav, layer, x, z, r, o.from, framed) : _wnavNearestOk(L, _wnavOkMask(L, r, framed), x, z, 3)[0];
+    return c == null ? [x, z] : Array.isArray(c) ? c : [_wnavCX(L, c), _wnavCZ(L, c)];
   }
   const dx = vel[0] * dt, dz = vel[1] * dt, D = Math.hypot(dx, dz);
   const n = Math.max(1, Math.ceil(D / 0.2));
@@ -1184,6 +1265,36 @@ function worldStep(nav, layer, pos, vel, r, dt, framed) {
   return [x, z];
 }
 
+/**
+ * Where a body that stands on an illegal point goes back to (docs/dev/WORLD_MOVEMENT.md 3): a breadth-first search outward from its cell
+ * over the layer's cells (illegal ones included: it starts inside a solid) for the nearest legal cell in the SAME connected part as
+ * `from` (its last legal point), within R metres (default 4). So a body pushed into a thin wall comes back out on its own side, never
+ * through to the other. -> [x, z] (the cell's centre) or null. The caller glides it there (life: at most 1.5 m/s), never a jump.
+ */
+function worldNavRescue(nav, layer, x, z, r, from, framed, R) {
+  const L = nav && nav.layers[layer]; if (!L || !L.data) return null;
+  r = _wnavR(layer, r);
+  const ok = _wnavOkMask(L, r, framed), C = framed ? null : worldNavComponents(nav, layer, r);
+  const kf = Array.isArray(from) ? _wnavIdx(L, from[0], from[1]) : -1, want = C && kf >= 0 ? C.comp[kf] : -1;
+  const k0 = _wnavIdx(L, x, z);
+  if (k0 < 0) { const c = _wnavNearestOk(L, ok, x, z, R || 4)[0]; return c == null ? null : [_wnavCX(L, c), _wnavCZ(L, c)]; }
+  const lim = (R || 4) * (R || 4), seen = new Set([k0]), q = [k0];
+  // (the 4-neighbours of a near cell, ok or not; the far grid by its own neighbours: a rescue there is rare)
+  for (let qi = 0; qi < q.length && qi < 4000; qi++) {
+    const k = q[qi];
+    if (ok[k] && (want < 0 || C.comp[k] === want)) return [_wnavCX(L, k), _wnavCZ(L, k)];
+    if (k >= L.N0) continue;
+    const w = L.w, i = k % w, j = (k - i) / w;
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const ii = i + di, jj = j + dj; if (ii < 0 || ii >= w || jj < 0 || jj >= L.hLive) continue;
+      const kk = jj * w + ii; if (seen.has(kk)) continue;
+      seen.add(kk);
+      if ((_wnavCX(L, kk) - x) ** 2 + (_wnavCZ(L, kk) - z) ** 2 <= lim) q.push(kk);
+    }
+  }
+  const c = _wnavNearestOk(L, ok, x, z, R || 4)[0];
+  return c == null ? null : [_wnavCX(L, c), _wnavCZ(L, c)];
+}
 /** Connected parts of a layer at a radius (4-neighbour across the seam), cached: { comp: Int32Array (-1 = not ok), sizes }. */
 function worldNavComponents(nav, layer, r) {
   const L = nav && nav.layers[layer]; if (!L || !L.data) return null;
@@ -1253,12 +1364,12 @@ function worldSpawnCells(nav, layer, r) {
     }
     if (edge) out.push({ x, z, i: k, edge, hidden });
   }
-  // doors: the front of every building (kb doors when known), on a legal cell within 1.5 m
+  // doors: only a door the building DECLARES (kb doors), on a legal cell within 1.5 m. A guessed door (the middle of a front face) made
+  // people step out of a blank wall (docs/dev/WORLD_MOVEMENT.md 4); whoever comes out of a declared one still fades in (life: an emerge)
   if (layer === 'walk') {
     for (const e of nav.ents) {
       const kb = typeof worldKb === 'function' ? _wnavKb(e.obj) : null;
-      const isB = (kb && (kb.cls === 'building' || Array.isArray(kb.doors))) || e.cls === 'building';
-      if (!isB) continue;
+      if (!(kb && Array.isArray(kb.doors) && kb.doors.length)) continue;
       const pts = _wnavDoors(e, kb);
       for (const p of pts) {
         const c = _wnavNearestOk(L, ok, p[0], p[1], 1.5)[0];

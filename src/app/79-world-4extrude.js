@@ -115,8 +115,10 @@ function _wexArcOf(path, x, z) {
   }
   return at;
 }
-/** The runs of a line between its gaps: [[s0, s1], ...] in metres along. */
+/** The runs of a line between its gaps: [[s0, s1], ...] in metres along. Core's one gap normaliser (worldLineRuns) when it is loaded, so the
+ *  extruder draws open exactly what the nav leaves open (docs/dev/WORLD_MOVEMENT.md 3); the reader below is its fallback. */
 function _wexRuns(line, total) {
+  if (typeof worldLineRuns === 'function') { try { return worldLineRuns(line, total).runs; } catch (e) { /* the fallback below */ } }
   const gaps = [];
   for (const g of Array.isArray(line.gaps) ? line.gaps : []) {
     if (Array.isArray(g) && g.length === 2 && _wexNum(g[0]) && _wexNum(g[1])) gaps.push([Math.min(g[0], g[1]), Math.max(g[0], g[1])]);

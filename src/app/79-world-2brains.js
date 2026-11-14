@@ -75,6 +75,21 @@ var worldBrains = {
   buggy: _wbrPerson({ age: 'adult', r: 0.4, turn: 0.7, start: 'walk', gait: [0.9, 1.05], states: {
     walk: { speed: [0.85, 1.15], dur: [10, 30], next: { walk: 0.85, idle: 0.15 }, clip: 'walk', still: 'idle' },
     idle: { speed: 0, dur: [2, 5], next: { walk: 1 }, clip: 'idle' } } }),
+  // a DWELLER (docs/dev/WORLD_MOVEMENT.md 2): someone who is here, not passing through. Stands (waits for a friend, checks a phone), looks
+  // about, chats in a ring of two to four, watches a landmark or the water, queues at a kiosk or a stop, sits on a bench; now and then walks
+  // a few metres to another spot. Its dwell goal owns the state: the table below only varies a long stand (life: _wlfDwellGoal)
+  dweller: _wbrPerson({ age: 'adult', turn: 0.8, start: 'idle', gait: [0.85, 1.0], states: {
+    walk: { speed: [0.8, 1.1], dur: [4, 12], next: { idle: 1 }, clip: 'walk', still: 'idle' },
+    idle: { speed: 0, dur: [8, 25], next: { idle: 0.55, look: 0.45 }, clip: 'idle' },
+    look: { speed: 0, dur: [4, 12], next: { idle: 1 }, clip: 'look' },
+    chat: { speed: 0, dur: [20, 90], next: { chat: 0.8, look: 0.2 }, clip: 'chat' },
+    wait: { speed: 0, dur: [20, 60], next: { wait: 1 }, clip: 'wait' },
+    sit: { speed: 0, dur: [60, 240], next: { idle: 1 }, clip: 'sit', pose: 'sit' } } }),
+  // a slow stroller who stops to look (a window, the water, a statue): walks at an easy pace and stands a while every so often
+  browser: _wbrPerson({ age: 'adult', turn: 0.6, start: 'walk', gait: [0.85, 1.0], states: {
+    walk: { speed: [0.75, 1.0], dur: [6, 18], next: { walk: 0.45, look: 0.4, idle: 0.15 }, clip: 'walk', still: 'idle' },
+    look: { speed: 0, dur: [5, 16], next: { walk: 1 }, clip: 'look' },
+    idle: { speed: 0, dur: [3, 8], next: { walk: 1 }, clip: 'idle' } } }),
   // a cyclist on a shared path (walk layer): rings and passes (M6). On a road, cyclists are lane traffic ('cyclist-road').
   cyclist: _wbrPerson({ age: 'adult', r: 0.4, h: [1.6, 1.8], turn: 0.6, start: 'ride', react: { ring: true }, space: 0.6, states: {
     ride: { speed: [3.5, 5.5], dur: [30, 90], next: { ride: 1 }, clip: 'ride', still: 'stopped', pose: 'ride' },
@@ -169,13 +184,17 @@ var worldBrains = {
 // scene `who` -> { cls, obj } (a mix picks a who per spawn; a population name with no mix of its own gets `mix`).
 // Object ids work too (rail.train-mainline, person.jogger ...): the class comes from the descriptor (worldLifeWhoOf).
 var worldLifeWho = {
-  walkers: { mix: { stroll: 0.55, brisk: 0.2, 'dog-walker': 0.15, couple: 0.1 } },
-  visit: { mix: { stroll: 0.6, elderly: 0.4 } },
-  crowd: { mix: { brisk: 0.45, stroll: 0.3, friends: 0.15, couple: 0.1 } },
-  crowds: { mix: { brisk: 0.45, stroll: 0.3, friends: 0.15, couple: 0.1 } },
+  // (a browser: a slow stroller who stops to look; docs/dev/WORLD_MOVEMENT.md 2)
+  walkers: { mix: { stroll: 0.45, browser: 0.1, brisk: 0.2, 'dog-walker': 0.15, couple: 0.1 } },
+  visit: { mix: { stroll: 0.45, browser: 0.2, elderly: 0.35 } },
+  crowd: { mix: { brisk: 0.4, stroll: 0.25, browser: 0.1, friends: 0.15, couple: 0.1 } },
+  crowds: { mix: { brisk: 0.4, stroll: 0.25, browser: 0.1, friends: 0.15, couple: 0.1 } },
   'dog-walkers': { mix: { 'dog-walker': 1 } },
   stroll: { cls: 'stroll', obj: 'person.walker' },
   walker: { cls: 'stroll', obj: 'person.walker' },
+  dweller: { cls: 'dweller', obj: 'person.walker' },
+  dwellers: { cls: 'dweller', obj: 'person.walker' },
+  browser: { cls: 'browser', obj: 'person.shopper' },
   brisk: { cls: 'brisk', obj: 'person.walker' },
   commuter: { cls: 'brisk', obj: 'person.commuter' },
   commuters: { cls: 'brisk', obj: 'person.commuter' },

@@ -460,14 +460,31 @@ function _wanPoseObj(obj, kind, pose, onBench) {
   }
   return null;
 }
+/**
+ * Life's locomotion of a legged body on the ground (interface I4; docs/dev/WORLD_MOVEMENT.md 1): { moving, k, phase } from its loco, walkK and
+ * gait odometry (a raw agent's gOdo, a record's gaitPhase), or null (no loco: a static, a swimmer, a bird in the air, a vehicle). The ONE
+ * 'is it moving' test: the animation never judges a speed of its own when life says what the body is doing.
+ */
+const _WAN_LOCO_MOVING = Object.freeze({ start: 1, walk: 1, stop: 1 });
+function _wanLoco(e) {
+  if (!e || typeof e.loco !== 'string' || e.layer === 'air' || e.state === 'fly') return null;
+  const kind = _wanKind(e);
+  if (kind !== 'person' && kind !== 'dog' && kind !== 'grazer' && kind !== 'walkbird') return null;
+  const k = _wanNum(e.walkK) ? _wanClamp(e.walkK, 0, 1) : (_WAN_LOCO_MOVING[e.loco] ? 1 : 0);
+  const ph = _wanNum(e.gaitPhase) ? e.gaitPhase : _wanNum(e.gOdo) ? e.gOdo : null;
+  return { moving: !!_WAN_LOCO_MOVING[e.loco] || k > 0.02, k, phase: ph == null ? null : _wanFrac(ph) };
+}
 function _wanTarget(e, prevState) {
   // the velocity life SHOWS (svx: low-passed over 0.2 s, so a one-tick spike never flips a walk cycle), else the real one
   const kind = _wanKind(e), vx = _wanNum(e.svx) ? e.svx : _wanNum(e.vx) ? e.vx : 0, vz = _wanNum(e.svz) ? e.svz : _wanNum(e.vz) ? e.vz : 0;
   // the ACTUAL ground speed (the velocity), never the speed the brain is aiming for: the feet must match the ground (A6)
-  const speed = _wanNum(e.svx) || _wanNum(e.vx) || _wanNum(e.vz) ? Math.hypot(vx, vz) : _wanNum(e.speed) ? Math.abs(e.speed) : _wanNum(e.spd) ? Math.abs(e.spd) : 0;
+  let speed = _wanNum(e.svx) || _wanNum(e.vx) || _wanNum(e.vz) ? Math.hypot(vx, vz) : _wanNum(e.speed) ? Math.abs(e.speed) : _wanNum(e.spd) ? Math.abs(e.spd) : 0;
   const st = String(e.state || ''), clip0 = String(e.clip || '');
   const wasMoving = prevState === 'move';
-  const moving = speed >= (wasMoving ? _WAN_MOVE_OUT : _WAN_MOVE_IN) || (speed >= _WAN_MOVE_OUT && prevState == null);
+  const lw = _wanLoco(e);
+  // the measured ground speed over life's window when it has one (the clip: walk or run)
+  if (lw && _wanNum(e.ws)) speed = e.ws;
+  const moving = lw ? lw.moving : speed >= (wasMoving ? _WAN_MOVE_OUT : _WAN_MOVE_IN) || (speed >= _WAN_MOVE_OUT && prevState == null);
   const air = e.layer === 'air' || st === 'fly' || clip0 === 'fly';
   if (st === 'sit' || clip0 === 'sit') return { state: 'sit', clip: 'sit', pose: 'sit', kind, speed: 0 };
   if (st === 'lie' || clip0 === 'lie') return { state: 'lie', clip: 'lie', pose: 'lie', kind, speed: 0 };
@@ -511,12 +528,20 @@ function _wanRates(e, tg, vr, mult) {
   const out = { rate: 0, period: 0, stride: 0, step: 0, k: 0, legPeriod: 0, paddle: 0 };
   if (tg.state === 'move') {
     if (tg.clip === 'walk' || tg.clip === 'run' || tg.clip === 'trot') {
-      let step = _wanStep(kind, h, sp, _wanKbStride(e.obj)) * (1 + 0.12 * (vr.v - 0.5));
-      let k = 1;
-      // a slow shuffle shortens the step instead of slowing the cycle past 1.6 s (the feet still keep pace)
-      const pMax = kind === 'walkbird' ? 4 : 1.6;
-      if (2 * step / Math.max(1e-3, sp) > pMax) { const s2 = Math.max(0.02, sp * pMax / 2); k = _wanClamp(s2 / step, 0.12, 1); step = s2; }
-      out.step = step; out.stride = 2 * step; out.k = k;
+      const lw = _wanLoco(e);
+      if (lw) {
+        // life's locomotion (I4): the full step of the pace it walks at, weighted by the stride weight; the cycle is life's odometry, so the
+        // feet keep pace by construction (never a shuffle: a body under walking pace stands)
+        const step = _wanStep(kind, h, Math.max(sp, 0.6), _wanKbStride(e.obj)) * (e.strideMul || 1);
+        out.step = step; out.stride = 2 * step; out.k = lw.k; out.kStep = 1;
+      } else {
+        let step = _wanStep(kind, h, sp, _wanKbStride(e.obj)) * (1 + 0.12 * (vr.v - 0.5));
+        let k = 1;
+        // a slow shuffle shortens the step instead of slowing the cycle past 1.6 s (the feet still keep pace)
+        const pMax = kind === 'walkbird' ? 4 : 1.6;
+        if (2 * step / Math.max(1e-3, sp) > pMax) { const s2 = Math.max(0.02, sp * pMax / 2); k = _wanClamp(s2 / step, 0.12, 1); step = s2; }
+        out.step = step; out.stride = 2 * step; out.k = k;
+      }
     } else if (tg.clip === 'swim') { out.stride = 0.7 * h * (1 + 0.12 * (vr.v - 0.5)); out.k = 1; }
     else if (tg.clip === 'fly') { const wr = _wanWing(h) * mult; out.stride = Math.max(0.05, sp) / wr; out.k = 1; }
     else if (tg.clip === 'pedal') { out.stride = 5 * (1 + 0.1 * (vr.v - 0.5)); out.k = 1; }
@@ -566,15 +591,17 @@ function _wanUpdate(world, e, dt, clock) {
     an.state = tg.state; an.clip = tg.clip; an.pose = tg.pose;
   }
   if (an.blend < 1) an.blend = Math.min(1, an.blend + dt / Math.max(0.25, an.dur));
-  const u = _wanEase(an.blend), from = an.from;
-  // the cycle: continuous; easing out of a move the cycle slows with the legs, never jumps
+  const u = _wanEase(an.blend), from = an.from, lw = _wanLoco(e);
+  // the cycle: continuous; easing out of a move the cycle slows with the legs, never jumps. With life's locomotion the cycle IS its gait
+  // odometry (distance covered / stride: no distance, no leg motion) and the stride weight its walkK, eased by life (START, STOP)
   const effRate = from && an.blend < 1 && from.state === 'move' && tg.state !== 'move' ? from.rate * (1 - u) : r.rate;
-  an.cyc = _wanFrac(an.cyc + dt * effRate);
+  an.cyc = lw && lw.phase != null ? lw.phase : _wanFrac(an.cyc + dt * effRate);
+  an.loco = lw ? e.loco : null;
   an.rate = _wanR(r.rate, 5); an.period = _wanR(r.period, 5); an.stride = _wanR(r.stride, 4); an.step = _wanR(r.step, 4); an.speed = _wanR(tg.speed, 4);
   if (r.legPeriod) an.legPeriod = r.legPeriod; else if (an.blend >= 1) an.legPeriod = 0;
   if (r.paddle) an.paddle = r.paddle;
-  an.k = _wanR(from && an.blend < 1 ? from.k + (r.k - from.k) * u : r.k, 4);
-  if (tg.state === 'move') an.kStep = r.k;   // the shuffle's share of a full step (the stance gait sizes the swing from the full step)
+  an.k = lw ? _wanR(tg.state === 'move' ? lw.k : 0, 4) : _wanR(from && an.blend < 1 ? from.k + (r.k - from.k) * u : r.k, 4);
+  if (tg.state === 'move') an.kStep = r.kStep != null ? r.kStep : r.k;   // the shuffle's share of a full step (the stance gait sizes the swing from the full step)
   an.idling = !!tg.idling;
   an.t = clock;
   // under budget pressure (degrade 3) far ones keep still between moves: no idle micro-motion at LOD 2
@@ -582,7 +609,8 @@ function _wanUpdate(world, e, dt, clock) {
   an.quiet = Math.max(_wanDegrade, S0 ? S0.level | 0 : 0) >= 3 && e.lod >= 2 && tg.state !== 'move';
   // the view a transition holds (M7): a sitter faces the way its bench faces; others keep their last facing while they stop
   an.face = null;
-  if (tg.state === 'sit' && e.seat && _wanNum(e.seat.facing)) an.face = e.seat.facing;
+  // (life's seat keeps its facing in radians; fdeg is the same in degrees: the view reads degrees)
+  if (tg.state === 'sit' && e.seat && (_wanNum(e.seat.fdeg) || _wanNum(e.seat.facing))) an.face = _wanNum(e.seat.fdeg) ? e.seat.fdeg : e.seat.facing;
   else if (tg.state === 'sit' && e.host && world && Array.isArray(world.entities)) { const b = world.entities.find(q => q && q.id === e.host); if (b && _wanNum(b.facing)) an.face = b.facing; }
   const onBench = !!(e.host && world && Array.isArray(world.entities) && world.entities.some(q => q && q.id === e.host && /bench|seat/.test(String(q.obj || ''))));
   an.obj = _wanPoseObj(e.obj, tg.kind, tg.pose, onBench);
@@ -804,6 +832,15 @@ function _wanSnapshot(e, world) {
   Object.assign(an, { state: tg.state, clip: tg.clip, pose: tg.pose, rate: _wanR(r.rate, 5), period: _wanR(r.period, 5), stride: _wanR(r.stride, 4), step: _wanR(r.step, 4), k: r.k, speed: _wanR(tg.speed, 4),
     legPeriod: r.legPeriod, paddle: r.paddle, t: _wanNum(e.t) ? e.t : 0, snapshot: true });
   an.obj = _wanPoseObj(e.obj, tg.kind, tg.pose, !!e.host);
+  // life's gait (I4) and the drawn gait, as the live record has them (a record drawn in another object than its life agent's, a legless
+  // figure's walking stand-in, is judged by what is drawn: its foreshortened swing, never the full side-on one)
+  const lw = _wanLoco(e);
+  if (lw) { if (lw.phase != null) an.cyc = lw.phase; an.kStep = 1; an.loco = e.loco; }
+  if (tg.state === 'move' && (tg.clip === 'walk' || tg.clip === 'run' || tg.clip === 'trot')) {
+    an.view = e.view || null;
+    const G = worldAnimGait(e, an, { view: an.view || undefined }); an.gait = { fs: G.fs, swing: G.swing, lift: G.lift, plane: G.plane };
+    if (tg.kind === 'person' && (_WAN_ART_FS[G.view] || 0) > 0.3) { const fv = _wanCross(e, G.fs); an.gait.plane = _wanR(Math.min(1, fv), 3); an.gait.lift = _wanR(Math.max(G.lift, 1 - Math.min(1, fv)), 3); }
+  }
   return an;
 }
 /** The anim record of an entity: its live record, else the one the system keeps by id, else a pure snapshot. */
@@ -916,7 +953,12 @@ function worldAnimHooks(ent, t, o) {
     return out;
   }
   const mv = an.state === 'move', blendU = _wanEase(an.blend == null ? 1 : an.blend);
-  const legPer = an.legPeriod || an.period || 1, legPh = _wanFrac(an.cyc - (an.t || 0) / legPer);
+  const legPer = an.legPeriod || an.period || 1;
+  // the legs at the PRESENTED gait (I4): a record carries life's gait phase and stride weight interpolated exactly as its position, so the
+  // phase is drawn as it is at T (the hook's t / period + phase = gaitPhase) and the stride weight is the record's. Else the anim clock's cycle
+  const lw = _wanLoco(ent), recPh = lw && _wanNum(ent.gaitPhase) ? ent.gaitPhase : null;
+  const legPh = recPh != null ? _wanFrac(recPh - T / legPer) : _wanFrac(an.cyc - (an.t || 0) / legPer);
+  const kLeg = lw && _wanNum(ent.walkK) ? (mv ? _wanClamp(ent.walkK, 0, 1) : 0) : an.k;
   const flying = an.pose === 'fly', still = an.state === 'sit' || an.state === 'lie' || an.state === 'stopped';
   const legged = kind === 'person' || kind === 'dog' || kind === 'grazer' || kind === 'walkbird';
   let gait = null;
@@ -927,7 +969,7 @@ function worldAnimHooks(ent, t, o) {
         // legs: the stride period from the speed (A6); still when seated, lying or stopped (M1); eased in and out (M7); FORESHORTENED by
         // the real angle to the line of sight (worldAnimGait): a walker coming toward the eye lifts its feet in turn, sways and bobs instead
         // of scissoring its legs in the picture plane (18 Oct: side-only art walking toward the camera read as walking on the spot)
-        const k = still ? 0 : an.k, G = gait || (gait = worldAnimGait(ent, an, { obj, view: o.view }));
+        const k = still ? 0 : kLeg, G = gait || (gait = worldAnimGait(ent, an, { obj, view: o.view }));
         // PLANTED FEET (20 Oct: the drawn feet slid 60 to 90 % of the body's speed walking side-on): seen side-on or three-quarter, a leg
         // hook (its pivot at the hip) turns through the stance at an even pace and as far as the step needs: the foot moves back under
         // the hip by the step's on-screen length (step x |sin rel|) while the body moves on by it, so it stands still on the ground
@@ -958,7 +1000,7 @@ function worldAnimHooks(ent, t, o) {
       case 'bob': {
         // a quick bob on a legged body (a dog's front view, the dog of a dog-walker: periods under a second) is its GAIT: it bobs twice a
         // stride while it moves and never while it stands (18 Oct: a standing dog seen head-on bobbed at 3.6 Hz, trotting on the spot)
-        if (legged && (h.period || 1) < 1) { out.push(Object.assign({}, h, { period: legPer / 2, phase: _wanFrac(2 * legPh), k: still || !mv ? 0 : k0 * an.k })); break; }
+        if (legged && (h.period || 1) < 1) { out.push(Object.assign({}, h, { period: legPer / 2, phase: _wanFrac(2 * legPh), k: still || !mv ? 0 : k0 * kLeg })); break; }
         const k = (kind === 'vehicle' || kind === 'rail') ? (mv ? 1 : an.idling ? 0.2 : 0) : kind === 'boat' ? (mv ? 1 : 0.35) : mv ? 1 : 0.5;
         if (kind === 'boat' && Math.abs(rock) > 0.05) out.push({ kind: 'paddle', part: h.part || '*', parts: h.parts, dy: (h.dy || 1) * k, deg: rock, period: 1e9, phase: _WAN_ROCK_PH });
         else out.push(Object.assign({}, h, { period: (h.period || 1) * mult, phase: ph, k: k0 * k }));

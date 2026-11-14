@@ -172,6 +172,75 @@ function _wcLineNear(path, x, z) {
   return best;
 }
 function _wcPathLen(path) { let L = 0; for (let i = 1; i < path.length; i++) L += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]); return L; }
+
+/* ---------- the one gap normaliser of a line (walls, fences, hedges, railings; docs/dev/WORLD_MOVEMENT.md 3) ---------- */
+/**
+ * A line's gaps read ONE way for everybody: the extruder draws its solid runs, the nav cuts the same runs, placement keeps things
+ * out of the same runs and the validator accepts what this reads. Before, three readers disagreed: [[s0, s1]] and { at: metres }
+ * were drawn open but stayed solid in the nav (an invisible wall in a drawn gateway, Cotswold's churchyard wall), and [x, z, w] was
+ * open in the nav but drawn as a continuous wall (people walked through a drawn wall).
+ * A gap is one of:
+ *   [s0, s1]                  metres along the path (s0 < s1)
+ *   { at: metres along, w }   its middle along the path, w its width (default 1.2 m: a gate)
+ *   { at: [x, z], w }         its middle at the nearest point of the path to (x, z)
+ *   [x, z, w]                 the same, as a triple
+ * -> { total, gaps: [[g0, g1]] (merged, clipped to the path), runs: [[s0, s1]] (the solid runs), bad: [indices nobody can read] }.
+ * total: the path length (computed when not given).
+ */
+function worldLineRuns(line, total) {
+  const path = line && Array.isArray(line.path) ? line.path.filter(_wcPt) : [];
+  const T = _wcNum(total) && total > 0 ? total : _wcPathLen(path), gaps = [], bad = [];
+  const raw = line && Array.isArray(line.gaps) ? line.gaps : [];
+  for (let i = 0; i < raw.length; i++) {
+    const g = raw[i];
+    let s = null, w = 1.2, span = null;
+    if (Array.isArray(g) && g.length === 2 && _wcNum(g[0]) && _wcNum(g[1]) && g[1] > g[0]) span = [g[0], g[1]];
+    else if (Array.isArray(g) && g.length === 3 && g.every(_wcNum) && g[2] > 0 && path.length >= 2) { const n = _wcLineNear(path, g[0], g[1]); s = n ? n.s : null; w = g[2]; }
+    else if (_wcObjOf(g) && (g.w == null || (_wcNum(g.w) && g.w > 0))) {
+      if (_wcNum(g.w)) w = g.w;
+      if (_wcNum(g.at)) s = g.at;
+      else if (_wcPt(g.at) && path.length >= 2) { const n = _wcLineNear(path, g.at[0], g.at[1]); s = n ? n.s : null; }
+    }
+    if (!span && _wcNum(s)) span = [s - w / 2, s + w / 2];
+    if (!span) { bad.push(i); continue; }
+    const g0 = Math.max(0, span[0]), g1 = Math.min(T, span[1]);
+    if (g1 > g0) gaps.push([g0, g1]);
+  }
+  gaps.sort((a, b) => a[0] - b[0]);
+  const merged = [];
+  for (const g of gaps) { const m = merged[merged.length - 1]; if (m && g[0] <= m[1]) m[1] = Math.max(m[1], g[1]); else merged.push(g.slice()); }
+  const runs = [];
+  let s = 0;
+  for (const [g0, g1] of merged) { if (g0 > s + 0.05) runs.push([s, g0]); s = Math.max(s, g1); }
+  if (T > s + 0.05) runs.push([s, T]);
+  return { total: T, gaps: merged, runs, bad };
+}
+/** The point at arc length s of a path ([x, z]; clamped to its ends). */
+function worldLinePointAt(path, s) {
+  let acc = 0;
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1], b = path[i], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (acc + L >= s || i === path.length - 1) { const t = L > 1e-9 ? Math.max(0, Math.min(1, (s - acc) / L)) : 0; return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; }
+    acc += L;
+  }
+  return path.length ? [path[0][0], path[0][1]] : [0, 0];
+}
+/** The solid parts of a line as polylines (every path vertex inside a run, the run's two ends cut exactly): [[[x, z], ...]]. */
+function worldLineParts(line) {
+  const path = line && Array.isArray(line.path) ? line.path.filter(_wcPt) : [];
+  if (path.length < 2) return [];
+  const R = worldLineRuns(line);
+  if (!R.gaps.length) return [path];
+  const out = [];
+  for (const [s0, s1] of R.runs) {
+    const part = [worldLinePointAt(path, s0)];
+    let acc = 0;
+    for (let i = 1; i < path.length; i++) { acc += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]); if (acc > s0 + 1e-6 && acc < s1 - 1e-6) part.push([path[i][0], path[i][1]]); }
+    part.push(worldLinePointAt(path, s1));
+    if (part.length >= 2) out.push(part);
+  }
+  return out;
+}
 function _wcPolyArea(p) { let a = 0; for (let i = 0, j = p.length - 1; i < p.length; j = i++) a += (p[j][0] + p[i][0]) * (p[j][1] - p[i][1]); return a / 2; }
 function _wcCentroid(pts) { let x = 0, z = 0; for (const p of pts) { x += p[0]; z += p[1]; } return pts.length ? [x / pts.length, z / pts.length] : [0, 0]; }
 /** The distance from a point to a polygon's boundary. */
@@ -819,7 +888,12 @@ function _wcCheck(spec0, repair) {
     if (!WORLD_LINE_KINDS.includes(l.kind)) { const al = { hedgerow: 'hedge', railings: 'railing', walls: 'wall', fences: 'fence', curb: 'kerb' }[l.kind]; if (al) act(p + '.kind', 'badValue', `unknown line kind ${l.kind}: read as ${al}`, set(l, 'kind', al, l.id)); else { act(p + '.kind', 'badValue', 'kind is ' + WORLD_LINE_KINDS.join(', '), drop(lines, l, l.id)); return; } }
     if (!(Array.isArray(l.path) && l.path.length >= 2 && l.path.every(_wcPt))) { act(p + '.path', 'badSurface', 'a line needs path (>= 2 points)', drop(lines, l, l.id)); return; }
     for (const k of ['width', 'h']) if (l[k] != null && !(_wcNum(l[k]) && l[k] > 0)) act(`${p}.${k}`, 'badValue', k + ' is metres > 0', strip(l, k, l.id));
-    if (l.gaps != null && !(Array.isArray(l.gaps) && l.gaps.every(g => (_wcPt(g) && g[0] >= 0 && g[1] > g[0]) || (g && typeof g === 'object' && !Array.isArray(g) && (_wcNum(g.at) || _wcPt(g.at)) && (g.w == null || (_wcNum(g.w) && g.w > 0)))))) act(p + '.gaps', 'badValue', 'gaps are [[s0, s1]] arc lengths in metres, or { at: metres along | [x, z], w } (the extruder reads both)', strip(l, 'gaps', l.id));
+    // the one gap normaliser (worldLineRuns) is the judge: what it reads, the extruder draws open AND the nav leaves open; an entry it
+    // cannot read is stripped by itself (the readable gates stay), never silently drawn open and walked as a wall
+    if (l.gaps != null) {
+      if (!Array.isArray(l.gaps)) act(p + '.gaps', 'badValue', 'gaps is a list: [s0, s1] metres along, { at: metres along | [x, z], w } or [x, z, w]', strip(l, 'gaps', l.id));
+      else { const bad = worldLineRuns(l).bad; if (bad.length) act(p + '.gaps', 'badValue', 'unreadable gap(s) ' + bad.join(', ') + ': a gap is [s0, s1] metres along, { at: metres along | [x, z], w } or [x, z, w]', set(l, 'gaps', l.gaps.filter((g, gi) => !bad.includes(gi)), l.id)); }
+    }
     if (l.obj != null && !worldObjectInfo(l.obj)) act(p + '.obj', 'unknownSize', 'no world descriptor for ' + l.obj, strip(l, 'obj', l.id));
     if (l.laid != null && !(l.kind === 'wall' && typeof WORLD_MASONRY_LAID !== 'undefined' && WORLD_MASONRY_LAID.includes(l.laid))) act(p + '.laid', 'badValue', 'laid is coursed, rubble or drystone, on a wall (how the stone is laid)', strip(l, 'laid', l.id));
     if (l.cope != null && !(l.kind === 'wall' && typeof WORLD_MASONRY_COPE !== 'undefined' && WORLD_MASONRY_COPE.includes(l.cope))) act(p + '.cope', 'badValue', 'cope is saddle, flat or upright, on a wall', strip(l, 'cope', l.id));
@@ -1718,9 +1792,44 @@ function worldBuild(spec, o = {}) {
       try { let gm = e.y; for (const q of worldModelFootOf(e, e.model) || []) gm = Math.min(gm, sceneGroundHeight(world.cam, q[0], q[1])); if (gm < e.y) e.y = _wcR3(gm); } catch (err) { /* keep the centre's ground */ }
     }
   }
+  // standing scenery figures become live dwellers (docs/dev/WORLD_MOVEMENT.md 2): life stands them where they were placed, facing the way they
+  // faced, breathing, looking about and turning (a frozen statue of a person, some in mid-stride walking art, read as wrong). Done last, so the
+  // placement, the fill and the frame checks saw them; the statics bake never draws them twice. o.dwellers === false keeps them static.
+  if (o.dwellers !== false && typeof worldLifeInit === 'function') { try { _wcDwellers(world); } catch (err) { _wcLogBuild(log, null, 'the dwellers: ' + String(err && err.message || err)); } }
   // one shape for every load-log entry, whoever acted (U2, 12.5)
   for (const l of world.log) if (l && typeof l === 'object') for (const k of ['id', 'obj', 'from', 'to']) if (!(k in l)) l[k] = null;
   return world;
+}
+/** At most this many scenery figures become live dwellers (the nearest first); the rest, far and tiny, stay static. */
+const WORLD_DWELLER_MAX = 12;
+/**
+ * A scenery figure that STANDS on the ground in view (not seated: a bench sitter, a cafe-goer, a picnicker, a wheelchair user; not on a
+ * deck or a boat; not a rider) -> world.dwellers [{ id, obj, variant, x, y, z, facing, h }], out of world.entities, each logged.
+ */
+function _wcDwellers(world) {
+  const cam = world.cam, f = cam && _wcNum(cam.f) ? cam.f : 800, x0 = cam && _wcNum(cam.x0) ? cam.x0 : 800;
+  const seated = /sit|reader|picnic|cafe|wheelchair|angler|deckchair|sunbath|lying|rower|kayak|paddle|sailor|surfer|cyclist|skate|climber/;
+  const cand = [];
+  for (const e of world.entities) {
+    if (!e || e.static === false || !/^person\./.test(String(e.obj || '')) || seated.test(String(e.obj))) continue;
+    const kb = e.obj ? _wcKbOf(e.obj) : null;
+    if (kb && kb.size && kb.size.pose === 'sit') continue;
+    const ak = String(e.attach || 'ground').split(':')[0];
+    if (ak !== 'ground' || e.host || !_wcNum(e.x) || !_wcNum(e.z) || !(e.z > 2) || e.z > 160 || f * 1.7 / e.z < 6) continue;   // (one under 6 px tall is a speck: it stays static)
+    const X = x0 + f * e.x / e.z;
+    if (X < -60 || X > 1660) continue;                                                     // out of the frame: it can stay a static
+    cand.push(e);
+  }
+  cand.sort((a, b) => a.z - b.z);
+  const take = new Set(cand.slice(0, WORLD_DWELLER_MAX));
+  if (!take.size) return;
+  world.dwellers = world.dwellers || [];
+  world.entities = world.entities.filter(e => {
+    if (!take.has(e)) return true;
+    world.dwellers.push({ id: e.id, obj: e.obj, variant: Number.isInteger(e.variant) ? e.variant : null, x: e.x, y: _wcNum(e.y) ? e.y : 0, z: e.z, facing: _wcNum(e.facing) ? e.facing : 180, h: _wcNum(e.height) ? e.height : null });
+    world.log.push({ id: e.id || null, obj: e.obj, action: 'live', rule: 'dweller', reason: 'a standing scenery figure is a live dweller (it stands here, breathes, looks about and turns; never a frozen statue)', from: [e.x, e.z], to: 'life', by: 'sense', path: null, severity: 'repair' });
+    return false;
+  });
 }
 /* ---------- walkways never cross open water (the validator's rule and the invariant checker's 'walkwayWater') ---------- */
 /** Surface kinds that are walkways: a deck laid over what is beneath it (ground, reeds or water). */
