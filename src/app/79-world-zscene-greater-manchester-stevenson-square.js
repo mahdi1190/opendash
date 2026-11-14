@@ -350,7 +350,7 @@
   },
   {
    "obj": "person.phone-idler",
-   "at": [4.6, 8.2],
+   "at": [4, 7.9],
    "facing": 270
   },
   {

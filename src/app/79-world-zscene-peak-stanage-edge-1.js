@@ -63,7 +63,6 @@
       { id: 'wall-pl', kind: 'wall', stone: '#6a6358', path: [[140, 60], [110, 66], [84, 64], [62, 70]], h: 1.3, gaps: [[74.5, 81]] },
       { id: 'wall-in', kind: 'wall', stone: '#6a6358', path: [at(70, 60), at(60, 140), at(66, 240), at(80, 380)], h: 1.3, gaps: [[120, 128]] },
     ],
-    landmarks: [{ id: 'church', obj: 'structure.parish-church', at: at(1250, 2150), facing: 90, src: 'St Michael and All Angels, Hathersage (OS Explorer OL1), the spire above the hamlet', model: { livery: 'grey-limestone', size: 1.15, opts: { crown: 'spire', era: 'perpendicular' } } }],
     entities: [
       // the heather carpet at the lens: ling, bilberry, bents and a few cotton-grass heads; the slope's bracken drifts and the boulder field (authored: the fill is off)
       { cluster: 'plant.ling-heather', on: 'pl-0', n: 70, seed: 51, gap: 0.2 }, { cluster: 'plant.bilberry', on: 'pl-0', n: 14, seed: 53, gap: 0.4 }, { cluster: 'plant.grass-long', on: 'pl-0', n: 8, seed: 52, gap: 0.6 }, { cluster: 'plant.rph-short-grass', on: 'pl-0', n: 170, seed: 54, gap: 0.06 }, { cluster: 'plant.bilberry', on: 'pl-0', n: 30, seed: 56, gap: 0.15 },
@@ -77,6 +76,10 @@
       { cluster: 'plant.ling-heather', on: 'pl-b', n: 60, seed: 13, gap: 1.6 }, { cluster: 'plant.bilberry', on: 'pl-b', n: 20, seed: 14, gap: 1.6 }, { cluster: 'rock.gritstone-block', on: 'pl-b', n: 8, seed: 18, gap: 6 },
       { cluster: 'rock.gritstone-block', on: 'boulders', n: 40, seed: 36, gap: 2.5 }, { cluster: 'plant.bracken', on: 'boulders', n: 30, seed: 34, gap: 2 }, { cluster: 'plant.ling-heather', on: 'boulders', n: 20, seed: 33, gap: 2 },
       { cluster: 'plant.bracken', on: 'slope', n: 30, seed: 58, gap: 3 }, { cluster: 'rock.gritstone-block', on: 'slope', n: 8, seed: 46, gap: 9 }, { cluster: 'tree.green-birch', on: 'slope', n: 4, seed: 61, gap: 12 },
+      // St Michael and All Angels, Hathersage (OS Explorer OL1): the spire above the hamlet, 2.2 km off and 11 units tall. An entity, not a
+      // landmark (14 Nov): the landmark check demoted it to scenery at every load anyway (never a subject at that size), after a face
+      // test against every occluder that cost a third of the build (0.82 -> 0.48 s in Node); the picture is the same
+      { obj: 'structure.parish-church', id: 'church', at: at(1250, 2150), facing: 90, model: { livery: 'grey-limestone', size: 1.15, opts: { crown: 'spire', era: 'perpendicular' } } },
     ],
     life: [
       // walkers both ways along the top (in from behind the lens and from the far end of the edge), sheep in the heather and on the slope, a buzzard over the valley

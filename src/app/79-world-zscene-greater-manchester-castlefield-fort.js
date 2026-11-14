@@ -17,17 +17,21 @@
      - landmarks[0]: repair: removed (blocksPath) landmark.mcf-roman-gate covers the whole width of path
      - entities: 6 entries kept where the placement solver settled them (overlap, blocksPath; 0.25-0.75 m, at most 1.2 m; each in the notes): entities[26] street.bench 0.42 m, entities[27] person.bench-sitter 0.5 m, entities[151] plant.grass 0.25 m, entities[232] plant.daisies 0.5 m, entities[269] plant.grass-long 0.75 m, entities[270] plant.grass-long 0.75 m
    PURE. Hidden dev pack until approved; the original scene is untouched.
+   RESTORED BY HAND (14 Nov):
+   The Roman fort's gate put back at [10, 48], 8 m further than the v2 pin (the world draws the art at its real 10.8 m, which at 40 m stood 1.35 times the v2's size and hid the viaduct) (the converter removed it: with no facing its 64 m wall box ran down the
+   path instead of across it). facing 90 lays the wall across the view; the path runs on to its foot (z 44.5), so walkers turn at the
+   gate rather than pass through its stones.
    ============================================================ */
 (function () {
   if (typeof worldAdd !== 'function') return;
-  worldAdd('world-test', {"id":"greater-manchester-castlefield-fort-w3","label":"Roman fort, Castlefield, Manchester","site":"Castlefield, Manchester — The reconstructed north gate of the Roman fort of Mamucium","tags":["uk","north west","greater manchester","manchester","castlefield","city","roman","fort","gate","park","viaduct","tram","world-v3"],"liveSky":{"lat":53.4762,"lon":-2.2576},"mood":"calm","colour":"green"},
+  worldAdd("world-test", {"id":"greater-manchester-castlefield-fort-w3","label":"Roman fort, Castlefield, Manchester","site":"Castlefield, Manchester — The reconstructed north gate of the Roman fort of Mamucium","tags":["uk","north west","greater manchester","manchester","castlefield","city","roman","fort","gate","park","viaduct","tram","world-v3"],"liveSky":{"lat":53.4762,"lon":-2.2576},"mood":"calm","colour":"green"},
 {
  "v": 3,
  "place": {"lat":53.4762,"lon":-2.2576,"region":"greater-manchester"},
  "camera": {"eye":1.65,"fov":58,"horizon":610,"heading":112},
  "surfaces": [
   {"id":"land","kind":"grass","poly":[[-5.1,7.4],[5.1,7.4],[2078.7,3000],[-2078.7,3000]]},
-  {"id":"path","kind":"path","path":[[-3,5],[1,14],[5,26],[8,36.5]],"width":2.6},
+  {"id":"path","kind":"path","path":[[-3,5],[1,14],[5,26],[8,36.5],[9.6,44.5]],"width":2.6},
   {"id":"path-x","kind":"path","path":[[-40,26],[-12,30],[4,33],[30,31]],"width":2.2},
   {"id":"beds","kind":"grass","poly":[[-30,34],[-10,35],[-10,36.5],[-30,36]]},
   {"id":"yard","kind":"plaza","poly":[[-200,60],[200,50],[200,96],[-200,112]]},
@@ -367,6 +371,7 @@
   {"obj":"bird.pigeon-feral","at":[-0.6,9.4]}
  ],
  "landmarks": [
+  {"obj":"landmark.mcf-roman-gate","at":[10,48],"facing":90,"variant":0,"src":"the reconstructed gate of the Roman fort of Mamucium, Castlefield (scheduled monument)"},
   {"obj":"landmark.beetham-tower-blade","at":[-160,470],"src":"https://www.castlefield.org.uk"}
  ],
  "life": [
