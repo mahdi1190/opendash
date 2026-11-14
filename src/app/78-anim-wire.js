@@ -69,6 +69,8 @@ const _AW_OPEN_MS = { subtle: 1100, standard: 1700, playful: 2300 };
  */
 function animCineShow(o) {
   if (!_awOn() || document.hidden) return null;
+  // (a world scene in the overlay plays on the game engine: its parse starts now if the opening did not start it)
+  try { if (typeof worldStagePreload === 'function' && /data-anim=/.test(String(o.art || ''))) worldStagePreload(); } catch (e) { /* the canvas renderer plays */ }
   const ms = o.ms || 3400;
   const el = document.createElement('div');
   el.className = 'ap-cine' + (o.cls ? ' ' + o.cls : ''); el.setAttribute('role', 'status');
@@ -276,6 +278,13 @@ function animOpeningSequence() {
   if (!ms || !_awOn() || animOpeningMode() === 'off') { done(); return false; }
   const alive = () => sp.isConnected && !ctl.gone();
   const wait = (t, fn) => setTimeout(() => { if (alive()) fn(); }, Math.max(0, t));
+  // a world scene plays on the game engine (79-world-7stage-0core.js): when the likely next opening is one (the place known from
+  // before), the engine's decode and parse (a few hundred ms) runs now, during the brand and the location wait, not in the middle of
+  // the scene's bake; any other opening never loads it (a world scene chosen after all loads it with its bake; the canvas renderer
+  // takes the scene if the stage is not ready in time)
+  try {
+    if (typeof worldStagePreload === 'function' && typeof animOpeningPeek === 'function' && animOpeningPeek().some((r) => { const it = animItem(r); return !!(it && it.world === 3); })) worldStagePreload();
+  } catch (e) { /* the canvas renderer plays */ }
   // Start during the brand splash; select artwork only after a fresh fix or
   // the bounded fallback. The load handler shares this same location request.
   const locationReady = typeof dashboardLocationBeforeOpening === 'function' ? dashboardLocationBeforeOpening() : null;

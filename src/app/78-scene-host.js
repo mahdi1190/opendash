@@ -17,6 +17,8 @@
      .is-rested (the Home card after 60 s), html.anim-paused, reduced motion, or not live (tiles: the
      still frame; data-sc-hover="1" plays on pointer enter and returns to the still on leave).
    - Fallback: no 2d context, or a bake that throws: the host gets the SVG still (sceneSvg) instead.
+   - World scenes (v3 items) on a live host big enough to be a scene play on the world stage (Phaser 4: _schStage,
+     79-world-7stage-0core.js); its renderer bakes with the canvas renderer and hands back to it when the stage cannot play.
    - Debug: window.__sceneStats() -> [{ ref, ...renderer.stats() }] for every live host.
    - v2 (docs/dev/SCENE_ENGINE_V2.md 7.5, 8.1, 14.2; builder C): a v2 scene (data.camera) and a v1 scene that opted in to
      effects (data.fx) are lit with sceneLightV2 (the light plus the sun on the ground, the local hour, the resolved weather
@@ -256,7 +258,10 @@ function _schMount(el) {
       const cache = _schCacheId(rec), maxFps = el.closest('#od-splash, .od-seq, .ap-cine, .auk-welcome') ? 60 : 0;
       // a scene with a prebaked manifest (78-scene-player.js): its static picture from the build-time images, the renderer only
       // for what moves; when the images cannot be had, the live canvas path below (the fallback)
-      if (_schPrebaked(rec, canvas, { lod, season, L, maxFps })) { /* the player */ } else
+      if (_schPrebaked(rec, canvas, { lod, season, L, maxFps })) { /* the player */ }
+      // a world (v3) scene on a live host big enough to be a scene: the world stage (Phaser, 79-world-7stage-0core.js), which bakes
+      // with the canvas renderer and hands back to it when it cannot play
+      else if (_schStage(rec, canvas, { lod, season, L, maxFps, flush, profile })) { /* the stage */ } else
       rec.r = sceneRendererCreate(canvas, rec.data, { lod, still: rec.still, season, L, maxFps, time: () => _schTime(rec), flush, profile, cache, hideUntilReady: true,
         onStill: (blob) => _schStill(rec, blob),
         onLive: () => _schRestart(rec),
@@ -308,6 +313,22 @@ function _schPrebaked(rec, canvas, a) {
       } catch (e2) { _schFallback(rec, e2); }
     } });
   return true;
+}
+/**
+ * A world scene (the derived data of a v3 item) on a live, moving host big enough to be a scene (the opening, the cine overlays,
+ * the gallery stage, the Home card): rec.r is the world stage (79-world-7stage-0core.js worldStageCreate, the renderer surface).
+ * Everything else, or the stage switched off (?stage=0, window.__sceneStageOff), keeps the canvas renderer.
+ */
+function _schStage(rec, canvas, a) {
+  const el = rec.el;
+  if (rec.still || rec.hoverOnly || typeof worldStageWanted !== 'function' || typeof worldStageCreate !== 'function') return false;
+  try { if (!worldStageWanted(el, rec.item, rec.data)) return false; } catch (e) { return false; }
+  try {
+    rec.r = worldStageCreate(el, canvas, rec.data, { lod: a.lod, season: a.season, L: a.L, maxFps: a.maxFps, time: () => _schTime(rec), flush: a.flush, profile: a.profile,
+      onReady: () => { if (!rec.tReady) rec.tReady = _schNowMs(); if (!rec.tShown) rec.tShown = rec.tReady; el.classList.add('sc-ready'); _schWant(rec); _schUpdate(rec); },
+      onError: (e) => _schFallback(rec, e) });
+  } catch (e) { rec.r = null; return false; }
+  return !!rec.r;
 }
 /** The host's id in the persistent bake cache, or null: a live library scene drawn as the library has it. */
 function _schCacheId(rec) {
