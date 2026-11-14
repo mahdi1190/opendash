@@ -144,16 +144,42 @@ window.GardenPaintWater = (function () {
     const norm = i => { const a = pts[(i - 1 + n) % n], b = pts[(i + 1) % n], dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1; return ccw ? { x: dy / L, y: -dx / L } : { x: -dy / L, y: dx / L }; };
     const pathOf = () => { const p = new Path2D(); p.moveTo(loop[0].x, loop[0].y); for (let i = 1; i < n; i++) p.lineTo(loop[i].x, loop[i].y); p.closePath(); return p; };
     const P = pathOf(), river_ = kind === 'river' || kind === 'gorge' || kind === 'brook';
+    // A route cuts the authored river into closed basins. At the hump bridge,
+    // the transverse closing edges meet the existing crossing-water picture:
+    // keep them for fill/clip authority, but do not paint a bank across them.
+    let bankP = P;
+    const mouths = new Set(), bridges = W.v >= 5 && river ? (pres.crossings || []).filter(c => c.kind === 'hump-bridge' && c.over === river.id) : [];
+    if (bridges.length) for (let i = 0; i < n; i++) {
+      const a = pts[i], b = pts[(i + 1) % n], dx = b.x - a.x, dy = b.y - a.y;
+      for (let j = 1; j < river.pts.length; j++) {
+        const c = river.pts[j - 1], d = river.pts[j], vx = d.x - c.x, vy = d.y - c.y, den = dx * vy - dy * vx;
+        if (Math.abs(den) < 1e-8) continue;
+        const qx = c.x - a.x, qy = c.y - a.y, t = (qx * vy - qy * vx) / den, u = (qx * dy - qy * dx) / den;
+        if (t < 0 || t > 1 || u < 0 || u > 1) continue;
+        const x = (a.x + dx * t) / W.cellW, y = (a.y + dy * t - W.sky) / W.cellH;
+        // Same six-cell search reach as the retained crossing-water strip.
+        if (bridges.some(c => Math.hypot(x - c.x, y - c.y) <= 6)) { mouths.add(i); break; }
+      }
+    }
+    if (mouths.size) {
+      bankP = new Path2D(); const start = (mouths.values().next().value + 1) % n; let pen = false;
+      for (let k = 0; k < n; k++) {
+        const i = (start + k) % n, a = pts[i], b = pts[(i + 1) % n];
+        if (mouths.has(i)) { pen = false; continue; }
+        if (!pen) bankP.moveTo(a.x, a.y);
+        bankP.lineTo(b.x, b.y); pen = true;
+      }
+    }
     const big = kind === 'mere' || kind === 'tarn';
     // 1. The bank: a damp earth band outside the water, darker at the waterline.
-    add(all, (cx, C) => { cx.lineJoin = 'round'; cx.strokeStyle = C.bank; cx.globalAlpha = .28; cx.lineWidth = river_ ? 22 : 30; cx.stroke(P); cx.globalAlpha = .5; cx.lineWidth = river_ ? 12 : 16; cx.stroke(P); cx.globalAlpha = .55; cx.strokeStyle = mix(C.bank, '#3e3626', .45); cx.lineWidth = 5; cx.stroke(P); cx.globalAlpha = 1; });
+    add(all, (cx, C) => { cx.lineJoin = 'round'; cx.strokeStyle = C.bank; cx.globalAlpha = .28; cx.lineWidth = river_ ? 22 : 30; cx.stroke(bankP); cx.globalAlpha = .5; cx.lineWidth = river_ ? 12 : 16; cx.stroke(bankP); cx.globalAlpha = .55; cx.strokeStyle = mix(C.bank, '#3e3626', .45); cx.lineWidth = 5; cx.stroke(bankP); cx.globalAlpha = 1; });
     // pebbles and grass lobes on the land side of the waterline
     for (let i = 0; i < n; i += 1) {
       const a = pts[i], nn = norm(i), seg = Math.hypot(pts[(i + 1) % n].x - a.x, pts[(i + 1) % n].y - a.y), steps = Math.max(1, Math.round(seg / 12)); if (seg < 12 && r() > seg / 12) continue;
       for (let k = 0; k < steps; k++) {
         const t = k / steps, b = pts[(i + 1) % n], x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, roll = r();
-        if (roll < .34) { const o = 4 + r() * 8, sx = x + nn.x * o, sy = y + nn.y * o, rx = 1.6 + r() * 2.6, d = D().blob(r, sx, sy, rx, rx * .62, 6, .3), d2 = D().ell(sx - rx * .3, sy - rx * .25, rx * .45, rx * .25); const tone = r(); add({ x: sx - 6, y: sy - 6, w: 12, h: 12 }, (cx, C) => { cx.fillStyle = tone < .5 ? '#a49b86' : '#bcb39c'; cx.fill(P2(d)); cx.fillStyle = '#ddd6c2'; cx.globalAlpha = .7; cx.fill(P2(d2)); cx.globalAlpha = 1; }); }
-        else if (roll < .62) { const o = 10 + r() * 10, sx = x + nn.x * o, sy = y + nn.y * o, d = D().blob(r, sx, sy, 7 + r() * 9, 3 + r() * 3, 7, .5), light = r() < .5; add({ x: sx - 18, y: sy - 8, w: 36, h: 16 }, (cx, C) => { cx.globalAlpha = .55; cx.fillStyle = light ? mix(C.grass, '#c8d08a', .25) : C.grass; cx.fill(P2(d)); cx.globalAlpha = 1; }); }
+        if (roll < .34) { const o = 4 + r() * 8, sx = x + nn.x * o, sy = y + nn.y * o, rx = 1.6 + r() * 2.6, d = D().blob(r, sx, sy, rx, rx * .62, 6, .3), d2 = D().ell(sx - rx * .3, sy - rx * .25, rx * .45, rx * .25); const tone = r(); if (!mouths.has(i)) add({ x: sx - 6, y: sy - 6, w: 12, h: 12 }, (cx, C) => { cx.fillStyle = tone < .5 ? '#a49b86' : '#bcb39c'; cx.fill(P2(d)); cx.fillStyle = '#ddd6c2'; cx.globalAlpha = .7; cx.fill(P2(d2)); cx.globalAlpha = 1; }); }
+        else if (roll < .62) { const o = 10 + r() * 10, sx = x + nn.x * o, sy = y + nn.y * o, d = D().blob(r, sx, sy, 7 + r() * 9, 3 + r() * 3, 7, .5), light = r() < .5; if (!mouths.has(i)) add({ x: sx - 18, y: sy - 8, w: 36, h: 16 }, (cx, C) => { cx.globalAlpha = .55; cx.fillStyle = light ? mix(C.grass, '#c8d08a', .25) : C.grass; cx.fill(P2(d)); cx.globalAlpha = 1; }); }
       }
     }
     tag = 'fill';
@@ -187,7 +213,7 @@ window.GardenPaintWater = (function () {
     // shallows: wide soft strokes of the shallow colour inside the edge, then a sandy bed showing through
     tag = 'shallow';
     // one stroke per feature, so a bake can stop between them
-    for (const [w, a, bed] of (river_ ? [[30, .3], [14, .45]] : [[90, .2], [44, .32], [18, .5]]).concat([[river_ ? 8 : 12, .22, true]])) add(all, (cx, C) => { cx.save(); cx.clip(P); cx.lineJoin = 'round'; cx.strokeStyle = bed ? C.bed : C.shallow; cx.globalAlpha = a; cx.lineWidth = w; cx.stroke(P); cx.globalAlpha = 1; cx.restore(); });
+    for (const [w, a, bed] of (river_ ? [[30, .3], [14, .45]] : [[90, .2], [44, .32], [18, .5]]).concat([[river_ ? 8 : 12, .22, true]])) add(all, (cx, C) => { cx.save(); cx.clip(P); cx.lineJoin = 'round'; cx.strokeStyle = bed ? C.bed : C.shallow; cx.globalAlpha = a; cx.lineWidth = w; cx.stroke(bankP); cx.globalAlpha = 1; cx.restore(); });
     tag = 'refl';
     // 3. The far bank's reflection: wherever the shore lies above the water, its
     //    trees and reeds hang down into it in dark lobes (light from the sky between).
@@ -256,7 +282,7 @@ window.GardenPaintWater = (function () {
     }
     tag = 'lap';
     // 7. The lap line: a thin bright line just inside the water, a wet dark line just outside.
-    add(all, (cx, C) => { cx.lineJoin = 'round'; cx.save(); cx.clip(P); cx.strokeStyle = C.foam; cx.globalAlpha = .55; cx.lineWidth = 3; cx.stroke(P); cx.globalAlpha = .25; cx.lineWidth = 8; cx.stroke(P); cx.restore(); cx.globalAlpha = 1; });
+    add(all, (cx, C) => { cx.lineJoin = 'round'; cx.save(); cx.clip(P); cx.strokeStyle = C.foam; cx.globalAlpha = .55; cx.lineWidth = 3; cx.stroke(bankP); cx.globalAlpha = .25; cx.lineWidth = 8; cx.stroke(bankP); cx.restore(); cx.globalAlpha = 1; });
     tag = 'reeds';
     // 8. Reed beds: clumps of the library's reeds and rushes along still and slow
     //    banks (never in rows), thickest where the design asks (the Mere's west

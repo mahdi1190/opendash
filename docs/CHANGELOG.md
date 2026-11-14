@@ -10,6 +10,15 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.68.6] - 2026-11-14
+
+### Fixed
+
+- Millwater bridge now sits over its authored river crossing. Its wider paved deck draws beneath players and pets, keeping them visible while crossing; the gate remains at the far bank.
+- Millwater's river picture flows through the crossing without transverse shoreline caps, stone rows or a separate grey water palette.
+- Broad grass tones are quieter, so the village and harbour lawns read as continuous ground while retaining fine seasonal detail.
+- The quay anchor's top ring no longer clips against the edge of its artwork.
+
 ## [2.68.5] - 2026-11-14
 
 ### Fixed

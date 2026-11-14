@@ -95,13 +95,15 @@ window.GardenPaintedProps = (function () {
   /* ---------- the handle every painter returns ---------- */
   function handle(scene, o, id, extra) {
     const node = o.element(scene, 'g', { class: 'gd-it gd-prop gd-painted gd-painted-' + (extra.cls || 'prop'), 'data-prop': id });
-    const parts = [], moving = [], over = [];
+    const parts = [], moving = [], over = [], ground = [];
     let dead = false, clock = 0, last = null, paused = false;
     const add = (im, under) => { if (!im) return null; if (under) node._inner.addAt(im, 0); else node._inner.add(im); parts.push(im); return im; };
     const h = {
       root: node.target, rootNode: node, painted: true, cacheNodes: [], bounds: null, lights: [], kind: extra.kind || undefined, dynamic: false,
       // above the night grade (light, not paint): soft pools and halos
       over(im) { if (!im) return null; const layer = o.layer; if (layer && layer.add) { layer.add(im); im.setDepth(80005); over.push(im); } else node._inner.add(im); return im; },
+      // Walkable bridge masonry shares the pier-deck layer below all actors.
+      ground(im) { if (!im) return null; const layer = o.layer; if (!layer || !layer.add) return add(im); layer.add(im); im.setDepth(-9250); ground.push(im); parts.push(im); return im; },
       add, move(im, fn) { if (im) { moving.push({ im, fn }); h.dynamic = true; if (!h.kind) h.kind = 'painted'; } return im; },
       // Bounds include transparent canvas padding and soft ground shadows.
       // Only the opaque painted parts own a visual hit; canonical feet and
@@ -121,14 +123,16 @@ window.GardenPaintedProps = (function () {
         return false;
       },
       update(time) {
-        if (dead || !moving.length) return; const dt = last == null ? 0 : Math.min(.08, Math.max(0, (time - last) / 1000)); last = time;
+        if (dead) return;
+        for (const im of ground) { im.setVisible(node.target.visible); im.setAlpha(node.target.alpha); }
+        if (!moving.length) return; const dt = last == null ? 0 : Math.min(.08, Math.max(0, (time - last) / 1000)); last = time;
         const motion = !paused && (typeof gardenMotionOn !== 'function' || gardenMotionOn()); if (motion) clock += dt;
         if (!node.target.visible) return;
         for (let i = moving.length - 1; i >= 0; i--) { const m = moving[i]; if (m.fn(m.im, clock, motion) === false) { m.im.destroy(); moving.splice(i, 1); } }
       },
       pauseAmbient(state) { paused = !!(state && (state.hush || state.frozen)); },
       setLitWindows() {},
-      destroy() { if (dead) return; dead = true; for (const im of over) im.destroy(); over.length = 0; node.remove(); },
+      destroy() { if (dead) return; dead = true; for (const im of over) im.destroy(); over.length = 0; for (const im of ground) im.destroy(); ground.length = 0; node.remove(); },
     };
     return h;
   }
@@ -507,28 +511,41 @@ window.GardenPaintedProps = (function () {
       : kind === 'pass' ? (side ? [['tree.pine', 0, { h: 170 }, 34, -art.S - 20, 'back'], ['rock.boulder', 0, { w: 96 }, 0, -art.S * .8, 'back'], ['rock.boulder', 1, { w: 110 }, 0, art.S * .8 + 6, 'front']] : [['tree.pine', 0, { h: 170 }, -half - 50, -16, 'back'], ['rock.boulder', 0, { w: 100 }, -half, 2, 'back'], ['rock.boulder', 1, { w: 110 }, half, 4, 'back']])
       : kind === 'ruin' ? [['tree.proof-yew', 0, { h: 130 }, side ? 40 : half + 52, side ? -art.S : -6, 'back']] : [];
     // the box of the drawing round the crossing's centre
-    const box = (kind === 'arch' || kind === 'ruin') && side ? [-half * .85 - 90, -art.S - 200, half * .85 + 90, art.S + 30] : side ? [-100, -170 - half * .9, 100, half * .9 + 22] : [-half - 90, -200, half + 90, 24];
+    const box = (kind === 'arch' || kind === 'ruin') && side ? [-half * .85 - 90, -art.S - 200, half * .85 + 90, art.S + 30] : side ? [-100, -170 - half * .9, 100, kind === 'bridge' ? frame.span + 28 : half * .9 + 22] : [-half - 90, -200, half + 90, 24];
     const base = (B) => {
       if (kind === 'arch') {
         B.shadow(0, 2, half + 30, 10, .26);
         elevation(B, side, half, art.S, () => livingArch(B, r, half, 128, season, open));
       } else if (kind === 'bridge') {
         // a stone hump bridge: the arch below, the deck, two parapets with copings
-        const len = side ? 74 : half * 1.1, w = side ? half * .8 : 30;
+        const len = side ? 74 : half * 1.1, w = side ? frame.span : 30;
         if (side) {
-          // seen from the south in profile: the near face with its arch, the deck behind a low near parapet, the far parapet beyond
+          // The walkable crossing is a ground-plane deck. Its full span stays
+          // paved at actors' canonical feet; the rails and front arch carry
+          // the hump illusion without lifting any player, peer or pet.
           const N = 24, hump = x => -18 * (1 - (x / len) * (x / len)), xs = Array.from({ length: N + 1 }, (_, i) => -len + i * 2 * len / N), band = (top, bot) => B.poly(xs.map(x => [x, top(x)]).concat(xs.slice().reverse().map(x => [x, bot(x)])));
-          const d = 10;                                         // how much of the deck the 3/4 view shows
-          B.shadow(0, 14, len + 10, 8, .28);
-          B.f(band(x => hump(x) - d - 12, x => hump(x) - d), STONE[1]).f(band(x => hump(x) - d - 12, x => hump(x) - d - 9.5), STONE[2]);
-          for (let i = 1; i < 10; i++) { const x = -len + i * len / 5; B.s(`M${x} ${hump(x) - d - 9}v8`, STONE[3], .7, .5); }
-          B.f(band(x => hump(x) - d, x => hump(x)), '#d8cba6');
-          for (let i = 0; i < 22; i++) { const x = (r() - .5) * len * 1.8; B.f(B.rect(x - 3, hump(x) - d + 1 + r() * (d - 4), 6, 2.6), r() < .5 ? '#c4b690' : '#e6dbbb', .8); }
-          B.f(band(x => hump(x), x => 16), STONE[0]).f(`M${-len * .42} 16q${len * .42} -34 ${len * .84} 0z`, '#344c50').f(`M${-len * .36} 16q${len * .36} -26 ${len * .72} 0z`, '#4e7478', .7);
-          for (let row = 0; row < 3; row++) for (let i = 0; i < 9; i++) { const x = -len + 4 + i * len / 4.4 + (row & 1) * 6, y = hump(x) + 3 + row * 5; if (Math.abs(x) < len * .44 && y > 16 - Math.sqrt(Math.max(0, 1 - (x / (len * .42)) ** 2)) * 30) continue; B.f(B.rect(x, y, len / 5, 4), r() < .5 ? STONE[2] : STONE[1], .5); }
-          for (let i = 0; i < 9; i++) { const a = Math.PI * (i / 8), x = -Math.cos(a) * len * .44, y = 16 - Math.sin(a) * 31; B.f(B.rr(x - 3.6, y - 3, 7.2, 6, 1), STONE[2], .9); }
-          B.f(band(x => hump(x) - 5, x => hump(x) + 1), STONE[1]).f(band(x => hump(x) - 5, x => hump(x) - 3.4), STONE[2]);
-          B.f(D().blob(r, -len + 4, 12, 12, 5, 7, .5), MOSS[0], .85).f(D().blob(r, len - 6, 10, 10, 4, 7, .5), MOSS[1], .85).f(B.ell(0, 20, len * .4, 3), '#9cc4c8', .45);
+          B.shadow(0, w + 14, len + 10, 8, .28);
+          B.f(band(x => -w + hump(x) - 12, () => -w), STONE[1]).f(band(x => -w + hump(x) - 12, x => -w + hump(x) - 9.5), STONE[2]);
+          for (let i = 1; i < 10; i++) { const x = -len + i * len / 5; B.s(`M${x} ${-w + hump(x) - 9}v8`, STONE[3], .7, .5); }
+          // Close-set paving fills the walking plane; half stones finish alternate courses.
+          B.f(band(() => -w, () => w), '#b9af95');
+          // Keep the existing surface samples so the arch and bank moss retain their seeded forms.
+          const wear = Array.from({ length: 22 }, () => ({ x: r(), y: r(), tone: r() }));
+          const tones = ['#c7bda2', '#cec3a7', '#c2b89e', '#cbbfa3'], rows = 16, stoneW = len / 4, stoneH = w * 2 / rows, joint = .65;
+          for (let row = 0; row < rows; row++) for (let col = 0; col < 8 + (row & 1); col++) {
+            const left = Math.max(-len, -len + (col - (row & 1) * .5) * stoneW), right = Math.min(len, -len + (col + 1 - (row & 1) * .5) * stoneW);
+            const x = left + joint / 2, y = -w + row * stoneH + joint / 2, sw = right - left - joint, sh = stoneH - joint;
+            const tone = wear[(row * 9 + col) % wear.length].tone;
+            B.f(B.rr(x, y, sw, sh, .65), tones[Math.floor(tone * tones.length)]);
+            if ((row + col) % 3 === 0) B.f(B.rect(x + 1, y + .35, sw - 2, .45), '#eee2c4', .35);
+          }
+          // A few soft worn faces, kept within the deck and without crack outlines.
+          for (const q of wear) B.f(B.ell((q.x - .5) * (len * 2 - 12), (q.y - .5) * (w * 2 - 8), 2.5 + q.tone * 2, .7), q.tone < .5 ? '#a89e85' : '#eee2c4', .16);
+          B.f(band(() => w, () => w + 16), STONE[0]).f(`M${-len * .42} ${w + 16}q${len * .42} -14 ${len * .84} 0z`, '#344c50').f(`M${-len * .36} ${w + 16}q${len * .36} -10 ${len * .72} 0z`, '#4e7478', .7);
+          for (let row = 0; row < 3; row++) for (let i = 0; i < 9; i++) { const x = -len + 4 + i * len / 4.4 + (row & 1) * 6, y = w + 2 + row * 4; if (Math.abs(x) < len * .44 && y > w + 16 - Math.sqrt(Math.max(0, 1 - (x / (len * .42)) ** 2)) * 14) continue; B.f(B.rect(x, y, len / 5, 3), r() < .5 ? STONE[2] : STONE[1], .5); }
+          for (let i = 0; i < 9; i++) { const a = Math.PI * (i / 8), x = -Math.cos(a) * len * .44, y = w + 16 - Math.sin(a) * 14; B.f(B.rr(x - 3.6, y - 2, 7.2, 4, 1), STONE[2], .9); }
+          B.f(band(x => w + hump(x) - 5, () => w + 1), STONE[1]).f(band(x => w + hump(x) - 5, x => w + hump(x) - 3.4), STONE[2]);
+          B.f(D().blob(r, -len + 4, w + 12, 12, 5, 7, .5), MOSS[0], .85).f(D().blob(r, len - 6, w + 10, 10, 4, 7, .5), MOSS[1], .85).f(B.ell(0, w + 20, len * .4, 3), '#9cc4c8', .45);
         } else {
           B.f(`M${-len} 0q${len} -40 ${len * 2} 0z`, '#3e5a5e', .5);
           for (const s of [-1, 1]) B.f(B.rr(s * len - (s > 0 ? 14 : 0), -42, 14, 42, 2), STONE[0]).f(B.rect(s * len - (s > 0 ? 14 : 0), -42, 4, 42), STONE[2], .6);
@@ -610,9 +627,15 @@ window.GardenPaintedProps = (function () {
     const art = gateArt(kind, g, frame, season, open), stem = 'gate|' + g.id + '|' + kind + '|' + season + '|' + (art.side ? 's' : 'f');
     const h = handle(scene, o, g.id, { cls: 'gate', kind: open ? 'paintedgate' : 'gate' });
     const baseKey = bake(scene, stem + '|base|' + (open ? 'o' : 'c'), art.box, B => art.base(B));
+    // The bridge crosses the river; its gate is on the far bank. Keep the
+    // blocker at crossSpan, but place the stone deck at its authored crossing.
+    const layout = kind === 'bridge' && typeof gardenIslandData === 'function' ? gardenIslandData() : null;
+    const crossing = layout && layout.presentation && (layout.presentation.crossings || []).find(c => c.gateId === g.id && c.kind === 'hump-bridge');
+    const baseX = crossing ? crossing.x * o.W.cellW : frame.x, baseY = crossing ? o.W.sky + crossing.y * o.W.cellH : frame.y;
     const lib = layer => { for (const [id, v, size, dx, dy, where] of art.lib) if (where === layer) h.add(libImage(scene, id, v, season, size, frame.x + dx, frame.y + dy, false)); };
     lib('back');
-    if (!h.add(image(scene, baseKey, frame.x, frame.y))) { h.destroy(); return null; }
+    const base = image(scene, baseKey, baseX, baseY);
+    if (!(kind === 'bridge' ? h.ground(base) : h.add(base))) { h.destroy(); return null; }
     lib('front');
     const was = gateSeen.get(g.id); gateSeen.set(g.id, !!open);
     const blockKey = bake(scene, stem + '|block', art.box, B => art.blocker(B));
@@ -632,7 +655,7 @@ window.GardenPaintedProps = (function () {
       h.move(sign, (node, t) => { const f = Math.min(1, t / 1.2); node.setAlpha(1 - f).setPosition(sx, sy + f * f * 40).setRotation(f * .6); return f < 1; });
     }
     const [x0, y0, x1, y1] = art.box;
-    return finish(h, { x: frame.x + x0, y: frame.y + y0, width: x1 - x0, height: y1 - y0 }, { x: frame.x, y: frame.y });
+    return finish(h, { x: Math.min(frame.x, baseX) + x0, y: Math.min(frame.y, baseY) + y0, width: x1 - x0 + Math.abs(baseX - frame.x), height: y1 - y0 + Math.abs(baseY - frame.y) }, { x: frame.x, y: frame.y });
   }
 
   /* ---------- Fleet Falls: rock step, falling sheet, spray, plunge pool ---------- */
