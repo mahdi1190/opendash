@@ -769,10 +769,12 @@ function _bfSaveSnapshot(update) {
 }
 
 /* ---------- auto-open on the first visit of the day ---------- */
-async function briefMaybeAutoOpen() {
+async function briefMaybeAutoOpen(navigation = _viewNavigation) {
+  // Keep the original navigation across delays: choosing another page cancels this welcome.
+  if (navigation !== _viewNavigation) return;
   // Just after a time-zone change: not before 06:00 local, never in the first 10 min (travel spec 2.5, 87-clock-ui.js).
   const wait = typeof clockAutoOpenWait === 'function' ? clockAutoOpenWait() : 0;
-  if (wait > 0) { clearTimeout(_bf.autoT); _bf.autoT = setTimeout(briefMaybeAutoOpen, Math.min(wait + 1000, 30 * 60000)); return; }
+  if (wait > 0) { clearTimeout(_bf.autoT); _bf.autoT = setTimeout(() => briefMaybeAutoOpen(navigation), Math.min(wait + 1000, 30 * 60000)); return; }
   _bf.dayCheck = todayStr();
   if (!briefPrefs().autoOpen || typeof _serverAvailable === 'undefined' || !_serverAvailable) return;
   if (typeof _obOpen !== 'undefined' && _obOpen) return;
@@ -780,9 +782,10 @@ async function briefMaybeAutoOpen() {
   const today = todayStr();
   if (seenDay('brief', today)) return;   // seen today here or on another computer
   // Playing in the garden (a room, a line out, a shop open): a new day must not pull you out to Home. Look again in a minute.
-  if (typeof state !== 'undefined' && /^garden(:|$)/.test(String(state.view || ''))) { clearTimeout(_bf.autoT); _bf.autoT = setTimeout(briefMaybeAutoOpen, 60000); return; }
+  if (typeof state !== 'undefined' && /^garden(:|$)/.test(String(state.view || ''))) { clearTimeout(_bf.autoT); _bf.autoT = setTimeout(() => briefMaybeAutoOpen(navigation), 60000); return; }
   try {
     const j = await _bfJson('/api/brief/day?date=' + today);
+    if (navigation !== _viewNavigation) return;
     if (j && j.brief && j.brief.seen) { seenMarkDay('brief', today); return; }
   } catch (e) { return; }
   briefOpen({ welcome: true });
