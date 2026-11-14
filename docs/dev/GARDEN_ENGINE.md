@@ -131,6 +131,15 @@ static paving joints retained in ground art. Travellers share the existing
 host ambient clock and actor rendering; they add no network fields or timers.
 Fish stocks are derived from connected water bodies and local coastal reaches,
 with nearby coverage allocated by the existing host decision clock and limits.
+The two public reaches leaving the Mere reuse its fish stock without moving
+primary journal homes. Freshwater patches record all their sampled region zones:
+an open part admits the patch, while spawning and swimming still check the
+actual point against closed regions. An ordinary level-four private cast in the
+upstream river attracted a naturally spawned pike; clicking the orchard side
+still showed its locked-gate explanation. This observation did not land a catch.
+An encrypted two-player visit received the same river fish IDs on both peers;
+the same roach entered its nibble state targeting the visitor on both screens.
+The visitor returned to their own Garden without captured errors.
 
 Crafted building, paving and bank materials are shared vector builders retained
 with the existing scene and chunks. They do not add physical objects or move
@@ -1586,6 +1595,12 @@ projection. Static outdoor drawings are culled against the camera with a small
 overscan; dynamic presentation has a wider margin. Procedural terrain uses
 bounded native chunks so a close camera does not replay the entire map's
 drawing commands.
+
+Clipped terrain polygons retain every shared corner through explicit triangle
+fills. Sending each piece through Phaser's path simplifier could remove a small
+corner from one side only and expose the sea beneath the beach. Ordinary private
+before/after views at the estuary used the same walking position and camera;
+the fine gaps disappeared, and wheel zoom remained usable.
 
 Optional activity camera subjects keep the local player together with a kite,
 soap film, that player's leaf boat and its next course marker, a requested pet

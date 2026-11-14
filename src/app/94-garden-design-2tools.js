@@ -88,6 +88,11 @@ function _gdzReachWhy(m, thing, out, build) {
     return '';
   } finally { undo(); gardenLandPropsReset(); }
 }
+// Restored sights use their Land placement, which takes precedence over dz.m.
+// Keep saved designs intact, but do not offer a move that cannot affect the world.
+function _gdzSightMoveWhy(row) {
+  return GARDEN_WORLD.v >= 3 && typeof GARDEN_SIGHT_PLACE_IDS !== 'undefined' && GARDEN_SIGHT_PLACE_IDS.includes(row.id) ? 'Use Land → Your discovered places to put this place away, then set it out nearby where you want it.' : '';
+}
 /** Can this fixed row stand with its corner at x, y? {why, door}. */
 function gardenDesignMoveCheck(row, x, y, o) {
   const m = _gdzModel(), w = row.w || 1, h = row.h || 1, base = gardenDesignBase(row.id), strict = !(o && o.loose), cls = gardenDesignClass(row);   // loose: Put it back and old layouts, only the reach rule
@@ -274,6 +279,7 @@ function gardenDesignAdaptPlace(kind, index) {
   if (kind === 'm') {
     const row = gardenDesignRow(item.row[0]);
     if (!row || !gardenDesignMovable(row.id) || gardenDesignLandmark(row.id)) { _gdzSay('This structure uses its own Land controls. Set it out nearby there; its earlier placement stays archived.', true); return; }
+    const storedWhy = _gdzSightMoveWhy(row); if (storedWhy) { _gdzSay(storedWhy, true); return; }
     const node = _gdp.svg && _gdp.svg.querySelector(`.gd-prop[data-prop="${CSS.escape(row.id)}"]`);
     if (!node) { _gdzSay('Put this structure out through Land first. Its earlier placement stays archived.', true); return; }
     L = { kind: 'prop', row, w: row.w || 1, h: row.h || 1, ox: row.x, oy: row.y, node, clone: !native ? node.cloneNode(true) : null, nativeSource: native ? 'prop:' + row.id : null };
@@ -497,6 +503,7 @@ function _gdzLift(ev, cell) {
     if (pr && gardenDesignRow(pr.id)) { if (gardenDesignLandmark(pr.id)) { _gdzSay(`${pr.name} is a landmark: it stays where it is.`, true); return false; } if (!gardenDesignMovable(pr.id)) { _gdzSay(`${pr.name} stays where it is: it is part of the place.`, true); return false; } L = { kind: 'prop', row: gardenDesignRow(pr.id), w: pr.w || 1, h: pr.h || 1 }; node = _gdp.svg.querySelector(`.gd-prop[data-prop="${CSS.escape(pr.id)}"]`); }
   }
   if (!L) { _gdzSay('Tap a shop, a bench, a lamp or a decoration to pick it up.'); return false; }
+  if (L.kind === 'prop') { const storedWhy = _gdzSightMoveWhy(L.row); if (storedWhy) { _gdzSay(storedWhy, true); return false; } }
   L.ox = L.kind === 'prop' ? L.row.x : L.kind === 'made' ? L.c[1] : gardenDecorById(m, L.uid).x;
   L.oy = L.kind === 'prop' ? L.row.y : L.kind === 'made' ? L.c[2] : gardenDecorById(m, L.uid).y;
   T.lifted = L; L.node = node;
