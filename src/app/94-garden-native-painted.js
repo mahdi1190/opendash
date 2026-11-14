@@ -1,10 +1,13 @@
 /** A tree's crown covers the player (world px): the player's middle inside the crown's own oval, not just anywhere in the tree's box.
  * Only those crowns fade, and not to a ghost: a few crisp crowns fade, never a wide pale veil of every tree near you. */
 const GARDEN_CROWN_FADE = 0.34;
-function gardenCrownCovers(px, py, tx, ty, H, w) {
+function gardenCrownCovers(px, py, tx, ty, H, w, image) {
   if (!(py < ty - 4)) return false;   // (the tree stands behind you: it is drawn under you anyway)
   const cy = ty - H * .66, ry = H * .36, rx = Math.max(H * .26, w * .42), dx = (px - tx) / rx, dy = (py - 28 - cy) / ry;
-  return dx * dx + dy * dy < 1;
+  if (dx * dx + dy * dy < 1) return true;
+  // Open-grown crowns have filled side clumps beyond the oval, with sky
+  // between them. Only their authored paint can extend this fade.
+  return !!(image && window.GardenNativePainted && GardenNativePainted.crownCovers(image, px, py));
 }
 /* The "Painted village" art style: the village and start area drawn with the
  * opening scenes' own kit (the scene library objects of 70-scene-lib-*.js
@@ -43,6 +46,45 @@ window.GardenNativePainted = (function () {
   /* ---------- library objects as baked sprites ---------- */
   const paths = new Map();
   const path = d => { let p = paths.get(d); if (!p) { if (paths.size > 20000) paths.clear(); p = new Path2D(d); paths.set(d, p); } return p; };
+  let crownProbe = null;
+  const crownBodyOffsets = [28, 14, 42];
+  function crownGeometry(sh, k) {
+    if (!sh.parts.crown || typeof scenePathBox !== 'function') return null;
+    const parts = [];
+    for (const shape of sh.parts.crown) {
+      if (!shape.f || shape.img || shape.op != null && shape.op < .5) continue;
+      const bounds = scenePathBox(shape.d, shape.m); if (!bounds) continue;
+      let inverse = null;
+      if (shape.m) {
+        const [a, b, c, d, e, f] = shape.m, det = a * d - b * c; if (Math.abs(det) < 1e-12) continue;
+        inverse = [d / det, -b / det, -c / det, a / det, (c * f - d * e) / det, (b * e - a * f) / det];
+      }
+      parts.push({ path: path(shape.d), bounds, inverse });
+    }
+    if (!parts.length) return null;
+    // Geometry queries only: no pixels are drawn or read, and no GPU texture
+    // is created. Paths and their bounds are retained with the existing bake.
+    if (!crownProbe) { const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1; crownProbe = canvas.getContext('2d'); }
+    return { parts, bounds: sh.box, k };
+  }
+  function crownCovers(image, px, py) {
+    const meta = image.texture && image.texture.customData && image.texture.customData.gdpaint, crown = meta && meta.crown;
+    if (!crown || !crownProbe) return false;
+    const sx = image.scaleX * crown.k * (image.flipX ? -1 : 1), sy = image.scaleY * crown.k * (image.flipY ? -1 : 1);
+    if (!sx || !sy) return false;
+    const angle = image.rotation || 0, cs = Math.cos(angle), sn = Math.sin(angle), dx = px - image.x;
+    const flipX = image.flipX ? image.frame.realWidth * (1 - 2 * meta.ox) / crown.k : 0, flipY = image.flipY ? image.frame.realHeight * (1 - 2 * meta.oy) / crown.k : 0;
+    for (const offset of crownBodyOffsets) {
+      const dy = py - offset - image.y, x = (dx * cs + dy * sn) / sx + flipX, y = (-dx * sn + dy * cs) / sy + flipY, box = crown.bounds;
+      if (x < box[0] || x > box[2] || y < box[1] || y > box[3]) continue;
+      for (const part of crown.parts) {
+        const b = part.bounds; if (x < b[0] || x > b[2] || y < b[1] || y > b[3]) continue;
+        const m = part.inverse, qx = m ? m[0] * x + m[2] * y + m[4] : x, qy = m ? m[1] * x + m[3] * y + m[5] : y;
+        if (crownProbe.isPointInPath(part.path, qx, qy)) return true;
+      }
+    }
+    return false;
+  }
   function paint(cx, p) {
     if (typeof p === 'string') return p;
     const stops = p.lin || p.rad, g = p.lin ? cx.createLinearGradient(p.x1 || 0, p.y1 || 0, p.x2 || 0, p.y2 != null ? p.y2 : 1) : cx.createRadialGradient(p.cx || 0, p.cy || 0, 0, p.cx || 0, p.cy || 0, p.r || 1);
@@ -71,13 +113,13 @@ window.GardenNativePainted = (function () {
     const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d');
     cx.setTransform(k, 0, 0, k, pad - x0 * k, pad - y0 * k);
     for (const n of names) drawShapes(cx, sh.parts[n] || [], night && n !== 'lit');
-    return { c, ox: pad - x0 * k, oy: pad - y0 * k, k };
+    return { c, ox: pad - x0 * k, oy: pad - y0 * k, k, crown: id.startsWith('tree.') ? crownGeometry(sh, k) : null };
   }
   function objectKey(scene, id, v, season, size, night) {
     const key = TEX + '|' + id + '|' + v + '|' + season + '|' + Math.round(size.w || 0) + 'x' + Math.round(size.h || 0) + (night ? '|n' : '');
     if (scene.textures.exists(key)) return { key, meta: scene.textures.get(key).customData && scene.textures.get(key).customData.gdpaint };
     const made = ok(() => objectCanvas(id, v, season, size, night)); if (!made) return null;
-    const tex = scene.textures.addCanvas(key, made.c); const meta = { ox: made.ox / made.c.width, oy: made.oy / made.c.height };
+    const tex = scene.textures.addCanvas(key, made.c); const meta = { ox: made.ox / made.c.width, oy: made.oy / made.c.height, crown: made.crown };
     tex.customData = Object.assign(tex.customData || {}, { gdpaint: meta }); return { key, meta };
   }
   function objectImage(scene, id, v, season, size, x, y, night) {
@@ -284,7 +326,7 @@ window.GardenNativePainted = (function () {
     if (!plantingTall.length || typeof _gw === 'undefined' || !lastInfo) return;
     const W = lastInfo.W, dt = fadeLast ? Math.min(.1, Math.max(0, (time - fadeLast) / 1000)) : .016; fadeLast = time;
     const x = _gw.px * W.cellW, y = W.sky + _gw.py * W.cellH;
-    for (const t of plantingTall) { if (!t.im.active) continue; const under = gardenCrownCovers(x, y, t.x, t.y, t.h, t.im.displayWidth), a = under ? GARDEN_CROWN_FADE : 1; if (under && t.im.visible) plantingCoverage.push(t.im); if (t.im.alpha !== a) t.im.setAlpha(Math.abs(a - t.im.alpha) < .02 ? a : t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8)); }
+    for (const t of plantingTall) { if (!t.im.active) continue; const under = gardenCrownCovers(x, y, t.x, t.y, t.h, t.im.displayWidth, t.im), a = under ? GARDEN_CROWN_FADE : 1; if (under && t.im.visible) plantingCoverage.push(t.im); if (t.im.alpha !== a) t.im.setAlpha(Math.abs(a - t.im.alpha) < .02 ? a : t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8)); }
   }
   function planting(scene, parent, info) {
     const W = info.W, made = [], season = info.season || 'summer', trees = GROVE[season] || GROVE.summer; spotCounts = {};
@@ -358,5 +400,5 @@ window.GardenNativePainted = (function () {
   }
   function memory(scene) { let bytes = 0, n = 0; if (cachedGround && scene && scene.textures.exists(cachedGround.key)) { const c = scene.textures.get(cachedGround.key).getSourceImage(); bytes += c.width * c.height * 4; n++; } return { groundBytes: bytes, groundTextures: n }; }
   function status() { return { wanted: wanted(), ready: ready(), groundMs, composeMs, K, planted: lastPlanting.length, spots: spotCounts, lastError }; }
-  return { wanted, ready, preload, ground, building, planting, fadeUnder, playerCanopies: () => plantingCoverage, status, objectImage, objectCanvas, paintIntoGround, compose, memory, get lastError() { return lastError; }, set lastError(v) { lastError = v; }, set overLayer(v) { overLayer = v; } };
+  return { wanted, ready, preload, ground, building, planting, fadeUnder, crownCovers, playerCanopies: () => plantingCoverage, status, objectImage, objectCanvas, paintIntoGround, compose, memory, get lastError() { return lastError; }, set lastError(v) { lastError = v; }, set overLayer(v) { overLayer = v; } };
 })();

@@ -1691,7 +1691,10 @@ window.GardenNativeWorld = (function () {
         const add = (id, node, body, x, y, kind, moving, key, lift) => {
           if (!node || !body || !node.isConnected || !body.target || !body.target.active || !node.target.visible && !node.target._nativeCacheHiddenBy) return;
           const localBounds = body.getBBox(), matrix = body.target.getWorldTransformMatrix(), b = effectBounds(body, localBounds, matrix), sourceFootY = matrix.ty == null ? matrix.f || 0 : matrix.ty;
-          const row = { id, source: body.target, node: body, x, y, groundX: x, groundY: y, waterline: y, w: kind === 'pet' ? Math.min(42, Math.max(12, b.width * .8)) : 22, h: kind === 'pet' ? 7 : 8, tall: Math.min(100, Math.max(12, b.height)), bounds: b, kind, moving: !!moving, dynamic: true, bakedContact: true, captureKey: key || body._gplKey || '', lift: lift == null ? y - sourceFootY : lift, sourceFootY };
+          // East/west share a retained body. A scale flip must refresh its
+          // reflection even when reduced motion disables timed captures.
+          const captureKey = (key || body._gplKey || '') + (kind === 'actor' ? '|facing:' + (matrix.a < 0 ? -1 : 1) : '');
+          const row = { id, source: body.target, node: body, x, y, groundX: x, groundY: y, waterline: y, w: kind === 'pet' ? Math.min(42, Math.max(12, b.width * .8)) : 22, h: kind === 'pet' ? 7 : 8, tall: Math.min(100, Math.max(12, b.height)), bounds: b, kind, moving: !!moving, dynamic: true, bakedContact: true, captureKey, lift: lift == null ? y - sourceFootY : lift, sourceFootY };
           effectActorRows.push(row); return row;
         };
         add('player', playerNode, playerInner, _gw.px * W.cellW, W.sky + _gw.py * W.cellH, 'actor', _gw.moving, playerInner._gplKey);

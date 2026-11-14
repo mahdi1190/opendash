@@ -90,6 +90,27 @@ with no captured application errors. An earlier interrupted browser session
 was excluded from this result. These observations do not establish every
 fishing outcome or a natural time-of-day palette transition.
 
+Tree fade keeps its existing ellipse and checks the retained authored crown
+paths when outward leaf clusters cover the player's body. The fallback probes
+filled crown geometry at three body heights, with the image's current scale,
+flip and rotation; gaps between clusters do not extend the fade. Paths and
+bounds are retained with the existing texture bake, without reading pixels or
+adding GPU textures.
+
+Actor reflection capture keys include the actual painted horizontal facing.
+Reduced-motion side steps retain the same idle art, so a mirrored body must
+invalidate its old reflected snapshot even when periodic captures are off.
+The existing capture scheduler handles the change for local and peer actors.
+
+Ordinary private play at the same well position showed the obscuring canal oak
+fade while the neighbouring crown's clear gap stayed opaque. Walking out from
+under it restored the opaque tree. With Reduce motion enabled through Settings,
+east/west side steps previously reused one reflected image despite a mirrored
+body. After the change, the same action refreshed the snapshot and showed the
+reflected actor turning. The preference was restored afterward. The focused
+after observation had no captured app errors; peer facing was not separately
+observed in this batch.
+
 World 4 uses the shared 96-by-96 authored island, coast-clipped frontier
 regions and exact layout fingerprint. Region access, water contours and
 multiplayer coordinates use the same tables across both renderers and the

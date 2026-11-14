@@ -10,6 +10,13 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.68.10] - 2026-11-14
+
+### Fixed
+
+- Tree canopies fade when their outward leaf clusters hide the player, including beside the wishing well.
+- Player reflections turn with the player when Reduce motion is enabled.
+
 ## [2.68.9] - 2026-11-14
 
 ### Fixed
