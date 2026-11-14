@@ -700,7 +700,32 @@ window.GardenPaintedProps = (function () {
     });
     // trees on the scarp top are the library's own, like the planting round them
     for (const [id, v, hh, dx, dy] of [['tree.pine', 0, 150, -84, -176 + 8], [season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 86, -176 + 14], ['tree.pine', 1, 120, 30 + Wd / 2, -176 - 6]]) h.add(libImage(scene, id, v, season, { h: hh }, spec.x + dx, spec.y + dy, false));
-    h.add(image(scene, baseKey, x, y));
+    const base = h.add(image(scene, baseKey, x, y));
+    // The fixed falls' canvas includes empty padding beside the cave stair.
+    // Keep its solid rock/sheet mask once per existing texture; frame probes
+    // read this CPU array, never canvas pixels or the current faded alpha.
+    if (authoredPool && base) {
+      const meta = base.texture.customData.gpp;
+      if (!Object.prototype.hasOwnProperty.call(meta, 'fallsMask')) meta.fallsMask = ok(() => {
+        const canvas = base.texture.getSourceImage(), width = canvas.width, height = canvas.height;
+        const pixels = canvas.getContext('2d').getImageData(0, 0, width, height).data, solid = new Uint8Array(width * height);
+        for (let i = 0; i < solid.length; i++) solid[i] = pixels[i * 4 + 3] >= 96 ? 1 : 0;
+        return { width, height, solid };
+      });
+      const mask = meta.fallsMask;
+      if (mask) h.fallsCoversPlayer = (px, py) => {
+        const matrix = base.getWorldTransformMatrix();
+        if (Math.abs(matrix.a * matrix.d - matrix.b * matrix.c) < 1e-10) return false;
+        for (const offset of [28, 14, 42]) {
+          const p = matrix.applyInverse(px, py - offset);
+          let sx = Math.floor(p.x + base.displayOriginX), sy = Math.floor(p.y + base.displayOriginY);
+          if (sx < 0 || sy < 0 || sx >= mask.width || sy >= mask.height) continue;
+          if (base.flipX) sx = mask.width - sx - 1; if (base.flipY) sy = mask.height - sy - 1;
+          if (mask.solid[sy * mask.width + sx]) return true;
+        }
+        return false;
+      };
+    }
     // Bank planting stays at the landscape foot when the sheet extends into the Mere.
     for (const [id, v, hh, dx, dy] of [['plant.fern', 0, 30, -96, 10], ['plant.fern', 1, 26, 98, 12], ['plant.bracken', 0, 34, -70, 24], ['plant.fern', 2, 24, 70, 26], ['plant.reed', 0, 34, -40, 30], ['plant.reed', 1, 30, 46, 30]]) h.add(libImage(scene, id, v, season, { h: hh }, spec.x + dx, spec.y + dy, false));
     // live: streaks running down the sheet (a tile sprite scrolls; nothing redraws)

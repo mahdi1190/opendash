@@ -47,7 +47,7 @@ window.GardenNativePainted = (function () {
   const paths = new Map();
   const path = d => { let p = paths.get(d); if (!p) { if (paths.size > 20000) paths.clear(); p = new Path2D(d); paths.set(d, p); } return p; };
   let crownProbe = null;
-  const crownBodyOffsets = [28, 14, 42];
+  const crownBodyOffsets = [28, 14, 42], crownPointOffsets = [0];
   function crownGeometry(sh, k) {
     if (!sh.parts.crown || typeof scenePathBox !== 'function') return null;
     const parts = [];
@@ -67,14 +67,14 @@ window.GardenNativePainted = (function () {
     if (!crownProbe) { const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1; crownProbe = canvas.getContext('2d'); }
     return { parts, bounds: sh.box, k };
   }
-  function crownCovers(image, px, py) {
+  function crownCovers(image, px, py, offsets = crownBodyOffsets) {
     const meta = image.texture && image.texture.customData && image.texture.customData.gdpaint, crown = meta && meta.crown;
     if (!crown || !crownProbe) return false;
     const sx = image.scaleX * crown.k * (image.flipX ? -1 : 1), sy = image.scaleY * crown.k * (image.flipY ? -1 : 1);
     if (!sx || !sy) return false;
     const angle = image.rotation || 0, cs = Math.cos(angle), sn = Math.sin(angle), dx = px - image.x;
     const flipX = image.flipX ? image.frame.realWidth * (1 - 2 * meta.ox) / crown.k : 0, flipY = image.flipY ? image.frame.realHeight * (1 - 2 * meta.oy) / crown.k : 0;
-    for (const offset of crownBodyOffsets) {
+    for (const offset of offsets) {
       const dy = py - offset - image.y, x = (dx * cs + dy * sn) / sx + flipX, y = (-dx * sn + dy * cs) / sy + flipY, box = crown.bounds;
       if (x < box[0] || x > box[2] || y < box[1] || y > box[3]) continue;
       for (const part of crown.parts) {
@@ -84,6 +84,14 @@ window.GardenNativePainted = (function () {
       }
     }
     return false;
+  }
+  /** The local line keeps its already drawn float/fish centres on the FX rig.
+   * Probe only those points against retained filled crowns, never nearby trees
+   * by radius or a fresh scene/fish search. Player coverage stays separate. */
+  function fishingCrownCovers(image) {
+    const F = typeof _gw !== 'undefined' && _gw.fishing, fx = typeof _gw !== 'undefined' && _gw.fx;
+    if (!image.active || !image.visible || !F || !fx || !fx.canopyPoints || F.bx >= GARDEN_ROOM_X || !['wait', 'bite', 'reel', 'help'].includes(F.state)) return false;
+    return fx.canopyPoints.some(p => image.depth > p.depth && Number.isFinite(p.x) && Number.isFinite(p.y) && crownCovers(image, p.x, p.y, crownPointOffsets));
   }
   function paint(cx, p) {
     if (typeof p === 'string') return p;
@@ -326,7 +334,7 @@ window.GardenNativePainted = (function () {
     if (!plantingTall.length || typeof _gw === 'undefined' || !lastInfo) return;
     const W = lastInfo.W, dt = fadeLast ? Math.min(.1, Math.max(0, (time - fadeLast) / 1000)) : .016; fadeLast = time;
     const x = _gw.px * W.cellW, y = W.sky + _gw.py * W.cellH;
-    for (const t of plantingTall) { if (!t.im.active) continue; const under = gardenCrownCovers(x, y, t.x, t.y, t.h, t.im.displayWidth, t.im), a = under ? GARDEN_CROWN_FADE : 1; if (under && t.im.visible) plantingCoverage.push(t.im); if (t.im.alpha !== a) t.im.setAlpha(Math.abs(a - t.im.alpha) < .02 ? a : t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8)); }
+    for (const t of plantingTall) { if (!t.im.active) continue; const under = gardenCrownCovers(x, y, t.x, t.y, t.h, t.im.displayWidth, t.im), a = under || fishingCrownCovers(t.im) ? GARDEN_CROWN_FADE : 1; if (under && t.im.visible) plantingCoverage.push(t.im); if (t.im.alpha !== a) t.im.setAlpha(Math.abs(a - t.im.alpha) < .02 ? a : t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8)); }
   }
   function planting(scene, parent, info) {
     const W = info.W, made = [], season = info.season || 'summer', trees = GROVE[season] || GROVE.summer; spotCounts = {};
@@ -400,5 +408,5 @@ window.GardenNativePainted = (function () {
   }
   function memory(scene) { let bytes = 0, n = 0; if (cachedGround && scene && scene.textures.exists(cachedGround.key)) { const c = scene.textures.get(cachedGround.key).getSourceImage(); bytes += c.width * c.height * 4; n++; } return { groundBytes: bytes, groundTextures: n }; }
   function status() { return { wanted: wanted(), ready: ready(), groundMs, composeMs, K, planted: lastPlanting.length, spots: spotCounts, lastError }; }
-  return { wanted, ready, preload, ground, building, planting, fadeUnder, crownCovers, playerCanopies: () => plantingCoverage, status, objectImage, objectCanvas, paintIntoGround, compose, memory, get lastError() { return lastError; }, set lastError(v) { lastError = v; }, set overLayer(v) { overLayer = v; } };
+  return { wanted, ready, preload, ground, building, planting, fadeUnder, crownCovers, fishingCrownCovers, playerCanopies: () => plantingCoverage, status, objectImage, objectCanvas, paintIntoGround, compose, memory, get lastError() { return lastError; }, set lastError(v) { lastError = v; }, set overLayer(v) { overLayer = v; } };
 })();

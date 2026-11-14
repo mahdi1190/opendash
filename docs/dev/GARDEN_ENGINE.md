@@ -140,6 +140,10 @@ still showed its locked-gate explanation. This observation did not land a catch.
 An encrypted two-player visit received the same river fish IDs on both peers;
 the same roach entered its nibble state targeting the visitor on both screens.
 The visitor returned to their own Garden without captured errors.
+The connected woodland brook also keeps its existing brook species through all
+of its reaches and crossing water. Its primary journal home and woodland unlock
+remain at the original brook section. Ordinary private play with woodland open
+showed dace in the formerly empty reach beside the footbridge.
 
 Crafted building, paving and bank materials are shared vector builders retained
 with the existing scene and chunks. They do not add physical objects or move
@@ -1601,6 +1605,19 @@ fills. Sending each piece through Phaser's path simplifier could remove a small
 corner from one side only and expose the sea beneath the beach. Ordinary private
 before/after views at the estuary used the same walking position and camera;
 the fine gaps disappeared, and wheel zoom remained usable.
+
+Fleet Falls refines its broad player-fade box with the existing rock/sheet
+texture's alpha mask. The mask is prepared once per retained texture; frame
+updates read that array without pixel capture. Ordinary before/after walking
+beside the cave stair left the player clear and changed the falsely faded falls
+back to full opacity.
+
+Painted woodland and village crowns use the local fishing rig's drawn float and
+assigned fish positions in their existing fade pass. They query retained filled
+crown paths, keeping the player's silhouette coverage separate. An ordinary
+river cast in a crown gap left the oak opaque; a nearby cast under its filled
+leaves faded it, and winding in restored it. No new scene scan or texture is
+needed for these action points.
 
 Optional activity camera subjects keep the local player together with a kite,
 soap film, that player's leaf boat and its next course marker, a requested pet

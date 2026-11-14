@@ -93,6 +93,9 @@ function gardenIslandBasinPatchHomes(pool, centre) {
   // The Mere's outlet keeps its existing fish through the two upstream
   // river reaches. Primary journal homes and their unlocks stay at the Mere.
   if (GARDEN_WORLD.v >= 5 && (pool.id === 'river-1' || pool.id === 'river-2')) return ['pond'];
+  // Every reach of the woodland brook keeps the brook's own fish.
+  // Its primary journal home and woodland unlock remain at brook-2.
+  if (GARDEN_WORLD.v >= 5 && pool.river === 'brook') return ['brook'];
   if (GARDEN_WORLD.v >= 5 && pool.id === 'allotment-pool') return centre.x < mx ? ['folly'] : ['folly', 'light'];   // (the frog pool's kinds live in the valley marsh, river-4: the journal's Millwater page)
   if (pool.id === 'pond') return ['pond'].concat(centre.y < my ? ['spring', 'tarn'] : [], centre.x >= mx ? ['falls'] : []);
   if (pool.id === 'allotment-pool') return centre.x < mx ? ['frogpool', 'race', 'brook'] : ['folly', 'light'];

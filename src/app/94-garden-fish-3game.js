@@ -232,6 +232,14 @@ function _gwFishFrame(dt) {
   fx.bob.setAttribute('visibility', 'visible'); fx.bob.setAttribute('transform', `translate(${bx.toFixed(1)} ${by.toFixed(1)}) rotate(${tilt.toFixed(1)})`);
   const onWater = F.state !== 'cast' && F.state !== 'land', wakeK = 1 + (motion ? Math.sin(F.t * 3) * 0.08 + (contact ? contact.pulse * .14 : 0) : 0);
   gardenFishFloatDepth(fx, fx.layer, F);
+  // Keep the two local action centres for the painted crowns' existing fade
+  // pass. These are presentation positions, never fish or catch state.
+  const canopy = fx.canopyPoints || (fx.canopyPoints = []); canopy.length = 0;
+  if (onWater && fx.layer && fx.layer._native && F.bx < GARDEN_ROOM_X) {
+    const angle = tilt * Math.PI / 180;
+    canopy.push({ x: bx + Math.sin(angle) * 2, y: by - Math.cos(angle) * 2, depth: ty });
+    if (contactFish && contactFish.seen && contactFish.st >= GF_ST.come && contactFish.st <= GF_ST.hooked && _gfs.layer && _gfs.layer.target) canopy.push({ x: contactFish.drawX, y: contactFish.drawY, depth: _gfs.layer.target.depth });
+  }
   fx.wake.setAttribute('visibility', onWater ? 'visible' : 'hidden');
   if (onWater) {
     // Follow the surface tug, excluding the float's downward dip.

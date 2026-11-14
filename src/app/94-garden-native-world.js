@@ -1208,7 +1208,8 @@ window.GardenNativeWorld = (function () {
       for (const record of fadingProps) {
         if (record.editorLifted) continue;
         const p = record.metadata.prop, b = record.bounds, sx = _gw.px * W.cellW, sy = W.sky + _gw.py * W.cellH;
-        const behind = sx > b.x - 8 && sx < b.x + b.width + 8 && sy > b.y + 18 && sy < W.sky + (p.y + p.h) * W.cellH - 1.5;
+        let behind = sx > b.x - 8 && sx < b.x + b.width + 8 && sy > b.y + 18 && sy < W.sky + (p.y + p.h) * W.cellH - 1.5;
+        if (behind && p.id === 'ld-falls' && record.handle.fallsCoversPlayer) behind = record.handle.fallsCoversPlayer(sx, sy);
         if (record.behind !== behind) { record.behind = behind; record.root.setAlpha(behind ? .38 : 1); }
       }
       coveringCanopies.length = 0;
