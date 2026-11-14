@@ -84,6 +84,11 @@ function _grmDoorProp(R) { try { return gardenPropsNow().find(p => p.lf === R.at
 function _grmDoorPt(R) {
   const p = _grmDoorProp(R); if (!p) return null;
   if (typeof gardenSightIsSetOut === 'function' && gardenSightIsSetOut(R.at) && p.door) return { x: p.door.x + .5, y: p.door.y + .5 };
+  // The Vale authors approach cells for its relocated sights; older gardens
+  // retain their original separate steps and beside-the-sight fallback.
+  const island = typeof gardenIslandData === 'function' ? gardenIslandData() : null;
+  const authored = island && island.version >= 5 && island.static.find(q => q.id === R.at && q.x === p.x && q.y === p.y);
+  if (authored && authored.door) return { x: authored.door.x + .5, y: authored.door.y + .5 };
   if (R.doorAt) return { x: R.doorAt[0], y: R.doorAt[1] };   // (its sight is hidden behind the shops: the steps are by the path round to it)
   // beside its sight: on the right if it can be, never in water or inside a building, where you could not see it or get to it
   const cx = p.x + p.w * 0.5, foot = p.y + p.h, spots = [[cx + 0.9, foot + 0.45], [cx - 0.9, foot + 0.45], [cx, foot + 1.45], [cx + 0.9, foot + 1.45]];
@@ -101,8 +106,17 @@ wdMod({
     for (const R of GRM_ROOMS) {
       const P = _grmDoorPt(R), S = _grd.list.get(R.id);
       if (!P || !GRM_SYM[R.id] || gardenZoneLockAt(Math.floor(P.x), Math.floor(P.y))) { if (S) { S.remove(); _grd.list.delete(R.id); } continue; }
-      if (S) { if (S.x !== P.x || S.y !== P.y - 0.3) { S.x = P.x; S.y = P.y - 0.3; S.z = P.y; S.tf = null; } continue; }
-      _grd.list.set(R.id, wdSprite({ id: 'grm-door-' + R.id, x: P.x, y: P.y - 0.3, z: P.y, still: true, hit: 0.9, hitUp: 30, label: R.verb, cursor: 'hand', svg: `<g class="grm-wayin" transform="scale(.82)">${GRM_SYM[R.id]()}</g>`, onClick: () => gardenRoomGo(R) }));
+      // Existing native scenery owns the post and cave. World interaction
+      // attaches to their retained feet; standing approaches stay unchanged.
+      const native = GARDEN_WORLD.v >= 5 && _gw.svg && _gw.svg._native && _gw.nativeWorld;
+      const prop = native && R.id === 'lampcup' && _grmDoorProp(R), drawing = prop && _gw.nativeWorld.entities.get('prop:' + prop.id);
+      const foot = drawing && drawing.metadata.foot, cave = native && R.id === 'falls' && window.GardenPaintedTerrain && GardenPaintedTerrain.roomEntrance && GardenPaintedTerrain.roomEntrance(R.id);
+      const lamp = !!(foot && Number.isFinite(foot.x) && Number.isFinite(foot.y)), anchor = lamp ? foot : cave;
+      const x = anchor ? anchor.x / GARDEN_WORLD.cellW : P.x, y = anchor ? (anchor.y - GARDEN_WORLD.sky) / GARDEN_WORLD.cellH : P.y - .3, z = lamp ? prop.y + prop.h + .01 : P.y, hitUp = lamp ? 5 : cave ? 15 : 30;
+      const art = lamp ? '<rect x="-2" y="-8" width="4" height="6" rx=".5" fill="#10121e" stroke="#8c9488" stroke-width=".6"/><circle cx=".8" cy="-5" r=".55" fill="#d8b24a"/>' : cave ? '<path d="M-7 -1H7" fill="none" stroke="#a8b4b0" stroke-width="1.2" stroke-linecap="round"/>' : GRM_SYM[R.id]();
+      const svg = `<g class="grm-wayin" transform="scale(.82)">${art}</g>`;
+      if (S) { if (S.x !== x || S.y !== y || S.z !== z) { S.x = x; S.y = y; S.z = z; S.tf = null; } S.hitUp = hitUp; wdArt(S, svg); continue; }
+      _grd.list.set(R.id, wdSprite({ id: 'grm-door-' + R.id, x, y, z, still: true, hit: 0.9, hitUp, label: R.verb, cursor: 'hand', svg, onClick: () => gardenRoomGo(R) }));
     }
     _grmChipCheck();   // putting away or locking its sight retires the old way to follow
   },

@@ -1052,24 +1052,38 @@ function _gwFrame(ts, rendererTick) {
       // slide along walls and round corners, never stop on them
       const moved = _gwMoveBy(ux * step / W.cellW, uy * step / W.cellH);
       _gw.moving = moved; if (!moved) _gw.spd = 0;
+      if (Math.abs(ux) > 0.3) _gw.face = ux > 0 ? 1 : -1;
     } else {
-      let arrived = false;
-      if (dist <= step) { _gw.px = tgt.x; _gw.py = tgt.y; _gw.path.shift(); arrived = !_gw.path.length; }
-      else {
-        const px0 = _gw.px, py0 = _gw.py, moved = _gwMoveBy(ux * step / W.cellW, uy * step / W.cellH);
+      let arrived = false, remaining = step;
+      // Spend this frame's distance across waypoints. Dropping the remainder
+      // at each bend made a route slow down according to the frame rate.
+      while (_gw.path.length && remaining > 1e-7) {
+        tgt = _gw.path[0];
+        const dxp = (tgt.x - _gw.px) * W.cellW, dyp = (tgt.y - _gw.py) * W.cellH;
+        dist = Math.hypot(dxp, dyp); ux = dxp / (dist || 1); uy = dyp / (dist || 1);
+        if (dist <= remaining && _gwLos({ x: _gw.px, y: _gw.py }, tgt)) {
+          _gw.px = tgt.x; _gw.py = tgt.y; remaining -= dist;
+          _gw.path.shift(); _gw.blockT = 0; arrived = !_gw.path.length;
+          continue;
+        }
+        const px0 = _gw.px, py0 = _gw.py;
+        // A changed obstacle can invalidate even the last short segment.
+        const moved = dist > remaining && _gwMoveBy(ux * remaining / W.cellW, uy * remaining / W.cellH);
         // how much of the step went the way we are heading: sliding sideways along a wall that is in the way is not getting anywhere
-        const gain = moved ? ((_gw.px - px0) * W.cellW * ux + (_gw.py - py0) * W.cellH * uy) / Math.max(step, 0.01) : 0;
-        _gw.blockT = gain < 0.35 ? (_gw.blockT || 0) + dt : 0;
+        const gain = moved ? ((_gw.px - px0) * W.cellW * ux + (_gw.py - py0) * W.cellH * uy) / Math.max(remaining, 0.01) : 0;
+        _gw.blockT = gain < 0.35 ? (_gw.blockT || 0) + dt * remaining / step : 0;
         if (!moved || _gw.blockT > 0.25) {
           // the way is shut (something grew, or a corner caught the feet): plan another way to the same place, and stop only if there is none
           _gw.spd = 0; _gw.blockT = 0;
           if (!_gwRepath()) { _gw.path = []; _gw.then = null; }
         }
+        break;
       }
       _gw.moving = _gw.spd > 3 || arrived;
+      // Arrival actions may turn toward their target; apply the walk heading first.
+      if (Math.abs(ux) > 0.3) _gw.face = ux > 0 ? 1 : -1;
       if (arrived) { _gw.moving = false; _gw.spd = 0; const th = _gw.then; _gw.then = null; _gwSaveSoon(); if (typeof th === 'function') { try { th(true); } catch (e) { console.error('[garden]', e); } } }
     }
-    if (Math.abs(ux) > 0.3) _gw.face = ux > 0 ? 1 : -1;
     _gw.sneak = sneak;
     if (_gw.moving) _gwSaveSoon();
   } else if (_gw.moving) { _gw.moving = false; _gwSaveSoon(); }

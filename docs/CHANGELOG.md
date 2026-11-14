@@ -10,6 +10,19 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.68.4] - 2026-11-14
+
+### Fixed
+
+- Shop, Land Office and market walls match their protected ground width. Ambient trees stay clear of authored paths and building reservations, including routes beyond closed gates.
+- The Vale's painted lake banks use the same continuous contours as the water. The main pier's final plank stays within its actual deck.
+- Secret entrances sit on the existing lamp and cave instead of drawing duplicate structures. Removed the bright decorative sand ribbon across the distant sea.
+- The large shark-fin overlay belongs to sharks; rare shrimp, crabs and other families keep their own silhouettes.
+- Walking carries its remaining movement through path bends for you, friends and pets, keeping closely spaced turns even. Arrival actions can turn you toward their target without the walk turning you back.
+- Short indoor walks keep their travel direction and use their actual movement distance instead of snapping early.
+- Walking to cast now measures the same float position that you and friends see, so a shoreline click cannot place the float beyond your rod's reach.
+- Hidden-room entrance markers use the Vale's authored approach points, including the cellar steps beside the sunken pool.
+
 ## [2.68.3] - 2026-11-13
 
 ### Fixed

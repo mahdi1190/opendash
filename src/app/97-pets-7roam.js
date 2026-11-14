@@ -497,18 +497,25 @@ function _ptwThink(P, W, dt) {
 }
 function _ptwStep(P, dt, t) {
   const x0 = P.x, y0 = P.y;
-  if (P.tx != null) {
-    const W = GARDEN_WORLD, dx = (P.tx - P.x) * W.cellW, dy = (P.ty - P.y) * W.cellH, d = Math.hypot(dx, dy);
-    if (d < 3) { P.x = P.tx; P.y = P.ty; P.tx = null; P.run = false; const c = P.arrive; P.arrive = null; if (P.root) P.root.classList.remove('pt-run'); if (c) c(); else { P.sit(); P.busy = 0.5; } }
-    else {
-      const sp = Math.min(d, 44 * P.per.speed * P.speed * dt), nx = P.x + dx / d * sp / W.cellW, ny = P.y + dy / d * sp / W.cellH;
+  // Spend the frame across route callbacks without snapping the last few pixels.
+  // A blocked/partial slide ends this frame; only a reached target advances it.
+  let remaining = Math.max(0, dt), arrivals = 0;
+  while (P.tx != null && remaining > 0 && arrivals < 32) {
+    const W = GARDEN_WORLD, tx = P.tx, ty = P.ty, dx = (tx - P.x) * W.cellW, dy = (ty - P.y) * W.cellH, d = Math.hypot(dx, dy), speed = 44 * P.per.speed * P.speed;
+    if (!(speed > 0)) break;
+    if (d > 0) {
+      const sp = Math.min(d, speed * remaining), nx = sp === d ? tx : P.x + dx / d * sp / W.cellW, ny = sp === d ? ty : P.y + dy / d * sp / W.cellH;
       if (Math.abs(dx) > 3) P.dir = dx > 0 ? 1 : -1;
       if (_ptwCanStep(P, nx, ny)) { P.x = nx; P.y = ny; }
       else if (!_ptwFlier(P) && !_ptwHas(P, 'swim') && !(P.up > 1) && typeof gardenWorldSlide === 'function') { const slide = gardenWorldSlide(P.x, P.y, nx - P.x, ny - P.y, .14, P.shoreMove || (P.shoreMove = {})); if (slide.moved) { P.x = slide.x; P.y = slide.y; } else if (++P.stuck > 20) { P.tx = null; P.arrive = null; P.run = false; P.sit(); P.busy = 1; if (P.me) { P.lost = true; P.busy = .2; } } }
       else if (_ptwCanStep(P, nx, P.y)) P.x = nx;
       else if (_ptwCanStep(P, P.x, ny)) P.y = ny;
       else if (++P.stuck > 20) { P.tx = null; P.arrive = null; P.run = false; P.sit(); P.busy = 1; if (P.me) { P.lost = true; P.busy = 0.2; } }
+      remaining = Math.max(0, remaining - sp / speed);
+      if (P.x !== tx || P.y !== ty) break;
     }
+    arrivals++;
+    P.tx = null; P.run = false; const c = P.arrive; P.arrive = null; if (P.root) P.root.classList.remove('pt-run'); if (c) c(); else { P.sit(); P.busy = 0.5; }
   }
   const off = gardenCull(P, P.node, P.x, P.y);
   const T = _ptwStand(P, Math.min(0.2, dt || 0));

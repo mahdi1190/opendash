@@ -241,13 +241,15 @@ function _gwFishLost(msg) {
   _gdpRefreshChromeSoon();
 }
 
-/** Click water (with any tool): cast there, to the very spot. If the rod does not reach from where you stand, you walk to the nearest place it does and cast from there. */
+/** Click water (with any tool): cast at its cell centre. If the rod does not reach from where you stand, you walk to the nearest place it does and cast from there. */
 function gardenFishClickPt(pt, m) {
   const cell = { x: Math.floor(pt.x), y: Math.floor(pt.y) };
   if (!gardenIsWater(cell.x, cell.y)) return false;
   if (typeof gardenWaterContainsPoint === 'function' && !gardenWaterContainsPoint(pt.x, pt.y)) return false;
   const zone = gardenWaterZone(cell.x, cell.y);
   { const no = gardenWaterNo(cell.x, cell.y, m); if (no) { _gdpSay({ ok: false, msg: no }); return true; } }
+  pt = { x: cell.x + 0.5, y: cell.y + 0.5 };   // plan the walk for the same cell-centred float everyone sees
+  if (typeof gardenWaterContainsPoint === 'function' && !gardenWaterContainsPoint(pt.x, pt.y)) { _gdpSay({ ok: false, msg: 'Too close to the bank. Try a little farther into the water.' }); return true; }
   const rod = gardenRod(), reach = rod.st.range, W = GARDEN_WORLD;
   const dist = (x, y) => Math.hypot(x - pt.x, y - pt.y);
   const d0 = dist(_gw.px, _gw.py);
@@ -273,7 +275,7 @@ function gardenFishClickPt(pt, m) {
 function gardenFishClick(cell, m) { return gardenFishClickPt({ x: cell.x + 0.5, y: cell.y + 0.5 }, m); }
 function _gwFishCast(pt0) {
   const pt = { x: Math.floor(pt0.x) + 0.5, y: Math.floor(pt0.y) + 0.5 };   // the middle of the cell: that is what everyone else is told
-  if (typeof gardenWaterContainsPoint === 'function' && !gardenWaterContainsPoint(pt.x, pt.y)) return;
+  if (typeof gardenWaterContainsPoint === 'function' && !gardenWaterContainsPoint(pt.x, pt.y)) { _gdpSay({ ok: false, msg: 'Too close to the bank. Try a little farther into the water.' }); return; }
   _gwFacePt(pt);
   const plan = gardenFishPlan(Math.floor(pt.x), Math.floor(pt.y));
   if (!plan.ok) { _gdpSay(plan); return; }

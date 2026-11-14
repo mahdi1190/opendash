@@ -355,10 +355,12 @@ window.GardenNativeWorld = (function () {
       const wet = c => ['ocean', 'water', 'pool', 'lake', 'ice'].includes(c.material);
       const inBox = (x, y) => x >= cbox.x0 - 2 && x <= cbox.x1 + 2 && y >= cbox.y0 - 2 && y <= cbox.y1 + 2;
       // The sea edge is the island's own coast (the shared smooth outline);
-      // inland water keeps its rounded cell contour.
+      // current Vale inland banks use the same continuous water contours.
       const coast = island.land.map(l => l.map(q => ({ x: q[0] * W.cellW, y: W.sky + q[1] * W.cellH })));
       const lawn = coast.map(l => insetTerrainContour(l, island.beachWidthPx));
-      const lakes = outlines(cells.map((c, i) => ({ material: inBox(i % W.cols, Math.floor(i / W.cols)) && wet(c) && c.material !== 'ocean' ? 'water' : '' })), 'water', W);
+      // Keep the existing legacy and frozen-water painting path.
+      const authoredBanks = W.v >= 5 && typeof gardenOtherWaterLoops === 'function' && !cells.some((c, i) => c.material === 'ice' && inBox(i % W.cols, Math.floor(i / W.cols)));
+      const lakes = authoredBanks ? gardenOtherWaterLoops(m) : outlines(cells.map((c, i) => ({ material: inBox(i % W.cols, Math.floor(i / W.cols)) && wet(c) && c.material !== 'ocean' ? 'water' : '' })), 'water', W);
       // Both ground painters use this same exact allowance. The curved
       // stroke owns the visible width, not a staircase of path-cell centres.
       const pathLoops = outlines(mark((c, x, y) => inBox(x, y) && !!routePaint[y * W.cols + x]), 'm', W, true);
@@ -384,7 +386,7 @@ window.GardenNativeWorld = (function () {
         for (let i = 0; i < t.length; i++) boxSig = (Math.imul(boxSig, 31) + t.charCodeAt(i)) | 0;
         boxSig = (Math.imul(boxSig, 31) + 59) | 0;
       }
-      const sig = [cbox.x0, cbox.y0, boxSig, cultivatedNow ? [...cultivatedNow].sort().join(',') : '', lakes.length, pathLoops.length].join('|');
+      const sig = [cbox.x0, cbox.y0, boxSig, cultivatedNow ? [...cultivatedNow].sort().join(',') : '', lakes.length, pathLoops.length, authoredBanks ? 'shore' : 'cells'].join('|');
       try { packGround = GardenNativePainted.ground(scene, rootNode._inner, { W, box, coast, lawn, lakes, paths: pathLoops, routes, plaza, meadow, soil, owned, season: sc.season, sig: sig + '|' + soil.length + ':' + owned.length }); }
       catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); return false; }
       const blocked = new Set(); for (const p of D.static) { const boxes = [p, p.apron].filter(Boolean); for (const b of boxes) for (let y = Math.floor(b.y) - 1; y <= b.y + b.h; y++) for (let x = Math.floor(b.x) - 1; x <= b.x + b.w; x++) blocked.add(x + ',' + y); }
@@ -396,9 +398,9 @@ window.GardenNativeWorld = (function () {
       // plant or decoration; land not yet bought grows wild until it is.
       const taken = new Set(); for (const item of (m.plants || []).concat(m.decor || [])) for (let y = item.y - 1; y <= item.y + 2; y++) for (let x = item.x - 1; x <= item.x + 2; x++) taken.add(x + ',' + y);
       const near = (x, y, r, test) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const c = cellAt(x + dx, y + dy); if (c && test(c)) return true; } return false; };
-      const isPath = c => c.material === 'path' || c.material === 'beach';
+      const isPath = c => c.route || c.material === 'path' || c.material === 'beach';
       const spot = (x, y) => {
-        const c = cellAt(x, y); if (!c || blocked.has(x + ',' + y) || taken.has(x + ',' + y)) return '';
+        const c = cellAt(x, y); if (!c || c.plantingReserved || blocked.has(x + ',' + y) || taken.has(x + ',' + y)) return '';
         if (c.material === 'beach' && near(x, y, 1, wet) && !near(x, y, 1, cc => cc.material === 'path')) return 'shore';
         if (wet(c) || c.material === 'beach' || c.material === 'path') return '';
         if (typeof gardenIslandRegionAt === 'function') { const r = gardenIslandRegionAt(x + .5, y + .5); if (r && r.zone) return ''; }
@@ -447,7 +449,9 @@ window.GardenNativeWorld = (function () {
         // Future growing plots stay part of the landscape until they open;
         // a map full of tiny unowned soil patches overwhelms the village.
         if (island && row && soilKinds.has(row.kind) && (locked || !cultivated.has(row.id))) material = 'green';
-        cells[y * W.cols + x] = { material, locked, area, row, water }; kinds.add(material);
+        // Scenic planting respects physical reservations even while a route is locked.
+        const route = !!(islandCell && islandCell.route), plantingReserved = !!(islandCell && (route || ['static', 'apron', 'facade', 'future-pier'].includes(islandCell.reservation)));
+        cells[y * W.cols + x] = { material, locked, area, row, water, route, plantingReserved }; kinds.add(material);
       }
       const routePaint = island ? routePaintAllowance(cells, sc, cultivated) : null;
       const lakeHoles = lake && !island ? outlines(cells.map((c, index) => ({ material: lake.cellContains(index % W.cols, Math.floor(index / W.cols)) && (!c.water || c.material === 'ice') ? 'hole' : '' })), 'hole', W, true).filter(loop => polygonArea(loop) > 0).map(loop => loop.slice().reverse()) : [];
@@ -697,7 +701,7 @@ window.GardenNativeWorld = (function () {
         pierBoards.nativeBounds = old ? { x: Math.min(old.x, b.x), y: Math.min(old.y, b.y), width: Math.max(old.x + old.width, b.x + b.width) - Math.min(old.x, b.x), height: Math.max(old.y + old.height, b.y + b.height) - Math.min(old.y, b.y) } : b;
         if (pier.side === 'south') {
           pg.fillStyle(0x315d54, .22).fillRoundedRect(x + 9, y + 11, w + 1, h, 5).fillStyle(0x796c51).fillRoundedRect(x - 4, y, w + 8, h, 4);
-          for (let yy = y + 3; yy < y + h - 3; yy += 14) { pg.fillStyle(Math.floor(yy / 14) % 3 ? 0xb19a71 : 0xbda77c).fillRect(x + 1, yy, w - 2, 12.5); pg.lineStyle(.8, 0xe6d5a8, .42).lineBetween(x + 7, yy + 2, x + w - 7, yy + 2); pg.fillStyle(0x68694e, .55).fillCircle(x + 7, yy + 8, .8).fillCircle(x + w - 7, yy + 8, .8); }
+          for (let yy = y + 3; yy < y + h - 3; yy += 14) { const bh = Math.min(12.5, y + h - 3 - yy); pg.fillStyle(Math.floor(yy / 14) % 3 ? 0xb19a71 : 0xbda77c).fillRect(x + 1, yy, w - 2, bh); if (bh > 2.4) pg.lineStyle(.8, 0xe6d5a8, .42).lineBetween(x + 7, yy + 2, x + w - 7, yy + 2); if (bh > 8.8) pg.fillStyle(0x68694e, .55).fillCircle(x + 7, yy + 8, .8).fillCircle(x + w - 7, yy + 8, .8); }
           for (const xx of [x - 1, x + w + 1]) pg.fillStyle(0x716c50).fillRoundedRect(xx - 3, y + 4, 6, 16, 2).fillStyle(0xd0bd8c).fillEllipse(xx, y + 4, 7, 4);
         } else {
           // Side decks retain a shallow timber edge and two water-end supports.
