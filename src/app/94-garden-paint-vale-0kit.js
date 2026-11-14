@@ -104,11 +104,12 @@ window.GardenPaintVale = (function () {
       const rr = KIT().rng(KIT().hash(x, y, 77)), edge = !test(x - 1, y) || !test(x + 1, y) || !test(x, y - 1) || !test(x, y + 1), k = edge ? .62 : .82;
       B.f(B.blob(rr, (x + .5) * cw, W.sky + (y + .5) * ch, cw * k, ch * (k + .1), 8, .3), o.base || P.lawn, a);
     }
+    // Keep overlapping meadow drifts subordinate to the seasonal grass detail.
     KIT().tiles(cb, 120, 40, o.salt || 5, (tx, ty, rr) => {
       for (let k = 0; k < 7; k++) {
         const x = tx + rr() * 120, y = ty + rr() * 120, cx = x / cw, cy = (y - W.sky) / ch; if (!test(Math.floor(cx), Math.floor(cy))) continue;
         const a = fade ? fade(cx, cy) : 1; if (a <= 0) continue; const n = KIT().fbm(x / 260, y / 180, 9);
-        B.f(B.blob(rr, x, y, 22 + rr() * 34, 8 + rr() * 12, 8, .5), n > .55 ? P.lawnHi : n < .42 ? P.lawnLo : (o.drift || P.lawn), (.18 + rr() * .14) * a);
+        B.f(B.blob(rr, x, y, 22 + rr() * 34, 8 + rr() * 12, 8, .5), n > .55 ? P.lawnHi : n < .42 ? P.lawnLo : (o.drift || P.lawn), (.08 + rr() * .06) * a);
       }
       for (let k = 0; k < 9; k++) {
         const x = tx + rr() * 120, y = ty + rr() * 120, cx = x / cw, cy = (y - W.sky) / ch; if (!test(Math.floor(cx), Math.floor(cy))) continue;

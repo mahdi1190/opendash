@@ -110,10 +110,11 @@ window.GardenNativePainted = (function () {
     cx.save(); clipLoops(info.coast); for (let i = 0; i < 200; i++) { const x = B.x + r() * B.w, y = B.y + r() * B.h; blob(x, y, 14 + r() * 30, 6 + r() * 12, 7, .5, r() < .5 ? P.sandWet : '#efe3bf', .16); } strokeLoops(info.coast, P.sandWet, 12, .7); cx.restore();
     strokeLoops(info.coast, P.foam, 2.2, .7);
     // 3. The meadow: one quiet base with broad soft light and shade in lobed
-    //    drifts (light from the upper left), never a stripe or a tile.
+    //    drifts (light from the upper left), never a stripe or a tile. Broad
+    //    overlapping tones stay faint so the small grass texture carries detail.
     cx.save(); clipLoops(info.lawn);
     cx.fillStyle = P.lawn; cx.fillRect(B.x, B.y, B.w, B.h);
-    for (let i = 0; i < B.w * B.h / 5200; i++) { const x = B.x + r() * B.w, y = B.y + r() * B.h, s = 30 + r() * 70; blob(x, y, s, s * .55, 9, .5, r() < .5 ? P.lawnLo : P.lawnHi, .22 + r() * .18); }
+    for (let i = 0; i < B.w * B.h / 5200; i++) { const x = B.x + r() * B.w, y = B.y + r() * B.h, s = 30 + r() * 70; blob(x, y, s, s * .55, 9, .5, r() < .5 ? P.lawnLo : P.lawnHi, .1 + r() * .08); }
     for (let i = 0; i < B.w * B.h / 160; i++) { const x = B.x + r() * B.w, y = B.y + r() * B.h; if (!info.meadow(x, y)) continue; cx.globalAlpha = .35; cx.strokeStyle = r() < .5 ? P.lawnLo : P.lawnHi; cx.lineWidth = 1.1; cx.beginPath(); cx.moveTo(x, y); cx.quadraticCurveTo(x + 1.5, y - 3, x + (r() - .5) * 4, y - 4 - r() * 3); cx.stroke(); }
     cx.globalAlpha = 1;
     // clover and moss: small darker drifts that break the lawn into a meadow

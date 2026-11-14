@@ -122,7 +122,7 @@
     put([[38.4, 83.6], [37.4, 84.4], [42.6, 81.2]], ['beach'], 'boat-sand', [-46, -26, 48, 10], drawBoat(P, '#3f6f8a', false));
     put([[53.2, 76.1], [46.6, 77.9]], ['path', 'beach'], 'crate1', [-16, -24, 18, 6], drawCrates(P, 0));
     put([[53.4, 78.55], [46.2, 78.6]], ['path', 'beach'], 'bench', [-30, -30, 30, 6], drawBench(P));
-    put([[44.7, 78.7], [56.4, 76.4]], ['path', 'beach', 'grass'], 'anchor', [-22, -40, 22, 6], drawAnchor(P));
+    put([[44.7, 78.7], [56.4, 76.4]], ['path', 'beach', 'grass'], 'anchor', [-22, -44, 22, 6], drawAnchor(P));
     put([[48.3, 78.6], [52.9, 77.2]], ['path', 'beach'], 'fishbox', [-16, -16, 18, 5], drawFishBox(P));
     // boats at their moorings and two buoys, out on the bay
     for (const [x, y, col, k] of [[45.6, 83.6, '#a8402e', 'boat-a'], [54.4, 84.6, '#2f6a5a', 'boat-b'], [42.4, 86.8, '#d8c890', 'boat-c']]) { const b = L.base(x, y); if (b && b.ocean) { const p = atCell(x, y); thing({ key: k, box: [-54, -26, 58, 14], x: p.x, y: p.y, draw: drawBoat(P, col, true) }); } }
