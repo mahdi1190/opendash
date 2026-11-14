@@ -90,6 +90,9 @@ function gardenIslandBasinPatchHomes(pool, centre) {
   const mx = pool.wet.x + pool.wet.w / 2, my = pool.wet.y + pool.wet.h / 2;
   // v5: the plunge pool under Fleet Falls is the Mere's north-west corner; the rest is the Mere.
   if (GARDEN_WORLD.v >= 5 && pool.id === 'pond') return centre.x < mx - 2 && centre.y < my ? ['falls', 'pond'] : ['pond'];
+  // The Mere's outlet keeps its existing fish through the two upstream
+  // river reaches. Primary journal homes and their unlocks stay at the Mere.
+  if (GARDEN_WORLD.v >= 5 && (pool.id === 'river-1' || pool.id === 'river-2')) return ['pond'];
   if (GARDEN_WORLD.v >= 5 && pool.id === 'allotment-pool') return centre.x < mx ? ['folly'] : ['folly', 'light'];   // (the frog pool's kinds live in the valley marsh, river-4: the journal's Millwater page)
   if (pool.id === 'pond') return ['pond'].concat(centre.y < my ? ['spring', 'tarn'] : [], centre.x >= mx ? ['falls'] : []);
   if (pool.id === 'allotment-pool') return centre.x < mx ? ['frogpool', 'race', 'brook'] : ['folly', 'light'];

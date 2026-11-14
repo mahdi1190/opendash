@@ -410,6 +410,8 @@ function _gfsIslandGeometry() {
     else {
       const centre = band.sampleCells.reduce((sum, point) => ({ x: sum.x + point[0] / band.sampleCells.length, y: sum.y + point[1] / band.sampleCells.length }), { x: 0, y: 0 });
       band.islandHomeWaters = gardenIslandBasinPatchHomes(band.islandWater, centre); band.regionZone = gardenZoneOf(centre.x, centre.y);
+      // A river patch can straddle a gate; its open bank must keep its stock.
+      band.regionZones = [...new Set(band.sampleCells.map(([x, y]) => gardenZoneOf(x, y)))];
       for (const water of GARDEN_REGION_WATERS) if (water.sec) { const section = gardenLandRow(water.sec); if (section && section.cells.some(([x, y]) => x + .5 >= band.x0 && x + .5 < band.x1 && y + .5 >= band.y0 && y + .5 < band.y1 && _gfsIslandShapeContains(band.component.shape, x + .5, y + .5))) band.islandHomeWaters.push(water.id); }
     }
     const occupied = new Set(band.sampleCells.map(point => Math.floor(point[0] / 12) + ',' + Math.floor(point[1] / 12)));
@@ -426,7 +428,7 @@ function _gfsIslandComponentAt(x, y) {
   return null;
 }
 function _gfsIslandBands(m) {
-  return _gfsIslandGeometry().bands.filter(band => band.islandOcean || !band.regionZone || m.areas.includes('zn-' + band.regionZone)).map(band => Object.assign({}, band, { islandAreas: m.areas })).concat(gardenRoomBands());
+  return _gfsIslandGeometry().bands.filter(band => band.islandOcean || band.regionZones.some(zone => !zone || m.areas.includes('zn-' + zone))).map(band => Object.assign({}, band, { islandAreas: m.areas })).concat(gardenRoomBands());
 }
 function _gfsBandContains(band, x, y) {
   if (band.sampleCells) { const component = _gfsIslandComponentAt(x, y); return !!component && component.id === band.bodyId && x >= band.x0 && x < band.x1 && y >= band.y0 && y < band.y1 && (!band.islandOcean || gardenIslandWaterZone(x, y) === band.zone); }

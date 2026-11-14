@@ -10,6 +10,14 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.68.12] - 2026-11-14
+
+### Fixed
+
+- Fine sea-coloured gaps no longer cut across beach sand where terrain pieces meet.
+- Moving a restored landmark in the Designer now directs you to Land's relocation controls instead of making its preview disappear at an obsolete position.
+- The public river leaving the Mere now carries its existing freshwater fish. A river section crossing a regional boundary keeps fish on its open side while the closed side remains restricted.
+
 ## [2.68.11] - 2026-11-14
 
 ### Fixed

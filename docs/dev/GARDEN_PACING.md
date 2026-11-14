@@ -87,6 +87,12 @@ the place's identity, finds and room progress, and both changes support Undo.
 Fixed island landmarks keep their authored positions. Existing room opening
 conditions still apply, and visitors observe the host's placements.
 
+Designer redirects restored sights to these Land controls, since their deliberate
+placement takes precedence over a Designer move. It preserves earlier saved
+design rows. Ordinary private play covered restoring a discovered haystack,
+refusing the ineffective drag without hiding it, and putting it away and setting
+it out at a new location while retaining its discovery.
+
 Shared-goal progress uses a compact chip. Contributions, the progress bar and
 host actions open only when requested; **Hide details** changes local presentation
 and **Skip this goal** remains a separate host action. Completion and shared

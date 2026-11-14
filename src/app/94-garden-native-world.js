@@ -278,7 +278,14 @@ window.GardenNativeWorld = (function () {
         for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
           const chunk = terrainChunk(cx, cy), cb = chunk.bounds, g = graphic(chunk); g.fillStyle(style.color, style.alpha);
           if (method && b.x >= cb.x && b.y >= cb.y && b.x + b.width <= cb.x + cb.width && b.y + b.height <= cb.y + cb.height) g[method](...args);
-          else { if (!points) points = polygon(); const clipped = clipTerrainPolygon(points, cb); if (clipped.length > 2) g.fillPoints(clipped, true, true); }
+          else {
+            if (!points) points = polygon(); const clipped = clipTerrainPolygon(points, cb);
+            if (clipped.length < 3) continue;
+            // FillPath simplifies subpixel corners independently in each
+            // clipped piece. Keep their shared edges exact when baking terrain.
+            const coords = clipped.flatMap(p => [p.x, p.y]), triangles = Phaser.Geom.Polygon.Earcut(coords, null, 2);
+            for (let i = 0; i < triangles.length; i += 3) { const a = clipped[triangles[i]], b = clipped[triangles[i + 1]], c = clipped[triangles[i + 2]]; g.fillTriangle(a.x, a.y, b.x, b.y, c.x, c.y); }
+          }
         }
       };
       const fillPolygon = (points, style) => paint(null, null, terrainBox(points), () => points, style || fill);
