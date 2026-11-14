@@ -22,7 +22,7 @@
      worldMaterialOutfit(hex, outfit, part)   -> a person's A11 outfit drawn as the colour of the top (skin and hair kept)
      worldMaterialSnow(mat, mctx)             -> 0..1 snow lying on this material now (S2: ground, roofs and boughs, snow days only)
      worldMaterialKey(mctx)                   -> the cache key part (V5): changes with the season state, light band and weather,
-                                                 never with the time inside a light band
+                                                 never with the time inside a light band (a mover's haze in steps of 1 / mctx.hazeQ)
    ============================================================ */
 const WORLD_MATERIALS = Object.freeze({
   // wet: darkening when wet (0..1 of the colour; raised 15 Oct, audit bug 15: rain looked dry, leaves and grass barely changed); frost: hoar frost catch; snow: where snow lies ('ground' | 'roof' | 'bough'
@@ -449,9 +449,13 @@ function worldMaterialColour(mat, hex, mctx) {
   _wmtColMemo.set(key, out);
   return out;
 }
-/** The cache key part of a material context (V5): the season state, the light band, the weather buckets and the haze bucket. */
+/**
+ * The cache key part of a material context (V5): the season state, the light band, the weather buckets and the haze bucket. A mover's
+ * context (79-world-5shade.js) carries hazeQ: its haze is keyed in steps of 1 / hazeQ ('H'; statics keep their steps of 0.1, 'h').
+ */
 function worldMaterialKey(mctx) {
   const c = mctx || {}, q = (v, n) => Math.round(_wmtClamp(Number(v) || 0, 0, 1) * n);
   return 'm' + (c.month == null ? '' : c.month) + (c.leaf ? c.leaf[0] + q(c.turn, 4) : '') + (c.art ? (c.artOwn ? 'A' : 'a') + c.art.slice(0, 2) : '') + '|' + (c.band || (c.sky && c.sky.band) || '-') +
-    '|w' + q(c.wet, 3) + 'f' + q(c.frost, 3) + 's' + (c.snowDay ? q(c.snow, 4) : 0) + 'h' + q(c.haze, 10) + (c.lamp && c.lamp.k > 0 ? 'l' + Math.round(c.lamp.k * 10) : '');
+    '|w' + q(c.wet, 3) + 'f' + q(c.frost, 3) + 's' + (c.snowDay ? q(c.snow, 4) : 0) + (c.hazeQ > 0 ? 'H' + q(c.haze, c.hazeQ) + '/' + c.hazeQ : 'h' + q(c.haze, 10)) +
+    (c.lamp && c.lamp.k > 0 ? 'l' + Math.round(c.lamp.k * 10) : '');
 }

@@ -145,6 +145,17 @@ export function collectSources(root = HERE) {
   if (existsSync(fontDir)) for (const file of readdirSync(fontDir).filter(f => /\.(woff2?|ttf|otf)$/i.test(f)).sort()) sceneHash.update(file + '\0').update(readFileSync(join(fontDir, file)));
   for (const file of ['src/motion.js', 'src/motion.css']) if (existsSync(join(root, file))) sceneHash.update(file + '\0').update(readFileSync(join(root, file)));
   sceneHash.update(raster);
+  // The world engine's own version (docs/dev/WORLD_LOAD.md 3): what draws a world (v3) scene's pixels, without the scene specs, the
+  // registry or the v2 scene data. A world scene's persistent keys are this plus a hash of its own spec (79-world-5persist.js
+  // worldPersistId), so a new or edited scene, a v2 pack or a registry change keeps every other world scene's bake.
+  const worldHash = createHash('sha256').update('freeflo-world-v1\0');
+  const worldFile = (f) => (/^70-scene-/.test(f) && !/^70-scene-data-/.test(f))
+    || (/^78-scene-/.test(f) && !/^78-scene-(cache|host|editor|player)\.js$/.test(f))
+    || (/^79-world-/.test(f) && !/^79-world-(zscene-|zzgallery|7stage-|9|5persist)/.test(f));
+  for (const file of app.files.filter(worldFile)) worldHash.update(file + '\0').update(readFileSync(join(root, 'src', 'app', file)));
+  worldHash.update('08-utils-dates.js\0').update(readFileSync(join(root, 'src', 'app', '08-utils-dates.js')));
+  if (existsSync(fontDir)) for (const file of readdirSync(fontDir).filter(f => /\.(woff2?|ttf|otf)$/i.test(f)).sort()) worldHash.update(file + '\0').update(readFileSync(join(fontDir, file)));
+  worldHash.update(raster);
   return {
     appFiles: app.files,
     styleFiles: styles.files,
@@ -155,6 +166,7 @@ export function collectSources(root = HERE) {
     body: readFileSync(join(root, 'src', 'body.html'), 'utf8'),
     raster,
     sceneVersion: sceneHash.digest('hex').slice(0, 24),
+    worldVersion: worldHash.digest('hex').slice(0, 24),
     gameEngineJs: engineBytes.toString('utf8'),
     gameEngineBlock: `<script id="freeflo-game-engine" type="application/octet-stream" data-version="${GAME_ENGINE_VERSION}">${engineBytes.toString('base64')}</script>\n`,
     islandJs: gardenIslandScript(root),
@@ -171,6 +183,7 @@ export function buildHtml(root = HERE) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="freeflo-scene-version" content="${s.sceneVersion}">
+<meta name="freeflo-world-version" content="${s.worldVersion}">
 <title>Freeflo</title>
 ${faviconLinks(root)}
 ${CONFIG_TAG}

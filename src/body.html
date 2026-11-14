@@ -32,6 +32,19 @@
   if (hold) { sp.classList.add('is-hold'); try { localStorage.setItem('dashboard-opening-day', day); } catch (e) { /* storage blocked */ } }
   try { sp.querySelector('.od-sp-in').innerHTML = FreefloBrand.lockup({ intro: true, speed: hold ? 1 : 0.62 }); }   // the orb for today (season or holiday)
   catch (e) { sp.querySelector('.od-sp-in').textContent = 'Freeflo'; }
+  // The next opening's first frame (kept after the app prepared it in idle time: 78-anim-wire.js animOpeningBootKeep), behind the brand
+  // from the first painted frame, while the app script parses; the live scene fades in over it at the welcome (docs/dev/WORLD_LOAD.md 5).
+  // Only when the full opening holds, the still is under 36 hours old and made for about this time of day; our own data URL only.
+  if (hold) try {
+    var bs = JSON.parse(localStorage.getItem('freeflo-opening-still') || 'null'), hr = d.getHours() + d.getMinutes() / 60;
+    var dh = bs ? Math.abs(hr - bs.hour) : 99; dh = Math.min(dh, 24 - dh);
+    if (bs && typeof bs.url === 'string' && /^data:image\/(webp|png|jpeg);base64,[A-Za-z0-9+\/=]+$/.test(bs.url) && Date.now() - bs.made < 36 * 3600000 && dh <= 3) {
+      var be = document.createElement('div'); be.className = 'od-boot'; be.setAttribute('aria-hidden', 'true');
+      be.setAttribute('data-ref', String(bs.ref || '').replace(/[^a-z0-9\/-]/gi, ''));
+      be.style.backgroundImage = 'url("' + bs.url + '")';
+      sp.insertBefore(be, sp.firstChild); sp.classList.add('has-boot');
+    }
+  } catch (e) { /* no still: the brand alone */ }
   // The clock starts at the first painted frame (the page's scripts may block the thread first,
   // and the CSS intro only starts when it is painted).
   var t0 = 0, gone = false, ready = false;

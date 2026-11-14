@@ -14,6 +14,8 @@
      animValidatePack(pack)          -> {ok, errors[]}  (manifest + every item)
      animRegisterPack(pack)          -> {ok, errors[]}; same id replaces
      animUnregisterPack(id)          wave 6: drop a non-core pack (the user's "mine" pack)
+     animSupersede(ref, by, o)       a world scene takes over a registered item's picture (keeps its ref and rules)
+     animSupersededOriginal(ref)     the item it took over, or null
      animPacks() / animPack(id)
      animItems({slot, pack, look})   items, in registration order (look: only enabled packs)
      animItem(ref)                   'pack/item' -> item (with .ref and .pack)
@@ -216,6 +218,33 @@ function animRegisterPack(p) {
   for (const from of p.movedFrom || []) for (const it of items) _animMoved.set(from + '/' + it.id, it.ref);
   return v;
 }
+const _animSuperseded = new Map();   // ref -> the item a world scene took over (the original, for tools that compare against it)
+/**
+ * A world-engine scene takes the place of a registered item (79-world-zzgallery.js, `node tools/world.mjs promote`). The item keeps
+ * its ref, id, pack, when(), county, place, view, caption, season and priority, so pins, favourites, blocks and the synced rotation
+ * (seen.openingLast) keep working; only its picture becomes `by`'s: the scene thunk, the world spec, the still (in the item's own
+ * season when it is one of a view's seasonal items). o.from: an old ref of `by` (its gallery preview) that now opens this item.
+ * Returns the new item, or null (no such item, or `by` is not a composed scene).
+ */
+function animSupersede(ref, by, o) {
+  const old = _animRefs.get(ref), pack = old && _animPacks.get(old.pack);
+  if (!old || !pack || !by || !by.composed || typeof by.svg !== 'function') return null;
+  const neu = Object.assign({}, old);
+  for (const k of ['recipe', 'recipeV', 'prebaked', 'legacySvg', 'legacyLabel', 'upgrade', 'retro', 'supersedes']) delete neu[k];
+  for (const k of ['scene', 'composed', 'rich', 'full', 'reduced', 'world', 'worldSpec', 'worldCamera', 'worldLog']) if (by[k] !== undefined) neu[k] = by[k];
+  const own = old.sceneSeason || old.ukSeason;
+  neu.svg = (so) => by.svg(own && !(so && (so.season || (so.sky && Number.isFinite(so.sky.ms)))) ? Object.assign({}, so, { season: own }) : so);
+  neu.supersededBy = String(by.id || '');
+  if (!neu.liveSky || neu.liveSky === true) neu.liveSky = by.liveSky;
+  const it = Object.freeze(neu);
+  _animPacks.set(pack.id, Object.freeze(Object.assign({}, pack, { items: Object.freeze(pack.items.map(x => (x === old ? it : x))) })));
+  _animRefs.set(ref, it);
+  if (!_animSuperseded.has(ref)) _animSuperseded.set(ref, old);
+  if (o && typeof o.from === 'string' && o.from.includes('/') && !_animRefs.has(o.from)) _animMoved.set(o.from, ref);
+  return it;
+}
+/** The item a world scene took over (animSupersede), or null. */
+function animSupersededOriginal(ref) { return _animSuperseded.get(ref) || null; }
 /** Remove a pack (the user's own "mine" pack when its last item is deleted). The core pack stays. */
 function animUnregisterPack(id) {
   const old = _animPacks.get(id);
@@ -245,6 +274,7 @@ function animLookNormalize(raw) {
     fav: refs(r.fav), block: refs(r.block), pin,
     packsOff: Array.isArray(r.packsOff) ? r.packsOff.filter(x => typeof x === 'string' && x !== 'core').slice(0, 100) : [],
     ukRegional: !!r.ukRegional,   // the UK regional packs (v2.2 wave 3), opt-in
+    stage: r.stage !== false,     // painted (world) scenes on the Garden's engine (79-world-7stage-*); off: the canvas renderer draws them
     opening: ANIM_OPENING_MODES.includes(r.opening) ? r.opening : 'daily',   // the opening sequence: every load, the first load of the day, or off
   };
 }
@@ -420,7 +450,9 @@ function animItemHtml(x, o) {
   // detail (about a fifth of the nodes, a quarter of the frame cost) while still filling its box and moving.
   const ao = it.rich && o.detail === 'tile' && (o.size === 'fill' || o.size === 'hero') ? Object.assign({}, o, { size: 'lg' }) : o;
   // the body is drawn only on the SVG path (a composed scene on the canvas never renders its SVG still)
-  const bodyOf = () => reduced ? (it.reduced === 'static' ? it.svg(ao) : it.reduced(ao)) : it.svg(ao);
+  // (a world scene's still never builds its world here: 79-world-5persist.js worldStillSvg draws a placeholder and replaces it later)
+  const svgOf = (a) => (it.world === 3 && it.worldSpec && typeof worldStillSvg === 'function' ? worldStillSvg(it, a) : it.svg(a));
+  const bodyOf = () => reduced ? (it.reduced === 'static' ? svgOf(ao) : it.reduced(ao)) : svgOf(ao);
   const cls = ['anim-scene', 'ap-art', 'c-' + it.colour, 'sz-' + (o.size || 'md'), 'ap-' + it.slot];
   // A rich scene (thousands of nodes, hundreds of loops) never loops in a small tile: every frame of an SVG
   // animation repaints the whole drawing on the main thread, so a 22-px badge cost as much as the full screen.

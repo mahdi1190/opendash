@@ -1,7 +1,8 @@
 // 79-world-3order.js - World engine v3, package render: depth order and chunks (docs/dev/WORLD_ENGINE.md 2.2, 2.3; R1, R2).
 // Pure (Node + browser). Depth convention: larger z = farther from the camera; draw far to near.
 //   worldChunks(world, nav, cam, opts)       -> [{ i, z0, z1, ents, bbox, stand, backdrop? }]  (far to near, <= 24)
-//   worldFrameOrder(chunks, agents, cam, boxes) -> [{ kind: 'chunk' | 'agent' | 'redraw', ref, chunk? }]
+//   worldFrameOrder(chunks, agents, cam, boxes) -> [{ kind: 'chunk' | 'agent' | 'static' | 'redraw', ref, chunk? }]  ('static': an agents entry
+//                                               with occl: true, a static drawn on its own at its depth: interface I2, WORLD_FLICKER.md 5)
 //   worldOrderCheck(order, boxes, opts)      -> [{ a, b, why }]   (must be empty; opts.all also tests static pairs)
 //   worldOrderNearer(a, b)                   -> true when a is nearer than b (footprint test, stable tie by id)
 //   worldOrderFrontZ(foot, x)                -> the footprint's front edge z at x (x clamped into the footprint)
@@ -320,6 +321,9 @@ function worldOrderMovers(roots) {
 // Per-frame order. Each agent is slotted after the last chunk holding an overlapping static it is in front
 // of (at least its zKey slot); statics in chunks up to that slot that are nearer and overlap are redrawn.
 // Agents attached to a host draw straight after the host (and after any redraws of the host).
+// A mover with occl: true is a STATIC taken out of the chunk bitmaps because movers pass behind it (79-world-5frame.js worldFramePlan):
+// it is ordered like a mover and emitted as { kind: 'static', ref } (interface I2: drawn once, at this place, from its baked drawing).
+// A mover is drawn after every FARTHER mover that overlaps it on screen (never after every farther one: docs/dev/WORLD_FLICKER.md 5).
 function worldFrameOrder(chunks, agents, cam, boxes) {
   chunks = chunks || []; agents = agents || [];
   var n = chunks.length, i, j, k;
@@ -345,8 +349,12 @@ function worldFrameOrder(chunks, agents, cam, boxes) {
   // slot per root (group = root + attached descendants share one slot)
   var slots = [];
   for (i = 0; i <= n; i++) slots.push(null);
-  var minSlot = 0;
+  // the slots already given, with each group's screen box: a mover is slotted at least as late as any earlier (farther) one it overlaps,
+  // so the two are drawn in order. Until 14 Nov it was slotted at least as late as EVERY earlier one (one walker slotted after a near chunk
+  // pushed every nearer walker after the same chunks, each then redrew every nearer static it overlapped: 56 redraws a frame in Manchester)
+  var placed = [];
   function groupOf(r, acc) { acc.push(r); var c = kids[r.id]; if (c) for (var t = 0; t < c.length; t++) groupOf(c[t], acc); return acc; }
+  function groupBox(grp) { var bb = null; for (var t = 0; t < grp.length; t++) if (grp[t]._box) bb = worldOrderUnion(bb, grp[t]._box); return bb; }
   for (i = 0; i < roots.length; i++) {
     var r = roots[i], grp = groupOf(r, []), zk = worldOrderZKey(r);
     // slot = number of chunks drawn before the agent (chunks with z0 >= zk are behind it; chunks run far to near)
@@ -367,15 +375,19 @@ function worldFrameOrder(chunks, agents, cam, boxes) {
       }
       if (found) slot = k + 1;
     }
-    if (slot < minSlot) slot = minSlot;
-    minSlot = slot;
+    var gb = groupBox(grp);
+    for (var pj = 0; pj < placed.length; pj++) {
+      var pl = placed[pj];
+      if (pl.slot > slot && (!gb || !pl.box || worldOrderOverlap(gb, pl.box))) slot = pl.slot;
+    }
+    placed.push({ box: gb, slot: slot });
     (slots[slot] || (slots[slot] = [])).push(grp);
   }
   var out = [];
   function emitGroup(grp, upTo) {
     for (var t = 0; t < grp.length; t++) {
       var m = grp[t], mz = worldOrderZMax(m), hid = worldOrderHostId(m);
-      out.push({ kind: 'agent', ref: m });
+      out.push({ kind: m.occl ? 'static' : 'agent', ref: m });
       if (!m._box) continue;
       // occluder redraws: statics drawn so far that are nearer than m and overlap it (size never exempts one, R2)
       for (var c = 0; c < upTo; c++) {
@@ -421,7 +433,7 @@ function worldOrderCheck(order, boxes, opts) {
       if (lastMover >= 0) (redr[rk] || (redr[rk] = {}))[lastMover] = p;
       p++;
     }
-    else { var mk = put(it.ref, it.kind === 'agent'); if (it.kind === 'agent') lastMover = mk; }
+    else { var mk = put(it.ref, it.kind === 'agent'); if (it.kind === 'agent' || it.kind === 'static') lastMover = mk; }   // (a redraw after a 'static' item paints over that static only)
   }
   var n = ents.length, X0 = new Float64Array(n), Y0 = new Float64Array(n), X1 = new Float64Array(n), Y1 = new Float64Array(n), has = new Uint8Array(n), movers = [];
   for (i = 0; i < n; i++) {

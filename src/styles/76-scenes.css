@@ -77,3 +77,10 @@ html[data-density="compact"] { --scene-xs: 22px; --scene-sm: 30px; --scene-md: 4
 .hist-b { padding-left: calc(var(--scene-sm) + 28px); }
 .wk-day .anim-scene.sz-xs { --as-size: var(--scene-dense); }
 @media (max-width: 760px) { .hist-b { padding-left: 18px; } }
+
+/* ---------- the world stage (79-world-7stage-0core.js): a world scene played by the game engine (Phaser, WebGL) ----------
+   Its own canvas (.sc-stage, also .sc-canvas: 76-scene.css hides it until sc-ready and fades it in) lies over the host's canvas,
+   which stays empty and hidden until the stage hands over to the canvas renderer (then .sc-staged goes). The engine sizes its
+   backing store in device px; the box is the host's, whatever size style the engine writes. */
+.anim-scene.ap-composed.sc-staged > canvas.sc-canvas:not(.sc-stage) { visibility: hidden; }
+.anim-scene.ap-composed > canvas.sc-stage { position: absolute; inset: 0; width: 100% !important; height: 100% !important; margin: 0 !important; pointer-events: none; }

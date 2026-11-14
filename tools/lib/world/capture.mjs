@@ -54,7 +54,9 @@ export async function worldCapture(chrome, src, o = {}) {
     try {
       const ok = await page.frameAt(t);
       if (ok !== true) throw new Error('no canvas renderer');
-      const png = await page.png(), file = join(dir, `${name}--t${String(Math.round(t)).padStart(4, '0')}.png`);
+      // named by the scene time in ms: frames less than a second apart (--fps above 1) each keep their own file (until 14 Nov they were
+      // named by whole seconds, so a 5 fps capture kept one frame a second and the strip repeated it)
+      const png = await page.png(), file = join(dir, `${name}--t${String(Math.round(t * 1000)).padStart(7, '0')}ms.png`);
       writeFileSync(file, png); frames.push({ t, file }); pngs.push(png);
     } catch (e) { errors.push(`t ${t}: ${e.message}`); }
   }

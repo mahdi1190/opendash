@@ -77,9 +77,11 @@
     entities: ent,
     // the main line on its low bank along the north shore (OS Explorer 145): a long flat-topped embankment the tracks run along
     ground: { features: [{ id: 'emb', kind: 'embankment', path: [[-420, railZ(-420)], [420, railZ(420)]], width: 30, h: 2.0 }] },
+    // 14 Nov: birdwatchers look 6-15 s at the deck (was 30-90 s) and are a tenth of the walkers (was a fifth): the boardwalk showed
+    // 56 % of its people standing; now about 29 % over 5 min (the 25-35 % a path with a viewpoint should show)
     life: [
-      { who: 'walkers', on: 'fen-walk', rate: '3/min', mix: { stroll: 0.6, birdwatcher: 0.2, 'dog-walker': 0.2 }, edges: ['S'] },
-      { who: 'visit', on: 'fen-walk', mix: { birdwatcher: 1 }, rate: '1/4min', edges: ['S'], goals: [{ go: 'fen-deck' }, { do: 'look', for: [30, 90] }, { leave: 'S' }] },
+      { who: 'walkers', on: 'fen-walk', rate: '3/min', mix: { stroll: 0.65, birdwatcher: 0.1, 'dog-walker': 0.25 }, edges: ['S'] },
+      { who: 'visit', on: 'fen-walk', mix: { birdwatcher: 1 }, rate: '1/4min', edges: ['S'], goals: [{ go: 'fen-deck' }, { do: 'look', for: [6, 15] }, { leave: 'S' }] },
       { who: 'train', on: 'railway', every: '2min', mix: { 'rail.train-mainline': 1 } },
       { who: 'heron', count: 1, on: 'pond', state: 'wade' },
       { who: 'kingfisher', count: 1, goals: [{ do: 'perch', for: [20, 60] }, { do: 'dive', for: [1, 2] }, { do: 'perch', for: [20, 60] }] },

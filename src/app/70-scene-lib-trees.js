@@ -183,7 +183,9 @@
       crown.push(...[...byW(0, 99)].map(([w, d]) => ({ s: '@frost', w: f2(Math.max(.8, w * .35)), d, op: .45, m: [1, 0, 0, 1, 0, -1], detail: w < 2 })));
       if (kind === 'birch' || kind === 'willow') crown.push({ s: '@catkin', w: 1, op: .7, d: tips.filter(t => t[2] >= 2).map(([tx, ty]) => { const L = Math.min(rr(r, 26, kind === 'willow' ? 160 : 50), -ty - 6); return L < 8 ? '' : `M${R(tx)} ${R(ty)}q${R(rr(r, -4, 4))} ${R(Math.min(L * .5, rr(r, 10, 30)))} ${R(rr(r, -6, 6))} ${R(L)}`; }).join('') });
       if (kind === 'alder') { let cat = ''; for (const [tx, ty] of tips.filter((t, i) => i % 3 === 0)) cat += `M${R(tx)} ${R(ty)}l${R(rr(r, -2, 2))} 9`; crown.push({ s: '@catkin', w: 3.2, d: cat }); }
-      if (kind === 'chestnut') { let bud = ''; for (const [tx, ty] of tips.filter((t, i) => i % 2 === 0)) bud += sceneD.ell(tx, ty - 2, 2, 3); crown.push(['@catkin', bud]); }
+      // a horse chestnut in winter: small dark sticky buds pointing up at the twig tips (round buds in the catkin colour read as conkers
+      // left on bare boughs when the tree frames a view close in: Yateley Green, January)
+      if (kind === 'chestnut') { let bud = ''; for (const [tx, ty] of tips.filter((t, i) => i % 3 === 0)) bud += `M${f1(tx - 1.1)} ${f1(ty)}Q${f1(tx - 1)} ${f1(ty - 2.2)} ${f1(tx)} ${f1(ty - 3.4)}Q${f1(tx + 1)} ${f1(ty - 2.2)} ${f1(tx + 1.1)} ${f1(ty)}z`; crown.push({ f: '@mark', d: bud, op: .85, detail: true }); }
       return { trunk, crown };
     }
     // the crown: leaf clusters top first (lower ones overlap the lit tops above)

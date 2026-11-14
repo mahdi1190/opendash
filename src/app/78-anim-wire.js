@@ -69,6 +69,8 @@ const _AW_OPEN_MS = { subtle: 1100, standard: 1700, playful: 2300 };
  */
 function animCineShow(o) {
   if (!_awOn() || document.hidden) return null;
+  // (a world scene in the overlay plays on the game engine: its parse starts now if the opening did not start it)
+  try { if (typeof worldStagePreload === 'function' && /data-anim=/.test(String(o.art || ''))) worldStagePreload(); } catch (e) { /* the canvas renderer plays */ }
   const ms = o.ms || 3400;
   const el = document.createElement('div');
   el.className = 'ap-cine' + (o.cls ? ' ' + o.cls : ''); el.setAttribute('role', 'status');
@@ -276,6 +278,13 @@ function animOpeningSequence() {
   if (!ms || !_awOn() || animOpeningMode() === 'off') { done(); return false; }
   const alive = () => sp.isConnected && !ctl.gone();
   const wait = (t, fn) => setTimeout(() => { if (alive()) fn(); }, Math.max(0, t));
+  // a world scene plays on the game engine (79-world-7stage-0core.js): when the likely next opening is one (the place known from
+  // before), the engine's decode and parse (a few hundred ms) runs now, during the brand and the location wait, not in the middle of
+  // the scene's bake; any other opening never loads it (a world scene chosen after all loads it with its bake; the canvas renderer
+  // takes the scene if the stage is not ready in time)
+  try {
+    if (typeof worldStagePreload === 'function' && typeof animOpeningPeek === 'function' && animOpeningPeek().some((r) => { const it = animItem(r); return !!(it && it.world === 3); })) worldStagePreload();
+  } catch (e) { /* the canvas renderer plays */ }
   // Start during the brand splash; select artwork only after a fresh fix or
   // the bounded fallback. The load handler shares this same location request.
   const locationReady = typeof dashboardLocationBeforeOpening === 'function' ? dashboardLocationBeforeOpening() : null;
@@ -305,6 +314,10 @@ function animOpeningSequence() {
     sp.style.setProperty('--od-scene-ms', ms[2] + 'ms');
     sp.classList.add('od-st-hello');
     try { if (typeof sceneHostRestartClock === 'function') sceneHostRestartClock(sp); } catch (e) { /* the scene keeps its clock */ }
+    // when the opening played (tomorrow's is prepared at this time of day: 78-scene-host.js _schPrepList), and the bootstrap still
+    // (src/body.html) goes once the scene has faded in over it
+    try { localStorage.setItem('freeflo-opening-at', String(typeof Clock !== 'undefined' && Clock.now ? Clock.now() : Date.now())); } catch (e) { /* storage blocked */ }   // clock-ok: the app clock
+    wait(1300, () => _awBootDone(sp, false));
     wait(helloMs, () => {
       sp.classList.add('od-st-scene');
       wait(ms[2], () => {
@@ -342,15 +355,52 @@ function _awOpeningSeenElsewhere(day, cb) {
   };
   check();
 }
+/* ---------- the bootstrap still (docs/dev/WORLD_LOAD.md 5) ----------
+   The next opening's first frame, small (WebP, at most _AW_BOOT_MAX_BYTES as a data URL), kept in localStorage after the idle prepare
+   (78-scene-host.js, job.boot). src/body.html paints it behind the brand while the app script parses (2-3 s on a typical machine), so
+   the scene is there from the first painted frame; the live scene fades in over it at the welcome. Another scene chosen: it fades out. */
+const _AW_BOOT_KEY = 'freeflo-opening-still', _AW_BOOT_MAX_BYTES = 250 * 1024, _AW_BOOT_W = 960;
+/** Keep the next opening's first frame for the bootstrap: ref, canvas (the frame at the base moment), at (the moment it shows, ms). */
+function animOpeningBootKeep(ref, canvas, at) {
+  if (!ref || !canvas || !canvas.width || typeof FileReader !== 'function') return;
+  const k = Math.min(1, _AW_BOOT_W / canvas.width), w = Math.max(1, Math.round(canvas.width * k)), h = Math.max(1, Math.round(canvas.height * k));
+  const c = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(w, h) : Object.assign(document.createElement('canvas'), { width: w, height: h });
+  const x = c.getContext('2d');
+  x.imageSmoothingQuality = 'high';
+  x.drawImage(canvas, 0, 0, w, h);
+  const enc = (q) => (typeof c.convertToBlob === 'function' ? c.convertToBlob({ type: 'image/webp', quality: q }) : new Promise((res) => c.toBlob(res, 'image/webp', q)));
+  const asUrl = (b) => new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result || '')); fr.onerror = () => res(''); fr.readAsDataURL(b); });
+  (async () => {
+    for (const q of [0.72, 0.56, 0.4]) {
+      const b = await enc(q);
+      if (!b || !/^image\/(webp|png|jpeg)$/.test(b.type)) return;
+      const url = await asUrl(b);
+      if (!url || url.length > _AW_BOOT_MAX_BYTES) continue;
+      const when = new Date(Number.isFinite(at) ? at : Date.now());   // clock-ok: the local hour the still was made for
+      localStorage.setItem(_AW_BOOT_KEY, JSON.stringify({ ref, made: Date.now(), hour: when.getHours() + when.getMinutes() / 60, w, h, url }));   // clock-ok: its age
+      return;
+    }
+  })().catch(() => { /* none kept */ });
+}
+/** The bootstrap still goes: faded out now (another scene: now true), or after the welcome's fade-in. */
+function _awBootDone(sp, now) {
+  const bs = sp && sp.querySelector('.od-boot');
+  if (!bs) return;
+  bs.classList.add('od-boot-out');
+  setTimeout(() => { try { bs.remove(); } catch (e) { /* gone */ } sp.classList.remove('has-boot'); }, now ? 420 : 0);
+}
 /** How long the welcome may wait past the brand for the scene to be baked and warmed up (a slow machine still gets its opening). */
 const _AW_SEQ_READY_MS = 2500;
-/** Calls fn once every composed scene in el is ready to show (sc-ready, or the SVG still), or after maxMs (at once when there is none). */
+/**
+ * Calls fn once every composed scene in el is ready to show (sc-ready, the SVG still, or its kept still shown: sc-shown, the live scene
+ * cross-fades in over it later: docs/dev/WORLD_LOAD.md 5), or after maxMs (at once when there is none).
+ */
 function _awSceneReady(el, maxMs, fn) {
   const t0 = performance.now();
   const ready = () => {
     let hosts = [];
     try { hosts = el && typeof el.querySelectorAll === 'function' ? [...el.querySelectorAll('.ap-composed[data-anim]')] : []; } catch (e) { hosts = []; }
-    return hosts.every(h => h.classList.contains('sc-ready') || h.classList.contains('sc-svg-fallback'));
+    return hosts.every(h => h.classList.contains('sc-ready') || h.classList.contains('sc-svg-fallback') || h.classList.contains('sc-shown'));
   };
   if (ready() || typeof requestAnimationFrame !== 'function') { fn(); return; }
   const check = () => { if (ready() || performance.now() - t0 > maxMs) fn(); else requestAnimationFrame(check); };
@@ -399,6 +449,8 @@ function _awOpeningStage(sp) {
     + `<div class="od-seq-title${arrival && arrival.egg ? ' has-egg' : ''}">${openingPoint ? ((arrival ? arrival.remaining > 0 : !w && !!tx) ? '<span class="od-seq-over">Welcome to</span>' : '') : '<span class="od-seq-over">Welcome back</span>'}${openingPoint ? `<span class="od-seq-place">${esc(openingPoint.town || openingPoint.name)}</span>` : ''}${arrival && arrival.egg ? `<span class="od-seq-egg"><b>${esc(arrival.egg.title)}</b><span>${esc(arrival.egg.detail)}</span></span>` : ''}</div>`
     + `<div class="od-seq-cap"><span class="od-seq-origin">${esc(cap)}</span><span class="od-seq-skip">Click or press any key to skip</span></div>`;
   sp.appendChild(box);
+  // the bootstrap still (src/body.html) of another scene than the one chosen goes now; the same scene's stays until the welcome
+  try { const bs = sp.querySelector('.od-boot'); if (bs && (!it || bs.getAttribute('data-ref') !== it.ref)) _awBootDone(sp, true); } catch (e) { /* none */ }
   if (openingPoint && arrival) animLocationArrivalState(openingPoint, true);
   sp.setAttribute('data-od-county', w ? w.id : '');
   sp.setAttribute('data-od-scene', it ? it.ref : stageIt ? stageIt.ref : 'fallback');

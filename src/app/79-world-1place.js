@@ -91,9 +91,10 @@ function _wplHull(pts) {
   up.pop(); lo.pop();
   return lo.concat(up);
 }
-/** A path cut into runs by its gaps ([[s0, s1]] arc lengths). */
+/** A path cut into runs by its gaps (every gap format core's worldLineRuns reads: the nav and the extruder cut the same runs). */
 function _wplRuns(path, gaps) {
   if (!Array.isArray(gaps) || !gaps.length) return [path];
+  if (typeof worldLineParts === 'function') { try { return worldLineParts({ path, gaps }); } catch (e) { /* the arc-length reader below */ } }
   const runs = []; let cur = [path[0]], s = 0;
   const inGap = v => gaps.some(g => v > g[0] && v < g[1]);
   for (let i = 1; i < path.length; i++) {

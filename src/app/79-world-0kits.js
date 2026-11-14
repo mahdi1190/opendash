@@ -310,6 +310,20 @@ const WORLD_STYLE_KITS = _wkbFreeze({
     rich: { mid: [['rock.boulder', 2], ['plant.rph-short-grass', 3], ['plant.grass-long', 2], ['plant.yg-meadow', 2], ['plant.fern', 1], ['rock.stones', 1]], far: [['rock.boulder', 3], ['plant.grass-long', 2], ['plant.rph-short-grass', 2]] },
     life: { walk: { who: 'walkers', rate: '2/min', mix: { brisk: 0.4, 'dog-walker': 0.3, couple: 0.2, stroll: 0.1 } }, graze: [{ who: 'sheep', count: 9 }] } },
 });
+/**
+ * The share of the people in view who STAND or SIT at any moment, by kit (docs/dev/WORLD_MOVEMENT.md 2; movement finding B1). People in a
+ * city square wait, chat, phone and watch; on a towpath most are going somewhere. Life seeds dwellers (standing, chatting, watching,
+ * queuing, seated) until this share is in place at the first frame, and keeps it. worldKitStandShare(key) -> the share (0..1) or null.
+ */
+const WORLD_KIT_STAND = Object.freeze({
+  'civic-square': 0.42, 'waterfront-city': 0.4, quayside: 0.36, 'river-city': 0.3, 'terraced-street': 0.25, 'old-town-lane': 0.22, 'cobbled-lane': 0.22,
+  'village-green': 0.32, park: 0.3, pond: 0.28, canal: 0.2, coast: 0.3, heath: 0.18, woodland: 0.18, moor: 0.15, farmland: 0.15, downs: 0.15, dale: 0.15,
+});
+function worldKitStandShare(key) {
+  if (typeof key !== 'string' || !key) return null;
+  const id = WORLD_STYLE_KITS[key] ? key : WORLD_KIT_ALIAS[key] && WORLD_STYLE_KITS[WORLD_KIT_ALIAS[key]] ? WORLD_KIT_ALIAS[key] : null;
+  return id && WORLD_KIT_STAND[id] != null ? WORLD_KIT_STAND[id] : null;
+}
 // legacy fill and backdrop style names (place.style, backdrop.style) -> kit
 const WORLD_KIT_ALIAS = Object.freeze({ 'canal-wooded': 'canal', lake: 'pond', 'lake-pond': 'pond', 'town-low': 'village-green', village: 'village-green', green: 'village-green',
   'city-victorian': 'civic-square', 'city-sheffield-hills': 'river-city', 'city-manchester-towers': 'river-city', harbour: 'quayside', docks: 'quayside', street: 'terraced-street',

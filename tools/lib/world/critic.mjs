@@ -32,7 +32,7 @@ function camOf(E, world, spec) {
   if (E.sceneCamera && spec && spec.camera) return E.sceneCamera({ camera: spec.camera });
   return null;
 }
-function boxOf(E, cam, e) {
+export function boxOf(E, cam, e) {
   if (E.worldEntityBox) { try { const b = E.worldEntityBox(cam, e); if (b && b.every(Number.isFinite)) return b; } catch { /* below */ } }
   const info = E.worldObjectInfo ? E.worldObjectInfo(e.obj) : null, h = Number.isFinite(e.height) ? e.height : info ? info.size.h : 1, w = info ? info.size.w : h;
   const p = E.sceneProject(cam, e.x, Math.max(0.3, e.z), Number.isFinite(e.y) ? e.y : 0), k = cam.f / Math.max(0.3, e.z);
@@ -73,7 +73,7 @@ export function criticRecordsOfWorld(E, world, o = {}) {
   return out;
 }
 /** The screen box of a world building: the extruder's (the generator's projection, roof included), else its prism. */
-function buildingBox(E, cam, b, season) {
+export function buildingBox(E, cam, b, season) {
   if (!b || !Array.isArray(b.foot) || b.foot.length < 3) return null;
   if (E.worldExtrudeBuilding) { try { const p = E.worldExtrudeBuilding(b, cam, { season }); if (p && Array.isArray(p.box) && p.box.every(Number.isFinite)) return p.box; } catch { /* the prism */ } }
   const h = Number.isFinite(b.h) ? b.h : (Number.isFinite(b.storeys) ? b.storeys : 2) * 3.1;

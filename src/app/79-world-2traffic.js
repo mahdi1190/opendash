@@ -121,14 +121,16 @@ function worldTraffic(world, nav) {
     }
   }
   // solids standing in a lane (a parked car, a bollard): traffic never drives through them
+  // (within 1.0 m of the lane's line: a car is 1.8 m wide. A tree trunk or a wall at the kerb, 1.1-1.2 m off the line, is passed; at
+  // 1.2 m it cut the whole lane: no traffic one way past a kerbside horse chestnut on the Cotswold green, none on a moorland road)
   for (const ln of T.lanes) {
     ln.blocks = [];
     for (const e of ents) {
       if (!e || e.static === false || e.solidity !== 'solid' || !Array.isArray(e.foot) || e.foot.length < 3) continue;
       let lo = Infinity, hi = -Infinity;
-      for (const q of e.foot) { const pr = _wtrProject(ln, q[0], q[1]); if (pr.d < 1.2) { lo = Math.min(lo, pr.s); hi = Math.max(hi, pr.s); } }
+      for (const q of e.foot) { const pr = _wtrProject(ln, q[0], q[1]); if (pr.d < 1.0) { lo = Math.min(lo, pr.s); hi = Math.max(hi, pr.s); } }
       const c = _wtrProject(ln, e.x, e.z);
-      if (c.d < 1.2) { lo = Math.min(lo, c.s); hi = Math.max(hi, c.s); }
+      if (c.d < 1.0) { lo = Math.min(lo, c.s); hi = Math.max(hi, c.s); }
       if (lo <= hi) ln.blocks.push({ s0: lo, s1: hi, id: e.id || e.obj });
     }
   }
@@ -138,6 +140,24 @@ function worldTraffic(world, nav) {
     let s0 = null, s1 = null;
     for (let s = 0; s <= ln.len; s += 0.5) { const p = worldTrafficLaneAt(ln, s); if (_wtrInShape(cr, p.x, p.z)) { if (s0 == null) s0 = s; s1 = s; } }
     if (s0 != null) ln.cross.push({ s0, s1, id: cr.id || null, shape: cr });
+  }
+  // a footpath painted ACROSS a road (after it in the list: the nav keeps the road under it, 79-world-1nav.js) is a crossing too: cars give
+  // way to whoever is on it. Only a short overlap counts (a pavement lying along a road's edge is not a crossing); the shape is the
+  // carriageway at the crossing, so somebody further along the path never stops the traffic
+  const walkKinds = { path: 1, pavement: 1, towpath: 1, plaza: 1, boardwalk: 1, deck: 1, platform: 1 };
+  for (const ln of T.lanes) {
+    const ri = surfaces.findIndex(s => (s.id || 'road') === ln.road && s.kind === 'road'), road = surfaces[ri];
+    if (!road) continue;
+    for (let si = ri + 1; si < surfaces.length; si++) {
+      const ps = surfaces[si];
+      if (!ps || !walkKinds[ps.kind] || !(ps.path || ps.poly)) continue;
+      let s0 = null, s1 = null;
+      for (let s = 0; s <= ln.len; s += 0.5) { const p = worldTrafficLaneAt(ln, s); if (_wtrInShape(ps, p.x, p.z)) { if (s0 == null) s0 = s; s1 = s; } }
+      if (s0 == null || s1 - s0 > 12) continue;
+      const a = worldTrafficLaneAt(ln, s0 - 0.5), b = worldTrafficLaneAt(ln, s1 + 0.5), half = (_wtrCentre(road).w || 6) / 2 + 0.8;
+      const nx = -a.tz, nz = a.tx, poly = [[a.x + nx * half, a.z + nz * half], [b.x + nx * half, b.z + nz * half], [b.x - nx * half, b.z - nz * half], [a.x - nx * half, a.z - nz * half]];
+      ln.cross.push({ s0, s1, id: (ps.id || ps.kind) + ':x', shape: { poly }, implicit: true });
+    }
   }
   // conflicts between lanes of different roads (give way: the lower lane id has the priority)
   for (let i = 0; i < T.lanes.length; i++) for (let j = i + 1; j < T.lanes.length; j++) {

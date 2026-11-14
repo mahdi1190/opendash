@@ -409,7 +409,11 @@ function worldWaterOwners(world, cam, R, ents) {
  * the composite starts at; default 0, may be negative: overscan above the frame), W (device width) }.
  * -> { comp: { data, width, height, x0, y0 }, owner: { idx: Int32Array, list: [{ id, z, contact }] } }
  */
-function worldWaterComposite(R, draws, o) {
+function worldWaterComposite(R, draws, o) { return _wwaRun(worldWaterCompositeSteps(R, draws, o)); }
+/** Run a generator to its end; its return value. */
+function _wwaRun(it) { let r = it.next(); while (!r.done) r = it.next(); return r.value; }
+/** worldWaterComposite in steps (a yield after each draw and each owner's layer; the same result): the world bake's slices. */
+function* worldWaterCompositeSteps(R, draws, o) {
   o = o || {};
   const vs = o.vs || 1, ox = o.ox || 0, oy = o.oy || 0;
   const x0 = Math.floor(Math.max(R.box[0] * vs + ox, o.x0 != null ? o.x0 : -Infinity, o.W != null ? 0 : -Infinity)), x1 = Math.ceil(Math.min(R.box[2] * vs + ox, o.W != null ? o.W : Infinity, o.x1 != null ? o.x1 : Infinity));
@@ -445,23 +449,26 @@ function worldWaterComposite(R, draws, o) {
       }
     }
     (byOwner[k] || (byOwner[k] = [])).push([src, sx, sy]);
+    yield;
   }
-  return { comp, owner: { idx, list, layers: _wwaLayers(byOwner, x0, y0, x1, y1) } };
+  return { comp, owner: { idx, list, layers: yield* _wwaLayersSteps(byOwner, x0, y0, x1, y1) } };
 }
 /**
  * Each owner's own image (the union of its pieces, drawn in order), cut to the composite's box: [{ k, x0, y0, w, h, data }].
  * The mirror reads these first, so a far thing keeps the parts a nearer thing hides on the screen (one flattened composite of
  * the view left holes in the water there; SCENE_LESSONS C), and the nearer image wins wherever two land on one water pixel.
  */
-function _wwaLayers(byOwner, X0, Y0, X1, Y1) {
+function _wwaLayers(byOwner, X0, Y0, X1, Y1) { return _wwaRun(_wwaLayersSteps(byOwner, X0, Y0, X1, Y1)); }
+function* _wwaLayersSteps(byOwner, X0, Y0, X1, Y1) {
   const out = [];
-  byOwner.forEach((list, k) => {
-    if (!list || !list.length) return;
+  for (let k = 0; k < byOwner.length; k++) {
+    const list = byOwner[k];
+    if (!list || !list.length) continue;
     let a0 = Infinity, b0 = Infinity, a1 = -Infinity, b1 = -Infinity;
     for (const [src, sx, sy] of list) { a0 = Math.min(a0, sx); b0 = Math.min(b0, sy); a1 = Math.max(a1, sx + src.width); b1 = Math.max(b1, sy + src.height); }
     a0 = Math.max(a0, X0); b0 = Math.max(b0, Y0); a1 = Math.min(a1, X1); b1 = Math.min(b1, Y1);
     const w = a1 - a0, h = b1 - b0;
-    if (!(w > 0 && h > 0)) return;
+    if (!(w > 0 && h > 0)) continue;
     const D = new Uint8ClampedArray(w * h * 4);
     for (const [src, sx, sy] of list) {
       const c0 = Math.max(a0, sx), c1 = Math.min(a1, sx + src.width), d0 = Math.max(b0, sy), d1 = Math.min(b1, sy + src.height);
@@ -474,7 +481,8 @@ function _wwaLayers(byOwner, X0, Y0, X1, Y1) {
       }
     }
     out.push({ k, x0: a0, y0: b0, w, h, data: D });
-  });
+    yield;
+  }
   return out;
 }
 
@@ -527,7 +535,9 @@ function _wwaSkyCols(o) {
  * nearer static's reflection), shade: [{ scr: [[X, Y]], op }] (screen polygons of shadows over the water: it dims there), dst
  * (an ImageData-like frame buffer to blend into; Node) }.
  */
-function worldWaterMirror(ctx, R, comp, owner, o) {
+function worldWaterMirror(ctx, R, comp, owner, o) { return _wwaRun(worldWaterMirrorSteps(ctx, R, comp, owner, o)); }
+/** worldWaterMirror in steps (a yield every 64 to 128 rows or columns of each pass; the same result): the world bake's slices. */
+function* worldWaterMirrorSteps(ctx, R, comp, owner, o) {
   o = o || {};
   const vs = o.vs || 1, ox = o.ox || 0, oy = o.oy || 0, cam = R.cam;
   ({ comp, owner } = _wwaNorm(R, comp, owner, o));
@@ -543,6 +553,7 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
   // 1. the wet mask: pixel centres inside the projected outline
   const wet = new Uint8Array(w * h);
   for (let x = 0; x < w; x++) {
+    if ((x & 127) === 127) yield;
     const X = (x0 + x + 0.5 - ox) / vs;
     for (const [a, b] of worldWaterSpansAt(R, X)) {
       const ya = Math.max(y0, Math.ceil(a * vs + oy - 0.5)), yb = Math.min(y1 - 1, Math.floor(b * vs + oy - 0.5));
@@ -556,6 +567,7 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
   else if (S.dark > 0.05) base3 = base3.map(c => _wwaMixRgb(c, _wwaMixRgb(S.mid, [5, 7, 12], 0.4), _wwaClamp(S.dark, 0, 1) * 0.85));
   const bed = _wwaRgb(look.bed || _WWA_BED);
   for (let r = 0; r < h; r++) {
+    if ((r & 127) === 127) yield;
     const Y = (y0 + r + 0.5 - oy) / vs, g = _wwaClamp((Y - cam.horizon) / Math.max(1, 900 - cam.horizon), 0, 1), u = 1 - g;
     rowU[r] = u;
     const b = g < 0.5 ? _wwaMixRgb(base3[0], base3[1], g * 2) : _wwaMixRgb(base3[1], base3[2], (g - 0.5) * 2);
@@ -571,13 +583,17 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
   const D = res.img.data;
   if (o.base !== false) {
     const B = new Uint8ClampedArray(w * h * 4);
-    for (let r = 0; r < h; r++) for (let x = 0; x < w; x++) {
-      const p = r * w + x;
-      if (!wet[p]) continue;
-      const c = rowBase[r], dz = _wwaDither(x0 + x, y0 + r), q = p * 4;
-      B[q] = c[0] + dz; B[q + 1] = c[1] + dz; B[q + 2] = c[2] + dz; B[q + 3] = 255;
-      res.wet++;
+    for (let r = 0; r < h; r++) {
+      if ((r & 63) === 63) yield;
+      for (let x = 0; x < w; x++) {
+        const p = r * w + x;
+        if (!wet[p]) continue;
+        const c = rowBase[r], dz = _wwaDither(x0 + x, y0 + r), q = p * 4;
+        B[q] = c[0] + dz; B[q + 1] = c[1] + dz; B[q + 2] = c[2] + dz; B[q + 3] = 255;
+        res.wet++;
+      }
     }
+    yield;
     if (typeof worldWaterChop === 'function') worldWaterChop(B, wet, w, h, x0, y0, { R, look, vs, ox, oy, cam, sky: o.sky && o.sky.__sky ? o.sky : null });   // wavelets on open water (79-world-4chop.js)
     res.base = { data: B, width: w, height: h };
     D.set(B);
@@ -629,7 +645,9 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
       const k = Ly.k;
       if (!ctc[k]) continue;
       const D = Ly.data, LW = Ly.w, LH = Ly.h;
+      yield;
       for (let lx = 0; lx < LW; lx++) {
+        if ((lx & 63) === 63) yield;
         const x = Ly.x0 + lx, ix = x - x0;
         if (ix < 0 || ix >= w) continue;
         const [A, B, C] = rowsOf(k, x), s0 = A + B;
@@ -655,6 +673,7 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
   } else if (comp && comp.data && owner && owner.idx) {
     const cw = comp.width, ch = comp.height, cx0 = comp.x0 || 0, cy0 = comp.y0 || 0;
     for (let cx = 0; cx < cw; cx++) {
+      if ((cx & 63) === 63) yield;
       const x = cx0 + cx, ix = x - x0;
       if (ix < 0 || ix >= w) continue;
       for (let cy = 0; cy < ch; cy++) {
@@ -672,6 +691,7 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
   // 4. the reflection over the base, displaced by the ripple (or left to the frame's band blit)
   const rip = o.ripple !== false;
   for (let r = 0; r < h; r++) {
+    if ((r & 63) === 63) yield;
     const dx = rip ? Math.round(worldWaterRipple(R, y0 + r, o.t || 0, { vs, oy, wind: o.wind })) : 0;
     for (let x = 0; x < w; x++) {
       const t = r * w + x;
@@ -690,6 +710,7 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
   for (const s of o.shade || []) {
     const P = s && (s.scr || s);
     if (!Array.isArray(P) || P.length < 3) continue;
+    yield;
     const k = 1 - 0.18 * _wwaClamp((s.op == null ? 0.35 : s.op) / 0.35, 0, 1);
     const bx0 = Math.max(x0, Math.floor(Math.min(...P.map(p => p[0])) * vs + ox)), bx1 = Math.min(x1, Math.ceil(Math.max(...P.map(p => p[0])) * vs + ox));
     const by0 = Math.max(y0, Math.floor(Math.min(...P.map(p => p[1])) * vs + oy)), by1 = Math.min(y1, Math.ceil(Math.max(...P.map(p => p[1])) * vs + oy));

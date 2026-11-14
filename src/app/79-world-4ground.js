@@ -22,6 +22,9 @@
                                                 channel wall faces of every sunken water region (the critic's bare-channel check)
      worldGroundDetailDraw(ctx, plan, o)     -> draws the surface marks (o.part 'marks') or the channel walls ('walls') on a 2D
                                                 context. o: { vs, ox, oy, colour(mat, hex) (look's materials), light (0..1) }
+     worldGroundDetailSteps(world, cam, o) / worldGroundDetailDrawSteps(ctx, plan, o)
+                                             the same two as generators (yield every few lines or a few hundred marks; the return
+                                             value is the plan / the count): the world bake runs them in its few-ms slices
    ============================================================ */
 
 /* ---------- the looks ---------- */
@@ -206,11 +209,13 @@ function _wgdTone(cam, out, s, P, look, rnd, scr, W, H, n) {
   }
 }
 /** Seeded small marks scattered by screen area (specks, ticks, leaves) inside a surface, where they are at least 0.6 units. */
-function _wgdScatter(cam, out, s, look, rnd, scr, W, H, perPx, kind, zMax) {
+function _wgdScatter(cam, out, s, look, rnd, scr, W, H, perPx, kind, zMax) { _wgdRun(_wgdScatterSteps(cam, out, s, look, rnd, scr, W, H, perPx, kind, zMax)); }
+function* _wgdScatterSteps(cam, out, s, look, rnd, scr, W, H, perPx, kind, zMax) {
   const box = _wgdBox(scr), x0 = Math.max(0, box[0]), x1 = Math.min(W, box[2]), y0 = Math.max(cam.horizon + 2, box[1]), y1 = Math.min(H, box[3]);
   if (!(x1 > x0 && y1 > y0)) return;
   const n = Math.min(_WGD_MARK_CAP / 3, Math.round((x1 - x0) * (y1 - y0) * perPx));
   for (let i = 0; i < n; i++) {
+    if ((i & 255) === 255) yield;
     const X = x0 + rnd() * (x1 - x0), Y = y0 + rnd() * (y1 - y0), g = _wgdUn(cam, X, Y);
     if (!g || g.d > zMax || !_wgdIn(s, g.x, g.d)) continue;
     const k = cam.f / g.d;
@@ -240,7 +245,8 @@ const _WGD_COBBLE_TONES = Object.freeze(['#8f887b', '#a09787', '#7f786d', '#aaa2
  * covers the edge of the one behind it. Only the stones that read (>= 0.9 px wide and 0.4 px deep: about the first 22 m of a 1.7 m eye) are made;
  * a stone is its dark joint, the stone itself in one of eight tones (a seeded pick, so the lane never repeats) and, near, a pale catch of light.
  */
-function _wgdCobbles(cam, out, s, L, rnd, o) {
+function _wgdCobbles(cam, out, s, L, rnd, o) { _wgdRun(_wgdCobblesSteps(cam, out, s, L, rnd, o)); }
+function* _wgdCobblesSteps(cam, out, s, L, rnd, o) {
   const size = L.cobbles, near = _wgdNear(cam), hw = s.width / 2, path = s.path, cap = Math.max(400, Math.min(8000, (o && o.cobbleCap) || 7700)), W = (o && o.W) || 1600, H = (o && o.H) || 900;
   let acc = 0, made = 0;
   const rows = [];
@@ -260,6 +266,7 @@ function _wgdCobbles(cam, out, s, L, rnd, o) {
   const groups = [];
   for (const row of rows) {
     if (made >= cap) break;
+    if ((groups.length & 15) === 15) yield;
     const nj = Math.ceil(s.width / size), ph = (row.k & 1) * 0.5 + (rnd() - 0.5) * 0.3, g = [];
     for (let j = 0; j <= nj; j++) {
       const v = -hw + (j + ph) * size + (rnd() - 0.5) * size * 0.35;
@@ -282,8 +289,11 @@ function _wgdCobbles(cam, out, s, L, rnd, o) {
   for (let i = groups.length - 1; i >= 0; i--) for (const m of groups[i]) out.push(m);
 }
 /** The marks of one surface by its look. */
-function _wgdSurfaceMarks(world, cam, s, look, L, o) {
+function _wgdSurfaceMarks(world, cam, s, look, L, o) { return _wgdRun(_wgdSurfaceMarksSteps(world, cam, s, look, L, o)); }
+/** The same, in steps (a yield every few lines or a few hundred marks: the bake's slices, 79-world-5frame.js). */
+function* _wgdSurfaceMarksSteps(world, cam, s, look, L, o) {
   const P = _wgdPoly(s), out = [], W = o.W || 1600, H = o.H || 900;
+  let ny = 0;
   if (!P) return out;
   const scr = _wgdScr(cam, P, null);
   if (!scr) return out;
@@ -307,13 +317,13 @@ function _wgdSurfaceMarks(world, cam, s, look, L, o) {
         const t = [dx / Ls, dz / Ls], n = [-t[1], t[0]];
         for (let u = Math.ceil(acc / du) * du - acc; u < Ls; u += du) {
           const p = [a[0] + t[0] * u, a[1] + t[1] * u], k = Math.round((acc + u) / du), heavy = L.courseEvery && k % L.courseEvery === 0;
-          _wgdLine(cam, out, [p[0] - n[0] * hw, p[1] - n[1] * hw], [p[0] + n[0] * hw, p[1] + n[1] * hw], t, heavy ? du * L.courseEvery : du, heavy ? 0.3 : 0.2, 'dark', zMax, 'joint');
+          { _wgdLine(cam, out, [p[0] - n[0] * hw, p[1] - n[1] * hw], [p[0] + n[0] * hw, p[1] + n[1] * hw], t, heavy ? du * L.courseEvery : du, heavy ? 0.3 : 0.2, 'dark', zMax, 'joint'); if ((++ny & 7) === 0) yield; }
         }
-        if (!L.stagger) for (let v = -hw + dv; v < hw - 1e-6; v += dv) _wgdLine(cam, out, [a[0] + n[0] * v, a[1] + n[1] * v], [c[0] + n[0] * v, c[1] + n[1] * v], n, dv, 0.16, 'dark', zMax * 0.4, 'joint-along');
+        if (!L.stagger) for (let v = -hw + dv; v < hw - 1e-6; v += dv) { _wgdLine(cam, out, [a[0] + n[0] * v, a[1] + n[1] * v], [c[0] + n[0] * v, c[1] + n[1] * v], n, dv, 0.16, 'dark', zMax * 0.4, 'joint-along'); if ((++ny & 7) === 0) yield; }
         else for (let u = Math.ceil(acc / du) * du - acc; u < Ls; u += du) {
           // a running bond: each course's cuts across its width sit at their own offset (seeded by the course), so no joint runs on
           const kc = Math.round((acc + u) / du), ph = ((Math.sin(kc * 12.9898 + (s.id || '').length * 7.1) * 43758.5453) % 1 + 1) % 1, nj = Math.max(1, Math.round(s.width / dv));
-          for (let j = 0; j < nj; j++) { const v = -hw + (j + ph) * dv; if (v > hw - 0.05) continue; const p = [a[0] + t[0] * u + n[0] * v, a[1] + t[1] * u + n[1] * v]; _wgdLine(cam, out, p, [p[0] + t[0] * du, p[1] + t[1] * du], n, dv, 0.16, 'dark', zMax * 0.4, 'joint-along'); }
+          for (let j = 0; j < nj; j++) { const v = -hw + (j + ph) * dv; if (v > hw - 0.05) continue; const p = [a[0] + t[0] * u + n[0] * v, a[1] + t[1] * u + n[1] * v]; { _wgdLine(cam, out, p, [p[0] + t[0] * du, p[1] + t[1] * du], n, dv, 0.16, 'dark', zMax * 0.4, 'joint-along'); if ((++ny & 7) === 0) yield; } }
         }
         acc += Ls;
       }
@@ -324,11 +334,11 @@ function _wgdSurfaceMarks(world, cam, s, look, L, o) {
       const at = (u, v) => [ax.u[0] * u + ax.v[0] * v, ax.u[1] * u + ax.v[1] * v];
       const lim = (n) => n > 2600;   // a vast plaza: every line still drawn, but only where it reads (the spacing rule)
       let k = 0;
-      for (let u = Math.ceil(u0 / du) * du; u <= u1 && !lim(out.length); u += du, k++) { const heavy = L.courseEvery && k % L.courseEvery === 0; _wgdLine(cam, out, at(u, v0), at(u, v1), ax.u, heavy ? du * L.courseEvery : du, heavy ? 0.3 : 0.2, 'dark', zMax); }
-      for (let v = Math.ceil(v0 / dv) * dv; v <= v1 && !lim(out.length); v += dv) _wgdLine(cam, out, at(u0, v), at(u1, v), ax.v, dv, 0.16, 'dark', zMax * 0.4);
+      for (let u = Math.ceil(u0 / du) * du; u <= u1 && !lim(out.length); u += du, k++) { const heavy = L.courseEvery && k % L.courseEvery === 0; { _wgdLine(cam, out, at(u, v0), at(u, v1), ax.u, heavy ? du * L.courseEvery : du, heavy ? 0.3 : 0.2, 'dark', zMax); if ((++ny & 7) === 0) yield; } }
+      for (let v = Math.ceil(v0 / dv) * dv; v <= v1 && !lim(out.length); v += dv) { _wgdLine(cam, out, at(u0, v), at(u1, v), ax.v, dv, 0.16, 'dark', zMax * 0.4); if ((++ny & 7) === 0) yield; }
     }
   }
-  if (L.cobbles && strip) _wgdCobbles(cam, out, s, L, rnd, Object.assign({ W, H }, o));
+  if (L.cobbles && strip) yield* _wgdCobblesSteps(cam, out, s, L, rnd, Object.assign({ W, H }, o));
   // a flight of steps: a dark riser line then a pale nosing every `treads` metres along the strip, across its width (kept where they read)
   if (L.treads && strip) {
     const path = s.path, hw = s.width / 2, du = L.treads;
@@ -339,8 +349,8 @@ function _wgdSurfaceMarks(world, cam, s, look, L, o) {
       const t = [dx / Ls, dz / Ls], n = [-t[1], t[0]];
       for (let u = Math.ceil(acc / du) * du - acc; u < Ls; u += du) {
         const p = [a[0] + t[0] * u, a[1] + t[1] * u], q = [p[0] + t[0] * du * 0.42, p[1] + t[1] * du * 0.42];
-        _wgdLine(cam, out, [p[0] - n[0] * hw, p[1] - n[1] * hw], [p[0] + n[0] * hw, p[1] + n[1] * hw], t, du, 0.5, 'dark', 320, 'tread');
-        _wgdLine(cam, out, [q[0] - n[0] * hw, q[1] - n[1] * hw], [q[0] + n[0] * hw, q[1] + n[1] * hw], t, du, 0.42, 'light', 320, 'nosing');
+        { _wgdLine(cam, out, [p[0] - n[0] * hw, p[1] - n[1] * hw], [p[0] + n[0] * hw, p[1] + n[1] * hw], t, du, 0.5, 'dark', 320, 'tread'); if ((++ny & 7) === 0) yield; }
+        { _wgdLine(cam, out, [q[0] - n[0] * hw, q[1] - n[1] * hw], [q[0] + n[0] * hw, q[1] + n[1] * hw], t, du, 0.42, 'light', 320, 'nosing'); if ((++ny & 7) === 0) yield; }
       }
       acc += Ls;
     }
@@ -355,11 +365,11 @@ function _wgdSurfaceMarks(world, cam, s, look, L, o) {
   if (L.edge) {
     for (let i = 0; i < P.length; i++) {
       const a = P[i], c = P[(i + 1) % P.length];
-      _wgdLine(cam, out, a, c, [0, 0.4], 0.4, 0.32, 'light', 90);
+      { _wgdLine(cam, out, a, c, [0, 0.4], 0.4, 0.32, 'light', 90); if ((++ny & 7) === 0) yield; }
     }
   }
   // gravel: specks, two ruts, frayed edges, damp patches
-  if (L.specks) _wgdScatter(cam, out, s, L, rnd, scr, W, H, L.specks, 'speck', 45);
+  if (L.specks) yield* _wgdScatterSteps(cam, out, s, L, rnd, scr, W, H, L.specks, 'speck', 45);
   if (L.ruts && strip && s.width >= 1.6) {
     // two worn wheel and foot lines: soft darker bands either side of a lighter crown (strips in perspective, Q5)
     const off = (e) => s.path.map((p, i) => { const a = s.path[Math.max(0, i - 1)], c = s.path[Math.min(s.path.length - 1, i + 1)], dx = c[0] - a[0], dz = c[1] - a[1], n = Math.hypot(dx, dz) || 1; return [p[0] - dz / n * e, p[1] + dx / n * e]; });
@@ -390,9 +400,9 @@ function _wgdSurfaceMarks(world, cam, s, look, L, o) {
   }
   if (L.damp) for (let i = 0, n = Math.round(4 + 8 * L.damp); i < n; i++) _wgdTone(cam, out, s, P, { tone: 0.12 }, rnd, scr, W, H, 1);
   // grass: ticks near (tufts read as grass, not paint), mowing stripes, clumps; heath drifts; woodland litter
-  if (L.ticks) _wgdScatter(cam, out, s, L, rnd, scr, W, H, L.ticks, 'tick', 22);
-  if (L.heather) _wgdScatter(cam, out, s, L, rnd, scr, W, H, 1 / 900, 'heather', 120);
-  if (L.leaves) _wgdScatter(cam, out, s, L, rnd, scr, W, H, 1 / 600, 'leaf', 30);
+  if (L.ticks) yield* _wgdScatterSteps(cam, out, s, L, rnd, scr, W, H, L.ticks, 'tick', 22);
+  if (L.heather) yield* _wgdScatterSteps(cam, out, s, L, rnd, scr, W, H, 1 / 900, 'heather', 120);
+  if (L.leaves) yield* _wgdScatterSteps(cam, out, s, L, rnd, scr, W, H, 1 / 600, 'leaf', 30);
   if (L.stripes) {
     // mowing stripes along the camera's view (constant x bands), fading with depth
     const xs = P.map(p => p[0]), zs = P.map(p => p[1]), xa = Math.min(...xs), xb = Math.max(...xs), za = Math.max(_wgdNear(cam), Math.min(...zs)), zb = Math.min(90, Math.max(...zs));
@@ -412,7 +422,7 @@ function _wgdSurfaceMarks(world, cam, s, look, L, o) {
   if (L.gutter && strip) {
     for (const e of [-0.5, 0.5]) {
       const off = e * s.width - Math.sign(e) * 0.2, path = s.path.map((p, i) => { const a = s.path[Math.max(0, i - 1)], c = s.path[Math.min(s.path.length - 1, i + 1)], dx = c[0] - a[0], dz = c[1] - a[1], n = Math.hypot(dx, dz) || 1; return [p[0] - dz / n * off, p[1] + dx / n * off]; });
-      for (let i = 1; i < path.length; i++) _wgdLine(cam, out, path[i - 1], path[i], [1, 0], 0.4, 0.3, 'dark', 120);
+      for (let i = 1; i < path.length; i++) { _wgdLine(cam, out, path[i - 1], path[i], [1, 0], 0.4, 0.3, 'dark', 120); if ((++ny & 7) === 0) yield; }
     }
   }
   if (L.patches) for (let i = 0; i < 8; i++) _wgdTone(cam, out, s, P, { tone: 0.09 }, rnd, scr, W, H, 1);
@@ -587,7 +597,14 @@ function _wgdWallMarks(world, cam, rec, run, o) {
  * The ground detail of a world through a camera (see the header). Surfaces are taken in spec order; each group is clipped to its
  * own screen polygon with every LATER overlapping surface (which lies on top of it) cut out. o: { W, H, kitLook }.
  */
-function worldGroundDetail(world, cam, o) {
+function worldGroundDetail(world, cam, o) { return _wgdRun(worldGroundDetailSteps(world, cam, o)); }
+/** Run a generator to its end; its return value. */
+function _wgdRun(it) { let r = it.next(); while (!r.done) r = it.next(); return r.value; }
+/**
+ * worldGroundDetail in steps (a generator: yields every few lines, a few hundred marks or a wall run; returns the same plan). The world
+ * bake (79-world-5frame.js) runs it in its slices of a few ms, so the plan (1.9 s on Albert Square in one piece) never blocks a frame.
+ */
+function* worldGroundDetailSteps(world, cam, o) {
   o = o || {};
   const out = { groups: [], walls: [], stats: { surfaces: 0, marks: 0, walls: 0 } };
   try {
@@ -599,11 +616,13 @@ function worldGroundDetail(world, cam, o) {
     const scrOf = new Map();
     // every surface's ground-level footprint on the screen (water too: its footprint is the channel, walls included), decks at their height
     for (const s of S) { const P = _wgdPoly(s); const q = P && _wgdScr(cam, P, _wgdNum(s.y) ? s.y : null); if (q) scrOf.set(s, q); }
-    S.forEach((s, i) => {
+    for (let i = 0; i < S.length; i++) {
+      const s = S[i];
+      yield;
       const look = worldGroundLookOf(world, s, K), L = look && WORLD_GROUND_LOOKS[look];
-      if (!L || L.wall) return;
+      if (!L || L.wall) continue;
       const clip = scrOf.get(s);
-      if (!clip) return;
+      if (!clip) continue;
       const bx = _wgdBox(clip), holes = [];
       for (let j = i + 1; j < S.length; j++) {
         const q = scrOf.get(S[j]);
@@ -612,13 +631,15 @@ function worldGroundDetail(world, cam, o) {
         if (qb[2] < bx[0] || qb[0] > bx[2] || qb[3] < bx[1] || qb[1] > bx[3]) continue;
         holes.push(q);
       }
-      const marks = _wgdSurfaceMarks(world, cam, s, look, L, { W, H });
-      if (!marks.length) return;
+      const marks = yield* _wgdSurfaceMarksSteps(world, cam, s, look, L, { W, H });
+      if (!marks.length) continue;
       out.groups.push({ surf: s.id, kind: s.kind, look, mat: L.mat, clip, holes, marks });
       out.stats.surfaces++; out.stats.marks += marks.length;
-    });
+    }
+    yield;
     for (const rec of worldChannelWalls(world, cam, { kitLook: K })) {
-      const runs = rec.runs.map(r => ({ scr: r.scr, zNear: r.zNear, zFar: r.zFar, courses: r.courses, marks: _wgdWallMarks(world, cam, rec, r, o) }));
+      const runs = [];
+      for (const r of rec.runs) { runs.push({ scr: r.scr, zNear: r.zNear, zFar: r.zFar, courses: r.courses, marks: _wgdWallMarks(world, cam, rec, r, o) }); yield; }
       out.walls.push({ water: rec.water, look: rec.look, edge: rec.edge, runs });
       out.stats.walls += runs.length;
     }
@@ -651,7 +672,9 @@ function worldGroundTextured(world, cam, x, z, o) {
  * (vs, ox, oy). o.colour(mat, hex) colours a material base (look's materials: season, light, weather, haze); dark and light marks
  * are translucent overlays, so they follow whatever the ground under them is. o.light (0..1, 1 = day) dims the light marks at night.
  */
-function worldGroundDetailDraw(ctx, plan, o) {
+function worldGroundDetailDraw(ctx, plan, o) { return _wgdRun(worldGroundDetailDrawSteps(ctx, plan, o)) || 0; }
+/** The same in steps (a yield every 400 marks; the context's clip and transform are kept across the steps: a private canvas only). */
+function* worldGroundDetailDrawSteps(ctx, plan, o) {
   o = o || {};
   if (!ctx || !plan) return 0;
   const vs = o.vs || 1, ox = o.ox || 0, oy = o.oy || 0, light = _wgdNum(o.light) ? Math.max(0, Math.min(1, o.light)) : 1, col = typeof o.colour === 'function' ? o.colour : ((m, h) => h);
@@ -687,7 +710,7 @@ function worldGroundDetailDraw(ctx, plan, o) {
       ctx.beginPath(); path(g.clip); ctx.clip();
       // each hole cut on its own (outside it AND outside the next): overlapping holes never cancel under even-odd
       for (const h of g.holes) { ctx.beginPath(); ctx.rect(-1e4, -1e4, 2e4, 2e4); path(h); ctx.clip('evenodd'); }
-      for (const m of g.marks) draw(m);
+      for (let i = 0; i < g.marks.length; i++) { draw(g.marks[i]); if ((i % 400) === 399) yield; }
       ctx.restore();
     }
   }
@@ -695,8 +718,9 @@ function worldGroundDetailDraw(ctx, plan, o) {
     for (const w of plan.walls || []) for (const r of w.runs) {
       ctx.save();
       ctx.beginPath(); path(r.scr); ctx.clip();
-      for (const m of r.marks) draw(m);
+      for (let i = 0; i < r.marks.length; i++) { draw(r.marks[i]); if ((i % 400) === 399) yield; }
       ctx.restore();
+      yield;
     }
   }
   ctx.restore();

@@ -60,6 +60,16 @@ function _wflRng(seed) {
   let a = _wkbHash(seed) || 1;
   return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
+/* The fill seeded per spatial cell (the scene factory, 14 Nov; SCENE_LESSONS V: one stream for the whole fill made a far-shore edit
+   move a near tree over the bench). A world whose seed is at least WORLD_FILL_CELL_SEED_MIN draws each sample cell's picks, variants
+   and positions from the cell's own stream (the seed, the kit, the tier and the cell), orders the cells by a hash of the cell, and
+   gives the accents and the richness tier streams of their own, so an edit reshuffles only the cells it touches. Worlds with smaller
+   seeds (every scene made before this) keep the one stream: their reviewed look does not change. `node tools/world.mjs new` gives
+   new scenes seeds from 10000 up. */
+const WORLD_FILL_CELL_SEED_MIN = 10000;
+function _wflCellSeeded(F) { return (F.world.seed | 0) >= WORLD_FILL_CELL_SEED_MIN; }
+function _wflCellRng(F, key) { return _wflRng('cell|' + (F.world.seed | 0) + '|' + F.styleKey + '|' + key); }
+function _wflCellU(F, key) { return ((_wkbHash('cellu|' + (F.world.seed | 0) + '|' + key) >>> 0) % 1000003) / 1000003; }
 function _wflPick(list, r, seen) {
   if (!Array.isArray(list) || !list.length) return null;
   // seen (a Map id -> count): favour kinds not placed yet, damp kinds placed many times (variety, P7)
@@ -961,14 +971,21 @@ function _wflHedges(F) {
   return F.count - before;
 }
 function _wflEdges(F) {
-  const E = F.style.edges || {}, ix = _wflIndexOf(F), r = F.r, before = F.count;
+  const E = F.style.edges || {}, ix = _wflIndexOf(F), before = F.count, cells = _wflCellSeeded(F);
+  // a cell-seeded world dresses each edge from a stream of its own (the surface id, the ring, the side), so an edit to one surface
+  // re-rolls that surface's edge only: on one shared stream, moving one vertex of a pond moved 27-31 % of a village green's fill
+  let r = F.r;
+  const own = (key) => { if (cells) { r = _wflCellRng(F, 'edge|' + key); F.postLeft = null; } };
+  own('hedges');
+  if (cells) F.r = r;
   _wflHedges(F);
   _wflRailBeds(F);
   // water banks by water kind: reed stands with gaps in the margin and bank planting (natural), coping lines (urban)
   for (const w of ix.waters) {
     const mode = (E.water || {})[w.s.water] || 'natural';
     if (mode === 'none') continue;
-    for (const ring of w.rings) {
+    for (const [ri, ring] of w.rings.entries()) {
+      own('water|' + (w.s.id || '') + '|' + ri);
       let state = r() < 0.5 ? 'gap' : 'stand', left = 1 + r() * 4, hard = [], stObj = _wflPick(E.natural.margin, r);
       const flush = () => { if (hard.length >= 2) _wflLine(F, 'coping', hard, w.s.id); hard = []; };
       _wflWalk(ring.pts, ring.closed, (p, t, nr, s, step) => {
@@ -1019,6 +1036,7 @@ function _wflEdges(F) {
   if (Array.isArray(E.verge) && E.verge.length) for (const s of ix.walks) {
     if (!Array.isArray(s.path) || !(s.width > 0) || s.kind === 'boardwalk' || s.kind === 'bridge-deck' || s.kind === 'deck') continue;
     for (const side of [-1, 1]) {
+      own('verge|' + (s.id || '') + '|' + side);
       const share = _wflNum(E.vergeShare) ? E.vergeShare : 0.6;
       let on = r() < share, left = 1 + r() * 3;
       _wflWalk(s.path, false, (p, t, nr, si, step) => {
@@ -1067,6 +1085,7 @@ function _wflEdges(F) {
     const walls = (F.world.entities || []).filter(e => e && !e.auto && Array.isArray(e.foot) && (e.cls === 'fence' || e.cls === 'building' || (worldKb(e.obj) || {}).cls === 'fence') && e.z < 80)
       .concat((F.world.buildings || []).filter(b => b && Array.isArray(b.foot) && b.foot.length >= 3 && Math.min(...b.foot.map(p => p[1])) < 80));
     for (const e of walls) {
+      own('base|' + (e.id || e.obj || '') + '|' + Math.round(e.x || (e.foot[0] && e.foot[0][0]) || 0) + ',' + Math.round(e.z || (e.foot[0] && e.foot[0][1]) || 0));
       const P = e.foot; let best = null;
       for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length], mz = (a[1] + b[1]) / 2; if (!best || mz < best.mz) best = { a, b, mz }; }
       if (!best) continue;
@@ -1077,11 +1096,13 @@ function _wflEdges(F) {
       }
     }
     for (const L of F.world.lines || []) if (L && (L.kind === 'wall' || L.kind === 'fence') && Array.isArray(L.path) && !L.auto) {
+      own('line|' + (L.id || '') + '|' + Math.round(L.path[0][0]) + ',' + Math.round(L.path[0][1]));
       _wflWalk(L.path, false, (p, t, nr, s, step) => { if (_wflVisible(F, p[0], p[1], 1) && r() < 0.35) _wflTry(F, { obj: _wflPick(E.wallBase, r), x: p[0] - Math.abs(nr[0]) * 0, z: p[1] - 0.35, auto: 'edge', rule: 'P5', why: 'wall base' }); });
     }
   }
   if (Array.isArray(E.hedgerow) && E.hedgerow.length) for (const s of ix.surfs) {
     if (s.kind !== 'field' || !Array.isArray(s.poly)) continue;
+    own('hedgerow|' + (s.id || ''));
     let on = true, left = 3 + r() * 6;
     _wflWalk(s.poly, true, (p, t, nr, si, step) => {
       if (!_wflVisible(F, p[0], p[1], 3)) return;
@@ -1408,7 +1429,7 @@ function _wflCoverPass(F, tier) {
       // undressed ground; an open lawn or beach (half dressed by its texture) gets a sparse share of the samples, never a carpet
       // (fewer near the lens, where one tuft fills a cell, more in the middle and far distance, where trees and benches stand)
       const rowT = (Math.floor(k / g.cols) + 0.5) * ch, nearRow = (rowT - F.cam.horizon) / (F.H - F.cam.horizon);
-      if (c !== 't' && c !== 'f' && !(c === 'p' && F.r() < (nearRow > 2 / 3 ? 0.03 : nearRow > 1 / 3 ? 0.14 : 0.4))) continue;
+      if (c !== 't' && c !== 'f' && !(c === 'p' && (_wflCellSeeded(F) ? _wflCellU(F, 'open|' + tier + '|' + k) : F.r()) < (nearRow > 2 / 3 ? 0.03 : nearRow > 1 / 3 ? 0.14 : 0.4))) continue;
       const i = k % g.cols, j = Math.floor(k / g.cols), X = (i + 0.5) * cw, Y = (j + 0.5) * ch;
       if (!(Y > hz + 1)) continue;
       const gp = _wflUnproject(F.cam, X, Y);
@@ -1421,14 +1442,18 @@ function _wflCoverPass(F, tier) {
     S = _wflSample(view, F.cam, { W: F.W, H: F.H, cols: 56, rows: 34, pad: F.pad, backdrop: _wflBackdrop(view, F.cam), surfAt: (x, z) => _wflSurfFast(F, x, z), ground: true });
     bare = S.samples.filter(q => !q.dressed && q.z != null && q.z <= _WFL_FILL_ZMAX);
   }
-  // seeded order, nearest rows first (they are the largest share of the frame)
-  const r = F.r;
-  for (const q of bare) q.u = r() + (q.band === 'near' ? 0 : q.band === 'mid' ? 0.5 : 1);
+  // seeded order, nearest rows first (they are the largest share of the frame); a cell-seeded world orders by a hash of the cell
+  const cells = _wflCellSeeded(F), r0 = F.r, cellKey = (q) => tier + '|' + Math.round(q.X) + ',' + Math.round(q.Y);
+  let r = F.r;
+  for (const q of bare) q.u = (cells ? _wflCellU(F, 'order|' + cellKey(q)) : r()) + (q.band === 'near' ? 0 : q.band === 'mid' ? 0.5 : 1);
   bare.sort((a, b) => a.u - b.u);
   F.boxes = [];
   let placed = 0;
+  try {
   for (const q of bare) {
     if (F.count >= F.maxAuto) break;
+    // the cell's own stream for its picks, positions and variants (_wflClump and _wflAdd read F.r)
+    if (cells) r = F.r = _wflCellRng(F, cellKey(q));
     if (F.boxes.some(b => q.X >= b[0] && q.X <= b[2] && q.Y >= b[1] && q.Y <= b[3])) continue;
     const g = _wflGroupOf(F, q.surf), spec = g && F.style.fill[g];
     if (!spec) { F.unfillable.add(q.surf ? q.surf.kind : 'ground'); continue; }
@@ -1460,6 +1485,7 @@ function _wflCoverPass(F, tier) {
       if (got.length) { done = true; placed += got.length; }
     }
   }
+  } finally { F.r = r0; }
   F.boxes = null;
   return placed;
 }
@@ -1770,15 +1796,18 @@ function worldFill(world, o) {
       world.backdrop = { style: style.backdrop };
       log.push({ id: null, obj: null, action: 'default', rule: 'emptyBackground', reason: `backdrop '${style.backdrop}' from the place style '${styleKey}'`, by: 'kb' });
     }
-    if (!state.edges) { _wflEdges(F); state.edges = true; }
-    if (!state.frame) { _wflFrame(F); _wflNearBand(F); state.frame = true; }
+    // a cell-seeded world runs each stage on a stream of its own (an edit that changes how much one stage draws no longer shifts the
+    // next); a one-stream world keeps its one sequence, so its reviewed look does not change
+    const r00 = F.r, staged = (key, fn) => { if (_wflCellSeeded(F)) F.r = _wflCellRng(F, 'stage|' + key); try { fn(); } finally { if (_wflCellSeeded(F)) F.r = r00; } };
+    if (!state.edges) { staged('edges', () => _wflEdges(F)); state.edges = true; }
+    if (!state.frame) { staged('frame', () => _wflFrame(F)); staged('near', () => _wflNearBand(F)); state.frame = true; }
     if (!fillOff && !state.fill) {
       const floor = o.floor || null, maxTier = o.maxTier || 5;
       let cov = _wflCoverage(F), rich = worldRichness(world, cam, { perennial: true, floor, W: F.W, H: F.H, box: false });
       const start = cov.bare;
-      _wflPaving(F);
-      _wflPeople(F);
-      _wflLife(F);
+      staged('paving', () => _wflPaving(F));
+      staged('people', () => _wflPeople(F));
+      staged('life', () => _wflLife(F));
       for (let tier = 1; tier <= maxTier; tier++) {
         if (cov.ok && rich.ok && tier > 1) break;
         const n = _wflCoverPass(F, tier);
@@ -1788,8 +1817,13 @@ function worldFill(world, o) {
         state.tiers = tier;
         if (n === 0) break;
       }
+      // a cell-seeded world: the accents and the richness tier draw from streams of their own (_wflClump reads F.r)
+      const rs = F.r;
+      if (_wflCellSeeded(F)) F.r = _wflCellRng(F, 'accents');
       _wflAccents(F);
+      if (_wflCellSeeded(F)) F.r = _wflCellRng(F, 'rich');
       _wflRichTier(F, floor);
+      F.r = rs;
       // ... and the walked ground keeps a way through (last, so the richness tiers cannot close it again)
       { const gone = _wflThroughLane(F); if (gone.length) log.push({ id: null, obj: null, action: 'fill', rule: 'P3', reason: `${gone.length} piece(s) taken away that closed the way through the walked ground (${gone.map(e => e.obj).join(', ')})`, by: 'kb' }); }
       rich = worldRichness(world, cam, { perennial: true, floor, W: F.W, H: F.H, box: false });

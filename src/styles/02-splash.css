@@ -29,6 +29,17 @@
    animation style layer's filters here (a full-screen filter is costly and the art is painted).
    Transform and opacity only. */
 .od-splash.is-hold { pointer-events: auto; cursor: pointer; }
+/* the bootstrap still (src/body.html; 78-anim-wire.js animOpeningBootKeep): the next opening's first frame behind the brand while the app
+   parses, softened under the splash's own light (or dark) so the brand stays legible; at the welcome the live scene fades in over it.
+   Another scene chosen: it fades out (.od-boot-out). Opacity only. */
+.od-splash.has-boot .od-sp-in { position: relative; z-index: 1; }
+.od-boot { position: absolute; inset: 0; background: center / cover no-repeat; opacity: 0; animation: od-boot-in 700ms cubic-bezier(0.22, 1, 0.36, 1) 40ms both; }
+.od-boot::after { content: ""; position: absolute; inset: 0; background: radial-gradient(38% 28% at 50% 50%, rgb(251 251 253 / 0.74), rgb(251 251 253 / 0.16)); }
+.od-splash.is-dark .od-boot::after { background: radial-gradient(38% 28% at 50% 50%, rgb(14 14 22 / 0.7), rgb(14 14 22 / 0.18)); }
+.od-splash.od-st-hello .od-boot::after { animation: od-seq-fade-out 900ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both; }
+.od-boot.od-boot-out { animation: od-seq-fade-out 400ms ease-out both; }
+@keyframes od-boot-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .od-boot { display: none; } }
 .od-splash.is-hold.is-out { animation-duration: 720ms; }
 .od-splash .od-seq { position: absolute; inset: 0; overflow: hidden; font-family: var(--font-sans, system-ui, sans-serif); }
 .od-seq-bg { position: absolute; inset: 0; opacity: 0; }

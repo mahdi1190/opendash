@@ -6,6 +6,8 @@
 //                                                   stands in for it; fixtures: true adds the test objects and test scenes.
 //   loadScenes(root, { fixtures, extra })           evaluate those files in Node the way the build does (one scope) -> the scene names (sceneSvg ...)
 //   scenePageHtml({ root, refs | data, size: { w, h }, dpr, mode, at, location, season, still, renderer, upgrades, compare, fixtures, wx, fx, governor })
+//                                                   renderer: 'canvas' (default) | 'svg' | 'stage' (a world scene on the world stage: the page also
+//                                                   carries the game engine block and its loader, 94-game-engine.js; Chrome needs WebGL: stageChromeArgs)
 //                                                   a self-contained page: the sources above + the app css the scenes need + 76-scene.css;
 //                                                   mounts each scene in a box of `size`; window.__sceneReady resolves after the first bake.
 //                                                   data: scene data (or a source string evaluated in the page, e.g. 'sceneTestDense()')
@@ -22,6 +24,7 @@ import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { animRegistryFiles } from './anim-sources.mjs';
 import { rasterAssetBlocks, readRasterAsset } from './raster-assets.mjs';
+import { GAME_ENGINE_VERSION, GAME_ENGINE_JS } from '../../lib/game-engine.mjs';
 
 export const repoRoot = () => resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SCENE_SRC_RE = /^(7[01]-scene-[a-z0-9-]+|79-world-[a-z0-9-]+)\.js$/, SCENE_BROWSER_RE = /^(78-scene-[a-z0-9-]+)\.js$/;
@@ -64,6 +67,17 @@ export function loadScenes(root = repoRoot(), { fixtures = true, extra = '', bro
 }
 
 const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+/**
+ * Chrome flags for a page with renderer 'stage': WebGL through SwiftShader (software) in a headless Chrome. The stage allows a
+ * software context only on a tool page (the app hands such a machine to the canvas renderer).
+ */
+export const stageChromeArgs = Object.freeze(['--enable-webgl', '--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']);
+/** The game engine's inert block and its loader (a stage page only): as build.mjs embeds them. */
+function stageEngineHtml(root) {
+  const bytes = readFileSync(join(root, GAME_ENGINE_JS));
+  const loader = readFileSync(join(root, 'src', 'app', '94-game-engine.js'), 'utf8');
+  return `<script id="freeflo-game-engine" type="application/octet-stream" data-version="${GAME_ENGINE_VERSION}">${bytes.toString('base64')}</script>\n<script>${loader}</script>`;
+}
 /** The css a scene page needs: the app's tokens, the animation library, the scene sizes, 76-scene.css. */
 function pageCss(root) {
   const styles = join(root, 'src', 'styles');
@@ -101,6 +115,7 @@ html,body{margin:0;background:${dark ? '#16171a' : '#f4f4f6'};overflow:hidden}
 .sp-box>.anim-scene>svg{width:100%;height:100%;display:block}
 ${boxCss}</style></head><body>${rasterAssetBlocks(root)}<div id="sp-root">${scenePageRows(opts)}</div>
 <script>window.__sceneErrors=[];addEventListener('error',e=>window.__sceneErrors.push(String(e.message)));window.__sceneOpts=${JSON.stringify(cfg)};</script>
+${cfg.renderer === 'stage' ? stageEngineHtml(root) : ''}
 <script>${src}
 ;(function () {
   const cfg = window.__sceneOpts, rootEl = document.getElementById('sp-root');

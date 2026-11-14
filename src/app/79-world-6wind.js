@@ -29,6 +29,11 @@
                                     sceneWind (-1.6..1.6) for the v2 'sway' hooks.
      the 'wind' system (phase fx, 30 Hz, 0.2 ms): keeps world.wind in step with world.time and sets ent.sway on every
      swaying static that is due this tick (worldLodDue). Degrades: 1 far ones every 4th tick, 2 only lod 0, 3 sway frozen.
+     _wwdPose(r, h, tau, L) -> { m, alpha } | null   the DRAWN pose of a plant's wind hook (the compositor's pose plan, both players:
+                                    docs/dev/WORLD_SHADE.md 3): every drawn sway is the one function here, continuous in time. The
+                                    light's wind strength (L.wind, read again at each relight) is eased over WORLD_WIND_EASE_S, and a
+                                    reed's parting (6anim's 'turn' that stands in for its sway while something walks through it) is
+                                    laid over the sway, its share eased in and out, so no plant changes its motion in one frame.
    Smoke and steam drift downwind through the particles (79-world-6particles.js); water ripples read worldWind (look).
    ============================================================ */
 const WORLD_WIND_CALM = 0.15;
@@ -237,3 +242,76 @@ if (typeof worldSystem === 'function') worldSystem({
   update(world) { _wwdTick(world); },
   onEvent: { weather(world) { worldWindParams(world); } },
 });
+
+/* ---------- the drawn sway (docs/dev/WORLD_SHADE.md 3) ----------
+   What a frame draws of a plant's wind hooks. The swing is the library's sway (sceneAnimPose: deg x k x sceneWind(t, x, L)), now with
+   a tall plant's swing slowed to its height's natural frequency (_wwdDrawnWind) and two causes of a jump taken out:
+   - the light's wind (L.wind, the weather's wind read again at every relight) multiplied every plant's swing at once: a new reading
+     moved every swaying plant in one frame. It is eased from the old strength to the new over WORLD_WIND_EASE_S (per drawn record);
+   - a reed being walked or swum through: 6anim's worldAnimHooks swaps its 'sway' hook for a held 'turn' of (deg x 6 x dir x amp) while
+     the parting's amp is over 0.05, and back to the sway below it. The two angles differ, so the reed jumped at both ends. Here the
+     parting is laid OVER the sway it stands in for, its share eased in from amp 0.05 to 0.2: at the switch it adds nothing either way. */
+const WORLD_WIND_EASE_S = 3;
+const _WWD_PART_A0 = 0.05, _WWD_PART_A1 = 0.2;
+const _wwdHookMemo = new Map();
+/** The library 'sway' hook a parting 'turn' stands in for (the object's own hook on the same part, pivot): null when none. */
+function _wwdSwayHookOf(r, h) {
+  if (typeof sceneObjShapes !== 'function' || !r || !r.o) return null;
+  const key = r.o + '|' + (r.v | 0) + '|' + (r.season || '') + '|' + (h.part || '') + '|' + (h.parts ? h.parts.join(',') : '') + '|' + (h.pivot ? h.pivot.join(',') : '');
+  if (_wwdHookMemo.has(key)) return _wwdHookMemo.get(key);
+  let out = null;
+  try {
+    const sh = sceneObjShapes(r.o, r.v | 0, r.season || 'summer'), list = sh && Array.isArray(sh.anim) ? sh.anim : [];
+    const same = (a, b) => String(a || '') === String(b || '');
+    out = list.find(x => x && x.kind === 'sway' && same(x.part, h.part) && same(x.parts && x.parts.join(','), h.parts && h.parts.join(',')) && same(x.pivot && x.pivot.join(','), h.pivot && h.pivot.join(','))) || null;
+  } catch (e) { out = null; }
+  if (_wwdHookMemo.size > 4000) _wwdHookMemo.clear();
+  _wwdHookMemo.set(key, out);
+  return out;
+}
+/** The light's wind strength for a drawn record at tau, eased over WORLD_WIND_EASE_S from the strength it had when the reading changed. */
+function _wwdWindK(r, L, tau) {
+  const w = L ? (L.wind == null ? 1 : L.wind) : 1;
+  if (!Number.isFinite(tau)) return w;
+  let E = r._wwdE;
+  if (!E) { E = r._wwdE = { from: w, to: w, t0: tau }; return w; }
+  const now = () => { const f = (tau - E.t0) / WORLD_WIND_EASE_S; if (!(f >= 0) || f >= 1) return E.to; return E.from + (E.to - E.from) * f * f * (3 - 2 * f); };
+  if (E.to !== w) { const cur = now(); E.from = cur; E.to = w; E.t0 = tau; }
+  return now();
+}
+/**
+ * The wind a drawn plant swings by at tau (v2 units, as sceneWind): sceneWind's field, its swing slowed for a tall plant by the natural
+ * frequency of its height (the world wind's law, 1 / sqrt(h): a plant up to WORLD_WIND_TALL_M keeps the library's timing, a 16 m tree swings
+ * at half its speed, never under 0.4 of it). The gust fronts keep the scene's own timing, so a gust still passes along the scene. A big
+ * near tree swung its crown at the speed of a reed: its 1 px twigs crossed the lit panes behind it a pixel a frame (the twinkle the
+ * flicker audit found in front of lit glass, docs/dev/WORLD_SHADE.md 6). wk: the light's wind strength (eased).
+ */
+const WORLD_WIND_TALL_M = 4;
+function _wwdDrawnWind(r, tau, wk) {
+  const hgt = Number.isFinite(r.height) ? r.height : 0, x = r.x || 0;
+  if (!(hgt > WORLD_WIND_TALL_M)) return sceneWind(tau, x, { wind: wk });
+  const ts = Math.max(0.4, Math.sqrt(WORLD_WIND_TALL_M / hgt)), t = tau * ts;
+  const base = 0.55 * Math.sin(0.9 * t + 0.0035 * x) + 0.3 * Math.sin(2.1 * t + 0.011 * x + 1.7) + 0.15 * Math.sin(5.3 * t + 0.031 * x);
+  const gust = 0.8 * Math.pow(Math.max(0, Math.sin(2 * Math.PI * (tau - x / 420) / 9)), 6);
+  return wk * (base + gust);
+}
+/**
+ * The drawn pose of a plant's wind hook at scene time tau (see above): a 'sway', or a reed's parting 'turn' (period 1e9, hold 0) laid
+ * over the sway it stands in for. r: the draw record (a live static); L: the frame's light. -> { m, alpha } or null (not a wind hook,
+ * or the library's pose is to be used).
+ */
+function _wwdPose(r, h, tau, L) {
+  if (!r || !h || typeof sceneWind !== 'function' || typeof _scAbout !== 'function') return null;
+  const parting = h.kind === 'turn' && h.period >= 1e8 && !(h.hold > 0);
+  if (h.kind !== 'sway' && !parting) return null;
+  const base = parting ? _wwdSwayHookOf(r, h) : h;
+  if (!base) return null;
+  const k = h.k == null ? 1 : h.k, p = h.pivot || [0, 0], wind = _wwdDrawnWind(r, tau, _wwdWindK(r, L, tau));
+  let deg = (base.deg || 2) * k * wind;
+  if (parting) {
+    // the parting's own angle (sceneAnimPose's held turn: deg x k at its hold), eased in from amp 0.05 (where the hook switches) to 0.2
+    const amp = Math.abs(h.deg || 0) / (6 * (base.deg || 2)), u = Math.max(0, Math.min(1, (amp - _WWD_PART_A0) / (_WWD_PART_A1 - _WWD_PART_A0)));
+    deg += (h.deg || 0) * k * u * u * (3 - 2 * u);
+  }
+  return { m: _scAbout(p[0], p[1], deg, 1, 1, 0, 0), alpha: 1 };
+}

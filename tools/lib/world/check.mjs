@@ -85,7 +85,8 @@ function pageProbe(opts, litPixels) {
     if (r.box.x1 * vs + ox < -50 || r.box.x0 * vs + ox > W + 50 || r.box.y1 * vs + oy < -50) continue;
     r.agent = a; aRecs.push(r);
   }
-  const movers = S.plan.live.concat(aRecs);
+  // (the statics drawn on their own, I2: plan.occl, ordered among the movers as { kind: 'static' } items; docs/dev/WORLD_FLICKER.md 5)
+  const movers = S.plan.live.concat(S.plan.occl || [], aRecs);
   const order = typeof worldFrameOrder === 'function' ? worldFrameOrder(S.plan.chunks, movers, null) : [];
   // 3. ownership in draw order: each record drawn alone, its opaque pixels own the frame until something later paints over them
   const own = new Int32Array(W * H).fill(-1), ownS = new Int32Array(W * H).fill(-1), exp = new Uint8ClampedArray(W * H * 3), recs = [], idx = new Map(), stat = [];
@@ -129,7 +130,8 @@ function pageProbe(opts, litPixels) {
   let clip = null;
   for (const it of order) {
     if (it.kind === 'chunk') { for (const r of it.ref.ents || []) paint(r, null); continue; }
-    if (it.kind === 'agent') { paint(it.ref, null); const b = it.ref.box; clip = [Math.floor(b.x0 * vs + ox) - 1, Math.floor(b.y0 * vs + oy) - 1, Math.ceil(b.x1 * vs + ox) + 1, Math.ceil(b.y1 * vs + oy) + 1]; continue; }
+    // a mover, or a static drawn on its own (I2: drawn once, whole, at its place; the redraws after it are clipped to it like a mover's)
+    if (it.kind === 'agent' || it.kind === 'static') { paint(it.ref, null); const b = it.ref.box; clip = [Math.floor(b.x0 * vs + ox) - 1, Math.floor(b.y0 * vs + oy) - 1, Math.ceil(b.x1 * vs + ox) + 1, Math.ceil(b.y1 * vs + oy) + 1]; continue; }
     if (it.kind === 'redraw' && clip) paint(it.ref, clip);
   }
   // static ownership before the agents (for the deck test: what lies under a walker's feet)

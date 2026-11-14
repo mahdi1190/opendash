@@ -73,7 +73,10 @@ function sceneHostAttrs(it, o) {
   const reduced = !!o.reduced, still = reduced || !(o.live || o.hover);
   let top = '#3a80c4', low = '#dcebf2';
   try {
-    const data = _scDataOf(it), season = _scSeasonOf(data, o), L = _scLightOf(data, o, season);
+    // a world (v3) item: its sky from its place alone (its derived data's view is the camera's place, 'afternoon', the live season), never
+    // its world: markup must not build one (0.7-1.5 s; docs/dev/WORLD_LOAD.md 1)
+    const ll = it && it.world === 3 && it.liveSky && typeof it.liveSky === 'object' ? it.liveSky : null;
+    const data = ll ? { view: { lat: ll.lat, lon: ll.lon }, at: 'afternoon', season: 'auto' } : _scDataOf(it), season = _scSeasonOf(data, o), L = _scLightOf(data, o, season);
     if (L && /^#[0-9a-f]{6}$/i.test(L.top || '')) top = L.top;
     if (L && /^#[0-9a-f]{6}$/i.test(L.low || '')) low = L.low;
   } catch (e) { /* the placeholder stays the day sky */ }
