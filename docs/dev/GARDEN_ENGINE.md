@@ -43,6 +43,22 @@ arrived at the host with the same cell-centred float. The visitor returned to
 their own ready Garden through Leave. These observations had no captured app
 exceptions; they are not a catch, latency or broad performance claim.
 
+The exact earlier Vale wishing-well row derives its approach from the current
+front edge instead of its stale ten-cell offset. Later Designer placements
+retain their own door overrides. Ordinary play at the same nearby position
+opened the well by click and E without walking away. A connected fictional
+visitor also opened it locally; the host saw the same rounded position, and
+Leave returned to the visitor's ready Garden without captured app exceptions.
+Shore garnish rejects roots on internal water joins
+after seeded choices are made; aquatic riffles and lilies retain their art.
+
+Regional tint intersects the authored region polygons with the existing inset
+lawn contour in the normal terrain batches. This replaces cell-centre beach
+exclusions without moving the coast, paths, water or collision boundaries.
+Fresh ordinary play at the same estuary viewpoint showed the rectangular
+coastal verge steps removed. This observation does not claim every path
+shoulder or water join is finished.
+
 World 4 uses the shared 96-by-96 authored island, coast-clipped frontier
 regions and exact layout fingerprint. Region access, water contours and
 multiplayer coordinates use the same tables across both renderers and the

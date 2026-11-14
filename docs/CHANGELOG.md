@@ -10,6 +10,14 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.68.8] - 2026-11-14
+
+### Fixed
+
+- The wishing well opens beside the well, instead of walking ten tiles away to an obsolete approach point.
+- Regional ground follows the continuous lawn edge, removing rectangular colour steps along the estuary's coastal verge.
+- Reeds, shore pebbles and bank reflections no longer follow internal shorelines where rivers join lakes. Aquatic rocks and plants remain in the water.
+
 ## [2.68.7] - 2026-11-14
 
 ### Fixed
