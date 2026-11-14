@@ -339,8 +339,12 @@ window.GardenPaintedProps = (function () {
       }
     } else {
       const P = PAINT[which], key = bake(scene, which + '|' + season + '|' + (night ? 'n' : 'd'), P.box, B => P.draw(B, { season, night }));
-      const im = h.add(image(scene, key, fx, foot)); if (!im) { h.destroy(); return null; }
-      b = { x: fx + P.box[0], y: foot + P.box[1], width: P.box[2] - P.box[0], height: P.box[3] - P.box[1] };
+      // The public board's two 7px posts stand at +/-36 and end at y=1.
+      // Align those feet with its protected span, retaining the roof overhang.
+      const board = prop.id === 'notice-board' && which === 'board', scale = board ? prop.w * W.cellW / 79 : 1, artFoot = foot - (board ? scale : 0);
+      const im = h.add(image(scene, key, fx, artFoot)); if (!im) { h.destroy(); return null; }
+      if (board) im.setScale(scale / K);
+      b = { x: fx + P.box[0] * scale, y: artFoot + P.box[1] * scale, width: (P.box[2] - P.box[0]) * scale, height: (P.box[3] - P.box[1]) * scale };
       if (which === 'fountain') addDrops(scene, h, fx, foot - 52, 16);
     }
     return finish(h, b, { x: fx, y: foot });
