@@ -59,6 +59,37 @@ Fresh ordinary play at the same estuary viewpoint showed the rectangular
 coastal verge steps removed. This observation does not claim every path
 shoulder or water join is finished.
 
+Coastal route paint now admits the inland part of a beach-centre cell and
+clips that addition to the same continuous lawn edge. Crossing channel bands
+use the basin painter's widths and colours; only crossing-water textures vary
+with the four time-of-day buckets. The retained composition does not keep its
+first water palette after a light change.
+
+Native water metadata preserves shared dry supports. After terrain painting,
+renderer-only holes also cover the opaque stepping-stone tops and faces;
+overlapping holes use the existing water interval subtraction. Physical water
+and standing support remain unchanged. Fishing target selection skips centres
+hidden by those stone faces within its existing same-body search. Settled
+native floats and wakes sort at their water contact independently of the hand
+rig, for local players and peers. Cast and landing poses return to the rig,
+and rig teardown removes the retained surface wrapper. Reflected strokes use
+the same world scale as their source paths.
+
+Ordinary private play moved the milestone through the Designer from its west
+shore position to a valid nearby position. Its room approach now follows the
+accepted current doorway, and room entry and Leave remained available. The
+same estuary view showed the square path shoulder removed; the previous cast
+onto a painted stone face selected a nearby clear water centre instead.
+
+Connected private host and visitor play then covered settled casts in both
+directions at the estuary. Each peer received the same selected float centre;
+the float surface sorted at that water row and reflections stayed clear of
+the stone faces. Cancelling each cast removed its local and peer surface
+wrappers. The visitor returned to their own ready garden through Leave,
+with no captured application errors. An earlier interrupted browser session
+was excluded from this result. These observations do not establish every
+fishing outcome or a natural time-of-day palette transition.
+
 World 4 uses the shared 96-by-96 authored island, coast-clipped frontier
 regions and exact layout fingerprint. Region access, water contours and
 multiplayer coordinates use the same tables across both renderers and the

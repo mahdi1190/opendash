@@ -331,7 +331,9 @@ window.GardenNativeWorld = (function () {
       const open = new Set(sc.areas || []), allowed = new Uint8Array(cells.length);
       for (let i = 0; i < cells.length; i++) {
         const cell = cells[i], x = i % W.cols, y = Math.floor(i / W.cols), row = cell && cell.row;
-        if (!cell || cell.water || ['ocean', 'beach', 'water', 'pool', 'lake', 'ice'].includes(cell.material) || row && row.solid) continue;
+        // A beach-centre cell may contain the inland edge of a curved road.
+        // Its surviving paint is clipped to the continuous lawn below.
+        if (!cell || cell.water || ['ocean', 'water', 'pool', 'lake', 'ice'].includes(cell.material) || cell.material === 'beach' && W.v < 5 || row && row.solid) continue;
         const base = gardenIslandBaseCell(x, y), zone = gardenIslandZoneAt(x, y);
         if (!base || !base.land || base.solid || base.staticId || zone && !open.has('zn-' + zone)) continue;
         const bareCore = !!(row && row.plot === 'core' && !open.has(row.id) && !(cultivated && cultivated.has(row.id)));
@@ -486,26 +488,30 @@ window.GardenNativeWorld = (function () {
       // by cell material exposed rectangular steps in the coastal verge.
       // Intersect the authored regions with the same inset used by the lawn;
       // water, cultivated soil and the narrower roads still paint above it.
-      if (authoredRegions.length) {
+      let fillLawnPiece = null;
+      if (island) {
         const lawnPieces = [];
         fillOutlines({ fillStyle() {}, fillTriangle(ax, ay, bx, by, cx, cy) {
           const points = [{ x: ax, y: ay }, { x: bx, y: by }, { x: cx, y: cy }];
           lawnPieces.push({ points, bounds: terrainBox(points) });
         } }, coast.map(loop => insetTerrainContour(loop, island.beachWidthPx)), 0);
+        // Reuse these coast pieces for the few route strips crossing beach
+        // cells; their centres must not impose square cuts on inland road.
+        fillLawnPiece = points => {
+          const bounds = terrainBox(points);
+          for (const piece of lawnPieces) {
+            const b = piece.bounds;
+            if (bounds.x >= b.x + b.width || bounds.x + bounds.width <= b.x || bounds.y >= b.y + b.height || bounds.y + bounds.height <= b.y) continue;
+            const clipped = clipTerrainConvex(points, piece.points);
+            for (let i = 1; i + 1 < clipped.length; i++) {
+              const a = clipped[0], b = clipped[i], c = clipped[i + 1];
+              g.fillTriangle(a.x, a.y, b.x, b.y, c.x, c.y);
+            }
+          }
+        };
         const regionPaint = {
           fillStyle(color) { g.fillStyle(color); },
-          fillTriangle(ax, ay, bx, by, cx, cy) {
-            const points = [{ x: ax, y: ay }, { x: bx, y: by }, { x: cx, y: cy }], bounds = terrainBox(points);
-            for (const piece of lawnPieces) {
-              const b = piece.bounds;
-              if (bounds.x >= b.x + b.width || bounds.x + bounds.width <= b.x || bounds.y >= b.y + b.height || bounds.y + bounds.height <= b.y) continue;
-              const clipped = clipTerrainConvex(points, piece.points);
-              for (let i = 1; i + 1 < clipped.length; i++) {
-                const a = clipped[0], b = clipped[i], c = clipped[i + 1];
-                g.fillTriangle(a.x, a.y, b.x, b.y, c.x, c.y);
-              }
-            }
-          },
+          fillTriangle(ax, ay, bx, by, cx, cy) { fillLawnPiece([{ x: ax, y: ay }, { x: bx, y: by }, { x: cx, y: cy }]); },
         };
         for (const region of authoredRegions) {
           const tone = parseInt(_gldIslandRegionTone(region.region, sc.season).slice(1), 16);
@@ -532,8 +538,19 @@ window.GardenNativeWorld = (function () {
         if (lake && !island && (kind === 'lake' || kind === 'ice' && frozenLake) && polygonArea(loops[0]) < 0) loops = [loops[0].slice().reverse()];
         borders.set(kind, loops); if (!(island && kind === 'path')) fillOutlines(island && kind === 'ice' ? terrainPainter(1) : g, loops, base);
         if (water || kind === 'ice') {
-          const holes = kind === 'lake' ? lakeHoles : loops.filter(loop => polygonArea(loop) <= 0);
-          for (const points of loops.filter(loop => polygonArea(loop) > 0)) waterRegions.push({ id: kind + ':' + waterRegions.length, points, holes: kind === 'lake' ? holes : holes.filter(hole => insidePolygon(hole[0], points)), holesCrossBoundary: kind === 'lake' && holes.some(hole => hole.some(point => !insidePolygon(point, points))), bounds: terrainBox(points), frozen: kind === 'ice' });
+          const shapes = otherWater && typeof gardenOtherWaterShapes === 'function' ? gardenOtherWaterShapes(m) : null;
+          if (shapes) {
+            // The outer paint loops omit crossing supports. Keep the exact
+            // shared dry holes in reflection, ripple and water-contact metadata.
+            const pointOf = p => ({ x: p.x * W.cellW, y: W.sky + p.y * W.cellH });
+            for (const shape of shapes) {
+              const points = shape.points.map(pointOf), holes = (shape.holes || []).map(loop => loop.map(pointOf));
+              waterRegions.push({ id: kind + ':' + waterRegions.length, points, holes, holesCrossBoundary: holes.some(hole => hole.some(point => !insidePolygon(point, points))), bounds: terrainBox(points), frozen: false });
+            }
+          } else {
+            const holes = kind === 'lake' ? lakeHoles : loops.filter(loop => polygonArea(loop) <= 0);
+            for (const points of loops.filter(loop => polygonArea(loop) > 0)) waterRegions.push({ id: kind + ':' + waterRegions.length, points, holes: kind === 'lake' ? holes : holes.filter(hole => insidePolygon(hole[0], points)), holesCrossBoundary: kind === 'lake' && holes.some(hole => hole.some(point => !insidePolygon(point, points))), bounds: terrainBox(points), frozen: kind === 'ice' });
+          }
         }
       }
       if (island) {
@@ -563,7 +580,11 @@ window.GardenNativeWorld = (function () {
               // cultivated plots, solid footprints and wet surfaces stay clear.
               if (!routePaint[y * W.cols + x]) continue;
               const clipped = clipTerrainPolygon(quad, { x, y, width: 1, height: 1 });
-              if (clipped.length > 2 && Math.abs(polygonArea(clipped)) > 1e-8) g.fillPoints(clipped.map(pointOf));
+              if (clipped.length > 2 && Math.abs(polygonArea(clipped)) > 1e-8) {
+                const points = clipped.map(pointOf);
+                if (cells[y * W.cols + x].material === 'beach') fillLawnPiece(points);
+                else g.fillPoints(points);
+              }
             }
           }
         };
@@ -575,7 +596,7 @@ window.GardenNativeWorld = (function () {
         g.lineStyle(.65, 0x8c8165, .25);
         for (const route of routes) for (const joint of gardenIslandRoadJoints(route)) {
           const x = Math.floor(joint.x), y = Math.floor(joint.y);
-          if (x < 0 || y < 0 || x >= W.cols || y >= W.rows || !routePaint[y * W.cols + x]) continue;
+          if (x < 0 || y < 0 || x >= W.cols || y >= W.rows || !routePaint[y * W.cols + x] || cells[y * W.cols + x].material === 'beach') continue;
           const a = pointOf(joint.a), b = pointOf(joint.b); g.lineBetween(a.x, a.y, b.x, b.y);
         }
         // A doorway gets a small rounded forecourt, not a painted rectangle
@@ -788,6 +809,37 @@ window.GardenNativeWorld = (function () {
         if (cross) { points.length = 0; const dx = gate.dx * W.cellW * .4, dy = gate.dy * W.cellH * .4; points.push({ x: cross[0].x - dx, y: cross[0].y - dy }, { x: cross[1].x - dx, y: cross[1].y - dy }, { x: cross[1].x + dx, y: cross[1].y + dy }, { x: cross[0].x + dx, y: cross[0].y + dy }); }
         const gateBounds = terrainBox(points);
         gateRows.push({ id: gate.id, zone: gate.n, x, y, dx: gate.dx, dy: gate.dy, width: gateBounds.width, height: gateBounds.height, open: (sc.areas || []).includes(zone.id), points, bounds: gateBounds, root: null });
+      }
+      // The stone picture extends beyond the walkable support. Water effects
+      // must stop at its opaque top and two-pixel face, without widening physics.
+      // Add these visual-only holes after terrain painting: overlapping stone
+      // loops are subtracted as a union by Water, never passed to Earcut.
+      if (packed && window.GardenPaintVale && GardenPaintVale.status().on && typeof gardenIslandCrossingGeometry === 'function') {
+        for (const deck of gardenIslandCrossingGeometry()) {
+          if (deck.kind !== 'stepping-stones' || !deck.stones) continue;
+          const { count, alongRadius, acrossRadius } = deck.stones, ux = (deck.b.x - deck.a.x) / deck.length, uy = (deck.b.y - deck.a.y) / deck.length;
+          const faces = [0, 2].map(y => {
+            // Match the painter's rounded SVG arcs. The tiny outward allowance
+            // covers the retained parser's subpixel chord approximation.
+            const points = GardenNativeArt.parsePath(sceneDraw.ell(0, y, alongRadius, acrossRadius))[0].points.slice();
+            if (points.length > 1 && Math.hypot(points[0].x - points[points.length - 1].x, points[0].y - points[points.length - 1].y) < 1e-8) points.pop();
+            return insetTerrainContour(points, polygonArea(points) > 0 ? -.1 : .1);
+          });
+          for (let i = 0; i < count; i++) {
+            const p = deck.deckPoint((i + .5) / count, 0);
+            for (const face of faces) {
+              const points = face.map(q => ({ x: p.x + q.x * ux - q.y * uy, y: p.y + q.x * uy + q.y * ux })), b = terrainBox(points);
+              for (const region of waterRegions) {
+                // These authored stones cross freshwater, whose pieces can
+                // overlap at a join; every intersecting piece needs the cut.
+                const r = region.bounds;
+                if (region.ocean || b.x > r.x + r.width || b.x + b.width < r.x || b.y > r.y + r.height || b.y + b.height < r.y) continue;
+                region.holes.push(points);
+                if (!region.holesCrossBoundary && points.some(q => !insidePolygon(q, region.points))) region.holesCrossBoundary = true;
+              }
+            }
+          }
+        }
       }
       // Land prices stay in deliberate ground inspection and the land office.
       cacheQueue.delete(terrain);

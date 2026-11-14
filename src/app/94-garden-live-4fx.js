@@ -190,7 +190,11 @@ function _gllBugGone(key) {
   if (b) { if (b.node && b.node.remove) b.node.remove(); _gw.bugs.delete(key); if (_gw.netting && _gw.netting.actor === b) _gw.netting = null; if (typeof gardenPop === 'function' && gardenMotionOn()) gardenPop(Math.floor(b.x), Math.floor(b.y), 1, 1, 'is-grow'); }
 }
 /* ---------- a line out, on their figure ---------- */
-function _gllFxClear(A) { if (A.fxg) { A.fxg.remove(); A.fxg = null; A.fxe = null; } }
+function _gllFxClear(A) {
+  if (A.fxe && A.fxe.floatRoot) A.fxe.floatRoot.remove();
+  if (A.fxg) A.fxg.remove();
+  A.fxg = null; A.fxe = null;
+}
 function _gllFishFx(A, e, ev) {
   if ((e === 'land' || e === 'lost' || e === 'in') && typeof gardenHelpInviteClear === 'function') gardenHelpInviteClear(A);
   const t = Date.now();   // clock-ok: how long they have been quiet
@@ -300,6 +304,7 @@ function _gllFxStep(A, dt) {
   _gllFxAttr(e.line, 'd', `M${tipX.toFixed(1)} ${tipY.toFixed(1)}Q${((tipX + bx) / 2).toFixed(1)} ${((tipY + by - 7) / 2 + sag).toFixed(1)} ${(bx + Math.sin(tilt * Math.PI / 180) * 7).toFixed(1)} ${(by - Math.cos(tilt * Math.PI / 180) * 7).toFixed(1)}`);
   _gllFxAttr(e.bob, 'transform', `translate(${bx.toFixed(1)} ${by.toFixed(1)}) rotate(${tilt.toFixed(1)})`);
   const onWater = F.state !== 'cast' && F.state !== 'land', wakeK = 1 + (motion ? Math.sin(F.t * 3) * 0.08 + (contact ? contact.pulse * .14 : 0) : 0);
+  gardenFishFloatDepth(e, A.fxg, F, A.x * W.cellW, W.sky + A.y * W.cellH);
   _gllFxAttr(e.wake, 'visibility', onWater ? 'visible' : 'hidden');
   if (onWater) {
     // Follow the surface tug, excluding the float's downward dip.

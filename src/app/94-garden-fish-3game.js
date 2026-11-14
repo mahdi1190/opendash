@@ -86,7 +86,7 @@ function _gwFishHud(F) {
   _gwFishHudNode = h;
   h.hidden = F.state === 'land' || F.state === 'reel';
 }
-function _gwFishClearFx() { if (_gw.fx) { for (const k of ['line', 'rod', 'bob', 'bubble', 'wake', 'ring', 'reel']) if (_gw.fx[k] && _gw.fx[k].remove) _gw.fx[k].remove(); if (_gw.fx.skin) _gw.fx.skin.g.remove(); } _gw.fx = null; }
+function _gwFishClearFx() { if (_gw.fx) { for (const k of ['line', 'rod', 'bob', 'bubble', 'wake', 'ring', 'reel', 'floatRoot']) if (_gw.fx[k] && _gw.fx[k].remove) _gw.fx[k].remove(); if (_gw.fx.skin) _gw.fx.skin.g.remove(); } _gw.fx = null; }
 function gardenFishFloatSvg(bob) {
   bob = bob || { c: '#d8452a', c2: '#fbfbf2' };
   return `<path d="M0 -7C4.5 -7 5.2 -3.7 4.1 -0.6Q2.8 2.8 0 3Q-2.8 2.8 -4.1 -0.6C-5.2 -3.7 -4.5 -7 0 -7Z" fill="${bob.c}" stroke="#303c35" stroke-width="0.9"/><path d="M-4.3 -3.4Q-4.6 -7 0 -7Q4.6 -7 4.3 -3.4Z" fill="${bob.c2}"/><path d="M-2.1 -4.5Q-3 -2.6 -2.1 -0.5" fill="none" stroke="#fffdf1" stroke-width="1.2" stroke-opacity="0.9" stroke-linecap="round"/><path d="M0 -7V-11" stroke="#fff9da" stroke-width="1.1" stroke-linecap="round"/><circle cy="-11" r="1.2" fill="${bob.c2}" stroke="#303c35" stroke-width="0.55"/>`;
@@ -118,6 +118,33 @@ function _gwFx() {
   _gw.fx = fx;
   return fx;
 }
+/** Settled floats sort by their water contact, independently of the hand rig.
+ * The peer rig uses actor-relative coordinates; keep that origin when moving
+ * its bob and wake into the outdoor native object layer. */
+function gardenFishFloatDepth(fx, layer, F, originX = 0, originY = 0) {
+  const world = window.GardenNative && GardenNative.active() && GardenNative.world();
+  const onWater = F.state !== 'cast' && F.state !== 'land';
+  if (!onWater || F.bx >= GARDEN_ROOM_X || !layer || !layer._native || !world || !world.rootNode.contains(layer)) {
+    if (fx.floatRoot && fx.bob.parentNode === fx.floatRoot) {
+      layer.insertBefore(fx.wake, fx.rod); layer.insertBefore(fx.bob, fx.bubble || fx.bub);
+    }
+    return;
+  }
+  let surface = fx.floatRoot, reorder = false;
+  if (!surface || !surface.isConnected) {
+    surface = fx.floatRoot = _gwEl('g', { class: 'gd-float-surface', 'pointer-events': 'none', 'aria-hidden': 'true' });
+    world.objectsNode.appendChild(surface); reorder = true;
+    // Repaints and peer departure can destroy the rig without its FX clear.
+    fx.rod.target.once('destroy', () => { surface.remove(); if (fx.floatRoot === surface) fx.floatRoot = null; });
+  }
+  if (fx.bob.parentNode !== surface) surface.append(fx.wake, fx.bob);
+  const transform = 'translate(' + originX.toFixed(1) + ' ' + originY.toFixed(1) + ')';
+  if (surface.getAttribute('transform') !== transform) surface.setAttribute('transform', transform);
+  const depth = GARDEN_WORLD.sky + F.by * GARDEN_WORLD.cellH;
+  if (surface.target.depth !== depth) { surface.target.setDepth(depth); reorder = true; }
+  if (reorder) world.depthChanged();
+}
+
 /** Project the current drawn hand into this rig's coordinates, for owner and
  * peers alike. A retained but hidden earlier pose must never own the grip. */
 function gardenFishHandAnchor(fx, owner, layer) {
@@ -204,6 +231,7 @@ function _gwFishFrame(dt) {
   fx.line.setAttribute('visibility', 'visible'); fx.line.setAttribute('d', `M${R.tipX.toFixed(1)} ${R.tipY.toFixed(1)}Q${((R.tipX + bx) / 2).toFixed(1)} ${((R.tipY + by - 7) / 2 + sag).toFixed(1)} ${(bx + Math.sin(tilt * Math.PI / 180) * 7).toFixed(1)} ${(by - Math.cos(tilt * Math.PI / 180) * 7).toFixed(1)}`);
   fx.bob.setAttribute('visibility', 'visible'); fx.bob.setAttribute('transform', `translate(${bx.toFixed(1)} ${by.toFixed(1)}) rotate(${tilt.toFixed(1)})`);
   const onWater = F.state !== 'cast' && F.state !== 'land', wakeK = 1 + (motion ? Math.sin(F.t * 3) * 0.08 + (contact ? contact.pulse * .14 : 0) : 0);
+  gardenFishFloatDepth(fx, fx.layer, F);
   fx.wake.setAttribute('visibility', onWater ? 'visible' : 'hidden');
   if (onWater) {
     // Follow the surface tug, excluding the float's downward dip.
@@ -241,6 +269,26 @@ function _gwFishLost(msg) {
   _gdpRefreshChromeSoon();
 }
 
+/** A stone overhang can cover wet water. Keep the cast centre off its opaque
+ * painted faces without changing the shared water or standing support. */
+function _gwFishStoneCovered(x, y) {
+  if (GARDEN_WORLD.v < 5 || x >= GARDEN_ROOM_X || typeof gardenIslandCrossingGeometry !== 'function') return false;
+  const W = GARDEN_WORLD, px = x * W.cellW, py = W.sky + y * W.cellH;
+  for (const c of gardenIslandCrossingGeometry()) {
+    if (c.kind !== 'stepping-stones' || !c.stones) continue;
+    const { count, alongRadius, acrossRadius } = c.stones, ux = (c.b.x - c.a.x) / c.length, uy = (c.b.y - c.a.y) / c.length;
+    const dx = px - c.a.x, dy = py - c.a.y, along = dx * ux + dy * uy, across = -dx * uy + dy * ux;
+    if (across < -acrossRadius || across > acrossRadius + 2) continue;
+    // Match the top ellipse and its two-pixel lower face in the stone painter.
+    const top = across / acrossRadius, face = (across - 2) / acrossRadius;
+    for (let i = 0; i < count; i++) {
+      const u = (along - (i + .5) * c.length / count) / alongRadius;
+      if (u * u + top * top <= 1 || u * u + face * face <= 1) return true;
+    }
+  }
+  return false;
+}
+
 /** Keep river clicks and their cell-centred floats in the same open water. */
 function _gwFishTarget(pt, m) {
   const cell = { x: Math.floor(pt.x), y: Math.floor(pt.y) }, centre = { x: cell.x + .5, y: cell.y + .5 };
@@ -253,7 +301,7 @@ function _gwFishTarget(pt, m) {
   const candidates = [];
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
     const q = { x: centre.x + dx, y: centre.y + dy }, d = Math.hypot(q.x - pt.x, q.y - pt.y);
-    if (d > 1.5 || !gardenWaterContainsPoint(q.x, q.y) || gardenZoneOf(q.x, q.y) !== region || gardenWaterNo(q.x, q.y, m)) continue;
+    if (d > 1.5 || !gardenWaterContainsPoint(q.x, q.y) || _gwFishStoneCovered(q.x, q.y) || gardenZoneOf(q.x, q.y) !== region || gardenWaterNo(q.x, q.y, m)) continue;
     const other = _gfsIslandComponentAt(q.x, q.y);
     if (!other || other.id !== body.id || !_gfsIslandShapeSegment(body.shape, pt, q)) continue;
     // The contour check keeps the segment in this basin; point checks also exclude live supports/ice.
@@ -298,7 +346,7 @@ function gardenFishClickPt(pt, m) {
 function gardenFishClick(cell, m) { return gardenFishClickPt({ x: cell.x + 0.5, y: cell.y + 0.5 }, m); }
 function _gwFishCast(pt0) {
   const pt = { x: Math.floor(pt0.x) + 0.5, y: Math.floor(pt0.y) + 0.5 };   // the middle of the cell: that is what everyone else is told
-  if (typeof gardenWaterContainsPoint === 'function' && !gardenWaterContainsPoint(pt.x, pt.y)) { _gdpSay({ ok: false, msg: 'Too close to the bank. Try a little farther into the water.' }); return; }
+  if ((typeof gardenWaterContainsPoint === 'function' && !gardenWaterContainsPoint(pt.x, pt.y)) || _gwFishStoneCovered(pt.x, pt.y)) { _gdpSay({ ok: false, msg: 'Too close to the bank. Try a little farther into the water.' }); return; }
   _gwFacePt(pt);
   const plan = gardenFishPlan(Math.floor(pt.x), Math.floor(pt.y));
   if (!plan.ok) { _gdpSay(plan); return; }

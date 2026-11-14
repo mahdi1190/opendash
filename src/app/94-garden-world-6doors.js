@@ -84,11 +84,11 @@ function _grmDoorProp(R) { try { return gardenPropsNow().find(p => p.lf === R.at
 function _grmDoorPt(R) {
   const p = _grmDoorProp(R); if (!p) return null;
   if (typeof gardenSightIsSetOut === 'function' && gardenSightIsSetOut(R.at) && p.door) return { x: p.door.x + .5, y: p.door.y + .5 };
-  // The Vale authors approach cells for its relocated sights; older gardens
-  // retain their original separate steps and beside-the-sight fallback.
+  // The Vale's current row owns its approach, including accepted Designer
+  // moves. Older gardens retain their separate steps and beside-sight fallback.
   const island = typeof gardenIslandData === 'function' ? gardenIslandData() : null;
-  const authored = island && island.version >= 5 && island.static.find(q => q.id === R.at && q.x === p.x && q.y === p.y);
-  if (authored && authored.door) return { x: authored.door.x + .5, y: authored.door.y + .5 };
+  const authored = island && island.version >= 5 && island.static.find(q => q.id === R.at);
+  if (authored && p.door) return { x: p.door.x + .5, y: p.door.y + .5 };
   if (R.doorAt) return { x: R.doorAt[0], y: R.doorAt[1] };   // (its sight is hidden behind the shops: the steps are by the path round to it)
   // beside its sight: on the right if it can be, never in water or inside a building, where you could not see it or get to it
   const cx = p.x + p.w * 0.5, foot = p.y + p.h, spots = [[cx + 0.9, foot + 0.45], [cx - 0.9, foot + 0.45], [cx, foot + 1.45], [cx + 0.9, foot + 1.45]];
