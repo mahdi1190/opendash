@@ -15,12 +15,27 @@
     const loops = (reg.polygons || []).map(l => l.map(L.pt)), regP = V.loopPath(loops), coastP = V.loopPath(L.coast), rb = kit.bboxOf(loops.flat(), 20);
     const walls = (L.D.landforms || []).filter(f => f.kind === 'terrace-wall' && f.polygon).map(f => f.polygon);
     const nearWall = (x, y, d) => walls.some(poly => poly.some(p => Math.abs(p[0] - x) < d && Math.abs(p[1] - y) < d * .8));
+    // This lawn sits above the fells layer. Its cell-sized lobes must not
+    // overpaint the shared water contours or the terrace masonry below it.
+    const groundCuts = (L.D.freshwater || []).filter(f => f.boundary).map(f => f.boundary.map(L.pt));
+    for (const poly of walls) {
+      const n = poly.length >> 1, a = poly.slice(0, n), b = poly.slice(n).reverse();
+      const north = a.reduce((s, p) => s + p[1], 0) <= b.reduce((s, p) => s + p[1], 0);
+      const upper = (north ? a : b).map(L.pt), lower = (north ? b : a).map(L.pt);
+      // terraceOps draws upright coping up to six pixels above the upper rim.
+      groundCuts.push(upper.map(p => ({ x: p.x, y: p.y - 7 })).concat(lower.slice().reverse()));
+    }
+    const groundClips = groundCuts.map(poly => {
+      const cut = new Path2D(); cut.rect(rb[0], rb[1], rb[2] - rb[0], rb[3] - rb[1]);
+      cut.addPath(V.loopPath([poly])); return cut;
+    });
     const inReg = (x, y) => { const b = L.base(x, y); return !!(b && b.region === 'orchard-headland'); };
     const grass = (x, y) => inReg(x, y) && L.kind(x + .5, y + .5) === 'grass';
 
     // 1. The terraces' grass: mown strips that follow the terraces, long grass at the edges, flowers by place
     add(rb, 91, (B, r, cb) => {
       B.cx.clip(regP); B.cx.clip(coastP);
+      for (const cut of groundClips) B.cx.clip(cut, 'evenodd');
       V.lawn(B, r, L, P, cb, (x, y) => grass(x, y), null, { salt: 91, base: kit.mix(P.lawn, '#b8c47a', season === 'winter' ? 0 : .25) });
       // mown strips: soft horizontal bands, one lobe per grass cell on every other row, so they stop softly at paths
       { const x0 = Math.floor(cb[0] / cw) - 1, x1 = Math.ceil(cb[2] / cw) + 1, y0 = Math.floor((cb[1] - W.sky) / ch) - 1, y1 = Math.ceil((cb[3] - W.sky) / ch) + 1; for (let y = y0; y <= y1; y++) { if (y % 2) continue; for (let x = x0; x <= x1; x++) if (grass(x, y)) B.f(B.ell((x + .5) * cw, W.sky + (y + .5) * ch, cw * .78, ch * .36), season === 'winter' ? '#c4cab8' : '#c2cc84', .2); } }

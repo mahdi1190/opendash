@@ -115,13 +115,23 @@ window.GardenPaintWater = (function () {
     // the connecting water below their boards or stones; no second ribbon is
     // invented across dry land here.
     const basins = data.version >= 5 ? data.freshwater || [] : brookWhole(W, data.freshwater || [], rivers.brook);
-    for (const f of basins) {
-      if (!f.boundary || f.boundary.length < 3) continue;
+    // Keep every basin's fill intact; its neighbours only mask internal shore ink.
+    const contours = basins.filter(f => f.boundary && f.boundary.length >= 3).map(f => {
+      const boundary = f.boundary.map(pt), pts = data.version >= 5 ? boundary : smooth(boundary);
+      return { f, pts, bounds: boundsOf(pts, 0) };
+    });
+    // Crossing strips join basin mouths too, including the brook's inlet to
+    // the Mere. Their shared water contour masks shore ink, never water fill.
+    const crossingContours = data.version >= 5 && typeof gardenIslandCrossingGeometry === 'function' ? gardenIslandCrossingGeometry().map(c => {
+      const toPx = p => ({ x: cx(p.x), y: cy(p.y) }), pts = c.points.map(toPx);
+      return { pts, holes: (c.holes || []).map(loop => loop.map(toPx)), bounds: boundsOf(pts, 0) };
+    }) : [], shoreMasks = contours.concat(crossingContours);
+    for (const { f, pts } of contours) {
       // The same frozen derived contour supplies water cells, feet, fish,
       // reflections and this picture. Never smooth it again in the painter.
-      const boundary = f.boundary.map(pt), pts = data.version >= 5 ? boundary : smooth(boundary), kind = kindOf(f), b = boundsOf(pts, 64), r = rng(hash(f.id));
+      const kind = kindOf(f), b = boundsOf(pts, 64), r = rng(hash(f.id));
       const ccw = signedArea(pts) > 0, river = lines[f.river || (kind === 'gorge' ? 'gorge' : kind === 'river' ? 'river' : kind === 'brook' ? 'brook' : '')] || null;
-      waters.push({ id: f.id, kind, pts, bounds: b, ccw, river, feats: features(W, f, pts, kind, ccw, river, r, pres) });
+      waters.push({ id: f.id, kind, pts, bounds: b, ccw, river, feats: features(W, f, pts, kind, ccw, river, r, pres, data.version >= 5 ? shoreMasks.filter(c => c.f !== f && hit(c.bounds, b)) : []) });
     }
     // The world box all chunks sit in.
     let all = null; for (const w of waters) all = all ? { x: Math.min(all.x, w.bounds.x), y: Math.min(all.y, w.bounds.y), x1: Math.max(all.x1, w.bounds.x + w.bounds.w), y1: Math.max(all.y1, w.bounds.y + w.bounds.h) } : { x: w.bounds.x, y: w.bounds.y, x1: w.bounds.x + w.bounds.w, y1: w.bounds.y + w.bounds.h };
@@ -136,19 +146,34 @@ window.GardenPaintWater = (function () {
   /* ---------- the still picture of one water, as a list of features ---------- */
   // Each feature: { b: bounds, draw(cx, P, B) } where B is a tiny brush. Random
   // choices are made here, once per water, so every chunk paints the same thing.
-  function features(W, f, pts, kind, ccw, river, r, pres) {
-    const out = [], loop = pts, n = pts.length;
-    let tag = 'bank'; const add = (b, draw) => out.push({ b, draw, tag });
-    const all = boundsOf(pts, 40);
+  function features(W, f, pts, kind, ccw, river, r, pres, neighbours) {
+    const out = [], loop = pts, n = pts.length, all = boundsOf(pts, 40);
+    // Mask only shore paint covered by another basin or crossing strip.
+    // Independent clips subtract their union; positive support holes restore
+    // dry ground even where a bridge end extends beyond its water contour.
+    const shoreClips = (neighbours || []).map(neighbour => {
+      const cut = new Path2D(); cut.rect(all.x - 64, all.y - 64, all.w + 128, all.h + 128);
+      const ring = (poly, positive) => {
+        const points = (signedArea(poly) > 0) === positive ? poly : poly.slice().reverse();
+        cut.moveTo(points[0].x, points[0].y); for (let i = 1; i < points.length; i++) cut.lineTo(points[i].x, points[i].y); cut.closePath();
+      };
+      ring(neighbour.pts, false); for (const hole of neighbour.holes || []) ring(hole, true);
+      return cut;
+    });
+    let tag = 'bank'; const add = (b, draw) => {
+      const mask = shoreClips.length && (tag === 'bank' || tag === 'shallow' || tag === 'lap');
+      out.push({ b, tag, draw: mask ? (cx, C, ctx) => { cx.save(); for (const cut of shoreClips) cx.clip(cut); draw(cx, C, ctx); cx.restore(); } : draw });
+    };
     // outward normal at each boundary vertex (screen px)
     const norm = i => { const a = pts[(i - 1 + n) % n], b = pts[(i + 1) % n], dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1; return ccw ? { x: dy / L, y: -dx / L } : { x: -dy / L, y: dx / L }; };
     const pathOf = () => { const p = new Path2D(); p.moveTo(loop[0].x, loop[0].y); for (let i = 1; i < n; i++) p.lineTo(loop[i].x, loop[i].y); p.closePath(); return p; };
     const P = pathOf(), river_ = kind === 'river' || kind === 'gorge' || kind === 'brook';
-    // A route cuts the authored river into closed basins. At the hump bridge,
-    // the transverse closing edges meet the existing crossing-water picture:
-    // keep them for fill/clip authority, but do not paint a bank across them.
+    // Routes cut rivers into closed basins. Where retained crossing water
+    // actually joins them, closing edges remain fill/clip authority only.
+    // The painter's shared span prevents nearby real banks losing their edges.
     let bankP = P;
-    const mouths = new Set(), bridges = W.v >= 5 && river ? (pres.crossings || []).filter(c => c.kind === 'hump-bridge' && c.over === river.id) : [];
+    const spanOf = window.GardenPaintVale && GardenPaintVale.crossingWaterSpan;
+    const mouths = new Set(), bridges = W.v >= 5 && river && spanOf ? (pres.crossings || []).filter(c => ['hump-bridge', 'footbridge', 'stepping-stones'].includes(c.kind) && c.over === river.id).map(c => spanOf(pres, c, gardenIslandBaseCell)).filter(Boolean) : [];
     if (bridges.length) for (let i = 0; i < n; i++) {
       const a = pts[i], b = pts[(i + 1) % n], dx = b.x - a.x, dy = b.y - a.y;
       for (let j = 1; j < river.pts.length; j++) {
@@ -156,9 +181,10 @@ window.GardenPaintWater = (function () {
         if (Math.abs(den) < 1e-8) continue;
         const qx = c.x - a.x, qy = c.y - a.y, t = (qx * vy - qy * vx) / den, u = (qx * dy - qy * dx) / den;
         if (t < 0 || t > 1 || u < 0 || u > 1) continue;
-        const x = (a.x + dx * t) / W.cellW, y = (a.y + dy * t - W.sky) / W.cellH;
-        // Same six-cell search reach as the retained crossing-water strip.
-        if (bridges.some(c => Math.hypot(x - c.x, y - c.y) <= 6)) { mouths.add(i); break; }
+        if (bridges.some(span => {
+          const s = span.Ln.cum[j - 1] + u * (span.Ln.cum[j] - span.Ln.cum[j - 1]);
+          return s >= span.s0 && s <= span.s1;
+        })) { mouths.add(i); break; }
       }
     }
     if (mouths.size) {
@@ -222,7 +248,7 @@ window.GardenPaintWater = (function () {
       if (r() < (river_ ? .45 : .2)) continue;
       const deep = (river_ ? 10 : 16) + r() * (river_ ? 14 : 34), rx = (river_ ? 10 : 16) + r() * (river_ ? 10 : 22), x = a.x + (r() - .5) * 8, y = a.y + deep * .55;
       const d = D().blob(r, x, y, rx, deep * .62, 8, .45), d2 = D().blob(r, x + (r() - .5) * rx * .5, y - deep * .2, rx * .55, deep * .4, 7, .4);
-      add({ x: x - rx - 4, y: a.y - 6, w: rx * 2 + 8, h: deep * 1.4 + 12 }, (cx, C) => { cx.save(); cx.clip(P); cx.globalAlpha = .38; cx.fillStyle = C.refl; cx.fill(P2(d)); cx.globalAlpha = .3; cx.fillStyle = C.reflDeep; cx.fill(P2(d2)); cx.restore(); });
+      if (!mouths.has(i)) add({ x: x - rx - 4, y: a.y - 6, w: rx * 2 + 8, h: deep * 1.4 + 12 }, (cx, C) => { cx.save(); cx.clip(P); cx.globalAlpha = .38; cx.fillStyle = C.refl; cx.fill(P2(d)); cx.globalAlpha = .3; cx.fillStyle = C.reflDeep; cx.fill(P2(d2)); cx.restore(); });
     }
     tag = 'sky';
     // 4. Sky streaks: on still water long horizontal wind lines, on running water
@@ -302,8 +328,10 @@ window.GardenPaintWater = (function () {
         const clump = [], cnt = bed ? 6 + Math.floor(r() * 6) : 3, mixIds = estuary ? ['plant.reed', 'plant.reed', 'plant.proof-fleet-reed', 'plant.bulrush'] : westBank ? ['plant.reed', 'plant.bulrush', 'plant.proof-fleet-rush', 'plant.canal-view-loosestrife'] : ['plant.reed', 'plant.proof-fleet-rush', 'plant.reed', 'plant.bulrush'];
         for (let k = 0; k < cnt; k++) { const o = (r() - .62) * 22, along = (r() - .5) * 24, id = mixIds[Math.floor(r() * mixIds.length)]; clump.push([a.x + nn.x * o - nn.y * along, a.y + nn.y * o + nn.x * along, id, r() < .5 ? 0 : 1, 24 + r() * (bed ? 22 : 12)]); }
         clump.sort((p, q) => p[1] - q[1]);
-        add({ x: a.x - 50, y: a.y - 80, w: 100, h: 110 }, (cx, C, ctx) => { for (const [x, y, id, v, h] of clump) ctx.stamp(id, v, h, x, y); });
-        out[out.length - 1].needs = clump.map(q => [q[2], q[3], q[4]]);
+        if (!mouths.has(i)) {
+          add({ x: a.x - 50, y: a.y - 80, w: 100, h: 110 }, (cx, C, ctx) => { for (const [x, y, id, v, h] of clump) ctx.stamp(id, v, h, x, y); });
+          out[out.length - 1].needs = clump.map(q => [q[2], q[3], q[4]]);
+        }
       }
     }
     return out;
@@ -471,7 +499,7 @@ window.GardenPaintWater = (function () {
     // rafts drifting out into the Mere, spray and mist rising off it.
     const F = pres.falls;
     if (F) {
-      const lipX = cx(F.x + F.w / 2), lipY = cy(F.y + (F.h || 3) * .6), fs = (data.static || []).find(s => s.id === 'ld-falls'), pool = fs ? { x: cx(fs.x + fs.w / 2), y: cy(fs.y + (fs.h || 1)) + 8 } : F.pool ? { x: cx(F.pool[0]), y: cy(F.pool[1]) } : { x: lipX, y: lipY + 60 }, r = rng(hash('falls-pool'));
+      const lipX = cx(F.x + F.w / 2), lipY = cy(F.y + (F.h || 3) * .6), fs = (data.static || []).find(s => s.id === 'ld-falls'), pool = data.version >= 5 && F.pool ? { x: cx(F.pool[0]), y: cy(F.pool[1]) } : fs ? { x: cx(fs.x + fs.w / 2), y: cy(fs.y + (fs.h || 1)) + 8 } : F.pool ? { x: cx(F.pool[0]), y: cy(F.pool[1]) } : { x: lipX, y: lipY + 60 }, r = rng(hash('falls-pool'));
       const width = F.w * W.cellW * .55, rafts = []; for (let i = 0; i < 46; i++) { const a = r() * Math.PI, d = 20 + r() * 100; rafts.push([pool.x + Math.cos(a) * d * 1.3 * (r() < .5 ? -1 : 1), pool.y + Math.sin(a) * d * .45 + 8, 3 + r() * 8, r()]); }
       extras.push({ b: { x: pool.x - 200, y: pool.y - 120, w: 400, h: 260 }, draw(c, C) {
         const w = M.waters.find(w => w.kind === 'mere'); if (w) { const p = new Path2D(); p.moveTo(w.pts[0].x, w.pts[0].y); for (const z of w.pts) p.lineTo(z.x, z.y); p.closePath(); c.save(); c.clip(p); }

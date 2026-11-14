@@ -399,7 +399,14 @@ window.GardenPaintedTerrain = (function () {
     const a = t.cells.slice(0, n), b = t.cells.slice(n).reverse();
     const north = a.reduce((s, p) => s + p[1], 0) <= b.reduce((s, p) => s + p[1], 0), upper = (north ? a : b).map(L.pt), lower = (north ? b : a).map(L.pt);
     const bb = kit.bboxOf(upper.concat(lower), 30), along = Math.abs(upper[upper.length - 1].x - upper[0].x) > Math.abs(upper[upper.length - 1].y - upper[0].y);
+    // Terrace ribbons can meet a river. Keep their masonry and shadow on
+    // the authored dry bank instead of painting a solid wall over the water.
+    const dry = (L.D.freshwater || []).filter(basin => basin.boundary).map(basin => basin.boundary.map(L.pt)).filter(points => kit.meets(kit.bboxOf(points), bb)).map(points => {
+      const mask = loopPath([points]); mask.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]); return mask;
+    });
     add(bb, 500 + t.id.length * 7, (B, r) => {
+      // Separate clips subtract the union, including overlapping basins.
+      for (const mask of dry) B.cx.clip(mask, 'evenodd');
       const face = B.poly(upper.concat(lower.slice().reverse()));
       B.cx.filter = 'blur(4px)'; B.f(B.poly(lower.map(p => ({ x: p.x + 3, y: p.y - 3 })).concat(lower.slice().reverse().map(p => ({ x: p.x + 9, y: p.y + 12 })))), '#2e3420', .22); B.cx.filter = 'none';
       B.f(face, B.lin(0, bb[1], 0, bb[3], [[0, '#9c9480'], [1, '#6e6858']]));
@@ -562,7 +569,7 @@ window.GardenPaintedTerrain = (function () {
   function build(scene, parent, sc) {
     const t0 = performance.now(), kit = KIT(); if (!kit || !wanted()) return null;
     const W = GARDEN_WORLD, L = readLayout(W); if (!L) return null;
-    const season = sc.season || 'summer', sig = 'gpt-2|' + season + '|' + (GardenIslandLayout.fingerprint || '');
+    const season = sc.season || 'summer', sig = 'gpt-3|' + season + '|' + (GardenIslandLayout.fingerprint || '');
     const old = current; if (old) { old.roomEntrances = null; old.handle.destroy(old.sig === sig); for (const s of sprites) s.destroy(); sprites = []; if (old.sig !== sig) for (const k of old.spriteKeys) if (scene.textures.exists(k)) scene.textures.remove(k); }
     const ops = ok(() => compose(L, season)); if (!ops) return null;
     const rb = kit.bboxOf(L.regionLoops.flat().concat(L.terraces.flatMap(t => t.pts)));

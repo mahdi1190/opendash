@@ -365,7 +365,7 @@ function _gfsRehome(f, band) {
 }
 /** Static water components and local stocks are derived once from the shared coast/pond contours. */
 const _gfsIslandHabitat = { revision: '', bands: [], byKey: new Map(), cells: null, components: [], spatial: new Map(), elapsed: 0 };
-function _gfsIslandShapeContains(shape, x, y) { return shape.ocean ? gardenIslandOceanContains(x, y) : shape.pool.boundary ? _gardenIslandInLoop(x, y, shape.pool.boundary) : _gardenIslandRect(x, y, shape.pool.wet); }
+function _gfsIslandShapeContains(shape, x, y) { return shape.ocean ? gardenIslandOceanContains(x, y) : (shape.pool.boundary ? _gardenIslandInLoop(x, y, shape.pool.boundary) : _gardenIslandRect(x, y, shape.pool.wet)) && !(shape.pool.holes || []).some(loop => _gardenIslandInLoop(x, y, loop)); }
 function _gfsIslandShapeSegment(shape, a, b) {
   if (!_gfsIslandShapeContains(shape, a.x, a.y) || !_gfsIslandShapeContains(shape, b.x, b.y)) return false;
   const wet = shape.pool && shape.pool.wet, loops = shape.ocean ? gardenIslandGeometry().land : [shape.pool.boundary || [[wet.x, wet.y], [wet.x + wet.w, wet.y], [wet.x + wet.w, wet.y + wet.h], [wet.x, wet.y + wet.h]]].concat(shape.pool.holes || []), rx = b.x - a.x, ry = b.y - a.y;
@@ -380,6 +380,17 @@ function _gfsIslandShapeSegment(shape, a, b) {
 function _gfsIslandGeometry() {
   const H = _gfsIslandHabitat, revision = gardenIslandGeometry().revision; if (H.revision === revision) return H;
   const W = GARDEN_WORLD, size = W.cols * W.rows, shapes = [{ id: 'sea', ocean: true }].concat(gardenIslandData().freshwater.map(pool => ({ id: pool.id, pool }))), source = new Int16Array(size).fill(-1), cells = new Int32Array(size).fill(-1), coasts = new Array(size), components = [], groups = new Map();
+  // Rendered crossing water is a real local habitat, with its exact board/stone holes.
+  // Keep the neighbouring river's species; do not join fish paths across dry land.
+  if (typeof gardenIslandCrossingGeometry === 'function') for (const crossing of gardenIslandCrossingGeometry()) {
+    const near = gardenIslandData().freshwater.filter(pool => pool.river === crossing.over).sort((a, b) => {
+      const distance = pool => Math.hypot(Math.max(pool.wet.x - crossing.mid.x, crossing.mid.x - pool.wet.x - pool.wet.w, 0) * W.cellW, Math.max(pool.wet.y - crossing.mid.y, crossing.mid.y - pool.wet.y - pool.wet.h, 0) * W.cellH);
+      return distance(a) - distance(b);
+    })[0];
+    if (!near || !crossing.points.length) continue;
+    const boundary = crossing.points.map(p => [p.x, p.y]), xs = boundary.map(p => p[0]), ys = boundary.map(p => p[1]), x = Math.min(...xs), y = Math.min(...ys);
+    shapes.push({ id: crossing.id, pool: { ...near, wet: { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y }, boundary, holes: (crossing.holes || []).map(loop => loop.map(p => [p.x, p.y])) } });
+  }
   for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) { const base = gardenIslandBaseCell(x, y), at = y * W.cols + x; if (base.ocean) { source[at] = 0; coasts[at] = gardenIslandFishingReach(x + .5, y + .5); } else if (base.freshwater) { const index = shapes.findIndex(shape => !shape.ocean && _gfsIslandShapeContains(shape, x + .5, y + .5)); if (index >= 0) source[at] = index; } }
   for (let start = 0; start < size; start++) {
     if (source[start] < 0 || cells[start] >= 0) continue;

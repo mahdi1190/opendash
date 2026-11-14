@@ -24,19 +24,30 @@
   function at(Ln, s) { s = Math.max(0, Math.min(Ln.len, s)); let i = 1; while (i < Ln.cum.length - 1 && Ln.cum[i] < s) i++; const a = Ln.cells[i - 1], b = Ln.cells[i], seg = Ln.cum[i] - Ln.cum[i - 1] || 1, t = (s - Ln.cum[i - 1]) / seg, tx = (b[0] - a[0]) / seg, ty = (b[1] - a[1]) / seg; return { x: a[0] + (b[0] - a[0]) * t, y: a[1] + (b[1] - a[1]) * t, tx, ty }; }
   function nearest(Ln, x, y) { let best = null; for (let s = 0; s <= Ln.len; s += .1) { const p = at(Ln, s), d = Math.hypot(p.x - x, p.y - y); if (!best || d < best.d) best = { s, d }; } return best; }
 
+  // The retained crossing water and river-bank joins share exactly this support.
+  function crossingWaterSpan(pres, c, base) {
+    const physical = typeof gardenIslandCrossingGeometry === 'function' ? gardenIslandCrossingGeometry().find(g => g.crossing.id === c.id) : null;
+    if (physical) return physical.span;
+    const riv = pres.rivers && pres.rivers[c.over]; if (!riv || !riv.line || riv.line.length < 2) return null;
+    const Ln = lineOf(riv.line), n0 = nearest(Ln, c.x, c.y);
+    const wet = s => { const p = at(Ln, s), b = base(p.x, p.y); return !!(b && b.freshwater); };
+    let s0 = n0.s, s1 = n0.s; for (let k = 0; k < 40 && s0 > 0 && !wet(s0); k++) s0 -= .15; for (let k = 0; k < 40 && s1 < Ln.len && !wet(s1); k++) s1 += .15;
+    return { Ln, n0, s0: Math.max(0, s0 - .7), s1: Math.min(Ln.len, s1 + .7) };
+  }
+  V.crossingWaterSpan = crossingWaterSpan;
+
   function crossings(C) {
     const { L, P, add, under } = C, cw = L.cw, ch = L.ch, W = L.W;
+    const physical = typeof gardenIslandCrossingGeometry === 'function' ? gardenIslandCrossingGeometry() : [];
     for (const c of L.pres.crossings || []) {
       const riv = L.pres.rivers && L.pres.rivers[c.over]; if (!riv || !riv.line) continue;
-      const Ln = lineOf(riv.line), hw = riv.halfWidth || 1, n0 = nearest(Ln, c.x, c.y);
-      const wet = s => { const p = at(Ln, s), b = L.base(p.x, p.y); return !!(b && b.freshwater); };
-      let s0 = n0.s, s1 = n0.s; for (let k = 0; k < 40 && s0 > 0 && !wet(s0); k++) s0 -= .15; for (let k = 0; k < 40 && s1 < Ln.len && !wet(s1); k++) s1 += .15;
-      s0 = Math.max(0, s0 - .7); s1 = Math.min(Ln.len, s1 + .7);
+      const deck = physical.find(g => g.crossing.id === c.id);
+      const { Ln, n0, s0, s1 } = deck ? deck.span : crossingWaterSpan(L.pres, c, L.base), hw = riv.halfWidth || 1;
       const mid = at(Ln, n0.s), anchor = { x: mid.x * cw, y: W.sky + mid.y * ch }, px = (x, y) => ({ x: x * cw - anchor.x, y: W.sky + y * ch - anchor.y });
       const left = [], right = [], centre = [];
       for (let s = s0; s <= s1 + 1e-6; s += .2) { const p = at(Ln, s), nx = -p.ty, ny = p.tx, k = hw * (1 + .06 * Math.sin(s * 3.1)); left.push(px(p.x + nx * k, p.y + ny * k)); right.push(px(p.x - nx * k, p.y - ny * k)); centre.push(px(p.x, p.y)); }
       if (left.length < 2) continue;
-      const strip = left.concat(right.slice().reverse()), bb = V.hull(strip.map(q => ({ x: q.x, y: q.y }))).reduce((b, q) => [Math.min(b[0], q.x), Math.min(b[1], q.y), Math.max(b[2], q.x), Math.max(b[3], q.y)], [1e9, 1e9, -1e9, -1e9]);
+      const strip = deck ? deck.points.map(p => px(p.x, p.y)) : left.concat(right.slice().reverse()), bb = V.hull(strip.map(q => ({ x: q.x, y: q.y }))).reduce((b, q) => [Math.min(b[0], q.x), Math.min(b[1], q.y), Math.max(b[2], q.x), Math.max(b[3], q.y)], [1e9, 1e9, -1e9, -1e9]);
       // the water under the crossing: drawn under the painted river, so its banks lap over the ends
       under({ key: 'cross-water|' + c.id, x: anchor.x, y: anchor.y, box: [bb[0] - 16, bb[1] - 16, bb[2] + 16, bb[3] + 16], draw: B => {
         const shape = B.poly(strip);
@@ -53,28 +64,42 @@
       if (c.kind === 'hump-bridge') continue;
       // the crossing itself, square to the river at its middle
       const nx = -mid.ty, ny = mid.tx, span = c.kind === 'footbridge' ? hw + .7 : hw + .15;
-      const A = { x: (mid.x + nx * span) * cw, y: W.sky + (mid.y + ny * span) * ch }, Bp = { x: (mid.x - nx * span) * cw, y: W.sky + (mid.y - ny * span) * ch };
+      const A = deck ? deck.a : { x: (mid.x + nx * span) * cw, y: W.sky + (mid.y + ny * span) * ch }, Bp = deck ? deck.b : { x: (mid.x - nx * span) * cw, y: W.sky + (mid.y - ny * span) * ch };
       const box = [Math.min(A.x, Bp.x) - 40, Math.min(A.y, Bp.y) - 40, Math.max(A.x, Bp.x) + 40, Math.max(A.y, Bp.y) + 40];
-      if (c.kind === 'footbridge') add(box, 61, (B, r) => footbridge(B, r, P, A, Bp));
-      else add(box, 62, (B, r) => stones(B, r, P, A, Bp, C.season));
+      if (c.kind === 'footbridge') add(box, 61, (B, r) => footbridge(B, r, P, A, Bp, deck));
+      else add(box, 62, (B, r) => stones(B, r, P, A, Bp, C.season, deck));
     }
   }
-  function footbridge(B, r, P, A, Bp) {
-    const L = Math.hypot(Bp.x - A.x, Bp.y - A.y), ux = (Bp.x - A.x) / L, uy = (Bp.y - A.y) / L, vx = -uy, vy = ux, hw = 17;
-    const q = (t, s, lift) => ({ x: A.x + ux * t + vx * s, y: A.y + uy * t + vy * s - (lift || 0) });
-    const arch = t => Math.sin(Math.PI * t / L) * 7;
-    B.cx.filter = 'blur(3px)'; B.f(B.poly([q(8, -hw + 4), q(L - 8, -hw + 4), q(L - 8, hw + 10), q(8, hw + 10)]), '#1e2e34', .3); B.cx.filter = 'none';
-    // stringers, then planks across, each lit on its upper edge, a few weathered pale
-    for (const s of [-hw + 2, hw - 2]) { const pts = []; for (let t = 0; t <= L; t += 4) pts.push(q(t, s, arch(t) - 3)); V.strokePts(B, pts, P.woodDk, 5, .9); }
-    for (let t = 2; t < L - 2; t += 6.4) { const a = arch(t), tone = r(); B.f(B.poly([q(t, -hw, a), q(t + 5.4, -hw, a), q(t + 5.4, hw, a), q(t, hw, a)]), tone < .2 ? P.woodHi : tone < .8 ? P.wood : P.woodLo).f(B.poly([q(t, -hw, a), q(t + 1.6, -hw, a), q(t + 1.6, hw, a), q(t, hw, a)]), P.woodHi, .5); }
-    // handrails on both sides: posts and a rail, the near one darker
+  function footbridge(B, r, P, A, Bp, deck) {
+    const L = Math.hypot(Bp.x - A.x, Bp.y - A.y), ux = (Bp.x - A.x) / L, uy = (Bp.y - A.y) / L, vx = -uy, vy = ux, hw = deck ? deck.halfWidth : 17;
+    const ground = (t, s) => ({ x: A.x + ux * t + vx * s, y: A.y + uy * t + vy * s });
+    const q = (t, s, lift = 0) => { const p = deck ? deck.deckPoint(t / L, s) : ground(t, s); return { x: p.x, y: p.y - (deck ? 0 : Math.sin(Math.PI * t / L) * 7) - lift }; };
+    B.cx.filter = 'blur(3px)'; B.f(B.poly([ground(8, -hw + 4), ground(L - 8, -hw + 4), ground(L - 8, hw + 10), ground(8, hw + 10)]), '#1e2e34', .3); B.cx.filter = 'none';
+    // Both ends of every board follow the same arch as its physical support.
+    for (const s of [-hw + 2, hw - 2]) { const pts = []; for (let t = 0; t < L; t += 4) pts.push(q(t, s, -3)); pts.push(q(L, s, -3)); V.strokePts(B, pts, P.woodDk, 5, .9); }
+    for (let t = 0; t < L; t += 6.4) { const end = Math.min(L, t + 5.4), hi = Math.min(end, t + 1.6), tone = r(); B.f(B.poly([q(t, -hw), q(end, -hw), q(end, hw), q(t, hw)]), tone < .2 ? P.woodHi : tone < .8 ? P.wood : P.woodLo).f(B.poly([q(t, -hw), q(hi, -hw), q(hi, hw), q(t, hw)]), P.woodHi, .5); }
+    // Raised handrails stay attached to that same deck plane.
     for (const [s, col] of [[-hw, P.woodLo], [hw, P.wood]]) {
-      const rail = []; for (let t = 0; t <= L; t += 4) rail.push(q(t, s, arch(t) + 13)); V.strokePts(B, rail, col, 2.6, .95); V.strokePts(B, rail, P.woodHi, 1, .5, 0, -.8);
-      for (let t = 2; t <= L - 1; t += (L - 4) / 3) { const a = q(t, s, arch(t)), b = q(t, s, arch(t) + 14); B.s(`M${a.x} ${a.y}L${b.x} ${b.y}`, P.woodDk, 3, .95); }
+      const rail = []; for (let t = 0; t < L; t += 4) rail.push(q(t, s, 13)); rail.push(q(L, s, 13)); V.strokePts(B, rail, col, 2.6, .95); V.strokePts(B, rail, P.woodHi, 1, .5, 0, -.8);
+      for (let t = 2; t <= L - 1; t += (L - 4) / 3) { const a = q(t, s), b = q(t, s, 14); B.s(`M${a.x} ${a.y}L${b.x} ${b.y}`, P.woodDk, 3, .95); }
     }
-    for (const t of [0, L]) B.f(B.blob(r, q(t, 0).x, q(t, 0).y + 4, 22, 8, 7, .4), '#9c8a66', .55);
+    for (const t of [0, L]) B.f(B.blob(r, ground(t, 0).x, ground(t, 0).y + 4, 22, 8, 7, .4), '#9c8a66', .55);
   }
-  function stones(B, r, P, A, Bp, season) {
+  function stones(B, r, P, A, Bp, season, deck) {
+    if (deck && deck.stones) {
+      // Connected low stone faces make the narrow supported ford visible.
+      // Their overlap covers the support even halfway between stone centres.
+      const { count, alongRadius, acrossRadius } = deck.stones, angle = Math.atan2(Bp.y - A.y, Bp.x - A.x);
+      for (let i = 0; i < count; i++) {
+        const p = deck.deckPoint((i + .5) / count, 0); B.cx.save(); B.cx.translate(p.x, p.y); B.cx.rotate(angle);
+        B.f(B.ell(0, 2, alongRadius, acrossRadius), '#4e4a40').f(B.ell(0, 0, alongRadius, acrossRadius), '#9a9484');
+        B.cx.clip(new Path2D(B.ell(0, 0, alongRadius, acrossRadius)));
+        B.f(B.blob(r, -alongRadius * .2, -acrossRadius * .25, alongRadius * .62, acrossRadius * .5, 7, .3), '#c8c2b0', .9);
+        if (r() < .5) B.f(B.blob(r, alongRadius * .2, acrossRadius * .1, alongRadius * .35, acrossRadius * .2, 6, .5), season === 'winter' ? '#e8ecef' : '#6f8446', .8);
+        B.cx.restore();
+      }
+      return;
+    }
     const L = Math.hypot(Bp.x - A.x, Bp.y - A.y), n = Math.max(3, Math.round(L / 26)), ux = (Bp.x - A.x) / L, uy = (Bp.y - A.y) / L;
     for (let i = 0; i < n; i++) {
       const t = (i + .5) / n * L, x = A.x + ux * t + (r() - .5) * 5, y = A.y + uy * t + (r() - .5) * 3, rx = 10 + r() * 4, ry = 6 + r() * 2;
@@ -238,7 +263,8 @@
         B.f(B.blob(r, c.x, c.y + 26, 110, 38, 11, .3), '#9a8458', .45).f(B.blob(r, c.x - 10, c.y + 22, 70, 22, 9, .3), '#b8a070', .35);
         for (let k = 0; k < 120; k++) { const a = r() * Math.PI * 2, d = Math.sqrt(r()); B.f(B.rect(c.x + Math.cos(a) * 100 * d, c.y + 24 + Math.sin(a) * 34 * d, 2 + r() * 3, 1 + r()), r() < .5 ? '#d8c08a' : '#8a6a46', .8); }
       });
-      thing({ key: 'logstack', x: c.x + 2.2 * cw, y: c.y + .4 * ch, box: [-40, -46, 44, 8], draw: B => logStack(B, C.kit.rng(72), P) });
+      const logs = gardenIslandLogStack(L.D), logAt = logs ? L.cpt(logs.x, logs.y) : { x: c.x + 2.2 * cw, y: c.y + .4 * ch };
+      thing({ key: 'logstack', x: logAt.x, y: logAt.y, box: [-40, -54, 44, 8], draw: B => logStack(B, C.kit.rng(72), P) });
       thing({ key: 'block', x: c.x - 1.9 * cw, y: c.y + 1.3 * ch, box: [-20, -34, 26, 8], draw: B => chopBlock(B, P) });
     }
     const ice = L.stat('ld-icehouse');

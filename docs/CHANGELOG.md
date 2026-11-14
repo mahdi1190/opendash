@@ -10,6 +10,22 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.68.7] - 2026-11-14
+
+### Fixed
+
+- Travelling between regions no longer loses scenery or character parts when cached drawings are replaced. Restored terrain and original artwork keep their visibility in sync within the existing memory allowance.
+- River sections beneath crossings now share their water geometry with walking and fishing. Players stay on the visible bridge or stone footing, and the surrounding water accepts casts and fish.
+- Narrow river clicks choose a nearby usable float position in the same open water instead of rejecting a wet bank edge because its grid centre is dry.
+- Public river water remains fishable beside locked planting sections, while closed regional gates still restrict access. Float placement stays on the clicked side of bridge supports.
+- The brook has one visible bridge with its interaction on the boards, and overlapping river and lake water no longer draw banks across their confluence.
+- The little bridge and boathouse no longer route interactions to obsolete doorway coordinates from the earlier layout.
+- Fleet Falls reaches its lake pool, with one splash composition, softer sheet edges and complete surrounding rock shelves.
+- River water flows through plank bridges and stepping-stone crossings without artificial banks across the channel.
+- Orchard grass stays off river water and terrace masonry, and terrace walls stop at the water's edge.
+- Walking and companion movement check the whole step along curved banks. Click routes and reachable-ground hints share shoreline clearance, reusing checks while the physical map stays unchanged.
+- The log stack beside Hollin's hut keeps its complete roof and a solid base. Classic draws the same stack so its shared collision stays visible in both graphics modes.
+
 ## [2.68.6] - 2026-11-14
 
 ### Fixed

@@ -82,21 +82,26 @@ const _gardenOtherWaters = (function () {
     return cells;
   }
   function build(bitmap, signature) {
-    const W = GARDEN_WORLD, stage = loopsOf(bitmap), holes = stage.filter(loop => area(loop) <= 0), shapes = [];
+    const W = GARDEN_WORLD, stage = loopsOf(bitmap), holes = stage.filter(loop => area(loop) <= 0), shapes = [], crossings = W.v >= 5 ? gardenIslandCrossingGeometry() : [];
     if (W.v >= 4) {
       // Paint and foot probes share the authored smooth shore. Boards and ice
       // keep their independent walk cover; enclosed dry islands retain holes.
       const basins = gardenIslandData().freshwater.filter(basin => Array.isArray(basin.boundary));
       if (basins.length) {
+        // Authored basins have no bitmap-derived islands. Walk cover remains
+        // independent; exact crossing decks cut these continuous contours.
+        holes.length = 0;
         stage.splice(0, stage.length, ...basins.map(basin => {
           const ring = basin.boundary.map(p => ({ x: p[0] * W.cellW, y: W.sky + p[1] * W.cellH }));
           return area(ring) < 0 ? ring.reverse() : ring;
-        }), ...holes);
+        }), ...crossings.map(c => { const ring = c.points.map(p => ({ x: p.x * W.cellW, y: W.sky + p.y * W.cellH })); return area(ring) < 0 ? ring.reverse() : ring; }));
       }
     }
     for (const outer of stage.filter(loop => area(loop) > 0)) {
       const points = outer.map(p => ({ x: p.x / W.cellW, y: (p.y - W.sky) / W.cellH })), inner = holes.filter(hole => inside(hole[0].x, hole[0].y, outer)).map(loop => loop.map(p => ({ x: p.x / W.cellW, y: (p.y - W.sky) / W.cellH }))), box = bounds(points);
+      for (const crossing of crossings) { const b = bounds(crossing.support); if (b.x <= box.x + box.width && b.x + b.width >= box.x && b.y <= box.y + box.height && b.y + b.height >= box.y) inner.push(crossing.support); }
       const shape = { id: 'other-water:' + Math.floor(box.x) + ':' + Math.floor(box.y), points, holes: inner, bounds: box, areas: [] };
+      if (crossings.length && inner.length) shape.edges = gardenIslandWaterEdges(points, inner);
       shape.contains = (x, y) => Number.isFinite(x) && Number.isFinite(y) && x >= box.x && y >= box.y && x <= box.x + box.width && y <= box.y + box.height && inside(x, y, points) && !inner.some(hole => inside(x, y, hole));
       const ids = new Set();
       for (let y = Math.max(0, Math.floor(box.y)); y < Math.min(W.rows, Math.ceil(box.y + box.height)); y++) for (let x = Math.max(0, Math.floor(box.x)); x < Math.min(W.cols, Math.ceil(box.x + box.width)); x++) if (bitmap[y * W.cols + x] && shape.contains(x + .5, y + .5)) {
