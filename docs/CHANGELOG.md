@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.68.11] - 2026-11-14
+
+### Fixed
+
+- A morning story postponed while playing in the Garden no longer pulls you away from a page you subsequently choose, such as Settings.
+
 ## [2.68.10] - 2026-11-14
 
 ### Fixed

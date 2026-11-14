@@ -89,6 +89,13 @@ classic `<script>`. That means:
 
 ### Area -> files -> owner role
 
+Automatic morning welcomes retain the navigation counter from their initial
+schedule through startup delays, Garden/time-zone retries and the brief fetch.
+`15-nav-sidebar.js` advances it on a real page change; `74-brief-ui.js` discards
+an older attempt. Explicit Start my day remains independent. Ordinary private
+play covered Garden to Settings beyond the retry interval, manual story start,
+and return to the Garden.
+
 **Garden direction:** keep the default world calm and coherent. Optional set
 pieces are put out deliberately, one at a time, with gradual existing-level
 unlocks; passive discoveries must not compete with the player's chosen action.

@@ -4,6 +4,7 @@
 // The hash as the page was opened. Person deep links can only be
 // checked once the state file has loaded, and render() rewrites the hash.
 const _BOOT_HASH = location.hash || '';
+const _BOOT_NAVIGATION = _viewNavigation;
 
 document.title = appTitle();
 { const b = document.getElementById('brand-name'); if (b) b.textContent = userName() || 'Freeflo'; }
@@ -97,7 +98,7 @@ bootStatePersistence().then(() => {
   if (AI_AVAILABLE || GOOGLE_CONNECTED) render();
   if (GOOGLE_CONNECTED) fetchCalendarEvents();
   _pollAiStatus(8);
-  if (typeof briefMaybeAutoOpen === 'function') setTimeout(briefMaybeAutoOpen, 600);   // Home's morning greeting, first visit of the day (74-brief-ui.js)
+  if (typeof briefMaybeAutoOpen === 'function') setTimeout(() => briefMaybeAutoOpen(_BOOT_NAVIGATION), 600);   // Home's morning greeting, first visit of the day (74-brief-ui.js)
   if (typeof liveSyncStart === 'function') liveSyncStart();   // changes from the assistant, MCP clients, other tabs
   if (typeof clockBoot === 'function') clockBoot();           // the time-zone sensor, banner and server sync (87-clock-ui.js)
   // AI chats: a reply this tab was writing before a reload is marked interrupted on every computer; the Ask button's unread dot (72-assistant.js).

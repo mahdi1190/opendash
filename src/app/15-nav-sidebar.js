@@ -22,6 +22,8 @@ function viewAlias(v) {
   const m = /^review:(evening|week|history)$/.exec(v);
   return m ? 'home:' + m[1] : v;
 }
+// A queued automatic welcome belongs to the navigation that scheduled it.
+let _viewNavigation = 0;
 function setView(v) {
   v = viewAlias(v);
   const from = state.view;
@@ -32,6 +34,7 @@ function setView(v) {
     if (window.Motion && Motion.scrollTopIfScrolled) Motion.scrollTopIfScrolled(document.getElementById('main'));
     return;
   }
+  _viewNavigation++;
   // Where you came from (14-shell.js): a page opened from a link inside another offers '‹ Back to …'.
   if (typeof navNoteMove === 'function') navNoteMove(from, v);
   // The person panel only renders when no task is selected, so going to a
