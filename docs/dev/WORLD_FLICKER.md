@@ -44,8 +44,12 @@ agent's memory outlives its last frame by `WORLD_FRAME_MEM_KEEP_S` (1 s). A stil
   way round. Discrete fields come from the nearer tick.
 - The life steps at 15 Hz inside 30 Hz ticks, so what it alone sets would hold for one tick and then jump. `_wh5Steps` lays those
   scalars on a line through the last two **life steps**, late by `step - tick` (so the line always runs between two known steps). The
-  life's discrete fields (`state`, `pose`, `clip`, `view`, `loco`, ...) switch halfway along that line. An agent new at a step comes up
-  from opacity 0 over the step.
+  life's discrete fields (`state`, `pose`, `clip`, `view`, `loco`, `stepping`, `seat`, `dwell`, ...) switch halfway along that line,
+  together (a sitter is never in the sit pose off its seat). An agent new at a step comes up from opacity 0 over the step.
+- `walkK` and `gaitPhase` are NOT on that line (14 Nov, wave 2): `worldAgents` already puts them between the life's last two steps with
+  the share it puts x and z (I4), so they move every tick with the body. On the step line they ran about one life step ahead of the
+  position: the legs out of step with the feet. Between ticks `_wh5Lerp` interpolates them like x and z (walkK linearly, gaitPhase the
+  short way round).
 - **Ghost floor**: a figure at least `WORLD_FRAME_LOD_PX` device px tall is never more see-through than `WORLD_FRAME_GHOST_MIN` (0.85)
   from a ghost pass. Its fade in or out still applies (`alphaNoGhost`, made by the driver). Measured at Fleet Pond (30 s at 30 fps):
   visible figure-frames under 0.85 dropped from 1274 to 33; alpha steps over 0.04 a frame dropped from 354 (max 0.111) to 73 (max 0.056).
@@ -109,6 +113,30 @@ fallback pass's index filter with it. Instead:
   (`S.stats.baseWaterOff`).
 - A live record nobody drew for 10 minutes lets go of its bake products and draw memory. A record's kept bake products are capped at
   `WORLD_FRAME_CACHE_BYTES` (160 MB).
+
+## 8a. Wave 2 seams (14 Nov)
+
+- **One moving test.** `worldHostAgents` and the hook fallbacks (`_wfrHooks` without appearance, `worldFrameAt`'s anim fallback) use the
+  loco state (`_wh5Moving`: start, walk or stop; `worldLifeMoving` when loaded), the speed only for a body without one (a boat).
+- **Every change of a figure's drawing dissolves** (`_wfrAgentMem`, both players): the view or flip as before, and now the OBJECT (a
+  legless figure walks in its stand-in art: person.birdwatcher <-> person.walker), the variant, the dress (`r.season`: the season, or the
+  umbrella of the weather, which used to swap on every walker in one frame) and the scale bucket its sprite is rastered at. The old
+  drawing keeps its own bucket with the same 0.75 hysteresis while it fades (`m.prev.e`).
+- **A real reset** (`_WH5_LIFE_KEYS`) also drops the water's rings, wakes, leaves and bobs (`water`), the wind (`wind`), the runner's
+  outputs (`frame`, `lights`, `shadows`), the light system's `sky` and `sun`, and appearance's `__wanLive` flag. Every write to
+  `world.<key>` in 2life, 2brains, 2traffic, 1nav, 6anim, 0sys, 6wind, 6particles, 4light and 4water was checked: the next runner's
+  systems make each again at their init or first tick; the world's build (entities, surfaces, nav, camera, falls, time) stays.
+- **A mover's own lamps** (a carried light, a live flame's halo) are drawn with the transform reset (`_wfrDrawItem`): the last sprite
+  blit's transform used to be still set, which put the halo in that sprite's space, off its lamp. At night in Manchester centre 1 no
+  agent carries a light and no lamp is live (electric lamps stay baked), so the render was the same before and after.
+- **Dwellers in the statics-only paths.** `world.dwellers` (the standing scenery people life brings alive) are out of
+  `world.entities`. The still data (an SVG tile, a thumbnail, reduced motion, Node: `worldHostData(..., { sim: false })`) now places
+  them where they stand (`worldHostDwellerEnts`; `o.dwellers` overrides), and a live record with no life (`sim: 'none'`, or a life
+  that failed to build) draws them as still figures (`worldFramePlanAt`). Stevenson Square's SVG still had lost its couple and busker.
+  The live paths draw them as agents, as before.
+- **`tools/lib/world/check.mjs`** paints the statics drawn on their own (`plan.occl`, order items `{ kind: 'static' }`) in its ownership
+  map, and clips the redraws after one to it.
+- **The stage** draws only from `worldFramePlanAt` (`_wsgPlanCopy` is gone).
 
 ## 9. Measured (one-off runs, 14 Nov; never gates)
 

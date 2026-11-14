@@ -32,6 +32,12 @@ const WORLD_STAGE_MIN_AREA = 360 * 200;     // css px: smaller hosts (tiles) kee
 const WORLD_STAGE_TEXTURES = 1;
 const WORLD_STAGE_SLICE_MS = 6;             // texture uploads per frame while preparing (no long task)
 const WORLD_STAGE_FADE_S = 0.9;             // a re-bake (light key, season) and a relit chunk cross-fade over this
+// the stage's frame-rate governor (typical hardware: the stage is fill-bound). Tiers: 0 full; 1 the water, the agents' mirror and shadows at
+// half rate; 2 render scale 0.75 and far figures drawn whole sooner (a smaller backing store, the css stretches it); 3 render scale 0.5; 4 the
+// canvas renderer plays instead (the fallback). It never thins people. Down when the median frame cadence misses the target by a third for
+// downS seconds; up after upS seconds within 15 % of it (doubled, up to backoffS, each time a step up had to come back down within 4 s)
+const WORLD_STAGE_GOV = Object.freeze({ downS: 2, upS: 10, backoffS: 80, miss: 1.34, ok: 1.15, warmS: 1.5, scales: [1, 1, 0.75, 0.5] });
+const WORLD_STAGE_BACKING = [2560, 1440];   // the stage's backing store at most (device px; also never over the screen's device size)
 const _wsgLive = [];                        // live stages, oldest first
 let _wsgNoGl = null;                        // why WebGL cannot be had on this page (a later stage goes straight to the canvas)
 let _wsgSeq = 0;
@@ -46,8 +52,18 @@ function worldStageOn() {
   if (typeof FreefloGameEngine === 'undefined' || typeof sceneRendererCreate !== 'function') return false;
   return !_wsgNoGl;
 }
-/** Tools only: software WebGL (SwiftShader) is allowed on a tool page; the app falls back to the canvas on it. */
-function _wsgSoftOk() { const so = typeof window !== 'undefined' ? window.__sceneOpts : null; return !!(so && so.renderer === 'stage'); }
+/**
+ * Software WebGL (SwiftShader) is allowed on a tool page; the app falls back to the canvas on it. DEV ONLY, never on by default: the app
+ * plays the stage on a software context too with ?stage=sw in its address or window.__sceneStageSoftware = true (headless Chrome has
+ * only software WebGL: the real opening is tested that way).
+ */
+function _wsgSoftOk() {
+  if (typeof window === 'undefined') return false;
+  const so = window.__sceneOpts;
+  if (so && so.renderer === 'stage') return true;
+  if (window.__sceneStageSoftware === true) return true;
+  try { return /(?:[?&#]|^)stage=sw(?:&|$)/.test(String(location.search || '') + '&' + String(location.hash || '').replace(/^#/, '')); } catch (e) { return false; }
+}
 /**
  * Can this page have a hardware WebGL context? Probed once, before the engine is even parsed: a machine without one (or with only a
  * software one, refused by failIfMajorPerformanceCaveat outside tool pages) goes straight to the canvas renderer. Phaser's own boot
@@ -89,6 +105,20 @@ function _wsgTiny() {
   if (!_wsgTinyCx) { const c = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(1, 1) : Object.assign(document.createElement('canvas'), { width: 1, height: 1 }); _wsgTinyCx = c.getContext('2d', { alpha: true }); }
   return { sky: _wsgTinyCx, groups: [_wsgTinyCx] };
 }
+/**
+ * The stage's own cap on its backing store (a share of the bake's device size, 0..1): at most WORLD_STAGE_BACKING and the screen's device size
+ * (a 4K bake on a laptop GPU fills 8 Mpx a layer). The bake keeps its size: the textures are sampled down.
+ */
+function _wsgBaseScale(W, H) {
+  let cap = WORLD_STAGE_BACKING[0] * WORLD_STAGE_BACKING[1];
+  try {
+    // (the screen, or the window when it is larger: a headless browser reports an 800 x 600 screen under a 1600 x 900 window)
+    const dpr = typeof devicePixelRatio === 'number' && devicePixelRatio > 0 ? devicePixelRatio : 1, sw = screen && screen.width ? screen.width * dpr : 0, sh = screen && screen.height ? screen.height * dpr : 0;
+    const ww = typeof innerWidth === 'number' ? innerWidth * dpr : 0, wh = typeof innerHeight === 'number' ? innerHeight * dpr : 0;
+    if (sw > 0 && sh > 0) cap = Math.min(cap, Math.max(sw * sh, ww * wh));
+  } catch (e) { /* no screen */ }
+  return Math.min(1, Math.sqrt(cap / Math.max(1, W * H)));
+}
 /** The device size of a css size (the baker's own rule: dpr-aware, capped by pixel count). */
 function _wsgDeviceSize(w, h) {
   const dpr = typeof devicePixelRatio === 'number' ? devicePixelRatio : 1, M = typeof SCENE_BACKING_MAX !== 'undefined' ? SCENE_BACKING_MAX : [3840, 2160];
@@ -108,7 +138,9 @@ function worldStageCreate(el, canvas, data, o) {
   const st = { id: ++_wsgSeq, el, hostCanvas: canvas, data, o, baker: null, game: null, scene: null, cv: null, W: 0, H: 0,
     running: false, fell: false, why: null, dead: false, shown: false, readyCalled: false, forceT: null, envShown: null, gen: new Map(),
     t0: _wsgNow(), tBakerReady: 0, tEngine: 0, tGame: 0, tReady: 0, warm: 0, grace: 0, boot: 0, frameNo: 0, lastGardenCheck: 0,
-    times: [], st: { frames: 0, uploads: 0, uploadMs: 0, uploadMax: 0, textures: 0, texBytes: 0, objects: 0, images: 0, figures: 0, redraws: 0, statics: 0, fades: 0, errors: [] } };
+    times: [], st: { frames: 0, uploads: 0, uploadMs: 0, uploadMax: 0, textures: 0, texBytes: 0, objects: 0, images: 0, figures: 0, redraws: 0, statics: 0, fades: 0, errors: [] },
+    gov: { tier: 0, base: 1, zoom: 1, iv: [], missFor: 0, okFor: 0, evalAt: 0, lastStep: 0, lastUp: -1e9, upWait: WORLD_STAGE_GOV.upS * 1000, steps: [], median: 0, target: 0, off: false },
+    lastStepAt: 0, lodK: 1 };
   // the baker: the v2 renderer on a detached canvas, frames into a 1 x 1 context while the stage plays (o.layers), the host's
   // canvas once it falls back. No persistent cache (its kept still is captured by a frame that moves the world's clock)
   const det = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(1, 1) : document.createElement('canvas');
@@ -140,7 +172,7 @@ function worldStageCreate(el, canvas, data, o) {
       if (st.dead) return;
       if (st.fell) { B.start(); return; }
       st.running = true;
-      if (st.game && st.game.loop && !st.game.loop.running) { try { st.game.loop.wake(); } catch (e) { /* the next frame */ } }
+      if (st.game && st.game.loop && !st.game.loop.running) { st.wokeAt = _wsgNow(); try { st.game.loop.wake(); } catch (e) { /* the next frame */ } }
     },
     stop() {
       if (st.fell) { B.stop(); return; }
@@ -160,7 +192,7 @@ function worldStageCreate(el, canvas, data, o) {
     },
     /** The host was re-mounted with the same key: the stage's canvas moves beside the canvas it was handed. */
     attach(c2) {
-      if (!c2) return;
+      if (!c2 || st.dead) return;   // (a destroyed stage never hides a host's canvas again)
       if (st.fell) { B.attach(c2); st.hostCanvas = c2; return; }
       st.hostCanvas = c2;
       const host = c2.parentNode;
@@ -180,6 +212,8 @@ function worldStageCreate(el, canvas, data, o) {
     get baker() { return B; },
     /** Tools: hand this stage over to the canvas now (the fallback path, on purpose). */
     fallBack(why) { _wsgFall(st, why || 'asked'); },
+    /** Tools: put the governor at a tier now (0..4; 4 hands over to the canvas) and keep it there (off: true) or let it govern again. */
+    stageTier(n, o) { if (!st.fell && !st.dead) { st.gov.off = !!(o && o.hold); _wsgGovSet(st, Math.max(0, Math.min(4, n | 0)), 'asked'); } return st.gov.tier; },
     /** Tools and the docs: the stage's own state (phase, timings, textures). */
     get stage() { return _wsgStats(st); },
   };
@@ -209,8 +243,11 @@ function _wsgGame(st, Ph, W, H) {
     _wsgFall(games[0], 'evicted by a newer stage');
   }
   const cv = document.createElement('canvas');
-  cv.className = 'sc-canvas sc-stage'; cv.setAttribute('aria-hidden', 'true'); cv.width = W; cv.height = H;
-  st.cv = cv; st.W = W; st.H = H;
+  st.W = W; st.H = H;
+  st.gov.base = _wsgBaseScale(W, H);
+  const z = _wsgZoom(st), GW = Math.max(1, Math.round(W * z)), GH = Math.max(1, Math.round(H * z));
+  cv.className = 'sc-canvas sc-stage'; cv.setAttribute('aria-hidden', 'true'); cv.width = GW; cv.height = GH;
+  st.cv = cv;
   if (st.hostCanvas && st.hostCanvas.parentNode) st.hostCanvas.insertAdjacentElement('afterend', cv); else st.el.appendChild(cv);
   st.el.classList.add('sc-staged');
   cv.addEventListener('webglcontextlost', (ev) => { try { ev.preventDefault(); } catch (e) { /* no matter */ } _wsgFall(st, 'the graphics context was lost'); });
@@ -221,7 +258,7 @@ function _wsgGame(st, Ph, W, H) {
     update() { _wsgTick(st); },
   };
   try {
-    st.game = new Ph.Game({ type: Ph.WEBGL, canvas: cv, parent: st.el, width: W, height: H, backgroundColor: '#000000', transparent: false, antialias: true, roundPixels: false, clearBeforeRender: false,
+    st.game = new Ph.Game({ type: Ph.WEBGL, canvas: cv, parent: st.el, width: GW, height: GH, backgroundColor: '#000000', transparent: false, antialias: true, roundPixels: false, clearBeforeRender: false,
       powerPreference: 'default', failIfMajorPerformanceCaveat: !_wsgSoftOk(), maxTextures: WORLD_STAGE_TEXTURES, preserveDrawingBuffer: false,
       audio: { noAudio: true }, input: { keyboard: false, mouse: false, touch: false, gamepad: false }, disableContextMenu: false, banner: false, autoFocus: false,
       fps: { target: 60, min: 10, limit: maxFps, smoothStep: false }, scene });
@@ -248,17 +285,37 @@ function _wsgReadyOnce(st) {
 }
 /** The scene exists: its fixed objects (stars, the fx graphics, pools); the rest comes with the first bake. */
 function _wsgSceneInit(st) {
+  _wsgCamera(st);
   if (typeof _wsgLayersInit === 'function') _wsgLayersInit(st);
+}
+/** The render scale now: the backing-store cap times the governor's tier scale. */
+function _wsgZoom(st) { return Math.max(0.1, Math.min(1, (st.gov.base || 1) * (WORLD_STAGE_GOV.scales[Math.min(3, st.gov.tier)] || 1))); }
+/** The main camera draws the bake's device frame (W x H) into the game's backing store at the render scale, from the top left. */
+function _wsgCamera(st) {
+  const z = _wsgZoom(st), GW = Math.max(1, Math.round(st.W * z)), GH = Math.max(1, Math.round(st.H * z));
+  st.gov.zoom = z;
+  try { const cam = st.scene.cameras.main; cam.setSize(GW, GH); if (typeof cam.setOrigin === 'function') cam.setOrigin(0, 0); cam.setZoom(GW / Math.max(1, st.W), GH / Math.max(1, st.H)); cam.setScroll(0, 0); } catch (e) { /* the old camera */ }
 }
 /** One loop step (Phaser's update): prepare until ready, then draw the frame at the host's time. */
 function _wsgTick(st) {
   if (st.dead || st.fell || !st.scene) return;
   const a = _wsgNow();
+  // the cadence of the frames shown (the loop's own interval while it plays; a sleep, a hidden tab or a held loop is no sample)
+  const iv = a - st.lastStepAt;
+  st.lastStepAt = a;
+  // (a slow machine's 4 fps is a sample, under 1 s; the first interval after the loop woke is a pause, never one)
+  const woke = st.wokeAt != null && st.wokeAt >= a - iv;
+  if (st.shown && st.running && st.forceT == null && !woke && iv > 0 && iv < 1000 && !(typeof document !== 'undefined' && document.hidden)) _wsgGovern(st, a, iv);
+  st.wokeAt = null;
+  if (st.fell || st.dead) return;   // (the governor handed over to the canvas)
   try {
     if (a - st.lastGardenCheck > 2000) {
       st.lastGardenCheck = a;
       if (typeof GardenNative !== 'undefined' && GardenNative && typeof GardenNative.active === 'function' && GardenNative.active()) { _wsgFall(st, 'the garden is open'); return; }
     }
+    // while its baker bakes, the game has nothing to draw: its loop sleeps (an empty frame presented 60 times a second took the bake's
+    // main thread and the GPU: the real opening's bake ran over a second longer beside it); the baker's onReady wakes it (_wsgBakerReady)
+    if (!st.shown && !st.baker.ready && st.game.loop && st.game.loop.running) { try { st.game.loop.sleep(); } catch (e) { /* awake */ } return; }
     if (!st.shown) _wsgPrepare(st);
     else if (st.forceT != null) _wsgFrame(st, st.forceT, false);
     else if (st.running) _wsgFrame(st, st.o.time ? st.o.time() : (_wsgNow() - st.t0) / 1000, false);
@@ -307,18 +364,73 @@ function _wsgFrame(st, t, warming) {
     if (out && (out.W !== st.W || out.H !== st.H)) {
       // a new size: nothing of the old bake fits; the switch is at once (the host's css stretched the old frame meanwhile)
       if (_wsgGenReady(st, envB, 1e9)) { _wsgResize(st, out.W, out.H); st.envShown = envB; if (typeof _wsgSlotsReset === 'function') _wsgSlotsReset(st); }
-    } else if (_wsgGenReady(st, envB, WORLD_STAGE_SLICE_MS)) st.envShown = envB;
+    } else if (_wsgGenReady(st, envB, WORLD_STAGE_SLICE_MS)) {
+      const old = st.envShown, So = old && old._wfr, Sn = envB._wfr;
+      if (st.shown && So && Sn && So.plan === Sn.plan) st.moverFade = { env: old, f0: _wsgNow() };   // a new light key: the movers' colours fade with the slots
+      else if (st.shown && So && Sn && typeof _wsgSnapTake === 'function' && _wsgSnapTake(st)) st.slotsInstant = true;   // a new plan (the season): the whole old frame fades out over the new
+      st.envShown = envB;
+    }
   }
   const env = st.envShown;
   if (!env) return;
   st.frameNo++;
-  _wsgDraw(st, env, t, warming);
+  try { _wsgDraw(st, env, t, warming); } finally { st.slotsInstant = false; }
+  if (typeof _wsgSnapFrame === 'function') _wsgSnapFrame(st);
   st.st.frames++;
 }
 function _wsgResize(st, W, H) {
   st.W = W; st.H = H;
-  try { st.game.scale.resize(W, H); } catch (e) { /* the old size */ }
-  try { const cam = st.scene.cameras.main; cam.setSize(W, H); cam.setScroll(0, 0); } catch (e) { /* the old camera */ }
+  st.gov.base = _wsgBaseScale(W, H);
+  const z = _wsgZoom(st);
+  try { st.game.scale.resize(Math.max(1, Math.round(W * z)), Math.max(1, Math.round(H * z))); } catch (e) { /* the old size */ }
+  _wsgCamera(st);
+}
+/**
+ * The governor's step (each frame shown, with its interval ms). Every 0.5 s: the median interval over the last 2 s against the target
+ * (the host's frame cap, at most 60 Hz). Tool pages that keep the quality fixed (window.__sceneOpts.governor === false) never step.
+ */
+function _wsgGovern(st, now, iv) {
+  const G = st.gov;
+  G.iv.push([now, iv]);
+  while (G.iv.length && now - G.iv[0][0] > 2000) G.iv.shift();
+  if (now - G.evalAt < 500) return;
+  const dtEval = G.evalAt ? Math.min(1000, now - G.evalAt) : 500;
+  G.evalAt = now;
+  const fps = Number.isFinite(st.o.maxFps) && st.o.maxFps > 0 ? Math.min(60, st.o.maxFps) : 60, target = 1000 / fps;
+  const a = G.iv.map(q => q[1]).sort((x, y) => x - y), med = a.length ? a[Math.floor(a.length / 2)] : 0;
+  G.median = Math.round(med * 10) / 10; G.target = Math.round(target * 10) / 10;
+  const so = typeof window !== 'undefined' ? window.__sceneOpts : null;
+  if (G.off || (so && so.governor === false) || a.length < 5 || now - st.tReady < WORLD_STAGE_GOV.warmS * 1000) { G.missFor = 0; G.okFor = 0; return; }
+  if (med > target * WORLD_STAGE_GOV.miss) { G.missFor += dtEval; G.okFor = 0; } else { G.missFor = 0; G.okFor = med <= target * WORLD_STAGE_GOV.ok ? G.okFor + dtEval : 0; }
+  if (G.missFor >= WORLD_STAGE_GOV.downS * 1000 && now - G.lastStep >= WORLD_STAGE_GOV.downS * 1000) {
+    // a step up that had to come back down soon: the next one waits twice as long
+    if (now - G.lastUp < 4000) G.upWait = Math.min(WORLD_STAGE_GOV.backoffS * 1000, G.upWait * 2);
+    _wsgGovSet(st, G.tier + 1, 'cadence ' + G.median + ' ms against ' + G.target);
+  } else if (G.tier > 0 && G.okFor >= G.upWait) {
+    G.lastUp = now;
+    _wsgGovSet(st, G.tier - 1, 'headroom ' + G.median + ' ms against ' + G.target);
+  }
+}
+/** Put the governor at a tier: the half rates (1), the render scale (2, 3: a texture resize, cross-faded from a picture of the old frame), the canvas (4). */
+function _wsgGovSet(st, tier, why) {
+  const G = st.gov, from = G.tier;
+  if (tier === from) return;
+  G.lastStep = _wsgNow(); G.missFor = 0; G.okFor = 0; G.iv.length = 0;
+  G.steps.push({ at: Math.round(G.lastStep - st.t0), from, to: tier, why });
+  if (G.steps.length > 12) G.steps.shift();
+  if (tier >= 4) { G.tier = 4; _wsgFall(st, 'the frame rate (governor: ' + why + ')'); return; }
+  const zOld = _wsgZoom(st);
+  G.tier = tier;
+  st.lodK = tier >= 2 ? 1.5 : 1;   // (as the canvas governor: far figures drawn whole sooner from the first render-scale step)
+  const z = _wsgZoom(st);
+  if (Math.abs(z - zOld) > 1e-6 && st.game && st.scene) {
+    // the old frame as a picture, fading out over the new resolution (never a visible switch: _wsgSnapFrame)
+    if (st.shown && typeof _wsgSnapTake === 'function') _wsgSnapTake(st);
+    try { st.game.scale.resize(Math.max(1, Math.round(st.W * z)), Math.max(1, Math.round(st.H * z))); } catch (e) { /* the old size */ }
+    _wsgCamera(st);
+    // the next frame is drawn at once (a resized drawing buffer is cleared)
+    if (st.shown && st.game && st.game.loop && !st.game.loop.running) { try { st.game.loop.wake(); } catch (e) { /* the next frame */ } }
+  }
 }
 /** Draw the frame at t now, synchronously (a restart, a pinned capture): one engine step with the time forced. */
 function _wsgStepAt(st, t) {
@@ -330,14 +442,19 @@ function _wsgReadBack(st, t) {
   _wsgStepAt(st, t);
   const gl = st.game.renderer && st.game.renderer.gl;
   if (!gl) return null;
-  const W = st.W, H = st.H, px = new Uint8Array(W * H * 4);
+  // (the drawing buffer is the render scale's size: read it as it is, then laid on the bake's device size)
+  const W = gl.drawingBufferWidth || st.W, H = gl.drawingBufferHeight || st.H, px = new Uint8Array(W * H * 4);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px);
-  const c = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(W, H) : Object.assign(document.createElement('canvas'), { width: W, height: H });
+  const mk = (w, h) => (typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(w, h) : Object.assign(document.createElement('canvas'), { width: w, height: h }));
+  const c = mk(W, H);
   const img = new ImageData(W, H), row = W * 4;
   for (let y = 0; y < H; y++) img.data.set(px.subarray((H - 1 - y) * row, (H - y) * row), y * row);
   c.getContext('2d').putImageData(img, 0, 0);
-  return c;
+  if (W === st.W && H === st.H) return c;
+  const c2 = mk(st.W, st.H), g2 = c2.getContext('2d');
+  g2.imageSmoothingQuality = 'high'; g2.drawImage(c, 0, 0, st.W, st.H);
+  return c2;
 }
 /**
  * Compile the textured batch shader for every texture count up to the limit (Phaser 4 builds one per count; the first frame that
@@ -418,6 +535,9 @@ function _wsgStats(st) {
     engineMs: since(st.tEngine), gameMs: since(st.tGame), bakerReadyMs: since(st.tBakerReady), readyMs: since(st.tReady),
     engineLoadMs: typeof FreefloGameEngine !== 'undefined' && FreefloGameEngine.status ? Math.round(FreefloGameEngine.status().loadMs || 0) : null,
     shaders: st.shaders || null, uploadMs: r(st.st.uploadMs), uploadMax: r(st.st.uploadMax), errors: st.st.errors.slice(0, 5),
+    // the governor: its tier, the render scale (the cap times the tier's), the backing store, the cadence it judged, its last steps
+    gov: { tier: st.gov.tier, zoom: r(st.gov.zoom || 1), base: r(st.gov.base || 1), backing: st.cv ? [st.cv.width, st.cv.height] : null, medianMs: st.gov.median, targetMs: st.gov.target,
+      upWaitS: Math.round(st.gov.upWait / 1000), held: !!st.gov.off, steps: st.gov.steps.slice(-6) },
   });
 }
 if (typeof window !== 'undefined') {

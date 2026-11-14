@@ -42,6 +42,26 @@ function _wsgHex(c) {
   return v;
 }
 
+/**
+ * A glint: a horizontal stroke from (x, y) to (x + len, y), w wide, with ROUND ends (the canvas path strokes them with lineCap 'round';
+ * Phaser's lines have square ends), as one filled outline (no doubled alpha where an end cap meets the stroke).
+ */
+const _WSG_CAP = [...Array(7).keys()].map(i => Math.PI / 2 + i * Math.PI / 6);
+function _wsgCapsule(g, x, y, len, w) {
+  const r = w / 2, pts = [];
+  for (const a of _WSG_CAP) pts.push({ x: x + Math.cos(a) * r, y: y - Math.sin(a) * r });
+  for (const a of _WSG_CAP) pts.push({ x: x + len - Math.cos(a) * r, y: y + Math.sin(a) * r });
+  g.fillPoints(pts, true);
+}
+/** Is the governor's half rate on (tier 1 and above: the water, the agents' mirror and shadows refresh every other frame)? -> skip this frame. */
+function _wsgHalfSkip(st, key) {
+  if (!st.gov || !(st.gov.tier >= 1) || !st.shown || st.forceT != null) return false;
+  const h = st.halfSeen || (st.halfSeen = new Map());
+  if (h.get(key) === st.frameNo - 1) return true;
+  h.set(key, st.frameNo);
+  return false;
+}
+
 /* ---------- water ---------- */
 /**
  * Per water region of a bake, its two masks (region px; opaque where the effect must not show):
@@ -89,6 +109,8 @@ function _wsgMaskImg(st, tx) {
  */
 function _wsgWater(st, env, S, P, G, D) {
   const W = st.waterRT || (st.waterRT = new Map());
+  // (governor tier 1 and above: the water refreshes every other frame; its textures keep the last one, still shown)
+  if (S.water && S.water.length && W.size && _wsgHalfSkip(st, 'water')) { _wsgRings(st, env, S, P, WSG_D_WORLD + _WSG_WORLD_DEPTH.waterfx); return; }
   for (const rt of W.values()) rt.seen = false;
   if (S.water && S.water.length) {
     const L = P.L, vs = env.vs, oy = env.oy, wind = L && L.wind != null ? L.wind : 1, tau = P.tau;
@@ -173,6 +195,22 @@ function _wsgMirrorInto(st, env, S, P, w, res, dt) {
     const f = P.figs && P.figs.get(r);
     if (f && A) src = { key: A.key, dt: A.dt, x0: f.x0, y0: f.y0, w: f.w, h: f.h, ax: f.ax, ay: f.ay, pre: 'm' + f.k };
     else if (r.prim && typeof _wsgPrimTex === 'function') { const p = _wsgPrimTex(st, env, S, r); if (p) src = { key: p.tx.key, dt: st.scene.textures.get(p.tx.key), x0: p.x0, y0: p.y0, w: p.w, h: p.h, ax: 0, ay: 0, pre: 'm' }; }
+    else if (!r.bmp) {
+      // a figure outside the atlas (over WORLD_STAGE_FIG_MAX, or the atlas full): its rest sprite flipped about the axis, its rows down to
+      // where the image meets the clip row, at the mirror strength times its opacity (5frame _wfrMirrorAgents' unposed branch)
+      const sp = _wfrSpriteOf(env, S, r, '*', { bucket: r.bucket }), tx = _wsgSpriteTex(st, sp);
+      if (!tx) continue;
+      const M = _wfrM(env, r), ycut = (2 * Yc - M[5] - yClip) / M[3];
+      if (!(ycut > sp.y0)) continue;
+      const hc = Math.min(tx.h, Math.ceil(tx.h * Math.min(1, (ycut - sp.y0) / sp.h)));
+      if (!(hc > 0)) continue;
+      const fr = hc >= tx.h ? undefined : _wsgFrameSet(st.scene.textures.get(tx.key), 'mc', hc, 0, 0, tx.w, hc);
+      const Am = _wsgSpriteA(sp, tx, [M[0], 0, 0, -M[3], M[4], 2 * Yc - M[5]]);
+      Am[4] -= res.x0; Am[5] -= res.y0;
+      _wsgInto(st, dt, tx, Am, a, fr);
+      n++;
+      continue;
+    }
     if (!src) continue;
     const hc = Math.min(src.h, Math.floor(2 * Yc - yClip - src.y0));
     if (!(hc > 0)) continue;
@@ -190,11 +228,11 @@ function _wsgGlintsInto(st, env, S, P, w, i, res, dt) {
   if (!plan || !plan.kind || !plan.glints || !plan.glints.length) return 0;
   const vs = env.vs, ox = env.ox, oy = env.oy, t = P.tau, L = P.L, o = { vs, ox, oy, wind: L && L.wind != null ? L.wind : 1 }, g = _wsgOffGfx(st), col = _wsgHex(plan.col);
   for (let q = 0; q < 3; q++) {
-    g.lineStyle(2.2 * vs, col, Math.max(0, Math.min(1, 0.85 * plan.k * (0.4 + 0.6 * Math.abs(Math.sin((t || 0) * (1.3 + q * 0.55) + q * 2.1))))));
+    g.fillStyle(col, Math.max(0, Math.min(1, 0.85 * plan.k * (0.4 + 0.6 * Math.abs(Math.sin((t || 0) * (1.3 + q * 0.55) + q * 2.1))))));
     for (const s of plan.glints) {
       if (s.g !== q) continue;
       const dx = worldWaterRipple(w.R, s.y * vs + oy, t, o), x = s.x * vs + ox + dx - res.x0, y = s.y * vs + oy - res.y0;
-      g.lineBetween(x, y, x + s.len * vs, y);
+      _wsgCapsule(g, x, y, s.len * vs, 2.2 * vs);
     }
   }
   dt.draw(g);
@@ -238,6 +276,11 @@ function _wsgAgentShadows(st, env, S, P, D) {
   try { plan = worldShadowPlan({ entities: [], surfaces: P.world.surfaces, cam: P.cam }, P.cam, S.sky || L, { agents: P.aRecs.map(r => ({ ...r.ent, id: r.id })), statics: false, W: 2 * (P.cam.x0 || 800) }) || []; }
   catch (e) { S.agentShadowOff = true; return; }
   if (!plan.length) { if (rt) rt.img.setVisible(false); return; }
+  // (governor tier 1 and above: the shadows refresh every other frame; the texture keeps the last one)
+  if (rt && rt.img.visible && _wsgHalfSkip(st, 'shadows')) return;
+  // nothing they show changed (the same figures in the same atlas places, the same shadow outlines): the texture is kept as it is
+  const sig = _wsgShadowSig(plan, P);
+  if (rt && rt.img.visible && sig && rt.sig === sig) { st.st.shadowSkips = (st.st.shadowSkips || 0) + 1; return; }
   const W = env.W, H = env.H;
   let R = st.shadowRT;
   if (R && (R.w !== W || R.h !== H)) { try { R.img.destroy(); st.scene.textures.remove(R.key); } catch (e) { /* gone */ } R = st.shadowRT = null; }
@@ -249,10 +292,25 @@ function _wsgAgentShadows(st, env, S, P, D) {
   // only what the last frame drew is cleared (the rest of the texture is empty)
   if (R.box) dt.clear(R.box[0], R.box[1], R.box[2], R.box[3]); else dt.clear();
   R.box = null;
-  const g = _wsgOffGfx(st);
+  let g = _wsgOffGfx(st);
   let polys = 0, n = 0;
-  for (const s of plan) {
+  // a shadow's own holes (holesScr: the water under it, at ITS plane) are erased once every shadow on the ground is drawn, each shadow's set
+  // filled EVEN-ODD as worldDrawShadows clips it (overlapping pieces cancel: at the Fleet Pond the boardwalk lies where nine pieces of the
+  // pond overlap, and the canvas keeps the walkers' shadows there; a nonzero union erased them). The shadows cast on a deck (no holes: they
+  // lie on the deck over the water) are drawn after that erase
+  const holes = [], deckLast = [];
+  for (const s of plan) if (s && /^deck:/.test(String(s.on || '')) && !(s.holesScr && s.holesScr.length)) deckLast.push(s);
+  const order = deckLast.length ? plan.filter(s => !deckLast.includes(s)).concat(['holes'], deckLast) : plan.concat(['holes']);
+  for (const s of order) {
+    if (s === 'holes') {
+      if (polys) { dt.draw(g); polys = 0; g = _wsgOffGfx(st); }
+      const hm = holes.length ? _wsgHoleMask(st, holes, W, H) : null;
+      if (hm) { const e = _wsgOffImg(st, hm.tx.key); e.setPosition(hm.x, hm.y); e.setCrop(0, 0, hm.w, hm.h); dt.erase(e); }
+      st.st.shadowHoles = holes.length;
+      continue;
+    }
     if (!s.scr || s.scr.length < 3 || !(s.op > 0)) continue;
+    if (s.holesScr && s.holesScr.length) { const set = s.holesScr.filter(H => H && H.length >= 3).map(H => H.map(q => [q[0] * vs + ox, q[1] * vs + oy])); if (set.length) holes.push(set); }
     const r = byId.get(String(s.ref)), f = r && P.figs ? P.figs.get(r) : null;
     let done = false;
     if (s.sil && r && !r.prim && sun && typeof sceneShadowMatrix === 'function') {
@@ -287,6 +345,7 @@ function _wsgAgentShadows(st, env, S, P, D) {
   }
   if (polys) dt.draw(g);
   if (!n) { R.img.setVisible(false); return; }
+  R.sig = sig;
   // shown, cleared next frame and erased only over the shadows' own box (the rest of the texture is empty)
   const x0 = Math.max(0, Math.floor(bx0) - 2), y0 = Math.max(0, Math.floor(by0) - 2), x1 = Math.min(W, Math.ceil(bx1) + 2), y1 = Math.min(H, Math.ceil(by1) + 2);
   if (!(x1 > x0 && y1 > y0)) { dt.render(); R.box = [0, 0, W, H]; R.img.setVisible(false); return; }
@@ -299,12 +358,45 @@ function _wsgAgentShadows(st, env, S, P, D) {
   R.img.setVisible(true);
 }
 
+/**
+ * The agents' shadow holes as one mask (device px): each shadow's holes filled even-odd (its own clip in worldDrawShadows), the sets laid
+ * together, on a 2D canvas the size of their box (Phaser's fills are nonzero), uploaded as it changes. -> { tx, x, y, w, h } or null.
+ */
+function _wsgHoleMask(st, sets, W, H) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const set of sets) for (const P of set) for (const q of P) { if (q[0] < x0) x0 = q[0]; if (q[0] > x1) x1 = q[0]; if (q[1] < y0) y0 = q[1]; if (q[1] > y1) y1 = q[1]; }
+  x0 = Math.max(0, Math.floor(x0) - 1); y0 = Math.max(0, Math.floor(y0) - 1); x1 = Math.min(W, Math.ceil(x1) + 1); y1 = Math.min(H, Math.ceil(y1) + 1);
+  const w = x1 - x0, h = y1 - y0;
+  if (!(w > 0 && h > 0)) return null;
+  let M = st.holeMask;
+  if (!M || M.c.width < w || M.c.height < h) M = st.holeMask = { c: _wsgCv(Math.max(w, M ? M.c.width : 0, 64), Math.max(h, M ? M.c.height : 0, 64)), ver: M ? M.ver : 0 };
+  const cx = M.c.getContext('2d');
+  cx.setTransform(1, 0, 0, 1, 0, 0); cx.clearRect(0, 0, M.c.width, M.c.height); cx.fillStyle = '#000';
+  for (const set of sets) { cx.beginPath(); for (const P of set) { cx.moveTo(P[0][0] - x0, P[0][1] - y0); for (let i = 1; i < P.length; i++) cx.lineTo(P[i][0] - x0, P[i][1] - y0); cx.closePath(); } cx.fill('evenodd'); }
+  const tx = _wsgDynTex(st, M.c, ++M.ver);
+  return tx ? { tx, x: x0, y: y0, w, h } : null;
+}
+/** What the agents' shadows show this frame, as a string (null: not comparable): every outline and opacity, and each figure's atlas drawing. */
+function _wsgShadowSig(plan, P) {
+  if (!P.figSig) return null;
+  let s = P.figSig + '#';
+  for (const q of plan) {
+    if (!q || !q.scr) continue;
+    s += q.ref + ':' + (q.op || 0).toFixed(3) + ':' + (q.sil ? 1 : 0);
+    for (const p of q.scr) s += ',' + p[0].toFixed(2) + ' ' + p[1].toFixed(2);
+    s += ';';
+  }
+  return s;
+}
+
 /* ---------- the v2 base water (78-scene-water.js frameGroup 20): where the world's own water does not reach ---------- */
 /** Per v2 water region of the bake: its reflection and the INVERSE of its mask (an erase with it is the pass's destination-in). */
 function _wsgBaseWaterGen(st, env, G) {
   G.baseWater = [];
   const W = env.water;
-  if (!W || !W.regions) return;
+  // the world draws its own water over every base water surface: the canvas path drops the v2 water pass for this bake (5frame,
+  // S.stats.baseWaterOff), so the stage draws none either (it laid a grey second reflection along the Fleet Pond's near shore)
+  if (!W || !W.regions || _wsgBaseWaterOff(env)) return;
   for (const R of W.regions) {
     if (!R.mask || !R.refl || !R.db) continue;
     const inv = _wsgCv(R.bw, R.bh), g = inv.getContext('2d');
@@ -317,10 +409,15 @@ function _wsgBaseWaterGen(st, env, G) {
  * The v2 base water's frame (_scwaFrame): its reflection in bands shifted by the pass's own ripple (_scwaShift) and its glints, kept
  * only where its mask is (the inverse mask erased), after the region's ground group. At frame rate (the canvas pass refreshes at 15 Hz).
  */
+function _wsgBaseWaterOff(env) {
+  const S = env && env._wfr;
+  if (S && S.stats && S.stats.baseWaterOff) return true;
+  return !!(env && env.passes && Array.isArray(env.passes.frameGroup) && !env.passes.frameGroup.some(p => p && p.id === 'water'));
+}
 function _wsgBaseWater(st, env, t) {
   const G = st.gen.get(env), M = st.baseRT || (st.baseRT = new Map());
   for (const rt of M.values()) rt.seen = false;
-  if (G && G.baseWater && G.baseWater.length && typeof _scwaShift === 'function') {
+  if (G && G.baseWater && G.baseWater.length && typeof _scwaShift === 'function' && !_wsgBaseWaterOff(env)) {
     const L = env.Lnow || env.L, wind = L ? L.wind : 1, vs = env.vs, ox = env.ox, oy = env.oy;
     G.baseWater.forEach((bw, i) => {
       const R = bw.R, refl = _wsgTexOf(st, R.refl), inv = _wsgTexOf(st, bw.inv);
@@ -342,11 +439,11 @@ function _wsgBaseWater(st, env, t) {
       if (R.glints && R.glints.length && R.glintSrc) {
         const g = _wsgOffGfx(st), col = _wsgHex(R.glintSrc.col);
         for (let gq = 0; gq < 3; gq++) {
-          g.lineStyle(2.2 * vs, col, Math.max(0, Math.min(1, 0.85 * R.glintSrc.k * (0.4 + 0.6 * Math.abs(Math.sin(t * (1.3 + gq * 0.55) + gq * 2.1))))));
+          g.fillStyle(col, Math.max(0, Math.min(1, 0.85 * R.glintSrc.k * (0.4 + 0.6 * Math.abs(Math.sin(t * (1.3 + gq * 0.55) + gq * 2.1))))));
           for (const s of R.glints) {
             if (s.g !== gq) continue;
             const dx = _scwaShift(R, s.y * vs + oy - R.db[1], t, wind) / vs + Math.sin(t * 0.9 + gq * 2) * 3, x = (s.x + dx) * vs + ox - R.db[0], y = s.y * vs + oy - R.db[1];
-            g.lineBetween(x, y, x + s.len * vs, y);
+            _wsgCapsule(g, x, y, s.len * vs, 2.2 * vs);
           }
         }
         dt.draw(g);
@@ -421,13 +518,16 @@ function _wsgBeams(st, env, S, P, D) {
 function _wsgOwnLights(st, env, S, P, r, D) {
   const own = (P.agentLights && P.agentLights.get(r.id)) || (r.static && S.liveLights && S.liveLights.get(r.id));
   if (!own || !own.length || typeof worldLightDraws !== 'function') return;
+  // (a static's light comes on and goes off over WORLD_FRAME_LIGHT_FADE_S: 5frame _wfrLitK, as the canvas path fades it)
+  const lk = r.static && typeof _wfrLitK === 'function' ? _wfrLitK(S, r, P.tau) : 1;
+  if (!(lk > 0.001)) return;
   const vs = env.vs, ox = env.ox, oy = env.oy;
   let k = 0;
   for (const d of worldLightDraws(own, P.cam, { stage: 'glow', sky: S.sky || undefined })) {
     if (d.kind !== 'halo') continue;
     const R = d.rx * vs, s = 2 * R / 128;
     if (!(R > 0.5)) continue;
-    _wsgBlit(st, st.fxHalo, [s, 0, 0, s, d.X * vs + ox - R, d.Y * vs + oy - R], Math.min(1, d.a), D + (k++) * 1e-4, { blend: 'add', mul: _wsgHex(d.col) });
+    _wsgBlit(st, st.fxHalo, [s, 0, 0, s, d.X * vs + ox - R, d.Y * vs + oy - R], Math.min(1, d.a) * lk, D + (k++) * 1e-4, { blend: 'add', mul: _wsgHex(d.col) });
   }
 }
 

@@ -154,6 +154,8 @@ async function perf() {
     out(`${p} (${r.engine}${r.stage && r.stage.why ? ': ' + r.stage.why : ''}): sc-ready ${r.readyMs} ms after mount (page ${r.loadMs} ms); bake ${r.bakeMs} ms CPU, ${r.bakeWallMs} ms wall; world bake ${r.world ? r.world.bakeMs : '-'} ms, longest slice ${r.world ? r.world.maxPrepareSliceMs : '-'} ms`);
     out(`  per frame (CPU, ms): median ${r.drawMs.median}, p95 ${r.drawMs.p95}, max ${r.drawMs.max} over ${r.drawMs.n} frames; rAF ${r.rafFps} fps`);
     if (r.stage && r.engine === 'phaser') out(`  stage: engine loaded ${r.stage.engineMs} ms, game ${r.stage.gameMs} ms, baker ready ${r.stage.bakerReadyMs} ms, ready ${r.stage.readyMs} ms (after create); engine parse ${r.stage.engineLoadMs} ms; uploads ${r.stage.uploads} (${r.stage.uploadMs} ms, longest ${r.stage.uploadMax} ms); textures ${r.stage.textures} (${Math.round(r.stage.texBytes / 1048576)} MB); images ${r.stage.images}; shaders ${JSON.stringify(r.stage.shaders)}`);
+    // (the governor: off on this page, governor: false; its tier, render scale and backing store as the stage reports them)
+    if (r.stage && r.stage.gov) out(`  governor: tier ${r.stage.gov.tier}, render scale ${r.stage.gov.zoom}, backing ${JSON.stringify(r.stage.gov.backing)}; atlas skips ${r.stage.atlasSkips || 0}, shadow skips ${r.stage.shadowSkips || 0}`);
   }
 }
 

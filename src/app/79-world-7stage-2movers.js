@@ -1,6 +1,6 @@
 /* ============================================================
    WORLD STAGE, the world in depth order (docs/dev/WORLD_STAGE.md 4). Private names: _wsg. Browser only.
-   Per frame, from the world's own plan (I1: worldFramePlanAt in 79-world-5frame.js; until it is there, _wsgPlanCopy below):
+   Per frame, from the world's own plan (I1: worldFramePlanAt in 79-world-5frame.js):
    the depth order (worldFrameOrder) gives every drawn piece a depth (WSG_D_ORDER + its place); chunks show in their slots
    (79-world-7stage-1layers.js) with their lit glass and additive halos; movers (people, animals, boats, the statics drawn live)
    are their pose plan's blits (_wfrPosePlan: each part a sprite with a 2 x 3 matrix) as pooled images, a matrix without a shear as
@@ -11,47 +11,23 @@
    ============================================================ */
 
 /**
- * The plan of a frame: { S, rec, world, cam, tau, L, aRecs, live, movers, order, wet, lightsOn } or null (the world not baked).
- * warming: a hidden frame (the world's clock neither starts nor moves).
+ * The plan of a frame: the world's own (I1: worldFramePlanAt in 79-world-5frame.js, the planning half of the canvas path's _wfrDraw: the
+ * one clock, the life, the draw memory, the depth order), or null (the world not baked). warming: a hidden frame (the world's clock
+ * neither starts nor moves: env.warming reaches worldHostAt). The tools' record of the frame (S.drawn, S.figs) is kept as _wfrDraw keeps it.
  */
 function _wsgPlan(st, env, t, warming) {
-  if (typeof worldFramePlanAt === 'function') {
-    const w0 = env.warming;
-    env.warming = !!warming;
-    try { return worldFramePlanAt(env, t); } finally { env.warming = w0; }
-  }
-  return _wsgPlanCopy(env, t, warming);
-}
-/**
- * TEMPORARY (I1): the planning half of 79-world-5frame.js _wfrDraw as of 2.68.8, kept in ONE function so it can be deleted once
- * worldFramePlanAt is merged (the flicker builder's fixes live there). No governor thinning: the stage has no governor.
- */
-function _wsgPlanCopy(env, t, warming) {
-  const S = env._wfr;
-  if (!S || !S.ready || !S.plan) return null;
-  const rec = S.rec, world = rec.world, cam = world.cam, vs = env.vs, ox = env.ox, oy = env.oy, L = env.Lnow || env.L;
-  const h = typeof worldHostAt === 'function' ? worldHostAt(rec, t, { key: env, warming: !!warming, still: !!env.still }) : { tau: 0, agents: [] };
-  const tau = h.tau, mem = rec.frame.agents || (rec.frame.agents = new Map()), seen = new Set(), aRecs = [];
-  const wet = typeof _scflWeather === 'function' ? !!_scflWeather(L).rain : !!(L && L.rain);
-  for (const a of h.agents || []) {
-    if (a.culled && a.cullReason !== 'occluded') continue;
-    const r = _wfrRec(_wfrAgentEnt(a), cam, { season: S.season, agent: true, prev: mem.get(String(a.id)), regions: S.regions, wet });
-    if (!r) continue;
-    if (!r.prim && r.z < cam.f * r.height / 405 && !a.framed) continue;
-    if (r.box.x1 * vs + ox < -50 || r.box.x0 * vs + ox > env.W + 50 || r.box.y1 * vs + oy < -50) continue;
-    r.agent = a;
-    _wfrAgentMem(mem, r, tau);
-    seen.add(r.id);
-    aRecs.push(r);
-  }
-  for (const k of [...mem.keys()]) if (!seen.has(k)) mem.delete(k);
-  S.drawn = { t, tau, agents: aRecs.map(r => r.agent) };
-  S.figs = S.figRec ? (S.drawn.figs = []) : null;
-  const sea = typeof _wfrSea === 'function' ? _wfrSea(L) : 0, live = S.hasRockingLive ? S.plan.live.map(r => (r.rocks ? _wfrRockRec(env, S, r, tau, sea) : r)) : S.plan.live;
-  const movers = live.concat(aRecs);
-  const order = typeof worldFrameOrder === 'function' ? worldFrameOrder(S.plan.chunks, movers, null) : S.chunks.map(o => ({ kind: 'chunk', ref: o.ch })).concat(movers.map(r => ({ kind: 'agent', ref: r })));
-  const lightsOn = !!(L && ((L.dark || 0) > 0.3 || L.windows || L.fog || (S.lightNow && S.lightNow.alt < 4)));
-  return { S, rec, world, cam, tau, L, aRecs, live, movers, order, wet, lightsOn };
+  if (typeof worldFramePlanAt !== 'function') return null;
+  const w0 = env.warming;
+  env.warming = !!warming;
+  let P;
+  try { P = worldFramePlanAt(env, t); } finally { env.warming = w0; }
+  if (!P) return null;
+  const S = P.S;
+  if (P.capture !== 'still' && !warming) {
+    S.drawn = { t, tau: P.tau, agents: P.aRecs.map(r => r.agent) };
+    S.figs = S.figRec ? (S.drawn.figs = []) : null;
+  } else S.figs = null;
+  return P;
 }
 
 /* ---------- pooled images: a texture through a 2 x 3 matrix ---------- */
@@ -169,6 +145,10 @@ function _wsgDepth(st, env, S, P, t) {
       r._fr = null;
       if (!(r.agent && typeof _wsgFigureDraw === 'function' && _wsgFigureDraw(st, env, S, P, r, fr, ga, D))) {
         fr.forEach((f, j) => _wsgMover(st, env, S, f.rec, P.tau, f.a * ga, D + j * 0.01));
+        // a re-bake's cross-fade (a new light key): the mover in the old bake's colours over it, fading out with the statics' slots, so it
+        // never switches colour at the start of the fade (an opaque drawing: old x (1 - k) + new x k)
+        const cf = P.moverFade;
+        if (cf && fr.length === 1 && !r.prim && !r.bmp) _wsgMover(st, cf.env, cf.S, r, P.tau, ga * (1 - cf.k), D + 0.005);
       }
       if (typeof _wsgOwnLights === 'function') _wsgOwnLights(st, env, S, P, r, D + 0.5);
       const b = fr.length === 2 ? { x0: Math.min(r.box.x0, fr[0].rec.box.x0), y0: Math.min(r.box.y0, fr[0].rec.box.y0), x1: Math.max(r.box.x1, fr[0].rec.box.x1), y1: Math.max(r.box.y1, fr[0].rec.box.y1) } : r.box;
@@ -176,7 +156,8 @@ function _wsgDepth(st, env, S, P, t) {
       continue;
     }
     if (it.kind === 'redraw' && clip) { if (_wsgRedraw(st, env, S, it.ref, clip, D)) redraws++; continue; }
-    if (it.kind === 'static') { _wsgStatic(st, env, S, it.ref, D); continue; }
+    // a static drawn on its own (I2), then its own halos (a lamp's: S.liveLights), as the canvas path's _wfrDrawItem draws them
+    if (it.kind === 'static') { _wsgStatic(st, env, S, it.ref, D); if (typeof _wsgOwnLights === 'function') _wsgOwnLights(st, env, S, P, it.ref, D + 0.5); continue; }
   }
   st.st.redraws = redraws;
   if (S.stats) { S.stats.frames++; S.stats.agents = P.aRecs.length; S.stats.redraws = redraws; S.stats.tau = P.tau; }
@@ -196,12 +177,15 @@ function _wsgMover(st, env, S, r, tau, alpha, D) {
   const L = env.Lnow || env.L, night = !!(L && (L.windows || L.dark > 0.5)), lit = !r.static && night && /vehicle|tram|train|boat|bus|car/.test(String(r.ent.cls || r.obj));
   const hooks = typeof sceneAnimPose === 'function' ? _wfrHooks(env, S, r, sh, tau) : [];
   const d = r.static ? S.draw.get(r.id) : null, M = d && d.M ? d.M : _wfrM(env, r);
-  const plan = _wfrPosePlan(r, hooks, tau, L, env.vs, M);
+  const plan = _wfrPosePlan(r, hooks, tau, L, env.vs, M, { lodK: st.lodK || 1 });
+  // a live static's light part comes on and goes off with its light over WORLD_FRAME_LIGHT_FADE_S (5frame _wfrDrawMover0: it was drawn at
+  // full strength on the stage until it vanished with its hook)
+  if (r.static && plan.blits.length > 1 && typeof _wfrLitK === 'function') { let lk = -1; for (const b of plan.blits) if (b.part !== '*' && !String(b.part).startsWith('rest:') && _WFR_LIGHT_PART.test(String(b.part))) { if (lk < 0) lk = _wfrLitK(S, r, tau); b.a *= lk; } }
   const x = { litGlow: lit, bucket: r.bucket };
   let n = 0;
   r.spNow = null;
   plan.blits.forEach((b, i) => {
-    const sp = _wfrSpriteOf(env, S, r, b.part, x);
+    const sp = b.sp || _wfrSpriteOf(env, S, r, b.part, x);   // (C4: a blit's own sprite)
     if (i === 0 && b.part === '*') r.spNow = sp;
     const tx = _wsgSpriteTex(st, sp);
     if (tx && _wsgBlit(st, tx, _wsgSpriteA(sp, tx, b.M), alpha * b.a, D + i * 1e-4)) n++;
@@ -385,22 +369,40 @@ function _wsgInto(st, dt, tx, A, alpha, frame) {
     dt.draw(pr.box);
   }
 }
-/** One drawing of a figure (5frame _wfrDrawMover0's blits) into a render texture, the device frame moved by (dx, dy). */
-function _wsgFigParts(st, env, S, P, rec, dt, dx, dy) {
+/**
+ * One drawing of a figure at the frame's scene time (5frame _wfrDrawMover0's blits): { plan, items: [{ tx, A (texture px -> device px), a }] }.
+ * env / S: the bake whose colours it is drawn in (a re-bake's cross-fade draws the old bake's too).
+ */
+function _wsgFigItems(st, env, S, P, rec) {
   const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(rec.o, rec.v, rec.season || S.season) : null;
   const L = env.Lnow || env.L, night = !!(L && (L.windows || L.dark > 0.5)), lit = night && /vehicle|tram|train|boat|bus|car/.test(String(rec.ent.cls || rec.obj));
   const hooks = typeof sceneAnimPose === 'function' ? _wfrHooks(env, S, rec, sh, P.tau) : [];
-  const plan = _wfrPosePlan(rec, hooks, P.tau, L, env.vs, _wfrM(env, rec)), x = { litGlow: lit, bucket: rec.bucket };
+  const plan = _wfrPosePlan(rec, hooks, P.tau, L, env.vs, _wfrM(env, rec), { lodK: st.lodK || 1 }), x = { litGlow: lit, bucket: rec.bucket }, items = [];
   rec.spNow = null;
   plan.blits.forEach((b, i) => {
-    const sp = _wfrSpriteOf(env, S, rec, b.part, x), tx = _wsgSpriteTex(st, sp);
+    const sp = b.sp || _wfrSpriteOf(env, S, rec, b.part, x), tx = _wsgSpriteTex(st, sp);   // (C4: a blit's own sprite)
     if (i === 0 && b.part === '*') rec.spNow = sp;
-    if (!tx) return;
-    const A = _wsgSpriteA(sp, tx, b.M);
-    A[4] += dx; A[5] += dy;
-    _wsgInto(st, dt, tx, A, b.a);
+    if (tx) items.push({ tx, A: _wsgSpriteA(sp, tx, b.M), a: b.a });
   });
-  return plan;
+  return { plan, items };
+}
+/** A drawing's items into a render texture, the device frame moved by (dx, dy). */
+function _wsgFigInto(st, dt, items, dx, dy) {
+  for (const it of items) { const A = it.A.slice(); A[4] += dx; A[5] += dy; _wsgInto(st, dt, it.tx, A, it.a); }
+}
+/** A drawing's items as a string (what it shows: the textures, their matrices to a thousandth of a px, their opacities). */
+function _wsgItemsSig(items) {
+  let s = '';
+  for (const it of items) { const A = it.A; s += it.tx.key + '@' + A[0].toFixed(4) + ',' + A[1].toFixed(4) + ',' + A[2].toFixed(4) + ',' + A[3].toFixed(4) + ',' + A[4].toFixed(3) + ',' + A[5].toFixed(3) + '*' + it.a.toFixed(3) + ';'; }
+  return s;
+}
+/** A re-bake's cross-fade of the movers' colours (st.moverFade, set when a new light key is shown): { env, S, k } or null once it is over. */
+function _wsgMoverFade(st) {
+  const f = st.moverFade;
+  if (!f) return null;
+  const k = (_wsgNow() - f.f0) / (WORLD_STAGE_FADE_S * 1000);
+  if (!(k < 1) || !f.env || !f.env._wfr || f.env._wfr.plan !== (st.envShown && st.envShown._wfr && st.envShown._wfr.plan)) { st.moverFade = null; return null; }
+  return { env: f.env, S: f.env._wfr, k: Math.max(0, k) };
 }
 /** Erase what lies below a floater's waterline cut (5frame _wfrClipCut keeps what is above it), device px moved by (dx, dy). */
 function _wsgCutErase(st, env, dt, cut, dx, dy) {
@@ -424,13 +426,17 @@ function _wsgCutErase(st, env, dt, cut, dx, dy) {
 }
 /**
  * The figure atlas of a frame: every person, animal and boat sprite (not a hull drawn in perspective, not a rocking bitmap) drawn
- * whole, once, into its own rectangle at its own sub-pixel place: a view change as a true dissolve (the old view whole, faded by
- * 1 - k, plus the new view whole times k: 5frame _wfrDrawDissolve), cut at its waterline. P.figs: record -> { x0, y0, w, h (device
- * px), ax, ay (in the atlas), frame }. The body is then one image at the figure's opacity (no part shows through another), and its
- * mirror and its shadow come from the same posed drawing.
+ * whole, once, into its own rectangle at its own sub-pixel place: a change of its drawing (a view, an object, a variant, a dress, a scale
+ * bucket: 5frame _wfrAgentMem) as a true dissolve (the old drawing whole, faded by 1 - k, plus the new one whole times k: 5frame
+ * _wfrDrawDissolve), and a re-bake's new colours the same way (the old bake's drawing to the new one over WORLD_STAGE_FADE_S, with the
+ * statics' slots), cut at its waterline. P.figs: record -> { x0, y0, w, h (device px), ax, ay (in the atlas), frame }. The body is then
+ * one image at the figure's opacity (no part shows through another), and its mirror and its shadow come from the same posed drawing.
+ * When every figure shows exactly what it showed the frame before (the same drawings in the same places: a held clock, people standing
+ * still, a repeated frame), the atlas is not drawn again (P.figSig: the shadows skip on it too).
  */
 function _wsgFigures(st, env, S, P) {
-  P.figs = new Map();
+  P.figs = new Map(); P.figSig = null;
+  P.moverFade = _wsgMoverFade(st);
   const O = _wsgOff(st); O.pu = 0; O.iu = 0; O.gu = 0;
   if (!P.aRecs.length) return;
   const vs = env.vs, ox = env.ox, oy = env.oy, list = [];
@@ -452,41 +458,51 @@ function _wsgFigures(st, env, S, P) {
   if (!pack(size) && size < 2048) { size = 2048; pack(size); }
   const A = _wsgAtlas(st, size);
   if (!A) return;
-  const placed = list.filter(f => f.ax >= 0);
-  // 1. the new views of the figures turning, whole, into the second texture (the dissolve's source)
-  const turning = placed.filter(f => f.fr.length === 2);
-  if (turning.length) {
-    A.dt2.clear(0, 0, A.size, Math.min(A.size, Math.max(...turning.map(f => f.ay + f.h)) + 1));
-    turning.forEach((f, i) => { _wsgFigParts(st, env, S, P, f.fr[1].rec, A.dt2, f.ax - f.x0, f.ay - f.y0); f.dname = _wsgFrameSet(A.dt2, 'd', i, f.ax, f.ay, f.w, f.h); });
+  const placed = list.filter(f => f.ax >= 0), cf = P.moverFade, sigs = [];
+  // each figure's drawing(s): one, or two mixed by k (a change of its drawing; else a re-bake's colours)
+  placed.forEach((f, k) => {
+    if (f.fr.length === 2) { f.old = _wsgFigItems(st, env, S, P, f.fr[0].rec); f.neu = _wsgFigItems(st, env, S, P, f.fr[1].rec); f.mix = f.fr[1].a; }
+    else {
+      if (cf) { f.old = _wsgFigItems(st, cf.env, cf.S, P, f.fr[0].rec); f.mix = cf.k; }
+      f.neu = _wsgFigItems(st, env, S, P, f.fr[0].rec);
+    }
+    f.cut = f.fr.length === 2 ? (f.fr[1].rec.cut || f.fr[0].rec.cut) : f.fr[0].rec.cut;
+    f.k = k; f.frame = 'f' + k;
+    sigs.push(f.ax + ',' + f.ay + ',' + f.w + ',' + f.h + ',' + f.x0 + ',' + f.y0 + '|' + (f.old ? _wsgItemsSig(f.old.items) + '|' + f.mix.toFixed(3) + '|' : '') + _wsgItemsSig(f.neu.items) + (f.cut ? '|' + JSON.stringify(f.cut) : ''));
+    P.figs.set(f.r, f);
+    if (S.figs && f.r.agent && f.fr.length !== 2) _wsgFigRec(env, S, f.r, f.neu.plan, _wfrAgentAlpha(f.r));
+  });
+  const sig = A.size + '#' + sigs.join('#');
+  P.figSig = sig;
+  st.st.figures = placed.length;
+  if (A.sig === sig) { st.st.atlasSkips = (st.st.atlasSkips || 0) + 1; return; }
+  A.sig = sig;
+  // 1. the new drawings of the mixed figures, whole, into the second texture (the dissolve's source)
+  const mixed = placed.filter(f => f.old);
+  if (mixed.length) {
+    A.dt2.clear(0, 0, A.size, Math.min(A.size, Math.max(...mixed.map(f => f.ay + f.h)) + 1));
+    mixed.forEach((f, i) => { _wsgFigInto(st, A.dt2, f.neu.items, f.ax - f.x0, f.ay - f.y0); f.dname = _wsgFrameSet(A.dt2, 'd', i, f.ax, f.ay, f.w, f.h); });
     A.dt2.render();
   }
-  // 2. the figures: a single view whole; a turning one as its old view whole, faded by 1 - k, plus the new one times k ('add')
+  // 2. the figures: a single drawing whole; a mixed one as its old drawing whole, faded by 1 - k, plus the new one times k ('add')
   // (only the rows the last frame and this one use are cleared: the rest of the atlas is empty)
   const usedH = Math.min(A.size, Math.max(...placed.map(f => f.ay + f.h)) + 1);
   A.dt.clear(0, 0, A.size, Math.max(usedH, A.usedH || 0));
   A.usedH = usedH;
-  placed.forEach((f, k) => {
+  placed.forEach((f) => {
     const dx = f.ax - f.x0, dy = f.ay - f.y0;
-    if (f.fr.length === 2) {
-      const kk = f.fr[1].a;
-      _wsgFigParts(st, env, S, P, f.fr[0].rec, A.dt, dx, dy);
+    if (f.old) {
+      const kk = f.mix;
+      _wsgFigInto(st, A.dt, f.old.items, dx, dy);
       const e = _wsgOffImg(st, st.fxWhite.key);
       e.setPosition(f.ax, f.ay); e.setScale(f.w / st.fxWhite.w, f.h / st.fxWhite.h); e.setAlpha(kk);
       A.dt.erase(e);
       A.dt.stamp(A.key2, f.dname, f.ax, f.ay, { originX: 0, originY: 0, alpha: kk, blendMode: 1 });
-      const cut = f.fr[1].rec.cut || f.fr[0].rec.cut;
-      if (cut) _wsgCutErase(st, env, A.dt, cut, dx, dy);
-    } else {
-      const plan = _wsgFigParts(st, env, S, P, f.fr[0].rec, A.dt, dx, dy);
-      if (S.figs && f.r.agent) _wsgFigRec(env, S, f.r, plan, _wfrAgentAlpha(f.r));
-      if (f.fr[0].rec.cut) _wsgCutErase(st, env, A.dt, f.fr[0].rec.cut, dx, dy);
-    }
-    f.frame = _wsgFrameSet(A.dt, 'f', k, f.ax, f.ay, f.w, f.h);
-    f.k = k;
-    P.figs.set(f.r, f);
+    } else _wsgFigInto(st, A.dt, f.neu.items, dx, dy);
+    if (f.cut) _wsgCutErase(st, env, A.dt, f.cut, dx, dy);
+    _wsgFrameSet(A.dt, 'f', f.k, f.ax, f.ay, f.w, f.h);
   });
   A.dt.render();
-  st.st.figures = placed.length;
 }
 /** A figure's body in the depth order: its atlas rectangle at its own opacity (ga: life's fade or ghost pass). */
 function _wsgFigureDraw(st, env, S, P, r, fr, ga, D) {

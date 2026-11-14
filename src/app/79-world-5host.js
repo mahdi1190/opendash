@@ -213,6 +213,10 @@ function worldHostV2Data(spec, o) {
   // at the camera's projection of its world anchor, its scale from its real height (the descriptor), its view from its facing.
   const cam = world.cam || (typeof sceneCamera === 'function' ? sceneCamera({ camera }) : null);
   const ents = (world.entities || []).filter(e => e && e.static !== false && e.obj);
+  // the standing scenery people life brings alive (world.dwellers: docs/dev/WORLD_MOVEMENT.md 2) are out of world.entities: a still (an SVG
+  // tile, a thumbnail, reduced motion, Node) has no life, so it draws them where they stand. o.dwellers: true / false overrides (the live
+  // data never: its life draws them)
+  if (o.dwellers === true || (o.dwellers !== false && (o.sim === false || o.still === true))) ents.push(...worldHostDwellerEnts(world));
   if (cam) for (const e of ents) data.place.push(...worldHostPlace(cam, e));
   // a minimal world (no core): the clusters it could not expand, as v2 clustered scatter; hedge surfaces as hedge scatter
   if (world.minimal) for (const e of spec.entities || []) {
@@ -227,6 +231,19 @@ function worldHostV2Data(spec, o) {
     try { for (const b of worldBackdrop(world, cam, o.season || 'summer') || []) if (b && b.obj && Number.isFinite(b.x) && b.z > 0) data.place.push(...worldHostPlace(cam, b)); } catch (e) { /* no bands: the v2 distant hills remain */ }
   }
   return data;
+}
+/**
+ * A world's dwellers (world.dwellers: { id, obj, variant, x, y, z, facing, h }) as static entities standing where they were placed, for
+ * whatever draws a world without its life (the still data, a live record that has none). Pure.
+ */
+function worldHostDwellerEnts(world) {
+  const out = [];
+  for (const d of (world && world.dwellers) || []) {
+    if (!d || !d.obj || !Number.isFinite(d.x) || !Number.isFinite(d.z)) continue;
+    out.push({ id: d.id, obj: d.obj, variant: Number.isInteger(d.variant) ? d.variant : null, x: d.x, y: Number.isFinite(d.y) ? d.y : 0, z: d.z, facing: Number.isFinite(d.facing) ? d.facing : 180,
+      height: Number.isFinite(d.h) && d.h > 0 ? d.h : null, static: true, attach: 'ground', foot: [[d.x, d.z]], dweller: true });
+  }
+  return out;
 }
 /**
  * The v2 placement of one world entity: [] when it is behind the camera or has no drawing. Pure. cam: a v2 camera.
@@ -431,10 +448,14 @@ function _wh5Lerp(prev, cur, al) {
   return out;
 }
 function _wh5ById(list) { const m = new Map(); for (const a of list || []) if (a && a.id != null) m.set(a.id, a); return m; }
-// what the life sim alone sets at its own steps (15 Hz): presented from the last two life steps (_wh5Steps), the discrete ones with them
-const _WH5_STEP_LERP = ['alpha', 'alphaNoGhost', 'ghost', 'walkK', 'vx', 'vz', 'speed'];
-const _WH5_STEP_WRAP = [['gaitPhase', 1], ['heading', 2 * Math.PI], ['facing', 360], ['phase', 1]];
-const _WH5_STEP_DISCRETE = ['state', 'pose', 'clip', 'view', 'mirror', 'loco', 'gait', 'gaitName', 'lookAt', 'stepping', 'squeeze', 'wants', 'intent', 'leaving'];
+// what the life sim alone sets at its own steps (15 Hz): presented from the last two life steps (_wh5Steps), the discrete ones with them.
+// NOT walkK and gaitPhase (I4): worldAgents already puts them between the life's last two steps with the same share as x and z (life.alpha), so
+// they move every tick with the body; laid on the step line as well they ran about one life step ahead of the position (the legs out of step
+// with the feet). They are interpolated between ticks like x and z (_wh5Lerp: walkK linear, gaitPhase the short way round). The seat and the
+// dwell kind switch with the pose and the loco state (a sitter is never drawn in the sit pose off its seat, or seated mid-step)
+const _WH5_STEP_LERP = ['alpha', 'alphaNoGhost', 'ghost', 'vx', 'vz', 'speed'];
+const _WH5_STEP_WRAP = [['heading', 2 * Math.PI], ['facing', 360], ['phase', 1]];
+const _WH5_STEP_DISCRETE = ['state', 'pose', 'clip', 'view', 'mirror', 'loco', 'gait', 'gaitName', 'lookAt', 'stepping', 'squeeze', 'wants', 'intent', 'leaving', 'seat', 'dwell'];
 /**
  * The life's step-level scalars of the agents a frame draws (WORLD_FLICKER.md 3): the life sim steps every other tick of the runner, so
  * the scalars it alone sets would hold for one tick and then jump. They are laid on a line through the two last life steps, late by one
@@ -479,10 +500,18 @@ function worldHostAgents(agents, cam, o) {
     const s = (cam.f / Math.max(0.3, a.z)) * hM / def.size[1];
     if (p.X < -200 || p.X > 1800 || p.Y < -200) continue;
     out.push({ a, id: a.id, o: obj, v: a.variant == null ? 0 : a.variant, X: p.X, Y: p.Y, s, flip: !!a.mirror, d: a.z, layer: _wh5LayerOf(cam, a.z, o.layers),
-      view: a.view || 'side', alpha: Number.isFinite(a.alpha) ? Math.max(0, Math.min(1, a.alpha)) : 1, kind: a.cls, moving: Math.hypot(a.vx || 0, a.vz || 0) > 0.05, phase: a.phase || 0 });
+      view: a.view || 'side', alpha: Number.isFinite(a.alpha) ? Math.max(0, Math.min(1, a.alpha)) : 1, kind: a.cls, moving: _wh5Moving(a), phase: a.phase || 0 });
   }
   out.sort((p, q) => q.d - p.d);
   return out;
+}
+/**
+ * Is an agent record moving? ONE test (I4, docs/dev/WORLD_MOVEMENT.md 1): a body with a locomotion state moves while it is in start, walk or
+ * stop (life's worldLifeMoving); anything without one (a boat, a bird in the air, a vehicle) by its speed.
+ */
+function _wh5Moving(a) {
+  if (a && typeof a.loco === 'string') return typeof worldLifeMoving === 'function' ? worldLifeMoving(a) : a.loco === 'start' || a.loco === 'walk' || a.loco === 'stop';
+  return !!a && Math.hypot(a.vx || 0, a.vz || 0) > 0.05;
 }
 /**
  * The drawn view of a thing facing `facing` (world degrees, 0 = away from the camera, 90 = right) standing at (x, z):
@@ -672,9 +701,14 @@ function _wh5ClearMem(rec) {
   if (f.agents) f.agents.clear();
   if (f.mems) for (const m of f.mems.values()) m.clear();
 }
-// the state the systems runner and its systems keep on a world (79-world-0sys.js _wsySlot, the life, wind, particles, light and attach
-// systems); the world's own build (entities, surfaces, nav, camera, time) is left alone
-const _WH5_LIFE_KEYS = ['_wlfLife', 'sim', 'agents', 'runner', 'bus', '_wsyRng', '_wsyAttach', '_wsyLod', '_wsyTimeS', '_wpt', '_wwd', '_wlLight'];
+// the state the systems runner and its systems keep on a world: the life (79-world-2life.js: _wlfLife, sim, agents), the runner (0sys: runner,
+// bus, the _wsy* slots, its outputs frame, lights, shadows), the water's rings, wakes, leaves and bobs (4water worldWaterInit: water), the
+// wind (6wind: wind, _wwd), particles (_wpt), the light system (4light: _wlLight, sky, sun) and appearance's live flag (6anim: __wanLive, with
+// its _wanWorlds entry below). The world's own build (entities, surfaces, nav, camera, falls, time) is left alone: the next runner's systems
+// make every one of these again at their init or first tick (audited 14 Nov against every write to world.<key> in 2life, 2brains, 2traffic,
+// 1nav, 6anim, 0sys, 6wind, 6particles, 4light and 4water)
+const _WH5_LIFE_KEYS = ['_wlfLife', 'sim', 'agents', 'runner', 'bus', '_wsyRng', '_wsyAttach', '_wsyLod', '_wsyTimeS', '_wpt', '_wwd', '_wlLight',
+  'water', 'wind', 'frame', 'lights', 'shadows', 'sky', 'sun', '__wanLive'];
 /**
  * A REAL reset of a world's life (WORLD_FLICKER.md 1): everything the runner and the life systems keep on the world is dropped (the life,
  * its agents, the systems' rngs and attach links, wind, particles, the light system, appearance's per-world animation state), so the next

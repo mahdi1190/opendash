@@ -28,6 +28,7 @@ function _wsgLayersInit(st) {
   if (typeof _wsgFxInit === 'function') _wsgFxInit(st);
 }
 function _wsgLayersFree(st) {
+  st.snap = null;
   if (st.tex) st.tex.clear();
   if (st.slots) st.slots.clear();
   if (st.gen) st.gen.clear();
@@ -192,7 +193,8 @@ function _wsgSlot(st, key, c, x, y, d, o) {
   let s = st.slots.get(key);
   if (!s) { s = { key, cur: null, prev: null, f0: 0, fadeIn: false, out: 0, a: 1 }; st.slots.set(key, s); }
   s.seen = st.frameNo;
-  const instant = !!o.now || !st.shown, wall = _wsgNow();
+  // (st.slotsInstant: the frame after a picture of the old frame was taken, which fades out over everything: _wsgSnapTake)
+  const instant = !!o.now || !st.shown || !!st.slotsInstant, wall = _wsgNow();
   if (c && (!s.cur || s.cur.t.c !== c)) {
     let t = _wsgTexOf(st, c);
     if (!t && (st.upLeft == null || st.upLeft > 0)) t = _wsgTexUp(st, c, 'static');
@@ -235,7 +237,7 @@ function _wsgSlotsEnd(st) {
   const wall = _wsgNow();
   for (const [key, s] of st.slots) {
     if (s.seen === st.frameNo) continue;
-    if (!st.shown || !s.cur) { _wsgSlotFree(st, s.cur); _wsgSlotFree(st, s.prev); st.slots.delete(key); continue; }
+    if (!st.shown || !s.cur || st.slotsInstant) { _wsgSlotFree(st, s.cur); _wsgSlotFree(st, s.prev); st.slots.delete(key); continue; }
     if (!s.out) s.out = wall;
     const k = 1 - (wall - s.out) / (WORLD_STAGE_FADE_S * 1000);
     if (k <= 0) { _wsgSlotFree(st, s.cur); _wsgSlotFree(st, s.prev); st.slots.delete(key); continue; }
@@ -249,6 +251,48 @@ function _wsgSlotsReset(st) {
   st.slots.clear();
 }
 
+/* ---------- a picture of the frame, fading out (a new plan, a new render scale) ---------- */
+/**
+ * Take a picture of the frame on screen now: every object shown, drawn in depth order into one texture of the bake's device size. It lies
+ * over everything (WSG_D_POST + 40) and fades out over WORLD_STAGE_FADE_S (_wsgSnapFrame) while the new frame plays under it: a season's
+ * new plan (new chunks, new depths: no slot matches its old self) and a resolution step of the governor are never a visible switch. Once.
+ * -> whether a picture was taken.
+ */
+function _wsgSnapTake(st) {
+  const sc = st.scene;
+  if (!sc || !st.shown || !st.W || !st.H) return false;
+  let X = st.snap;
+  if (X && (X.w !== st.W || X.h !== st.H)) { _wsgSnapFree(st); X = null; }
+  try {
+    if (!X) {
+      const key = 'wsg' + st.id + '.snap.' + (++st.texSeq), dt = sc.textures.addDynamicTexture(key, st.W, st.H);
+      if (!dt) return false;
+      X = st.snap = { key, dt, w: st.W, h: st.H, img: sc.add.image(0, 0, key).setOrigin(0, 0).setDepth(WSG_D_POST + 40) };
+    }
+    X.img.setVisible(false);
+    const list = sc.children.list.filter(o => o && o.visible && o !== X.img && !(o.alpha <= 0)).sort((a, b) => a.depth - b.depth);
+    X.dt.clear(); X.dt.draw(list); X.dt.render();
+    X.f0 = _wsgNow(); X.img.setAlpha(1); X.img.setVisible(true);
+    st.st.snaps = (st.st.snaps || 0) + 1;
+    return true;
+  } catch (e) { st.st.errors.push('snap: ' + (e && e.message)); _wsgSnapFree(st); return false; }
+}
+/** Each frame: the picture's fade (1 to 0 over WORLD_STAGE_FADE_S), then it goes with its texture. */
+function _wsgSnapFrame(st) {
+  const X = st.snap;
+  if (!X || !X.img || !X.img.visible) return;
+  const k = (_wsgNow() - X.f0) / (WORLD_STAGE_FADE_S * 1000);
+  if (k >= 1) { _wsgSnapFree(st); return; }
+  X.img.setAlpha(Math.max(0, 1 - k));
+}
+function _wsgSnapFree(st) {
+  const X = st.snap;
+  if (!X) return;
+  st.snap = null;
+  try { X.img.destroy(); } catch (e) { /* gone */ }
+  try { if (st.scene) st.scene.textures.remove(X.key); } catch (e) { /* gone */ }
+}
+
 /* ---------- a frame ---------- */
 /** The frame at t of a bake env: the static layers in their slots, the world in depth order, the weather; warming: hidden frames. */
 function _wsgDraw(st, env, t, warming) {
@@ -257,7 +301,7 @@ function _wsgDraw(st, env, t, warming) {
   st.pool.used = 0; st.pool.pairUsed = 0;
   st.st.statics = 0;
   const L = env.Lnow || env.L || out.L;
-  // the plan of the world at t (the people, the live statics, the depth order): I1 (worldFramePlanAt) or the stage's copy
+  // the plan of the world at t (the people, the live statics, the depth order): I1 (worldFramePlanAt)
   const P = typeof _wsgPlan === 'function' ? _wsgPlan(st, env, t, warming) : null;
   // the figure atlas (people and animals drawn once each: their bodies, mirrors and shadows all come from it)
   if (P && typeof _wsgFigures === 'function') { try { _wsgFigures(st, env, S, P); } catch (e) { P.figs = null; st.st.errors.push('figures: ' + (e && e.message)); } }

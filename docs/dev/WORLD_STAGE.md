@@ -47,9 +47,21 @@ keeps tool pages as they were.
   - the garden's game opens;
   - the stage is not ready 1.5 s after the baker;
   - a newer stage evicts it (at most `WORLD_STAGE_MAX` = 2 games at once);
+  - the frame-rate governor's last tier (§5a);
   - a frame throws.
 
+  Each cause was exercised in a one-off page (14 Nov, wave 2): a third and a fourth stage (the two oldest hand over and keep
+  playing), the garden's game becoming active (handed over within its 2 s check, the canvas moving), a lost context
+  (`WEBGL_lose_context`: 115 ms), and destroy while the engine loads, while the game boots (between `new Phaser.Game` and its
+  scene's create) and while preparing (no canvas, no game, no listed stage left; no error). A destroyed stage never hides a
+  host's canvas again (`attach` is a no-op once destroyed).
+- **Software WebGL, dev only.** A tool page (`renderer: 'stage'`) may use SwiftShader. In the app, `?stage=sw` in the address
+  or `window.__sceneStageSoftware = true` allows it too (to test the real opening in headless Chrome). Never on by default. Note
+  that Chrome started with `--ignore-gpu-blocklist` (the tools' `stageChromeArgs`) does not report SwiftShader as a major
+  performance caveat, so the app plays the stage there even without the switch; `?stage=0` forces the canvas.
+
   `stats().stage.why` says which. The host's `sc-ready` comes from whichever player is ready.
+- **While the baker bakes**, the game's loop sleeps (it has nothing to draw); the baker's ready wakes it.
 - **No persistent cache.** The baker gets no `cache`. Its kept still is captured by a frame at t = 0 that
   steps the world's clock back (the clock-restart finding). Once that capture no longer moves the clock,
   passing `cache: ref` brings back the kept still on reload.
@@ -90,9 +102,9 @@ with its bake (the bake takes longer than the parse).
 
 ## 4. The frame
 
-The frame is drawn from the world's own plan. `worldFramePlanAt(env, t)` is the planning half of
-`_wfrDraw`, owned by the flicker builder. Until it is merged, `_wsgPlanCopy` (one function, delete after
-the merge) stands in. Depths, in drawing order:
+The frame is drawn from the world's own plan: `worldFramePlanAt(env, t)`, the planning half of `_wfrDraw` (interface I1,
+`docs/dev/WORLD_FLICKER.md` 2). The stage sets `env.warming` around the call for its hidden frames (the clock never moves) and
+keeps the tools' record of the frame (`S.drawn`, `S.figs`) as `_wfrDraw` does. Depths, in drawing order:
 
 | depth | what |
 |---|---|
@@ -118,14 +130,27 @@ the merge) stands in. Depths, in drawing order:
   matrix with a shear is a container pair, from its closed-form SVD R S R.
 - **The figure atlas** (`_wsgFigures`). Every person, animal and boat sprite is drawn ONCE a frame,
   whole, into its own rectangle of a 1024 (or 2048) render texture, at its own sub-pixel place:
-  - a view change is a true dissolve: the old view whole, faded by 1 - k with an erase, plus the new view
-    whole times k, added from a second texture;
+  - a change of its drawing is a true dissolve: the old drawing whole, faded by 1 - k with an erase, plus the
+    new one whole times k, added from a second texture. A change is a view or a flip, the object (a legless
+    figure walks in its stand-in art), the variant, the dress (the season, the umbrella of the weather) or the
+    scale bucket its sprite is rastered at (5frame `_wfrAgentMem`, both players);
+  - a re-bake with a new light key (the same plan) mixes the figure's drawing in the old bake's colours into the
+    new one over the slots' fade (`st.moverFade`), so people never switch colour at its start. A mover outside the
+    atlas (a live static, a figure over 480 px) gets its old-colour drawing over it at 1 - k instead;
+  - when no figure shows anything new (the same drawings in the same places: a held clock, people standing still,
+    a repeated frame), the atlas is not drawn again (`stats().stage.atlasSkips`); the agents' shadows skip on the
+    same test (`shadowSkips`);
   - a floater is cut below its waterline by an erased polygon;
   - the body is then one image at the figure's opacity, so a ghosting walker no longer shows its limbs
     through its body;
   - its mirror and its shadow come from the same posed drawing.
 
-  Figures over 480 px are drawn straight.
+  Figures over 480 px are drawn straight (their mirror from their rest sprite, as the canvas path mirrors an
+  unposed figure).
+- **A new plan** (a season: new chunks at new depths, so no slot matches its old self) and a **step of the render
+  scale** (§5a) take one picture of the frame on screen (`_wsgSnapTake`: every shown object drawn in depth order into
+  one texture of the bake's size), lay it over everything and fade it out over `WORLD_STAGE_FADE_S` while the new
+  frame plays under it. The slots of that first frame switch at once under the picture.
 - **Occluder redraws** are the static's own pixels cropped to the mover's box (`setCrop`), with no clip and
   no second blending:
   - a drawn piece from its 1:1 cache (`_wfrPrimCache`);
@@ -152,14 +177,48 @@ the merge) stands in. Depths, in drawing order:
   erase with the INVERSE mask is the pass's `destination-in`, exactly.
 - **Agent shadows** (sun up). `worldShadowPlan` runs per frame. Each figure's atlas drawing is a silhouette
   (tint FILL, `#14202e`) through `sceneShadowMatrix`, a shear done as a container pair. That gives a
-  walking shadow, an improvement on the canvas's rest sprite. Polygons are Graphics. Then the wet area is
-  erased (even-odd), and the result is shown only over the shadows' box.
-- **Lamps.** A live lamp's halo and a carried light use one shared radial texture (profile 1, .42, .12, 0 at
+  walking shadow. Polygons are Graphics. Each shadow's own holes (`holesScr`: the water under it at its plane)
+  are erased after the ground shadows, from a 2D mask of the shadows' box with each shadow's set filled
+  EVEN-ODD, as `worldDrawShadows` clips each one (overlapping water pieces cancel: at the Fleet Pond the boardwalk
+  lies where nine pieces of the pond overlap, and a nonzero union erased the walkers' shadows on it). Shadows cast
+  on a deck are drawn after that erase. Then the wet area is erased (even-odd), and the result is shown only over
+  the shadows' box.
+- **The v2 base water** is not drawn when the canvas path drops its pass for the bake (`S.stats.baseWaterOff`: the
+  world's water covers every base water surface); it laid a grey second reflection along the Fleet Pond's near
+  shore.
+- **Glints** are filled capsules: round ends, as the canvas strokes them with `lineCap: 'round'`.
+- **Lamps.** A static drawn on its own (I2: a lantern, a lamp head) draws its own halos right after it (`S.liveLights`), faded with
+  its light (`_wfrLitK`), as the canvas path does since its transform fix. A live lamp's halo and a carried light use one shared radial texture (profile 1, .42, .12, 0 at
   0, .18, .45, 1) tinted and added. A beam uses a shared gradient triangle mapped onto its three points.
 - **Rings, wakes, floating leaves** are Graphics, unclipped, as the canvas draws them.
 - **Weather.** The v2 frame passes the stage does not draw natively (rings, fog banks, rain and snow
   streaks, lightning) and the falls use their own Canvas 2D code, drawn into a frame overlay refreshed at
   most 15 times a second and uploaded only while it draws something.
+
+## 5a. The frame-rate governor
+
+The stage is fill-bound, so it watches the cadence of its own shown frames (the loop's interval; a sleep, a hidden tab and the
+first interval after a wake are no sample) against the target (the host's frame cap, at most 60 Hz). Every 0.5 s it takes the
+median over the last 2 s (`WORLD_STAGE_GOV`):
+
+| tier | what changes |
+|---|---|
+| 0 | full quality |
+| 1 | the water, the agents' mirror (inside the water textures) and their shadows refresh every other frame |
+| 2 | render scale 0.75 (the game's backing store is smaller, the css stretches it; the camera zooms the bake's frame into it); far figures drawn whole sooner (LOD x1.5, as the canvas governor) |
+| 3 | render scale 0.5 |
+| 4 | the canvas renderer plays (the fallback, `why`: 'the frame rate (governor: ...)') |
+
+- Down one tier when the median misses the target by a third for 2 s (never in the first 1.5 s after ready). Up one after 10 s
+  within 15 % of it. A step up that comes back down within 4 s doubles the next wait (up to 80 s).
+- It never thins people. A tier's resolution step is a texture resize: the old frame's picture fades out over it (§4).
+- **Backing-store cap:** at most 2560 x 1440 device px, and never over the screen's device size (or the window's, when larger:
+  headless Chrome reports an 800 x 600 screen). The bake keeps its size; its textures are sampled down.
+- Tool pages that fix the quality (`window.__sceneOpts.governor === false`, as `tools/stage.mjs`) never step. Tools can set a tier:
+  `rec.r.stageTier(n, { hold: true })`.
+- `stats().stage.gov` and `__worldStages()[i].gov`: `{ tier, zoom, base, backing, medianMs, targetMs, upWaitS, held, steps }`.
+- Measured once under SwiftShader (Fleet Pond 2, governor on, 16 s): tier 1 at 6.7 s (cadence 352 ms), 2 at 10.9 s (373 ms),
+  3 at 14.6 s (231 ms), then the canvas at 17.4 s (154 ms against 16.7). On a real GPU it should rarely leave tier 0.
 
 ## 6. Pitfalls found (Phaser 4.2.1)
 
@@ -222,13 +281,32 @@ Notes on these numbers:
   - Fleet Pond 2: 0.2 (autumn), 0.2 (night);
   - Castlefield Basin: 0.16 (summer), 0.25 (night).
 
+## 8a. The real app (14 Nov, wave 2)
+
+Run on a scratch data folder and a test port in headless Chrome (software WebGL, 6 builders sharing 4 cores: slow, noisy, single
+runs). The location was set to Fleet, Hampshire, the UK regional scenes on and the opening pinned to Fleet Pond 2 (autumn).
+
+- **First load of a fresh browser:** the opening showed the seasonal fallback landscape with the "Fleet" welcome: the state (the
+  UK switch, the pin) had not reached the page when the brand ended. A returning browser has it.
+- **Second load (stage):** brand to 9.7 s, then the welcome; the caption at 11.4 s; the host was mounted at 6.8 s (after a 3.4 s
+  main-thread task at 4.4 s), the baker was ready 4.97 s after the stage was made and the stage 0.94 s after that (sc-ready 12.8 s).
+  So the welcome and the caption showed over an empty background for about 3 s, then the scene (Fleet Pond 2 at night, the lit
+  boardwalk and its walkers) faded in. The engine was parsed at the stage's creation (469 ms): `animOpeningPeek` at the start of
+  the sequence cannot see the pinned world scene before the state loads, so the preload did not run.
+- **Second load (canvas, `?stage=0`):** the host mounted at 6.0 s, sc-ready 3.5 s later (9.5 s), 0.45 s after the welcome.
+- Under SwiftShader the stage then plays at 2-3 fps (a 1.0-1.5 s frame right after sc-ready): on this machine the governor would
+  hand it to the canvas after about 10 s; the opening is over before that.
+- **The gallery stage** (Settings > Animations, Fleet Pond 2 selected): the stage plays it (726 x 408); the 209 x 117 tiles keep
+  the canvas renderer.
+- **The Home card** (the Animation of the day, size m, the Fun preset): the stage plays it (793 x 445). Ready 13.6 s after it was
+  made: the card bakes in idle time while the opening holds the screen (by design).
+
 ## 9. Known differences from the canvas path
 
-- **Lamp halos.** A live lamp shows its halo; the canvas path draws it off its lamp: `_wfrDraw` calls
-  `worldDrawLights` for a mover's own lamps with the last blit's transform still set.
-- **Agent shadows** walk (posed silhouettes).
+- **Agent shadows** walk (posed silhouettes) for every figure in the atlas; the canvas poses the 6 largest at governor level 0.
 - **Water ripple** moves at frame rate, not in 15 Hz steps.
-- **Glints** have square ends (Phaser lines have no round caps).
-- **Translucent figures** are drawn whole, never part by part.
-- **Shadow holes.** A shadow polygon's own holes (`holesScr`) are not cut (only the water is).
-- **Figures over 480 px.** Their mirror is not drawn.
+- **Translucent figures** are drawn whole, never part by part. Live statics are drawn part by part, as the canvas path draws
+  them: their plan opacity is always 1 (only their light parts fade, `_wfrLitK`, on both players).
+- **A season change** is a picture of the old frame fading out (frozen people for 0.9 s), the canvas path's held swap.
+- **Shadow holes** that overlap across two different shadows are cut from both (one mask for all); the canvas cuts each shadow
+  by its own holes only.

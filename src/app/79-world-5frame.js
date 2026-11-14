@@ -258,43 +258,53 @@ function _wfrAgentEnt(a) {
 }
 /**
  * The draw memory of an agent across frames (the compositor's and worldFrameFigures'): its scale bucket (with hysteresis) and the
- * start of a view change (m.prev: the view, object and flip it changes from; m.since: when). Returns m; sets r.bucket and r.mem.
+ * start of a view change (m.prev: the drawing it changes from; m.since: when). Returns m; sets r.bucket and r.mem.
+ * A change is anything that swaps the drawing: the view or the flip, the OBJECT (a legless figure walks in its stand-in art,
+ * person.birdwatcher <-> person.walker: life's _wlfWalkArt), its variant, its dress (the season or the umbrella of the weather), and the
+ * scale bucket its sprite is rastered at (hysteresis 0.75 of a quarter octave). Each one dissolves over WORLD_FRAME_FADE_S on every
+ * renderer (the canvas path's _wfrDrawDissolve, the stage's figure atlas): until 14 Nov an object, variant, dress or bucket change
+ * swapped the drawing in one frame. The old drawing keeps its own bucket (m.prev.e) with the same hysteresis while it fades.
  */
 function _wfrAgentMem(mem, r, tau) {
   let m = mem.get(r.id);
-  if (!m) { m = { e: Math.round(Math.log2(Math.max(1e-3, r.s)) * 4), view: r.view, mirror: r.mirror, o: r.o, flip: r.flip, prev: null, since: -1 }; mem.set(r.id, m); }
-  const ex = Math.log2(Math.max(1e-3, r.s)) * 4;
+  if (!m) { m = { e: Math.round(Math.log2(Math.max(1e-3, r.s)) * 4), view: r.view, mirror: r.mirror, o: r.o, v: r.v, season: r.season, flip: r.flip, prev: null, since: -1 }; mem.set(r.id, m); }
+  const ex = Math.log2(Math.max(1e-3, r.s)) * 4, e0 = m.e;
   if (Math.abs(ex - m.e) > 0.75) m.e = Math.round(ex);
   r.bucket = 2 ** (m.e / 4);
   // sz: the scale times the depth (the view's own scale at any depth): the old view of a change is drawn at ITS scale, not the new one's
   const sz = r.s * r.z;
-  if (m.o !== r.o || m.flip !== r.flip) {
-    // a second change while the first is less than half faded: the new view takes the place of the half-shown one (the old view keeps
-    // fading out); else the view it leaves becomes the old one. Until 20 Oct the half-shown one vanished at once (a dog's width popped)
+  const swapped = m.o !== r.o || m.flip !== r.flip || (m.v !== undefined && m.v !== r.v) || (m.season !== undefined && m.season !== r.season);
+  if (swapped || m.e !== e0) {
+    // a second change while the first is less than half faded: the new drawing takes the place of the half-shown one (the old one keeps
+    // fading out); else the drawing it leaves becomes the old one. Until 20 Oct the half-shown one vanished at once (a dog's width popped)
     const k0 = m.prev && m.since >= 0 ? (tau - m.since) / WORLD_FRAME_FADE_S : 1;
-    if (!(k0 < 0.5)) { m.prev = { o: m.o, flip: m.flip, view: m.view, sz: m.sz }; m.since = tau; }
+    if (!(k0 < 0.5)) { m.prev = { o: m.o, v: m.v, season: m.season, flip: m.flip, view: m.view, sz: m.sz, e: e0 }; m.since = tau; }
     m.changed = tau;
   }
-  m.view = r.view; m.mirror = r.mirror; m.o = r.o; m.flip = r.flip; m.sz = sz;
+  // the old drawing's bucket follows its own scale with the same hysteresis (never a bucket flip-flop inside its dissolve)
+  if (m.prev && Number.isFinite(m.prev.e) && m.prev.sz > 0 && r.z > 0) { const eo = Math.log2(Math.max(1e-3, m.prev.sz / r.z)) * 4; if (Math.abs(eo - m.prev.e) > 0.75) m.prev.e = Math.round(eo); }
+  m.view = r.view; m.mirror = r.mirror; m.o = r.o; m.v = r.v; m.season = r.season; m.flip = r.flip; m.sz = sz;
   r.mem = m;
   return m;
 }
 /**
- * The drawings of an agent this frame: [{ rec, a }] (a: the share of its opacity), two while a view change cross-fades (the old view
- * under the new), else one. Clears the memory of a finished change.
+ * The drawings of an agent this frame: [{ rec, a }] (a: the share of its opacity), two while a change cross-fades (the old drawing under
+ * the new), else one. Clears the memory of a finished change.
  */
 function _wfrFadeRecs(r, m, tau) {
   const k = m && m.prev && m.since >= 0 ? Math.max(0, Math.min(1, (tau - m.since) / WORLD_FRAME_FADE_S)) : 1;
   if (k < 1 && m.prev && m.prev.o && !r.prim) {
-    const old = Object.assign({}, r, { o: m.prev.o, flip: !!m.prev.flip, view: m.prev.view || r.view });
+    const p = m.prev, old = Object.assign({}, r, { o: p.o, flip: !!p.flip, view: p.view || r.view });
+    if (p.v !== undefined) old.v = p.v;
+    if (p.season !== undefined) old.season = p.season;
     // the old view at its own scale (until 20 Oct it took the new view's: a walker's side art shrank by a fifth in the first frame of a
-    // turn toward the eye, whatever the views' heights), its own box and sprite bucket
-    if (m.prev.sz > 0 && r.z > 0) {
-      old.s = m.prev.sz / r.z;
-      old.bucket = 2 ** (Math.round(Math.log2(Math.max(1e-3, old.s)) * 4) / 4);
+    // turn toward the eye, whatever the views' heights), its own box and sprite bucket (with its own hysteresis: m.prev.e)
+    if (p.sz > 0 && r.z > 0) {
+      old.s = p.sz / r.z;
+      old.bucket = Number.isFinite(p.e) ? 2 ** (p.e / 4) : 2 ** (Math.round(Math.log2(Math.max(1e-3, old.s)) * 4) / 4);
       const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(old.o, old.v, old.season) : null, b = sh && sh.box;
       if (b) old.box = old.flip ? { x0: r.X - b[2] * old.s, y0: r.Y + b[1] * old.s, x1: r.X - b[0] * old.s, y1: r.Y + b[3] * old.s } : { x0: r.X + b[0] * old.s, y0: r.Y + b[1] * old.s, x1: r.X + b[2] * old.s, y1: r.Y + b[3] * old.s };
-    }
+    } else if (Number.isFinite(p.e)) old.bucket = 2 ** (p.e / 4);
     return [{ rec: old, a: 1 - k, old: true }, { rec: r, a: k }];
   }
   if (m) m.prev = null;
@@ -902,7 +912,7 @@ function worldFrameAt(scene, t, o) {
     const e = r.ent, a = r.agent || {};
     let anim = null, sway = null;
     if (typeof worldAnimOf === 'function') { try { anim = _wfrPlain(worldAnimOf(agent ? Object.assign({}, a, e) : e, world)); } catch (err) { anim = null; } }
-    if (!anim) anim = agent ? { state: Math.hypot(e.vx || 0, e.vz || 0) > 0.05 ? 'move' : 'idle', clip: a.clip || null, rate: null, phase: _wfrR3(a.phase || 0), period: null } : { state: 'none' };
+    if (!anim) anim = agent ? { state: (typeof _wh5Moving === 'function' ? _wh5Moving(e) : Math.hypot(e.vx || 0, e.vz || 0) > 0.05) ? 'move' : 'idle', clip: a.clip || null, rate: null, phase: _wfrR3(a.phase || 0), period: null } : { state: 'none' };
     if (typeof worldSway === 'function') {
       try { const s = worldSway(e, world, t); sway = s ? { dir: _wfrR3(s.dir), amp: _wfrR3(s.amp) } : null; } catch (err) { sway = null; }
     }
@@ -1921,7 +1931,7 @@ function _wfrHooks(env, S, r, sh, tau) {
       if (list) return r.static ? worldFrameHookFilter(r, list.filter(x => x && x.kind), { lit: _wfrLitK(S, r, tau) > 0 }) : list.filter(x => x && x.kind);
     } catch (e) { /* below */ }
   }
-  if (r.static || !sh || !Array.isArray(sh.anim) || !(Math.hypot(r.ent.vx || 0, r.ent.vz || 0) > 0.05)) return [];
+  if (r.static || !sh || !Array.isArray(sh.anim) || !(typeof _wh5Moving === 'function' ? _wh5Moving(r.ent) : Math.hypot(r.ent.vx || 0, r.ent.vz || 0) > 0.05)) return [];
   const ph = Number.isFinite(r.ent.phase) ? r.ent.phase : 0;
   return sh.anim.filter(h => h.kind === 'walk' || h.kind === 'paddle' || h.kind === 'flap').map(h => Object.assign({}, h, { phase: ((h.phase || 0) + ph) % 1 }));
 }
@@ -2004,7 +2014,8 @@ function _wfrDrawMover0(env, S, ctx, r, tau, alpha) {
     const A0 = alpha == null ? 1 : alpha;
     r.spNow = null;
     plan.blits.forEach((b, i) => {
-      const sp = _wfrSpriteOf(env, S, r, b.part, x);
+      // (interface C4: a blit may carry its own sprite, b.sp: a lamp-lit or hazed second drawing of the part, blended by b.a)
+      const sp = b.sp || _wfrSpriteOf(env, S, r, b.part, x);
       if (i === 0 && b.part === '*') r.spNow = sp;
       if (sp && env.keep) env.keep(sp);
       blit(sp, b.M, A0 * b.a);
@@ -2230,6 +2241,9 @@ function worldFramePlanAt(env, t) {
   const capture = env.capture || (env.background ? 'still' : null);
   const st = typeof worldHostAt === 'function' ? worldHostAt(rec, t, { key: env, warming: !!env.warming, still: !!env.still, capture: capture || undefined }) : { tau: 0, agents: [], ready: false };
   const tau = st.tau;
+  // a live record with no life (sim 'none', or a life that failed to build): the standing scenery people it would have brought alive
+  // (world.dwellers) stand where they were placed, drawn as still figures (they are out of the statics: docs/dev/WORLD_MOVEMENT.md 2)
+  if (!rec.driver && (rec.noLife || rec.lifeBuilt) && world.dwellers && world.dwellers.length && !(st.agents && st.agents.length)) st.agents = _wfrDwellersStill(world);
   // the agents as draw records (views by appearance with hysteresis; scale buckets with hysteresis; view changes cross-fade)
   const mem = _wfrMemOf(env, S, capture === 'still'), seen = new Set(), aRecs = [];
   // the weather now (rain, showers, drizzle: the v2 light's own reading): people carry an umbrella up only in it
@@ -2258,6 +2272,18 @@ function worldFramePlanAt(env, t) {
   return { S, rec, world, cam, tau, L, aRecs, live, occl, movers, order, wet, lightsOn, ready: !!st.ready, capture, mem };
 }
 
+/** A world's dwellers as agents that stand still where they were placed (a record without life draws them so). Kept per world. */
+const _wfrDwellMemo = new WeakMap();
+function _wfrDwellersStill(world) {
+  let L = _wfrDwellMemo.get(world);
+  if (L && L.src === world.dwellers) return L.list;
+  const ents = typeof worldHostDwellerEnts === 'function' ? worldHostDwellerEnts(world) : [];
+  const list = ents.map(e => ({ id: e.id != null ? e.id : 'dweller@' + e.x + ',' + e.z, cls: 'person', obj: e.obj, variant: e.variant, x: e.x, y: e.y, z: e.z, vx: 0, vz: 0, speed: 0,
+    heading: e.facing * Math.PI / 180, facing: e.facing, h: e.height, layer: 'walk', state: 'idle', pose: 'stand', alpha: 1, alphaNoGhost: 1, ghost: 0, kind: 'walker',
+    loco: 'stand', walkK: 0, gaitPhase: 0, dwell: 'authored', host: null, framed: false }));
+  _wfrDwellMemo.set(world, { src: world.dwellers, list });
+  return list;
+}
 /** A static drawn on its own (I2), from its bake drawing: a prim's bitmap 1:1 or its sprite with its device transform; its lit glass. */
 function _wfrDrawStatic(env, S, ctx, r, bx, by, own) {
   const d = S.draw.get(r.id);
@@ -2337,6 +2363,9 @@ function _wfrDrawItem(env, S, ctx, it, red, tau, F, agentLights) {
   if (own) {
     // (a static's light comes on and goes off over WORLD_FRAME_LIGHT_FADE_S)
     const lk = r.static || isStatic ? _wfrLitK(S, r, tau) : 1;
+    // (the halos are in device px: the mover's last sprite blit left its own transform set, and worldDrawLights' halo branch does not reset
+    // it, so a carried lamp's or a live flame's halo landed in that sprite's space, off its lamp; the stage drew it at the lamp. 14 Nov)
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
     if (lk > 0.001) { try { n += worldDrawLights(ctx, own, cam, { vs, ox: env.ox, oy: env.oy, sky: S.sky || undefined, stage: 'glow', alpha: lk }) || 0; } catch (e) { /* no lamp */ } }
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
   }
