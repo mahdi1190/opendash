@@ -17,6 +17,16 @@
    shown is a synced flag (state.seen.arrival, 06-core-seen.js), so the same
    arrival is not welcomed again on your other computer.
    ============================================================ */
+/* Town anchors for places that have openings of their own but no main town of the county table (71-uk-counties.js): Malham
+   (its cove), Hathersage (under Stanage Edge), Reepham (its four views), Bibury (the Cotswold green). A device near one of
+   them is "at" it, so the place's scene is its local intro; the UK packs and the world places (79-world-zzgallery.js) measure
+   their 25 km from the same anchors. Whitby, York, Liverpool, Norwich and Brighton are main towns already. */
+const ANIM_UK_PLACE_ANCHORS = Object.freeze([['north-yorkshire', 'Malham', 54.061, -2.153], ['derbyshire', 'Hathersage', 53.330, -1.653],
+  ['norfolk', 'Reepham', 52.762, 1.112], ['gloucestershire', 'Bibury', 51.759, -1.833]]);
+(function () {
+  if (typeof _UK_TOWNS === 'undefined' || !Array.isArray(_UK_TOWNS)) return;
+  for (const [id, town, lat, lon] of ANIM_UK_PLACE_ANCHORS) if (!_UK_TOWNS.some(t => t.id === id && t.town === town)) _UK_TOWNS.push({ town, lat, lon, id });
+})();
 const _AUK_KEY = 'dashboard-anim-uk-county';
 let _aukMemo = { at: 0, key: '', where: null };
 let _aukArrivalMemory = null;

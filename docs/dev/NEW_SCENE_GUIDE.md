@@ -2,6 +2,12 @@
 
 > **No tests (owner's rule, 23 Oct 2026):** the test suite, security tests and test CI were removed. Do not write or run tests, invariant matrices, perf budgets or review agents; check the build (`node build.mjs`) and look at the result. Mentions of `tests/`, `npm test` or mandatory gates below are out of date. Only the privacy scan stays, before publishing. See CLAUDE.md.
 
+> **Start with the scene factory (14 Nov): `docs/dev/SCENE_FACTORY.md`.** `node tools/world.mjs new <slug> --archetype <a> ...`
+> builds a DRAFT from an archetype distilled from the gold scenes (Fleet Pond 2, Albert Square, Castlefield Basin) and renders a
+> review sheet beside the gold in 13-34 s; `accept` writes the scene file; `promote` puts it in the opening rotation. The `--setting`
+> scaffold below is the older route: use it only for a kind of place no archetype covers yet (the coast, the street and open
+> families). Its green family is superseded by the `village-green` archetype.
+
 The goal (the user, 16 Oct): "make sure we can generate new scenes fast". A new place takes a short description and a few minutes to a
 good first render, with no engine work, at the quality of Whitby, York and Malham. The layout only has to be plausible (not map
 accurate); the landmarks have to be recognisable; it has to LOOK good.
@@ -126,9 +132,20 @@ With no missing piece, a place is a scaffold, a render and two or three layout t
 | a seafront of blank red gables | the Edwardian gable style seen at a grazing angle | the coast recipe uses `georgian` (a cream and stone terrace); a view at a slant needs a style with its fronts to the eye |
 | `worldModelCheck` failed a 2.9 m sign | the near view stood 3 m from a camera 6 m up | the check keeps a small thing in shot (`79-world-4models.js`) |
 
-## 9. Known gaps (not done)
+## 9. Known gaps (not done; see section 10 and SCENE_FACTORY.md for the archetype route)
 
 A church from `church-tower` is still a plain nave: use `parish-church` (17 Oct). Pier kiosks are models and the pier has people
 (SCENE_LESSONS Z). The sea is a small part of the coast view (the layout looks along the promenade).
 The `street`, `water-edge` and `open` families are validated but not rendered in this pass (the guide's checklist applies to them first).
 `tests/world-kit-fixtures.test.mjs` has one failure that is on `main` too (a fishing boat in the quayside fixture is 6 m tall).
+
+## 10. Scaffold fixes (14 Nov) and what goes through the factory now
+
+- A new scene is a world-test item only (gallery). To play it as an opening, `node tools/world.mjs promote <id>` (SCENE_FACTORY.md 2):
+  it takes over the registered view of the same place by ref (pins and the rotation keep working) or joins the `uk-world` pack.
+- The street family's `pub` had no slot (`P.pub` undefined): the pub building, its forecourt and its sign were invalid and dropped
+  with no note. Use `--archetype village-green` for a green with its church; a street pub waits for the `medieval-lane` archetype.
+- The fill's lighting rule (L4) stands a lamp post 6 m from the lens when no lamp lights the near 45 m: put one lamp of your own on a
+  path (the archetypes do), or the frame gets a pole from top to bottom at its edge.
+- A framing element should carry `framed: true`: then the fill's C3 framing leaves that side alone.
+- `node tools/world.mjs gold <ref>` prints the gold-relative checks (SCENE_FACTORY.md 4); `critic --box` the old box measure.

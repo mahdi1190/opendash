@@ -60,6 +60,16 @@ function _wflRng(seed) {
   let a = _wkbHash(seed) || 1;
   return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
+/* The fill seeded per spatial cell (the scene factory, 14 Nov; SCENE_LESSONS V: one stream for the whole fill made a far-shore edit
+   move a near tree over the bench). A world whose seed is at least WORLD_FILL_CELL_SEED_MIN draws each sample cell's picks, variants
+   and positions from the cell's own stream (the seed, the kit, the tier and the cell), orders the cells by a hash of the cell, and
+   gives the accents and the richness tier streams of their own, so an edit reshuffles only the cells it touches. Worlds with smaller
+   seeds (every scene made before this) keep the one stream: their reviewed look does not change. `node tools/world.mjs new` gives
+   new scenes seeds from 10000 up. */
+const WORLD_FILL_CELL_SEED_MIN = 10000;
+function _wflCellSeeded(F) { return (F.world.seed | 0) >= WORLD_FILL_CELL_SEED_MIN; }
+function _wflCellRng(F, key) { return _wflRng('cell|' + (F.world.seed | 0) + '|' + F.styleKey + '|' + key); }
+function _wflCellU(F, key) { return ((_wkbHash('cellu|' + (F.world.seed | 0) + '|' + key) >>> 0) % 1000003) / 1000003; }
 function _wflPick(list, r, seen) {
   if (!Array.isArray(list) || !list.length) return null;
   // seen (a Map id -> count): favour kinds not placed yet, damp kinds placed many times (variety, P7)
@@ -1408,7 +1418,7 @@ function _wflCoverPass(F, tier) {
       // undressed ground; an open lawn or beach (half dressed by its texture) gets a sparse share of the samples, never a carpet
       // (fewer near the lens, where one tuft fills a cell, more in the middle and far distance, where trees and benches stand)
       const rowT = (Math.floor(k / g.cols) + 0.5) * ch, nearRow = (rowT - F.cam.horizon) / (F.H - F.cam.horizon);
-      if (c !== 't' && c !== 'f' && !(c === 'p' && F.r() < (nearRow > 2 / 3 ? 0.03 : nearRow > 1 / 3 ? 0.14 : 0.4))) continue;
+      if (c !== 't' && c !== 'f' && !(c === 'p' && (_wflCellSeeded(F) ? _wflCellU(F, 'open|' + tier + '|' + k) : F.r()) < (nearRow > 2 / 3 ? 0.03 : nearRow > 1 / 3 ? 0.14 : 0.4))) continue;
       const i = k % g.cols, j = Math.floor(k / g.cols), X = (i + 0.5) * cw, Y = (j + 0.5) * ch;
       if (!(Y > hz + 1)) continue;
       const gp = _wflUnproject(F.cam, X, Y);
@@ -1421,14 +1431,18 @@ function _wflCoverPass(F, tier) {
     S = _wflSample(view, F.cam, { W: F.W, H: F.H, cols: 56, rows: 34, pad: F.pad, backdrop: _wflBackdrop(view, F.cam), surfAt: (x, z) => _wflSurfFast(F, x, z), ground: true });
     bare = S.samples.filter(q => !q.dressed && q.z != null && q.z <= _WFL_FILL_ZMAX);
   }
-  // seeded order, nearest rows first (they are the largest share of the frame)
-  const r = F.r;
-  for (const q of bare) q.u = r() + (q.band === 'near' ? 0 : q.band === 'mid' ? 0.5 : 1);
+  // seeded order, nearest rows first (they are the largest share of the frame); a cell-seeded world orders by a hash of the cell
+  const cells = _wflCellSeeded(F), r0 = F.r, cellKey = (q) => tier + '|' + Math.round(q.X) + ',' + Math.round(q.Y);
+  let r = F.r;
+  for (const q of bare) q.u = (cells ? _wflCellU(F, 'order|' + cellKey(q)) : r()) + (q.band === 'near' ? 0 : q.band === 'mid' ? 0.5 : 1);
   bare.sort((a, b) => a.u - b.u);
   F.boxes = [];
   let placed = 0;
+  try {
   for (const q of bare) {
     if (F.count >= F.maxAuto) break;
+    // the cell's own stream for its picks, positions and variants (_wflClump and _wflAdd read F.r)
+    if (cells) r = F.r = _wflCellRng(F, cellKey(q));
     if (F.boxes.some(b => q.X >= b[0] && q.X <= b[2] && q.Y >= b[1] && q.Y <= b[3])) continue;
     const g = _wflGroupOf(F, q.surf), spec = g && F.style.fill[g];
     if (!spec) { F.unfillable.add(q.surf ? q.surf.kind : 'ground'); continue; }
@@ -1460,6 +1474,7 @@ function _wflCoverPass(F, tier) {
       if (got.length) { done = true; placed += got.length; }
     }
   }
+  } finally { F.r = r0; }
   F.boxes = null;
   return placed;
 }
@@ -1788,8 +1803,13 @@ function worldFill(world, o) {
         state.tiers = tier;
         if (n === 0) break;
       }
+      // a cell-seeded world: the accents and the richness tier draw from streams of their own (_wflClump reads F.r)
+      const rs = F.r;
+      if (_wflCellSeeded(F)) F.r = _wflCellRng(F, 'accents');
       _wflAccents(F);
+      if (_wflCellSeeded(F)) F.r = _wflCellRng(F, 'rich');
       _wflRichTier(F, floor);
+      F.r = rs;
       // ... and the walked ground keeps a way through (last, so the richness tiers cannot close it again)
       { const gone = _wflThroughLane(F); if (gone.length) log.push({ id: null, obj: null, action: 'fill', rule: 'P3', reason: `${gone.length} piece(s) taken away that closed the way through the walked ground (${gone.map(e => e.obj).join(', ')})`, by: 'kb' }); }
       rich = worldRichness(world, cam, { perennial: true, floor, W: F.W, H: F.H, box: false });

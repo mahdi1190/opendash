@@ -14,6 +14,17 @@
 //   node tools/world.mjs new <slug> --setting <kit> --place "<name>" --lat <n> --lon <n> --view "<words>" [--landmarks=church-tower:cotswold-church,pub,pond] [--houses=<style>] [--county=<c>] [--force]
 //                         SCAFFOLD a new place: writes src/app/79-world-zscene-<slug>-1.js (a short spec built from the kit's recipe; it shows in the gallery at once),
 //                         then validates it and prints what the engine dropped. Next: render <slug>-1-w3. docs/dev/NEW_SCENE_GUIDE.md
+//   THE SCENE FACTORY (docs/dev/SCENE_FACTORY.md):
+//   node tools/world.mjs archetypes                       the archetypes, their gold scenes and the brief each one takes
+//   node tools/world.mjs new <slug> --archetype <a> --place "<name>" --lat <n> --lon <n> --county <id> --town <Town> [brief flags] [--dir=D] [--no-sheet]
+//                         a DRAFT spec in D (never src/app) and its REVIEW SHEET: the draft at summer noon, autumn golden hour and winter night
+//                         beside the archetype's gold, with the gold-relative checks, the solver and fill drops and the load budget
+//   node tools/world.mjs accept <draft.json> [--force]    the draft becomes src/app/79-world-zscene-<slug>-1.js (gallery at once)
+//   node tools/world.mjs promote <id>[,<id>] [--supersedes=<ref,...>] [--county= --town= --place= --view= --months=]   / demote <id>
+//                         into (out of) the opening rotation: the table in src/app/79-world-zzgallery.js
+//   node tools/world.mjs gold <ref> [--archetype=<a>]     the gold-relative checks and the load budget (critic does the same; critic --box: the box measure)
+//   node tools/world.mjs contact <all | promoted | id,id,...> [--moments=summer-noon,autumn-golden,winter-night] [--cache] [--dir=D] [--out=file.png]
+//                         many scenes in one Chrome and one contact sheet
 //   node tools/world.mjs motion <ref> [--seconds=600] [--svg=file] [--json]
 //   node tools/world.mjs preflight <ref...> [--json]
 //                         PREDICT what the invariant gate will report, in about a second a scene, before any 15-cell run (16.7,
@@ -93,6 +104,7 @@ export function specOf(E, r) {
   if (r && r.endsWith('.json') && existsSync(r)) {
     const j = JSON.parse(readFileSync(r, 'utf8'));
     const id = r.replace(/^.*[\\/]/, '').replace(/\.json$/, '');
+    if (j && j.draft && j.spec) return { spec: j.spec, id: (j.meta && j.meta.id) || id, converted: false, draft: j };   // a factory draft (world.mjs new --archetype)
     return j && j.spec && j.expect ? { spec: j.spec, id: j.id || id, converted: false, fixture: j } : { spec: j, id, converted: false };
   }
   const hit = resolveRef(E, r) || resolveRef(E, 'world-test/' + r);
@@ -447,9 +459,45 @@ async function newPlace() {
 }
 
 async function main() {
-  if (!cmd || flags.help || (!ref && !['adversarial', 'accept'].includes(cmd))) { out(readFileSync(new URL(import.meta.url), 'utf8').split('\n').filter(l => l.startsWith('//')).map(l => l.slice(3)).join('\n')); return 2; }
-  if (cmd === 'new') return newPlace();
+  if (!cmd || flags.help || (!ref && !['adversarial', 'accept', 'archetypes'].includes(cmd))) { out(readFileSync(new URL(import.meta.url), 'utf8').split('\n').filter(l => l.startsWith('//')).map(l => l.slice(3)).join('\n')); return 2; }
+  if (cmd === 'new' && !flags.archetype) return newPlace();
+  if (cmd === 'archetypes') {
+    const { archetypeList } = await import('./lib/world/archetypes.mjs');
+    for (const a of archetypeList()) { out(`${a.id}  (gold: ${a.gold})\n  ${a.summary}`); for (const [k, v] of Object.entries(a.brief)) out(`    --${k}: ${v}`); }
+    return 0;
+  }
   const E = loadEngine({ root });
+
+  if (cmd === 'new') {
+    // the scene factory: brief -> archetype -> a DRAFT spec in a scratch folder -> the review sheet (docs/dev/SCENE_FACTORY.md)
+    const { factoryDraft, factoryReview } = await import('./lib/world/factory.mjs');
+    const { o } = newArgs(argv);
+    const t0 = Date.now(), slug = ref;
+    const brief = Object.assign({}, o, { slug });
+    for (const k of ['archetype', 'dir', 'out', 'no-sheet', 'json']) delete brief[k];
+    if (typeof o.landmark === 'string') { try { brief.landmark = JSON.parse(o.landmark); } catch { out('--landmark is JSON, e.g. --landmark=\'{"stone":"flint","crown":"spire"}\''); return 2; } }
+    for (const k of ['stone', 'crown', 'style', 'storeys']) if (o[k] != null) { brief.landmark = Object.assign({}, brief.landmark || {}, { [k]: k === 'storeys' ? Number(o[k]) : o[k] }); delete brief[k]; }
+    let d;
+    try { d = factoryDraft(E, o.archetype, brief); } catch (e) { out('new: ' + e.message); return 2; }
+    const dir = dirOf('drafts'), file = typeof o.out === 'string' ? resolve(o.out) : join(dir, `${d.meta.id.replace(/-w3$/, '')}.json`);
+    mkdirSync(resolve(file, '..'), { recursive: true });
+    writeFileSync(file, JSON.stringify(d, null, 1));
+    out(`draft: ${file}  (archetype ${d.archetype}, gold ${d.gold}; ${Date.now() - t0} ms)`);
+    out(d.validation.ok ? '  validate: ok' : `  validate: ${d.validation.errors.length} error(s)`);
+    for (const e of d.validation.errors.slice(0, 10)) out('    ' + e);
+    for (const n of d.notes) out('  note: ' + n);
+    if (o['no-sheet']) { out(`next: node tools/world.mjs render ${file} --dates=summer,autumn,night  |  accept ${file}`); return d.validation.ok ? 0 : 1; }
+    const chrome = await chromeOf(!!flags.gpu);
+    try {
+      const r = await factoryReview(chrome, E, d, { dir: resolve(file, '..'), goldDir: join(WORLD_OUT, 'gold'), root });
+      const { goldText } = await import('./lib/world/goldcheck.mjs');
+      for (const l of goldText(r.checks, d.meta.id, r.gold)) out(l);
+      out(`review sheet: ${r.sheet}`);
+      out(`loop: ${Math.round((Date.now() - t0) / 100) / 10} s from the brief to the sheet (checks ${Math.round(r.msChecks / 100) / 10} s, renders ${Math.round(r.msRender / 100) / 10} s)`);
+      out(`next: look at the sheet; then accept: node tools/world.mjs accept ${file}`);
+    } finally { await chrome.close(); }
+    return d.validation.ok ? 0 : 1;
+  }
 
   if (cmd === 'models') {
     const { modelSheet } = await import('./lib/world/models.mjs');
@@ -636,6 +684,21 @@ async function main() {
     return res.every(r => r.ok) ? 0 : 1;
   }
 
+  if (cmd === 'gold' || (cmd === 'critic' && !flags.box)) {
+    // the gold-relative checks (tools/lib/world/goldcheck.mjs) beside the archetype's gold scene; `critic --box` is the old box measure
+    const { goldChecks, goldText } = await import('./lib/world/goldcheck.mjs');
+    const { ARCHETYPES } = await import('./lib/world/archetypes.mjs');
+    const s = specOf(E, ref);
+    const arch = ARCHETYPES[typeof flags.archetype === 'string' ? flags.archetype : (s.draft && s.draft.archetype) || ''] || null;
+    const plan = s.draft ? s.draft.plan : null;
+    const r = goldChecks(E, s.spec, { plan: plan || (arch && arch.gold === s.id ? arch.goldPlan : null), checks: arch ? arch.checks : undefined });
+    let g = null;
+    if (arch && arch.gold !== s.id && !flags['no-gold']) { const gs = specOf(E, arch.gold); g = goldChecks(E, gs.spec, { checks: arch.checks, plan: arch.goldPlan }); }
+    if (flags.json) { out(JSON.stringify({ checks: r.checks, budget: r.budget, drops: r.drops, gold: g ? { id: arch.gold, checks: g.checks, budget: g.budget } : null }, null, 1)); }
+    else { for (const l of goldText(r, s.id + (arch ? ' (archetype ' + arch.id + ')' : ''), g)) out(l); if (g) out(`  gold: ${arch.gold}`); }
+    return r.checks.some(c => (c.id === 'subject' || c.id === 'landmarks') && c.ok === false) ? 1 : 0;
+  }
+
   if (cmd === 'critic') {
     const s = specOf(E, ref);
     const c = s.converted ? Object.assign({ ref: s.ref }, worldCritic(E, s.spec, {})) : criticOfRef(E, s.ref || ref, {}, resolveRef);
@@ -788,6 +851,68 @@ async function main() {
     }
     if (flags.json) out(JSON.stringify(all.map(a => ({ cell: a.cell, file: a.file, ok: a.res.ok, discs: a.res.discs.discs, sawtooth: { value: a.res.sawtooth.value, rows: a.res.sawtooth.rows }, night: a.res.night ? { value: a.res.night.value, p5: a.res.night.p5, p95: a.res.night.p95 } : null })), null, 1));
     return all.every(a => a.res.ok) ? 0 : 1;
+  }
+
+  if (cmd === 'promote' || cmd === 'demote') {
+    // the opening rotation's world scenes: one line a scene in 79-world-zzgallery.js (tools/lib/world/promote.mjs)
+    const P = await import('./lib/world/promote.mjs');
+    const ids = String(ref).split(',').map(s => s.trim()).filter(Boolean).map(r => (/-w3$/.test(r) ? r : r + '-w3'));
+    let bad = 0;
+    for (const id of ids) {
+      if (cmd === 'demote') { const r = P.writeOpening(root, id, null); out(`${id}: ${r.changed ? 'demoted (gallery only again)' : 'was not promoted'}`); continue; }
+      try {
+        const R = P.readOpening(root), claimed = new Set();
+        for (const [k, v] of R.entries) if (k !== id && v.entry.supersedes) for (const x of v.entry.supersedes) claimed.add(x);
+        let r;
+        if (typeof flags.supersedes === 'string') {
+          const refs = flags.supersedes.split(',').map(s => s.trim()).filter(Boolean);
+          const miss = refs.filter(x => !(E.refs && E.refs.get(x)));
+          if (miss.length) throw new Error(`not registered: ${miss.join(', ')}`);
+          r = { entry: { supersedes: refs }, notes: [] };
+        } else r = P.openingEntry(E, id, { county: flags.county, town: flags.town, place: flags.place, view: flags.view, months: flags.months, label: flags.label, claimed });
+        for (const x of r.entry.supersedes || []) if (claimed.has(x)) throw new Error(`${x} is already taken over by another promoted scene (demote that one first)`);
+        const w = P.writeOpening(root, id, r.entry);
+        out(`${id}: ${w.changed ? 'promoted' : 'unchanged'}  ${r.entry.supersedes ? 'takes over ' + r.entry.supersedes.join(', ') : 'a place of its own near ' + r.entry.ukTown + ' (' + r.entry.county + ')'}`);
+        for (const n of r.notes) out('  note: ' + n);
+      } catch (e) { out(`${id}: NOT promoted: ${e.message}`); bad++; }
+    }
+    out('next: node build.mjs --syntax (the table is in ' + P.OPENING_FILE + ')');
+    return bad ? 1 : 0;
+  }
+
+  if (cmd === 'contact') {
+    // a contact sheet of many scenes: 'all' (every world scene), 'promoted' (the opening rotation's world scenes), or ids / refs
+    const { renderWorlds, contactSheet } = await import('./lib/world/contact.mjs');
+    const { promotedIds } = await import('./lib/world/promote.mjs');
+    const all = (E.packs && E.packs['world-test'] || []).map(it => it.id);
+    const want = ref === 'all' ? all : ref === 'promoted' ? promotedIds(root) : String(ref).split(',').map(s => s.trim()).filter(Boolean);
+    const list = [];
+    for (const r of want) { try { const s = specOf(E, r); list.push({ id: s.id, spec: s.spec }); } catch (e) { out(`  skip ${r}: ${e.message}`); } }
+    const moments = String(typeof flags.moments === 'string' ? flags.moments : 'summer-noon').split(',');
+    const dir = dirOf('contact'), t0 = Date.now();
+    const chrome = await chromeOf(!!flags.gpu);
+    try {
+      const cells = await renderWorlds(chrome, list, { dir, moments, root, cache: !!flags.cache, onCell: (c) => out(`  ${c.id} ${c.moment}: ${c.error ? 'ERROR ' + c.error : c.file} (${c.ms} ms)`) });
+      const tiles = cells.map(c => ({ file: c.error ? null : c.file, title: `${c.id}${moments.length > 1 ? ' - ' + c.moment : ''}`, lines: c.error ? [c.error] : [], bad: !!c.error }));
+      const file = typeof flags.out === 'string' ? resolve(flags.out) : join(dir, `contact-${String(ref).replace(/[^a-z0-9-]+/gi, '_').slice(0, 40)}.png`);
+      writeFileSync(file, await contactSheet(chrome, tiles, { title: `World scenes: ${ref} (${moments.join(', ')})`, cols: Number(flags.cols) || 5, thumb: Number(flags.thumb) || 360 }));
+      out(`contact sheet: ${file}  (${list.length} scene(s), ${Math.round((Date.now() - t0) / 1000)} s)`);
+      return cells.some(c => c.error) ? 1 : 0;
+    } finally { await chrome.close(); }
+  }
+
+  if (cmd === 'accept' && ref && /\.json$/.test(ref)) {
+    // a factory draft becomes a scene file in src/app (it shows in the gallery at once; promote it to play as an opening)
+    const { draftSource } = await import('./lib/world/factory.mjs');
+    const d = JSON.parse(readFileSync(resolve(ref), 'utf8'));
+    if (!d.draft || !d.spec || !d.meta) { out(`${ref} is not a factory draft (node tools/world.mjs new <slug> --archetype ...)`); return 2; }
+    const r = draftSource(d), file = join(root, 'src', 'app', r.file);
+    if (existsSync(file) && !flags.force) { out(`src/app/${r.file} exists (use --force to overwrite)`); return 2; }
+    writeFileSync(file, r.text);
+    const E2 = loadEngine({ root, fresh: true }), v = validateSpec(d.spec, E2);
+    out(`wrote src/app/${r.file}  (${r.text.split('\n').length} lines)  id ${r.id}  validate: ${v.ok ? 'ok' : v.errors.length + ' error(s)'}`);
+    out(`next: node build.mjs --syntax; promote it when it is at the bar: node tools/world.mjs promote ${r.id}`);
+    return v.ok ? 0 : 1;
   }
 
   if (cmd === 'accept') {

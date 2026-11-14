@@ -88,7 +88,9 @@ export const LANDMARKS = {
   bridge: (P) => ({ buildings: [{ id: 'bridge', foot: P.bridge, storeys: 1, h: 8, landmark: true, style: 'swing-bridge', src: 'the swing bridge' }] }),
 };
 /** Who may take which slot, by family. */
-const FAMILY_LANDMARKS = { green: ['church-tower', 'parish-church', 'pub', 'pond', 'minster'], coast: ['pier', 'lighthouse', 'beach-huts'], 'water-edge': ['bridge', 'church-tower', 'abbey', 'minster'], street: ['minster', 'church-tower', 'pub'], open: ['church-tower'] };
+// (14 Nov) the street family has no pub slot: its pub building, forecourt and sign came out invalid and were dropped with no note.
+// It is now refused with a note; a green with its church goes through the factory's `village-green` archetype (SCENE_FACTORY.md).
+const FAMILY_LANDMARKS = { green: ['church-tower', 'parish-church', 'pub', 'pond', 'minster'], coast: ['pier', 'lighthouse', 'beach-huts'], 'water-edge': ['bridge', 'church-tower', 'abbey', 'minster'], street: ['minster', 'church-tower'], open: ['church-tower'] };
 
 /** A row of houses along a surface, broken around the stretches in `skip` ([from, to] in metres along the surface). */
 function rows(id, along, side, style, len, skip, extra) {
