@@ -288,7 +288,7 @@ window.GardenPaintWood = (function () {
       if (b.made && vis !== b.vis && !(vis && !b.made)) { b.vis = vis; for (const t of b.trees) if (t.im) t.im.setVisible(vis); }
       // a crown you are under fades, so you can always see yourself (a wide crown by its own width); so does a crown over a
       // story house (Hollin's hut) once you are near it
-      if (vis && pl) for (const t of b.trees) { if (!t.im) continue; const under = gardenCrownCovers(pl.x, pl.y, t.x, t.y, t.h * t.scale, t.im.displayWidth, t.im), near = t.hides && Math.hypot((pl.x - t.hides.x) / S.W.cellW, (pl.y - t.hides.y) / S.W.cellH) < 3.5; const a = near || under ? GARDEN_CROWN_FADE : 1; if (under && t.im.active && t.im.visible) S.covering.push(t.im); if (t.im.alpha !== a) t.im.setAlpha(t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8 || 1)); }
+      if (vis && pl) for (const t of b.trees) { if (!t.im) continue; const under = gardenCrownCovers(pl.x, pl.y, t.x, t.y, t.h * t.scale, t.im.displayWidth, t.im), near = t.hides && Math.hypot((pl.x - t.hides.x) / S.W.cellW, (pl.y - t.hides.y) / S.W.cellH) < 3.5; const a = near || under || GardenNativePainted.fishingCrownCovers(t.im) ? GARDEN_CROWN_FADE : 1; if (under && t.im.active && t.im.visible) S.covering.push(t.im); if (t.im.alpha !== a) t.im.setAlpha(t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8 || 1)); }
     }
     const tTrees = performance.now(); S.tw.trees = Math.max(S.tw.trees, tTrees - t0 - tBake);
     if (S.sortObjects && S.objects.sort) { S.objects.sort('depth'); S.sortObjects = false; }

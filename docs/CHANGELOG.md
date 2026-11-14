@@ -10,6 +10,14 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.68.13] - 2026-11-14
+
+### Fixed
+
+- Foliage covering your float or the fish approaching it fades during fishing, then returns when the action ends.
+- Fleet Falls stays solid when you stand beside its empty artwork margin instead of behind its rocks or falling water.
+- The woodland brook's existing fish populate its connected reaches, including the water by the footbridge, after woodland opens.
+
 ## [2.68.12] - 2026-11-14
 
 ### Fixed
