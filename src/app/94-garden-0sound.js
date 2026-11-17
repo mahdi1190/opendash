@@ -66,11 +66,27 @@ function _gsApply() {
 }
 /** Where an older garden chime plugs in. */
 function gardenSoundOut(ac) { return _gsn.g && ac === _gsn.ac ? _gsn.g.fx : ac.destination; }
+/** For the game's other chimes (milestones, pet tricks, the Play games): {ac, out} on the garden's own context, so the Volume, the
+    Effects switch, the safety limiter and the hidden-tab pause reach them too (they used to go straight to the speakers, louder than
+    anything here and deaf to the volume). o.always: a note you pressed yourself, so past the Effects switch (still under the Volume).
+    Null when Sound is off. */
+function gardenSoundBus(o) {
+  try { const c = _gsnCtx(); if (!c || !_gsn.g) return null; return { ac: c, out: o && o.always ? _gsn.g.master : _gsn.g.fx }; } catch (e) { return null; }
+}
+/** The Volume as a gain (0..1), for a sound that cannot use the bus. */
+function gardenSoundLevel() { try { const v = _gsPrefs().vol; return v * v; } catch (e) { return 0.49; } }
 
 /* ---------- building blocks (any BaseAudioContext: the live one or an offline render) ---------- */
 function _gsNoise(c) {
   let b = _gsn.noise.get(c);
   if (!b) { const n = Math.floor(c.sampleRate * 2.5); b = c.createBuffer(1, n, c.sampleRate); const d = b.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; _gsn.noise.set(c, b); }
+  return b;
+}
+/** The beds' own noise: 9.3 s, so a loop is too long to hear (the short one repeated every 2.5 s, and rain or the falls through it sounded like a loop). */
+function _gsNoiseLong(c) {
+  const key = _gsn.noiseL || (_gsn.noiseL = new WeakMap());
+  let b = key.get(c);
+  if (!b) { const n = Math.floor(c.sampleRate * 9.3); b = c.createBuffer(1, n, c.sampleRate); const d = b.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; key.set(c, b); }
   return b;
 }
 function _gsPan(c, out, pan) {
@@ -141,8 +157,8 @@ function _gsFrog(c, out, t, R, peak, pan) {
 }
 const _gsSteps = {
   grass: (c, o, t, R, k, p) => { _gsHiss(c, o, t, { f: _gsJ(R, 1900, 0.25), q: 0.7, a: 0.008, d: _gsJ(R, 0.1, 0.2), peak: 0.16 * k, pan: p }); _gsHiss(c, o, t + 0.012, { type: 'lowpass', f: 500, q: 0.7, d: 0.06, peak: 0.12 * k, pan: p }); },
-  path: (c, o, t, R, k, p) => { const n = 3 + Math.floor(R() * 3); for (let i = 0; i < n; i++) _gsHiss(c, o, t + R() * 0.05, { f: _gsJ(R, 3200, 0.35), q: 2.2, a: 0.002, d: 0.018 + R() * 0.02, peak: 0.2 * k, pan: p }); _gsTone(c, o, t, { f: _gsJ(R, 95, 0.1), f2: 60, d: 0.06, peak: 0.08 * k, pan: p }); },
-  wood: (c, o, t, R, k, p) => { const f = _gsJ(R, 175, 0.08); _gsTone(c, o, t, { type: 'triangle', f, f2: f * 0.82, d: 0.1, peak: 0.16 * k, pan: p }); _gsTone(c, o, t, { f: f * 2.4, d: 0.05, peak: 0.05 * k, pan: p }); _gsHiss(c, o, t, { type: 'highpass', f: 2800, d: 0.012, peak: 0.07 * k, pan: p }); },
+  path: (c, o, t, R, k, p) => { const n = 3 + Math.floor(R() * 3); for (let i = 0; i < n; i++) _gsHiss(c, o, t + R() * 0.05, { f: _gsJ(R, 2900, 0.3), q: 2, a: 0.003, d: 0.018 + R() * 0.02, peak: 0.14 * k, pan: p }); _gsTone(c, o, t, { f: _gsJ(R, 95, 0.1), f2: 60, d: 0.06, peak: 0.08 * k, pan: p }); },
+  wood: (c, o, t, R, k, p) => { const f = _gsJ(R, 175, 0.08); _gsTone(c, o, t, { type: 'triangle', f, f2: f * 0.82, a: 0.004, d: 0.1, peak: 0.1 * k, pan: p, lp: 1400 }); _gsTone(c, o, t, { f: f * 2.4, d: 0.05, peak: 0.035 * k, pan: p }); _gsHiss(c, o, t, { type: 'highpass', f: 2800, d: 0.012, peak: 0.04 * k, pan: p }); },
   sand: (c, o, t, R, k, p) => { _gsHiss(c, o, t, { type: 'lowpass', f: _gsJ(R, 750, 0.2), q: 0.6, a: 0.018, d: _gsJ(R, 0.15, 0.15), peak: 0.22 * k, pan: p }); },
   snow: (c, o, t, R, k, p) => { _gsHiss(c, o, t, { f: _gsJ(R, 1300, 0.2), q: 1.3, a: 0.025, d: _gsJ(R, 0.17, 0.15), peak: 0.15 * k, pan: p }); for (let i = 0; i < 4; i++) _gsHiss(c, o, t + 0.02 + R() * 0.12, { f: _gsJ(R, 3400, 0.2), q: 3, a: 0.002, d: 0.012, peak: 0.07 * k, pan: p }); },
 };
@@ -160,23 +176,23 @@ function _gsPet(c, out, t, R, sp) {
 }
 const _gsSfx = {
   // panels
-  open: (c, o, t, R) => { _gsTone(c, o, t, { f: 520, f2: 760, d: 0.13, peak: 0.1 }); _gsTone(c, o, t + 0.05, { f: 780, f2: 1040, d: 0.16, peak: 0.065 }); _gsHiss(c, o, t, { f: 3000, d: 0.05, peak: 0.03 }); },
-  close: (c, o, t, R) => { _gsTone(c, o, t, { f: 760, f2: 540, d: 0.12, peak: 0.08 }); _gsTone(c, o, t + 0.05, { f: 520, f2: 400, d: 0.15, peak: 0.06 }); },
+  open: (c, o, t, R) => { _gsTone(c, o, t, { f: 520, f2: 760, a: 0.008, d: 0.13, peak: 0.07 }); _gsTone(c, o, t + 0.05, { f: 780, f2: 1040, a: 0.008, d: 0.16, peak: 0.045 }); _gsHiss(c, o, t, { f: 3000, d: 0.05, peak: 0.02 }); },
+  close: (c, o, t, R) => { _gsTone(c, o, t, { f: 760, f2: 540, a: 0.008, d: 0.12, peak: 0.06 }); _gsTone(c, o, t + 0.05, { f: 520, f2: 400, a: 0.008, d: 0.15, peak: 0.045 }); },
   tab: (c, o, t, R) => { _gsTone(c, o, t, { type: 'triangle', f: _gsJ(R, 1500, 0.04), d: 0.035, peak: 0.07 }); _gsHiss(c, o, t, { type: 'highpass', f: 4000, d: 0.01, peak: 0.03 }); },
-  buy: (c, o, t, R) => { for (let i = 0; i < 3; i++) { const f = _gsJ(R, 2500, 0.04) * (1 + i * 0.19); _gsTone(c, o, t + i * 0.07, { f, d: 0.28, peak: 0.06 }); _gsTone(c, o, t + i * 0.07, { f: f * 2.76, d: 0.1, peak: 0.022 }); } _gsPluck(c, o, t + 0.2, 1318.5, 0.04, 0.5); _gsPluck(c, o, t + 0.28, 1760, 0.035, 0.6); },
-  sell: (c, o, t, R) => { for (let i = 0; i < 4; i++) { const f = _gsJ(R, 2300, 0.08); _gsTone(c, o, t + i * 0.06, { f, d: 0.22, peak: 0.05 }); _gsTone(c, o, t + i * 0.06, { f: f * 2.76, d: 0.08, peak: 0.018 }); } },
+  buy: (c, o, t, R) => { for (let i = 0; i < 3; i++) { const f = _gsJ(R, 2100, 0.04) * (1 + i * 0.19); _gsTone(c, o, t + i * 0.07, { f, d: 0.28, peak: 0.042 }); _gsTone(c, o, t + i * 0.07, { f: f * 2.76, d: 0.1, peak: 0.012 }); } _gsPluck(c, o, t + 0.2, 1318.5, 0.04, 0.5); _gsPluck(c, o, t + 0.28, 1760, 0.035, 0.6); },
+  sell: (c, o, t, R) => { for (let i = 0; i < 4; i++) { const f = _gsJ(R, 2100, 0.08); _gsTone(c, o, t + i * 0.06, { f, d: 0.22, peak: 0.04 }); _gsTone(c, o, t + i * 0.06, { f: f * 2.76, d: 0.08, peak: 0.01 }); } },
   cant: (c, o, t, R) => { _gsTone(c, o, t, { type: 'triangle', f: 330, f2: 300, d: 0.11, peak: 0.1, lp: 1200 }); _gsTone(c, o, t + 0.11, { type: 'triangle', f: 247, f2: 230, d: 0.16, peak: 0.09, lp: 1000 }); },
   cheer: (c, o, t, R) => { _gsPluck(c, o, t, 880, 0.045, 0.35); _gsPluck(c, o, t + 0.06, 1174.7, 0.04, 0.4); },
   // fishing
   cast: (c, o, t, R) => { _gsHiss(c, o, t, { f: 500, f2: 2600, q: 1, a: 0.08, d: 0.34, peak: 0.13 }); _gsTone(c, o, t + 0.06, { f: 1500, f2: 600, d: 0.32, peak: 0.018 }); },
-  plop: (c, o, t, R) => { _gsTone(c, o, t, { f: _gsJ(R, 700, 0.1), f2: 160, d: 0.1, a: 0.002, peak: 0.17 }); _gsHiss(c, o, t + 0.01, { f: 1000, q: 0.8, d: 0.13, peak: 0.07 }); for (let i = 0; i < 3; i++) _gsTone(c, o, t + 0.09 + R() * 0.22, { f: _gsJ(R, 900, 0.2), f2: 1600, d: 0.03, peak: 0.035 }); },
+  plop: (c, o, t, R) => { _gsTone(c, o, t, { f: _gsJ(R, 700, 0.1), f2: 160, d: 0.1, a: 0.005, peak: 0.12 }); _gsHiss(c, o, t + 0.01, { f: 1000, q: 0.8, d: 0.13, peak: 0.07 }); for (let i = 0; i < 3; i++) _gsTone(c, o, t + 0.09 + R() * 0.22, { f: _gsJ(R, 900, 0.2), f2: 1600, d: 0.03, peak: 0.035 }); },
   nibble: (c, o, t, R) => { _gsTone(c, o, t, { f: _gsJ(R, 900, 0.1), f2: 1300, d: 0.045, peak: 0.07 }); _gsTone(c, o, t + 0.09, { f: _gsJ(R, 800, 0.1), f2: 1150, d: 0.04, peak: 0.045 }); },
-  bite: (c, o, t, R) => { _gsHiss(c, o, t, { f: 1500, f2: 650, q: 0.7, a: 0.004, d: 0.38, peak: 0.24 }); _gsTone(c, o, t, { f: 230, f2: 90, d: 0.16, peak: 0.14 }); for (let i = 0; i < 4; i++) _gsTone(c, o, t + 0.1 + R() * 0.3, { f: _gsJ(R, 2200, 0.3), f2: 3000, d: 0.025, peak: 0.035 }); _gsPluck(c, o, t + 0.02, 1568, 0.04, 0.3); },
+  bite: (c, o, t, R) => { _gsHiss(c, o, t, { f: 1500, f2: 650, q: 0.7, a: 0.012, d: 0.38, peak: 0.17 }); _gsTone(c, o, t, { f: 230, f2: 90, a: 0.006, d: 0.16, peak: 0.11 }); for (let i = 0; i < 4; i++) _gsTone(c, o, t + 0.1 + R() * 0.3, { f: _gsJ(R, 2200, 0.3), f2: 3000, d: 0.025, peak: 0.035 }); _gsPluck(c, o, t + 0.02, 1568, 0.04, 0.3); },
   strike: (c, o, t, R) => { _gsHiss(c, o, t, { f: 900, f2: 2200, q: 1, d: 0.12, peak: 0.1 }); },
   tick: (c, o, t, R, x) => { const k = (x && x.k) || 0; _gsHiss(c, o, t, { type: 'highpass', f: 3500, d: 0.007, peak: 0.07 }); _gsTone(c, o, t, { f: 2300 + k * 1500, d: 0.014, peak: 0.022 }); },
   drag: (c, o, t, R) => { _gsHiss(c, o, t, { type: 'highpass', f: 5000, d: 0.005, peak: 0.04 }); },
   strain: (c, o, t, R, x) => { const k = (x && x.k) || 0; _gsTone(c, o, t, { type: 'triangle', f: 1700 + k * 700, f2: 1750 + k * 760, a: 0.05, d: 0.3, peak: 0.022 }); },
-  splash: (c, o, t, R) => { _gsHiss(c, o, t, { f: 1900, f2: 800, q: 0.6, a: 0.005, d: 0.42, peak: 0.2 }); for (let i = 0; i < 5; i++) _gsTone(c, o, t + 0.12 + R() * 0.35, { f: _gsJ(R, 2000, 0.35), f2: 2900, d: 0.025, peak: 0.032 }); },
+  splash: (c, o, t, R) => { _gsHiss(c, o, t, { f: 1900, f2: 800, q: 0.6, a: 0.01, d: 0.42, peak: 0.17 }); for (let i = 0; i < 5; i++) _gsTone(c, o, t + 0.12 + R() * 0.35, { f: _gsJ(R, 2000, 0.35), f2: 2900, d: 0.025, peak: 0.032 }); },
   catch: (c, o, t, R, x) => {
     const rare = x && x.rare, notes = rare ? [1046.5, 1318.5, 1568, 2093, 2637] : [1046.5, 1318.5, 1568, 2093];
     notes.forEach((f, i) => _gsPluck(c, o, t + i * 0.085, f, 0.05, 0.8, (i - 2) * 0.12));
@@ -192,9 +208,9 @@ const _gsSfx = {
   // the garden
   plant: (c, o, t, R) => { for (const at of [0, 0.13]) _gsHiss(c, o, t + at, { type: 'lowpass', f: _gsJ(R, 420, 0.15), q: 0.7, d: 0.08, peak: 0.28 }); _gsTone(c, o, t + 0.26, { f: 620, f2: 940, d: 0.1, peak: 0.05 }); },
   water: (c, o, t, R) => { _gsHiss(c, o, t, { f: 2300, f2: 1700, q: 1.3, a: 0.09, d: 0.75, peak: 0.1 }); for (let i = 0; i < 6; i++) _gsTone(c, o, t + 0.1 + R() * 0.7, { f: _gsJ(R, 1800, 0.3), f2: 2700, d: 0.03, peak: 0.032 }); },
-  harvest: (c, o, t, R) => { _gsTone(c, o, t, { f: 260, f2: 720, d: 0.07, peak: 0.14 }); _gsHiss(c, o, t, { f: 3000, q: 0.8, d: 0.2, peak: 0.07 }); _gsPluck(c, o, t + 0.08, 1318.5, 0.04, 0.35); },
+  harvest: (c, o, t, R) => { _gsTone(c, o, t, { f: 260, f2: 720, a: 0.006, d: 0.07, peak: 0.1 }); _gsHiss(c, o, t, { f: 3000, q: 0.8, d: 0.2, peak: 0.07 }); _gsPluck(c, o, t + 0.08, 1318.5, 0.04, 0.35); },
   dig: (c, o, t, R) => { _gsHiss(c, o, t, { f: 900, q: 1, d: 0.13, peak: 0.2 }); _gsHiss(c, o, t + 0.05, { type: 'lowpass', f: 300, d: 0.1, peak: 0.22 }); },
-  place: (c, o, t, R) => { _gsTone(c, o, t, { type: 'triangle', f: 220, f2: 190, d: 0.08, peak: 0.13 }); _gsTone(c, o, t + 0.09, { type: 'triangle', f: 196, f2: 170, d: 0.09, peak: 0.1 }); },
+  place: (c, o, t, R) => { _gsTone(c, o, t, { type: 'triangle', f: 220, f2: 190, a: 0.004, d: 0.08, peak: 0.1, lp: 1500 }); _gsTone(c, o, t + 0.09, { type: 'triangle', f: 196, f2: 170, a: 0.004, d: 0.09, peak: 0.08, lp: 1500 }); },
   craft: (c, o, t, R) => { for (const at of [0, 0.18, 0.36]) { _gsTone(c, o, t + at, { type: 'triangle', f: _gsJ(R, 900, 0.05), d: 0.05, peak: 0.08 }); _gsHiss(c, o, t + at, { type: 'highpass', f: 3000, d: 0.012, peak: 0.05 }); } },
   sparkle: (c, o, t, R) => { for (let i = 0; i < 5; i++) _gsTone(c, o, t + i * 0.05, { f: _gsJ(R, 3000, 0.3), d: 0.22, peak: 0.024, pan: (R() - 0.5) * 0.6 }); },
   door: (c, o, t, R) => { _gsTone(c, o, t, { type: 'sawtooth', f: _gsJ(R, 95, 0.05), fm: 125, f2: 88, a: 0.06, d: 0.5, peak: 0.07, bp: 700, q: 5 }); _gsHiss(c, o, t + 0.5, { type: 'highpass', f: 2600, d: 0.016, peak: 0.08 }); _gsTone(c, o, t + 0.55, { f: 115, f2: 70, d: 0.13, peak: 0.12 }); },
@@ -215,7 +231,7 @@ function gardenSfx(name, o) {
   try {
     if (!_gsAllowed() || !_gsPrefs().fx) return false;
     const fn = _gsSfx[name]; if (!fn) return false;
-    const now = performance.now(), gap = name === 'tick' || name === 'drag' ? 30 : 70;
+    const now = performance.now(), gap = name === 'tick' || name === 'drag' ? 30 : name === 'level' ? 1500 : 70;
     if (now - (_gsn.last[name] || 0) < gap) return true;   // (the same sound twice at once is one sound)
     if ((name === 'open' || name === 'close') && now < _gsn.uiQuiet) return true;
     _gsn.last[name] = now;
@@ -232,8 +248,8 @@ function gardenSoundLog() { return _gsn.log.slice(); }
 
 /* ---------- ambience: a few chains, made once, faded in and out ---------- */
 function _gsAmbBuild(c, out) {
-  const N = _gsNoise(c), A = { c, nodes: [] };
-  const src = (rate) => { const s = c.createBufferSource(); s.buffer = N; s.loop = true; s.playbackRate.value = rate || 1; s.start(c.currentTime, Math.random() * 2); A.nodes.push(s); return s; };
+  const N = _gsNoiseLong(c), A = { c, nodes: [] };
+  const src = (rate) => { const s = c.createBufferSource(); s.buffer = N; s.loop = true; s.playbackRate.value = rate || 1; s.start(c.currentTime, Math.random() * 9); A.nodes.push(s); return s; };
   const filt = (type, f, q) => { const b = c.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q == null ? 0.7 : q; return b; };
   const gain = (v) => { const g = c.createGain(); g.gain.value = v; return g; };
   const pan = () => c.createStereoPanner ? c.createStereoPanner() : gain(1);
@@ -248,7 +264,9 @@ function _gsAmbBuild(c, out) {
   // a waterfall (or the mill race): a steady rush and a low roar
   { const bp = filt('bandpass', 1100, 0.45), lo = filt('lowpass', 170, 0.7), lvl = gain(0), p = pan(), lg = gain(1.6); chain(src(1), bp, lvl); chain(src(0.5), lo, lg, lvl); lvl.connect(p); p.connect(out); A.falls = lvl; A.fallsPan = p; }
   // rain, and drips scheduled on top
-  { const hp = filt('highpass', 1400, 0.5), lp = filt('lowpass', 7000, 0.5), lvl = gain(0); chain(src(1.1), hp, lp, lvl, out); A.rain = lvl; A.rainLP = lp; A.dripAt = 0; }
+  { const hp = filt('highpass', 1400, 0.5), lp = filt('lowpass', 6000, 0.5), body = gain(0.85), lvl = gain(0); chain(src(1.1), hp, lp, body, lvl, out); lfo(0.031, 0.15, body.gain); A.rain = lvl; A.rainLP = lp; A.dripAt = 0; }
+  // a brook, a river or the gorge: running water, a babble rather than a lap (the vale's rivers used to lap like a pond)
+  { const bp = filt('bandpass', 1500, 0.9), bub = gain(0.5), lo = filt('lowpass', 420, 0.7), lg = gain(0.7), lvl = gain(0), p = pan(); chain(src(0.9), bp, bub, lvl); chain(src(0.7), lo, lg, lvl); lvl.connect(p); p.connect(out); A.brook = lvl; A.brookBub = bub; A.brookBP = bp; A.brookPan = p; A.babAt = 0; }
   // crickets: a pulsing high tone, gated in chirps
   { const car = c.createOscillator(), am = gain(0.5), pulse = c.createOscillator(), depth = gain(0.5), chirp = gain(0), lvl = gain(0);
     car.frequency.value = 4400; pulse.type = 'square'; pulse.frequency.value = 29; pulse.connect(depth); depth.connect(am.gain); chain(car, am, chirp, lvl, out); car.start(); pulse.start(); A.nodes.push(car, pulse);
@@ -257,15 +275,35 @@ function _gsAmbBuild(c, out) {
   { const lp = filt('lowpass', 260, 0.6), lvl = gain(0); chain(src(0.4), lp, lvl, out); A.room = lvl; A.clockAt = 0; }
   return A;
 }
+/** One moment of running water: the brook's level and colour wander, so it never settles into a hiss. */
+function _gsBabble(A, at, R) { A.brookBub.gain.setTargetAtTime(0.3 + R() * 0.7, at, 0.03); A.brookBP.frequency.setTargetAtTime(_gsJ(R, 1500, 0.3), at, 0.05); }
 function _gsAmbStop(A, t) {
   if (!A) return;
   for (const n of A.nodes) { try { n.stop(t); } catch (e) { /* stopped */ } }
 }
-const GS_AMB_GAIN = Object.freeze({ wind: 0.09, sea: 0.25, lap: 0.28, falls: 0.08, rain: 0.04, crick: 0.012, room: 0.12 });   // (water and rain sit about 6 dB under the steps and tools)
+const GS_AMB_GAIN = Object.freeze({ wind: 0.07, sea: 0.11, lap: 0.12, brook: 0.07, falls: 0.065, rain: 0.024, crick: 0.011, room: 0.055 });   // (2.71 QA, measured offline: the beds sit 4-8 dB under the steps and tools, and well under a catch or a level)
 
-/** What is around you, about once a second: {sea, seaPan, lap, lapPan, falls, fallsPan, woods, high} 0..1 */
+/** Which water a vale cell is: 1 still (the Mere, the pools, the tarn), or how fast it runs: 0.55 a brook, 0.75 the Millwater river, 1 the gorge. Asked per cell and kept. */
+function _gsFlow(x, y) {
+  try {
+    const D = typeof gardenIslandData === 'function' ? gardenIslandData() : null, W = GARDEN_WORLD; if (!D || typeof _gardenIslandInLoop !== 'function') return 1;
+    let F = _gsn.flow;
+    if (!F || F.d !== D) {
+      const basins = (D.freshwater || []).filter(b => Array.isArray(b.boundary)).map(b => { const xs = b.boundary.map(q => q[0]), ys = b.boundary.map(q => q[1]); return { b: b.boundary, x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys), v: !b.river ? 1 : /gorge/.test(b.id) ? 1 : /river/.test(b.id) ? 0.75 : 0.55, run: !!b.river }; });
+      F = _gsn.flow = { d: D, basins, m: new Float32Array(W.cols * W.rows).fill(-1) };
+    }
+    const i = y * W.cols + x; if (F.m[i] >= 0) return F.m[i];
+    const cx = x + 0.5, cy = y + 0.5;
+    let v = 0;   // 0: still (no basin found counts as still)
+    for (const B of F.basins) if (cx >= B.x0 && cx <= B.x1 && cy >= B.y0 && cy <= B.y1 && _gardenIslandInLoop(cx, cy, B.b)) { v = B.run ? B.v : 0; break; }
+    return F.m[i] = v;
+  } catch (e) { return 0; }
+}
+/** How each region sounds: the woods have more birds and less wind, the fells more wind, the high orchard a little of both. */
+const GS_REGION = Object.freeze({ 'west-woods': { woods: 1 }, 'southwest-ruins': { woods: 0.8 }, 'north-headland': { high: 1 }, 'orchard-headland': { high: 0.45, orchard: 1 } });
+/** What is around you, about once a second: {sea, seaPan, lap, lapPan, brook, brookPan, falls, fallsPan, woods, high, orchard} 0..1 */
 function _gsNear(px, py) {
-  const out = { sea: 0, seaPan: 0, lap: 0, lapPan: 0, falls: 0, fallsPan: 0, woods: 0, high: 0 };
+  const out = { sea: 0, seaPan: 0, lap: 0, lapPan: 0, brook: 0, brookPan: 0, falls: 0, fallsPan: 0, woods: 0, high: 0, orchard: 0 };
   const W = typeof GARDEN_WORLD !== 'undefined' ? GARDEN_WORLD : null; if (!W || !Number.isFinite(px)) return out;
   const R = 9, island = typeof gardenIslandActive === 'function' && gardenIslandActive();
   for (let dy = -R; dy <= R; dy += 1.5) for (let dx = -R; dx <= R; dx += 1.5) {
@@ -276,7 +314,7 @@ function _gsNear(px, py) {
     if (island) { const cell = gardenIslandBaseCell(x, y); if (!cell) continue; sea = cell.ocean; fresh = cell.freshwater; }
     else if (gardenIsWater(x, y)) { const z = gardenWaterZone(x, y); fresh = true; if (z && z !== 'pond') sea = false; }
     if (sea && w > out.sea) { out.sea = w; out.seaPan = dx / R; }
-    if (fresh && w > out.lap) { out.lap = w; out.lapPan = dx / R; }
+    if (fresh) { const run = island ? _gsFlow(x, y) : 0; if (run) { if (w * run > out.brook) { out.brook = w * run; out.brookPan = dx / R; } } else if (w > out.lap) { out.lap = w; out.lapPan = dx / R; } }
   }
   // waterfalls and mills: the props that are one, by name (so new ones join in)
   for (const s of _gsSources()) {
@@ -285,8 +323,9 @@ function _gsNear(px, py) {
   }
   try {
     const reg = island && typeof gardenIslandRegionAt === 'function' ? gardenIslandRegionAt(px, py) : null, words = reg ? (reg.id + ' ' + (reg.name || '')).toLowerCase() : '';
-    if (/wood|forest|grove|ruin/.test(words)) out.woods = 1;
-    if (/mountain|peak|headland|cloud|fell|high/.test(words)) out.high = 1;
+    const known = reg && GS_REGION[reg.id];
+    if (known) Object.assign(out, known);
+    else { if (/wood|forest|grove|ruin/.test(words)) out.woods = 1; if (/mountain|peak|cloud|fell/.test(words)) out.high = 1; }   // (a region added later)
   } catch (e) { /* no regions here */ }
   return out;
 }
@@ -332,24 +371,25 @@ function _gsAmbience(c) {
   const set = (k, v, tc) => A[k].gain.setTargetAtTime(Math.max(0, v) * GS_AMB_GAIN[k], t, tc || 0.8);
   const frozen = season === 'winter' && snow;
   set('wind', ((0.3 + 0.55 * near.high + 0.3 * near.sea + (season === 'winter' ? 0.2 : 0) + (rain ? 0.2 : 0)) * (near.woods ? 0.65 : 1) * (snow ? 0.7 : 1)) * out);
-  set('sea', near.sea * out); set('lap', near.lap * (frozen ? 0.15 : 1) * out); set('falls', near.falls * (frozen ? 0.4 : 1) * out);
+  set('sea', near.sea * out); set('lap', near.lap * (frozen ? 0.15 : 1) * out); set('brook', near.brook * (frozen ? 0.3 : 1) * out); set('falls', near.falls * (frozen ? 0.4 : 1) * out);
   set('rain', rain && !snow ? (room ? 0.5 : 1) : 0, 1.5);
   const crickets = (night || dusk) && !rain && !snow && season !== 'winter' ? (season === 'spring' ? 0.5 : 1) * (dusk ? 0.55 : 1) * (1 - 0.6 * near.sea) : 0;
   set('crick', crickets * out, 1.5); set('room', room && !room.music ? 1 : 0, 0.5);
-  if (A.seaPan.pan) A.seaPan.pan.setTargetAtTime(near.seaPan * 0.7, t, 1); if (A.lapPan.pan) A.lapPan.pan.setTargetAtTime(near.lapPan * 0.7, t, 1); if (A.fallsPan.pan) A.fallsPan.pan.setTargetAtTime(near.fallsPan * 0.8, t, 1);
+  if (A.seaPan.pan) A.seaPan.pan.setTargetAtTime(near.seaPan * 0.7, t, 1); if (A.lapPan.pan) A.lapPan.pan.setTargetAtTime(near.lapPan * 0.7, t, 1); if (A.fallsPan.pan) A.fallsPan.pan.setTargetAtTime(near.fallsPan * 0.8, t, 1); if (A.brookPan.pan) A.brookPan.pan.setTargetAtTime(near.brookPan * 0.7, t, 1);
   A.rainLP.frequency.setTargetAtTime(room ? 900 : 7000, t, 0.5);
   G.ambLP.frequency.setTargetAtTime(room ? 750 : snow ? 3200 : 16000, t, 0.4);
   // what happens in the next second
   const until = t + 1.15, from = (k) => (A[k] < t ? t + R() * 0.4 : A[k]);
   if (near.sea > 0.02) { for (A.waveAt = from('waveAt'); A.waveAt < until;) { const up = 1.4 + R() * 1.2, down = 2.4 + R() * 1.8, top = 0.65 + R() * 0.35; A.seaSw.gain.setTargetAtTime(top, A.waveAt, up / 3); A.seaSw.gain.setTargetAtTime(0.18, A.waveAt + up, down / 3); A.seaLP.frequency.setTargetAtTime(1300, A.waveAt, up / 3); A.seaLP.frequency.setTargetAtTime(600, A.waveAt + up, down / 3); A.waveAt += up + down + R() * 2; } }
   if (near.lap > 0.02) { for (A.lapAt = from('lapAt'); A.lapAt < until;) { const k = 0.4 + R() * 0.6, d = 0.18 + R() * 0.3; A.lapSw.gain.setTargetAtTime(k, A.lapAt, 0.05); A.lapSw.gain.setTargetAtTime(0.12, A.lapAt + d, 0.12); A.lapAt += d + 0.35 + R() * 0.9; } }
-  if (rain && !snow) { for (A.dripAt = from('dripAt'); A.dripAt < until;) { _gsTone(c, G.amb, A.dripAt, { f: _gsJ(R, 2600, 0.35), f2: 3600, d: 0.025, peak: 0.02 * out, pan: (R() - 0.5) * 1.4 }); A.dripAt += 0.08 + R() * 0.35; } }
+  if (near.brook > 0.02) { for (A.babAt = from('babAt'); A.babAt < until;) { _gsBabble(A, A.babAt, R); A.babAt += 0.07 + R() * 0.09; } }
+  if (rain && !snow) { for (A.dripAt = from('dripAt'); A.dripAt < until;) { _gsTone(c, G.amb, A.dripAt, { f: _gsJ(R, 2600, 0.35), f2: 3600, d: 0.025, peak: 0.011 * out, pan: (R() - 0.5) * 1.4 }); A.dripAt += 0.08 + R() * 0.35; } }
   if (crickets > 0.02) { for (A.chirpAt = from('chirpAt'); A.chirpAt < until;) { const s = A.chirpAt; for (let i = 0; i < 3; i++) { A.chirp.gain.setTargetAtTime(1, s + i * 0.16, 0.012); A.chirp.gain.setTargetAtTime(0, s + i * 0.16 + 0.09, 0.015); } A.chirpAt += 0.7 + R() * 0.5; } }
-  if (room && !room.music) { for (A.clockAt = from('clockAt'); A.clockAt < until; A.clockAt += 1) _gsHiss(c, G.amb, A.clockAt, { type: 'highpass', f: 3000, d: 0.008, peak: 0.025 }); }
+  if (room && !room.music) { for (A.clockAt = from('clockAt'); A.clockAt < until; A.clockAt += 1) _gsHiss(c, G.amb, A.clockAt, { type: 'highpass', f: 3000, d: 0.008, peak: 0.014 }); }
   // birds by day, an owl at night, gulls by the sea, frogs by fresh water
-  const busy = (dawn ? 0.5 : tod === 'day' ? 0.24 : dusk ? 0.12 : 0) * (near.woods ? 1.6 : 1) * (season === 'winter' ? 0.4 : 1) * (rain || snow ? 0.2 : 1) * (1 - 0.5 * near.high) * (room ? 0.4 : 1);
+  const busy = (dawn ? 0.5 : tod === 'day' ? 0.24 : dusk ? 0.12 : 0) * (near.woods ? 1 + 0.6 * near.woods : near.orchard ? 1.3 : 1) * (season === 'winter' ? 0.4 : 1) * (rain || snow ? 0.2 : 1) * (1 - 0.5 * near.high) * (room ? 0.4 : 1);
   if (R() < busy) { const kinds = near.woods ? ['robin', 'wren', 'tit', 'dove', 'robin'] : ['robin', 'tit', 'tweet', 'dove', 'robin', 'wren']; _gsBird(c, G.amb, t + R() * 0.9, R, kinds[Math.floor(R() * kinds.length)], 0.035 * out * (0.45 + R() * 0.55), (R() - 0.5) * 1.4); }
-  if (night && !rain && R() < 0.025) _gsBird(c, G.amb, t + R(), R, 'owl', 0.05 * out, (R() - 0.5));
+  if (night && !rain && R() < 0.025) _gsBird(c, G.amb, t + R(), R, 'owl', 0.03 * out, (R() - 0.5));
   if (near.sea > 0.3 && !night && !room && R() < 0.02) _gsBird(c, G.amb, t + R(), R, 'gull', 0.012 * near.sea, near.seaPan);
   if (near.lap > 0.25 && (night || dusk) && (season === 'spring' || season === 'summer') && !room && R() < 0.1) _gsFrog(c, G.amb, t + R(), R, 0.04 * near.lap, near.lapPan);
   // your pet now and then
@@ -366,10 +406,10 @@ function _gsMusic(c, t, s) {
   const R = Math.random, sc = GS_SCALES[s.tod] || GS_SCALES.day, slow = s.tod === 'night' || s.tod === 'dusk' ? 1.5 : 1, out = _gsn.g.mIn, k = (s.room ? 0.6 : 1) * (s.rain ? 0.75 : 1);
   let at = Math.max(t, _gsn.music), i = Math.floor(R() * (sc.length - 3));
   const n = 3 + Math.floor(R() * 4);
-  if (R() < 0.5) _gsTone(c, out, at, { f: sc[0] / 2, a: 0.4, d: 3.2 * slow, peak: 0.022 * k });   // a low note under it
+  if (R() < 0.5) _gsTone(c, out, at, { f: sc[0] / 2, a: 0.4, d: 3.2 * slow, peak: 0.015 * k });   // a low note under it
   for (let j = 0; j < n; j++) {
     const f = sc[Math.max(0, Math.min(sc.length - 1, i))];
-    if (s.season === 'winter' || s.snow) _gsBell(c, out, at, f * 2, 0.018 * k, 1.6); else _gsPluck(c, out, at, f * 2, 0.03 * k, 1.3, (R() - 0.5) * 0.5);
+    if (s.season === 'winter' || s.snow) _gsBell(c, out, at, f * 2, 0.013 * k, 1.6); else _gsPluck(c, out, at, f * 2, 0.021 * k, 1.3, (R() - 0.5) * 0.5);
     at += (0.32 + R() * 0.4) * slow; i += R() < 0.65 ? (R() < 0.5 ? 1 : -1) : (R() < 0.5 ? 2 : -2);
   }
   _gsn.music = at + (6 + R() * 10) * slow;
@@ -386,6 +426,9 @@ function _gsSleep() {
   const c = _gsn.ac, A = _gsn.amb;
   if (A && c) { const t = c.currentTime; for (const k of Object.keys(GS_AMB_GAIN)) A[k].gain.setTargetAtTime(0, t, 0.15); _gsAmbStop(A, t + 0.8); _gsn.amb = null; }
   _gsn.step.moving = false; _gsn.music = 0;
+  // and let the sound card rest once the last sounds have gone (it used to keep running on every other page)
+  clearTimeout(_gsn.restT);
+  _gsn.restT = setTimeout(() => { try { if (!_gsn.iv && c && c.state === 'running') c.suspend(); } catch (e) { /* fine */ } }, 1500);
 }
 function _gsTick() {
   if (!_gsShowing() || !_gsAllowed()) { _gsSleep(); return; }
@@ -507,7 +550,7 @@ function gardenSoundRender(name, secs, o) {
   const s = String(name);
   if (s.startsWith('step:')) _gsStep(c, out, 0.02, s.slice(5), R, 1, 0);
   else if (s === 'amb:birds') { let at = 0.1; while (at < secs - 2) at += _gsBird(c, out, at, R, ['robin', 'tit', 'wren', 'dove', 'tweet'][Math.floor(R() * 5)], 0.035 * (0.45 + R() * 0.55), (R() - 0.5)) + 0.6 + R() * 1.5; }
-  else if (s === 'amb:owl') _gsBird(c, out, 0.1, R, 'owl', 0.05);
+  else if (s === 'amb:owl') _gsBird(c, out, 0.1, R, 'owl', 0.03);
   else if (s === 'amb:frog') _gsFrog(c, out, 0.1, R, 0.04);
   else if (s === 'amb:music') { const G = _gsGraph(c); G.lim.disconnect(); G.music.disconnect(); G.music.connect(out); const save = { g: _gsn.g, m: _gsn.music }; _gsn.g = G; _gsn.music = 0.01; for (let t = 0; t < secs - 3; t += 1) if (_gsn.music <= t + 1.1) _gsMusic(c, t, { tod: o.tod || 'day', season: o.season || 'summer' }); _gsn.g = save.g; _gsn.music = save.m; }
   else if (s.startsWith('amb:')) {
@@ -516,15 +559,16 @@ function gardenSoundRender(name, secs, o) {
     const until = secs, R2 = R;
     if (k === 'sea') for (let at = 0.1; at < until;) { const up = 1.4 + R2() * 1.2, down = 2.4 + R2() * 1.8, top = 0.65 + R2() * 0.35; A.seaSw.gain.setTargetAtTime(top, at, up / 3); A.seaSw.gain.setTargetAtTime(0.18, at + up, down / 3); A.seaLP.frequency.setTargetAtTime(1300, at, up / 3); A.seaLP.frequency.setTargetAtTime(600, at + up, down / 3); at += up + down + R2() * 2; }
     if (k === 'lap') for (let at = 0.1; at < until;) { const kk = 0.4 + R2() * 0.6, d = 0.18 + R2() * 0.3; A.lapSw.gain.setTargetAtTime(kk, at, 0.05); A.lapSw.gain.setTargetAtTime(0.12, at + d, 0.12); at += d + 0.35 + R2() * 0.9; }
+    if (k === 'brook') for (let at = 0.1; at < until; at += 0.07 + R2() * 0.09) _gsBabble(A, at, R2);
     if (k === 'crick') for (let at = 0.1; at < until; at += 0.7 + R2() * 0.5) for (let i = 0; i < 3; i++) { A.chirp.gain.setTargetAtTime(1, at + i * 0.16, 0.012); A.chirp.gain.setTargetAtTime(0, at + i * 0.16 + 0.09, 0.015); }
-    if (k === 'rain') for (let at = 0.1; at < until; at += 0.08 + R2() * 0.35) _gsTone(c, out, at, { f: _gsJ(R2, 2600, 0.35), f2: 3600, d: 0.025, peak: 0.02, pan: (R2() - 0.5) * 1.4 });
-    if (k === 'room') for (let at = 0.2; at < until; at += 1) _gsHiss(c, out, at, { type: 'highpass', f: 3000, d: 0.008, peak: 0.025 });
+    if (k === 'rain') for (let at = 0.1; at < until; at += 0.08 + R2() * 0.35) _gsTone(c, out, at, { f: _gsJ(R2, 2600, 0.35), f2: 3600, d: 0.025, peak: 0.011, pan: (R2() - 0.5) * 1.4 });
+    if (k === 'room') for (let at = 0.2; at < until; at += 1) _gsHiss(c, out, at, { type: 'highpass', f: 3000, d: 0.008, peak: 0.014 });
   }
   else if (_gsSfx[s]) _gsSfx[s](c, out, 0.02, R, o);
   else return Promise.reject(new Error('no such sound: ' + s));
   return c.startRendering().then(b => ({ sr, l: b.getChannelData(0), r: b.getChannelData(1) }));
 }
-function gardenSoundNames() { return Object.keys(_gsSfx).concat(Object.keys(_gsSteps).map(k => 'step:' + k), ['amb:wind', 'amb:sea', 'amb:lap', 'amb:falls', 'amb:rain', 'amb:crick', 'amb:room', 'amb:birds', 'amb:owl', 'amb:frog', 'amb:music']); }
+function gardenSoundNames() { return Object.keys(_gsSfx).concat(Object.keys(_gsSteps).map(k => 'step:' + k), ['amb:wind', 'amb:sea', 'amb:lap', 'amb:brook', 'amb:falls', 'amb:rain', 'amb:crick', 'amb:room', 'amb:birds', 'amb:owl', 'amb:frog', 'amb:music']); }
 
 /* ---------- wiring (listeners only: nothing runs until the garden shows and someone clicks) ---------- */
 if (typeof document !== 'undefined' && document.addEventListener) {
