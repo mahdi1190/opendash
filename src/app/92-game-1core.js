@@ -683,9 +683,16 @@ function gameSound(kind) {
   try {
     const g = _gmG();
     if (!g.prefs.sounds || !gameOn() || document.hidden) return;
-    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
-    const ac = _gm.ac || (_gm.ac = new AC());
-    if (ac.state === 'suspended') ac.resume();
+    // in the garden a level-up is the garden's own (said once); elsewhere the garden's sound carries it, under its Volume (94-garden-0sound.js)
+    if (kind === 'level' && typeof gardenSfx === 'function' && typeof _gsShowing === 'function' && _gsShowing() && gardenSfx('level')) return;
+    const bus = typeof gardenSoundBus === 'function' ? gardenSoundBus() : null;
+    let ac, out;
+    if (bus) { ac = bus.ac; out = bus.out; }
+    else {
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+      ac = _gm.ac || (_gm.ac = new AC()); out = ac.destination;
+      if (ac.state === 'suspended') { const r = ac.resume(); if (r && r.catch) r.catch(() => {}); }
+    }
     const notes = { level: [523.25, 659.25, 783.99, 1046.5], boss: [392, 523.25, 659.25, 783.99, 1046.5], quest: [783.99, 1046.5], achievement: [880, 1174.66], milestone: [659.25, 783.99, 1046.5] }[kind] || [880];
     const t0 = ac.currentTime + 0.02;
     notes.forEach((f, i) => {
@@ -693,7 +700,7 @@ function gameSound(kind) {
       o.type = 'triangle'; o.frequency.value = f;
       const t = t0 + i * 0.09;
       v.gain.setValueAtTime(0, t); v.gain.linearRampToValueAtTime(0.05, t + 0.015); v.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
-      o.connect(v); v.connect(ac.destination); o.start(t); o.stop(t + 0.34);
+      o.connect(v); v.connect(out); o.start(t); o.stop(t + 0.34);
     });
   } catch (e) { /* no audio here */ }
 }
