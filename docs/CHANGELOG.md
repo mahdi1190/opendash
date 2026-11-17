@@ -10,6 +10,21 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.71.0] - 2026-11-17
+
+### Fixed
+
+- **Trees are solid.** You no longer walk through tree trunks anywhere in the vale; you slide round them, and leaves still let you walk behind.
+- **Locked land looks locked.** Land you haven't bought shows a fence, or a thicket in the woods, instead of stopping you with an invisible wall. Buying it clears the way.
+- Fleet Falls is fed by the gorge, so the water runs from the tarn over the falls into the Mere. The gap in the cliff beside the falls is closed.
+- Millwater bridge is a proper stone bridge you walk across, and the mill's wheel sits in the river.
+- The quay wall, harbour clutter and lighthouse no longer let you stand in the sea or walk through them.
+- Trees no longer hide the well, the sunken pool, your starter bed, the ruins, the pond or the ice house, and none grow on the green, the cider square, paths or walls.
+- Painted boathouse, smokehouse, bird hide, barn, mill, shepherd's hut, folly, Thistle's old house and the old hollow oak replace their placeholder drawings.
+- Shallows and surf run along the whole coast, the estuary has salt marsh and a boardwalk, and the cold cove has a shore.
+- Lamps light up the old woodland and the orchard at night.
+- Many smaller fixes: stepping stones, floating gates and doors, hard edges, and the north horizon.
+
 ## [2.70.0] - 2026-11-17
 
 ### Changed
