@@ -93,8 +93,10 @@ window.GardenPaintWood = (function () {
         if (!inside(x + .5, y + .5, poly)) continue; const c = cellAt(x, y); if (wet(c)) continue;
         land.push([x, y]);
         if (onWall(x + .5, y + 1)) continue;   // (a trunk never stands on a dry-stone terrace wall)
-        // Land not yet bought in the old wood is a wall to your feet: show it as one (brambles and holly in a knot), not open grass.
-        if (def.mood === 'old' && c.locked && c.row && /^l[sc]-/.test(c.row.id || '') && !c.plantingReserved && !isPath(c)) { thicket(out, x, y, px, py, region.id); continue; }
+        // Land not yet bought in a wood is a wall to your feet: show it as one (brambles and holly in a knot), not open grass.
+        // The map-wide rule (one look per kind of country): thicket in the woods (light and old), a post-and-rail fence
+        // everywhere else, the valley meadow included (94-garden-paint-vale-1valley.js, which skips THICKET_WOODS).
+        if (def.mood !== 'meadow' && c.locked && c.row && /^l[sc]-/.test(c.row.id || '') && !c.plantingReserved && !isPath(c)) { thicket(out, x, y, px, py, region.id); continue; }
         if (c.plantingReserved || isPath(c) || statics.has(x + ',' + y) || (c.row && c.row.plot && !c.locked) || clear(x + .5, y + .5) || byGate(x, y) || byFind(x, y)) continue;
         const grove = noise(x, y, 5, hash(region.id) & 1023), dense = noise(x, y, 2.2, 77), pathNear = near(x, y, 1, isPath), waterNear = near(x, y, 1, wet);
         // groves where the field is high, glades where it is low; a fringe of shrubs at path edges
@@ -402,5 +404,5 @@ window.GardenPaintWood = (function () {
   /** The painted trees' trunk feet, in cells ({x0, y0, x1, y1}), for the walking boxes (94-garden-world-0walk.js), and a
    * signature that changes only when the trees do (a repaint with the same trees keeps the route grid). */
   function trunks() { const S = state; if (!S || !S.M) return null; if (!S.trunks) { const list = S.M.trees.filter(t => t.trunk).map(t => t.trunk); let h = list.length; for (const b of list) h = (Math.imul(h, 31) + Math.round(b.x0 * 64) * 7 + Math.round(b.y0 * 64)) | 0; S.trunks = { list, sig: list.length + ':' + h }; } return S.trunks; }
-  return { paint, tick, clear, playerCanopies: () => state ? state.covering : null, status, memory, covers, trunks, WOODS, get lastError() { return lastError; } };
+  return { paint, tick, clear, playerCanopies: () => state ? state.covering : null, status, memory, covers, trunks, WOODS, thicketWood: id => !!(WOODS[id] && WOODS[id].mood !== 'meadow'), get lastError() { return lastError; } };
 })();

@@ -835,8 +835,9 @@ window.GardenPaintedProps = (function () {
       // Standalone falls have a stone rim; the Mere already owns its real shoreline.
       if (!sharedPool) for (let i = 0; i < 8; i++) { const a = Math.PI * (.08 + .84 * r()), px = Math.cos(a) * 92 * (r() < .5 ? -1 : 1), py = 14 + Math.sin(a) * 14; B.stone(r, px, py, 7 + r() * 5, 4 + r() * 2, STONE, r() < .5 ? MOSS : null); }
     });
-    // trees on the scarp top are the library's own, like the planting round them
-    for (const [id, v, hh, dx, dy] of (fed ? [[season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 96, -S + 10], ['tree.pine', 1, 120, 150, -S - 4]] : [['tree.pine', 0, 150, -84, -S + 8], [season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 86, -S + 14], ['tree.pine', 1, 120, 30 + Wd / 2, -S - 6]])) h.add(libImage(scene, id, v, season, { h: hh }, ax + dx, ay + dy, false));
+    // trees on the scarp top are the library's own, like the planting round them (their trunks join the one trunk list: gateTrees)
+    fallsFeet = [];
+    for (const [id, v, hh, dx, dy] of (fed ? [[season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 96, -S + 10], ['tree.pine', 1, 120, 150, -S - 4]] : [['tree.pine', 0, 150, -84, -S + 8], [season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 86, -S + 14], ['tree.pine', 1, 120, 30 + Wd / 2, -S - 6]])) { h.add(libImage(scene, id, v, season, { h: hh }, ax + dx, ay + dy, false)); fallsFeet.push([+((ax + dx) / o.W.cellW).toFixed(2), +((ay + dy - o.W.sky) / o.W.cellH).toFixed(2), hh > 140 ? .5 : .4]); }
     const base = h.add(image(scene, baseKey, x, y));
     // The fixed falls' canvas includes empty padding beside the cave stair.
     // Keep its solid rock/sheet mask once per existing texture; frame probes
@@ -916,5 +917,21 @@ window.GardenPaintedProps = (function () {
     cx.fillStyle = '#7d9a5a'; cx.fillRect(0, 0, c.width, c.height); cx.setTransform(K, 0, 0, K, -x0 * K, -y0 * K);
     ok(() => art.base(brush(cx))); if (!open) ok(() => art.blocker(brush(cx))); return c.toDataURL();
   }
-  return { gatePreview, kit, decorTable: DECOR, paintTable: PAINT, memory, glowPool, prop, signature, decor, decorSignature, decorKnown, gate, gateSignature, gateKind, falls, poolKey, image, status, get lastError() { return lastError; } };
+  /** The trees the crossings' art stands beside (the stair's cherries, the pass's pine, the ruin's yew), as trunk feet
+   *  in cells ([x, y, width]) for the one trunk-collision list (94-garden-world-0walk.js _gwPaintedTrunks). The same
+   *  numbers gateArt uses; a tree stands whether the gate is open or not. */
+  let gateTreesMemo = null, fallsFeet = [];
+  function gateTrees() {
+    const D = typeof gardenIslandData === 'function' ? gardenIslandData() : null; if (!D || !D.gates || typeof _gldIslandGateFrame !== 'function') return [];
+    if (gateTreesMemo && gateTreesMemo.d === D) return gateTreesMemo.out.concat(fallsFeet);
+    const W = GARDEN_WORLD, out = [];
+    for (const g of D.gates) {
+      const frame = g.crossSpan ? ok(() => _gldIslandGateFrame(g)) : null; if (!frame) continue;
+      const art = ok(() => gateArt(gateKind(g), g, frame, 'summer', true, null)); if (!art) continue;
+      for (const [id, , size, dx, dy] of art.lib) if (/^tree\./.test(id)) out.push([+((frame.x + dx) / W.cellW).toFixed(2), +((frame.y + dy - W.sky) / W.cellH).toFixed(2), size.h > 140 ? .5 : .4]);
+    }
+    gateTreesMemo = { d: D, out };
+    return out.concat(fallsFeet);
+  }
+  return { gateTrees, gatePreview, kit, decorTable: DECOR, paintTable: PAINT, memory, glowPool, prop, signature, decor, decorSignature, decorKnown, gate, gateSignature, gateKind, falls, poolKey, image, status, get lastError() { return lastError; } };
 })();

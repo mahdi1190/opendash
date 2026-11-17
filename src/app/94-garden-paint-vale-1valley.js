@@ -1,9 +1,12 @@
-/* Painted vale: Millwater valley's ground (see 94-garden-paint-vale-0kit.js).
- *  - Land not yet yours in the valley is fenced: a weathered post-and-rail
- *    fence along each locked plot's edge where it meets ground you can walk
- *    on, so the plot's edge reads as the stop it is (it was an invisible wall
- *    in the painted garden; Classic always drew a fence here). The fence
- *    follows the garden: buying a plot takes its fence away.
+/* Painted vale: Millwater valley's ground and the fences on unbought land (see 94-garden-paint-vale-0kit.js).
+ *  - Land not yet yours is fenced, map-wide outside the woods: a weathered
+ *    post-and-rail fence along each locked plot's edge where it meets ground
+ *    you can walk on, so the plot's edge reads as the stop it is (it was an
+ *    invisible wall in the painted garden; Classic always drew a fence here).
+ *    The fence follows the garden: buying a plot takes its fence away. In the
+ *    painted woods (Whispering woodland, the old woodland) the same land is a
+ *    thicket of bramble and holly instead (94-garden-paint-wood-0core.js): one
+ *    rule, fences in open country and thickets in the woods.
  *  - The open valley floor gets its meadow: drifts of buttercups, clover and
  *    cuckooflower in the free grass, kept off paths, plots and doorways.
  * Only rendering: cells, walking and saved rows are untouched. */
@@ -11,18 +14,20 @@
   'use strict';
   const V = window.GardenPaintVale; if (!V) return;
   const inValley = (x, y) => { const r = typeof gardenIslandRegionAt === 'function' ? gardenIslandRegionAt(x + .5, y + .5) : null; return !!(r && /mill|valley/.test(String(r.id) + ' ' + String(r.theme || ''))); };
+  // fenced: open country, i.e. anywhere but a wood that shows its locked land as thicket
+  const fenced = (x, y) => { const r = typeof gardenIslandRegionAt === 'function' ? gardenIslandRegionAt(x + .5, y + .5) : null; return !(r && window.GardenPaintWood && GardenPaintWood.thicketWood && GardenPaintWood.thicketWood(r.id)); };
   let plotsMemo = null;
-  /** Valley plot cells and the edges they share with dry ground: [{ id, cells:[[x,y]], edges:[[x,y,side,nx,ny]] }]. */
+  /** Plot cells in open country and the edges they share with dry ground: [{ id, cells:[[x,y]], edges:[[x,y,side,nx,ny]] }]. */
   function plots() {
     if (plotsMemo) return plotsMemo;
     const W = GARDEN_WORLD, byId = new Map();
     for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
-      const row = typeof gardenLandCell === 'function' ? gardenLandCell(x, y) : null; if (!row || !row.plot || !inValley(x, y)) continue;
+      const row = typeof gardenLandCell === 'function' ? gardenLandCell(x, y) : null; if (!row || !row.plot || !fenced(x, y)) continue;
       let p = byId.get(row.id); if (!p) byId.set(row.id, p = { id: row.id, cells: [], edges: [] }); p.cells.push([x, y]);
       for (const [dx, dy, side] of [[0, 1, 's'], [0, -1, 'n'], [1, 0, 'e'], [-1, 0, 'w']]) {
         const nx = x + dx, ny = y + dy, nrow = gardenLandCell(nx, ny), base = gardenIslandBaseCell(nx, ny);
         if (nrow && nrow.id === row.id) continue;
-        if (!base || !base.land || base.freshwater || base.solid) continue;
+        if (!base || !base.land || base.freshwater || base.solid || nrow && nrow.solid) continue;   // (no fence against water, rock or thicket)
         p.edges.push([x, y, side, nx, ny]);
       }
     }

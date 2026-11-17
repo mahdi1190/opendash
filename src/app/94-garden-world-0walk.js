@@ -90,8 +90,6 @@ function _gwBuildSolids(m) {
     const W = GARDEN_WORLD, scale = 1.75, x = oak.x + 2.9, y = oak.y - 1.5;
     add(x - 20 * scale / W.cellW, y - 8 * scale / W.cellH, x + 20 * scale / W.cellW, y + 2 * scale / W.cellH);
   }
-  // The High orchard's painted rows: each trunk is a small box at its foot (94-garden-paint-vale-1orchard.js).
-  for (const [x, y, w] of _gwOrchardTrunks()) add(x - w / 2, y - .24, x + w / 2, y + .04);
   const logs = typeof gardenIslandLogStack === 'function' ? gardenIslandLogStack(island) : null;
   if (logs) { const f = logs.foot; add(f.x0, f.y0, f.x1, f.y1); }
   // The quay's sea wall (94-garden-paint-vale-1harbour.js draws it from the plaza): the coast line lies a little below
@@ -102,9 +100,6 @@ function _gwBuildSolids(m) {
     const pier = island.static.find(p => p.id === 'pier'), y0 = quay.y + 1.85, y1 = quay.y + 3.2, x0 = quay.x - 5.1, x1 = quay.x + 5.4;
     if (pier && pier.x > x0 && pier.x + pier.w < x1) { add(x0, y0, pier.x, y1); add(pier.x + pier.w, y0, x1, y1); } else add(x0, y0, x1, y1);
   }
-  // the painted village trees: a trunk box at the foot, like a planted tree (the crowns stay for walking behind)
-  const trunks = island && window.GardenNativePainted && GardenNativePainted.trunks ? GardenNativePainted.trunks().list : [];
-  for (const t of trunks) add(t.x - t.w / 2, t.y - .3, t.x + t.w / 2, t.y - .02);
   // Fleet Falls sits in a gap in the scarp. Its painted rock (the cave cheek west of the
   // water, the step east of it out to the scarp) is solid, so only the cave stair climbs it.
   const fw = island && island.version >= 5 && typeof gardenFallsWater === 'function' ? gardenFallsWater(island) : null, fl = fw && island.presentation.falls;
@@ -122,16 +117,53 @@ function _gwBuildSolids(m) {
     const W = GARDEN_WORLD, side = Math.abs(frame.uy) > Math.abs(frame.ux), half = Math.max(46, Math.min(80, frame.span * .62)), S = frame.span * .9;
     for (const sgn of [-1, 1]) { const lx = frame.x + sgn * (side ? .85 : 1) * (half + 2), ly = frame.y + 2 + (side ? sgn * (S / half * .8) * (half + 2) : 0); add((lx - 9) / W.cellW, (ly - 7 - W.sky) / W.cellH, (lx + 9) / W.cellW, (ly + 2 - W.sky) / W.cellH); }
   }
-  // the painted woods' trunks collide where they are drawn (their crowns are for walking behind)
-  const trunks = _gwWoodTrunks(m);
-  if (trunks) for (const b of trunks.list) add(b.x0, b.y0, b.x1, b.y1);
+  // Every painted tree on the map (village planting, the three painted woods, the orchard rows) has one trunk box at
+  // its foot, from one list (_gwPaintedTrunks): the crowns are for walking behind.
+  for (const b of _gwPaintedTrunks(island)) add(b.x0, b.y0, b.x1, b.y1);
   // the old woodland's lamp plinths (94-garden-0island.js): a small block at the foot, the lantern above is walked behind
   if (typeof gardenIslandOldWoodLamps === 'function') for (const q of gardenIslandOldWoodLamps(island).concat(gardenIslandPosternPiers(island))) add(q.foot.x0, q.foot.y0, q.foot.x1, q.foot.y1);
   return { list, at };
 }
-function _gwWoodTrunks() { return typeof GardenPaintWood !== 'undefined' && GardenPaintWood && GardenPaintWood.trunks ? GardenPaintWood.trunks() : null; }
+/** The one trunk-collision list for painted trees, in cells ({x0, y0, x1, y1, src}). Five painters plant trees, each
+ *  recording its trunk feet: the village planting (GardenNativePainted.trunks, {x, y, w} at the foot), the painted woods
+ *  (GardenPaintWood.trunks, boxes already), the High orchard rows (GardenPaintVale.orchardTrunks, [x, y, w]), the fells'
+ *  pines and rowans (GardenPaintedTerrain.trunks) and the crossings' trees (GardenPaintedProps.gateTrees). Every
+ *  foot becomes the same shape of box (its width, .28 of a row deep, ending just past the foot), and a foot that lies
+ *  within half a cell of one already listed is the same tree drawn twice (a wood or the orchard over the planting), so it
+ *  is listed once. */
+function _gwFellTrunks() { const t = typeof GardenPaintedTerrain !== 'undefined' && GardenPaintedTerrain && GardenPaintedTerrain.trunks ? GardenPaintedTerrain.trunks() : null; return Array.isArray(t) ? t : []; }
+function _gwGateTrunks() { const nat = typeof GardenNativePainted !== 'undefined' && GardenNativePainted && GardenNativePainted.wanted && GardenNativePainted.wanted(); const t = nat && typeof GardenPaintedProps !== 'undefined' && GardenPaintedProps && GardenPaintedProps.gateTrees ? GardenPaintedProps.gateTrees() : null; return Array.isArray(t) ? t : []; }
+/** What the painted-trunk list depends on, cheaply: each painter's own revision or signature. */
+function _gwTrunkSig() {
+  const nat = typeof GardenNativePainted !== 'undefined' && GardenNativePainted && GardenNativePainted.trunks ? GardenNativePainted.trunks() : null;
+  const wood = typeof GardenPaintWood !== 'undefined' && GardenPaintWood && GardenPaintWood.trunks ? GardenPaintWood.trunks() : null;
+  const orch = typeof GardenPaintVale !== 'undefined' && GardenPaintVale && typeof GardenPaintVale.orchardTrunks === 'function' ? GardenPaintVale.orchardTrunks() : null;
+  const feetSig = list => { let h = list.length; for (const t of list) h = (Math.imul(h, 31) + Math.round(t[0] * 64) * 7 + Math.round(t[1] * 64)) | 0; return list.length + ':' + h; };
+  return (nat ? nat.rev : 0) + '/' + (wood ? wood.sig : '') + '/' + feetSig(Array.isArray(orch) ? orch : []) + '/' + feetSig(_gwFellTrunks()) + '/' + feetSig(_gwGateTrunks());
+}
+function _gwPaintedTrunks(island) {
+  if (!island) return [];
+  const feet = [];
+  const nat = typeof GardenNativePainted !== 'undefined' && GardenNativePainted && GardenNativePainted.trunks ? GardenNativePainted.trunks() : null;
+  const wood = typeof GardenPaintWood !== 'undefined' && GardenPaintWood && GardenPaintWood.trunks ? GardenPaintWood.trunks() : null;
+  const orch = typeof GardenPaintVale !== 'undefined' && GardenPaintVale && typeof GardenPaintVale.orchardTrunks === 'function' ? GardenPaintVale.orchardTrunks() : null;
+  // the woods and the orchard are listed first: their boxes were measured against their own drawn trunks
+  if (wood && wood.list) for (const b of wood.list) feet.push({ x: (b.x0 + b.x1) / 2, y: b.y1, w: Math.max(.3, b.x1 - b.x0), src: 'wood' });
+  if (Array.isArray(orch)) for (const [x, y, w] of orch) feet.push({ x, y: y + .04, w, src: 'orchard' });
+  if (nat && nat.list) for (const t of nat.list) feet.push({ x: t.x, y: t.y - .02, w: t.w, src: 'village' });
+  for (const [x, y, w] of _gwFellTrunks()) feet.push({ x, y, w, src: 'fells' });
+  for (const [x, y, w] of _gwGateTrunks()) feet.push({ x, y, w, src: 'gate' });
+  const out = [], seen = new Map();
+  for (const f of feet) {
+    const k = Math.floor(f.x) + ',' + Math.floor(f.y); let dup = false;
+    for (let dy = -1; dy <= 1 && !dup; dy++) for (let dx = -1; dx <= 1 && !dup; dx++) for (const o of seen.get((Math.floor(f.x) + dx) + ',' + (Math.floor(f.y) + dy)) || []) if (Math.abs(o.x - f.x) < .5 && Math.abs(o.y - f.y) < .35) { dup = true; break; }
+    if (dup) continue;
+    (seen.get(k) || seen.set(k, []).get(k)).push(f);
+    out.push({ x0: f.x - f.w / 2, y0: f.y - .28, x1: f.x + f.w / 2, y1: f.y, src: f.src });
+  }
+  return out;
+}
 /** Do feet (half width fx, half depth fy, in cells) at x, y touch one of the boxes? */
-function _gwOrchardTrunks() { const t = typeof GardenPaintVale !== 'undefined' && GardenPaintVale && typeof GardenPaintVale.orchardTrunks === 'function' ? GardenPaintVale.orchardTrunks() : null; return Array.isArray(t) ? t : []; }
 function _gwSolidHit(x, y, fx, fy) {
   const S = _gw.solids; if (!S || !S.list.length) return false;
   for (let cy = Math.floor(y - fy); cy <= Math.floor(y + fy); cy++) for (let cx = Math.floor(x - fx); cx <= Math.floor(x + fx); cx++) {
@@ -205,22 +237,20 @@ function _gwRouteSourceInputs(m) {
     values.push(d.x, d.y, def.w || 1, def.h || 1); count++;
   }
   values[start] = count;
-  { const trunks = _gwOrchardTrunks(); values.push(trunks.length); for (const t of trunks) values.push(t[0], t[1], t[2]); }
   const props = gardenPropsNow(); values.push(GARDEN_PROPS.length, props.length);
-  values.push(window.GardenNativePainted && GardenNativePainted.trunks ? GardenNativePainted.trunks().rev : 0);
   for (const p of props) values.push(p.x, p.y, p.w, p.h, gardenPropCol(p), !!p.walk, p.needs || '', !p.needs || gardenWorkOwned(p.needs));
   start = values.length; count = 0; values.push(0);
   // Read the actual occupancy used by _gwBuildGrid, including its unknown
   // decoration fallback and first-occupant semantics for overlapping rows.
   for (const [cell, occupant] of m.occ) if (occupant && occupant.decor && (decorCols.get(occupant.decor) || 'full') === 'full') { values.push(cell); count++; }
   values[start] = count;
-  values.push((_gwWoodTrunks() || {}).sig || '');   // the painted woods' trunks (_gwBuildSolids)
+  values.push(_gwTrunkSig());   // the painted trees' trunks (_gwPaintedTrunks)
   return values;
 }
 function _gwGrid(m, groundOnly) {
   if (_gw.boat && !groundOnly) return _gwContinuousBoatGrid(m);
   const mm = m || gardenHere(), shore = typeof gardenLakeGeometry === 'function' ? gardenLakeGeometry(mm) : null, otherShapes = typeof gardenOtherWaterShapes === 'function' ? gardenOtherWaterShapes(mm) : null, state = _gwRouteState();
-  const key = (mm.visit ? mm.visit.key : _gd.memoKey) + '|' + mm.level.level + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0) + '|' + (shore && shore.revision || 0) + '|' + gardenPierDeckSignature() + '|' + ((_gwWoodTrunks(mm) || {}).sig || '');
+  const key = (mm.visit ? mm.visit.key : _gd.memoKey) + '|' + mm.level.level + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0) + '|' + (shore && shore.revision || 0) + '|' + gardenPierDeckSignature() + '|' + (_gwTrunkSig() || '');
   if (!_gw.grid || _gw.gridKey !== key || _gw.grid.model !== mm || _gw.grid.routeState !== state || _gw.grid.otherShapes !== otherShapes) {
     const saved = _gw.routeSnapshot, inputs = _gwRouteSourceInputs(mm);
     const stats = _gw.routeGridStats || (_gw.routeGridStats = { coarseBuilds: 0, preparations: 0, reused: 0, boatPreparations: 0, preflightChecks: 0, preflightReused: 0 }); stats.preflightChecks++;
