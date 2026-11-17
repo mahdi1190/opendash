@@ -380,7 +380,14 @@ window.GardenNativePainted = (function () {
       if (!sceneObj(id)) return;
       if (size.h && size.h < 50 && gx) {
         if (!paintLow) return; const o = ok(() => objectCanvas(id, v, season, size)); if (!o) return;
-        const k = K / OBJ_K; gx.drawImage(o.c, (x - g.box.x) * K - o.ox * k, (y - g.box.y) * K - o.oy * k, o.c.width * k, o.c.height * k); return;
+        const k = K / OBJ_K, bx = (x - g.box.x) * K, by = (y - g.box.y) * K, bw = Math.min(o.c.width * k, size.h * K * 2.2);
+        // seated in the lawn: a soft shadow under it and grass grown up over its foot, so a hedge or gorse clump
+        // never ends in a ruled line across the grass (polish, Nov 2026)
+        gx.save(); gx.globalAlpha = .22; gx.fillStyle = '#2e3e22'; gx.beginPath(); gx.ellipse(bx, by - K, bw * .46, 3.2 * K, 0, 0, Math.PI * 2); gx.fill(); gx.restore();
+        gx.drawImage(o.c, bx - o.ox * k, by - o.oy * k, o.c.width * k, o.c.height * k);
+        gx.save(); const blades = Math.round(bw / (2.6 * K)), seed = Math.abs(Math.round(x * 7 + y * 13)), tone = season === 'winter' ? ['#8a9878', '#a4ae90'] : season === 'autumn' ? ['#7e9446', '#9aaa58'] : ['#5e8a3e', '#7aa24c'];
+        gx.lineCap = 'round'; for (let i = 0; i < blades; i++) { const t = blades > 1 ? i / (blades - 1) : .5, h = ((seed + i * 37) % 7) / 7, px = bx - bw * .48 + t * bw * .96, len = (3 + h * 4.5) * K * (1 - Math.abs(t - .5) * .6); gx.strokeStyle = tone[(seed + i) % 2]; gx.globalAlpha = .9; gx.lineWidth = 1.1 * K; gx.beginPath(); gx.moveTo(px, by + K * .6); gx.quadraticCurveTo(px + (h - .5) * 2 * K, by - len * .5, px + (h - .5) * 4 * K, by - len); gx.stroke(); }
+        gx.restore(); return;
       }
       const im = objectImage(scene, id, v, season, size, x, y, false); if (!im) return; im.setDepth(y); parent.add(im); made.push(im);
       if (size.h >= 50) tall.push({ im, x, y, h: size.h });

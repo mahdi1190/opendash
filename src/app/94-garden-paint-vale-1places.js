@@ -203,7 +203,11 @@
     for (const pz of L.pres.plazas || []) {
       const style = STYLE[pz.id]; if (!style) continue;
       const rt = L.routes.get(pz.route); if (!rt || !rt.points || rt.points.length < 2) continue;
-      const a = L.pt(rt.points[0]), b = L.pt(rt.points[rt.points.length - 1]), w = rt.widthCells || 4, seed = kit.hashStr(pz.id);
+      let a = L.pt(rt.points[0]); const b = L.pt(rt.points[rt.points.length - 1]), w = rt.widthCells || 4, seed = kit.hashStr(pz.id);
+      // The land office stands on the terrace's west end: pave from its east wall, so the building is not set down on the flags
+      // (the lake walk's sandy road carries on behind it).
+      const office = pz.id === 'lakeside-terrace' && L.stat('land-office');
+      if (office && office.x < rt.points[0][0] + 1 && office.x + office.w > rt.points[0][0]) a = L.pt([office.x + office.w + .5, rt.points[0][1]]);
       const shape = V.capsule(kit.rng(seed), a, b, w / 2 * cw * .95 + 8, w / 2 * ch * 1.05 + 4, style === 'broken' || style === 'litter' ? .3 : .08), bb = kit.bboxOf(shape, 30);
       add(bb, seed, (B, r) => {
         const path = new Path2D(B.poly(shape)), dry = new Path2D(); dry.rect(bb[0] - 10, bb[1] - 10, bb[2] - bb[0] + 20, bb[3] - bb[1] + 20); for (const w of L.D.freshwater || []) if (w.boundary) dry.addPath(V.loopPath([w.boundary.map(L.pt)]));
