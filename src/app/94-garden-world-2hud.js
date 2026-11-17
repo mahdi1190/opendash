@@ -439,7 +439,7 @@ function gardenBubbleOpen(at, o) {
     b.onclick = (ev) => { ev.stopPropagation(); if (!it.keep) gardenBubbleClose(); it.run(b); };
     row.appendChild(b);
   }
-  el.style.boxSizing = 'border-box'; el.style.overflowY = 'auto'; el.style.overscrollBehavior = 'contain';
+  el.style.boxSizing = 'border-box'; el.style.overscrollBehavior = 'contain';   // (it scrolls only when it does not fit: gardenHudFrame. A scroll box always on clipped the tail and showed a bar for a few pixels)
   const head = el.querySelector('.gd-bub-h'); if (head) head.style.whiteSpace = 'normal';
   box.appendChild(el);
   _gh.bubble = { el, at, w: el.offsetWidth, h: el.offsetHeight, preferredWidth: parseFloat(getComputedStyle(el).maxWidth) || Infinity, key: '' };
@@ -641,7 +641,7 @@ function gardenHudFrame(force) {
       }
       top = Math.min(top, bottom - 1);
       const maxHeight = Math.max(1, Math.floor(bottom - top));
-      if (B.maxHeight !== maxHeight) { B.maxHeight = maxHeight; B.el.style.maxHeight = maxHeight + 'px'; B.h = B.el.offsetHeight; }
+      if (B.maxHeight !== maxHeight) { B.maxHeight = maxHeight; B.el.style.maxHeight = maxHeight + 'px'; const last = B.el.lastElementChild; B.el.style.overflowY = last && last.offsetTop + last.offsetHeight + 12 > maxHeight ? 'auto' : ''; B.h = B.el.offsetHeight; }
       const y = Math.round(Math.max(top, Math.min(bottom - B.h, p.y - B.h - 10)));
       const tail = Math.round(Math.max(12, Math.min(B.w - 12, p.x - x)));
       const key = x + ',' + y + ',' + tail;
