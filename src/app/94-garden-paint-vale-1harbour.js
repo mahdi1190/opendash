@@ -18,12 +18,22 @@
     return best.sort((a, b) => a.x - b.x);
   }
 
+  // The sea coast: the longest run of the island's outline inside the map (the west and
+  // north edges run on into the painted mainland, which has its own shore).
+  function seaCoast(L) {
+    let best = [], run = [];
+    for (const loop of L.coast) { for (const p of loop.concat(loop)) { const cx = p.x / L.cw, cy = (p.y - L.W.sky) / L.ch; if (cx > -.4 && cy > -.4 && cx < L.W.cols + .4 && cy < L.W.rows + .4) run.push(p); else { if (run.length > best.length) best = run; run = []; } } if (run.length > best.length) best = run; run = []; }
+    return best.length > loopLen(L) ? best.slice(0, loopLen(L) + 1) : best;
+  }
+  const loopLen = L => Math.max(0, ...L.coast.map(l => l.length));
+  // runs of consecutive points that pass a test
+  function runsWhere(pts, test) { const out = []; let run = []; for (const p of pts) { if (test(p)) run.push(p); else { if (run.length > 1) out.push(run); run = []; } } if (run.length > 1) out.push(run); return out; }
+
   function compose(C) {
     const { L, P, kit, W, add, thing } = C, cw = L.cw, ch = L.ch, cpt = L.cpt;
     const quay = (L.pres.plazas || []).find(p => p.id === 'the-quay'); if (!quay) return;
     const box = [QUAY.x0 * cw, W.sky + QUAY.y0 * ch, QUAY.x1 * cw, W.sky + QUAY.y1 * ch];
     const coastP = V.loopPath(L.coast), outside = new Path2D(); outside.rect(box[0] - 400, box[1] - 400, box[2] - box[0] + 800, box[3] - box[1] + 800); outside.addPath(coastP);
-    const bay = bayCoast(L);
     const smooth = (a, b, t) => Math.max(0, Math.min(1, (t - a) / (b - a)));
     // the village ground ends at its box (start + 17 rows, x within start +/- 18): feather into it
     const st = L.D.anchors.start, vy1 = st.y + 18;
@@ -46,25 +56,44 @@
     // 1. Grass over the plain ground between the village and the beach
     add(box, 31, (B, r, cb) => { B.cx.clip(coastP); V.lawn(B, r, L, P, cb, (x, y) => y >= QUAY.y0 && L.kind(x + .5, y + .5) === 'grass', fade, { salt: 31, wash }); });
 
-    // 2. The bay: shallows and lace of foam outside the coast, wet sand, a wrack line and shells inside it
-    if (bay.length > 2) {
-      add([box[0] - 60, box[1] + 200, box[2] + 60, box[3] + 200], 32, (B, r) => {
-        B.cx.save(); B.cx.clip(outside, 'evenodd');
-        V.strokePts(B, bay, P.shallow, 150, .22, 0, 30); V.strokePts(B, bay, P.shallow, 80, .3, 0, 14); V.strokePts(B, bay, '#b7d8cf', 34, .35, 0, 6);
+    // 2. The sea edge all round: shallows and a lace of foam outside the coast, wet sand,
+    // a wrack line and shells inside it. One continuous run of the sea coast (the bay and
+    // every beach on to Wren cove and the cold cove), so the shallows never stop at a
+    // straight edge. Split into ops by stretch so only shore chunks bake; in a chunk only
+    // the first stretch that meets it draws the whole run, so nothing doubles up.
+    const shore = seaCoast(L);
+    if (shore.length > 2) {
+      const seaBox = [-1200, -1200, W.cols * cw + 1200, W.sky + W.rows * ch + 1200];
+      const outsideAll = new Path2D(); outsideAll.rect(seaBox[0], seaBox[1], seaBox[2] - seaBox[0], seaBox[3] - seaBox[1]); outsideAll.addPath(coastP);
+      const bbs = []; for (let i = 0; i < shore.length; i += 8) bbs.push(kit.bboxOf(shore.slice(Math.max(0, i - 1), i + 9), 110));
+      const near = (p, cb, m) => p.x > cb[0] - m && p.x < cb[2] + m && p.y > cb[1] - m && p.y < cb[3] + m;
+      const beachAt = p => { const k = L.kind(p.x / cw, (p.y - W.sky) / ch); return k === 'beach' || k === 'path'; };
+      // seaward copies of the line (along the outward normal: the sea side of the outline)
+      const offOf = (pts, d) => pts.map((p, i) => { const a = pts[Math.max(0, i - 1)], c = pts[Math.min(pts.length - 1, i + 1)], l = Math.hypot(c.x - a.x, c.y - a.y) || 1; return { x: p.x + (c.y - a.y) / l * d, y: p.y - (c.x - a.x) / l * d }; }), off = d => offOf(shore, d);
+      const in2 = off(-2), in14 = off(-14), in24 = off(-24);
+      // the water's lace runs straight across the river mouth (a bar), not up into it in a V
+      const sea = shore.filter((p, i) => { const q = in24[i], b = L.base(q.x / cw, (q.y - W.sky) / ch); return !(b && b.freshwater); });
+      const o30 = offOf(sea, 30), o14 = offOf(sea, 14), o6 = offOf(sea, 6), o3 = offOf(sea, 3), o15 = offOf(sea, 15);
+      const prng = (p, salt) => kit.rng(kit.hash(Math.round(p.x), Math.round(p.y), salt));
+      bbs.forEach((bb, idx) => add(bb, 32, (B, r, cb) => {
+        for (let j = 0; j < idx; j++) if (kit.meets(bbs[j], cb)) return;
+        B.cx.save(); B.cx.clip(outsideAll, 'evenodd');
+        V.strokePts(B, o30, P.shallow, 150, .22); V.strokePts(B, o14, P.shallow, 80, .3); V.strokePts(B, o6, '#b7d8cf', 34, .35);
         // sand ripples seen through the shallows
-        for (const p of V.walk(bay, 26)) for (let k = 0; k < 2; k++) { const d = 14 + r() * 50, x = p.x + (r() - .5) * 20; B.s(`M${x - 9} ${p.y + d}q9 -3 18 0`, '#d8e6d8', 1.1, .25); }
+        for (const p of V.walk(sea, 26)) { if (!near(p, cb, 90)) continue; const q = prng(p, 71); for (let k = 0; k < 2; k++) { const d = 14 + q() * 50, x = p.x + p.ty * d + (q() - .5) * 20, y = p.y - p.tx * d; B.s(`M${x - 9} ${y}q9 -3 18 0`, '#d8e6d8', 1.1, .25); } }
         // the lace: broken lines of foam at the edge and a fainter line further out
-        B.cx.setLineDash([14, 6, 4, 9]); V.strokePts(B, bay, P.foam, 2.6, .85, 0, 3); B.cx.setLineDash([22, 14, 6, 18]); V.strokePts(B, bay, P.foam, 1.6, .45, 0, 15); B.cx.setLineDash([]);
+        B.cx.setLineDash([14, 6, 4, 9]); V.strokePts(B, o3, P.foam, 2.6, .85); B.cx.setLineDash([22, 14, 6, 18]); V.strokePts(B, o15, P.foam, 1.6, .45); B.cx.setLineDash([]);
         B.cx.restore();
         B.cx.save(); B.cx.clip(coastP);
-        V.strokePts(B, bay, P.sandWet, 30, .55); V.strokePts(B, bay, P.sandWet, 12, .5, 0, -2);
-        // the wrack line: dark weed and drift at the last high tide
-        for (const p of V.walk(bay, 7)) { if (r() < .25) continue; const y = p.y - 26 - Math.sin(p.x / 60) * 5 + (r() - .5) * 4; B.f(B.blob(r, p.x, y, 2 + r() * 4, 1 + r() * 1.2, 6, .6), r() < .6 ? '#5e5a3a' : '#7a6a48', .7); if (r() < .12) B.f(B.rr(p.x - 5, y - 1, 10 + r() * 6, 2.2, 1), '#a08a66', .8); }
+        // wet sand only where the shore is sand (the cold cove's moor and rock keep their own edge)
+        for (const run of runsWhere(shore.map((p, i) => ({ x: p.x, y: p.y, i })), p => beachAt(in14[p.i]))) { V.strokePts(B, run, P.sandWet, 30, .55); V.strokePts(B, run.map(p => in2[p.i]), P.sandWet, 12, .5); }
+        // the wrack line: dark weed and drift at the last high tide, a stride above the water
+        for (const p of V.walk(shore, 7)) { if (!near(p, cb, 40)) continue; const q = prng(p, 72); if (q() < .25) continue; const d = 26 + Math.sin((p.x + p.y) / 60) * 5 + (q() - .5) * 4, x = p.x - p.ty * d, y = p.y + p.tx * d; if (!beachAt({ x, y })) continue; B.f(B.blob(q, x, y, 2 + q() * 4, 1 + q() * 1.2, 6, .6), q() < .6 ? '#5e5a3a' : '#7a6a48', .7); if (q() < .12) B.f(B.rr(x - 5, y - 1, 10 + q() * 6, 2.2, 1), '#a08a66', .8); }
         // shells, pebbles and ripples on the dry sand
-        kit.tiles(box, 90, 0, 33, (tx, ty, rr) => { for (let k = 0; k < 10; k++) { const x = tx + rr() * 90, y = ty + rr() * 90; if (L.kind(x / cw, (y - W.sky) / ch) !== 'beach') continue; const t = rr();
+        kit.tiles(cb, 90, 0, 33, (tx, ty, rr) => { for (let k = 0; k < 10; k++) { const x = tx + rr() * 90, y = ty + rr() * 90; if (L.kind(x / cw, (y - W.sky) / ch) !== 'beach') continue; const t = rr();
           if (t < .35) B.s(`M${x - 7} ${y}q7 -2.4 14 0`, P.sandDk, 1, .28); else if (t < .6) B.f(B.ell(x, y, 1.6, 1.1), ['#f6efe0', '#e8c4b8', '#d8d0c0'][Math.floor(rr() * 3)], .95); else if (t < .8) B.f(B.ell(x, y, 2 + rr() * 2, 1.2 + rr()), ['#a89c88', '#8c8474', '#c2b8a4'][Math.floor(rr() * 3)], .9); } });
         B.cx.restore();
-      });
+      }));
     }
 
     // 3. One promenade from the village to the quay. Its shoulders gradually
