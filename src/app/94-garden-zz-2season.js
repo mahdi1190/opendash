@@ -9,6 +9,10 @@ const GTG_SEASON_AT = Object.freeze({   // world cells
   patches: Object.freeze([[14.5, 13.5, 3], [37, 14.2, 3], [18, 17.8, 3.5], [33.5, 17.8, 3.5], [24.5, 13.5, 3], [29, 16.6, 2.5], [17, 15.8, 2.5]]),
   holes: Object.freeze([[16, 22], [21, 21], [29, 22], [34, 21], [38, 22], [14, 24], [19, 23], [30, 24], [37, 23], [22, 28], [28, 34], [15, 32], [38, 27], [33, 26]]),   // and one at each named spot
 });
+/* The trees and patches are cells of the old garden's map. On the Vale those cells are the open moor below Cloudbreak,
+   where cartoon cherry trees, leaf heaps and leaf drifts stood out of place on the painted fells (the painted world
+   keeps its own seasons), so the Vale has none of them. */
+function _gtgSeasonAt() { return typeof gardenIslandActive === 'function' && gardenIslandActive() ? { trees: [], patches: [] } : GTG_SEASON_AT; }
 const _gtgs = { season: '', ice: false, cold: false };
 const _GTG_HOLES = (() => {
   const s = new Set(GTG_SEASON_AT.holes.map(h => h[0] + ',' + h[1]));
@@ -57,7 +61,7 @@ function _gtgPatchSvg(season, seed) {
   const dot = (x, y, r) => `M${n(x - r)} ${n(y)}a${r} ${r} 0 1 0 ${r * 2} 0a${r} ${r} 0 1 0 ${-r * 2} 0z`;
   let s = '', i = 0;
   if (season === 'winter') s += '<defs><radialGradient id="tg-snow"><stop offset="0" stop-color="#ffffff" stop-opacity=".85"/><stop offset=".65" stop-color="#ffffff" stop-opacity=".6"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient></defs>';
-  for (const [cx, cy, r] of GTG_SEASON_AT.patches) {
+  for (const [cx, cy, r] of _gtgSeasonAt().patches) {
     const px = cx * W.cellW, py = W.sky + cy * W.cellH, rx = r * W.cellW, ry = r * W.cellH * 0.8;
     const at = () => { const a = rnd() * 6.283, d = rnd(); return [px + Math.cos(a) * rx * d, py + Math.sin(a) * ry * d]; };
     if (season === 'spring') for (let k = 0; k < 46; k++, i++) { const [x, y] = at(); add(['#fbdce6', '#f4b4c8', '#ffffff'][i % 3], leaf(x, y, 2.6, 1.5)); }
@@ -75,7 +79,8 @@ function _gtgPatchSvg(season, seed) {
 function _gtgFallSvg(season) {
   if (season !== 'spring' && season !== 'autumn') return '';
   const W = GARDEN_WORLD, rnd = gardenRand('tg-fall' + season), cols = season === 'spring' ? ['#fbdce6', '#f4b4c8', '#ffffff'] : ['#d8682a', '#e8a83a', '#c8382a']; let s = '';
-  for (let i = 0; i < 8; i++) { const t = GTG_SEASON_AT.trees[i % GTG_SEASON_AT.trees.length], x = (t[0] + rnd() * 3 - 1.5) * W.cellW, y = W.sky + t[1] * W.cellH - 70 - rnd() * 40; s += `<ellipse class="tg-fall" style="animation-delay:-${(rnd() * 9).toFixed(1)}s" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="3" ry="1.8" fill="${cols[i % 3]}"/>`; }
+  const trees = _gtgSeasonAt().trees; if (!trees.length) return '';
+  for (let i = 0; i < 8; i++) { const t = trees[i % trees.length], x = (t[0] + rnd() * 3 - 1.5) * W.cellW, y = W.sky + t[1] * W.cellH - 70 - rnd() * 40; s += `<ellipse class="tg-fall" style="animation-delay:-${(rnd() * 9).toFixed(1)}s" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="3" ry="1.8" fill="${cols[i % 3]}"/>`; }
   return s;
 }
 function _gtgGround(m) {
@@ -117,7 +122,9 @@ function _gtgLeafSvg(s) {
 }
 function _gtgMoundSvg() { const A = GART; return A.P('#000000', A.ell(0, 1, 26, 5), 0.1) + A.P('#f4fafc', A.ell(0, -5, 26, 10)) + A.P('#ffffff', A.ell(-6, -8, 16, 6)); }
 function _gtgSeasonDraw(m) {
+  const trees = _gtgSeasonAt().trees;
   GTG_SEASON_AT.trees.forEach(([x, y], i) => {
+    if (!trees.length) { gtgSprite('sn-' + i, null); return; }
     const free = !gardenPropAt(Math.floor(x), Math.floor(y)) && !(m.occ && m.occ.has(Math.floor(x) + ',' + Math.floor(y)));
     const svg = !free ? '' : m.season === 'spring' ? _gtgCherrySvg(i) : m.season === 'summer' ? _gtgClumpSvg(i) : m.season === 'autumn' ? _gtgLeafSvg(i) : _gtgMoundSvg();
     gtgSprite('sn-' + i, svg ? { x, y, z: y, hit: 0, svg, cursor: '' } : null);

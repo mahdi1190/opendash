@@ -182,7 +182,9 @@ window.GardenPaintedTerrain = (function () {
         // aerial haze: the farther the range, the paler it is near its foot
         B.f(body, B.lin(0, base - amp, 0, foot, [[0, 'rgba(232,238,240,0)'], [1, kit.rgba('#e6ecee', [.55, .38, .2][layer])]]));
       }
-      B.f(B.rect(xs0, W.sky - 20, xs1 - xs0 + 70, 40), B.lin(0, W.sky - 20, 0, W.sky + 20, [[0, kit.rgba('#e4eaec', 0)], [.6, kit.rgba('#e4eaec', .28)], [1, kit.rgba('#e4eaec', 0)]]));
+      // the near range's foot melts into the fell's own colour, under a low bank of mist, so the backdrop has no ruled line where the walkable fell begins
+      B.f(B.rect(xs0, W.sky - 46, xs1 - xs0 + 70, 52), B.lin(0, W.sky - 46, 0, foot + 2, [[0, kit.rgba(snowRow > 0 ? P.snow : P.fell, 0)], [1, kit.rgba(snowRow > 0 ? P.snow : P.fell, .92)]]));
+      B.f(B.rect(xs0, W.sky - 34, xs1 - xs0 + 70, 70), B.lin(0, W.sky - 34, 0, W.sky + 36, [[0, kit.rgba('#e4eaec', 0)], [.5, kit.rgba('#e4eaec', .42)], [1, kit.rgba('#e4eaec', 0)]]));
     });
     // 5. Snow above the snow line: a white blanket with a ragged edge, blue shade in the south-east falls, rock and heather through it.
     if (snowRow > -5) add(fellBB, 41, (B, r0, cb) => {
@@ -566,7 +568,7 @@ window.GardenPaintedTerrain = (function () {
     for (const op of ops) for (const p of op.pines || []) out.push({ key: sig + '|pine|' + p.seed, box: [-24, -p.h - 14, 44, 8], x: p.x, y: p.y, draw: B => pineArt(B, p.h, P, p.seed, snowy) });
     return out;
   }
-  function build(scene, parent, sc) {
+  function build(scene, parent, sc, objParent) {
     const t0 = performance.now(), kit = KIT(); if (!kit || !wanted()) return null;
     const W = GARDEN_WORLD, L = readLayout(W); if (!L) return null;
     const season = sc.season || 'summer', sig = 'gpt-3|' + season + '|' + (GardenIslandLayout.fingerprint || '');
@@ -576,8 +578,12 @@ window.GardenPaintedTerrain = (function () {
     const box = { x: 0, y: W.sky - 150, w: W.cols * W.cellW, h: Math.min(W.sky + W.rows * W.cellH, rb[3] + 80) - (W.sky - 150) };
     const handle = kit.chunked(scene, parent, ops, { key: sig, box, K, chunk: CHUNK, depth: DEPTH, budgetMB: 40 });
     const keys = []; let spritePx = 0;
-    for (const o of occluders(L, ops, season, sig)) { const im = kit.sprite(scene, parent, o.key, o.box, o.draw, o.x, o.y, o.K); if (im) { sprites.push(im); keys.push(o.key); spritePx += im._gptPx || 0; } }
-    if (parent.sort) parent.sort('depth');
+    // the peaks, tors, rowans and pines stand among the world's objects, sorted by their foot with the player, the
+    // landmarks and the trees (in the root they were drawn over every object: the Horn's foot hid the grotto under it
+    // and anyone standing just in front of it)
+    const standIn = objParent || parent;
+    for (const o of occluders(L, ops, season, sig)) { const im = kit.sprite(scene, standIn, o.key, o.box, o.draw, o.x, o.y, o.K); if (im) { sprites.push(im); keys.push(o.key); spritePx += im._gptPx || 0; } }
+    if (parent.sort) parent.sort('depth'); if (standIn !== parent && standIn.sort) standIn.sort('depth');
     current = { sig, handle, spriteKeys: keys, roomEntrances: L.falls && L.falls.caveStair ? { falls: caveMouthAt(L, L.falls.caveStair) } : {} };
     stats = { sig, chunks: handle.chunks, buildMs: Math.round(performance.now() - t0), sprites: sprites.length, spritePx };
     return { destroy() { handle.destroy(true); for (const s of sprites) s.destroy(); sprites = []; current = current && current.handle === handle ? Object.assign(current, { handle: { destroy() {} }, roomEntrances: null }) : current; } };
