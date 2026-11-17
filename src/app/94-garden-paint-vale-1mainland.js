@@ -15,7 +15,13 @@
     if (!pres || !(pres.edges || []).length) return;
     const gw = W.cols * cw, cp = (x, y) => ({ x: x * cw, y: W.sky + y * ch });
     // the mainland's own outline, in cells: it overlaps the island (the island is cut out), and ends in two headlands
-    const big = [[-60, -70], [120, -70], [112, -40], [100, -22], [92, -10], [84, 1], [60, 6], [20, 8], [6, 12], [3, 34], [4, 56], [2, 66], [-5, 72.5], [-14, 77], [-28, 81], [-46, 83], [-60, 84]].map(p => cp(p[0], p[1]));
+    // the north-east headland's coast is broken into small bays and points (as straight runs it cut the far ranges off
+    // along a ruled diagonal over the sea in the whole-map view)
+    const neRaw = [[120, -70], [112, -40], [100, -22], [92, -10], [84, 1]], ne = [];
+    for (let i = 0; i < neRaw.length - 1; i++) { const [ax, ay] = neRaw[i], [bx, by] = neRaw[i + 1], len = Math.hypot(bx - ax, by - ay), n = Math.max(2, Math.round(len / 1.6)), nx = (by - ay) / len, ny = -(bx - ax) / len;
+      for (let k = 0; k < n; k++) { const t = k / n, x = ax + (bx - ax) * t, y = ay + (by - ay) * t, w = i || k ? (kit.fbm(x / 7, y / 7, 186) - .5) * 9 + (kit.fbm(x / 2.2, y / 2.2, 187) - .5) * 2.4 : 0; ne.push([x + nx * w, y + ny * w]); } }
+    const big = [[-60, -70]].concat(ne, [[84, 1], [60, 6], [20, 8], [6, 12], [3, 34], [4, 56], [2, 66], [-5, 72.5], [-14, 77], [-28, 81], [-46, 83], [-60, 84]]).map(p => cp(p[0], p[1]));
+    const shoreNE = ne.slice(1).concat([[84, 1]]).map(p => cp(p[0], p[1]));
     const bigP = new Path2D(B0(big)), coastP = V.loopPath(L.coast);
     const SEAM = W.sky + 30, FADE = 70;   // the mainland reaches a little over the island's west edge and its sky strip, then fades out, so no edge shows
     const outGrid = new Path2D(); outGrid.rect(-6000, -6000, gw + 12000, 16000); outGrid.rect(FADE, SEAM, gw - FADE, 9000);
@@ -109,6 +115,17 @@
         });
         // the foot of the fells fades into the haze where the island's own fells begin, so there is no line at the grid's edge
         if (cb[2] > 0) B.f(B.rect(Math.max(cb[0], 0), Math.max(cb[1], dy - 80), cb[2] - Math.max(cb[0], 0), top - Math.max(cb[1], dy - 80)), B.lin(0, dy - 80, 0, SEAM, [[0, kit.rgba(P.haze, 0)], [1, kit.rgba(P.haze, .5)]]));
+        // Over the island's own far ranges (94-garden-paint-terrain-1fells.js draws them in the sky strip, nearer than these) only
+        // haze and sky: the near moor and its copses showed through the gaps between those peaks, above them, as if farther off.
+        const fx0 = -80, fx1 = 82.5 * cw + 60, hzTop = -110;
+        if (cb[2] > fx0 - 240 && cb[0] < fx1 + 240 && cb[3] > hzTop) {
+          const veil = B.lin(0, hzTop, 0, -30, [[0, kit.rgba(kit.mix(sky, P.haze, .5), 0)], [1, kit.rgba(kit.mix(sky, P.haze, .5), 1)]]);
+          // full over the island's span, feathered out over 240 px at each end in thin strips (no ruled end in the whole-map view)
+          const FE = 240, NS = 24, low = B.lin(0, -30, 0, SEAM, [[0, kit.mix(sky, P.haze, .5)], [1, kit.mix(sky, P.haze, .75)]]);
+          const band = (x, w, a) => { B.f(B.rect(x, hzTop, w, -30 - hzTop), veil, a); B.f(B.rect(x, -30, w, SEAM + 30), low, a); };
+          band(fx0, fx1 - fx0, 1);
+          for (let k = 0; k < NS; k++) { const a = (k + .5) / (NS + 1), w = FE / NS; band(fx0 - FE + k * w, w + .6, a); band(fx1 + FE - (k + 1) * w - .6, w + .6, a); }
+        }
       }
       // the long road, leaving from the milestone
       if (part !== 3) return;
@@ -128,6 +145,8 @@
       else bandClip.rect(-6000, SEAM, 6000 + band[2], 9000);
       // Keep the western mainland beach; the northern backdrop needs no bright diagonal ribbon.
       main(band, 86 + i, (B) => { B.cx.clip(bandClip); for (const sh of [shoreS]) { V.strokePts(B, sh, P.shallow, 120, .3); V.strokePts(B, sh, P.sand, 60, 1); V.strokePts(B, sh, P.sandWet, 22, .5, 0, 18); B.cx.setLineDash([16, 8]); V.strokePts(B, sh, P.foam, 3, .7, 0, 32); B.cx.setLineDash([]); } });
+      // the north-east headland meets the sea in low dark rock and a broken line of surf, misted like the land behind it
+      if (i) main(band, 88, (B) => { B.cx.clip(bandClip); V.strokePts(B, shoreNE, P.shallow, 90, .28); V.strokePts(B, shoreNE, kit.mix('#6f6a60', P.haze, .35), 18, .9); V.strokePts(B, shoreNE, kit.mix('#9a9284', P.haze, .4), 7, .7, -3); B.cx.setLineDash([10, 14]); V.strokePts(B, shoreNE, P.foam, 3, .55, 9); B.cx.setLineDash([]); });
       for (let part = 0; part < 4; part++) {
         main(band, 90 + i * 10 + part, (B, r, cb) => { B.cx.clip(bandClip); B.cx.clip(bigP); B.cx.clip(outGrid, 'evenodd'); paintLand(B, r, cb, part); });
         // inside the grid's corners, only where the island's coast leaves sea
