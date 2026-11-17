@@ -123,6 +123,8 @@ function _gwBuildSolids(m) {
   // the painted woods' trunks collide where they are drawn (their crowns are for walking behind)
   const trunks = _gwWoodTrunks(m);
   if (trunks) for (const b of trunks.list) add(b.x0, b.y0, b.x1, b.y1);
+  // the old woodland's lamp plinths (94-garden-0island.js): a small block at the foot, the lantern above is walked behind
+  if (typeof gardenIslandOldWoodLamps === 'function') for (const q of gardenIslandOldWoodLamps(island).concat(gardenIslandPosternPiers(island))) add(q.foot.x0, q.foot.y0, q.foot.x1, q.foot.y1);
   return { list, at };
 }
 function _gwWoodTrunks() { return typeof GardenPaintWood !== 'undefined' && GardenPaintWood && GardenPaintWood.trunks ? GardenPaintWood.trunks() : null; }
