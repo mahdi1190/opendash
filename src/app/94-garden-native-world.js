@@ -423,6 +423,13 @@ window.GardenNativeWorld = (function () {
       if (typeof gardenPropsNow === 'function') for (const p of gardenPropsNow()) if (!p.walk && Number.isFinite(p.x)) for (let y = Math.floor(p.y) - 1; y <= p.y + (p.h || 1); y++) for (let x = Math.floor(p.x) - 1; x <= p.x + (p.w || 1); x++) blocked.add(x + ',' + y);   // (a sight placed at run time, such as the shore bench)
       // and the gates stay readable: no village tree in front of an arch or bridge (the canopy rises up the screen over it)
       for (const g of D.gates || []) for (let y = g.y - 2; y <= g.y + 5; y++) for (let x = g.x - 3; x <= g.x + 3; x++) blocked.add(x + ',' + y);
+      // nor on a solid landform: no bank tree grows out of the orchard's terrace wall or the scarp
+      for (const f of D.landforms || []) {
+        if (f.col !== 'full' || !f.polygon || f.polygon.length < 3) continue;
+        const poly = f.polygon.map(([x, y]) => ({ x, y }));
+        let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const [px, py] of f.polygon) { x0 = Math.min(x0, px); y0 = Math.min(y0, py); x1 = Math.max(x1, px); y1 = Math.max(y1, py); }
+        for (let y = Math.floor(y0); y <= y1; y++) for (let x = Math.floor(x0); x <= x1; x++) if ([[.5, .5], [.15, .9], [.85, .9]].some(([dx, dy]) => gardenIslandInPolygon(x + dx, y + dy, poly))) blocked.add(x + ',' + y);
+      }
       // the gates' finds lie in the open, not under a tree (the shears' glint on the reed-bank bench was behind two birches)
       if (typeof GARDEN_GATE_FINDS !== 'undefined' && typeof gardenGateFindPoint === 'function') for (const f of GARDEN_GATE_FINDS) { const q = gardenGateFindPoint(f); if (q) for (let y = Math.floor(q.y) - 3; y <= Math.floor(q.y) + 2; y++) for (let x = Math.floor(q.x) - 2; x <= Math.floor(q.x) + 2; x++) blocked.add(x + ',' + y); }
       // Planting keeps clear of every path, doorway, owned plot and saved

@@ -103,6 +103,13 @@ function _gwBuildSolids(m) {
   // the painted village trees: a trunk box at the foot, like a planted tree (the crowns stay for walking behind)
   const trunks = island && window.GardenNativePainted && GardenNativePainted.trunks ? GardenNativePainted.trunks().list : [];
   for (const t of trunks) add(t.x - t.w / 2, t.y - .3, t.x + t.w / 2, t.y - .02);
+  // Fleet Falls sits in a gap in the scarp. Its painted rock (the cave cheek west of the
+  // water, the step east of it out to the scarp) is solid, so only the cave stair climbs it.
+  const fw = island && island.version >= 5 && typeof gardenFallsWater === 'function' ? gardenFallsWater(island) : null, fl = fw && island.presentation.falls;
+  if (fw && fl.caveStair) {
+    add(fl.caveStair[0] + .62, fw.lip.y + .15, fw.lip.x + .2, fl.caveStair[1] + .85);
+    add(fw.lip.x + 1.6, fw.lip.y + .15, fl.x + fl.w + .75, fl.y + 1.7);
+  }
   return { list, at };
 }
 /** Do feet (half width fx, half depth fy, in cells) at x, y touch one of the boxes? */
