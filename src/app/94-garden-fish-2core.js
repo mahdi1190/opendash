@@ -303,7 +303,9 @@ function _gcBugsBase(mArg) {
   if (!pool.length) return [];
   // flowers bring them, up to what a garden of this level holds: 2 at the start, one more every 5 levels. A bug hotel adds one of its own
   const cap = Math.min(GARDEN_BUGS_MAX, 2 + Math.floor(m.level.level / 5) + Math.min(2, hotels));
-  const n = Math.max(1, Math.min(cap, 1 + Math.floor(blooms.length / 8) + Math.floor(trees.length / 6) + (woods ? 1 : 0) + (m.tod === 'night' ? -1 : 0) + (wet ? -1 : 0)));
+  // one more for each region you have opened: the vale's bugs are spread over all its pages, and with two for the whole vale a player in the village saw none for long stretches
+  const zones = island ? m.areas.filter(a => /^zn-\d+$/.test(a)).length : (woods ? 1 : 0);
+  const n = Math.max(1, Math.min(cap, 1 + Math.floor(blooms.length / 8) + Math.floor(trees.length / 6) + zones + (m.tod === 'night' ? -1 : 0) + (wet ? -1 : 0)));
   const weights = pool.map(b => gardenBugWeight(b, ctx) * (typeof gardenBugHabitat === 'function' ? gardenBugHabitat(b, m) : 1));   // (habitats you built: a kind comes more often, never more bugs)
   rg.even(pool, weights);
   const out = []; let beachUsed = false;
