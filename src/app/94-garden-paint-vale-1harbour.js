@@ -163,18 +163,12 @@
 
     // 6. Things that stand up on the quay, the sand and the water
     const atCell = (x, y) => ({ x: x * cw, y: W.sky + y * ch });
-    const spot = (x, y, want) => { const k = L.kind(x, y); return L.free(x, y) && (!want || want.includes(k)); };
     // bollards along the wall's top, clear of the pier
     for (let x = quay.x - 5.4; x < quay.x + 6; x += 1.45) { if (x > 48.7 && x < 52.4) continue; const p = atCell(x, quay.y + 1.5); thing({ key: 'bollard', box: [-8, -16, 10, 5], x: p.x, y: p.y, draw: drawBollard(P) }); }
-    const put = (cands, want, key, box, draw) => { for (const [x, y] of cands) if (spot(x, y, want)) { const p = atCell(x, y); thing({ key, box, x: p.x, y: p.y, draw }); return true; } return false; };
-    put([[44.3, 76.6], [43.6, 75.4], [57.3, 75.4]], ['path', 'grass', 'beach'], 'crates', [-30, -46, 34, 8], drawCrates(P, 1));
-    put([[57.6, 75.2], [58.3, 76.2], [43.2, 77.6]], ['path', 'grass', 'beach'], 'pots', [-28, -34, 30, 6], drawPots(P));
-    put([[38.6, 80.6], [39.4, 80.2], [37.6, 81.6]], ['beach', 'grass'], 'net', [-42, -60, 44, 8], drawNet(P));
-    put([[38.4, 83.6], [37.4, 84.4], [42.6, 81.2]], ['beach'], 'boat-sand', [-46, -26, 48, 10], drawBoat(P, '#3f6f8a', false));
-    put([[53.2, 76.1], [46.6, 77.9]], ['path', 'beach'], 'crate1', [-16, -24, 18, 6], drawCrates(P, 0));
-    put([[53.4, 78.55], [46.2, 78.6]], ['path', 'beach'], 'bench', [-30, -30, 30, 6], drawBench(P));
-    put([[44.7, 78.7], [56.4, 76.4]], ['path', 'beach', 'grass'], 'anchor', [-22, -44, 22, 6], drawAnchor(P));
-    put([[48.3, 78.6], [52.9, 77.2]], ['path', 'beach'], 'fishbox', [-16, -16, 18, 5], drawFishBox(P));
+    // where each stands is shared with walking (gardenIslandHarbourThings), so the feet meet what is drawn
+    const looks = { crates: [[-30, -46, 34, 8], drawCrates(P, 1)], pots: [[-28, -34, 30, 6], drawPots(P)], net: [[-42, -60, 44, 8], drawNet(P)], 'boat-sand': [[-46, -26, 48, 10], drawBoat(P, '#3f6f8a', false)],
+      crate1: [[-16, -24, 18, 6], drawCrates(P, 0)], bench: [[-30, -30, 30, 6], drawBench(P)], anchor: [[-22, -44, 22, 6], drawAnchor(P)], fishbox: [[-16, -16, 18, 5], drawFishBox(P)] };
+    for (const t of gardenIslandHarbourThings(L.D)) { const look = looks[t.key]; if (!look) continue; const p = atCell(t.x, t.y); thing({ key: t.key, box: look[0], x: p.x, y: p.y, draw: look[1] }); }
     // boats at their moorings and two buoys, out on the bay
     for (const [x, y, col, k] of [[45.6, 83.6, '#a8402e', 'boat-a'], [54.0, 86.2, '#2f6a5a', 'boat-b'], [42.4, 86.8, '#d8c890', 'boat-c']]) { const b = L.base(x, y); if (b && b.ocean) { const p = atCell(x, y); thing({ key: k, box: [-54, -26, 58, 14], x: p.x, y: p.y, draw: drawBoat(P, col, true) }); } }
     for (const [x, y] of [[47.2, 87.4], [56.8, 86.6], [43.4, 84.6]]) { const b = L.base(x, y); if (b && b.ocean) { const p = atCell(x, y); thing({ key: 'buoy', box: [-8, -14, 8, 5], x: p.x, y: p.y, draw: drawBuoy(P) }); } }

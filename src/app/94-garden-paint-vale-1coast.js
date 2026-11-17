@@ -188,3 +188,30 @@
     } },
   });
 })();
+
+/** The harbour's standing clutter (crates, lobster pots, the drying net, a boat on the sand, the quay bench, the anchor):
+ * where each stands, from the layout alone, so the painter (94-garden-paint-vale-1harbour.js) and walking
+ * (_gwBuildSolids) agree. The first candidate spot on the wanted ground, clear of every building, wins.
+ * {key, x, y, foot: [x0, y0, x1, y1]} in cells; foot is the box the feet cannot enter. */
+function gardenIslandHarbourThings(data) {
+  const D = data || (typeof gardenIslandData === 'function' ? gardenIslandData() : null); if (!D || !D.static || D.version < 5) return [];
+  const memo = gardenIslandHarbourThings._m; if (memo && memo.d === D) return memo.out;
+  const taken = new Set(); for (const p of D.static) for (const b of [p, p.apron].filter(Boolean)) for (let y = Math.floor(b.y) - 1; y <= b.y + b.h; y++) for (let x = Math.floor(b.x) - 1; x <= b.x + b.w; x++) taken.add(x + ',' + y);
+  const kind = (x, y) => { const b = gardenIslandBaseCell(x, y); if (!b || !b.land) return 'sea'; if (b.freshwater) return 'water'; if (b.route) return 'path'; if (b.beach) return 'beach'; return 'grass'; };
+  const spot = (x, y, want) => !taken.has(Math.floor(x) + ',' + Math.floor(y)) && want.includes(kind(x, y));
+  // [key, candidates, wanted ground, half width and depth of the foot in px]
+  const rows = [
+    ['crates', [[44.3, 76.6], [43.6, 75.4], [57.3, 75.4]], ['path', 'grass', 'beach'], -28, 34, 12],
+    ['pots', [[57.6, 75.2], [58.3, 76.2], [43.2, 77.6]], ['path', 'grass', 'beach'], -24, 26, 9],
+    ['net', [[38.6, 80.6], [39.4, 80.2], [37.6, 81.6]], ['beach', 'grass'], -36, 36, 5],
+    ['boat-sand', [[38.4, 83.6], [37.4, 84.4], [42.6, 81.2]], ['beach'], -40, 44, 10],
+    ['crate1', [[53.2, 76.1], [46.6, 77.9]], ['path', 'beach'], -10, 10, 8],
+    ['bench', [[53.4, 78.55], [46.2, 78.6]], ['path', 'beach'], -24, 24, 6],
+    ['anchor', [[44.7, 78.7], [56.4, 76.4]], ['path', 'beach', 'grass'], -10, 10, 5],
+    ['fishbox', [[48.3, 78.6], [52.9, 77.2]], ['path', 'beach'], -12, 12, 6],
+  ];
+  const W = GARDEN_WORLD, out = [];
+  for (const [key, cands, want, l, r, d] of rows) { const at = cands.find(([x, y]) => spot(x, y, want)); if (at) out.push({ key, x: at[0], y: at[1], foot: [at[0] + l / W.cellW, at[1] - d / W.cellH, at[0] + r / W.cellW, at[1]] }); }
+  gardenIslandHarbourThings._m = { d: D, out };
+  return out;
+}
