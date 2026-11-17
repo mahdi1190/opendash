@@ -66,6 +66,8 @@ window.GardenPaintWood = (function () {
       p.moveTo(px(pts[0].x), py(pts[0].y)); for (let i = 1; i < pts.length; i++) p.lineTo(px(pts[i].x), py(pts[i].y));
       out.floorClip.routes.push({ path: p, width: gardenIslandRoadStyle(route).main ? 40 : 26 });
     }
+    const wallPolys = (data.landforms || []).filter(f => f.kind === 'terrace-wall' && f.polygon && f.polygon.length > 2).map(f => f.polygon);
+    const onWall = (x, y) => wallPolys.some(p => [[0, 0], [.6, 0], [-.6, 0], [0, .5], [0, -.5]].some(([dx, dy]) => inside(x + dx, y + dy, p)));
     for (const region of data.regions || []) {
       const def = WOODS[region.id]; if (!def) continue;
       const poly = region.polygons[0], season = info.season || 'summer';
@@ -83,6 +85,7 @@ window.GardenPaintWood = (function () {
       for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
         if (!inside(x + .5, y + .5, poly)) continue; const c = cellAt(x, y); if (wet(c)) continue;
         land.push([x, y]);
+        if (onWall(x + .5, y + 1)) continue;   // (a trunk never stands on a dry-stone terrace wall)
         if (c.plantingReserved || isPath(c) || statics.has(x + ',' + y) || (c.row && c.row.plot && !c.locked) || clear(x + .5, y + .5) || byGate(x, y) || byFind(x, y)) continue;
         const grove = noise(x, y, 5, hash(region.id) & 1023), dense = noise(x, y, 2.2, 77), pathNear = near(x, y, 1, isPath), waterNear = near(x, y, 1, wet);
         // groves where the field is high, glades where it is low; a fringe of shrubs at path edges
