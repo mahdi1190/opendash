@@ -896,7 +896,18 @@ function gardenPropAt(x, y) {
   return null;
 }
 /** What a prop does to your feet: 'full', 'soft' or 'none' (see the table). */
-function gardenPropCol(p) { return !p ? 'none' : p.col === 'none' || p.col === 'soft' || p.col === 'full' ? p.col : p.walk ? 'none' : 'full'; }
+function gardenPropCol(p) {
+  // The labyrinth is a spiral worn into level turf. Its reserved placement
+  // stays intact, but that reservation must not become an invisible wall.
+  if (!p || p.art === 'turf' || p.kind === 'ld-turf') return 'none';
+  return p.col === 'none' || p.col === 'soft' || p.col === 'full' ? p.col : p.walk ? 'none' : 'full';
+}
+/** The fixed east-bank mill presents its wheel to the river on its left. */
+function gardenPropMirrorX(p) {
+  if (!p || p.id !== 'ld-mill' || typeof GardenIslandLayout === 'undefined') return false;
+  const data = GardenIslandLayout.data, fixed = data && data.version === 5 && data.static.find(row => row.id === p.id);
+  return !!(fixed && fixed.x === 72 && fixed.y === 63 && p.x === fixed.x && p.y === fixed.y && p.w === fixed.w && p.h === fixed.h);
+}
 /** Walkable prop cell (the pier boards)? */
 /* Cells over water you can stand on with no prop: the island, always; the stones and the moon road while they are open (94-garden-wonder-4isle.js). */
 const _GD_WALK_EXTRA = new Set();

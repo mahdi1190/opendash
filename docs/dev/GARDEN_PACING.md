@@ -96,6 +96,31 @@ same place before and after the barrier correction. A separate mature garden
 naturally stocked Gorge trout and reached a bite at a cast beside the gorge
 stones. No fish landing or multiplayer replay is claimed for this focused pass.
 
+## Map presentation and crossings (2.70.0)
+
+The six small crossings derive their deck endpoints from the authored routes
+and continuous dry banks. Boards, stone slabs, water holes and walking support
+use those same endpoints. Narrow decks supply checked centreline navigation
+anchors so a click across the gorge or estuary follows the visible crossing.
+Millwater retains its existing broad support and lock boundary beneath lower
+masonry, quieter paving and a clearer road across the deck.
+
+Regional meadow and woodland floors use continuous ground with soft shading.
+The orchard mowing is subtle, the harbour road tapers into the quay, and ground
+paint respects continuous shorelines, road shoulders and cultivated soil.
+Freshwater banks stop at the coast and the river-mouth shading fades into the
+sea. Fallback tree foliage follows the season, the fixed east-bank mill faces
+its wheel toward the river, and level turf labyrinth art no longer blocks feet.
+
+Ordinary private play toured all six regions and all seven crossings. The first
+revised build exposed long gorge and estuary detours; after the navigation fix,
+all seven crossings were walked directly between their banks. Keyboard movement
+crossed the previously blocked labyrinth and followed the riverbank without
+entering its water. A lower-level garden still stopped at the visible closed
+Millwater barrier. The canonical map, saved ownership and unlock rules are
+unchanged. This pass does not establish a multiplayer replay or exhaustive
+coverage of every placed object and seasonal state.
+
 ## Optional activities
 
 Discovered landmarks that were packed away by the island layout are available

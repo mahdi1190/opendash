@@ -260,6 +260,25 @@ function _gwPrepareRouteGrid(grid) {
     if (!(grid.shore && near(grid.shore)) && !(grid.otherShapes && _gwOtherShoreCandidates(grid, x + .5, y + .5, .5, .5).some(near))) { if (!grid.liquid) grid[index] = 0; continue; }
     search: for (const dy of offsets) for (const dx of offsets) if (candidate(x + dx, y + dy)) { grid[index] = 0; grid.anchors.set(index, { x: x + dx, y: y + dy }); break search; }
   }
+  if (!grid.liquid && typeof gardenIslandCrossingGeometry === 'function') for (const crossing of gardenIslandCrossingGeometry()) {
+    if (crossing.kind === 'hump-bridge') continue;
+    // A narrow diagonal deck can pass between every coarse offset above, or
+    // share a cell with a disconnected bank. Give each traversed cell a point
+    // on the same centreline as the visible slabs/boards. Splitting at exact
+    // cell boundaries keeps the anchors connected even at a short corner cut.
+    const a = { x: crossing.a.x / W.cellW, y: (crossing.a.y - W.sky) / W.cellH }, b = { x: crossing.b.x / W.cellW, y: (crossing.b.y - W.sky) / W.cellH }, dx = b.x - a.x, dy = b.y - a.y, cuts = [0, 1];
+    for (const [start, end] of [[a.x, b.x], [a.y, b.y]]) {
+      if (Math.abs(end - start) < 1e-10) continue;
+      for (let v = Math.floor(Math.min(start, end)) + 1; v < Math.max(start, end); v++) cuts.push((v - start) / (end - start));
+    }
+    cuts.sort((a, b) => a - b);
+    for (let i = 1; i < cuts.length; i++) {
+      if (cuts[i] - cuts[i - 1] < 1e-8) continue;
+      const t = (cuts[i - 1] + cuts[i]) / 2, x = a.x + dx * t, y = a.y + dy * t, cx = Math.floor(x), cy = Math.floor(y);
+      if (cx < 0 || cy < 0 || cx >= W.cols || cy >= W.rows || !candidate(x, y)) continue;
+      const index = cy * W.cols + cx; grid[index] = 0; grid.anchors.set(index, { x, y });
+    }
+  }
 }
 function _gwCellPoint(cell, grid) { grid = grid || _gwGridNow(); return grid.anchors && grid.anchors.get(cell.y * GARDEN_WORLD.cols + cell.x) || { x: cell.x + .5, y: cell.y + .5 }; }
 /** Neighbour links near banks use the same feet as the eventual walk. */

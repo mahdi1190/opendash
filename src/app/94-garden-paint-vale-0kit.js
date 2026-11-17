@@ -27,7 +27,7 @@ window.GardenPaintVale = (function () {
   const KIT = () => window.GardenPaintTerrainKit;
   const DEPTH = -9346, UNDER = -9592, MAIN_DEPTH = -9268;
   const parts = [];
-  let cur = null, lastError = null, stats = {};
+  let cur = null, heldGround = null, lastError = null, stats = {};
   const memo = new Map();
   const ok = f => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
 
@@ -51,9 +51,10 @@ window.GardenPaintVale = (function () {
   /* ---------- reading the layout ---------- */
   function readLayout(W, data, cellAt) {
     const cw = W.cellW, ch = W.cellH, cpt = (x, y) => ({ x: x * cw, y: W.sky + y * ch }), pt = p => cpt(p[0], p[1]);
+    const L = { cellAt, soil: cultivatedGround(W, cellAt) };
     const pres = data.presentation || {}, base = (x, y) => gardenIslandBaseCell(x, y);
     const coast = ((data.coast && data.coast.land) || []).map(l => l.map(pt));
-    const mat = (x, y) => { const c = cellAt ? cellAt(Math.floor(x), Math.floor(y)) : null; return c ? c.material : ''; };
+    const mat = (x, y) => { const c = L.cellAt ? L.cellAt(Math.floor(x), Math.floor(y)) : null; return c ? c.material : ''; };
     const statics = data.static || [], stat = id => statics.find(s => s.id === id);
     const routes = new Map((data.routes || []).map(r => [r.id, r]));
     const routePts = id => { const r = routes.get(id); return r && r.points && r.points.length > 1 ? gardenIslandRoutePath(r).points.map(p => cpt(p.x, p.y)) : []; };
@@ -68,11 +69,80 @@ window.GardenPaintVale = (function () {
     // the footprints the painters keep clear of (statics with their aprons, one cell round)
     const taken = new Set(); for (const p of statics) for (const b of [p, p.apron].filter(Boolean)) for (let y = Math.floor(b.y) - 1; y <= b.y + b.h; y++) for (let x = Math.floor(b.x) - 1; x <= b.x + b.w; x++) taken.add(x + ',' + y);
     const free = (x, y) => !taken.has(Math.floor(x) + ',' + Math.floor(y));
-    const plot = (x, y) => { const c = cellAt ? cellAt(Math.floor(x), Math.floor(y)) : null; return !!(c && c.row && c.row.plot); };
-    return { W, D: data, pres, cw, ch, cpt, pt, base, coast, mat, kind, stat, routes, routePts, free, plot, cellAt };
+    const plot = (x, y) => { const c = L.cellAt ? L.cellAt(Math.floor(x), Math.floor(y)) : null; return !!(c && c.row && c.row.plot); };
+    return Object.assign(L, { W, D: data, pres, cw, ch, cpt, pt, base, coast, mat, kind, stat, routes, routePts, free, plot });
+  }
+  // Read the already-built cell table once at repaint, never while walking.
+  // Actual soil stays visible through decorative meadow and road overlays.
+  function cultivatedGround(W, cellAt) {
+    if (!cellAt) return { sig: '0', path: null };
+    const kinds = new Set(['bed', 'patch', 'veg', 'rich', 'herb', 'berry']), path = new Path2D(); let hash = 2166136261, count = 0;
+    const bb = [Infinity, Infinity, -Infinity, -Infinity]; path.rect(0, 0, W.cols * W.cellW, W.sky + W.rows * W.cellH);
+    for (let y = 0; y < W.rows; y++) {
+      let start = -1;
+      for (let x = 0; x <= W.cols; x++) {
+        const c = x < W.cols ? cellAt(x, y) : null, soil = !!(c && kinds.has(c.material));
+        if (soil) { if (start < 0) start = x; hash = Math.imul(hash ^ (y * W.cols + x), 16777619); count++; }
+        if (!soil && start >= 0) { const px = start * W.cellW, py = W.sky + y * W.cellH; path.rect(px, py, (x - start) * W.cellW, W.cellH); bb[0] = Math.min(bb[0], px); bb[1] = Math.min(bb[1], py); bb[2] = Math.max(bb[2], x * W.cellW); bb[3] = Math.max(bb[3], py + W.cellH); start = -1; }
+      }
+    }
+    return { sig: count ? count + ':' + (hash >>> 0) : '0', path: count ? path : null, bb };
   }
   const loopPath = (loops) => { const p = new Path2D(); for (const l of loops) { if (!l.length) continue; p.moveTo(l[0].x, l[0].y); for (let i = 1; i < l.length; i++) p.lineTo(l[i].x, l[i].y); p.closePath(); } return p; };
   const strokePts = (B, pts, col, w, op, dx, dy) => { if (pts.length < 2) return; const p = new Path2D(); p.moveTo(pts[0].x + (dx || 0), pts[0].y + (dy || 0)); for (let i = 1; i < pts.length; i++) p.lineTo(pts[i].x + (dx || 0), pts[i].y + (dy || 0)); B.s(p, col, w, op); };
+  // Match the native road outside the village and its narrower painted road
+  // inside. The same ninety-pixel feather makes their shoulders meet gently.
+  function routeRibbon(L, route, edge) {
+    const sampled = gardenIslandRoutePath(route), pts = sampled.points, st = gardenIslandRoadStyle(route), start = L.D.anchors.start, left = [], right = [];
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i], a = pts[i ? i - 1 : sampled.closed ? pts.length - 2 : 0], b = pts[i < pts.length - 1 ? i + 1 : sampled.closed ? 1 : i];
+      const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1, pxLen = Math.hypot(dx * L.cw, dy * L.ch) || 1, q = L.cpt(p.x, p.y);
+      const inset = Math.min((p.x - start.x + 18) * L.cw, (start.x + 19 - p.x) * L.cw, (p.y - start.y + 26) * L.ch, (start.y + 18 - p.y) * L.ch);
+      const fade = Math.max(0, Math.min(1, inset / 90)), t = fade * fade * (3 - 2 * fade), radius = edge ? st.edgeRadius : st.radius, half = (st.main ? 20 : 13) + (edge ? 2.5 : 0);
+      const ox = -dy / len * radius * L.cw * (1 - t) - dy * L.ch / pxLen * half * t, oy = dx / len * radius * L.ch * (1 - t) + dx * L.cw / pxLen * half * t;
+      left.push({ x: q.x + ox, y: q.y + oy }); right.push({ x: q.x - ox, y: q.y - oy });
+    }
+    return left.concat(right.reverse());
+  }
+  function groundClips(L) {
+    if (L.groundClips) return L.groundClips;
+    const W = L.W, kit = KIT(), cuts = [], lanes = [], area = poly => poly.reduce((sum, p, i) => { const q = poly[(i + 1) % poly.length]; return sum + p.x * q.y - q.x * p.y; }, 0);
+    const ring = (p, poly, positive) => p.addPath(loopPath([(area(poly) > 0) === positive ? poly : poly.slice().reverse()]));
+    const outside = (poly, holes) => {
+      const p = new Path2D(); p.rect(-L.cw * 2, -L.ch * 2, (W.cols + 4) * L.cw, W.sky + (W.rows + 4) * L.ch); ring(p, poly, false);
+      // Nonzero winding restores support even where its end extends beyond
+      // this particular water polygon. Separate cuts keep overlapping rivers wet.
+      for (const hole of holes || []) ring(p, hole, true);
+      return { bb: kit.bboxOf(poly, 0), path: p };
+    };
+    const crossings = W.v >= 5 && typeof gardenIslandCrossingGeometry === 'function' ? gardenIslandCrossingGeometry() : [], supports = crossings.map(c => c.support.map(p => L.cpt(p.x, p.y)));
+    for (const f of L.D.freshwater || []) if (f.boundary && f.boundary.length > 2) cuts.push(outside(f.boundary.map(L.pt), supports));
+    for (const c of crossings) cuts.push(outside(c.points.map(p => L.cpt(p.x, p.y)), supports));
+    for (const route of L.routes.values()) if (route.points && route.points.length > 1) lanes.push(outside(routeRibbon(L, route, true)));
+    // Only the visible doorway forecourt stays bare, rather than a rectangular
+    // hole round the building's entire physical reservation.
+    for (const prop of L.D.static || []) {
+      const a = prop.apron; if (!a || !prop.door) continue;
+      const fw = Math.min(2.8, prop.w + .4, a.w - .4), fh = Math.min(1.25, a.h - .2); if (fw <= 0 || fh <= 0) continue;
+      const x = Math.max(a.x + .1, Math.min(a.x + a.w - fw - .1, prop.door.x + .5 - fw / 2)), y = Math.max(a.y + .1, Math.min(a.y + a.h - fh - .1, prop.y + prop.h + .1));
+      const q = L.cpt(x, y), p = new Path2D(); p.rect(-L.cw * 2, -L.ch * 2, (W.cols + 4) * L.cw, W.sky + (W.rows + 4) * L.ch);
+      p.roundRect(q.x, q.y, fw * L.cw, fh * L.ch, 12); lanes.push({ bb: [q.x, q.y, q.x + fw * L.cw, q.y + fh * L.ch], path: p, rule: 'evenodd' });
+    }
+    // The coast painter uses this exact inward offset for the sand/lawn seam.
+    const lawn = L.coast.map(poly => poly.map((p, i) => {
+      const a = poly[(i + poly.length - 1) % poly.length], b = poly[(i + 1) % poly.length], al = Math.hypot(p.x - a.x, p.y - a.y) || 1, bl = Math.hypot(b.x - p.x, b.y - p.y) || 1;
+      const ax = -(p.y - a.y) / al, ay = (p.x - a.x) / al, bx = -(b.y - p.y) / bl, by = (b.x - p.x) / bl, d = (L.D.coast.beachWidthPx || 0) / Math.max(.25, 1 + ax * bx + ay * by);
+      return { x: p.x + (ax + bx) * d, y: p.y + (ay + by) * d };
+    }));
+    return L.groundClips = { coast: loopPath(L.coast), lawn: loopPath(lawn), cuts, lanes };
+  }
+  /** Retained continuous ground limits, applied only while a chunk is baked. */
+  function clipGround(B, L, cb, meadow) {
+    const clips = groundClips(L); B.cx.clip(meadow ? clips.lawn : clips.coast);
+    for (const cut of clips.cuts) if (KIT().meets(cut.bb, cb)) B.cx.clip(cut.path);
+    if (meadow) for (const cut of clips.lanes) if (KIT().meets(cut.bb, cb)) B.cx.clip(cut.path, cut.rule || 'nonzero');
+    if (L.soil.path && KIT().meets(L.soil.bb, cb)) B.cx.clip(L.soil.path, 'evenodd');
+  }
   /** Points along a polyline every step px, with the unit tangent. */
   function walk(pts, step) {
     const out = []; let carry = 0;
@@ -94,16 +164,14 @@ window.GardenPaintVale = (function () {
     for (let i = p.length - 1; i >= 0; i--) { const q = p[i]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
     up.pop(); lo.pop(); return lo.concat(up);
   }
-  /** Grass laid over the plain island ground: one lobe per grass cell (they overlap into a soft edge), then drifts, tufts
-   *  and flowers. test(x, y) says where (cell coords); fade(x, y) is an alpha 0..1 (a feather into the village ground). */
+  /** A continuous meadow wash, then quiet drifts, tufts and flowers. The caller
+   *  clips its region; clipGround keeps the whole wash off roads, water and sand.
+   *  test(x, y) places details; fade(x, y) feathers into the village ground. */
   function lawn(B, r, L, P, cb, test, fade, o) {
     o = o || {}; const W = L.W, cw = L.cw, ch = L.ch;
-    const x0 = Math.floor(cb[0] / cw) - 1, x1 = Math.ceil(cb[2] / cw) + 1, y0 = Math.floor((cb[1] - W.sky) / ch) - 1, y1 = Math.ceil((cb[3] - W.sky) / ch) + 1;
-    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-      if (!test(x, y)) continue; const a = fade ? fade(x + .5, y + .5) : 1; if (a <= 0) continue;
-      const rr = KIT().rng(KIT().hash(x, y, 77)), edge = !test(x - 1, y) || !test(x + 1, y) || !test(x, y - 1) || !test(x, y + 1), k = edge ? .62 : .82;
-      B.f(B.blob(rr, (x + .5) * cw, W.sky + (y + .5) * ch, cw * k, ch * (k + .1), 8, .3), o.base || P.lawn, a);
-    }
+    B.cx.save(); clipGround(B, L, cb, true);
+    if (o.wash) o.wash(B, cb, o.base || P.lawn);
+    else B.f(B.rect(cb[0], cb[1], cb[2] - cb[0], cb[3] - cb[1]), o.base || P.lawn);
     // Keep overlapping meadow drifts subordinate to the seasonal grass detail.
     KIT().tiles(cb, 120, 40, o.salt || 5, (tx, ty, rr) => {
       for (let k = 0; k < 7; k++) {
@@ -118,6 +186,7 @@ window.GardenPaintVale = (function () {
         if (rr() < .25) for (let f = 0; f < 4; f++) B.f(B.circ(x + (rr() - .5) * 12, y - rr() * 4, .9 + rr() * .6), P.flower[Math.floor(rr() * P.flower.length)], .9 * a);
       }
     });
+    B.cx.restore();
   }
   /** Flagstones in courses over a clip (world px box): pale stones with joints, some lit, some worn, moss in a few. */
   function flags(B, r, P, bb, o) {
@@ -155,25 +224,26 @@ window.GardenPaintVale = (function () {
 
   /* ---------- the front door ---------- */
   function paint(scene, root, info, objects) {
-    clear(); if (!wanted() || !info || !info.data || window.__gpvOff) return;
+    if (!wanted() || !info || !info.data || window.__gpvOff) { clear(); return; }
     const t0 = performance.now(), kit = KIT(), W = info.W, season = info.season || 'summer', P = PAL[season] || PAL.summer;
-    const L = readLayout(W, info.data, info.cellAt), sig = 'gpv-1|' + season + '|' + (GardenIslandLayout.fingerprint || '');
+    const L = readLayout(W, info.data, info.cellAt), sig = 'gpv-1|' + season + '|' + (GardenIslandLayout.fingerprint || ''), groundSig = sig + '|g|' + L.soil.sig;
+    clear(groundSig);
     // Only crossing water uses the four water-light palettes. Keep the ground
     // and standing-object caches unchanged when that discrete bucket changes.
     const waterTod = ['dawn', 'dusk', 'night'].includes(info.tod) ? info.tod : 'day', underSig = sig + '|u|' + waterTod + '|';
     // the composition is the same for the same picture: compose once, then a repaint (a gate opening) only places it
     let comp = memo.get(sig);
     if (!comp) {
-      comp = { ground: [], main: [], under: [], things: [] };
+      comp = { L, ground: [], main: [], under: [], things: [] };
       const ctx = { L, P, season, tod: info.tod, kit, W, sig, add: (bb, seed, draw, extra) => comp.ground.push(Object.assign({ bb, seed, draw }, extra || {})), main: (bb, seed, draw) => comp.main.push({ bb, seed, draw }), under: o => comp.under.push(o), thing: o => comp.things.push(o) };
       for (const p of parts) ok(() => p.compose(ctx));
       memo.clear(); memo.set(sig, comp);
-    }
+    } else { comp.L.cellAt = L.cellAt; comp.L.soil = L.soil; }
     const { ground, main, under, things } = comp;
     const worldBox = { x: -1800, y: -1200, w: W.cols * W.cellW + 4800, h: W.sky + W.rows * W.cellH + 2600 };
     const gBox = { x: 0, y: 0, w: W.cols * W.cellW, h: W.sky + W.rows * W.cellH };
     const handles = []; let groundHandle = null;
-    if (ground.length) handles.push(groundHandle = kit.chunked(scene, root, ground, { key: sig + '|g', box: gBox, K: 1.1, chunk: 256, depth: DEPTH, budgetMB: 20, lazy: true, slice: 10 }));
+    if (ground.length) handles.push(groundHandle = kit.chunked(scene, root, ground, { key: groundSig, box: gBox, K: 1.1, chunk: 256, depth: DEPTH, budgetMB: 20, lazy: true, slice: 10 }));
     if (main.length) handles.push(kit.chunked(scene, root, main, { key: sig + '|m', box: worldBox, K: .35, chunk: 512, depth: MAIN_DEPTH, budgetMB: 6, lazy: true, slice: 10 }));
     // Standing things and the crossings' water: a texture already baked is shown at once; a new one waits in a queue
     // that tick() bakes nearest the camera first, a few milliseconds a frame (so a repaint never freezes a frame).
@@ -190,7 +260,7 @@ window.GardenPaintVale = (function () {
     for (const u of under) (scene.textures.exists(underSig + u.key) ? make(u, true) : queue.push([u, true]));
     for (const o of things) (o.make || scene.textures.exists(sig + '|t|' + o.key) ? make(o, false) : queue.push([o, false]));
     if (root.sort) root.sort('depth'); if (objects && objects.sort) objects.sort('depth');
-    cur = { sig, handles, groundHandle, sprites, scene, queue, make, objects, root, tall, W, covering: [] };
+    cur = { sig, groundSig, handles, groundHandle, sprites, scene, queue, make, objects, root, tall, W, covering: [] };
     stats.buildMs = Math.round(performance.now() - t0);
   }
   function tick(time, view) {
@@ -207,11 +277,15 @@ window.GardenPaintVale = (function () {
     for (const c of [cur.objects, cur.root]) if (c && c.sort) c.sort('depth');
     stats.queueWorstMs = Math.max(stats.queueWorstMs || 0, Math.round(performance.now() - t0));
   }
-  function clear() {
-    if (!cur) return;
-    for (const h of cur.handles) ok(() => h.destroy(true));   // textures are kept for the next paint with the same picture
-    for (const s of cur.sprites) ok(() => s.destroy());
-    cur = null;
+  function clear(nextGroundSig) {
+    if (cur) {
+      for (const h of cur.handles) ok(() => h.destroy(true));
+      for (const s of cur.sprites) ok(() => s.destroy());
+      heldGround = { sig: cur.groundSig, handle: cur.groundHandle }; cur = null;
+    }
+    // Nature releases the old scene before calling paint. Retain its handle
+    // until the next signature is known, then discard obsolete soil masks.
+    if (nextGroundSig && heldGround && heldGround.sig !== nextGroundSig) { if (heldGround.handle) ok(() => heldGround.handle.destroy(false)); heldGround = null; }
   }
   function pendingGround() { return cur && cur.groundHandle ? cur.groundHandle.pendingInView() : 0; }
   function status() {
@@ -229,5 +303,5 @@ window.GardenPaintVale = (function () {
   }
   /** Landform kinds painted here (the world skips its own art for them). */
   function owns(kind) { return (kind === 'ruin-wall' || kind === 'ruin') && wanted(); }
-  return { parts, PAL, wanted, paint, tick, clear, pendingGround, playerCanopies: () => cur ? cur.covering : null, status, paintTo, owns, readLayout, loopPath, strokePts, walk, lobe, capsule, hull, lawn, flags, setts, ok, get lastError() { return lastError; } };
+  return { parts, PAL, wanted, paint, tick, clear, pendingGround, playerCanopies: () => cur ? cur.covering : null, status, paintTo, owns, readLayout, loopPath, strokePts, routeRibbon, clipGround, walk, lobe, capsule, hull, lawn, flags, setts, ok, get lastError() { return lastError; } };
 })();

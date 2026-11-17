@@ -121,6 +121,64 @@ function gardenIslandLandContains(x, y) { return Number.isFinite(x) && Number.is
 function gardenIslandOceanContains(x, y) { const W = GARDEN_WORLD; return Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 && x < W.cols && y < W.rows && !gardenIslandLandContains(x, y); }
 function _gardenIslandRect(x, y, r) { return x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h; }
 function _gardenIslandFreshwaterTest(G, cx, cy) { return G.freshwater.some(p => p.boundary ? _gardenIslandInLoop(cx, cy, p.boundary) : _gardenIslandRect(cx, cy, p.wet)); }
+/** Meet the two authored approaches at their banks, including a route junction
+ * at a crossing. This is derived once and is shared by paint and remote feet. */
+function _gardenIslandCrossingRouteSpan(c, water, halfWidth) {
+  const D = gardenIslandData(), W = GARDEN_WORLD, route = (D.routes || []).find(r => r.id === c.along);
+  if (!route || !route.points || route.points.length < 2) return null;
+  let points = gardenIslandRoutePath(route).points.slice();
+  for (const end of [0, 1]) {
+    const joint = end ? points[points.length - 1] : points[0];
+    if (Math.hypot(joint.x - c.x, joint.y - c.y) > 1.5) continue;
+    const near = end ? points[points.length - 2] : points[1], dx = near.x - joint.x, dy = near.y - joint.y;
+    let best = null;
+    for (const other of D.routes || []) {
+      if (other === route || !other.points || other.points.length < 2) continue;
+      const path = gardenIslandRoutePath(other).points;
+      for (const reverse of [false, true]) {
+        const p = reverse ? path[path.length - 1] : path[0], q = reverse ? path[path.length - 2] : path[1];
+        if (Math.hypot(p.x - joint.x, p.y - joint.y) > .02) continue;
+        const dot = (dx * (q.x - p.x) + dy * (q.y - p.y)) / (Math.hypot(dx, dy) * Math.hypot(q.x - p.x, q.y - p.y) || 1);
+        if (!best || dot < best.dot) best = { dot, path: reverse ? path.slice().reverse() : path.slice() };
+      }
+    }
+    if (best) points = end ? points.concat(best.path.slice(1)) : best.path.slice(1).reverse().concat(points);
+  }
+  const cum = [0]; let closest = null;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1], b = points[i], dx = b.x - a.x, dy = b.y - a.y, length = Math.hypot(dx, dy);
+    cum.push(cum[i - 1] + length);
+    const t = Math.max(0, Math.min(1, ((c.x - a.x) * dx + (c.y - a.y) * dy) / (length * length || 1))), d = Math.hypot(a.x + dx * t - c.x, a.y + dy * t - c.y);
+    if (!closest || d < closest.d) closest = { d, s: cum[i - 1] + length * t };
+  }
+  const length = cum[cum.length - 1], at = s => {
+    s = Math.max(0, Math.min(length, s)); let i = 1; while (i < cum.length - 1 && cum[i] < s) i++;
+    const a = points[i - 1], b = points[i], t = (s - cum[i - 1]) / (cum[i] - cum[i - 1] || 1);
+    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+  }, wet = p => _gardenIslandFreshwaterTest(gardenIslandGeometry(), p.x, p.y) || gardenIslandInPolygon(p.x, p.y, water);
+  let centre = null;
+  for (let d = 0; d <= 2.5 && centre === null; d += .1) for (const sign of [-1, 1]) {
+    const s = closest.s + d * sign; if (s >= 0 && s <= length && wet(at(s))) { centre = s; break; }
+  }
+  if (centre === null) return null;
+  const bank = sign => {
+    for (let d = .08; d <= 9; d += .08) {
+      const s = centre + d * sign; if (s < 0 || s > length) return null;
+      if (!wet(at(s))) return Math.max(0, Math.min(length, s + sign * .38));
+    }
+    return null;
+  };
+  let sa = bank(-1), sb = bank(1); if (sa === null || sb === null) return null;
+  // Both corners of each landing must reach dry bank, not just its centre.
+  for (let pass = 0; pass < 18; pass++) {
+    const a = at(sa), b = at(sb), dx = (b.x - a.x) * W.cellW, dy = (b.y - a.y) * W.cellH, n = Math.hypot(dx, dy) || 1;
+    const dry = p => [-1, 0, 1].every(sign => { const corner = { x: p.x - dy / n * halfWidth * sign / W.cellW, y: p.y + dx / n * halfWidth * sign / W.cellH }; return gardenIslandLandContains(corner.x, corner.y) && !wet(corner); });
+    const da = dry(a), db = dry(b);
+    if (da && db) return { a: { x: a.x * W.cellW, y: W.sky + a.y * W.cellH }, b: { x: b.x * W.cellW, y: W.sky + b.y * W.cellH } };
+    if (!da) sa = Math.max(0, sa - .1); if (!db) sb = Math.min(length, sb + .1);
+  }
+  return null;
+}
 /** Retained river water and the precise standing surfaces crossing it. */
 function gardenIslandCrossingGeometry() {
   if (_gardenIslandDerived.crossings) return _gardenIslandDerived.crossings;
@@ -139,10 +197,11 @@ function gardenIslandCrossingGeometry() {
     s0 = Math.max(0, s0 - .7); s1 = Math.min(Ln.len, s1 + .7);
     const hw = river.halfWidth || 1, left = [], right = [];
     for (let s = s0; s <= s1 + 1e-6; s += .2) { const p = at(s), k = hw * (1 + .06 * Math.sin(s * 3.1)); left.push({ x: p.x - p.ty * k, y: p.y + p.tx * k }); right.push({ x: p.x + p.ty * k, y: p.y - p.tx * k }); }
-    const mid = at(n0.s), span = c.kind === 'footbridge' ? hw + .7 : hw + .15;
-    const a = { x: (mid.x - mid.ty * span) * W.cellW, y: W.sky + (mid.y + mid.tx * span) * W.cellH }, b = { x: (mid.x + mid.ty * span) * W.cellW, y: W.sky + (mid.y - mid.tx * span) * W.cellH };
-    const length = Math.hypot(b.x - a.x, b.y - a.y), ux = (b.x - a.x) / length, uy = (b.y - a.y) / length, halfWidth = c.kind === 'footbridge' ? 17 : 14;
-    const deckPoint = (t, s) => ({ x: a.x + (b.x - a.x) * t - uy * s, y: a.y + (b.y - a.y) * t + ux * s - (c.kind === 'footbridge' ? Math.sin(Math.PI * t) * 7 : 0) });
+    const mid = at(n0.s), span = c.kind === 'footbridge' ? hw + .7 : hw + .15, points = left.concat(right.reverse()), halfWidth = c.kind === 'footbridge' ? 17 : 14;
+    const approach = c.kind !== 'hump-bridge' && _gardenIslandCrossingRouteSpan(c, points, halfWidth);
+    const a = approach ? approach.a : { x: (mid.x - mid.ty * span) * W.cellW, y: W.sky + (mid.y + mid.tx * span) * W.cellH }, b = approach ? approach.b : { x: (mid.x + mid.ty * span) * W.cellW, y: W.sky + (mid.y - mid.tx * span) * W.cellH };
+    const length = Math.hypot(b.x - a.x, b.y - a.y), ux = (b.x - a.x) / length, uy = (b.y - a.y) / length;
+    const deckPoint = (t, s) => ({ x: a.x + (b.x - a.x) * t - uy * s, y: a.y + (b.y - a.y) * t + ux * s });
     let support;
     if (c.kind === 'hump-bridge') {
       const gate = (D.gates || []).find(g => g.id === c.gateId), ends = gate && gate.crossSpan;
@@ -150,11 +209,10 @@ function gardenIslandCrossingGeometry() {
       if (!depth) continue;
       support = [{ x: c.x - 74 / W.cellW, y: c.y - depth / W.cellH }, { x: c.x + 74 / W.cellW, y: c.y - depth / W.cellH }, { x: c.x + 74 / W.cellW, y: c.y + depth / W.cellH }, { x: c.x - 74 / W.cellW, y: c.y + depth / W.cellH }];
     } else {
-      const n = c.kind === 'footbridge' ? Math.max(1, Math.ceil(length / 4)) : 1, edge = side => Array.from({ length: n + 1 }, (_, i) => cell(deckPoint(i / n, side * halfWidth)));
-      support = edge(-1).concat(edge(1).reverse());
+      support = [cell(deckPoint(0, -halfWidth)), cell(deckPoint(1, -halfWidth)), cell(deckPoint(1, halfWidth)), cell(deckPoint(0, halfWidth))];
     }
-    const count = Math.max(3, Math.round(length / 26)), points = left.concat(right.reverse());
-    result.push({ id: 'crossing-water:' + c.id, crossing: c, over: c.over, kind: c.kind, points, support, holes: [support], mid, span: { Ln, n0, s0, s1 }, a, b, length, halfWidth, deckPoint, stones: { count, alongRadius: .8 * length / count, acrossRadius: 20 } });
+    const count = Math.max(3, Math.round(length / 21));
+    result.push({ id: 'crossing-water:' + c.id, crossing: c, over: c.over, kind: c.kind, points, support, holes: [support], mid, span: { Ln, n0, s0, s1 }, a, b, length, halfWidth, deckPoint, stones: { count, alongRadius: .5 * length / count, acrossRadius: halfWidth } });
   }
   return _gardenIslandDerived.crossings = result;
 }

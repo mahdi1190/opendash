@@ -26,11 +26,25 @@
     const bay = bayCoast(L);
     const smooth = (a, b, t) => Math.max(0, Math.min(1, (t - a) / (b - a)));
     // the village ground ends at its box (start + 17 rows, x within start +/- 18): feather into it
-    const st = L.D.anchors.start, vx0 = st.x - 18, vx1 = st.x + 19, vy1 = st.y + 18;
-    const fade = (x, y) => smooth(vy1 - 2.6, vy1 - .2, y) * Math.min(smooth(QUAY.x0 + .5, QUAY.x0 + 2.5, x), 1 - smooth(QUAY.x1 - 3, QUAY.x1 - .5, x)) * (x < vx0 || x > vx1 ? 1 : 1);
+    const st = L.D.anchors.start, vy1 = st.y + 18;
+    const fade = (x, y) => smooth(vy1 - 2.6, vy1 - .2, y) * Math.min(smooth(QUAY.x0 + .5, QUAY.x0 + 2.5, x), 1 - smooth(QUAY.x1 - 3, QUAY.x1 - .5, x));
+    let washCanvas = null;
+    const wash = (B, cb, color) => {
+      // Reuse one small scratch canvas to multiply the two smooth feathers.
+      // The result is baked into the existing chunk, without strip boundaries.
+      if (!washCanvas) washCanvas = document.createElement('canvas');
+      const x = Math.floor(cb[0]), y = Math.floor(cb[1]), w = Math.ceil(cb[2]) - x, h = Math.ceil(cb[3]) - y;
+      if (washCanvas.width !== w || washCanvas.height !== h) { washCanvas.width = w; washCanvas.height = h; }
+      const cx = washCanvas.getContext('2d'); cx.setTransform(1, 0, 0, 1, 0, 0); cx.clearRect(0, 0, w, h); cx.setTransform(1, 0, 0, 1, -x, -y); cx.globalCompositeOperation = 'source-over';
+      const vertical = cx.createLinearGradient(0, W.sky + (vy1 - 2.6) * ch, 0, W.sky + (vy1 - .2) * ch); vertical.addColorStop(0, kit.rgba(color, 0)); vertical.addColorStop(1, color); cx.fillStyle = vertical; cx.fillRect(x, y, w, h);
+      const horizontal = cx.createLinearGradient(box[0], 0, box[2], 0);
+      for (const [at, alpha] of [[QUAY.x0, 0], [QUAY.x0 + .5, 0], [QUAY.x0 + 2.5, 1], [QUAY.x1 - 3, 1], [QUAY.x1 - .5, 0], [QUAY.x1, 0]]) horizontal.addColorStop((at - QUAY.x0) / (QUAY.x1 - QUAY.x0), 'rgba(0,0,0,' + alpha + ')');
+      cx.globalCompositeOperation = 'destination-in'; cx.fillStyle = horizontal; cx.fillRect(x, y, w, h); cx.globalCompositeOperation = 'source-over';
+      B.cx.drawImage(washCanvas, x, y, w, h);
+    };
 
     // 1. Grass over the plain ground between the village and the beach
-    add(box, 31, (B, r, cb) => { B.cx.clip(coastP); V.lawn(B, r, L, P, cb, (x, y) => y >= QUAY.y0 && L.kind(x + .5, y + .5) === 'grass', fade, { salt: 31 }); });
+    add(box, 31, (B, r, cb) => { B.cx.clip(coastP); V.lawn(B, r, L, P, cb, (x, y) => y >= QUAY.y0 && L.kind(x + .5, y + .5) === 'grass', fade, { salt: 31, wash }); });
 
     // 2. The bay: shallows and lace of foam outside the coast, wet sand, a wrack line and shells inside it
     if (bay.length > 2) {
@@ -53,20 +67,20 @@
       });
     }
 
-    // 3. Paths: the promenade's last stretch, the strand and the lighthouse walk, as worn flags and sandy tracks
-    const promenade = L.routePts('harbour-walk').filter(p => (p.y - W.sky) / ch > vy1 - 4);
-    if (promenade.length > 1) add(kit.bboxOf(promenade, 80), 34, (B, r) => {
-      V.strokePts(B, promenade, 'rgba(46,52,30,.22)', 112, 1, 2, 4); V.strokePts(B, promenade, P.kerb, 108, 1);
-      const p = new Path2D(); p.moveTo(promenade[0].x, promenade[0].y); for (const q of promenade) p.lineTo(q.x, q.y); B.cx.save(); B.cx.lineWidth = 100; B.cx.lineCap = 'butt';
-      // clip to the stroke: draw flags into a band (the stroke's own outline)
-      const band = new Path2D(); const N = kit.normals(promenade); band.moveTo(promenade[0].x + N[0].x * 50, promenade[0].y + N[0].y * 50); for (let i = 1; i < promenade.length; i++) band.lineTo(promenade[i].x + N[i].x * 50, promenade[i].y + N[i].y * 50); for (let i = promenade.length - 1; i >= 0; i--) band.lineTo(promenade[i].x - N[i].x * 50, promenade[i].y - N[i].y * 50); band.closePath();
-      B.cx.clip(band); const bb = kit.bboxOf(promenade, 60); V.flags(B, r, P, bb, { row: 13, w: 24, salt: 34, moss: .05 });
-      // the feather: the village's own promenade above, so this one fades in over it
-      B.cx.restore();
-    }, { });
+    // 3. One promenade from the village to the quay. Its shoulders gradually
+    // widen with the native road, rather than jumping to a hundred-pixel band.
+    const promenade = L.routePts('harbour-walk'), promenadeRoute = L.routes.get('harbour-walk');
+    if (promenade.length > 1) {
+      const band = V.loopPath([V.routeRibbon(L, promenadeRoute, false)]), kerb = V.loopPath([V.routeRibbon(L, promenadeRoute, true)]), bb = kit.bboxOf(promenade, 80);
+      add(bb, 34, (B, r, cb) => {
+        V.clipGround(B, L, cb); B.f(kerb, P.kerb); B.s(kerb, 'rgba(46,52,30,.18)', 2);
+        B.cx.save(); B.cx.clip(band); V.flags(B, r, P, [bb[0], Math.max(bb[1], cb[1] - 13), bb[2], Math.min(bb[3], cb[3] + 13)], { row: 13, w: 24, salt: 34, moss: .05 }); B.cx.restore();
+      });
+    }
     for (const id of ['strand', 'lighthouse-walk', 'coast-walk']) {
       const pts = L.routePts(id); if (pts.length < 2) continue;
-      add(kit.bboxOf(pts, 40), 35 + id.length, (B, r) => {
+      add(kit.bboxOf(pts, 40), 35 + id.length, (B, r, cb) => {
+        V.clipGround(B, L, cb);
         V.strokePts(B, pts, P.pathEdge, 30, .55); V.strokePts(B, pts, P.path, 24, .9); V.strokePts(B, pts, P.pathWear, 9, .6);
         for (const q of V.walk(pts, 7)) { if (r() < .4) continue; const s = (r() < .5 ? -1 : 1) * (8 + r() * 6); B.f(B.ell(q.x - q.ty * s, q.y + q.tx * s, 1.4 + r() * 1.6, 1 + r()), r() < .5 ? P.pathEdge : P.sandDk, .7); }
       });
