@@ -149,7 +149,7 @@ function gardenLandMachineLoad(id) {
   if (info.state !== 'empty') return _gdNo('It is busy');
   if (info.haveN < f.n) return _gdNo(`It needs ${f.n} ${f.input === 'fruit' ? 'pieces of fruit' : 'bunches of herbs'}: you have ${info.haveN}`);
   let need = f.n, pay = 0; const i = {};
-  for (const [k, n] of info.have) { const take = Math.min(need, Math.floor(n)); if (take <= 0) continue; i[k] = -take; pay += take * gardenPlant(k.slice(5)).yield.sell; need -= take; if (!need) break; }
+  for (const [k, n] of info.have) { const take = Math.min(need, Math.floor(n)); if (take <= 0) continue; i[k] = -take; pay += take * gardenCropSellEach(gardenPlant(k.slice(5))); need -= take; if (!need) break; }
   pay = Math.ceil(pay * f.mult);
   if (typeof gardenLiveFx === 'function' && f.x != null) gardenLiveFx('use', 'machine', { x: f.x, y: f.y });
   return _gldPay(f.name.toLowerCase(), `${f.name}: on the go, ${pay} coins when it is done`, { i }, [['ldm.' + id, { at: Math.floor(m.now), pay }]], f.icon);
@@ -183,7 +183,7 @@ function gardenLandSwap() {
 function gardenLandHelpInfo(m) {
   const wk = _gdWeekFrom(m.today), pool = GARDEN_PLANTS.filter(p => p.yield && p.price > 0 && !p.unlock && (p.lv || 1) <= m.level.level && ['veg', 'fruit', 'herb', 'flower'].includes(p.cat));
   const p = pool[gardenHash('ld-help|' + wk) % pool.length], n = 4 + gardenHash('ld-help-n|' + wk) % 4;
-  const pay = Math.ceil(p.yield.sell * n * 2.5) + 10;
+  const pay = Math.ceil(gardenCropSellEach(p) * n * 2.5) + 10;
   return { plant: p, n, pay, wk, done: _gdG().seen[_gldKey('lf-help')] === wk, have: Math.floor(m.wallet.items['crop:' + p.id] || 0) };
 }
 function gardenLandHelp() {
