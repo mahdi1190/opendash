@@ -31,22 +31,42 @@ window.GardenNativeScenery = (function () {
     };
     let geometry = '', b, canopyOcclusion = null;
     if (kind === 'tree') {
-      const h = spec.height || 178, rx = spec.width || 81, seed = spec.seed || 0, cy = y - h * .68;
-      const crowns = [], crown = (cx, yy, w, tall, phase) => {
+      const h = spec.height || 178, rx = spec.width || 81, seed = spec.seed || 0, cy = y - h * .60, crownH = Math.min(h * .25, rx * 1.05), lean = (seed % 11 - 5) * .7;
+      const crowns = [], crown = (cx, yy, w, tall, phase, occludes = true) => {
         let d = ''; const points = [];
-        for (let i = 0; i < 40; i++) { const a = i * Math.PI / 20, r = 1 + Math.sin(a * 5 + phase) * .075 + Math.cos(a * 8 - phase) * .045, px = cx + Math.cos(a) * w * r + Math.sin(a) * w * .08, py = yy + Math.sin(a) * tall * r; points.push({ x: px, y: py }); d += (i ? 'L' : 'M') + n(px) + ' ' + n(py); }
-        crowns.push(points);
+        for (let i = 0; i < 40; i++) { const a = i * Math.PI / 20, r = 1 + Math.sin(a * 5 + phase) * .13 + Math.cos(a * 8 - phase) * .055, px = cx + Math.cos(a) * w * r + Math.sin(a) * w * .05, py = yy + Math.sin(a) * tall * r; points.push({ x: px, y: py }); d += (i ? 'L' : 'M') + n(px) + ' ' + n(py); }
+        if (occludes) crowns.push(points);
         return d + 'Z';
       };
       geometry = ellipse(4, 3, rx * .53, 10, '#315740', .13)
-        + path(`M-9 0Q-4 ${n(-h * .3)} -8 ${n(-h * .6)}L4 ${n(-h * .66)}Q1 ${n(-h * .28)} 8 0Z`, '#7b7552', '#62704e', 1.1)
-        + path(`M-2 ${n(-h * .28)}L-26 ${n(-h * .56)}M-1 ${n(-h * .4)}L22 ${n(-h * .65)}`, 'none', '#7b7552', 4)
-        + path(`M-4 -4Q-1 ${n(-h * .25)} -3 ${n(-h * .47)}`, 'none', '#b3a27b', 1.5);
-      const color = spec.season === 'autumn' && seed % 5 === 0 ? '#a68d50' : spec.season === 'winter' ? '#759b82' : seed % 3 ? '#547b50' : '#678858';
-      const canopy = addMoving(path(crown(x, cy, rx, h * .36, seed), color, '#456449', 1.2)
-        + path(crown(x - rx * .21, cy - h * .11, rx * .68, h * .23, seed + 2), spec.season === 'autumn' && seed % 5 === 0 ? '#bda967' : '#92ab70')
-        + path(crown(x + rx * .28, cy + h * .13, rx * .52, h * .19, seed + 4), '#3c654b')
-        + path(crown(x + rx * .26, cy + h * .08, rx * .47, h * .16, seed + 4), color), 0, 0,
+        + path(`M-9 0Q${n(lean - 4)} ${n(-h * .24)} ${n(lean - 5)} ${n(-h * .55)}L${n(lean + 3)} ${n(-h * .69)}Q${n(lean + 4)} ${n(-h * .25)} 8 0Z`, '#77583d')
+        + path(`M${n(lean)} ${n(-h * .34)}Q${n(-rx * .18)} ${n(-h * .46)} ${n(-rx * .62)} ${n(-h * .61)}M${n(lean)} ${n(-h * .43)}Q${n(rx * .22)} ${n(-h * .53)} ${n(rx * .55)} ${n(-h * .69)}M${n(-rx * .30)} ${n(-h * .51)}L${n(-rx * .46)} ${n(-h * .68)}`, 'none', '#77583d', 4.5)
+        + path(`M-4 -4Q${n(lean - 2)} ${n(-h * .25)} ${n(lean - 2)} ${n(-h * .50)}M${n(lean - 1)} ${n(-h * .37)}L${n(-rx * .53)} ${n(-h * .60)}`, 'none', '#b08b5e', 1.5);
+      // These retained trees fill the gaps between painted regions. Give
+      // them the same grouped foliage and seasonal light as their neighbours,
+      // rather than a green oval with three larger ovals laid over it.
+      const tones = spec.season === 'autumn'
+        ? (seed % 3 === 0 ? ['#715034', '#ac7136', '#ca9247', '#e1b86c'] : ['#78452d', '#b76430', '#d1843b', '#e7ad60'])
+        : spec.season === 'winter' ? ['#647568', '#899b86', '#a5b49a', '#d1d7bf']
+        : spec.season === 'spring' ? ['#426b3a', '#648b46', '#8aab5a', '#b2c77b']
+        : ['#355c36', '#507c40', '#75994d', '#9eb56a'];
+      // Keep the crown's depth in proportion to its width. The authored
+      // narrow mountain stands otherwise turn any round lobe into a flame.
+      const masses = [[-.67, .09, .36, .48], [.53, .20, .39, .46], [-.41, -.49, .37, .50], [.31, -.55, .40, .46], [-.30, .57, .39, .39], [.33, .62, .38, .39], [-.02, -.06, .43, .48]];
+      const flip = seed % 2 ? -1 : 1;
+      let foliage = '', faces = '', tips = '';
+      for (let i = 0; i < masses.length; i++) {
+        const [dx, dy, w, tall] = masses[i], px = x + dx * rx * flip, py = cy + dy * crownH + Math.sin(seed + i * 2.1) * crownH * .07, phase = seed + i * 1.7;
+        foliage += path(crown(px, py, rx * w, crownH * tall, phase), tones[0]);
+        faces += path(crown(px - rx * w * .12, py - crownH * tall * .15, rx * w * .88, crownH * tall * .79, phase + .8, false), tones[i === 4 || i === 5 ? 1 : 2]);
+        // Small patches of leaves interrupt each mass. No single highlight
+        // covers the centre and hides the shape of all the other branches.
+        for (let j = 0; j < 4; j++) {
+          const a = j * 2.1 + i * .7, tx = px - rx * w * .12 + Math.cos(a) * rx * w * .48, ty = py - crownH * tall * .20 + Math.sin(a) * crownH * tall * .35;
+          tips += path(crown(tx, ty, rx * w * (.20 + j % 2 * .055), crownH * tall * .24, phase + j, false), tones[j === 0 && i < 4 ? 3 : j % 2 ? 1 : 2]);
+        }
+      }
+      const canopy = addMoving(foliage + faces + tips, 0, 0,
       (node, t, env) => { const turn = Math.sin(t * .62 + seed) * (.18 + Math.min(.36, Math.abs(env.windX || 0) * .08)); node.setAttribute('transform', `translate(${n(x)} ${n(y)}) rotate(${n(turn)}) translate(${n(-x)} ${n(-y)})`); });
       b = { x: x - rx * 1.2, y: y - h * 1.1, width: rx * 2.4, height: h * 1.1 + 14 }; canopy.nativeBounds = { ...b };
       canopyOcclusion = { node: canopy, polygons: crowns };
@@ -159,6 +179,10 @@ window.GardenNativeScenery = (function () {
       for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5; geometry += path(`M53 -32L${n(53 + Math.cos(a) * 30)} ${n(-32 + Math.sin(a) * 30)}`, 'none', '#b39768', 3); }
       geometry += ellipse(53, -32, 7, 7, woodDark) + ellipse(52, -33, 3, 3, '#c7b083');
       b = { x: x - 88, y: y - 143, width: 181, height: 159 };
+      if (spec.mirrorX) {
+        geometry = '<g transform="scale(-1 1)">' + geometry + '</g>';
+        b.x = 2 * x - b.x - b.width;
+      }
     } else if (kind === 'gate' && spec.major === false && spec.gate && spec.gate.crossSpan) {
       const frame = _gldIslandGateFrame(spec.gate), leaf = _gldIslandGateLeaf(frame.span, spec), px = frame.span * frame.ux, py = frame.span * frame.uy;
       geometry = _gldIslandGateBody(frame, spec);

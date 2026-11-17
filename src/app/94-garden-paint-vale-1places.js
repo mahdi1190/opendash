@@ -69,7 +69,7 @@
         B.cx.restore();
       } });
       if (c.kind === 'hump-bridge') continue;
-      // the crossing itself, square to the river at its middle
+      // The shared deck meets the actual path on both dry banks.
       const nx = -mid.ty, ny = mid.tx, span = c.kind === 'footbridge' ? hw + .7 : hw + .15;
       const A = deck ? deck.a : { x: (mid.x + nx * span) * cw, y: W.sky + (mid.y + ny * span) * ch }, Bp = deck ? deck.b : { x: (mid.x - nx * span) * cw, y: W.sky + (mid.y - ny * span) * ch };
       const box = [Math.min(A.x, Bp.x) - 40, Math.min(A.y, Bp.y) - 40, Math.max(A.x, Bp.x) + 40, Math.max(A.y, Bp.y) + 40];
@@ -80,30 +80,43 @@
   function footbridge(B, r, P, A, Bp, deck) {
     const L = Math.hypot(Bp.x - A.x, Bp.y - A.y), ux = (Bp.x - A.x) / L, uy = (Bp.y - A.y) / L, vx = -uy, vy = ux, hw = deck ? deck.halfWidth : 17;
     const ground = (t, s) => ({ x: A.x + ux * t + vx * s, y: A.y + uy * t + vy * s });
-    const q = (t, s, lift = 0) => { const p = deck ? deck.deckPoint(t / L, s) : ground(t, s); return { x: p.x, y: p.y - (deck ? 0 : Math.sin(Math.PI * t / L) * 7) - lift }; };
+    const q = (t, s, lift = 0) => { const p = deck ? deck.deckPoint(t / L, s) : ground(t, s); return { x: p.x, y: p.y - lift }; };
     B.cx.filter = 'blur(3px)'; B.f(B.poly([ground(8, -hw + 4), ground(L - 8, -hw + 4), ground(L - 8, hw + 10), ground(8, hw + 10)]), '#1e2e34', .3); B.cx.filter = 'none';
-    // Both ends of every board follow the same arch as its physical support.
-    for (const s of [-hw + 2, hw - 2]) { const pts = []; for (let t = 0; t < L; t += 4) pts.push(q(t, s, -3)); pts.push(q(L, s, -3)); V.strokePts(B, pts, P.woodDk, 5, .9); }
-    for (let t = 0; t < L; t += 6.4) { const end = Math.min(L, t + 5.4), hi = Math.min(end, t + 1.6), tone = r(); B.f(B.poly([q(t, -hw), q(end, -hw), q(end, hw), q(t, hw)]), tone < .2 ? P.woodHi : tone < .8 ? P.wood : P.woodLo).f(B.poly([q(t, -hw), q(hi, -hw), q(hi, hw), q(t, hw)]), P.woodHi, .5); }
-    // Raised handrails stay attached to that same deck plane.
-    for (const [s, col] of [[-hw, P.woodLo], [hw, P.wood]]) {
-      const rail = []; for (let t = 0; t < L; t += 4) rail.push(q(t, s, 13)); rail.push(q(L, s, 13)); V.strokePts(B, rail, col, 2.6, .95); V.strokePts(B, rail, P.woodHi, 1, .5, 0, -.8);
-      for (let t = 2; t <= L - 1; t += (L - 4) / 3) { const a = q(t, s), b = q(t, s, 14); B.s(`M${a.x} ${a.y}L${b.x} ${b.y}`, P.woodDk, 3, .95); }
+    // Flush stone abutments finish in the bank, rather than a dirt blot over
+    // the boards. The continuous bed and every plank stay inside support.
+    B.f(B.poly([q(0, -hw), q(L, -hw), q(L, hw), q(0, hw)]), P.woodDk);
+    const cap = Math.min(10, L * .12);
+    for (const t of [0, L - cap]) {
+      B.f(B.poly([q(t, -hw), q(t + cap, -hw), q(t + cap, hw), q(t, hw)]), '#a69d84');
+      V.strokePts(B, [q(t + 1.5, -hw + 1), q(t + 1.5, hw - 1)], '#d7ccb0', 1.6, .7);
+      for (const s of [-hw / 3, hw / 3]) V.strokePts(B, [q(t + 1, s), q(t + cap - 1, s)], '#766d58', .8, .65);
     }
-    for (const t of [0, L]) B.f(B.blob(r, ground(t, 0).x, ground(t, 0).y + 4, 22, 8, 7, .4), '#9c8a66', .55);
+    for (const s of [-hw + 2, hw - 2]) V.strokePts(B, [q(cap, s, -2), q(L - cap, s, -2)], P.woodDk, 4, .9);
+    for (let t = cap; t < L - cap; t += 6.4) {
+      const end = Math.min(L - cap, t + 5.8), hi = Math.min(end, t + 1.2), tone = r();
+      B.f(B.poly([q(t, -hw), q(end, -hw), q(end, hw), q(t, hw)]), tone < .16 ? P.woodHi : tone < .82 ? P.wood : P.woodLo).f(B.poly([q(t, -hw), q(hi, -hw), q(hi, hw), q(t, hw)]), P.woodHi, .4);
+      for (const s of [-hw + 4, hw - 4]) { const p = q(t + 3, s); B.f(B.circ(p.x, p.y, .6), P.woodDk, .8); }
+    }
+    // The rail carries the gentle arch; feet remain on the visible flat deck.
+    for (const [s, col] of [[-hw, P.woodLo], [hw, P.wood]]) {
+      const lift = t => 13 + Math.sin(Math.PI * (t - cap / 2) / (L - cap)) * 4;
+      const rail = []; for (let t = cap / 2; t < L - cap / 2; t += 4) rail.push(q(t, s, lift(t))); rail.push(q(L - cap / 2, s, 13)); V.strokePts(B, rail, col, 2.6, .95); V.strokePts(B, rail, P.woodHi, 1, .5, 0, -.8);
+      for (let i = 0; i <= 3; i++) { const t = cap / 2 + (L - cap) * i / 3, a = q(t, s), b = q(t, s, lift(t) + 1); B.s(`M${a.x} ${a.y}L${b.x} ${b.y}`, P.woodDk, 3, .95); }
+    }
   }
   function stones(B, r, P, A, Bp, season, deck) {
     if (deck && deck.stones) {
-      // Connected low stone faces make the narrow supported ford visible.
-      // Their overlap covers the support even halfway between stone centres.
-      const { count, alongRadius, acrossRadius } = deck.stones, angle = Math.atan2(Bp.y - A.y, Bp.x - A.x);
+      // Close-set low slabs expose the exact ford. The old oversized ellipses
+      // hung beyond its edges and left invisible support between the stones.
+      const { count, acrossRadius: hw } = deck.stones, q = (t, s) => deck.deckPoint(t, s), step = 1 / count;
+      B.f(B.poly([q(0, -hw), q(1, -hw), q(1, hw), q(0, hw)]), '#817c6b');
       for (let i = 0; i < count; i++) {
-        const p = deck.deckPoint((i + .5) / count, 0); B.cx.save(); B.cx.translate(p.x, p.y); B.cx.rotate(angle);
-        B.f(B.ell(0, 2, alongRadius, acrossRadius), '#4e4a40').f(B.ell(0, 0, alongRadius, acrossRadius), '#9a9484');
-        B.cx.clip(new Path2D(B.ell(0, 0, alongRadius, acrossRadius)));
-        B.f(B.blob(r, -alongRadius * .2, -acrossRadius * .25, alongRadius * .62, acrossRadius * .5, 7, .3), '#c8c2b0', .9);
-        if (r() < .5) B.f(B.blob(r, alongRadius * .2, acrossRadius * .1, alongRadius * .35, acrossRadius * .2, 6, .5), season === 'winter' ? '#e8ecef' : '#6f8446', .8);
-        B.cx.restore();
+        const lo = i * step + (i ? .35 / deck.length : 0), hi = (i + 1) * step - (i < count - 1 ? .35 / deck.length : 0), chip = 1.4 / deck.length, tone = r();
+        const face = B.poly([q(lo + chip, -hw), q(hi - chip, -hw), q(hi, -hw + 1.4), q(hi, hw - 1.4), q(hi - chip, hw), q(lo + chip, hw), q(lo, hw - 1.4), q(lo, -hw + 1.4)]);
+        B.f(face, tone < .3 ? '#aaa38f' : tone < .75 ? '#b8b09a' : '#c2b9a2');
+        V.strokePts(B, [q(lo + chip, -hw + 1.5), q(hi - chip, -hw + 1.5)], '#e1d6ba', 1.3, .72);
+        V.strokePts(B, [q(lo + chip, hw - 1.2), q(hi - chip, hw - 1.2)], '#676858', 1.8, .7);
+        if (tone < .34) { const p = q((lo + hi) / 2, hw * .62); B.f(B.ell(p.x, p.y, 3, 1.2), season === 'winter' ? '#e8ecef' : '#7d8b54', .62); }
       }
       return;
     }

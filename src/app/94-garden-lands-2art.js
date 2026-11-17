@@ -560,7 +560,8 @@ function _gldDraw(kind, p, sc, o) {
   const fn = _GLD_PROP_ART[kind]; if (!fn) return '';
   const W = GARDEN_WORLD, cx = (p.x + p.w / 2) * W.cellW, by = W.sky + (p.y + p.h) * W.cellH - 3;
   const sh = `<ellipse cx="${_gwN(cx + 2)}" cy="${_gwN(by + 1)}" rx="${_gwN(p.w * W.cellW / 2 + 2)}" ry="4" fill="#1a2a14" fill-opacity="0.2"/>`;
-  return sh + _gwInked(cx, by, fn(sc, o));
+  const art = fn(sc, o);
+  return sh + _gwInked(cx, by, gardenPropMirrorX(p) ? '<g transform="scale(-1 1)">' + art + '</g>' : art);
 }
 /* Large regions share their exact authored coast contours with access. These
  * detached rows are reused by native retained art, Classic and photographs. */

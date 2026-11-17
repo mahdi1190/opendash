@@ -869,7 +869,7 @@ window.GardenNativeWorld = (function () {
       const gate = kind === 'gate' && typeof gardenZoneGate === 'function' ? gardenZoneGate(prop.id) : null, zone = gate && gardenZone(gate.n);
       const open = gate ? (sc.areas || []).includes(zone.id) : !String(gardenAreaAt(prop.x, prop.y, model.level.level)).startsWith('locked:');
       const major = !gate, foot = gateCrossingFoot(gate);
-      const handle = GardenNativeScenery.create(scene, { id: prop.id, kind, x: foot ? foot.x : (prop.x + prop.w / 2) * W.cellW, y: foot ? foot.y : W.sky + (prop.y + prop.h) * W.cellH - 4, width: gate ? gate.h > 1 ? 74 : 57 : prop.w * W.cellW, name: zone ? zone.name : prop.name, level: zone && zone.lv, showRequirement: false, open, major, gate, season: sc.season });
+      const handle = GardenNativeScenery.create(scene, { id: prop.id, kind, x: foot ? foot.x : (prop.x + prop.w / 2) * W.cellW, y: foot ? foot.y : W.sky + (prop.y + prop.h) * W.cellH - 4, width: gate ? gate.h > 1 ? 74 : 57 : prop.w * W.cellW, name: zone ? zone.name : prop.name, level: zone && zone.lv, showRequirement: false, open, major, gate, mirrorX: gardenPropMirrorX(prop), season: sc.season });
       if (handle && foot) handle.foot = foot;
       if (handle && ambientPause) handle.pauseAmbient(ambientPause); return handle;
     }
@@ -1053,7 +1053,7 @@ window.GardenNativeWorld = (function () {
         }
         const windowed = prop && ['shop', 'tackle', 'lf-office'].includes(prop.kind);
         const paneMaterialKey = prop && ['windmill', 'shepherd', 'mill'].includes(sceneryKind(prop)) ? '|panes:' + (nightMaterials ? 'warm' : 'day') : '';
-        const signature = prop && 'native-landscape-crafted-9' + (packOn() ? '-painted' : '') + '|' + prop.id + '|' + [prop.x, prop.y, prop.w, prop.h, sc.season, sceneryKind(prop) === 'gate' ? (sc.areas || []).join('.') : ''].join(',') + (windowed ? '|windows:' + (nightMaterials ? 'warm' : 'day') : '');
+        const signature = prop && 'native-landscape-crafted-10' + (packOn() ? '-painted' : '') + '|' + prop.id + '|' + [prop.x, prop.y, prop.w, prop.h, sc.season, sceneryKind(prop) === 'gate' ? (sc.areas || []).join('.') : ''].join(',') + (windowed ? '|windows:' + (nightMaterials ? 'warm' : 'day') : '');
         if (prop && paintedOn() && !(typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(prop.id)).some(Boolean))) {
           const gateRow = typeof gardenZoneGate === 'function' ? gardenZoneGate(prop.id) : null, meta = { kind: prop.act ? 'prop' : 'scenery', id, prop, model: prop };
           let rec = null;
@@ -1087,7 +1087,7 @@ window.GardenNativeWorld = (function () {
       }
       for (const spec of forestRows) {
         if (window.GardenPaintNature && GardenPaintNature.covers(W, spec.x, spec.y)) continue;   // painted woods stand there
-        const id = spec.id, signature = 'native-forest-crafted-8|' + id + '|' + sc.season; keep.add(id);
+        const id = spec.id, signature = 'native-forest-crafted-9|' + id + '|' + sc.season; keep.add(id);
         if (drawings.get(id)?.source === signature) continue;
         const old = drawings.get(id); if (old) old.handle.destroy();
         const handle = GardenNativeScenery.create(scene, { ...spec, season: sc.season }); if (!handle) continue;

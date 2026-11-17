@@ -10,6 +10,21 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.70.0] - 2026-11-17
+
+### Changed
+
+- The Garden's footbridges and stepping stones now meet their paths on both banks, with visible boards and slabs matching the ground you can walk on. Millwater has a lower stone bridge with clearer road entrances.
+- Smoother meadow, orchard and woodland ground replaces the repeated grass patches. The harbour promenade widens gradually into the quay, and paths and grass stop at the water and beach edges.
+- Seasonal tree crowns have branching silhouettes and smaller groups of leaves. The fixed watermill now presents its wheel toward the river.
+
+### Fixed
+
+- Clicking across narrow gorge and estuary stones uses the crossing instead of sending the player on a long detour.
+- The river mouth blends into the sea instead of drawing a closed canal with offshore banks and reeds.
+- The flat turf labyrinth no longer blocks walking with an invisible wall.
+- Decorative ground keeps planted beds visible and refreshes when the displayed Garden changes.
+
 ## [2.69.1] - 2026-11-17
 
 ### Fixed

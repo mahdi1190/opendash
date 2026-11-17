@@ -520,32 +520,56 @@ window.GardenPaintedProps = (function () {
         // a stone hump bridge: the arch below, the deck, two parapets with copings
         const len = side ? 74 : half * 1.1, w = side ? frame.span : 30;
         if (side) {
-          // The walkable crossing is a ground-plane deck. Its full span stays
-          // paved at actors' canonical feet; the rails and front arch carry
-          // the hump illusion without lifting any player, peer or pet.
-          const N = 24, hump = x => -18 * (1 - (x / len) * (x / len)), xs = Array.from({ length: N + 1 }, (_, i) => -len + i * 2 * len / N), band = (top, bot) => B.poly(xs.map(x => [x, top(x)]).concat(xs.slice().reverse().map(x => [x, bot(x)])));
-          B.shadow(0, w + 14, len + 10, 8, .28);
-          B.f(band(x => -w + hump(x) - 12, () => -w), STONE[1]).f(band(x => -w + hump(x) - 12, x => -w + hump(x) - 9.5), STONE[2]);
-          for (let i = 1; i < 10; i++) { const x = -len + i * len / 5; B.s(`M${x} ${-w + hump(x) - 9}v8`, STONE[3], .7, .5); }
-          // Close-set paving fills the walking plane; half stones finish alternate courses.
-          B.f(band(() => -w, () => w), '#b9af95');
-          // Keep the existing surface samples so the arch and bank moss retain their seeded forms.
+          // This is a low masonry crossing with broad, flush landings. Tall
+          // curved sheets made its standing plane read as a vertical block.
+          const N = 24, xs = Array.from({ length: N + 1 }, (_, i) => -len + i * 2 * len / N), band = (top, bot) => B.poly(xs.map(x => [x, top(x)]).concat(xs.slice().reverse().map(x => [x, bot(x)])));
+          B.shadow(0, w + 5, len + 2, 3.5, .16);
+          B.f(band(() => -w - 5, () => -w), '#908d76').f(band(() => -w - 5, () => -w - 3.5), '#c7bfa4');
+          for (let i = 1; i < 9; i++) { const x = -len + i * len / 4.5; B.s(`M${x} ${-w - 4.5}v4`, '#716f5d', .6, .45); }
+          // Quiet worn flags fill the complete support. The road through the
+          // middle carries the stronger pattern; shoulders remain ground.
+          B.f(band(() => -w, () => w), '#aca790');
           const wear = Array.from({ length: 22 }, () => ({ x: r(), y: r(), tone: r() }));
-          const tones = ['#c7bda2', '#cec3a7', '#c2b89e', '#cbbfa3'], rows = 16, stoneW = len / 4, stoneH = w * 2 / rows, joint = .65;
-          for (let row = 0; row < rows; row++) for (let col = 0; col < 8 + (row & 1); col++) {
-            const left = Math.max(-len, -len + (col - (row & 1) * .5) * stoneW), right = Math.min(len, -len + (col + 1 - (row & 1) * .5) * stoneW);
-            const x = left + joint / 2, y = -w + row * stoneH + joint / 2, sw = right - left - joint, sh = stoneH - joint;
-            const tone = wear[(row * 9 + col) % wear.length].tone;
-            B.f(B.rr(x, y, sw, sh, .65), tones[Math.floor(tone * tones.length)]);
-            if ((row + col) % 3 === 0) B.f(B.rect(x + 1, y + .35, sw - 2, .45), '#eee2c4', .35);
+          for (let row = 0; row < 5; row++) for (let col = 0; col < 6; col++) {
+            const tone = wear[(row * 6 + col) % wear.length].tone, x = -len + 2 + col * (len * 2 - 4) / 6, y = -w + 2 + row * (w * 2 - 4) / 5, sw = (len * 2 - 4) / 6, sh = (w * 2 - 4) / 5;
+            B.f(B.poly([[x + 1, y + 1], [x + sw - 1, y + 2], [x + sw - 2, y + sh - 1], [x + 2, y + sh - 2]]), tone < .5 ? '#bcb59b' : '#a09e86', .25);
+            if ((row + col) % 4 === 0) B.s(`M${x + 4} ${y + sh - 2}l${sw - 8} .6`, '#787a65', .65, .28);
+          }
+          const route = crossing && typeof gardenIslandData === 'function' && (gardenIslandData().routes || []).find(route => route.id === crossing.along);
+          if (route) {
+            const W = GARDEN_WORLD, road = gardenIslandRoutePath(route).points, roadY = x => {
+              const wx = crossing.x + x / W.cellW;
+              for (let i = 1; i < road.length; i++) { const a = road[i - 1], b = road[i]; if (wx < Math.min(a.x, b.x) || wx > Math.max(a.x, b.x) || Math.abs(b.x - a.x) < 1e-8) continue; return (a.y + (b.y - a.y) * (wx - a.x) / (b.x - a.x) - crossing.y) * W.cellH; }
+              return 0;
+            }, roadHalf = gardenIslandRoadStyle(route).radius * W.cellH, width = x => roadHalf + 4 * Math.sin(Math.PI * (x + len) / (2 * len)), upper = x => roadY(x) - width(x), lower = x => roadY(x) + width(x), lane = band(upper, lower);
+            B.cx.save(); B.cx.clip(new Path2D(lane));
+            B.f(lane, '#c9b58c');
+            for (let row = 0; row < 14; row++) for (let col = 0; col < 13; col++) {
+              const x = -len + col * 12 + (row & 1) * 6, y = -w + row * 8;
+              B.f(B.rr(x + .45, y + .45, 11.1, 7.1, 1), ['#d5c39b', '#cdbb94', '#dccaa2'][(row * 7 + col * 3 + (col & 1)) % 3]);
+            }
+            B.cx.restore();
+            for (const edge of [upper, lower]) B.s(xs.map((x, i) => `${i ? 'L' : 'M'}${x} ${edge(x)}`).join(''), '#daceaf', 1.1, .45);
+            // Dressed end stones sit within the supported deck. Their courses
+            // turn into each bank while leaving the road-width opening flush.
+            for (const sign of [-1, 1]) {
+              const x = sign < 0 ? -len : len - 6, y = roadY(sign * len), gap = roadHalf + 2;
+              for (const range of [[-w, y - gap], [y + gap, w]]) {
+                if (range[1] <= range[0]) continue;
+                B.f(B.rect(x, range[0], 6, range[1] - range[0]), '#a29e86').f(B.rect(x + (sign < 0 ? 1 : 4), range[0], 1, range[1] - range[0]), '#c3bba0', .6);
+                for (let yy = range[0] + 12; yy < range[1]; yy += 14) B.s(`M${x + 1} ${yy}h4`, '#78735f', .65, .5);
+              }
+            }
           }
           // A few soft worn faces, kept within the deck and without crack outlines.
           for (const q of wear) B.f(B.ell((q.x - .5) * (len * 2 - 12), (q.y - .5) * (w * 2 - 8), 2.5 + q.tone * 2, .7), q.tone < .5 ? '#a89e85' : '#eee2c4', .16);
-          B.f(band(() => w, () => w + 16), STONE[0]).f(`M${-len * .42} ${w + 16}q${len * .42} -14 ${len * .84} 0z`, '#344c50').f(`M${-len * .36} ${w + 16}q${len * .36} -10 ${len * .72} 0z`, '#4e7478', .7);
-          for (let row = 0; row < 3; row++) for (let i = 0; i < 9; i++) { const x = -len + 4 + i * len / 4.4 + (row & 1) * 6, y = w + 2 + row * 4; if (Math.abs(x) < len * .44 && y > w + 16 - Math.sqrt(Math.max(0, 1 - (x / (len * .42)) ** 2)) * 14) continue; B.f(B.rect(x, y, len / 5, 3), r() < .5 ? STONE[2] : STONE[1], .5); }
-          for (let i = 0; i < 9; i++) { const a = Math.PI * (i / 8), x = -Math.cos(a) * len * .44, y = w + 16 - Math.sin(a) * 14; B.f(B.rr(x - 3.6, y - 2, 7.2, 4, 1), STONE[2], .9); }
-          B.f(band(x => w + hump(x) - 5, () => w + 1), STONE[1]).f(band(x => w + hump(x) - 5, x => w + hump(x) - 3.4), STONE[2]);
-          B.f(D().blob(r, -len + 4, w + 12, 12, 5, 7, .5), MOSS[0], .85).f(D().blob(r, len - 6, w + 10, 10, 4, 7, .5), MOSS[1], .85).f(B.ell(0, w + 20, len * .4, 3), '#9cc4c8', .45);
+          // Only a shallow course is visible below the near edge. Short dark
+          // water arches suggest the culvert without a second raised panel.
+          B.f(band(() => w, () => w + 6), '#8d8b74');
+          for (const x of [-len * .26, len * .26]) B.f(`M${x - 17} ${w + 6}q17 -8 34 0z`, '#456467', .85);
+          B.f(band(() => w - 3, () => w + .5), '#b9b297').f(band(() => w - 3, () => w - 1.8), '#d6ccb0', .8);
+          for (let i = 1; i < 11; i++) { const x = -len + i * len / 5.5; B.s(`M${x} ${w - 2.5}v3`, '#817e69', .65, .6); }
+          B.f(D().blob(r, -len + 5, w + 4, 7, 2.2, 7, .4), MOSS[0], .65).f(D().blob(r, len - 7, w + 3, 6, 2, 7, .4), MOSS[1], .65);
         } else {
           B.f(`M${-len} 0q${len} -40 ${len * 2} 0z`, '#3e5a5e', .5);
           for (const s of [-1, 1]) B.f(B.rr(s * len - (s > 0 ? 14 : 0), -42, 14, 42, 2), STONE[0]).f(B.rect(s * len - (s > 0 ? 14 : 0), -42, 4, 42), STONE[2], .6);

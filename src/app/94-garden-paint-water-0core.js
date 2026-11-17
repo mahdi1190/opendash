@@ -110,6 +110,22 @@ window.GardenPaintWater = (function () {
     const pres = data.presentation || {}, rivers = pres.rivers || {};
     const lines = {};
     for (const [id, r] of Object.entries(rivers)) if (r && r.line && r.line.length > 1) lines[id] = Object.assign(line(r.line.map(pt)), { hw: r.halfWidth || 1, cells: r.line, id });
+    // Freshwater is still a fishing habitat offshore, but its closed basin
+    // must not draw a second bank around a rectangle in the open sea.
+    const coast = data.version >= 5 ? ((data.coast && data.coast.land) || []).map(loop => loop.map(pt)) : [];
+    const onLand = (x, y) => !coast.length || coast.some(loop => inside(x, y, loop));
+    const coastPath = coast.length ? new Path2D() : null, seaMouths = [];
+    for (const loop of coast) { coastPath.moveTo(loop[0].x, loop[0].y); for (const p of loop.slice(1)) coastPath.lineTo(p.x, p.y); coastPath.closePath(); }
+    if (coast.length) for (const L of Object.values(lines)) {
+      for (let i = 1; i < L.pts.length; i++) {
+        const a = L.pts[i - 1], b = L.pts[i];
+        if (!onLand(a.x, a.y) || onLand(b.x, b.y)) continue;
+        let lo = 0, hi = 1;
+        for (let k = 0; k < 16; k++) { const t = (lo + hi) / 2; if (onLand(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)) lo = t; else hi = t; }
+        const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+        seaMouths.push({ id: L.id, x: a.x + (b.x - a.x) * hi, y: a.y + (b.y - a.y) * hi, tx: (b.x - a.x) / len, ty: (b.y - a.y) / len });
+      }
+    }
     const waters = [];
     // Vale's shared banks already include the river pieces. Crossings paint
     // the connecting water below their boards or stones; no second ribbon is
@@ -131,7 +147,7 @@ window.GardenPaintWater = (function () {
       // reflections and this picture. Never smooth it again in the painter.
       const kind = kindOf(f), b = boundsOf(pts, 64), r = rng(hash(f.id));
       const ccw = signedArea(pts) > 0, river = lines[f.river || (kind === 'gorge' ? 'gorge' : kind === 'river' ? 'river' : kind === 'brook' ? 'brook' : '')] || null;
-      waters.push({ id: f.id, kind, pts, bounds: b, ccw, river, feats: features(W, f, pts, kind, ccw, river, r, pres, data.version >= 5 ? shoreMasks.filter(c => c.f !== f && hit(c.bounds, b)) : []) });
+      waters.push({ id: f.id, kind, pts, bounds: b, ccw, river, feats: features(W, f, pts, kind, ccw, river, r, pres, data.version >= 5 ? shoreMasks.filter(c => c.f !== f && hit(c.bounds, b)) : [], onLand) });
     }
     // The world box all chunks sit in.
     let all = null; for (const w of waters) all = all ? { x: Math.min(all.x, w.bounds.x), y: Math.min(all.y, w.bounds.y), x1: Math.max(all.x1, w.bounds.x + w.bounds.w), y1: Math.max(all.y1, w.bounds.y + w.bounds.h) } : { x: w.bounds.x, y: w.bounds.y, x1: w.bounds.x + w.bounds.w, y1: w.bounds.y + w.bounds.h };
@@ -140,13 +156,14 @@ window.GardenPaintWater = (function () {
       const box = { x: x * CH, y: y * CH, w: CH, h: CH }, list = waters.filter(w => hit(w.bounds, box));
       if (list.length) chunks.set(x + ',' + y, { key: x + ',' + y, box, list, image: null, tex: null, used: 0 });
     }
-    return { W, waters, lines, chunks, pres };
+    const mouthFades = seaMouths.flatMap(m => waters.filter(w => w.river && w.river.id === m.id && inside(m.x, m.y, w.pts)).map(w => Object.assign({ bounds: w.bounds }, m)));
+    return { W, waters, lines, chunks, pres, coastPath, mouthFades };
   }
 
   /* ---------- the still picture of one water, as a list of features ---------- */
   // Each feature: { b: bounds, draw(cx, P, B) } where B is a tiny brush. Random
   // choices are made here, once per water, so every chunk paints the same thing.
-  function features(W, f, pts, kind, ccw, river, r, pres, neighbours) {
+  function features(W, f, pts, kind, ccw, river, r, pres, neighbours, onLand) {
     const out = [], loop = pts, n = pts.length, all = boundsOf(pts, 40);
     // Mask only shore paint covered by another basin or crossing strip.
     // Independent clips subtract their union; positive support holes restore
@@ -163,7 +180,7 @@ window.GardenPaintWater = (function () {
     // Bank garnish belongs to its shoreline root. Reject roots inside joined
     // water after their random choices, so reed tops cannot survive as clipped
     // fragments and true outer-bank details keep their existing placement.
-    const shoreCovered = (x, y) => (neighbours || []).some(neighbour => inside(x, y, neighbour.pts) && !(neighbour.holes || []).some(hole => inside(x, y, hole)));
+    const shoreCovered = (x, y) => !onLand(x, y) || (neighbours || []).some(neighbour => inside(x, y, neighbour.pts) && !(neighbour.holes || []).some(hole => inside(x, y, hole)));
     let tag = 'bank'; const add = (b, draw) => {
       const mask = shoreClips.length && (tag === 'bank' || tag === 'shallow' || tag === 'lap');
       out.push({ b, tag, draw: mask ? (cx, C, ctx) => { cx.save(); for (const cut of shoreClips) cx.clip(cut); draw(cx, C, ctx); cx.restore(); } : draw });
@@ -379,6 +396,18 @@ window.GardenPaintWater = (function () {
     job.ms += performance.now() - t0;
     if (job.i < job.list.length) return false;
     const ch = job.ch, B = ch.box, key = TEX + '-' + ch.key + '-' + (++S.serial), u0 = performance.now();
+    // Apply once at upload, not per feature/frame. The native sea beneath has
+    // the same base water colour as inland water, so the last reach can lose
+    // its freshwater shading gradually without a capped shoreline in the sea.
+    if (S.M.coastPath) {
+      cx.save(); cx.globalCompositeOperation = 'destination-in'; cx.globalAlpha = 1; cx.fillStyle = '#fff'; cx.fill(S.M.coastPath); cx.restore();
+      for (const m of S.M.mouthFades) if (hit(m.bounds, B)) {
+        cx.save(); cx.beginPath(); cx.rect(m.bounds.x, m.bounds.y, m.bounds.w, m.bounds.h); cx.clip();
+        const fade = cx.createLinearGradient(m.x - m.tx * 72, m.y - m.ty * 72, m.x, m.y);
+        fade.addColorStop(0, '#fff'); fade.addColorStop(1, 'rgba(255,255,255,0)');
+        cx.globalCompositeOperation = 'destination-in'; cx.fillStyle = fade; cx.fillRect(B.x, B.y, B.w, B.h); cx.restore();
+      }
+    }
     S.scene.textures.addImage(key, job.c); ch.tex = key; ch.bytes = job.c.width * job.c.height * 4;   // (addImage: a baked chunk is never redrawn, and addCanvas reads every pixel back first: a quarter-second stall)
     ch.image = S.scene.add.image(B.x, B.y, key).setOrigin(0, 0).setDisplaySize(B.w + 1, B.h + 1).setDepth(-9590); S.parent.add(ch.image); S.sortParent = true;
     job.ms += performance.now() - u0; bakeMs += job.ms; bakes++; worstBake = Math.max(worstBake, performance.now() - t0);

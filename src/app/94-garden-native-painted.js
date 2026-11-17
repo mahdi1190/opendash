@@ -111,9 +111,39 @@ window.GardenNativePainted = (function () {
     }
     cx.globalAlpha = 1;
   }
+  // The ruins' evergreen yew keeps the scene asset's size and foot, but its
+  // garden-scale crown needs smaller sprays than the distant scene silhouette.
+  // Clone the compiled shapes; opening scenes keep their original library art.
+  const gardenYewPaint = new WeakMap();
+  function gardenYewShapes(source, variant) {
+    if (gardenYewPaint.has(source)) return gardenYewPaint.get(source);
+    const r = rng(4410 + variant * 17), [x0, y0, x1] = source.box, H = -y0 * .96, R = (x1 - x0) * .46, centre = (x0 + x1) / 2;
+    const layers = ['', '', '', ''], tones = ['#152a1c', '#1e3a26', '#294a30', '#416342'];
+    const clumps = [[-.49, -.56, .37, .19], [.40, -.54, .38, .20], [-.23, -.78, .39, .17], [.30, -.77, .32, .16], [-.56, -.36, .34, .16], [.52, -.35, .34, .16], [-.20, -.25, .39, .13], [.24, -.24, .38, .13], [-.04, -.52, .42, .21]];
+    let needles = '';
+    for (let i = 0; i < clumps.length; i++) {
+      const [dx, dy, w, h] = clumps[i], x = centre + dx * R, y = dy * H, rx = w * R, ry = h * H;
+      layers[0] += sceneDraw.blob(r, x + 2, y + 3, rx, ry, 9, .3);
+      layers[1] += sceneDraw.blob(r, x - rx * .09, y - ry * .08, rx * .90, ry * .87, 9, .35);
+      for (let j = 0; j < 6; j++) {
+        const a = j * 2.4 + i, px = x + Math.cos(a) * rx * .54, py = y + Math.sin(a) * ry * .48;
+        layers[2] += sceneDraw.blob(r, px, py, rx * (.24 + r() * .09), ry * .27, 7, .4);
+        if (j < 3) layers[3] += sceneDraw.blob(r, px - rx * .07, py - ry * .08, rx * .12, ry * .12, 6, .4);
+        const length = 4 + r() * 4;
+        needles += `M${px - length} ${py + 1}q${length} -3 ${length * 2} -2M${px - length * .5} ${py - 1}l-2 -3M${px + length * .3} ${py - 1}l2 -3`;
+      }
+    }
+    const crown = layers.map((d, i) => ({ f: tones[i], d }));
+    crown.push({ s: '#6c8258', w: .7, op: .42, d: needles });
+    const branches = `M-3 -20Q-9 ${-H * .34} ${centre - R * .49} ${-H * .57}M3 -30Q${R * .11} ${-H * .42} ${centre + R * .43} ${-H * .62}M-1 -32Q-8 ${-H * .47} ${centre - R * .10} ${-H * .77}`;
+    const trunk = source.parts.trunk.concat([{ s: '#4a2a1c', w: 8, d: branches }, { s: '#926b45', w: 2, op: .75, d: branches }]);
+    const shaped = Object.assign({}, source, { parts: Object.assign({}, source.parts, { trunk, crown }) });
+    gardenYewPaint.set(source, shaped); return shaped;
+  }
   /** One library object as a canvas at a given world size: { c, ox, oy } with (ox, oy) its foot in canvas px. */
   function objectCanvas(id, v, season, size, night) {
-    const sh = sceneObjShapes(id, v, season); if (!sh) return null;
+    let sh = sceneObjShapes(id, v, season); if (!sh) return null;
+    if (id === 'tree.proof-yew') sh = gardenYewShapes(sh, v);
     const names = (sh.still || sh.order.filter(p => p !== 'lit')).concat(night && sh.parts.lit ? ['lit'] : []);
     const [x0, y0, x1, y1] = sh.box, k = (size.w ? size.w / (x1 - x0) : size.h / (y1 - y0)) * OBJ_K;
     const pad = 4, w = Math.ceil((x1 - x0) * k) + pad * 2, h = Math.ceil((y1 - y0) * k) + pad * 2;
@@ -194,6 +224,10 @@ window.GardenNativePainted = (function () {
     if (info.owned && info.owned.length) { cx.save(); clipLoops(info.owned); cx.filter = 'blur(3px)'; strokeLoops(info.owned, '#7d6a44', 9, .13); cx.filter = 'none'; cx.restore(); fillLoops(info.owned, 'rgba(190,200,120,.06)'); }
     // Inland water: a damp bank, the pond, its shallow rim and lap line.
     if (info.lakes.length) {
+      // The v5 river continues beyond the coast for water mechanics. Its
+      // freshwater banks end at land; the sea below supplies the open mouth.
+      // Clip the original contours, without closing a new lap line at shore.
+      cx.save(); if (info.W.v >= 5) clipLoops(info.coast);
       strokeLoops(info.lakes, P.sandWet, 14, .9); fillLoops(info.lakes, P.water);
       cx.save(); clipLoops(info.lakes); strokeLoops(info.lakes, P.shallow, 40, .5); strokeLoops(info.lakes, P.shallow, 18, .6);
       // the sky on the water: long soft bands, then short bright glints, darker ripples under the banks
@@ -201,6 +235,7 @@ window.GardenNativePainted = (function () {
       for (let i = 0; i < B.w * B.h / 1800; i++) { const x = B.x + r() * B.w, y = B.y + r() * B.h, l = 4 + r() * 12; cx.globalAlpha = .35 + r() * .3; cx.strokeStyle = r() < .7 ? '#e8f4f0' : '#c4e0e0'; cx.lineWidth = 1 + r() * .8; cx.lineCap = 'round'; cx.beginPath(); cx.moveTo(x, y); cx.lineTo(x + l, y); cx.stroke(); }
       cx.globalAlpha = 1; cx.restore();
       strokeLoops(info.lakes, P.foam, 2, .7);
+      cx.restore();
     }
     // 4. Paths: a soft cast shadow, the worn edge, the gravel and a paler
     //    centre, clipped to the shared paint allowance from the world.

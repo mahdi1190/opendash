@@ -44,6 +44,7 @@ window.GardenPaintWood = (function () {
 
   function build(info, cellAt) {
     const W = info.W, data = info.data, out = { trees: [], floors: [], lights: [], shafts: [], W };
+    out.groundLayout = window.GardenPaintVale && GardenPaintVale.readLayout ? GardenPaintVale.readLayout(W, data, cellAt) : null;
     const pres = data.presentation || {}, plazas = (pres.plazas || []).filter(p => p.rx || /clearing|court/.test(p.id));
     // round every landmark, and four rows in front of it: a crown there would hide the house, its door and whoever stands at it (Thistle's old house was lost in the canopy)
     // a story house in the woods (Hollin's hut, Thistle's old house) stands in a small glade, open to the south so the canopy never hides it
@@ -99,7 +100,7 @@ window.GardenPaintWood = (function () {
           out.floors.push({ kind: 'stamp', id: u[0], v: Math.floor(h3(x, y, 34) * 3), h: 26 + h3(x, y, 35) * 16, x: px(x + .5) + (h3(x, y, 36) - .5) * 30, y: py(y + 1) - 6 });
         }
       }
-      out.floors.push({ kind: 'floor', region: region.id, def, land, season, poly, glades: def.mood === 'meadow' ? [] : plazas.filter(p => inside(p.x, p.y, poly)).map(p => ({ x: px(p.x), y: py(p.y), rx: ((p.rx || 3.2) + 1.2) * W.cellW, ry: ((p.ry || 2.4) + 1) * W.cellH })) });
+      out.floors.push({ kind: 'floor', region: region.id, def, land, season, poly, path: loops(region.polygons), glades: def.mood === 'meadow' ? [] : plazas.filter(p => inside(p.x, p.y, poly)).map(p => ({ x: px(p.x), y: py(p.y), rx: ((p.rx || 3.2) + 1.2) * W.cellW, ry: ((p.ry || 2.4) + 1) * W.cellH })) });
       // light: dapples on the floor wherever the canopy is broken, shafts over glades and clearings
       const r = rng(hash(region.id + 'light'));
       for (const [x, y] of land) {
@@ -131,23 +132,24 @@ window.GardenPaintWood = (function () {
     if (S.M.floorClip.land) cx.clip(S.M.floorClip.land, 'evenodd');
     for (const [f, land] of ch.floors) {
       const F = Object.assign({}, f.def.floor, (f.def.mood === 'meadow' ? MEADOW_TONE : SEASON_TONE)[season] || {}), r = rng(hash(f.region + ch.key));
-      // soft lobed cells of litter (they overlap, so the edge of the wood is organic, never square)
-      for (const [x, y] of land) { yield;
-        const X = x * W.cellW + W.cellW / 2, Y = W.sky + y * W.cellH + W.cellH / 2; if (X < view.x || X > view.x + view.w || Y < view.y || Y > view.y + view.h) continue;
-        const g = noise(x, y, 5, hash(f.region) & 1023), rr = rng(hash(f.region) ^ (x * 977 + y * 131));
-        // one opaque union of big jittered lobes: the floor's colour with an organic edge, no cell pattern
-        cx.globalAlpha = 1; cx.fillStyle = F.litter; cx.fill(new Path2D(sceneDraw.blob(rr, X + (rr() - .5) * 16, Y + (rr() - .5) * 10, W.cellW * (.8 + rr() * .3), W.cellH * (.85 + rr() * .3), 9, .3)));
-      }
-      // broad drifts of tone over the union, from smooth fields: canopy shade under
-      // the groves, sun in the glades, green moss and grass where it is damp
+      const meadow = f.def.mood === 'meadow', palette = window.GardenPaintVale && GardenPaintVale.PAL[season];
+      cx.save(); cx.clip(f.path);
+      if (S.M.groundLayout) GardenPaintVale.clipGround({ cx }, S.M.groundLayout, [B.x - E, B.y - E, B.x + B.w + E, B.y + B.h + E], true);
+      // One continuous floor; the river meadow shares the harbour's seasonal
+      // lawn. Broad soft tone replaces opaque grass stamped once per cell.
+      yield; cx.globalAlpha = 1; cx.fillStyle = meadow && palette ? palette.lawn : F.litter; cx.fillRect(B.x - E, B.y - E, B.w + 2 * E, B.h + 2 * E);
+      // Canopy shade and damp moss stay broad and soft, without hard lobes.
       for (const [x, y] of land) { yield;
         if ((x + y * 3) % 2) continue; const X = x * W.cellW + W.cellW / 2, Y = W.sky + y * W.cellH + W.cellH / 2; if (X < view.x || X > view.x + view.w || Y < view.y || Y > view.y + view.h) continue;
         const g = noise(x, y, 5, hash(f.region) & 1023), m = noise(x, y, 3.3, 501), rr = rng(hash(f.region + 'd') ^ (x * 613 + y * 271));
-        const blob = (a, col, sx, sy) => { cx.globalAlpha = a; cx.fillStyle = col; cx.fill(new Path2D(sceneDraw.blob(rr, X + (rr() - .5) * 30, Y + (rr() - .5) * 18, W.cellW * sx, W.cellH * sy, 10, .45))); };
-        if (g > .5) blob(Math.min(f.def.mood === 'meadow' ? .14 : .34, (g - .5) * 1.2), F.shade, 1.5, 1.4);
-        else if (g < .36) blob((.36 - g) * 1.4, F.sun, 1.3, 1.1);
-        if (m > .58) blob((m - .58) * 1.6, F.moss, 1.2, 1);
-        else if (m < .3) blob((.3 - m) * 1.2, F.leaf[x % 3], 1.1, .9);
+        const blob = (a, col, sx, sy) => {
+          const px = X + (rr() - .5) * 30, py = Y + (rr() - .5) * 18, rx = W.cellW * sx, ry = W.cellH * sy, n = parseInt(col.slice(1), 16), rgb = (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255);
+          cx.save(); cx.translate(px, py); cx.scale(1, ry / rx); const grad = cx.createRadialGradient(0, 0, 0, 0, 0, rx); grad.addColorStop(0, 'rgba(' + rgb + ',' + a + ')'); grad.addColorStop(.55, 'rgba(' + rgb + ',' + a * .5 + ')'); grad.addColorStop(1, 'rgba(' + rgb + ',0)'); cx.globalAlpha = 1; cx.fillStyle = grad; cx.fillRect(-rx, -rx, rx * 2, rx * 2); cx.restore();
+        };
+        if (g > .5) blob(Math.min(meadow ? .055 : .23, (g - .5) * .8), F.shade, 1.5, 1.4);
+        else if (g < .36) blob(Math.min(meadow ? .06 : .24, (.36 - g) * .9), F.sun, 1.3, 1.1);
+        if (m > .58) blob(Math.min(meadow ? .04 : .18, (m - .58) * .9), F.moss, 1.2, 1);
+        else if (m < .3) blob(Math.min(meadow ? .04 : .15, (.3 - m) * .8), F.leaf[x % 3], 1.1, .9);
       }
       cx.globalAlpha = 1;
       // the clearing: a sunlit lawn of short grass opening in the litter, soft at its edge, flowers in the light
@@ -170,7 +172,7 @@ window.GardenPaintWood = (function () {
         // spring bluebells in drifts under the light wood
         if (season === 'spring' && f.def.mood === 'light' && g > .4 && rr() < .5) for (let i = 0; i < 9; i++) { cx.globalAlpha = .85; cx.fillStyle = i % 3 ? '#6f78c8' : '#8c90da'; cx.beginPath(); cx.arc(X + (rr() - .5) * W.cellW, Y + (rr() - .5) * W.cellH, 1.3, 0, Math.PI * 2); cx.fill(); }
       }
-      cx.globalAlpha = 1; void r;
+      cx.globalAlpha = 1; cx.restore(); void r;
     }
     for (const f of ch.stamps) { yield;
       const s = stampCanvas(f.id, f.v, season, f.h); if (!s) continue; const k = (f.h / s.hq) / 2; cx.drawImage(s.c, f.x - s.ox * k, f.y - s.oy * k, s.c.width * k, s.c.height * k);
