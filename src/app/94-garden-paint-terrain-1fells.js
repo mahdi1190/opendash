@@ -357,6 +357,11 @@ window.GardenPaintedTerrain = (function () {
       B.f(B.poly([{ x: sx - 30, y: top - 4 }, { x: sx - 16, y: top - 2 }, { x: sx - 15, y: bottom }, { x: sx - 34, y: bottom + 4 }]), P.rockHi, .95);
       B.f(B.poly([{ x: sx - 34, y: top + 6 }, { x: sx - 22, y: top + 8 }, { x: sx - 22, y: bottom - 2 }, { x: sx - 36, y: bottom + 2 }]), P.rock, .8);
       B.f(B.poly([{ x: sx + 14, y: top - 2 }, { x: sx + 32, y: top - 6 }, { x: sx + 36, y: bottom + 4 }, { x: sx + 15, y: bottom }]), P.rockLo, 1);
+      // dressed with weathered blocks and boulders, so the cut reads as rock like the scarp beside it, not flat slabs
+      for (const [x0, x1, dark] of [[-36, -14, false], [14, 36, true]]) for (let k = 0; k < 5; k++) {
+        const t = (k + .5) / 5, y = top + (bottom - top) * t + (r() - .5) * 4, x = sx + (x0 + x1) / 2 + (r() - .5) * 6, rx = 9 + r() * 4 + t * 3, ry = 6 + r() * 3 + t * 2;
+        B.stone(r, x, y, rx, ry, dark ? Object.assign({}, P, { rock: P.rockLo, rockHi: P.rock }) : P, snowy ? 'snow' : r() < .5 ? P.lichen : null);
+      }
       // the steps: lit treads, shaded risers, a worn hollow in the middle, wet towards the falls
       const steps = 8, sh = (bottom - top) / steps;
       for (let k = 0; k < steps; k++) { const y = top + k * sh, w = 26 + k * .6;

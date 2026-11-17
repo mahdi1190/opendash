@@ -179,6 +179,18 @@ function _gardenIslandCrossingRouteSpan(c, water, halfWidth) {
   }
   return null;
 }
+/** Fleet Falls' drawn water, in world cells, for the painters (presentation only):
+ * the lip sits on the gorge line where the river reaches the scarp top (falls.y),
+ * and the sheet lands straight below it in the Mere, so the river visibly feeds
+ * the falls. null before v5 or when the layout has no gorge. */
+function gardenFallsWater(data) {
+  const D = data || (typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data), pres = D && D.version >= 5 && D.presentation, F = pres && pres.falls, line = pres && pres.rivers && pres.rivers.gorge && pres.rivers.gorge.line;
+  if (!F || !F.pool || !line || line.length < 2) return null;
+  let lx = NaN;
+  for (let i = 1; i < line.length; i++) { const a = line[i - 1], b = line[i]; if ((a[1] - F.y) * (b[1] - F.y) <= 0 && a[1] !== b[1]) { lx = a[0] + (b[0] - a[0]) * (F.y - a[1]) / (b[1] - a[1]); break; } }
+  if (!Number.isFinite(lx)) return null;
+  return { lip: { x: lx, y: F.y }, foot: { x: lx + .15, y: F.pool[1] } };
+}
 /** Retained river water and the precise standing surfaces crossing it. */
 function gardenIslandCrossingGeometry() {
   if (_gardenIslandDerived.crossings) return _gardenIslandDerived.crossings;

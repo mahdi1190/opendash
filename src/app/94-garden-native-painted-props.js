@@ -692,30 +692,44 @@ window.GardenPaintedProps = (function () {
   /* ---------- Fleet Falls: rock step, falling sheet, spray, plunge pool ---------- */
   function falls(scene, spec, o) {
     const season = spec.season || 'summer', Wd = Math.round(Math.max(40, Math.min(110, (spec.width || 96) * .55))), r = rng(hash(spec.id || 'falls'));
-    let x = spec.x, y = spec.y, H = 176, authoredPool = false;
+    let x = spec.x, y = spec.y, H = 176, authoredPool = false, ax = spec.x, ay = spec.y, S = 176, fed = false;   // (ax, ay): the rock step's foot; S: its height
     const data = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data, W = typeof GARDEN_WORLD !== 'undefined' && GARDEN_WORLD;
     const fixed = data && data.version >= 5 && spec.id === 'ld-falls' && (data.static || []).find(p => p.id === spec.id), pool = fixed && data.presentation && data.presentation.falls && data.presentation.falls.pool;
     // The fixed Vale sheet meets its authored pool, not the dry interaction foot.
     // Keep its top lip at the same height; relocated scenery keeps its own anchor.
     if (pool && W && spec.x === (fixed.x + fixed.w / 2) * W.cellW && spec.y === W.sky + (fixed.y + fixed.h) * W.cellH - 4) {
       x = pool[0] * W.cellW; y = W.sky + pool[1] * W.cellH - 8; H += y - spec.y; authoredPool = true;
+      // The gorge feeds the sheet: its lip sits where the river reaches the scarp
+      // top, and the step is only as tall as the scarp, so the river runs into it.
+      const fw = typeof gardenFallsWater === 'function' && gardenFallsWater(data);
+      if (fw) { fed = true; ax = fw.lip.x * W.cellW; S = Math.max(64, Math.round(spec.y - (W.sky + fw.lip.y * W.cellH)) + 6); x = fw.foot.x * W.cellW; y = W.sky + fw.foot.y * W.cellH - 8; H = y - (ay - S); }
     }
-    const sharedPool = authoredPool && typeof GardenPaintWater !== 'undefined', lipX = spec.x - x;
+    const sharedPool = authoredPool && typeof GardenPaintWater !== 'undefined', lipX = ax - x, k = S / 176;
     const h = handle(scene, o, spec.id, { cls: 'falls', kind: 'falls' });
     const rock = ['#a39a86', '#7e7664', '#cbc3ad', '#5e584a'];
-    const rockReach = Math.ceil(Wd / 2 + 130), box = [-rockReach, -H - 50, rockReach, 40];
-    const baseKey = bake(scene, 'falls|' + season + '|' + Wd + '|' + H + '|' + sharedPool, box, B => {
+    const rockReach = Math.ceil(Wd / 2 + 130) + (fed ? 60 : 0), box = [-rockReach, -H - 50, rockReach, 40];
+    const baseKey = bake(scene, 'falls|' + season + '|' + Wd + '|' + H + '|' + S + '|' + Math.round(lipX) + '|' + fed + '|' + sharedPool, box, B => {
       // the plunge pool and its pale lip
       if (!sharedPool) B.f(B.ell(0, 8, 86, 22), '#4e7e8c').f(B.ell(0, 6, 74, 17), '#5f93a0').f(B.ell(-14, 4, 40, 7), '#88b8c0', .55).s(B.ell(0, 8, 86, 22), '#cfe2dc', 2, .5);
       // Keep the scarp at its original landscape anchor while the sheet reaches the Mere.
-      B.cx.save(); B.cx.translate(spec.x - x, spec.y - y);
+      B.cx.save(); B.cx.translate(ax - x, ay - y);
       // the rock step: big lobed masses lit from the upper left, darker in the cleft behind the water
-      B.f(D().blob(r, 0, -176 * .55, 112, 176 * .62, 12, .35), rock[1]);
-      for (const [px, py, rx, ry] of [[-74, -40, 46, 44], [76, -46, 46, 48], [-58, -112, 44, 46], [62, -118, 46, 46], [-30, -176 + 6, 44, 30], [34, -176 + 2, 46, 30], [-86, -4, 30, 18], [90, -6, 30, 18]]) B.stone(r, px, py, rx, ry, rock, MOSS);
+      if (fed) {
+        // The Vale's falls: the cave mouth and stair stand at the sheet's west edge, so the rock
+        // step runs east from the water to the scarp (falls.x + w), with no rock over the cave.
+        const east = Math.max(120, (fixed.x + fixed.w + .7) * W.cellW - ax);
+        B.f(D().blob(r, east * .55, -S * .5, east * .55, S * .58, 12, .3), rock[1]);
+        for (const [t, py, rx, ry] of [[.3, -.42, 34, .46], [.6, -.48, 40, .5], [.9, -.4, 34, .44], [.26, -.9, 30, .26], [.58, -.92, 36, .24], [.88, -.86, 30, .22], [.4, -.04, 26, .2], [.75, -.06, 30, .2], [1, -.08, 22, .16]]) B.stone(r, Wd / 2 + 8 + (east - Wd / 2 - 8) * t, py * S, rx, Math.max(10, ry * S), rock, MOSS);
+        // a wet black lip stone under the water's west edge, below the cave sill
+        B.stone(r, -Wd / 2 - 2, -6, 10, 7, ['#5e584a', '#3f3b33', '#7e7664', '#2e2b25'], null);
+      } else {
+      B.f(D().blob(r, 0, -S * .55, 112, S * .62, 12, .35), rock[1]);
+      for (const [px, py, rx, ry] of [[-74, -40, 46, 44], [76, -46, 46, 48], [-58, -112, 44, 46], [62, -118, 46, 46], [-30, -176 + 6, 44, 30], [34, -176 + 2, 46, 30], [-86, -4, 30, 18], [90, -6, 30, 18]]) B.stone(r, px, py * k, rx, Math.max(ry * k, Math.min(ry, 16)), rock, MOSS);
+      }
       // ledges of the step: each a lit top face with a shadow under it, the strata of the scarp
-      for (const [ly, lw] of [[-176 * .26, 96], [-176 * .52, 104], [-176 * .78, 92]]) for (const sgn of [-1, 1]) { const lx = sgn * (Wd / 2 + lw / 2 + 4); B.f(D().blob(r, lx, ly + 5, lw / 2, 5, 9, .3), rock[3], .45).f(D().blob(r, lx, ly, lw / 2, 4, 9, .3), rock[2], .85).f(D().blob(r, lx - sgn * 10, ly - 3, lw / 3, 3, 8, .4), MOSS[1], .75); }
+      for (const [ly, lw] of (fed ? [[-S * .5, 84]] : [[-S * .26, 96], [-S * .52, 104], [-S * .78, 92]])) for (const sgn of (fed ? [1] : [-1, 1])) { const lx = sgn * (Wd / 2 + lw / 2 + 4); B.f(D().blob(r, lx, ly + 5, lw / 2, 5, 9, .3), rock[3], .45).f(D().blob(r, lx, ly, lw / 2, 4, 9, .3), rock[2], .85).f(D().blob(r, lx - sgn * 10, ly - 3, lw / 3, 3, 8, .4), MOSS[1], .75); }
       // trees and ferns crown the top; ivy hangs down the faces
-      for (let i = 0; i < 6; i++) { const px = (i < 3 ? -1 : 1) * (Wd / 2 + 10 + (i % 3) * 16); B.s(`M${px} ${-176 + 10}q${(r() - .5) * 8} 30 ${(r() - .5) * 4} ${40 + r() * 30}`, leafOf(season)[0], 2, .8); }
+      for (let i = fed ? 3 : 0; i < 6; i++) { const px = (i < 3 ? -1 : 1) * (Wd / 2 + 10 + (i % 3) * 16); B.s(`M${px} ${-S + 10}q${(r() - .5) * 8} ${30 * k} ${(r() - .5) * 4} ${(40 + r() * 30) * Math.max(.5, k)}`, leafOf(season)[0], 2, .8); }
       B.cx.restore();
       // A wet cleft follows the falling water instead of framing it with straight posts.
       const sheet = `M${lipX - Wd / 2} ${-H}h${Wd}C${lipX + Wd / 2 - 4} ${-H * .7} ${Wd / 2 - 7} ${-H * .3} ${Wd / 2 + 4} -8q${-Wd / 2 - 4} 10 ${-Wd - 8} 0C${-Wd / 2 + 7} ${-H * .3} ${lipX - Wd / 2 + 4} ${-H * .7} ${lipX - Wd / 2} ${-H}z`;
@@ -730,7 +744,7 @@ window.GardenPaintedProps = (function () {
       if (!sharedPool) for (let i = 0; i < 8; i++) { const a = Math.PI * (.08 + .84 * r()), px = Math.cos(a) * 92 * (r() < .5 ? -1 : 1), py = 14 + Math.sin(a) * 14; B.stone(r, px, py, 7 + r() * 5, 4 + r() * 2, STONE, r() < .5 ? MOSS : null); }
     });
     // trees on the scarp top are the library's own, like the planting round them
-    for (const [id, v, hh, dx, dy] of [['tree.pine', 0, 150, -84, -176 + 8], [season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 86, -176 + 14], ['tree.pine', 1, 120, 30 + Wd / 2, -176 - 6]]) h.add(libImage(scene, id, v, season, { h: hh }, spec.x + dx, spec.y + dy, false));
+    for (const [id, v, hh, dx, dy] of (fed ? [[season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 96, -S + 10], ['tree.pine', 1, 120, 150, -S - 4]] : [['tree.pine', 0, 150, -84, -S + 8], [season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 86, -S + 14], ['tree.pine', 1, 120, 30 + Wd / 2, -S - 6]])) h.add(libImage(scene, id, v, season, { h: hh }, ax + dx, ay + dy, false));
     const base = h.add(image(scene, baseKey, x, y));
     // The fixed falls' canvas includes empty padding beside the cave stair.
     // Keep its solid rock/sheet mask once per existing texture; frame probes
@@ -758,7 +772,7 @@ window.GardenPaintedProps = (function () {
       };
     }
     // Bank planting stays at the landscape foot when the sheet extends into the Mere.
-    for (const [id, v, hh, dx, dy] of [['plant.fern', 0, 30, -96, 10], ['plant.fern', 1, 26, 98, 12], ['plant.bracken', 0, 34, -70, 24], ['plant.fern', 2, 24, 70, 26], ['plant.reed', 0, 34, -40, 30], ['plant.reed', 1, 30, 46, 30]]) h.add(libImage(scene, id, v, season, { h: hh }, spec.x + dx, spec.y + dy, false));
+    for (const [id, v, hh, dx, dy] of (fed ? [['plant.fern', 1, 26, 98, 12], ['plant.fern', 2, 24, 140, 18], ['plant.bracken', 0, 30, 70, 22], ['plant.reed', 1, 30, 46, 30]] : [['plant.fern', 0, 30, -96, 10], ['plant.fern', 1, 26, 98, 12], ['plant.bracken', 0, 34, -70, 24], ['plant.fern', 2, 24, 70, 26], ['plant.reed', 0, 34, -40, 30], ['plant.reed', 1, 30, 46, 30]])) h.add(libImage(scene, id, v, season, { h: hh }, ax + dx, ay + dy, false));
     // live: streaks running down the sheet (a tile sprite scrolls; nothing redraws)
     const streakKey = bake(scene, 'falls-streak|' + Wd, [0, 0, Wd, 64], B => {
       const cx = B.cx; for (let i = 0; i < 10; i++) { const px = 3 + (i * 4.6) % (Wd - 6), py = (i * 23) % 64, len = 14 + (i * 7) % 18; B.s(`M${px} ${py}v${len}`, i % 3 ? '#ffffff' : '#d6eeea', i % 2 ? 1.4 : 2.2, .55); if (py + len > 64) B.s(`M${px} ${py - 64}v${len}`, i % 3 ? '#ffffff' : '#d6eeea', i % 2 ? 1.4 : 2.2, .55); }
