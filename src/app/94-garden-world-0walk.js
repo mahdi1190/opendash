@@ -110,6 +110,8 @@ function _gwBuildSolids(m) {
     add(fl.caveStair[0] + .62, fw.lip.y + .15, fw.lip.x + .2, fl.caveStair[1] + .85);
     add(fw.lip.x + 1.6, fw.lip.y + .15, fl.x + fl.w + .75, fl.y + 1.7);
   }
+  // the harbour's painted crates, pots, net, beached boat, bench and anchor stand in the way like the log stack
+  if (island && island.version >= 5 && typeof gardenIslandHarbourThings === 'function') for (const t of gardenIslandHarbourThings(island)) add(t.foot[0], t.foot[1], t.foot[2], t.foot[3]);
   return { list, at };
 }
 /** Do feet (half width fx, half depth fy, in cells) at x, y touch one of the boxes? */
