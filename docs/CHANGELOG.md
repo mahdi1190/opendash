@@ -10,6 +10,13 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.69.1] - 2026-11-17
+
+### Fixed
+
+- The closed Millwater bridge now has a full barrier across its deck where the player actually stops, instead of a small marker farther along the bridge.
+- Gorge trout can inhabit the river flowing out of the source tarn, as their journal clue describes. The mountain unlock still applies, and other tarn species keep their existing homes.
+
 ## [2.69.0] - 2026-11-14
 
 ### Added

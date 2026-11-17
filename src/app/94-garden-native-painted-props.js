@@ -501,7 +501,7 @@ window.GardenPaintedProps = (function () {
     B.text(have ? 'Ready to open' : name ? 'Needs ' + name : 'Level ' + (lv || '?'), x - 1, y + 16.5, 7, '#f4ecd8', 'Inter, sans-serif', '700');   // (have: the shackle stands open, and the sign says so)
   }
   /** One gate as base art + (closed) a blocker + its sign. side: the span runs down the screen (you cross left to right). */
-  function gateArt(kind, g, frame, season, open) {
+  function gateArt(kind, g, frame, season, open, crossing) {
     const side = Math.abs(frame.uy) > Math.abs(frame.ux), half = Math.max(46, Math.min(80, frame.span * .62)), r = rng(hash(g.id + kind));
     const L = leafOf(season), art = { S: frame.span * .9 };
     const oak = season === 'winter' ? 'tree.oak' : 'tree.green-oak';
@@ -589,9 +589,16 @@ window.GardenPaintedProps = (function () {
           for (let i = 0; i < 16; i++) { const x = (r() - .5) * half * 1.7, y = -4 - r() * 52; B.f(D().blob(r, x, y, 12, 8, 8, .6), '#3e5a30', .95).f(D().blob(r, x - 3, y - 3, 6.4, 4, 6, .5), '#5e7e40', .95); B.s(`M${x - 12} ${y + 2}q8 -14 22 -6`, '#6a4a3a', 1.2, .9); B.f(B.circ(x + 3, y - 3, 1.6), '#4a1a30').f(B.circ(x - 4, y + 1, 1.4), '#7a2a3a').f(B.circ(x + 6, y + 2, 1.3), '#c84a5a'); }
         });
       } else if (kind === 'bridge') {
-        // a barrier pole across the deck, on a post, with a chain
+        // A closed bridge's pole spans its deck between two upright posts.
         const len = side ? 74 : half;
-        if (side) { const x = -len * .55, y = -18 * (1 - .3) - 4; B.post(x - 6, y - 30, y + 2, 4, OAK).post(x + 6, y - 40, y - 10, 4, OAK); B.s(`M${x - 6} ${y - 22}L${x + 6} ${y - 34}`, '#f2ece0', 4.4); for (let i = 0; i < 3; i++) B.s(`M${x - 6 + i * 4} ${y - 22 - i * 4}l2 -2`, '#c84a3a', 4.4); }
+        if (side && crossing) {
+          // Millwater's locked region starts at the crossing centre. Its
+          // far-bank sign is separate; it must not move this visible stop.
+          const W = GARDEN_WORLD, x = crossing.x * W.cellW - frame.x, y = W.sky + crossing.y * W.cellH - frame.y, a = y - frame.span, b = y + frame.span, height = 28;
+          B.post(x, a - 36, a, 5, OAK).post(x, b - 36, b, 5, OAK);
+          B.s(`M${x} ${a - height}L${x} ${b - height}`, '#f2ece0', 4.4);
+          for (let t = a; t < b; t += 24) B.s(`M${x} ${t - height}L${x} ${Math.min(b, t + 12) - height}`, '#c84a3a', 4.4);
+        } else if (side) { const x = -len * .55, y = -18 * (1 - .3) - 4; B.post(x - 6, y - 30, y + 2, 4, OAK).post(x + 6, y - 40, y - 10, 4, OAK); B.s(`M${x - 6} ${y - 22}L${x + 6} ${y - 34}`, '#f2ece0', 4.4); for (let i = 0; i < 3; i++) B.s(`M${x - 6 + i * 4} ${y - 22 - i * 4}l2 -2`, '#c84a3a', 4.4); }
         else { B.post(-len + 8, -38, 0, 5, OAK); B.beam(-len + 6, -36, len * 2 - 12, 6, ['#e8e0cc', '#b8ae98', '#ffffff']); for (let x = -len + 14; x < len - 10; x += 16) B.f(B.rect(x, -36, 8, 6), '#c84a3a'); }
       } else if (kind === 'ruin') {
         // shut: the ring's fallen stones heaped in the opening, a voussoir on top, nettles through them
@@ -624,13 +631,13 @@ window.GardenPaintedProps = (function () {
     if (typeof _gldIslandGateFrame !== 'function') return null;
     const frame = g.crossSpan ? _gldIslandGateFrame(g) : null; if (!frame) return null;
     const kind = gateKind(g), season = sc.season || 'summer', zone = typeof gardenZone === 'function' ? gardenZone(g.n) : null, lv = zone && zone.lv;
-    const art = gateArt(kind, g, frame, season, open), stem = 'gate|' + g.id + '|' + kind + '|' + season + '|' + (art.side ? 's' : 'f');
-    const h = handle(scene, o, g.id, { cls: 'gate', kind: open ? 'paintedgate' : 'gate' });
-    const baseKey = bake(scene, stem + '|base|' + (open ? 'o' : 'c'), art.box, B => art.base(B));
-    // The bridge crosses the river; its gate is on the far bank. Keep the
-    // blocker at crossSpan, but place the stone deck at its authored crossing.
     const layout = kind === 'bridge' && typeof gardenIslandData === 'function' ? gardenIslandData() : null;
     const crossing = layout && layout.presentation && (layout.presentation.crossings || []).find(c => c.gateId === g.id && c.kind === 'hump-bridge');
+    const art = gateArt(kind, g, frame, season, open, crossing), stem = 'gate|' + g.id + '|' + kind + '|' + season + '|' + (art.side ? 's' : 'f');
+    const h = handle(scene, o, g.id, { cls: 'gate', kind: open ? 'paintedgate' : 'gate' });
+    const baseKey = bake(scene, stem + '|base|' + (open ? 'o' : 'c'), art.box, B => art.base(B));
+    // The stone deck belongs to its authored crossing; the sign and inspection
+    // remain at crossSpan. The blocker draws its own offset to the locked neck.
     const baseX = crossing ? crossing.x * o.W.cellW : frame.x, baseY = crossing ? o.W.sky + crossing.y * o.W.cellH : frame.y;
     const lib = layer => { for (const [id, v, size, dx, dy, where] of art.lib) if (where === layer) h.add(libImage(scene, id, v, season, size, frame.x + dx, frame.y + dy, false)); };
     lib('back');
