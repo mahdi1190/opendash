@@ -311,6 +311,7 @@ window.GardenPaintWood = (function () {
     if (S.sortRoot && S.root.sort) { S.root.sort('depth'); S.sortRoot = false; }
     // trees: make a bucket's sprites once, when it comes near (one bucket a frame, and not on a bake frame)
     const pl = typeof _gw !== 'undefined' ? { x: _gw.px * S.W.cellW, y: S.W.sky + _gw.py * S.W.cellH } : null;
+    let underN = 0; const fading = [];
     for (const b of S.buckets.values()) {
       const vis = hit(b.box, view);
       // a new tree texture costs a bake: at most one a frame; trees whose texture exists are free
@@ -318,8 +319,12 @@ window.GardenPaintWood = (function () {
       if (b.made && vis !== b.vis && !(vis && !b.made)) { b.vis = vis; for (const t of b.trees) if (t.im) t.im.setVisible(vis); }
       // a crown you are under fades, so you can always see yourself (a wide crown by its own width); so does a crown over a
       // story house (Hollin's hut) once you are near it
-      if (vis && pl) for (const t of b.trees) { if (!t.im) continue; const under = gardenCrownCovers(pl.x, pl.y, t.x, t.y, t.h * t.scale, t.im.displayWidth, t.im), near = t.hides && Math.hypot((pl.x - t.hides.x) / S.W.cellW, (pl.y - t.hides.y) / S.W.cellH) < 3.5; const a = near || under || GardenNativePainted.fishingCrownCovers(t.im) ? GARDEN_CROWN_FADE : 1; if (under && t.im.active && t.im.visible) S.covering.push(t.im); if (t.im.alpha !== a) t.im.setAlpha(t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8 || 1)); }
+      if (vis && pl) for (const t of b.trees) { if (!t.im) continue; const under = gardenCrownCovers(pl.x, pl.y, t.x, t.y, t.h * t.scale, t.im.displayWidth, t.im), near = t.hides && Math.hypot((pl.x - t.hides.x) / S.W.cellW, (pl.y - t.hides.y) / S.W.cellH) < 3.5; t.fade = near || under || GardenNativePainted.fishingCrownCovers(t.im); if (under) { underN++; if (t.im.active && t.im.visible) S.covering.push(t.im); } fading.push(t); }
     }
+    // Several crowns over you fade further each, so you are as easy to see under three as under one (stacked at the one-crown
+    // fade you read as a ghost deep in the wood)
+    const fadeTo = underN > 1 ? Math.max(.14, 1 - Math.pow(1 - GARDEN_CROWN_FADE, 1 / Math.min(3, underN))) : GARDEN_CROWN_FADE;
+    for (const t of fading) { const a = t.fade ? fadeTo : 1; if (t.im.alpha !== a) t.im.setAlpha(t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8 || 1)); }
     const tTrees = performance.now(); S.tw.trees = Math.max(S.tw.trees, tTrees - t0 - tBake);
     if (S.sortObjects && S.objects.sort) { S.objects.sort('depth'); S.sortObjects = false; }
     S.tw.sort = Math.max(S.tw.sort, performance.now() - tTrees);

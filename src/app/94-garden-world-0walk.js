@@ -92,6 +92,14 @@ function _gwBuildSolids(m) {
   }
   const logs = typeof gardenIslandLogStack === 'function' ? gardenIslandLogStack(island) : null;
   if (logs) { const f = logs.foot; add(f.x0, f.y0, f.x1, f.y1); }
+  // The painted Forest arch's two trunks stand where they are drawn (94-garden-native-painted-props.js gateArt 'arch':
+  // their feet at +-(half + 2), sheared when the arch is seen side on); the lane runs between them, well clear.
+  const woodsGate = island && island.version >= 5 && (island.gates || []).find(g => g.id === 'island-woods');
+  const frame = woodsGate && typeof _gldIslandGateFrame === 'function' && typeof GardenNativePainted !== 'undefined' && GardenNativePainted.wanted && GardenNativePainted.wanted() ? _gldIslandGateFrame(woodsGate) : null;
+  if (frame) {
+    const W = GARDEN_WORLD, side = Math.abs(frame.uy) > Math.abs(frame.ux), half = Math.max(46, Math.min(80, frame.span * .62)), S = frame.span * .9;
+    for (const sgn of [-1, 1]) { const lx = frame.x + sgn * (side ? .85 : 1) * (half + 2), ly = frame.y + 2 + (side ? sgn * (S / half * .8) * (half + 2) : 0); add((lx - 9) / W.cellW, (ly - 7 - W.sky) / W.cellH, (lx + 9) / W.cellW, (ly + 2 - W.sky) / W.cellH); }
+  }
   // the painted woods' trunks collide where they are drawn (their crowns are for walking behind)
   const trunks = _gwWoodTrunks(m);
   if (trunks) for (const b of trunks.list) add(b.x0, b.y0, b.x1, b.y1);
