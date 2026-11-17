@@ -212,13 +212,16 @@ function gardenIslandCrossingGeometry() {
     s0 = Math.max(0, s0 - .7); s1 = Math.min(Ln.len, s1 + .7);
     const hw = river.halfWidth || 1, left = [], right = [];
     for (let s = s0; s <= s1 + 1e-6; s += .2) { const p = at(s), k = hw * (1 + .06 * Math.sin(s * 3.1)); left.push({ x: p.x - p.ty * k, y: p.y + p.tx * k }); right.push({ x: p.x + p.ty * k, y: p.y - p.tx * k }); }
-    const mid = at(n0.s), span = c.kind === 'footbridge' ? hw + .7 : hw + .15, points = left.concat(right.reverse()), halfWidth = c.kind === 'footbridge' ? 17 : 14;
-    const approach = c.kind !== 'hump-bridge' && _gardenIslandCrossingRouteSpan(c, points, halfWidth);
+    // The Millwater hump bridge carries its lane between two parapets: its
+    // standing deck is a lane-wide band from bank to bank, as drawn, not the
+    // gate's four-cell lock span (which read as a square slab on the river).
+    const mid = at(n0.s), span = c.kind === 'footbridge' ? hw + .7 : hw + .15, points = left.concat(right.reverse()), halfWidth = c.kind === 'footbridge' ? 17 : c.kind === 'hump-bridge' ? 24 : 14;
+    const approach = _gardenIslandCrossingRouteSpan(c, points, halfWidth);
     const a = approach ? approach.a : { x: (mid.x - mid.ty * span) * W.cellW, y: W.sky + (mid.y + mid.tx * span) * W.cellH }, b = approach ? approach.b : { x: (mid.x + mid.ty * span) * W.cellW, y: W.sky + (mid.y - mid.tx * span) * W.cellH };
     const length = Math.hypot(b.x - a.x, b.y - a.y), ux = (b.x - a.x) / length, uy = (b.y - a.y) / length;
     const deckPoint = (t, s) => ({ x: a.x + (b.x - a.x) * t - uy * s, y: a.y + (b.y - a.y) * t + ux * s });
     let support;
-    if (c.kind === 'hump-bridge') {
+    if (c.kind === 'hump-bridge' && !approach) {
       const gate = (D.gates || []).find(g => g.id === c.gateId), ends = gate && gate.crossSpan;
       const depth = ends && ends.length === 2 ? Math.hypot((ends[1][0] - ends[0][0]) * W.cellW, (ends[1][1] - ends[0][1]) * W.cellH) / 2 : 0;
       if (!depth) continue;

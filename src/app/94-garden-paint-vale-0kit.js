@@ -26,7 +26,7 @@ window.GardenPaintVale = (function () {
   'use strict';
   const KIT = () => window.GardenPaintTerrainKit;
   const DEPTH = -9346, UNDER = -9592, MAIN_DEPTH = -9268;
-  const parts = [];
+  const parts = [], groundSigs = [];
   let cur = null, heldGround = null, lastError = null, stats = {};
   const memo = new Map();
   const ok = f => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
@@ -226,7 +226,7 @@ window.GardenPaintVale = (function () {
   function paint(scene, root, info, objects) {
     if (!wanted() || !info || !info.data || window.__gpvOff) { clear(); return; }
     const t0 = performance.now(), kit = KIT(), W = info.W, season = info.season || 'summer', P = PAL[season] || PAL.summer;
-    const L = readLayout(W, info.data, info.cellAt), sig = 'gpv-1|' + season + '|' + (GardenIslandLayout.fingerprint || ''), groundSig = sig + '|g|' + L.soil.sig;
+    const L = readLayout(W, info.data, info.cellAt), sig = 'gpv-1|' + season + '|' + (GardenIslandLayout.fingerprint || ''), groundSig = sig + '|g|' + L.soil.sig + groundSigs.map(f => ok(f) || '').join('');   // (an area part whose ground follows the garden adds its key: 94-garden-paint-vale-1valley.js)
     clear(groundSig);
     // Only crossing water uses the four water-light palettes. Keep the ground
     // and standing-object caches unchanged when that discrete bucket changes.
@@ -303,5 +303,5 @@ window.GardenPaintVale = (function () {
   }
   /** Landform kinds painted here (the world skips its own art for them). */
   function owns(kind) { return (kind === 'ruin-wall' || kind === 'ruin') && wanted(); }
-  return { parts, PAL, wanted, paint, tick, clear, pendingGround, playerCanopies: () => cur ? cur.covering : null, status, paintTo, owns, readLayout, loopPath, strokePts, routeRibbon, clipGround, walk, lobe, capsule, hull, lawn, flags, setts, ok, get lastError() { return lastError; } };
+  return { parts, groundSigs, PAL, wanted, paint, tick, clear, pendingGround, playerCanopies: () => cur ? cur.covering : null, status, paintTo, owns, readLayout, loopPath, strokePts, routeRibbon, clipGround, walk, lobe, capsule, hull, lawn, flags, setts, ok, get lastError() { return lastError; } };
 })();
