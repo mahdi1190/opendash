@@ -122,6 +122,9 @@ function _gwBuildSolids(m) {
   for (const b of _gwPaintedTrunks(island)) add(b.x0, b.y0, b.x1, b.y1);
   // the old woodland's lamp plinths (94-garden-0island.js): a small block at the foot, the lantern above is walked behind
   if (typeof gardenIslandOldWoodLamps === 'function') for (const q of gardenIslandOldWoodLamps(island).concat(gardenIslandPosternPiers(island))) add(q.foot.x0, q.foot.y0, q.foot.x1, q.foot.y1);
+  // the village's street lamps (ld-lamp-a by the Land Office, ld-lamp-b by the quay): an iron post on a small plinth, a block at its foot
+  // like the old woodland's lamps, so you walk round the post and behind the lantern, not through it (their cell stays open)
+  for (const p of gardenPropsNow()) if (p.art === 'lamp' && /^ld-lamp-/.test(p.id)) { const x = p.x + .5, y = p.y + .7; add(x - .17, y - .2, x + .17, y + .04); }
   return { list, at };
 }
 /** The one trunk-collision list for painted trees, in cells ({x0, y0, x1, y1, src}). Five painters plant trees, each
@@ -456,7 +459,11 @@ function _gwLos(a, b, m) {
 function _gwMoveBy(dx, dy) {
   const W = GARDEN_WORLD, x0 = _gw.px, y0 = _gw.py;
   const shore = _gwShoreSlide(x0, y0, dx, dy, GW_FOOT.x, GW_FOOT.y, _gwFree, _gwGridNow(), _gw.shoreMove || (_gw.shoreMove = {}));
-  if (shore.shore) { _gw.px = shore.x; _gw.py = shore.y; return shore.moved; }
+  // how far a candidate gets the way you are pressing, as a share of the step
+  const len2 = (dx * W.cellW) ** 2 + (dy * W.cellH) ** 2, gain = (px, py) => len2 ? ((px - x0) * W.cellW * dx * W.cellW + (py - y0) * W.cellH * dy * W.cellH) / len2 : 0;
+  // the bank's own slide, unless it all but stops a diagonal press dead (a corner of the gorge bank or the Mere shore): then the
+  // wall slide below gets its turn, and whichever goes further the way you are pressing wins (17 Nov 2026)
+  if (shore.shore && (gain(shore.x, shore.y) >= .3 || !(dx && dy))) { _gw.px = shore.x; _gw.py = shore.y; return shore.moved; }
   let x = x0, y = y0;
   if (_gwFree(x0 + dx, y0 + dy)) { x += dx; y += dy; }
   else {
@@ -467,6 +474,7 @@ function _gwMoveBy(dx, dy) {
       const unit = horiz ? 1 / W.cellH : 1 / W.cellW;   // one pixel across the way we are going, in cells
       // the smallest sideways offset (2 .. 24 px: far enough to round a small box head-on) that lets the step go on; walk toward it a step at a time, so it never jitters
       search: for (let k = 1; k <= 12; k++) for (const s of [1, -1]) {
+        if (dx && dy && s !== Math.sign(horiz ? dy : dx)) continue;   // a diagonal press rounds a corner only the way it presses: stepping back the other way made you jitter on the spot
         const full = s * k * 2 * unit, part = s * Math.min(k * 2, Math.max(1, stepPx)) * unit, whole = Math.abs(part) >= Math.abs(full) - 1e-9;
         const ax = horiz ? x0 + dx : x0 + full, ay = horiz ? y0 + full : y0 + dy;   // sideways by the whole offset and on
         if (!_gwFree(ax, ay)) continue;
@@ -475,6 +483,7 @@ function _gwMoveBy(dx, dy) {
       }
     }
   }
+  if (shore.shore && shore.moved && gain(shore.x, shore.y) >= gain(x, y)) { _gw.px = shore.x; _gw.py = shore.y; return true; }
   if (x === x0 && y === y0) return false;
   _gw.px = x; _gw.py = y; return true;
 }
@@ -1447,6 +1456,9 @@ function _gwPropOwnsPoint(prop, pt) {
   // An unbuilt site's artwork is its price marker. Its future building
   // footprint is empty ground and must not intercept plants or insects.
   if (prop.site) return false;
+  // A small prop (a lectern, the sundial, a post box: 'soft') owns only the ground right under it; its painted pixels pick it
+  // too (hitPoint). Owning its whole cell and the door cell in front made a strip of the green open the story (17 Nov 2026).
+  if (gardenPropCol(prop) === 'soft') { const cx = prop.x + (prop.w || 1) / 2, foot = prop.y + (prop.h || 1) - .08; return Math.abs(pt.x - cx) <= .3 && pt.y >= foot - .55 && pt.y <= foot + .05; }
   if (pt.x >= prop.x && pt.x < prop.x + (prop.w || 1) && pt.y >= prop.y && pt.y < prop.y + (prop.h || 1)) return true;
   const door = prop.door;
   return !!door && Math.abs(pt.x - door.x - .5) <= .42 && Math.abs(pt.y - door.y - .5) <= .34;
