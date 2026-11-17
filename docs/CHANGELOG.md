@@ -10,6 +10,18 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.71.1] - 2026-11-17
+
+### Fixed
+
+- Locked land wears its region: dry-stone walls on the moor, hedges in the orchard, birch scrub and bracken in Whispering woodland. A small sign on each shows the level and price it needs.
+- Dusk now looks like dusk, darkening through the whole evening with a warmer tint.
+- Walking diagonally into a bank or shore slides along it instead of stopping.
+- Clicking the ground in front of the sundial walks there instead of opening the story.
+- The story replay plays cleanly.
+- The Great Oak no longer swallows its clearing at full zoom-out, and the map's west and north edges no longer show hard seams.
+- The village lamps are solid.
+
 ## [2.71.0] - 2026-11-17
 
 ### Fixed
