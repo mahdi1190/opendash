@@ -299,6 +299,43 @@
         B.f(B.blob(r, c.x, c.y + 4, 22, 5, 7, .4), '#3e4a3a', .5);
       });
     }
+    // the watchtower's door faces south, off its own path: a trodden way round its west end joins the pond walk to the step
+    const tower = L.stat('ld-tower'), walk = L.routes.get('pond-walk');
+    if (tower && tower.door && walk) {
+      const pts = [[tower.x - .75, tower.y - .1], [tower.x - .7, tower.y + .75], [tower.x - .2, tower.y + 1.4], [tower.door.x, tower.y + 1.6]].map(L.pt);
+      add(C.kit.bboxOf(pts, 40), 79, (B, r) => {
+        V.strokePts(B, pts, '#6e5e3e', 30, .3); V.strokePts(B, pts, '#b8a478', 24, .9); V.strokePts(B, pts, '#d4c196', 16, .85); V.strokePts(B, pts, '#e2d2a8', 6, .5, -2, -1);
+        for (let k = 0; k < 18; k++) { const t = r(), i = Math.min(2, Math.floor(t * 3)), a = pts[i], b = pts[i + 1], f = t * 3 - i; B.f(B.blob(r, a.x + (b.x - a.x) * f + (r() - .5) * 14, a.y + (b.y - a.y) * f + (r() - .5) * 8, 3 + r() * 3, 1.4 + r(), 6, .5), r() < .5 ? '#7d8f4e' : '#9a8a5e', .55); }
+      });
+    }
+    // the wayside lamps: an iron lantern on a squat stone plinth, glass that holds the light (lit at dusk by the world's lights)
+    if (typeof gardenIslandOldWoodLamps === 'function') gardenIslandOldWoodLamps(L.D).forEach((q, i) => {
+      const p = L.cpt(q.x, q.y);
+      thing({ key: 'oldlamp|' + i + '|' + C.season, x: p.x, y: p.y, box: [-18, -70, 18, 8], draw: B => {
+        const r = C.kit.rng(300 + i);
+        B.shadow(2, 1, 13, 3.4, .32);
+        B.f(B.rr(-9, -15, 18, 15, 2.5), RUIN.body).f(B.rect(-9, -15, 5, 15), RUIN.hi, .45).f(B.rect(4, -15, 5, 15), RUIN.lo, .55).f(B.rr(-10.5, -18, 21, 4, 1.5), RUIN.lo).f(B.rr(-10.5, -18, 21, 1.6, 1), RUIN.hi, .7);
+        B.f(B.blob(r, -3, -17, 7, 2, 6, .5), C.season === 'winter' ? '#f2f4f0' : RUIN.moss, .9);
+        B.s('M0 -18V-50', P.iron, 3).s('M-1 -18V-50', '#5a6064', 1, .6).s('M0 -46Q6 -50 9 -46', P.iron, 1.8);
+        B.f('M-6 -56L6 -56L5 -46L-5 -46Z', '#f2d36b', .95).f('M-6 -56L-1 -56L-1.5 -46L-5 -46Z', '#fff2c0', .6).s('M-6 -56L6 -56L5 -46L-5 -46ZM0 -56V-46M-5.5 -51H5.5', P.iron, 1.2);
+        B.f('M-8 -56L0 -62L8 -56Z', P.iron).f(B.circ(0, -63, 1.6), P.iron).f(B.rect(-5.5, -46.5, 11, 2), P.iron);
+        if (C.season !== 'winter' && r() < .7) fern(B, r, 9, 1, C.season);
+      } });
+    });
+    // the postern: two old gate piers either side of the circuit where it leaves through the east wall
+    if (typeof gardenIslandPosternPiers === 'function') gardenIslandPosternPiers(L.D).forEach((q, i) => {
+      const p = L.cpt(q.x, q.y);
+      thing({ key: 'postern-pier|' + i + '|' + C.season, x: p.x, y: p.y, box: [-22, -66, 22, 10], draw: B => {
+        const r = C.kit.rng(410 + i), ST = { rock: RUIN.body, rockLo: RUIN.lo, rockHi: RUIN.hi, rockDk: RUIN.dk };
+        B.shadow(3, 2, 18, 4.4, .34);
+        B.f(B.rect(-11, -48 + i * 6, 22, 48 - i * 6), B.lin(0, -48, 0, 0, [[0, RUIN.body], [.8, RUIN.lo], [1, RUIN.dk]])).f(B.rect(-11, -48 + i * 6, 6, 48 - i * 6), RUIN.hi, .4).f(B.rect(5, -48 + i * 6, 6, 48 - i * 6), RUIN.lo, .5);
+        for (let y = -44 + i * 6; y < -2; y += 8) B.f(B.rect(-11, y, 22, 1), RUIN.dk, .35).f(B.rect(-11 + ((y / 8) & 1) * 9, y - 7, 1, 7), RUIN.dk, .3);
+        B.f(B.rr(-13.5, -53 + i * 6, 27, 6, 2), RUIN.lo).f(B.rr(-13.5, -53 + i * 6, 27, 2.4, 1.2), RUIN.hi, .8).f(B.blob(r, -4, -52 + i * 6, 9, 2.4, 6, .5), C.season === 'winter' ? '#f2f4f0' : RUIN.moss, .9);
+        B.f(`M-11 ${-40 + i * 6}Q-14 ${-24 + i * 6} -9 ${-12}Q-4 ${-26 + i * 6} -6 ${-40 + i * 6}Z`, RUIN.ivy, .9);
+        for (let k = 0; k < 3; k++) B.stone(r, (r() - .5) * 30, 4 + r() * 4, 4 + r() * 3, 2.6 + r(), ST, r() < .5 ? RUIN.moss : null);
+        fern(B, r, i ? -12 : 13, 3, C.season);
+      } });
+    });
     // the small stone by the chapel wall, with no name on it
     const chapel = L.stat('ld-chapel');
     if (chapel) { const p = L.cpt(chapel.x - .6, chapel.y + chapel.h + .4); thing({ key: 'chapel-stone', x: p.x, y: p.y, box: [-14, -26, 16, 6], draw: B => { B.shadow(3, 1, 11, 3, .3); B.f('M-7 0L-7 -15Q-7 -21 0 -21Q7 -21 7 -15L7 0Z', RUIN.body).f('M-7 0L-7 -15Q-7 -21 0 -21L0 0Z', RUIN.hi, .5).f(B.blob(window.GardenPaintTerrainKit.rng(5), -2, -19, 5, 2, 6, .5), RUIN.moss, .9); B.f(B.circ(-3, 1, 1.6), '#f0e0a0').f(B.circ(2, 1.4, 1.4), '#e8e4f0'); } }); }

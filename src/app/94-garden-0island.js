@@ -68,6 +68,38 @@ function gardenIslandLogStack(data) {
   // The posts and lowest logs occupy the base; the roof is safe to walk behind.
   return { x, y, foot: { x0: x - 36 / W.cellW, y0: y - 8 / W.cellH, x1: x + 36 / W.cellW, y1: y + 2 / W.cellH } };
 }
+/**
+ * The old woodland's wayside lamps: seven old iron lanterns on stone plinths by its paths (the arch, the Hush, the
+ * court, the birches, the shore, the ice house, the postern). Each stands on the nearest open grass to its spot, never
+ * on a path, water, a building or land for sale. Positions in cells (foot); the painter draws them, the walk treats
+ * the plinth as solid and the night lights them. Cached per layout.
+ */
+const _GD_OLDWOOD_LAMPS = [[21.6, 66.6], [19.1, 69.6], [23.6, 77.1], [18.6, 80.6], [23.4, 85.2], [30.5, 85.6], [34.2, 77.6]];
+function gardenIslandOldWoodLamps(data) {
+  data = data || (gardenIslandActive() ? gardenIslandData() : null);
+  if (!data || data.version < 5 || !(data.regions || []).some(r => r.id === 'southwest-ruins')) return [];
+  if (data._oldLamps) return data._oldLamps;
+  const ok = (x, y) => {
+    const c = gardenIslandBaseCell(x, y); if (!c || !c.land || c.freshwater || c.beach || c.route || c.reservation || c.solid || c.region !== 'southwest-ruins') return false;
+    const row = typeof gardenLandCell === 'function' ? gardenLandCell(Math.floor(x), Math.floor(y)) : null;
+    return !(row && /^l[sct]-/.test(row.id || ''));
+  };
+  const out = [];
+  for (const [ax, ay] of _GD_OLDWOOD_LAMPS) {
+    let best = null;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const x = Math.floor(ax) + dx, y = Math.floor(ay) + dy; if (!ok(x, y)) continue; const d = Math.hypot(x + .5 - ax, y + .5 - ay); if (!best || d < best.d) best = { x: x + .5, y: y + .7, d }; }
+    if (best) out.push({ x: best.x, y: best.y, foot: { x0: best.x - .2, y0: best.y - .22, x1: best.x + .2, y1: best.y + .04 } });
+  }
+  try { Object.defineProperty(data, '_oldLamps', { value: out, enumerable: false }); } catch (e) { /* frozen layout: recompute */ }
+  return out;
+}
+/** The postern: a gap in the old woodland's east wall where its circuit meets the cottage lane, marked by two stone piers at the path's edges. Cells. */
+function gardenIslandPosternPiers(data) {
+  data = data || (gardenIslandActive() ? gardenIslandData() : null);
+  const sc = data && data.version >= 5 && ((data.presentation && data.presentation.shortcuts) || []).find(s => s.id === 'postern');
+  if (!sc || !sc.at) return [];
+  return [[sc.at[0] + .3, sc.at[1] - 1.05], [sc.at[0] + .55, sc.at[1] + 1.25]].map(([x, y]) => ({ x, y, foot: { x0: x - .26, y0: y - .2, x1: x + .26, y1: y + .04 } }));
+}
 /** Optional decks use the displayed Garden's mechanics identity, never a visitor's ownership. */
 function gardenSidePierMechanicsReady(source) {
   const data = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data, mechanics = data && data.mechanics;

@@ -150,7 +150,7 @@ window.GardenPaintWood = (function () {
     const yew = typeof sceneObj === 'function' && sceneObj('tree.proof-yew') ? 'tree.proof-yew' : null;
     out.trees = out.trees.filter(t => {
       if (t.region !== region.id || t.thicket || !covers(t.x, t.y, t.h * t.scale)) return true;
-      if (yew && !covers(t.x, t.y, 130 * .82)) { t.id = yew; t.v = 0; t.h = 130; t.scale = .82; return true; }
+      if (yew && !covers(t.x, t.y, 130 * .82)) { t.id = yew; t.v = Math.floor(h3(t.cx, t.cy, 5) * 2); t.h = 130; t.scale = .74 + h3(t.cx, t.cy, 7) * .12; t.flip = h3(t.cx, t.cy, 6) < .5; return true; }
       // else the same tree a step or two back from what it hid, if the ground there is free
       for (const [dx, dy] of [[0, 2], [-2, 1], [2, 1], [0, 3], [-2, 3], [2, 3]]) {
         const nx = t.cx + dx, ny = t.cy + dy, x = t.x + dx * cw, y = t.y + dy * ch;

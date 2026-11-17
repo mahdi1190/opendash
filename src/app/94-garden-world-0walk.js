@@ -92,6 +92,8 @@ function _gwBuildSolids(m) {
   }
   const logs = typeof gardenIslandLogStack === 'function' ? gardenIslandLogStack(island) : null;
   if (logs) { const f = logs.foot; add(f.x0, f.y0, f.x1, f.y1); }
+  // the old woodland's lamp plinths (94-garden-0island.js): a small block at the foot, the lantern above is walked behind
+  if (typeof gardenIslandOldWoodLamps === 'function') for (const q of gardenIslandOldWoodLamps(island).concat(gardenIslandPosternPiers(island))) add(q.foot.x0, q.foot.y0, q.foot.x1, q.foot.y1);
   return { list, at };
 }
 /** Do feet (half width fx, half depth fy, in cells) at x, y touch one of the boxes? */
