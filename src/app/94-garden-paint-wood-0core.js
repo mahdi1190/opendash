@@ -145,14 +145,15 @@ window.GardenPaintWood = (function () {
     }
     for (const w of data.freshwater || []) if (w.boundary && inside(w.wet.x + w.wet.w / 2, w.wet.y + w.wet.h / 2, poly)) { const xs = w.boundary.map(p => p[0]), ys = w.boundary.map(p => p[1]); box(Math.min(...xs) + .3, Math.min(...ys) + .3, Math.max(...xs) - .3, Math.max(...ys) - .2); }
     for (const s of (data.presentation && data.presentation.shortcuts) || []) if (s.from === region.id && s.at) box(s.at[0] - 2, s.at[1] - 1.6, s.at[0] + 1.4, s.at[1] + 1.2);
-    const covers = (x, y, H) => { const c = [x - H * .4, y - H, x + H * .4, y - H * .28]; return keep.some(k => y > k[3] - ch * .2 && c[0] < k[2] && k[0] < c[2] && c[1] < k[3] && k[1] < c[3]); };
+    // covered: a crown in front hides more than a quarter of it (a crown brushing the pond's far corner is fine)
+    const covers = (x, y, H) => { const c = [x - H * .4, y - H, x + H * .4, y - H * .28]; return keep.some(k => { if (y <= k[3] - ch * .2) return false; const ox = Math.min(c[2], k[2]) - Math.max(c[0], k[0]), oy = Math.min(c[3], k[3]) - Math.max(c[1], k[1]); return ox > 0 && oy > 0 && ox * oy > (k[2] - k[0]) * (k[3] - k[1]) * .25; }); };
     const taken = new Set(out.trees.map(t => t.cx + ',' + t.cy)), moved = [];
     const yew = typeof sceneObj === 'function' && sceneObj('tree.proof-yew') ? 'tree.proof-yew' : null;
     out.trees = out.trees.filter(t => {
       if (t.region !== region.id || t.thicket || !covers(t.x, t.y, t.h * t.scale)) return true;
       if (yew && !covers(t.x, t.y, 130 * .82)) { t.id = yew; t.v = Math.floor(h3(t.cx, t.cy, 5) * 2); t.h = 130; t.scale = .74 + h3(t.cx, t.cy, 7) * .12; t.flip = h3(t.cx, t.cy, 6) < .5; return true; }
-      // else the same tree a step or two back from what it hid, if the ground there is free
-      for (const [dx, dy] of [[0, 2], [-2, 1], [2, 1], [0, 3], [-2, 3], [2, 3]]) {
+      // else the same tree a step or two away (behind what it hid, first), if the ground there is free
+      for (const [dx, dy] of [[0, -2], [-1, -3], [1, -3], [0, -4], [-2, -1], [2, -1], [0, 2], [-2, 1], [2, 1], [0, 3]]) {
         const nx = t.cx + dx, ny = t.cy + dy, x = t.x + dx * cw, y = t.y + dy * ch;
         if (!spotOk(nx, ny) || taken.has(nx + ',' + ny) || covers(x, y, t.h * t.scale)) continue;
         moved.push(Object.assign({}, t, { x, y, cx: nx, cy: ny })); taken.add(nx + ',' + ny); break;
