@@ -1755,7 +1755,7 @@ function gardenWorldStart(root, m) {
   const again = !!_gw.placed && (GARDEN_WORLD.v < 3 || _gw.positionLayout === _gwPositionKey());
   const sv = again ? { x: _gw.px, y: _gw.py } : _gwSavedPos();
   if (sv && (again || _gwFree(sv.x, sv.y))) { _gw.px = sv.x; _gw.py = sv.y; }   // (a redraw never moves you: the walk-out below does, if something is in the way)
-  else { const f = _gwCellPoint(_gwNearestFree(GARDEN_WORLD.start.x, GARDEN_WORLD.start.y, 8) || GARDEN_WORLD.start); _gw.px = f.x; _gw.py = f.y; }
+  else { const st = GARDEN_WORLD.start, dx = typeof gardenVisitOn === 'function' && gardenVisitOn() ? -2 : 0; const f = _gwCellPoint(_gwNearestFree(st.x + dx, st.y, 8) || _gwNearestFree(st.x, st.y, 8) || st); _gw.px = f.x; _gw.py = f.y; }   // a visitor arrives a step beside the start, not inside a host who has not moved off it
   // the page being drawn again (another tab wrote, the state was replaced) used to stop a walk in progress: it now carries on
   _gw.positionLayout = _gwPositionKey(); _gw.placed = true; if (!again) { _gw.path = []; _gw.then = null; } _gw.moving = false; _gw.fig = { idle: '', walk: '' }; _gw.bodyKey = ''; _gw.node = null; _gw.pet = null; _gw.keys.clear();
   if (_gw.box) {
