@@ -1492,6 +1492,8 @@ function gardenWorldPick(it, cell, ev, m) {
   if (bug) return { kind: 'bug', bug, pt };
   const decor = it && it.kind === 'decor' && (!it.ground || _gdpTool() === 'dig') ? gardenDecorById(m, it.uid) : null;   // you walk over a path, but the spade lifts it
   if (plant || decor) return { kind: plant ? 'plant' : 'decor', plant, decor, pt, cell: c };
+  // a shut gate's way in (a bridge's far end is over the river): the click means the gate (94-garden-wonder-7gates.js)
+  if (WD.v >= 4 && _gdpTool() === 'hand' && typeof gardenGateNearShut === 'function') { const gate = gardenGateNearShut(pt, m); if (gate) return { kind: 'land', land: 'zn-' + gate.n, pt, cell: c }; }
   // Island rivers share cells with growing-plot edges. Water follows region
   // permissions, not the neighbouring plot's planting unlock.
   if (WD.v >= 4 && typeof gardenWaterContainsPoint === 'function' && gardenWaterContainsPoint(pt.x, pt.y)) {
