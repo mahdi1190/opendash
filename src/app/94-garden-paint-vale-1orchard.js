@@ -50,6 +50,18 @@
         if (rr() < .3) B.tufts(rr, x, y, 10, 4, [P.lawnLo, P.lawnHi], 6); } });
     }, {});
 
+    // 1b. The orchard pond's margin: a worn earth bank with sedge and a few stones, so the grass meets the water at a
+    // shore (as the Mere's does) and not at a bare glassy lip. Drawn under the water's own shallows.
+    for (const pool of (L.D.freshwater || []).filter(w => w.id === 'orchard-pool' && w.boundary && w.boundary.length > 2)) {
+      const pts = pool.boundary.map(L.pt), loop = V.loopPath([pts]), bb = kit.bboxOf(pts, 40);
+      add(bb, 97, (B, r) => {
+        B.s(loop, season === 'winter' ? '#8e8a74' : '#8a7a52', 26, .5).s(loop, '#6e6040', 12, .55).s(loop, '#5a5238', 4, .45);
+        for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; for (let t = 0; t < 1; t += .34) { const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, cx = (bb[0] + bb[2]) / 2, cy = (bb[1] + bb[3]) / 2, d = Math.hypot(x - cx, (y - cy) * 1.6) || 1, ox = (x - cx) / d, oy = (y - cy) * 1.6 / d;
+          if (r() < .32) B.stone(r, x + ox * 9, y + oy * 5, 3 + r() * 3, 2 + r() * 1.4, { rock: '#b4aa94', rockLo: '#8c8270', rockHi: '#d8cfb8', rockDk: '#4e483e' }, null);
+          if (season !== 'winter' && r() < .7) B.tufts(r, x + ox * (14 + r() * 8), y + oy * (8 + r() * 5), 12, 6, ['#9a9a52', '#7c8a44', season === 'autumn' ? '#b8a05a' : '#a8b468'], 9); } }
+      });
+    }
+
     // 2. Trees in rows along the terraces, clear of everything the player uses
     const trees = [], kinds = GardenPaintWood.orchardKinds || ['apple'];
     // What the rows keep clear of, measured from the painted shapes, not cell centres: a trunk never stands on a

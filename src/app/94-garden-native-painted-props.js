@@ -507,11 +507,11 @@ window.GardenPaintedProps = (function () {
     const oak = season === 'winter' ? 'tree.oak' : 'tree.green-oak';
     // library objects standing in the crossing: [id, variant, size, dx, dy, 'back' | 'front']
     art.lib = kind === 'arch' ? []
-      : kind === 'stair' ? [['tree.cherry', 0, { h: 104 }, -(side ? 30 : half * 1.15) - 52, -40, 'back'], ['tree.cherry', 1, { h: 96 }, (side ? 30 : half * 1.15) + 52, -36, 'back']]
+      : kind === 'stair' ? [['tree.cherry', 0, { h: 104 }, -(side ? 30 : half * 1.55) - 58, -14, 'back'], ['tree.cherry', 1, { h: 96 }, (side ? 30 : half * 1.55) + 58, -10, 'back']]
       : kind === 'pass' ? (side ? [['tree.pine', 0, { h: 170 }, 34, -art.S - 20, 'back'], ['rock.boulder', 0, { w: 96 }, 0, -art.S * .8, 'back'], ['rock.boulder', 1, { w: 110 }, 0, art.S * .8 + 6, 'front']] : [['tree.pine', 0, { h: 170 }, -half - 50, -16, 'back'], ['rock.boulder', 0, { w: 100 }, -half, 2, 'back'], ['rock.boulder', 1, { w: 110 }, half, 4, 'back']])
       : kind === 'ruin' ? [['tree.proof-yew', 0, { h: 130 }, side ? 40 : half + 52, side ? -art.S : -6, 'back']] : [];
     // the box of the drawing round the crossing's centre
-    const box = (kind === 'arch' || kind === 'ruin') && side ? [-half * .85 - 90, -art.S - 200, half * .85 + 90, art.S + 30] : side ? [-100, -170 - half * .9, 100, kind === 'bridge' ? frame.span + 28 : half * .9 + 22] : [-half - 90, -200, half + 90, 24];
+    const box = (kind === 'arch' || kind === 'ruin') && side ? [-half * .85 - 90, -art.S - 200, half * .85 + 90, art.S + 30] : side ? [-100, -170 - half * .9, 100, kind === 'bridge' ? frame.span + 28 : half * .9 + 22] : [-half - 90, -200, half + 90, kind === 'stair' ? 60 : 24];
     const base = (B) => {
       if (kind === 'arch') {
         B.shadow(0, 2, half + 30, 10, .26);
@@ -582,16 +582,17 @@ window.GardenPaintedProps = (function () {
         elevation(B, side, half, art.S, () => ruinedArch(B, r, half, 124, season, open));
         for (let i = 0; i < 4; i++) B.stone(r, (side ? 20 : half + 18) + i * 9 * (side ? 0 : 1), (side ? half * .6 + i * 8 : 2 - i * 2), 7 - i, 4.4 - i * .5, STONE, i < 2 ? MOSS : null);
       } else if (kind === 'stair') {
-        // stone steps climbing through a gap in a dry-stone wall, a small oak gate at the top
-        const steps = 6, sw = side ? 30 : half * 1.15;
-        for (let i = 0; i < steps; i++) { const y = -i * 9, x = side ? -24 + i * 8 : 0, w = sw - i * 1.5; B.f(B.rect(x - w, y - 9, w * 2, 9), STONE[1]).f(B.rect(x - w, y - 9, w * 2, 3), STONE[2]).f(B.rect(x - w, y - 2, w * 2, 2), STONE[3], .4); }
+        // stone steps climbing through the gap in the terrace wall: they fill the wall's opening (its faces stand a
+        // cell below the crossing line), their cheeks overlap the wall ends, a small oak gate at the top
+        const steps = 6, sw = side ? 30 : half * 1.55, dy = side ? 0 : 52, top = dy - steps * 9;
+        for (let i = 0; i < steps; i++) { const y = dy - i * 9, x = side ? -24 + i * 8 : 0, w = sw - i * 1.5; B.f(B.rect(x - w, y - 9, w * 2, 9), STONE[1]).f(B.rect(x - w, y - 9, w * 2, 3), STONE[2]).f(B.rect(x - w, y - 2, w * 2, 2), STONE[3], .4); }
         for (const s of [-1, 1]) {
-          for (let row = 0; row < 7; row++) for (let i = 0; i < 4; i++) { const x = s * (sw + 8 + i * 11) + (row & 1) * 4 * s, y = -4 - row * 7.6 - (side ? 0 : 0); B.f(D().blob(r, x, y, 6.4, 3.8, 6, .3), (row + i) % 3 ? STONE[0] : STONE[1]).f(D().blob(r, x - 1.4, y - 1.2, 3.6, 1.6, 6, .3), STONE[2], .55); }
-          B.f(D().blob(r, s * (sw + 22), -58, 22, 7, 9, .5), MOSS[0], .85).f(D().blob(r, s * (sw + 18), -61, 12, 3.6, 7, .5), MOSS[1], .85);
-          B.crown(r, s * (sw + 40), -74, 26, 20, season, 4);
-          if (season !== 'winter') for (let i = 0; i < 7; i++) B.f(B.circ(s * (sw + 28 + r() * 26), -76 + (r() - .5) * 26, 1.6), season === 'autumn' ? '#c8402a' : '#f4d8e0', .95);
+          for (let row = 0; row < 7; row++) for (let i = 0; i < 4; i++) { const x = s * (sw + 8 + i * 11) + (row & 1) * 4 * s, y = dy - 4 - row * 7.6; B.f(D().blob(r, x, y, 6.4, 3.8, 6, .3), (row + i) % 3 ? STONE[0] : STONE[1]).f(D().blob(r, x - 1.4, y - 1.2, 3.6, 1.6, 6, .3), STONE[2], .55); }
+          B.f(D().blob(r, s * (sw + 22), dy - 58, 22, 7, 9, .5), MOSS[0], .85).f(D().blob(r, s * (sw + 18), dy - 61, 12, 3.6, 7, .5), MOSS[1], .85);
+          B.crown(r, s * (sw + 40), dy - 74, 26, 20, season, 4);
+          if (season !== 'winter') for (let i = 0; i < 7; i++) B.f(B.circ(s * (sw + 28 + r() * 26), dy - 76 + (r() - .5) * 26, 1.6), season === 'autumn' ? '#c8402a' : '#f4d8e0', .95);
         }
-        B.post(-sw + 2, -96, -52, 5, OAK).post(sw - 2, -96, -52, 5, OAK);
+        B.post(-sw + 2, top - 44, top + 2, 5, OAK).post(sw - 2, top - 44, top + 2, 5, OAK);
       } else {
         // the pass: boulders either side of the col, scree, heather, a cairn of stacked stones
         const rock = ['#a8a698', '#848274', '#cfccbe', '#666456'], o = side ? [[0, -half * .8], [0, half * .8]] : [[-half, 0], [half, 0]];
@@ -634,10 +635,10 @@ window.GardenPaintedProps = (function () {
         });
       } else if (kind === 'stair') {
         // the oak gate at the top of the steps, shut
-        const sw = side ? 30 : half * 1.15; B.beam(-sw + 4, -92, sw * 2 - 8, 5, OAK).beam(-sw + 4, -66, sw * 2 - 8, 5, OAK);
-        for (let x = -sw + 8; x < sw - 6; x += 8) B.post(x, -94, -58, 3.4, OAK);
-        B.s(`M${-sw + 6} -64L${sw - 6} -90`, OAK[1], 3);
-        B.f(B.rr(-4, -82, 8, 7, 1.4), '#6a6e70');
+        const sw = side ? 30 : half * 1.55, g = side ? 0 : 52 - 6 * 9 + 54; B.beam(-sw + 4, g - 92, sw * 2 - 8, 5, OAK).beam(-sw + 4, g - 66, sw * 2 - 8, 5, OAK);
+        for (let x = -sw + 8; x < sw - 6; x += 8) B.post(x, g - 94, g - 58, 3.4, OAK);
+        B.s(`M${-sw + 6} ${g - 64}L${sw - 6} ${g - 90}`, OAK[1], 3);
+        B.f(B.rr(-4, g - 82, 8, 7, 1.4), '#6a6e70');
       } else {
         // a rope with prayer-flag pennants across the col
         const a = side ? [0, -half * .6] : [-half + 20, -40], b2 = side ? [0, half * .6] : [half - 20, -40];
