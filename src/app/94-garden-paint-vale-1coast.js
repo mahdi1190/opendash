@@ -30,7 +30,7 @@
         B.cx.save(); V.clipGround(B, L, cb, true);
         // a darker, damper sward first, fading out from the boardwalk
         kit.tiles(cb, 70, 20, 61, (tx, ty, rr) => { for (let k = 0; k < 6; k++) { const x = tx + rr() * 70, y = ty + rr() * 70; if (!marshy(x, y)) continue; const d = near(x, y); if (d > 270) continue; const a = Math.min(1, (270 - d) / 110);
-          B.f(B.blob(rr, x, y, 30 + rr() * 34, 10 + rr() * 12, 9, .45), rr() < .5 ? pal.rushLo : '#6f7c44', (.1 + rr() * .08) * a); } });
+          B.f(B.blob(rr, x, y, 40 + rr() * 40, 14 + rr() * 12, 10, .4), rr() < .5 ? pal.rushLo : '#6f7c44', (.05 + rr() * .05) * a); } });
         // creeks: winding grey mud runnels with a thread of water, draining toward the river mouth
         const rc = kit.rng(611);
         for (let i = 0; i < spine.length - 1; i++) {
@@ -71,7 +71,7 @@
     if (cove.length > 1 && coast.length > 2) {
       const bb = kit.bboxOf(coast, 120), R = { rock: '#9a958c', rockLo: '#6e6a62', rockHi: '#c8c2b4', rockDk: '#3e3c38', lichen: '#c9c48a' };
       // (standing sprites, not ground: the fells' moor is laid over the vale's ground up here)
-      const rocks = []; for (const q of V.walk(coast, 30)) { const rr = kit.rng(kit.hash(Math.round(q.x), Math.round(q.y), 67)); if (rr() < .25) continue; const d = -4 + rr() * 22; rocks.push({ x: q.x + q.ty * d, y: q.y - q.tx * d, s: 9 + rr() * 13, seed: kit.hash(Math.round(q.x), Math.round(q.y), 68) }); }
+      const rocks = []; for (const q of V.walk(coast, 20)) { const rr = kit.rng(kit.hash(Math.round(q.x), Math.round(q.y), 67)); if (rr() < .45) continue; const n = rr() < .3 ? 2 : 1; for (let j = 0; j < n; j++) { const d = -8 + rr() * 36, along = (rr() - .5) * 16; rocks.push({ x: q.x + q.ty * d + q.tx * along, y: q.y - q.tx * d + q.ty * along, s: (d > 18 ? 5 : 7) + rr() * (d > 18 ? 9 : 15), seed: kit.hash(Math.round(q.x), Math.round(q.y), 68 + j) }); } }
       // the shingle: one flat sprite under everything that stands, grey stones going smaller up the beach
       const ox = Math.round((bb[0] + bb[2]) / 2), oy = Math.round(bb[3]);
       C.thing({ key: 'cold-cove-shingle', depth: -9000, x: ox, y: oy, box: [bb[0] - ox, bb[1] - oy, bb[2] - ox, 0], K: 1, draw: B => {
