@@ -796,12 +796,20 @@ function* _wh5LifeStepsBody(rec, sliceMs) {
 // live records nobody drew for this long let go of their bake products (a renderer that still holds a bake keeps its own; the next bake
 // of an idle one rebuilds them): a page that showed many openings over a day no longer keeps every one's bitmaps (WORLD_FLICKER.md 8)
 const WORLD_HOST_IDLE_MS = 10 * 60000;
+const WORLD_HOST_DROP_MS = 2 * 60000;   // a live world not drawn for this long is dropped (_wh5Sweep)
 let _wh5SweptAt = 0;
 function _wh5Sweep() {
   const now = _wh5Now();
   if (now - _wh5SweptAt < 30000) return;
   _wh5SweptAt = now;
-  for (const r of _wh5Live.values()) {
+  for (const r of [..._wh5Live.values()]) {
+    // a world nobody has drawn for a while goes whole (its world, life and agents, 15-25 MB a scene): browsing the gallery kept every
+    // scene ever shown alive, 1.2 GB after the 45 painted openings. A renderer still holding the record keeps drawing it (the frame
+    // passes hold the record itself); the next worldHostData of that id builds it again (from the kept bake when there is one)
+    if (now - (r.lastUsed || 0) > WORLD_HOST_DROP_MS) {
+      _wh5Live.delete(r.id);
+      continue;
+    }
     if (!(now - (r.lastUsed || 0) > WORLD_HOST_IDLE_MS) || !r.frame) continue;
     if (r.frame.cache && r.frame.cache.size) r.frame.cache.clear();
     _wh5ClearMem(r);

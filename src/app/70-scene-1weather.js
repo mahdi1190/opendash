@@ -95,7 +95,10 @@ function sceneWinterMood(lat, lon, ms) {
   const k = _scwxClamp((Math.abs(lat || 0) - 35) / 12, 0, 1);
   if (!k) return 'plain';
   const day = Math.floor(ms / 86400000), cell = Math.floor((lat || 0) / 4) + ',' + Math.floor((lon || 0) / 4);
-  if (_scwxRnd(_scwxHash('wmood-snow|' + Math.floor(day / 2) + '|' + cell))() < w * k / 6) return 'snow';
+  // no made-up snow in the autumn shoulder month (November; May south of the equator): the trees still wear their autumn leaves, so a
+  // seeded snow day painted white greens under orange crowns (Yateley Green, Fleet and Wyndham's Pool on 17 Nov). Live snow still shows.
+  const autumnEdge = (lat < 0 ? (_scwxMonth(ms) + 6) % 12 : _scwxMonth(ms)) === 10;
+  if (!autumnEdge && _scwxRnd(_scwxHash('wmood-snow|' + Math.floor(day / 2) + '|' + cell))() < w * k / 6) return 'snow';
   return _scwxRnd(_scwxHash('wmood-frost|' + day + '|' + cell))() < w * k * 0.36 ? 'frost' : 'plain';
 }
 /**
