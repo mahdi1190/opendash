@@ -4,8 +4,8 @@
 
      GARDEN_GATE_RULES   by gate id (the layout's gates[].id), or by the region it opens (gates[].district), so a new layout with new gate ids still finds its row:
                          {name (the gate's own name, as the folk say it), key (the GARDEN_GATE_ITEMS id it takes), who (a WD_FOLK id: who drops the hint), hint, block (what is in the way), verb (the button), done (said as it opens), help (said when the fallback opens it), will (said before, at the gate)}
-     GARDEN_GATE_ITEMS   what you can find: {name, tag (a few words for the gate's hanging sign), them (a plural: 'take them'), art (drawn in 94-garden-wonder-7gates.js), about}
-     GARDEN_GATE_FINDS   where each one is: {id, gives, gate, near: [anchor ids, tried in turn], region (the region it lies in, when no anchor is there), who (a character gives it), needs ({fish: n kinds caught} or {item}), lines, then (what to do next, when it is not the gate's own find)}
+     GARDEN_GATE_ITEMS   what you can find: {name, tag (a few words for the gate's hanging sign), them (a plural: 'take them'), ready (said instead of 'you have it', for what is not a thing you carry), art (drawn in 94-garden-wonder-7gates.js), about}
+     GARDEN_GATE_FINDS   where each one is: {id, gives, gate, near: [anchor ids, tried in turn], off ([dx, dy] cells from the first anchor), at (where, in words, for the glint note), title (what the talk is headed, if not the item), got (its last line, if not 'in your bag'), region (the region it lies in, when no anchor is there), who (a character gives it), needs ({fish: n kinds caught} or {item}), lines, then (what to do next, when it is not the gate's own find)}
                          Anchors are ids the layout places: placementAnchors.sights / .features, or static props. Nothing here has a cell, so the vale moves them by moving its anchors.
      The fallback        a gate opens anyway at its zone's level + GARDEN_GATE_MARGIN (GARDEN_ZONES lv 3, 6, 10, 14, 18: so 5, 8, 12, 16, 20).
                          A find shows from GARDEN_GATE_EARLY levels below the zone's level, so the curious can go up to that much early and no further.
@@ -22,7 +22,7 @@ const GARDEN_GATE_ITEMS = _gdF({
   plank: _gdF({ name: 'A stout plank', tag: 'a plank', art: 'plank', about: 'Pip’s spare plank, long enough to cover the broken boards on the bridge.' }),
   lantern: _gdF({ name: 'An old lantern', tag: 'a lantern', art: 'lantern', about: 'A tin lantern that still lights. Tam dug it up.' }),
   cog: _gdF({ name: 'A wooden cog', tag: 'a cog', art: 'cog', about: 'The cog the mill wheel lost. Somebody has been using it as a doorstop.' }),
-  mill: _gdF({ name: 'The mill turning', tag: 'the mill', art: 'mill', about: 'The wheel turns again, and the sluice to the orchard stair is up.' }),
+  mill: _gdF({ name: 'The mill turning', tag: 'the mill', ready: 'The mill is turning and the sluice is up.', art: 'mill', about: 'The wheel turns again, and the sluice to the orchard stair is up.' }),
   rope: _gdF({ name: 'A coil of rope', tag: 'a rope', art: 'rope', about: 'Good hemp rope, for the steep bit of the pass.' }),
 });
 const GARDEN_GATE_RULES = _gdF({
@@ -33,12 +33,12 @@ const GARDEN_GATE_RULES = _gdF({
   'island-headland': _gdF({ name: 'Cloudbreak pass', region: 'north-headland', key: 'rope', who: 'wick', block: 'The last climb to the pass is too steep without a rope.', hint: 'Someone left a coil of rope on the old orchard wall, by the cider barrels. I watched them forget it.', verb: 'Tie on the rope', done: 'The rope holds. You pull yourself up, and the mountains are ahead.', help: 'tied a rope on the steep bit for you', will: 'will tie a rope on for you' }),
 });
 const GARDEN_GATE_FINDS = _gdF([
-  _gdF({ id: 'shears', gives: 'shears', gate: 'island-woods', near: _gdF(['reed-bank', 'ld-falls']), region: 'home-island', lines: _gdF(['A pair of old shears hangs from the bench, by a string.', 'Garden shears. Sharp enough for brambles.']) }),
+  _gdF({ id: 'shears', gives: 'shears', gate: 'island-woods', at: 'the bench by the reeds', near: _gdF(['reed-bank', 'ld-falls']), region: 'home-island', lines: _gdF(['A pair of old shears hangs from the bench, by a string.', 'Garden shears. Sharp enough for brambles.']) }),
   _gdF({ id: 'plank', gives: 'plank', gate: 'island-mill', near: _gdF(['old-angler', 'pier']), region: 'home-island', who: 'pip', needs: _gdF({ fish: 1 }), ask: 'A fish, any fish, and the plank is yours. The lake is right there. I’m not going anywhere. Well, I am, but not yet.', lines: _gdF(['A fish! For me? You shouldn’t have. You should, actually, we agreed.', 'Here is the plank. Mind the end, it bites.']) }),
   _gdF({ id: 'lantern', gives: 'lantern', gate: 'island-ruins', near: _gdF(['ld-stump', 'ld-hollow']), region: 'west-woods', who: 'tam', lines: _gdF(['Here it is. Came up with the worms. It still has oil in it, which is more than I can say for the worms.', 'Go on, take it. Under that arch it is darker than my tunnels.']) }),
-  _gdF({ id: 'cog', gives: 'cog', gate: 'island-orchard', near: _gdF(['ld-boathouse', 'ld-bridge']), region: 'east-mill', then: 'Now fit it to the mill wheel, over the river in Millwater valley.', lines: _gdF(['A wooden cog is propping the boathouse door open.', 'It has the same teeth as the mill wheel. You prop the door with a stone instead.']) }),
-  _gdF({ id: 'mill', gives: 'mill', gate: 'island-orchard', near: _gdF(['ld-mill', 'ld-churn']), region: 'east-mill', needs: _gdF({ item: 'cog' }), ask: 'The wheel is still. There is a gap in its teeth where a cog should be.', lines: _gdF(['You fit the cog. It drops into place with a clunk.', 'The wheel creaks, turns, and keeps turning. Far off, the sluice lifts.']) }),
-  _gdF({ id: 'rope', gives: 'rope', gate: 'island-headland', near: _gdF(['ld-barrels', 'ld-orchard-wall']), region: 'orchard-headland', lines: _gdF(['A coil of rope lies on the wall by the barrels.', 'Good hemp rope, long enough for a steep climb.']) }),
+  _gdF({ id: 'cog', gives: 'cog', gate: 'island-orchard', at: 'the boathouse door', near: _gdF(['ld-boathouse', 'ld-bridge']), off: _gdF([1.1, -0.2]), region: 'east-mill', then: 'Now fit it to the mill wheel, over the river in Millwater valley.', lines: _gdF(['A wooden cog is propping the boathouse door open.', 'It has the same teeth as the mill wheel. You prop the door with a stone instead.']) }),
+  _gdF({ id: 'mill', gives: 'mill', gate: 'island-orchard', title: 'The mill wheel', got: 'The sluice is up: go and climb the Orchard stair.', near: _gdF(['ld-mill', 'ld-churn']), region: 'east-mill', needs: _gdF({ item: 'cog' }), ask: 'The wheel is still. There is a gap in its teeth where a cog should be.', lines: _gdF(['You fit the cog. It drops into place with a clunk.', 'The wheel creaks, turns, and keeps turning. Far off, the sluice lifts.']) }),
+  _gdF({ id: 'rope', gives: 'rope', gate: 'island-headland', at: 'the cider barrels', near: _gdF(['ld-barrels', 'ld-orchard-wall']), region: 'orchard-headland', lines: _gdF(['A coil of rope lies on the wall by the barrels.', 'Good hemp rope, long enough for a steep climb.']) }),
 ]);
 function _gggData() { return typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data ? GardenIslandLayout.data : null; }
 /** The layout's gate row: by its id, or a zone number. */
@@ -70,7 +70,7 @@ function gardenGateAnchor(id) {
 }
 /** Where a find lies: its first anchor this layout has, else the middle of its region. */
 function gardenGateFindPoint(find) {
-  for (const id of find.near || []) { const p = gardenGateAnchor(id); if (p) return p; }
+  for (const id of find.near || []) { const p = gardenGateAnchor(id); if (p) return find.off && id === find.near[0] ? { x: p.x + find.off[0], y: p.y + find.off[1] } : p; }   // (off: from its first anchor, so the cog lies at the boathouse door, not under the old angler's feet)
   const D = _gggData(), region = D && (D.regions || []).find(r => r.id === find.region), poly = region && region.polygons && region.polygons[0];
   if (!poly || !poly.length) return null;
   const pts = poly.map(p => Array.isArray(p) ? p : [p.x, p.y]);
