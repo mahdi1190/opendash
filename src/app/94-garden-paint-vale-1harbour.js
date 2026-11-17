@@ -74,19 +74,25 @@
       // the water's lace runs straight across the river mouth (a bar), not up into it in a V
       const sea = shore.filter((p, i) => { const q = in24[i], b = L.base(q.x / cw, (q.y - W.sky) / ch); return !(b && b.freshwater); });
       const o30 = offOf(sea, 30), o14 = offOf(sea, 14), o6 = offOf(sea, 6), o3 = offOf(sea, 3), o15 = offOf(sea, 15);
+      const lens = pts => pts.reduce((out, p, i) => (out.push(i ? out[i - 1] + Math.hypot(p.x - pts[i - 1].x, p.y - pts[i - 1].y) : 0), out), []), len3 = lens(o3), len15 = lens(o15);
+      // index spans [a, b) of the points within m px of a box, each widened by a point either side
+      const spans = (pts, cb, m) => { const out = []; let a = -1; for (let i = 0; i <= pts.length; i++) { const inside = i < pts.length && near(pts[i], cb, m); if (inside && a < 0) a = Math.max(0, i - 1); if (!inside && a >= 0) { out.push([a, Math.min(pts.length, i + 1)]); a = -1; } } return out; };
       const prng = (p, salt) => kit.rng(kit.hash(Math.round(p.x), Math.round(p.y), salt));
       bbs.forEach((bb, idx) => add(bb, 32, (B, r, cb) => {
         for (let j = 0; j < idx; j++) if (kit.meets(bbs[j], cb)) return;
         B.cx.save(); B.cx.clip(outsideAll, 'evenodd');
-        V.strokePts(B, o30, P.shallow, 150, .22); V.strokePts(B, o14, P.shallow, 80, .3); V.strokePts(B, o6, '#b7d8cf', 34, .35);
+        // only the stretch near this chunk is stroked (whole strokes cost the full coast each chunk); the dashes keep their phase
+        const seaRuns = spans(sea, cb, 230);
+        for (const [a, b] of seaRuns) { V.strokePts(B, o30.slice(a, b), P.shallow, 150, .22); V.strokePts(B, o14.slice(a, b), P.shallow, 80, .3); V.strokePts(B, o6.slice(a, b), '#b7d8cf', 34, .35); }
         // sand ripples seen through the shallows
         for (const p of V.walk(sea, 26)) { if (!near(p, cb, 90)) continue; const q = prng(p, 71); for (let k = 0; k < 2; k++) { const d = 14 + q() * 50, x = p.x + p.ty * d + (q() - .5) * 20, y = p.y - p.tx * d; B.s(`M${x - 9} ${y}q9 -3 18 0`, '#d8e6d8', 1.1, .25); } }
         // the lace: broken lines of foam at the edge and a fainter line further out
-        B.cx.setLineDash([14, 6, 4, 9]); V.strokePts(B, o3, P.foam, 2.6, .85); B.cx.setLineDash([22, 14, 6, 18]); V.strokePts(B, o15, P.foam, 1.6, .45); B.cx.setLineDash([]);
+        for (const [a, b] of seaRuns) { B.cx.setLineDash([14, 6, 4, 9]); B.cx.lineDashOffset = len3[a]; V.strokePts(B, o3.slice(a, b), P.foam, 2.6, .85); B.cx.setLineDash([22, 14, 6, 18]); B.cx.lineDashOffset = len15[a]; V.strokePts(B, o15.slice(a, b), P.foam, 1.6, .45); }
+        B.cx.setLineDash([]); B.cx.lineDashOffset = 0;
         B.cx.restore();
         B.cx.save(); B.cx.clip(coastP);
         // wet sand only where the shore is sand (the cold cove's moor and rock keep their own edge)
-        for (const run of runsWhere(shore.map((p, i) => ({ x: p.x, y: p.y, i })), p => beachAt(in14[p.i]))) { V.strokePts(B, run, P.sandWet, 30, .55); V.strokePts(B, run.map(p => in2[p.i]), P.sandWet, 12, .5); }
+        for (const run of runsWhere(shore.map((p, i) => ({ x: p.x, y: p.y, i })), p => beachAt(in14[p.i]) && near(p, cb, 230))) { V.strokePts(B, run, P.sandWet, 30, .55); V.strokePts(B, run.map(p => in2[p.i]), P.sandWet, 12, .5); }
         // the wrack line: dark weed and drift at the last high tide, a stride above the water
         for (const p of V.walk(shore, 7)) { if (!near(p, cb, 40)) continue; const q = prng(p, 72); if (q() < .25) continue; const d = 26 + Math.sin((p.x + p.y) / 60) * 5 + (q() - .5) * 4, x = p.x - p.ty * d, y = p.y + p.tx * d; if (!beachAt({ x, y })) continue; B.f(B.blob(q, x, y, 2 + q() * 4, 1 + q() * 1.2, 6, .6), q() < .6 ? '#5e5a3a' : '#7a6a48', .7); if (q() < .12) B.f(B.rr(x - 5, y - 1, 10 + q() * 6, 2.2, 1), '#a08a66', .8); }
         // shells, pebbles and ripples on the dry sand
