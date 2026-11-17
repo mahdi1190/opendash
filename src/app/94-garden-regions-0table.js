@@ -232,6 +232,7 @@ function gardenRegionWords(def) {
     }
     if (GARDEN_WORLD.v >= 4 && H.w === 'pond') return GARDEN_WORLD.v >= 5 ? { where: 'The Mere, along its different banks.', reach: 'The Mere is open from the beginning. Fleet Falls drops into its north-west corner, where the plunge pool is.' } : { where: 'The village lake, along its different banks.', reach: 'The village lake is open from the beginning. Spring-fed fish favour the north bank; the falls feed its east side.' };
     if (H.sea || H.w === 'pond') return reach ? { reach } : null;
+    if (GARDEN_WORLD.v >= 5 && def.id === 'golden-trout' && H.w === 'tarn') return { where: 'Lives in the source tarn and its outflow through the gorge.', reach };
     const w = _GRG_WATER.get(H.w);
     if (GARDEN_WORLD.v >= 4 && !w.room) { const basin = w.islandBasin && _grgIslandBasin(w.id), place = basin ? (GARDEN_WORLD.v >= 5 ? ({ pond: 'the Mere', 'allotment-pool': 'the woodland pond in the old woods', 'orchard-pool': 'the orchard pond', 'river-4': 'the marsh below the bird hide', tarn: 'the source tarn', spring: 'Foxglove spring', 'brook-2': 'the woodland brook' })[basin.id] || basin.name || w.name : ({ pond: 'the village lake', 'allotment-pool': 'the ruined woodland pond', 'orchard-pool': 'the orchard pond' })[basin.id]) : w.name; const bank = GARDEN_WORLD.v >= 5 ? ({ falls: 'the plunge pool under Fleet Falls' })[H.w] : ({ spring: 'the spring-fed north bank', tarn: 'the cooler north bank', falls: 'the eastern falls', frogpool: 'the reed-lined west bank', race: 'the west inlet', brook: 'the west inlet', folly: 'the quiet east bank', light: 'the eastern rocks', dip: 'the shaded north bank', cider: 'the sunny south bank' })[H.w]; return { where: 'Lives in ' + place + (bank ? ', near ' + bank : '') + '.', reach }; }
     return { where: `Lives in ${w.name}, ${R.on}, and nowhere else.`, reach };
@@ -278,7 +279,7 @@ function gardenRegionBands(areas) {
 function gardenRegionOdds(odds, b, ctx) {
   if (b.islandHomeWaters) {
     const out = odds.filter(([id]) => gardenFishDef(id).cat !== 'fish');
-    const mine = GARDEN_FISH_ONLY.filter(def => { const home = gardenRegionHome(def); return home && b.islandHomeWaters.includes(home.w) && gardenRegionHomeOpen(home, b.islandAreas); });
+    const mine = GARDEN_FISH_ONLY.filter(def => gardenRegionHome(def) && gardenRegionBandHas(def.id, b));
     for (const def of mine) if (gardenFishFits(def, Object.assign({}, ctx, { zone: def.zone[0] }))) out.push([def.id, gardenBugWeight(def, ctx)]);
     // a water is never empty: when none of its own is about at this hour or season, its commons still bite, at half the odds
     if (!out.some(([id]) => gardenFishDef(id).cat === 'fish')) for (const def of mine.some(d => d.rarity === 'common') ? mine.filter(d => d.rarity === 'common') : mine.filter(d => !d.legend)) if (gardenFishFits(Object.assign({}, def, { tod: [], seasons: [] }), Object.assign({}, ctx, { zone: def.zone[0] }))) out.push([def.id, gardenBugWeight(def, ctx) * 0.5]);
@@ -290,7 +291,16 @@ function gardenRegionOdds(odds, b, ctx) {
   return out;
 }
 /** May this fish appear in this band? (the one that got away, a legend: they keep to where they live) */
-function gardenRegionBandHas(id, b) { const H = gardenRegionHome(gardenFishDef(id)); if (!H) return true; if (b.islandHomeWaters) return b.islandHomeWaters.includes(H.w) && gardenRegionHomeOpen(H, b.islandAreas); return b.rw ? H.w === b.rw : b.zone === 'pond' ? H.w === 'pond' : !!H.sea; }
+function gardenRegionBandHas(id, b) {
+  const H = gardenRegionHome(gardenFishDef(id)); if (!H) return true;
+  if (b.islandHomeWaters) {
+    // Gorge trout follow the tarn's spill, as their journal clue describes.
+    // The other tarn fish stay in the tarn; its mountain unlock still applies.
+    const spill = GARDEN_WORLD.v >= 5 && b.islandWater && b.islandWater.river === 'gorge' && id === 'golden-trout' && H.w === 'tarn';
+    return (b.islandHomeWaters.includes(H.w) || spill) && gardenRegionHomeOpen(H, b.islandAreas);
+  }
+  return b.rw ? H.w === b.rw : b.zone === 'pond' ? H.w === 'pond' : !!H.sea;
+}
 /** The cells a bug of this home may sit on, open or not: its trail and the sections off it, or round its place. Cached. */
 const _GRG_CELLS = new Map(), _GRG_CELL_PLACES = new Map();
 function _grgHomeCells(H) {

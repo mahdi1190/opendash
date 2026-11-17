@@ -78,6 +78,24 @@ The local Update made full/exact backups, and genuine legacy saves were archived
 and deduplicated; the downloaded copy matched the archive. Current-client ACK
 refresh remains unplayed; no real-data migration is claimed.
 
+## Water contact fixes (2.69.1)
+
+The closed native Millwater bridge draws a full barrier across its supported
+deck at the region boundary. The far-bank sign keeps its inspection point;
+the deck, collision authority, unlock requirements and opening animation are
+unchanged. The crossing is resolved when the art is built, without a new
+per-frame lookup.
+
+Gorge trout also inhabit the source tarn's outflow, matching their existing
+journal clue. Normal stocking and forced returns use the same habitat
+predicate. Their mountain unlock still applies, and the other tarn species
+remain in their existing waters. The journal names both the tarn and gorge.
+
+Isolated ordinary play observed the closed bridge stopping the player at the
+same place before and after the barrier correction. A separate mature garden
+naturally stocked Gorge trout and reached a bite at a cast beside the gorge
+stones. No fish landing or multiplayer replay is claimed for this focused pass.
+
 ## Optional activities
 
 Discovered landmarks that were packed away by the island layout are available
