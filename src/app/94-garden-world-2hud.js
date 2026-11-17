@@ -48,6 +48,25 @@ function _ghTreats() {
 /** Your title: read from the Field Journal's pages, never a number (JOURNAL.md section 9). */
 const GH_TITLES = Object.freeze(['New in the vale', 'Keeper of the Mere', 'Friend of the woods', 'Walker of the Millwater', 'Keeper of the old ways', 'Orchard hand', 'Of the high places', 'Naturalist of Fleetwater']);
 function _ghTitle() { let n = 0; try { if (typeof gardenJournalPageState === 'function') for (const p of GARDEN_JOURNAL_PAGES) if (gardenJournalPageState(p.id).done) n++; } catch (e) { n = 0; } return GH_TITLES[Math.min(GH_TITLES.length - 1, n)]; }
+/* What your real work paid today, in plain words: one quiet line in the purse, and a note when you come back to the garden after earning
+   (C:/tmp/gamedesign/FUN_PLAN.md 'acknowledged, not paid': no bar and no target). Coins used to change with nothing to say why. */
+function _ghEarnedLine(w) {
+  const e = w && w.econToday; if (!e || !(e.coins > 0)) return 'Time you spend on your tasks, and tasks you finish, fill this purse.';
+  const bits = [];
+  if (e.focusMin) bits.push(`${_geFmtMin(e.focusMin)} focused`);
+  if (e.taskN) bits.push(`${e.taskN} task${e.taskN === 1 ? '' : 's'} finished`);
+  return `Today: ${e.coins} coin${e.coins === 1 ? '' : 's'}${bits.length ? ' from ' + bits.join(' and ') : ''}.`;
+}
+function _ghEarnedNote(w) {
+  const e = w && w.econToday; if (!e || !(e.coins > 0) || typeof gardenShownNow !== 'function' || !gardenShownNow()) return;
+  const today = _gdToday(); let seen = null;
+  try { seen = JSON.parse(localStorage.getItem('gd.earnSeen') || 'null'); } catch (err) { seen = null; }
+  const before = seen && seen.d === today ? Number(seen.c) || 0 : 0;
+  if (e.coins <= before) return;
+  try { localStorage.setItem('gd.earnSeen', JSON.stringify({ d: today, c: e.coins })); } catch (err) { return; }   // (no storage: say nothing rather than say it every time)
+  gardenMessage(`+${e.coins - before} coin${e.coins - before === 1 ? '' : 's'} while you worked`, { icon: 'coins', ms: 5000 });
+}
+wdMod({ id: 'earned-note', fun: false, tick(m) { if (m && !m.visit) _ghEarnedNote(m.wallet); } });   // (checked once a second, once the garden is on screen)
 function _ghHud(box, m) {
   const w = m.wallet, lv = w.level, wi = m.water, sky = _gdpSkyChip(m), treats = _ghTreats();
   const pct = Math.round(lv.pct * 100);
@@ -58,6 +77,7 @@ function _ghHud(box, m) {
     + (treats != null ? stat('is-treats', icon('cookie'), treats, 'Treats for your pet') : '')
     + stat('is-timber', icon('trees'), _gdpNum(gardenHas('mat:timber')), 'Timber: for land, building, fences and paths') + stat('is-stone', icon('mountain'), _gdpNum(gardenHas('mat:stone')), 'Stone: for land, building, paths and ornaments')
     + '</div>'
+    + (m.visit ? '' : `<small class="gd-hud-earned">${esc(_ghEarnedLine(w))}</small>`)
     + `<div class="gd-hud-sky" data-tip="${escAttr(_gdpWeatherNote(m) || sky.text)}">${icon(sky.ic)}<span>${esc(sky.text)}</span></div></div>`;
   const el = _ghHost(box, 'gd-hud'); el.setAttribute('aria-label', 'Garden status');
   if (_gh.hud !== html || !el.firstChild) { const focused = el.contains(document.activeElement); _gh.hud = html; el.innerHTML = html; if (focused) el.querySelector('[data-hud-details]').focus({ preventScroll: true }); }
