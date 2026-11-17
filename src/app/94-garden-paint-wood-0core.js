@@ -59,6 +59,7 @@ window.GardenPaintWood = (function () {
     // painted drift. Keep those drifts off the actual coast, beach and water.
     const loops = rows => { const p = new Path2D(); for (const row of rows) { if (!row || row.length < 3) continue; p.moveTo(px(row[0][0]), py(row[0][1])); for (let i = 1; i < row.length; i++) p.lineTo(px(row[i][0]), py(row[i][1])); p.closePath(); } return p; };
     const coast = data.coast && data.coast.land || [];
+    { const home = (data.regions || []).find(rg => rg.id === 'home-island'); out.homePath = home && home.polygons && home.polygons.length ? loops(home.polygons) : null; }
     out.floorClip = { land: coast.length ? loops(coast) : null, water: (data.freshwater || []).filter(w => w.boundary && w.boundary.length >= 3).map(w => loops([w.boundary])), beach: Math.max(0, data.coast && data.coast.beachWidthPx || 0), routes: [] };
     for (const route of data.routes || []) {
       if (!route.points || route.points.length < 2) continue;
@@ -172,7 +173,11 @@ window.GardenPaintWood = (function () {
         // spring bluebells in drifts under the light wood
         if (season === 'spring' && f.def.mood === 'light' && g > .4 && rr() < .5) for (let i = 0; i < 9; i++) { cx.globalAlpha = .85; cx.fillStyle = i % 3 ? '#6f78c8' : '#8c90da'; cx.beginPath(); cx.arc(X + (rr() - .5) * W.cellW, Y + (rr() - .5) * W.cellH, 1.3, 0, Math.PI * 2); cx.fill(); }
       }
-      cx.globalAlpha = 1; cx.restore(); void r;
+      cx.globalAlpha = 1;
+      // Where a wood meets the village lawn its floor fades out over a few steps, instead of
+      // stopping on the region's straight polygon edge (a hard light/dark line on the grass).
+      if (S.M.homePath) { cx.globalCompositeOperation = 'destination-out'; cx.filter = 'blur(14px)'; cx.fillStyle = '#000'; cx.fill(S.M.homePath); cx.filter = 'none'; cx.globalCompositeOperation = 'source-over'; }
+      cx.restore(); void r;
     }
     for (const f of ch.stamps) { yield;
       const s = stampCanvas(f.id, f.v, season, f.h); if (!s) continue; const k = (f.h / s.hq) / 2; cx.drawImage(s.c, f.x - s.ox * k, f.y - s.oy * k, s.c.width * k, s.c.height * k);
