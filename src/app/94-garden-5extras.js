@@ -158,7 +158,7 @@ function _gdxPriceBtn(item, m, pr, card) {
   b.onclick = (ev) => { ev.stopPropagation(); _gdxBuy(item, 1, card || b, pr, b); };
   return b;
 }
-function _gdxWhyShort(why) { const w = String(why || ''); const lv = /level (\d+)/i.exec(w); return lv ? 'Lv ' + lv[1] : w.replace(/^Event: /, '').replace(/ only$/, ''); }
+function _gdxWhyShort(why) { const w = String(why || ''); const lv = /level (\d+)/i.exec(w); return lv ? 'Lv ' + lv[1] : /crafting bench/i.test(w) ? 'Craft it' : w.replace(/^Event: /, '').replace(/ only$/, ''); }   // (the whole reason is on hover; a tile's button holds a word or two)
 /** A short time ('15h', '4d') for a tile. */
 function _gdxShortH(h) { return h < 24 ? Math.max(1, Math.round(h)) + 'h' : Math.round(h / 24) + 'd'; }
 /** One thing for sale: a picture, its name, and a price you press. How long it takes and what it sells for are small marks; the sentence is on hover. */

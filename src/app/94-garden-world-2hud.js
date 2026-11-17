@@ -30,7 +30,7 @@ const _GH_GLYPH = Object.freeze({
   coin: '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.500" fill="#f2b01e" stroke="#a06c0c" stroke-width="1.400"/><circle cx="10" cy="10" r="5.400" fill="none" stroke="#ffe08a" stroke-width="1.400"/></svg>',
 });
 const _GH_TOOLS = Object.freeze([
-  ['hand', 'Hand: does what a plant needs'], ['water', 'Watering can'], ['feed', 'Fertiliser: half a day of growth'], ['trim', 'Shears'], ['dig', 'Spade: dig up'],
+  ['hand', 'Hand: does what a plant needs'], ['water', 'Watering can'], ['feed', 'Compost: half a day of growth'], ['trim', 'Shears'], ['dig', 'Spade: dig up'],
 ]);
 function _ghBox() { return _gdp.root ? _gdp.root.querySelector('.gd-stagebox') : null; }
 function _ghHost(box, cls, tag) { let n = box.querySelector(':scope > .' + cls.split(' ')[0]); if (!n) { n = document.createElement(tag || 'div'); n.className = cls; box.appendChild(n); } return n; }
@@ -439,7 +439,7 @@ function gardenBubbleOpen(at, o) {
     b.onclick = (ev) => { ev.stopPropagation(); if (!it.keep) gardenBubbleClose(); it.run(b); };
     row.appendChild(b);
   }
-  el.style.boxSizing = 'border-box'; el.style.overflowY = 'auto'; el.style.overscrollBehavior = 'contain';
+  el.style.boxSizing = 'border-box'; el.style.overscrollBehavior = 'contain';   // (it scrolls only when it is taller than the room it has: gardenHudFrame. Always scrolling clipped the tail and showed a scrollbar for its 9 px)
   const head = el.querySelector('.gd-bub-h'); if (head) head.style.whiteSpace = 'normal';
   box.appendChild(el);
   _gh.bubble = { el, at, w: el.offsetWidth, h: el.offsetHeight, preferredWidth: parseFloat(getComputedStyle(el).maxWidth) || Infinity, key: '' };
@@ -641,7 +641,7 @@ function gardenHudFrame(force) {
       }
       top = Math.min(top, bottom - 1);
       const maxHeight = Math.max(1, Math.floor(bottom - top));
-      if (B.maxHeight !== maxHeight) { B.maxHeight = maxHeight; B.el.style.maxHeight = maxHeight + 'px'; B.h = B.el.offsetHeight; }
+      if (B.maxHeight !== maxHeight) { B.maxHeight = maxHeight; B.el.style.maxHeight = maxHeight + 'px'; B.el.style.overflowY = B.el.scrollHeight > maxHeight + 12 ? 'auto' : ''; B.h = B.el.offsetHeight; }
       const y = Math.round(Math.max(top, Math.min(bottom - B.h, p.y - B.h - 10)));
       const tail = Math.round(Math.max(12, Math.min(B.w - 12, p.x - x)));
       const key = x + ',' + y + ',' + tail;
