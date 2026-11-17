@@ -193,9 +193,15 @@ window.GardenPaintTerrainKit = (function () {
     const tick = () => {
       if (dead) return;
       const v = viewBox(.05), near = viewBox(.45), keep = viewBox(1.3); if (!v) return;
+      // chunks whose picture is already baked (a repaint for the hour, a gate opening) only need placing: put up to a few
+      // milliseconds' worth of those in view at once, so a repaint at the whole-map zoom does not fill in box by box
+      { const t0 = performance.now(); let placed = 0; for (const ch of list) { if (ch.live || ch.job || !meets(ch.bb, v) || !scene.textures.exists(ch.key)) continue; bakeOne(ch, 0); placed++; if (performance.now() - t0 > 4) break; } if (placed && parent.sort) parent.sort('depth'); }
       // one chunk per tick: first what is on screen, then the margin round it; each bake is small (a 256 px chunk)
       let best = null, bd = Infinity;
       for (const ch of list) if (!ch.live && meets(ch.bb, near)) { const d = dist(ch, v) - (meets(ch.bb, v) ? 1e6 : 0); if (d < bd) { bd = d; best = ch; } }
+      // opts.prebake: with nothing near the view left to paint, and you standing still, the rest bakes in the background, nearest first,
+      // while it fits the budget (the far mainland and the north backdrop: so the whole-map view does not fill in box by box)
+      if (!best && opts.prebake && bakedPx < budget * .92 && !(typeof _gw !== 'undefined' && _gw.moving)) for (const ch of list) if (!ch.live) { const d = dist(ch, v); if (d < bd) { bd = d; best = ch; } }
       if (best && bakeOne(best, opts.slice || 12) && parent.sort) parent.sort('depth');
       if (bakedPx > budget) { let far = null, fd = -1; for (const ch of list) if (ch.live && !meets(ch.bb, keep)) { const d = dist(ch, v); if (d > fd) { fd = d; far = ch; } } if (far) evict(far); }
     };

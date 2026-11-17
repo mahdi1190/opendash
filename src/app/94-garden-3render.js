@@ -454,7 +454,7 @@ function gardenSvgPatch(oldSvg, partsOrHtml) {
   parts.layers.forEach(([name, h], i) => {
     if (name === 'objects') { _gdrPatchItems(kids[i], parts.items); return; }
     if (name === 'ui' || was.layers[name] === h) return;
-    const nu = _gdrParse(h)[0];
+    const nu = _gdrParse(h, oldSvg)[0];
     if (!nu) return;
     if (soft && GDR_LIGHT_LAYERS.has(name)) { oldSvg.insertBefore(nu, kids[i]); _gdrFadeAway(kids[i], fading.names, nu, name); }
     else oldSvg.replaceChild(nu, kids[i]);
@@ -503,9 +503,10 @@ function _gdrRemember(svg, parts, kids) {
   if (kids) svg._gdEls = kids;
   else { const all = [...svg.children]; svg._gdEls = all.length === parts.layers.length ? all : null; }   // (just drawn: nothing else is in it yet)
 }
-/** SVG markup to nodes in the SVG namespace. */
-function _gdrParse(html) {
-  if (window.GardenNative && GardenNative.scene()) { const root = gardenSceneElement('g'); root.innerHTML = html; const nodes = [...root.children]; for (const node of nodes) root.removeChild(node); root.destroy(); return nodes; }
+/** SVG markup to nodes in the SVG namespace. `into` (optional) is where they go: a real DOM svg (the story replay, a card) gets DOM nodes even while the painted scene is up. */
+function _gdrParse(html, into) {
+  const dom = !!into && typeof Node !== 'undefined' && into instanceof Node;
+  if (!dom && window.GardenNative && GardenNative.scene()) { const root = gardenSceneElement('g'); root.innerHTML = html; const nodes = [...root.children]; for (const node of nodes) root.removeChild(node); root.destroy(); return nodes; }
   const t = document.createElement('template');
   t.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg">' + html + '</svg>';
   return [...t.content.firstElementChild.children];
@@ -517,7 +518,7 @@ function _gdrPatchItems(layer, items) {
   const fresh = [];
   const avail = new Map([...pool].map(([k, l]) => [k, l.length]));
   for (const it of items) { const a = avail.get(it[0]) || 0; if (a > 0) avail.set(it[0], a - 1); else fresh.push(it); }
-  const parsed = fresh.length ? _gdrParse(fresh.map(x => x[1]).join('')) : [];
+  const parsed = fresh.length ? _gdrParse(fresh.map(x => x[1]).join(''), layer) : [];
   let pi = 0;
   const next = items.map(([sig]) => { const l = pool.get(sig); if (l && l.length) return l.shift(); return parsed[pi++]; }).filter(Boolean);
   // Move only what is out of place, stepping over what is not the scene's. Moving a node restarts its animations and repaints it, and moving every item behind you on each save was a flash of its own.

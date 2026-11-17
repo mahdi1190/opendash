@@ -153,7 +153,7 @@ window.GardenNativeLight = (function () {
     }
     function state(time, dt) {
       const t = time / 1000, sun = calendar(), hour = preview && Number.isFinite(preview.hour) ? preview.hour : frozenAt != null ? environment.hour : sun.hour;
-      const season = model && model.season || 'summer', rise = clamp((hour - sun.up + .6) / 1.2), set = clamp((sun.down + .6 - hour) / 1.2);
+      const season = model && model.season || 'summer', rise = clamp((hour - sun.up + .9) / 2.4), set = clamp((sun.down + .9 - hour) / 2.4);   // (the light turns over the same hour and a half the garden calls dawn and dusk, sunrise and sunset +-45 min: it ran over +-36 min, so the first half of dusk was lit as broad day; 17 Nov 2026)
       const daylight = room ? .38 : rise * rise * (3 - 2 * rise) * set * set * (3 - 2 * set), elevation = Math.max(.08, Math.sin(clamp((hour - sun.up) / (sun.down - sun.up)) * Math.PI));
       const override = preview && (preview.rain != null || preview.snow != null), weather = model && model.rain || {}, snow = clamp(Number(override ? preview.snow : weather.snow) || 0), rain = snow ? 0 : clamp(Number(override ? preview.rain : weather.now) || 0), wet = rain || snow;
       // Snow is precipitation even though it deliberately does not water plants.
@@ -299,9 +299,9 @@ window.GardenNativeLight = (function () {
         const darkness = outdoorDarkness(env) - (1 - env.daylight) * .07, dusk = 1 - Math.abs(env.daylight * 2 - 1);
         const t = clamp(darkness / .4), warm = clamp(dusk) * (1 - t * .55), eve = env.hour >= 12;
         const night0 = outdoorNightPresentation() ? [.5, .58, .8] : [.56, .63, .82], warm0 = eve ? [1, .84, .72] : [1, .9, .8];
-        const mul = [0, 1, 2].map(i => (1 + (night0[i] - 1) * t) * (1 + (warm0[i] - 1) * warm * .6));
+        const mul = [0, 1, 2].map(i => (1 + (night0[i] - 1) * t) * (1 + (warm0[i] - 1) * warm * (eve ? .85 : .6)));   // (an evening reads amber-rose, not a slightly dimmer noon)
         if (t > .01 || warm > .04) night.setBlendMode(Phaser.BlendModes.MULTIPLY).fillStyle(mul.reduce((n, c) => n * 256 + Math.round(clamp(c) * 255), 0), 1).fillRect(x, y, width, height);
-        if (dusk > .1) atmosphere.fillStyle(env.hour < 12 ? 0xffd6ab : 0xefb397, dusk * .045).fillRect(x, y, width, height);
+        if (dusk > .1) atmosphere.fillStyle(env.hour < 12 ? 0xffd6ab : 0xefb397, dusk * (env.hour < 12 ? .045 : .065)).fillRect(x, y, width, height);
         if (env.wetness > .04) atmosphere.fillStyle(0x73969d, env.wetness * .022).fillRect(x, y, width, height);
         if (env.snow) atmosphere.fillStyle(0xe5eff1, env.snow * .018).fillRect(x, y, width, height);
       }

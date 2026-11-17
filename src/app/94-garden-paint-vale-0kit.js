@@ -244,27 +244,32 @@ window.GardenPaintVale = (function () {
     const gBox = { x: 0, y: 0, w: W.cols * W.cellW, h: W.sky + W.rows * W.cellH };
     const handles = []; let groundHandle = null;
     if (ground.length) handles.push(groundHandle = kit.chunked(scene, root, ground, { key: groundSig, box: gBox, K: 1.1, chunk: 256, depth: DEPTH, budgetMB: 20, lazy: true, slice: 10 }));
-    if (main.length) handles.push(kit.chunked(scene, root, main, { key: sig + '|m', box: worldBox, K: .35, chunk: 512, depth: MAIN_DEPTH, budgetMB: 6, lazy: true, slice: 10 }));
+    if (main.length) handles.push(kit.chunked(scene, root, main, { key: sig + '|m', box: worldBox, K: .35, chunk: 512, depth: MAIN_DEPTH, budgetMB: 10, lazy: true, slice: 10, prebake: true }));
     // Standing things and the crossings' water: a texture already baked is shown at once; a new one waits in a queue
     // that tick() bakes nearest the camera first, a few milliseconds a frame (so a repaint never freezes a frame).
-    const sprites = [], queue = [], tall = [];
+    const sprites = [], queue = [], tall = [], shrink = [];
     const make = (o, isUnder) => {
       if (o.make) { const im = ok(() => o.make(scene)); if (im) { im.setDepth(o.y); (objects || root).add(im); sprites.push(im); if (im.displayHeight > 60) tall.push(im); } return; }   // (a tall one, a tree: it fades when you stand under it)
       const key = (isUnder ? underSig : sig + '|t|') + o.key, draw = isUnder ? B => o.draw(B, waterTod) : o.draw;
       const im = kit.sprite(scene, isUnder ? root : objects || root, key, o.box, draw, o.x, o.y, o.K || (isUnder ? 1.25 : 1.5)); if (!im) return;
       im.setDepth(isUnder ? UNDER : o.depth != null ? o.depth : o.y); sprites.push(im); stats.spritePx = (stats.spritePx || 0) + (im._gptPx || 0);
       if (!isUnder && o.crown) { im._gpvCrown = o.crown; tall.push(im); }
+      if (!isUnder && o.farShrink) { im._gpvBase = im.scaleX; im._gpvShrink = o.farShrink; shrink.push(im); }
       if (isUnder && root.sort) root.sort('depth');
     };
     stats = { sig, ground: ground.length, mainland: main.length, under: under.length, things: things.length, spritePx: 0 };
     for (const u of under) (scene.textures.exists(underSig + u.key) ? make(u, true) : queue.push([u, true]));
     for (const o of things) (o.make || scene.textures.exists(sig + '|t|' + o.key) ? make(o, false) : queue.push([o, false]));
     if (root.sort) root.sort('depth'); if (objects && objects.sort) objects.sort('depth');
-    cur = { sig, groundSig, handles, groundHandle, sprites, scene, queue, make, objects, root, tall, W, covering: [] };
+    cur = { sig, groundSig, handles, groundHandle, sprites, scene, queue, make, objects, root, tall, shrink, W, covering: [] };
     stats.buildMs = Math.round(performance.now() - t0);
   }
   function tick(time, view) {
     if (cur) cur.covering.length = 0;
+    // a landmark that would swallow its own clearing when the whole map is in view (the Great Oak) draws smaller as you zoom out:
+    // full size from the walking zoom in, down to farShrink at the whole-map zoom (its foot stays put)
+    if (cur && cur.shrink.length) { const z = cur.scene.cameras && cur.scene.cameras.main ? cur.scene.cameras.main.zoom : 1, t = Math.max(0, Math.min(1, (z - .25) / .45));
+      for (const im of cur.shrink) if (im.active) { const k = im._gpvBase * (im._gpvShrink + (1 - im._gpvShrink) * t); if (Math.abs(im.scaleX - k) > 1e-4) im.setScale(k); } }
     if (cur && cur.tall.length && typeof _gw !== 'undefined') {
       // a tree you stand under fades, so you can always see yourself (as in the woods and the village)
       const W = cur.W, x = _gw.px * W.cellW, y = W.sky + _gw.py * W.cellH;
