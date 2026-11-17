@@ -83,6 +83,8 @@ window.GardenPaintWood = (function () {
       for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
         if (!inside(x + .5, y + .5, poly)) continue; const c = cellAt(x, y); if (wet(c)) continue;
         land.push([x, y]);
+        // Land not yet bought in the old wood is a wall to your feet: show it as one (brambles and holly in a knot), not open grass.
+        if (def.mood === 'old' && c.locked && c.row && /^l[sc]-/.test(c.row.id || '') && !c.plantingReserved && !isPath(c)) { thicket(out, x, y, px, py, region.id); continue; }
         if (c.plantingReserved || isPath(c) || statics.has(x + ',' + y) || (c.row && c.row.plot && !c.locked) || clear(x + .5, y + .5) || byGate(x, y) || byFind(x, y)) continue;
         const grove = noise(x, y, 5, hash(region.id) & 1023), dense = noise(x, y, 2.2, 77), pathNear = near(x, y, 1, isPath), waterNear = near(x, y, 1, wet);
         // groves where the field is high, glades where it is low; a fringe of shrubs at path edges
@@ -111,9 +113,55 @@ window.GardenPaintWood = (function () {
       // the light wood also gets shafts over its biggest glades (low grove field, many land cells)
       if (def.mood === 'light') for (const [x, y] of land) if (x % 7 === 0 && y % 6 === 0 && noise(x, y, 5, hash(region.id) & 1023) < .28 && !clear(x, y)) out.shafts.push({ x: px(x + .5), y: py(y + .5), n: 2, region: region.id });
     }
+    keepOldWoodInView(out, data, W, (x, y) => { const c = cellAt(x, y), r = (data.regions || []).find(q => WOODS[q.id] && WOODS[q.id].mood === 'old'); return !!(c && r && inside(x + .5, y + .5, r.polygons[0]) && !wet(c) && !c.plantingReserved && !isPath(c) && !statics.has(x + ',' + y) && !(c.row && (c.row.plot || c.locked && /^l[sc]-/.test(c.row.id || ''))) && !near(x, y, 1, isPath) && !plazas.some(p => Math.hypot((x + .5 - p.x) / ((p.rx || 3.2) + 1), (y + .5 - p.y) / ((p.ry || 2.4) + 1)) < 1)); });
     // a crown that still reaches over a story house fades as you come near it (tick)
     for (const h of houses) { const hx = (h.x + (h.w || 1) / 2) * W.cellW, hy = W.sky + (h.y + .5) * W.cellH; for (const t of out.trees) { const H = t.h * t.scale; if (hy < t.y && hy > t.y - H * .95 && Math.abs(hx - t.x) < H * .5) t.hides = { x: hx, y: hy }; } }
     return out;
+  }
+
+  // A knot of bramble, holly and bracken filling one cell, drawn upright so it hides your feet like the real thing.
+  const THICKET = [['plant.hedgerow-blackberry', 32], ['plant.holly', 50], ['plant.shrub', 38], ['plant.hedgerow-blackberry', 30], ['plant.holly', 44]];
+  function thicket(out, x, y, px, py, region) {
+    const have = THICKET.filter(([id]) => typeof sceneObj === 'function' && sceneObj(id)); if (!have.length) return;
+    const [id, h] = have[Math.floor(h3(x, y, 41) * have.length)];
+    out.trees.push({ id, v: Math.floor(h3(x, y, 45) * 3), size: 0, h, x: px(x + .5) + (h3(x, y, 43) - .5) * 10, y: py(y + .9), flip: h3(x, y, 47) < .5, scale: .92 + h3(x, y, 49) * .2, region, cx: x, cy: y, thicket: true });
+    if (h3(x, y, 51) < .6) out.floors.push({ kind: 'stamp', id: 'plant.bracken', v: Math.floor(h3(x, y, 52) * 3), h: 22 + h3(x, y, 53) * 8, x: px(x + .5) + (h3(x, y, 54) - .5) * 26, y: py(y + 1) - 2 });
+  }
+  /* The old woodland's walls, pond and ruins stay in view. Its oaks are tall
+   * (a crown rises up to nine rows above its trunk), so a tree in front of a
+   * wall, the pond or a ruin painted over it: the ring of wall, the postern and
+   * the pond read as missing. A tree whose crown would cover one becomes a low
+   * yew if that clears it, else ferns and holly at its foot. Only this wood. */
+  function keepOldWoodInView(out, data, W, spotOk) {
+    const region = (data.regions || []).find(r => WOODS[r.id] && WOODS[r.id].mood === 'old'); if (!region) return;
+    const cw = W.cellW, ch = W.cellH, py = y => W.sky + y * ch, keep = [], poly = region.polygons[0];
+    const box = (x0, y0, x1, y1) => keep.push([x0 * cw, py(y0), x1 * cw, py(y1)]);
+    const LIFT = { 'ld-chapel': 6, 'ld-tower': 3.4, 'ld-statue': 2.6, 'ld-woodhut': 2.6, 'ld-icehouse': 2.2, 'ld-labyrinth': 1.2 };
+    for (const s of data.static || []) if (inside(s.x + (s.w || 1) / 2, s.y + .5, poly)) box(s.x - .4, s.y + (s.h || 1) - (LIFT[s.id] || 3), s.x + (s.w || 1) + .4, s.y + (s.h || 1) + .6);
+    for (const f of data.landforms || []) {
+      if (f.region !== region.id || !f.polygon) continue;
+      if (f.kind === 'ruin-wall') for (const [x, y] of f.polygon) box(x - .5, y - 1.7, x + .5, y + .3);
+      else { const xs = f.polygon.map(p => p[0]), ys = f.polygon.map(p => p[1]); box(Math.min(...xs) - .2, Math.min(...ys) - .8, Math.max(...xs) + .2, Math.max(...ys) + .2); }
+    }
+    for (const w of data.freshwater || []) if (w.boundary && inside(w.wet.x + w.wet.w / 2, w.wet.y + w.wet.h / 2, poly)) { const xs = w.boundary.map(p => p[0]), ys = w.boundary.map(p => p[1]); box(Math.min(...xs) + .3, Math.min(...ys) + .3, Math.max(...xs) - .3, Math.max(...ys) - .2); }
+    for (const s of (data.presentation && data.presentation.shortcuts) || []) if (s.from === region.id && s.at) box(s.at[0] - 2, s.at[1] - 1.6, s.at[0] + 1.4, s.at[1] + 1.2);
+    const covers = (x, y, H) => { const c = [x - H * .4, y - H, x + H * .4, y - H * .28]; return keep.some(k => y > k[3] - ch * .2 && c[0] < k[2] && k[0] < c[2] && c[1] < k[3] && k[1] < c[3]); };
+    const taken = new Set(out.trees.map(t => t.cx + ',' + t.cy)), moved = [];
+    const yew = typeof sceneObj === 'function' && sceneObj('tree.proof-yew') ? 'tree.proof-yew' : null;
+    out.trees = out.trees.filter(t => {
+      if (t.region !== region.id || t.thicket || !covers(t.x, t.y, t.h * t.scale)) return true;
+      if (yew && !covers(t.x, t.y, 130 * .82)) { t.id = yew; t.v = 0; t.h = 130; t.scale = .82; return true; }
+      // else the same tree a step or two back from what it hid, if the ground there is free
+      for (const [dx, dy] of [[0, 2], [-2, 1], [2, 1], [0, 3], [-2, 3], [2, 3]]) {
+        const nx = t.cx + dx, ny = t.cy + dy, x = t.x + dx * cw, y = t.y + dy * ch;
+        if (!spotOk(nx, ny) || taken.has(nx + ',' + ny) || covers(x, y, t.h * t.scale)) continue;
+        moved.push(Object.assign({}, t, { x, y, cx: nx, cy: ny })); taken.add(nx + ',' + ny); break;
+      }
+      const u = WOODS[region.id].under[Math.floor(h3(t.cx, t.cy, 33) * WOODS[region.id].under.length)];
+      out.floors.push({ kind: 'stamp', id: u[0], v: Math.floor(h3(t.cx, t.cy, 34) * 3), h: 30 + h3(t.cx, t.cy, 35) * 14, x: t.x, y: t.y - 2 });
+      return false;
+    });
+    for (const t of moved) out.trees.push(t);
   }
 
   /* ---------- the floor, baked in chunks ---------- */
