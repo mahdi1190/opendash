@@ -202,7 +202,7 @@ function gardenMarket(el, m) {
 }
 function _gdxItemName(k) {
   const [kind, id] = k.split(':');
-  if (kind === 'crop') { const p = gardenPlant(id); return p ? (p.yield && p.yield.item ? p.yield.item[0].toUpperCase() + p.yield.item.slice(1) : p.name) : id; }
+  if (kind === 'crop') { const p = gardenPlant(id); return p ? (p.yield && p.yield.item ? p.yield.item[0].toUpperCase() + p.yield.item.slice(1) : p.name.replace(/ (tree|bush|plant|vine)$/i, '')) : id; }   // (you sell apples, not the apple tree: as the crafting bench says it)
   if (kind === 'bq') { const b = GARDEN_BOUQUETS.find(x => x.id === id); return b ? b.name : id; }
   if (kind === 'decor') { const d = gardenDecor(id); return d ? d.name : id; }
   if (kind === 'seed') { const p = gardenPlant(id); return p ? p.name + ' seeds' : id; }

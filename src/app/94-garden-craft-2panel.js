@@ -80,6 +80,16 @@ function gardenCraftTab(el, m) {
   try { gardenCraftSeen(); } catch (e) { /* later */ }
 }
 function _gcrRepaint(el) { const box = el && el.isConnected ? el : document.querySelector('.gcr-body'); if (!box) return; const y = box.scrollTop; const g = box.querySelector('.gcr-grid'), gy = g ? g.scrollTop : 0; gardenCraftTab(box, gardenModel()); box.scrollTop = y; const g2 = box.querySelector('.gcr-grid'); if (g2) g2.scrollTop = gy; }
+/** What a made thing is for, in plain words, and how many you have (a blurb alone did not say that a crumble feeds your pet). */
+function _gcrWhatFor(r) {
+  const mk = r.def.make || {}, n = r.owned || 0;
+  if (mk.treats) return { ic: 'cookie', text: `Makes ${mk.treats} treat${mk.treats === 1 ? '' : 's'} for your pet.` };
+  if (mk.wear) return { ic: 'shirt', text: 'Something for you to wear.' + (n ? ` You have ${n}.` : '') };
+  if (mk.pet) return { ic: 'paw-print', text: 'Something for your pet to wear.' + (n ? ` You have ${n}.` : '') };
+  if (mk.decor) { const k = gardenHas('decor:' + mk.decor); return { ic: 'flower-2', text: 'A decoration for your garden.' + (k ? ` ${k} in your bag.` : '') }; }
+  if (mk.emote) return { ic: 'sparkles', text: 'A new move for you.' + (n ? ' Yours already.' : '') };
+  return null;
+}
 function _gcrDetail(r, el) {
   const d = _gcrEl('div', 'gcr-detail');
   const bench = _gcrEl('div', 'gcr-bench'); bench.innerHTML = '<span class="gcr-rays" aria-hidden="true"></span>';
@@ -93,6 +103,7 @@ function _gcrDetail(r, el) {
     return d;
   }
   if (r.def.blurb) d.appendChild(_gcrEl('p', 'gcr-blurb', r.def.blurb));
+  { const w = _gcrWhatFor(r); if (w) { const line = _gcrEl('p', 'gcr-how'); line.innerHTML = icon(w.ic, 'i-sm'); line.appendChild(_gcrEl('span', null, w.text)); d.appendChild(line); } }
   const list = _gcrEl('div', 'gcr-needs');
   for (const n of r.need) {
     const row = _gcrEl('div', 'gcr-need' + (n.have >= n.n ? ' is-ok' : ' is-no')); row.dataset.key = n.key;
