@@ -112,8 +112,20 @@ function _gwBuildSolids(m) {
   }
   // the harbour's painted crates, pots, net, beached boat, bench and anchor stand in the way like the log stack
   if (island && island.version >= 5 && typeof gardenIslandHarbourThings === 'function') for (const t of gardenIslandHarbourThings(island)) add(t.foot[0], t.foot[1], t.foot[2], t.foot[3]);
+  // The painted Forest arch's two trunks stand where they are drawn (94-garden-native-painted-props.js gateArt 'arch':
+  // their feet at +-(half + 2), sheared when the arch is seen side on); the lane runs between them, well clear.
+  const woodsGate = island && island.version >= 5 && (island.gates || []).find(g => g.id === 'island-woods');
+  const frame = woodsGate && typeof _gldIslandGateFrame === 'function' && typeof GardenNativePainted !== 'undefined' && GardenNativePainted.wanted && GardenNativePainted.wanted() ? _gldIslandGateFrame(woodsGate) : null;
+  if (frame) {
+    const W = GARDEN_WORLD, side = Math.abs(frame.uy) > Math.abs(frame.ux), half = Math.max(46, Math.min(80, frame.span * .62)), S = frame.span * .9;
+    for (const sgn of [-1, 1]) { const lx = frame.x + sgn * (side ? .85 : 1) * (half + 2), ly = frame.y + 2 + (side ? sgn * (S / half * .8) * (half + 2) : 0); add((lx - 9) / W.cellW, (ly - 7 - W.sky) / W.cellH, (lx + 9) / W.cellW, (ly + 2 - W.sky) / W.cellH); }
+  }
+  // the painted woods' trunks collide where they are drawn (their crowns are for walking behind)
+  const trunks = _gwWoodTrunks(m);
+  if (trunks) for (const b of trunks.list) add(b.x0, b.y0, b.x1, b.y1);
   return { list, at };
 }
+function _gwWoodTrunks() { return typeof GardenPaintWood !== 'undefined' && GardenPaintWood && GardenPaintWood.trunks ? GardenPaintWood.trunks() : null; }
 /** Do feet (half width fx, half depth fy, in cells) at x, y touch one of the boxes? */
 function _gwSolidHit(x, y, fx, fy) {
   const S = _gw.solids; if (!S || !S.list.length) return false;
@@ -196,12 +208,13 @@ function _gwRouteSourceInputs(m) {
   // decoration fallback and first-occupant semantics for overlapping rows.
   for (const [cell, occupant] of m.occ) if (occupant && occupant.decor && (decorCols.get(occupant.decor) || 'full') === 'full') { values.push(cell); count++; }
   values[start] = count;
+  values.push((_gwWoodTrunks() || {}).sig || '');   // the painted woods' trunks (_gwBuildSolids)
   return values;
 }
 function _gwGrid(m, groundOnly) {
   if (_gw.boat && !groundOnly) return _gwContinuousBoatGrid(m);
   const mm = m || gardenHere(), shore = typeof gardenLakeGeometry === 'function' ? gardenLakeGeometry(mm) : null, otherShapes = typeof gardenOtherWaterShapes === 'function' ? gardenOtherWaterShapes(mm) : null, state = _gwRouteState();
-  const key = (mm.visit ? mm.visit.key : _gd.memoKey) + '|' + mm.level.level + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0) + '|' + (shore && shore.revision || 0) + '|' + gardenPierDeckSignature();
+  const key = (mm.visit ? mm.visit.key : _gd.memoKey) + '|' + mm.level.level + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0) + '|' + (shore && shore.revision || 0) + '|' + gardenPierDeckSignature() + '|' + ((_gwWoodTrunks(mm) || {}).sig || '');
   if (!_gw.grid || _gw.gridKey !== key || _gw.grid.model !== mm || _gw.grid.routeState !== state || _gw.grid.otherShapes !== otherShapes) {
     const saved = _gw.routeSnapshot, inputs = _gwRouteSourceInputs(mm);
     const stats = _gw.routeGridStats || (_gw.routeGridStats = { coarseBuilds: 0, preparations: 0, reused: 0, boatPreparations: 0, preflightChecks: 0, preflightReused: 0 }); stats.preflightChecks++;

@@ -463,10 +463,11 @@ window.GardenPaintedProps = (function () {
     if (open) B.flowers(r, 0, -1, half * 1.4, 12, season === 'winter' ? ['#f2f0e8', '#d8e0e8'] : ['#e8c84a', '#f2f0e8', '#c86aa0']);
   }
   /** The forest arch, face on: two old trees whose trunks lean in and grow into one bough over the way, a crown along the top, ivy hanging in the opening. */
-  function livingArch(B, r, half, rise, season, open) {
+  function livingArch(B, r, half, rise, season, open, side) {
     const L = leafOf(season), tw = 15;
-    // the opening: the woodland path beyond, in green shade
-    B.f(`M${-half + 4} 0C${-half + 2} ${-rise * .62} ${-half * .5} ${-rise + 10} 0 ${-rise + 10}C${half * .5} ${-rise + 10} ${half - 2} ${-rise * .62} ${half - 4} 0z`, B.lin(0, -rise, 0, 0, [[0, 'rgba(26,40,24,.7)'], [.65, 'rgba(46,66,36,.42)'], [1, 'rgba(80,100,60,.14)']]));
+    // the opening: the woodland path beyond, in green shade (seen side on, the way through is the real ground, path and all:
+    // a shade there was a dark box standing on the lane)
+    if (!side) B.f(`M${-half + 4} 0C${-half + 2} ${-rise * .62} ${-half * .5} ${-rise + 10} 0 ${-rise + 10}C${half * .5} ${-rise + 10} ${half - 2} ${-rise * .62} ${half - 4} 0z`, B.lin(0, -rise, 0, 0, [[0, 'rgba(26,40,24,.7)'], [.65, 'rgba(46,66,36,.42)'], [1, 'rgba(80,100,60,.14)']]));
     // roots
     for (const s of [-1, 1]) for (let i = 0; i < 3; i++) B.s(`M${s * half} -6q${s * (8 + i * 6)} 2 ${s * (14 + i * 8)} ${6 - i}`, OAK[1], 5 - i, 1);
     // the two trunks leaning in and meeting: a thick dark bough, a lit edge, bark lines
@@ -515,7 +516,7 @@ window.GardenPaintedProps = (function () {
     const base = (B) => {
       if (kind === 'arch') {
         B.shadow(0, 2, half + 30, 10, .26);
-        elevation(B, side, half, art.S, () => livingArch(B, r, half, 128, season, open));
+        elevation(B, side, half, art.S, () => livingArch(B, r, half, 128, season, open, side));
       } else if (kind === 'bridge') {
         // a stone hump bridge: the arch below, the deck, two parapets with copings
         const len = side ? 74 : half * 1.1, w = side ? frame.span : 30;
@@ -648,7 +649,7 @@ window.GardenPaintedProps = (function () {
     };
     return Object.assign(art, { box, base, blocker, side, half });
   }
-  function gateSignature(g, open, sc) { let have = ''; try { const rule = !open && typeof gardenGateRule === 'function' ? gardenGateRule(g) : null; if (rule && typeof gardenGateHas === 'function' && gardenGateHas(rule.key)) have = '|have'; } catch (e) { /* the sign as before */ } return 'painted-gate-3|' + g.id + '|' + gateKind(g) + '|' + (open ? 'open' : 'shut') + '|' + sc.season + '|' + (g.crossSpan || []).join(';') + have; }
+  function gateSignature(g, open, sc) { let have = ''; try { const rule = !open && typeof gardenGateRule === 'function' ? gardenGateRule(g) : null; if (rule && typeof gardenGateHas === 'function' && gardenGateHas(rule.key)) have = '|have'; } catch (e) { /* the sign as before */ } return 'painted-gate-4|' + g.id + '|' + gateKind(g) + '|' + (open ? 'open' : 'shut') + '|' + sc.season + '|' + (g.crossSpan || []).join(';') + have; }
   /** A gate as a handle. open: the region beyond is yours. */
   function gate(scene, g, sc, o, open) {
     open = !!open;

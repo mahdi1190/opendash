@@ -511,7 +511,27 @@ const _GLD_PROP_ART = {
   beacon() { const A = GART; return A.S('#6a4a2e', 3.400, 'M0 0V-30') + A.S('#3a3f44', 1.400, 'M-9 -44L-6 -30H6L9 -44M-9 -44H9M-3 -44L-2 -30M3 -44L2 -30') + A.P('#5a3a22', A.ell(0, -40, 7, 3)) + A.S('#6a4a2e', 2, 'M-8 0L0 -10L8 0'); },
   warren() { const A = GART; return A.P('#8a9a5a', 'M-30 0Q-16 -14 0 -14Q16 -14 30 0z') + A.P('#2a2418', A.ell(-12, -4, 4, 2.600) + A.ell(6, -7, 3.500, 2.200) + A.ell(16, -2.500, 3, 1.800)); },
   ring(sc) { const A = GART, lf = sc.season === 'winter' ? '#9aa890' : sc.season === 'autumn' ? '#c88a30' : '#4f8a44'; let s = ''; for (const [x, y, k] of [[-78, -6, 1], [-40, -22, 0.8], [8, -24, 0.8], [52, -20, 0.85], [78, -2, 1.05]]) s += A.P('#5a3f28', `M${x - 9 * k} ${y}Q${x - 6 * k} ${y - 28 * k} ${x - 7 * k} ${y - 50 * k}H${x + 7 * k}Q${x + 6 * k} ${y - 28 * k} ${x + 9 * k} ${y}Q${x + 13 * k} ${y + 2} ${x + 14 * k} ${y + 3}H${x - 14 * k}Q${x - 13 * k} ${y + 2} ${x - 9 * k} ${y}z`) + A.P(lf, A.blob(A.rng(x + 90), x, y - 62 * k, 24 * k, 18 * k, 10, 0.2)); return s + A.P('#8a9a5a', A.ell(0, -8, 34, 8), 0.6); },
-  hollow(sc) { const A = GART, lf = sc.season === 'winter' ? '#9aa890' : sc.season === 'autumn' ? '#c8802e' : '#4f8a44'; return A.P('#5a3f28', 'M-18 0Q-14 -30 -16 -56H16Q14 -30 18 0Q24 3 28 4H-28Q-24 3 -18 0z') + A.P('#1e1610', 'M-9 0Q-11 -22 0 -30Q11 -22 9 0z') + A.P('#8a6a44', A.rect(-6, -16, 12, 1.800)) + A.P(lf, A.blob(A.rng(8), 0, -74, 34, 26, 11, 0.2)) + A.P(A.lt(lf, 0.2), A.blob(A.rng(9), -9, -82, 16, 11, 9, 0.2), 0.9); },
+  /** The hollow oak at the Great Oak's feet: an old pollard, squat and gnarled, its top long gone to a ring of short living limbs, a tall split at its foot you could squeeze into (the owl's room), and a pair of eyes in the dark. Drawn as old bark and moss to sit beside the painted Great Oak, not a lollipop tree. */
+  hollow(sc) {
+    const A = GART, r = A.rng('gld-hollow2'), w = sc.season === 'winter', au = sc.season === 'autumn';
+    const lf = w ? null : au ? ['#8a4a20', '#c8802e', '#e0a848'] : sc.season === 'spring' ? ['#4f7a3a', '#6f9a48', '#9cc060'] : ['#3e6630', '#557f3c', '#7aa452'];
+    const bark = ['#6a5440', '#4e3e30', '#8a7258', '#2e241c'], moss = w ? '#c8ccbc' : '#6f8446';
+    let o = A.P('rgba(30,36,24,.3)', A.ell(3, 1, 34, 6));
+    // the short living limbs on the broken crown, behind the bole
+    for (const [x0, a, L] of [[-12, -0.75, 26], [-2, -0.15, 22], [10, 0.55, 28], [16, 1.0, 18]]) { const [x1, y1] = A.at(x0, -54, a, L); o += A.S(bark[1], 6, `M${x0} -52Q${(x0 + x1) / 2} ${(-52 + y1) / 2 - 6} ${x1} ${y1}`) + A.S(bark[2], 1.6, `M${x0 - 1.5} -53Q${(x0 + x1) / 2 - 1.5} ${(-53 + y1) / 2 - 7} ${x1 - 1} ${y1}`, .5); if (lf) for (let k = 0; k < 3; k++) o += A.P(lf[k], A.blob(r, x1 + (k - 1) * 4, y1 - 3 - k * 2, 11 - k * 2.6, 8 - k * 1.8, 8, .4), .95); else o += A.S(bark[1], 1.4, `M${x1} ${y1}l${(r() - .5) * 14} ${-8 - r() * 8}M${x1} ${y1}l${(r() - .5) * 12} ${-6 - r() * 6}`, .9); }
+    // the bole: wide-footed, buttressed roots, the broken top ragged
+    o += A.P(bark[0], 'M-30 2Q-22 -4 -20 -22Q-24 -44 -18 -58L-12 -54L-6 -62L2 -56L9 -64L14 -55L20 -58Q24 -42 20 -22Q22 -4 32 3Q10 0 0 1Q-12 0 -30 2Z');
+    o += A.P(bark[2], 'M-26 1Q-18 -4 -16 -22Q-20 -42 -16 -56L-10 -52Q-14 -40 -11 -22Q-11 -6 -18 1Z', .6) + A.P(bark[1], 'M12 -54Q20 -40 16 -22Q18 -4 28 2Q16 0 10 1Q12 -22 8 -52Z', .6);
+    for (let k = 0; k < 8; k++) o += A.S(bark[3], 1, `M${-14 + k * 4} ${-6 - r() * 6}q${(r() - .5) * 4} ${-18 - r() * 12} ${(r() - .5) * 5} ${-30 - r() * 14}`, .4);
+    // the hollow: a tall split from the ground, darkness inside, the lip worn pale
+    o += A.P('#14100c', 'M-9 1Q-12 -18 -4 -34Q2 -38 6 -30Q12 -16 9 1Z') + A.S(bark[2], 1.6, 'M-9 0Q-12 -18 -4 -34Q2 -38 6 -30', .7);
+    // the owl's eyes, catching the light
+    o += A.P('#f2c432', A.circ(-3.4, -20, 2.4) + A.circ(3.4, -20, 2.4)) + A.P('#1a1208', A.circ(-3.2, -20, 1.1) + A.circ(3.6, -20, 1.1));
+    // moss and ivy on the shaded side, a fern at the foot
+    for (let i = 0; i < 9; i++) o += A.P(i % 3 ? moss : lf ? lf[0] : '#56704a', A.blob(r, 14 + r() * 12, -6 - r() * 40, 3 + r() * 3, 2 + r() * 2, 6, .5), .85);
+    if (!w) for (let k = 0; k < 5; k++) o += A.P(lf ? lf[k % 2] : '#4e6a36', A.leaf(-22 + k * 2, 2, -0.9 + k * 0.32, 12, 2.4), .9);
+    return o;
+  },
   treehouse(sc) { const A = GART, Wd = GART_PAL.wood, lf = sc.season === 'winter' ? '#9aa890' : sc.season === 'autumn' ? '#c8802e' : '#4f8a44'; return A.P('#5a3f28', 'M-10 0L-7 -66H7L10 0z') + A.P(lf, A.blob(A.rng(4), 0, -92, 44, 26, 11, 0.2)) + A.P(Wd[1], A.rrect(-30, -60, 60, 4, 1)) + A.P(Wd[3], A.rrect(-22, -82, 44, 22, 1.500)) + A.P('#3a2a1a', A.rect(-5, -76, 10, 16)) + A.P('#8a4a30', 'M-28 -80L0 -96L28 -80z') + A.S(Wd[0], 1.300, 'M22 -56V-14M28 -56V-14M22 -46H28M22 -36H28M22 -26H28') + A.S('#c8bc90', 0.7, 'M-26 -56V-12'); },
   clamp() { const A = GART; return A.P('#5a5a3a', 'M-34 0Q-24 -24 0 -26Q24 -24 34 0z') + A.P('#3a3a2a', 'M-12 -24Q0 -28 12 -24Q6 -20 -6 -20z') + A.P('#7a7a4a', 'M-28 -2Q-20 -18 -8 -22Q-14 -10 -16 -2z', 0.7); },
   barrels() { const A = GART, Wd = GART_PAL.wood; const b = (x, y) => A.P(Wd[1], A.rrect(x - 9, y - 18, 18, 18, 5)) + A.S('#3a3f44', 1.300, `M${x - 9} ${y - 13}h18M${x - 9} ${y - 5}h18`) + A.P(Wd[3], A.rect(x - 6, y - 16, 3, 14), 0.5); return b(-12, 0) + b(9, 0) + b(-2, -17); },
@@ -521,6 +541,34 @@ const _GLD_PROP_ART = {
   mill() { const A = GART, Wd = GART_PAL.wood, St = GART_PAL.stone; let sp = ''; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; sp += `M42 -18L${42 + Math.cos(a) * 16} ${-18 + Math.sin(a) * 16}`; } return A.P(St[1], A.rect(-48, -40, 76, 40)) + A.P(St[3], A.rect(-46, -38, 12, 36), 0.5) + A.P('#8a4a30', 'M-54 -38L-10 -62L34 -38z') + A.P(Wd[1], A.rrect(-14, -24, 14, 24, 2)) + A.P('#3a4a5a', A.rect(-38, -30, 10, 10)) + A.S(Wd[0], 3, A.circ(42, -18, 16)) + A.S(Wd[0], 1.800, sp); },
   rope() { const A = GART; return A.S('#8a6a44', 1.400, 'M-26 -14Q0 -2 26 -14M-26 -6Q0 6 26 -6') + A.S('#6e4c2a', 3, 'M-26 -16V2M26 -16V2') + A.S('#a67c50', 2.600, 'M-18 -3V0M-11 0V3M-4 2V5M4 2V5M11 0V3M18 -3V0'); },
   turf(sc) { const A = GART, c = sc.season === 'winter' ? '#b8c0ac' : '#6f9a4a'; return A.P(c, A.ell(0, -8, 60, 15)) + `<path d="M0 -8c8 -5 22 -2 24 2s-16 8 -30 6s-22 -6 -18 -10s26 -9 44 -6s30 8 26 14s-30 12 -52 10s-36 -8 -32 -14" fill="none" stroke="#e8dcb4" stroke-width="2.600" stroke-linecap="round"/>`; },
+  /** Thistle's old house in the woods: a low rubble-stone cottage gone quiet, slates mossed, ivy to the eaves, one window, the door off its latch and standing a hand open, flowers up through the step. */
+  oldhouse(sc) {
+    const A = GART, r = A.rng('gld-oldhouse'), w = sc.season === 'winter', au = sc.season === 'autumn';
+    const ivy = w ? ['#3c5236', '#56704a', '#74906a'] : au ? ['#5a5a2a', '#8a6a2e', '#b0702e'] : ['#2f4e2a', '#46703a', '#6a9450'];
+    let o = A.P('rgba(30,36,24,.28)', A.ell(2, 1, 50, 7));
+    // the walls: rubble stone, lit from the upper left, a darker damp foot
+    o += A.P('#a89e86', A.rect(-38, -36, 76, 36)) + A.P('#bdb39a', A.rect(-38, -36, 30, 36), .6) + A.P('#7e7562', A.rect(-38, -6, 76, 6), .55);
+    for (let y = -33, i = 0; y < -2; y += 6, i++) for (let x = -37 + (i % 2) * 5; x < 36; x += 9 + r() * 4) { const sw = 6 + r() * 4; o += A.P(r() < .5 ? '#c9bfa6' : '#988e78', A.rrect(x, y, Math.min(sw, 37 - x), 4.6, 1.6), .7); }
+    // the gable end and the roof: old slates, a sag along the ridge, moss in the courses
+    o += A.P('#4d5257', 'M-46 -34L-30 -62Q0 -66 30 -62L46 -34z') + A.P('#646a70', 'M-46 -34L-30 -62Q-12 -64 -2 -64L-14 -34z', .8);
+    for (let k = 0; k < 5; k++) { const y = -38 - k * 5.4; o += A.S('#3a3e42', .8, `M${-44 + k * 3} ${y}L${44 - k * 3} ${y}`, .7); }
+    for (let k = 0; k < 7; k++) o += A.P(w ? '#e8ecef' : '#7d8b4a', A.blob(r, -30 + r() * 60, -40 - r() * 20, 4 + r() * 4, 1.6 + r() * 1.4, 6, .5), .8);
+    o += A.P('#2c2f32', 'M-46 -34L46 -34L44 -31L-44 -31z', .7);
+    // the chimney, cold: no smoke
+    o += A.P('#8f8572', A.rect(20, -74, 11, 16)) + A.P('#a99f88', A.rect(20, -74, 4, 16), .7) + A.P('#5a5448', A.rect(19, -76, 13, 3));
+    // the window: small panes, one cracked, a sill
+    o += A.P('#5a4a34', A.rect(-30, -27, 16, 14)) + A.P('#2e3a3e', A.rect(-28.5, -25.5, 13, 11)) + A.P('#6f8a92', A.rect(-28.5, -25.5, 6, 5), .5) + A.S('#5a4a34', 1.1, 'M-22 -25.5V-14.5M-28.5 -20H-15.5') + A.S('#c8d4d6', .6, 'M-20 -24l3 3l-1 2', .8) + A.P('#cbbfa4', A.rect(-31.5, -13, 19, 2));
+    // the door, off its latch: dark gap on the hinge side, the boards weathered silver-brown, an old ring handle
+    o += A.P('#3e3226', A.rect(-1, -30, 18, 30)) + A.P('#1c1712', A.rect(-1, -30, 4, 30)) + A.P('#7a6448', 'M3 -30L17 -30L17 0L3 0z') + A.S('#5e4c36', .8, 'M7.5 -30V0M12 -30V0', .8) + A.P('#a28a64', A.rect(3, -30, 3, 30), .45) + A.S('#3a2e22', 1, A.circ(14, -15, 1.6));
+    o += A.P('#9a917c', A.rrect(-4, -2, 26, 4, 1.6)) + A.P('#b9b09a', A.rect(-4, -2, 26, 1.4), .7);
+    // ivy up the left wall and over the eaves, trailing down by the door
+    for (let i = 0; i < 26; i++) { const t = r(), x = -40 + r() * 34 + (t > .7 ? r() * 30 : 0), y = -4 - r() * 44 + (x > -10 ? -10 : 0); o += A.P(ivy[i % 3], A.blob(r, x, y, 3.4 + r() * 3.4, 2.6 + r() * 2, 6, .55), .95); }
+    for (let i = 0; i < 4; i++) { const x = -6 + r() * 4; o += A.S(ivy[0], 1, `M${x} -34q${2 - r() * 4} 8 ${1 - r() * 2} ${14 + r() * 8}`, .9); }
+    // the garden coming up through the step: foxgloves, grass, a self-sown flower or two
+    if (!w) for (let i = 0; i < 3; i++) { const x = 24 + i * 5 + r() * 3, h = 12 + r() * 8; o += A.S('#4e6a36', 1.1, `M${x} 0V${-h}`) + A.P(au ? '#b06a8a' : '#c45a9a', A.ell(x + .8, -h + 2, 1.6, 4.4), .9); }
+    for (let i = 0; i < 12; i++) { const x = -42 + r() * 84; o += A.S(w ? '#8a9a7a' : '#5e8a3a', 1, `M${x} 1q${(r() - .5) * 3} -4 ${(r() - .5) * 2} ${-4 - r() * 4}`, .9); }
+    return o;
+  },
   smoke() { const A = GART; return A.P('#2f2a26', A.rect(-40, -30, 80, 30)) + A.S('#16120f', 0.8, 'M-26 -30V0M-12 -30V0M12 -30V0M26 -30V0', 0.8) + A.P('#1e1a18', 'M-46 -28L0 -50L46 -28z') + A.P('#16120f', A.rect(-8, -22, 16, 22)) + A.P('#2f2a26', A.rect(14, -56, 9, 18)); },
   ice() { const A = GART, Wd = GART_PAL.wood; return A.P('#6f8a4a', 'M-42 0Q-34 -36 0 -38Q34 -36 42 0z') + A.P('#8aa45a', 'M-34 -4Q-28 -28 -8 -34Q-20 -18 -22 -4z', 0.8) + A.P('#9a968a', A.rrect(-13, -24, 26, 24, 8)) + A.P(Wd[0], A.rrect(-9, -20, 18, 20, 5)) + A.S('#3a3f44', 1.400, 'M-9 -13H9M-9 -5H9'); },
   frogstone() { const A = GART, St = GART_PAL.stone; return A.P(St[1], 'M-18 0Q-20 -16 -6 -20Q10 -22 18 -8Q20 -2 18 0z') + A.P(St[3], A.circ(-8, -21, 4) + A.circ(4, -22, 4)) + A.P('#2a2a2a', A.circ(-8, -21, 1.500) + A.circ(4, -22, 1.500)) + A.S(St[0], 1, 'M-12 -11Q0 -6 12 -10'); },
