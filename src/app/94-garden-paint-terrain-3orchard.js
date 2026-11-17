@@ -139,7 +139,7 @@
   } };
 
   // The cider barrels: three oak casks stacked by the press, iron hoops, a spigot and a drip on the setts.
-  ART['ld-barrels'] = { box: [-34, -46, 34, 8], draw(B, o) {
+  ART['ld-barrels'] = { box: [-34, -72, 50, 8], draw(B, o) {
     const r = KIT().rng(89);
     B.shadow(3, 2, 32, 6, .32);
     const cask = (x, y, k) => {
@@ -150,5 +150,17 @@
     cask(-14, 0, 1); cask(14, 0, 1); cask(0, -24, .95);
     B.f(B.rect(10, -12, 5, 3), '#4a3a2a').f(B.ell(13, 3, 4, 1.3), '#c8a050', .6);
     for (let k = 0; k < 4; k++) B.f(B.blob(r, -26 + r() * 52, 2 + r() * 4, 3, 1.2, 5, .5), '#8a6a3a', .35);
+    // the square's lantern post: an oak post, an iron arm, a pierced tin lantern (lit at night: LIGHTS below)
+    B.f(B.rect(26, -66, 4, 66), '#6e5438').f(B.rect(26, -66, 1.4, 66), '#9a7a54', .8).s('M28 -62H42', '#2f3336', 1.6).s('M40 -62V-58', '#2f3336', 1);
+    B.f(B.rect(36, -58, 9, 11), '#f2e2a8').f(B.poly([[35, -58], [40.5, -63], [46, -58]]), '#2f3336').f(B.rect(36, -48, 9, 1.6), '#2f3336').s('M38.5 -57V-49M42.5 -57V-49', '#2f3336', .7, .7);
   } };
+
+  // Lit at night, as world point lights (94-garden-native-world.js reads a painted handle's lights): [dx, dy, radius] from the foot.
+  const LIGHTS = { 'ld-barrels': [[40, -52, 96]], 'ld-folly': [[0, -112, 70]], 'ld-treehouse': [[-26, -126, 64]] };
+  const landmark = GardenPaintedMarks.landmark;
+  GardenPaintedMarks.landmark = function (scene, prop, sc, element, W) {
+    const h = landmark.apply(this, arguments), list = h && prop && LIGHTS[prop.id];
+    if (list) h.lights = list.map(([dx, dy, radius]) => ({ x: h.foot.x + dx, y: h.foot.y + dy, radius }));
+    return h;
+  };
 })();

@@ -418,6 +418,9 @@ window.GardenPaintedTerrain = (function () {
         const tone = r(); B.f(B.blob(r, p.x + (row & 1) * 2, p.y, w, Math.max(1.6, hgt * .42), 6, .3), tone < .3 ? '#b8b09a' : tone < .7 ? '#a39b85' : '#c9c2ac', .95).f(B.ell(p.x - w * .3, p.y - hgt * .18, w * .4, Math.max(.6, hgt * .12)), '#ddd6c2', .6);
         if (r() < .04) B.f(B.rect(p.x - 2, p.y - hgt * .5, 7, hgt * .4), '#d6cfb8', .9);
       }
+      // the slanted ends, where two walls butt together, get their own stones: the courses above pair the rims point by
+      // point and leave a bare dark wedge at a joint (High orchard, terrace-wall-2/-3)
+      for (const [u, l] of [[U[0], Lw[0]], [U[U.length - 1], Lw[Lw.length - 1]]]) for (let k = 0; k < 7; k++) { const t0 = (k + .5) / 7, x = u.x + (l.x - u.x) * t0, y = u.y + (l.y - u.y) * t0; for (const dx of [-5, 4]) { const tone = r(); B.f(B.blob(r, x + dx + (r() - .5) * 2, y, 4.5 + r() * 2, 2.6, 6, .3), tone < .3 ? '#b8b09a' : tone < .7 ? '#a39b85' : '#c9c2ac', .95).f(B.ell(x + dx - 1.5, y - .8, 1.8, .7), '#ddd6c2', .55); } }
       B.cx.restore();
       // cope: a row of upright stones on top, lit from the left; moss and turf from the terrace above
       const top = kit.resample(upper, 3.4);
