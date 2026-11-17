@@ -354,7 +354,8 @@ function gardenLandsTick(was, lv, moments) {
     const said = gate && typeof wdFolkGateHelpLine === 'function' ? wdFolkGateHelpLine(gate.id) : '';   // (the helper's own words: 94-garden-wonder-1kin.js)
     moments.push({ kind: 'area', text: who ? (said ? `${who.name}: “${said}” ${z.name} is open.` : `${who.name} ${rule.help}: ${z.name} is open`) : `A gate has opened: ${z.name.toLowerCase()}`, icon: 'map-pin', area: z.id });
   }
-  for (const t of GARDEN_LAND_TRAILS) if (!t.zn && t.lv > was && t.lv <= lv) moments.push({ kind: 'area', text: `${t.name} is open`, icon: 'footprints', area: t.id });
+  const vale = GARDEN_WORLD.v >= 4 && Array.isArray(gardenIslandData().regions);   // (the vale has none of the old garden's trails: "Orchard steps is open" at level 5 named a path that is not there)
+  if (!vale) for (const t of GARDEN_LAND_TRAILS) if (!t.zn && t.lv > was && t.lv <= lv) moments.push({ kind: 'area', text: `${t.name} is open`, icon: 'footprints', area: t.id });
   const n = GARDEN_LAND_SECTIONS.filter(s => s.buy && s.lv > was && s.lv <= lv).length + GARDEN_LAND_FEATURES.filter(f => f.lv > was && f.lv <= lv && !f.prize).length;
   if (n) moments.push({ kind: 'grant', text: `${n} new thing${n === 1 ? '' : 's'} at the land office`, icon: 'map-pin' });
 }
