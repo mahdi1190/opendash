@@ -152,10 +152,15 @@
         // inside the grid's corners, only where the island's coast leaves sea
         main(band, 120 + i * 10 + part, (B, r, cb) => { if (cb[0] > 0 && cb[1] > 0) return; B.cx.clip(bandClip); B.cx.clip(bigP); B.cx.clip(outCoast, 'evenodd'); B.cx.clip(new Path2D(B.rect(0, 0, gw, 9000))); paintLand(B, r, cb, part); });
       }
+      // the west fields rise into the haze at the foot of the far fells, not to a ruled line under them (the north band's haze above SEAM)
+      // (and west of the island, the north band's strip of fields under the ridges hazes into the same: it stood as a ruled block on the sea)
+      const hazeTop = kit.rgba(kit.mix(P.haze, '#d6e4ea', .3), .92);
+      if (i === 0) main(band, 150, (B, r, cb) => { B.cx.clip(bandClip); B.cx.clip(bigP); const y0 = SEAM, y1 = SEAM + 260; if (cb[3] < y0 || cb[1] > y1) return; B.f(B.rect(cb[0], y0, cb[2] - cb[0], y1 - y0), B.lin(0, y0, 0, y1, [[0, hazeTop], [.45, kit.rgba(P.haze, .45)], [1, kit.rgba(P.haze, 0)]])); });
+      else main(band, 151, (B, r, cb) => { B.cx.clip(bandClip); B.cx.clip(bigP); const y0 = 10, y1 = SEAM, x1 = Math.min(cb[2], 0); if (cb[3] < y0 || cb[1] > y1 || x1 <= cb[0]) return; const g = B.lin(0, y0, 0, y1, [[0, kit.rgba(P.haze, 0)], [.5, kit.rgba(P.haze, .7)], [1, hazeTop]]); B.f(B.rect(cb[0], y0, x1 - cb[0], y1 - y0), g); });
       // a soft seam at the grid edge: the island's woods and fells fade into the mainland
       // the part over the island fades out: west across the woods' edge, north down over the sky strip into the island's own fells
       main(band, 140 + i, (B, r, cb) => { B.cx.globalCompositeOperation = 'destination-out';
-        if (i === 0) B.f(B.rect(-FADE, Math.max(cb[1], SEAM), FADE * 2 + 10, cb[3] - Math.max(cb[1], SEAM)), B.lin(-FADE, 0, FADE, 0, [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,1)']]));
+        if (i === 0) B.f(B.rect(0, Math.max(cb[1], SEAM), FADE + 10, cb[3] - Math.max(cb[1], SEAM)), B.lin(0, 0, FADE + 10, 0, [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,1)']]));   // (from the island's edge in: faded from 70 px short of it, the sea showed through in a pale strip ending in a ruled line where the island's ground began)
         else if (cb[2] > 0) B.f(B.rect(Math.max(cb[0], 0), W.sky - 90, cb[2] - Math.max(cb[0], 0), 130), B.lin(0, W.sky - 90, 0, SEAM - 6, [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,1)']]));
         B.cx.globalCompositeOperation = 'source-over'; });
     }

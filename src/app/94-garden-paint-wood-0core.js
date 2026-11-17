@@ -152,11 +152,15 @@ window.GardenPaintWood = (function () {
 
   // A knot of bramble, holly and bracken filling one cell, drawn upright so it hides your feet like the real thing.
   const THICKET = [['plant.hedgerow-blackberry', 32], ['plant.holly', 50], ['plant.shrub', 38], ['plant.hedgerow-blackberry', 30], ['plant.holly', 44]];
+  // Whispering woodland is a light birch wood: its unbought land is birch scrub (young birches no taller than you) in bracken and fern,
+  // not the old woodland's bramble and holly knot (17 Nov 2026: one locked-land rule, in local dress)
+  const THICKET_LIGHT = [['tree.green-birch', 62], ['plant.bracken', 34], ['tree.pool-birch', 56], ['plant.fern', 30], ['plant.bracken', 30], ['tree.green-birch', 52]];
   function thicket(out, x, y, px, py, region) {
-    const have = THICKET.filter(([id]) => typeof sceneObj === 'function' && sceneObj(id)); if (!have.length) return;
+    const light = WOODS[region] && WOODS[region].mood === 'light';
+    const have = (light ? THICKET_LIGHT : THICKET).filter(([id]) => typeof sceneObj === 'function' && sceneObj(id)); if (!have.length) return;
     const [id, h] = have[Math.floor(h3(x, y, 41) * have.length)];
     out.trees.push({ id, v: Math.floor(h3(x, y, 45) * 3), size: 0, h, x: px(x + .5) + (h3(x, y, 43) - .5) * 10, y: py(y + .9), flip: h3(x, y, 47) < .5, scale: .92 + h3(x, y, 49) * .2, region, cx: x, cy: y, thicket: true });
-    if (h3(x, y, 51) < .6) out.floors.push({ kind: 'stamp', id: 'plant.bracken', v: Math.floor(h3(x, y, 52) * 3), h: 22 + h3(x, y, 53) * 8, x: px(x + .5) + (h3(x, y, 54) - .5) * 26, y: py(y + 1) - 2 });
+    if (h3(x, y, 51) < (light ? .9 : .6)) out.floors.push({ kind: 'stamp', id: light && h3(x, y, 55) < .35 ? 'plant.fern' : 'plant.bracken', v: Math.floor(h3(x, y, 52) * 3), h: 22 + h3(x, y, 53) * 8, x: px(x + .5) + (h3(x, y, 54) - .5) * 26, y: py(y + 1) - 2 });
   }
   /* The old woodland's walls, pond and ruins stay in view. Its oaks are tall
    * (a crown rises up to nine rows above its trunk), so a tree in front of a
