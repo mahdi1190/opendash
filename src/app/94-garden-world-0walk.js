@@ -92,8 +92,12 @@ function _gwBuildSolids(m) {
   }
   const logs = typeof gardenIslandLogStack === 'function' ? gardenIslandLogStack(island) : null;
   if (logs) { const f = logs.foot; add(f.x0, f.y0, f.x1, f.y1); }
+  // the painted woods' trunks collide where they are drawn (their crowns are for walking behind)
+  const trunks = _gwWoodTrunks(m);
+  if (trunks) for (const b of trunks.list) add(b.x0, b.y0, b.x1, b.y1);
   return { list, at };
 }
+function _gwWoodTrunks() { return typeof GardenPaintWood !== 'undefined' && GardenPaintWood && GardenPaintWood.trunks ? GardenPaintWood.trunks() : null; }
 /** Do feet (half width fx, half depth fy, in cells) at x, y touch one of the boxes? */
 function _gwSolidHit(x, y, fx, fy) {
   const S = _gw.solids; if (!S || !S.list.length) return false;
@@ -175,12 +179,13 @@ function _gwRouteSourceInputs(m) {
   // decoration fallback and first-occupant semantics for overlapping rows.
   for (const [cell, occupant] of m.occ) if (occupant && occupant.decor && (decorCols.get(occupant.decor) || 'full') === 'full') { values.push(cell); count++; }
   values[start] = count;
+  values.push((_gwWoodTrunks() || {}).sig || '');   // the painted woods' trunks (_gwBuildSolids)
   return values;
 }
 function _gwGrid(m, groundOnly) {
   if (_gw.boat && !groundOnly) return _gwContinuousBoatGrid(m);
   const mm = m || gardenHere(), shore = typeof gardenLakeGeometry === 'function' ? gardenLakeGeometry(mm) : null, otherShapes = typeof gardenOtherWaterShapes === 'function' ? gardenOtherWaterShapes(mm) : null, state = _gwRouteState();
-  const key = (mm.visit ? mm.visit.key : _gd.memoKey) + '|' + mm.level.level + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0) + '|' + (shore && shore.revision || 0) + '|' + gardenPierDeckSignature();
+  const key = (mm.visit ? mm.visit.key : _gd.memoKey) + '|' + mm.level.level + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0) + '|' + (shore && shore.revision || 0) + '|' + gardenPierDeckSignature() + '|' + ((_gwWoodTrunks(mm) || {}).sig || '');
   if (!_gw.grid || _gw.gridKey !== key || _gw.grid.model !== mm || _gw.grid.routeState !== state || _gw.grid.otherShapes !== otherShapes) {
     const saved = _gw.routeSnapshot, inputs = _gwRouteSourceInputs(mm);
     const stats = _gw.routeGridStats || (_gw.routeGridStats = { coarseBuilds: 0, preparations: 0, reused: 0, boatPreparations: 0, preflightChecks: 0, preflightReused: 0 }); stats.preflightChecks++;

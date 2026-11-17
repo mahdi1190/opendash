@@ -521,6 +521,34 @@ const _GLD_PROP_ART = {
   mill() { const A = GART, Wd = GART_PAL.wood, St = GART_PAL.stone; let sp = ''; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; sp += `M42 -18L${42 + Math.cos(a) * 16} ${-18 + Math.sin(a) * 16}`; } return A.P(St[1], A.rect(-48, -40, 76, 40)) + A.P(St[3], A.rect(-46, -38, 12, 36), 0.5) + A.P('#8a4a30', 'M-54 -38L-10 -62L34 -38z') + A.P(Wd[1], A.rrect(-14, -24, 14, 24, 2)) + A.P('#3a4a5a', A.rect(-38, -30, 10, 10)) + A.S(Wd[0], 3, A.circ(42, -18, 16)) + A.S(Wd[0], 1.800, sp); },
   rope() { const A = GART; return A.S('#8a6a44', 1.400, 'M-26 -14Q0 -2 26 -14M-26 -6Q0 6 26 -6') + A.S('#6e4c2a', 3, 'M-26 -16V2M26 -16V2') + A.S('#a67c50', 2.600, 'M-18 -3V0M-11 0V3M-4 2V5M4 2V5M11 0V3M18 -3V0'); },
   turf(sc) { const A = GART, c = sc.season === 'winter' ? '#b8c0ac' : '#6f9a4a'; return A.P(c, A.ell(0, -8, 60, 15)) + `<path d="M0 -8c8 -5 22 -2 24 2s-16 8 -30 6s-22 -6 -18 -10s26 -9 44 -6s30 8 26 14s-30 12 -52 10s-36 -8 -32 -14" fill="none" stroke="#e8dcb4" stroke-width="2.600" stroke-linecap="round"/>`; },
+  /** Thistle's old house in the woods: a low rubble-stone cottage gone quiet, slates mossed, ivy to the eaves, one window, the door off its latch and standing a hand open, flowers up through the step. */
+  oldhouse(sc) {
+    const A = GART, r = A.rng('gld-oldhouse'), w = sc.season === 'winter', au = sc.season === 'autumn';
+    const ivy = w ? ['#3c5236', '#56704a', '#74906a'] : au ? ['#5a5a2a', '#8a6a2e', '#b0702e'] : ['#2f4e2a', '#46703a', '#6a9450'];
+    let o = A.P('rgba(30,36,24,.28)', A.ell(2, 1, 50, 7));
+    // the walls: rubble stone, lit from the upper left, a darker damp foot
+    o += A.P('#a89e86', A.rect(-38, -36, 76, 36)) + A.P('#bdb39a', A.rect(-38, -36, 30, 36), .6) + A.P('#7e7562', A.rect(-38, -6, 76, 6), .55);
+    for (let y = -33, i = 0; y < -2; y += 6, i++) for (let x = -37 + (i % 2) * 5; x < 36; x += 9 + r() * 4) { const sw = 6 + r() * 4; o += A.P(r() < .5 ? '#c9bfa6' : '#988e78', A.rrect(x, y, Math.min(sw, 37 - x), 4.6, 1.6), .7); }
+    // the gable end and the roof: old slates, a sag along the ridge, moss in the courses
+    o += A.P('#4d5257', 'M-46 -34L-30 -62Q0 -66 30 -62L46 -34z') + A.P('#646a70', 'M-46 -34L-30 -62Q-12 -64 -2 -64L-14 -34z', .8);
+    for (let k = 0; k < 5; k++) { const y = -38 - k * 5.4; o += A.S('#3a3e42', .8, `M${-44 + k * 3} ${y}L${44 - k * 3} ${y}`, .7); }
+    for (let k = 0; k < 7; k++) o += A.P(w ? '#e8ecef' : '#7d8b4a', A.blob(r, -30 + r() * 60, -40 - r() * 20, 4 + r() * 4, 1.6 + r() * 1.4, 6, .5), .8);
+    o += A.P('#2c2f32', 'M-46 -34L46 -34L44 -31L-44 -31z', .7);
+    // the chimney, cold: no smoke
+    o += A.P('#8f8572', A.rect(20, -74, 11, 16)) + A.P('#a99f88', A.rect(20, -74, 4, 16), .7) + A.P('#5a5448', A.rect(19, -76, 13, 3));
+    // the window: small panes, one cracked, a sill
+    o += A.P('#5a4a34', A.rect(-30, -27, 16, 14)) + A.P('#2e3a3e', A.rect(-28.5, -25.5, 13, 11)) + A.P('#6f8a92', A.rect(-28.5, -25.5, 6, 5), .5) + A.S('#5a4a34', 1.1, 'M-22 -25.5V-14.5M-28.5 -20H-15.5') + A.S('#c8d4d6', .6, 'M-20 -24l3 3l-1 2', .8) + A.P('#cbbfa4', A.rect(-31.5, -13, 19, 2));
+    // the door, off its latch: dark gap on the hinge side, the boards weathered silver-brown, an old ring handle
+    o += A.P('#3e3226', A.rect(-1, -30, 18, 30)) + A.P('#1c1712', A.rect(-1, -30, 4, 30)) + A.P('#7a6448', 'M3 -30L17 -30L17 0L3 0z') + A.S('#5e4c36', .8, 'M7.5 -30V0M12 -30V0', .8) + A.P('#a28a64', A.rect(3, -30, 3, 30), .45) + A.S('#3a2e22', 1, A.circ(14, -15, 1.6));
+    o += A.P('#9a917c', A.rrect(-4, -2, 26, 4, 1.6)) + A.P('#b9b09a', A.rect(-4, -2, 26, 1.4), .7);
+    // ivy up the left wall and over the eaves, trailing down by the door
+    for (let i = 0; i < 26; i++) { const t = r(), x = -40 + r() * 34 + (t > .7 ? r() * 30 : 0), y = -4 - r() * 44 + (x > -10 ? -10 : 0); o += A.P(ivy[i % 3], A.blob(r, x, y, 3.4 + r() * 3.4, 2.6 + r() * 2, 6, .55), .95); }
+    for (let i = 0; i < 4; i++) { const x = -6 + r() * 4; o += A.S(ivy[0], 1, `M${x} -34q${2 - r() * 4} 8 ${1 - r() * 2} ${14 + r() * 8}`, .9); }
+    // the garden coming up through the step: foxgloves, grass, a self-sown flower or two
+    if (!w) for (let i = 0; i < 3; i++) { const x = 24 + i * 5 + r() * 3, h = 12 + r() * 8; o += A.S('#4e6a36', 1.1, `M${x} 0V${-h}`) + A.P(au ? '#b06a8a' : '#c45a9a', A.ell(x + .8, -h + 2, 1.6, 4.4), .9); }
+    for (let i = 0; i < 12; i++) { const x = -42 + r() * 84; o += A.S(w ? '#8a9a7a' : '#5e8a3a', 1, `M${x} 1q${(r() - .5) * 3} -4 ${(r() - .5) * 2} ${-4 - r() * 4}`, .9); }
+    return o;
+  },
   smoke() { const A = GART; return A.P('#2f2a26', A.rect(-40, -30, 80, 30)) + A.S('#16120f', 0.8, 'M-26 -30V0M-12 -30V0M12 -30V0M26 -30V0', 0.8) + A.P('#1e1a18', 'M-46 -28L0 -50L46 -28z') + A.P('#16120f', A.rect(-8, -22, 16, 22)) + A.P('#2f2a26', A.rect(14, -56, 9, 18)); },
   ice() { const A = GART, Wd = GART_PAL.wood; return A.P('#6f8a4a', 'M-42 0Q-34 -36 0 -38Q34 -36 42 0z') + A.P('#8aa45a', 'M-34 -4Q-28 -28 -8 -34Q-20 -18 -22 -4z', 0.8) + A.P('#9a968a', A.rrect(-13, -24, 26, 24, 8)) + A.P(Wd[0], A.rrect(-9, -20, 18, 20, 5)) + A.S('#3a3f44', 1.400, 'M-9 -13H9M-9 -5H9'); },
   frogstone() { const A = GART, St = GART_PAL.stone; return A.P(St[1], 'M-18 0Q-20 -16 -6 -20Q10 -22 18 -8Q20 -2 18 0z') + A.P(St[3], A.circ(-8, -21, 4) + A.circ(4, -22, 4)) + A.P('#2a2a2a', A.circ(-8, -21, 1.500) + A.circ(4, -22, 1.500)) + A.S(St[0], 1, 'M-12 -11Q0 -6 12 -10'); },
