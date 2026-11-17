@@ -8,7 +8,12 @@ function _wdMiceDoorAt(m) {
   let t = null;
   for (const p of m.plants) if (p.def.cat === 'tree' && p.stage >= 3 && (!t || p.planted < t.planted)) t = p;
   if (t) return { x: t.x + t.fp / 2 + 0.28, y: t.y + t.fp - 0.04, tree: t };
-  return Object.assign({ tree: null }, WD_AT.miceBack);
+  // No grown tree of yours yet: the foot of the village tree nearest the usual spot (the old fallback stood the door
+  // on the open village green, with nothing round it to be the foot of)
+  const back = WD_AT.miceBack, trunks = !m.visit && window.GardenNativePainted && GardenNativePainted.trunks ? GardenNativePainted.trunks().list : [];
+  let best = null, bd = 12; for (const k of trunks) { const d = Math.hypot(k.x - back.x, k.y - back.y); if (d < bd) { bd = d; best = k; } }
+  if (best) return { tree: null, x: Math.round((best.x + 0.3) * 100) / 100, y: Math.round((best.y - 0.04) * 100) / 100 };
+  return Object.assign({ tree: null }, back);
 }
 function _wdMouse(x, y, s, o) {
   o = o || {}; const f = o.c || '#a8957e', A = GART;

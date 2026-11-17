@@ -365,5 +365,27 @@
     } });
   }
 
+  /* ---------- the high street's front gardens (polish, Nov 2026) ----------
+   * The road from the quay to the green ran between bare lawns. Cottage borders along both verges: a leafy band with
+   * lavender, roses and marigolds, a hollyhock now and then. Ground paint only (you step over a border, as on the green),
+   * and only on open grass: never on a plot, a sight's footprint or the road. */
+  function highStreet(C) {
+    const { L, add, kit } = C, cw = L.cw, ch = L.ch, W = L.W, pts = L.routePts('harbour-walk'); if (pts.length < 2) return;
+    const season = C.season, seed = kit.hashStr('high-street');
+    const blooms = season === 'winter' ? ['#d8d2c4', '#b8a890'] : season === 'autumn' ? ['#c8783a', '#e0b050', '#a8503a', '#9a7ac8'] : season === 'spring' ? ['#f2efe2', '#e8c84a', '#d88aa8', '#9ab0e0'] : ['#9a7ac8', '#d86a7a', '#e8a040', '#f2efe2', '#c84a5a'];
+    const leaf = season === 'winter' ? '#7a8468' : season === 'autumn' ? '#6e7a3e' : '#4f7a38', leafHi = season === 'winter' ? '#929a80' : season === 'autumn' ? '#8a9448' : '#6a9a48';
+    const r0 = kit.rng(seed + 1), spots = []; for (const q of V.walk(pts, 9)) { const cy = (q.y - W.sky) / ch; if (cy < 59.2 || cy > 74.6) continue; for (const s of [-1, 1]) for (const d of [1.9, 2.4]) { const x = q.x + s * d * cw + (r0() - .5) * 6, y = q.y, gx = x / cw, gy = (y - W.sky) / ch; if (L.kind(gx, gy) === 'grass' && L.free(gx, gy) && !L.plot(gx, gy) && L.kind(gx - s * .5, gy) !== 'water') spots.push({ x, y, s }); } }
+    if (!spots.length) return;
+    const bb = kit.bboxOf(spots.map(p => ({ x: p.x, y: p.y })), 40);
+    add(bb, seed, (B, r) => {
+      for (const p of spots) { B.f(B.blob(r, p.x, p.y, 15, 7, 8, .45), leaf, .92).f(B.blob(r, p.x - 2, p.y - 3, 10, 4.6, 7, .45), leafHi, .75); }
+      spots.forEach((p, i) => {
+        const n = season === 'winter' ? 2 : 9; for (let k = 0; k < n; k++) B.f(B.circ(p.x + (r() - .5) * 20, p.y - 2 + (r() - .5) * 7, 1.5 + r() * .8), blooms[Math.floor(r() * blooms.length)], .95);
+        if (i % 7 === 3 && season !== 'winter') { const hx = p.x + (r() - .5) * 8, col = blooms[Math.floor(r() * blooms.length)]; B.s(`M${hx} ${p.y}L${hx + 1} ${p.y - 24}`, '#5a7a3a', 1.6, .9); for (let k = 0; k < 5; k++) B.f(B.circ(hx + 1 + (r() - .5) * 2, p.y - 6 - k * 4, 2.6 - k * .25), col, .95); }
+      });
+    });
+  }
+
+  V.parts.push({ id: 'high-street', compose: highStreet });
   V.parts.push({ id: 'crossings', compose: crossings }, { id: 'ruins', compose: ruins }, { id: 'plazas', compose: plazas }, { id: 'homes', compose: homes }, { id: 'green', compose: green });
 })();
