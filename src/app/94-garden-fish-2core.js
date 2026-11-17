@@ -209,7 +209,8 @@ function _gcWindow(now) { return Math.floor(now / 1200000); }   // 20 minutes: t
  */
 /* A few existing bare-ground hunters also use the island's upper sand.
  * This only chooses a home for an already eligible bug, within its old cap. */
-const _GC_BEACH_GROUND = new Set(['black-ant', 'red-ant', 'ground-beetle', 'rove-beetle']);
+const _GC_SHORE = new Set(['sand-hopper', 'sea-slater']);
+const _GC_BEACH_GROUND = new Set(['black-ant', 'red-ant', 'ground-beetle', 'rove-beetle', ..._GC_SHORE]);   // (the vale's two shore bugs live on the strand, as their clues say, not on any lawn)
 const _gcBeachHabitat = { revision: null, allowed: null, points: [] };
 function _gcBeachCells() {
   if (typeof gardenIslandActive !== 'function' || !gardenIslandActive()) return null;
@@ -310,8 +311,9 @@ function _gcBugsBase(mArg) {
     let r = rnd() * weights.reduce((a, b) => a + b, 0), k = 0;
     for (; k < pool.length - 1; k++) { r -= weights[k]; if (r <= 0) break; }
     const b = pool[k], habs = b.hab.filter(habOk), hab = habs[Math.floor(rnd() * habs.length)] || b.hab[0], want = b.needs && b.needs.plant ? blooms.find(p => p.def.id === b.needs.plant) : null;
-    const beach = !beachUsed && hab === 'ground' && !want && !rg.away(b) ? _gcBeachBugSpot(b, m, rnd, out) : null;
+    const shore = _GC_SHORE.has(b.id), beach = (!beachUsed || shore) && hab === 'ground' && !want && !rg.away(b) ? _gcBeachBugSpot(b, m, rnd, out) : null;
     const s = beach || (want ? { x: want.x + 0.5, y: want.y + 0.6 } : rg.away(b) ? rg.cell(b, rnd, free) : spot(hab));
+    if (shore && !beach) continue;   // (a shore bug is on the strand or not out at all)
     if (beach) beachUsed = true;
     if (!s) continue;
     const key = win + '.' + out.length;
