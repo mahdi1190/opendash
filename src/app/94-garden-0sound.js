@@ -373,7 +373,7 @@ function _gsAmbience(c) {
   set('wind', ((0.3 + 0.55 * near.high + 0.3 * near.sea + (season === 'winter' ? 0.2 : 0) + (rain ? 0.2 : 0)) * (near.woods ? 0.65 : 1) * (snow ? 0.7 : 1)) * out);
   set('sea', near.sea * out); set('lap', near.lap * (frozen ? 0.15 : 1) * out); set('brook', near.brook * (frozen ? 0.3 : 1) * out); set('falls', near.falls * (frozen ? 0.4 : 1) * out);
   set('rain', rain && !snow ? (room ? 0.5 : 1) : 0, 1.5);
-  const crickets = (night || dusk) && !rain && !snow && season !== 'winter' ? (season === 'spring' ? 0.5 : 1) * (dusk ? 0.55 : 1) * (1 - 0.6 * near.sea) : 0;
+  const crickets = (night || dusk) && !rain && !snow && season !== 'winter' ? (season === 'spring' ? 0.5 : season === 'autumn' ? 0.35 : 1) * (dusk ? 0.55 : 1) * (1 - 0.6 * near.sea) : 0;
   set('crick', crickets * out, 1.5); set('room', room && !room.music ? 1 : 0, 0.5);
   if (A.seaPan.pan) A.seaPan.pan.setTargetAtTime(near.seaPan * 0.7, t, 1); if (A.lapPan.pan) A.lapPan.pan.setTargetAtTime(near.lapPan * 0.7, t, 1); if (A.fallsPan.pan) A.fallsPan.pan.setTargetAtTime(near.fallsPan * 0.8, t, 1); if (A.brookPan.pan) A.brookPan.pan.setTargetAtTime(near.brookPan * 0.7, t, 1);
   A.rainLP.frequency.setTargetAtTime(room ? 900 : 7000, t, 0.5);
@@ -419,6 +419,7 @@ function _gsMusic(c, t, s) {
 function _gsShowing() { try { return typeof _gw !== 'undefined' && !!_gw.on && (typeof _gdOnPage !== 'function' || _gdOnPage()) || !!_gsRoom(); } catch (e) { return false; } }
 function gardenSoundWake() {
   if (_gsn.iv || !_gsn.armed || !_gsShowing() || !_gsAllowed()) return;
+  clearTimeout(_gsn.restT);   // (back before the sound card was let rest)
   _gsn.iv = setInterval(_gsTick, GS_TICK_MS); _gsn.n = 0;
 }
 function _gsSleep() {
@@ -494,6 +495,7 @@ function _gsOnGarden(ev) {
   else if (k === 'decor' || k === 'move') gardenSfx('place');
   else if (k === 'craft' || k === 'recipe') gardenSfx('craft');
   else if (k === 'collect' || k === 'feed' || k === 'bouquet' || k === 'wonder') gardenSfx('sparkle');
+  else if ((k === 'bug' || k === 'fish') && !('isNew' in d)) gardenSfx('place');   // ('show' carries its kind too: one put in the case or the tank, not a catch)
   else if (k === 'bug') gardenSfx('netted');   // ('catch' carries its own kind: a bug here; a fish is said by its landing)
   else if (k === 'land') gardenSfx(/^zn-/.test(String(d.id || '')) ? 'gate' : 'sparkle');
   else if (d.what) gardenSfx('sparkle');
