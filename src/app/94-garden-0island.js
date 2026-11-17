@@ -57,6 +57,9 @@ function gardenIslandStaticRow(row) {
   // The v5 well moved to the village but retained a doorway ten cells east.
   // Repair only that authored row; later Designer placements keep their own doors.
   if (data.version === 5 && p.id === 'ld-wish' && p.x === 33 && p.y === 58 && p.w === 1 && p.h === 1 && p.door && p.door.x === 43 && p.door.y === 58) next.door = Object.freeze({ x: p.x, y: p.y + p.h });
+  // The v5 shore bench stood behind the land office's roof (only its end showed). Presentation and seating only:
+  // it sits a few steps west on open ground by the lake walk, facing the water; the layout file is unchanged.
+  if (data.version === 5 && p.id === 'ld-bench-b' && p.x === 45 && p.y === 42 && p.w === 2) { next.x = 40.6; next.y = 42; next.door = Object.freeze({ x: 41, y: 43 }); }
   return next;
 }
 /** The woodpile's authored anchor and ground contact, shared by paint and feet. */
@@ -67,6 +70,38 @@ function gardenIslandLogStack(data) {
   const W = data.world, x = hut.x + hut.w / 2 + 2.2, y = hut.y + hut.h + .4;
   // The posts and lowest logs occupy the base; the roof is safe to walk behind.
   return { x, y, foot: { x0: x - 36 / W.cellW, y0: y - 8 / W.cellH, x1: x + 36 / W.cellW, y1: y + 2 / W.cellH } };
+}
+/**
+ * The old woodland's wayside lamps: seven old iron lanterns on stone plinths by its paths (the arch, the Hush, the
+ * court, the birches, the shore, the ice house, the postern). Each stands on the nearest open grass to its spot, never
+ * on a path, water, a building or land for sale. Positions in cells (foot); the painter draws them, the walk treats
+ * the plinth as solid and the night lights them. Cached per layout.
+ */
+const _GD_OLDWOOD_LAMPS = [[21.6, 66.6], [19.1, 69.6], [23.6, 77.1], [18.6, 80.6], [23.4, 85.2], [30.5, 85.6], [34.2, 77.6]];
+function gardenIslandOldWoodLamps(data) {
+  data = data || (gardenIslandActive() ? gardenIslandData() : null);
+  if (!data || data.version < 5 || !(data.regions || []).some(r => r.id === 'southwest-ruins')) return [];
+  if (data._oldLamps) return data._oldLamps;
+  const ok = (x, y) => {
+    const c = gardenIslandBaseCell(x, y); if (!c || !c.land || c.freshwater || c.beach || c.route || c.reservation || c.solid || c.region !== 'southwest-ruins') return false;
+    const row = typeof gardenLandCell === 'function' ? gardenLandCell(Math.floor(x), Math.floor(y)) : null;
+    return !(row && /^l[sct]-/.test(row.id || ''));
+  };
+  const out = [];
+  for (const [ax, ay] of _GD_OLDWOOD_LAMPS) {
+    let best = null;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const x = Math.floor(ax) + dx, y = Math.floor(ay) + dy; if (!ok(x, y)) continue; const d = Math.hypot(x + .5 - ax, y + .5 - ay); if (!best || d < best.d) best = { x: x + .5, y: y + .7, d }; }
+    if (best) out.push({ x: best.x, y: best.y, foot: { x0: best.x - .2, y0: best.y - .22, x1: best.x + .2, y1: best.y + .04 } });
+  }
+  try { Object.defineProperty(data, '_oldLamps', { value: out, enumerable: false }); } catch (e) { /* frozen layout: recompute */ }
+  return out;
+}
+/** The postern: a gap in the old woodland's east wall where its circuit meets the cottage lane, marked by two stone piers at the path's edges. Cells. */
+function gardenIslandPosternPiers(data) {
+  data = data || (gardenIslandActive() ? gardenIslandData() : null);
+  const sc = data && data.version >= 5 && ((data.presentation && data.presentation.shortcuts) || []).find(s => s.id === 'postern');
+  if (!sc || !sc.at) return [];
+  return [[sc.at[0] + .3, sc.at[1] - 1.05], [sc.at[0] + .55, sc.at[1] + 1.25]].map(([x, y]) => ({ x, y, foot: { x0: x - .26, y0: y - .2, x1: x + .26, y1: y + .04 } }));
 }
 /** Optional decks use the displayed Garden's mechanics identity, never a visitor's ownership. */
 function gardenSidePierMechanicsReady(source) {
@@ -179,6 +214,18 @@ function _gardenIslandCrossingRouteSpan(c, water, halfWidth) {
   }
   return null;
 }
+/** Fleet Falls' drawn water, in world cells, for the painters (presentation only):
+ * the lip sits on the gorge line where the river reaches the scarp top (falls.y),
+ * and the sheet lands straight below it in the Mere, so the river visibly feeds
+ * the falls. null before v5 or when the layout has no gorge. */
+function gardenFallsWater(data) {
+  const D = data || (typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data), pres = D && D.version >= 5 && D.presentation, F = pres && pres.falls, line = pres && pres.rivers && pres.rivers.gorge && pres.rivers.gorge.line;
+  if (!F || !F.pool || !line || line.length < 2) return null;
+  let lx = NaN;
+  for (let i = 1; i < line.length; i++) { const a = line[i - 1], b = line[i]; if ((a[1] - F.y) * (b[1] - F.y) <= 0 && a[1] !== b[1]) { lx = a[0] + (b[0] - a[0]) * (F.y - a[1]) / (b[1] - a[1]); break; } }
+  if (!Number.isFinite(lx)) return null;
+  return { lip: { x: lx, y: F.y }, foot: { x: lx + .15, y: F.pool[1] } };
+}
 /** Retained river water and the precise standing surfaces crossing it. */
 function gardenIslandCrossingGeometry() {
   if (_gardenIslandDerived.crossings) return _gardenIslandDerived.crossings;
@@ -197,13 +244,16 @@ function gardenIslandCrossingGeometry() {
     s0 = Math.max(0, s0 - .7); s1 = Math.min(Ln.len, s1 + .7);
     const hw = river.halfWidth || 1, left = [], right = [];
     for (let s = s0; s <= s1 + 1e-6; s += .2) { const p = at(s), k = hw * (1 + .06 * Math.sin(s * 3.1)); left.push({ x: p.x - p.ty * k, y: p.y + p.tx * k }); right.push({ x: p.x + p.ty * k, y: p.y - p.tx * k }); }
-    const mid = at(n0.s), span = c.kind === 'footbridge' ? hw + .7 : hw + .15, points = left.concat(right.reverse()), halfWidth = c.kind === 'footbridge' ? 17 : 14;
-    const approach = c.kind !== 'hump-bridge' && _gardenIslandCrossingRouteSpan(c, points, halfWidth);
+    // The Millwater hump bridge carries its lane between two parapets: its
+    // standing deck is a lane-wide band from bank to bank, as drawn, not the
+    // gate's four-cell lock span (which read as a square slab on the river).
+    const mid = at(n0.s), span = c.kind === 'footbridge' ? hw + .7 : hw + .15, points = left.concat(right.reverse()), halfWidth = c.kind === 'footbridge' ? 17 : c.kind === 'hump-bridge' ? 24 : 14;
+    const approach = _gardenIslandCrossingRouteSpan(c, points, halfWidth);
     const a = approach ? approach.a : { x: (mid.x - mid.ty * span) * W.cellW, y: W.sky + (mid.y + mid.tx * span) * W.cellH }, b = approach ? approach.b : { x: (mid.x + mid.ty * span) * W.cellW, y: W.sky + (mid.y - mid.tx * span) * W.cellH };
     const length = Math.hypot(b.x - a.x, b.y - a.y), ux = (b.x - a.x) / length, uy = (b.y - a.y) / length;
     const deckPoint = (t, s) => ({ x: a.x + (b.x - a.x) * t - uy * s, y: a.y + (b.y - a.y) * t + ux * s });
     let support;
-    if (c.kind === 'hump-bridge') {
+    if (c.kind === 'hump-bridge' && !approach) {
       const gate = (D.gates || []).find(g => g.id === c.gateId), ends = gate && gate.crossSpan;
       const depth = ends && ends.length === 2 ? Math.hypot((ends[1][0] - ends[0][0]) * W.cellW, (ends[1][1] - ends[0][1]) * W.cellH) / 2 : 0;
       if (!depth) continue;

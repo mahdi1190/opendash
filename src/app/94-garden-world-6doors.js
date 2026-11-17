@@ -88,6 +88,8 @@ function _grmDoorPt(R) {
   // moves. Older gardens retain their separate steps and beside-sight fallback.
   const island = typeof gardenIslandData === 'function' ? gardenIslandData() : null;
   const authored = island && island.version >= 5 && island.static.find(q => q.id === R.at);
+  // A way in that is round the back of its sight (the old gardener's hothouse) stands beside and behind it, not on its plinth.
+  if (authored && p.door && R.back) return { x: authored.x + R.back[0], y: authored.y + R.back[1] };
   if (authored && p.door) return { x: p.door.x + .5, y: p.door.y + .5 };
   if (R.doorAt) return { x: R.doorAt[0], y: R.doorAt[1] };   // (its sight is hidden behind the shops: the steps are by the path round to it)
   // beside its sight: on the right if it can be, never in water or inside a building, where you could not see it or get to it
@@ -110,10 +112,13 @@ wdMod({
       // attaches to their retained feet; standing approaches stay unchanged.
       const native = GARDEN_WORLD.v >= 5 && _gw.svg && _gw.svg._native && _gw.nativeWorld;
       const prop = native && R.id === 'lampcup' && _grmDoorProp(R), drawing = prop && _gw.nativeWorld.entities.get('prop:' + prop.id);
-      const foot = drawing && drawing.metadata.foot, cave = native && R.id === 'falls' && window.GardenPaintedTerrain && GardenPaintedTerrain.roomEntrance && GardenPaintedTerrain.roomEntrance(R.id);
+      let foot = drawing && drawing.metadata.foot, cave = native && R.id === 'falls' && window.GardenPaintedTerrain && GardenPaintedTerrain.roomEntrance && GardenPaintedTerrain.roomEntrance(R.id);
+      // a painted landmark that draws its own way in (the grotto's mouth, the shepherd's hut's door): the way in is that door, not a second cartoon door in front of it
+      const own = native && !cave && !prop && window.GardenPaintedMarks && GardenPaintedMarks.wayIn && GardenPaintedMarks.wayIn(R.at), ownDrawing = own && _gw.nativeWorld.entities.get('prop:' + R.at), ownFoot = ownDrawing && ownDrawing.metadata && ownDrawing.metadata.foot;
+      if (ownFoot && Number.isFinite(ownFoot.x) && Number.isFinite(ownFoot.y)) cave = { x: ownFoot.x + own.dx, y: ownFoot.y + own.dy };
       const lamp = !!(foot && Number.isFinite(foot.x) && Number.isFinite(foot.y)), anchor = lamp ? foot : cave;
       const x = anchor ? anchor.x / GARDEN_WORLD.cellW : P.x, y = anchor ? (anchor.y - GARDEN_WORLD.sky) / GARDEN_WORLD.cellH : P.y - .3, z = lamp ? prop.y + prop.h + .01 : P.y, hitUp = lamp ? 5 : cave ? 15 : 30;
-      const art = lamp ? '<rect x="-2" y="-8" width="4" height="6" rx=".5" fill="#10121e" stroke="#8c9488" stroke-width=".6"/><circle cx=".8" cy="-5" r=".55" fill="#d8b24a"/>' : cave ? '<path d="M-7 -1H7" fill="none" stroke="#a8b4b0" stroke-width="1.2" stroke-linecap="round"/>' : GRM_SYM[R.id]();
+      const art = lamp ? '<rect x="-2" y="-8" width="4" height="6" rx=".5" fill="#10121e" stroke="#8c9488" stroke-width=".6"/><circle cx=".8" cy="-5" r=".55" fill="#d8b24a"/>' : cave || native && R.id === 'boatloft' && window.GardenPaintedMarks && GardenPaintedMarks.knows('ld-boathouse') ? '<path d="M-7 -1H7" fill="none" stroke="#a8b4b0" stroke-width="1.2" stroke-linecap="round"/>' : native ? GRM_SYM[R.id]().replace(/<path class="grm-glowp"[^>]*\/>/, '') : GRM_SYM[R.id]();   // (the painted lighthouse has its own lamp: no beam floating beside it)
       const svg = `<g class="grm-wayin" transform="scale(.82)">${art}</g>`;
       if (S) { if (S.x !== x || S.y !== y || S.z !== z) { S.x = x; S.y = y; S.z = z; S.tf = null; } S.hitUp = hitUp; wdArt(S, svg); continue; }
       _grd.list.set(R.id, wdSprite({ id: 'grm-door-' + R.id, x, y, z, still: true, hit: 0.9, hitUp, label: R.verb, cursor: 'hand', svg, onClick: () => gardenRoomGo(R) }));

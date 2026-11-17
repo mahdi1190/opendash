@@ -335,6 +335,8 @@ window.GardenNativeWorld = (function () {
     // an unowned core plot. Buying, planting, walking and route finding never
     // read this allowance. Regional locks and physical surfaces still win.
     function routePaintAllowance(cells, sc, cultivated) {
+      // A post or a cross standing on a road cell keeps the road under it: cutting its cell out left a square of bare ground in the paving.
+      const statics = new Map(gardenIslandData().static.map(p => [p.id, p])), smallSight = base => { const p = base.route && statics.get(base.staticId); return !!p && p.w === 1 && p.h === 1 && p.col !== 'full'; };
       const open = new Set(sc.areas || []), allowed = new Uint8Array(cells.length);
       for (let i = 0; i < cells.length; i++) {
         const cell = cells[i], x = i % W.cols, y = Math.floor(i / W.cols), row = cell && cell.row;
@@ -342,11 +344,14 @@ window.GardenNativeWorld = (function () {
         // Its surviving paint is clipped to the continuous lawn below.
         if (!cell || cell.water || ['ocean', 'water', 'pool', 'lake', 'ice'].includes(cell.material) || cell.material === 'beach' && W.v < 5 || row && row.solid) continue;
         const base = gardenIslandBaseCell(x, y), zone = gardenIslandZoneAt(x, y);
-        if (!base || !base.land || base.solid || base.staticId || zone && !open.has('zn-' + zone)) continue;
+        if (!base || !base.land || base.solid || base.staticId && !smallSight(base) || zone && !open.has('zn-' + zone)) continue;
         const bareCore = !!(row && row.plot === 'core' && !open.has(row.id) && !(cultivated && cultivated.has(row.id)));
         if (row && row.plot && !bareCore || cell.locked && !bareCore) continue;
         allowed[i] = 1;
       }
+      // A road into a closed zone runs one cell on under the mist instead of stopping square at its edge (the brook walk ended in a cut-off block).
+      const into = []; for (let i = 0; i < cells.length; i++) { if (allowed[i]) continue; const x = i % W.cols, y = Math.floor(i / W.cols), base = gardenIslandBaseCell(x, y), zone = base && base.route && !base.solid && !base.staticId && gardenIslandZoneAt(x, y); if (!zone || open.has('zn-' + zone) || cells[i] && cells[i].water) continue; if (x > 0 && allowed[i - 1] || x < W.cols - 1 && allowed[i + 1] || y > 0 && allowed[i - W.cols] || y < W.rows - 1 && allowed[i + W.cols]) into.push(i); }
+      for (const i of into) allowed[i] = 1;
       return allowed;
     }
     function clearPierDecks() {
@@ -361,7 +366,7 @@ window.GardenNativeWorld = (function () {
     // are shared; outside its feathered box the island keeps this painting.
     let packGround = null, packPlanting = null, packTerrain = null;
     // High ground in the same style (94-garden-paint-terrain-*.js): the fells, the Edge, the gorge, peaks and terraces.
-    function paintTerrain(sc) { if (!window.GardenPaintedTerrain) return; try { packTerrain = GardenPaintedTerrain.build(scene, rootNode._inner, sc); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); } }
+    function paintTerrain(sc) { if (!window.GardenPaintedTerrain) return; try { packTerrain = GardenPaintedTerrain.build(scene, rootNode._inner, sc, objects._inner || objects.target); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); } }
     function terrainMark(prop, sc) { if (!window.GardenPaintedMarks || !GardenPaintedMarks.knows(prop.id) || !packOn() || typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(prop.id)).some(Boolean)) return null; try { return GardenPaintedMarks.landmark(scene, prop, sc, element, W); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); return null; } }
     function terrainOwns(kind) { return !!(packTerrain && GardenPaintedTerrain.owns(kind)); }
     function terrainOwnsRegion(id) { return !!(packTerrain && GardenPaintedTerrain.ownsRegion(id)); }
@@ -415,8 +420,16 @@ window.GardenNativeWorld = (function () {
       try { packGround = GardenNativePainted.ground(scene, rootNode._inner, { W, box, coast, lawn, lakes, paths: pathLoops, routes, plaza, meadow, soil, owned, season: sc.season, sig: sig + '|' + soil.length + ':' + owned.length }); }
       catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); return false; }
       const blocked = new Set(); for (const p of D.static) { const boxes = [p, p.apron].filter(Boolean); for (const b of boxes) for (let y = Math.floor(b.y) - 1; y <= b.y + b.h; y++) for (let x = Math.floor(b.x) - 1; x <= b.x + b.w; x++) blocked.add(x + ',' + y); }
+      if (typeof gardenPropsNow === 'function') for (const p of gardenPropsNow()) if (!p.walk && Number.isFinite(p.x)) for (let y = Math.floor(p.y) - 1; y <= p.y + (p.h || 1); y++) for (let x = Math.floor(p.x) - 1; x <= p.x + (p.w || 1); x++) blocked.add(x + ',' + y);   // (a sight placed at run time, such as the shore bench)
       // and the gates stay readable: no village tree in front of an arch or bridge (the canopy rises up the screen over it)
       for (const g of D.gates || []) for (let y = g.y - 2; y <= g.y + 5; y++) for (let x = g.x - 3; x <= g.x + 3; x++) blocked.add(x + ',' + y);
+      // nor on a solid landform: no bank tree grows out of the orchard's terrace wall or the scarp
+      for (const f of D.landforms || []) {
+        if (f.col !== 'full' || !f.polygon || f.polygon.length < 3) continue;
+        const poly = f.polygon.map(([x, y]) => ({ x, y }));
+        let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const [px, py] of f.polygon) { x0 = Math.min(x0, px); y0 = Math.min(y0, py); x1 = Math.max(x1, px); y1 = Math.max(y1, py); }
+        for (let y = Math.floor(y0); y <= y1; y++) for (let x = Math.floor(x0); x <= x1; x++) if ([[.5, .5], [.15, .9], [.85, .9]].some(([dx, dy]) => gardenIslandInPolygon(x + dx, y + dy, poly))) blocked.add(x + ',' + y);
+      }
       // the gates' finds lie in the open, not under a tree (the shears' glint on the reed-bank bench was behind two birches)
       if (typeof GARDEN_GATE_FINDS !== 'undefined' && typeof gardenGateFindPoint === 'function') for (const f of GARDEN_GATE_FINDS) { const q = gardenGateFindPoint(f); if (q) for (let y = Math.floor(q.y) - 3; y <= Math.floor(q.y) + 2; y++) for (let x = Math.floor(q.x) - 2; x <= Math.floor(q.x) + 2; x++) blocked.add(x + ',' + y); }
       // Planting keeps clear of every path, doorway, owned plot and saved
@@ -424,15 +437,24 @@ window.GardenNativeWorld = (function () {
       const taken = new Set(); for (const item of (m.plants || []).concat(m.decor || [])) for (let y = item.y - 1; y <= item.y + 2; y++) for (let x = item.x - 1; x <= item.x + 2; x++) taken.add(x + ',' + y);
       const near = (x, y, r, test) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const c = cellAt(x + dx, y + dy); if (c && test(c)) return true; } return false; };
       const isPath = c => c.route || c.material === 'path' || c.material === 'beach';
+      // A crown rises about four rows up the screen: no tree just in front of (south of) a building, a sight, the starter
+      // bed or a plot, so the well, the sunken pool and your own bed are never lost behind leaves (polish, Nov 2026).
+      const screened = new Set(); { const mark = b => { for (let y = Math.floor(b.y) - 1; y <= b.y + b.h; y++) for (let x = Math.floor(b.x) - 1; x <= b.x + b.w; x++) screened.add(x + ',' + y); };
+        for (const p of D.static) if (!p.walk) mark(p); if (D.anchors.bed) mark(D.anchors.bed); }
+      const hidesSomething = (x, y) => { for (let dy = 1; dy <= 4; dy++) for (let dx = -2; dx <= 2; dx++) { const k = (x + dx) + ',' + (y - dy), c = cellAt(x + dx, y - dy); if (screened.has(k) || c && (soilSet.has(c.material) || c.row && c.row.plot && !c.locked)) return true; } return false; };
+      // The green inside the ring path is a mown common: nothing self-sown on it (a shrub stood under the maypole).
+      const ringRoute = D.routes.find(r => r.id === 'plaza-loop'), ring = ringRoute ? ringRoute.points.map(([x, y]) => ({ x, y })) : null;
       const spot = (x, y) => {
         const c = cellAt(x, y); if (!c || c.plantingReserved || blocked.has(x + ',' + y) || taken.has(x + ',' + y)) return '';
+        if (ring && insidePolygon({ x: x + .5, y: y + .5 }, ring)) return '';
         if (c.material === 'beach' && near(x, y, 1, wet) && !near(x, y, 1, cc => cc.material === 'path')) return 'shore';
         if (wet(c) || c.material === 'beach' || c.material === 'path') return '';
         if (typeof gardenIslandRegionAt === 'function') { const r = gardenIslandRegionAt(x + .5, y + .5); if (r && r.zone) return ''; }
         if (near(x, y, 1, isPath)) return '';
-        if (c.row && c.locked) return ['wood', 'orchard', 'dell'].includes(c.row.kind) || c.row.solid ? 'tree' : 'wild';
+        const tree = hidesSomething(x, y) ? 'edge' : 'tree';
+        if (c.row && c.locked) return ['wood', 'orchard', 'dell'].includes(c.row.kind) || c.row.solid ? tree : 'wild';
         if (c.row && c.row.plot) return '';
-        return near(x, y, 2, isPath) ? 'edge' : 'tree';
+        return near(x, y, 2, isPath) ? 'edge' : tree;
       };
       try { packPlanting = GardenNativePainted.planting(scene, objects._inner || objects.target, { W, box: cbox, spot, season: sc.season }); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); }
       natureLayers(sc, cellAt);
@@ -469,7 +491,7 @@ window.GardenNativeWorld = (function () {
       for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
         const row = typeof gardenLandCell === 'function' ? gardenLandCell(x, y) : null, area = gardenAreaAt(x, y, level), locked = String(area).startsWith('locked:');
         const islandCell = island ? gardenIslandBaseCell(x, y) : null;
-        const water = gardenIsWater(x, y), iceCell = typeof _GD_ICE !== 'undefined' && _GD_ICE.has(x + ',' + y), fixedLand = typeof _GD_WALK_EXTRA !== 'undefined' && _GD_WALK_EXTRA.has(x + ',' + y), prop = iceCell && typeof gardenPropAt === 'function' ? gardenPropAt(x, y) : null, frozen = iceCell && (island || !lake || lake.cellContains(x, y)) && !fixedLand && !(prop && prop.walk), path = !!(row && (row.lane || row.trail)) && !locked;
+        const water = gardenIsWater(x, y), iceCell = typeof _GD_ICE !== 'undefined' && _GD_ICE.has(x + ',' + y), fixedLand = typeof _GD_WALK_EXTRA !== 'undefined' && _GD_WALK_EXTRA.has(x + ',' + y), prop = iceCell && typeof gardenPropAt === 'function' ? gardenPropAt(x, y) : null, frozen = iceCell && (island || !lake || lake.cellContains(x, y)) && !fixedLand && !(prop && prop.walk), path = !!(row && (row.lane || row.trail)) && !locked && !(islandCell && islandCell.staticId);   // (a sight standing on an old lane cell is lawn round its foot: the road paint keeps clear of it, and a bare lane cell drew a pale square under the signpost and the market cross)
         let material = frozen ? 'ice' : islandCell && islandCell.ocean ? 'ocean' : water ? lake && lake.cellContains(x, y) ? 'lake' : 'water' : islandCell && islandCell.beach ? 'beach' : path ? 'path' : row && row.solid ? 'wild' : row && row.kind || 'green';
         // Future growing plots stay part of the landscape until they open;
         // a map full of tiny unowned soil patches overwhelms the village.
@@ -697,7 +719,7 @@ window.GardenNativeWorld = (function () {
           for (const loop of loops) for (let i = 0; i < loop.length; i++) { const a = loop[i], b = loop[(i + 1) % loop.length], light = b.x - a.x > b.y - a.y; g.lineStyle(light ? .9 : 1.1, light ? p.soilLight : p.soilDark, light ? .34 : .28).lineBetween(a.x, a.y, b.x, b.y); }
         }
       }
-      if (authoredRegions.length) forestRows.push(..._gldIslandRegionStands().filter(sp => !terrainOwnsRegion(sp.region || (gardenIslandBaseCell(sp.x / W.cellW, (sp.y - W.sky) / W.cellH) || {}).region)));
+      if (authoredRegions.length) forestRows.push(..._gldIslandRegionStands().filter(sp => { const region = sp.region || (gardenIslandBaseCell(sp.x / W.cellW, (sp.y - W.sky) / W.cellH) || {}).region; return !terrainOwnsRegion(region) && !(window.GardenPaintVale && GardenPaintVale.ownsRegion && GardenPaintVale.ownsRegion(region)); }));   // (the painted orchard plants its own rows)
       const smallWaters = waterRegions.filter(region => !region.frozen && !region.ocean && !region.id.startsWith('lake:'));
       const withinWater = (x, y, region) => insidePolygon({ x, y }, region.points) && !region.holes.some(hole => insidePolygon({ x, y }, hole));
       const occupiedBank = (x, y) => {
@@ -1140,6 +1162,10 @@ window.GardenNativeWorld = (function () {
           reflectedScenery.push({ id: record.id, source: record.root, x: foot.x, y: foot.y, w: record.bounds.width, h: 9, tall: record.bounds.height, bounds: record.bounds, kind: 'scenery', dynamic: !!record.handle.dynamic, captureKey });
         }
       }
+      // the old woodland's wayside lamps are painted scenery (94-garden-paint-vale-1places.js), lit here at dusk and night
+      if (typeof gardenIslandOldWoodLamps === 'function' && window.GardenPaintVale && GardenPaintVale.wanted()) gardenIslandOldWoodLamps().forEach((q, i) => pointLights.push({ id: 'oldwood-lamp:' + i, x: q.x * W.cellW, y: W.sky + q.y * W.cellH - 44, radius: 120, height: 40, color: nightMaterials ? 0xffc17a : 0xffd88e, intensity: .85 }));
+      // and Hollin's window: someone lives in the hut
+      { const hut = typeof gardenIslandLogStack === 'function' && GardenIslandLayout.data && (GardenIslandLayout.data.static || []).find(p => p.id === 'ld-woodhut'); if (hut && window.GardenPaintVale && GardenPaintVale.wanted()) pointLights.push({ id: 'oldwood-hut:window', x: (hut.x + hut.w / 2) * W.cellW, y: W.sky + (hut.y + hut.h) * W.cellH - 22, radius: 78, height: 20, color: 0xffc47c, intensity: .5 }); }
       _gw.grid = null; _gw.gq = null; _gw.solids = null; _gw.gridKey = ''; _gw.cam.dirty = true;
       if (typeof _gwGrid === 'function') _gwGrid(m);
       sortObjects();

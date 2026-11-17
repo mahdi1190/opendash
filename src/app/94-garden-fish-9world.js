@@ -155,7 +155,7 @@ function _gcwAngler(p, sc, o, ca) {
   b += '<path d="M-5 -12q6 0 13 2l5 10h-4l-5 -7q-7 0 -11 -3z" fill="#3f5a7a"/><path d="M-8 -30Q-8 -12 -4 -11H6Q8 -22 5 -30z" fill="#b8843a" stroke="#6e4c2a" stroke-width=".7"/>';
   b += '<circle cx="-1" cy="-36" r="7.4" fill="#e8c8a8"/><path d="M-7 -33q0 9 7 10q7 -1 7 -9q-3 3 -7 2q-4 1 -7 -3z" fill="#e8e4d8"/><circle cx="3" cy="-37" r="1" fill="#2a2018"/>';
   b += `<path d="M-11 -39q10 -6 21 0l1 2h-23z" fill="${gold ? '#f2c432' : '#e8c24a'}" stroke="#8a6a1a" stroke-width=".7"/><path d="M-7 -40q6 -9 14 0" fill="${gold ? '#f2c432' : '#d8a832'}" stroke="#8a6a1a" stroke-width=".7"/>`;
-  b += `<path d="M2 -22L34 -46" stroke="#6e4c2a" stroke-width="1.8" stroke-linecap="round"/><path d="M34 -46Q40 -20 38 6" stroke="#fbfbf2" stroke-opacity=".75" stroke-width=".8" fill="none"/><path d="M2 -22l6 -2" stroke="#e8c8a8" stroke-width="3" stroke-linecap="round"/>`;
+  b += `<path d="M2 -22L34 -46" stroke="#6e4c2a" stroke-width="1.8" stroke-linecap="round"/><path d="M34 -46Q41 -6 42 48" stroke="#fbfbf2" stroke-opacity=".75" stroke-width=".8" fill="none"/><ellipse cx="42" cy="50" rx="6" ry="1.8" fill="none" stroke="#f4faf6" stroke-opacity=".6" stroke-width=".8"/><path d="M40 49.6a2 2 0 0 1 4 0z" fill="#d8402e"/><path d="M40 49.6a2 2 0 0 0 4 0z" fill="#f4efe2"/><path d="M2 -22l6 -2" stroke="#e8c8a8" stroke-width="3" stroke-linecap="round"/>`;
   void sc; void o;
   return `<g transform="translate(${_gcwN(cx)} ${_gcwN(by)})">${b}</g>`;
 }

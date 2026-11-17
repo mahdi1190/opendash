@@ -77,7 +77,62 @@ window.GardenPaintedMarks = (function () {
     if (o.season === 'autumn') for (let k = 0; k < 7; k++) B.f(B.ell(-34 + r() * 70, 2 + r() * 6, 2.2, 1.8), '#c8b84a', .95);
     if (o.season === 'spring') for (let k = 0; k < 16; k++) B.f(B.circ(-36 + r() * 74, -2 + r() * 10, 1.2), '#fdfaf2', .9);
   } };
+  // the warren bank (windy flats): a low turf bank on the stony plateau, sandy scrapes and spoil, burrow mouths in shadow
+  // (it was the old flat green dome, a cartoon among the painted fells)
+  ART['ld-warren'] = { box: [-62, -30, 66, 12], draw(B, o) {
+    const kit = KIT(), r = kit.rng(59), snowy = o.season === 'winter', autumn = o.season === 'autumn';
+    const turf = snowy ? '#cfd3c8' : autumn ? '#a69a62' : '#8f9c5a', turfHi = snowy ? STONE.snow : autumn ? '#c2b47a' : '#aab670', turfLo = snowy ? '#a9b4b8' : autumn ? '#8a7e50' : '#76824c';
+    B.shadow(4, 3, 58, 9, .26);
+    B.f(B.blob(r, 2, -6, 56, 15, 11, .18), turfLo, .55).f(B.blob(r, 0, -8, 52, 13, 11, .2), turfLo, .6).f(B.blob(r, -2, -10, 50, 12, 11, .2), turf).f(B.blob(r, -10, -15, 30, 6, 9, .3), turfHi, .8);
+    // sandy spoil fanned out below each mouth, then the mouths, dark and round-topped
+    [[-34, -6, 1], [-10, -9, 1.2], [14, -6, 1], [36, -8, .85]].forEach(([x, y, k]) => {
+      B.f(B.blob(r, x + 2, y + 6, 11 * k, 4 * k, 8, .4), snowy ? '#e6e8e2' : '#c9b48a', .9);
+      for (let j = 0; j < 4; j++) B.f(B.circ(x - 6 + r() * 14, y + 4 + r() * 6, .8 + r() * .8), '#a08a62', .8);
+      B.f(`M${x - 6 * k} ${y + 2}Q${x - 6.4 * k} ${y - 7 * k} ${x} ${y - 7.4 * k}Q${x + 6.4 * k} ${y - 7 * k} ${x + 6 * k} ${y + 2}Z`, '#3a3024');
+      B.f(`M${x - 4 * k} ${y + 2}Q${x - 4 * k} ${y - 4.6 * k} ${x} ${y - 5 * k}Q${x + 4 * k} ${y - 4.6 * k} ${x + 4 * k} ${y + 2}Z`, '#1e1914');
+      B.s(`M${x - 6 * k} ${y - 1}Q${x} ${y - 9 * k} ${x + 6 * k} ${y - 1}`, turfLo, 1.2, .7);
+    });
+    for (let k = 0; k < 4; k++) B.stone(r, -50 + r() * 100, 2 + r() * 6, 2.4 + r() * 2.4, 1.6 + r() * 1.2, STONE, snowy ? 'snow' : r() < .4 ? STONE.lichen : null);
+    if (!snowy) B.tufts(r, 0, -16, 90, 18, ['#7d8f4e', '#c2c78e', '#9aa86a'], 5).tufts(r, 0, 4, 110, 10, ['#8c9a5e', '#c2c78e'], 4);
+  } };
+  // Wick's shepherd's hut on the high pasture: weathered planks, a curved tin roof, iron wheels, plank steps up to
+  // the door, a stove pipe, a log pile under the end; its door is its way in (wayIn), so no extra door is drawn on it
+  ART['ld-hut'] = { box: [-56, -116, 60, 14], door: { dx: 15, dy: 0 }, draw(B, o) {
+    const kit = KIT(), r = kit.rng(61), snowy = o.season === 'winter', iron = '#2e2c2a', ironHi = '#64605a';
+    const wall = '#6f8274', wallLo = '#4f6052', wallHi = '#93a596', roof = '#8a8f92', roofLo = '#5f6468', roofHi = '#b9bec0';
+    B.shadow(4, 2, 52, 9, .34);
+    // the undercarriage and the wheels (one pair seen, the far pair a darker hint)
+    B.f(B.rect(-38, -26, 76, 5), '#3a3430');
+    for (const x of [-26, 26]) { B.f(B.circ(x + 4, -12, 11), '#24221f', .5); B.s(B.circ(x, -12, 11), iron, 3).s(B.circ(x, -12, 11), ironHi, .9, .6); for (let a = 0; a < 6; a++) { const t = a * Math.PI / 3; B.s(`M${x} -12l${(Math.cos(t) * 10).toFixed(1)} ${(Math.sin(t) * 10).toFixed(1)}`, iron, 1.3); } B.f(B.circ(x, -12, 2.4), ironHi); }
+    // the body: planks, lit west end, a shaded underside
+    B.f(B.rect(-38, -70, 76, 46), B.lin(-38, 0, 38, 0, [[0, wallHi], [.25, wall], [1, wallLo]]));
+    for (let y = -64; y < -26; y += 6) B.s(`M-38 ${y}h76`, wallLo, .8, .55);
+    for (let k = 0; k < 6; k++) B.f(B.rect(-36 + r() * 66, -68 + r() * 40, 6 + r() * 10, 1.6), wallHi, .35);   // worn paint
+    B.f(B.rect(-38, -30, 76, 6), 'rgba(30,34,28,.35)');
+    // the curved tin roof, its ribs, the overhang's shadow on the wall
+    B.f('M-43 -68Q-42 -96 0 -98Q42 -96 43 -68Z', B.lin(0, -98, 0, -68, [[0, roofHi], [.5, roof], [1, roofLo]]));
+    for (let x = -36; x <= 36; x += 6) B.s(`M${x} -69Q${x * .98} ${-94 + Math.abs(x) * .14} ${x * .9} -96`, roofLo, .7, .5);
+    B.s('M-43 -68Q-42 -96 0 -98', roofHi, 1.4, .8).f(B.rect(-38, -70, 76, 4), 'rgba(20,24,22,.35)');
+    if (snowy) B.f('M-41 -76Q-40 -98 0 -100Q40 -98 41 -76Q20 -84 0 -84Q-22 -84 -41 -76Z', STONE.snow, .96);
+    else B.f(B.blob(r, -18, -90, 10, 3, 6, .4), '#a0623a', .35).f(B.blob(r, 22, -84, 7, 2.4, 6, .4), '#a0623a', .3);   // rust
+    // the stove pipe and its cap
+    B.f(B.rect(24, -112, 5, 20), iron).f(B.rect(24, -112, 1.6, 20), ironHi, .7).f(B.rect(21, -115, 11, 3), iron);
+    // a small window with warm glass and a sill
+    B.f(B.rect(-26, -60, 18, 16), '#3a3024').f(B.rect(-24.5, -58.5, 15, 13), B.lin(0, -58, 0, -45, [[0, '#f2dc9a'], [1, '#d8a85a']])).s('M-17 -58.5v13M-24.5 -52h15', '#3a3024', 1.4).f(B.rect(-27, -44, 20, 2.2), wallHi);
+    // the door (the way in) and its plank steps down to the turf
+    B.f(B.rect(6, -64, 18, 40), '#3a2c1e').f(B.rect(7.5, -62.5, 15, 37), B.lin(7, 0, 23, 0, [[0, '#8a6a46'], [1, '#6a5034']]));
+    B.s('M11 -62v36M15 -62v36M19 -62v36', '#4e3a26', .8, .7).f(B.circ(20.5, -44, 1.2), '#c8a23a');
+    B.f(B.poly([[4, -24], [26, -24], [28, -17], [2, -17]]), '#7a5a3a').f(B.poly([[2, -16], [28, -16], [30, -9], [0, -9]]), '#6e5234').f(B.poly([[0, -8], [30, -8], [32, 0], [-2, 0]]), '#62482e');
+    B.s('M4 -24h22M2 -16h26M0 -8h30', '#a07a50', 1, .8);
+    // logs stacked under the west end, a bucket, turf round the wheels
+    for (let k = 0; k < 5; k++) { const x = -48 + (k % 3) * 6 + (k > 2 ? 3 : 0), y = -3 - (k > 2 ? 5.4 : 0); B.f(B.circ(x, y, 3), '#8a6440').f(B.circ(x, y, 1.8), '#c49a66'); }
+    B.f(B.poly([[38, 0], [39, -8], [47, -8], [46, 0]]), '#6a6e70').s('M38.5 -8h9', '#9a9ea0', 1);
+    if (!snowy) B.tufts(r, 0, 1, 104, 22, ['#8c9a5e', '#c2c78e', '#7d8f4e'], 6);
+    else B.f(B.blob(r, 0, 2, 50, 4, 9, .3), STONE.snow, .85);
+  } };
   function knows(id) { return !!ART[id]; }
+  /** Where a painted landmark's own door is, as an offset from its foot (world px), or null when it has none. */
+  function wayIn(id) { const a = ART[id]; return a ? a.door || (id === 'ld-grotto' ? { dx: 0, dy: 0 } : null) : null; }
   /** A painted landmark as a world handle (the same shape the village's painted buildings return). */
   function landmark(scene, prop, sc, element, W) {
     const kit = KIT(), art = prop && ART[prop.id]; if (!kit || !art) return null;
@@ -90,5 +145,5 @@ window.GardenPaintedMarks = (function () {
     node.nativeBounds = b;
     return { root: node.target, rootNode: node, bounds: b, painted: true, foot: { x, y: foot }, update() {}, destroy() { node.remove(); } };
   }
-  return { knows, landmark, ART };
+  return { knows, landmark, wayIn, ART };
 })();

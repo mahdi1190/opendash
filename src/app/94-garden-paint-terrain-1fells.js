@@ -20,7 +20,7 @@ window.GardenPaintedTerrain = (function () {
   const KIT = () => window.GardenPaintTerrainKit, D2 = () => sceneDraw;
   const K = 1.5, CHUNK = 256, DEPTH = -9350;
   const GORGE_WATER = true;                // the gorge's water is painted with its walls; false leaves a hole for the water painter
-  let current = null, sprites = [], lastError = null, stats = {};
+  let current = null, sprites = [], lastError = null, stats = {}, trunkFeet = [];
   const ok = f => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
 
   const BASE = { rock: '#a49a8c', rockLo: '#7d7468', rockHi: '#c9c1b0', rockDk: '#4e473f', lichen: '#c9c48a', moss: '#7d8f4e', peat: '#5a4636', path: '#c4b089', pathLo: '#9c8a66', pathHi: '#dccfac', snow: '#fbfbf7', snowSh: '#c8d6e6', snowDk: '#a9bccf', pine: '#3c5a3a', pineHi: '#58784a', bark: '#b06a3a', water: '#6d9fb0', shallow: '#93bfbd', foam: '#eef2e2', cave: '#1d2224' };
@@ -182,7 +182,9 @@ window.GardenPaintedTerrain = (function () {
         // aerial haze: the farther the range, the paler it is near its foot
         B.f(body, B.lin(0, base - amp, 0, foot, [[0, 'rgba(232,238,240,0)'], [1, kit.rgba('#e6ecee', [.55, .38, .2][layer])]]));
       }
-      B.f(B.rect(xs0, W.sky - 20, xs1 - xs0 + 70, 40), B.lin(0, W.sky - 20, 0, W.sky + 20, [[0, kit.rgba('#e4eaec', 0)], [.6, kit.rgba('#e4eaec', .28)], [1, kit.rgba('#e4eaec', 0)]]));
+      // the near range's foot melts into the fell's own colour, under a low bank of mist, so the backdrop has no ruled line where the walkable fell begins
+      B.f(B.rect(xs0, W.sky - 46, xs1 - xs0 + 70, 52), B.lin(0, W.sky - 46, 0, foot + 2, [[0, kit.rgba(snowRow > 0 ? P.snow : P.fell, 0)], [1, kit.rgba(snowRow > 0 ? P.snow : P.fell, .92)]]));
+      B.f(B.rect(xs0, W.sky - 34, xs1 - xs0 + 70, 70), B.lin(0, W.sky - 34, 0, W.sky + 36, [[0, kit.rgba('#e4eaec', 0)], [.5, kit.rgba('#e4eaec', .42)], [1, kit.rgba('#e4eaec', 0)]]));
     });
     // 5. Snow above the snow line: a white blanket with a ragged edge, blue shade in the south-east falls, rock and heather through it.
     if (snowRow > -5) add(fellBB, 41, (B, r0, cb) => {
@@ -214,8 +216,17 @@ window.GardenPaintedTerrain = (function () {
     for (const w of L.water) if (!w.river) {
       const ring = kit.resample(w.pts.concat([w.pts[0]]), 7);
       add(kit.bboxOf(w.pts, 30), 61 + w.id.length, (B, r) => {
-        B.s(B.line(ring), snowRow > 90 ? P.snowSh : '#b4ab94', 9, .9).s(B.line(ring), snowRow > 90 ? P.snow : '#cfc6ae', 4, .9);
-        for (let i = 0; i < ring.length; i += 2) { const p = ring[i]; B.stone(r, p.x + (r() - .5) * 8, p.y + (r() - .5) * 5, 2 + r() * 4, 1.4 + r() * 2.2, P, snowRow > 90 ? 'snow' : P.lichen); }
+        // A natural stony shore, not a bead necklace: a soft damp margin, then stones in
+        // clusters of different sizes with gaps of turf and the odd boulder between them.
+        B.s(B.line(ring), snowRow > 90 ? P.snowSh : '#9c937c', 12, .35).s(B.line(ring), snowRow > 90 ? P.snow : '#c4bba2', 5, .45);
+        const field = i => Math.sin(i * .37 + w.id.length) + Math.sin(i * .113 + 2.1) * .8;
+        for (let i = 0; i < ring.length; i++) {
+          const p = ring[i], f = field(i); if (f < -.55 || r() < .3) continue;
+          const big = f > 1.15 && r() < .35, rx = big ? 6 + r() * 5 : 1.6 + r() * (f > .4 ? 4.2 : 2.6);
+          if (big) B.boulder(r, p.x + (r() - .5) * 8, p.y + (r() - .5) * 4, rx, rx * .7, P, snowRow > 90);
+          else B.stone(r, p.x + (r() - .5) * 10, p.y + (r() - .5) * 6, rx, rx * (.55 + r() * .25), P, snowRow > 90 ? 'snow' : r() < .5 ? P.lichen : null);
+          if (f < 0 && r() < .5 && snowRow <= 90) B.tufts(r, p.x + (r() - .5) * 10, p.y - 3, 6, 3, [P.fellLo, P.bleach], 3);
+        }
       });
     }
     if (L.gorge && L.gorge.line) gorgeOps(L, P, ops, add, season, snowRow > 90);
@@ -268,9 +279,12 @@ window.GardenPaintedTerrain = (function () {
     add(bb, 141, (B, r, cb) => {
       // the young river itself (the gorge is one picture: its water, its walls): dark in the deep middle, paler at the edges, white water
       if (GORGE_WATER) {
+        // The young river begins at the tarn's shore: its channel never paints a rounded spout out into the tarn.
+        B.cx.save(); { const still = L.water.filter(w => !w.river && w.pts.length > 2); if (still.length) { const cut = new Path2D(); cut.rect(bb[0] - 10, bb[1] - 10, bb[2] - bb[0] + 20, bb[3] - bb[1] + 20); for (const w of still) { w.pts.forEach((p, i) => i ? cut.lineTo(p.x, p.y) : cut.moveTo(p.x, p.y)); cut.closePath(); } B.cx.clip(cut, 'evenodd'); } }
         const chan = B.poly(far.concat(near.slice().reverse()));
         B.f(chan, '#5d8fa2'); B.s(B.line(mid), '#4a7a8e', hw * W.cellH * 1.1, .8); B.s(B.line(mid.map(p => ({ x: p.x - 3, y: p.y - 2 }))), '#8fb9bf', hw * W.cellH * .35, .35);
         for (let i = 1; i < mid.length - 1; i += 2) { const rr = kit.rng(7001 + i), p = mid[i], q = near[i], t = rr(); const x = p.x + (q.x - p.x) * t * .8, y = p.y + (q.y - p.y) * t * .8; if (rr() < .55) B.s(`M${x - 5} ${y}q5 -2 10 0`, P.foam, 1.1 + rr(), .55 + rr() * .3); }
+        B.cx.restore();
       }
       // the far wall: weathered rock from the lip down into the water, deeper towards the falls
       const G = { lit: '#a39886', mid: '#827868', shade: '#5c554c', deep: '#323a38', hi: '#cdc2ac', damp: '#4f6446', moss: P.moss, heather: P.heather, snow: P.snow };
@@ -357,6 +371,11 @@ window.GardenPaintedTerrain = (function () {
       B.f(B.poly([{ x: sx - 30, y: top - 4 }, { x: sx - 16, y: top - 2 }, { x: sx - 15, y: bottom }, { x: sx - 34, y: bottom + 4 }]), P.rockHi, .95);
       B.f(B.poly([{ x: sx - 34, y: top + 6 }, { x: sx - 22, y: top + 8 }, { x: sx - 22, y: bottom - 2 }, { x: sx - 36, y: bottom + 2 }]), P.rock, .8);
       B.f(B.poly([{ x: sx + 14, y: top - 2 }, { x: sx + 32, y: top - 6 }, { x: sx + 36, y: bottom + 4 }, { x: sx + 15, y: bottom }]), P.rockLo, 1);
+      // dressed with weathered blocks and boulders, so the cut reads as rock like the scarp beside it, not flat slabs
+      for (const [x0, x1, dark] of [[-36, -14, false], [14, 36, true]]) for (let k = 0; k < 5; k++) {
+        const t = (k + .5) / 5, y = top + (bottom - top) * t + (r() - .5) * 4, x = sx + (x0 + x1) / 2 + (r() - .5) * 6, rx = 9 + r() * 4 + t * 3, ry = 6 + r() * 3 + t * 2;
+        B.stone(r, x, y, rx, ry, dark ? Object.assign({}, P, { rock: P.rockLo, rockHi: P.rock }) : P, snowy ? 'snow' : r() < .5 ? P.lichen : null);
+      }
       // the steps: lit treads, shaded risers, a worn hollow in the middle, wet towards the falls
       const steps = 8, sh = (bottom - top) / steps;
       for (let k = 0; k < steps; k++) { const y = top + k * sh, w = 26 + k * .6;
@@ -418,6 +437,9 @@ window.GardenPaintedTerrain = (function () {
         const tone = r(); B.f(B.blob(r, p.x + (row & 1) * 2, p.y, w, Math.max(1.6, hgt * .42), 6, .3), tone < .3 ? '#b8b09a' : tone < .7 ? '#a39b85' : '#c9c2ac', .95).f(B.ell(p.x - w * .3, p.y - hgt * .18, w * .4, Math.max(.6, hgt * .12)), '#ddd6c2', .6);
         if (r() < .04) B.f(B.rect(p.x - 2, p.y - hgt * .5, 7, hgt * .4), '#d6cfb8', .9);
       }
+      // the slanted ends, where two walls butt together, get their own stones: the courses above pair the rims point by
+      // point and leave a bare dark wedge at a joint (High orchard, terrace-wall-2/-3)
+      for (const [u, l] of [[U[0], Lw[0]], [U[U.length - 1], Lw[Lw.length - 1]]]) for (let k = 0; k < 7; k++) { const t0 = (k + .5) / 7, x = u.x + (l.x - u.x) * t0, y = u.y + (l.y - u.y) * t0; for (const dx of [-5, 4]) { const tone = r(); B.f(B.blob(r, x + dx + (r() - .5) * 2, y, 4.5 + r() * 2, 2.6, 6, .3), tone < .3 ? '#b8b09a' : tone < .7 ? '#a39b85' : '#c9c2ac', .95).f(B.ell(x + dx - 1.5, y - .8, 1.8, .7), '#ddd6c2', .55); } }
       B.cx.restore();
       // cope: a row of upright stones on top, lit from the left; moss and turf from the terrace above
       const top = kit.resample(upper, 3.4);
@@ -566,7 +588,7 @@ window.GardenPaintedTerrain = (function () {
     for (const op of ops) for (const p of op.pines || []) out.push({ key: sig + '|pine|' + p.seed, box: [-24, -p.h - 14, 44, 8], x: p.x, y: p.y, draw: B => pineArt(B, p.h, P, p.seed, snowy) });
     return out;
   }
-  function build(scene, parent, sc) {
+  function build(scene, parent, sc, objParent) {
     const t0 = performance.now(), kit = KIT(); if (!kit || !wanted()) return null;
     const W = GARDEN_WORLD, L = readLayout(W); if (!L) return null;
     const season = sc.season || 'summer', sig = 'gpt-3|' + season + '|' + (GardenIslandLayout.fingerprint || '');
@@ -576,8 +598,15 @@ window.GardenPaintedTerrain = (function () {
     const box = { x: 0, y: W.sky - 150, w: W.cols * W.cellW, h: Math.min(W.sky + W.rows * W.cellH, rb[3] + 80) - (W.sky - 150) };
     const handle = kit.chunked(scene, parent, ops, { key: sig, box, K, chunk: CHUNK, depth: DEPTH, budgetMB: 40 });
     const keys = []; let spritePx = 0;
-    for (const o of occluders(L, ops, season, sig)) { const im = kit.sprite(scene, parent, o.key, o.box, o.draw, o.x, o.y, o.K); if (im) { sprites.push(im); keys.push(o.key); spritePx += im._gptPx || 0; } }
-    if (parent.sort) parent.sort('depth');
+    // the peaks, tors, rowans and pines stand among the world's objects, sorted by their foot with the player, the
+    // landmarks and the trees (in the root they were drawn over every object: the Horn's foot hid the grotto under it
+    // and anyone standing just in front of it)
+    const standIn = objParent || parent;
+    const occ = occluders(L, ops, season, sig);
+    for (const o of occ) { const im = kit.sprite(scene, standIn, o.key, o.box, o.draw, o.x, o.y, o.K); if (im) { sprites.push(im); keys.push(o.key); spritePx += im._gptPx || 0; } }
+    // the pines and rowans' trunk feet, in cells ([x, y, width]), for the one trunk-collision list (94-garden-world-0walk.js _gwPaintedTrunks)
+    trunkFeet = occ.filter(o => /\|(pine|rowan)\|/.test(o.key)).map(o => [+(o.x / W.cellW).toFixed(2), +((o.y - W.sky) / W.cellH).toFixed(2), .34]);
+    if (parent.sort) parent.sort('depth'); if (standIn !== parent && standIn.sort) standIn.sort('depth');
     current = { sig, handle, spriteKeys: keys, roomEntrances: L.falls && L.falls.caveStair ? { falls: caveMouthAt(L, L.falls.caveStair) } : {} };
     stats = { sig, chunks: handle.chunks, buildMs: Math.round(performance.now() - t0), sprites: sprites.length, spritePx };
     return { destroy() { handle.destroy(true); for (const s of sprites) s.destroy(); sprites = []; current = current && current.handle === handle ? Object.assign(current, { handle: { destroy() {} }, roomEntrances: null }) : current; } };
@@ -620,5 +649,5 @@ window.GardenPaintedTerrain = (function () {
     return Object.assign({}, stats, { wanted: wanted(), pending: h ? h.pending : null, live: h ? h.live : null, baked: h ? h.baked : null, evicted: h ? h.evicted : null, worstChunkMs: h ? h.worstMs : null, worstSliceMs: h ? h.sliceWorstMs : null, p95ChunkMs: h ? h.p95 : null, medianChunkMs: h ? h.median : null, bakeMs: h ? h.bakeMs : null, textureMB: Math.round(px * 4 / 1048576 * 10) / 10, lastError: lastError || (KIT() && KIT().lastError) });
   }
   function roomEntrance(id) { return current && current.roomEntrances && current.roomEntrances[id] || null; }
-  return { wanted, build, paintTo, profile, owns, ownsRegion, status, compose, readLayout, roomEntrance, PAL };
+  return { wanted, build, paintTo, profile, owns, ownsRegion, status, compose, readLayout, roomEntrance, PAL, trunks: () => (wanted() && trunkFeet) || null };
 })();
