@@ -90,6 +90,8 @@ function _gwBuildSolids(m) {
     const W = GARDEN_WORLD, scale = 1.75, x = oak.x + 2.9, y = oak.y - 1.5;
     add(x - 20 * scale / W.cellW, y - 8 * scale / W.cellH, x + 20 * scale / W.cellW, y + 2 * scale / W.cellH);
   }
+  // The High orchard's painted rows: each trunk is a small box at its foot (94-garden-paint-vale-1orchard.js).
+  for (const [x, y, w] of _gwOrchardTrunks()) add(x - w / 2, y - .24, x + w / 2, y + .04);
   const logs = typeof gardenIslandLogStack === 'function' ? gardenIslandLogStack(island) : null;
   if (logs) { const f = logs.foot; add(f.x0, f.y0, f.x1, f.y1); }
   // The quay's sea wall (94-garden-paint-vale-1harbour.js draws it from the plaza): the coast line lies a little below
@@ -129,6 +131,7 @@ function _gwBuildSolids(m) {
 }
 function _gwWoodTrunks() { return typeof GardenPaintWood !== 'undefined' && GardenPaintWood && GardenPaintWood.trunks ? GardenPaintWood.trunks() : null; }
 /** Do feet (half width fx, half depth fy, in cells) at x, y touch one of the boxes? */
+function _gwOrchardTrunks() { const t = typeof GardenPaintVale !== 'undefined' && GardenPaintVale && typeof GardenPaintVale.orchardTrunks === 'function' ? GardenPaintVale.orchardTrunks() : null; return Array.isArray(t) ? t : []; }
 function _gwSolidHit(x, y, fx, fy) {
   const S = _gw.solids; if (!S || !S.list.length) return false;
   for (let cy = Math.floor(y - fy); cy <= Math.floor(y + fy); cy++) for (let cx = Math.floor(x - fx); cx <= Math.floor(x + fx); cx++) {
@@ -202,6 +205,7 @@ function _gwRouteSourceInputs(m) {
     values.push(d.x, d.y, def.w || 1, def.h || 1); count++;
   }
   values[start] = count;
+  { const trunks = _gwOrchardTrunks(); values.push(trunks.length); for (const t of trunks) values.push(t[0], t[1], t[2]); }
   const props = gardenPropsNow(); values.push(GARDEN_PROPS.length, props.length);
   values.push(window.GardenNativePainted && GardenNativePainted.trunks ? GardenNativePainted.trunks().rev : 0);
   for (const p of props) values.push(p.x, p.y, p.w, p.h, gardenPropCol(p), !!p.walk, p.needs || '', !p.needs || gardenWorkOwned(p.needs));
