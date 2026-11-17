@@ -31,7 +31,7 @@
   background: var(--gj-rib); color: #fff8ea; cursor: pointer; box-shadow: 2px 2px 0 rgba(0, 0, 0, .18); transform: translateX(-8px); transition: transform var(--gu-dur, 170ms) var(--gu-ease, ease); }
 .gj-ribbon span { writing-mode: vertical-rl; font-family: var(--gj-serif); font-weight: 700; font-size: .82rem; letter-spacing: .02em; }
 .gj-ribbon svg { width: 16px; height: 16px; flex: none; }
-@media (max-height: 920px) { .gj-ribbon { padding: 7px 4px; gap: 4px; } .gj-ribbon span { font-size: .74rem; } .gj-ribbon svg { width: 13px; height: 13px; } }
+@media (max-height: 920px) { .gj-ribbon { padding: 6px 3px; gap: 4px; } .gj-ribbon span { font-size: .7rem; letter-spacing: 0; } .gj-ribbon svg { display: none; } }   /* (a short window: the word alone, so all seven fit whole) */
 .gj-ribbon:hover, .gj-ribbon.is-on { transform: translateX(0); }
 .gj-ribbon.is-on { box-shadow: 3px 3px 0 rgba(0, 0, 0, .25), inset 0 0 0 2px rgba(255, 255, 255, .35); }
 .gj-ribbon:focus-visible, .gj-card:focus-visible, .gj-label:focus-visible, .gj-chip:focus-visible, .gj-place:focus-visible { outline: 3px solid #2c5d94; outline-offset: 2px; }
