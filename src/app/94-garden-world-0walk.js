@@ -92,6 +92,17 @@ function _gwBuildSolids(m) {
   }
   const logs = typeof gardenIslandLogStack === 'function' ? gardenIslandLogStack(island) : null;
   if (logs) { const f = logs.foot; add(f.x0, f.y0, f.x1, f.y1); }
+  // The quay's sea wall (94-garden-paint-vale-1harbour.js draws it from the plaza): the coast line lies a little below
+  // the wall's foot, and you could step down off the quay and stand in the sea in front of the wall. Its top edge is
+  // the end of the quay; the pier, the steps at each end and the beach past them stay open.
+  const quay = island && island.version >= 5 && island.presentation && (island.presentation.plazas || []).find(p => p.id === 'the-quay');
+  if (quay) {
+    const pier = island.static.find(p => p.id === 'pier'), y0 = quay.y + 1.85, y1 = quay.y + 3.2, x0 = quay.x - 5.1, x1 = quay.x + 5.4;
+    if (pier && pier.x > x0 && pier.x + pier.w < x1) { add(x0, y0, pier.x, y1); add(pier.x + pier.w, y0, x1, y1); } else add(x0, y0, x1, y1);
+  }
+  // the painted village trees: a trunk box at the foot, like a planted tree (the crowns stay for walking behind)
+  const trunks = island && window.GardenNativePainted && GardenNativePainted.trunks ? GardenNativePainted.trunks().list : [];
+  for (const t of trunks) add(t.x - t.w / 2, t.y - .3, t.x + t.w / 2, t.y - .02);
   return { list, at };
 }
 /** Do feet (half width fx, half depth fy, in cells) at x, y touch one of the boxes? */
@@ -169,6 +180,7 @@ function _gwRouteSourceInputs(m) {
   }
   values[start] = count;
   const props = gardenPropsNow(); values.push(GARDEN_PROPS.length, props.length);
+  values.push(window.GardenNativePainted && GardenNativePainted.trunks ? GardenNativePainted.trunks().rev : 0);
   for (const p of props) values.push(p.x, p.y, p.w, p.h, gardenPropCol(p), !!p.walk, p.needs || '', !p.needs || gardenWorkOwned(p.needs));
   start = values.length; count = 0; values.push(0);
   // Read the actual occupancy used by _gwBuildGrid, including its unknown
