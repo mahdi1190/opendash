@@ -145,6 +145,14 @@
         const P2 = { rock: '#a0988a', rockLo: '#7a7266', rockHi: '#cfc6b2', rockDk: '#4a443c', lichen: '#d8c86a' };
         // the rock pool
         B.f(B.blob(r, c.x - 70, c.y + 52, 22, 9, 9, .3), '#6f6a5c').f(B.blob(r, c.x - 70, c.y + 51, 19, 7, 9, .3), '#7fb3b4').f(B.ell(c.x - 74, c.y + 49, 8, 1.6), '#e4f2ee', .7);
+        // the shelf the tower and the keeper's cottage stand on: a low weathered platform of rock
+        // reaching out over the tide, so neither building stands in the water
+        const sx = c.x - 22, sy = c.y - 10;
+        B.f(B.blob(r, sx + 4, sy + 10, 96, 26, 14, .22), '#3e4a44', .3);
+        B.f(B.blob(r, sx, sy + 4, 92, 24, 14, .2), P2.rockDk).f(B.blob(r, sx - 3, sy, 88, 21, 14, .2), P2.rockLo).f(B.blob(r, sx - 10, sy - 5, 72, 15, 12, .25), P2.rock).f(B.blob(r, sx - 26, sy - 9, 40, 7, 9, .3), P2.rockHi, .8);
+        for (let i = 0; i < 9; i++) { const x = sx - 80 + r() * 160, y = sy - 4 + r() * 18; B.s(`M${x} ${y}l${6 + r() * 10} ${(r() - .5) * 4}`, P2.rockDk, 1, .45); }
+        for (let i = 0; i < 6; i++) B.f(B.blob(r, sx - 70 + r() * 140, sy + 16 + r() * 6, 8 + r() * 10, 2.4, 7, .5), '#4f5a36', .7);
+        B.f(B.blob(r, sx - 40, sy - 8, 14, 3, 7, .5), P2.lichen, .5).f(B.blob(r, sx + 30, sy - 4, 10, 2.4, 7, .5), P2.lichen, .45);
         const rocks = []; for (let i = 0; i < 26; i++) { const a = Math.PI * (.05 + r() * .9), d = 40 + r() * 110; rocks.push([c.x + Math.cos(a) * d * 1.3 - 10, c.y + Math.sin(a) * d * .7 + 6, 10 + r() * 18]); }
         rocks.sort((a, b) => a[1] - b[1]);
         for (const [x, y, s] of rocks) { B.boulder(r, x, y, s * 1.5, s * .8, P2, false); if (y > c.y + 40) B.f(B.blob(r, x, y - 1, s * .8, s * .2, 7, .5), '#4f5a36', .75); }
@@ -168,7 +176,7 @@
     put([[44.7, 78.7], [56.4, 76.4]], ['path', 'beach', 'grass'], 'anchor', [-22, -44, 22, 6], drawAnchor(P));
     put([[48.3, 78.6], [52.9, 77.2]], ['path', 'beach'], 'fishbox', [-16, -16, 18, 5], drawFishBox(P));
     // boats at their moorings and two buoys, out on the bay
-    for (const [x, y, col, k] of [[45.6, 83.6, '#a8402e', 'boat-a'], [54.4, 84.6, '#2f6a5a', 'boat-b'], [42.4, 86.8, '#d8c890', 'boat-c']]) { const b = L.base(x, y); if (b && b.ocean) { const p = atCell(x, y); thing({ key: k, box: [-54, -26, 58, 14], x: p.x, y: p.y, draw: drawBoat(P, col, true) }); } }
+    for (const [x, y, col, k] of [[45.6, 83.6, '#a8402e', 'boat-a'], [54.0, 86.2, '#2f6a5a', 'boat-b'], [42.4, 86.8, '#d8c890', 'boat-c']]) { const b = L.base(x, y); if (b && b.ocean) { const p = atCell(x, y); thing({ key: k, box: [-54, -26, 58, 14], x: p.x, y: p.y, draw: drawBoat(P, col, true) }); } }
     for (const [x, y] of [[47.2, 87.4], [56.8, 86.6], [43.4, 84.6]]) { const b = L.base(x, y); if (b && b.ocean) { const p = atCell(x, y); thing({ key: 'buoy', box: [-8, -14, 8, 5], x: p.x, y: p.y, draw: drawBuoy(P) }); } }
   }
 
