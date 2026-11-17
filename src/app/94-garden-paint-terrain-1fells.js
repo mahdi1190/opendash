@@ -214,8 +214,17 @@ window.GardenPaintedTerrain = (function () {
     for (const w of L.water) if (!w.river) {
       const ring = kit.resample(w.pts.concat([w.pts[0]]), 7);
       add(kit.bboxOf(w.pts, 30), 61 + w.id.length, (B, r) => {
-        B.s(B.line(ring), snowRow > 90 ? P.snowSh : '#b4ab94', 9, .9).s(B.line(ring), snowRow > 90 ? P.snow : '#cfc6ae', 4, .9);
-        for (let i = 0; i < ring.length; i += 2) { const p = ring[i]; B.stone(r, p.x + (r() - .5) * 8, p.y + (r() - .5) * 5, 2 + r() * 4, 1.4 + r() * 2.2, P, snowRow > 90 ? 'snow' : P.lichen); }
+        // A natural stony shore, not a bead necklace: a soft damp margin, then stones in
+        // clusters of different sizes with gaps of turf and the odd boulder between them.
+        B.s(B.line(ring), snowRow > 90 ? P.snowSh : '#9c937c', 12, .35).s(B.line(ring), snowRow > 90 ? P.snow : '#c4bba2', 5, .45);
+        const field = i => Math.sin(i * .37 + w.id.length) + Math.sin(i * .113 + 2.1) * .8;
+        for (let i = 0; i < ring.length; i++) {
+          const p = ring[i], f = field(i); if (f < -.55 || r() < .3) continue;
+          const big = f > 1.15 && r() < .35, rx = big ? 6 + r() * 5 : 1.6 + r() * (f > .4 ? 4.2 : 2.6);
+          if (big) B.boulder(r, p.x + (r() - .5) * 8, p.y + (r() - .5) * 4, rx, rx * .7, P, snowRow > 90);
+          else B.stone(r, p.x + (r() - .5) * 10, p.y + (r() - .5) * 6, rx, rx * (.55 + r() * .25), P, snowRow > 90 ? 'snow' : r() < .5 ? P.lichen : null);
+          if (f < 0 && r() < .5 && snowRow <= 90) B.tufts(r, p.x + (r() - .5) * 10, p.y - 3, 6, 3, [P.fellLo, P.bleach], 3);
+        }
       });
     }
     if (L.gorge && L.gorge.line) gorgeOps(L, P, ops, add, season, snowRow > 90);
@@ -268,9 +277,12 @@ window.GardenPaintedTerrain = (function () {
     add(bb, 141, (B, r, cb) => {
       // the young river itself (the gorge is one picture: its water, its walls): dark in the deep middle, paler at the edges, white water
       if (GORGE_WATER) {
+        // The young river begins at the tarn's shore: its channel never paints a rounded spout out into the tarn.
+        B.cx.save(); { const still = L.water.filter(w => !w.river && w.pts.length > 2); if (still.length) { const cut = new Path2D(); cut.rect(bb[0] - 10, bb[1] - 10, bb[2] - bb[0] + 20, bb[3] - bb[1] + 20); for (const w of still) { w.pts.forEach((p, i) => i ? cut.lineTo(p.x, p.y) : cut.moveTo(p.x, p.y)); cut.closePath(); } B.cx.clip(cut, 'evenodd'); } }
         const chan = B.poly(far.concat(near.slice().reverse()));
         B.f(chan, '#5d8fa2'); B.s(B.line(mid), '#4a7a8e', hw * W.cellH * 1.1, .8); B.s(B.line(mid.map(p => ({ x: p.x - 3, y: p.y - 2 }))), '#8fb9bf', hw * W.cellH * .35, .35);
         for (let i = 1; i < mid.length - 1; i += 2) { const rr = kit.rng(7001 + i), p = mid[i], q = near[i], t = rr(); const x = p.x + (q.x - p.x) * t * .8, y = p.y + (q.y - p.y) * t * .8; if (rr() < .55) B.s(`M${x - 5} ${y}q5 -2 10 0`, P.foam, 1.1 + rr(), .55 + rr() * .3); }
+        B.cx.restore();
       }
       // the far wall: weathered rock from the lip down into the water, deeper towards the falls
       const G = { lit: '#a39886', mid: '#827868', shade: '#5c554c', deep: '#323a38', hi: '#cdc2ac', damp: '#4f6446', moss: P.moss, heather: P.heather, snow: P.snow };
