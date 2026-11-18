@@ -151,7 +151,7 @@ function _wkDeep() { try { return typeof _wdOn !== 'function' || _wdOn('story');
 /** A line in the right telling: {t, soft} (soft '' means the gentle telling leaves it out), or a plain string. */
 function _wkSay(l) { if (l == null) return ''; if (typeof l === 'string') return l; return _wkDeep() || l.soft === undefined ? l.t : l.soft; }
 const WK_CARE = Object.freeze({
-  note: '(A note before this part: it touches on abuse and loss. You can choose a gentler story in Settings, under Garden.)',
+  note: '(A note before this part: it touches on abuse and loss. You can choose a gentler story in Settings, under Garden world: turn off “Darker turns in the story”.)',
   title: 'You’re not alone',
   text: ['If something in the story brought up something for you, that’s all right. It happens.', 'Talking to someone you trust can help: a friend, family, or your doctor.', 'A local helpline can listen too, any time, and you don’t have to give your name.', 'If you are in danger right now, call your local emergency number.'],
 });
