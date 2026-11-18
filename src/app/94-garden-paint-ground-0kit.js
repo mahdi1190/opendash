@@ -125,7 +125,7 @@ window.GardenPaintGround = (function () {
     };
     if (!opts.lazy) { const v = viewBox(.05), K = level(); for (const ch of list) if (v && meets(ch.bb, v)) { if (!adopt(ch)) bakeStep(ch, Math.min(K, 1.5), 0); } }
     const tick = () => {
-      if (dead || !host || document.hidden) return; const v = viewBox(.05), near = viewBox(.4), keep = viewBox(1.2); if (!v) return; const K = level();
+      if (dead || !host || document.hidden) return; const v = viewBox(.05), near = viewBox(.35), keep = viewBox(.7); if (!v) return; const K = level();
       { const t0 = performance.now(); for (const ch of list) { if (ch.image || !ch.cached || !meets(ch.bb, near)) continue; adopt(ch); if (performance.now() - t0 > 4) break; } }
       // one chunk a tick: on screen and bare first, then on screen and at the wrong sharpness or repainted, then the margin
       let best = null, bs = Infinity;
@@ -135,8 +135,8 @@ window.GardenPaintGround = (function () {
         const s = (inView ? 0 : 1e7) + need * 1e6 + dist(ch, v) - (ch.job ? 5e5 : 0); if (s < bs) { bs = s; best = ch; }
       }
       if (!best && opts.prebake && bakedPx < budget * .9 && !(typeof _gw !== 'undefined' && _gw.moving)) for (const ch of list) if (!ch.image) { const d = dist(ch, v); if (d < bs) { bs = d; best = ch; } }
-      if (best) bakeStep(best, follow && !meets(best.bb, near) ? Math.min(K, 1) : K, slice);
-      if (bakedPx > budget) { let far = null, fd = -1; for (const ch of list) if (ch.image && !meets(ch.bb, keep)) { const d = dist(ch, v); if (d > fd) { fd = d; far = ch; } } if (far) evict(far); }
+      if (best) bakeStep(best, follow && !meets(best.bb, near) ? Math.min(K, minK) : K, slice);
+      if (bakedPx > budget) { let far = null, fd = -1; for (const ch of list) if (ch.image && !meets(ch.bb, keep)) { const d = dist(ch, v) * ch.K; if (d > fd) { fd = d; far = ch; } } if (far) evict(far); }
     };
     const timer = setInterval(() => ok(tick), 34);
     // a late op is painted over what is already baked (and into every later bake): props' shadows, low planting
@@ -220,6 +220,7 @@ window.GardenPaintGround = (function () {
     // a lawn is never one green: the sward in short strokes that lean with the light, clover and moss in drifts, tufts, the odd stone
     lawn(cx, cb, P, env) {
       wash(cx, cb, P, 11, 1); cx.lineCap = 'round'; const winter = P.season === 'winter';
+      tiles(cb, 320, 44, 19, (tx, ty, r) => { if (r() < .5) return; const x = tx + r() * 320, y = ty + r() * 320, s = 14 + r() * 20; blob(cx, r, x, y, s, s * .42, 9, .5, '#a08c5e', .2); blob(cx, r, x - 2, y - 1, s * .6, s * .24, 8, .5, '#b8a370', .22); });
       tiles(cb, 96, 22, 21, (tx, ty, r) => { for (let i = 0; i < 2; i++) { if (r() < .45) continue; const x0 = tx + r() * 96, y0 = ty + r() * 96, moss = r() < .35;
         for (let k = 0, n = 12 + Math.floor(r() * 20); k < n; k++) { const a = r() * 6.283, d = Math.sqrt(r()) * 17, x = x0 + Math.cos(a) * d, y = y0 + Math.sin(a) * d * .5;
           if (moss) { cx.globalAlpha = .45; cx.fillStyle = r() < .5 ? '#8f9a3e' : '#a6aa4c'; cx.fillRect(x, y, 1.4 + r() * 1.4, 1 + r() * .8); continue; }
@@ -381,10 +382,10 @@ window.GardenPaintGround = (function () {
 
   /* ---------- 3. the path kit ---------- */
   const PATH = {
-    cobble: { rank: 3, blur: 4.2, edge: .1, bed: '#a8977a', margin: .34 },
-    setts: { rank: 3, blur: 4.6, edge: .08, bed: '#ae9c78', margin: .3 },
+    cobble: { rank: 3, blur: 4.2, edge: .1, bed: '#96866a', margin: .34 },
+    setts: { rank: 3, blur: 4.6, edge: .08, bed: '#9a8a6c', margin: .3 },
     gravel: { rank: 2, blur: 5.4, edge: .16, bed: '#d7c294', margin: .3 },
-    earth: { rank: 1, blur: 6.4, edge: .3, bed: '#c0a878', margin: .26 },
+    earth: { rank: 1, blur: 6.4, edge: .3, bed: '#bfaa84', margin: .26 },
     boardwalk: { rank: 4, planks: true }, steps: { rank: 4, planks: true },
   };
   /** A dense, smoothed centre line with a half width at every point: pts [{x, y, w?}] world px, width the default. */
@@ -435,24 +436,31 @@ window.GardenPaintGround = (function () {
       cx.globalAlpha = 1;
     };
     const clips = cx => { if (env.allow) cx.clip(env.allow, 'evenodd'); if (env.within) cx.clip(env.within, 'evenodd'); };
+    const verge = (cx, cb, cov, salt) => {
+      if (season === 'winter') return;
+      tiles(cb, 24, 8, salt, (tx, ty, r) => { for (let i = 0; i < 4; i++) { const x = tx + r() * 24, y = ty + r() * 24, v = cov.sample(x, y); if (v < .05 || v > .3 || noise(x / 70, y / 50, 211) < .57) continue; const k = env.kindAt ? env.kindAt(x, y) : 'lawn'; if (k !== 'lawn' && k !== 'meadow') continue;
+        const q = rng(hash(Math.round(x * 8), Math.round(y * 8), salt) | 1), t = q(), P = palette(k, season), hh = 3 + q() * 3.5, col = season === 'autumn' ? (t < .5 ? '#e8dcc0' : '#d8a040') : t < .4 ? '#f6f2e4' : t < .7 ? '#f0d24a' : t < .86 ? '#e88ab0' : '#8f8fe0';
+        ell(cx, x + .5, y + .5, 1.8, .8, P.shadow, .25); blade(cx, x, y, (q() - .5) * 1.6, hh, P.lo, .8, .8); ell(cx, x, y - hh, 1.5, 1.3, col, .95); if (t < .4) ell(cx, x, y - hh, .5, .45, '#e8c040', 1); } });
+      cx.globalAlpha = 1;
+    };
     const soft = kind => ({ bb: bbAll, seed: 700 + PATH[kind].rank, draw(B, r0, cb) {
       const cov = coverage(cb, kind); if (!cov) return; const cx = B.cx, S0 = PATH[kind], winter = season === 'winter'; clips(cx);
       // the trodden margin: the ground thins and browns before the path begins (soft, and wider than the path)
-      cx.globalAlpha = S0.margin; { const s = scratch('tint', cov.w, cov.h), pic = alphaOf('alM', cov, (v, nz) => smooth(.04, .5, v + nz), .16, 30); s.cx.fillStyle = winter ? '#8f8a6a' : '#84733f'; s.cx.fillRect(0, 0, cov.w, cov.h); s.cx.globalCompositeOperation = 'destination-in'; s.cx.drawImage(pic, 0, 0); lay(cx, cov, s.c); } cx.globalAlpha = 1;
+      cx.globalAlpha = S0.margin; { const s = scratch('tint', cov.w, cov.h), pic = alphaOf('alM', cov, (v, nz) => smooth(.04, .5, v + nz), .16, 30); s.cx.fillStyle = winter ? '#8f8a6a' : '#7d7244'; s.cx.fillRect(0, 0, cov.w, cov.h); s.cx.globalCompositeOperation = 'destination-in'; s.cx.drawImage(pic, 0, 0); lay(cx, cov, s.c); } cx.globalAlpha = 1;
       const body = alphaOf('alB', cov, (v, nz) => smooth(.5 - .09, .5 + .09, v + nz), S0.edge, kind === 'earth' ? 22 : 15);
       if (kind === 'cobble' || kind === 'setts') {
-        fillThrough(B, cov, body, sx => wash(sx, cb, { base: S0.bed, lo: '#8f7f62', hi: '#b8a888', warm: '#b09a74', cool: '#9a9280' }, 131, .7));
+        fillThrough(B, cov, body, sx => wash(sx, cb, { base: S0.bed, lo: '#7c6e54', hi: '#a89878', warm: '#9c8a68', cool: '#8a8474' }, 131, .7));
         // the stones: courses that run across the screen, every stone its own width, tone and tilt, lit on its upper left;
         // a stone is laid where its middle is on the road, so the road's edge is the stones' own edge, never a ruled line
-        const rowH = kind === 'setts' ? 8.4 : 6.6, tw = 96, y0 = Math.floor((cb[1] - 8) / rowH), y1 = Math.floor((cb[3] + 8) / rowH), tones = ['#c6b088', '#d0bb92', '#dcc8a0', '#d6c4a0', '#bea67e', '#d8c2aa'];
+        const rowH = kind === 'setts' ? 8.4 : 6.6, tw = 96, y0 = Math.floor((cb[1] - 8) / rowH), y1 = Math.floor((cb[3] + 8) / rowH), tones = ['#c6b088', '#d0bb92', '#dcc8a0', '#d6c4a0', '#bea67e', '#cfc6b0', '#b9ae98', '#d8c2aa'];
         for (let ry = y0; ry <= y1; ry++) { const off = h01(ry, 7, 141) * tw, t0 = Math.floor((cb[0] - 12 - off) / tw), t1 = Math.floor((cb[2] + 12 - off) / tw);
           for (let t = t0; t <= t1; t++) { const r = rng(hash(t, ry, 143) | 1), ws = []; let sum = 0; while (sum < tw) { const w = (kind === 'setts' ? 8.5 : 5.6) + r() * (kind === 'setts' ? 7 : 3.2); ws.push(w); sum += w; } const f = tw / sum; let x = t * tw + off;
             for (const w0 of ws) { const w = w0 * f, mx = x + w / 2, my = (ry + .5) * rowH + (r() - .5) * .8, tone = r(), tilt = (r() - .5) * .1, j = r(); x += w; if (mx < cb[0] - 8 || mx > cb[2] + 8) continue; const v = cov.sample(mx, my); if (v < .5 + (j - .5) * .12) continue;
-              const sw = w - 1.5 - j * .5, sh = rowH - 1.5 - (1 - j) * .5, base = tones[tone < .15 ? 0 : tone < .4 ? 1 : tone < .65 ? 2 : tone < .82 ? 3 : tone < .93 ? 4 : 5], rad = kind === 'setts' ? 1.5 : 1.9;
+              const sw = w - 1.5 - j * .5, sh = rowH - 1.5 - (1 - j) * .5, base = tones[tone < .14 ? 0 : tone < .36 ? 1 : tone < .58 ? 2 : tone < .72 ? 3 : tone < .82 ? 4 : tone < .9 ? 5 : tone < .96 ? 6 : 7], rad = kind === 'setts' ? 1.5 : 1.9;
               cx.save(); cx.translate(mx, my); cx.rotate(tilt);
               cx.globalAlpha = .34; cx.fillStyle = '#54462f'; cx.beginPath(); cx.roundRect(-sw / 2 + .6, -sh / 2 + .8, sw, sh, rad); cx.fill();
               cx.globalAlpha = 1; cx.fillStyle = base; cx.beginPath(); cx.roundRect(-sw / 2, -sh / 2, sw, sh, rad); cx.fill();
-              cx.globalAlpha = v > .93 ? .42 : .24; cx.fillStyle = '#f1e2bc'; cx.beginPath(); cx.roundRect(-sw / 2 + .6, -sh / 2 + .5, sw * .72, sh * .36, 1.1); cx.fill();
+              cx.globalAlpha = v > .97 ? .3 : .18; cx.fillStyle = '#f4e8c6'; cx.beginPath(); cx.roundRect(-sw / 2 + .6, -sh / 2 + .5, sw * .62, sh * .3, 1); cx.fill();
               cx.globalAlpha = .2; cx.fillStyle = '#7a6648'; cx.beginPath(); cx.roundRect(-sw / 2 + .5, sh / 2 - 1.6, sw - 1, 1.3, .7); cx.fill();
               cx.restore();
               if (v < .8 && j > .62 && !winter) { const q = rng(hash(Math.round(mx * 4), Math.round(my * 4), 145) | 1); blob(cx, q, mx + w / 2, my + (j - .8) * 6, 1.4 + q() * 1.8, .9 + q(), 5, .5, q() < .5 ? '#7d8f4e' : '#93a252', .75); }   // (moss and weeds in the joints towards the edge)
@@ -466,7 +474,7 @@ window.GardenPaintGround = (function () {
         tiles(cb, 48, 6, 155, (tx, ty, r) => { for (let i = 0; i < 3; i++) { const x = tx + r() * 48, y = ty + r() * 48, s = 1 + r() * 2; if (cov.sample(x, y) < .6) continue; pebble(cx, rng(hash(Math.round(x * 8), Math.round(y * 8), 156) | 1), x, y, s, { shadow: '#6e5e3e', stone: '#c9bb98', stoneLo: '#a8997a', stoneHi: '#efe4c6' }); } });
         if (kind === 'earth') grassIn(cx, cb, cov, .5, .78, 157);   // (a trail is half grown over)
       }
-      grassIn(cx, cb, cov, .3, .56, 159);
+      grassIn(cx, cb, cov, .3, .56, 159); verge(cx, cb, cov, 163);
     } });
     // boardwalks and steps keep their own shape: planks or treads laid across the line, one every few px along it
     const planks = { bb: bbAll, seed: 790, draw(B, r0, cb) {
