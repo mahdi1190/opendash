@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.73.2] - 2026-11-18
+
+### Changed
+
+- Large dashboards take less work to read and save. Freeflo now writes more compact state files. Existing saves and backups still open normally.
+
 ## [2.73.1] - 2026-11-18
 
 ### Changed
