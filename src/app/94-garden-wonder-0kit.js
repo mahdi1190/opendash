@@ -186,6 +186,9 @@ function wdTalk(o) {
   T.say = (text, actions) => { lines.length = 0; lines.push(text); T.i = 0; o.actions = actions || []; show(); };
   el.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); wdTalkClose(); } ev.stopPropagation(); });
   box.appendChild(el); show();
+  // the portrait frames the whole figure: tall folk (Hollin's antlers, Quince's ears, the angler's hat) were cut off by the fixed frame (17 Nov 2026)
+  const pv = el.querySelector('.wd-talk-art svg');
+  if (pv) { try { const b = pv.getBBox(); if (b.height > 0 && (b.y < -54 || b.y + b.height > 6)) { const y0 = Math.min(-54, b.y - 2), y1 = Math.max(6, b.y + b.height + 2), h = y1 - y0, w = Math.max(h * 0.8, 2 * Math.max(-b.x, b.x + b.width) + 4); pv.setAttribute('viewBox', `${-w / 2} ${y0} ${w} ${h}`); } } catch (e) { /* not drawn yet: the fixed frame stays */ } }
   return T;
 }
 function wdTalkClose(quiet) { const T = _wd.talk; if (!T) return; _wd.talk = null; const had = T.el.contains(document.activeElement); T.el.remove(); if (had) { try { const b = typeof _gw !== 'undefined' && _gw.box && _gw.box.isConnected ? _gw.box : _wdBox(); if (b && b.focus) b.focus({ preventScroll: true }); } catch (e) { /* no stage */ } }   // (the keys go back to the garden: M, E and walking work at once)
