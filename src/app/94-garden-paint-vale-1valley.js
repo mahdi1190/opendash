@@ -75,7 +75,7 @@
   // the sign on a locked plot's fence: a small board on a post saying what it needs, its level or (once you have that) its price
   function sign(B, x, y, row, lv) {
     const lvNeed = row.lv || 0, coin = lv >= lvNeed && !!row.buy, txt = lv < lvNeed ? 'Lv ' + lvNeed : row.buy ? String(row.buy) : ''; if (!txt) return;
-    B.f(B.ell(x + 1, y + 1, 7, 2), 'rgba(40,40,24,.25)');
+    if (window.GardenPaintGround && GardenPaintGround.castShadow) GardenPaintGround.castShadow(B.cx, x, y, 14, 26, { a: .24 }); else B.f(B.ell(x + 1, y + 1, 7, 2), 'rgba(40,40,24,.25)');   /* (the board's shadow, thrown the way every other is) */
     B.f(B.rect(x - 1.2, y - 15, 2.4, 15), '#5e4c36').f(B.rect(x - 1.2, y - 15, 1, 15), '#8a7454', .7);
     const cx = B.cx; cx.save(); cx.font = '700 7.5px system-ui, sans-serif';
     const w = Math.max(16, cx.measureText(txt).width + (coin ? 7 : 0) + 6), x0 = x - w / 2, y0 = y - 26;
@@ -87,6 +87,17 @@
   function fence(B, r, P, edges, W, season) {
     const cw = W.cellW, ch = W.cellH, lv = level(), wood = ['#8a7454', '#a88e66', '#5e4c36'];
     const fronts = [];
+    // every run's shadow first, along the world's one light (the kit lays them in one soft fill), so no fence, wall or hedge stands on the grass without one
+    if (window.GardenPaintGround && GardenPaintGround.castRuns) {
+      const runs = [];
+      for (const [x, y, side, nx, ny] of edges) {
+        if (!locked(x, y, lv) || locked(nx, ny, lv)) continue;
+        const x0 = x * cw, y0 = W.sky + y * ch, kind = regionKind(x, y), h = kind === 'wall' ? 13 : kind === 'hedge' ? 15 : 12;
+        if (side === 's' || side === 'n') { const yy = side === 's' ? y0 + ch - 3 : y0 + 9; runs.push([x0, yy, x0 + cw, yy, h]); }
+        else { const xx = side === 'e' ? x0 + cw - 3 : x0 + 3; runs.push([xx, y0 - (kind === 'wall' || kind === 'hedge' ? 4 : 0), xx, y0 + ch, h]); }
+      }
+      GardenPaintGround.castRuns(B.cx, runs, { a: .26 });
+    }
     for (const [x, y, side, nx, ny] of edges) {
       if (!locked(x, y, lv) || locked(nx, ny, lv)) continue;   // (a plot that is yours, or two locked plots side by side: no fence between)
       const inset = 3, x0 = x * cw, y0 = W.sky + y * ch, kind = regionKind(x, y);

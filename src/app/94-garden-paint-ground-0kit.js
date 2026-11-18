@@ -58,6 +58,15 @@ window.GardenPaintGround = (function () {
     cx.beginPath(); cx.moveTo(x - hw, y - d); cx.lineTo(x + hw, y - d); cx.lineTo(x + hw * .9 + dx, y + dy - d * .5); cx.lineTo(x + hw * .82 + dx, y + dy + d); cx.lineTo(x - hw * .8 + dx, y + dy + d); cx.lineTo(x - hw, y + d); cx.closePath(); cx.fill(); cx.restore(); cx.filter = 'none'; cx.globalAlpha = 1;
     contact(cx, x, y, Math.max(4, w * .5), Math.max(2, Math.min(8, w * .1)), Math.min(.36, a * 1.2));
   }
+  /** The shadows of low runs painted into the ground (a fence, a hedge, a field wall): runs = [[x0, y0, x1, y1, h]], each a foot
+   *  line and the height of what stands on it. Every run's foot is carried out along the light and the lot is filled once,
+   *  softly, so a fence that runs up the screen throws a band beside it and one that runs across a thin line below. o: { a } */
+  function castRuns(cx, runs, o) {
+    if (!runs || !runs.length) return; const K = scaleOf(cx), a = o && o.a != null ? o.a : .2;
+    cx.save(); cx.filter = 'blur(' + (1.3 * K).toFixed(1) + 'px)'; cx.globalAlpha = a; cx.fillStyle = LIGHT.shade; cx.beginPath();
+    for (const [x0, y0, x1, y1, h] of runs) { const len = Math.min(104, h * .72), dx = LIGHT.sx * len, dy = LIGHT.sy * len + 1.2; cx.moveTo(x0, y0 - .8); cx.lineTo(x1, y1 - .8); cx.lineTo(x1 + dx, y1 + dy); cx.lineTo(x0 + dx, y0 + dy); cx.closePath(); }
+    cx.fill('nonzero'); cx.restore(); cx.filter = 'none'; cx.globalAlpha = 1;
+  }
   /** A soft pool of warm light on the ground (a lamp, a lit window), for art baked for dusk and night. */
   function lightPool(cx, x, y, rx, ry, a, col) {
     const c = hex(col || LIGHT.warm); cx.save(); cx.translate(x, y); cx.scale(1, ry / rx); cx.globalCompositeOperation = 'lighter';
@@ -537,7 +546,7 @@ window.GardenPaintGround = (function () {
   //        under an edge, for the grass that grows in), box }
   function paths(env) {
     const season = env.season || 'summer', box = env.box, bbAll = [box.x, box.y, box.x + box.w, box.y + box.h];
-    const routes = (env.routes || []).filter(r => r.points && r.points.length > 1 && PATH[r.kind]).map(r => { const line = centreLine(r.points, r.width || 26, r.closed); let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, wm = 0; for (const p of line) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); wm = Math.max(wm, p.w); } return { id: r.id, kind: r.kind, line, bb: [x0 - wm, y0 - wm, x1 + wm, y1 + wm], salt: hashStr(String(r.id)) }; });
+    const routes = (env.routes || []).filter(r => r.points && r.points.length > 1 && PATH[r.kind]).map(r => { const line = centreLine(r.points, r.width || 26, r.closed); let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, wm = 0; for (const p of line) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); wm = Math.max(wm, p.w); } return { id: r.id, kind: r.kind, line, bb: [x0 - wm, y0 - wm, x1 + wm, y1 + wm], salt: hashStr(String(r.id)), closed: !!r.closed }; });
     const areas = (env.areas || []).filter(a => PATH[a.kind]).map(a => { const e = a.ellipse, pts = a.points; const bb = e ? [e.x - e.rx, e.y - e.ry, e.x + e.rx, e.y + e.ry] : pts.reduce((b, p) => [Math.min(b[0], p.x), Math.min(b[1], p.y), Math.max(b[2], p.x), Math.max(b[3], p.y)], [1e9, 1e9, -1e9, -1e9]); return { kind: a.kind, e, pts, bb }; });
     // where a path ends on another, both widen a little: a pad at the meeting point, which the smoothing turns into a fillet
     const pads = [];
@@ -631,9 +640,11 @@ window.GardenPaintGround = (function () {
     // boardwalks and steps keep their own shape: planks or treads laid across the line, one every few px along it
     const planks = { bb: bbAll, seed: 790, draw(B, r0, cb) {
       const cx = B.cx; if (env.allow) cx.clip(env.allow, 'evenodd');
-      for (const rt of routes) { const S0 = PATH[rt.kind]; if (!S0.planks || !meets(rt.bb, cb)) continue; const L = rt.line, steps = rt.kind === 'steps', gap = steps ? 9 : 5.2; let next = 0, n = 0;
-        if (!steps) for (let i = 1; i < L.length; i++) { const p = L[i - 1], q = L[i]; if (Math.max(p.x, q.x) < cb[0] - 30 || Math.min(p.x, q.x) > cb[2] + 30 || Math.max(p.y, q.y) < cb[1] - 30 || Math.min(p.y, q.y) > cb[3] + 30) continue; cx.globalAlpha = .2; cx.strokeStyle = '#26341c'; cx.lineWidth = p.w + 3; cx.lineCap = 'butt'; cx.beginPath(); cx.moveTo(p.x + 2, p.y + 3); cx.lineTo(q.x + 2, q.y + 3); cx.stroke(); }
-        for (let i = 1; i < L.length; i++) { const p = L[i - 1], q = L[i]; while (next <= q.d) { const t = (next - p.d) / Math.max(.001, q.d - p.d), x = p.x + (q.x - p.x) * t, y = p.y + (q.y - p.y) * t, hw = (p.w + (q.w - p.w) * t) / 2, k = n++; next += gap; if (x < cb[0] - 30 || x > cb[2] + 30 || y < cb[1] - 30 || y > cb[3] + 30) continue;
+      for (const rt of routes) { const S0 = PATH[rt.kind]; if (!S0.planks || !meets(rt.bb, cb)) continue; const L = rt.line, steps = rt.kind === 'steps', gap = steps ? 9 : 5.2, D = L[L.length - 1].d; let next = 0, n = 0;
+        // no square ends: the ground is trodden bare where a walk or a stair begins, and its last boards are shorter, as if laid to fit
+        if (!rt.closed) for (const e of [L[0], L[L.length - 1]]) { if (e.x < cb[0] - 40 || e.x > cb[2] + 40 || e.y < cb[1] - 40 || e.y > cb[3] + 40) continue; const R = Math.max(10, e.w * .9), g = cx.createRadialGradient(e.x, e.y, 0, e.x, e.y, R); g.addColorStop(0, 'rgba(150,126,88,.6)'); g.addColorStop(.55, 'rgba(150,126,88,.32)'); g.addColorStop(1, 'rgba(150,126,88,0)'); cx.save(); cx.translate(e.x, e.y); cx.scale(1, .72); cx.translate(-e.x, -e.y); cx.globalAlpha = 1; cx.fillStyle = g; cx.beginPath(); cx.arc(e.x, e.y, R, 0, Math.PI * 2); cx.fill(); cx.restore(); }
+        if (!steps) for (let i = 1; i < L.length; i++) { const p = L[i - 1], q = L[i]; if (Math.max(p.x, q.x) < cb[0] - 30 || Math.min(p.x, q.x) > cb[2] + 30 || Math.max(p.y, q.y) < cb[1] - 30 || Math.min(p.y, q.y) > cb[3] + 30) continue; cx.globalAlpha = .2; cx.strokeStyle = '#26341c'; cx.lineWidth = p.w + 3; cx.lineCap = i === 1 || i === L.length - 1 ? 'round' : 'butt'; cx.beginPath(); cx.moveTo(p.x + 2, p.y + 3); cx.lineTo(q.x + 2, q.y + 3); cx.stroke(); }
+        for (let i = 1; i < L.length; i++) { const p = L[i - 1], q = L[i]; while (next <= q.d) { const t = (next - p.d) / Math.max(.001, q.d - p.d), x = p.x + (q.x - p.x) * t, y = p.y + (q.y - p.y) * t, end = rt.closed ? 99 : Math.min(next, D - next), hw = (p.w + (q.w - p.w) * t) / 2 * (end < gap * .7 ? .68 : end < gap * 1.8 ? .86 : 1), k = n++; next += gap; if (x < cb[0] - 30 || x > cb[2] + 30 || y < cb[1] - 30 || y > cb[3] + 30) continue;
           const r = rng(hash(k, rt.salt, 171) | 1), ang = Math.atan2(q.y - p.y, q.x - p.x), tone = r();
           cx.save(); cx.translate(x, y); cx.rotate(ang + (r() - .5) * .05);
           if (steps) { cx.globalAlpha = .4; cx.fillStyle = '#4a4232'; cx.beginPath(); cx.roundRect(-3.4, -hw + 1.2, 7.4, hw * 2, 1.6); cx.fill(); cx.globalAlpha = 1; cx.fillStyle = tone < .4 ? '#b8ae96' : tone < .8 ? '#c8bea4' : '#a89e88'; cx.beginPath(); cx.roundRect(-3.6, -hw, 6.6, hw * 2 - .6, 1.6); cx.fill(); cx.globalAlpha = .5; cx.fillStyle = '#e4dcc6'; cx.beginPath(); cx.roundRect(-3.2, -hw + .6, 2, hw * 2 - 2, 1); cx.fill(); if (r() < .3) blob(cx, r, 2.6, (r() - .5) * hw * 1.6, 2, 1.2, 5, .5, '#7d8f4e', .7); }
@@ -646,5 +657,5 @@ window.GardenPaintGround = (function () {
   }
 
   function status() { const layers = [...registry].map(h => ({ key: String(h.key).slice(0, 24), level: h.level, chunks: h.chunks, live: h.live, MB: h.MB, baked: h.baked, evicted: h.evicted, medianMs: h.median, p95Ms: h.p95, worstChunkMs: h.worstMs, worstSliceMs: h.sliceWorstMs })); return { layers, MB: +layers.reduce((a, l) => a + l.MB, 0).toFixed(1), slow: Object.assign({}, slow), lastError }; }
-  return { resetSlow() { slow.opMs = 0; slow.op = ''; slow.uploadMs = 0; slow.tickMs = 0; }, LIGHT, contact, castShadow, lightPool, cast, layer, levelFor, LEVELS, KINDS, palette, paintKind, wash, kindGrid, layoutKinds, layoutPaths, routeKind, ROUTE_WIDTH, ground, paths, flower, softCut, centreLine, tiles, rng, hash, hashStr, noise, fbm, mix, scratch, status, get lastError() { return lastError; }, set lastError(v) { lastError = v; } };
+  return { resetSlow() { slow.opMs = 0; slow.op = ''; slow.uploadMs = 0; slow.tickMs = 0; }, LIGHT, contact, castShadow, castRuns, lightPool, cast, layer, levelFor, LEVELS, KINDS, palette, paintKind, wash, kindGrid, layoutKinds, layoutPaths, routeKind, ROUTE_WIDTH, ground, paths, flower, softCut, centreLine, tiles, rng, hash, hashStr, noise, fbm, mix, scratch, status, get lastError() { return lastError; }, set lastError(v) { lastError = v; } };
 })();
