@@ -292,7 +292,8 @@ window.GardenNativePainted = (function () {
     const size = { w: shape ? (shape.box[2] - shape.box[0]) * scale : def.w };
     const main = objectImage(scene, def.obj, def.v, season, size, cx - (def.wallCenterX || 0) * scale, foot - (def.wallFootY || 0) * scale, night); if (!main) { node.remove(); return null; }
     node._inner.add(main); parts.push([main, def.obj, def.v, size]);
-    for (const [id, v, dx, dy, w, h] of def.extra || []) { if (!sceneObj(id)) continue; const im = objectImage(scene, id, v, season, w ? { w } : { h }, cx + dx, foot + dy, night); if (im) { node._inner.addAt(im, dy > 0 ? node._inner.list.length : 1); parts.push([im, id, v, w ? { w } : { h }]); } }
+    const lampLights = [];   /* (a street lamp standing by a building is lit at dusk and night like any other: no dark lamp beside a lit one) */
+    for (const [id, v, dx, dy, w, h] of def.extra || []) { if (!sceneObj(id)) continue; const im = objectImage(scene, id, v, season, w ? { w } : { h }, cx + dx, foot + dy, night); if (im) { node._inner.addAt(im, dy > 0 ? node._inner.list.length : 1); parts.push([im, id, v, w ? { w } : { h }]); if (id === 'street.lamp') lampLights.push({ x: cx + dx, y: foot + dy - im.displayHeight * im.originY + 14, radius: 120, pool: true }); } }
     if (def.sign) {
       const g = scene.add.graphics(), sy = foot + 12, tw = Math.max(54, def.sign.length * 6.4) / 2;
       g.fillStyle(0x3d3424, .22).fillRoundedRect(cx - tw + 2, sy - 7, tw * 2, 15, 4).fillStyle(0xf3ead2).fillRoundedRect(cx - tw, sy - 9, tw * 2, 15, 4).lineStyle(1, 0xb9a57c, 1).strokeRoundedRect(cx - tw, sy - 9, tw * 2, 15, 4);
@@ -303,7 +304,7 @@ window.GardenNativePainted = (function () {
     if (night && window.GardenPaintedProps) { const pk = GardenPaintedProps.poolKey(scene); if (pk) { const pool = scene.add.image(cx, foot + 10, pk).setOrigin(.5, .5).setScale(def.w * 1.1 / 256, def.w * .3 / 256).setAlpha(.3), layer = overLayer; if (layer) { layer.add(pool); pool.setDepth(80005); } else node._inner.add(pool); poolImages.push(pool); } }
     const top = main.y - main.displayHeight * main.originY, b = { x: main.x - main.displayWidth * main.originX - 10, y: top - 4, width: main.displayWidth + 20, height: foot - top + 26 };
     node.nativeBounds = b;
-    return { root: node.target, rootNode: node, bounds: b, painted: true, foot: { x: cx, y: foot }, update() {}, setLitWindows(on) { for (const [im, id, v, size] of parts) { const o = objectKey(scene, id, v, season, size, !!on); if (o && im.texture.key !== o.key) im.setTexture(o.key).setOrigin(o.meta.ox, o.meta.oy); } }, destroy() { for (const im of poolImages) im.destroy(); node.remove(); } };
+    return { root: node.target, rootNode: node, bounds: b, painted: true, lights: lampLights, foot: { x: cx, y: foot }, update() {}, setLitWindows(on) { for (const [im, id, v, size] of parts) { const o = objectKey(scene, id, v, season, size, !!on); if (o && im.texture.key !== o.key) im.setTexture(o.key).setOrigin(o.meta.ox, o.meta.oy); } }, destroy() { for (const im of poolImages) im.destroy(); node.remove(); } };
   }
 
   /* ---------- planting: groves, shrubs and reeds in deliberate groups ---------- */
@@ -341,6 +342,10 @@ window.GardenNativePainted = (function () {
       if (size.h >= 50) { tall.push({ im, x, y, h: size.h }); trunks.push(Object.freeze({ x: x / W.cellW, y: (y - W.sky) / W.cellH, w: (size.was || size.h) > 100 ? .5 : .4 })); }
     };
     const tall = plantingTall = [], trunks = [];
+    // Nothing overlaps: a tree stands 3.5 to 5 times the player (gardenSizePx), but never so tall that its crown covers a building,
+    // a sign, a lamp or a seat standing behind it. Then it keeps the most height that leaves them clear, down to its old size.
+    const keep = (typeof gardenPropsNow === 'function' ? gardenPropsNow() : []).filter(p => p && p.w && (p.tall == null || p.tall >= .6)).map(p => { const foot = W.sky + (p.y + (p.h || 1)) * W.cellH, up = /lamp/.test(String(p.kind || p.art || '')) ? gardenSizePx('lamp', 1) + 8 : Math.max(30, (p.tall == null ? 2 : p.tall) * 46); return { x0: p.x * W.cellW - 6, x1: (p.x + p.w) * W.cellW + 6, y0: foot - up, y1: foot }; });
+    const fitTree = (species, x, y, want, least) => { const F = window.GardenPaintTrees && GardenPaintTrees.form ? GardenPaintTrees.form(species) : { rx: .46, cy: .6, ry: .33 }; for (let h = want; h > least; h -= 10) { const cx0 = x - h * F.rx, cx1 = x + h * F.rx, cy0 = y - h, cy1 = y - h * (F.cy - F.ry); if (!keep.some(b => b.y1 < y - 2 && b.x1 > cx0 && b.x0 < cx1 && b.y1 > cy0 && b.y0 < cy1)) return Math.round(h); } return Math.round(least); };
     const gates = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data && GardenIslandLayout.data.gates || [], fl = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data && (GardenIslandLayout.data.presentation || {}).falls, byGate = (x, y) => gates.some(g => Math.abs(x - g.x) <= 3 && y - g.y >= -2 && y - g.y <= 5) || !!(fl && x >= fl.x - 3 && x <= fl.x + (fl.w || 3) + 2 && y >= fl.y - 1 && y <= fl.y + (fl.h || 3) + 4);   // (nor over Fleet Falls)
     for (let cy = info.box.y0; cy <= info.box.y1; cy++) for (let cx = info.box.x0; cx <= info.box.x1; cx++) {
       const spot = info.spot(cx, cy); spotCounts[spot || 'none'] = (spotCounts[spot || 'none'] || 0) + 1; if (!spot) continue;
@@ -348,7 +353,7 @@ window.GardenNativePainted = (function () {
       const h = (a, b, k) => { let n = Math.imul(a * 374761393 + b * 668265263 + k * 1442695041, 1) >>> 0; n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0; return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
       const r = h(cx, cy, 11), cluster = h(Math.floor(cx / 3), Math.floor(cy / 2), 5), px = (cx + .5) * W.cellW + (h(cx, cy, 2) - .5) * 22, py = W.sky + (cy + 1) * W.cellH - 4 + (h(cx, cy, 3) - .5) * 8;
       // A grove where the cluster field is high (one species leads it), shrubs at its fringe.
-      if (spot === 'tree' && cluster > .42) add(trees[Math.floor((cluster * 7 + r * 2) % trees.length)], Math.floor(r * 3), { h: Math.round(gardenSizePx('tree', r)), was: 84 + r * 40 }, px, py);   /* (a mature tree stands 3.5 to 5 times the player; `was` keeps the trunk's old width for walking) */
+      if (spot === 'tree' && cluster > .42) { const id = trees[Math.floor((cluster * 7 + r * 2) % trees.length)]; add(id, Math.floor(r * 3), { h: fitTree(TREE_KIT[id], px, py, gardenSizePx('tree', r), 84 + r * 40), was: 84 + r * 40 }, px, py); }   /* (a mature tree stands 3.5 to 5 times the player; `was` keeps the trunk's old width for walking) */
       else if ((spot === 'tree' && cluster > .3 || spot === 'edge' && cluster > .35 || spot === 'wild' && r > .4) && r > .3) add(SHRUB[Math.floor(r * 53) % SHRUB.length], Math.floor(r * 7) % 3, { h: 26 + r * 16 }, px, py);
       else if (spot === 'shore' && r > .45) add(r > .75 ? 'plant.bulrush' : 'plant.reed', Math.floor(r * 5) % 3, { h: 30 + r * 14 }, px, py);
     }

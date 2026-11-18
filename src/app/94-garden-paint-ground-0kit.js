@@ -368,8 +368,11 @@ window.GardenPaintGround = (function () {
     },
     // open fell: bleached tussock grass, heather in drifts, peat showing through, grey stones with lichen
     moor(cx, cb, P, env) {
-      wash(cx, cb, P, 81, 1.3); cx.lineCap = 'round'; const bloom = P.season === 'summer' || P.season === 'autumn', hLo = '#5c4a52', hMid = '#7d6470', hHi = bloom ? '#a8789e' : '#8f7f72', hLit = bloom ? '#94768c' : '#8a7c70', bleach = mix(P.hi, '#e6dcae', .6);
+      wash(cx, cb, P, 81, 1.3); cx.lineCap = 'round'; const bloom = P.season === 'summer' || P.season === 'autumn', hLo = '#5c4a52', hMid = '#7d6470', hHi = bloom ? '#a8789e' : '#8f7f72', hLit = bloom ? '#94768c' : '#8a7c70', bleach = mix(P.hi, '#e6dcae', .6), far = scaleOf(cx) < 1;
       tiles(cb, 64, 20, 83, (tx, ty, r) => { for (let i = 0; i < 5; i++) { const x = tx + r() * 64, y = ty + r() * 64, drift = fbm(x / 230, y / 150, 77), pick = r();
+        /* (from far off the heather is a few broad soft masses in each drift: a field of small dark clumps read as a rash of dots) */
+        if (far && drift > .56 && pick < .7) { if (pick < .22) { const s = 15 + r() * 14; blob(cx, r, x + 2, y + 2, s, s * .5, 9, .5, hLo, .3); blob(cx, r, x, y, s * .92, s * .42, 9, .5, hMid, .5); blob(cx, r, x - s * .25, y - s * .14, s * .5, s * .18, 7, .5, hLit, .4); } continue; }
+        if (far && pick >= .2 && pick < .62) continue;
         if (drift > .56 && pick < .7) { const s = 6 + r() * 8; blob(cx, r, x + s * .12, y + s * .14, s, s * .52, 8, .6, hLo, .55); blob(cx, r, x, y - s * .05, s * .86, s * .42, 8, .6, hMid, .85); blob(cx, r, x - s * .22, y - s * .16, s * .5, s * .2, 7, .5, hLit, .55); for (let k = 0; k < 9; k++) { const px = x + (r() - .5) * s * 1.5, py = y - s * .1 + (r() - .5) * s * .5; ell(cx, px, py, .7 + r() * .5, .6 + r() * .4, r() < .6 ? hHi : hLo, .8); } continue; }
         if (pick < .1 && drift > .5) { const w = 8 + r() * 10; blob(cx, r, x + 1, y + 2.2, w, w * .26, 8, .4, '#4a3a2c', .8); blob(cx, r, x - .5, y - .5, w * .92, w * .2, 8, .45, P.lo, .85); continue; }
         if (pick < .2) { pebble(cx, r, x, y, 2 + r() * 3.6, { shadow: P.shadow, stone: '#a9a49a', stoneLo: '#8a857c', stoneHi: '#d4d0c4' }); if (r() < .5) ell(cx, x - 1, y - 1, 1.2, .6, '#c8c46a', .7); continue; }

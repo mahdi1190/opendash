@@ -263,5 +263,5 @@ window.GardenPaintTrees = (function () {
     cx.restore();
   }
   function stats() { return { made, MB: +(bytes / 1048576).toFixed(1), worstMs: Math.round(worstMs), K }; }
-  return { canvas, image, groundShadow, stats, species: Object.keys(FORM), K };
+  return { canvas, image, groundShadow, stats, species: Object.keys(FORM), K, form: sp => FORM[sp] || FORM.oak };
 })();
