@@ -1,0 +1,5 @@
+/* The Sound panel (94-garden-0sound.js, gardenSoundOpen): its rows sit straight in the dialog body, so the first needs no rule above it */
+.gs-panel .set-row:first-child { border-top: 0; padding-top: 0; }
+.gs-panel .gs-vol { accent-color: var(--accent); width: 150px; max-width: 100%; cursor: pointer; }
+.gs-panel .gs-vol:disabled { cursor: default; }
+.gs-panel .gs-note { margin: var(--space-3) 0 0; }

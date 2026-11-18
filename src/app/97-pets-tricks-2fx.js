@@ -339,11 +339,15 @@ function _fxSoundOn() { try { return typeof _gmG === 'function' && _gmG().prefs.
 function _fxSound(kind) {
   if (!_fxSoundOn()) return;
   try {
-    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
-    const ac = _fxS.ac || (_fxS.ac = new AC()); if (ac.state === 'suspended') ac.resume();
+    // through the garden's sound (its Volume, Effects switch and pause), and 4 dB under what it was: a boom or a roar was the loudest thing in the game
+    const bus = typeof gardenSoundBus === 'function' ? gardenSoundBus() : null;
+    let ac, dest;
+    if (bus) { ac = bus.ac; dest = bus.out; }
+    else { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; ac = _fxS.ac || (_fxS.ac = new AC()); dest = ac.destination; if (ac.state === 'suspended') { const r = ac.resume(); if (r && r.catch) r.catch(() => {}); } }
+    const bus0 = ac.createGain(); bus0.gain.value = 0.63; bus0.connect(dest);
     const now = ac.currentTime + 0.01;
-    const tone = (f, at, len, peak, type, f2) => { const o = ac.createOscillator(), v = ac.createGain(); o.type = type || 'sine'; o.frequency.setValueAtTime(f, now + at); if (f2) o.frequency.exponentialRampToValueAtTime(f2, now + at + len); v.gain.setValueAtTime(0, now + at); v.gain.linearRampToValueAtTime(peak, now + at + Math.min(0.4, len * 0.25)); v.gain.exponentialRampToValueAtTime(0.0001, now + at + len); o.connect(v); v.connect(ac.destination); o.start(now + at); o.stop(now + at + len + 0.02); };
-    const noise = (at, len, peak, fr, fr2) => { const n = ac.sampleRate * len, b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; const s = ac.createBufferSource(); s.buffer = b; const fl = ac.createBiquadFilter(); fl.type = 'bandpass'; fl.frequency.setValueAtTime(fr, now + at); if (fr2) fl.frequency.exponentialRampToValueAtTime(fr2, now + at + len); const v = ac.createGain(); v.gain.setValueAtTime(0, now + at); v.gain.linearRampToValueAtTime(peak, now + at + len * 0.3); v.gain.exponentialRampToValueAtTime(0.0001, now + at + len); s.connect(fl); fl.connect(v); v.connect(ac.destination); s.start(now + at); };
+    const tone = (f, at, len, peak, type, f2) => { const o = ac.createOscillator(), v = ac.createGain(); o.type = type || 'sine'; o.frequency.setValueAtTime(f, now + at); if (f2) o.frequency.exponentialRampToValueAtTime(f2, now + at + len); v.gain.setValueAtTime(0, now + at); v.gain.linearRampToValueAtTime(peak, now + at + Math.min(0.4, len * 0.25)); v.gain.exponentialRampToValueAtTime(0.0001, now + at + len); o.connect(v); v.connect(bus0); o.start(now + at); o.stop(now + at + len + 0.02); };
+    const noise = (at, len, peak, fr, fr2) => { const n = ac.sampleRate * len, b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; const s = ac.createBufferSource(); s.buffer = b; const fl = ac.createBiquadFilter(); fl.type = 'bandpass'; fl.frequency.setValueAtTime(fr, now + at); if (fr2) fl.frequency.exponentialRampToValueAtTime(fr2, now + at + len); const v = ac.createGain(); v.gain.setValueAtTime(0, now + at); v.gain.linearRampToValueAtTime(peak, now + at + len * 0.3); v.gain.exponentialRampToValueAtTime(0.0001, now + at + len); s.connect(fl); fl.connect(v); v.connect(bus0); s.start(now + at); };
     const S = {
       chime: () => [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => tone(f, i * 0.09, 1.1, 0.035, 'triangle')),
       choir: () => [261.63, 329.63, 392, 523.25, 659.25].forEach((f) => { tone(f, 0, 3.2, 0.02, 'sine'); tone(f * 1.005, 0.05, 3.2, 0.012, 'sine'); }),

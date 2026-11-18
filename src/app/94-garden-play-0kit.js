@@ -70,13 +70,22 @@ function gpTone(notes, o) {
   o = o || {};
   try {
     if (!o.force && !(typeof _gmG === 'function' && _gmG().prefs.sounds)) return;
-    const AC = window.AudioContext || window.webkitAudioContext; if (!AC || document.hidden) return;
-    const ac = _gp.ac || (_gp.ac = new AC()); if (ac.state === 'suspended') ac.resume();
+    if (document.hidden) return;
+    // the garden's sound, so the Volume and the Effects switch reach these too (a note you pressed yourself plays past the switch)
+    const bus = typeof gardenSoundBus === 'function' ? gardenSoundBus({ always: !!o.force }) : null;
+    let ac, out, k = 1;
+    if (bus) { ac = bus.ac; out = bus.out; }
+    else {
+      if (!o.force) return;
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+      ac = _gp.ac || (_gp.ac = new AC()); if (ac.state === 'suspended') { const r = ac.resume(); if (r && r.catch) r.catch(() => {}); }
+      out = ac.destination; k = typeof gardenSoundLevel === 'function' ? gardenSoundLevel() : 0.49;
+    }
     const t0 = ac.currentTime + 0.02, gap = o.gap || 0.12, len = o.len || 0.32;
     notes.forEach((f, i) => {
       const s = ac.createOscillator(), v = ac.createGain(); s.type = o.type || 'triangle'; s.frequency.value = f;
-      const t = t0 + i * gap; v.gain.setValueAtTime(0, t); v.gain.linearRampToValueAtTime(o.vol || 0.07, t + 0.015); v.gain.exponentialRampToValueAtTime(0.0001, t + len);
-      s.connect(v); v.connect(ac.destination); s.start(t); s.stop(t + len + 0.02);
+      const t = t0 + i * gap; v.gain.setValueAtTime(0, t); v.gain.linearRampToValueAtTime((o.vol || 0.07) * k, t + 0.015); v.gain.exponentialRampToValueAtTime(0.0001, t + len);
+      s.connect(v); v.connect(out); s.start(t); s.stop(t + len + 0.02);
     });
   } catch (e) { /* no audio here */ }
 }
