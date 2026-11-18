@@ -31,7 +31,7 @@
  * The server always starts with the sandbox environment from --sandbox-env (default C:/tmp/sandbox-env.mjs, which exports
  * sandboxEnv(): no way out to the real calendar, mail or the Claude command line). Without it the tool refuses to run.
  */
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -47,7 +47,7 @@ const { sandboxEnv, EDGE_SAFE_FLAGS } = await import(pathToFileURL(ENV_MODULE).h
 const SAFE_FLAGS = Array.isArray(EDGE_SAFE_FLAGS) && EDGE_SAFE_FLAGS.length ? EDGE_SAFE_FLAGS : ['--disable-extensions', '--disable-sync', '--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--disable-component-update', '--disable-features=msImplicitSignin'];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const WORK = path.join(OUT, 'run-' + LABEL), DATA = path.join(WORK, 'data-' + PORT), PROFILE = path.join(WORK, 'profile-' + CDP), THUMB_DIR = path.join(OUT, LABEL + '-thumbs');
-for (const d of [DATA, PROFILE, THUMB_DIR]) fs.rmSync(d, { recursive: true, force: true });
+for (const d of [DATA, PROFILE, THUMB_DIR]) fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 });
 for (const d of [DATA, THUMB_DIR]) fs.mkdirSync(d, { recursive: true });
 
 /* ---------- the part that runs in the page: tools/lib/collide-audit-page.js ---------- */
@@ -57,7 +57,15 @@ const PAGE = fs.readFileSync(new URL('./lib/collide-audit-page.js', import.meta.
 const srv = spawn(process.execPath, ['serve.mjs', '--port', String(PORT), '--no-open', '--data-dir', DATA], { cwd: REPO, stdio: 'ignore', env: sandboxEnv() });
 const br = spawn(EDGE, ['--headless=new', ...SAFE_FLAGS, `--remote-debugging-port=${CDP}`, `--user-data-dir=${PROFILE}`, '--window-size=1500,900', 'about:blank'], { stdio: 'ignore' });
 let finished = false;
-const stop = async code => { if (finished) return; finished = true; try { br.kill(); } catch { /* gone */ } try { srv.kill(); } catch { /* gone */ } await sleep(500); process.exit(code); };
+// (the whole browser, not only its first process: the rest held the profile folder open and the next run could not clear it; then the profile goes too)
+const stop = async code => {
+  if (finished) return; finished = true;
+  try { if (typeof send === 'function') await send('Browser.close', {}, 3000); } catch { /* gone */ }
+  if (process.platform === 'win32' && br.pid) try { spawnSync('taskkill', ['/PID', String(br.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* gone */ }
+  try { br.kill(); } catch { /* gone */ } try { srv.kill(); } catch { /* gone */ }
+  await sleep(1200); try { fs.rmSync(PROFILE, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 }); } catch { /* still held: the next run clears it */ }
+  process.exit(code);
+};
 setTimeout(() => { console.error('overall timeout'); stop(3); }, 50 * 60 * 1000);
 let tabs = null; for (let i = 0; i < 60 && !tabs; i++) { await sleep(500); try { tabs = await (await fetch(`http://127.0.0.1:${CDP}/json`)).json(); } catch { /* not up yet */ } }
 const page = tabs.find(t => t.type === 'page' && t.url === 'about:blank') || tabs.find(t => t.type === 'page'); const ws = new WebSocket(page.webSocketDebuggerUrl); await new Promise(r => { ws.onopen = r; });

@@ -802,7 +802,8 @@
       if (!list.length) { const rec = [...nw.entities.values()].find(r => r.metadata && r.metadata.uid === u.uid); if (!rec) decor.skipped.push(u.def.id + ' (not drawn)'); continue; }
       decor.drawn++;
       if (col === 'none' || u.def.layer === 'ground') continue;
-      const o = list.slice().sort((p, q) => q.bounds.w * q.bounds.h - p.bounds.w * p.bounds.h)[0]; if (o.heightPx < 10) continue;
+      // its biggest picture that stands on the ground (a windmill's turning sails are sometimes its biggest picture, and end two rows up: that came and went from run to run)
+      const lowest = Math.max(...list.map(q => q.Yb)), o = list.filter(q => q.Yb >= lowest - CH * .6).sort((p, q) => q.bounds.w * q.bounds.h - p.bounds.w * p.bounds.h)[0]; if (o.heightPx < 10) continue;
       decor.checked++; F.checked++; const before = faults.length;
       o.kind = 'decor'; o.name = (u.def.name || u.def.id) + (u.def.rot ? ' (turn ' + u.r + ')' : '');
       checkObject(o, { family: fam, region: 'decorations (anywhere)', decor: u.def.id, turn: u.r, col });

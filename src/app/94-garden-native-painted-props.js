@@ -797,12 +797,29 @@ window.GardenPaintedProps = (function () {
       h.standing(base, frame.y - art.S * .8 + 2, true); h.standing(near, nearDepth, true);
       // Walking through, you pass behind the near trunk and its leaves: they thin while they cover you, like any
       // crown you stand under, so you never vanish behind your own gate.
+      // (the near half's paint, read once into memory at a quarter size the first time you come up to the arch. Asking
+      // the texture for a pixel reads it back from its canvas every time: five reads a frame while you stood in the arch,
+      // 3 ms a frame and now and then 30, which showed as a long task when walking through. Measured 18 Nov 2026.)
+      let mask = null;
+      const alphaAt = (u, v) => {
+        if (!mask) {
+          mask = { a: null, w: 0, h: 0 };
+          try {
+            const src = scene.textures.get(baseKey).getSourceImage(), w = Math.max(1, Math.ceil(texW / 4)), hh = Math.max(1, Math.ceil(texH / 4)), c = document.createElement('canvas'); c.width = w; c.height = hh;
+            const cx = c.getContext('2d', { willReadFrequently: true }); cx.drawImage(src, 0, 0, w, hh);
+            const d = cx.getImageData(0, 0, w, hh).data, al = new Uint8Array(w * hh); for (let i = 0; i < al.length; i++) al[i] = d[i * 4 + 3];
+            mask = { a: al, w, h: hh };
+          } catch (e) { /* no picture to read: the arch stays whole */ }
+        }
+        if (!mask.a) return 0;
+        return mask.a[Math.min(mask.h - 1, Math.floor(v / texH * mask.h)) * mask.w + Math.min(mask.w - 1, Math.floor(u / texW * mask.w))];
+      };
       h.move(near, im => {
         if (typeof _gw === 'undefined' || !im.active) return;
         const X = _gw.px * o.W.cellW, Y = o.W.sky + _gw.py * o.W.cellH; let hide = false;
         if (Y < nearDepth && Y > baseY + by0 && X > baseX - 12 && X < baseX + bx1 + 12) for (const [dx, dy] of [[0, -10], [0, -30], [-7, -22], [7, -22], [0, -46]]) {
           const u = Math.round((X + dx - baseX - bx0) * K), v = Math.round((Y + dy - baseY - by0) * K);
-          if (u >= mid && u < texW && v >= 0 && v < texH && scene.textures.getPixelAlpha(u, v, baseKey) >= 96) { hide = true; break; }
+          if (u >= mid && u < texW && v >= 0 && v < texH && alphaAt(u, v) >= 96) { hide = true; break; }
         }
         const want = hide ? (typeof GARDEN_CROWN_FADE === 'number' ? GARDEN_CROWN_FADE : .45) : 1, now = im._gppFade == null ? 1 : im._gppFade;
         im._gppFade = Math.abs(want - now) < .03 ? want : now + (want - now) * .25; im.setAlpha(im._gppFade); if (base.active) base.setAlpha(im._gppFade);   // (the whole arch thins together: one half alone left a hard line down its leaves)
