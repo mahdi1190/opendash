@@ -124,7 +124,7 @@ window.GardenPaintTrees = (function () {
     ms.sort((p, q) => p.y - q.y);   // back (top) first: front masses overlap them
     const lit = m => Math.max(0, Math.min(1, .52 - (m.nx * LIGHT.x + m.ny * LIGHT.y) * .5));
     // 1. the deep core: one dark body under everything, so overlaps read as depth, not seams
-    cx.fillStyle = C[0]; for (const m of ms) { mass(cx, r, m.x + m.rx * .16, m.y + m.ry * .2, m.rx * .9, m.ry * .88, 7); cx.fill(); }
+    cx.fillStyle = mix(C[0], C[1], .35); for (const m of ms) { mass(cx, r, m.x + m.rx * .1, m.y + m.ry * .13, m.rx * .96, m.ry * .94, 7); cx.fill(); }
     // 2. each mass: a shaded underside, the lit body set up-left on it, then a sunlit cap of leaf dabs
     const dab = H * F.dab, fruitAt = [];
     for (const m of ms) {
@@ -135,17 +135,17 @@ window.GardenPaintTrees = (function () {
       const nd = Math.round(10 + m.rx / dab * 1.2);
       for (let k = 0; k < nd; k++) {
         const a = Math.PI * (1.05 + r() * .9) + (r() - .5) * .6, d = .35 + r() * .55, x = m.x + Math.cos(a) * m.rx * d * .8 - m.rx * .1, y = m.y + Math.sin(a) * m.ry * d * .8 - m.ry * .12;
-        const t = l * .6 + (1 - d) * .2 + r() * .3; cx.fillStyle = t > .62 ? C[4] : mix(C[2], C[3], .5 + t * .5); cx.globalAlpha = .75 + r() * .25;
-        const s = dab * (.7 + r() * .6); cx.beginPath(); cx.ellipse(x, y, s, s * .62, a + 1.2 + (r() - .5), 0, Math.PI * 2); cx.fill();
+        const t = l * .6 + (1 - d) * .2 + r() * .3; cx.fillStyle = t > .7 ? mix(C[3], C[4], .6) : mix(C[2], C[3], .45 + t * .5); cx.globalAlpha = .55 + r() * .3;
+        const s = dab * (.8 + r() * .7); cx.beginPath(); cx.arc(x, y, s, 0, Math.PI * 2); cx.arc(x + s * .9, y + s * .3, s * .7, 0, Math.PI * 2); cx.fill();
       }
       // a few dark leaf dabs breaking the lower edge
-      cx.fillStyle = C[0]; cx.globalAlpha = .6;
-      for (let k = 0; k < 4; k++) { const a = Math.PI * (.1 + r() * .8), x = m.x + Math.cos(a) * m.rx * .7, y = m.y + Math.sin(a) * m.ry * .72; cx.beginPath(); cx.ellipse(x, y, dab * .9, dab * .55, a, 0, Math.PI * 2); cx.fill(); }
+      cx.fillStyle = C[1]; cx.globalAlpha = .35;
+      for (let k = 0; k < 3; k++) { const a = Math.PI * (.1 + r() * .8), x = m.x + Math.cos(a) * m.rx * .7, y = m.y + Math.sin(a) * m.ry * .72; cx.beginPath(); cx.ellipse(x, y, dab * .9, dab * .55, a, 0, Math.PI * 2); cx.fill(); }
       cx.globalAlpha = 1;
       if (m.ny > -.35 && r() < .8) fruitAt.push(m);
     }
     // 3. sky gaps: shaded pockets with a limb across them, so the crown has air in it
-    const gaps = sp === 'birch' ? 2 : 0;
+    const gaps = 0;   // (sky pockets read as stray marks at garden scale)
     for (let i = 0; i < gaps; i++) {
       const x = ccx + (r() - .3) * RX * .9, y = ccy + (r() * .5) * RY, w = H * (.022 + r() * .018);
       cx.fillStyle = C[0]; cx.globalAlpha = .8; mass(cx, r, x, y, w * 1.4, w, 5); cx.fill(); cx.globalAlpha = 1;
