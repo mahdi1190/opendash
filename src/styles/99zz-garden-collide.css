@@ -1,0 +1,26 @@
+/* What blocks walking (94-garden-world-7collide.js): the key card and the hover label, paper and wood like the rest of the garden. */
+.gd-stagebox > .gd-collide-key {
+  position: absolute; left: 12px; bottom: 74px; z-index: 9; display: flex; flex-direction: column; gap: 4px; max-width: 220px; padding: 9px 11px;
+  font-size: 13px; line-height: 1.3; color: var(--gu-ink, #3b2a1a); background: var(--gu-paper, #fbf3e1);
+  border: 2px solid var(--gu-line, #dcc59b); border-radius: 12px; box-shadow: var(--gu-shadow-sm, 0 4px 12px rgba(46, 30, 12, .16));
+}
+.gd-collide-key b { font-size: 13px; color: var(--gu-wood-2, #5e4027); }
+.gd-collide-key span { display: flex; align-items: center; gap: 7px; }
+.gd-collide-key i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; border: 1.5px solid; }
+.gd-collide-key i.is-block { background: rgba(216, 67, 47, .45); border-color: #b13522; }
+.gd-collide-key i.is-water { background: rgba(47, 111, 216, .2); border-color: #2f6fd8; }
+.gd-collide-key i.is-click { background: transparent; border-color: #2a6fe0; }
+.gd-collide-key i.is-door { width: 10px; height: 10px; border-radius: 50%; background: #2fae4a; border-color: #fff; box-shadow: 0 0 0 1px #2fae4a; }
+.gd-collide-key button {
+  margin-top: 3px; align-self: flex-start; padding: 4px 10px; font: inherit; font-size: 12px; color: var(--gu-wood-ink, #fff6e4);
+  background: var(--gu-wood, #7a5534); border: 1px solid var(--gu-wood-2, #5e4027); border-radius: 999px; cursor: pointer;
+}
+.gd-collide-key button:focus-visible { outline: 2px solid var(--gu-gold, #f6c94a); outline-offset: 2px; }
+.gd-collide-key kbd { font: inherit; font-size: 11px; padding: 0 3px; border-radius: 3px; background: rgba(255, 246, 228, .2); }
+.gd-stagebox > .gd-collide-tip {
+  position: absolute; z-index: 10; max-width: 260px; padding: 5px 9px; pointer-events: none;
+  font-size: 13px; line-height: 1.3; color: var(--gu-ink, #3b2a1a); background: var(--gu-card, #fffaf0);
+  border: 1.5px solid var(--gu-line-2, #c3a574); border-radius: 8px; box-shadow: var(--gu-shadow-sm, 0 4px 12px rgba(46, 30, 12, .16));
+}
+.gd-stagebox > .gd-collide-tip[hidden] { display: none; }
+@media (max-width: 640px) { .gd-stagebox > .gd-collide-key { bottom: 128px; left: 10px; } }

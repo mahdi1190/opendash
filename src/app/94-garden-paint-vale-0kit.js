@@ -27,7 +27,7 @@ window.GardenPaintVale = (function () {
   const KIT = () => window.GardenPaintTerrainKit;
   const DEPTH = -9346, UNDER = -9592, MAIN_DEPTH = -9268;
   const parts = [], groundSigs = [];
-  let cur = null, heldGround = null, lastError = null, stats = {};
+  let cur = null, heldGround = null, lastError = null, stats = {}, feetNow = [], feetSig = '';
   const memo = new Map();
   const ok = f => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
 
@@ -238,6 +238,10 @@ window.GardenPaintVale = (function () {
       const ctx = { L, P, season, tod: info.tod, kit, W, sig, add: (bb, seed, draw, extra) => comp.ground.push(Object.assign({ bb, seed, draw }, extra || {})), main: (bb, seed, draw) => comp.main.push({ bb, seed, draw }), under: o => comp.under.push(o), thing: o => comp.things.push(o) };
       for (const p of parts) ok(() => p.compose(ctx));
       memo.clear(); memo.set(sig, comp);
+      // the standing things that say where their foot is: walking stops the feet there (_gwBuildSolids)
+      const cw = W.cellW, ch = W.cellH, names = { 'cold-cove-rock': 'shore boulder', block: 'chopping block', 'chapel-stone': 'chapel stone' };
+      feetNow = comp.things.filter(o => o.foot && o.key).map(o => { const id = o.key.split('|')[0], name = names[id.replace(/-\d+$/, '')] || id; return Object.freeze({ x0: (o.x + o.foot[0]) / cw, y0: (o.y - o.foot[2] - W.sky) / ch, x1: (o.x + o.foot[1]) / cw, y1: (o.y + 2 - W.sky) / ch, src: 'painted ' + name }); });
+      feetSig = feetNow.length + ':' + feetNow.reduce((h, f) => (Math.imul(h, 31) + Math.round(f.x0 * 64) * 7 + Math.round(f.y0 * 64)) | 0, 0);
     } else { comp.L.cellAt = L.cellAt; comp.L.soil = L.soil; }
     const { ground, main, under, things } = comp;
     const worldBox = { x: -1800, y: -1200, w: W.cols * W.cellW + 4800, h: W.sky + W.rows * W.cellH + 2600 };
@@ -308,5 +312,5 @@ window.GardenPaintVale = (function () {
   }
   /** Landform kinds painted here (the world skips its own art for them). */
   function owns(kind) { return (kind === 'ruin-wall' || kind === 'ruin') && wanted(); }
-  return { parts, groundSigs, PAL, wanted, paint, tick, clear, pendingGround, playerCanopies: () => cur ? cur.covering : null, status, paintTo, owns, readLayout, loopPath, strokePts, routeRibbon, clipGround, walk, lobe, capsule, hull, lawn, flags, setts, ok, get lastError() { return lastError; } };
+  return { feet: () => (wanted() ? feetNow : []), feetSig: () => (wanted() ? feetSig : ''), parts, groundSigs, PAL, wanted, paint, tick, clear, pendingGround, playerCanopies: () => cur ? cur.covering : null, status, paintTo, owns, readLayout, loopPath, strokePts, routeRibbon, clipGround, walk, lobe, capsule, hull, lawn, flags, setts, ok, get lastError() { return lastError; } };
 })();

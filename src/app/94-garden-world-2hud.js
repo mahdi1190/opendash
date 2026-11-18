@@ -103,7 +103,7 @@ function _ghMenu(box, m) {
   if (m.visit) together.push(['visit', 'Guestbook', 'feather']);
   const html = `<button type="button" class="gd-mbtn gd-mleave gd-mnav" data-menu="nav" aria-label="Show sidebar" title="Show sidebar">${icon('panel-left')}</button><button type="button" class="gd-mbtn gd-mmore" data-menu="more" aria-label="Garden menu" aria-expanded="false" aria-controls="gd-menu-panel">${icon('menu')}<span>Menu</span></button><div class="gd-mlist" id="gd-menu-panel">`
     + group('Garden', garden) + group('Explore', ['journal', 'lands', 'almanac', 'catch'].map(by)) + group('Play & friends', together)
-    + group('View & help', [['map', 'Map (M)', 'map'], ['view', 'Camera', 'sliders-horizontal'], by('graphics'), ['sound', 'Sound', 'music'], by('help')])
+    + group('View & help', [['map', 'Map (M)', 'map'], ['view', 'Camera', 'sliders-horizontal'], by('graphics'), ['sound', 'Sound', 'music'], ['collide', typeof gardenCollideOn === 'function' && gardenCollideOn() ? 'Hide what blocks walking' : 'Show what blocks walking', 'footprints'], by('help')])
     + `</div><button type="button" class="gd-mbtn gd-mleave" data-menu="leave" aria-label="${m.visit ? 'Back to your garden' : 'Leave the garden'}" data-tip="${m.visit ? 'Back to your garden' : 'Leave the garden'}">${icon('x')}</button>`;
   const el = _ghHost(box, 'gd-menu', 'nav');
   el.classList.toggle('is-open', !!_gh.menuOpen);
@@ -126,6 +126,7 @@ function _ghMenu(box, m) {
       if (id === 'help') { gardenGuideOpen(); return; }
       if (id === 'graphics') { gardenGraphicsOpen(); return; }
       if (id === 'sound') { gardenSoundOpen(); return; }
+      if (id === 'collide') { if (typeof gardenCollideToggle === 'function') gardenCollideToggle(); return; }
       if (id === 'design') { gardenDesignEnter(); return; }
       gardenPopupOpen(id);
     });

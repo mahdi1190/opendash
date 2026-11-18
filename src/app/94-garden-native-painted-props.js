@@ -929,6 +929,7 @@ window.GardenPaintedProps = (function () {
       const frame = g.crossSpan ? ok(() => _gldIslandGateFrame(g)) : null; if (!frame) continue;
       const art = ok(() => gateArt(gateKind(g), g, frame, 'summer', true, null)); if (!art) continue;
       for (const [id, , size, dx, dy] of art.lib) if (/^tree\./.test(id)) out.push([+((frame.x + dx) / W.cellW).toFixed(2), +((frame.y + dy - W.sky) / W.cellH).toFixed(2), size.h > 140 ? .5 : .4]);
+        else if (/^rock\./.test(id) && size.w) out.push([+((frame.x + dx) / W.cellW).toFixed(2), +((frame.y + dy + size.w * .26 - W.sky) / W.cellH).toFixed(2), +(size.w * .5 / W.cellW).toFixed(2)]);   // (the pass's boulders, drawn from their middle: a block along their foot, half the stone wide)
     }
     gateTreesMemo = { d: D, out };
     return out.concat(fallsFeet);

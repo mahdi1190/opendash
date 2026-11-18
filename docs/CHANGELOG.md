@@ -10,6 +10,17 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.73.0] - 2026-11-18
+
+### Added
+
+- **See what blocks walking.** Garden → Menu → View & help → "Show what blocks walking" (or Shift+C) shades everything you can't walk through in red, water and click areas in blue, and doors in green. Point at a red area to see what it is.
+
+### Fixed
+
+- Mountains, cliffs, ruin walls and terrace walls now block along their real edges instead of whole squares, so there are no gaps to slip through and no invisible walls at their ends.
+- The cider press, millstone, maypole, bollards and boulders block where they stand.
+
 ## [2.72.0] - 2026-11-18
 
 ### Fixed
