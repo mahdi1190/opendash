@@ -159,7 +159,11 @@ window.GardenPaintWood = (function () {
     const light = WOODS[region] && WOODS[region].mood === 'light';
     const have = (light ? THICKET_LIGHT : THICKET).filter(([id]) => typeof sceneObj === 'function' && sceneObj(id)); if (!have.length) return;
     const [id, h] = have[Math.floor(h3(x, y, 41) * have.length)];
-    out.trees.push({ id, v: Math.floor(h3(x, y, 45) * 3), size: 0, h, x: px(x + .5) + (h3(x, y, 43) - .5) * 10, y: py(y + .9), flip: h3(x, y, 47) < .5, scale: .92 + h3(x, y, 49) * .2, region, cx: x, cy: y, thicket: true });
+    // a small tree in the knot has a trunk the feet stop at, like every other painted tree (the light woods' unbought
+    // land is walked through: 94-garden-world-0walk.js gardenLockedPlotOpenToFeet), in cells at its foot
+    const tx = px(x + .5) + (h3(x, y, 43) - .5) * 10, ty = py(y + .9), GW = GARDEN_WORLD;
+    const trunk = /^tree\./.test(id) ? { x0: (tx - 5) / GW.cellW, x1: (tx + 5) / GW.cellW, y0: (ty - 6 - GW.sky) / GW.cellH, y1: (ty + 1 - GW.sky) / GW.cellH } : null;
+    out.trees.push({ id, v: Math.floor(h3(x, y, 45) * 3), size: 0, h, x: tx, y: ty, flip: h3(x, y, 47) < .5, scale: .92 + h3(x, y, 49) * .2, region, cx: x, cy: y, thicket: true, trunk });
     if (h3(x, y, 51) < (light ? .9 : .6)) out.floors.push({ kind: 'stamp', id: light && h3(x, y, 55) < .35 ? 'plant.fern' : 'plant.bracken', v: Math.floor(h3(x, y, 52) * 3), h: 22 + h3(x, y, 53) * 8, x: px(x + .5) + (h3(x, y, 54) - .5) * 26, y: py(y + 1) - 2 });
   }
   /* The old woodland's walls, pond and ruins stay in view. Its oaks are tall

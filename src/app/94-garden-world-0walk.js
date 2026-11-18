@@ -226,13 +226,27 @@ function _gwSolidHit(x, y, fx, fy) {
   }
   return false;
 }
+/** Does a plot you have not bought yet let the feet through? It stops them where the painted garden draws its edge: a
+ *  fence, wall or hedge ring in open country (94-garden-paint-vale-1valley.js), a knot of bramble and holly on every cell
+ *  in the old woodland. In the light woods (Whispering woodland) the same land is drawn as more birch and bracken with no
+ *  edge at all, so squares of open-looking wood stopped the feet for no reason you could see (the owner, 18 Nov 2026:
+ *  collisions "so many random"; the audit: every one of those plots an invisible wall). There it is walked through like
+ *  the wood round it: its small birches keep their trunk boxes (GardenPaintWood.trunks), and buying, planting and
+ *  placing still ask whose land it is (gardenAreaAt), not whether the feet can stand on it. */
+function gardenLockedPlotOpenToFeet(x, y, id) {
+  if (!/^l[sc]-/.test(id) || GARDEN_WORLD.v < 5) return false;
+  const wood = typeof GardenPaintWood !== 'undefined' && GardenPaintWood && GardenPaintWood.WOODS, painted = typeof GardenNativePainted !== 'undefined' && GardenNativePainted && GardenNativePainted.wanted && GardenNativePainted.wanted();
+  if (!wood || !painted || typeof gardenIslandRegionAt !== 'function') return false;
+  const region = gardenIslandRegionAt(x + .5, y + .5);
+  return !!(region && wood[region.id] && wood[region.id].mood === 'light');
+}
 function _gwBuildGrid(m) {
   const W = GARDEN_WORLD, g = new Uint8Array(W.cols * W.rows), otherWater = new Uint8Array(g.length), waterCover = new Uint8Array(g.length), shore = typeof gardenLakeGeometry === 'function' ? gardenLakeGeometry(m) : null;
   const lvl = m.level.level;
   for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
     let blocked = false;
     const a = gardenAreaAt(x, y, lvl);
-    if (a.startsWith('locked:') && !(a === 'locked:' + GARDEN_LAND_THICKET.id && _gwLandformCell(x, y))) blocked = true;   // behind the little fence (a landform stops the feet along its outline: _gwBuildSolids)
+    if (a.startsWith('locked:') && !(a === 'locked:' + GARDEN_LAND_THICKET.id && _gwLandformCell(x, y)) && !gardenLockedPlotOpenToFeet(x, y, a.slice(7))) blocked = true;   // behind the little fence (a landform stops the feet along its outline: _gwBuildSolids)
     const pr = gardenPropAt(x, y), pc = pr ? gardenPropCol(pr) : '';
     if (pc === 'full') blocked = true;                                // (a shop is a wall; a lectern is a box, the mooring post, the reeds and the boat nothing: _gwBuildSolids)
     const water = (!pr || pc === 'none' && !pr.walk) && gardenIsWater(x, y);
