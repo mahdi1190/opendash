@@ -21,7 +21,9 @@
    ============================================================ */
 
 const WORLD_STAGE_MAX = 2;                  // stages holding a game (a WebGL context) at once
-const WORLD_STAGE_GRACE_MS = 1500;          // after the baker is ready, the stage has this long to be ready (else the canvas plays)
+// after the baker is ready, the stage has this long to be ready (else the canvas plays). It must outlast WORLD_STAGE_PEOPLE_MS: at 1.5 s a
+// scene whose people were still being built fell to the canvas on a fast graphics card (Plymouth Hoe, Canterbury in the gallery, 17 Nov)
+const WORLD_STAGE_GRACE_MS = 4500;
 const WORLD_STAGE_PEOPLE_MS = 3000;         // ... of which it waits at most this long for the world's life (its people)
 const WORLD_STAGE_BOOT_MS = 6000;           // the engine's load and the game's boot, at most
 const WORLD_STAGE_MIN_AREA = 360 * 200;     // css px: smaller hosts (tiles) keep the canvas renderer
@@ -232,7 +234,16 @@ function worldStageCreate(el, canvas, data, o) {
 function _wsgBoot(st, w, h) {
   st.boot = _wsgNow();
   if (!_wsgGlProbe()) { _wsgFall(st, _wsgNoGl || 'no WebGL'); return; }
-  st.bootTimer = setTimeout(() => { if (!st.scene && !st.fell && !st.dead) _wsgFall(st, 'the engine did not start in time'); }, WORLD_STAGE_BOOT_MS);
+  // the bake shares the main thread with the engine's boot: while the baker is still baking, the boot is not late (a cold first scene's
+  // bake runs 7-15 s, so the first opening of a session always fell to the canvas on a fast graphics card). Late is: the bake is done
+  // and the game has not started within the grace after it, or 30 s in all.
+  const late = () => {
+    if (st.scene || st.fell || st.dead) return;
+    if (st.baker.ready && st.tBakerReady) return;   // the grace after the bake decides (_wsgBakerReady)
+    if (_wsgNow() - st.boot < 30000) { st.bootTimer = setTimeout(late, 1000); return; }
+    _wsgFall(st, 'the engine did not start in time');
+  };
+  st.bootTimer = setTimeout(late, WORLD_STAGE_BOOT_MS);
   let p;
   try { p = FreefloGameEngine.load(); } catch (e) { _wsgFall(st, 'engine: ' + (e && e.message)); return; }
   p.then((Ph) => {
@@ -520,7 +531,9 @@ function _wsgFall(st, why) {
 function _wsgDispose(game) {
   if (!game) return;
   try { game.destroy(true); } catch (e) { return; }
-  const finish = () => queueMicrotask(() => { if (!game.pendingDestroy) return; try { if (game.isRunning && typeof game.runDestroy === 'function') game.runDestroy(); else if (game.events) game.events.once('ready', finish); } catch (e) { /* gone */ } });
+  // (a runDestroy that throws part way leaves pendingDestroy set, and the loop's next step ran it again: an uncaught "reading 'sys'"
+  // each time a stage fell back mid-preparation. A failed disposal stops the loop instead.)
+  const finish = () => queueMicrotask(() => { if (!game.pendingDestroy) return; try { if (game.isRunning && typeof game.runDestroy === 'function') game.runDestroy(); else if (game.events) game.events.once('ready', finish); } catch (e) { try { game.pendingDestroy = false; if (game.loop && typeof game.loop.stop === 'function') game.loop.stop(); } catch (e2) { /* gone */ } } });
   finish();
 }
 function _wsgDestroy(st) {
