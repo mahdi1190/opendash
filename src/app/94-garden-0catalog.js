@@ -900,6 +900,10 @@ function gardenPropCol(p) {
   // The labyrinth is a spiral worn into level turf. Its reserved placement
   // stays intact, but that reservation must not become an invisible wall.
   if (!p || p.art === 'turf' || p.kind === 'ld-turf') return 'none';
+  // The ring of old trees: in the painted garden it is a low carved stone at the heart of a ring of pears
+  // (94-garden-paint-terrain-2marks.js), not five trunks side by side, yet its four cells stopped the feet as one slab
+  // with bare grass on most of it. There it is a small block at the stone, like a lectern (the collision audit, 18 Nov 2026).
+  if (p.id === 'ld-ring' && typeof GardenNativePainted !== 'undefined' && GardenNativePainted && GardenNativePainted.wanted && GardenNativePainted.wanted()) return 'soft';
   return p.col === 'none' || p.col === 'soft' || p.col === 'full' ? p.col : p.walk ? 'none' : 'full';
 }
 /** The fixed east-bank mill presents its wheel to the river on its left. */

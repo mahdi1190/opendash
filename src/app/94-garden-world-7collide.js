@@ -55,10 +55,12 @@ function gardenCollideData(mArg) {
   if (nw && nw.entities) for (const row of nw.entities.values()) {
     const md = row.metadata || {}, p = md.prop; if (md.kind !== 'prop' || !p || p.site) continue;
     const b = row.bounds, art = b ? { x0: b.x / W.cellW, y0: (b.y - W.sky) / W.cellH, x1: (b.x + b.width) / W.cellW, y1: (b.y + b.height - W.sky) / W.cellH } : null;
-    let own;
-    if (gardenPropCol(p) === 'soft') { const cx = p.x + (p.w || 1) / 2, foot = p.y + (p.h || 1) - .08; own = { x0: cx - .3, y0: foot - .55, x1: cx + .3, y1: foot + .05 }; }
+    let own, poly = null;
+    // (a crossing's click area is its own deck, not its cell: 94-garden-native-world.js pick)
+    if (md.crossingSupport && md.crossingSupport.length > 2) { poly = md.crossingSupport.map(q => ({ x: q.x / W.cellW, y: (q.y - W.sky) / W.cellH })); own = { x0: Math.min(...poly.map(q => q.x)), y0: Math.min(...poly.map(q => q.y)), x1: Math.max(...poly.map(q => q.x)), y1: Math.max(...poly.map(q => q.y)) }; }
+    else if (gardenPropCol(p) === 'soft') { const cx = p.x + (p.w || 1) / 2, foot = p.y + (p.h || 1) - .08; own = { x0: cx - .3, y0: foot - .55, x1: cx + .3, y1: foot + .05 }; }
     else own = { x0: p.x, y0: p.y, x1: p.x + (p.w || 1), y1: p.y + (p.h || 1) };
-    clicks.push({ id: p.id, name: p.name || p.id, own, art, door: p.door ? { x0: p.door.x + .08, y0: p.door.y + .16, x1: p.door.x + .92, y1: p.door.y + .84 } : null, act: !!p.act });
+    clicks.push({ id: p.id, name: p.name || p.id, own, poly, art, door: p.door ? { x0: p.door.x + .08, y0: p.door.y + .16, x1: p.door.x + .92, y1: p.door.y + .84 } : null, act: !!p.act });
   }
   for (const p of gardenPropsNow()) {
     if (!p.act || p.site || p.needs && !gardenWorkOwned(p.needs)) continue;
@@ -103,7 +105,9 @@ function _gcvDraw(g, D, scale) {
   // clickable areas in blue: the ground a click owns (solid line), its painted art (faint), its door step (dotted feel: thin)
   for (const c of D.clicks) {
     if (c.art) { g.lineStyle(lw * .8, GCV_COL.click, .28); g.strokeRect(X(c.art.x0), Y(c.art.y0), (c.art.x1 - c.art.x0) * W.cellW, (c.art.y1 - c.art.y0) * W.cellH); }
-    g.lineStyle(lw * 1.4, GCV_COL.click, .9); g.strokeRect(X(c.own.x0), Y(c.own.y0), (c.own.x1 - c.own.x0) * W.cellW, (c.own.y1 - c.own.y0) * W.cellH);
+    g.lineStyle(lw * 1.4, GCV_COL.click, .9);
+    if (c.poly) { g.beginPath(); g.moveTo(X(c.poly[0].x), Y(c.poly[0].y)); for (let k = 1; k < c.poly.length; k++) g.lineTo(X(c.poly[k].x), Y(c.poly[k].y)); g.closePath(); g.strokePath(); }
+    else g.strokeRect(X(c.own.x0), Y(c.own.y0), (c.own.x1 - c.own.x0) * W.cellW, (c.own.y1 - c.own.y0) * W.cellH);
     if (c.door) { g.lineStyle(lw, GCV_COL.click, .6); g.strokeRect(X(c.door.x0), Y(c.door.y0), (c.door.x1 - c.door.x0) * W.cellW, (c.door.y1 - c.door.y0) * W.cellH); }
   }
   // doors and arrival points in green

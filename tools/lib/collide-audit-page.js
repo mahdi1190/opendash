@@ -21,6 +21,12 @@
  *   door-unreachable                         a door, gate or arrival point you cannot walk to from where you arrive
  *   click-area                               a click area that is not on its art
  *   path-blocked                             a drawn path that is not walkable along its middle or across its width
+ *   closed-edge                              with the five gates shut: a way into a closed region that is not its gate
+ *   slide-stall, slide-jitter                how walking feels: a diagonal press into an edge that stops dead where it
+ *                                            could slide on, or shakes on the spot
+ *   route-none, route-detour, route-stall    click-to-walk: no way found where the feet have one; a way much longer than
+ *                                            the feet need; a walk that stands still or never arrives (followed frame by
+ *                                            frame the way the game follows it)
  */
 (async function collideAuditPage(opts) {
   opts = opts || {};
@@ -71,7 +77,7 @@
           for (let u = 0, s = -1; u <= w; u++) { const on = u < w && col[u] >= rowsN * thr; if (on && s < 0) s = u; if (!on && s >= 0) { runs.push([s, u - 1]); s = -1; } }
           if (!runs.length) continue;
           if (tall) { const near = runs.filter(r => originU >= r[0] - 6 && originU <= r[1] + 6).sort((p, q) => (p[1] - p[0]) - (q[1] - q[0]))[0]; best = near || (thr === .15 ? runs.sort((p, q) => Math.abs((p[0] + p[1]) / 2 - originU) - Math.abs((q[0] + q[1]) / 2 - originU))[0] : null); }
-          else best = runs.sort((p, q) => (q[1] - q[0]) - (p[1] - p[0]))[0];
+          else { const joined = []; for (const r of runs) { const last = joined[joined.length - 1]; if (last && r[0] - last[1] <= 12) last[1] = r[1]; else joined.push([r[0], r[1]]); } best = joined.sort((p, q) => (q[1] - q[0]) - (p[1] - p[0]))[0]; }   // (canes of a screen, legs of a stack: one base, not its widest leg)
         }
         if (best) {
           u0 = best[0]; u1 = best[1];
@@ -202,7 +208,17 @@
     const a = toCell(o.X0, o.Yb), b = toCell(o.X1, o.Yb), span = b.x - a.x, mid = (a.x + b.x) / 2, yb = a.y;
     if (yb < 0 || yb > W.rows || mid < 0 || mid > W.cols) return;
     const yTest = yb - 4 / CH, xs = span < .3 ? [mid] : [a.x + span * .2, mid, b.x - span * .2];
+    // a wall or a rock that stands on a landform (a ruin wall's stones, a peak on its mountain) is the landform's: check 4
+    { const formNear = (x0, y0, x1, y1) => D.rects.some(r => r.form && _gwFormHitsBox(r.form, x0, y0, x1, y1)), peak = /\|peak\||\|crag\|/.test(o.key);
+      if (o.kind === 'wall' && formNear(a.x - .1, yb - .7, b.x + .1, yb + .15)) return;
+      if (o.kind === 'rock' && (peak ? formNear(a.x - .1, yb - 1.6, b.x + .1, yb + .15) : formNear(mid - .05, yb - .3, mid + .05, yb))) return; }
+    // by design, said in the walking code: the Great Oak's roots are walked over (only its bole blocks); a crutch under a bough is a pole you brush past
+    if (/great-oak|crutch/.test(o.name + ' ' + o.key)) return;
+    // nobody can get to it (it stands in the water, a skerry): nothing to line up
+    { let touch = false; for (let x = a.x - .3; x <= b.x + .3 && !touch; x += .15) for (const dy of [-.5, -.25, 0, .25]) if (free(x, yb + dy)) { touch = true; break; } if (!touch) return; }
     const freeN = xs.filter(x => free(x, yTest)).length; let midFree = free(mid, yTest);
+    // a thin thing (a pole, a post): its small block may sit a few pixels above or below the last painted row
+    if (midFree && span < .3) for (let y = yb - 10 / CH; y <= yb + 4 / CH && midFree; y += 2 / CH) if (!free(mid, y)) midFree = false;
     const base = Object.assign({ obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: mid, y: yb, span: +span.toFixed(2) }, extra || {});
     // a tree's roots flare and its leaf litter lies lower than its trunk: its block may sit anywhere from the narrow foot down to the lowest root
     if (midFree && o.kind === 'tree') { for (let y = yb - 14 / CH; y <= yb + 5 / CH && midFree; y += 2 / CH) if (!free(mid, y)) midFree = false; if (!midFree) return; }
@@ -230,7 +246,7 @@
     // a block much wider than the base only counts when it is this thing's own (one box, or its own cells): neighbours' boxes side by side are theirs
     const own = rs.length <= 1 || cellsUnder.length;
     if (span > .6 && bw < span * .4) push({ kind: extra ? 'decor-foot' : 'block-size', ...base, detail: 'block ' + bw.toFixed(2) + ' cells wide under a base ' + span.toFixed(2) + ' wide (too small)' });
-    else if (own && rs.length <= 1 && !cellsUnder.length && bw > .8 && bw > Math.max(span * 2, span + 1)) push({ kind: extra ? 'decor-foot' : 'block-size', ...base, detail: 'block ' + bw.toFixed(2) + ' cells wide under a base ' + span.toFixed(2) + ' wide (too big)' });
+    else if (own && rs.length <= 1 && !cellsUnder.length && bw > .8 && bw > Math.max(span * 2, span + 1) && bw > o.bounds.w / CW * 1.15) push({ kind: extra ? 'decor-foot' : 'block-size', ...base, detail: 'block ' + bw.toFixed(2) + ' cells wide under a base ' + span.toFixed(2) + ' wide (too big)' });
     if (Math.abs(bc - mid) > Math.max(.35, span * .4) && !(bx0 <= mid && bx1 >= mid)) push({ kind: extra ? 'decor-foot' : 'block-offset', ...base, detail: 'block centre ' + (bc - mid).toFixed(2) + ' cells from the base centre' });
   };
   for (const o of objs) {
@@ -264,13 +280,14 @@
   for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) { const id = lockedId(x, y); if (id) (plots.get(id) || plots.set(id, []).get(id)).push([x, y]); }
   const isThicketWood = (x, y) => { const r = gardenIslandRegionAt(x + .5, y + .5); return !!(r && window.GardenPaintWood && GardenPaintWood.thicketWood && GardenPaintWood.thicketWood(r.id)); };
   const anyPaint = (X, Y) => paintAt(X, Y) || paintIn(floraBuckets, X, Y);
+  const footIn = new Set(); for (const o of all) { const c = toCell((o.X0 + o.X1) / 2, o.Yb); for (const dy of [-.35, 0]) footIn.add(Math.floor(c.x) + ',' + Math.floor(c.y + dy)); }   // (cells something stands on: a crown over a cell is not a thicket on it)
   let lockedEdges = 0;
   for (const [id, cells] of plots) {
     const bare = [], openEdges = [];
     for (const [x, y] of cells) {
       if (isThicketWood(x, y)) {
         let on = 0; for (const fy of [.2, .5, .8]) for (const fx of [.2, .5, .8]) { const p = toPx(x + fx, y + fy); if (anyPaint(p.X, p.Y)) on++; }
-        if (on < 3) bare.push([x, y, on]);
+        if (on < 3 || !footIn.has(x + ',' + y)) bare.push([x, y, on]);
       } else for (const [dx, dy, side] of [[0, 1, 's'], [0, -1, 'n'], [1, 0, 'e'], [-1, 0, 'w']]) {
         const nx = x + dx, ny = y + dy; if (lockedId(nx, ny)) continue;
         if (nx < 0 || ny < 0 || nx >= W.cols || ny >= W.rows || grid.hard[ny * W.cols + nx]) continue;
@@ -311,7 +328,7 @@
     let on = 0, n = 0; for (const fy of [.2, .5, .8]) for (const fx of [.15, .5, .85]) { n++; const p = toPx(c.own.x0 + ow * fx, c.own.y0 + (c.own.y1 - c.own.y0) * fy); const cp = toCell(p.X, p.Y); if (paintAt(p.X, p.Y) || c.art && cp.x >= c.art.x0 && cp.x <= c.art.x1 && cp.y >= c.art.y0 && cp.y <= c.art.y1 + .15) on++; }
     const base = { obj: 'prop', name: c.name, x: cx, y: c.own.y1 };
     if (ov < ow * .5) push({ kind: 'click-area', ...base, detail: 'click area ' + ow.toFixed(1) + ' wide overlaps the art by ' + ov.toFixed(2) + ' cells' });
-    else if (Math.abs(c.own.y1 - ab) > .8 && mine.length) push({ kind: 'click-area', ...base, detail: 'click area ends ' + (c.own.y1 - ab).toFixed(2) + ' rows from the drawn base' });
+    else if (Math.abs(c.own.y1 - ab) > .8 && mine.length && on / n < .67) push({ kind: 'click-area', ...base, detail: 'click area ends ' + (c.own.y1 - ab).toFixed(2) + ' rows from the drawn base' });
     else if (on / n < .34) push({ kind: 'click-area', ...base, detail: 'only ' + on + ' of ' + n + ' points of the click area are over the art' });
   }
 
@@ -353,7 +370,7 @@
           const x = p.x + (q.x - p.x) * k / n, y = p.y + (q.y - p.y) * k / n; pathSamples++;
           let blockedAt = null;
           if (lane === 'middle') { if (!(free(x, y) || free(x + .3, y) || free(x - .3, y) || free(x, y + .3) || free(x, y - .3))) blockedAt = { x, y }; }
-          else if (!nearCrossing(x, y) && !onDeck(x, y) && free(x, y)) for (const s of [-1, 1]) { const ex = x + nx * half * CW * s, ey = y + ny * half * CW * s; if (!free(ex, ey) && !free(ex + nx * -s * 6, ey + ny * -s * 6)) { blockedAt = { x: ex, y: ey }; break; } }
+          else if (!nearCrossing(x, y) && !onDeck(x, y) && free(x, y)) for (const s of [-1, 1]) { const ex = x + nx * half * CW * s, ey = y + ny * half * CW * s; if (!free(ex, ey) && !free(ex + nx * -s * 6, ey + ny * -s * 6)) { const q = toPx(ex, ey); if (paintAt(q.X, q.Y) || paintAt(q.X, q.Y - 10) || gardenPropAt(Math.floor(ex), Math.floor(ey))) continue; blockedAt = { x: ex, y: ey }; break; } }   // (a barrel, a lamp, a stall drawn on a square stands there by design: checks 1 and 2 hold it to its art)
           if (!blockedAt) { flush(); continue; }
           const why = gardenCollideAt(blockedAt.x, blockedAt.y); if (!why.length) why.push('the feet test (edge of water or a box)');
           if (!run) run = { x: blockedAt.x, y: blockedAt.y, n: 0, why: new Set() }; run.n++; for (const w of why) run.why.add(w);
@@ -367,10 +384,14 @@
   const waterAt = (x, y) => gardenWaterContainsPoint(x, y);
   const waterOnly = (x, y) => { const fx = GW_FOOT.x, fy = GW_FOOT.y; return _gwHardFeet(grid, x, y, fx, fy) && !_gwSolidHit(x, y, fx, fy) && gardenWonderWalkFine(x, y, fy) && !_gwGridFeet(grid, x, y, fx, fy); };
   const shore = { points: 0, wet: 0, notes: [] };
+  // where the feet can stand, on a quarter-cell lattice over the whole map (the shoreline, the feel of walking and click-to-walk all read it)
+  const ST = .25, NX = W.cols / ST, NY = W.rows / ST, lat = new Uint8Array(NX * NY);
+  for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) lat[j * NX + i] = free(i * ST + .001, j * ST + .001) ? 1 : 0;
+  const latAt = (i, j) => i >= 0 && j >= 0 && i < NX && j < NY && lat[j * NX + i] === 1;
   if (mosaic.ok || opts.noPicture) {
-    const ST = .25, onWater = new Set(), dryBlocked = new Set(), drawnDry = new Set();
-    for (let j = 0; j < W.rows / ST; j++) for (let i = 0; i < W.cols / ST; i++) {
-      const x = i * ST + .001, y = j * ST + .001, fr = free(x, y); shore.points++;
+    const onWater = new Set(), dryBlocked = new Set(), drawnDry = new Set();
+    for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
+      const x = i * ST + .001, y = j * ST + .001, fr = lat[j * NX + i] === 1; shore.points++;
       const wet = waterAt(x, y); if (wet) shore.wet++;
       if (fr) { if (mosaic.ok && pixWater(x, y, 6, 3) >= .85 && pixWater(x, y, 11, 5) >= .7) { const p = toPx(x, y); if (!anyPaint(p.X, p.Y) && !anyPaint(p.X, p.Y - 8)) onWater.add(i + ',' + j); } continue; }
       if (!wet && waterOnly(x, y)) {
@@ -433,7 +454,170 @@
   // a pier's deck from the quay to its end, down the middle
   for (const p of decksNow) { let n = 0, first = null; for (let y = p.y - .6; y <= p.y + p.h - .35; y += .1) if (!free(p.x + p.w / 2, y)) { n++; first = first || y; } if (n) push({ kind: 'crossing-gap', obj: 'pier', name: 'pier ' + p.id, x: p.x + p.w / 2, y: first, detail: (n * .1).toFixed(1) + ' cells of its middle line cannot be walked' }); }
 
+
+  /* ---------- 11. how walking feels: a diagonal press into any edge slides along it, and never shakes ---------- */
+  // From every standing point beside something that stops the feet, press each diagonal toward it for a third of a
+  // second, with the game's own step (_gwMoveBy at walking pace, 60 frames a second). A stall: the feet stop dead (or
+  // crawl) where giving a few pixels the other way would let them go on (the corner of a box, a slanted wall, a kink
+  // in a bank), not in a true inside corner. A jitter: the feet reverse direction three times or more.
+  const stage = async name => { window.__auditStage = name + ' @' + Math.round(performance.now()); await sleep(0); };
+  await stage('feel');
+  const feel = { starts: 0, runs: 0, stalls: 0, jitters: 0, ms: 0, of: 0 };
+  if (!opts.noFeel) {
+    const t0 = performance.now(), keepPos = { x: _gw.px, y: _gw.py }, stepPx = GW_SPEED.walk / 60, dd = stepPx / Math.hypot(CW, CH);
+    const stalls = new Map(), jitters = new Map(), edgePts = [];
+    for (let j = 1; j < NY - 1; j++) for (let i = 1; i < NX - 1; i++) {
+      if (!lat[j * NX + i]) continue;
+      let edge = false; for (let dj = -1; dj <= 1 && !edge; dj++) for (let di = -1; di <= 1; di++) if (!lat[(j + dj) * NX + i + di]) { edge = true; break; }
+      if (edge) edgePts.push(j * NX + i);
+    }
+    // (every standing point beside an edge, thinned evenly to opts.feelMax of them: the same points every run)
+    feel.of = edgePts.length; const stride = Math.max(1, Math.ceil(edgePts.length / (opts.feelMax || 9000)));
+    for (let e = 0; e < edgePts.length; e += stride) {
+      const i = edgePts[e] % NX, j = (edgePts[e] - i) / NX; feel.starts++;
+      if (feel.starts % 500 === 0) await stage('feel ' + e + '/' + edgePts.length);
+      const x = i * ST + .001, y = j * ST + .001;
+      for (const [sx, sy] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        if (latAt(i + sx, j + sy) && latAt(i + sx, j) && latAt(i, j + sy)) continue;   // (nothing that way)
+        feel.runs++; _gw.px = x; _gw.py = y; if (_gw.shoreMove) _gw.shoreMove = {};
+        let lastX = 0, lastY = 0, flips = 0, slow = 0, stall = null;
+        for (let f = 0; f < 16; f++) {
+          const bx = _gw.px, by = _gw.py; _gwMoveBy(sx * dd, sy * dd);
+          const mx = (_gw.px - bx) * CW, my = (_gw.py - by) * CH;
+          if (Math.abs(mx) > .3) { if (lastX && Math.sign(mx) !== lastX) flips++; lastX = Math.sign(mx); }
+          if (Math.abs(my) > .3) { if (lastY && Math.sign(my) !== lastY) flips++; lastY = Math.sign(my); }
+          if (Math.hypot(mx, my) >= stepPx * .15) { slow = 0; continue; }
+          if (++slow < 2) continue;
+          // stopped: could they go on along the edge that caught them? One step across for a small give against the
+          // up-and-down part of the press (an edge up to about 50 degrees from level), or one step up or down for a
+          // small give against the across part (an edge within about 20 degrees of upright), and the next step too.
+          // (An edge met nearly square, and a true inside corner, are honest stops.)
+          const x0 = _gw.px, y0 = _gw.py, vx = sx * dd * CW, vy = sy * dd * CH; let round = '';
+          for (let g = .5; g <= 3.5 && !round; g += .5) if (free(x0 + vx / CW, y0 - sy * g / CH) && free(x0 + 2 * vx / CW, y0 - sy * 2 * g / CH) && free(x0 + 3 * vx / CW, y0 - sy * 3 * g / CH)) round = 'across, giving ' + g + ' px ' + (sy > 0 ? 'up' : 'down') + ' a step';
+          for (let g = .25; g <= .75 && !round; g += .25) if (free(x0 - sx * g / CW, y0 + vy / CH) && free(x0 - sx * 2 * g / CW, y0 + 2 * vy / CH) && free(x0 - sx * 3 * g / CW, y0 + 3 * vy / CH)) round = (sy > 0 ? 'down' : 'up') + ', giving ' + g + ' px ' + (sx > 0 ? 'left' : 'right') + ' a step';
+          if (round) stall = { x: x0, y: y0, round, dir: (sy > 0 ? 'down' : 'up') + '-' + (sx > 0 ? 'right' : 'left') };
+          break;
+        }
+        if (stall) { feel.stalls++; const k = Math.round(stall.x) + ',' + Math.round(stall.y), g = stalls.get(k) || stalls.set(k, { n: 0, first: stall }).get(k); g.n++; }
+        else if (flips >= 3) { feel.jitters++; const k = Math.round(x) + ',' + Math.round(y), g = jitters.get(k) || jitters.set(k, { n: 0, x, y, dir: (sy > 0 ? 'down' : 'up') + '-' + (sx > 0 ? 'right' : 'left') }).get(k); g.n++; }
+      }
+    }
+    _gw.px = keepPos.x; _gw.py = keepPos.y; if (_gw.shoreMove) _gw.shoreMove = {};
+    const whyAt = (x, y, sx, sy) => { for (const [ax, ay] of [[sx, sy], [sx, 0], [0, sy]]) { const w = gardenCollideAt(x + ax * .3, y + ay * .2); if (w.length) return w.slice(0, 2).join('; '); } return 'the edge of water or a box'; };
+    for (const g of stalls.values()) { const s = g.first, sx = /right/.test(s.dir) ? 1 : -1, sy = /down/.test(s.dir) ? 1 : -1; push({ kind: 'slide-stall', obj: 'walking', name: 'pressing ' + s.dir + ' into ' + whyAt(s.x, s.y, sx, sy), x: s.x, y: s.y, detail: g.n + ' press(es) near here stop dead; the feet could go on ' + s.round }); }
+    for (const g of jitters.values()) push({ kind: 'slide-jitter', obj: 'walking', name: 'pressing ' + g.dir + ' beside ' + whyAt(g.x, g.y, /right/.test(g.dir) ? 1 : -1, /down/.test(g.dir) ? 1 : -1), x: g.x, y: g.y, detail: g.n + ' press(es) near here change direction three times or more in a third of a second' });
+    feel.ms = Math.round(performance.now() - t0);
+  }
+
+  /* ---------- 12. click-to-walk: it finds the way the feet have, without a long detour, and gets there without standing still ---------- */
+  await stage('routes');
+  const walkTo = { hubs: 0, routes: 0, followed: 0, none: 0, detours: 0, stalls: 0, ms: 0, routeMs: 0, followMs: 0, worst: [] };
+  if (!opts.noRoutes) {
+    const t0 = performance.now(), keepPos = { x: _gw.px, y: _gw.py };
+    // the shortest way the feet have, over the lattice (eight ways, in pixels), from one point to everywhere
+    const field = from => {
+      const dist = new Float64Array(NX * NY).fill(Infinity), heap = [], si = Math.round(from.x / ST), sj = Math.round(from.y / ST);
+      const pushH = (d, n) => { heap.push([d, n]); let c = heap.length - 1; while (c > 0) { const p = (c - 1) >> 1; if (heap[p][0] <= heap[c][0]) break; [heap[p], heap[c]] = [heap[c], heap[p]]; c = p; } };
+      const popH = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let c = 0; for (;;) { const l = c * 2 + 1, r = l + 1; let m2 = c; if (l < heap.length && heap[l][0] < heap[m2][0]) m2 = l; if (r < heap.length && heap[r][0] < heap[m2][0]) m2 = r; if (m2 === c) break; [heap[m2], heap[c]] = [heap[c], heap[m2]]; c = m2; } } return top; };
+      for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) if (latAt(si + di, sj + dj)) { const n = (sj + dj) * NX + si + di, d = Math.hypot(di * ST * CW, dj * ST * CH); if (d < dist[n]) { dist[n] = d; pushH(d, n); } }
+      const sxp = ST * CW, syp = ST * CH, diag = Math.hypot(sxp, syp);
+      while (heap.length) { const [d, n] = popH(); if (d > dist[n]) continue; const i = n % NX, j = (n - i) / NX;
+        for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { if (!di && !dj) continue; if (!latAt(i + di, j + dj)) continue; if (di && dj && (!latAt(i + di, j) || !latAt(i, j + dj))) continue; const nn = (j + dj) * NX + i + di, nd = d + (di && dj ? diag : di ? sxp : syp); if (nd < dist[nn]) { dist[nn] = nd; pushH(nd, nn); } } }
+      return dist;
+    };
+    const fieldAt = (dist, p) => { let best = Infinity; const i0 = Math.round(p.x / ST), j0 = Math.round(p.y / ST); for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) if (latAt(i0 + di, j0 + dj)) best = Math.min(best, dist[(j0 + dj) * NX + i0 + di] + Math.abs((i0 + di) * ST - p.x) * CW + Math.abs((j0 + dj) * ST - p.y) * CH); return best; };
+    const lenOf = (from, way) => { let L = 0, at = from; for (const p of way) { L += Math.hypot((p.x - at.x) * CW, (p.y - at.y) * CH); at = p; } return L; };
+    // follow a planned way frame by frame, as the game does (94-garden-native-world.js move)
+    const follow = (from, goal, way) => {
+      let path = way.slice(), spd = 0, blockT = 0, repaths = 0, frames = 0, stood = 0; const dt = 1 / 60, cap = Math.ceil(lenOf(from, way) / (GW_SPEED.walk * dt) * 2.5) + 400;
+      _gw.px = from.x; _gw.py = from.y; if (_gw.shoreMove) _gw.shoreMove = {};
+      while (path.length && frames++ < cap) {
+        while (path.length > 1 && _gwLos({ x: _gw.px, y: _gw.py }, path[1], GW_CLEAR)) path.shift();
+        const target = path[0], dx = (target.x - _gw.px) * CW, dy = (target.y - _gw.py) * CH, distance = Math.hypot(dx, dy), ux = dx / (distance || 1), uy = dy / (distance || 1);
+        let remaining = distance; for (let k = 1; k < path.length; k++) remaining += Math.hypot((path[k].x - path[k - 1].x) * CW, (path[k].y - path[k - 1].y) * CH);
+        const want = Math.min(remaining > 170 ? GW_SPEED.run : GW_SPEED.walk, Math.sqrt(2 * GW_ACC * remaining) + 34);
+        spd += Math.max(-GW_ACC * dt * 1.4, Math.min(GW_ACC * dt, want - spd));
+        if (spd <= 3) continue;
+        const step = spd * dt;
+        if (distance <= step) { _gw.px = target.x; _gw.py = target.y; path.shift(); continue; }
+        if (_gwMoveBy(ux * step / CW, uy * step / CH)) { blockT = 0; continue; }
+        stood++; blockT += dt;
+        if (blockT > .25) { blockT = 0; if (++repaths > 4) break; const tgt = free(goal.x, goal.y) ? goal : _gwNearestFreePt(goal.x, goal.y, 3), np = tgt ? _gwRoute({ x: _gw.px, y: _gw.py }, tgt) : null; if (!np) break; path = np; }
+      }
+      return { ok: !path.length, frames, repaths, stood, x: _gw.px, y: _gw.py };
+    };
+    const hubs = [{ name: 'the arrival point', x: W.start.x + .5, y: W.start.y + .5 }];
+    for (const d of D.doors) if (d.kind === 'gate' && hubs.length < (opts.hubs || 3)) { const p = _gwNearestFreePt(d.x, d.y, 2); if (p) hubs.push({ name: d.name, x: p.x, y: p.y }); }
+    const targets = [];
+    for (const d of doorList) { if (d.kind === 'start') continue; let spot = null; for (let r = 0; r <= 1.2 && !spot; r += .2) for (let a = 0; a < 8 && !spot; a++) { const x = d.x + Math.cos(a * Math.PI / 4) * r, y = d.y + Math.sin(a * Math.PI / 4) * r; if (free(x, y)) spot = { x, y }; } if (spot) targets.push({ d, spot }); }
+    walkTo.hubs = hubs.length;
+    for (const [hi, h] of hubs.entries()) {
+      const dist = field(h);
+      for (const t of targets) {
+        const ref = fieldAt(dist, t.spot); if (!Number.isFinite(ref) || ref < 60) continue;
+        walkTo.routes++; if (walkTo.routes % 20 === 0) await stage('routes ' + walkTo.routes);
+        const tr = performance.now();
+        let way = null; try { way = _gwRoute({ x: h.x, y: h.y }, t.spot); } catch (e) { way = null; }
+        walkTo.routeMs += performance.now() - tr;
+        const base = { obj: 'walking', x: t.d.x, y: t.d.y, region: regionOf(t.d.x, t.d.y) };
+        if (!way) { walkTo.none++; push({ kind: 'route-none', ...base, name: 'from ' + h.name + ' to ' + t.d.name, detail: 'click-to-walk finds no way, though the feet have one ' + Math.round(ref) + ' px long' }); continue; }
+        const L = lenOf(h, way);
+        if (L > ref * 1.3 + 90) { walkTo.detours++; push({ kind: 'route-detour', ...base, name: 'from ' + h.name + ' to ' + t.d.name, detail: 'click-to-walk goes ' + Math.round(L) + ' px; the feet have a way of ' + Math.round(ref) + ' px' }); }
+        walkTo.worst.push(+(L / ref).toFixed(2));
+        if (hi > 0) continue;   // (followed frame by frame from the arrival point)
+        walkTo.followed++;
+        // the last 700 px of the way up to the door, planned afresh from there (the game checks its sight line every
+        // frame, which makes a whole cross-map walk slow to replay); every twelfth door is walked the whole way
+        let from = { x: h.x, y: h.y }, wayF = way;
+        if (L > 760 && walkTo.followed % 12) { let left = L - 700, at = from; for (const p of way) { const seg = Math.hypot((p.x - at.x) * CW, (p.y - at.y) * CH); if (seg >= left) { const k = left / (seg || 1); from = { x: at.x + (p.x - at.x) * k, y: at.y + (p.y - at.y) * k }; break; } left -= seg; at = p; } const w2 = free(from.x, from.y) ? _gwRoute(from, t.spot) : null; if (w2) wayF = w2; else from = { x: h.x, y: h.y }; }
+        const tf = performance.now(), r = follow(from, t.spot, wayF), miss = Math.hypot((r.x - t.spot.x) * CW, (r.y - t.spot.y) * CH);
+        walkTo.followMs += performance.now() - tf;
+        if (!r.ok || miss > 8) { walkTo.stalls++; push({ kind: 'route-stall', obj: 'walking', x: r.x, y: r.y, name: 'walking from ' + h.name + ' to ' + t.d.name, detail: 'the walk never arrives: it ends ' + Math.round(miss) + ' px short after ' + r.frames + ' frames and ' + r.repaths + ' new plans' }); }
+        else if (r.repaths) { walkTo.stalls++; push({ kind: 'route-stall', obj: 'walking', x: t.d.x, y: t.d.y, name: 'walking from ' + h.name + ' to ' + t.d.name, detail: 'the walk stands still ' + r.repaths + ' time(s) for a quarter of a second and plans again (' + r.stood + ' still frames)' }); }
+      }
+      await sleep(0);
+    }
+    walkTo.routeMs = Math.round(walkTo.routeMs); walkTo.followMs = Math.round(walkTo.followMs);
+    walkTo.worst.sort((p, q) => q - p); walkTo.worst = walkTo.worst.slice(0, 5);
+    _gw.px = keepPos.x; _gw.py = keepPos.y; if (_gw.shoreMove) _gw.shoreMove = {};
+    walkTo.ms = Math.round(performance.now() - t0);
+  }
+
+  /* ---------- 13. the five gates shut: a closed region stops the feet all along its edge, and its gate is the only way up to it ---------- */
+  await stage('closed');
+  const closed = { zones: 0, edgeCells: 0, gates: 0, leaks: 0 };
+  if (!opts.noClosed) try {
+    const zones = [..._GD_LAND].filter(z => /^zn-/.test(z)), keepPos = { x: _gw.px, y: _gw.py };
+    for (const z of zones) _GD_LAND.delete(z);
+    try {
+      _gw.grid = null; _gw.gq = null; _gw.reach = null;
+      const g2 = _gwGrid(gardenHere(), true), zoneOf = (x, y) => { const a = String(gardenAreaAt(x, y, lvl)); return /^locked:zn-/.test(a) ? a.slice(7) : ''; };
+      _gw.px = start.x; _gw.py = start.y; const reach2 = _gwReach(); closed.zones = zones.length;
+      // nobody gets in: no cell of a closed region can be reached, and none lets the feet stand
+      const leak = new Set();
+      for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
+        const z = zoneOf(x, y); if (!z) continue;
+        if (reach2[y * W.cols + x] || !g2.hard[y * W.cols + x] || free(x + .5, y + .5)) leak.add(x + ',' + y);
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < W.cols && ny < W.rows && !zoneOf(nx, ny) && reach2[ny * W.cols + nx]) { closed.edgeCells++; break; } }
+      }
+      for (const c of clusters(leak, 1)) { closed.leaks++; push({ kind: 'closed-edge', obj: 'closed region', name: 'a way into ' + regionOf(c.x + .5, c.y + .5) + ' with its gate shut', x: c.x + .5, y: c.y + .5, detail: c.n + ' cell(s) of the closed region can be stood on or reached' }); }
+      // every shut gate can be walked up to
+      const D2 = gardenCollideData(gardenHere());
+      for (const d of D2.doors) { if (d.kind !== 'gate') continue; closed.gates++; let ok = false; for (let dy = -1.6; dy <= 1.6 && !ok; dy += .2) for (let dx = -1.6; dx <= 1.6 && !ok; dx += .2) { const x = d.x + dx, y = d.y + dy; if (x >= 0 && y >= 0 && x < W.cols && y < W.rows && free(x, y) && reach2[Math.floor(y) * W.cols + Math.floor(x)]) ok = true; } if (!ok) push({ kind: 'closed-edge', obj: 'gate', name: d.name + ' (shut)', x: d.x, y: d.y, detail: 'the shut gate cannot be walked up to from the arrival point' }); }
+      // a drawn path only meets a closed region at its gate
+      const gatePts = (island.gates || []).map(g => ({ x: g.x + .5, y: g.y + .5 }));
+      for (const r of island.routes || []) { if (!r.points || r.points.length < 2) continue; const pts = gardenIslandRoutePath(r).points; let was = null, said = false;
+        for (let k = 1; k < pts.length && !said; k++) { const p = pts[k - 1], q = pts[k], n = Math.max(1, Math.round(Math.hypot(q.x - p.x, q.y - p.y) / .3));
+          for (let t = 0; t < n && !said; t++) { const x = p.x + (q.x - p.x) * t / n, y = p.y + (q.y - p.y) * t / n, z = x >= 0 && y >= 0 && x < W.cols && y < W.rows ? zoneOf(Math.floor(x), Math.floor(y)) : ''; const now = z ? 'in' : (free(x, y) && reach2[Math.floor(y) * W.cols + Math.floor(x)] ? 'out' : was);
+            if (was && now && was !== now && !gatePts.some(g => Math.hypot(g.x - x, g.y - y) < 3.2)) { said = true; push({ kind: 'closed-edge', obj: 'path', name: 'path ' + r.id, x, y, detail: 'the path runs into a closed region more than three cells from any gate' }); } was = now; } } }
+    } finally {
+      for (const z of zones) _GD_LAND.add(z);
+      _gw.grid = null; _gw.gq = null; _gw.reach = null; grid = _gwGrid(gardenHere(), true); D = gardenCollideData(gardenHere()); _gw.px = keepPos.x; _gw.py = keepPos.y;
+    }
+  } catch (e) { closed.error = String(e && e.stack || e).slice(0, 300); }
+
   /* ---------- 10. every decoration a player can place: each family, each way round ---------- */
+  await stage('decor');
   const decor = { placed: 0, checked: 0, drawn: 0, families: {}, skipped: [] };
   if (!opts.noDecor) try {
     const G = _gdG(), uids = [], want = [];
@@ -441,7 +625,7 @@
     const okCell = (x, y) => { if (x < 1 || y < 1 || x >= W.cols - 1 || y >= W.rows - 1) return false; const i = y * W.cols + x, b = gardenIslandBaseCell(x, y); return !grid.hard[i] && !grid[i] && b && b.land && !b.freshwater && !b.solid && !gardenIsWater(x, y) && !String(gardenAreaAt(x, y, lvl)).startsWith('locked:') && !m.occ.get(x + ',' + y) && !gardenPropAt(x, y) && free(x + .5, y + .5); };
     const taken = new Set(); let wi = 0;
     for (let y = 2; y < W.rows - 3 && wi < want.length; y += 1) for (let x = 2; x < W.cols - 4 && wi < want.length; x += 1) {
-      const { def, r } = want[wi], w = (r % 2 && def.rot ? def.h : def.w) || 1, h = (r % 2 && def.rot ? def.w : def.h) || 1; let ok = true;
+      const { def, r } = want[wi], w = def.w || 1, h = def.h || 1; let ok = true;
       for (let yy = y - 1; yy <= y + h && ok; yy++) for (let xx = x - 1; xx <= x + w && ok; xx++) if (!okCell(xx, yy) || taken.has(xx + ',' + yy)) ok = false;
       if (ok && solidsNear(x - .6, y - .6, x + w + .6, y + h + .6).length) ok = false;
       if (!ok) continue;
@@ -471,7 +655,7 @@
       o.kind = 'decor'; o.name = (u.def.name || u.def.id) + (u.def.rot ? ' (turn ' + u.r + ')' : '');
       checkObject(o, { family: fam, region: 'decorations (anywhere)', decor: u.def.id, turn: u.r, col });
       // its block's foot against its drawn foot
-      const a = toCell(o.X0, o.Yb), b = toCell(o.X1, o.Yb), w = (u.r % 2 && u.def.rot ? u.def.h : u.def.w) || 1, h = (u.r % 2 && u.def.rot ? u.def.w : u.def.h) || 1, foot = u.y + h, mid = (a.x + b.x) / 2;
+      const a = toCell(o.X0, o.Yb), b = toCell(o.X1, o.Yb), w = u.def.w || 1, h = u.def.h || 1, foot = u.y + h, mid = (a.x + b.x) / 2;   // (a turned decoration keeps its footprint: 94-garden-design-2tools.js; only its drawing turns)
       if (faults.length === before && Math.abs(a.y - foot) > .5) push({ kind: 'decor-foot', obj: 'decor', name: o.name, family: fam, region: 'decorations (anywhere)', decor: u.def.id, turn: u.r, col, x: mid, y: a.y, detail: 'its drawn base is ' + (a.y - foot).toFixed(2) + ' rows from the foot of its ' + w + ' x ' + h + ' footprint' });
       if (faults.length > before) F.faults += faults.length - before;
     }
@@ -484,5 +668,5 @@
   const counts = { byKind: {}, byRegion: {}, byObject: {}, byRegionKind: {} };
   for (const f of faults) { counts.byKind[f.kind] = (counts.byKind[f.kind] || 0) + 1; counts.byRegion[f.region] = (counts.byRegion[f.region] || 0) + 1; counts.byObject[f.obj] = (counts.byObject[f.obj] || 0) + 1; const k = f.region + ' / ' + f.kind; counts.byRegionKind[k] = (counts.byRegionKind[k] || 0) + 1; }
   const objKinds = {}; for (const o of all) objKinds[o.kind] = (objKinds[o.kind] || 0) + 1;
-  return { total: faults.length, counts, faults, scanned: { sprites: all.length, checked, byKind: objKinds, rects: D.rects.length, cells: D.cells.length, doors: doorsChecked, clicks: D.clicks.length, landforms: (island.landforms || []).length, routes: (island.routes || []).length, pathSamples, lockedPlots: plots.size, lockedEdges, shorePoints: shore.points, shoreDrawnDryNotes: shore.notes, crossings: crossingsChecked, decks: decksNow.length, picture: mosaic, decor } };
+  return { total: faults.length, counts, faults, scanned: { sprites: all.length, checked, byKind: objKinds, rects: D.rects.length, cells: D.cells.length, doors: doorsChecked, clicks: D.clicks.length, landforms: (island.landforms || []).length, routes: (island.routes || []).length, pathSamples, lockedPlots: plots.size, lockedEdges, shorePoints: shore.points, shoreDrawnDryNotes: shore.notes, crossings: crossingsChecked, decks: decksNow.length, picture: mosaic, decor, feel, walkTo, closed } };
 })

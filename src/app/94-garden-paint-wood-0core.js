@@ -195,7 +195,8 @@ window.GardenPaintWood = (function () {
       for (const [dx, dy] of [[0, -2], [-1, -3], [1, -3], [0, -4], [-2, -1], [2, -1], [0, 2], [-2, 1], [2, 1], [0, 3]]) {
         const nx = t.cx + dx, ny = t.cy + dy, x = t.x + dx * cw, y = t.y + dy * ch;
         if (!spotOk(nx, ny) || taken.has(nx + ',' + ny) || covers(x, y, t.h * t.scale)) continue;
-        moved.push(Object.assign({}, t, { x, y, cx: nx, cy: ny })); taken.add(nx + ',' + ny); break;
+        // (its trunk box moves with it: it used to stay behind as a block on bare ground while the tree itself was walked through)
+        moved.push(Object.assign({}, t, { x, y, cx: nx, cy: ny, trunk: t.trunk ? { x0: t.trunk.x0 + dx, x1: t.trunk.x1 + dx, y0: t.trunk.y0 + dy, y1: t.trunk.y1 + dy } : null })); taken.add(nx + ',' + ny); break;
       }
       const u = WOODS[region.id].under[Math.floor(h3(t.cx, t.cy, 33) * WOODS[region.id].under.length)];
       out.floors.push({ kind: 'stamp', id: u[0], v: Math.floor(h3(t.cx, t.cy, 34) * 3), h: 30 + h3(t.cx, t.cy, 35) * 14, x: t.x, y: t.y - 2 });
@@ -411,6 +412,9 @@ window.GardenPaintWood = (function () {
   function covers(cx, cy) { const D = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data; if (!D || !D.regions) return false; for (const r of D.regions) { const def = WOODS[r.id]; if (def && def.mood !== 'meadow' && inside(cx, cy, r.polygons[0])) return true; } return false; }
   /** The painted trees' trunk feet, in cells ({x0, y0, x1, y1}), for the walking boxes (94-garden-world-0walk.js), and a
    * signature that changes only when the trees do (a repaint with the same trees keeps the route grid). */
-  function trunks() { const S = state; if (!S || !S.M) return null; if (!S.trunks) { const list = S.M.trees.filter(t => t.trunk).map(t => t.trunk); let h = list.length; for (const b of list) h = (Math.imul(h, 31) + Math.round(b.x0 * 64) * 7 + Math.round(b.y0 * 64)) | 0; S.trunks = { list, sig: list.length + ':' + h }; } return S.trunks; }
-  return { paint, tick, clear, playerCanopies: () => state ? state.covering : null, status, memory, covers, trunks, WOODS, thicketWood: id => !!(WOODS[id] && WOODS[id].mood !== 'meadow'), get lastError() { return lastError; } };
+  function trunks() { const S = state; if (!S || !S.M) return null; if (!S.trunks) { const list = S.M.trees.filter(t => t.trunk).map(t => t.trunk); let h = list.length; for (const b of list) h = (Math.imul(h, 31) + Math.round(b.x0 * 64) * 7 + Math.round(b.y0 * 64)) | 0; S.trunks = { list, sig: list.length + ':' + h + ':' + thicketCells().size }; } return S.trunks; }
+  /** The cells a thicket knot is drawn on (cy * cols + cx), from the same model as the trees: unbought land in the old
+   *  woodland stops the feet where its knot is drawn and nowhere else (94-garden-world-0walk.js gardenLockedPlotOpenToFeet). */
+  function thicketCells() { const S = state; if (!S || !S.M) return null; if (!S.thicketCells) { const set = new Set(), cols = GARDEN_WORLD.cols; for (const t of S.M.trees) if (t.thicket) set.add(t.cy * cols + t.cx); S.thicketCells = set; } return S.thicketCells; }
+  return { paint, tick, clear, playerCanopies: () => state ? state.covering : null, status, memory, covers, trunks, thicketCells, WOODS, thicketWood: id => !!(WOODS[id] && WOODS[id].mood !== 'meadow'), get lastError() { return lastError; } };
 })();

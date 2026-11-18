@@ -237,8 +237,13 @@ function gardenLockedPlotOpenToFeet(x, y, id) {
   if (!/^l[sc]-/.test(id) || GARDEN_WORLD.v < 5) return false;
   const wood = typeof GardenPaintWood !== 'undefined' && GardenPaintWood && GardenPaintWood.WOODS, painted = typeof GardenNativePainted !== 'undefined' && GardenNativePainted && GardenNativePainted.wanted && GardenNativePainted.wanted();
   if (!wood || !painted || typeof gardenIslandRegionAt !== 'function') return false;
-  const region = gardenIslandRegionAt(x + .5, y + .5);
-  return !!(region && wood[region.id] && wood[region.id].mood === 'light');
+  const region = gardenIslandRegionAt(x + .5, y + .5), def = region && wood[region.id];
+  if (!def || def.mood === 'meadow') return false;
+  if (def.mood === 'light') return true;
+  // The old woodland: a knot on every cell of unbought land, except where its painter draws none (a pool site is bare
+  // leaf litter until it is bought: two squares of open ground by the pond stopped the feet). Open where no knot is drawn.
+  const knots = GardenPaintWood.thicketCells ? GardenPaintWood.thicketCells() : null;
+  return !!knots && !knots.has(y * GARDEN_WORLD.cols + x);
 }
 function _gwBuildGrid(m) {
   const W = GARDEN_WORLD, g = new Uint8Array(W.cols * W.rows), otherWater = new Uint8Array(g.length), waterCover = new Uint8Array(g.length), shore = typeof gardenLakeGeometry === 'function' ? gardenLakeGeometry(m) : null;
@@ -528,8 +533,9 @@ function _gwMoveBy(dx, dy) {
   const len2 = (dx * W.cellW) ** 2 + (dy * W.cellH) ** 2, gain = (px, py) => len2 ? ((px - x0) * W.cellW * dx * W.cellW + (py - y0) * W.cellH * dy * W.cellH) / len2 : 0;
   // the bank's own slide, unless it all but stops a diagonal press dead (a corner of the gorge bank or the Mere shore): then the
   // wall slide below gets its turn, and whichever goes further the way you are pressing wins (17 Nov 2026)
-  if (shore.shore && (gain(shore.x, shore.y) >= .3 || !(dx && dy))) { _gw.px = shore.x; _gw.py = shore.y; return shore.moved; }
-  let x = x0, y = y0;
+  if (shore.shore && (gain(shore.x, shore.y) >= .3 || !(dx && dy))) { _gw.px = shore.x; _gw.py = shore.y; _gw.slideHold = null; return shore.moved; }
+  let x = x0, y = y0, held = '';
+  const hold = _gw.slideHold;   // the give of the frame before, if any (_gwGiveSlide)
   if (_gwFree(x0 + dx, y0 + dy)) { x += dx; y += dy; }
   else {
     if (dx && _gwFree(x0 + dx, y0)) x = x0 + dx;
@@ -546,11 +552,47 @@ function _gwMoveBy(dx, dy) {
         const bx = horiz ? (whole ? ax : x0) : x0 + part, by = horiz ? y0 + part : (whole ? ay : y0);
         if (_gwFree(bx, by)) { x = bx; y = by; break search; }
       }
+      // A diagonal press caught on the corner of a box, a slanted wall or a kink in a bank: neither axis is open on
+      // its own, so you stopped dead where you plainly could slide on (the five corner stalls left on 17 Nov 2026,
+      // and every ruin and terrace wall that runs at a slant). Give way a little against one part of the press and go
+      // on along the other, at walking pace (_gwGiveSlide). A true inside corner, and a wall you press square into,
+      // still stop you.
+      if (x === x0 && y === y0 && dx && dy) { const g = _gwGiveSlide(x0, y0, dx, dy); if (g) { x = g.x; y = g.y; held = g.kind; } }
+    }
+    // (right after giving way, the part of the press you gave against does not pull the feet straight back into the
+    // edge while the other part is still shut: that made you shake for a frame or two at the end of a slanted wall)
+    else if (hold && hold.sx === Math.sign(dx) && hold.sy === Math.sign(dy) && (hold.kind === 'x' ? x !== x0 && y === y0 : x === x0 && y !== y0)) {
+      const g = _gwGiveSlide(x0, y0, dx, dy); if (g && g.kind === hold.kind) { x = g.x; y = g.y; held = g.kind; }
     }
   }
+  _gw.slideHold = held ? { sx: Math.sign(dx), sy: Math.sign(dy), kind: held } : null;
   if (shore.shore && shore.moved && gain(shore.x, shore.y) >= gain(x, y)) { _gw.px = shore.x; _gw.py = shore.y; return true; }
   if (x === x0 && y === y0) return false;
   _gw.px = x; _gw.py = y; return true;
+}
+/**
+ * A diagonal step (dx, dy cells) that is shut whole and on each axis: the nearest way on along the edge that caught the
+ * feet, or null. Two ways are tried, smallest give first: across (the x part of the press, giving g px against its y
+ * part: kind 'y') and along y (giving g px against its x part: kind 'x'). The step is taken at walking pace along that
+ * line, so the feet follow the edge and stay against it. A way that does not go on the way you press (a wall met
+ * square) only counts where the edge falls away beyond it (the corner of a box, the end of a wall), so a flat wall
+ * pressed square stops you and never slides you sideways.
+ */
+function _gwGiveSlide(x0, y0, dx, dy) {
+  const W = GARDEN_WORLD, vx = dx * W.cellW, vy = dy * W.cellH, sp = Math.hypot(vx, vy), maxGive = Math.max(3, sp * 1.6);
+  for (let g = .25; g <= maxGive + 1e-9; g += .25) {
+    for (let way = 0; way < 2; way++) {
+      const tx = way ? -Math.sign(vx) * g : vx, ty = way ? vy : -Math.sign(vy) * g, L = Math.hypot(tx, ty), along = (vx * tx + vy * ty) / L;
+      if (along < -.3 * sp) continue;   // (back the way you came)
+      if (!_gwFree(x0 + tx / W.cellW, y0 + ty / W.cellH)) continue;
+      const k = Math.min(1, sp / L), ex = x0 + tx * k / W.cellW, ey = y0 + ty * k / W.cellH;
+      if (!_gwFree(ex, ey)) continue;
+      // met nearly square: only round a corner (twice as far on for the same give is open), never slide along a flat wall
+      if (along < .15 * sp && !(way ? _gwFree(x0 + tx / W.cellW, y0 + 2 * ty / W.cellH) : _gwFree(x0 + 2 * tx / W.cellW, y0 + ty / W.cellH))) continue;
+      return { x: ex, y: ey, kind: way ? 'x' : 'y' };
+    }
+  }
+  return null;
 }
 /** Sweep to contact, then project the remaining stage velocity onto the bank
  * tangent. Obstacles keep their old box handling; no axis jitter at a curve. */
