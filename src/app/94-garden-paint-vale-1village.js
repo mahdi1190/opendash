@@ -59,7 +59,10 @@
   }
   /** Corners cut three times: a rounded outline that stays within a third of a cell of the cells' own edge, and a run of
    * one-cell steps becomes one easy slanting line (no staircase, no ruled rectangle). */
-  function soften(loop, cut) { let p = loop; for (let k = 0; k < 3; k++) { const o = [], c = cut / (k * 1.2 + 1); for (let i = 0; i < p.length; i++) { const a = p[i], b = p[(i + 1) % p.length], L = Math.hypot(b.x - a.x, b.y - a.y) || 1, d = Math.min(c, L * (k ? .3 : .42)) / L; o.push({ x: a.x + (b.x - a.x) * d, y: a.y + (b.y - a.y) * d }, { x: b.x - (b.x - a.x) * d, y: b.y - (b.y - a.y) * d }); } p = o; } return p; }
+  function soften(loop, cut, first) { let p = loop; for (let k = 0; k < 3; k++) { const o = [], c = cut / (k * 1.2 + 1); for (let i = 0; i < p.length; i++) { const a = p[i], b = p[(i + 1) % p.length], L = Math.hypot(b.x - a.x, b.y - a.y) || 1, d = Math.min(c, L * (k ? .3 : first || .42)) / L; o.push({ x: a.x + (b.x - a.x) * d, y: a.y + (b.y - a.y) * d }, { x: b.x - (b.x - a.x) * d, y: b.y - (b.y - a.y) * d }); } p = o; } return p; }
+  /** The same loop with a point every few px, each moved a little across the line by where it is: grown, not ruled. */
+  function wander(loop, amp) { const out = []; for (let i = 0; i < loop.length; i++) { const a = loop[i], b = loop[(i + 1) % loop.length], L = Math.hypot(b.x - a.x, b.y - a.y); if (L < .01) continue; const n = Math.max(1, Math.round(L / 9)), nx = -(b.y - a.y) / L, ny = (b.x - a.x) / L; for (let j = 0; j < n; j++) { const t = j / n, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, w = (Math.sin(x * .071 + y * .043) + Math.sin(x * .029 - y * .083 + 1.7) * .8 + Math.sin(x * .19 + y * .13 + .6) * .35) * amp * .5; out.push({ x: x + nx * w, y: y + ny * w * .7 }); } } return out; }
+  const SOFT = new Set(['long-grass', 'meadow', 'reeds', 'bracken', 'hedge-road', 'stile']);
   const pathOf = loops => { const p = new Path2D(); for (const l of loops) { p.moveTo(l[0].x, l[0].y); for (let i = 1; i < l.length; i++) p.lineTo(l[i].x, l[i].y); p.closePath(); } return p; };
   const inPoly = (x, y, P) => { let ins = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) ins = !ins; } return ins; };
 
@@ -123,10 +126,10 @@
   };
   // What grows inside a field that is not yours yet (clipped to the field): the same country as its edge, a little wilder.
   // Laid tile by tile (60 px tiles on one grid, each with its own seed), only the tiles this chunk touches.
-  function fill(B, C, f, bb, cb, has) {
+  function fill(B, C, f, bb, cb, has, loops) {
     const P = C.P, season = C.season, cw = C.L.cw, ch = C.L.ch, sky = C.W.sky, st = strawTones(season), lt = leafTones(season), edge = f.edge;
     const box = [Math.max(bb[0], cb[0] - 4), Math.max(bb[1], cb[1] - 4), Math.min(bb[2], cb[2] + 4), Math.min(bb[3], cb[3] + 4)]; if (box[2] <= box[0] || box[3] <= box[1]) return;
-    const inF = (x, y) => has.has(Math.floor(x / cw) + ',' + Math.floor((y - sky) / ch));
+    const inCell = (x, y) => has.has(Math.floor(x / cw) + ',' + Math.floor((y - sky) / ch)), inF = loops ? (x, y) => { if (!inCell(x, y) && !inCell(x + 14, y) && !inCell(x - 14, y) && !inCell(x, y + 10) && !inCell(x, y - 10)) return false; for (const l of loops) if (inPoly(x, y, l)) return true; return false; } : inCell;
     const wash = edge === 'bracken' ? [P.floor, .78] : edge === 'reeds' ? ['#7e8a52', .7] : edge === 'meadow' ? [st[1], .6] : edge === 'long-grass' || edge === 'hedge-road' ? [st[0], .5] : [P.lawnLo, .5];
     B.f(B.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]), P.lawn).f(B.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]), wash[0], wash[1]);
     const T = 60, tall = edge === 'meadow' || edge === 'long-grass' || edge === 'hedge-road', salt = KIT().hashStr('fill|' + f.id) & 0xffff;
@@ -145,7 +148,7 @@
         const leaf = season === 'autumn' ? ['#b0682a', '#d38f3a', '#8a5a2c', '#e0b050'] : season === 'winter' ? ['#8a7a5a', '#a0906a', '#6e6450'] : ['#7d8f4e', '#6a7c40', '#94a058', '#8a7a4a'];
         for (let k = 0; k < 50; k++) { const [x, y] = at(), a = 1.6 + r() * 1.6, b = 1 + r() * .8, c = leaf[Math.floor(r() * leaf.length)]; if (inF(x, y)) B.f(B.ell(x, y, a, b), c, .8); }
         // deep bracken all through it (a thicket you cannot see into, not a ring round an empty middle), a foxglove here and there
-        const pts = []; for (let k = 0; k < 13; k++) { const [x, y] = at(), big = 1 + r() * .5; if (inF(x, y) && inF(x, y - 12)) pts.push({ x, y, big }); } STYLE.bracken(B, pts, C);
+        const pts = []; for (let k = 0; k < 19; k++) { const [x, y] = at(), big = 1.05 + r() * .55; if (inF(x, y) && inF(x, y - 9)) pts.push({ x, y, big }); } STYLE.bracken(B, pts, C);
         if (season !== 'winter') for (let k = 0; k < 2; k++) { const [x, y] = at(), h = 15 + r() * 7, bell = season === 'autumn' ? '#b98a6a' : '#c66a9a', go = r() < .45; if (!go || !inF(x, y) || !inF(x, y - 22)) continue; B.s(`M${x} ${y}q1 ${-h * .5} 0 ${-h}`, '#5a6e3a', 1.3, .9); for (let j = 0; j < 5; j++) B.f(B.ell(x + (j % 2 ? 1.5 : -1.5), y - h + j * 2.6, 1.5, 1.9), bell, .92); }
       }
       if (edge === 'reeds') { const pts = []; for (let k = 0; k < 5; k++) { const [x, y] = at(); if (inF(x, y) && inF(x, y - 12)) pts.push({ x, y }); } STYLE.reeds(B, pts, C); for (let k = 0; k < 2; k++) { const [x, y] = at(), w = 8 + r() * 8; if (inF(x, y)) B.f(B.blob(r, x, y, w, 2.4, 7, .5), '#5e7a6a', .35); } }
@@ -159,7 +162,14 @@
         for (let j = 0; j < 5; j++) B.f(B.blob(r, x + (r() - .5) * 8, y - 12 - r() * 8, 2.6, 1.8, 6, .4), lt[1 + Math.floor(r() * 3)], .9);
       }
       if (edge === 'drystone' && season !== 'winter') for (let k = 0; k < 14; k++) { const [x, y] = at(), c = r() < .6 ? '#e0a0b8' : '#f4f0e4'; if (inF(x, y)) B.f(B.circ(x, y, 1.2), c, .9); }   // thrift
-      if (edge === 'hedge' || edge === 'stile') for (let k = 0; k < 7; k++) { const [x, y] = at(), w = 5 + r() * 4, fl = r() < .5, c = r() < .5 ? '#f4f0e0' : '#f0d24a', dx = (r() - .5) * 4; if (!inF(x, y)) continue; B.f(B.blob(r, x, y, w, 2.2, 6, .5), lt[1], .55); if (season !== 'winter' && fl) B.f(B.circ(x + dx, y - 2, 1.1), c, .9); }
+      if (edge === 'hedge' || edge === 'stile') {
+        const wild = season === 'winter' ? ['#d8d2c4'] : season === 'autumn' ? ['#e8dcc0', '#d8a040', '#b86a8a', '#9a7ac8'] : ['#f4f0e0', '#f0d24a', '#d88aa8', '#9a7ac8', '#e8553a'];
+        for (let k = 0; k < 20; k++) { const [x, y] = at(), hh = 5 + r() * 7, lean = (r() - .5) * 4, t = r(); if (inF(x, y)) B.s(`M${x} ${y}q${lean * .3} ${-hh * .6} ${lean} ${-hh}`, t < .5 ? '#566e30' : st[Math.floor(t * 3) % 3], 1.1, .8); }
+        for (let k = 0; k < 3; k++) { const [x, y] = at(), n = 5 + Math.floor(r() * 5), rx = 9 + r() * 9, c = wild[Math.floor(r() * wild.length)]; if (!inF(x, y) || !inF(x, y - 8)) continue;
+          B.f(B.blob(r, x, y, rx, 4.2, 8, .45), lt[0], .5).f(B.blob(r, x - 1, y - 1.5, rx * .8, 3.2, 7, .45), lt[1], .75).f(B.blob(r, x - 2, y - 2.6, rx * .5, 2, 6, .45), lt[2], .7);
+          if (season !== 'winter') for (let j = 0; j < n; j++) B.f(B.circ(x + (r() - .5) * rx * 1.7, y - 2.5 - r() * 4, 1.2 + r() * .6), c, .95); }
+        { const [x, y] = at(), go = r(); if (go < .45 && inF(x, y) && inF(x, y - 14)) { for (let j = 0; j < 3; j++) { const dx = (j - 1) * 2.4 + (r() - .5), hh = 10 + r() * 6; B.s(`M${x + dx} ${y}q${dx * .3} ${-hh * .5} ${dx * .8} ${-hh}`, '#5a6e3a', 1.3, .9); B.f(B.ell(x + dx * 1.8, y - hh - 1.5, 1.3, 3), season === 'winter' ? '#7a6a52' : '#8a5a3a', .9); } B.f(B.blob(r, x, y, 7, 2.6, 7, .4), lt[1], .8); } }   // a clump of dock gone to seed
+      }
     });
   }
   // the sign at a field's gate: a small board on a post saying what the next piece of it needs, its level or its price
@@ -199,7 +209,7 @@
     if (!cells.length) return null;
     const key = f.id + '|' + lv + '|' + lockedSecs.join(','), hit = memo.get(key); if (hit) return hit;
     const mine = new Set(cells.map(c => c[0] + ',' + c[1]));
-    const loops = outline(cells).map(l => soften(l.map(p => ({ x: p[0] * cw, y: W.sky + p[1] * ch })), 20));
+    const soft = SOFT.has(f.edge), loops = outline(cells).map(l => { const q = soften(l.map(p => ({ x: p[0] * cw, y: W.sky + p[1] * ch })), soft ? 30 : 20, soft ? .5 : .42); return soft ? wander(q, 5) : q; });
     const walk = (x, y) => { const cx = Math.floor(x / cw), cy = Math.floor((y - W.sky) / ch); if (mine.has(cx + ',' + cy)) return false; const b = gardenIslandBaseCell(cx, cy), row = gardenLandCell(cx, cy); return !!b && b.land && !b.freshwater && !b.solid && !(row && row.solid) && !lockedAt(cx, cy, lv); };
     const roadAt = (x, y) => { const b = gardenIslandBaseCell(Math.floor(x / cw), Math.floor((y - W.sky) / ch)); return !!(b && b.route); };
     // where this field meets another field that is also shut, the firmer of the two edges stands on the line between them
@@ -260,9 +270,12 @@
     const lv = level(), S = shape(f, C, lv);
     if (S) {
       // its ground, over whatever the road's soft edge left on it
-      B.cx.save(); B.cx.clip(S.path, 'nonzero'); fill(B, C, f, bb, cb, S.has);
+      const grown = SOFT.has(f.edge);
+      // (a grown field has no line round it: its colour runs out a little way into the lawn and thins there)
+      if (grown) { B.cx.save(); B.cx.filter = 'blur(5px)'; B.s(S.path, f.edge === 'bracken' ? C.P.floor : f.edge === 'reeds' ? '#7e8a52' : strawTones(C.season)[0], 9, .3); B.cx.restore(); }
+      B.cx.save(); B.cx.clip(S.path, 'nonzero'); fill(B, C, f, bb, cb, S.has, S.loops);
       // a soft shade just inside the edge, so the field sits in the ground
-      B.cx.filter = 'blur(2.5px)'; B.s(S.path, '#2a3a1c', 6, .22); B.cx.filter = 'none'; B.cx.restore();
+      B.cx.filter = 'blur(2.5px)'; B.s(S.path, '#2a3a1c', 6, grown ? .1 : .22); B.cx.filter = 'none'; B.cx.restore();
       const g = S.gate, edge = STYLE[f.edge] || STYLE.hedge, kind = f.edge === 'hedge' ? 'wicket' : 'field';
       // the orchard keeps its hedge to the road side; away from the road the long grass is its edge
       const paint = part => { if (!part.length) return; if (f.edge === 'hedge-road') { const road = part.filter(q => q.road), off = part.filter(q => !q.road); if (off.length) STYLE['long-grass'](B, off, C, { tall: 1.1 }); if (road.length) edge(B, road, C); } else edge(B, part, C); };
@@ -307,6 +320,14 @@
       B.f(B.blob(r, x, y, 3.8 + t * 1.8, 2.5 + t, 6, .4), lt[t < .45 ? 1 : t < .85 ? 2 : 3], .94);
       if (season === 'winter' ? bloom < .1 : bloom < .78) B.f(B.circ(x + dx, y - up, sz), col, .96);
     }
+    // drifts of low planting across the middle: cushions of leaf with the same flowers, thinner than at the edge, so the
+    // border reads as a bed and what you plant in it still stands clear
+    { const xs = loops.flatMap(l => l.map(q => q.x)), ys = loops.flatMap(l => l.map(q => q.y)), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), n = Math.round((x1 - x0) * (y1 - y0) / 150);
+      B.cx.save(); B.cx.clip(path, 'nonzero'); B.f(path, season === 'winter' ? '#6e6450' : '#5e5236', .2);
+      for (let k = 0; k < n; k++) { const x = x0 + r() * (x1 - x0), y = y0 + r() * (y1 - y0), t = r(), w = 4.5 + r() * 4.5, bloom = r(), col = flowers[Math.floor(r() * flowers.length)], dx = (r() - .5) * 5, up = 1 + r() * 2, go = r(); if (go < .28) continue;
+        B.f(B.blob(r, x, y, w, 2.4 + t * 1.2, 6, .4), lt[t < .4 ? 0 : t < .8 ? 1 : 2], t < .4 ? .55 : .88);
+        if (season === 'winter' ? bloom < .08 : bloom < .5) B.f(B.circ(x + dx, y - up, 1.2 + bloom), col, .95); }
+      B.cx.restore(); }
     // the edging: one low line of honey stone with its joints, lit along the top
     B.s(path, '#4e4230', 4.2, .3).s(path, '#c9b68e', 2.8, 1);
     B.cx.save(); B.cx.translate(-.3, -.7); B.s(path, '#efe2be', 1, .55); B.cx.restore();
@@ -319,27 +340,40 @@
     secSet = null; cellField = null; memo.clear();
     const green = (pres.plazas || []).find(p => p.id === 'the-green'), lawnPts = green && Array.isArray(green.lawn) ? V.shapeLoop(L, green.lawn, 3) : null, lawn = lawnPts ? pathOf([lawnPts]) : null;
     // The cottage lane's last stretch, down to the postern, lies beyond the village's painted ground (which stops at row
-    // 72): the same soft gravel carries on, and the worn way goes on through the gap in the old wall and dies away.
-    { const lane = L.routes.get('cottage-lane'), rc = L.routes.get('ruins-circuit'), start = D.anchors.start, edgeY = start.y + 17.2;
+    // 72): the same gravel carries on, soft at both edges, narrows to the gap between the two old piers and goes on
+    // through it as a worn way that dies out under the trees. It starts a little way back up the lane and comes in
+    // gradually there, so the two stretches meet without a line across the lane.
+    { const lane = L.routes.get('cottage-lane'), rc = L.routes.get('ruins-circuit'), start = D.anchors.start, edgeY = start.y + 18;
       if (lane && Array.isArray(lane.widths) && lane.points && lane.points.length > 1) {
-        const lp = gardenIslandRoutePath(lane).points.filter(q => q.y >= edgeY).map(q => ({ x: q.x, y: q.y, w: gardenIslandRouteWidthAt(lane, q.x, q.y) }));
+        const lp = gardenIslandRoutePath(lane).points.filter(q => q.y >= edgeY - 2.4).map(q => ({ x: q.x, y: q.y, w: gardenIslandRouteWidthAt(lane, q.x, q.y) }));
         const end = lp[lp.length - 1], on = [];
-        if (end && rc && rc.points) { const near = rc.points.map(q => ({ x: q[0], y: q[1] })).filter(q => Math.hypot(q.x - end.x, q.y - end.y) < 3.2).sort((a, b) => Math.hypot(a.x - end.x, a.y - end.y) - Math.hypot(b.x - end.x, b.y - end.y)); for (const q of near) if (Math.hypot(q.x - end.x, q.y - end.y) > .5) on.push({ x: q.x, y: q.y, w: 1.5 }); }
+        // (on along the old wood's circuit: its next two points, set a quarter of a cell south so the worn way lies along the
+        // middle of the plain strip the ground under the painting lays there, and one cell further towards the third)
+        if (end && rc && rc.points) { const near = rc.points.map(q => ({ x: q[0], y: q[1] })).filter(q => Math.hypot(q.x - end.x, q.y - end.y) > .5).sort((a, b) => Math.hypot(a.x - end.x, a.y - end.y) - Math.hypot(b.x - end.x, b.y - end.y)).slice(0, 3);
+          near.forEach((q, i) => { if (i < 2) return on.push({ x: q.x, y: q.y + .23, w: 1.5 }); const p = near[1], d = Math.hypot(q.x - p.x, q.y - p.y) || 1; on.push({ x: p.x + (q.x - p.x) / d, y: p.y + .23 + (q.y - p.y) / d, w: 1.5 }); }); }
         const all = lp.concat(on);
-        if (all.length > 2) {
-          const px = all.map(q => L.cpt(q.x, q.y)), qs = V.walk(px, 5), n = qs.length, nLane = Math.max(1, Math.round(n * (lp.length - 1) / Math.max(1, all.length - 1)));
+        if (lp.length > 2) {
+          // (rounded where the lane turns west through the gap)
+          const raw = all.map(q => L.cpt(q.x, q.y)), px = []; raw.forEach((q, i) => { if (i < lp.length - 2 || i === raw.length - 1 || i === 0) return px.push(q); const a = raw[i - 1], b = raw[i + 1]; px.push({ x: a.x * .22 + q.x * .56 + b.x * .22, y: a.y * .22 + q.y * .56 + b.y * .22 }); });
+          const qs = V.walk(px, 5), n = qs.length, laneLen = (() => { let t = 0; for (let i = 1; i < lp.length; i++) t += Math.hypot(raw[i].x - raw[i - 1].x, raw[i].y - raw[i - 1].y); return t; })(), nLane = Math.max(2, Math.min(n - 1, Math.round(laneLen / 5)));
           const wAt = q => { const cx = q.x / cw, cy = (q.y - W.sky) / ch; let best = all[0], bd = 1e9; for (const a of all) { const d = Math.hypot(a.x - cx, a.y - cy); if (d < bd) { bd = d; best = a; } } return best.w; };
-          const half = (q, i) => wAt(q) * .46 * Math.hypot(q.ty * cw, q.tx * ch) * Math.min(1, .2 + (n - 1 - i) / 12);
-          const ribbon = (k, grow) => { const l = [], rr = []; qs.forEach((q, i) => { const h = Math.max(1, half(q, i) * k + grow * Math.min(1, (n - 1 - i) / 8)); l.push([q.x - q.ty * h, q.y + q.tx * h]); rr.push([q.x + q.ty * h, q.y - q.tx * h]); }); const pth = new Path2D(), pts = l.concat(rr.reverse()); pth.moveTo(pts[0][0], pts[0][1]); for (let j = 1; j < pts.length; j++) pth.lineTo(pts[j][0], pts[j][1]); pth.closePath(); return pth; };
-          add(kit.bboxOf(px, 50), kit.hashStr('lane-tail'), (B, r) => {
-            const P = C.P;
-            B.cx.filter = 'blur(3px)'; B.cx.save(); B.cx.translate(1.5, 2.5); B.f(ribbon(1, 9), '#8a7a4a', .3); B.cx.restore(); B.f(ribbon(1, 5), '#bca878', .92); B.cx.filter = 'none';
-            B.f(ribbon(1, 2), P.path, 1); B.cx.filter = 'blur(1.5px)'; B.f(ribbon(.45, 0), P.pathWear, .5); B.cx.filter = 'none';
-            qs.forEach((q, i) => { const h = half(q, i) + 2;
-              for (let k = 0; k < 7; k++) { const o = (r() - .5) * 1.9 * h, x = q.x - q.ty * o + (r() - .5) * 5, y = q.y + q.tx * o + (r() - .5) * 5; B.f(B.rect(x, y, .9 + r() * 1.3, .7 + r() * .9), r() < .5 ? P.pathEdge : r() < .5 ? P.pathWear : '#a89068', .5); }
-              for (const sd of [-1, 1]) { if (r() < .3) continue; const o = (h + 1.5 - r() * 4.5) * sd, x = q.x - q.ty * o, y = q.y + q.tx * o, m = 2 + Math.floor(r() * 3); for (let k = 0; k < m; k++) { const hh = 2.5 + r() * 4, lx = (r() - .5) * 3; B.s(`M${x + k * .8} ${y + 1}q${lx * .4} ${-hh * .5} ${lx} ${-hh}`, r() < .5 ? P.lawnLo : '#6f8a40', 1, .7); } }
+          // full width down the lane, easing to the width of the gap over its last stretch, then dying away beyond the piers
+          const ease = t => t * t * (3 - 2 * t), taper = i => i <= nLane - 16 ? 1 : i <= nLane ? 1 - .42 * ease((i - (nLane - 16)) / 16) : (u => u < .62 ? .58 : .58 * (1 - ease((u - .62) / .38)))((i - nLane) / Math.max(1, n - 1 - nLane));
+          const half = (q, i) => Math.max(i > nLane ? 0 : 6, (i > nLane ? 33 : wAt(q) * .37 * Math.hypot(q.ty * cw, q.tx * ch)) * taper(i));
+          const ribbon = (k, grow, full) => { const l = [], rr = []; qs.forEach((q, i) => { const h = full ? (i > nLane ? 24 * Math.min(1, (n - 1 - i) / 8) + 2 : wAt(q) * .37 * Math.hypot(q.ty * cw, q.tx * ch) * k + grow) : Math.max(.5, half(q, i) * k + grow * Math.min(1, (n - 1 - i) / 6)); l.push([q.x - q.ty * h, q.y + q.tx * h]); rr.push([q.x + q.ty * h, q.y - q.tx * h]); }); const pth = new Path2D(), pts = l.concat(rr.reverse()); pth.moveTo(pts[0][0], pts[0][1]); for (let j = 1; j < pts.length; j++) pth.lineTo(pts[j][0], pts[j][1]); pth.closePath(); return pth; };
+          const yA = W.sky + (edgeY - 2.4) * ch, yB = W.sky + (edgeY - .5) * ch, hexA = (h, al) => { const v = parseInt(String(h).slice(1), 16); return 'rgba(' + (v >> 16 & 255) + ',' + (v >> 8 & 255) + ',' + (v & 255) + ',' + al + ')'; };
+          add(kit.bboxOf(px, 60), kit.hashStr('lane-tail'), (B, r) => {
+            const P = C.P, cx = B.cx, lay = (pth, col, al, blur, dx, dy) => { const g = cx.createLinearGradient(0, yA, 0, yB); g.addColorStop(0, hexA(col, 0)); g.addColorStop(1, hexA(col, al)); cx.save(); cx.filter = blur ? 'blur(' + blur + 'px)' : 'none'; if (dx || dy) cx.translate(dx, dy); cx.fillStyle = g; cx.fill(pth); cx.restore(); };
+            // (turf first, over the whole width of the plain strip the ground under the painting lays along the route here)
+            lay(ribbon(1.2, 12, true), P.lawn, 1, 5);
+            lay(ribbon(1, 9), '#8a7a4a', .3, 4, 1.5, 2.5); lay(ribbon(1, 4.5), '#bca878', .9, 3);
+            lay(ribbon(1, 0), P.path, 1, 1.4); lay(ribbon(.45, 0), P.pathWear, .5, 2);
+            qs.forEach((q, i) => { const h = half(q, i), vis = Math.max(0, Math.min(1, (q.y - yA) / (yB - yA))); if (h < 2.5 || vis < .5) return;
+              // the wheel lines, grit in two tones, and grass leaning in over both edges
+              for (const sd of [-1, 1]) { const o = h * .44 * sd; cx.globalAlpha = .28; cx.fillStyle = P.pathEdge; cx.fillRect(q.x - q.ty * o - .8, q.y + q.tx * o - .8, 1.6, 1.6); } cx.globalAlpha = 1;
+              for (let k = 0; k < 7; k++) { const o = (r() - .5) * 1.8 * h, x = q.x - q.ty * o + (r() - .5) * 5, y = q.y + q.tx * o + (r() - .5) * 5; B.f(B.rect(x, y, .9 + r() * 1.3, .7 + r() * .9), r() < .5 ? P.pathEdge : r() < .5 ? P.pathWear : '#a89068', .5); }
+              for (const sd of [-1, 1]) { if (r() < .3) continue; const o = (h + 1.5 - r() * 4.5) * sd, x = q.x - q.ty * o, y = q.y + q.tx * o, m = 2 + Math.floor(r() * 3); for (let k = 0; k < m; k++) { const hh = 2.5 + r() * 4, lx = (r() - .5) * 3; B.s(`M${x + k * .8} ${y + 1}q${lx * .4} ${-hh * .5} ${lx} ${-hh}`, r() < .5 ? P.lawnLo : '#6f8a40', 1, .7); } if (r() < .1) B.f(B.blob(r, x, y, 3 + r() * 3, 1.6 + r(), 6, .5), r() < .5 ? P.lawnLo : '#7d9448', .55); }
             });
-            void nLane;
           });
         }
       }

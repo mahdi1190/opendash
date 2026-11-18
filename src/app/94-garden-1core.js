@@ -306,10 +306,11 @@ function gardenEnsure() {
     // (v4: the mapped cells are a building's doorway, so the stones go on the green just above the arrival instead)
     const S = GARDEN_WORLD.start, stones = [28, 29, 30].map(x => gardenStarterCell(x, 14, 'start')), spare = [0, 1, 2, 3, 4, 5].map(i => ({ x: S.x + 2 + i, y: S.y - 1 }));
     // (v5: the old start cells fell on the village green, across its flower ring, and the sign stood against the notice board.
-    // A new garden's stones step from the cottage lane along the front of its own bed, and the sign stands at the bed's corner.)
+    // 2.74, the rebuilt village: a new garden's stones step from the end of the cottage path, past the corner of its own bed,
+    // to the wishing well, and the sign stands at the bed's corner. Any that do not fit stay in the bag: never on the square.)
     const bed = GARDEN_WORLD.v >= 5 && GardenIslandLayout.data.anchors && GardenIslandLayout.data.anchors.bed;
-    const byBed = bed ? [5, 6, 7].map(dx => ({ x: bed.x + dx, y: bed.y + bed.h })) : null, signAt = bed ? { x: bed.x + 6, y: bed.y - 1 } : null;
-    const row = byBed && byBed.every(c => fits('stepping-stones', c)) ? byBed : stones.every(c => fits('stepping-stones', c)) ? stones : spare.filter(c => fits('stepping-stones', c)).slice(0, 3);
+    const byBed = bed ? [{ x: bed.x + 1, y: bed.y - 1 }, { x: bed.x, y: bed.y - 1 }, { x: bed.x - 1, y: bed.y }] : null, signAt = bed ? { x: bed.x + 6, y: bed.y - 1 } : null;
+    const row = byBed ? byBed.filter(c => fits('stepping-stones', c)) : stones.every(c => fits('stepping-stones', c)) ? stones : spare.filter(c => fits('stepping-stones', c)).slice(0, 3);
     row.forEach((c, i) => { g.decor['p' + (28 + i)] = { d: 'stepping-stones', x: c.x, y: c.y, r: 0, v: 0, at: now }; });
     const c = signAt && fits('welcome-sign', signAt) ? signAt : gardenStarterCell(30, 13, 'start'); if (fits('welcome-sign', c)) g.decor.sign = { d: 'welcome-sign', x: c.x, y: c.y, r: 0, v: 0, at: now }; }
   const coins = 60 + Math.min(500, total) + 10 * Math.min(30, streak);
