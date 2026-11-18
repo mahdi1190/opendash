@@ -409,8 +409,8 @@
   };
   for (const c of crossGeo) {
     const a = { x: c.a.x / CW, y: (c.a.y - W.sky) / CH }, b = { x: c.b.x / CW, y: (c.b.y - W.sky) / CH }, name = c.kind + ' ' + c.crossing.id, label = c.kind === 'stepping-stones' ? 'stones' : 'bridge';
-    // the middle line of the deck, bank to bank, and a cell on along it at each end
-    const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx * CW, dy * CH), ext = 44 / len; let gap = null, gapN = 0;
+    // the middle line of the deck, bank to bank, and a step on at each end
+    const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx * CW, dy * CH), ext = 10 / len; let gap = null, gapN = 0;   // (a step past each landing; whether the path beyond joins is the click-to-walk test below: paths bend at a bridge)
     for (let t = -ext; t <= 1 + ext + 1e-9; t += 3 / len) { const x = a.x + dx * t, y = a.y + dy * t; if (!free(x, y)) { gapN++; if (!gap) gap = { x, y, t }; } }
     if (gap) push({ kind: 'crossing-gap', obj: label, name, x: gap.x, y: gap.y, detail: (gapN * 3) + ' px of its middle line cannot be walked, first ' + (gap.t < 0 ? 'before its near end' : gap.t > 1 ? 'past its far end' : Math.round(gap.t * 100) + '% of the way over') + ': ' + (gardenCollideAt(gap.x, gap.y).slice(0, 2).join('; ') || 'the feet test (edge of water or a box)') });
     // both ends join their path: click-to-walk from the path a little before it to the path a little past it goes over the deck
