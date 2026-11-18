@@ -34,7 +34,7 @@ function gardenLandsWire(m) {
   for (const f of GARDEN_LAND_FEATURES) if (f.x != null && gardenLandOwnsFeature(f.id)) lf.push(f.id);
   if (typeof gardenRewardTrailsWire === 'function') ls.push(...gardenRewardTrailsWire(m));   // a path opened early with pegs: friends see it open too
   const gates = (typeof GARDEN_ZONE_GATES !== 'undefined' ? GARDEN_ZONE_GATES : []).filter(g => gardenHas('gate:' + g.id) > 0).map(g => 'zn-' + g.n);   // gates opened with a find go first, so the 12-id cap never drops one: a friend sees them open (gardenLandsOfSnap)
-  const areas = gates.concat(GARDEN_AREAS.filter(a => (a.buy ? plots.has(a.id) : m.areas.includes(a.id))).map(a => a.id));
+  const areas = gates.concat(GARDEN_AREAS.filter(a => (a.buy ? plots.has(a.id) : m.areas.includes(a.id))).map(a => a.id)).slice(0, 12);   // the snapshot's cap (GARDEN_SCHEMA areas: 12): one more and a friend's app refuses the whole garden, live or saved. The plain areas past it come back from the level (gardenLandsOfSnap)
   const S = gardenLandShowMine(m);
   return { areas, ls, lf, lc: S.c, lz: S.z, lr: S.r };
 }

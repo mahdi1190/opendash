@@ -539,10 +539,10 @@ function gardenLandsOpen(level, own) {
 }
 /** A snapshot's land: {areas (for the scene and the walking: GARDEN_AREAS rows, sections, trails, features), land (what goes in gardenLandSet)}. */
 function gardenLandsOfSnap(snap) {
-  const areas = (snap.areas || []).filter(id => { const a = gardenArea(id); return a && !gardenLandRow(id) && !a.buy; }), own = (snap.ls || []).concat(snap.lf || [], (snap.areas || []).filter(id => /^zn-[1-9]$/.test(id)));   // (zn-<n>: a gate they opened with a find)
+  const areas = (snap.areas || []).filter(id => { const a = gardenArea(id); return a && !gardenLandRow(id) && !a.buy; }).concat(GARDEN_AREAS.filter(a => !a.buy && (Number(snap.lv) || 1) >= a.lv).map(a => a.id)), own = (snap.ls || []).concat(snap.lf || [], (snap.areas || []).filter(id => /^zn-[1-9]$/.test(id)));   // (zn-<n>: a gate they opened with a find)
   if (Array.isArray(snap.lc) && snap.lc.length) own.push('finds');
   const open = gardenLandsOpen(snap.lv, own);
-  return { areas: [...new Set(areas.concat([...open]))], land: [...open] };
+  return { areas: [...new Set(areas.concat([...open]))], land: [...open] };   // (the plain areas open by their level, as at home: a snapshot's 12-id cap keeps the gates and may leave some out)
 }
 /** What a snapshot may say about land: ids from these tables, numbers in bounds. Called by gardenSnapshotClean. */
 function gardenLandsClean(raw, out) {
