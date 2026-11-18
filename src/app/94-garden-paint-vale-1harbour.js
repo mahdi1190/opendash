@@ -112,7 +112,36 @@
         B.cx.save(); B.cx.clip(band); V.flags(B, r, P, [bb[0], Math.max(bb[1], cb[1] - 13), bb[2], Math.min(bb[3], cb[3] + 13)], { row: 13, w: 24, salt: 34, moss: .05 }); B.cx.restore();
       });
     }
-    for (const id of ['strand', 'lighthouse-walk', 'coast-walk']) {
+    // (the meadow's wash is not cut away along them, V.softRoutes: the turf runs on under the worn line, with no hard edge)
+    // The village's two shore trails (2.74) are worn ways, not laid ones: trodden earth on the turf, a packed damp line and
+    // footprints on the sand, soft at both edges, as wide as the route is there, and dying away where the trail ends.
+    for (const id of ['strand', 'lighthouse-walk']) {
+      const pts = L.routePts(id), route = L.routes.get(id); if (pts.length < 2 || !route || !Array.isArray(route.widths)) continue;
+      const qs = V.walk(pts, 5), n = qs.length; if (n < 3) continue;
+      const sandAt = q => L.kind(q.x / cw, (q.y - W.sky) / ch) === 'beach';
+      const half = (q, i) => gardenIslandRouteWidthAt(route, q.x / cw, (q.y - W.sky) / ch) * .46 * Math.hypot(q.ty * cw, q.tx * ch) * Math.min(1, .25 + (n - 1 - i) / 10);
+      const runs = []; { let cur = null; qs.forEach((q, i) => { const sand = sandAt(q); if (!cur || cur.sand !== sand) { const prev = cur; cur = { sand, pts: prev ? prev.pts.slice(-3) : [] }; runs.push(cur); } cur.pts.push({ q, i }); }); }
+      // (each stretch narrows to nothing at both its ends, so turf and sand hand over to each other with no square end)
+      const ribbon = (run, k, grow, whole) => { const l = [], rr = [], m = run.pts.length; run.pts.forEach(({ q, i }, j) => { const e = whole ? 1 : Math.min(1, (j + .4) / 4, (m - 1 - j + .4) / 4), h = Math.max(.6, (half(q, i) * k + grow) * e); l.push([q.x - q.ty * h, q.y + q.tx * h]); rr.push([q.x + q.ty * h, q.y - q.tx * h]); }); const p = new Path2D(), all = l.concat(rr.reverse()); p.moveTo(all[0][0], all[0][1]); for (let j = 1; j < all.length; j++) p.lineTo(all[j][0], all[j][1]); p.closePath(); return p; };
+      add(kit.bboxOf(pts, 40), 35 + id.length, (B, r, cb) => {
+        V.clipGround(B, L, cb);
+        // (the plain ground under the painting lays its own flat strip of road wherever the route crosses a cell that is
+        // not beach, even one out on the sand: sand over that strip, seaward of the turf's edge)
+        { const gc = V.groundClips(L), off = new Path2D(); off.rect(cb[0] - 60, cb[1] - 60, cb[2] - cb[0] + 120, cb[3] - cb[1] + 120); off.addPath(gc.lawn);
+          B.cx.save(); B.cx.clip(off, 'evenodd'); B.f(ribbon({ pts: qs.map((q, i) => ({ q, i })) }, 1.7, 12, true), C.season === 'winter' ? '#dedcc5' : '#e4d6b2', 1); B.cx.restore(); }
+        for (const run of runs) { if (run.pts.length < 2) continue;
+          if (run.sand) { B.cx.filter = 'blur(5px)'; B.f(ribbon(run, .95, 2), P.sandWet, .34); B.cx.filter = 'blur(2.5px)'; B.f(ribbon(run, .4, 0), P.sandDk, .16); B.cx.filter = 'none'; }
+          else { B.cx.filter = 'blur(6px)'; B.f(ribbon(run, 1, 3), P.pathEdge, .3); B.cx.filter = 'blur(4px)'; B.f(ribbon(run, .84, 0), P.path, .78); B.cx.filter = 'blur(3px)'; B.f(ribbon(run, .4, 0), P.pathWear, .45); B.cx.filter = 'none'; }
+        }
+        qs.forEach((q, i) => {
+          const h = half(q, i), sand = sandAt(q);
+          if (sand) { if (i % 2 === 0 && i < n - 2) { const s = (i % 4 ? 1 : -1) * 3.2; B.f(B.ell(q.x - q.ty * s + q.tx * 1.5, q.y + q.tx * s + q.ty * 1.5, 2.3, 1.5), P.sandDk, .5).f(B.ell(q.x - q.ty * s - q.tx * 1.6, q.y + q.tx * s - q.ty * 1.6, 1.5, 1.2), P.sandDk, .45); } }   // footprints
+          else { for (let k = 0; k < 3; k++) { const o = (r() - .5) * 2 * h; B.f(B.ell(q.x - q.ty * o, q.y + q.tx * o, .8 + r(), .6 + r() * .6), r() < .5 ? P.pathEdge : P.pathWear, .6); }   // grit
+            for (const sd of [-1, 1]) { if (r() < .45) continue; const o = (h + 1 - r() * 3) * sd, x = q.x - q.ty * o, y = q.y + q.tx * o, hh = 3 + r() * 4; B.s(`M${x} ${y + 1}q${(r() - .5) * 2} ${-hh * .5} ${(r() - .5) * 4} ${-hh}`, r() < .5 ? P.lawnLo : '#6f8a40', 1, .75); } }   // grass growing in over the edge
+        });
+      });
+    }
+    for (const id of ['coast-walk']) {
       const pts = L.routePts(id); if (pts.length < 2) continue;
       add(kit.bboxOf(pts, 40), 35 + id.length, (B, r, cb) => {
         V.clipGround(B, L, cb);
@@ -236,5 +265,6 @@
   const drawFishBox = P => B => { B.shadow(1, 1, 14, 3, .3); crate(B, -12, 0, 22, 9, P, 1); for (let k = 0; k < 4; k++) B.f(B.ell(-8 + k * 5, -10, 2.6, 1.2), '#c8d4dc').f(B.ell(-8 + k * 5, -10.4, 1.6, .5), '#fff', .7); };
   const drawBuoy = P => B => { B.f(B.ell(0, 2, 8, 2.4), '#2e5a6a', .25); B.f(B.circ(0, -4, 5.4), '#c8402e').f(B.rect(-5.4, -5, 10.8, 2.2), '#f4efe2').f(B.circ(-1.8, -6, 1.6), '#fff', .5); B.s('M0 -9.4v-4', P.iron, 1.2); };
 
+  V.softRoutes.add('strand'); V.softRoutes.add('lighthouse-walk');
   V.parts.push({ id: 'harbour', compose });
 })();
