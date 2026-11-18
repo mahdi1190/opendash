@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.73.15] - 2026-11-18
+
+### Changed
+
+- Leaving Finance while a transaction search is still waiting now closes it cleanly. Opening Finance again keeps the new search on its own timer.
+
 ## [2.73.14] - 2026-11-18
 
 ### Changed
