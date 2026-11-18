@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.73.6] - 2026-11-18
+
+### Changed
+
+- Home skips two unnecessary redraws when Expenses and Owed first load empty. Starting Freeflo also avoids rewriting the dashboard file when its contents already match.
+
 ## [2.73.5] - 2026-11-18
 
 ### Changed
