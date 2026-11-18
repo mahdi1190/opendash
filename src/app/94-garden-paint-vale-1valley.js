@@ -23,6 +23,7 @@
     const W = GARDEN_WORLD, byId = new Map();
     for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
       const row = typeof gardenLandCell === 'function' ? gardenLandCell(x, y) : null; if (!row || !row.plot || !fenced(x, y)) continue;
+      if (V.villageSection && V.villageSection(row.id)) continue;   // (a village field wears its own edge: 94-garden-paint-vale-1village.js)
       let p = byId.get(row.id); if (!p) byId.set(row.id, p = { id: row.id, cells: [], edges: [] }); p.cells.push([x, y]);
       for (const [dx, dy, side] of [[0, 1, 's'], [0, -1, 'n'], [1, 0, 'e'], [-1, 0, 'w']]) {
         const nx = x + dx, ny = y + dy, nrow = gardenLandCell(nx, ny), base = gardenIslandBaseCell(nx, ny);

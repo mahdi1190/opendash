@@ -123,8 +123,18 @@
 
     // 4. The quay: flags in courses with a granite kerb, the harbour wall down to the tide, steps, rings and rope
     const qa = cpt(quay.x - 6.1, quay.y - 1.9), qb = cpt(quay.x + 6.3, quay.y + 1.65), qx0 = qa.x, qx1 = qb.x, qy0 = qa.y, qy1 = qb.y, face = 19;
-    const quayShape = `M${qx0 + 26} ${qy0}L${qx1 - 26} ${qy0}Q${qx1} ${qy0} ${qx1} ${qy0 + 18}L${qx1} ${qy1}L${qx0} ${qy1}L${qx0} ${qy0 + 18}Q${qx0} ${qy0} ${qx0 + 26} ${qy0}Z`;
-    add([qx0 - 40, qy0 - 30, qx1 + 40, qy1 + face + 30], 41, (B, r) => {
+    // The quay's front is its authored shape (2.74): it bulges at the pier root and tapers into the strand and the
+    // lighthouse walk; its sea edge stays the straight harbour wall, so the wall, steps and bollards keep their line.
+    const front = Array.isArray(quay.shape) ? quay.shape.filter(p => p[1] < quay.y + .7).sort((a, b) => a[0] - b[0]) : [];
+    let quayShape = `M${qx0 + 26} ${qy0}L${qx1 - 26} ${qy0}Q${qx1} ${qy0} ${qx1} ${qy0 + 18}L${qx1} ${qy1}L${qx0} ${qy1}L${qx0} ${qy0 + 18}Q${qx0} ${qy0} ${qx0 + 26} ${qy0}Z`, qTop = qy0, qLeft = qx0, qRight = qx1;
+    if (front.length > 3) {
+      const g = i => front[Math.max(0, Math.min(front.length - 1, i))], pts = [];
+      for (let i = 0; i < front.length - 1; i++) { const p0 = g(i - 1), p1 = g(i), p2 = g(i + 1), p3 = g(i + 2); for (let k = 0; k < 6; k++) { const t = k / 6, t2 = t * t, t3 = t2 * t, c = j => .5 * ((2 * p1[j]) + (-p0[j] + p2[j]) * t + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * t2 + (-p0[j] + 3 * p1[j] - 3 * p2[j] + p3[j]) * t3); pts.push(cpt(c(0), c(1))); } }
+      pts.push(cpt(front[front.length - 1][0], front[front.length - 1][1]));
+      quayShape = `M${qx0} ${qy1}` + pts.map(p => `L${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join('') + `L${qx1} ${qy1}Z`;
+      qTop = Math.min(...pts.map(p => p.y)); qLeft = Math.min(qx0, ...pts.map(p => p.x)); qRight = Math.max(qx1, ...pts.map(p => p.x));
+    }
+    add([qLeft - 40, qTop - 30, qRight + 40, qy1 + face + 30], 41, (B, r) => {
       B.cx.filter = 'blur(3px)'; B.f(B.rect(qx0 + 4, qy1 + 2, qx1 - qx0, face + 6), '#2e3a36', .25); B.cx.filter = 'none';
       // the harbour wall's face: big dressed blocks, darker and weedy towards the tide, lit at the top
       B.f(B.rect(qx0, qy1, qx1 - qx0, face), B.lin(0, qy1, 0, qy1 + face, [[0, P.wall], [.6, P.wallLo], [1, '#4e5a4a']]));
@@ -132,7 +142,7 @@
       for (let x = qx0; x < qx1; x += 6) if (r() < .7) B.f(B.blob(r, x, qy1 + face - 2, 4 + r() * 4, 2 + r() * 2.5, 6, .6), r() < .5 ? '#4a5a34' : '#6a7440', .8);
       for (let x = qx0 + 30; x < qx1 - 20; x += 70 + r() * 30) { B.s(`M${x} ${qy1 + 7}a3 3 0 1 0 0.1 0`, P.iron, 1.4, .9); B.s(`M${x} ${qy1 + 2}l0 2`, P.iron, 1.6, .9); }
       // the flags, then a kerb of long granite copes along the sea edge
-      B.cx.save(); B.cx.clip(new Path2D(quayShape)); V.flags(B, r, P, [qx0, qy0, qx1, qy1], { row: 15, w: 30, salt: 41, moss: .06 });
+      B.cx.save(); B.cx.clip(new Path2D(quayShape)); V.flags(B, r, P, [qLeft, qTop, qRight, qy1], { row: 15, w: 30, salt: 41, moss: .06 });
       // feet have worn a paler way from the promenade to the pier
       B.f(B.blob(r, (qx0 + qx1) / 2 - 20, (qy0 + qy1) / 2, 70, 26, 9, .3), P.stoneHi, .3);
       B.cx.restore();

@@ -312,8 +312,9 @@ window.GardenNativePainted = (function () {
     for (const rt of info.routes) band(rt, '#8a7a4a', 12, .3, 1.5, 2.5);
     for (const rt of info.routes) band(rt, rt.main ? '#b8a37c' : '#bca878', 4, .9);
     cx.filter = 'none';
-    for (const rt of info.routes) band(rt, rt.main ? '#a8977a' : P.path, -1, 1);   // (the main road's mortar bed; the lane's gravel)
+    for (const rt of info.routes) if (!rt.plaza) band(rt, rt.main ? '#a8977a' : P.path, -1, 1);   // (the main road's mortar bed; the lane's gravel)
     for (const rt of info.routes) {
+      if (rt.plaza) continue;   // (laid with the square, as one paved surface: step 5)
       if (rt.main) {
         // laid stones in rough courses across the road, never a grid: each a lumpy rounded hexagon, sized and toned by chance
         along(rt, 6.4, (x, y, tx, ty, rw) => {
@@ -354,15 +355,32 @@ window.GardenNativePainted = (function () {
     // (2.74: every shaped plaza in the box, the square with its rose and the terrace; the old single pad is gone)
     for (const pz of info.plazas || (info.plaza ? [Object.assign({ rose: info.plaza.centre }, info.plaza)] : [])) {
       const b = pz.bounds, rose = pz.rose, ccx = rose ? rose.x : pz.centre.x, ccy = rose ? rose.y : pz.centre.y;
-      cx.save(); cx.beginPath(); loop(pz.points); cx.fillStyle = '#3e4a2a'; cx.globalAlpha = .28; cx.filter = 'blur(' + Math.round(4 * K) + 'px)'; cx.translate(3, 5); cx.fill(); cx.restore();
-      cx.save(); cx.beginPath(); loop(pz.points); cx.fillStyle = '#ae9c78'; cx.fill(); cx.clip();
+      // The paved shape: the plaza's outline and, with it, the flagged walks that are part of it (2.74), as one path
+      // (every piece wound the same way and filled once, so the pieces never show where they overlap).
+      const U = new Path2D(), ribs = pz.ribbons || [];
+      { let q = pz.points, area = 0; for (let i = 0; i < q.length; i++) { const u = q[i], v = q[(i + 1) % q.length]; area += u.x * v.y - v.x * u.y; } if (area < 0) q = q.slice().reverse(); U.moveTo(q[0].x, q[0].y); for (let i = 1; i < q.length; i++) U.lineTo(q[i].x, q[i].y); U.closePath(); }
+      for (const rt of ribs) U.addPath(ribbon(rt, 0));
+      // (the lawn inside the walk is the lawn's: the end of the terrace road never lies on it)
+      cx.save(); if (pz.lawn) { cx.beginPath(); cx.rect(B.x, B.y, B.w, B.h); loop(pz.lawn); cx.clip('evenodd'); }
+      cx.save(); cx.fillStyle = '#3e4a2a'; cx.globalAlpha = .28; cx.filter = 'blur(' + Math.round(4 * K) + 'px)'; cx.translate(3, 5); cx.fill(U, 'nonzero'); cx.restore();
+      if (ribs.length) {
+        // the kerb round the whole shape: stroked first, so the paving laid over it leaves only the outer half showing
+        cx.save(); cx.lineJoin = 'round'; cx.lineCap = 'butt';
+        cx.globalAlpha = .4; cx.strokeStyle = '#4e4230'; cx.lineWidth = 9; cx.translate(.6, 1.3); cx.stroke(U); cx.translate(-.6, -1.3);
+        cx.globalAlpha = 1; cx.strokeStyle = '#a89070'; cx.lineWidth = 7; cx.stroke(U);
+        cx.strokeStyle = '#c0aa82'; cx.setLineDash([6.5, 2.4]); cx.lineWidth = 7; cx.stroke(U); cx.setLineDash([]);
+        cx.restore();
+      }
+      cx.save(); cx.fillStyle = '#ae9c78'; cx.fill(U, 'nonzero'); cx.clip(U, 'nonzero');
       const inRose = (x, y) => !!rose && Math.hypot((x - ccx) / 46, (y - ccy) / 25.3) < 1;
       for (let y = b.y - 4; y < b.y + b.h + 4;) {
         const rh = 7.2 + r() * 2.6; let x = b.x - 4 - r() * 8;
         while (x < b.x + b.w + 4) {
           const w = 8 + r() * 8, x0 = x + .9, y0 = y + .9, x1 = x + w - .9, y1 = y + rh - .9, mx = (x0 + x1) / 2, my = (y0 + y1) / 2; x += w;
           if (inRose(mx, my)) continue;
-          const d = Math.hypot((mx - pz.centre.x) / (b.w / 2), (my - pz.centre.y) / (b.h / 2)), j = () => (r() - .5) * 1.4;
+          const inU = (x, y) => cx.isPointInPath(U, (x - B.x) * K, (y - B.y) * K), j = () => (r() - .5) * 1.4;
+          if (ribs.length && !inU(mx, my) && !inU(x0, y0) && !inU(x1, y1) && !inU(x1, y0) && !inU(x0, y1)) continue;   // (off the paving: nothing to lay)
+          const d = ribs.length ? (Math.hypot((mx - ccx) / 150, (my - ccy) / 70) < 1 ? .3 : inU(mx, my - 6) && inU(mx, my + 6) && inU(mx - 9, my) && inU(mx + 9, my) ? .62 : 1) : Math.hypot((mx - pz.centre.x) / (b.w / 2), (my - pz.centre.y) / (b.h / 2));
           const tone = r(), base = tone < .15 ? '#c8b08a' : tone < .4 ? '#d4be96' : tone < .65 ? P.stone : tone < .82 ? '#dcc9a4' : tone < .93 ? '#cdb68e' : '#d8c2aa';
           cx.save(); cx.translate(mx, my); cx.rotate((r() - .5) * .05);
           const sw = x1 - x0 + j() * .4, shh = y1 - y0 + j() * .3;
@@ -387,7 +405,23 @@ window.GardenNativePainted = (function () {
       cx.globalAlpha = .22; cx.fillStyle = '#fff8e6'; cx.beginPath(); cx.ellipse(ccx - 8, ccy - 4, 22, 9, -.2, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 1;
       }
       // the inner shade along the rim (the plaza sits a little below the turf)
-      cx.filter = 'blur(' + Math.round(2 * K) + 'px)'; cx.beginPath(); loop(pz.points); cx.strokeStyle = '#5a4c34'; cx.lineWidth = 6; cx.globalAlpha = .28; cx.stroke(); cx.filter = 'none'; cx.globalAlpha = 1;
+      if (!ribs.length) { cx.filter = 'blur(' + Math.round(2 * K) + 'px)'; cx.beginPath(); loop(pz.points); cx.strokeStyle = '#5a4c34'; cx.lineWidth = 6; cx.globalAlpha = .28; cx.stroke(); cx.filter = 'none'; cx.globalAlpha = 1; }
+      cx.restore();
+      if (ribs.length) {
+        // turf growing in over the kerb from outside, all round the shape: blades rooted just off its edge
+        const inU = (x, y) => cx.isPointInPath(U, (x - B.x) * K, (y - B.y) * K), edge = [];
+        const q = pz.points; for (let i = 0; i < q.length; i++) { const a = q[i], c = q[(i + 1) % q.length], L = Math.hypot(c.x - a.x, c.y - a.y); for (let t = 0; t < L; t += 2.6) edge.push([a.x + (c.x - a.x) * t / L, a.y + (c.y - a.y) * t / L]); }
+        for (const rt of ribs) for (let i = 1; i < rt.points.length; i++) { const a = rt.points[i - 1], c = rt.points[i], L = Math.hypot(c.x - a.x, c.y - a.y) || 1, nx = -(c.y - a.y) / L, ny = (c.x - a.x) / L; for (let t = 0; t < L; t += 2.6) for (const sd of [-1, 1]) { const h = (rt.half[i - 1] + (rt.half[i] - rt.half[i - 1]) * t / L) * sd; edge.push([a.x + (c.x - a.x) * t / L + nx * h, a.y + (c.y - a.y) * t / L + ny * h]); } }
+        cx.lineCap = 'round';
+        for (const [ex, ey] of edge) {
+          if (r() < .4) continue; const x = ex + (r() - .5) * 2, y = ey + (r() - .5) * 2;
+          // on the rim: some ground just beside it is off the paving
+          let ox = 0, oy = 0, out = 0; for (const [dx, dy] of [[3.5, 0], [-3.5, 0], [0, 3.5], [0, -3.5]]) if (!inU(x + dx, y + dy)) { ox += dx; oy += dy; out++; } if (!out || out === 4) continue;
+          const bx = x + ox / out * .9, by = y + oy / out * .9 + 1.5, hh = 2.5 + r() * 4.5;
+          cx.globalAlpha = .8; cx.strokeStyle = r() < .5 ? P.lawnLo : '#6f8a40'; cx.lineWidth = 1; cx.beginPath(); cx.moveTo(bx, by + 2); cx.quadraticCurveTo(bx + (r() - .5) * 2, by - hh * .4, bx + (r() - .5) * 4, by - hh); cx.stroke();
+        }
+        cx.globalAlpha = 1; cx.restore(); continue;
+      }
       cx.restore();
       // the kerb: separate blocks along the rim, each lit, with grass grown up against them
       const pts = pz.points.concat([pz.points[0]]); cx.lineCap = 'round';

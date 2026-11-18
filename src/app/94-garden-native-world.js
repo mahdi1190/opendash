@@ -338,6 +338,7 @@ window.GardenNativeWorld = (function () {
       // A post or a cross standing on a road cell keeps the road under it: cutting its cell out left a square of bare ground in the paving.
       const statics = new Map(gardenIslandData().static.map(p => [p.id, p])), smallSight = base => { const p = base.route && statics.get(base.staticId); return !!p && p.w === 1 && p.h === 1 && p.col !== 'full'; };
       const open = new Set(sc.areas || []), allowed = new Uint8Array(cells.length);
+      const SOIL_MATERIALS = new Set(['bed', 'patch', 'veg', 'rich', 'herb', 'berry']), fieldIds = new Set(((gardenIslandData().presentation || {}).fields || []).flatMap(f => f.sections));
       for (let i = 0; i < cells.length; i++) {
         const cell = cells[i], x = i % W.cols, y = Math.floor(i / W.cols), row = cell && cell.row;
         // A beach-centre cell may contain the inland edge of a curved road.
@@ -346,7 +347,10 @@ window.GardenNativeWorld = (function () {
         const base = gardenIslandBaseCell(x, y), zone = gardenIslandZoneAt(x, y);
         if (!base || !base.land || base.solid || base.staticId && !smallSight(base) || zone && !open.has('zn-' + zone)) continue;
         const bareCore = !!(row && row.plot === 'core' && !open.has(row.id) && !(cultivated && cultivated.has(row.id)));
-        if (row && row.plot && !bareCore || cell.locked && !bareCore) continue;
+        // (a village field's lawn cell takes the road's curved edge; the field paints its own ground and edge over its side,
+        // 94-garden-paint-vale-1village.js. A dug bed never does: soil stays soil.)
+        const fieldLawn = !!(row && row.plot && fieldIds && fieldIds.has(row.id) && !SOIL_MATERIALS.has(cell.material) && !(cultivated && cultivated.has(row.id)));
+        if ((row && row.plot && !bareCore || cell.locked && !bareCore) && !fieldLawn) continue;
         allowed[i] = 1;
       }
       // A road into a closed zone runs one cell on under the mist instead of stopping square at its edge (the brook walk ended in a cut-off block).
@@ -382,6 +386,8 @@ window.GardenNativeWorld = (function () {
       const cbox = { x0: start.x - 18, x1: start.x + 18, y0: start.y - 26, y1: start.y + 17 };
       const box = { x: cbox.x0 * W.cellW, y: W.sky + cbox.y0 * W.cellH, w: (cbox.x1 - cbox.x0 + 1) * W.cellW, h: (cbox.y1 - cbox.y0 + 1) * W.cellH };
       const mark = test => cells.map((c, i) => ({ material: test(c, i % W.cols, Math.floor(i / W.cols)) ? 'm' : '' }));
+      // (the village's fields paint their own ground, edges and planters: 94-garden-paint-vale-1village.js)
+      const fieldIds = new Set(((D.presentation || {}).fields || []).flatMap(f => f.sections)), villageField = id => fieldIds.has(id);
       const wet = c => ['ocean', 'water', 'pool', 'lake', 'ice'].includes(c.material);
       const inBox = (x, y) => x >= cbox.x0 - 2 && x <= cbox.x1 + 2 && y >= cbox.y0 - 2 && y <= cbox.y1 + 2;
       // The sea edge is the island's own coast (the shared smooth outline);
@@ -397,8 +403,11 @@ window.GardenNativeWorld = (function () {
       // Owned beds: soil where something grows, a dug edge round an empty owned plot,
       // so plantable land always reads as plantable on the painted lawn.
       const soilSet = new Set(['bed', 'patch', 'veg', 'rich', 'herb', 'berry']);
-      const soil = outlines(mark((c, x, y) => inBox(x, y) && soilSet.has(c.material)), 'm', W, true).map(l => insetTerrainContour(l, 2));
-      const owned = outlines(mark((c, x, y) => inBox(x, y) && c.row && c.row.plot && !c.locked && !soilSet.has(c.material)), 'm', W, true).map(l => insetTerrainContour(l, 3));
+      // (2.74: corners rounded and the line a little uneven, by a fixed wobble along it: a bed is dug by hand, never ruled)
+      const softLoop = (l, cut, wob) => { let p = l; for (let k = 0; k < 2; k++) { const o = []; for (let i = 0; i < p.length; i++) { const a = p[i], b = p[(i + 1) % p.length], L = Math.hypot(b.x - a.x, b.y - a.y), d = Math.min(cut / (k + 1), L * .32) / (L || 1); o.push({ x: a.x + (b.x - a.x) * d, y: a.y + (b.y - a.y) * d }, { x: b.x - (b.x - a.x) * d, y: b.y - (b.y - a.y) * d }); } p = o; }
+        const out = []; for (let i = 0; i < p.length; i++) { const a = p[i], b = p[(i + 1) % p.length], L = Math.hypot(b.x - a.x, b.y - a.y), n = Math.max(1, Math.round(L / 14)), nx = -(b.y - a.y) / (L || 1), ny = (b.x - a.x) / (L || 1); for (let j = 0; j < n; j++) { const t = j / n, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, w = (Math.sin(x * .13 + y * .07) + Math.sin(x * .049 - y * .11 + 1.7)) * wob * .5; out.push({ x: x + nx * w, y: y + ny * w }); } } return out; };
+      const soil = outlines(mark((c, x, y) => inBox(x, y) && soilSet.has(c.material)), 'm', W, true).map(l => softLoop(insetTerrainContour(l, 2), 13, 1.6));
+      const owned = outlines(mark((c, x, y) => inBox(x, y) && c.row && c.row.plot && !c.locked && !soilSet.has(c.material) && !villageField(c.row.id)), 'm', W, true).map(l => softLoop(insetTerrainContour(l, 3), 14, 1.2));
       const pt = p => ({ x: p.x * W.cellW, y: W.sky + p.y * W.cellH });
       // A route with authored widths (the hand-authored village, 2.74) is painted as a ribbon of its own width: half, in px
       // per point, across the path (cells are wider than deep, so the same cells read wider across a north-south road).
@@ -410,10 +419,15 @@ window.GardenNativeWorld = (function () {
       const plazas = [];
       for (const r of D.routes) if (r.id === 'plaza-loop' && Array.isArray(r.shape) && r.shape.length > 2 && r.shape.some(q => inBox(q[0], q[1]))) {
         const points = smoothLoop(r.shape), xs = points.map(q => q.x), ys = points.map(q => q.y), green = r.id === 'plaza-loop' && (D.presentation.plazas || []).find(p => p.id === 'the-green');
-        plazas.push({ id: r.id, points, bounds: { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) }, centre: { x: xs.reduce((a, b) => a + b, 0) / xs.length, y: ys.reduce((a, b) => a + b, 0) / ys.length }, rose: green && green.rose ? pt({ x: green.rose.x, y: green.rose.y }) : null, flags: r.id === 'lakeside-terrace' });
+        // One paved surface: the square, the flagged walk round the green and the short road up to the terrace are laid as one
+        // (a ring laid in courses along its own line fanned at every bend; and three pavings met in seams).
+        const ribbons = routes.filter(q => q.half && (q.id === 'plaza-loop' || q.id === 'green-terrace')); for (const q of ribbons) { q.plaza = true; q.points.forEach((p, i) => { xs.push(p.x - q.half[i], p.x + q.half[i]); ys.push(p.y - q.half[i], p.y + q.half[i]); }); }
+        const sx = points.map(q => q.x), sy = points.map(q => q.y);
+        plazas.push({ id: r.id, points, ribbons, bounds: { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) }, centre: { x: sx.reduce((a, b) => a + b, 0) / sx.length, y: sy.reduce((a, b) => a + b, 0) / sy.length }, rose: green && green.rose ? pt({ x: green.rose.x, y: green.rose.y }) : null, lawn: green && Array.isArray(green.lawn) && green.lawn.length > 2 ? smoothLoop(green.lawn) : null });
       }
       const inPoly = (x, y, P) => { let ins = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) ins = !ins; } return ins; };
-      const meadow = (px, py) => { const c = cellAt(Math.floor(px / W.cellW), Math.floor((py - W.sky) / W.cellH)); return !!c && !wet(c) && !['beach', 'path'].includes(c.material) && !plazas.some(pz => inPoly(px, py, pz.points)); };
+      const onRibbon = (px, py, q) => { for (let i = 1; i < q.points.length; i++) { const a = q.points[i - 1], b = q.points[i], dx = b.x - a.x, dy = b.y - a.y, t = Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / (dx * dx + dy * dy || 1))); if (Math.hypot(px - a.x - dx * t, py - a.y - dy * t) <= q.half[i - 1] + (q.half[i] - q.half[i - 1]) * t) return true; } return false; };
+      const meadow = (px, py) => { const c = cellAt(Math.floor(px / W.cellW), Math.floor((py - W.sky) / W.cellH)); return !!c && !wet(c) && !['beach', 'path'].includes(c.material) && !plazas.some(pz => inPoly(px, py, pz.points) || (pz.ribbons || []).some(q => onRibbon(px, py, q))); };
       const plaza = null;
       // The village ground is keyed by what lies in its own box (each village cell's material and whether it is an open plot; cells of the zones past the gates are the mist's), never by
       // the open areas as a whole: a gate opening, or the woodland's plots opening with it, lies outside the box, and a 1 s bake
@@ -463,6 +477,10 @@ window.GardenNativeWorld = (function () {
         if (typeof gardenIslandRegionAt === 'function') { const r = gardenIslandRegionAt(x + .5, y + .5); if (r && r.zone) return ''; }
         if (near(x, y, 1, isPath)) return '';
         const tree = hidesSomething(x, y) ? 'edge' : 'tree';
+        // A village field paints its own ground and what grows in it (94-garden-paint-vale-1village.js): only its trees are
+        // set here, and nothing low is set on its edge, where the field's own ground would cut it in two.
+        if (c.row && c.locked && villageField(c.row.id)) return ['wood', 'orchard', 'dell'].includes(c.row.kind) ? tree : '';
+        if (near(x, y, 1, cc => !!(cc.row && cc.locked && villageField(cc.row.id)))) return '';
         if (c.row && c.locked) return ['wood', 'orchard', 'dell'].includes(c.row.kind) || c.row.solid ? tree : 'wild';
         if (c.row && c.row.plot) return '';
         return near(x, y, 2, isPath) ? 'edge' : tree;
