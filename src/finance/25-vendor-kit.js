@@ -234,10 +234,10 @@
   // Spending in the range with every filter except the merchant one, so the
   // merchant views can light the selected merchant and dim the rest.
   function spendNoMerchant(ctx) {
-    return ctx.lazy('c2:snm', () => { const q = pred({ merchant: true }); const rg = ctx.rg; return ctx.M.tx.filter(t => t.kind === 'spend' && t.n >= rg.from && t.n <= rg.to && q(t)); });
+    return ctx.lazy('c2:snm', () => spendInRange(ctx.M.tx, ctx.rg, { merchant: true }));
   }
   function spendNoMerchantPrev(ctx) {
-    return ctx.lazy('c2:snmp', () => { const q = pred({ merchant: true }); const p = ctx.prev; return ctx.M.tx.filter(t => t.kind === 'spend' && t.n >= p.from && t.n <= p.to && q(t)); });
+    return ctx.lazy('c2:snmp', () => spendInRange(ctx.M.tx, ctx.prev, { merchant: true }));
   }
 
   // ── VL: pure vendor analysis (NEW; numbers come from the same model rows) ──

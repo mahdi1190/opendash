@@ -21,7 +21,7 @@
   /** The spending rows of the range with every filter but the country (the list shows them all, the chosen one lit). */
   function ccRows(ctx) {
     PL.ensure(ctx.M);
-    return ctx.lazy('ccRows', () => { const q = pred({ country: true }); return ctx.M.tx.filter(t => t.kind === 'spend' && t.n >= ctx.rg.from && t.n <= ctx.rg.to && q(t)); });
+    return ctx.lazy('ccRows', () => spendInRange(ctx.M.tx, ctx.rg, { country: true }));
   }
   /** One colour per country, kept for the model: home is the quiet slate, the rest the palette by all-time spend. */
   function ccColor(cc) {

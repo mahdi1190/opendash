@@ -48,6 +48,27 @@
     for (const t of rows) (t.kind === 'spend' ? o.spend : t.kind === 'income' ? o.income : o.xfer).push(t);
     return o;
   }
+  // buildModel sorts counted transactions newest first. Find the start of the
+  // window, then visit its rows in statement order (including ties on one day).
+  function filterRange(tx, { from, to }, keep) {
+    if (!tx.length) return [];
+    if (tx[0].n <= to && tx[tx.length - 1].n >= from) return tx.filter(keep);
+    let lo = 0, hi = tx.length;
+    while (lo < hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (tx[mid].n <= to) hi = mid;
+      else lo = mid + 1;
+    }
+    const rows = [];
+    for (let i = lo; i < tx.length && tx[i].n >= from; i++) {
+      if (keep(tx[i])) rows.push(tx[i]);
+    }
+    return rows;
+  }
+  function spendInRange(tx, range, skip) {
+    const keep = pred(skip);
+    return filterRange(tx, range, t => t.kind === 'spend' && keep(t));
+  }
   function makeBuckets(from, to, gran) {
     const out = [];
     const multiYear = dobj(from).getUTCFullYear() !== dobj(to).getUTCFullYear();
@@ -78,17 +99,16 @@
     const M = R.model; const rg = getRange();
     const prev = { from: rg.from - rg.len, to: rg.from - 1, len: rg.len };
     const p = pred();
-    const inR = r => t => t.n >= r.from && t.n <= r.to;
-    const cur = split(M.tx.filter(t => inR(rg)(t) && p(t)));
-    const prv = split(M.tx.filter(t => inR(prev)(t) && p(t)));
+    const cur = split(filterRange(M.tx, rg, p));
+    const prv = split(filterRange(M.tx, prev, p));
     const buckets = makeBuckets(rg.from, rg.to, F.gran);
     const ix = indexer(rg.from, F.gran);
     const effFrom = Math.max(rg.from, M.minN), effTo = Math.min(rg.to, M.anchor);
     const ctx = { M, rg, prev, p, cur, prv, buckets, ix, hasPrev: prev.to >= M.minN, days: Math.max(1, effTo - effFrom + 1), effFrom, effTo };
     const memo = {};
     ctx.lazy = (k, f) => (k in memo ? memo[k] : (memo[k] = f()));
-    ctx.spendNoCat = () => ctx.lazy('snc', () => { const q = pred({ cats: true }); return M.tx.filter(t => t.kind === 'spend' && t.n >= rg.from && t.n <= rg.to && q(t)); });
-    ctx.spendNoCatPrev = () => ctx.lazy('sncp', () => { const q = pred({ cats: true }); return M.tx.filter(t => t.kind === 'spend' && t.n >= prev.from && t.n <= prev.to && q(t)); });
+    ctx.spendNoCat = () => ctx.lazy('snc', () => spendInRange(M.tx, rg, { cats: true }));
+    ctx.spendNoCatPrev = () => ctx.lazy('sncp', () => spendInRange(M.tx, prev, { cats: true }));
     ctx.prevSeries = f => {
       const pb = makeBuckets(prev.from, prev.to, F.gran); const pix = indexer(prev.from, F.gran);
       const arr = seriesBy(ctx.prv.spend, pb, pix, f || (t => t.s));
