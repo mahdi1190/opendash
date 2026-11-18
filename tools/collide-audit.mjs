@@ -86,7 +86,6 @@ async function inPageAudit() {
   const KIND = (k, rec) => {
     const md = rec && rec.metadata || {};
     if (/^__garden|^gpwd-|^gpw-|gpw-mist|gpw-foam|\|u\|/.test(k)) return '';
-    if (md.kind === 'plant' || md.kind === 'ground') return '';
     if (/\|plant\.(planter|rph-flower-tub|tub|pot)/.test(k)) return 'decor';
     if (/\|plant\./.test(k)) return '';   // bracken, ferns, reeds, shrubs: flora you brush through by design
     if (/\|tree\.|^gpwo\||\|(pine|rowan)\|/.test(k)) return 'tree';
@@ -96,6 +95,7 @@ async function inPageAudit() {
     if (/ruin|wall|terrace/.test(k)) return 'wall';
     if (/fence|railing|hedge/.test(k)) return 'fence';
     if (/^gpm\|/.test(k)) return 'landmark';
+    if (md.kind === 'plant' || md.kind === 'ground') return '';   // (a planted row, or understory: the planting's own rules)
     if (/^gpv-\d\|[^|]*\|[^|]*\|t\|(crates|pots|net|boat|crate|bench|anchor|fishbox)/.test(k)) return 'harbour';
     if (md.kind === 'decor' || /\|dec\|/.test(k)) return 'decor';
     if (md.kind === 'prop' || md.kind === 'scenery' || /^gpp\||\|street\./.test(k)) return 'prop';
@@ -288,7 +288,7 @@ try {
   await sleep(1500);
   for (const { f, i } of picks) {
     const at = await evq(`(()=>{const p=gardenWorldNearestFree(${f.x},${f.y}+3.5,2.5,.14)||{x:${f.x},y:${f.y}+3.5};_gw.px=p.x;_gw.py=p.y;_gw.path=[];_gw.cam.init=false;_gw.cam.dirty=true;return 1})()`);
-    void at; await sleep(650);
+    void at; await sleep(1100);
     const xy = await evq(`(()=>{const q=_gw.nativeWorld.project(${f.x},${f.y});const b=_gw.box.getBoundingClientRect();return JSON.stringify({x:q.x+b.left,y:q.y+b.top})})()`);
     let p; try { p = JSON.parse(xy); } catch { continue; }
     const clip = { x: Math.max(250, Math.min(1500 - 340, Math.round(p.x - 170))), y: Math.max(0, Math.min(900 - 220, Math.round(p.y - 120))), width: 340, height: 220, scale: 1 };
