@@ -124,9 +124,8 @@ const ANIM_PACK_CSS_MAX_BYTES = 24000;
 const _ANIM_ID_RE = /^[a-z0-9][a-z0-9-]{0,47}$/;
 const _animPacks = new Map();     // id -> frozen pack {id, name, ..., items:[item]}
 const _animRefs = new Map();      // 'pack/item' -> item
-/* Retired items: the basic hand-drawn place studies of the South East pack (90 scenes: one flat landmark on a generic hill or shore, nothing like the
-   Yateley, Fleet, Whitby or York standard). They stay in their files so a refresh can bring one back; the registry drops them, so no picker, gallery,
-   catalogue or saved choice shows them (a saved ref to one falls back like any missing ref). Removed at the user's request, 18 Oct 2026. */
+/* These retired South East refs stay unavailable to pickers, the gallery and saved choices,
+   including when an older pack supplies a definition. */
 const ANIM_RETIRED_SOUTH_EAST = new Set([
   'berkshire-dorney-rowing', 'berkshire-eton-mess', 'berkshire-hocktide', 'berkshire-hungerford-canal', 'berkshire-hungerford-canal-2',
   'berkshire-maidenhead-bridge', 'berkshire-maidenhead-bridge-2', 'berkshire-windsor-castle', 'buckinghamshire-aylesbury-ducks',
