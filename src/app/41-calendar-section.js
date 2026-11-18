@@ -149,7 +149,7 @@ function _calBuild() {
     const opt = { includeDone: !!calPrefs().showDone };
     const grid = calMonthGrid(Object.assign({}, o, {
       year: f.getFullYear(), month: f.getMonth(), selected: calFocus(), // clock-ok: wall date
-      entries: (iso) => calEntriesOn(iso, opt),
+      entries: _calMonthEntries(opt),
       onSelect: (iso) => calSetFocus(iso),
     }));
     body.appendChild(grid);

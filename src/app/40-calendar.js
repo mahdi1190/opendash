@@ -458,7 +458,7 @@ function calendarEventsFor(person, limit) {
  * a task's planned slot is a second task entry with planned:true (key 'p:<id>').
  * opt: {taskFilter(item), includeDone, sources (override calPrefs), plans (false: no planned slots)}
  */
-function calEntriesOn(iso, opt) {
+function calEntriesOn(iso, opt, tasksForDay) {
   opt = opt || {};
   const on = (k) => (opt.sources ? opt.sources[k] !== false : calSourceOn(k));
   const out = [];
@@ -503,7 +503,7 @@ function calEntriesOn(iso, opt) {
   if (tasksOn || plansOn) {
     // The calendar's own view can show one stream only (right-click a stream > Show in calendar).
     const onlyStream = !opt.sources && calPrefs().stream && STREAMS[calPrefs().stream] ? calPrefs().stream : null;
-    for (const t of getAllItems()) {
+    for (const t of tasksForDay ? tasksForDay(iso) : getAllItems()) {
       // A planned slot that day: when the user means to work on it, its own entry
       // (planned:true, key 'p:<id>') beside the deadline's. opt.plans:false leaves them out.
       const ps = plansOn ? planSlotOf(t) : null;
@@ -726,6 +726,27 @@ function renderCalendarEvents() {
 function fetchCalendarEvents() { if (_serverAvailable) CalStore.load(); }
 
 /* ---------- the task views' "Calendar" mode ---------- */
+// A month draws up to 42 days synchronously. Index the candidate tasks once if task entries are shown.
+function _calMonthEntries(opt) {
+  let byDay;
+  function tasksForDay(iso) {
+    if (!byDay) {
+      byDay = new Map();
+      const add = (day, task) => {
+        if (!byDay.has(day)) byDay.set(day, []);
+        byDay.get(day).push(task);
+      };
+      for (const task of getAllItems()) {
+        const due = effDate(task), plan = task.plannedFor;
+        if (due) add(due, task);
+        if (plan && plan !== due) add(plan, task);
+      }
+    }
+    return byDay.get(iso) || [];
+  }
+  return iso => calEntriesOn(iso, opt, tasksForDay);
+}
+
 // A month grid of exactly the tasks the current view and filter show; drag a
 // task to another day to reschedule it. The full Calendar lives at #view=calendar.
 function renderCalendarView(container) {
@@ -751,7 +772,7 @@ function renderCalendarView(container) {
   wrap.appendChild(head);
   const grid = calMonthGrid({
     year: yr, month: mo - 1,
-    entries: (iso) => calEntriesOn(iso, { sources: { google: false, countdowns: false, tasks: true }, taskFilter: (i) => filter(i) && matchesSearch(i, searchQuery), includeDone: true }),
+    entries: _calMonthEntries({ sources: { google: false, countdowns: false, tasks: true }, taskFilter: (i) => filter(i) && matchesSearch(i, searchQuery), includeDone: true }),
     onDay: (iso) => setView('day:' + iso),
   });
   grid.classList.add('compact');
