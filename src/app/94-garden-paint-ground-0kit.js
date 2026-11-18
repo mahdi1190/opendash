@@ -119,10 +119,16 @@ window.GardenPaintGround = (function () {
     const viewBox = grow => { const v = cam && cam.worldView; if (!v || !v.width) return null; const gx = v.width * grow, gy = v.height * grow; return [v.x - gx, v.y - gy, v.x + v.width + gx, v.y + v.height + gy]; };
     const dist = (ch, v) => Math.hypot((ch.bb[0] + ch.bb[2]) / 2 - (v[0] + v[2]) / 2, (ch.bb[1] + ch.bb[3]) / 2 - (v[1] + v[3]) / 2);
     // the level follows the zoom once the zoom has rested a moment (a wheel turn passes through many zooms)
+    const pxAt = k => ((size + 2 * PAD) * k) ** 2;   /* (a chunk's canvas px at a level) */
     const level = () => {
       if (!follow) return fixedK; const z = cam ? cam.zoom || 1 : 1, now = performance.now();
       if (Math.abs(z - zoomSeen) > zoomSeen * .012) { zoomSeen = z; zoomAt = now; if (wantK) return wantK; }
-      if (!wantK || now - zoomAt > 220) wantK = levelFor(z, minK, maxK);
+      if (!wantK || now - zoomAt > 220) {
+        // (never sharper than the budget can hold over one screen: the chunks a screen can touch, at that level)
+        let k = levelFor(z, minK, maxK); const vw = cam && cam.worldView;
+        if (vw && vw.width) { const n = (vw.width / size + 1) * (vw.height / size + 1); while (k > minK && n * pxAt(k) > budget) k = LEVELS[LEVELS.indexOf(k) - 1] || minK; }
+        wantK = k;
+      }
       return wantK;
     };
     if (!opts.lazy) { const v = viewBox(.05), K = level(); for (const ch of list) if (v && meets(ch.bb, v)) { if (!adopt(ch)) bakeStep(ch, Math.min(K, 1.5), 0); } }
@@ -131,16 +137,20 @@ window.GardenPaintGround = (function () {
       if (dead || !host) return; const v = viewBox(.05), near = viewBox(.35), keep = viewBox(.7); if (!v) return; const K = level(), moving = typeof _gw !== 'undefined' && !!_gw.moving;
       { const t0 = performance.now(); for (const ch of list) { if (ch.image || !ch.cached || !meets(ch.bb, near)) continue; adopt(ch); if (performance.now() - t0 > 4) break; } }
       // one chunk a tick: on screen and bare first, then on screen and at the wrong sharpness or repainted, then the margin
-      let best = null, bs = Infinity; held = 0;
+      let best = null, bs = Infinity, wantRoom = false; held = 0;
       for (const ch of list) {
         const inView = meets(ch.bb, v), inNear = inView || meets(ch.bb, near); if (!inNear) continue;
         const need = !ch.image ? 0 : ch.dirty ? 1 : ch.K !== K ? (ch.K < K ? 2 : 4) : -1; if (need < 0) continue;
+        /* (the margin round the screen is painted at the full level only while that fits the budget; a bare chunk there is painted at the lowest level instead, so nothing walks on to the screen unpainted) */
+        let low = false; if (!inView && need !== 1 && bakedPx - ch.px + pxAt(K) > budget) { wantRoom = true; if (ch.image || !follow || K <= minK || bakedPx + pxAt(minK) > budget) continue; low = true; }
+        ch.low = low;
         if (moving && need > 1 && heavy(ch, K)) { held++; continue; }
         const s = (inView ? 0 : 1e7) + need * 1e6 + dist(ch, v) - (ch.job ? 5e5 : 0); if (s < bs) { bs = s; best = ch; }
       }
       if (!best && opts.prebake && bakedPx < budget * .9 && !(typeof _gw !== 'undefined' && _gw.moving)) for (const ch of list) if (!ch.image) { const d = dist(ch, v); if (d < bs) { bs = d; best = ch; } }
-      if (best) { let k = follow && !meets(best.bb, near) ? Math.min(K, minK) : K; if (moving && follow && !best.image) for (const l of [2, 1.5, 1]) if (k > l && l >= minK && heavy(best, k)) k = l; bakeStep(best, k, slice); }
-      if (bakedPx > budget) { let far = null, fd = -1; for (const ch of list) if (ch.image && !meets(ch.bb, keep)) { const d = dist(ch, v) * ch.K; if (d > fd) { fd = d; far = ch; } } if (far) evict(far); }
+      if (best) { let k = follow && (best.low || !meets(best.bb, near)) ? Math.min(K, minK) : K; if (moving && follow && !best.image) for (const l of [2, 1.5, 1]) if (k > l && l >= minK && heavy(best, k)) k = l; bakeStep(best, k, slice); }
+      // over the budget: let go the farthest, sharpest chunk that is off the screen (one well away first); short of room for the margin: one well away
+      if (bakedPx > budget || wantRoom) { const over = bakedPx > budget; let far = null, fd = -1; for (const ch of list) { if (!ch.image || meets(ch.bb, v)) continue; const away = !meets(ch.bb, keep); if (!away && !over) continue; const d = dist(ch, v) * ch.K * (away ? 1 : .001); if (d > fd) { fd = d; far = ch; } } if (far) evict(far); }
     };
     const timer = setInterval(() => { const t0 = performance.now(); ok(tick); const d = performance.now() - t0; if (d > slow.tickMs) slow.tickMs = +d.toFixed(1); }, 34);
     const handle = {

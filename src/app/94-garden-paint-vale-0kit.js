@@ -247,7 +247,7 @@ window.GardenPaintVale = (function () {
     const worldBox = { x: -1800, y: -1200, w: W.cols * W.cellW + 4800, h: W.sky + W.rows * W.cellH + 2600 };
     const gBox = { x: 0, y: 0, w: W.cols * W.cellW, h: W.sky + W.rows * W.cellH };
     const handles = []; let groundHandle = null;
-    if (ground.length) handles.push(groundHandle = kit.chunked(scene, root, ground, { key: groundSig, box: gBox, K: 1.1, chunk: 256, depth: DEPTH, budgetMB: 20, lazy: true, slice: 10 }));
+    if (ground.length) handles.push(groundHandle = kit.chunked(scene, root, ground, { key: groundSig, box: gBox, K: 1.1, chunk: 256, depth: DEPTH, budgetMB: 28, lazy: true, slice: 10 }));
     if (main.length) handles.push(kit.chunked(scene, root, main, { key: sig + '|m', box: worldBox, K: .35, chunk: 512, depth: MAIN_DEPTH, budgetMB: 10, lazy: true, slice: 10, prebake: true }));
     // Standing things and the crossings' water: a texture already baked is shown at once; a new one waits in a queue
     // that tick() bakes nearest the camera first, a few milliseconds a frame (so a repaint never freezes a frame).

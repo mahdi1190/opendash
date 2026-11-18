@@ -600,7 +600,7 @@ window.GardenPaintedTerrain = (function () {
     const ops = ok(() => compose(L, season)); if (!ops) return null;
     const rb = kit.bboxOf(L.regionLoops.flat().concat(L.terraces.flatMap(t => t.pts)));
     const box = { x: 0, y: W.sky - 150, w: W.cols * W.cellW, h: Math.min(W.sky + W.rows * W.cellH, rb[3] + 80) - (W.sky - 150) };
-    const handle = kit.chunked(scene, parent, ops, { key: sig, box, K, chunk: CHUNK, depth: DEPTH, budgetMB: 40 });
+    const handle = kit.chunked(scene, parent, ops, { key: sig, box, K, chunk: CHUNK, depth: DEPTH, budgetMB: 32 });
     const keys = []; let spritePx = 0;
     // the peaks, tors, rowans and pines stand among the world's objects, sorted by their foot with the player, the
     // landmarks and the trees (in the root they were drawn over every object: the Horn's foot hid the grotto under it

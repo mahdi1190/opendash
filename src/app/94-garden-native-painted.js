@@ -226,7 +226,8 @@ window.GardenNativePainted = (function () {
     if (info.soil && info.soil.length) { const soilP = loopsPath(info.soil);
       ops.push({ bb: loopsBox(info.soil, 8), seed: 5, draw(Bk, r, cb) { const cx = Bk.cx; cx.lineJoin = 'round'; cx.globalAlpha = .22; cx.strokeStyle = P.shadow; cx.lineWidth = 7; cx.stroke(soilP); cx.globalAlpha = 1; cx.strokeStyle = '#6a5034'; cx.lineWidth = 5; cx.stroke(soilP); cx.save(); cx.clip(soilP, 'evenodd'); G.paintKind(cx, 'soil', cb, season); cx.restore(); cx.globalAlpha = .8; cx.strokeStyle = '#a8845a'; cx.lineWidth = 1.4; cx.stroke(soilP); cx.globalAlpha = 1; } }); }
     if (info.owned && info.owned.length) { const ownedP = loopsPath(info.owned);
-      ops.push({ bb: loopsBox(info.owned, 8), seed: 6, draw(Bk) { const cx = Bk.cx; const k = Math.hypot(cx.getTransform().a, cx.getTransform().b) || 1; cx.save(); cx.clip(ownedP, 'evenodd'); cx.lineJoin = 'round'; cx.strokeStyle = '#7d6a44'; cx.filter = 'blur(' + (3.5 * k).toFixed(1) + 'px)'; for (const [w, al] of [[16, .05], [8, .07]]) { cx.globalAlpha = al; cx.lineWidth = w; cx.stroke(ownedP); } cx.restore(); cx.filter = 'none'; cx.globalAlpha = 1; } }); }
+      /* (no clip: clipped to the plot it had a ruled outer edge, which showed as a pale rectangle on the lawn close up; the worn line fades both ways) */
+      ops.push({ bb: loopsBox(info.owned, 16), seed: 6, draw(Bk) { const cx = Bk.cx; const k = Math.hypot(cx.getTransform().a, cx.getTransform().b) || 1; cx.save(); cx.lineJoin = 'round'; cx.strokeStyle = '#7d6a44'; cx.filter = 'blur(' + (4 * k).toFixed(1) + 'px)'; for (const [w, al] of [[9, .045], [4, .06]]) { cx.globalAlpha = al; cx.lineWidth = w; cx.stroke(ownedP); } cx.restore(); cx.filter = 'none'; cx.globalAlpha = 1; } }); }
     // 4. Inland water under the painted water: a damp bank, the water, its shallow rim and lap line (the v5 river runs on
     //    past the coast for the water mechanics, so its banks are cut at the land's edge).
     if (info.lakes && info.lakes.length) { const lakeP = loopsPath(info.lakes);
@@ -251,7 +252,7 @@ window.GardenNativePainted = (function () {
     ops.push({ bb, seed: 9, draw(Bk, r0, cb) { const cx = Bk.cx; G.tiles(cb, 96, 46, 301, (tx, ty, r) => { for (let g = 0; g < 2; g++) { const gx = tx + r() * 96, gy = ty + r() * 96, kind = stamps[Math.floor(r() * stamps.length)], count = 4 + Math.floor(r() * 7), go = r() > .25, k0 = kindAt(gx, gy); for (let i = 0; i < count; i++) { const x = gx + (r() - .5) * 70, y = gy + (r() - .5) * 34, sc = (.7 + r() * .5) / (OBJ_K * 2); if (!go || k0 !== 'lawn' && k0 !== 'meadow' || !info.meadow(x, y)) continue; const st = stampOf(kind); if (st) cx.drawImage(st.c, x - st.ox * sc, y - st.oy * sc, st.c.width * sc, st.c.height * sc); } } }); } });
     // lazy: nothing bakes in this task (the planting and the props' shadows are added to it straight after, and the world's
     // opening waits for what is on screen: pendingInView)
-    const layer = G.layer(scene, parent, ops, { key: TEX + '-g' + (++groundSerial), box: B, chunk: 256, depth: -9600, budgetMB: 64, prebake: true, slice: 8, lazy: true });
+    const layer = G.layer(scene, parent, ops, { key: TEX + '-g' + (++groundSerial), box: B, chunk: 256, depth: -9600, budgetMB: 48, prebake: true, slice: 8, lazy: true });
     cachedGround = { sig, box: B, layer }; groundMs = Math.round(performance.now() - started);
     if (retiring) { const old = retiring, t0 = performance.now(), wait = () => { if (retiring !== old) return; if (cachedGround && cachedGround.layer === layer && layer.softInView() > 0 && performance.now() - t0 < 9000) return void setTimeout(wait, 250); old.destroy(); retiring = null; }; setTimeout(wait, 250); }
     return handleOf(layer);
