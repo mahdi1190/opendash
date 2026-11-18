@@ -32,9 +32,9 @@
  },
  "newStatics": [
   {"id":"ld-cottage-1","x":44,"y":61,"w":2,"h":1,"col":"full","tall":2.4,"district":"south-grow-common","door":{"x":45,"y":62}},
-  {"id":"ld-cottage-2","x":44,"y":63,"w":2,"h":1,"col":"full","tall":2.4,"district":"south-grow-common","door":{"x":45,"y":64}},
+  {"id":"ld-cottage-2","x":44,"y":64,"w":2,"h":1,"col":"full","tall":2.4,"district":"south-grow-common","door":{"x":45,"y":65}},
   {"id":"ld-cottage-3","x":49,"y":61,"w":2,"h":1,"col":"full","tall":2.4,"district":"south-grow-common","door":{"x":49,"y":62}},
-  {"id":"ld-cottage-4","x":49,"y":63,"w":2,"h":1,"col":"full","tall":2.4,"district":"south-grow-common","door":{"x":49,"y":64}}
+  {"id":"ld-cottage-4","x":49,"y":64,"w":2,"h":1,"col":"full","tall":2.4,"district":"south-grow-common","door":{"x":49,"y":65}}
  ],
  "fields": {
   "wren": {"name":"Wren's garden","edge":"box hedge with a wicket gate","col":"#9a6e4a","gateHint":[43,61]},
