@@ -92,12 +92,12 @@ function _gcvDraw(g, D, scale) {
     for (const [y, row] of byRow) { row.sort((a, b) => a.x - b.x); let s = row[0], e = row[0]; for (let k = 1; k <= row.length; k++) { const c = row[k]; if (c && c.x === e.x + 1 && c.src === s.src) { e = c; continue; } g.fillRect(X(s.x), Y(y), (e.x - s.x + 1) * W.cellW, W.cellH); s = e = c; } }
   };
   runs(D.water, GCV_COL.water, .16);
-  runs(D.cells, GCV_COL.block, .3);
+  runs(D.cells, GCV_COL.block, .4);
   // shore lines: the exact edge the feet are tested against
   g.lineStyle(lw * 1.2, GCV_COL.water, .7);
   for (const loops of D.shores) for (const loop of loops) if (loop && loop.length > 2) { g.beginPath(); g.moveTo(X(loop[0].x), Y(loop[0].y)); for (let k = 1; k < loop.length; k++) g.lineTo(X(loop[k].x), Y(loop[k].y)); g.closePath(); g.strokePath(); }
   // the boxes: trunks, posts, harbour clutter, small props
-  g.fillStyle(GCV_COL.block, .45); g.lineStyle(lw, GCV_COL.block, .95);
+  g.fillStyle(GCV_COL.block, .55); g.lineStyle(lw * 1.2, 0x8f1d10, .95);
   for (const r of D.rects) { g.fillRect(X(r.x0), Y(r.y0), (r.x1 - r.x0) * W.cellW, (r.y1 - r.y0) * W.cellH); g.strokeRect(X(r.x0), Y(r.y0), (r.x1 - r.x0) * W.cellW, (r.y1 - r.y0) * W.cellH); }
   // clickable areas in blue: the ground a click owns (solid line), its painted art (faint), its door step (dotted feel: thin)
   for (const c of D.clicks) {
