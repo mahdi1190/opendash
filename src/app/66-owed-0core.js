@@ -39,9 +39,21 @@ function owdSet(j) {
 async function owdLoad(force) {
   if (OWD.loading) return OWD.loading;
   if (!force && OWD.loaded && Date.now() - OWD.at < 20000) return OWD.data;
-  OWD.loading = owdApi('').then((j) => { owdSet(j); OWD.currency = j.currency || OWD.currency; return OWD.data; })
+  let emptyFirstLoad = false;
+  OWD.loading = owdApi('').then((j) => {
+    const currency = j.currency || OWD.currency;
+    const first = !force && !OWD.loaded && !OWD.error && !OWD.suggestions.length;
+    owdSet(j);
+    // On first load an empty account leaves the Home card hidden and the Owed badge blank.
+    emptyFirstLoad = first && j.data?.things?.length === 0 && !OWD.suggestions.length && !owdInboxOpen() && currency === OWD.currency;
+    OWD.currency = currency;
+    return OWD.data;
+  })
     .catch((e) => { OWD.error = netErrorReason(e, 'This could not load'); OWD.loaded = true; return OWD.data; })
-    .finally(() => { OWD.loading = null; owdRepaint(true); });
+    .finally(() => {
+      OWD.loading = null;
+      if (!emptyFirstLoad || state.view !== 'home' || state.selectedTaskId || document.querySelector('.modal')) owdRepaint(true);
+    });
   return OWD.loading;
 }
 function owdRepaint(background) {

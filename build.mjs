@@ -229,11 +229,10 @@ function main(argv) {
     return;
   }
   const out = resolve(arg('--out') || join(root, 'index.html'));
-  const html = buildHtml(root);
-  const before = existsSync(out) ? readFileSync(out, 'utf8') : '';
-  writeFileSync(out, html);
-  const changed = before !== html;
-  console.log(`[build] wrote ${out} (${html.length} bytes, ${changed ? 'changed' : 'unchanged'})`);
+  const html = Buffer.from(buildHtml(root), 'utf8');
+  const changed = !existsSync(out) || !readFileSync(out).equals(html);
+  if (changed) writeFileSync(out, html);
+  console.log(`[build] ${changed ? 'wrote' : 'kept'} ${out} (${html.length} bytes, ${changed ? 'changed' : 'unchanged'})`);
   if (argv.includes('--check') && changed) {
     console.error('[build --check] index.html changed; rebuild before shipping');
     process.exit(1);
