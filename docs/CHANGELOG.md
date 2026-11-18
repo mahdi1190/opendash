@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.73.10] - 2026-11-18
+
+### Changed
+
+- Sorting tasks by title, opening the People sidebar, and using Home’s Focus and People cards now take less time on larger dashboards.
+
 ## [2.73.9] - 2026-11-18
 
 ### Changed
