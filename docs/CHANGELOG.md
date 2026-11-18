@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.73.13] - 2026-11-18
+
+### Changed
+
+- An idle friends sync now leaves its local copy alone when the shared information and the friends list are unchanged.
+
 ## [2.73.12] - 2026-11-18
 
 ### Changed
