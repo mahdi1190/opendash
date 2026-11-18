@@ -446,6 +446,11 @@ window.GardenNativePainted = (function () {
     'land-office': { obj: 'building.cottage', v: 1, w: 140, wallWidth: 160, sign: 'Land Office', extra: [['street.lamp', 0, -78, 4, 0, 70]] },
     'tackle-shop': { obj: 'building.fpv-sailing-hut', v: 0, w: 150, wallWidth: 376, wallCenterX: -8, wallFootY: 14, sign: 'Tackle & Tide', extra: [['street.mqn-lifebuoy', 0, 80, 2, 0, 30]] },
     'market-stall': { obj: 'structure.mcr-market-chalet', v: 1, w: 104, wallWidth: 200 },
+    // the high street's cottages (2.74), each its own kind so the street is not one house four times
+    'ld-cottage-1': { obj: 'building.cottage', v: 1, w: 100, wallWidth: 160, extra: [['plant.rph-flower-tub', 1, -44, 6, 16]] },
+    'ld-cottage-2': { obj: 'building.thatched-cottage', v: 1, w: 100, wallWidth: 216 },
+    'ld-cottage-3': { obj: 'building.green-cottage', v: 0, w: 100, wallWidth: 150, extra: [['plant.planter', 0, 46, 0, 20]] },
+    'ld-cottage-4': { obj: 'building.thatched-cottage', v: 0, w: 100, wallWidth: 216 },
   };
   const HALL = [
     { obj: 'structure.wp-bivvy', v: 0, w: 96, wallWidth: 150, wallCenterX: 5 },

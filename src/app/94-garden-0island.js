@@ -319,11 +319,21 @@ function gardenIslandCoastDistance(x, y) {
   for (const points of gardenIslandGeometry().land) for (let i = 0; i < points.length; i++) { const a = points[i], b = points[(i + 1) % points.length], ax = a[0] * W.cellW, ay = a[1] * W.cellH, dx = (b[0] - a[0]) * W.cellW, dy = (b[1] - a[1]) * W.cellH, t = Math.max(0, Math.min(1, ((x * W.cellW - ax) * dx + (y * W.cellH - ay) * dy) / (dx * dx + dy * dy || 1))); distance = Math.min(distance, Math.hypot(x * W.cellW - ax - dx * t, y * W.cellH - ay - dy * t)); }
   return distance;
 }
+// A route covers its shape (a plaza: the square, the terrace, the quay) and its centreline out to the local half width
+// (route.widths, one per point, from the hand-authored village; otherwise widthCells). Same rule as tools/garden-vale-layout.mjs.
 function _gardenIslandOnRoute(x, y, route) {
   if (!route.points) return false;
-  const radius2 = (route.widthCells * .5) ** 2;
-  for (let i = 1; i < route.points.length; i++) { const a = route.points[i - 1], b = route.points[i], dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy || 1))); if ((x - a[0] - dx * t) ** 2 + (y - a[1] - dy * t) ** 2 <= radius2) return true; }
+  if (route.shape && _gardenIslandInLoop(x, y, route.shape)) return true;
+  const widths = Array.isArray(route.widths) && route.widths.length === route.points.length ? route.widths : null, radius2 = (route.widthCells * .5) ** 2;
+  for (let i = 1; i < route.points.length; i++) { const a = route.points[i - 1], b = route.points[i], dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy || 1))), d2 = (x - a[0] - dx * t) ** 2 + (y - a[1] - dy * t) ** 2; if (d2 <= (widths ? ((widths[i - 1] + (widths[i] - widths[i - 1]) * t) * .5) ** 2 : radius2)) return true; }
   return false;
+}
+/** The route's full width (cells) at the point of its centreline nearest x, y: route.widths where authored, else widthCells. */
+function gardenIslandRouteWidthAt(route, x, y) {
+  const P = route && route.points, Wd = route && Array.isArray(route.widths) && route.widths.length === P.length ? route.widths : null; if (!P || !Wd) return Number(route && route.widthCells) || 2;
+  let best = Infinity, w = Wd[0];
+  for (let i = 1; i < P.length; i++) { const a = P[i - 1], b = P[i], dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy || 1))), d = (x - a[0] - dx * t) ** 2 + (y - a[1] - dy * t) ** 2; if (d < best) { best = d; w = Wd[i - 1] + (Wd[i] - Wd[i - 1]) * t; } }
+  return w;
 }
 /** Exact cell-centre beach membership, prepared once from every coast segment.
  * Bounding boxes only select candidates. The final anisotropic pixel distance
