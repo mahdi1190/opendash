@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.73.12] - 2026-11-18
+
+### Changed
+
+- Month view now groups scheduled tasks and deadlines by date once per grid, making busy calendars quicker to open.
+
 ## [2.73.11] - 2026-11-18
 
 ### Changed
