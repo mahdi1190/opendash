@@ -478,7 +478,7 @@ const GARDEN_DECOR = _gdRows([
   _gD('dc-milk-churns', 'Milk churns', 'ornament', { price: 16, lv: 3, look: { c: '#b8c0c6', c2: '#8a9298', h: 0.7 }, blurb: 'Cottage. Waiting at the gate for a cart that has stopped coming.' }),
   _gD('dc-washing-line', 'Washing line', 'structure', { w: 2, price: 22, lv: 4, look: { c: '#7a5a3a', c2: '#e8607a', h: 1.1 }, blurb: 'Cottage. Friends can see your socks.' }),
   _gD('dc-clay-oven', 'Clay oven', 'structure', { price: 40, lv: 7, effect: { kind: 'light' }, look: { c: '#c8855a', c2: '#a39b8c', h: 0.9 }, blurb: 'Cottage. It glows at dusk and smells of bread.' }),
-  _gD('dc-cottage-gate', 'Cottage gate', 'fence', { craft: 1, price: 0, rot: 1, look: { c: '#efe8d8', c2: '#6a4a2a', h: 0.8 }, blurb: 'Cottage. White pickets, and it never quite shuts.' }),
+  _gD('dc-cottage-gate', 'Cottage gate', 'fence', { craft: 1, price: 0, rot: 1, col: 'none', look: { c: '#efe8d8', c2: '#6a4a2a', h: 0.8 }, blurb: 'Cottage. White pickets, and it never quite shuts.' }),
   _gD('dc-tea-table', 'Tea table', 'seat', { price: 20, lv: 4, look: { c: '#fbf5ec', c2: '#3a8ac4', h: 0.8 }, blurb: 'Cottage. The pot is still warm.' }),
   _gD('dc-sleeping-cat', 'Sleeping cat', 'ornament', { price: 30, lv: 6, look: { c: '#e8903a', c2: '#fbf5ec', h: 0.4 }, blurb: 'Cottage. Made of stone, painted ginger, and just as hard to move.' }),
   _gD('dc-lavender-tub', 'Lavender tub', 'planter', { craft: 1, price: 0, look: { c: '#a87c4f', c2: '#8a6ac8', h: 0.8 }, blurb: 'Cottage. A half barrel of purple.' }),

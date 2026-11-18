@@ -106,7 +106,7 @@ window.GardenPaintedProps = (function () {
       ground(im) { if (!im) return null; const layer = o.layer; if (!layer || !layer.add) return add(im); layer.add(im); im.setDepth(-9250); ground.push(im); parts.push(im); return im; },
       // A part of a ground-level picture that stands up (a bridge's near parapet): in the object layer at its own
       // foot line, so whoever walks behind it is drawn behind it. Follows the handle's visibility, goes with it.
-      standing(im, depth) { if (!im) return null; const layer = o.standing; if (!layer || !layer.add) return add(im); layer.add(im); im.setDepth(depth); ground.push(im); return im; },   // (no object layer, a preview: with the rest of the picture)
+      standing(im, depth, hit) { if (!im) return null; const layer = o.standing; if (!layer || !layer.add) return add(im); layer.add(im); im.setDepth(depth); ground.push(im); if (hit) parts.push(im); return im; },   // (no object layer, a preview: with the rest of the picture)
       add, move(im, fn) { if (im) { moving.push({ im, fn }); h.dynamic = true; if (!h.kind) h.kind = 'painted'; } return im; },
       // Bounds include transparent canvas padding and soft ground shadows.
       // Only the opaque painted parts own a visual hit; canonical feet and
@@ -785,7 +785,17 @@ window.GardenPaintedProps = (function () {
     const lib = layer => { for (const [id, v, size, dx, dy, where] of art.lib) if (where === layer) { const im = libImage(scene, id, v, season, size, frame.x + dx, frame.y + dy, false); if (im && dy < -4 && kind !== 'bridge') h.standing(im, frame.y + dy); else h.add(im); } };
     lib('back');
     const base = image(scene, baseKey, baseX, baseY);
-    if (!(kind === 'bridge' ? h.ground(base) : h.add(base))) { h.destroy(); return null; }
+    // An open arch seen side-on has one trunk beyond the path and one this side of it, a good step apart, and it
+    // sorted as one thing by the path's middle: on the near half of the path you were drawn in front of the trunk you
+    // stood behind (drawing order, 18 Nov 2026). Its picture goes in as two halves, each by its own trunk's foot
+    // (the side-on drawing puts them at -/+ 0.8 S either side of the crossing line: elevation()).
+    const halves = open && art.side && (kind === 'arch' || kind === 'ruin') && o.standing && base ? (() => {
+      const [bx0, by0, bx1, by1] = art.box, texW = Math.ceil((bx1 - bx0) * K), texH = Math.ceil((by1 - by0) * K), mid = Math.round(-bx0 * K), near = image(scene, baseKey, baseX, baseY);
+      if (!near || mid < 2 || mid > texW - 2) { if (near) near.destroy(); return false; }
+      base.setCrop(0, 0, mid, texH); near.setCrop(mid, 0, texW - mid, texH);
+      h.standing(base, frame.y - art.S * .8 + 2, true); h.standing(near, frame.y + art.S * .8 + 2, true); return true;
+    })() : false;
+    if (!halves && !(kind === 'bridge' ? h.ground(base) : h.add(base))) { h.destroy(); return null; }
     if (kind === 'bridge' && crossing) ok(() => bridgeFront(scene, h, o, baseKey, art.box, baseX, baseY, crossing));
     lib('front');
     const was = gateSeen.get(g.id); gateSeen.set(g.id, !!open);

@@ -55,13 +55,16 @@
   const pixelsOf = (im, tall) => {
     const originU = Math.round(im.displayOriginX || 0);
     const fr = im.frame, src = fr && fr.source && fr.source.image; if (!src || !(src instanceof HTMLCanvasElement || src instanceof HTMLImageElement)) return null;
-    const key = im.texture.key + '#' + fr.name + (tall ? '#t' + originU : ''); if (pix.has(key)) return pix.get(key);
+    // (a cropped image shows only that part of its picture: a bridge's parapet strip, one half of an arch)
+    const crop = im.isCropped && im._crop ? { x: Math.round(im._crop.x), y: Math.round(im._crop.y), w: Math.round(im._crop.width), h: Math.round(im._crop.height) } : null;
+    const key = im.texture.key + '#' + fr.name + (tall ? '#t' + originU : '') + (crop ? '#c' + [crop.x, crop.y, crop.w, crop.h].join(',') : ''); if (pix.has(key)) return pix.get(key);
     let out = null;
     try {
       const w = fr.cutWidth, h = fr.cutHeight; if (!w || !h || w * h > 4e6) { pix.set(key, null); return null; }
       const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d', { willReadFrequently: true });
       cx.drawImage(src, fr.cutX, fr.cutY, w, h, 0, 0, w, h); const data = cx.getImageData(0, 0, w, h).data, a = new Uint8Array(w * h);
       for (let i = 0; i < a.length; i++) a[i] = data[i * 4 + 3];
+      if (crop) for (let v = 0; v < h; v++) for (let u = 0; u < w; u++) if (u < crop.x || v < crop.y || u >= crop.x + crop.w || v >= crop.y + crop.h) a[v * w + u] = 0;
       // The drawn base: what stands on the ground. Solid paint only (alpha >= 160, so a soft shadow does not count).
       let top = h, bottom = -1;
       for (let v = 0; v < h && top === h; v++) for (let u = 0; u < w; u++) if (a[v * w + u] >= 160) { top = v; break; }
@@ -372,7 +375,9 @@
         for (let k = 0; k < n; k++) {
           const x = p.x + (q.x - p.x) * k / n, y = p.y + (q.y - p.y) * k / n; pathSamples++;
           let blockedAt = null;
-          if (lane === 'middle') { if (!(free(x, y) || free(x + .3, y) || free(x - .3, y) || free(x, y + .3) || free(x, y - .3))) blockedAt = { x, y }; }
+          // (where a path's line runs over the water beside its own bridge, nothing is painted and the bridge carries
+          // the walk: check 9 walks every crossing end to end and into its paths by real click-to-walk)
+          if (lane === 'middle') { if (!(free(x, y) || free(x + .3, y) || free(x - .3, y) || free(x, y + .3) || free(x, y - .3)) && !(gardenWaterContainsPoint(x, y) && nearCrossing(x, y))) blockedAt = { x, y }; }
           else if (!nearCrossing(x, y) && !onDeck(x, y) && free(x, y)) for (const s of [-1, 1]) { const ex = x + nx * half * CW * s, ey = y + ny * half * CW * s; if (!free(ex, ey) && !free(ex + nx * -s * 6, ey + ny * -s * 6)) { const q = toPx(ex, ey); if (paintAt(q.X, q.Y) || paintAt(q.X, q.Y - 10) || gardenPropAt(Math.floor(ex), Math.floor(ey))) continue; blockedAt = { x: ex, y: ey }; break; } }   // (a barrel, a lamp, a stall drawn on a square stands there by design: checks 1 and 2 hold it to its art)
           if (!blockedAt) { flush(); continue; }
           const why = gardenCollideAt(blockedAt.x, blockedAt.y); if (!why.length) why.push('the feet test (edge of water or a box)');
@@ -487,8 +492,9 @@
         for (let f = 0; f < 16; f++) {
           const bx = _gw.px, by = _gw.py; _gwMoveBy(sx * dd, sy * dd);
           const mx = (_gw.px - bx) * CW, my = (_gw.py - by) * CH;
-          if (Math.abs(mx) > .3) { if (lastX && Math.sign(mx) !== lastX) flips++; lastX = Math.sign(mx); }
-          if (Math.abs(my) > .3) { if (lastY && Math.sign(my) !== lastY) flips++; lastY = Math.sign(my); }
+          // (a reversal you could see: three quarters of a pixel or more in a frame. Less is the last settling into a corner)
+          if (Math.abs(mx) > .75) { if (lastX && Math.sign(mx) !== lastX) flips++; lastX = Math.sign(mx); }
+          if (Math.abs(my) > .75) { if (lastY && Math.sign(my) !== lastY) flips++; lastY = Math.sign(my); }
           if (Math.hypot(mx, my) >= stepPx * .15) { slow = 0; continue; }
           if (++slow < 2) continue;
           // stopped: could they go on along the edge that caught them? One step across for a small give against the
@@ -498,17 +504,17 @@
           const x0 = _gw.px, y0 = _gw.py, vx = sx * dd * CW, vy = sy * dd * CH; let round = '';
           for (let g = .5; g <= 3.5 && !round; g += .5) if (free(x0 + vx / CW, y0 - sy * g / CH) && free(x0 + 2 * vx / CW, y0 - sy * 2 * g / CH) && free(x0 + 3 * vx / CW, y0 - sy * 3 * g / CH)) round = 'across, giving ' + g + ' px ' + (sy > 0 ? 'up' : 'down') + ' a step';
           for (let g = .25; g <= .75 && !round; g += .25) if (free(x0 - sx * g / CW, y0 + vy / CH) && free(x0 - sx * 2 * g / CW, y0 + 2 * vy / CH) && free(x0 - sx * 3 * g / CW, y0 + 3 * vy / CH)) round = (sy > 0 ? 'down' : 'up') + ', giving ' + g + ' px ' + (sx > 0 ? 'left' : 'right') + ' a step';
-          if (round) stall = { x: x0, y: y0, round, dir: (sy > 0 ? 'down' : 'up') + '-' + (sx > 0 ? 'right' : 'left') };
+          if (round) stall = { x: x0, y: y0, round, dir: (sy > 0 ? 'down' : 'up') + '-' + (sx > 0 ? 'right' : 'left'), from: [x, y, sx, sy] };
           break;
         }
         if (stall) { feel.stalls++; const k = Math.round(stall.x) + ',' + Math.round(stall.y), g = stalls.get(k) || stalls.set(k, { n: 0, first: stall }).get(k); g.n++; }
-        else if (flips >= 3) { feel.jitters++; const k = Math.round(x) + ',' + Math.round(y), g = jitters.get(k) || jitters.set(k, { n: 0, x, y, dir: (sy > 0 ? 'down' : 'up') + '-' + (sx > 0 ? 'right' : 'left') }).get(k); g.n++; }
+        else if (flips >= 3) { feel.jitters++; const k = Math.round(x) + ',' + Math.round(y), g = jitters.get(k) || jitters.set(k, { n: 0, x, y, dir: (sy > 0 ? 'down' : 'up') + '-' + (sx > 0 ? 'right' : 'left'), from: [x, y, sx, sy] }).get(k); g.n++; }
       }
     }
     _gw.px = keepPos.x; _gw.py = keepPos.y; if (_gw.shoreMove) _gw.shoreMove = {};
     const whyAt = (x, y, sx, sy) => { for (const [ax, ay] of [[sx, sy], [sx, 0], [0, sy]]) { const w = gardenCollideAt(x + ax * .3, y + ay * .2); if (w.length) return w.slice(0, 2).join('; '); } return 'the edge of water or a box'; };
-    for (const g of stalls.values()) { const s = g.first, sx = /right/.test(s.dir) ? 1 : -1, sy = /down/.test(s.dir) ? 1 : -1; push({ kind: 'slide-stall', obj: 'walking', name: 'pressing ' + s.dir + ' into ' + whyAt(s.x, s.y, sx, sy), x: s.x, y: s.y, detail: g.n + ' press(es) near here stop dead; the feet could go on ' + s.round }); }
-    for (const g of jitters.values()) push({ kind: 'slide-jitter', obj: 'walking', name: 'pressing ' + g.dir + ' beside ' + whyAt(g.x, g.y, /right/.test(g.dir) ? 1 : -1, /down/.test(g.dir) ? 1 : -1), x: g.x, y: g.y, detail: g.n + ' press(es) near here change direction three times or more in a third of a second' });
+    for (const g of stalls.values()) { const s = g.first, sx = /right/.test(s.dir) ? 1 : -1, sy = /down/.test(s.dir) ? 1 : -1; push({ kind: 'slide-stall', obj: 'walking', from: s.from, name: 'pressing ' + s.dir + ' into ' + whyAt(s.x, s.y, sx, sy), x: s.x, y: s.y, detail: g.n + ' press(es) near here stop dead; the feet could go on ' + s.round }); }
+    for (const g of jitters.values()) push({ kind: 'slide-jitter', obj: 'walking', from: g.from, name: 'pressing ' + g.dir + ' beside ' + whyAt(g.x, g.y, /right/.test(g.dir) ? 1 : -1, /down/.test(g.dir) ? 1 : -1), x: g.x, y: g.y, detail: g.n + ' press(es) near here change direction three times or more in a third of a second' });
     feel.ms = Math.round(performance.now() - t0);
   }
 
@@ -641,7 +647,7 @@
     const pSet = new Set(pChain), seenAt = new Set(), TOL = 5;
     const standPx = (X, Y) => { const c = toCell(X, Y); return c.x >= 0 && c.y >= 0 && c.x < W.cols && c.y < W.rows && free(c.x, c.y); };
     for (const o of objs) {
-      if (!playerObj || o.im.isCropped || /lightpool|\|block$|gatesign/.test(o.key)) continue;
+      if (!playerObj || /lightpool|\|block$|gatesign/.test(o.key)) continue;
       let child = o.im, anc = o.im.parentContainer; while (anc && !pSet.has(anc)) { child = anc; anc = anc.parentContainer; }
       if (!anc) continue;
       const pChild = pChain[pChain.indexOf(anc) - 1]; if (!pChild) continue;

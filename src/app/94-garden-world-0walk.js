@@ -43,6 +43,8 @@ function gardenPlantBlocks(p) { return !!(p && p.def && p.def.cat === 'tree' && 
  *   'none'  you walk through or over it: flat things (a picnic blanket), things you walk under (an arch, a pergola) or that hang (string lights, bunting)
  *   'soft'  a small box where it stands: a lantern, a bird bath, a gnome. About half a cell wide and a third deep at its base, so you slip past it
  *   'full'  the whole footprint, like a wall: fences, walls, hedges, benches and seats (you walk up to sit), a fountain, a shed
+ * A gate is the way through a fence: the cottage gate is 'none' (it was 'soft', a half-cell box in the middle of pickets
+ * a cell and a third wide, so you squeezed past either side of a thing drawn shut: the collision audit, 18 Nov 2026).
  * Trees block their trunk only (a small box at the foot), so the leaves are for walking behind. A catalogue row may say `col: 'none' | 'soft' | 'full'`
  * for itself. Soft boxes are not in the cell grid the routes are planned on (a cell with a lantern in it is still a cell you cross), only in what the
  * feet are tested against (_gwFree, gardenWorldFree), so you go round them instead of the route avoiding the whole cell.
@@ -557,12 +559,18 @@ function _gwMoveBy(dx, dy) {
       // and every ruin and terrace wall that runs at a slant). Give way a little against one part of the press and go
       // on along the other, at walking pace (_gwGiveSlide). A true inside corner, and a wall you press square into,
       // still stop you.
-      if (x === x0 && y === y0 && dx && dy) { const g = _gwGiveSlide(x0, y0, dx, dy); if (g) { x = g.x; y = g.y; held = g.kind; } }
+      if (x === x0 && y === y0 && dx && dy) {
+        const g = hold && hold.sx === Math.sign(dx) && hold.sy === Math.sign(dy) && _gwGiveSlide(x0, y0, dx, dy, hold.kind) || _gwGiveSlide(x0, y0, dx, dy);   // (the kind it took the frame before, while that lasts)
+        // Where the bank's own slide has just said this is a closed corner of the shore, only a way that really
+        // leads on (the same step open twice more): any other only shuffled the feet about for a few frames before
+        // they stopped anyway.
+        if (g && (!(shore.shore && shore.blockedCorner) || _gwFree(2 * g.x - x0, 2 * g.y - y0) && _gwFree(3 * g.x - 2 * x0, 3 * g.y - 2 * y0))) { x = g.x; y = g.y; held = g.kind; }
+      }
     }
     // (right after giving way, the part of the press you gave against does not pull the feet straight back into the
     // edge while the other part is still shut: that made you shake for a frame or two at the end of a slanted wall)
     else if (hold && hold.sx === Math.sign(dx) && hold.sy === Math.sign(dy) && (hold.kind === 'x' ? x !== x0 && y === y0 : x === x0 && y !== y0)) {
-      const g = _gwGiveSlide(x0, y0, dx, dy); if (g && g.kind === hold.kind) { x = g.x; y = g.y; held = g.kind; }
+      const g = _gwGiveSlide(x0, y0, dx, dy, hold.kind); if (g) { x = g.x; y = g.y; held = g.kind; }
     }
   }
   _gw.slideHold = held ? { sx: Math.sign(dx), sy: Math.sign(dy), kind: held } : null;
@@ -573,26 +581,37 @@ function _gwMoveBy(dx, dy) {
 /**
  * A diagonal step (dx, dy cells) that is shut whole and on each axis: the nearest way on along the edge that caught the
  * feet, or null. Two ways are tried, smallest give first: across (the x part of the press, giving g px against its y
- * part: kind 'y') and along y (giving g px against its x part: kind 'x'). The step is taken at walking pace along that
- * line, so the feet follow the edge and stay against it. A way that does not go on the way you press (a wall met
- * square) only counts where the edge falls away beyond it (the corner of a box, the end of a wall), so a flat wall
- * pressed square stops you and never slides you sideways.
+ * part: kind 'y') and along y (giving g px against its x part: kind 'x'). A way that does not go on the way you press
+ * (a wall met square) only counts where the edge falls away beyond it (the corner of a box, the end of a wall), so a
+ * flat wall pressed square stops you and never slides you sideways.
+ * Pace: walking pace where the edge runs within about 45 degrees of the press, less the squarer you meet it (down to a
+ * third), the way a body pressed against a wall creeps along it; it used to run along a wall met almost square at full
+ * pace, up the screen while you pressed down. Where the corner that caught you sticks out into that short step, the
+ * step goes to the open point beyond it instead (it stopped dead there: five of the last stalls, 18 Nov 2026).
+ * `want` ('x' or 'y') asks for that kind only: _gwMoveBy keeps to the kind it took the frame before while it lasts.
  */
-function _gwGiveSlide(x0, y0, dx, dy) {
+function _gwGiveSlide(x0, y0, dx, dy, want) {
   const W = GARDEN_WORLD, vx = dx * W.cellW, vy = dy * W.cellH, sp = Math.hypot(vx, vy), maxGive = Math.max(3, sp * 1.6);
-  for (let g = .25; g <= maxGive + 1e-9; g += .25) {
-    for (let way = 0; way < 2; way++) {
+  const open = (px, py) => _gwFree(x0 + px / W.cellW, y0 + py / W.cellH);
+  // the first way on of each kind (its smallest give, so the one that goes furthest the way you press)
+  const best = [null, null];
+  for (let way = 0; way < 2; way++) {
+    if (want && want !== (way ? 'x' : 'y')) continue;
+    for (let g = .25; g <= maxGive + 1e-9 && !best[way]; g += .25) {
       const tx = way ? -Math.sign(vx) * g : vx, ty = way ? vy : -Math.sign(vy) * g, L = Math.hypot(tx, ty), along = (vx * tx + vy * ty) / L;
-      if (along < -.3 * sp) continue;   // (back the way you came)
-      if (!_gwFree(x0 + tx / W.cellW, y0 + ty / W.cellH)) continue;
-      const k = Math.min(1, sp / L), ex = x0 + tx * k / W.cellW, ey = y0 + ty * k / W.cellH;
-      if (!_gwFree(ex, ey)) continue;
+      if (along < -.3 * sp) break;   // (back the way you came, and every bigger give more so)
+      if (!open(tx, ty)) continue;
       // met nearly square: only round a corner (twice as far on for the same give is open), never slide along a flat wall
-      if (along < .15 * sp && !(way ? _gwFree(x0 + tx / W.cellW, y0 + 2 * ty / W.cellH) : _gwFree(x0 + 2 * tx / W.cellW, y0 + ty / W.cellH))) continue;
-      return { x: ex, y: ey, kind: way ? 'x' : 'y' };
+      if (along < .15 * sp && !(way ? open(tx, 2 * ty) : open(2 * tx, ty))) continue;
+      const pace = sp * Math.max(.34, Math.min(1, along / sp / .7)), k = Math.min(1, pace / L);
+      let ex = tx * k, ey = ty * k;
+      if (!open(ex, ey)) { if (L > sp * 1.6) continue; ex = tx; ey = ty; }
+      best[way] = { x: x0 + ex / W.cellW, y: y0 + ey / W.cellH, kind: way ? 'x' : 'y', along };
     }
   }
-  return null;
+  // of the two, the one that goes on further the way you press (the other is usually a dead end one step long:
+  // taking it first made a one-frame twitch the wrong way before the real slide began)
+  return best[0] && best[1] ? (best[1].along > best[0].along + 1e-6 ? best[1] : best[0]) : best[0] || best[1];
 }
 /** Sweep to contact, then project the remaining stage velocity onto the bank
  * tangent. Obstacles keep their old box handling; no axis jitter at a curve. */
