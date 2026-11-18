@@ -164,8 +164,6 @@ function homeFocusTasks(limit) {
   });
   return cands.slice(0, limit || cfg.count);
 }
-/** How many tasks qualify for Focus under the same filters as the list (streams, snoozes), uncapped. */
-function homeFocusCandidateCount() { return homeFocusTasks(Infinity).length; }
 /** The Focus header count: "Top 7 of 28" when capped, "3 of up to 7" when fewer qualify than the Tune count. */
 function homeFocusCountLabel(nShown, total, cap) {
   if (!nShown) return '';

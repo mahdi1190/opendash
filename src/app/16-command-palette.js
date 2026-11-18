@@ -119,11 +119,12 @@ function _palHighlight(text, q) {
 
 function _palOpenCounts() {
   const byStream = {}, byTag = {}, byPerson = {};
+  const idx = typeof pplIndex === 'function' ? pplIndex() : null;
   for (const i of getAllItems()) {
     if (statusOf(i.id) === 'done') continue;
     byStream[effStream(i)] = (byStream[effStream(i)] || 0) + 1;
     for (const t of effTags(i)) byTag[t] = (byTag[t] || 0) + 1;
-    if (typeof effPeople === 'function') for (const p of effPeople(i)) byPerson[p] = (byPerson[p] || 0) + 1;
+    if (typeof effPeople === 'function') for (const p of effPeople(i, idx)) byPerson[p] = (byPerson[p] || 0) + 1;
   }
   return { byStream, byTag, byPerson };
 }
