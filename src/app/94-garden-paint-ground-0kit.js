@@ -66,7 +66,7 @@ window.GardenPaintGround = (function () {
   }
 
   /* ---------- 1. the zoom-following chunked layer ---------- */
-  const LEVELS = [.75, 1, 1.5, 2, 3, 4], SHARP = .8, PAD = 2, registry = new Set(), slow = { opMs: 0, op: '', uploadMs: 0, tickMs: 0 };
+  const LEVELS = [.75, 1, 1.5, 2, 3, 4], SHARP = .8, PAD = 2, HEAVY_MS = 26, registry = new Set(), slow = { opMs: 0, op: '', uploadMs: 0, tickMs: 0 };
   /** The bake level the camera needs now: the smallest level within 20% of the screen's own pixel density. */
   function levelFor(zoom, lo, hi) { const need = (zoom || 1) * SHARP; let k = LEVELS[LEVELS.length - 1]; for (const l of LEVELS) if (l >= need) { k = l; break; } return clamp(k, lo == null ? LEVELS[0] : lo, hi == null ? 4 : hi); }
   // ops: [{ bb: [x0, y0, x1, y1] world px, seed, clip, tag, draw(B, r, chunkBB) }]   (the shape GardenPaintTerrainKit.chunked takes)
@@ -86,7 +86,7 @@ window.GardenPaintGround = (function () {
     for (const ch of list.slice()) if (!ch.ops.length || ch.ops.every(o => o.decor)) { chunks.delete(ch.id); list.splice(list.indexOf(ch), 1); }
     // pictures an earlier layer of the same key left behind (a repaint that changed nothing here): place them, do not bake again
     for (const ch of list) for (const l of LEVELS.concat(follow ? [] : [fixedK])) { const k = opts.key + '|' + ch.id + '|' + l; if (scene.textures.exists(k)) { ch.cached = { key: k, K: l }; } }
-    let bakedPx = 0, baked = 0, evicted = 0, worst = 0, sliceWorst = 0, bakeMs = 0, dead = false, host = parent, serial = 0, wantK = follow ? 0 : fixedK, zoomSeen = 0, zoomAt = 0;
+    let bakedPx = 0, baked = 0, evicted = 0, worst = 0, sliceWorst = 0, bakeMs = 0, dead = false, host = parent, serial = 0, wantK = follow ? 0 : fixedK, zoomSeen = 0, zoomAt = 0, held = 0;
     const times = [], cam = scene.cameras && scene.cameras.main, budget = (opts.budgetMB || 32) * 1048576 / 4;
     const place = (ch, key, K, w, h) => {
       const p = PAD * K, im = scene.add.image(ch.bb[0], ch.bb[1], key).setOrigin(0, 0).setScale(1 / K).setDepth(opts.depth).setCrop(p, p, w - 2 * p, h - 2 * p);
@@ -102,7 +102,7 @@ window.GardenPaintGround = (function () {
       while (J.next < ch.ops.length) {
         const o = ch.ops[J.next++], o0 = performance.now();
         ok(() => { cx.save(); if (o.clip) cx.clip(o.clip, 'evenodd'); o.draw(J.B, rng(o.seed || 1), ch.bb); cx.restore(); cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over'; cx.filter = 'none'; });
-        { const od = performance.now() - o0; if (od > slow.opMs) { slow.opMs = +od.toFixed(1); slow.op = (o.tag || o.name || 'seed ' + o.seed) + ' @' + ch.id + ' x' + K; } }
+        { const od = performance.now() - o0, per = od / (K * K); if (!(o.cost >= per)) o.cost = per; if (od > slow.opMs) { slow.opMs = +od.toFixed(1); slow.op = (o.tag || o.name || 'seed ' + o.seed) + ' @' + ch.id + ' x' + K; } }
         if (ms && performance.now() - s > ms) break;
       }
       const took = performance.now() - s; J.ms += took; sliceWorst = Math.max(sliceWorst, took);
@@ -126,18 +126,20 @@ window.GardenPaintGround = (function () {
       return wantK;
     };
     if (!opts.lazy) { const v = viewBox(.05), K = level(); for (const ch of list) if (v && meets(ch.bb, v)) { if (!adopt(ch)) bakeStep(ch, Math.min(K, 1.5), 0); } }
+    const heavy = (ch, k) => { const lim = HEAVY_MS / (k * k); for (const o of ch.ops) if (o.cost > lim) return true; return false; };
     const tick = () => {
-      if (dead || !host) return; const v = viewBox(.05), near = viewBox(.35), keep = viewBox(.7); if (!v) return; const K = level();
+      if (dead || !host) return; const v = viewBox(.05), near = viewBox(.35), keep = viewBox(.7); if (!v) return; const K = level(), moving = typeof _gw !== 'undefined' && !!_gw.moving;
       { const t0 = performance.now(); for (const ch of list) { if (ch.image || !ch.cached || !meets(ch.bb, near)) continue; adopt(ch); if (performance.now() - t0 > 4) break; } }
       // one chunk a tick: on screen and bare first, then on screen and at the wrong sharpness or repainted, then the margin
-      let best = null, bs = Infinity;
+      let best = null, bs = Infinity; held = 0;
       for (const ch of list) {
         const inView = meets(ch.bb, v), inNear = inView || meets(ch.bb, near); if (!inNear) continue;
         const need = !ch.image ? 0 : ch.dirty ? 1 : ch.K !== K ? (ch.K < K ? 2 : 4) : -1; if (need < 0) continue;
+        if (moving && need > 1 && heavy(ch, K)) { held++; continue; }
         const s = (inView ? 0 : 1e7) + need * 1e6 + dist(ch, v) - (ch.job ? 5e5 : 0); if (s < bs) { bs = s; best = ch; }
       }
       if (!best && opts.prebake && bakedPx < budget * .9 && !(typeof _gw !== 'undefined' && _gw.moving)) for (const ch of list) if (!ch.image) { const d = dist(ch, v); if (d < bs) { bs = d; best = ch; } }
-      if (best) bakeStep(best, follow && !meets(best.bb, near) ? Math.min(K, minK) : K, slice);
+      if (best) { let k = follow && !meets(best.bb, near) ? Math.min(K, minK) : K; if (moving && follow && !best.image) for (const l of [2, 1.5, 1]) if (k > l && l >= minK && heavy(best, k)) k = l; bakeStep(best, k, slice); }
       if (bakedPx > budget) { let far = null, fd = -1; for (const ch of list) if (ch.image && !meets(ch.bb, keep)) { const d = dist(ch, v) * ch.K; if (d > fd) { fd = d; far = ch; } } if (far) evict(far); }
     };
     const timer = setInterval(() => { const t0 = performance.now(); ok(tick); const d = performance.now() - t0; if (d > slow.tickMs) slow.tickMs = +d.toFixed(1); }, 34);
@@ -160,7 +162,7 @@ window.GardenPaintGround = (function () {
       chunks: list.length, get pending() { return list.filter(c => !c.image).length; }, get worstMs() { return Math.round(worst); }, get sliceWorstMs() { return Math.round(sliceWorst); }, get bakeMs() { return Math.round(bakeMs); }, buildMs: 0,
       get texturePx() { return bakedPx; }, get MB() { return +(bakedPx * 4 / 1048576).toFixed(1); }, get level() { return wantK; },
       get p95() { const t = times.slice(-200).sort((a, b) => a - b); return t.length ? t[Math.floor(t.length * .95)] : 0; }, get median() { const t = times.slice(-200).sort((a, b) => a - b); return t.length ? t[t.length >> 1] : 0; },
-      get baked() { return baked; }, get evicted() { return evicted; }, get live() { return list.filter(c => c.image).length; },
+      get baked() { return baked; }, get evicted() { return evicted; }, get held() { return held; }, get live() { return list.filter(c => c.image).length; },
       /** Stop painting but stay on the stage (a newer layer is taking over); destroy() follows. */
       retire() { dead = true; clearInterval(timer); for (const ch of list) ch.job = null; },
       destroy(keepTextures) { dead = true; clearInterval(timer); registry.delete(handle); for (const ch of list) { if (ch.image) ch.image.destroy(); ch.image = null; ch.job = null; if (!keepTextures) { if (ch.tex && scene.textures.exists(ch.tex)) scene.textures.remove(ch.tex); if (ch.cached && scene.textures.exists(ch.cached.key)) scene.textures.remove(ch.cached.key); } } },
@@ -237,7 +239,7 @@ window.GardenPaintGround = (function () {
   const PAINT = {
     // a lawn is never one green: the sward in short strokes that lean with the light, clover and moss in drifts, tufts, the odd stone
     lawn(cx, cb, P, env) {
-      wash(cx, cb, P, 11, 1.2); cx.lineCap = 'round'; const winter = P.season === 'winter', sun = mix(P.hi, '#eef0a6', .45), deep = mix(P.lo, P.cool, .5);
+      wash(cx, cb, P, 11, 1.2); cx.lineCap = 'round'; const winter = P.season === 'winter', sun = mix(P.hi, '#eef0a6', .45), deep = mix(P.lo, P.cool, .5), far = scaleOf(cx) < 1;
       // light and shade laid on in broad strokes a few steps across: lit swells with a brighter heart, cooler hollows beside them
       tiles(cb, 80, 60, 17, (tx, ty, r) => { for (let i = 0; i < 3; i++) { const x = tx + r() * 80, y = ty + r() * 80, s = 18 + r() * 30, lit = r() < .55; if (noise(x / 170, y / 120, 15) < .42) continue;
         blob(cx, r, x, y, s, s * .38, 10, .5, lit ? P.hi : deep, lit ? .2 : .16); if (lit) blob(cx, r, x - s * .22, y - s * .08, s * .52, s * .17, 8, .5, sun, .2); else blob(cx, r, x + s * .2, y + s * .06, s * .5, s * .16, 8, .5, P.lo, .16); } });
@@ -245,10 +247,10 @@ window.GardenPaintGround = (function () {
       tiles(cb, 96, 22, 21, (tx, ty, r) => { for (let i = 0; i < 2; i++) { if (r() < .45) continue; const x0 = tx + r() * 96, y0 = ty + r() * 96, moss = r() < .35;
         for (let k = 0, n = 12 + Math.floor(r() * 20); k < n; k++) { const a = r() * 6.283, d = Math.sqrt(r()) * 17, x = x0 + Math.cos(a) * d, y = y0 + Math.sin(a) * d * .5;
           if (moss) { cx.globalAlpha = .45; cx.fillStyle = r() < .5 ? '#8f9a3e' : '#a6aa4c'; cx.fillRect(x, y, 1.4 + r() * 1.4, 1 + r() * .8); continue; }
-          cx.globalAlpha = .5; cx.fillStyle = r() < .5 ? P.cool : mix(P.lo, P.cool, .5); for (let j = 0; j < 3; j++) { const b = j * 2.1 + r(); cx.beginPath(); cx.arc(x + Math.cos(b) * 1.1, y + Math.sin(b) * .7, 1.05, 0, 6.283); cx.fill(); }
+          cx.globalAlpha = .5; cx.fillStyle = r() < .5 ? P.cool : mix(P.lo, P.cool, .5); if (far) { cx.fillRect(x - 1.6, y - 1.1, 3.2, 2.2); r(); r(); r(); } else for (let j = 0; j < 3; j++) { const b = j * 2.1 + r(); cx.beginPath(); cx.arc(x + Math.cos(b) * 1.1, y + Math.sin(b) * .7, 1.05, 0, 6.283); cx.fill(); }
           if (r() < .035 && !winter) ell(cx, x, y - 1.4, 1, .9, '#f4f0e2', .85); } } });
       const tones = [P.lo, mix(P.lo, '#4f6f34', .4), P.hi, mix(P.hi, '#e2dc8e', .5)];
-      tiles(cb, 32, 6, 23, (tx, ty, r) => { for (let i = 0; i < 12; i++) { const x = tx + r() * 32, y = ty + r() * 32, t = r(), len = 2.4 + r() * 3.2, lean = .5 - r() * .2; blade(cx, x, y, lean * 2, len, tones[t < .38 ? 0 : t < .6 ? 1 : t < .92 ? 2 : 3], .9 + r() * .9, .2 + r() * .22); } });
+      tiles(cb, 32, 6, 23, (tx, ty, r) => { for (let i = 0; i < (far ? 6 : 12); i++) { const x = tx + r() * 32, y = ty + r() * 32, t = r(), len = 2.4 + r() * 3.2, lean = .5 - r() * .2; blade(cx, x, y, lean * 2, len, tones[t < .38 ? 0 : t < .6 ? 1 : t < .92 ? 2 : 3], .9 + r() * .9, .2 + r() * .22); } });
       tiles(cb, 64, 10, 25, (tx, ty, r) => { for (let i = 0; i < 3; i++) { if (r() < .2) continue; tuft(cx, r, tx + r() * 64, ty + r() * 64, 4 + Math.floor(r() * 4), 4 + r() * 5, P.lo, P.hi, P); } });
       if (!winter) tiles(cb, 128, 26, 27, (tx, ty, r) => { if (r() < .5) return; const x0 = tx + r() * 128, y0 = ty + r() * 128, white = r() < .6; for (let k = 0, n = 4 + Math.floor(r() * 7); k < n; k++) { const x = x0 + (r() - .5) * 40 * (.4 + r()), y = y0 + (r() - .5) * 20 * (.4 + r()); flower(cx, x, y, white ? 1.9 + r() * .7 : 1.5 + r() * .5, white ? '#fbf8ee' : '#f2d040', white ? '#e6b436' : '#d9a520', P); } });
       tiles(cb, 256, 14, 29, (tx, ty, r) => { for (let g = 0; g < 2; g++) { const gx = tx + r() * 256, gy = ty + r() * 256; for (let k = 0, n = 2 + Math.floor(r() * 4); k < n; k++) pebble(cx, r, gx + (r() - .5) * 22, gy + (r() - .5) * 10, 1.4 + r() * (k ? 2 : 3.4), P); } });
@@ -258,7 +260,7 @@ window.GardenPaintGround = (function () {
     // a hay meadow: longer, tawnier grass that all leans one way, seed heads catching the light, flowers in drifts
     meadow(cx, cb, P, env) {
       wash(cx, cb, P, 41, 1.15); cx.lineCap = 'round'; const winter = P.season === 'winter', gold = mix(P.hi, '#e6d48a', .55), tones = [P.lo, mix(P.lo, P.cool, .5), P.hi, gold];
-      tiles(cb, 32, 8, 43, (tx, ty, r) => { for (let i = 0; i < 10; i++) { const x = tx + r() * 32, y = ty + r() * 32, t = r(), len = 4 + r() * 5.5, sway = 1.2 + fbm(x / 120, y / 80, 5) * 2.6; blade(cx, x, y, sway, len, tones[t < .3 ? 0 : t < .5 ? 1 : t < .82 ? 2 : 3], .8 + r() * .7, .22 + r() * .24); if (t > .9 && !winter) ell(cx, x + sway, y - len, .9, 1.5, gold, .8); } });
+      tiles(cb, 32, 8, 43, (tx, ty, r) => { for (let i = 0; i < (scaleOf(cx) < 1 ? 5 : 10); i++) { const x = tx + r() * 32, y = ty + r() * 32, t = r(), len = 4 + r() * 5.5, sway = 1.2 + fbm(x / 120, y / 80, 5) * 2.6; blade(cx, x, y, sway, len, tones[t < .3 ? 0 : t < .5 ? 1 : t < .82 ? 2 : 3], .8 + r() * .7, .22 + r() * .24); if (t > .9 && !winter) ell(cx, x + sway, y - len, .9, 1.5, gold, .8); } });
       tiles(cb, 64, 12, 45, (tx, ty, r) => { for (let i = 0; i < 2; i++) { if (r() < .3) continue; tuft(cx, r, tx + r() * 64, ty + r() * 64, 5 + Math.floor(r() * 4), 6 + r() * 6, P.lo, gold, P); } });
       if (!winter) tiles(cb, 112, 34, 47, (tx, ty, r) => { if (r() < .35) return; const x0 = tx + r() * 112, y0 = ty + r() * 112, t = r(), col = P.season === 'autumn' ? (t < .5 ? '#d8a040' : '#e8dcc0') : t < .3 ? '#e2534a' : t < .55 ? '#f6f2e4' : t < .8 ? '#f0d24a' : '#7f8fd8';
         for (let k = 0, n = 7 + Math.floor(r() * 12); k < n; k++) { const x = x0 + (r() - .5) * 62, y = y0 + (r() - .5) * 30, hh = 3 + r() * 4; blade(cx, x, y, .8, hh, P.lo, .7, .7); flower(cx, x + .8, y - hh, 1.7 + r() * .6, col, col === '#f6f2e4' ? '#e6b436' : mix(col, '#3a2a1a', .35), P); } });
@@ -269,7 +271,7 @@ window.GardenPaintGround = (function () {
       const old = P.kind === 'oldwood'; wash(cx, cb, P, old ? 71 : 61, 1.25);
       tiles(cb, 128, 60, 63, (tx, ty, r) => { for (let i = 0; i < 2; i++) { const x = tx + r() * 128, y = ty + r() * 128, s = 26 + r() * 40; blob(cx, r, x, y, s, s * .5, 8, .5, old ? '#3c4f34' : '#4a5c36', .16 + r() * .1); if (!old || r() < .4) blob(cx, r, x + s * .9, y - s * .4, s * .7, s * .32, 8, .5, '#e6dc98', old ? .08 : .14); } });
       const litter = P.season === 'winter' ? ['#8a7a5c', '#9c8c6c', '#6e6048'] : old ? ['#7a5c34', '#8f7440', '#5c4a30', '#6f7a3e'] : ['#a8763a', '#c09848', '#8a5c30', '#9aa04e', '#b88a40'];
-      tiles(cb, 32, 6, 65, (tx, ty, r) => { for (let i = 0; i < (P.season === 'autumn' ? 13 : 8); i++) { cx.globalAlpha = .5 + r() * .3; cx.fillStyle = litter[Math.floor(r() * litter.length)]; cx.fill(P2(D().leaf(tx + r() * 32, ty + r() * 32, r() * 6.3, 2.4 + r() * 2, 1.2))); } });
+      tiles(cb, 32, 6, 65, (tx, ty, r) => { for (let i = 0; i < (P.season === 'autumn' ? 13 : 8) * (scaleOf(cx) < 1 ? .5 : 1); i++) { cx.globalAlpha = .5 + r() * .3; cx.fillStyle = litter[Math.floor(r() * litter.length)]; cx.fill(P2(D().leaf(tx + r() * 32, ty + r() * 32, r() * 6.3, 2.4 + r() * 2, 1.2))); } });
       cx.lineCap = 'round';
       tiles(cb, 64, 14, 67, (tx, ty, r) => {
         for (let i = 0; i < (old ? 3 : 2); i++) { if (r() < .35) continue; const x = tx + r() * 64, y = ty + r() * 64, s = 4 + r() * 7; blob(cx, r, x + 1, y + 1.2, s, s * .5, 7, .4, '#35492c', .5); blob(cx, r, x, y, s, s * .48, 7, .4, old ? '#5f8446' : '#7d9a4c', .9); blob(cx, r, x - s * .25, y - s * .14, s * .5, s * .2, 6, .4, '#b3c66c', .7); }
@@ -286,7 +288,7 @@ window.GardenPaintGround = (function () {
         if (pick < .1 && drift > .5) { const w = 8 + r() * 10; blob(cx, r, x + 1, y + 2.2, w, w * .26, 8, .4, '#4a3a2c', .8); blob(cx, r, x - .5, y - .5, w * .92, w * .2, 8, .45, P.lo, .85); continue; }
         if (pick < .2) { pebble(cx, r, x, y, 2 + r() * 3.6, { shadow: P.shadow, stone: '#a9a49a', stoneLo: '#8a857c', stoneHi: '#d4d0c4' }); if (r() < .5) ell(cx, x - 1, y - 1, 1.2, .6, '#c8c46a', .7); continue; }
         tuft(cx, r, x, y, 4 + Math.floor(r() * 4), 4 + r() * 4.5, P.lo, bleach, P); } });
-      tiles(cb, 32, 6, 85, (tx, ty, r) => { for (let i = 0; i < 6; i++) { const x = tx + r() * 32, y = ty + r() * 32; blade(cx, x, y, 1 + r() * 1.4, 2.6 + r() * 3.4, r() < .5 ? bleach : P.lo, .8 + r() * .6, .2 + r() * .2); } });
+      tiles(cb, 32, 6, 85, (tx, ty, r) => { for (let i = 0; i < (scaleOf(cx) < 1 ? 3 : 6); i++) { const x = tx + r() * 32, y = ty + r() * 32; blade(cx, x, y, 1 + r() * 1.4, 2.6 + r() * 3.4, r() < .5 ? bleach : P.lo, .8 + r() * .6, .2 + r() * .2); } });
       cx.globalAlpha = 1;
     },
     // wet ground: dark peaty hollows holding a little sky, rushes and sedge in clumps, mud at the edges
@@ -294,7 +296,7 @@ window.GardenPaintGround = (function () {
       wash(cx, cb, P, 91, 1.35); cx.lineCap = 'round';
       tiles(cb, 96, 40, 93, (tx, ty, r) => { for (let i = 0; i < 2; i++) { if (r() < .3) continue; const x = tx + r() * 96, y = ty + r() * 96, s = 10 + r() * 20; blob(cx, r, x, y, s * 1.25, s * .5, 9, .5, '#6a6244', .5); blob(cx, r, x, y, s, s * .36, 9, .45, '#4f6460', .85); blob(cx, r, x - s * .15, y - s * .05, s * .62, s * .16, 8, .4, '#a9c4c6', .5); cx.globalAlpha = .7; cx.strokeStyle = '#e4eeea'; cx.lineWidth = .8; cx.beginPath(); cx.moveTo(x - s * .4, y - s * .08); cx.lineTo(x + s * .1, y - s * .08); cx.stroke(); } });
       tiles(cb, 48, 12, 95, (tx, ty, r) => { for (let i = 0; i < 3; i++) { if (r() < .25) continue; const x = tx + r() * 48, y = ty + r() * 48, n = 5 + Math.floor(r() * 5), hh = 6 + r() * 7; ell(cx, x + 1.5, y + .8, 4.4, 1.4, P.shadow, .35); for (let k = 0; k < n; k++) { const lx = (k - n / 2) * .9 + (r() - .5); blade(cx, x + k * .5 - n * .25, y, lx, hh * (.7 + r() * .4), k % 2 ? '#56703c' : '#6f8648', 1, .85); if (r() < .3) ell(cx, x + k * .5 - n * .25 + lx, y - hh * .8, .8, 1.6, '#6e4f30', .9); } } });
-      tiles(cb, 32, 6, 97, (tx, ty, r) => { for (let i = 0; i < 6; i++) blade(cx, tx + r() * 32, ty + r() * 32, .6 + r(), 3 + r() * 3.5, r() < .5 ? P.lo : P.hi, .8 + r() * .5, .2 + r() * .2); });
+      tiles(cb, 32, 6, 97, (tx, ty, r) => { for (let i = 0; i < (scaleOf(cx) < 1 ? 3 : 6); i++) blade(cx, tx + r() * 32, ty + r() * 32, .6 + r(), 3 + r() * 3.5, r() < .5 ? P.lo : P.hi, .8 + r() * .5, .2 + r() * .2); });
       cx.globalAlpha = 1;
     },
     // dug soil: furrows that catch the light on one side, clods, a little straw

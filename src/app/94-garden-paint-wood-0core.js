@@ -367,7 +367,7 @@ window.GardenPaintWood = (function () {
     const dt = S.last == null ? 0 : Math.min(.08, Math.max(0, (time - S.last) / 1000)); S.last = time;
     const motion = typeof gardenMotionOn !== 'function' || gardenMotionOn(); if (motion) S.clock += dt; S.frame++;
     const near = { x: view.x - 384, y: view.y - 384, w: view.w + 768, h: view.h + 768 };
-    { const cam = S.scene.cameras && S.scene.cameras.main, z = cam ? cam.zoom || 1 : 1, now = performance.now(); if (Math.abs(z - (S.zoomSeen || 0)) > z * .012) { S.zoomSeen = z; S.zoomAt = now; } if (!S.wantK || now - (S.zoomAt || 0) > 220) S.wantK = window.GardenPaintGround ? GardenPaintGround.levelFor(z, 1, 4) : 1; }
+    { const cam = S.scene.cameras && S.scene.cameras.main, z = cam ? cam.zoom || 1 : 1, now = performance.now(); if (Math.abs(z - (S.zoomSeen || 0)) > z * .012) { S.zoomSeen = z; S.zoomAt = now; } if (!S.wantK || now - (S.zoomAt || 0) > 220) S.wantK = window.GardenPaintGround ? GardenPaintGround.levelFor(z, 1, 3) : 1;   // (3 at most: what is near the screen then fits CAP_MB on any screen) }
     const wantK = S.wantK || 1;
     let resident = 0, budget = 1; const vx = view.x + view.w / 2, vy = view.y + view.h / 2, pick = () => { let best = null, bd = Infinity; for (const ch of S.chunks.values()) { const seen = hit(ch.box, view); if (ch.image && (ch.K >= wantK || !seen) || !hit(ch.box, near) || (S.job && S.job.ch === ch)) continue; const d = Math.hypot(ch.box.x + CH / 2 - vx, (ch.box.y + CH / 2 - vy) * 1.4) - (seen ? 1e6 : 0) + (ch.image ? 5e5 : 0); if (d < bd) { bd = d; best = ch; } } return best; };
     for (const ch of S.chunks.values()) if (ch.image) { resident++; if (hit(ch.box, view)) ch.used = S.frame; }
