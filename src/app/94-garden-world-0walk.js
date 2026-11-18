@@ -94,6 +94,14 @@ function _gwBuildSolids(m) {
     const W = GARDEN_WORLD, scale = 1.75, x = oak.x + 2.9, y = oak.y - 1.5;
     add(x - 20 * scale / W.cellW, y - 8 * scale / W.cellH, x + 20 * scale / W.cellW, y + 2 * scale / W.cellH, 'the Great Oak trunk');
   }
+  // The warren bank is painted two and a half cells wide on a one-cell footprint (94-garden-paint-terrain-2marks.js,
+  // ART['ld-warren'].box runs from 62 px left of its foot to 66 px right): only the middle two burrows stopped the feet
+  // and you walked over the outer two. The low ends of the bank stop them too (the collision audit, 18 Nov 2026).
+  const warren = island && island.version >= 5 && typeof GardenNativePainted !== 'undefined' && GardenNativePainted && GardenNativePainted.wanted && GardenNativePainted.wanted() ? gardenPropsNow().find(p => p.id === 'ld-warren') : null;
+  if (warren && gardenPropCol(warren) === 'full' && !(warren.needs && !gardenWorkOwned(warren.needs))) {
+    const W = GARDEN_WORLD, w = warren.w || 1, cx = warren.x + w / 2, foot = warren.y + (warren.h || 1);
+    add(cx - 54 / W.cellW, foot - .4, warren.x, foot - .02, 'The warren bank (its west end)'); add(warren.x + w, foot - .4, cx + 58 / W.cellW, foot - .02, 'The warren bank (its east end)');
+  }
   const logs = typeof gardenIslandLogStack === 'function' ? gardenIslandLogStack(island) : null;
   if (logs) { const f = logs.foot; add(f.x0, f.y0, f.x1, f.y1, 'log stack'); }
   // The quay's sea wall (94-garden-paint-vale-1harbour.js draws it from the plaza): the coast line lies a little below

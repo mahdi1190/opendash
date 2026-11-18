@@ -73,7 +73,8 @@ window.GardenPaintWood = (function () {
     // How far (world px) a trunk foot is from the edge of the nearest drawn path or plaza
     // line: a trunk never stands on a path's painted width, so it can collide without blocking it.
     const pathGap = (X, Y) => { let best = Infinity; for (const r of routeLines) for (let i = 1; i < r.pts.length; i++) { const a = r.pts[i - 1], b = r.pts[i], dx = b.x - a.x, dy = b.y - a.y, L = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((X - a.x) * dx + (Y - a.y) * dy) / L)), d = Math.hypot(X - a.x - dx * t, Y - a.y - dy * t) - r.half; if (d < best) best = d; } return best; };
-    const wallPolys = (data.landforms || []).filter(f => f.kind === 'terrace-wall' && f.polygon && f.polygon.length > 2).map(f => f.polygon);
+    // (every wall: a terrace wall, a ruin wall and the rock of a scarp. Trunks stood in the old wood's ruin walls and at the foot of the Edge: the collision audit's overlap check, 18 Nov 2026)
+    const wallPolys = (data.landforms || []).filter(f => /-wall$/.test(String(f.kind)) && f.polygon && f.polygon.length > 2).map(f => f.polygon);
     const onWall = (x, y) => wallPolys.some(p => [[0, 0], [.6, 0], [-.6, 0], [0, .5], [0, -.5]].some(([dx, dy]) => inside(x + dx, y + dy, p)));
     for (const region of data.regions || []) {
       const def = WOODS[region.id]; if (!def) continue;
@@ -92,7 +93,7 @@ window.GardenPaintWood = (function () {
       for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
         if (!inside(x + .5, y + .5, poly)) continue; const c = cellAt(x, y); if (wet(c)) continue;
         land.push([x, y]);
-        if (onWall(x + .5, y + 1)) continue;   // (a trunk never stands on a dry-stone terrace wall)
+        if (onWall(x + .5, y + 1)) continue;   // (a trunk never stands on a wall)
         // Land not yet bought in a wood is a wall to your feet: show it as one (brambles and holly in a knot), not open grass.
         // The map-wide rule (one look per kind of country): thicket in the woods (light and old), a post-and-rail fence
         // everywhere else, the valley meadow included (94-garden-paint-vale-1valley.js, which skips THICKET_WOODS).
@@ -144,7 +145,7 @@ window.GardenPaintWood = (function () {
       // the light wood also gets shafts over its biggest glades (low grove field, many land cells)
       if (def.mood === 'light') for (const [x, y] of land) if (x % 7 === 0 && y % 6 === 0 && noise(x, y, 5, hash(region.id) & 1023) < .28 && !clear(x, y)) out.shafts.push({ x: px(x + .5), y: py(y + .5), n: 2, region: region.id });
     }
-    keepOldWoodInView(out, data, W, (x, y) => { const c = cellAt(x, y), r = (data.regions || []).find(q => WOODS[q.id] && WOODS[q.id].mood === 'old'); return !!(c && r && inside(x + .5, y + .5, r.polygons[0]) && !wet(c) && !c.plantingReserved && !isPath(c) && !statics.has(x + ',' + y) && !(c.row && (c.row.plot || c.locked && /^l[sc]-/.test(c.row.id || ''))) && !near(x, y, 1, isPath) && !plazas.some(p => Math.hypot((x + .5 - p.x) / ((p.rx || 3.2) + 1), (y + .5 - p.y) / ((p.ry || 2.4) + 1)) < 1)); });
+    keepOldWoodInView(out, data, W, (x, y) => { const c = cellAt(x, y), r = (data.regions || []).find(q => WOODS[q.id] && WOODS[q.id].mood === 'old'); return !!(c && r && inside(x + .5, y + .5, r.polygons[0]) && !wet(c) && !c.plantingReserved && !isPath(c) && !statics.has(x + ',' + y) && !onWall(x + .5, y + 1) && !(c.row && (c.row.plot || c.locked && /^l[sc]-/.test(c.row.id || ''))) && !near(x, y, 1, isPath) && !plazas.some(p => Math.hypot((x + .5 - p.x) / ((p.rx || 3.2) + 1), (y + .5 - p.y) / ((p.ry || 2.4) + 1)) < 1)); });
     // a crown that still reaches over a story house fades as you come near it (tick)
     for (const h of houses) { const hx = (h.x + (h.w || 1) / 2) * W.cellW, hy = W.sky + (h.y + .5) * W.cellH; for (const t of out.trees) { const H = t.h * t.scale; if (hy < t.y && hy > t.y - H * .95 && Math.abs(hx - t.x) < H * .5) t.hides = { x: hx, y: hy }; } }
     return out;

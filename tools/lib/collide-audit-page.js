@@ -27,6 +27,9 @@
  *                                            feet can stand in between: you are drawn on the wrong side of it
  *   slide-stall, slide-jitter                how walking feels: a diagonal press into an edge that stops dead where it
  *                                            could slide on, or shakes on the spot
+ *   overlap                                  two drawn things on top of each other that are not meant to be: a field
+ *                                            over a path, a path under a building, a path over water, a thing standing
+ *                                            on a path, a thing inside another, a building on a field (each pair once)
  *   route-none, route-detour, route-stall    click-to-walk: no way found where the feet have one; a way much longer than
  *                                            the feet need; a walk that stands still or never arrives (followed frame by
  *                                            frame the way the game follows it)
@@ -120,7 +123,10 @@
       if (!o) return; const kids = o.list || null;
       if ((o.type === 'Image' || o.type === 'Sprite') && o.texture) {
         const k = String(o.texture.key || ''), rec = owner(o), kind = KIND(k, rec);
-        if (kind && o.depth > -9000 && (o.visible !== false || o._gppStanding) && (!only || only(rec, k))) {   // (a standing part of a picture that is out of view is hidden with it, not gone)
+        // (a standing part of a picture that is out of view is hidden with it, not gone; and a picture baked into a cached
+        // tile hides its own images behind the tile, 94-garden-native-art.js: every sight and building once it has been
+        // on screen a while. Skipping those made the count of things checked change from run to run.)
+        if (kind && o.depth > -9000 && (o.visible !== false || o._gppStanding || o._nativeCacheHiddenBy) && (!only || only(rec, k))) {
           const P = pixelsOf(o, kind === 'tree');
           if (P && P.vb >= 0 && P.u1 >= P.u0) {
             // (copied: Phaser hands back one shared matrix for every object)
@@ -222,22 +228,25 @@
     if (/great-oak|crutch/.test(o.name + ' ' + o.key)) return;
     // nobody can get to it (it stands in the water, a skerry): nothing to line up
     { let touch = false; for (let x = a.x - .3; x <= b.x + .3 && !touch; x += .15) for (const dy of [-.5, -.25, 0, .25]) if (free(x, yb + dy)) { touch = true; break; } if (!touch) return; }
-    const freeN = xs.filter(x => free(x, yTest)).length; let midFree = free(mid, yTest);
+    const freeN = xs.filter(x => free(x, yTest)).length; let midFree = free(mid, yTest), skirt = 0;
     // a thin thing (a pole, a post): its small block may sit a few pixels above or below the last painted row
     if (midFree && span < .3) for (let y = yb - 10 / CH; y <= yb + 4 / CH && midFree; y += 2 / CH) if (!free(mid, y)) midFree = false;
     const base = Object.assign({ obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: mid, y: yb, span: +span.toFixed(2) }, extra || {});
     // a tree's roots flare and its leaf litter lies lower than its trunk: its block may sit anywhere from the narrow foot down to the lowest root
     if (midFree && o.kind === 'tree') { for (let y = yb - 14 / CH; y <= yb + 5 / CH && midFree; y += 2 / CH) if (!free(mid, y)) midFree = false; if (!midFree) return; }
+    // a painted sight stands in a skirt of grass, a mound or worn ground drawn a little below its foot line (a treehouse's
+    // tussocks, a warren's spoil): its block may start up to half a cell above the lowest paint. Its width is still judged below.
+    if (midFree && o.kind === 'landmark') { for (let y = yb - 16 / CH; y <= yb && midFree; y += 2 / CH) if (!free(mid, y)) { midFree = false; skirt = yb - y; } }
     // a thin thing held by stays or with a wide skirt (a maypole, a crutch under a bough): its block stands under the middle of the drawing
     if (midFree && span < .45 && o.bounds.w > 40) { const bc = toCell(o.bounds.x + o.bounds.w / 2, o.bounds.y + o.bounds.h), near = solidsNear(bc.x - .35, bc.y - 1.2, bc.x + .35, bc.y + .15).filter(r => !r.form); if (near.length) return; }
     if (midFree && (xs.length === 1 || freeN >= 2)) { push({ kind: extra ? 'decor-foot' : 'walk-through', ...base, detail: 'feet can stand on its drawn base (' + freeN + ' of ' + xs.length + ' test points free)' }); return; }
     // what blocks at its base: boxes and cells along the base line, a third of a cell deep
     // (only blocks that reach under this base: a neighbour's trunk beside it is the neighbour's)
-    const band = { y0: yb - .35, y1: yb + .05 };
+    const band = { y0: yb - .35 - skirt, y1: yb + .05 };
     const rs = solidsNear(a.x - .05, band.y0, b.x + .05, band.y1).filter(r => !r.form);   // (a landform's box is its outline's bounds, not a block)
     let bx0 = Infinity, bx1 = -Infinity;
     for (const r of rs) { bx0 = Math.min(bx0, r.x0); bx1 = Math.max(bx1, r.x1); }
-    const cellsUnder = []; for (let x = Math.floor(a.x); x <= Math.floor(b.x); x++) if (hardAt(x + .5, yb - .15)) cellsUnder.push(x);
+    const cellsUnder = []; for (let x = Math.floor(a.x); x <= Math.floor(b.x); x++) if (hardAt(x + .5, yb - .15) || skirt && hardAt(x + .5, yb - .15 - skirt)) cellsUnder.push(x);
     for (const x of cellsUnder) { bx0 = Math.min(bx0, x); bx1 = Math.max(bx1, x + 1); }
     if (!(bx1 > bx0)) {
       // nothing under the base, though the feet cannot stand there (water or the shore): fine; otherwise look a little round it
@@ -253,7 +262,9 @@
     const own = rs.length <= 1 || cellsUnder.length;
     if (span > .6 && bw < span * .4) push({ kind: extra ? 'decor-foot' : 'block-size', ...base, detail: 'block ' + bw.toFixed(2) + ' cells wide under a base ' + span.toFixed(2) + ' wide (too small)' });
     else if (own && rs.length <= 1 && !cellsUnder.length && bw > .8 && bw > Math.max(span * 2, span + 1) && bw > o.bounds.w / CW * 1.15) push({ kind: extra ? 'decor-foot' : 'block-size', ...base, detail: 'block ' + bw.toFixed(2) + ' cells wide under a base ' + span.toFixed(2) + ' wide (too big)' });
-    if (Math.abs(bc - mid) > Math.max(.35, span * .4) && !(bx0 <= mid && bx1 >= mid)) push({ kind: extra ? 'decor-foot' : 'block-offset', ...base, detail: 'block centre ' + (bc - mid).toFixed(2) + ' cells from the base centre' });
+    // (leaf litter or a root to one side of a sight widens its lowest paint, and a decoration drawn in parts has a narrow lowest run: a block under the middle of the body is in the right place)
+    const bodyMid2 = toCell(o.bounds.x + o.bounds.w / 2, 0).x, underBody = (o.kind === 'landmark' || !!extra) && Math.abs(bc - bodyMid2) <= Math.max(.2, o.bounds.w / CW * .15);
+    if (!underBody && Math.abs(bc - mid) > Math.max(.35, span * .4) && !(bx0 <= mid && bx1 >= mid)) push({ kind: extra ? 'decor-foot' : 'block-offset', ...base, detail: 'block centre ' + (bc - mid).toFixed(2) + ' cells from the base centre' });
   };
   for (const o of objs) {
     if (noBlock.has(o.kind) || softProp(o.prop) || o.heightPx < 14) continue;
@@ -670,6 +681,90 @@
     }
   } catch (e) { order.error = String(e && e.stack || e).slice(0, 300); }
 
+  /* ---------- 15. overlaps: no two drawn things lie on top of each other unless they are meant to ---------- */
+  // Meant to: a bridge over water, a crown over a path, a path running into its own square, things set out on a square
+  // or the quay, a gate across its path. Everything else is reported as a pair:
+  //   a field over a path            a plot's cells under a path's drawn width (its fence and sign stand on the path)
+  //   a path under a building        a building or sight's footprint on a path's drawn width
+  //   a path over water              a path's middle line over water where no bridge, stones or pier carries it
+  //   a path through a square        a path that is not the square's own running on across its paving
+  //   a thing on a path              a tree, rock, prop or sight whose drawn base stands well inside a path's width
+  //   a thing inside another         two standing things whose drawn bases share the same ground; a drawn base inside a
+  //                                  building's footprint or inside a rock or wall; two footprints on the same cells
+  //   a building on a field          a building's footprint or its door step inside a plot
+  await stage('overlaps');
+  const overlap = { pairs: 0, byPair: {}, roads: 0, plotCells: 0, things: 0 };
+  if (!opts.noOverlap) try {
+    const seenPair = new Set();
+    const over = (pair, a, b, x, y, detail) => { const k = pair + '|' + a + '|' + b; if (seenPair.has(k)) return; seenPair.add(k); overlap.pairs++; overlap.byPair[pair] = (overlap.byPair[pair] || 0) + 1; push({ kind: 'overlap', obj: pair, name: a + ' / ' + b, x, y, detail }); };
+    const plazas = (island.presentation && island.presentation.plazas) || [];
+    const roads = [];
+    for (const r of island.routes || []) {
+      if (!r.points || r.points.length < 2) continue;
+      const pts = gardenIslandRoutePath(r).points, rad = gardenIslandRoadStyle(r).radius;
+      roads.push({ id: r.id, pts, rad, square: plazas.some(p => p.route === r.id), x0: Math.min(...pts.map(q => q.x)) - rad - .3, x1: Math.max(...pts.map(q => q.x)) + rad + .3, y0: Math.min(...pts.map(q => q.y)) - rad * CW / CH - .3, y1: Math.max(...pts.map(q => q.y)) + rad * CW / CH + .3 });
+    }
+    overlap.roads = roads.length;
+    const distPx = (R, x, y) => { let best = Infinity; for (let i = 1; i < R.pts.length; i++) { const p = R.pts[i - 1], q = R.pts[i], ax = (q.x - p.x) * CW, ay = (q.y - p.y) * CH, bx = (x - p.x) * CW, by = (y - p.y) * CH, L = ax * ax + ay * ay || 1, t = Math.max(0, Math.min(1, (ax * bx + ay * by) / L)), d = Math.hypot(bx - ax * t, by - ay * t); if (d < best) best = d; } return best; };
+    const inSquare = (x, y, k) => plazas.find(p => ((x - p.x) / (p.rx || 3.2)) ** 2 + ((y - p.y) / (p.ry || 2.4)) ** 2 <= (k || 1));   // (a square with no size of its own: the painters' default, 94-garden-paint-wood-0core.js)
+    /** How much of a rectangle (cells) lies under a path's drawn band, in square cells, and where. `k`: share of the half width that counts. */
+    const under = (R, x0, y0, x1, y1, k) => { if (x1 < R.x0 || x0 > R.x1 || y1 < R.y0 || y0 > R.y1) return null; const N = 5; let on = 0, sx = 0, sy = 0; for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const x = x0 + (x1 - x0) * (i + .5) / N, y = y0 + (y1 - y0) * (j + .5) / N; if (distPx(R, x, y) < R.rad * CW * k) { on++; sx += x; sy += y; } } return on ? { area: on / (N * N) * (x1 - x0) * (y1 - y0), x: sx / on, y: sy / on } : null; };
+    // a field over a path
+    const fieldOn = new Map();
+    for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
+      const row = typeof gardenLandCell === 'function' ? gardenLandCell(x, y) : null; if (!row || !row.plot) continue; overlap.plotCells++;
+      for (const R of roads) { const u = under(R, x, y, x + 1, y + 1, .8); if (!u) continue; const k = row.id + '|' + R.id, g = fieldOn.get(k) || fieldOn.set(k, { plot: row.id, road: R.id, area: 0, sx: 0, sy: 0, cells: [] }).get(k); g.area += u.area; g.sx += u.x * u.area; g.sy += u.y * u.area; g.cells.push(x + ',' + y); }
+    }
+    for (const g of fieldOn.values()) if (g.area >= .3) over('a field over a path', 'plot ' + g.plot, 'path ' + g.road, g.sx / g.area, g.sy / g.area, g.area.toFixed(2) + ' square cells of the plot lie under the path’s drawn width (cells ' + g.cells.slice(0, 6).join(' ') + ')');
+    // a path under a building; a building on a field; two footprints on the same cells
+    const propsNow = gardenPropsNow().filter(p => !(p.needs && !gardenWorkOwned(p.needs)) && !p.site), blocked = faults.filter(f => f.kind === 'path-blocked').map(f => f.name + ' ' + f.detail), onRoad = new Set();
+    const foot = p => gardenPropCol(p) === 'soft' ? { x0: p.x + (p.w || 1) / 2 - Math.min(p.w || 1, 2) * .25, y0: p.y + (p.h || 1) - .36, x1: p.x + (p.w || 1) / 2 + Math.min(p.w || 1, 2) * .25, y1: p.y + (p.h || 1) - .08 } : { x0: p.x, y0: p.y, x1: p.x + (p.w || 1), y1: p.y + (p.h || 1) };
+    for (const p of propsNow) {
+      if (gardenPropCol(p) === 'none') continue; const f = foot(p), nm = p.name || p.id;
+      if (!inSquare((f.x0 + f.x1) / 2, f.y1)) for (const R of roads) { if (R.square) continue; const u = under(R, f.x0, f.y0, f.x1, f.y1, .7); if (!u || u.area < .2) continue; onRoad.add(p.id + '|' + R.id); if (blocked.some(b => b.includes('(' + nm + ')'))) continue; over('a path under a building', nm, 'path ' + R.id, u.x, u.y, u.area.toFixed(2) + ' square cells of its footprint stand on the path’s drawn width'); }   // (one fault per cause: a building on a path's middle line is a path-blocked fault already)
+      const inPlot = new Map(); for (let y = Math.floor(f.y0); y < f.y1; y++) for (let x = Math.floor(f.x0); x < f.x1; x++) { const row = gardenLandCell(x, y); if (row && row.plot) inPlot.set(row.id, (inPlot.get(row.id) || 0) + 1); }
+      for (const [id, n] of inPlot) over('a building on a field', nm, 'plot ' + id, (f.x0 + f.x1) / 2, f.y1, n + ' cell(s) of its footprint are cells of the plot');
+      if (p.door) { const row = gardenLandCell(p.door.x, p.door.y); if (row && row.plot) over('a building on a field', 'the door step of ' + nm, 'plot ' + row.id, p.door.x + .5, p.door.y + .5, 'its door step at ' + p.door.x + ',' + p.door.y + ' is a cell of the plot' + (String(gardenAreaAt(p.door.x, p.door.y, lvl)).startsWith('locked:') ? ' (shut behind its fence until the plot is bought)' : '')); }
+      for (const q of propsNow) { if (q === p || q.id <= p.id || gardenPropCol(q) === 'none') continue; const g = foot(q), w = Math.min(f.x1, g.x1) - Math.max(f.x0, g.x0), h = Math.min(f.y1, g.y1) - Math.max(f.y0, g.y0); if (w > .05 && h > .05) over('a thing inside another', nm, q.name || q.id, Math.max(f.x0, g.x0) + w / 2, Math.min(f.y1, g.y1), 'their footprints share ' + (w * h).toFixed(2) + ' square cells'); }
+    }
+    // a path over water; a path through a square that is not its own
+    for (const R of roads) {
+      let run = null; const flush = () => { if (run && run.n >= 4) over('a path over water', 'path ' + R.id, 'water at ' + run.x.toFixed(1) + ', ' + run.y.toFixed(1), run.x, run.y, (run.n * .25).toFixed(1) + ' cells of its middle line lie over water with no bridge, stones or pier there'); run = null; };
+      const inSq = new Map(), ends = [inSquare(R.pts[0].x, R.pts[0].y, 1.1), inSquare(R.pts[R.pts.length - 1].x, R.pts[R.pts.length - 1].y, 1.1)];   // (a path that ends in a square joins it)
+      for (let i = 1; i < R.pts.length; i++) {
+        const p = R.pts[i - 1], q = R.pts[i], n = Math.max(1, Math.round(Math.hypot(q.x - p.x, q.y - p.y) / .25));
+        for (let k = 0; k < n; k++) {
+          const x = p.x + (q.x - p.x) * k / n, y = p.y + (q.y - p.y) * k / n;
+          if (gardenWaterContainsPoint(x, y) && !nearCrossing(x, y) && !onDeck(x, y) && (!mosaic.ok || pixWater(x, y, 8, 4) >= .5)) { if (!run) run = { x, y, n: 0 }; run.n++; } else flush();
+          const sq = inSquare(x, y, .8); if (sq && sq.route !== R.id && !ends.includes(sq)) { const g = inSq.get(sq.id) || inSq.set(sq.id, { n: 0, x, y }).get(sq.id); g.n++; if (g.n === 4) { g.x = x; g.y = y; } }
+        }
+      }
+      flush();
+      for (const [id, g] of inSq) if (g.n * .25 >= 2.5) over('a path through a square', 'path ' + R.id, 'square ' + id, g.x, g.y, (g.n * .25).toFixed(1) + ' cells of the path run on across the square’s own paving');
+    }
+    // standing things: on a path; base in base; in a building's footprint; in rock or wall
+    const stands = objs.filter(o => ['tree', 'rock', 'prop', 'harbour', 'landmark', 'building', 'wall'].includes(o.kind) && o.heightPx >= 14 && !/lightpool|\|block$|gatesign|bridge|stones|\|stair|steps|boardwalk|\|pier/.test(o.key)).map(o => { const a = toCell(o.X0, o.Yb), b = toCell(o.X1, o.Yb); return { o, x: (a.x + b.x) / 2, y: a.y, w: b.x - a.x, tag: o.kind + ' ' + o.name + ' at ' + ((a.x + b.x) / 2).toFixed(1) + ', ' + a.y.toFixed(1), propId: o.prop ? o.prop.id : '' }; }).filter(t => t.x >= 0 && t.y >= 0 && t.x < W.cols && t.y < W.rows);
+    overlap.things = stands.length;
+    const fullForms = (island.landforms || []).filter(f => f.polygon && f.col === 'full').map(f => ({ f, x0: Math.min(...f.polygon.map(q => q[0])), x1: Math.max(...f.polygon.map(q => q[0])), y0: Math.min(...f.polygon.map(q => q[1])), y1: Math.max(...f.polygon.map(q => q[1])) }));
+    const cellOf = new Map();
+    for (const t of stands) {
+      // on a path (not on a square or the quay, where things are set out)
+      if (!inSquare(t.x, t.y, 1.15) && !softProp(t.o.prop)) for (const R of roads) { if (R.square || t.x < R.x0 || t.x > R.x1 || t.y < R.y0 || t.y > R.y1) continue; const d = distPx(R, t.x, t.y - 2 / CH); if (d < R.rad * CW * .55) { if (t.propId && (onRoad.has(t.propId + '|' + R.id) || blocked.some(b => b.includes('(' + (t.o.prop.name || t.propId) + ')')))) break; over('a thing on a path', t.tag, 'path ' + R.id, t.x, t.y, 'its drawn base stands ' + Math.round(d) + ' px from the middle of a path ' + Math.round(R.rad * 2 * CW) + ' px wide'); break; } }
+      // inside a building's footprint that is not its own
+      { const P = gardenPropAt(Math.floor(t.x), Math.floor(t.y - .12)); if (P && gardenPropCol(P) === 'full' && P.id !== t.propId && ['tree', 'rock', 'harbour'].includes(t.o.kind)) over('a thing inside another', t.tag, P.name || P.id, t.x, t.y, 'its drawn base stands inside the footprint of ' + (P.name || P.id)); }
+      // inside rock or a wall
+      if (['tree', 'prop', 'harbour', 'landmark', 'building'].includes(t.o.kind)) for (const F of fullForms) { if (t.x < F.x0 || t.x > F.x1 || t.y < F.y0 || t.y > F.y1) continue; if (F.f.kind === 'ruin' || F.f.kind === 'mountain' || F.f.kind === 'rock-wall' && /\|pine\|/.test(t.o.key)) continue;   // (meant: a ruin's floor is grown over; the Edge's own wind-bent pines stand on its rock, 94-garden-paint-terrain-1fells.js)
+        if (inLoop(t.x, t.y - .15, F.f.polygon) && inLoop(t.x - .2, t.y - .15, F.f.polygon) && inLoop(t.x + .2, t.y - .15, F.f.polygon)) { over('a thing inside another', t.tag, F.f.kind + ' ' + F.f.id, t.x, t.y, 'its drawn base stands inside the drawn ' + F.f.kind); break; } }
+      const k = Math.floor(t.x) + ',' + Math.floor(t.y); (cellOf.get(k) || cellOf.set(k, []).get(k)).push(t);
+    }
+    // two drawn bases on the same ground (not parts of one thing)
+    for (const t of stands) for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) for (const u of cellOf.get((Math.floor(t.x) + di) + ',' + (Math.floor(t.y) + dj)) || []) {
+      if (u === t || u.tag <= t.tag || u.o.rec && u.o.rec === t.o.rec || u.propId && u.propId === t.propId || u.o.im.parentContainer && u.o.im.parentContainer === t.o.im.parentContainer && u.o.kind !== 'tree') continue;
+      const ow = Math.min(t.x + t.w / 2, u.x + u.w / 2) - Math.max(t.x - t.w / 2, u.x - u.w / 2), small = Math.min(t.w, u.w);
+      if (small * CW >= 5 && ow > small * .5 && Math.abs(t.y - u.y) * CH <= 7) over('a thing inside another', t.tag, u.tag, (t.x + u.x) / 2, Math.max(t.y, u.y), 'their drawn bases share ' + Math.round(ow * CW) + ' px of the same ground line');
+    }
+  } catch (e) { overlap.error = String(e && e.stack || e).slice(0, 400); }
+
   /* ---------- 10. every decoration a player can place: each family, each way round ---------- */
   await stage('decor');
   const decor = { placed: 0, checked: 0, drawn: 0, families: {}, skipped: [] };
@@ -722,5 +817,5 @@
   const counts = { byKind: {}, byRegion: {}, byObject: {}, byRegionKind: {} };
   for (const f of faults) { counts.byKind[f.kind] = (counts.byKind[f.kind] || 0) + 1; counts.byRegion[f.region] = (counts.byRegion[f.region] || 0) + 1; counts.byObject[f.obj] = (counts.byObject[f.obj] || 0) + 1; const k = f.region + ' / ' + f.kind; counts.byRegionKind[k] = (counts.byRegionKind[k] || 0) + 1; }
   const objKinds = {}; for (const o of all) objKinds[o.kind] = (objKinds[o.kind] || 0) + 1;
-  return { total: faults.length, counts, faults, scanned: { sprites: all.length, checked, byKind: objKinds, rects: D.rects.length, cells: D.cells.length, doors: doorsChecked, clicks: D.clicks.length, landforms: (island.landforms || []).length, routes: (island.routes || []).length, pathSamples, lockedPlots: plots.size, lockedEdges, shorePoints: shore.points, shoreDrawnDryNotes: shore.notes, crossings: crossingsChecked, decks: decksNow.length, picture: mosaic, decor, feel, walkTo, closed, order } };
+  return { total: faults.length, counts, faults, scanned: { sprites: all.length, checked, byKind: objKinds, rects: D.rects.length, cells: D.cells.length, doors: doorsChecked, clicks: D.clicks.length, landforms: (island.landforms || []).length, routes: (island.routes || []).length, pathSamples, lockedPlots: plots.size, lockedEdges, shorePoints: shore.points, shoreDrawnDryNotes: shore.notes, crossings: crossingsChecked, decks: decksNow.length, picture: mosaic, decor, feel, walkTo, closed, order, overlap } };
 })
