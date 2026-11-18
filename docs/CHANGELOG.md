@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.73.7] - 2026-11-18
+
+### Changed
+
+- Catching up on past achievements saves the new rewards together. This reduces a pause after opening a large dashboard and keeps the history XP limit intact if a catch-up is interrupted and retried.
+
 ## [2.73.6] - 2026-11-18
 
 ### Changed
