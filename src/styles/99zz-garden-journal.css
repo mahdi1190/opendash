@@ -16,7 +16,7 @@
 .gj-pagehead { display: flex; padding: 8px 12px; background: var(--gu-wood, #7a5534); color: var(--gu-wood-ink, #fff6e4); border-radius: 12px 12px 0 0; }
 
 .gj-host { color: var(--gj-ink, #3a2f1c); }
-.gj-book { position: relative; display: grid; grid-template-columns: 1fr 1fr 0; min-height: 100%; padding: 10px 64px 10px 10px; border-radius: 16px; background: var(--gj-cloth, #4f6e3c);
+.gj-book { position: relative; display: grid; grid-template-columns: 1fr 1fr 0; min-height: 100%; flex: none; padding: 10px 64px 10px 10px; border-radius: 16px; background: var(--gj-cloth, #4f6e3c);
   box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .12), 0 8px 22px rgba(0, 0, 0, .35); }
 .gj-leaf { position: relative; background: var(--gj-paper, #fbf5e3); padding: 18px 22px 16px; min-width: 0; display: flex; flex-direction: column; gap: 10px;
   background-image: repeating-linear-gradient(0deg, transparent 0 27px, rgba(160, 130, 80, .08) 27px 28px); }
@@ -25,7 +25,7 @@
 .gj-hand { font-family: var(--gj-hand); color: var(--gj-ink-2, #6b5a3e); }
 
 /* the ribbons */
-/* (sticky in the third, empty column: all seven stay in view however long the page scrolls; they used to stretch down the whole book, so Keepsakes and Photos sat below the fold) */
+/* (sticky in the third, empty column: all seven stay in view however long the page scrolls (the book must not shrink in the popup body, flex: none, or they stop at its first screen); they used to stretch down the whole book, so Keepsakes and Photos sat below the fold) */
 .gj-ribbons { position: sticky; top: 6px; grid-column: 3; grid-row: 1; align-self: start; justify-self: start; margin: 6px 0 0 2px; width: 58px; display: flex; flex-direction: column; gap: 6px; }
 .gj-ribbon { flex: none; height: clamp(72px, calc((100vh - 290px) / 7), 104px); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 6px; padding: 10px 4px; border: 0; border-radius: 0 10px 10px 0;
   background: var(--gj-rib); color: #fff8ea; cursor: pointer; box-shadow: 2px 2px 0 rgba(0, 0, 0, .18); transform: translateX(-8px); transition: transform var(--gu-dur, 170ms) var(--gu-ease, ease); }
