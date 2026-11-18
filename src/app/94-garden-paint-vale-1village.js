@@ -114,7 +114,8 @@
     bracken: (B, run, C) => {
       const col = C.season === 'autumn' ? ['#a8703a', '#c8904a', '#8a5a30'] : C.season === 'winter' ? ['#8a6a4a', '#a08260', '#6e5440'] : ['#3f6a32', '#5a8a42', '#7aa255'], s = run.slice().sort((a, b) => a.y - b.y);
       for (const q of s) B.f(B.ell(q.x + 1, q.y + .8, 7, 2.2), '#22301a', .22);
-      for (const q of s) { const r = rngAt(q, 19), big = (q.big || 1) * (.8 + r() * .55), x0 = q.x + (r() - .5) * 5, y0 = q.y + (r() - .5) * 3; for (let k = 0; k < 5; k++) { const a = -Math.PI / 2 + (k - 2) * .5 + (r() - .5) * .3, l = (8 + r() * 7) * big, ex = x0 + Math.cos(a) * l * 1.25, ey = y0 + Math.sin(a) * l; B.s(`M${x0} ${y0}Q${(x0 + ex) / 2} ${ey - 3} ${ex} ${ey}`, col[k % col.length], 2.1, .92); B.s(`M${(x0 + ex) / 2} ${(y0 + ey) / 2 - 2}l${(ex - x0) * .25} ${-2.4}`, col[(k + 1) % col.length], 1, .7); } }
+      const alt = C.season === 'autumn' ? ['#7e8440', '#9a9a4a', '#66703a'] : C.season === 'winter' ? ['#7a705c', '#8e8468', '#5e5648'] : ['#557a34', '#86a84e', '#a2b860'];
+      for (const q of s) { const r = rngAt(q, 19), big = (q.big || 1) * (.8 + r() * .55), x0 = q.x + (r() - .5) * 5, y0 = q.y + (r() - .5) * 3, pal = r() < .32 ? alt : col; for (let k = 0; k < 5; k++) { const a = -Math.PI / 2 + (k - 2) * .5 + (r() - .5) * .3, l = (8 + r() * 7) * big, ex = x0 + Math.cos(a) * l * 1.25, ey = y0 + Math.sin(a) * l; B.s(`M${x0} ${y0}Q${(x0 + ex) / 2} ${ey - 3} ${ex} ${ey}`, pal[k % pal.length], 2.1, .92); B.s(`M${(x0 + ex) / 2} ${(y0 + ey) / 2 - 2}l${(ex - x0) * .25} ${-2.4}`, pal[(k + 1) % pal.length], 1, .7); } }
     },
     // the Mere bank: reeds and reedmace
     reeds: (B, run, C) => {
@@ -142,7 +143,7 @@
     }
     KIT().tiles(box, T, 14, salt + 2, (tx, ty, r) => {
       const at = () => [tx + r() * T, ty + r() * T];
-      if (edge !== 'bracken') for (let k = 0, n = tall ? 62 : 32; k < n; k++) { const [x, y] = at(), hh = 4 + r() * (tall && edge !== 'hedge-road' ? 8 : 5), lean = (r() - .5) * 4, t = r(), t2 = r(); if (inF(x, y)) B.s(`M${x} ${y}q${lean * .3} ${-hh * .6} ${lean} ${-hh}`, t < .4 ? P.lawnLo : t < .7 ? '#566e30' : st[Math.floor(t2 * 3)], 1, .8); }
+      if (edge !== 'bracken') for (let k = 0, n = tall ? 62 : 32; k < n; k++) { const [x, y] = at(), hh = 4 + r() * (tall ? 8 : 5), lean = (r() - .5) * 4, t = r(), t2 = r(); if (inF(x, y)) B.s(`M${x} ${y}q${lean * .3} ${-hh * .6} ${lean} ${-hh}`, t < .4 ? P.lawnLo : t < .7 ? '#566e30' : st[Math.floor(t2 * 3)], 1, .8); }
       if (edge === 'meadow' && season !== 'winter') { const fl = season === 'autumn' ? ['#e8dcc0', '#d8a040', '#c85a3a'] : ['#d8402e', '#e8553a', '#f4f0e0', '#f0d24a', '#8ab0e0']; for (let k = 0; k < 24; k++) { const [x, y] = at(), up = 3 + r() * 5, s = 1.3 + r() * .8, c = fl[Math.floor(r() * fl.length)]; if (inF(x, y)) B.f(B.circ(x, y - up, s), c, .95); } }
       if (edge === 'bracken') {
         const leaf = season === 'autumn' ? ['#b0682a', '#d38f3a', '#8a5a2c', '#e0b050'] : season === 'winter' ? ['#8a7a5a', '#a0906a', '#6e6450'] : ['#7d8f4e', '#6a7c40', '#94a058', '#8a7a4a'];
@@ -160,7 +161,7 @@
         for (let k = 0; k < 2; k++) { const [x, y] = at(); if (!inF(x, y) || !inF(x, y - 10)) continue; B.tufts(r, x, y, 12, 6, [lt[1], lt[2], P.lawnLo], 9); if (season !== 'winter') for (let j = 0; j < 3; j++) B.f(B.circ(x + (r() - .5) * 10, y - 6 - r() * 4, 1.2), '#c79ac0', .9); }   // willowherb come up through the old beds
         { const [x, y] = at(); if (inF(x, y) && r() < .7) B.f(B.rr(x, y, 5.4, 3, 1), '#8a5642', .8).f(B.rr(x + 4, y + 2, 4.6, 2.6, 1), '#96604a', .8); }
       }
-      if (edge === 'hedge-road') for (let k = 0; k < 2; k++) {   // young trees: whips on stakes
+      if (edge === 'hedge-road') for (let k = 0; k < 3; k++) {   // young trees: whips on stakes
         const [x, y] = at(); if (r() < .25 || !inF(x, y) || !inF(x, y - 14)) continue;
         B.f(B.ell(x + 2, y + 1, 5, 1.6), '#22301a', .22).f(B.rect(x + 2.4, y - 11, 1.3, 11), '#8a7454').s(`M${x} ${y}q${-.6} ${-9} ${.4} ${-17}`, '#5e4c36', 1.3, .95);
         for (let j = 0; j < 5; j++) B.f(B.blob(r, x + (r() - .5) * 8, y - 12 - r() * 8, 2.6, 1.8, 6, .4), lt[1 + Math.floor(r() * 3)], .9);
