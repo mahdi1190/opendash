@@ -155,13 +155,14 @@ Light a thing from the upper left: lit face and highlights up and left, shade do
    the zoom and the memory budget. No fixed-resolution ground textures.
 4. Scatter by `tiles`, shade by `noise`: a chunk must paint the same picture as its neighbour along their edge.
 5. No hard outlines, no rectangles, no square ends. Edges are masks, fringes or the shapes of the things themselves.
-6. One light. Use `castShadow` and `contact`; never a shadow that falls another way.
+6. One light. Stand things with `sprite(..., shade)` or hand them to `cast.blobs`; never a shadow that falls another
+   way, and never a round blob under a thing in place of its shadow.
 7. If a thing a player can bump into moves, its collision moves with it: read the same placement data the walking
    code reads, and check with Shift+C.
 
 ## Numbers (1500 x 900 window, headless Edge with the GPU on, 18 Nov 2026)
 
-Texture memory held by the kit ( and ):
+Texture memory held by the kit (`GardenPaintGround.status()` and `GardenPaintTerrainKit.sharpStatus()`):
 
 | | Walking zoom (2.0, level 2) | Closest zoom (3.9, level 3) | Whole map (0.87, level .75) |
 | --- | --- | --- | --- |
@@ -175,7 +176,7 @@ Texture memory held by the kit ( and ):
 On a 2x screen (2504 x 1800 canvas, level 4 at the walking zoom and closer) the kit held 106 MB at both zooms, measured
 with the shared ground's budget at 48 MB; that budget is 64 MB now, so allow about 120 MB. A chunk is 0.15 MB at level
 .75, 1.1 MB at level 2, 2.4 MB at level 3 and 4.3 MB at level 4. The woods' own floor and the tree textures are not the
-kit's and are not counted here (: 14 MB of a 44 MB cap, and 11 MB of trees).
+kit's and are not counted here (`GardenPaintWood.status()`: 14 MB of a 44 MB cap, and 11 MB of trees).
 
 Bake times for a 256 px chunk of the shared ground, in total, spread over slices on a 34 ms timer: median 24 to 31 ms,
 95th percentile 47 to 63 ms. One slice is 8 to 10 ms by design, but a slice cannot stop inside an op: the longest single
