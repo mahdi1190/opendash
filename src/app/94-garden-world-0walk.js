@@ -62,25 +62,26 @@ function gardenDecorCol(def) {
 /** The boxes the feet are tested against besides the cell grid: [{x0, y0, x1, y1}] in cells, and which cells each touches. */
 function _gwBuildSolids(m) {
   const list = [], at = new Map();
-  const add = (x0, y0, x1, y1) => {
-    const r = { x0, y0, x1, y1 }; list.push(r);
+  // (src names the thing for the collision view, 94-garden-world-7collide.js; walking reads only the box)
+  const add = (x0, y0, x1, y1, src) => {
+    const r = { x0, y0, x1, y1, src: src || 'something solid' }; list.push(r);
     for (let cy = Math.floor(y0); cy <= Math.floor(y1 - 1e-6); cy++) for (let cx = Math.floor(x0); cx <= Math.floor(x1 - 1e-6); cx++) { const k = cx + ',' + cy; (at.get(k) || at.set(k, []).get(k)).push(r); }
   };
   for (const p of m.plants) {
     if (!gardenPlantBlocks(p)) continue;
     const fp = p.fp || 1, cx = p.x + fp / 2, foot = p.y + fp - 0.08, w = fp > 1 ? 0.5 : 0.4, d = fp > 1 ? 0.32 : 0.28;
-    add(cx - w / 2, foot - d, cx + w / 2, foot);   // the trunk: the leaves are for walking behind
+    add(cx - w / 2, foot - d, cx + w / 2, foot, 'tree trunk: ' + ((p.def && p.def.name) || 'a planted tree'));   // the trunk: the leaves are for walking behind
   }
   for (const dc of m.decor) {
     const def = dc.def; if (!def || def.layer === 'ground' || gardenDecorCol(def) !== 'soft') continue;
     const w = def.w || 1, h = def.h || 1, cx = dc.x + w / 2, foot = dc.y + h - 0.08, bw = Math.min(w, 2) * 0.5, d = 0.28 + (h > 1 ? 0.3 : 0);
-    add(cx - bw / 2, foot - d, cx + bw / 2, foot);
+    add(cx - bw / 2, foot - d, cx + bw / 2, foot, 'decoration: ' + (def.name || def.id));
   }
   for (const p of gardenPropsNow()) {
     if (p.needs && !gardenWorkOwned(p.needs)) continue;
     if (gardenPropCol(p) !== 'soft') continue;
     const cx = p.x + p.w / 2, foot = p.y + p.h - 0.08, bw = Math.min(p.w, 2) * 0.5, d = 0.28;
-    add(cx - bw / 2, foot - d, cx + bw / 2, foot);   // a lectern, a camera, a post box: a small box at the base, so there is room beside it
+    add(cx - bw / 2, foot - d, cx + bw / 2, foot, 'small prop: ' + (p.name || p.id));   // a lectern, a camera, a post box: a small box at the base, so there is room beside it
   }
   // The authored landmark oak is painted scenery rather than a planted row.
   // Give only its bole a small foot box; its roots and crown remain walkable.
@@ -88,43 +89,43 @@ function _gwBuildSolids(m) {
   const oak = island && island.version >= 5 && island.presentation && (island.presentation.plazas || []).find(p => p.id === 'great-oak-clearing');
   if (oak) {
     const W = GARDEN_WORLD, scale = 1.75, x = oak.x + 2.9, y = oak.y - 1.5;
-    add(x - 20 * scale / W.cellW, y - 8 * scale / W.cellH, x + 20 * scale / W.cellW, y + 2 * scale / W.cellH);
+    add(x - 20 * scale / W.cellW, y - 8 * scale / W.cellH, x + 20 * scale / W.cellW, y + 2 * scale / W.cellH, 'the Great Oak trunk');
   }
   const logs = typeof gardenIslandLogStack === 'function' ? gardenIslandLogStack(island) : null;
-  if (logs) { const f = logs.foot; add(f.x0, f.y0, f.x1, f.y1); }
+  if (logs) { const f = logs.foot; add(f.x0, f.y0, f.x1, f.y1, 'log stack'); }
   // The quay's sea wall (94-garden-paint-vale-1harbour.js draws it from the plaza): the coast line lies a little below
   // the wall's foot, and you could step down off the quay and stand in the sea in front of the wall. Its top edge is
   // the end of the quay; the pier, the steps at each end and the beach past them stay open.
   const quay = island && island.version >= 5 && island.presentation && (island.presentation.plazas || []).find(p => p.id === 'the-quay');
   if (quay) {
     const pier = island.static.find(p => p.id === 'pier'), y0 = quay.y + 1.85, y1 = quay.y + 3.2, x0 = quay.x - 5.1, x1 = quay.x + 5.4;
-    if (pier && pier.x > x0 && pier.x + pier.w < x1) { add(x0, y0, pier.x, y1); add(pier.x + pier.w, y0, x1, y1); } else add(x0, y0, x1, y1);
+    if (pier && pier.x > x0 && pier.x + pier.w < x1) { add(x0, y0, pier.x, y1, 'quay sea wall'); add(pier.x + pier.w, y0, x1, y1, 'quay sea wall'); } else add(x0, y0, x1, y1, 'quay sea wall');
   }
   // Fleet Falls sits in a gap in the scarp. Its painted rock (the cave cheek west of the
   // water, the step east of it out to the scarp) is solid, so only the cave stair climbs it.
   const fw = island && island.version >= 5 && typeof gardenFallsWater === 'function' ? gardenFallsWater(island) : null, fl = fw && island.presentation.falls;
   if (fw && fl.caveStair) {
-    add(fl.caveStair[0] + .62, fw.lip.y + .15, fw.lip.x + .2, fl.caveStair[1] + .85);
-    add(fw.lip.x + 1.6, fw.lip.y + .15, fl.x + fl.w + .75, fl.y + 1.7);
+    add(fl.caveStair[0] + .62, fw.lip.y + .15, fw.lip.x + .2, fl.caveStair[1] + .85, 'rock by Fleet Falls (cave cheek)');
+    add(fw.lip.x + 1.6, fw.lip.y + .15, fl.x + fl.w + .75, fl.y + 1.7, 'rock by Fleet Falls (step)');
   }
   // the harbour's painted crates, pots, net, beached boat, bench and anchor stand in the way like the log stack
-  if (island && island.version >= 5 && typeof gardenIslandHarbourThings === 'function') for (const t of gardenIslandHarbourThings(island)) add(t.foot[0], t.foot[1], t.foot[2], t.foot[3]);
+  if (island && island.version >= 5 && typeof gardenIslandHarbourThings === 'function') for (const t of gardenIslandHarbourThings(island)) add(t.foot[0], t.foot[1], t.foot[2], t.foot[3], 'harbour ' + t.key);
   // The painted Forest arch's two trunks stand where they are drawn (94-garden-native-painted-props.js gateArt 'arch':
   // their feet at +-(half + 2), sheared when the arch is seen side on); the lane runs between them, well clear.
   const woodsGate = island && island.version >= 5 && (island.gates || []).find(g => g.id === 'island-woods');
   const frame = woodsGate && typeof _gldIslandGateFrame === 'function' && typeof GardenNativePainted !== 'undefined' && GardenNativePainted.wanted && GardenNativePainted.wanted() ? _gldIslandGateFrame(woodsGate) : null;
   if (frame) {
     const W = GARDEN_WORLD, side = Math.abs(frame.uy) > Math.abs(frame.ux), half = Math.max(46, Math.min(80, frame.span * .62)), S = frame.span * .9;
-    for (const sgn of [-1, 1]) { const lx = frame.x + sgn * (side ? .85 : 1) * (half + 2), ly = frame.y + 2 + (side ? sgn * (S / half * .8) * (half + 2) : 0); add((lx - 9) / W.cellW, (ly - 7 - W.sky) / W.cellH, (lx + 9) / W.cellW, (ly + 2 - W.sky) / W.cellH); }
+    for (const sgn of [-1, 1]) { const lx = frame.x + sgn * (side ? .85 : 1) * (half + 2), ly = frame.y + 2 + (side ? sgn * (S / half * .8) * (half + 2) : 0); add((lx - 9) / W.cellW, (ly - 7 - W.sky) / W.cellH, (lx + 9) / W.cellW, (ly + 2 - W.sky) / W.cellH, 'Forest arch trunk'); }
   }
   // Every painted tree on the map (village planting, the three painted woods, the orchard rows) has one trunk box at
   // its foot, from one list (_gwPaintedTrunks): the crowns are for walking behind.
-  for (const b of _gwPaintedTrunks(island)) add(b.x0, b.y0, b.x1, b.y1);
+  for (const b of _gwPaintedTrunks(island)) add(b.x0, b.y0, b.x1, b.y1, 'tree trunk (' + ({ wood: 'painted wood', orchard: 'orchard', village: 'village', fells: 'fells', gate: 'crossing' }[b.src] || b.src) + ')');
   // the old woodland's lamp plinths (94-garden-0island.js): a small block at the foot, the lantern above is walked behind
-  if (typeof gardenIslandOldWoodLamps === 'function') for (const q of gardenIslandOldWoodLamps(island).concat(gardenIslandPosternPiers(island))) add(q.foot.x0, q.foot.y0, q.foot.x1, q.foot.y1);
+  if (typeof gardenIslandOldWoodLamps === 'function') { const lamps = gardenIslandOldWoodLamps(island); for (const q of lamps.concat(gardenIslandPosternPiers(island))) add(q.foot.x0, q.foot.y0, q.foot.x1, q.foot.y1, lamps.includes(q) ? 'lamp plinth' : 'postern pier'); }
   // the village's street lamps (ld-lamp-a by the Land Office, ld-lamp-b by the quay): an iron post on a small plinth, a block at its foot
   // like the old woodland's lamps, so you walk round the post and behind the lantern, not through it (their cell stays open)
-  for (const p of gardenPropsNow()) if (p.art === 'lamp' && /^ld-lamp-/.test(p.id)) { const x = p.x + .5, y = p.y + .7; add(x - .17, y - .2, x + .17, y + .04); }
+  for (const p of gardenPropsNow()) if (p.art === 'lamp' && /^ld-lamp-/.test(p.id)) { const x = p.x + .5, y = p.y + .7; add(x - .17, y - .2, x + .17, y + .04, 'street lamp post'); }
   return { list, at };
 }
 /** The one trunk-collision list for painted trees, in cells ({x0, y0, x1, y1, src}). Five painters plant trees, each
@@ -1620,6 +1621,7 @@ function gardenWorldKey(ev, down, arrowsOnly) {
   if (k === '+' || k === '=') { gardenCamSet(null, -1); ev.preventDefault(); return true; }
   if (k === '-' || k === '_') { gardenCamSet(null, 1); ev.preventDefault(); return true; }
   if (k === 'f' || k === 'F') { gardenCamSet(gardenCamMode() === 'fit' ? 'follow' : 'fit'); ev.preventDefault(); return true; }
+  if ((k === 'c' || k === 'C') && ev.shiftKey) { if (typeof gardenCollideToggle === 'function') gardenCollideToggle(); ev.preventDefault(); return true; }   // what blocks walking (94-garden-world-7collide.js)
   if (k === 'c' || k === 'C') { gardenCamSet('follow'); ev.preventDefault(); return true; }
   if (k === 'q' || k === 'Q') { if (typeof gartEmoteWheel === 'function') gartEmoteWheel(); ev.preventDefault(); return true; }
   if ((k === 'j' || k === 'J') && !ev.ctrlKey && !ev.metaKey && !ev.altKey) { if (typeof gardenJournalOpen === 'function') gardenJournalOpen(); ev.preventDefault(); return true; }   // the Field Journal
