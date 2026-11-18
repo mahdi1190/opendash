@@ -436,7 +436,7 @@ function gardenFreshNote() {
   try { if (localStorage.getItem(key)) return; localStorage.setItem(key, '1'); } catch (e) { /* private mode: once per page */ }
   // Over the garden when it is open (an app toast sits under the full-screen garden and is never seen); the garden may
   // still be opening, so wait for it a little; anywhere else, the app's own toast.
-  const msg = 'Your garden has a new home in Fleetwater Vale. Gardens start fresh in this version.';
+  const msg = 'Your garden has a new home in the rebuilt Fleetwater village. Gardens start fresh in this version.';
   let tries = 0;
   const shown = gardenShownNow;
   const say = () => {
