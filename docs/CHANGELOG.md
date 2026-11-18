@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.73.5] - 2026-11-18
+
+### Changed
+
+- The local server uses less memory to serve the dashboard. Changing settings also takes less work when a new tab loads the page.
+
 ## [2.73.4] - 2026-11-18
 
 ### Changed
