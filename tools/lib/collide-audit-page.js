@@ -21,7 +21,10 @@
  *   door-unreachable                         a door, gate or arrival point you cannot walk to from where you arrive
  *   click-area                               a click area that is not on its art
  *   path-blocked                             a drawn path that is not walkable along its middle or across its width
- *   closed-edge                              with the five gates shut: a way into a closed region that is not its gate
+ *   closed-edge                              each region closed in turn: a way into it that is not its gate, or a gate
+ *                                            that cannot be walked up to
+ *   draw-order                               a standing thing that sorts above or below its own drawn base, where the
+ *                                            feet can stand in between: you are drawn on the wrong side of it
  *   slide-stall, slide-jitter                how walking feels: a diagonal press into an edge that stops dead where it
  *                                            could slide on, or shakes on the spot
  *   route-none, route-detour, route-stall    click-to-walk: no way found where the feet have one; a way much longer than
@@ -91,7 +94,7 @@
   };
   const KIND = (k, rec) => {
     const md = rec && rec.metadata || {};
-    if (/^__garden|^gpwd-|^gpw-|gpw-mist|gpw-foam|\|u\||mainland-haze|shingle/.test(k)) return '';
+    if (/^__garden|^gpwd-|^gpw-|gpw-mist|gpw-foam|\|u\||mainland-haze|shingle|\|t\|rail\||lightpool/.test(k)) return '';   // (a footbridge's near rail is its crossing's: check 9)
     if (/\|plant\.(planter|rph-flower-tub|tub|pot)/.test(k)) return 'decor';
     if (/\|plant\./.test(k)) return 'flora';   // bracken, ferns, reeds, shrubs: flora you brush through by design (kept for "is anything drawn here")
     if (/\|tree\.|^gptree\||^gpwo\||\|(pine|rowan)\|/.test(k)) return 'tree';
@@ -583,38 +586,83 @@
     walkTo.ms = Math.round(performance.now() - t0);
   }
 
-  /* ---------- 13. the five gates shut: a closed region stops the feet all along its edge, and its gate is the only way up to it ---------- */
+  /* ---------- 13. each region closed in turn (its own gate shut, the rest open): it stops the feet all along its edge, and its gate can be walked up to ---------- */
+  // (All five shut at once says little: three of the gates stand inside regions that are themselves closed then.)
+  // A drawn path that runs on into a closed region's mist away from its gate is listed as a note, not a fault: the
+  // layout's paths cross region lines by design and the mist is drawn over them.
   await stage('closed');
-  const closed = { zones: 0, edgeCells: 0, gates: 0, leaks: 0 };
+  const closed = { zones: 0, edgeCells: 0, gates: 0, leaks: 0, pathNotes: [] };
   if (!opts.noClosed) try {
     const zones = [..._GD_LAND].filter(z => /^zn-/.test(z)), keepPos = { x: _gw.px, y: _gw.py };
-    for (const z of zones) _GD_LAND.delete(z);
+    const gateZone = g => { const k = typeof WK_GATES !== 'undefined' && WK_GATES[g.id]; return k && k.zone ? 'zn-' + k.zone : ''; };
     try {
-      _gw.grid = null; _gw.gq = null; _gw.reach = null;
-      const g2 = _gwGrid(gardenHere(), true), zoneOf = (x, y) => { const a = String(gardenAreaAt(x, y, lvl)); return /^locked:zn-/.test(a) ? a.slice(7) : ''; };
-      _gw.px = start.x; _gw.py = start.y; const reach2 = _gwReach(); closed.zones = zones.length;
-      // nobody gets in: no cell of a closed region can be reached, and none lets the feet stand
-      const leak = new Set();
-      for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
-        const z = zoneOf(x, y); if (!z) continue;
-        if (reach2[y * W.cols + x] || !g2.hard[y * W.cols + x] || free(x + .5, y + .5)) leak.add(x + ',' + y);
-        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < W.cols && ny < W.rows && !zoneOf(nx, ny) && reach2[ny * W.cols + nx]) { closed.edgeCells++; break; } }
+      for (const z of zones) {
+        _GD_LAND.delete(z);
+        try {
+          _gw.grid = null; _gw.gq = null; _gw.reach = null;
+          const g2 = _gwGrid(gardenHere(), true), zoneOf = (x, y) => { const a = String(gardenAreaAt(x, y, lvl)); return /^locked:zn-/.test(a) ? a.slice(7) : ''; };
+          _gw.px = start.x; _gw.py = start.y; const reach2 = _gwReach(); closed.zones++;
+          // nobody gets in: no cell of the closed region can be reached, and none lets the feet stand
+          const leak = new Set(); let cellsIn = 0;
+          for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
+            if (zoneOf(x, y) !== z) continue; cellsIn++;
+            if (reach2[y * W.cols + x] || !g2.hard[y * W.cols + x] || free(x + .5, y + .5)) leak.add(x + ',' + y);
+            for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < W.cols && ny < W.rows && !zoneOf(nx, ny) && reach2[ny * W.cols + nx]) { closed.edgeCells++; break; } }
+          }
+          if (!cellsIn) push({ kind: 'closed-edge', obj: 'closed region', name: z + ' has no cells when shut', x: start.x, y: start.y, detail: 'shutting this region closes nothing' });
+          for (const c of clusters(leak, 1)) { closed.leaks++; push({ kind: 'closed-edge', obj: 'closed region', name: 'a way into ' + regionOf(c.x + .5, c.y + .5) + ' with its gate shut', x: c.x + .5, y: c.y + .5, detail: c.n + ' cell(s) of the closed region can be stood on or reached' }); }
+          // its shut gate can be walked up to
+          const mine = (island.gates || []).filter(g => gateZone(g) === z);
+          for (const g of mine) { closed.gates++; const gx = g.x + .5, gy = g.y + .5; let ok = false; for (let dy = -1.8; dy <= 1.8 && !ok; dy += .2) for (let dx = -1.8; dx <= 1.8 && !ok; dx += .2) { const x = gx + dx, y = gy + dy; if (x >= 0 && y >= 0 && x < W.cols && y < W.rows && free(x, y) && reach2[Math.floor(y) * W.cols + Math.floor(x)]) ok = true; } if (!ok) push({ kind: 'closed-edge', obj: 'gate', name: g.id + ' (shut)', x: gx, y: gy, detail: 'the shut gate cannot be walked up to from the arrival point with every other gate open' }); }
+          // (note) a drawn path that meets the closed region away from its gate
+          for (const r of island.routes || []) { if (!r.points || r.points.length < 2) continue; const pts = gardenIslandRoutePath(r).points; let was = null, said = false;
+            for (let k = 1; k < pts.length && !said; k++) { const p = pts[k - 1], q = pts[k], n = Math.max(1, Math.round(Math.hypot(q.x - p.x, q.y - p.y) / .3));
+              for (let t = 0; t < n && !said; t++) { const x = p.x + (q.x - p.x) * t / n, y = p.y + (q.y - p.y) * t / n, inZ = x >= 0 && y >= 0 && x < W.cols && y < W.rows && zoneOf(Math.floor(x), Math.floor(y)) === z; const now = inZ ? 'in' : (free(x, y) && reach2[Math.floor(y) * W.cols + Math.floor(x)] ? 'out' : was);
+                if (was && now && was !== now && !mine.some(g => Math.hypot(g.x + .5 - x, g.y + .5 - y) < 3.2)) { said = true; closed.pathNotes.push({ zone: z, path: r.id, x: +x.toFixed(2), y: +y.toFixed(2) }); } was = now; } } }
+        } finally { _GD_LAND.add(z); }
       }
-      for (const c of clusters(leak, 1)) { closed.leaks++; push({ kind: 'closed-edge', obj: 'closed region', name: 'a way into ' + regionOf(c.x + .5, c.y + .5) + ' with its gate shut', x: c.x + .5, y: c.y + .5, detail: c.n + ' cell(s) of the closed region can be stood on or reached' }); }
-      // every shut gate can be walked up to
-      const D2 = gardenCollideData(gardenHere());
-      for (const d of D2.doors) { if (d.kind !== 'gate') continue; closed.gates++; let ok = false; for (let dy = -1.6; dy <= 1.6 && !ok; dy += .2) for (let dx = -1.6; dx <= 1.6 && !ok; dx += .2) { const x = d.x + dx, y = d.y + dy; if (x >= 0 && y >= 0 && x < W.cols && y < W.rows && free(x, y) && reach2[Math.floor(y) * W.cols + Math.floor(x)]) ok = true; } if (!ok) push({ kind: 'closed-edge', obj: 'gate', name: d.name + ' (shut)', x: d.x, y: d.y, detail: 'the shut gate cannot be walked up to from the arrival point' }); }
-      // a drawn path only meets a closed region at its gate
-      const gatePts = (island.gates || []).map(g => ({ x: g.x + .5, y: g.y + .5 }));
-      for (const r of island.routes || []) { if (!r.points || r.points.length < 2) continue; const pts = gardenIslandRoutePath(r).points; let was = null, said = false;
-        for (let k = 1; k < pts.length && !said; k++) { const p = pts[k - 1], q = pts[k], n = Math.max(1, Math.round(Math.hypot(q.x - p.x, q.y - p.y) / .3));
-          for (let t = 0; t < n && !said; t++) { const x = p.x + (q.x - p.x) * t / n, y = p.y + (q.y - p.y) * t / n, z = x >= 0 && y >= 0 && x < W.cols && y < W.rows ? zoneOf(Math.floor(x), Math.floor(y)) : ''; const now = z ? 'in' : (free(x, y) && reach2[Math.floor(y) * W.cols + Math.floor(x)] ? 'out' : was);
-            if (was && now && was !== now && !gatePts.some(g => Math.hypot(g.x - x, g.y - y) < 3.2)) { said = true; push({ kind: 'closed-edge', obj: 'path', name: 'path ' + r.id, x, y, detail: 'the path runs into a closed region more than three cells from any gate' }); } was = now; } } }
     } finally {
       for (const z of zones) _GD_LAND.add(z);
       _gw.grid = null; _gw.gq = null; _gw.reach = null; grid = _gwGrid(gardenHere(), true); D = gardenCollideData(gardenHere()); _gw.px = keepPos.x; _gw.py = keepPos.y;
     }
   } catch (e) { closed.error = String(e && e.stack || e).slice(0, 300); }
+
+  /* ---------- 14. drawing order: you are drawn in front of what you stand in front of, and behind what you stand behind ---------- */
+  // Every standing sprite sorts against the player's feet line by one number: its depth (or its handle's), or its
+  // layer's when it sits in a layer that is always over or under the walkers. Where the feet are stopped at its drawn
+  // base (its block, read with the same feet test the game uses), that number must fall inside the stopped band:
+  //   below the band: someone standing just in front of the block is drawn behind the thing;
+  //   above the band: someone standing just behind the block is drawn in front of it.
+  // Things with no block at their base (walked over or brushed past) have no wrong side and are not judged.
+  await stage('order');
+  const order = { checked: 0, judged: 0, faults: 0, alwaysOver: 0, alwaysUnder: 0 };
+  if (!opts.noOrder) try {
+    const playerObj = nw.playerNode && nw.playerNode.target, pChain = []; for (let p = playerObj; p; p = p.parentContainer) pChain.push(p);
+    const pSet = new Set(pChain), seenAt = new Set(), TOL = 5;
+    const standPx = (X, Y) => { const c = toCell(X, Y); return c.x >= 0 && c.y >= 0 && c.x < W.cols && c.y < W.rows && free(c.x, c.y); };
+    for (const o of objs) {
+      if (!playerObj || o.im.isCropped || /lightpool|\|block$|gatesign/.test(o.key)) continue;
+      let child = o.im, anc = o.im.parentContainer; while (anc && !pSet.has(anc)) { child = anc; anc = anc.parentContainer; }
+      if (!anc) continue;
+      const pChild = pChain[pChain.indexOf(anc) - 1]; if (!pChild) continue;
+      if (pChild !== playerObj && Math.abs(child.depth) >= 70000) continue;   // (light, weather, signs over everything: not paint that stands in the world)
+      const T = pChild === playerObj ? child.depth : child.depth > pChild.depth ? Infinity : -Infinity, X = (o.X0 + o.X1) / 2, Yb = o.Yb;
+      order.checked++; if (T === Infinity) order.alwaysOver++; if (T === -Infinity) order.alwaysUnder++;
+      // the stopped band of feet rows at the base's middle column: the run of blocked rows nearest the drawn base
+      let top = null, bottom = null;
+      for (let d = 0; d <= 12 && top == null; d++) for (const Y of d ? [Yb - d, Yb + d] : [Yb]) if (!standPx(X, Y)) { top = bottom = Y; break; }
+      if (top == null) continue;
+      while (top > Yb - 90 && !standPx(X, top - 1)) top--; while (bottom < Yb + 60 && !standPx(X, bottom + 1)) bottom++;
+      if (top <= Yb - 90 || bottom >= Yb + 60) continue;   // (water, a building's whole footprint, the map's edge: no near side or far side to stand on here)
+      order.judged++;
+      let what = '';
+      if (T > bottom + TOL && standPx(X, bottom + 2)) what = 'someone standing just in front of it is drawn behind it (it sorts ' + (T === Infinity ? 'over everyone' : Math.round(T - bottom) + ' px below the front of its block') + ')';
+      else if (T < top - TOL && standPx(X, top - 2) && paintAt(X, top - 8) === o) what = 'someone standing just behind it is drawn in front of it (it sorts ' + (T === -Infinity ? 'under everyone' : Math.round(top - T) + ' px above the back of its block') + ')';
+      if (!what) continue;
+      const c = toCell(X, Yb), k = o.name + '|' + Math.round(c.x * 2) + ',' + Math.round(c.y * 2); if (seenAt.has(k)) continue; seenAt.add(k);
+      order.faults++; push({ kind: 'draw-order', obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: c.x, y: c.y, detail: what });
+    }
+  } catch (e) { order.error = String(e && e.stack || e).slice(0, 300); }
 
   /* ---------- 10. every decoration a player can place: each family, each way round ---------- */
   await stage('decor');
@@ -668,5 +716,5 @@
   const counts = { byKind: {}, byRegion: {}, byObject: {}, byRegionKind: {} };
   for (const f of faults) { counts.byKind[f.kind] = (counts.byKind[f.kind] || 0) + 1; counts.byRegion[f.region] = (counts.byRegion[f.region] || 0) + 1; counts.byObject[f.obj] = (counts.byObject[f.obj] || 0) + 1; const k = f.region + ' / ' + f.kind; counts.byRegionKind[k] = (counts.byRegionKind[k] || 0) + 1; }
   const objKinds = {}; for (const o of all) objKinds[o.kind] = (objKinds[o.kind] || 0) + 1;
-  return { total: faults.length, counts, faults, scanned: { sprites: all.length, checked, byKind: objKinds, rects: D.rects.length, cells: D.cells.length, doors: doorsChecked, clicks: D.clicks.length, landforms: (island.landforms || []).length, routes: (island.routes || []).length, pathSamples, lockedPlots: plots.size, lockedEdges, shorePoints: shore.points, shoreDrawnDryNotes: shore.notes, crossings: crossingsChecked, decks: decksNow.length, picture: mosaic, decor, feel, walkTo, closed } };
+  return { total: faults.length, counts, faults, scanned: { sprites: all.length, checked, byKind: objKinds, rects: D.rects.length, cells: D.cells.length, doors: doorsChecked, clicks: D.clicks.length, landforms: (island.landforms || []).length, routes: (island.routes || []).length, pathSamples, lockedPlots: plots.size, lockedEdges, shorePoints: shore.points, shoreDrawnDryNotes: shore.notes, crossings: crossingsChecked, decks: decksNow.length, picture: mosaic, decor, feel, walkTo, closed, order } };
 })

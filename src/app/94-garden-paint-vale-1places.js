@@ -37,7 +37,7 @@
   V.crossingWaterSpan = crossingWaterSpan;
 
   function crossings(C) {
-    const { L, P, add, under } = C, cw = L.cw, ch = L.ch, W = L.W;
+    const { L, P, add, under, thing } = C, cw = L.cw, ch = L.ch, W = L.W;
     const physical = typeof gardenIslandCrossingGeometry === 'function' ? gardenIslandCrossingGeometry() : [];
     for (const c of L.pres.crossings || []) {
       const riv = L.pres.rivers && L.pres.rivers[c.over]; if (!riv || !riv.line) continue;
@@ -73,7 +73,7 @@
       const nx = -mid.ty, ny = mid.tx, span = c.kind === 'footbridge' ? hw + .7 : hw + .15;
       const A = deck ? deck.a : { x: (mid.x + nx * span) * cw, y: W.sky + (mid.y + ny * span) * ch }, Bp = deck ? deck.b : { x: (mid.x - nx * span) * cw, y: W.sky + (mid.y - ny * span) * ch };
       const box = [Math.min(A.x, Bp.x) - 40, Math.min(A.y, Bp.y) - 40, Math.max(A.x, Bp.x) + 40, Math.max(A.y, Bp.y) + 40];
-      if (c.kind === 'footbridge') add(box, 61, (B, r) => footbridge(B, r, P, A, Bp, deck));
+      if (c.kind === 'footbridge') { add(box, 61, (B, r) => footbridge(B, r, P, A, Bp, deck)); nearRail(thing, c, P, A, Bp, deck); }
       else add(box, 62, (B, r) => stones(B, r, P, A, Bp, C.season, deck));
     }
   }
@@ -102,6 +102,31 @@
       const lift = t => 13 + Math.sin(Math.PI * (t - cap / 2) / (L - cap)) * 4;
       const rail = []; for (let t = cap / 2; t < L - cap / 2; t += 4) rail.push(q(t, s, lift(t))); rail.push(q(L - cap / 2, s, 13)); V.strokePts(B, rail, col, 2.6, .95); V.strokePts(B, rail, P.woodHi, 1, .5, 0, -.8);
       for (let i = 0; i <= 3; i++) { const t = cap / 2 + (L - cap) * i / 3, a = q(t, s), b = q(t, s, lift(t) + 1); B.s(`M${a.x} ${a.y}L${b.x} ${b.y}`, P.woodDk, 3, .95); }
+    }
+  }
+  /** The footbridge's rail on the side nearer the viewer, again, as short standing pieces in the object layer: the
+   *  same strokes as the rail baked into the ground above, so nothing changes until someone stands on the deck behind
+   *  it. Then it crosses in front of their legs; before, the whole bridge was under their feet and they looked as if
+   *  they stood outside the rail, over the water (drawing order, 18 Nov 2026). Each piece is a column of the rail
+   *  and sorts by the rail's own foot there, a little forward so nobody on the deck is ever cut in two by it. */
+  function nearRail(thing, c, P, A, Bp, deck) {
+    const L = Math.hypot(Bp.x - A.x, Bp.y - A.y), ux = (Bp.x - A.x) / L, uy = (Bp.y - A.y) / L, hw = deck ? deck.halfWidth : 17;
+    if (!thing || Math.abs(ux) < .6) return;   // (a bridge that runs up the screen, or steeply, has its rails left and right of you: they stay in the ground picture)
+    const s = ux > 0 ? hw : -hw, col = s > 0 ? P.wood : P.woodLo, cap = Math.min(10, L * .12);
+    const q = (t, lift = 0) => { const p = deck ? deck.deckPoint(t / L, s) : { x: A.x + ux * t - uy * s, y: A.y + uy * t + ux * s }; return { x: p.x, y: p.y - lift }; };
+    const lift = t => 13 + Math.sin(Math.PI * (t - cap / 2) / (L - cap)) * 4;
+    const rail = []; for (let t = cap / 2; t < L - cap / 2; t += 4) rail.push(q(t, lift(t))); rail.push(q(L - cap / 2, 13));
+    const posts = [0, 1, 2, 3].map(i => cap / 2 + (L - cap) * i / 3);
+    const e0 = q(cap / 2), e1 = q(L - cap / 2), xa = Math.min(e0.x, e1.x) - 3, xb = Math.max(e0.x, e1.x) + 3, STRIP = 10, n = Math.max(1, Math.ceil((xb - xa) / STRIP));
+    const footAt = X => { const k = Math.max(0, Math.min(1, (X - e0.x) / ((e1.x - e0.x) || 1))); return e0.y + (e1.y - e0.y) * k; };
+    for (let i = 0; i < n; i++) {
+      const X0 = xa + i * STRIP, X1 = Math.min(xb, X0 + STRIP), fx = (X0 + X1) / 2, fy = footAt(fx), end = i === 0 || i === n - 1;
+      thing({ key: 'rail|' + c.id + '|' + i, x: fx, y: fy, depth: fy + (end ? 1 : 6), box: [X0 - fx - 1, -34, X1 - fx + 1, 12], draw: B => {
+        B.cx.save(); B.cx.beginPath(); B.cx.rect(X0 - fx, -40, X1 - X0, 60); B.cx.clip(); B.cx.translate(-fx, -fy);
+        V.strokePts(B, rail, col, 2.6, .95); V.strokePts(B, rail, P.woodHi, 1, .5, 0, -.8);
+        for (const t of posts) { const a = q(t), b = q(t, lift(t) + 1); B.s(`M${a.x} ${a.y}L${b.x} ${b.y}`, P.woodDk, 3, .95); }
+        B.cx.restore();
+      } });
     }
   }
   function stones(B, r, P, A, Bp, season, deck) {

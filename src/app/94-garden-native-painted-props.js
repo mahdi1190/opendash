@@ -104,6 +104,9 @@ window.GardenPaintedProps = (function () {
       over(im) { if (!im) return null; const layer = o.layer; if (layer && layer.add) { layer.add(im); im.setDepth(80005); over.push(im); } else node._inner.add(im); return im; },
       // Walkable bridge masonry shares the pier-deck layer below all actors.
       ground(im) { if (!im) return null; const layer = o.layer; if (!layer || !layer.add) return add(im); layer.add(im); im.setDepth(-9250); ground.push(im); parts.push(im); return im; },
+      // A part of a ground-level picture that stands up (a bridge's near parapet): in the object layer at its own
+      // foot line, so whoever walks behind it is drawn behind it. Follows the handle's visibility, goes with it.
+      standing(im, depth) { if (!im) return null; const layer = o.standing; if (!layer || !layer.add) return add(im); layer.add(im); im.setDepth(depth); ground.push(im); return im; },   // (no object layer, a preview: with the rest of the picture)
       add, move(im, fn) { if (im) { moving.push({ im, fn }); h.dynamic = true; if (!h.kind) h.kind = 'painted'; } return im; },
       // Bounds include transparent canvas padding and soft ground shadows.
       // Only the opaque painted parts own a visual hit; canonical feet and
@@ -740,6 +743,28 @@ window.GardenPaintedProps = (function () {
     };
     return Object.assign(art, { box, base, blocker, side, half });
   }
+  /** The Millwater bridge's downstream parapet and face again, as narrow upright strips of the same baked picture
+   *  in the object layer (the picture itself stays on the ground, under everyone, because its deck is walked on).
+   *  Each strip sorts by the parapet's own foot at that column, so someone who walks up to the near parapet has
+   *  their shoes behind its coping. Before, the whole bridge was always under their feet and they stood on top of
+   *  the wall (drawing order, 18 Nov 2026). The strips are the base's own pixels: nothing changes until then. */
+  function bridgeFront(scene, h, o, baseKey, box, baseX, baseY, crossing) {
+    const deck = typeof gardenIslandCrossingGeometry === 'function' ? gardenIslandCrossingGeometry().find(c => c.crossing.id === crossing.id) : null;
+    if (!deck || !deck.length || !baseKey) return;
+    const [x0, y0, , y1] = box, hw = deck.halfWidth, ux = (deck.b.x - deck.a.x) / deck.length, uy = (deck.b.y - deck.a.y) / deck.length;
+    if (ux < .3) return;   // (the painter draws the face on this side: only when that side is the near one)
+    const xa = deck.a.x - uy * hw, xb = deck.b.x - uy * hw, STRIP = 8, texH = Math.ceil((y1 - y0) * K);
+    for (let X = xa - 8; X < xb + 8; X += STRIP) {
+      const X1 = Math.min(xb + 8, X + STRIP), t = Math.max(0, Math.min(1, ((X + X1) / 2 - xa) / (xb - xa))), foot = deck.a.y + (deck.b.y - deck.a.y) * t + ux * hw;
+      // from the coping's top edge down (millBridge: the coping stands 9 px and the hump over the parapet's foot, set
+      // 2.5 px in; the end piers a little higher): never the setts of the road above it, which would cover the legs
+      const end = (X + X1) / 2 < xa + 7 || (X + X1) / 2 > xb - 7, TOP = end ? 18 : 12.5 + 4.5 * Math.sin(Math.PI * t);
+      const u = Math.round((X - baseX - x0) * K), v = Math.max(0, Math.round((foot - TOP - baseY - y0) * K)), w = Math.round((X1 - X) * K);
+      if (u < 0 || w < 1 || v >= texH) continue;
+      const im = image(scene, baseKey, baseX, baseY); if (!im) continue;
+      if (!o.standing) { im.destroy(); return; } im.setCrop(u, v, w, texH - v); h.standing(im, foot + 2);
+    }
+  }
   function gateSignature(g, open, sc) { let have = ''; try { const rule = !open && typeof gardenGateRule === 'function' ? gardenGateRule(g) : null; if (rule && typeof gardenGateHas === 'function' && gardenGateHas(rule.key)) have = '|have'; } catch (e) { /* the sign as before */ } return 'painted-gate-4|' + g.id + '|' + gateKind(g) + '|' + (open ? 'open' : 'shut') + '|' + sc.season + '|' + (g.crossSpan || []).join(';') + have; }
   /** A gate as a handle. open: the region beyond is yours. */
   function gate(scene, g, sc, o, open) {
@@ -755,10 +780,13 @@ window.GardenPaintedProps = (function () {
     // The stone deck belongs to its authored crossing; the sign and inspection
     // remain at crossSpan. The blocker draws its own offset to the locked neck.
     const baseX = crossing ? crossing.x * o.W.cellW : frame.x, baseY = crossing ? o.W.sky + crossing.y * o.W.cellH : frame.y;
-    const lib = layer => { for (const [id, v, size, dx, dy, where] of art.lib) if (where === layer) h.add(libImage(scene, id, v, season, size, frame.x + dx, frame.y + dy, false)); };
+    // (a tree or boulder that stands behind the gate's own line sorts by its own foot, not the gate's: someone
+    // walking between the two was drawn behind the tree they stood in front of: drawing order, 18 Nov 2026)
+    const lib = layer => { for (const [id, v, size, dx, dy, where] of art.lib) if (where === layer) { const im = libImage(scene, id, v, season, size, frame.x + dx, frame.y + dy, false); if (im && dy < -4 && kind !== 'bridge') h.standing(im, frame.y + dy); else h.add(im); } };
     lib('back');
     const base = image(scene, baseKey, baseX, baseY);
     if (!(kind === 'bridge' ? h.ground(base) : h.add(base))) { h.destroy(); return null; }
+    if (kind === 'bridge' && crossing) ok(() => bridgeFront(scene, h, o, baseKey, art.box, baseX, baseY, crossing));
     lib('front');
     const was = gateSeen.get(g.id); gateSeen.set(g.id, !!open);
     const blockKey = bake(scene, stem + '|block', art.box, B => art.blocker(B));
@@ -837,7 +865,7 @@ window.GardenPaintedProps = (function () {
     });
     // trees on the scarp top are the library's own, like the planting round them (their trunks join the one trunk list: gateTrees)
     fallsFeet = [];
-    for (const [id, v, hh, dx, dy] of (fed ? [[season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 96, -S + 10], ['tree.pine', 1, 120, 150, -S - 4]] : [['tree.pine', 0, 150, -84, -S + 8], [season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 86, -S + 14], ['tree.pine', 1, 120, 30 + Wd / 2, -S - 6]])) { h.add(libImage(scene, id, v, season, { h: hh }, ax + dx, ay + dy, false)); fallsFeet.push([+((ax + dx) / o.W.cellW).toFixed(2), +((ay + dy - o.W.sky) / o.W.cellH).toFixed(2), hh > 140 ? .5 : .4]); }
+    for (const [id, v, hh, dx, dy] of (fed ? [[season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 96, -S + 10], ['tree.pine', 1, 120, 150, -S - 4]] : [['tree.pine', 0, 150, -84, -S + 8], [season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 86, -S + 14], ['tree.pine', 1, 120, 30 + Wd / 2, -S - 6]])) { h.standing(libImage(scene, id, v, season, { h: hh }, ax + dx, ay + dy, false), ay + dy); fallsFeet.push([+((ax + dx) / o.W.cellW).toFixed(2), +((ay + dy - o.W.sky) / o.W.cellH).toFixed(2), hh > 140 ? .5 : .4]); }
     const base = h.add(image(scene, baseKey, x, y));
     // The fixed falls' canvas includes empty padding beside the cave stair.
     // Keep its solid rock/sheet mask once per existing texture; frame probes

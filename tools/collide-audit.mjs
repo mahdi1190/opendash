@@ -39,7 +39,9 @@ const OUT = arg('out', 'C:/tmp/collide'), LABEL = arg('label', 'audit'), THUMBS 
 const ENV_MODULE = arg('sandbox-env', 'C:/tmp/sandbox-env.mjs');
 const EDGE = arg('browser', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe');
 if (!fs.existsSync(ENV_MODULE)) { console.error('No sandbox environment module at ' + ENV_MODULE + ': refusing to start a server without it.'); process.exit(2); }
-const { sandboxEnv } = await import(pathToFileURL(ENV_MODULE).href);
+const { sandboxEnv, EDGE_SAFE_FLAGS } = await import(pathToFileURL(ENV_MODULE).href);
+// (a fresh browser profile must never sign in, sync or install extensions: the module's own list when it has one)
+const SAFE_FLAGS = Array.isArray(EDGE_SAFE_FLAGS) && EDGE_SAFE_FLAGS.length ? EDGE_SAFE_FLAGS : ['--disable-extensions', '--disable-sync', '--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--disable-component-update', '--disable-features=msImplicitSignin'];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const WORK = path.join(OUT, 'run-' + LABEL), DATA = path.join(WORK, 'data-' + PORT), PROFILE = path.join(WORK, 'profile-' + CDP), THUMB_DIR = path.join(OUT, LABEL + '-thumbs');
 for (const d of [DATA, PROFILE, THUMB_DIR]) fs.rmSync(d, { recursive: true, force: true });
@@ -50,7 +52,7 @@ const PAGE = fs.readFileSync(new URL('./lib/collide-audit-page.js', import.meta.
 
 /* ---------- the sandbox ---------- */
 const srv = spawn(process.execPath, ['serve.mjs', '--port', String(PORT), '--no-open', '--data-dir', DATA], { cwd: REPO, stdio: 'ignore', env: sandboxEnv() });
-const br = spawn(EDGE, ['--headless=new', '--disable-extensions', '--disable-sync', '--no-first-run', '--disable-background-networking', '--disable-component-update', `--remote-debugging-port=${CDP}`, `--user-data-dir=${PROFILE}`, '--window-size=1500,900', 'about:blank'], { stdio: 'ignore' });
+const br = spawn(EDGE, ['--headless=new', ...SAFE_FLAGS, `--remote-debugging-port=${CDP}`, `--user-data-dir=${PROFILE}`, '--window-size=1500,900', 'about:blank'], { stdio: 'ignore' });
 let finished = false;
 const stop = async code => { if (finished) return; finished = true; try { br.kill(); } catch { /* gone */ } try { srv.kill(); } catch { /* gone */ } await sleep(500); process.exit(code); };
 setTimeout(() => { console.error('overall timeout'); stop(3); }, 50 * 60 * 1000);
@@ -80,7 +82,7 @@ try {
   result.label = LABEL; result.clock = CLOCK; result.errors = errors.slice(0, 20); result.when = new Date().toISOString();
   console.log('faults', result.total, JSON.stringify(result.counts.byKind));
   // thumbnails with the collision view on, worst first (walk-through and invisible walls, then the rest)
-  const order = { 'walk-through': 0, 'invisible-wall': 1, 'water-walkable': 1, 'shore-blocked': 1, 'crossing-gap': 2, 'crossing-deck': 2, 'locked-edge': 2, 'path-blocked': 3, 'door-unreachable': 3, 'block-offset': 4, 'block-size': 5, 'drawn-blocked-walkable': 6, 'click-area': 7, 'decor-foot': 8 };
+  const order = { 'walk-through': 0, 'invisible-wall': 1, 'water-walkable': 1, 'shore-blocked': 1, 'crossing-gap': 2, 'crossing-deck': 2, 'locked-edge': 2, 'path-blocked': 3, 'door-unreachable': 3, 'block-offset': 4, 'block-size': 5, 'drawn-blocked-walkable': 6, 'click-area': 7, 'decor-foot': 8, 'closed-edge': 2, 'draw-order': 3, 'slide-stall': 6, 'slide-jitter': 6, 'route-none': 3, 'route-detour': 6, 'route-stall': 6 };
   const picks = result.faults.map((f, i) => ({ f, i })).filter(p => p.f.kind !== 'decor-foot').sort((a, b) => (order[a.f.kind] ?? 9) - (order[b.f.kind] ?? 9)).slice(0, THUMBS);
   await evq(`(()=>{const p=_gdpPrefs();p.cam='follow';p.zoom=4;_gw.cam.dirty=true;gardenCollideToggle(true);document.querySelectorAll('.gd-collide-key,.qs-card,[class*=quick-start]').forEach(e=>e.style.visibility='hidden');return gardenCollideOn()})()`);
   await sleep(1500);

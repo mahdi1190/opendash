@@ -283,6 +283,15 @@ function _gwFishStoneCovered(x, y) {
   if (GARDEN_WORLD.v < 5 || x >= GARDEN_ROOM_X || typeof gardenIslandCrossingGeometry !== 'function') return false;
   const W = GARDEN_WORLD, px = x * W.cellW, py = W.sky + y * W.cellH;
   for (const c of gardenIslandCrossingGeometry()) {
+    if (c.kind === 'footbridge' || c.kind === 'hump-bridge') {
+      // A bridge's boards, rails and stonework are drawn over the water they span, and stand up from it: a float at a
+      // cell centre under the deck, behind a rail or on the bridge's downstream wall sat on the bridge itself
+      // (18 Nov 2026). Covered: any point whose spot on the deck, up to a rail's height above it or a wall's drop
+      // below it, lies in the deck's band.
+      const ux = (c.b.x - c.a.x) / c.length, uy = (c.b.y - c.a.y) / c.length, lift = c.kind === 'hump-bridge' ? 17 : 19, drop = c.kind === 'hump-bridge' ? 27 : 5, reach = (c.halfWidth || 17) + 3;
+      for (let l = -drop; l <= lift; l += 3) { const dx = px - c.a.x, dy = py + l - c.a.y, along = dx * ux + dy * uy, across = -dx * uy + dy * ux; if (along >= -8 && along <= c.length + 8 && Math.abs(across) <= reach) return true; }
+      continue;
+    }
     if (c.kind !== 'stepping-stones' || !c.stones) continue;
     const { count, alongRadius, acrossRadius } = c.stones, ux = (c.b.x - c.a.x) / c.length, uy = (c.b.y - c.a.y) / c.length;
     const dx = px - c.a.x, dy = py - c.a.y, along = dx * ux + dy * uy, across = -dx * uy + dy * ux;
