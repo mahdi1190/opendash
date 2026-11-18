@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.73.11] - 2026-11-18
+
+### Changed
+
+- Watering and checking plant growth take less work in established gardens. The garden now checks which sprinklers were in place at 6 a.m. once for the whole view.
+
 ## [2.73.10] - 2026-11-18
 
 ### Changed
