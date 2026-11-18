@@ -142,7 +142,7 @@ function homeCalEvents(iso) {
 }
 function _homeCalFromStore(iso) {
   let entries = [];
-  try { entries = calEntriesOn(iso, { sources: { google: true, tasks: false, countdowns: false, declined: false } }); } catch (e) { return []; }
+  try { entries = calEntriesOn(iso, { sources: { google: true, tasks: false, plans: false, countdowns: false, declined: false } }); } catch (e) { return []; }
   const out = [];
   for (const e of entries) {
     if (!e || e.kind !== 'event' || e.declined) continue;

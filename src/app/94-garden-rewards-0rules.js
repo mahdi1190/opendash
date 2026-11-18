@@ -111,14 +111,15 @@ const GR_DESIGN = Object.freeze([
 /** What the milestones and the design items read. All from your own garden; nothing is sent. */
 function gardenRewardCtx(m) {
   const g = _gdG(), W = g.wd || {};
+  const items = gardenWallet().items;
   return {
     sections: GARDEN_LAND_SECTIONS.filter(s => m.areas.includes(s.id)).length,
-    built: GARDEN_LAND_FEATURES.filter(f => gardenHas('feat:' + f.id) > 0).length,
-    curios: GARDEN_LAND_CURIOS.filter(c => gardenHas('cur:' + c.id) > 0).length,
+    built: GARDEN_LAND_FEATURES.filter(f => items['feat:' + f.id] >= 1).length,
+    curios: GARDEN_LAND_CURIOS.filter(c => items['cur:' + c.id] >= 1).length,
     fish: Object.keys(g.fl || {}).length, bugs: Object.keys(g.bl || {}).length, ribbons: Object.keys(g.rib || {}).length,
     placed: Object.keys(g.decor || {}).length,
     stars: Object.keys(W).filter(k => k.startsWith('sk.')).length, letters: Object.keys(W).filter(k => k.startsWith('lr.')).length, isle: W.isle ? 1 : 0,
-    earlyTrails: GARDEN_LAND_TRAILS.filter(t => gardenHas('land:' + t.id) > 0).length,
+    earlyTrails: GARDEN_LAND_TRAILS.filter(t => items['land:' + t.id] >= 1).length,
   };
 }
 function gardenDesignRows(m) {
