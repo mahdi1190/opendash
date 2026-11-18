@@ -2,7 +2,7 @@
    SERVICE WORKER - the offline page (served as /sw.js by
    server/routes/server-control.mjs, which stamps the version).
    ============================================================
-   The ONLY thing it does: when the dashboard server is not running, opening
+   When the dashboard server is not running, opening
    the dashboard shows the last copy of the app (index.html) instead of the
    browser's "can't reach this page", so the page can show "The dashboard
    server isn't running" with [Start server] and [Retry].
@@ -11,7 +11,8 @@
      the copy from the server is always used when the server answers; the
      cached copy ONLY when the network fails. Only a page the server marks
      X-Dashboard-App: dashboard is kept (not another program on the port).
-   - /api/* and everything else is never touched, never cached.
+   - A closing tab can hand off its pending save when a beacon is too large.
+     The worker posts it once to the state API. Only the app shell is cached.
    - One cache per version ('dashboard-shell-<version>'); a new build is a new
      worker that takes over at once (skipWaiting + clients.claim) and deletes
      the older caches, so a stale page after an update cannot happen.
@@ -93,6 +94,14 @@ if (typeof self !== 'undefined' && typeof self.addEventListener === 'function' &
     event.waitUntil(caches.keys()
       .then(keys => Promise.all(keys.filter(k => k.startsWith(SW_CACHE_PREFIX) && k !== SW_CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim()));
+  });
+  self.addEventListener('message', (event) => {
+    if (event.origin !== self.location.origin || event.source?.type !== 'window') return;
+    const message = event.data;
+    if (message?.type !== 'save-state-on-exit' || !(message.body instanceof Blob) || message.body.type !== 'application/json') return;
+    event.waitUntil(fetch('/api/state', {
+      method: 'POST', body: message.body, mode: 'same-origin', redirect: 'error',
+    }).catch(() => {})); // The browser keeps its local copy if the server is unavailable.
   });
   self.addEventListener('fetch', (event) => {
     const r = event.request;
