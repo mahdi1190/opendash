@@ -130,5 +130,5 @@ wdTaleAdd({ id: 'perpetua-late', kind: 'small', title: 'Late', journal: 'Perpetu
 const WK_HOLLIN_ROW = Object.freeze({ id: 'hollin', name: 'Hollin', kind: 'stoat', fur: '#8a7058', coat: '#4e5a46', snout: '#d8c8b0', hat: 'cap', hatc: '#5a4a38', prop: 'bag', likes: 'fish' });
 wdTaleResident({ id: 'hollin', name: 'Hollin', home: { region: 'southwest-ruins', near: ['ld-woodhut', 'ld-labyrinth', 'ld-tower'] }, art: () => _wdFolkArt(WK_HOLLIN_ROW),
   here: (m) => !(wdTaleFlag('hollin.gone')),
-  quiet: 'He nods, and goes on with the net.', dayRows: () => typeof WK_DAY_HOLLIN !== 'undefined' ? WK_DAY_HOLLIN : null,
+  hello: 'Hollin. I cut wood. You’ll be the one Tam keeps not mentioning.', quiet: 'He nods, and goes on with the net.', dayRows: () => typeof WK_DAY_HOLLIN !== 'undefined' ? WK_DAY_HOLLIN : null,
   day: ['Wood’s dry. Good splitting weather. You can tell by the sound.', 'Owl was round. Said nothing useful. Owls don’t.', 'Mended the angler’s nets. He said “Ta.” Longest speech he’s made this year.', 'I talk to the trees. They’re good listeners. Bad at answers.', 'Mind the yews. They’re older than the chapel and they know it.'] });

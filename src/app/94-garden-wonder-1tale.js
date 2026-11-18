@@ -296,6 +296,7 @@ function _wtResPlace(r, m) {
 function _wtResTalk(r, S) {
   const m = gardenModel(), W = _wtW(), today = m.today, F = wdFacts(m, r.id), lines = [], actions = [];
   const t = wdTaleFor(r.id, m);
+  if (!F.met && r.hello) lines.push(r.hello);   // the first time: who he is, before any story (he opened with the cog, a stranger without a name)
   if (t) { const o = wdTaleTell(t.s, t.b); lines.push(...o.lines); actions.push(...o.actions); }
   else if (W['fy.' + r.id] !== today && (r.dayRows || r.day)) { const rows = r.dayRows ? r.dayRows() : null, d = rows && typeof _wkDayPick === 'function' ? _wkDayPick(r.id, rows, _wkFacts(F, m), today) : r.day ? r.day[gardenHash('wt|' + today + r.id) % r.day.length] : ''; W['fy.' + r.id] = today; if (d) lines.push(d); }
   if (F.last !== today && typeof _wkAdd === 'function') _wkAdd(r.id, 1);
