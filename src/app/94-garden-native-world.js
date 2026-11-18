@@ -1131,7 +1131,7 @@ window.GardenNativeWorld = (function () {
       for (const [id, record] of drawings) if (!keep.has(id)) { record.handle.destroy(); drawings.delete(id); sorted = true; }
       // Painted village: every standing thing is composed into the ground picture (shadow, foundation planting, worn door)
       if (packGround && window.GardenNativePainted && GardenNativePainted.compose) {
-        const items = []; for (const record of drawings.values()) { const meta = record.metadata, foot = meta.foot || record.handle.foot, b = record.bounds; if (!record.handle.painted || !foot || !b || meta.kind === 'decor' || meta.kind === 'ground') continue; items.push({ id: record.id, x: foot.x, y: foot.y, w: Math.min(220, b.width * .8), door: !!(meta.prop && meta.prop.door) }); }
+        const items = []; for (const record of drawings.values()) { const meta = record.metadata, foot = meta.foot || record.handle.foot, b = record.bounds; if (!record.handle.painted || !foot || !b || meta.kind === 'decor' || meta.kind === 'ground') continue; items.push({ id: record.id, x: foot.x, y: foot.y, w: Math.min(220, b.width * .8), h: b.height, fw: (Number(meta.prop && meta.prop.w) || Number(meta.model && meta.model.w) || 0) * W.cellW, door: !!(meta.prop && meta.prop.door), shaded: !!record.handle.shaded }); }
         try { GardenNativePainted.compose(scene, items); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); }
         if (typeof window !== 'undefined') window.__gardenPaintedScene = scene;
       }
@@ -1154,7 +1154,7 @@ window.GardenNativeWorld = (function () {
         if (meta.kind === 'ground' || def && def.layer === 'ground') continue;
         if (source && def) {
           const x = meta.foot ? meta.foot.x : (source.x + (def.fp || def.w || 1) / 2) * W.cellW, y = meta.foot ? meta.foot.y : W.sky + (source.y + (def.fp || def.h || 1)) * W.cellH;
-          solidObjects.push({ id: record.id, x, y, w: Math.min((def.fp || def.w || 1) * W.cellW, record.bounds.width || 80), h: W.cellH * .4, height: Math.max(12, (record.bounds.height || 60) * .8), kind: meta.kind, root: record.root });
+          solidObjects.push({ id: record.id, x, y, w: Math.min((def.fp || def.w || 1) * W.cellW, record.bounds.width || 80), h: W.cellH * .4, height: Math.max(12, (record.bounds.height || 60) * .8), kind: meta.kind, root: record.root, shaded: !!record.handle.shaded });
           reflectedScenery.push({ id: record.id, source: record.root, x, y, w: record.bounds.width, h: W.cellH * .4, tall: record.bounds.height, bounds: record.bounds, kind: meta.kind, dynamic: !!record.handle.dynamic, captureKey });
           if (def.glow || def.effect && def.effect.kind === 'light') pointLights.push({ id: record.id, x, y: y - Math.min(50, record.bounds.height || 40), ground: y + 2, radius: def.glow ? 54 : 105, color: nightMaterials ? 0xffc17a : 0xffd98c, intensity: def.glow ? .35 : .8 });
           if (meta.kind === 'prop' && ['shop', 'tackle'].includes(def.kind)) pointLights.push({ id: record.id + ':window', x, y: y - (record.handle.painted ? 48 : nightMaterials ? 76 : 28), ground: y + 12, radius: nightMaterials ? 96 : 72, color: nightMaterials ? 0xffc47c : 0xffdca3, intensity: .58 });

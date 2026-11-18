@@ -208,7 +208,8 @@ window.GardenNativePainted = (function () {
     const started = performance.now(), G = window.GardenPaintGround;
     const B = info.box, P = palette(info.season), sig = info.sig + '|' + info.season; lastInfo = info;
     K = G.levelFor(scene.cameras && scene.cameras.main ? scene.cameras.main.zoom : 1);
-    const handleOf = layer => ({ layer, destroy() { layer.detach(); } });
+    const handleOf = layer => ({ layer, destroy() { layer.detach(); G.cast.detach(); } });
+    G.cast.attach(scene, parent, B, info.W);   // (the shadows of standing sprites: one soft layer over every ground)
     if (cachedGround && cachedGround.sig === sig && cachedGround.layer) { cachedGround.layer.attach(parent); groundMs = Math.round(performance.now() - started); return handleOf(cachedGround.layer); }
     if (cachedGround && cachedGround.layer) {
       rebuilds.push([cachedGround.sig, sig]); if (rebuilds.length > 4) rebuilds.shift();
@@ -390,15 +391,17 @@ window.GardenNativePainted = (function () {
   let composeMs = 0;
   function compose(scene, items) {
     const g = cachedGround; if (!g || !g.layer || !items.length) return;
-    const key = items.map(i => [i.id, Math.round(i.x), Math.round(i.y), Math.round(i.w)].join(':')).sort().join('|');
+    const key = items.map(i => [i.id, Math.round(i.x), Math.round(i.y), Math.round(i.w), Math.round(i.fw || 0)].join(':')).sort().join('|');
     if (g.composed === key) return; const t0 = performance.now(), G = window.GardenPaintGround, B = g.box, list = items.map(i => Object.assign({}, i)), P = palette(lastInfo && lastInfo.season), meadow = lastInfo && lastInfo.meadow || (() => true);
+    // its soft shadow, thrown the way every shadow in the vale falls (the kit's one light) and dark where it meets the ground:
+    // on the kit's shadow layer, which lies over every region's ground (in this ground it was hidden wherever a region paints its own)
+    G.cast.blobs(list.filter(it => !it.shaded).map(it => { const w0 = it.fw ? Math.min(it.w, it.fw) : it.w, tall = it.h > w0 * 1.6, w = tall ? Math.max(8, w0 * .3) : w0;   // (as wide as what stands on the ground: a lamp's glow and a roof's eaves are not its foot, and a post is thinner still)
+      return { id: it.id, x: it.x, y: it.y + 1, w, h: Math.min(160, it.h ? it.h * .85 : it.w * .9), a: .26 }; }));
     g.layer.set('compose', { bb: [B.x, B.y, B.x + B.w, B.y + B.h], seed: 1, draw(Bk, r0, cb) {
       const cx = Bk.cx;
       for (const it of list) {
         if (it.x < cb[0] - it.w - 110 || it.x > cb[2] + it.w + 40 || it.y < cb[1] - 60 || it.y > cb[3] + 40) continue;
         const r = rng(hash32(String(it.id) + ':' + Math.round(it.x) + ',' + Math.round(it.y)));
-        // its soft shadow, thrown the way every shadow in the vale falls (the kit's one light), and dark where it meets the ground
-        G.castShadow(cx, it.x, it.y + 2, it.w, Math.min(150, it.w * .9), { a: .2 });
         // worn ground where feet stop: at a door, in front of a bench or a board
         if (it.door) { cx.globalAlpha = .38; cx.fillStyle = P.pathWear; cx.fill(path(sceneDraw.blob(r, it.x, it.y + 12, Math.max(14, it.w * .2), 7, 8, .5))); cx.globalAlpha = .25; cx.fillStyle = P.pathEdge; cx.fill(path(sceneDraw.blob(r, it.x + 2, it.y + 14, Math.max(8, it.w * .12), 4, 7, .5))); cx.globalAlpha = 1; }
         // planting growing round the foundation, thicker at the corners

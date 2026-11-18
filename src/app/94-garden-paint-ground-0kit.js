@@ -52,11 +52,11 @@ window.GardenPaintGround = (function () {
   /** The soft shadow an upright thing throws: base centre (x, y), its width and height in world px. o: { a, len } */
   function castShadow(cx, x, y, w, h, o) {
     o = o || {}; const len = Math.min(90, h * (o.len == null ? .55 : o.len)), a = o.a == null ? .24 : o.a, ex = x + LIGHT.sx * len, ey = y + LIGHT.sy * len * .6;
-    const ang = Math.atan2(ey - y, ex - x), L = Math.hypot(ex - x, ey - y), rx = L / 2 + w * .42, ry = Math.max(3, w * .26);
-    cx.save(); cx.translate((x + ex) / 2, (y + ey) / 2 + 1); cx.rotate(ang); cx.scale(1, ry / rx);
-    const g = cx.createRadialGradient(-rx * .25, 0, 0, 0, 0, rx); g.addColorStop(0, 'rgba(38,52,28,' + a + ')'); g.addColorStop(.6, 'rgba(38,52,28,' + a * .5 + ')'); g.addColorStop(1, 'rgba(38,52,28,0)');
-    cx.fillStyle = g; cx.beginPath(); cx.arc(0, 0, rx, 0, Math.PI * 2); cx.fill(); cx.restore();
-    contact(cx, x, y, Math.max(4, w * .5), Math.max(2, w * .16), a * 1.5);
+    // the thing's foot laid over along the light: its base line, and the same line carried out to where its top's shadow falls
+    const K = scaleOf(cx), hw = w / 2, d = Math.max(1.5, Math.min(10, w * .1)), dx = ex - x, dy = ey - y;
+    cx.save(); cx.filter = 'blur(' + (Math.max(1.6, Math.min(4.5, 1.4 + w * .03)) * K).toFixed(1) + 'px)'; cx.globalAlpha = a; cx.fillStyle = LIGHT.shade;
+    cx.beginPath(); cx.moveTo(x - hw, y - d); cx.lineTo(x + hw, y - d); cx.lineTo(x + hw * .9 + dx, y + dy - d * .5); cx.lineTo(x + hw * .82 + dx, y + dy + d); cx.lineTo(x - hw * .8 + dx, y + dy + d); cx.lineTo(x - hw, y + d); cx.closePath(); cx.fill(); cx.restore(); cx.filter = 'none'; cx.globalAlpha = 1;
+    contact(cx, x, y, Math.max(4, w * .5), Math.max(2, Math.min(8, w * .1)), Math.min(.36, a * 1.2));
   }
   /** A soft pool of warm light on the ground (a lamp, a lit window), for art baked for dusk and night. */
   function lightPool(cx, x, y, rx, ry, a, col) {
@@ -180,6 +180,64 @@ window.GardenPaintGround = (function () {
   /* ---------- small shared canvases ---------- */
   const pool = new Map();
   function scratch(name, w, h, opts) { let s = pool.get(name); if (!s) { const c = document.createElement('canvas'); s = { c, cx: c.getContext('2d', opts || undefined) }; pool.set(name, s); } if (s.c.width !== w || s.c.height !== h) { s.c.width = w; s.c.height = h; } else { s.cx.setTransform(1, 0, 0, 1, 0, 0); s.cx.globalCompositeOperation = 'source-over'; s.cx.globalAlpha = 1; s.cx.filter = 'none'; s.cx.clearRect(0, 0, w, h); } return s; }
+
+  /* ---------- 4b. the shadows of standing sprites ---------- */
+  // A painter that stands a sprite on the ground (a wall, a cairn, a lamp post, a pine) hands it to cast.add(), or stands it
+  // with GardenPaintTerrainKit.sprite(..., shade), which does. Its shadow is its own silhouette laid over on the ground along
+  // LIGHT, squashed and blurred, with a tight dark contact along its foot: so a wall throws a wall's shadow and a lamp a
+  // lamp's, all the same way. They are baked into one soft layer just over the ground (level 1: a shadow has no detail to
+  // sharpen), a slice at a time, only where something stands.
+  const cast = (function () {
+    const items = new Map(); let L = null, at = null, sweep = null;
+    const lean = h => { const len = Math.min(.52, 90 / Math.max(1, h)); return { a: LIGHT.sx * len, b: LIGHT.sy * len * .62 }; };
+    const source = it => { const T = it.scene.textures; if (!T.exists(it.key)) return null; const s = T.get(it.key).getSourceImage(); return s && s.width > 1 ? s : null; };
+    // where the sprite meets the ground: the span of what is painted just above its base line (read once from the sprite)
+    const footOf = (it, src) => {
+      if (it.foot) return it.foot; const w = it.box[2] - it.box[0], k = src.width / w, n = Math.max(8, Math.min(160, Math.round(w / 2))), rows = 4, y0 = Math.max(0, Math.round(-it.box[1] * k - 5 * k));
+      const s = scratch('castFoot', n, rows, { willReadFrequently: true }); s.cx.drawImage(src, 0, y0, src.width, Math.max(1, Math.round(4.5 * k)), 0, 0, n, rows);
+      let lo = n, hi = -1; ok(() => { const d = s.cx.getImageData(0, 0, n, rows).data; for (let j = 0; j < rows; j++) for (let i = 0; i < n; i++) if (d[(j * n + i) * 4 + 3] > 70) { if (i < lo) lo = i; if (i > hi) hi = i; } });
+      it.foot = hi < lo ? [it.box[0] + w * .35, it.box[0] + w * .65] : [it.box[0] + lo / n * w, it.box[0] + (hi + 1) / n * w]; return it.foot;
+    };
+    function opOf(it) {
+      const h = -it.box[1], w = it.box[2] - it.box[0], { a, b } = lean(h);
+      return { bb: [it.x + it.box[0] - 10, it.y - 12, it.x + it.box[2] + a * h + 12, it.y + b * h + 14], seed: 1, name: 'shadow', draw(B) {
+        const cx = B.cx, src = source(it); if (!src) return; const K = scaleOf(cx), c = cx.canvas, s = scratch('cast', c.width, c.height), sc = s.cx, k = src.width / w, rows = Math.min(src.height, Math.round((h + 1) * k));
+        // the silhouette of what stands above the base line, laid over on the ground: a point h px up lands a little right and below
+        sc.setTransform(cx.getTransform()); sc.transform(1, 0, -a, -b, it.x, it.y); sc.imageSmoothingEnabled = true; sc.drawImage(src, 0, 0, src.width, rows, it.box[0], it.box[1], w, rows / k);
+        sc.setTransform(1, 0, 0, 1, 0, 0); sc.globalCompositeOperation = 'source-in'; sc.fillStyle = LIGHT.shade; sc.fillRect(0, 0, c.width, c.height); sc.globalCompositeOperation = 'source-over';
+        cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); cx.globalAlpha = it.a; cx.filter = 'blur(' + (2 * K).toFixed(1) + 'px)'; cx.drawImage(s.c, 0, 0); cx.restore(); cx.filter = 'none'; cx.globalAlpha = 1;
+        const f = footOf(it, src), fw = Math.max(6, f[1] - f[0]); contact(cx, it.x + (f[0] + f[1]) / 2, it.y - 1, fw * .56, Math.max(2.2, Math.min(9, fw * .13)), Math.min(.4, it.a * 1.5));
+      } };
+    }
+    const idOf = o => o.key + '@' + Math.round(o.x) + ',' + Math.round(o.y);
+    /** Stand a sprite's shadow on the ground. o: { key (its texture), x, y (its base, world px), box [x0, y0, x1, y1] about the base, a (strength) } */
+    function add(scene, o) {
+      if (!o || !o.key || !o.box || !(o.box[1] < -6)) return null; const id = idOf(o), old = items.get(id); if (old) { old.gone = 0; return id; }
+      const W = at && at.W || (typeof GARDEN_WORLD !== 'undefined' ? GARDEN_WORLD : null); if (W && typeof gardenIslandBaseCell === 'function') { const c = gardenIslandBaseCell(Math.floor(o.x / W.cellW), Math.floor((o.y - 3 - W.sky) / W.cellH)); if (c && (c.ocean || c.freshwater)) return null; }   // (afloat: the water chain owns what a boat does to the water)
+      const it = { id, scene, key: o.key, x: o.x, y: o.y, box: o.box.slice(), a: o.a == null ? .34 : o.a, gone: 0 }; items.set(id, it); if (L) L.set('s|' + id, opOf(it), id); return id;
+    }
+    /** Its sprite is gone. The shadow goes a moment later, unless the same sprite is stood again (a repaint), so nothing flickers. */
+    function drop(id) { const it = items.get(id); if (!it) return; it.gone = performance.now(); arm(); }
+    function arm() { if (sweep) return; sweep = setTimeout(() => { sweep = null; const now = performance.now(); let later = false; for (const [k, q] of items) { if (!q.gone) continue; if (now - q.gone < 900) { later = true; continue; } items.delete(k); if (L) L.set('s|' + k, null); } if (later) arm(); }, 1000); }
+    /** The ground is on the stage: put the shadow layer over it (parent: the ground's container; W: the world's cell sizes). */
+    function attach(scene, parent, box, W) {
+      if (L && at && at.scene !== scene) { L.destroy(); L = null; }
+      at = { scene, W };
+      if (!L) { L = layer(scene, parent, [...items.values()].filter(q => q.scene === scene).map(q => Object.assign(opOf(q), { tag: 's|' + q.id, sig: q.id })).concat([...ovals].map(([id, o]) => Object.assign(ovalOp(o.q), { tag: 'o|' + id, sig: o.sig }))), { key: 'gdcast', box, chunk: 256, depth: -9340, budgetMB: 10, follow: false, K: .75, lazy: true, slice: 7 }); for (const [k, q] of items) if (q.scene !== scene) items.delete(k); }
+      else L.attach(parent);
+    }
+    function detach() { if (L) L.detach(); }
+    // Things that have no sprite of their own to lay over (a library building, a bench): a soft oval thrown the same way.
+    // list: [{ id, x, y (base, world px), w, h, a }]; the whole set each time, and only what changed is painted again.
+    const ovals = new Map();
+    const ovalOp = q => { const len = Math.min(90, q.h * .55); return { bb: [q.x - q.w * .6 - 12, q.y - 24, q.x + LIGHT.sx * len + q.w * .6 + 14, q.y + LIGHT.sy * len * .6 + 26], seed: 1, name: 'oval', draw(B) { castShadow(B.cx, q.x, q.y, q.w, q.h, { a: q.a }); } }; };
+    function blobs(list) {
+      const seen = new Set();
+      for (const q of list) { const sig = [Math.round(q.x), Math.round(q.y), Math.round(q.w), Math.round(q.h), q.a].join(':'); seen.add(q.id); const old = ovals.get(q.id); if (old && old.sig === sig) continue; ovals.set(q.id, { q: Object.assign({}, q), sig }); if (L) L.set('o|' + q.id, ovalOp(q), sig); }
+      for (const id of [...ovals.keys()]) if (!seen.has(id)) { ovals.delete(id); if (L) L.set('o|' + id, null); }
+    }
+    return { add, drop, attach, detach, blobs, get count() { return items.size + ovals.size; }, get layer() { return L; } };
+  })();
 
   /* ---------- 2. the ground kinds ---------- */
   const KINDS = ['lawn', 'meadow', 'forest', 'oldwood', 'moor', 'marsh', 'soil', 'sand', 'shingle'], SHORE = new Set(['sand', 'shingle']);
@@ -554,5 +612,5 @@ window.GardenPaintGround = (function () {
   }
 
   function status() { const layers = [...registry].map(h => ({ key: String(h.key).slice(0, 24), level: h.level, chunks: h.chunks, live: h.live, MB: h.MB, baked: h.baked, evicted: h.evicted, medianMs: h.median, p95Ms: h.p95, worstChunkMs: h.worstMs, worstSliceMs: h.sliceWorstMs })); return { layers, MB: +layers.reduce((a, l) => a + l.MB, 0).toFixed(1), slow: Object.assign({}, slow), lastError }; }
-  return { resetSlow() { slow.opMs = 0; slow.op = ''; slow.uploadMs = 0; slow.tickMs = 0; }, LIGHT, contact, castShadow, lightPool, layer, levelFor, LEVELS, KINDS, palette, paintKind, wash, kindGrid, layoutKinds, layoutPaths, routeKind, ROUTE_WIDTH, ground, paths, flower, softCut, centreLine, tiles, rng, hash, hashStr, noise, fbm, mix, scratch, status, get lastError() { return lastError; }, set lastError(v) { lastError = v; } };
+  return { resetSlow() { slow.opMs = 0; slow.op = ''; slow.uploadMs = 0; slow.tickMs = 0; }, LIGHT, contact, castShadow, lightPool, cast, layer, levelFor, LEVELS, KINDS, palette, paintKind, wash, kindGrid, layoutKinds, layoutPaths, routeKind, ROUTE_WIDTH, ground, paths, flower, softCut, centreLine, tiles, rng, hash, hashStr, noise, fbm, mix, scratch, status, get lastError() { return lastError; }, set lastError(v) { lastError = v; } };
 })();

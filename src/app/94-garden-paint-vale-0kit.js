@@ -255,7 +255,8 @@ window.GardenPaintVale = (function () {
     const make = (o, isUnder) => {
       if (o.make) { const im = ok(() => o.make(scene)); if (im) { im.setDepth(o.y); (objects || root).add(im); sprites.push(im); if (im.displayHeight > 60) tall.push(im); } return; }   // (a tall one, a tree: it fades when you stand under it)
       const key = (isUnder ? underSig : sig + '|t|') + o.key, draw = isUnder ? B => o.draw(B, waterTod) : o.draw;
-      const im = kit.sprite(scene, isUnder ? root : objects || root, key, o.box, draw, o.x, o.y, o.K || (isUnder ? 1.25 : 1.5)); if (!im) return;
+      // (a thing that stands on the ground at its base line lays its shadow there; shade: false for one that does not)
+      const im = kit.sprite(scene, isUnder ? root : objects || root, key, o.box, draw, o.x, o.y, o.K || (isUnder ? 1.25 : 1.5), !isUnder && o.depth == null && o.shade !== false ? o.shade || true : null); if (!im) return;
       im.setDepth(isUnder ? UNDER : o.depth != null ? o.depth : o.y); sprites.push(im); stats.spritePx = (stats.spritePx || 0) + (im._gptPx || 0);
       if (!isUnder && o.crown) { im._gpvCrown = o.crown; tall.push(im); }
       if (!isUnder && o.farShrink) { im._gpvBase = im.scaleX; im._gpvShrink = o.farShrink; shrink.push(im); }
