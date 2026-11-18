@@ -1,6 +1,8 @@
 /* One game, one scene clock, native display components and native input.
  * Saved rules and HTML menus are shared with the dashboard; no SVG scene is
  * mounted, measured, watched or rasterized by this runtime. */
+/** Device pixels per CSS pixel the garden's canvas is drawn at (at most 2: four times the pixels is the fill-rate ceiling). */
+function gardenNativePixelRatio() { return Math.max(1, Math.min(2, Number(window.devicePixelRatio) || 1)); }
 function gardenSceneElement(tag, attrs) {
   if (window.GardenNative && GardenNative.scene()) return GardenNativeArt.element(GardenNative.scene(), tag, attrs || {});
   const node = document.createElementNS('http://www.w3.org/2000/svg', tag);
@@ -547,7 +549,7 @@ window.GardenNative = (function () {
           s.scene = this; s.game = this.game;
           const position = _gwSavedPos(); if (position) { _gw.px = position.x; _gw.py = position.y; }
           _gw.root = _gdp.root; _gw.box = box; _gw.sizeOk = false;
-          s.world = GardenNativeWorld.create(this, { model: s.model, box, root: _gdp.root }); _gdp.svg = s.world.rootNode; _gw.svg = s.world.rootNode;
+          s.world = GardenNativeWorld.create(this, { model: s.model, box, root: _gdp.root, width: Math.max(1, box.clientWidth), height: Math.max(1, box.clientHeight) }); _gdp.svg = s.world.rootNode; _gw.svg = s.world.rootNode;
           GardenNativeArt.configure(null, this.sys.renderer);
           s.lighting = GardenNativeLight.create(this, { world: s.world, model: s.model });
           if (window.GardenNativeFrontier) s.frontier = GardenNativeFrontier.create(this, { world: s.world });
@@ -563,8 +565,12 @@ window.GardenNative = (function () {
       }, update(time, delta) { step(s, time, delta); } };
       // Four texture slots keep the reachable shader suite small; preparation
       // still warms every native variant before the player takes control.
-      s.game = new Phaser.Game({ type: Phaser.WEBGL, parent: host, width: Math.max(1, box.clientWidth), height: Math.max(1, box.clientHeight), backgroundColor: '#87aa78', antialias: true, resolution: Math.min(2, devicePixelRatio || 1), powerPreference: 'high-performance', maxTextures: 4, audio: { noAudio: true }, input: { keyboard: true, mouse: { preventDefaultWheel: true }, touch: true, activePointers: 3, gamepad: false }, scene: config, fps: { target: 60, min: 15, limit: 0, smoothStep: false }, banner: false });
-      s.resize = new ResizeObserver(() => { if (s.dead || !s.world || s.capturing) return; const w = box.clientWidth, h = box.clientHeight; if (!w || !h) return; s.game.scale.resize(w, h); if (!inRoom()) s.world.resize(w, h); }); s.resize.observe(box);
+      // Phaser 4 has no resolution setting: the canvas is drawn in device pixels (capped at 2x) and shown at CSS size
+      // (zoom 1 / ratio), so a HiDPI screen no longer upscales a CSS-sized canvas (the blur close up). The world's camera
+      // multiplies its zoom by the same ratio (94-garden-native-world.js updateCamera).
+      const dpr = gardenNativePixelRatio();
+      s.game = new Phaser.Game({ type: Phaser.WEBGL, parent: host, width: Math.max(1, Math.round(box.clientWidth * dpr)), height: Math.max(1, Math.round(box.clientHeight * dpr)), zoom: 1 / dpr, backgroundColor: '#87aa78', antialias: true, resolution: dpr, powerPreference: 'high-performance', maxTextures: 4, audio: { noAudio: true }, input: { keyboard: true, mouse: { preventDefaultWheel: true }, touch: true, activePointers: 3, gamepad: false }, scene: config, fps: { target: 60, min: 15, limit: 0, smoothStep: false }, banner: false });
+      s.resize = new ResizeObserver(() => { if (s.dead || !s.world || s.capturing) return; const w = box.clientWidth, h = box.clientHeight; if (!w || !h) return; const ratio = gardenNativePixelRatio(); s.game.scale.setZoom(1 / ratio); s.game.scale.resize(Math.round(w * ratio), Math.round(h * ratio)); if (!inRoom()) s.world.resize(w, h); }); s.resize.observe(box);
       s.visibility = () => { if (s.dead || !s.game) return; if (document.hidden) { if (s.blur) s.blur(); s.game.loop.sleep(); } else s.game.loop.wake(); }; document.addEventListener('visibilitychange', s.visibility);
     }).catch(error => { lastError = String(error && error.message || error); if (s.dead) return; clearTimeout(s.slowTimer); retry('The garden could not open: ' + lastError); console.error('[native garden]', error); });
   }
@@ -598,7 +604,7 @@ window.GardenNative = (function () {
       const restore = () => {
         if (s.dead) return; if (ghost) ghost.remove();
         s.game.scale.resize(size.w, size.h); for (const [object, value] of visible) if (object.active) object.setVisible(value);
-        s.world.resize(size.w, size.h); if (s.world.prepareRender) s.world.prepareRender(); GardenNativeArt.updateAll(s.scene, s.time || performance.now()); if (typeof petGardenVisualFrame === 'function') petGardenVisualFrame(s.time || performance.now()); let presentationEnvironment = null; if (s.surface) s.surface.update(s.time || performance.now(), 0, presentationEnvironment = s.lighting.environment()); if (s.water) s.water.update(s.time || performance.now(), 0, presentationEnvironment || s.lighting.environment());
+        s.world.resize(size.w / gardenNativePixelRatio(), size.h / gardenNativePixelRatio()); if (s.world.prepareRender) s.world.prepareRender(); GardenNativeArt.updateAll(s.scene, s.time || performance.now()); if (typeof petGardenVisualFrame === 'function') petGardenVisualFrame(s.time || performance.now()); let presentationEnvironment = null; if (s.surface) s.surface.update(s.time || performance.now(), 0, presentationEnvironment = s.lighting.environment()); if (s.water) s.water.update(s.time || performance.now(), 0, presentationEnvironment || s.lighting.environment());
         s.host.style.visibility = ''; s.capturing = false; openingVisibility(s);
       };
       const finish = (error, blob) => { if (settled) return; settled = true; clearTimeout(timer); restore(); if (error) reject(error); else resolve(blob); };

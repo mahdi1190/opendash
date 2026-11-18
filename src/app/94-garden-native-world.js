@@ -1345,7 +1345,8 @@ window.GardenNativeWorld = (function () {
       const main = scene.cameras.main;
       // Phaser's zoom setters dirty the camera even for the same numeric value.
       // Compare its real zoom, so photo-camera restoration still takes effect.
-      if (main.zoomX !== camera.scale || main.zoomY !== camera.scale) main.setZoom(camera.scale);
+      const deviceZoom = camera.scale * (scene.scale && scene.scale.width ? scene.scale.width / size.w : 1);   // (the canvas is in device pixels: 94-garden-native-runtime.js)
+      if (main.zoomX !== deviceZoom || main.zoomY !== deviceZoom) main.setZoom(deviceZoom);
       main.centerOn(camera.x + camera.w / 2, camera.y + camera.h / 2);
       scene._nativeViewTransition = smooth && (Math.abs(target.h - camera.h) > target.h * .003 || performance.now() - zoomInputAt < 110);
       scene._nativeTargetZoom = Math.min(size.w / target.w, size.h / target.h);

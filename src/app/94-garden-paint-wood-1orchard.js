@@ -49,6 +49,8 @@
       if (season === 'autumn') for (let i = 0; i < 4; i++) { cx.fillStyle = col; cx.globalAlpha = .8; cx.beginPath(); cx.ellipse((r() - .5) * crownW * .9, 2 + r() * 5, 2.4, 1.4, 0, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 1; } }
   }
   function orchardTree(scene, o) {
+    // the painted tree kit's orchard trees: lit leaf masses, fruit tucked into them, a rooted trunk (94-garden-paint-tree-0kit.js)
+    if (window.GardenPaintTrees && KINDS[o.kind || 'apple']) { const im = GardenPaintTrees.image(scene, { species: o.kind || 'apple', season: o.season, v: o.v, h: o.h || 110, x: o.x, y: o.y, flip: o.flip, shadow: true }); if (im) return im; }
     const kind = KINDS[o.kind] ? o.kind : 'apple', season = o.season || 'summer', v = Math.max(0, Math.min(2, o.v | 0)), H = Math.max(60, Math.round((o.h || 110) / 20) * 20);
     const key = TEX + '|' + kind + '|' + season + '|' + v + '|' + H;
     if (!scene.textures.exists(key)) {

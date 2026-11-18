@@ -360,6 +360,7 @@ window.GardenNativePainted = (function () {
 
   /* ---------- planting: groves, shrubs and reeds in deliberate groups ---------- */
   const GROVE = { summer: ['tree.green-oak', 'tree.green-birch', 'tree.green-chestnut', 'tree.hawthorn', 'tree.green-alder'], autumn: ['tree.green-oak', 'tree.green-birch', 'tree.green-chestnut', 'tree.hawthorn', 'tree.cherry'] };
+  const TREE_KIT = { 'tree.green-oak': 'oak', 'tree.green-birch': 'birch', 'tree.green-chestnut': 'chestnut', 'tree.hawthorn': 'hawthorn', 'tree.green-alder': 'alder', 'tree.cherry': 'cherry' };
   const SHRUB = ['plant.holly', 'plant.gorse', 'plant.hedge', 'plant.fern', 'plant.bracken'];
   /** Once a frame: a village crown you stand under fades, so you can always see yourself (as in the woods). */
   let plantingTall = [], fadeLast = 0;
@@ -389,7 +390,16 @@ window.GardenNativePainted = (function () {
         gx.lineCap = 'round'; for (let i = 0; i < blades; i++) { const t = blades > 1 ? i / (blades - 1) : .5, h = ((seed + i * 37) % 7) / 7, px = bx - bw * .48 + t * bw * .96, len = (3 + h * 4.5) * K * (1 - Math.abs(t - .5) * .6); gx.strokeStyle = tone[(seed + i) % 2]; gx.globalAlpha = .9; gx.lineWidth = 1.1 * K; gx.beginPath(); gx.moveTo(px, by + K * .6); gx.quadraticCurveTo(px + (h - .5) * 2 * K, by - len * .5, px + (h - .5) * 4 * K, by - len); gx.stroke(); }
         gx.restore(); return;
       }
-      const im = objectImage(scene, id, v, season, size, x, y, false); if (!im) return; im.setDepth(y); parent.add(im); made.push(im);
+      // trees: the painted tree kit (94-garden-paint-tree-0kit.js), crowns of lit leaf masses on rooted trunks, and their
+      // dappled shadow and root contact painted into the cached ground (no sprite, no frame cost)
+      const species = TREE_KIT[id], kit = species && window.GardenPaintTrees;
+      let im = null;
+      if (kit) {
+        im = ok(() => GardenPaintTrees.image(scene, { species, season, v, h: size.h, x, y, flip: (Math.round(x) & 1) === 1 }));
+        if (im && paintLow) { gx.save(); gx.setTransform(K, 0, 0, K, -g.box.x * K, -g.box.y * K); ok(() => GardenPaintTrees.groundShadow(gx, x, y, size.h, { species, season })); gx.restore(); }
+      }
+      if (!im) im = objectImage(scene, id, v, season, size, x, y, false);
+      if (!im) return; im.setDepth(y); parent.add(im); made.push(im);
       if (size.h >= 50) { tall.push({ im, x, y, h: size.h }); trunks.push(Object.freeze({ x: x / W.cellW, y: (y - W.sky) / W.cellH, w: size.h > 100 ? .5 : .4 })); }
     };
     const tall = plantingTall = [], trunks = [];
