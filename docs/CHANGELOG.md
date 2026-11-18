@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.73.3] - 2026-11-18
+
+### Changed
+
+- Checking garden milestones and updating Memories takes less time on dashboards with a long task history. The download also drops unused code from the old Nature book.
+
 ## [2.73.2] - 2026-11-18
 
 ### Changed
