@@ -66,7 +66,7 @@ window.GardenPaintGround = (function () {
   }
 
   /* ---------- 1. the zoom-following chunked layer ---------- */
-  const LEVELS = [.75, 1, 1.5, 2, 3, 4], SHARP = .8, PAD = 2, HEAVY_MS = 26, registry = new Set(), slow = { opMs: 0, op: '', uploadMs: 0, tickMs: 0 };
+  const LEVELS = [.75, 1, 1.5, 2, 3, 4], SHARP = .76, PAD = 2, HEAVY_MS = 26, registry = new Set(), slow = { opMs: 0, op: '', uploadMs: 0, tickMs: 0 };
   /** The bake level the camera needs now: the smallest level within 20% of the screen's own pixel density. */
   function levelFor(zoom, lo, hi) { const need = (zoom || 1) * SHARP; let k = LEVELS[LEVELS.length - 1]; for (const l of LEVELS) if (l >= need) { k = l; break; } return clamp(k, lo == null ? LEVELS[0] : lo, hi == null ? 4 : hi); }
   // ops: [{ bb: [x0, y0, x1, y1] world px, seed, clip, tag, draw(B, r, chunkBB) }]   (the shape GardenPaintTerrainKit.chunked takes)
@@ -191,28 +191,27 @@ window.GardenPaintGround = (function () {
     const items = new Map(); let L = null, at = null, sweep = null;
     const lean = h => { const len = Math.min(.52, 90 / Math.max(1, h)); return { a: LIGHT.sx * len, b: LIGHT.sy * len * .62 }; };
     const source = it => { const T = it.scene.textures; if (!T.exists(it.key)) return null; const s = T.get(it.key).getSourceImage(); return s && s.width > 1 ? s : null; };
-    // where the sprite meets the ground: the span of what is painted just above its base line (read once from the sprite)
-    const footOf = (it, src) => {
-      if (it.foot) return it.foot; const w = it.box[2] - it.box[0], k = src.width / w, n = Math.max(8, Math.min(160, Math.round(w / 2))), rows = 4, y0 = Math.max(0, Math.round(-it.box[1] * k - 5 * k));
-      const s = scratch('castFoot', n, rows, { willReadFrequently: true }); s.cx.drawImage(src, 0, y0, src.width, Math.max(1, Math.round(4.5 * k)), 0, 0, n, rows);
-      let lo = n, hi = -1; ok(() => { const d = s.cx.getImageData(0, 0, n, rows).data; for (let j = 0; j < rows; j++) for (let i = 0; i < n; i++) if (d[(j * n + i) * 4 + 3] > 70) { if (i < lo) lo = i; if (i > hi) hi = i; } });
-      it.foot = hi < lo ? [it.box[0] + w * .35, it.box[0] + w * .65] : [it.box[0] + lo / n * w, it.box[0] + (hi + 1) / n * w]; return it.foot;
-    };
     function opOf(it) {
       const h = -it.box[1], w = it.box[2] - it.box[0], { a, b } = lean(h);
       return { bb: [it.x + it.box[0] - 10, it.y - 12, it.x + it.box[2] + a * h + 12, it.y + b * h + 14], seed: 1, name: 'shadow', draw(B) {
         const cx = B.cx, src = source(it); if (!src) return; const K = scaleOf(cx), c = cx.canvas, s = scratch('cast', c.width, c.height), sc = s.cx, k = src.width / w, rows = Math.min(src.height, Math.round((h + 1) * k));
+        // (no pixel is read back from the sprite: reading one made the browser fetch the whole picture from the graphics card, 50 to 240 ms)
+        const lay = (m, y0, n, alpha, blur) => {
+          sc.setTransform(1, 0, 0, 1, 0, 0); sc.globalCompositeOperation = 'source-over'; sc.clearRect(0, 0, c.width, c.height);
+          sc.setTransform(cx.getTransform()); sc.transform(m[0], m[1], m[2], m[3], it.x, it.y); sc.imageSmoothingEnabled = true; sc.drawImage(src, 0, y0, src.width, n, it.box[0], it.box[1] + y0 / k, w, n / k);
+          sc.setTransform(1, 0, 0, 1, 0, 0); sc.globalCompositeOperation = 'source-in'; sc.fillStyle = LIGHT.shade; sc.fillRect(0, 0, c.width, c.height); sc.globalCompositeOperation = 'source-over';
+          cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); cx.globalAlpha = alpha; cx.filter = 'blur(' + (blur * K).toFixed(1) + 'px)'; cx.drawImage(s.c, 0, 0); cx.restore(); cx.filter = 'none'; cx.globalAlpha = 1;
+        };
         // the silhouette of what stands above the base line, laid over on the ground: a point h px up lands a little right and below
-        sc.setTransform(cx.getTransform()); sc.transform(1, 0, -a, -b, it.x, it.y); sc.imageSmoothingEnabled = true; sc.drawImage(src, 0, 0, src.width, rows, it.box[0], it.box[1], w, rows / k);
-        sc.setTransform(1, 0, 0, 1, 0, 0); sc.globalCompositeOperation = 'source-in'; sc.fillStyle = LIGHT.shade; sc.fillRect(0, 0, c.width, c.height); sc.globalCompositeOperation = 'source-over';
-        cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); cx.globalAlpha = it.a; cx.filter = 'blur(' + (2 * K).toFixed(1) + 'px)'; cx.drawImage(s.c, 0, 0); cx.restore(); cx.filter = 'none'; cx.globalAlpha = 1;
-        const f = footOf(it, src), fw = Math.max(6, f[1] - f[0]); contact(cx, it.x + (f[0] + f[1]) / 2, it.y - 1, fw * .56, Math.max(2.2, Math.min(9, fw * .13)), Math.min(.4, it.a * 1.5));
+        lay([1, 0, -a, -b], 0, rows, it.a, 2);
+        // the contact: the lowest hand's breadth of it, folded down in front of its foot, so the dark line is exactly as wide as what stands there
+        const strip = Math.min(rows, Math.max(2, Math.round(Math.min(9, h * .3) * k))); lay([1, 0, -.12, -.5], rows - strip, strip, Math.min(.5, it.a * 1.5), 1.1);
       } };
     }
     const idOf = o => o.key + '@' + Math.round(o.x) + ',' + Math.round(o.y);
     /** Stand a sprite's shadow on the ground. o: { key (its texture), x, y (its base, world px), box [x0, y0, x1, y1] about the base, a (strength) } */
     function add(scene, o) {
-      if (!o || !o.key || !o.box || !(o.box[1] < -6)) return null; const id = idOf(o), old = items.get(id); if (old) { old.gone = 0; return id; }
+      if (!o || !o.key || !o.box || !(o.box[1] < -6) || (o.box[2] - o.box[0]) * -o.box[1] > 26e4) return null; /* (nothing flat, and nothing as big as a hillside: that is terrain, with its own shade) */ const id = idOf(o), old = items.get(id); if (old) { old.gone = 0; return id; }
       const W = at && at.W || (typeof GARDEN_WORLD !== 'undefined' ? GARDEN_WORLD : null); if (W && typeof gardenIslandBaseCell === 'function') { const c = gardenIslandBaseCell(Math.floor(o.x / W.cellW), Math.floor((o.y - 3 - W.sky) / W.cellH)); if (c && (c.ocean || c.freshwater)) return null; }   // (afloat: the water chain owns what a boat does to the water)
       const it = { id, scene, key: o.key, x: o.x, y: o.y, box: o.box.slice(), a: o.a == null ? .34 : o.a, gone: 0 }; items.set(id, it); if (L) L.set('s|' + id, opOf(it), id); return id;
     }
@@ -294,6 +293,13 @@ window.GardenPaintGround = (function () {
     for (let p = 0; p < 6; p++) { const a = a0 + p * 1.0472; cx.beginPath(); cx.ellipse(x + Math.cos(a) * s * .6, y + Math.sin(a) * s * .48, s * .44, s * .25, a, 0, 6.283); cx.fill(); }
     if (eye) ell(cx, x, y, s * .34, s * .29, eye, 1);
   }
+  // Many tiny specks at once (grit, clods, grains): round ones, because a square speck shows as a pixel close up. One stroke
+  // of round-capped dashes for each colour and size, so thousands cost a few calls. add(x, y, width, colour index); flush().
+  function grains(cx, cols, alpha) {
+    const buckets = cols.map(() => [[], []]);
+    return { add(x, y, w, ci) { buckets[ci][w > 1.5 ? 1 : 0].push(x, y, w); },
+      flush() { cx.save(); cx.lineCap = 'round'; cx.globalAlpha = alpha; for (let ci = 0; ci < cols.length; ci++) for (let b = 0; b < 2; b++) { const q = buckets[ci][b]; if (!q.length) continue; cx.strokeStyle = cols[ci]; cx.lineWidth = b ? 1.5 : 1; cx.beginPath(); for (let i = 0; i < q.length; i += 3) { cx.moveTo(q[i], q[i + 1]); cx.lineTo(q[i] + q[i + 2] * .5, q[i + 1] + .12); } cx.stroke(); q.length = 0; } cx.restore(); } };
+  }
   const PAINT = {
     // a lawn is never one green: the sward in short strokes that lean with the light, clover and moss in drifts, tufts, the odd stone
     lawn(cx, cb, P, env) {
@@ -304,8 +310,8 @@ window.GardenPaintGround = (function () {
       tiles(cb, 320, 44, 19, (tx, ty, r) => { if (r() < .5) return; const x = tx + r() * 320, y = ty + r() * 320, s = 14 + r() * 20; blob(cx, r, x, y, s, s * .42, 9, .5, '#a08c5e', .2); blob(cx, r, x - 2, y - 1, s * .6, s * .24, 8, .5, '#b8a370', .22); });
       tiles(cb, 96, 22, 21, (tx, ty, r) => { for (let i = 0; i < 2; i++) { if (r() < .45) continue; const x0 = tx + r() * 96, y0 = ty + r() * 96, moss = r() < .35;
         for (let k = 0, n = 12 + Math.floor(r() * 20); k < n; k++) { const a = r() * 6.283, d = Math.sqrt(r()) * 17, x = x0 + Math.cos(a) * d, y = y0 + Math.sin(a) * d * .5;
-          if (moss) { cx.globalAlpha = .45; cx.fillStyle = r() < .5 ? '#8f9a3e' : '#a6aa4c'; cx.fillRect(x, y, 1.4 + r() * 1.4, 1 + r() * .8); continue; }
-          cx.globalAlpha = .5; cx.fillStyle = r() < .5 ? P.cool : mix(P.lo, P.cool, .5); if (far) { cx.fillRect(x - 1.6, y - 1.1, 3.2, 2.2); r(); r(); r(); } else for (let j = 0; j < 3; j++) { const b = j * 2.1 + r(); cx.beginPath(); cx.arc(x + Math.cos(b) * 1.1, y + Math.sin(b) * .7, 1.05, 0, 6.283); cx.fill(); }
+          if (moss) { cx.globalAlpha = .45; cx.fillStyle = r() < .5 ? '#8f9a3e' : '#a6aa4c'; const w = 1.4 + r() * 1.4, h = 1 + r() * .8; cx.beginPath(); cx.ellipse(x + w / 2, y + h / 2, w * .58, h * .58, 0, 0, 6.283); cx.fill(); continue; }
+          cx.globalAlpha = .5; cx.fillStyle = r() < .5 ? P.cool : mix(P.lo, P.cool, .5); if (far) { cx.beginPath(); cx.ellipse(x, y, 1.8, 1.25, 0, 0, 6.283); cx.fill(); r(); r(); r(); } else for (let j = 0; j < 3; j++) { const b = j * 2.1 + r(); cx.beginPath(); cx.arc(x + Math.cos(b) * 1.1, y + Math.sin(b) * .7, 1.05, 0, 6.283); cx.fill(); }
           if (r() < .035 && !winter) ell(cx, x, y - 1.4, 1, .9, '#f4f0e2', .85); } } });
       const tones = [P.lo, mix(P.lo, '#4f6f34', .4), P.hi, mix(P.hi, '#e2dc8e', .5)];
       tiles(cb, 32, 6, 23, (tx, ty, r) => { for (let i = 0; i < (far ? 6 : 12); i++) { const x = tx + r() * 32, y = ty + r() * 32, t = r(), len = 2.4 + r() * 3.2, lean = .5 - r() * .2; blade(cx, x, y, lean * 2, len, tones[t < .38 ? 0 : t < .6 ? 1 : t < .92 ? 2 : 3], .9 + r() * .9, .2 + r() * .22); } });
@@ -362,14 +368,14 @@ window.GardenPaintGround = (function () {
       wash(cx, cb, P, 101, .8);
       const y0 = Math.floor(cb[1] / 7.5) * 7.5; cx.lineCap = 'round';
       for (let y = y0; y < cb[3] + 8; y += 7.5) { cx.globalAlpha = .42; cx.strokeStyle = '#5a3e28'; cx.lineWidth = 1.6; cx.beginPath(); for (let x = Math.floor(cb[0] / 16) * 16; x <= cb[2] + 16; x += 16) { const yy = y + (noise(x / 40, y / 9, 5) - .5) * 1.8; x === Math.floor(cb[0] / 16) * 16 ? cx.moveTo(x, yy) : cx.lineTo(x, yy); } cx.stroke(); cx.globalAlpha = .3; cx.strokeStyle = '#a07c58'; cx.lineWidth = 1; cx.beginPath(); cx.moveTo(cb[0] - 2, y - 2.2); cx.lineTo(cb[2] + 2, y - 2.2); cx.stroke(); }
-      tiles(cb, 32, 3, 103, (tx, ty, r) => { for (let i = 0; i < 22; i++) { cx.globalAlpha = .5; cx.fillStyle = r() < .5 ? P.lo : P.hi; cx.fillRect(tx + r() * 32, ty + r() * 32, 1 + r() * 1.6, .8 + r() * .8); } });
+      { const g = grains(cx, [P.lo, P.hi], .5); tiles(cb, 32, 3, 103, (tx, ty, r) => { for (let i = 0; i < 22; i++) { const ci = r() < .5 ? 0 : 1, x = tx + r() * 32, y = ty + r() * 32, w = 1 + r() * 1.6; r(); g.add(x, y, w, ci); } }); g.flush(); }
       cx.globalAlpha = 1;
     },
     // a beach: damp and dry sand in drifts, wind ripples, a line of wrack and shells
     sand(cx, cb, P, env) {
       wash(cx, cb, P, 111, 1); cx.lineCap = 'round';
       tiles(cb, 64, 30, 113, (tx, ty, r) => { for (let i = 0; i < 3; i++) { const x = tx + r() * 64, y = ty + r() * 64, l = 14 + r() * 26, b = (r() - .5) * 4; cx.globalAlpha = .22; cx.strokeStyle = P.lo; cx.lineWidth = 1.1; cx.beginPath(); cx.moveTo(x, y); cx.quadraticCurveTo(x + l / 2, y + b, x + l, y); cx.stroke(); cx.globalAlpha = .3; cx.strokeStyle = '#f7efd2'; cx.lineWidth = .8; cx.beginPath(); cx.moveTo(x, y - 1.2); cx.quadraticCurveTo(x + l / 2, y + b - 1.2, x + l, y - 1.2); cx.stroke(); } });
-      tiles(cb, 32, 3, 115, (tx, ty, r) => { for (let i = 0; i < 9; i++) { cx.globalAlpha = .35; cx.fillStyle = r() < .5 ? P.lo : '#f6ecd0'; cx.fillRect(tx + r() * 32, ty + r() * 32, .8 + r() * 1.1, .7 + r() * .7); } });
+      { const g = grains(cx, [P.lo, '#f6ecd0'], .35); tiles(cb, 32, 3, 115, (tx, ty, r) => { for (let i = 0; i < 9; i++) { const ci = r() < .5 ? 0 : 1, x = tx + r() * 32, y = ty + r() * 32, w = .8 + r() * 1.1; r(); g.add(x, y, w, ci); } }); g.flush(); }
       tiles(cb, 96, 8, 117, (tx, ty, r) => { for (let i = 0; i < 3; i++) { const x = tx + r() * 96, y = ty + r() * 96, t = r(); if (t < .4) pebble(cx, r, x, y, 1.2 + r() * 2, { shadow: '#8a7a56', stone: '#bfb6a2', stoneLo: '#9c9484', stoneHi: '#eae4d4' }); else if (t < .7) { ell(cx, x + .5, y + .5, 2, 1.1, '#8a7a56', .3); ell(cx, x, y, 1.8, 1.2, r() < .5 ? '#f4e6dc' : '#eecfc0', 1); cx.globalAlpha = .5; cx.strokeStyle = '#c8a898'; cx.lineWidth = .4; cx.beginPath(); cx.moveTo(x - 1.2, y + .6); cx.lineTo(x, y - 1); cx.lineTo(x + 1.2, y + .6); cx.stroke(); } else blob(cx, r, x, y, 3 + r() * 4, 1 + r(), 6, .7, '#5c5a38', .5); } });
       cx.globalAlpha = 1;
     },
@@ -395,12 +401,13 @@ window.GardenPaintGround = (function () {
   // env: { W, grid (kindGrid), season, coast: Path2D (the land's smooth outline), lawn: Path2D (the same, inset past the
   //        beach), box }.  Returns ops for layer(): the shore first, then each land kind present, the commonest first.
   function ground(env) {
-    const W = env.W, cw = W.cellW, chh = W.cellH, grid = env.grid, season = env.season || 'summer', MARG = 44, memo = new Map();
+    const W = env.W, cw = W.cellW, chh = W.cellH, grid = env.grid, season = env.season || 'summer', MARG = 66, memo = new Map();
     const rank = cb => {
       const key = cb[0] + ',' + cb[1]; let R = memo.get(key); if (R) return R; if (memo.size > 600) memo.clear();
       const x0 = Math.floor((cb[0] - MARG) / cw), x1 = Math.floor((cb[2] + MARG) / cw), y0 = Math.floor((cb[1] - W.sky - MARG) / chh), y1 = Math.floor((cb[3] - W.sky + MARG) / chh), n = new Array(KINDS.length).fill(0); let wet = false, any = false;
       for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const v = grid.at(x, y); if (v) { n[v - 1]++; any = true; } if (x < 0 || y < 0 || x >= grid.cols || y >= grid.rows || grid.wet[y * grid.cols + x] || v && SHORE.has(KINDS[v - 1])) wet = true; }
-      const order = k => n.map((c, i) => [c, i]).filter(([c, i]) => c && SHORE.has(KINDS[i]) === k).sort((a, b) => b[0] - a[0]).map(q => q[1]);
+      // (in the kit's own order, never by which is commoner here: the same kind lies on top in every chunk, so the line between two kinds is one picture across a chunk's edge)
+      const order = k => n.map((c, i) => [c, i]).filter(([c, i]) => c && SHORE.has(KINDS[i]) === k).map(q => q[1]);
       let shore = order(true); const land = order(false); if (wet && any && !shore.length) shore = [KINDS.indexOf('sand')];
       R = { shore, land, wet, cells: [x0, y0, x1, y1] }; memo.set(key, R); return R;
     };
@@ -412,12 +419,13 @@ window.GardenPaintGround = (function () {
       if (test) {
         a.cx.fillStyle = '#000';
         for (let y = R.cells[1]; y <= R.cells[3]; y++) for (let x = R.cells[0]; x <= R.cells[2]; x++) { const v = grid.at(x, y); if (!v || !test(v - 1)) continue; const px = ((x + .5) * cw + (h01(x, y, 3) - .5) * 14) / S - mx0, py = (W.sky + (y + .5) * chh + (h01(x, y, 4) - .5) * 9) / S - my0; a.cx.beginPath(); a.cx.ellipse(px, py, cw * (.62 + h01(x, y, 5) * .22) / S, chh * (.66 + h01(x, y, 6) * .24) / S, 0, 0, 6.283); a.cx.fill(); }
-        b.cx.filter = 'blur(2.6px)'; b.cx.drawImage(a.c, 0, 0); b.cx.filter = 'none';
+        b.cx.filter = 'blur(5.5px)'; b.cx.drawImage(a.c, 0, 0); b.cx.filter = 'none';
       } else { b.cx.fillStyle = '#000'; b.cx.fillRect(0, 0, mw, mh); }
       let dom = null;
       if (domain) { const c = scratch('maskC', mw, mh, { willReadFrequently: true }); c.cx.filter = 'blur(1.6px)'; c.cx.setTransform(1 / S, 0, 0, 1 / S, -mx0, -my0); c.cx.fillStyle = '#000'; c.cx.fill(domain, 'evenodd'); c.cx.setTransform(1, 0, 0, 1, 0, 0); c.cx.filter = 'none'; dom = c.cx.getImageData(0, 0, mw, mh).data; }
       const img = b.cx.getImageData(0, 0, mw, mh), d = img.data;
-      for (let j = 0, q = 3; j < mh; j++) for (let i = 0; i < mw; i++, q += 4) { const X = (mx0 + i) * S, Y = (my0 + j) * S, nz = (fbm(X / 34, Y / 24, 99) - .5) * .5; let v = test ? smooth(.34, .66, d[q] / 255 + nz) : 1; if (dom) v *= smooth(.3, .7, dom[q] / 255 + nz * .7); d[q] = Math.round(v * 255); }
+      for (let j = 0, q = 3; j < mh; j++) for (let i = 0; i < mw; i++, q += 4) { // (the line between two kinds wanders a good stride either way and breaks into tongues: never the cell grid, never a ruled edge)
+        const X = (mx0 + i) * S, Y = (my0 + j) * S, nz = (fbm(X / 34, Y / 24, 99) - .5) * .5, wide = (fbm(X / 90, Y / 62, 97) - .5) * 1.5 + nz * .8, m = d[q] / 255; let v = test ? smooth(.38, .62, m + wide * 4 * m * (1 - m)) : 1; /* (the noise only moves the line: well inside a kind it is whole, well outside there is none) */ if (dom) v *= smooth(.3, .7, dom[q] / 255 + nz * .7); d[q] = Math.round(v * 255); }
       b.cx.putImageData(img, 0, 0); return { c: b.c, x: mx0 * S, y: my0 * S, w: mw * S, h: mh * S };
     };
     const through = (B, cb, kind, m) => {
@@ -589,7 +597,7 @@ window.GardenPaintGround = (function () {
         // (the stones are laid by their own ops below, a third of the courses each, so no slice is long)
       } else {
         const P = kind === 'gravel' ? { base: S0.bed, lo: '#b29a6b', hi: '#e5d5ab', warm: '#d9bf8a', cool: '#c9bd9c' } : { base: S0.bed, lo: '#9c855a', hi: '#d9c698', warm: '#c4a26c', cool: '#b0a682' };
-        fillThrough(B, cov, body, sx => { wash(sx, cb, P, kind === 'gravel' ? 151 : 161, 1); tiles(cb, 32, 3, 153, (tx, ty, r) => { for (let i = 0; i < (kind === 'gravel' ? 46 : 20); i++) { const x = tx + r() * 32, y = ty + r() * 32; sx.globalAlpha = .5; sx.fillStyle = r() < .5 ? P.lo : r() < .6 ? P.hi : '#a89068'; sx.fillRect(x, y, .9 + r() * 1.3, .7 + r() * .9); } }); sx.globalAlpha = 1; });
+        fillThrough(B, cov, body, sx => { wash(sx, cb, P, kind === 'gravel' ? 151 : 161, 1); const g = grains(sx, [P.lo, P.hi, '#a89068'], .5); tiles(cb, 32, 3, 153, (tx, ty, r) => { for (let i = 0; i < (kind === 'gravel' ? 46 : 20); i++) { const x = tx + r() * 32, y = ty + r() * 32, ci = r() < .5 ? 0 : r() < .6 ? 1 : 2, w = .9 + r() * 1.3; r(); g.add(x, y, w, ci); } }); g.flush(); sx.globalAlpha = 1; });
         // beaten paler down the middle, where feet and wheels go
         cx.globalAlpha = kind === 'gravel' ? .5 : .42; { const s = scratch('tint', cov.w, cov.h), pic = alphaOf('alM', cov, (v, nz) => smooth(.86, 1, v + nz), .1, 26); s.cx.fillStyle = kind === 'gravel' ? '#ecdfb8' : '#d2bd8e'; s.cx.fillRect(0, 0, cov.w, cov.h); s.cx.globalCompositeOperation = 'destination-in'; s.cx.drawImage(pic, 0, 0); lay(cx, cov, s.c); } cx.globalAlpha = 1;
       }

@@ -223,7 +223,7 @@ window.GardenPaintTerrainKit = (function () {
   // shade: true (or { a }) when it stands on the ground: the shared kit lays its shadow there (GardenPaintGround.cast).
   // Its picture follows the camera like the ground does: close up it is painted again at the level the zoom needs (sharpen).
   const sharp = new Map();   // texture key -> { scene, key, box, draw, K0, K, images: Set, seen }
-  let sharpTimer = null, sharpPx = 0, sharpWorst = 0;
+  let sharpTimer = null, sharpPx = 0, sharpWorst = 0, sharpWalkWorst = 0; const firstMs = new Map();
   const SHARP_BUDGET = 20 * 1048576 / 4, SHARP_ONE = 2.6e6;
   // show every image of a sprite at another picture of it, keeping whatever scaling its painter gave it
   const swap = (S, tex, K) => { const f = S.K / K; for (const im of S.images) { if (!im.active) continue; im.setTexture(tex).setScale(im.scaleX * f, im.scaleY * f); if (im._gpvBase) im._gpvBase *= f; } };
@@ -234,12 +234,13 @@ window.GardenPaintTerrainKit = (function () {
       for (const im of S.images) if (!im.active) S.images.delete(im);
       if (!S.images.size) { if (S.tex && S.scene.textures.exists(S.tex)) { S.scene.textures.remove(S.tex); sharpPx -= S.px; } sharp.delete(key); continue; }
       const cam = S.scene.cameras && S.scene.cameras.main, v = cam && cam.worldView; if (!v || !v.width) continue;
-      const w = S.box[2] - S.box[0], h = S.box[3] - S.box[1]; let want = G.levelFor(cam.zoom, S.K0, 4); while (want > S.K0 && w * h * want * want > SHARP_ONE) want = G.LEVELS[G.LEVELS.indexOf(want) - 1] || S.K0; if (want < S.K0) want = S.K0;
+      const w = S.box[2] - S.box[0], h = S.box[3] - S.box[1]; let want = G.levelFor(cam.zoom, S.K0, 4); while (want > S.K0 && (w * h * want * want > SHARP_ONE || S.ms0 * (want / S.K0) ** 2 > 40)) want = G.LEVELS[G.LEVELS.indexOf(want) - 1] || S.K0; /* (never a painting that would take a long task: its first painting was timed) */ if (want < S.K0) want = S.K0;
       let d = Infinity; for (const im of S.images) { if (im.x + S.box[2] < v.x || im.x + S.box[0] > v.right || im.y + S.box[3] < v.y || im.y + S.box[1] > v.bottom) continue; d = Math.min(d, Math.hypot(im.x - v.centerX, im.y - v.centerY)); }
       if (d < Infinity) S.seen = now;
       // out of sight for a while, or over the budget: back to the picture it was first painted at
       if (S.tex && (now - S.seen > 12000 || sharpPx > SHARP_BUDGET && d === Infinity)) { plain(S); continue; }
-      if (d < bd && S.K !== want && (want > S.K || S.tex) && !(moving && w * h * want * want > 4e5)) { bd = d; best = S; S.want = want; }
+      // (while you walk only a sprite known to paint in a few milliseconds is painted again: its first painting was timed)
+      if (d < bd && S.K !== want && (want > S.K || S.tex) && !(moving && want > S.K0 && !(S.ms0 * (want / S.K0) ** 2 < 9))) { bd = d; best = S; S.want = want; }
     }
     if (!best) return; const S = best, K = S.want, t0 = performance.now();
     if (K <= S.K0) { plain(S); return; }
@@ -247,24 +248,24 @@ window.GardenPaintTerrainKit = (function () {
     if (ok(() => (S.draw(brush(cx)), 1)) == null) { S.K0 = 99; return; }   // (it would not paint again: leave it as it is)
     const tex = S.key + '|x' + K; if (S.scene.textures.exists(tex)) S.scene.textures.remove(tex); S.scene.textures.addCanvas(tex, c);
     swap(S, tex, K);
-    if (S.tex) { S.scene.textures.remove(S.tex); sharpPx -= S.px; } S.tex = tex; S.K = K; S.px = w * h; sharpPx += S.px; sharpWorst = Math.max(sharpWorst, performance.now() - t0);
+    if (S.tex) { S.scene.textures.remove(S.tex); sharpPx -= S.px; } S.tex = tex; S.K = K; S.px = w * h; sharpPx += S.px; { const ms = performance.now() - t0; sharpWorst = Math.max(sharpWorst, ms); if (moving) sharpWalkWorst = Math.max(sharpWalkWorst, ms); if (!(S.ms0 >= 0)) S.ms0 = ms / (K / S.K0) ** 2; }
   }
   function sprite(scene, parent, key, box, draw, x, y, K, shade) {
     K = K || 1.5; let px = 0;
     if (!scene.textures.exists(key)) {
       const [x0, y0, x1, y1] = box, w = Math.ceil((x1 - x0) * K), h = Math.ceil((y1 - y0) * K); if (w < 2 || h < 2 || w > 4096 || h > 4096) return null;
       const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d'); cx.setTransform(K, 0, 0, K, -x0 * K, -y0 * K);
-      if (ok(() => (draw(brush(cx)), 1)) == null) return null;
-      scene.textures.addCanvas(key, c); px = w * h;
+      const d0 = performance.now(); if (ok(() => (draw(brush(cx)), 1)) == null) return null;
+      scene.textures.addCanvas(key, c); px = w * h; firstMs.set(key, performance.now() - d0); if (firstMs.size > 600) firstMs.delete(firstMs.keys().next().value);
     }
     const [x0, y0, x1, y1] = box;
     const im = scene.add.image(x, y, key).setOrigin(-x0 / (x1 - x0), -y0 / (y1 - y0)).setScale(1 / K).setDepth(y);
     parent.add(im); im._gptPx = px;
-    if (K >= .75 && K < 4) { let S = sharp.get(key); if (!S || S.scene !== scene) { if (S && S.tex && S.scene.textures.exists(S.tex)) { S.scene.textures.remove(S.tex); sharpPx -= S.px; } S = { scene, key, box, draw, K0: K, K, images: new Set(), seen: performance.now(), tex: null, px: 0 }; sharp.set(key, S); } S.images.add(im); if (S.tex) im.setTexture(S.tex).setScale(im.scaleX * S.K0 / S.K); if (!sharpTimer) sharpTimer = setInterval(() => ok(sharpen), 90); }
+    if (K >= .75 && K < 4) { let S = sharp.get(key); if (!S || S.scene !== scene) { if (S && S.tex && S.scene.textures.exists(S.tex)) { S.scene.textures.remove(S.tex); sharpPx -= S.px; } S = { scene, key, box, draw, K0: K, K, images: new Set(), seen: performance.now(), tex: null, px: 0, ms0: firstMs.get(key) }; sharp.set(key, S); } S.images.add(im); if (S.tex) im.setTexture(S.tex).setScale(im.scaleX * S.K0 / S.K); if (!sharpTimer) sharpTimer = setInterval(() => ok(sharpen), 90); }
     if (shade && window.GardenPaintGround && GardenPaintGround.cast) { const id = GardenPaintGround.cast.add(scene, { key, x, y, box, a: shade.a }); if (id) im.once('destroy', () => GardenPaintGround.cast.drop(id)); }
     return im;
   }
-  const sharpStatus = () => ({ sprites: sharp.size, sharp: [...sharp.values()].filter(S => S.tex).length, MB: +(sharpPx * 4 / 1048576).toFixed(1), worstMs: Math.round(sharpWorst) });
+  const sharpStatus = () => ({ sprites: sharp.size, sharp: [...sharp.values()].filter(S => S.tex).length, MB: +(sharpPx * 4 / 1048576).toFixed(1), worstMs: Math.round(sharpWorst), worstWalkingMs: Math.round(sharpWalkWorst) });
 
   return { rng, hash, hashStr, noise, fbm, brush, rockBand, resample, normals, bboxOf, meets, tiles, chunked, sprite, sharpStatus, mix, rgba, P2, get lastError() { return lastError; }, set lastError(v) { lastError = v; } };
 })();
