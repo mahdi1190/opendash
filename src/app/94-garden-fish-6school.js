@@ -483,7 +483,8 @@ function _gfsIslandPopulate(dt, m, bands, byKey, lines, folk, cap, fast, contest
     if (targets.length + pinned.length >= cap) break;
   }
   const idle = [..._gfs.list.values()].filter(fish => fish.st === GF_ST.swim && fish.to == null), assigned = new Set();
-  for (const fish of idle) if (fish.x < GARDEN_ROOM_X && _gfsFar(fish.x, fish.y, folk) > E.near + 4) { _gfsDrop(fish); _gfs.dirty = true; }
+  const wanted = new Set(targets.map(target => target.band.key));   // (a water someone is near keeps its fish: one spawned at its far end used to leave on the next tick and another came, dozens a minute, each a message to everyone there)
+  for (const fish of idle) if (fish.x < GARDEN_ROOM_X && !wanted.has(fish.band) && _gfsFar(fish.x, fish.y, folk) > E.near + 4) { _gfsDrop(fish); _gfs.dirty = true; }
   for (const target of targets) {
     let best = null, distance = Infinity;
     for (const fish of idle) { if (!_gfs.list.has(fish.u) || assigned.has(fish.u) || fish.band !== target.band.key) continue; const d = Math.hypot(fish.x - target.point.x, fish.y - target.point.y); if (target.line && !_gfsLineApproachClear(fish, target.line)) continue; if (d < distance) { best = fish; distance = d; } }
