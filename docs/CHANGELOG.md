@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.73.8] - 2026-11-18
+
+### Changed
+
+- The pet collection and avatar picker do less work when checking what you have unlocked, especially after a long history of focus sessions.
+
 ## [2.73.7] - 2026-11-18
 
 ### Changed
