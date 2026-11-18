@@ -30,7 +30,7 @@
 import { existsSync, promises as fsp } from 'node:fs';
 import { join } from 'node:path';
 import { atomicWrite, withLock, readJson, retryFs } from '../lib/fsutil.mjs';
-import { dataFingerprint, fullFingerprint } from '../lib/state-keys.mjs';
+import { dataFingerprint, uiFingerprint } from '../lib/state-keys.mjs';
 import { HttpError } from './http.mjs';
 import { fenceGardenUiWrite, gardenWorldTag, sameGardenWorldTag, gardenTransitionMayCommit } from '../lib/garden-world-fence.mjs';
 import { gardenIslandLayout, gardenIslandFingerprint } from '../lib/garden-island.mjs';
@@ -52,9 +52,7 @@ export function createStateStore({ stateDir, log = () => {}, now = () => Date.no
 
   const validate = (o) => o && typeof o === 'object' && Array.isArray(o.custom);
 
-  /** Raw JSON text for GET /api/state, or null if there is no state yet. */
-  async function readText() {
-    if (!existsSync(file)) return null;
+  async function readValidated() {
     let recovered = null;
     const obj = await readJson(file, {
       validate, backupDirs: [backups, daily],
@@ -62,14 +60,18 @@ export function createStateStore({ stateDir, log = () => {}, now = () => Date.no
     });
     if (recovered) {
       log('warn', `state file was unreadable; served the newest good backup (${recovered.split(/[\\/]/).pop()})`);
-      return { text: JSON.stringify(obj), recoveredFrom: recovered };
     }
-    return { text: JSON.stringify(obj), recoveredFrom: null };
+    return { obj, recoveredFrom: recovered };
+  }
+
+  /** Raw JSON text for GET /api/state, or null if there is no state yet. */
+  async function readText() {
+    const { obj, recoveredFrom } = await readValidated();
+    return obj ? { text: JSON.stringify(obj), recoveredFrom } : null;
   }
 
   async function readObject() {
-    const r = await readText();
-    return r ? JSON.parse(r.text) : null;
+    return (await readValidated()).obj;
   }
 
   async function initLastRolling() {
@@ -162,14 +164,14 @@ export function createStateStore({ stateDir, log = () => {}, now = () => Date.no
   /** Write `next` over `prev` (caller holds the lock). Stamps the new version. */
   async function commit(prevText, prev, next) {
     const prevSave = Number(prev && prev._lastSave) || 0;
-    if (prev && fullFingerprint(prev) === fullFingerprint(next)) {
+    const dataChanged = !prev || dataFingerprint(prev) !== dataFingerprint(next);
+    if (!dataChanged && uiFingerprint(prev) === uiFingerprint(next)) {
       return { lastSave: prevSave, taskCount: next.custom.length, written: false, backups: [], dataChanged: false };
     }
-    const dataChanged = !prev || dataFingerprint(prev) !== dataFingerprint(next);
     const made = prev && dataChanged ? await backupIfNeeded(prevText) : [];
     const lastSave = Math.max(now(), prevSave + 1);
     next._lastSave = lastSave;
-    await atomicWrite(file, JSON.stringify(next, null, 1));
+    await atomicWrite(file, JSON.stringify(next));
     return { lastSave, taskCount: next.custom.length, written: true, backups: made, dataChanged };
   }
 
@@ -262,9 +264,7 @@ export function createStateStore({ stateDir, log = () => {}, now = () => Date.no
 
   /** The file's current version (_lastSave), or 0. */
   async function version() {
-    const r = await readText().catch(() => null);
-    if (!r) return 0;
-    try { return Number(JSON.parse(r.text)._lastSave) || 0; } catch { return 0; }
+    try { return Number((await readObject())?._lastSave) || 0; } catch { return 0; }
   }
 
   async function info() {
