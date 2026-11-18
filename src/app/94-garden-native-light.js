@@ -251,7 +251,7 @@ window.GardenNativeLight = (function () {
     }
     function paintShadows(env, v) {
       // (a clear day throws a shadow you can see at noon too: never shorter than two fifths of the thing, never fainter than a soft grey)
-      const list = occluders(), direction = Math.hypot(env.sunX, env.sunY) || 1, length = Math.max(.4, .2 + (1 - env.elevation) * .62), strength = room ? 0 : env.daylight * .23 * (1 - env.cloudCover * .7);
+      const list = occluders(), direction = Math.hypot(env.sunX, env.sunY) || 1, length = Math.max(.4, .2 + (1 - env.elevation) * .62), strength = room ? 0 : env.daylight * .28 * (1 - env.cloudCover * .7);
       for (let i = 0; i < list.length; i++) {
         const o = list[i], key = o.id == null ? 'static:' + i : String(o.id);
         if (o.kind === 'actor' || o.kind === 'pet' || !inView(o, v, 220)) continue;

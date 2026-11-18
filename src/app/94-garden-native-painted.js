@@ -396,7 +396,7 @@ window.GardenNativePainted = (function () {
     // its soft shadow, thrown the way every shadow in the vale falls (the kit's one light) and dark where it meets the ground:
     // on the kit's shadow layer, which lies over every region's ground (in this ground it was hidden wherever a region paints its own)
     G.cast.blobs(list.filter(it => !it.shaded).map(it => { const w0 = it.fw ? Math.min(it.w, it.fw) : it.w, tall = it.h > w0 * 1.6, w = tall ? Math.max(8, w0 * .3) : w0;   // (as wide as what stands on the ground: a lamp's glow and a roof's eaves are not its foot, and a post is thinner still)
-      return { id: it.id, x: it.x, y: it.y + 1, w, h: Math.min(160, it.h ? it.h * .85 : it.w * .9), a: .26 }; }));
+      return { id: it.id, x: it.x, y: it.y + 1, w, h: Math.min(160, it.h ? it.h * .85 : it.w * .9), a: .34 }; }));
     g.layer.set('compose', { bb: [B.x, B.y, B.x + B.w, B.y + B.h], seed: 1, draw(Bk, r0, cb) {
       const cx = Bk.cx;
       for (const it of list) {

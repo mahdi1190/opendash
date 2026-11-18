@@ -51,7 +51,7 @@ window.GardenPaintGround = (function () {
   }
   /** The soft shadow an upright thing throws: base centre (x, y), its width and height in world px. o: { a, len } */
   function castShadow(cx, x, y, w, h, o) {
-    o = o || {}; const len = Math.min(90, h * (o.len == null ? .55 : o.len)), a = o.a == null ? .24 : o.a, ex = x + LIGHT.sx * len, ey = y + LIGHT.sy * len * .6;
+    o = o || {}; const len = Math.min(104, h * (o.len == null ? .72 : o.len)), a = o.a == null ? .24 : o.a, ex = x + LIGHT.sx * len, ey = y + LIGHT.sy * len;
     // the thing's foot laid over along the light: its base line, and the same line carried out to where its top's shadow falls
     const K = scaleOf(cx), hw = w / 2, d = Math.max(1.5, Math.min(10, w * .1)), dx = ex - x, dy = ey - y;
     cx.save(); cx.filter = 'blur(' + (Math.max(1.6, Math.min(4.5, 1.4 + w * .03)) * K).toFixed(1) + 'px)'; cx.globalAlpha = a; cx.fillStyle = LIGHT.shade;
@@ -189,7 +189,7 @@ window.GardenPaintGround = (function () {
   // sharpen), a slice at a time, only where something stands.
   const cast = (function () {
     const items = new Map(); let L = null, at = null, sweep = null;
-    const lean = h => { const len = Math.min(.52, 90 / Math.max(1, h)); return { a: LIGHT.sx * len, b: LIGHT.sy * len * .62 }; };
+    const lean = h => { const len = Math.min(.72, 104 / Math.max(1, h)); return { a: LIGHT.sx * len, b: LIGHT.sy * len }; };   /* (as the moving shadows fall: along LIGHT, with no extra flattening, or a low thing's shadow is a hairline hidden by its own foot) */
     const source = it => { const T = it.scene.textures; if (!T.exists(it.key)) return null; const s = T.get(it.key).getSourceImage(); return s && s.width > 1 ? s : null; };
     function opOf(it) {
       const h = -it.box[1], w = it.box[2] - it.box[0], { a, b } = lean(h);
@@ -203,9 +203,9 @@ window.GardenPaintGround = (function () {
           cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); cx.globalAlpha = alpha; cx.filter = 'blur(' + (blur * K).toFixed(1) + 'px)'; cx.drawImage(s.c, 0, 0); cx.restore(); cx.filter = 'none'; cx.globalAlpha = 1;
         };
         // the silhouette of what stands above the base line, laid over on the ground: a point h px up lands a little right and below
-        lay([1, 0, -a, -b], 0, rows, it.a, 2);
+        lay([1, 0, -a, -b], 0, rows, it.a, 1.5);
         // the contact: the lowest hand's breadth of it, folded down in front of its foot, so the dark line is exactly as wide as what stands there
-        const strip = Math.min(rows, Math.max(2, Math.round(Math.min(9, h * .3) * k))); lay([1, 0, -.12, -.5], rows - strip, strip, Math.min(.5, it.a * 1.5), 1.1);
+        const strip = Math.min(rows, Math.max(2, Math.round(Math.min(9, h * .3) * k))); lay([1, 0, -.12, -.5], rows - strip, strip, Math.min(.5, it.a), 1.1);
       } };
     }
     const idOf = o => o.key + '@' + Math.round(o.x) + ',' + Math.round(o.y);
@@ -213,7 +213,7 @@ window.GardenPaintGround = (function () {
     function add(scene, o) {
       if (!o || !o.key || !o.box || !(o.box[1] < -6) || (o.box[2] - o.box[0]) * -o.box[1] > 26e4) return null; /* (nothing flat, and nothing as big as a hillside: that is terrain, with its own shade) */ const id = idOf(o), old = items.get(id); if (old) { old.gone = 0; return id; }
       const W = at && at.W || (typeof GARDEN_WORLD !== 'undefined' ? GARDEN_WORLD : null); if (W && typeof gardenIslandBaseCell === 'function') { const c = gardenIslandBaseCell(Math.floor(o.x / W.cellW), Math.floor((o.y - 3 - W.sky) / W.cellH)); if (c && (c.ocean || c.freshwater)) return null; }   // (afloat: the water chain owns what a boat does to the water)
-      const it = { id, scene, key: o.key, x: o.x, y: o.y, box: o.box.slice(), a: o.a == null ? .34 : o.a, gone: 0 }; items.set(id, it); if (L) L.set('s|' + id, opOf(it), id); return id;
+      const it = { id, scene, key: o.key, x: o.x, y: o.y, box: o.box.slice(), a: o.a == null ? .5 : o.a, gone: 0 }; items.set(id, it); if (L) L.set('s|' + id, opOf(it), id); return id;
     }
     /** Its sprite is gone. The shadow goes a moment later, unless the same sprite is stood again (a repaint), so nothing flickers. */
     function drop(id) { const it = items.get(id); if (!it) return; it.gone = performance.now(); arm(); }
@@ -229,13 +229,15 @@ window.GardenPaintGround = (function () {
     // Things that have no sprite of their own to lay over (a library building, a bench): a soft oval thrown the same way.
     // list: [{ id, x, y (base, world px), w, h, a }]; the whole set each time, and only what changed is painted again.
     const ovals = new Map();
-    const ovalOp = q => { const len = Math.min(90, q.h * .55); return { bb: [q.x - q.w * .6 - 12, q.y - 24, q.x + LIGHT.sx * len + q.w * .6 + 14, q.y + LIGHT.sy * len * .6 + 26], seed: 1, name: 'oval', draw(B) { castShadow(B.cx, q.x, q.y, q.w, q.h, { a: q.a }); } }; };
+    const ovalOp = q => { const len = Math.min(104, q.h * .72); return { bb: [q.x - q.w * .6 - 12, q.y - 24, q.x + LIGHT.sx * len + q.w * .6 + 14, q.y + LIGHT.sy * len + 28], seed: 1, name: 'oval', draw(B) { castShadow(B.cx, q.x, q.y, q.w, q.h, { a: q.a }); } }; };
     function blobs(list) {
       const seen = new Set();
       for (const q of list) { const sig = [Math.round(q.x), Math.round(q.y), Math.round(q.w), Math.round(q.h), q.a].join(':'); seen.add(q.id); const old = ovals.get(q.id); if (old && old.sig === sig) continue; ovals.set(q.id, { q: Object.assign({}, q), sig }); if (L) L.set('o|' + q.id, ovalOp(q), sig); }
       for (const id of [...ovals.keys()]) if (!seen.has(id)) { ovals.delete(id); if (L) L.set('o|' + id, null); }
     }
-    return { add, drop, attach, detach, blobs, get count() { return items.size + ovals.size; }, get layer() { return L; } };
+    /** What throws a shadow now (for checking a place): [{ id, x, y, w, h, sprite }] */
+    const list = () => [...items.values()].map(q => ({ id: q.key.split('|').slice(-2).join('|'), x: Math.round(q.x), y: Math.round(q.y), w: Math.round(q.box[2] - q.box[0]), h: Math.round(-q.box[1]), sprite: true, gone: !!q.gone })).concat([...ovals].map(([id, o]) => ({ id: String(id), x: Math.round(o.q.x), y: Math.round(o.q.y), w: Math.round(o.q.w), h: Math.round(o.q.h), sprite: false })));
+    return { add, drop, attach, detach, blobs, list, get count() { return items.size + ovals.size; }, get layer() { return L; } };
   })();
 
   /* ---------- 2. the ground kinds ---------- */
@@ -312,7 +314,7 @@ window.GardenPaintGround = (function () {
         for (let k = 0, n = 12 + Math.floor(r() * 20); k < n; k++) { const a = r() * 6.283, d = Math.sqrt(r()) * 17, x = x0 + Math.cos(a) * d, y = y0 + Math.sin(a) * d * .5;
           if (moss) { cx.globalAlpha = .45; cx.fillStyle = r() < .5 ? '#8f9a3e' : '#a6aa4c'; const w = 1.4 + r() * 1.4, h = 1 + r() * .8; cx.beginPath(); cx.ellipse(x + w / 2, y + h / 2, w * .58, h * .58, 0, 0, 6.283); cx.fill(); continue; }
           cx.globalAlpha = .5; cx.fillStyle = r() < .5 ? P.cool : mix(P.lo, P.cool, .5); if (far) { cx.beginPath(); cx.ellipse(x, y, 1.8, 1.25, 0, 0, 6.283); cx.fill(); r(); r(); r(); } else for (let j = 0; j < 3; j++) { const b = j * 2.1 + r(); cx.beginPath(); cx.arc(x + Math.cos(b) * 1.1, y + Math.sin(b) * .7, 1.05, 0, 6.283); cx.fill(); }
-          if (r() < .035 && !winter) ell(cx, x, y - 1.4, 1, .9, '#f4f0e2', .85); } } });
+          if (r() < .035 && !winter) { if (far) ell(cx, x, y - 1.4, 1, .9, '#f4f0e2', .85); else flower(cx, x, y - 1.4, 1.5, '#f6f2e6', '#e6b436', P); } } } });   /* (a clover head or a daisy with its eye: a plain white dot read as a speck of dust close up) */
       const tones = [P.lo, mix(P.lo, '#4f6f34', .4), P.hi, mix(P.hi, '#e2dc8e', .5)];
       tiles(cb, 32, 6, 23, (tx, ty, r) => { for (let i = 0; i < (far ? 6 : 12); i++) { const x = tx + r() * 32, y = ty + r() * 32, t = r(), len = 2.4 + r() * 3.2, lean = .5 - r() * .2; blade(cx, x, y, lean * 2, len, tones[t < .38 ? 0 : t < .6 ? 1 : t < .92 ? 2 : 3], .9 + r() * .9, .2 + r() * .22); } });
       tiles(cb, 64, 10, 25, (tx, ty, r) => { for (let i = 0; i < 3; i++) { if (r() < .2) continue; tuft(cx, r, tx + r() * 64, ty + r() * 64, 4 + Math.floor(r() * 4), 4 + r() * 5, P.lo, P.hi, P); } });
