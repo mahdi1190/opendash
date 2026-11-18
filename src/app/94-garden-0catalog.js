@@ -360,7 +360,7 @@ const GARDEN_DECOR = _gdRows([
   _gD('bug-hotel', 'Bug hotel', 'wildlife', { price: 30, lv: 4, look: { c: '#a87c4f', c2: '#c9a26a', h: 0.9 }, effect: { kind: 'bugs' }, attracts: ['ladybird', 'honeybee'], blurb: 'Five stars from the ladybirds.' }),
   _gD('hedgehog-house', 'Hedgehog house', 'wildlife', { price: 35, lv: 5, look: { c: '#7a5636', c2: '#c9a26a', h: 0.45 }, effect: { kind: 'hedgehog' }, attracts: ['hedgehog'], blurb: 'A snug dome for a prickly guest.' }),
   _gD('beehive', 'Beehive', 'wildlife', { price: 90, lv: 6, look: { c: '#f4f1ea', c2: '#e8c33a', h: 0.9 }, effect: { kind: 'hive' }, attracts: ['honeybee'], blurb: 'Honey every two days while three flowers bloom.' }),
-  _gD('compost-bin', 'Compost bin', 'wildlife', { price: 40, lv: 3, look: { c: '#3f5a3a', c2: '#6f5232', h: 0.8 }, effect: { kind: 'compost' }, attracts: ['blackbird'], blurb: 'Peelings in, fertiliser out: one a day.' }),
+  _gD('compost-bin', 'Compost bin', 'wildlife', { price: 40, lv: 3, look: { c: '#3f5a3a', c2: '#6f5232', h: 0.8 }, effect: { kind: 'compost' }, attracts: ['blackbird'], blurb: 'Peelings in, compost out: one a day.' }),
   /* 2.22: angling and bug catching: these show what you have caught (94-garden-fish-1world.js) */
   _gD('aquarium', 'Aquarium', 'angling', { w: 2, price: 90, lv: 2, look: { c: '#7fb8d8', c2: '#4a8ab0', h: 1.1 }, effect: { kind: 'show', what: 'fish' }, blurb: 'Your best catches, swimming. Friends see it when they visit.' }),
   _gD('bug-case', 'Bug case', 'angling', { price: 60, lv: 2, look: { c: '#a87c4f', c2: '#efe3c4', h: 1.0 }, effect: { kind: 'show', what: 'bugs' }, blurb: 'Nine of your bugs, pinned under glass.' }),

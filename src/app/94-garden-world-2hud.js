@@ -30,7 +30,7 @@ const _GH_GLYPH = Object.freeze({
   coin: '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.500" fill="#f2b01e" stroke="#a06c0c" stroke-width="1.400"/><circle cx="10" cy="10" r="5.400" fill="none" stroke="#ffe08a" stroke-width="1.400"/></svg>',
 });
 const _GH_TOOLS = Object.freeze([
-  ['hand', 'Hand: does what a plant needs'], ['water', 'Watering can'], ['feed', 'Fertiliser: half a day of growth'], ['trim', 'Shears'], ['dig', 'Spade: dig up'],
+  ['hand', 'Hand: does what a plant needs'], ['water', 'Watering can'], ['feed', 'Compost: half a day of growth'], ['trim', 'Shears'], ['dig', 'Spade: dig up'],
 ]);
 function _ghBox() { return _gdp.root ? _gdp.root.querySelector('.gd-stagebox') : null; }
 function _ghHost(box, cls, tag) { let n = box.querySelector(':scope > .' + cls.split(' ')[0]); if (!n) { n = document.createElement(tag || 'div'); n.className = cls; box.appendChild(n); } return n; }
@@ -48,6 +48,25 @@ function _ghTreats() {
 /** Your title: read from the Field Journal's pages, never a number (JOURNAL.md section 9). */
 const GH_TITLES = Object.freeze(['New in the vale', 'Keeper of the Mere', 'Friend of the woods', 'Walker of the Millwater', 'Keeper of the old ways', 'Orchard hand', 'Of the high places', 'Naturalist of Fleetwater']);
 function _ghTitle() { let n = 0; try { if (typeof gardenJournalPageState === 'function') for (const p of GARDEN_JOURNAL_PAGES) if (gardenJournalPageState(p.id).done) n++; } catch (e) { n = 0; } return GH_TITLES[Math.min(GH_TITLES.length - 1, n)]; }
+/* What your real work paid today, in plain words: one quiet line in the purse, and a note when you come back to the garden after earning
+   (C:/tmp/gamedesign/FUN_PLAN.md 'acknowledged, not paid': no bar and no target). Coins used to change with nothing to say why. */
+function _ghEarnedLine(w) {
+  const e = w && w.econToday; if (!e || !(e.coins > 0)) return 'Time you spend on your tasks, and tasks you finish, fill this purse.';
+  const bits = [];
+  if (e.focusMin) bits.push(`${_geFmtMin(e.focusMin)} focused`);
+  if (e.taskN) bits.push(`${e.taskN} task${e.taskN === 1 ? '' : 's'} finished`);
+  return `Today: ${e.coins} coin${e.coins === 1 ? '' : 's'}${bits.length ? ' from ' + bits.join(' and ') : ''}.`;
+}
+function _ghEarnedNote(w) {
+  const e = w && w.econToday; if (!e || !(e.coins > 0) || typeof gardenShownNow !== 'function' || !gardenShownNow()) return;
+  const today = _gdToday(); let seen = null;
+  try { seen = JSON.parse(localStorage.getItem('gd.earnSeen') || 'null'); } catch (err) { seen = null; }
+  const before = seen && seen.d === today ? Number(seen.c) || 0 : 0;
+  if (e.coins <= before) return;
+  try { localStorage.setItem('gd.earnSeen', JSON.stringify({ d: today, c: e.coins })); } catch (err) { return; }   // (no storage: say nothing rather than say it every time)
+  gardenMessage(`+${e.coins - before} coin${e.coins - before === 1 ? '' : 's'} while you worked`, { icon: 'coins', ms: 5000 });
+}
+wdMod({ id: 'earned-note', fun: false, tick(m) { if (m && !m.visit) _ghEarnedNote(m.wallet); } });   // (checked once a second, once the garden is on screen)
 function _ghHud(box, m) {
   const w = m.wallet, lv = w.level, wi = m.water, sky = _gdpSkyChip(m), treats = _ghTreats();
   const pct = Math.round(lv.pct * 100);
@@ -58,6 +77,7 @@ function _ghHud(box, m) {
     + (treats != null ? stat('is-treats', icon('cookie'), treats, 'Treats for your pet') : '')
     + stat('is-timber', icon('trees'), _gdpNum(gardenHas('mat:timber')), 'Timber: for land, building, fences and paths') + stat('is-stone', icon('mountain'), _gdpNum(gardenHas('mat:stone')), 'Stone: for land, building, paths and ornaments')
     + '</div>'
+    + (m.visit ? '' : `<small class="gd-hud-earned">${esc(_ghEarnedLine(w))}</small>`)
     + `<div class="gd-hud-sky" data-tip="${escAttr(_gdpWeatherNote(m) || sky.text)}">${icon(sky.ic)}<span>${esc(sky.text)}</span></div></div>`;
   const el = _ghHost(box, 'gd-hud'); el.setAttribute('aria-label', 'Garden status');
   if (_gh.hud !== html || !el.firstChild) { const focused = el.contains(document.activeElement); _gh.hud = html; el.innerHTML = html; if (focused) el.querySelector('[data-hud-details]').focus({ preventScroll: true }); }
@@ -439,7 +459,7 @@ function gardenBubbleOpen(at, o) {
     b.onclick = (ev) => { ev.stopPropagation(); if (!it.keep) gardenBubbleClose(); it.run(b); };
     row.appendChild(b);
   }
-  el.style.boxSizing = 'border-box'; el.style.overscrollBehavior = 'contain';   // (it scrolls only when it does not fit: gardenHudFrame. A scroll box always on clipped the tail and showed a bar for a few pixels)
+  el.style.boxSizing = 'border-box'; el.style.overscrollBehavior = 'contain';   // (it scrolls only when it is taller than the room it has: gardenHudFrame. Always scrolling clipped the tail and showed a scrollbar for its 9 px)
   const head = el.querySelector('.gd-bub-h'); if (head) head.style.whiteSpace = 'normal';
   box.appendChild(el);
   _gh.bubble = { el, at, w: el.offsetWidth, h: el.offsetHeight, preferredWidth: parseFloat(getComputedStyle(el).maxWidth) || Infinity, key: '' };
@@ -641,7 +661,7 @@ function gardenHudFrame(force) {
       }
       top = Math.min(top, bottom - 1);
       const maxHeight = Math.max(1, Math.floor(bottom - top));
-      if (B.maxHeight !== maxHeight) { B.maxHeight = maxHeight; B.el.style.maxHeight = maxHeight + 'px'; const last = B.el.lastElementChild; B.el.style.overflowY = last && last.offsetTop + last.offsetHeight + 12 > maxHeight ? 'auto' : ''; B.h = B.el.offsetHeight; }
+      if (B.maxHeight !== maxHeight) { B.maxHeight = maxHeight; B.el.style.maxHeight = maxHeight + 'px'; B.el.style.overflowY = B.el.scrollHeight > maxHeight + 12 ? 'auto' : ''; B.h = B.el.offsetHeight; }
       const y = Math.round(Math.max(top, Math.min(bottom - B.h, p.y - B.h - 10)));
       const tail = Math.round(Math.max(12, Math.min(B.w - 12, p.x - x)));
       const key = x + ',' + y + ',' + tail;
