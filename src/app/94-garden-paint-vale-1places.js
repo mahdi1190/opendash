@@ -254,9 +254,9 @@
       });
       // dressing by job: the cider square's press, bell and lanterns; the mill yard's millstone and sacks; the court's fallen column
       const spot = (x, y) => L.free(x, y) && ['grass', 'path'].includes(L.kind(x, y));
-      const put = (cands, key, box, draw) => { for (const [x, y] of cands) if (spot(x, y)) { const p = L.cpt(x, y); thing({ key, box, x: p.x, y: p.y, draw }); return; } };
-      if (pz.id === 'cider-square') { put([[80.2, 36.4], [79.6, 35.4], [75.4, 37.6]], 'press', [-26, -50, 28, 6], drawPress(P)); put([[79.6, 38.3], [80.4, 38.6]], 'bell', [-14, -64, 16, 5], drawBell(P)); put([[76.9, 38.6], [78.2, 38.9]], 'baskets', [-24, -18, 26, 5], drawBaskets(P, C.season)); }
-      if (pz.id === 'mill-yard') { put([[76.6, 64.6], [77.2, 65.2], [76.9, 66.8]], 'millstone', [-22, -40, 24, 6], drawMillstone(P)); put([[77.3, 66.9], [73.6, 67.4], [76.8, 67.6]], 'sacks', [-22, -24, 24, 5], drawSacks(P)); }
+      const put = (cands, key, box, draw, foot) => { for (const [x, y] of cands) if (spot(x, y)) { const p = L.cpt(x, y); thing({ key, box, x: p.x, y: p.y, draw, foot }); return; } };   // foot: [left, right, depth] px the feet cannot enter (GardenPaintVale.feet)
+      if (pz.id === 'cider-square') { put([[80.2, 36.4], [79.6, 35.4], [75.4, 37.6]], 'press', [-26, -50, 28, 6], drawPress(P), [-21, 23, 10]); put([[79.6, 38.3], [80.4, 38.6]], 'bell', [-14, -64, 16, 5], drawBell(P), [-6, 7, 6]); put([[76.9, 38.6], [78.2, 38.9]], 'baskets', [-24, -18, 26, 5], drawBaskets(P, C.season), [-18, 20, 8]); }
+      if (pz.id === 'mill-yard') { put([[76.6, 64.6], [77.2, 65.2], [76.9, 66.8]], 'millstone', [-22, -40, 24, 6], drawMillstone(P), [-18, 20, 10]); put([[77.3, 66.9], [73.6, 67.4], [76.8, 67.6]], 'sacks', [-22, -24, 24, 5], drawSacks(P), [-18, 20, 8]); }
       if (pz.id === 'ruin-court') { const c = L.cpt(pz.x + 1.4, pz.y + .9); add([c.x - 60, c.y - 30, c.x + 60, c.y + 30], 75, (B, r) => { B.shadow(c.x + 4, c.y + 6, 46, 8, .3); B.f(B.rr(c.x - 44, c.y - 7, 80, 14, 7), RUIN.body).f(B.rr(c.x - 44, c.y - 7, 80, 5, 2.5), RUIN.hi, .8).f(B.ell(c.x + 38, c.y, 6, 7), RUIN.lo).f(B.ell(c.x + 38, c.y, 3.4, 4), RUIN.dk, .3); for (let k = -36; k < 34; k += 9) B.s(`M${c.x + k} ${c.y - 6}v12`, RUIN.lo, .8, .5); B.f(B.blob(r, c.x - 10, c.y - 6, 22, 3, 7, .5), RUIN.moss, .8); fern(B, r, c.x - 50, c.y + 6, C.season); fern(B, r, c.x + 20, c.y + 9, C.season); }); }
       if (style === 'litter') { const o = oakAt(L, pz), S = OAK_SCALE; thing({ key: 'great-oak-5|' + C.season, x: o.x, y: o.y, box: [-250 * S, -360 * S, 250 * S, 40 * S].map(Math.round), crown: { x: 0, y: -230 * S, rx: 250 * S, ry: 145 * S }, farShrink: .6, K: .9, draw: B => { B.cx.save(); B.cx.scale(S, S); greatOak(B, kit.rng(seed + 9), P, C.season); B.cx.restore(); } }); }
     }
@@ -304,7 +304,7 @@
       });
       const logs = gardenIslandLogStack(L.D), logAt = logs ? L.cpt(logs.x, logs.y) : { x: c.x + 2.2 * cw, y: c.y + .4 * ch };
       thing({ key: 'logstack', x: logAt.x, y: logAt.y, box: [-40, -54, 44, 8], draw: B => logStack(B, C.kit.rng(72), P) });
-      thing({ key: 'block', x: c.x - 1.9 * cw, y: c.y + 1.3 * ch, box: [-20, -34, 26, 8], draw: B => chopBlock(B, P) });
+      thing({ key: 'block', x: c.x - 1.9 * cw, y: c.y + 1.3 * ch, box: [-20, -34, 26, 8], foot: [-14, 18, 8], draw: B => chopBlock(B, P) });
     }
     const ice = L.stat('ld-icehouse');
     if (ice) {
@@ -357,7 +357,7 @@
     });
     // the small stone by the chapel wall, with no name on it
     const chapel = L.stat('ld-chapel');
-    if (chapel) { const p = L.cpt(chapel.x - .6, chapel.y + chapel.h + .4); thing({ key: 'chapel-stone', x: p.x, y: p.y, box: [-14, -26, 16, 6], draw: B => { B.shadow(3, 1, 11, 3, .3); B.f('M-7 0L-7 -15Q-7 -21 0 -21Q7 -21 7 -15L7 0Z', RUIN.body).f('M-7 0L-7 -15Q-7 -21 0 -21L0 0Z', RUIN.hi, .5).f(B.blob(window.GardenPaintTerrainKit.rng(5), -2, -19, 5, 2, 6, .5), RUIN.moss, .9); B.f(B.circ(-3, 1, 1.6), '#f0e0a0').f(B.circ(2, 1.4, 1.4), '#e8e4f0'); } }); }
+    if (chapel) { const p = L.cpt(chapel.x - .6, chapel.y + chapel.h + .4); thing({ key: 'chapel-stone', x: p.x, y: p.y, box: [-14, -26, 16, 6], foot: [-11, 13, 8], draw: B => { B.shadow(3, 1, 11, 3, .3); B.f('M-7 0L-7 -15Q-7 -21 0 -21Q7 -21 7 -15L7 0Z', RUIN.body).f('M-7 0L-7 -15Q-7 -21 0 -21L0 0Z', RUIN.hi, .5).f(B.blob(window.GardenPaintTerrainKit.rng(5), -2, -19, 5, 2, 6, .5), RUIN.moss, .9); B.f(B.circ(-3, 1, 1.6), '#f0e0a0').f(B.circ(2, 1.4, 1.4), '#e8e4f0'); } }); }
   }
   function logStack(B, r, P) {
     B.shadow(4, 1, 40, 6, .3);
@@ -405,7 +405,7 @@
     // the maypole: on free ground near the middle (never on a plot or a house)
     const ok = (x, y) => L.free(x, y) && !L.plot(x, y) && L.kind(x, y) === 'grass';
     let spot = null; for (const [dx, dy] of [[0, -.6], [-1, -.6], [1, -.6], [0, .4], [-2, 0], [2, 0], [-1, 1], [1, 1], [-3, .6], [3, .6]]) if (ok(pz.x + dx, pz.y + dy)) { spot = L.cpt(pz.x + dx, pz.y + dy); break; }
-    if (spot) thing({ key: 'maypole|' + C.season, x: spot.x, y: spot.y, box: [-46, -150, 46, 14], draw: B => {
+    if (spot) thing({ key: 'maypole|' + C.season, x: spot.x, y: spot.y, box: [-46, -150, 46, 14], foot: [-6, 6, 6], draw: B => {
       const rr = kit.rng(seed + 3), cols = ['#c84a3a', '#e8c84a', '#3a7ac0', '#f2f0e8', '#5e9a54', '#c86aa0'];
       B.shadow(0, 2, 26, 6, .3);
       for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2, ex = Math.cos(a) * 34, ey = Math.sin(a) * 9 + 2; B.s(`M0 -128Q${ex * .6} ${-60 + ey} ${ex} ${ey}`, cols[k], 1.6, .9).f(B.circ(ex, ey, 1.6), '#6a5034'); }

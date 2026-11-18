@@ -153,6 +153,34 @@ window.GardenNativePainted = (function () {
     for (const n of names) drawShapes(cx, sh.parts[n] || [], night && n !== 'lit');
     return { c, ox: pad - x0 * k, oy: pad - y0 * k, k, crown: id.startsWith('tree.') ? crownGeometry(sh, k) : null };
   }
+  /**
+   * Where a library tree's trunk stands, measured from its own drawing (the collision view, 18 Nov 2026: a trunk box sat on
+   * the tree's anchor, and some drawings stand their trunk well to one side of it: the second green oak by most of a cell).
+   * In the lowest tenth of the drawing, the widest run of columns painted solid in most rows is the trunk.
+   * Returns { dx, w } in world px for the tree drawn h px tall and not mirrored (a mirrored one uses -dx), or null.
+   * Measured once per drawing at 200 px tall and scaled: the drawings scale evenly.
+   */
+  const trunkFeet = new Map();
+  function trunkFoot(id, v, h) {
+    const key = id + '|' + (v || 0);
+    if (!trunkFeet.has(key)) {
+      let foot = null;
+      const made = ok(() => objectCanvas(id, v || 0, 'summer', { h: 200 }));
+      if (made) ok(() => {
+        const c = made.c, w = c.width, hh = c.height, a = c.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, hh).data, solid = (u, y) => a[(y * w + u) * 4 + 3] >= 160;
+        let top = -1, bottom = -1;
+        for (let y = 0; y < hh && top < 0; y++) for (let u = 0; u < w; u++) if (solid(u, y)) { top = y; break; }
+        for (let y = hh - 1; y >= 0 && bottom < 0; y--) { let n = 0; for (let u = 0; u < w; u++) if (solid(u, y) && ++n >= 2) { bottom = y; break; } }
+        if (top < 0 || bottom <= top) return;
+        const band = Math.max(4, Math.min(40, Math.round((bottom - top) * .1))), b0 = Math.max(top, bottom - band), rows = bottom - b0 + 1, col = new Uint16Array(w);
+        for (let y = b0; y <= bottom; y++) for (let u = 0; u < w; u++) if (solid(u, y)) col[u]++;
+        let best = null; for (const thr of [.6, .35, .15]) { if (best) break; for (let u = 0, s = -1; u <= w; u++) { const on = u < w && col[u] >= rows * thr; if (on && s < 0) s = u; if (!on && s >= 0) { if (!best || u - s > best[1] - best[0]) best = [s, u - 1]; s = -1; } } }   // (leaves fallen at its foot: fewer rows)
+        if (best) foot = { dx: ((best[0] + best[1] + 1) / 2 - made.ox) / OBJ_K, w: (best[1] - best[0] + 1) / OBJ_K };
+      });
+      trunkFeet.set(key, foot);
+    }
+    const f = trunkFeet.get(key); return f ? { dx: f.dx * h / 200, w: f.w * h / 200 } : null;
+  }
   function objectKey(scene, id, v, season, size, night) {
     const key = TEX + '|' + id + '|' + v + '|' + season + '|' + Math.round(size.w || 0) + 'x' + Math.round(size.h || 0) + (night ? '|n' : '');
     if (scene.textures.exists(key)) return { key, meta: scene.textures.get(key).customData && scene.textures.get(key).customData.gdpaint };
@@ -452,5 +480,5 @@ window.GardenNativePainted = (function () {
   }
   function memory(scene) { let bytes = 0, n = 0; if (cachedGround && scene && scene.textures.exists(cachedGround.key)) { const c = scene.textures.get(cachedGround.key).getSourceImage(); bytes += c.width * c.height * 4; n++; } return { groundBytes: bytes, groundTextures: n }; }
   function status() { return { wanted: wanted(), ready: ready(), groundMs, composeMs, K, planted: lastPlanting.length, spots: spotCounts, lastError }; }
-  return { wanted, ready, preload, ground, building, planting, trunks: () => plantingTrunks, fadeUnder, crownCovers, fishingCrownCovers, playerCanopies: () => plantingCoverage, status, objectImage, objectCanvas, paintIntoGround, compose, memory, get lastError() { return lastError; }, set lastError(v) { lastError = v; }, set overLayer(v) { overLayer = v; } };
+  return { wanted, ready, preload, ground, building, planting, trunks: () => plantingTrunks, trunkFoot, fadeUnder, crownCovers, fishingCrownCovers, playerCanopies: () => plantingCoverage, status, objectImage, objectCanvas, paintIntoGround, compose, memory, get lastError() { return lastError; }, set lastError(v) { lastError = v; }, set overLayer(v) { overLayer = v; } };
 })();
