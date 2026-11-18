@@ -418,8 +418,7 @@ window.GardenNativePainted = (function () {
         gx.restore(); return;
       }
       const im = objectImage(scene, id, v, season, size, x, y, false); if (!im) return; im.setDepth(y); parent.add(im); made.push(im);
-      // (the trunk where the drawing stands it, as wide as it is drawn: trunkFoot)
-      if (size.h >= 50) { tall.push({ im, x, y, h: size.h }); const f = /^tree\./.test(id) ? trunkFoot(id, v, size.h) : null; trunks.push(Object.freeze(f ? { x: (x + f.dx) / W.cellW, y: (y - W.sky) / W.cellH, w: gardenTrunkBoxWidth(f.w) } : { x: x / W.cellW, y: (y - W.sky) / W.cellH, w: size.h > 100 ? .5 : .4 })); }
+      if (size.h >= 50) { tall.push({ im, x, y, h: size.h }); trunks.push(Object.freeze({ x: x / W.cellW, y: (y - W.sky) / W.cellH, w: size.h > 100 ? .5 : .4 })); }
     };
     const tall = plantingTall = [], trunks = [];
     const gates = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data && GardenIslandLayout.data.gates || [], fl = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data && (GardenIslandLayout.data.presentation || {}).falls, byGate = (x, y) => gates.some(g => Math.abs(x - g.x) <= 3 && y - g.y >= -2 && y - g.y <= 5) || !!(fl && x >= fl.x - 3 && x <= fl.x + (fl.w || 3) + 2 && y >= fl.y - 1 && y <= fl.y + (fl.h || 3) + 4);   // (nor over Fleet Falls)
