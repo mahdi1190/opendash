@@ -33,7 +33,14 @@ A chunked layer whose bake level follows the camera.
 - Baking runs on a 34 ms timer, never inside a frame: one slice of one chunk a tick (`slice`, 8 to 10 ms), chunks on
   screen first, then a margin round the screen. With `prebake: true` the rest of the layer bakes at the lowest level
   while the player stands still, so the whole-map view is ready.
-- Memory is bounded by `budgetMB`: past it, chunks away from the screen are let go, the sharpest first.
+- Memory is bounded by `budgetMB`, and the bound is real. A layer is never sharper than its budget can hold over one
+  screen (it drops a level instead). The margin round the screen is painted at the full level only while that fits; a
+  bare chunk in the margin is painted at the lowest level, so nothing walks on to the screen unpainted. Past the budget,
+  chunks off the screen are let go, the farthest and sharpest first. Budgets today: shared ground 48 MB, vale places 28,
+  fells 32, shadows 10.
+- No single op should take long: a slice cannot stop inside one. The kit lays each ground kind in three bands for that
+  reason. If your op paints a whole chunk of fine brushwork, split it the same way (a clip on whole canvas pixels).
+  `GardenPaintGround.status().slow` names the slowest op and tick since `resetSlow()`.
 
 `ops` is a list of `{ bb: [x0, y0, x1, y1], seed, draw(B, r, chunkBB), clip?, tag? }` in world px, exactly what
 `GardenPaintTerrainKit.chunked` takes. **`chunked` now uses this layer by itself** for any layer baked at 1 px a
@@ -63,6 +70,8 @@ growth, a fine grain), then its own brushwork by hashed tiles (the sward and clo
 flower drifts of a meadow, leaf litter and moss, heather and tussocks, pools and rushes, furrows, wind ripples and
 shells, packed pebbles). No flat fill, no repeat, no seam.
 
+- Where two kinds meet they are laid in one fixed order (the order of the list above, later on top), never by which is
+  commoner in a chunk, so the line between them is one picture across a chunk's edge.
 - `paintKind` paints one kind over any box of any canvas. Use it wherever you used to fill a flat colour: under a
   clip for a glade, a paddock, a yard of bare soil. The wood's floor does this for its base.
 - `ground(env)` returns the ops for a whole area from a kind grid. Where two kinds meet, each is laid through a soft

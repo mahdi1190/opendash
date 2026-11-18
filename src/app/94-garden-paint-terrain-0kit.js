@@ -223,24 +223,24 @@ window.GardenPaintTerrainKit = (function () {
   // shade: true (or { a }) when it stands on the ground: the shared kit lays its shadow there (GardenPaintGround.cast).
   // Its picture follows the camera like the ground does: close up it is painted again at the level the zoom needs (sharpen).
   const sharp = new Map();   // texture key -> { scene, key, box, draw, K0, K, images: Set, seen }
-  let sharpTimer = null, sharpPx = 0, sharpWorst = 0, sharpWalkWorst = 0; const firstMs = new Map();
+  let sharpTimer = null, sharpPx = 0, sharpWorst = 0, sharpWalkWorst = 0, lastMove = 0; const firstMs = new Map();
   const SHARP_BUDGET = 20 * 1048576 / 4, SHARP_ONE = 2.6e6;
   // show every image of a sprite at another picture of it, keeping whatever scaling its painter gave it
   const swap = (S, tex, K) => { const f = S.K / K; for (const im of S.images) { if (!im.active) continue; im.setTexture(tex).setScale(im.scaleX * f, im.scaleY * f); if (im._gpvBase) im._gpvBase *= f; } };
   const plain = S => { swap(S, S.key, S.K0); if (S.tex && S.scene.textures.exists(S.tex)) S.scene.textures.remove(S.tex); sharpPx -= S.px; S.tex = null; S.K = S.K0; S.px = 0; };
   function sharpen() {
-    const G = window.GardenPaintGround; if (!G || !sharp.size) return; const now = performance.now(); let best = null, bd = Infinity, moving = typeof _gw !== 'undefined' && !!_gw.moving;
+    const G = window.GardenPaintGround; if (!G || !sharp.size) return; const now = performance.now(); let best = null, bd = Infinity, moving = typeof _gw !== 'undefined' && !!_gw.moving; if (moving) lastMove = now; const settled = now - lastMove > 900;
     for (const [key, S] of sharp) {
       for (const im of S.images) if (!im.active) S.images.delete(im);
-      if (!S.images.size) { if (S.tex && S.scene.textures.exists(S.tex)) { S.scene.textures.remove(S.tex); sharpPx -= S.px; } sharp.delete(key); continue; }
+      if (!S.images.size) { if (S.tex) { sharpPx -= S.px; ok(() => { if (S.scene.textures.exists(S.tex)) S.scene.textures.remove(S.tex); }); } sharp.delete(key); continue; }   /* (its scene may be gone with it) */
       const cam = S.scene.cameras && S.scene.cameras.main, v = cam && cam.worldView; if (!v || !v.width) continue;
       const w = S.box[2] - S.box[0], h = S.box[3] - S.box[1]; let want = G.levelFor(cam.zoom, S.K0, 4); while (want > S.K0 && (w * h * want * want > SHARP_ONE || S.ms0 * (want / S.K0) ** 2 > 40)) want = G.LEVELS[G.LEVELS.indexOf(want) - 1] || S.K0; /* (never a painting that would take a long task: its first painting was timed) */ if (want < S.K0) want = S.K0;
       let d = Infinity; for (const im of S.images) { if (im.x + S.box[2] < v.x || im.x + S.box[0] > v.right || im.y + S.box[3] < v.y || im.y + S.box[1] > v.bottom) continue; d = Math.min(d, Math.hypot(im.x - v.centerX, im.y - v.centerY)); }
       if (d < Infinity) S.seen = now;
       // out of sight for a while, or over the budget: back to the picture it was first painted at
       if (S.tex && (now - S.seen > 12000 || sharpPx > SHARP_BUDGET && d === Infinity)) { plain(S); continue; }
-      // (while you walk only a sprite known to paint in a few milliseconds is painted again: its first painting was timed)
-      if (d < bd && S.K !== want && (want > S.K || S.tex) && !(moving && want > S.K0 && !(S.ms0 * (want / S.K0) ** 2 < 9))) { bd = d; best = S; S.want = want; }
+      // (while you walk, and for a moment after you stop, only a sprite known to paint in a few milliseconds is painted again: its first painting was timed)
+      if (d < bd && S.K !== want && (want > S.K || S.tex) && !(!settled && want > S.K0 && !(S.ms0 * (want / S.K0) ** 2 < 9))) { bd = d; best = S; S.want = want; }
     }
     if (!best) return; const S = best, K = S.want, t0 = performance.now();
     if (K <= S.K0) { plain(S); return; }

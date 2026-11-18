@@ -210,6 +210,8 @@ window.GardenNativePainted = (function () {
     K = G.levelFor(scene.cameras && scene.cameras.main ? scene.cameras.main.zoom : 1);
     const handleOf = layer => ({ layer, destroy() { layer.detach(); G.cast.detach(); } });
     G.cast.attach(scene, parent, B, info.W);   // (the shadows of standing sprites: one soft layer over every ground)
+    /* (the garden was left and opened again: a new scene. The kept ground belongs to the old one, which is gone: start again, or nothing is painted) */
+    if (cachedGround && cachedGround.scene !== scene) { const old = cachedGround.layer; cachedGround = null; for (const l of [old, retiring]) if (l) try { l.destroy(true); } catch (e) {} retiring = null; }
     if (cachedGround && cachedGround.sig === sig && cachedGround.layer) { cachedGround.layer.attach(parent); groundMs = Math.round(performance.now() - started); return handleOf(cachedGround.layer); }
     if (cachedGround && cachedGround.layer) {
       rebuilds.push([cachedGround.sig, sig]); if (rebuilds.length > 4) rebuilds.shift();
@@ -252,8 +254,8 @@ window.GardenNativePainted = (function () {
     ops.push({ bb, seed: 9, draw(Bk, r0, cb) { const cx = Bk.cx; G.tiles(cb, 96, 46, 301, (tx, ty, r) => { for (let g = 0; g < 2; g++) { const gx = tx + r() * 96, gy = ty + r() * 96, kind = stamps[Math.floor(r() * stamps.length)], count = 4 + Math.floor(r() * 7), go = r() > .25, k0 = kindAt(gx, gy); for (let i = 0; i < count; i++) { const x = gx + (r() - .5) * 70, y = gy + (r() - .5) * 34, sc = (.7 + r() * .5) / (OBJ_K * 2); if (!go || k0 !== 'lawn' && k0 !== 'meadow' || !info.meadow(x, y)) continue; const st = stampOf(kind); if (st) cx.drawImage(st.c, x - st.ox * sc, y - st.oy * sc, st.c.width * sc, st.c.height * sc); } } }); } });
     // lazy: nothing bakes in this task (the planting and the props' shadows are added to it straight after, and the world's
     // opening waits for what is on screen: pendingInView)
-    const layer = G.layer(scene, parent, ops, { key: TEX + '-g' + (++groundSerial), box: B, chunk: 256, depth: -9600, budgetMB: 48, prebake: true, slice: 8, lazy: true });
-    cachedGround = { sig, box: B, layer }; groundMs = Math.round(performance.now() - started);
+    const layer = G.layer(scene, parent, ops, { key: TEX + '-g' + (++groundSerial), box: B, chunk: 256, depth: -9600, budgetMB: 64, prebake: true, slice: 8, lazy: true });
+    cachedGround = { sig, box: B, layer, scene }; groundMs = Math.round(performance.now() - started);
     if (retiring) { const old = retiring, t0 = performance.now(), wait = () => { if (retiring !== old) return; if (cachedGround && cachedGround.layer === layer && layer.softInView() > 0 && performance.now() - t0 < 9000) return void setTimeout(wait, 250); old.destroy(); retiring = null; }; setTimeout(wait, 250); }
     return handleOf(layer);
   }

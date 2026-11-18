@@ -134,7 +134,8 @@ window.GardenPaintGround = (function () {
     if (!opts.lazy) { const v = viewBox(.05), K = level(); for (const ch of list) if (v && meets(ch.bb, v)) { if (!adopt(ch)) bakeStep(ch, Math.min(K, 1.5), 0); } }
     const heavy = (ch, k) => { const lim = HEAVY_MS / (k * k); for (const o of ch.ops) if (o.cost > lim) return true; return false; };
     const tick = () => {
-      if (dead || !host) return; const v = viewBox(.05), near = viewBox(.35), keep = viewBox(.7); if (!v) return; const K = level(), moving = typeof _gw !== 'undefined' && !!_gw.moving;
+      if (dead || !host) return; if (!scene.textures || !scene.textures.game) { dead = true; clearInterval(timer); registry.delete(handle); return; }   /* (its scene is gone: stop, quietly) */
+      const v = viewBox(.05), near = viewBox(.35), keep = viewBox(.7); if (!v) return; const K = level(), moving = typeof _gw !== 'undefined' && !!_gw.moving;
       { const t0 = performance.now(); for (const ch of list) { if (ch.image || !ch.cached || !meets(ch.bb, near)) continue; adopt(ch); if (performance.now() - t0 > 4) break; } }
       // one chunk a tick: on screen and bare first, then on screen and at the wrong sharpness or repainted, then the margin
       let best = null, bs = Infinity, wantRoom = false; held = 0;
@@ -230,7 +231,7 @@ window.GardenPaintGround = (function () {
     function arm() { if (sweep) return; sweep = setTimeout(() => { sweep = null; const now = performance.now(); let later = false; for (const [k, q] of items) { if (!q.gone) continue; if (now - q.gone < 900) { later = true; continue; } items.delete(k); if (L) L.set('s|' + k, null); } if (later) arm(); }, 1000); }
     /** The ground is on the stage: put the shadow layer over it (parent: the ground's container; W: the world's cell sizes). */
     function attach(scene, parent, box, W) {
-      if (L && at && at.scene !== scene) { L.destroy(); L = null; }
+      if (L && at && at.scene !== scene) { ok(() => L.destroy()); L = null; }   /* (a new scene: the old one's pictures went with it) */
       at = { scene, W };
       if (!L) { L = layer(scene, parent, [...items.values()].filter(q => q.scene === scene).map(q => Object.assign(opOf(q), { tag: 's|' + q.id, sig: q.id })).concat([...ovals].map(([id, o]) => Object.assign(ovalOp(o.q), { tag: 'o|' + id, sig: o.sig }))), { key: 'gdcast', box, chunk: 256, depth: -9340, budgetMB: 10, follow: false, K: .75, lazy: true, slice: 7 }); for (const [k, q] of items) if (q.scene !== scene) items.delete(k); }
       else L.attach(parent);
