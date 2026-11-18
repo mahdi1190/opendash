@@ -2,7 +2,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { createGzip } from 'node:zlib';
-import { cspFor, injectConfig, MIME, send } from './http.mjs';
+import { CONFIG_TAG, cspFor, injectConfig, MIME, send } from './http.mjs';
 
 function encodingFor(header) {
   const weights = new Map();
@@ -26,7 +26,7 @@ export function createAppShell(file) {
     const stat = statSync(file), key = `${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`;
     if (!source || source.key !== key) {
       const bytes = readFileSync(file);
-      source = { key, id: createHash('sha256').update(bytes).digest('hex').slice(0, 12), html: bytes.toString('utf8'), csp: null };
+      source = { key, id: createHash('sha256').update(bytes).digest('hex').slice(0, 12), bytes, configAt: bytes.indexOf(CONFIG_TAG), csp: null };
       page = null;
     }
     return source;
@@ -34,8 +34,12 @@ export function createAppShell(file) {
   function prepared(config) {
     const built = current(), cfg = { ...config, build: built.id }, key = JSON.stringify(cfg);
     if (!page || page.source !== built || page.key !== key) {
-      const bytes = Buffer.from(injectConfig(built.html, cfg), 'utf8');
-      if (!built.csp) built.csp = cspFor(built.html);
+      const at = built.configAt;
+      // Only the small config tag varies between requests for the same build.
+      const bytes = at < 0 ? built.bytes : Buffer.concat([
+        built.bytes.subarray(0, at), Buffer.from(injectConfig(CONFIG_TAG, cfg)), built.bytes.subarray(at + CONFIG_TAG.length),
+      ]);
+      if (!built.csp) built.csp = cspFor(built.bytes.toString('utf8'));
       page = { source: built, key, bytes, csp: built.csp, zipped: null };
     }
     return page;
