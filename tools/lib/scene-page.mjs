@@ -24,7 +24,7 @@ import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { animRegistryFiles } from './anim-sources.mjs';
 import { rasterAssetBlocks, readRasterAsset } from './raster-assets.mjs';
-import { GAME_ENGINE_VERSION, GAME_ENGINE_JS } from '../../lib/game-engine.mjs';
+import { readGameEngine } from '../../lib/game-engine.mjs';
 
 export const repoRoot = () => resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SCENE_SRC_RE = /^(7[01]-scene-[a-z0-9-]+|79-world-[a-z0-9-]+)\.js$/, SCENE_BROWSER_RE = /^(78-scene-[a-z0-9-]+)\.js$/;
@@ -74,9 +74,8 @@ const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt
 export const stageChromeArgs = Object.freeze(['--enable-webgl', '--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']);
 /** The game engine's inert block and its loader (a stage page only): as build.mjs embeds them. */
 function stageEngineHtml(root) {
-  const bytes = readFileSync(join(root, GAME_ENGINE_JS));
   const loader = readFileSync(join(root, 'src', 'app', '94-game-engine.js'), 'utf8');
-  return `<script id="freeflo-game-engine" type="application/octet-stream" data-version="${GAME_ENGINE_VERSION}">${bytes.toString('base64')}</script>\n<script>${loader}</script>`;
+  return readGameEngine(root).html + `<script>${loader}</script>`;
 }
 /** The css a scene page needs: the app's tokens, the animation library, the scene sizes, 76-scene.css. */
 function pageCss(root) {
