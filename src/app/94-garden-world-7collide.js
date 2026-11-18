@@ -16,7 +16,7 @@
    widths) changes; nothing runs while it is off. Hovering or tapping a red area names what it is.
    Only the outdoor native (Phaser) world draws it.
    ============================================================ */
-const _gcv = { on: false, g: null, nw: null, key: '', raf: 0, tip: null, legend: null, data: null, box: null, move: null, tap: null, tipT: 0 };
+const _gcv = { on: false, g: null, feet: null, nw: null, key: '', raf: 0, tip: null, legend: null, data: null, box: null, move: null, tap: null, tipT: 0 };
 const GCV_COL = Object.freeze({ block: 0xd8432f, water: 0x2f6fd8, click: 0x2a6fe0, door: 0x2fae4a, start: 0x1d8a3a });
 const _GCV_LANDFORM = Object.freeze({ 'ruin-wall': 'ruin wall', ruin: 'ruin', 'rock-wall': 'rock wall', 'terrace-wall': 'terrace wall', mountain: 'mountain' });
 function gardenCollideOn() { return !!_gcv.on; }
@@ -121,6 +121,7 @@ function _gcvFrame() {
   if (_gw.box && _gcv.box !== _gw.box) _gcvBind(_gw.box);
   if (_gcv.nw !== nw || !_gcv.g || !_gcv.g.scene) {
     if (_gcv.g) try { _gcv.g.destroy(); } catch (e) { /* the scene went with it */ }
+    if (_gcv.feet) { try { _gcv.feet.destroy(); } catch (e) { /* the scene went with it */ } _gcv.feet = null; }
     _gcv.nw = nw; _gcv.g = nw.root.scene.add.graphics(); _gcv.g.setDepth(89500); nw.root.add(_gcv.g); _gcv.key = '';
   }
   const inRoom = typeof _grm !== 'undefined' && _grm.me, cam = nw.camera(), step = Math.round(Math.log2(cam.scale || 1) * 2);
@@ -131,6 +132,16 @@ function _gcvFrame() {
       _gcv.data = gardenCollideData(); _gcv.gridRef = _gw.grid; _gcv.solidRef = _gw.solids; _gcv.key = key;
       _gcvDraw(_gcv.g, _gcv.data, cam.scale);
     }
+  }
+  // your own feet, every frame: the small oval that is tested against everything above (so its size can be judged
+  // against the figure, and you can see what caught it)
+  if (!_gcv.feet || !_gcv.feet.scene) { _gcv.feet = nw.root.scene.add.graphics(); _gcv.feet.setDepth(89501); nw.root.add(_gcv.feet); }
+  _gcv.feet.setVisible(!inRoom);
+  if (!inRoom && typeof GW_FOOT !== 'undefined') {
+    const W = GARDEN_WORLD, fx = _gw.px * W.cellW, fy = W.sky + _gw.py * W.cellH, lw = Math.max(1, 1.5 / (cam.scale || 1));
+    _gcv.feet.clear(); _gcv.feet.fillStyle(0xffffff, .35); _gcv.feet.fillEllipse(fx, fy, GW_FOOT.x * 2 * W.cellW, GW_FOOT.y * 2 * W.cellH);
+    _gcv.feet.lineStyle(lw * 2.2, 0x2b2118, .9); _gcv.feet.strokeEllipse(fx, fy, GW_FOOT.x * 2 * W.cellW, GW_FOOT.y * 2 * W.cellH);
+    _gcv.feet.lineStyle(lw, 0xffffff, 1); _gcv.feet.strokeEllipse(fx, fy, GW_FOOT.x * 2 * W.cellW, GW_FOOT.y * 2 * W.cellH);
   }
   _gcv.raf = requestAnimationFrame(_gcvFrame);
 }
@@ -152,7 +163,7 @@ function _gcvLegend(on) {
   if (!on) { if (el) el.remove(); _gcv.legend = null; if (_gcv.tip) { _gcv.tip.remove(); _gcv.tip = null; } return; }
   if (!el || !el.isConnected) {
     el = _gcv.legend = document.createElement('div'); el.className = 'gd-collide-key';
-    el.innerHTML = '<b>What blocks walking</b><span><i class="is-block"></i>blocks your feet</span><span><i class="is-water"></i>water</span><span><i class="is-click"></i>click area</span><span><i class="is-door"></i>door or arrival</span><button type="button" data-collide-off>Hide <kbd>Shift</kbd>+<kbd>C</kbd></button>';
+    el.innerHTML = '<b>What blocks walking</b><span><i class="is-block"></i>blocks your feet</span><span><i class="is-water"></i>water</span><span><i class="is-click"></i>click area</span><span><i class="is-door"></i>door or arrival</span><span><i class="is-feet"></i>your feet</span><button type="button" data-collide-off>Hide <kbd>Shift</kbd>+<kbd>C</kbd></button>';
     el.addEventListener('click', ev => { if (ev.target.closest('[data-collide-off]')) gardenCollideToggle(false); });
     box.appendChild(el);
   }
@@ -178,6 +189,7 @@ function gardenCollideToggle(on) {
   } else {
     if (_gcv.raf) { cancelAnimationFrame(_gcv.raf); clearTimeout(_gcv.raf); } _gcv.raf = 0;
     if (_gcv.g) { try { _gcv.g.destroy(); } catch (e) { /* gone with the scene */ } _gcv.g = null; }
+    if (_gcv.feet) { try { _gcv.feet.destroy(); } catch (e) { /* gone with the scene */ } _gcv.feet = null; }
     _gcvBind(null); _gcv.nw = null; _gcv.data = null;
   }
   const hud = typeof _ghBox === 'function' && _ghBox();

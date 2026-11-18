@@ -106,7 +106,7 @@ window.GardenPaintedProps = (function () {
       ground(im) { if (!im) return null; const layer = o.layer; if (!layer || !layer.add) return add(im); layer.add(im); im.setDepth(-9250); ground.push(im); parts.push(im); return im; },
       // A part of a ground-level picture that stands up (a bridge's near parapet): in the object layer at its own
       // foot line, so whoever walks behind it is drawn behind it. Follows the handle's visibility, goes with it.
-      standing(im, depth, hit) { if (!im) return null; const layer = o.standing; if (!layer || !layer.add) return add(im); layer.add(im); im.setDepth(depth); ground.push(im); if (hit) parts.push(im); return im; },   // (no object layer, a preview: with the rest of the picture)
+      standing(im, depth, hit) { if (!im) return null; const layer = o.standing; if (!layer || !layer.add) return add(im); layer.add(im); im.setDepth(depth); im._gppStanding = true; ground.push(im); if (hit) parts.push(im); return im; },   // (no object layer, a preview: with the rest of the picture)
       add, move(im, fn) { if (im) { moving.push({ im, fn }); h.dynamic = true; if (!h.kind) h.kind = 'painted'; } return im; },
       // Bounds include transparent canvas padding and soft ground shadows.
       // Only the opaque painted parts own a visual hit; canonical feet and
@@ -793,7 +793,21 @@ window.GardenPaintedProps = (function () {
       const [bx0, by0, bx1, by1] = art.box, texW = Math.ceil((bx1 - bx0) * K), texH = Math.ceil((by1 - by0) * K), mid = Math.round(-bx0 * K), near = image(scene, baseKey, baseX, baseY);
       if (!near || mid < 2 || mid > texW - 2) { if (near) near.destroy(); return false; }
       base.setCrop(0, 0, mid, texH); near.setCrop(mid, 0, texW - mid, texH);
-      h.standing(base, frame.y - art.S * .8 + 2, true); h.standing(near, frame.y + art.S * .8 + 2, true); return true;
+      const nearDepth = frame.y + art.S * .8 + 2;
+      h.standing(base, frame.y - art.S * .8 + 2, true); h.standing(near, nearDepth, true);
+      // Walking through, you pass behind the near trunk and its leaves: they thin while they cover you, like any
+      // crown you stand under, so you never vanish behind your own gate.
+      h.move(near, im => {
+        if (typeof _gw === 'undefined' || !im.active) return;
+        const X = _gw.px * o.W.cellW, Y = o.W.sky + _gw.py * o.W.cellH; let hide = false;
+        if (Y < nearDepth && Y > baseY + by0 && X > baseX - 12 && X < baseX + bx1 + 12) for (const [dx, dy] of [[0, -10], [0, -30], [-7, -22], [7, -22], [0, -46]]) {
+          const u = Math.round((X + dx - baseX - bx0) * K), v = Math.round((Y + dy - baseY - by0) * K);
+          if (u >= mid && u < texW && v >= 0 && v < texH && scene.textures.getPixelAlpha(u, v, baseKey) >= 96) { hide = true; break; }
+        }
+        const want = hide ? (typeof GARDEN_CROWN_FADE === 'number' ? GARDEN_CROWN_FADE : .45) : 1, now = im._gppFade == null ? 1 : im._gppFade;
+        im._gppFade = Math.abs(want - now) < .03 ? want : now + (want - now) * .25; im.setAlpha(im._gppFade); if (base.active) base.setAlpha(im._gppFade);   // (the whole arch thins together: one half alone left a hard line down its leaves)
+      });
+      return true;
     })() : false;
     if (!halves && !(kind === 'bridge' ? h.ground(base) : h.add(base))) { h.destroy(); return null; }
     if (kind === 'bridge' && crossing) ok(() => bridgeFront(scene, h, o, baseKey, art.box, baseX, baseY, crossing));

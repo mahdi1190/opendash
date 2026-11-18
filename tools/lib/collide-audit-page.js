@@ -120,7 +120,7 @@
       if (!o) return; const kids = o.list || null;
       if ((o.type === 'Image' || o.type === 'Sprite') && o.texture) {
         const k = String(o.texture.key || ''), rec = owner(o), kind = KIND(k, rec);
-        if (kind && o.depth > -9000 && o.visible !== false && (!only || only(rec, k))) {
+        if (kind && o.depth > -9000 && (o.visible !== false || o._gppStanding) && (!only || only(rec, k))) {   // (a standing part of a picture that is out of view is hidden with it, not gone)
           const P = pixelsOf(o, kind === 'tree');
           if (P && P.vb >= 0 && P.u1 >= P.u0) {
             // (copied: Phaser hands back one shared matrix for every object)
