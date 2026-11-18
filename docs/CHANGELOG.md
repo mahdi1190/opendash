@@ -10,6 +10,13 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.73.1] - 2026-11-18
+
+### Changed
+
+- **Richer village and orchard art.** Trees have lit leaf masses, rooted trunks and dappled shadows, with fruit growing among the leaves. The lawn has light and shade, clover and moss. Roads are laid stones with soft, trodden edges, and the plaza has setts with mortar, moss and a stone kerb.
+- **Sharper on high-resolution screens.** The garden now draws at your screen's real sharpness.
+
 ## [2.73.0] - 2026-11-18
 
 ### Added
