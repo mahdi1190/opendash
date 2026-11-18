@@ -68,7 +68,14 @@
   function txBuildBar(cd) {
     S.txSearch = h('input', { type: 'search', class: 'fv-input', placeholder: 'Search names, descriptions, categories…', 'aria-label': 'Search transactions' });
     let qt = 0;
-    S.txSearch.addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => { F.q = S.txSearch.value; R.page = 0; changed(); }, 220); });
+    S.txSearch.addEventListener('input', e => {
+      const input = e.currentTarget;
+      clearTimeout(qt);
+      qt = setTimeout(() => {
+        if (S.txSearch !== input || !input.isConnected) return;
+        F.q = input.value; R.page = 0; changed();
+      }, 220);
+    });
     S.txFlowSeg = seg([['all', 'All'], ['in', 'Money in'], ['out', 'Money out']], R.txFlow || 'all', v => { R.txFlow = v; S.txFlowSeg.set(v); txTable(cd, R.ctx); }, 'Money in or out');
     S.txCatBtn = h('button', { type: 'button', class: 'fv-btn fv-menu-btn', 'aria-haspopup': 'true', onclick: e => txCatMenu(e.currentTarget) }, ic('layout-grid'), h('span', { class: 'l', text: 'Category' }), ic('chevron-down'));
     S.txKindBtn = h('button', { type: 'button', class: 'fv-btn fv-menu-btn', 'aria-haspopup': 'true', onclick: e => txKindMenu(e.currentTarget) }, ic('credit-card'), h('span', { class: 'l', text: 'Type' }), ic('chevron-down'));
