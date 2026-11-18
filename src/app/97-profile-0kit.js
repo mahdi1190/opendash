@@ -351,7 +351,11 @@ function profileAvatarRandom(rnd, ok, keep) {
 }
 /** '' when the option can be picked, else why not. */
 function profileLockOf(k, id, ctx) {
-  const o = pfOptions(k).find(x => x.id === id);
+  const part = pfPart(k);
+  if (!part || typeof id !== 'string') return 'Not available';
+  const colours = _PF_COLOUR_TABLES[part.colour];
+  const o = part.opts ? part.opts.find(x => x.id === id)
+    : colours && Object.prototype.hasOwnProperty.call(colours, id) && colours[id];
   if (!o) return 'Not available';
   ctx = ctx || {};
   if (o.season) {

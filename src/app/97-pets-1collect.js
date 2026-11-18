@@ -132,9 +132,8 @@ function _ptcGrown(plant) {
 function _ptcProgress(id, p, ctx, F) {
   const rt = petRoute(id);
   if (!rt) return { have: 1, of: 1, done: true };
-  const T = _ptcTreatsNow();
   switch (rt.type) {
-    case 'treats': return { have: Math.min(T, rt.of), of: rt.of, pay: 'treats', can: T >= rt.of };
+    case 'treats': { const T = _ptcTreatsNow(); return { have: Math.min(T, rt.of), of: rt.of, pay: 'treats', can: T >= rt.of }; }
     case 'coins': { const w = _ptcWallet(), c = w ? w.coins : 0; return { have: Math.min(c, rt.of), of: rt.of, pay: 'coins', can: c >= rt.of }; }
     case 'fact': { const h = Number(F[rt.key]) || 0; return { have: Math.min(h, rt.of), of: rt.of, done: h >= rt.of }; }
     case 'grow': { const h = _ptcGrown(rt.plant); return { have: Math.min(h, rt.of), of: rt.of, done: h >= rt.of }; }
@@ -180,7 +179,8 @@ function petCollectTick(o) {
     const ctx = petUnlockCtx(), F = _ptcFacts(p), got = [];
     const first = !p.seenTick;
     for (const sp of PET_SPECIES) {
-      if (!sp.lock || p.unl[sp.id]) continue;
+      // Purchases are recorded by petUnlock. A balance alone never unlocks a pet.
+      if (!sp.lock || p.unl[sp.id] || sp.lock.treats || sp.lock.coins) continue;
       const prog = _ptcProgress(sp.id, p, ctx, F);
       if (prog.done) { p.unl[sp.id] = _ptToday(); got.push(sp.id); _ptNote('met-' + sp.id); changed = true; }
     }
@@ -196,8 +196,14 @@ function petCelebrationsTake() { const c = _ptc.celeb.slice(); _ptc.celeb.length
 /* ---------- the collection ---------- */
 function petCollectCount() {
   const p = _ptS();
-  let owned = 0;
-  for (const sp of PET_SPECIES) if (petOwnsSpecies(sp.id, p) || (sp.lock && !petLockOf('species', sp.id, petUnlockCtx()))) owned++;
+  let owned = 0, ctx;
+  for (const sp of PET_SPECIES) {
+    if (petOwnsSpecies(sp.id, p)) owned++;
+    else if (sp.lock) {
+      if (!ctx) ctx = petUnlockCtx();
+      if (!petLockOf('species', sp.id, ctx)) owned++;
+    }
+  }
   return { owned, total: PET_SPECIES.length, pct: Math.round(owned / PET_SPECIES.length * 100) };
 }
 function petCollection() {
