@@ -200,6 +200,8 @@ window.GardenNativePainted = (function () {
   // is crisp at every zoom, bakes a few milliseconds at a time and holds only what is near the screen.
   // info: { W, box (the whole map, world px), coast, lawn, lakes, paths, soil, owned: loops (world px), kinds (the kit's kind grid),
   //         routes: [{ id, kind, width, points px }], plaza: { centre, bounds, points }, meadow(px, py), season, sig }
+  let retiring = null;   // (the ground layer being replaced: it stays up until the new one is whole on screen)
+  const rebuilds = [];   // (the last few changes of the ground's key: what made it repaint)
   const loopsPath = loops => { const p = new Path2D(); for (const l of loops || []) { if (!l.length) continue; p.moveTo(l[0].x, l[0].y); for (let i = 1; i < l.length; i++) p.lineTo(l[i].x, l[i].y); p.closePath(); } return p; };
   const loopsBox = (loops, pad) => { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const l of loops) for (const q of l) { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y); } return [x0 - pad, y0 - pad, x1 + pad, y1 + pad]; };
   function ground(scene, parent, info) {
@@ -208,7 +210,11 @@ window.GardenNativePainted = (function () {
     K = G.levelFor(scene.cameras && scene.cameras.main ? scene.cameras.main.zoom : 1);
     const handleOf = layer => ({ layer, destroy() { layer.detach(); } });
     if (cachedGround && cachedGround.sig === sig && cachedGround.layer) { cachedGround.layer.attach(parent); groundMs = Math.round(performance.now() - started); return handleOf(cachedGround.layer); }
-    if (cachedGround && cachedGround.layer) cachedGround.layer.destroy(); cachedGround = null;
+    if (cachedGround && cachedGround.layer) {
+      rebuilds.push([cachedGround.sig, sig]); if (rebuilds.length > 4) rebuilds.shift();
+      if (retiring) retiring.destroy(); retiring = cachedGround.layer; retiring.retire();
+    }
+    cachedGround = null;
     const W = info.W, bb = [B.x, B.y, B.x + B.w, B.y + B.h], coastP = loopsPath(info.coast), lawnP = loopsPath(info.lawn), allowP = loopsPath(info.paths), season = info.season;
     const kindAt = (px, py) => { const v = info.kinds.at(Math.floor(px / W.cellW), Math.floor((py - W.sky) / W.cellH)); return v ? G.KINDS[v - 1] : null; };
     // 1. The ground itself: every kind the layout names, shore first.
@@ -243,8 +249,11 @@ window.GardenNativePainted = (function () {
     const stamps = [['plant.wildflowers', 0], ['plant.daisies', 1], ['plant.wildflowers', 2], ['plant.daisies', 0], ['plant.grass', 1], ['plant.wildflowers', 3]], stampC = new Map();
     const stampOf = kind => { const key = kind.join(':'); let st = stampC.get(key); if (st === undefined) { st = ok(() => objectCanvas(kind[0], kind[1], season, { h: kind[0] === 'plant.grass' ? 24 : 20 })); stampC.set(key, st); } return st; };
     ops.push({ bb, seed: 9, draw(Bk, r0, cb) { const cx = Bk.cx; G.tiles(cb, 96, 46, 301, (tx, ty, r) => { for (let g = 0; g < 2; g++) { const gx = tx + r() * 96, gy = ty + r() * 96, kind = stamps[Math.floor(r() * stamps.length)], count = 4 + Math.floor(r() * 7), go = r() > .25, k0 = kindAt(gx, gy); for (let i = 0; i < count; i++) { const x = gx + (r() - .5) * 70, y = gy + (r() - .5) * 34, sc = (.7 + r() * .5) / (OBJ_K * 2); if (!go || k0 !== 'lawn' && k0 !== 'meadow' || !info.meadow(x, y)) continue; const st = stampOf(kind); if (st) cx.drawImage(st.c, x - st.ox * sc, y - st.oy * sc, st.c.width * sc, st.c.height * sc); } } }); } });
-    const layer = G.layer(scene, parent, ops, { key: TEX + '-g' + (++groundSerial), box: B, chunk: 256, depth: -9600, budgetMB: 64, prebake: true, slice: 8 });
+    // lazy: nothing bakes in this task (the planting and the props' shadows are added to it straight after, and the world's
+    // opening waits for what is on screen: pendingInView)
+    const layer = G.layer(scene, parent, ops, { key: TEX + '-g' + (++groundSerial), box: B, chunk: 256, depth: -9600, budgetMB: 64, prebake: true, slice: 8, lazy: true });
     cachedGround = { sig, box: B, layer }; groundMs = Math.round(performance.now() - started);
+    if (retiring) { const old = retiring, t0 = performance.now(), wait = () => { if (retiring !== old) return; if (cachedGround && cachedGround.layer === layer && layer.softInView() > 0 && performance.now() - t0 < 9000) return void setTimeout(wait, 250); old.destroy(); retiring = null; }; setTimeout(wait, 250); }
     return handleOf(layer);
   }
 
@@ -406,6 +415,7 @@ window.GardenNativePainted = (function () {
     g.composed = key; composeMs = Math.round(performance.now() - t0);
   }
   function memory(scene) { const l = cachedGround && cachedGround.layer; return { groundBytes: l ? l.texturePx * 4 : 0, groundTextures: l ? l.live : 0 }; }
-  function status() { const l = cachedGround && cachedGround.layer; return { wanted: wanted(), ready: ready(), groundMs, composeMs, K: l ? l.level : K, ground: l ? { level: l.level, chunks: l.chunks, live: l.live, MB: l.MB, medianMs: l.median, p95Ms: l.p95, worstSliceMs: l.sliceWorstMs } : null, planted: lastPlanting.length, spots: spotCounts, lastError: lastError || (window.GardenPaintGround && GardenPaintGround.lastError) || null }; }
-  return { wanted, ready, preload, ground, building, planting, trunks: () => plantingTrunks, trunkFoot, fadeUnder, crownCovers, fishingCrownCovers, playerCanopies: () => plantingCoverage, status, objectImage, objectCanvas, paintIntoGround, compose, memory, get lastError() { return lastError; }, set lastError(v) { lastError = v; }, set overLayer(v) { overLayer = v; } };
+  function pendingGround() { const l = cachedGround && cachedGround.layer; return l && !retiring ? l.pendingInView() : 0; }
+  function status() { const l = cachedGround && cachedGround.layer; return { wanted: wanted(), ready: ready(), groundMs, composeMs, K: l ? l.level : K, ground: l ? { level: l.level, chunks: l.chunks, live: l.live, MB: l.MB, medianMs: l.median, p95Ms: l.p95, worstSliceMs: l.sliceWorstMs } : null, planted: lastPlanting.length, spots: spotCounts, rebuilds, lastError: lastError || (window.GardenPaintGround && GardenPaintGround.lastError) || null }; }
+  return { wanted, ready, preload, ground, building, planting, trunks: () => plantingTrunks, trunkFoot, fadeUnder, crownCovers, fishingCrownCovers, playerCanopies: () => plantingCoverage, status, objectImage, objectCanvas, paintIntoGround, compose, memory, pendingGround, get lastError() { return lastError; }, set lastError(v) { lastError = v; }, set overLayer(v) { overLayer = v; } };
 })();

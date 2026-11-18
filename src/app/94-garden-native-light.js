@@ -16,7 +16,8 @@ window.GardenNativeLight = (function () {
     const clouds = scene.add.container(0, 0).setDepth(-9850).setName('garden-sky-clouds'), cloudShade = scene.add.container(0, 0).setDepth(-9310), glow = scene.add.graphics().setDepth(78000);
     const atmosphere = scene.add.graphics().setDepth(79900), rain = scene.add.container(0, 0).setDepth(79500), sky = scene.add.graphics().setDepth(-10020);
     const night = scene.add.graphics().setDepth(80000), moteHalo = scene.add.container(0, 0).setDepth(79395), motes = scene.add.container(0, 0).setName('garden-motes').setDepth(79400), bursts = scene.add.container(0, 0).setDepth(85000).setName('garden-bursts'), groundWeather = scene.add.graphics().setDepth(-9200);
-    const objects = [shadows, actorShadows, clouds, cloudShade, glow, atmosphere, rain, sky, night, moteHalo, motes, bursts, groundWeather];
+    const groundPools = scene.add.container(0, 0).setDepth(80005).setName('garden-light-pools'), poolImages = new Map();
+    const objects = [shadows, actorShadows, clouds, cloudShade, glow, atmosphere, rain, sky, night, moteHalo, motes, bursts, groundWeather, groundPools];
     let model = options.model || null, room = null, effects = null, dead = false, frame = 0, staticKey = '', staticAt = 0, screenKey = '', lamps = [], frozenAt = null, visibleActors = 0;
     let lastTime = null, ambientTime = 0, ambientAt = null, ambientOrigin = 0, ambientOriginAt = 0, ambientHeld = true, ambientSource = 'local', ambientFollowing = false, ambientSession = '', outdoorWetness = 0, lastMotion = true, fieldDirty = true, impactKind = '', precipitationVisible = 0;
     const drops = Array.from({ length: 110 }, () => ({ x: rng(), y: rng(), z: .3 + rng() * .7, phase: rng() * TAU }));
@@ -300,8 +301,9 @@ window.GardenNativeLight = (function () {
         // deep blue at night, rose and amber at dusk and dawn, nothing at all by day.
         const darkness = outdoorDarkness(env) - (1 - env.daylight) * .07, dusk = 1 - Math.abs(env.daylight * 2 - 1);
         const t = clamp(darkness / .4), warm = clamp(dusk) * (1 - t * .55), eve = env.hour >= 12;
-        const night0 = outdoorNightPresentation() ? [.5, .58, .8] : [.56, .63, .82], warm0 = eve ? [1, .84, .72] : [1, .9, .8];
-        const mul = [0, 1, 2].map(i => (1 + (night0[i] - 1) * t) * (1 + (warm0[i] - 1) * warm * (eve ? .85 : .6)));   // (an evening reads amber-rose, not a slightly dimmer noon)
+        const night0 = outdoorNightPresentation() ? [.5, .58, .8] : [.56, .63, .82], warm0 = eve ? [1, .82, .64] : [1, .9, .8], hold = 1 - .55 * clamp(dusk);
+        // (an evening reads amber and rose: the cool night grade is held back through the turning hour, or the two cancel to a flat slate grey)
+        const mul = [0, 1, 2].map(i => (1 + (night0[i] - 1) * t * hold) * (1 + (warm0[i] - 1) * warm * (eve ? 1.15 : .6)));
         if (t > .01 || warm > .04) night.setBlendMode(Phaser.BlendModes.MULTIPLY).fillStyle(mul.reduce((n, c) => n * 256 + Math.round(clamp(c) * 255), 0), 1).fillRect(x, y, width, height);
         if (dusk > .1) atmosphere.fillStyle(env.hour < 12 ? 0xffd6ab : 0xefb397, dusk * (env.hour < 12 ? .045 : .065)).fillRect(x, y, width, height);
         if (env.wetness > .04) atmosphere.fillStyle(0x73969d, env.wetness * .022).fillRect(x, y, width, height);
@@ -337,6 +339,7 @@ window.GardenNativeLight = (function () {
       lightMembership.clear();
       for (const lamp of lamps) lightMembership.add(lamp.id || lamp.x + ',' + lamp.y);
       for (const [key, light] of pointLights) if (!lightMembership.has(key)) { light.destroy(); pointLights.delete(key); }
+      for (const [key, pool] of poolImages) { if (!lightMembership.has(key)) { pool.destroy(); poolImages.delete(key); } else pool.setVisible(false); }
       glow.clear(); for (const light of pointLights.values()) light.setVisible(false); if (!room && env.daylight >= .8) return;
       const amount = room ? 1 : 1 - env.daylight, t = time / 1000, warmNight = outdoorNightPresentation(), lightDepth = warmNight ? 80010 : 78000;
       for (const lamp of lamps) {
@@ -354,6 +357,8 @@ window.GardenNativeLight = (function () {
         const transmission = warmNight ? (1 - outdoorDarkness(env)) * 1.12 : 1;
         light.intensity = amount * flicker * (lamp.intensity == null ? 1 : lamp.intensity) * (.17 + env.wetness * .025) * transmission;
         light.color.setTo(color >> 16 & 255, color >> 8 & 255, color & 255);
+        // its pool on the ground: a soft warm oval where the light falls (a lamp's foot, the ground before a lit window)
+        if (!room && lamp.ground != null) { let pool = poolImages.get(key); if (!pool) { pool = scene.add.image(0, 0, softKey).setBlendMode(Phaser.BlendModes.ADD); groundPools.add(pool); poolImages.set(key, pool); } const pr = radius * (lamp.pool || 1.2); pool.setVisible(true).setPosition(lamp.x, lamp.ground).setDisplaySize(pr * 2, pr * .95).setTint(color).setAlpha(Math.min(.5, amount * flicker * (lamp.intensity == null ? 1 : lamp.intensity) * .58)); }
       }
     }
     function weatherParticles(kind, count) {

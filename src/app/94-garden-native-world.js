@@ -1156,11 +1156,11 @@ window.GardenNativeWorld = (function () {
           const x = meta.foot ? meta.foot.x : (source.x + (def.fp || def.w || 1) / 2) * W.cellW, y = meta.foot ? meta.foot.y : W.sky + (source.y + (def.fp || def.h || 1)) * W.cellH;
           solidObjects.push({ id: record.id, x, y, w: Math.min((def.fp || def.w || 1) * W.cellW, record.bounds.width || 80), h: W.cellH * .4, height: Math.max(12, (record.bounds.height || 60) * .8), kind: meta.kind, root: record.root });
           reflectedScenery.push({ id: record.id, source: record.root, x, y, w: record.bounds.width, h: W.cellH * .4, tall: record.bounds.height, bounds: record.bounds, kind: meta.kind, dynamic: !!record.handle.dynamic, captureKey });
-          if (def.glow || def.effect && def.effect.kind === 'light') pointLights.push({ id: record.id, x, y: y - Math.min(50, record.bounds.height || 40), radius: def.glow ? 54 : 105, color: nightMaterials ? 0xffc17a : 0xffd98c, intensity: def.glow ? .35 : .8 });
-          if (meta.kind === 'prop' && ['shop', 'tackle'].includes(def.kind)) pointLights.push({ id: record.id + ':window', x, y: y - (record.handle.painted ? 48 : nightMaterials ? 76 : 28), radius: nightMaterials ? 96 : 72, color: nightMaterials ? 0xffc47c : 0xffdca3, intensity: .58 });
+          if (def.glow || def.effect && def.effect.kind === 'light') pointLights.push({ id: record.id, x, y: y - Math.min(50, record.bounds.height || 40), ground: y + 2, radius: def.glow ? 54 : 105, color: nightMaterials ? 0xffc17a : 0xffd98c, intensity: def.glow ? .35 : .8 });
+          if (meta.kind === 'prop' && ['shop', 'tackle'].includes(def.kind)) pointLights.push({ id: record.id + ':window', x, y: y - (record.handle.painted ? 48 : nightMaterials ? 76 : 28), ground: y + 12, radius: nightMaterials ? 96 : 72, color: nightMaterials ? 0xffc47c : 0xffdca3, intensity: .58 });
           // Painted village houses are lower: the glow sits on their window row.
-          else if (record.handle.painted && meta.kind === 'prop' && ['lf-office', 'hall'].includes(def.kind)) pointLights.push({ id: record.id + ':window', x, y: y - 48, radius: nightMaterials ? 90 : 64, color: nightMaterials ? 0xffc47c : 0xffdca3, intensity: .55 });
-          if (meta.prop && /^(lamp|lampbox|beacon|lighthouse)$/.test(def.art || def.kind || '')) pointLights.push({ id: record.id + ':lamp', x, y: record.bounds.y + record.bounds.height * .3, radius: def.art === 'lighthouse' ? 175 : 110, height: record.bounds.height * .75, color: nightMaterials ? 0xffc17a : 0xffd88e, intensity: .8, flicker: def.art === 'beacon' });
+          else if (record.handle.painted && meta.kind === 'prop' && ['lf-office', 'hall'].includes(def.kind)) pointLights.push({ id: record.id + ':window', x, y: y - 48, ground: y + 12, radius: nightMaterials ? 90 : 64, color: nightMaterials ? 0xffc47c : 0xffdca3, intensity: .55 });
+          if (meta.prop && /^(lamp|lampbox|beacon|lighthouse)$/.test(def.art || def.kind || '')) pointLights.push({ id: record.id + ':lamp', x, y: record.bounds.y + record.bounds.height * .3, ground: def.art === 'lighthouse' ? null : y + 2, radius: def.art === 'lighthouse' ? 175 : 110, height: record.bounds.height * .75, color: nightMaterials ? 0xffc17a : 0xffd88e, intensity: .8, flicker: def.art === 'beacon' });
         } else if (meta.kind === 'scenery' && record.bounds.width < 350 && record.bounds.height > 25) {
           const foot = meta.foot || { x: record.bounds.x + record.bounds.width / 2, y: record.bounds.y + record.bounds.height };
           solidObjects.push({ id: record.id, x: foot.x, y: foot.y, w: record.bounds.width * (meta.tree ? .25 : .65), h: 9, height: record.bounds.height * .82, kind: 'scenery', root: record.root });
@@ -1168,7 +1168,7 @@ window.GardenNativeWorld = (function () {
         }
       }
       // the old woodland's wayside lamps are painted scenery (94-garden-paint-vale-1places.js), lit here at dusk and night
-      if (typeof gardenIslandOldWoodLamps === 'function' && window.GardenPaintVale && GardenPaintVale.wanted()) gardenIslandOldWoodLamps().forEach((q, i) => pointLights.push({ id: 'oldwood-lamp:' + i, x: q.x * W.cellW, y: W.sky + q.y * W.cellH - 44, radius: 120, height: 40, color: nightMaterials ? 0xffc17a : 0xffd88e, intensity: .85 }));
+      if (typeof gardenIslandOldWoodLamps === 'function' && window.GardenPaintVale && GardenPaintVale.wanted()) gardenIslandOldWoodLamps().forEach((q, i) => pointLights.push({ id: 'oldwood-lamp:' + i, x: q.x * W.cellW, y: W.sky + q.y * W.cellH - 44, ground: W.sky + q.y * W.cellH + 2, radius: 120, height: 40, color: nightMaterials ? 0xffc17a : 0xffd88e, intensity: .85 }));
       // and Hollin's window: someone lives in the hut
       { const hut = typeof gardenIslandLogStack === 'function' && GardenIslandLayout.data && (GardenIslandLayout.data.static || []).find(p => p.id === 'ld-woodhut'); if (hut && window.GardenPaintVale && GardenPaintVale.wanted()) pointLights.push({ id: 'oldwood-hut:window', x: (hut.x + hut.w / 2) * W.cellW, y: W.sky + (hut.y + hut.h) * W.cellH - 22, radius: 78, height: 20, color: 0xffc47c, intensity: .5 }); }
       _gw.grid = null; _gw.gq = null; _gw.solids = null; _gw.gridKey = ''; _gw.cam.dirty = true;
@@ -1706,7 +1706,7 @@ window.GardenNativeWorld = (function () {
       }
       // Lazy Vale ground is part of the visible picture too. Let its existing
       // sliced streamer finish this view before opening (the runtime timeout stays).
-      const pendingGround = window.GardenPaintVale && GardenPaintVale.pendingGround ? GardenPaintVale.pendingGround() : 0;
+      const pendingGround = (window.GardenPaintVale && GardenPaintVale.pendingGround ? GardenPaintVale.pendingGround() : 0) + (packGround && window.GardenNativePainted && GardenNativePainted.pendingGround ? GardenNativePainted.pendingGround() : 0);
       return { ready: terrainRequiredReady === terrainRequired && !pendingVisible && !pendingPlayerPoses && !pendingGround, terrainReady, terrainTotal: terrainChunks.size, terrainRequired, terrainRequiredReady, terrainDeferred: terrainChunks.size - terrainRequired, pendingVisible, pendingPlayerPoses, pendingGround };
     }
     function resize(w, h) { size = { w: Math.max(1, w), h: Math.max(1, h) }; _gw.size = { ...size }; _gw.sizeOk = true; _gw.cam.init = false; updateCamera(.016, true); }
