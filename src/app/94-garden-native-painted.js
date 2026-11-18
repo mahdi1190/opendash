@@ -225,16 +225,15 @@ window.GardenNativePainted = (function () {
     if (info.soil && info.soil.length) { const soilP = loopsPath(info.soil);
       ops.push({ bb: loopsBox(info.soil, 8), seed: 5, draw(Bk, r, cb) { const cx = Bk.cx; cx.lineJoin = 'round'; cx.globalAlpha = .22; cx.strokeStyle = P.shadow; cx.lineWidth = 7; cx.stroke(soilP); cx.globalAlpha = 1; cx.strokeStyle = '#6a5034'; cx.lineWidth = 5; cx.stroke(soilP); cx.save(); cx.clip(soilP, 'evenodd'); G.paintKind(cx, 'soil', cb, season); cx.restore(); cx.globalAlpha = .8; cx.strokeStyle = '#a8845a'; cx.lineWidth = 1.4; cx.stroke(soilP); cx.globalAlpha = 1; } }); }
     if (info.owned && info.owned.length) { const ownedP = loopsPath(info.owned);
-      ops.push({ bb: loopsBox(info.owned, 8), seed: 6, draw(Bk) { const cx = Bk.cx; cx.save(); cx.clip(ownedP, 'evenodd'); cx.lineJoin = 'round'; cx.strokeStyle = '#7d6a44'; for (const [w, al] of [[15, .035], [10, .045], [5, .05]]) { cx.globalAlpha = al; cx.lineWidth = w; cx.stroke(ownedP); } cx.globalAlpha = 1; cx.fillStyle = 'rgba(190,200,120,.06)'; cx.fill(ownedP, 'evenodd'); cx.restore(); } }); }
+      ops.push({ bb: loopsBox(info.owned, 8), seed: 6, draw(Bk) { const cx = Bk.cx; const k = Math.hypot(cx.getTransform().a, cx.getTransform().b) || 1; cx.save(); cx.clip(ownedP, 'evenodd'); cx.lineJoin = 'round'; cx.strokeStyle = '#7d6a44'; cx.filter = 'blur(' + (3.5 * k).toFixed(1) + 'px)'; for (const [w, al] of [[16, .05], [8, .07]]) { cx.globalAlpha = al; cx.lineWidth = w; cx.stroke(ownedP); } cx.restore(); cx.filter = 'none'; cx.globalAlpha = 1; } }); }
     // 4. Inland water under the painted water: a damp bank, the water, its shallow rim and lap line (the v5 river runs on
     //    past the coast for the water mechanics, so its banks are cut at the land's edge).
     if (info.lakes && info.lakes.length) { const lakeP = loopsPath(info.lakes);
       ops.push({ bb: loopsBox(info.lakes, 24), seed: 7, draw(Bk) { const cx = Bk.cx; cx.save(); if (W.v >= 5) cx.clip(coastP, 'evenodd'); cx.lineJoin = 'round'; cx.globalAlpha = .9; cx.strokeStyle = P.sandWet; cx.lineWidth = 14; cx.stroke(lakeP); cx.globalAlpha = 1; cx.fillStyle = P.water; cx.fill(lakeP, 'evenodd'); cx.save(); cx.clip(lakeP, 'evenodd'); cx.strokeStyle = P.shallow; cx.globalAlpha = .5; cx.lineWidth = 40; cx.stroke(lakeP); cx.globalAlpha = .6; cx.lineWidth = 18; cx.stroke(lakeP); cx.restore(); cx.globalAlpha = .7; cx.strokeStyle = P.foam; cx.lineWidth = 2; cx.stroke(lakeP); cx.restore(); cx.globalAlpha = 1; } }); }
     // 5. Paths: the kit's roads, lanes, trails, boardwalks and steps along the layout's routes; then the square's setts.
-    for (const o of G.paths({ routes: info.routes, season, allow: allowP, within: W.v >= 5 ? lawnP : null, kindAt, box: B })) ops.push(o);
+    for (const o of G.paths({ routes: info.routes, areas: (info.areas || []).concat(info.plaza ? [{ kind: 'setts', points: info.plaza.points }] : []), season, allow: allowP, within: W.v >= 5 ? lawnP : null, kindAt, box: B })) ops.push(o);
     if (info.plaza) {
       const pz = info.plaza, ccx = pz.centre.x, ccy = pz.centre.y;
-      for (const o of G.paths({ areas: [{ kind: 'setts', points: pz.points }], season, kindAt, box: B })) ops.push(o);
       // the compass rose inlaid in the square, worn by feet: a ring of dark stone, a pale field, the points in honey stone
       ops.push({ bb: [ccx - 52, ccy - 32, ccx + 52, ccy + 32], seed: 8, draw(Bk) { const cx = Bk.cx;
         cx.globalAlpha = .3; cx.fillStyle = '#4e4230'; cx.beginPath(); cx.ellipse(ccx + 1, ccy + 1.6, 47, 26, 0, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 1;

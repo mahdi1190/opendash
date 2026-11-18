@@ -137,10 +137,10 @@ window.GardenPaintVale = (function () {
     return L.groundClips = { coast: loopPath(L.coast), lawn: loopPath(lawn), cuts, lanes };
   }
   /** Retained continuous ground limits, applied only while a chunk is baked. */
-  function clipGround(B, L, cb, meadow) {
+  function clipGround(B, L, cb, meadow, soft) {
     const clips = groundClips(L); B.cx.clip(meadow ? clips.lawn : clips.coast);
     for (const cut of clips.cuts) if (KIT().meets(cut.bb, cb)) B.cx.clip(cut.path);
-    if (meadow) for (const cut of clips.lanes) if (KIT().meets(cut.bb, cb)) B.cx.clip(cut.path, cut.rule || 'nonzero');
+    if (meadow && !soft) for (const cut of clips.lanes) if (KIT().meets(cut.bb, cb)) B.cx.clip(cut.path, cut.rule || 'nonzero');
     if (L.soil.path && KIT().meets(L.soil.bb, cb)) B.cx.clip(L.soil.path, 'evenodd');
   }
   /** Points along a polyline every step px, with the unit tangent. */

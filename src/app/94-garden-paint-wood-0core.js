@@ -69,7 +69,7 @@ window.GardenPaintWood = (function () {
       const pts = gardenIslandRoutePath(route).points, p = new Path2D(); if (pts.length < 2) continue;
       p.moveTo(px(pts[0].x), py(pts[0].y)); for (let i = 1; i < pts.length; i++) p.lineTo(px(pts[i].x), py(pts[i].y));
       const width = gardenIslandRoadStyle(route).main ? 40 : 26;
-      out.floorClip.routes.push({ path: p, width, kind: window.GardenPaintGround ? GardenPaintGround.routeKind(route) : '' });
+      out.floorClip.routes.push({ path: p, width, kind: window.GardenPaintGround ? GardenPaintGround.routeKind(route) : '', yard: route.tier === 'plaza' ? Math.max(1, Number(route.widthCells) || 3) : 0 });
       routeLines.push({ pts: pts.map(q => ({ x: px(q.x), y: py(q.y) })), half: width / 2 });
     }
     // How far (world px) a trunk foot is from the edge of the nearest drawn path or plaza
@@ -220,7 +220,7 @@ window.GardenPaintWood = (function () {
       const F = Object.assign({}, f.def.floor, (f.def.mood === 'meadow' ? MEADOW_TONE : SEASON_TONE)[season] || {}), r = rng(hash(f.region + ch.key));
       const meadow = f.def.mood === 'meadow', palette = window.GardenPaintVale && GardenPaintVale.PAL[season];
       cx.save(); cx.clip(f.path);
-      if (S.M.groundLayout) GardenPaintVale.clipGround({ cx }, S.M.groundLayout, [B.x - E, B.y - E, B.x + B.w + E, B.y + B.h + E], true);
+      if (S.M.groundLayout) GardenPaintVale.clipGround({ cx }, S.M.groundLayout, [B.x - E, B.y - E, B.x + B.w + E, B.y + B.h + E], true, !!window.GardenPaintGround);   // (with the shared kit the floor fades out over paths and yards below: no ruled ribbon)
       // One continuous floor; the river meadow shares the harbour's seasonal
       // lawn. Broad soft tone replaces opaque grass stamped once per cell.
       yield; cx.globalAlpha = 1;
@@ -282,7 +282,7 @@ window.GardenPaintWood = (function () {
     const clip = S.M.floorClip;
     if (clip.land && clip.beach) { cx.lineWidth = clip.beach * 2; cx.stroke(clip.land); }
     for (const water of clip.water) cx.fill(water);
-    if (window.GardenPaintGround) { cx.filter = 'blur(' + Math.round(5 * K) + 'px)'; for (const rt of clip.routes) { cx.lineWidth = Math.max(8, (GardenPaintGround.ROUTE_WIDTH[rt.kind] || rt.width) - 2); cx.stroke(rt.path); } cx.filter = 'none'; }
+    if (window.GardenPaintGround) { cx.filter = 'blur(' + Math.round(5 * K) + 'px)'; for (const rt of clip.routes) { if (rt.yard) continue; cx.lineWidth = Math.max(8, (GardenPaintGround.ROUTE_WIDTH[rt.kind] || rt.width) - 2); cx.stroke(rt.path); } cx.filter = 'blur(' + Math.round(12 * K) + 'px)'; for (const rt of clip.routes) { if (!rt.yard) continue; cx.lineWidth = rt.yard * 22; cx.stroke(rt.path); } cx.filter = 'none'; }
     else for (const rt of clip.routes) { cx.lineWidth = rt.width + 4; cx.stroke(rt.path); }
     cx.globalCompositeOperation = 'source-over';
     const key = TEX + '-' + ch.key + '-' + (++S.serial);

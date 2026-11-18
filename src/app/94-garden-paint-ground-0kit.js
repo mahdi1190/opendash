@@ -168,6 +168,13 @@ window.GardenPaintGround = (function () {
     registry.add(handle); return handle;
   }
 
+  /** Cut a soft-edged hole in what is painted so far (the ground beneath shows through): shape is a Path2D in world px,
+   *  feather the fade's width in world px, o: { stroke: line width (cut along a line instead of filling), rule, a }. */
+  function softCut(cx, shape, feather, o) {
+    o = o || {}; const K = scaleOf(cx); cx.save(); cx.globalCompositeOperation = 'destination-out'; cx.globalAlpha = o.a == null ? 1 : o.a; cx.filter = 'blur(' + Math.max(1, Math.round((feather || 8) * K)) + 'px)'; cx.fillStyle = '#000'; cx.strokeStyle = '#000'; cx.lineCap = 'round'; cx.lineJoin = 'round';
+    if (o.stroke) { cx.lineWidth = o.stroke; cx.stroke(shape); } else cx.fill(shape, o.rule || 'nonzero');
+    cx.restore(); cx.filter = 'none'; cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over';
+  }
   /* ---------- small shared canvases ---------- */
   const pool = new Map();
   function scratch(name, w, h, opts) { let s = pool.get(name); if (!s) { const c = document.createElement('canvas'); s = { c, cx: c.getContext('2d', opts || undefined) }; pool.set(name, s); } if (s.c.width !== w || s.c.height !== h) { s.c.width = w; s.c.height = h; } else { s.cx.setTransform(1, 0, 0, 1, 0, 0); s.cx.globalCompositeOperation = 'source-over'; s.cx.globalAlpha = 1; s.cx.filter = 'none'; s.cx.clearRect(0, 0, w, h); } return s; }
@@ -219,20 +226,31 @@ window.GardenPaintGround = (function () {
     ell(cx, x + 1.4, y + .7, 3.4 + n * .3, 1.2, P.shadow, .32);
     for (let k = 0; k < n; k++) { const lean = (k - n / 2) * 1.1 + (r() - .5), px = x + k * .6 - n * .3; blade(cx, px, y, lean, hh * (.7 + r() * .5), k % 2 ? dark : P.dark || dark, 1.1, .8); blade(cx, px + lean * .55, y - hh * .5, lean * .45, hh * .42, lit, .8, .6); }
   }
+  // a small flower seen from above: petals round a centre when the bake is fine enough to show them, a dot from far off
+  function flower(cx, x, y, s, col, eye, P) {
+    ell(cx, x + s * .3, y + s * .35, s * 1.05, s * .6, P.shadow, .26);
+    if (scaleOf(cx) < 1.3) { ell(cx, x, y, s * .8, s * .7, col, .95); return; }
+    cx.globalAlpha = .97; cx.fillStyle = col; const a0 = (x * 7.3 + y * 3.1) % 1.05;
+    for (let p = 0; p < 6; p++) { const a = a0 + p * 1.0472; cx.beginPath(); cx.ellipse(x + Math.cos(a) * s * .6, y + Math.sin(a) * s * .48, s * .44, s * .25, a, 0, 6.283); cx.fill(); }
+    if (eye) ell(cx, x, y, s * .34, s * .29, eye, 1);
+  }
   const PAINT = {
     // a lawn is never one green: the sward in short strokes that lean with the light, clover and moss in drifts, tufts, the odd stone
     lawn(cx, cb, P, env) {
-      wash(cx, cb, P, 11, 1); cx.lineCap = 'round'; const winter = P.season === 'winter';
+      wash(cx, cb, P, 11, 1.2); cx.lineCap = 'round'; const winter = P.season === 'winter', sun = mix(P.hi, '#eef0a6', .45), deep = mix(P.lo, P.cool, .5);
+      // light and shade laid on in broad strokes a few steps across: lit swells with a brighter heart, cooler hollows beside them
+      tiles(cb, 80, 60, 17, (tx, ty, r) => { for (let i = 0; i < 3; i++) { const x = tx + r() * 80, y = ty + r() * 80, s = 18 + r() * 30, lit = r() < .55; if (noise(x / 170, y / 120, 15) < .42) continue;
+        blob(cx, r, x, y, s, s * .38, 10, .5, lit ? P.hi : deep, lit ? .2 : .16); if (lit) blob(cx, r, x - s * .22, y - s * .08, s * .52, s * .17, 8, .5, sun, .2); else blob(cx, r, x + s * .2, y + s * .06, s * .5, s * .16, 8, .5, P.lo, .16); } });
       tiles(cb, 320, 44, 19, (tx, ty, r) => { if (r() < .5) return; const x = tx + r() * 320, y = ty + r() * 320, s = 14 + r() * 20; blob(cx, r, x, y, s, s * .42, 9, .5, '#a08c5e', .2); blob(cx, r, x - 2, y - 1, s * .6, s * .24, 8, .5, '#b8a370', .22); });
       tiles(cb, 96, 22, 21, (tx, ty, r) => { for (let i = 0; i < 2; i++) { if (r() < .45) continue; const x0 = tx + r() * 96, y0 = ty + r() * 96, moss = r() < .35;
         for (let k = 0, n = 12 + Math.floor(r() * 20); k < n; k++) { const a = r() * 6.283, d = Math.sqrt(r()) * 17, x = x0 + Math.cos(a) * d, y = y0 + Math.sin(a) * d * .5;
           if (moss) { cx.globalAlpha = .45; cx.fillStyle = r() < .5 ? '#8f9a3e' : '#a6aa4c'; cx.fillRect(x, y, 1.4 + r() * 1.4, 1 + r() * .8); continue; }
           cx.globalAlpha = .5; cx.fillStyle = r() < .5 ? P.cool : mix(P.lo, P.cool, .5); for (let j = 0; j < 3; j++) { const b = j * 2.1 + r(); cx.beginPath(); cx.arc(x + Math.cos(b) * 1.1, y + Math.sin(b) * .7, 1.05, 0, 6.283); cx.fill(); }
-          if (r() < .07 && !winter) ell(cx, x, y - 1.6, 1.3, 1.3, '#f4f0e2', .9); } } });
+          if (r() < .035 && !winter) ell(cx, x, y - 1.4, 1, .9, '#f4f0e2', .85); } } });
       const tones = [P.lo, mix(P.lo, '#4f6f34', .4), P.hi, mix(P.hi, '#e2dc8e', .5)];
       tiles(cb, 32, 6, 23, (tx, ty, r) => { for (let i = 0; i < 12; i++) { const x = tx + r() * 32, y = ty + r() * 32, t = r(), len = 2.4 + r() * 3.2, lean = .5 - r() * .2; blade(cx, x, y, lean * 2, len, tones[t < .38 ? 0 : t < .6 ? 1 : t < .92 ? 2 : 3], .9 + r() * .9, .2 + r() * .22); } });
       tiles(cb, 64, 10, 25, (tx, ty, r) => { for (let i = 0; i < 3; i++) { if (r() < .2) continue; tuft(cx, r, tx + r() * 64, ty + r() * 64, 4 + Math.floor(r() * 4), 4 + r() * 5, P.lo, P.hi, P); } });
-      if (!winter) tiles(cb, 128, 26, 27, (tx, ty, r) => { if (r() < .5) return; const x0 = tx + r() * 128, y0 = ty + r() * 128, col = r() < .6 ? '#f6f2e4' : '#f0d24a'; for (let k = 0, n = 5 + Math.floor(r() * 9); k < n; k++) { const x = x0 + (r() - .5) * 46, y = y0 + (r() - .5) * 22; ell(cx, x + .5, y + .6, 1.3, .8, P.shadow, .3); ell(cx, x, y, 1.25, 1.1, col, .95); if (col !== '#f0d24a') ell(cx, x, y, .45, .4, '#e8c040', 1); } });
+      if (!winter) tiles(cb, 128, 26, 27, (tx, ty, r) => { if (r() < .5) return; const x0 = tx + r() * 128, y0 = ty + r() * 128, white = r() < .6; for (let k = 0, n = 4 + Math.floor(r() * 7); k < n; k++) { const x = x0 + (r() - .5) * 40 * (.4 + r()), y = y0 + (r() - .5) * 20 * (.4 + r()); flower(cx, x, y, white ? 1.9 + r() * .7 : 1.5 + r() * .5, white ? '#fbf8ee' : '#f2d040', white ? '#e6b436' : '#d9a520', P); } });
       tiles(cb, 256, 14, 29, (tx, ty, r) => { for (let g = 0; g < 2; g++) { const gx = tx + r() * 256, gy = ty + r() * 256; for (let k = 0, n = 2 + Math.floor(r() * 4); k < n; k++) pebble(cx, r, gx + (r() - .5) * 22, gy + (r() - .5) * 10, 1.4 + r() * (k ? 2 : 3.4), P); } });
       if (P.season === 'autumn') tiles(cb, 48, 6, 31, (tx, ty, r) => { for (let i = 0; i < 2; i++) { cx.globalAlpha = .75; cx.fillStyle = ['#c0702e', '#d89a3e', '#a8562a', '#b8a040'][Math.floor(r() * 4)]; cx.fill(P2(D().leaf(tx + r() * 48, ty + r() * 48, r() * 6.3, 3 + r() * 2, 1.4))); } });
       cx.globalAlpha = 1;
@@ -243,7 +261,7 @@ window.GardenPaintGround = (function () {
       tiles(cb, 32, 8, 43, (tx, ty, r) => { for (let i = 0; i < 10; i++) { const x = tx + r() * 32, y = ty + r() * 32, t = r(), len = 4 + r() * 5.5, sway = 1.2 + fbm(x / 120, y / 80, 5) * 2.6; blade(cx, x, y, sway, len, tones[t < .3 ? 0 : t < .5 ? 1 : t < .82 ? 2 : 3], .8 + r() * .7, .22 + r() * .24); if (t > .9 && !winter) ell(cx, x + sway, y - len, .9, 1.5, gold, .8); } });
       tiles(cb, 64, 12, 45, (tx, ty, r) => { for (let i = 0; i < 2; i++) { if (r() < .3) continue; tuft(cx, r, tx + r() * 64, ty + r() * 64, 5 + Math.floor(r() * 4), 6 + r() * 6, P.lo, gold, P); } });
       if (!winter) tiles(cb, 112, 34, 47, (tx, ty, r) => { if (r() < .35) return; const x0 = tx + r() * 112, y0 = ty + r() * 112, t = r(), col = P.season === 'autumn' ? (t < .5 ? '#d8a040' : '#e8dcc0') : t < .3 ? '#e2534a' : t < .55 ? '#f6f2e4' : t < .8 ? '#f0d24a' : '#7f8fd8';
-        for (let k = 0, n = 7 + Math.floor(r() * 12); k < n; k++) { const x = x0 + (r() - .5) * 62, y = y0 + (r() - .5) * 30, hh = 3 + r() * 4; blade(cx, x, y, .8, hh, P.lo, .7, .7); ell(cx, x + .8, y - hh, 1.5, 1.25, col, .95); ell(cx, x + .5, y - hh - .4, .6, .45, '#ffffff', .35); } });
+        for (let k = 0, n = 7 + Math.floor(r() * 12); k < n; k++) { const x = x0 + (r() - .5) * 62, y = y0 + (r() - .5) * 30, hh = 3 + r() * 4; blade(cx, x, y, .8, hh, P.lo, .7, .7); flower(cx, x + .8, y - hh, 1.7 + r() * .6, col, col === '#f6f2e4' ? '#e6b436' : mix(col, '#3a2a1a', .35), P); } });
       cx.globalAlpha = 1;
     },
     // a woodland floor: leaf litter, moss cushions, twigs, pools of light that got through the leaves
@@ -382,11 +400,31 @@ window.GardenPaintGround = (function () {
   /** The surface of a layout route: its own surface if the layout names one, else by its name and tier. */
   function routeKind(r) { if (r.surface && PATH[r.surface]) return r.surface; const id = String(r.id || ''); if (/boardwalk/.test(id)) return 'boardwalk'; if (/steps/.test(id)) return 'steps'; return r.tier === 'main' ? 'cobble' : r.tier === 'plaza' ? 'setts' : r.tier === 'lane' ? 'gravel' : 'earth'; }
   const ROUTE_WIDTH = { cobble: 40, setts: 40, gravel: 26, earth: 20, boardwalk: 22, steps: 24 };
+  /** Every route of a layout in the kit's terms (world px), ready for paths(): { routes, areas }.
+   *  A route's painted width is the layout's own where it has one (route.widths: cells, one a point, the hand-drawn layouts;
+   *  or route.paintWidth: px), else the surface's usual width. A route with a drawn outline (route.shape: a polygon in cells,
+   *  a square or a yard) gives an area of its surface. o: { skip(route), plazas: true to keep plaza-tier centre lines } */
+  function layoutPaths(W, data, o) {
+    o = o || {}; const routes = [], areas = [], px = q => ({ x: q[0] * W.cellW, y: W.sky + q[1] * W.cellH });
+    for (const r of data.routes || []) {
+      if (!r.points || r.points.length < 2 || o.skip && o.skip(r)) continue; const kind = routeKind(r);
+      if (Array.isArray(r.shape) && r.shape.length > 2) areas.push({ id: r.id, kind: PATH[kind].planks ? 'setts' : kind, points: r.shape.map(px) });
+      if (r.tier === 'plaza' && !o.plazas) continue;
+      if (Array.isArray(r.widths) && r.widths.length === r.points.length) {
+        // (a width in cells is measured across the path: a cell is wider than it is tall, so the px width turns with the path)
+        const P = r.points, pts = P.map((q, i) => { const a = P[Math.max(0, i - 1)], b = P[Math.min(P.length - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return Object.assign(px(q), { w: r.widths[i] * .92 * Math.hypot(dy / l * W.cellW, dx / l * W.cellH) }); });
+        routes.push({ id: r.id, kind, width: ROUTE_WIDTH[kind] || 26, closed: false, points: pts, own: true }); continue;
+      }
+      const path = typeof gardenIslandRoutePath === 'function' ? gardenIslandRoutePath(r) : { points: r.points.map(q => ({ x: q[0], y: q[1] })), closed: false };
+      routes.push({ id: r.id, kind, width: Number(r.paintWidth) || ROUTE_WIDTH[kind] || 26, closed: !!path.closed, points: path.points.map(p => ({ x: p.x * W.cellW, y: W.sky + p.y * W.cellH })) });
+    }
+    return { routes, areas };
+  }
 
   /* ---------- 3. the path kit ---------- */
   const PATH = {
-    cobble: { rank: 3, blur: 4.2, edge: .1, bed: '#96866a', margin: .34 },
-    setts: { rank: 3, blur: 4.6, edge: .08, bed: '#9a8a6c', margin: .3 },
+    cobble: { rank: 3, blur: 4.2, edge: .1, bed: '#a8966f', margin: .26 },
+    setts: { rank: 3, blur: 4.6, edge: .08, bed: '#ab9972', margin: .24 },
     gravel: { rank: 2, blur: 5.4, edge: .16, bed: '#d7c294', margin: .3 },
     earth: { rank: 1, blur: 6.4, edge: .3, bed: '#bfaa84', margin: .26 },
     boardwalk: { rank: 4, planks: true }, steps: { rank: 4, planks: true },
@@ -410,18 +448,19 @@ window.GardenPaintGround = (function () {
     // where a path ends on another, both widen a little: a pad at the meeting point, which the smoothing turns into a fillet
     const pads = [];
     for (const r of routes) for (const end of [r.line[0], r.line[r.line.length - 1]]) { let best = null; for (const o of routes) { if (o === r || !meets(o.bb, [end.x - 40, end.y - 40, end.x + 40, end.y + 40])) continue; for (let i = 0; i < o.line.length; i += 2) { const p = o.line[i], dd = Math.hypot(p.x - end.x, p.y - end.y); if (dd < (p.w + end.w) * .5 && (!best || p.w > best.w)) best = { w: p.w, kind: o.kind }; } } if (best) { const wide = PATH[best.kind].rank >= PATH[r.kind].rank ? best.kind : r.kind; if (!PATH[wide].planks) pads.push({ x: end.x, y: end.y, r: Math.max(best.w, end.w) * .6, kind: wide }); } }
-    const SS = 1.5, CM = 20;
+    const SS = 1.5, CM = 20, kindsUsed = new Set(routes.map(r => r.kind).concat(areas.map(a => a.kind)));
     // the coverage of one kind of path over a chunk, 0..1 on a 1.5 px grid: every line, area and pad together, blurred
     const covMemo = new Map();
-    const coverage = (cb, kind) => { const key = kind + '|' + cb[0] + ',' + cb[1] + ',' + cb[2]; let c = covMemo.get(key); if (c === undefined) { if (covMemo.size > 5) covMemo.delete(covMemo.keys().next().value); c = coverage0(cb, kind); covMemo.set(key, c); } return c; };
+    const coverage = (cb, kind) => { const key = kind + '|' + cb[0] + ',' + cb[1] + ',' + cb[2]; let c = covMemo.get(key); if (c === undefined) { if (covMemo.size > 7) covMemo.delete(covMemo.keys().next().value); c = coverage0(cb, kind); covMemo.set(key, c); } return c; };
     const coverage0 = (cb, kind) => {
       const near = [cb[0] - CM, cb[1] - CM, cb[2] + CM, cb[3] + CM], rs = routes.filter(r => r.kind === kind && meets(r.bb, near)), as = areas.filter(a => a.kind === kind && meets(a.bb, near)), ps = pads.filter(p => p.kind === kind && p.x > near[0] - p.r && p.x < near[2] + p.r && p.y > near[1] - p.r && p.y < near[3] + p.r);
       if (!rs.length && !as.length) return null;
       const x0 = Math.floor(near[0] / SS), y0 = Math.floor(near[1] / SS), w = Math.ceil(near[2] / SS) - x0, h = Math.ceil(near[3] / SS) - y0, A = scratch('covA', w, h, { willReadFrequently: true }), Bc = scratch('covB', w, h, { willReadFrequently: true }), a = A.cx;
-      a.setTransform(1 / SS, 0, 0, 1 / SS, -x0, -y0); a.fillStyle = '#000'; a.strokeStyle = '#000'; a.lineCap = 'round'; a.lineJoin = 'round';
+      a.setTransform(1 / SS, 0, 0, 1 / SS, -x0, -y0); a.fillStyle = '#000'; a.strokeStyle = '#000'; a.lineCap = 'round'; a.lineJoin = 'round'; a.save(); if (env.allow) a.clip(env.allow, 'evenodd'); if (env.within) a.clip(env.within, 'evenodd');
       for (const r of rs) { const L = r.line; let run = false; for (let i = 1; i < L.length; i++) { const p = L[i - 1], q = L[i], m = Math.max(p.w, q.w); if (Math.max(p.x, q.x) < near[0] - m || Math.min(p.x, q.x) > near[2] + m || Math.max(p.y, q.y) < near[1] - m || Math.min(p.y, q.y) > near[3] + m) continue; a.lineWidth = (p.w + q.w) / 2; a.beginPath(); a.moveTo(p.x, p.y); a.lineTo(q.x, q.y); a.stroke(); run = true; } void run; }
-      for (const s of as) { a.beginPath(); if (s.e) a.ellipse(s.e.x, s.e.y, s.e.rx, s.e.ry, 0, 0, 6.283); else { a.moveTo(s.pts[0].x, s.pts[0].y); for (let i = 1; i < s.pts.length; i++) a.lineTo(s.pts[i].x, s.pts[i].y); a.closePath(); } a.fill(); }
       for (const p of ps) { a.beginPath(); a.arc(p.x, p.y, p.r, 0, 6.283); a.fill(); }
+      a.restore();
+      for (const s of as) { a.beginPath(); if (s.e) a.ellipse(s.e.x, s.e.y, s.e.rx, s.e.ry, 0, 0, 6.283); else { a.moveTo(s.pts[0].x, s.pts[0].y); for (let i = 1; i < s.pts.length; i++) a.lineTo(s.pts[i].x, s.pts[i].y); a.closePath(); } a.fill(); }
       Bc.cx.filter = 'blur(' + (PATH[kind].blur / SS).toFixed(2) + 'px)'; Bc.cx.drawImage(A.c, 0, 0); Bc.cx.filter = 'none';
       const d = Bc.cx.getImageData(0, 0, w, h).data, c = new Float32Array(w * h); for (let i = 0, q = 3; i < c.length; i++, q += 4) c[i] = d[q] / 255;
       const sample = (x, y) => { const fx = x / SS - x0 - .5, fy = y / SS - y0 - .5, ix = Math.floor(fx), iy = Math.floor(fy); if (ix < 0 || iy < 0 || ix >= w - 1 || iy >= h - 1) return 0; const u = fx - ix, v = fy - iy, q = iy * w + ix; return (c[q] * (1 - u) + c[q + 1] * u) * (1 - v) + (c[q + w] * (1 - u) + c[q + w + 1] * u) * v; };
@@ -440,7 +479,7 @@ window.GardenPaintGround = (function () {
       tiles(cb, 16, 6, salt, (tx, ty, r) => { for (let i = 0; i < 9; i++) { const x = tx + r() * 16, y = ty + r() * 16, v = cov.sample(x, y); if (v < lo || v > hi) continue; const k = env.kindAt ? env.kindAt(x, y) : 'lawn'; if (!k || SHORE.has(k) || k === 'soil') continue; const P = palette(k, season), q = rng(hash(Math.round(x * 8), Math.round(y * 8), salt) | 1), n = 2 + Math.floor(q() * 3); for (let b = 0; b < n; b++) blade(cx, x + b * .8, y + 1, (q() - .5) * 3.4, 2.6 + q() * 4.2, q() < .5 ? P.lo : P.mid, 1, .75); if (q() < .1) blob(cx, q, x, y, 3 + q() * 3, 1.5 + q(), 6, .5, P.lo, .5); } });
       cx.globalAlpha = 1;
     };
-    const clips = cx => { if (env.allow) cx.clip(env.allow, 'evenodd'); if (env.within) cx.clip(env.within, 'evenodd'); };
+    const clips = cx => { void cx; };   // (allow and within shape the coverage itself, softly: no op cuts on a ruled line)
     const verge = (cx, cb, cov, salt) => {
       if (season === 'winter') return;
       tiles(cb, 24, 8, salt, (tx, ty, r) => { for (let i = 0; i < 4; i++) { const x = tx + r() * 24, y = ty + r() * 24, v = cov.sample(x, y); if (v < .05 || v > .3 || noise(x / 70, y / 50, 211) < .57) continue; const k = env.kindAt ? env.kindAt(x, y) : 'lawn'; if (k !== 'lawn' && k !== 'meadow') continue;
@@ -451,21 +490,26 @@ window.GardenPaintGround = (function () {
     const fringe = kind => ({ bb: bbAll, seed: 720 + PATH[kind].rank, name: kind + ' fringe', draw(B, r0, cb) {
       const cov = coverage(cb, kind); if (!cov) return; const cx = B.cx; clips(cx);
       if (kind === 'gravel' || kind === 'earth') tiles(cb, 48, 6, 155, (tx, ty, r) => { for (let i = 0; i < 3; i++) { const x = tx + r() * 48, y = ty + r() * 48, s = 1 + r() * 2; if (cov.sample(x, y) < .6) continue; pebble(cx, rng(hash(Math.round(x * 8), Math.round(y * 8), 156) | 1), x, y, s, { shadow: '#6e5e3e', stone: '#c9bb98', stoneLo: '#a8997a', stoneHi: '#efe4c6' }); } });
+      if (kind === 'cobble' || kind === 'setts') {   // light and shade over the laid stones, and the middle worn paler by feet: one surface, not a grid of bricks
+        const body = alphaOf('alB', cov, v => smooth(.5, .62, v), 0, 15);
+        cx.globalAlpha = .3; fillThrough(B, cov, body, sx => wash(sx, cb, { base: '#c8b48c', lo: '#84765a', hi: '#f2e6c2', warm: '#d6b684', cool: '#a09e92' }, 137, 1.7)); cx.globalAlpha = 1;
+        cx.globalAlpha = .2; { const t = scratch('tint', cov.w, cov.h), pic = alphaOf('alM', cov, (v, nz) => smooth(.9, 1, v + nz), .1, 30); t.cx.fillStyle = '#f3e7c4'; t.cx.fillRect(0, 0, cov.w, cov.h); t.cx.globalCompositeOperation = 'destination-in'; t.cx.drawImage(pic, 0, 0); lay(cx, cov, t.c); } cx.globalAlpha = 1;
+      }
       if (kind === 'earth') grassIn(cx, cb, cov, .5, .78, 157);   // (a trail is half grown over)
       grassIn(cx, cb, cov, .3, .56, 159); verge(cx, cb, cov, 163);
     } });
     // The stones: courses that run across the screen, every stone its own width, tone and corners, lit on its upper left.
     // A stone is laid where its middle is on the road, so the road's edge is the stones' own edge, never a ruled line.
-    const TONES = ['#c6b088', '#d0bb92', '#dcc8a0', '#d6c4a0', '#bea67e', '#cfc6b0', '#b9ae98', '#d8c2aa'];
+    const TONES = ['#bfa97f', '#c9b489', '#d4c097', '#cebc98', '#b59d76', '#c6bda6', '#afa48e', '#d0b9a0'];
     const stones = (kind, phase) => ({ bb: bbAll, seed: 740 + phase, name: kind + ' stones ' + phase, draw(B, r0, cb) {
-      const cov = coverage(cb, kind); if (!cov) return; const cx = B.cx, winter = season === 'winter', fine = scaleOf(cx) >= 1.3; clips(cx);
+      const cov = coverage(cb, kind); if (!cov) return; const cx = B.cx, winter = season === 'winter', fine = scaleOf(cx) >= 1.3, over = kind === 'cobble' && kindsUsed.has('setts') ? coverage(cb, 'setts') : null; clips(cx);
       const setts = kind === 'setts', rowH = setts ? 8.4 : 6.6, tw = 96, y0 = Math.floor((cb[1] - 8) / rowH), y1 = Math.floor((cb[3] + 8) / rowH);
       for (let ry = y0; ry <= y1; ry++) { if (((ry % 3) + 3) % 3 !== phase) continue; const off = h01(ry, 7, 141) * tw, t0 = Math.floor((cb[0] - 12 - off) / tw), t1 = Math.floor((cb[2] + 12 - off) / tw);
         for (let t = t0; t <= t1; t++) { const r = rng(hash(t, ry, 143) | 1), ws = []; let sum = 0; while (sum < tw) { const w = (setts ? 8.5 : 5.6) + r() * (setts ? 7 : 3.2); ws.push(w); sum += w; } const f = tw / sum; let x = t * tw + off;
-          for (const w0 of ws) { const w = w0 * f, mx = x + w / 2 + (r() - .5) * .5, my = (ry + .5) * rowH + (r() - .5) * .9, tone = r(), c1 = r(), j = r(); x += w; if (mx < cb[0] - 8 || mx > cb[2] + 8) continue; const v = cov.sample(mx, my); if (v < .5 + (j - .5) * .12) continue;
-            const sw = w - 1.5 - j * .5, sh = rowH - 1.5 - (1 - j) * .5, base = TONES[tone < .14 ? 0 : tone < .36 ? 1 : tone < .58 ? 2 : tone < .72 ? 3 : tone < .82 ? 4 : tone < .9 ? 5 : tone < .96 ? 6 : 7], x0 = mx - sw / 2, yy = my - sh / 2;
+          for (const w0 of ws) { const w = w0 * f, mx = x + w / 2 + (r() - .5) * .5, my = (ry + .5) * rowH + (r() - .5) * .9, tone = r(), c1 = r(), j = r(); x += w; if (mx < cb[0] - 8 || mx > cb[2] + 8) continue; const v = cov.sample(mx, my); if (v < .5 + (j - .5) * .12 || over && over.sample(mx, my) > .46) continue;
+            const sw = w - 1.1 - j * .5, sh = rowH - 1.1 - (1 - j) * .5, base = TONES[tone < .14 ? 0 : tone < .36 ? 1 : tone < .58 ? 2 : tone < .72 ? 3 : tone < .82 ? 4 : tone < .9 ? 5 : tone < .96 ? 6 : 7], x0 = mx - sw / 2, yy = my - sh / 2;
             const rad = fine ? [1 + c1 * 1.6, 1 + j * 1.6, 1 + (1 - c1) * 1.6, 1 + (1 - j) * 1.6] : 1.4;
-            cx.globalAlpha = .34; cx.fillStyle = '#54462f'; cx.beginPath(); cx.roundRect(x0 + .6, yy + .8, sw, sh, rad); cx.fill();
+            cx.globalAlpha = .26; cx.fillStyle = '#5e4e34'; cx.beginPath(); cx.roundRect(x0 + .5, yy + .7, sw, sh, rad); cx.fill();
             cx.globalAlpha = 1; cx.fillStyle = base; cx.beginPath(); cx.roundRect(x0, yy, sw, sh, rad); cx.fill();
             if (!fine) continue;
             cx.globalAlpha = v > .97 ? .3 : .18; cx.fillStyle = '#f4e8c6'; cx.beginPath(); cx.roundRect(x0 + .6, yy + .5, sw * .62, sh * .3, 1); cx.fill();
@@ -481,7 +525,7 @@ window.GardenPaintGround = (function () {
       cx.globalAlpha = S0.margin; { const s = scratch('tint', cov.w, cov.h), pic = alphaOf('alM', cov, (v, nz) => smooth(.04, .5, v + nz), .16, 30); s.cx.fillStyle = winter ? '#8f8a6a' : '#7d7244'; s.cx.fillRect(0, 0, cov.w, cov.h); s.cx.globalCompositeOperation = 'destination-in'; s.cx.drawImage(pic, 0, 0); lay(cx, cov, s.c); } cx.globalAlpha = 1;
       const body = alphaOf('alB', cov, (v, nz) => smooth(.5 - .09, .5 + .09, v + nz), S0.edge, kind === 'earth' ? 22 : 15);
       if (kind === 'cobble' || kind === 'setts') {
-        fillThrough(B, cov, body, sx => wash(sx, cb, { base: S0.bed, lo: '#7c6e54', hi: '#a89878', warm: '#9c8a68', cool: '#8a8474' }, 131, .7));
+        fillThrough(B, cov, body, sx => wash(sx, cb, { base: S0.bed, lo: '#8c7c5c', hi: '#b8a680', warm: '#ae9a70', cool: '#9a927c' }, 131, .7));
         // (the stones are laid by their own ops below, a third of the courses each, so no slice is long)
       } else {
         const P = kind === 'gravel' ? { base: S0.bed, lo: '#b29a6b', hi: '#e5d5ab', warm: '#d9bf8a', cool: '#c9bd9c' } : { base: S0.bed, lo: '#9c855a', hi: '#d9c698', warm: '#c4a26c', cool: '#b0a682' };
@@ -504,10 +548,9 @@ window.GardenPaintGround = (function () {
       }
       cx.globalAlpha = 1;
     } };
-    const kindsUsed = new Set(routes.map(r => r.kind).concat(areas.map(a => a.kind)));
     return ['earth', 'gravel', 'cobble', 'setts'].filter(k => kindsUsed.has(k)).flatMap(k => k === 'cobble' || k === 'setts' ? [soft(k), stones(k, 0), stones(k, 1), stones(k, 2), fringe(k)] : [soft(k), fringe(k)]).concat(kindsUsed.has('boardwalk') || kindsUsed.has('steps') ? [planks] : []);
   }
 
   function status() { const layers = [...registry].map(h => ({ key: String(h.key).slice(0, 24), level: h.level, chunks: h.chunks, live: h.live, MB: h.MB, baked: h.baked, evicted: h.evicted, medianMs: h.median, p95Ms: h.p95, worstChunkMs: h.worstMs, worstSliceMs: h.sliceWorstMs })); return { layers, MB: +layers.reduce((a, l) => a + l.MB, 0).toFixed(1), slow: Object.assign({}, slow), lastError }; }
-  return { resetSlow() { slow.opMs = 0; slow.op = ''; slow.uploadMs = 0; slow.tickMs = 0; }, LIGHT, contact, castShadow, lightPool, layer, levelFor, LEVELS, KINDS, palette, paintKind, wash, kindGrid, layoutKinds, routeKind, ROUTE_WIDTH, ground, paths, centreLine, tiles, rng, hash, hashStr, noise, fbm, mix, scratch, status, get lastError() { return lastError; }, set lastError(v) { lastError = v; } };
+  return { resetSlow() { slow.opMs = 0; slow.op = ''; slow.uploadMs = 0; slow.tickMs = 0; }, LIGHT, contact, castShadow, lightPool, layer, levelFor, LEVELS, KINDS, palette, paintKind, wash, kindGrid, layoutKinds, layoutPaths, routeKind, ROUTE_WIDTH, ground, paths, flower, softCut, centreLine, tiles, rng, hash, hashStr, noise, fbm, mix, scratch, status, get lastError() { return lastError; }, set lastError(v) { lastError = v; } };
 })();

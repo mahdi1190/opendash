@@ -406,7 +406,7 @@ window.GardenNativeWorld = (function () {
       const pt = p => ({ x: p.x * W.cellW, y: W.sky + p.y * W.cellH });
       // every route in the kit's terms: its surface (the layout's own if it names one, else by tier and name) and painted width;
       // yards and plazas are still painted by their region (94-garden-paint-vale-1places.js)
-      const routes = D.routes.filter(r => r.points && r.points.length > 1 && r.tier !== 'plaza').map(r => { const kind = G.routeKind(r), path = gardenIslandRoutePath(r); return { id: r.id, kind, width: Number(r.paintWidth) || G.ROUTE_WIDTH[kind] || 26, closed: !!path.closed, points: path.points.map(pt) }; });
+      const laid = G.layoutPaths(W, D), routes = laid.routes;
       const kinds = packKinds || (packKinds = G.layoutKinds(W, D));
       const pc = pt({ x: start.x + .5, y: start.y + .5 }), pw = 250, ph = 130;
       const plaza = { centre: pc, bounds: { x: pc.x - pw / 2, y: pc.y - ph / 2, w: pw, h: ph }, points: terrainRoundedRect(pc.x - pw / 2, pc.y - ph / 2, pw, ph, 40) };
@@ -422,7 +422,7 @@ window.GardenNativeWorld = (function () {
         boxSig = (Math.imul(boxSig, 31) + 59) | 0;
       }
       const sig = [cbox.x0, cbox.y0, boxSig, cultivatedNow ? [...cultivatedNow].sort().join(',') : '', lakes.length, pathLoops.length, authoredBanks ? 'shore' : 'cells'].join('|');
-      try { packGround = GardenNativePainted.ground(scene, rootNode._inner, { W, box, coast, lawn, lakes, paths: pathLoops, routes, plaza, meadow, soil, owned, kinds, season: sc.season, sig: sig + '|' + soil.length + ':' + owned.length + ':' + pathLoops.length }); }
+      try { packGround = GardenNativePainted.ground(scene, rootNode._inner, { W, box, coast, lawn, lakes, paths: pathLoops, routes, areas: laid.areas, plaza, meadow, soil, owned, kinds, season: sc.season, sig: sig + '|' + soil.length + ':' + owned.length + ':' + pathLoops.length }); }
       catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); return false; }
       const blocked = new Set(); for (const p of D.static) { const boxes = [p, p.apron].filter(Boolean); for (const b of boxes) for (let y = Math.floor(b.y) - 1; y <= b.y + b.h; y++) for (let x = Math.floor(b.x) - 1; x <= b.x + b.w; x++) blocked.add(x + ',' + y); }
       if (typeof gardenPropsNow === 'function') for (const p of gardenPropsNow()) if (!p.walk && Number.isFinite(p.x)) for (let y = Math.floor(p.y) - 1; y <= p.y + (p.h || 1); y++) for (let x = Math.floor(p.x) - 1; x <= p.x + (p.w || 1); x++) blocked.add(x + ',' + y);   // (a sight placed at run time, such as the shore bench)
