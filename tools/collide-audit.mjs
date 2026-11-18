@@ -160,7 +160,7 @@ async function inPageAudit() {
     // what blocks at its base: boxes and cells along the base line, a third of a cell deep
     const band = { y0: yb - .35, y1: yb + .05 };
     // (only blocks that reach under this base: a neighbour's trunk beside it is the neighbour's)
-    const rs = solidsNear(a.x - .15, band.y0, b.x + .15, band.y1);
+    const rs = solidsNear(a.x - .15, band.y0, b.x + .15, band.y1).filter(r => !r.form);   // (a landform's box is its outline's bounds, not a block)
     let bx0 = Infinity, bx1 = -Infinity;
     for (const r of rs) { bx0 = Math.min(bx0, r.x0); bx1 = Math.max(bx1, r.x1); }
     const cellsUnder = []; for (let x = Math.floor(a.x); x <= Math.floor(b.x); x++) if (hardAt(x + .5, yb - .15)) cellsUnder.push(x);
