@@ -211,7 +211,7 @@ window.GardenPaintGround = (function () {
     const idOf = o => o.key + '@' + Math.round(o.x) + ',' + Math.round(o.y);
     /** Stand a sprite's shadow on the ground. o: { key (its texture), x, y (its base, world px), box [x0, y0, x1, y1] about the base, a (strength) } */
     function add(scene, o) {
-      if (!o || !o.key || !o.box || !(o.box[1] < -6) || (o.box[2] - o.box[0]) * -o.box[1] > 26e4) return null; /* (nothing flat, and nothing as big as a hillside: that is terrain, with its own shade) */ const id = idOf(o), old = items.get(id); if (old) { old.gone = 0; return id; }
+      if (!o || !o.key || !o.box || !(o.box[1] < -6) || (o.box[2] - o.box[0]) * -o.box[1] > 5e5) return null; /* (nothing flat, and nothing as big as a hillside: that is terrain, with its own shade) */ const id = idOf(o), old = items.get(id); if (old) { old.gone = 0; return id; }
       const W = at && at.W || (typeof GARDEN_WORLD !== 'undefined' ? GARDEN_WORLD : null); if (W && typeof gardenIslandBaseCell === 'function') { const c = gardenIslandBaseCell(Math.floor(o.x / W.cellW), Math.floor((o.y - 3 - W.sky) / W.cellH)); if (c && (c.ocean || c.freshwater)) return null; }   // (afloat: the water chain owns what a boat does to the water)
       const it = { id, scene, key: o.key, x: o.x, y: o.y, box: o.box.slice(), a: o.a == null ? .5 : o.a, gone: 0 }; items.set(id, it); if (L) L.set('s|' + id, opOf(it), id); return id;
     }
@@ -402,6 +402,7 @@ window.GardenPaintGround = (function () {
   }
   // env: { W, grid (kindGrid), season, coast: Path2D (the land's smooth outline), lawn: Path2D (the same, inset past the
   //        beach), box }.  Returns ops for layer(): the shore first, then each land kind present, the commonest first.
+  let lastMask = null;   /* (the last soft mask made, by any ground: masks share their canvases) */
   function ground(env) {
     const W = env.W, cw = W.cellW, chh = W.cellH, grid = env.grid, season = env.season || 'summer', MARG = 66, memo = new Map();
     const rank = cb => {
@@ -436,13 +437,25 @@ window.GardenPaintGround = (function () {
       cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); cx.drawImage(s.c, 0, 0); cx.restore();
     };
     const bb = [env.box.x, env.box.y, env.box.x + env.box.w, env.box.y + env.box.h], ops = [];
-    const pass = (n, shoreGroup) => ops.push({ bb, seed: 500 + n + (shoreGroup ? 0 : 10), name: (shoreGroup ? 'shore ' : 'land ') + n, draw(B, r, cb) {
+    // A kind is laid over a chunk in three bands, each its own op: one op for the whole chunk took up to 56 ms at level 3,
+    // and an op cannot be cut into slices. A band is a clip on whole canvas pixels, and the brushwork is a function of the
+    // place alone, so the bands meet without a line.
+    const BANDS = 3;
+    const band = (cx, cb, i) => {
+      const m = cx.getTransform(), py = y => Math.round(m.d * y + m.f), h = (cb[3] - cb[1]) / BANDS, y0 = i ? (py(cb[1] + h * i) - m.f) / m.d : cb[1] - 64, y1 = i < BANDS - 1 ? (py(cb[1] + h * (i + 1)) - m.f) / m.d : cb[3] + 64;
+      cx.beginPath(); cx.rect(cb[0] - 64, y0, cb[2] - cb[0] + 128, y1 - y0); cx.clip(); return [cb[0], Math.max(cb[1], y0), cb[2], Math.min(cb[3], y1)];
+    };
+    // (the bands of one pass share its mask: it is kept only until another mask is made, since masks share their canvases)
+    const maskOf = (cb, R, tag, test, domain) => { const key = cb[0] + ',' + cb[1] + ',' + cb[2] + '|' + tag; if (lastMask && lastMask.key === key) return lastMask.m; lastMask = null; const m = mask(cb, R, test, domain); lastMask = { key, m }; return m; };
+    const pass = (n, shoreGroup, i) => ops.push({ bb, seed: 500 + n + (shoreGroup ? 0 : 10), name: (shoreGroup ? 'shore ' : 'land ') + n + '.' + i, draw(B, r, cb) {
       const R = rank(cb), group = shoreGroup ? R.shore : R.land; if (n >= group.length) return; const ki = group[n], kind = KINDS[ki], cx = B.cx;
-      if (shoreGroup) { cx.save(); if (env.coast) cx.clip(env.coast, 'evenodd'); if (n === 0) paintKind(cx, kind, cb, season, env); else through(B, cb, kind, mask(cb, R, v => v === ki, null)); cx.restore(); return; }
-      if (n === 0 && !R.wet) return paintKind(cx, kind, cb, season, env);
-      through(B, cb, kind, mask(cb, R, n === 0 ? null : v => v === ki, R.wet ? env.lawn : null));
+      cx.save(); const sub = band(cx, cb, i);
+      if (shoreGroup) { if (env.coast) cx.clip(env.coast, 'evenodd'); if (n === 0) paintKind(cx, kind, sub, season, env); else through(B, sub, kind, maskOf(cb, R, 's' + n, v => v === ki, null)); }
+      else if (n === 0 && !R.wet) paintKind(cx, kind, sub, season, env);
+      else through(B, sub, kind, maskOf(cb, R, 'l' + n, n === 0 ? null : v => v === ki, R.wet ? env.lawn : null));
+      cx.restore();
     } });
-    pass(0, true); pass(1, true); pass(0, false); pass(1, false); pass(2, false); pass(3, false);
+    for (const [n, shoreGroup] of [[0, true], [1, true], [0, false], [1, false], [2, false], [3, false]]) for (let i = 0; i < BANDS; i++) pass(n, shoreGroup, i);
     return ops;
   }
 
