@@ -47,7 +47,7 @@ function gardenCollideData(mArg) {
     if (grid.hard[i]) { const why = _gcvCellWhy(x, y, m) || 'blocked cell ' + x + ',' + y; cells.push({ x, y, src: why }); seen.set(i, why); }
     else if (grid[i]) water.push({ x, y, src: grid.otherWater[i] || gardenIsWater(x, y) ? 'water' : 'water edge (no room for feet)' });
   }
-  const rects = solids ? solids.list.map(r => ({ x0: r.x0, y0: r.y0, x1: r.x1, y1: r.y1, src: r.src || 'something solid' })) : [];
+  const rects = solids ? solids.list.map(r => ({ x0: r.x0, y0: r.y0, x1: r.x1, y1: r.y1, src: r.src || 'something solid', form: r.form || null })) : [];
   const shores = [];
   for (const shape of [grid.shore, ...(grid.otherShapes || [])]) if (shape && shape.points) shores.push([shape.points, ...(shape.holes || [])]);
   const clicks = [], doors = [];
@@ -73,7 +73,7 @@ function gardenCollideData(mArg) {
 /** What stops the feet at x, y (cells), in plain words: boxes first, then the cell, then water. */
 function gardenCollideAt(x, y, mArg) {
   const D = gardenCollideData(mArg), W = GARDEN_WORLD, out = [];
-  for (const r of D.rects) if (x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1) out.push(r.src);
+  for (const r of D.rects) if (x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1 && (!r.form || _gwInPoly(x, y, r.form.poly))) out.push(r.src);
   const cx = Math.floor(x), cy = Math.floor(y), i = cy * W.cols + cx;
   if (cx >= 0 && cy >= 0 && cx < W.cols && cy < W.rows) {
     if (D.cellWhy.has(i)) out.push(D.cellWhy.get(i));
@@ -98,7 +98,8 @@ function _gcvDraw(g, D, scale) {
   for (const loops of D.shores) for (const loop of loops) if (loop && loop.length > 2) { g.beginPath(); g.moveTo(X(loop[0].x), Y(loop[0].y)); for (let k = 1; k < loop.length; k++) g.lineTo(X(loop[k].x), Y(loop[k].y)); g.closePath(); g.strokePath(); }
   // the boxes: trunks, posts, harbour clutter, small props
   g.fillStyle(GCV_COL.block, .55); g.lineStyle(lw * 1.2, 0x8f1d10, .95);
-  for (const r of D.rects) { g.fillRect(X(r.x0), Y(r.y0), (r.x1 - r.x0) * W.cellW, (r.y1 - r.y0) * W.cellH); g.strokeRect(X(r.x0), Y(r.y0), (r.x1 - r.x0) * W.cellW, (r.y1 - r.y0) * W.cellH); }
+  for (const r of D.rects) if (r.form) { const p = r.form.poly; g.beginPath(); g.moveTo(X(p[0][0]), Y(p[0][1])); for (let k = 1; k < p.length; k++) g.lineTo(X(p[k][0]), Y(p[k][1])); g.closePath(); g.fillPath(); g.strokePath(); }
+  for (const r of D.rects) if (!r.form) { g.fillRect(X(r.x0), Y(r.y0), (r.x1 - r.x0) * W.cellW, (r.y1 - r.y0) * W.cellH); g.strokeRect(X(r.x0), Y(r.y0), (r.x1 - r.x0) * W.cellW, (r.y1 - r.y0) * W.cellH); }
   // clickable areas in blue: the ground a click owns (solid line), its painted art (faint), its door step (dotted feel: thin)
   for (const c of D.clicks) {
     if (c.art) { g.lineStyle(lw * .8, GCV_COL.click, .28); g.strokeRect(X(c.art.x0), Y(c.art.y0), (c.art.x1 - c.art.x0) * W.cellW, (c.art.y1 - c.art.y0) * W.cellH); }

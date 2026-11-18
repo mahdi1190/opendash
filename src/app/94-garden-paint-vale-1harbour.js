@@ -170,7 +170,7 @@
     // 6. Things that stand up on the quay, the sand and the water
     const atCell = (x, y) => ({ x: x * cw, y: W.sky + y * ch });
     // bollards along the wall's top, clear of the pier
-    for (let x = quay.x - 5.4; x < quay.x + 6; x += 1.45) { if (x > 48.7 && x < 52.4) continue; const p = atCell(x, quay.y + 1.5); thing({ key: 'bollard', box: [-8, -16, 10, 5], x: p.x, y: p.y, draw: drawBollard(P) }); }
+    for (let x = quay.x - 5.4; x < quay.x + 6; x += 1.45) { if (x > 48.7 && x < 52.4) continue; const p = atCell(x, quay.y + 1.5); thing({ key: 'bollard', box: [-8, -16, 10, 5], foot: [-6, 8, 6], x: p.x, y: p.y, draw: drawBollard(P) }); }
     // where each stands is shared with walking (gardenIslandHarbourThings), so the feet meet what is drawn
     const looks = { crates: [[-30, -46, 34, 8], drawCrates(P, 1)], pots: [[-28, -34, 30, 6], drawPots(P)], net: [[-42, -60, 44, 8], drawNet(P)], 'boat-sand': [[-46, -26, 48, 10], drawBoat(P, '#3f6f8a', false)],
       crate1: [[-16, -24, 18, 6], drawCrates(P, 0)], bench: [[-30, -30, 30, 6], drawBench(P)], anchor: [[-22, -44, 22, 6], drawAnchor(P)], fishbox: [[-16, -16, 18, 5], drawFishBox(P)] };

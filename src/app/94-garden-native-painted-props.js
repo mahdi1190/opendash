@@ -928,7 +928,8 @@ window.GardenPaintedProps = (function () {
     for (const g of D.gates) {
       const frame = g.crossSpan ? ok(() => _gldIslandGateFrame(g)) : null; if (!frame) continue;
       const art = ok(() => gateArt(gateKind(g), g, frame, 'summer', true, null)); if (!art) continue;
-      for (const [id, , size, dx, dy] of art.lib) if (/^tree\./.test(id)) out.push([+((frame.x + dx) / W.cellW).toFixed(2), +((frame.y + dy - W.sky) / W.cellH).toFixed(2), size.h > 140 ? .5 : .4]);
+      // (the trunk where the drawing stands it, as wide as it is drawn: GardenNativePainted.trunkFoot)
+      for (const [id, v, size, dx, dy] of art.lib) if (/^tree\./.test(id)) { const f = window.GardenNativePainted && GardenNativePainted.trunkFoot ? GardenNativePainted.trunkFoot(id, v, size.h) : null; out.push([+((frame.x + dx + (f ? f.dx : 0)) / W.cellW).toFixed(2), +((frame.y + dy - W.sky) / W.cellH).toFixed(2), f ? +gardenTrunkBoxWidth(f.w).toFixed(2) : size.h > 140 ? .5 : .4]); }
     }
     gateTreesMemo = { d: D, out };
     return out.concat(fallsFeet);

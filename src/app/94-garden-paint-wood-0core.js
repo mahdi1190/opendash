@@ -407,6 +407,13 @@ window.GardenPaintWood = (function () {
   function covers(cx, cy) { const D = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data; if (!D || !D.regions) return false; for (const r of D.regions) { const def = WOODS[r.id]; if (def && def.mood !== 'meadow' && inside(cx, cy, r.polygons[0])) return true; } return false; }
   /** The painted trees' trunk feet, in cells ({x0, y0, x1, y1}), for the walking boxes (94-garden-world-0walk.js), and a
    * signature that changes only when the trees do (a repaint with the same trees keeps the route grid). */
-  function trunks() { const S = state; if (!S || !S.M) return null; if (!S.trunks) { const list = S.M.trees.filter(t => t.trunk).map(t => t.trunk); let h = list.length; for (const b of list) h = (Math.imul(h, 31) + Math.round(b.x0 * 64) * 7 + Math.round(b.y0 * 64)) | 0; S.trunks = { list, sig: list.length + ':' + h }; } return S.trunks; }
+  // Each trunk box stands where its drawing stands the trunk and is as wide as it is drawn (GardenNativePainted.trunkFoot; a
+  // mirrored tree mirrors it): the anchor is not always the trunk (the second green oak's is most of a cell to one side).
+  function trunkBox(t, W) {
+    const GP = window.GardenNativePainted, f = GP && GP.trunkFoot ? GP.trunkFoot(t.id, t.v, t.h) : null; if (!f) return t.trunk;
+    const x = t.x + f.dx * t.scale * (t.flip ? -1 : 1), half = gardenTrunkBoxWidth(f.w * t.scale) * W.cellW / 2;
+    return { x0: (x - half) / W.cellW, x1: (x + half) / W.cellW, y0: t.trunk.y0, y1: t.trunk.y1 };
+  }
+  function trunks() { const S = state; if (!S || !S.M) return null; if (!S.trunks) { const list = S.M.trees.filter(t => t.trunk).map(t => trunkBox(t, S.W)); let h = list.length; for (const b of list) h = (Math.imul(h, 31) + Math.round(b.x0 * 64) * 7 + Math.round(b.y0 * 64)) | 0; S.trunks = { list, sig: list.length + ':' + h }; } return S.trunks; }
   return { paint, tick, clear, playerCanopies: () => state ? state.covering : null, status, memory, covers, trunks, WOODS, thicketWood: id => !!(WOODS[id] && WOODS[id].mood !== 'meadow'), get lastError() { return lastError; } };
 })();

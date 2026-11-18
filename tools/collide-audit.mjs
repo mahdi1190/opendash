@@ -105,13 +105,15 @@ async function inPageAudit() {
   const objs = [];
   const visit = o => {
     if (!o) return; const list = o.list || null;
-    if ((o.type === 'Image' || o.type === 'Sprite') && o.texture && o.active !== false) {
+    if ((o.type === 'Image' || o.type === 'Sprite') && o.texture) {
       const k = String(o.texture.key || ''), rec = owner(o), kind = KIND(k, rec);
       if (kind && o.depth > -9000) {
         const P = pixelsOf(o);
         if (P && P.vb >= 0 && P.u1 >= P.u0) {
-          const mx = o.getWorldTransformMatrix(), ox = o.displayOriginX, oy = o.displayOriginY;
-          const wp = (u, v) => { const p = mx.transformPoint(u - ox, v - oy); return { X: p.x, Y: p.y }; };
+          // (copied: Phaser hands back one shared matrix for every object)
+          const wm = o.getWorldTransformMatrix(), mx = { a: wm.a, b: wm.b, c: wm.c, d: wm.d, e: wm.e, f: wm.f }, ox = o.displayOriginX, oy = o.displayOriginY;
+          mx.det = mx.a * mx.d - mx.b * mx.c;
+          const wp = (u, v) => { const x = u - ox, y = v - oy; return { X: x * mx.a + y * mx.c + mx.e, Y: x * mx.b + y * mx.d + mx.f }; };
           const a = wp(P.u0, P.vb), b = wp(P.u1 + 1, P.vb + 1), t = wp(P.u0, P.top), bb = o.getBounds();
           const X0 = Math.min(a.X, b.X), X1 = Math.max(a.X, b.X), Yb = Math.max(a.Y, b.Y), heightPx = Math.abs(Yb - t.Y);
           const md = rec && rec.metadata || {}, prop = md.prop || null;
@@ -125,12 +127,15 @@ async function inPageAudit() {
   visit(scene.children);
   // opaque paint at a world point, from any standing sprite (inverse transform into its texture)
   const buckets = new Map(), BK = 96; const bkey = (i, j) => i + ',' + j;
-  for (const o of objs) { const b = o.bounds; for (let j = Math.floor(b.y / BK); j <= Math.floor((b.y + b.h) / BK); j++) for (let i = Math.floor(b.x / BK); i <= Math.floor((b.x + b.w) / BK); i++) { const k = bkey(i, j); (buckets.get(k) || buckets.set(k, []).get(k)).push(o); } }
-  const tmp = { x: 0, y: 0 };
+  // vector drawings (props, sights, decorations drawn as shapes): their own hit test is their paint
+  const vec = [];
+  for (const r of nw.entities.values()) { const k = r.metadata && r.metadata.kind; if (!['prop', 'scenery', 'decor', 'land'].includes(k) || !r.handle || !r.bounds) continue; vec.push({ vector: true, rec: r, bounds: { x: r.bounds.x, y: r.bounds.y, w: r.bounds.width, h: r.bounds.height } }); }
+  for (const o of objs.concat(vec)) { const b = o.bounds; for (let j = Math.floor(b.y / BK); j <= Math.floor((b.y + b.h) / BK); j++) for (let i = Math.floor(b.x / BK); i <= Math.floor((b.x + b.w) / BK); i++) { const k = bkey(i, j); (buckets.get(k) || buckets.set(k, []).get(k)).push(o); } }
   const paintAt = (X, Y, except) => {
     for (const o of buckets.get(bkey(Math.floor(X / BK), Math.floor(Y / BK))) || []) {
       if (o === except) continue; const b = o.bounds; if (X < b.x || X > b.x + b.w || Y < b.y || Y > b.y + b.h) continue;
-      const p = o.mx.applyInverse(X, Y, tmp), u = Math.floor(p.x + o.ox), v = Math.floor(p.y + o.oy);
+      if (o.vector) { if (!o.rec.handle.hitPoint || o.rec.handle.hitPoint(X, Y)) return o; continue; }   // (a drawing with no hit test of its own: its box)
+      const M = o.mx, dx = X - M.e, dy = Y - M.f, lx = (M.d * dx - M.c * dy) / M.det, ly = (M.a * dy - M.b * dx) / M.det, u = Math.floor(lx + o.ox), v = Math.floor(ly + o.oy);
       if (u >= 0 && v >= 0 && u < o.P.w && v < o.P.h && o.P.a[v * o.P.w + u] >= 120) return o;
     }
     return null;
@@ -175,6 +180,7 @@ async function inPageAudit() {
   // invisible walls: boxes and cells that block where no standing thing has paint
   const painted = (x0, y0, x1, y1) => { for (const fy of [.15, .5, .85]) for (const fx of [.15, .5, .85]) { const p = toPx(x0 + (x1 - x0) * fx, y0 + (y1 - y0) * fy); if (paintAt(p.X, p.Y)) return true; } return false; };
   for (const r of D.rects) {
+    if (r.form) continue;   // (a landform: its outline is checked against its drawing below)
     if (painted(r.x0 - .06, r.y0 - .1, r.x1 + .06, r.y1 + .04)) continue;
     push({ kind: 'invisible-wall', obj: /trunk/.test(r.src) ? 'tree' : /harbour/.test(r.src) ? 'harbour' : /lamp|pier|post/.test(r.src) ? 'prop' : /wall|rock/.test(r.src) ? 'wall' : 'prop', name: r.src, x: +((r.x0 + r.x1) / 2).toFixed(2), y: +r.y1.toFixed(2), w: +(r.x1 - r.x0).toFixed(2), h: +(r.y1 - r.y0).toFixed(2), detail: 'box ' + [r.x0, r.y0, r.x1, r.y1].map(v => v.toFixed(2)).join(', ') + ' with nothing drawn on it' });
   }
@@ -269,6 +275,8 @@ try {
   // synthetic progress in this throwaway save: the five regional gates are open
   await evq(`(()=>{const g=_gdG();for(const id of ['island-woods','island-mill','island-ruins','island-orchard','island-headland'])g.led['gt.'+id]={d:'2026-11-12',k:'gk',i:{['gate:'+id]:1},n:1};_gdSave();return 1})()`);
   await evq(`setView('home')`); await sleep(3000); await evq(`setView('garden')`); await sleep(14000); await evq(close); await sleep(1000);
+  // a look at the whole map first, so every painter places what it only places in view (the orchard's trees)
+  await evq(`gardenCamSet('fit')`); await sleep(14000); await evq(`gardenCamSet('follow')`); await sleep(3000);
   console.log('garden', await evq(`JSON.stringify({open:[..._GD_LAND].filter(x=>/^zn-/.test(x)),native:!!(window.GardenNative&&GardenNative.active()),version:typeof APP_VERSION!=='undefined'?APP_VERSION:''})`));
   const result = await ev(`(${inPageAudit.toString()})()`, 600000);
   result.label = LABEL; result.clock = CLOCK; result.errors = errors.slice(0, 20); result.when = new Date().toISOString();
