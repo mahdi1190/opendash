@@ -43,9 +43,12 @@ function achState() {
     histXp: Math.max(0, Number(s.histXp) || 0),
   };
 }
-function _achSave(s) {
+function _achSave(s, awards) {
   state.achievements = { v: 2, unlocked: s.unlocked, notes: s.notes, checked: !!s.checked, hist: s.hist || {}, packs: s.packs || {}, histSeen: s.histSeen || '', xpPaid: s.xpPaid || '', histXp: s.histXp || 0 };
-  if (typeof saveUI === 'function') saveUI();
+  if (awards && Object.keys(awards).length) {
+    Object.assign(_gmG().awards, awards);
+    _gmSave();
+  } else if (typeof saveUI === 'function') saveUI();
 }
 function achUnlockedIds() { return Object.keys(achState().unlocked).filter(id => !!achDef(id)); }
 /** The facts view (92-game-4facts.js); without the game module, the old flat facts. */
@@ -160,12 +163,6 @@ function _achHistXp(s, xp) {
   s.histXp += pay;
   return pay;
 }
-function _achPay(id, day, xp, hist) {
-  if (!(xp > 0) || typeof _gmAwardRaw !== 'function') return 0;
-  const rec = { d: day, xp, k: 'ach' };
-  if (hist) rec.h = 1;
-  return _gmAwardRaw('ach:' + id, rec) ? xp : 0;
-}
 function achCheck() {
   if (typeof state === 'undefined' || !state) return [];
   // Wait for the state file (99-boot.js -> gameFactsBoot): a pack first checked on an empty cache would
@@ -188,23 +185,32 @@ function achCheck() {
   // XP: each unlock once; history at half rate, 2,000 in all at most. The core's earlier unlocks are paid once too.
   let histXp = 0;
   const live = [], hist = [];
+  const aw = (state.game && state.game.awards) || {}, pending = {};
+  // Keep new payments with their history checkpoint until the whole check succeeds.
+  function pay(id, date, xp, historical) {
+    const key = 'ach:' + id;
+    if (!(xp > 0) || typeof _gmG !== 'function' || aw[key] || pending[key]) return;
+    const rec = { d: date, xp, k: 'ach' };
+    if (historical) rec.h = 1;
+    pending[key] = rec;
+    histXp += xp;
+  }
   for (const d of fresh) {
     const h = !!s.hist[d.id] && s.hist[d.id] === day && _ach.histSession.has(d.pack);
     (h ? hist : live).push(d.id);
-    histXp += _achPay(d.id, day, h ? _achHistXp(s, d.xp) : d.xp, h);
+    pay(d.id, day, h ? _achHistXp(s, d.xp) : d.xp, h);
   }
   if (!s.xpPaid) {
-    const aw = (state.game && state.game.awards) || {};
     for (const id of Object.keys(s.unlocked)) {
       const d = achDef(id);
       if (!d || aw['ach:' + id] || fresh.includes(d)) continue;
-      histXp += _achPay(id, s.unlocked[id], _achHistXp(s, d.xp), true);
+      pay(id, s.unlocked[id], _achHistXp(s, d.xp), true);
     }
     s.xpPaid = day; changed = true;
   }
   if (!fresh.length && !changed && s.checked) return [];
   s.checked = true;
-  _achSave(s);
+  _achSave(s, pending);
   if (typeof _agMemo !== 'undefined') _agMemo.key = '';   // today's look may now include a reward
   if (typeof _gf !== 'undefined') { _gf.view = null; }
   for (const d of fresh) _achRewardEmit(d, hist.includes(d.id));
