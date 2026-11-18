@@ -145,7 +145,7 @@ wdTaleAdd({ id: 'v-beans', kind: 'small', title: 'Danny’s beans', journal: 'Be
 ] });
 
 wdTaleAdd({ id: 'v-heron', kind: 'small', title: 'One spot', journal: 'The heron on the second stone.', gentle: 'keep', steps: [
-  { id: 'a', who: 'place', near: ['ls-heronry', 'ls-heron-isle'], when: { open: [2], tod: ['dusk'] }, lines: [
+  { id: 'a', who: 'place', near: ['ls-heron-isle', 'ls-heronry'], when: { open: [2], tod: ['dusk'] }, lines: [
     'Two flat stones in the shallows. An old heron stands on the left one. The right one is empty, and the heron faces it.'] },
   { id: 'b', who: 'wick', when: { heart: 2, days: 1 }, lines: [
     'The old heron. Its mate stood on the other stone for twenty years. Then didn’t. It still stands there at dusk. Not waiting. Herons aren’t daft.',
