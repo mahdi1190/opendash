@@ -29,6 +29,7 @@
 const _SCH_FORGET_MS = 2500, _SCH_RELIGHT_MS = 120000, _SCH_RESIZE_MS = 150;
 const _schHosts = new Map();       // host element -> record
 const _schGone = new Map();        // key -> { rec, at } (removed hosts, kept for _SCH_FORGET_MS)
+let _schForgetTimer = 0;
 let _schHiddenMs = 0, _schHiddenAt = 0, _schInit = false, _schRO = null, _schIO = null, _schTimer = 0;
 const _schT0 = new Map();          // key -> own start time (hosts the continuity file does not stamp: tiles, stills)
 
@@ -222,10 +223,25 @@ function _schSweep() {
     _schHosts.delete(el);
     if (_schRO) _schRO.unobserve(el);
     if (_schIO) _schIO.unobserve(el);
-    if (rec.r) { rec.r.stop(); _schGone.set(rec.key, { rec, at: now }); }
+    clearTimeout(rec.rt);
+    _schStillDone(rec, true);
+    if (rec.r) {
+      rec.r.stop();
+      const previous = _schGone.get(rec.key);
+      if (previous && previous.rec.r) previous.rec.r.destroy();
+      _schGone.set(rec.key, { rec, at: now });
+    }
   }
-  for (const [k, g] of _schGone) if (now - g.at > _SCH_FORGET_MS) { _schGone.delete(k); if (g.rec.r) g.rec.r.destroy(); }
-  if (_schGone.size) setTimeout(_schSweep, _SCH_FORGET_MS + 100);
+  let next = Infinity;
+  for (const [key, gone] of _schGone) {
+    const left = gone.at + _SCH_FORGET_MS - now;
+    if (left >= 0) { next = Math.min(next, left); continue; }
+    _schGone.delete(key);
+    if (gone.rec.r) gone.rec.r.destroy();
+  }
+  if (!_schForgetTimer && next < Infinity) {
+    _schForgetTimer = setTimeout(() => { _schForgetTimer = 0; _schSweep(); }, Math.ceil(next) + 1);
+  }
 }
 function _schMount(el) {
   if (_schHosts.has(el)) return;
@@ -412,7 +428,7 @@ function _schCacheId(rec) {
  * canvas, shown once decoded; the canvas fades in over it when ready (the same frame: the live scene starts from it).
  */
 function _schStill(rec, blob) {
-  if (rec.stillImg || rec.el.classList.contains('sc-ready') || typeof URL === 'undefined' || typeof Image !== 'function') return;
+  if (!rec.el.isConnected || rec.stillImg || rec.el.classList.contains('sc-ready') || typeof URL === 'undefined' || typeof Image !== 'function') return;
   const url = URL.createObjectURL(blob), img = new Image();
   img.className = 'sc-still'; img.alt = ''; img.setAttribute('aria-hidden', 'true'); img.decoding = 'async';
   rec.stillImg = img; rec.stillUrl = url;

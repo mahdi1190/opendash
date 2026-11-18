@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.73.4] - 2026-11-18
+
+### Changed
+
+- Browsing the painted scene gallery releases memory when you leave a preview. Freeflo also loads fewer unused scene definitions when it starts.
+
 ## [2.73.3] - 2026-11-18
 
 ### Changed
