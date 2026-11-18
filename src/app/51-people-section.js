@@ -1017,9 +1017,16 @@ registerSidebarBlock('tasks', {
     const pref = sbListPrefsFor('people', SB_PEOPLE_DEFAULTS);
     const cur = state.view.startsWith('person:') ? state.view.slice(7) : (typeof pcCurrentPersonId === 'function' ? pcCurrentPersonId() : null);
     const st = sbStats().people;
-    const scored = people.filter(p => !p.inactive || p.pinned || p.id === cur).map(p => ({ p, n: openTaskCountFor(p.id) }));
+    const counts = new Map();
+    if (people.length) {
+      const idx = pplIndex();
+      for (const task of ctx.counts.open) {
+        for (const id of effPeople(task, idx)) counts.set(id, (counts.get(id) || 0) + 1);
+      }
+    }
+    const scored = people.filter(p => !p.inactive || p.pinned || p.id === cur).map(p => ({ p, n: counts.get(p.id) || 0 }));
     const pick = scored.filter(x => x.p.pinned || x.p.id === cur || pref.sort !== 'open' || x.n > 0);
-    if (cur && !pick.some(x => x.p.id === cur)) { const p = getPerson(cur); if (p && !p.self) pick.push({ p, n: openTaskCountFor(p.id) }); }
+    if (cur && !pick.some(x => x.p.id === cur)) { const p = getPerson(cur); if (p && !p.self) pick.push({ p, n: counts.get(p.id) || 0 }); }
     sbOrderedList(el, {
       key: 'people', noun: 'People', defaults: SB_PEOPLE_DEFAULTS,
       items: pick.map(({ p, n }) => ({ id: p.id, label: p.name, open: n, total: (st.get(p.id) || {}).total || 0, recent: (st.get(p.id) || {}).recent || 0, pinned: !!p.pinned, p })),

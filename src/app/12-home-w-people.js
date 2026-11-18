@@ -225,12 +225,12 @@ function _hbpEvents(today, tomorrow) {
   }
   return out;
 }
-function _hbpTasks() {
+function _hbpTasks(idx) {
   const focus = typeof homeFocusTasks === 'function' ? homeFocusTasks().map(x => x.i.id) : [];
   const out = [];
   for (const i of getAllItems()) {
     if (statusOf(i.id) === 'done') continue;
-    const ppl = typeof effPeople === 'function' ? effPeople(i) : (i.people || []);
+    const ppl = typeof effPeople === 'function' ? effPeople(i, idx) : (i.people || []);
     if (!ppl.length) continue;
     const waiting = typeof homeIsWaiting === 'function' && homeIsWaiting(i);
     const wp = waiting && typeof homeWaitingPerson === 'function' ? homeWaitingPerson(i) : null;
@@ -258,8 +258,8 @@ function _hbpRender(el, ctx) {
   const today = todayStr();
   const tomorrow = tomorrowStr();
   const events = _hbpEvents(today, tomorrow);
-  const tasks = _hbpTasks();
   const idx = typeof pplIndex === 'function' ? pplIndex() : undefined;
+  const tasks = _hbpTasks(idx);
   const first = homePeopleToday({ people: state.people, idx, events, tasks, today, nowHM: _hbpHM(new Date(Clock.now())), locale: APP_CONFIG.locale, max: 5 });
   const seen = _hbpLastSeen(first.rows.filter(r => r.meeting && !r.group).map(r => r.id), today);
   const res = Object.keys(seen).length ? homePeopleToday({ people: state.people, idx, events, tasks, today, nowHM: _hbpHM(new Date(Clock.now())), lastSeen: seen, locale: APP_CONFIG.locale, max: 5 }) : first;

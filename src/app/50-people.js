@@ -39,7 +39,7 @@ function pplIndex() {
   return _pplIdxCache.idx;
 }
 /** People linked to a task (ids): explicit + named by a tag - unlinked. */
-function effPeople(item) { return item ? pplLinked(state, item, pplIndex()) : []; }
+function effPeople(item, idx) { return item ? pplLinked(state, item, idx || pplIndex()) : []; }
 /** Tasks linked to a person. opts.open: only open ones (the default for counts). */
 function tasksForPerson(personId, opts) {
   const idx = pplIndex();                  // once per call, not once per task (the sidebar asks for every person)

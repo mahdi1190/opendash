@@ -249,6 +249,7 @@ function _cmpDate(a, b) {
 /** Sort a list. by: date | priority | title | created | manual | completed. view: for manual order. */
 function sortItems(items, by, view) {
   const arr = items.slice();
+  if (arr.length < 2) return arr;
   view = view || state.view;
   if (by === 'manual') {
     const order = state.customOrder[view] || [];
@@ -261,7 +262,10 @@ function sortItems(items, by, view) {
     return arr;
   }
   if (by === 'priority') arr.sort((a, b) => ((PRIORITY_ORDER[effPriority(a)] ?? 3) - (PRIORITY_ORDER[effPriority(b)] ?? 3)) || _cmpDate(a, b));
-  else if (by === 'title') arr.sort((a, b) => effTitle(a).localeCompare(effTitle(b), _locale(), { sensitivity: 'base' }));
+  else if (by === 'title') {
+    const collator = new Intl.Collator(_locale(), { sensitivity: 'base' });
+    arr.sort((a, b) => collator.compare(effTitle(a), effTitle(b)));
+  }
   else if (by === 'created') arr.sort((a, b) => _createdTs(b) - _createdTs(a));
   else if (by === 'completed') arr.sort((a, b) => closedAt(b) - closedAt(a));
   else arr.sort(_cmpDate);

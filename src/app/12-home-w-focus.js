@@ -70,8 +70,9 @@ function homeFocusDoneToday(shownIds) {
 /* ---------- render ---------- */
 function _hfRender(root, ctx) {
   _hfCtx = ctx;
-  const focus = homeFocusTasks();
-  const total = homeFocusCandidateCount();
+  const candidates = homeFocusTasks(Infinity);
+  const focus = candidates.slice(0, homeFocusConfig().count);
+  const total = candidates.length;
   const today = todayStr();
   if (_hfShown.day !== today) { _hfShown.day = today; _hfShown.ids = new Set(); }
   for (const f of focus) _hfShown.ids.add(f.i.id);
