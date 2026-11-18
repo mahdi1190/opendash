@@ -1,9 +1,8 @@
 /* ============================================================
-   GARDEN LIFE, the Nature book (2.23). A tidy collection: silhouettes until you have found something, the day you first saw it, hints for where and when. It is a section of the Almanac (the Notice board).
+   GARDEN LIFE, discoveries and their rewards. The Field Journal shows the creatures and keepsakes you have found.
 
      gardenLifeFound(kind, id, o)  kind 'c' creature, 'e' surprise, 'k' keepsake: note it (the first time), pay once. Automatic sightings stay in Recent; {userAction:true} answers a real hello/pickup. Synced in state.garden.disc as 'lf.<kind>.<id>': <first day>.
      gardenLifeHas(kind, id)    have you found it?
-     gardenLifeBookTab(el, m)   the panel
      gardenLifeFacts()          {creatures, surprises, keepsakes, rare, found: {c: {id: day}, e, k}} for anything that wants to unlock by them: pet unlock rows can say {life: 'fox'} or {lifeCount: 10}
      gardenLifeUnlocked(rule)   the check for those rules: true, or false
 
@@ -11,8 +10,6 @@
    not lost (gardenLifeSettle). Saying hello again pays nothing, so there is nothing to farm. Keys are prefixed, so nothing that counts plants and visitors in `disc` is affected.
    ============================================================ */
 const GL_ECON = Object.freeze({ coins: Object.freeze({ common: 1, uncommon: 2, rare: 4, epic: 8, legendary: 15 }), xp: Object.freeze({ common: 1, uncommon: 2, rare: 3, epic: 5, legendary: 8 }), keepsake: 1, dayCoins: 12 });
-const _GL_SHELVES = Object.freeze([['insect', 'Insects', 'bug'], ['bird', 'Birds', 'bird'], ['animal', 'Animals', 'paw-print'], ['pond', 'Pond life', 'waves'], ['surprise', 'Surprises', 'sparkles'], ['keep', 'Keepsakes', 'gem']]);
-const _glb = { shelf: '' };
 
 function _glKey(kind, id) { return `lf.${kind}.${id}`; }
 function gardenLifeHas(kind, id) { try { return !!_gdG().disc[_glKey(kind, id)]; } catch (e) { return false; } }
@@ -66,7 +63,6 @@ function _glbShow(kind, def, o) {
   const explicit = !!(o && o.userAction) && kind !== 'k';
   gardenMessage(text, { ambient: !explicit, source: 'nature:' + kind + ':' + def.id, icon: 'book-open', ...(explicit ? { action: { label: 'Field Journal', run: () => gardenJournalOpen({ sec: kind === 'k' ? 'keep' : 'creatures', kind: 'seen' }) } } : {}) });
 }
-function _glbShelfOf(kind, def) { return kind === 'e' ? 'surprise' : kind === 'k' ? 'keep' : def.group; }
 /** A picture for the book: the creature's kit art at rest, in an svg of its own, framed by its real size. */
 function _glbArt(kind, def, px) {
   let inner = '';
@@ -87,61 +83,6 @@ function _glbFit(root) {
         svg.setAttribute('viewBox', [cx - side / 2, cy - side / 2, side, side].map(_glF).join(' '));
       } catch (e) { /* it keeps the default frame */ }
     }
-  });
-}
-/* ---------- the panel ---------- */
-const _GL_TOD = Object.freeze({ dawn: 'dawn', day: 'daytime', dusk: 'dusk', night: 'night' });
-function _glbWhen(def) {
-  const w = def.when || {}, bits = [];
-  if (w.seasons && w.seasons.length < 4) bits.push(w.seasons.map(s => (typeof GARDEN_SEASON_LABEL !== 'undefined' && GARDEN_SEASON_LABEL[s]) || s).join(', '));
-  if (w.tod && w.tod.length < 4) bits.push(w.tod.map(t => _GL_TOD[t] || t).join(', '));
-  if (w.weather && w.weather.includes('rain')) bits.push('in the rain');
-  return bits.join(' · ');
-}
-function _glbCounts() {
-  const n = (kind, list) => list.filter(d => gardenLifeHas(kind, d.id)).length;
-  return { c: n('c', GARDEN_CREATURES), e: n('e', GARDEN_LIFE_EGGS), k: n('k', GARDEN_KEEPSAKES) };
-}
-function gardenLifeBookTab(el) {
-  const shelf = _glb.shelf || 'insect', C = _glbCounts();
-  const total = GARDEN_CREATURES.length + GARDEN_LIFE_EGGS.length + GARDEN_KEEPSAKES.length, have = C.c + C.e + C.k;
-  const head = _gdpEl('div', 'gl-book-head');
-  head.innerHTML = `<b>${have}</b><span class="muted"> of ${total} found</span><span class="gd-xpbar gl-book-bar"><i style="width:${Math.round(have / total * 100)}%"></i></span>`;
-  el.appendChild(head);
-  el.appendChild(_gdxChips(_GL_SHELVES.map(s => [s[0], s[1]]), shelf, (k) => { _glb.shelf = k; _gdxRepaintTab(); }));
-  const list = shelf === 'surprise' ? GARDEN_LIFE_EGGS.map(d => ['e', d]) : shelf === 'keep' ? GARDEN_KEEPSAKES.map(d => ['k', d]) : GARDEN_CREATURES.filter(d => d.group === shelf).map(d => ['c', d]);
-  const g = _gdG(), place = 'nature:' + shelf, rarities = Object.keys(GARDEN_RARITY), found = ([kind, d]) => (g.disc[_glKey(kind, d.id)] ? 0 : 1);
-  const cmp = (a, b) => found(a) - found(b) || rarities.indexOf(a[1].rarity) - rarities.indexOf(b[1].rarity) || String(a[1].name).localeCompare(b[1].name);
-  gardenPager(el, { key: place, items: gardenPagerOrder(place, list, ([k, d]) => k + d.id, cmp), grid: 'gd-grid gd-alm-grid gl-book-grid gpg-book', row: 150, draw: ([kind, d]) => {
-    const day = g.disc[_glKey(kind, d.id)], known = !!day;
-    const c = _gdpEl('button', 'gd-almcard gl-bookcard' + (known ? '' : ' is-unknown') + (d.rarity ? ' gd-r-' + d.rarity : '')); c.type = 'button';
-    const art = _gdpEl('div', 'gd-card-art' + (known ? '' : ' gl-silhouette')); art.innerHTML = _glbArt(kind, d, 72); c.appendChild(art);
-    c.appendChild(_gdpEl('b', null, known ? d.name : '???'));
-    c.appendChild(_gdpEl('small', 'muted', known ? (kind === 'c' ? _glbWhen(d) || 'Any time' : day) : (d.rarity && GARDEN_RARITY[d.rarity] ? GARDEN_RARITY[d.rarity].label : 'Keep looking')));
-    c.onclick = () => _glbDetail(kind, d, day);
-    _glbFit(c);
-    return c;
-  } });
-}
-function _glbDetail(kind, d, day) {
-  const back = _gdp.pop && _gdp.pop.tab;   // closing an entry goes back to the page of the book you were on
-  openDialog({
-    title: day ? d.name : 'Not found yet', width: 480, className: 'gd-popup', onClose: back ? () => setTimeout(() => gardenPopupOpen(back), 0) : undefined,
-    body(el) {
-      el.classList.add('gd-almdlg');
-      const art = _gdpEl('div', 'gd-almdlg-art' + (day ? '' : ' gl-silhouette')); art.innerHTML = _glbArt(kind, d, 128); el.appendChild(art); _glbFit(art);
-      const book = kind === 'c' ? (d.book || {}) : d;
-      const hint = book.hint || (kind === 'k' ? 'Something might drop this, if you say hello.' : 'Keep looking.');
-      if (!day) { el.appendChild(_gdpEl('p', null, hint)); const w = kind === 'c' ? _glbWhen(d) : ''; if (w) el.appendChild(_gdpEl('p', 'muted', w)); return; }
-      if (book.blurb) el.appendChild(_gdpEl('p', 'gd-almdlg-blurb', book.blurb));
-      const ul = _gdpEl('ul', 'gd-insp-facts');
-      const li = (ic, t) => { const x = _gdpEl('li'); x.innerHTML = icon(ic, 'i-sm'); x.appendChild(_gdpEl('span', null, t)); ul.appendChild(x); };
-      li('eye', 'First found ' + day);
-      if (d.rarity && GARDEN_RARITY[d.rarity]) li('tag', GARDEN_RARITY[d.rarity].label);
-      if (kind !== 'k') li('map-pin', hint);
-      if (kind === 'c') { const w = _glbWhen(d); if (w) li('clock', w); }
-      el.appendChild(ul);
-    },
   });
 }
 /* ---------- for other agents: unlock rules as data ---------- */
