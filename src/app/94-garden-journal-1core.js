@@ -247,7 +247,7 @@ function _gjWalk(def, m) {
   } catch (e) { pt = null; }
   if (typeof gardenPopupClose === 'function') gardenPopupClose();
   if (H.sea) { if (typeof gardenGoToAct === 'function') gardenGoToAct('tackle'); gardenMessage('Sea fish: cast from the pier or the shore, off the coast its clue names.', { icon: 'waves' }); return; }
-  if (H.g) { gardenMessage('This one comes to gardens: grow flowers and look about at the right hour.', { icon: 'flower-2' }); return; }
+  if (H.g) { const hab = def.hab || [], say = def.page === 'sea' ? (hab.includes('light') ? 'This one comes to the lamps by the sea, in a fog at dawn or dusk.' : 'This one lives on the beach: walk along the sand at the right hour.') : hab.length && hab.every(h => h === 'water') ? 'This one is on the water: walk along the edge of the Mere or a pond at the right hour.' : 'This one comes to gardens: grow flowers and look about at the right hour.'; gardenMessage(say, { icon: def.page === 'sea' || hab.includes('water') ? 'waves' : 'flower-2' }); return; }
   if (!pt || !gardenRegionHomeOpen(H, m.areas) || !gardenWalkToPoint(pt, null, { radius: 6 })) gardenMessage('No path there yet. The way opens as you explore.', { icon: 'map' });
 }
 

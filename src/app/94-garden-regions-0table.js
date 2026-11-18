@@ -228,13 +228,15 @@ function gardenRegionWords(def) {
   if (def.cat === 'fish') {
     if (GARDEN_WORLD.v >= 4 && H.sea) {
       const coast = gardenIslandFishCoastHint(def), region = coast && gardenIslandRegionForZone(coast.zone);
+      const name = coast ? (GARDEN_WORLD.v >= 5 && _GRG_VALE_COAST[coast.id]) || coast.name : '';
+      if (GARDEN_WORLD.v >= 5) return { where: coast ? 'In the sea, mostly off ' + name + (def.rarity === 'common' ? '. It wanders along the other open shores too.' : ', and nowhere else.') : 'In the sea, off any open shore.', reach: region && region.level > 1 ? 'The shore there opens with ' + region.name + ', at garden level ' + region.level + ' at the latest.' : 'That shore is open from the start.' };
       return { where: coast ? 'Coastal water, especially ' + coast.name + '. Other open coasts can hold it too.' : 'Open coastal water around the island, north and south as well as the main pier.', reach: region ? region.name + ' opens at garden level ' + region.level + '; its shore favours this kind.' : 'Explore either public shore. Fish gather near people without requiring the main pier.' };
     }
     if (GARDEN_WORLD.v >= 4 && H.w === 'pond') return GARDEN_WORLD.v >= 5 ? { where: 'The Mere, along its different banks.', reach: 'The Mere is open from the beginning. Fleet Falls drops into its north-west corner, where the plunge pool is.' } : { where: 'The village lake, along its different banks.', reach: 'The village lake is open from the beginning. Spring-fed fish favour the north bank; the falls feed its east side.' };
     if (H.sea || H.w === 'pond') return reach ? { reach } : null;
     if (GARDEN_WORLD.v >= 5 && def.id === 'golden-trout' && H.w === 'tarn') return { where: 'Lives in the source tarn and its outflow through the gorge.', reach };
     const w = _GRG_WATER.get(H.w);
-    if (GARDEN_WORLD.v >= 4 && !w.room) { const basin = w.islandBasin && _grgIslandBasin(w.id), place = basin ? (GARDEN_WORLD.v >= 5 ? ({ pond: 'the Mere', 'allotment-pool': 'the woodland pond in the old woods', 'orchard-pool': 'the orchard pond', 'river-4': 'the marsh below the bird hide', tarn: 'the source tarn', spring: 'Foxglove spring', 'brook-2': 'the woodland brook' })[basin.id] || basin.name || w.name : ({ pond: 'the village lake', 'allotment-pool': 'the ruined woodland pond', 'orchard-pool': 'the orchard pond' })[basin.id]) : w.name; const bank = GARDEN_WORLD.v >= 5 ? ({ falls: 'the plunge pool under Fleet Falls' })[H.w] : ({ spring: 'the spring-fed north bank', tarn: 'the cooler north bank', falls: 'the eastern falls', frogpool: 'the reed-lined west bank', race: 'the west inlet', brook: 'the west inlet', folly: 'the quiet east bank', light: 'the eastern rocks', dip: 'the shaded north bank', cider: 'the sunny south bank' })[H.w]; return { where: 'Lives in ' + place + (bank ? ', near ' + bank : '') + '.', reach }; }
+    if (GARDEN_WORLD.v >= 4 && !w.room) { const basin = w.islandBasin && _grgIslandBasin(w.id), place = basin ? (GARDEN_WORLD.v >= 5 ? ({ pond: 'the Mere', 'allotment-pool': 'the woodland pond in the old woods', 'orchard-pool': 'the orchard pond', 'river-4': 'the marsh below the bird hide', tarn: 'the source tarn', spring: 'Foxglove spring', 'brook-2': 'the woodland brook' })[basin.id] || basin.name || w.name : ({ pond: 'the village lake', 'allotment-pool': 'the ruined woodland pond', 'orchard-pool': 'the orchard pond' })[basin.id]) : w.name; const bank = GARDEN_WORLD.v >= 5 ? ({ falls: 'the plunge pool under Fleet Falls', folly: 'the lily pads at its west end', light: 'the stones at its east end', dip: 'its deep north end', cider: 'its south end, by the cider square', frogpool: 'the reeds' })[H.w] : ({ spring: 'the spring-fed north bank', tarn: 'the cooler north bank', falls: 'the eastern falls', frogpool: 'the reed-lined west bank', race: 'the west inlet', brook: 'the west inlet', folly: 'the quiet east bank', light: 'the eastern rocks', dip: 'the shaded north bank', cider: 'the sunny south bank' })[H.w]; return { where: 'Lives in ' + place + (bank ? ', near ' + bank : '') + '.', reach }; }
     return { where: `Lives in ${w.name}, ${R.on}, and nowhere else.`, reach };
   }
   const near = def.hab.map(h => _GF_HAB_WORDS[h] || h);
@@ -244,10 +246,14 @@ function gardenRegionWords(def) {
   return { where: `Lives ${R.on}. Look near ${_gfOr(near)}.`, reach };
 }
 /** A word or two for a card. '': the card's own words will do. */
+const _GRG_VALE_COAST = Object.freeze({ north: 'the strand, west of the quay', south: 'the quay and the pier', forest: 'Wren cove, on the wooded coast', valley: 'the estuary', ruins: 'the rocky shore below the ruins', orchard: 'the east beach below the orchard', headland: 'the cold cove under the mountains' });
+/* Fleetwater Vale's own names for the waters (v5). The rows above keep the old island's names, which in the vale named the wrong places (the old woodland's stone pool came out as 'the rocks by the lighthouse'). */
+const _GRG_VALE_WATER = Object.freeze({ falls: 'the plunge pool under Fleet Falls', spring: 'Foxglove spring', brook: 'the woodland brook', race: 'the mill race', frogpool: 'the marsh pools below the bird hide', folly: 'the lily pool in the old woods', light: 'the stone pool in the old woods', cider: 'the cider pond', dip: 'the deep end of the orchard pond', tarn: 'the source tarn' });
+function _grgWaterName(id) { const w = _GRG_WATER.get(id); return GARDEN_WORLD.v >= 5 && _GRG_VALE_WATER[id] ? _GRG_VALE_WATER[id] : w ? w.name : ''; }
 function gardenRegionShort(def) {
   const H = gardenRegionHome(def); if (!H || H.sea || H.w === 'pond' || H.g) return '';
   if (H.p) return _grgPlaceName(H);
-  if (H.w) return _GRG_WATER.get(H.w).name;
+  if (H.w) return _grgWaterName(H.w);
   return gardenRegion(H.r).name.replace(/^The /, 'the ');
 }
 /** What stops a cast at this cell of any water, the lake too. '' if nothing. */
