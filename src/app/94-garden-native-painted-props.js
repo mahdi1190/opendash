@@ -304,7 +304,7 @@ window.GardenPaintedProps = (function () {
   const KIND = { postbox: 'postbox', lectern: 'lectern', sundial: 'sundial', tripod: 'tripod', board: 'board', lakeboard: 'lakeboard', smoker: 'smoker', well: 'well', wish: 'well', post: 'sign', fountain: 'fountain' };
   const LIB = {
     // library objects for the rest: [id, variant, size]
-    seat: ['street.bench', 0, { w: 84 }], lamp: ['street.lamp', 0, { h: 96 }], lampbox: ['street.lamp', 0, { h: 96 }], lighthouse: ['building.lighthouse', 0, { h: 190 }],
+    seat: ['street.bench', 0, { w: 84 }], lamp: ['street.lamp', 0, { h: Math.round(gardenSizePx('lamp') / .61) }], lampbox: ['street.lamp', 0, { h: Math.round(gardenSizePx('lamp') / .61) }],   /* (a lamp post is 1.8 to 2 times the player; the post is .61 of the library lamp's box) */ lighthouse: ['building.lighthouse', 0, { h: 190 }],
     reeds: null, boat: null,
   };
   function propPainter(prop) {

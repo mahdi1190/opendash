@@ -265,7 +265,7 @@ window.GardenNativePainted = (function () {
   // aprons, picking and depth stay where they were.
   const BUILD = {
     'garden-shop': { obj: 'building.green-cottage', v: 0, w: 150, wallWidth: 150, sign: 'Seed & Stem', extra: [['plant.planter', 1, -84, 0, 26], ['plant.planter', 0, 84, 0, 26], ['plant.rph-flower-tub', 1, -60, 8, 18]] },
-    'land-office': { obj: 'building.cottage', v: 1, w: 140, wallWidth: 160, sign: 'Land Office', extra: [['street.lamp', 0, -78, 4, 0, 70]] },
+    'land-office': { obj: 'building.cottage', v: 1, w: 140, wallWidth: 160, sign: 'Land Office', extra: [['street.lamp', 0, -78, 4, 0, Math.round(gardenSizePx('lamp') / .61)]] },   /* (the library lamp's box is taller than its post: the post is .61 of it) */
     'tackle-shop': { obj: 'building.fpv-sailing-hut', v: 0, w: 150, wallWidth: 376, wallCenterX: -8, wallFootY: 14, sign: 'Tackle & Tide', extra: [['street.mqn-lifebuoy', 0, 80, 2, 0, 30]] },
     'market-stall': { obj: 'structure.mcr-market-chalet', v: 1, w: 104, wallWidth: 200 },
   };
@@ -338,7 +338,7 @@ window.GardenNativePainted = (function () {
       }
       if (!im) im = objectImage(scene, id, v, season, size, x, y, false);
       if (!im) return; im.setDepth(y); parent.add(im); made.push(im);
-      if (size.h >= 50) { tall.push({ im, x, y, h: size.h }); trunks.push(Object.freeze({ x: x / W.cellW, y: (y - W.sky) / W.cellH, w: size.h > 100 ? .5 : .4 })); }
+      if (size.h >= 50) { tall.push({ im, x, y, h: size.h }); trunks.push(Object.freeze({ x: x / W.cellW, y: (y - W.sky) / W.cellH, w: (size.was || size.h) > 100 ? .5 : .4 })); }
     };
     const tall = plantingTall = [], trunks = [];
     const gates = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data && GardenIslandLayout.data.gates || [], fl = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data && (GardenIslandLayout.data.presentation || {}).falls, byGate = (x, y) => gates.some(g => Math.abs(x - g.x) <= 3 && y - g.y >= -2 && y - g.y <= 5) || !!(fl && x >= fl.x - 3 && x <= fl.x + (fl.w || 3) + 2 && y >= fl.y - 1 && y <= fl.y + (fl.h || 3) + 4);   // (nor over Fleet Falls)
@@ -348,7 +348,7 @@ window.GardenNativePainted = (function () {
       const h = (a, b, k) => { let n = Math.imul(a * 374761393 + b * 668265263 + k * 1442695041, 1) >>> 0; n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0; return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
       const r = h(cx, cy, 11), cluster = h(Math.floor(cx / 3), Math.floor(cy / 2), 5), px = (cx + .5) * W.cellW + (h(cx, cy, 2) - .5) * 22, py = W.sky + (cy + 1) * W.cellH - 4 + (h(cx, cy, 3) - .5) * 8;
       // A grove where the cluster field is high (one species leads it), shrubs at its fringe.
-      if (spot === 'tree' && cluster > .42) add(trees[Math.floor((cluster * 7 + r * 2) % trees.length)], Math.floor(r * 3), { h: 84 + r * 40 }, px, py);
+      if (spot === 'tree' && cluster > .42) add(trees[Math.floor((cluster * 7 + r * 2) % trees.length)], Math.floor(r * 3), { h: Math.round(gardenSizePx('tree', r)), was: 84 + r * 40 }, px, py);   /* (a mature tree stands 3.5 to 5 times the player; `was` keeps the trunk's old width for walking) */
       else if ((spot === 'tree' && cluster > .3 || spot === 'edge' && cluster > .35 || spot === 'wild' && r > .4) && r > .3) add(SHRUB[Math.floor(r * 53) % SHRUB.length], Math.floor(r * 7) % 3, { h: 26 + r * 16 }, px, py);
       else if (spot === 'shore' && r > .45) add(r > .75 ? 'plant.bulrush' : 'plant.reed', Math.floor(r * 5) % 3, { h: 30 + r * 14 }, px, py);
     }
