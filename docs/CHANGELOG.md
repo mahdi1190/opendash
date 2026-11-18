@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.73.14] - 2026-11-18
+
+### Changed
+
+- The offline dashboard is smaller. The garden and painted scenes still use the same bundled game engine when you open them.
+
 ## [2.73.13] - 2026-11-18
 
 ### Changed
