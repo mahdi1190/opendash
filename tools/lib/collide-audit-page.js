@@ -687,6 +687,7 @@
   //   a field over a path            a plot's cells under a path's drawn width (its fence and sign stand on the path)
   //   a path under a building        a building or sight's footprint on a path's drawn width
   //   a path over water              a path's middle line over water where no bridge, stones or pier carries it
+  //   a field over water             a plot's cell that is water (its fence, hedge or wall is drawn across the water)
   //   a path through a square        a path that is not the square's own running on across its paving
   //   a thing on a path              a tree, rock, prop or sight whose drawn base stands well inside a path's width
   //   a thing inside another         two standing things whose drawn bases share the same ground; a drawn base inside a
@@ -709,13 +710,15 @@
     const inSquare = (x, y, k) => plazas.find(p => ((x - p.x) / (p.rx || 3.2)) ** 2 + ((y - p.y) / (p.ry || 2.4)) ** 2 <= (k || 1));   // (a square with no size of its own: the painters' default, 94-garden-paint-wood-0core.js)
     /** How much of a rectangle (cells) lies under a path's drawn band, in square cells, and where. `k`: share of the half width that counts. */
     const under = (R, x0, y0, x1, y1, k) => { if (x1 < R.x0 || x0 > R.x1 || y1 < R.y0 || y0 > R.y1) return null; const N = 5; let on = 0, sx = 0, sy = 0; for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const x = x0 + (x1 - x0) * (i + .5) / N, y = y0 + (y1 - y0) * (j + .5) / N; if (distPx(R, x, y) < R.rad * CW * k) { on++; sx += x; sy += y; } } return on ? { area: on / (N * N) * (x1 - x0) * (y1 - y0), x: sx / on, y: sy / on } : null; };
-    // a field over a path
-    const fieldOn = new Map();
+    // a field over a path; a field over water (its fence or hedge is drawn across the water)
+    const fieldOn = new Map(), fieldWet = new Map();
     for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
       const row = typeof gardenLandCell === 'function' ? gardenLandCell(x, y) : null; if (!row || !row.plot) continue; overlap.plotCells++;
+      { let wet = 0; for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) if (gardenWaterContainsPoint(x + (i + .5) / 4, y + (j + .5) / 4)) wet++; if (wet >= 12) (fieldWet.get(row.id) || fieldWet.set(row.id, []).get(row.id)).push(x + ',' + y); }
       for (const R of roads) { const u = under(R, x, y, x + 1, y + 1, .8); if (!u) continue; const k = row.id + '|' + R.id, g = fieldOn.get(k) || fieldOn.set(k, { plot: row.id, road: R.id, area: 0, sx: 0, sy: 0, cells: [] }).get(k); g.area += u.area; g.sx += u.x * u.area; g.sy += u.y * u.area; g.cells.push(x + ',' + y); }
     }
     for (const g of fieldOn.values()) if (g.area >= .3) over('a field over a path', 'plot ' + g.plot, 'path ' + g.road, g.sx / g.area, g.sy / g.area, g.area.toFixed(2) + ' square cells of the plot lie under the path’s drawn width (cells ' + g.cells.slice(0, 6).join(' ') + ')');
+    for (const [id, cells] of fieldWet) { const [cx, cy] = cells[0].split(',').map(Number); over('a field over water', 'plot ' + id, 'water at ' + cells[0], cx + .5, cy + .5, cells.length + ' cell(s) of the plot are water, three quarters or more: ' + cells.slice(0, 6).join(' ') + ' (a ring drawn round the plot crosses the water)'); }
     // a path under a building; a building on a field; two footprints on the same cells
     const propsNow = gardenPropsNow().filter(p => !(p.needs && !gardenWorkOwned(p.needs)) && !p.site), blocked = faults.filter(f => f.kind === 'path-blocked').map(f => f.name + ' ' + f.detail), onRoad = new Set();
     const foot = p => gardenPropCol(p) === 'soft' ? { x0: p.x + (p.w || 1) / 2 - Math.min(p.w || 1, 2) * .25, y0: p.y + (p.h || 1) - .36, x1: p.x + (p.w || 1) / 2 + Math.min(p.w || 1, 2) * .25, y1: p.y + (p.h || 1) - .08 } : { x0: p.x, y0: p.y, x1: p.x + (p.w || 1), y1: p.y + (p.h || 1) };

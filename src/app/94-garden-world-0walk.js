@@ -582,7 +582,11 @@ function _gwMoveBy(dx, dy) {
     }
   }
   _gw.slideHold = held ? { sx: Math.sign(dx), sy: Math.sign(dy), kind: held } : null;
-  if (shore.shore && shore.moved && gain(shore.x, shore.y) >= gain(x, y)) { _gw.px = shore.x; _gw.py = shore.y; return true; }
+  // (while the feet are giving way round a kink in a bank, the bank's own slide does not win a frame with a step back
+  // the way they are getting on: it and the give took turns for four frames, a 2 px shake at one kink of the Millwater's
+  // bank by the estuary, the last jitter the collision audit found, 18 Nov 2026)
+  const backOnGive = held && (held === 'x' ? (shore.y - y0) * dy : (shore.x - x0) * dx) < 0;
+  if (shore.shore && shore.moved && !backOnGive && gain(shore.x, shore.y) >= gain(x, y)) { _gw.px = shore.x; _gw.py = shore.y; return true; }
   if (x === x0 && y === y0) return false;
   _gw.px = x; _gw.py = y; return true;
 }

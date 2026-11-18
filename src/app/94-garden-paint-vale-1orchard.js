@@ -15,6 +15,9 @@
     const loops = (reg.polygons || []).map(l => l.map(L.pt)), regP = V.loopPath(loops), coastP = V.loopPath(L.coast), rb = kit.bboxOf(loops.flat(), 20);
     const walls = (L.D.landforms || []).filter(f => f.kind === 'terrace-wall' && f.polygon).map(f => f.polygon);
     const nearWall = (x, y, d) => walls.some(poly => poly.some(p => Math.abs(p[0] - x) < d && Math.abs(p[1] - y) < d * .8));
+    // (nor in the rock of the Edge: a plum stood in the scarp at the orchard's north-west corner. The collision audit's overlap check, 18 Nov 2026)
+    const rocks = (L.D.landforms || []).filter(f => f.kind === 'rock-wall' && f.polygon && f.polygon.length > 2).map(f => f.polygon);
+    const inRock = (x, y) => rocks.some(pts => { let on = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) on = !on; } return on; });
     // This lawn sits above the fells layer. Its cell-sized lobes must not
     // overpaint the shared water contours or the terrace masonry below it.
     const groundCuts = (L.D.freshwater || []).filter(f => f.boundary).map(f => f.boundary.map(L.pt));
@@ -81,7 +84,7 @@
       const fx = Math.floor(jx), fy = Math.floor(jy);
       // the trunk's own cell is grass (or the edge of a path cell the painted ribbon does not reach), on land the orchard owns
       const own = inReg(fx, fy) && (grass(fx, fy) || L.kind(fx + .5, fy + .5) === 'path' && offPath(jx, jy, 24));
-      if (!own || !L.free(jx, jy) || L.plot(jx, jy) || L.plot(jx, jy - 1) || L.plot(jx - .8, jy) || L.plot(jx + .8, jy) || nearWall(jx, jy, 1.3)) continue;
+      if (!own || !L.free(jx, jy) || L.plot(jx, jy) || L.plot(jx, jy - 1) || L.plot(jx - .8, jy) || L.plot(jx + .8, jy) || nearWall(jx, jy, 1.3) || inRock(jx, jy - .1) || inRock(jx - .25, jy - .1) || inRock(jx + .25, jy - .1)) continue;
       // the thyme terrace, the cowslip rise and the folly's ridge stay open: no rows there
       if (jy < 25 || (jx > 81.5 && jy > 33.5 && jy < 39.5) || (jx > 82 && jy < 33.5)) continue;
       if (!clearOf(jx, jy)) continue;
@@ -94,7 +97,7 @@
     for (let y = 25.2; y < 47; y += .9) for (let x = 60.4 + (Math.round(y * 10) % 2) * .5; x < 89; x += 1.05) {
       if (trees.length >= 64) break;
       const jx = x + (kit.hash(Math.round(x * 10), Math.round(y * 10), 98) % 100) / 100 * .4 - .2, jy = y + (kit.hash(Math.round(x * 10), Math.round(y * 10), 99) % 100) / 100 * .3 - .15, fx = Math.floor(jx), fy = Math.floor(jy);
-      if (!(inReg(fx, fy) && grass(fx, fy)) || !L.free(jx, jy) || L.plot(jx, jy) || L.plot(jx, jy - 1) || L.plot(jx - .8, jy) || L.plot(jx + .8, jy) || nearWall(jx, jy, 1.3)) continue;
+      if (!(inReg(fx, fy) && grass(fx, fy)) || !L.free(jx, jy) || L.plot(jx, jy) || L.plot(jx, jy - 1) || L.plot(jx - .8, jy) || L.plot(jx + .8, jy) || nearWall(jx, jy, 1.3) || inRock(jx, jy - .1) || inRock(jx - .25, jy - .1) || inRock(jx + .25, jy - .1)) continue;
       if ((jx > 81.5 && jy > 33.5 && jy < 39.5) || (jx > 82 && jy < 33.5) || !clearOf(jx, jy)) continue;
       if (ringC && ((jx - ringC.x) / 4.6) ** 2 + ((jy - ringC.y) / 3) ** 2 < 1 || Math.hypot(jx - 84.6, (jy - 45.2) * 1.4) < 2.4) continue;
       if (trees.some(t => ((t.x - jx) / 2.05) ** 2 + ((t.y - jy) / 1.6) ** 2 < 1)) continue;

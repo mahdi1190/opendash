@@ -81,7 +81,9 @@ try {
   // a look at the whole map first, so every painter places what it only places in view (the orchard's trees)
   await evq(`gardenCamSet('fit')`); await sleep(14000); await evq(`gardenCamSet('follow')`); await sleep(3000);
   console.log('garden', await evq(`JSON.stringify({open:[..._GD_LAND].filter(x=>/^zn-/.test(x)),native:!!(window.GardenNative&&GardenNative.active()),version:typeof APP_VERSION!=='undefined'?APP_VERSION:''})`));
-  const result = await ev(`(${PAGE})(${JSON.stringify({ noDecor: process.argv.includes('--no-decor'), noPicture: process.argv.includes('--no-picture') })})`, 900000);
+  // (--opts '{"feelMax":20000,"hubs":4}': every standing point beside an edge instead of every other one; more starting places for click-to-walk)
+  let more = {}; try { more = JSON.parse(arg('opts', '{}')); } catch { more = {}; }
+  const result = await ev(`(${PAGE})(${JSON.stringify({ noDecor: process.argv.includes('--no-decor'), noPicture: process.argv.includes('--no-picture'), ...more })})`, 900000);
   result.label = LABEL; result.clock = CLOCK; result.errors = errors.slice(0, 20); result.when = new Date().toISOString();
   console.log('faults', result.total, JSON.stringify(result.counts.byKind));
   // thumbnails with the collision view on, worst first (walk-through and invisible walls, then the rest)
