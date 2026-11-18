@@ -46,22 +46,31 @@ const CSP_PARTS = [
   "frame-ancestors 'self'",
 ];
 const JS_TYPES = /^(|module|(text|application)\/(x-)?(java|ecma)script)$/i;
+/** Only the pinned engine is allowed to become an inline script on first use. */
+function gameEngineHash(type, body) {
+  let source;
+  if (type === 'application/json') {
+    try { source = JSON.parse(body); } catch { return null; }
+    if (typeof source !== 'string') return null;
+  } else if (type === 'application/octet-stream') {
+    // A previously built index.html still has its own base64 loader.
+    const encoded = body.trim();
+    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) return null;
+    source = Buffer.from(encoded, 'base64');
+  } else return null;
+  if (createHash('sha256').update(source).digest('hex') !== GAME_ENGINE_SHA256) return null;
+  const code = source.toString().replace(/\r\n?/g, '\n');
+  return `'sha256-${createHash('sha256').update(code, 'utf8').digest('base64')}'`;
+}
 /** The sha256 sources of every inline script a browser would run in this HTML. */
 export function inlineScriptHashes(html) {
   const out = new Set();
   for (const m of String(html || '').matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
     const t = /\btype\s*=\s*["']?([^"'\s>]*)/i.exec(m[1]);
-    // The game engine stays inert until selected. Authorize its exact pinned
-    // bytes when it is decoded later, without allowing arbitrary inline code.
-    if (t && t[1] === 'application/octet-stream' && /\bid=["']freeflo-game-engine["']/.test(m[1]) && m[1].includes(`data-version="${GAME_ENGINE_VERSION}"`)) {
-      const encoded = m[2].trim();
-      if (/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) {
-        const bytes = Buffer.from(encoded, 'base64');
-        if (createHash('sha256').update(bytes).digest('hex') === GAME_ENGINE_SHA256) {
-          const code = bytes.toString('utf8').replace(/\r\n?/g, '\n');
-          out.add(`'sha256-${createHash('sha256').update(code, 'utf8').digest('base64')}'`);
-        }
-      }
+    if (/\sid=["']freeflo-game-engine["']/.test(m[1])) {
+      if (!t || !m[1].includes(` data-version="${GAME_ENGINE_VERSION}"`)) continue;
+      const hash = gameEngineHash(t[1], m[2]);
+      if (hash) out.add(hash);
       continue;
     }
     if (!JS_TYPES.test(t ? t[1].trim() : '') || /\bsrc\s*=/i.test(m[1])) continue;

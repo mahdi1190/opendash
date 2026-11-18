@@ -42,7 +42,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { rasterAssetBlocks } from './tools/lib/raster-assets.mjs';
-import { GAME_ENGINE_VERSION, GAME_ENGINE_JS, GAME_ENGINE_SHA256 } from './lib/game-engine.mjs';
+import { GAME_ENGINE_JS, readGameEngine } from './lib/game-engine.mjs';
 import { gardenIslandScript } from './lib/garden-island.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -132,8 +132,7 @@ export function collectSources(root = HERE) {
   const styles = concatDir(join(root, 'src', 'styles'), '.css');
   // Bundled as inert data: Phaser is parsed only when the player chooses the
   // new garden renderer, rather than adding startup work to every dashboard.
-  const engineBytes = readFileSync(join(root, GAME_ENGINE_JS));
-  if (createHash('sha256').update(engineBytes).digest('hex') !== GAME_ENGINE_SHA256) throw new Error('The bundled Phaser file does not match its pinned version');
+  const engine = readGameEngine(root);
   const raster = rasterAssetBlocks(root);
   const sceneHash = createHash('sha256').update('freeflo-scenes-v1\0');
   // Keep persistent scene artwork across releases that change only gardens,
@@ -167,8 +166,8 @@ export function collectSources(root = HERE) {
     raster,
     sceneVersion: sceneHash.digest('hex').slice(0, 24),
     worldVersion: worldHash.digest('hex').slice(0, 24),
-    gameEngineJs: engineBytes.toString('utf8'),
-    gameEngineBlock: `<script id="freeflo-game-engine" type="application/octet-stream" data-version="${GAME_ENGINE_VERSION}">${engineBytes.toString('base64')}</script>\n`,
+    gameEngineJs: engine.source,
+    gameEngineBlock: engine.html,
     islandJs: gardenIslandScript(root),
     beforeJs: readExtras(root, EXTRA_JS_BEFORE, '.js'),
     afterJs: readExtras(root, EXTRA_JS_AFTER, '.js'),

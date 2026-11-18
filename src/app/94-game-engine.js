@@ -11,12 +11,12 @@ window.FreefloGameEngine = (function () {
         const started = performance.now();
         try {
           const source = document.getElementById('freeflo-game-engine');
-          if (!source || source.dataset.version !== version) throw new Error('The game engine is missing. Rebuild or update Freeflo and try again.');
-          const binary = atob(source.textContent.trim()), bytes = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          if (!source || source.type !== 'application/json' || source.dataset.version !== version) throw new Error('The game engine is missing. Rebuild or update Freeflo and try again.');
+          const code = JSON.parse(source.textContent);
+          if (typeof code !== 'string') throw new Error('The game engine could not be read. Rebuild or update Freeflo and try again.');
           const script = document.createElement('script');
           script.dataset.freefloEngine = version;
-          script.textContent = new TextDecoder().decode(bytes);
+          script.textContent = code;
           try { document.head.appendChild(script); } finally { script.remove(); }
           if (!window.Phaser || window.Phaser.VERSION !== version) throw new Error('The game engine could not start in this browser.');
           loadedAt = Date.now(); loadMs = performance.now() - started;
