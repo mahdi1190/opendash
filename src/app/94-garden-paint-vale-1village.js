@@ -256,8 +256,15 @@
     for (const id of f.sections) for (const c of cellsOf(id)) if (soilAt(c[0], c[1])) cells.push(c);
     if (!cells.length) return;
     const key = f.id + '|soil|' + cells.length + '|' + cells.reduce((h, c) => (Math.imul(h, 31) + c[0] * 97 + c[1]) | 0, 7); let pts = memo.get(key);
-    if (!pts) { pts = []; for (const raw of outline(cells)) { const loop = soften(raw.map(q => ({ x: q[0] * cw, y: W.sky + q[1] * ch })), 13); for (const q of V.walk(loop.concat([loop[0]]), 4.2)) pts.push(q); } if (memo.size > 60) memo.clear(); memo.set(key, pts); }
-    const P = C.P, season = C.season;
+    if (!pts) { pts = []; for (const raw of outline(cells)) { const loop = soften(raw.map(q => ({ x: q[0] * cw, y: W.sky + q[1] * ch })), 22); for (const q of V.walk(loop.concat([loop[0]]), 4.2)) pts.push(q); } if (memo.size > 60) memo.clear(); memo.set(key, pts); }
+    const P = C.P, season = C.season, lv = level();
+    // Turf right up to the dug edge, all the way round. (The ground under the painting is cut square to the bed's cells,
+    // and a road beside it is cut away too: between a rounded bed and a road that left a ruled strip of plain ground.)
+    // Not where the next cell out is more soil, or a field that is still shut: its own edge stands there.
+    { const turf = new Path2D(); let any = false;
+      for (const q of pts) { if (!inBox(q, cb, 20)) continue; const ox = q.ty, oy = -q.tx, cx = Math.floor((q.x + ox * 9) / cw), cy = Math.floor((q.y + oy * 7 - W.sky) / ch);
+        if (soilAt(cx, cy) || lockedAt(cx, cy, lv)) continue; const x = q.x + ox * 5.5, y = q.y + oy * 5.5; turf.moveTo(x + 8.5, y); turf.arc(x, y, 8.5, 0, Math.PI * 2); any = true; }
+      if (any) { B.cx.save(); B.cx.filter = 'blur(1.6px)'; B.f(turf, P.lawn, 1); B.cx.restore(); } }
     for (const q of pts) { if (!inBox(q, cb, 20)) continue; const rr = rngAt(q, 29), ox = q.ty, oy = -q.tx;   // (ox, oy): out of the bed
       if (soilAt(Math.floor((q.x + ox * 9) / cw), Math.floor((q.y + oy * 7 - W.sky) / ch))) continue;   // (the next field's bed carries on from here: no edge between them)
       if (rr() < .6) { const d = .5 + rr() * 4.5, w = 2.6 + rr() * 3, h = 1.6 + rr() * 1.6, dark = rr() < .4; B.f(B.blob(rr, q.x + ox * d, q.y + oy * d, w, h, 6, .5), dark ? '#6a4e36' : '#7d5d40', .96); }
