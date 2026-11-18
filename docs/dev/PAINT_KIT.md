@@ -159,25 +159,42 @@ Light a thing from the upper left: lit face and highlights up and left, shade do
 7. If a thing a player can bump into moves, its collision moves with it: read the same placement data the walking
    code reads, and check with Shift+C.
 
-## Numbers (1500 x 900 window, 1x screen, headless Edge with the GPU on, 18 Nov 2026)
+## Numbers (1500 x 900 window, headless Edge with the GPU on, 18 Nov 2026)
+
+Texture memory held by the kit ( and ):
 
 | | Walking zoom (2.0, level 2) | Closest zoom (3.9, level 3) | Whole map (0.87, level .75) |
 | --- | --- | --- | --- |
-| Shared ground (budget 64 MB, whole map kept at level .75 underneath) | 64 MB | 64 MB | 29 MB |
-| Vale places ground (budget 20 MB) | 21 to 24 MB | 26 MB | 20 MB |
-| Fells ground (budget 40 MB) | up to 34 MB | 11 MB | 12 MB |
-| Shadow layer (budget 10 MB, level .75) | 5 to 9 MB | 3 MB | 9 MB |
-| Sharpened sprites (bound 20 MB) | 1 to 2 MB | 2 to 4 MB | 0 |
-| **All paint-kit textures** | **about 105 to 130 MB** | **about 105 MB** | **about 70 MB** |
+| Shared ground (budget 64 MB; the whole map is kept at level .75 underneath) | 48 to 63 MB | 63 MB | 29 MB |
+| Vale places ground (budget 28 MB) | 27 to 28 MB | 27 MB | 23 MB |
+| Fells ground (budget 32 MB) | 15 MB | 21 MB | 12 MB |
+| Shadow layer (budget 10 MB, level .75) | 5 MB | 5 MB | 10 MB |
+| Sharpened sprites (bound 20 MB) | under 1 MB | under 1 MB | 0 |
+| **All paint-kit textures** | **96 to 110 MB** | **116 MB** | **74 MB** |
 
-A budget is what a layer holds when it has a choice: the chunks on screen and in the margin round it are always
-kept, so a layer can run over its budget at a high level (the vale ground does, by about 6 MB). A chunk is 0.15 MB at
-level .75, 1.1 MB at level 2, 2.4 MB at level 3 and 4.3 MB at level 4 (a 2x screen close up; not measured in this pass).
+On a 2x screen (2504 x 1800 canvas, level 4 at the walking zoom and closer) the kit held 106 MB at both zooms, measured
+with the shared ground's budget at 48 MB; that budget is 64 MB now, so allow about 120 MB. A chunk is 0.15 MB at level
+.75, 1.1 MB at level 2, 2.4 MB at level 3 and 4.3 MB at level 4. The woods' own floor and the tree textures are not the
+kit's and are not counted here (: 14 MB of a 44 MB cap, and 11 MB of trees).
 
-Bake times, per 256 px chunk of the shared ground: median 16 to 23 ms and 95th percentile 33 to 43 ms in total, spread
-over slices on a timer; the longest single slice was 22 ms, the longest single op 18 ms. The shadow layer: under 1 ms
-median, 6 ms worst slice at rest.
+Bake times for a 256 px chunk of the shared ground, in total, spread over slices on a 34 ms timer: median 24 to 31 ms,
+95th percentile 47 to 63 ms. One slice is 8 to 10 ms by design, but a slice cannot stop inside an op: the longest single
+op measured was 22 ms at levels .75 to 2 and, in the worst case, 60 to 70 ms at level 3 (a band of ground where three
+kinds meet, or the earth-trail op over a chunk full of trails). Those ran while standing still; while you walk a chunk
+with a costly op is not re-baked sharper, and a bare one is baked at a lower level first. The shadow layer: 1 ms median,
+4 ms 95th percentile, 8 ms worst slice.
 
-Walking with real keys round the green and down the harbour road for 24 s: at zoom 2.0 no long task (over 50 ms) and no
-frame gap over 50 ms (95th percentile frame 12 ms, longest 48 ms); at zoom 3.9 no long task and one frame gap over 50 ms
-(60 ms). Headless frame rates are not a measure of a real screen; the long tasks and gaps are.
+Walking with real keys round the green and down the harbour road, 24 s a run:
+
+| Run | Long tasks (over 50 ms) | Frame gaps over 50 ms | Longest frame gap |
+| --- | --- | --- | --- |
+| Zoom 2.0, straight after loading | 1 (54 ms) | 12 | 182 ms |
+| Zoom 2.0 | 1 (58 ms) | 3 | 79 ms |
+| Zoom 2.0, again | 0 | 0 | 48 ms |
+| Zoom 3.9 | 0 | 1 | 55 ms |
+| 2x screen, walking zoom | 1 (51 ms) | 3 | 67 ms |
+| 2x screen, closest zoom | 1 (60 ms) | 2 | 73 ms |
+
+So the rule of no task over 50 ms while walking is close but not met: about one task of 51 to 60 ms in some runs. The
+kit's own slowest timer tick in those runs was 15 to 30 ms, so the long task is not a single kit tick; what it is has
+not been found. Headless frame rates are not a measure of a real screen; the long tasks and gaps are.
