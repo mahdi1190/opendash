@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.73.9] - 2026-11-18
+
+### Changed
+
+- Finance reads spending history once per category when preparing a report. Choosing dates, a shop, or a country now skips transactions outside the selected period.
+
 ## [2.73.8] - 2026-11-18
 
 ### Changed
