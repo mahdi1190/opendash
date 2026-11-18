@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.73.16] - 2026-11-18
+
+### Changed
+
+- Closing a large dashboard can now finish its pending save through the offline-page worker when the browser refuses the usual closing request.
+
 ## [2.73.15] - 2026-11-18
 
 ### Changed
