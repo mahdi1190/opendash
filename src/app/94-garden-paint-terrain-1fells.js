@@ -85,7 +85,8 @@ window.GardenPaintedTerrain = (function () {
     // 1. The fell: one base with broad lobed drifts; the moor west is heather-dark, the pasture east is short turf.
     add(fellBB, 11, (B, r, cb) => {
       clipFell(B);
-      B.f(B.rect(cb[0] - 2, cb[1] - 2, cb[2] - cb[0] + 4, cb[3] - cb[1] + 4), B.lin(0, top, 0, rb[3], [[0, P.fellHi], [.45, P.fell], [1, P.fellLo]]));
+      // the ground itself is the shared kit's moor now (94-garden-paint-ground-0kit.js), under this layer; without the kit, or under snow, the old base
+      if (!window.GardenPaintGround || snowRow > -5) B.f(B.rect(cb[0] - 2, cb[1] - 2, cb[2] - cb[0] + 4, cb[3] - cb[1] + 4), B.lin(0, top, 0, rb[3], [[0, P.fellHi], [.45, P.fell], [1, P.fellLo]]));
       kit.tiles(cb, 150, 90, 3, (tx, ty, r) => {
         for (let k = 0; k < (moor(tx) > .5 ? 6 : 3); k++) {
           const x = tx + r() * 150, y = ty + r() * 150, m = moor(x), n = kit.fbm(x / 420, y / 300, 5), s = 40 + r() * 70;
@@ -230,8 +231,11 @@ window.GardenPaintedTerrain = (function () {
       });
     }
     if (L.gorge && L.gorge.line) gorgeOps(L, P, ops, add, season, snowRow > 90);
-    // 7. Trails: worn earth and stone, edges ragged with turf; plazas are stony pads.
+    // 7. Trails: worn earth and stone, edges ragged with turf; plazas are stony pads. With no snow lying the trails are the shared
+    //    path kit's (the same picture the map's ground has beneath, laid again over the rises painted above).
+    if (window.GardenPaintGround && snowRow < -5) { const G = GardenPaintGround; for (const o of G.paths({ routes: L.routes.filter(rt => rt.tier !== 'plaza').map(rt => { const kind = G.routeKind(rt); return { id: rt.id, kind, width: G.ROUTE_WIDTH[kind], points: rt.points }; }), season, kindAt: () => 'moor', box: { x: fellBB[0], y: fellBB[1], w: fellBB[2] - fellBB[0], h: fellBB[3] - fellBB[1] } })) ops.push(o); }
     for (const rt of L.routes) {
+      if (window.GardenPaintGround && snowRow < -5 && rt.tier !== 'plaza') continue;   // (the shared path kit paints the trails when no snow lies; the stony pads stay here)
       const pts = kit.resample(rt.points, 5), bb = kit.bboxOf(pts, 30), plaza = rt.tier === 'plaza', wpx = plaza ? rt.width * ch * .9 : Math.max(16, rt.width * 14);
       add(bb, 71 + rt.id.length * 3, (B, r, cb) => {
         clipFell(B);

@@ -152,6 +152,9 @@ window.GardenPaintTerrainKit = (function () {
   // opts: { key, box: {x, y, w, h}, K, chunk (world px), depth }
   const PAD = 2;
   function chunked(scene, parent, ops, opts) {
+    // Layers baked at 1 px a world px or more follow the camera's zoom through the shared kit (crisp at every zoom, the same
+    // slices, streaming and budget); a far backdrop baked small on purpose (K under 1) keeps this fixed baker.
+    if (window.GardenPaintGround && opts.follow !== false && (opts.K || 1.5) >= 1) return GardenPaintGround.layer(scene, parent, ops, opts);
     const K = opts.K || 1.5, size = opts.chunk || 512, box = opts.box, cols = Math.ceil(box.w / size), rows = Math.ceil(box.h / size), list = [];
     const t0 = performance.now(); let worst = 0, bakedPx = 0, bakeMs = 0;
     for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {

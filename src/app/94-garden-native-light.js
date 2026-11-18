@@ -165,7 +165,9 @@ window.GardenNativeLight = (function () {
       environment.gust = room ? 0 : (.25 + .75 * (.5 + .5 * Math.sin(t * .17 + Math.sin(t * .057)))) * (wet ? .9 : season === 'autumn' ? .55 : .33);
       environment.windX = room ? 0 : Math.cos(.3 + Math.sin(t * .013) * .4) * environment.gust;
       environment.windY = room ? 0 : .14 + Math.sin(t * .019) * .1;
-      environment.sunX = Math.cos((hour - 6) / 24 * TAU); environment.sunY = .42 + Math.sin((hour - 8) / 24 * TAU) * .22; environment.elevation = elevation;
+      // One light for the whole world (94-garden-paint-ground-0kit.js LIGHT): the sun is upper left at every hour, as all the
+      // baked art is painted, so a moving shadow falls the same way as a painted one; the hour changes its length and strength only.
+      { const L = window.GardenPaintGround && GardenPaintGround.LIGHT; environment.sunX = L ? -L.sx : -.94; environment.sunY = L ? L.sy : .34; } environment.elevation = elevation;
       return environment;
     }
     function imageFor(pool, parent, key) {
