@@ -71,17 +71,12 @@ export function inlineScriptHashes(html) {
   }
   return [...out];
 }
-let _cspMemo = { key: null, value: '' };
 /** The Content-Security-Policy for a response body (HTML gets its own inline-script hashes). */
 export function cspFor(html) {
   if (!html) return CSP;
-  // index.html is several MB: reuse the last result while the page is the same (the config is a JSON block, never run).
-  const key = String(html).replace(/<script id="dashboard-config" type="application\/json">[\s\S]*?<\/script>/, '');
-  if (_cspMemo.key === key) return _cspMemo.value;
-  const hashes = inlineScriptHashes(key);
-  const value = CSP_PARTS.map(p => p ?? ["script-src 'self'", ...hashes].join(' ')).join('; ');
-  _cspMemo = { key, value };
-  return value;
+  // The app shell caches the header per build. JSON blocks are skipped by the hasher.
+  const hashes = inlineScriptHashes(html);
+  return CSP_PARTS.map(p => p ?? ["script-src 'self'", ...hashes].join(' ')).join('; ');
 }
 const CSP = CSP_PARTS.map(p => p ?? "script-src 'self'").join('; ');
 
