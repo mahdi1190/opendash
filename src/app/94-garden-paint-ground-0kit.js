@@ -423,10 +423,10 @@ window.GardenPaintGround = (function () {
 
   /* ---------- 3. the path kit ---------- */
   const PATH = {
-    cobble: { rank: 3, blur: 4.2, edge: .1, bed: '#a8966f', margin: .26 },
+    cobble: { rank: 3, blur: 4.2, edge: .18, bed: '#a8966f', margin: .26 },
     setts: { rank: 3, blur: 4.6, edge: .08, bed: '#ab9972', margin: .24 },
-    gravel: { rank: 2, blur: 5.4, edge: .16, bed: '#d7c294', margin: .3 },
-    earth: { rank: 1, blur: 6.4, edge: .3, bed: '#bfaa84', margin: .26 },
+    gravel: { rank: 2, blur: 5.4, edge: .4, bed: '#d7c294', margin: .3 },
+    earth: { rank: 1, blur: 6.4, edge: .5, bed: '#bfaa84', margin: .26 },
     boardwalk: { rank: 4, planks: true }, steps: { rank: 4, planks: true },
   };
   /** A dense, smoothed centre line with a half width at every point: pts [{x, y, w?}] world px, width the default. */
@@ -492,8 +492,8 @@ window.GardenPaintGround = (function () {
       if (kind === 'gravel' || kind === 'earth') tiles(cb, 48, 6, 155, (tx, ty, r) => { for (let i = 0; i < 3; i++) { const x = tx + r() * 48, y = ty + r() * 48, s = 1 + r() * 2; if (cov.sample(x, y) < .6) continue; pebble(cx, rng(hash(Math.round(x * 8), Math.round(y * 8), 156) | 1), x, y, s, { shadow: '#6e5e3e', stone: '#c9bb98', stoneLo: '#a8997a', stoneHi: '#efe4c6' }); } });
       if (kind === 'cobble' || kind === 'setts') {   // light and shade over the laid stones, and the middle worn paler by feet: one surface, not a grid of bricks
         const body = alphaOf('alB', cov, v => smooth(.5, .62, v), 0, 15);
-        cx.globalAlpha = .3; fillThrough(B, cov, body, sx => wash(sx, cb, { base: '#c8b48c', lo: '#84765a', hi: '#f2e6c2', warm: '#d6b684', cool: '#a09e92' }, 137, 1.7)); cx.globalAlpha = 1;
-        cx.globalAlpha = .2; { const t = scratch('tint', cov.w, cov.h), pic = alphaOf('alM', cov, (v, nz) => smooth(.9, 1, v + nz), .1, 30); t.cx.fillStyle = '#f3e7c4'; t.cx.fillRect(0, 0, cov.w, cov.h); t.cx.globalCompositeOperation = 'destination-in'; t.cx.drawImage(pic, 0, 0); lay(cx, cov, t.c); } cx.globalAlpha = 1;
+        cx.globalAlpha = .24; fillThrough(B, cov, body, sx => wash(sx, cb, { base: '#c8b48c', lo: '#84765a', hi: '#f2e6c2', warm: '#d6b684', cool: '#a09e92' }, 137, 1.7)); cx.globalAlpha = 1;
+        cx.globalAlpha = .13; { const t = scratch('tint', cov.w, cov.h), pic = alphaOf('alM', cov, (v, nz) => smooth(.9, 1, v + nz), .1, 30); t.cx.fillStyle = '#f3e7c4'; t.cx.fillRect(0, 0, cov.w, cov.h); t.cx.globalCompositeOperation = 'destination-in'; t.cx.drawImage(pic, 0, 0); lay(cx, cov, t.c); } cx.globalAlpha = 1;
       }
       if (kind === 'earth') grassIn(cx, cb, cov, .5, .78, 157);   // (a trail is half grown over)
       grassIn(cx, cb, cov, .3, .56, 159); verge(cx, cb, cov, 163);
@@ -523,7 +523,7 @@ window.GardenPaintGround = (function () {
       const cov = coverage(cb, kind); if (!cov) return; const cx = B.cx, S0 = PATH[kind], winter = season === 'winter'; clips(cx);
       // the trodden margin: the ground thins and browns before the path begins (soft, and wider than the path)
       cx.globalAlpha = S0.margin; { const s = scratch('tint', cov.w, cov.h), pic = alphaOf('alM', cov, (v, nz) => smooth(.04, .5, v + nz), .16, 30); s.cx.fillStyle = winter ? '#8f8a6a' : '#7d7244'; s.cx.fillRect(0, 0, cov.w, cov.h); s.cx.globalCompositeOperation = 'destination-in'; s.cx.drawImage(pic, 0, 0); lay(cx, cov, s.c); } cx.globalAlpha = 1;
-      const body = alphaOf('alB', cov, (v, nz) => smooth(.5 - .09, .5 + .09, v + nz), S0.edge, kind === 'earth' ? 22 : 15);
+      const body = alphaOf('alB', cov, (v, nz) => smooth(.5 - .09, .5 + .09, v + nz), S0.edge, kind === 'earth' ? 34 : kind === 'gravel' ? 28 : 15);   // (the edge wanders a few px either way, so a straight route never has a ruled edge)
       if (kind === 'cobble' || kind === 'setts') {
         fillThrough(B, cov, body, sx => wash(sx, cb, { base: S0.bed, lo: '#8c7c5c', hi: '#b8a680', warm: '#ae9a70', cool: '#9a927c' }, 131, .7));
         // (the stones are laid by their own ops below, a third of the courses each, so no slice is long)

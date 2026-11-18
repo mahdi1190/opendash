@@ -355,10 +355,12 @@ window.GardenNativeLight = (function () {
         // previous transmitted energy, with a small warm accent, instead of
         // exposing the formerly graded pool at full unattenuated intensity.
         const transmission = warmNight ? (1 - outdoorDarkness(env)) * 1.12 : 1;
-        light.intensity = amount * flicker * (lamp.intensity == null ? 1 : lamp.intensity) * (.17 + env.wetness * .025) * transmission;
+        // (while the sky is still light a lamp only warms what is near it: at full strength it burnt pale stone to white)
+        const ease = room ? 1 : 1 - .45 * clamp(1 - Math.abs(env.daylight * 2 - 1));
+        light.intensity = amount * flicker * (lamp.intensity == null ? 1 : lamp.intensity) * (.17 + env.wetness * .025) * transmission * ease;
         light.color.setTo(color >> 16 & 255, color >> 8 & 255, color & 255);
         // its pool on the ground: a soft warm oval where the light falls (a lamp's foot, the ground before a lit window)
-        if (!room && lamp.ground != null) { let pool = poolImages.get(key); if (!pool) { pool = scene.add.image(0, 0, softKey).setBlendMode(Phaser.BlendModes.ADD); groundPools.add(pool); poolImages.set(key, pool); } const pr = radius * (lamp.pool || 1.2); pool.setVisible(true).setPosition(lamp.x, lamp.ground).setDisplaySize(pr * 2, pr * .95).setTint(color).setAlpha(Math.min(.5, amount * flicker * (lamp.intensity == null ? 1 : lamp.intensity) * .58)); }
+        if (!room && lamp.ground != null) { let pool = poolImages.get(key); if (!pool) { pool = scene.add.image(0, 0, softKey).setBlendMode(Phaser.BlendModes.ADD); groundPools.add(pool); poolImages.set(key, pool); } const pr = radius * (lamp.pool || 1.2); pool.setVisible(true).setPosition(lamp.x, lamp.ground).setDisplaySize(pr * 2.1, pr * .9).setTint(color).setAlpha(Math.min(.24, amount * flicker * (lamp.intensity == null ? 1 : lamp.intensity) * .3)); }   // (soft: a pool you can still see the ground through, never a white glare)
       }
     }
     function weatherParticles(kind, count) {

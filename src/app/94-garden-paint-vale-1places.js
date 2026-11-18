@@ -227,12 +227,14 @@
       add(bb, seed, (B, r) => {
         const path = new Path2D(B.poly(shape)), dry = new Path2D(); dry.rect(bb[0] - 10, bb[1] - 10, bb[2] - bb[0] + 20, bb[3] - bb[1] + 20); for (const w of L.D.freshwater || []) if (w.boundary) dry.addPath(V.loopPath([w.boundary.map(L.pt)]));
         B.cx.clip(dry, 'evenodd');
-        if (style !== 'litter') { B.cx.filter = 'blur(3px)'; B.f(path, '#2e3420', .2); B.cx.filter = 'none'; }
+        const kitYard = window.GardenPaintGround && (style === 'setts' || style === 'yard') ? GardenPaintGround.paths({ areas: [{ kind: 'setts', points: shape }], season: C.season, kindAt: () => 'meadow', box: { x: bb[0], y: bb[1], w: bb[2] - bb[0], h: bb[3] - bb[1] } }) : null;
+        if (kitYard) for (const o of kitYard) { B.cx.save(); o.draw(B, r, bb); B.cx.restore(); B.cx.globalAlpha = 1; }
+        else if (style !== 'litter') { B.cx.filter = 'blur(3px)'; B.f(path, '#2e3420', .2); B.cx.filter = 'none'; }
         B.cx.save(); B.cx.clip(path);
-        if (style === 'setts') { V.setts(B, r, P, bb, { size: 11, salt: seed, grout: '#a8987a', cols: ['#c9b994', '#c2b28c', '#d2c5a2', '#bcac86'] }); for (let k = 0; k < 18; k++) B.f(B.blob(r, bb[0] + r() * (bb[2] - bb[0]), bb[1] + r() * (bb[3] - bb[1]), 14 + r() * 20, 4 + r() * 5, 7, .5), r() < .5 ? '#e0d4b2' : '#9c8c68', .25); }
+        if (style === 'setts') { if (!kitYard) V.setts(B, r, P, bb, { size: 11, salt: seed, grout: '#a8987a', cols: ['#c9b994', '#c2b28c', '#d2c5a2', '#bcac86'] }); for (let k = 0; k < 18; k++) B.f(B.blob(r, bb[0] + r() * (bb[2] - bb[0]), bb[1] + r() * (bb[3] - bb[1]), 14 + r() * 20, 4 + r() * 5, 7, .5), r() < .5 ? '#e0d4b2' : '#9c8c68', .25); }
         else if (style === 'yard') {   // warm, worn and busy: honey setts like the plaza's, cart ruts, flour by the door, straw, moss in the joints
           const bw = bb[2] - bb[0], bh = bb[3] - bb[1], rx = () => bb[0] + r() * bw, ry = () => bb[1] + r() * bh;
-          V.setts(B, r, P, bb, { size: 11, salt: seed, grout: '#9a8460', cols: ['#d2b88c', '#c6aa7e', '#dcc69e', '#bfa178', '#cfae84', '#c9b48e'] });
+          if (!kitYard) V.setts(B, r, P, bb, { size: 11, salt: seed, grout: '#9a8460', cols: ['#d2b88c', '#c6aa7e', '#dcc69e', '#bfa178', '#cfae84', '#c9b48e'] });
           for (let k = 0; k < 16; k++) B.f(B.blob(r, rx(), ry(), 16 + r() * 24, 5 + r() * 7, 7, .5), r() < .55 ? '#e6d2a6' : '#a08458', .24);   // sun and wear in broad patches
           for (let k = 0; k < 26; k++) B.f(B.blob(r, rx(), ry(), 3 + r() * 5, 1.2 + r(), 5, .5), r() < .6 ? '#7d8a44' : '#96a052', .5);   // moss and weeds in the joints
           for (const o of [-9, 9]) { const pts = [{ x: a.x - 60, y: a.y + o + 8 }, { x: (a.x + b.x) / 2, y: a.y + o + 2 }, { x: b.x + 70, y: b.y + o - 10 }]; V.strokePts(B, pts, '#7a5c3c', 5, .32); V.strokePts(B, pts, '#e8d6ae', 1.2, .3); }   // cart ruts, polished on their lips
@@ -250,7 +252,7 @@
           const o = oakAt(L, pz); for (let k = 0; k < 7; k++) { const ang = Math.PI * (.05 + k / 6 * .9), l = 60 + r() * 70; B.s(`M${o.x + Math.cos(ang) * 14} ${o.y}Q${o.x + Math.cos(ang) * l * .5} ${o.y + Math.sin(ang) * l * .25 + 6} ${o.x + Math.cos(ang) * l} ${o.y + Math.sin(ang) * l * .45}`, '#5a4632', 5 - k % 3, .55); }
         }
         B.cx.restore();
-        if (style === 'setts' || style === 'flags' || style === 'yard') B.s(path, P.kerb, 3, .8);
+        if (!kitYard && (style === 'setts' || style === 'flags' || style === 'yard')) B.s(path, P.kerb, 3, .8);
       });
       // dressing by job: the cider square's press, bell and lanterns; the mill yard's millstone and sacks; the court's fallen column
       const spot = (x, y) => L.free(x, y) && ['grass', 'path'].includes(L.kind(x, y));
