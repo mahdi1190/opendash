@@ -238,6 +238,24 @@
     const out = { has: mine, loops, path: pathOf(loops), pieces, gate: g, next: rows[0] || null };
     if (memo.size > 60) memo.clear(); memo.set(key, out); return out;
   }
+  /** Dug beds in a field: a spade's edge is never ruled. Crumbs of soil lie out on the grass, turf creeps back in over
+   * the edge, tufts lean across it and a daisy stands here and there, so no bed is a hard-edged slab. Follows the garden:
+   * worked out from the soil that is there now (once per state), painted piece by piece where the chunk is. */
+  function bedEdges(B, C, f, cb) {
+    const W = C.W, cw = C.L.cw, ch = C.L.ch, soilAt = (x, y) => SOIL.has(C.L.mat(x, y)), cells = [];
+    for (const id of f.sections) for (const c of cellsOf(id)) if (soilAt(c[0], c[1])) cells.push(c);
+    if (!cells.length) return;
+    const key = f.id + '|soil|' + cells.length + '|' + cells.reduce((h, c) => (Math.imul(h, 31) + c[0] * 97 + c[1]) | 0, 7); let pts = memo.get(key);
+    if (!pts) { pts = []; for (const raw of outline(cells)) { const loop = soften(raw.map(q => ({ x: q[0] * cw, y: W.sky + q[1] * ch })), 13); for (const q of V.walk(loop.concat([loop[0]]), 4.2)) pts.push(q); } if (memo.size > 60) memo.clear(); memo.set(key, pts); }
+    const P = C.P, season = C.season;
+    for (const q of pts) { if (!inBox(q, cb, 20)) continue; const rr = rngAt(q, 29), ox = q.ty, oy = -q.tx;   // (ox, oy): out of the bed
+      if (soilAt(Math.floor((q.x + ox * 9) / cw), Math.floor((q.y + oy * 7 - W.sky) / ch))) continue;   // (the next field's bed carries on from here: no edge between them)
+      if (rr() < .6) { const d = .5 + rr() * 4.5, w = 2.6 + rr() * 3, h = 1.6 + rr() * 1.6, dark = rr() < .4; B.f(B.blob(rr, q.x + ox * d, q.y + oy * d, w, h, 6, .5), dark ? '#6a4e36' : '#7d5d40', .96); }
+      if (rr() < .5) { const d = .5 + rr() * 4, w = 3 + rr() * 3.4, h = 1.8 + rr() * 1.8, lo = rr() < .5; B.f(B.blob(rr, q.x - ox * d, q.y - oy * d, w, h, 6, .5), lo ? P.lawnLo : P.lawn, .96); }
+      if (rr() < .55) { const n = 2 + Math.floor(rr() * 3), bx = q.x + ox * (1 + rr() * 3), by = q.y + oy * (1 + rr() * 3); for (let k = 0; k < n; k++) { const hh = 3.5 + rr() * 5, lean = -ox * (1.5 + rr() * 2.5) + (rr() - .5) * 2.5, tone = rr(); B.s(`M${bx + k * 1.1} ${by + 1}q${lean * .4} ${-hh * .55} ${lean} ${-hh}`, tone < .45 ? P.lawnLo : tone < .8 ? '#6f8a40' : P.lawnHi, 1, .85); } }
+      if (season !== 'winter' && rr() < .05) { const dx = q.x + ox * (5 + rr() * 4), dy = q.y + oy * (4 + rr() * 3); B.f(B.circ(dx, dy, 1.7), '#f6f2e4', .95).f(B.circ(dx, dy, .7), '#f0d24a', .95); }
+    }
+  }
   function drawField(B, C, f, bb, cb) {
     const lv = level(), S = shape(f, C, lv);
     if (S) {
@@ -267,6 +285,7 @@
       B.s(path, '#5a4a30', 2, .3).s(path, '#efe6c8', .9, .85);   // the spade cut and the string along it
       for (const l of loops) for (const q of V.walk(l.concat([l[0]]), 46)) { B.f(B.ell(q.x + 1, q.y + .8, 2.6, 1), '#22301a', .25); B.post(q.x, q.y - 7, q.y + .5, 2.2, ['#b89a6a', '#8a6c46', '#e0c898']); }   // pegs
     }
+    bedEdges(B, C, f, cb);
   }
 
   /* ---------- the planters: land that is yours from the start, kerbed on the lawn ---------- */
@@ -276,14 +295,22 @@
     const path = pathOf(loops), season = C.season, lt = leafTones(season);
     const flowers = season === 'winter' ? ['#f4f6f2', '#e8ecef'] : season === 'autumn' ? ['#e8dcc0', '#d8a040', '#c85a3a', '#e0c070', '#9a7ac8'] : season === 'spring' ? ['#f2efe2', '#e8c84a', '#d88aa8', '#9ab0e0'] : ['#f4f0e0', '#f0d24a', '#c79ac0', '#e88a8a', '#8ab0e0'];
     B.cx.save(); if (lawn) B.cx.clip(lawn, 'nonzero');
-    // the bed: a touch richer than the lawn, shaded along its near side so it sits a little raised
-    B.f(path, season === 'winter' ? '#8e9a7c' : season === 'autumn' ? '#7e8c44' : '#6f9a48', .3);
-    B.cx.save(); B.cx.clip(path, 'nonzero'); B.cx.filter = 'blur(2px)'; B.s(path, '#2a3a1c', 5, .2); B.cx.filter = 'none'; B.cx.restore();
-    // low flowers hugging the inside of the kerb
-    for (const l of loops) for (const q of V.walk(l.concat([l[0]]), 10)) { if (r() < .25) continue; const o = 6 + r() * 3, x = q.x - q.ty * o, y = q.y + q.tx * o; B.f(B.blob(r, x, y, 5.5, 3.2, 7, .4), lt[1], .8).f(B.blob(r, x - 1, y - 1.2, 3.4, 1.8, 6, .4), lt[2], .7); for (let j = 0; j < 3; j++) B.f(B.circ(x + (r() - .5) * 8, y - 1.6 + (r() - .5) * 3.4, 1.35 + r() * .5), flowers[Math.floor(r() * flowers.length)], .95); }
-    // the kerb: small honey stones set on edge, each its own, lit from the upper left
-    for (const l of loops) { const pts = V.walk(l.concat([l[0]]), 6.2).sort((a, b) => a.y - b.y); for (const q of pts) { const a = Math.atan2(q.ty, q.tx), tone = r(); B.cx.save(); B.cx.translate(q.x, q.y); B.cx.rotate(a);
-      B.f(B.rr(-2.7, -.7, 5.6, 4, 1.4), '#4e4230', .32).f(B.rr(-2.8, -2, 5.6, 3.8, 1.5), tone < .3 ? '#c6b088' : tone < .6 ? '#d6c29a' : tone < .85 ? '#cdb890' : '#bea67e').f(B.rr(-2.2, -1.8, 3.6, 1.1, .5), '#f0e2be', .6); B.cx.restore(); } }
+    // the panel: a finer, lighter lawn than the green round it
+    B.f(path, season === 'winter' ? '#c2ccb4' : season === 'autumn' ? '#b4bc6c' : '#a8c86a', .26);
+    // its border: a narrow bed of flowers all the way round, inside a low stone edging (a curved flower border, not a string of stones)
+    B.cx.save(); B.cx.clip(path, 'nonzero');
+    B.cx.filter = 'blur(1.5px)'; B.s(path, '#33281a', 21, .26); B.cx.filter = 'none';
+    B.s(path, season === 'winter' ? '#6e5c4a' : '#6b4f38', 15, .92);
+    B.cx.restore();
+    for (const l of loops) for (const q of V.walk(l.concat([l[0]]), 4.4)) {
+      const o = 2 + r() * 4.2, x = q.x - q.ty * o, y = q.y + q.tx * o, t = r(), bloom = r(), dx = (r() - .5) * 4, up = 1.2 + r() * 1.8, sz = 1.3 + r() * .7, col = flowers[Math.floor(r() * flowers.length)];
+      B.f(B.blob(r, x, y, 3.8 + t * 1.8, 2.5 + t, 6, .4), lt[t < .45 ? 1 : t < .85 ? 2 : 3], .94);
+      if (season === 'winter' ? bloom < .1 : bloom < .78) B.f(B.circ(x + dx, y - up, sz), col, .96);
+    }
+    // the edging: one low line of honey stone with its joints, lit along the top
+    B.s(path, '#4e4230', 4.2, .3).s(path, '#c9b68e', 2.8, 1);
+    B.cx.save(); B.cx.translate(-.3, -.7); B.s(path, '#efe2be', 1, .55); B.cx.restore();
+    for (const l of loops) for (const q of V.walk(l.concat([l[0]]), 6.4)) B.s(`M${q.x - q.ty * 1.5} ${q.y + q.tx * 1.5}L${q.x + q.ty * 1.5} ${q.y - q.tx * 1.5}`, '#8a7858', .8, .65);
     B.cx.restore();
   }
 
@@ -326,6 +353,29 @@
         const onLawn = !!lawnPts && cs.filter(c => inPoly((c[0] + .5) * cw, W.sky + (c[1] + .5) * ch, lawnPts)).length * 2 > cs.length;
         add(pb, kit.hashStr('planter|' + s), (B, r) => drawPlanter(B, r, C, s, onLawn ? lawn : null));
       }
+    }
+    // The square and the walk round the green are one big floor of setts: light and wear across it, the lines feet take,
+    // moss and weeds in the joints where nobody walks, and in autumn the lime's leaves drifting over setts and lawn.
+    if (green && Array.isArray(green.square) && green.square.length > 2) {
+      const orient = poly => { let a = 0; for (let i = 0; i < poly.length; i++) { const u = poly[i], v = poly[(i + 1) % poly.length]; a += u.x * v.y - v.x * u.y; } return a < 0 ? poly.slice().reverse() : poly; };
+      const loopRt = L.routes.get('plaza-loop'), sq = orient(V.shapeLoop(L, green.square)), rib = loopRt && loopRt.points ? orient(V.routeRibbon(L, loopRt, false)) : [];
+      const paved = (x, y) => (inPoly(x, y, sq) || (rib.length > 2 && inPoly(x, y, rib))) && !(lawnPts && inPoly(x, y, lawnPts));
+      const floor = pathOf(rib.length > 2 ? [sq, rib] : [sq]), bb = kit.bboxOf(sq.concat(rib), 12), salt = kit.hashStr('square-floor') & 0xffff;
+      const rose = green.rose ? L.cpt(green.rose.x, green.rose.y) : null, lime = green.lime ? L.cpt(green.lime.x, green.lime.y - 1.2) : null, loopPts = L.routePts('plaza-loop');
+      const way = pts => pts.map(q => L.cpt(q[0], q[1])), ways = [way([[48.4, 60.6], [48.3, 58.9], [47.2, 57], [47.6, 55.4]]), way([[42.4, 53.2], [43.6, 56.2], [46.8, 57.4], [50.4, 57.2], [54.6, 56.2], [55.9, 53.2]])];
+      add(bb, salt, (B, r, cb) => {
+        const season = C.season, box = [Math.max(bb[0], cb[0] - 4), Math.max(bb[1], cb[1] - 4), Math.min(bb[2], cb[2] + 4), Math.min(bb[3], cb[3] + 4)]; if (box[2] <= box[0] || box[3] <= box[1]) return;
+        if (lime && (season === 'autumn' || season === 'winter')) kit.tiles(box, 60, 4, salt + 9, (tx, ty, rr) => { const leaf = season === 'autumn' ? ['#c8742a', '#e09a3a', '#a85a26', '#e8b84e', '#b8502a'] : ['#8a7a5a', '#a0906a']; for (let k = 0; k < 16; k++) { const x = tx + rr() * 60, y = ty + rr() * 60, w = Math.max(0, 1 - Math.hypot((x - lime.x) / 250, (y - lime.y) / 150)), go = rr(), a = 1.5 + rr() * 1.5, b = .9 + rr() * .8, c = leaf[Math.floor(rr() * leaf.length)]; if (go < w * (season === 'autumn' ? .9 : .25)) B.f(B.ell(x, y, a, b), c, .85); } });
+        B.cx.save(); B.cx.clip(floor, 'nonzero');
+        { const off = new Path2D(); off.rect(bb[0] - 20, bb[1] - 20, bb[2] - bb[0] + 40, bb[3] - bb[1] + 40); if (lawnPts) off.addPath(pathOf([lawnPts])); if (rose) off.ellipse(rose.x, rose.y, 48, 27, 0, 0, Math.PI * 2); B.cx.clip(off, 'evenodd'); }
+        // sun and shade in broad soft patches (drawn from the tiles round about too: a patch is wide)
+        kit.tiles(box, 90, 60, salt + 1, (tx, ty, rr) => { for (let k = 0; k < 3; k++) { const x = tx + rr() * 90, y = ty + rr() * 90, rx = 26 + rr() * 34, ry = 9 + rr() * 9, light = rr() < .55, a = .1 + rr() * .09; B.f(B.blob(rr, x, y, rx, ry, 8, .5), light ? '#f4e6c0' : '#8e7a56', a); } });
+        // where feet go: round the green, up from the high street, across the square
+        B.cx.filter = 'blur(5px)'; V.strokePts(B, loopPts.concat(loopPts.slice(0, 2)), '#f6ead0', 15, .2); for (const w of ways) V.strokePts(B, w, '#f6ead0', 20, .2); B.cx.filter = 'none';
+        // moss and small weeds in the joints, thick at the edges where nobody walks
+        kit.tiles(box, 60, 6, salt + 2, (tx, ty, rr) => { for (let k = 0; k < 26; k++) { const x = tx + rr() * 60, y = ty + rr() * 60, w = 2.6 + rr() * 3.4, h = 1 + rr() * 1.1, t = rr(), keep = rr(); if (!paved(x, y)) continue; const rim = !paved(x + 13, y) || !paved(x - 13, y) || !paved(x, y + 9) || !paved(x, y - 9); if (!rim && keep > .07) continue; B.f(B.blob(rr, x, y, w, h, 5, .5), t < .5 ? '#7d8a44' : t < .8 ? '#96a052' : '#6a7a3a', rim ? .62 : .45); } });
+        B.cx.restore();
+      });
     }
     // the great lime on the green: the village's tree, a seat round its foot
     if (green && green.lime && window.GardenPaintTrees) {
