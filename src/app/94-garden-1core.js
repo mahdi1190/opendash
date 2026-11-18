@@ -334,19 +334,29 @@ function _gdHeartLevel(A, upTo) {
   if (upTo) { let lo = 0, hi = A.sorted.length - 1, best = -1; while (lo <= hi) { const mid = (lo + hi) >> 1; if (A.sorted[mid] <= upTo) { best = mid; lo = mid + 1; } else hi = mid - 1; } total = best < 0 ? 0 : A.cnt.get(A.sorted[best]); }
   return [0, 10, 50, 150, 400, 1000, 2500].filter(x => total >= x).length - 1;
 }
-function _gdSprinkled(g, pl, def, now) {
-  // the latest 06:00 a sprinkler within its reach watered this cell
-  let best = 0;
-  const fp = def.fp || 1;
+/** Sprinklers already in place at the latest 06:00 in this view of the garden. */
+function _gdActiveSprinklers(g, now) {
+  const rows = [];
+  let time = 0;
   for (const d of Object.values(g.decor)) {
     const dd = d && gardenDecor(d.d); if (!dd || d._packed === 3 || !dd.effect || dd.effect.kind !== 'sprinkler') continue;
-    const r = dd.effect.r || 1;
-    if (pl.x + fp - 1 < d.x - r || pl.x > d.x + r || pl.y + fp - 1 < d.y - r || pl.y > d.y + r) continue;
-    const today = _gdDayOf(now);
-    let t = _gdDayMs(today, 360); if (t > now) t = _gdDayMs(_gdAddDays(today, -1), 360);
-    if ((d.at || 0) <= t && t > best) best = t;
+    if (!time) {
+      const today = _gdDayOf(now);
+      time = _gdDayMs(today, 360);
+      if (time > now) time = _gdDayMs(_gdAddDays(today, -1), 360);
+    }
+    if ((d.at || 0) <= time) rows.push({ x: d.x, y: d.y, r: dd.effect.r || 1 });
   }
-  return best;
+  return { rows, time };
+}
+function _gdSprinkled(ctx, pl, def) {
+  const { rows, time } = ctx.sprinklers || (ctx.sprinklers = _gdActiveSprinklers(ctx.g, ctx.now));
+  const fp = def.fp || 1;
+  for (const d of rows) {
+    if (pl.x + fp - 1 < d.x - d.r || pl.x > d.x + d.r || pl.y + fp - 1 < d.y - d.r || pl.y > d.y + d.r) continue;
+    return Math.max(0, time);
+  }
+  return 0;
 }
 function _gdNearEffect(occDecor, x, y, fp, kind, r) {
   for (const d of occDecor) {
@@ -371,7 +381,7 @@ function _gdPlantState(pl, def, ctx) {
   let sf = inSeason ? 1.3 : 0.8;
   if (ctx.events.includes('midsummer')) sf *= 1.25;
   sf *= gardenLandGrow(pl.x, pl.y);   // the kind of land it is in, a scarecrow nearby
-  const lastWater = Math.max(Number(pl.w) || t0, ctx.rain.last || 0, _gdSprinkled(ctx.g, pl, def, now), gardenLandRillAt(pl, def.fp || 1, now));
+  const lastWater = Math.max(Number(pl.w) || t0, ctx.rain.last || 0, _gdSprinkled(ctx, pl, def), gardenLandRillAt(pl, def.fp || 1, now));
   const dry = def.thirst ? Math.max(0, (now - lastWater) / _GD_H - def.thirst) : 0;
   const realH = Math.max(0, (now - t0) / _GD_H);
   const act = _gdActivity(A, t0, now);
@@ -423,12 +433,10 @@ function _gdRewardOf(kind, id, key) {
   if (kind === 'rib') { const r = GARDEN_RIBBONS.find(x => x.id === id); return r ? { c: r.reward.c || 0, x: 25, i: r.reward.i || null } : null; }
   return null;
 }
-/** Coins (and free seed packets) earned from the data on one day. */
-function _gdEarnDay(A, d, questsDone, run) {
-  const r = A.days.get(d), n = r ? r.n : 0, fm = r ? r.focusMin : 0;
-  const c = Math.min(70, 4 * Math.min(n, 10) + Math.min(18, Math.floor(fm / 10)) + (n > 0 ? Math.min(10, run == null ? _gdStreakAt(A, d) : run) : 0)) + 25 * (questsDone || 0);
-  const packets = Math.min(2, Math.floor(n / 3));
-  return { c, packets };
+/** Work coins earned under the original garden rules. */
+function _gdLegacyWorkCoins(r, run) {
+  const n = r ? r.n : 0, fm = r ? r.focusMin : 0;
+  return Math.min(70, 4 * Math.min(n, 10) + Math.min(18, Math.floor(fm / 10)) + (n > 0 ? Math.min(10, run) : 0));
 }
 function _gdGameQuestsByDay() {
   const out = {};
@@ -451,23 +459,19 @@ function gardenWallet() {
   let econToday = null;
   if (g.since) {
     const qd = _gdGameQuestsByDay(), ef = _gdEconFrom(g), EI = _gdEconInputs(A);
-    const pool = _gdSeedPool(p => p.rarity === 'common' && p.lv <= 2);
     let run = _gdStreakAt(A, _gdAddDays(g.since, -1)), run2 = 0;
     for (let d = g.since, i = 0; d <= today && i < 3000; d = _gdAddDays(d, 1), i++) {
       const r = A.days.get(d); run = r && r.n > 0 ? run + 1 : 0;
-      const e = _gdEarnDay(A, d, qd[d], run);
-      let c = e.c, packets = e.packets;
+      let workCoins;
       if (d >= ef) {
         const t = gardenEconDay(Object.assign({ sessions: [], done: [] }, EI.get(d), { run: run2 + 1 }));
         run2 = t.base > 0 ? run2 + 1 : 0;
-        const legacy = d === ef ? e.c - 25 * (qd[d] || 0) : 0;   // the day it began, nobody earns less than the old rules gave
-        c = Math.max(legacy, t.coins) + 25 * (qd[d] || 0);
-        packets = d === ef ? Math.max(packets, t.packets) : t.packets;
+        workCoins = Math.max(d === ef ? _gdLegacyWorkCoins(r, run) : 0, t.coins);
         if (d === today) econToday = t;
         if (typeof gardenRewardWorkDay === 'function') _gdAddItems(items, gardenRewardWorkDay(EI.get(d), t, d));   // real work also earns pegs, timber, tickets (94-garden-rewards-0rules.js)
-      }
+      } else workCoins = _gdLegacyWorkCoins(r, run);
+      const c = workCoins + 25 * (qd[d] || 0);
       coins += c; earned += c;
-      void packets; void pool;   // (free seed packets are gone: seeds are real things now, bought, dropped by plants, or a surprise)
     }
   }
   // the ledger and the bank
@@ -514,17 +518,8 @@ function _gdOwnsTool(id) { return gardenHas('tool:' + id) > 0; }
 /* ---------- water ---------- */
 function gardenWaterInfo(model) {
   const g = _gdG(), now = _gdNow(), today = _gdDayOf(now);
-  let cap = 10;
-  for (const t of GARDEN_TOOLS) if (t.kind === 'can' && _gdOwnsTool(t.id)) cap += t.n;
-  const per = {};
-  for (const d of Object.values(g.decor)) { const dd = d && gardenDecor(d.d); if (dd && d._packed !== 3 && dd.effect && dd.effect.kind === 'can' && (per[dd.id] || 0) < 2) { per[dd.id] = (per[dd.id] || 0) + 1; cap += dd.effect.n || 0; } }
-  if (typeof gardenPlayWater === 'function') cap += gardenPlayWater(today);   // a dish that gives you a strong arm (94-garden-play-3cook.js)
-  cap += gardenLandWaterExtra(g, today);   // a rain barrel, the morning's dew
-  const A = _gdAct(), doneToday = A.days.has(today) ? A.days.get(today).n : 0;
-  const wal = gardenWallet(), bonus = today >= wal.econFrom ? wal.econToday.water : Math.min(10, 2 * doneToday);
   const used = Object.keys(g.wl[today] || {}).length;
   const rain = model ? model.rain : _gdRain(now);
-  void cap; void bonus;   // water is free: refill the can at the pump or the Mere. A thirsty plant droops; nothing is counted
   return { cap: GARDEN_WATER_FREE, bonus: 0, used, left: GARDEN_WATER_FREE, raining: !!rain.now, free: true };
 }
 

@@ -40,7 +40,6 @@ function gpCookResult(items) {
   return gpDish('mash');
 }
 function _gpIngredients() { const out = []; for (const [k, v] of Object.entries(gardenWallet().items)) if (v >= 1 && _gpIngTag(k)) out.push({ item: k, n: Math.floor(v), tag: _gpIngTag(k) }); const order = ['egg', 'flour', 'honey', 'veg', 'fruit', 'herb', 'flower', 'fish']; return out.sort((a, b) => order.indexOf(a.tag) - order.indexOf(b.tag)); }
-function gardenPlayWater(day) { return Number(gpGet('fx.arm.' + day, 0)) || 0; }
 function gardenPlayWalk() { const u = Number(gpGet('fx.feet', 0)); return u > _gdNow() ? 1.3 : 1; }
 function gpDishesOwned() { const out = []; for (const d of GP_DISHES) { const n = gardenHas('dish:' + d.id); if (n) out.push({ d, n }); } return out; }
 function _gpEat(d) {
