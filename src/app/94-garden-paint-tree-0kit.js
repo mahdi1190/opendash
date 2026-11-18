@@ -155,7 +155,7 @@ window.GardenPaintTrees = (function () {
   }
   function fruit(cx, r, sp, season, H, info) {
     const cols = (FRUIT[sp] || {})[season]; if (!cols) return;
-    const n = sp === 'hawthorn' ? 14 : season === 'autumn' ? 11 : 7, s0 = sp === 'hawthorn' ? H * .008 : H * (season === 'autumn' ? .017 : .014);
+    const n = sp === 'hawthorn' ? 14 : sp === 'pear' ? 6 : season === 'autumn' ? 10 : 7, s0 = sp === 'hawthorn' ? H * .008 : H * (season === 'autumn' ? .017 : .014);
     let placed = 0;
     for (const m of info.fruitAt) {
       if (placed >= n) break; if (r() < .35) continue;
@@ -164,11 +164,12 @@ window.GardenPaintTrees = (function () {
       const bx = m.x + (r() - .3) * m.rx * .9, by = m.y + m.ry * (.15 + r() * .35);
       for (let j = 0; j < k && placed < n; j++, placed++) {
         const x = bx + (j - k / 2) * s0 * 1.9 + (r() - .5) * s0, y = by + (r() - .5) * s0 * 1.2, s = s0 * (.8 + r() * .4);
+        cx.fillStyle = info.C[0]; cx.globalAlpha = .45; cx.beginPath(); cx.ellipse(x + s * .35, y + s * .55, s * 1.05, s * .6, 0, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 1;   // its shade in the leaves
         const g = cx.createRadialGradient(x - s * .35, y - s * .4, s * .1, x, y, s * 1.1); g.addColorStop(0, cols[2]); g.addColorStop(.45, cols[1]); g.addColorStop(1, cols[0]);
         cx.fillStyle = g; cx.beginPath(); if (sp === 'pear') { cx.ellipse(x, y + s * .15, s * .8, s * 1.1, 0, 0, Math.PI * 2); } else cx.arc(x, y, s, 0, Math.PI * 2); cx.fill();
         if (s > 1.2) { cx.fillStyle = 'rgba(255,250,235,.45)'; cx.beginPath(); cx.arc(x - s * .35, y - s * .4, s * .22, 0, Math.PI * 2); cx.fill(); }
         // a leaf over it, so it sits inside the crown
-        if (r() < .7) { cx.fillStyle = info.C[r() < .5 ? 1 : 2]; cx.beginPath(); cx.ellipse(x + s * .7, y - s * .6, s * 1.1, s * .55, -.6, 0, Math.PI * 2); cx.fill(); }
+
       }
     }
   }
