@@ -235,7 +235,7 @@ window.GardenPaintTrees = (function () {
     return { c, ox: halfW * k, oy: up * k, k, ms, crown: { x: 0, y: -H * F.cy, rx: H * F.rx, ry: H * F.ry } };
   }
   function image(scene, o) {
-    const sp = FORM[o.species] ? o.species : 'oak', season = o.season || 'summer', v = Math.max(0, Math.min(2, o.v | 0)), want = Math.max(30, o.h || 100), H = Math.max(STEP * 2, Math.round(want / STEP) * STEP);
+    const sp = FORM[o.species] ? o.species : 'oak', season = o.season || 'summer', v = Math.max(0, Math.min(2, o.v | 0)), want = Math.max(30, o.h || 100), step = want > 130 ? STEP * 2 : STEP, H = Math.max(STEP * 2, Math.round(want / step) * step);   /* (a mature tree is 3.5 to 5 times the player now: tall trees share a texture every 48 px of height, or their pictures alone held 35 MB) */
     const key = TEX + '|' + sp + '|' + season + '|' + v + '|' + H + (o.shadow ? '|s' : '');
     if (!scene.textures.exists(key)) {
       const m = canvas({ species: sp, season, v, h: H, shadow: !!o.shadow }); if (!m) return null;
