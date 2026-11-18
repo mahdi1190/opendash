@@ -11,7 +11,7 @@
    The song is a file that is not part of the app: <data>/media/stage.ogg, served by server/routes/garden-room.mjs when it is there. Without it a short
    tune is played by the page itself. Everything drawn comes from the tables and functions below; people's looks go through the avatar kit.
    ============================================================ */
-const EE = Object.freeze({ W: 960, H: 600, U: 16, speed: 210, door: Object.freeze({ x: 64, y: 546, x0: 8, x1: 106, y0: 392, y1: 560 }), spawn: Object.freeze({ x: 150, y: 520 }), vol: 0.8, volDefault: 50, fig: 1.3 });
+const EE = Object.freeze({ W: 960, H: 600, U: 16, speed: 210, door: Object.freeze({ x: 64, y: 546, x0: 8, x1: 106, y0: 392, y1: 560 }), spawn: Object.freeze({ x: 150, y: 520 }), vol: 0.8, volDefault: 50, fig: 1.3 * GARDEN_ACTOR_SCALE });
 /** The band: where each of the four stands and how it moves (a width to roam, how fast, how high a hop). */
 const EE_BAND = Object.freeze([
   Object.freeze({ id: 'sing', x: 392, y: 362, ax: 12, fx: 0.9, hop: 6, tilt: 3, role: 'sing', ph: 0 }),

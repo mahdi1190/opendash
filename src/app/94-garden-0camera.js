@@ -1,3 +1,10 @@
+/* One size for everything that walks, flies or is carried. Every actor (you, friends, the vale's folk, travellers, pets,
+ * creatures and what they hold) is drawn at this share of the size its art was made at, so a person is small beside a
+ * tree or a cottage. Change it here and nowhere else: docs/dev/PAINT_KIT.md, "Scale". */
+const GARDEN_ACTOR_SCALE = 0.8;
+/** A drawing made at the old size, at the size actors are drawn now (its feet stay at 0,0). */
+function gardenActorSized(svg) { return svg ? '<g class="gd-actor-size" transform="scale(' + GARDEN_ACTOR_SCALE + ')">' + svg + '</g>' : svg; }
+
 /* Optional activity subjects for the native follow camera. Camera framing is
  * local presentation; providers never change game positions or saved zoom. */
 window.GardenActivityCamera = (function () {

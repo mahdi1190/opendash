@@ -538,7 +538,7 @@ function _glPaint(c, dt) {
   // a turn is a quick squeeze through the middle, not a snap
   const k = 1 - Math.exp(-dt * 14); c.fx += (c.faceTo - c.fx) * k; if (Math.abs(c.fx) < 0.12) c.fx = c.faceTo * 0.12;
   const sink = Math.max(0, Math.min(1, Number(c.sink) || 0)), s = 1 - sink * 0.92, down = sink * 2, angle = c.bank * (c.fx >= 0 ? 1 : -1) * 0.6;
-  const tf = `translate(0 ${_glF(down)}) rotate(${_glF(angle)}) scale(${_glF(c.fx)} ${_glF(s)})`;
+  const tf = `translate(0 ${_glF(down)}) rotate(${_glF(angle)}) scale(${_glF(c.fx * GARDEN_ACTOR_SCALE)} ${_glF(s * GARDEN_ACTOR_SCALE)})`;
   if (c.tf !== tf) { c.tf = tf; c.poseEl.setAttribute('transform', tf); }
   const S = c.S, on = c.raisedPerch || c.perched && c.perched.lift > 0, l = _glF(S.lift), shTf = on || c.medium === 'water' ? 'off' : `translate(0 ${l}) scale(${_glF(Math.max(0.55, 1 - S.lift / 160))})`;
   if (c.shTf !== shTf) { c.shTf = shTf; if (shTf === 'off') c.shEl.setAttribute('visibility', 'hidden'); else { c.shEl.removeAttribute('visibility'); c.shEl.setAttribute('transform', shTf); } }

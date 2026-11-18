@@ -40,8 +40,8 @@ function _gwHeldUp(svgFrag, ms) {
   // the catch held up over your head for a moment
   const a = _gwActors(); if (!a || !gardenMotionOn()) return;
   const [x, y] = _gwFeet();
-  const g = _gwEl('g', { class: 'gd-held', transform: `translate(${x.toFixed(1)} ${(y - 78).toFixed(1)})` });
-  g.innerHTML = `<g transform="scale(0.62)">${svgFrag}</g>`;
+  const g = _gwEl('g', { class: 'gd-held', transform: `translate(${x.toFixed(1)} ${(y - 78 * GARDEN_ACTOR_SCALE).toFixed(1)})` });
+  g.innerHTML = `<g transform="scale(${0.62 * GARDEN_ACTOR_SCALE})">${svgFrag}</g>`;
   a.appendChild(g); setTimeout(() => g.remove(), ms || 1400);
 }
 
@@ -169,10 +169,11 @@ function _gwRodPoints(fx) {
   // the hand and the tip of the rod, in stage units, for how the player is standing
   const [x, y] = _gwFeet(), f = _gw.face;
   const F = _gw.fishing, motion = gardenMotionOn();
-  let tipX = x + f * 34, tipY = y - 62, hx = x + f * 8, hy = y - 30;
-  if (F && F.state === 'cast') { const u = Math.min(1, F.t / 0.28); tipX = x + f * (-18 + 52 * u); tipY = y - (78 - 16 * u); }
-  else if (F && (F.state === 'wait' || F.state === 'bite')) { tipX = x + f * 38; tipY = y - 56 + (F.state === 'bite' && motion ? Math.sin(F.t * 22) * 1.1 : 0); }
-  else if (F && (F.state === 'reel' || F.state === 'land')) { tipX = x + f * 30; tipY = y - 68 + (motion ? Math.sin(F.t * 12) * 0.8 : 0); }
+  const k = GARDEN_ACTOR_SCALE;   /* (the rod is the figure's size) */
+  let tipX = x + f * 34 * k, tipY = y - 62 * k, hx = x + f * 8 * k, hy = y - 30 * k;
+  if (F && F.state === 'cast') { const u = Math.min(1, F.t / 0.28); tipX = x + f * (-18 + 52 * u) * k; tipY = y - (78 - 16 * u) * k; }
+  else if (F && (F.state === 'wait' || F.state === 'bite')) { tipX = x + f * 38 * k; tipY = y - 56 * k + (F.state === 'bite' && motion ? Math.sin(F.t * 22) * 1.1 : 0); }
+  else if (F && (F.state === 'reel' || F.state === 'land')) { tipX = x + f * 30 * k; tipY = y - 68 * k + (motion ? Math.sin(F.t * 12) * 0.8 : 0); }
   const hand = _gwFishHand(fx);
   if (hand && Number.isFinite(hand.x) && Number.isFinite(hand.y)) { tipX += hand.x - hx; tipY += hand.y - hy; hx = hand.x; hy = hand.y; }
   return { hx, hy, tipX, tipY };
@@ -495,7 +496,7 @@ function _gwReelStep(dt) {
 }
 
 /* ---------- bugs: they live in the actors layer and wander by themselves ---------- */
-const GW_BUG_SCALE = 0.4;   // a butterfly (36 units of art) comes out about 14 units across: smaller than the gardener's head (about 22), and a beetle smaller still
+const GW_BUG_SCALE = 0.4 * GARDEN_ACTOR_SCALE;   // a butterfly (36 units of art) comes out about 14 units across: smaller than the gardener's head (about 22), and a beetle smaller still
 function _gwBugsLayer() { return _gw.svg ? _gw.svg.querySelector('.gd-objects') : null; }   // 2.23: a bug is drawn in its row: it goes behind a tree and in front of a bench
 function _gwBugsReset() { if (_gw.bugs) for (const b of _gw.bugs.values()) if (b.node && b.node.remove) b.node.remove(); _gw.bugs = new Map(); _gw.bugsAt = 0; _gw.netting = null; }
 /** Bring the bugs on the stage in line with the ones about now (after a paint, and every so often). */
@@ -687,7 +688,7 @@ function _gwNetAir() {
   if (!gardenMotionOn()) return;
   const a = _gwActors(); if (!a) return;
   const [x, y] = _gwFeet(), f = _gw.face;
-  const g = _gwEl('g', { class: 'gd-swing', transform: `translate(${x.toFixed(1)} ${(y - 30).toFixed(1)}) scale(${f} 1)` });
+  const g = _gwEl('g', { class: 'gd-swing', transform: `translate(${x.toFixed(1)} ${(y - 30 * GARDEN_ACTOR_SCALE).toFixed(1)}) scale(${f * GARDEN_ACTOR_SCALE} ${GARDEN_ACTOR_SCALE})` });
   if (g._native && window.GardenNativeActions) {
     const skinId = typeof gardenLookWorn === 'function' ? gardenLookWorn('net') : '', skin = skinId && typeof gardenLookDef === 'function' ? gardenLookDef(skinId) : null;
     const net = gardenNet(), hoop = GARDEN_NET_HOOP[net.tier - 1] || GARDEN_NET_HOOP[0], head = typeof gardenLookNetSwing === 'function' ? gardenLookNetSwing(skinId) : '';

@@ -1229,7 +1229,7 @@ window.GardenNativeWorld = (function () {
         playerViewKey = appearance; playerProfile = state.profile; playerWardrobe = state.wardrobe;
         if (typeof gartPlayerPaint === 'function') gartPlayerPaint(playerInner, _gw);
         const box = playerInner.getBBox(), corners = [[box.x, box.y], [box.x + box.width, box.y], [box.x, box.y + box.height], [box.x + box.width, box.y + box.height]].map(([px, py]) => GardenNativeArt.point(playerInner._matrix || { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }, px, py));
-        playerOcclusionHeight = clamp(-Math.min(...corners.map(point => point.y)), 44, 88);
+        playerOcclusionHeight = clamp(-Math.min(...corners.map(point => point.y)), 44 * GARDEN_ACTOR_SCALE, 88);
       }
       const x = _gw.px * W.cellW, y = W.sky + _gw.py * W.cellH, z = Math.floor(_gw.py * 3);
       playerNode.setAttribute('transform', 'translate(' + x + ' ' + y + ')'); playerNode.setAttribute('data-z', String(_gw.py + .001)); playerNode.target.setDepth(y + .001);
@@ -1734,7 +1734,7 @@ window.GardenNativeWorld = (function () {
           // East/west share a retained body. A scale flip must refresh its
           // reflection even when reduced motion disables timed captures.
           const captureKey = (key || body._gplKey || '') + (kind === 'actor' ? '|facing:' + (matrix.a < 0 ? -1 : 1) : '');
-          const row = { id, source: body.target, node: body, x, y, groundX: x, groundY: y, waterline: y, w: kind === 'pet' ? Math.min(42, Math.max(12, b.width * .8)) : 22, h: kind === 'pet' ? 7 : 8, tall: Math.min(100, Math.max(12, b.height)), bounds: b, kind, moving: !!moving, dynamic: true, bakedContact: true, captureKey, lift: lift == null ? y - sourceFootY : lift, sourceFootY };
+          const row = { id, source: body.target, node: body, x, y, groundX: x, groundY: y, waterline: y, w: kind === 'pet' ? Math.min(42, Math.max(12, b.width * .8)) : 22 * GARDEN_ACTOR_SCALE, h: (kind === 'pet' ? 7 : 8) * GARDEN_ACTOR_SCALE, tall: Math.min(100, Math.max(12, b.height)), bounds: b, kind, moving: !!moving, dynamic: true, bakedContact: true, captureKey, lift: lift == null ? y - sourceFootY : lift, sourceFootY };
           effectActorRows.push(row); return row;
         };
         add('player', playerNode, playerInner, _gw.px * W.cellW, W.sky + _gw.py * W.cellH, 'actor', _gw.moving, playerInner._gplKey);
@@ -1805,7 +1805,7 @@ window.GardenNativeWorld = (function () {
       }
       return { revision: surfaceRevision, parent: rootNode._inner, regions: waterRegions, lockedRegions, gates: gateRows, landmarks: landmarkRows, containsWater, actors: effectActorRows, creatures: effectCreatureRows, fishingRigs: effectsState.fishingRigs || [], reflectables: effectHeldRows.length ? reflectedScenery.concat(effectHeldRows) : reflectedScenery, lights: pointLights };
     }
-    function occluders() { return solidObjects.concat([{ id: 'player', x: _gw.px * W.cellW, y: W.sky + _gw.py * W.cellH, w: 19, h: 8, height: 51, kind: 'actor', root: playerNode.target }]); }
+    function occluders() { return solidObjects.concat([{ id: 'player', x: _gw.px * W.cellW, y: W.sky + _gw.py * W.cellH, w: 19 * GARDEN_ACTOR_SCALE, h: 8 * GARDEN_ACTOR_SCALE, height: 51 * GARDEN_ACTOR_SCALE, kind: 'actor', root: playerNode.target }]); }
     function playerOcclusionState() { return { active: coveringCanopies.length + externalCanopies.length > 0, occluders: coveringCanopies.slice(), tracked: canopyOccluders.length, externalCoverage: externalCanopies.length, overlapping: externalCanopies.length > 0 && externalCanopies.length + coveringCanopies.length >= 2, silhouetteVisible, silhouetteBuilds, outline: silhouetteVisible, silhouetteBodies: silhouetteBodies.size, treeRootAlphaUnchanged: true, fadedCrowns: canopyOccluders.filter(crown => crown.faded).map(crown => ({ id: crown.id, alpha: crown.node.target.alpha, normalAlpha: crown.normalAlpha })) }; }
     const api = { root, rootNode, objectsNode: objects, actorsNode: actors, petsNode: pets, uiNode: ui, effectsNode: effects, playerNode, sync, update, prepareRender, prepareCaches, walkTo, actor, spawn: spec => actor(spec.id, spec.svg || '', spec.x, spec.y, spec), remove, point, project, pick, bounds, resize, cameraSet, cameraControls, zoom: step => cameraSet(null, step), camera: () => ({ ...camera }), model: () => model, playerState: () => ({ x: _gw.px, y: _gw.py, face: _gw.face, moving: _gw.moving }), entities: drawings, dynamic, occluders, lightSources: () => pointLights, renderStats: () => ({ staticObjects: drawings.size, visibleStatic, terrainChunks: terrainChunks.size, visibleTerrain, cacheQuality, terrainBaseQuality, terrainBaseReady, queuedTerrainBase: terrainBaseQueue.size, queuedCaches: cacheQueue.size, needGroundRings: needRings.size, mainCameraCull: { cameraId: mainExclusionCameraId, guardWorldPx: mainDrawingGuard, excludedDrawings: mainExcludedDrawings, specialActors: specialMainStatus() }, playerOcclusion: playerOcclusionState() }), setVisible: value => root.setVisible(value), depthChanged: () => { sorted = true; }, flushDepth: sortObjects, stopMoving: () => { _gw.path = []; _gw.then = null; _gw.hold = null; _gw.keys.clear(); _gw.spd = 0; }, destroy };
     api.effectsState = effectsState;
