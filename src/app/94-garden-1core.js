@@ -1324,12 +1324,23 @@ function gardenBuy(item, n) {
   _gdEmit('buy', { item: key, n });
   return _gdDone(`Bought ${n > 1 ? n + ' ' : ''}${name} for ${cost} coins`, 'buying', mark, { icon: 'shopping-bag' });
 }
+/** What the market pays for one picked crop, before a festival's boost. Seed prices doubled in 2.18.1 and the crops did not, so a radish, a carrot
+ *  or a melon sold for less than its seed and growing food lost coins. Now a crop that is lifted at harvest pays its seed back with a little over
+ *  (about 1.2 times, on an average harvest), and one that is picked again and again pays its seed back over about three pickings. A crop that
+ *  already sold for more keeps its price. Nothing is stored: past sales keep what they paid. */
+const GARDEN_CROP_FLOOR = Object.freeze({ lifted: 1.2, picked: 0.35 });
+function gardenCropSellEach(p) {
+  const y = p && p.yield; if (!y) return 0;
+  const base = Number(y.sell) || 0, price = Number(p.price) || 0; if (!price) return base;
+  const avg = (y.n[0] + y.n[1]) / 2 || 1, share = y.regrow > 0 ? GARDEN_CROP_FLOOR.picked : GARDEN_CROP_FLOOR.lifted;
+  return Math.max(base, Math.ceil(price * share / avg));
+}
 /** What the market pays for one of an item (0 = it does not buy it). */
 function gardenSellPrice(item, mArg) {
   const m = mArg || gardenModel(), [kind, id] = String(item).split(':');
   if (kind === 'craft') return typeof gardenCraftSellPrice === 'function' ? gardenCraftSellPrice(id, m) : 0;
   const boost = m.events.includes('harvest-home') ? 1.2 : 1;
-  if (kind === 'crop') { const p = gardenPlant(id); return p && p.yield ? Math.max(1, Math.round(p.yield.sell * boost)) : 0; }
+  if (kind === 'crop') { const p = gardenPlant(id); return p && p.yield ? Math.max(1, Math.round(gardenCropSellEach(p) * boost)) : 0; }
   if (kind === 'bq') { const b = GARDEN_BOUQUETS.find(x => x.id === id); return b ? Math.round((b.bonus + b.n * 3) * boost) : 0; }
   if (kind === 'decor') { const d = gardenDecor(id); return d ? Math.floor(d.price / 2) : 0; }
   if (item === 'honey') return Math.round(12 * boost);

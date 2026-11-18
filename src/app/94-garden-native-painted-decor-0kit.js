@@ -26,6 +26,8 @@ window.GardenPaintedDecor = (function () {
   const kit = () => window.GardenPaintedProps && GardenPaintedProps.kit;
   const vOf = (R, v) => R && R.v ? ((v | 0) % R.v + R.v) % R.v : 0;
   const sideOf = (R, r) => !!(R && R.side && ((r | 0) % 2 === 1));
+  // Turn (rot) on a piece with no side view mirrors it, so every press shows a change: with a side view, the back half of a turn mirrors (the bench, the barrow and the rest had a Turn button that did nothing)
+  const turnFlip = (R, r) => !!(R && !R.ground && (R.side ? (r | 0) & 2 : (r | 0) % 2 === 1));
   const partOf = (R, side) => side ? R.side : R;
   function opts(K, id, season, night, v, side, icon, tile) { return { season: season || 'summer', night: !!night, v, side, tile: tile | 0, r: K.rng(K.hash(id) + v * 31 + (tile | 0) * 97 + 1), K, D: sceneDraw, H, P: K.PALETTE, icon: !!icon }; }
 
@@ -90,7 +92,7 @@ window.GardenPaintedDecor = (function () {
     const W = o.W, season = sc.season || 'summer', night = !!o.night, mood = season + '|' + (night ? 'n' : 'd');
     const flat = !!R.ground, fx = (item.x + (def.w || 1) / 2) * W.cellW, foot = W.sky + (item.y + (def.h || 1)) * W.cellH - (flat ? 0 : 4);
     // paths and ground covers lie flat; tile is a position variant so a run of them does not repeat
-    const side = sideOf(R, item.r), v = vOf(R, item.v), P = partOf(R, side), flip = !flat && !!item.flip, SC = flat ? 1 : scaleOf(R), tile = R.tiles ? ((item.x * 7 + item.y * 13) % R.tiles + R.tiles) % R.tiles : 0;
+    const side = sideOf(R, item.r), v = vOf(R, item.v), P = partOf(R, side), flip = !flat && (!!item.flip !== turnFlip(R, item.r)), SC = flat ? 1 : scaleOf(R), tile = R.tiles ? ((item.x * 7 + item.y * 13) % R.tiles + R.tiles) % R.tiles : 0;
     if (!P || !P.draw) return null;
     sweep(scene, mood); warmSoon();
     const h = K.handle(scene, o, 'decor:' + item.uid, { cls: 'decor' });
@@ -115,7 +117,7 @@ window.GardenPaintedDecor = (function () {
     return K.finish(h, { x: fx + bx0, y: foot + y0 * SC, width: bx1 - bx0, height: (y1 - y0) * SC + 6 }, { x: fx, y: foot });
   }
   function ground(id) { const R = ROWS[id]; return !!(R && R.ground && !R.iconOnly); }
-  function signature(item, sc, night) { const R = ROWS[item.id]; return R ? 'painted-decor-3|' + item.id + '|' + item.x + ',' + item.y + '|' + vOf(R, item.v) + (sideOf(R, item.r) ? 's' : '') + (item.flip ? 'f' : '') + '|' + sc.season + (night ? '|n' : '') : null; }
+  function signature(item, sc, night) { const R = ROWS[item.id]; return R ? 'painted-decor-3|' + item.id + '|' + item.x + ',' + item.y + '|' + vOf(R, item.v) + (sideOf(R, item.r) ? 's' : '') + (!!item.flip !== turnFlip(R, item.r) ? 'f' : '') + '|' + sc.season + (night ? '|n' : '') : null; }
 
   /* ---------- icons: the shop, the bag, the crafting bench ---------- */
   const ICON = new Map(), ICON_MAX = 320, S = 112;

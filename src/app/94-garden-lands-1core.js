@@ -34,7 +34,7 @@ function gardenLandsWire(m) {
   for (const f of GARDEN_LAND_FEATURES) if (f.x != null && gardenLandOwnsFeature(f.id)) lf.push(f.id);
   if (typeof gardenRewardTrailsWire === 'function') ls.push(...gardenRewardTrailsWire(m));   // a path opened early with pegs: friends see it open too
   const gates = (typeof GARDEN_ZONE_GATES !== 'undefined' ? GARDEN_ZONE_GATES : []).filter(g => gardenHas('gate:' + g.id) > 0).map(g => 'zn-' + g.n);   // gates opened with a find go first, so the 12-id cap never drops one: a friend sees them open (gardenLandsOfSnap)
-  const areas = gates.concat(GARDEN_AREAS.filter(a => (a.buy ? plots.has(a.id) : m.areas.includes(a.id))).map(a => a.id));
+  const areas = gates.concat(GARDEN_AREAS.filter(a => (a.buy ? plots.has(a.id) : m.areas.includes(a.id))).map(a => a.id)).slice(0, 12);   // the snapshot's cap (GARDEN_SCHEMA areas: 12): one more and a friend's app refuses the whole garden, live or saved. The plain areas past it come back from the level (gardenLandsOfSnap)
   const S = gardenLandShowMine(m);
   return { areas, ls, lf, lc: S.c, lz: S.z, lr: S.r };
 }
@@ -149,7 +149,7 @@ function gardenLandMachineLoad(id) {
   if (info.state !== 'empty') return _gdNo('It is busy');
   if (info.haveN < f.n) return _gdNo(`It needs ${f.n} ${f.input === 'fruit' ? 'pieces of fruit' : 'bunches of herbs'}: you have ${info.haveN}`);
   let need = f.n, pay = 0; const i = {};
-  for (const [k, n] of info.have) { const take = Math.min(need, Math.floor(n)); if (take <= 0) continue; i[k] = -take; pay += take * gardenPlant(k.slice(5)).yield.sell; need -= take; if (!need) break; }
+  for (const [k, n] of info.have) { const take = Math.min(need, Math.floor(n)); if (take <= 0) continue; i[k] = -take; pay += take * gardenCropSellEach(gardenPlant(k.slice(5))); need -= take; if (!need) break; }
   pay = Math.ceil(pay * f.mult);
   if (typeof gardenLiveFx === 'function' && f.x != null) gardenLiveFx('use', 'machine', { x: f.x, y: f.y });
   return _gldPay(f.name.toLowerCase(), `${f.name}: on the go, ${pay} coins when it is done`, { i }, [['ldm.' + id, { at: Math.floor(m.now), pay }]], f.icon);
@@ -183,7 +183,7 @@ function gardenLandSwap() {
 function gardenLandHelpInfo(m) {
   const wk = _gdWeekFrom(m.today), pool = GARDEN_PLANTS.filter(p => p.yield && p.price > 0 && !p.unlock && (p.lv || 1) <= m.level.level && ['veg', 'fruit', 'herb', 'flower'].includes(p.cat));
   const p = pool[gardenHash('ld-help|' + wk) % pool.length], n = 4 + gardenHash('ld-help-n|' + wk) % 4;
-  const pay = Math.ceil(p.yield.sell * n * 2.5) + 10;
+  const pay = Math.ceil(gardenCropSellEach(p) * n * 2.5) + 10;
   return { plant: p, n, pay, wk, done: _gdG().seen[_gldKey('lf-help')] === wk, have: Math.floor(m.wallet.items['crop:' + p.id] || 0) };
 }
 function gardenLandHelp() {
@@ -354,7 +354,8 @@ function gardenLandsTick(was, lv, moments) {
     const said = gate && typeof wdFolkGateHelpLine === 'function' ? wdFolkGateHelpLine(gate.id) : '';   // (the helper's own words: 94-garden-wonder-1kin.js)
     moments.push({ kind: 'area', text: who ? (said ? `${who.name}: “${said}” ${z.name} is open.` : `${who.name} ${rule.help}: ${z.name} is open`) : `A gate has opened: ${z.name.toLowerCase()}`, icon: 'map-pin', area: z.id });
   }
-  for (const t of GARDEN_LAND_TRAILS) if (!t.zn && t.lv > was && t.lv <= lv) moments.push({ kind: 'area', text: `${t.name} is open`, icon: 'footprints', area: t.id });
+  const vale = GARDEN_WORLD.v >= 4 && Array.isArray(gardenIslandData().regions);   // (the vale has none of the old garden's trails: "Orchard steps is open" at level 5 named a path that is not there)
+  if (!vale) for (const t of GARDEN_LAND_TRAILS) if (!t.zn && t.lv > was && t.lv <= lv) moments.push({ kind: 'area', text: `${t.name} is open`, icon: 'footprints', area: t.id });
   const n = GARDEN_LAND_SECTIONS.filter(s => s.buy && s.lv > was && s.lv <= lv).length + GARDEN_LAND_FEATURES.filter(f => f.lv > was && f.lv <= lv && !f.prize).length;
   if (n) moments.push({ kind: 'grant', text: `${n} new thing${n === 1 ? '' : 's'} at the land office`, icon: 'map-pin' });
 }

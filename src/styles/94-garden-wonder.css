@@ -99,3 +99,5 @@
 .wd-yearrow.is-now { border-color: var(--accent, #8a6a44); }
 .wd-hide-row { display: flex; align-items: center; gap: 7px; padding: 3px 8px 8px; font-size: 13px; cursor: pointer; }
 @media (max-width: 640px) { .wd-talk { bottom: 66px; } .wd-talk-art { width: 52px; height: 66px; margin-top: -14px; } .wd-talk-art svg { width: 52px; height: 66px; } }
+/* while someone is talking, the first-run quick start card steps aside (it sat over the strip's buttons, 17 Nov 2026) */
+html:has(.wd-talk) .wn-qs { visibility: hidden; }

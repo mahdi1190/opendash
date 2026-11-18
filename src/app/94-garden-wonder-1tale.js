@@ -224,6 +224,7 @@ function wdTaleAnchor(id, depth) {
 }
 function _wtAnchorPt(ids) { for (const id of ids || []) { const p = wdTaleAnchor(id); if (p) return p; } return null; }
 function _wtPlaces(m) {
+  if (_wtHeavyToday()) return;   // free place beats too: after a heavy moment the rest of the day is ordinary life (STORIES.md, Pacing)
   for (const s of WD_TALES) {
     if (!_wtStoryOn(s)) continue;
     const W = _wtW(), next = _wtNext(s, m, '');
@@ -295,6 +296,7 @@ function _wtResPlace(r, m) {
 function _wtResTalk(r, S) {
   const m = gardenModel(), W = _wtW(), today = m.today, F = wdFacts(m, r.id), lines = [], actions = [];
   const t = wdTaleFor(r.id, m);
+  if (!F.met && r.hello) lines.push(r.hello);   // the first time: who he is, before any story (he opened with the cog, a stranger without a name)
   if (t) { const o = wdTaleTell(t.s, t.b); lines.push(...o.lines); actions.push(...o.actions); }
   else if (W['fy.' + r.id] !== today && (r.dayRows || r.day)) { const rows = r.dayRows ? r.dayRows() : null, d = rows && typeof _wkDayPick === 'function' ? _wkDayPick(r.id, rows, _wkFacts(F, m), today) : r.day ? r.day[gardenHash('wt|' + today + r.id) % r.day.length] : ''; W['fy.' + r.id] = today; if (d) lines.push(d); }
   if (F.last !== today && typeof _wkAdd === 'function') _wkAdd(r.id, 1);
@@ -324,7 +326,15 @@ function wdBoxStories(el, m) {
   }
   _wtKeepsBox(el, W);
   const next = wdTaleMainNext(m);
-  if (next) { const n = next.b.who === 'angler' ? 'The old angler' : (WD_FOLK_ROW.get(next.b.who) || {}).name; if (n) el.appendChild(_gdpEl('p', 'muted', `${n} has the next part of the vale’s story.`)); }
+  if (next) {
+    // who has it, and where to find them (a resident never calls, so the page says where he is; the post simply comes)
+    const w = next.b.who, res = WD_TALE_RESIDENTS.get(w);
+    const t = w === 'angler' ? 'The old angler, on the pier, has the next part of the vale’s story.'
+      : w === 'post' ? 'The next part of the vale’s story is coming by post.'
+      : res ? `${res.name}, the woodcutter in the old woodland, has the next part of the vale’s story.`
+      : (WD_FOLK_ROW.get(w) || {}).name ? `${WD_FOLK_ROW.get(w).name} has the next part of the vale’s story.` : '';
+    if (t) el.appendChild(_gdpEl('p', 'muted', t));
+  }
 }
 function _wtKeepsBox(el, W) {
   const keeps = Object.keys(W).filter(k => k.startsWith('kp.')).map(k => k.slice(3)), recs = Object.keys(W).filter(k => k.startsWith('rp.')).map(k => k.slice(3));

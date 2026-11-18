@@ -158,7 +158,7 @@ function _gdxPriceBtn(item, m, pr, card) {
   b.onclick = (ev) => { ev.stopPropagation(); _gdxBuy(item, 1, card || b, pr, b); };
   return b;
 }
-function _gdxWhyShort(why) { const w = String(why || ''); const lv = /level (\d+)/i.exec(w); return lv ? 'Lv ' + lv[1] : w.replace(/^Event: /, '').replace(/ only$/, ''); }
+function _gdxWhyShort(why) { const w = String(why || ''); const lv = /level (\d+)/i.exec(w); return lv ? 'Lv ' + lv[1] : /crafting bench/i.test(w) ? 'Craft it' : w.replace(/^Event: /, '').replace(/ only$/, ''); }   // (the whole reason is on hover; a tile's button holds a word or two)
 /** A short time ('15h', '4d') for a tile. */
 function _gdxShortH(h) { return h < 24 ? Math.max(1, Math.round(h)) + 'h' : Math.round(h / 24) + 'd'; }
 /** One thing for sale: a picture, its name, and a price you press. How long it takes and what it sells for are small marks; the sentence is on hover. */
@@ -202,7 +202,7 @@ function gardenMarket(el, m) {
 }
 function _gdxItemName(k) {
   const [kind, id] = k.split(':');
-  if (kind === 'crop') { const p = gardenPlant(id); return p ? (p.yield && p.yield.item ? p.yield.item[0].toUpperCase() + p.yield.item.slice(1) : p.name) : id; }
+  if (kind === 'crop') { const p = gardenPlant(id); return p ? (p.yield && p.yield.item ? p.yield.item[0].toUpperCase() + p.yield.item.slice(1) : p.name.replace(/ (tree|bush|plant|vine)$/i, '')) : id; }   // (you sell apples, not the apple tree: as the crafting bench says it)
   if (kind === 'bq') { const b = GARDEN_BOUQUETS.find(x => x.id === id); return b ? b.name : id; }
   if (kind === 'decor') { const d = gardenDecor(id); return d ? d.name : id; }
   if (kind === 'seed') { const p = gardenPlant(id); return p ? p.name + ' seeds' : id; }

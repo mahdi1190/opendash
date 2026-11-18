@@ -10,6 +10,19 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.72.0] - 2026-11-18
+
+### Fixed
+
+- **Gates:** hints and "something is glinting" notes now show, prompts name the gate and say when it opens anyway, opening one gives 25 coins and 20 XP, clicking near the Millwater bridge's gate opens it instead of fishing, and the cog sits in plain view.
+- **Field Journal:** its seven ribbons stay in view, cards name the vale's own pools and shores, sea fish and shore bugs live where their clues say, and more bugs are about as you open the vale.
+- **Market and earnings:** food you grow sells for at least what its seed cost, and the garden tells you what your focus time and finished tasks earned. Turn mirrors a decoration, and the shop, crafting and market words are clearer.
+- **Friends:** a garden with every gate open can be visited again, big gardens show on a live visit, a friend you let in walks straight in, visits send far fewer messages, and visitors arrive beside you rather than inside you.
+- **Sound:** rivers and brooks sound like running water, rain no longer loops, the mix is gentler, Volume controls every game sound, a level-up chimes once, and sound stops when you leave the garden.
+- **Story:** Hollin introduces himself, story moments wait after a heavy moment, and the care note names the right setting. Talk portraits show the whole figure.
+- **Rooms:** the hollow oak and the measurer's den no longer show old cartoon doors.
+- **Painted openings:** they no longer pile up in memory, play on the graphics card from the first opening of the day, and November no longer shows made-up snow.
+
 ## [2.71.1] - 2026-11-17
 
 ### Fixed

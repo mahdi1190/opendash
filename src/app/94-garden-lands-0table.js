@@ -299,7 +299,7 @@ const _GLD_FEATURE_ROWS = [
   { id: 'lf-well', name: 'Village well', art: 'well', does: 'collect', per: 'day', give: { dew: 2 }, verb: 'Draw a bucket', dew: 2, sec: 'lc-well-green', w: 1, h: 1, col: 'soft', lv: 2, cost: 40, tall: 1.4, icon: 'droplets', blurb: 'Draw a bucket once a day: two more cans of water.' },
   { id: 'lf-barrel', name: 'Rain barrel', art: 'barrel', does: 'barrel', sec: 'lc-well-green', w: 1, h: 1, col: 'soft', lv: 3, cost: 60, tall: 1.1, water: 3, icon: 'droplets', blurb: 'Three more cans of water every day.' },
   { id: 'lf-stone', name: 'Lucky stone', art: 'stone', does: 'collect', per: 'day', give: { coins: [3, 10] }, verb: 'Knock on the stone', sec: 'lc-band-green', w: 1, h: 1, col: 'soft', lv: 3, cost: 50, tall: 0.9, icon: 'coins', blurb: 'Knock on it once a day. A few coins always fall out, nobody knows why.' },
-  { id: 'lf-worms', name: 'Worm bin', art: 'worms', does: 'collect', per: '2day', give: { i: { fertiliser: 1 } }, verb: 'Take the fertiliser', sec: 'lc-long-beds', w: 1, h: 1, col: 'soft', lv: 4, cost: 80, tall: 0.9, icon: 'recycle', blurb: 'A bag of free fertiliser every two days.' },
+  { id: 'lf-worms', name: 'Worm bin', art: 'worms', does: 'collect', per: '2day', give: { i: { fertiliser: 1 } }, verb: 'Take the compost', sec: 'lc-long-beds', w: 1, h: 1, col: 'soft', lv: 4, cost: 80, tall: 0.9, icon: 'recycle', blurb: 'A bag of free compost every two days.' },
   { id: 'lf-arch', name: 'Seasons arch', art: 'arch', does: 'collect', per: 'season', give: { season: 1, x: 10 }, verb: 'Take this season’s seed', sec: 'lc-fountain-green', w: 2, h: 1, col: 'none', lv: 5, cost: 120, tall: 1.9, icon: 'flower', blurb: 'Changes with the year, and leaves you a free seed each season.' },
   { id: 'lf-boots', name: 'Stout boots', art: 'boots', does: 'boots', sec: '', x: 17, y: 19, w: 1, h: 1, door: { x: 17, y: 20 }, col: 'none', lv: 5, cost: 150, tall: 0.7, icon: 'footprints', blurb: 'You walk a good bit faster everywhere. They stand by the shops when you are not in them.' },
   { id: 'lf-scarecrow', name: 'Scarecrow', art: 'scarecrow', does: 'scarecrow', sec: 'ls-allot-row', w: 1, h: 1, col: 'soft', lv: 6, cost: 140, tall: 1.7, grow: 1.1, r: 4, icon: 'wheat', blurb: 'Plants near it grow a tenth faster. Dresses for the season.' },
@@ -539,10 +539,10 @@ function gardenLandsOpen(level, own) {
 }
 /** A snapshot's land: {areas (for the scene and the walking: GARDEN_AREAS rows, sections, trails, features), land (what goes in gardenLandSet)}. */
 function gardenLandsOfSnap(snap) {
-  const areas = (snap.areas || []).filter(id => { const a = gardenArea(id); return a && !gardenLandRow(id) && !a.buy; }), own = (snap.ls || []).concat(snap.lf || [], (snap.areas || []).filter(id => /^zn-[1-9]$/.test(id)));   // (zn-<n>: a gate they opened with a find)
+  const areas = (snap.areas || []).filter(id => { const a = gardenArea(id); return a && !gardenLandRow(id) && !a.buy; }).concat(GARDEN_AREAS.filter(a => !a.buy && (Number(snap.lv) || 1) >= a.lv).map(a => a.id)), own = (snap.ls || []).concat(snap.lf || [], (snap.areas || []).filter(id => /^zn-[1-9]$/.test(id)));   // (zn-<n>: a gate they opened with a find)
   if (Array.isArray(snap.lc) && snap.lc.length) own.push('finds');
   const open = gardenLandsOpen(snap.lv, own);
-  return { areas: [...new Set(areas.concat([...open]))], land: [...open] };
+  return { areas: [...new Set(areas.concat([...open]))], land: [...open] };   // (the plain areas open by their level, as at home: a snapshot's 12-id cap keeps the gates and may leave some out)
 }
 /** What a snapshot may say about land: ids from these tables, numbers in bounds. Called by gardenSnapshotClean. */
 function gardenLandsClean(raw, out) {
