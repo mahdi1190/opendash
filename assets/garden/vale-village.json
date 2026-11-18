@@ -28,7 +28,8 @@
   "market-stall": {"door":{"x":51,"y":57}},
   "craft-bench": {"door":{"x":54,"y":57}},
   "post-box": {"door":{"x":46,"y":57}},
-  "notice-board": {"x":57,"y":50,"door":{"x":56,"y":51}}
+  "notice-board": {"x":57,"y":50,"door":{"x":56,"y":51}},
+  "ld-lamp-b": {"x":48,"y":75,"door":{"x":48,"y":76}}
  },
  "newStatics": [
   {"id":"ld-cottage-1","x":44,"y":61,"w":2,"h":1,"col":"full","tall":2.4,"district":"south-grow-common","door":{"x":45,"y":62}},
