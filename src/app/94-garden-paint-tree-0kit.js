@@ -14,7 +14,7 @@
  * Sun: upper left, so shadows fall to the lower right. Nothing runs at load. */
 window.GardenPaintTrees = (function () {
   'use strict';
-  const K = 3, TEX = 'gptree', STEP = 16;
+  const K = 2.5, TEX = 'gptree', STEP = 24;
   let bytes = 0, made = 0, worstMs = 0;
   function rng(seed) { let s = (seed >>> 0) % 2147483647 || 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
   const mix = (a, b, t) => { const p = parseInt(a.slice(1), 16), q = parseInt(b.slice(1), 16), c = (x, y) => Math.round(x + (y - x) * t); return 'rgb(' + c(p >> 16, q >> 16) + ',' + c((p >> 8) & 255, (q >> 8) & 255) + ',' + c(p & 255, q & 255) + ')'; };
@@ -224,7 +224,7 @@ window.GardenPaintTrees = (function () {
   function canvas(o) {
     const sp = FORM[o.species] ? o.species : 'oak', season = o.season || 'summer', v = Math.max(0, Math.min(2, o.v | 0)), H = Math.max(30, o.h || 100), k = o.K || K, F = FORM[sp];
     const t0 = performance.now();
-    const halfW = H * Math.max(F.rx * 1.35, .3, o.shadow ? .24 + F.rx * 1.3 : 0) + 6, up = H * (F.cy + F.ry * 1.25) + 6, down = o.shadow ? 8 + H * F.rx * .3 : 8, w = Math.ceil(halfW * 2 * k), h = Math.ceil((up + down) * k);
+    const halfW = H * Math.max(F.rx * 1.35, .3, o.shadow ? .3 + F.rx * 1.2 : 0) + 6, up = H * (F.cy + F.ry * 1.25) + 6, down = o.shadow ? 10 + H * (.1 + F.rx * .5) : 8, w = Math.ceil(halfW * 2 * k), h = Math.ceil((up + down) * k);
     if (w > 4096 || h > 4096) return null;
     const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d');
     cx.setTransform(k, 0, 0, k, halfW * k, up * k);

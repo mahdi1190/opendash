@@ -202,7 +202,7 @@ window.GardenNativePainted = (function () {
     // middle: patches of richer and thinner sward
     wash(1 / 6, wx => { for (let i = 0; i < B.w * B.h / 3200; i++) { const x = B.x + r() * B.w, y = B.y + r() * B.h, s = 16 + r() * 40, t = r(); washBlob(wx, x, y, s, s * .55, t < .4 ? P.lawnLo : t < .75 ? P.lawnHi : '#b8b46a', .22 + r() * .12); } });
     // worn soil: bare, trodden ground in a few patches, with grass thinning into it
-    wash(1 / 3, wx => { for (let i = 0; i < B.w * B.h / 90000; i++) { const x = B.x + r() * B.w, y = B.y + r() * B.h; if (!info.meadow(x, y)) continue; const s = 14 + r() * 22; washBlob(wx, x, y, s, s * .45, '#9c8758', .5); washBlob(wx, x - 2, y - 1, s * .6, s * .25, '#b8a370', .45); } });
+    wash(1 / 3, wx => { for (let i = 0; i < B.w * B.h / 90000; i++) { const x = B.x + r() * B.w, y = B.y + r() * B.h; if (!info.meadow(x, y)) continue; const s = 12 + r() * 18; washBlob(wx, x, y, s, s * .4, '#a08c5e', .3); washBlob(wx, x - 2, y - 1, s * .55, s * .22, '#b8a370', .3); } });
     // clover and moss in drifts: small trefoils in a cooler green with the odd white head; moss yellower and fine
     for (let i = 0; i < B.w * B.h / 9000; i++) {
       const x0 = B.x + r() * B.w, y0 = B.y + r() * B.h; if (!info.meadow(x0, y0)) continue; const moss = r() < .35;
@@ -274,20 +274,20 @@ window.GardenNativePainted = (function () {
     for (const rt of info.routes) stroke(rt.points, '#8a7a4a', rt.width + 12, .3, 1.5, 2.5);
     for (const rt of info.routes) stroke(rt.points, rt.main ? '#b8a37c' : '#bca878', rt.width + 4, .9);
     cx.filter = 'none';
-    for (const rt of info.routes) stroke(rt.points, rt.main ? '#9a8a6a' : P.path, rt.width - 1, 1);   // (the main road's mortar bed; the lane's gravel)
+    for (const rt of info.routes) stroke(rt.points, rt.main ? '#a8977a' : P.path, rt.width - 1, 1);   // (the main road's mortar bed; the lane's gravel)
     for (const rt of info.routes) {
       if (rt.main) {
         // laid stones in rough courses across the road, never a grid: each a lumpy rounded hexagon, sized and toned by chance
-        along(rt, 7.2, (x, y, tx, ty) => {
-          const nx = -ty, ny = tx, half = rt.width / 2 - 1;
-          for (let o = -half + 2 + r() * 3; o < half - 2; o += 6 + r() * 4) {
-            const w = 3.2 + r() * 2.2, h = 2.6 + r() * 1.2, px = x + nx * o + tx * (r() - .5) * 2, py = y + ny * o + ty * (r() - .5) * 2, worn = Math.abs(o) < half * .4;
-            const tone = r(), base = tone < .2 ? P.stoneLo : tone < .45 ? '#cfb98e' : tone < .7 ? P.stone : tone < .85 ? '#d8c4a6' : '#c4ae86';
-            const q = []; for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + .3, rr = .85 + r() * .25; q.push([px + (Math.cos(a) * w * tx - Math.sin(a) * h * nx) * rr, py + (Math.cos(a) * w * ty - Math.sin(a) * h * ny) * rr]); }
-            cx.beginPath(); cx.moveTo((q[5][0] + q[0][0]) / 2, (q[5][1] + q[0][1]) / 2); for (let k = 0; k < 6; k++) { const p0 = q[k], p1 = q[(k + 1) % 6]; cx.quadraticCurveTo(p0[0], p0[1], (p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2); } cx.closePath();
-            cx.globalAlpha = .4; cx.fillStyle = '#5e5038'; cx.save(); cx.translate(.7, .9); cx.fill(); cx.restore();
-            cx.globalAlpha = 1; cx.fillStyle = base; cx.fill();
-            cx.globalAlpha = worn ? .55 : .35; cx.fillStyle = P.stoneHi; cx.beginPath(); cx.ellipse(px - .8, py - .8, w * .55, h * .4, Math.atan2(ty, tx), 0, Math.PI * 2); cx.fill();
+        along(rt, 6.4, (x, y, tx, ty) => {
+          const nx = -ty, ny = tx, half = rt.width / 2 - 1, ang = Math.atan2(ty, tx);
+          for (let o = -half + r() * 2.5; o < half; ) {
+            const w = 5.2 + r() * 2.6, h = 5 + r() * 1.2, px = x + nx * (o + w / 2), py = y + ny * (o + w / 2), worn = Math.abs(o) < half * .45; o += w + .9;
+            const tone = r(), base = tone < .2 ? '#c6b088' : tone < .45 ? '#d0bb92' : tone < .75 ? P.stone : tone < .9 ? '#d6c4a0' : '#bea67e';
+            cx.save(); cx.translate(px, py); cx.rotate(ang + Math.PI / 2 + (r() - .5) * .12);
+            cx.globalAlpha = .3; cx.fillStyle = '#5e5038'; cx.beginPath(); cx.roundRect(-w / 2 + .5, -h / 2 + .7, w, h, 1.8); cx.fill();
+            cx.globalAlpha = 1; cx.fillStyle = base; cx.beginPath(); cx.roundRect(-w / 2, -h / 2, w, h, 1.8); cx.fill();
+            cx.globalAlpha = worn ? .4 : .22; cx.fillStyle = P.stoneHi; cx.beginPath(); cx.roundRect(-w / 2 + .6, -h / 2 + .5, w * .7, h * .38, 1.2); cx.fill();
+            cx.restore();
           }
         });
       } else {
@@ -314,7 +314,7 @@ window.GardenNativePainted = (function () {
     if (info.plaza) {
       const pz = info.plaza, b = pz.bounds, ccx = pz.centre.x, ccy = pz.centre.y;
       cx.save(); cx.beginPath(); loop(pz.points); cx.fillStyle = '#3e4a2a'; cx.globalAlpha = .28; cx.filter = 'blur(' + Math.round(4 * K) + 'px)'; cx.translate(3, 5); cx.fill(); cx.restore();
-      cx.save(); cx.beginPath(); loop(pz.points); cx.fillStyle = '#a2906c'; cx.fill(); cx.clip();
+      cx.save(); cx.beginPath(); loop(pz.points); cx.fillStyle = '#ae9c78'; cx.fill(); cx.clip();
       const inRose = (x, y) => Math.hypot((x - ccx) / 46, (y - ccy) / 25.3) < 1;
       for (let y = b.y - 4; y < b.y + b.h + 4;) {
         const rh = 7.2 + r() * 2.6; let x = b.x - 4 - r() * 8;
@@ -322,15 +322,13 @@ window.GardenNativePainted = (function () {
           const w = 8 + r() * 8, x0 = x + .9, y0 = y + .9, x1 = x + w - .9, y1 = y + rh - .9, mx = (x0 + x1) / 2, my = (y0 + y1) / 2; x += w;
           if (inRose(mx, my)) continue;
           const d = Math.hypot((mx - ccx) / (b.w / 2), (my - ccy) / (b.h / 2)), j = () => (r() - .5) * 1.4;
-          const tone = r(), base = tone < .18 ? P.stoneLo : tone < .4 ? '#d2bb90' : tone < .62 ? P.stone : tone < .78 ? '#e0cfa8' : tone < .9 ? '#c8b088' : '#d6c0a8';
-          const q = [[x0 + j(), y0 + j()], [x1 + j(), y0 + j()], [x1 + j(), y1 + j()], [x0 + j(), y1 + j()]];
-          cx.beginPath(); cx.moveTo((q[3][0] + q[0][0]) / 2, (q[3][1] + q[0][1]) / 2); for (let k = 0; k < 4; k++) { const p0 = q[k], p1 = q[(k + 1) % 4]; cx.quadraticCurveTo(p0[0], p0[1], (p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2); } cx.closePath();
-          cx.globalAlpha = 1; cx.fillStyle = base; cx.fill();
-          // each stone domed by the light: a lit upper face, a darker lower edge
-          cx.save(); cx.clip();
-          cx.globalAlpha = .5; cx.fillStyle = P.stoneHi; cx.fillRect(x0 - 1, y0 - 1, (x1 - x0) * .75, 2.2);
-          cx.globalAlpha = .35; cx.fillStyle = '#8a7656'; cx.fillRect(x0 - 1, y1 - 1.8, x1 - x0 + 2, 2.6);
-          if (d < .55 && r() < .5) { cx.globalAlpha = .25; cx.fillStyle = '#f4e8c8'; cx.fillRect(x0, y0, x1 - x0, y1 - y0); }   // polished by feet in the middle
+          const tone = r(), base = tone < .15 ? '#c8b08a' : tone < .4 ? '#d4be96' : tone < .65 ? P.stone : tone < .82 ? '#dcc9a4' : tone < .93 ? '#cdb68e' : '#d8c2aa';
+          cx.save(); cx.translate(mx, my); cx.rotate((r() - .5) * .05);
+          const sw = x1 - x0 + j() * .4, shh = y1 - y0 + j() * .3;
+          cx.globalAlpha = 1; cx.fillStyle = base; cx.beginPath(); cx.roundRect(-sw / 2, -shh / 2, sw, shh, 1.6); cx.fill();
+          cx.globalAlpha = .3; cx.fillStyle = P.stoneHi; cx.beginPath(); cx.roundRect(-sw / 2 + .5, -shh / 2 + .4, sw * .8, 2, 1); cx.fill();
+          cx.globalAlpha = .22; cx.fillStyle = '#7a6648'; cx.beginPath(); cx.roundRect(-sw / 2 + .4, shh / 2 - 1.7, sw - .8, 1.5, .8); cx.fill();
+          if (d < .55 && r() < .5) { cx.globalAlpha = .16; cx.fillStyle = '#f4e8c8'; cx.beginPath(); cx.roundRect(-sw / 2, -shh / 2, sw, shh, 1.6); cx.fill(); }   // polished by feet in the middle
           cx.restore();
           // moss and weeds in the joints, more towards the rim
           if (d > .7 && r() < (d - .6) * .9) { cx.globalAlpha = .7; cx.fillStyle = r() < .5 ? '#7d8f4e' : '#93a252'; cx.fill(path(sceneDraw.blob(r, x1 + .4, (y0 + y1) / 2 + j(), 1.6 + r() * 2, 1 + r(), 5, .5))); }
