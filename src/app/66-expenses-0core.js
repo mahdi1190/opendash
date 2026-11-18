@@ -30,9 +30,18 @@ function expSet(data) {
 async function expLoad(force) {
   if (EXP.loading) return EXP.loading;
   if (!force && EXP.loaded && Date.now() - EXP.at < 20000) return EXP.data;
-  EXP.loading = expApi('').then((j) => { expSet(j.data); EXP.currency = j.currency || EXP.currency; return EXP.data; })
+  let firstEmptyLoad = false;
+  EXP.loading = expApi('').then((j) => {
+    firstEmptyLoad = !EXP.loaded && j.data?.items?.length === 0;
+    expSet(j.data); EXP.currency = j.currency || EXP.currency;
+    return EXP.data;
+  })
     .catch((e) => { EXP.error = netErrorReason(e, 'Expenses could not load'); EXP.loaded = true; return EXP.data; })
-    .finally(() => { EXP.loading = null; expRepaint(); });
+    .finally(() => {
+      EXP.loading = null;
+      // An empty expense list leaves the Home widget hidden and the sidebar badge empty.
+      if (!firstEmptyLoad || state.view !== 'home' || state.selectedTaskId) expRepaint();
+    });
   return EXP.loading;
 }
 /** Repaint what shows expenses: the page, Home, the open task. */
