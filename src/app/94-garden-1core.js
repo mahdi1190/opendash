@@ -309,7 +309,7 @@ function gardenEnsure() {
     // 2.74, the rebuilt village: a new garden's stones step from the end of the cottage path, past the corner of its own bed,
     // to the wishing well, and the sign stands at the bed's corner. Any that do not fit stay in the bag: never on the square.)
     const bed = GARDEN_WORLD.v >= 5 && GardenIslandLayout.data.anchors && GardenIslandLayout.data.anchors.bed;
-    const byBed = bed ? [{ x: bed.x + 1, y: bed.y - 1 }, { x: bed.x, y: bed.y - 1 }, { x: bed.x - 1, y: bed.y }] : null, signAt = bed ? { x: bed.x + 6, y: bed.y - 1 } : null;
+    const byBed = bed ? [{ x: bed.x + 1, y: bed.y - 1 }, { x: bed.x, y: bed.y - 1 }, { x: bed.x - 1, y: bed.y }] : null, signAt = bed ? { x: bed.x + 5, y: bed.y - 1 } : null;   // (one cell in from the bed's corner: the corner cell is half on the square's paving)
     const row = byBed ? byBed.filter(c => fits('stepping-stones', c)) : stones.every(c => fits('stepping-stones', c)) ? stones : spare.filter(c => fits('stepping-stones', c)).slice(0, 3);
     row.forEach((c, i) => { g.decor['p' + (28 + i)] = { d: 'stepping-stones', x: c.x, y: c.y, r: 0, v: 0, at: now }; });
     const c = signAt && fits('welcome-sign', signAt) ? signAt : gardenStarterCell(30, 13, 'start'); if (fits('welcome-sign', c)) g.decor.sign = { d: 'welcome-sign', x: c.x, y: c.y, r: 0, v: 0, at: now }; }

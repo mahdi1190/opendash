@@ -153,6 +153,10 @@
       }
       if (edge === 'reeds') { const pts = []; for (let k = 0; k < 5; k++) { const [x, y] = at(); if (inF(x, y) && inF(x, y - 12)) pts.push({ x, y }); } STYLE.reeds(B, pts, C); for (let k = 0; k < 2; k++) { const [x, y] = at(), w = 8 + r() * 8; if (inF(x, y)) B.f(B.blob(r, x, y, w, 2.4, 7, .5), '#5e7a6a', .35); } }
       if (edge === 'wall') {
+        // rough grass all through it, nettles in clumps, the lines of the old beds still showing, a cold frame's bones
+        for (let k = 0; k < 34; k++) { const [x, y] = at(), hh = 4 + r() * 7, lean = (r() - .5) * 4, t = r(); if (inF(x, y)) B.s(`M${x} ${y}q${lean * .3} ${-hh * .6} ${lean} ${-hh}`, t < .45 ? '#566e30' : t < .8 ? P.lawnLo : st[Math.floor(t * 3) % 3], 1.1, .8); }
+        for (let k = 0; k < 2; k++) { const [x, y] = at(), w = 16 + r() * 14; if (inF(x - w / 2, y) && inF(x + w / 2, y)) B.f(B.rr(x - w / 2, y - 2.6, w, 5.2, 2.4), '#6a5034', .28).f(B.rr(x - w / 2 + 1, y - 1.8, w - 2, 2.2, 1), '#8a6c4a', .22); }
+        for (let k = 0; k < 3; k++) { const [x, y] = at(), rx = 8 + r() * 7; if (!inF(x, y) || !inF(x, y - 12)) continue; B.f(B.ell(x + 1, y + 1, rx, 2.6), '#22301a', .2); for (let j = 0; j < 6; j++) { const dx = (r() - .5) * rx * 1.6, hh = 8 + r() * 7; B.s(`M${x + dx} ${y}q${(r() - .5) * 2} ${-hh * .5} ${(r() - .5) * 3} ${-hh}`, lt[1], 1.3, .9); B.f(B.blob(r, x + dx, y - hh * .7, 2.6, 1.6, 5, .4), lt[r() < .5 ? 0 : 2], .9); } }
         for (let k = 0; k < 2; k++) { const [x, y] = at(); if (!inF(x, y) || !inF(x, y - 10)) continue; B.tufts(r, x, y, 12, 6, [lt[1], lt[2], P.lawnLo], 9); if (season !== 'winter') for (let j = 0; j < 3; j++) B.f(B.circ(x + (r() - .5) * 10, y - 6 - r() * 4, 1.2), '#c79ac0', .9); }   // willowherb come up through the old beds
         { const [x, y] = at(); if (inF(x, y) && r() < .7) B.f(B.rr(x, y, 5.4, 3, 1), '#8a5642', .8).f(B.rr(x + 4, y + 2, 4.6, 2.6, 1), '#96604a', .8); }
       }
@@ -291,9 +295,10 @@
       for (const p of near) paint(p.filter(q => q.y <= gy));
       if (g && g.x > cb[0] - 60 && g.x < cb[2] + 60 && g.y > cb[1] - 20 && g.y < cb[3] + 50) {
         gate(B, g, kind);
-        if (S.next) { const sx = g.horiz ? g.x + g.len / 2 + 5 : g.x + (g.east ? 8 : -8), sy = g.horiz ? g.y + 1 : g.y + g.len / 2 + 3; sign(B, sx, sy, S.next, lv); }
       }
       for (const p of near) paint(p.filter(q => q.y > gy));
+      // (the sign last: reeds, long grass or a hedge end right beside the gate never stand across its board)
+      if (g && S.next && g.x > cb[0] - 60 && g.x < cb[2] + 60 && g.y > cb[1] - 20 && g.y < cb[3] + 50) { const sx = g.horiz ? g.x + g.len / 2 + 5 : g.x + (g.east ? 8 : -8), sy = g.horiz ? g.y + 1 : g.y + g.len / 2 + 3; sign(B, sx, sy, S.next, lv); }
       if (f.edge === 'meadow') { B.cx.save(); const out = new Path2D(); out.rect(bb[0] - 60, bb[1] - 60, bb[2] - bb[0] + 120, bb[3] - bb[1] + 120); out.addPath(S.path); B.cx.clip(out, 'evenodd'); B.s(S.path, C.P.lawnHi, 9, .3); B.cx.restore(); }   // the mown edge round the uncut meadow
     }
     // land of this field that is yours and not yet dug: pegged out with string, so you can see what is yours
