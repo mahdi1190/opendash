@@ -245,18 +245,19 @@ function flushPersistNow() {
   if (!_serverAvailable || (!_persistTimer && !_persistUITimer)) return;
   _persistFire();
 }
-// Tab closing: a beacon (its answer can't be read; the tab is gone).
+// A beacon can finish after the tab closes. If its queue is full, the
+// dashboard's service worker can finish the same version-checked save.
 function flushPersistOnExit() {
-  if (!_serverAvailable || (!_persistTimer && !_persistUITimer)) return;
+  if (!_serverAvailable || (!_persistTimer && !_persistUITimer && !_persistInFlight)) return;
   if (_persistTimer) clearTimeout(_persistTimer);
   if (_persistUITimer) clearTimeout(_persistUITimer);
   _persistTimer = _persistUITimer = null;
   try {
     const payload = _stateForPersist();
     if (_persistKey(payload) === _lastPersistedKey) return;
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon(STATE_API, new Blob([JSON.stringify(_gardenPersistEnvelope(payload))], { type: 'application/json' }));
-    }
+    const body = new Blob([JSON.stringify(_gardenPersistEnvelope(payload))], { type: 'application/json' });
+    if (navigator.sendBeacon && navigator.sendBeacon(STATE_API, body)) return;
+    navigator.serviceWorker?.controller?.postMessage({ type: 'save-state-on-exit', body });
   } catch (e) { /* best effort */ }
 }
 
