@@ -33,7 +33,9 @@ window.GardenPaintedMarks = (function () {
       B.tufts(r, 0, 1, 50, 12, ['#8c9a5e', '#c2c78e'], 6);
     } },
     // four standing stones in a row, leaning, lichened, each throwing its shadow to the south-east
-    'ld-stones': { box: [-110, -64, 120, 16], draw(B, o) {
+    // (foot: each stone's own base, [left, right, depth] in px from the middle of the footprint's foot line: the feet stop
+    // at the four stones, not at one slab four cells long with the gaps between them shut: 94-garden-world-0walk.js)
+    'ld-stones': { box: [-110, -64, 120, 16], foot: [[-81, -63, 9], [-37, -15, 9], [12, 32, 9], [60, 76, 9]], draw(B, o) {
       const kit = KIT(), r = kit.rng(41), snowy = o.season === 'winter';
       [[-72, 34, 9, -.12], [-26, 46, 11, .05], [22, 38, 10, -.08], [68, 28, 8, .14]].forEach(([x, h, w, lean]) => {
         B.f(B.poly([[x - w * .6, 0], [x + w * .6, 0], [x + w * .6 + 22, 8], [x - w * .2 + 22, 9]]), 'rgba(40,46,30,.22)');
@@ -97,7 +99,8 @@ window.GardenPaintedMarks = (function () {
   } };
   // Wick's shepherd's hut on the high pasture: weathered planks, a curved tin roof, iron wheels, plank steps up to
   // the door, a stove pipe, a log pile under the end; its door is its way in (wayIn), so no extra door is drawn on it
-  ART['ld-hut'] = { box: [-56, -116, 60, 14], door: { dx: 15, dy: 0 }, draw(B, o) {
+  // (foot: the hut's body from end to end, a cell and a half; its one layout cell left both ends, a wheel and the steps, open)
+  ART['ld-hut'] = { box: [-56, -116, 60, 14], foot: [[-38, 38, 0]], door: { dx: 15, dy: 0 }, draw(B, o) {
     const kit = KIT(), r = kit.rng(61), snowy = o.season === 'winter', iron = '#2e2c2a', ironHi = '#64605a';
     const wall = '#6f8274', wallLo = '#4f6052', wallHi = '#93a596', roof = '#8a8f92', roofLo = '#5f6468', roofHi = '#b9bec0';
     B.shadow(4, 2, 52, 9, .34);

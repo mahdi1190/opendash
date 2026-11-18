@@ -183,9 +183,11 @@
         // a ruined profile: high runs and tumbled gaps, never the same twice
         let h = 28 + rr() * 14; for (let i = 0; i < mid.length; i++) { h += (rr() - .5) * 12; if (rr() < .1) h = 7 + rr() * 6; if (rr() < .12) h = 32 + rr() * 16; h = Math.max(6, Math.min(48, h)); H.push(h); }
         for (let k = 0; k < 2; k++) for (let i = 1; i < H.length - 1; i++) H[i] = (H[i - 1] + H[i] * 2 + H[i + 1]) / 4;
-        // in pieces of six stretches: each bakes quickly and sorts by its own foot
-        for (let g = 0; g < mid.length - 1; g += 6) {
-          const sub = mid.slice(g, g + 7), hs = H.slice(g, g + 7); let ft = sub[0]; for (const p of sub) if (p.y > ft.y) ft = p;
+        // in pieces of two stretches: each bakes quickly and sorts by its own foot (pieces of six sorted a slanting wall up
+        // to two rows away from where it stood: now that the feet stop at the drawn wall and not a cell short of it
+        // (94-garden-world-0walk.js gardenRuinWallFoot), someone standing in front of its upper end was drawn behind it)
+        for (let g = 0; g < mid.length - 1; g += 2) {
+          const sub = mid.slice(g, g + 3), hs = H.slice(g, g + 3); let ft = sub[0]; for (const p of sub) if (p.y > ft.y) ft = p;
           const C2 = sub.map(p => ({ x: p.x - ft.x, y: p.y - ft.y })), bb = kit.bboxOf(C2);
           thing({ key: 'ruin3|' + f.id + '|' + g, x: ft.x, y: ft.y, box: [bb[0] - 30, bb[1] - 64, bb[2] + 30, bb[3] + 20], K: 1.1, draw: B => ruinWall(B, kit.rng(seed + 1 + g), C2, hs, C.P, C.season) });
         }

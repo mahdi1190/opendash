@@ -58,7 +58,8 @@
 
   // The folly: a round tower of pale stone on the ridge, a slate cap and a weathervane; a studded door kept locked,
   // and the camera obscura's high window under the cap.
-  ART['ld-folly'] = { box: [-46, -176, 48, 12], draw(B, o) {
+  // (foot: the tower's drum and the growth at its foot; its two layout cells shut a third of a cell of plain grass either side)
+  ART['ld-folly'] = { box: [-46, -176, 48, 12], foot: [[-31, 33, 0]], draw(B, o) {
     const r = KIT().rng(73), s = o.season, R = 26, top = -128;
     B.shadow(8, 2, 44, 9, .34);
     // the drum: shaded round, lit from the upper left

@@ -789,12 +789,17 @@ window.GardenPaintedProps = (function () {
     // sorted as one thing by the path's middle: on the near half of the path you were drawn in front of the trunk you
     // stood behind (drawing order, 18 Nov 2026). Its picture goes in as two halves, each by its own trunk's foot
     // (the side-on drawing puts them at -/+ 0.8 S either side of the crossing line: elevation()).
-    const halves = open && art.side && (kind === 'arch' || kind === 'ruin') && o.standing && base ? (() => {
+    // Shut, the whole gate is drawn over everyone (it stands in the mist of the land behind it), and walking up the lane
+    // to the hurdle you vanished behind the near trunk and its leaves: the first gate every new player walks to (the
+    // verifier, 18 Nov 2026). The near half stands on your side of the hurdle, clear of the mist, so it sorts by its own
+    // trunk and thins over you exactly as it does when the gate is open; the far half stays with the shut gate.
+    const halves = art.side && (kind === 'arch' || kind === 'ruin') && o.standing && base ? (() => {
       const [bx0, by0, bx1, by1] = art.box, texW = Math.ceil((bx1 - bx0) * K), texH = Math.ceil((by1 - by0) * K), mid = Math.round(-bx0 * K), near = image(scene, baseKey, baseX, baseY);
       if (!near || mid < 2 || mid > texW - 2) { if (near) near.destroy(); return false; }
       base.setCrop(0, 0, mid, texH); near.setCrop(mid, 0, texW - mid, texH);
       const nearDepth = frame.y + art.S * .8 + 2;
-      h.standing(base, frame.y - art.S * .8 + 2, true); h.standing(near, nearDepth, true);
+      if (open) h.standing(base, frame.y - art.S * .8 + 2, true); else h.add(base);
+      h.standing(near, nearDepth, true);
       // Walking through, you pass behind the near trunk and its leaves: they thin while they cover you, like any
       // crown you stand under, so you never vanish behind your own gate.
       // (the near half's paint, read once into memory at a quarter size the first time you come up to the arch. Asking
@@ -989,6 +994,24 @@ window.GardenPaintedProps = (function () {
   /** The trees the crossings' art stands beside (the stair's cherries, the pass's pine, the ruin's yew), as trunk feet
    *  in cells ([x, y, width]) for the one trunk-collision list (94-garden-world-0walk.js _gwPaintedTrunks). The same
    *  numbers gateArt uses; a tree stands whether the gate is open or not. */
+  /** The crossings' standing stonework as boxes the feet cannot enter, in cells ({x0, y0, x1, y1, src}), from the same
+   *  numbers the drawings use (gateArt, ruinedArch): the Ruined arch's piers and the wall stubs beside them, the Orchard
+   *  stair's stone cheeks and oak posts, the cairn by the pass. They stand whether the gate is open or shut. */
+  let gateFeetMemo = null;
+  function gateFeet() {
+    const D = typeof gardenIslandData === 'function' ? gardenIslandData() : null; if (!D || !D.gates || typeof _gldIslandGateFrame !== 'function') return [];
+    if (gateFeetMemo && gateFeetMemo.d === D) return gateFeetMemo.out;
+    const W = GARDEN_WORLD, out = [], box = (g, x0, y0, x1, y1, what) => out.push({ x0: x0 / W.cellW, y0: (y0 - W.sky) / W.cellH, x1: x1 / W.cellW, y1: (y1 - W.sky) / W.cellH, src: (g.name || g.id) + ' (' + what + ')' });
+    for (const g of D.gates) {
+      const frame = g.crossSpan ? ok(() => _gldIslandGateFrame(g)) : null; if (!frame) continue;
+      const kind = gateKind(g), side = Math.abs(frame.uy) > Math.abs(frame.ux), half = Math.max(46, Math.min(80, frame.span * .62)); if (side) continue;   // (seen side on, the arch's trunks are in the trunk list and the bridge is its crossing's)
+      if (kind === 'ruin') { const pw = Math.max(12, half * .3), reach = half + pw + half * .7 + 12; for (const s of [-1, 1]) box(g, frame.x + (s < 0 ? -reach : half), frame.y - 8, frame.x + (s < 0 ? -half : reach), frame.y + 1, s < 0 ? 'west pier and wall' : 'east pier and wall'); }
+      else if (kind === 'stair') { const sw = half * 1.55, dy = 52, top = dy - 6 * 9; for (const s of [-1, 1]) box(g, frame.x + (s < 0 ? -(sw + 47) : sw - 5), frame.y + top - 6, frame.x + (s < 0 ? -(sw - 5) : sw + 47), frame.y + dy, s < 0 ? 'west cheek and post' : 'east cheek and post'); }
+      else if (kind === 'pass') box(g, frame.x + half + 36 - 13, frame.y - 2 - 6, frame.x + half + 36 + 13, frame.y - 2 + 3, 'cairn');
+    }
+    gateFeetMemo = { d: D, out };
+    return out;
+  }
   let gateTreesMemo = null, fallsFeet = [];
   function gateTrees() {
     const D = typeof gardenIslandData === 'function' ? gardenIslandData() : null; if (!D || !D.gates || typeof _gldIslandGateFrame !== 'function') return [];
@@ -1003,5 +1026,5 @@ window.GardenPaintedProps = (function () {
     gateTreesMemo = { d: D, out };
     return out.concat(fallsFeet);
   }
-  return { gateTrees, gatePreview, kit, decorTable: DECOR, paintTable: PAINT, memory, glowPool, prop, signature, decor, decorSignature, decorKnown, gate, gateSignature, gateKind, falls, poolKey, image, status, get lastError() { return lastError; } };
+  return { gateTrees, gateFeet, gatePreview, kit, decorTable: DECOR, paintTable: PAINT, memory, glowPool, prop, signature, decor, decorSignature, decorKnown, gate, gateSignature, gateKind, falls, poolKey, image, status, get lastError() { return lastError; } };
 })();

@@ -21,6 +21,9 @@ window.GardenPaintedTerrain = (function () {
   const K = 1.5, CHUNK = 256, DEPTH = -9350;
   const GORGE_WATER = true;                // the gorge's water is painted with its walls; false leaves a hole for the water painter
   let current = null, sprites = [], lastError = null, stats = {}, trunkFeet = [];
+  // The old sheepfolds of the high pasture: [x, y, radius in cells, the ring steps (of 40) left out for the gateway: after, before].
+  // One list for the painting (compose, 3b) and for walking (94-garden-world-0walk.js gardenWalkFolds): the ring stops the feet.
+  const FOLDS = Object.freeze([[57.4, 18.6, 1.6, 33, 37], [54.6, 15.8, 1.2, 33, 37]]);
   const ok = f => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
 
   const BASE = { rock: '#a49a8c', rockLo: '#7d7468', rockHi: '#c9c1b0', rockDk: '#4e473f', lichen: '#c9c48a', moss: '#7d8f4e', peat: '#5a4636', path: '#c4b089', pathLo: '#9c8a66', pathHi: '#dccfac', snow: '#fbfbf7', snowSh: '#c8d6e6', snowDk: '#a9bccf', pine: '#3c5a3a', pineHi: '#58784a', bark: '#b06a3a', water: '#6d9fb0', shallow: '#93bfbd', foam: '#eef2e2', cave: '#1d2224' };
@@ -137,17 +140,20 @@ window.GardenPaintedTerrain = (function () {
         }
       });
     });
-    // 3b. Outcrops (flat gritstone slabs breaking the turf, ground-level: you walk over them) and the old sheepfolds of the high pasture.
+    // 3b. Outcrops (gritstone slabs breaking the turf) and the old sheepfolds of the high pasture. The slabs were meant
+    //     as ground you walk over, but each is painted with a dark underside and a lit top and reads as a boulder up to
+    //     your thigh (the verifier, 18 Nov 2026: "drawn rocks with no red"): they stop the feet now (standing()).
     const routeNear = (x, y, d) => L.routes.some(rt => rt.points.some((p, i) => i % 3 === 0 && Math.abs(p.x - x) < d && Math.abs(p.y - y) < d * .7));
     const crops = [[67.2, 18.2, 6, 1.2], [75.6, 16.8, 6, 1.3], [68.8, 19.6, 4, .9], [73.6, 19.2, 4, .8]].map(([x, y, n, sc]) => ({ x: x * cw, y: W.sky + y * ch, n, s: sc })); { const rr = kit.rng(5150); for (let k = 0; k < 60 && crops.length < 26; k++) { const x = (4 + rr() * 74) * cw, y = W.sky + (3 + rr() * 16) * ch; if (fellAt(x, y) && !routeNear(x, y, 60) && !L.peaks.some(pk => { const b = kit.bboxOf(pk.pts, 40); return x > b[0] && x < b[2] && y > b[1] && y < b[3]; })) crops.push({ x, y, n: 3 + Math.floor(rr() * 5), s: .7 + rr() * .8 }); } }
     for (const c of crops) add([c.x - 70, c.y - 40, c.x + 70, c.y + 40], 170 + Math.round(c.x), (B, r) => {
       clipFell(B); const sn = snowAt(c.x, c.y) > .6;
       for (let k = 0; k < c.n; k++) { const x = c.x + (r() - .5) * 80 * c.s, y = c.y + (r() - .5) * 30 * c.s, rx = (8 + r() * 14) * c.s, ry = rx * (.34 + r() * .14);
+        if (B.stand) B.stand(x + 1, y + 1.2, rx + 1, ry + 1.2);   // (for walking: standing() below; nothing is drawn by it)
         B.f(B.blob(r, x + 2, y + 2.4, rx, ry, 8, .3), P.rockDk, .45).f(B.blob(r, x, y, rx, ry, 8, .3), P.rockLo).f(B.blob(r, x - rx * .12, y - ry * .3, rx * .86, ry * .66, 8, .3), P.rock).f(B.blob(r, x - rx * .3, y - ry * .45, rx * .4, ry * .25, 6, .4), sn ? P.snow : P.rockHi, .8);
         B.s(`M${x - rx * .2} ${y - ry * .6}l${rx * .15} ${ry * 1.1}`, P.rockDk, .9, .5);
         if (!sn) { if (r() < .5) B.f(B.blob(r, x + rx * .3, y - ry * .2, rx * .25, ry * .2, 6, .5), P.lichen, .6); B.tufts(r, x, y + ry * .8, rx * 1.6, 5, [P.fellLo, P.bleach], 5); if (moor(x) > .3) B.heather(r, x + rx * .9, y + ry * .5, 4 + r() * 3, P, P.bloom); } }
     });
-    for (const [fx, fy, frx] of [[57.4, 18.6, 1.6], [54.6, 15.8, 1.2]]) { const c = L.cpt(fx, fy), RX = frx * cw, RY = frx * ch * .95;
+    for (const [fx, fy, frx] of FOLDS) { const c = L.cpt(fx, fy), RX = frx * cw, RY = frx * ch * .95;
       add([c.x - RX - 20, c.y - RY - 20, c.x + RX + 20, c.y + RY + 24], 190 + fx, (B, r) => {
         clipFell(B); const sn = snowAt(c.x, c.y) > .6, ring = []; for (let k = 0; k <= 40; k++) { const a = k / 40 * Math.PI * 2; if (k > 33 && k < 37) { ring.push(null); continue; } ring.push({ x: c.x + Math.cos(a) * RX, y: c.y + Math.sin(a) * RY }); }
         // the fold's turf is greener (sheltered), then the wall: a shaded outer face to the south, the stones, the cope
@@ -594,6 +600,7 @@ window.GardenPaintedTerrain = (function () {
     const season = sc.season || 'summer', sig = 'gpt-3|' + season + '|' + (GardenIslandLayout.fingerprint || '');
     const old = current; if (old) { old.roomEntrances = null; old.handle.destroy(old.sig === sig); for (const s of sprites) s.destroy(); sprites = []; if (old.sig !== sig) for (const k of old.spriteKeys) if (scene.textures.exists(k)) scene.textures.remove(k); }
     const ops = ok(() => compose(L, season)); if (!ops) return null;
+    standOps = ops.filter(o => /\.boulder\(|\.stand\(/.test(String(o.draw))); standMemo = null; standSigNow = sig;
     const rb = kit.bboxOf(L.regionLoops.flat().concat(L.terraces.flatMap(t => t.pts)));
     const box = { x: 0, y: W.sky - 150, w: W.cols * W.cellW, h: Math.min(W.sky + W.rows * W.cellH, rb[3] + 80) - (W.sky - 150) };
     const handle = kit.chunked(scene, parent, ops, { key: sig, box, K, chunk: CHUNK, depth: DEPTH, budgetMB: 40 });
@@ -610,6 +617,31 @@ window.GardenPaintedTerrain = (function () {
     current = { sig, handle, spriteKeys: keys, roomEntrances: L.falls && L.falls.caveStair ? { falls: caveMouthAt(L, L.falls.caveStair) } : {} };
     stats = { sig, chunks: handle.chunks, buildMs: Math.round(performance.now() - t0), sprites: sprites.length, spritePx };
     return { destroy() { handle.destroy(true); for (const s of sprites) s.destroy(); sprites = []; current = current && current.handle === handle ? Object.assign(current, { handle: { destroy() {} }, roomEntrances: null }) : current; } };
+  }
+  /**
+   * The rocks the ground painting stands up out of the turf, in cells, for walking: the brush's boulders (a top, a lit
+   * face, a shaded face and a contact shadow; knee high and more) as boxes [x0, y0, x1, y1], and the outcrops' slabs as
+   * ovals { x, y, rx, ry }. They were paint only: you walked straight over each one and were drawn on top of it (the
+   * verifier, 18 Nov 2026). Each is the whole drawn rock, so nobody stands half behind one. Found by painting the ground
+   * ops that draw them once more into a scrap canvas, with a brush that writes each rock down (the same seeds, so the
+   * same rocks); worked out once per painting, when walking first asks. Only rocks on the fells' own ground count (the
+   * drawing is clipped to it); pebbles (the brush's stone) stay walked over.
+   */
+  let standOps = null, standMemo = null, standSigNow = '';
+  const STAND_MIN = Object.freeze({ w: 7, h: 5 });   // px: smaller than this is a stone you step over
+  function standing() {
+    const kit = KIT(); if (!kit || !wanted() || !standOps) return [];
+    if (standMemo && standMemo.sig === standSigNow) return standMemo.list;
+    const W = GARDEN_WORLD, list = [], c = document.createElement('canvas'); c.width = c.height = 2; const cx = c.getContext('2d'), B = kit.brush(cx), draw = B.boulder;
+    const mine = (X, Y) => { const gx = X / W.cellW, gy = (Y - W.sky) / W.cellH; if (gx < 0 || gy < 0 || gx >= W.cols || gy >= W.rows || typeof gardenIslandRegionAt !== 'function') return false; const reg = gardenIslandRegionAt(gx, gy); return !!(reg && ownsRegion(reg.id)) && (typeof gardenIslandLandContains !== 'function' || gardenIslandLandContains(gx, gy)); };
+    B.boulder = function (r, x, y, w, h) {
+      if (w >= STAND_MIN.w && h >= STAND_MIN.h) { const m = cx.getTransform(), X = m.a * x + m.c * y + m.e, Y = m.b * x + m.d * y + m.f; if (mine(X, Y - h / 2)) list.push([+((X - w * .52) / W.cellW).toFixed(3), +((Y - h - W.sky) / W.cellH).toFixed(3), +((X + w * .5) / W.cellW).toFixed(3), +((Y - W.sky) / W.cellH).toFixed(3)]); }
+      return draw.apply(B, arguments);
+    };
+    B.stand = function (x, y, rx, ry) { const m = cx.getTransform(), X = m.a * x + m.c * y + m.e, Y = m.b * x + m.d * y + m.f; if (mine(X, Y)) list.push({ x: +(X / W.cellW).toFixed(3), y: +((Y - W.sky) / W.cellH).toFixed(3), rx: +(rx / W.cellW).toFixed(3), ry: +(ry / W.cellH).toFixed(3) }); };
+    for (const o of standOps) ok(() => { cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); try { o.draw(B, kit.rng(o.seed || 1), o.bb); } finally { cx.restore(); cx.filter = 'none'; cx.globalAlpha = 1; } });
+    standMemo = { sig: standSigNow, list };
+    return list;
   }
   /**
    * The showcase: paint a box of the high ground straight into a 2D context (no scene needed), the ground then the
@@ -649,5 +681,5 @@ window.GardenPaintedTerrain = (function () {
     return Object.assign({}, stats, { wanted: wanted(), pending: h ? h.pending : null, live: h ? h.live : null, baked: h ? h.baked : null, evicted: h ? h.evicted : null, worstChunkMs: h ? h.worstMs : null, worstSliceMs: h ? h.sliceWorstMs : null, p95ChunkMs: h ? h.p95 : null, medianChunkMs: h ? h.median : null, bakeMs: h ? h.bakeMs : null, textureMB: Math.round(px * 4 / 1048576 * 10) / 10, lastError: lastError || (KIT() && KIT().lastError) });
   }
   function roomEntrance(id) { return current && current.roomEntrances && current.roomEntrances[id] || null; }
-  return { wanted, build, paintTo, profile, owns, ownsRegion, status, compose, readLayout, roomEntrance, PAL, trunks: () => (wanted() && trunkFeet) || null };
+  return { wanted, build, paintTo, profile, owns, ownsRegion, status, compose, readLayout, roomEntrance, PAL, trunks: () => (wanted() && trunkFeet) || null, folds: () => (wanted() ? FOLDS : []), standing, standSig: () => (wanted() && standOps ? standSigNow : '') };
 })();

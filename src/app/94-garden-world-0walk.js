@@ -58,12 +58,15 @@ function gardenDecorCol(def) {
   if (!def) return 'full';
   if (def.col === 'none' || def.col === 'soft' || def.col === 'full') return def.col;
   if (GARDEN_COL_NONE.has(def.id)) return 'none';
-  if (GARDEN_COL_FULL.has(def.id) || (def.effect && def.effect.kind === 'sit')) return 'full';
+  // (every fence, wall, hedge and railing is 'full' by its family, not by a list of ids: the newer panels, the hazel hurdle,
+  // the stone kerb, rope and posts, the crooked railings and the tumbled wall, were missing from the list, so each blocked
+  // only a half-cell box under a panel drawn a cell wide and a run of them had a gap at every joint: the verifier, 18 Nov 2026)
+  if (GARDEN_COL_FULL.has(def.id) || def.cat === 'fence' || (def.effect && def.effect.kind === 'sit')) return 'full';
   return 'soft';
 }
 /** The boxes the feet are tested against besides the cell grid: [{x0, y0, x1, y1}] in cells, and which cells each touches. */
 function _gwBuildSolids(m) {
-  const list = [], at = new Map();
+  const list = [], at = new Map(), painted = typeof GardenNativePainted !== 'undefined' && GardenNativePainted && GardenNativePainted.wanted && GardenNativePainted.wanted();
   // (src names the thing for the collision view, 94-garden-world-7collide.js; walking reads only the box)
   const add = (x0, y0, x1, y1, src) => {
     const r = { x0, y0, x1, y1, src: src || 'something solid' }; list.push(r);
@@ -129,9 +132,27 @@ function _gwBuildSolids(m) {
     const W = GARDEN_WORLD, side = Math.abs(frame.uy) > Math.abs(frame.ux), half = Math.max(46, Math.min(80, frame.span * .62)), S = frame.span * .9;
     for (const sgn of [-1, 1]) { const lx = frame.x + sgn * (side ? .85 : 1) * (half + 2), ly = frame.y + 2 + (side ? sgn * (S / half * .8) * (half + 2) : 0); add((lx - 9) / W.cellW, (ly - 7 - W.sky) / W.cellH, (lx + 9) / W.cellW, (ly + 2 - W.sky) / W.cellH, 'Forest arch trunk'); }
   }
+  // The crossings' own standing stonework (94-garden-native-painted-props.js gateFeet): the Ruined arch's two piers and the
+  // wall stubs beside them, the stone cheeks and oak posts either side of the Orchard stair, the cairn on the pass. They
+  // were paint only: you walked through each pier and came out behind it (the verifier, 18 Nov 2026).
+  if (painted && island && typeof GardenPaintedProps !== 'undefined' && GardenPaintedProps && GardenPaintedProps.gateFeet) for (const f of GardenPaintedProps.gateFeet()) add(f.x0, f.y0, f.x1, f.y1, f.src);
+  // A sight whose painting says where its base is (94-garden-paint-terrain-2marks.js ART[id].foot): the feet stop at that
+  // base, not at its layout cells (_gwBuildGrid leaves those open to the feet). The hill stones are four stones, not a slab
+  // four cells long; the folly's tower is narrower than its two cells; the shepherd's hut is wider than its one.
+  for (const p of gardenPropsNow()) { const feet = gardenPropPaintedFeet(p); if (feet) for (const f of feet) add(f.x0, f.y0, f.x1, f.y1, p.name || p.id); }
+  // The fells' sheepfolds (94-garden-paint-terrain-1fells.js): a dry-stone ring painted into the turf with a gateway in
+  // it. It was walked straight over. The ring stops the feet along its own line; the gateway is the way in.
+  if (painted && island && island.version >= 5 && typeof GardenPaintedTerrain !== 'undefined' && GardenPaintedTerrain && GardenPaintedTerrain.folds) for (const f of gardenWalkFolds(island)) { const r = add(f.x0, f.y0, f.x1, f.y1, f.src); r.form = f; }
+  // the boulders the fells' ground painting stands up out of the turf (94-garden-paint-terrain-1fells.js standing)
+  if (painted && island && island.version >= 5 && typeof GardenPaintedTerrain !== 'undefined' && GardenPaintedTerrain && GardenPaintedTerrain.standing) for (const b of GardenPaintedTerrain.standing()) {
+    if (Array.isArray(b)) { add(b[0], b[1], b[2], b[3], 'boulder (fells)'); continue; }
+    // (a slab of an outcrop: an oval, so its corners are not blocked where nothing is drawn)
+    const pts = []; for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6; pts.push([b.x + Math.cos(a) * b.rx, b.y + Math.sin(a) * b.ry]); }
+    const f = _gwFormOf(pts, 'rock outcrop (fells)'), r = add(f.x0, f.y0, f.x1, f.y1, f.src); r.form = f;
+  }
   // Every painted tree on the map (village planting, the three painted woods, the orchard rows) has one trunk box at
   // its foot, from one list (_gwPaintedTrunks): the crowns are for walking behind.
-  for (const b of _gwPaintedTrunks(island)) add(b.x0, b.y0, b.x1, b.y1, 'tree trunk (' + ({ wood: 'painted wood', orchard: 'orchard', village: 'village', fells: 'fells', gate: 'crossing' }[b.src] || b.src) + ')');
+  for (const b of _gwPaintedTrunks(island)) add(b.x0, b.y0, b.x1, b.y1, 'tree trunk (' + ({ wood: 'painted wood', orchard: 'orchard', village: 'village', fells: 'fells', gate: 'crossing', forest: 'a big tree' }[b.src] || b.src) + ')');
   // the old woodland's lamp plinths (94-garden-0island.js): a small block at the foot, the lantern above is walked behind
   if (typeof gardenIslandOldWoodLamps === 'function') { const lamps = gardenIslandOldWoodLamps(island); for (const q of lamps.concat(gardenIslandPosternPiers(island))) add(q.foot.x0, q.foot.y0, q.foot.x1, q.foot.y1, lamps.includes(q) ? 'lamp plinth' : 'postern pier'); }
   // the village's street lamps (ld-lamp-a by the Land Office, ld-lamp-b by the quay): an iron post on a small plinth, a block at its foot
@@ -154,6 +175,10 @@ function _gwBuildSolids(m) {
  *  within half a cell of one already listed is the same tree drawn twice (a wood or the orchard over the planting), so it
  *  is listed once. */
 function _gwFellTrunks() { const t = typeof GardenPaintedTerrain !== 'undefined' && GardenPaintedTerrain && GardenPaintedTerrain.trunks ? GardenPaintedTerrain.trunks() : null; return Array.isArray(t) ? t : []; }
+/** The world's own big trees (94-garden-native-world.js forestRows: the trees that stand where no painter plants a wood;
+ *  twelve of them on the fells). They were the one kind of tree with no trunk box: you walked through each trunk and stood
+ *  inside it (the verifier, 18 Nov 2026). [x, y, width] at the foot, in cells. */
+function _gwForestTrunks() { const nw = typeof _gw !== 'undefined' && _gw && _gw.nativeWorld, t = nw && nw.forestTrunks ? nw.forestTrunks() : null; return Array.isArray(t) ? t : []; }
 function _gwGateTrunks() { const nat = typeof GardenNativePainted !== 'undefined' && GardenNativePainted && GardenNativePainted.wanted && GardenNativePainted.wanted(); const t = nat && typeof GardenPaintedProps !== 'undefined' && GardenPaintedProps && GardenPaintedProps.gateTrees ? GardenPaintedProps.gateTrees() : null; return Array.isArray(t) ? t : []; }
 /** What the painted-trunk list depends on, cheaply: each painter's own revision or signature. */
 function _gwTrunkSig() {
@@ -162,7 +187,7 @@ function _gwTrunkSig() {
   const orch = typeof GardenPaintVale !== 'undefined' && GardenPaintVale && typeof GardenPaintVale.orchardTrunks === 'function' ? GardenPaintVale.orchardTrunks() : null;
   const feetSig = list => { let h = list.length; for (const t of list) h = (Math.imul(h, 31) + Math.round(t[0] * 64) * 7 + Math.round(t[1] * 64)) | 0; return list.length + ':' + h; };
   const vale = typeof GardenPaintVale !== 'undefined' && GardenPaintVale && GardenPaintVale.feetSig ? GardenPaintVale.feetSig() : '';
-  return vale + '/' + (nat ? nat.rev : 0) + '/' + (wood ? wood.sig : '') + '/' + feetSig(Array.isArray(orch) ? orch : []) + '/' + feetSig(_gwFellTrunks()) + '/' + feetSig(_gwGateTrunks());
+  return vale + '/' + (nat ? nat.rev : 0) + '/' + (wood ? wood.sig : '') + '/' + feetSig(Array.isArray(orch) ? orch : []) + '/' + feetSig(_gwFellTrunks()) + '/' + feetSig(_gwGateTrunks()) + '/' + feetSig(_gwForestTrunks()) + '/' + (typeof GardenPaintedTerrain !== 'undefined' && GardenPaintedTerrain && GardenPaintedTerrain.standSig ? GardenPaintedTerrain.standSig() : '');
 }
 function _gwPaintedTrunks(island) {
   if (!island) return [];
@@ -176,6 +201,7 @@ function _gwPaintedTrunks(island) {
   if (nat && nat.list) for (const t of nat.list) feet.push({ x: t.x, y: t.y - .02, w: t.w, src: 'village' });
   for (const [x, y, w] of _gwFellTrunks()) feet.push({ x, y, w, src: 'fells' });
   for (const [x, y, w] of _gwGateTrunks()) feet.push({ x, y, w, src: 'gate' });
+  for (const [x, y, w] of _gwForestTrunks()) feet.push({ x, y, w, src: 'forest' });
   const out = [], seen = new Map();
   for (const f of feet) {
     const k = Math.floor(f.x) + ',' + Math.floor(f.y); let dup = false;
@@ -193,19 +219,72 @@ const _GW_LANDFORM_NAME = Object.freeze({ 'ruin-wall': 'ruin wall', ruin: 'ruin'
 function gardenWalkLandforms(island) {
   if (!island || island.version < 5) return [];
   if (island._walkForms) return island._walkForms;
-  const out = (island.landforms || []).filter(f => f.col === 'full' && f.polygon && f.polygon.length > 2).map(f => {
-    const xs = f.polygon.map(p => p[0]), ys = f.polygon.map(p => p[1]);
-    // each cell of its box: 1 (all inside), the edges crossing it, or nothing (outside), so a foot test reads a cell, not the outline
-    const cells = new Map(), pts = f.polygon;
-    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
-      const e = [pts[j][0], pts[j][1], pts[i][0], pts[i][1]];
-      for (let cy = Math.floor(Math.min(e[1], e[3])); cy <= Math.floor(Math.max(e[1], e[3])); cy++) for (let cx = Math.floor(Math.min(e[0], e[2])); cx <= Math.floor(Math.max(e[0], e[2])); cx++) { if (!_gwSegHitsBox(e, cx, cy, cx + 1, cy + 1)) continue; const k = cx + ',' + cy, l = cells.get(k); if (l) l.push(e); else cells.set(k, [e]); }
-    }
-    for (let cy = Math.floor(Math.min(...ys)); cy <= Math.floor(Math.max(...ys)); cy++) for (let cx = Math.floor(Math.min(...xs)); cx <= Math.floor(Math.max(...xs)); cx++) { const k = cx + ',' + cy; if (!cells.has(k) && _gwInPoly(cx + .5, cy + .5, pts)) cells.set(k, 1); }
-    return Object.freeze({ poly: pts, cells, x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), src: (_GW_LANDFORM_NAME[f.kind] || 'rock') + ' ' + f.id });
-  });
+  // A ruin wall's layout outline is a band a cell and a half thick; the painted garden stands a wall 14 px thick on that
+  // band's middle line (94-garden-paint-vale-1places.js ruinWall, T = 7). The feet stopped at the band: up to a cell short
+  // of the drawn wall on bare ground, on every one of the thirteen walls (the verifier, 18 Nov 2026). Where that painter
+  // draws them, the feet stop at the wall it draws.
+  const thin = typeof GardenPaintVale !== 'undefined' && GardenPaintVale && GardenPaintVale.owns && GardenPaintVale.owns('ruin-wall');
+  const out = (island.landforms || []).filter(f => f.col === 'full' && f.polygon && f.polygon.length > 2).map(f => _gwFormOf(thin && f.kind === 'ruin-wall' ? gardenRuinWallFoot(f.polygon) || f.polygon : f.polygon, (_GW_LANDFORM_NAME[f.kind] || 'rock') + ' ' + f.id));
   try { Object.defineProperty(island, '_walkForms', { value: out, enumerable: false }); } catch (e) { /* a frozen layout: worked out again next time */ }
   return out;
+}
+/** An outline that stops the feet, ready for the foot test: {poly, cells, x0, y0, x1, y1, src} (cells: 1 all inside, or the edges that cross it). */
+function _gwFormOf(pts, src) {
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  // each cell of its box: 1 (all inside), the edges crossing it, or nothing (outside), so a foot test reads a cell, not the outline
+  const cells = new Map();
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const e = [pts[j][0], pts[j][1], pts[i][0], pts[i][1]];
+    for (let cy = Math.floor(Math.min(e[1], e[3])); cy <= Math.floor(Math.max(e[1], e[3])); cy++) for (let cx = Math.floor(Math.min(e[0], e[2])); cx <= Math.floor(Math.max(e[0], e[2])); cx++) { if (!_gwSegHitsBox(e, cx, cy, cx + 1, cy + 1)) continue; const k = cx + ',' + cy, l = cells.get(k); if (l) l.push(e); else cells.set(k, [e]); }
+  }
+  for (let cy = Math.floor(Math.min(...ys)); cy <= Math.floor(Math.max(...ys)); cy++) for (let cx = Math.floor(Math.min(...xs)); cx <= Math.floor(Math.max(...xs)); cx++) { const k = cx + ',' + cy; if (!cells.has(k) && _gwInPoly(cx + .5, cy + .5, pts)) cells.set(k, 1); }
+  return Object.freeze({ poly: pts, cells, x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), src });
+}
+/** The middle line of a ruin wall's layout band, in cells: the line its painter stands the wall on (the same points:
+ *  94-garden-paint-vale-1places.js ruins()). The band's outline runs down one side and back up the other. */
+function gardenRuinWallMid(polygon) {
+  const n = polygon.length >> 1, a = polygon.slice(0, n), b = polygon.slice(n).reverse(), m = Math.min(a.length, b.length), mid = [];
+  for (let i = 0; i < m; i += 2) mid.push([(a[i][0] + b[i][0]) / 2, (a[i][1] + b[i][1]) / 2]);
+  if (m % 2 === 0 && m) mid.push([(a[m - 1][0] + b[m - 1][0]) / 2, (a[m - 1][1] + b[m - 1][1]) / 2]);
+  return mid;
+}
+/** The drawn foot of a ruin wall as an outline in cells: its middle line, 8 px either side across and 5 px up and down
+ *  (the painter's 7 and 4.2, and a pixel for the stones that stand proud of it). */
+function gardenRuinWallFoot(polygon) {
+  const W = GARDEN_WORLD, mid = gardenRuinWallMid(polygon); if (mid.length < 2) return null;
+  const px = mid.map(p => ({ x: p[0] * W.cellW, y: p[1] * W.cellH })), left = [], right = [];
+  for (let i = 0; i < px.length; i++) {
+    const p = px[Math.max(0, i - 1)], q = px[Math.min(px.length - 1, i + 1)], L = Math.hypot(q.x - p.x, q.y - p.y) || 1, nx = -(q.y - p.y) / L * 8, ny = (q.x - p.x) / L * 5;
+    // (the ends stand a few pixels past the last point, like the end faces the painter draws)
+    const ex = i === 0 ? -(q.x - p.x) / L * 3 : i === px.length - 1 ? (q.x - p.x) / L * 3 : 0, ey = i === 0 ? -(q.y - p.y) / L * 3 : i === px.length - 1 ? (q.y - p.y) / L * 3 : 0;
+    left.push([(px[i].x + nx + ex) / W.cellW, (px[i].y + ny + ey) / W.cellH]); right.push([(px[i].x - nx + ex) / W.cellW, (px[i].y - ny + ey) / W.cellH]);
+  }
+  return left.concat(right.reverse());
+}
+/** The fells' sheepfold rings as outlines that stop the feet: each ring's wall, 5 px either side of its line, open at its gateway. */
+function gardenWalkFolds(island) {
+  if (island._walkFolds) return island._walkFolds;
+  const W = GARDEN_WORLD, out = [];
+  for (const [fx, fy, frx, g0, g1] of GardenPaintedTerrain.folds() || []) {
+    const RX = frx * W.cellW, RY = frx * W.cellH * .95, outer = [], inner = [];
+    // (the painter's ring: 40 steps round, the steps g0..g1 left out for the gateway; the wall runs from g1 round to g0)
+    for (let k = g1; k <= 40 + g0; k += .5) { const a = k / 40 * Math.PI * 2, c = Math.cos(a), sn = Math.sin(a); outer.push([fx + c * (RX + 5) / W.cellW, fy + sn * (RY + 5) / W.cellH]); inner.push([fx + c * (RX - 5) / W.cellW, fy + sn * (RY - 5) / W.cellH]); }
+    out.push(_gwFormOf(outer.concat(inner.reverse()), 'sheepfold wall'));
+  }
+  try { Object.defineProperty(island, '_walkFolds', { value: out, enumerable: false }); } catch (e) { /* a frozen layout: worked out again next time */ }
+  return out;
+}
+/** A sight's painted base as boxes in cells, when its painting names one (ART[id].foot: [[left, right, depth]...] in px
+ *  from the middle of its footprint's foot line; depth 0 = as deep as its footprint) and that painting is the one in
+ *  use; else null and its layout cells stop the feet as before. */
+function gardenPropPaintedFeet(p) {
+  if (!p || typeof GardenPaintedMarks === 'undefined' || !GardenPaintedMarks || !GardenPaintedMarks.ART || GARDEN_WORLD.v < 5) return null;
+  const art = GardenPaintedMarks.ART[p.id]; if (!art || !art.foot || gardenPropCol(p) !== 'full') return null;
+  if (!(typeof GardenNativePainted !== 'undefined' && GardenNativePainted && GardenNativePainted.wanted && GardenNativePainted.wanted())) return null;
+  if (p.needs && !gardenWorkOwned(p.needs)) return null;
+  if (typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(p.id) || {}).some(Boolean)) return null;   // (a look of your own choosing is drawn by another painter)
+  const W = GARDEN_WORLD, cx = p.x + (p.w || 1) / 2, foot = p.y + (p.h || 1);
+  return art.foot.map(([l, r, d]) => ({ x0: cx + l / W.cellW, y0: d ? foot - d / W.cellH : p.y, x1: cx + r / W.cellW, y1: foot - .02 }));
 }
 /** Is a landform cell solid only because of its landform (so the outline, not the cell, stops the feet)? */
 function _gwLandformCell(x, y) { const c = typeof gardenIslandBaseCell === 'function' ? gardenIslandBaseCell(x, y) : null; return !!(c && c.solid && c.landformId && GARDEN_WORLD.v >= 5); }
@@ -273,7 +352,10 @@ function _gwBuildGrid(m) {
     // (a tree's trunk and a small decoration are boxes, not cells: _gwBuildSolids)
     g[y * W.cols + x] = blocked ? 1 : 0;
   }
-  g.hard = g.slice(); g.otherWater = otherWater; g.waterCover = waterCover; g.shore = shore; g.otherShapes = typeof gardenOtherWaterShapes === 'function' ? gardenOtherWaterShapes(m) : null; g.model = m; g.anchors = new Map(); g.probe = {}; g.contact = {};
+  g.hard = g.slice();
+  // (a sight whose painting names its base: the feet stop at that base, _gwBuildSolids; its cells stay shut to the routes' planner)
+  for (const p of gardenPropsNow()) { if (!gardenPropPaintedFeet(p)) continue; for (let y = p.y; y < p.y + (p.h || 1); y++) for (let x = p.x; x < p.x + (p.w || 1); x++) { if (x < 0 || y < 0 || x >= W.cols || y >= W.rows) continue; const a2 = gardenAreaAt(x, y, lvl), c2 = m.occ.get(x + ',' + y); if (!a2.startsWith('locked:') && !(c2 && c2.decor)) g.hard[y * W.cols + x] = 0; } }
+  g.otherWater = otherWater; g.waterCover = waterCover; g.shore = shore; g.otherShapes = typeof gardenOtherWaterShapes === 'function' ? gardenOtherWaterShapes(m) : null; g.model = m; g.anchors = new Map(); g.probe = {}; g.contact = {};
   g.otherBuckets = new Map(); g.noShapes = [];
   if (g.otherShapes) for (const shape of g.otherShapes) { const b = shape.bounds; if (!b) continue; for (let y = Math.max(0, Math.floor(b.y - 1)); y <= Math.min(W.rows - 1, Math.ceil(b.y + b.height + 1)); y++) for (let x = Math.max(0, Math.floor(b.x - 1)); x <= Math.min(W.cols - 1, Math.ceil(b.x + b.width + 1)); x++) { const index = y * W.cols + x; let list = g.otherBuckets.get(index); if (!list) { list = []; g.otherBuckets.set(index, list); } list.push(shape); } }
   return g;
