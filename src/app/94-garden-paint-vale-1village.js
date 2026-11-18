@@ -6,24 +6,30 @@
  *   the shore wood: bracken under the trees      the Mere bank: reeds      the glasshouse garden: an old brick wall
  *   the bridge plot: a hedge and a stile      the lighthouse garden: a dry-stone wall
  * with one gate per field, and the sign with what it needs (its level, or its price once you have the level) at that
- * gate. The edge follows the locked cells exactly (rounded a little at the corners), because that is where the feet
- * stop; it follows the garden too: land you open loses its edge. The green's own borders and the well green are
- * yours from the start: they are kerbed planters on the lawn. The great lime stands on the green.
- * Ground paint only (and one standing tree): cells, walking and saved rows are untouched. */
+ * gate. The edge follows the locked cells (rounded: a run of steps becomes one easy line), because that is where the
+ * feet stop; it follows the garden too: land you open loses its edge and is pegged out with string instead. The green's
+ * own borders and the well green are yours from the start: kerbed planters on the lawn. The great lime stands on the green.
+ * Ground paint only (and one standing tree): cells, walking and saved rows are untouched.
+ * Speed: every piece is placed by where it is (a seeded generator per sample or per tile), so a ground chunk paints
+ * only what lies in it and the chunks still meet without a seam. A field's outline is worked out once per state. */
 (function () {
   'use strict';
   const V = window.GardenPaintVale; if (!V) return;
+  const KIT = () => window.GardenPaintTerrainKit;
   const data = () => (typeof gardenIslandData === 'function' ? gardenIslandData() : null);
   const fields = () => { try { return (data().presentation || {}).fields || []; } catch (e) { return []; } };
-  let secSet = null;
+  let secSet = null; const memo = new Map();
   /** A section of a village field: it wears its field's edge, so the valley's fences leave it alone. */
   V.villageSection = id => { if (!secSet) secSet = new Set(fields().flatMap(f => f.sections)); return secSet.has(id); };
   const level = () => { try { return gardenModel().level.level; } catch (e) { return 1; } };
   const lockedAt = (x, y, lv) => { try { return String(gardenAreaAt(x, y, lv)).startsWith('locked:'); } catch (e) { return false; } };
   const cellsOf = id => { try { return data().sectionCells[id] || []; } catch (e) { return []; } };
   const rowOf = id => (typeof gardenLandRow === 'function' ? gardenLandRow(id) : null);
+  const SOIL = new Set(['bed', 'patch', 'veg', 'rich', 'herb', 'berry']);
   // the ground re-bakes when a field section opens, or when you reach its level (the sign turns from level to price)
   V.groundSigs.push(() => { if (typeof gardenAreaAt !== 'function') return ''; const lv = level(); let h = 7; for (const f of fields()) for (const s of f.sections) { const c = cellsOf(s)[0]; if (!c) continue; const row = rowOf(s); h = (Math.imul(h, 31) + (lockedAt(c[0], c[1], lv) ? 3 : 1) + (row && lv >= (row.lv || 0) ? 7 : 0)) >>> 0; } return '|vl' + h; });
+  const rngAt = (q, salt) => KIT().rng(KIT().hash(Math.round(q.x * 4), Math.round(q.y * 4), salt) | 1);
+  const inBox = (q, cb, up) => q.x > cb[0] - 18 && q.x < cb[2] + 18 && q.y > cb[1] - 6 && q.y < cb[3] + (up || 30);
 
   /** The outline of a set of cells: closed loops of cell corners, clockwise round the cells (so the cells are on the right). */
   function outline(cells) {
@@ -59,12 +65,12 @@
   const leafTones = season => season === 'autumn' ? ['#4e5a2a', '#66702e', '#8a8438', '#a8763a'] : season === 'winter' ? ['#46503a', '#58624a', '#6e785c', '#7c7460'] : season === 'spring' ? ['#3a6630', '#4e823a', '#6ea24c', '#8cba60'] : ['#345c2c', '#467436', '#5e9044', '#7aa858'];
   const strawTones = season => season === 'winter' ? ['#8e8a6a', '#a8a480', '#c2be9c'] : season === 'autumn' ? ['#94843e', '#b8a24e', '#d6c06a'] : season === 'spring' ? ['#7c9a48', '#96b25a', '#b8cc78'] : ['#8a9a44', '#a8b454', '#cdc878'];
   // A hedge, a wall: a row of short upright pieces, far ones first, each with a shaded foot, a body and a lit top, so
-  // the whole reads as one raised edge that follows any line. o: { w, h, body:[cols], top:[cols], step }
-  function raised(B, r, run, o) {
+  // the whole reads as one raised edge that follows any line. o: { w, h, body:[cols], top:[cols], rag, jit, round, dab }
+  function raised(B, run, o) {
     const s = run.slice().sort((a, b) => a.y - b.y);
     for (const q of s) B.f(B.ell(q.x + 1.6, q.y + 1.2, o.w * .62, 2.3), '#22301a', .2);
     for (const q of s) {
-      const w = o.w * (1 + (r() - .5) * (o.rag || 0)), h = o.h * (1 + (r() - .5) * (o.rag || 0)), x = q.x + (r() - .5) * (o.jit || 0), y = q.y;
+      const r = rngAt(q, 11), w = o.w * (1 + (r() - .5) * (o.rag || 0)), h = o.h * (1 + (r() - .5) * (o.rag || 0)), x = q.x + (r() - .5) * (o.jit || 0), y = q.y;
       B.f(B.rr(x - w / 2, y - h, w, h + 1, Math.min(o.round == null ? 3 : o.round, w / 2)), o.body[Math.floor(r() * o.body.length)]);
       B.f(B.rr(x - w / 2, y - h, w * .34, h + 1, 1.5), o.lit || o.top[0], .28);
       B.f(B.ell(x - .5, y - h + 1.6, w * .5, 2.4), o.top[Math.floor(r() * o.top.length)], .95);
@@ -72,74 +78,85 @@
     }
   }
   const STYLE = {
-    // Wren's garden: clipped box, neat and square-topped
-    hedge: (B, r, run, C) => { const t = C.season === 'winter' ? ['#2e4a2c', '#3c5c36', '#527448', '#6a8a5c'] : ['#2a4c26', '#386030', '#4e7c3c', '#6c9a4e']; raised(B, r, run, { w: 9.5, h: 11, body: [t[0], t[0], t[1]], top: [t[2], t[2], t[3]], lit: t[3], round: 3.2, dab: (B2, r2, x, y, w) => { if (r2() < .5) B2.f(B2.circ(x + (r2() - .5) * w * .7, y + 1.5 + r2() * 2, .9), t[3], .7); } }); },
+    // Wren's garden: clipped box, evergreen, neat and square-topped
+    hedge: (B, run, C) => { const t = C.season === 'winter' ? ['#2e4a2c', '#3c5c36', '#527448', '#6a8a5c'] : ['#2a4c26', '#386030', '#4e7c3c', '#6c9a4e']; raised(B, run, { w: 9.5, h: 11, body: [t[0], t[0], t[1]], top: [t[2], t[2], t[3]], lit: t[3], round: 3.2, dab: (B2, r2, x, y, w) => { if (r2() < .5) B2.f(B2.circ(x + (r2() - .5) * w * .7, y + 1.5 + r2() * 2, .9), t[3], .7); } }); },
     // the orchard's roadside and the bridge plot: hawthorn, shaggier, haws in autumn and may in spring
-    'hedge-road': (B, r, run, C) => { const t = leafTones(C.season), berry = C.season === 'autumn' ? '#b03a2a' : C.season === 'spring' ? '#f4f0e4' : null; raised(B, r, run, { w: 11, h: 12.5, rag: .34, jit: 1.6, body: [t[0], t[1], t[0]], top: [t[2], t[3], t[1]], lit: t[3], round: 4.6, dab: (B2, r2, x, y, w) => { B2.f(B2.blob(r2, x + (r2() - .5) * 3, y + 1, w * .46, 2.6, 6, .5), t[2 + (r2() < .4 ? 1 : 0)], .85); if (berry && r2() < .45) B2.f(B2.circ(x + (r2() - .5) * w * .7, y + 3 + r2() * 4, 1), berry, .9); } }); },
-    stile: (B, r, run, C) => STYLE['hedge-road'](B, r, run, C),
+    'hedge-road': (B, run, C) => { const t = leafTones(C.season), berry = C.season === 'autumn' ? '#b03a2a' : C.season === 'spring' ? '#f4f0e4' : null; raised(B, run, { w: 11, h: 12.5, rag: .34, jit: 1.6, body: [t[0], t[1], t[0]], top: [t[2], t[3], t[1]], lit: t[3], round: 4.6, dab: (B2, r2, x, y, w) => { B2.f(B2.blob(r2, x + (r2() - .5) * 3, y + 1, w * .46, 2.6, 6, .5), t[2 + (r2() < .4 ? 1 : 0)], .85); if (berry && r2() < .45) B2.f(B2.circ(x + (r2() - .5) * w * .7, y + 3 + r2() * 4, 1), berry, .9); } }); },
+    stile: (B, run, C) => STYLE['hedge-road'](B, run, C),
     // the lighthouse garden: a low dry-stone wall, grey and lichened
-    drystone: (B, r, run) => { raised(B, r, run, { w: 8.4, h: 8.5, rag: .3, jit: .8, body: ['#8e8678', '#a8a090', '#7a7366', '#9a9282'], top: ['#bdb5a3', '#cfc8b6', '#b0a896'], lit: '#d8d2c2', round: 2.6, dab: (B2, r2, x, y, w) => { if (r2() < .16) B2.f(B2.blob(r2, x, y + 2, 2.6, 1.3, 6, .5), '#a8b06a', .75); B2.s(`M${x - w / 2} ${y + 4.4}h${w}`, '#5e584c', .7, .4); } }); },
-    // the glasshouse garden: an old brick wall, tumbled in places
-    wall: (B, r, run) => {
-      const keep = run.filter((q, i) => Math.sin(i * .09 + q.x * .011 + q.y * .017) > -.9);   // (a gap or two where it has fallen)
-      raised(B, r, keep, { w: 8.8, h: 11.5, rag: .08, body: ['#8a5642', '#7c4c3a', '#96604a', '#845040'], top: ['#a8806a', '#9c7460', '#b08c74'], lit: '#b89078', round: 1.2, dab: (B2, r2, x, y, w) => { B2.s(`M${x - w / 2} ${y + 4}h${w}M${x - w / 2} ${y + 7.6}h${w}`, '#cdb8a0', .55, .4); if (r2() < .2) B2.f(B2.blob(r2, x, y + 1 + r2() * 5, 3.4, 2, 6, .5), r2() < .5 ? '#5e7a3e' : '#7d8f4e', .85); } });
-      for (const q of run) if (!keep.includes(q) && r() < .4) B.f(B.rr(q.x - 3 + (r() - .5) * 6, q.y - 2.5 + (r() - .5) * 4, 5.4, 3, 1), r() < .5 ? '#8a5642' : '#7c4c3a', .9);   // fallen bricks in the gaps
+    drystone: (B, run) => { raised(B, run, { w: 8.4, h: 8.5, rag: .3, jit: .8, body: ['#8e8678', '#a8a090', '#7a7366', '#9a9282'], top: ['#bdb5a3', '#cfc8b6', '#b0a896'], lit: '#d8d2c2', round: 2.6, dab: (B2, r2, x, y, w) => { if (r2() < .16) B2.f(B2.blob(r2, x, y + 2, 2.6, 1.3, 6, .5), '#a8b06a', .75); B2.s(`M${x - w / 2} ${y + 4.4}h${w}`, '#5e584c', .7, .4); } }); },
+    // the glasshouse garden: an old brick wall, tumbled in a place or two
+    wall: (B, run) => {
+      const stands = q => Math.sin(q.i * .09 + q.x * .011 + q.y * .017) > -.9, keep = run.filter(stands);
+      raised(B, keep, { w: 8.8, h: 11.5, rag: .08, body: ['#8a5642', '#7c4c3a', '#96604a', '#845040'], top: ['#a8806a', '#9c7460', '#b08c74'], lit: '#b89078', round: 1.2, dab: (B2, r2, x, y, w) => { B2.s(`M${x - w / 2} ${y + 4}h${w}M${x - w / 2} ${y + 7.6}h${w}`, '#cdb8a0', .55, .4); if (r2() < .2) B2.f(B2.blob(r2, x, y + 1 + r2() * 5, 3.4, 2, 6, .5), r2() < .5 ? '#5e7a3e' : '#7d8f4e', .85); } });
+      for (const q of run) if (!stands(q)) { const r = rngAt(q, 13); if (r() < .4) B.f(B.rr(q.x - 3 + (r() - .5) * 6, q.y - 2.5 + (r() - .5) * 4, 5.4, 3, 1), r() < .5 ? '#8a5642' : '#7c4c3a', .9); }   // fallen bricks in the gaps
     },
     // long grass: tall blades and seed heads standing thick at the edge
-    'long-grass': (B, r, run, C, o) => {
+    'long-grass': (B, run, C, o) => {
       const st = strawTones(C.season), lo = C.P.lawnLo, s = run.slice().sort((a, b) => a.y - b.y), tall = (o && o.tall) || 1;
       for (const q of s) B.f(B.ell(q.x + 1, q.y + .6, 5.5, 1.9), '#2a3a1c', .22);
-      for (const q of s) for (let k = 0; k < 4; k++) {
-        const x = q.x + (r() - .5) * 7, y = q.y + (r() - .5) * 2.6, h = (9 + r() * 8) * tall, lean = (r() - .5) * 5;
-        B.s(`M${x} ${y}q${lean * .3} ${-h * .6} ${lean} ${-h}`, k === 0 ? '#566e30' : k === 1 ? lo : st[Math.floor(r() * st.length)], 1.15, .92);
-        if (r() < .3) B.f(B.ell(x + lean, y - h - 1, 1, 2.1), st[2], .95);
+      for (const q of s) { const r = rngAt(q, 17);
+        for (let k = 0; k < 4; k++) {
+          const x = q.x + (r() - .5) * 7, y = q.y + (r() - .5) * 2.6, h = (9 + r() * 8) * tall, lean = (r() - .5) * 5;
+          B.s(`M${x} ${y}q${lean * .3} ${-h * .6} ${lean} ${-h}`, k === 0 ? '#566e30' : k === 1 ? lo : st[Math.floor(r() * st.length)], 1.15, .92);
+          if (r() < .3) B.f(B.ell(x + lean, y - h - 1, 1, 2.1), st[2], .95);
+        }
+        if (o && o.flowers && r() < .5) B.f(B.circ(q.x + (r() - .5) * 8, q.y - 5 - r() * 9, 1.5 + r() * .6), o.flowers[Math.floor(r() * o.flowers.length)], .95);
       }
-      if (o && o.flowers) for (const q of s) if (r() < .5) B.f(B.circ(q.x + (r() - .5) * 8, q.y - 5 - r() * 9, 1.5 + r() * .6), o.flowers[Math.floor(r() * o.flowers.length)], .95);
     },
-    meadow: (B, r, run, C) => STYLE['long-grass'](B, r, run, C, { flowers: C.season === 'winter' ? null : C.season === 'autumn' ? ['#e8dcc0', '#d8a040', '#c85a3a'] : ['#d8402e', '#e8553a', '#f4f0e0', '#f0d24a', '#d8402e'] }),
+    meadow: (B, run, C) => STYLE['long-grass'](B, run, C, { flowers: C.season === 'winter' ? null : C.season === 'autumn' ? ['#e8dcc0', '#d8a040', '#c85a3a'] : ['#d8402e', '#e8553a', '#f4f0e0', '#f0d24a', '#d8402e'] }),
     // the shore wood: bracken, waist high
-    bracken: (B, r, run, C) => {
+    bracken: (B, run, C) => {
       const col = C.season === 'autumn' ? ['#a8703a', '#c8904a', '#8a5a30'] : C.season === 'winter' ? ['#8a6a4a', '#a08260', '#6e5440'] : ['#3f6a32', '#5a8a42', '#7aa255'], s = run.slice().sort((a, b) => a.y - b.y);
       for (const q of s) B.f(B.ell(q.x + 1, q.y + .8, 7, 2.2), '#22301a', .22);
-      for (const q of s) for (let k = 0; k < 5; k++) { const a = -Math.PI / 2 + (k - 2) * .5 + (r() - .5) * .3, l = 8 + r() * 7, ex = q.x + Math.cos(a) * l * 1.25, ey = q.y + Math.sin(a) * l; B.s(`M${q.x} ${q.y}Q${(q.x + ex) / 2} ${ey - 3} ${ex} ${ey}`, col[k % col.length], 2.1, .92); B.s(`M${(q.x + ex) / 2} ${(q.y + ey) / 2 - 2}l${(ex - q.x) * .25} ${-2.4}`, col[(k + 1) % col.length], 1, .7); }
+      for (const q of s) { const r = rngAt(q, 19); for (let k = 0; k < 5; k++) { const a = -Math.PI / 2 + (k - 2) * .5 + (r() - .5) * .3, l = 8 + r() * 7, ex = q.x + Math.cos(a) * l * 1.25, ey = q.y + Math.sin(a) * l; B.s(`M${q.x} ${q.y}Q${(q.x + ex) / 2} ${ey - 3} ${ex} ${ey}`, col[k % col.length], 2.1, .92); B.s(`M${(q.x + ex) / 2} ${(q.y + ey) / 2 - 2}l${(ex - q.x) * .25} ${-2.4}`, col[(k + 1) % col.length], 1, .7); } }
     },
     // the Mere bank: reeds and reedmace
-    reeds: (B, r, run, C) => {
+    reeds: (B, run, C) => {
       const col = C.season === 'winter' ? ['#a89a6a', '#c0b282'] : C.season === 'autumn' ? ['#8a8a40', '#b4a050'] : ['#557a3a', '#7aa04a'], s = run.slice().sort((a, b) => a.y - b.y);
       for (const q of s) B.f(B.ell(q.x + 1, q.y + .6, 5, 1.7), '#22301a', .2);
-      for (const q of s) for (let k = 0; k < 4; k++) { const x = q.x + (r() - .5) * 7, h = 13 + r() * 10, lean = (r() - .5) * 4; B.s(`M${x} ${q.y}q${lean * .3} ${-h * .6} ${lean} ${-h}`, col[k % 2], 1.2, .95); if (r() < .3) B.f(B.rr(x + lean - 1.1, q.y - h - 4, 2.2, 5.5, 1.1), '#6e4a2c', .95); }
+      for (const q of s) { const r = rngAt(q, 23); for (let k = 0; k < 4; k++) { const x = q.x + (r() - .5) * 7, h = 13 + r() * 10, lean = (r() - .5) * 4; B.s(`M${x} ${q.y}q${lean * .3} ${-h * .6} ${lean} ${-h}`, col[k % 2], 1.2, .95); if (r() < .3) B.f(B.rr(x + lean - 1.1, q.y - h - 4, 2.2, 5.5, 1.1), '#6e4a2c', .95); } }
     },
     kerb: () => {},
   };
   // What grows inside a field that is not yours yet (clipped to the field): the same country as its edge, a little wilder.
-  function fill(B, r, C, f, bb, cells) {
-    const P = C.P, season = C.season, w = bb[2] - bb[0], h = bb[3] - bb[1], area = cells.length * C.L.cw * C.L.ch, at = () => { const c = cells[Math.floor(r() * cells.length)]; return [(c[0] + r()) * C.L.cw, C.W.sky + (c[1] + r()) * C.L.ch]; };
-    const st = strawTones(season), lt = leafTones(season), edge = f.edge;
+  // Laid tile by tile (60 px tiles on one grid, each with its own seed), only the tiles this chunk touches.
+  function fill(B, C, f, bb, cb, has) {
+    const P = C.P, season = C.season, cw = C.L.cw, ch = C.L.ch, sky = C.W.sky, st = strawTones(season), lt = leafTones(season), edge = f.edge;
+    const box = [Math.max(bb[0], cb[0] - 4), Math.max(bb[1], cb[1] - 4), Math.min(bb[2], cb[2] + 4), Math.min(bb[3], cb[3] + 4)]; if (box[2] <= box[0] || box[3] <= box[1]) return;
+    const inF = (x, y) => has.has(Math.floor(x / cw) + ',' + Math.floor((y - sky) / ch));
     const wash = edge === 'bracken' ? [P.floor, .78] : edge === 'reeds' ? ['#7e8a52', .7] : edge === 'meadow' ? [st[1], .6] : edge === 'long-grass' || edge === 'hedge-road' ? [st[0], .5] : [P.lawnLo, .5];
-    B.f(B.rect(bb[0], bb[1], w, h), P.lawn).f(B.rect(bb[0], bb[1], w, h), wash[0], wash[1]);
-    // light and shade in soft drifts, so no field is one flat colour
-    for (let k = 0; k < area / 2600; k++) { const [x, y] = at(); B.f(B.blob(r, x, y, 26 + r() * 40, 9 + r() * 12, 8, .5), r() < .5 ? P.lawnHi : '#3e5a2a', .12 + r() * .08); }
+    B.f(B.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]), P.lawn).f(B.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]), wash[0], wash[1]);
+    const T = 60, tall = edge === 'meadow' || edge === 'long-grass' || edge === 'hedge-road', salt = KIT().hashStr('fill|' + f.id) & 0xffff;
+    // light and shade in soft drifts, so no field is one flat colour (from the tiles round about too: a drift is wide)
+    KIT().tiles(box, T, 46, salt + 1, (tx, ty, r) => { for (let k = 0; k < 2; k++) { const x = tx + r() * T, y = ty + r() * T, rx = 26 + r() * 30, ry = 9 + r() * 10, lift = r() < .5, a = .12 + r() * .08; if (inF(x, y)) B.f(B.blob(r, x, y, rx, ry, 8, .5), lift ? P.lawnHi : '#3e5a2a', a); } });
     if (edge === 'long-grass') {
       // the slope's strips: long beds lying along the contour, gone back to grass, still showing in the sward
-      for (let y = bb[1] - 8; y < bb[3] + 8; y += 15) { const pts = []; for (let x = bb[0] - 10; x <= bb[2] + 10; x += 24) pts.push({ x, y: y + Math.sin(x * .011 + y * .004) * 6 }); V.strokePts(B, pts, Math.round((y - bb[1]) / 15) % 2 ? '#5a6e30' : st[2], 7, .16); }
+      const x0 = Math.floor((box[0] - 30) / 24) * 24;
+      for (let k = 0, y = bb[1] - 8; y < bb[3] + 8; y += 15, k++) { if (y < box[1] - 12 || y > box[3] + 12) continue; const pts = []; for (let x = x0; x <= box[2] + 30; x += 24) pts.push({ x, y: y + Math.sin(x * .011 + y * .004) * 6 }); V.strokePts(B, pts, k % 2 ? '#5a6e30' : st[2], 7, .16); }
     }
-    const blades = edge === 'bracken' ? 0 : area / (edge === 'meadow' || edge === 'long-grass' || edge === 'hedge-road' ? 55 : 110);
-    for (let k = 0; k < blades; k++) { const [x, y] = at(), hh = 4 + r() * (edge === 'meadow' || edge === 'long-grass' ? 8 : 5), lean = (r() - .5) * 4; B.s(`M${x} ${y}q${lean * .3} ${-hh * .6} ${lean} ${-hh}`, r() < .4 ? P.lawnLo : r() < .5 ? '#566e30' : st[Math.floor(r() * 3)], 1, .8); }
-    if (edge === 'meadow' && season !== 'winter') { const fl = season === 'autumn' ? ['#e8dcc0', '#d8a040', '#c85a3a'] : ['#d8402e', '#e8553a', '#f4f0e0', '#f0d24a', '#8ab0e0']; for (let k = 0; k < area / 150; k++) { const [x, y] = at(); B.f(B.circ(x, y - 3 - r() * 5, 1.3 + r() * .8), fl[Math.floor(r() * fl.length)], .95); } }
-    if (edge === 'bracken') {
-      const leaf = season === 'autumn' ? ['#b0682a', '#d38f3a', '#8a5a2c', '#e0b050'] : season === 'winter' ? ['#8a7a5a', '#a0906a', '#6e6450'] : ['#7d8f4e', '#6a7c40', '#94a058', '#8a7a4a'];
-      for (let k = 0; k < area / 70; k++) { const [x, y] = at(); B.f(B.ell(x, y, 1.6 + r() * 1.6, 1 + r() * .8), leaf[Math.floor(r() * leaf.length)], .8); }
-      const pts = []; for (let k = 0; k < area / 900; k++) { const [x, y] = at(); pts.push({ x, y }); } STYLE.bracken(B, r, pts, C);
-    }
-    if (edge === 'reeds') { const pts = []; for (let k = 0; k < area / 700; k++) { const [x, y] = at(); pts.push({ x, y }); } STYLE.reeds(B, r, pts, C); for (let k = 0; k < area / 1600; k++) { const [x, y] = at(); B.f(B.blob(r, x, y, 8 + r() * 8, 2.4, 7, .5), '#5e7a6a', .35); } }
-    if (edge === 'wall') { for (let k = 0; k < area / 1500; k++) { const [x, y] = at(); B.tufts(r, x, y, 12, 6, [lt[1], lt[2], P.lawnLo], 9); if (season !== 'winter') for (let j = 0; j < 3; j++) B.f(B.circ(x + (r() - .5) * 10, y - 6 - r() * 4, 1.2), '#c79ac0', .9); }   // willowherb come up through the old beds
-      for (let k = 0; k < area / 2600; k++) { const [x, y] = at(); B.f(B.rr(x, y, 5.4, 3, 1), '#8a5642', .8).f(B.rr(x + 4, y + 2, 4.6, 2.6, 1), '#96604a', .8); } }
-    if (edge === 'hedge-road') for (let k = 0; k < area / 2200; k++) {   // young trees: whips on stakes
-      const [x, y] = at(); B.f(B.ell(x + 2, y + 1, 5, 1.6), '#22301a', .22).f(B.rect(x + 2.4, y - 11, 1.3, 11), '#8a7454').s(`M${x} ${y}q${-.6} ${-9} ${.4} ${-17}`, '#5e4c36', 1.3, .95);
-      for (let j = 0; j < 5; j++) B.f(B.blob(r, x + (r() - .5) * 8, y - 12 - r() * 8, 2.6, 1.8, 6, .4), lt[1 + Math.floor(r() * 3)], .9);
-    }
-    if (edge === 'drystone' && season !== 'winter') for (let k = 0; k < area / 260; k++) { const [x, y] = at(); B.f(B.circ(x, y, 1.2), r() < .6 ? '#e0a0b8' : '#f4f0e4', .9); }   // thrift
-    if (edge === 'hedge' || edge === 'stile') for (let k = 0; k < area / 520; k++) { const [x, y] = at(); B.f(B.blob(r, x, y, 5 + r() * 4, 2.2, 6, .5), lt[1], .55); if (season !== 'winter' && r() < .5) B.f(B.circ(x + (r() - .5) * 4, y - 2, 1.1), r() < .5 ? '#f4f0e0' : '#f0d24a', .9); }
+    KIT().tiles(box, T, 14, salt + 2, (tx, ty, r) => {
+      const at = () => [tx + r() * T, ty + r() * T];
+      if (edge !== 'bracken') for (let k = 0, n = tall ? 62 : 32; k < n; k++) { const [x, y] = at(), hh = 4 + r() * (tall && edge !== 'hedge-road' ? 8 : 5), lean = (r() - .5) * 4, t = r(), t2 = r(); if (inF(x, y)) B.s(`M${x} ${y}q${lean * .3} ${-hh * .6} ${lean} ${-hh}`, t < .4 ? P.lawnLo : t < .7 ? '#566e30' : st[Math.floor(t2 * 3)], 1, .8); }
+      if (edge === 'meadow' && season !== 'winter') { const fl = season === 'autumn' ? ['#e8dcc0', '#d8a040', '#c85a3a'] : ['#d8402e', '#e8553a', '#f4f0e0', '#f0d24a', '#8ab0e0']; for (let k = 0; k < 24; k++) { const [x, y] = at(), up = 3 + r() * 5, s = 1.3 + r() * .8, c = fl[Math.floor(r() * fl.length)]; if (inF(x, y)) B.f(B.circ(x, y - up, s), c, .95); } }
+      if (edge === 'bracken') {
+        const leaf = season === 'autumn' ? ['#b0682a', '#d38f3a', '#8a5a2c', '#e0b050'] : season === 'winter' ? ['#8a7a5a', '#a0906a', '#6e6450'] : ['#7d8f4e', '#6a7c40', '#94a058', '#8a7a4a'];
+        for (let k = 0; k < 50; k++) { const [x, y] = at(), a = 1.6 + r() * 1.6, b = 1 + r() * .8, c = leaf[Math.floor(r() * leaf.length)]; if (inF(x, y)) B.f(B.ell(x, y, a, b), c, .8); }
+        const pts = []; for (let k = 0; k < 4; k++) { const [x, y] = at(); if (inF(x, y) && inF(x, y - 10)) pts.push({ x, y }); } STYLE.bracken(B, pts, C);
+      }
+      if (edge === 'reeds') { const pts = []; for (let k = 0; k < 5; k++) { const [x, y] = at(); if (inF(x, y) && inF(x, y - 12)) pts.push({ x, y }); } STYLE.reeds(B, pts, C); for (let k = 0; k < 2; k++) { const [x, y] = at(), w = 8 + r() * 8; if (inF(x, y)) B.f(B.blob(r, x, y, w, 2.4, 7, .5), '#5e7a6a', .35); } }
+      if (edge === 'wall') {
+        for (let k = 0; k < 2; k++) { const [x, y] = at(); if (!inF(x, y) || !inF(x, y - 10)) continue; B.tufts(r, x, y, 12, 6, [lt[1], lt[2], P.lawnLo], 9); if (season !== 'winter') for (let j = 0; j < 3; j++) B.f(B.circ(x + (r() - .5) * 10, y - 6 - r() * 4, 1.2), '#c79ac0', .9); }   // willowherb come up through the old beds
+        { const [x, y] = at(); if (inF(x, y) && r() < .7) B.f(B.rr(x, y, 5.4, 3, 1), '#8a5642', .8).f(B.rr(x + 4, y + 2, 4.6, 2.6, 1), '#96604a', .8); }
+      }
+      if (edge === 'hedge-road') for (let k = 0; k < 2; k++) {   // young trees: whips on stakes
+        const [x, y] = at(); if (r() < .25 || !inF(x, y) || !inF(x, y - 14)) continue;
+        B.f(B.ell(x + 2, y + 1, 5, 1.6), '#22301a', .22).f(B.rect(x + 2.4, y - 11, 1.3, 11), '#8a7454').s(`M${x} ${y}q${-.6} ${-9} ${.4} ${-17}`, '#5e4c36', 1.3, .95);
+        for (let j = 0; j < 5; j++) B.f(B.blob(r, x + (r() - .5) * 8, y - 12 - r() * 8, 2.6, 1.8, 6, .4), lt[1 + Math.floor(r() * 3)], .9);
+      }
+      if (edge === 'drystone' && season !== 'winter') for (let k = 0; k < 14; k++) { const [x, y] = at(), c = r() < .6 ? '#e0a0b8' : '#f4f0e4'; if (inF(x, y)) B.f(B.circ(x, y, 1.2), c, .9); }   // thrift
+      if (edge === 'hedge' || edge === 'stile') for (let k = 0; k < 7; k++) { const [x, y] = at(), w = 5 + r() * 4, fl = r() < .5, c = r() < .5 ? '#f4f0e0' : '#f0d24a', dx = (r() - .5) * 4; if (!inF(x, y)) continue; B.f(B.blob(r, x, y, w, 2.2, 6, .5), lt[1], .55); if (season !== 'winter' && fl) B.f(B.circ(x + dx, y - 2, 1.1), c, .9); }
+    });
   }
   // the sign at a field's gate: a small board on a post saying what the next piece of it needs, its level or its price
   function sign(B, x, y, row, lv) {
@@ -176,16 +193,18 @@
     const W = C.W, cw = C.L.cw, ch = C.L.ch, cells = [], lockedSecs = [];
     for (const s of f.sections) { const cs = cellsOf(s); if (cs.length && lockedAt(cs[0][0], cs[0][1], lv)) { lockedSecs.push(s); for (const c of cs) cells.push(c); } }
     if (!cells.length) return null;
+    const key = f.id + '|' + lv + '|' + lockedSecs.join(','), hit = memo.get(key); if (hit) return hit;
     const mine = new Set(cells.map(c => c[0] + ',' + c[1]));
     const loops = outline(cells).map(l => soften(l.map(p => ({ x: p[0] * cw, y: W.sky + p[1] * ch })), 20));
     const walk = (x, y) => { const cx = Math.floor(x / cw), cy = Math.floor((y - W.sky) / ch); if (mine.has(cx + ',' + cy)) return false; const b = gardenIslandBaseCell(cx, cy), row = gardenLandCell(cx, cy); return !!b && b.land && !b.freshwater && !b.solid && !(row && row.solid) && !lockedAt(cx, cy, lv); };
+    const roadAt = (x, y) => { const b = gardenIslandBaseCell(Math.floor(x / cw), Math.floor((y - W.sky) / ch)); return !!(b && b.route); };
     // the edge stands just inside the outline (so its top never reaches over ground you stand on behind it)
-    const runs = []; let all = [];
+    const runs = [], all = []; let n = 0;
     for (const l of loops) {
       const pts = V.walk(l.concat([l[0]]), f.edge === 'long-grass' || f.edge === 'meadow' || f.edge === 'reeds' ? 3.6 : f.edge === 'bracken' ? 9 : 4.4); let run = [];
       for (const q of pts) {
         const open = walk(q.x + q.ty * 12, q.y - q.tx * 9), inset = Math.abs(q.tx) > Math.abs(q.ty) ? (q.tx > 0 ? 8.5 : 2.5) : 4.5;   // (the north side stands further in: the piece is drawn upward from its foot)
-        const s = { x: q.x - q.ty * inset, y: q.y + q.tx * inset, tx: q.tx, ty: q.ty, ox: q.x, oy: q.y };
+        const s = { x: q.x - q.ty * inset, y: q.y + q.tx * inset, tx: q.tx, ty: q.ty, ox: q.x, oy: q.y, i: n++, road: roadAt(q.x + q.ty * 30, q.y - q.tx * 20) };
         if (open) { run.push(s); all.push(s); } else if (run.length) { runs.push(run); run = []; }
       }
       if (run.length) runs.push(run);
@@ -199,37 +218,48 @@
         const openS = walk((G.x + .5) * cw, W.sky + (G.y + 1.5) * ch), openN = walk((G.x + .5) * cw, W.sky + (G.y - .5) * ch);
         if (openS || openN && !horizAuthored) g = { x: (G.x + .5) * cw, y: W.sky + (openS ? G.y + 1 : G.y) * ch + (openS ? -2.5 : 8.5), horiz: true, len: cw - 4, south: openS, east: false };
         else g = { x: gx, y: gy + (horizAuthored ? (G.out.y > G.y ? -2.5 : 8.5) : 0), horiz: horizAuthored, len: horizAuthored ? cw - 4 : ch, south: G.out.y > G.y, east: G.out.x > G.x };
-      }
-      else {
+      } else {
         // (the authored cell is yours already: the gate moves to the nearest edge that is left, one that faces you if it can)
         let best = null; for (const s of all) { const hz = Math.abs(s.tx) > .92, d = Math.hypot(s.ox - gx, s.oy - gy) + (hz ? (s.tx < 0 ? 0 : 14) : 70); if (!best || d < best.d) best = { d, s }; }
         const s = best.s, hz = Math.abs(s.tx) > .92; g = { x: hz ? (Math.floor(s.ox / cw) + .5) * cw : s.x, y: s.y, horiz: hz, len: hz ? cw - 4 : ch, south: s.tx < 0, east: s.ty > 0 };
       }
     }
+    // back to front: pieces of edge with the gate's gap cut out of them
+    const gap = q => g && Math.abs(q.x - g.x) < (g.horiz ? g.len / 2 + 1 : 7) && Math.abs(q.y - g.y) < (g.horiz ? 8 : g.len / 2 + 1);
+    const pieces = []; for (const run of runs) { let cur = []; for (const q of run) { if (gap(q)) { if (cur.length) pieces.push(cur); cur = []; } else cur.push(q); } if (cur.length) pieces.push(cur); }
     const rows = lockedSecs.map(rowOf).filter(Boolean).sort((a, b) => (a.lv || 0) - (b.lv || 0) || (a.buy || 0) - (b.buy || 0));
-    return { cells, loops, path: pathOf(loops), runs, gate: g, next: rows[0] || null };
+    const out = { has: mine, loops, path: pathOf(loops), pieces, gate: g, next: rows[0] || null };
+    if (memo.size > 60) memo.clear(); memo.set(key, out); return out;
   }
-  function drawField(B, r, C, f, bb) {
-    const lv = level(), S = shape(f, C, lv); if (!S) return;
-    // its ground, over whatever the road's soft edge left on it
-    B.cx.save(); B.cx.clip(S.path, 'nonzero'); fill(B, r, C, f, bb, S.cells); B.cx.restore();
-    // a soft shade just inside the edge, so the field sits in the ground
-    B.cx.save(); B.cx.clip(S.path, 'nonzero'); B.cx.filter = 'blur(2.5px)'; B.s(S.path, '#2a3a1c', 6, .22); B.cx.filter = 'none'; B.cx.restore();
-    const g = S.gate, gap = q => g && Math.abs(q.x - g.x) < (g.horiz ? g.len / 2 + 1 : 7) && Math.abs(q.y - g.y) < (g.horiz ? 8 : g.len / 2 + 1);
-    const edge = STYLE[f.edge] || STYLE.hedge, kind = f.edge === 'hedge' ? 'wicket' : 'field';
-    // the orchard keeps its hedge to the road side; away from the road the long grass is its edge
-    const nearRoad = q => { const cx = Math.floor((q.ox + q.ty * 30) / C.L.cw), cy = Math.floor((q.oy - q.tx * 20 - C.W.sky) / C.L.ch), b = gardenIslandBaseCell(cx, cy); return !!(b && b.route); };
-    // back to front: the far (north) edges, then the gate and sign, then the near edges over them
-    const pieces = []; for (const run of S.runs) { let cur = []; for (const q of run) { if (gap(q)) { if (cur.length) pieces.push(cur); cur = []; } else cur.push(q); } if (cur.length) pieces.push(cur); }
-    const paint = part => { if (!part.length) return; if (f.edge === 'hedge-road') { const road = part.filter(nearRoad), off = part.filter(q => !nearRoad(q)); if (off.length) STYLE['long-grass'](B, r, off, C, { tall: 1.1 }); if (road.length) edge(B, r, road, C); } else edge(B, r, part, C); };
-    const gy = g ? g.y : Infinity;
-    for (const p of pieces) paint(p.filter(q => q.y <= gy));
-    if (g) {
-      gate(B, g, kind);
-      if (S.next) { const sx = g.horiz ? g.x + g.len / 2 + 5 : g.x + (g.east ? 8 : -8), sy = g.horiz ? g.y + 1 : g.y + g.len / 2 + 3; sign(B, sx, sy, S.next, lv); }
+  function drawField(B, C, f, bb, cb) {
+    const lv = level(), S = shape(f, C, lv);
+    if (S) {
+      // its ground, over whatever the road's soft edge left on it
+      B.cx.save(); B.cx.clip(S.path, 'nonzero'); fill(B, C, f, bb, cb, S.has);
+      // a soft shade just inside the edge, so the field sits in the ground
+      B.cx.filter = 'blur(2.5px)'; B.s(S.path, '#2a3a1c', 6, .22); B.cx.filter = 'none'; B.cx.restore();
+      const g = S.gate, edge = STYLE[f.edge] || STYLE.hedge, kind = f.edge === 'hedge' ? 'wicket' : 'field';
+      // the orchard keeps its hedge to the road side; away from the road the long grass is its edge
+      const paint = part => { if (!part.length) return; if (f.edge === 'hedge-road') { const road = part.filter(q => q.road), off = part.filter(q => !q.road); if (off.length) STYLE['long-grass'](B, off, C, { tall: 1.1 }); if (road.length) edge(B, road, C); } else edge(B, part, C); };
+      // back to front: the far edges, then the gate and its sign, then the near edges over them
+      const gy = g ? g.y : Infinity, near = S.pieces.map(p => p.filter(q => inBox(q, cb)));
+      for (const p of near) paint(p.filter(q => q.y <= gy));
+      if (g && g.x > cb[0] - 60 && g.x < cb[2] + 60 && g.y > cb[1] - 20 && g.y < cb[3] + 50) {
+        gate(B, g, kind);
+        if (S.next) { const sx = g.horiz ? g.x + g.len / 2 + 5 : g.x + (g.east ? 8 : -8), sy = g.horiz ? g.y + 1 : g.y + g.len / 2 + 3; sign(B, sx, sy, S.next, lv); }
+      }
+      for (const p of near) paint(p.filter(q => q.y > gy));
+      if (f.edge === 'meadow') { B.cx.save(); const out = new Path2D(); out.rect(bb[0] - 60, bb[1] - 60, bb[2] - bb[0] + 120, bb[3] - bb[1] + 120); out.addPath(S.path); B.cx.clip(out, 'evenodd'); B.s(S.path, C.P.lawnHi, 9, .3); B.cx.restore(); }   // the mown edge round the uncut meadow
     }
-    for (const p of pieces) paint(p.filter(q => q.y > gy));
-    if (f.edge === 'meadow') { B.cx.save(); const out = new Path2D(); out.rect(bb[0] - 60, bb[1] - 60, bb[2] - bb[0] + 120, bb[3] - bb[1] + 120); out.addPath(S.path); B.cx.clip(out, 'evenodd'); B.s(S.path, C.P.lawnHi, 9, .3); B.cx.restore(); }   // the mown edge round the uncut meadow
+    // land of this field that is yours and not yet dug: pegged out with string, so you can see what is yours
+    for (const id of f.sections) {
+      const row = rowOf(id), cs = cellsOf(id); if (!row || row.kind === 'green' || !cs.length || lockedAt(cs[0][0], cs[0][1], lv) || SOIL.has(C.L.mat(cs[0][0], cs[0][1]))) continue;
+      const W = C.W, cw = C.L.cw, ch = C.L.ch, raw = outline(cs).map(l => l.map(p => ({ x: p[0] * cw, y: W.sky + p[1] * ch })));
+      const loops = raw.map(l => soften(l.map((p, i, a) => { const mx = a.reduce((t, q) => t + q.x, 0) / a.length, my = a.reduce((t, q) => t + q.y, 0) / a.length, dx = mx - p.x, dy = my - p.y, d = Math.hypot(dx, dy) || 1; return { x: p.x + dx / d * 4, y: p.y + dy / d * 3 }; }), 9)), path = pathOf(loops);
+      B.cx.save(); B.cx.clip(path, 'nonzero'); B.f(path, '#c8d08a', .1); B.cx.filter = 'blur(2px)'; B.s(path, '#4a3e26', 5, .2); B.cx.filter = 'none'; B.cx.restore();
+      B.s(path, '#5a4a30', 2, .3).s(path, '#efe6c8', .9, .85);   // the spade cut and the string along it
+      for (const l of loops) for (const q of V.walk(l.concat([l[0]]), 46)) { B.f(B.ell(q.x + 1, q.y + .8, 2.6, 1), '#22301a', .25); B.post(q.x, q.y - 7, q.y + .5, 2.2, ['#b89a6a', '#8a6c46', '#e0c898']); }   // pegs
+    }
   }
 
   /* ---------- the planters: land that is yours from the start, kerbed on the lawn ---------- */
@@ -252,12 +282,12 @@
 
   function compose(C) {
     const { L, add, kit, thing, W } = C, cw = L.cw, ch = L.ch, D = L.D, pres = L.pres || {}, list = pres.fields || []; if (!list.length) return;
-    secSet = null;
+    secSet = null; memo.clear();
     const green = (pres.plazas || []).find(p => p.id === 'the-green'), lawnPts = green && Array.isArray(green.lawn) ? V.shapeLoop(L, green.lawn, 3) : null, lawn = lawnPts ? pathOf([lawnPts]) : null;
     for (const f of list) {
       const cells = f.sections.flatMap(s => (D.sectionCells || {})[s] || []); if (!cells.length) continue;
       const xs = cells.map(c => c[0]), ys = cells.map(c => c[1]), bb = [Math.min(...xs) * cw - 30, W.sky + Math.min(...ys) * ch - 44, (Math.max(...xs) + 1) * cw + 30, W.sky + (Math.max(...ys) + 1) * ch + 16], seed = kit.hashStr('field|' + f.id);
-      add(bb, seed, (B, r) => drawField(B, r, C, f, bb));
+      add(bb, seed, (B, r, cb) => drawField(B, C, f, bb, cb || bb));
       for (const s of f.sections) { const row = rowOf(s); if (!row || row.kind !== 'green') continue; const cs = (D.sectionCells || {})[s] || []; if (!cs.length) continue;
         const sx = cs.map(c => c[0]), sy = cs.map(c => c[1]), pb = [Math.min(...sx) * cw - 12, W.sky + Math.min(...sy) * ch - 14, (Math.max(...sx) + 1) * cw + 12, W.sky + (Math.max(...sy) + 1) * ch + 12];
         const onLawn = !!lawnPts && cs.filter(c => inPoly((c[0] + .5) * cw, W.sky + (c[1] + .5) * ch, lawnPts)).length * 2 > cs.length;
@@ -287,7 +317,7 @@
         const season = C.season, lt = leafTones(season), fl = season === 'winter' ? ['#e8ecef'] : season === 'autumn' ? ['#d8a040', '#c85a3a', '#e0c070', '#9a7ac8'] : ['#d86a7a', '#f2efe2', '#e8a040', '#9a7ac8', '#f0d24a'];
         const free = (x, yy) => { const cx = Math.floor(x / cw), cy = Math.floor((yy - W.sky) / ch), b = gardenIslandBaseCell(cx, cy); return !!b && b.land && !b.freshwater && !b.route && !L.plot(cx, cy); };
         // the skirt
-        for (let x = x0 - 6; x <= x1 + 6; x += 6.5) { if (Math.abs(x - door) < 15 || !free(x, y + 4)) continue; const yy = y + 2.5 + r() * 2.5; B.f(B.blob(r, x, yy, 6.4, 3.4, 7, .45), lt[1], .9).f(B.blob(r, x - 1, yy - 1.4, 4.2, 2, 6, .45), lt[2], .75); if (season !== 'winter' || r() < .3) for (let j = 0; j < 2; j++) B.f(B.circ(x + (r() - .5) * 7, yy - 1.5 - r() * 2, 1.3 + r() * .5), fl[Math.floor(r() * fl.length)], .95); }
+        for (let x = x0 - 6; x <= x1 + 6; x += 6.5) { const yy = y + 2.5 + r() * 2.5, f1 = r(), f2 = r(), f3 = r(), f4 = r(), f5 = r(); if (Math.abs(x - door) < 15 || !free(x, y + 4)) continue; B.f(B.blob(r, x, yy, 6.4, 3.4, 7, .45), lt[1], .9).f(B.blob(r, x - 1, yy - 1.4, 4.2, 2, 6, .45), lt[2], .75); if (season !== 'winter' || f1 < .3) for (const [a, b] of [[f2, f3], [f4, f5]]) B.f(B.circ(x + (a - .5) * 7, yy - 1.5 - b * 2, 1.5), fl[Math.floor(a * fl.length)], .95); }
         // a shrub at each corner
         for (const [x, side] of [[x0 - 9, -1], [x1 + 9, 1]]) { if (!free(x, y + 2)) continue; const yy = y + 1; B.f(B.ell(x + 2, yy + 3, 13, 3.4), '#22301a', .22).f(B.blob(r, x, yy - 4, 12, 8.5, 9, .3), lt[0]).f(B.blob(r, x - 2 * side - 1.5, yy - 6.5, 8.5, 5.4, 8, .3), lt[1]).f(B.blob(r, x - 3, yy - 8.6, 5, 2.8, 7, .3), lt[3], .8); if (season !== 'winter') for (let j = 0; j < 5; j++) B.f(B.circ(x + (r() - .5) * 18, yy - 3 - r() * 8, 1.4), fl[Math.floor(r() * fl.length)], .95); }
       });
