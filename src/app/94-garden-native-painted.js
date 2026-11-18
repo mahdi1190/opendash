@@ -174,7 +174,7 @@ window.GardenNativePainted = (function () {
         if (top < 0 || bottom <= top) return;
         const band = Math.max(4, Math.min(40, Math.round((bottom - top) * .1))), b0 = Math.max(top, bottom - band), rows = bottom - b0 + 1, col = new Uint16Array(w);
         for (let y = b0; y <= bottom; y++) for (let u = 0; u < w; u++) if (solid(u, y)) col[u]++;
-        let best = null; for (let u = 0, s = -1; u <= w; u++) { const on = u < w && col[u] >= rows * .6; if (on && s < 0) s = u; if (!on && s >= 0) { if (!best || u - s > best[1] - best[0]) best = [s, u - 1]; s = -1; } }
+        let best = null; for (const thr of [.6, .35, .15]) { if (best) break; for (let u = 0, s = -1; u <= w; u++) { const on = u < w && col[u] >= rows * thr; if (on && s < 0) s = u; if (!on && s >= 0) { if (!best || u - s > best[1] - best[0]) best = [s, u - 1]; s = -1; } } }   // (leaves fallen at its foot: fewer rows)
         if (best) foot = { dx: ((best[0] + best[1] + 1) / 2 - made.ox) / OBJ_K, w: (best[1] - best[0] + 1) / OBJ_K };
       });
       trunkFeet.set(key, foot);

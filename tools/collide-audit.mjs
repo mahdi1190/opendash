@@ -76,7 +76,7 @@ async function inPageAudit() {
       if (bottom >= top) {
         const band = Math.max(4, Math.min(40, Math.round((bottom - top) * .1))), b0 = Math.max(top, bottom - band), rowsN = bottom - b0 + 1, col = new Uint16Array(w);
         for (let v = b0; v <= bottom; v++) for (let u = 0; u < w; u++) if (a[v * w + u] >= 160) col[u]++;
-        let best = null; for (let u = 0, s = -1; u <= w; u++) { const on = u < w && col[u] >= rowsN * .6; if (on && s < 0) s = u; if (!on && s >= 0) { if (!best || u - s > best[1] - best[0]) best = [s, u - 1]; s = -1; } }
+        let best = null; for (const thr of [.6, .35, .15]) { if (best) break; for (let u = 0, s = -1; u <= w; u++) { const on = u < w && col[u] >= rowsN * thr; if (on && s < 0) s = u; if (!on && s >= 0) { if (!best || u - s > best[1] - best[0]) best = [s, u - 1]; s = -1; } } }   // (a fallen apple under the tree: the trunk is painted in fewer of the lowest rows)
         if (best) { u0 = best[0]; u1 = best[1]; for (let v = bottom; v >= b0 && vb < 0; v--) for (let u = u0; u <= u1; u++) if (a[v * w + u] >= 160) { vb = v; break; } }
       }
       out = { w, h, a, vb, u0, u1, top };
