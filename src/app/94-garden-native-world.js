@@ -400,10 +400,21 @@ window.GardenNativeWorld = (function () {
       const soil = outlines(mark((c, x, y) => inBox(x, y) && soilSet.has(c.material)), 'm', W, true).map(l => insetTerrainContour(l, 2));
       const owned = outlines(mark((c, x, y) => inBox(x, y) && c.row && c.row.plot && !c.locked && !soilSet.has(c.material)), 'm', W, true).map(l => insetTerrainContour(l, 3));
       const pt = p => ({ x: p.x * W.cellW, y: W.sky + p.y * W.cellH });
-      const routes = D.routes.filter(r => r.points && r.points.length > 1).map(r => { const st = gardenIslandRoadStyle(r); return { main: st.main, width: st.main ? 40 : 26, points: gardenIslandRoutePath(r).points.map(pt) }; });
-      const pc = pt({ x: start.x + .5, y: start.y + .5 }), pw = 250, ph = 130;
-      const plaza = { centre: pc, bounds: { x: pc.x - pw / 2, y: pc.y - ph / 2, w: pw, h: ph }, points: terrainRoundedRect(pc.x - pw / 2, pc.y - ph / 2, pw, ph, 40) };
-      const meadow = (px, py) => { const c = cellAt(Math.floor(px / W.cellW), Math.floor((py - W.sky) / W.cellH)); return !!c && !wet(c) && !['beach', 'path'].includes(c.material) && Math.hypot((px - pc.x) / pw, (py - pc.y) / ph) > .62; };
+      // A route with authored widths (the hand-authored village, 2.74) is painted as a ribbon of its own width: half, in px
+      // per point, across the path (cells are wider than deep, so the same cells read wider across a north-south road).
+      const routes = D.routes.filter(r => r.points && r.points.length > 1).map(r => { const st = gardenIslandRoadStyle(r), cpts = gardenIslandRoutePath(r).points;
+        const half = Array.isArray(r.widths) ? cpts.map((q, i) => { const a = cpts[Math.max(0, i - 1)], b = cpts[Math.min(cpts.length - 1, i + 1)], dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy) || 1; return gardenIslandRouteWidthAt(r, q.x, q.y) * .46 * Math.hypot(dy / l * W.cellW, dx / l * W.cellH); }) : null;
+        return { id: r.id, main: st.main, width: st.main ? 40 : 26, half, points: cpts.map(pt) }; });
+      // The plazas are shaped (the square at the green's foot, the Lakeside terrace): their outlines, smoothed, in px.
+      const smoothLoop = poly => { const n = poly.length, out = []; for (let i = 0; i < n; i++) { const p0 = poly[(i - 1 + n) % n], p1 = poly[i], p2 = poly[(i + 1) % n], p3 = poly[(i + 2) % n]; for (let k = 0; k < 6; k++) { const t = k / 6, t2 = t * t, t3 = t2 * t, f = j => .5 * ((2 * p1[j]) + (-p0[j] + p2[j]) * t + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * t2 + (-p0[j] + 3 * p1[j] - 3 * p2[j] + p3[j]) * t3); out.push(pt({ x: f(0), y: f(1) })); } } return out; };
+      const plazas = [];
+      for (const r of D.routes) if (r.id === 'plaza-loop' && Array.isArray(r.shape) && r.shape.length > 2 && r.shape.some(q => inBox(q[0], q[1]))) {
+        const points = smoothLoop(r.shape), xs = points.map(q => q.x), ys = points.map(q => q.y), green = r.id === 'plaza-loop' && (D.presentation.plazas || []).find(p => p.id === 'the-green');
+        plazas.push({ id: r.id, points, bounds: { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) }, centre: { x: xs.reduce((a, b) => a + b, 0) / xs.length, y: ys.reduce((a, b) => a + b, 0) / ys.length }, rose: green && green.rose ? pt({ x: green.rose.x, y: green.rose.y }) : null, flags: r.id === 'lakeside-terrace' });
+      }
+      const inPoly = (x, y, P) => { let ins = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) ins = !ins; } return ins; };
+      const meadow = (px, py) => { const c = cellAt(Math.floor(px / W.cellW), Math.floor((py - W.sky) / W.cellH)); return !!c && !wet(c) && !['beach', 'path'].includes(c.material) && !plazas.some(pz => inPoly(px, py, pz.points)); };
+      const plaza = null;
       // The village ground is keyed by what lies in its own box (each village cell's material and whether it is an open plot; cells of the zones past the gates are the mist's), never by
       // the open areas as a whole: a gate opening, or the woodland's plots opening with it, lies outside the box, and a 1 s bake
       // would freeze the mist rolling back.
@@ -417,7 +428,7 @@ window.GardenNativeWorld = (function () {
         boxSig = (Math.imul(boxSig, 31) + 59) | 0;
       }
       const sig = [cbox.x0, cbox.y0, boxSig, cultivatedNow ? [...cultivatedNow].sort().join(',') : '', lakes.length, pathLoops.length, authoredBanks ? 'shore' : 'cells'].join('|');
-      try { packGround = GardenNativePainted.ground(scene, rootNode._inner, { W, box, coast, lawn, lakes, paths: pathLoops, routes, plaza, meadow, soil, owned, season: sc.season, sig: sig + '|' + soil.length + ':' + owned.length }); }
+      try { packGround = GardenNativePainted.ground(scene, rootNode._inner, { W, box, coast, lawn, lakes, paths: pathLoops, routes, plaza, plazas, meadow, soil, owned, season: sc.season, sig: sig + '|' + soil.length + ':' + owned.length }); }
       catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); return false; }
       const blocked = new Set(); for (const p of D.static) { const boxes = [p, p.apron].filter(Boolean); for (const b of boxes) for (let y = Math.floor(b.y) - 1; y <= b.y + b.h; y++) for (let x = Math.floor(b.x) - 1; x <= b.x + b.w; x++) blocked.add(x + ',' + y); }
       if (typeof gardenPropsNow === 'function') for (const p of gardenPropsNow()) if (!p.walk && Number.isFinite(p.x)) for (let y = Math.floor(p.y) - 1; y <= p.y + (p.h || 1); y++) for (let x = Math.floor(p.x) - 1; x <= p.x + (p.w || 1); x++) blocked.add(x + ',' + y);   // (a sight placed at run time, such as the shore bench)

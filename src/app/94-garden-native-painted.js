@@ -296,18 +296,28 @@ window.GardenNativePainted = (function () {
     cx.save(); clipLoops(info.paths);
     if (info.W.v >= 5) clipLoops(info.lawn);
     const stroke = (pts, style, width, alpha, dx, dy) => { if (pts.length < 2) return; cx.beginPath(); cx.moveTo(pts[0].x + (dx || 0), pts[0].y + (dy || 0)); for (let i = 1; i < pts.length; i++) cx.lineTo(pts[i].x + (dx || 0), pts[i].y + (dy || 0)); cx.strokeStyle = style; cx.lineWidth = width; cx.globalAlpha = alpha; cx.lineJoin = 'round'; cx.lineCap = 'round'; cx.stroke(); cx.globalAlpha = 1; };
-    const along = (rt, step, fn) => { for (let i = 1; i < rt.points.length; i++) { const a = rt.points[i - 1], b = rt.points[i], L = Math.hypot(b.x - a.x, b.y - a.y), tx = (b.x - a.x) / (L || 1), ty = (b.y - a.y) / (L || 1); for (let t = 0; t < L; t += step) fn(a.x + tx * t, a.y + ty * t, tx, ty); } };
+    // (fn gets the local width too: an authored route widens and narrows along its length, 2.74)
+    const along = (rt, step, fn) => { for (let i = 1; i < rt.points.length; i++) { const a = rt.points[i - 1], b = rt.points[i], L = Math.hypot(b.x - a.x, b.y - a.y), tx = (b.x - a.x) / (L || 1), ty = (b.y - a.y) / (L || 1), w = rt.half ? rt.half[i - 1] + rt.half[i] : rt.width; for (let t = 0; t < L; t += step) fn(a.x + tx * t, a.y + ty * t, tx, ty, w); } };
+    // A route of varying width is a ribbon: a quad per step and a disc at every point, all wound the same way, filled once
+    // (so a soft or translucent layer never doubles up where the pieces overlap). grow: px added to the whole width.
+    const ribbon = (rt, grow, scale, dx, dy) => { const P = rt.points, H = rt.half, p = new Path2D(), ox = dx || 0, oy = dy || 0, k = scale == null ? 1 : scale, h = i => Math.max(.6, H[i] * k + grow / 2);
+      for (let i = 1; i < P.length; i++) { const a = P[i - 1], b = P[i], L = Math.hypot(b.x - a.x, b.y - a.y); if (L < 1e-6) continue; const nx = -(b.y - a.y) / L, ny = (b.x - a.x) / L, ha = h(i - 1), hb = h(i);
+        let q = [[a.x + nx * ha, a.y + ny * ha], [b.x + nx * hb, b.y + ny * hb], [b.x - nx * hb, b.y - ny * hb], [a.x - nx * ha, a.y - ny * ha]]; let area = 0; for (let j = 0; j < 4; j++) { const u = q[j], v = q[(j + 1) % 4]; area += u[0] * v[1] - v[0] * u[1]; } if (area < 0) q = q.reverse();
+        p.moveTo(q[0][0] + ox, q[0][1] + oy); for (let j = 1; j < 4; j++) p.lineTo(q[j][0] + ox, q[j][1] + oy); p.closePath(); }
+      for (let i = 0; i < P.length; i += 1) { p.moveTo(P[i].x + ox + h(i), P[i].y + oy); p.arc(P[i].x + ox, P[i].y + oy, h(i), 0, Math.PI * 2); p.closePath(); }
+      return p; };
+    const band = (rt, style, grow, alpha, dx, dy, scale) => { if (!rt.half) return stroke(rt.points, style, rt.width + grow, alpha, dx, dy); cx.globalAlpha = alpha; cx.fillStyle = style; cx.fill(ribbon(rt, grow, scale, dx, dy), 'nonzero'); cx.globalAlpha = 1; };
     // the trodden margin, soft (blurred) so lawn and path meet without a line
     cx.filter = 'blur(' + Math.round(3 * K) + 'px)';
-    for (const rt of info.routes) stroke(rt.points, '#8a7a4a', rt.width + 12, .3, 1.5, 2.5);
-    for (const rt of info.routes) stroke(rt.points, rt.main ? '#b8a37c' : '#bca878', rt.width + 4, .9);
+    for (const rt of info.routes) band(rt, '#8a7a4a', 12, .3, 1.5, 2.5);
+    for (const rt of info.routes) band(rt, rt.main ? '#b8a37c' : '#bca878', 4, .9);
     cx.filter = 'none';
-    for (const rt of info.routes) stroke(rt.points, rt.main ? '#a8977a' : P.path, rt.width - 1, 1);   // (the main road's mortar bed; the lane's gravel)
+    for (const rt of info.routes) band(rt, rt.main ? '#a8977a' : P.path, -1, 1);   // (the main road's mortar bed; the lane's gravel)
     for (const rt of info.routes) {
       if (rt.main) {
         // laid stones in rough courses across the road, never a grid: each a lumpy rounded hexagon, sized and toned by chance
-        along(rt, 6.4, (x, y, tx, ty) => {
-          const nx = -ty, ny = tx, half = rt.width / 2 - 1, ang = Math.atan2(ty, tx);
+        along(rt, 6.4, (x, y, tx, ty, rw) => {
+          const nx = -ty, ny = tx, half = rw / 2 - 1, ang = Math.atan2(ty, tx);
           for (let o = -half + r() * 2.5; o < half; ) {
             const w = 5.2 + r() * 2.6, h = 5 + r() * 1.2, px = x + nx * (o + w / 2), py = y + ny * (o + w / 2), worn = Math.abs(o) < half * .45; o += w + .9;
             const tone = r(), base = tone < .2 ? '#c6b088' : tone < .45 ? '#d0bb92' : tone < .75 ? P.stone : tone < .9 ? '#d6c4a0' : '#bea67e';
@@ -320,17 +330,19 @@ window.GardenNativePainted = (function () {
         });
       } else {
         // gravel: a beaten paler centre, wheel-worn darker lines, grit in two tones
-        stroke(rt.points, P.pathWear, rt.width * .45, .5);
-        stroke(rt.points, P.pathEdge, 1.6, .28, -rt.width * .22, 0); stroke(rt.points, P.pathEdge, 1.6, .28, rt.width * .22, 0);
-        along(rt, 2.2, (x, y, tx, ty) => { for (let k = 0; k < 3; k++) { const o = (r() - .5) * rt.width * .95, px = x - ty * o, py = y + tx * o; cx.globalAlpha = .5; cx.fillStyle = r() < .5 ? P.pathEdge : r() < .5 ? P.pathWear : '#a89068'; cx.fillRect(px, py, .9 + r() * 1.3, .7 + r() * .9); } });
+        if (rt.half) band(rt, P.pathWear, 0, .5, 0, 0, .45);
+        else stroke(rt.points, P.pathWear, rt.width * .45, .5);
+        if (!rt.half) { stroke(rt.points, P.pathEdge, 1.6, .28, -rt.width * .22, 0); stroke(rt.points, P.pathEdge, 1.6, .28, rt.width * .22, 0); }
+        else along(rt, 3, (x, y, tx, ty, rw) => { for (const side of [-1, 1]) { const o = rw * .22 * side; cx.globalAlpha = .28; cx.fillStyle = P.pathEdge; cx.fillRect(x - ty * o - .8, y + tx * o - .8, 1.6, 1.6); } });   // (the wheel lines, following the width)
+        along(rt, 2.2, (x, y, tx, ty, rw) => { for (let k = 0; k < 3; k++) { const o = (r() - .5) * rw * .95, px = x - ty * o, py = y + tx * o; cx.globalAlpha = .5; cx.fillStyle = r() < .5 ? P.pathEdge : r() < .5 ? P.pathWear : '#a89068'; cx.fillRect(px, py, .9 + r() * 1.3, .7 + r() * .9); } });
       }
     }
     cx.globalAlpha = 1; cx.restore();
     // grass creeping in over both edges of every path: blades and small clumps rooted in the lawn, leaning out
     cx.save(); clipLoops(info.lawn); cx.lineCap = 'round';
-    for (const rt of info.routes) along(rt, 3.4, (x, y, tx, ty) => {
+    for (const rt of info.routes) along(rt, 3.4, (x, y, tx, ty, rw) => {
       for (const side of [-1, 1]) {
-        if (r() < .3) continue; const o = (rt.width / 2 + 1.5 - r() * 4.5) * side, px = x - ty * o, py = y + tx * o, n = 2 + Math.floor(r() * 3);
+        if (r() < .3) continue; const o = (rw / 2 + 1.5 - r() * 4.5) * side, px = x - ty * o, py = y + tx * o, n = 2 + Math.floor(r() * 3);
         for (let k = 0; k < n; k++) { const hh = 2.5 + r() * 4, lx = (r() - .5) * 3 - ty * side * 1.5; cx.globalAlpha = .7; cx.strokeStyle = r() < .5 ? P.lawnLo : '#6f8a40'; cx.lineWidth = 1; cx.beginPath(); cx.moveTo(px + k * .8, py + 1); cx.quadraticCurveTo(px + k * .8 + lx * .4, py - hh * .5, px + k * .8 + lx, py - hh); cx.stroke(); }
         if (r() < .12) { cx.globalAlpha = .55; cx.fillStyle = r() < .5 ? P.lawnLo : '#7d9448'; cx.fill(path(sceneDraw.blob(r, px, py, 3 + r() * 3, 1.6 + r(), 6, .5))); }
       }
@@ -339,17 +351,18 @@ window.GardenNativePainted = (function () {
     // 5. The plaza: irregular setts laid in courses, mortar between them, wear in the middle and moss in the joints
     //    at the edges, grass growing in over its rim; a stone kerb of separate blocks in place of a ruled outline,
     //    and the compass rose inlaid, worn by feet.
-    if (info.plaza) {
-      const pz = info.plaza, b = pz.bounds, ccx = pz.centre.x, ccy = pz.centre.y;
+    // (2.74: every shaped plaza in the box, the square with its rose and the terrace; the old single pad is gone)
+    for (const pz of info.plazas || (info.plaza ? [Object.assign({ rose: info.plaza.centre }, info.plaza)] : [])) {
+      const b = pz.bounds, rose = pz.rose, ccx = rose ? rose.x : pz.centre.x, ccy = rose ? rose.y : pz.centre.y;
       cx.save(); cx.beginPath(); loop(pz.points); cx.fillStyle = '#3e4a2a'; cx.globalAlpha = .28; cx.filter = 'blur(' + Math.round(4 * K) + 'px)'; cx.translate(3, 5); cx.fill(); cx.restore();
       cx.save(); cx.beginPath(); loop(pz.points); cx.fillStyle = '#ae9c78'; cx.fill(); cx.clip();
-      const inRose = (x, y) => Math.hypot((x - ccx) / 46, (y - ccy) / 25.3) < 1;
+      const inRose = (x, y) => !!rose && Math.hypot((x - ccx) / 46, (y - ccy) / 25.3) < 1;
       for (let y = b.y - 4; y < b.y + b.h + 4;) {
         const rh = 7.2 + r() * 2.6; let x = b.x - 4 - r() * 8;
         while (x < b.x + b.w + 4) {
           const w = 8 + r() * 8, x0 = x + .9, y0 = y + .9, x1 = x + w - .9, y1 = y + rh - .9, mx = (x0 + x1) / 2, my = (y0 + y1) / 2; x += w;
           if (inRose(mx, my)) continue;
-          const d = Math.hypot((mx - ccx) / (b.w / 2), (my - ccy) / (b.h / 2)), j = () => (r() - .5) * 1.4;
+          const d = Math.hypot((mx - pz.centre.x) / (b.w / 2), (my - pz.centre.y) / (b.h / 2)), j = () => (r() - .5) * 1.4;
           const tone = r(), base = tone < .15 ? '#c8b08a' : tone < .4 ? '#d4be96' : tone < .65 ? P.stone : tone < .82 ? '#dcc9a4' : tone < .93 ? '#cdb68e' : '#d8c2aa';
           cx.save(); cx.translate(mx, my); cx.rotate((r() - .5) * .05);
           const sw = x1 - x0 + j() * .4, shh = y1 - y0 + j() * .3;
@@ -365,12 +378,14 @@ window.GardenNativePainted = (function () {
       }
       cx.globalAlpha = 1;
       // the rose: an inlaid ring of dark stone, a pale field, the points in honey stone, softened by wear
+      if (rose) {
       cx.fillStyle = '#8f7a58'; cx.beginPath(); cx.ellipse(ccx, ccy, 46, 25.3, 0, 0, Math.PI * 2); cx.fill();
       cx.fillStyle = '#e4d4ae'; cx.beginPath(); cx.ellipse(ccx, ccy, 42.5, 23.2, 0, 0, Math.PI * 2); cx.fill();
       cx.strokeStyle = '#b49c72'; cx.lineWidth = 1.2; cx.globalAlpha = .7; cx.beginPath(); cx.ellipse(ccx, ccy, 29, 16, 0, 0, Math.PI * 2); cx.stroke(); cx.globalAlpha = 1;
       for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4 - Math.PI / 2, l = i % 2 ? 15 : 26; for (const [side, col] of [[1, '#a8875a'], [-1, '#c8a878']]) { cx.fillStyle = col; cx.beginPath(); cx.moveTo(ccx + Math.cos(a) * l, ccy + Math.sin(a) * l * .55); cx.lineTo(ccx + Math.cos(a + side * 1.25) * 4.4, ccy + Math.sin(a + side * 1.25) * 2.4); cx.lineTo(ccx, ccy); cx.fill(); } }
       cx.fillStyle = '#6e5a3e'; cx.beginPath(); cx.arc(ccx, ccy, 2, 0, Math.PI * 2); cx.fill();
       cx.globalAlpha = .22; cx.fillStyle = '#fff8e6'; cx.beginPath(); cx.ellipse(ccx - 8, ccy - 4, 22, 9, -.2, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 1;
+      }
       // the inner shade along the rim (the plaza sits a little below the turf)
       cx.filter = 'blur(' + Math.round(2 * K) + 'px)'; cx.beginPath(); loop(pz.points); cx.strokeStyle = '#5a4c34'; cx.lineWidth = 6; cx.globalAlpha = .28; cx.stroke(); cx.filter = 'none'; cx.globalAlpha = 1;
       cx.restore();
@@ -410,9 +425,9 @@ window.GardenNativePainted = (function () {
     }
     // Low verges along every path: tufts and flowers at its edges, in runs.
     for (const rt of info.routes) for (let i = 1; i < rt.points.length; i++) {
-      const a = rt.points[i - 1], b = rt.points[i], L = Math.hypot(b.x - a.x, b.y - a.y), nx = -(b.y - a.y) / (L || 1), ny = (b.x - a.x) / (L || 1);
+      const a = rt.points[i - 1], b = rt.points[i], L = Math.hypot(b.x - a.x, b.y - a.y), nx = -(b.y - a.y) / (L || 1), ny = (b.x - a.x) / (L || 1), rw = rt.half ? rt.half[i - 1] + rt.half[i] : rt.width;
       for (let t = 0; t < L; t += 14) {
-        if (r() < .45) continue; const side = r() < .5 ? -1 : 1, o = (rt.width / 2 + 5 + r() * 6) * side, x = a.x + (b.x - a.x) * t / L + nx * o, y = a.y + (b.y - a.y) * t / L + ny * o;
+        if (r() < .45) continue; const side = r() < .5 ? -1 : 1, o = (rw / 2 + 5 + r() * 6) * side, x = a.x + (b.x - a.x) * t / L + nx * o, y = a.y + (b.y - a.y) * t / L + ny * o;
         if (!info.meadow(x, y)) continue; const kind = stamps[Math.floor(r() * stamps.length)], key = kind.join(':'); let s = stampC.get(key);
         if (s === undefined) { s = ok(() => objectCanvas(kind[0], kind[1], info.season, { h: kind[0] === 'plant.grass' ? 12 : 10 })); stampC.set(key, s); }
         if (s) { const k = (.6 + r() * .4) / OBJ_K; cx.drawImage(s.c, x - s.ox * k, y - s.oy * k, s.c.width * k, s.c.height * k); }

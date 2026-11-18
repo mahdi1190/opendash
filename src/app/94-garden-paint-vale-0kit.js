@@ -92,6 +92,8 @@ window.GardenPaintVale = (function () {
   const strokePts = (B, pts, col, w, op, dx, dy) => { if (pts.length < 2) return; const p = new Path2D(); p.moveTo(pts[0].x + (dx || 0), pts[0].y + (dy || 0)); for (let i = 1; i < pts.length; i++) p.lineTo(pts[i].x + (dx || 0), pts[i].y + (dy || 0)); B.s(p, col, w, op); };
   // Match the native road outside the village and its narrower painted road
   // inside. The same ninety-pixel feather makes their shoulders meet gently.
+  /** A closed polygon in cells, smoothed (Catmull-Rom) and in px: the shaped plazas (2.74). */
+  function shapeLoop(L, poly, n) { const out = [], m = poly.length, k = n || 6; for (let i = 0; i < m; i++) { const p0 = poly[(i - 1 + m) % m], p1 = poly[i], p2 = poly[(i + 1) % m], p3 = poly[(i + 2) % m]; for (let j = 0; j < k; j++) { const t = j / k, t2 = t * t, t3 = t2 * t, f = q => .5 * ((2 * p1[q]) + (-p0[q] + p2[q]) * t + (2 * p0[q] - 5 * p1[q] + 4 * p2[q] - p3[q]) * t2 + (-p0[q] + 3 * p1[q] - 3 * p2[q] + p3[q]) * t3); out.push(L.cpt(f(0), f(1))); } } return out; }
   function routeRibbon(L, route, edge) {
     const sampled = gardenIslandRoutePath(route), pts = sampled.points, st = gardenIslandRoadStyle(route), start = L.D.anchors.start, left = [], right = [];
     for (let i = 0; i < pts.length; i++) {
@@ -99,7 +101,9 @@ window.GardenPaintVale = (function () {
       const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1, pxLen = Math.hypot(dx * L.cw, dy * L.ch) || 1, q = L.cpt(p.x, p.y);
       const inset = Math.min((p.x - start.x + 18) * L.cw, (start.x + 19 - p.x) * L.cw, (p.y - start.y + 26) * L.ch, (start.y + 18 - p.y) * L.ch);
       const fade = Math.max(0, Math.min(1, inset / 90)), t = fade * fade * (3 - 2 * fade), radius = edge ? st.edgeRadius : st.radius, half = (st.main ? 20 : 13) + (edge ? 2.5 : 0);
-      const ox = -dy / len * radius * L.cw * (1 - t) - dy * L.ch / pxLen * half * t, oy = dx / len * radius * L.ch * (1 - t) + dx * L.cw / pxLen * half * t;
+      // an authored route (the village, 2.74) has its own width at every point, the same inside the village ground and out
+      const aw = Array.isArray(route.widths) ? gardenIslandRouteWidthAt(route, p.x, p.y) * .46 + (edge ? .06 : 0) : 0;
+      const ox = aw ? -dy / len * aw * L.cw : -dy / len * radius * L.cw * (1 - t) - dy * L.ch / pxLen * half * t, oy = aw ? dx / len * aw * L.ch : dx / len * radius * L.ch * (1 - t) + dx * L.cw / pxLen * half * t;
       left.push({ x: q.x + ox, y: q.y + oy }); right.push({ x: q.x - ox, y: q.y - oy });
     }
     return left.concat(right.reverse());
@@ -312,5 +316,5 @@ window.GardenPaintVale = (function () {
   }
   /** Landform kinds painted here (the world skips its own art for them). */
   function owns(kind) { return (kind === 'ruin-wall' || kind === 'ruin') && wanted(); }
-  return { feet: () => (wanted() ? feetNow : []), feetSig: () => (wanted() ? feetSig : ''), parts, groundSigs, PAL, wanted, paint, tick, clear, pendingGround, playerCanopies: () => cur ? cur.covering : null, status, paintTo, owns, readLayout, loopPath, strokePts, routeRibbon, clipGround, walk, lobe, capsule, hull, lawn, flags, setts, ok, get lastError() { return lastError; } };
+  return { feet: () => (wanted() ? feetNow : []), feetSig: () => (wanted() ? feetSig : ''), parts, groundSigs, PAL, wanted, paint, tick, clear, pendingGround, playerCanopies: () => cur ? cur.covering : null, status, paintTo, owns, readLayout, loopPath, strokePts, routeRibbon, shapeLoop, clipGround, walk, lobe, capsule, hull, lawn, flags, setts, ok, get lastError() { return lastError; } };
 })();
