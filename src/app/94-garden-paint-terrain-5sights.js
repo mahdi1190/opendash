@@ -445,8 +445,11 @@ window.GardenPaintSeat = (function () {
   } };
 
   /* ---------- the bee boles: a stretch of dry-stone wall with three arched recesses, a straw skep in each ---------- */
-  A['ld-boles'] = { box: [-44, -60, 46, 6], seat: { kind: 'earth', w: 70, front: 14 }, draw(B, o) {
+  A['ld-boles'] = { box: [-70, -60, 72, 6], seat: { kind: 'earth', w: 70, front: 14 }, draw(B, o) {
     const r = KIT().rng(137), s = o.season, h = sz('wall', .9) * 1.05;
+    // the old garden wall it was built into runs on either side as a ruin, lower and lower until it sinks into the turf
+    // (a short stub of wall set down on grass, part of no wall: art director and hunter, round 3)
+    { const rw = KIT().rng(138); for (const sd of [-1, 1]) for (let i = 0; i < 9; i++) { const t = i / 8, x = sd * (38 + t * 28), top = h * (.62 - t * .52); for (let y = -3; y > -top; y -= 5.4) rw() < .86 && B.stone(rw, x + (rw() - .5) * 2, y, 3.6 + rw() * 1.4, 2.6, MOSSY, rw() < .35 ? '#9aa86a' : null); if (s !== 'winter') B.tufts(rw, x, 1, 7, 3, grass(s), 4 + t * 4); } }
     for (let row = 0, y = -4; y > -h; row++, y -= 6) for (let x = -36 + (row & 1) * 4; x < 36; x += 8 + r() * 3) B.stone(r, x, y, 4.4 + r() * 1.6, 3, MOSSY, r() < .25 ? '#9aa86a' : null);
     B.f(B.rr(-38, -h - 4, 76, 6, 2), MOSSY.rockLo).f(B.rr(-38, -h - 4, 76, 2.6, 1.4), MOSSY.rockHi);
     for (const x of [-22, 0, 22]) {

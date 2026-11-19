@@ -488,7 +488,7 @@
   } };
   /* ---------- the apple clamp: a long mound of thatched straw over the stored apples, turf laid on its ends, a rope net over
      it weighted with stones; opened in winter, the apples showing red in the straw ---------- */
-  A['ld-clamp'] = { box: [-52, -44, 54, 8], seat: { kind: 'earth', w: 84, front: 12, stones: 0, way: false }, draw(B, o) {
+  A['ld-clamp'] = { box: [-52, -44, 66, 8], seat: { kind: 'earth', w: 84, front: 12, stones: 0, way: false }, draw(B, o) {
     const r = KIT().rng(601), s = o.season, h = H * .9, STRAW = ['#d8b860', '#c4a04a', '#a8843a', '#e8cc7a'];
     const mound = `M-46 0Q-48 -${h * .7} -24 -${h}Q0 -${h * 1.06} 24 -${h}Q48 -${h * .7} 46 0Z`;
     B.f(mound, B.lin(-46, -h, 46, 0, [[0, STRAW[3]], [.4, STRAW[0]], [1, STRAW[2]]]));
@@ -501,7 +501,18 @@
     for (const x of [-38, -14, 14, 38]) B.s(`M${x} -6v4`, '#8a7450', .7).f(B.blob(r, x, 0, 3.4, 2.4, 6, .3), STONE.rockLo).f(B.blob(r, x - .8, -.8, 2, 1.2, 6, .3), STONE.rockHi, .8);
     if (s === 'winter') { B.f(`M-40 -${h * .5}Q-20 -${h * 1.04} 0 -${h * 1.02}Q20 -${h * 1.04} 40 -${h * .5}Q0 -${h * .82} -40 -${h * .5}Z`, '#f4f6f2', .92); B.f(B.blob(r, 4, -8, 12, 6, 8, .4), '#3a2a18'); for (let i = 0; i < 8; i++) B.f(B.circ(-4 + r() * 16, -10 + r() * 6, 2), i % 3 ? '#c83a2a' : '#d8a030'); }
     else B.f(B.blob(r, 6, -6, 7, 3, 7, .4), '#5a4024', .6).f(B.circ(4, -6, 1.8), '#c83a2a').f(B.circ(8, -5.4, 1.8), '#d8a030');
-    B.tufts(r, -48, 1, 8, 7, grass(s), 7).tufts(r, 48, 1, 8, 7, grass(s), 7);
+    // (it read as a flat straw sticker with no apples: hunter, round 3) the far side in shade, earth banked at its foot,
+    // the near end opened where the apples are taken from, a full basket waiting beside it
+    B.f(`M8 -${h * 1.02}Q40 -${h * .9} 46 0H20Q30 -${h * .5} 8 -${h * 1.02}Z`, STRAW[2], .42).f(B.rr(-46, -4, 92, 4, 2), '#6a5232', .55);
+    if (s !== 'winter') {
+      B.f(`M-12 0Q-13 -${h * .5} 0 -${h * .58}Q13 -${h * .5} 12 0Z`, '#3a2a18').f(`M-10 0Q-10 -${h * .42} 0 -${h * .5}Q10 -${h * .42} 10 0Z`, '#2a1e12');
+      for (let i = 0; i < 9; i++) { const x = -7 + (i % 4) * 4.4 + (i > 3 ? 2 : 0), y = -2.4 - Math.floor(i / 4) * 3.6; B.f(B.circ(x, y, 2.1), i % 3 ? '#c8402a' : '#d8a030').f(B.circ(x - .6, y - .7, .7), '#ffe8c0', .6); }
+      B.s(`M-12 0Q-13 -${h * .5} 0 -${h * .58}Q13 -${h * .5} 12 0`, STRAW[3], 1.4, .8);
+      // the basket: wicker, two handles, heaped with red and gold
+      B.f(B.poly([[46, -1], [62, -1], [64, -11], [44, -11]]), '#9a7440').s('M45 -8h18M45.5 -4.4h17', '#6e5028', .7, .8).s('M48 -11q6 -8 12 0', '#7a5a30', 1.2);
+      for (let i = 0; i < 6; i++) B.f(B.circ(47 + i * 3, -12 - (i % 2) * 1.6, 2), i % 2 ? '#d8a030' : '#c8402a');
+    }
+    B.tufts(r, -48, 1, 8, 7, grass(s), 7).tufts(r, 40, 1, 6, 4, grass(s), 6);
   } };
 
   /* ---------- cider square: three oak casks on a stillage beside the twin-screw press, its slatted cheese and tray, a basket

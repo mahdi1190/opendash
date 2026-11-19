@@ -1281,8 +1281,10 @@ window.GardenNativeWorld = (function () {
         const p = record.metadata.prop, b = record.bounds, sx = _gw.px * W.cellW, sy = W.sky + _gw.py * W.cellH;
         let behind = sx > b.x - 8 && sx < b.x + b.width + 8 && sy > b.y + 18 && sy < W.sky + (p.y + p.h) * W.cellH - 1.5;
         if (behind && p.id === 'ld-falls' && record.handle.fallsCoversPlayer) behind = record.handle.fallsCoversPlayer(sx, sy);
+        // (only when you are within the middle of it and under its top: beside a barn's gable it faded with nothing hidden)
+        if (behind && p.id !== 'ld-falls') behind = sx > b.x + b.width * .12 && sx < b.x + b.width * .88 && sy - playerOcclusionHeight * .6 > b.y;
         if (record.behind !== behind) { record.behind = behind; record.root.setAlpha(behind ? .8 : 1); }
-        if (behind && sx > b.x + b.width * .12 && sx < b.x + b.width * .88 && sy - playerOcclusionHeight * .6 > b.y) propBehind++;
+        if (behind) propBehind++;
       }
       coveringCanopies.length = 0;
       const probes = [{ x, y: y - playerOcclusionHeight * .81 }, { x, y: y - playerOcclusionHeight * .48 }, { x: x - 6, y: y - playerOcclusionHeight * .54 }, { x: x + 6, y: y - playerOcclusionHeight * .54 }];
