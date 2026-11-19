@@ -236,8 +236,11 @@ window.GardenPaintedTerrain = (function () {
     for (const c of crops) add([c.x - 70, c.y - 40, c.x + 70, c.y + 40], 170 + Math.round(c.x), (B, r) => {
       clipFell(B); const sn = snowAt(c.x, c.y) > .6;
       for (let k = 0; k < c.n; k++) { const x = c.x + (r() - .5) * 80 * c.s, y = c.y + (r() - .5) * 30 * c.s, rx = (8 + r() * 14) * c.s, ry = rx * (.34 + r() * .14);
-        B.f(B.blob(r, x + 2, y + 2.4, rx, ry, 8, .3), P.rockDk, .45).f(B.blob(r, x, y, rx, ry, 8, .3), P.rockLo).f(B.blob(r, x - rx * .12, y - ry * .3, rx * .86, ry * .66, 8, .3), P.rock).f(B.blob(r, x - rx * .3, y - ry * .45, rx * .4, ry * .25, 6, .4), sn ? P.snow : P.rockHi, .8);
-        B.s(`M${x - rx * .2} ${y - ry * .6}l${rx * .15} ${ry * 1.1}`, P.rockDk, .9, .5);
+        const tone = r(), form = r(), T = tone < .33 ? { lo: '#7e766a', mid: '#9c9488', hi: '#c6beb0' } : tone < .66 ? { lo: '#86786a', mid: '#a6988a', hi: '#d0c4b2' } : { lo: '#747670', mid: '#929490', hi: '#bcbeb8' };   // (cool, warm or grey stone: one slab stamped over the fells was a fault)
+        if (form < .55) B.f(B.blob(r, x + 2, y + 2.4, rx, ry, 8, .3), P.rockDk, .4).f(B.blob(r, x, y, rx, ry, 8, .3), T.lo).f(B.blob(r, x - rx * (.05 + r() * .2), y - ry * (.2 + r() * .2), rx * (.7 + r() * .2), ry * .66, 8, .3), T.mid).f(B.blob(r, x - rx * (.2 + r() * .25), y - ry * .45, rx * (.25 + r() * .25), ry * .25, 6, .4), sn ? P.snow : T.hi, .8);
+        else if (form < .8) { const g = (r() - .5) * rx * .4; for (const sd of [-1, 1]) { const hx = x + sd * rx * .26 + g * .3; B.f(B.blob(r, hx + 2, y + 2.2, rx * .5, ry, 7, .3), P.rockDk, .4).f(B.blob(r, hx, y, rx * .48, ry * .95, 7, .3), T.lo).f(B.blob(r, hx - rx * .1, y - ry * .3, rx * .34, ry * .55, 6, .3), T.mid).f(B.blob(r, hx - rx * .2, y - ry * .5, rx * .16, ry * .2, 5, .4), sn ? P.snow : T.hi, .8); } }
+        else { const hh = ry * (1.6 + r() * .8); B.f(B.ell(x + rx * .2, y + 1.5, rx * .9, ry * .45), P.rockDk, .35).f(B.blob(r, x, y - hh * .4, rx * .72, hh * .62, 9, .25), T.lo).f(B.blob(r, x - rx * .12, y - hh * .55, rx * .52, hh * .42, 8, .3), T.mid).f(B.blob(r, x - rx * .3, y - hh * .78, rx * .24, hh * .16, 6, .4), sn ? P.snow : T.hi, .85); }
+        if (r() < .4) { const cx0 = x + (r() - .5) * rx * .8; B.s(`M${cx0} ${y - ry * .6}l${(r() - .5) * rx * .4} ${ry * (.6 + r() * .6)}`, P.rockDk, .8, .45); }
         if (!sn) { if (r() < .5) B.f(B.blob(r, x + rx * .3, y - ry * .2, rx * .25, ry * .2, 6, .5), P.lichen, .6); B.tufts(r, x, y + ry * .8, rx * 1.6, 5, [P.fellLo, P.bleach], 5); if (moor(x) > .3) B.heather(r, x + rx * .9, y + ry * .5, 4 + r() * 3, P, P.bloom); } }
     });
     // the old sheepfolds of the high pasture: two rings of dry stone near the shepherd's hut, each where its whole ring
@@ -318,7 +321,7 @@ window.GardenPaintedTerrain = (function () {
         B.cx.clip(coastP, 'evenodd');   // (not the region: the wall stands up above the map's top row)
         for (let tx = Math.floor((cb[0] - 20) / 20) * 20; tx < cb[2] + 20; tx += 20) { const r = kit.rng(kit.hash(tx, 7, 34)); for (let x = tx; x < tx + 20; ) {
           const i = Math.max(0, Math.min(edgeY.length - 1, Math.round(x / cw * 2))), e = edgeY[i]; if (!e.ok) { x += 6; continue; }
-          const n = kit.noise(x / 40, 1.3, 461), h = hh * (.62 + kit.noise(x / 9, 2.1, 462) * .35) * (n < .25 ? .6 : 1), w = 4 + r() * 5, y0 = e.y + 3;
+          const n = kit.noise(x / 40, 1.3, 461), h = hh * (.62 + kit.noise(x / 9, 2.1, 462) * .35) * (n < .25 ? .6 : 1), w = 4 + r() * 5, y0 = e.y + 3 - kit.noise(x / 70, 4.1, 463) * 5;   /* (its line wanders a little; it never stands below where you stop) */
           if (x === tx) B.f(B.rect(tx - .5, y0 - h * .7, 21, h * .7), snowRow > 90 ? P.snowSh : '#6e685c', .95);
           const rows = Math.max(2, Math.round(h / 4.4)); for (let k = 0; k < rows; k++) { const sy = y0 - 2.4 - k * (h - 3.5) / rows + (r() - .5), bx = x + (k & 1 ? w * .5 : 0) + (r() - .5) * 1.6, bw = w * (.7 + r() * .6); B.f(B.ell(bx + bw / 2 + .6, sy + .9, bw / 2, 2.1), '#4e483e', .4).f(B.ell(bx + bw / 2, sy, bw / 2 * (.85 + r() * .3), 2 + r() * .6), r() < .4 ? '#a8a090' : r() < .6 ? '#bdb5a3' : '#8e8678').f(B.ell(bx + bw / 2 - 1, sy - 1, bw / 4, .7), '#dcd6c6', .4); }
           B.f(B.ell(x + w / 2, y0 - h + 1.4, w * .45, 1.6), snowRow > 90 ? P.snow : r() < .3 ? P.moss : '#c2baa6');
@@ -877,11 +880,14 @@ window.GardenPaintedTerrain = (function () {
     B.s(`M${tx(.45)} ${-h * .45}Q${tx(.6) - 1 * s} ${-h * .62} ${tx(.9)} ${top}`, '#b8683a', tw * 1.15).s(`M${tx(.45) - tw * .3} ${-h * .46}Q${tx(.6) - 1.6 * s} ${-h * .62} ${tx(.9) - tw * .3} ${top}`, '#e09a5e', tw * .4, .85);
     for (let k = 0; k < 6; k++) { const y = -h * (.12 + r() * .3), x = tx(-y / h), d = r() < .5 ? -1 : 1; B.f(B.ell(x + d * tw * .2, y, tw * .3, tw * .14), '#3a2e26', .5); if (k < 3) B.s(`M${x} ${y}l${d * (6 + r() * 6) * s} ${-(2 + r() * 3) * s}`, '#6a5a4c', 1.2 * s + .5, .8); }
     // the crown pads: flat, broken, clustered high, the topmost smallest
-    const pads = []; const n = 5 + Math.floor(r() * 3);
-    for (let k = 0; k < n; k++) { const t = k / (n - 1), y = -h * (.56 + t * .4) + (r() - .5) * 8 * s, side = k % 2 ? 1 : -1, x = tx(-y / h) + side * (6 + r() * 22) * s * (1.1 - t * .6), rx = (22 + r() * 18) * s * (1.15 - t * .55), ry = rx * (.3 + r() * .12); pads.push({ x, y, rx, ry, bx: tx(-y / h) }); }
+    // (each pine its own: an old flat-topped one with a few broad pads high up, a young one with many small pads down its
+    // stem, or one between; its green a little bluer or warmer; one stamp of stacked pads repeated over the fells was a fault)
+    const pads = [], form = r(), n = form < .33 ? 3 + Math.floor(r() * 2) : form < .66 ? 5 + Math.floor(r() * 3) : 7 + Math.floor(r() * 3), lo = form < .33 ? .7 : form < .66 ? .56 : .4;
+    for (let k = 0; k < n; k++) { const t = k / (n - 1), y = -h * (lo + t * (.96 - lo)) + (r() - .5) * 8 * s, side = (k + (seed & 1)) % 2 ? 1 : -1, x = tx(-y / h) + side * (6 + r() * 22) * s * (1.1 - t * .6) * (form < .33 ? 1.3 : form > .66 ? .7 : 1), rx = (22 + r() * 18) * s * (1.15 - t * .55) * (form < .33 ? 1.35 : form > .66 ? .72 : 1), ry = rx * (.3 + r() * .12); pads.push({ x, y, rx, ry, bx: tx(-y / h) }); }
+    const pv = r(), PD = pv < .33 ? ['#1e2e26', '#30503e', '#486c50', '#749a68'] : pv < .66 ? ['#1e2e22', '#33503a', '#4c6e46', '#7a9a5c'] : ['#232e1e', '#3a5232', '#56723e', '#86a05a'];
     for (const p of pads) B.s(`M${p.bx} ${p.y + p.ry * .6}Q${(p.bx + p.x) / 2} ${p.y + p.ry * .2} ${p.x} ${p.y}`, '#7a4a2c', 1.6 * s + .6, .9);
-    for (const p of pads) B.f(B.blob(r, p.x + 3 * s, p.y + p.ry * .55, p.rx * 1.04, p.ry * 1.1, 11, .5), '#1e2e22', .9);
-    for (const p of pads) { B.f(B.blob(r, p.x, p.y, p.rx, p.ry, 11, .55), '#33503a'); B.f(B.blob(r, p.x - p.rx * .12, p.y - p.ry * .3, p.rx * .78, p.ry * .6, 9, .5), snowy ? '#eef2f2' : '#4c6e46', .95); B.f(B.blob(r, p.x - p.rx * .35, p.y - p.ry * .5, p.rx * .38, p.ry * .3, 7, .5), snowy ? '#ffffff' : '#7a9a5c', .8);
+    for (const p of pads) B.f(B.blob(r, p.x + 3 * s, p.y + p.ry * .55, p.rx * 1.04, p.ry * 1.1, 11, .5), PD[0], .9);
+    for (const p of pads) { B.f(B.blob(r, p.x, p.y, p.rx, p.ry, 11, .55), PD[1]); B.f(B.blob(r, p.x - p.rx * .12, p.y - p.ry * .3, p.rx * .78, p.ry * .6, 9, .5), snowy ? '#eef2f2' : PD[2], .95); B.f(B.blob(r, p.x - p.rx * .35, p.y - p.ry * .5, p.rx * .38, p.ry * .3, 7, .5), snowy ? '#ffffff' : PD[3], .8);
       for (let k = 0; k < 10; k++) B.s(`M${p.x + (r() - .5) * p.rx * 1.6} ${p.y + (r() - .3) * p.ry}l${(r() - .5) * 4 * s} ${-2.4 * s}`, r() < .5 ? '#5e7e50' : '#22342a', 1 * s + .3, .7); }
   }
   // Groves for the fells, from the layout: rowans and pines in small clusters along the gorge's banks, a shelter belt

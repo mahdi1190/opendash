@@ -253,10 +253,13 @@
     // 2b. The orchard pond's margin: a worn earth bank with sedge and a few stones, so the grass meets the water at a
     // shore (as the Mere's does) and not at a bare glassy lip. Drawn under the water's own shallows.
     for (const pool of (L.D.freshwater || []).filter(w => w.boundary && w.boundary.length > 2 && inReg(w.boundary.reduce((s, p) => s + p[0], 0) / w.boundary.length, w.boundary.reduce((s, p) => s + p[1], 0) / w.boundary.length))) {
-      const pts = pool.boundary.map(L.pt), loop = V.loopPath([pts]), bb = kit.bboxOf(pts, 40);
+      // (the outline's corners rounded, and the margin wide and narrow by turns: an even band round a polygon read as a paddling pool)
+      let pts = pool.boundary.map(L.pt); for (let it = 0; it < 2; it++) { const o = []; for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; o.push({ x: a.x * .75 + b.x * .25, y: a.y * .75 + b.y * .25 }, { x: a.x * .25 + b.x * .75, y: a.y * .25 + b.y * .75 }); } pts = o; }
+      const loop = V.loopPath([pts]), bb = kit.bboxOf(pts, 40);
       add(bb, 97, (B, r) => {
-        B.s(loop, season === 'winter' ? '#8e8a74' : '#8a7a52', 26, .5).s(loop, '#6e6040', 12, .55).s(loop, '#5a5238', 4, .45);
-        for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; for (let t = 0; t < 1; t += .34) { const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, cx = (bb[0] + bb[2]) / 2, cy = (bb[1] + bb[3]) / 2, d = Math.hypot(x - cx, (y - cy) * 1.6) || 1, ox = (x - cx) / d, oy = (y - cy) * 1.6 / d;
+        B.s(loop, season === 'winter' ? '#8e8a74' : '#8a7a52', 14, .35).s(loop, '#5a5238', 3, .4);
+        for (let i = 0; i < pts.length; i++) { const p = pts[i], m = kit.noise(i * .17, 3.1, 957); if (m < .3) continue; B.f(B.blob(r, p.x, p.y + 2, 6 + m * 14, 3 + m * 6, 7, .5), m > .6 ? '#6e6040' : '#8a7a52', .3 + m * .2); }
+        for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; for (let t = r() * .3; t < 1; t += .2 + r() * .5) { if (kit.noise(i * .3 + t, 5.3, 958) < .35) continue; const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, cx = (bb[0] + bb[2]) / 2, cy = (bb[1] + bb[3]) / 2, d = Math.hypot(x - cx, (y - cy) * 1.6) || 1, ox = (x - cx) / d, oy = (y - cy) * 1.6 / d;
           if (r() < .32) B.stone(r, x + ox * 9, y + oy * 5, 3 + r() * 3, 2 + r() * 1.4, { rock: '#b4aa94', rockLo: '#8c8270', rockHi: '#d8cfb8', rockDk: '#4e483e' }, null);
           if (season !== 'winter' && r() < .7) B.tufts(r, x + ox * (14 + r() * 8), y + oy * (8 + r() * 5), 12, 6, ['#9a9a52', '#7c8a44', season === 'autumn' ? '#b8a05a' : '#a8b468'], 9); } }
       });

@@ -102,7 +102,7 @@
   // a wall was drawn against the hut's wheel, the standing stones stood through a wall): the landmark is the edge there.
   // How far up a landmark is drawn, in cells, decides how much of the plot's edge behind it stays clear.
   let statMemo = null;
-  const statics = () => statMemo || (statMemo = ((typeof gardenIslandData === 'function' ? gardenIslandData() : {}).static || []).map(s => ({ x0: s.x - .85, x1: s.x + s.w + .85, y0: s.y - (/folly|tower|treehouse|mill|lighthouse/.test(s.id) ? 4.2 : /hut|stones|wall|cairn|beacon|grotto|falls/.test(s.id) ? 2.2 : 1.4), y1: s.y + s.h + .45 })));
+  const statics = () => statMemo || (statMemo = ((typeof gardenIslandData === 'function' ? gardenIslandData() : {}).static || []).map(s => ({ x0: s.x - .85, x1: s.x + s.w + .85, y0: s.y - (/folly|tower|treehouse|mill|lighthouse/.test(s.id) ? 3.6 : /hut|stones|wall|cairn|beacon|grotto|falls/.test(s.id) ? 1.25 : .9), y1: s.y + s.h + .45 })));
   const byStatic = (x, y) => statics().some(s => x > s.x0 && x < s.x1 && y > s.y0 && y < s.y1);
   // the way into a plaza: a sign never stands in a square (it stood in the cider square's lantern)
   let plazaMemo = null;
