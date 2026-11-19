@@ -35,7 +35,8 @@ function _gaStaticRows() {
       continue;
     }
     const b = rec && rec.bounds, fx = b && b.width ? (b.x + b.width / 2) / W.cellW : r.x + r.w / 2, fy = b && b.height ? (b.y + b.height - W.sky) / W.cellH : r.y + r.h;
-    for (const o of opts) out.push({ key: r.id + ':' + o.act, act: o.act, name: o.name, x: fx, y: fy, stand: { x: fx + o.stand[0], y: fy + o.stand[1] }, deg: o.deg, lift: o.lift || 0, src: r.id, boat: !!o.boat });
+    const top = b && b.height ? (b.y - W.sky) / W.cellH : null;   // the drawn top: the prompt sits just above it
+    for (const o of opts) out.push({ key: r.id + ':' + o.act, act: o.act, name: o.name, x: fx, y: fy, top, stand: { x: fx + o.stand[0], y: fy + o.stand[1] }, deg: o.deg, lift: o.lift || 0, src: r.id, boat: !!o.boat });
   }
   return out;
 }
@@ -108,7 +109,7 @@ function gartActFrame() {
 }
 function _gaPlace() {
   const r = _ga.near, el = _ga.el; if (!r || !el) return;
-  const s = typeof _ghProject === 'function' ? _ghProject(r.x, r.y - 1.9) : null; if (!s) return;
+  const s = typeof _ghProject === 'function' ? _ghProject(r.x, r.top != null ? Math.max(r.top + 0.55, r.y - 6) : r.src === 'tree' ? r.y - 3.2 : r.y - 1.9) : null; if (!s) return;
   el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y)}px) translate(-50%, -100%)`;
 }
 /** E or Space: the prompt's action, if one is showing. Returns true when it did something. */

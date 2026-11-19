@@ -1,8 +1,8 @@
 /* The action prompt over the thing in reach (94-garden-zz-7act-1core.js): plain words, the key to press. */
-.ga-prompt { position: absolute; left: 0; top: 0; z-index: 30; display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px 5px 6px; border: 1px solid rgba(70, 52, 30, 0.35); border-radius: 999px; background: rgba(255, 250, 238, 0.94); color: #3a2c1c; font: 600 13px/1.2 system-ui, sans-serif; box-shadow: 0 2px 8px rgba(40, 28, 10, 0.22); cursor: pointer; white-space: nowrap; pointer-events: auto; transition: opacity .15s; }
+.ga-prompt { position: absolute; left: 0; top: 0; z-index: 30; display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px 5px 6px; border: 2px solid #d9c49a; border-radius: 999px; background: #fdf4e3; color: #3a2c1c; font: 600 13px/1.2 system-ui, sans-serif; box-shadow: 0 2px 8px rgba(40, 28, 10, 0.22); cursor: pointer; white-space: nowrap; pointer-events: auto; transition: opacity .15s; }
 .ga-prompt[hidden] { display: none; }
 .ga-prompt kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; border-radius: 6px; background: #5a4630; color: #fff7e6; font: 700 11px/1 system-ui, sans-serif; }
 .ga-prompt:hover, .ga-prompt:focus-visible { background: #fff; outline: 2px solid #c89a4a; }
-@media (prefers-color-scheme: dark) { .ga-prompt { background: rgba(40, 34, 26, 0.94); color: #f4ead6; border-color: rgba(240, 220, 180, 0.25); } .ga-prompt kbd { background: #e8d4a8; color: #2a2016; } }
+/* (the world's own bubbles are cream by day and night, in either theme: the prompt is one of them) */
 .ga-zzz { animation: ga-zzz 2.4s ease-in-out infinite; }
 @keyframes ga-zzz { from { transform: translate(0, 0); opacity: 0.2; } 50% { opacity: 1; } to { transform: translate(-6px, -12px); opacity: 0; } }
