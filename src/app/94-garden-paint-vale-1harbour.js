@@ -235,7 +235,9 @@
       // pieces culled to the view, at most 30 times a second, and not at all when the whole map is in view.
       if (C.live) {
         const pieces = []; let run = [];
-        const flush = () => { if (run.length > 3) for (let i = 0; i < run.length - 1; i += 24) { const pts = run.slice(i, i + 25); if (pts.length > 2) pieces.push({ pts, bb: kit.bboxOf(pts, 30) }); } run = []; };
+        // (each run fades in and out over its first and last few points, so no stretch of swash ends in a cut edge)
+        const flush = () => { if (run.length > 5) { run.forEach((q, i) => { const k = Math.min(1, i / 7, (run.length - 1 - i) / 7); q.a *= k * k * (3 - 2 * k); });
+          for (let i = 0; i < run.length - 1; i += 24) { const pts = run.slice(i, i + 25); if (pts.length > 2) pieces.push({ pts, bb: kit.bboxOf(pts, 30) }); } } run = []; };
         const wallAt = p => { const c = cellOf(p.x, p.y); return c[0] > quay.x - 6.6 && c[0] < quay.x + 6.8 && c[1] < quay.y + 3.4; };   // (not along the foot of the harbour wall)
         for (let i = 0; i < seaW.length; i += 2) { const q = seaW[i], a = inl(q, 10), b = inl(q, 26);
           if (kindAt(a.x, a.y) === 'beach' && kindAt(b.x, b.y) === 'beach' && !wallAt(q)) run.push({ x: q.x, y: q.y, tx: q.tx, ty: q.ty, s: i * 5, a: 6 + N(q.x, q.y, 260, 120) * 9, ph: F(q.x, q.y, 520, 121) * 1.7 }); else flush(); }
@@ -250,13 +252,17 @@
             if (time - last < 33) return; last = time; g.clear().setVisible(true);
             const t = time / 1000, m = 40;
             for (const pc of pieces) { const bb = pc.bb; if (bb[2] < view.x - m || bb[0] > view.x + view.w + m || bb[3] < view.y - m || bb[1] > view.y + view.h + m) continue;
-              sheet.length = 0; foam.length = 0;
-              for (const q of pc.pts) { const u = ((t / 7.5 + q.ph + q.s / 1500) % 1 + 1) % 1, d = q.a * reach(u), fa = u < .3 ? .45 + .45 * u / .3 : .9 * Math.pow(1 - (u - .3) / .7, 1.6);
-                foam.push(q.x - q.ty * d, q.y + q.tx * d, fa); sheet.push({ x: q.x - q.ty * d, y: q.y + q.tx * d }); }
-              for (let i = pc.pts.length - 1; i >= 0; i--) { const q = pc.pts[i]; sheet.push({ x: q.x + q.ty * 3, y: q.y - q.tx * 3 }); }
-              g.fillStyle(0xd6efe8, .34).fillPoints(sheet, true);
-              for (let i = 0; i + 5 < foam.length; i += 3) { const a = (foam[i + 2] + foam[i + 5]) / 2; if (a < .04) continue;
-                g.lineStyle(3.4, 0xffffff, a * .28).lineBetween(foam[i], foam[i + 1], foam[i + 3], foam[i + 4]).lineStyle(1.3, 0xffffff, a).lineBetween(foam[i], foam[i + 1], foam[i + 3], foam[i + 4]); }
+              foam.length = 0;
+              for (const q of pc.pts) { const u = ((t / 7.5 + q.ph + q.s / 1500) % 1 + 1) % 1, d = q.a * reach(u) + (q.a > 1 ? Math.sin(q.s / 23 + t * 1.1) * .9 : 0), fa = (u < .3 ? .35 + .4 * u / .3 : .75 * Math.pow(1 - (u - .3) / .7, 1.6)) * Math.min(1, q.a / 5);
+                foam.push(q, d, fa); }
+              // the sheet of water in two films, thicker towards the sea, so it has no edge of its own: only the foam has one
+              for (const [f, a] of [[1, .13], [.55, .13]]) { sheet.length = 0;
+                for (let i = 0; i < foam.length; i += 3) { const q = foam[i], d = foam[i + 1] * f; sheet.push({ x: q.x - q.ty * d, y: q.y + q.tx * d }); }
+                for (let i = foam.length - 3; i >= 0; i -= 3) { const q = foam[i]; sheet.push({ x: q.x + q.ty * 3, y: q.y - q.tx * 3 }); }
+                g.fillStyle(0xe2f4ee, a).fillPoints(sheet, true); }
+              for (let i = 0; i + 5 < foam.length; i += 3) { const a = (foam[i + 2] + foam[i + 5]) / 2; if (a < .04) continue; const q = foam[i], q2 = foam[i + 3], d = foam[i + 1], d2 = foam[i + 4];
+                const x1 = q.x - q.ty * d, y1 = q.y + q.tx * d, x2 = q2.x - q2.ty * d2, y2 = q2.y + q2.tx * d2;
+                g.lineStyle(3.2, 0xffffff, a * .22).lineBetween(x1, y1, x2, y2).lineStyle(1.1, 0xffffff, a).lineBetween(x1, y1, x2, y2); }
             }
           } };
         } });
@@ -298,11 +304,13 @@
         for (let k = 0; k < 4; k++) { const qw = k % 2 ? 12 : 21, x0 = dir > 0 ? ex : ex - qw, y = qy1 + k * ch4; B.f(B.rr(x0 + .5, y + .5, qw - 1, ch4 - 1, 1.4), k === 3 ? '#5a644e' : '#c6bead', .97).f(B.rect(x0 + 1, y + 1, qw - 2, 1.2), k === 3 ? '#76825e' : '#eee8da', .6).f(B.rect(x0 + 1, y + ch4 - 2, qw - 2, 1.1), '#46443c', .45); }
         const eb = L.base((ex - dir * 16) / cw, (qy1 + face * .5 - W.sky) / ch); if (eb && eb.ocean) continue;   // (an end in the water keeps its face to the tide)
         const top = qy1 + face * .3, foot = qy1 + face + 6, fx = ex - dir * 34, far = ex + dir * 74;
-        B.f(`M${fx} ${foot + 2}Q${ex - dir * 8} ${top - 4} ${ex + dir * 10} ${top}Q${ex + dir * 38} ${qy1 + face * .7} ${far} ${foot}Z`, B.lin(0, top, 0, foot, [[0, P.sand], [.65, P.sandDk], [1, P.sandWet]]), .97);
-        B.s(`M${ex - dir * 6} ${top + 2}Q${ex + dir * 22} ${top + 6} ${ex + dir * 46} ${qy1 + face * .8}`, '#fff4dc', 1.2, .42);
-        for (let k = 0; k < 8; k++) { const x = ex + dir * (r() * 62 - 12), y = top + 6 + r() * (foot - top - 8); B.f(B.ell(x, y, 1.4 + r() * 1.6, 1 + r() * .7), ['#a89c88', '#8c8474', '#c2b8a4', '#f2ebdc'][Math.floor(r() * 4)], .9); }
+        // (its shadow on the face first, then the drift with a rounded fall to the wet sand, a lit crest and a darker foot)
+        B.s(`M${ex} ${top}C${ex + dir * 30} ${top + 3} ${ex + dir * 42} ${qy1 + face * .62} ${ex + dir * 54} ${qy1 + face * .8}`, '#3a362c', 3.4, .2);
+        B.f(`M${fx} ${foot + 2}Q${ex - dir * 8} ${top - 4} ${ex + dir * 10} ${top}C${ex + dir * 30} ${top + 2} ${ex + dir * 40} ${qy1 + face * .62} ${ex + dir * 52} ${qy1 + face * .78}Q${ex + dir * 63} ${foot - 5} ${far} ${foot}Z`, B.lin(0, top, 0, foot + 2, [[0, '#f0dcae'], [.35, P.sand], [.75, P.sandDk], [1, P.sandWet]]), .97);
+        B.s(`M${ex - dir * 4} ${top + 1.5}C${ex + dir * 22} ${top + 3} ${ex + dir * 34} ${qy1 + face * .55} ${ex + dir * 44} ${qy1 + face * .7}`, '#fff6e0', 1.3, .45);
+        for (let k = 0; k < 9; k++) { const x = ex + dir * (r() * 62 - 12), y = top + 6 + r() * (foot - top - 8); B.f(B.ell(x, y, 1.4 + r() * 1.6, 1 + r() * .7), ['#a89c88', '#8c8474', '#c2b8a4', '#f2ebdc'][Math.floor(r() * 4)], .9); }
         for (let k = 0; k < 4; k++) B.tufts(r, ex + dir * (r() * 26 - 8), top + 3 + r() * 5, 8, 3, ['#8fa058', '#b4b868', '#6f8a46'], 6 + r() * 5);
-        B.f(B.blob(r, ex + dir * 44, foot - 2, 18, 3, 7, .5), '#5e6a3a', .55);
+        for (let k = 0; k < 5; k++) { const x = ex + dir * (56 + r() * 30), y = foot - 1 - r() * 3; B.s(`M${x} ${y}q${dir * (3 + r() * 3)} ${-1 - r()} ${dir * (6 + r() * 4)} ${r() - .5}`, r() < .5 ? '#4e5e34' : '#6a7440', 1.3, .7); }
       }
       // the top: big granite slabs in courses of three depths along the quay, each its own grey (blue-grey, buff, a warm
       // pink now and then, the tone drifting across the quay by noise so it is never wallpaper), dark joints that read,
