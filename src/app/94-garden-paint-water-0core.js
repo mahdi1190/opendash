@@ -750,11 +750,11 @@ window.GardenPaintWater = (function () {
     S.sortParent = true;
     // Foam strips: the weir and the falls' landing (scrolling white water).
     for (const fx of S.foams) {
-      const ts = put(scene.add.tileSprite(fx.x, fx.y, fx.w, 32, T.strip), fx.over).setRotation(fx.ang).setScale(1, fx.h / 32).setAlpha(.85);
+      const ts = fx.noStrip ? null : put(scene.add.tileSprite(fx.x, fx.y, fx.w, 32, T.strip), fx.over).setRotation(fx.ang).setScale(1, fx.h / 32).setAlpha(.85);
       const puffs = []; const r = rng(hash('foam' + fx.x));
       for (let i = 0; i < fx.puffs; i++) puffs.push({ im: put(scene.add.image(fx.x, fx.y, T.foam), fx.over).setAlpha(0), ph: r(), off: (r() - .5) * fx.w * .9 });
-      out.push({ b: { x: fx.x - fx.w, y: fx.y - fx.w, w: fx.w * 2, h: fx.w * 2 }, list: [{ im: ts }].concat(puffs), kind: 'foam', update(dt, t) {
-        ts.tilePositionX = -t * fx.speed; ts.setAlpha(.7 + Math.sin(t * 3.1) * .12);
+      out.push({ b: { x: fx.x - fx.w, y: fx.y - fx.w, w: fx.w * 2, h: fx.w * 2 }, list: (ts ? [{ im: ts }] : []).concat(puffs), kind: 'foam', update(dt, t) {
+        if (ts) { ts.tilePositionX = -t * fx.speed; ts.setAlpha(.7 + Math.sin(t * 3.1) * .12); }
         const c = Math.cos(fx.ang), s = Math.sin(fx.ang);
         for (const p of puffs) { const f = (t * .45 + p.ph) % 1, along = p.off, down = f * fx.drift; p.im.setPosition(fx.x + c * along - s * down, fx.y + s * along + c * down).setScale(.5 + f * .9, .4 + f * .5).setAlpha(Math.sin(f * Math.PI) * .7); }
       } });
@@ -799,7 +799,7 @@ window.GardenPaintWater = (function () {
         // the sill: dressed stones lit from the upper left, a dark wet face downstream
         for (const [x, y, rr, t] of stones) { c.fillStyle = '#5c584c'; c.beginPath(); c.ellipse(x + 2, y + 3, rr, rr * .6, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = t < .5 ? '#b3ab94' : '#a39b85'; c.beginPath(); c.ellipse(x, y, rr, rr * .55, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = '#d8d0b8'; c.globalAlpha = .8; c.beginPath(); c.ellipse(x - rr * .3, y - rr * .2, rr * .5, rr * .22, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; if (t > .6) { c.fillStyle = C.moss; c.globalAlpha = .7; c.beginPath(); c.ellipse(x + rr * .2, y - rr * .3, rr * .4, rr * .18, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; } }
       } });
-      foams.push({ x: q.x + q.tx * 16, y: q.y + q.ty * 16, w: half * 2.2, h: 26, ang: ang + Math.PI / 2, speed: 26, puffs: 12, drift: 34 });
+      foams.push({ x: q.x + q.tx * 16, y: q.y + q.ty * 16, w: half * 1.7, h: 26, ang: ang + Math.PI / 2, speed: 26, puffs: 12, drift: 34 });
       mists.push({ x: q.x + q.tx * 26, y: q.y + q.ty * 26, rx: half * .6, ry: 8, n: 3, a: .22, speed: .06, drift: 18, rise: 10 });
       S.weir = { x: q.x, y: q.y, ang, half };
     }
@@ -827,7 +827,8 @@ window.GardenPaintWater = (function () {
         c.globalAlpha = 1; c.fillStyle = g2; c.save(); c.translate(pool.x, pool.y - 6); c.scale(1, .45); c.beginPath(); c.arc(0, 0, width * .9, 0, Math.PI * 2); c.fill(); c.restore();
         if (w) c.restore(); c.globalAlpha = 1;
       } });
-      foams.push({ x: pool.x, y: pool.y - 4, w: width * 1.1, h: 22, ang: 0, speed: 38, puffs: 9, drift: 16, over: pool.y + 30 });
+      // (puffs only here: a scrolling strip has square ends, and under the falls it showed as a pale rectangle)
+      foams.push({ x: pool.x, y: pool.y - 4, w: width * 1.1, h: 22, ang: 0, speed: 38, puffs: 12, drift: 16, over: pool.y + 30, noStrip: true });
       // spray boiling up off the pool in front of the sheet, a veil drifting up its face, and a low mist lying out over the water
       mists.push({ x: pool.x, y: pool.y - 14, rx: width * .45, ry: 8, n: 6, a: .34, speed: .11, drift: 0, rise: 56, over: pool.y + 40 });
       mists.push({ x: pool.x, y: pool.y - 70, rx: width * .3, ry: 36, n: 4, a: .12, speed: .05, drift: 0, rise: 60, over: pool.y + 41 });

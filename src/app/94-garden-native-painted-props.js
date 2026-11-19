@@ -821,7 +821,7 @@ window.GardenPaintedProps = (function () {
     const h = handle(scene, o, spec.id, { cls: 'falls', kind: 'falls' });
     const rock = ['#a39a86', '#7e7664', '#cbc3ad', '#5e584a'];
     const rockReach = Math.ceil(Wd / 2 + 130) + (fed ? 60 : 0), box = [-rockReach, -H - 50, rockReach, 40];
-    const baseKey = bake(scene, 'falls2|' + season + '|' + Wd + '|' + H + '|' + S + '|' + Math.round(lipX) + '|' + fed + '|' + sharedPool, box, B => {
+    const baseKey = bake(scene, 'falls4|' + season + '|' + Wd + '|' + H + '|' + S + '|' + Math.round(lipX) + '|' + fed + '|' + sharedPool, box, B => {
       // the plunge pool and its pale lip
       if (!sharedPool) B.f(B.ell(0, 8, 86, 22), '#4e7e8c').f(B.ell(0, 6, 74, 17), '#5f93a0').f(B.ell(-14, 4, 40, 7), '#88b8c0', .55).s(B.ell(0, 8, 86, 22), '#cfe2dc', 2, .5);
       // Keep the scarp at its original landscape anchor while the sheet reaches the Mere.
@@ -857,11 +857,18 @@ window.GardenPaintedProps = (function () {
         for (let i = 0; i < 15; i++) { const u = (i + .5) / 15 - .5 + (r() - .5) * .04, top = lipX + u * Wd, mid = u * (Wd - 10) * .92, bot = u * (Wd + 8), pale = i % 3 !== 1, w = pale ? 1.4 + r() * 2.2 : 2.6 + r() * 2.6, t0 = -H + 4 + r() * H * .12, t1 = -6 - r() * H * .15;
           B.s(`M${top} ${t0}C${top + (mid - top) * .6} ${-H * .62} ${mid} ${-H * .3} ${bot} ${t1}`, pale ? '#f4fbf8' : '#5d9ea4', w, pale ? .32 + r() * .3 : .22 + r() * .14); }
         cl.restore(); }
-      // the lip: water bending over the edge, a bright roll and the thin dark line just under it
-      B.f(B.ell(lipX, -H + 1, Wd / 2 + 3, 4.5), '#f6fcf9', .95);
-      B.s(`M${lipX - Wd / 2 + 2} ${-H + 6}q${Wd / 2} 4 ${Wd - 4} 0`, '#4d8d93', 1.6, .45);
-      // the foam where it lands: a churned white skirt wider than the sheet, puffed up where the water strikes
-      for (let i = 0; i < 16; i++) { const sx = (r() - .5) * Wd * 1.8, rx = 8 + r() * 12; B.f(D().blob(r, sx, -4 + (r() - .5) * 8 - Math.max(0, 1 - Math.abs(sx) / Wd) * 6, rx, 4 + r() * 4, 7, .5), i % 4 ? '#f4faf6' : '#dceee9', .75); }
+      // spray peeling off both edges of the sheet as it falls, broken and fading (a sheet with clean edges reads as a pipe)
+      for (const sgn of [-1, 1]) for (let i = 0; i < 6; i++) { const t = .3 + r() * .62, y0 = -H * (1 - t), xe = sgn * (Wd / 2 - 1 + t * 3) + lipX * (1 - t); B.s(`M${xe} ${y0}q${sgn * (1 + r() * 2)} ${3 + r() * 3} ${sgn * (1 + r() * 2.5)} ${6 + r() * 7}`, '#f4fbf8', 1.2 + r() * 1.6, .16 + r() * .22); }
+      // the lip: the river darkens as it gathers to the edge, then bends over it in a bright roll, thick and thin across
+      // the drop, broken by two lip stones, with the shade just under the roll (not one clean rim, which read as a cylinder's top)
+      { const cl = B.cx, ga = cl.createLinearGradient(0, -H - 12, 0, -H + 2); ga.addColorStop(0, 'rgba(58,118,128,0)'); ga.addColorStop(1, 'rgba(58,118,128,.6)'); cl.save(); cl.fillStyle = ga; cl.beginPath(); cl.ellipse(lipX, -H - 4, Wd / 2 + 3, 8, 0, 0, Math.PI * 2); cl.fill(); cl.restore(); }
+      for (let i = 0; i < 9; i++) { const u = (i + .5) / 9 - .5, px = lipX + u * Wd, rr = Wd / 9 * (.75 + r() * .6); B.f(B.ell(px, -H + 1 + (r() - .5) * 2.6, rr, 2.4 + r() * 2.6), i % 3 === 1 ? '#d8eeea' : '#f6fcf9', .78 + r() * .2); }
+      B.s(`M${lipX - Wd / 2 + 2} ${-H + 6}q${Wd / 2} 4 ${Wd - 4} 0`, '#4d8d93', 1.4, .36);
+      for (const u of [-.34, .3]) B.stone(r, lipX + u * Wd, -H + 1, 4.5 + r() * 2.5, 2.8 + r() * 1.2, ['#6f6a5c', '#4e4a40', '#9c9580', '#3a372f'], MOSS);
+      // the foam where it lands: a soft churned skirt wider than the sheet, puffed up where the water strikes, a few crisp
+      // bubbles on it (flat white blobs read as cotton wool)
+      { const cl = B.cx; for (let i = 0; i < 18; i++) { const sx = (r() - .5) * Wd * 1.9, rx = 9 + r() * 13, ry = 4 + r() * 4, sy = -4 + (r() - .5) * 8 - Math.max(0, 1 - Math.abs(sx) / Wd) * 7, g = cl.createRadialGradient(sx, sy, 0, sx, sy, rx); g.addColorStop(0, 'rgba(250,253,251,.96)'); g.addColorStop(.55, 'rgba(238,247,245,.62)'); g.addColorStop(1, 'rgba(238,247,245,0)'); cl.save(); cl.translate(sx, sy); cl.scale(1, ry / rx); cl.translate(-sx, -sy); cl.fillStyle = g; cl.beginPath(); cl.arc(sx, sy, rx, 0, Math.PI * 2); cl.fill(); cl.restore(); } }
+      for (let i = 0; i < 14; i++) { const sx = (r() - .5) * Wd * 1.5, rr = 1 + r() * 2.2; B.f(B.ell(sx, -5 + (r() - .5) * 8, rr * 1.4, rr), '#ffffff', .55 + r() * .35); }
       // Standalone falls have a stone rim; the Mere already owns its real shoreline.
       if (!sharedPool) for (let i = 0; i < 8; i++) { const a = Math.PI * (.08 + .84 * r()), px = Math.cos(a) * 92 * (r() < .5 ? -1 : 1), py = 14 + Math.sin(a) * 14; B.stone(r, px, py, 7 + r() * 5, 4 + r() * 2, STONE, r() < .5 ? MOSS : null); }
     });
