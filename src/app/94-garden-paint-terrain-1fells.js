@@ -549,7 +549,7 @@ window.GardenPaintedTerrain = (function () {
     const RS = .55, L = [-.6, -.42, .68], snowLine = H * (1.02 - snowShare * 1.15);
     for (let i = 1; i < NX - 1; i++) {
       const col = Math.round((gx0 + i * ST - x0) / ST); if (col < 0 || col >= PW) continue;
-      let ymin = Math.min(PH, (gy0 + (NY - 1) * ST - y0) / ST);
+      let ymin = Math.min(PH, (gy0 + (NY - 1) * ST - y0) / ST), drawn = false;
       for (let j = NY - 2; j >= 1; j--) {
         const z = h[j * NX + i], sy = (gy0 + j * ST - z - y0) / ST; if (z <= .3) { ymin = Math.min(ymin, sy); continue; } if (sy >= ymin) continue;
         const dzx = (h[j * NX + i + 1] - h[j * NX + i - 1]) / (2 * ST) * RS, dzy = (h[(j + 1) * NX + i] - h[(j - 1) * NX + i]) / (2 * ST * 1.6) * RS;
@@ -571,9 +571,9 @@ window.GardenPaintedTerrain = (function () {
         rr = rr * k * (1 - crease) + (lam > .6 ? 5 : -3); gg = gg * k * (1 - crease) + (lam > .6 ? 3 : -2); bb = bb * k * (1 - crease) + (lam > .6 ? -3 : 4);
         const yTop = Math.max(0, Math.floor(sy)), yBot = Math.min(PH, Math.ceil(ymin));
         for (let yy = yTop; yy < yBot; yy++) { const o = (yy * PW + col) * 4; px[o] = rr; px[o + 1] = gg; px[o + 2] = bb; px[o + 3] = 255; }
-        ymin = sy;
+        ymin = sy; drawn = true;
       }
-      sky[col] = ymin;
+      if (drawn) sky[col] = ymin;   // (a column with no mountain in it has no skyline: its rim drew a line across the moor)
     }
     // fill single-column gaps the sampling left
     for (let yy = 0; yy < PH; yy++) for (let col = 1; col < PW - 1; col++) { const o = (yy * PW + col) * 4; if (px[o + 3] === 0 && px[o - 1] === 255 && px[o + 7] === 255) for (let q = 0; q < 4; q++) px[o + q] = (px[o - 4 + q] + px[o + 4 + q]) >> 1; }
@@ -717,8 +717,8 @@ window.GardenPaintedTerrain = (function () {
     // rowans on the gorge's far lip, where the river runs down to the falls
     // (the second stands back from the lip of Fleet Falls: at .84 it grew out of the falling water)
     // the groves: rowans and pines in clusters from the layout (groves()), each a standing sprite whose trunk blocks the feet
-    for (const g of groves(L, season)) out.push(g.kind === 'pine' ? { key: sig + '|pine|g' + g.seed, box: [-g.h * .4, -g.h - 10, g.h * .5, 8], x: g.x, y: g.y, draw: B => pineArt(B, g.h, P, g.seed, snowy) } : { key: sig + '|rowan|g' + g.seed, box: [-g.h * .45, -g.h - 8, g.h * .45, 8], x: g.x, y: g.y, draw: B => rowanArt(B, g.h, P, g.seed, season) });
-    for (const op of ops) for (const p of op.pines || []) out.push({ key: sig + '|pine|' + p.seed, box: [-p.h * .4, -p.h - 10, p.h * .5, 8], x: p.x, y: p.y, draw: B => pineArt(B, p.h, P, p.seed, snowy) });
+    for (const g of groves(L, season)) out.push(g.kind === 'pine' ? { key: sig + '|pine|g' + g.seed, box: [-g.h * .72, -g.h - 14, g.h * .85, 10], x: g.x, y: g.y, draw: B => pineArt(B, g.h, P, g.seed, snowy) } : { key: sig + '|rowan|g' + g.seed, box: [-g.h * .78, -g.h * 1.08 - 10, g.h * .78, 10], x: g.x, y: g.y, draw: B => rowanArt(B, g.h, P, g.seed, season) });
+    for (const op of ops) for (const p of op.pines || []) out.push({ key: sig + '|pine|' + p.seed, box: [-p.h * .72, -p.h - 14, p.h * .85, 10], x: p.x, y: p.y, draw: B => pineArt(B, p.h, P, p.seed, snowy) });
     return out;
   }
   function build(scene, parent, sc, objParent) {
