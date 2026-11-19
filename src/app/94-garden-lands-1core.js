@@ -440,6 +440,13 @@ function gardenFreshNote() {
   let tries = 0;
   const shown = gardenShownNow;
   const say = () => {
+    // held over the garden's passing notes for twelve seconds (as a plain message the walking hint and the welcome replaced
+    // it at once, so nobody saw it), and kept in the recent list
+    if (shown() && typeof gardenMessageHold === 'function' && typeof _gmsgWhere === 'function' && _gmsgWhere()) {
+      gardenMessageHold('fresh-start', msg, { urgent: true }); setTimeout(() => gardenMessageDrop('fresh-start'), 12000);
+      if (typeof _toastRemember === 'function') _toastRemember(msg, '', 'sprout');
+      return;
+    }
     if (shown() && typeof gardenMessage === 'function' && gardenMessage(msg, { icon: 'sprout', ms: 12000, log: true })) return;
     const opening = typeof state !== 'undefined' && state && state.view === 'garden' || typeof _gdOnPage === 'function' && _gdOnPage();
     if (opening && ++tries < 240) { setTimeout(say, 500); return; }   // (a first open can take a while: up to two minutes, then the app's toast)
