@@ -141,14 +141,14 @@ window.GardenNativePainted = (function () {
     gardenYewPaint.set(source, shaped); return shaped;
   }
   /** One library object as a canvas at a given world size: { c, ox, oy } with (ox, oy) its foot in canvas px. */
-  function objectCanvas(id, v, season, size, night) {
+  function objectCanvas(id, v, season, size, night, cpu) {   // cpu: a canvas kept in memory, for pictures that are read back (icons)
     let sh = sceneObjShapes(id, v, season); if (!sh) return null;
     if (id === 'tree.proof-yew') sh = gardenYewShapes(sh, v);
     const names = (sh.still || sh.order.filter(p => p !== 'lit')).concat(night && sh.parts.lit ? ['lit'] : []);
     const [x0, y0, x1, y1] = sh.box, k = (size.w ? size.w / (x1 - x0) : size.h / (y1 - y0)) * OBJ_K;
     const pad = 4, w = Math.ceil((x1 - x0) * k) + pad * 2, h = Math.ceil((y1 - y0) * k) + pad * 2;
     if (w > 4096 || h > 4096 || w < 2 || h < 2) return null;
-    const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d');
+    const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d', cpu ? { willReadFrequently: true } : undefined);
     cx.setTransform(k, 0, 0, k, pad - x0 * k, pad - y0 * k);
     for (const n of names) drawShapes(cx, sh.parts[n] || [], night && n !== 'lit');
     return { c, ox: pad - x0 * k, oy: pad - y0 * k, k, crown: id.startsWith('tree.') ? crownGeometry(sh, k) : null };
@@ -165,7 +165,7 @@ window.GardenNativePainted = (function () {
     const key = id + '|' + (v || 0);
     if (!trunkFeet.has(key)) {
       let foot = null;
-      const made = ok(() => objectCanvas(id, v || 0, 'summer', { h: 200 }));
+      const made = ok(() => objectCanvas(id, v || 0, 'summer', { h: 200 }, false, true));   /* (in memory: it is read back below, and reading a card's canvas waits for the card) */
       if (made) ok(() => {
         const c = made.c, w = c.width, hh = c.height, a = c.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, hh).data, solid = (u, y) => a[(y * w + u) * 4 + 3] >= 160;
         let top = -1, bottom = -1;

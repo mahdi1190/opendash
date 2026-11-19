@@ -3,6 +3,23 @@
  * mounted, measured, watched or rasterized by this runtime. */
 /** Device pixels per CSS pixel the garden's canvas is drawn at (at most 2: four times the pixels is the fill-rate ceiling). */
 function gardenNativePixelRatio() { return Math.max(1, Math.min(2, Number(window.devicePixelRatio) || 1)); }
+/* Phaser checks a new or resized framebuffer with gl.checkFramebufferStatus, and in the browser that call waits for the
+ * graphics process to finish everything queued before it: 28 to 69 ms inside a walking frame on a 2x screen (most of the
+ * long tasks left while walking). A colour texture no larger than the card allows, with a depth or stencil buffer of the
+ * same size, is always complete in WebGL, so such a framebuffer is made without the wait. Anything else is checked as before. */
+function noFramebufferWait() {
+  const R = window.Phaser && Phaser.Renderer && Phaser.Renderer.WebGL && Phaser.Renderer.WebGL.Wrappers, F = R && R.WebGLFramebufferWrapper, P = F && F.prototype;
+  if (!P || typeof P.createResource !== 'function' || P._gardenNoWait) return; const make = P.createResource; let max = 0;
+  P.createResource = function () {
+    const gl = this.renderer && this.renderer.gl; if (!gl || typeof gl.checkFramebufferStatus !== 'function') return make.apply(this, arguments);
+    if (!max) { try { max = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096; } catch (e) { max = 4096; } }
+    if (!(this.width >= 1 && this.height >= 1 && this.width <= max && this.height <= max) || !(this.attachments || []).every(a => !a.texture || a.texture.webGLTexture)) return make.apply(this, arguments);
+    const own = Object.prototype.hasOwnProperty.call(gl, 'checkFramebufferStatus'), was = gl.checkFramebufferStatus, complete = gl.FRAMEBUFFER_COMPLETE;
+    gl.checkFramebufferStatus = () => complete;
+    try { return make.apply(this, arguments); } finally { if (own) gl.checkFramebufferStatus = was; else delete gl.checkFramebufferStatus; }
+  };
+  P._gardenNoWait = true;
+}
 function gardenSceneElement(tag, attrs) {
   if (window.GardenNative && GardenNative.scene()) return GardenNativeArt.element(GardenNative.scene(), tag, attrs || {});
   const node = document.createElementNS('http://www.w3.org/2000/svg', tag);
@@ -569,6 +586,7 @@ window.GardenNative = (function () {
       // (zoom 1 / ratio), so a HiDPI screen no longer upscales a CSS-sized canvas (the blur close up). The world's camera
       // multiplies its zoom by the same ratio (94-garden-native-world.js updateCamera).
       const dpr = gardenNativePixelRatio();
+      noFramebufferWait();
       s.game = new Phaser.Game({ type: Phaser.WEBGL, parent: host, width: Math.max(1, Math.round(box.clientWidth * dpr)), height: Math.max(1, Math.round(box.clientHeight * dpr)), zoom: 1 / dpr, backgroundColor: '#87aa78', antialias: true, resolution: dpr, powerPreference: 'high-performance', maxTextures: 4, audio: { noAudio: true }, input: { keyboard: true, mouse: { preventDefaultWheel: true }, touch: true, activePointers: 3, gamepad: false }, scene: config, fps: { target: 60, min: 15, limit: 0, smoothStep: false }, banner: false });
       s.resize = new ResizeObserver(() => { if (s.dead || !s.world || s.capturing) return; const w = box.clientWidth, h = box.clientHeight; if (!w || !h) return; const ratio = gardenNativePixelRatio(); s.game.scale.setZoom(1 / ratio); s.game.scale.resize(Math.round(w * ratio), Math.round(h * ratio)); if (!inRoom()) s.world.resize(w, h); }); s.resize.observe(box);
       s.visibility = () => { if (s.dead || !s.game) return; if (document.hidden) { if (s.blur) s.blur(); s.game.loop.sleep(); } else s.game.loop.wake(); }; document.addEventListener('visibilitychange', s.visibility);

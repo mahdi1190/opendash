@@ -140,10 +140,12 @@ window.GardenPaintedDecor = (function () {
   }
   function iconCanvas(id, o) {
     const K = kit(), src = K && source(id, o.v); if (!src) return null;
-    const c = document.createElement('canvas'); c.width = S; c.height = S; const cx = c.getContext('2d');
+    // (every canvas here is kept in memory, not on the graphics card: reading a card's canvas back for the crop and the
+    //  data URL waited for everything the card had queued, 47 ms in a walking frame on a 2x screen)
+    const c = document.createElement('canvas'); c.width = S; c.height = S; const cx = c.getContext('2d', { willReadFrequently: true });
     if (src.lib) {
       const GP = window.GardenNativePainted; if (!GP || !GP.objectCanvas || typeof sceneObj !== 'function' || !sceneObj(src.lib[1])) return null;
-      const m = GP.objectCanvas(src.lib[1], src.lib[2], o.season || 'summer', src.lib[3], false); if (!m) return null;
+      const m = GP.objectCanvas(src.lib[1], src.lib[2], o.season || 'summer', src.lib[3], false, true); if (!m) return null;
       return fit(m.c, m.c.getContext('2d'), c, cx, true);
     }
     // draw at a generous size, then crop to what was painted so small icons fill their tile
@@ -207,7 +209,7 @@ window.GardenPaintedDecor = (function () {
   function extraIcon(id, px, cls) {
     const p = EXTRA[id], K = kit(); if (!p || !K) return '';
     const key = 'x|' + id; let url = ICON.get(key);
-    if (url === undefined) url = make(key, () => { const c = document.createElement('canvas'); c.width = S; c.height = S; const [x0, y0, x1, y1] = p.box, k = Math.min(S * 1.5 / (x1 - x0), S * 1.5 / (y1 - y0)), t = document.createElement('canvas'); t.width = Math.ceil((x1 - x0) * k); t.height = Math.ceil((y1 - y0) * k); const tx = t.getContext('2d', { willReadFrequently: true }); tx.setTransform(k, 0, 0, k, -x0 * k, -y0 * k); p.draw(K.brush(tx), opts(K, id, 'summer', false, 0, false, true)); return fit(t, tx, c, c.getContext('2d'), false); });
+    if (url === undefined) url = make(key, () => { const c = document.createElement('canvas'); c.width = S; c.height = S; const [x0, y0, x1, y1] = p.box, k = Math.min(S * 1.5 / (x1 - x0), S * 1.5 / (y1 - y0)), t = document.createElement('canvas'); t.width = Math.ceil((x1 - x0) * k); t.height = Math.ceil((y1 - y0) * k); const tx = t.getContext('2d', { willReadFrequently: true }); tx.setTransform(k, 0, 0, k, -x0 * k, -y0 * k); p.draw(K.brush(tx), opts(K, id, 'summer', false, 0, false, true)); return fit(t, tx, c, c.getContext('2d', { willReadFrequently: true }), false); });
     return url ? `<svg class="${cls || 'gcr-art'} gd-ico-painted" viewBox="0 0 ${S} ${S}" width="${px}" height="${px}" aria-hidden="true" focusable="false"><image href="${url}" x="0" y="0" width="${S}" height="${S}"/></svg>` : '';
   }
   function status() { return { rows: Object.keys(ROWS).length, worldMs: Math.round(worldMs), worldMax: +worldMax.toFixed(1), deferred, queued: queue.length, icons, iconMs: Math.round(iconMs), cached: ICON.size, lastError }; }

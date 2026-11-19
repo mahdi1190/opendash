@@ -78,6 +78,24 @@ window.GardenPaintGround = (function () {
   const LEVELS = [.75, 1, 1.5, 2, 3, 4], SHARP = .76, PAD = 2, HEAVY_MS = 26, registry = new Set(), slow = { opMs: 0, op: '', uploadMs: 0, tickMs: 0 };
   /** The bake level the camera needs now: the smallest level within 20% of the screen's own pixel density. */
   function levelFor(zoom, lo, hi) { const need = (zoom || 1) * SHARP; let k = LEVELS[LEVELS.length - 1]; for (const l of LEVELS) if (l >= need) { k = l; break; } return clamp(k, lo == null ? LEVELS[0] : lo, hi == null ? 4 : hi); }
+  // Chunk canvases are used again once their picture is let go. Every new canvas is memory the script engine is told
+  // about, and making one for every bake while you walk (1 to 4 MB each) set off whole-heap collections of 60 to 100 ms.
+  // A few spare canvases of each size are kept; a texture's canvas comes back here only when its texture is removed.
+  const spare = new Map(); let spareN = 0, reused = 0, made = 0;
+  function takeCanvas(w, h) {
+    const k = w + 'x' + h, l = spare.get(k); let c = l && l.pop();
+    if (c) { c._gpkSpare = false; spareN--; reused++; const cx = c.getContext('2d'); cx.setTransform(1, 0, 0, 1, 0, 0); cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over'; cx.filter = 'none'; cx.clearRect(0, 0, w, h); return c; }
+    c = document.createElement('canvas'); c.width = w; c.height = h; c._gpkMine = true; made++; return c;
+  }
+  function giveCanvas(c) {
+    if (!c || !c._gpkMine || c._gpkSpare) return; const k = c.width + 'x' + c.height; let l = spare.get(k); if (!l) spare.set(k, l = []);
+    if (l.length >= 4 || spareN >= 12) return; c._gpkSpare = true; l.push(c); spareN++;
+  }
+  // remove a texture this kit made, keeping its canvas for the next bake
+  function dropTexture(scene, key) {
+    if (!key || !scene.textures.exists(key)) return; let c = null; try { c = scene.textures.get(key).getSourceImage(); } catch (e) { c = null; }
+    scene.textures.remove(key); if (c && c._gpkMine) { c._gpkSpare = false; giveCanvas(c); }
+  }
   // ops: [{ bb: [x0, y0, x1, y1] world px, seed, clip, tag, draw(B, r, chunkBB) }]   (the shape GardenPaintTerrainKit.chunked takes)
   // opts: { key, box, chunk, depth, budgetMB, slice, lazy, prebake, K (fixed level when follow is false), minK, maxK, follow }
   function layer(scene, parent, ops, opts) {
@@ -99,14 +117,14 @@ window.GardenPaintGround = (function () {
     const times = [], cam = scene.cameras && scene.cameras.main, budget = (opts.budgetMB || 32) * 1048576 / 4;
     const place = (ch, key, K, w, h) => {
       const p = PAD * K, im = scene.add.image(ch.bb[0], ch.bb[1], key).setOrigin(0, 0).setScale(1 / K).setDepth(opts.depth).setCrop(p, p, w - 2 * p, h - 2 * p);
-      if (ch.image) ch.image.destroy(); if (ch.tex && ch.tex !== key && scene.textures.exists(ch.tex)) scene.textures.remove(ch.tex);
+      if (ch.image) ch.image.destroy(); if (ch.tex && ch.tex !== key) dropTexture(scene, ch.tex);
       bakedPx += w * h - ch.px; ch.px = w * h; ch.image = im; ch.tex = key; ch.K = K; ch.dirty = false; if (host) { host.add(im); if (host.sort) host.sort('depth'); }
     };
     const adopt = ch => { const c = ch.cached; ch.cached = null; if (!c || !scene.textures.exists(c.key)) return false; const src = scene.textures.get(c.key).getSourceImage(); place(ch, c.key, c.K, src.width, src.height); return true; };
     // one slice of one chunk's bake: its ops run into its canvas until the slice is used; the picture swaps in when the last op is done
     const bakeStep = (ch, K, ms) => {
       const s = performance.now();
-      if (!ch.job || ch.job.K !== K) { const w = Math.ceil((ch.bb[2] - ch.bb[0]) * K), h = Math.ceil((ch.bb[3] - ch.bb[1]) * K), c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d'); cx.setTransform(K, 0, 0, K, -ch.bb[0] * K, -ch.bb[1] * K); ch.job = { c, cx, B: brushOf(cx), next: 0, ms: 0, K }; }
+      if (!ch.job || ch.job.K !== K) { if (ch.job) giveCanvas(ch.job.c); const w = Math.ceil((ch.bb[2] - ch.bb[0]) * K), h = Math.ceil((ch.bb[3] - ch.bb[1]) * K), c = takeCanvas(w, h); const cx = c.getContext('2d'); cx.setTransform(K, 0, 0, K, -ch.bb[0] * K, -ch.bb[1] * K); ch.job = { c, cx, B: brushOf(cx), next: 0, ms: 0, K }; }
       const J = ch.job, cx = J.cx;
       while (J.next < ch.ops.length) {
         const o = ch.ops[J.next++], o0 = performance.now();
@@ -117,14 +135,14 @@ window.GardenPaintGround = (function () {
       const took = performance.now() - s; J.ms += took; sliceWorst = Math.max(sliceWorst, took);
       if (J.next < ch.ops.length) return false;
       const key = opts.key + '|' + ch.id + '|' + K;
-      if (scene.textures.exists(key)) scene.textures.remove(key);
+      if (ch.image && ch.tex === key) { ch.image.destroy(); ch.image = null; } dropTexture(scene, key);   /* (the picture showing this key goes first, so its canvas is free to be used again) */
       const u0 = performance.now();
       { const t = scene.textures.addImage(key, J.c); if (t && typeof t.refresh !== 'function') t.refresh = function () { for (const src of this.source) src.update(); return this; }; }
       ch.job = null; place(ch, key, K, J.c.width, J.c.height); slow.uploadMs = Math.max(slow.uploadMs, +(performance.now() - u0).toFixed(1));
       worst = Math.max(worst, J.ms); bakeMs += J.ms; baked++; times.push(Math.round(J.ms)); if (times.length > 400) times.splice(0, 200);
       return true;
     };
-    const evict = ch => { ch.job = null; if (ch.image) ch.image.destroy(); ch.image = null; if (ch.tex && scene.textures.exists(ch.tex)) scene.textures.remove(ch.tex); ch.tex = null; bakedPx -= ch.px; ch.px = 0; ch.K = 0; evicted++; };
+    const evict = ch => { if (ch.job) giveCanvas(ch.job.c); ch.job = null; if (ch.image) ch.image.destroy(); ch.image = null; dropTexture(scene, ch.tex); ch.tex = null; bakedPx -= ch.px; ch.px = 0; ch.K = 0; evicted++; };
     const viewBox = grow => { const v = cam && cam.worldView; if (!v || !v.width) return null; const gx = v.width * grow, gy = v.height * grow; return [v.x - gx, v.y - gy, v.x + v.width + gx, v.y + v.height + gy]; };
     const dist = (ch, v) => Math.hypot((ch.bb[0] + ch.bb[2]) / 2 - (v[0] + v[2]) / 2, (ch.bb[1] + ch.bb[3]) / 2 - (v[1] + v[3]) / 2);
     // the level follows the zoom once the zoom has rested a moment (a wheel turn passes through many zooms)
@@ -664,6 +682,6 @@ window.GardenPaintGround = (function () {
     return ['earth', 'gravel', 'cobble', 'setts'].filter(k => kindsUsed.has(k)).flatMap(k => k === 'cobble' || k === 'setts' ? [soft(k), stones(k, 0), stones(k, 1), stones(k, 2), fringe(k)] : [soft(k), fringe(k)]).concat(kindsUsed.has('boardwalk') || kindsUsed.has('steps') ? [planks] : []);
   }
 
-  function status() { const layers = [...registry].map(h => ({ key: String(h.key).slice(0, 24), level: h.level, chunks: h.chunks, live: h.live, MB: h.MB, baked: h.baked, evicted: h.evicted, medianMs: h.median, p95Ms: h.p95, worstChunkMs: h.worstMs, worstSliceMs: h.sliceWorstMs })); return { layers, MB: +layers.reduce((a, l) => a + l.MB, 0).toFixed(1), slow: Object.assign({}, slow), lastError }; }
+  function status() { const layers = [...registry].map(h => ({ key: String(h.key).slice(0, 24), level: h.level, chunks: h.chunks, live: h.live, MB: h.MB, baked: h.baked, evicted: h.evicted, medianMs: h.median, p95Ms: h.p95, worstChunkMs: h.worstMs, worstSliceMs: h.sliceWorstMs })); return { layers, MB: +layers.reduce((a, l) => a + l.MB, 0).toFixed(1), slow: Object.assign({}, slow), canvases: { made, reused, spare: spareN }, lastError }; }
   return { resetSlow() { slow.opMs = 0; slow.op = ''; slow.uploadMs = 0; slow.tickMs = 0; }, LIGHT, contact, castShadow, castRuns, lightPool, cast, layer, levelFor, LEVELS, KINDS, palette, paintKind, wash, kindGrid, layoutKinds, layoutPaths, routeKind, ROUTE_WIDTH, ground, paths, flower, softCut, centreLine, tiles, rng, hash, hashStr, noise, fbm, mix, scratch, status, get lastError() { return lastError; }, set lastError(v) { lastError = v; } };
 })();
