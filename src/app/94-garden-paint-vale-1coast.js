@@ -88,7 +88,10 @@
         // the trail runs on as a worn way over the shingle to the water's edge
         const end = cove[cove.length - 1], to = coast.reduce((a, q) => Math.hypot(q.x - end.x, q.y - end.y) < Math.hypot(a.x - end.x, a.y - end.y) ? q : a, coast[0]);
         const way = [end, { x: (end.x * 2 + to.x) / 3, y: (end.y * 2 + to.y) / 3 + 3 }, { x: to.x - 8, y: to.y }];
-        V.strokePts(B, way, P.pathEdge, 18, .35); V.strokePts(B, way, '#b8b0a0', 12, .55);
+        // (a trodden way of pebbles pressed flat and paler, narrowing and breaking up towards the water; two broad strokes
+        // ended in a pale square-ish patch on the shingle: round 3)
+        for (const q of V.walk(way, 3)) { const rr = kit.rng(kit.hash(Math.round(q.x), Math.round(q.y), 61)), u = Math.hypot(q.x - end.x, q.y - end.y) / (Math.hypot(to.x - end.x, to.y - end.y) || 1), wdt = 9 * (1 - u * .6);
+          for (let k = 0; k < 3; k++) { if (rr() < u * .7) continue; const d = (rr() - .5) * 2 * wdt; B.f(B.ell(q.x - q.ty * d, q.y + q.tx * d, 1.8 + rr() * 1.6, .9 + rr() * .5), rr() < .5 ? '#c4bcac' : '#b4ac9c', .8); } }
         B.cx.restore();
       } });
       // boulders at the tide line, each its own stone: a tall split block, a low round cobble, a tilted slab; granite, slate
