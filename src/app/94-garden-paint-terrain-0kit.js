@@ -72,12 +72,16 @@ window.GardenPaintTerrainKit = (function () {
       },
       tufts(r, x, y, w, n, cols, h) { for (let i = 0; i < n; i++) { const px = x + (r() - .5) * w, hh = (h || 5) * (.6 + r() * .6); B.s(`M${px} ${y}q${(r() - .5) * 3} ${-hh * .6} ${(r() - .5) * 5} ${-hh}`, cols[i % cols.length], 1, .85); } return B; },
       // a heather clump: dark mound, mid lobes, lit lobes, bloom specks
+      // (a low cushion built of a few lobes in three tones with many fanned sprigs, its shape and size its own each time:
+      // two translucent ellipses and six sticks read as one vector stamp repeated over the moor; 19 Nov 2026)
       heather(r, x, y, rx, P, bloom) {
-        const ry = rx * .55;
-        B.f(D().blob(r, x + rx * .1, y + ry * .15, rx, ry, 9, .7), P.heatherLo, .5).f(D().blob(r, x - rx * .05, y - ry * .1, rx * .82, ry * .78, 9, .7), P.heather, .65);
-        // the sprigs: short upright strokes, dark at the root, lit at the tip, so a clump has texture and no outline
-        for (let i = 0; i < 6; i++) { const px = x + (r() - .5) * rx * 1.5, py = y + (r() - .5) * ry * .9, h = 2 + r() * 2.6; B.s(`M${px} ${py}l${(r() - .5) * 1.4} ${-h}`, r() < .5 ? P.heatherLo : P.heatherHi, .9, .8); }
-        if (bloom) for (let i = 0; i < 7; i++) B.f(B.circ(x + (r() - .5) * rx * 1.4, y + (r() - .7) * ry, .5 + r() * .5), bloom, .75);
+        rx *= .75 + r() * .5; const ry = rx * (.4 + r() * .2), lobes = 2 + Math.floor(r() * 3), mid = mix(P.heather, P.heatherLo, .35);
+        B.f(D().blob(r, x + rx * .16, y + ry * .26, rx * 1.05, ry * .7, 9, .6), P.heatherLo, .75);
+        for (let i = 0; i < lobes; i++) { const ox = (r() - .5) * rx * 1.1, oy = (r() - .5) * ry * .5, s = .42 + r() * .38; B.f(D().blob(r, x + ox, y + oy - ry * .12, rx * s, ry * s, 8, .65), i % 2 ? P.heather : mid, .92); }
+        B.f(D().blob(r, x - rx * .3, y - ry * .38, rx * (.25 + r() * .2), ry * .26, 7, .6), P.heatherHi, .45);
+        // the sprigs fan up and out from the cushion, dark at the root side, lit towards the light
+        for (let i = 0, n = 7 + Math.floor(rx * 1.1 + r() * 4); i < n; i++) { const a = -1.5708 + (r() - .5) * 2, px = x + (r() - .5) * rx * 1.7, py = y + (r() - .25) * ry * .8, h = 1.4 + r() * 2.6, t = r(); B.s(`M${px} ${py}l${(Math.cos(a) * h).toFixed(2)} ${(Math.sin(a) * h).toFixed(2)}`, t < .4 ? P.heatherLo : t < .75 ? mid : P.heatherHi, .7 + r() * .4, .75); }
+        if (bloom) for (let i = 0, n = 3 + Math.floor(r() * 8); i < n; i++) B.f(B.circ(x - rx * .15 + (r() - .5) * rx * 1.2, y + (r() - .8) * ry, .45 + r() * .5), bloom, .8);
         return B;
       },
       rr(x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); return `M${x + r} ${y}h${w - 2 * r}q${r} 0 ${r} ${r}v${h - 2 * r}q0 ${r} ${-r} ${r}h${-(w - 2 * r)}q${-r} 0 ${-r} ${-r}v${-(h - 2 * r)}q0 ${-r} ${r} ${-r}z`; },

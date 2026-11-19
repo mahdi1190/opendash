@@ -319,7 +319,7 @@ window.GardenNativePainted = (function () {
     if (!plantingTall.length || typeof _gw === 'undefined' || !lastInfo) return;
     const W = lastInfo.W, dt = fadeLast ? Math.min(.1, Math.max(0, (time - fadeLast) / 1000)) : .016; fadeLast = time;
     const x = _gw.px * W.cellW, y = W.sky + _gw.py * W.cellH;
-    for (const t of plantingTall) { if (!t.im.active) continue; const under = gardenCrownCovers(x, y, t.x, t.y, t.h, t.im.displayWidth, t.im), a = under || fishingCrownCovers(t.im) ? GARDEN_CROWN_FADE : 1; if (under && t.im.visible) plantingCoverage.push(t.im); if (t.im.alpha !== a) t.im.setAlpha(Math.abs(a - t.im.alpha) < .02 ? a : t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8)); }
+    for (const t of plantingTall) { if (!t.im.active) continue; const under = gardenCrownCovers(x, y, t.x, t.y, t.h, Math.min(t.im.displayWidth, t.h * 1.05), t.im), a = under || fishingCrownCovers(t.im) ? GARDEN_CROWN_FADE : 1; if (under && t.im.visible) plantingCoverage.push(t.im); if (t.im.alpha !== a) t.im.setAlpha(Math.abs(a - t.im.alpha) < .02 ? a : t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8)); }
   }
   function planting(scene, parent, info) {
     const W = info.W, made = [], season = info.season || 'summer', trees = GROVE[season] || GROVE.summer; spotCounts = {};

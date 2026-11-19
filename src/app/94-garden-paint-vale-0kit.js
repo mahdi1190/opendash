@@ -170,8 +170,9 @@ window.GardenPaintVale = (function () {
   function lawn(B, r, L, P, cb, test, fade, o) {
     o = o || {}; const W = L.W, cw = L.cw, ch = L.ch;
     B.cx.save(); clipGround(B, L, cb, true);
+    // (noBase: the shared ground's own kind shows through, painted with its light and shade; a flat fill here hid it)
     if (o.wash) o.wash(B, cb, o.base || P.lawn);
-    else B.f(B.rect(cb[0], cb[1], cb[2] - cb[0], cb[3] - cb[1]), o.base || P.lawn);
+    else if (!o.noBase) B.f(B.rect(cb[0], cb[1], cb[2] - cb[0], cb[3] - cb[1]), o.base || P.lawn);
     // Keep overlapping meadow drifts subordinate to the seasonal grass detail.
     KIT().tiles(cb, 120, 40, o.salt || 5, (tx, ty, rr) => {
       for (let k = 0; k < 7; k++) {
@@ -278,7 +279,7 @@ window.GardenPaintVale = (function () {
     if (cur && cur.tall.length && typeof _gw !== 'undefined') {
       // a tree you stand under fades, so you can always see yourself (as in the woods and the village)
       const W = cur.W, x = _gw.px * W.cellW, y = W.sky + _gw.py * W.cellH;
-      for (const im of cur.tall) { if (!im.active) continue; const c = im._gpvCrown, under = c ? y < im.y - 4 && ((x - im.x - c.x) / c.rx) ** 2 + ((y - 28 - im.y - c.y) / c.ry) ** 2 < 1 : gardenCrownCovers(x, y, im.x, im.y, im.displayHeight * im.originY, im.displayWidth), a = under ? GARDEN_CROWN_FADE : 1; if (under && im.visible) cur.covering.push(im); if (im.alpha !== a) im.setAlpha(Math.abs(a - im.alpha) < .03 ? a : im.alpha + (a - im.alpha) * .25); }
+      for (const im of cur.tall) { if (!im.active) continue; const c = im._gpvCrown, under = c ? y < im.y - 4 && ((x - im.x - c.x) / c.rx) ** 2 + ((y - 28 - im.y - c.y) / c.ry) ** 2 < 1 : gardenCrownCovers(x, y, im.x, im.y, im.displayHeight * im.originY, Math.min(im.displayWidth, im.displayHeight * im.originY * 1.05)), a = under ? GARDEN_CROWN_FADE : 1; if (under && im.visible) cur.covering.push(im); if (im.alpha !== a) im.setAlpha(Math.abs(a - im.alpha) < .03 ? a : im.alpha + (a - im.alpha) * .25); }
     }
     if (!cur || !cur.queue.length) return;
     const t0 = performance.now(), cx = view ? view.x + view.w / 2 : 0, cy = view ? view.y + view.h / 2 : 0;

@@ -684,7 +684,18 @@ window.GardenPaintedProps = (function () {
         // stone steps climbing through the gap in the terrace wall: they fill the wall's opening (its faces stand a
         // cell below the crossing line), their cheeks overlap the wall ends, a small oak gate at the top
         const steps = 6, sw = side ? 30 : half * 1.55, dy = side ? 0 : 52, top = dy - steps * 9;
-        for (let i = 0; i < steps; i++) { const y = dy - i * 9, x = side ? -24 + i * 8 : 0, w = sw - i * 1.5; B.f(B.rect(x - w, y - 9, w * 2, 9), STONE[1]).f(B.rect(x - w, y - 9, w * 2, 3), STONE[2]).f(B.rect(x - w, y - 2, w * 2, 2), STONE[3], .4); }
+        // (each tread is laid of slabs of their own widths with rounded ends, worn pale where the trail runs up the middle,
+        // the outer slabs mossed and grassed over; the trail is trodden bare on to the bottom step and off the top one. A
+        // flat striped rectangle with square ends, wider than its trail, read as pasted on; 19 Nov 2026)
+        for (const [ax, ay, a] of [[0, dy + 5, .5], [side ? -24 + steps * 8 : 0, top - 3, .42]]) { const g = B.cx.createRadialGradient(ax, ay, 0, ax, ay, sw * .9); g.addColorStop(0, 'rgba(160,136,96,' + a + ')'); g.addColorStop(.6, 'rgba(160,136,96,' + a * .45 + ')'); g.addColorStop(1, 'rgba(160,136,96,0)'); B.cx.save(); B.cx.translate(ax, ay); B.cx.scale(1, .34); B.cx.translate(-ax, -ay); B.cx.fillStyle = g; B.cx.globalAlpha = 1; B.cx.beginPath(); B.cx.arc(ax, ay, sw * .9, 0, Math.PI * 2); B.cx.fill(); B.cx.restore(); }
+        for (let i = 0; i < steps; i++) { const y = dy - i * 9, x = side ? -24 + i * 8 : 0, w = sw - i * 1.5;
+          B.f(B.rr(x - w + 2, y - 3.2, w * 2 - 4, 3.8, 1.9), STONE[3], .5);
+          for (let sx0 = x - w + (r() - .5) * 3; sx0 < x + w - 3; ) { const sw2 = Math.min(x + w - sx0, 9 + r() * 15), mid = Math.abs(sx0 + sw2 / 2 - x) / w, tone = r();
+            B.f(B.rr(sx0 + .6, y - 9 + r() * .8, sw2 - 1.2, 7.2, 2.8), mid > .7 ? STONE[1] : tone < .5 ? STONE[0] : STONE[1]).f(B.rr(sx0 + 1.4, y - 8.4, (sw2 - 2.8) * .7, 2, 1), STONE[2], mid < .4 ? .75 : .45);
+            if (mid > .62 && r() < .7) B.f(D().blob(r, sx0 + sw2 / 2, y - 5, sw2 * .4, 2.6, 6, .5), MOSS[r() < .5 ? 0 : 1], .55);
+            sx0 += sw2; }
+          for (const s of [-1, 1]) if (r() < .75) B.tufts(r, x + s * (w - 2), y - 2, 8, 4, season);
+        }
         for (const s of [-1, 1]) {
           for (let row = 0; row < 7; row++) for (let i = 0; i < 4; i++) { const x = s * (sw + 8 + i * 11) + (row & 1) * 4 * s, y = dy - 4 - row * 7.6; B.f(D().blob(r, x, y, 6.4, 3.8, 6, .3), (row + i) % 3 ? STONE[0] : STONE[1]).f(D().blob(r, x - 1.4, y - 1.2, 3.6, 1.6, 6, .3), STONE[2], .55); }
           B.f(D().blob(r, s * (sw + 22), dy - 58, 22, 7, 9, .5), MOSS[0], .85).f(D().blob(r, s * (sw + 18), dy - 61, 12, 3.6, 7, .5), MOSS[1], .85);

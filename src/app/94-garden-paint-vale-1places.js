@@ -237,8 +237,12 @@
           if (!kitYard) V.setts(B, r, P, bb, { size: 11, salt: seed, grout: '#9a8460', cols: ['#d2b88c', '#c6aa7e', '#dcc69e', '#bfa178', '#cfae84', '#c9b48e'] });
           for (let k = 0; k < 16; k++) B.f(B.blob(r, rx(), ry(), 16 + r() * 24, 5 + r() * 7, 7, .5), r() < .55 ? '#e6d2a6' : '#a08458', .24);   // sun and wear in broad patches
           for (let k = 0; k < 26; k++) B.f(B.blob(r, rx(), ry(), 3 + r() * 5, 1.2 + r(), 5, .5), r() < .6 ? '#7d8a44' : '#96a052', .5);   // moss and weeds in the joints
-          for (const o of [-9, 9]) { const pts = [{ x: a.x - 60, y: a.y + o + 8 }, { x: (a.x + b.x) / 2, y: a.y + o + 2 }, { x: b.x + 70, y: b.y + o - 10 }]; V.strokePts(B, pts, '#7a5c3c', 5, .32); V.strokePts(B, pts, '#e8d6ae', 1.2, .3); }   // cart ruts, polished on their lips
-          for (let k = 0; k < 16; k++) B.f(B.blob(r, a.x + (r() - .3) * (b.x - a.x + 80), a.y + (r() - .5) * 60, 10 + r() * 16, 3 + r() * 4, 7, .5), '#fbf4e2', .42);   // flour, thick by the door
+          // cart ruts: worn hollows in the setts, darker in broken lengths and polished in places, that fade out at both ends
+          // (two long even brown lines read as rails laid across the yard; 19 Nov 2026)
+          for (const o of [-9, 9]) { const pts = [{ x: a.x - 50, y: a.y + o + 7 }, { x: (a.x + b.x) / 2, y: a.y + o + 2 }, { x: b.x + 50, y: b.y + o - 8 }], run = V.walk(pts, 3);
+            for (let i = 1; i < run.length; i++) { const t = i / run.length, e = Math.min(1, Math.min(t, 1 - t) * 5), n = kit.noise(run[i].x / 26, o, 233); if (n < .38) continue; const p = run[i - 1], q = run[i]; B.s(`M${p.x} ${p.y}L${q.x} ${q.y}`, '#7a5c3c', 3.4 + n * 2, .16 * e * n); if (n > .62) B.s(`M${p.x} ${p.y - 1}L${q.x} ${q.y - 1}`, '#f0e2bc', .9, .22 * e); } }
+          // flour: a fine dusting by the door, thickest at the sill, never a white puddle
+          for (let k = 0; k < 40; k++) { const x = a.x + (r() - .3) * (b.x - a.x + 80), y = a.y + (r() - .5) * 50; B.f(B.blob(r, x, y, 2 + r() * 5, 1 + r() * 1.8, 6, .6), '#f8f0dc', .1 + r() * .14); }
           for (let k = 0; k < 70; k++) { const x = rx(), y = ry(); B.s(`M${x} ${y}l${(r() - .5) * 9} ${(r() - .5) * 3}`, r() < .7 ? '#e2bc5a' : '#c89a3c', 1.1, .8); }   // spilt straw
           for (let k = 0; k < 18; k++) B.f(B.ell(rx(), ry(), 1.8 + r() * 1.4, 1.1 + r() * .6), ['#b0682a', '#d38f3a', '#8a5a2c', '#7d8f4e'][Math.floor(r() * 4)], .75);   // a few blown leaves
           for (let k = 0; k < 3; k++) { const x = rx(), y = ry(); B.f(B.blob(r, x, y, 12 + r() * 10, 4 + r() * 2, 8, .4), '#7e6a4a', .35).f(B.blob(r, x - 2, y - 1, 8 + r() * 6, 2.4, 8, .4), '#b6cbd0', .5); }   // rain puddles in the low setts
@@ -267,7 +271,14 @@
   const drawBell = P => B => { B.shadow(2, 1, 8, 2.4, .3); B.post(0, -58, 0, 4, [P.wood, P.woodLo, P.woodHi]); B.s('M0 -56H10', P.woodLo, 2.6); B.f('M4 -54Q4 -46 2 -42H18Q16 -46 16 -54Q10 -58 4 -54Z', '#b08a3a').f('M5 -53Q5 -47 3 -43H8Q7 -48 8 -54Z', '#e0c070', .7).f(B.circ(10, -41, 1.6), '#5a4a2a'); };
   const drawBaskets = (P, season) => B => { B.shadow(2, 1, 22, 4, .3); for (const x of [-12, 10]) { B.f(`M${x - 10} -12L${x + 10} -12L${x + 8} 0L${x - 8} 0Z`, '#a8844e').s(`M${x - 9} -8H${x + 9}M${x - 8.5} -4H${x + 8.5}`, '#7a5e34', .8, .8); for (let k = 0; k < 5; k++) B.f(B.circ(x - 7 + k * 3.5, -13 - (k % 2) * 1.6, 2.6), season === 'autumn' ? (k % 2 ? '#c8402e' : '#e0b23a') : '#9cbc4a'); } };
   const drawMillstone = P => B => { B.shadow(6, 2, 20, 5, .3); B.f(B.ell(0, -18, 12, 18), '#8e8a7c').f(B.ell(-2, -19, 11, 17), '#b4ae9c').f(B.ell(-2, -19, 3.4, 5), '#5e5a4e'); for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; B.s(`M${-2 + Math.cos(a) * 4} ${-19 + Math.sin(a) * 6}L${-2 + Math.cos(a + .3) * 10} ${-19 + Math.sin(a + .3) * 15}`, '#7a7668', 1, .7); } };
-  const drawSacks = P => B => { B.shadow(2, 1, 22, 5, .3); for (const [x, y, s] of [[-10, 0, 1], [9, 0, .95], [0, -11, .9]]) { B.f(`M${x - 9 * s} ${y}Q${x - 11 * s} ${y - 12 * s} ${x - 5 * s} ${y - 16 * s}L${x + 5 * s} ${y - 16 * s}Q${x + 11 * s} ${y - 12 * s} ${x + 9 * s} ${y}Z`, '#e4dcc4').f(`M${x - 8 * s} ${y}Q${x - 10 * s} ${y - 11 * s} ${x - 5 * s} ${y - 15 * s}L${x - 2 * s} ${y - 15 * s}Q${x - 6 * s} ${y - 10 * s} ${x - 4 * s} ${y}Z`, '#fff', .5).s(`M${x - 4 * s} ${y - 16 * s}l${8 * s} 0`, '#a08a5a', 1.4); } };
+  // (sacks of hessian: a body shaded round to the lower right, lit on the upper left, a tied neck with its ears, a seam
+  // and a dusting of flour; they were flat cream shapes; 19 Nov 2026)
+  const drawSacks = P => B => { B.shadow(2, 1, 22, 5, .3); for (const [x, y, s] of [[-10, 0, 1], [9, 0, .95], [0, -11, .9]]) {
+    const body = `M${x - 9 * s} ${y}Q${x - 11 * s} ${y - 12 * s} ${x - 5 * s} ${y - 16 * s}L${x + 5 * s} ${y - 16 * s}Q${x + 11 * s} ${y - 12 * s} ${x + 9 * s} ${y}Z`;
+    B.f(body, B.lin(x - 9 * s, y - 16 * s, x + 9 * s, y, [[0, '#e2d4ae'], [.55, '#c8b48a'], [1, '#9a8660']])).s(body, '#7a6a4a', .8, .55)
+     .f(`M${x - 8 * s} ${y - 1}Q${x - 10 * s} ${y - 11 * s} ${x - 5 * s} ${y - 15 * s}L${x - 2 * s} ${y - 15 * s}Q${x - 6 * s} ${y - 10 * s} ${x - 4 * s} ${y - 1}Z`, '#f4ead0', .55)
+     .f(`M${x - 2 * s} ${y - 16 * s}L${x - 4.5 * s} ${y - 19.5 * s}L${x - .5 * s} ${y - 17.5 * s}L${x + 1.5 * s} ${y - 19.8 * s}L${x + 2.5 * s} ${y - 16 * s}Z`, '#b8a47c').s(`M${x - 4 * s} ${y - 16 * s}l${8 * s} 0`, '#6a5434', 1.4)
+     .s(`M${x + 1 * s} ${y - 14 * s}Q${x + 3 * s} ${y - 7 * s} ${x + 2 * s} ${y - 1}`, '#8a7650', .6, .5).f(B.ell(x - 3 * s, y - 4 * s, 4 * s, 1.6 * s), '#fbf6e8', .3); } };
   const OAK_SCALE = 1.75;   // the vale's landmark tree: its crown stands over the woods, seen from the arch and from the green zoomed out
   const oakAt = (L, pz) => L.cpt(pz.x + 2.9, pz.y - 1.5);   // at the clearing's north-east edge, clear of the bench and the hollow oak
   function greatOak(B, r, P, season) {
@@ -396,21 +407,30 @@
       for (let k = -2; k < 16; k++) { const x = bb[0] + k * 34; B.f(`M${x} ${bb[1]}l34 0l${-h * .35} ${h}l-34 0z`, k % 2 ? '#ffffff' : '#2e4a20', k % 2 ? .035 : .03); }
       // the worn line across the middle where everyone cuts over
       V.strokePts(B, [{ x: bb[0] + w * .16, y: cy0 + h * .18 }, { x: cx0 - w * .1, y: cy0 + 4 }, { x: cx0 + w * .14, y: cy0 - 6 }, { x: bb[2] - w * .14, y: cy0 - h * .2 }], '#b8a878', 10, .22);
-      // daisies and clover in the sward
-      for (let k = 0; k < w * h / 260; k++) { const x = bb[0] + r() * w, y = bb[1] + r() * h; if (r() < .6) B.f(B.circ(x, y, 1.2), C.season === 'winter' ? '#f4f6f2' : r() < .8 ? '#f6f2e4' : '#f0d24a', .9); else B.f(B.blob(r, x, y, 3.4, 2.2, 6, .4), '#5e8a44', .5); }
+      // clover in the sward (its daisies are the village ground's own, in drifts: a dot sprinkled every few steps read as confetti)
+      for (let k = 0; k < w * h / 700; k++) { const x = bb[0] + r() * w, y = bb[1] + r() * h; B.f(B.blob(r, x, y, 3.4, 2.2, 6, .4), '#5e8a44', .4); }
+      // the ring the dancers have worn round the maypole's foot, the grass thin and brown there
+      if (spot) for (let k = 0; k < 3; k++) B.s(B.ell(spot.x, spot.y + 2, 34 - k * 3, 10 - k), '#a89466', 7 - k * 2, .12 + k * .05);
       B.cx.restore();
-      // a ring of cottage flowers just inside the path
-      const leafy = C.season === 'winter' ? '#7a8a6e' : '#5e8040';
-      for (const q of V.walk(inner.concat([inner[0]]), 11)) { if (q.y > cy0 && Math.abs(q.x - cx0) < w * .21) continue;   // (not across the paved circle at the green's foot)
-        const o = 3 + r() * 6, x = q.x - q.ty * o, y = q.y + q.tx * o; B.f(B.blob(r, x, y, 6, 3.6, 7, .4), leafy, .85); for (let j = 0; j < 3; j++) B.f(B.circ(x + (r() - .5) * 9, y - 2 + (r() - .5) * 4, 1.6), flowers[Math.floor(r() * flowers.length)], .95); }
+      // cottage flowers just inside the path in clumps and runs of their own lengths, some of the edge bare grass: a clump
+      // every eleven px all the way round, each with three bright dots, traced the lawn's edge like a bead necklace
+      const leafy = C.season === 'winter' ? '#7a8a6e' : '#5e8040', soft = c => kit.mix(c, '#9cb070', .25);
+      for (const q of V.walk(inner.concat([inner[0]]), 7)) { if (q.y > cy0 && Math.abs(q.x - cx0) < w * .21) continue;   // (not across the paved circle at the green's foot)
+        const run = kit.noise(q.x / 70, q.y / 50, 404); if (run < .5 || r() < .35) continue;
+        const o = 2 + r() * 12 + (run - .5) * 10, x = q.x - q.ty * o + (r() - .5) * 4, y = q.y + q.tx * o, s = .7 + r() * .7;
+        B.f(B.blob(r, x + 1, y + 1.2, 6 * s, 3.2 * s, 7, .5), '#3e5a2c', .3).f(B.blob(r, x, y, 6 * s, 3.4 * s, 7, .5), leafy, .8).f(B.blob(r, x - 1.5 * s, y - 1.2 * s, 3.2 * s, 1.5 * s, 6, .5), '#86a85a', .6);
+        if (run > .58) for (let j = 0, n = 1 + Math.floor(r() * 3); j < n; j++) B.f(B.circ(x + (r() - .5) * 8 * s, y - 2 + (r() - .5) * 3, 1.1 + r() * .5), soft(flowers[Math.floor(r() * flowers.length)]), .9); }
     });
     // the maypole: on free ground near the middle (never on a plot or a house)
     const ok = (x, y) => L.free(x, y) && !L.plot(x, y) && L.kind(x, y) === 'grass';
     let spot = null; for (const [dx, dy] of [[0, -.6], [-1, -.6], [1, -.6], [0, .4], [-2, 0], [2, 0], [-1, 1], [1, 1], [-3, .6], [3, .6]]) if (ok(pz.x + dx, pz.y + dy)) { spot = L.cpt(pz.x + dx, pz.y + dy); break; }
-    if (spot) thing({ key: 'maypole|' + C.season, x: spot.x, y: spot.y, box: [-46, -150, 46, 14], foot: [-6, 6, 6], draw: B => {
+    // (the tallest thing on the green throws a shadow you can see, pole and ribbons, and each ribbon's peg sits in the turf
+    // with its own contact; the ribbons are drawn a little wider with a soft dark underside, so on a 2x screen a thin
+    // diagonal does not break into steps)
+    if (spot) thing({ key: 'maypole|' + C.season, x: spot.x, y: spot.y, box: [-46, -150, 46, 14], foot: [-6, 6, 6], shade: { a: 1 }, draw: B => {
       const rr = kit.rng(seed + 3), cols = ['#c84a3a', '#e8c84a', '#3a7ac0', '#f2f0e8', '#5e9a54', '#c86aa0'];
-      B.shadow(0, 2, 26, 6, .3);
-      for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2, ex = Math.cos(a) * 34, ey = Math.sin(a) * 9 + 2; B.s(`M0 -128Q${ex * .6} ${-60 + ey} ${ex} ${ey}`, cols[k], 1.6, .9).f(B.circ(ex, ey, 1.6), '#6a5034'); }
+      B.shadow(1.5, 2, 12, 4, .45);
+      for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2, ex = Math.cos(a) * 34, ey = Math.sin(a) * 9 + 2; B.shadow(ex + 1, ey + .8, 3.4, 1.4, .5); B.s(`M0 -128Q${ex * .6} ${-60 + ey} ${ex} ${ey}`, '#3a3428', 3, .16).s(`M0 -128Q${ex * .6} ${-60 + ey} ${ex} ${ey}`, cols[k], 2.1, .95).f(B.circ(ex, ey, 1.8), '#6a5034').f(B.circ(ex - .5, ey - .6, .7), '#a8845a'); }
       B.post(0, -134, 2, 5, ['#e8dcc0', '#b8a888', '#ffffff']);
       for (let k = 0; k < 7; k++) B.s(`M-2.4 ${-120 + k * 16}l4.8 -6`, cols[k % cols.length], 2, .9);
       B.f(B.ell(0, -128, 9, 4), '#5e8a44').f(B.circ(-5, -130, 2), cols[0]).f(B.circ(2, -131, 2), cols[1]).f(B.circ(6, -128, 2), cols[5]).f(B.circ(-1, -126, 1.6), cols[3]);

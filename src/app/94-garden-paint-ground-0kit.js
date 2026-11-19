@@ -307,11 +307,14 @@ window.GardenPaintGround = (function () {
   // a coarse world grid smoothed up. It is a function of the place alone, so neighbouring chunks agree exactly.
   function wash(cx, cb, P, seed, amp) {
     const G = 8, x0 = Math.floor(cb[0] / G) - 1, y0 = Math.floor(cb[1] / G) - 1, nx = Math.ceil((cb[2] - cb[0]) / G) + 4, ny = Math.ceil((cb[3] - cb[1]) / G) + 4;
-    const s = scratch('wash', nx, ny, { willReadFrequently: true }), img = s.cx.createImageData(nx, ny), d = img.data, B = hex(P.base), L = hex(P.lo), H = hex(P.hi), Wm = hex(P.warm), C = hex(P.cool); amp = amp == null ? 1 : amp;
+    // (the light and shade has to read at the walking zoom: lit swells go a good way towards a sunny straw, hollows towards
+    // a deep cool green, and a fourth, very broad swell lays whole sunlit and shaded reaches several screens across. With
+    // only the kind's own lo and hi the field was 25 levels either way and the ground read as a flat fill; 19 Nov 2026)
+    const s = scratch('wash', nx, ny, { willReadFrequently: true }), img = s.cx.createImageData(nx, ny), d = img.data, B = hex(P.base), L = hex(mix(P.lo, P.dark || P.lo, .45)), H = hex(mix(P.hi, '#f2ecb0', .3)), Wm = hex(P.warm), C = hex(P.cool); amp = amp == null ? 1 : amp;
     for (let j = 0, q = 0; j < ny; j++) for (let i = 0; i < nx; i++, q += 4) {
       const X = (x0 + i) * G, Y = (y0 + j) * G;
-      const t = ((fbm(X / 360, Y / 250, seed) - .5) * 1.7 + (fbm(X / 96, Y / 66, seed + 31) - .5) * 1.0 + (noise(X / 27, Y / 19, seed + 67) - .5) * .4) * amp, hue = fbm(X / 210, Y / 150, seed + 93) - .5;
-      const to = t > 0 ? H : L, a = Math.min(1, Math.abs(t) * 1.25), hb = hue > 0 ? Wm : C, ha = Math.min(.5, Math.abs(hue) * 1.1) * amp;
+      const t = ((fbm(X / 900, Y / 620, seed + 151) - .5) * 1.4 + (fbm(X / 360, Y / 250, seed) - .5) * 1.9 + (fbm(X / 96, Y / 66, seed + 31) - .5) * 1.1 + (noise(X / 27, Y / 19, seed + 67) - .5) * .45) * amp, hue = fbm(X / 210, Y / 150, seed + 93) - .5;
+      const to = t > 0 ? H : L, a = Math.min(1, Math.abs(t) * 1.3), hb = hue > 0 ? Wm : C, ha = Math.min(.55, Math.abs(hue) * 1.3) * amp;
       for (let c = 0; c < 3; c++) { const v = B[c] + (to[c] - B[c]) * a; d[q + c] = v + (hb[c] - v) * ha; } d[q + 3] = 255;
     }
     s.cx.putImageData(img, 0, 0);
@@ -359,7 +362,8 @@ window.GardenPaintGround = (function () {
       const tones = [P.lo, mix(P.lo, '#4f6f34', .4), P.hi, mix(P.hi, '#e2dc8e', .5)];
       tiles(cb, 32, 6, 23, (tx, ty, r) => { for (let i = 0; i < (far ? 6 : 12); i++) { const x = tx + r() * 32, y = ty + r() * 32, t = r(), len = 2.4 + r() * 3.2, lean = .5 - r() * .2; blade(cx, x, y, lean * 2, len, tones[t < .38 ? 0 : t < .6 ? 1 : t < .92 ? 2 : 3], .9 + r() * .9, .2 + r() * .22); } });
       tiles(cb, 64, 10, 25, (tx, ty, r) => { for (let i = 0; i < 3; i++) { if (r() < .2) continue; tuft(cx, r, tx + r() * 64, ty + r() * 64, 4 + Math.floor(r() * 4), 4 + r() * 5, P.lo, P.hi, P); } });
-      if (!winter) tiles(cb, 128, 26, 27, (tx, ty, r) => { if (r() < .5) return; const x0 = tx + r() * 128, y0 = ty + r() * 128, white = r() < .6; for (let k = 0, n = 4 + Math.floor(r() * 7); k < n; k++) { const x = x0 + (r() - .5) * 40 * (.4 + r()), y = y0 + (r() - .5) * 20 * (.4 + r()); flower(cx, x, y, white ? 1.9 + r() * .7 : 1.5 + r() * .5, white ? '#fbf8ee' : '#f2d040', white ? '#e6b436' : '#d9a520', P); } });
+      // daisies and buttercups in a few close drifts where the sward is thin, not sprinkled evenly (that read as confetti)
+      if (!winter) tiles(cb, 160, 26, 27, (tx, ty, r) => { if (r() < .55) return; const x0 = tx + r() * 160, y0 = ty + r() * 160, white = r() < .7; if (noise(x0 / 210, y0 / 150, 27) < .45) return; for (let k = 0, n = 5 + Math.floor(r() * 9); k < n; k++) { const q = Math.sqrt(r()), a = r() * 6.283, x = x0 + Math.cos(a) * q * 22, y = y0 + Math.sin(a) * q * 10; flower(cx, x, y, (white ? 1.5 + r() * .6 : 1.3 + r() * .4) * (1 - q * .3), white ? '#f6f2e4' : '#ecc83c', white ? '#e0b038' : '#c99a1e', P); } });
       tiles(cb, 256, 14, 29, (tx, ty, r) => { for (let g = 0; g < 2; g++) { const gx = tx + r() * 256, gy = ty + r() * 256; for (let k = 0, n = 2 + Math.floor(r() * 4); k < n; k++) pebble(cx, r, gx + (r() - .5) * 22, gy + (r() - .5) * 10, 1.4 + r() * (k ? 2 : 3.4), P); } });
       if (P.season === 'autumn') tiles(cb, 48, 6, 31, (tx, ty, r) => { for (let i = 0; i < 2; i++) { cx.globalAlpha = .75; cx.fillStyle = ['#c0702e', '#d89a3e', '#a8562a', '#b8a040'][Math.floor(r() * 4)]; cx.fill(P2(D().leaf(tx + r() * 48, ty + r() * 48, r() * 6.3, 3 + r() * 2, 1.4))); } });
       cx.globalAlpha = 1;
@@ -378,7 +382,12 @@ window.GardenPaintGround = (function () {
       const old = P.kind === 'oldwood'; wash(cx, cb, P, old ? 71 : 61, 1.25);
       tiles(cb, 128, 60, 63, (tx, ty, r) => { for (let i = 0; i < 2; i++) { const x = tx + r() * 128, y = ty + r() * 128, s = 26 + r() * 40; blob(cx, r, x, y, s, s * .5, 8, .5, old ? '#3c4f34' : '#4a5c36', .16 + r() * .1); if (!old || r() < .4) blob(cx, r, x + s * .9, y - s * .4, s * .7, s * .32, 8, .5, '#e6dc98', old ? .08 : .14); } });
       const litter = P.season === 'winter' ? ['#8a7a5c', '#9c8c6c', '#6e6048'] : old ? ['#7a5c34', '#8f7440', '#5c4a30', '#6f7a3e'] : ['#a8763a', '#c09848', '#8a5c30', '#9aa04e', '#b88a40'];
-      tiles(cb, 32, 6, 65, (tx, ty, r) => { for (let i = 0; i < (P.season === 'autumn' ? 13 : 8) * (scaleOf(cx) < 1 ? .5 : 1); i++) { cx.globalAlpha = .5 + r() * .3; cx.fillStyle = litter[Math.floor(r() * litter.length)]; cx.fill(P2(D().leaf(tx + r() * 32, ty + r() * 32, r() * 6.3, 2.4 + r() * 2, 1.2))); } });
+      // leaf litter lies in drifts (thick in hollows and against roots, bare where feet and rain have cleared it), each leaf
+      // its own size, turn and tone with a lit half: an even scatter of one flat oval read as polka dots (19 Nov 2026)
+      tiles(cb, 32, 6, 65, (tx, ty, r) => { const drift = fbm((tx + 16) / 150, (ty + 16) / 105, 66), n = Math.round((P.season === 'autumn' ? 15 : 10) * Math.max(0, drift * 1.9 - .55) * (scaleOf(cx) < 1 ? .5 : 1));
+        for (let i = 0; i < n; i++) { const x = tx + r() * 32, y = ty + r() * 32, a = r() * 6.3, s = (1.6 + r() * r() * 3.4) * (.8 + drift * .5), w = .7 + r() * .6, col = litter[Math.floor(r() * litter.length)];
+          cx.globalAlpha = .55 + r() * .35; cx.fillStyle = col; cx.fill(P2(D().leaf(x, y, a, s, s * .42 * w)));
+          if (s > 2.4) { cx.globalAlpha = .35; cx.fillStyle = mix(col, '#f4e2a4', .45); cx.fill(P2(D().leaf(x - .4, y - .35, a, s * .62, s * .2 * w))); } } });
       cx.lineCap = 'round';
       tiles(cb, 64, 14, 67, (tx, ty, r) => {
         for (let i = 0; i < (old ? 3 : 2); i++) { if (r() < .35) continue; const x = tx + r() * 64, y = ty + r() * 64, s = 4 + r() * 7; blob(cx, r, x + 1, y + 1.2, s, s * .5, 7, .4, '#35492c', .5); blob(cx, r, x, y, s, s * .48, 7, .4, old ? '#5f8446' : '#7d9a4c', .9); blob(cx, r, x - s * .25, y - s * .14, s * .5, s * .2, 6, .4, '#b3c66c', .7); }
@@ -622,21 +631,26 @@ window.GardenPaintGround = (function () {
       if (kind === 'cobble' || kind === 'setts') {   // light and shade over the laid stones, and the middle worn paler by feet: one surface, not a grid of bricks
         const body = alphaOf('alB', cov, v => smooth(.5, .62, v), 0, 15);
         cx.globalAlpha = .24; fillThrough(B, cov, body, sx => wash(sx, cb, { base: '#c8b48c', lo: '#84765a', hi: '#f2e6c2', warm: '#d6b684', cool: '#a09e92' }, 137, 1.7)); cx.globalAlpha = 1;
-        cx.globalAlpha = .13; { const t = scratch('tint', cov.w, cov.h), pic = alphaOf('alM', cov, (v, nz) => smooth(.9, 1, v + nz), .1, 30); t.cx.fillStyle = '#f3e7c4'; t.cx.fillRect(0, 0, cov.w, cov.h); t.cx.globalCompositeOperation = 'destination-in'; t.cx.drawImage(pic, 0, 0); lay(cx, cov, t.c); } cx.globalAlpha = 1;
+        cx.globalAlpha = .2; { const t = scratch('tint', cov.w, cov.h), pic = alphaOf('alM', cov, (v, nz) => smooth(.9, 1, v + nz), .16, 30); /* (the worn line down the middle, where everyone walks) */ t.cx.fillStyle = '#f3e7c4'; t.cx.fillRect(0, 0, cov.w, cov.h); t.cx.globalCompositeOperation = 'destination-in'; t.cx.drawImage(pic, 0, 0); lay(cx, cov, t.c); } cx.globalAlpha = 1;
       }
       if (kind === 'earth') grassIn(cx, cb, cov, .5, .78, 157);   // (a trail is half grown over)
       grassIn(cx, cb, cov, .3, .56, 159); verge(cx, cb, cov, 163);
     } });
     // The stones: courses that run across the screen, every stone its own width, tone and corners, lit on its upper left.
     // A stone is laid where its middle is on the road, so the road's edge is the stones' own edge, never a ruled line.
-    const TONES = ['#bfa97f', '#c9b489', '#d4c097', '#cebc98', '#b59d76', '#c6bda6', '#afa48e', '#d0b9a0'];
+    const TONES = ['#bfa97f', '#c9b489', '#d4c097', '#cebc98', '#b59d76', '#c6bda6', '#afa48e', '#d0b9a0'], GRANITE = ['#b4ada0', '#a8a294', '#c4beb0', '#9c968a'], mixMemo = new Map();
+    const mixQ = (a, b, t) => { const q = Math.round(clamp(t) * 8), k = a + b + q; let c = mixMemo.get(k); if (!c) { c = mix(a, b, q / 8); mixMemo.set(k, c); } return c; };
     const stones = (kind, phase) => ({ bb: bbAll, seed: 740 + phase, name: kind + ' stones ' + phase, draw(B, r0, cb) {
       const cov = coverage(cb, kind); if (!cov) return; const cx = B.cx, winter = season === 'winter', fine = scaleOf(cx) >= 1.3, over = kind === 'cobble' && kindsUsed.has('setts') ? coverage(cb, 'setts') : null; clips(cx);
       const setts = kind === 'setts', rowH = setts ? 8.4 : 6.6, tw = 96, y0 = Math.floor((cb[1] - 8) / rowH), y1 = Math.floor((cb[3] + 8) / rowH);
       for (let ry = y0; ry <= y1; ry++) { if (((ry % 3) + 3) % 3 !== phase) continue; const off = h01(ry, 7, 141) * tw, t0 = Math.floor((cb[0] - 12 - off) / tw), t1 = Math.floor((cb[2] + 12 - off) / tw);
         for (let t = t0; t <= t1; t++) { const r = rng(hash(t, ry, 143) | 1), ws = []; let sum = 0; while (sum < tw) { const w = (setts ? 8.5 : 5.6) + r() * (setts ? 7 : 3.2); ws.push(w); sum += w; } const f = tw / sum; let x = t * tw + off;
           for (const w0 of ws) { const w = w0 * f, mx = x + w / 2 + (r() - .5) * .5, my = (ry + .5) * rowH + (r() - .5) * .9, tone = r(), c1 = r(), j = r(); x += w; if (mx < cb[0] - 8 || mx > cb[2] + 8) continue; const v = cov.sample(mx, my); if (v < .5 + (j - .5) * .12 || over && over.sample(mx, my) > .46) continue;
-            const sw = w - 1.1 - j * .5, sh = rowH - 1.1 - (1 - j) * .5, base = TONES[tone < .14 ? 0 : tone < .36 ? 1 : tone < .58 ? 2 : tone < .72 ? 3 : tone < .82 ? 4 : tone < .9 ? 5 : tone < .96 ? 6 : 7], x0 = mx - sw / 2, yy = my - sh / 2;
+            // (not wallpaper: the stone changes in patches a few strides across, greyer granite here, darker honey there, and
+            // towards the edge stones are smaller, sunk and now and then missing; 19 Nov 2026)
+            const patch = noise(mx / 150, my / 105, 147), edgeK = clamp((.8 - v) / .3); if (edgeK > 0 && j < edgeK * .22) continue;
+            const pick = TONES[tone < .14 ? 0 : tone < .36 ? 1 : tone < .58 ? 2 : tone < .72 ? 3 : tone < .82 ? 4 : tone < .9 ? 5 : tone < .96 ? 6 : 7], base = patch > .6 ? mixQ(pick, GRANITE[Math.floor(tone * 4)], (patch - .6) * 2.2) : patch < .38 ? mixQ(pick, '#a08460', (.38 - patch) * 1.6) : pick;
+            const sw = (w - 1.1 - j * .5) * (1 - edgeK * .18), sh = (rowH - 1.1 - (1 - j) * .5) * (1 - edgeK * .12), x0 = mx - sw / 2, yy = my - sh / 2;
             const rad = fine ? [1 + c1 * 1.6, 1 + j * 1.6, 1 + (1 - c1) * 1.6, 1 + (1 - j) * 1.6] : 1.4;
             cx.globalAlpha = .26; cx.fillStyle = '#5e4e34'; cx.beginPath(); cx.roundRect(x0 + .5, yy + .7, sw, sh, rad); cx.fill();
             cx.globalAlpha = 1; cx.fillStyle = base; cx.beginPath(); cx.roundRect(x0, yy, sw, sh, rad); cx.fill();

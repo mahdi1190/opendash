@@ -256,7 +256,9 @@ window.GardenPaintWood = (function () {
         const X = x * W.cellW + W.cellW / 2, Y = W.sky + y * W.cellH + W.cellH / 2; if (X < view.x || X > view.x + view.w || Y < view.y || Y > view.y + view.h) continue;
         const g = noise(x, y, 5, hash(f.region) & 1023), rr = rng(hash(f.region + 'f') ^ (x * 977 + y * 131));
         // leaf litter flecks and moss
-        for (let i = 0; i < 6; i++) { cx.globalAlpha = .45; cx.fillStyle = F.leaf[i % 3]; const lx = X + (rr() - .5) * W.cellW, ly = Y + (rr() - .5) * W.cellH; cx.beginPath(); cx.ellipse(lx, ly, 1.6 + rr() * 1.6, .9 + rr() * .7, rr() * 3, 0, Math.PI * 2); cx.fill(); }
+        // (with the shared kit the litter is its forest floor's, laid in drifts with a lit half to each leaf: six flat ovals a
+        // cell here, on top of it, read as a polka-dot field; 19 Nov 2026)
+        if (!window.GardenPaintGround) for (let i = 0; i < 6; i++) { cx.globalAlpha = .45; cx.fillStyle = F.leaf[i % 3]; const lx = X + (rr() - .5) * W.cellW, ly = Y + (rr() - .5) * W.cellH; cx.beginPath(); cx.ellipse(lx, ly, 1.6 + rr() * 1.6, .9 + rr() * .7, rr() * 3, 0, Math.PI * 2); cx.fill(); }
         if (rr() < (f.def.mood === 'old' ? .5 : .25)) { cx.globalAlpha = .5; cx.fillStyle = F.moss; cx.fill(new Path2D(sceneDraw.blob(rr, X + (rr() - .5) * 20, Y + (rr() - .5) * 10, 8 + rr() * 10, 4 + rr() * 4, 7, .5))); }
         // spring bluebells in drifts under the light wood
         if (season === 'spring' && f.def.mood === 'light' && g > .4 && rr() < .5) for (let i = 0; i < 9; i++) { cx.globalAlpha = .85; cx.fillStyle = i % 3 ? '#6f78c8' : '#8c90da'; cx.beginPath(); cx.arc(X + (rr() - .5) * W.cellW, Y + (rr() - .5) * W.cellH, 1.3, 0, Math.PI * 2); cx.fill(); }
@@ -401,7 +403,9 @@ window.GardenPaintWood = (function () {
       if (b.made && vis !== b.vis && !(vis && !b.made)) { b.vis = vis; for (const t of b.trees) if (t.im) t.im.setVisible(vis); }
       // a crown you are under fades, so you can always see yourself (a wide crown by its own width); so does a crown over a
       // story house (Hollin's hut) once you are near it
-      if (vis && pl) for (const t of b.trees) { if (!t.im) continue; const under = gardenCrownCovers(pl.x, pl.y, t.x, t.y, t.h * t.scale, t.im.displayWidth, t.im), near = t.hides && Math.hypot((pl.x - t.hides.x) / S.W.cellW, (pl.y - t.hides.y) / S.W.cellH) < 3.5; t.fade = near || under || GardenNativePainted.fishingCrownCovers(t.im); if (under) { underN++; if (t.im.active && t.im.visible) S.covering.push(t.im); } fading.push(t); }
+      // (the picture's width includes its shadow and dapple margins: a fruit tree's fade oval by it was twice the crown, so
+      // the tree beside the orchard bell stood as a grey ghost with you a stride away; the crown is at most about its height)
+      if (vis && pl) for (const t of b.trees) { if (!t.im) continue; const under = gardenCrownCovers(pl.x, pl.y, t.x, t.y, t.h * t.scale, Math.min(t.im.displayWidth, t.h * t.scale * 1.05), t.im), near = t.hides && Math.hypot((pl.x - t.hides.x) / S.W.cellW, (pl.y - t.hides.y) / S.W.cellH) < 3.5; t.fade = near || under || GardenNativePainted.fishingCrownCovers(t.im); if (under) { underN++; if (t.im.active && t.im.visible) S.covering.push(t.im); } fading.push(t); }
     }
     // Several crowns over you fade further each, so you are as easy to see under three as under one (stacked at the one-crown
     // fade you read as a ghost deep in the wood)
