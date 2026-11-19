@@ -65,11 +65,13 @@ window.GardenPaintSeat = (function () {
   function add(scene, layer, prop, W, o) {
     const kit = KIT(); if (!kit || !layer || !prop) return null;
     const kind = o.kind || 'earth', w = o.w || Math.max(20, (prop.w || 1) * W.cellW * .82), front = o.front || 20, back = o.back || 9, x = o.x, foot = o.foot;
-    const door = prop.door ? [((prop.door.x + .5) * W.cellW - x), Math.max(6, W.sky + (prop.door.y + .5) * W.cellH - foot)] : null;
+    // (a door listed far from its thing, as the wishing well's is, is where you stand to look at it: the way starts at the thing)
+    const near = prop.door && prop.door.x >= prop.x - 2 && prop.door.x <= prop.x + (prop.w || 1) + 1 && prop.door.y >= prop.y - 2 && prop.door.y <= prop.y + (prop.h || 1) + 1;
+    const door = near ? [((prop.door.x + .5) * W.cellW - x), Math.max(6, W.sky + (prop.door.y + .5) * W.cellH - foot)] : prop.door ? [0, 10] : null;
     let way = null;
     if (o.way !== false && door) {
-      const c = nearestRoute(prop.door.x + .5, prop.door.y + .5);
-      if (c && c.gap > .35 && c.gap < 6) { const len = Math.hypot(c.x - prop.door.x - .5, c.y - prop.door.y - .5) || 1, ux = (c.x - prop.door.x - .5) / len, uy = (c.y - prop.door.y - .5) / len, ex = (c.x - ux * c.half * .6) * W.cellW - x, ey = W.sky + (c.y - uy * c.half * .6) * W.cellH - foot; way = [ex, ey]; }
+      const dx0 = (x + door[0]) / W.cellW, dy0 = (foot + door[1] - W.sky) / W.cellH, c = nearestRoute(dx0, dy0);
+      if (c && c.gap > .35 && c.gap < 5) { const len = Math.hypot(c.x - dx0, c.y - dy0) || 1, ux = (c.x - dx0) / len, uy = (c.y - dy0) / len, ex = (c.x - ux * c.half * .6) * W.cellW - x, ey = W.sky + (c.y - uy * c.half * .6) * W.cellH - foot; way = [ex, ey]; }
     }
     const pts = [[-w / 2 - front - 14, -back - 10], [w / 2 + front + 14, front + 22]]; if (way) { pts.push([way[0] - 16, way[1] - 12], [way[0] + 16, way[1] + 12]); }
     if (o.box) pts.push([o.box[0], o.box[1]], [o.box[2], o.box[3]]);
@@ -111,10 +113,18 @@ window.GardenPaintSeat = (function () {
     // the far rim and the dark water inside, a glint and three coins
     B.f(B.ell(0, top, 21, 7), '#6f6754').f(B.ell(0, top + .6, 17.4, 5.4), B.rad(-3, top, 17, [[0, '#2e4a50'], [.7, '#16262a'], [1, '#0e1618']])).f(B.ell(-5, top - 1, 6, 1.4), '#9cc4c8', .45);
     for (const [cx, cy] of [[4, top + 1.2], [-2, top + 2], [8, top - .4]]) B.f(B.ell(cx, cy, 1.6, .8), '#e8c45a', .9);
-    // the head: two courses of curved stone, darker to the east, moss on the coping
-    for (let row = 0; row < 3; row++) { const y0 = top + row * (wall / 3); for (let i = 0; i < 7; i++) { const a0 = Math.PI * (i / 7), a1 = Math.PI * ((i + 1) / 7), x0 = -Math.cos(a0) * 21, x1 = -Math.cos(a1) * 21, mid = (x0 + x1) / 2, sag = Math.sin((a0 + a1) / 2) * 7; const tone = mid < -8 ? STONE.rockHi : mid > 9 ? STONE.rockLo : STONE.rock; B.f(B.poly([[x0, y0 + Math.sin(a0) * 7], [x1, y0 + Math.sin(a1) * 7], [x1, y0 + wall / 3 + Math.sin(a1) * 7 - .6], [x0, y0 + wall / 3 + Math.sin(a0) * 7 - .6]]), tone).s(`M${x0} ${y0 + Math.sin(a0) * 7}L${x1} ${y0 + Math.sin(a1) * 7}`, STONE.rockDk, .6, .45); void sag; } }
-    B.f(`M-21 ${top}A21 7 0 0 0 21 ${top}L21 ${top + 2}A21 7 0 0 1 -21 ${top + 2}Z`, STONE.rockHi, .9);
-    B.f(`M9 ${top + 4}Q21 ${top + 1} 21 ${top}L21 ${-1}Q15 4 6 6Z`, STONE.rockDk, .22);
+    // the head: courses of rough dressed stone round the drum, each block its own tone, dark mortar, lit to the west
+    const WS = ['#b8ae96', '#a39a82', '#8e8670', '#c9c0a8', '#9a927c'], courses = 4, ch = (wall + 5) / courses;
+    B.f(`M-21 ${top}A21 7 0 0 0 21 ${top}L21 ${top + wall + 5}A21 7 0 0 1 -21 ${top + wall + 5}Z`, '#6e6654');
+    for (let row = 0; row < courses; row++) { const y0 = top + row * ch, n = 6 + (row & 1); let a = (row & 1) * .22;
+      for (let i = 0; i < n; i++) { const a0 = Math.PI * a / 1, span = (1 - (row & 1) * .22 / n) / n; let a1 = Math.min(1, a + span * (.8 + r() * .4)); if (i === n - 1) a1 = 1; const p0 = -Math.cos(Math.PI * a), p1 = -Math.cos(Math.PI * a1), s0 = Math.sin(Math.PI * a) * 7, s1 = Math.sin(Math.PI * a1) * 7, x0 = p0 * 21 + .5, x1 = p1 * 21 - .5, mid = (x0 + x1) / 2;
+        let tone = WS[Math.floor(r() * WS.length)]; if (mid < -10) tone = r() < .6 ? '#d4ccb4' : tone; if (mid > 11) tone = r() < .6 ? '#7e7662' : tone;
+        B.f(B.poly([[x0, y0 + s0 + .5], [x1, y0 + s1 + .5], [x1, y0 + ch + s1 - .5], [x0, y0 + ch + s0 - .5]]), tone).f(B.poly([[x0, y0 + s0 + .5], [x1, y0 + s1 + .5], [x1, y0 + s1 + 1.6], [x0, y0 + s0 + 1.6]]), '#ffffff', mid < 6 ? .22 : .08);
+        a = a1; void a0; if (a >= 1) break; } }
+    B.f(`M8 ${top + 3}Q21 ${top + 1} 21 ${top}L21 ${top + wall + 5}Q14 ${top + wall + 11} 4 ${top + wall + 12}Z`, '#2a281e', .22);
+    // the coping: a ring of flat capstones round the mouth, lit on top
+    B.s(B.ell(0, top, 20, 6.6), '#7a7260', 4.4).s(B.ell(0, top - .8, 20, 6.4), '#d8d0b8', 2, .9);
+    for (let i = 0; i < 10; i++) { const t = i / 10 * Math.PI * 2; B.s(`M${Math.cos(t) * 17.6} ${top + Math.sin(t) * 5.4}L${Math.cos(t) * 22.4} ${top + Math.sin(t) * 7.6}`, '#5e5848', .7, .7); }
     mossOn(B, KIT().rng(72), -20, top + 6, 18, 6, s);
     // the oak frame: two posts set into the head, a windlass with its crank, rope down to a bucket at the rim
     for (const x of [-18, 18]) B.post(x, -post, top + 6, 4.2, OAK);

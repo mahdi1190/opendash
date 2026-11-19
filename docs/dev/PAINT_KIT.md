@@ -216,6 +216,26 @@ on its decoration row); its view along the run is drawn deeper first so a turned
 Anything painted into the ground that stands up (a plot's fence along its north edge) stands far enough inside its
 plot that its top meets the plot's edge: a player behind it is never drawn over it.
 
+## 6. Sights and what a player builds: `GardenPaintSeat` and `GardenPaintedMarks.ART`
+
+`src/app/94-garden-paint-terrain-5sights.js` paints the sights (`ld-*`), the things a player builds or wins (`lf-*`) and
+seats every one of them, and every painted prop, in the ground it stands on.
+
+- **A painting** is a row in `GardenPaintedMarks.ART[id]`: `{ box, draw(B, o), seat, lit, lights, flat, shade }`, drawn in
+  the fells' brush with its base on y = 0 at the middle of its footprint. It wins over the older painted-prop drawing
+  of the same thing. No shadow is painted inside a standing picture: the shared light lays its silhouette. `lit` gives
+  it a second picture for dusk and night; `lights` are its warm live lights, as offsets from its foot. `flat: true`
+  is for a thing that lies in the ground (a sunken pool, a turf maze, a ring of low stones): it is drawn with its seat,
+  under every actor.
+- **A seat** (`GardenPaintSeat.add(scene, layer, prop, W, o)`) is one picture at depth -9345, over every region's
+  ground and under the shadows and every actor: trodden earth or laid flags round the foot (`kind`: `flags`, `earth`,
+  `moss`, `sand`, `turf`), foundation stones, a dark contact exactly as wide as what stands there, grass grown in over
+  the edges, and a worn way from the thing's door to the nearest path or plaza of the layout (`way: false` for none).
+  It follows the zoom like any sprite. `seat: false` on an art row, or `false` in `SEATS` in
+  `94-garden-native-painted-props.js`, leaves a thing unseated (afloat, in reeds).
+- Sizes come from `gardenSizePx`; a thing keeps its footprint, door and collision. If it needs more ground than its
+  footprint, say so for the region's layout instead of drawing over a neighbour.
+
 ## The rules
 
 1. Drive everything from layout data: regions, routes, statics, landforms, `presentation`. **No hard-coded cells.**

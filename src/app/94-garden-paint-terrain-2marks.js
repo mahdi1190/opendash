@@ -151,7 +151,7 @@ window.GardenPaintedMarks = (function () {
     node.nativeBounds = b;
     let lit = night0;
     const lights = night0 && art.lights ? art.lights.map(([dx, dy, r]) => ({ x: x + dx, y: foot + dy, radius: r || 110, pool: true })) : [];
-    const h = { root: node.target, rootNode: node, bounds: b, painted: true, shaded: art.shade !== false, foot: { x, y: foot }, lights, update() { if (seat) { seat.setVisible(node.target.visible); seat.setAlpha(node.target.alpha); } },
+    const h = { root: node.target, rootNode: node, bounds: b, painted: true, shaded: art.shade !== false || !!art.flat, foot: { x, y: foot }, lights, update() { if (seat) { seat.setVisible(node.target.visible); seat.setAlpha(node.target.alpha); } },
       setLitWindows(on) { on = !!on && !!art.lit; if (on === lit) return; lit = on; const next = kit.sprite(scene, host, keyOf(on), art.box, B => art.draw(B, { season, night: on, prop }), x, foot, K, art.shade !== false); if (!next) return; next.setDepth(depthOf()); im.destroy(); im = next; h.lights.length = 0; if (on && art.lights) for (const [dx, dy, r] of art.lights) h.lights.push({ x: x + dx, y: foot + dy, radius: r || 110, pool: true }); },
       destroy() { if (seat) seat.destroy(); if (host !== node._inner) im.destroy(); node.remove(); } };
     return h;
