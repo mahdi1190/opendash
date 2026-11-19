@@ -192,6 +192,15 @@ window.GardenPaintWater = (function () {
     if (night) { edge = mix(edge, base, .3); shoal = mix(shoal, base, .25); mid = mix(mid, base, .15); }
     return { edge: rgbOf(edge), shoal: rgbOf(shoal), mid: rgbOf(mid), base: rgbOf(base), sand: rgbOf('#d6c89a'), wet: '#a8956a', foam: night ? '#dfe8ea' : '#fbfdf6' };
   }
+  // What the water reflects by the hour (the light module's evening grade is laid over all of it): c0 and c1 the two tones of
+  // the clouds' reflections, broad patches lo..hi of a long, low noise; glow a wash of the sky's own colour over open water.
+  const SKYR = {
+    day: { a: .24, lo: .52, hi: .68, c0: '#eef8f4', c1: '#d2eaee', glow: 0, g: '#ffffff' },
+    dawn: { a: .5, lo: .5, hi: .64, c0: '#fad8c2', c1: '#f0bcbc', glow: .1, g: '#a8b4cc' },
+    dusk: { a: .62, lo: .5, hi: .63, c0: '#ffc888', c1: '#f3a0a8', glow: .16, g: '#97a3c6' },
+    night: { a: .5, lo: .54, hi: .67, c0: '#c8d8ee', c1: '#a2b8da', glow: .24, g: '#26405e' },
+  };
+  function skyOf(S) { const R = SKYR[S.tod] || SKYR.day; let c0 = R.c0, c1 = R.c1; if (S.season === 'winter') { c0 = mix(c0, '#e4e8ea', .4); c1 = mix(c1, '#d4dce2', .4); } return { a: R.a, lo: R.lo, hi: R.hi, c0: rgbOf(c0), c1: rgbOf(c1), glow: R.glow, g: rgbOf(R.g) }; }
   function fieldCanvas(c, w, h) { if (!c) { c = document.createElement('canvas'); } if (c.width < w) c.width = w; if (c.height < h) c.height = h; return c; }
   // One distance pass over a field: seed[i] = 1 where the distance is 0. Two sweeps of an eight-neighbour chamfer
   // (within a few per cent of the true distance; the same lattice and values in every chunk). Field px.
@@ -246,7 +255,7 @@ window.GardenPaintWater = (function () {
   }
   function bodyDraw(S, U, sea) {
     const M = S.M, G = window.GardenPaintGround;
-    const noise = G ? G.noise : () => .5, fbm = G ? G.fbm : () => .5, SP = sea ? seaPalette(S) : null;
+    const noise = G ? G.noise : () => .5, fbm = G ? G.fbm : () => .5, SP = sea ? seaPalette(S) : null, SKY = G ? skyOf(S) : null;
     const toneOf = (pts, kind, b) => { const p = new Path2D(); pts.forEach((q, i) => i ? p.lineTo(q.x, q.y) : p.moveTo(q.x, q.y)); p.closePath(); const t = TONE[kind] || TONE.pool; return { p, b, fill: 'rgb(' + Math.round(t[0] * 255) + ',' + Math.round(t[1] * 255) + ',' + Math.round(t[2] * 255) + ')' }; };
     // a crossing strip (the water under a bridge or between stepping stones) takes the tone of the water it lies over
     const overOf = c => { const cen = c.pts.reduce((a, q) => ({ x: a.x + q.x / c.pts.length, y: a.y + q.y / c.pts.length }), { x: 0, y: 0 }); let best = null, bd = Infinity; for (const w of M.waters) { if (!hit(w.bounds, { x: c.bounds.x - 40, y: c.bounds.y - 40, w: c.bounds.w + 80, h: c.bounds.h + 80 })) continue; const d = inside(cen.x, cen.y, w.pts) ? 0 : edgeDist(cen.x, cen.y, w.pts); if (d < bd) { bd = d; best = w; } } return best; };
@@ -348,7 +357,19 @@ window.GardenPaintWater = (function () {
               rr = rr * lift * (1 - mS) + sr * sl * mS; gg = gg * lift * (1 - mS) + sg * sl * mS; bb = bb * lift * (1 - mS) + sb * sl * mS; lift = 1;
               al2 *= 1 - mS * sstep(SEA_FADE[0], SEA_FADE[1], dS);
             } }
-          o[j] = Math.min(255, rr * lift); o[j + 1] = Math.min(255, gg * lift); o[j + 2] = Math.min(255, bb * lift); o[j + 3] = Math.round(al2 * 255);
+          rr *= lift; gg *= lift; bb *= lift;
+          // the sky in the water (SKYR, by the hour): long low reflections of clouds by day, the sunset's gold and rose at dusk,
+          // a cool moonlit sky at night; full on open still water and the sea, faint on running water, under trees and in peat
+          if (SKY) {
+            const open = (1 - mS) * mm * (1 - run * .62) * (1 - tS[tj] * .85) * (1 - tD[tj] * .45) + mS * (DS[tj] >= 0 ? sstep(6, 70, DS[tj]) : 1);
+            if (open > .01) {
+              const sk = fbm(wx / 430, wy / 84, 131) + (noise(wx / 170, wy / 34, 137) - .5) * .2, cl = sstep(SKY.lo, SKY.hi, sk) * SKY.a * open, hue = sstep(.35, .65, noise(wx / 520, wy / 300, 139));
+              const c0 = SKY.c0[0] + (SKY.c1[0] - SKY.c0[0]) * hue, c1 = SKY.c0[1] + (SKY.c1[1] - SKY.c0[1]) * hue, c2 = SKY.c0[2] + (SKY.c1[2] - SKY.c0[2]) * hue, gl = SKY.glow * open;
+              if (gl) { rr += (SKY.g[0] - rr) * gl; gg += (SKY.g[1] - gg) * gl; bb += (SKY.g[2] - bb) * gl; }
+              rr += (c0 - rr) * cl; gg += (c1 - gg) * cl; bb += (c2 - bb) * cl;
+            }
+          }
+          o[j] = Math.min(255, rr); o[j + 1] = Math.min(255, gg); o[j + 2] = Math.min(255, bb); o[j + 3] = Math.round(al2 * 255);
         } }
       ox.putImageData(img, 0, 0);
       // the shore lines, by marching squares on a field at a level: segments sorted into a few paths by what they are
@@ -668,6 +689,19 @@ window.GardenPaintWater = (function () {
     const sea = seaCutOps(S); if (sea.hard) ops.push(sea.hard); return ops.concat(sea.plume);
   }
 
+  /* ---------- a coarse map of where the water is, for the live layers (bit 1 fresh water, bit 2 the sea) ---------- */
+  function waterMask(S) {
+    const M = S.M, a = M.all, q = 8, x0 = Math.floor(a.x - 400), y0 = Math.floor(a.y - 400), gw = Math.ceil((a.x1 - a.x + 800) / q), gh = Math.ceil((a.y1 - a.y + 800) / q);
+    if (gw * gh > 1.2e6) return null;
+    const c = document.createElement('canvas'); c.width = gw; c.height = gh; const x = c.getContext('2d', { willReadFrequently: true });
+    x.setTransform(1 / q, 0, 0, 1 / q, -x0 / q, -y0 / q); x.fillStyle = '#f00'; x.fill(unionPath(M));
+    if (M.coast.length) { x.globalCompositeOperation = 'lighter'; x.fillStyle = '#0f0'; x.fill(seaPath(M), 'evenodd'); }
+    const d = x.getImageData(0, 0, gw, gh).data, m = new Uint8Array(gw * gh); for (let i = 0; i < m.length; i++) m[i] = (d[i * 4] > 127 ? 1 : 0) | (d[i * 4 + 1] > 127 ? 2 : 0);
+    c.width = c.height = 1;
+    const sea0 = M.coast.length ? 2 : 0;
+    return { at(wx, wy) { const i = Math.floor((wx - x0) / q), j = Math.floor((wy - y0) / q); return i < 0 || j < 0 || i >= gw || j >= gh ? sea0 : m[j * gw + i]; } };
+  }
+
   /* ---------- live layers ---------- */
   function liveTextures(scene) {
     const make = (key, w, h, draw) => { const k = TEX + '-' + key; if (scene.textures.exists(k)) return k; const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); scene.textures.addCanvas(k, c); return k; };
@@ -682,6 +716,14 @@ window.GardenPaintWater = (function () {
       // a strip of white water that tiles along x: the weir and riffle foam scroll this
       // a wave running up the sand: a soft white crescent, brightest along its leading edge, fading back into the sea
       lap: make('lap', 64, 16, (cx) => { const g = cx.createLinearGradient(0, 3, 0, 15); g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(.3, 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)'); cx.fillStyle = g; cx.beginPath(); cx.moveTo(2, 9); cx.quadraticCurveTo(32, 1, 62, 9); cx.quadraticCurveTo(32, 18, 2, 9); cx.fill(); const e = cx.createLinearGradient(0, 0, 64, 0); e.addColorStop(0, 'rgba(0,0,0,1)'); e.addColorStop(.18, 'rgba(0,0,0,0)'); e.addColorStop(.82, 'rgba(0,0,0,0)'); e.addColorStop(1, 'rgba(0,0,0,1)'); cx.globalCompositeOperation = 'destination-out'; cx.fillStyle = e; cx.fillRect(0, 0, 64, 16); }),
+      // a small wave on the open sea: a bright crest, tapered at both ends, over the darker water of its own trough
+      crest: make('crest', 48, 14, (cx) => { cx.lineCap = 'round'; const g = (a) => { const l = cx.createLinearGradient(3, 0, 45, 0); l.addColorStop(0, 'rgba(255,255,255,0)'); l.addColorStop(.32, 'rgba(255,255,255,' + a + ')'); l.addColorStop(.62, 'rgba(255,255,255,' + a + ')'); l.addColorStop(1, 'rgba(255,255,255,0)'); return l; };
+        cx.strokeStyle = 'rgba(24,64,80,.7)'; cx.lineWidth = 2.6; cx.beginPath(); cx.moveTo(7, 10.8); cx.quadraticCurveTo(24, 6.2, 42, 10.8); cx.stroke();
+        cx.globalCompositeOperation = 'destination-in'; cx.fillStyle = g(1); cx.fillRect(0, 0, 48, 14); cx.globalCompositeOperation = 'source-over';
+        cx.strokeStyle = g(.38); cx.lineWidth = 5; cx.beginPath(); cx.moveTo(4, 8); cx.quadraticCurveTo(24, 2.5, 44, 8); cx.stroke();
+        cx.strokeStyle = g(1); cx.lineWidth = 2.3; cx.beginPath(); cx.moveTo(4, 7.6); cx.quadraticCurveTo(24, 2.2, 44, 7.6); cx.stroke(); }),
+      // a lamp's light lying on the water: a short soft bar, brightest in the middle
+      streak: make('streak', 32, 8, (cx, w, h) => { const g = cx.createRadialGradient(16, 4, 0, 16, 4, 16); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.4, 'rgba(255,255,255,.5)'); g.addColorStop(1, 'rgba(255,255,255,0)'); cx.save(); cx.scale(1, .25); cx.fillStyle = g; cx.fillRect(0, 0, 32, 32); cx.restore(); }),
       strip: make('strip', 128, 32, (cx) => { const r = rng(31); for (let i = 0; i < 70; i++) { const x = r() * 128, y = 4 + r() * 24, len = 4 + r() * 18, a = .25 + r() * .6; cx.strokeStyle = 'rgba(255,255,255,' + a + ')'; cx.lineWidth = .8 + r() * 1.8; cx.lineCap = 'round'; for (const ox of [0, -128, 128]) { cx.beginPath(); cx.moveTo(x + ox, y); cx.lineTo(x + ox + len, y + (r() - .5) * 2); cx.stroke(); } } }),
     };
   }
@@ -750,6 +792,61 @@ window.GardenPaintWater = (function () {
           } });
         }
       }
+    }
+    // The open sea's own surface, a pool of sprites that follows the camera: small waves that rise, run a little with the wind
+    // and fall back, and sparkles of the sun (gold at dusk, the moon's at night). A grid fixed to the world gives each cell at
+    // most one, at its own place and time, and only where the sea runs on well clear of any shore (the swell and foam live
+    // there); a cell is tested once. Only cells on screen hold a sprite, so its cost does not grow with the sea.
+    const MK = S.mask;
+    if (MK && S.M.coast.length) {
+      const pool = [], NP = 110, cells = new Map(), clear = (x, y, m) => MK.at(x, y) === 2 && MK.at(x - m, y) === 2 && MK.at(x + m, y) === 2 && MK.at(x, y - m * .7) === 2 && MK.at(x, y + m * .7) === 2;
+      for (let i = 0; i < NP; i++) pool.push({ im: add(scene.add.image(0, 0, T.crest)).setAlpha(0).setVisible(false), on: false });
+      const hc = (a, b, c) => { let h = Math.imul(a * 73856093 ^ b * 19349663 ^ c * 83492791, 2654435761) >>> 0; h ^= h >>> 15; return (h % 100000) / 100000; };
+      const crestTint = night ? 0xb4c6e8 : dusk ? 0xffe2c0 : 0xffffff, crestA = night ? .3 : dusk ? .6 : .78, sparkTint = night ? 0xdce6ff : dusk ? 0xffd08a : 0xffffff, sparkA = night ? .5 : dusk ? .85 : .6;
+      out.push({ b: { x: -1e6, y: -1e6, w: 2e6, h: 2e6 }, list: pool, kind: 'sea surface', update(dt, t) {
+        const v = S.view; if (!v) return; const G = v.w > 1700 ? 256 : v.w > 900 ? 128 : 64, gx0 = Math.floor(v.x / G), gy0 = Math.floor(v.y / G), gx1 = Math.ceil((v.x + v.w) / G), gy1 = Math.ceil((v.y + v.h) / G);
+        let n = 0;
+        for (let gy = gy0; gy < gy1 && n < NP; gy++) for (let gx = gx0; gx < gx1 && n < NP; gx++) {
+          const key = G + ':' + gx + ':' + gy; let c = cells.get(key);
+          if (c === undefined) { if (cells.size > 6000) cells.clear(); const cx0 = (gx + .5) * G, cy0 = (gy + .5) * G; c = clear(cx0, cy0, G * .5 + 22) ? { x: cx0, y: cy0, ph: hc(gx, gy, 1), per: 3.2 + hc(gx, gy, 2) * 3.4, sp: hc(gx, gy, 3) < (dusk ? .42 : night ? .3 : .26) } : null; cells.set(key, c); }
+          if (!c) continue;
+          const u = t / c.per + c.ph, cyc = Math.floor(u), f = u - cyc;
+          if (hc(gx, gy, cyc + 11) < .22) continue;   // (now and then a cell rests a cycle, so the sea never shows a grid)
+          const g = pool[n++], x = c.x + (hc(gx, gy, cyc + 5) - .5) * G * .9, y = c.y + (hc(gx, gy, cyc + 7) - .5) * G * .9, k = .65 + hc(gx, gy, cyc + 9) * .6;
+          if (!g.on) { g.im.setVisible(true); g.on = true; }
+          if (c.sp) { const s = Math.max(0, Math.sin(f * Math.PI)) ** 4; if (g.im.texture.key !== T.spark) g.im.setTexture(T.spark); g.im.setTint(sparkTint).setPosition(x, y).setRotation(0).setScale(k * .8, k * .55).setAlpha(s * sparkA); }
+          else { const s = Math.sin(f * Math.PI); if (g.im.texture.key !== T.crest) g.im.setTexture(T.crest); g.im.setTint(crestTint).setPosition(x + f * 7, y - f * 1.5).setRotation(-.04).setScale(k * (.7 + f * .45), k * (.8 + s * .25)).setAlpha(s * s * crestA); }
+        }
+        for (let i = n; i < NP; i++) { const g = pool[i]; if (g.on || g.im.visible) { g.im.setVisible(false); g.on = false; } }
+      } });
+    }
+    // A lamp's light lying on the water at dusk and at night: a column of soft bars that waver, below the lamp as its mirror
+    // image would fall (as far under its foot as the light stands above it), only where that falls on water. The lamps are
+    // the light module's (the world's light sources); they are read again now and then, as the world builds them.
+    if ((night || dusk) && MK) {
+      const pool = [], NL = 90, rows = [];
+      for (let i = 0; i < NL; i++) pool.push({ im: add(scene.add.image(0, 0, T.streak)).setAlpha(0).setVisible(false).setBlendMode(Phaser.BlendModes.ADD), on: false });
+      let seen = -1, readAt = -10;
+      const read = () => {
+        const Wd = window.GardenNative && GardenNative.world && GardenNative.world(), L = Wd && Wd.lightSources ? Wd.lightSources() : null; if (!L || L.length === seen) return; seen = L.length; rows.length = 0;
+        for (const l of L) { if (/falls/.test(String(l.id || ''))) continue;   // (the falls is a landmark with a door, not a lit window)
+          const x = +l.x, top = +l.y, foot = Number.isFinite(+l.ground) && l.ground != null ? +l.ground : top + Math.min(60, (+l.height || 40)); if (!Number.isFinite(x) || !Number.isFinite(top)) continue;
+          const h = Math.max(14, foot - top), col = typeof l.color === 'number' ? l.color : 0xffd88e, pw = Math.max(0, Math.min(1, +l.intensity || .7));
+          for (let k = 0; k < 7; k++) { const y = foot + 5 + k * h * 1.15 / 6; if (MK.at(x, y) && MK.at(x - 6, y) && MK.at(x + 6, y)) rows.push({ x, y, k, col, pw: pw * (1 - k / 8.5), ph: (x * .07 + top * .03) % 6.28 }); }
+          if (rows.length >= NL) break;
+        }
+      };
+      out.push({ b: { x: -1e6, y: -1e6, w: 2e6, h: 2e6 }, list: pool, kind: 'lamp light', update(dt, t) {
+        if (t - readAt > 2) { readAt = t; read(); }
+        const v = S.view, env = window.GardenNative && GardenNative.lighting && GardenNative.lighting(), day = env && env.environment ? Math.max(0, Math.min(1, +env.environment().daylight || 0)) : (night ? 0 : .4), lit = Math.max(0, Math.min(1, (.62 - day) / .42));
+        let n = 0;
+        if (v && lit > .02) for (const r of rows) { if (n >= NL) break; if (r.x < v.x - 40 || r.x > v.x + v.w + 40 || r.y < v.y - 40 || r.y > v.y + v.h + 40) continue;
+          const g = pool[n++]; if (!g.on) { g.im.setVisible(true); g.on = true; }
+          const wob = Math.sin(t * 1.4 + r.ph + r.k * .9), wid = (.32 + r.k * .07) * (1 + .18 * Math.sin(t * 2.1 + r.k * 1.7 + r.ph));
+          g.im.setTint(r.col).setPosition(r.x + wob * (1 + r.k * .5), r.y).setScale(wid, .7).setAlpha(r.pw * lit * (.55 + .2 * Math.sin(t * 2.6 + r.k + r.ph)));
+        }
+        for (let i = n; i < NL; i++) { const g = pool[i]; if (g.on || g.im.visible) { g.im.setVisible(false); g.on = false; } }
+      } });
     }
     S.sortParent = true;
     // Foam strips: the weir and the falls' landing (scrolling white water).
@@ -855,7 +952,7 @@ window.GardenPaintWater = (function () {
     const S = state = { scene, parent, objects: objects || null, W: info.W, data: info.data, season: info.season || 'summer', tod: info.tod || 'day', serial: 0, clock: 0, last: null, sortParent: false };
     S.P = palette(S.tod, S.season); S.M = ok(() => build(info.W, info.data)); if (!S.M || !S.M.all) { state = null; return null; }
     const sp = ok(() => setPieces(S)) || { extras: [], foams: [], mists: [] }; S.extras = sp.extras; S.foams = sp.foams; S.mists = sp.mists;
-    S.tex = liveTextures(scene); S.em = ok(() => emitters(S)) || [];
+    S.tex = liveTextures(scene); S.mask = ok(() => waterMask(S)); S.em = ok(() => emitters(S)) || [];
     // every reed stamp is drawn now, with the ground, so walking never pays for one
     { const w0 = performance.now(), need = new Set(); for (const w of S.M.waters) for (const f of w.feats) if (f.needs) for (const q of f.needs) need.add(stampKey(q[0], q[1], S.season, q[2]) + '#' + q.join('#')); for (const k of need) { const q = k.split('#').slice(1); stampCanvas(q[0], +q[1], S.season, +q[2]); } S.warmMs = Math.round(performance.now() - w0); S.warmCount = need.size; }
     // the still picture: the paint kit's layer bakes it at the camera's level; the chunks on screen now are baked at once
@@ -878,7 +975,7 @@ window.GardenPaintWater = (function () {
     S.frame = (S.frame || 0) + 1;
     if (S.sortParent && S.parent.sort) { S.parent.sort('depth'); S.sortParent = false; }
     if (S.sortObjects && S.objects && S.objects.sort) { S.objects.sort('depth'); S.sortObjects = false; }
-    const pad = { x: view.x - 60, y: view.y - 60, w: view.w + 120, h: view.h + 120 };
+    const pad = { x: view.x - 60, y: view.y - 60, w: view.w + 120, h: view.h + 120 }; S.view = view;
     for (const e of S.em) {
       const vis = hit(e.b, pad);
       if (vis !== e.vis) { e.vis = vis; for (const g of e.list) g.im.setVisible(vis); for (const q of e.rings || []) q.im.setVisible(vis); }
@@ -892,7 +989,8 @@ window.GardenPaintWater = (function () {
   }
   function status() {
     const S = state; let sprites = 0, visible = 0; if (S) for (const e of S.em) { sprites += e.list.length + (e.rings || []).length; if (e.vis) visible += e.list.length + (e.rings || []).length; }
-    return { slowest, warm: S ? [S.warmCount, S.warmMs] : null, on: !!S, tod: S && S.tod, waters: S ? S.M.waters.length : 0, buildMs: S && S.buildMs, tickWorst: +tickWorst.toFixed(1), sprites, visible, memory: memory(), weir: S && S.weir ? [Math.round(S.weir.x), Math.round(S.weir.y)] : null, mouths: S ? S.M.mouths.map(m => [Math.round(m.x), Math.round(m.y), Math.round(m.hw)]) : null, lastError };
+    const pools = S ? S.em.filter(e => e.kind === 'sea surface' || e.kind === 'lamp light').map(e => e.kind + ' ' + e.list.filter(g => g.on).length + '/' + e.list.length) : null;
+    return { slowest, pools, warm: S ? [S.warmCount, S.warmMs] : null, on: !!S, tod: S && S.tod, waters: S ? S.M.waters.length : 0, buildMs: S && S.buildMs, tickWorst: +tickWorst.toFixed(1), sprites, visible, memory: memory(), weir: S && S.weir ? [Math.round(S.weir.x), Math.round(S.weir.y)] : null, mouths: S ? S.M.mouths.map(m => [Math.round(m.x), Math.round(m.y), Math.round(m.hw)]) : null, lastError };
   }
   /** Whether this painter paints the sea surface too (the native water then draws no surf line of its own along the coast). */
   function paintsSea() { return !!(state && state.layer && state.M && state.M.coast.length); }
