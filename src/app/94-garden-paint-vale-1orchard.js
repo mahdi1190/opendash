@@ -143,7 +143,9 @@
         V.clipGround(B, L, cb, true);
         const winter = season === 'winter';
         // the bank's shade laid soft on the terrace below it
-        soft(B, cb, S => { S.f(band(b.pts, 0, SHADE + 10), winter ? '#4a5048' : '#3a4a20', .3).f(band(b.pts, 0, SHADE * .5), winter ? '#4a5048' : '#2e3e18', .24); });
+        soft(B, cb, S => { S.f(band(b.pts, 0, SHADE + 10), winter ? '#4a5048' : '#3a4a20', .4).f(band(b.pts, 0, SHADE * .5), winter ? '#4a5048' : '#2e3e18', .3);
+          // and the lit lip of the terrace above, so each level reads as a step: light on top, the bank, shade below
+          S.f(band(b.pts.map(p => ({ x: p.x, y: p.y - FACE * p.t, t: p.t })), 16, 0), winter ? '#f4f4ea' : '#f4ecb0', .2); });
         // the face, turned from the sun: deeper green at the foot, lit towards the lip; its upper edge wanders a little
         const face = new Path2D(); b.pts.forEach((p, i) => { const y = p.y - FACE * p.t * (.85 + kit.noise(p.cx * 1.7, b.k, 816) * .3); i ? face.lineTo(p.x, y) : face.moveTo(p.x, y); });
         for (let i = b.pts.length - 1; i >= 0; i--) face.lineTo(b.pts[i].x, b.pts[i].y + 1.5 * b.pts[i].t);
@@ -160,8 +162,22 @@
           const lift = t => FACE * t * (.85 + kit.noise(t === p.t ? p.cx * 1.7 : q.cx * 1.7, b.k, 816) * .3);
           if (n > .25) B.s(`M${p.x} ${p.y - lift(p.t) + .6}L${q.x} ${q.y - lift(q.t) + .6}`, winter ? '#f6f6ee' : '#f2ecb4', 1.6, .55 * Math.min(p.t, q.t));
           if (n < .8) B.s(`M${p.x} ${p.y + .8}L${q.x} ${q.y + .8}`, '#2c3818', 1.8, .32 * Math.min(p.t, q.t)); }
-        // the face's grass, longer than the mown terrace and leaning down the slope; flowers in drifts; a broken
-        // dry-stone foot where the bank is highest, laid only where a stone sits wholly off the path
+        // the dry-stone face that holds the terrace up, where the bank stands highest: courses of honey limestone laid in
+        // bond, a turf cope over it and a dark seam at its foot, broken where a path climbs (19 Nov 2026: the terraces read as
+        // one lawn crossed by strips of loose stones, with no wall faces and no change of level)
+        { let run = []; const runs = []; for (const p of b.pts) { if (p.t > .3 && offPath(p.cx, p.cy, 4)) run.push(p); else { if (run.length > 3) runs.push(run); run = []; } } if (run.length > 3) runs.push(run);
+          for (const rn of runs) {
+            const top = rn.map(p => ({ x: p.x, y: p.y - FACE * p.t * .78 })), bot = rn.map(p => ({ x: p.x, y: p.y + 1 })), poly = B.poly(top.concat(bot.slice().reverse()));
+            B.f(poly, winter ? '#8e887a' : '#8c7c5c', .96);
+            B.cx.save(); B.cx.clip(new Path2D(poly));
+            const x0 = rn[0].x - 4, x1 = rn[rn.length - 1].x + 4, yTop = Math.min(...top.map(q => q.y)), yBot = Math.max(...bot.map(q => q.y));
+            for (let y = yBot - .5, row = 0; y > yTop - 2; y -= 4.3, row++) for (let x = x0 - (row & 1) * 3.5; x < x1; ) { const w = 3.6 + r() * 6.4, tone = r(), sh = 2.8 + r() * 1.4, dy = (r() - .5) * .9; B.f(B.rr(x, y - sh - .2 + dy, w - .9, sh, 1.2), tone < .35 ? FOOT.rock : tone < .7 ? FOOT.rockLo : FOOT.rockHi).f(B.rr(x + .4, y - sh - .2 + dy, w * .6, 1, .5), '#efe4c4', .45);   /* (each stone its own length and depth, rounded by weather: laid even they read as brick) */ if (!winter && r() < .06) B.f(B.ell(x + w / 2, y - 3, w * .4, 1.3), '#8a9a4e', .7); x += w; }
+            B.f(poly, B.lin(0, yTop, 0, yBot, [[0, 'rgba(255,244,210,.12)'], [1, 'rgba(40,34,20,.22)']]));
+            B.cx.restore();
+            B.s(B.line(bot), '#2c2818', 1.8, .4);
+            B.s(B.line(top.map(q => ({ x: q.x, y: q.y + .6 }))), winter ? '#f4f4ee' : P.lawnLo || '#5a7a3a', 2.6, .85).s(B.line(top.map(q => ({ x: q.x, y: q.y - .6 }))), winter ? '#ffffff' : '#b4c070', 1.3, .75);
+          } }
+        // the face's grass, longer than the mown terrace and leaning down the slope; flowers in drifts
         for (let i = 0; i < b.pts.length; i++) {
           const p = b.pts[i]; if (p.t < .15) continue;
           if (p.x < cb[0] - 20 || p.x > cb[2] + 20) continue;
@@ -170,11 +186,6 @@
           if (r() < .55) B.tufts(r, p.x + (r() - .5) * 10, p.y - fh - 1, 10, 3, winter ? ['#a8a890'] : ['#a8b468', P.lawnHi || '#c4cc7a'], 5);
           const drift = kit.noise(p.cx / 2.6, b.k * 5.1, 813);
           if (flowers.length && drift > .56 && r() < .7) for (let f = 0; f < 3; f++) B.f(B.circ(p.x + (r() - .5) * 12, p.y - fh * (.25 + r() * .6), 1.3 + r() * .5), flowers[Math.floor(r() * flowers.length)], .92);
-          const foot = kit.noise(p.cx / 1.7, b.k * 2.3, 814);
-          if (p.t > .35 && foot > .22 && i % 2 === 0 && offPath(p.cx, p.cy, 6)) {
-            // the dry-stone revetment along the bank's foot: courses of flat stones laid end to end, three where the bank is highest
-            for (let c = 0; c < (foot > .6 ? 3 : foot > .38 ? 2 : 1); c++) { let x = p.x - 7 + c * 3; while (x < p.x + 7) { const sw = 3.4 + r() * 2.6, sh = 2 + r() * .8; B.stone(r, x + sw, p.y - 1.6 - c * 3.6 - sh * .4, sw, sh, FOOT, foot > .74 && !winter && r() < .4 ? '#8a9a4e' : null); x += sw * 2 + .6; } }
-          }
         }
       });
     }

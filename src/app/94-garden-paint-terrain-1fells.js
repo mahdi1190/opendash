@@ -168,7 +168,7 @@ window.GardenPaintedTerrain = (function () {
     for (const c of L.sections) if (/top|flat|pasture|view|warren|stones|end/.test(c.id) && !(summit && Math.hypot(c.x - summit.cx, (c.y - summit.cy) * 1.6) < 6.5) && !inPeak(c.x, c.y)) tops.push([c.x + .4, c.y - .6, /flat/.test(c.id) ? 6.4 : 4.2, /flat/.test(c.id) ? 1.9 : 2.3, /top/.test(c.id) ? 4 : 3]);
     if (pass) for (const sd of [-1, 1]) tops.push([pass.x + .5 + sd * 4, pass.y - 2.1 - (sd > 0 ? .9 : 0), 3.3, 1.8, 4]);
     for (let y = 4; y < (rb[3] - W.sky) / ch - 5; y += 5) for (let x = 3; x < W.cols - 3; x += 7) { const jx = x + (kit.hash(x, y, 701) % 100) / 30 - 1.6, jy = y + (kit.hash(x, y, 702) % 100) / 60 - .8, c = L.cpt(jx, jy);
-      if (moor(c.x) > .5 && kit.fbm(jx / 11, jy / 6, 703) > .58 && fellAt(c.x, c.y) && !inPeak(jx, jy) && tops.every(t => Math.hypot(t[0] - jx, (t[1] - jy) * 1.8) > 8)) tops.push([jx, jy, 5.4, 2.4, 3]); }
+      if ((moor(c.x) > .5 ? kit.fbm(jx / 11, jy / 6, 703) > .58 : kit.fbm(jx / 11, jy / 6, 703) > .6) && fellAt(c.x, c.y) && !inPeak(jx, jy) && tops.every(t => Math.hypot(t[0] - jx, (t[1] - jy) * 1.8) > 8)) tops.push([jx, jy, 5.4, 2.4, 3]); }
     tops.forEach(([x, y, rx, ry, n], hi) => {
       const c = L.cpt(x, y), RX = rx * cw, RY = ry * ch;
       add([c.x - RX - 30, c.y - RY - 40, c.x + RX + 30, c.y + RY + 30], 100 + hi, (B, r0, cb) => {
@@ -178,9 +178,9 @@ window.GardenPaintedTerrain = (function () {
           const s = 1 - k / (n + .4), rr = kit.rng(900 + hi * 31 + k), cx0 = c.x - k * 5, cy0 = c.y - k * RY * .18, m = moor(cx0);
           const base = m > .5 ? kit.mix(P.heather, P.fellHi, k / n * .5) : kit.mix(P.fell, P.fellHi, k / n);
           const d = B.blob(rr, cx0, cy0, RX * s, RY * s, 11, .32);
-          S.cx.save(); S.cx.translate(RX * s * .05 + 2, RY * s * .1 + 2.5); S.f(d, m > .5 ? P.heatherLo : P.fellLo, .3); S.cx.restore();
-          S.f(d, base, .32);
-          S.f(B.blob(rr, cx0 - RX * s * .28, cy0 - RY * s * .3, RX * s * .42, RY * s * .26, 8, .4), P.fellHi, .22);
+          S.cx.save(); S.cx.translate(RX * s * .07 + 3, RY * s * .14 + 3.5); S.f(d, m > .5 ? P.heatherLo : kit.mix(P.fellLo, '#4a5230', .3), .42); S.cx.restore();
+          S.f(d, base, .36);
+          S.f(B.blob(rr, cx0 - RX * s * .28, cy0 - RY * s * .3, RX * s * .42, RY * s * .26, 8, .4), kit.mix(P.fellHi, '#f4ecc0', .25), .34);   // (stronger light and shade: the fells read as one flat meadow)
         } });
       });
     });
@@ -309,6 +309,23 @@ window.GardenPaintedTerrain = (function () {
       B.f(B.rect(xs1 - 220, top - 60, 400, W.sky - top + 110), B.lin(xs1 - 220, 0, xs1 + 40, 0, [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,1)']]));
       B.cx.globalCompositeOperation = 'source-over';
     });
+    // 4b. The march wall: where the fell runs out at the map's north edge you stop at an old boundary wall, high as your
+    // waist, tumbled in places, grown over with turf and lichen (you stopped in open grass with nothing to say why).
+    // (walking stops a fifth of a cell into the top row of the layout's land, wherever that row is fell)
+    { const edgeY = []; for (let x = 0; x <= W.cols; x += .5) edgeY.push({ y: W.sky + .2 * ch - 1, ok: fellAt(Math.min(W.cols - .05, x) * cw, W.sky + .5 * ch) });
+      const hh = gardenSizePx('wall', .2);
+      add([0, W.sky - hh - 20, worldW, W.sky + 3 * ch + 10], 33, (B, r0, cb) => {
+        B.cx.clip(coastP, 'evenodd');   // (not the region: the wall stands up above the map's top row)
+        for (let tx = Math.floor((cb[0] - 20) / 20) * 20; tx < cb[2] + 20; tx += 20) { const r = kit.rng(kit.hash(tx, 7, 34)); for (let x = tx; x < tx + 20; ) {
+          const i = Math.max(0, Math.min(edgeY.length - 1, Math.round(x / cw * 2))), e = edgeY[i]; if (!e.ok) { x += 6; continue; }
+          const n = kit.noise(x / 40, 1.3, 461), h = hh * (.62 + kit.noise(x / 9, 2.1, 462) * .35) * (n < .25 ? .6 : 1), w = 4 + r() * 5, y0 = e.y + 3;
+          if (x === tx) B.f(B.rect(tx - .5, y0 - h * .7, 21, h * .7), snowRow > 90 ? P.snowSh : '#6e685c', .95);
+          const rows = Math.max(2, Math.round(h / 4.4)); for (let k = 0; k < rows; k++) { const sy = y0 - 2.4 - k * (h - 3.5) / rows + (r() - .5), bx = x + (k & 1 ? w * .5 : 0) + (r() - .5) * 1.6, bw = w * (.7 + r() * .6); B.f(B.ell(bx + bw / 2 + .6, sy + .9, bw / 2, 2.1), '#4e483e', .4).f(B.ell(bx + bw / 2, sy, bw / 2 * (.85 + r() * .3), 2 + r() * .6), r() < .4 ? '#a8a090' : r() < .6 ? '#bdb5a3' : '#8e8678').f(B.ell(bx + bw / 2 - 1, sy - 1, bw / 4, .7), '#dcd6c6', .4); }
+          B.f(B.ell(x + w / 2, y0 - h + 1.4, w * .45, 1.6), snowRow > 90 ? P.snow : r() < .3 ? P.moss : '#c2baa6');
+          if (snowRow <= 90 && r() < .35) B.tufts(r, x + w / 2, y0 + 1, 7, 3, [P.fellLo, P.bleach], 5);
+          if (n < .25 && r() < .5) B.stone(r, x + (r() - .5) * 6, y0 + 3 + r() * 4, 2 + r() * 2, 1.3 + r(), P, snowRow > 90 ? 'snow' : null);
+          x += w + .3; } }
+      }); }
     // 5. Snow above the snow line: a white blanket with a ragged edge, blue shade in the south-east falls, rock and heather through it.
     if (snowRow > -5) add(fellBB, 41, (B, r0, cb) => {
       clipFell(B);
@@ -521,9 +538,12 @@ window.GardenPaintedTerrain = (function () {
           B.f(B.blob(rr, p.x + (rr() - .5) * 4, p.y + .5 + rr() * 1.6, 3 + rr() * 4, 1.6 + rr() * 2.2, 6, .5), col, .95); }
         B.s(B.line(idx.map(i => ({ x: L2[i].x, y: L2[i].y - 1.6 }))), snowy ? '#ffffff' : P.fellHi, 2.2, .75);
         if (!snowy) for (const i of idx) { if (i % 2) continue; const rr = R(i, 4); if (rr() < .5) B.tufts(rr, L2[i].x, L2[i].y + 1.5, 6, 3, [P.fellLo, P.bleach], 5); }
-        const cap = (i, dir) => { const a = L2[i], b = F2[i], w = 12 * dir, pts = [a, { x: a.x + w * .6, y: a.y + 3 }, { x: a.x + w, y: (a.y + b.y) / 2 }, { x: b.x + w * .9, y: b.y }, b];
-          B.f(B.poly(pts), dir < 0 ? P.rockHi : P.rockDk, dir < 0 ? .85 : .75).f(B.poly([a, { x: a.x + w * .6, y: a.y + 3 }, { x: a.x + w * .4, y: a.y + 6 }, { x: a.x, y: a.y + 4 }]), snowy ? P.snow : P.fell, .95);
-          for (let k = 0; k < 3; k++) B.s(`M${a.x + w * (.3 + k * .2)} ${a.y + 6 + k * 4}l${w * .1} 10`, P.rockDk, .8, .4); };
+        // an open end of the Edge runs out as the rock does: the face drops in a slump of boulders and scree into the turf
+        // (it ended in a hard pale triangle at the beach and the pass)
+        const cap = (i, dir) => { const a = L2[i], b = F2[i], hgt = Math.max(8, b.y - a.y), rr = R(i, 77 + dir);
+          for (let k = 0; k < 6; k++) { const t = k / 5, x = a.x + dir * (4 + t * 22), y = a.y + hgt * (.35 + t * .5) + rr() * 3, s = (1 - t * .6) * (7 + rr() * 5); B.boulder(rr, x, y, s, s * .7, Object.assign({}, P, { rock: '#9c917e', rockLo: '#6e655a', rockHi: '#c8bea8' }), snowy); }
+          for (let k = 0; k < 8; k++) B.stone(rr, a.x + dir * (6 + rr() * 30), b.y + rr() * 8 - 2, 1.4 + rr() * 2.6, 1 + rr() * 1.4, P, snowy ? 'snow' : null);
+          if (!snowy) B.tufts(rr, a.x + dir * 18, b.y + 2, 18, 5, [P.fellLo, P.bleach], 6); };
         if (openStart && s0 === 0) cap(0, -1); if (openEnd && s1 === N - 1) cap(N - 1, 1);
       });
     }
@@ -753,7 +773,7 @@ window.GardenPaintedTerrain = (function () {
     for (let yy = 0; yy < PH; yy++) for (let col = 1; col < PW - 1; col++) { const o = (yy * PW + col) * 4; if (px[o + 3] === 0 && px[o - 1] === 255 && px[o + 7] === 255) for (let q = 0; q < 4; q++) px[o + q] = (px[o - 4 + q] + px[o + 4 + q]) >> 1; }
     cx.putImageData(img, 0, 0);
     // a breath of blur, so the long spans of a steep face do not read as stripes
-    const cv2 = document.createElement('canvas'); cv2.width = PW; cv2.height = PH; const c2 = cv2.getContext('2d'); c2.filter = 'blur(.8px)'; c2.drawImage(cv, 0, 0); c2.filter = 'none'; c2.globalAlpha = .55; c2.drawImage(cv, 0, 0); c2.globalAlpha = 1;
+    const cv2 = document.createElement('canvas'); cv2.width = PW; cv2.height = PH; const c2 = cv2.getContext('2d'); c2.filter = 'blur(1.25px)'; c2.drawImage(cv, 0, 0); c2.filter = 'none'; c2.globalAlpha = .3;   /* (more of the blur: the field's rows showed as stair-steps where one ground met another) */ c2.drawImage(cv, 0, 0); c2.globalAlpha = 1;
     const out = { cv: cv2, ST, sky, top, cls, PW, PH, h, NX, NY, gx0, gy0 };
     PEAK_FIELDS.set(key, out); if (PEAK_FIELDS.size > 8) PEAK_FIELDS.delete(PEAK_FIELDS.keys().next().value);
     return out;
