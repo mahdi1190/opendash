@@ -23,6 +23,8 @@
  *                                            against its art; a fence's block reaches each joint of a run; a long
  *                                            thing's drawn ends stop the feet
  *   cast-on-dry                              a cell middle the cast accepts as water that is drawn as ground or rock
+ *   wall-low                                 a free-standing ruin wall drawn flat (under 0.8 of the figure's height at the
+ *                                            new size) along its line: it reads as a path the feet cannot walk on
  *   door-unreachable                         a door, gate or arrival point you cannot walk to from where you arrive
  *   click-area                               a click area that is not on its art
  *   path-blocked                             a drawn path that is not walkable along its middle or across its width
@@ -975,6 +977,47 @@
     }
   } catch (e) { overlap.error = String(e && e.stack || e).slice(0, 400); }
 
+  /* ---------- 16. walls drawn standing: a wall stops the feet along its line, so it must be drawn as a wall ---------- */
+  // A free-standing ruin wall that is painted as a flat strip edged with stones reads as a path, and the feet stop at it (the
+  // verifier, 19 Nov 2026: postern-wall-1 and the ruin walls by the old woodland). Along each wall's middle line, the
+  // standing paint over that point must be at least 0.8 of H, the figure's height at the new size (common rule 14: walls
+  // 0.8 to 1.2 H). An art fault, not a collision one: it is listed for the region's art. (A terrace wall is a retaining
+  // face painted into the ground picture, not a standing sprite: this check cannot read its height and leaves it out.)
+  const wallLow = { checked: 0, low: 0, H: 0 };
+  try {
+    // (the figure's drawn height: its body's box through its own scale, as the canopy fade reads it, 94-garden-native-world.js)
+    let fig = 50; try { const inner = _gw.node.querySelector('.gd-pl-in'), bx = inner.getBBox(), m = inner._matrix || { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }; fig = -Math.min(...[[bx.x, bx.y], [bx.x + bx.width, bx.y]].map(([x, y]) => GardenNativeArt.point(m, x, y).y)); } catch (e) { fig = 50; }
+    const H = .8 * Math.max(30, Math.min(100, fig || 50)); wallLow.H = Math.round(H); wallLow.figure = Math.round(fig);
+    const walls = objs.filter(o => o.kind === 'wall' && o.P && o.mx && Math.abs(o.mx.b) < 1e-6 && Math.abs(o.mx.c) < 1e-6);
+    const standingAt = (X, Y) => {
+      let best = 0;
+      for (const o of walls) {
+        if (X < o.bounds.x || X > o.bounds.x + o.bounds.w || Y < o.bounds.y - 4 || Y > o.bounds.y + o.bounds.h + 8) continue;
+        const P = o.P, u = Math.round((X - o.mx.e) / o.mx.a + o.ox); if (u < 0 || u >= P.w) continue;
+        let top = -1, low = -1; for (let v = P.top; v <= P.bottom; v++) if (P.a[v * P.w + u] >= 160) { if (top < 0) top = v; low = v; }
+        if (top >= 0) best = Math.max(best, (low - top) * Math.abs(o.mx.d));
+      }
+      return best;
+    };
+    for (const f of (island.landforms || []).filter(f => f.col === 'full' && f.kind === 'ruin-wall' && f.polygon && f.polygon.length > 3)) {
+      const mid = typeof gardenRuinWallMid === 'function' ? gardenRuinWallMid(f.polygon) : []; if (mid.length < 2) continue;
+      let run = null, worst = Infinity; const runs = [];
+      for (let i = 1; i < mid.length; i++) {
+        const a = mid[i - 1], b = mid[i], n = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / .5));
+        // (only where the wall runs across the screen, within 30 degrees of level: a column of paint through a wall that runs
+        // up the screen is its length, not its height. Its ground plan is about 10 px deep, gardenRuinWallFoot)
+        if (Math.abs((b[1] - a[1]) * CH) > Math.abs((b[0] - a[0]) * CW) * .58) { if (run) { runs.push(run); run = null; } continue; }
+        for (let k = 0; k < n; k++) {
+          const x = a[0] + (b[0] - a[0]) * k / n, y = a[1] + (b[1] - a[1]) * k / n, p = toPx(x, y); wallLow.checked++;
+          const h = Math.max(0, standingAt(p.X, p.Y) - 10);
+          if (h < H * .8) { if (!run) run = { x, y, n: 0, h: Infinity }; run.n++; run.h = Math.min(run.h, h); } else if (run) { runs.push(run); run = null; }
+        }
+      }
+      if (run) runs.push(run);
+      for (const r of runs) if (r.n >= 3) { wallLow.low++; worst = Math.min(worst, r.h); push({ kind: 'wall-low', obj: 'wall', name: f.kind + ' ' + f.id, x: +r.x.toFixed(2), y: +r.y.toFixed(2), detail: 'over ' + (r.n * .5).toFixed(1) + ' cells of its line the wall is drawn ' + Math.round(r.h) + ' px tall or less (a wall stands 0.8 to 1.2 of the figure, ' + Math.round(H * .8) + ' to ' + Math.round(H * 1.2) + ' px): painted flat, it reads as a path the feet cannot walk on' }); }
+    }
+  } catch (e) { wallLow.error = String(e && e.stack || e).slice(0, 300); }
+
   /* ---------- 10. every decoration a player can place: each family, each way round ---------- */
   await stage('decor');
   const decor = { placed: 0, checked: 0, drawn: 0, families: {}, skipped: [] };
@@ -1074,5 +1117,5 @@
   const counts = { byKind: {}, byRegion: {}, byObject: {}, byRegionKind: {} };
   for (const f of faults) { counts.byKind[f.kind] = (counts.byKind[f.kind] || 0) + 1; counts.byRegion[f.region] = (counts.byRegion[f.region] || 0) + 1; counts.byObject[f.obj] = (counts.byObject[f.obj] || 0) + 1; const k = f.region + ' / ' + f.kind; counts.byRegionKind[k] = (counts.byRegionKind[k] || 0) + 1; }
   const objKinds = {}; for (const o of all) objKinds[o.kind] = (objKinds[o.kind] || 0) + 1;
-  return { total: faults.length, counts, faults, scanned: { sprites: all.length, checked, shapeTrees, parts, groundRocks, byKind: objKinds, rects: D.rects.length, cells: D.cells.length, doors: doorsChecked, clicks: D.clicks.length, landforms: (island.landforms || []).length, routes: (island.routes || []).length, pathSamples, lockedPlots: plots.size, lockedEdges, shorePoints: shore.points, shoreDrawnDryNotes: shore.notes, crossings: crossingsChecked, decks: decksNow.length, picture: mosaic, decor, feel, walkTo, closed, order, shutOrder, overlap } };
+  return { total: faults.length, counts, faults, scanned: { sprites: all.length, checked, shapeTrees, parts, groundRocks, byKind: objKinds, rects: D.rects.length, cells: D.cells.length, doors: doorsChecked, clicks: D.clicks.length, landforms: (island.landforms || []).length, routes: (island.routes || []).length, pathSamples, lockedPlots: plots.size, lockedEdges, shorePoints: shore.points, shoreDrawnDryNotes: shore.notes, crossings: crossingsChecked, decks: decksNow.length, picture: mosaic, decor, feel, walkTo, closed, order, shutOrder, overlap, wallLow } };
 })

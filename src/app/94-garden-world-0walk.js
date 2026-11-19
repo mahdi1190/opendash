@@ -101,7 +101,9 @@ function _gwBuildSolids(m) {
     // (the long wooden planter is a box of bedding drawn end to end across its two cells and half a cell deep: it blocks
     // end to end and that deep. Its half-size box left half a cell of drawn planter at each end to walk through (the
     // verifier, 18 Nov 2026), and a box a tenth of a cell short at each end let you stand in its end post (19 Nov 2026))
-    const long = def.id === 'planter-box', w = def.w || 1, h = def.h || 1, cx = dc.x + w / 2, foot = dc.y + h - 0.08, bw = long ? w - .04 : Math.min(w, 2) * 0.5, d = long ? .44 : 0.28 + (h > 1 ? 0.3 : 0);
+    // (and the mammoth skeleton stands on a plinth drawn 1.7 cells long, 52 px each side at the decorations' 0.8 scale,
+    // 94-garden-native-painted-decor-8prizes.js: the half-size box left both ends of the plinth to stand on, the audit)
+    const long = def.id === 'planter-box', plinth = def.id === 'play-fos-mammoth' ? 1.66 : 0, w = def.w || 1, h = def.h || 1, cx = dc.x + w / 2, foot = dc.y + h - 0.08, bw = long ? w - .04 : plinth || Math.min(w, 2) * 0.5, d = long || plinth ? .44 : 0.28 + (h > 1 ? 0.3 : 0);
     add(cx - bw / 2, foot - d, cx + bw / 2, foot, 'decoration: ' + (def.name || def.id));
   }
   for (const dc of m.decor) { const b = gardenFenceBand(dc); if (b) add(b.x0, b.y0, b.x1, b.y1, 'decoration: ' + (dc.def.name || dc.def.id)); }
