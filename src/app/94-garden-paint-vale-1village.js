@@ -207,14 +207,27 @@
     }
   }
 
+  /** A shut field's drawn outline (px): its cells' outline with the corners rounded, and for a grown edge the line wandering. */
+  const fieldLoops = (f, cells, W, cw, ch) => { const soft = SOFT.has(f.edge); return outline(cells).map(l => { const q = soften(l.map(p => ({ x: p[0] * cw, y: W.sky + p[1] * ch })), soft ? 30 : 20, soft ? .5 : .42); return soft ? wander(q, 5) : q; }); };
+  const lockedCells = (f, lv) => { const cells = [], secs = []; for (const s of f.sections) { const cs = cellsOf(s); if (cs.length && lockedAt(cs[0][0], cs[0][1], lv)) { secs.push(s); for (const c of cs) cells.push(c); } } return { cells, secs }; };
+  /** For walking (94-garden-world-0walk.js): each shut field's outline in cells, the same line its ground is drawn to, so the feet
+   * stop where the hedge, the long grass or the reeds are painted and not at the square cells under them. [{ poly, cells, src }] */
+  let formsKey = '', formsNow = [];
+  V.fieldForms = () => {
+    if (!V.wanted || !V.wanted()) return [];
+    const W = GARDEN_WORLD, lv = level(), shut = fields().map(f => [f, lockedCells(f, lv)]).filter(e => e[1].cells.length);
+    const key = lv + '|' + shut.map(e => e[0].id + ':' + e[1].secs.join(',')).join('/'); if (key === formsKey) return formsNow;
+    formsKey = key; formsNow = [];
+    for (const [f, s] of shut) for (const l of fieldLoops(f, s.cells, W, W.cellW, W.cellH)) formsNow.push({ poly: l.map(q => [q.x / W.cellW, (q.y - W.sky) / W.cellH]), cells: s.cells, src: 'shut field: ' + (f.name || f.id) });
+    return formsNow;
+  };
   /** What a field is now: its locked cells, their rounded outline, the runs of edge that face ground you can walk on, its gate. */
   function shape(f, C, lv) {
-    const W = C.W, cw = C.L.cw, ch = C.L.ch, cells = [], lockedSecs = [];
-    for (const s of f.sections) { const cs = cellsOf(s); if (cs.length && lockedAt(cs[0][0], cs[0][1], lv)) { lockedSecs.push(s); for (const c of cs) cells.push(c); } }
+    const W = C.W, cw = C.L.cw, ch = C.L.ch, { cells, secs: lockedSecs } = lockedCells(f, lv);
     if (!cells.length) return null;
     const key = f.id + '|' + lv + '|' + lockedSecs.join(','), hit = memo.get(key); if (hit) return hit;
     const mine = new Set(cells.map(c => c[0] + ',' + c[1]));
-    const soft = SOFT.has(f.edge), loops = outline(cells).map(l => { const q = soften(l.map(p => ({ x: p[0] * cw, y: W.sky + p[1] * ch })), soft ? 30 : 20, soft ? .5 : .42); return soft ? wander(q, 5) : q; });
+    const loops = fieldLoops(f, cells, W, cw, ch);
     const walk = (x, y) => { const cx = Math.floor(x / cw), cy = Math.floor((y - W.sky) / ch); if (mine.has(cx + ',' + cy)) return false; const b = gardenIslandBaseCell(cx, cy), row = gardenLandCell(cx, cy); return !!b && b.land && !b.freshwater && !b.solid && !(row && row.solid) && !lockedAt(cx, cy, lv); };
     const roadAt = (x, y) => { const b = gardenIslandBaseCell(Math.floor(x / cw), Math.floor((y - W.sky) / ch)); return !!(b && b.route); };
     // where this field meets another field that is also shut, the firmer of the two edges stands on the line between them

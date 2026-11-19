@@ -57,9 +57,7 @@ function gardenIslandStaticRow(row) {
   // The v5 well moved to the village but retained a doorway ten cells east.
   // Repair only that authored row; later Designer placements keep their own doors.
   if (data.version === 5 && p.id === 'ld-wish' && p.x === 33 && p.y === 58 && p.w === 1 && p.h === 1 && p.door && p.door.x === 43 && p.door.y === 58) next.door = Object.freeze({ x: p.x, y: p.y + p.h });
-  // The v5 shore bench stood behind the land office's roof (only its end showed). Presentation and seating only:
-  // it sits a few steps west on open ground by the lake walk, facing the water; the layout file is unchanged.
-  if (data.version === 5 && p.id === 'ld-bench-b' && p.x === 45 && p.y === 42 && p.w === 2) { next.x = 40.6; next.y = 42; next.door = Object.freeze({ x: 41, y: 43 }); }
+  // (2.74: the shore bench stands by the lake walk in the layout itself, vale-village.json, so it needs no move here)
   return next;
 }
 /** The woodpile's authored anchor and ground contact, shared by paint and feet. */
