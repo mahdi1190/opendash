@@ -542,13 +542,14 @@ window.GardenPaintedProps = (function () {
     trunk(-12, yn, -6, -150, 24);
     const canopy = [[-30, -176, 52, 34], [26, -170, 50, 32], [-4, -196, 46, 28], [-48, -146, 34, 26], [44, -142, 34, 24], [0, -150, 58, 30]];
     for (const [x, y, rx, ry] of canopy) B.crown(r, x, y, rx, ry, season, 6);
-    // a bough from the south oak reaching over into the north oak's crown: the arch itself
-    B.s(`M10 -64C8 -108 -2 -132 -10 -150`, bark[3], 13).s(`M10 -64C8 -108 -2 -132 -10 -150`, bark[1], 10).s(`M7 -68C5 -108 -4 -130 -12 -148`, bark[2], 3, .55);
+    // the arch itself: the north oak's great bough reaching out over the way and coming down into the south bank (a second
+    // trunk on the near side stood across the path in this view: round 3, first look)
+    const bough = `M-6 -150C14 -168 40 -128 30 -84C26 -62 22 ${ys - 30} 16 ${ys - 12}`;
+    B.s(bough, bark[3], 13).s(bough, bark[1], 10).s(`M-6 -153C14 -171 37 -130 27 -86`, bark[2], 3, .55);
+    for (const [x, y, rx, ry] of [[22, -150, 34, 22], [36, -112, 22, 18], [30, -80, 16, 14]]) B.crown(r, x, y, rx, ry, season, 5);
     // ivy and old man's beard hanging from the canopy over the way (never down to head height)
     for (let i = 0; i < 12; i++) { const x = -40 + i * 7 + (r() - .5) * 4, y = -126 - r() * 12, len = 10 + r() * 16; B.s(`M${x} ${y}q${(r() - .5) * 5} ${len * .5} ${(r() - .5) * 4} ${len}`, L[0], 1.3, .9); B.f(B.ell(x + (r() - .5) * 3, y + len * .85, 2, 1.5), L[1], .9); }
-    trunk(14, ys, 8, -118, 28);
-    B.crown(r, 18, -132, 44, 28, season, 6).crown(r, -6, -128, 30, 18, season, 4);
-    bank(ys + 10, ys + 104);
+    bank(ys - 6, ys + 100);
     if (open) {
       // cut: the bramble's stubs either side of the way, a heap of cut canes pushed to the bank, flowers where it was
       for (const y of [yn + 14, ys - 12]) for (let i = 0; i < 6; i++) { const x = -26 + i * 9 + (r() - .5) * 4, h = 6 + r() * 7; B.s(`M${x} ${y}l${(r() - .5) * 3} ${-h}`, '#6a3a36', 1.8).f(B.circ(x + .6, y - h, 1), '#c8a888', .9); }
@@ -992,7 +993,7 @@ window.GardenPaintedProps = (function () {
       if (deck && deck.halfWidth < 40) {
         const T = millPlanks(deck.length), [ta, tb] = T.plank(T.gap), pt = (t, s) => deck.deckPoint(t / deck.length, s), c = pt((ta + tb) / 2, 0), hw = deck.halfWidth;
         // (only the length of it that shows between the parapets: drawn over them, the whole plank hung down the bridge's face)
-        const quad = [pt(ta, -hw + 1), pt(tb, -hw + 1), pt(tb, hw - 10), pt(ta, hw - 10)].map(p => [p.x - c.x, p.y - c.y]), xs = quad.map(p => p[0]), ys = quad.map(p => p[1]);
+        const quad = [pt(ta, -hw + 1), pt(tb, -hw + 1), pt(tb, hw - 15), pt(ta, hw - 15)].map(p => [p.x - c.x, p.y - c.y]), xs = quad.map(p => p[0]), ys = quad.map(p => p[1]);
         const pk = bake(scene, 'gateplank|' + Math.round(deck.length) + '|' + Math.round(hw), [Math.min(...xs) - 2, Math.min(...ys) - 2, Math.max(...xs) + 2, Math.max(...ys) + 3], B2 => { B2.f(B2.poly(quad.map(([x, y]) => [x + .6, y + 1.4])), 'rgba(30,24,16,.4)').f(B2.poly(quad), '#c4a272').s(`M${quad[0][0]} ${quad[0][1]}L${quad[3][0]} ${quad[3][1]}`, '#e8cc98', .8, .8); for (const p of [.2, .8]) { const x = quad[0][0] + (quad[3][0] - quad[0][0]) * p + 1, y = quad[0][1] + (quad[3][1] - quad[0][1]) * p; B2.f(B2.circ(x, y, .8), '#2a2420'); } });
         const puff = bake(scene, 'gatedust', [-9, -6, 9, 6], B2 => B2.f(B2.ell(0, 0, 8, 5), B2.rad(0, 0, 8, [[0, 'rgba(214,200,170,.8)'], [1, 'rgba(214,200,170,0)']])));
         const plank = h.add(image(scene, pk, c.x, c.y - 46));
