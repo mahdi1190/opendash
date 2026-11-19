@@ -411,4 +411,240 @@ window.GardenPaintSeat = (function () {
     B.stone(r, 0, -26, 6, 4, STONE, '#9aa86a');
     B.tufts(r, -68, -24, 6, 5, G, 5).tufts(r, 70, -24, 6, 5, G, 5);
   } };
+
+  /* ======== what a player builds or wins (lf-*): set out anywhere, so each brings its own seat ======== */
+  // the village well is the wishing well's sister: the same head and frame, no coins in it
+  A['lf-well'] = Object.assign({}, A['ld-wish']);
+  // a flag on a pole in a stone socket, its cloth lifting (the region prizes)
+  const flag = (cols, emblem) => ({ box: [-20, -118, 40, 6], seat: { kind: 'turf', w: 18, front: 12, stones: 4, way: false }, draw(B, o) {
+    const r = KIT().rng(157 + cols[0].length), top = -sz('lamp', 1) * 1.3;
+    B.f(B.rr(-7, -6, 14, 7, 2), STONE.rockLo).f(B.rr(-7, -6, 14, 2.6, 1.4), STONE.rockHi);
+    B.s(`M0 -5V${top}`, '#6a5034', 2.6).s(`M-.7 -5V${top}`, '#b08c5e', .8, .8).f(B.circ(0, top - 1.6, 2), '#c8a23a');
+    B.f(`M1 ${top + 2}Q14 ${top - 1} 30 ${top + 3}Q24 ${top + 10} 30 ${top + 17}Q14 ${top + 14} 1 ${top + 19}Z`, cols[0]).f(`M1 ${top + 2}Q14 ${top - 1} 30 ${top + 3}L28 ${top + 6}Q14 ${top + 3} 1 ${top + 6}Z`, cols[1], .9).f(`M1 ${top + 14}Q14 ${top + 11} 29 ${top + 15}L30 ${top + 17}Q14 ${top + 14} 1 ${top + 19}Z`, 'rgba(0,0,0,.18)');
+    if (emblem) emblem(B, 15, top + 10);
+    B.tufts(r, 0, 3, 20, 10, grass(o.season), 7);
+  } });
+  A['lf-rg-garden'] = flag(['#3f7a4a', '#5e9a5e'], (B, x, y) => B.f(B.circ(x, y, 3.4), '#f2d04a').f(B.circ(x, y, 1.6), '#c8741a'));
+  A['lf-rg-hill'] = flag(['#3f6486', '#5e86a8'], (B, x, y) => B.f(B.poly([[x - 6, y + 4], [x, y - 5], [x + 6, y + 4]]), '#eef2f4'));
+  /* the anglers' board: a slate on two posts under a little roof, the year's best catch chalked up, a brass fish on top */
+  const board = (title, art) => ({ box: [-34, -92, 34, 6], seat: { kind: 'earth', w: 50, front: 16 }, draw(B, o) {
+    const r = KIT().rng(163 + title.length), post = sz('lamp', .2) * .92;
+    for (const x of [-22, 22]) B.post(x, -post, 0, 4.2, OAK);
+    B.f(B.rr(-26, -post + 10, 52, 34, 2), OAK[1]).f(B.rr(-23, -post + 13, 46, 28, 1.4), art === 'slate' ? '#2e3a3c' : '#e8dcc0');
+    shingles(B, r, [[-32, -post + 10], [0, -post - 6], [32, -post + 10]], ['#5a6a5e', '#3e4a40', '#7e8e80']);
+    if (art === 'slate' && title === 'stars') { for (let i = 0; i < 5; i++) { const cx = -16 + i * 8, cy = -post + 24; B.f(B.poly([0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(k => { const a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? 1.5 : 3.4; return [cx + Math.cos(a) * rr, cy + Math.sin(a) * rr]; })), i < 3 ? '#f2d04a' : '#6a7a7c'); } B.s(`M-18 ${-post + 33}h30`, '#c8d0cc', .8, .8); }
+    else if (art === 'slate') { B.s(`M-18 ${-post + 22}q10 -6 22 0q-4 4 -10 3`, '#eef2ee', 1.1, .9).s(`M-18 ${-post + 30}h30M-18 ${-post + 35}h22`, '#c8d0cc', .8, .8); B.f(`M8 ${-post - 4}q6 -3 10 0l3 -2v4l-3 -2q-4 3 -10 0z`, '#c8a23a'); }
+    else for (let i = 0; i < 3; i++) { const x = -16 + i * 14; B.f(B.rect(x - 5, -post + 17 + (i % 2) * 3, 11, 13), ['#f4eee0', '#efe2c4', '#f8f0dc'][i]).s(`M${x - 3} ${-post + 22 + (i % 2) * 3}h7M${x - 3} ${-post + 25 + (i % 2) * 3}h5`, '#8a8478', .6).f(B.circ(x, -post + 17 + (i % 2) * 3, .9), '#b84a3a'); }
+    B.tufts(r, -22, 3, 10, 6, grass(o.season), 7).tufts(r, 22, 3, 10, 6, grass(o.season), 7);
+  } });
+  A['lf-rg-lake'] = board('anglers', 'slate');
+  A['lf-help'] = board('help', 'notes');
+  A['lf-stars'] = board('stars', 'slate');
+  /* the corn stook (the fields' prize): sheaves leaned together, tied, a scarecrow's hat on top */
+  A['lf-rg-fields'] = { box: [-30, -76, 30, 6], seat: { kind: 'earth', w: 40, front: 14, stones: 0, way: false }, draw(B, o) {
+    const r = KIT().rng(167), top = -sz('door', 1) * 1.3;
+    for (let i = 0; i < 7; i++) { const x = -18 + i * 6, lean = (x) * -.35; B.f(`M${x - 5} 0L${x + lean - 2} ${top + 6}L${x + lean + 2} ${top + 6}L${x + 5} 0Z`, i % 2 ? '#c8a050' : '#dcb868'); for (let k = 0; k < 4; k++) B.s(`M${x + lean + (k - 1.5)} ${top + 6}l${(k - 1.5) * 1.4} -6`, '#e8cc78', .8); }
+    B.s(`M-14 ${top * .45}Q0 ${top * .45 + 4} 14 ${top * .45}`, '#9a7a3a', 1.6).f(B.ell(0, top + 2, 9, 2.4), '#6a5034').f(`M-5 ${top + 2}q5 -9 10 0z`, '#7a5e40');
+    B.tufts(r, 0, 3, 40, 12, grass(o.season), 6);
+  } };
+  /* the heron post (the marsh's prize): an oak post in the reeds with a carved heron on it */
+  A['lf-rg-marsh'] = { box: [-30, -100, 30, 6], seat: { kind: 'moss', w: 22, front: 12, stones: 3, way: false }, draw(B, o) {
+    const r = KIT().rng(173), top = -sz('lamp', .5) * .95;
+    B.post(0, top, 0, 6, OAK);
+    B.s(`M-2 ${top}q-2 -14 6 -22`, '#9aa0a4', 3).f(B.ell(6, top - 24, 4, 3), '#9aa0a4').s(`M9 ${top - 24}l9 2`, '#c8a23a', 1.4).f(B.ell(-1, top - 6, 10, 6), '#8a9094').f(B.ell(-3, top - 8, 7, 3.4), '#b8bec2').s(`M-8 ${top - 4}l-8 4`, '#6a7074', 2);
+    for (let i = 0; i < 10; i++) { const x = -22 + r() * 44, h = 16 + r() * 18; B.s(`M${x} 3q${(r() - .5) * 4} ${-h / 2} ${(r() - .5) * 6} ${-h}`, '#7a9a4a', 1.2, .9); if (r() < .4) B.f(B.ell(x, 3 - h, 1.4, 4), '#6a4a2a'); }
+  } };
+  /* the cider press (the orchards' prize): an oak screw press with its tray and a tub of apples */
+  A['lf-rg-orchards'] = { box: [-34, -76, 36, 6], seat: { kind: 'earth', w: 46, front: 16 }, draw(B, o) {
+    const r = KIT().rng(179), top = -sz('door', 1) * 1.25;
+    for (const x of [-18, 18]) B.post(x, top, 0, 5, OAK);
+    B.f(B.rect(-22, top, 44, 6), OAK[1]).f(B.rect(-22, top, 44, 2), OAK[2]).s(`M0 ${top + 6}v14`, IRON[1], 3).s(`M-12 ${top + 2}h24`, IRON[0], 2);
+    B.f(B.rect(-14, top + 20, 28, 6), OAK[0]).f(B.rr(-20, -14, 40, 10, 2), OAK[1]).f(B.rect(-16, -18, 32, 5), '#c8a050', .9).f(B.rect(-22, -4, 44, 4), OAK[3]);
+    B.f(B.rr(22, -12, 12, 12, 3), WOOD[1]); for (let i = 0; i < 5; i++) B.f(B.circ(24 + (i % 3) * 3.4, -12 - Math.floor(i / 3) * 3, 2), i % 2 ? '#c8442a' : '#9aaa3a');
+    B.tufts(r, -26, 3, 8, 5, grass(o.season), 6).tufts(r, 32, 3, 8, 5, grass(o.season), 6);
+  } };
+  /* the rain barrel: an oak butt on a stone stand under a little spout, a tap and a dipper */
+  A['lf-barrel'] = { box: [-22, -54, 22, 6], seat: { kind: 'earth', w: 30, front: 14, way: false }, draw(B, o) {
+    const r = KIT().rng(181), h = sz('well') * 1.7;
+    B.f(B.rr(-14, -5, 28, 5, 1.4), STONE.rockLo).f(B.rect(-14, -5, 28, 1.6), STONE.rockHi);
+    B.f(`M-11 -5Q-14 ${-5 - h / 2} -11 ${-5 - h}H11Q14 ${-5 - h / 2} 11 -5Z`, B.lin(-13, 0, 13, 0, [[0, '#b08c5e'], [.4, '#8a6a46'], [1, '#5a4430']]));
+    for (const y of [-8, -5 - h * .5, -2 - h]) B.s(`M-12.6 ${y}h25.2`, IRON[0], 1.6);
+    B.f(B.ell(0, -5 - h, 11, 3), '#5a4430').f(B.ell(0, -5 - h + .4, 9, 2.2), '#3a5a5e').f(B.ell(-3, -5 - h, 3, .8), '#a8c8c8', .6);
+    B.s(`M8 ${-5 - h}V${-14 - h}h-10`, '#5a6064', 1.6).f(B.rect(10, -10, 3, 3), IRON[1]);
+    B.tufts(r, -14, 3, 8, 5, grass(o.season), 6).tufts(r, 15, 3, 8, 5, grass(o.season), 6);
+  } };
+  /* the lucky stone: a round worn boulder with a hole through it, lichen, coins in the hole */
+  A['lf-stone'] = { box: [-26, -40, 26, 6], seat: { kind: 'moss', w: 36, front: 12, stones: 0, way: false }, draw(B, o) {
+    const r = KIT().rng(191), h = sz('boulder', .2);
+    B.f(B.blob(r, 0, -h / 2, 18, h / 2, 9, .2), MOSSY.rockLo).f(B.blob(r, -3, -h * .58, 14, h * .38, 9, .2), MOSSY.rock).f(B.blob(r, -7, -h * .72, 7, h * .18, 7, .3), MOSSY.rockHi, .8);
+    B.f(B.ell(2, -h * .5, 5, 4.4), '#2a261e').f(B.ell(3, -h * .46, 3.4, 3), '#16140e').f(B.ell(3, -h * .38, 1.6, .9), '#e8c45a');
+    mossOn(B, r, -16, -h * .9, 28, 5, o.season); B.tufts(r, 0, 3, 36, 10, grass(o.season), 6);
+  } };
+  /* the dew stone and the moon stone: a flat-topped stone with a hollow that holds water (pale and silvered for the moon's) */
+  const bowl = (moon) => ({ box: [-26, -36, 26, 6], seat: { kind: 'moss', w: 36, front: 12, stones: 0, way: false }, lit: moon, lights: moon ? [[0, -20, 60]] : null, draw(B, o) {
+    const r = KIT().rng(moon ? 193 : 197), h = sz('well') * .95, P = moon ? { rock: '#b8bcc4', rockLo: '#8e929a', rockHi: '#dfe2e8', rockDk: '#4e5258' } : MOSSY;
+    B.f(B.blob(r, 0, -h / 2, 19, h / 2, 9, .15), P.rockLo).f(B.blob(r, -2, -h * .6, 16, h * .34, 9, .15), P.rock);
+    B.f(B.ell(0, -h + 2, 15, 4.4), P.rockHi).f(B.ell(1, -h + 2.4, 10, 2.8), moon ? (o.night ? '#e8f0ff' : '#9cb0c8') : '#7aa0a4').f(B.ell(-2, -h + 1.8, 4, .8), '#ffffff', .6);
+    if (moon) for (const [x, y] of [[-12, -h * .5], [10, -h * .4]]) B.s(`M${x} ${y}a3 3 0 1 0 3 -3a2.2 2.2 0 1 1 -3 3`, '#5e626a', .8, .8);
+    mossOn(B, r, -16, -4, 30, 4, o.season); B.tufts(r, 0, 3, 36, 10, grass(o.season), 6);
+  } });
+  A['lf-dew'] = bowl(false); A['lf-moon'] = bowl(true);
+  /* the worm bin: a slatted wooden box with a lid propped, dark compost, a trowel */
+  A['lf-worms'] = { box: [-26, -40, 26, 6], seat: { kind: 'earth', w: 38, front: 14, way: false }, draw(B, o) {
+    const r = KIT().rng(199), h = sz('well') * 1.1;
+    B.f(B.rect(-17, -h, 34, h), WOOD[1]); for (let y = -h; y < 0; y += 5) B.f(B.rect(-17, y + .6, 34, 3.6), y % 2 ? WOOD[0] : WOOD[2], .9);
+    B.f(B.rect(-17, -h, 5, h), '#ffffff', .1).f(B.rect(12, -h, 5, h), '#000000', .15);
+    B.f(B.ell(0, -h, 17, 3.6), '#3a2a1a').f(B.blob(r, 0, -h - 1, 14, 2.4, 7, .4), '#5a4028');
+    B.f(B.poly([[-18, -h - 1], [18, -h - 1], [14, -h - 13], [-14, -h - 10]]), WOOD[0]).s(`M-18 ${-h - 1}L18 ${-h - 1}`, WOOD[3], .8);
+    B.s(`M20 -2L28 -14`, WOOD[1], 1.6).f(`M27 -15l4 -5l2 2z`, IRON[1]);
+    B.tufts(r, -18, 3, 8, 5, grass(o.season), 6).tufts(r, 18, 3, 8, 5, grass(o.season), 6);
+  } };
+  /* the scarecrow: a cross of poles, an old coat stuffed with straw, a hat, a crow on the arm */
+  A['lf-scarecrow'] = { box: [-36, -86, 36, 6], seat: { kind: 'earth', w: 18, front: 12, stones: 0, way: false }, draw(B, o) {
+    const r = KIT().rng(211), top = -sz('door', .3) * 1.4;
+    B.s(`M0 0V${top}`, OAK[1], 3).s(`M-28 ${top + 18}H28`, OAK[1], 2.6);
+    B.f(`M-24 ${top + 14}L-8 ${top + 12}L-10 ${top + 44}L10 ${top + 44}L8 ${top + 12}L24 ${top + 14}L22 ${top + 22}L9 ${top + 22}L11 ${top + 46}L-11 ${top + 46}L-9 ${top + 22}L-22 ${top + 22}Z`, '#5a6a8a').f(`M-9 ${top + 22}L-11 ${top + 46}L-3 ${top + 46}L-3 ${top + 14}Z`, '#7a8aa8', .6);
+    for (const [x, y] of [[-26, top + 18], [26, top + 18], [-6, top + 48], [6, top + 48]]) for (let k = 0; k < 4; k++) B.s(`M${x} ${y}l${(r() - .5) * 6} ${3 + r() * 4}`, '#e0c068', 1, .9);
+    B.f(B.rect(-4, top + 26, 8, 8), '#b84a3a', .9);
+    B.f(B.circ(0, top + 6, 7), '#e8d4a0').f(B.circ(-2, top + 5, 1), '#3a2a1a').f(B.circ(3, top + 5, 1), '#3a2a1a').s(`M-3 ${top + 9}q3 2 6 0`, '#8a5a3a', .8);
+    B.f(B.ell(0, top, 12, 2.6), '#4a3a2a').f(`M-6 ${top}q6 -12 12 0z`, '#5a4634').f(B.rect(-6, top - 3, 12, 2), '#b84a3a');
+    B.f(B.ell(20, top + 13, 4, 3), '#1e1e22').f(B.circ(23, top + 10, 2.2), '#1e1e22').s(`M25 ${top + 10}l3 1`, '#c8a23a', 1);
+    B.tufts(r, 0, 3, 20, 8, grass(o.season), 7);
+  } };
+  /* the seasons arch: a willow arch over the way, wound with whatever the season has (blossom, roses, hips, holly) */
+  A['lf-arch'] = { box: [-56, -104, 56, 6], seat: { kind: 'turf', w: 80, front: 10, stones: 0, way: false }, draw(B, o) {
+    const r = KIT().rng(223), s = o.season, top = -sz('door', 1) * 1.65, L = leaf(s), bloom = { spring: ['#f4d8e0', '#fff4f4'], summer: ['#d8607a', '#f2a0b0'], autumn: ['#c8442a', '#e08a3a'], winter: ['#b82a2a', '#2e5a34'] }[s] || ['#d8607a', '#f2a0b0'];
+    for (const x of [-38, 38]) { B.s(`M${x} 0V${top * .55}`, OAK[1], 4); }
+    B.s(`M-38 ${top * .55}Q-38 ${top} 0 ${top}Q38 ${top} 38 ${top * .55}`, OAK[1], 4).s(`M-34 ${top * .55}Q-34 ${top + 4} 0 ${top + 4}Q34 ${top + 4} 34 ${top * .55}`, OAK[2], 1.4, .7);
+    for (let i = 0; i < 34; i++) { const t = i / 33, a = Math.PI * t, x = i < 8 ? -38 + (r() - .5) * 6 : i > 25 ? 38 + (r() - .5) * 6 : -Math.cos(a) * 38, y = i < 8 ? -i * 7 : i > 25 ? -(33 - i) * 7 : top * .55 - Math.sin(a) * (-top * .45); B.f(B.blob(r, x, y, 5, 4, 6, .5), L[i % 3], .95); if (r() < .45) B.f(B.circ(x + (r() - .5) * 4, y + (r() - .5) * 3, 1.8), bloom[i % 2]); }
+    B.tufts(r, -38, 3, 10, 6, grass(s), 7).tufts(r, 38, 3, 10, 6, grass(s), 7);
+  } };
+  /* the bee skeps: three straw skeps on an oak bench, bees about them */
+  A['lf-skeps'] = { box: [-30, -50, 30, 6], seat: { kind: 'earth', w: 46, front: 14, way: false }, draw(B, o) {
+    const r = KIT().rng(227), seat = sz('seat') * 1.3;
+    for (const x of [-20, 20]) B.post(x, -seat, 0, 3.6, OAK);
+    B.f(B.rect(-26, -seat - 3, 52, 4), OAK[0]).f(B.rect(-26, -seat - 3, 52, 1.4), OAK[2]);
+    for (const x of [-15, 0, 15]) { for (let i = 0; i < 5; i++) B.f(B.ell(x, -seat - 5 - i * 4, 8 - i * 1.3, 2.6), i % 2 ? '#c8a050' : '#dcb868'); B.f(B.ell(x, -seat - 5, 1.8, 1.2), '#3a2a14'); }
+    if (o.season !== 'winter') for (let i = 0; i < 6; i++) B.f(B.circ(-24 + r() * 48, -seat - 26 - r() * 12, .9), '#3a2a14');
+    B.tufts(r, -24, 3, 8, 5, grass(o.season), 6).tufts(r, 24, 3, 8, 5, grass(o.season), 6);
+  } };
+  /* stout boots: a boot scraper by a mounting block, a good pair of boots standing on it */
+  A['lf-boots'] = { box: [-26, -36, 26, 6], seat: { kind: 'flags', w: 34, front: 12, way: false }, draw(B, o) {
+    const r = KIT().rng(229), h = sz('seat') * 1.6;
+    ashlar(B, r, -16, -h, 32, h, STONE, 5);
+    for (const x of [-8, 5]) B.f(`M${x - 4} ${-h}V${-h - 11}h7v7h5v4z`, '#5a3e26').f(B.rect(x - 4, -h - 1.6, 12, 1.6), '#2e2014').f(B.rect(x - 4, -h - 11, 7, 2), '#7a5a3a');
+    B.s(`M18 0V-10M24 0V-10M17 -8h8`, IRON[0], 1.4);
+    B.tufts(r, -16, 3, 8, 5, grass(o.season), 6).tufts(r, 20, 3, 8, 5, grass(o.season), 6);
+  } };
+  /* the bandstand: an eight-sided stage on a stone base, slim iron columns, a green and cream roof to a finial, bunting */
+  A['lf-bandstand'] = { box: [-62, -156, 64, 8], seat: { kind: 'flags', w: 92, front: 18 }, lit: true, lights: [[0, -60, 110]], draw(B, o) {
+    const r = KIT().rng(233), eaves = sz('eaves', 1) * 1.05, ridge = sz('hall', .2) * .95, base = sz('seat') * 1.5;
+    ashlar(B, r, -46, -base, 92, base, STONE, 5); B.f(B.rect(-48, -base - 3, 96, 4), STONE.rockHi);
+    for (const x of [-20, -10, 0, 10, 20]) B.f(B.rect(x - 4, -base + 2, 8, 3), STONE.rockDk, .25);
+    for (const x of [-44, -26, -9, 9, 26, 44]) B.s(`M${x} ${-base - 3}V${-eaves}`, '#2e4a3a', 2.4).s(`M${x - .7} ${-base - 3}V${-eaves}`, '#5e7e68', .7, .8);
+    B.s(`M-44 ${-base - 14}H44`, '#2e4a3a', 1.2).s(`M-44 ${-base - 10}H44`, '#2e4a3a', .8);
+    for (let x = -42; x < 44; x += 4) B.s(`M${x} ${-base - 14}v4`, '#2e4a3a', .7);
+    if (o.night) B.f(B.rect(-44, -eaves, 88, eaves - base - 3), 'rgba(255,210,130,.22)');
+    B.f(B.poly([[-56, -eaves + 2], [0, -ridge], [56, -eaves + 2]]), '#3e6a52'); for (let i = -4; i <= 4; i++) B.s(`M${i * 13} ${-eaves + 2}L0 ${-ridge}`, i % 2 ? '#e8e0c8' : '#2e5240', 3.4, .7);
+    B.f(B.poly([[-56, -eaves + 2], [0, -ridge], [-6, -ridge + 4], [-48, -eaves + 2]]), '#ffffff', .12);
+    for (let x = -54; x < 54; x += 6) B.f(B.poly([[x, -eaves + 2], [x + 3, -eaves + 6], [x + 6, -eaves + 2]]), '#e8e0c8');
+    B.f(B.rect(-1.4, -ridge - 12, 2.8, 12), '#2e4a3a').f(B.circ(0, -ridge - 13, 2.6), '#c8a23a');
+    for (let i = 0; i < 12; i++) { const x = -50 + i * 9, y = -eaves + 9 + Math.sin(i / 11 * Math.PI) * 5; B.f(B.poly([[x, y], [x + 4, y + 6], [x + 8, y]]), ['#c84a3a', '#f2d04a', '#3f7486'][i % 3]); }
+    B.tufts(r, -50, 4, 10, 6, grass(o.season), 7).tufts(r, 52, 4, 10, 6, grass(o.season), 7);
+  } };
+  /* the jam kettle: a copper pan on an iron trivet over a little brick hearth, jars cooling on a crate */
+  A['lf-kettle'] = { box: [-30, -54, 32, 6], seat: { kind: 'earth', w: 46, front: 14, way: false }, lit: true, lights: [[-2, -10, 60]], draw(B, o) {
+    const r = KIT().rng(239);
+    B.f(B.rr(-20, -12, 32, 12, 2), '#8e4a33'); for (let y = -9; y < 0; y += 4) B.s(`M-20 ${y}h32`, '#5e2e20', .6, .7);
+    B.f(B.rr(-12, -10, 16, 8, 3), '#1a1410').f(B.ell(-4, -4, 5, 2.4), o.night ? '#ffb04a' : '#c86a2a', .9);
+    for (const x of [-16, 8]) B.s(`M${x} -12L${x + 2} -22`, IRON[0], 1.6);
+    B.f(`M-18 -22Q-18 -36 -4 -36Q10 -36 10 -22Z`, B.lin(-18, 0, 10, 0, [[0, '#e09a5a'], [.4, '#c87a3a'], [1, '#8a4a22']])).f(B.ell(-4, -36, 14, 3), '#7a3a1a').f(B.ell(-4, -36, 11, 2), '#a02a3a');
+    B.s(`M-18 -30q-6 -2 -8 2`, '#8a4a22', 1.6);
+    if (o.season !== 'winter') B.s(`M-6 -40q-3 -5 1 -9M0 -40q3 -6 0 -11`, '#f4f0e6', 1, .45);
+    B.f(B.rect(14, -10, 16, 10), WOOD[1]).f(B.rect(14, -10, 16, 2), WOOD[2]); for (const x of [17, 22, 27]) B.f(B.rr(x - 2, -17, 4.4, 7, 1), '#b8304a').f(B.rect(x - 2.2, -18, 4.8, 1.8), '#e8dcc0');
+    B.tufts(r, -24, 3, 8, 5, grass(o.season), 6).tufts(r, 30, 3, 8, 5, grass(o.season), 6);
+  } };
+  /* the drying rack: an oak frame with bunches of herbs hung head down, a basket below */
+  A['lf-rack'] = { box: [-30, -74, 30, 6], seat: { kind: 'earth', w: 46, front: 14, way: false }, draw(B, o) {
+    const r = KIT().rng(241), top = -sz('door', .5) * 1.2;
+    for (const x of [-22, 22]) B.post(x, top, 0, 3.6, OAK);
+    for (const y of [top + 4, top + 22]) { B.s(`M-24 ${y}H24`, OAK[1], 2.4); for (let x = -18; x <= 18; x += 6) { B.s(`M${x} ${y}v4`, '#c8b48a', .7); for (let k = 0; k < 5; k++) B.s(`M${x} ${y + 4}l${(k - 2) * 1.2} ${8 + r() * 4}`, ['#6a8a44', '#8a9a5a', '#a88aa8', '#7a9a6a'][(x + 18 + k) % 4], 1.2); } }
+    B.f(B.ell(0, -2, 12, 3), WOOD[1]).f(`M-12 -2Q-12 -10 0 -10Q12 -10 12 -2Z`, '#b08c5e').s(`M-12 -6h24`, WOOD[1], .8);
+    B.tufts(r, -24, 3, 8, 5, grass(o.season), 6).tufts(r, 24, 3, 8, 5, grass(o.season), 6);
+  } };
+  /* the seed swap shelf: a little roofed cupboard on a post, its door open on packets and jars */
+  A['lf-swap'] = { box: [-26, -80, 26, 6], seat: { kind: 'earth', w: 24, front: 14, stones: 3 }, draw(B, o) {
+    const r = KIT().rng(251), top = -sz('lamp', .2) * .95;
+    B.post(0, top + 28, 0, 5, OAK);
+    B.f(B.rect(-17, top + 6, 34, 26), OAK[1]).f(B.rect(-15, top + 8, 30, 22), '#3a2c1e');
+    for (const y of [top + 18]) B.s(`M-15 ${y}H15`, OAK[2], 1.2);
+    for (let i = 0; i < 6; i++) { const x = -13 + i * 4.6, y = i < 3 ? top + 10 : top + 20; B.f(B.rect(x, y, 3.8, 7), ['#e8c84a', '#c86a5a', '#8aa86a', '#e8dcc0', '#6a8ab8', '#d8a04a'][i]); }
+    B.f(B.poly([[17, top + 6], [26, top + 9], [26, top + 33], [17, top + 32]]), OAK[0]);
+    shingles(B, r, [[-22, top + 7], [0, top - 6], [22, top + 7]], ['#8a5e3e', '#6a4428', '#b88a5e']);
+    B.tufts(r, 0, 3, 22, 10, grass(o.season), 7);
+  } };
+  /* the spring rill: water rising in a ring of mossy stones and running off in a little stony channel (it lies in the ground) */
+  A['lf-rill'] = { box: [-34, -26, 34, 12], shade: false, flat: true, seat: { kind: 'moss', w: 30, front: 12, back: 14, stones: 0, way: false }, draw(B, o) {
+    const r = KIT().rng(257), winter = o.season === 'winter';
+    B.f(B.blob(r, 0, -8, 16, 8, 9, .3), '#2e4a4e').f(B.blob(r, -2, -9, 12, 5.4, 8, .3), winter ? '#cfe0e8' : '#4e7a7e').f(B.ell(-4, -10, 4, 1.2), '#c8e4e8', .7);
+    B.f(`M10 -4Q20 0 30 6L26 9Q18 4 8 1Z`, '#3e6a6e').s(`M12 -2Q20 1 28 7`, '#a8d0d4', .8, .7);
+    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; B.stone(r, Math.cos(a) * 17, -8 + Math.sin(a) * 9, 3.6, 2.4, MOSSY, i % 3 ? null : '#9aa86a'); }
+    if (!winter) for (let i = 0; i < 5; i++) B.s(`M${-14 + i * 7} -18q-2 -6 -5 -9`, '#5f7a3c', 1, .9);
+  } };
+  /* the little museum: a stone building with a pediment and two columns, a brass plate, a lamp each side */
+  A['lf-museum'] = { box: [-62, -150, 64, 8], seat: { kind: 'flags', w: 90, front: 20 }, lit: true, lights: [[-20, -40, 90], [20, -40, 90]], draw(B, o) {
+    const r = KIT().rng(263), eaves = sz('eaves', 1) * 1.1, ridge = sz('hall', 0) * .9;
+    ashlar(B, r, -46, -eaves, 92, eaves, STONE, 6.5);
+    B.f(B.rect(-50, -8, 100, 8), STONE.rockLo).f(B.rect(-50, -8, 100, 2), STONE.rockHi).f(B.rect(-52, -2, 104, 4), STONE.rock);
+    B.f(B.poly([[-54, -eaves], [0, -ridge], [54, -eaves]]), STONE.rock).f(B.poly([[-44, -eaves - 3], [0, -ridge + 8], [44, -eaves - 3]]), STONE.rockLo).f(B.rect(-56, -eaves - 1, 112, 5), STONE.rockHi);
+    B.f(B.circ(0, -eaves - 12, 6), STONE.rockHi).f(B.circ(0, -eaves - 12, 4), '#c8a23a', .8);
+    for (const x of [-18, 18]) { B.f(B.rect(x - 5, -eaves + 4, 10, eaves - 12), STONE.rockHi).f(B.rect(x + 1, -eaves + 4, 4, eaves - 12), STONE.rockLo, .7); B.f(B.rect(x - 7, -eaves + 2, 14, 3), STONE.rock).f(B.rect(x - 7, -11, 14, 3), STONE.rock); }
+    B.f(B.rr(-10, -sz('door', .6) - 8, 20, sz('door', .6), 2), '#2e2418').f(B.rr(-8.6, -sz('door', .6) - 6.6, 17.2, sz('door', .6) - 1.4, 1.6), B.lin(-8, 0, 9, 0, [[0, '#6a4a30'], [1, '#4a3220']]));
+    windowLit(B, -40, -eaves + 14, 12, 18, o.night, '#e8dcc0'); windowLit(B, 28, -eaves + 14, 12, 18, o.night, '#e8dcc0');
+    B.f(B.rect(-12, -eaves + 2, 24, 6), '#c8a23a').text('MUSEUM', 0, -eaves + 5.2, 4.4, '#4a3a1a');
+    B.tufts(r, -52, 4, 10, 6, grass(o.season), 7).tufts(r, 54, 4, 10, 6, grass(o.season), 7);
+  } };
+  /* the lookout tower: a tall timber tower on stone feet, a ladder stair, a railed top under a little roof (five times the player) */
+  A['lf-lookout'] = { box: [-50, -236, 52, 8], seat: { kind: 'earth', w: 70, front: 16 }, draw(B, o) {
+    const r = KIT().rng(269), top = -sz('tower', 0) * 1.02;
+    for (const x of [-30, 30]) { B.stone(r, x, -2, 7, 4, STONE, null); B.s(`M${x} -4L${x * .6} ${top + 26}`, OAK[1], 5).s(`M${x - 1.4} -4L${x * .6 - 1.4} ${top + 26}`, OAK[2], 1.4, .7); }
+    for (let k = 1; k < 6; k++) { const y = -4 + (top + 30) * k / 6, hw = 30 - 12 * k / 6; B.s(`M${-hw} ${y}H${hw}`, OAK[1], 2.4); if (k < 5) B.s(`M${-hw} ${y}L${hw - 2} ${y + (top + 30) / 6}M${hw} ${y}L${-hw + 2} ${y + (top + 30) / 6}`, OAK[0], 1.4, .8); }
+    for (let y = -6; y > top + 30; y -= 8) B.s(`M-6 ${y}h12`, WOOD[0], 1.6); B.s(`M-6 -4V${top + 30}M6 -4V${top + 30}`, WOOD[1], 1.6);
+    B.f(B.rect(-24, top + 22, 48, 6), OAK[1]).f(B.rect(-24, top + 22, 48, 2), OAK[2]);
+    for (let x = -22; x <= 22; x += 6) B.s(`M${x} ${top + 22}v-12`, OAK[1], 1.4); B.s(`M-24 ${top + 10}H24`, OAK[1], 2);
+    for (const x of [-22, 22]) B.s(`M${x} ${top + 10}V${top - 6}`, OAK[1], 2);
+    shingles(B, r, [[-30, top - 4], [0, top - 22], [30, top - 4]], ['#8a5e3e', '#6a4428', '#b88a5e']);
+    B.f(B.rect(10, top - 40, 1.6, 20), '#6a5034').f(`M11.6 ${top - 40}l12 3l-12 3z`, '#c84a3a');
+    B.tufts(r, -38, 4, 10, 6, grass(o.season), 7).tufts(r, 38, 4, 10, 6, grass(o.season), 7);
+  } };
+  /* the savings oak: a young oak in its prime (four times the player), a little iron-bound box half buried in its roots */
+  A['lf-oak'] = { box: [-74, -184, 76, 8], seat: { kind: 'moss', w: 26, front: 14, stones: 0, way: false }, draw(B, o) {
+    const r = KIT().rng(271), s = o.season, L = leaf(s), H0 = sz('tree', .1), bark = ['#6a5a46', '#4a3e30', '#8e7c62'];
+    for (const [x, d] of [[-12, -1], [12, 1]]) B.f(`M${x - 4} 0Q${x + d * 4} -10 ${x} -18L${x + 6} -14Q${x + 7} -6 ${x + 8 + d * 6} 1Z`, bark[d < 0 ? 0 : 1]);
+    B.f(`M-10 0Q-12 ${-H0 * .3} -6 ${-H0 * .5}L6 ${-H0 * .5}Q12 ${-H0 * .3} 10 0Z`, bark[0]).f(`M-10 0Q-12 ${-H0 * .3} -6 ${-H0 * .5}L-2 ${-H0 * .5}Q-4 ${-H0 * .3} -3 0Z`, bark[2], .7);
+    for (const [x1, y1] of [[-36, -H0 * .62], [34, -H0 * .6], [0, -H0 * .8]]) B.s(`M0 ${-H0 * .48}Q${x1 * .4} ${-H0 * .56} ${x1} ${y1}`, bark[1], 5);
+    if (s !== 'winter') { for (let k = 0; k < 14; k++) B.f(B.blob(r, (r() - .5) * 110, -H0 * .72 + (r() - .5) * H0 * .36, 26, 18, 9, .35), L[0], .96); for (let k = 0; k < 12; k++) B.f(B.blob(r, (r() - .6) * 96, -H0 * .76 + (r() - .65) * H0 * .3, 18, 12, 8, .4), L[1], .95); for (let k = 0; k < 10; k++) B.f(B.blob(r, (r() - .7) * 80, -H0 * .82 + (r() - .7) * H0 * .2, 10, 7, 7, .45), L[2], .9); for (let k = 0; k < 6; k++) B.f(B.blob(r, -30 + r() * 30, -H0 * .9 + r() * 14, 5, 4, 6, .5), L[3], .8); }
+    else for (let k = 0; k < 10; k++) { const a = -Math.PI * (.15 + r() * .7), l = 30 + r() * 30; B.s(`M0 ${-H0 * .55}l${Math.cos(a) * l} ${Math.sin(a) * l}`, bark[1], 2); }
+    B.f(B.rr(10, -8, 14, 9, 1.4), '#7a5a3a').s(`M10 -5h14M17 -8v9`, IRON[1], .9).f(B.circ(17, -4, 1.2), '#c8a23a');
+    B.tufts(r, -16, 3, 10, 6, grass(s), 7).tufts(r, 26, 3, 10, 6, grass(s), 7);
+  } };
+  /* the observatory: a round stone drum with a copper dome, its slit open on the sky, a little door */
+  A['lf-observatory'] = { box: [-60, -164, 62, 8], seat: { kind: 'flags', w: 86, front: 18 }, lit: true, lights: [[0, -40, 80]], draw(B, o) {
+    const r = KIT().rng(277), drum = sz('eaves', .8) * 1.05, dome = sz('ridge', 1) * 1.08;
+    ashlar(B, r, -42, -drum, 84, drum, STONE, 7);
+    B.f(`M-42 0Q0 8 42 0V-4Q0 4 -42 -4Z`, STONE.rockDk, .25);
+    B.f(`M-46 ${-drum}Q-46 ${-dome} 0 ${-dome}Q46 ${-dome} 46 ${-drum}Z`, B.lin(-46, 0, 46, 0, [[0, '#8ec8b0'], [.4, '#6aa890'], [1, '#3e7a64']]));
+    for (let k = -3; k <= 3; k++) B.s(`M${k * 13} ${-drum}Q${k * 11} ${-dome + 6} 0 ${-dome}`, '#4e8a74', .8, .7);
+    B.f(`M-6 ${-drum - 2}L-5 ${-dome + 2}H5L6 ${-drum - 2}Z`, o.night ? '#1a2440' : '#26302e'); if (o.night) for (let i = 0; i < 4; i++) B.f(B.circ(-3 + r() * 6, -dome + 8 + r() * 20, .7), '#fff8e0');
+    B.f(B.rect(-48, -drum - 2, 96, 4), STONE.rockHi);
+    B.f(B.rr(-9, -sz('door', .5), 18, sz('door', .5), 1.6), '#2e2418').f(B.rr(-7.6, -sz('door', .5) + 1.4, 15.2, sz('door', .5) - 1.4, 1.2), '#5a6a7a');
+    windowLit(B, -32, -drum + 14, 10, 12, o.night, '#e8dcc0'); windowLit(B, 22, -drum + 14, 10, 12, o.night, '#e8dcc0');
+    B.tufts(r, -48, 4, 10, 6, grass(o.season), 7).tufts(r, 50, 4, 10, 6, grass(o.season), 7);
+  } };
+  /* the stone circle: a ring of grey stones, the near ones standing taller, worn turf inside */
+  A['lf-circle'] = { box: [-80, -62, 82, 14], shade: false, flat: true, seat: { kind: 'turf', w: 120, front: 12, back: 36, stones: 0, way: false }, draw(B, o) {
+    const r = KIT().rng(281), s = o.season, n = 9;
+    const order = [...Array(n).keys()].map(i => { const a = -Math.PI / 2 + i / n * Math.PI * 2; return { x: Math.cos(a) * 64, y: -22 + Math.sin(a) * 20, a }; }).sort((p, q) => p.y - q.y);
+    for (const p of order) { const h = 9 + (p.y + 42) * .2 + r() * 4, w = 6 + r() * 3; B.f(B.poly([[p.x - w, p.y], [p.x - w * 1.05, p.y - h * .5], [p.x - w * .6, p.y - h], [p.x + w * .5, p.y - h * .94], [p.x + w, p.y - h * .4], [p.x + w, p.y]]), '#857c6e').f(B.poly([[p.x - w, p.y], [p.x - w * 1.05, p.y - h * .5], [p.x - w * .6, p.y - h], [p.x - w * .1, p.y - h * .5], [p.x - w * .2, p.y]]), '#b0a690'); B.f(B.blob(r, p.x - w * .3, p.y - h * .6, 2, 1.6, 6, .5), s === 'winter' ? '#f4f6f2' : '#c9c48a', .7); B.tufts(r, p.x, p.y + 1, w * 2.4, 5, grass(s), 5); }
+  } };
 })();
