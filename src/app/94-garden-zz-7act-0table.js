@@ -52,14 +52,14 @@ const GA_PROPS = Object.freeze({
    Sitting, the thigh comes forward at you (drawn at 0.6 of its length) and the shin hangs straight: the hips are then 23 units above the soles,
    and the root drops 5.1 so the soles stay on the ground. A seat higher than that lifts the whole figure (the spot's `seat`, as a share of the
    figure's height, read by the core: lift = GW_SCALE * (70 * seat - 23)), so the hips are on the seat and the feet hang just clear. */
-const GA_SEAT_HIP = 20.4, _GA_TH = 0.4, _GA_SH = 1 / 0.4;
-const _GA_SITP = { root: { y: 7.6 }, up: { y: 0.4 }, legL: { sy: _GA_TH, r: 3 }, legR: { sy: _GA_TH, r: -3 }, kneeL: { sy: _GA_SH, r: -3 }, kneeR: { sy: _GA_SH, r: 3 }, armL: { r: 12, sy: 0.92 }, armR: { r: -12, sy: 0.92 } };
+const _GA_TH = 0.55, _GA_SH = 1 / _GA_TH, GA_SEAT_HIP = _GA_TH * 12.7 + 15.3;   // (round 3: the thighs a little longer, so the knees come forward over the feet and the lap reads)
+const _GA_SITP = { root: { y: 28 - GA_SEAT_HIP }, up: { y: 0.4 }, legL: { sy: _GA_TH, r: 13 }, legR: { sy: _GA_TH, r: -13 }, kneeL: { sy: _GA_SH, r: -21 }, kneeR: { sy: _GA_SH, r: 21 }, armL: { r: 6, sy: 0.86 }, armR: { r: -6, sy: 0.86 } };   // (knees apart, feet in: the bend at the knee shows; hands on the lap)
 const _gaHoldPose = (P, at, e) => Object.fromEntries(Object.entries(P).map(([k, v]) => [k, [[at, v, e || 'o'], [1, v]]]));
 const _GA_SIT = _gaHoldPose(_GA_SITP, 0.55);
 /* the sitting loop: the shins swing in turn (foreshortened as they come forward), a look round now and then */
 const _GA_SITLOOP = (ms) => Object.assign({ ms }, _gaHoldPose(_GA_SITP, 0, 'l'), {
-  kneeL: [[0, { sy: _GA_SH, r: -3 }], [0.12, { sy: _GA_SH * 0.72, r: -6 }, 'io'], [0.24, { sy: _GA_SH, r: -3 }, 'io'], [0.36, { sy: _GA_SH * 0.76, r: -5 }, 'io'], [0.48, { sy: _GA_SH, r: -3 }, 'io'], [1, { sy: _GA_SH, r: -3 }]],
-  kneeR: [[0, { sy: _GA_SH, r: 3 }], [0.5, { sy: _GA_SH, r: 3 }], [0.62, { sy: _GA_SH * 0.72, r: 6 }, 'io'], [0.74, { sy: _GA_SH, r: 3 }, 'io'], [0.86, { sy: _GA_SH * 0.76, r: 5 }, 'io'], [1, { sy: _GA_SH, r: 3 }, 'io']],
+  kneeL: [[0, { sy: _GA_SH, r: -21 }], [0.12, { sy: _GA_SH * 0.72, r: -26 }, 'io'], [0.24, { sy: _GA_SH, r: -21 }, 'io'], [0.36, { sy: _GA_SH * 0.76, r: -25 }, 'io'], [0.48, { sy: _GA_SH, r: -21 }, 'io'], [1, { sy: _GA_SH, r: -21 }]],
+  kneeR: [[0, { sy: _GA_SH, r: 21 }], [0.5, { sy: _GA_SH, r: 21 }], [0.62, { sy: _GA_SH * 0.72, r: 26 }, 'io'], [0.74, { sy: _GA_SH, r: 21 }, 'io'], [0.86, { sy: _GA_SH * 0.76, r: 25 }, 'io'], [1, { sy: _GA_SH, r: 21 }, 'io']],
   head: [[0, {}], [0.3, {}], [0.4, { r: 8 }, 'io'], [0.58, { r: 8 }], [0.68, { r: -4 }, 'io'], [0.8, {}, 'io'], [1, {}]] });
 /* the ladder: 14 rungs 9.4 apart from 6 up, the landing at 134 (the world draws both: 94-garden-zz-7act-2world.js) */
 const GA_LADDER = Object.freeze({ rungs: 14, first: 6, gap: 9.4, top: 134 });
@@ -174,8 +174,8 @@ const GARDEN_ACTS = Object.freeze({
 });
 /** The fixed things of the layout and what each offers. stand: where the feet go (cells from the foot's middle), deg: the way you face. */
 const GARDEN_ACT_BY_PROP = Object.freeze({
-  'ld-bench-a': [{ act: 'sit', name: 'the bench', stand: [0, 0.04], deg: 90, seat: 0.6 }],
-  'ld-bench-b': [{ act: 'sit', name: 'the bench', stand: [0, 0.04], deg: 90, seat: 0.6 }],   // seat: the seat's height as drawn today, a share of the figure's height (the size standard asks 0.3 H: a painter who lowers it changes this one number)
+  'ld-bench-a': [{ act: 'sit', name: 'the bench', stand: [0, -0.16], deg: 90, seat: 0.36 }],
+  'ld-bench-b': [{ act: 'sit', name: 'the bench', stand: [0, -0.16], deg: 90, seat: 0.36 }],   // seat: the seat's height as drawn today, a share of the figure's height (the size standard asks 0.3 H: a painter who lowers it changes this one number)
   'ld-stump': [{ act: 'sit', name: 'the stump', stand: [0, 0.06], deg: 90, seat: 0.34 }],
   'ld-driftwood': [{ act: 'sit', name: 'the driftwood', stand: [0, 0.1], deg: 90, seat: 0.3 }],
   'ld-boles': [{ act: 'sit', name: 'the log', stand: [0, 0.1], deg: 90, seat: 0.32 }],

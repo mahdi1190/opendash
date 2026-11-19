@@ -601,6 +601,7 @@ function gardenWorldSlide(x, y, dx, dy, r, out) {
 }
 /** The feet are inside something (a plant grew where you stood, a decoration was put down): glide out to the nearest open ground. */
 function _gwPushOut(dt) {
+  if (typeof gartActSeatHeld === 'function' && gartActSeatHeld()) return false;   // sat on a bench: the hips are over its footing on purpose (getting up glides you out)
   if (_gwFree(_gw.px, _gw.py)) {
     if (_gw.replan) { _gw.replan = false; _gw.repaths = 0; if (!_gwRepath()) { _gw.path = []; _gw.then = null; } }
     return false;

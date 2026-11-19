@@ -312,7 +312,7 @@ window.GardenPaintedProps = (function () {
   const KIND = { postbox: 'postbox', lectern: 'lectern', sundial: 'sundial', tripod: 'tripod', board: 'board', lakeboard: 'lakeboard', smoker: 'smoker', well: 'well', wish: 'well', post: 'sign', fountain: 'fountain' };
   const LIB = {
     // library objects for the rest: [id, variant, size]
-    seat: ['street.bench', 0, { w: 84 }], lamp: ['street.lamp', 0, { h: Math.round(gardenSizePx('lamp') / .61) }], lampbox: ['street.lamp', 0, { h: Math.round(gardenSizePx('lamp') / .61) }],   /* (a lamp post is 1.8 to 2 times the player; the post is .61 of the library lamp's box) */ lighthouse: ['building.lighthouse', 0, { h: 190 }],
+    seat: ['street.bench', 0, { w: 84 }, 0.66],   /* (a long low bench: the seat at 0.3 of the player's height, the size standard, so you sit with your feet on the ground: 94-garden-zz-7act-0table.js seat) */ lamp: ['street.lamp', 0, { h: Math.round(gardenSizePx('lamp') / .61) }], lampbox: ['street.lamp', 0, { h: Math.round(gardenSizePx('lamp') / .61) }],   /* (a lamp post is 1.8 to 2 times the player; the post is .61 of the library lamp's box) */ lighthouse: ['building.lighthouse', 0, { h: 190 }],
     reeds: null, boat: null,
   };
   function propPainter(prop) {
@@ -347,6 +347,7 @@ window.GardenPaintedProps = (function () {
         b = { x: fx - 40, y: foot - 40, width: 80, height: 48 };
       } else {
         const [id, v, size] = LIB[k], im = h.add(libImage(scene, id, v, season, size, fx, foot, night)); if (!im) { h.destroy(); return null; }
+        if (LIB[k][3]) im.setScale(im.scaleX, im.scaleY * LIB[k][3]);   // (lower, not narrower: it keeps its footprint)
         const top = foot - im.displayHeight * im.originY; b = { x: fx - im.displayWidth / 2 - 6, y: top - 4, width: im.displayWidth + 12, height: foot - top + 12 };
         if (k === 'lamp' || k === 'lampbox') { h.lights.push({ x: fx, y: top + 14, radius: 120, pool: true }); if (night) glowPool(scene, h, fx, foot, 110, top + 12); }
       }

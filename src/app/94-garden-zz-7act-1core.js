@@ -15,6 +15,8 @@ const GA_REACH = 2.2;   // cells: how near a thing must be for its prompt
 const GA_WIRE = 'act-';
 function _gaMotion() { try { return typeof _gartMotionOk === 'function' ? _gartMotionOk() : gardenMotionOn(); } catch (e) { return true; } }
 function gartActBusy() { return !!(_ga.cur && _ga.cur.doing); }
+/** Sat on a seat whose front edge is inside its own footing (a bench): the walker leaves the feet where they are until you get up. */
+function gartActSeatHeld() { const c = _ga.cur; return !!(c && c.doing && c.spot && c.spot.seated); }
 function gartActLift() { return _ga.cur && _ga.cur.doing ? _ga.cur.lift || 0 : 0; }
 function gartActRow(id) { return GARDEN_ACTS[id] || null; }
 /* ---------- what is in reach ---------- */
@@ -36,7 +38,7 @@ function _gaStaticRows() {
     }
     const b = rec && rec.bounds, fx = b && b.width ? (b.x + b.width / 2) / W.cellW : r.x + r.w / 2, fy = b && b.height ? (b.y + b.height - W.sky) / W.cellH : r.y + r.h;
     const top = b && b.height ? (b.y - W.sky) / W.cellH : null;   // the drawn top: the prompt sits just above it
-    for (const o of opts) out.push({ key: r.id + ':' + o.act, act: o.act, name: o.name, x: fx, y: fy, top, stand: { x: fx + o.stand[0], y: fy + o.stand[1] }, deg: o.deg, lift: _gaSeatLift(o), src: r.id, boat: !!o.boat, reach: o.reach || 0, noProp: !!o.noProp });
+    for (const o of opts) out.push({ key: r.id + ':' + o.act, act: o.act, name: o.name, x: fx, y: fy, top, stand: { x: fx + o.stand[0], y: fy + o.stand[1] }, deg: o.deg, lift: _gaSeatLift(o), seated: o.seat != null, src: r.id, boat: !!o.boat, reach: o.reach || 0, noProp: !!o.noProp });
   }
   // what this branch draws for the moves (94-garden-zz-7act-2world.js): the telescope, the lighthouse ladder, the campfires
   let season = ''; try { season = gardenModel().season; } catch (e) { season = ''; }
@@ -202,13 +204,13 @@ function gartActRun(id, spot) {
   if (typeof gartEmoteStop === 'function') gartEmoteStop();
   const cur = _ga.cur = { id, row, spot: spot || null, doing: false, lift: row.seat != null ? _gaSeatLift(row) : spot && spot.lift ? spot.lift : 0, t0: 0, fxT: 0, fxI: 0 };
   const start = () => { if (_ga.cur === cur) _gaStart(cur); };
-  if (spot && spot.stand && typeof _gwFree === 'function' && !_gwFree(spot.stand.x, spot.stand.y) && typeof _gwNearestFreePt === 'function') {   // a place you cannot stand on: the nearest place you can
+  if (spot && spot.stand && !spot.seated && typeof _gwFree === 'function' && !_gwFree(spot.stand.x, spot.stand.y) && typeof _gwNearestFreePt === 'function') {   // a place you cannot stand on: the nearest place you can
     const f = _gwNearestFreePt(spot.stand.x, spot.stand.y, 2.6); if (f) { spot = Object.assign({}, spot, { stand: { x: f.x, y: f.y } }); cur.spot = spot; }
   }
   if (spot && spot.stand) {
     const W = GARDEN_WORLD, far = Math.hypot((spot.stand.x - _gw.px) * W.cellW, (spot.stand.y - _gw.py) * W.cellH);
-    if (far < 14 || Math.hypot(spot.stand.x - _gw.px, spot.stand.y - _gw.py) < 0.8) start();
-    else if (!gardenWalkToPoint(spot.stand, (ok) => { if (ok !== false) start(); }, { radius: 1.6 })) { _ga.cur = null; try { gameDeny(null, { say: 'You cannot get there.' }); } catch (e) { /* fine */ } return false; }
+    if (far < 14 || Math.hypot(spot.stand.x - _gw.px, spot.stand.y - _gw.py) < (spot.seated ? 1.2 : 0.8)) start();   /* (a seat's front edge is inside the bench's own footing: you step back on to it from just in front) */
+    else if (!gardenWalkToPoint(spot.seated && typeof _gwFree === 'function' && !_gwFree(spot.stand.x, spot.stand.y) && typeof _gwNearestFreePt === 'function' ? (_gwNearestFreePt(spot.stand.x, spot.stand.y + 0.3, 2.6) || spot.stand) : spot.stand, (ok) => { if (ok !== false) start(); }, { radius: 1.6 })) { _ga.cur = null; try { gameDeny(null, { say: 'You cannot get there.' }); } catch (e) { /* fine */ } return false; }
   } else start();
   return true;
 }
