@@ -10,7 +10,7 @@
      petLifeThink(P, W)     the roaming loop asks before its own pick (97-pets-7roam.js): maybe one of these instead. True when one started
      petLifeTick(P, W, dt)  every frame for your companion: watches what you do (stand still, run, sit, fish, go indoors) and queues a reaction
      petLifeEvent(kind)     something happened (a pat, an emote, a photo): your companion answers
-     petLifeTry(id)         play one now, wherever it can (the checking tool, tools/pet-life-check.mjs, and the assistant)
+     petLifeTry(id, o)      play one now (o.here: where the pet stands); the round-3 checking scripts drive every row through it
      petLifeList()          every row with whether it is unlocked, its hint and how it is set off (the pet page and the checks)
      petLifeCelebrate(id)   an unlock: a little party, a line in the garden's messages
 
@@ -88,6 +88,8 @@ function _plNear(P, kind, R) {
 function _plDoing() {
   try { if (typeof gardenPlayerDoing === 'function') { const d = gardenPlayerDoing(); if (d) return String(d.kind || d); } } catch (e) { /* below */ }
   if (typeof _grm !== 'undefined' && _grm && _grm.on) return 'room';
+  // the player's moves (feat/player-moves, 94-garden-zz-7act-1core.js): what the interaction system says you are doing, in a pet's words
+  try { if (typeof gartActBusy === 'function' && gartActBusy() && typeof _ga !== 'undefined' && _ga.cur) { const id = String(_ga.cur.id || _ga.cur.act || (_ga.cur.row && _ga.cur.row.id) || ''); const k = { sit: 'sit', dangle: 'sit', lean: 'sit', lie: 'lie', nap: 'lie', angel: 'lie', ladder: 'climb', climbtree: 'climb', row: 'boat', read: 'talk', look: 'talk', photo: 'photo', warm: 'sit', feed: 'sit' }[id]; if (k) return k; } } catch (e) { /* below */ }
   if (typeof _gw === 'undefined' || !_gw) return '';
   if (_gw.boat) return 'boat';
   if (_gw.fishing && ['cast', 'wait', 'bite', 'reel'].includes(_gw.fishing.state)) return 'fish';
