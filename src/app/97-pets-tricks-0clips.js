@@ -263,6 +263,7 @@ const _PCFX = Object.freeze({
   hay: () => '<path d="M-4 .6L4-.8M-3.400-1.200L3.600 1M-4 1.800L2.400-2" stroke="#e2c060" stroke-width=".7" stroke-linecap="round"/>',
   marsh: () => '<rect x="-2.600" y="-2.200" width="5.200" height="4.400" rx="1.600" fill="#fff6ea" stroke="#d8b88a" stroke-width=".5"/><path d="M-2.200-1.400q2.200-.8 4.400 0" stroke="#c88a4a" stroke-width=".8" fill="none"/>',
   print: () => '<ellipse cy="1" rx="1.700" ry="1.400" fill="#5a4630" opacity=".55"/><circle cx="-1.700" cy="-1.200" r=".6" fill="#5a4630" opacity=".55"/><circle cx="0" cy="-1.900" r=".6" fill="#5a4630" opacity=".55"/><circle cx="1.700" cy="-1.200" r=".6" fill="#5a4630" opacity=".55"/>',
+  sill: () => '<path d="M-17-15H17V2H-17z" fill="#8a5a32"/><path d="M-17-15H17V-12H-17z" fill="#a8743f"/><path d="M-19 0H19V3.400H-19z" fill="#6a4426"/><path d="M-17-34H-13V0H-17zM13-34H17V0H13z" fill="#7a4e2c"/><path d="M-8-10H-2V-3H-8zM4-9H9V-4H4z" fill="#6f4a2a" opacity=".5"/>',   // a window sill a pet peeks over (85, the treehouse)
   bird: () => '<path d="M-4 0Q-2-2.400 0 0Q2-2.400 4 0" stroke="#3a3440" stroke-width="1" fill="none" stroke-linecap="round"/>',
   bug: () => '<ellipse rx="2" ry="1.500" fill="#3a3a30"/><path d="M-1.600-1.200L-3-2.600M1.600-1.200L3-2.600" stroke="#3a3a30" stroke-width=".5"/><ellipse cx="-.9" cy="-1.300" rx="1.400" ry=".8" fill="#dfeef8" opacity=".8"/><ellipse cx=".9" cy="-1.300" rx="1.400" ry=".8" fill="#dfeef8" opacity=".8"/>',
   sweat: () => '<path d="M0-2.600Q1.800 .2 0 1.600Q-1.800 .2 0-2.600z" fill="#bfe6fa" stroke="#6fb4dc" stroke-width=".35"/>',
@@ -303,7 +304,9 @@ function _pcSprite(parent, kind, c, A, o, i) {
   const dur = o.dur || 800;
   let frames;
   const T = (x, y, k, r) => `translate(${_pcN(x)}px,${_pcN(y)}px) rotate(${_pcN(r || 0)}deg) scale(${_pcN(k)})`;
-  if (o.path) {
+  if (o.hold) {
+    frames = [{ offset: 0, transform: T(x0, y0, s), opacity: 1 }, { offset: 1, transform: T(x0, y0, s), opacity: 1 }];
+  } else if (o.path) {
     const n = o.path.length - 1;
     frames = o.path.map((p, j) => ({ offset: j / n, transform: T(x0 + p[0], y0 + p[1], s, j * 60), opacity: j === n && !o.keep ? 0 : 1, easing: j % 2 ? 'cubic-bezier(.6,0,.9,.5)' : 'cubic-bezier(.1,.5,.4,1)' }));
   } else if (o.orbit) {

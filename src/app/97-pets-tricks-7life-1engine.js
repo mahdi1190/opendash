@@ -170,6 +170,7 @@ function petLifeThink(P, W) {
 /** Every frame for your companion: what you are up to, measured, and a reaction queued when something changes. Numbers only. */
 function petLifeTick(P, W, dt) {
   if (!P || !P.me || typeof _gw === 'undefined') return;
+  _plScarfSeason(W);
   const pl = _ptwPlayer(), doing = _plDoing();
   if (pl && pl.moving) { _pl.moveT += dt; _pl.stillT = 0; } else { if (_pl.moveT > 0) _pl.lastMoveT = _pl.moveT; _pl.moveT = 0; _pl.stillT += dt; }
   if (_pl.stillT - dt < 30 && _pl.stillT >= 30 && !doing && Math.hypot(P.x - _gw.px, P.y - _gw.py) < 5) petLifeEvent('still');   // half a minute stood still: it comes to lie on your feet
@@ -228,7 +229,7 @@ function _plParty(rows) {
 }
 /** Copy-cat (44): another pet nearby saw that, and tries the same a moment later. */
 function _plCopy(P, clip) {
-  if (!clip || !/^(jump|spin|wiggle|sniff|stretch|yawn|l-splash|l-dandelion|l-batgrass|dig|roll|pounce|l-greet)$/.test(clip) || Math.random() > 0.5) return;
+  if (!clip || !/^(jump|spin|wiggle|l-wiggle|sniff|l-sniff|stretch|yawn|l-splash|l-dandelion|l-batgrass|dig|roll|pounce|l-greet|l-flakes|l-rainbow)$/.test(clip) || Math.random() > 0.5) return;
   const W = _ptw.W; if (!W) return;
   const Q = W.pets.find(q => q !== P && !_ptwGone(q) && q.tx == null && !q.wow && q.pose !== 'sleep' && !(q.root && q.root._pcH) && Math.hypot(q.x - P.x, q.y - P.y) < 3 && _plSoon(q, 'copycat', 40) && _plSuits(q, clip));
   if (!Q) return;
@@ -246,4 +247,62 @@ function petLifeMenuItems(P) {
     if (r.id === 'belly-rub' && typeof petBondGive === 'function') { try { petBondGive('pat'); } catch (e) { /* only a moment */ } }
     _plPlay(P, _plClips(r), 1.5, () => P.hearts());
   } }));
+}
+
+/* ---------- round 2 of the hundred things: the loose ones ---------- */
+/** 85: up into the treehouse, and out of its window. The window is a spot on the treehouse's own row (94-garden-lands-0table.js: pet.window, world
+ *  pixels from its foot); the pet goes to the foot of the ladder, hops, and is up at the window with the sill in front of it, then comes down. */
+function _plTreehouse(P) {
+  let row = null, prop = null;
+  try { row = (typeof GARDEN_LAND_SIGHTS !== 'undefined' ? GARDEN_LAND_SIGHTS : []).find(r => r.id === 'ld-treehouse'); prop = gardenLandProps().find(p => p.id === 'ld-treehouse'); } catch (e) { return false; }
+  const win = row && row.pet && row.pet.window; if (!win || !prop) return false;
+  const foot = { x: prop.x + prop.w / 2, y: prop.y + prop.h };
+  const near = _pl.here ? { x: P.x, y: P.y } : _ptwBeside(foot); if (!near) return false;
+  const up = () => {
+    const was = { x: P.x, y: P.y };
+    P.dir = 1; P.x = foot.x; P.y = foot.y + 0.04;   // drawn just in front of the treehouse, at its foot
+    P.perch = { dx: win[0], up: -win[1] };
+    _plPlay(P, ['l-window'], 0, () => { P.perch = null; P.x = was.x; P.y = was.y; _plPlay(P, ['jump'], 0.6); });
+  };
+  if (_pl.here) { _plPlay(P, ['jump'], 0, up); return true; }
+  P.walkTo(near.x, near.y, false, () => _plPlay(P, ['jump'], 0, up));
+  return true;
+}
+/** 93: the winter scarf. The first shiver of the winter, it puts one on (a pet that already wears something at the neck keeps that), and it stays
+ *  on all winter: it is the look's own neck item, so it is saved, shown on the pet page and sent to friends like any accessory. Spring takes it off. */
+const PL_SCARF = 'pi-cbandwinter';
+function _plScarf(on) {
+  try {
+    const g = petGet(); if (!g.has) return false;
+    const S = _ptS(true), look = Object.assign({}, g.look); delete look.name;
+    if (on) { if (look.itemNeck) return false; S.lifeScarf = 1; petSet({ look: Object.assign(look, { itemNeck: PL_SCARF }) }); return true; }
+    if (!S.lifeScarf) return false;
+    S.lifeScarf = 0; if (look.itemNeck === PL_SCARF) petSet({ look: Object.assign(look, { itemNeck: '' }) });
+    return true;
+  } catch (e) { return false; }
+}
+let _plScarfT = 0;
+function _plScarfSeason(W) { const t = performance.now(); if (t - _plScarfT < 15000) return; _plScarfT = t; try { if (W && W.m && W.m.season && W.m.season !== 'winter' && _ptS().lifeScarf) _plScarf(false); } catch (e) { /* next time */ } }
+/** 100: leaving the garden (the Home button, the garden's Leave button, a page opened from the sidebar): your companion waves first, where you can
+ *  see it, and the page changes a moment later. Only for your own tap or key (never a page change the app makes by itself), and not twice in a row. */
+let _plByeT = 0, _plInputT = 0;
+try { addEventListener('pointerdown', () => { _plInputT = performance.now(); }, true); addEventListener('keydown', () => { _plInputT = performance.now(); }, true); } catch (e) { /* no window */ }
+function _plGoodbye(go) {
+  try {
+    const now = performance.now();
+    if (typeof state === 'undefined' || !state || state.view !== 'garden' || now - _plInputT > 800 || now - _plByeT < 5000) return false;
+    if (typeof _ptw === 'undefined' || !_ptw.pets || !_pcMotionOn() || typeof _ptwVisiting === 'function' && _ptwVisiting()) return false;
+    const P = _ptw.pets.find(q => q.me); if (!P || !P.root || P.wow) return false;
+    if (typeof _gwInView === 'function' && _gw && _gw.cam && _gw.cam.w && !_gwInView(P.x, P.y, 0.3)) return false;
+    _plByeT = now;
+    P.tx = null; P.arrive = null; P.busy = 0; P.cb = null; P.perch = null;
+    _plFacePlayer(P); _plPlay(P, ['l-wave'], 1.5);
+    if (typeof gardenLivePet === 'function') { /* the clip goes to friends as any clip does */ }
+    setTimeout(go, 1350);
+    return true;
+  } catch (e) { return false; }
+}
+if (typeof setView === 'function') {
+  const _plSetView0 = setView;
+  setView = function (v) { const self = this, args = arguments; if (v !== 'garden' && _plGoodbye(() => _plSetView0.apply(self, args))) return; return _plSetView0.apply(this, arguments); };
 }
