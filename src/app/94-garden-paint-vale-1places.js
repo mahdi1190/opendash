@@ -114,14 +114,14 @@
       if (deck.over === 'brook' || deck.over === 'river') { const sea = deck.over === 'river';
         // The woodland brook: rounded, water-worn stones (a squircle filling each slab, so the footing is still the
         // whole support), wet dark feet, a ring of ripple where the water meets them, moss on the shaded side.
-        const tones = sea ? ['#a8a498', '#b6b1a4', '#9a968a', '#aca596', '#bcb6a6'] : season === 'winter' ? ['#a9a89c', '#bdbcb0', '#9a9a8e'] : ['#a19a84', '#b3ab93', '#958f7b', '#aaa088'];
+        const tones = sea ? ['#8e8a80', '#9c978b', '#858178', '#a29c8f', '#948e82'] : season === 'winter' ? ['#a9a89c', '#bdbcb0', '#9a9a8e'] : ['#a19a84', '#b3ab93', '#958f7b', '#aaa088'];
         const sq = (lo, hi, k, ds, dt, jit) => { const pts = []; for (let j = 0; j < 28; j++) { const a = j / 28 * Math.PI * 2, c = Math.cos(a), si = Math.sin(a), u = Math.sign(c) * Math.pow(Math.abs(c), .5), v = Math.sign(si) * Math.pow(Math.abs(si), .5), n = 1 + (jit ? (jit[j % jit.length] - .5) * .06 : 0); pts.push(q((lo + hi) / 2 + dt + u * (hi - lo) / 2 * k * n, ds + v * hw * k * n)); } return B.poly(pts); };
         for (let i = 0; i < count; i++) {
           const lo = i * step + (i ? .25 / deck.length : 0), hi = (i + 1) * step - (i < count - 1 ? .25 / deck.length : 0), jit = [r(), r(), r(), r(), r(), r(), r()], tone = r();
           B.s(sq(lo, hi, 1.08, 0, 0, jit), P.foam || '#eef2e2', 1.6, .5);
           B.f(sq(lo, hi, 1, 1.2, 0, jit), '#4e4a40', .85);
           B.f(sq(lo, hi, .97, 0, 0, jit), tones[Math.floor(tone * tones.length)]);
-          B.f(sq(lo, hi, .6, -hw * .22, -(hi - lo) * .08, jit), '#d4ccb4', .5);
+          B.f(sq(lo, hi, .6, -hw * .22, -(hi - lo) * .08, jit), sea ? '#c4bcaa' : '#d4ccb4', sea ? .42 : .5);
           if (tone < .45 || sea) B.f(sq(lo, hi, sea ? .5 : .42, hw * .5, (hi - lo) * .1, jit), season === 'winter' ? '#e8ecef' : sea ? '#4f6a3a' : '#6f8446', sea ? .5 : .6);
           if (sea) for (let k = 0; k < 4; k++) { const p = q(lo + (hi - lo) * (.2 + r() * .6), hw * (.3 + r() * .5)); B.f(B.circ(p.x, p.y, .9), '#e4e0d4', .8); }
         }
