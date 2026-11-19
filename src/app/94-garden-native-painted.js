@@ -543,10 +543,12 @@ window.GardenNativePainted = (function () {
     if (night && window.GardenPaintedProps) { const pk = GardenPaintedProps.poolKey(scene); if (pk) { const pool = scene.add.image(cx, foot + 10, pk).setOrigin(.5, .5).setScale(def.w * 1.1 / 256, def.w * .3 / 256).setAlpha(.3), layer = overLayer; if (layer) { layer.add(pool); pool.setDepth(80005); } else node._inner.add(pool); poolImages.push(pool); } }
     // the click area is the picture and its sign, no wider: the village's paths pass close by these houses now they stand at
     // full size, and a click on the path beside one must walk there, not in at its door
-    // (clickTop: the share of the picture above the roof that is only a flagpole and its flag, not part of the house)
-    const top = main.y - main.displayHeight * main.originY + main.displayHeight * (def.clickTop || 0), b = { x: main.x - main.displayWidth * main.originX - 2, y: top, width: main.displayWidth + 4, height: foot - top + (def.sign ? 22 : 8) };
+    // (clickTop: the share of the picture above the roof that is only a flagpole and its flag, not part of the house: it is
+    // drawn, and cached, with the house, but a click there is a click on the ground behind it)
+    const top = main.y - main.displayHeight * main.originY, b = { x: main.x - main.displayWidth * main.originX - 2, y: top, width: main.displayWidth + 4, height: foot - top + (def.sign ? 22 : 8) };
+    const hitTop = top + main.displayHeight * (def.clickTop || 0);
     node.nativeBounds = b;
-    return { root: node.target, rootNode: node, bounds: b, painted: true, foot: { x: cx, y: foot }, update() {}, setLitWindows(on) { for (const [im, id, v, size] of parts) { const o = objectKey(scene, id, v, season, size, !!on); if (o && im.texture.key !== o.key) im.setTexture(o.key).setOrigin(o.meta.ox, o.meta.oy); } }, destroy() { for (const im of poolImages) im.destroy(); node.remove(); } };
+    return { root: node.target, rootNode: node, bounds: b, hitPoint: def.clickTop ? (x, y) => y >= hitTop : undefined, painted: true, foot: { x: cx, y: foot }, update() {}, setLitWindows(on) { for (const [im, id, v, size] of parts) { const o = objectKey(scene, id, v, season, size, !!on); if (o && im.texture.key !== o.key) im.setTexture(o.key).setOrigin(o.meta.ox, o.meta.oy); } }, destroy() { for (const im of poolImages) im.destroy(); node.remove(); } };
   }
 
   /* ---------- planting: groves, shrubs and reeds in deliberate groups ---------- */
