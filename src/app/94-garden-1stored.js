@@ -97,6 +97,10 @@ function _gardenFeatureClearWhy(f, x, y, m) {
   for (const g of (typeof GARDEN_ZONE_GATES !== 'undefined' ? GARDEN_ZONE_GATES : [])) { if (!g.crossSpan) continue; const xs = g.crossSpan.map(p => p[0]), ys = g.crossSpan.map(p => p[1]); if (x + w > Math.min(...xs) - 2.5 && x < Math.max(...xs) + 2.5 && y + h > Math.min(...ys) - 2.5 && y < Math.max(...ys) + 2.5) return 'Too close to the gate'; }
   // a tall picture covers the ground behind it as well: a windmill went up in front of a scarecrow, its sails over it
   const up = art && art.box ? 1 + Math.floor(Math.max(0, -art.box[1] - 60) / W.cellH / 2) : 1;
+  // no tree stands in it or just in front of it (the windmill inside a great tree, the savings oak and the hill flag lost
+  // under the wood's canopy), and no tall building in front hides it (the bandstand behind the land office's roof)
+  if (typeof _gwPaintedTrunks === 'function') { let feet = []; try { feet = _gwPaintedTrunks(true) || []; } catch (e) { /* no painted trees yet */ } for (const t of feet) if (t.x > x - reach - .8 && t.x < x + w + reach + .8 && t.y > y - up && t.y < y + h + 3) return 'Too close to a tree'; }
+  for (const s of statics) { const sf = s.y + (s.h || 1), tall = (s.tall || 1) >= 1.8 || !!(window.GardenPaintedMarks && GardenPaintedMarks.ART[s.id] && -GardenPaintedMarks.ART[s.id].box[1] > 90); if (tall && sf > y + h && sf <= y + h + 4 && s.x + (s.w || 1) + 1 > x - reach && s.x - 1 < x + w + reach) return `Too close behind ${String(s.name || 'a building').replace(/^The /, 'the ')}`; }
   for (let cy = y - up; cy < y - 1; cy++) for (let cx = x - reach; cx < x + w + reach; cx++) {
     if (cx < 0 || cy < 0 || cx >= W.cols || cy >= W.rows) continue;
     const pr = gardenPropAt(cx, cy); if (pr && pr.id !== f.id) return `Too close to ${String(pr.name || 'something').replace(/^The /, 'the ')}`;
