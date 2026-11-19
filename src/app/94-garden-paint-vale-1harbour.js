@@ -321,8 +321,8 @@
         if (sand) B.s(`M${p.x + hw * .2} ${p.y + 2}q${hw * .5} 3 ${hw + 10} -1`, '#f2e6c4', 1.4, .5); }); }
     // boats at their moorings and two buoys, out on the bay
     // (where they ride is set from the quay, so it follows the layout; a buoy no longer sits on boat-a)
-    for (const [dx, dy, col, k] of [[-6.7, 7, '#a8402e', 'boat-a'], [3.7, 8.6, '#2f6a5a', 'boat-b'], [-7.9, 9.2, '#d8c890', 'boat-c']]) { const x = quay.x + dx, y = quay.y + dy; const b = L.base(x, y); if (b && b.ocean) { const p = atCell(x, y); thing({ key: k, box: [-54, -26, 58, 14], x: p.x, y: p.y, draw: drawBoat(P, col, true) }); } }
-    for (const [dx, dy] of [[-3.1, 9.8], [6.5, 9], [-9.6, 7.4]]) { const x = quay.x + dx, y = quay.y + dy; const b = L.base(x, y); if (b && b.ocean) { const p = atCell(x, y); thing({ key: 'buoy', box: [-8, -14, 8, 5], x: p.x, y: p.y, draw: drawBuoy(P) }); } }
+    for (const [dx, dy, col, k] of [[-6.7, 7, '#a8402e', 'boat-a'], [3.7, 8.6, '#2f6a5a', 'boat-b'], [-7.9, 9.2, '#d8c890', 'boat-c']]) { const x = quay.x + dx, y = quay.y + dy; const b = L.base(x, y); if (b && b.ocean) { const p = atCell(x, y); thing({ key: k, box: [-54, -26, 58, 14], x: p.x, y: p.y, bob: 1.4, draw: drawBoat(P, col, true) }); } }
+    for (const [dx, dy] of [[-3.1, 9.8], [6.5, 9], [-9.6, 7.4]]) { const x = quay.x + dx, y = quay.y + dy; const b = L.base(x, y); if (b && b.ocean) { const p = atCell(x, y); thing({ key: 'buoy', box: [-8, -14, 8, 5], x: p.x, y: p.y, bob: 1.8, draw: drawBuoy(P) }); } }
   }
 
   /* ---------- the standing things ---------- */

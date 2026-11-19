@@ -254,7 +254,7 @@ window.GardenPaintVale = (function () {
     if (main.length) handles.push(kit.chunked(scene, root, main, { key: sig + '|m', box: worldBox, K: .35, chunk: 512, depth: MAIN_DEPTH, budgetMB: 10, lazy: true, slice: 10, prebake: true }));
     // Standing things and the crossings' water: a texture already baked is shown at once; a new one waits in a queue
     // that tick() bakes nearest the camera first, a few milliseconds a frame (so a repaint never freezes a frame).
-    const sprites = [], queue = [], tall = [], shrink = [];
+    const sprites = [], queue = [], tall = [], shrink = [], bob = [];
     const make = (o, isUnder) => {
       if (o.make) { const im = ok(() => o.make(scene)); if (im) { im.setDepth(o.y); (objects || root).add(im); sprites.push(im); if (im.displayHeight > 60) tall.push(im); } return; }   // (a tall one, a tree: it fades when you stand under it)
       const key = (isUnder ? underSig : sig + '|t|') + o.key, draw = isUnder ? B => o.draw(B, waterTod) : o.draw;
@@ -263,19 +263,22 @@ window.GardenPaintVale = (function () {
       im.setDepth(isUnder ? UNDER : o.depth != null ? o.depth : o.y); sprites.push(im); stats.spritePx = (stats.spritePx || 0) + (im._gptPx || 0);
       if (!isUnder && o.crown) { im._gpvCrown = o.crown; tall.push(im); }
       if (!isUnder && o.farShrink) { im._gpvBase = im.scaleX; im._gpvShrink = o.farShrink; shrink.push(im); }
+      if (!isUnder && o.bob) { im._gpvBob = { y: im.y, ph: ((o.x * 7 + o.y * 13) % 628) / 100, a: o.bob }; bob.push(im); }   // (afloat: it rides the swell)
       if (isUnder && root.sort) root.sort('depth');
     };
     stats = { sig, ground: ground.length, mainland: main.length, under: under.length, things: things.length, spritePx: 0 };
     for (const u of under) (scene.textures.exists(underSig + u.key) ? make(u, true) : queue.push([u, true]));
     for (const o of things) (o.make || scene.textures.exists(sig + '|t|' + o.key) ? make(o, false) : queue.push([o, false]));
     if (root.sort) root.sort('depth'); if (objects && objects.sort) objects.sort('depth');
-    cur = { sig, groundSig, handles, groundHandle, sprites, scene, queue, make, objects, root, tall, shrink, W, covering: [] };
+    cur = { sig, groundSig, handles, groundHandle, sprites, scene, queue, make, objects, root, tall, shrink, bob, W, covering: [] };
     stats.buildMs = Math.round(performance.now() - t0);
   }
   function tick(time, view) {
     if (cur) cur.covering.length = 0;
     // a landmark that would swallow its own clearing when the whole map is in view (the Great Oak) draws smaller as you zoom out:
     // full size from the walking zoom in, down to farShrink at the whole-map zoom (its foot stays put)
+    // boats and buoys afloat ride a slow swell, each on its own beat: a pixel or two up and down and a little roll
+    if (cur && cur.bob.length && time) for (const im of cur.bob) { if (!im.active || !im.visible) continue; const b = im._gpvBob, t = time / 1000 + b.ph; im.y = b.y + Math.sin(t * 1.3) * b.a; im.rotation = Math.sin(t * .9 + 1) * .012 * b.a; }
     if (cur && cur.shrink.length) { const z = cur.scene.cameras && cur.scene.cameras.main ? cur.scene.cameras.main.zoom : 1, t = Math.max(0, Math.min(1, (z - .25) / .45));
       for (const im of cur.shrink) if (im.active) { const k = im._gpvBase * (im._gpvShrink + (1 - im._gpvShrink) * t); if (Math.abs(im.scaleX - k) > 1e-4) im.setScale(k); } }
     if (cur && cur.tall.length && typeof _gw !== 'undefined') {
@@ -303,7 +306,7 @@ window.GardenPaintVale = (function () {
   function pendingGround() { return cur && cur.groundHandle ? cur.groundHandle.pendingInView() : 0; }
   function status() {
     const hs = cur ? cur.handles : [], px = hs.reduce((s, h) => s + (h.texturePx || 0), 0) + (stats.spritePx || 0);
-    return Object.assign({}, stats, { wanted: wanted(), on: !!cur, chunks: hs.map(h => h.chunks), live: hs.map(h => h.live), pending: hs.map(h => h.pending), worstSliceMs: Math.max(0, ...hs.map(h => h.sliceWorstMs || 0)), worstChunkMs: Math.max(0, ...hs.map(h => h.worstMs || 0)), textureMB: Math.round(px * 4 / 1048576 * 10) / 10, lastError: lastError || (KIT() && KIT().lastError) });
+    return Object.assign({}, stats, { wanted: wanted(), on: !!cur, afloat: cur ? cur.bob.map(im => +(im.y - im._gpvBob.y).toFixed(2)) : [], chunks: hs.map(h => h.chunks), live: hs.map(h => h.live), pending: hs.map(h => h.pending), worstSliceMs: Math.max(0, ...hs.map(h => h.sliceWorstMs || 0)), worstChunkMs: Math.max(0, ...hs.map(h => h.worstMs || 0)), textureMB: Math.round(px * 4 / 1048576 * 10) / 10, lastError: lastError || (KIT() && KIT().lastError) });
   }
   /** Draw the ground picture of a box straight into a 2D context (no scene), for previews: GardenPaintVale.paintTo(ctx, [x0, y0, x1, y1], 1). */
   function paintTo(cx, box, k, season) {
