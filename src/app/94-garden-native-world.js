@@ -1176,7 +1176,7 @@ window.GardenNativeWorld = (function () {
           const gate = gateRows.find(g => g.id === meta.id); if (gate) { gate.root = record.root; gate.bounds = record.bounds; gate.depth = 76000; }
         }
         if (meta.prop && meta.prop.kind) fadingProps.push(record);
-        if (record.handle.painted && record.handle.lights) record.handle.lights.forEach((l, i) => pointLights.push({ id: record.id + ':pl' + i, x: l.x, y: l.y, radius: l.radius, color: nightMaterials ? 0xffc17a : 0xffd88e, intensity: .8 }));
+        if (record.handle.painted && record.handle.lights) record.handle.lights.forEach((l, i) => pointLights.push({ id: record.id + ':pl' + i, x: l.x, y: l.y, ground: l.ground, radius: l.radius, color: nightMaterials ? 0xffc17a : 0xffd88e, intensity: .9 }));
         if (record.handle.canopyOcclusion) {
           const crown = record.handle.canopyOcclusion;
           canopyOccluders.push({ id: record.id, record, node: crown.node, polygons: crown.polygons, bounds: terrainBox(crown.polygons.flat()), normalAlpha: crown.node.target.alpha, faded: false });

@@ -553,10 +553,12 @@ window.GardenPaintedProps = (function () {
   function brambleSide(B, r, S, season) {
     const yn = -S - 6, ys = S, cane = ['#5e2e30', '#7a3e3a', '#8e5446'], leaf = season === 'autumn' ? ['#5a3a24', '#8a4a2a', '#a8602e'] : season === 'winter' ? ['#3e4636', '#545c46', '#6a5644'] : ['#24401e', '#34582a', '#4e7438'];
     B.shadow(4, 4, 46, ys - yn, .22);
+    // a low dark mound of leaves first, so the canes arch out of it, not a stack of red strokes (round 3, first look)
+    for (let y = yn; y <= ys; y += 6) { const mid = 1 - Math.abs(y - (yn + ys) / 2) / ((ys - yn) / 2), h = 20 + mid * 22; B.f(D().blob(r, 0, y - h * .45, 36 + mid * 12, h * .55, 10, .4), leaf[0], .97).f(D().blob(r, -6, y - h * .62, 24 + mid * 8, h * .3, 9, .45), leaf[1], .9); }
     for (let y = yn; y <= ys; y += 4.2) {
       const mid = 1 - Math.abs(y - (yn + ys) / 2) / ((ys - yn) / 2), h = 22 + mid * 26 + r() * 6;
-      for (let k = 0; k < 3; k++) { const x0 = -40 + r() * 30, x1 = x0 + 30 + r() * 34, top = y - h * (.7 + r() * .4); B.s(`M${x0} ${y}Q${(x0 + x1) / 2} ${top} ${x1} ${y - 2 + r() * 4}`, cane[k % 3], 1.6 + r(), .95); for (let t = .2; t < .9; t += .17) { const px = x0 + (x1 - x0) * t, py = y + (top - y) * 4 * t * (1 - t) * .5; B.s(`M${px} ${py}l1.6 -1.4`, '#2a1618', .6, .9); } }
-      for (let k = 0; k < 4; k++) { const x = -38 + r() * 76, py = y - h * (.25 + r() * .7); for (let j = 0; j < 3; j++) { const a = -1.6 + j * 1.05 + (r() - .5) * .3; B.f(B.ell(x + Math.cos(a) * 3, py + Math.sin(a) * 2.2, 2.6, 1.6), leaf[(j + k) % 3], .96); } }
+      if ((Math.round(y) & 3) < 2) { const k = Math.round(y) & 1, x0 = -46 + r() * 30, x1 = x0 + 34 + r() * 38, top = y - h * (.8 + r() * .5); B.s(`M${x0} ${y}Q${(x0 + x1) / 2} ${top} ${x1} ${y - 2 + r() * 4}`, cane[k], 1.3 + r() * .6, .9); for (let t = .2; t < .9; t += .2) { const px = x0 + (x1 - x0) * t, py = y + (top - y) * 4 * t * (1 - t) * .5; B.s(`M${px} ${py}l1.6 -1.4`, '#2a1618', .6, .9); } }
+      for (let k = 0; k < 6; k++) { const x = -42 + r() * 84, py = y - h * (.2 + r() * .75); for (let j = 0; j < 3; j++) { const a = -1.6 + j * 1.05 + (r() - .5) * .3; B.f(B.ell(x + Math.cos(a) * 3.6, py + Math.sin(a) * 2.6, 3.2, 2), leaf[(j + k) % 3], .97); } }
       if (season !== 'winter' && r() < .7) { const x = -32 + r() * 64, py = y - h * (.4 + r() * .5); if (season === 'summer' || season === 'spring') B.f(B.circ(x, py, 1.8), '#f6f0f0').f(B.circ(x, py, .7), '#e8d070'); else B.f(B.circ(x, py, 1.9), '#1e1426').f(B.circ(x - .6, py - .6, .6), '#6a5a8a', .8); }
       if (season === 'summer' && r() < .5) B.f(B.circ(-30 + r() * 60, y - h * (.3 + r() * .4), 1.7), r() < .5 ? '#b0283a' : '#2a1826');
     }
@@ -669,8 +671,15 @@ window.GardenPaintedProps = (function () {
     { const T = millPlanks(L), [t0, t1] = T.span;
       B.f(band(run(-hw, 0, t0 - 1, t1 + 1, 2), run(hw, 0, t0 - 1, t1 + 1, 2)), '#3e3020');
       for (let i = 0; i < T.n; i++) { const [ta, tb] = T.plank(i), quad = [q(ta, -hw + .5), q(tb, -hw + .5), q(tb, hw - .5), q(ta, hw - .5)];
-        if (!open && i === T.gap) { B.f(B.poly(quad), B.lin(0, quad[0][1], 0, quad[2][1], [[0, '#0e1a1c'], [.5, '#22383c'], [1, '#365458']])); const g0 = q((ta + tb) / 2, -hw * .5), g1 = q((ta + tb) / 2, hw * .2); B.s(`M${g0[0]} ${g0[1]}L${g1[0]} ${g1[1]}`, '#9cc4c8', .9, .55); continue; }
-        B.f(B.poly(quad), ['#9a7a54', '#8a6c48', '#a88a60', '#93744e'][i % 4]);
+        if (!open && i === T.gap) {
+          // the gap: the river seen through it, bright and moving, the plank ends either side dark with the drop
+          const wide = [q(ta - 1.2, -hw + .5), q(tb + 1.2, -hw + .5), q(tb + 1.2, hw - .5), q(ta - 1.2, hw - .5)];
+          B.f(B.poly(wide), B.lin(0, wide[0][1], 0, wide[2][1], [[0, '#3e6e78'], [.5, '#5a92a0'], [1, '#4a8290']]));
+          for (const f of [.3, .62]) { const g0 = q(ta + .5, (f * 2 - 1) * hw * .8), g1 = q(tb - .5, (f * 2 - 1) * hw * .8 + 2); B.s(`M${g0[0]} ${g0[1]}L${g1[0]} ${g1[1]}`, '#e6f4f2', .9, .8); }
+          for (const t of [ta - 1.2, tb + 1.2]) { const a = q(t, -hw + .5), b = q(t, hw - .5); B.s(`M${a[0]} ${a[1]}L${b[0]} ${b[1]}`, '#1e1810', 1.4, .9); }
+          continue;
+        }
+        B.f(B.poly(quad), ['#b8996c', '#a8895e', '#c4a576', '#ae9064'][i % 4]);
         const e0 = q(ta + .6, -hw + 1), e1 = q(ta + .6, hw - 1); B.s(`M${e0[0]} ${e0[1]}L${e1[0]} ${e1[1]}`, '#c8a878', .6, .6);
         for (const s of [-hw * .62, hw * .62]) { const n = q((ta + tb) / 2, s); B.f(B.circ(n[0], n[1], .8), '#2a2420'); }
         for (let k = 0; k < 2; k++) { const a = q(ta + 1 + r() * (tb - ta - 2), -hw * .9), b = q(ta + 1 + r() * (tb - ta - 2), hw * (.2 + r() * .6)); B.s(`M${a[0]} ${a[1]}L${b[0]} ${b[1]}`, '#5e4630', .45, .5); } }
@@ -727,7 +736,7 @@ window.GardenPaintedProps = (function () {
     if (open) { const p = q(-2, -hw - 6), x = p[0], y = p[1]; B.post(x, y - 34, y, 3, IRON).f(B.rr(x - 4, y - 44, 8, 10, 1.5), '#f2e6b8').f(B.poly([[x - 6, y - 44], [x, y - 50], [x + 6, y - 44]]), IRON[0]); }
   }
   /** Where the Millwater bridge's oak patch lies along its deck (t from its west end, px): the planks and the one that is missing. */
-  function millPlanks(L) { const t0 = L * .45, t1 = L * .55, n = 6, w = (t1 - t0) / n; return { span: [t0, t1], n, gap: 3, plank: i => [t0 + i * w + .35, t0 + (i + 1) * w - .35] }; }
+  function millPlanks(L) { const t0 = L * .43, t1 = L * .57, n = 6, w = (t1 - t0) / n; return { span: [t0, t1], n, gap: 3, plank: i => [t0 + i * w + .35, t0 + (i + 1) * w - .35] }; }
   function gateArt(kind, g, frame, season, open, crossing) {
     const side = Math.abs(frame.uy) > Math.abs(frame.ux), half = Math.max(46, Math.min(80, frame.span * .62)), r = rng(hash(g.id + kind));
     const L = leafOf(season), art = { S: frame.span * .9 };

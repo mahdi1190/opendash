@@ -151,15 +151,19 @@
     // one sign per plot, on the front (south) fence, the middle of its lowest run, but never where a sight stands in front
     // of it (the lighthouse's tower over the '360', the well's roof over the 'Lv 3': art director, round 3)
     if (fronts.length) {
-      const statics = (typeof gardenIslandData === 'function' && gardenIslandData().static) || [];
-      const hidden = (x, y) => statics.some(s => x >= s.x - 1 && x <= s.x + (s.w || 1) && y >= s.y - 5 && y < s.y + (s.h || 1));
+      // a sight's painted picture (its art row's box, a little inside its padding), else a cell either side and five rows up
+      const statics = (typeof gardenIslandData === 'function' && gardenIslandData().static) || [], ART = window.GardenPaintedMarks && GardenPaintedMarks.ART;
+      const reach = statics.map(s => { const a = ART && ART[s.id], cx = (s.x + (s.w || 1) / 2) * cw, foot = W.sky + (s.y + (s.h || 1)) * ch; return a && a.box ? [cx + a.box[0] * .8 - 14, cx + a.box[2] * .8 + 14, foot + a.box[1], foot] : [(s.x - 1) * cw, (s.x + (s.w || 1) + 1) * cw, foot - 6 * ch, foot]; });
+      const hidden = (px, py) => reach.some(q => px > q[0] && px < q[1] && py > q[2] && py < q[3]);
       const yMax = Math.max(...fronts.map(f => f[1])), low = fronts.filter(f => f[1] === yMax).sort((a, b) => a[0] - b[0]);
-      let spot = low[low.length >> 1], half = low.length % 2 ? 0 : -cw / 2;
-      if (hidden(spot[0], spot[1])) {
-        const mx = low.reduce((s, f) => s + f[0], 0) / low.length, open = fronts.filter(f => !hidden(f[0], f[1])).sort((a, b) => (b[1] - a[1]) * 4 + Math.abs(a[0] - mx) - Math.abs(b[0] - mx));
-        if (open.length) { spot = open[0]; half = 0; }
+      const at = (f, dx) => [(f[0] + .5) * cw + dx, W.sky + (f[1] + 1) * ch - 1];
+      let spot = low[low.length >> 1], pos = at(spot, low.length % 2 ? 0 : -cw / 2);
+      if (hidden(pos[0], pos[1] - 20)) {
+        const mx = (low.reduce((s, f) => s + f[0], 0) / low.length + .5) * cw, tries = [];
+        for (const f of fronts) for (const dx of [0, -cw * .34, cw * .34]) { const p = at(f, dx); if (!hidden(p[0], p[1] - 20)) tries.push({ f, p, score: (yMax - f[1]) * 4 * cw + Math.abs(p[0] - mx) }); }
+        tries.sort((a, b) => a.score - b.score); if (tries.length) { spot = tries[0].f; pos = tries[0].p; }
       }
-      const row = gardenLandCell(spot[0], spot[1]); if (row) sign(B, (spot[0] + .5) * cw + half, W.sky + (spot[1] + 1) * ch - 1, row, lv);
+      const row = gardenLandCell(spot[0], spot[1]); if (row) sign(B, pos[0], pos[1], row, lv);
     }
   }
   function compose(C) {

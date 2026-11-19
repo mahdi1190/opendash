@@ -581,7 +581,7 @@ window.GardenPaintSeat = (function () {
   A['plot:deck'] = { box: [-30, -26, 30, 8], seat: false, shade: false, draw(B, o) {
     const r = KIT().rng(337);
     // a square chalked on the planks, a stack of new boards, a coil of rope and a box of nails
-    B.s('M-20 -2h30v-12h-30z', '#f4f0e2', .9, .7).s('M-18 -4l26 -8M-18 -12l26 8', '#f4f0e2', .5, .35);
+    B.s('M-20 -2h30v-12h-30z', '#f4f0e2', .8, .45).s('M-18 -4l26 -8M-18 -12l26 8', '#f4f0e2', .5, .25);
     for (let i = 0; i < 3; i++) B.f(B.rr(12, -4 - i * 3, 16, 3, .8), ['#d8b884', '#c8a472', '#e0c494'][i]).s(`M12.5 ${-2.6 - i * 3}h15`, '#8a6a46', .4, .6);
     for (let i = 0; i < 3; i++) B.s(B.ell(-24, -3 - i * 1.2, 5 - i, 2 - i * .3), i % 2 ? '#d8c08a' : '#b89a6a', 1.3);
     B.f(B.rr(2, -9, 7, 5, 1), '#6a4a2e').f(B.rr(2, -9, 7, 1.4, .6), '#8a6a46').f(B.circ(5.5, -8.6, .6), '#8a8e90');
@@ -837,10 +837,12 @@ window.GardenPaintSeat = (function () {
     B.tufts(r, -48, 4, 10, 6, grass(o.season), 7).tufts(r, 50, 4, 10, 6, grass(o.season), 7);
   } };
   /* the stone circle: a ring of grey stones, the near ones standing taller, worn turf inside */
-  A['lf-circle'] = { box: [-80, -62, 82, 14], shade: false, flat: true, seat: { kind: 'turf', w: 120, front: 12, back: 36, stones: 0, way: false }, draw(B, o) {
-    const r = KIT().rng(281), s = o.season, n = 9;
-    const order = [...Array(n).keys()].map(i => { const a = -Math.PI / 2 + i / n * Math.PI * 2; return { x: Math.cos(a) * 64, y: -22 + Math.sin(a) * 20, a }; }).sort((p, q) => p.y - q.y);
-    for (const p of order) { const h = 9 + (p.y + 42) * .2 + r() * 4, w = 6 + r() * 3; B.f(B.poly([[p.x - w, p.y], [p.x - w * 1.05, p.y - h * .5], [p.x - w * .6, p.y - h], [p.x + w * .5, p.y - h * .94], [p.x + w, p.y - h * .4], [p.x + w, p.y]]), '#857c6e').f(B.poly([[p.x - w, p.y], [p.x - w * 1.05, p.y - h * .5], [p.x - w * .6, p.y - h], [p.x - w * .1, p.y - h * .5], [p.x - w * .2, p.y]]), '#b0a690'); B.f(B.blob(r, p.x - w * .3, p.y - h * .6, 2, 1.6, 6, .5), s === 'winter' ? '#f4f6f2' : '#c9c48a', .7); B.tufts(r, p.x, p.y + 1, w * 2.4, 5, grass(s), 5); }
+  // (the stones were knee high and read as teeth, far too small for 2400 coins: art director, round 3. Now they stand
+  // waist to shoulder high to a figure, broad slabs in a wider ring, the tallest at the back)
+  A['lf-circle'] = { box: [-92, -96, 94, 16], shade: false, flat: true, seat: { kind: 'turf', w: 140, front: 12, back: 40, stones: 0, way: false }, draw(B, o) {
+    const r = KIT().rng(281), s = o.season, n = 11;
+    const order = [...Array(n).keys()].map(i => { const a = -Math.PI / 2 + i / n * Math.PI * 2; return { x: Math.cos(a) * 76, y: -26 + Math.sin(a) * 22, a }; }).sort((p, q) => p.y - q.y);
+    for (const p of order) { const h = sz('door', 0) * (.42 + (-p.y - 4) / 48 * .3) + r() * 6, w = 8 + r() * 4; B.f(B.poly([[p.x - w, p.y], [p.x - w * 1.05, p.y - h * .5], [p.x - w * .6, p.y - h], [p.x + w * .5, p.y - h * .94], [p.x + w, p.y - h * .4], [p.x + w, p.y]]), '#857c6e').f(B.poly([[p.x - w, p.y], [p.x - w * 1.05, p.y - h * .5], [p.x - w * .6, p.y - h], [p.x - w * .1, p.y - h * .5], [p.x - w * .2, p.y]]), '#b0a690'); B.f(B.blob(r, p.x - w * .3, p.y - h * .6, 2, 1.6, 6, .5), s === 'winter' ? '#f4f6f2' : '#c9c48a', .7); B.tufts(r, p.x, p.y + 1, w * 2.4, 5, grass(s), 5); }
   } };
   // (the brushwork above, for the next file of sights: 94-garden-paint-terrain-6sights.js)
   M.SIGHT_KIT = { ashlar, mossOn, ivy, shingles, windowLit, leaf, grass, sz, STONE, MOSSY, OAK, WOOD, IRON };
