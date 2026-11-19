@@ -402,10 +402,10 @@ const GARDEN_LAND_SIGHTS = _gdMovable([
   { id: 'ld-woodhut', art: 'smoke', name: 'The woodcutter’s hut', x: 49, y: 2, w: 2, col: 'full', tall: 1.5, say: 'A low hut among the yews, with a stack of split logs under the eaves. Somebody keeps the step swept.' },   // (Hollin's home: docs/dev/STORIES.md)
   { id: 'ld-oldhouse', art: 'oldhouse', name: 'The old house', x: 2, y: 28, w: 2, col: 'full', tall: 1.5, say: 'Ivy to the eaves and a door that has not been opened in years. The garden still comes up through the step.' },   // (Mother Thistle's old house)
   // the high street's four cottages (the hand-authored village, 2.74): lived in, so no eggs; they pinch the road between the quay and the square
-  { id: 'ld-cottage-1', art: 'oldhouse', name: 'Rose cottage', x: 20, y: 30, w: 2, col: 'full', tall: 2.4, say: 'Roses round the door and a cat on the sill. The cat does not look up.' },
-  { id: 'ld-cottage-2', art: 'oldhouse', name: 'The baker’s cottage', x: 23, y: 30, w: 2, col: 'full', tall: 2.4, say: 'It smells of bread, every morning, whether anyone has baked or not.' },
-  { id: 'ld-cottage-3', art: 'oldhouse', name: 'Ivy cottage', x: 20, y: 33, w: 2, col: 'full', tall: 2.4, say: 'A boot scraper by the step and boots by the scraper. Somebody has just come in from the fields.' },
-  { id: 'ld-cottage-4', art: 'oldhouse', name: 'The harbour master’s cottage', x: 23, y: 33, w: 2, col: 'full', tall: 2.4, say: 'A brass telescope in the window, pointed at the quay. It has seen everything.' },
+  { id: 'ld-cottage-1', art: 'oldhouse', name: 'Rose cottage', x: 20, y: 30, w: 3, col: 'full', tall: 3.6, say: 'Roses round the door and a cat on the sill. The cat does not look up.' },
+  { id: 'ld-cottage-2', art: 'oldhouse', name: 'The baker’s cottage', x: 23, y: 30, w: 3, col: 'full', tall: 3.6, say: 'It smells of bread, every morning, whether anyone has baked or not.' },
+  { id: 'ld-cottage-3', art: 'oldhouse', name: 'Ivy cottage', x: 20, y: 33, w: 3, col: 'full', tall: 3.6, say: 'A boot scraper by the step and boots by the scraper. Somebody has just come in from the fields.' },
+  { id: 'ld-cottage-4', art: 'oldhouse', name: 'The harbour master’s cottage', x: 23, y: 33, w: 3, col: 'full', tall: 3.6, say: 'A brass telescope in the window, pointed at the quay. It has seen everything.' },
   { id: 'ld-orchard-wall', art: 'wall', name: 'The orchard wall', x: 45, y: 12, w: 2, col: 'full', tall: 0.6, say: 'Dry stone, and older than the trees.', egg: { verb: 'Look on top', c: 3, found: 'One sock, and three coins in the sock. Nobody has come back for it.' } },
   { id: 'ld-arch-e', art: 'gate', name: 'The orchard gate', x: 43, y: 18, col: 'none', tall: 1.9, say: 'The way up into the orchards.' },
   // west: the fields
