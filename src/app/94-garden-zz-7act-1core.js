@@ -413,7 +413,7 @@ function _gaSky(cur, on) {
 function gartActGroundClear(x, y) {
   try {
     for (const [dx, dy] of [[0, 0], [-0.6, 0], [0.6, 0], [-1.1, 0], [1.1, 0]]) {
-      const c = gardenIslandBaseCell(x + dx, y + dy); if (!c || !c.land || c.ocean || c.freshwater || c.solid || c.route || c.reservation || c.staticId) return false;
+      const c = gardenIslandBaseCell(x + dx, y + dy); if (!c || !c.land || c.ocean || c.freshwater || c.solid || c.route || c.reservation || c.staticId || c.district === 'garden-core') return false;   /* (your own beds: soil, not somewhere to lie) */
     }
     for (const p of (gardenIslandData().presentation || {}).plazas || []) if (p.rx && ((x - p.x) / (p.rx + 0.6)) ** 2 + ((y - p.y) / ((p.ry || p.rx) + 0.6)) ** 2 < 1) return false;
     const near = (_ga.list || []).some(r => Math.hypot(r.x - x, (r.y - y) * 1.3) < 1.4); if (near) return false;
