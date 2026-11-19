@@ -447,8 +447,10 @@ window.GardenPaintedProps = (function () {
     // wall stubs either side, one stone fallen from the ring, ivy. The opening shows the way through.
     const st = ['#c4bca4', '#a39a82', '#ddd6c0', '#7e7662'], L = leafOf(season), pw = Math.max(12, half * .3), spring = -rise * .58, ry = rise + spring - 6;
     const ring = (t, rr) => [Math.cos(Math.PI - t * Math.PI) * rr, spring - Math.sin(t * Math.PI) * rr * ry / half];
-    // the opening: the path running on beyond, in shade
-    B.f(`M${-half} 0V${spring}A${half} ${ry} 0 0 1 ${half} ${spring}V0z`, B.lin(0, spring - ry, 0, 0, [[0, 'rgba(36,40,30,.62)'], [.7, 'rgba(60,70,46,.38)'], [1, 'rgba(90,100,70,.12)']]));
+    // the opening: the path running on beyond, in shade; shut, it is black dark under the ring until the lantern goes up
+    // (it was sunlit and only heaped with rubble, the lantern's hook a faint post: hunter, round 3)
+    B.f(`M${-half} 0V${spring}A${half} ${ry} 0 0 1 ${half} ${spring}V0z`, open ? B.lin(0, spring - ry, 0, 0, [[0, 'rgba(36,40,30,.62)'], [.7, 'rgba(60,70,46,.38)'], [1, 'rgba(90,100,70,.12)']]) : B.lin(0, spring - ry, 0, 0, [[0, 'rgba(10,12,10,.96)'], [.6, 'rgba(18,22,16,.9)'], [1, 'rgba(34,40,28,.55)']]));
+    if (open) B.f(`M${-half} 0V${spring}A${half} ${ry} 0 0 1 ${half} ${spring}V0z`, B.rad(-half + 16, spring + 18, half * 1.3, [[0, 'rgba(255,214,140,.42)'], [.5, 'rgba(255,200,120,.14)'], [1, 'rgba(255,200,120,0)']]));
     // wall stubs running off either side, broken lower than the arch
     for (const s of [-1, 1]) {
       const x0 = s * (half + pw), len = half * .7, top = s < 0 ? -rise * .52 : -rise * .36;
@@ -478,6 +480,12 @@ window.GardenPaintedProps = (function () {
     for (const [x, y, rx] of [[-half - pw * .8, spring - ry * .5, 13], [-half * .6, spring - ry * .95, 10], [half + pw * .6, spring - 4, 9]]) B.f(D().blob(r, x, y, rx, rx * .7, 8, .5), L[0], .92).f(D().blob(r, x - 2, y - 2, rx * .62, rx * .4, 7, .5), L[1], .92).f(D().blob(r, x - 3, y - 3, rx * .3, rx * .2, 6, .5), L[2], .9);
     for (let i = 0; i < 6; i++) { const x = -half - pw + r() * pw * 1.3, len = 18 + r() * 34; B.s(`M${x} ${spring - ry * .4}q${(r() - .5) * 8} ${len * .5} ${(r() - .5) * 6} ${len}`, L[0], 1.5, .9); }
     if (open) B.flowers(r, 0, -1, half * 1.4, 12, season === 'winter' ? ['#f2f0e8', '#d8e0e8'] : ['#e8c84a', '#f2f0e8', '#c86aa0']);
+    // the lantern's iron bracket on the west pier, its hook empty while the way is shut; once open the lantern hangs there, lit
+    { const bx = -half, by = spring + 10;
+      B.s(`M${bx - 3} ${by}h16M${bx + 1} ${by}l7 -7`, IRON[0], 2.2).s(`M${bx - 3} ${by - .8}h16`, IRON[1], .7, .8).f(B.rect(bx - 6, by - 4, 4, 8), IRON[0]);
+      if (!open) B.s(`M${bx + 12} ${by}v4a2 2 0 1 0 3 2`, IRON[0], 1.4);
+      else { const lx = bx + 12, ly = by + 4; B.f(B.circ(lx, ly + 9, 18), 'rgba(255,214,140,.28)').s(`M${lx} ${by}v4`, IRON[0], 1.2).f(B.poly([[lx - 5, ly], [lx + 5, ly], [lx + 4, ly + 13], [lx - 4, ly + 13]]), '#ffd27a').s(`M${lx - 5} ${ly}L${lx + 5} ${ly}L${lx + 4} ${ly + 13}L${lx - 4} ${ly + 13}Z`, IRON[0], 1.1).f(B.poly([[lx - 6, ly], [lx, ly - 5], [lx + 6, ly]]), IRON[0]).f(B.circ(lx, ly + 6.5, 2.6), '#fff4c8'); }
+    }
   }
   /** The forest arch, face on: two old trees whose trunks lean in and grow into one bough over the way, a crown along the top, ivy hanging in the opening. */
   function livingArch(B, r, half, rise, season, open, side) {
@@ -983,7 +991,8 @@ window.GardenPaintedProps = (function () {
       const deck = kind === 'bridge' && crossing && typeof gardenIslandCrossingGeometry === 'function' ? gardenIslandCrossingGeometry().find(d => d.crossing.id === crossing.id) : null;
       if (deck && deck.halfWidth < 40) {
         const T = millPlanks(deck.length), [ta, tb] = T.plank(T.gap), pt = (t, s) => deck.deckPoint(t / deck.length, s), c = pt((ta + tb) / 2, 0), hw = deck.halfWidth;
-        const quad = [pt(ta, -hw + .5), pt(tb, -hw + .5), pt(tb, hw - .5), pt(ta, hw - .5)].map(p => [p.x - c.x, p.y - c.y]), xs = quad.map(p => p[0]), ys = quad.map(p => p[1]);
+        // (only the length of it that shows between the parapets: drawn over them, the whole plank hung down the bridge's face)
+        const quad = [pt(ta, -hw + 1), pt(tb, -hw + 1), pt(tb, hw - 10), pt(ta, hw - 10)].map(p => [p.x - c.x, p.y - c.y]), xs = quad.map(p => p[0]), ys = quad.map(p => p[1]);
         const pk = bake(scene, 'gateplank|' + Math.round(deck.length) + '|' + Math.round(hw), [Math.min(...xs) - 2, Math.min(...ys) - 2, Math.max(...xs) + 2, Math.max(...ys) + 3], B2 => { B2.f(B2.poly(quad.map(([x, y]) => [x + .6, y + 1.4])), 'rgba(30,24,16,.4)').f(B2.poly(quad), '#c4a272').s(`M${quad[0][0]} ${quad[0][1]}L${quad[3][0]} ${quad[3][1]}`, '#e8cc98', .8, .8); for (const p of [.2, .8]) { const x = quad[0][0] + (quad[3][0] - quad[0][0]) * p + 1, y = quad[0][1] + (quad[3][1] - quad[0][1]) * p; B2.f(B2.circ(x, y, .8), '#2a2420'); } });
         const puff = bake(scene, 'gatedust', [-9, -6, 9, 6], B2 => B2.f(B2.ell(0, 0, 8, 5), B2.rad(0, 0, 8, [[0, 'rgba(214,200,170,.8)'], [1, 'rgba(214,200,170,0)']])));
         const plank = h.add(image(scene, pk, c.x, c.y - 46));

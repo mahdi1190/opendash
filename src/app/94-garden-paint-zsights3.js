@@ -71,7 +71,7 @@
   /* ---------- the boathouse: a gable of sea-blue weatherboard on a granite footing, its slate roof running back, the boat
      doors standing open on the dark inside with a boat's bow in it, the loft door under its hoist beam (the way up to
      the boat loft), lobster pots, oars, a lifebuoy and rope at its foot; the ship's lantern by the doors lit at night ---------- */
-  A['ld-boathouse'] = { box: [-84, -190, 86, 12], seat: { kind: 'flags', w: 136, front: 20 }, lit: true, lights: [[-44, -58, 90], [0, -118, 70]], draw(B, o) {
+  A['ld-boathouse'] = { box: [-84, -190, 86, 12], door: { dx: 0, dy: -2 }, seat: { kind: 'flags', w: 136, front: 20 }, lit: true, lights: [[-44, -58, 90], [0, -118, 70]], draw(B, o) {
     const r = KIT().rng(711), s = o.season, eaves = -H * 1.95, ridge = -H * 3.45, back = 34, hw = 64;
     const BLUE = ['#5e868c', '#4a6e74', '#7ea4a8', '#2e4a50'], TRIM = '#efe8d8';
     // the roof running back from the gable: the west pitch lit, the east in shade, slate courses, the ridge tiles

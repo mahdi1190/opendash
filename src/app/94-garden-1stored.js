@@ -92,6 +92,9 @@ function _gardenFeatureClearWhy(f, x, y, m) {
   const W = GARDEN_WORLD, w = f.w || 1, h = f.h || 1, A = window.GardenPaintedMarks && GardenPaintedMarks.ART, art = A && A[f.id];
   const half = art && art.box ? Math.max(-art.box[0], art.box[2]) / W.cellW : w / 2 + .3, reach = Math.max(1, Math.ceil(half - w / 2 - .2));
   const lv = m && m.level ? m.level.level : 1, statics = (typeof gardenIslandData === 'function' && gardenIslandData().static) || [];
+  // never on a path (a footprint on the lane put the observatory across it), never in a gate's crossing (a prize board stood in the forest arch)
+  for (let cy = y; cy < y + h; cy++) for (let cx = x; cx < x + w; cx++) { const base = typeof gardenIslandBaseCell === 'function' ? gardenIslandBaseCell(cx, cy) : null; if (base && (base.route || base.reservation === 'apron')) return 'Keep the path clear'; }
+  for (const g of (typeof GARDEN_ZONE_GATES !== 'undefined' ? GARDEN_ZONE_GATES : [])) { if (!g.crossSpan) continue; const xs = g.crossSpan.map(p => p[0]), ys = g.crossSpan.map(p => p[1]); if (x + w > Math.min(...xs) - 2.5 && x < Math.max(...xs) + 2.5 && y + h > Math.min(...ys) - 2.5 && y < Math.max(...ys) + 2.5) return 'Too close to the gate'; }
   for (let cy = y - 1; cy <= y + h; cy++) for (let cx = x - reach; cx < x + w + reach; cx++) {
     if (cx >= x && cx < x + w && cy >= y && cy < y + h) continue;   // (the footprint itself: _gdPlaceOk)
     if (cx < 0 || cy < 0 || cx >= W.cols || cy >= W.rows) return 'Too near the edge of the garden';

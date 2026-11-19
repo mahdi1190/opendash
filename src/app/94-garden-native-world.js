@@ -1045,7 +1045,11 @@ window.GardenNativeWorld = (function () {
         node.appendChild(skin);
       }
       const b = { x: x - 14, y: foot - h - 4, width: cw + 32, height: h + 16 }; node.nativeBounds = b;
-      return { root: node.target, rootNode: node, bounds: b, update() {}, destroy() { node.remove(); } };
+      // the stall, the notice board and the craft bench stood on bare grass (art director, round 3): each stands in its own
+      // apron of flags or trodden earth, with a worn way to the nearest path
+      const made = { root: node.target, rootNode: node, bounds: b, update() {}, destroy() { node.remove(); } };
+      seatUnder(made, prop, sc, prop.kind === 'bench' ? { kind: 'earth', w: cw * .9, front: 18 } : { kind: 'flags', w: cw * .86, front: prop.kind === 'board' ? 16 : 20 });
+      return made;
     }
     function sync(next) {
       if (dead) return;
