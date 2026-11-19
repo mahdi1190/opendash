@@ -84,9 +84,17 @@
   // along its length (by place, so two cells' runs meet), dark at its foot and inside, sunlit on its upper left, with may
   // blossom in spring, dog-rose in summer and haws in autumn, and the meadow grown up its foot. hh tall.
   const HAW = { summer: ['#2a4222', '#3a5a2c', '#527638', '#729848', '#9cbc6a'], spring: ['#2c4622', '#41622c', '#5a8238', '#7ea84a', '#aed072'], autumn: ['#2e3a1c', '#46522a', '#626a34', '#868440', '#aca45c'], winter: ['#3a3428', '#4e4636', '#635a46', '#7a7058', '#958a6e'] };
+  // Each field its own hedge (round 2), so thirty fields are not one hedge stamped thirty times: most are hawthorn, some
+  // blackthorn (darker and bluer, a little taller, white with blossom before its leaves in spring, sloes in autumn), some
+  // hazel and field maple (lighter and rounder, cut lower, gold in autumn). Chosen by place (the field's first edge).
+  const HEDGES = [null,
+    { summer: ['#1e3020', '#2c4430', '#3e5c40', '#587a52', '#7e9a70'], spring: ['#26382a', '#3a5038', '#567046', '#7e9466', '#e8ece0'], autumn: ['#262a1c', '#3a4026', '#545a30', '#74783e', '#94945a'], winter: ['#2e2a28', '#423c36', '#58504a', '#6e665e', '#88807a'], fl: { spring: '#fbfbf4', summer: null, autumn: '#3c3e66', winter: null }, k: 1.08 },
+    { summer: ['#2e4824', '#46662e', '#62863c', '#86a84e', '#aec66e'], spring: ['#304c24', '#4a6e2e', '#68903e', '#8eb456', '#bcd67e'], autumn: ['#4a4420', '#74682a', '#a48a36', '#cca648', '#eaca6e'], winter: ['#4a4030', '#5e5440', '#74684e', '#8a7e60', '#a49878'], fl: { spring: '#e8d878', summer: null, autumn: '#8a6a3a', winter: null }, k: .86 }];
+  let hedgeVar = 0;
   function fieldHedge(B, r, P, x0, y0, horiz, len, season, hh) {
     if (len < 2) return;
-    const C = HAW[season] || HAW.summer, G = window.GardenPaintGround, wob = (u, v) => G && G.noise ? G.noise(u / 26, v / 26, 4417) : .5;
+    const HV = HEDGES[hedgeVar], C = (HV && HV[season]) || HAW[season] || HAW.summer, flOf = s => HV ? HV.fl[s] : s === 'spring' ? '#f6f2e6' : s === 'summer' ? '#f2b8c4' : s === 'autumn' ? '#b02a22' : null; if (HV) hh *= HV.k;
+    const G = window.GardenPaintGround, wob = (u, v) => G && G.noise ? G.noise(u / 26, v / 26, 4417) : .5;
     hh = hh || 24;
     if (horiz) {
       B.s(`M${x0} ${y0 + 1.5}h${len}`, '#26301a', 5, .18);
@@ -100,7 +108,7 @@
       }
       // leaf texture and flowers or haws in the sunlit face
       for (let i = 0; i < len / 3; i++) { const px = x0 + r() * len, py = y0 - hh * (.25 + r() * .6); B.f(B.ell(px, py, 1.4, .9), C[2 + Math.floor(r() * 3)], .7); }
-      const fl = season === 'spring' ? '#f6f2e6' : season === 'summer' ? '#f2b8c4' : season === 'autumn' ? '#b02a22' : null;
+      const fl = flOf(season);
       if (fl) for (let i = 0; i < len / (season === 'spring' ? 5 : 11); i++) { const px = x0 + r() * len, py = y0 - hh * (.45 + r() * .45); if (wob(px * 2.3, y0 + 91) < .5) continue; B.f(B.circ(px, py, season === 'summer' ? 1.5 : 1.05), fl, .95); if (season === 'summer') B.f(B.circ(px, py, .55), '#f8e070', 1); }
       // the shade inside its foot, and the meadow grown up in front of it
       B.f(B.rr(x0 - 1, y0 - 4.5, len + 2, 4.5, 2), 'rgba(20,32,14,.32)');
@@ -112,7 +120,7 @@
       B.s(`M${x0 + 2.5} ${ys}V${ye + 3}`, '#26301a', 6, .16);
       for (let py = ys; py <= ye; py += 3.6) { const hgt = hh * (.74 + wob(x0, py) * .36); B.f(B.blob(r, x0 + .6, py - hgt * .42, 5.6, hgt * .32, 7, .35), C[0], 1); }
       for (let py = ys + 1; py <= ye; py += 4.2) { const hgt = hh * (.74 + wob(x0, py) * .36); B.f(B.blob(r, x0 - .6, py - hgt * .6, 4.4, hgt * .22, 7, .4), C[1 + (r() < .5 ? 1 : 0)], .95); B.f(B.blob(r, x0 - 1.8, py - hgt * .76, 2.4, hgt * .1, 6, .45), C[3], .85); }
-      const fl = season === 'spring' ? '#f6f2e6' : season === 'summer' ? '#f2b8c4' : season === 'autumn' ? '#b02a22' : null;
+      const fl = flOf(season);
       if (fl && wob(x0 * 3, y0) > .45) for (let i = 0; i < len / 16; i++) B.f(B.circ(x0 + (r() - .6) * 6, ys + r() * (ye - ys) - hh * (.4 + r() * .3), 1.1), fl, .95);
     }
   }
@@ -153,6 +161,7 @@
     cx.fillStyle = '#3e2c1a'; cx.textBaseline = 'middle'; cx.fillText(txt, tx, y0 + 6.4); cx.restore();
   }
   function fence(B, r, P, edges, W, season, cb) {
+    { const G0 = window.GardenPaintGround, e0 = edges[0], q = e0 && G0 && G0.hash ? G0.hash(e0[0], e0[1], 4471) % 20 : 0; hedgeVar = q < 11 ? 0 : q < 16 ? 1 : 2; }
     const cw = W.cellW, ch = W.cellH, lv = level(), wood = ['#8a7454', '#a88e66', '#5e4c36'], RH = RUN_H();
     const fronts = [], inset = 3, drawn = new Set();
     for (const [x, y, side, nx, ny] of edges) if (locked(x, y, lv) && !locked(nx, ny, lv)) drawn.add(x + ',' + y + side);
