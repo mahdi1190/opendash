@@ -390,7 +390,9 @@ window.GardenPaintGround = (function () {
           if (s > 2.4) { cx.globalAlpha = .35; cx.fillStyle = mix(col, '#f4e2a4', .45); cx.fill(P2(D().leaf(x - .4, y - .35, a, s * .62, s * .2 * w))); } } });
       cx.lineCap = 'round';
       tiles(cb, 64, 14, 67, (tx, ty, r) => {
-        for (let i = 0; i < (old ? 3 : 2); i++) { if (r() < .35) continue; const x = tx + r() * 64, y = ty + r() * 64, s = 4 + r() * 7; blob(cx, r, x + 1, y + 1.2, s, s * .5, 7, .4, '#35492c', .5); blob(cx, r, x, y, s, s * .48, 7, .4, old ? '#5f8446' : '#7d9a4c', .9); blob(cx, r, x - s * .25, y - s * .14, s * .5, s * .2, 6, .4, '#b3c66c', .7); }
+        // moss cushions gather in drifts (on old roots and in damp hollows), low and close to the litter's own tone: one
+        // bright lit cushion every few strides, evenly, read as green coins on the floor (19 Nov 2026, the woods chain)
+        for (let i = 0; i < (old ? 4 : 3); i++) { const x = tx + r() * 64, y = ty + r() * 64, dm = fbm(x / 120, y / 80, 68), s = (3 + r() * 6) * (.7 + dm * .6); if (dm < (old ? .5 : .56) || r() < .3) continue; blob(cx, r, x + 1, y + 1.2, s, s * .46, 7, .4, '#35492c', .35); blob(cx, r, x, y, s, s * .44, 7, .4, old ? '#55783e' : '#6f8c44', .7); blob(cx, r, x - s * .25, y - s * .14, s * .45, s * .16, 6, .4, old ? '#7f9a56' : '#97ac5e', .38); }
         for (let i = 0; i < 2; i++) { if (r() < .5) continue; const x = tx + r() * 64, y = ty + r() * 64, a = r() * 3.14, l = 5 + r() * 9; cx.globalAlpha = .6; cx.strokeStyle = '#4e3c28'; cx.lineWidth = .9; cx.beginPath(); cx.moveTo(x, y); cx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l * .5); cx.stroke(); }
         if (r() < .45 && P.season !== 'winter') { const x = tx + r() * 64, y = ty + r() * 64; ell(cx, x + 1.5, y + .8, 5, 1.6, P.shadow, .35); for (let f = 0; f < 5; f++) { const a = -1.57 + (f - 2) * .5 + (r() - .5) * .3, l = 5 + r() * 4; blade(cx, x, y, Math.cos(a) * l, -Math.sin(a) * l * .8, f % 2 ? '#4f7a3a' : '#6c964a', 1.3, .85); } }
       });
