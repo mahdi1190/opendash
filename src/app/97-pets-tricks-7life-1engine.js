@@ -216,8 +216,13 @@ function petLifeList() {
 /** A new thing learned: the pet throws a little party where it is, and the garden says so. */
 function petLifeCelebrate(id) {
   const row = typeof petBookRow === 'function' && petBookRow(id); if (!row || !row.life) return;
-  const P = typeof _ptw !== 'undefined' && _ptw.pets.find(q => q.me), name = typeof petName === 'function' ? petName() : 'Your pet';
-  if (typeof gardenMessage === 'function') gardenMessage(`${name} learned something new: ${row.name}!`, { icon: 'party-popper' });
+  _pl.cel.push(row); if (_pl.cel.length > 1) return;   // several at once (a friend level reached): one party, one line
+  setTimeout(() => { const rows = _pl.cel.splice(0); _plParty(rows); }, 250);
+}
+function _plParty(rows) {
+  const row = rows[rows.length - 1], P = typeof _ptw !== 'undefined' && _ptw.pets.find(q => q.me), name = typeof petName === 'function' ? petName() : 'Your pet';
+  const list = rows.map(r => r.name), words = list.length > 1 ? list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1] : list[0];
+  if (typeof gardenMessage === 'function') gardenMessage(`${name} learned something new: ${words}! Tap ${name} to play.`, { icon: 'party-popper' });
   if (typeof _fxSound === 'function') _fxSound('chime');
   if (P && !P.wow && P.tx == null) { P.busy = 0; P.cb = null; P.sit({ eyes: 'sparkle', mouth: 'open' }); _plPlay(P, ['l-party', row.clip || 'proud'], 1.5); }
 }
