@@ -793,11 +793,13 @@ window.GardenPaintedProps = (function () {
     // to the hurdle you vanished behind the near trunk and its leaves: the first gate every new player walks to (the
     // verifier, 18 Nov 2026). The near half stands on your side of the hurdle, clear of the mist, so it sorts by its own
     // trunk and thins over you exactly as it does when the gate is open; the far half stays with the shut gate.
+    let split = null;
     const halves = art.side && (kind === 'arch' || kind === 'ruin') && o.standing && base ? (() => {
       const [bx0, by0, bx1, by1] = art.box, texW = Math.ceil((bx1 - bx0) * K), texH = Math.ceil((by1 - by0) * K), mid = Math.round(-bx0 * K), near = image(scene, baseKey, baseX, baseY);
       if (!near || mid < 2 || mid > texW - 2) { if (near) near.destroy(); return false; }
       base.setCrop(0, 0, mid, texH); near.setCrop(mid, 0, texW - mid, texH);
       const nearDepth = frame.y + art.S * .8 + 2;
+      split = { mid, texW, texH, nearDepth, fadeWith: [] };
       if (open) h.standing(base, frame.y - art.S * .8 + 2, true); else h.add(base);
       h.standing(near, nearDepth, true);
       // Walking through, you pass behind the near trunk and its leaves: they thin while they cover you, like any
@@ -828,6 +830,7 @@ window.GardenPaintedProps = (function () {
         }
         const want = hide ? (typeof GARDEN_CROWN_FADE === 'number' ? GARDEN_CROWN_FADE : .45) : 1, now = im._gppFade == null ? 1 : im._gppFade;
         im._gppFade = Math.abs(want - now) < .03 ? want : now + (want - now) * .25; im.setAlpha(im._gppFade); if (base.active) base.setAlpha(im._gppFade);   // (the whole arch thins together: one half alone left a hard line down its leaves)
+        for (const f of split.fadeWith) if (f.active) f.setAlpha(im._gppFade);
       });
       return true;
     })() : false;
@@ -841,10 +844,22 @@ window.GardenPaintedProps = (function () {
     const signBox = [-40, -30, 40, 26], signKey = bake(scene, 'gatesign|' + (lv || 0) + '|' + need + (have ? '|have' : ''), signBox, B => needSign(B, 0, 0, lv, need, have));
     const sx = frame.x + (art.side ? 0 : 0), sy = frame.y - (kind === 'arch' ? 84 : kind === 'stair' ? 74 : kind === 'ruin' ? 72 : 70) + (art.side && kind !== 'stair' && kind !== 'arch' && kind !== 'ruin' ? -art.half * .2 : 0);
     if (!open) {
-      h.add(image(scene, blockKey, frame.x, frame.y));
+      // (shut and seen side on, the hurdle and its brambles run from the far trunk to the near one. Drawn whole over
+      // everyone, they hid you a step to the near side of the hurdle (the audit's shut-gate drawing order, 19 Nov 2026):
+      // their near half sorts and thins with the near trunk, the far half stays with the shut gate)
+      const blk = image(scene, blockKey, frame.x, frame.y), nb = split && blk && baseX === frame.x && baseY === frame.y ? image(scene, blockKey, frame.x, frame.y) : null;
+      if (nb) { blk.setCrop(0, 0, split.mid, split.texH); nb.setCrop(split.mid, 0, split.texW - split.mid, split.texH); h.add(blk); h.standing(nb, split.nearDepth, true); split.fadeWith.push(nb); }
+      else h.add(blk);
       const sign = h.add(image(scene, signKey, sx, sy)); sign.setScale(1.7 / K);
-      // the sign sways on its hooks, barely
-      h.move(sign, (node, t, motion) => { if (motion) node.setRotation(Math.sin(t * 1.3) * .03); });
+      // the sign sways on its hooks, barely; it hangs over everyone, so it thins while you stand behind it (a step past
+      // the shut Forest arch you vanished behind its sign: the verifier, 18 Nov 2026)
+      h.move(sign, (node, t, motion) => {
+        if (motion) node.setRotation(Math.sin(t * 1.3) * .03);
+        if (typeof _gw === 'undefined' || !node.active) return;
+        const X = _gw.px * o.W.cellW, Y = o.W.sky + _gw.py * o.W.cellH, w = node.displayWidth / 2, hh = node.displayHeight / 2;
+        const want = X + 10 > sx - w && X - 10 < sx + w && Y > sy - hh && Y - 48 < sy + hh ? .4 : 1, now = node.alpha;
+        if (Math.abs(want - now) > .01) node.setAlpha(Math.abs(want - now) < .03 ? want : now + (want - now) * .25);
+      });
     } else if (was === false) {
       // it has just opened: the barrier goes and the sign drops away
       const block = h.add(image(scene, blockKey, frame.x, frame.y)), sign = h.add(image(scene, signKey, sx, sy)); sign.setScale(1.7 / K);

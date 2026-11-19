@@ -9,7 +9,8 @@
  *   the walking side the real feet test (_gwFree), the boxes (_gwBuildSolids), the walking grid, the routes' planner
  * Checks (kind):
  *   walk-through, block-size, block-offset   a standing thing against the block at its drawn base; a tree drawn as shapes
- *                                            (1b); stonework (gates, walls) column by column along its drawn foot (1c)
+ *                                            (1b); stonework (gates, walls) column by column along its drawn foot (1c);
+ *                                            boulders, slabs and fold rings painted into the ground itself (1d)
  *   invisible-wall                           a box, a blocked cell or a locked plot with nothing drawn on it; a block
  *                                            between the drawn parts of a thing, or running on past its drawn ends (1c)
  *   drawn-blocked-walkable                   a drawn rock or wall (landform) the feet can walk into
@@ -28,7 +29,8 @@
  *   closed-edge                              each region closed in turn: a way into it that is not its gate, or a gate
  *                                            that cannot be walked up to
  *   draw-order                               a standing thing that sorts above or below its own drawn base, where the
- *                                            feet can stand in between: you are drawn on the wrong side of it
+ *                                            feet can stand in between: you are drawn on the wrong side of it; and
+ *                                            each gate again with its region shut (14b: a shut gate is drawn another way)
  *   slide-stall, slide-jitter                how walking feels: a diagonal press into an edge that stops dead where it
  *                                            could slide on, or shakes on the spot
  *   overlap                                  two drawn things on top of each other that are not meant to be: a field
@@ -350,6 +352,44 @@
         for (const [X, X2, side] of [[L - off, L - off2, 'west'], [Rt + off, Rt + off2, 'east']]) if (anyBlockAt(X) && cellFree(X2, yb)) { const mc = toCell(X, yb); push({ kind: 'invisible-wall', obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: mc.x, y: mc.y, detail: 'its block runs on more than ' + (.25).toFixed(2) + ' cells past its drawn ' + side + ' end, with nothing drawn there' }); }
       }
     }
+  }
+
+  /* ---------- 1d. rocks and walls painted into the ground itself: the fells' boulders, outcrop slabs and sheepfold rings ---------- */
+  // collect() reads standing pictures only, and the fells' ground painting stands boulders knee to thigh high out of the
+  // turf and draws dry-stone fold rings with a gateway: every one was walked straight over, with no fault reported (the
+  // verifier, 18 Nov 2026). Here the ground painting's own ops are painted once more into a scrap canvas with a brush that
+  // notes every boulder it draws (13 x 7 px and up: smaller is a stone under the feet) and every outcrop slab; each must
+  // stop the feet at its foot. A rock painted on a path is reported as a thing on a path (it should not be drawn there).
+  // Each fold ring must stop the feet all along its wall, its gateway left open.
+  const groundRocks = { boulders: 0, slabs: 0, folds: 0, onPath: 0 };
+  { const T = window.GardenPaintedTerrain, kit = window.GardenPaintTerrainKit;
+    if (T && kit && T.wanted && T.wanted() && T.compose && T.readLayout) try {
+      const L = T.readLayout(W), ops = T.compose(L, m.season || 'summer') || [], c = document.createElement('canvas'); c.width = c.height = 2;
+      const cx = c.getContext('2d'), B = kit.brush(cx), draw = B.boulder, noted = [];
+      const fellsAt = (X, Y) => { const p = toCell(X, Y); if (p.x < 0 || p.y < 0 || p.x >= W.cols || p.y >= W.rows) return false; const reg = gardenIslandRegionAt(p.x, p.y); return !!(reg && T.ownsRegion(reg.id)) && (typeof gardenIslandLandContains !== 'function' || gardenIslandLandContains(p.x, p.y)) && !gardenWaterContainsPoint(p.x, p.y); };
+      B.boulder = function (r, x, y, w, h) { if (w >= 13 && h >= 7) { const t = cx.getTransform(); noted.push({ what: 'boulder', X: t.a * x + t.c * y + t.e, Y: t.b * x + t.d * y + t.f, w, h }); } return draw.apply(B, arguments); };
+      B.stand = function (x, y, rx, ry) { const t = cx.getTransform(); noted.push({ what: 'slab', X: t.a * x + t.c * y + t.e, Y: t.b * x + t.d * y + t.f + ry, w: rx * 2, h: ry * 2 }); };
+      for (const o of ops) { try { cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); o.draw(B, kit.rng(o.seed || 1), o.bb); } catch (e) { /* that op's own error: the painter's status has it */ } finally { cx.restore(); } }
+      const roads = (island.routes || []).filter(r => r.points && r.points.length > 1).map(r => ({ id: r.id, pts: gardenIslandRoutePath(r).points, rad: gardenIslandRoadStyle(r).radius * CW }));
+      const roadAt = (X, Y) => { const p = toCell(X, Y); for (const R of roads) for (let i = 1; i < R.pts.length; i++) { const a = R.pts[i - 1], b = R.pts[i], ax = (b.x - a.x) * CW, ay = (b.y - a.y) * CH, bx = (p.x - a.x) * CW, by = (p.y - a.y) * CH, LL = ax * ax + ay * ay || 1, t = Math.max(0, Math.min(1, (ax * bx + ay * by) / LL)); if (Math.hypot(bx - ax * t, by - ay * t) < R.rad * .7) return R.id; } return ''; };
+      const seen = new Set();
+      for (const n of noted) {
+        if (!fellsAt(n.X, n.Y - n.h / 2)) continue;   // (clipped away: the ground painting draws the fells' own ground only)
+        const k = Math.round(n.X / 4) + ',' + Math.round(n.Y / 4); if (seen.has(k)) continue; seen.add(k);
+        groundRocks[n.what === 'boulder' ? 'boulders' : 'slabs']++;
+        const p = toCell(n.X, n.Y), road = roadAt(n.X, n.Y - n.h * .4);
+        if (road) { groundRocks.onPath++; push({ kind: 'overlap', obj: 'a thing on a path', name: 'a ' + n.what + ' painted on path ' + road, x: p.x, y: p.y, detail: 'a ' + Math.round(n.w) + ' x ' + Math.round(n.h) + ' px rock is painted into the ground on the path’s drawn width (walked over there)' }); continue; }
+        const pts = [[n.X, n.Y - n.h * .45], [n.X - n.w * .3, n.Y - 3], [n.X + n.w * .3, n.Y - 3]], freeN = pts.filter(([X, Y]) => { const q = toCell(X, Y); return free(q.x, q.y); }).length;
+        if (freeN >= 2) push({ kind: 'walk-through', obj: 'ground rock', name: (n.what === 'boulder' ? 'boulder' : 'outcrop slab') + ' painted into the fells', key: 'ground painting', x: p.x, y: p.y, detail: 'a ' + Math.round(n.w) + ' x ' + Math.round(n.h) + ' px rock painted standing out of the turf: the feet can stand on it (' + freeN + ' of 3 test points free)' });
+      }
+      // the sheepfold rings: the painter's ring (FOLDS: x, y, radius in cells, the ring steps of 40 left out for the gateway)
+      for (const [fx, fy, frx, g0, g1] of (T.folds && T.folds()) || []) {
+        groundRocks.folds++; const RX = frx * CW, RY = frx * CH * .95, c0 = toPx(fx, fy); let run = [];
+        const flush = () => { if (run.length >= 2) { const q = run[run.length >> 1]; push({ kind: 'walk-through', obj: 'ground wall', name: 'sheepfold ring at ' + fx + ', ' + fy, key: 'ground painting', x: q.x, y: q.y, detail: run.length + ' points of its drawn wall (of 80 round it) can be stood on' }); } run = []; };
+        for (let s = 0; s < 80; s++) { const k = s / 2; if (k > g0 && k < g1) { flush(); continue; } const a = k / 40 * Math.PI * 2, q = toCell(c0.X + Math.cos(a) * RX, c0.Y + Math.sin(a) * RY); if (free(q.x, q.y)) run.push(q); else flush(); }
+        flush();
+      }
+    } catch (e) { groundRocks.error = String(e && e.stack || e).slice(0, 300); }
   }
 
   /* ---------- 2. invisible walls: boxes and cells that block where nothing is drawn ---------- */
@@ -708,6 +748,35 @@
     walkTo.ms = Math.round(performance.now() - t0);
   }
 
+  /** Drawing order of one standing thing (check 14, and check 13 at each shut gate): {what, c} when someone stopped at its
+   *  block is drawn on the wrong side of it, else null. Every standing sprite sorts against the player's feet line by one
+   *  number: its depth (or its handle's), or its layer's when it sits in a layer that is always over or under the walkers.
+   *  Where the feet are stopped at its drawn base (read with the same feet test the game uses, on the walking grid in use),
+   *  that number must fall inside the stopped band. overAll: a thing drawn over everyone (a shut gate stands in the mist
+   *  over all) is judged too, not passed by as light or weather. ownPaint(X, Y): its own paint is at that point. */
+  const judgeOrder = (o, tally, overAll, ownPaint) => {
+    const playerObj = nw.playerNode && nw.playerNode.target; if (!playerObj || /lightpool|\|block$|gatesign/.test(o.key)) return null;
+    const pChain = []; for (let p = playerObj; p; p = p.parentContainer) pChain.push(p);
+    const pSet = new Set(pChain), TOL = 5, standPx = (X, Y) => { const c = toCell(X, Y); return c.x >= 0 && c.y >= 0 && c.x < W.cols && c.y < W.rows && free(c.x, c.y); };
+    let child = o.im, anc = o.im.parentContainer; while (anc && !pSet.has(anc)) { child = anc; anc = anc.parentContainer; }
+    if (!anc) return null;
+    const pChild = pChain[pChain.indexOf(anc) - 1]; if (!pChild) return null;
+    if (!overAll && pChild !== playerObj && Math.abs(child.depth) >= 70000) return null;   // (light, weather, signs over everything: not paint that stands in the world)
+    const T = pChild === playerObj ? child.depth : child.depth > pChild.depth ? Infinity : -Infinity, X = (o.X0 + o.X1) / 2, Yb = o.Yb;
+    tally.checked++; if (T === Infinity) tally.alwaysOver++; if (T === -Infinity) tally.alwaysUnder++;
+    // the stopped band of feet rows at the base's middle column: the run of blocked rows nearest the drawn base
+    let top = null, bottom = null;
+    for (let d = 0; d <= 12 && top == null; d++) for (const Y of d ? [Yb - d, Yb + d] : [Yb]) if (!standPx(X, Y)) { top = bottom = Y; break; }
+    if (top == null) return null;
+    while (top > Yb - 90 && !standPx(X, top - 1)) top--; while (bottom < Yb + 60 && !standPx(X, bottom + 1)) bottom++;
+    if (top <= Yb - 90 || bottom >= Yb + 60) return null;   // (water, a building's whole footprint, the map's edge: no near side or far side to stand on here)
+    tally.judged++;
+    let what = '';
+    if (T > bottom + TOL && standPx(X, bottom + 2)) what = 'someone standing just in front of it is drawn behind it (it sorts ' + (T === Infinity ? 'over everyone' : Math.round(T - bottom) + ' px below the front of its block') + ')';
+    else if (T < top - TOL && standPx(X, top - 2) && ownPaint(X, top - 8)) what = 'someone standing just behind it is drawn in front of it (it sorts ' + (T === -Infinity ? 'under everyone' : Math.round(top - T) + ' px above the back of its block') + ')';
+    return what ? { what, c: toCell(X, Yb) } : null;
+  };
+
   /* ---------- 13. each region closed in turn (its own gate shut, the rest open): it stops the feet all along its edge, and its gate can be walked up to ---------- */
   // (All five shut at once says little: three of the gates stand inside regions that are themselves closed then.)
   // A drawn path that runs on into a closed region's mist away from its gate is listed as a note, not a fault: the
@@ -759,30 +828,11 @@
   await stage('order');
   const order = { checked: 0, judged: 0, faults: 0, alwaysOver: 0, alwaysUnder: 0 };
   if (!opts.noOrder) try {
-    const playerObj = nw.playerNode && nw.playerNode.target, pChain = []; for (let p = playerObj; p; p = p.parentContainer) pChain.push(p);
-    const pSet = new Set(pChain), seenAt = new Set(), TOL = 5;
-    const standPx = (X, Y) => { const c = toCell(X, Y); return c.x >= 0 && c.y >= 0 && c.x < W.cols && c.y < W.rows && free(c.x, c.y); };
+    const seenAt = new Set();
     for (const o of objs) {
-      if (!playerObj || /lightpool|\|block$|gatesign/.test(o.key)) continue;
-      let child = o.im, anc = o.im.parentContainer; while (anc && !pSet.has(anc)) { child = anc; anc = anc.parentContainer; }
-      if (!anc) continue;
-      const pChild = pChain[pChain.indexOf(anc) - 1]; if (!pChild) continue;
-      if (pChild !== playerObj && Math.abs(child.depth) >= 70000) continue;   // (light, weather, signs over everything: not paint that stands in the world)
-      const T = pChild === playerObj ? child.depth : child.depth > pChild.depth ? Infinity : -Infinity, X = (o.X0 + o.X1) / 2, Yb = o.Yb;
-      order.checked++; if (T === Infinity) order.alwaysOver++; if (T === -Infinity) order.alwaysUnder++;
-      // the stopped band of feet rows at the base's middle column: the run of blocked rows nearest the drawn base
-      let top = null, bottom = null;
-      for (let d = 0; d <= 12 && top == null; d++) for (const Y of d ? [Yb - d, Yb + d] : [Yb]) if (!standPx(X, Y)) { top = bottom = Y; break; }
-      if (top == null) continue;
-      while (top > Yb - 90 && !standPx(X, top - 1)) top--; while (bottom < Yb + 60 && !standPx(X, bottom + 1)) bottom++;
-      if (top <= Yb - 90 || bottom >= Yb + 60) continue;   // (water, a building's whole footprint, the map's edge: no near side or far side to stand on here)
-      order.judged++;
-      let what = '';
-      if (T > bottom + TOL && standPx(X, bottom + 2)) what = 'someone standing just in front of it is drawn behind it (it sorts ' + (T === Infinity ? 'over everyone' : Math.round(T - bottom) + ' px below the front of its block') + ')';
-      else if (T < top - TOL && standPx(X, top - 2) && paintAt(X, top - 8) === o) what = 'someone standing just behind it is drawn in front of it (it sorts ' + (T === -Infinity ? 'under everyone' : Math.round(top - T) + ' px above the back of its block') + ')';
-      if (!what) continue;
-      const c = toCell(X, Yb), k = o.name + '|' + Math.round(c.x * 2) + ',' + Math.round(c.y * 2); if (seenAt.has(k)) continue; seenAt.add(k);
-      order.faults++; push({ kind: 'draw-order', obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: c.x, y: c.y, detail: what });
+      const r = judgeOrder(o, order, false, (X, Y) => paintAt(X, Y) === o); if (!r) continue;
+      const k = o.name + '|' + Math.round(r.c.x * 2) + ',' + Math.round(r.c.y * 2); if (seenAt.has(k)) continue; seenAt.add(k);
+      order.faults++; push({ kind: 'draw-order', obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: r.c.x, y: r.c.y, detail: r.what });
     }
   } catch (e) { order.error = String(e && e.stack || e).slice(0, 300); }
 
@@ -911,6 +961,10 @@
       const lowest = Math.max(...list.map(q => q.Yb)), o = list.filter(q => q.Yb >= lowest - CH * .6).sort((p, q) => q.bounds.w * q.bounds.h - p.bounds.w * p.bounds.h)[0]; if (o.heightPx < 10) continue;
       decor.checked++; F.checked++; const before = faults.length;
       o.kind = 'decor'; o.name = (u.def.name || u.def.id) + (u.def.rot ? ' (turn ' + u.r + ')' : '');
+      // a thing that hovers (the sheet ghost bobs over its own shadow): it has no drawn base on the ground; its block
+      // belongs under it, at its shadow and footprint's foot (judged by its lowest paint, it was reported walked through)
+      { const spec = window.GardenPaintedProps && GardenPaintedProps.decorTable && GardenPaintedProps.decorTable[u.def.id], ft = u.y + (u.def.h || 1), ya = toCell(o.X0, o.Yb).y, xm = toCell((o.X0 + o.X1) / 2, o.Yb).x;
+        if (spec && (spec.anim || []).some(q => q.kind === 'bob') && ya < ft - 4 / CH) { if (free(xm, ft - .12) && free(xm, ft - .25)) push({ kind: 'decor-foot', obj: 'decor', name: o.name, family: fam, region: 'decorations (anywhere)', decor: u.def.id, turn: u.r, col, x: xm, y: ft - .12, detail: 'it hovers over its shadow, and the feet can stand on the shadow under it' }); if (faults.length > before) F.faults += faults.length - before; continue; } }
       checkObject(o, { family: fam, region: 'decorations (anywhere)', decor: u.def.id, turn: u.r, col });
       // its block's foot against its drawn foot
       const a = toCell(o.X0, o.Yb), b = toCell(o.X1, o.Yb), w = u.def.w || 1, h = u.def.h || 1, foot = u.y + h, mid = (a.x + b.x) / 2;   // (a turned decoration keeps its footprint: 94-garden-design-2tools.js; only its drawing turns)
@@ -932,9 +986,38 @@
     else window.__auditDecorUids = uids.map(u => u.uid);
   } catch (e) { decor.error = String(e && e.stack || e).slice(0, 400); }
 
+  /* ---------- 14b. drawing order at each shut gate: its region shut in turn, the scene drawn again, the gate judged as in 14 ---------- */
+  // Check 14 sees every gate open. Shut, a gate is drawn another way (over everyone, in the mist of the land behind it),
+  // and walking up the lane to the Forest arch's hurdle a new player vanished behind its near trunk and leaves while the
+  // open arch sorted right (the verifier, 18 Nov 2026). Last of all, because drawing the scene again replaces the gates'
+  // pictures that the checks above hold.
+  const shutOrder = { gates: 0, checked: 0, judged: 0, faults: 0, alwaysOver: 0, alwaysUnder: 0 };
+  if (!opts.noOrder && !opts.noClosed) try {
+    const zones = [..._GD_LAND].filter(z => /^zn-/.test(z)), redraw = async () => { _gd.rev++; _gd.memoKey = ''; _gw.grid = null; _gw.gq = null; _gw.reach = null; _gwGrid(gardenHere(), true); nw.sync(gardenHere()); await tickAll(40); await sleep(400); };
+    const gateZone = g => { const k = typeof WK_GATES !== 'undefined' && WK_GATES[g.id]; return k && k.zone ? 'zn-' + k.zone : ''; };
+    try {
+      for (const z of zones) {
+        const mine = (island.gates || []).filter(g => gateZone(g) === z); if (!mine.length) continue;
+        _GD_LAND.delete(z);
+        try {
+          await redraw();
+          const ids = new Set(mine.map(g => g.id)); recByRoot = new Map(); for (const r of nw.entities.values()) recByRoot.set(r.root, r);
+          const list = collect(rec => !!rec && (ids.has(String(rec.id || '').replace(/^prop:/, '')) || !!(rec.metadata && ids.has(rec.metadata.id)))).filter(o => o.kind !== 'flora');
+          shutOrder.gates += mine.length;
+          const seen = new Set();
+          for (const o of list) {
+            const own = bucketsOf([o]), r = judgeOrder(o, shutOrder, true, (X, Y) => paintIn(own, X, Y) === o); if (!r) continue;
+            const k = Math.round(r.c.x * 2) + ',' + Math.round(r.c.y * 2); if (seen.has(k)) continue; seen.add(k);
+            shutOrder.faults++; push({ kind: 'draw-order', obj: 'gate (shut)', name: o.name + ' (shut)', key: o.key.slice(0, 90), x: r.c.x, y: r.c.y, detail: 'with its region shut: ' + r.what });
+          }
+        } finally { _GD_LAND.add(z); }
+      }
+    } finally { for (const z of zones) _GD_LAND.add(z); await redraw(); grid = _gwGrid(gardenHere(), true); D = gardenCollideData(gardenHere()); }
+  } catch (e) { shutOrder.error = String(e && e.stack || e).slice(0, 300); }
+
   /* ---------- tally ---------- */
   const counts = { byKind: {}, byRegion: {}, byObject: {}, byRegionKind: {} };
   for (const f of faults) { counts.byKind[f.kind] = (counts.byKind[f.kind] || 0) + 1; counts.byRegion[f.region] = (counts.byRegion[f.region] || 0) + 1; counts.byObject[f.obj] = (counts.byObject[f.obj] || 0) + 1; const k = f.region + ' / ' + f.kind; counts.byRegionKind[k] = (counts.byRegionKind[k] || 0) + 1; }
   const objKinds = {}; for (const o of all) objKinds[o.kind] = (objKinds[o.kind] || 0) + 1;
-  return { total: faults.length, counts, faults, scanned: { sprites: all.length, checked, shapeTrees, parts, byKind: objKinds, rects: D.rects.length, cells: D.cells.length, doors: doorsChecked, clicks: D.clicks.length, landforms: (island.landforms || []).length, routes: (island.routes || []).length, pathSamples, lockedPlots: plots.size, lockedEdges, shorePoints: shore.points, shoreDrawnDryNotes: shore.notes, crossings: crossingsChecked, decks: decksNow.length, picture: mosaic, decor, feel, walkTo, closed, order, overlap } };
+  return { total: faults.length, counts, faults, scanned: { sprites: all.length, checked, shapeTrees, parts, groundRocks, byKind: objKinds, rects: D.rects.length, cells: D.cells.length, doors: doorsChecked, clicks: D.clicks.length, landforms: (island.landforms || []).length, routes: (island.routes || []).length, pathSamples, lockedPlots: plots.size, lockedEdges, shorePoints: shore.points, shoreDrawnDryNotes: shore.notes, crossings: crossingsChecked, decks: decksNow.length, picture: mosaic, decor, feel, walkTo, closed, order, shutOrder, overlap } };
 })
