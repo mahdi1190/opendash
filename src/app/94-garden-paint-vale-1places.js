@@ -246,7 +246,7 @@
         const cx = (foot[0].x + foot[2].x) / 2, cy = (foot[0].y + foot[2].y) / 2, mx = (v0.x + v1.x) / 2 - cx, my = (v0.y + v1.y) / 2 - cy, s = Math.sign(onx * mx + ony * my) || 1, outY = ony * s, outX = onx * s;
         if (outY <= 0 && outX <= 0) continue;   // faces turned away from the camera are hidden
         const face = [v0, v1, up(v1, (e + 1) % 4), up(v0, e)], lit = outY > Math.abs(outX) ? 1 : 0;
-        B.f(B.poly(face), B.lin(0, Math.min(face[2].y, face[3].y), 0, Math.max(v0.y, v1.y), [[0, lit ? RUIN.hi : RUIN.lo], [.35, lit ? RUIN.body : '#6a685a'], [.8, lit ? RUIN.lo : '#56554a'], [1, RUIN.dk]]));
+        B.f(B.poly(face), B.lin(0, Math.min(face[2].y, face[3].y), 0, Math.max(v0.y, v1.y), band ? [[0, lit ? RUIN.body : RUIN.lo], [.4, lit ? RUIN.lo : '#5a584a'], [.85, lit ? '#5e5c4c' : '#46453a'], [1, '#2e2e26']] : [[0, lit ? RUIN.hi : RUIN.lo], [.35, lit ? RUIN.body : '#6a685a'], [.8, lit ? RUIN.lo : '#56554a'], [1, RUIN.dk]]));
         B.cx.save(); B.cx.clip(new Path2D(B.poly(face)));
         const len = Math.hypot(ex, ey), hh = Math.max(hs[e], hs[(e + 1) % 4]);
         for (let y = 0; y < hh; y += 6.5) for (let t = (Math.round(y / 6.5) % 2) * 5; t < len; t += 10 + r() * 5) { const x0 = v0.x + ex * t / len, y0 = v0.y + ey * t / len - y - 3; if (r() < .3) continue; if (band && r() < .1) { B.f(B.ell(x0, y0, 3.6 + r() * 2, 2.2), RUIN.dk, .7); continue; } B.f(B.ell(x0, y0, (band ? 3.2 + r() * 4 : 4.4 + r() * 2.4), band ? 2 + r() * 1.3 : 2.5), r() < .4 ? RUIN.lo : r() < .8 ? RUIN.body : RUIN.hi, .75).f(B.rect(x0 - 4, y0 + 2.3, 8, .9), RUIN.dk, .35); }
@@ -264,7 +264,7 @@
       }
       // the old wall's broken top: its core shaded, then loose capstones along it with gaps between them, a stone gone here and
       // there, moss and grass only in clumps (a flat moss band all along read as the top of a raised road)
-      B.f(B.poly(top), RUIN.lo);
+      B.f(B.poly(top), RUIN.body).f(B.poly(top), '#fff6dc', .1);   // (lit from above, the face below it in shade: the wall reads as standing up)
       const a0 = { x: (top[0].x + top[3].x) / 2, y: (top[0].y + top[3].y) / 2 }, a1 = { x: (top[1].x + top[2].x) / 2, y: (top[1].y + top[2].y) / 2 }, tl = Math.hypot(a1.x - a0.x, a1.y - a0.y) || 1;
       for (let s = r() * 4; s < tl; s += 6 + r() * 5) { if (r() < .14) continue; const t = s / tl, x = a0.x + (a1.x - a0.x) * t, y = a0.y + (a1.y - a0.y) * t + (r() - .5) * 2, w = 3.2 + r() * 3.4, hgt = 1.8 + r() * 1.8;
         B.f(B.blob(r, x + .6, y + 1, w, hgt, 6, .3), RUIN.dk, .6).f(B.blob(r, x, y, w * .94, hgt * .9, 6, .3), r() < .6 ? RUIN.lo : RUIN.body).f(B.ell(x - w * .3, y - hgt * .35, w * .4, hgt * .3), '#c8c2a8', .25);
