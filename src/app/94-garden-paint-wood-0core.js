@@ -207,7 +207,10 @@ window.GardenPaintWood = (function () {
             // a kit tree: its height from the size standard (a mature tree 3.5 to 5 H, holly and hawthorn as young trees),
             // spaced from its neighbours by its own crown so groves read as trees, not a felt of leaves; its crown is lowered
             // (or the tree left out) until it no longer hides more than a stride of path (the woods lane was lost under the canopy)
-            const F = GardenPaintTrees.form(kit), want = Math.round(gardenSizePx(sp[2], sp[3] + (sp[4] - sp[3]) * h3(x, y, 7)));
+            // (19 Nov 2026, round 3 fixes, round 2: the oldest, tallest trees stand in the hearts of the groves and younger ones at the
+            //  glades' edges, so a grove rises to a crown from far off; every tree at much the same height read as a carpet)
+            const heart = Math.max(0, Math.min(1, (grove - .35) / .4)), young = sp[2] === 'tree' && grove < .42 && h3(x, y, 19) < .28;
+            const F = GardenPaintTrees.form(kit), want = Math.round(young ? gardenSizePx('young', .3 + h3(x, y, 7) * .7) : gardenSizePx(sp[2], sp[3] + (sp[4] - sp[3]) * (h3(x, y, 7) * .6 + heart * .4)));
             const gap = want * F.rx * (kit === 'birch' ? .55 : kit === 'holly' || kit === 'hawthorn' ? .7 : .95) * (1 - md.dense * .3) * (grove > .62 ? .8 : 1);
             if (placed.some(q => Math.hypot(q.x - tx, (q.y - ty) * 1.5) < Math.max(gap, q.gap))) continue;
             const half = Math.max(4, Math.min(13, want * F.girth * .75));
@@ -691,7 +694,7 @@ window.GardenPaintWood = (function () {
     return (Math.round((c >> 16 & 255) * k[0]) << 16) | (Math.round((c >> 8 & 255) * k[1]) << 8) | Math.round((c & 255) * k[2]);
   }
   function makeTree(t) {
-    const S = state, tint = todTint(t, S.tod);
+    const S = state, tint = todTint(t, S.tod); t.baseTint = tint == null ? 0xffffff : tint; t.dim = false;
     if (t.kit) {
       const im = ok(() => GardenPaintTrees.image(S.scene, { species: t.kit, season: S.season, v: t.v, h: t.h, x: t.x, y: t.y, flip: t.flip })); if (!im) return null;
       if (tint != null && tint !== 0xffffff) im.setTint(tint);
@@ -863,7 +866,9 @@ window.GardenPaintWood = (function () {
     // (19 Nov 2026, round 3 fixes, round 2: the woods' crowns fade less deep than the world's, so a crown over you, its trunk
     //  and roots with it, does not go to a milky ghost of itself; you still show through it)
     const FADE = Math.max(GARDEN_CROWN_FADE, .46), fadeTo = underN > 1 ? Math.max(.26, 1 - Math.pow(1 - FADE, 1 / Math.min(3, underN))) : FADE;
-    for (const t of fading) { const a = t.fade ? fadeTo : 1; if (t.im.alpha !== a) t.im.setAlpha(t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8 || 1)); }
+    for (const t of fading) { const a = t.fade ? fadeTo : 1; if (t.im.alpha !== a) t.im.setAlpha(t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8 || 1));
+      // (and a fading crown goes deeper in tone, so it reads as shade over you, not a milky ghost of the tree)
+      if (t.dim !== !!t.fade && t.im.setTint) { t.dim = !!t.fade; const c = t.baseTint == null ? 0xffffff : t.baseTint; t.im.setTint(t.dim ? ((((c >> 16) & 255) * .66 | 0) << 16) | ((((c >> 8) & 255) * .72 | 0) << 8) | ((c & 255) * .78 | 0) : c); } }
     const tTrees = performance.now(); S.tw.trees = Math.max(S.tw.trees, tTrees - t0 - tBake);
     if (S.sortObjects && S.objects.sort) { S.objects.sort('depth'); S.sortObjects = false; }
     S.tw.sort = Math.max(S.tw.sort, performance.now() - tTrees);
