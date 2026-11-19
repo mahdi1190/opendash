@@ -849,11 +849,11 @@ window.GardenPaintWood = (function () {
     if (S.sortRoot && S.root.sort) { S.root.sort('depth'); S.sortRoot = false; }
     // trees: make a bucket's sprites once, when it comes near (one bucket a frame, and not on a bake frame)
     const pl = typeof _gw !== 'undefined' ? { x: _gw.px * S.W.cellW, y: S.W.sky + _gw.py * S.W.cellH } : null;
-    let underN = 0; const fading = [];
+    let underN = 0, madeN = 0; const fading = [];   // (madeN: at most ten tree sprites made a frame, so a bucket coming into view never costs one long frame)
     for (const b of S.buckets.values()) {
       const vis = hit(b.box, view);
       // a new tree texture costs a bake: at most one a frame; trees whose texture exists are free
-      if (vis && !b.made) { let all = true; for (const t of b.trees) { if (t.im || t.failed) continue; const key = t.kit ? kitKey(t, S.season) : 'gdpaint|' + t.id + '|' + t.v + '|' + S.season + '|0x' + t.h; if (!S.scene.textures.exists(key)) { if (budget <= 0) { all = false; continue; } budget--; } if (!makeTree(t)) t.failed = true; S.sortObjects = true; } if (all) { b.made = true; b.vis = true; } }
+      if (vis && !b.made) { let all = true; for (const t of b.trees) { if (t.im || t.failed) continue; if (madeN >= 10) { all = false; break; } madeN++; const key = t.kit ? kitKey(t, S.season) : 'gdpaint|' + t.id + '|' + t.v + '|' + S.season + '|0x' + t.h; if (!S.scene.textures.exists(key)) { if (budget <= 0) { all = false; continue; } budget--; } if (!makeTree(t)) t.failed = true; S.sortObjects = true; } if (all) { b.made = true; b.vis = true; } }
       if (b.made && vis !== b.vis && !(vis && !b.made)) { b.vis = vis; for (const t of b.trees) if (t.im) t.im.setVisible(vis); }
       // a crown you are under fades, so you can always see yourself (a wide crown by its own width); so does a crown over a
       // story house (Hollin's hut) once you are near it
