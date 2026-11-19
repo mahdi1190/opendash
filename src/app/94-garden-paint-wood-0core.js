@@ -58,7 +58,7 @@ window.GardenPaintWood = (function () {
   const LIT = {
     'ld-hollow': { up: .7, r: 22, pool: 58, color: 0xffb860, a: .9 },
     'ld-house': { up: .32, r: 20, pool: 62, color: 0xffc27a, a: .55 },
-    'ld-oldhouse': { up: .9, r: 28, pool: 76, color: 0xffc27a, a: .75 },
+    'ld-oldhouse': { up: .55, dx: -.36, r: 22, pool: 70, color: 0xffc27a, a: .7 },
     'ld-woodhut': { up: .8, r: 24, pool: 66, color: 0xffbe70, a: .7 },
   };
   // The named places of the woods plant their own trees round them (woodland.md section 3, by the layout's plot ids; a plot
@@ -139,6 +139,9 @@ window.GardenPaintWood = (function () {
     const lampsAt = typeof gardenIslandOldWoodLamps === 'function' ? ok(() => gardenIslandOldWoodLamps(data)) || [] : [];
     const byLamp = (x, y) => lampsAt.some(q => Math.abs(x - q.x) < 1.8 && y - q.y > -2.6 && y - q.y < 5.2);
     out.lamps = lampsAt;
+    // and Hollin's woodpile (94-garden-paint-vale-1places.js paints it by the ruins lane): no trunk on it, no crown over it
+    const pile = window.GardenPaintVale && GardenPaintVale.woodpileSpot ? ok(() => GardenPaintVale.woodpileSpot(data)) : null;
+    const byPile = (x, y) => !!pile && Math.abs(x - pile.x) < 2.6 && y - pile.y > -1.4 && y - pile.y < 4.6;
     const tm = out.tm = {}, T0 = performance.now();
     for (const region of data.regions || []) {
       const def = WOODS[region.id]; if (!def) continue;
@@ -174,7 +177,7 @@ window.GardenPaintWood = (function () {
         // (19 Nov 2026, round 2: one knot is composed for each plot, not one bush a cell: a plot of two rows read as two
         //  ruled bramble strips, repeated down every unbought plot in the wood)
         if (def.mood !== 'meadow' && c.locked && c.row && /^l[sc]-/.test(c.row.id || '') && !c.plantingReserved && !isPath(c)) { if (!window.GardenPaintTrees) { thicket(out, x, y, px, py, region.id); continue; } const k = c.row.id; if (!knots.has(k)) knots.set(k, []); knots.get(k).push([x, y]); continue; }
-        if (c.plantingReserved || isPath(c) || statics.has(x + ',' + y) || (c.row && c.row.plot && !c.locked) || clear(x + .5, y + .5) || byGate(x, y) || byFind(x, y) || byOak(x, y) || byLamp(x + .5, y + 1)) continue;
+        if (c.plantingReserved || isPath(c) || statics.has(x + ',' + y) || (c.row && c.row.plot && !c.locked) || clear(x + .5, y + .5) || byGate(x, y) || byFind(x, y) || byOak(x, y) || byLamp(x + .5, y + 1) || byPile(x + .5, y + 1)) continue;
         const grove = noise(x, y, 5, hash(region.id) & 1023), dense = noise(x, y, 2.2, 77), pathNear = near(x, y, 1, isPath), waterNear = near(x, y, 1, wet);
         // groves where the field is high, glades where it is low; a fringe of shrubs at path edges
         const bankNear = def.mood === 'meadow' && near(x, y, 2, wet) && !waterNear;
@@ -294,6 +297,12 @@ window.GardenPaintWood = (function () {
     // the kit's own crown shade along the light, so it is soft, dappled and long at dusk like every other tree's
     { const g = (pres.plazas || []).find(p => p.id === 'great-oak-clearing'); if (g && window.GardenPaintTrees && typeof gardenSizePx === 'function') out.oakShadow = { kit: 'greatoak', x: (g.x + 2.9) * W.cellW, y: W.sky + (g.y - 1.5) * W.cellH, h: Math.round(gardenSizePx('greatOak', .35)) }; }
     keepOldWoodInView(out, data, W, (x, y) => { const c = cellAt(x, y), r = (data.regions || []).find(q => WOODS[q.id] && WOODS[q.id].mood === 'old'); return !!(c && r && inside(x + .5, y + .5, r.polygons[0]) && !wet(c) && !c.plantingReserved && !isPath(c) && !statics.has(x + ',' + y) && !(c.row && (c.row.plot || c.locked && /^l[sc]-/.test(c.row.id || ''))) && !near(x, y, 1, isPath) && !plazas.some(p => Math.hypot((x + .5 - p.x) / ((p.rx || 3.2) + 1), (y + .5 - p.y) / ((p.ry || 2.4) + 1)) < 1)); });
+    // no tree stands in front of a house in the woods hiding its face (a willow at Sallow carr stood over Thistle's front
+    // door): a crown that covers a fifth of a house's front, from in front of it, goes, and ferns grow at its foot instead
+    { const fronts = houses.map(h => [h.x * W.cellW - 6, W.sky + (h.y + (h.h || 1)) * W.cellH - 120, (h.x + (h.w || 1)) * W.cellW + 6, W.sky + (h.y + (h.h || 1)) * W.cellH]);
+      out.trees = out.trees.filter(t => { const H = t.h * (t.scale || 1), F = t.kit ? GardenPaintTrees.form(t.kit) : { cy: .62, rx: .42, ry: .34 }, c = [t.x - H * F.rx, t.y - H * (F.cy + F.ry), t.x + H * F.rx, t.y - H * Math.max(.1, F.cy - F.ry)];
+        for (const k of fronts) { if (t.y <= k[3] + 2) continue; const ox = Math.min(c[2], k[2]) - Math.max(c[0], k[0]), oy = Math.min(c[3], k[3]) - Math.max(c[1], k[1]); if (ox > 0 && oy > 0 && ox * oy > (k[2] - k[0]) * (k[3] - k[1]) * .2) { out.floors.push({ kind: 'stamp', id: 'plant.fern', v: 0, h: 30, x: t.x, y: t.y - 2 }); return false; } }
+        return true; }); }
     // a crown that still reaches over a story house fades as you come near it (tick)
     for (const h of houses) { const hx = (h.x + (h.w || 1) / 2) * W.cellW, hy = W.sky + (h.y + .5) * W.cellH; for (const t of out.trees) { const H = t.h * t.scale; if (hy < t.y && hy > t.y - H * .95 && Math.abs(hx - t.x) < H * .5) t.hides = { x: hx, y: hy }; } }
     // the canopy's shade over the whole floor, from the trees that stand there (and the rhythm plots), and each tree as dark
@@ -388,7 +397,7 @@ window.GardenPaintWood = (function () {
         const g = noise(tx / 48, ty / 30, 1.6, 913); if (g < .42) continue; const r = rng(h3(tx / T | 0, ty / T | 0, 917) * 2147483646 + 1), n = Math.round((g - .42) * 6 * few + r());
         for (let k = 0; k < n; k++) {
           const x = tx + r() * T, y = ty + r() * T, v = CF.at(x, y); if (v < .2) continue;
-          const rx = (2.5 + r() * r() * 9) * (eve ? 1.9 : 1), ry = rx * (.42 + r() * .18) * (eve ? .5 : 1), a = Math.min(.85, .3 + v * .5) * (.6 + r() * .4), rot = .28 + (r() - .5) * .3;
+          const rx = (2.5 + r() * r() * 9) * (eve ? 2.2 : 1), ry = rx * (.42 + r() * .18) * (eve ? .62 : 1), a = Math.min(.85, .3 + v * .5) * (.6 + r() * .4), rot = .28 + (r() - .5) * .3;
           o.save(); o.translate(x, y); o.rotate(rot); o.scale(1, ry / rx);
           const gr = o.createRadialGradient(0, 0, 0, 0, 0, rx); gr.addColorStop(0, 'rgba(0,0,0,' + a.toFixed(3) + ')'); gr.addColorStop(.55, 'rgba(0,0,0,' + (a * .92).toFixed(3) + ')'); gr.addColorStop(.82, 'rgba(0,0,0,' + (a * .45).toFixed(3) + ')'); gr.addColorStop(1, 'rgba(0,0,0,0)');   // (a fleck has an edge: soft blobs read as smoke)
           o.fillStyle = gr; o.fillRect(-rx, -rx, rx * 2, rx * 2); o.restore();
@@ -398,7 +407,7 @@ window.GardenPaintWood = (function () {
       o.globalCompositeOperation = 'source-over';
     }
     cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); cx.globalAlpha = tod === 'night' ? .85 : 1; cx.globalCompositeOperation = 'source-over'; cx.drawImage(canopyScratch, 0, 0, w, h, 0, 0, w, h); cx.restore();
-    if (flecks.length) { cx.save(); for (const [x, y, rx, ry, rot, a] of flecks) { cx.save(); cx.translate(x, y); cx.rotate(rot); cx.scale(1, ry / rx); const gr = cx.createRadialGradient(0, 0, 0, 0, 0, rx); gr.addColorStop(0, 'rgba(255,178,92,' + (a * .42).toFixed(3) + ')'); gr.addColorStop(.6, 'rgba(255,160,84,' + (a * .26).toFixed(3) + ')'); gr.addColorStop(1, 'rgba(255,150,80,0)'); cx.fillStyle = gr; cx.fillRect(-rx, -rx, rx * 2, rx * 2); cx.restore(); } cx.restore(); }
+    if (flecks.length) { cx.save(); for (const [x, y, rx, ry, rot, a] of flecks) { cx.save(); cx.translate(x, y); cx.rotate(rot); cx.scale(1, ry / rx); const gr = cx.createRadialGradient(0, 0, 0, 0, 0, rx); gr.addColorStop(0, 'rgba(255,190,112,' + (a * .26).toFixed(3) + ')'); gr.addColorStop(.6, 'rgba(255,176,104,' + (a * .14).toFixed(3) + ')'); gr.addColorStop(1, 'rgba(255,150,80,0)'); cx.fillStyle = gr; cx.fillRect(-rx, -rx, rx * 2, rx * 2); cx.restore(); } cx.restore(); }
     return true;
   }
   /* One knot of thicket for each unbought plot in a wood: one or two young trees stand up out of the back of it, bramble,
@@ -551,8 +560,8 @@ window.GardenPaintWood = (function () {
         // cell here, on top of it, read as a polka-dot field; 19 Nov 2026)
         if (!window.GardenPaintGround) for (let i = 0; i < 6; i++) { cx.globalAlpha = .45; cx.fillStyle = F.leaf[i % 3]; const lx = X + (rr() - .5) * W.cellW, ly = Y + (rr() - .5) * W.cellH; cx.beginPath(); cx.ellipse(lx, ly, 1.6 + rr() * 1.6, .9 + rr() * .7, rr() * 3, 0, Math.PI * 2); cx.fill(); }
         // fallen twigs and small heaps of dead leaves, each its own length and turn (a floor that has had trees over it for years)
-        if (f.def.mood !== 'meadow' && pn !== 2) { const nT = rr() < .45 ? 1 + (rr() < .3 ? 1 : 0) : 0; for (let i = 0; i < nT; i++) { const tx = X + (rr() - .5) * W.cellW, ty = Y + (rr() - .5) * W.cellH, a = rr() * Math.PI, l = 6 + rr() * 12, bx = Math.cos(a) * l, by = Math.sin(a) * l * .45, bend = (rr() - .5) * 5; cx.lineCap = 'round'; cx.globalAlpha = .7; cx.strokeStyle = season === 'winter' ? '#5a5048' : '#4e3c28'; cx.lineWidth = 1.5; cx.beginPath(); cx.moveTo(tx - bx / 2, ty - by / 2); cx.quadraticCurveTo(tx + bend, ty - bend * .5, tx + bx / 2, ty + by / 2); cx.stroke(); cx.globalAlpha = .45; cx.strokeStyle = '#9a8060'; cx.lineWidth = .6; cx.beginPath(); cx.moveTo(tx - bx / 2, ty - by / 2 - .7); cx.quadraticCurveTo(tx + bend, ty - bend * .5 - .7, tx + bx / 2, ty + by / 2 - .7); cx.stroke(); if (rr() < .4) { cx.globalAlpha = .6; cx.strokeStyle = '#4e3c28'; cx.lineWidth = 1; cx.beginPath(); cx.moveTo(tx, ty); cx.lineTo(tx + (rr() - .3) * 6, ty - 2 - rr() * 3); cx.stroke(); } }
-          if (rr() < .35) { const lx = X + (rr() - .5) * W.cellW, ly = Y + (rr() - .5) * W.cellH; cx.globalAlpha = .32; cx.fillStyle = season === 'autumn' ? '#8a5a2c' : '#5e5232'; cx.fill(new Path2D(sceneDraw.blob(rr, lx, ly, 5 + rr() * 7, 2.5 + rr() * 3, 7, .5))); cx.globalAlpha = .28; cx.fillStyle = season === 'autumn' ? '#c08840' : '#9a8a58'; cx.fill(new Path2D(sceneDraw.blob(rr, lx - 1.5, ly - 1, 3 + rr() * 4, 1.5 + rr() * 2, 6, .5))); } }
+        if (f.def.mood !== 'meadow' && pn !== 2) { const twigs = noise(x, y, 2.3, 541), nT = rr() < (twigs > .55 ? .5 : .07) ? 1 + (rr() < .25 ? 1 : 0) : 0;   // (in drifts where branches came down, not an even scatter) for (let i = 0; i < nT; i++) { const tx = X + (rr() - .5) * W.cellW, ty = Y + (rr() - .5) * W.cellH, a = rr() * Math.PI, l = 6 + rr() * 12, bx = Math.cos(a) * l, by = Math.sin(a) * l * .45, bend = (rr() - .5) * 5; cx.lineCap = 'round'; cx.globalAlpha = .7; cx.strokeStyle = season === 'winter' ? '#5a5048' : '#4e3c28'; cx.lineWidth = 1.5; cx.beginPath(); cx.moveTo(tx - bx / 2, ty - by / 2); cx.quadraticCurveTo(tx + bend, ty - bend * .5, tx + bx / 2, ty + by / 2); cx.stroke(); cx.globalAlpha = .45; cx.strokeStyle = '#9a8060'; cx.lineWidth = .6; cx.beginPath(); cx.moveTo(tx - bx / 2, ty - by / 2 - .7); cx.quadraticCurveTo(tx + bend, ty - bend * .5 - .7, tx + bx / 2, ty + by / 2 - .7); cx.stroke(); if (rr() < .4) { cx.globalAlpha = .6; cx.strokeStyle = '#4e3c28'; cx.lineWidth = 1; cx.beginPath(); cx.moveTo(tx, ty); cx.lineTo(tx + (rr() - .3) * 6, ty - 2 - rr() * 3); cx.stroke(); } }
+          if (rr() < (twigs > .45 ? .4 : .1)) { const lx = X + (rr() - .5) * W.cellW, ly = Y + (rr() - .5) * W.cellH; cx.globalAlpha = .32; cx.fillStyle = season === 'autumn' ? '#8a5a2c' : '#5e5232'; cx.fill(new Path2D(sceneDraw.blob(rr, lx, ly, 5 + rr() * 7, 2.5 + rr() * 3, 7, .5))); cx.globalAlpha = .28; cx.fillStyle = season === 'autumn' ? '#c08840' : '#9a8a58'; cx.fill(new Path2D(sceneDraw.blob(rr, lx - 1.5, ly - 1, 3 + rr() * 4, 1.5 + rr() * 2, 6, .5))); } }
         if (noise(x, y, 2.6, 515) > (f.def.mood === 'old' ? .5 : .62) && rr() < .75) { cx.globalAlpha = .42;   /* (moss in drifts, not one pad a cell at random: an even scatter read as lily pads) */ cx.fillStyle = F.moss; cx.fill(new Path2D(sceneDraw.blob(rr, X + (rr() - .5) * 20, Y + (rr() - .5) * 10, 8 + rr() * 10, 4 + rr() * 4, 7, .5))); }
         // spring bluebells in drifts under the light wood
         // (19 Nov 2026, round 2: in carpets, not confetti: where a slow drift field is high a violet haze lies on the litter and

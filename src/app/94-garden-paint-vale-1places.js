@@ -394,9 +394,50 @@
     if (season === 'autumn') for (let i = 0; i < 40; i++) B.f(B.ell(-200 + r() * 400, 2 + r() * 26, 2, 1.2), L[1 + Math.floor(r() * 3)], .85);
   }
 
+  /* ---------- Hollin's woodpile by the ruins lane (woodland.md 17: stacked logs, a sawhorse, a kettle on a fire) ----------
+   * Where: the first stretch of open grass beside the lane that runs from the Great Oak to the Ruined arch, a third to half
+   * of the way along it, on whichever side is free (never on a path, a plot, a static or land for sale). The woods' planting
+   * keeps its trees off the same spot (GardenPaintWood reads woodpileSpot). In cells; null if the layout has no such lane. */
+  function woodpileSpot(data) {
+    const rt = (data.routes || []).find(r => r.id === 'ruins-lane'); if (!rt || !rt.points || rt.points.length < 2 || typeof gardenIslandBaseCell !== 'function') return null;
+    if (pileCache.has(data)) return pileCache.get(data);
+    const pts = rt.points, cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    const len = cum[cum.length - 1], at = s => { let i = 1; while (i < cum.length - 1 && cum[i] < s) i++; const a = pts[i - 1], b = pts[i], t = (s - cum[i - 1]) / ((cum[i] - cum[i - 1]) || 1); return { x: a[0] + (b[0] - a[0]) * t, y: a[1] + (b[1] - a[1]) * t, tx: (b[0] - a[0]) / ((cum[i] - cum[i - 1]) || 1), ty: (b[1] - a[1]) / ((cum[i] - cum[i - 1]) || 1) }; };
+    const ok = (x, y) => { const c = gardenIslandBaseCell(Math.floor(x), Math.floor(y)), row = typeof gardenLandCell === 'function' ? gardenLandCell(Math.floor(x), Math.floor(y)) : null; return !!(c && c.land && !c.freshwater && !c.beach && !c.route && !c.solid && !c.reserved && !c.staticId && !(row && (row.plot || /^l[sct]-/.test(row.id || '')))) && !(data.static || []).some(p => x > p.x - 1 && x < p.x + (p.w || 1) + 1 && y > p.y - 1 && y < p.y + (p.h || 1) + 1); };
+    let best = null;
+    for (let s = len * .33; s <= len * .55 && !best; s += .25) { const p = at(s); for (const side of [1, -1]) { const nx = -p.ty * side, ny = p.tx * side, x = p.x + nx * 2.4, y = p.y + ny * 2.4; if ([[0, 0], [-1, 0], [1, 0], [0, -1], [-1, -1], [1, -1], [1.6, 0], [-1.6, 0]].every(([dx, dy]) => ok(x + dx, y + dy))) { best = { x, y }; break; } } }
+    pileCache.set(data, best); return best;
+  }
+  const pileCache = new WeakMap();   // (the layout is frozen: the spot is kept beside it)
+  V.woodpileSpot = woodpileSpot;
+  function woodpile(B, r, P, season) {
+    // trodden earth and chips round it
+    B.f(B.blob(r, 4, 6, 70, 16, 10, .35), '#7a6644', .35).f(B.blob(r, -6, 5, 44, 10, 9, .35), '#9a8458', .3);
+    for (let k = 0; k < 60; k++) { const a = r() * Math.PI * 2, d = Math.sqrt(r()); B.f(B.rect(Math.cos(a) * 64 * d, 6 + Math.sin(a) * 14 * d, 2 + r() * 2.6, .9 + r() * .8), r() < .5 ? '#d8c08a' : '#8a6a46', .75); }
+    // the long cordwood stack between two stakes
+    B.shadow(6, 1, 36, 5, .3);
+    for (const x of [-30, 30]) B.f(B.rect(x - 1.8, -27, 3.6, 28), P.woodDk);
+    let y = -2; for (let row = 0; row < 4; row++) { let x = -28 + r() * 2, rowH = 0; while (x < 26) { const rad = 2.6 + r() * r() * 2.8, cx0 = x + rad, cy0 = y - rad + (r() - .5); if (cx0 + rad > 29) break; const face = r() < .3 ? '#d8c6a0' : r() < .6 ? '#c8b088' : '#b49870'; B.f(B.circ(cx0, cy0, rad), r() < .5 ? '#6e5236' : '#82623e').f(B.circ(cx0 - .3, cy0 - .3, rad * .8), face).f(B.circ(cx0 - .3, cy0 - .3, rad * .4), C2(face), .45); x += rad * 2 + .2 + r() * .6; rowH = Math.max(rowH, rad * 2); } y -= Math.max(5, rowH * .86); }
+    // the sawhorse, a log across it, sawdust under the cut
+    const sx = 50; B.shadow(sx + 3, 1, 16, 3.5, .28);
+    for (const [a, b] of [[-9, 6], [9, -6]]) { B.s(`M${sx + a} 0L${sx + b} -17`, P.woodDk, 2.6); B.s(`M${sx + a + 4} 1L${sx + b + 4} -16`, '#6e5236', 2.2); }
+    B.f(B.rr(sx - 16, -21, 32, 6, 3), '#82623e').f(B.ell(sx + 16, -18, 2.8, 3.1), '#d2ae78').f(B.rect(sx - 16, -21, 32, 1.6), '#a08058', .6);
+    B.f(B.ell(sx + 2, 2, 7, 1.8), '#e4cc9a', .7);
+    // the fire: a ring of stones, half-burnt sticks, a kettle hung from a tripod (cold in the dark: Hollin is home by dusk)
+    const fx = -52; B.f(B.ell(fx, 2, 11, 4), '#3a3028', .7);
+    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; B.f(B.blob(r, fx + Math.cos(a) * 10, 2 + Math.sin(a) * 3.8, 2.6, 1.8, 6, .3), r() < .5 ? '#8e8a78' : '#a8a492'); }
+    B.s(`M${fx - 5} 1L${fx + 4} -1`, '#2e2620', 2).s(`M${fx - 3} -1L${fx + 5} 2`, '#4a3a2a', 1.8).f(B.ell(fx, 0, 3, 1.2), '#c86a2a', .7);
+    for (const [a, b] of [[-10, 3], [10, 3], [0, -4]]) B.s(`M${fx + a} ${b}L${fx} -24`, '#5a4632', 1.6);
+    B.s(`M${fx} -24L${fx} -14`, '#3a3a3a', .8).f(B.rr(fx - 5, -15, 10, 8, 3.4), '#4a4e52').f(B.rr(fx - 5, -15, 4, 8, 2), '#7a8086', .6).s(`M${fx + 5} -11l4 -2`, '#4a4e52', 1.6);
+    // a bucket and an axe left in the block
+    B.f(B.rr(18, -7, 7, 8, 1.6), '#7a6a52').f(B.ell(21.5, -7, 3.5, 1.2), '#5a4a3a');
+    if (season !== 'winter') for (let k = 0; k < 5; k++) B.tufts(r, -70 + r() * 140, 8 + r() * 4, 10, 3, ['#6f8446', '#8a9a58'], 6);
+  }
+
   /* ---------- Hollin's hut and the ice house: their surroundings ---------- */
   function homes(C) {
     const { L, P, add, thing } = C, cw = L.cw, ch = L.ch;
+    { const wp = woodpileSpot(L.D); if (wp) { const p = L.cpt(wp.x, wp.y); thing({ key: 'woodpile', x: p.x, y: p.y, box: [-80, -40, 76, 20], foot: [-32, 32, 8], draw: B => woodpile(B, C.kit.rng(77), P, C.season) }); } }
     const hut = L.stat('ld-woodhut');
     if (hut) {
       const c = L.cpt(hut.x + hut.w / 2, hut.y + hut.h);
@@ -406,7 +447,7 @@
         for (let k = 0; k < 120; k++) { const a = r() * Math.PI * 2, d = Math.sqrt(r()); B.f(B.rect(c.x + Math.cos(a) * 100 * d, c.y + 24 + Math.sin(a) * 34 * d, 2 + r() * 3, 1 + r()), r() < .5 ? '#d8c08a' : '#8a6a46', .8); }
       });
       const logs = gardenIslandLogStack(L.D), logAt = logs ? L.cpt(logs.x, logs.y) : { x: c.x + 2.2 * cw, y: c.y + .4 * ch };
-      thing({ key: 'logstack', x: logAt.x, y: logAt.y, box: [-40, -54, 44, 8], draw: B => logStack(B, C.kit.rng(72), P) });
+      thing({ key: 'logstack2', x: logAt.x, y: logAt.y, box: [-46, -58, 48, 8], draw: B => logStack(B, C.kit.rng(72), P) });
       thing({ key: 'block', x: c.x - 1.9 * cw, y: c.y + 1.3 * ch, box: [-20, -34, 26, 8], foot: [-14, 18, 8], draw: B => chopBlock(B, P) });
     }
     const ice = L.stat('ld-icehouse');
@@ -462,11 +503,29 @@
     const chapel = L.stat('ld-chapel');
     if (chapel) { const p = L.cpt(chapel.x - .6, chapel.y + chapel.h + .4); thing({ key: 'chapel-stone', x: p.x, y: p.y, box: [-14, -26, 16, 6], foot: [-11, 13, 8], draw: B => { B.shadow(3, 1, 11, 3, .3); B.f('M-7 0L-7 -15Q-7 -21 0 -21Q7 -21 7 -15L7 0Z', RUIN.body).f('M-7 0L-7 -15Q-7 -21 0 -21L0 0Z', RUIN.hi, .5).f(B.blob(window.GardenPaintTerrainKit.rng(5), -2, -19, 5, 2, 6, .5), RUIN.moss, .9); B.f(B.circ(-3, 1, 1.6), '#f0e0a0').f(B.circ(2, 1.4, 1.4), '#e8e4f0'); } }); }
   }
+  const C2 = c => { const n = parseInt(c.slice(1), 16), f = v => Math.max(0, Math.round(v * .84)); return '#' + ((f(n >> 16 & 255) << 16) | (f(n >> 8 & 255) << 8) | f(n & 255)).toString(16).padStart(6, '0'); };   // (a growth ring: the face a shade darker)
   function logStack(B, r, P) {
     B.shadow(4, 1, 40, 6, .3);
-    for (const x of [-34, 34]) B.f(B.rect(x - 2, -40, 4, 40), P.woodDk);
-    for (let row = 0; row < 5; row++) for (let k = 0; k < 7; k++) { const x = -29 + k * 9.6 + (row % 2) * 4.8, y = -5 - row * 8.4; if (x > 30) continue; B.f(B.circ(x, y, 4.6), '#8a6a46').f(B.circ(x - .4, y - .4, 3.6), '#d8b884').f(B.circ(x - .4, y - .4, 1.6), '#b8925e', .8); }
-    B.f('M-40 -42L0 -52L42 -42L40 -38L0 -47L-38 -38Z', '#5e5040');
+    // (19 Nov 2026, round 3 fixes: a woodpile, not a honeycomb: logs of every girth packed as they fell, split ones showing a
+    //  pale face, older ones greyed and mossy at the bottom, dark gaps between them, under a roof of weathered shakes)
+    B.f(B.rect(-38, -46, 76, 46), '#2a2018', .9);
+    for (const x of [-35, 35]) B.f(B.rect(x - 2.4, -44, 4.8, 44), P.woodDk).f(B.rect(x - 2.4, -44, 1.6, 44), '#8a6a46', .5);
+    let y = -4; for (let row = 0; row < 6 && y > -40; row++) {
+      const end = 31 - Math.abs(row - 2) * .8; let x = -31 + r() * 3, rowH = 0;
+      while (x < end) {
+        const rad = 2.8 + r() * r() * 3.6, split = r() < .3, old = row < 2 && r() < .5, cx0 = x + rad, cy0 = y - rad + (r() - .5) * 1.2;
+        if (cx0 + rad > end + 2) break;
+        const bark = old ? '#6a6250' : r() < .5 ? '#6e5236' : '#82623e', face = old ? '#a89c80' : split ? '#d8c6a0' : r() < .5 ? '#c8b088' : '#b89c74';
+        if (split) B.f(`M${cx0 - rad} ${cy0}A${rad} ${rad} 0 0 1 ${cx0 + rad} ${cy0}L${cx0} ${cy0 + rad * .9}Z`, bark).f(`M${cx0 - rad * .8} ${cy0}A${rad * .8} ${rad * .8} 0 0 1 ${cx0 + rad * .8} ${cy0}L${cx0} ${cy0 + rad * .7}Z`, face);
+        else B.f(B.circ(cx0, cy0, rad), bark).f(B.circ(cx0 - .3, cy0 - .3, rad * .8), face).f(B.circ(cx0 - .3, cy0 - .3, rad * .45), C2(face), .45).f(B.circ(cx0 - .3, cy0 - .3, rad * .14), '#7a5a36', .6);
+        if (old && r() < .5) B.f(B.ell(cx0 + rad * .3, cy0 + rad * .5, rad * .7, rad * .35), '#6f8446', .75);
+        x += rad * 2 + .3 + r() * .8; rowH = Math.max(rowH, rad * 2);
+      }
+      y -= Math.max(5.5, rowH * .86);
+    }
+    B.f('M-42 -44L0 -55L44 -44L42 -39L0 -49L-40 -39Z', '#5e5040').f('M-42 -44L0 -55L0 -52L-40 -42Z', '#7a6a56', .6);
+    for (let k = -38; k < 40; k += 6) B.s(`M${k} -44l${(r() - .5) * 1.5} 4`, '#463a2e', .8, .6);
+    B.f(B.blob(r, -10, 1, 34, 3.4, 8, .4), '#6f8446', .5);
   }
   function chopBlock(B, P) {
     B.shadow(2, 1, 14, 4, .3);
