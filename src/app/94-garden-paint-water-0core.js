@@ -775,6 +775,9 @@ window.GardenPaintWater = (function () {
         cx.globalCompositeOperation = 'destination-in'; cx.fillStyle = g(1); cx.fillRect(0, 0, 48, 14); cx.globalCompositeOperation = 'source-over';
         cx.strokeStyle = g(.38); cx.lineWidth = 5; cx.beginPath(); cx.moveTo(4, 8); cx.quadraticCurveTo(24, 2.5, 44, 8); cx.stroke();
         cx.strokeStyle = g(1); cx.lineWidth = 2.3; cx.beginPath(); cx.moveTo(4, 7.6); cx.quadraticCurveTo(24, 2.2, 44, 7.6); cx.stroke(); }),
+      // a petal or leaf afloat: a pointed oval with a soft shadow on the water under it and a faint midrib (tinted per leaf)
+      leaf: make('leaf', 14, 9, (cx) => { const leaf = (dx, dy) => { cx.beginPath(); cx.moveTo(1.5 + dx, 4 + dy); cx.quadraticCurveTo(6.5 + dx, -.5 + dy, 11.5 + dx, 4 + dy); cx.quadraticCurveTo(6.5 + dx, 8.5 + dy, 1.5 + dx, 4 + dy); cx.fill(); };
+        cx.fillStyle = 'rgba(16,40,46,.28)'; leaf(1.2, 1.2); cx.fillStyle = '#ffffff'; leaf(0, 0); cx.strokeStyle = 'rgba(0,0,0,.18)'; cx.lineWidth = .6; cx.beginPath(); cx.moveTo(2.5, 4); cx.lineTo(10.5, 4); cx.stroke(); }),
       // a lamp's light lying on the water: a short soft bar, brightest in the middle
       streak: make('streak', 32, 8, (cx, w, h) => { const g = cx.createRadialGradient(16, 4, 0, 16, 4, 16); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.4, 'rgba(255,255,255,.5)'); g.addColorStop(1, 'rgba(255,255,255,0)'); cx.save(); cx.scale(1, .25); cx.fillStyle = g; cx.fillRect(0, 0, 32, 32); cx.restore(); }),
       strip: make('strip', 128, 32, (cx) => { const r = rng(31); for (let i = 0; i < 70; i++) { const x = r() * 128, y = 4 + r() * 24, len = 4 + r() * 18, a = .25 + r() * .6; cx.strokeStyle = 'rgba(255,255,255,' + a + ')'; cx.lineWidth = .8 + r() * 1.8; cx.lineCap = 'round'; for (const ox of [0, -128, 128]) { cx.beginPath(); cx.moveTo(x + ox, y); cx.lineTo(x + ox + len, y + (r() - .5) * 2); cx.stroke(); } } }),
@@ -821,6 +824,35 @@ window.GardenPaintWater = (function () {
           // adding an offset near phase zero made its centre wander onto land.
           if (cycle !== q.cycle) { const p = pick(); if (p) { q.x = p.x; q.y = p.y; } q.cycle = cycle; }
           q.im.setPosition(q.x, q.y).setScale(.15 + f * .9, .15 + f * .8).setAlpha(f < .7 ? (1 - f / .7) * .3 : 0);
+        }
+      } });
+    }
+    // The spring wells up: small rings opening one after another over its source, and bubbles rising to break the surface.
+    for (const w of S.M.waters) {
+      if (w.kind !== 'spring') continue;
+      let sx = 0, sy = 0; for (const p of w.pts) { sx += p.x / w.pts.length; sy += p.y / w.pts.length; }
+      if (!inside(sx, sy, w.pts)) { const p = w.pts[0]; sx = p.x; sy = p.y; }
+      const r = rng(hash(w.id + 'well')), rings = [], list = [];
+      for (let i = 0; i < 3; i++) rings.push({ im: add(scene.add.image(sx, sy, T.ring)).setAlpha(0), ph: i / 3 });
+      for (let i = 0; i < 7; i++) list.push({ im: add(scene.add.image(sx, sy, T.spark)).setAlpha(0), ph: r(), dx: (r() - .5) * 16, dy: (r() - .5) * 7, per: 1.6 + r() * 1.8 });
+      out.push({ b: { x: sx - 60, y: sy - 40, w: 120, h: 80 }, list: list.concat(rings), kind: 'spring', update(dt, t) {
+        for (const q of rings) { const f = (t / 3.2 + q.ph) % 1; q.im.setPosition(sx, sy + 1).setScale(.08 + f * .42, .08 + f * .36).setAlpha((1 - f) * (night ? .22 : .34)); }
+        for (const g of list) { const f = (t / g.per + g.ph) % 1; g.im.setPosition(sx + g.dx, sy + g.dy - f * 2).setScale(.18 + f * .12).setAlpha(Math.sin(f * Math.PI) ** 2 * (night ? .4 : .7)); }
+      } });
+    }
+    // Drift on still water by the season: a few petals and seed heads in summer, blossom in spring, leaves in autumn, each
+    // turning slowly as the breeze carries it across, fading in and out so none is seen to start or stop.
+    const DRIFT = { spring: [0xf6cdd8, 0xfbe6ec, 0xf2f2e4], summer: [0xf6f2e2, 0xe8e4c8, 0xf3d8e0], autumn: [0xc8813a, 0xd9a441, 0xa8592c, 0xb89a40] }[S.season];
+    if (DRIFT) for (const w of S.M.waters) {
+      if (!(w.kind === 'mere' || w.kind === 'pool')) continue;
+      const b = w.bounds, r = rng(hash(w.id + 'drift')), list = [], N = w.kind === 'mere' ? (S.season === 'autumn' ? 18 : 12) : 3;
+      const pick = () => { for (let k = 0; k < 30; k++) { const x = b.x + r() * b.w, y = b.y + r() * b.h; if (inside(x, y, w.pts) && edgeDist(x, y, w.pts) > 14) return { x, y }; } return null; };
+      for (let i = 0; i < N; i++) { const p = pick(); if (!p) continue; list.push({ im: add(scene.add.image(p.x, p.y, T.leaf)).setTint(DRIFT[Math.floor(r() * DRIFT.length)]).setAlpha(0), x: p.x, y: p.y, life: r(), span: 34 + r() * 40, rot: r() * 6.28, spin: (r() - .5) * .25, k: .7 + r() * .5 }); }
+      out.push({ b, list, kind: 'drift', update(dt, t) {
+        for (const g of this.list) {
+          g.life += dt / g.span; g.x += dt * (1.1 + Math.sin(t * .1 + g.rot) * .5); g.y += dt * Math.sin(t * .07 + g.rot * 2) * .35; g.rot += dt * g.spin;
+          if (g.life >= 1 || !inside(g.x, g.y, w.pts)) { const p = pick(); g.life = 0; if (p) { g.x = p.x; g.y = p.y; } }
+          g.im.setPosition(g.x, g.y).setRotation(g.rot).setScale(g.k).setAlpha(Math.min(1, Math.sin(g.life * Math.PI) * 3) * (night ? .45 : .9));
         }
       } });
     }
@@ -885,7 +917,11 @@ window.GardenPaintWater = (function () {
         for (const l of L) { if (/falls/.test(String(l.id || ''))) continue;   // (the falls is a landmark with a door, not a lit window)
           const x = +l.x, top = +l.y, foot = Number.isFinite(+l.ground) && l.ground != null ? +l.ground : top + Math.min(60, (+l.height || 40)); if (!Number.isFinite(x) || !Number.isFinite(top)) continue;
           const h = Math.max(14, foot - top), col = typeof l.color === 'number' ? l.color : 0xffd88e, pw = Math.max(0, Math.min(1, +l.intensity || .7));
-          for (let k = 0; k < 7; k++) { const y = foot + 5 + k * h * 1.15 / 6; if (MK.at(x, y) && MK.at(x - 6, y) && MK.at(x + 6, y)) rows.push({ x, y, k, col, pw: pw * (1 - k / 8.5), ph: (x * .07 + top * .03) % 6.28 }); }
+          // (a light that stands back from the edge, on a quay or a bank, still lays its column down from the waterline in front
+          //  of it, fainter the farther back it stands; one with no water within a few strides lays none)
+          let y0 = foot + 5; while (y0 < foot + 96 && !(MK.at(x, y0) && MK.at(x - 6, y0) && MK.at(x + 6, y0))) y0 += 4; if (y0 >= foot + 96) continue;
+          const back = Math.max(0, Math.min(1, (y0 - foot - 5) / 110));
+          for (let k = 0; k < 7; k++) { const y = y0 + k * h * 1.15 / 6; if (MK.at(x, y) && MK.at(x - 6, y) && MK.at(x + 6, y)) rows.push({ x, y, k, col, pw: pw * (1 - back) * (1 - k / 8.5), ph: (x * .07 + top * .03) % 6.28 }); }
           if (rows.length >= NL) break;
         }
       };
@@ -896,7 +932,7 @@ window.GardenPaintWater = (function () {
         if (v && lit > .02) for (const r of rows) { if (n >= NL) break; if (r.x < v.x - 40 || r.x > v.x + v.w + 40 || r.y < v.y - 40 || r.y > v.y + v.h + 40) continue;
           const g = pool[n++]; if (!g.on) { g.im.setVisible(true); g.on = true; }
           const wob = Math.sin(t * 1.4 + r.ph + r.k * .9), wid = (.32 + r.k * .07) * (1 + .18 * Math.sin(t * 2.1 + r.k * 1.7 + r.ph));
-          g.im.setTint(r.col).setPosition(r.x + wob * (1 + r.k * .5), r.y).setScale(wid, .7).setAlpha(r.pw * lit * (.55 + .2 * Math.sin(t * 2.6 + r.k + r.ph)));
+          g.im.setTint(r.col).setPosition(r.x + wob * (1 + r.k * .5), r.y).setScale(wid * 1.25, .85).setAlpha(Math.min(1, r.pw * lit * 1.9 * (.7 + .3 * Math.sin(t * 2.6 + r.k + r.ph))));   // (strong: the night's grade is laid over it)
         }
         for (let i = n; i < NL; i++) { const g = pool[i]; if (g.on || g.im.visible) { g.im.setVisible(false); g.on = false; } }
       } });
