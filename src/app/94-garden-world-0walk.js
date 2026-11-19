@@ -117,7 +117,9 @@ function _gwBuildSolids(m) {
   const frame = woodsGate && typeof _gldIslandGateFrame === 'function' && typeof GardenNativePainted !== 'undefined' && GardenNativePainted.wanted && GardenNativePainted.wanted() ? _gldIslandGateFrame(woodsGate) : null;
   if (frame) {
     const W = GARDEN_WORLD, side = Math.abs(frame.uy) > Math.abs(frame.ux), half = Math.max(46, Math.min(80, frame.span * .62)), S = frame.span * .9;
-    for (const sgn of [-1, 1]) { const lx = frame.x + sgn * (side ? .85 : 1) * (half + 2), ly = frame.y + 2 + (side ? sgn * (S / half * .8) * (half + 2) : 0); add((lx - 9) / W.cellW, (ly - 7 - W.sky) / W.cellH, (lx + 9) / W.cellW, (ly + 2 - W.sky) / W.cellH, 'Forest arch trunk'); }
+    // (seen side on, the arch is a gap in a woodland edge whose oak and hedge banks block through the gate's own feet,
+    // GardenPaintedProps.gateTrees: the two sheared trunks no longer stand there)
+    if (!side) for (const sgn of [-1, 1]) { const lx = frame.x + sgn * (half + 2), ly = frame.y + 2; add((lx - 9) / W.cellW, (ly - 7 - W.sky) / W.cellH, (lx + 9) / W.cellW, (ly + 2 - W.sky) / W.cellH, 'Forest arch trunk'); }
   }
   // Every painted tree on the map (village planting, the three painted woods, the orchard rows) has one trunk box at
   // its foot, from one list (_gwPaintedTrunks): the crowns are for walking behind.

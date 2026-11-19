@@ -612,7 +612,7 @@ window.GardenPaintSeat = (function () {
     B.f('M1 -32q8 1 11 -3q-2 5 -10 7z', '#c8402e').f('M1 -32q5 .4 7 -1.6', '#e8705a', .7);   // a rag tied on: here it goes
     B.s('M0 -14q7 4 11 13', '#d8c08a', .8).f(B.ell(12, 0, 3.4, 1.8), '#e8e0cc').f(B.ell(12, -.6, 3.4, 1), '#c8402e');   // and a float on a cord
   } };
-  A['plot:deck'] = { box: [-30, -26, 30, 8], seat: false, shade: false, draw(B, o) {
+  A['plot:deck'] = { box: [-30, -26, 30, 8], seat: false, shade: false, flat: true, draw(B, o) {
     const r = KIT().rng(337);
     // a square chalked on the planks, a stack of new boards, a coil of rope and a box of nails
     B.s('M-20 -2h30v-12h-30z', '#f4f0e2', .8, .45).s('M-18 -4l26 -8M-18 -12l26 8', '#f4f0e2', .5, .25);
@@ -620,7 +620,7 @@ window.GardenPaintSeat = (function () {
     for (let i = 0; i < 3; i++) B.s(B.ell(-24, -3 - i * 1.2, 5 - i, 2 - i * .3), i % 2 ? '#d8c08a' : '#b89a6a', 1.3);
     B.f(B.rr(2, -9, 7, 5, 1), '#6a4a2e').f(B.rr(2, -9, 7, 1.4, .6), '#8a6a46').f(B.circ(5.5, -8.6, .6), '#8a8e90');
   } };
-  A['plot:land'] = { box: [-34, -30, 36, 10], seat: { kind: 'earth', w: 44, front: 14, back: 10, stones: 0, way: false }, shade: false, draw(B, o) {
+  A['plot:land'] = { box: [-34, -30, 36, 10], seat: { kind: 'earth', w: 44, front: 14, back: 10, stones: 0, way: false }, shade: false, flat: true, draw(B, o) {
     const r = KIT().rng(341);
     // four pegs and a string round a square of bare earth, bricks stacked and a bucket of mortar waiting
     const pegs = [[-20, -14], [20, -14], [22, 2], [-22, 2]];
