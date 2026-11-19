@@ -492,7 +492,7 @@ window.GardenNativePainted = (function () {
   // aprons, picking and depth stay where they were.
   const BUILD = {
     'garden-shop': { obj: 'building.green-cottage', v: 0, w: 150, wallWidth: 150, sign: 'Seed & Stem', extra: [['plant.planter', 1, -84, 0, 26], ['plant.planter', 0, 84, 0, 26], ['plant.rph-flower-tub', 1, -60, 8, 18]] },
-    'land-office': { obj: 'building.cottage', v: 1, w: 140, wallWidth: 160, sign: 'Land Office', extra: [['street.lamp', 0, -78, 4, 0, 70]] },
+    'land-office': { obj: 'building.cottage', v: 1, w: 140, wallWidth: 160, sign: 'Land Office', extra: [['street.lamp', 0, -66, 4, 0, 70]] },   // (the lamp on the door's side of the west corner: the lake walk passes just outside it)
     'tackle-shop': { obj: 'building.fpv-sailing-hut', v: 0, w: 150, wallWidth: 376, wallCenterX: -8, wallFootY: 14, sign: 'Tackle & Tide', extra: [['street.mqn-lifebuoy', 0, 80, 2, 0, 30]] },
     'market-stall': { obj: 'structure.mcr-market-chalet', v: 1, w: 104, wallWidth: 200 },
     // the high street's cottages (2.74), each its own kind so the street is not one house four times
