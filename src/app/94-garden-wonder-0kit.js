@@ -40,7 +40,9 @@ const WD_AT = Object.freeze({   // world cells
   rowboat: Object.freeze({ x: _WD_ISLE_C.cx - 0.7, y: _WD_ISLE_C.cy - 2 }),
   rowHome: _wdPt('tackle-shop', -0.9, 0),
   postWalk: _wdPt('post-box', -0.1, 0.2),
-  postFlag: _wdPt('post-box', 0, -0.58),
+  // the little red flag stands on the post box itself, at its foot (from its door it floated on the paving a cell above the
+  // box once the rebuilt village turned the box to face the square, door on its north side)
+  postFlag: (() => { const p = GARDEN_PROPS.find(x => x.id === 'post-box'); return p ? { x: p.x + p.w / 2, y: p.y + (p.h || 1) - 0.08 } : _wdPt('post-box', 0, -0.58); })(),
   bench: _wdPt('reed-bank', -0.3, 0.4),
   trunk: _wdPt('reed-bank', 1.2, -0.58),
   rug: _wdPt('notice-board', -1, -2.8),
