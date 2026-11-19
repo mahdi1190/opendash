@@ -425,7 +425,7 @@ window.GardenPaintedProps = (function () {
     else { const P = PAINT[d[1]]; im = h.add(image(scene, bake(scene, d[1] + '|' + season + '|' + (o.night ? 'n' : 'd'), P.box, B => P.draw(B, { season, night: o.night })), fx, foot)); if (d[1] === 'fountain') addDrops(scene, h, fx, foot - 52, 16); }
     if (!im) { h.destroy(); return null; }
     if (item.flip) im.setFlipX(true);
-    castOf(scene, im, fx, foot, !!item.flip);
+    if (castOf(scene, im, fx, foot, !!item.flip)) h.shaded = true;   /* (its silhouette is on the ground: no second, moving shadow from the light module) */
     if ((item.id === 'lantern' || item.id === 'solar-lights') && o.night) glowPool(scene, h, fx, foot, item.id === 'lantern' ? 90 : 60, item.id === 'lantern' ? foot - ((Number(item.v) || 0) % 2 ? 63 : 58) : null);
     const top = foot - im.displayHeight * im.originY;
     return finish(h, { x: fx - im.displayWidth / 2 - 4, y: top - 2, width: im.displayWidth + 8, height: foot - top + 10 }, { x: fx, y: foot });

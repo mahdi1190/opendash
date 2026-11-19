@@ -255,7 +255,8 @@ window.GardenNativeLight = (function () {
       for (let i = 0; i < list.length; i++) {
         const o = list[i], key = o.id == null ? 'static:' + i : String(o.id);
         if (o.kind === 'actor' || o.kind === 'pet' || !inView(o, v, 220)) continue;
-        if (strength > .004 && !o.shaded) shadeShape(shadowPool, shadows, key + ':sun', o, -env.sunX / direction, env.sunY / direction, length, strength, false);   // (shaded: its silhouette is already laid on the ground by the paint kit)
+        if (strength > .004 && !o.shaded) { const w = Math.max(3, Number(o.w || o.width) || 20), tall = clamp(Number(o.tall || o.height) || 36, 8, 150), thin = clamp(w / (Math.min(85, tall * length) * .45), .35, 1);   /* (a post, a tripod, a lamp: a thin shadow is a faint one, or it reads as a dark smear across pale stone) */
+          shadeShape(shadowPool, shadows, key + ':sun', o, -env.sunX / direction, env.sunY / direction, length, strength * thin, false); }   // (shaded: its silhouette is already laid on the ground by the paint kit)
         if (env.daylight < .65 || room) lampCasts(shadowPool, shadows, key, o, false, env);
       }
       hideUnusedShadows(shadowPool);
@@ -351,14 +352,14 @@ window.GardenNativeLight = (function () {
         const key = lamp.id || lamp.x + ',' + lamp.y; let light = pointLights.get(key);
         if (!light) { light = scene.add.pointlight(lamp.x, lamp.y, color, radius, .15, .09); light.setDepth(lightDepth); const parent = layer(); if (parent) { parent.add(light); parent.sort('depth'); } pointLights.set(key, light); }
         else if (light.depth !== lightDepth) { light.setDepth(lightDepth); if (light.parentContainer) light.parentContainer.sort('depth'); }
-        light.setVisible(true).setPosition(lamp.x, lamp.y); light.radius = radius;
+        light.setVisible(true).setPosition(lamp.x, lamp.y); light.radius = room ? radius : radius * .72;   /* (outdoors the glow round a lamp's head is a soft halo; the light it throws is the pool on the ground below: a full-size glow bloomed white over pale stone) */
         // Outdoor emissive light sits above the cool night grade. Keep its
         // previous transmitted energy, with a small warm accent, instead of
         // exposing the formerly graded pool at full unattenuated intensity.
         const transmission = warmNight ? (1 - outdoorDarkness(env)) * 1.12 : 1;
         // (while the sky is still light a lamp only warms what is near it: at full strength it burnt pale stone to white)
         const ease = room ? 1 : 1 - .45 * clamp(1 - Math.abs(env.daylight * 2 - 1));
-        light.intensity = amount * flicker * (lamp.intensity == null ? 1 : lamp.intensity) * (.17 + env.wetness * .025) * transmission * ease;
+        light.intensity = amount * flicker * (lamp.intensity == null ? 1 : lamp.intensity) * (.17 + env.wetness * .025) * transmission * ease * (room ? 1 : .85);
         light.color.setTo(color >> 16 & 255, color >> 8 & 255, color & 255);
         // its pool on the ground: a soft warm oval where the light falls (a lamp's foot, the ground before a lit window)
         if (!room && lamp.ground != null) { let pool = poolImages.get(key); if (!pool) { pool = scene.add.image(0, 0, softKey).setBlendMode(Phaser.BlendModes.ADD); groundPools.add(pool); poolImages.set(key, pool); } const pr = radius * (lamp.pool || 1.2); pool.setVisible(true).setPosition(lamp.x, lamp.ground).setDisplaySize(pr * 2.1, pr * .9).setTint(color).setAlpha(Math.min(.24, amount * flicker * (lamp.intensity == null ? 1 : lamp.intensity) * .3)); }   // (soft: a pool you can still see the ground through, never a white glare)

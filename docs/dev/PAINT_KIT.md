@@ -36,7 +36,7 @@ A chunked layer whose bake level follows the camera.
 - Memory is bounded by `budgetMB`, and the bound is real. A layer is never sharper than its budget can hold over one
   screen (it drops a level instead). The margin round the screen is painted at the full level only while that fits; a
   bare chunk in the margin is painted at the lowest level, so nothing walks on to the screen unpainted. Past the budget,
-  chunks off the screen are let go, the farthest and sharpest first. Budgets today: shared ground 48 MB, vale places 28,
+  chunks off the screen are let go, the farthest and sharpest first. Budgets today: shared ground 64 MB, vale places 28,
   fells 32, shadows 10.
 - No single op should take long: a slice cannot stop inside one. The kit lays each ground kind in three bands for that
   reason. If your op paints a whole chunk of fine brushwork, split it the same way (a clip on whole canvas pixels).
@@ -133,9 +133,15 @@ shadow that moves and a shadow that is painted fall the same way at every hour; 
 - `cast.blobs([{ id, x, y, w, h, a }])`: for things with no sprite of their own to lay over (library buildings, benches,
   boards). `compose` in `94-garden-native-painted.js` calls it for every painted prop: `w` is the width of what stands on
   the ground (the footprint, not the eaves or a lamp's glow), `h` its height.
+- `GardenPaintedProps.kit.castOf(scene, image, x, y, flip, a)`: for a Phaser image you placed yourself (decorations,
+  painted props). It lays that picture's own silhouette on the shadow layer and takes it away when the image is
+  destroyed, so a decoration picked up or moved leaves no shadow behind. Every placed decoration and every painted prop
+  goes through it.
 - `castShadow(ctx, x, y, width, height, { a, len })`: the same soft shadow drawn straight into a canvas you are painting
   (the foot laid over along the light, with a dark contact). For baked ground detail only; anything that stands goes
   through `sprite(..., shade)` or `cast.blobs`, or its shadow ends up under a region's own ground.
+- `castRuns(ctx, [[x0, y0, x1, y1, height], ...], { a })`: the shadows of low runs painted into the ground (a fence, a
+  hedge, a field wall, a plot's boundary) in one soft fill along the light. Lay them before the runs themselves.
 - A sprite stood with `sprite()` also **follows the zoom**: close up it is painted again at the level the camera needs
   (one sprite every 90 ms, nearest first; while you walk only sprites whose first painting took a few milliseconds),
   and goes back to its first picture 12 s after it leaves the screen. So `draw` must paint the same picture every time:
@@ -145,6 +151,46 @@ shadow that moves and a shadow that is painted fall the same way at every hour; 
   windows that are lit live are the light module's (`pointLights`); do not paint a second pool under them.
 
 Light a thing from the upper left: lit face and highlights up and left, shade down and right.
+
+## 5. Scale: `GARDEN_ACTOR_SCALE`, `GARDEN_SIZE`, `gardenSizePx(name, t)`
+
+Everything is sized against **H, the player's height** (`GARDEN_H`, about 41 world px). Both numbers live in
+`src/app/94-garden-0camera.js` and nowhere else.
+
+- **Actors.** `GARDEN_ACTOR_SCALE = 0.8` draws every actor at 0.8 of the size its art was made at: you, friends, the
+  vale's folk, travellers, pets, creatures and bugs, indoors and out, with what they hold (rod, net, a catch held up),
+  their name labels, speech bubbles, contact shadows, reflections and footprints in snow. The camera keeps its distance
+  (`_gwCamDefaultIdx` reads the figure's art size, not the drawn size), so the player is smaller in the same view. Wrap a
+  new actor's drawing in `gardenActorSized(svg)` or multiply by the constant; never size an actor anywhere else.
+- **The world.** `gardenSizePx(name, t)` gives a size in world px, `t` from 0 (least) to 1 (most) between the two ends
+  of its row. A painter asks for a size by name and never writes a height of its own. If a thing cannot grow to its
+  size without covering something (nothing overlaps), it keeps the most height that leaves the other thing clear, as
+  the village planting does (`fitTree` in `94-garden-native-painted.js`), and its region's layout should give it the
+  ground it needs.
+
+| Name | Size in H | World px | Applied today in the shared kits |
+| --- | --- | --- | --- |
+| (the player) | 1 | 41 | every actor, `GARDEN_ACTOR_SCALE` |
+| `door` | 1.25 | 52 | library buildings are not resized here; their doors measure about 1.1 H now |
+| `eaves` / `ridge` (a cottage) | 1.8 / 3 to 3.5 | 75 / 124 to 145 | library cottages measure about 1.9 / 3.5 |
+| `hall` (shops, the hall, the barn, the boathouse) | 3.5 to 4.5 | 145 to 186 | region painters |
+| `tower` (mill, lighthouse, folly, tower, windmill) | 5 to 8 | 207 to 331 | region painters |
+| `tree` (mature) / `crown` | 3.5 to 5 / 2.5 to 4 wide | 145 to 207 / 104 to 166 | the village planting (`GardenPaintTrees` draws any size asked) |
+| `young` (a fruit tree, a young birch) | 2 to 2.5 | 83 to 104 | region painters (the orchard) |
+| `greatOak`, `falls` | at least 8 | 331 | the woods and the water chain (today about 3 H: not met) |
+| `cliff` (cliffs, the scarp) | at least 3 | 124 | the fells |
+| `lamp` (a lamp post) | 1.8 to 2 | 75 to 83 | street lamps, building lamps, the lantern decoration |
+| `fence`, `hedge` | 0.5 to 0.6 | 21 to 25 | plot fences and field hedges on unbought land; placed fences and hedges |
+| `wall` | 0.8 to 1.2 | 33 to 50 | dry-stone plot walls on the fells; placed walls |
+| `barrel`, `well` (a well head) | 0.5 | 21 | region painters |
+| `seat` (a bench seat) | 0.3 | 12 | region painters |
+| `boulder` | 0.5 to 1.5 | 21 to 62 | region painters |
+| `mainRoad` / `lane` / `trail` (painted width) | 1.1 / 0.75 / 0.5 at least | 46 / 32 / 22 | the path kit's `ROUTE_WIDTH` (three figures abreast, two, one and a half) |
+
+A fence, hedge or wall placed as a decoration is drawn to its row by a vertical factor (`stand: [name, art height]`
+on its decoration row); its view along the run is drawn deeper first so a turned run still meets the next cell.
+Anything painted into the ground that stands up (a plot's fence along its north edge) stands far enough inside its
+plot that its top meets the plot's edge: a player behind it is never drawn over it.
 
 ## The rules
 
@@ -159,6 +205,7 @@ Light a thing from the upper left: lit face and highlights up and left, shade do
    way, and never a round blob under a thing in place of its shadow.
 7. If a thing a player can bump into moves, its collision moves with it: read the same placement data the walking
    code reads, and check with Shift+C.
+8. Sizes come from `gardenSizePx`, never a number of your own; actors only from `GARDEN_ACTOR_SCALE`.
 
 ## Numbers (1500 x 900 window, headless Edge with the GPU on, 18 Nov 2026)
 

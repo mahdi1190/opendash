@@ -97,7 +97,7 @@ window.GardenPaintedDecor = (function () {
     const side = sideOf(R, item.r), v = vOf(R, item.v), P = partOf(R, side), flip = !flat && (!!item.flip !== turnFlip(R, item.r)), SC = flat ? 1 : scaleOf(R), tile = R.tiles ? ((item.x * 7 + item.y * 13) % R.tiles + R.tiles) % R.tiles : 0;
     if (!P || !P.draw) return null;
     sweep(scene, mood); warmSoon();
-    const h = K.handle(scene, o, 'decor:' + item.uid, { cls: 'decor' });
+    const h = K.handle(scene, o, 'decor:' + item.uid, { cls: 'decor' }); if (!flat && K.castOf && window.GardenPaintGround && GardenPaintGround.cast) h.shaded = true;   /* (its own silhouette goes on the ground when it is painted: no second, moving shadow) */
     let gone = false; const destroy = h.destroy; h.destroy = () => { gone = true; destroy(); };
     // fy: drawn to the size standard's height; a turned run is drawn deeper by 1/fy first, so after the factor it still spans its cell
     const fy = flat ? 1 : standOf(R), box = side && fy !== 1 ? [P.box[0], P.box[1] - 28 * (1 / fy - 1), P.box[2], P.box[3]] : P.box;

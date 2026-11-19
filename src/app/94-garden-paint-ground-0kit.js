@@ -505,7 +505,9 @@ window.GardenPaintGround = (function () {
   }
   /** The surface of a layout route: its own surface if the layout names one, else by its name and tier. */
   function routeKind(r) { if (r.surface && PATH[r.surface]) return r.surface; const id = String(r.id || ''); if (/boardwalk/.test(id)) return 'boardwalk'; if (/steps/.test(id)) return 'steps'; return r.tier === 'main' ? 'cobble' : r.tier === 'plaza' ? 'setts' : r.tier === 'lane' ? 'gravel' : 'earth'; }
-  const ROUTE_WIDTH = { cobble: 40, setts: 40, gravel: 26, earth: 20, boardwalk: 22, steps: 24 };
+  // painted widths from the size standard (GARDEN_SIZE): a main road three figures wide, a lane two, a trail one and a half
+  const SZ = (n, t, d) => typeof gardenSizePx === 'function' ? Math.round(gardenSizePx(n, t)) : d;
+  const ROUTE_WIDTH = { cobble: SZ('mainRoad', 0, 46), setts: 40, gravel: SZ('lane', .1, 32), earth: SZ('trail', .1, 22), boardwalk: 22, steps: 24 };
   /** Every route of a layout in the kit's terms (world px), ready for paths(): { routes, areas }.
    *  A route's painted width is the layout's own where it has one (route.widths: cells, one a point, the hand-drawn layouts;
    *  or route.paintWidth: px), else the surface's usual width. A route with a drawn outline (route.shape: a polygon in cells,
