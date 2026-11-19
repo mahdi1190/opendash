@@ -192,7 +192,10 @@
         if (sx < 4 || sy < 4 || sx >= img.width - 4 || sy >= img.height - 4) continue;
         const o = (sy * img.width + sx) * 4, r = data[o], g = data[o + 1], b = data[o + 2];
         if (!mask[j * MW + i]) mosaic.seen++;
-        mask[j * MW + i] = b >= r + 12 && b >= g - 25 ? 1 : b >= r - 4 && Math.max(r, g, b) - Math.min(r, g, b) > 12 ? 3 : 2;   // (3: sand, grass, bark and stone all have less blue than red)
+        // (3: pale or green-tinted water: sand, grass, bark and stone all have less blue than red; 5: white foam and
+        // sparkle; 4: grey stone, rock and shingle; 2: any other drawn ground)
+        const hi = Math.max(r, g, b), lo = Math.min(r, g, b);
+        mask[j * MW + i] = b >= r + 12 && b >= g - 25 ? 1 : b >= r - 4 && hi - lo > 12 ? 3 : lo > 200 ? 5 : hi - lo < 18 && hi > 70 && lo < 200 ? 4 : 2;
       }
       mosaic.tiles++;
     }
@@ -203,8 +206,14 @@
   /** Share of water-coloured pixels round a cell point (rx, ry in world px); -1 when the picture has no pixels there. */
   const pixWater = (x, y, rx, ry, loose) => {
     const p = toPx(x, y), i0 = Math.floor((p.X - rx) / MS), i1 = Math.floor((p.X + rx) / MS), j0 = Math.floor((p.Y - ry) / MS), j1 = Math.floor((p.Y + ry) / MS); let wet = 0, n = 0;
-    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { if (i < 0 || j < 0 || i >= MW || j >= MH) continue; const v = mask[j * MW + i]; if (!v) continue; n++; if (v === 1 || loose && v === 3) wet++; }
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { if (i < 0 || j < 0 || i >= MW || j >= MH) continue; const v = mask[j * MW + i]; if (!v) continue; n++; if (v === 1 || loose && (v === 3 || v === 5)) wet++; }
     return n >= 4 ? wet / n : -1;
+  };
+  /** Share of grey stone pixels (rock, shingle, a wall) round a cell point; 0 when the picture has none there. */
+  const greyShare = (x, y, rx, ry) => {
+    const p = toPx(x, y), i0 = Math.floor((p.X - rx) / MS), i1 = Math.floor((p.X + rx) / MS), j0 = Math.floor((p.Y - ry) / MS), j1 = Math.floor((p.Y + ry) / MS); let g = 0, n = 0;
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { if (i < 0 || j < 0 || i >= MW || j >= MH) continue; const v = mask[j * MW + i]; if (!v) continue; n++; if (v === 4) g++; }
+    return n ? g / n : 0;
   };
   /** Group flagged lattice points (key "i,j") into touching clusters: [{n, x, y}] in cells. */
   const clusters = (set, step) => {
@@ -317,11 +326,16 @@
       // each column's lowest solid paint with at least 15 world px of solid paint standing above it, a third of the
       // player's height: a tuft, a pebble or the scree of a col is stepped over, not a wall (the picture may be drawn at
       // twice the world's scale or more: the height is measured in world px)
-      const sc = Math.hypot(o.mx.a, o.mx.b) || 1, stepU = Math.max(1, Math.round(3 / sc));
+      const sc = Math.hypot(o.mx.a, o.mx.b) || 1, stepU = Math.max(1, Math.round(3 / sc)), colsLow = [];
       for (let u = 0; u < P.w; u += stepU) {
         let v = P.h - 1; while (v >= 0 && P.a[v * P.w + u] < 160) v--; if (v < 0) continue;
-        let up = v; while (up > 0 && P.a[(up - 1) * P.w + u] >= 160) up--; if ((v - up) * sc < 15) continue;
-        const p = wp(u + .5, v + 1); cols.push({ u, X: p.X, Y: p.Y });
+        let up = v; while (up > 0 && P.a[(up - 1) * P.w + u] >= 160) up--;
+        const p = wp(u + .5, v + 1);
+        // (a thing's drawn ends are where its paint ends, however low: a boulder's flank slopes down to the turf, and judged
+        // by its 15 px columns only, its own block seemed to run on past its ends: the collision audit, 19 Nov 2026)
+        if ((v - up) * sc >= 4) colsLow.push({ u, X: p.X, Y: p.Y });
+        if ((v - up) * sc < 15) continue;
+        cols.push({ u, X: p.X, Y: p.Y });
       }
       if (!cols.length) continue;
       parts.objects++; parts.columns += cols.length;
@@ -348,7 +362,7 @@
         const Rs = runsOf(low, stepU, stepU), yb = base - 4;
         const anyBlockAt = X => !cellFree(X, yb) && bare(X, yb) && bare(X, yb - 10) && !wetPx(X, yb);
         for (let i = 1; i < Rs.length; i++) { const g0 = Rs[i - 1].list[Rs[i - 1].list.length - 1].X, g1 = Rs[i].list[0].X, gap = g1 - g0; if (gap < GW_FOOT.x * 2 * CW + 8) continue; const X = (g0 + g1) / 2; if (anyBlockAt(X) && cellFree(X, yb + GW_FOOT.y * CH + .6 * CH)) { const mc = toCell(X, yb); push({ kind: 'invisible-wall', obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: mc.x, y: mc.y, detail: 'blocked in the ' + Math.round(gap) + ' px gap between two of its drawn parts, with nothing drawn there' }); } }
-        const L = Math.min(...low.map(c => c.X)), Rt = Math.max(...low.map(c => c.X)), off = (GW_FOOT.x + .25) * CW, off2 = (GW_FOOT.x + .75) * CW;
+        const lowAll = colsLow.filter(c => c.Y >= base - 14).concat(low), L = Math.min(...lowAll.map(c => c.X)), Rt = Math.max(...lowAll.map(c => c.X)), off = (GW_FOOT.x + .25) * CW, off2 = (GW_FOOT.x + .75) * CW;
         for (const [X, X2, side] of [[L - off, L - off2, 'west'], [Rt + off, Rt + off2, 'east']]) if (anyBlockAt(X) && cellFree(X2, yb)) { const mc = toCell(X, yb); push({ kind: 'invisible-wall', obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: mc.x, y: mc.y, detail: 'its block runs on more than ' + (.25).toFixed(2) + ' cells past its drawn ' + side + ' end, with nothing drawn there' }); }
       }
     }
@@ -565,6 +579,10 @@
       // bank and the sky's colours at the tide line are patchy and are not taken for ground)
       const pw = pixWater(cx, cy, 5, 3, true); if (pw < 0 || pw > .05 || pixWater(cx, cy, 10, 6, true) >= .2) continue;
       const p = toPx(cx, cy); if (anyPaint(p.X, p.Y)) continue;   // (a float among reeds or lily pads, or a crossing drawn over it: those are their own checks)
+      // (water all round, a cell and more away, and the spot itself not grey stone: reeds, lily pads or a bank's rim line
+      // painted into the water's own ground, which the float sits among, not on dry ground: the reed beds of the rivers and
+      // ponds were most of the 68 this check first reported)
+      if (pixWater(cx, cy, 26, 15, true) >= .35 && greyShare(cx, cy, 5, 3) < .5) continue;
       dryFloat.add(x + ',' + y);
     }
     for (const c of clusters(dryFloat, 1)) push({ kind: 'cast-on-dry', obj: 'shore', name: 'a cast lands on drawn ground', x: c.x + .5, y: c.y + .5, detail: c.n + ' cell middle(s) the cast accepts as water are drawn as ' + (regionOf(c.x + .5, c.y + .5) === 'north-headland' ? 'rock or bank' : 'ground') + ': the float sits on them' });
@@ -963,7 +981,7 @@
       o.kind = 'decor'; o.name = (u.def.name || u.def.id) + (u.def.rot ? ' (turn ' + u.r + ')' : '');
       // a thing that hovers (the sheet ghost bobs over its own shadow): it has no drawn base on the ground; its block
       // belongs under it, at its shadow and footprint's foot (judged by its lowest paint, it was reported walked through)
-      { const spec = window.GardenPaintedProps && GardenPaintedProps.decorTable && GardenPaintedProps.decorTable[u.def.id], ft = u.y + (u.def.h || 1), ya = toCell(o.X0, o.Yb).y, xm = toCell((o.X0 + o.X1) / 2, o.Yb).x;
+      { const spec = (window.GardenPaintedDecor && GardenPaintedDecor.row && GardenPaintedDecor.row(u.def.id)) || (window.GardenPaintedProps && GardenPaintedProps.decorTable && GardenPaintedProps.decorTable[u.def.id]), ft = u.y + (u.def.h || 1), ya = toCell(o.X0, o.Yb).y, xm = toCell((o.X0 + o.X1) / 2, o.Yb).x;
         if (spec && (spec.anim || []).some(q => q.kind === 'bob') && ya < ft - 4 / CH) { if (free(xm, ft - .12) && free(xm, ft - .25)) push({ kind: 'decor-foot', obj: 'decor', name: o.name, family: fam, region: 'decorations (anywhere)', decor: u.def.id, turn: u.r, col, x: xm, y: ft - .12, detail: 'it hovers over its shadow, and the feet can stand on the shadow under it' }); if (faults.length > before) F.faults += faults.length - before; continue; } }
       checkObject(o, { family: fam, region: 'decorations (anywhere)', decor: u.def.id, turn: u.r, col });
       // its block's foot against its drawn foot

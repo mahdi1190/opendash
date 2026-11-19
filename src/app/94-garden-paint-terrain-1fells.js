@@ -145,9 +145,14 @@ window.GardenPaintedTerrain = (function () {
     //     your thigh (the verifier, 18 Nov 2026: "drawn rocks with no red"): they stop the feet now (standing()).
     const routeNear = (x, y, d) => L.routes.some(rt => rt.points.some((p, i) => i % 3 === 0 && Math.abs(p.x - x) < d && Math.abs(p.y - y) < d * .7));
     const crops = [[67.2, 18.2, 6, 1.2], [75.6, 16.8, 6, 1.3], [68.8, 19.6, 4, .9], [73.6, 19.2, 4, .8]].map(([x, y, n, sc]) => ({ x: x * cw, y: W.sky + y * ch, n, s: sc })); { const rr = kit.rng(5150); for (let k = 0; k < 60 && crops.length < 26; k++) { const x = (4 + rr() * 74) * cw, y = W.sky + (3 + rr() * 16) * ch; if (fellAt(x, y) && !routeNear(x, y, 60) && !L.peaks.some(pk => { const b = kit.bboxOf(pk.pts, 40); return x > b[0] && x < b[2] && y > b[1] && y < b[3]; })) crops.push({ x, y, n: 3 + Math.floor(rr() * 5), s: .7 + rr() * .8 }); } }
+    // (no slab on a path's drawn width: the pass's outcrops lay across its path, so as blocks they shut it, and walked over
+    // they were rocks you stood in (the collision audit, 19 Nov 2026). The paths as drawn: the same band walking reads.)
+    const ways = ok(() => (gardenIslandData().routes || []).filter(rt => rt.points && rt.points.length > 1).map(rt => ({ pts: gardenIslandRoutePath(rt).points, rad: gardenIslandRoadStyle(rt).radius * cw }))) || [];
+    const onWay = (X, Y, rx, ry) => ways.some(R => { const x = X / cw, y = (Y - W.sky) / ch; for (let i = 1; i < R.pts.length; i++) { const p = R.pts[i - 1], q = R.pts[i], ax = (q.x - p.x) * cw, ay = (q.y - p.y) * ch, bx = (x - p.x) * cw, by = (y - p.y) * ch, LL = ax * ax + ay * ay || 1, t = Math.max(0, Math.min(1, (ax * bx + ay * by) / LL)), dx = bx - ax * t, dy = by - ay * t, d = Math.hypot(dx, dy) || 1; if (d < R.rad + 4 + Math.hypot(rx * dx / d, ry * dy / d)) return true; } return false; });
     for (const c of crops) add([c.x - 70, c.y - 40, c.x + 70, c.y + 40], 170 + Math.round(c.x), (B, r) => {
       clipFell(B); const sn = snowAt(c.x, c.y) > .6;
       for (let k = 0; k < c.n; k++) { const x = c.x + (r() - .5) * 80 * c.s, y = c.y + (r() - .5) * 30 * c.s, rx = (8 + r() * 14) * c.s, ry = rx * (.34 + r() * .14);
+        if (onWay(x, y + 1.2, rx + 1, ry + 1.2)) continue;
         if (B.stand) B.stand(x + 1, y + 1.2, rx + 1, ry + 1.2);   // (for walking: standing() below; nothing is drawn by it)
         B.f(B.blob(r, x + 2, y + 2.4, rx, ry, 8, .3), P.rockDk, .45).f(B.blob(r, x, y, rx, ry, 8, .3), P.rockLo).f(B.blob(r, x - rx * .12, y - ry * .3, rx * .86, ry * .66, 8, .3), P.rock).f(B.blob(r, x - rx * .3, y - ry * .45, rx * .4, ry * .25, 6, .4), sn ? P.snow : P.rockHi, .8);
         B.s(`M${x - rx * .2} ${y - ry * .6}l${rx * .15} ${ry * 1.1}`, P.rockDk, .9, .5);
@@ -644,7 +649,9 @@ window.GardenPaintedTerrain = (function () {
       if (w >= STAND_MIN.w && h >= STAND_MIN.h) { const m = cx.getTransform(), X = m.a * x + m.c * y + m.e, Y = m.b * x + m.d * y + m.f; if (mine(X, Y - h / 2) && !onWay(X, Y - h / 2, w * .5)) list.push([+((X - w * .52) / W.cellW).toFixed(3), +((Y - h - W.sky) / W.cellH).toFixed(3), +((X + w * .5) / W.cellW).toFixed(3), +((Y - W.sky) / W.cellH).toFixed(3)]); }
       return draw.apply(B, arguments);
     };
-    B.stand = function (x, y, rx, ry) { const m = cx.getTransform(), X = m.a * x + m.c * y + m.e, Y = m.b * x + m.d * y + m.f; if (mine(X, Y) && !onWay(X, Y, rx)) list.push({ x: +(X / W.cellW).toFixed(3), y: +((Y - W.sky) / W.cellH).toFixed(3), rx: +(rx / W.cellW).toFixed(3), ry: +(ry / W.cellH).toFixed(3) }); };
+    // (a slab is never painted on a path now (compose 3b), so every slab that is drawn stops the feet: one a little way
+    // off the pass path was still left out here and walked over, the collision audit, 19 Nov 2026)
+    B.stand = function (x, y, rx, ry) { const m = cx.getTransform(), X = m.a * x + m.c * y + m.e, Y = m.b * x + m.d * y + m.f; if (mine(X, Y)) list.push({ x: +(X / W.cellW).toFixed(3), y: +((Y - W.sky) / W.cellH).toFixed(3), rx: +(rx / W.cellW).toFixed(3), ry: +(ry / W.cellH).toFixed(3) }); };
     for (const o of standOps) ok(() => { cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); try { o.draw(B, kit.rng(o.seed || 1), o.bb); } finally { cx.restore(); cx.filter = 'none'; cx.globalAlpha = 1; } });
     standMemo = { sig: standSigNow, list };
     return list;
