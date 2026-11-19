@@ -223,13 +223,50 @@
         if (p.x < view.x - 900 || p.x > view.x + view.w + 900 || p.y < view.y - 700 || p.y > view.y + view.h + 700) { if (pivot.visible) { pivot.setVisible(false); halo.setVisible(false); } return; }
         const turn = (time / 16000) * Math.PI * 2 * (typeof gardenMotionOn === 'function' && !gardenMotionOn() ? 0 : 1);
         pivot.setVisible(true).setPosition(p.x, p.y).setScale(1, .5); halo.setVisible(true).setPosition(p.x, p.y);
-        let toward = 0; for (const im of beams) { const a = turn + im._a; im.setRotation(a).setScale(1.25, 1).setAlpha(.34 * night); toward = Math.max(toward, Math.max(0, Math.sin(a)) ** 6); }
-        halo.setScale(.55 + toward * .45).setAlpha((.55 + toward * .45) * night);
+        // (the lamp is shielded on the landward side, as a harbour light is: the beam is full over the sea, faint over the land)
+        let toward = 0; for (const im of beams) { const a = turn + im._a, sea = Math.sin(a), k = sea > 0 ? .45 + .55 * sea : .18 + .27 * (1 + sea); im.setRotation(a).setScale(1.25, 1).setAlpha(.3 * night * k); toward = Math.max(toward, Math.max(0, sea) ** 6); }
+        halo.setScale(.42 + toward * .38).setAlpha((.45 + toward * .4) * night);
         ms = performance.now() - t0;
       } };
     } });
   }
-  if (V) { V.parts.push({ id: 'coast', compose });
+  // 5. The coast after dark: the shore buildings' windows and doors lit warm (the boathouse, the smokehouse and the bird
+  // hide stood dark beside the lit tackle shop), and the moon's path on the sea, a broken column of light that glitters
+  // on the swell below the moon (the sea was one flat grey-blue with nothing on it). Light, not paint: added above the
+  // night's grade, near the camera only.
+  function night(C) {
+    const { L, kit, W } = C; if (!C.live) return;
+    const lit = ['ld-boathouse', 'ld-smoke', 'ld-hide'].map(id => L.stat(id)).filter(Boolean);
+    C.live({ make: (scene) => {
+      const GLOW = 'gpv-coast-glow', SPARK = 'gpv-coast-spark';
+      if (!scene.textures.exists(GLOW)) { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,214,140,.95)'); g.addColorStop(.3, 'rgba(255,190,110,.45)'); g.addColorStop(1, 'rgba(255,170,90,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); scene.textures.addCanvas(GLOW, c); }
+      if (!scene.textures.exists(SPARK)) { const c = document.createElement('canvas'); c.width = 32; c.height = 8; const x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 32, 0); g.addColorStop(0, 'rgba(230,240,255,0)'); g.addColorStop(.5, 'rgba(240,246,255,1)'); g.addColorStop(1, 'rgba(230,240,255,0)'); x.fillStyle = g; x.beginPath(); x.ellipse(16, 4, 16, 2.2, 0, 0, Math.PI * 2); x.fill(); scene.textures.addCanvas(SPARK, c); }
+      const root = scene.add.container(0, 0).setDepth(80006).setVisible(false), glows = [], sparks = [];
+      for (let i = 0; i < 70; i++) { const im = scene.add.image(0, 0, SPARK).setBlendMode(Phaser.BlendModes.ADD).setVisible(false); root.add(im); sparks.push(im); }
+      let night = 0, checked = -1e9, placed = false;
+      const place = () => { const nw = typeof _gw !== 'undefined' && _gw.nativeWorld; if (!nw || !nw.entities) return false;
+        for (const p of lit) { const rec = nw.entities.get('prop:' + p.id); if (!rec || !rec.bounds) continue; const b = rec.bounds, cx = b.x + b.width / 2, foot = b.y + b.height;
+          // a window or a lit door low in the front wall, and a soft spill on the ground in front
+          for (const [dx, dy, s, a] of [[-.18, -.3, .9, .9], [.22, -.28, .7, .75], [0, .02, 1.6, .35]]) { const im = scene.add.image(cx + dx * b.width, foot + dy * b.height, GLOW).setBlendMode(Phaser.BlendModes.ADD).setScale(s, s * (dy > 0 ? .45 : 1)); im._a = a; root.add(im); glows.push(im); } }
+        return true; };
+      return { obj: root, stat: () => ({ night: +night.toFixed(2), glows: glows.length }), update(time, view) {
+        if (time - checked > 1000) { checked = time; try { const lt = window.GardenNative && GardenNative.lighting && GardenNative.lighting(), d = lt && lt.environment ? lt.environment().daylight : 1; night = Math.max(0, Math.min(1, (.4 - (d == null ? 1 : d)) / .28)); } catch (e) { night = 0; } }
+        const z = scene.cameras && scene.cameras.main ? scene.cameras.main.zoom : 1;
+        if (night < .02 || !view || z < 1 || typeof _gw !== 'undefined' && _gw.room) { if (root.visible) root.setVisible(false); return; }
+        if (!placed) placed = place(); root.setVisible(true);
+        const flick = .92 + Math.sin(time / 310) * .04 + Math.sin(time / 97) * .03;
+        for (const g of glows) g.setAlpha(g._a * night * flick);
+        // the moon's path: below the moon (towards the top right of the view), a column of glints on open sea only
+        const t = time / 1000, mx = view.x + view.w * .68; let k = 0;
+        for (let i = 0; i < sparks.length; i++) { const u = (i * .618 + Math.floor(t / 2.2 + i * .37) * .31) % 1, row = i / sparks.length, y = view.y + view.h * (.08 + row * .9), spread = 18 + row * view.w * .09, x = mx + (u - .5) * 2 * spread + Math.sin(t * .7 + i) * 4;
+          const c = { x: x / L.cw, y: (y - W.sky) / L.ch }, b = L.base(c.x, c.y), im = sparks[i];
+          if (!b || !b.ocean || typeof gardenIslandCoastDistance === 'function' && gardenIslandCoastDistance(c.x, c.y) < 30) { im.setVisible(false); continue; }
+          const tw = Math.max(0, Math.sin(t * 2.1 + i * 1.7)); im.setVisible(true).setPosition(x, y).setScale(.6 + (1 - Math.abs(u - .5) * 2) * .9, 1).setAlpha(night * (.12 + tw * .38) * (1 - Math.abs(u - .5) * 1.4)); k++; }
+        void k; void kit;
+      } };
+    } });
+  }
+  if (V) { V.parts.push({ id: 'coast', compose }, { id: 'coast-night', compose: night });
     // the ground bakes again when a region opens or shuts (the rope along a shut edge, 3a above)
     V.groundSigs.push(() => { try { return '|zn:' + (gardenModel().areas || []).filter(a => /^zn-/.test(a)).sort().join(','); } catch (e) { return ''; } }); }
 

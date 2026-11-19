@@ -40,13 +40,21 @@
   V.groundSigs.push(() => { if (typeof gardenAreaAt !== 'function') return ''; const lv = level(); let h = 0, n = 0; for (const p of plots()) { const c = p.cells[0]; if (locked(c[0], c[1], lv)) { const row = gardenLandCell(c[0], c[1]); h = (h * 31 + p.cells.length + c[0] * 97 + c[1] + (row && lv >= (row.lv || 0) ? 7 : 0)) >>> 0; n++; } } return '|vf' + n + ':' + h; });
   // The fence wears the country it stands in: a dry-stone wall on the north moor, a hedge in the High orchard,
   // the weathered post-and-rail everywhere else (the village, the valley). One rule, local dress (17 Nov 2026).
-  const regionKind = (x, y) => { const r = typeof gardenIslandRegionAt === 'function' ? gardenIslandRegionAt(x + .5, y + .5) : null, id = r ? String(r.id) + ' ' + String(r.theme || '') : ''; return /mountain|north-headland/.test(id) ? 'wall' : /orchard/.test(id) ? 'hedge' : 'rail'; };
+  // By the shore a plot wears the shore's dress instead, chosen per plot so a row of them is not one stamp: a rope on
+  // driftwood stakes, or a chestnut paling like a sand fence (coast round 3: rows of identical rail pens and hedge boxes
+  // stood along the top of every beach). A plot is by the shore when any of its cells is within two of sand or sea.
+  const shoreDress = new Map();
+  const plotShore = (row) => { if (!row || !row.id) return ''; if (shoreDress.has(row.id)) return shoreDress.get(row.id); const p = plots().find(q => q.id === row.id); let near = false;
+    if (p) for (const [x, y] of p.cells) { for (let dy = -2; dy <= 2 && !near; dy++) for (let dx = -2; dx <= 2 && !near; dx++) { const b = gardenIslandBaseCell(x + dx, y + dy); if (b && (b.beach || b.ocean)) near = true; } if (near) break; }
+    let h = 0; for (let i = 0; i < row.id.length; i++) h = (Math.imul(h, 31) + row.id.charCodeAt(i)) | 0;
+    const kind = near ? ((h >>> 3) % 5 < 3 ? 'rope' : 'paling') : ''; shoreDress.set(row.id, kind); return kind; };
+  const regionKind = (x, y) => { const r = typeof gardenIslandRegionAt === 'function' ? gardenIslandRegionAt(x + .5, y + .5) : null, id = r ? String(r.id) + ' ' + String(r.theme || '') : ''; if (/mountain|north-headland/.test(id)) return 'wall'; const shore = plotShore(typeof gardenLandCell === 'function' ? gardenLandCell(x, y) : null); return shore || (/orchard/.test(id) ? 'hedge' : 'rail'); };
 
   const lighten = (c) => { const n = parseInt(c.slice(1), 16), f = v => Math.min(255, Math.round(v + (255 - v) * .25)); return '#' + [n >> 16, (n >> 8) & 255, n & 255].map(f).map(v => v.toString(16).padStart(2, '0')).join(''); };
   // Heights from the size standard (GARDEN_SIZE in 94-garden-0camera.js, docs/dev/PAINT_KIT.md "Scale"): a fence or hedge .55 H, a field wall .8 H.
   // These are painted into the ground, so a run along a plot's north edge stands far enough inside the plot that its top meets the edge:
   // you stand behind it with nothing of it drawn over your feet.
-  const RUN_H = () => ({ rail: gardenSizePx('fence', .5), hedge: gardenSizePx('hedge', .5), wall: gardenSizePx('wall', 0) });
+  const RUN_H = () => ({ rail: gardenSizePx('fence', .5), hedge: gardenSizePx('hedge', .5), wall: gardenSizePx('wall', 0), rope: gardenSizePx('fence', .7), paling: gardenSizePx('fence', .9) });
   // a dry-stone wall along one cell edge: (x0, y0) the run's foot, along x (horiz) or along y, len px, hh tall
   function wallRun(B, r, P, x0, y0, horiz, len, season, hh) {
     hh = hh || 10; const stone = ['#a8a090', '#8e8678', '#bdb5a3', '#7a7366'], n = Math.max(3, Math.round(len / 7)), rows = Math.max(2, Math.round((hh - 3) / 4.6)), cy = k => y0 - 2.6 - k * (hh - 5) / rows;
@@ -124,6 +132,24 @@
         const run = kind === 'wall' ? wallRun : hedgeRun;
         if (side === 's' || side === 'n') run(B, r, P, x0, side === 's' ? y0 + ch - inset : y0 + northFoot(kind), true, cw, season, hh);
         else run(B, r, P, side === 'e' ? x0 + cw - inset : x0 + inset, y0 + from, false, ch - from, season, hh);
+        continue;
+      }
+      if (kind === 'rope' || kind === 'paling') {
+        const horiz = side === 's' || side === 'n', ax = horiz ? x0 : side === 'e' ? x0 + cw - inset : x0 + inset, ay = horiz ? (side === 's' ? y0 + ch - inset : y0 + northFoot(kind)) : y0 + from, len = horiz ? cw : ch - from, ux = horiz ? 1 : 0, uy = horiz ? 0 : 1;
+        if (kind === 'paling') {
+          // split chestnut palings close together, grey with weather, a little uneven, bound by two twists of wire
+          B.s(`M${ax} ${ay + 1.5}L${ax + ux * len} ${ay + uy * len + 1.5}`, '#2e3420', 3.4, .14);
+          for (let t = 0; t <= len; t += horiz ? 3.4 : 5) { const px = ax + ux * t + (r() - .5) * .6, py = ay + uy * t, ph = hh * (.82 + r() * .3), lean = (r() - .5) * 1.4; B.s(`M${px} ${py}l${lean} ${-ph}`, r() < .5 ? '#a49680' : r() < .5 ? '#857864' : '#b8ac94', 1.7, .96).s(`M${px - .4} ${py}l${lean} ${-ph}`, '#d8ccb4', .5, .5); }
+          for (const f of [.3, .72]) B.s(`M${ax} ${ay - hh * f}L${ax + ux * len} ${ay + uy * len - hh * f}`, '#4a463e', .8, .85);
+        } else {
+          // driftwood stakes, bleached and leaning, a rope slung between them
+          const n = horiz ? 2 : 1, stake = [];
+          for (let k = 0; k <= n; k++) { const t = len * k / n, px = ax + ux * t + (r() - .5) * 1.5, py = ay + uy * t, ph = hh * (.85 + r() * .3), lean = (r() - .5) * 2.2; stake.push({ x: px + lean, y: py - ph + 2 });
+            B.f(`M${px - 1.8} ${py}L${px - 1.3 + lean} ${py - ph}L${px + 1.3 + lean} ${py - ph - .5}L${px + 1.8} ${py}Z`, r() < .5 ? '#a89a82' : '#94866e').f(`M${px - 1.8} ${py}L${px - 1.3 + lean} ${py - ph}L${px - .3 + lean} ${py - ph}L${px - .5} ${py}Z`, '#d4c8b0', .55); }
+          for (let k = 1; k < stake.length; k++) { const a = stake[k - 1], b = stake[k], mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 + (horiz ? 4 : 1.5);
+            B.s(`M${a.x} ${a.y + 1.2}Q${mx} ${my + 1.2} ${b.x} ${b.y + 1.2}`, '#3a3226', 1.4, .16).s(`M${a.x} ${a.y}Q${mx} ${my} ${b.x} ${b.y}`, '#b89a5e', 1.6, .95).s(`M${a.x} ${a.y - .5}Q${mx} ${my - .5} ${b.x} ${b.y - .5}`, '#efe0b4', .5, .55); }
+        }
+        if (r() < .5) B.tufts(r, ax + ux * len * r(), ay + uy * len * r(), 8, 3, ['#8fa058', '#b4b868', '#6f8a46'], 6);
         continue;
       }
       // post and rail: posts .55 H, two rails, the top one weathered paler
