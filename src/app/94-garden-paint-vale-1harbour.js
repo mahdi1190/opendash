@@ -167,6 +167,23 @@
           if (t < .3 && !cold) { const w = 6 + rr() * 6; B.s(`M${x - w} ${y}q${w} -2.2 ${w * 2} 0`, P.sandDk, .9, .22).s(`M${x - w + 1} ${y + 1}q${w - 1} -1.6 ${w * 2 - 2} 0`, '#f2e6c4', .7, .3); }
           else if (t < .52) B.f(B.ell(x, y, 1.5 + rr() * .6, 1 + rr() * .4), ['#f6efe0', '#e8c4b8', '#d8d0c0', '#c8b8a0'][Math.floor(rr() * 4)], .95).f(B.ell(x - .5, y - .4, .7, .4), '#fff', .6);
           else if (t < .8) { const s = 1.6 + rr() * 2.2; B.f(B.ell(x + .6, y + .7, s, s * .6), '#6e6452', .3).f(B.ell(x, y, s, s * .62), ['#a89c88', '#8c8474', '#c2b8a4', '#9a9488'][Math.floor(rr() * 4)], .95).f(B.ell(x - s * .3, y - s * .25, s * .45, s * .25), '#e8e2d4', .55); } } });
+        // the middle of a wide beach is never bare (round 2): runnels the tide left, long shallow pools along the shore with
+        // the sky in them and a dark wet margin; a gull's tracks wandering over the damp sand; now and then a crab's hole,
+        // a razor shell or a starfish
+        for (let i = 0; i < shoreW.length; i += 9) { const q = shoreW[i]; if (!near(q, cb, 120)) continue; const n = F(q.x, q.y, 380, 131); if (n < .5) continue; const rr = prng(q, 132); if (rr() < .35) continue;
+          const d = 24 + rr() * 22, m = inl(q, d), m2 = inl(q, d + 26); if (kindAt(m.x, m.y) !== 'beach' || kindAt(m2.x, m2.y) !== 'beach' || coldAt(m.x, m.y) || !plantable(m.x, m.y)) continue;
+          const len = 18 + rr() * 30, ang = Math.atan2(q.ty, q.tx);
+          B.cx.save(); B.cx.translate(m.x, m.y); B.cx.rotate(ang + (rr() - .5) * .2);
+          B.f(B.blob(rr, 0, 1.2, len + 5, 5.6, 10, .35), P.sandWet, .5).f(B.blob(rr, 0, 0, len, 3.2, 10, .35), '#a9c8c4', .78).f(B.blob(rr, -len * .2, -.9, len * .55, 1, 8, .4), '#e6f2ee', .7);
+          B.s(`M${-len * .85} 3.2Q0 4.4 ${len * .85} 3`, '#f2e8cc', .9, .45); B.cx.restore(); }
+        kit.tiles(cb, 170, 80, 134, (tx, ty, rr) => { if (rr() > .4) return; let x = tx + rr() * 170, y = ty + rr() * 170, a = rr() * Math.PI * 2; if (kindAt(x, y) !== 'beach' || coldAt(x, y)) return;
+          for (let k = 0; k < 16; k++) { a += (rr() - .5) * .5; const side = k % 2 ? 1.5 : -1.5, fx = x - Math.sin(a) * side, fy = y + Math.cos(a) * side * .7; if (kindAt(fx, fy) !== 'beach') break;
+            for (const b of [-.55, 0, .55]) B.s(`M${fx} ${fy}l${Math.cos(a + b) * 2.3} ${Math.sin(a + b) * 1.6}`, '#8e7e62', .6, .5);
+            x += Math.cos(a) * 4.4; y += Math.sin(a) * 3.1; } });
+        kit.tiles(cb, 120, 8, 135, (tx, ty, rr) => { for (let k = 0; k < 3; k++) { const x = tx + rr() * 120, y = ty + rr() * 120, t = rr(); if (kindAt(x, y) !== 'beach' || coldAt(x, y) || rr() > F(x, y, 200, 136) * .8) continue;
+          if (t < .45) B.f(B.ell(x, y, 2.2, 1.3), '#e8d8b4', .75).f(B.ell(x, y + .2, 1, .6), '#5e5040', .7);
+          else if (t < .85) { const a = rr() * 3; B.s(`M${x} ${y + .8}l${Math.cos(a) * 6} ${Math.sin(a) * 2.6}`, '#6e6452', 1.6, .25).s(`M${x} ${y}l${Math.cos(a) * 6} ${Math.sin(a) * 2.6}`, '#5e5a64', 1.7, .85).s(`M${x} ${y - .4}l${Math.cos(a) * 5.6} ${Math.sin(a) * 2.4}`, '#b4b0c0', .6, .7); }
+          else if (t < .93) { const a0 = rr() * 6; let d = ''; for (let j = 0; j < 10; j++) { const a = a0 + j / 10 * Math.PI * 2, rad = j % 2 ? 1.5 : 4.2; d += (j ? 'L' : 'M') + (x + Math.cos(a) * rad).toFixed(1) + ' ' + (y + Math.sin(a) * rad * .7).toFixed(1); } B.f(B.ell(x + .8, y + .8, 4, 2.4), '#6e5a40', .2).f(d + 'Z', '#e0885a', .92).f(B.circ(x - .4, y - .3, 1.1), '#f4b688', .8); } } });
         B.cx.restore();
       }));
 
