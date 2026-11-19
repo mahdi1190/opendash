@@ -14,7 +14,7 @@
   const H = typeof GARDEN_H !== 'undefined' ? GARDEN_H : 41;
   const SLATE = ['#5d666c', '#4a5258', '#7d878c', '#363e44'];
   const FELL = { rock: '#a29a88', rockLo: '#7a7264', rockHi: '#cdc4ae', rockDk: '#46423a', lichen: '#cfc78a', snow: '#fbfbf7' };
-  const lichenDots = (B, r, x, y, w, h, n, s) => { for (let i = 0; i < n; i++) { const px = x + r() * w, py = y + r() * h, k = 1 + r() * 2.4; B.f(B.circ(px, py, k), s === 'winter' ? '#eef0ea' : r() < .5 ? '#d6cc86' : '#a8b47a', .55).f(B.circ(px, py, k * .45), '#efe8b8', .45); } };
+  const lichenDots = (B, r, x, y, w, h, n, s) => { for (let i = 0; i < n; i++) { const px = x + r() * w, py = y + r() * h, k = .8 + r() * 1.8, c = s === 'winter' ? '#e8ece6' : r() < .55 ? '#c4bc84' : '#98a474'; B.f(B.blob(r, px, py, k * 1.5, k, 6, .55), c, .42).f(B.blob(r, px - k * .3, py - k * .2, k * .6, k * .4, 5, .5), '#e4dcb0', .3); } };
   // a shingled pitch between two eaves points and a ridge point, mossed a little, lit from the west
   function shingleRoof(B, r, x0, x1, eave, ridge, s, o) {
     o = o || {}; const mid = (x0 + x1) / 2, tone = o.tone || ['#6e5440', '#4e3a2a', '#9a7656', '#2e2218'];
@@ -74,7 +74,7 @@
     B.f(B.circ(32, -38, 5), '#3a6ab0').f(B.circ(32, -38, 3), '#e0c050').f(B.poly([[29, -34], [27, -26], [31, -29]]), '#3a6ab0').f(B.poly([[35, -34], [37, -26], [33, -29]]), '#3a6ab0');
     B.f(B.rect(-41, -78, 82, 48), B.lin(-41, -78, 41, -30, [[0, 'rgba(255,240,210,.16)'], [.6, 'rgba(255,240,210,0)'], [1, 'rgba(50,34,20,.16)']]));
     // the header plank under the hood, painted by hand
-    B.f(B.rr(-22, -90, 44, 9, 1.5), '#e8dcbc').f(B.rect(-22, -90, 44, 1.2), '#fff6e0', .8).text('Notices', 0, -85.4, 7, '#4a3b26');
+    B.f(B.rr(-18, -25, 36, 9, 1.5), '#e8dcbc').f(B.rect(-18, -25, 36, 1.2), '#fff6e0', .8).f(B.rect(-18, -17, 36, 1), '#8a7a5a', .5).text('Notices', 0, -20.4, 7, '#4a3b26');
     // the hood: two pitches of oak shingles on a ridge, moss in the laps, a finial
     shingleRoof(B, r, -52, 52, -84, -108, s, { moss: 5 });
     B.f(B.rect(-1.6, -114, 3.2, 7), OAK[1]).f(B.circ(0, -114, 2.2), OAK[2]);
@@ -214,19 +214,22 @@
   } };
 
   /* ---------- the smoker: a squat brick smokehouse with a tin roof, its chimney breathing, eels hung under the eave ---------- */
-  A['smoker'] = { box: [-30, -94, 32, 8], seat: { kind: 'earth', w: 40, front: 14 }, lit: true, lights: [[0, -14, 50]], draw(B, o) {
+  A['smoker'] = { box: [-30, -94, 32, 8], seat: { kind: 'earth', w: 40, front: 14 }, lit: true, lights: [[0, -14, 50]],
+    // smoking (the catch's smoker state 1): the curl of smoke and the glow under the door; otherwise cold
+    state: () => { try { const ca = typeof gardenCatchHere === 'function' ? gardenCatchHere() : null; return Number(ca && ca.sm) === 1 ? 'on' : 'cold'; } catch (e) { return 'cold'; } }, draw(B, o) {
+    const on = o.state === 'on';
     const r = KIT().rng(481), s = o.season, eave = -H * 1.25, BR = ['#a65a3e', '#8e4a33', '#c07656', '#6e3a28'];
     M.SIGHT_KIT.brick(B, r, -20, eave, 40, -eave - 2, BR);
     ashlar(B, r, -21, -6, 42, 6, STONE, 4);
     B.f(B.rr(-7, -30, 14, 24, 1.5), '#3a2a20').f(B.rect(-6, -29, 12, 3), '#5a3e30').f(B.circ(5, -17, 1), '#c8a464');
-    if (o.night) B.f(B.rect(-6, -10, 12, 4), '#e89a4a', .7);
+    if (on) B.f(B.rect(-6, -10, 12, 4), '#e89a4a', o.night ? .8 : .45);
     B.f(B.rect(-7, -6, 14, 2), '#2a1e16', .6);
     // the chimney up the east end, the tin roof, a curl of smoke
     B.post(12, eave - 22, eave + 4, 8, ['#8e4a36', '#6e382a', '#b0664e']).f(B.rect(10, eave - 25, 12, 3.4), '#5a3428');
     B.f(B.poly([[-26, eave + 2], [0, eave - 16], [26, eave + 2], [24, eave + 5], [-24, eave + 5]]), '#5e686c').f(B.poly([[-26, eave + 2], [0, eave - 16], [0, eave + 4]]), '#9aa6aa').f(B.poly([[26, eave + 2], [0, eave - 16], [0, eave + 4]]), '#7a858a');
     for (let i = -3; i <= 3; i++) B.s(`M${i * 7.4} ${eave + 3}L0 ${eave - 16}`, '#5a6468', .5, .55);
     B.f(B.blob(r, -14, eave - 2, 5, 1.6, 6, .5), '#a0623a', .4);
-    for (let i = 0; i < 4; i++) B.f(B.blob(r, 17 + i * 3.4, eave - 30 - i * 6, 4.4 + i * 1.8, 3 + i, 7, .4), '#e8e6e0', .48 - i * .1);
+    if (on) for (let i = 0; i < 4; i++) B.f(B.blob(r, 17 + i * 3.4, eave - 30 - i * 6, 4.4 + i * 1.8, 3 + i, 7, .4), '#e8e6e0', .48 - i * .1);
     // eels and a pair of fish on the rail under the eave, a stack of oak chips, a split log seat
     B.s(`M-22 ${eave + 8}h-6`, OAK[1], 1.6);
     for (let i = 0; i < 2; i++) B.s(`M${-25 + i * 3} ${eave + 8}q-1 6 1 12`, '#6a5a3a', 1.8);
@@ -258,8 +261,9 @@
 
   /* ---------- the frog stone: a round boulder that sits like a frog, two lichen knobs for eyes, a crack of a mouth, a real
      frog on its back and a rain puddle at its feet ---------- */
-  A['ld-frog'] = { box: [-34, -42, 36, 8], seat: { kind: 'moss', w: 46, front: 12, stones: 0, way: false }, draw(B, o) {
-    const r = KIT().rng(501), s = o.season, P = { rock: '#8e9282', rockLo: '#6a6e60', rockHi: '#b8bcaa', rockDk: '#3a3e34' };
+  A['ld-frog'] = { box: [-44, -54, 46, 10], seat: { kind: 'moss', w: 58, front: 12, stones: 0, way: false }, draw(B, o) { B.cx.save(); B.cx.scale(1.25, 1.25); try { frog(B, o); } finally { B.cx.restore(); } } };
+  function frog(B, o) {
+    const r = KIT().rng(501), s = o.season, P = { rock: '#9c9484', rockLo: '#746c5e', rockHi: '#cbc2ac', rockDk: '#3a342c' };
     B.f(B.ell(-20, 4, 10, 2.6), '#5a7a84', .55).f(B.ell(-22, 3.4, 5, 1), '#b8d4dc', .6);
     // the body: a broad low boulder, lit west, the haunch on the east
     B.f(B.blob(r, 2, -12, 28, 13, 12, .12), P.rockLo);
@@ -274,36 +278,41 @@
       B.f(B.ell(20, -22, 3.4, 2.2), '#5e9a3e').f(B.circ(22.4, -23.6, 1.3), '#6eac46').f(B.circ(22.6, -24, .5), '#1e2a14').f(B.ell(18, -20.6, 1.6, .8), '#4a7a30'); }
     else B.f(B.blob(r, -2, -26, 18, 3, 8, .3), '#f4f6f2', .9);
     B.tufts(r, -26, 2, 8, 6, grass(s), 6).tufts(r, 28, 2, 8, 6, grass(s), 7);
-  } };
+  }
 
   /* ---------- the grotto: a mouth in a face of mossed gritstone under the Horn, ledges and a hanging garden of ferns over it,
      a trickle from its lip into a pool on the threshold; the mouth is the way in ---------- */
-  A['ld-grotto'] = { box: [-80, -124, 82, 14], door: { dx: 0, dy: 0 }, seat: { kind: 'moss', w: 104, front: 16, stones: 0 }, draw(B, o) {
-    const r = KIT().rng(511), s = o.season, snowy = s === 'winter', L = leaf(s), GRIT = { rock: '#9a907c', rockLo: '#716956', rockHi: '#c4b89c', rockDk: '#3e3830', lichen: '#c9c48a', snow: '#fbfbf7' };
-    const mh = H * 1.45, mw = 44;
-    // the rock face: three tiers of bedded gritstone, each block its own, stepping back as they rise
-    const tiers = [[-70, 72, 0, -46], [-60, 62, -40, -82], [-44, 44, -76, -110]];
-    for (const [x0, x1, y0, y1] of tiers) {
-      B.f(`M${x0} ${y0}Q${x0 - 4} ${(y0 + y1) / 2} ${x0 + 8} ${y1}H${x1 - 8}Q${x1 + 4} ${(y0 + y1) / 2} ${x1} ${y0}Z`, GRIT.rockDk);
-      for (let y = y0 - 1, row = 0; y > y1 + 4; row++) { const ch = 7 + r() * 5; for (let x = x0 + 2 - r() * 6; x < x1 - 2;) { const w = 12 + r() * 16, cx = x + w / 2, k = (cx - x0) / (x1 - x0); if (cx > x0 + 4 && cx < x1 - 4) { const top = y - ch + 1; B.f(B.rr(cx - w / 2 + .6, top, w - 1.2, ch - 1, 2.4), k < .4 ? GRIT.rock : k > .75 ? GRIT.rockLo : r() < .5 ? GRIT.rock : '#8a826e').f(B.rr(cx - w / 2 + 1.2, top + .4, w - 2.4, 2, 1), GRIT.rockHi, .35 + Math.max(0, .5 - k) * .6).f(B.rect(cx - w / 2 + 1, y - 2.6, w - 2, 1.6), GRIT.rockDk, .35); } x += w; } y -= ch; }
-      // turf and moss on each ledge
-      for (let x = x0 + 6; x < x1 - 6; x += 6 + r() * 6) B.f(B.blob(r, x, y1 + 1, 5 + r() * 5, 2.4, 7, .5), snowy ? GRIT.snow : r() < .5 ? '#7d8f4e' : '#93a660', .95);
+  A['ld-grotto'] = { box: [-82, -128, 84, 14], door: { dx: 0, dy: 0 }, seat: { kind: 'moss', w: 104, front: 16, stones: 0 }, draw(B, o) {
+    const r = KIT().rng(511), s = o.season, snowy = s === 'winter', L = leaf(s), G = { rock: '#9a907c', rockLo: '#736a58', rockHi: '#c6ba9e', rockDk: '#3a342c', lichen: '#c9c48a', snow: '#fbfbf7' };
+    const mh = H * 1.5, mw = 46, turf = snowy ? G.snow : s === 'autumn' ? '#9a9450' : '#7d8f4e', turfHi = snowy ? '#ffffff' : s === 'autumn' ? '#b8ac62' : '#9aae5e';
+    // the knoll: rounded masses of gritstone heaped back to front, each lit on its west shoulder, bedding cracks across them,
+    // turf and heather grown over the tops
+    const masses = [[-44, -92, 32, 26], [2, -104, 36, 26], [44, -88, 30, 24], [-62, -56, 26, 24], [-30, -64, 28, 24], [32, -66, 28, 24], [62, -52, 24, 22], [-66, -18, 20, 18], [-42, -26, 22, 20], [42, -26, 22, 20], [66, -18, 18, 16]];
+    for (const [x, y, rx, ry] of masses) {
+      const east = x > 18;
+      B.f(B.blob(r, x + 4, y + 5, rx, ry, 11, .16), G.rockDk, .9);
+      B.f(B.blob(r, x, y, rx, ry, 11, .16), east ? G.rockLo : G.rock);
+      B.f(B.blob(r, x - rx * .28, y - ry * .3, rx * .62, ry * .46, 9, .22), G.rockHi, east ? .3 : .6);
+      for (let k = 0; k < 3; k++) { const yy = y - ry * .35 + k * ry * .36; B.s(`M${x - rx * (.75 - r() * .2)} ${yy}q${rx * .7} ${1.5 + r() * 2} ${rx * (1.3 + r() * .2)} ${(r() - .5) * 3}`, G.rockDk, .9, .38); }
+      if (r() < .6) B.s(`M${x + (r() - .5) * rx} ${y - ry * .5}l${(r() - .5) * 3} ${ry * .7}`, G.rockDk, .8, .35);
     }
-    B.f(B.poly([[40, 0], [72, 0], [62, -40], [44, -76], [30, -76], [46, -40]]), '#1e1a14', .22);   // (the east side in shade)
-    // the mouth: a dark arch under a lintel of overhang, its throat going back into green dark
-    B.f(arch(0, 2, mw + 10, mh + 8), '#3a342a').f(arch(0, 2, mw, mh), B.rad(0, -mh * .4, mh * .9, [[0, '#26382e'], [.45, '#16201a'], [1, '#0a0e0c']]));
-    B.f(arch(-2, 2, mw * .5, mh * .6), 'rgba(110,170,130,.12)');
-    B.s(`M${-mw / 2 - 5} 2V${-mh + mw / 2 - 4}A${mw / 2 + 5} ${mw / 2 + 5} 0 0 1 ${mw / 2 + 5} ${-mh + mw / 2 - 4}`, GRIT.rockHi, 1.8, .6);
-    // ferns hanging over the lip, ivy curtains down the face, a drip line and the trickle into the pool
-    if (!snowy) { for (let k = 0; k < 9; k++) { const a = Math.PI * (1 + k / 8), x = Math.cos(a) * (mw / 2 + 6), y = -mh + mw / 2 + Math.sin(a) * (mw / 2 + 6) - 3; for (let j = 0; j < 4; j++) B.s(`M${x} ${y}q${(j - 1.5) * 3} 3 ${(j - 1.5) * 5} ${7 + r() * 6}`, j % 2 ? L[1] : L[2], 1.2, .9); }
-      ferns(B, r, -54, -44, 18, 5, s); ferns(B, r, 52, -44, 16, 4, s); ferns(B, r, -30, -78, 20, 4, s); ivy(B, r, -66, -2, -40, s); ivy(B, r, 64, -4, -34, s); }
-    else for (let k = 0; k < 9; k++) { const x = -mw / 2 + 4 + k * 4.6; B.f(`M${x - 1.2} ${-mh + 6}l1.2 ${6 + r() * 9}l1.2 ${-6 - r() * 9}z`, '#e6f3f8', .9); }
-    B.s(`M6 ${-mh + 2}q1 ${mh * .4} -1 ${mh - 6}`, '#bfe0e4', 1, .55);
-    B.f(B.blob(r, 2, 3, 20, 4, 9, .3), '#3e6a6e', .9).f(B.blob(r, -2, 2, 13, 2, 8, .3), '#9ccad0', .55);
-    for (let k = 0; k < 7; k++) B.stone(r, -24 + k * 8 + (r() - .5) * 3, 6 + (k % 2) * 2, 3.4 + r() * 2, 2, Object.assign({}, GRIT, { rock: '#7f8a86', rockHi: '#a8b4b0' }), r() < .4 ? '#7d8f4e' : null);
-    // boulders fallen at the foot, the lichen on the face
-    B.boulder && B.boulder(r, -62, 6, 18, 14, GRIT, snowy); B.boulder && B.boulder(r, 64, 6, 16, 11, GRIT, snowy);
-    lichenDots(B, r, -60, -100, 120, 90, 14, s);
+    for (const [x, y, rx, ry] of masses.slice(0, 7)) { B.f(B.blob(r, x - 2, y - ry * .72, rx * .86, ry * .3, 9, .45), turf, .95); B.f(B.blob(r, x - rx * .3, y - ry * .82, rx * .4, ry * .14, 7, .5), turfHi, .8); if (!snowy && r() < .7) for (let i = 0; i < 4; i++) B.f(B.circ(x + (r() - .5) * rx, y - ry * .78 + (r() - .5) * 3, 1.3), s === 'autumn' ? '#8a5a6a' : '#9a6a9a', .8); }
+    // the mouth: a ragged dark opening under a lip of rock, its throat going back into green dark
+    const lip = [], hole = [];
+    for (let i = 0; i <= 18; i++) { const a = Math.PI * (1 + i / 18), j = 1 + (r() - .5) * .12; lip.push([Math.cos(a) * (mw / 2 + 7) * j, 3 + Math.sin(a) * (mh + 6) * j]); hole.push([Math.cos(a) * mw / 2 * j, 3 + Math.sin(a) * mh * j]); }
+    B.f(B.poly(lip), G.rockLo).f(B.poly(lip.slice(0, 10).concat([[0, -mh * .6], [-mw * .3, 3]])), G.rock, .8);
+    B.f(B.poly(hole), B.rad(0, -mh * .45, mh, [[0, '#2a3c30'], [.45, '#16201a'], [1, '#080c0a']]));
+    B.f(B.blob(r, -3, -mh * .32, mw * .22, mh * .3, 8, .2), 'rgba(110,170,130,.14)');
+    B.s(B.line(lip.slice(1, 10)), G.rockHi, 1.6, .55);
+    // ferns hanging over the lip, ivy down the flanks, the drip and the pool on the threshold
+    if (!snowy) { for (let k = 2; k < 17; k += 2) { const [x, y] = lip[k]; for (let jj = 0; jj < 3; jj++) B.s(`M${x} ${y}q${(jj - 1) * 3} 3 ${(jj - 1) * 4.6} ${7 + r() * 7}`, jj % 2 ? L[1] : L[2], 1.2, .9); }
+      ferns(B, r, -56, -36, 18, 5, s); ferns(B, r, 56, -34, 16, 4, s); ferns(B, r, -24, -88, 20, 4, s); ferns(B, r, 30, -90, 16, 3, s); ivy(B, r, -70, -4, -40, s); ivy(B, r, 70, -6, -34, s); }
+    else for (let k = 0; k < 9; k++) { const x = -mw / 2 + 5 + k * 4.4; B.f(`M${x - 1.2} ${-mh + 8}l1.2 ${6 + r() * 9}l1.2 ${-6 - r() * 9}z`, '#e6f3f8', .9); }
+    B.s(`M7 ${-mh + 6}q1 ${mh * .4} -1 ${mh - 8}`, '#bfe0e4', 1, .55);
+    B.f(B.blob(r, 2, 4, 20, 4, 9, .3), '#3e6a6e', .9).f(B.blob(r, -2, 3, 13, 2, 8, .3), '#9ccad0', .55);
+    for (let k = 0; k < 7; k++) B.stone(r, -24 + k * 8 + (r() - .5) * 3, 7 + (k % 2) * 2, 3.4 + r() * 2, 2, Object.assign({}, G, { rock: '#7f8a86', rockHi: '#a8b4b0' }), r() < .4 ? '#7d8f4e' : null);
+    B.boulder(r, -70, 8, 18, 13, G, snowy); B.boulder(r, 72, 8, 15, 10, G, snowy);
+    lichenDots(B, r, -64, -110, 128, 90, 16, s);
   } };
 
   /* ---------- the hill stones: four tall standing stones in a row on the headland, older than anyone, leaning,
@@ -313,7 +322,9 @@
     const pts = [[x - w, 0], [x - w * 1.06, -h * .4], [tx - w * .82, top + h * .1], [tx - w * .3, top], [tx + w * .4, top + h * .05], [x + w * .96, -h * .45], [x + w, 0]];
     B.f(B.poly(pts), P.rockLo);
     B.f(B.poly([[x - w, 0], [x - w * 1.06, -h * .4], [tx - w * .82, top + h * .1], [tx - w * .3, top], [tx + w * .02, top + h * .45], [x - w * .1, 0]]), B.lin(x - w, 0, x + w * .2, 0, [[0, P.rockHi], [1, P.rock]]));
-    B.f(B.poly([[tx - w * .82, top + h * .1], [tx - w * .3, top], [tx + w * .4, top + h * .05], [tx, top + h * .12]]), '#ddd4bc', .75);
+    B.f(B.poly([[tx - w * .82, top + h * .1], [tx - w * .3, top], [tx + w * .4, top + h * .05], [tx, top + h * .12]]), P.rockHi, .8);
+    for (let k = 0; k < 5; k++) { const sx = x - w * .7 + r() * w * 1.5; B.s(`M${sx + lean * h * .8} ${-h * .85}q${(r() - .5) * 2} ${h * .3} ${(r() - .5) * 3} ${h * (.45 + r() * .3)}`, P.rockDk, 1.4 + r(), .12); }
+    B.f(B.poly([[x + w * .2, 0], [x + w, 0], [x + w * .96, -h * .45], [tx + w * .4, top + h * .05], [tx + w * .1, top + h * .3]]), P.rockDk, .22);
     for (let k = 0; k < 4; k++) { const y = -h * (.15 + k * .2); B.s(`M${x - w * (.8 - r() * .3) + lean * -y} ${y}l${w * (.4 + r() * .6)} ${(r() - .5) * 3}`, P.rockDk, .7, .35); }
     B.s(`M${x + w * .3 + lean * h * .6} ${-h * .6}l${-1 + r() * 2} ${h * .3}`, P.rockDk, .9, .45);
     lichenDots(B, r, x - w * .9, -h * .85, w * 1.8, h * .7, Math.round(h / 8), s);
@@ -323,7 +334,8 @@
   }
   A['ld-stones'] = { box: [-112, -104, 118, 12], seat: { kind: 'turf', w: 180, front: 12, back: 6, stones: 0, way: false }, draw(B, o) {
     const r = KIT().rng(521), s = o.season;
-    [[-74, H * 1.7, 11, -.1], [-26, H * 2.3, 14, .04], [24, H * 1.9, 12, -.07], [72, H * 1.4, 10, .16]].forEach(([x, h, w, lean]) => slab(B, r, x, h, w, lean, s, FELL));
+    const GRIT = { rock: '#8f887a', rockLo: '#68625a', rockHi: '#b4ac9a', rockDk: '#3a362e' };
+    [[-74, H * 1.7, 11, -.1], [-26, H * 2.3, 14, .04], [24, H * 1.9, 12, -.07], [72, H * 1.4, 10, .16]].forEach(([x, h, w, lean]) => slab(B, r, x, h, w, lean, s, GRIT));
     // a fallen fifth lying in the grass between the second and third
     B.f(B.blob(r, 0, -3, 12, 4, 8, .2), FELL.rockLo).f(B.blob(r, -1, -4.4, 10, 2.6, 8, .2), FELL.rock).f(B.blob(r, -4, -5, 5, 1.2, 6, .3), FELL.rockHi, .7);
     B.tufts(r, 0, 1, 30, 8, ['#8c9a5e', '#b4bc7e'], 7);
