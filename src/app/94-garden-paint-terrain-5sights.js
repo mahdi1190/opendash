@@ -767,4 +767,6 @@ window.GardenPaintSeat = (function () {
     const order = [...Array(n).keys()].map(i => { const a = -Math.PI / 2 + i / n * Math.PI * 2; return { x: Math.cos(a) * 64, y: -22 + Math.sin(a) * 20, a }; }).sort((p, q) => p.y - q.y);
     for (const p of order) { const h = 9 + (p.y + 42) * .2 + r() * 4, w = 6 + r() * 3; B.f(B.poly([[p.x - w, p.y], [p.x - w * 1.05, p.y - h * .5], [p.x - w * .6, p.y - h], [p.x + w * .5, p.y - h * .94], [p.x + w, p.y - h * .4], [p.x + w, p.y]]), '#857c6e').f(B.poly([[p.x - w, p.y], [p.x - w * 1.05, p.y - h * .5], [p.x - w * .6, p.y - h], [p.x - w * .1, p.y - h * .5], [p.x - w * .2, p.y]]), '#b0a690'); B.f(B.blob(r, p.x - w * .3, p.y - h * .6, 2, 1.6, 6, .5), s === 'winter' ? '#f4f6f2' : '#c9c48a', .7); B.tufts(r, p.x, p.y + 1, w * 2.4, 5, grass(s), 5); }
   } };
+  // (the brushwork above, for the next file of sights: 94-garden-paint-terrain-6sights.js)
+  M.SIGHT_KIT = { ashlar, mossOn, ivy, shingles, windowLit, leaf, grass, sz, STONE, MOSSY, OAK, WOOD, IRON };
 })();
