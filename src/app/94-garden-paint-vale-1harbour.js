@@ -372,8 +372,11 @@
       const road = (promenade.length > 1 ? promenade : []).reduce((m, p) => Math.abs(p.y - qy0) < Math.abs(m.y - qy0) ? p : m, { x: -1e9, y: 1e9 });
       for (let x = qx0 + 8; x < qx1 - 8; x += 5) {
         const off = Math.abs(x - road.x) - 34; if (off < 0) continue; const near = Math.min(1, off / 40), n = kit.noise(x / 46, 3, 77), dep = (4 + n * 13) * near;
-        B.f(B.blob(r, x, qy0 + dep * .35, 5 + r() * 4, dep * .55 + 2, 7, .5), r() < .5 ? P.lawn : P.lawnLo, .9 * near);
-        if (r() < .7) B.tufts(r, x, qy0 + dep * .6 + 2, 7, 3, [P.lawnLo, P.lawnHi], 4 + r() * 3);
+        // (round 2: in the lawn's own light tones, thinner and broken, with the turf's lip shading the stone under it: in the
+        // darker greens at nine tenths it read as a low hedge along the back of the quay, which you then walked through)
+        const ty = qy0 + dep * .35, tw = 4 + r() * 4, th = dep * .45 + 1.5;
+        if (n > .25 || r() < .5) { B.f(B.blob(r, x + 1, ty + 1.6, tw, th, 7, .5), '#5a6a3a', .14 * near).f(B.blob(r, x, ty, tw, th, 7, .5), r() < .6 ? P.lawnHi : P.lawn, .62 * near); }
+        if (r() < .55) B.tufts(r, x, qy0 + dep * .5 + 2, 7, 2, [P.lawn, P.lawnHi], 3 + r() * 3);
         if (r() < .18) B.f(B.ell(x + 3, qy0 + dep + 4 + r() * 6, 2.2 + r() * 2, 1.4), P.lawnLo, .45 * near);   // (moss in the joints a stride out)
       }
       // a rope coil and a lost glove (the steps down the wall are laid with the wall, under the sand banked at its ends)
