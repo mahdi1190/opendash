@@ -30,6 +30,8 @@ const GA_PROPS = Object.freeze({
   zzz: '<g transform="translate(16 -62) rotate(90)"><g class="ga-zzz"><text x="0" y="0" font-size="8" font-weight="700" fill="#f4f0ff" stroke="#5a5a8a" stroke-width="0.4">z</text><text x="6" y="-7" font-size="10" font-weight="700" fill="#f4f0ff" stroke="#5a5a8a" stroke-width="0.4">z</text></g></g>',
   blanket: '<g><path d="M-46 2Q-44 -5 -20 -6L22 -5Q40 -4 42 3Q20 7 -2 7Q-30 7 -46 2z" fill="#c8584a" stroke="#7a3028" stroke-width="0.7"/><path d="M-36 -2L32 -1M-38 3L36 3" stroke="#f0d8b8" stroke-width="1" opacity="0.7"/></g>',
   drips: '<g class="ga-drips">' + _GA_K(6, (i) => `<path d="M${-8 + i * 3.2} ${-30 + (i % 3) * 9}q1 2 0 3q-1 -1 0 -3z" fill="#9ad4ee"/>`).join('') + '</g>',
+  // the bell rope, hanging from the bell above to the hands (stays put while the arms pull)
+  rope: '<g><path d="M0 -150Q1.4 -110 0 -66" stroke="#b08a58" stroke-width="2.2" fill="none"/><path d="M-2 -70h4l-.6 9h-2.8z" fill="#c84a3a" stroke="#7a2a20" stroke-width="0.5"/></g>',
   peek: '',
 });
 /* Parts: front on, root (feet at 0,0) / up (from the hips) / head / armL armR (hang from the shoulders: + turns the left arm out, - the right) / legL legR. */
@@ -55,7 +57,7 @@ const GARDEN_ACTS = Object.freeze({
       legL: _GA_K(14, (i) => [i / 14, { sy: i % 2 ? 0.72 : 1 }, 'io']).concat([[1, {}]]), legR: _GA_K(14, (i) => [i / 14, { sy: i % 2 ? 1 : 0.72 }, 'io']).concat([[1, {}]]), head: [[0.5, { r: -6 }], [0.56, { r: 6 }, 'io'], [0.62, {}, 'io']] } },
   shake: { verb: 'Shake the tree', dir: 'n', ms: 1700, first: 'Shook a fruit tree. Something fell out.', sound: 'rustle', shake: true,
     enter: { up: _GA_K(8, (i) => [0.1 + i * 0.1, { r: i % 2 ? 4 : -4, x: i % 2 ? 1 : -1 }, 'io']).concat([[1, {}]]), armL: [[0.1, { r: 120 }, 'o'], [0.9, { r: 120 }], [1, {}]], armR: [[0.1, { r: -120 }, 'o'], [0.9, { r: -120 }], [1, {}]], root: _GA_K(8, (i) => [0.1 + i * 0.1, { x: i % 2 ? 1.4 : -1.4 }, 'l']).concat([[1, {}]]) } },
-  bell: { verb: 'Ring the bell', dir: 'n', ms: 2200, first: 'Rang the bell. Half the vale looked up.', sound: 'bell', use: 'bell',
+  bell: { verb: 'Ring the bell', dir: 'n', ms: 2200, prop: 'rope', propBehind: true, propGround: true, first: 'Rang the bell. Half the vale looked up.', sound: 'bell', use: 'bell',
     enter: { armL: [[0.1, { r: 168 }, 'o'], [0.3, { r: 130 }, 'i'], [0.45, { r: 168 }, 'o'], [0.65, { r: 130 }, 'i'], [0.8, { r: 168 }, 'o'], [1, {}]], armR: [[0.1, { r: -168 }, 'o'], [0.3, { r: -130 }, 'i'], [0.45, { r: -168 }, 'o'], [0.65, { r: -130 }, 'i'], [0.8, { r: -168 }, 'o'], [1, {}]], root: [[0.3, { y: 3, sy: 0.94 }, 'i'], [0.45, { y: -2 }, 'o'], [0.65, { y: 3, sy: 0.94 }, 'i'], [0.8, { y: -2 }, 'o'], [1, {}]] } },
   pump: { verb: 'Work the pump and drink', dir: 'n', ms: 3000, first: 'Pumped cold water and drank it from my hands.', sound: 'splash', fx: { at: [0.3, 0.45, 0.6], kind: 'water', dy: -0.3, width: 18 },
     enter: { armR: [[0.08, { r: -165 }, 'o'], [0.2, { r: -105 }, 'io'], [0.32, { r: -165 }, 'io'], [0.44, { r: -105 }, 'io'], [0.56, { r: -165 }, 'io'], [0.66, { r: -30 }, 'io'], [1, {}]], up: [[0.2, { r: 6, y: 1 }, 'io'], [0.32, {}, 'io'], [0.44, { r: 6, y: 1 }, 'io'], [0.56, {}, 'io'], [0.7, { r: 14, y: 3 }, 'io'], [0.9, { r: 14, y: 3 }], [1, {}]], armL: [[0.66, {}], [0.72, { r: 70 }, 'o'], [0.9, { r: 70 }], [1, {}]], head: [[0.7, { y: 3 }, 'io'], [0.9, { y: 3 }], [1, {}]] } },
@@ -103,7 +105,7 @@ const GARDEN_ACT_BY_PROP = Object.freeze({
   'ld-driftwood': [{ act: 'sit', name: 'the driftwood', stand: [0, 0.1], deg: 90, lift: 1 }],
   'ld-boles': [{ act: 'sit', name: 'the log', stand: [0, 0.1], deg: 90, lift: 2 }],
   'ld-pump': [{ act: 'pump', name: 'the pump', stand: [0, 0.5], deg: -90 }],
-  'ld-wish': [{ act: 'wish', name: 'the wishing well', stand: [0, 0.5], deg: -90 }],
+  'ld-wish': [{ act: 'wish', name: 'the wishing well', stand: [0, 0.95], deg: -90 }],   // (far enough back not to stand on its stones)
   'ld-chapel': [{ act: 'bell', name: 'the chapel bell', stand: [0, 0.6], deg: -90 }],
   'ld-lighthouse': [{ act: 'ladder', name: 'the lighthouse ladder', stand: [0.12, 0.1], deg: -90 }],
   'ld-treehouse': [{ act: 'ladder', name: 'the treehouse ladder', stand: [0, 0.4], deg: -90 }],
@@ -119,8 +121,8 @@ const GARDEN_ACT_BY_PROP = Object.freeze({
   'ld-beacon': [{ act: 'warm', name: 'the beacon fire', stand: [0, 0.7], deg: -90 }],
   smoker: [{ act: 'warm', name: 'the fire', stand: [0, 0.7], deg: -90 }],
   'ld-falls': [{ act: 'shower', name: 'the falls', stand: [0, 0.4], deg: 90 }],
-  'reed-bank': [{ act: 'feed', name: 'the ducks', stand: [0, 0.6], deg: -90 }],
-  'camera-tripod': [{ act: 'photo', name: 'the camera', stand: [0, 1.4], deg: 90 }],
+  'reed-bank': [{ act: 'feed', name: 'the ducks', stand: [1.7, 0.35], deg: -90 }],   // (beside the bench there, not behind it)
+  'camera-tripod': [{ act: 'photo', name: 'the camera', stand: [-1.3, 1.5], deg: 90 }],
 });
 /** Placed decorations, by their effect kind (gardenDecor(id).effect.kind). */
 const GARDEN_ACT_BY_DECOR = Object.freeze({ sit: [{ act: 'sit', name: 'the seat', stand: [0, 0.06], deg: 90, lift: 4 }], wish: [{ act: 'wish', name: 'the well', stand: [0, 0.5], deg: -90 }] });
