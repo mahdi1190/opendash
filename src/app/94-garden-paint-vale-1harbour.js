@@ -273,12 +273,14 @@
       const tallBehind = (x, y) => (L.D.static || []).some(st => { const up = st.col === 'full' ? Math.max(7, (st.tall || 1) * 2.6) : Math.max(1.5, (st.tall || 1) * 2.6); /* (a building's picture can stand far taller than its layout height says) */ return x > (st.x - 1.2) * cw && x < (st.x + st.w + 1.2) * cw && y > W.sky + (st.y + st.h - up - 1) * ch && y < W.sky + (st.y + st.h) * ch; });
       const doors = (L.D.static || []).filter(st => st.door).map(st => ({ x: (st.door.x + .5) * cw, y: W.sky + (st.door.y + .5) * ch })).concat((L.D.landforms || []).filter(f => /stair|step/.test(String(f.kind) + ' ' + String(f.id))).map(f => { const xs = (f.polygon || [[0, 0]]).map(p => p[0]), ys = (f.polygon || [[0, 0]]).map(p => p[1]); return { x: (Math.min(...xs) + Math.max(...xs)) / 2 * cw, y: W.sky + Math.max(...ys) * ch }; }));
       for (let i = 0; i < seaW.length; i += 7) { const q = seaW[i]; if (F(q.x, q.y, 300, 141) < .34) continue; const rr = prng(q, 142); if (rr() < .3) continue;
-        const d = 32 + rr() * 30, p = inl(q, d), back = inl(q, d + 34), c0 = cellOf(p.x, p.y); if (kindAt(p.x, p.y) !== 'beach' || kindAt(back.x, back.y) === 'sea' || !plantable(p.x, p.y) || pathNear(p.x, p.y, 30) || harbourBox(c0)) continue;
+        const d = 32 + rr() * 30, p = inl(q, d), back = inl(q, d + 34), c0 = cellOf(p.x, p.y); if (kindAt(p.x, p.y) !== 'beach' || kindAt(back.x, back.y) === 'sea' || !plantable(p.x, p.y) || harbourBox(c0)) continue;
+        // (beside a path along the sand only something you walk past, a sandcastle with its bucket, never a thing that stops the feet)
+        const byPath = pathNear(p.x, p.y, 30); if (byPath && (pathNear(p.x, p.y, 15) || coldAt(p.x, p.y))) continue;
         if (c0[0] < 2.5 || c0[1] < 3 || c0[0] > W.cols - 2.5 || c0[1] > W.rows - 2 || doors.some(o => Math.abs(o.x - p.x) < 3 * cw && Math.abs(o.y - p.y) < 3 * ch)) continue;
         let solid = false; for (let dy = -1.5; dy <= 1.5 && !solid; dy += .75) for (let dx = -1.5; dx <= 1.5 && !solid; dx += .75) { const b = L.base(c0[0] + dx, c0[1] + dy); if (b && (b.solid || b.staticId)) solid = true; }
         if (solid || tallBehind(p.x, p.y) || left.some(o => Math.hypot(o.x - p.x, o.y - p.y) < 5 * cw) || things.some(t => Math.hypot(t.x - p.x, t.y - p.y) < 160)) continue;
         const cold = coldAt(p.x, p.y), pick = cold ? ['boat', 'net', 'pots'] : ['boat', 'net', 'pots', 'castle', C.season === 'summer' ? 'windbreak' : 'castle'];
-        left.push({ x: p.x, y: p.y, kind: pick[Math.floor(rr() * pick.length)], seed: kit.hash(Math.round(p.x), Math.round(p.y), 143) }); }
+        left.push({ x: p.x, y: p.y, kind: byPath ? 'castle' : pick[Math.floor(rr() * pick.length)], seed: kit.hash(Math.round(p.x), Math.round(p.y), 143) }); }
       const BOATS = ['#3f6f8a', '#a8402e', '#2f6a5a', '#d8c890', '#5a6e8a', '#7a3a4a'];
       const castle = B => { B.shadow(4, 1, 20, 4, .25); B.f('M-16 0L-15 -9L-9 -9L-9 -14L-4 -14L-4 -9L4 -9L4 -16L9 -16L9 -9L15 -9L16 0Z', '#d8c08a').f('M-16 0L-15 -9L-9 -9L-9 -14L-6 -14L-6 0Z', '#ecdcaa', .7).f('M9 -16L9 -9L15 -9L16 0L10 0Z', '#b49a64', .6);
         for (const [x, y] of [[-12, -9], [-6, -14], [6, -16], [12, -9]]) B.f(B.rect(x - 1, y - 2, 2, 2), '#c8ae78'); B.s('M6.5 -16v-7', '#5a4630', .8).f('M6.5 -23l5 1.6l-5 1.6z', '#e0503a');
