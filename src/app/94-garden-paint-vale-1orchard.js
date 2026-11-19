@@ -218,8 +218,8 @@
         for (let k = 0; k < T.N; k++) {
           const pts = []; for (let x = x0; x <= x1 + .01; x += .5) { const q = L.cpt(x, line(k, x) - 1.25); pts.push({ x: q.x, y: q.y, t: 1 }); }
           const pk = kit.bboxOf(pts, 60); if (pk[3] < cb[1] - 80 || pk[1] > cb[3] + 80) continue;
-          S.f(band(pts, ch * .75, ch * .55), season === 'winter' ? '#d8dcc8' : '#e2e49a', .22);   // the mown strip the row stands in
-          S.f(band(pts.map(p => ({ x: p.x, y: p.y + ch * .95, t: 1 })), ch * .3, ch * .35), season === 'winter' ? '#b8bca4' : '#c8b86a', .16);   // longer, warmer grass towards the bank below
+          S.f(band(pts, ch * .75, ch * .55), season === 'winter' ? '#d8dcc8' : '#e2e49a', .15);   // the mown strip the row stands in
+          S.f(band(pts.map(p => ({ x: p.x, y: p.y + ch * .95, t: 1 })), ch * .3, ch * .35), season === 'winter' ? '#b8bca4' : '#c8b86a', .11);   // longer, warmer grass towards the bank below
         }
       });
       kit.tiles(cb, 100, 20, 92, (tx, ty, rr) => { for (let k = 0; k < 8; k++) { const x = tx + rr() * 100, y = ty + rr() * 100, cx = x / cw, cy = (y - W.sky) / ch; if (!grass(Math.floor(cx), Math.floor(cy))) continue;
