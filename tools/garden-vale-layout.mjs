@@ -164,6 +164,27 @@ function splineW(ctrl, widths, closed, step = .5) { // Catmull-Rom through the c
 }
 const vRoute = id => { const a = VV.routes.find(r => r.id === id); if (!a) throw Error('vale-village.json has no route ' + id); const { pts, ws } = splineW(a.control, a.widths, !!a.closed);
   return route(id, a.tier, pts, 0, Object.assign({ widthCells: Math.max(...ws), widths: ws }, a.gateId ? { gateId: a.gateId } : {}, id === 'plaza-loop' ? { shape: VV.plazas['the-square'].poly.map(p => p.map(r2)) } : {})); };
+// The old woodland (zone 3) is hand-authored in assets/garden/vale-oldwood.json (layout round 3, 19 Nov 2026), read the
+// same way: splines with a width at each control point, the court and the two yards as shapes, the static moves, the
+// 17 sections in eight fields. Its ruins-lane takes over from the woods' part of the lane at 18.9,62.6.
+const VO = JSON.parse(readFileSync(join(root, 'assets/garden/vale-oldwood.json'), 'utf8'));
+const VO_SKIP = new Set(['maze-gap']);   // (the solved maze's way through: no hedge yet opens later, so the west ring stays shut; see the file's routes)
+function oldwoodRoutes() {
+  const out = [];
+  for (const a of VO.routes) {
+    if (VO_SKIP.has(a.id)) continue;
+    const plaza = VO.plazas[a.id], ctrl = a.id === 'ruins-lane' ? VO.ruinsLaneNorth.concat(a.control) : a.control, wid = a.id === 'ruins-lane' ? VO.ruinsLaneNorth.map(() => 2).concat(a.widths) : a.widths;
+    if (plaza) { out.push(route(a.id, 'plaza', a.control, 3, { widthCells: 2, shape: plaza.poly.map(p => p.map(r2)) })); continue; }
+    const { pts, ws } = splineW(ctrl, wid, false);
+    out.push(route(a.id, a.tier === 'track' ? 'trail' : a.tier, pts, 3, Object.assign({ widthCells: Math.max(...ws), widths: ws }, a.gateId ? { gateId: a.gateId } : {}, a.tier === 'track' ? { worn: 'earth', unsigned: true } : {})));
+  }
+  // the two yards: the postern yard where the round and the pond walk meet, and the yew maze's yard
+  for (const [id, y] of Object.entries(VO.yards)) { const b = bbox(y.poly), cy = r2((b.y + b.y1) / 2); out.push(route(id, 'plaza', [[r2(b.x + .4), cy], [r2(b.x1 - .4), cy]], 3, { widthCells: 1, shape: y.poly.map(p => p.map(r2)), yard: true })); }
+  return out;
+}
+// the walled garden's old brick wall on three sides (the ruin wall behind it is the fourth), its two green doors gaps in it
+{ const e = VO.enclosures['garden-yard'], [w0, w1] = [e.poly[8], e.poly[0]], d = e.doors;
+  landforms.push(...wallSegments('garden-wall', 'southwest-ruins', 'ruin-wall', [[w1[0], w1[1] + .1], [w0[0], w0[1] + .05], [28.85, 67.8], [e.poly[4][0], e.poly[4][1]], [e.poly[3][0], e.poly[3][1] + .3]], [[d[0][0] - .05, d[0][1], .85], [d[1][0], d[1][1] + .05, .85]], .42, 12)); }
 const vPlaza = (id, width) => { const p = VV.plazas[id]; return route(id, 'plaza', p.spine, 0, { widthCells: width, shape: p.poly.map(q => q.map(r2)) }); };
 const GREEN = { x: 49, y: 51.6, rx: 6.6, ry: 4.4 };   // (the green's rough extent, for painters that only want a centre and radii)
 const routes = [
@@ -179,12 +200,8 @@ const routes = [
   route('spring-trail', 'trail', [[11.4, 31.8], [8.6, 29.4]], 1),
   route('cove-trail', 'trail', [[11, 40.6], [7.8, 50], [6.2, 62], [5.2, 72], [6.2, 81.6]], 1),
   route('brook-walk', 'trail', [[27.2, 40.6], [31.6, 39.4], [34.6, 38.3], [35.95, 37.75]], 1),   // (village fix round 1: it ends at the lake walk by the footbridge; it ran a cell past it, a rounded stub on the grass beside the bridge's foot)
-  // Old woodland (zone 3)
-  route('ruins-lane', 'lane', [[17.2, 45.6], [18.2, 53], [19, 60], [19.6, 65.1], [21, 70.4], [22.2, 74.4]], 3, { gateId: 'island-ruins' }),
-  route('ruin-court', 'plaza', [[21, 74.8], [23.6, 74.8]], 3, { widthCells: 4.4 }),
-  route('ruins-circuit', 'trail', [[21, 74.8], [18.6, 78.6], [15.8, 84], [21.6, 87.4], [28.6, 86.4], [32.6, 82], [33.2, 77.6], [34.6, 74.6], [35.8, 74.2], [36.6, 74.2]], 3),
-  route('pond-walk', 'trail', [[23.6, 74.8], [27, 76.6], [31, 76.8], [32.6, 82]], 3),
-  route('west-shore', 'trail', [[15.8, 84], [13.6, 87.6]], 3),
+  // Old woodland (zone 3): hand-authored in assets/garden/vale-oldwood.json (layout round 3), read below (oldwoodRoutes)
+  ...oldwoodRoutes(),
   // Millwater valley (zone 2)
   route('mill-lane', 'lane', [[72, 58.8], [72.8, 62.4], [73.8, 65.4]], 2),
   route('mill-yard', 'plaza', [[74, 65.8], [76.4, 65.8]], 2, { widthCells: 4 }),
@@ -295,6 +312,12 @@ for (const p of S) if (p.door === undefined) p.door = { x: p.x, y: p.y + 1 };
 // the hand-authored village (vale-village.json): statics that move to face the square, and the new cottages
 for (const [id, mv] of Object.entries(VV.staticMoves)) { const p = S.find(q => q.id === id); if (!p) { warn.push('static move: no static ' + id); continue; } Object.assign(p, mv); if (p.apron) p.apron = p.door && p.door.y < p.y ? { x: p.x - 1, y: p.y - 3, w: p.w + 2, h: 3 } : { x: p.x - 1, y: p.y + 1, w: p.w + 2, h: 3 }; }
 for (const ns of VV.newStatics) S.push(Object.assign(sightRow(ns.id), ns));
+// the hand-authored old woodland (vale-oldwood.json): the chapel, the tower, the ice house, Hollin's hut and the maze's
+// sundial move to the plan's places and grow to the footprints the size standard needs (rule 14)
+for (const [id, mv] of Object.entries(VO.staticMoves)) {
+  const p = S.find(q => q.id === id); if (!p) { warn.push('oldwood static move: no static ' + id); continue; }
+  const { why, ...m } = mv; void why; Object.assign(p, m); if (!m.apron) delete p.apron; delete p.rearEnvelope;
+}
 // how deep a building stands on the ground (fix round 1): a house blocks its whole footprint, front wall to back wall, not
 // only the row along its front, so the feet stop where its walls stand and never step into the picture. The front row
 // (and so the foot it is drawn from, its door and its depth order) stays where it was; the rows behind it are added.
@@ -371,6 +394,14 @@ for (const [id, a] of Object.entries(VV.sections)) {
   while (keep.length && keep.length < need) { let best = null; for (const [x, y] of keep) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (why(nx, ny)) continue; const d = Math.hypot(nx - mx, ny - my); if (!best || d < best[2]) best = [nx, ny, d]; } if (!best) break; keep.push([best[0], best[1]]); taken.add(K(best[0], best[1])); }
   if (keep.length < need) warn.push(`village section ${id} has ${keep.length} cells, fewer than its ${need}`);
   sectionCells[id] = keep;
+}
+// the old woodland's 17 sections are hand-authored, in eight fields (vale-oldwood.json); each cell must be free zone-3
+// ground, except that the shore's rock plots (the spit and Otter cove) may lie on the beach (the plan's beach exception)
+for (const [id, a] of Object.entries(VO.sections)) {
+  const keep = [], why = (x, y) => { const c = C(x, y); return !c || !c.land ? 'sea' : c.fw ? 'water' : c.beach && a.kind !== 'rock' ? 'beach' : c.route ? 'route ' + c.route : c.st ? 'static ' + c.st : c.lf ? 'landform ' + c.lf : c.reserved ? 'reserved (apron or facade)' : c.zone !== 3 ? 'zone ' + c.zone : taken.has(K(x, y)) ? 'taken' : S.some(p => p.door && Math.floor(p.door.x) === x && Math.floor(p.door.y) === y) ? 'a door' : ''; };
+  for (const [x, y] of a.cells) { const w = why(x, y); if (w) warn.push(`oldwood section ${id} cell ${x},${y} is not free (${w})`); else { keep.push([x, y]); taken.add(K(x, y)); } }
+  if (keep.length < 4) warn.push(`oldwood section ${id} has ${keep.length} cells`);
+  sectionCells[id] = keep.sort((p, q) => p[1] - q[1] || p[0] - q[0]);
 }
 const fieldOf = Object.fromEntries(Object.entries(VV.sections).map(([id, a]) => [id, a.field]));
 const shapeOf = n => n >= 19 ? [5, 4] : n >= 14 ? [7, 2] : n >= 12 ? [4, 3] : n >= 9 ? [3, 3] : n >= 6 ? [3, 2] : [2, 2];
@@ -466,6 +497,15 @@ const fields = Object.entries(VV.fields).map(([id, f]) => {
   if (hint && !gate) warn.push('field ' + id + ' has no gate');
   return { id, name: f.name, edge: EDGE[id] || 'hedge', sections: secs, gate: gate ? { x: gate.x, y: gate.y, out: gate.out, section: gate.section } : null };
 });
+// the old woodland's eight fields: the gate is the field cell beside a path nearest the field's middle, so each opens off the walk
+for (const [id, f] of Object.entries(VO.fields)) {
+  const secs = Object.keys(VO.sections).filter(s => VO.sections[s].field === id), mine = new Set(secs.flatMap(s => sectionCells[s].map(c => K(c[0], c[1])))), cand = [];
+  const all = secs.flatMap(s => sectionCells[s]), mx = all.reduce((n, c) => n + c[0], 0) / (all.length || 1), my = all.reduce((n, c) => n + c[1], 0) / (all.length || 1);
+  for (const s of secs) for (const [x, y] of sectionCells[s]) for (const [dx, dy] of [[0, 1], [0, -1], [-1, 0], [1, 0]]) { const c = C(x + dx, y + dy); if (!c || mine.has(K(x + dx, y + dy)) || taken.has(K(x + dx, y + dy)) || !c.land || c.fw || c.st || c.lf || c.zone !== 3 || !c.route) continue; cand.push({ x, y, out: { x: x + dx, y: y + dy }, section: s, d: Math.hypot(x + .5 - mx, y + .5 - my) + (dy ? 0 : .4) }); }
+  const g = cand.sort((a, b) => a.d - b.d)[0];
+  if (!g) warn.push('oldwood field ' + id + ' has no gate on a path');
+  fields.push({ id: 'ow-' + id, name: f.name, edge: VO.fieldEdges[id] || 'bracken', sections: secs, gate: g ? { x: g.x, y: g.y, out: g.out, section: g.section } : null });
+}
 for (const [id, a] of Object.entries(storyAnchors)) { const x = Math.floor(a.x), y = Math.floor(a.y); if (Object.entries(sectionCells).some(([, cs]) => cs.some(c => c[0] === x && c[1] === y))) warn.push(`story anchor ${id} stands in a field (${x},${y})`); }
 
 /* ------------------------------------------------------------ what the painter reads (presentation only, no collision) */
@@ -490,7 +530,8 @@ const presentation = {
     { id: 'lakeside-terrace', route: 'lakeside-terrace', x: 48.6, y: 43.6, shape: VV.plazas['lakeside-terrace'].poly.map(p => p.map(r2)), job: 'a crescent along the Mere shore: lake hall facing the water, the bench with the falls view' },
     { id: 'great-oak-clearing', route: 'great-oak-clearing', x: 15.3, y: 44.6, job: 'the Great Oak (draw a huge oak crown here, seen from the Forest arch)' },
     { id: 'mill-yard', route: 'mill-yard', x: 74.2, y: 65.8, job: 'the watermill and its turning wheel on the river' },
-    { id: 'ruin-court', route: 'ruin-court', x: 22.3, y: 74.8, job: 'the chapel and old foundations' },
+    { id: 'ruin-court', route: 'ruin-court', x: 22.7, y: 75.9, shape: VO.plazas['ruin-court'].poly.map(p => p.map(r2)), job: VO.plazas['ruin-court'].job },
+    ...Object.entries(VO.yards).map(([id, y]) => { const b = bbox(y.poly); return { id, route: id, x: r2((b.x + b.x1) / 2), y: r2((b.y + b.y1) / 2), shape: y.poly.map(p => p.map(r2)), job: y.job }; }),
     { id: 'cider-square', route: 'cider-square', x: 77.9, y: 37, job: 'barrels, the press' },
     { id: 'summit-cairn', route: 'summit-cairn', x: 50.6, y: 9.8, job: 'the cairn and the beacon' },
   ],
@@ -503,6 +544,12 @@ const presentation = {
     { id: 'falls-cave-stair', route: 'gorge-trail', from: 'north-headland', to: 'home-island', level: 18, at: [42.2, 25.9], note: 'behind the falls, down to the lake walk' },
   ],
   landmarks: { lighthouse: 'ld-lighthouse', watchtower: 'ld-tower', folly: 'ld-folly', greatOak: 'great-oak-clearing', beacon: 'ld-beacon', millWheel: 'ld-mill', falls: 'ld-falls' },
+  // the old woodland's own things for its painters (vale-oldwood.json): lamps, finger posts, benches, the well head, the
+  // carved birds and the bell rim (the two secrets), the garden's green doors, the maze, the Old Man and the sea steps
+  oldwood: { lamps: VO.props.lamps.map(([x, y, what]) => ({ x, y, what })), fingerPosts: VO.props.fingerPosts, benches: VO.props.benches, wellHead: VO.props.wellHead, smallStone: VO.props.smallStone,
+    carvedBirds: VO.props.carvedBirds, bellRim: VO.props.bellRim, gardenDoors: VO.enclosures['garden-yard'].doors, oldMan: VO.props.oldMan, seaSteps: VO.props.seaSteps,
+    maze: { x: 31.2, y: 80.05, rx: 2.3, ry: 1.67, mouth: 'east', note: 'two low clipped yew rings and the sundial at the heart; the east mouth opens on the round, the west ring stays shut' },
+    focalPoints: VO.focalPoints, secrets: VO.secrets, glades: VO.glades, planting: VO.planting, hollinsTrack: 'hollins-track' },
   mist: 'Each closed region already gets mist from its polygon (94-garden-native-frontier.js).',
   millRace: millStretch.id,
 };
