@@ -182,7 +182,7 @@ window.GardenPaintWater = (function () {
   let fieldMask = null, fieldOut = null, fieldTone = null, fieldSea = null;
   // each water's own character, blended across joins: [shade under trees or peat, extra depth, running]. A woodland brook runs dark
   // under its canopy, a fell tarn is dark and peaty, the open Mere and the river take the sky; running water carries lines along its current.
-  const TONE = { mere: [0, 0, 0], river: [.06, .08, .8], brook: [.72, .26, 1], spring: [.6, .14, .3], gorge: [.3, .16, 1], tarn: [.38, .34, 0], pool: [.12, .06, 0] }, SHADE = [44, 84, 74], STONE_WET = [104, 104, 86], TB = 8;
+  const TONE = { mere: [0, 0, 0], river: [.06, .08, .8], brook: [.72, .26, 1], spring: [.6, .14, .3], gorge: [.3, .16, 1], tarn: [.6, .52, 0], pool: [.12, .06, 0] }, SHADE = [44, 84, 74], STONE_WET = [104, 104, 86], TB = 8;
   // The open sea far out is the world's own sea fill under this layer (by season); the painted sea fades into it offshore.
   const SEA_BASE = { summer: '#599f9d', spring: '#599f9d', autumn: '#5b9b9a', winter: '#76a8ad' };
   function seaPalette(S) {
@@ -554,10 +554,11 @@ window.GardenPaintWater = (function () {
     // 4. Sky streaks: on still water long horizontal wind lines, on running water
     //    short pale dashes along the current.
     if (!river_) {
-      for (let i = 0; i < (big ? 46 : 10); i++) {
+      // (a dark fell tarn holds fewer and fainter streaks of sky than the open Mere: a tarn full of them read as stripes)
+      for (let i = 0; i < (kind === 'tarn' ? 18 : big ? 46 : 10); i++) {
         let x = 0, y = 0, tries = 0; do { x = all.x + r() * all.w; y = all.y + r() * all.h; tries++; } while (tries < 30 && !(inside(x, y, pts) && edgeDist(x, y, pts) > 18));
         if (tries >= 30) continue; const rx = 18 + r() * (big ? 80 : 30), ry = .9 + r() * 1.6, hi = r() < .3;
-        add({ x: x - rx, y: y - 4, w: rx * 2, h: 8 }, (cx, C) => { cx.save(); cx.clip(P); cx.globalAlpha = (hi ? .5 : .32) * (C.warm || 1) * (kind === 'tarn' ? .55 : 1); cx.fillStyle = hi ? C.skyHi : C.sky; cx.beginPath(); cx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); cx.fill(); cx.restore(); });
+        add({ x: x - rx, y: y - 4, w: rx * 2, h: 8 }, (cx, C) => { cx.save(); cx.clip(P); cx.globalAlpha = (hi ? .5 : .32) * (C.warm || 1) * (kind === 'tarn' ? .38 : 1); cx.fillStyle = hi ? C.skyHi : C.sky; cx.beginPath(); cx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); cx.fill(); cx.restore(); });
       }
       // a broad pale sky sheen in the open middle (the brightest thing in the picture)
       const c0 = { x: all.x + all.w * .45, y: all.y + all.h * .5 };
