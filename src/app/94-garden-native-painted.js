@@ -42,6 +42,48 @@ window.GardenNativePainted = (function () {
   const palette = season => PAL[season] || PAL.summer;
   const ok = (f) => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
   let lastInfo = null, overLayer = null, lastError = null, groundMs = 0, lastPlanting = [], plantingTrunks = { list: [], key: '', rev: 0 }, spotCounts = {}, cachedGround = null, groundSerial = 0;
+  /** (village fix round 2) Setts laid in fans, the old way: each fan a few courses of small stones on arcs, the fans in
+   * overlapping rows like scales, so the paving has no rows to run across a curved street and never reads as a brick
+   * wallpaper. Stones and mortar are close in tone (one surface, the joints a shade darker, never a dark grid); the
+   * tone wanders in broad patches of older and newer stone; feet polish a paler way; moss and the odd weed live in the
+   * joints towards the rim. Every fan is seeded by its place, so ground chunks painted apart meet exactly.
+   * o: { salt, P (palette), skip(x, y): leave a stone out (the rose), wear(x, y): 0..1 polish, rim(x, y): 0..1 towards the edge } */
+  function fanSetts(cx, bb, o) {
+    o = o || {}; const P = o.P || PAL.summer, salt = o.salt | 0, R = 21, ring = 4.4, half = 1.2, dx = R * 2 * Math.sin(half) * .82, ys = .6, dy = R * ys * .62;
+    const tones = o.tones || ['#c6b08a', '#cfb993', '#d6c39e', '#ccb690', '#d2bfa2', '#c2ab86', '#d9c8a6'];
+    const patch = (x, y) => Math.sin(x * .011 + y * .019) + Math.sin(x * .027 - y * .015 + 1.3) * .6 + Math.sin(x * .061 + y * .052 + .4) * .25;
+    const hash = (a, b) => { let n = Math.imul(a * 374761393 + b * 668265263 + salt * 1442695041, 1) >>> 0; n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0; return (n ^ (n >>> 16)) >>> 0; };
+    cx.save(); cx.globalAlpha = 1; cx.fillStyle = o.mortar || '#b3a07e'; cx.fillRect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]);
+    const j0 = Math.floor((bb[1] - 4) / dy), j1 = Math.ceil((bb[3] + R * ys + 4) / dy);
+    for (let j = j0; j <= j1; j++) {
+      const off = (j & 1) ? dx / 2 : 0, fy = j * dy, i0 = Math.floor((bb[0] - off - R) / dx), i1 = Math.ceil((bb[2] - off + R) / dx);
+      for (let i = i0; i <= i1; i++) {
+        const fx = i * dx + off, rr = rng(hash(i, j) | 1), age = patch(fx, fy);
+        // the fan: its courses from the outside in; the arc's crown at (fx, fy - r * ys), convex up the screen
+        for (let k = 0; k < 4; k++) {
+          const r0 = R - k * ring, r1 = r0 - ring + .85; if (r1 < 1.6) break;
+          const rm = (r0 + r1) / 2, n = Math.max(2, Math.round(2 * half * rm / (4.6 + rr() * 1.2))), da = 2 * half / n;
+          for (let s = 0; s < n; s++) {
+            const a0 = Math.PI / 2 - half + s * da + .7 / rm, a1 = a0 + da - 1.1 / rm, am = (a0 + a1) / 2;
+            const mx = fx + Math.cos(am) * rm, my = fy - Math.sin(am) * rm * ys; if (mx < bb[0] - 6 || mx > bb[2] + 6 || my < bb[1] - 5 || my > bb[3] + 5) continue;
+            if (o.skip && o.skip(mx, my)) continue;
+            const t = rr() + age * .1, base = tones[Math.max(0, Math.min(tones.length - 1, Math.floor(t * tones.length)))];
+            const p0x = fx + Math.cos(a0) * r0, p0y = fy - Math.sin(a0) * r0 * ys, p1x = fx + Math.cos(a1) * r0, p1y = fy - Math.sin(a1) * r0 * ys, p2x = fx + Math.cos(a1) * r1, p2y = fy - Math.sin(a1) * r1 * ys, p3x = fx + Math.cos(a0) * r1, p3y = fy - Math.sin(a0) * r1 * ys;
+            const quad = () => { cx.beginPath(); cx.moveTo(p0x, p0y); cx.lineTo(p1x, p1y); cx.lineTo(p2x, p2y); cx.lineTo(p3x, p3y); cx.closePath(); };
+            cx.globalAlpha = 1; cx.fillStyle = base; quad(); cx.fill();
+            // lit along its top edge, a little shade along its foot: the stone has a face, a hand's width, and wear
+            cx.globalAlpha = .34; cx.strokeStyle = P.stoneHi || '#eddcb6'; cx.lineWidth = .9; cx.beginPath(); cx.moveTo(p0x, p0y + .4); cx.lineTo(p1x, p1y + .4); cx.stroke();
+            cx.globalAlpha = .2; cx.strokeStyle = '#6e5c42'; cx.beginPath(); cx.moveTo(p3x, p3y - .3); cx.lineTo(p2x, p2y - .3); cx.stroke();
+            const w = o.wear ? o.wear(mx, my) : 0, rim = o.rim ? o.rim(mx, my) : 0;
+            if (w > 0 && rr() < w) { cx.globalAlpha = .14 + w * .1; cx.fillStyle = '#f6ecd0'; quad(); cx.fill(); }
+            else if (age < -.9 && rr() < .4) { cx.globalAlpha = .1; cx.fillStyle = '#6a5a40'; quad(); cx.fill(); }
+            if (rim > 0 && rr() < rim * .55) { cx.globalAlpha = .7; cx.fillStyle = rr() < .5 ? '#7d8f4e' : '#93a252'; cx.beginPath(); cx.ellipse(p1x + .2, (p1y + p2y) / 2, .9 + rr() * 1.2, .7 + rr() * .5, 0, 0, 7); cx.fill(); }
+          }
+        }
+      }
+    }
+    cx.restore();
+  }
 
   /* ---------- library objects as baked sprites ---------- */
   const paths = new Map();
@@ -379,35 +421,23 @@ window.GardenNativePainted = (function () {
       const mkd = mkx.getImageData(0, 0, mkw, mkh).data, inU = (x, y) => { const i = Math.floor((x - b.x + 24) * MK), k = Math.floor((y - b.y + 24) * MK); return i >= 0 && k >= 0 && i < mkw && k < mkh && mkd[(k * mkw + i) * 4 + 3] > 127; };
       cx.save(); cx.fillStyle = '#ae9c78'; cx.fill(U, 'nonzero'); cx.clip(U, 'nonzero');
       const inRose = (x, y) => !!rose && Math.hypot((x - ccx) / 46, (y - ccy) / 25.3) < 1;
-      // (fix round 1: setts at about a third of their old size, nearer a real sett beside the figure; the old ones were bricks
-      // twice to three times too big, laid in ruler-straight courses that filled the screen like wallpaper. Now the courses
-      // wander, the stones vary in size and tone in broad patches as old paving does, a worn granite slab is let in here
-      // and there, and moss lives in the joints towards the rim)
-      const patch = (x, y) => Math.sin(x * .013 + y * .021) + Math.sin(x * .031 - y * .017 + 1.3) * .6;
-      for (let y = b.y - 4; y < b.y + b.h + 4;) {
-        const rh = 4.6 + r() * 1.6; let x = b.x - 4 - r() * 6;
-        while (x < b.x + b.w + 4) {
-          const slab = r() < .012, w = slab ? 11 + r() * 6 : 4.6 + r() * 4.4, sag = Math.sin(x * .019 + y * .043) * 1.3, x0 = x + .7, y0 = y + .7 + sag, x1 = x + w - .7, y1 = y + (slab ? rh * 1.9 : rh) - .7 + sag, mx = (x0 + x1) / 2, my = (y0 + y1) / 2; x += w;
-          if (inRose(mx, my)) continue;
-          if (ribs.length && !inU(mx, my) && !inU(x0, y0) && !inU(x1, y1) && !inU(x1, y0) && !inU(x0, y1)) continue;   // (off the paving: nothing to lay)
-          const d = ribs.length ? (Math.hypot((mx - ccx) / 150, (my - ccy) / 70) < 1 ? .3 : inU(mx, my - 5) && inU(mx, my + 5) && inU(mx - 7, my) && inU(mx + 7, my) ? .62 : 1) : Math.hypot((mx - pz.centre.x) / (b.w / 2), (my - pz.centre.y) / (b.h / 2));
-          const pv = patch(mx, my), tone = r() + pv * .12, base = slab ? (r() < .5 ? '#b8b0a0' : '#c4bcaa') : tone < .15 ? '#c8b08a' : tone < .4 ? '#d4be96' : tone < .65 ? P.stone : tone < .82 ? '#dcc9a4' : tone < .93 ? '#cdb68e' : '#d8c2aa';
-          const sw = x1 - x0 + (r() - .5) * .5, shh = y1 - y0 + (r() - .5) * .4, sx = mx - sw / 2, sy = my - shh / 2;
-          cx.globalAlpha = 1; cx.fillStyle = base; cx.beginPath(); cx.roundRect(sx, sy, sw, shh, 1.3); cx.fill();
-          cx.globalAlpha = .3; cx.fillStyle = P.stoneHi; cx.fillRect(sx + .5, sy + .3, sw * .75, 1.3);
-          cx.globalAlpha = .24; cx.fillStyle = '#7a6648'; cx.fillRect(sx + .4, sy + shh - 1.1, sw - .8, 1.1);
-          if (d < .55 && r() < .5) { cx.globalAlpha = .16; cx.fillStyle = '#f4e8c8'; cx.fillRect(sx, sy, sw, shh); }   // polished by feet in the middle
-          else if (pv < -1 && r() < .35) { cx.globalAlpha = .12; cx.fillStyle = '#6a5a40'; cx.fillRect(sx, sy, sw, shh); }   // an old darker patch
-          // moss and weeds in the joints, more towards the rim
-          if (d > .7 && r() < (d - .6) * .7) { cx.globalAlpha = .7; cx.fillStyle = r() < .5 ? '#7d8f4e' : '#93a252'; cx.fill(path(sceneDraw.blob(r, x1 + .3, my + (r() - .5), 1.2 + r() * 1.6, .8 + r() * .7, 5, .5))); }
-        }
-        y += rh;
-      }
+      // (fix round 2: the setts laid in fans, see fanSetts; in rows they ran straight across the curved streets and read as a
+      // brick wallpaper. One lattice and one seed for the square, the walks, the high street and the quay: no seam between them)
+      const dOf = (x, y) => ribs.length ? (Math.hypot((x - ccx) / 150, (y - ccy) / 70) < 1 ? .3 : inU(x, y - 5) && inU(x, y + 5) && inU(x - 7, y) && inU(x + 7, y) ? .62 : 1) : Math.hypot((x - pz.centre.x) / (b.w / 2), (y - pz.centre.y) / (b.h / 2));
+      fanSetts(cx, [b.x - 6, b.y - 6, b.x + b.w + 6, b.y + b.h + 6], { P, salt: 23, skip: (x, y) => inRose(x, y) || ribs.length > 0 && !inU(x, y) && !inU(x, y - 4) && !inU(x, y + 4) && !inU(x - 5, y) && !inU(x + 5, y),
+        wear: (x, y) => dOf(x, y) < .55 ? .45 : 0, rim: (x, y) => { const d = dOf(x, y); return d > .7 ? (d - .6) * 1.2 : 0; } });
       cx.globalAlpha = 1;
       // the rose: an inlaid ring of dark stone, a pale field, the points in honey stone, softened by wear
       if (rose) {
-      cx.fillStyle = '#8f7a58'; cx.beginPath(); cx.ellipse(ccx, ccy, 46, 25.3, 0, 0, Math.PI * 2); cx.fill();
-      cx.fillStyle = '#e4d4ae'; cx.beginPath(); cx.ellipse(ccx, ccy, 42.5, 23.2, 0, 0, Math.PI * 2); cx.fill();
+      // (fix round 2: laid in stone, not a printed disc: a ring of separate dark kerb stones round it, its field in pale
+      // stones cut to the circle with their joints showing, the points in honey stone, all worn by feet)
+      cx.fillStyle = '#a08a66'; cx.beginPath(); cx.ellipse(ccx, ccy, 46, 25.3, 0, 0, Math.PI * 2); cx.fill();
+      for (let i = 0; i < 28; i++) { const a0 = i / 28 * Math.PI * 2 + .02, a1 = (i + 1) / 28 * Math.PI * 2 - .02, t = (i * 37 % 11) / 11; cx.fillStyle = t < .4 ? '#94805e' : t < .75 ? '#a48e6a' : '#8a7656'; cx.beginPath(); cx.ellipse(ccx, ccy, 45.4, 24.9, 0, a0, a1); cx.ellipse(ccx, ccy, 42.2, 23, 0, a1, a0, true); cx.closePath(); cx.fill(); }
+      cx.fillStyle = '#dccba6'; cx.beginPath(); cx.ellipse(ccx, ccy, 42.2, 23, 0, 0, Math.PI * 2); cx.fill();
+      cx.save(); cx.beginPath(); cx.ellipse(ccx, ccy, 42.2, 23, 0, 0, Math.PI * 2); cx.clip(); cx.strokeStyle = '#b8a37e'; cx.lineWidth = .8; cx.globalAlpha = .6;
+      for (let k = -40; k <= 40; k += 8.5) { cx.beginPath(); cx.moveTo(ccx + k, ccy - 24); cx.lineTo(ccx + k + 3, ccy + 24); cx.stroke(); }
+      for (let k = -20; k <= 20; k += 6.2) { cx.beginPath(); cx.moveTo(ccx - 44, ccy + k); cx.lineTo(ccx + 44, ccy + k + 1.5); cx.stroke(); }
+      cx.restore(); cx.globalAlpha = 1;
       cx.strokeStyle = '#b49c72'; cx.lineWidth = 1.2; cx.globalAlpha = .7; cx.beginPath(); cx.ellipse(ccx, ccy, 29, 16, 0, 0, Math.PI * 2); cx.stroke(); cx.globalAlpha = 1;
       for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4 - Math.PI / 2, l = i % 2 ? 15 : 26; for (const [side, col] of [[1, '#a8875a'], [-1, '#c8a878']]) { cx.fillStyle = col; cx.beginPath(); cx.moveTo(ccx + Math.cos(a) * l, ccy + Math.sin(a) * l * .55); cx.lineTo(ccx + Math.cos(a + side * 1.25) * 4.4, ccy + Math.sin(a + side * 1.25) * 2.4); cx.lineTo(ccx, ccy); cx.fill(); } }
       cx.fillStyle = '#6e5a3e'; cx.beginPath(); cx.arc(ccx, ccy, 2, 0, Math.PI * 2); cx.fill();
@@ -670,5 +700,5 @@ window.GardenNativePainted = (function () {
   }
   function memory(scene) { let bytes = 0, n = 0; if (cachedGround && scene && scene.textures.exists(cachedGround.key)) { const c = scene.textures.get(cachedGround.key).getSourceImage(); bytes += c.width * c.height * 4; n++; } return { groundBytes: bytes, groundTextures: n }; }
   function status() { return { wanted: wanted(), ready: ready(), groundMs, composeMs, K, planted: lastPlanting.length, spots: spotCounts, lastError }; }
-  return { wanted, ready, preload, ground, building, planting, trunks: () => plantingTrunks, trunkFoot, fadeUnder, crownCovers, fishingCrownCovers, playerCanopies: () => plantingCoverage, status, objectImage, objectCanvas, paintIntoGround, compose, memory, get lastError() { return lastError; }, set lastError(v) { lastError = v; }, set overLayer(v) { overLayer = v; } };
+  return { wanted, ready, preload, ground, building, planting, fanSetts, trunks: () => plantingTrunks, trunkFoot, fadeUnder, crownCovers, fishingCrownCovers, playerCanopies: () => plantingCoverage, status, objectImage, objectCanvas, paintIntoGround, compose, memory, get lastError() { return lastError; }, set lastError(v) { lastError = v; }, set overLayer(v) { overLayer = v; } };
 })();

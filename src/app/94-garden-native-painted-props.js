@@ -150,9 +150,9 @@ window.GardenPaintedProps = (function () {
       B.f(B.rect(-10, -46, 20, 2.4), '#8e2820').f(B.rr(-6, -38, 12, 2.6, 1), '#2a1a16').f(B.rect(-6, -38, 12, .8), '#6a2a22');
       B.f(B.rr(-5, -31, 10, 8, 1), '#f4eee0').s('M-3 -28h6M-3 -25.5h4', '#8a8478', .7).f(B.rect(-9, -10, 18, 2), '#8e2820');
       B.f(B.rect(-8.2, -43, 2.2, 36), '#ee8a70', .35);
-      // a letter waiting on the plinth, and grass at the foot
-      B.f(B.poly([[7, -4], [17, -7], [19, -1], [9, 2]]), '#fbf6ea').s('M7 -4l6 1.5l6 -4.5', '#c8bfa8', .7);
-      B.tufts(r, 0, 1, 26, 9, o.season);
+      // (village fix round 2) it stands on the square's paving: no grass growing out of the stones at its foot, and no white
+      // letter lying on the ground beside it (the flag on the box says when there is post); the plinth's worn foot instead
+      void r; B.f(B.ell(0, 1.2, 12, 2.2), '#6a5a44', .22).f(B.rect(-10, -1.2, 20, 1.2), '#5a5048', .5);
     } },
     // the field journal: an oak lectern, the book open on fish and bugs, a quill
     lectern: { box: [-26, -64, 26, 8], draw(B, o) {
@@ -304,7 +304,8 @@ window.GardenPaintedProps = (function () {
   const KIND = { postbox: 'postbox', lectern: 'lectern', sundial: 'sundial', tripod: 'tripod', board: 'board', lakeboard: 'lakeboard', smoker: 'smoker', well: 'well', wish: 'well', post: 'sign', fountain: 'fountain' };
   const LIB = {
     // library objects for the rest: [id, variant, size]
-    seat: ['street.bench', 0, { w: 84 }], lamp: ['street.lamp', 0, { h: 96 }], lampbox: ['street.lamp', 0, { h: 96 }], lighthouse: ['building.lighthouse', 0, { h: 190 }],
+    // (village fix round 2: a street lamp nearly twice the player, rule 14's 1.8 to 2 H; at 96 it stood at about 1.45 H)
+    seat: ['street.bench', 0, { w: 84 }], lamp: ['street.lamp', 0, { h: 124 }], lampbox: ['street.lamp', 0, { h: 124 }], lighthouse: ['building.lighthouse', 0, { h: 190 }],
     reeds: null, boat: null,
   };
   // (village fix round 1: the harbour's lighthouse is a tower, six and a half times the player, not a little taller than a

@@ -17,29 +17,15 @@
   // and there, moss in the joints, a shallow puddle now and then. (Flagstones half the figure's height in ruler-straight
   // rows read as a brick wall papered over the ground.) Rows and stones are keyed by their place, so chunks meet exactly.
   function paveSetts(B, P, bb, salt, moss) {
-    const cx = B.cx, K = TK(), rowH = 5.6, patch = (x, y) => Math.sin(x * .013 + y * .021) + Math.sin(x * .031 - y * .017 + 1.3) * .6;
-    const tones = ['#c8b08a', '#d4be96', P.stone, '#dcc9a4', '#cdb68e', '#d8c2aa'];
-    B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), '#a8977a');   // the mortar bed
-    for (let y = Math.floor(bb[1] / rowH) * rowH - rowH; y < bb[3] + rowH; y += rowH) {
-      const rr = K.rng(K.hash(Math.round(y * 10), 7, salt) | 1);
-      for (let x = Math.floor(bb[0] / 7) * 7 - rr() * 7; x < bb[2]; ) {
-        const slab = rr() < .012, w = slab ? 12 + rr() * 6 : 4.6 + rr() * 4.2, sag = Math.sin(x * .019 + y * .043) * 1.2, hh = slab ? rowH * 1.9 : rowH;
-        const x0 = x + .6, y0 = y + .6 + sag, sw = w - 1.2, sh = hh - 1.2; x += w;
-        if (y0 > bb[3] + 2 || y0 + sh < bb[1] - 2) continue;
-        const pv = patch(x0, y0), t = rr() + pv * .12;
-        cx.globalAlpha = 1; cx.fillStyle = slab ? (rr() < .5 ? '#b8b0a0' : '#c4bcaa') : tones[Math.max(0, Math.min(5, Math.floor(t * 6)))];
-        cx.beginPath(); cx.roundRect(x0, y0, sw, sh, 1.3); cx.fill();
-        cx.globalAlpha = .3; cx.fillStyle = P.stoneHi; cx.fillRect(x0 + .5, y0 + .3, sw * .75, 1.2);
-        cx.globalAlpha = .24; cx.fillStyle = '#7a6648'; cx.fillRect(x0 + .4, y0 + sh - 1.1, sw - .8, 1.1);
-        if (pv < -1 && rr() < .35) { cx.globalAlpha = .12; cx.fillStyle = '#6a5a40'; cx.fillRect(x0, y0, sw, sh); }
-        if (moss && rr() < moss) { cx.globalAlpha = .6; cx.fillStyle = rr() < .5 ? '#7d8f4e' : '#93a252'; cx.beginPath(); cx.ellipse(x0 + sw + .3, y0 + sh / 2, 1.1 + rr(), .8, 0, 0, 7); cx.fill(); }
-      }
-    }
-    cx.globalAlpha = 1;
-    // broad light and wear, and a puddle now and then where the stones have sunk
+    // (village fix round 2) laid in fans like the square (GardenNativePainted.fanSetts, the same lattice and seed, so the
+    // high street, the quay and the square are one paving with no seam): in straight rows they ran across the street's
+    // curve and read as a brick wallpaper. Broad light and wear, and a puddle now and then, over the top.
+    const K = TK(), NP = window.GardenNativePainted;
+    if (NP && NP.fanSetts) NP.fanSetts(B.cx, bb, { P, salt: 23, rim: moss ? () => moss * 1.5 : null });
+    else B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), P.stone);
     K.tiles(bb, 150, 0, salt + 90, (tx, ty, rr) => {
-      for (let k = 0; k < 2; k++) B.f(B.blob(rr, tx + rr() * 150, ty + rr() * 150, 30 + rr() * 40, 10 + rr() * 14, 9, .5), rr() < .55 ? '#f4e8c8' : '#7a6648', .1);
-      if (rr() < .3) { const px = tx + 20 + rr() * 110, py = ty + 20 + rr() * 110, w = 9 + rr() * 9; B.f(B.blob(rr, px, py, w, w * .36, 9, .35), '#8a9a98', .45).f(B.blob(rr, px - w * .2, py - 1, w * .5, w * .12, 7, .4), '#e8f0ee', .45); }
+      for (let k = 0; k < 2; k++) B.f(B.blob(rr, tx + rr() * 150, ty + rr() * 150, 30 + rr() * 40, 10 + rr() * 14, 9, .5), rr() < .55 ? '#f4e8c8' : '#7a6648', .09);
+      if (rr() < .25) { const px = tx + 20 + rr() * 110, py = ty + 20 + rr() * 110, w = 9 + rr() * 9; B.f(B.blob(rr, px, py, w, w * .36, 9, .35), '#8a9a98', .4).f(B.blob(rr, px - w * .2, py - 1, w * .5, w * .12, 7, .4), '#e8f0ee', .4); }
     });
   }
 

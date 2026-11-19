@@ -4,7 +4,8 @@
    THE BOTTLE. Pick a friend and a line from the book (never free text: GTG_BOTTLE_LINES, the index goes on the wire) and it sets off. Three days later it is bobbing in their lake (frozen in, in winter). Snapshot `bt` [[mark, line, day sent]], the last three; `bw` how many wait unread, so a visitor sees them too.
    ============================================================ */
 const GTG_GN = Object.freeze({ days: 3, hostTicket: 3, homeTicket: 6, at3: Object.freeze({ 'mat:stone': 2 }), at6: Object.freeze({ 'mat:stone': 5 }) });
-const GTG_GN_AT = Object.freeze(Object.assign(_wdPt('post-box', 1.1, 0.5), { guest: _wdPt('notice-board', -3.4, 0.5) }));   // world cells: yours at home; those staying with you stand in a row from here
+// (village fix round 2) your gnome stands on the turf at the corner of your bed by the welcome sign, not out in the square's paving
+const GTG_GN_AT = Object.freeze(Object.assign(_wdPt('ld-sign-c', 2.2, 1.1), { guest: _wdPt('notice-board', -3.4, 0.5) }));   // world cells: yours at home; those staying with you stand in a row from here
 const GTG_BOTTLE_AT = Object.freeze([[19, 23.4], [31.5, 22.6], [23, 26.6]]);   // world cells: where a bottle comes to rest
 const GTG_BOTTLE = Object.freeze({ days: 3, keep: 3, read: 3, send: 1 });
 /* Append only: the index is what is sent. No names, no links, nothing but kindness. */

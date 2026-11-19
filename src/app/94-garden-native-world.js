@@ -439,7 +439,9 @@ window.GardenNativeWorld = (function () {
         const paint = x >= 0 && y >= 0 && x < W.cols && y < W.rows ? routePaint[y * W.cols + x] : 0;
         boxSig = (Math.imul(boxSig, 31) + paint) | 0;
         if (typeof gardenZoneOf === 'function' && gardenZoneOf(x, y)) continue;
-        const c = cellAt(x, y), t = c ? (c.material || '') + (c.row && c.row.plot && !c.locked ? '+' : '') : '-';
+        // (village fix round 2: not whether a village field's piece is yours: that ground is the field painter's, in its own
+        // chunks, and opening one at a level-up baked this whole picture again, a freeze of several seconds)
+        const c = cellAt(x, y), t = c ? (c.material || '') + (c.row && c.row.plot && !c.locked && !villageField(c.row.id) ? '+' : '') : '-';
         for (let i = 0; i < t.length; i++) boxSig = (Math.imul(boxSig, 31) + t.charCodeAt(i)) | 0;
         boxSig = (Math.imul(boxSig, 31) + 59) | 0;
       }
@@ -450,6 +452,8 @@ window.GardenNativeWorld = (function () {
       if (typeof gardenPropsNow === 'function') for (const p of gardenPropsNow()) if (!p.walk && Number.isFinite(p.x)) for (let y = Math.floor(p.y) - 1; y <= p.y + (p.h || 1); y++) for (let x = Math.floor(p.x) - 1; x <= p.x + (p.w || 1); x++) blocked.add(x + ',' + y);   // (a sight placed at run time, such as the shore bench)
       // and the gates stay readable: no village tree in front of an arch or bridge (the canopy rises up the screen over it)
       for (const g of D.gates || []) for (let y = g.y - 2; y <= g.y + 5; y++) for (let x = g.x - 3; x <= g.x + 3; x++) blocked.add(x + ',' + y);
+      // (village fix round 2) and the way up to a gate is clear too: no crown standing over the mouth of the Millwater bridge
+      for (const g of D.gates || []) if (g.door) for (let y = g.door.y - 1; y <= g.door.y + 5; y++) for (let x = g.door.x - 3; x <= g.door.x + 2; x++) blocked.add(x + ',' + y);
       // nor on a solid landform: no bank tree grows out of the orchard's terrace wall or the scarp
       for (const f of D.landforms || []) {
         if (f.col !== 'full' || !f.polygon || f.polygon.length < 3) continue;
@@ -482,6 +486,12 @@ window.GardenNativeWorld = (function () {
         // A village field paints its own ground and what grows in it (94-garden-paint-vale-1village.js): only its trees are
         // set here, and nothing low is set on its edge, where the field's own ground would cut it in two.
         if (c.row && c.locked && villageField(c.row.id)) return ['wood', 'orchard', 'dell'].includes(c.row.kind) ? tree : '';
+        // (village fix round 2) an orchard or a wood of the village that is yours keeps its trees, the same trees it had
+        // (an orchard lost every tree the moment it opened), never in front of a building, the bed or anything you plant
+        if (c.row && !c.locked && villageField(c.row.id) && ['wood', 'orchard'].includes(c.row.kind)) {
+          for (let dy = 0; dy <= 4; dy++) for (let dx = -2; dx <= 2; dx++) { const k = (x + dx) + ',' + (y - dy); if (dy && screened.has(k) || taken.has(k)) return ''; }
+          return 'tree';
+        }
         if (near(x, y, 1, cc => !!(cc.row && cc.locked && villageField(cc.row.id)))) return '';
         if (c.row && c.locked) return ['wood', 'orchard', 'dell'].includes(c.row.kind) || c.row.solid ? tree : 'wild';
         if (c.row && c.row.plot) return '';
@@ -1279,7 +1289,13 @@ window.GardenNativeWorld = (function () {
       for (const record of fadingProps) {
         if (record.editorLifted) continue;
         const p = record.metadata.prop, b = record.bounds, sx = _gw.px * W.cellW, sy = W.sky + _gw.py * W.cellH;
-        let behind = sx > b.x - 8 && sx < b.x + b.width + 8 && sy > b.y + 18 && sy < W.sky + (p.y + p.h) * W.cellH - 1.5;
+        // (village fix round 2) a house fades only when it really stands over you: a good share of your figure inside the
+        // body of its picture (its eaves, flower boxes and the air at the picture's sides left out), with your feet behind
+        // its foot. Walking a lane beside a cottage, or standing at a door beside a tower, faded the whole building to
+        // half see-through, grass showing through its walls, as if it were a fault in the drawing.
+        const footY = W.sky + (p.y + p.h) * W.cellH, inset = Math.max(6, b.width * .12), bx0 = b.x + inset, bx1 = b.x + b.width - inset, by0 = b.y + 18;
+        const ph = playerOcclusionHeight || 50, ox = Math.max(0, Math.min(sx + 7, bx1) - Math.max(sx - 7, bx0)), oy = Math.max(0, Math.min(sy, footY) - Math.max(sy - ph, by0));
+        let behind = sy < footY - 6 && ox * oy >= 14 * ph * .4;
         if (behind && p.id === 'ld-falls' && record.handle.fallsCoversPlayer) behind = record.handle.fallsCoversPlayer(sx, sy);
         if (record.behind !== behind) { record.behind = behind; record.root.setAlpha(behind ? .38 : 1); }
       }

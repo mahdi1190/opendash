@@ -116,6 +116,9 @@ wdMod({
       // a painted landmark that draws its own way in (the grotto's mouth, the shepherd's hut's door): the way in is that door, not a second cartoon door in front of it
       const own = native && !cave && !prop && window.GardenPaintedMarks && GardenPaintedMarks.wayIn && GardenPaintedMarks.wayIn(R.at), ownDrawing = own && _gw.nativeWorld.entities.get('prop:' + R.at), ownFoot = ownDrawing && ownDrawing.metadata && ownDrawing.metadata.foot;
       if (ownFoot && Number.isFinite(ownFoot.x) && Number.isFinite(ownFoot.y)) cave = { x: ownFoot.x + own.dx, y: ownFoot.y + own.dy };
+      // (village fix round 2) the painted lighthouse has its own door at the foot of its tower: the way up is that door, not a
+      // little red-and-white striped box with an arched door standing loose on the sand beside it, like a second toy lighthouse
+      if (native && !cave && R.id === 'lamproom') { const d = _gw.nativeWorld.entities.get('prop:' + R.at), f = d && d.metadata && d.metadata.foot; if (f && Number.isFinite(f.x) && Number.isFinite(f.y)) cave = { x: f.x, y: f.y - 2 }; }
       // the painted hollow oak has its own split and the owl's eyes in it (2.71): the way in is that split, at the tree's foot, not a second cartoon hollow in front of it
       if (R.id === 'owl' && prop) { const W = GARDEN_WORLD, ok = foot && Number.isFinite(foot.x) && Number.isFinite(foot.y); cave = ok ? { x: foot.x, y: foot.y } : { x: (prop.x + prop.w / 2) * W.cellW, y: W.sky + (prop.y + prop.h - .1) * W.cellH }; foot = null; }
       const lamp = !!(foot && Number.isFinite(foot.x) && Number.isFinite(foot.y)), anchor = lamp ? foot : cave;
