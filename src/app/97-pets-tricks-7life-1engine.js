@@ -113,13 +113,14 @@ function _plPlay(P, clips, rest, after, o) {
   const tight = !!(P.lifeCur && (P.lifeCur.group === 'you' || P.lifeCur.tight));
   if (P.me && !_pl.here && !o.at && !o.staged && !(P.lifeCur && P.lifeCur.stay) && _plFar(P, tight)) { const t = _plStage(P, tight); if (t) { P.lifeStaged = 1; P.walkTo(t.x, t.y, true, () => { _plFacePlayer(P); _plPlay(P, clips, rest, after, Object.assign({}, o, { staged: 1 })); }); return; } }
   const row = P.lifeCur, kind = o.prop || row && (row.propAlways || (P.lifeStaged || _pl.here) && row.prop);
-  if (kind && clips.length && !o.noProp) _plProp(P, kind, clips.reduce((t, c) => t + _plMs(c), 0));
   const next = (i) => {
     if (i >= clips.length) { P.sit(); P.busy = rest == null ? 1.2 : rest; if (after) after(); return; }
     P.clip(clips[i], _plMs(clips[i]), () => next(i + 1), i > 0 ? { quiet: true } : undefined);
     if (i === 0) _plCopy(P, clips[0]);
   };
   next(0);
+  // drawn after the first clip has started: a clip can change the pet's pose picture, and the thing belongs in the one that shows
+  if (kind && clips.length && !o.noProp) _plProp(P, kind, clips.reduce((t, c) => t + _plMs(c), 0));
 }
 function _plMs(c) { const lib = typeof petClipDef === 'function' ? petClipDef(c) : null; return lib ? lib.ms : (PET_CLIPS[c] || [0, 1200])[1]; }
 /** Where you can see it: inside the camera with a margin (a cell and a bit from each edge). */
@@ -295,8 +296,8 @@ function _plTreehouse(P) {
     const was = { x: P.x, y: P.y };
     P.dir = 1; P.x = foot.x; P.y = foot.y + 0.04;   // drawn just in front of the treehouse, at its foot
     P.perch = { dx: win[0], up: -win[1] - 4 };   // feet just below the window's bottom edge: the wall and sill hide the body, the head shows in the window
+    _plPlay(P, ['l-window'], 0, () => { P.perch = null; P.x = was.x; P.y = was.y; _plPlay(P, ['jump'], 0.6); }, { at: 1 });
     _plSill(P, _plMs('l-window'));
-    _plPlay(P, ['l-window'], 0, () => { P.perch = null; P.x = was.x; P.y = was.y; _plPlay(P, ['jump'], 0.6); });
   };
   if (_pl.here) { _plPlay(P, ['jump'], 0, up); return true; }
   P.walkTo(near.x, near.y, false, () => _plPlay(P, ['jump'], 0, up));
