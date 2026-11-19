@@ -126,4 +126,230 @@
     if (s !== 'winter') { mossOn(B, r, -hw, -14, hw * 2, 8, s); for (let i = 0; i < 6; i++) B.f(B.circ(-hw + 4 + r() * 20, -15 - r() * 4, 1.2), '#f4f0e2', .9); }
     B.tufts(r, -hw - 2, 1, 10, 7, grass(s), 6).tufts(r, hw + 2, 1, 10, 7, grass(s), 6);
   } };
+
+  /* ---------- shared pieces for the merged sights (the owner, 19 Nov: "merged into a structure or the land it belongs to") ---------- */
+  const BARK = ['#6e5a42', '#4e3e2c', '#8e785a', '#2e2418'];
+  // surface roots snaking out over the ground from a trunk's foot, mossed, sinking into the earth as they go (in a seat: under every actor)
+  function roots(B, r, n, x0, x1, reach, s) {
+    for (let i = 0; i < n; i++) {
+      const side = i % 2 ? 1 : -1, sx = side < 0 ? x0 + r() * 8 : x1 - r() * 8, a = (side < 0 ? Math.PI : 0) + (r() - .5) * 1.1 + (side < 0 ? -.25 : .25), len = reach * (.55 + r() * .45);
+      let px = sx, py = 1 + r() * 3, w = 6 + r() * 3;
+      for (let k = 0; k < 7; k++) { const nx = px + Math.cos(a + (r() - .5) * .6) * len / 7, ny = py + Math.abs(Math.sin(a)) * len / 7 * .45 + (r() - .5) * 2; B.s(`M${px} ${py}L${nx} ${ny}`, BARK[1], w, .95).s(`M${px} ${py - w * .25}L${nx} ${ny - w * .25}`, BARK[2], w * .35, .7); px = nx; py = ny; w *= .78; }
+      if (s !== 'winter') B.f(B.blob(r, sx + side * 10, 3, 6, 2, 6, .5), '#7d8f4e', .7);
+    }
+  }
+  // leaf litter in drifts, each leaf its own turn (autumn thick, summer a few old ones)
+  function litter(B, r, rx, ry, n, s) {
+    const cols = s === 'autumn' ? ['#c45a26', '#e0a040', '#8e6a2c', '#b8782e'] : s === 'winter' ? ['#8a7a64', '#a89a80'] : ['#8e7a4a', '#a8905a', '#6e6a3a'];
+    for (let i = 0; i < n; i++) { const a = r() * Math.PI * 2, d = .45 + Math.sqrt(r()) * .55, x = Math.cos(a) * rx * d, y = Math.sin(a) * ry * d + ry * .2; B.cx.save(); B.cx.translate(x, y); B.cx.rotate(r() * 3); B.f(B.ell(0, 0, 2 + r() * 1.4, 1 + r() * .6), cols[i % cols.length], .85); B.cx.restore(); }
+  }
+  // a crown of leaf masses lit from the upper left: the dark under-lobes, the body, lit lobes, a few bright flecks
+  function crown(B, r, lobes, s, o) {
+    o = o || {}; const L = leaf(s);
+    if (s === 'winter') { for (const [x, y, rx] of lobes) for (let k = 0; k < 3; k++) { const a = -Math.PI * (.15 + r() * .7); B.s(`M${x} ${y + rx * .3}l${Math.cos(a) * rx} ${Math.sin(a) * rx * .8}`, '#6a5444', 1.6, .75); } return; }
+    for (const [x, y, rx, ry] of lobes) B.f(B.blob(r, x + rx * .12, y + ry * .16, rx, ry, 10, .32), L[0]);
+    for (const [x, y, rx, ry] of lobes) B.f(B.blob(r, x - rx * .04, y - ry * .04, rx * .84, ry * .8, 10, .34), L[1]);
+    for (const [x, y, rx, ry] of lobes) if (x < (o.litX == null ? 0 : o.litX) + rx * .4 || y < (o.litY || -1e9)) B.f(B.blob(r, x - rx * .26, y - ry * .3, rx * .5, ry * .42, 8, .4), L[2], .92);
+    for (const [x, y, rx, ry] of lobes) if (r() < .5) B.f(B.blob(r, x - rx * .4, y - ry * .5, rx * .2, ry * .16, 6, .5), L[3], .85);
+    for (let i = 0; i < lobes.length * 4; i++) { const [x, y, rx, ry] = lobes[Math.floor(r() * lobes.length)], a = r() * Math.PI * 2; B.f(B.ell(x + Math.cos(a) * rx * .95, y + Math.sin(a) * ry * .95, 2.2, 1.4), L[r() < .5 ? 0 : 1], .9); }
+    if (s === 'autumn') for (let i = 0; i < lobes.length * 2; i++) { const [x, y, rx, ry] = lobes[Math.floor(r() * lobes.length)]; B.f(B.blob(r, x + (r() - .5) * rx, y + (r() - .5) * ry, rx * .22, ry * .18, 6, .5), ['#c45a26', '#e0a040', '#b8782e'][i % 3], .85); }
+  }
+  // a puff of smoke, soft, for a part that rises and fades
+  const puff = (B, rad) => B.f(B.circ(0, 0, rad), B.rad(0, 0, rad, [[0, 'rgba(236,234,228,.85)'], [.6, 'rgba(226,224,218,.45)'], [1, 'rgba(220,220,214,0)']]));
+  const smokeParts = (at, n, rise, drift, rate) => Array.from({ length: n }, (_, i) => ({ id: 'smoke' + i, box: [-9, -9, 9, 9], at, draw: B => puff(B, 7 + i * .6),
+    anim(im, t, o) { const p = (t * rate + i / n) % 1; im.setPosition(o.x + Math.sin(p * 3 + i) * 2 + p * drift, o.y - p * rise); im.setAlpha(Math.min(1, p * 6) * (1 - p) * .7); } }));
+
+  /* ---------- the great stump: the bole of a felled oak, its buttress roots running out into the moss, the felling cut with
+     its splintered hinge, the very small door of the parlour with its step, a tin chimney with a thread of smoke; the
+     trunk that was felled lies beside it and its own logs are split and stacked on the east ---------- */
+  A['ld-stump'] = { box: [-72, -92, 74, 10], door: { dx: 10, dy: 0 }, lit: true, lights: [[12, -14, 50]],
+    seat: { kind: 'moss', w: 74, front: 20, back: 22, stones: 0, box: [-96, -30, 96, 34], extra(B, r, P, G) { roots(B, r, 7, -30, 30, 52, 'summer'); litter(B, r, 70, 20, 46, 'autumn'); for (let i = 0; i < 14; i++) B.f(B.ell(36 + r() * 26, 2 + r() * 6, 1.6, .8), '#d4b07a', .9); } },
+    parts: smokeParts([18, -78], 3, 34, 8, .22),
+    draw(B, o) {
+    const r = KIT().rng(721), s = o.season, top = -H * 1.3, bark = BARK;
+    // the felled trunk lying away to the west, its sawn end toward the stump, moss along its back, a fern in front
+    B.f(`M-72 -4Q-74 -22 -64 -26L-34 -24Q-28 -14 -32 -2Z`, bark[1]).f(`M-72 -10Q-72 -22 -64 -25L-36 -23Q-34 -20 -36 -18Z`, bark[2], .6);
+    for (let i = 0; i < 5; i++) B.s(`M${-70 + i * 2} ${-6 - i * 3.6}L-36 ${-6 - i * 3.4}`, bark[3], .7, .45);
+    B.f(B.ell(-33, -13, 6, 11.6), '#b49a70').f(B.ell(-33, -13, 4.6, 9.6), '#cdb488'); for (let k = 1; k < 4; k++) B.s(B.ell(-33, -13, 4.6 - k, 9.6 - k * 2.2), '#a08460', .5, .7);
+    if (s !== 'winter') { mossOn(B, r, -70, -24, 30, 6, s); ferns(B, r, -54, 0, 20, 4, s); }
+    // the buttress roots where they leave the bole, then the bole itself, fluted, lit on the west
+    for (const [x, d] of [[-34, -1], [-24, -1], [28, 1], [36, 1], [-4, 0]]) B.f(`M${x - 7} 1Q${x + d * 7} -20 ${x + d * 2} -30L${x + 9} -25Q${x + 11 + d * 5} -11 ${x + 12 + d * 12} 2Z`, bark[d < 0 ? 0 : 1]);
+    B.f(`M-29 0Q-34 ${top * .5} -30 ${top}H30Q34 ${top * .5} 29 0Z`, bark[0]);
+    B.f(`M-34 0Q-37 ${top * .5} -31 ${top}H-12Q-16 ${top * .5} -14 0Z`, bark[2], .65).f(`M13 0Q18 ${top * .5} 13 ${top}H31Q36 ${top * .5} 33 0Z`, bark[1], .8);
+    for (let i = 0; i < 11; i++) { const x = -28 + i * 5.6 + (r() - .5) * 2; B.s(`M${x} -2Q${x + (r() - .5) * 4} ${top * .5} ${x + (r() - .5) * 3} ${top + 2}`, bark[3], .8, .45); }
+    // the felling cut: the pale face, its rings, the splintered hinge standing up along the back edge
+    B.f(B.ell(0, top, 31, 8), '#b49a70').f(B.ell(0, top, 27, 6.4), '#cdb488');
+    for (let k = 1; k < 7; k++) B.s(B.ell(-1 + k * .3, top + .2, 27 - k * 3.8, 6.4 - k * .9), '#a08460', .55, .7);
+    B.f(B.ell(-9, top - 1, 11, 2.6), '#e4d0a4', .5);
+    const hinge = [[-22, top - 3]]; for (let x = -20; x <= 22; x += 3) hinge.push([x, top - 4 - (r() * 9 + (Math.abs(x) < 10 ? 6 : 0))]); hinge.push([24, top - 3]);
+    B.f(B.poly(hinge.concat([[24, top - 1], [-22, top - 1]])), '#c4a878').s(B.line(hinge), '#8e7450', .7);
+    for (let i = 0; i < 6; i++) B.s(`M${-16 + i * 6} ${top - 2}l${(r() - .5) * 2} ${-4 - r() * 4}`, '#e8d4a8', .6, .8);
+    // the tin chimney of the parlour stove, out of the cut face
+    B.f(B.rect(15, top - 18, 5, 18), B.lin(15, 0, 20, 0, [[0, '#9aa0a2'], [1, '#4e5456']])).f(B.rect(13.6, top - 21, 7.8, 3.4), '#3e4446');
+    // moss on the bole and the rim, bracket fungi on the shaded side
+    mossOn(B, r, -30, top + 3, 34, 9, s); for (let i = 0; i < 6; i++) B.f(B.blob(r, -31 + r() * 5, top * (.15 + r() * .65), 4, 2, 6, .5), s === 'winter' ? '#e8eeea' : '#6f8446', .85);
+    for (const [x, y] of [[27, top * .6], [30, top * .45], [25, top * .3]]) B.f(`M${x - 6} ${y}q6 -4.6 12 0z`, '#c89a5a').f(`M${x - 6} ${y}h12`, '#8a6438').f(`M${x - 4} ${y - 1.4}q4 -2.4 8 0`, '#e0b878', .6);
+    // the very small door: round-topped and green, a brass knob, a step of flat stone, a window that glows at night
+    B.f(`M4 0V-13a6 6 0 0 1 12 0V0Z`, '#2e2418').f(`M5.4 0V-12.6a4.6 4.6 0 0 1 9.2 0V0Z`, '#4e7a4a').s('M10 -12v12', '#3a5a36', .5).f(B.circ(13, -6, .9), '#e8c45a');
+    B.f(B.rr(1, -1.4, 18, 3, 1), STONE.rock).f(B.rect(1.4, -1.4, 17, 1), STONE.rockHi, .8);
+    B.f(B.circ(-7, -17, 3.4), '#3a2c1e').f(B.circ(-7, -17, 2.6), o.night ? '#ffd27a' : '#3e4e52').s('M-7 -19.6v5.2M-9.6 -17h5.2', '#8a6a46', .5);
+    B.s('M20 -14h3', IRON[0], .8).f(B.rr(21.4, -13, 3.4, 5, .8), IRON[0]).f(B.rr(22, -12.4, 2.2, 3.6, .5), o.night ? '#ffe08a' : '#7a9a9c');
+    // the logs from it, split and stacked on the east: ends toward us, pale wood ringed, bark at the rim
+    const round = (x, y, R) => { B.f(B.circ(x + .6, y + .6, R), bark[3], .6).f(B.circ(x, y, R), bark[1]).f(B.circ(x - .3, y - .3, R * .82), '#cdb488').s(B.ell(x - .3, y - .3, R * .5, R * .5), '#a08460', .5, .7).f(B.ell(x - R * .3, y - R * .35, R * .3, R * .18), '#e8d4a8', .6); };
+    for (const [x, y, R] of [[42, -5, 5.4], [53, -5, 5.6], [64, -5, 5.2], [47.5, -15, 5.2], [58.5, -15, 5.4], [53, -25, 5]]) round(x, y, R);
+    B.f(B.poly([[38, -1], [46, -3], [44, 1]]), '#cdb488');
+    // ferns and grass round the foot, a toadstool or two, fallen leaves on the cut in autumn
+    if (s !== 'winter') { ferns(B, r, -22, 2, 18, 4, s); ferns(B, r, 30, 2, 12, 3, s); for (const [x, c] of [[-14, '#c83a2a'], [-10, '#d84a3a']]) B.f(`M${x - 3} -3q3 -4 6 0z`, c).s(`M${x} -3v3`, '#efe8d8', 1.2).f(B.circ(x - 1, -4, .5), '#ffffff'); }
+    if (s === 'autumn') litter(B, r, 22, 4, 12, s);
+    if (s === 'winter') B.f(B.ell(0, top - 1, 28, 6), '#f4f6f2', .9);
+    B.tufts(r, -40, 3, 10, 6, grass(s), 7).tufts(r, 70, 3, 8, 6, grass(s), 7);
+  } };
+
+  /* ---------- pump square: a small yard of flags against a dry-stone wall, the cast-iron pump at the wall with its trough,
+     a bucket and the dipper on its nail, the flags dark and shining where the water runs off; the spout drips ---------- */
+  A['ld-pump'] = { box: [-66, -94, 68, 8],
+    seat: { kind: 'flags', w: 116, front: 26, back: 16, stones: 0, box: [-82, -26, 84, 40], extra(B, r) {
+      // the wet: dark round the trough's foot and the bucket, a runnel off to the yard's edge, shine on it
+      B.f(B.blob(r, -16, 6, 30, 7, 10, .35), '#3e3a2c', .32).f(B.blob(r, 42, 6, 10, 4, 8, .4), '#3e3a2c', .28);
+      B.s('M-4 10Q8 16 4 24Q-2 30 10 34', '#3e3a2c', 2.6, .3).s('M-4 10Q8 16 4 24', '#e8f0f0', .6, .45);
+      for (let i = 0; i < 6; i++) B.f(B.ell(-30 + r() * 30, 3 + r() * 7, 3 + r() * 3, .8), '#eef4f4', .35);
+    } },
+    parts: [
+      { id: 'drip', box: [-3, -3, 3, 4], at: [-4, -38], draw: B => B.f('M0 -2.4Q2 1 0 2.4Q-2 1 0 -2.4Z', '#d8eef2').f(B.circ(-.5, .4, .6), '#ffffff', .9), anim(im, t, o) { const p = (t * .7) % 1, f = Math.min(1, p / .8); im.setPosition(o.x, o.y + f * f * 15); im.setAlpha(p < .8 ? .9 : 0); } },
+      { id: 'ring', box: [-9, -3, 9, 3], at: [-4, -21], draw: B => B.s(B.ell(0, 0, 7, 1.8), '#e8f4f4', .8).s(B.ell(0, 0, 3.6, .9), '#ffffff', .6), anim(im, t, o) { const p = (t * .7) % 1; im.setAlpha(p >= .8 ? (1 - (p - .8) / .2) * .8 : 0); } },
+    ],
+    draw(B, o) {
+    const r = KIT().rng(731), s = o.season, L = leaf(s), wallTop = -H * 1.1, top = -H * 1.9, green = ['#2e4a3a', '#1e3428', '#4e6e58', '#0e1a14'];
+    // the wall behind: rubble in courses, a coping of slabs, its ends broken down, ivy on the west, valerian on the cope
+    const wt = x => wallTop + (x < -50 ? (-50 - x) * .9 : x > 52 ? (x - 52) * .9 : 0) + Math.sin(x * .3) * .8;
+    rubble(B, r, -62, 64, -14, wt, ['#9a9480', '#8a8470', '#a8a28c', '#7e7864'], { course: 4.6, moss: .12 });
+    for (let x = -50; x < 52;) { const w = 9 + r() * 7; B.f(B.rr(x, wallTop - 4, w - .6, 5, 1.2), '#b4ae98').f(B.rect(x + .6, wallTop - 4, w - 1.8, 1.4), '#d8d2bc', .8); x += w; }
+    ivy(B, r, -54, -14, wallTop + 2, s); ivy(B, r, -46, -14, wallTop + 8, s);
+    if (s !== 'winter') for (let i = 0; i < 6; i++) { const x = 24 + r() * 26; B.s(`M${x} ${wallTop - 3}q${(r() - .5) * 3} -5 ${(r() - .5) * 4} -9`, '#5e8a3e', .8); B.f(B.blob(r, x + (r() - .5) * 3, wallTop - 12 - r() * 2, 2.6, 2, 6, .5), s === 'autumn' ? '#a8562a' : '#d84a5a', .9); }
+    // the dipper on its nail, a horseshoe over the pump for luck
+    B.f(B.circ(-30, -40, .9), IRON[0]).s('M-30 -40l-2 12', '#8a949a', 1.4).f(B.ell(-32.4, -27, 4, 2.6), '#9aa4a8').f(B.ell(-33, -27.6, 2.6, 1.2), '#cfd8da', .7);
+    B.s('M22 -66a4 4 0 1 1 8 0', '#5a5e60', 1.8);
+    // the trough: a long dressed block, the water in it lit by the sky, moss at its foot
+    B.f(B.rr(-40, -22, 52, 22, 2), STONE.rockLo).f(B.rect(-40, -22, 52, 4), STONE.rockHi).f(B.rect(-40, -18, 8, 18), STONE.rock, .7).f(B.rect(4, -18, 8, 18), '#3e3a30', .25);
+    B.f(B.rect(-37, -20.6, 46, 3.8), s === 'winter' ? '#d8e6ec' : B.lin(0, -21, 0, -17, [[0, '#7aa4ac'], [1, '#2e5258']])).f(B.ell(-18, -19.4, 12, .8), '#e8f4f4', .5);
+    mossOn(B, r, -40, -1, 52, 7, s); B.s('M-38 -14l2 12M6 -12l1 10', '#6a6454', .6, .5);
+    // the pump against the wall: a fluted cast-iron column, a collar, a domed cap and finial, the handle up, the spout over the trough
+    B.f(B.rr(12, -6, 18, 6, 1), STONE.rockLo).f(B.rect(12, -6, 18, 1.6), STONE.rockHi);
+    B.f(B.rect(14, top + 12, 14, -top - 18), drum(B, 14, 28, [green[2], green[0], green[0], green[1], green[3]]));
+    for (const x of [17.4, 21, 24.6]) B.s(`M${x} ${top + 14}V-8`, green[3], .5, .5);
+    for (const y of [top + 20, -30, -10]) B.f(B.rect(12.6, y, 16.8, 3.4), green[1]).f(B.rect(12.6, y, 16.8, 1.1), green[2], .7);
+    B.f(B.ell(21, top + 12, 9, 3.2), green[1]).f(`M13 ${top + 12}Q13 ${top + 2} 21 ${top}Q29 ${top + 2} 29 ${top + 12}Z`, drum(B, 13, 29, [green[2], green[0], green[0], green[1], green[3]])).f(B.circ(21, top - 3, 2.4), green[1]).f(B.circ(20.2, top - 3.8, .9), green[2]);
+    B.s(`M14 -38Q4 -40 -2 -38`, green[0], 4.4).s(`M14 -39.4Q4 -41.4 -2 -39.4`, green[2], 1, .7).f(B.ell(-3, -36.6, 2.6, 2.4), green[1]).f(B.ell(-3.6, -35.4, 1.4, 1), '#0a120e');
+    B.s(`M28 ${top + 20}Q40 ${top + 14} 46 ${top + 2}`, green[0], 3.4).f(B.circ(46.4, top + 1.4, 2.6), green[1]).s(`M28 ${top + 20}l3 -1`, green[2], 1, .7);
+    // a wooden bucket on the flags, staves and two iron hoops, water in it; a stool
+    B.f('M36 1L34 -14H50L48 1Z', B.lin(34, 0, 50, 0, [[0, '#b08a5a'], [.6, '#8a6a42'], [1, '#5a4228']])).f(B.ell(42, -14, 8, 2.2), '#5a4228').f(B.ell(42, -14, 6.6, 1.6), '#4e7a80');
+    for (const y of [-11, -3]) B.s(`M34.6 ${y}Q42 ${y + 1.4} 49.4 ${y}`, IRON[1], 1.2);
+    for (let x = 37; x < 48; x += 3.2) B.s(`M${x} -13v13`, '#5a4228', .5, .5);
+    B.s('M35 -14Q42 -24 49 -14', '#8a949a', .8);
+    if (s !== 'winter') { for (let i = 0; i < 5; i++) B.f(B.circ(-58 + r() * 8, -2 - r() * 3, 1.2), ['#f4f0e2', '#e8c84a'][i % 2]); ferns(B, r, 58, 1, 10, 3, s); }
+    if (s === 'winter') { B.f(B.rect(-50, wallTop - 6, 102, 3), '#f4f6f2', .9).f(B.ell(21, top + 1, 8, 2.4), '#f4f6f2', .9); for (let i = 0; i < 4; i++) B.f(`M${-34 + i * 12} -22l1.2 ${5 + r() * 5}l1.2 ${-5 - r() * 5}z`, '#e6f3f8', .9); }
+    B.tufts(r, -64, 2, 8, 6, grass(s), 6).tufts(r, 64, 2, 8, 6, grass(s), 6);
+    void L;
+  } };
+
+  /* ---------- the treehouse: built into a great sweet chestnut, a deck of planks round the trunk on knee braces, a railing,
+     the plank house with its shingle roof among the limbs, a rope ladder down to the roots, a lantern on a cord from a
+     branch (lit at night, swinging a little) and a pennant on the ridge ---------- */
+  const TX = -12, DECK = -H * 2.35;
+  A['ld-treehouse'] = { box: [-130, -262, 126, 14], lit: true, lights: [[TX - 62, DECK - 30, 70], [TX + 26, DECK - 26, 80]],
+    seat: { kind: 'turf', w: 64, front: 18, back: 18, stones: 0, box: [-110, -26, 110, 36], extra(B, r) { roots(B, r, 8, TX - 24, TX + 24, 64, 'summer'); litter(B, r, 70, 18, 22, 'summer'); } },
+    parts: [
+      { id: 'lantern', box: [-8, -2, 8, 30], at: [TX - 62, DECK - 54], draw(B, o) { B.s('M0 0V14', '#c8b080', .9); B.f('M-4 14h8l-1 11h-6z', IRON[0]).f('M-3.2 15h6.4l-.8 9h-4.8z', o.night ? B.rad(0, 19.5, 6, [[0, '#fffbe6'], [.5, '#ffe08a'], [1, '#e8a44a']]) : '#8aa4a6').f('M-5 14Q0 9 5 14Z', IRON[1]).f(B.rect(-1.4, 25, 2.8, 1.6), IRON[0]); },
+        anim(im, t) { im.setRotation(Math.sin(t * 1.1) * .07 + Math.sin(t * 2.7) * .02); } },
+      { id: 'pennant', box: [-2, -24, 22, 2], at: [TX + 30, DECK - 74], draw(B) { B.s('M0 0V-22', '#6e4c2a', 1.2).f('M0 -22l18 4l-18 4.4z', '#d8452a').f('M0 -22l18 4l-18 1z', '#f06a4a', .7); },
+        anim(im, t) { im.setRotation(Math.sin(t * 2.1) * .05); } },
+    ],
+    draw(B, o) {
+    const r = KIT().rng(741), s = o.season, tx = TX, deck = DECK, wall = '#8a6a48', plank = ['#9a7a54', '#7a5e40', '#c4a478', '#4a3a2c'];
+    // the crown behind: the great mass of the chestnut, above and round the house
+    const back = []; for (let i = 0; i < 13; i++) { const a = r() * Math.PI * 2, d = Math.sqrt(r()); back.push([tx + Math.cos(a) * 72 * d, -184 + Math.sin(a) * 42 * d, 30 + r() * 12, 22 + r() * 8]); }
+    crown(B, r, back, s, { litX: tx });
+    // the trunk: broad and spiral-furrowed, flaring into roots at the foot, forking above the deck into three limbs
+    for (const [x, d] of [[tx - 30, -1], [tx - 22, -1], [tx + 24, 1], [tx + 32, 1]]) B.f(`M${x - 7} 1Q${x + d * 7} -12 ${x + d * 2} -22L${x + 9} -18Q${x + 11 + d * 4} -8 ${x + 12 + d * 12} 2Z`, BARK[d < 0 ? 0 : 1]);
+    B.f(`M${tx - 26} 0Q${tx - 17} -60 ${tx - 15} ${deck - 30}L${tx + 15} ${deck - 30}Q${tx + 17} -60 ${tx + 28} 0Z`, BARK[0]);
+    B.f(`M${tx - 26} 0Q${tx - 17} -60 ${tx - 15} ${deck - 30}L${tx - 5} ${deck - 30}Q${tx - 8} -60 ${tx - 10} 0Z`, BARK[2], .65).f(`M${tx + 8} 0Q${tx + 8} -60 ${tx + 6} ${deck - 30}L${tx + 15} ${deck - 30}Q${tx + 17} -60 ${tx + 28} 0Z`, BARK[1], .8);
+    for (let k = 0; k < 9; k++) B.s(`M${tx - 22 + k * 5} -3Q${tx - 12 + k * 3.6} ${deck * .5} ${tx - 10 + k * 2.6} ${deck - 28}`, BARK[3], .9, .45);
+    for (const [dx, dy, w] of [[-70, -186, 11], [6, -222, 10], [68, -180, 10]]) B.s(`M${tx} ${deck - 26}Q${tx + dx * .3} ${deck - 26 + (dy - deck + 26) * .6} ${tx + dx} ${dy}`, BARK[0], w).s(`M${tx - 2} ${deck - 26}Q${tx + dx * .3 - 2} ${deck - 26 + (dy - deck + 26) * .6} ${tx + dx - 2} ${dy}`, BARK[2], w * .25, .6);
+    // the branch that carries the lantern, out to the west
+    B.s(`M${tx - 10} ${deck - 40}Q${tx - 40} ${deck - 62} ${tx - 76} ${deck - 58}`, BARK[1], 4.4).s(`M${tx - 10} ${deck - 41}Q${tx - 40} ${deck - 63} ${tx - 76} ${deck - 59}`, BARK[2], 1.2, .6);
+    // the knee braces from the trunk out under the deck, then the deck: planks across, a fascia, its shadow on the bark
+    for (const d of [-1, 1]) B.s(`M${tx + d * 12} ${deck + 36}L${tx + d * 50} ${deck + 2}`, plank[1], 4.4).s(`M${tx + d * 12} ${deck + 35}L${tx + d * 50} ${deck + 1}`, plank[2], 1.2, .6);
+    B.f(B.ell(tx - 2, deck + 4, 62, 12), 'rgba(30,22,14,.35)');
+    B.f(`M${tx - 62} ${deck - 4}Q${tx - 62} ${deck - 14} ${tx - 40} ${deck - 16}H${tx + 38}Q${tx + 60} ${deck - 14} ${tx + 60} ${deck - 4}Z`, plank[0]);
+    for (let x = tx - 58; x < tx + 58; x += 5.2) B.s(`M${x} ${deck - 15}l${(x - tx) * .04} 11`, plank[3], .6, .55);
+    B.f(B.rect(tx - 62, deck - 4, 122, 5), plank[1]).f(B.rect(tx - 62, deck - 4, 122, 1.4), plank[2], .8);
+    // the house on the deck, east of the trunk: crooked plank walls, a round window, a door onto the deck, a shingle roof
+    const hx0 = tx + 4, hx1 = tx + 54, hb = deck - 12, ht = hb - H * 1.05;
+    B.f(B.poly([[hx0, hb], [hx0 + 1, ht], [hx1 - 1, ht - 1], [hx1, hb]]), wall);
+    for (let x = hx0 + 4; x < hx1; x += 5) B.s(`M${x} ${hb}l.4 ${ht - hb}`, '#5a4430', .7, .6);
+    B.f(B.rect(hx1 - 12, ht, 12, hb - ht), '#1a1008', .2).f(B.rect(hx0, ht, 10, hb - ht), '#ffffff', .08);
+    B.f(B.circ(hx0 + 30, ht + 15, 7), '#5a4430').f(B.circ(hx0 + 30, ht + 15, 5.6), o.night ? B.rad(hx0 + 30, ht + 15, 6, [[0, '#ffe6a6'], [1, '#e8a85a']]) : '#3e4e52').s(`M${hx0 + 30} ${ht + 9.4}v11.2M${hx0 + 24.4} ${ht + 15}h11.2`, '#5a4430', .9);
+    if (!o.night) B.f(B.circ(hx0 + 28, ht + 13, 1.6), '#a8c0c2', .6);
+    B.f(B.rect(hx0 + 12, hb - 28, 11, 28), '#3e2c1c').f(B.rect(hx0 + 13, hb - 27, 9, 27), o.night ? '#7a5a34' : '#5a4430').f(B.circ(hx0 + 20, hb - 14, .8), '#e8c45a');
+    shingleRoof(B, r, hx0 - 6, hx1 + 6, ht + 2, ht - 30, s, { moss: 3, tone: ['#6e5a44', '#4e3e2e', '#9a8462', '#2e2418'] });
+    // the railing round the deck: posts and a top rail, a gap where the ladder comes up
+    for (let x = tx - 58; x <= tx + 56; x += 12) if (x < tx - 52 || x > tx - 34) B.post(x, deck - 22, deck - 3, 2.6, plank);
+    B.s(`M${tx - 60} ${deck - 21}H${tx - 52}M${tx - 34} ${deck - 21}H${tx + 58}`, plank[0], 2.6).s(`M${tx - 60} ${deck - 22}H${tx - 52}M${tx - 34} ${deck - 22}H${tx + 58}`, plank[2], .8, .7);
+    // the rope ladder from the deck's gap down to the roots
+    const lx0 = tx - 50, lx1 = tx - 37, lb = -4;
+    for (const x of [lx0, lx1]) B.s(`M${x} ${deck - 4}Q${x - 3} ${(deck + lb) / 2} ${x - 1} ${lb}`, '#c8b080', 1.3).s(`M${x} ${deck - 4}Q${x - 3} ${(deck + lb) / 2} ${x - 1} ${lb}`, '#7a6440', .5, .6);
+    for (let y = deck + 6; y < lb - 2; y += 9) { const k = Math.sin(Math.PI * (y - deck) / (lb - deck)) * -2.6; B.s(`M${lx0 + k} ${y}H${lx1 + k}`, plank[1], 2.2).s(`M${lx0 + k} ${y - .7}H${lx1 + k}`, plank[2], .7, .7); }
+    // leaves in front, over the limbs and the roof's edge, so the house sits inside the tree
+    const front = [[tx - 76, -150, 24, 16], [tx + 70, -146, 22, 15], [tx - 30, -214, 24, 15], [tx + 28, -222, 22, 14], [tx - 86, -184, 18, 13], [tx + 82, -182, 18, 12]];
+    crown(B, r, front, s, { litX: tx - 20, litY: -200 });
+    if (s === 'summer') for (let i = 0; i < 16; i++) B.s(`M${tx - 70 + r() * 140} ${-212 + r() * 70}l${(r() - .5) * 4} 7`, '#f0e2a0', 1.3, .85);
+    if (s === 'autumn') for (let i = 0; i < 8; i++) B.f(B.circ(tx - 50 + r() * 100, 2 + r() * 6, 2), '#9ab040');
+    B.tufts(r, tx - 44, 3, 20, 8, grass(s), 7).tufts(r, tx + 46, 3, 20, 8, grass(s), 7);
+  } };
+
+  /* ---------- the hollow oak: an ancient oak still in full leaf, its bole split open at the foot (the way in), roots over
+     the moss, and up the trunk the owl's hole, where the owl sleeps by day and at dusk opens its eyes, blinks and turns
+     its head ---------- */
+  const OWL = [-6, -104];
+  const owlFace = (open) => B => {
+    B.f(B.ell(0, 1, 7, 7.6), '#8a6a42').f(B.ell(-2.6, -1, 3.6, 3.4), '#c8a878').f(B.ell(2.6, -1, 3.6, 3.4), '#c8a878');
+    B.f('M-6 -6l-1.6 -4.4l3.6 2.6zM6 -6l1.6 -4.4l-3.6 2.6z', '#6a5034');
+    if (open) for (const ex of [-2.6, 2.6]) B.f(B.circ(ex, -1, 2.3), '#f2c030').f(B.circ(ex, -1, 1.1), '#120c06').f(B.circ(ex - .5, -1.6, .45), '#fffbe8');
+    else for (const ex of [-2.6, 2.6]) B.s(`M${ex - 2} -1q2 1.6 4 0`, '#3a2810', .9);
+    B.f('M-1 1.4L0 3.6L1 1.4Z', '#d8a040').f(B.ell(0, 6.4, 4.6, 2.6), '#a8865a', .8);
+    for (let i = 0; i < 4; i++) B.s(`M${-2.4 + i * 1.6} 5.6l.4 1.4`, '#5a4430', .5, .7);
+  };
+  A['ld-hollow'] = { box: [-104, -246, 106, 10], lit: true, lights: [],
+    seat: { kind: 'moss', w: 84, front: 18, back: 20, stones: 0, box: [-104, -28, 104, 36], extra(B, r) { roots(B, r, 8, -32, 32, 60, 'summer'); litter(B, r, 74, 20, 34, 'autumn'); } },
+    parts: [
+      { id: 'owl', box: [-9, -12, 9, 10], at: OWL, draw: (B, o) => owlFace(!!o.night)(B),
+        anim(im, t, o) { im.setRotation(o.night ? Math.sin(t * .45) * .22 + (Math.sin(t * .13) > .7 ? .3 : 0) : 0); } },
+      { id: 'lids', box: [-9, -12, 9, 10], at: OWL, draw: B => { B.f(B.ell(0, 1, 7, 7.6), '#8a6a42').f(B.ell(-2.6, -1, 3.6, 3.4), '#c8a878').f(B.ell(2.6, -1, 3.6, 3.4), '#c8a878').f('M-6 -6l-1.6 -4.4l3.6 2.6zM6 -6l1.6 -4.4l-3.6 2.6z', '#6a5034'); for (const ex of [-2.6, 2.6]) B.s(`M${ex - 2} -1q2 1.6 4 0`, '#3a2810', .9); B.f('M-1 1.4L0 3.6L1 1.4Z', '#d8a040').f(B.ell(0, 6.4, 4.6, 2.6), '#a8865a', .8); },
+        anim(im, t, o) { const p = t % 4.2; im.setAlpha(o.night && (p < .16 || (p > .5 && p < .62)) ? 1 : 0); im.setRotation(o.night ? Math.sin(t * .45) * .22 + (Math.sin(t * .13) > .7 ? .3 : 0) : 0); } },
+    ],
+    draw(B, o) {
+    const r = KIT().rng(751), s = o.season, top = -H * 2.9, bark = ['#6a5a46', '#4a3e30', '#8e7c62', '#2a221a'];
+    // the crown behind: broad and low, as an old oak's is, on four great limbs
+    const lobes = []; for (let i = 0; i < 14; i++) { const a = r() * Math.PI * 2, d = Math.sqrt(r()); lobes.push([Math.cos(a) * 62 * d, -172 + Math.sin(a) * 40 * d, 28 + r() * 12, 20 + r() * 8]); }
+    crown(B, r, lobes, s, { litX: -10 });
+    // the buttress roots and the bole, broad and fluted, lit on the west
+    for (const [x, d] of [[-38, -1], [-28, -1], [28, 1], [36, 1], [-4, 0]]) B.f(`M${x - 8} 1Q${x + d * 7} -16 ${x + d * 2} -26L${x + 10} -21Q${x + 12 + d * 5} -9 ${x + 13 + d * 12} 2Z`, bark[d < 0 ? 0 : 1]);
+    B.f(`M-34 0Q-40 ${top * .4} -26 ${top}H24Q38 ${top * .4} 34 0Z`, bark[0]);
+    B.f(`M-34 0Q-40 ${top * .4} -26 ${top}H-12Q-20 ${top * .4} -16 0Z`, bark[2], .65).f(`M14 0Q22 ${top * .4} 12 ${top}H24Q38 ${top * .4} 34 0Z`, bark[1], .8);
+    for (let i = 0; i < 13; i++) { const x = -32 + i * 5.2; B.s(`M${x} -2Q${x + (r() - .5) * 6} ${top * .5} ${x * .75 + (r() - .5) * 4} ${top + 2}`, bark[3], .9, .4); }
+    for (let i = 0; i < 8; i++) B.f(B.blob(r, -30 + r() * 60, -14 + r() * top, 3 + r() * 3, 1.4, 6, .5), bark[3], .4);
+    // the four great limbs into the crown
+    for (const [x0, x1, y1, w] of [[-20, -70, -176, 13], [-6, -26, -214, 11], [8, 30, -212, 11], [20, 72, -170, 12]]) B.s(`M${x0} ${top + 6}Q${(x0 + x1) / 2} ${top - 20} ${x1} ${y1}`, bark[0], w).s(`M${x0 - 2} ${top + 6}Q${(x0 + x1) / 2 - 2} ${top - 20} ${x1 - 2} ${y1}`, bark[2], w * .25, .6);
+    // the owl's hole up the trunk: a dark oval with a lip of callused bark
+    B.f(B.ell(OWL[0], OWL[1], 10, 12), bark[3]).f(B.ell(OWL[0], OWL[1] + 1, 8.4, 10.4), '#120c08').s(B.ell(OWL[0] - .6, OWL[1], 10, 12), bark[2], 1.4, .7);
+    // the hollow at the foot: a tall split in the bole, the dark of it, the lit lip, a threshold of roots worn smooth
+    B.f(`M-14 0Q-18 -30 -4 -56Q6 -48 10 -30Q12 -12 12 0Z`, bark[3]).f(`M-11 0Q-13 -28 -3 -50Q4 -42 8 -28Q9 -12 9 0Z`, B.lin(0, -50, 0, 0, [[0, '#0e0a06'], [1, '#261a10']]));
+    B.s(`M-14 0Q-18 -30 -4 -56`, bark[2], 2.2, .8).s(`M12 0Q12 -12 10 -30`, bark[1], 1.6, .8);
+    B.f(B.rr(-12, -2, 24, 3, 1.4), '#8e7c62').f(B.rect(-11, -2, 22, 1), '#b4a284', .8);
+    // front leaves over the limbs' ends, so the head of the tree is one mass
+    crown(B, r, [[-74, -150, 24, 15], [68, -146, 22, 14], [-30, -214, 22, 14], [32, -214, 22, 14]], s, { litX: -20, litY: -200 });
+    mossOn(B, r, -36, top * .3, 22, 8, s); for (let i = 0; i < 6; i++) B.f(B.blob(r, 28 + r() * 6, top * (.2 + r() * .5), 3, 4, 6, .5), s === 'winter' ? '#dfe8e4' : '#6f8446', .8);
+    if (s !== 'winter') { ferns(B, r, -34, 2, 18, 4, s); ferns(B, r, 34, 2, 18, 4, s); }
+    B.tufts(r, -50, 4, 10, 6, grass(s), 7).tufts(r, 52, 4, 10, 6, grass(s), 7);
+  } };
 })();

@@ -160,7 +160,7 @@ window.GardenPaintedMarks = (function () {
     const seat = art.seat !== false && window.GardenPaintSeat && layer ? GardenPaintSeat.add(scene, layer, prop, W, Object.assign({ season, x, foot }, art.seat || {})) : null;
     const b = { x: x + art.box[0], y: foot + art.box[1], width: art.box[2] - art.box[0], height: art.box[3] - art.box[1] };
     node.nativeBounds = b;
-    let lit = night0, last = null, paused = false, checked = 0;
+    let lit = night0, last = null, paused = false, checked = 0, animT = 0;
     const lights = night0 && art.lights ? art.lights.map(([dx, dy, r]) => ({ x: x + dx, y: foot + dy, radius: r || 110, pool: true })) : [];
     const repaint = on => { const next = body(on); if (!next) return false; next.setDepth(depthOf()); im.destroy(); im = next; makeParts(on); return true; };
     const h = { root: node.target, rootNode: node, bounds: b, painted: true, shaded: art.shade !== false || !!art.flat, foot: { x, y: foot }, lights,
@@ -173,6 +173,10 @@ window.GardenPaintedMarks = (function () {
         if (art.state && time - checked > 1000) { checked = time; const now = stateOf(); if (now !== state) { state = now; repaint(lit); } }
         if (!node.target.visible || paused || typeof gardenMotionOn === 'function' && !gardenMotionOn()) return;
         for (const q of parts) { const w = q.p.spin ? q.p.spin({ state, season }, env || {}) : 0; if (w && q.im) { q.turn += w * dt; q.im.setRotation(q.turn); } }
+        // art.parts[].anim(im, t, o): a small life of its own (a drip from a spout, an owl's blink, a lantern swinging, smoke);
+        // o.x, o.y are its hub, o.night whether the lit picture is up. Only while it is on screen and motion is on (above).
+        animT += dt;
+        for (const q of parts) if (q.p.anim && q.im) q.p.anim(q.im, animT, { x: x + q.p.at[0], y: foot + q.p.at[1], night: lit, state, season });
       },
       pauseAmbient(st) { paused = !!(st && (st.hush || st.frozen)); },
       setLitWindows(on) { on = !!on && !!art.lit; if (on === lit) return; lit = on; if (!repaint(on)) return; h.lights.length = 0; if (on && art.lights) for (const [dx, dy, r] of art.lights) h.lights.push({ x: x + dx, y: foot + dy, radius: r || 110, pool: true }); },
