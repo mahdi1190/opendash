@@ -284,6 +284,9 @@ window.GardenPaintSeat = (function () {
     // the hollow at the foot: a tall split, dark inside, lit lip; the owl hole up the trunk
     B.f(`M-12 0Q-15 -26 -4 -46Q4 -40 8 -26Q10 -12 10 0Z`, bark[3]).f(`M-9 0Q-11 -24 -3 -40Q3 -34 6 -24Q7 -12 7 0Z`, B.lin(0, -40, 0, 0, [[0, '#120c08'], [1, '#2a1e14']]));
     B.s(`M-12 0Q-15 -26 -4 -46`, bark[2], 2, .8);
+    // someone large and feathered at home in the dark of it: two round eyes, a glint in each
+    for (const ex of [-4.4, 2.2]) B.f(B.circ(ex, -27, 2.5), '#e8b830').f(B.circ(ex + .3, -27, 1.2), '#1a1208').f(B.circ(ex - .5, -27.8, .55), '#fff8e0');
+    B.f(`M-3 -23.6l2 2.2l2 -2.2z`, '#8a6a3a');
     B.f(B.ell(-4, top * .62, 6, 7), bark[3]).f(B.ell(-4, top * .62 + 1, 4.4, 5.4), '#140e0a').s(B.ell(-4.6, top * .62, 6, 7), bark[2], 1, .6);
     mossOn(B, r, -32, top * .3, 20, 7, s); for (let i = 0; i < 4; i++) B.f(B.blob(r, 26 + r() * 6, top * (.3 + r() * .4), 3, 4, 6, .5), s === 'winter' ? '#dfe8e4' : '#6f8446', .8);
     for (let i = 0; i < 6; i++) { const x = -24 + r() * 50; B.s(`M${x} 4q-5 -7 -8 -14`, '#5f7a3c', 1.1, .9); }
@@ -375,7 +378,10 @@ window.GardenPaintSeat = (function () {
   A['ld-icehouse'] = { box: [-66, -84, 66, 8], door: { dx: 0, dy: 0 }, seat: { kind: 'earth', w: 40, front: 16, stones: 0 }, draw(B, o) {
     const r = KIT().rng(131), s = o.season, top = -sz('ridge', 0) * .62, G = grass(s), L = leaf(s);
     // the mound: turf over a buried dome, light on its west shoulder, a hawthorn on top
-    B.f(B.blob(r, 0, top * .5, 62, -top * .56, 12, .12), s === 'winter' ? '#cfd8d0' : '#5e7a3c').f(B.blob(r, -12, top * .6, 44, -top * .4, 11, .16), s === 'winter' ? '#e8eeea' : '#76944a', .9).f(B.blob(r, -22, top * .72, 22, -top * .16, 9, .3), s === 'winter' ? '#f6f8f6' : '#94b060', .7);
+    // (in the colours of the turf round it, lit softly on the west shoulder: no bright lump laid on top)
+    B.f(B.blob(r, 2, top * .5 + 2, 63, -top * .56, 12, .12), s === 'winter' ? '#b8c4bc' : '#4e6a34', .9).f(B.blob(r, 0, top * .5, 61, -top * .55, 12, .12), s === 'winter' ? '#cfd8d0' : '#64803e');
+    for (let k = 0; k < 7; k++) B.f(B.blob(r, -34 + k * 6, top * (.62 + k * .02), 30 - k * 3, -top * (.3 - k * .03), 10, .2), s === 'winter' ? '#e2e9e4' : k < 3 ? '#6e8c46' : '#7a9a4e', .22);
+    for (let i = 0; i < 40; i++) { const x = (r() - .5) * 110, y = top * .5 + (r() - .3) * -top * .8; if (Math.abs(x) < 26 && y > -44) continue; B.s(`M${x} ${y}l${(r() - .5) * 2} -${2 + r() * 3}`, s === 'winter' ? '#f4f6f4' : r() < .5 ? '#86a456' : '#4e6a34', .9, .7); }
     for (let i = 0; i < 30; i++) { const a = Math.PI * (.05 + r() * .9), x = -Math.cos(a) * 58, y = top * .5 - Math.sin(a) * -top * .5; B.tufts(r, x, y + 2, 6, 3, G, 5); }
     B.s(`M30 ${top * .96}q2 -16 -4 -26`, '#4e3a2a', 2.4); for (let k = 0; k < 6; k++) B.f(B.blob(r, 24 + (r() - .5) * 20, top * .96 - 24 + (r() - .5) * 12, 8, 6, 7, .45), L[k % 3], .95);
     // the portal: brick arch in a stone face, a keystone, steps going down into the dark, the door open a crack
