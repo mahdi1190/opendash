@@ -109,18 +109,20 @@
       // Close-set low slabs expose the exact ford. The old oversized ellipses
       // hung beyond its edges and left invisible support between the stones.
       const { count, acrossRadius: hw } = deck.stones, q = (t, s) => deck.deckPoint(t, s), step = 1 / count;
-      if (deck.over === 'brook') {
-        // The woodland brook: rounded, water-worn stones (a squircle filling each slab, so the footing is still the
-        // whole support), wet dark feet, a ring of ripple where the water meets them, moss on the shaded side.
-        const tones = season === 'winter' ? ['#a9a89c', '#bdbcb0', '#9a9a8e'] : ['#a19a84', '#b3ab93', '#958f7b', '#aaa088'];
-        const sq = (lo, hi, k, ds, dt, jit) => { const pts = []; for (let j = 0; j < 28; j++) { const a = j / 28 * Math.PI * 2, c = Math.cos(a), si = Math.sin(a), u = Math.sign(c) * Math.pow(Math.abs(c), .5), v = Math.sign(si) * Math.pow(Math.abs(si), .5), n = 1 + (jit ? (jit[j % jit.length] - .5) * .06 : 0); pts.push(q((lo + hi) / 2 + dt + u * (hi - lo) / 2 * k * n, ds + v * hw * k * n)); } return B.poly(pts); };
+      {
+        // Every ford (the brook's, the gorge's, the estuary's): rounded, water-worn boulders, each its own shape and size
+        // inside its slab of the support (a lumpy round outline, a little askew), wet dark feet, a ring of ripple where the
+        // water meets them, moss on the shaded side. (Square slabs end to end, on a stone plank under them, read as a
+        // paved causeway lying on the water; art director, round 3.)
+        const tones = season === 'winter' ? ['#a9a89c', '#bdbcb0', '#9a9a8e'] : deck.over === 'river' ? ['#9a957f', '#aaa38c', '#8c8775', '#a39a82'] : ['#a19a84', '#b3ab93', '#958f7b', '#aaa088'];
+        const sq = (lo, hi, k, ds, dt, jit, kk) => { const pts = []; for (let j = 0; j < 28; j++) { const a = j / 28 * Math.PI * 2, c = Math.cos(a), si = Math.sin(a), u = Math.sign(c) * Math.pow(Math.abs(c), .78), v = Math.sign(si) * Math.pow(Math.abs(si), .78), n = 1 + (jit ? (jit[j % jit.length] - .5) * .22 + (jit[(j + 3) % jit.length] - .5) * .1 : 0); pts.push(q((lo + hi) / 2 + dt + u * (hi - lo) / 2 * k * n * kk[0], ds + kk[1] + v * hw * k * n * kk[2])); } return B.poly(pts); };
         for (let i = 0; i < count; i++) {
-          const lo = i * step + (i ? .25 / deck.length : 0), hi = (i + 1) * step - (i < count - 1 ? .25 / deck.length : 0), jit = [r(), r(), r(), r(), r(), r(), r()], tone = r();
-          B.s(sq(lo, hi, 1.08, 0, 0, jit), P.foam || '#eef2e2', 1.6, .5);
-          B.f(sq(lo, hi, 1, 1.2, 0, jit), '#4e4a40', .85);
-          B.f(sq(lo, hi, .97, 0, 0, jit), tones[Math.floor(tone * tones.length)]);
-          B.f(sq(lo, hi, .6, -hw * .22, -(hi - lo) * .08, jit), '#d4ccb4', .5);
-          if (tone < .45) B.f(sq(lo, hi, .42, hw * .5, (hi - lo) * .1, jit), season === 'winter' ? '#e8ecef' : '#6f8446', .6);
+          const lo = i * step + (i ? .3 / deck.length : 0), hi = (i + 1) * step - (i < count - 1 ? .3 / deck.length : 0), jit = [r(), r(), r(), r(), r(), r(), r()], tone = r(), kk = [.9 + r() * .12, (r() - .5) * hw * .16, .84 + r() * .16];
+          B.s(sq(lo, hi, 1.1, 0, 0, jit, kk), P.foam || '#eef2e2', 1.6, .5);
+          B.f(sq(lo, hi, 1, 1.4, 0, jit, kk), '#4a463c', .85);
+          B.f(sq(lo, hi, .97, 0, 0, jit, kk), tones[Math.floor(tone * tones.length)]);
+          B.f(sq(lo, hi, .62, -hw * .2, -(hi - lo) * .08, jit, kk), '#d4ccb4', .45);
+          if (tone < .5) B.f(sq(lo, hi, .42, hw * .45, (hi - lo) * .12, jit, kk), season === 'winter' ? '#e8ecef' : '#6f8446', .55);
         }
         return;
       }

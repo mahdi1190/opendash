@@ -41,7 +41,9 @@ window.GardenPaintWater = (function () {
     day: { water: '#5a9fab', deep: '#367a8c', shallow: '#8ec8bd', sky: '#d4ecea', skyHi: '#f4fbf6', refl: '#466c47', reflDeep: '#365738', glint: '#ffffff', foam: '#f3f8f1', bed: '#b9ad84' },
     dawn: { water: '#5f9fae', deep: '#3a7a8e', shallow: '#97c6bf', sky: '#f4dcc8', skyHi: '#fff2e4', refl: '#4f6a48', reflDeep: '#3e573c', glint: '#fff4e6', foam: '#f6f2ea', bed: '#b4a886' },
     dusk: { water: '#5d9cab', deep: '#38778b', shallow: '#94c4bd', sky: '#f7c39a', skyHi: '#ffe0bc', refl: '#3f5a40', reflDeep: '#304833', glint: '#ffe2b8', foam: '#f4ece2', bed: '#ab9f80' },
-    night: { water: '#4f8f9f', deep: '#326c80', shallow: '#78aeab', sky: '#a9c0d6', skyHi: '#e2ecf8', refl: '#2c4434', reflDeep: '#22372b', glint: '#e4ecff', foam: '#d8e2e6', bed: '#8a8470' },
+    // (night water is dark before the night's blue grade is multiplied over it: a teal under that grade came out a saturated
+    //  royal blue, lighter than the land round it, so the night's light and dark ran the wrong way; art director, round 3)
+    night: { water: '#2d5462', deep: '#1c3a4a', shallow: '#3f6870', sky: '#7c90aa', skyHi: '#b4c4da', refl: '#16241c', reflDeep: '#0f1a14', glint: '#e4ecff', foam: '#aebcc2', bed: '#4f4c40' },
   };
   const SEASON = {
     summer: { reed: ['#6d8a3e', '#8fa952', '#b4c472'], lily: ['#4f7c3e', '#6f9a4e', '#93b864'], flower: ['#fbfbf4', '#f6c9d6'], bank: '#8a7856', grass: '#6f8e45', moss: '#7d8f4e' },
@@ -182,23 +184,31 @@ window.GardenPaintWater = (function () {
   let fieldMask = null, fieldOut = null, fieldTone = null, fieldSea = null;
   // each water's own character, blended across joins: [shade under trees or peat, extra depth, running]. A woodland brook runs dark
   // under its canopy, a fell tarn is dark and peaty, the open Mere and the river take the sky; running water carries lines along its current.
-  const TONE = { mere: [0, 0, 0], river: [.06, .08, .8], brook: [.72, .26, 1], spring: [.6, .14, .3], gorge: [.3, .16, 1], tarn: [.6, .52, 0], pool: [.12, .06, 0] }, SHADE = [44, 84, 74], STONE_WET = [104, 104, 86], TB = 8;
+  const TONE = { mere: [0, 0, 0], river: [.06, .08, .8], brook: [.72, .26, 1], spring: [.6, .14, .3], gorge: [.3, .16, 1], tarn: [.6, .52, 0], pool: [.12, .06, 0] }, SHADE = [44, 84, 74], STONE_WET = [104, 104, 86], PEAT = [44, 40, 28], TB = 8;
   // The open sea far out is the world's own sea fill under this layer (by season); the painted sea fades into it offshore.
   const SEA_BASE = { summer: '#599f9d', spring: '#599f9d', autumn: '#5b9b9a', winter: '#76a8ad' };
   function seaPalette(S) {
     const base = SEA_BASE[S.season] || SEA_BASE.summer, night = S.tod === 'night';
-    let edge = '#d2ecdc', shoal = '#7dcfc0', mid = '#5cb0b2';
+    // (a sea, not a pool: pale clear water over the sand, a green-blue shoal, then a deeper blue band before it opens out into
+    //  the world's sea; a single bright mint shoal read as a swimming pool)
+    let edge = '#cfe4d4', shoal = '#84c2b2', mid = '#4b98a2', base0 = base;
     if (S.season === 'winter') { edge = mix(edge, '#e2e8e6', .4); shoal = mix(shoal, '#a8c8c8', .45); mid = mix(mid, base, .4); }
-    if (night) { edge = mix(edge, base, .3); shoal = mix(shoal, base, .25); mid = mix(mid, base, .15); }
-    return { edge: rgbOf(edge), shoal: rgbOf(shoal), mid: rgbOf(mid), base: rgbOf(base), sand: rgbOf('#d6c89a'), wet: '#a8956a', foam: night ? '#dfe8ea' : '#fbfdf6' };
+    // at night the sea is as dark as the world's own sea is made under it (NIGHT_SEA), so the night grade turns it navy
+    if (night) { edge = '#5f7a78'; shoal = '#3a6466'; mid = '#2c5462'; base0 = NIGHT_SEA; }
+    return { edge: rgbOf(edge), shoal: rgbOf(shoal), mid: rgbOf(mid), base: rgbOf(base0), sand: rgbOf(night ? '#6e6a58' : '#d6c89a'), wet: '#a8956a', foam: night ? '#b9c6ca' : '#fbfdf6' };
   }
+  // the world's own sea under the painted one, at night: a dark veil over its fill (paint() lays it), and the painted sea
+  // fades out into the same colour offshore
+  const NIGHT_SEA = '#2a4f5c', NIGHT_VEIL = { col: 0x16303e, a: .68 };
   // What the water reflects by the hour (the light module's evening grade is laid over all of it): c0 and c1 the two tones of
   // the clouds' reflections, broad patches lo..hi of a long, low noise; glow a wash of the sky's own colour over open water.
   const SKYR = {
     day: { a: .24, lo: .52, hi: .68, c0: '#eef8f4', c1: '#d2eaee', glow: 0, g: '#ffffff' },
     dawn: { a: .46, lo: .55, hi: .66, c0: '#fde0cc', c1: '#f0c0d0', glow: .1, g: '#a8b4cc' },
-    dusk: { a: .5, lo: .56, hi: .66, c0: '#ffd2b0', c1: '#e8a4c0', glow: .16, g: '#8f9fc6' },   // (light peach and rose-lilac: a deep gold half-blended into teal read as mud)
-    night: { a: .5, lo: .54, hi: .67, c0: '#c8d8ee', c1: '#a2b8da', glow: .24, g: '#26405e' },
+    // (soft peach and a dusty rose, not a saturated magenta: one bright pink blob repeated across the sea read as stains)
+    dusk: { a: .36, lo: .57, hi: .69, c0: '#f6d4b8', c1: '#dcb4bc', glow: .14, g: '#8f9fc6' },   // (light peach and rose-lilac: a deep gold half-blended into teal read as mud)
+    // (a faint moonlit sky: bright cloud reflections made the night's water the brightest thing on the screen)
+    night: { a: .26, lo: .57, hi: .7, c0: '#8a9cb8', c1: '#6c82a6', glow: .1, g: '#162a40' },
   };
   function skyOf(S) { const R = SKYR[S.tod] || SKYR.day; let c0 = R.c0, c1 = R.c1; if (S.season === 'winter') { c0 = mix(c0, '#e4e8ea', .4); c1 = mix(c1, '#d4dce2', .4); } return { a: R.a, lo: R.lo, hi: R.hi, c0: rgbOf(c0), c1: rgbOf(c1), glow: R.glow, g: rgbOf(R.g) }; }
   function fieldCanvas(c, w, h) { if (!c) { c = document.createElement('canvas'); } if (c.width < w) c.width = w; if (c.height < h) c.height = h; return c; }
@@ -340,6 +350,9 @@ window.GardenPaintWater = (function () {
           const kk = Math.min(1, k + tD[tj] * (1 - k) * sstep(4, 40, d)), shd = tS[tj] * .62 * (.4 + .6 * mm);
           rr += (dp[0] - rr) * kk; gg += (dp[1] - gg) * kk; bb += (dp[2] - bb) * kk;
           rr += (SHADE[0] - rr) * shd; gg += (SHADE[1] - gg) * shd; bb += (SHADE[2] - bb) * shd;
+          // a fell tarn's water is stained brown-black by the peat it drains (only the tarn carries this much depth)
+          const peat = sstep(.4, .5, tD[tj]) * (1 - run) * (.55 + .2 * mm);
+          if (peat > .01) { rr += (PEAT[0] - rr) * peat; gg += (PEAT[1] - gg) * peat; bb += (PEAT[2] - bb) * peat; }
           let lift = 1 + big * .08 + fine * .045;
           // the current: thin pale lines running with the banks, wavering and broken, and darker water between them
           if (run > .04 && d > 2) { const ph = d * .58 + (noise(wx / 64, wy / 64, 91) - .5) * 5.5, ln = Math.max(0, Math.sin(ph)) ** 5, brk = sstep(.42, .68, noise(wx / 24, wy / 24, 93)); lift += run * (ln * brk * .16 - .035 * (1 - ln)) * sstep(2, 9, d); }
@@ -386,7 +399,9 @@ window.GardenPaintWater = (function () {
         return ps; };
       const fv = (gx, gy) => Fv[gy * gw + gx], loc = (gx, gy) => (Math.min(chh - 1, gy - gy0)) * cw + Math.min(cw - 1, gx - gx0);
       // 0 a still bank, 1 a running bank, 2 to 4 the sea's lap: strong, middling, faint (by a noise along the shore)
-      const shoreCls = (gx, gy, X, Y) => { const ms = Mc ? marine(X, Y) : 0; if (ms > .5) { const v = noise(X / 64, Y / 44, 97); return v > .58 ? 2 : v > .4 ? 3 : 4; } return tR[loc(gx, gy)] > .45 ? 1 : noise(X / 52, Y / 36, 99) > .5 ? 0 : 5; };
+      // still banks change along the shore (a stretch of bare damp earth, then turf down to the water, then stones), so no pond
+      // has one even rim; a fell tarn's bank is dark peat (6)
+      const shoreCls = (gx, gy, X, Y) => { const ms = Mc ? marine(X, Y) : 0; if (ms > .5) { const v = noise(X / 64, Y / 44, 97); return v > .58 ? 2 : v > .4 ? 3 : 4; } const l = loc(gx, gy); if (tR[l] > .45) return 1; if (tD[l] > .4) return 6; const v = noise(X / 52, Y / 36, 99); return v > .6 ? 0 : v > .38 ? 5 : 7; };
       const outer = contour(fv, .5, shoreCls);
       // swell lines out on the sea: two broken lines a little way off the sand, the nearer one brighter, as if a wave were coming in
       if (Mc) {
@@ -410,20 +425,58 @@ window.GardenPaintWater = (function () {
       cx.lineJoin = 'round'; cx.lineCap = 'round';
       // the bank: a damp earth band along a fresh shore (the water is laid over its inner half); the sea's sand only darkens
       // a little where the waves wet it (the shared ground already lays the tide's damp edge on the beach)
-      for (const b of [0, 1, 5]) if (outer[b]) { cx.strokeStyle = P.bank; cx.globalAlpha = .24; cx.lineWidth = 24; cx.stroke(outer[b]); cx.globalAlpha = .4; cx.lineWidth = 12; cx.stroke(outer[b]); }
+      // (by stretch: damp earth (0) and a running bank (1) carry the band; turf (5) only a thin dark seam; stones (7) a grey
+      //  gravel margin; peat (6) a dark brown hag edge)
+      for (const [b, col, w1, a1, w2, a2] of [[0, P.bank, 24, .24, 12, .4], [1, P.bank, 24, .24, 12, .4], [5, P.bank, 8, .14, 4, .22], [7, '#8e897a', 16, .22, 8, .34], [6, '#3c3226', 22, .34, 10, .5]]) if (outer[b]) { cx.strokeStyle = col; cx.globalAlpha = a1; cx.lineWidth = w1; cx.stroke(outer[b]); cx.globalAlpha = a2; cx.lineWidth = w2; cx.stroke(outer[b]); }
       if (SP) for (const b of [2, 3, 4]) if (outer[b]) { cx.strokeStyle = SP.wet; cx.globalAlpha = .2; cx.lineWidth = 12; cx.stroke(outer[b]); cx.globalAlpha = .22; cx.lineWidth = 5; cx.stroke(outer[b]); }
       cx.globalAlpha = 1;
       cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high'; cx.drawImage(e.canvas, e.dst[0], e.dst[1], e.dst[2], e.dst[3]);
       if (s1 || s2) { cx.strokeStyle = SP.foam; if (s1) { cx.globalAlpha = .16; cx.lineWidth = 6; cx.stroke(s1); cx.globalAlpha = .5; cx.lineWidth = 1.7; cx.stroke(s1); } if (s2) { cx.globalAlpha = .32; cx.lineWidth = 1.4; cx.stroke(s2); } cx.globalAlpha = 1; }
-      for (const b of [0, 1, 5]) if (wet[b]) { cx.strokeStyle = mix(P.bank, '#3e3626', .5); cx.globalAlpha = b === 1 ? .45 : .55; cx.lineWidth = b === 1 ? 2.6 : 3.2; cx.stroke(wet[b]); }
+      for (const b of [0, 1, 5, 6, 7]) if (wet[b]) { cx.strokeStyle = b === 6 ? '#221c14' : mix(P.bank, '#3e3626', .5); cx.globalAlpha = b === 1 ? .45 : b === 5 ? .4 : .55; cx.lineWidth = b === 1 ? 2.6 : b === 5 ? 2.2 : 3.2; cx.stroke(wet[b]); }
       // (on still water the lap comes and goes along the shore: a whole bright ring round a pond reads as a pool's tiled edge)
       if (lap[0]) { cx.strokeStyle = P.foam; cx.globalAlpha = .14; cx.lineWidth = 6; cx.stroke(lap[0]); cx.globalAlpha = .4; cx.lineWidth = 1.9; cx.stroke(lap[0]); }
+      if (lap[7]) { cx.strokeStyle = P.foam; cx.globalAlpha = .1; cx.lineWidth = 5; cx.stroke(lap[7]); cx.globalAlpha = .3; cx.lineWidth = 1.5; cx.stroke(lap[7]); }
       if (lap[5]) { cx.strokeStyle = P.foam; cx.globalAlpha = .07; cx.lineWidth = 5; cx.stroke(lap[5]); cx.globalAlpha = .16; cx.lineWidth = 1.3; cx.stroke(lap[5]); }
+      if (lap[6]) { cx.strokeStyle = P.foam; cx.globalAlpha = .1; cx.lineWidth = 1.1; cx.stroke(lap[6]); }
       if (lap[1]) { cx.strokeStyle = P.foam; cx.globalAlpha = .14; cx.lineWidth = 1.2; cx.stroke(lap[1]); }
       if (SP) { cx.strokeStyle = SP.foam; for (const [b, w, a] of [[2, 3.6, .92], [3, 2.6, .66], [4, 1.7, .36]]) if (lap[b]) { cx.globalAlpha = a * .3; cx.lineWidth = w * 3.2; cx.stroke(lap[b]); cx.globalAlpha = a; cx.lineWidth = w; cx.stroke(lap[b]); } }
       cx.globalAlpha = 1;
     }
     const entry = cb => { const k = keyOf(cb); let e = cache.get(k); if (!e) e = keep(k, fields(cb)); else keep(k, e); if (e.stage < 2) colour(e, cb); return e; };
+    // The trees on the banks in the still water: each painted tree's trunk foot (the one trunk list the walking reads, so the
+    // painters' own placements), mirrored about its foot (its crown hangs down as far below the foot as it stands above), seen
+    // only where that falls on fresh water, darker than the sky in the water and broken by the ripples. Read when a chunk
+    // bakes (the planting painters may finish after the water), and again a few seconds later while the list is still empty.
+    let trees = null, treesAt = -1e9; const W = M.W;
+    const wetAt = (x, y) => M.waters.some(w => x >= w.bounds.x && x <= w.bounds.x + w.bounds.w && y >= w.bounds.y && y <= w.bounds.y + w.bounds.h && inside(x, y, w.pts) && w.kind !== 'gorge');
+    const treeList = () => {
+      if (trees && trees.length) return trees; const now = performance.now(); if (now - treesAt < 3000) return trees || []; treesAt = now;
+      const raw = typeof _gwPaintedTrunks === 'function' ? ok(() => _gwPaintedTrunks(true)) : null, out = [], tall = typeof gardenSizePx === 'function' ? ok(() => gardenSizePx('tree', .4)) || 160 : 160;
+      for (const b of raw || []) { const x = (b.x0 + b.x1) / 2 * W.cellW, y = W.sky + b.y1 * W.cellH, h = tall * (b.src === 'wood' || b.src === 'fells' ? 1.05 : b.src === 'orchard' ? .6 : .85);
+        // where its image meets the water: the first wet point below the foot, within half its height
+        let y0 = -1; for (let yy = y + 3; yy < y + h * .55; yy += 4) if (wetAt(x, yy)) { y0 = yy; break; } if (y0 < 0) continue;
+        out.push({ x, y, h, cw: h * .6, y0, s: hash(Math.round(x) + ',' + Math.round(y)) }); }
+      return trees = out;
+    };
+    // (laid on by tick() as one op a tree once the list is there: layer.add paints it over what is baked and into every later bake)
+    S.mirrorKit = { list: treeList, paint: (cx, t) => ok(() => mirror(cx, [t])) };
+    function mirror(cx, near) {
+      const P = S.P, rf = rgbOf(P.refl), rd = rgbOf(P.reflDeep), sk = rgbOf(P.sky);
+      cx.save(); cx.clip(U);
+      for (const t of near) {
+        const q = rng(t.s), top = t.y + t.h, fade = y => Math.max(0, 1 - (y - t.y0) / (top - t.y0 + 1) * .7);
+        // the trunk, then the crown's masses (darkest near the waterline, fading towards the reflected crown top)
+        const tk = cx.createLinearGradient(0, t.y0, 0, t.y + t.h * .42); tk.addColorStop(0, 'rgba(' + rd + ',.34)'); tk.addColorStop(1, 'rgba(' + rd + ',0)');
+        cx.fillStyle = tk; cx.fillRect(t.x - 2.2, t.y0, 4.4, Math.max(0, t.y + t.h * .42 - t.y0));
+        for (let k = 0; k < 5; k++) { const cy = t.y + t.h * (.5 + q() * .36), x = t.x + (q() - .5) * t.cw * .55, rx = t.cw * (.24 + q() * .16), ry = t.h * (.12 + q() * .07); if (cy + ry < t.y0) continue;
+          const a = .34 * fade(cy), g = cx.createRadialGradient(x, cy, 0, x, cy, rx), c = k % 2 ? rd : rf; g.addColorStop(0, 'rgba(' + c + ',' + a + ')'); g.addColorStop(.6, 'rgba(' + c + ',' + a * .6 + ')'); g.addColorStop(1, 'rgba(' + c + ',0)');
+          cx.save(); cx.translate(x, cy); cx.scale(1, ry / rx); cx.translate(-x, -cy); cx.fillStyle = g; cx.beginPath(); cx.arc(x, cy, rx, 0, Math.PI * 2); cx.fill(); cx.restore(); }
+        // the ripples break it into bands: thin streaks of the sky across it
+        cx.lineCap = 'round';
+        for (let y = t.y0 + 3 + q() * 3; y < top; y += 4 + q() * 4) { const w = t.cw * (.25 + q() * .4), x = t.x + (q() - .5) * t.cw * .5; cx.strokeStyle = 'rgba(' + sk + ',' + (.1 + q() * .14) + ')'; cx.lineWidth = .8 + q() * .9; cx.beginPath(); cx.moveTo(x - w / 2, y); cx.lineTo(x + w / 2, y); cx.stroke(); }
+      }
+      cx.restore();
+    }
     return {
       fields(B, r, cb) { const k = keyOf(cb); if (!cache.has(k)) keep(k, fields(cb)); },
       colour(B, r, cb) { entry(cb); },
@@ -517,13 +570,16 @@ window.GardenPaintWater = (function () {
     //    one outline of all the water; this basin's own band is kept for a painter without the body).
     tag = 'bankband'; add(all, (cx, C) => { cx.lineJoin = 'round'; cx.strokeStyle = C.bank; cx.globalAlpha = .28; cx.lineWidth = river_ ? 22 : 30; cx.stroke(bankP); cx.globalAlpha = .5; cx.lineWidth = river_ ? 12 : 16; cx.stroke(bankP); cx.globalAlpha = .55; cx.strokeStyle = mix(C.bank, '#3e3626', .45); cx.lineWidth = 5; cx.stroke(bankP); cx.globalAlpha = 1; });
     tag = 'bank';
-    // pebbles and grass lobes on the land side of the waterline
+    // pebbles and grass lobes on the land side of the waterline, by the stretch of bank the body paints there (the same
+    // noise: stones where it lays a gravel margin, turf where it lays none), so a pond has no even ring of pebbles
+    const Gk = window.GardenPaintGround, bankNoise = (x, y) => Gk && Gk.noise ? Gk.noise(x / 52, y / 36, 99) : .5, fell = kind === 'tarn';
     for (let i = 0; i < n; i += 1) {
       const a = pts[i], nn = norm(i), seg = Math.hypot(pts[(i + 1) % n].x - a.x, pts[(i + 1) % n].y - a.y), steps = Math.max(1, Math.round(seg / 12)); if (seg < 12 && r() > seg / 12) continue;
       for (let k = 0; k < steps; k++) {
-        const t = k / steps, b = pts[(i + 1) % n], x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, roll = r();
-        if (roll < .34) { const o = 4 + r() * 8, sx = x + nn.x * o, sy = y + nn.y * o, rx = 1.6 + r() * 2.6, d = D().blob(r, sx, sy, rx, rx * .62, 6, .3), d2 = D().ell(sx - rx * .3, sy - rx * .25, rx * .45, rx * .25); const tone = r(); if (!mouths.has(i) && !shoreCovered(x, y)) add({ x: sx - 6, y: sy - 6, w: 12, h: 12 }, (cx, C) => { cx.fillStyle = tone < .5 ? '#a49b86' : '#bcb39c'; cx.fill(P2(d)); cx.fillStyle = '#ddd6c2'; cx.globalAlpha = .7; cx.fill(P2(d2)); cx.globalAlpha = 1; }); }
-        else if (roll < .62) { const o = 10 + r() * 10, sx = x + nn.x * o, sy = y + nn.y * o, d = D().blob(r, sx, sy, 7 + r() * 9, 3 + r() * 3, 7, .5), light = r() < .5; if (!mouths.has(i) && !shoreCovered(x, y)) add({ x: sx - 18, y: sy - 8, w: 36, h: 16 }, (cx, C) => { cx.globalAlpha = .55; cx.fillStyle = light ? mix(C.grass, '#c8d08a', .25) : C.grass; cx.fill(P2(d)); cx.globalAlpha = 1; }); }
+        const t = k / steps, b = pts[(i + 1) % n], x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, roll = r(), v = river_ ? .5 : bankNoise(x, y), stony = v < .38, turf = v >= .38 && v <= .6;
+        const pPeb = fell ? .1 : river_ ? .3 : stony ? .66 : turf ? .05 : .16, pGrass = fell ? .5 : turf ? .62 : stony ? .08 : .3;
+        if (roll < pPeb) { const o = 3 + r() * (stony ? 11 : 8), sx = x + nn.x * o, sy = y + nn.y * o, rx = 1.4 + r() * r() * (stony ? 6 : 2.8), d = D().blob(r, sx, sy, rx, rx * .62, 6, .3), d2 = D().ell(sx - rx * .3, sy - rx * .25, rx * .45, rx * .25); const tone = r(); if (!mouths.has(i) && !shoreCovered(x, y)) add({ x: sx - 9, y: sy - 9, w: 18, h: 18 }, (cx, C) => { cx.fillStyle = tone < .35 ? '#8e8674' : tone < .7 ? '#a49b86' : '#bcb39c'; cx.fill(P2(d)); cx.fillStyle = '#ddd6c2'; cx.globalAlpha = .6; cx.fill(P2(d2)); cx.globalAlpha = 1; }); }
+        else if (roll < pPeb + pGrass) { const o = (turf ? 4 : 10) + r() * 10, sx = x + nn.x * o, sy = y + nn.y * o, d = D().blob(r, sx, sy, 7 + r() * 9, 3 + r() * 3, 7, .5), light = r() < .5; if (!mouths.has(i) && !shoreCovered(x, y)) add({ x: sx - 18, y: sy - 8, w: 36, h: 16 }, (cx, C) => { cx.globalAlpha = fell ? .6 : .55; cx.fillStyle = fell ? (light ? '#6e5a5e' : '#5a5a3a') : light ? mix(C.grass, '#c8d08a', .25) : C.grass; cx.fill(P2(d)); cx.globalAlpha = 1; }); }
       }
     }
     tag = 'fill';
@@ -654,6 +710,33 @@ window.GardenPaintWater = (function () {
           for (const [px, py, pr, t] of peb) { cx.globalAlpha = .5; cx.fillStyle = t < .5 ? '#7c7462' : '#968c76'; cx.beginPath(); cx.ellipse(px, py + wid * .4, pr, pr * .6, 0, 0, Math.PI * 2); cx.fill(); }
           cx.restore(); cx.globalAlpha = 1; });
         s += step * 2.4;   // one bar a bend
+      }
+    }
+    tag = 'margin';
+    // 4d. The river's margins: on its straight reaches the river was one even width between two parallel banks (a drain, not a
+    //     lowland river). Every so often, on alternate sides, a bed of reeds and sedge or a gravel shoal reaches out from the
+    //     bank into the shallows, so the open water narrows and widens and the banks never run parallel for long. Inside the
+    //     water's own outline (nothing to walk on is invented), from the river's line.
+    if ((kind === 'river' || kind === 'brook') && river) {
+      const hwp = river.hw * (W.cellW + W.cellH) / 2, per = kind === 'brook' ? 96 : 150; let side = r() < .5 ? -1 : 1;
+      for (let s = per * (.3 + r() * .5); s < river.len - 40; s += per * (.65 + r() * .7)) {
+        side = -side; const c = at(river, s), nx = -c.ty * side, ny = c.tx * side, bx = c.x + nx * hwp * .98, by = c.y + ny * hwp * .98;
+        if (!inside(c.x + nx * hwp * .55, c.y + ny * hwp * .55, pts) || !inside(c.x, c.y, pts) || shoreCovered(bx, by)) continue;
+        const reach = hwp * (.28 + r() * .24), len = (kind === 'brook' ? 22 : 34) + r() * (kind === 'brook' ? 26 : 50), ang = Math.atan2(c.ty, c.tx), reedy = kind === 'brook' || r() < .62, peb = [], clump = [];
+        for (let k = 0; k < 12; k++) peb.push([(r() - .5) * len * 1.3, -r() * reach * .9, .9 + r() * 1.8, r()]);
+        if (reedy) { const ids = ['plant.reed', 'plant.proof-fleet-rush', 'plant.bulrush', 'plant.reed']; for (let k = 0, cnt = 4 + Math.floor(r() * 5); k < cnt; k++) { const u = (r() - .5) * len * 1.1, v = -r() * reach * .75; clump.push([bx + Math.cos(ang) * u - Math.sin(ang) * v * side, by + Math.sin(ang) * u + Math.cos(ang) * v * side, ids[Math.floor(r() * ids.length)], r() < .5 ? 0 : 1, 22 + r() * 16]); } clump.sort((p, q) => p[1] - q[1]); }
+        add({ x: bx - len * 1.6 - 60, y: by - len * 1.6 - 90, w: len * 3.2 + 120, h: len * 3.2 + 150 }, (cx, C, ctx) => {
+          cx.save(); cx.clip(P); cx.translate(bx, by); cx.rotate(ang); cx.scale(1, side);
+          // the shallow ground the margin stands in: mud and silt under reeds, pale gravel on a shoal, fading into the water
+          const col = rgbOf(reedy ? mix(C.bank, C.grass, .25) : mix(C.bed, '#d8cca6', .3)), cy1 = -reach * .35;
+          cx.save(); cx.scale(1, reach / len); const g = cx.createRadialGradient(0, cy1 * len / reach, 0, 0, cy1 * len / reach, len); g.addColorStop(0, 'rgba(' + col + ',' + (reedy ? .7 : .6) + ')'); g.addColorStop(.55, 'rgba(' + col + ',' + (reedy ? .45 : .32) + ')'); g.addColorStop(1, 'rgba(' + col + ',0)'); cx.fillStyle = g; cx.beginPath(); cx.arc(0, cy1 * len / reach, len, 0, Math.PI * 2); cx.fill(); cx.restore();
+          // a lap of light along its water side
+          cx.globalAlpha = .35; cx.strokeStyle = C.foam; cx.lineWidth = 1.2; cx.beginPath(); cx.ellipse(0, -reach * .25, len * .62, reach * .72, 0, Math.PI * 1.15, Math.PI * 1.85); cx.stroke(); cx.globalAlpha = 1;
+          if (!reedy) for (const [px, py, pr, t] of peb) { cx.globalAlpha = .55; cx.fillStyle = t < .5 ? '#7c7462' : '#988e78'; cx.beginPath(); cx.ellipse(px, py, pr, pr * .6, 0, 0, Math.PI * 2); cx.fill(); }
+          cx.restore(); cx.globalAlpha = 1;
+          if (reedy) for (const [x, y, id, v, h] of clump) ctx.stamp(id, v, h, x, y);
+        });
+        if (reedy) out[out.length - 1].needs = clump.map(q => [q[2], q[3], q[4]]);
       }
     }
     tag = 'rapid';
@@ -981,6 +1064,39 @@ window.GardenPaintWater = (function () {
     return out;
   }
 
+  /* White water off a drop (the weir's sill, a step in the gorge), in the drop's own frame: x runs downstream from the brink,
+   * y across the channel (-half..half). Held water above it as a soft darker pool, the brink's sky line in broken arcs, then
+   * tongues of white water of their own widths and lengths pouring off it, with darker water between them and bubbles
+   * drifting away. Nothing has a straight edge: a rectangle of white or of darker water read as a pane of glass. */
+  function dropOf(r, half, k) {
+    const tongues = [], bubbles = [], brink = [];
+    let y = -half * 1.08; while (y < half * 1.08) { const w = half * (.12 + r() * .22); tongues.push([y + w / 2, w * (.42 + r() * .2), (16 + r() * 22) * k, .55 + r() * .4, (r() - .5) * 3]); y += w * (.8 + r() * .5); }
+    for (let i = 0; i < 34; i++) { const t = r(); bubbles.push([6 + t * 44 * k, (r() - .5) * 2.1 * half, .8 + r() * 2.2, (1 - t) * (.35 + r() * .45)]); }
+    y = -half * 1.05; while (y < half * 1.05) { const l = half * (.1 + r() * .22); brink.push([y, y + l, (r() - .5) * 2]); y += l + half * (.04 + r() * .1); }
+    return { tongues, bubbles, brink };
+  }
+  function paintDrop(c, C, d, half) {
+    c.save();
+    // the held water: a soft pool of darker, smoother water just above the brink (round-ended, so no edge shows)
+    const g0 = c.createRadialGradient(-16, 0, 0, -16, 0, 30); const dc = rgbOf(C.deep); g0.addColorStop(0, 'rgba(' + dc + ',.32)'); g0.addColorStop(.7, 'rgba(' + dc + ',.16)'); g0.addColorStop(1, 'rgba(' + dc + ',0)');
+    c.save(); c.scale(1, half * 1.15 / 30); c.fillStyle = g0; c.beginPath(); c.arc(-16, 0, 30, 0, Math.PI * 2); c.fill(); c.restore();
+    // the brink catching the sky, broken where the water humps over a stone
+    c.lineCap = 'round'; c.strokeStyle = C.skyHi; c.lineWidth = 1.4;
+    for (const [y0, y1, dx] of d.brink) { c.globalAlpha = .5; c.beginPath(); c.moveTo(-3 + dx, y0); c.quadraticCurveTo(-5 + dx, (y0 + y1) / 2, -3 + dx, y1); c.stroke(); }
+    // the darker water between the tongues, under the white
+    c.globalAlpha = .22; c.fillStyle = '#1e3036';
+    for (const [y, w] of d.tongues) { c.beginPath(); c.ellipse(5, y + w * 1.15, 6, w * .4, 0, 0, Math.PI * 2); c.fill(); }
+    // the tongues of white water, each its own width and length, fading as they spread downstream
+    const fc = rgbOf(C.foam);
+    for (const [y, w, l, a, dy] of d.tongues) {
+      const g = c.createRadialGradient(2, y, 0, 2, y, l); g.addColorStop(0, 'rgba(' + fc + ',' + a + ')'); g.addColorStop(.35, 'rgba(' + fc + ',' + a * .6 + ')'); g.addColorStop(1, 'rgba(' + fc + ',0)');
+      c.save(); c.translate(2, y); c.scale(1, w / l); c.translate(-2, -y); c.globalAlpha = 1; c.fillStyle = g; c.beginPath(); c.arc(2, y, l, -Math.PI / 2, Math.PI / 2); c.fill(); c.restore();
+      c.globalAlpha = a * .7; c.fillStyle = C.foam; c.beginPath(); c.ellipse(3, y + dy * .3, 2.4, w * .8, 0, 0, Math.PI * 2); c.fill();
+    }
+    for (const [x, y, rr, a] of d.bubbles) { c.globalAlpha = a; c.fillStyle = C.foam; c.beginPath(); c.ellipse(x, y, rr * 1.4, rr * .8, 0, 0, Math.PI * 2); c.fill(); }
+    c.restore(); c.globalAlpha = 1;
+  }
+
   /* ---------- set pieces the layout names: the weir, the falls' pool ---------- */
   function setPieces(S) {
     const M = S.M, W = S.W, data = S.data, pres = data.presentation || {}, extras = [], foams = [], mists = [];
@@ -993,24 +1109,20 @@ window.GardenPaintWater = (function () {
       const mx = cx(mill.x + mill.w / 2 - .5), my = cy(mill.y + 2.6), near = nearestOn(river, mx, my), q = at(river, near.s + 30), ang = Math.atan2(q.ty, q.tx), nx = -q.ty, ny = q.tx;
       const half = river.hw * Math.hypot(nx * W.cellW, ny * W.cellH) * 1.05, r = rng(hash('weir'));
       const span = (k) => ({ x: q.x + nx * half * k, y: q.y + ny * half * k });
-      const a = span(-1), b = span(1), stones = []; for (let i = 0; i <= 10; i++) { const t = i / 10, p = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }; stones.push([p.x, p.y, 7 + r() * 3, r()]); }
-      const up = 16, down = 34, box = { x: Math.min(a.x, b.x) - 60, y: Math.min(a.y, b.y) - 60, w: Math.abs(b.x - a.x) + 120, h: Math.abs(b.y - a.y) + 120 };
+      // (old weathered stones of their own sizes, a few lower ones the river pours through: eleven equal stones in a row and a
+      //  straight-edged white band across the river read as a sheet of glass beside a bead necklace; art director, round 3)
+      const a = span(-1), b = span(1), stones = []; for (let i = 0; i <= 12; i++) { const t = (i + (r() - .5) * .5) / 12, p = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }, low = r() < .28; stones.push([p.x + (r() - .5) * 3, p.y + (r() - .5) * 3, low ? 3.5 + r() * 2.5 : 5 + r() * 5.5, r(), low]); }
+      const drop = dropOf(r, half, 1.15), box = { x: Math.min(a.x, b.x) - 70, y: Math.min(a.y, b.y) - 70, w: Math.abs(b.x - a.x) + 140, h: Math.abs(b.y - a.y) + 140 };
       const clipW = () => { const w = M.waters.find(w => w.id === 'river-3') || M.waters.find(w => w.kind === 'river' && inside(q.x, q.y, w.pts)); return w ? (() => { const p = new Path2D(); p.moveTo(w.pts[0].x, w.pts[0].y); for (const z of w.pts) p.lineTo(z.x, z.y); p.closePath(); return p; })() : null; };
       let clip = null;
       extras.push({ b: box, draw(c, C) {
         clip = clip || clipW(); c.save(); if (clip) c.clip(clip);
-        // still water held above the sill: darker, smooth, a bright sky line
-        c.save(); c.translate(q.x, q.y); c.rotate(ang);
-        c.globalAlpha = .35; c.fillStyle = C.deep; c.fillRect(-up - 30, -half * 1.4, 30, half * 2.8);
-        c.globalAlpha = .45; c.fillStyle = C.skyHi; c.fillRect(-10, -half * 1.2, 2, half * 2.4);
-        // white water below the sill
-        const g = c.createLinearGradient(0, 0, down + 20, 0); g.addColorStop(0, 'rgba(250,252,250,.95)'); g.addColorStop(.4, 'rgba(240,248,246,.55)'); g.addColorStop(1, 'rgba(240,248,246,0)');
-        c.globalAlpha = 1; c.fillStyle = g; c.fillRect(4, -half * 1.3, down + 20, half * 2.6);
-        c.restore(); c.restore();
-        // the sill: dressed stones lit from the upper left, a dark wet face downstream
-        for (const [x, y, rr, t] of stones) { c.fillStyle = '#5c584c'; c.beginPath(); c.ellipse(x + 2, y + 3, rr, rr * .6, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = t < .5 ? '#b3ab94' : '#a39b85'; c.beginPath(); c.ellipse(x, y, rr, rr * .55, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = '#d8d0b8'; c.globalAlpha = .8; c.beginPath(); c.ellipse(x - rr * .3, y - rr * .2, rr * .5, rr * .22, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; if (t > .6) { c.fillStyle = C.moss; c.globalAlpha = .7; c.beginPath(); c.ellipse(x + rr * .2, y - rr * .3, rr * .4, rr * .18, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; } }
+        c.save(); c.translate(q.x, q.y); c.rotate(ang); paintDrop(c, C, drop, half); c.restore();
+        c.restore();
+        // the sill: weathered stones lit from the upper left, a dark wet face downstream, moss on the older ones
+        for (const [x, y, rr, t, low] of stones) { c.fillStyle = '#4c483e'; c.beginPath(); c.ellipse(x + 1.5, y + 2.4, rr * 1.02, rr * .6, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = low ? '#7e7866' : t < .5 ? '#a8a08a' : '#99917b'; c.beginPath(); c.ellipse(x, y, rr, rr * (.5 + t * .12), (t - .5) * .4, 0, Math.PI * 2); c.fill(); c.fillStyle = '#d2cab2'; c.globalAlpha = low ? .35 : .7; c.beginPath(); c.ellipse(x - rr * .3, y - rr * .2, rr * .46, rr * .2, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; if (t > .55) { c.fillStyle = C.moss; c.globalAlpha = .7; c.beginPath(); c.ellipse(x + rr * .15, y - rr * .3, rr * .45, rr * .18, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; } if (low) { c.strokeStyle = C.foam; c.globalAlpha = .7; c.lineWidth = 1.2; c.beginPath(); c.ellipse(x, y - 1, rr * .8, rr * .35, 0, Math.PI * 1.1, Math.PI * 1.9); c.stroke(); c.globalAlpha = 1; } }
       } });
-      foams.push({ x: q.x + q.tx * 16, y: q.y + q.ty * 16, w: half * 1.7, h: 26, ang: ang + Math.PI / 2, speed: 26, puffs: 12, drift: 34 });
+      foams.push({ x: q.x + q.tx * 16, y: q.y + q.ty * 16, w: half * 1.7, h: 26, ang: ang + Math.PI / 2, speed: 26, puffs: 16, drift: 34, noStrip: true });
       mists.push({ x: q.x + q.tx * 26, y: q.y + q.ty * 26, rx: half * .6, ry: 8, n: 3, a: .22, speed: .06, drift: 18, rise: 10 });
       S.weir = { x: q.x, y: q.y, ang, half };
     }
@@ -1034,8 +1146,10 @@ window.GardenPaintWater = (function () {
           for (let k = 0; k < n; k++) { const bx = (q() - .5) * rr * 3.2, by = (q() - .5) * rr * .7, br = .9 + q() * (2.6 - d * 1.2); c.globalAlpha = al * (.45 + q() * .55); c.beginPath(); c.ellipse(bx, by, br * 1.5, br * .8, 0, 0, Math.PI * 2); c.fill(); }
           c.restore(); });
         // (no whole rings drawn round it: three perfect ellipses read as a target; the broken arcs above are the spreading water)
-        const g2 = c.createRadialGradient(pool.x, pool.y - 6, 0, pool.x, pool.y - 6, width * .9); g2.addColorStop(0, 'rgba(255,255,255,.95)'); g2.addColorStop(.6, 'rgba(245,250,248,.5)'); g2.addColorStop(1, 'rgba(245,250,248,0)');
-        c.globalAlpha = 1; c.fillStyle = g2; c.save(); c.translate(pool.x, pool.y - 6); c.scale(1, .45); c.beginPath(); c.arc(0, 0, width * .9, 0, Math.PI * 2); c.fill(); c.restore();
+        // (the churn where the sheet lands: several overlapping soft boils, not one white blob)
+        const fc = rgbOf(C.foam); for (let k = 0; k < 5; k++) { const ox = (k - 2) * width * .32 + Math.sin(k * 2.3) * 6, oy = -6 + Math.cos(k * 1.7) * 4, rr = width * (.32 + (k % 2) * .14);
+          const g2 = c.createRadialGradient(pool.x + ox, pool.y + oy, 0, pool.x + ox, pool.y + oy, rr); g2.addColorStop(0, 'rgba(' + fc + ',.62)'); g2.addColorStop(.55, 'rgba(' + fc + ',.26)'); g2.addColorStop(1, 'rgba(' + fc + ',0)');
+          c.globalAlpha = 1; c.fillStyle = g2; c.save(); c.translate(pool.x + ox, pool.y + oy); c.scale(1, .5); c.beginPath(); c.arc(0, 0, rr, 0, Math.PI * 2); c.fill(); c.restore(); }
         if (w) c.restore(); c.globalAlpha = 1;
       } });
       // (puffs only here: a scrolling strip has square ends, and under the falls it showed as a pale rectangle)
@@ -1056,21 +1170,16 @@ window.GardenPaintWater = (function () {
         const s = lip.s - back; if (s < 30) continue;
         const q = at(gl, s), ang = Math.atan2(q.ty, q.tx), nx = -q.ty, ny = q.tx, half = gl.hw * Math.hypot(nx * W.cellW, ny * W.cellH) * 1.08;
         const wb = M.waters.find(w => w.kind === 'gorge' && inside(q.x, q.y, w.pts)); if (!wb) continue;
-        const tongues = []; for (let k = 0, nT = 4 + Math.floor(r() * 3); k < nT; k++) tongues.push([((k + .5) / nT - .5) * 2 * half * .95, half / nT * (.7 + r() * .5), 14 + r() * 16]);
-        const stones = []; for (let i = 0, nS = 5 + Math.floor(r() * 3); i <= nS; i++) { const t = i / nS - .5; stones.push([t * 2 * half + (r() - .5) * 4, (r() - .5) * 4, 4.5 + r() * 4.5, r()]); }
-        let clip = null; const box = { x: q.x - half - 50, y: q.y - half - 50, w: half * 2 + 100, h: half * 2 + 100 };
+        // (a ledge of boulders of their own sizes, not a row, set a little askew across the current)
+        // (boulders at the step's ends and the odd one in the stream, the water pouring between: a full row read as stepping stones)
+        const drop = dropOf(r, half, .8), skew = (r() - .5) * .5, stones = []; for (let i = 0, nS = 4 + Math.floor(r() * 4); i <= nS; i++) { const t = i / nS - .5; if (Math.abs(t) < .3 ? r() < .7 : r() < .1) continue; stones.push([t * 2 * half + (r() - .5) * 6, (r() - .5) * 7 + t * half * skew, (Math.abs(t) < .3 ? 3 : 4.5) + r() * r() * 7, r()]); }
+        let clip = null; const box = { x: q.x - half - 60, y: q.y - half - 60, w: half * 2 + 120, h: half * 2 + 120 };
         extras.push({ b: box, draw(c, C) {
           if (!clip) { clip = new Path2D(); clip.moveTo(wb.pts[0].x, wb.pts[0].y); for (const z of wb.pts) clip.lineTo(z.x, z.y); clip.closePath(); }
-          c.save(); c.clip(clip); c.translate(q.x, q.y); c.rotate(ang);
-          // glassy held water above the ledge, a bright sky line along its brink, then the white spill below it
-          c.globalAlpha = .32; c.fillStyle = C.deep; c.fillRect(-34, -half * 1.4, 30, half * 2.8);
-          c.globalAlpha = .5; c.fillStyle = C.skyHi; c.fillRect(-6, -half * 1.2, 1.6, half * 2.4);
-          // the step's wet face just below the ledge, then the white spill off it, broken into tongues across the channel
-          c.globalAlpha = .45; c.fillStyle = '#28363a'; c.fillRect(3, -half * 1.3, 5, half * 2.6);
-          const g = c.createLinearGradient(7, 0, 30, 0); g.addColorStop(0, 'rgba(250,252,250,.9)'); g.addColorStop(.4, 'rgba(240,248,246,.42)'); g.addColorStop(1, 'rgba(240,248,246,0)');
-          c.globalAlpha = 1; c.fillStyle = g; for (let k = 0; k < tongues.length; k++) { const [y0, w0, l0] = tongues[k]; c.beginPath(); c.ellipse(7 + l0 * .5, y0, l0 * .5 + 2, w0, 0, 0, Math.PI * 2); c.fill(); }
+          c.save(); c.clip(clip); c.translate(q.x, q.y); c.rotate(ang + skew * .3);
+          paintDrop(c, C, drop, half);
           // the ledge itself: wet boulders, lit from the upper left, darker downstream where the water pours off them
-          for (const [lat, dx, rr, t] of stones) { const x = dx, y = lat; c.fillStyle = '#2e2b25'; c.beginPath(); c.ellipse(x + 2, y + 1.5, rr, rr * .7, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = t < .5 ? '#55503f' : '#635d4c'; c.beginPath(); c.ellipse(x, y, rr * .9, rr * .62, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = '#9a927c'; c.globalAlpha = .6; c.beginPath(); c.ellipse(x - rr * .3, y - rr * .22, rr * .42, rr * .22, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; }
+          for (const [lat, dx, rr, t] of stones) { const x = dx, y = lat; c.fillStyle = '#2e2b25'; c.beginPath(); c.ellipse(x + 2, y + 1.5, rr, rr * .7, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = t < .5 ? '#55503f' : '#635d4c'; c.beginPath(); c.ellipse(x, y, rr * .9, rr * .62, t - .5, 0, Math.PI * 2); c.fill(); c.fillStyle = '#9a927c'; c.globalAlpha = .6; c.beginPath(); c.ellipse(x - rr * .3, y - rr * .22, rr * .42, rr * .22, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; }
           c.restore();
         } });
       }
@@ -1098,11 +1207,14 @@ window.GardenPaintWater = (function () {
     // (lazy: false), so the first frame has its water
     const G = window.GardenPaintGround, a = S.M.all, box = { x: Math.floor(a.x / 256) * 256, y: Math.floor(a.y / 256) * 256, w: 0, h: 0 }; box.w = Math.ceil((a.x1 + 200 - box.x) / 256) * 256; box.h = Math.ceil((a.y1 + 200 - box.y) / 256) * 256; S.box = box;
     if (G && G.layer) S.layer = ok(() => G.layer(scene, parent, layerOps(S), { key: TEX + '|' + S.tod + '|' + S.season + '|' + (++serialAll), box, chunk: 256, depth: -9590, budgetMB: BUDGET_MB, slice: 8, lazy: false, minK: 1, maxK: 4 }));
+    // at night the world's own sea fill (under everything, at -10010) is veiled dark, the colour the painted sea fades into
+    if (S.tod === 'night' && S.M.coast.length) ok(() => { const W = S.W, w = W.cols * W.cellW, h = W.sky + W.rows * W.cellH; S.veil = scene.add.graphics().setDepth(-10005); S.veil.fillStyle(NIGHT_VEIL.col, NIGHT_VEIL.a).fillRect(-3000, -3000, w + 6000, h + 6000); parent.add(S.veil); S.sortParent = true; });
     S.buildMs = Math.round(performance.now() - t0);
     return { destroy: clear };
   }
   function clear() {
     if (!state) return; const S = state; state = null;
+    if (S.veil) ok(() => S.veil.destroy());
     if (S.layer) ok(() => S.layer.destroy());
     for (const e of S.em || []) for (const g of e.list || []) g.im.destroy(); for (const e of S.em || []) for (const q of e.rings || []) q.im.destroy();
   }
@@ -1115,6 +1227,9 @@ window.GardenPaintWater = (function () {
     if (S.sortParent && S.parent.sort) { S.parent.sort('depth'); S.sortParent = false; }
     if (S.sortObjects && S.objects && S.objects.sort) { S.objects.sort('depth'); S.sortObjects = false; }
     const pad = { x: view.x - 60, y: view.y - 60, w: view.w + 120, h: view.h + 120 }; S.view = view;
+    // the trees on the banks in the still water, once the planting painters have listed their trunks (looked for every 2 s)
+    if (!S.mirrored && S.mirrorKit && S.layer && S.layer.add && time - (S.mirrorAt || -1e9) > 2000) { S.mirrorAt = time; const T = S.mirrorKit.list();
+      if (T.length) { S.mirrored = T.length; for (const t of T) S.layer.add({ bb: [t.x - t.cw, t.y0 - 4, t.x + t.cw, t.y + t.h + 4], seed: 9, tag: 'water mirror', draw(B) { S.mirrorKit.paint(B.cx, t); } }); } }
     for (const e of S.em) {
       const vis = hit(e.b, pad);
       if (vis !== e.vis) { e.vis = vis; for (const g of e.list) g.im.setVisible(vis); for (const q of e.rings || []) q.im.setVisible(vis); }

@@ -845,7 +845,10 @@ window.GardenPaintedProps = (function () {
       for (let i = fed ? 3 : 0; i < 6; i++) { const px = (i < 3 ? -1 : 1) * (Wd / 2 + 10 + (i % 3) * 16); B.s(`M${px} ${-S + 10}q${(r() - .5) * 8} ${30 * k} ${(r() - .5) * 4} ${(40 + r() * 30) * Math.max(.5, k)}`, leafOf(season)[0], 2, .8); }
       B.cx.restore();
       // A wet cleft follows the falling water instead of framing it with straight posts.
-      const sheet = `M${lipX - Wd / 2} ${-H}h${Wd}C${lipX + Wd / 2 - 4} ${-H * .7} ${Wd / 2 - 7} ${-H * .3} ${Wd / 2 + 4} -8q${-Wd / 2 - 4} 10 ${-Wd - 8} 0C${-Wd / 2 + 7} ${-H * .3} ${lipX - Wd / 2 + 4} ${-H * .7} ${lipX - Wd / 2} ${-H}z`;
+      // (the lip is a broken, bowed edge where the water humps over the rock, not one straight rule; the sheet fans out a little
+      //  as it falls and its sides waver, so it reads as falling water and not a pale panel; art director, round 3)
+      const lipPath = (() => { let d = '', n = 6; for (let i = 1; i <= n; i++) { const u0 = (i - 1) / n, u1 = i / n, xm = lipX - Wd / 2 + Wd * (u0 + u1) / 2, x1 = lipX - Wd / 2 + Wd * u1, bow = Math.sin(Math.PI * u1) * 4, ym = -H + 1.5 + Math.sin(Math.PI * (u0 + u1) / 2) * 5 + (r() - .5) * 3.2; d += `Q${xm.toFixed(1)} ${ym.toFixed(1)} ${x1.toFixed(1)} ${(-H + bow + (i < n ? (r() - .5) * 2 : 0)).toFixed(1)}`; } return d; })();
+      const sheet = `M${lipX - Wd / 2} ${-H}${lipPath}C${lipX + Wd / 2 + 1} ${-H * .72} ${Wd / 2 - 3} ${-H * .42} ${Wd / 2 + 2} ${-H * .24}S${Wd / 2 + 9} -16 ${Wd / 2 + 8} -8q${-Wd / 2 - 8} 11 ${-Wd - 16} 0C${-Wd / 2 - 6} ${-H * .14} ${-Wd / 2 + 3} ${-H * .3} ${-Wd / 2 + 1} ${-H * .46}S${lipX - Wd / 2 - 1} ${-H * .8} ${lipX - Wd / 2} ${-H}z`;
       // the wet rock the water runs over shows dark at its edges (a soft cleft, never an outline round the sheet)
       { const cl = B.cx; cl.save(); cl.filter = 'blur(' + (3 * K).toFixed(1) + 'px)'; B.f(sheet, '#2f3d3c', .5); cl.restore(); cl.filter = 'none'; }
       // the falling sheet: brightest where it curls over the lip, a deep green-blue body, white again where it breaks below
@@ -863,11 +866,12 @@ window.GardenPaintedProps = (function () {
       // the drop, broken by two lip stones, with the shade just under the roll (not one clean rim, which read as a cylinder's top)
       { const cl = B.cx, ga = cl.createLinearGradient(0, -H - 12, 0, -H + 2); ga.addColorStop(0, 'rgba(58,118,128,0)'); ga.addColorStop(1, 'rgba(58,118,128,.6)'); cl.save(); cl.fillStyle = ga; cl.beginPath(); cl.ellipse(lipX, -H - 4, Wd / 2 + 3, 8, 0, 0, Math.PI * 2); cl.fill(); cl.restore(); }
       for (let i = 0; i < 9; i++) { const u = (i + .5) / 9 - .5, px = lipX + u * Wd, rr = Wd / 9 * (.75 + r() * .6); B.f(B.ell(px, -H + 1 + (r() - .5) * 2.6, rr, 2.4 + r() * 2.6), i % 3 === 1 ? '#d8eeea' : '#f6fcf9', .78 + r() * .2); }
-      B.s(`M${lipX - Wd / 2 + 2} ${-H + 6}q${Wd / 2} 4 ${Wd - 4} 0`, '#4d8d93', 1.4, .36);
-      for (const u of [-.34, .3]) B.stone(r, lipX + u * Wd, -H + 1, 4.5 + r() * 2.5, 2.8 + r() * 1.2, ['#6f6a5c', '#4e4a40', '#9c9580', '#3a372f'], MOSS);
+      B.s(`M${lipX - Wd / 2 + 2} ${-H + 8}q${Wd / 2} 5 ${Wd - 4} 0`, '#4d8d93', 1.4, .36);
+      // (no stones set on the lip: two pebbles sitting on the brink read as a garden water feature; wet rock frames its ends)
+      for (const sgn of [-1, 1]) B.stone(r, lipX + sgn * (Wd / 2 + 6), -H + 4, 9 + r() * 4, 6 + r() * 2, ['#6f6a5c', '#4e4a40', '#9c9580', '#3a372f'], MOSS);
       // the foam where it lands: a soft churned skirt wider than the sheet, puffed up where the water strikes, a few crisp
       // bubbles on it (flat white blobs read as cotton wool)
-      { const cl = B.cx; for (let i = 0; i < 18; i++) { const sx = (r() - .5) * Wd * 1.9, rx = 9 + r() * 13, ry = 4 + r() * 4, sy = -4 + (r() - .5) * 8 - Math.max(0, 1 - Math.abs(sx) / Wd) * 7, g = cl.createRadialGradient(sx, sy, 0, sx, sy, rx); g.addColorStop(0, 'rgba(250,253,251,.96)'); g.addColorStop(.55, 'rgba(238,247,245,.62)'); g.addColorStop(1, 'rgba(238,247,245,0)'); cl.save(); cl.translate(sx, sy); cl.scale(1, ry / rx); cl.translate(-sx, -sy); cl.fillStyle = g; cl.beginPath(); cl.arc(sx, sy, rx, 0, Math.PI * 2); cl.fill(); cl.restore(); } }
+      { const cl = B.cx; for (let i = 0; i < 18; i++) { const sx = (r() - .5) * Wd * 1.9, rx = 9 + r() * 13, ry = 4 + r() * 4, sy = -4 + (r() - .5) * 8 - Math.max(0, 1 - Math.abs(sx) / Wd) * 7, g = cl.createRadialGradient(sx, sy, 0, sx, sy, rx); g.addColorStop(0, 'rgba(250,253,251,.78)'); g.addColorStop(.55, 'rgba(238,247,245,.4)'); g.addColorStop(1, 'rgba(238,247,245,0)'); cl.save(); cl.translate(sx, sy); cl.scale(1, ry / rx); cl.translate(-sx, -sy); cl.fillStyle = g; cl.beginPath(); cl.arc(sx, sy, rx, 0, Math.PI * 2); cl.fill(); cl.restore(); } }
       for (let i = 0; i < 14; i++) { const sx = (r() - .5) * Wd * 1.5, rr = 1 + r() * 2.2; B.f(B.ell(sx, -5 + (r() - .5) * 8, rr * 1.4, rr), '#ffffff', .55 + r() * .35); }
       // Standalone falls have a stone rim; the Mere already owns its real shoreline.
       if (!sharedPool) for (let i = 0; i < 8; i++) { const a = Math.PI * (.08 + .84 * r()), px = Math.cos(a) * 92 * (r() < .5 ? -1 : 1), py = 14 + Math.sin(a) * 14; B.stone(r, px, py, 7 + r() * 5, 4 + r() * 2, STONE, r() < .5 ? MOSS : null); }
