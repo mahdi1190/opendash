@@ -13,6 +13,8 @@ import { createHash } from 'node:crypto';
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const v4 = JSON.parse(readFileSync(join(root, 'assets/garden/island-v4.json'), 'utf8'));
 const W = { cols: 96, rows: 96, cellW: 48, cellH: 30 };
+// Cloudbreak mountains (zone 5) are hand-authored in assets/garden/vale-mountains.json, like the village (the approved plan, 19 Nov 2026)
+const VM = JSON.parse(readFileSync(join(root, 'assets/garden/vale-mountains.json'), 'utf8'));
 const r2 = n => Math.round(n * 100) / 100;
 const warn = [];
 
@@ -45,7 +47,7 @@ const RIVER = [[58.2, 38.4], [61, 43.6], [63.6, 48.6], [65, 55], [66.6, 60], [70
 const BROOK = [[6.6, 30.2], [10, 33.6], [16, 35.4], [23, 37.2], [30, 36], [35.4, 36.4], [39.6, 35.2]];
 // [polyline, half width, gaps [[x, y, half length]]]
 const ribbons = {
-  gorge: [GORGE, .85, [[35.8, 16.9, .8]]],
+  gorge: [GORGE, .85, [[35.8, 16.9, .8], [43.3, 23.8, .9]]],   // (2.74 Cloudbreak: the lip stones cross above the falls; a third piece of gorge, gorge-3, below them)
   river: [RIVER, 1.45, [[59.9, 41.1, .75], [65, 55.1, 1.25], [78.6, 80.4, .8]]],
   brook: [BROOK, .62, [[10.3, 33.7, .7], [25.6, 36.8, .7], [37.4, 36, .8]]],
 };
@@ -137,6 +139,8 @@ const landforms = [
   ...wallSegments('ruin-wall', 'southwest-ruins', 'ruin-wall', [[32.6, 62], [27, 62.6], [20, 64.8], [14.6, 68.6], [11, 74], [12.4, 80], [12.8, 84.4]], [[19.6, 65.1, 2.2]], 1.6, 5),
   ...wallSegments('postern-wall', 'southwest-ruins', 'ruin-wall', [[32.6, 62], [35, 70], [36.4, 78], [37.8, 83.6]], [[35.8, 74.2, 1.8]], 1.6, 5),
   ...wallSegments('orchard-bank', 'orchard-headland', 'terrace-wall', [[60.2, 27.2], [61, 28.6], [60.8, 34], [61, 39.4]], [[61, 38.4, 1.8]], 1.6, 5),
+  // Cloudbreak mountains (vale-mountains.json): the cove's cliffs and the falls rail, rock lines that stop the feet
+  ...VM.walls.map(w => ({ id: w.id, region: 'north-headland', kind: w.kind, polygon: ribbon(w.line, w.halfWidth).map(p => [r2(p[0]), r2(p[1])]), col: 'full', reserved: true })),
   ...wallSegments('terrace-wall', 'orchard-headland', 'terrace-wall', [[63.2, 48.6], [68, 48.4], [78, 50.6], [90.8, 50]], [[80.2, 50.4, 2.0]], 1.6, 5),
 ];
 
@@ -165,6 +169,10 @@ function splineW(ctrl, widths, closed, step = .5) { // Catmull-Rom through the c
 const vRoute = id => { const a = VV.routes.find(r => r.id === id); if (!a) throw Error('vale-village.json has no route ' + id); const { pts, ws } = splineW(a.control, a.widths, !!a.closed);
   return route(id, a.tier, pts, 0, Object.assign({ widthCells: Math.max(...ws), widths: ws }, a.gateId ? { gateId: a.gateId } : {}, id === 'plaza-loop' ? { shape: VV.plazas['the-square'].poly.map(p => p.map(r2)) } : {})); };
 const vPlaza = (id, width) => { const p = VV.plazas[id]; return route(id, 'plaza', p.spine, 0, { widthCells: width, shape: p.poly.map(q => q.map(r2)) }); };
+const mRoute = a => { const { pts, ws } = splineW(a.control, a.widths, false); return route(a.id, a.tier, pts, 5, Object.assign({ widthCells: Math.max(...ws), widths: ws, surface: a.surface }, a.opens ? { opens: a.opens } : {})); };
+const mPlaza = (id, p) => { const b = bbox(p.poly), cy = r2((b.y + b.y1) / 2), wide = b.x1 - b.x >= b.y1 - b.y;
+  const spine = wide ? [[b.x + (b.x1 - b.x) * .3, cy], [b.x + (b.x1 - b.x) * .7, cy]] : [[(b.x + b.x1) / 2, b.y + (b.y1 - b.y) * .3], [(b.x + b.x1) / 2, b.y + (b.y1 - b.y) * .7]];
+  return route(id, 'plaza', spine, 5, { widthCells: r2(Math.min(b.x1 - b.x, b.y1 - b.y) * .6), shape: p.poly.map(q => q.map(r2)), surface: p.surface, name: p.name }); };
 const GREEN = { x: 49, y: 51.6, rx: 6.6, ry: 4.4 };   // (the green's rough extent, for painters that only want a centre and radii)
 const routes = [
   // the arrival spine: quay, high street, the square and the green, the Lakeside terrace (harbour-walk[0] is the green end)
@@ -203,13 +211,10 @@ const routes = [
   route('east-beach', 'trail', [[79.2, 37], [82.4, 40.4], [85.6, 42.4]], 4),
   route('lakeside-steps', 'trail', [[59.9, 41.1], [61, 38.4], [62.6, 35.6], [65.6, 34.4], [68.4, 35.4]], 4),
   route('orchard-rows', 'trail', [[68, 42.4], [74, 41.4], [78.4, 40], [84, 45.6]], 4),
-  // Cloudbreak mountains (zone 5)
-  route('pass-summit', 'trail', [[71, 21.3], [70.6, 19.6], [66.4, 18.4], [60.6, 16.4], [56, 12.6], [51.6, 9.8]], 5),
-  route('summit-cairn', 'plaza', [[49.6, 9.8], [51.6, 9.8]], 5, { widthCells: 3.6 }),
-  route('summit-tarn', 'trail', [[49.6, 9.8], [44, 12], [38.6, 12.4], [36, 12]], 5),
-  route('gorge-trail', 'trail', [[36, 12], [35.2, 15], [35.8, 16.9], [36.6, 19.8], [39.4, 22.4], [41.4, 24.4], [42.2, 25.9], [42.2, 27.2]], 5),
-  route('cold-cove', 'trail', [[56, 12.6], [62, 15.6], [70.4, 14.6], [74.6, 10.6], [77.2, 9.6]], 5),
-  route('moor-trail', 'trail', [[38.6, 12.4], [35.4, 7.2], [28, 6.4], [20, 12.6], [10, 14.6], [3, 14]], 5),
+  // Cloudbreak mountains (zone 5): hand-authored (vale-mountains.json): the Cloudbreak Way, lanes and trails with a width
+  // at each control point, and the open tops as shapes (the summit, the col, Wick's yard, the Long View, the falls top, the moor's end)
+  ...VM.routes.map(a => mRoute(a)),
+  ...Object.entries(VM.plazas).map(([id, p]) => mPlaza(id, p)),
 ];
 
 /* ------------------------------------------------------------ gates (ids, n and fromZone kept) */
@@ -295,6 +300,11 @@ for (const p of S) if (p.door === undefined) p.door = { x: p.x, y: p.y + 1 };
 // the hand-authored village (vale-village.json): statics that move to face the square, and the new cottages
 for (const [id, mv] of Object.entries(VV.staticMoves)) { const p = S.find(q => q.id === id); if (!p) { warn.push('static move: no static ' + id); continue; } Object.assign(p, mv); if (p.apron) p.apron = p.door && p.door.y < p.y ? { x: p.x - 1, y: p.y - 3, w: p.w + 2, h: 3 } : { x: p.x - 1, y: p.y + 1, w: p.w + 2, h: 3 }; }
 for (const ns of VV.newStatics) S.push(Object.assign(sightRow(ns.id), ns));
+// Cloudbreak (vale-mountains.json): the hut, cairn, beacon, stones, grotto and warren at their new sizes and places, and
+// three new ones (the bothy, the toposcope, the moor's end gate). The standing stones block only the four stones
+// (presentation.mountains.stones), so their rectangle is open ground on the summit (col 'none').
+for (const [id, mv] of Object.entries(VM.staticMoves)) { const p = S.find(q => q.id === id); if (!p) { warn.push('mountain static move: no static ' + id); continue; } Object.assign(p, mv); delete p.stones; delete p.apron; }
+for (const ns of VM.newStatics) S.push(Object.assign(sightRow(ns.id), ns));
 // how deep a building stands on the ground (fix round 1): a house blocks its whole footprint, front wall to back wall, not
 // only the row along its front, so the feet stop where its walls stand and never step into the picture. The front row
 // (and so the foot it is drawn from, its door and its depth order) stays where it was; the rows behind it are added.
@@ -372,6 +382,9 @@ for (const [id, a] of Object.entries(VV.sections)) {
   if (keep.length < need) warn.push(`village section ${id} has ${keep.length} cells, fewer than its ${need}`);
   sectionCells[id] = keep;
 }
+// Cloudbreak's nine sections are hand-authored fields (vale-mountains.json): each cell must be free zone-5 ground
+const mWhy = (x, y) => { const c = C(x, y); return !c || !c.land ? 'sea' : c.fw ? 'water' : c.beach ? 'beach' : c.route ? 'route ' + c.route : c.st ? 'static ' + c.st : c.lf ? 'landform' : c.reserved ? 'reserved' : c.zone !== 5 ? 'zone ' + c.zone : taken.has(K(x, y)) ? 'taken' : S.some(p => p.door && Math.floor(p.door.x) === x && Math.floor(p.door.y) === y) ? 'a door' : ''; };
+for (const [id, f] of Object.entries(VM.fields)) { const keep = []; for (const [x, y] of f.cells) { const w = mWhy(x, y); if (w) warn.push(`mountain section ${id} cell ${x},${y} is not free (${w})`); else { keep.push([x, y]); taken.add(K(x, y)); } } sectionCells[id] = keep; }
 const fieldOf = Object.fromEntries(Object.entries(VV.sections).map(([id, a]) => [id, a.field]));
 const shapeOf = n => n >= 19 ? [5, 4] : n >= 14 ? [7, 2] : n >= 12 ? [4, 3] : n >= 9 ? [3, 3] : n >= 6 ? [3, 2] : [2, 2];
 const free = (x, y, zone) => { const c = C(x, y); return !!c && c.land && !c.fw && !c.beach && !c.reserved && c.zone === zone && !taken.has(K(x, y)) && x >= 1 && y >= 1 && x < W.cols - 1 && y < W.rows - 1; };
@@ -466,6 +479,14 @@ const fields = Object.entries(VV.fields).map(([id, f]) => {
   if (hint && !gate) warn.push('field ' + id + ' has no gate');
   return { id, name: f.name, edge: EDGE[id] || 'hedge', sections: secs, gate: gate ? { x: gate.x, y: gate.y, out: gate.out, section: gate.section } : null };
 });
+// Cloudbreak's fields: one section each, its gate the field cell beside a path nearest the authored hint
+for (const [id, f] of Object.entries(VM.fields)) {
+  const mine = new Set(sectionCells[id].map(c => K(c[0], c[1]))), cand = [];
+  for (const [x, y] of sectionCells[id]) for (const [dx, dy] of [[0, 1], [0, -1], [-1, 0], [1, 0]]) { const c = C(x + dx, y + dy); if (!c || mine.has(K(x + dx, y + dy)) || taken.has(K(x + dx, y + dy)) || !c.land || c.fw || c.st || c.lf || c.zone !== 5) continue; cand.push({ x, y, out: { x: x + dx, y: y + dy }, onRoute: !!c.route }); }
+  const sc = q => (q.onRoute ? 0 : 2) + Math.hypot(q.x + .5 - f.gateHint[0], q.y + .5 - f.gateHint[1]), g = cand.sort((a, b) => sc(a) - sc(b))[0];
+  if (!g) warn.push('mountain field ' + id + ' has no gate'); else if (!g.onRoute) warn.push('mountain field ' + id + ' gate is not onto a path');
+  fields.push({ id, name: f.name, edge: f.edge, kind: f.kind, zone: 5, sections: [id], gate: g ? { x: g.x, y: g.y, out: g.out, section: id } : null });
+}
 for (const [id, a] of Object.entries(storyAnchors)) { const x = Math.floor(a.x), y = Math.floor(a.y); if (Object.entries(sectionCells).some(([, cs]) => cs.some(c => c[0] === x && c[1] === y))) warn.push(`story anchor ${id} stands in a field (${x},${y})`); }
 
 /* ------------------------------------------------------------ what the painter reads (presentation only, no collision) */
@@ -480,7 +501,8 @@ const presentation = {
     { id: 'outlet-footbridge', kind: 'footbridge', over: 'river', x: 59.9, y: 41.1, along: 'lakeside-steps' },
     { id: 'millwater-bridge', kind: 'hump-bridge', over: 'river', x: 65, y: 55.1, along: 'east-road', gateId: 'island-mill' },
     { id: 'estuary-stones', kind: 'stepping-stones', over: 'river', x: 78.6, y: 80.4, along: 'coast-walk' },
-    { id: 'gorge-stones', kind: 'stepping-stones', over: 'gorge', x: 35.8, y: 16.9, along: 'gorge-trail' },
+    { id: 'gorge-stones', kind: 'stepping-stones', style: 'clapper', over: 'gorge', x: 35.8, y: 16.9, along: 'gorge-trail' },   // (Cloudbreak plan: drawn as a clapper bridge, two flat slabs two figures wide)
+    { id: 'lip-stones', kind: 'stepping-stones', over: 'gorge', x: 43.3, y: 23.8, along: 'lip-stones' },   // (new: across the gorge above the falls, the Edge walk's way to the falls top)
     { id: 'brook-stones-west', kind: 'stepping-stones', over: 'brook', x: 10.3, y: 33.7, along: 'woodland-loop' },
     { id: 'brook-stones-east', kind: 'stepping-stones', over: 'brook', x: 25.6, y: 36.8, along: 'woodland-loop' },
   ],
@@ -492,7 +514,8 @@ const presentation = {
     { id: 'mill-yard', route: 'mill-yard', x: 74.2, y: 65.8, job: 'the watermill and its turning wheel on the river' },
     { id: 'ruin-court', route: 'ruin-court', x: 22.3, y: 74.8, job: 'the chapel and old foundations' },
     { id: 'cider-square', route: 'cider-square', x: 77.9, y: 37, job: 'barrels, the press' },
-    { id: 'summit-cairn', route: 'summit-cairn', x: 50.6, y: 9.8, job: 'the cairn and the beacon' },
+    ...Object.entries(VM.plazas).map(([id, p]) => { const b = bbox(p.poly); return { id, route: id, name: p.name, surface: p.surface, x: r2((b.x + b.x1) / 2), y: r2((b.y + b.y1) / 2), shape: p.poly.map(q => q.map(r2)),
+      job: { 'summit-cairn': 'Cloudbreak top: a rock-and-turf summit reaching the standing stones; the cairn and the empty beacon on the skyline', 'cloudbreak-col': 'the col through the rock step above the pass, turf', 'wick-yard': 'Wick\'s yard: flags before the hut door, a bench and the telescope', 'long-view': 'the Long View: a rock ledge with a bench over the vale', 'falls-top': 'the falls top: wet rock beside the lip, the cave stair down behind the water', 'moor-end': 'the moor\'s end: peat, the last wall and the field gate, the fingerpost to the Long Road' }[id] || p.name }; }),
   ],
   fields,   // the village's sections grouped into fields: how locked land reads (edge) and the one way in (gate)
   gateKinds: Object.fromEntries(gates.map(g => [g.id, g.kind])),
@@ -500,9 +523,11 @@ const presentation = {
     { id: 'coast-walk', route: 'coast-walk', from: 'east-mill', to: 'home-island', level: 6, note: 'estuary stepping stones to the lighthouse and quay' },
     { id: 'postern', route: 'ruins-circuit', from: 'southwest-ruins', to: 'home-island', level: 10, at: [35.8, 74.2], note: 'a gap in the ruin wall onto the cottage lane' },
     { id: 'lakeside-steps', route: 'lakeside-steps', from: 'orchard-headland', to: 'home-island', level: 14, at: [61, 38.4], note: 'steps down the orchard bank to the outlet footbridge' },
+    ...VM.shortcuts.filter(sc => sc.id !== 'C').map(sc => ({ id: sc.id === 'A' ? 'lip-stones' : 'wicks-steps', name: sc.name, route: sc.route, from: 'north-headland', to: 'north-headland', at: sc.at, note: sc.how })),
     { id: 'falls-cave-stair', route: 'gorge-trail', from: 'north-headland', to: 'home-island', level: 18, at: [42.2, 25.9], note: 'behind the falls, down to the lake walk' },
   ],
   landmarks: { lighthouse: 'ld-lighthouse', watchtower: 'ld-tower', folly: 'ld-folly', greatOak: 'great-oak-clearing', beacon: 'ld-beacon', millWheel: 'ld-mill', falls: 'ld-falls' },
+  mountains: { stones: VM.staticMoves['ld-stones'].stones, wayCairns: VM.wayCairns, seats: VM.seats, trees: VM.trees, sights: VM.sights, secrets: VM.secrets, midwinterLine: VM.midwinterLine },
   mist: 'Each closed region already gets mist from its polygon (94-garden-native-frontier.js).',
   millRace: millStretch.id,
 };
