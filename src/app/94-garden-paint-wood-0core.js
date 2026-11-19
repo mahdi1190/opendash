@@ -331,7 +331,7 @@ window.GardenPaintWood = (function () {
     { const fronts = houses.map(h => [h.x * W.cellW - 6, W.sky + (h.y + (h.h || 1)) * W.cellH - 120, (h.x + (h.w || 1)) * W.cellW + 6, W.sky + (h.y + (h.h || 1)) * W.cellH]);
       // (19 Nov 2026, round 3 fixes, round 2: and no trunk at all in the strip just before a house's front, a thicket's own
       //  trees too: the willow of the unbought plot at Sallow carr stood with its trunk and curtain across Thistle's door)
-      const doorstep = houses.map(h => [h.x - 1.2, h.y + (h.h || 1) - .3, h.x + (h.w || 1) + 1.2, h.y + (h.h || 1) + 3.4]);
+      const doorstep = houses.map(h => [h.x - 1.6, h.y + (h.h || 1) - .3, h.x + (h.w || 1) + 1.6, h.y + (h.h || 1) + 6]);   // (a tall crown up to six rows out still rose over the door)
       out.trees = out.trees.filter(t => { const H = t.h * (t.scale || 1), F = t.kit ? GardenPaintTrees.form(t.kit) : { cy: .62, rx: .42, ry: .34 }, c = [t.x - H * F.rx, t.y - H * (F.cy + F.ry), t.x + H * F.rx, t.y - H * Math.max(.1, F.cy - F.ry)];
         { const fx = t.x / W.cellW, fy = (t.y - W.sky) / W.cellH; if (H > 50 && doorstep.some(d => fx > d[0] && fx < d[2] && fy > d[1] && fy < d[3])) { out.floors.push({ kind: 'stamp', id: 'plant.fern', v: 1, h: 28, x: t.x, y: t.y - 2 }); return false; } }
         for (const k of fronts) { if (t.y <= k[3] + 2) continue; const ox = Math.min(c[2], k[2]) - Math.max(c[0], k[0]), oy = Math.min(c[3], k[3]) - Math.max(c[1], k[1]); if (ox > 0 && oy > 0 && ox * oy > (k[2] - k[0]) * (k[3] - k[1]) * .12) { out.floors.push({ kind: 'stamp', id: 'plant.fern', v: 0, h: 30, x: t.x, y: t.y - 2 }); return false; } }
