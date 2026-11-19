@@ -36,7 +36,7 @@
   "land-office": {"x":43,"w":4,"door":{"x":44.5,"y":46},"rearEnvelope":{"x":42.9,"y":40.2,"w":4.2,"h":4.8}},
   "tackle-shop": {"x":52,"w":4,"door":{"x":53.5,"y":75},"rearEnvelope":{"x":51.9,"y":71.9,"w":4.2,"h":3.1}},
   "lake-hall": {"x":51,"w":4,"door":{"x":52.5,"y":42},"rearEnvelope":{"x":50.9,"y":37.4,"w":4.2,"h":3.6}},
-  "lake-board": {"x":55,"y":41,"door":{"x":55,"y":42}},
+  "lake-board": {"x":56,"y":41,"door":{"x":56,"y":42}},
   "ld-boathouse": {"x":56}
  },
  "newStatics": [
