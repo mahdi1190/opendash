@@ -155,6 +155,8 @@ window.GardenPaintWater = (function () {
     }
     // The world box the layer's chunks sit in.
     let all = null; for (const w of waters) all = all ? { x: Math.min(all.x, w.bounds.x), y: Math.min(all.y, w.bounds.y), x1: Math.max(all.x1, w.bounds.x + w.bounds.w), y1: Math.max(all.y1, w.bounds.y + w.bounds.h) } : { x: w.bounds.x, y: w.bounds.y, x1: w.bounds.x + w.bounds.w, y1: w.bounds.y + w.bounds.h };
+    // The sea is painted with the inland water out to its reach offshore (SEA_FADE), so the layer covers the coast too.
+    if (coast.length) { const cb0 = boundsOf(coast.flat(), SEA_FADE[1] + 48); all = { x: Math.min(all.x, cb0.x), y: Math.min(all.y, cb0.y), x1: Math.max(all.x1, cb0.x + cb0.w), y1: Math.max(all.y1, cb0.y + cb0.h) }; }
     // A river mouth: where its line leaves the land, with the river's width there (the plume spreads from it).
     const mouths = seaMouths.map(m => { const L = lines[m.id]; return Object.assign({ hw: (L ? L.hw : 1) * (W.cellW + W.cellH) / 2 }, m); });
     return { W, waters, lines, pres, coastPath, coast, mouths, crossings: crossingContours, all };
@@ -167,7 +169,7 @@ window.GardenPaintWater = (function () {
   // clear shallows, then the open water, and the deep in the middle of the Mere and the river's channel. Measured on a
   // coarse field (FQ world px a step) for each chunk with a margin as wide as the deepest colour reaches, so two chunks
   // agree along their edge, smoothed up and cut by the union's own outline, so the shore stays crisp.
-  const FQ = 3, DMAX = 102;
+  const FQ = 3, DMAX = 102, SQ = 6, SEA_D = 240, SEA_FADE = [168, 236], MBLUR = 13;
   function orient(pts, outer) { return (signedArea(pts) > 0) === outer ? pts : pts.slice().reverse(); }
   function unionPath(M) {
     const p = new Path2D(), loop = q => { p.moveTo(q[0].x, q[0].y); for (let i = 1; i < q.length; i++) p.lineTo(q[i].x, q[i].y); p.closePath(); };
@@ -177,10 +179,19 @@ window.GardenPaintWater = (function () {
   }
   const rgbOf = c => { const n = parseInt(c.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
   const sstep = (a, b, v) => { const t = Math.max(0, Math.min(1, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
-  let fieldMask = null, fieldOut = null, fieldTone = null;
-  // each water's own character, blended across joins: [shade under trees or peat, extra depth]. A woodland brook runs dark
-  // under its canopy, a fell tarn is dark and peaty, the open Mere and the river take the sky.
-  const TONE = { mere: [0, 0], river: [0, .04], brook: [.5, .1], spring: [.42, .06], gorge: [.18, .1], tarn: [.38, .34], pool: [.12, .06] }, SHADE = [44, 84, 74], TB = 8;
+  let fieldMask = null, fieldOut = null, fieldTone = null, fieldSea = null;
+  // each water's own character, blended across joins: [shade under trees or peat, extra depth, running]. A woodland brook runs dark
+  // under its canopy, a fell tarn is dark and peaty, the open Mere and the river take the sky; running water carries lines along its current.
+  const TONE = { mere: [0, 0, 0], river: [0, .04, .8], brook: [.5, .1, 1], spring: [.42, .06, .3], gorge: [.18, .1, 1], tarn: [.38, .34, 0], pool: [.12, .06, 0] }, SHADE = [44, 84, 74], TB = 8;
+  // The open sea far out is the world's own sea fill under this layer (by season); the painted sea fades into it offshore.
+  const SEA_BASE = { summer: '#599f9d', spring: '#599f9d', autumn: '#5b9b9a', winter: '#76a8ad' };
+  function seaPalette(S) {
+    const base = SEA_BASE[S.season] || SEA_BASE.summer, night = S.tod === 'night';
+    let edge = '#d2ecdc', shoal = '#7dcfc0', mid = '#5cb0b2';
+    if (S.season === 'winter') { edge = mix(edge, '#e2e8e6', .4); shoal = mix(shoal, '#a8c8c8', .45); mid = mix(mid, base, .4); }
+    if (night) { edge = mix(edge, base, .3); shoal = mix(shoal, base, .25); mid = mix(mid, base, .15); }
+    return { edge: rgbOf(edge), shoal: rgbOf(shoal), mid: rgbOf(mid), base: rgbOf(base), sand: rgbOf('#d6c89a'), wet: '#a8956a', foam: night ? '#dfe8ea' : '#fbfdf6' };
+  }
   function fieldCanvas(c, w, h) { if (!c) { c = document.createElement('canvas'); } if (c.width < w) c.width = w; if (c.height < h) c.height = h; return c; }
   // One distance pass over a field: seed[i] = 1 where the distance is 0. Two sweeps of an eight-neighbour chamfer
   // (within a few per cent of the true distance; the same lattice and values in every chunk). Field px.
@@ -191,81 +202,181 @@ window.GardenPaintWater = (function () {
     for (let y = gh - 1; y >= 0; y--) for (let x = gw - 1; x >= 0; x--) { const i = y * gw + x; let d = D[i]; if (!d) continue; if (x < gw - 1) d = Math.min(d, D[i + 1] + 1); if (y < gh - 1) { d = Math.min(d, D[i + gw] + 1); if (x < gw - 1) d = Math.min(d, D[i + gw + 1] + DG); if (x) d = Math.min(d, D[i + gw - 1] + DG); } D[i] = d; }
     return D;
   }
+  // a box blur of a w x h field in place (two of them make a soft round kernel); tmp is scratch of the same size
+  function boxBlur(A, w, h, r, tmp) {
+    const k = 2 * r + 1;
+    for (let y = 0; y < h; y++) { const o = y * w; let s = 0; for (let x = -r; x <= r; x++) s += A[o + Math.min(w - 1, Math.max(0, x))]; for (let x = 0; x < w; x++) { tmp[o + x] = s / k; s += A[o + Math.min(w - 1, x + r + 1)] - A[o + Math.max(0, x - r)]; } }
+    for (let x = 0; x < w; x++) { let s = 0; for (let y = -r; y <= r; y++) s += tmp[Math.min(h - 1, Math.max(0, y)) * w + x]; for (let y = 0; y < h; y++) { A[y * w + x] = s / k; s += tmp[Math.min(h - 1, y + r + 1) * w + x] - tmp[Math.max(0, y - r) * w + x]; } }
+  }
   const CLOSE_R = 16, OPEN_R = 9;   // world px: a land corner jutting into the water is rounded off this far, a water corner this far
-  let fieldBufs = null;
-  function bufs(n) { if (!fieldBufs || fieldBufs.n < n) fieldBufs = { n, a: new Float32Array(n), m: new Uint8Array(n), s: new Uint8Array(n), d: new Float32Array(n), e: new Float32Array(n), f: new Float32Array(n) }; return fieldBufs; }
-  function bodyOp(S) {
-    const M = S.M, U = unionPath(M), a = M.all, G = window.GardenPaintGround;
-    const noise = G ? G.noise : () => .5, fbm = G ? G.fbm : () => .5;
-    const tones = M.waters.map(w => { const p = new Path2D(); w.pts.forEach((q, i) => i ? p.lineTo(q.x, q.y) : p.moveTo(q.x, q.y)); p.closePath(); const t = TONE[w.kind] || TONE.pool; return { p, b: w.bounds, fill: 'rgb(' + Math.round(t[0] * 255) + ',' + Math.round(t[1] * 255) + ',0)' }; });
-    return { bb: [a.x - 24, a.y - 24, a.x1 + 24, a.y1 + 24], seed: 3, tag: 'water body', draw(B, r, cb) {
+  let fieldBufs = null, seaBufs = null;
+  function bufs(n) { if (!fieldBufs || fieldBufs.n < n) fieldBufs = { n, a: new Float32Array(n), m: new Uint8Array(n), s: new Uint8Array(n), d: new Float32Array(n), e: new Float32Array(n), f: new Float32Array(n), c: new Float32Array(n) }; return fieldBufs; }
+  function sbufs(n) { if (!seaBufs || seaBufs.n < n) seaBufs = { n, s: new Uint8Array(n), d: new Float32Array(n), w: new Float32Array(n), m: new Float32Array(n), t: new Float32Array(n) }; return seaBufs; }
+  /* The body of the water: one picture for all the water at once, the sea with it. Every basin, crossing strip and brook
+   * is one union, and the sea is joined to it, so where two waters meet (the Mere and its outlet, the river under a
+   * bridge, the brook at its stepping stones, the river running out into the sea) the water is one tone with no seam and
+   * no edge. Its colour comes from how far a point lies from the nearest real shore: a sandy bed showing through at the
+   * edge, clear shallows, then the open water, and the deep in the middle of the Mere and the river's channel. The sea
+   * has its own: a foam line where it laps the sand, turquoise shallows that widen and narrow along the shore, swell
+   * lines, and then the open sea, fading into the world's sea fill offshore. How much of a point's water is sea is read
+   * from all the water within a few strides (a wide soft kernel), so a river turns into the sea over its mouth and the
+   * line where the coast crosses the river never shows.
+   * One op per chunk that holds water (a chunk of dry land holds no picture). Measured on a fine field (FQ world px a
+   * step) with a margin as wide as the fresh water's deepest colour reaches, and a coarse one (SQ) for the sea's
+   * reach offshore, so two chunks agree along their edge; smoothed up and cut by the water's own outline. */
+  function bodyOps(S) {
+    const M = S.M, U = unionPath(M), sea = M.coast.length ? seaPath(M) : null, box = S.box, size = 256, q = 8;
+    const draw = bodyDraw(S, U, sea), out = [];
+    const gw = Math.ceil(box.w / q), gh = Math.ceil(box.h / q), c = document.createElement('canvas'); c.width = gw; c.height = gh;
+    const x = c.getContext('2d', { willReadFrequently: true }); x.setTransform(1 / q, 0, 0, 1 / q, -box.x / q, -box.y / q); x.fillStyle = '#fff'; x.fill(U); if (sea) x.fill(sea, 'evenodd');
+    const px = x.getImageData(0, 0, gw, gh).data, wetAt = (a, b) => px[(b * gw + a) * 4 + 3] > 8;
+    const any = (a0, a1, b0, b1, want) => { a0 = Math.max(0, a0); b0 = Math.max(0, b0); a1 = Math.min(gw, a1); b1 = Math.min(gh, b1); for (let b = b0; b < b1; b++) for (let a = a0; a < a1; a++) if (wetAt(a, b) === want) return true; return false; };
+    const cols = Math.ceil(box.w / size), rows = Math.ceil(box.h / size), k = size / q, mw = 4, ml = Math.ceil(SEA_FADE[1] / q);
+    for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+      // water in the chunk or within a bank's width of it, and (for the open sea) land within the sea's painted reach
+      if (!any(i * k - mw, (i + 1) * k + mw, j * k - mw, (j + 1) * k + mw, true)) continue;
+      if (sea && !any(i * k - ml, (i + 1) * k + ml, j * k - ml, (j + 1) * k + ml, false)) continue;
+      const cxm = box.x + (i + .5) * size, cym = box.y + (j + .5) * size;
+      out.push({ bb: [cxm - 8, cym - 8, cxm + 8, cym + 8], seed: 3, tag: 'water body', draw });
+    }
+    return out;
+  }
+  function bodyDraw(S, U, sea) {
+    const M = S.M, G = window.GardenPaintGround;
+    const noise = G ? G.noise : () => .5, fbm = G ? G.fbm : () => .5, SP = sea ? seaPalette(S) : null;
+    const tones = M.waters.map(w => { const p = new Path2D(); w.pts.forEach((q, i) => i ? p.lineTo(q.x, q.y) : p.moveTo(q.x, q.y)); p.closePath(); const t = TONE[w.kind] || TONE.pool; return { p, b: w.bounds, fill: 'rgb(' + Math.round(t[0] * 255) + ',' + Math.round(t[1] * 255) + ',' + Math.round(t[2] * 255) + ')' }; });
+    return function (B, r, cb) {
       const cx = B.cx, P = S.P, bed = rgbOf(P.bed), sh = rgbOf(P.shallow), wa = rgbOf(P.water), dp = rgbOf(P.deep);
       const x0 = Math.floor((cb[0] - DMAX) / FQ) * FQ, y0 = Math.floor((cb[1] - DMAX) / FQ) * FQ, x1 = Math.ceil((cb[2] + DMAX) / FQ) * FQ, y1 = Math.ceil((cb[3] + DMAX) / FQ) * FQ, gw = (x1 - x0) / FQ, gh = (y1 - y0) / FQ, n = gw * gh;
+      // the fine field: fresh water in red, the sea in green (added), so each one's own coverage can be read back
       fieldMask = fieldCanvas(fieldMask, gw, gh); const mx = fieldMask.getContext('2d', { willReadFrequently: true });
-      mx.setTransform(1, 0, 0, 1, 0, 0); mx.clearRect(0, 0, gw, gh); mx.setTransform(1 / FQ, 0, 0, 1 / FQ, -x0 / FQ, -y0 / FQ); mx.fillStyle = '#fff'; mx.fill(U);
-      const src = mx.getImageData(0, 0, gw, gh).data, T = bufs(n), cov = T.a, m = T.m, sd = T.s, D = T.d, E = T.e, Fv = T.f;
-      let any = false; for (let i = 0; i < n; i++) { cov[i] = src[i * 4 + 3] / 255; m[i] = cov[i] > .5 ? 1 : 0; if (m[i]) any = true; }
+      mx.setTransform(1, 0, 0, 1, 0, 0); mx.globalCompositeOperation = 'source-over'; mx.clearRect(0, 0, gw, gh); mx.setTransform(1 / FQ, 0, 0, 1 / FQ, -x0 / FQ, -y0 / FQ); mx.fillStyle = '#f00'; mx.fill(U);
+      if (sea) { mx.globalCompositeOperation = 'lighter'; mx.fillStyle = '#0f0'; mx.fill(sea, 'evenodd'); mx.globalCompositeOperation = 'source-over'; }
+      const src = mx.getImageData(0, 0, gw, gh).data, T = bufs(n), cov = T.a, m = T.m, sd = T.s, D = T.d, E = T.e, Fv = T.f, sc = T.c;
+      let any = false; for (let i = 0; i < n; i++) { const A = src[i * 4 + 3] / 255; cov[i] = src[i * 4] / 255 * A; sc[i] = src[i * 4 + 1] / 255 * A; m[i] = cov[i] > .5 ? 1 : 0; if (m[i] || sc[i] > .5) any = true; }
       if (!any) return;
-      // the one outline of all the water: closed (a land corner between two basins is filled with water, round) and then
-      // opened (a sharp water corner is rounded off), so no bank meets another at an angle
+      // the one outline of all the fresh water: closed (a land corner between two basins is filled with water, round) and then
+      // opened (a sharp water corner is rounded off), so no bank meets another at an angle; the sea joins it as it is
       const rc = CLOSE_R / FQ, ro = OPEN_R / FQ;
       chamfer(m, gw, gh, D); for (let i = 0; i < n; i++) sd[i] = D[i] > rc ? 1 : 0;        // land beyond the dilation
       chamfer(sd, gw, gh, D); for (let i = 0; i < n; i++) sd[i] = D[i] > rc ? 0 : 1;        // not closed water
       chamfer(sd, gw, gh, D); for (let i = 0; i < n; i++) sd[i] = D[i] > ro ? 1 : 0;        // eroded water
-      chamfer(sd, gw, gh, D); for (let i = 0; i < n; i++) { const w = D[i] <= ro; Fv[i] = w === !!m[i] ? cov[i] : w ? 1 : 0; }   // final, with the true edge's own coverage where it did not move
+      chamfer(sd, gw, gh, D); for (let i = 0; i < n; i++) { const w = D[i] <= ro; Fv[i] = Math.min(1, (w === !!m[i] ? cov[i] : w ? 1 : 0) + sc[i]); }   // final, with the true edge's own coverage where it did not move, and the sea added (where the river's outline meets the coast's, their two half-covered edges make one whole: no seam of shore across a river mouth)
       for (let i = 0; i < n; i++) sd[i] = Fv[i] > .5 ? 0 : 1;
       chamfer(sd, gw, gh, D);   // D: how far inside the water, field px
       // only this chunk's own area (and a little round it) is coloured and drawn
       const gx0 = Math.max(0, Math.floor((cb[0] - 6 - x0) / FQ)), gx1 = Math.min(gw, Math.ceil((cb[2] + 6 - x0) / FQ)), gy0 = Math.max(0, Math.floor((cb[1] - 6 - y0) / FQ)), gy1 = Math.min(gh, Math.ceil((cb[3] + 6 - y0) / FQ)), cw = gx1 - gx0, chh = gy1 - gy0;
+      // the coarse field for the sea: how far offshore (to the nearest land) and how much of the water round a point is sea
+      let Dc = null, Mc = null, sgw = 0, sgh = 0, sx0 = 0, sy0 = 0;
+      if (sea) {
+        sx0 = Math.floor((cb[0] - SEA_D) / SQ) * SQ; sy0 = Math.floor((cb[1] - SEA_D) / SQ) * SQ; sgw = Math.ceil((cb[2] + SEA_D - sx0) / SQ); sgh = Math.ceil((cb[3] + SEA_D - sy0) / SQ);
+        fieldSea = fieldCanvas(fieldSea, sgw, sgh); const qx = fieldSea.getContext('2d', { willReadFrequently: true });
+        qx.setTransform(1, 0, 0, 1, 0, 0); qx.globalCompositeOperation = 'source-over'; qx.clearRect(0, 0, sgw, sgh); qx.setTransform(1 / SQ, 0, 0, 1 / SQ, -sx0 / SQ, -sy0 / SQ); qx.fillStyle = '#f00'; qx.fill(U);
+        qx.globalCompositeOperation = 'lighter'; qx.fillStyle = '#0f0'; qx.fill(sea, 'evenodd'); qx.globalCompositeOperation = 'source-over';
+        const sp = qx.getImageData(0, 0, sgw, sgh).data, sn = sgw * sgh, Q = sbufs(sn); let anySea = false;
+        for (let i = 0; i < sn; i++) { const A = sp[i * 4 + 3] / 255, g = sp[i * 4 + 1] / 255 * A; Q.s[i] = A > .5 ? 0 : 1; Q.w[i] = A; Q.m[i] = g; if (g > .02) anySea = true; }
+        if (anySea) {
+          Dc = chamfer(Q.s, sgw, sgh, Q.d);
+          boxBlur(Q.m, sgw, sgh, MBLUR, Q.t); boxBlur(Q.m, sgw, sgh, MBLUR, Q.t); boxBlur(Q.w, sgw, sgh, MBLUR, Q.t); boxBlur(Q.w, sgw, sgh, MBLUR, Q.t);
+          for (let i = 0; i < sn; i++) Q.m[i] = Q.w[i] > .004 ? Math.min(1, Q.m[i] / Q.w[i]) : 0;
+          Mc = Q.m;
+        }
+      }
+      const samp = (A, wx, wy, far) => { const fx = (wx - sx0) / SQ - .5, fy = (wy - sy0) / SQ - .5, ix = Math.max(0, Math.min(sgw - 2, Math.floor(fx))), iy = Math.max(0, Math.min(sgh - 2, Math.floor(fy))), tx = Math.max(0, Math.min(1, fx - ix)), ty = Math.max(0, Math.min(1, fy - iy)), i = iy * sgw + ix;
+        let a = A[i], b = A[i + 1], c = A[i + sgw], d = A[i + sgw + 1]; if (far != null) { a = Math.min(a, far); b = Math.min(b, far); c = Math.min(c, far); d = Math.min(d, far); }
+        return (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty; };
+      const marine = (wx, wy) => Mc ? sstep(.3, .7, samp(Mc, wx, wy)) : 0;
       // a light 3 x 3 smoothing there, so the shore lines found below run smooth between the field's points
       for (let y = Math.max(0, gy0 - 1); y < Math.min(gh, gy1 + 1); y++) for (let x = Math.max(0, gx0 - 1); x < Math.min(gw, gx1 + 1); x++) { let s = 0, k = 0; for (let j = -1; j <= 1; j++) { const yy = y + j; if (yy < 0 || yy >= gh) continue; for (let q = -1; q <= 1; q++) { const xx = x + q; if (xx < 0 || xx >= gw) continue; const wgt = (j || q) ? (j && q ? 1 : 2) : 4; s += Fv[yy * gw + xx] * wgt; k += wgt; } } E[y * gw + x] = s / k; }
       for (let y = Math.max(0, gy0 - 1); y < Math.min(gh, gy1 + 1); y++) for (let x = Math.max(0, gx0 - 1); x < Math.min(gw, gx1 + 1); x++) Fv[y * gw + x] = E[y * gw + x];
-      // the shore lines, by marching squares on the smoothed field at a level (a little outside the water's edge for
-      // the wet dark line, a little inside it for the bright lap): segments in one path, stroked once, so no beading
-      const contour = level => { const p = new Path2D(); let k = 0;
-        for (let gy = gy0; gy < gy1 - 1; gy++) for (let gx = gx0; gx < gx1 - 1; gx++) {
-          const i = gy * gw + gx, a0 = Fv[i] - level, b0 = Fv[i + 1] - level, c0 = Fv[i + gw + 1] - level, d0 = Fv[i + gw] - level;
-          const s = (a0 > 0) + (b0 > 0) + (c0 > 0) + (d0 > 0); if (s === 0 || s === 4) continue;
-          const X = x0 + (gx + .5) * FQ, Y = y0 + (gy + .5) * FQ, cut = [], C4 = [[X, Y, a0], [X + FQ, Y, b0], [X + FQ, Y + FQ, c0], [X, Y + FQ, d0]];
-          for (let q = 0; q < 4; q++) { const A = C4[q], Bq = C4[(q + 1) % 4]; if ((A[2] > 0) !== (Bq[2] > 0)) { const t = A[2] / (A[2] - Bq[2]); cut.push(A[0] + (Bq[0] - A[0]) * t, A[1] + (Bq[1] - A[1]) * t); } }
-          for (let q = 0; q + 3 < cut.length; q += 4) { p.moveTo(cut[q], cut[q + 1]); p.lineTo(cut[q + 2], cut[q + 3]); k++; }
-        }
-        return k ? p : null; };
-      const outer = contour(.5);
       // each water's tone, blurred so a brook turns into the Mere over a few strides (only this chunk's area)
       fieldTone = fieldCanvas(fieldTone, gw, gh); const tx = fieldTone.getContext('2d', { willReadFrequently: true }); tx.setTransform(1, 0, 0, 1, 0, 0); tx.clearRect(0, 0, gw, gh); tx.setTransform(1 / FQ, 0, 0, 1 / FQ, -x0 / FQ, -y0 / FQ);
-      for (const t of tones) if (t.b.x < x1 && t.b.x + t.b.w > x0 && t.b.y < y1 && t.b.y + t.b.h > y0) { tx.fillStyle = t.fill; tx.fill(t.p); }
-      const ty0 = Math.max(0, gy0 - TB), ty1 = Math.min(gh, gy1 + TB), tdat = tx.getImageData(0, 0, gw, gh).data, hS = new Float32Array(n), hD = new Float32Array(n), hW = new Float32Array(n);
-      for (let y = ty0; y < ty1; y++) { let sS = 0, sD = 0, sW = 0; const o0 = y * gw; for (let x = gx0 - 2 * TB - 1; x < gx1; x++) { const ad = x + TB, sb = x - TB - 1; if (ad >= 0 && ad < gw) { const q = (o0 + ad) * 4, w8 = tdat[q + 3] / 255; sS += tdat[q] * w8; sD += tdat[q + 1] * w8; sW += w8; } if (sb >= gx0 - TB - 1 && sb >= 0 && sb < gw) { const q = (o0 + sb) * 4, w8 = tdat[q + 3] / 255; sS -= tdat[q] * w8; sD -= tdat[q + 1] * w8; sW -= w8; } if (x >= gx0 && x < gx1) { hS[o0 + x] = sS; hD[o0 + x] = sD; hW[o0 + x] = sW; } } }
-      const tS = new Float32Array(cw * chh), tD = new Float32Array(cw * chh);
-      for (let x = gx0; x < gx1; x++) { let sS = 0, sD = 0, sW = 0; for (let y = gy0 - 2 * TB - 1; y < gy1; y++) { const ad = y + TB, sb = y - TB - 1; if (ad >= ty0 && ad < ty1) { const q = ad * gw + x; sS += hS[q]; sD += hD[q]; sW += hW[q]; } if (sb >= gy0 - TB - 1 && sb >= ty0 && sb < ty1) { const q = sb * gw + x; sS -= hS[q]; sD -= hD[q]; sW -= hW[q]; } if (y >= gy0 && y < gy1) { const j = (y - gy0) * cw + (x - gx0); tS[j] = sW > .01 ? sS / sW / 255 : 0; tD[j] = sW > .01 ? sD / sW / 255 : 0; } } }
+      // (each water's tone reaches a little past its own outline first, so the water of a crossing strip between two waters takes theirs:
+      //  left untoned, the brook's stepping stones stood in a paler patch of water with none of the brook's shade)
+      const near = tones.filter(t => t.b.x - 40 < x1 && t.b.x + t.b.w + 40 > x0 && t.b.y - 40 < y1 && t.b.y + t.b.h + 40 > y0);
+      tx.lineJoin = 'round'; tx.lineWidth = 80; for (const t of near) { tx.strokeStyle = t.fill; tx.stroke(t.p); }
+      for (const t of near) { tx.fillStyle = t.fill; tx.fill(t.p); }
+      const ty0 = Math.max(0, gy0 - TB), ty1 = Math.min(gh, gy1 + TB), tdat = tx.getImageData(0, 0, gw, gh).data, hS = new Float32Array(n), hD = new Float32Array(n), hR = new Float32Array(n), hW = new Float32Array(n);
+      for (let y = ty0; y < ty1; y++) { let sS = 0, sD = 0, sR = 0, sW = 0; const o0 = y * gw; for (let x = gx0 - 2 * TB - 1; x < gx1; x++) { const ad = x + TB, sb = x - TB - 1; if (ad >= 0 && ad < gw) { const q = (o0 + ad) * 4, w8 = tdat[q + 3] / 255; sS += tdat[q] * w8; sD += tdat[q + 1] * w8; sR += tdat[q + 2] * w8; sW += w8; } if (sb >= gx0 - TB - 1 && sb >= 0 && sb < gw) { const q = (o0 + sb) * 4, w8 = tdat[q + 3] / 255; sS -= tdat[q] * w8; sD -= tdat[q + 1] * w8; sR -= tdat[q + 2] * w8; sW -= w8; } if (x >= gx0 && x < gx1) { hS[o0 + x] = sS; hD[o0 + x] = sD; hR[o0 + x] = sR; hW[o0 + x] = sW; } } }
+      const tS = new Float32Array(cw * chh), tD = new Float32Array(cw * chh), tR = new Float32Array(cw * chh), DS = new Float32Array(cw * chh), MS = new Float32Array(cw * chh);
+      for (let x = gx0; x < gx1; x++) { let sS = 0, sD = 0, sR = 0, sW = 0; for (let y = gy0 - 2 * TB - 1; y < gy1; y++) { const ad = y + TB, sb = y - TB - 1; if (ad >= ty0 && ad < ty1) { const q = ad * gw + x; sS += hS[q]; sD += hD[q]; sR += hR[q]; sW += hW[q]; } if (sb >= gy0 - TB - 1 && sb >= ty0 && sb < ty1) { const q = sb * gw + x; sS -= hS[q]; sD -= hD[q]; sR -= hR[q]; sW -= hW[q]; } if (y >= gy0 && y < gy1) { const j = (y - gy0) * cw + (x - gx0); tS[j] = sW > .01 ? sS / sW / 255 : 0; tD[j] = sW > .01 ? sD / sW / 255 : 0; tR[j] = sW > .01 ? sR / sW / 255 : 0; } } }
       // the colour of the water by how far it lies from the shore; its alpha is the smoothed outline itself, so the edge
       // is soft for a world pixel and then the wet line and the lap are drawn crisp over it
       fieldOut = fieldCanvas(fieldOut, cw, chh); const ox = fieldOut.getContext('2d'), img = ox.createImageData(cw, chh), o = img.data;
       for (let y = gy0; y < gy1; y++) { const wy = y0 + (y + .5) * FQ;
-        for (let x = gx0; x < gx1; x++) { const i = y * gw + x, j = ((y - gy0) * cw + (x - gx0)) * 4, al = Fv[i]; if (al <= .004) { o[j + 3] = 0; continue; }
+        for (let x = gx0; x < gx1; x++) { const i = y * gw + x, tj = (y - gy0) * cw + (x - gx0), j = tj * 4, al = Fv[i]; DS[tj] = -1; if (al <= .004) { o[j + 3] = 0; continue; }
           const wx = x0 + (x + .5) * FQ, d = Math.min(DMAX, Math.max(0, (D[i] >= 1e8 ? DMAX : D[i]) * FQ - FQ * .5));
           // broad reaches of darker and paler water, and a finer ripple of tone, so no stretch is one flat colour
-          const big = fbm(wx / 260, wy / 170, 41) - .5, fine = noise(wx / 46, wy / 30, 57) - .5;
-          const e = sstep(0, 7, d), mm = sstep(3, 24, d), k = Math.min(1, Math.max(0, sstep(26, 100, d) * .9 + big * .35));
+          const big = fbm(wx / 260, wy / 170, 41) - .5, fine = noise(wx / 46, wy / 30, 57) - .5, run = tR[tj];
+          // running water gets to its own colour within a stride of the bank (a brook is not a strip of sandy glass)
+          const e = sstep(0, 7 - 4 * run, d), mm = sstep(3 - 2 * run, 24 - 12 * run, d), k = Math.min(1, Math.max(0, sstep(26, 100, d) * .9 + big * .35));
           let rr = bed[0] + (sh[0] - bed[0]) * (.5 + .5 * e), gg = bed[1] + (sh[1] - bed[1]) * (.5 + .5 * e), bb = bed[2] + (sh[2] - bed[2]) * (.5 + .5 * e);
           rr += (wa[0] - rr) * mm; gg += (wa[1] - gg) * mm; bb += (wa[2] - bb) * mm;
-          const tj = (y - gy0) * cw + (x - gx0), kk = Math.min(1, k + tD[tj] * (1 - k) * sstep(4, 40, d)), shd = tS[tj] * .62 * (.4 + .6 * mm);
+          const kk = Math.min(1, k + tD[tj] * (1 - k) * sstep(4, 40, d)), shd = tS[tj] * .62 * (.4 + .6 * mm);
           rr += (dp[0] - rr) * kk; gg += (dp[1] - gg) * kk; bb += (dp[2] - bb) * kk;
           rr += (SHADE[0] - rr) * shd; gg += (SHADE[1] - gg) * shd; bb += (SHADE[2] - bb) * shd;
-          const lift = 1 + big * .08 + fine * .045; o[j] = Math.min(255, rr * lift); o[j + 1] = Math.min(255, gg * lift); o[j + 2] = Math.min(255, bb * lift); o[j + 3] = Math.min(255, Math.round(al * 1.25 * 255));
+          let lift = 1 + big * .08 + fine * .045;
+          // the current: thin pale lines running with the banks, wavering and broken, and darker water between them
+          if (run > .04 && d > 2) { const ph = d * .58 + (noise(wx / 64, wy / 64, 91) - .5) * 5.5, ln = Math.max(0, Math.sin(ph)) ** 5, brk = sstep(.42, .68, noise(wx / 24, wy / 24, 93)); lift += run * (ln * brk * .16 - .035 * (1 - ln)) * sstep(2, 9, d); }
+          let al2 = Math.min(1, al * 1.25), mS = 0;
+          if (Mc) { mS = marine(wx, wy); MS[tj] = mS; const dS = d >= DMAX - 3 ? Math.max(d, samp(Dc, wx, wy, SEA_D / SQ) * SQ - SQ * .5) : d; DS[tj] = dS;
+            if (mS > .002) {
+              // sand bars and channels: the shallows widen and narrow along the shore, and a finer unevenness on that
+              const bar = fbm(wx / 230, wy / 160, 73) - .5, dn = Math.max(0, dS * (1 - bar * .8) + (noise(wx / 40, wy / 28, 79) - .5) * 9);
+              const t0 = sstep(0, 10, dn), t1 = sstep(12, 74, dn), t2 = sstep(80, 176, dn), C = SP;
+              let sr = C.edge[0] + (C.shoal[0] - C.edge[0]) * t0, sg = C.edge[1] + (C.shoal[1] - C.edge[1]) * t0, sb = C.edge[2] + (C.shoal[2] - C.edge[2]) * t0;
+              sr += (C.mid[0] - sr) * t1; sg += (C.mid[1] - sg) * t1; sb += (C.mid[2] - sb) * t1;
+              sr += (C.base[0] - sr) * t2; sg += (C.base[1] - sg) * t2; sb += (C.base[2] - sb) * t2;
+              const sand = (1 - sstep(0, 6, dn)) * .3; sr += (C.sand[0] - sr) * sand; sg += (C.sand[1] - sg) * sand; sb += (C.sand[2] - sb) * sand;
+              const sl = 1 + big * .06 + fine * .03 * (1 - t2);
+              rr = rr * lift * (1 - mS) + sr * sl * mS; gg = gg * lift * (1 - mS) + sg * sl * mS; bb = bb * lift * (1 - mS) + sb * sl * mS; lift = 1;
+              al2 *= 1 - mS * sstep(SEA_FADE[0], SEA_FADE[1], dS);
+            } }
+          o[j] = Math.min(255, rr * lift); o[j + 1] = Math.min(255, gg * lift); o[j + 2] = Math.min(255, bb * lift); o[j + 3] = Math.round(al2 * 255);
         } }
       ox.putImageData(img, 0, 0);
+      // the shore lines, by marching squares on a field at a level: segments sorted into a few paths by what they are
+      // (a still or a running bank, the sea's foam strong, middling or faint), each stroked once, so no beading
+      const contour = (get, level, cls) => { const ps = [];
+        for (let gy = gy0; gy < gy1 - 1; gy++) for (let gx = gx0; gx < gx1 - 1; gx++) {
+          const a0 = get(gx, gy) - level, b0 = get(gx + 1, gy) - level, c0 = get(gx + 1, gy + 1) - level, d0 = get(gx, gy + 1) - level;
+          const s = (a0 > 0) + (b0 > 0) + (c0 > 0) + (d0 > 0); if (s === 0 || s === 4) continue;
+          const X = x0 + (gx + .5) * FQ, Y = y0 + (gy + .5) * FQ, b = cls(gx, gy, X + FQ / 2, Y + FQ / 2); if (b < 0) continue;
+          const cut = [], C4 = [[X, Y, a0], [X + FQ, Y, b0], [X + FQ, Y + FQ, c0], [X, Y + FQ, d0]];
+          for (let q = 0; q < 4; q++) { const A = C4[q], Bq = C4[(q + 1) % 4]; if ((A[2] > 0) !== (Bq[2] > 0)) { const t = A[2] / (A[2] - Bq[2]); cut.push(A[0] + (Bq[0] - A[0]) * t, A[1] + (Bq[1] - A[1]) * t); } }
+          const p = ps[b] || (ps[b] = new Path2D()); for (let q = 0; q + 3 < cut.length; q += 4) { p.moveTo(cut[q], cut[q + 1]); p.lineTo(cut[q + 2], cut[q + 3]); }
+        }
+        return ps; };
+      const fv = (gx, gy) => Fv[gy * gw + gx], loc = (gx, gy) => (Math.min(chh - 1, gy - gy0)) * cw + Math.min(cw - 1, gx - gx0);
+      // 0 a still bank, 1 a running bank, 2 to 4 the sea's lap: strong, middling, faint (by a noise along the shore)
+      const shoreCls = (gx, gy, X, Y) => { const ms = Mc ? marine(X, Y) : 0; if (ms > .5) { const v = noise(X / 64, Y / 44, 97); return v > .58 ? 2 : v > .4 ? 3 : 4; } return tR[loc(gx, gy)] > .45 ? 1 : 0; };
+      const outer = contour(fv, .5, shoreCls);
       cx.lineJoin = 'round'; cx.lineCap = 'round';
-      // the bank: a damp earth band along the shore (the water is laid over its inner half)
-      if (outer) { cx.strokeStyle = P.bank; cx.globalAlpha = .24; cx.lineWidth = 24; cx.stroke(outer); cx.globalAlpha = .4; cx.lineWidth = 12; cx.stroke(outer); cx.globalAlpha = 1; }
-      cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high'; cx.drawImage(fieldOut, 0, 0, cw, chh, x0 + gx0 * FQ, y0 + gy0 * FQ, cw * FQ, chh * FQ);
-      // the wet dark line at the water's edge, then the lap: a thin bright line just inside the water, a softer glow beside it
-      const wet = contour(.3), lap = contour(.78);
-      if (wet) { cx.strokeStyle = mix(P.bank, '#3e3626', .5); cx.globalAlpha = .55; cx.lineWidth = 3.2; cx.stroke(wet); }
-      if (lap) { cx.strokeStyle = P.foam; cx.globalAlpha = .18; cx.lineWidth = 7; cx.stroke(lap); cx.globalAlpha = .5; cx.lineWidth = 2.2; cx.stroke(lap); }
+      // the bank: a damp earth band along a fresh shore (the water is laid over its inner half); the sea's sand only darkens
+      // a little where the waves wet it (the shared ground already lays the tide's damp edge on the beach)
+      for (const b of [0, 1]) if (outer[b]) { cx.strokeStyle = P.bank; cx.globalAlpha = .24; cx.lineWidth = 24; cx.stroke(outer[b]); cx.globalAlpha = .4; cx.lineWidth = 12; cx.stroke(outer[b]); }
+      if (SP) for (const b of [2, 3, 4]) if (outer[b]) { cx.strokeStyle = SP.wet; cx.globalAlpha = .2; cx.lineWidth = 12; cx.stroke(outer[b]); cx.globalAlpha = .22; cx.lineWidth = 5; cx.stroke(outer[b]); }
       cx.globalAlpha = 1;
-    } };
+      cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high'; cx.drawImage(fieldOut, 0, 0, cw, chh, x0 + gx0 * FQ, y0 + gy0 * FQ, cw * FQ, chh * FQ);
+      // swell lines out on the sea: two broken lines a little way off the sand, the nearer one brighter, as if a wave were coming in
+      if (Mc) {
+        const ds = (gx, gy) => DS[loc(gx, gy)];
+        // (kept off the creases where the distance from two shores meets, out of a river mouth or round a spit: a swell line there runs in a V)
+        const slope = (gx, gy) => Math.hypot(ds(gx + 1, gy) - ds(gx - 1, gy), ds(gx, gy + 1) - ds(gx, gy - 1)) / (2 * FQ);
+        const swell = (lv, f, cut) => contour(ds, lv, (gx, gy, X, Y) => MS[loc(gx, gy)] > .6 && slope(gx, gy) > .86 && slope(gx + 1, gy + 1) > .86 && noise(X / f, Y / (f * .62), 101 + lv) > cut ? 0 : -1)[0];
+        const s1 = swell(20, 120, .5), s2 = swell(46, 150, .56), s3 = null;
+        cx.strokeStyle = SP.foam; if (s1) { cx.globalAlpha = .16; cx.lineWidth = 6; cx.stroke(s1); cx.globalAlpha = .5; cx.lineWidth = 1.7; cx.stroke(s1); } if (s2) { cx.globalAlpha = .32; cx.lineWidth = 1.4; cx.stroke(s2); } if (s3) { cx.globalAlpha = .18; cx.lineWidth = 1.2; cx.stroke(s3); }
+        cx.globalAlpha = 1;
+      }
+      // the wet dark line at a fresh water's edge, then the lap: a thin bright line just inside the water, a softer glow beside
+      // it (fainter on running water); on the sea a line of foam where the waves run up the sand, thick and thin along the shore
+      const wet = contour(fv, .3, shoreCls), lap = contour(fv, .78, shoreCls);
+      for (const b of [0, 1]) if (wet[b]) { cx.strokeStyle = mix(P.bank, '#3e3626', .5); cx.globalAlpha = b ? .45 : .55; cx.lineWidth = b ? 2.6 : 3.2; cx.stroke(wet[b]); }
+      if (lap[0]) { cx.strokeStyle = P.foam; cx.globalAlpha = .18; cx.lineWidth = 7; cx.stroke(lap[0]); cx.globalAlpha = .5; cx.lineWidth = 2.2; cx.stroke(lap[0]); }
+      if (lap[1]) { cx.strokeStyle = P.foam; cx.globalAlpha = .3; cx.lineWidth = 1.5; cx.stroke(lap[1]); }
+      if (SP) { cx.strokeStyle = SP.foam; for (const [b, w, a] of [[2, 3.6, .92], [3, 2.6, .66], [4, 1.7, .36]]) if (lap[b]) { cx.globalAlpha = a * .3; cx.lineWidth = w * 3.2; cx.stroke(lap[b]); cx.globalAlpha = a; cx.lineWidth = w; cx.stroke(lap[b]); } }
+      cx.globalAlpha = 1;
+    };
   }
   // The sea: what this layer paints beyond the coast is let go, hard for the banks, softly for a river's own water,
   // which runs on out into the sea and fades there in a widening plume, so a river mouth opens into the sea with no
@@ -435,10 +546,10 @@ window.GardenPaintWater = (function () {
         if (r() > rate) continue;
         const q = at(river, s), lat = (r() - .5) * 1.1 * river.hw, x = q.x - q.ty * lat * W.cellW * .8, y = q.y + q.tx * lat * W.cellH * .8;
         if (!inside(x, y, pts)) continue;
-        const rx = (kind === 'gorge' ? 6 : 4) + r() * 7, sd = D().blob(r, x, y, rx, rx * .6, 7, .35), hl = D().blob(r, x - rx * .3, y - rx * .3, rx * .5, rx * .28, 6, .3), moss = D().blob(r, x - rx * .1, y - rx * .45, rx * .6, rx * .22, 6, .5), ang = Math.atan2(q.ty, q.tx), wake = 10 + r() * 14;
+        const rx = (kind === 'gorge' ? 6 : 4) + r() * 7, sd = D().blob(r, x, y, rx, rx * .6, 7, .35), hl = D().blob(r, x - rx * .3, y - rx * .3, rx * .5, rx * .28, 6, .3), moss = D().blob(r, x - rx * .1, y - rx * .45, rx * .6, rx * .22, 6, .5), ang = Math.atan2(q.ty, q.tx), wake = 6 + r() * 9;
         add({ x: x - 30, y: y - 30, w: 60, h: 60 }, (cx, C) => {
           // the V of white water downstream of the stone, then the stone itself
-          cx.save(); cx.translate(x, y); cx.rotate(ang); cx.globalAlpha = .55; cx.strokeStyle = C.foam; cx.lineWidth = 1.4; cx.lineCap = 'round';
+          cx.save(); cx.translate(x, y); cx.rotate(ang); cx.globalAlpha = .4; cx.strokeStyle = C.foam; cx.lineWidth = 1.3; cx.lineCap = 'round';
           cx.beginPath(); cx.moveTo(rx * .6, -rx * .5); cx.quadraticCurveTo(rx + wake * .5, -rx * .7, rx + wake, -rx * 1.2); cx.moveTo(rx * .6, rx * .5); cx.quadraticCurveTo(rx + wake * .5, rx * .7, rx + wake, rx * 1.2); cx.stroke();
           cx.globalAlpha = .35; cx.fillStyle = C.foam; cx.beginPath(); cx.ellipse(-rx * .9, 0, 2.5, rx * .8, 0, 0, Math.PI * 2); cx.fill(); cx.restore();
           cx.fillStyle = '#6f6a5c'; cx.fill(P2(sd)); cx.globalAlpha = .9; cx.fillStyle = '#9c9580'; cx.fill(P2(hl)); cx.globalAlpha = .8; cx.fillStyle = C.moss; cx.fill(P2(moss)); cx.globalAlpha = 1;
@@ -516,8 +627,10 @@ window.GardenPaintWater = (function () {
   function layerOps(S) {
     const banks = [], dress = []; let seed = 11;
     for (const w of S.M.waters) for (const f of w.feats) { if (SKIP.has(f.tag)) continue; (f.tag === 'bank' ? banks : dress).push(opOf(S, f, seed++)); }
-    const sea = seaCutOps(S), ops = banks.concat([bodyOp(S)], dress, S.extras.map(e => opOf(S, e, seed++)));
-    if (sea.hard) ops.push(sea.hard); return ops.concat(sea.plume);
+    // (with a coast the body paints the sea as well, so nothing is cut away at the coast and a river needs no plume of its own)
+    const ops = banks.concat(bodyOps(S), dress, S.extras.map(e => opOf(S, e, seed++)));
+    if (S.M.coast.length) return ops;
+    const sea = seaCutOps(S); if (sea.hard) ops.push(sea.hard); return ops.concat(sea.plume);
   }
 
   /* ---------- live layers ---------- */
@@ -557,7 +670,7 @@ window.GardenPaintWater = (function () {
           g.life += dt / g.span; g.s += this.speed * g.sp * dt * (1 - Math.abs(g.lat) * .5);
           if (g.life >= 1 || g.s > this.s1) { g.life = 0; g.s = this.s0 + r() * (this.s1 - this.s0); g.lat = (r() - .5) * 1.25; }
           const q = at(this.L, g.s), lat = g.lat * this.L.hw, x = q.x - q.ty * lat * W.cellW * .85, y = q.y + q.tx * lat * W.cellH * .85;
-          g.im.setPosition(x, y).setRotation(Math.atan2(q.ty, q.tx)).setScale(g.k * (this.w.kind === 'gorge' ? 1.1 : .8), g.k * .8).setAlpha(Math.sin(g.life * Math.PI) * (night ? .35 : .55));
+          g.im.setPosition(x, y).setRotation(Math.atan2(q.ty, q.tx)).setScale(g.k * (this.w.kind === 'gorge' ? .46 : .32), g.k * .9).setAlpha(Math.sin(g.life * Math.PI) * (night ? .26 : .4));   // (short and soft: long bright ones read as rain)
         }
       } });
     }
@@ -575,7 +688,7 @@ window.GardenPaintWater = (function () {
           // Start each ripple at a fresh wet point once per cycle. Repeatedly
           // adding an offset near phase zero made its centre wander onto land.
           if (cycle !== q.cycle) { const p = pick(); if (p) { q.x = p.x; q.y = p.y; } q.cycle = cycle; }
-          q.im.setPosition(q.x, q.y).setScale(.15 + f * .9, .15 + f * .8).setAlpha(f < .7 ? (1 - f / .7) * .45 : 0);
+          q.im.setPosition(q.x, q.y).setScale(.15 + f * .9, .15 + f * .8).setAlpha(f < .7 ? (1 - f / .7) * .3 : 0);
         }
       } });
     }
@@ -683,7 +796,7 @@ window.GardenPaintWater = (function () {
     { const w0 = performance.now(), need = new Set(); for (const w of S.M.waters) for (const f of w.feats) if (f.needs) for (const q of f.needs) need.add(stampKey(q[0], q[1], S.season, q[2]) + '#' + q.join('#')); for (const k of need) { const q = k.split('#').slice(1); stampCanvas(q[0], +q[1], S.season, +q[2]); } S.warmMs = Math.round(performance.now() - w0); S.warmCount = need.size; }
     // the still picture: the paint kit's layer bakes it at the camera's level; the chunks on screen now are baked at once
     // (lazy: false), so the first frame has its water
-    const G = window.GardenPaintGround, a = S.M.all, box = { x: Math.floor(a.x / 256) * 256, y: Math.floor(a.y / 256) * 256, w: 0, h: 0 }; box.w = Math.ceil((a.x1 + 200 - box.x) / 256) * 256; box.h = Math.ceil((a.y1 + 200 - box.y) / 256) * 256;
+    const G = window.GardenPaintGround, a = S.M.all, box = { x: Math.floor(a.x / 256) * 256, y: Math.floor(a.y / 256) * 256, w: 0, h: 0 }; box.w = Math.ceil((a.x1 + 200 - box.x) / 256) * 256; box.h = Math.ceil((a.y1 + 200 - box.y) / 256) * 256; S.box = box;
     if (G && G.layer) S.layer = ok(() => G.layer(scene, parent, layerOps(S), { key: TEX + '|' + S.tod + '|' + S.season + '|' + (++serialAll), box, chunk: 256, depth: -9590, budgetMB: BUDGET_MB, slice: 8, lazy: false, minK: 1, maxK: 4 }));
     S.buildMs = Math.round(performance.now() - t0);
     return { destroy: clear };
@@ -717,5 +830,7 @@ window.GardenPaintWater = (function () {
     const S = state; let sprites = 0, visible = 0; if (S) for (const e of S.em) { sprites += e.list.length + (e.rings || []).length; if (e.vis) visible += e.list.length + (e.rings || []).length; }
     return { slowest, warm: S ? [S.warmCount, S.warmMs] : null, on: !!S, tod: S && S.tod, waters: S ? S.M.waters.length : 0, buildMs: S && S.buildMs, tickWorst: +tickWorst.toFixed(1), sprites, visible, memory: memory(), weir: S && S.weir ? [Math.round(S.weir.x), Math.round(S.weir.y)] : null, mouths: S ? S.M.mouths.map(m => [Math.round(m.x), Math.round(m.y), Math.round(m.hw)]) : null, lastError };
   }
-  return { wanted, paint, tick, clear, status, memory, palette, startView, get lastError() { return lastError; } };
+  /** Whether this painter paints the sea surface too (the native water then draws no surf line of its own along the coast). */
+  function paintsSea() { return !!(state && state.layer && state.M && state.M.coast.length); }
+  return { wanted, paint, tick, clear, status, memory, palette, startView, paintsSea, ownsSea: true, get lastError() { return lastError; } };
 })();

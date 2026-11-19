@@ -19,7 +19,7 @@ window.GardenPaintedTerrain = (function () {
   'use strict';
   const KIT = () => window.GardenPaintTerrainKit, D2 = () => sceneDraw;
   const K = 1.5, CHUNK = 256, DEPTH = -9350;
-  const GORGE_WATER = true;                // the gorge's water is painted with its walls; false leaves a hole for the water painter
+  const GORGE_WATER = false;               // the gorge's water is painted with its walls; false leaves a hole for the water painter (94-garden-paint-water-0core.js: one water from the tarn to the Mere, its flow lines, stones and glints)
   let current = null, sprites = [], lastError = null, stats = {}, trunkFeet = [];
   const ok = f => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
 
@@ -327,12 +327,12 @@ window.GardenPaintedTerrain = (function () {
         for (let j = 0; j < 6; j++) { const t = (j + .5) / 6, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t + 2, rr = kit.rng(8801 + j);
           B.s(`M${x - 8} ${y + 3}q8 3 16 0`, P.foam, 1.4, .8); B.boulder(rr, x, y + 2, 9 + rr() * 4, 5 + rr() * 2, Object.assign({}, P, { rock: '#8c8578', rockLo: '#625c54', rockHi: '#bdb4a2' }), snowy); } void p; }
       // white water: short foam strokes in the channel, more towards the falls
-      for (let i = 2; i < mid.length - 1; i++) { const t = i / mid.length, p = mid[i], q = farIn[i]; if (r() < .35 + t * .4) { const x = (p.x + q.x) / 2 + (r() - .5) * 8, y = (p.y + q.y) / 2 + 4 + (r() - .5) * 6; B.s(`M${x} ${y}q4 -1.4 8 0`, P.foam, 1.2, .75); } }
+      if (GORGE_WATER) for (let i = 2; i < mid.length - 1; i++) { const t = i / mid.length, p = mid[i], q = farIn[i]; if (r() < .35 + t * .4) { const x = (p.x + q.x) / 2 + (r() - .5) * 8, y = (p.y + q.y) / 2 + 4 + (r() - .5) * 6; B.s(`M${x} ${y}q4 -1.4 8 0`, P.foam, 1.2, .75); } }
     });
     const xs = (L.D.presentation.crossings || []).filter(c => c.over === 'gorge');
     for (const c of xs) { const p = L.cpt(c.x, c.y); add([p.x - 60, p.y - 50, p.x + 60, p.y + 50], 131, (B, r) => {
       const i = mid.reduce((bi, q, k) => Math.hypot(q.x - p.x, q.y - p.y) < Math.hypot(mid[bi].x - p.x, mid[bi].y - p.y) ? k : bi, 0), seg = mid.slice(Math.max(0, i - 5), i + 6);
-      B.s(B.line(seg), '#7fb0b8', hw * W.cellH * .7, .35); void seg;
+      if (GORGE_WATER) B.s(B.line(seg), '#7fb0b8', hw * W.cellH * .7, .35); void seg;
       for (let k = 0; k < 4; k++) { const q = mid[Math.max(0, Math.min(mid.length - 1, i))], a = (k - 1.5) * 12; B.f(B.ell(q.x - 8 + a * .9 + 2, q.y - a * .55 + 2, 7, 3.6), P.rockDk, .45).f(B.blob(r, q.x - 8 + a * .9, q.y - a * .55, 7, 3.6, 7, .25), P.rock).f(B.ell(q.x - 10 + a * .9, q.y - a * .55 - 1, 3.5, 1.4), P.rockHi, .8).s(`M${q.x - 14 + a * .9} ${q.y - a * .55 + 2}q6 2 12 0`, P.foam, 1, .7); }
     }); }
   }
