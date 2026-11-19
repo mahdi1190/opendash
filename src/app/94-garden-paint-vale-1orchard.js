@@ -296,9 +296,46 @@
       hives.push({ x, y });
     }
     hives.forEach((h, i) => { const p = L.cpt(h.x, h.y); thing({ key: 'hive-' + (i % 3) + '|' + season, x: p.x, y: p.y, box: [-18, -44, 20, 6], draw: drawHive(i, season), foot: [-12, 12, 8] }); });
+    // Gentle motion (a few sprites on the scene's own update, nothing baked): cloud shadows drifting over the highlands on
+    // the wind by day, and bees working round each hive in the warm months.
+    motion(C, thing, hives.map(h => L.cpt(h.x, h.y)), (L.D.regions || []).filter(r => r.id === reg.id || r.theme === 'mountain'));
     // windfalls under the trees in autumn
     if (season === 'autumn' && trees.length) add(kit.bboxOf(trees.map(t => L.cpt(t.x, t.y)), 40), 98, (B, r) => { for (const t of trees) { const p = L.cpt(t.x, t.y); for (let k = 0; k < 5; k++) B.f(B.circ(p.x + (r() - .5) * 40, p.y + (r() - .3) * 10, 2.2), r() < .6 ? '#c8442e' : '#e0b23a', .9); } });
     info = { ms: Math.round(performance.now() - t0), terraces: T.N, step: +T.S.toFixed(2), banks: banks.map(b => [b.k, +b.pts[0].cx.toFixed(1), +b.pts[b.pts.length - 1].cx.toFixed(1)]), steps: steps.length, trees: trees.length, hives: hives.length, rows: trees.filter(t => !t.old).length, mother: mother ? [+mother.x.toFixed(1), +mother.y.toFixed(1)] : null, rej };
+  }
+
+  function motion(C, thing, hives, regs) {
+    const { L, kit, season, tod } = C, W = L.W, night = tod === 'night';
+    const onUpdate = (scene, im, fn) => { const f = (time) => { if (!im.active) return; fn(time); }; scene.events.on('update', f); im.once('destroy', () => scene.events.off('update', f)); };
+    // cloud shadows: a few big soft lobed shadows, darker by day than at dusk, none at night (no sun to throw them)
+    if (!night && regs.length) {
+      const pts = regs.flatMap(r => (r.polygons || []).flat()), y0 = W.sky + Math.max(0, Math.min(...pts.map(p => p[1]))) * L.ch - 200, y1 = W.sky + Math.min(W.rows, Math.max(...pts.map(p => p[1]))) * L.ch;
+      const x0 = -500, span = W.cols * L.cw + 1000, a = tod === 'dusk' ? .15 : .26;
+      for (let i = 0; i < 4; i++) {
+        const r = kit.rng(kit.hash(i * 31 + 7, 4400, 11)), sc = 5.5 + r() * 3.5, vx = 6 + r() * 4, vy = .8 + r() * .8, off = r() * span, yb = y0 + r() * (y1 - y0);
+        thing({ y: -9330, make: scene => {
+          const key = 'gpv-cloud-' + (i % 2);
+          if (!scene.textures.exists(key)) { const c = document.createElement('canvas'); c.width = 256; c.height = 128; const x = c.getContext('2d'), rr = kit.rng(91 + i % 2);
+            for (let k = 0; k < 7; k++) { const cx = 50 + rr() * 156, cy = 40 + rr() * 48, R = 28 + rr() * 34, g = x.createRadialGradient(cx, cy, 0, cx, cy, R); g.addColorStop(0, 'rgba(26,38,44,.55)'); g.addColorStop(.6, 'rgba(26,38,44,.3)'); g.addColorStop(1, 'rgba(26,38,44,0)'); x.fillStyle = g; x.beginPath(); x.ellipse(cx, cy, R * 1.3, R * .8, 0, 0, Math.PI * 2); x.fill(); }
+            scene.textures.addCanvas(key, c); }
+          // (made small, then grown on its first frame: a tall image would be taken for a tree and faded as you walk under it)
+          const im = scene.add.image(0, 0, key).setScale(.2).setAlpha(a); let grown = false;
+          onUpdate(scene, im, time => { if (!grown) { im.setScale(sc, sc * .62); grown = true; } const t = time / 1000; im.x = x0 + ((t * vx + off) % span); im.y = yb + Math.sin(t * .01 + i) * 60 + ((t * vy) % 240) - 120; });
+          return im; } });
+      }
+    }
+    // bees: five round each hive's door, spring and summer by day
+    if (!night && tod !== 'dusk' && (season === 'spring' || season === 'summer')) hives.forEach((h, j) => {
+      for (let b = 0; b < 5; b++) {
+        const r = kit.rng(5100 + j * 13 + b), w = 1.6 + r() * 1.4, rx = 16 + r() * 14, ry = 7 + r() * 7, ph = r() * 6.28, sp = 1.1 + r() * 1.2;
+        thing({ y: h.y + 3, make: scene => {
+          const key = 'gpv-bee';
+          if (!scene.textures.exists(key)) { const c = document.createElement('canvas'); c.width = 12; c.height = 8; const x = c.getContext('2d'); x.fillStyle = 'rgba(244,240,224,.85)'; x.beginPath(); x.ellipse(5, 2.6, 2.6, 1.6, -.4, 0, Math.PI * 2); x.fill(); x.fillStyle = '#3a2c18'; x.beginPath(); x.ellipse(6, 5, 3, 2, 0, 0, Math.PI * 2); x.fill(); x.fillStyle = '#d8a83a'; x.fillRect(5.4, 3.4, 1.2, 3.2); scene.textures.addCanvas(key, c); }
+          const im = scene.add.image(h.x, h.y - 24, key).setScale(.42);
+          onUpdate(scene, im, time => { const t = time / 1000 * sp + ph; im.x = h.x + Math.cos(t) * rx + Math.sin(t * 2.3) * 3; im.y = h.y - 22 - w * 4 + Math.sin(t * 1.4) * ry; });
+          return im; } });
+      }
+    });
   }
 
   // A white hive of stacked lifts (as old orchards keep them): legs, a landing board, three lifts each a little proud of
