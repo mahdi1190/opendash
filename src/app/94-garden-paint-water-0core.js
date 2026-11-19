@@ -167,7 +167,7 @@ window.GardenPaintWater = (function () {
   // clear shallows, then the open water, and the deep in the middle of the Mere and the river's channel. Measured on a
   // coarse field (FQ world px a step) for each chunk with a margin as wide as the deepest colour reaches, so two chunks
   // agree along their edge, smoothed up and cut by the union's own outline, so the shore stays crisp.
-  const FQ = 2, DMAX = 104;
+  const FQ = 3, DMAX = 102;
   function orient(pts, outer) { return (signedArea(pts) > 0) === outer ? pts : pts.slice().reverse(); }
   function unionPath(M) {
     const p = new Path2D(), loop = q => { p.moveTo(q[0].x, q[0].y); for (let i = 1; i < q.length; i++) p.lineTo(q[i].x, q[i].y); p.closePath(); };
@@ -180,7 +180,7 @@ window.GardenPaintWater = (function () {
   let fieldMask = null, fieldOut = null, fieldTone = null;
   // each water's own character, blended across joins: [shade under trees or peat, extra depth]. A woodland brook runs dark
   // under its canopy, a fell tarn is dark and peaty, the open Mere and the river take the sky.
-  const TONE = { mere: [0, 0], river: [0, .04], brook: [.5, .1], spring: [.42, .06], gorge: [.18, .1], tarn: [.38, .34], pool: [.12, .06] }, SHADE = [44, 84, 74], TB = 12;
+  const TONE = { mere: [0, 0], river: [0, .04], brook: [.5, .1], spring: [.42, .06], gorge: [.18, .1], tarn: [.38, .34], pool: [.12, .06] }, SHADE = [44, 84, 74], TB = 8;
   function fieldCanvas(c, w, h) { if (!c) { c = document.createElement('canvas'); } if (c.width < w) c.width = w; if (c.height < h) c.height = h; return c; }
   // One distance pass over a field: seed[i] = 1 where the distance is 0. Two sweeps of an eight-neighbour chamfer
   // (within a few per cent of the true distance; the same lattice and values in every chunk). Field px.
