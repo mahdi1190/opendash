@@ -454,4 +454,76 @@
     if (s !== 'winter') for (let i = 0; i < 8; i++) B.f(B.circ(-50 + r() * 8 + (i % 2) * 92, -2 - r() * 5, 1.3), ['#e8c84a', '#f2f0e8', '#c86aa0'][i % 3], .9);
     B.tufts(r, -48, 2, 8, 6, grass(s), 6).tufts(r, 48, 2, 8, 6, grass(s), 6);
   } };
+  /* ---------- the rowing boat at its mooring: a clinker-built boat of painted planks, two thwarts, the oars shipped along
+     her, a painter rope up to the oak mooring post on the bank (the post is drawn with her: it has no drawing of its own);
+     she rides the water a little ---------- */
+  A['boat'] = { box: [-42, -64, 44, 12], seat: false, bob: 1.1, shade: false, state: () => { try { return typeof gardenWorkOwned === 'function' && gardenWorkOwned('rowing-boat') ? 'own' : ''; } catch (e) { return ''; } }, draw(B, o) {
+    const r = KIT().rng(591), s = o.season, px = 30, py = -28, top = py - H * .62;
+    // the post on the bank behind her, then the rope from her bow ring up to it
+    B.f(`M${px - 5} ${py}V${top + 2}Q${px} ${top - 1.2} ${px + 5} ${top + 2}V${py}Z`, drum(B, px - 5, px + 5, ['#a8906a', '#8a7050', '#6a5238', '#4a3826', '#2e2218']));
+    B.f(B.ell(px, top + 1.6, 5, 1.6), '#b8a07a').f(B.rect(px - 5.2, top + 7, 10.4, 2), IRON[1]);
+    for (let k = 0; k < 2; k++) B.s(`M${px - 5.4} ${top + 12 + k * 2.2}q5.4 2.4 10.8 0`, k ? '#c8a874' : '#a88a54', 1.6);
+    B.s(`M28 -6Q${px - 6} ${py - 2} ${px - 4} ${top + 13}`, '#b8a074', 1.1);
+    // the water round her: a dark contact, a ring of ripples
+    B.f(B.ell(0, 2, 38, 6.4), 'rgba(16,40,56,.32)').s(B.ell(0, 2.4, 40, 7.4), '#e8f4f4', .8, .45);
+    // the hull: painted planks below the gunwale in laps, a white strake, tar at the waterline; bow to the east
+    const hull = 'M-34 -6Q-36 2 -24 5Q0 9 24 5Q34 2 38 -8Q20 -4 0 -4Q-20 -4 -34 -6Z';
+    B.f(hull, B.lin(0, -8, 0, 8, [[0, '#3e6e74'], [.55, '#2e5258'], [1, '#1e3438']]));
+    for (let k = 1; k < 3; k++) B.s(`M${-34 + k} ${-6 + k * 3.4}Q0 ${-1 + k * 3.6} ${37 - k * 1.6} ${-8 + k * 3.6}`, '#1e3438', .7, .6);
+    B.s('M-34 -6Q-20 -3.6 0 -3.6Q20 -3.6 38 -8', '#f2ece0', 1.6);
+    B.f('M-24 5Q0 9 24 5Q20 7.6 0 8.4Q-20 7.6 -24 5Z', '#1a1a16', .7);
+    // inside: the bottom boards lit, the gunwale's far edge, two thwarts and the stern seat, the oars shipped
+    B.f('M-32 -7Q-22 -16 0 -16Q24 -16 37 -9Q20 -5 0 -5Q-20 -5 -32 -7Z', '#c49a66').f('M-32 -7Q-22 -16 0 -16Q24 -16 37 -9Q22 -12 0 -12Q-20 -12 -32 -7Z', '#8a6a44', .8);
+    B.s('M-32 -7Q-22 -16 0 -16Q24 -16 37 -9', '#5a4028', 1.4);
+    for (const x of [-10, 12]) B.f(B.rr(x - 3, -15, 6, 10, 1), '#a87a4e').f(B.rect(x - 3, -15, 6, 1.4), '#d8b080', .8);
+    B.f('M-30 -8Q-26 -13 -20 -13V-6Q-26 -6 -30 -8Z', '#a87a4e');
+    for (const [y, c] of [[-10, '#d4b07a'], [-8, '#b48a58']]) { B.s(`M-28 ${y}L30 ${y - 2}`, c, 1.6); B.f(B.ell(30 + (y + 10) * 2, y - 2, 4, 1.6), c); }
+    B.f(B.circ(37, -9, 1.2), IRON[1]);
+    // yours: a red pennant on a staff at her bow
+    if (o.state === 'own') { B.s('M34 -9V-32', '#6e4c2a', 1.4).f('M34 -32l12 3.4l-12 3.6z', '#d8452a').f('M34 -32l12 3.4l-12 .8z', '#f06a4a', .7); }
+    if (s === 'winter') B.f('M-28 -9Q0 -15 32 -10Q0 -11 -28 -8Z', '#f4f6f2', .8);
+    if (s === 'autumn') for (let i = 0; i < 3; i++) B.f(B.ell(-18 + r() * 40, -9 + r() * 3, 1.6, .9), ['#c45a26', '#e0a040'][i % 2]);
+  } };
+  /* ---------- the apple clamp: a long mound of thatched straw over the stored apples, turf laid on its ends, a rope net over
+     it weighted with stones; opened in winter, the apples showing red in the straw ---------- */
+  A['ld-clamp'] = { box: [-52, -44, 54, 8], seat: { kind: 'earth', w: 84, front: 12, stones: 0, way: false }, draw(B, o) {
+    const r = KIT().rng(601), s = o.season, h = H * .9, STRAW = ['#d8b860', '#c4a04a', '#a8843a', '#e8cc7a'];
+    const mound = `M-46 0Q-48 -${h * .7} -24 -${h}Q0 -${h * 1.06} 24 -${h}Q48 -${h * .7} 46 0Z`;
+    B.f(mound, B.lin(-46, -h, 46, 0, [[0, STRAW[3]], [.4, STRAW[0]], [1, STRAW[2]]]));
+    for (let i = 0; i < 90; i++) { const x = -42 + r() * 84, k = 1 - Math.abs(x) / 46, y = -2 - r() * h * Math.sqrt(Math.max(0, k)) * .98; B.s(`M${x} ${y}l${(r() - .5) * 2} ${2.4 + r() * 3}`, STRAW[1 + Math.floor(r() * 3)], .7, .8); }
+    // turf on each end, cut in blocks
+    for (const sd of [-1, 1]) { for (let k = 0; k < 4; k++) B.f(B.rr(sd * 36 - 8 + (sd < 0 ? 0 : 2), -6 - k * 6, 14, 6, 1.4), k % 2 ? '#6e7a3e' : '#5e6a34').f(B.rect(sd * 36 - 8 + (sd < 0 ? 0 : 2), -6 - k * 6, 14, 1.4), '#8e9a54', .8); }
+    // the rope net and its stone weights
+    for (let x = -30; x <= 30; x += 12) B.s(`M${x} -${h * (1 - Math.abs(x) / 70)}Q${x * 1.2} -${h * .4} ${x * 1.32} -4`, '#8a7450', .8, .85);
+    B.s(`M-40 -${h * .45}Q0 -${h * .78} 40 -${h * .45}`, '#8a7450', .8, .85);
+    for (const x of [-38, -14, 14, 38]) B.s(`M${x} -6v4`, '#8a7450', .7).f(B.blob(r, x, 0, 3.4, 2.4, 6, .3), STONE.rockLo).f(B.blob(r, x - .8, -.8, 2, 1.2, 6, .3), STONE.rockHi, .8);
+    if (s === 'winter') { B.f(`M-40 -${h * .5}Q-20 -${h * 1.04} 0 -${h * 1.02}Q20 -${h * 1.04} 40 -${h * .5}Q0 -${h * .82} -40 -${h * .5}Z`, '#f4f6f2', .92); B.f(B.blob(r, 4, -8, 12, 6, 8, .4), '#3a2a18'); for (let i = 0; i < 8; i++) B.f(B.circ(-4 + r() * 16, -10 + r() * 6, 2), i % 3 ? '#c83a2a' : '#d8a030'); }
+    else B.f(B.blob(r, 6, -6, 7, 3, 7, .4), '#5a4024', .6).f(B.circ(4, -6, 1.8), '#c83a2a').f(B.circ(8, -5.4, 1.8), '#d8a030');
+    B.tufts(r, -48, 1, 8, 7, grass(s), 7).tufts(r, 48, 1, 8, 7, grass(s), 7);
+  } };
+
+  /* ---------- cider square: three oak casks on a stillage beside the twin-screw press, its slatted cheese and tray, a basket
+     of windfalls; a drip from the spigot darkens the setts ---------- */
+  A['ld-barrels'] = { box: [-42, -84, 56, 8], seat: { kind: 'flags', w: 56, front: 14 }, draw(B, o) {
+    const r = KIT().rng(611), s = o.season, OAKC = ['#b08456', '#8a6440', '#d4aa74', '#4e3824'];
+    // the press, behind and to the east: two posts, a beam, the screws, the cheese of pomace in its slats, the tray
+    const px = 34, beam = -H * 1.7;
+    for (const x of [px - 14, px + 14]) B.post(x, beam - 4, 0, 5, OAK);
+    B.f(B.rect(px - 18, beam - 8, 36, 7), OAK[1]).f(B.rect(px - 18, beam - 8, 36, 2), OAK[2], .9);
+    for (const x of [px - 7, px + 7]) { B.f(B.rect(x - 1.6, beam - 18, 3.2, 12), IRON[1]); for (let y = beam - 17; y < beam - 6; y += 2.4) B.s(`M${x - 1.6} ${y}l3.2 1`, IRON[0], .6); B.s(`M${x - 6} ${beam - 18}h12`, IRON[0], 1.4); }
+    B.f(B.rect(px - 11, beam + 10, 22, 6), OAK[0]);
+    B.f(B.rect(px - 11, beam + 16, 22, -beam - 30), '#b8803e'); for (let x = px - 10; x < px + 11; x += 3.6) B.s(`M${x} ${beam + 16}v${-beam - 30}`, OAK[1], 1.3);
+    B.f(B.rect(px - 16, -14, 32, 5), OAK[1]).f(B.rect(px - 16, -14, 32, 1.4), OAK[2]).s(`M${px + 16} -11l4 3`, OAK[1], 1.6).f(B.ell(px + 21, -7, 3, 1.2), '#c8a050', .8);
+    // the stillage and the casks, ends toward us: staves, two iron hoops, a chalked mark, a spigot on the bottom pair
+    B.f(B.rect(-36, -10, 50, 4), OAK[1]).f(B.rect(-36, -10, 50, 1.2), OAK[2]); for (const x of [-32, 10]) B.f(B.rr(x - 4, -6, 8, 6, 1), STONE.rockLo).f(B.rect(x - 4, -6, 8, 1.4), STONE.rockHi);
+    const cask = (x, y, R) => { B.f(B.circ(x + 1.2, y + 1.2, R), OAKC[3], .6).f(B.circ(x, y, R), B.rad(x - R * .35, y - R * .35, R * 1.4, [[0, OAKC[2]], [.6, OAKC[0]], [1, OAKC[1]]])); for (let k = -2; k <= 2; k++) { const yy = y + k * R * .36, w = Math.sqrt(Math.max(0, R * R - (k * R * .36) ** 2)); B.s(`M${x - w} ${yy}h${w * 2}`, OAKC[1], .6, .7); } B.s(B.circ(x, y, R - .8), IRON[1], 1.6).s(B.circ(x, y, R * .62), IRON[1], 1, .7).f(B.ell(x - R * .3, y - R * .5, R * .3, R * .12), '#ffffff', .2); };
+    cask(-24, -20, 11); cask(0, -20, 11); cask(-12, -38, 10);
+    for (const x of [-24, 0]) B.f(B.rect(x - 1.4, -14, 2.8, 4), '#8a8478').f(B.rect(x - 2.6, -12, 5.2, 1.6), '#b4ac98');
+    B.s('M-6 -48l6 2M-16 -42l3 -3', '#f2f0e8', .7, .8);
+    B.f(B.ell(-24, -1, 3, 1), '#6a3a2a', .5).f(B.circ(-24, -6, .8), '#c8a050', .9);
+    // a basket of windfalls by the press, a few apples rolled away
+    B.f(B.ell(16, -3, 8, 4), '#a8844e').s('M8 -4q8 3 16 0', '#7a5a30', .8); for (let i = 0; i < 6; i++) B.f(B.circ(11 + r() * 10, -6 - r() * 3, 2), i % 2 ? '#c83a2a' : '#9ab83a');
+    for (let i = 0; i < 3; i++) B.f(B.circ(-38 + r() * 10, 1 + r() * 3, 1.8), '#c8a030');
+    B.tufts(r, -38, 1, 6, 5, grass(s), 6).tufts(r, 52, 1, 6, 5, grass(s), 6);
+  } };
 })();

@@ -166,6 +166,8 @@ window.GardenPaintedMarks = (function () {
     const h = { root: node.target, rootNode: node, bounds: b, painted: true, shaded: art.shade !== false || !!art.flat, foot: { x, y: foot }, lights,
       update(time, env) {
         if (seat) { seat.setVisible(node.target.visible); seat.setAlpha(node.target.alpha); }
+        // art.bob: a thing afloat rides the water a little (the rowing boat), as the library boat did
+        if (art.bob && im && !paused && !(typeof gardenMotionOn === 'function' && !gardenMotionOn())) { const t = time / 1000; im.y = foot + Math.sin(t * 1.3) * art.bob; im.setRotation(Math.sin(t * .9) * .018); }
         if (!parts.length && !art.state) return;
         const dt = last == null ? 0 : Math.min(.08, Math.max(0, (time - last) / 1000)); last = time;
         if (art.state && time - checked > 1000) { checked = time; const now = stateOf(); if (now !== state) { state = now; repaint(lit); } }
@@ -176,7 +178,7 @@ window.GardenPaintedMarks = (function () {
       setLitWindows(on) { on = !!on && !!art.lit; if (on === lit) return; lit = on; if (!repaint(on)) return; h.lights.length = 0; if (on && art.lights) for (const [dx, dy, r] of art.lights) h.lights.push({ x: x + dx, y: foot + dy, radius: r || 110, pool: true }); },
       destroy() { if (seat) seat.destroy(); if (host !== node._inner) { im.destroy(); for (const q of parts) if (q.im) q.im.destroy(); } node.remove(); } };
     // (a thing with moving parts or a changing state is called every frame, as the painted props with motion are)
-    if (parts.length || art.state) { h.kind = 'painted'; h.dynamic = true; }
+    if (parts.length || art.state || art.bob) { h.kind = 'painted'; h.dynamic = true; }
     return h;
   }
   return { knows, landmark, wayIn, ART };
