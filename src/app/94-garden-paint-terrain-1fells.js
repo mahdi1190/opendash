@@ -480,7 +480,7 @@ window.GardenPaintedTerrain = (function () {
       }
       // the far wall: weathered rock from the lip down into the water, deeper towards the falls
       const G = { lit: '#a39886', mid: '#827868', shade: '#5c554c', deep: '#323a38', hi: '#cdc2ac', damp: '#4f6446', moss: P.moss, heather: P.heather, snow: P.snow };
-      kit.rockBand(B, far, farIn, far.map((_, i) => i), (i, k) => kit.rng(9001 + i * 131 + k * 17), G, { snowy, size: .7, tiers: [[.3, 1], [.72, .8]] });
+      { const on = far.map((q, i) => i).filter(i => far[i].x > cb[0] - 90 && far[i].x < cb[2] + 90 && far[i].y > cb[1] - 90 && far[i].y < cb[3] + 90); if (on.length > 1) kit.rockBand(B, far, farIn, on, (i, k) => kit.rng(9001 + i * 131 + k * 17), G, { snowy, size: .7, tiers: [[.3, 1], [.72, .8]] }); }   /* (only the stretch of wall this chunk can show: the whole gorge in every chunk was the slowest op on the fells, 75 ms) */
       B.s(B.line(farIn), '#2e3a3c', 2.4, .4);   // the wet foot of the wall
       B.s(B.line(far), snowy ? P.snow : P.rockHi, 2.2, .95);
       // moss, ferns and heather along the far lip
@@ -799,15 +799,19 @@ window.GardenPaintedTerrain = (function () {
     // stones on the scree, tufts and sprigs on the turf and heather, so a flank close up is rock and turf, not a smear
     // (sparse and low in contrast: at one mark in 26 points the scree read as a rash of dots from afar, and a sharper
     // repaint of the Horn took 124 ms)
-    { const rr = kit.rng(seed + 77), N = F.NX * F.NY, n = Math.min(2400, Math.round(N / 60));
-      const turf = [kit.mix(P.fellLo, '#6e7a40', .3), kit.mix(P.fellHi, '#d8d2a0', .2)], heath = [P.heatherLo, P.heatherHi || P.heather];
+    // (the marks are gathered once per peak into a few paths by colour, and the picture strokes and fills those: drawn mark by
+    // mark, painting a peak again close up took 84 ms)
+    if (!F.marks) { const rr = kit.rng(seed + 77), N = F.NX * F.NY, n = Math.min(3000, Math.round(N / 50)), M = new Map(), g = (kind, col, wd, a) => { const k = kind + '|' + col + '|' + wd + '|' + a; let o = M.get(k); if (!o) M.set(k, o = { kind, col, wd, a, p: new Path2D() }); return o.p; };
+      const turf = [kit.mix(P.fellLo, '#6e7a40', .3), kit.mix(P.fellHi, '#d8d2a0', .2)], heath = [P.heatherLo, P.heatherHi || P.heather], el = (pp, x, y, rx, ry) => { pp.moveTo(x + rx, y); pp.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); };
       for (let k = 0; k < n; k++) { const q = Math.floor(rr() * N), c = F.cls[q]; if (!c) continue; const i = q % F.NX, j = (q / F.NX) | 0, z = F.h[q];
         const X = F.gx0 + i * F.ST, Y = F.gy0 + j * F.ST - z, s = .7 + rr() * .7, t = rr();
-        if (c === 4) { const w = 2.4 + rr() * 3.4, hh = 1.6 + rr() * 2.2; B.f(B.blob(rr, X + w * .25, Y + hh * .35, w, hh, 6, .3), '#4a443c', .3).f(B.blob(rr, X, Y, w * .9, hh * .85, 6, .3), t < .5 ? '#a89e8c' : '#9a9080', .55).f(B.blob(rr, X - w * .3, Y - hh * .35, w * .45, hh * .3, 5, .35), '#ddd4c0', .45); }   // a block of the crag, lit on its upper left
-        else if (c === 3) { if (t < .6) B.s(`M${X - 2.4 * s} ${Y + .4}q${2.4 * s} ${-.9} ${4.8 * s} ${(rr() - .5) * .8}`, t < .3 ? '#8a8070' : '#cfc6b0', .9, .45); else B.f(B.ell(X + .4, Y + .5, 1.3 * s, .6 * s), '#5e564c', .22).f(B.ell(X, Y, 1.2 * s, .55 * s), '#c4baa4', .5); }   // a scree runnel or a loose stone
-        else if (c === 5) { if (t < .4) B.s(`M${X - 3} ${Y}q3 -.8 6 0`, P.snowSh, .9, .55); }
-        else { const col = c === 2 ? heath[t < .5 ? 0 : 1] : turf[t < .55 ? 0 : 1]; for (let b = 0; b < 3; b++) B.s(`M${X + (b - 1) * 1.3} ${Y}l${(b - 1) * .9 + (rr() - .5) * .6} ${-(2 + rr() * 2.2) * s}`, col, .8, .55); }
-      } }
+        if (c === 4) { const w = 2.4 + rr() * 3.4, hh = 1.6 + rr() * 2.2; el(g('f', '#4a443c', 0, .3), X + w * .25, Y + hh * .35, w, hh); el(g('f', t < .5 ? '#a89e8c' : '#9a9080', 0, .55), X, Y, w * .9, hh * .85); el(g('f', '#ddd4c0', 0, .45), X - w * .3, Y - hh * .35, w * .45, hh * .3); }   // a block of the crag, lit on its upper left
+        else if (c === 3) { if (t < .6) { const pp = g('s', t < .3 ? '#8a8070' : '#cfc6b0', .9, .45); pp.moveTo(X - 2.4 * s, Y + .4); pp.quadraticCurveTo(X, Y - .5, X + 2.4 * s, Y + .4 + (rr() - .5) * .8); } else { el(g('f', '#5e564c', 0, .22), X + .4, Y + .5, 1.3 * s, .6 * s); el(g('f', '#c4baa4', 0, .5), X, Y, 1.2 * s, .55 * s); } }   // a scree runnel or a loose stone
+        else if (c === 5) { if (t < .4) { const pp = g('s', P.snowSh, .9, .55); pp.moveTo(X - 3, Y); pp.quadraticCurveTo(X, Y - .8, X + 3, Y); } }
+        else { const pp = g('s', c === 2 ? heath[t < .5 ? 0 : 1] : turf[t < .55 ? 0 : 1], .8, .55); for (let b = 0; b < 3; b++) { pp.moveTo(X + (b - 1) * 1.3, Y); pp.lineTo(X + (b - 1) * 1.3 + (b - 1) * .9 + (rr() - .5) * .6, Y - (2 + rr() * 2.2) * s); } }
+      }
+      F.marks = [...M.values()]; }
+    cx.save(); cx.lineCap = 'round'; for (const m of F.marks) { cx.globalAlpha = m.a; if (m.kind === 'f') { cx.fillStyle = m.col; cx.fill(m.p); } else { cx.strokeStyle = m.col; cx.lineWidth = m.wd; cx.stroke(m.p); } } cx.restore();
     // the foot: fell and heather lapping up in soft lobes, boulders fallen out on to the moor
     const Ks = Math.abs(cx.getTransform().a) || 1, fb = kit.bboxOf(foot || [{ x: -w / 2, y: -d }, { x: w / 2, y: 0 }]);
     const ring = []; for (let k = 0; k <= 40; k++) { const a = Math.PI * k / 40; ring.push({ x: (fb[0] + fb[2]) / 2 - Math.cos(a) * (fb[2] - fb[0]) / 2 * 1.02, y: (fb[1] + fb[3]) / 2 + Math.sin(a) * (fb[3] - fb[1]) / 2 * 1.04 }); }
@@ -942,9 +946,9 @@ window.GardenPaintedTerrain = (function () {
       // (the height field is made here, before the sprite's first painting is timed: with it inside, the painting took so long
       // that the sharpener never painted the peak again close up, and the flanks stayed a soft 1.25 px a world px)
       ok(() => peakField(w, d, H, snowS, P, seed, sharp, foot, pbox[0], pbox[1], pbox[2] - pbox[0], pbox[3] - pbox[1]));
-      // (painted at 2 px a world px when the garden is built, so close up the brushwork is crisp without the sharpener painting it
-      // again: that repaint took 120 to 175 ms the moment you stopped near a peak)
-      out.push({ key: sig + '|peak|' + pk.id, box: pbox, x: ox, y: oy, K: 2, fade, fadeTo: .5, draw: B => peakArt(B, w, d, H, snowS, P, seed, sharp, foot, pbox) });
+      // (painted at 3 px a world px when the garden is built, so close up it is crisp and the sharpener never paints it again:
+      // a repaint of a picture this size, with its upload, took 84 to 229 ms the moment you stopped near a peak)
+      out.push({ key: sig + '|peak|' + pk.id, box: pbox, x: ox, y: oy, K: 3, fade, fadeTo: .5, draw: B => peakArt(B, w, d, H, snowS, P, seed, sharp, foot, pbox) });
     }
     // tors framing the gaps in the Edge: the pass and the falls cave stair stand between rock
     const gapAt = [].concat(L.gates.filter(g => g.kind === 'pass').map(g => [g.x + .5, g.y + .9]), L.falls && L.falls.caveStair ? [L.falls.caveStair] : []);

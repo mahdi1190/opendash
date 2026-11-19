@@ -171,7 +171,7 @@
             B.f(poly, winter ? '#8e887a' : '#8c7c5c', .96);
             B.cx.save(); B.cx.clip(new Path2D(poly));
             const x0 = rn[0].x - 4, x1 = rn[rn.length - 1].x + 4, yTop = Math.min(...top.map(q => q.y)), yBot = Math.max(...bot.map(q => q.y));
-            for (let y = yBot - .5, row = 0; y > yTop - 2; y -= 4.3, row++) for (let x = x0 - (row & 1) * 3.5; x < x1; ) { const w = 3.6 + r() * 6.4, tone = r(), sh = 2.8 + r() * 1.4, dy = (r() - .5) * .9; B.f(B.rr(x, y - sh - .2 + dy, w - .9, sh, 1.2), tone < .35 ? FOOT.rock : tone < .7 ? FOOT.rockLo : FOOT.rockHi).f(B.rr(x + .4, y - sh - .2 + dy, w * .6, 1, .5), '#efe4c4', .45);   /* (each stone its own length and depth, rounded by weather: laid even they read as brick) */ if (!winter && r() < .06) B.f(B.ell(x + w / 2, y - 3, w * .4, 1.3), '#8a9a4e', .7); x += w; }
+            for (let y = yBot - .5, row = 0; y > yTop - 2; y -= 4.3, row++) for (let x = x0 - (row & 1) * 3.5; x < x1; ) { const w = 3.6 + r() * 6.4, tone = r(), sh = 2.8 + r() * 1.4, dy = (r() - .5) * .9; if (x + w < cb[0] - 4 || x > cb[2] + 4) { if (!winter) r(); x += w; continue; }   /* (off this chunk: the same draws taken, so both chunks lay the same stones) */ B.f(B.rr(x, y - sh - .2 + dy, w - .9, sh, 1.2), tone < .35 ? FOOT.rock : tone < .7 ? FOOT.rockLo : FOOT.rockHi).f(B.rr(x + .4, y - sh - .2 + dy, w * .6, 1, .5), '#efe4c4', .45);   /* (each stone its own length and depth, rounded by weather: laid even they read as brick) */ if (!winter && r() < .06) B.f(B.ell(x + w / 2, y - 3, w * .4, 1.3), '#8a9a4e', .7); x += w; }
             B.f(poly, B.lin(0, yTop, 0, yBot, [[0, 'rgba(255,244,210,.12)'], [1, 'rgba(40,34,20,.22)']]));
             B.cx.restore();
             B.s(B.line(bot), '#2c2818', 1.8, .4);
