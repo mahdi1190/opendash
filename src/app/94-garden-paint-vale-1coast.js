@@ -76,7 +76,14 @@
       const ox = Math.round((bb[0] + bb[2]) / 2), oy = Math.round(bb[3]);
       C.thing({ key: 'cold-cove-shingle', depth: -9000, x: ox, y: oy, box: [bb[0] - ox, bb[1] - oy, bb[2] - ox, 0], K: 1, draw: B => {
         B.cx.save(); B.cx.translate(-ox, -oy); B.cx.clip(V.loopPath(L.coast));
-        V.strokePts(B, coast, '#8f8a7e', 46, .45); V.strokePts(B, coast, '#a8a294', 30, .6); V.strokePts(B, coast, '#7a756a', 10, .45);
+        // (inside the map, and the bands end square under the clip, fading at each end: their round ends showed as two pale
+        // discs, one at the map's top edge and one at the foot of the scarp: round 3)
+        B.cx.beginPath(); B.cx.rect(bb[0] - 200, W.sky, bb[2] - bb[0] + 400, bb[3] - W.sky + 200); B.cx.clip();
+        const line = B.line(coast), band = (w, col, op) => B.s(line, col, w, op, 'butt');
+        band(46, '#8f8a7e', .45); band(30, '#a8a294', .6); band(10, '#7a756a', .45);
+        B.cx.globalCompositeOperation = 'destination-out';
+        for (const e of [coast[0], coast[coast.length - 1]]) { const g = B.cx.createRadialGradient(e.x, e.y, 0, e.x, e.y, 64); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(.45, 'rgba(0,0,0,.7)'); g.addColorStop(1, 'rgba(0,0,0,0)'); B.cx.fillStyle = g; B.cx.fillRect(e.x - 64, e.y - 64, 128, 128); }
+        B.cx.globalCompositeOperation = 'source-over';
         for (const q of V.walk(coast, 4)) { const rr = kit.rng(kit.hash(Math.round(q.x), Math.round(q.y), 66)); for (let k = 0; k < 3; k++) { const d = rr() * 24, x = q.x - q.ty * d + (rr() - .5) * 4, y = q.y + q.tx * d; B.f(B.ell(x, y, 1.6 + rr() * 2.4 * (1 - d / 30), 1 + rr() * 1.2), ['#b8b2a4', '#8c877c', '#d2ccbe', '#6e6a62'][Math.floor(rr() * 4)], .95); } }
         // the trail runs on as a worn way over the shingle to the water's edge
         const end = cove[cove.length - 1], to = coast.reduce((a, q) => Math.hypot(q.x - end.x, q.y - end.y) < Math.hypot(a.x - end.x, a.y - end.y) ? q : a, coast[0]);
@@ -300,7 +307,11 @@
       B.f(B.rect(-60, -44, 4, 44), '#e8e2d2', .85).f(B.rect(56, -44, 4, 44), '#c8c2b2', .85);
       // the big doors standing open: a dark boat-shed inside, the bow of a red boat on its trolley
       B.f(B.rect(-56, -38, 44, 38), '#1e2428').f(B.rect(-56, -38, 44, 10), '#2c343a', .8);
-      B.f('M-52 0Q-50 -14 -34 -16Q-20 -14 -16 0Z', '#b8442e').f('M-50 0Q-48 -10 -34 -12Q-24 -10 -20 0Z', '#d86a4e', .5).f(B.rect(-50, -3, 32, 3), '#f4efe2', .85);
+      // (the bow seen head on, on its trolley: a stem, the hull flaring to white gunwales, planks; it was a red half-disc)
+      B.f(B.rect(-52, -3.4, 36, 2.6), '#3a3026').f(B.circ(-47, -.6, 2.4), '#22201c').f(B.circ(-21, -.6, 2.4), '#22201c').f(B.circ(-47.6, -1.2, .8), '#6a645c');
+      B.f('M-51 -24Q-49 -9 -34 -4Q-19 -9 -17 -24Q-34 -20 -51 -24Z', '#b8442e').f('M-51 -24Q-49 -9 -34 -4L-34 -21Q-43 -21 -51 -24Z', '#d0644a', .55);
+      B.f('M-51 -24Q-34 -20 -17 -24Q-34 -27 -51 -24Z', '#3a2018').s('M-51 -24Q-34 -20 -17 -24', '#f4efe2', 1.6, .95);
+      B.s('M-49 -17Q-34 -12 -19 -17', '#8a2e20', .8, .7).s('M-46 -10.5Q-34 -7 -22 -10.5', '#8a2e20', .8, .7).s('M-34 -5V-21', '#7a281a', 1.4, .9).f(B.ell(-34, -24.6, 1.6, 1.2), '#c8b07a');
       B.f(B.poly([[-56, -38], [-66, -34], [-66, 2], [-56, 0]]), '#7c9898').f(B.poly([[-12, -38], [-4, -35], [-4, 1], [-12, 0]]), '#56706f');
       B.s('M-61 -30v24M-8 -30v24', '#e8e2d2', 1.4, .8);
       // the loft door at the side (the way in), a lamp over it, a lifebuoy, oars against the wall

@@ -110,7 +110,7 @@
       // 2a. the sea side: shallows that come and go with the sand under them, then the lace
       bbs.forEach((bb, idx) => add(bb, 32, (B, r, cb) => {
         if (!firstFor(idx, cb)) return;
-        B.cx.save(); B.cx.clip(outsideAll, 'evenodd');
+        B.cx.save(); B.cx.beginPath(); B.cx.rect(-4000, W.sky - 1, W.cols * cw + 8000, W.rows * ch + 4000); B.cx.clip();   /* (not above the map's top edge: a sliver of the outline there was painted as a sand spike) */ B.cx.clip(outsideAll, 'evenodd');
         // (a ramp of thin passes along one line, so the shallows fade out to the deep with no edge: three wide bands of one
         // strength each ended in a hard line parallel to the coast)
         for (const [a, b] of spansOf(seaW, cb, 240)) { const line = []; for (let i = a; i <= b; i++) line.push(out(seaW[i], 4)); for (let w = 220; w >= 20; w -= 20) V.strokePts(B, line, w > 80 ? P.shallow : '#b7d8cf', w, w > 80 ? .055 : .075); }
@@ -138,7 +138,7 @@
       // shells and pebbles in drifts, wind ripples on the dry sand
       bbs.forEach((bb, idx) => add(bb, 33, (B, r, cb) => {
         if (!firstFor(idx, cb)) return;
-        B.cx.save(); B.cx.clip(coastP);
+        B.cx.save(); B.cx.beginPath(); B.cx.rect(-4000, W.sky - 1, W.cols * cw + 8000, W.rows * ch + 4000); B.cx.clip();   /* (not above the map's top edge: a sliver of the outline there was painted as a sand spike) */ B.cx.clip(coastP);
         for (let i = 0; i < shoreW.length; i += 2) { const q = shoreW[i]; if (!near(q, cb, 60)) continue; if (!beachAt(inl(q, 14))) continue; const rr = prng(q, 84), n = F(q.x, q.y, 120, 85), c = inl(q, 2);
           const p = inl(q, 6 + n * 10); B.f(B.blob(rr, p.x, p.y, 13 + n * 14, 6 + n * 7, 8, .35), P.sandWet, .3 + n * .2);
           B.f(B.blob(rr, c.x, c.y, 9, 3.4, 7, .3), P.sandWet, .45); }
@@ -210,7 +210,7 @@
       // one op a stretch of shore, so a chunk only bakes the clumps near it
       for (let i = 0; i < clumps.length; i += 24) { const set = clumps.slice(i, i + 24), cbb = kit.bboxOf(set, 60);
         add(cbb, 34, (B, r, cb) => {
-          B.cx.save(); B.cx.clip(coastP);
+          B.cx.save(); B.cx.beginPath(); B.cx.rect(-4000, W.sky - 1, W.cols * cw + 8000, W.rows * ch + 4000); B.cx.clip();   /* (not above the map's top edge: a sliver of the outline there was painted as a sand spike) */ B.cx.clip(coastP);
           for (const c of set) { if (!near(c, cb, 50)) continue; const rr = kit.rng(c.seed), s = .8 + c.n * .5;
             // a low hummock the wind has built round the roots: lit on its sunny side, shaded on the other
             if (!c.cold) B.f(B.blob(rr, c.x + 3, c.y + 1, 22 * s, 7 * s, 9, .4), P.sandDk, .14).f(B.blob(rr, c.x - 4, c.y - 2, 17 * s, 5 * s, 9, .4), '#f2e6c0', .3);
@@ -235,7 +235,16 @@
         if (rr() < .6) { const u = .3 + rr() * .4, bx = x0 + (x1 - x0) * u, by = y0 + (y1 - y0) * u; B.s(`M${bx} ${by}l${-sa * 9 + 2} ${-6 - rr() * 3}`, '#9c907a', 1.8, .95); }
         B.f(B.blob(rr, g.x + 6, g.y + 3, g.len * .45, 2.4, 7, .4), '#c8b483', .3); });
       const RK = { rock: '#9c968a', rockLo: '#767064', rockHi: '#cbc4b2', rockDk: '#4a463e', lichen: '#d2c26a' };
-      for (const g of ledges) add([g.x - 120, g.y - 70, g.x + 120, g.y + 80], 37, (B) => { const rr = kit.rng(g.seed), slabs = 3 + Math.floor(rr() * 3), pts = [];
+      // (round 3: each stretch of rock its own form: tabular ledges, one big weed-dark boulder among cobbles, or a spread of
+      // cobbles and weed; a pool only now and then. The same pool and three grey stones stood at every one)
+      const RK2 = [RK, { rock: '#8a8a84', rockLo: '#66665f', rockHi: '#b8b8ae', rockDk: '#3a3a36', lichen: '#c8c47a' }, { rock: '#a8987e', rockLo: '#7e6e58', rockHi: '#d0c0a0', rockDk: '#4a3e30', lichen: '#d8b85a' }];
+      for (const g of ledges) add([g.x - 120, g.y - 70, g.x + 120, g.y + 80], 37, (B) => { const rr = kit.rng(g.seed), form = rr(), pal = RK2[Math.floor(rr() * RK2.length)];
+        if (form > .4) { // a boulder among cobbles, or cobbles alone, with weed at the tide
+          const n = form > .75 ? 9 + Math.floor(rr() * 8) : 4 + Math.floor(rr() * 4), big = form <= .75;
+          if (big) { const bx = g.x - g.ty * (10 + rr() * 10), by = g.y + g.tx * (10 + rr() * 10), w = 30 + rr() * 22; B.boulder(rr, bx, by, w, w * (.5 + rr() * .25), pal, false); B.f(B.blob(rr, bx, by - 1, w * .45, 2.4, 8, .5), '#3e4e30', .8); for (let k = 0; k < 6; k++) B.f(B.circ(bx + (rr() - .5) * w * .7, by - 3 - rr() * 6, .7), '#e4e0d4', .75); }
+          for (let k = 0; k < n; k++) { const along = (rr() - .5) * 90 * g.s, d = 2 + rr() * 34, x = g.x + g.tx * along - g.ty * d, y = g.y + g.ty * along + g.tx * d, sz = 3 + rr() * (big ? 6 : 9); B.f(B.blob(rr, x + 1, y + 1, sz, sz * .55, 7, .4), '#3a3a2c', .25).f(B.blob(rr, x, y, sz, sz * .6, 7, .4), [pal.rock, pal.rockLo, pal.rockHi][Math.floor(rr() * 3)]).f(B.blob(rr, x - sz * .3, y - sz * .25, sz * .4, sz * .2, 6, .4), pal.rockHi, .5); if (d < 14 && rr() < .6) B.f(B.blob(rr, x, y + sz * .4, sz * .8, 1.4, 6, .5), '#4f5a36', .7); }
+          return; }
+        const slabs = 3 + Math.floor(rr() * 3), pts = [];
         // low tabular rocks on the wet sand, the seaward one with its toe in the water: a lit top, a dark face, weed at the foot
         for (let k = 0; k < slabs; k++) { const along = (k - (slabs - 1) / 2) * 24 * g.s + (rr() - .5) * 10, d = (k === 0 ? 2 : 8) + rr() * 22; pts.push({ x: g.x + g.tx * along - g.ty * d, y: g.y + g.ty * along + g.tx * d, w: (16 + rr() * 20) * g.s, h: (7 + rr() * 5) * g.s, sea: k === 0 }); }
         pts.sort((a, b) => a.y - b.y);
@@ -249,7 +258,7 @@
           if (rr() < .35) B.f(B.blob(rr, p.x - p.w * .1, top, 3.4, 1.4, 6, .5), RK.lichen, .55); }
         // a rock pool caught between two of them, with the sky in it
         const a = pts[0], b = pts[pts.length - 1], px = (a.x + b.x) / 2 - g.ty * 14, py = (a.y + b.y) / 2 + g.tx * 10;
-        if (rr() < .7) B.f(B.blob(rr, px, py, 11 * g.s, 4.4 * g.s, 9, .3), '#6f6a5c').f(B.blob(rr, px, py - .6, 9 * g.s, 3.4 * g.s, 9, .3), '#7fb3b4').f(B.ell(px - 3, py - 1.6, 4 * g.s, .9), '#e4f2ee', .7); });
+        if (rr() < .35) B.f(B.blob(rr, px, py, 11 * g.s, 4.4 * g.s, 9, .3), '#6f6a5c').f(B.blob(rr, px, py - .6, 9 * g.s, 3.4 * g.s, 9, .3), '#7fb3b4').f(B.ell(px - 3, py - 1.6, 4 * g.s, .9), '#e4f2ee', .7); });
 
       // 2f. What people leave on a wide beach, and what stands off the shore (round 3: long stretches of bare sand with a log
       // or two, and an empty sea). Along the sea coast, now and then where the beach is wide: a rowing boat drawn up, a net
@@ -467,6 +476,26 @@
       const rc = { x: (qx0 + qx1) / 2 + 52, y: qy1 - 14 }; for (let k = 0; k < 4; k++) B.s(B.ell(rc.x, rc.y, 7 - k * 1.4, 3.6 - k * .7), k % 2 ? P.rope : '#a88a54', 1.6, .95);
       B.s(`M${rc.x + 6} ${rc.y}q12 2 18 9`, P.rope, 1.4, .9);
     });
+
+    // 4b. The boathouse's slipway: from its big doors down through the quay's edge into the water, granite setts at the
+    // sides, timber across with two iron rails for the boat trolley, wet and weedy where the tide reaches (round 3: the
+    // boathouse stood on the slabs with no way for a boat to reach the sea). From the boathouse's place in the layout;
+    // drawn only if the sea is close below its doors.
+    const bh = L.stat('ld-boathouse');
+    if (bh) { const ART = window.GardenPaintedMarks && GardenPaintedMarks.ART && GardenPaintedMarks.ART['ld-boathouse'], doorX = (bh.x + bh.w / 2) * cw - 34, top = W.sky + (bh.y + bh.h) * ch - 2; let sea = null;
+      for (let y = top; y < top + 170; y += 4) { const b = L.base(doorX / cw, (y - W.sky) / ch); if (b && b.ocean) { sea = y; break; } }
+      if (ART && sea) { const bot = sea + 26, w0 = 46, w1 = 52;
+        add([doorX - 50, top - 6, doorX + 50, bot + 16], 42, (B, r) => {
+          const L0 = doorX - w0 / 2, R0 = doorX + w0 / 2, L1 = doorX - w1 / 2, R1 = doorX + w1 / 2, ramp = `M${L0} ${top}L${R0} ${top}L${R1} ${bot}Q${doorX} ${bot + 6} ${L1} ${bot}Z`;
+          B.f(`M${L0 - 4} ${top + 2}L${R0 + 4} ${top + 2}L${R1 + 5} ${bot + 2}L${L1 - 5} ${bot + 2}Z`, '#2e3430', .3);
+          B.f(ramp, '#7a6a52'); B.cx.save(); B.cx.clip(new Path2D(ramp));
+          for (let y = top + 1; y < bot + 6; y += 5.2) { const u = (y - top) / (bot - top), wet = u > .55; B.f(B.rect(L1 - 2, y, w1 + 4, 4.4), wet ? (r() < .5 ? '#5e5a44' : '#6a6048') : (r() < .5 ? '#9a8664' : '#8a7656'), .95).f(B.rect(L1 - 2, y, w1 + 4, 1), wet ? '#7a7a5a' : '#c4ac84', .5); }
+          for (let y = top + 4; y < bot; y += 9) { const u = (y - top) / (bot - top); if (u > .5) B.f(B.blob(r, doorX + (r() - .5) * 40, y, 6 + r() * 6, 1.6, 7, .5), r() < .5 ? '#3e4e30' : '#56622f', .6); }
+          for (const dx of [-9, 9]) B.s(`M${doorX + dx} ${top}L${doorX + dx * 1.08} ${bot}`, '#3a3e40', 2, .9).s(`M${doorX + dx - .6} ${top}L${doorX + dx * 1.08 - .6} ${bot}`, '#9aa0a4', .7, .7);
+          B.cx.restore();
+          for (const [a, b] of [[[L0, top], [L1, bot]], [[R0, top], [R1, bot]]]) { for (let t = 0; t < 1; t += .14) { const x = a[0] + (b[0] - a[0]) * t, y = a[1] + (b[1] - a[1]) * t; B.f(B.rr(x - 3.6, y, 7.2, 6.4, 1.6), t > .55 ? '#6e7060' : r() < .5 ? '#b0a894' : '#a0988a').f(B.rect(x - 3, y + .6, 6, 1.2), '#dcd6c6', t > .55 ? .25 : .55); } }
+          B.s(`M${L1 - 3} ${bot + 1}Q${doorX} ${bot + 8} ${R1 + 3} ${bot + 1}`, P.foam, 1.4, .6);
+        }); } }
 
     // 5. The lighthouse on its rocks: weed-dark boulders at the tide, turf with thrift above, a rock pool
     const lh = L.stat('ld-lighthouse');
