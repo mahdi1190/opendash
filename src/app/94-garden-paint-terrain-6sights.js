@@ -314,6 +314,8 @@
     B.tufts(r, -62, 4, 12, 7, grass(s), 7).tufts(r, 62, 4, 12, 7, grass(s), 7);
   } };
 
+  Object.assign(M.SIGHT_KIT, { rubble, lancet, arch, ferns, brick, PALE });
+
   // A light of its own wins over one an older file gave the same thing (94-garden-paint-terrain-3orchard.js lit the folly
   // where its old high window was).
   const landmark = M.landmark;
