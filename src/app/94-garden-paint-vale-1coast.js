@@ -68,7 +68,7 @@
       // (seaward is +d here; the cluster's others lie up the shingle, never on the trail's way down to the water)
       const tEnd = cove[cove.length - 1], tTo = coast.reduce((a, q) => Math.hypot(q.x - tEnd.x, q.y - tEnd.y) < Math.hypot(a.x - tEnd.x, a.y - tEnd.y) ? q : a, coast[0]);
       const onWay = (x, y) => { const vx = tTo.x - tEnd.x, vy = tTo.y - tEnd.y, l2 = vx * vx + vy * vy || 1, t = Math.max(0, Math.min(1, ((x - tEnd.x) * vx + (y - tEnd.y) * vy) / l2)); return Math.hypot(x - tEnd.x - vx * t, y - tEnd.y - vy * t) < 40; };
-      const rocks = []; for (const q of V.walk(coast, 14)) { const rr = kit.rng(kit.hash(Math.round(q.x), Math.round(q.y), 67)), n = kit.fbm(q.x / 170, q.y / 170, 69); if (n < .47 || rr() < .3) continue; const k = n > .63 ? 3 : n > .55 ? 2 : 1;
+      const rocks = []; for (const q of V.walk(coast, 20)) { const rr = kit.rng(kit.hash(Math.round(q.x), Math.round(q.y), 67)), n = kit.fbm(q.x / 170, q.y / 170, 69); if (n < .5 || rr() < .35) continue; const k = n > .63 ? 3 : n > .55 ? 2 : 1;
         for (let j = 0; j < k; j++) { const d = j === 0 ? -16 + rr() * 30 : -54 + rr() * 58, along = (rr() - .5) * (j === 0 ? 14 : 44), big = j === 0 ? 1 : .4 + rr() * .35, x = q.x + q.ty * d + q.tx * along, y = q.y - q.tx * d + q.ty * along; if (onWay(x, y) || rocks.some(o => Math.hypot(o.x - x, o.y - y) < 18)) continue; rocks.push({ x, y, s: (9 + rr() * 10 + (n - .47) * 70) * big, seed: kit.hash(Math.round(q.x), Math.round(q.y), 68 + j) }); } }
       // the shingle: one flat sprite under everything that stands, grey stones going smaller up the beach
       const ox = Math.round((bb[0] + bb[2]) / 2), oy = Math.round(bb[3]);

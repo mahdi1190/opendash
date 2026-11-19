@@ -153,10 +153,10 @@
           // a clump of wrack: a dark tangle with a few curled fronds and bladders, each its own size and turn (strands laid
           // along the shore read as scratches)
           B.f(B.blob(rr, p.x, p.y + 1, 9 + rr() * 8, 2.6 + rr() * 1.6, 8, .5), P.sandWet, .3);   // (the damp the weed keeps)
-          const k = 1 + Math.floor(rr() * 2.4); for (let j = 0; j < k; j++) { const ox = p.x + (rr() - .5) * 12, oy = p.y + (rr() - .5) * 4, col = ['#7a6e48', '#8c7c52', '#5f5e3a', '#6e6640', '#9a8a5e'][Math.floor(rr() * 5)];
-            B.f(B.blob(rr, ox, oy, 1.8 + rr() * 3, 1 + rr() * 1, 7, .6), col, .62);
-            for (let m = 0; m < 2; m++) { const a = rr() * Math.PI * 2, l = 2 + rr() * 3; B.s(`M${ox} ${oy}q${Math.cos(a) * l} ${Math.sin(a) * l * .5 - 1.4} ${Math.cos(a + .9) * l * 1.3} ${Math.sin(a + .9) * l * .6}`, col, .9, .7); }
-            if (rr() < .3) B.f(B.circ(ox + (rr() - .5) * 5, oy - .6, .8), '#8a7a44', .8); }
+          // flat strands of weed lying along the tide's line, soft and low in contrast (small dark clumps read as spiders)
+          const ang = Math.atan2(q.ty, q.tx), k = 1 + Math.floor(rr() * 2.4); for (let j = 0; j < k; j++) { const u = (rr() - .5) * 14, ox = p.x + q.tx * u, oy = p.y + q.ty * u + (rr() - .5) * 3, col = ['#7d7448', '#8f8455', '#6a6a44', '#9a8c5c', '#5e6440'][Math.floor(rr() * 5)], len = 5 + rr() * 7;
+            B.cx.save(); B.cx.translate(ox, oy); B.cx.rotate(ang + (rr() - .5) * .5); B.f(B.blob(rr, 0, 0, len, 1 + rr() * .9, 8, .45), col, .55); B.cx.restore();
+            B.s(`M${ox - q.tx * len * .8} ${oy - q.ty * len * .8 - .6}q${q.tx * len * .8} ${q.ty * len * .8 + (rr() - .5) * 3} ${q.tx * len * 1.6} ${q.ty * len * 1.6}`, col, .7, .45); }
           if (rr() < .1) B.f(B.ell(p.x + 4, p.y + 2, 1.7, 1.1), rr() < .5 ? '#f6efe0' : '#e2bcb0', .95);
           if (rr() < .035) { const len = 10 + rr() * 12; B.s(`M${p.x - q.tx * len} ${p.y - q.ty * len + 1.4}L${p.x + q.tx * len} ${p.y + q.ty * len + 1.4}`, '#5a5040', 3.6, .2).s(`M${p.x - q.tx * len} ${p.y - q.ty * len}L${p.x + q.tx * len} ${p.y + q.ty * len}`, '#a8997e', 2.6, .95).s(`M${p.x - q.tx * len} ${p.y - q.ty * len - .8}L${p.x + q.tx * len * .6} ${p.y + q.ty * len * .6 - .8}`, '#d6cbb2', .9, .8); }
         }
@@ -310,6 +310,13 @@
     const looks = { crates: [[-30, -46, 34, 8], drawCrates(P, 1)], pots: [[-28, -34, 30, 6], drawPots(P)], net: [[-42, -60, 44, 8], drawNet(P)], 'boat-sand': [[-46, -26, 48, 10], drawBoat(P, '#3f6f8a', false)],
       crate1: [[-16, -24, 18, 6], drawCrates(P, 0)], bench: [[-30, -30, 30, 6], drawBench(P)], anchor: [[-22, -44, 22, 6], drawAnchor(P)], fishbox: [[-16, -16, 18, 5], drawFishBox(P)] };
     for (const t of gardenIslandHarbourThings(L.D)) { const look = looks[t.key]; if (!look) continue; const p = atCell(t.x, t.y); thing({ key: t.key, box: look[0], x: p.x, y: p.y, draw: look[1] }); }
+    // each stands in its own worn ground: damp sand scuffed round a boat or a net's posts, trodden turf round the crates,
+    // pebbles and tufts at the foot (drawn in, not set down on top)
+    for (const t of gardenIslandHarbourThings(L.D)) { const p = atCell(t.x, t.y), k = L.kind(t.x, t.y); if (k !== 'beach' && k !== 'grass') continue; const hw = (t.foot[2] - t.foot[0]) * cw / 2 + 8;
+      add([p.x - hw - 24, p.y - 30, p.x + hw + 34, p.y + 24], 38, (B) => { const rr = kit.rng(kit.hash(Math.round(p.x), Math.round(p.y), 108)), sand = k === 'beach';
+        B.f(B.blob(rr, p.x + 5, p.y, hw + 6, 7, 9, .4), sand ? P.sandWet : P.lawnLo, sand ? .32 : .4).f(B.blob(rr, p.x - 2, p.y - 2, hw * .8, 4.5, 9, .4), sand ? P.sandDk : '#8a7a58', sand ? .14 : .2);
+        for (let i = 0; i < 9; i++) { const ax = p.x + (rr() - .5) * (hw * 2 + 16), ay = p.y + (rr() - .4) * 10; if (sand) B.f(B.ell(ax, ay, 1.3 + rr() * 1.6, .9 + rr() * .7), ['#a89c88', '#8c8474', '#c2b8a4', '#f2ebdc'][Math.floor(rr() * 4)], .9); else B.tufts(rr, ax, ay, 6, 3, [P.lawnLo, P.lawnHi, P.leaf[1]], 4 + rr() * 3); }
+        if (sand) B.s(`M${p.x + hw * .2} ${p.y + 2}q${hw * .5} 3 ${hw + 10} -1`, '#f2e6c4', 1.4, .5); }); }
     // boats at their moorings and two buoys, out on the bay
     // (where they ride is set from the quay, so it follows the layout; a buoy no longer sits on boat-a)
     for (const [dx, dy, col, k] of [[-6.7, 7, '#a8402e', 'boat-a'], [3.7, 8.6, '#2f6a5a', 'boat-b'], [-7.9, 9.2, '#d8c890', 'boat-c']]) { const x = quay.x + dx, y = quay.y + dy; const b = L.base(x, y); if (b && b.ocean) { const p = atCell(x, y); thing({ key: k, box: [-54, -26, 58, 14], x: p.x, y: p.y, draw: drawBoat(P, col, true) }); } }

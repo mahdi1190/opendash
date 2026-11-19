@@ -787,9 +787,33 @@ window.GardenNativeWorld = (function () {
         const old = pierBoards.nativeBounds;
         pierBoards.nativeBounds = old ? { x: Math.min(old.x, b.x), y: Math.min(old.y, b.y), width: Math.max(old.x + old.width, b.x + b.width) - Math.min(old.x, b.x), height: Math.max(old.y + old.height, b.y + b.height) - Math.min(old.y, b.y) } : b;
         if (pier.side === 'south') {
-          pg.fillStyle(0x315d54, .22).fillRoundedRect(x + 9, y + 11, w + 1, h, 5).fillStyle(0x796c51).fillRoundedRect(x - 4, y, w + 8, h, 4);
-          for (let yy = y + 3; yy < y + h - 3; yy += 14) { const bh = Math.min(12.5, y + h - 3 - yy); pg.fillStyle(Math.floor(yy / 14) % 3 ? 0xb19a71 : 0xbda77c).fillRect(x + 1, yy, w - 2, bh); if (bh > 2.4) pg.lineStyle(.8, 0xe6d5a8, .42).lineBetween(x + 7, yy + 2, x + w - 7, yy + 2); if (bh > 8.8) pg.fillStyle(0x68694e, .55).fillCircle(x + 7, yy + 8, .8).fillCircle(x + w - 7, yy + 8, .8); }
-          for (const xx of [x - 1, x + w + 1]) pg.fillStyle(0x716c50).fillRoundedRect(xx - 3, y + 4, 6, 16, 2).fillStyle(0xd0bd8c).fillEllipse(xx, y + 4, 7, 4);
+          // Weathered boards of different lengths with staggered joints and dark gaps, nail lines at the joists, rail posts
+          // and a rope rail down both sides, its shadow on the water to the lee, and a ladder down from the last deck's end
+          // (it was flat bands of one tone: art round 3, 19 Nov 2026). Only drawing: the deck walks as before.
+          let sd = 0; for (const ch of String(pier.id)) sd = (Math.imul(sd, 31) + ch.charCodeAt(0)) | 0; const rnd = () => ((sd = (Math.imul(sd, 1103515245) + 12345) | 0) >>> 8) / 16777216;
+          const tones = sc.season === 'winter' ? [0xa8a08c, 0xb4ac98, 0x9c9480, 0xbcb4a0, 0x948c7a] : [0xb09c76, 0xbfab84, 0xa48f6a, 0xc8b690, 0x9a8a6c, 0xb8a888];
+          const last = decks.reduce((m, p) => p.side === 'south' && p.y + p.h > m ? p.y + p.h : m, 0) === pier.y + pier.h;
+          pg.fillStyle(0x234a48, .26).fillRoundedRect(x + 7, y + 9, w + 3, h + 2, 5).fillStyle(0x234a48, .14).fillRoundedRect(x + 4, y + 5, w + 6, h + 4, 7);
+          pg.fillStyle(0x5a4c38).fillRoundedRect(x - 4, y, w + 8, h + 2, 3).fillStyle(0x6e5e44).fillRoundedRect(x - 4, y, w + 8, h, 3);
+          for (let yy = y + 2, row = 0; yy < y + h - 2; yy += 13, row++) {
+            const bh = Math.min(11.6, y + h - 2 - yy); if (bh < 2) break;
+            for (let xx = x - 2 - (row % 2) * 24 - rnd() * 10; xx < x + w + 2; ) { const bw = 30 + rnd() * 34, x0 = Math.max(x - 2, xx), x1 = Math.min(x + w + 2, xx + bw); if (x1 - x0 > 3) {
+              const t = tones[Math.floor(rnd() * tones.length)]; pg.fillStyle(t).fillRect(x0 + .6, yy, x1 - x0 - 1.2, bh);
+              pg.fillStyle(0xf0e2bc, .32).fillRect(x0 + 1, yy + .6, x1 - x0 - 2, 1.3).fillStyle(0x4e4232, .28).fillRect(x0 + 1, yy + bh - 1.6, x1 - x0 - 2, 1.4);
+              if (rnd() < .28) pg.lineStyle(.7, 0x7a6a50, .45).lineBetween(x0 + 4 + rnd() * 6, yy + 3 + rnd() * 4, x1 - 4 - rnd() * 6, yy + 3 + rnd() * 4);
+              if (rnd() < .12) pg.fillStyle(0x6a5a42, .6).fillEllipse(x0 + (x1 - x0) * (.2 + rnd() * .6), yy + bh / 2, 3.4, 1.8);
+              pg.fillStyle(0x3a3226, .5).fillRect(x1 - .6, yy, 1.2, bh); } xx += bw; }
+            for (const nx of [x + 4, x + w / 2, x + w - 4]) if (bh > 6) pg.fillStyle(0x4a4236, .7).fillCircle(nx - 1.6, yy + bh / 2, .8).fillCircle(nx + 1.6, yy + bh / 2, .8);
+            pg.fillStyle(0x2e281e, .55).fillRect(x - 3, yy + bh, w + 6, 1.4);
+          }
+          pg.fillStyle(0x2e5a58, .16).fillRect(x - 3, y + h - 22, w + 6, 20);   // (wet towards the water's end)
+          // rail posts down both sides with a rope rail between them, each post with a pale cap and its shadow to the lee
+          const posts = []; for (let yy = y + 6; yy < y + h - 4; yy += 37) posts.push(yy);
+          for (const xx of [x - 2, x + w + 2]) {
+            for (const yy of posts) pg.fillStyle(0x234a48, .25).fillRect(xx + 2, yy + 2, 6, 10).fillStyle(0x5e4a34).fillRoundedRect(xx - 3, yy - 9, 6, 17, 1.6).fillStyle(0x8a7050, .7).fillRect(xx - 2.2, yy - 8, 1.6, 15).fillStyle(0xd0bd8c).fillEllipse(xx, yy - 9, 7, 3.6);
+            pg.lineStyle(1.6, 0xc9b07a, .9); for (let i = 1; i < posts.length; i++) { const y0 = posts[i - 1] - 6, y1 = posts[i] - 6, sag = 3; pg.beginPath(); pg.moveTo(xx, y0); for (let k = 1; k <= 6; k++) { const u = k / 6; pg.lineTo(xx + Math.sin(u * Math.PI) * .8, y0 + (y1 - y0) * u + Math.sin(u * Math.PI) * sag); } pg.strokePath(); }
+          }
+          if (last) { const lx = x + w * .7; pg.fillStyle(0x234a48, .3).fillRect(lx - 6, y + h + 2, 14, 10); pg.fillStyle(0x4e3e2c).fillRect(lx - 6, y + h - 3, 2.4, 14).fillRect(lx + 4, y + h - 3, 2.4, 14); for (let k = 0; k < 3; k++) pg.fillStyle(0x7a6448).fillRect(lx - 5, y + h + 1 + k * 4, 10, 1.6); }
         } else {
           // Side decks retain a shallow timber edge and two water-end supports.
           const waterEnd = pier.side === 'west' ? x + 3 : x + w - 3, endFace = pier.side === 'west' ? x - 3 : x + w - 1, endBevel = pier.side === 'west' ? x - .8 : x + w + .8;
