@@ -192,6 +192,7 @@ window.GardenPaintVale = (function () {
   /** Flagstones in courses over a clip (world px box): pale stones with joints, some lit, some worn, moss in a few. */
   function flags(B, r, P, bb, o) {
     o = o || {}; const rowH = o.row || 14, w0 = o.w || 26;
+    if (o.pal) P = Object.assign({}, P, o.pal);   // (a stone of its own: the quay's granite)
     B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), P.stone);
     // broad wear and weather first, so the stones sit in one light
     KIT().tiles(bb, 140, 0, (o.salt || 1) + 50, (tx, ty, rr) => { for (let k = 0; k < 3; k++) B.f(B.blob(rr, tx + rr() * 140, ty + rr() * 140, 30 + rr() * 50, 12 + rr() * 18, 9, .5), rr() < .5 ? P.stoneHi : P.stoneLo, .35); });
@@ -203,7 +204,7 @@ window.GardenPaintVale = (function () {
         if (o.broken && rr() < o.broken) { B.f(B.rect(x, y, w, rowH), P.lawnLo, .55); B.tufts(rr, x + w / 2, y + rowH - 2, w * .7, 3, [P.lawnLo, P.lawnHi], 5); x += w; continue; }
         // each stone its own warm tone (honey, buff, a rosy one now and then), lit along the top, shaded along the foot,
         // with a little grain: laid stone, not flat slabs
-        const warmTones = [P.stone, P.stoneLo, P.stoneHi, '#d4b688', '#d8bca4', '#c9b38c'];
+        const warmTones = o.tones || [P.stone, P.stoneLo, P.stoneHi, '#d4b688', '#d8bca4', '#c9b38c'];
         B.f(B.rect(x + .6, y + .6, w - 1.2, rowH - 1.8), warmTones[Math.floor(tone * warmTones.length) % warmTones.length], .7);
         B.f(B.rect(x + 1, y + .8, w - 2, 1.1), P.stoneHi, .55).f(B.rect(x + 1, y + rowH - 2.4, w - 2, 1.3), P.stoneLo, .55).f(B.rect(x - .5, y, 1.1, rowH), o.grout || P.grout, .5);
         for (let k = 0; k < 3; k++) B.f(B.rect(x + 2 + rr() * (w - 4), y + 2 + rr() * (rowH - 5), 1.2, 1), rr() < .5 ? P.stoneLo : P.stoneHi, .5);

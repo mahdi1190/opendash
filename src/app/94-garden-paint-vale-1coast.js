@@ -54,15 +54,7 @@
           else if (t < .85) { B.f(B.blob(rr, x + 1, y + 1, 7, 2.4, 7, .5), pal.rushLo, .5); for (let j = 0; j < 7; j++) { const px = x + (rr() - .5) * 10, h = 7 + rr() * 7; B.s(`M${px} ${y}q${(rr() - .5) * 3} ${-h * .6} ${(rr() - .5) * 5} ${-h}`, rr() < .5 ? pal.rush : pal.rushHi, 1.1, .9); } }
           else { for (let j = 0; j < 4; j++) { const px = x + (rr() - .5) * 8, h = 13 + rr() * 9; B.s(`M${px} ${y}l${(rr() - .5) * 3} ${-h}`, C.season === 'winter' ? '#b8a888' : '#a89a5a', 1.2, .9); if (rr() < .6) B.f(B.ell(px + (rr() - .5) * 2, y - h + 2, 1.5, 4), '#6a4a2a', .95); } } } });
         B.cx.restore();
-        // the boardwalk itself: planks across two rails on short piles, weathered silver, over the trail's line
-        const pts = V.walk(walk, 7);
-        for (const q of pts) { const nx = -q.ty, ny = q.tx; for (const s of [-15, 15]) { if (Math.round(q.x / 7) % 6) continue; const px = q.x + nx * s, py = q.y + ny * s * .8; B.f(B.rect(px - 2, py - 1, 4, 7), '#4e4436', .9).f(B.ell(px, py + 6, 4, 1.4), '#3e4a3c', .4); } }
-        V.strokePts(B, walk, 'rgba(40,46,32,.22)', 40, 1, 2, 4);
-        V.strokePts(B, walk, '#6e604a', 34, 1); V.strokePts(B, walk, '#8f8068', 30, 1);
-        for (const q of pts) { const nx = -q.ty * 14, ny = q.tx * 11, tone = kit.rng(kit.hash(Math.round(q.x), Math.round(q.y), 64))();
-          B.s(`M${q.x - nx} ${q.y - ny}L${q.x + nx} ${q.y + ny}`, tone < .3 ? '#a49a84' : tone < .7 ? '#b3a88f' : '#c4baa2', 5.2, 1, 'butt');
-          B.s(`M${q.x - nx} ${q.y - ny + 2.4}L${q.x + nx} ${q.y + ny + 2.4}`, '#5e5242', .8, .55, 'butt'); }
-        V.strokePts(B, walk, '#6e604a', 1.2, .6, 0, 0);
+        // (the boardwalk is the shared path kit's, laid by the shared ground: a second one here had a dark round end like a pill)
       });
     }
 
@@ -71,7 +63,13 @@
     if (cove.length > 1 && coast.length > 2) {
       const bb = kit.bboxOf(coast, 120), R = { rock: '#9a958c', rockLo: '#6e6a62', rockHi: '#c8c2b4', rockDk: '#3e3c38', lichen: '#c9c48a' };
       // (standing sprites, not ground: the fells' moor is laid over the vale's ground up here)
-      const rocks = []; for (const q of V.walk(coast, 20)) { const rr = kit.rng(kit.hash(Math.round(q.x), Math.round(q.y), 67)); if (rr() < .45) continue; const n = rr() < .3 ? 2 : 1; for (let j = 0; j < n; j++) { const d = -8 + rr() * 36, along = (rr() - .5) * 16; rocks.push({ x: q.x + q.ty * d + q.tx * along, y: q.y - q.tx * d + q.ty * along, s: (d > 18 ? 5 : 7) + rr() * (d > 18 ? 9 : 15), seed: kit.hash(Math.round(q.x), Math.round(q.y), 68 + j) }); } }
+      // in clusters with bare shingle between (they stood in an even row along the tide before: art round 3, 19 Nov 2026):
+      // a cluster's middle stone is the biggest, the rest smaller round it, a few out in the water
+      // (seaward is +d here; the cluster's others lie up the shingle, never on the trail's way down to the water)
+      const tEnd = cove[cove.length - 1], tTo = coast.reduce((a, q) => Math.hypot(q.x - tEnd.x, q.y - tEnd.y) < Math.hypot(a.x - tEnd.x, a.y - tEnd.y) ? q : a, coast[0]);
+      const onWay = (x, y) => { const vx = tTo.x - tEnd.x, vy = tTo.y - tEnd.y, l2 = vx * vx + vy * vy || 1, t = Math.max(0, Math.min(1, ((x - tEnd.x) * vx + (y - tEnd.y) * vy) / l2)); return Math.hypot(x - tEnd.x - vx * t, y - tEnd.y - vy * t) < 40; };
+      const rocks = []; for (const q of V.walk(coast, 14)) { const rr = kit.rng(kit.hash(Math.round(q.x), Math.round(q.y), 67)), n = kit.fbm(q.x / 170, q.y / 170, 69); if (n < .47 || rr() < .3) continue; const k = n > .63 ? 3 : n > .55 ? 2 : 1;
+        for (let j = 0; j < k; j++) { const d = j === 0 ? -16 + rr() * 30 : -54 + rr() * 58, along = (rr() - .5) * (j === 0 ? 14 : 44), big = j === 0 ? 1 : .4 + rr() * .35, x = q.x + q.ty * d + q.tx * along, y = q.y - q.tx * d + q.ty * along; if (onWay(x, y) || rocks.some(o => Math.hypot(o.x - x, o.y - y) < 18)) continue; rocks.push({ x, y, s: (9 + rr() * 10 + (n - .47) * 70) * big, seed: kit.hash(Math.round(q.x), Math.round(q.y), 68 + j) }); } }
       // the shingle: one flat sprite under everything that stands, grey stones going smaller up the beach
       const ox = Math.round((bb[0] + bb[2]) / 2), oy = Math.round(bb[3]);
       C.thing({ key: 'cold-cove-shingle', depth: -9000, x: ox, y: oy, box: [bb[0] - ox, bb[1] - oy, bb[2] - ox, 0], K: 1, draw: B => {
