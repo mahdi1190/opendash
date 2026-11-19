@@ -103,7 +103,9 @@ function gardenWorksArt(sc) {
     const pier = (gardenIslandData().static || []).find(p => p.id === 'pier');
     if (pier) {
       mx = pier.x - 24; my = pier.y + pier.h - 25;
-      const wet = (x, y) => typeof gardenIsWater === 'function' && gardenIsWater(Math.floor(x), Math.floor(y)), onDeck = (x, y) => x >= pier.x - .2 && x < pier.x + pier.w + .2 && y >= pier.y - .5;
+      // (and two cells clear of any landmark or building: a reed bed in front of the lighthouse hid its rock)
+      const stood = (gardenIslandData().static || []).filter(p => p.id !== 'pier' && !/^pier-/.test(p.id) && (p.col || 'full') !== 'none');
+      const wet = (x, y) => typeof gardenIsWater === 'function' && gardenIsWater(Math.floor(x), Math.floor(y)), onDeck = (x, y) => x >= pier.x - .2 && x < pier.x + pier.w + .2 && y >= pier.y - .5 || stood.some(p => x > p.x - 2 && x < p.x + p.w + 2 && y > p.y - 2 && y < p.y + p.h + 2);
       snap = (x, y, bank) => { for (let r = 0; r <= 4; r++) for (let a = 0; a < Math.max(1, r * 8); a++) { const t = a / Math.max(1, r * 8) * Math.PI * 2, px = Math.floor(x + Math.cos(t) * r) + .5, py = Math.floor(y + Math.sin(t) * r) + .5; if (!wet(px, py) || onDeck(px, py)) continue; if (bank && wet(px - 1, py) && wet(px + 1, py) && wet(px, py - 1) && wet(px, py + 1)) continue; return [px, py]; } return null; };
     }
   }
