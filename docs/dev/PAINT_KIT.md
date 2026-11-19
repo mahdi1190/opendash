@@ -248,8 +248,28 @@ seats every one of them, and every painted prop, in the ground it stands on.
 - **A way in.** An art row with `door: { dx, dy }` draws its own entrance; the rooms (`94-garden-world-6doors.js`) then
   stand only a worn threshold there, not a second door picture on the grass. Every sight with a room has one.
 - **Gate signs** are fixed to what bars the way (`gateMount` in `94-garden-native-painted-props.js`): chains from the
-  arch, nailed to the bridge's post or the stair gate, on a stake in the ruin's heap, hung from the pass's rope. Their
-  words are on the board, dark on cream.
+  arch, nailed to the bridge's post or the stair gate, on a stake in the ruin's heap, nailed to the pass's tie post.
+  Their words are on the board, dark on cream. E opens a way in within about a cell of where its sight paints its door
+  (`gardenWorldInteract`), before plants and fishing.
+- **Gates tell their own story** (`gateArt`): a crossing seen side on (its span runs down the screen) is never a face-on
+  arch sheared to recede; the forest arch is a gap in a woodland edge (hedge banks north and south, an oak whose bough
+  arches over the way into the south bank), with a bramble mound in the gap while shut. The Millwater bridge has an oak
+  patch in its crown with one plank missing (`millPlanks`); opening drops the plank in with dust. The orchard stair has
+  risers and the mill's leat with its sluice, dry until the wheel turns. The pass has a rock step, a tie post and,
+  once open, the rope run up to a stake. The ruined arch is dark with an empty lantern hook until it opens.
+- **Standing behind a thing** fades it only to .8 and shows your outline over it (`propBehind` in
+  `94-garden-native-world.js`): a sight whose door is at its back must never go to a ghost.
+- **Not built yet** (`plot:*` rows): a work for the lake that you could build next stands marked out where it will go,
+  from `gardenWorksArt(sc).unbuilt` and the layout's statics with `needs`: piles and rope for the next pier, a stake and
+  rag in the water, a chalked square with planks on the deck, pegs, string and bricks on land. A land feature has no
+  place until you set it out, so it has no marked plot.
+- **Setting out** (`_gardenFeatureClearWhy` in `94-garden-1stored.js`): the ground a feature's picture covers (its art
+  row's box, a cell in front, and as far behind as its height reaches) must be free of locked land, props, sights,
+  decorations, paths under the footprint, a village square, a gate's crossing, the woods' trees (`GardenPaintWood.standing`)
+  and any painted trunk, and it must not stand right behind a tall building.
+- **Locked plots near sights** (`94-garden-paint-vale-1valley.js`): a plot's wall or hedge is only as tall as leaves its
+  own ground showing (full height on a plot three cells deep), and its sign moves along the front, then to the far run,
+  until no sight's painted box stands in front of it. A plot that crowds a sight is a layout fault: list the cells.
 
 ## The rules
 
