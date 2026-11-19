@@ -84,14 +84,154 @@
         V.strokePts(B, way, P.pathEdge, 18, .35); V.strokePts(B, way, '#b8b0a0', 12, .55);
         B.cx.restore();
       } });
-      // boulders at the tide line, half in the water, with weed and a line of foam at their feet
-      rocks.forEach((k, i) => C.thing({ key: 'cold-cove-rock-' + i, x: k.x, y: k.y + 2, box: [-k.s * 1.2, -k.s * 1.3, k.s * 1.2, 8], foot: [-k.s * 1.4, k.s * 1.4, k.s * .55], draw: B => {
-        const rr = kit.rng(k.seed); B.boulder(rr, 0, -2, k.s * 1.6, k.s, R, C.season === 'winter' && rr() < .4); B.f(B.blob(rr, 0, -2, k.s * .9, k.s * .18, 7, .5), '#4f5a36', .7); B.s(`M${-k.s} 1q${k.s} 3 ${k.s * 2} 0`, P.foam, 1.2, .55);
-      } }));
+      // boulders at the tide line, each its own stone: a tall split block, a low round cobble, a tilted slab; granite, slate
+      // or a rusty one now and then; weed only on the ones the tide reaches, at their foot. (round 3 fix: one grey boulder
+      // with the same moss band and a white foam plate across its foot stood in a necklace along the water)
+      const ROCKS = [R, { rock: '#8f8c86', rockLo: '#66645f', rockHi: '#bdb9b0', rockDk: '#3a3936', lichen: '#b8b884' }, { rock: '#a39684', rockLo: '#776b5c', rockHi: '#cdbfa8', rockDk: '#433a30', lichen: '#d0b85e' }];
+      rocks.forEach((k, i) => { const rr0 = kit.rng(k.seed ^ 0x5bd1), form = rr0(), kc = cell(k.x, k.y), wet = typeof gardenIslandCoastDistance === 'function' && gardenIslandCoastDistance(kc.x, kc.y) < 22, w =k.s * (form < .3 ? 1.1 : form < .7 ? 1.7 : 2.1), h = k.s * (form < .3 ? 1.25 : form < .7 ? .85 : .55);
+        C.thing({ key: 'cold-cove-rock-' + i, x: k.x, y: k.y + 2, box: [-w * .7, -h * 1.35, w * .7, 8], foot: [-w * .55, w * .55, Math.max(6, h * .45)], draw: B => {
+          const rr = kit.rng(k.seed), pal = ROCKS[Math.floor(rr0() * 3)];
+          if (form < .7) B.boulder(rr, 0, -1, w, h, pal, C.season === 'winter' && rr() < .4); else B.stone(rr, 0, -h * .4, w * .5, h * .55, pal, rr() < .4 ? pal.lichen : null);
+          if (wet) { B.f(B.blob(rr, w * .05, -1.5, w * (.25 + rr() * .2), 1.6 + rr() * 1.2, 7, .6), rr() < .5 ? '#3e4e30' : '#56622f', .75); for (let j = 0; j < 3; j++) B.f(B.circ((rr() - .5) * w * .5, -2 - rr() * h * .3, .6), '#dcd8ca', .7); }
+        } }); });
     }
 
+    // 3. Where walking stops at the shore, you see why (common rule 15; art round 3, coast fix 1, 20 Nov 2026).
+    //  a. Where two regions meet across a beach, a timber groyne runs from the top of the sand out into the tide: posts worn
+    //     round by the sea, a plank or two between them sunk in the sand up the beach, weed and foam at their feet in the
+    //     water. While the land past it is shut, a rope is strung from post to post along it and on, on driftwood stakes, over
+    //     the open ground near the shore wherever no plot fence already stands (the beach east of the lighthouse was closed
+    //     with nothing drawn on the sand at all). All from the regions' own outlines, so it follows any new layout.
+    //  b. Where the land runs on to the map's own edge beside the sea (the north-east cove), big boulders lie across the
+    //     shingle at the edge, so the way north ends at rock you can see, not at the sky.
+    const ek = p => p[0] + ',' + p[1], edges = new Map(), coastD = (x, y) => typeof gardenIslandCoastDistance === 'function' ? gardenIslandCoastDistance(x, y) : 0;
+    for (const rg of L.D.regions || []) for (const poly of rg.polygons || []) for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length], k = [ek(a), ek(b)].sort().join('|'); let e = edges.get(k); if (!e) edges.set(k, e = { a, b, regions: new Set() }); e.regions.add(rg.id); }
+    const lines = [];
+    for (const e of edges.values()) {
+      if (e.regions.size !== 2) continue; const A = L.cpt(e.a[0], e.a[1]), Bq = L.cpt(e.b[0], e.b[1]), len = Math.hypot(Bq.x - A.x, Bq.y - A.y); if (len < 4) continue;
+      const tx = (Bq.x - A.x) / len, ty = (Bq.y - A.y) / len, pts = [];
+      // (not along a wall, a rock or a crossing: those show the stop themselves)
+      const gates = (L.D.gates || []).map(g => ({ x: g.x, y: g.y })), solidNear = (x, y) => [[0, 0], [.6, 0], [-.6, 0], [0, .6], [0, -.6]].some(([dx, dy]) => { const b = L.base(x + dx, y + dy); return !!(b && b.solid); });
+      for (let t = 0; t <= len; t += 6) { const x = A.x + tx * t, y = A.y + ty * t, c = cell(x, y); if (c.x < 0 || c.y < 0 || c.x >= W.cols || c.y >= W.rows || solidNear(c.x, c.y) || gates.some(g => Math.hypot(g.x - c.x, g.y - c.y) < 3.5)) { pts.push(null); continue; } pts.push({ x, y, cx: c.x, cy: c.y, tx, ty, k: L.kind(c.x, c.y), d: coastD(c.x, c.y) }); }
+      lines.push(pts);
+    }
+    const groynes = [];
+    for (const pts of lines) {
+      // the sand where this edge crosses a beach, and up to 48 px of it on into the water at either end
+      let run = []; const flush = () => {
+        const firstB = run.findIndex(p => p.k === 'beach'), lastB = run.length - 1 - [...run].reverse().findIndex(p => p.k === 'beach');
+        if (firstB >= 0 && run.filter(p => p.k === 'beach').length >= 3) { const g = run.slice(Math.max(0, firstB - 8), lastB + 9); if (g.some(p => p.k === 'sea') || Math.min(...g.map(p => p.d)) < 20) groynes.push(g); }
+        run = []; };
+      for (const p of pts) { if (p && (p.k === 'beach' || p.k === 'sea')) run.push(p); else flush(); }
+      flush();
+    }
+    const WOODG = ['#7a6a52', '#5e5242', '#a2927a', '#3e362c'], GPG = window.GardenPaintGround;
+    const ROCKS2 = [{ rock: '#9a958c', rockLo: '#6e6a62', rockHi: '#c8c2b4', rockDk: '#3e3c38', lichen: '#c9c48a' }, { rock: '#8f8c86', rockLo: '#66645f', rockHi: '#bdb9b0', rockDk: '#3a3936', lichen: '#b8b884' }, { rock: '#a39684', rockLo: '#776b5c', rockHi: '#cdbfa8', rockDk: '#433a30', lichen: '#d0b85e' }];
+    for (const g of groynes) {
+      const bb = kit.bboxOf(g, 40);
+      add(bb, 51, (B) => {
+        const rr = kit.rng(kit.hash(Math.round(g[0].x), Math.round(g[0].y), 51)), posts = [];
+        for (let i = 0; i < g.length; i++) { const p = g[i], sea = p.k === 'sea', wet = sea || p.d < 26, h = sea ? 12 + rr() * 6 : wet ? 10 + rr() * 6 : 4 + Math.min(1, 60 / (p.d + 20)) * 6 + rr() * 2.5;
+          for (const s of [0, .5]) { const x = p.x + p.tx * s * 6 + (rr() - .5) * 1.2, y = p.y + p.ty * s * 6; posts.push({ x, y, h: h * (s ? .82 + rr() * .3 : 1), sea, wet }); } }
+        posts.sort((a, b) => a.y - b.y);
+        // the planks between the posts, sunk in the sand up the beach, standing out of it lower down
+        const line = g.map(p => ({ x: p.x, y: p.y }));
+        B.cx.save(); B.cx.clip(V.loopPath(L.coast)); V.strokePts(B, line, P.sandWet, 12, .3); B.cx.restore();
+        for (const [lift, col, a] of [[3, WOODG[1], .92], [6.5, WOODG[0], .88]]) { const lifted = g.map(p => ({ x: p.x, y: p.y - lift * (p.k === 'sea' || p.d < 26 ? 1 : .35) })); V.strokePts(B, lifted, col, 3.4, a); V.strokePts(B, lifted, WOODG[2], 1, .5, -.4, -1.2); }
+        if (GPG && GPG.castRuns) GPG.castRuns(B.cx, g.slice(1).map((p, i) => [g[i].x, g[i].y, p.x, p.y, p.k === 'sea' || p.d < 26 ? 14 : 6]), { a: .16 });
+        for (const q of posts) {
+          if (q.sea) B.f(B.ell(q.x + 1, q.y + 1, 4.4, 1.6), '#2e4a48', .25);
+          else if (GPG && GPG.contact) GPG.contact(B.cx, q.x, q.y, 3.4, 1.4, .32); else B.shadow(q.x + 1, q.y + 1, 3.4, 1.4, .3);
+          B.post(q.x, q.y - q.h, q.y, 4.6, [WOODG[0], WOODG[1], WOODG[2]]).f(B.ell(q.x, q.y - q.h, 2.3, 1.1), WOODG[2], .9).f(B.ell(q.x - .5, q.y - q.h - .2, 1.2, .5), '#d8ccb0', .7);
+          if (q.wet) B.f(B.rect(q.x - 2.3, q.y - Math.min(q.h, 5.5), 4.6, Math.min(q.h, 5.5)), '#3e4e30', .75).f(B.circ(q.x + .6, q.y - 2.6, .55), '#dcd8ca', .8);
+          if (q.sea) B.s(`M${q.x - 3.4} ${q.y + .6}q3.4 2 6.8 0`, P.foam, 1.1, .6);
+        }
+      });
+    }
+    // the rope while the land beyond is shut: drawn when the ground is baked, from what is open then (the ground bakes again
+    // when a region opens: the key below)
+    const lockedAt = (x, y) => { try { return String(gardenAreaAt(Math.floor(x), Math.floor(y), (gardenModel().level || {}).level || 1)).startsWith('locked:zn-'); } catch (e) { return false; } };
+    const plotAt = (x, y) => { const r = typeof gardenLandCell === 'function' ? gardenLandCell(Math.floor(x), Math.floor(y)) : null; return !!(r && r.plot); };
+    const roped = lines.map(pts => pts.filter(p => p && p.k !== 'sea' && p.k !== 'water' && p.d < 9 * cw));
+    roped.forEach((pts, li) => { if (pts.length < 3) return; const bb = kit.bboxOf(pts, 40);
+      add(bb, 52, (B) => {
+        // which stretches are a shut edge now: one side closed land, the other open, and no plot fence there already
+        const segs = []; let seg = [];
+        // (a plot fence stands there already when the cell either side across the edge is a plot)
+        for (const p of pts) { const nx = -p.ty, ny = p.tx, ax = p.cx + nx * .8, ay = p.cy + ny * .8 * cw / ch, bx = p.cx - nx * .8, by = p.cy - ny * .8 * cw / ch, a = lockedAt(ax, ay), b = lockedAt(bx, by);
+          if (a !== b && !plotAt(p.cx + nx * .45, p.cy + ny * .45 * cw / ch) && !plotAt(p.cx - nx * .45, p.cy - ny * .45 * cw / ch)) seg.push(p); else { if (seg.length > 2) segs.push(seg); seg = []; } }
+        if (seg.length > 2) segs.push(seg);
+        for (const s of segs) {
+          const rr = kit.rng(kit.hash(Math.round(s[0].x), Math.round(s[0].y), 52 + li)), stakes = [];
+          for (let i = 0; i < s.length; i += 5) stakes.push(s[i]); if (stakes[stakes.length - 1] !== s[s.length - 1]) stakes.push(s[s.length - 1]);
+          const H = gardenSizePx('fence', 1) * 1.25, top = q => ({ x: q.x, y: q.y - H + 4 });
+          if (GPG && GPG.castRuns) GPG.castRuns(B.cx, stakes.slice(1).map((q, i) => [stakes[i].x, stakes[i].y, q.x, q.y, H * .6]), { a: .14 });
+          for (let i = 1; i < stakes.length; i++) { const a = top(stakes[i - 1]), b = top(stakes[i]), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 + 5;
+            B.s(`M${a.x} ${a.y + 1.4}Q${mx} ${my + 1.4} ${b.x} ${b.y + 1.4}`, '#3a3226', 1.6, .18).s(`M${a.x} ${a.y}Q${mx} ${my} ${b.x} ${b.y}`, '#b89a5e', 2.2, .97).s(`M${a.x} ${a.y - .5}Q${mx} ${my - .5} ${b.x} ${b.y - .5}`, '#efe0b4', .6, .6);
+            if (i % 3 === 2) { const fx = mx, fy = my - 1; B.s(`M${fx} ${fy}v3`, P.rope, .8, .9).f(B.ell(fx, fy + 5, 2.4, 3), '#c8402e').f(B.rect(fx - 2.4, fy + 4.4, 4.8, 1.2), '#f4efe2').f(B.ell(fx - .8, fy + 3.8, .8, 1), '#fff', .5); } }
+          for (const q of stakes) { const lean = (rr() - .5) * 2.4, h = H * (.95 + rr() * .2), col = rr() < .5 ? ['#9c8e78', '#6e6454', '#c8bca4'] : ['#8a7a60', '#5e5242', '#b4a486'];
+            if (GPG && GPG.contact) GPG.contact(B.cx, q.x, q.y, 3.6, 1.4, .3); else B.shadow(q.x + 1, q.y + 1, 3.6, 1.4, .3);
+            B.f(`M${q.x - 3} ${q.y}L${q.x - 2.3 + lean} ${q.y - h}L${q.x + 2.3 + lean} ${q.y - h - .8}L${q.x + 3} ${q.y}Z`, col[0]).f(`M${q.x - 1.8} ${q.y}L${q.x - 1.4 + lean} ${q.y - h}L${q.x - .4 + lean} ${q.y - h}L${q.x - .6} ${q.y}Z`, col[2], .6).f(`M${q.x + .8} ${q.y}L${q.x + .9 + lean} ${q.y - h}L${q.x + 1.4 + lean} ${q.y - h - .6}L${q.x + 1.8} ${q.y}Z`, col[1], .7);
+            B.tufts(rr, q.x, q.y + .5, 6, 3, q.k === 'beach' ? ['#8fa058', '#b4b868'] : ['#5e7e3e', '#8aa858'], 5); }
+          // the level the land past it opens at, on a board at the end you come to first (as on every locked plot's fence)
+          const end = s.reduce((m, p) => p.d > m.d ? p : m, s[0]), sides = [[end.cx + end.ty * .9, end.cy - end.tx * .9 * cw / ch], [end.cx - end.ty * .9, end.cy + end.tx * .9 * cw / ch]], shut = sides.find(([x, y]) => lockedAt(x, y));
+          const rgn = shut && typeof gardenIslandRegionAt === 'function' ? gardenIslandRegionAt(shut[0], shut[1]) : null, lvNeed = rgn && rgn.level;
+          if (lvNeed) { const sx = end.x - 9, sy = end.y + 2, txt = 'Lv ' + lvNeed; B.f(B.rect(sx - 1.4, sy - 22, 2.8, 22), '#5e4c36').f(B.rect(sx - 1.4, sy - 22, 1.1, 22), '#8a7454', .7);
+            const cx = B.cx; cx.save(); cx.font = '700 9px system-ui, sans-serif'; const w = cx.measureText(txt).width + 8, x0 = sx - w / 2, y0 = sy - 36;
+            B.f(B.rr(x0 + 1, y0 + 1.2, w, 14, 2.4), 'rgba(30,24,16,.3)').f(B.rr(x0, y0, w, 14, 2.4), '#c9a876').f(B.rr(x0, y0, w, 4, 1.6), '#dcc092', .8).s(B.rr(x0, y0, w, 14, 2.4), '#6e5434', .9, .9);
+            cx.fillStyle = '#3e2c1a'; cx.textBaseline = 'middle'; cx.fillText(txt, x0 + 4, y0 + 7.4); cx.restore(); }
+        }
+      });
+    });
+    // b. the map's own edge by the sea: boulders across the land's last row where it is beach or near the shore
+    const edgeRocks = [];
+    const seaBy = x => { for (let dx = -4; dx <= 4; dx++) for (let dy = 0; dy <= 2; dy++) { const c = L.base(x + dx + .5, dy + .5); if (c && c.ocean) return true; } return false; };   // (the sea itself close by: the island's outline also runs along the map's edge)
+    for (let x = 0; x < W.cols; x++) { const b = L.base(x + .5, .5); if (!b || !b.land || b.solid || b.freshwater || !seaBy(x)) continue;
+      const rr = kit.rng(kit.hash(x, 0, 53)), n = 2 + Math.floor(rr() * 2);
+      for (let j = 0; j < n; j++) { const s = 13 + rr() * 13 * (j ? .7 : 1), px = (x + (j + rr() * .8) / n) * cw, py = W.sky + (.15 + rr() * .5) * ch + (j ? 6 : 0); edgeRocks.push({ x: px, y: py, s, seed: kit.hash(x, j, 54), beach: !!b.beach }); } }
+    edgeRocks.forEach((k, i) => C.thing({ key: 'edge-rock-' + i, x: k.x, y: k.y, box: [-k.s * 1.3, -k.s * 1.6, k.s * 1.3, 8], foot: [-k.s * .9, k.s * .9, Math.max(8, k.y - W.sky + 2)], draw: B => {
+      const rr = kit.rng(k.seed), pal = ROCKS2[Math.floor(rr() * ROCKS2.length)]; B.boulder(rr, 0, 0, k.s * 2, k.s * (1 + rr() * .5), pal, C.season === 'winter' && rr() < .5);
+      if (!k.beach || rr() < .5) { for (let j = 0; j < 4; j++) B.tufts(rr, (rr() - .5) * k.s * 2, 1, 6, 3, ['#6f7a44', '#8a9452', '#a0a060'], 5 + rr() * 4); if (rr() < .5) B.f(B.blob(rr, k.s * .8, -1, k.s * .5, k.s * .3, 7, .5), '#5e6e3a', .8); }
+    } }));
+
+    // 4. The lighthouse at night: the lantern lit, its beam turning slowly over the sea, a warm pulse each time it comes
+    // round (it stood dark at dusk and night: art director, round 3). Light, not paint: drawn above the night's grade,
+    // added, near the camera only, a few draw calls a frame.
+    const lhs = L.stat('ld-lighthouse');
+    if (lhs && C.live) C.live({ make: (scene) => {
+      const BEAM = 'gpv-lh-beam', HALO = 'gpv-lh-halo';
+      if (!scene.textures.exists(BEAM)) { const c = document.createElement('canvas'); c.width = 640; c.height = 160; const x = c.getContext('2d');
+        const g = x.createLinearGradient(0, 0, 640, 0); g.addColorStop(0, 'rgba(255,244,214,1)'); g.addColorStop(.12, 'rgba(255,238,196,.6)'); g.addColorStop(.55, 'rgba(255,232,186,.2)'); g.addColorStop(1, 'rgba(255,228,180,0)');
+        x.filter = 'blur(5px)'; x.fillStyle = g; x.beginPath(); x.moveTo(4, 76); x.lineTo(636, 4); x.lineTo(636, 156); x.lineTo(4, 84); x.closePath(); x.fill(); x.filter = 'none';
+        const v = x.createLinearGradient(0, 0, 0, 160); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(.32, 'rgba(0,0,0,.7)'); v.addColorStop(.5, 'rgba(0,0,0,1)'); v.addColorStop(.68, 'rgba(0,0,0,.7)'); v.addColorStop(1, 'rgba(0,0,0,0)');
+        x.globalCompositeOperation = 'destination-in'; x.fillStyle = v; x.fillRect(0, 0, 640, 160); scene.textures.addCanvas(BEAM, c); }
+      if (!scene.textures.exists(HALO)) { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'), g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+        g.addColorStop(0, 'rgba(255,246,220,1)'); g.addColorStop(.18, 'rgba(255,226,160,.7)'); g.addColorStop(.5, 'rgba(255,200,120,.18)'); g.addColorStop(1, 'rgba(255,190,110,0)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128); scene.textures.addCanvas(HALO, c); }
+      const pivot = scene.add.container(0, 0).setDepth(80006).setVisible(false), beams = [0, Math.PI].map(a => { const im = scene.add.image(0, 0, BEAM).setOrigin(0, .5).setBlendMode(Phaser.BlendModes.ADD); im._a = a; pivot.add(im); return im; });
+      const halo = scene.add.image(0, 0, HALO).setDepth(80006).setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
+      let at = null, night = 0, checked = -1e9, ms = 0;
+      // where the lantern is: the top of the lighthouse's own picture (its topmost painted row, found once), a little down
+      const lantern = () => { const nw = typeof _gw !== 'undefined' && _gw.nativeWorld, rec = nw && nw.entities && nw.entities.get('prop:ld-lighthouse'); if (!rec || !rec.bounds || !rec.handle || !rec.handle.hitPoint) return null;
+        const b = rec.bounds; if (at && at.b === b.y + b.x) return at;
+        for (let y = b.y; y < b.y + b.height * .4; y += 2) { const xs = []; for (let x = b.x; x < b.x + b.width; x += 3) if (rec.handle.hitPoint(x, y)) xs.push(x); if (xs.length) { const cx = (Math.min(...xs) + Math.max(...xs)) / 2; return at = { b: b.y + b.x, x: cx, y: y + b.height * .1 }; } }
+        return null; };
+      return { obj: pivot, stat: () => ({ night: +night.toFixed(2), at, ms: +ms.toFixed(2) }), update(time, view) {
+        if (time - checked > 1000) { checked = time; try { const lt = window.GardenNative && GardenNative.lighting && GardenNative.lighting(), d = lt && lt.environment ? lt.environment().daylight : 1; night = Math.max(0, Math.min(1, (.42 - (d == null ? 1 : d)) / .3)); } catch (e) { night = 0; } }
+        const on = night > .02 && view && !(typeof _gw !== 'undefined' && _gw.room);
+        if (!on) { if (pivot.visible) { pivot.setVisible(false); halo.setVisible(false); } return; }
+        const t0 = performance.now(), p = lantern(); if (!p) return;
+        if (p.x < view.x - 900 || p.x > view.x + view.w + 900 || p.y < view.y - 700 || p.y > view.y + view.h + 700) { if (pivot.visible) { pivot.setVisible(false); halo.setVisible(false); } return; }
+        const turn = (time / 16000) * Math.PI * 2 * (typeof gardenMotionOn === 'function' && !gardenMotionOn() ? 0 : 1);
+        pivot.setVisible(true).setPosition(p.x, p.y).setScale(1, .5); halo.setVisible(true).setPosition(p.x, p.y);
+        let toward = 0; for (const im of beams) { const a = turn + im._a; im.setRotation(a).setScale(1.25, 1).setAlpha(.34 * night); toward = Math.max(toward, Math.max(0, Math.sin(a)) ** 6); }
+        halo.setScale(.55 + toward * .45).setAlpha((.55 + toward * .45) * night);
+        ms = performance.now() - t0;
+      } };
+    } });
   }
-  if (V) V.parts.push({ id: 'coast', compose });
+  if (V) { V.parts.push({ id: 'coast', compose });
+    // the ground bakes again when a region opens or shuts (the rope along a shut edge, 3a above)
+    V.groundSigs.push(() => { try { return '|zn:' + (gardenModel().areas || []).filter(a => /^zn-/.test(a)).sort().join(','); } catch (e) { return ''; } }); }
 
   /* ---------- the buildings ---------- */
   const M = window.GardenPaintedMarks; if (!M || !M.ART) return;
@@ -198,7 +338,9 @@ function gardenIslandHarbourThings(data) {
   const memo = gardenIslandHarbourThings._m; if (memo && memo.d === D) return memo.out;
   const taken = new Set(); for (const p of D.static) for (const b of [p, p.apron].filter(Boolean)) for (let y = Math.floor(b.y) - 1; y <= b.y + b.h; y++) for (let x = Math.floor(b.x) - 1; x <= b.x + b.w; x++) taken.add(x + ',' + y);
   const kind = (x, y) => { const b = gardenIslandBaseCell(x, y); if (!b || !b.land) return 'sea'; if (b.freshwater) return 'water'; if (b.route) return 'path'; if (b.beach) return 'beach'; return 'grass'; };
-  const spot = (x, y, want) => !taken.has(Math.floor(x) + ',' + Math.floor(y)) && want.includes(kind(x, y));
+  // (and clear of a wall or rock by a cell and a half: the boat on the sand lay on the end of the old woodland's ruin wall)
+  const nearSolid = (x, y) => { for (let dy = -1.5; dy <= 1.5; dy += .75) for (let dx = -1.5; dx <= 1.5; dx += .75) { const b = gardenIslandBaseCell(Math.floor(x + dx), Math.floor(y + dy)); if (b && b.solid) return true; } return false; };
+  const spot = (x, y, want) => !taken.has(Math.floor(x) + ',' + Math.floor(y)) && want.includes(kind(x, y)) && !nearSolid(x, y);
   // [key, candidates, wanted ground, half width and depth of the foot in px]
   const rows = [
     ['crates', [[44.3, 76.6], [43.6, 75.4], [57.3, 75.4]], ['path', 'grass', 'beach'], -28, 34, 12],

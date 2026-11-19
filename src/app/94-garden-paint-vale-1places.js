@@ -111,7 +111,28 @@
       const { count, acrossRadius: hw } = deck.stones, q = (t, s) => deck.deckPoint(t, s), step = 1 / count;
       // (the estuary's stones too, in sea-grey granite with green weed at the tide: round 2 of the coast, 19 Nov 2026; they were
       // pale slabs on one dark bed, a plank causeway across the river mouth)
-      if (deck.over === 'brook' || deck.over === 'river') { const sea = deck.over === 'river';
+      if (deck.over === 'river') {
+        // The estuary: water-worn boulders, each its own size, outline, lean and tone, laid a little off the line as stones
+        // in a river are, with small stones and weed between them in the water and the foam on their upstream side only.
+        // Each still covers its own slab, so the footing is the whole support. (round 3: ten identical rounded squares with
+        // the same moss patch and two white dots, a ruler-straight row of tiles)
+        const tones = ['#8e8a80', '#9c978b', '#858178', '#a29c8f', '#948e82', '#a09484', '#7e7b74'], mid = t => q(t, 0);
+        const outline = (lo, hi, k, ds, dt, rad, off) => { const pts = []; for (let j = 0; j < 30; j++) { const a = j / 30 * Math.PI * 2, f = j / 30 * rad.length, i0 = Math.floor(f) % rad.length, i1 = (i0 + 1) % rad.length, w = (1 - Math.cos((f - Math.floor(f)) * Math.PI)) / 2, rr = rad[i0] * (1 - w) + rad[i1] * w; pts.push(q((lo + hi) / 2 + dt + Math.cos(a) * (hi - lo) / 2 * k * rr, ds + off + Math.sin(a) * hw * k * rr * .92)); } return B.poly(pts); };
+        for (let i = 0; i < count; i++) {
+          const lo = i * step + (i ? .2 / deck.length : 0), hi = (i + 1) * step - (i < count - 1 ? .2 / deck.length : 0), size = 1.02 + r() * .2, off = (r() - .5) * hw * .3, rad = Array.from({ length: 7 }, () => .86 + r() * .26), tone = tones[Math.floor(r() * tones.length)];
+          B.f(outline(lo, hi, size * 1.04, 1.8, 0, rad, off), '#3e3a32', .55);
+          B.f(outline(lo, hi, size, 0, 0, rad, off), tone);
+          B.f(outline(lo, hi, size * (.45 + r() * .2), -hw * (.18 + r() * .12), -(hi - lo) * (.05 + r() * .1), rad, off), '#c4bcaa', .3 + r() * .2);
+          if (r() < .7) B.f(outline(lo, hi, size * (.3 + r() * .25), hw * .55, (hi - lo) * (r() - .5) * .3, rad, off), r() < .6 ? '#4f6a3a' : '#5e6a34', .45 + r() * .2);
+          if (r() < .4) { const p = q(lo + (hi - lo) * (.3 + r() * .4), off - hw * (.2 + r() * .3)); B.f(B.blob(r, p.x, p.y, 2.6 + r() * 2, 1.2 + r(), 6, .5), r() < .5 ? '#c8c48a' : '#e4e0d4', .55); }
+          // foam on the side the river comes from, broken
+          const fa = q(lo + (hi - lo) * (.15 + r() * .2), -hw * size * .98 + off), fb = q(lo + (hi - lo) * (.6 + r() * .25), -hw * size * .98 + off); B.s(`M${fa.x} ${fa.y}Q${(fa.x + fb.x) / 2} ${(fa.y + fb.y) / 2 - 2} ${fb.x} ${fb.y}`, P.foam || '#eef2e2', 1.3, .55);
+          // a small stone or two in the water beside it, off the walk
+          for (let k = 0, n = Math.floor(r() * 3); k < n; k++) { const side = r() < .5 ? -1 : 1, p = q(lo + (hi - lo) * r(), side * hw * (1.25 + r() * .45)), s = 2.4 + r() * 3.4; B.f(B.blob(r, p.x + .8, p.y + 1, s, s * .6, 7, .4), '#2e3a36', .35).f(B.blob(r, p.x, p.y, s, s * .62, 7, .4), tones[Math.floor(r() * tones.length)]).f(B.blob(r, p.x - s * .3, p.y - s * .2, s * .45, s * .25, 6, .4), '#cfc8b8', .45); }
+        }
+        void mid; return;
+      }
+      if (deck.over === 'brook') { const sea = false;
         // The woodland brook: rounded, water-worn stones (a squircle filling each slab, so the footing is still the
         // whole support), wet dark feet, a ring of ripple where the water meets them, moss on the shaded side.
         const tones = sea ? ['#8e8a80', '#9c978b', '#858178', '#a29c8f', '#948e82'] : season === 'winter' ? ['#a9a89c', '#bdbcb0', '#9a9a8e'] : ['#a19a84', '#b3ab93', '#958f7b', '#aaa088'];

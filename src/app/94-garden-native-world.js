@@ -396,7 +396,19 @@ window.GardenNativeWorld = (function () {
       // Both ground painters use this same exact allowance. The curved
       // stroke owns the visible width, not a staircase of path-cell centres.
       const statics = new Map(D.static.map(p => [p.id, p])), openNow = new Set(sc.areas || []);
-      const groundPaint = (c, x, y) => { if (routePaint[y * W.cols + x]) return true; if (!c || wet(c) || c.row && c.row.solid) return false; const base = gardenIslandBaseCell(x, y); if (!base || !base.land || base.solid) return false; if (base.staticId) { const p = statics.get(base.staticId); if (!(base.route && p && p.w === 1 && p.h === 1 && p.col !== 'full')) return false; } return !(c.row && c.row.plot && !(c.row.plot === 'core' && !openNow.has(c.row.id) && !(cultivatedNow && cultivatedNow.has(c.row.id)))); };
+      // A building by the shore that stands on a route (the smokehouse and the bird hide on the marsh boardwalk, the boathouse
+      // on the lighthouse walk): the route is not painted under its picture, so no planks run through its roof and out past
+      // its walls; the walk comes to the building and goes on from it. Outside the village only (coast round 3, 20 Nov 2026;
+      // the layout should move the route or the building).
+      const underBuilding = new Set(), ART = window.GardenPaintedMarks && GardenPaintedMarks.ART;
+      for (const p of D.static) {
+        if (p.col !== 'full' || p.w * p.h < 2 || p.x >= cbox.x0 && p.x < cbox.x1 && p.y >= cbox.y0 && p.y < cbox.y1) continue;
+        let shore = false; for (let y = Math.floor(p.y) - 3; y <= p.y + p.h + 3 && !shore; y++) for (let x = Math.floor(p.x) - 3; x <= p.x + p.w + 3 && !shore; x++) { const b = gardenIslandBaseCell(x, y); if (b && b.beach) shore = true; }
+        if (!shore) continue;
+        const tall = ART && ART[p.id] ? -ART[p.id].box[1] : (p.tall || 1.5) * 40, rows = Math.max(1, Math.ceil(tall * .8 / W.cellH));
+        for (let y = Math.floor(p.y + p.h) - rows; y < p.y + p.h; y++) for (let x = Math.floor(p.x); x < p.x + p.w; x++) if (x >= 0 && y >= 0 && x < W.cols && y < W.rows) underBuilding.add(y * W.cols + x);
+      }
+      const groundPaint = (c, x, y) => { if (underBuilding.has(y * W.cols + x)) return false; if (routePaint[y * W.cols + x]) return true; if (!c || wet(c) || c.row && c.row.solid) return false; const base = gardenIslandBaseCell(x, y); if (!base || !base.land || base.solid) return false; if (base.staticId) { const p = statics.get(base.staticId); if (!(base.route && p && p.w === 1 && p.h === 1 && p.col !== 'full')) return false; } return !(c.row && c.row.plot && !(c.row.plot === 'core' && !openNow.has(c.row.id) && !(cultivatedNow && cultivatedNow.has(c.row.id)))); };
       const pathLoops = outlines(mark(groundPaint), 'm', W, true);
       // Owned beds: soil where something grows, a dug edge round an empty owned plot,
       // so plantable land always reads as plantable on the painted lawn.
@@ -1289,7 +1301,11 @@ window.GardenNativeWorld = (function () {
         const p = record.metadata.prop, b = record.bounds, sx = _gw.px * W.cellW, sy = W.sky + _gw.py * W.cellH;
         let behind = sx > b.x - 8 && sx < b.x + b.width + 8 && sy > b.y + 18 && sy < W.sky + (p.y + p.h) * W.cellH - 1.5;
         if (behind && p.id === 'ld-falls' && record.handle.fallsCoversPlayer) behind = record.handle.fallsCoversPlayer(sx, sy);
-        if (record.behind !== behind) { record.behind = behind; record.root.setAlpha(behind ? .38 : 1); }
+        // a painted building fades only where its own picture covers you (head, chest or hips), not over the whole box round
+        // it: the lighthouse, its cottage and its rocks went ghostly whenever you stood beside the tower (coast round 3).
+        // Tested again only when you have moved a pixel, a handful of reads of one texture.
+        else if (behind && record.handle.hitPoint) { const k = Math.round(sx) + ',' + Math.round(sy); if (record._fadeAt !== k) { record._fadeAt = k; record._fadeHit = [.85, .55, .25].some(f => record.handle.hitPoint(sx, sy - playerOcclusionHeight * f)); } behind = record._fadeHit; }
+        if (record.behind !== behind) { record.behind = behind; record.root.setAlpha(behind ? (record.handle.hitPoint ? .45 : .38) : 1); }
       }
       coveringCanopies.length = 0;
       const probes = [{ x, y: y - playerOcclusionHeight * .81 }, { x, y: y - playerOcclusionHeight * .48 }, { x: x - 6, y: y - playerOcclusionHeight * .54 }, { x: x + 6, y: y - playerOcclusionHeight * .54 }];
