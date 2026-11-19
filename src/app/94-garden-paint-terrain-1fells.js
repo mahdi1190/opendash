@@ -63,7 +63,12 @@ window.GardenPaintedTerrain = (function () {
     const routes = (D.routes || []).filter(r => zones.has(r.zone) && r.points && r.points.length > 1).map(r => ({ id: r.id, tier: r.tier, width: r.widthCells || 1.4, points: gardenIslandRoutePath(r).points.map(p => cpt(p.x, p.y)) }));
     const falls = D.presentation && D.presentation.falls;
     const gates = (D.gates || []).filter(g => g.kind === 'pass' || ids.has(g.district));
-    return { D, W, pt, cpt, regions, regionLoops, coast, peaks, runs, terraces, water, gorge, routes, falls, gates, ids, inRegion };
+    // the places the layout names on the fells: its sections (by id and middle), its statics, its tarn
+    const sections = Object.entries(D.sectionCells || {}).map(([id, cells]) => ({ id, x: cells.reduce((a, c) => a + c[0], 0) / cells.length + .5, y: cells.reduce((a, c) => a + c[1], 0) / cells.length + .5 })).filter(c => inRegion(c.x, c.y));
+    const statics = (D.static || []).filter(c => inRegion(c.x + c.w / 2, c.y + c.h / 2)), tarn = water.find(w => /tarn/.test(w.id)) || null;
+    const plotCells = new Set(); for (const cells of Object.values(D.sectionCells || {})) for (const c of cells) plotCells.add(c[0] + ',' + c[1]);
+    const plotAt = (x, y) => plotCells.has(Math.floor(x) + ',' + Math.floor(y));
+    return { D, W, pt, cpt, regions, regionLoops, coast, peaks, runs, terraces, water, gorge, routes, falls, gates, ids, inRegion, sections, statics, tarn, plotAt };
   }
   const loopPath = (loops) => { const p = new Path2D(); for (const l of loops) { if (!l.length) continue; p.moveTo(l[0].x, l[0].y); for (let i = 1; i < l.length; i++) p.lineTo(l[i].x, l[i].y); p.closePath(); } return p; };
 
@@ -94,7 +99,12 @@ window.GardenPaintedTerrain = (function () {
     const fellBB = [Math.max(-40, rb[0]), Math.max(top, rb[1]), Math.min(worldW + 40, rb[2]), rb[3] + 60];
     const cellOf = (x, y) => gardenIslandBaseCell(x / cw, (y - W.sky) / ch);
     const fellAt = (x, y) => { const c = cellOf(x, y); return !!(c && c.land && L.ids.has(c.region) && !c.freshwater); };
-    const moor = x => Math.max(0, Math.min(1, (28 * cw - x) / (7 * cw)));
+    // the heather moor runs west from the tarn (its west shore and a stride on), fading over seven cells
+    const tarnB = L.tarn ? kit.bboxOf(L.tarn.pts) : null, moorEdge = tarnB ? tarnB[0] + 1.1 * cw : worldW * .3;
+    const moor = x => Math.max(0, Math.min(1, (moorEdge - x) / (7 * cw)));
+    const plazas = L.routes.filter(rt => rt.tier === 'plaza').map(rt => { const a = rt.points[0], b = rt.points[rt.points.length - 1]; return { id: rt.id, x0: Math.min(a.x, b.x) / cw, x1: Math.max(a.x, b.x) / cw, cx: (a.x + b.x) / 2 / cw, cy: ((a.y + b.y) / 2 - W.sky) / ch, w: rt.width }; });
+    const summit = plazas.slice().sort((p, q) => q.w - p.w)[0] || null, pass = L.gates.find(g => g.kind === 'pass' || /pass/i.test(g.name || '')) || null;
+    const bog = L.sections.find(c => /mist|bog|moss|marsh/.test(c.id)) || null, tarnC = tarnB ? { x: (tarnB[0] + tarnB[2]) / 2 / cw, y: ((tarnB[1] + tarnB[3]) / 2 - W.sky) / ch, r: Math.max(tarnB[2] - tarnB[0], (tarnB[3] - tarnB[1]) * cw / ch) / 2 / cw + 3.4 } : null;
     const snowRow = SNOW[season];
     const snowAt = (x, y) => { const row = (y - W.sky) / ch; if (snowRow > 90) return 1; if (snowRow < -5) return 0; const edge = snowRow + (kit.fbm(x / 140, y / 90, 41) - .5) * 4.5; return row < edge - .8 ? 1 : row < edge + .8 ? (edge + .8 - row) / 1.6 : 0; };
     const add = (bb, seed, draw, extra) => ops.push(Object.assign({ bb, seed, draw }, extra || {}));
@@ -114,8 +124,49 @@ window.GardenPaintedTerrain = (function () {
         }
       }));
     });
+    // 1b. Heather in drifts, not dots. The shared moor lays a small clump of heather wherever its drift field passes .56;
+    // seen together they read as an even rash of purple dots. Here the same field is laid as one continuous mass at a
+    // quarter of the resolution, smoothed up: deep heather where the moor is heathery (darker in its hollows, lit and in
+    // bloom on its swells, broken at its edge), and on the pasture, where the turf is short, varied turf over the kit's
+    // clumps instead. So the clumps underneath become texture inside a drift.
+    // where heather begins, by how heathery the moor is: one smooth rule (a step in it drew a straight edge down the moor)
+    const heathAt = m => { const t = Math.max(0, Math.min(1, (m - .08) / .34)), u = t * t * (3 - 2 * t); return .74 + (.56 - m * .06 - .74) * u; };
+    if (window.GardenPaintGround && snowRow <= -5) {
+      const hexA = c => { const n = parseInt(c.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }, sm = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
+      const HL = hexA(P.heatherLo), HM = hexA(kit.mix(P.heather, P.heatherLo, .2)), HH = hexA(P.bloom ? kit.mix(P.heather, P.bloom, .55) : P.heatherHi), FL = hexA(P.fellLo), FM = hexA(P.fell), FH = hexA(kit.mix(P.fellHi, P.bleach, .3));
+      let hc = null, hb = null;
+      add(fellBB, 13, (B, r, cb) => {
+        clipFell(B);
+        const Q = 3, pad = 12, w = Math.ceil((cb[2] - cb[0] + pad * 2) / Q), h = Math.ceil((cb[3] - cb[1] + pad * 2) / Q);
+        if (!hc) { hc = document.createElement('canvas'); hb = document.createElement('canvas'); }
+        for (const c of [hc, hb]) if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+        const x = hc.getContext('2d'), img = x.createImageData(w, h), d = img.data;
+        for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+          const wx = cb[0] - pad + (i + .5) * Q, wy = cb[1] - pad + (j + .5) * Q, dr = kit.fbm(wx / 230, wy / 150, 77); if (dr < .53) continue;
+          const m = moor(wx), th = heathAt(m), fine = kit.noise(wx / 7, wy / 4.5, 820), lump = kit.noise(wx / 15, wy / 9, 821);
+          // (the drift's edge is lumpy and fairly sharp: a wide soft ramp read as a purple cloud airbrushed on the turf)
+          const aH = sm((dr - th + .02 + (lump - .5) * .07 + (fine - .5) * .03) / .028), aC = sm((dr - .535) / .045) * (1 - aH);
+          const n = kit.noise(wx / 22, wy / 13, 818), lit = kit.noise(wx / 70, wy / 44, 819), o = (j * w + i) * 4, past = 1 - sm((m - .1) / .35);
+          const hcol = n < .4 ? HL : lit > .58 && n > .55 ? HH : HM, fcol = n < .35 ? FL : n > .7 ? FH : FM, k = .88 + lit * .16 + (fine - .5) * .16;
+          const hA = aH * (.52 + n * .3 + (fine - .5) * .14) * (1 - past * .3), tot = hA + aC * .7; if (tot <= .01) continue;
+          const fh = hA / tot * (1 - past * .3);   // (on the pasture the heather is short and dull, half turf)
+          d[o] = (hcol[0] * fh + fcol[0] * (1 - fh)) * k; d[o + 1] = (hcol[1] * fh + fcol[1] * (1 - fh)) * k; d[o + 2] = (hcol[2] * fh + fcol[2] * (1 - fh)) * k; d[o + 3] = Math.min(1, tot) * 255;
+        }
+        x.putImageData(img, 0, 0);
+        const bx = hb.getContext('2d'); bx.clearRect(0, 0, w, h); bx.filter = 'blur(.6px)'; bx.drawImage(hc, 0, 0); bx.filter = 'none';
+        B.cx.save(); B.cx.imageSmoothingEnabled = true; B.cx.imageSmoothingQuality = 'high'; B.cx.drawImage(hb, cb[0] - pad, cb[1] - pad, w * Q, h * Q); B.cx.restore();
+      });
+    }
     // 2. The tops: contour-ringed rises, each ring a lit north-west rim and a shaded south-east fall, so height reads from above.
-    const tops = [[50, 9.6, 8, 4.6, 6], [43.5, 15, 4.6, 2.6, 4], [31, 3.6, 6.4, 1.9, 3], [60, 15.4, 4, 1.8, 3], [21, 15, 6, 2.6, 3], [9, 16, 5, 2.2, 3], [74, 12.5, 3.6, 2, 3], [36.5, 7.5, 3.2, 1.6, 3], [67.4, 18.4, 3.2, 1.7, 4], [75.4, 17.2, 3.4, 1.9, 4]];
+    // (where the rises are comes from the layout: the summit's top, the high places its sections name, the two shoulders of
+    // the pass, and out on the moor wherever a broad swell of noise rises; no cell is named)
+    const inPeak = (x, y) => L.peaks.some(pk => { const b = kit.bboxOf(pk.pts, 30), px = x * cw, py = W.sky + y * ch; return px > b[0] && px < b[2] && py > b[1] && py < b[3]; });
+    const tops = [];
+    if (summit) tops.push([summit.cx - .6, summit.cy - .2, Math.max(6, summit.x1 - summit.x0 + 5.5), 4.6, 6]);
+    for (const c of L.sections) if (/top|flat|pasture|view|warren|stones|end/.test(c.id) && !(summit && Math.hypot(c.x - summit.cx, (c.y - summit.cy) * 1.6) < 6.5) && !inPeak(c.x, c.y)) tops.push([c.x + .4, c.y - .6, /flat/.test(c.id) ? 6.4 : 4.2, /flat/.test(c.id) ? 1.9 : 2.3, /top/.test(c.id) ? 4 : 3]);
+    if (pass) for (const sd of [-1, 1]) tops.push([pass.x + .5 + sd * 4, pass.y - 2.1 - (sd > 0 ? .9 : 0), 3.3, 1.8, 4]);
+    for (let y = 4; y < (rb[3] - W.sky) / ch - 5; y += 5) for (let x = 3; x < W.cols - 3; x += 7) { const jx = x + (kit.hash(x, y, 701) % 100) / 30 - 1.6, jy = y + (kit.hash(x, y, 702) % 100) / 60 - .8, c = L.cpt(jx, jy);
+      if (moor(c.x) > .5 && kit.fbm(jx / 11, jy / 6, 703) > .58 && fellAt(c.x, c.y) && !inPeak(jx, jy) && tops.every(t => Math.hypot(t[0] - jx, (t[1] - jy) * 1.8) > 8)) tops.push([jx, jy, 5.4, 2.4, 3]); }
     tops.forEach(([x, y, rx, ry, n], hi) => {
       const c = L.cpt(x, y), RX = rx * cw, RY = ry * ch;
       add([c.x - RX - 30, c.y - RY - 40, c.x + RX + 30, c.y + RY + 30], 100 + hi, (B, r0, cb) => {
@@ -146,13 +197,21 @@ window.GardenPaintedTerrain = (function () {
       kit.tiles(cb, 64, 24, 7, (tx, ty, r) => {
         for (let k = 0; k < 7; k++) {
           const x = tx + r() * 64, y = ty + r() * 64, pick = r(), sz = r(); if (!fellAt(x, y)) continue;
-          const m = moor(x), row = (y - W.sky) / ch, tarnNear = Math.hypot(x / cw - 31, row - 11) < 7.5, wet = tarnNear || Math.hypot(x / cw - 73, row - 18) < 4.2;
+          const m = moor(x), row = (y - W.sky) / ch, tarnNear = !!tarnC && Math.hypot(x / cw - tarnC.x, row - tarnC.y) < tarnC.r, wet = tarnNear || !!bog && Math.hypot(x / cw - bog.x, row - bog.y) < 4.2;
           const drift = kit.fbm(x / 230, y / 150, 77), fern = kit.fbm(x / 210, y / 130, 91);
-          if ((m > .25 ? drift > .56 - m * .06 : drift > .74) && pick < .6 + (drift - .56) * 1.5) { B.cx.globalAlpha = 1; B.heather(r, x, y, 4 + sz * 5 + Math.max(0, drift - .56) * 22, m > .25 ? P : HP, P.bloom && drift > .62 && r() < .7 ? P.bloom : null); continue; }
+          const hth = heathAt(m);
+          if (drift > hth && pick < .6 + (drift - .56) * 1.5) {
+            B.cx.globalAlpha = 1;
+            // inside a drift (1b lays its mass): fine sprigs, the odd spray of bloom; a real clump only at the drift's broken edge
+            if (!window.GardenPaintGround || snowRow > -5 || (drift < hth + .035 && r() < .35)) { B.heather(r, x, y, 3 + sz * 4, m > .25 ? P : HP, P.bloom && r() < .5 ? P.bloom : null); continue; }
+            for (let q = 0; q < 5; q++) { const px = x + (r() - .5) * 11, py = y + (r() - .5) * 5, hh = 1.6 + r() * 2.8; B.s(`M${px} ${py}l${(r() - .5) * 1.8} ${-hh}`, q % 3 === 1 ? P.heatherHi : P.heatherLo, 1.1, .62); }
+            if (P.bloom && drift > .6 && r() < .3) B.f(B.circ(x + (r() - .5) * 6, y - 2.5, 1.1), P.bloom, .75);
+            continue;
+          }
           if (pick < .5) { B.tufts(r, x, y, 10, 4 + Math.floor(sz * 4), [P.fellLo, P.fellHi, P.bleach], 5); continue; }
-          if (pick < .62 && (peakNear(x, y) || row < 11 && x > 44 * cw && x < 56 * cw || r() < .25)) { B.stone(r, x, y, 2 + sz * 4, 1.2 + sz * 2.2, P); continue; }
+          if (pick < .62 && (peakNear(x, y) || !!summit && row < summit.cy + 1.3 && Math.abs(x / cw - summit.cx) < 6 || r() < .25)) { B.stone(r, x, y, 2 + sz * 4, 1.2 + sz * 2.2, P); continue; }
           if (pick < .7 && wet) { B.f(B.blob(r, x, y, 5 + sz * 4, 2.6 + sz * 2, 7, .5), P.fellLo, .7); B.tufts(r, x, y - 1, 9, 7, ['#6f7f48', P.bleach], 7); if (season !== 'winter' && season !== 'autumn') for (let i = 0; i < 4; i++) B.f(B.circ(x + (r() - .5) * 10, y - 6 - r() * 4, 1.3), '#f6f4ec', .95); continue; }
-          if (pick < .78 && x > 46 * cw && m < .2) { const L2 = 16 + sz * 26; B.s(`M${x} ${y}q${L2 / 2} ${-2 - r() * 3} ${L2} ${(r() - .5) * 3}`, P.fellLo, 1.4, .55).s(`M${x} ${y - 1.2}q${L2 / 2} ${-2 - r() * 3} ${L2} ${(r() - .5) * 3}`, P.fellHi, .8, .5); continue; }
+          if (pick < .78 && !!summit && x > (summit.x0 - 3.6) * cw && m < .2) { const L2 = 16 + sz * 26; B.s(`M${x} ${y}q${L2 / 2} ${-2 - r() * 3} ${L2} ${(r() - .5) * 3}`, P.fellLo, 1.4, .55).s(`M${x} ${y - 1.2}q${L2 / 2} ${-2 - r() * 3} ${L2} ${(r() - .5) * 3}`, P.fellHi, .8, .5); continue; }
           if (pick < .8 && m > .4 && drift > .58) { const w = 8 + sz * 10; B.f(B.blob(r, x + 1, y + 2.4, w, w * .26, 8, .4), P.peat, .85).f(B.blob(r, x - .5, y - .6, w * .92, w * .2, 8, .45), P.heatherLo, .85).f(B.blob(r, x - w * .2, y - 1.2, w * .45, w * .1, 7, .5), P.heather, .7); continue; }
           if (fern > .7 && pick < .9 && season !== 'winter' && (m > .15 || row > 16)) { for (let f = 0; f < 4; f++) { const a = -Math.PI / 2 + (f - 1.5) * .55 + (r() - .5) * .3, l = 6 + r() * 4, ex = x + Math.cos(a) * l, ey = y + Math.sin(a) * l * .8; B.s(`M${x} ${y}Q${(x + ex) / 2 + 1.5} ${(y + ey) / 2 - 1} ${ex} ${ey}`, P.bracken, 1, .6); for (let k = 1; k < 4; k++) { const t = k / 4, px = x + (ex - x) * t, py = y + (ey - y) * t; B.s(`M${px} ${py}l${2.6 - t * 1.4} ${1 - t}M${px} ${py}l${-2.4 + t * 1.2} ${1.2 - t}`, P.bracken, .8, .55); } } continue; }
         }
@@ -160,7 +219,8 @@ window.GardenPaintedTerrain = (function () {
     });
     // 3b. Outcrops (flat gritstone slabs breaking the turf, ground-level: you walk over them) and the old sheepfolds of the high pasture.
     const routeNear = (x, y, d) => L.routes.some(rt => rt.points.some((p, i) => i % 3 === 0 && Math.abs(p.x - x) < d && Math.abs(p.y - y) < d * .7));
-    const crops = [[67.2, 18.2, 6, 1.2], [75.6, 16.8, 6, 1.3], [68.8, 19.6, 4, .9], [73.6, 19.2, 4, .8]].map(([x, y, n, sc]) => ({ x: x * cw, y: W.sky + y * ch, n, s: sc })); { const rr = kit.rng(5150); for (let k = 0; k < 60 && crops.length < 26; k++) { const x = (4 + rr() * 74) * cw, y = W.sky + (3 + rr() * 16) * ch; if (fellAt(x, y) && !routeNear(x, y, 60) && !L.peaks.some(pk => { const b = kit.bboxOf(pk.pts, 40); return x > b[0] && x < b[2] && y > b[1] && y < b[3]; })) crops.push({ x, y, n: 3 + Math.floor(rr() * 5), s: .7 + rr() * .8 }); } }
+    // (slabs either side of the pass, where the col's rock breaks through, then a scatter over the open fell)
+    const crops = (pass ? [[-3.8, -1.8, 6, 1.2], [4.6, -3.2, 6, 1.3], [-2.2, -.4, 4, .9], [2.6, -.8, 4, .8]] : []).map(([dx, dy, n, sc]) => ({ x: (pass.x + dx) * cw, y: W.sky + (pass.y + dy) * ch, n, s: sc })); { const rr = kit.rng(5150), yMax = (rb[3] - W.sky) / ch - 6; for (let k = 0; k < 140 && crops.length < 26; k++) { const x = (2 + rr() * (W.cols - 4)) * cw, y = W.sky + (2 + rr() * Math.max(4, yMax - 2)) * ch; if (fellAt(x, y) && !routeNear(x, y, 60) && !L.peaks.some(pk => { const b = kit.bboxOf(pk.pts, 40); return x > b[0] && x < b[2] && y > b[1] && y < b[3]; })) crops.push({ x, y, n: 3 + Math.floor(rr() * 5), s: .7 + rr() * .8 }); } }
     for (const c of crops) add([c.x - 70, c.y - 40, c.x + 70, c.y + 40], 170 + Math.round(c.x), (B, r) => {
       clipFell(B); const sn = snowAt(c.x, c.y) > .6;
       for (let k = 0; k < c.n; k++) { const x = c.x + (r() - .5) * 80 * c.s, y = c.y + (r() - .5) * 30 * c.s, rx = (8 + r() * 14) * c.s, ry = rx * (.34 + r() * .14);
@@ -168,7 +228,16 @@ window.GardenPaintedTerrain = (function () {
         B.s(`M${x - rx * .2} ${y - ry * .6}l${rx * .15} ${ry * 1.1}`, P.rockDk, .9, .5);
         if (!sn) { if (r() < .5) B.f(B.blob(r, x + rx * .3, y - ry * .2, rx * .25, ry * .2, 6, .5), P.lichen, .6); B.tufts(r, x, y + ry * .8, rx * 1.6, 5, [P.fellLo, P.bleach], 5); if (moor(x) > .3) B.heather(r, x + rx * .9, y + ry * .5, 4 + r() * 3, P, P.bloom); } }
     });
-    for (const [fx, fy, frx] of [[57.4, 18.6, 1.6], [54.6, 15.8, 1.2]]) { const c = L.cpt(fx, fy), RX = frx * cw, RY = frx * ch * .95;
+    // the old sheepfolds of the high pasture: two rings of dry stone near the shepherd's hut, each where its whole ring
+    // is clear of plots, paths, statics and water (a fold laid over a plot's wall was an overlap)
+    const hut = L.statics.find(c => /hut|bothy/.test(c.id)), folds = [];
+    if (hut) for (const fr of [1.6, 1.2]) for (let d = 3; d < 7.5 && folds.length < (fr === 1.6 ? 1 : 2); d += .5) for (let a = 0; a < 16 && folds.length < (fr === 1.6 ? 1 : 2); a++) {
+      const fx = hut.x + .5 + Math.cos(a / 16 * Math.PI * 2 + 2.2) * d, fy = hut.y + .5 + Math.sin(a / 16 * Math.PI * 2 + 2.2) * d * .7, c = L.cpt(fx, fy);
+      let ok = fellAt(c.x, c.y) && !inPeak(fx, fy) && !routeNear(c.x, c.y, fr * cw + 30) && folds.every(f => Math.hypot(f[0] - fx, (f[1] - fy) * 1.6) > f[2] + fr + 1.5);
+      for (let k = 0; ok && k < 12; k++) { const q = k / 12 * Math.PI * 2, px = fx + Math.cos(q) * (fr + .5), py = fy + Math.sin(q) * (fr + .5) * .95; if (L.plotAt(px, py) || !fellAt(px * cw, W.sky + py * ch) || L.statics.some(t => px > t.x - .3 && px < t.x + t.w + .3 && py > t.y - .3 && py < t.y + t.h + .3)) ok = false; }
+      if (ok) folds.push([fx, fy, fr]);
+    }
+    for (const [fx, fy, frx] of folds) { const c = L.cpt(fx, fy), RX = frx * cw, RY = frx * ch * .95;
       add([c.x - RX - 20, c.y - RY - 20, c.x + RX + 20, c.y + RY + 24], 190 + fx, (B, r) => {
         clipFell(B); const sn = snowAt(c.x, c.y) > .6, ring = []; for (let k = 0; k <= 40; k++) { const a = k / 40 * Math.PI * 2; if (k > 33 && k < 37) { ring.push(null); continue; } ring.push({ x: c.x + Math.cos(a) * RX, y: c.y + Math.sin(a) * RY }); }
         // the fold's turf is greener (sheltered), then the wall: a shaded outer face to the south, the stones, the cope
@@ -178,9 +247,11 @@ window.GardenPaintedTerrain = (function () {
       }); }
     // 4. The far fells beyond the north edge (backdrop only): three ranges of real peaks going into haze, each peak lit on
     //    its west flank and shaded on its east, snow on the far tops by season; the near range is fell-coloured and meets the fell.
-    add([-60, top - 40, Math.min(worldW, 84 * cw), W.sky + 40], 31, (B) => {
+    // (the far fells run east as far as the land does along the north edge: past it is the sea)
+    const northEnd = Math.max(0, ...L.coast.flat().filter(p => p.y < W.sky + 4 * ch).map(p => p.x)) || worldW * .86;
+    add([-60, top - 40, Math.min(worldW, northEnd + 1.5 * cw), W.sky + 40], 31, (B) => {
       B.cx.clip(coastP, 'evenodd');
-      const xs0 = -80, xs1 = Math.min(worldW, 82.5 * cw), foot = W.sky + 4;
+      const xs0 = -80, xs1 = Math.min(worldW, northEnd), foot = W.sky + 4;
       const nearCol = kit.mix(P.fellLo, P.far[2], .35), cols = [P.far[0], P.far[1], nearCol];
       for (let layer = 0; layer < 3; layer++) {
         const rr = kit.rng(700 + layer), base = [W.sky - 34, W.sky - 14, foot][layer], amp = [118, 92, 58][layer], col = cols[layer], peaks = [];
