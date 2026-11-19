@@ -124,6 +124,30 @@
       for (const q of s) { const r = rngAt(q, 23); for (let k = 0; k < 4; k++) { const x = q.x + (r() - .5) * 7, h = 13 + r() * 10, lean = (r() - .5) * 4; B.s(`M${x} ${q.y}q${lean * .3} ${-h * .6} ${lean} ${-h}`, col[k % 2], 1.2, .95); if (r() < .3) B.f(B.rr(x + lean - 1.1, q.y - h - 4, 2.2, 5.5, 1.1), '#6e4a2c', .95); } }
     },
     kerb: () => {},
+    // (village fix round 3) the rough edge of a field away from its front: its own growth thinning out into the lawn in
+    // clumps and drifts (long grass, seed heads, a bramble or a shrub here and there, a stone by the wall), never one even
+    // band, so the line where the feet stop is the edge of the rough ground and not a drawn ring
+    margin: (B, run, C, kind) => {
+      const st = strawTones(C.season), lt = leafTones(C.season), lo = C.P.lawnLo, s = run.slice().sort((a, b) => a.y - b.y);
+      const thick = q => { const x = q.ox || q.x, y = q.oy || q.y; return .5 + .5 * (Math.sin(x * .037 + y * .051) * .6 + Math.sin(x * .013 - y * .029 + 2.1) * .4); };
+      const berry = C.season === 'autumn' ? '#7a2a4a' : C.season === 'summer' ? '#3a2a4a' : null, bloom = C.season === 'winter' ? null : C.season === 'autumn' ? ['#e8dcc0', '#d8a040', '#b86a8a'] : ['#f4f0e0', '#f0d24a', '#d88aa8', '#9a7ac8'];
+      for (const q of s) { const k = thick(q); if (k > .25) B.f(B.ell(q.x + 1, q.y + .6, 3 + k * 4, 1.6), '#2a3a1c', .1 + k * .1); }
+      for (const q of s) {
+        const r = rngAt(q, 31), k = thick(q);
+        if (k < .22) { if (r() < .5) B.s(`M${q.x} ${q.y}q.4 -2.4 .8 -4`, lo, 1, .7); continue; }   // a gap: the grass just shorter here
+        const n = k > .6 ? 4 : k > .4 ? 3 : 2;
+        for (let j = 0; j < n; j++) { const x = q.x + (r() - .5) * 8, y = q.y + (r() - .5) * 3.4, h = (4 + r() * 7) * (.55 + k * .75), lean = (r() - .5) * 5;
+          B.s(`M${x} ${y}q${lean * .3} ${-h * .6} ${lean} ${-h}`, j === 0 ? '#566e30' : j === 1 ? lo : st[Math.floor(r() * st.length)], 1.1, .9);
+          if (r() < .22 * k) B.f(B.ell(x + lean, y - h - 1, .9, 1.9), st[2], .95); }
+        if (bloom && r() < .1) B.f(B.circ(q.x + (r() - .5) * 8, q.y - 3 - r() * 6, 1.3), bloom[Math.floor(r() * bloom.length)], .95);
+        if (k > .7 && r() < .07) {   // a bramble or a shrub where the growth is thickest
+          const w = 7 + r() * 6, h = 7 + r() * 5, x = q.x + (r() - .5) * 4, y = q.y + 1;
+          B.f(B.ell(x + 2, y + .6, w * 1.1, 2.4), '#22301a', .2).f(B.blob(r, x, y - h * .45, w, h * .55, 8, .45), lt[0], .95).f(B.blob(r, x - 1.2, y - h * .62, w * .72, h * .4, 7, .45), lt[1], .95).f(B.blob(r, x - 2.2, y - h * .78, w * .42, h * .22, 6, .4), lt[2], .8);
+          if (berry) for (let j = 0; j < 4; j++) B.f(B.circ(x + (r() - .5) * w * 1.2, y - h * .5 + (r() - .5) * h * .5, .9), berry, .9);
+        }
+        if ((kind === 'wall' || kind === 'drystone') && k > .55 && r() < .05) { const x = q.x + (r() - .5) * 6, y = q.y; B.f(B.ell(x + 1, y + .8, 4.6, 1.5), '#22301a', .22).f(B.blob(r, x, y - 2, 4.2, 2.6, 7, .4), kind === 'wall' ? '#8a5642' : '#9a9282', .95).f(B.blob(r, x - .8, y - 3, 2.4, 1.2, 6, .4), kind === 'wall' ? '#a8806a' : '#bdb5a3', .9); }   // a fallen stone of the old wall
+      }
+    },
   };
   // What grows inside a field that is not yours yet (clipped to the field): the same country as its edge, a little wilder.
   // Laid tile by tile (60 px tiles on one grid, each with its own seed), only the tiles this chunk touches.
@@ -194,7 +218,11 @@
         const leaf = season === 'autumn' ? ['#b0682a', '#d38f3a', '#8a5a2c', '#e0b050'] : season === 'winter' ? ['#8a7a5a', '#a0906a', '#6e6450'] : ['#7d8f4e', '#6a7c40', '#94a058', '#8a7a4a'];
         for (let k = 0; k < 50; k++) { const [x, y] = at(), a = 1.6 + r() * 1.6, b = 1 + r() * .8, c = leaf[Math.floor(r() * leaf.length)]; if (inF(x, y)) B.f(B.ell(x, y, a, b), c, .8); }
         // deep bracken all through it (a thicket you cannot see into, not a ring round an empty middle), a foxglove here and there
-        const pts = []; for (let k = 0, n = tame ? 6 : 19; k < n; k++) { const [x, y] = at(), big = (tame ? .6 : 1.05) + r() * .55; if (inF(x, y) && inF(x, y - 9)) pts.push({ x, y, big }); } STYLE.bracken(B, pts, C);
+        // (village fix round 3: in drifts with clearings between them, waist high and no more, a holly or a hazel standing in
+        // it here and there: an even block of tall stalks read as a maize field set down in the village)
+        const drift = (x, y) => .5 + .5 * Math.sin(x * .021 + y * .034 + 1.3) * Math.cos(x * .013 - y * .027);
+        const pts = []; for (let k = 0, n = tame ? 5 : 11; k < n; k++) { const [x, y] = at(), big = (tame ? .55 : .8) + r() * .35; if (drift(x, y) > .38 && inF(x, y) && inF(x, y - 9)) pts.push({ x, y, big }); } STYLE.bracken(B, pts, C);
+        if (!tame && r() < .35) { const [x, y] = at(); if (inF(x, y) && inF(x, y - 18) && inF(x - 9, y) && inF(x + 9, y)) { const ev = ['#2e4a2a', '#3c5c34', '#527a40']; B.f(B.ell(x + 3, y + 1, 11, 3), '#22301a', .22).f(B.blob(r, x, y - 9, 10, 9, 8, .4), ev[0]).f(B.blob(r, x - 1.5, y - 12, 7.5, 6.5, 7, .4), ev[1]).f(B.blob(r, x - 3, y - 15, 4, 3, 6, .4), ev[2], .9); if (C.season === 'winter' || C.season === 'autumn') for (let j = 0; j < 4; j++) B.f(B.circ(x + (r() - .5) * 12, y - 6 - r() * 10, 1), '#c8302a', .95); } }
         if (season !== 'winter') for (let k = 0; k < 2; k++) { const [x, y] = at(), h = 15 + r() * 7, bell = season === 'autumn' ? '#b98a6a' : '#c66a9a', go = r() < .45; if (!go || !inF(x, y) || !inF(x, y - 22)) continue; B.s(`M${x} ${y}q1 ${-h * .5} 0 ${-h}`, '#5a6e3a', 1.3, .9); for (let j = 0; j < 5; j++) B.f(B.ell(x + (j % 2 ? 1.5 : -1.5), y - h + j * 2.6, 1.5, 1.9), bell, .92); }
       }
       if (edge === 'reeds') { const pts = []; for (let k = 0; k < 5; k++) { const [x, y] = at(); if (inF(x, y) && inF(x, y - 12)) pts.push({ x, y }); } STYLE.reeds(B, pts, C); for (let k = 0; k < 2; k++) { const [x, y] = at(), w = 8 + r() * 8; if (inF(x, y)) B.f(B.blob(r, x, y, w, 2.4, 7, .5), '#5e7a6a', .35); } }
@@ -305,6 +333,11 @@
         const s = best.s, hz = Math.abs(s.tx) > .92; g = { x: hz ? (Math.floor(s.ox / cw) + .5) * cw : s.x, y: s.y, horiz: hz, len: hz ? cw - 4 : ch, south: s.tx < 0, east: s.ty > 0 };
       }
     }
+    // (village fix round 3) the field's front: a stretch either side of its gate (the gate stands where the field meets
+    // its lane). Only there does it wear its built edge (the hedge, the wall, the dry-stone wall); everywhere else its own
+    // rough growth runs out into the grass in clumps, so no field is a pen with a ring of hedge or wall round it
+    // (only the side the gate is on: a small field is all within a couple of cells of its gate)
+    { const gn = g ? (g.horiz ? [0, g.south ? 1 : -1] : [g.east ? 1 : -1, 0]) : null; for (const s of all) s.front = !!g && Math.hypot(s.x - g.x, s.y - g.y) < cw * 2.2 && s.ty * gn[0] - s.tx * gn[1] > .45; }
     // back to front: pieces of edge with the gate's gap cut out of them
     const gap = q => g && Math.abs(q.x - g.x) < (g.horiz ? g.len / 2 + 1 : 7) && Math.abs(q.y - g.y) < (g.horiz ? 8 : g.len / 2 + 1);
     const pieces = []; for (const run of runs) { let cur = []; for (const q of run) { if (gap(q)) { if (cur.length) pieces.push(cur); cur = []; } else cur.push(q); } if (cur.length) pieces.push(cur); }
@@ -343,18 +376,19 @@
     if (S) {
       // its ground, over whatever the road's soft edge left on it
       const grown = SOFT.has(f.edge);
-      // (a grown field has no line round it: its colour runs out a little way into the lawn and thins there)
-      if (grown) { B.cx.save(); B.cx.filter = 'blur(5px)'; B.s(S.path, f.edge === 'bracken' ? C.P.floor : f.edge === 'reeds' ? '#7e8a52' : strawTones(C.season)[0], 9, .3); B.cx.restore(); }
+      // (a field has no line round it: its colour runs out a little way into the lawn and thins there; round 3: every
+      // field, since away from its front none of them is walled or hedged in)
+      { B.cx.save(); B.cx.filter = 'blur(6px)'; B.s(S.path, f.edge === 'bracken' ? C.P.floor : f.edge === 'reeds' ? '#7e8a52' : grown ? strawTones(C.season)[0] : C.P.lawnLo, 12, grown ? .3 : .26); B.cx.restore(); }
       B.cx.save(); B.cx.clip(S.path, 'nonzero'); fill(B, C, f, bb, cb, S.has, S.loops);
       // a soft shade just inside the edge, so the field sits in the ground
-      B.cx.filter = 'blur(2.5px)'; B.s(S.path, '#2a3a1c', 6, grown ? .1 : .22); B.cx.filter = 'none'; B.cx.restore();
+      B.cx.filter = 'blur(2.5px)'; B.s(S.path, '#2a3a1c', 6, .1); B.cx.filter = 'none'; B.cx.restore();
       const g = S.gate, edge = STYLE[f.edge] || STYLE.hedge, kind = f.edge === 'hedge' ? 'wicket' : 'field';
-      // the orchard keeps its hedge to the road side; away from the road the long grass is its edge
-      // (fix round 2) the lighthouse garden's dry-stone wall lies on the ground round the plot: full height along its front,
-      // lower down its sides and lowest at the back, so a narrow plot does not stand up as a tall stone arch like a portal
-      const dry = (B2, run) => { const front = run.filter(q => q.tx < -.7), side = run.filter(q => Math.abs(q.tx) <= .7), back = run.filter(q => q.tx > .7), D = { rag: .3, jit: .8, body: ['#8e8678', '#a8a090', '#7a7366', '#9a9282'], top: ['#bdb5a3', '#cfc8b6', '#b0a896'], lit: '#d8d2c2', round: 2.6 };
-        if (back.length) raised(B2, back, Object.assign({ w: 7.6, h: 3.6 }, D)); if (side.length) raised(B2, side, Object.assign({ w: 7.2, h: 4.6 }, D)); if (front.length) edge(B2, front, C); };
-      const paint = part => { if (!part.length) return; if (f.edge === 'hedge-road') { const road = part.filter(q => q.road), off = part.filter(q => !q.road); if (off.length) STYLE['long-grass'](B, off, C, { tall: 1.1 }); if (road.length) edge(B, road, C); } else if (f.edge === 'drystone') dry(B, part); else edge(B, part, C); };
+      // (round 3) the built edge (or the kind's own thick growth) only along the front; the rest is the rough margin, with
+      // the kind's own reeds, bracken or long grass standing in it here and there where it grows thickest
+      const thickAt = q => .5 + .5 * (Math.sin(q.ox * .037 + q.oy * .051) * .6 + Math.sin(q.ox * .013 - q.oy * .029 + 2.1) * .4);
+      const paint = part => { if (!part.length) return; const front = part.filter(q => q.front), back = part.filter(q => !q.front);
+        if (back.length) { STYLE.margin(B, back, C, f.edge); if (grown) { const tuft = back.filter(q => thickAt(q) > .62); if (tuft.length) (f.edge === 'long-grass' || f.edge === 'meadow' ? (B2, r2, C2) => STYLE['long-grass'](B2, r2, C2, { tall: .8 }) : edge)(B, tuft, C); } }
+        if (front.length) edge(B, front, C); };
       // back to front: the far edges, then the gate and its sign, then the near edges over them
       const gy = g ? g.y : Infinity, near = S.pieces.map(p => p.filter(q => inBox(q, cb)));
       for (const p of near) paint(p.filter(q => q.y <= gy));
@@ -364,7 +398,7 @@
       for (const p of near) paint(p.filter(q => q.y > gy));
       // (the sign last: reeds, long grass or a hedge end right beside the gate never stand across its board)
       if (g && S.next && g.x > cb[0] - 60 && g.x < cb[2] + 60 && g.y > cb[1] - 20 && g.y < cb[3] + 50) { const sx = g.horiz ? g.x + g.len / 2 + 5 : g.x + (g.east ? 8 : -8), sy = g.horiz ? g.y + 1 : g.y + g.len / 2 + 3; sign(B, sx, sy, S.next, lv); }
-      if (f.edge === 'meadow') { B.cx.save(); const out = new Path2D(); out.rect(bb[0] - 60, bb[1] - 60, bb[2] - bb[0] + 120, bb[3] - bb[1] + 120); out.addPath(S.path); B.cx.clip(out, 'evenodd'); B.s(S.path, C.P.lawnHi, 9, .3); B.cx.restore(); }   // the mown edge round the uncut meadow
+      if (f.edge === 'meadow') { B.cx.save(); const out = new Path2D(); out.rect(bb[0] - 60, bb[1] - 60, bb[2] - bb[0] + 120, bb[3] - bb[1] + 120); out.addPath(S.path); B.cx.clip(out, 'evenodd'); B.cx.filter = 'blur(4px)'; B.s(S.path, C.P.lawnHi, 10, .22); B.cx.filter = 'none'; B.cx.restore(); }   // the mown edge round the uncut meadow
     }
     // Land of this field that is yours. (Village fix round 2: it went to a plain striped lawn, the orchard lost its trees and
     // the hedge went with the price sign, so you could not see what you owned.) It keeps its field's character, tended
@@ -411,7 +445,9 @@
         const ox = q.x + q.ty * 12, oy = q.y - q.tx * 9, ocx = Math.floor(ox / cw), ocy = Math.floor((oy - W.sky) / ch);
         if (fieldCells.get(ocx + ',' + ocy) === f) continue;   // (the next piece of this field: its own edge, or none, stands there)
         const b = gardenIslandBaseCell(ocx, ocy); if (!b || !b.land) continue;
-        if (ownedLow[f.edge] && !b.route) continue;   // (a raised edging only along a lane or a path: never a ring round the plot)
+        // (a raised edging only along a lane or a path, and (round 3) for a stretch either side of the gate, so the gateway
+        // stands in a run of hedge or wall and not alone on the grass: never a ring round the plot)
+        if (ownedLow[f.edge] && !b.route && !(gateHere && Math.hypot(q.x - gx, q.y - gy) < cw * 1.9)) continue;
         if (gateHere && Math.hypot(q.x - gx, q.y - gy) < cw * .75) continue;   // the gateway, open
         const inset = Math.abs(q.tx) > Math.abs(q.ty) ? (q.tx > 0 ? 6 : 2) : 3.5; run.push({ x: q.x - q.ty * inset, y: q.y + q.tx * inset, tx: q.tx, ty: q.ty, i: run.length, big: .55 });
       }

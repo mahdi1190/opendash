@@ -157,7 +157,7 @@ window.GardenNativeWorld = (function () {
     const effectIds = new WeakMap(), creatureMotion = new WeakMap();
     const chunkWidth = W.cellW * 4, chunkHeight = W.cellH * 6;
     const route = scene.add.graphics(); route.setDepth(89000); root.add(route);
-    let model = null, modelKey = '', terrainKey = '', shorelineRevision = 0, sorted = false, dead = false, routeKey = '', fishZoom = 1, wasFishing = false, fishViewMode = '', playerViewKey = '', playerProfile = null, playerWardrobe = null, visibleStatic = 0, visibleTerrain = 0, cacheQuality = 0, terrainBaseQuality = 1, terrainBaseReady = 0;
+    let model = null, modelKey = '', terrainKey = '', terrainVisit = '', terrainLater = false, terrainStillAt = 0, shorelineRevision = 0, sorted = false, dead = false, routeKey = '', fishZoom = 1, wasFishing = false, fishViewMode = '', playerViewKey = '', playerProfile = null, playerWardrobe = null, visibleStatic = 0, visibleTerrain = 0, cacheQuality = 0, terrainBaseQuality = 1, terrainBaseReady = 0;
     let camera = { x: 0, y: 0, w: 800, h: 600, scale: 1, left: 0, top: 0 }, zoomInputAt = 0, activityCamera = null, cameraUiMode = '', cameraUiZoomIn = null, cameraUiZoomOut = null, size = { w: options.width || scene.scale.width || 1000, h: options.height || scene.scale.height || 700 };
     const playerNode = element(scene, 'g', { class: 'gd-player', 'data-live': '1' });
     // The Painted village stands the figure in the scenes' soft contact shadow; the pale halo read as a sticker's edge (94-garden-art-g-paint.js).
@@ -816,7 +816,7 @@ window.GardenNativeWorld = (function () {
       for (const pier of decks) {
         const x = pier.x * W.cellW, y = W.sky + pier.y * W.cellH, w = pier.w * W.cellW, h = pier.h * W.cellH;
         const node = element(scene, 'g', { class: 'gd-pier-deck', 'data-pier': pier.id }), pg = scene.add.graphics();
-        const b = pier.side === 'south' ? { x: x - 6, y: y - 1, width: w + 17, height: h + 13 } : { x: x - 4, y: y - 5, width: w + 8, height: h + 14 };
+        const b = pier.side === 'south' ? { x: x - 10, y: y - 16, width: w + 30, height: h + 36 } : { x: x - 4, y: y - 5, width: w + 8, height: h + 14 };
         node.nativeBounds = b; pierBoards.appendChild(node); node._inner.add(pg);
         pierDeckRecords.set(pier.id, { node, bounds: b });
         // The parent union is diagnostic only; caches and culling use each deck.
@@ -825,7 +825,9 @@ window.GardenNativeWorld = (function () {
         if (pier.side === 'south') {
           // (village fix round 1: the pier stands on piles in the water, with its shadow and the piles' reflections, instead of
           // a plank rectangle lying flat on the sea)
-          pg.fillStyle(0x0b2a3c, .12).fillRoundedRect(x + 2, y + 18, w + 16, h + 4, 9).fillStyle(0x0b2a3c, .18).fillRoundedRect(x + 6, y + 14, w + 6, h, 6);
+          // (village fix round 3: its shadow on the water laid in soft layers that fade out at the edge; two hard slabs of it
+          // read as a dark strip ruled down the deck's right side)
+          for (const [d, a] of [[13, .03], [10, .035], [7, .045], [4.5, .055], [2.2, .065]]) pg.fillStyle(0x0b2a3c, a).fillRoundedRect(x + 7 - d, y + 16 - d * .5, w + d * 2, h - 6 + d * 1.5, 5 + d);
           const pile = (px, top, len) => {
             pg.fillStyle(0x1f3a48, .3).fillRect(px - 2.4, top + len + 1.5, 4.8, 2.6).fillRect(px - 1.7, top + len + 5.5, 3.4, 1.8).fillRect(px - 2.1, top + len + 9, 4.2, 1.2);   // the reflection, broken by the ripples
             pg.fillStyle(0x3b2a19).fillRect(px - 2.7, top, 5.4, len).fillStyle(0x8a6a42, .45).fillRect(px - 2.2, top, 1.5, len).fillStyle(0x2a4a30, .7).fillRect(px - 2.7, top + len - 3.5, 5.4, 3.5);   // the pile, weedy at the tide
@@ -833,9 +835,26 @@ window.GardenNativeWorld = (function () {
           };
           for (let yy = y + W.cellH * .7; yy < y + h - 6; yy += W.cellH * 1.25) for (const px of [x - 2, x + w + 2]) pile(px, yy, 11);
           for (const px of [x + 3, x + w / 3, x + w * 2 / 3, x + w - 3]) pile(px, y + h, 12);
-          pg.fillStyle(0x796c51).fillRoundedRect(x - 4, y, w + 8, h, 4);
-          for (let yy = y + 3; yy < y + h - 3; yy += 14) { const bh = Math.min(12.5, y + h - 3 - yy); pg.fillStyle(Math.floor(yy / 14) % 3 ? 0xb19a71 : 0xbda77c).fillRect(x + 1, yy, w - 2, bh); if (bh > 2.4) pg.lineStyle(.8, 0xe6d5a8, .42).lineBetween(x + 7, yy + 2, x + w - 7, yy + 2); if (bh > 8.8) pg.fillStyle(0x68694e, .55).fillCircle(x + 7, yy + 8, .8).fillCircle(x + w - 7, yy + 8, .8); }
-          for (const xx of [x - 1, x + w + 1]) pg.fillStyle(0x716c50).fillRoundedRect(xx - 3, y + 4, 6, 16, 2).fillStyle(0xd0bd8c).fillEllipse(xx, y + 4, 7, 4);
+          pg.fillStyle(0x6a5c44).fillRoundedRect(x - 4, y, w + 8, h, 3);
+          // (village fix round 3) boards of their own lengths of timber: four weathered tones, a dark gap and a lit edge to
+          // each, nails over the two stringers, grain, a board here and there set a hand out of line
+          const tone = [0xb19a71, 0xbda77c, 0xa88f66, 0xc4b088], hsh = n => { let v = Math.imul(n ^ 0x9e37, 2654435761) >>> 0; v ^= v >>> 15; return (v >>> 0) / 4294967296; };
+          for (let yy = y + 2, k = 0; yy < y + h - 2; yy += 9.5, k++) { const bh = Math.min(8.6, y + h - 2 - yy), jx = (hsh(k * 7 + 3) - .5) * 2.2;
+            pg.fillStyle(tone[Math.floor(hsh(k * 13 + 1) * 4)]).fillRect(x - 1 + jx, yy, w + 2, bh);
+            if (bh > 2.4) pg.fillStyle(0xf0e2b8, .35).fillRect(x + jx, yy, w, 1).fillStyle(0x4e3e2a, .5).fillRect(x - 1 + jx, yy + bh - .9, w + 2, .9);
+            if (bh > 6) pg.fillStyle(0x4e4636, .7).fillCircle(x + 6 + jx, yy + bh / 2, .8).fillCircle(x + w - 6 + jx, yy + bh / 2, .8);
+            if (hsh(k * 5 + 9) < .6) pg.lineStyle(.6, 0x7a6448, .45).lineBetween(x + 12 + hsh(k) * (w - 40), yy + 2 + hsh(k + 99) * 4, x + 26 + hsh(k) * (w - 40), yy + 2 + hsh(k + 99) * 4); }
+          pg.fillStyle(0x5e4c34).fillRect(x - 4, y, 3, h).fillRect(x + w + 1, y, 3, h).fillStyle(0xd8c49a, .4).fillRect(x - 4, y, 1, h);   // the side beams
+          // posts along both sides with a rope swagged between them, a lifebuoy on one, a ladder down at the far end
+          const postAt = []; for (let yy = y + 4; yy < y + h - 4; yy += W.cellH * 1.25) postAt.push(yy); postAt.push(y + h - 4);
+          for (const xx of [x - 2.5, x + w + 2.5]) {
+            pg.lineStyle(1.5, 0xdccaa0, .95);
+            for (let i = 1; i < postAt.length; i++) { const a = postAt[i - 1] - 9, b = postAt[i] - 9, sag = (b - a) * .14; pg.beginPath(); pg.moveTo(xx, a); for (let t = 1; t <= 6; t++) { const u = t / 6; pg.lineTo(xx + (xx < x ? -1 : 1) * Math.sin(u * Math.PI) * 2.2, a + (b - a) * u + Math.sin(u * Math.PI) * sag * .3); } pg.strokePath(); }
+            for (const yy of postAt) pg.fillStyle(0x2a3a30, .25).fillEllipse(xx + 2, yy + 2, 8, 3).fillStyle(0x6e5a40).fillRoundedRect(xx - 2.8, yy - 13, 5.6, 15, 2).fillStyle(0xa88e66, .7).fillRect(xx - 2.1, yy - 12, 1.4, 13).fillStyle(0xd0bd8c).fillEllipse(xx, yy - 13, 6.4, 3.4);
+          }
+          { const by = y + h * .55, bx = x + w + 2.5; pg.lineStyle(3.2, 0xf4f0e6).strokeEllipse(bx + 5, by - 6, 11, 11).lineStyle(3.2, 0xd0402e, 1); for (const a0 of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) { pg.beginPath(); pg.arc(bx + 5, by - 6, 5.5, a0, a0 + .7); pg.strokePath(); } }
+          { const lx = x + w - 15; pg.lineStyle(1.7, 0x4e3e2c).lineBetween(lx, y + h - 6, lx, y + h + 15).lineBetween(lx + 8, y + h - 6, lx + 8, y + h + 15); for (let k = 0; k < 4; k++) pg.lineStyle(1.3, 0x8a7458).lineBetween(lx, y + h - 2 + k * 5, lx + 8, y + h - 2 + k * 5); pg.lineStyle(.9, 0xeaf6f4, .5).strokeEllipse(lx + 4, y + h + 15, 14, 3.4); }
+          pg.fillStyle(0x4a4a48).fillRoundedRect(x + w / 2 - 6, y + h - 9, 12, 3, 1.4).fillStyle(0x5c5c58).fillRoundedRect(x + w / 2 - 2, y + h - 10.5, 4, 4.4, 1);   // a cleat
           pg.fillStyle(0x5a4630).fillRect(x - 4, y + h - 1, w + 8, 4).fillStyle(0x3a2c1c, .55).fillRect(x - 4, y + h + 3, w + 8, 1.2);   // the deck's end beam (the next length of pier, when built, lies over it)
         } else {
           // Side decks retain a shallow timber edge and two water-end supports.
@@ -1097,7 +1116,12 @@ window.GardenNativeWorld = (function () {
       // geometry already participate through the surface and lake revisions.
       const cultivated = typeof gardenIslandActive === 'function' && gardenIslandActive() ? cultivatedSections(m) : null;
       const tk = [packOn() ? 'painted' : '', sc.season, sc.tod, m.level.level, (sc.areas || []).join(','), designRev, surfaceKey, lake && lake.revision, cultivated && [...cultivated].sort().join(','), deckKey].join('|');
-      if (terrainKey !== tk) { terrainKey = tk; drawTerrain(m, sc, lake, cultivated, decks); }
+      // (village fix round 3) a new level or a newly opened piece of land while you are walking (the garden earns a level
+      // from what you find on a walk) waits to be drawn until you stop: drawing the whole ground again is far longer than a
+      // frame, and walking must never stall. The walk itself already follows the new land; only the paint waits.
+      const visitKey = m.visit ? m.visit.key : '', walkingNow = !!terrainKey && visitKey === terrainVisit && typeof _gw !== 'undefined' && !!(_gw.moving || (_gw.path && _gw.path.length) || (_gw.keys && _gw.keys.size));
+      if (terrainKey !== tk && walkingNow) terrainLater = true;
+      else if (terrainKey !== tk) { terrainKey = tk; terrainVisit = visitKey; terrainLater = false; drawTerrain(m, sc, lake, cultivated, decks); }
       shorelineRevision = lake && lake.revision || 0;
       const keep = new Set(), modelPlants = new Map(m.plants.map(p => [p.uid, p])), modelDecor = new Map(m.decor.map(p => [p.uid, p]));
       const add = (id, html, metadata, depth, parent) => { if (!html) return; keep.add(id); return nodeDrawing(id, html, metadata, depth, parent); };
@@ -1671,6 +1695,8 @@ window.GardenNativeWorld = (function () {
       // Old-version lines can briefly preserve a shoreline cove without a
       // dashboard repaint. Ordinary swimming keeps this resident revision.
       if (model && typeof gardenLakeGeometry === 'function' && gardenLakeGeometry(model).revision !== shorelineRevision) sync(model);
+      // (village fix round 3) the ground held back while walking is drawn once you have stood still for a moment
+      if (terrainLater && model && !(_gw.moving || (_gw.path && _gw.path.length) || (_gw.keys && _gw.keys.size))) { if (!terrainStillAt) terrainStillAt = time; else if (time - terrainStillAt > 350) { terrainStillAt = 0; modelKey = ''; sync(model); } } else terrainStillAt = 0;
       _gw.frameActive = true; _gw.frameGrid = null; _gw.framePrefs = _gdpPrefs();
       try {
         if (editorPaint) { const paint = editorPaint; editorPaint = null; paint(); }

@@ -68,13 +68,16 @@ window.GardenPaintWood = (function () {
       p.moveTo(px(pts[0].x), py(pts[0].y)); for (let i = 1; i < pts.length; i++) p.lineTo(px(pts[i].x), py(pts[i].y));
       const width = gardenIslandRoadStyle(route).main ? 40 : 26;
       out.floorClip.routes.push({ path: p, width });
-      routeLines.push({ pts: pts.map(q => ({ x: px(q.x), y: py(q.y) })), half: width / 2 });
+      { const ps = pts.map(q => ({ x: px(q.x), y: py(q.y) })), xs = ps.map(q => q.x), ys = ps.map(q => q.y); routeLines.push({ pts: ps, half: width / 2, x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) }); }
     }
     // How far (world px) a trunk foot is from the edge of the nearest drawn path or plaza
     // line: a trunk never stands on a path's painted width, so it can collide without blocking it.
-    const pathGap = (X, Y) => { let best = Infinity; for (const r of routeLines) for (let i = 1; i < r.pts.length; i++) { const a = r.pts[i - 1], b = r.pts[i], dx = b.x - a.x, dy = b.y - a.y, L = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((X - a.x) * dx + (Y - a.y) * dy) / L)), d = Math.hypot(X - a.x - dx * t, Y - a.y - dy * t) - r.half; if (d < best) best = d; } return best; };
-    const wallPolys = (data.landforms || []).filter(f => f.kind === 'terrace-wall' && f.polygon && f.polygon.length > 2).map(f => f.polygon);
-    const onWall = (x, y) => wallPolys.some(p => [[0, 0], [.6, 0], [-.6, 0], [0, .5], [0, -.5]].some(([dx, dy]) => inside(x + dx, y + dy, p)));
+    // (a route whose whole box lies further off than the gap that matters is skipped: only the near ones are measured)
+    const pathGap = (X, Y) => { let best = Infinity; for (const r of routeLines) { if (X < r.x0 - r.half - 60 || X > r.x1 + r.half + 60 || Y < r.y0 - r.half - 60 || Y > r.y1 + r.half + 60) { best = Math.min(best, 60); continue; } for (let i = 1; i < r.pts.length; i++) { const a = r.pts[i - 1], b = r.pts[i], dx = b.x - a.x, dy = b.y - a.y, L = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((X - a.x) * dx + (Y - a.y) * dy) / L)), d = Math.hypot(X - a.x - dx * t, Y - a.y - dy * t) - r.half; if (d < best) best = d; } } return best; };
+    // (village fix round 3: each wall's box first, so the thousands of cells nowhere near a terrace wall skip the polygon
+    // tests; this alone was about 150 ms of every level-up, part of the stall when a level came while walking)
+    const wallPolys = (data.landforms || []).filter(f => f.kind === 'terrace-wall' && f.polygon && f.polygon.length > 2).map(f => { const xs = f.polygon.map(q => q[0]), ys = f.polygon.map(q => q[1]); return { p: f.polygon, x0: Math.min(...xs) - .7, x1: Math.max(...xs) + .7, y0: Math.min(...ys) - .6, y1: Math.max(...ys) + .6 }; });
+    const onWall = (x, y) => wallPolys.some(w => x >= w.x0 && x <= w.x1 && y >= w.y0 && y <= w.y1 && [[0, 0], [.6, 0], [-.6, 0], [0, .5], [0, -.5]].some(([dx, dy]) => inside(x + dx, y + dy, w.p)));
     for (const region of data.regions || []) {
       const def = WOODS[region.id]; if (!def) continue;
       const poly = region.polygons[0], season = info.season || 'summer';

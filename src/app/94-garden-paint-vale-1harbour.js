@@ -24,7 +24,8 @@
     if (NP && NP.fanSetts) NP.fanSetts(B.cx, bb, { P, salt: 23, rim: moss ? () => moss * 1.5 : null });
     else B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), P.stone);
     K.tiles(bb, 150, 0, salt + 90, (tx, ty, rr) => {
-      for (let k = 0; k < 2; k++) B.f(B.blob(rr, tx + rr() * 150, ty + rr() * 150, 30 + rr() * 40, 10 + rr() * 14, 9, .5), rr() < .55 ? '#f4e8c8' : '#7a6648', .09);
+      for (let k = 0; k < 3; k++) B.f(B.blob(rr, tx + rr() * 150, ty + rr() * 150, 30 + rr() * 40, 10 + rr() * 14, 9, .5), rr() < .5 ? '#f4e8c8' : '#6a5638', .13);   // (round 3: stronger, so the paving is not one even pattern)
+      for (let k = 0; k < 7; k++) { const x = tx + rr() * 150, y = ty + rr() * 150; B.s(`M${x - 1.2} ${y}l-.6 -3.4M${x} ${y}l.3 -4.2M${x + 1.2} ${y}l.8 -3`, rr() < .5 ? '#66763a' : '#7e8a46', .9, .85); }   // weeds in the joints
       if (rr() < .25) { const px = tx + 20 + rr() * 110, py = ty + 20 + rr() * 110, w = 9 + rr() * 9; B.f(B.blob(rr, px, py, w, w * .36, 9, .35), '#8a9a98', .4).f(B.blob(rr, px - w * .2, py - 1, w * .5, w * .12, 7, .4), '#e8f0ee', .4); }
     });
   }
@@ -296,6 +297,53 @@
   const drawFishBox = P => B => { B.shadow(1, 1, 14, 3, .3); crate(B, -12, 0, 22, 9, P, 1); for (let k = 0; k < 4; k++) B.f(B.ell(-8 + k * 5, -10, 2.6, 1.2), '#c8d4dc').f(B.ell(-8 + k * 5, -10.4, 1.6, .5), '#fff', .7); };
   const drawBuoy = P => B => { B.f(B.ell(0, 2, 8, 2.4), '#2e5a6a', .25); B.f(B.circ(0, -4, 5.4), '#c8402e').f(B.rect(-5.4, -5, 10.8, 2.2), '#f4efe2').f(B.circ(-1.8, -6, 1.6), '#fff', .5); B.s('M0 -9.4v-4', P.iron, 1.2); };
 
+  // (village fix round 3) Where the village's sand runs on into country that is still shut (the beach east of the
+  // lighthouse, the strand's far end), a rope line on driftwood posts stands along the edge where the feet stop, wrack
+  // caught round the posts' feet, so walking never stops at nothing. It follows the shut land's own cells (the stop line)
+  // and goes when that country opens.
+  const shutKey = () => { try { return (gardenModel().areas || []).filter(a => /^zn-/.test(a)).sort().join(','); } catch (e) { return ''; } };
+  V.groundSigs.push(() => '|rope:' + shutKey());
+  let ropeKey = null, ropeRuns = [];
+  function ropeLine(W) {
+    const k = shutKey(); if (k === ropeKey) return ropeRuns; ropeKey = k; ropeRuns = [];
+    let lv = 1; try { lv = gardenModel().level.level; } catch (e) { /* level 1 */ }
+    const base = (x, y) => { try { return gardenIslandBaseCell(x, y); } catch (e) { return null; } };
+    const shut = (x, y) => { const b = base(x, y); if (!b || !b.land || b.ocean) return false; try { return /^locked:zn-/.test(String(gardenAreaAt(x, y, lv))); } catch (e) { return false; } };
+    const sand = (x, y) => { const b = base(x, y); return !!b && b.land && !b.ocean && !!b.beach && !shut(x, y); };
+    const pts = [], cw = W.cellW, ch = W.cellH;
+    for (let y = QUAY.y0; y <= QUAY.y1; y++) for (let x = QUAY.x0; x <= QUAY.x1; x++) {
+      if (!sand(x, y)) continue;
+      // a point every third of a cell along each edge it shares with shut land, set a little into the shut side
+      if (shut(x + 1, y)) for (const t of [.17, .5, .83]) pts.push({ x: (x + 1.12) * cw, y: W.sky + (y + t) * ch });
+      if (shut(x - 1, y)) for (const t of [.17, .5, .83]) pts.push({ x: (x - .12) * cw, y: W.sky + (y + t) * ch });
+      if (shut(x, y + 1)) for (const t of [.17, .5, .83]) pts.push({ x: (x + t) * cw, y: W.sky + (y + 1.12) * ch });
+      if (shut(x, y - 1)) for (const t of [.17, .5, .83]) pts.push({ x: (x + t) * cw, y: W.sky + (y - .12) * ch });
+    }
+    if (!pts.length) return ropeRuns;
+    // chain them into runs, nearest next, and ease the cell steps into one line
+    const left = pts.slice(); left.sort((a, b) => a.y - b.y || a.x - b.x);
+    while (left.length) { const run = [left.shift()]; for (;;) { const e = run[run.length - 1]; let bi = -1, bd = 1e9; for (let i = 0; i < left.length; i++) { const d = Math.hypot(left[i].x - e.x, left[i].y - e.y); if (d < bd) { bd = d; bi = i; } } if (bi < 0 || bd > cw * 1.3) break; run.push(left.splice(bi, 1)[0]); }
+      if (run.length < 3) continue;
+      const sm = run.map((q, i) => { let sx = 0, sy = 0, n = 0; for (let j = Math.max(0, i - 2); j <= Math.min(run.length - 1, i + 2); j++) { sx += run[j].x; sy += run[j].y; n++; } return { x: sx / n, y: sy / n }; });
+      ropeRuns.push(sm); }
+    return ropeRuns;
+  }
+  function composeRope(C) {
+    const { kit, W, add, P } = C, box = [QUAY.x0 * W.cellW, W.sky + QUAY.y0 * W.cellH, QUAY.x1 * W.cellW, W.sky + QUAY.y1 * W.cellH];
+    add(box, 47, (B, r, cb) => {
+      for (const run of ropeLine(W)) {
+        const posts = V.walk(run, 21); if (posts.length < 2) continue;
+        const near = posts.filter(q => q.x > cb[0] - 40 && q.x < cb[2] + 40 && q.y > cb[1] - 30 && q.y < cb[3] + 40); if (!near.length) continue;
+        const rr = kit.rng(kit.hash(Math.round(posts[0].x), Math.round(posts[0].y), 47) | 1), H = posts.map(() => 13 + rr() * 5), lean = posts.map(() => (rr() - .5) * 2.4);
+        posts.forEach((q, i) => { B.f(B.ell(q.x + 2, q.y + 1, 6, 1.8), '#3a3020', .22); if (rr() < .55) B.f(B.blob(rr, q.x - 1, q.y + .5, 5 + rr() * 3, 1.6, 7, .5), rr() < .5 ? '#5e6a3a' : '#7a6a48', .8); });
+        for (let i = 1; i < posts.length; i++) { const a = posts[i - 1], b = posts[i], ya = a.y - H[i - 1] + 3, yb = b.y - H[i] + 3, mx = (a.x + b.x) / 2, my = (ya + yb) / 2 + 5;
+          B.s(`M${a.x + lean[i - 1]} ${ya}Q${mx} ${my} ${b.x + lean[i]} ${yb}`, '#5e4c36', 2.2, .35).s(`M${a.x + lean[i - 1]} ${ya - .6}Q${mx} ${my - .6} ${b.x + lean[i]} ${yb - .6}`, '#d8c8a0', 1.5, .95); }
+        posts.forEach((q, i) => { const h = H[i], lx = lean[i]; B.s(`M${q.x} ${q.y}L${q.x + lx} ${q.y - h}`, '#6e5a44', 3.6, .98).s(`M${q.x - .9} ${q.y}L${q.x + lx - .9} ${q.y - h}`, '#a89070', 1.2, .8).f(B.ell(q.x + lx, q.y - h, 1.9, 1), '#c8b494'); });
+      }
+    });
+  }
+
   V.softRoutes.add('strand'); V.softRoutes.add('lighthouse-walk');
   V.parts.push({ id: 'harbour', compose });
+  V.parts.push({ id: 'harbour-rope', compose: composeRope });
 })();

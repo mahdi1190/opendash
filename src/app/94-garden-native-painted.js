@@ -448,6 +448,18 @@ window.GardenNativePainted = (function () {
         cx.save(); cx.lineJoin = 'round'; cx.globalAlpha = .9; cx.strokeStyle = '#9c8a6a'; cx.lineWidth = 5; cx.stroke(sq); cx.strokeStyle = '#b8a582'; cx.setLineDash([3.4, 1.3]); cx.lineWidth = 3.6; cx.stroke(sq); cx.setLineDash([]); cx.restore();
         cx.globalAlpha = 1;
       }
+      // (village fix round 3) the paving lived in: broad patches of damp and of sun-bleached stone, a shallow puddle or two
+      // holding the sky, weeds in the cracks, a drain, and in autumn leaves blown against the kerb (one even pattern read
+      // as wallpaper or as sand from the walking camera)
+      { const pr = rng(7717 + Math.round(b.x * 3 + b.y)), n = Math.max(4, Math.min(44, Math.round(b.w * b.h / 8000))), season = info.season || 'summer';
+        for (let k = 0; k < n; k++) { const x = b.x + pr() * b.w, y = b.y + pr() * b.h; if (!inU(x, y)) continue; cx.globalAlpha = .09 + pr() * .1; cx.fillStyle = pr() < .45 ? '#5a4c34' : '#f6ecd0'; cx.beginPath(); cx.ellipse(x, y, 22 + pr() * 46, 8 + pr() * 15, (pr() - .5) * .6, 0, 7); cx.fill(); }
+        for (let k = 0; k < Math.max(2, Math.round(n / 6)); k++) { const x = b.x + pr() * b.w, y = b.y + pr() * b.h, w = 8 + pr() * 12; if (!inU(x - w - 4, y) || !inU(x + w + 4, y) || !inU(x, y - 6) || !inU(x, y + 6) || inRose(x, y)) continue;
+          cx.globalAlpha = .45; cx.fillStyle = '#6a7470'; cx.beginPath(); cx.ellipse(x, y, w, w * .36, 0, 0, 7); cx.fill(); cx.globalAlpha = .6; cx.fillStyle = '#b4c8d0'; cx.beginPath(); cx.ellipse(x - w * .08, y - w * .04, w * .84, w * .26, 0, 0, 7); cx.fill(); cx.globalAlpha = .75; cx.fillStyle = '#f2f8f6'; cx.beginPath(); cx.ellipse(x - w * .34, y - w * .1, w * .24, w * .05, 0, 0, 7); cx.fill(); }
+        cx.globalAlpha = .9; cx.lineWidth = .9;
+        for (let k = 0; k < n * 4; k++) { const x = b.x + pr() * b.w, y = b.y + pr() * b.h; if (!inU(x, y) || inRose(x, y)) continue; cx.strokeStyle = pr() < .5 ? '#66763a' : '#7e8a46'; cx.beginPath(); for (let j = 0; j < 3; j++) { cx.moveTo(x + j * 1.3 - 1.3, y); cx.lineTo(x + (j - 1) * 1.8 + (pr() - .5) * 1.6, y - 2.4 - pr() * 2.6); } cx.stroke(); }
+        for (let k = 0; k < Math.max(1, Math.round(n / 14)); k++) { const x = b.x + pr() * b.w, y = b.y + pr() * b.h; if (!inU(x - 9, y) || !inU(x + 9, y) || inRose(x, y)) continue; cx.globalAlpha = 1; cx.fillStyle = '#5a5650'; cx.fillRect(x - 7, y - 3, 14, 6); cx.fillStyle = '#2e2c28'; for (let j = 0; j < 5; j++) cx.fillRect(x - 5.6 + j * 2.4, y - 2, 1.2, 4); cx.fillStyle = '#8a8478'; cx.fillRect(x - 7, y - 3, 14, .9); }
+        if (season === 'autumn') for (let k = 0; k < n * 6; k++) { const x = b.x + pr() * b.w, y = b.y + pr() * b.h; if (!inU(x, y) || (inU(x, y + 9) && inU(x, y - 9) && inU(x + 12, y) && inU(x - 12, y) && pr() < .85)) continue; cx.globalAlpha = .9; cx.fillStyle = ['#c8702a', '#d8a040', '#a8501c', '#b8863a'][Math.floor(pr() * 4)]; cx.beginPath(); cx.ellipse(x, y, 1.8 + pr(), 1 + pr() * .5, pr() * 3, 0, 7); cx.fill(); }
+      }
       cx.globalAlpha = 1;
       // the rose: an inlaid ring of dark stone, a pale field, the points in honey stone, softened by wear
       if (rose) {
@@ -552,17 +564,17 @@ window.GardenNativePainted = (function () {
   // Library buildings, each its own kind, sized to the old footprint so doors,
   // aprons, picking and depth stay where they were.
   const BUILD = {
-    'garden-shop': { obj: 'building.green-cottage', v: 0, w: 200, wallWidth: 150, door: '#2f5a3a', sign: 'Seed & Stem', extra: [['plant.planter', 1, -110, 0, 28], ['plant.planter', 0, 110, 0, 28], ['plant.rph-flower-tub', 1, -80, 8, 20]] },   // (four cells: a shop stands larger than the cottages)
+    'garden-shop': { obj: 'building.green-cottage', v: 0, w: 200, wallWidth: 150, door: '#2f5a3a', sign: 'Seed & Stem', shop: [0x3e7a4a, 0xf2ead2], extra: [['plant.planter', 1, -110, 0, 28], ['plant.planter', 0, 110, 0, 28], ['plant.rph-flower-tub', 1, -80, 8, 20]] },   // (four cells: a shop stands larger than the cottages)
     // (the Land Office and Tackle & Tide four cells wide, round 3: shops stand larger than the cottages)
     'land-office': { obj: 'building.cottage', v: 1, w: 190, wallWidth: 160, door: '#5a3a2a', sign: 'Land Office', extra: [['street.lamp', 0, -102, 4, 0, 74]] },   // (the lamp on the door's side of the west corner: the lake walk passes just outside it)
     'tackle-shop': { obj: 'building.fpv-sailing-hut', v: 0, w: 200, wallWidth: 376, wallCenterX: -8, wallFootY: 14, clickTop: .3, sign: 'Tackle & Tide', extra: [['street.mqn-lifebuoy', 0, 104, 2, 0, 32]] },
     'market-stall': { obj: 'structure.mcr-market-chalet', v: 1, w: 104, wallWidth: 200 },
     // the high street's cottages (2.74), each its own kind so the street is not one house four times. Three cells wide, so
     // the ridge stands about 3.5 times the player's height (common size standard); the low thatched kind would stay under 2.5.
-    'ld-cottage-1': { obj: 'building.cottage', v: 2, w: 150, wallWidth: 160, door: '#2f5a44', extra: [['plant.rph-flower-tub', 1, -62, 6, 20]] },
+    'ld-cottage-1': { obj: 'building.thatched-cottage', v: 1, w: 160, wallWidth: 216, door: '#2f5a44', extra: [['plant.rph-flower-tub', 1, -62, 6, 20]] },
     'ld-cottage-2': { obj: 'building.cottage', v: 0, w: 150, wallWidth: 160, door: '#2a3e66', extra: [['plant.planter', 1, 64, 0, 24]] },
     'ld-cottage-3': { obj: 'building.cottage', v: 1, w: 150, wallWidth: 160, door: '#7a2e2a', extra: [['plant.planter', 0, 64, 0, 24]] },
-    'ld-cottage-4': { obj: 'building.green-cottage', v: 2, w: 150, wallWidth: 150, door: '#4a5a3a', extra: [['plant.rph-flower-tub', 0, -62, 6, 20]] },
+    'ld-cottage-4': { obj: 'building.green-cottage', v: 2, w: 150, wallWidth: 150, door: '#2e4a6a', porch: 1, extra: [['plant.rph-flower-tub', 0, -62, 6, 20], ['street.mqn-lifebuoy', 0, 60, 2, 0, 22]] },
   };
   const HALL = [
     // (four cells wide from round 3: the hall stands larger than the cottages; w is its shadow's width)
@@ -605,6 +617,31 @@ window.GardenNativePainted = (function () {
       g.fillStyle(0xd8b24a).fillCircle(x + dw * .3, by - dh * .42, 1.3).fillRect(x - dw * .14, by - dh * .5, dw * .28, 1.4);
       g.fillStyle(0xc8bca4).fillRect(x - dw / 2 - 5, by - 1.5, dw + 10, 3.4).fillStyle(0xe0d6c0).fillRect(x - dw / 2 - 5, by - 1.5, dw + 10, 1);
       g.fillStyle(0x4a3c32).fillTriangle(x - dw / 2 - 6, by - dh - 2.6, x + dw / 2 + 6, by - dh - 2.6, x, by - dh - 12).fillStyle(0x6a5646).fillTriangle(x - dw / 2 - 4, by - dh - 3.4, x, by - dh - 3.4, x, by - dh - 10.6);
+      node._inner.add(g);
+    }
+    // (village fix round 3) a shop is told from the houses by its front: a striped awning over the ground floor with a
+    // scalloped valance, a bench of seed trays and potted seedlings under the window and a chalkboard by the door; the
+    // harbour master's house has a white-painted porch over its door and a lifebuoy by it
+    if (def.shop) {
+      const g = scene.add.graphics(), x = cx - (def.wallCenterX || 0) * scale, by = foot - (def.wallFootY || 0) * scale - 1, half = prop.w * W.cellW / 2 - 10, top = by - 66, bot = by - 50, n = 14, sw = half * 2 / n, bw = (half * 2 + 12) / n;
+      g.fillStyle(0x2a2418, .22).fillRect(x - half - 2, bot, half * 2 + 4, 7);
+      for (let i = 0; i < n; i++) g.fillStyle(i % 2 ? def.shop[1] : def.shop[0]).fillPoints([{ x: x - half + i * sw, y: top }, { x: x - half + (i + 1) * sw, y: top }, { x: x - half - 6 + (i + 1) * bw, y: bot }, { x: x - half - 6 + i * bw, y: bot }], true);
+      for (let i = 0; i < n; i++) g.fillStyle(i % 2 ? def.shop[1] : def.shop[0]).fillCircle(x - half - 6 + (i + .5) * bw, bot, bw / 2);
+      g.fillStyle(0xffffff, .16).fillRect(x - half, top, half * 2, 3).fillStyle(0x3a2e22).fillRect(x - half - 2, top - 2, half * 2 + 4, 2.4);
+      for (const ex of [x - half - 2, x + half + 2]) g.fillStyle(0x3a2e22).fillRect(ex - 1, top - 2, 2, 18);
+      // the seed bench under the left window
+      const sx = x - half * .58; g.fillStyle(0x2a2418, .25).fillEllipse(sx + 2, by + 1.5, 46, 5).fillStyle(0x6e5236).fillRect(sx - 21, by - 12, 42, 3.4).fillRect(sx - 19, by - 9, 2.6, 9).fillRect(sx + 16.4, by - 9, 2.6, 9);
+      for (let k = 0; k < 4; k++) { const px = sx - 16 + k * 10.5; g.fillStyle(0x9a5a3a).fillRect(px - 3.6, by - 19, 7.2, 6.4).fillStyle(0xb06a44).fillRect(px - 4.2, by - 19.6, 8.4, 1.8).fillStyle(k % 2 ? 0x5e8a3a : 0x7aa04a).fillCircle(px - 1.4, by - 21.6, 2.6).fillCircle(px + 1.6, by - 22.4, 2.4).fillStyle(k === 1 ? 0xe8b830 : k === 3 ? 0xd85a6a : 0x6e9a40).fillCircle(px, by - 24, 1.5); }
+      // a chalkboard on an easel by the door
+      const bx = x + half * .62; g.fillStyle(0x2a2418, .25).fillEllipse(bx + 2, by + 1, 18, 3.4).fillStyle(0x6e5236).fillPoints([{ x: bx - 8, y: by }, { x: bx - 2, y: by - 26 }, { x: bx + 2, y: by - 26 }, { x: bx + 8, y: by }], false).fillStyle(0x2e3a34).fillRect(bx - 7, by - 24, 14, 16).fillStyle(0xf0ead8, .85).fillRect(bx - 4.5, by - 21, 9, 1.2).fillRect(bx - 4.5, by - 17.6, 6, 1.2).fillRect(bx - 4.5, by - 14.2, 7.6, 1.2);
+      node._inner.add(g);
+    }
+    if (def.porch && def.door) {
+      const g = scene.add.graphics(), x = cx - (def.wallCenterX || 0) * scale + (def.doorDx || 0), by = foot - (def.wallFootY || 0) * scale - 1, pw = 34, ph = 62;
+      g.fillStyle(0x2a2418, .2).fillRect(x - pw / 2 + 3, by - ph + 12, pw, ph - 12);
+      for (const px of [x - pw / 2, x + pw / 2 - 3.4]) g.fillStyle(0xf2efe6).fillRect(px, by - ph + 10, 3.4, ph - 10).fillStyle(0xcfc8b8).fillRect(px + 2.4, by - ph + 10, 1, ph - 10);
+      g.fillStyle(0xf2efe6).fillTriangle(x - pw / 2 - 4, by - ph + 11, x + pw / 2 + 4, by - ph + 11, x, by - ph - 4).fillStyle(0x5a6470).fillTriangle(x - pw / 2 - 6, by - ph + 9, x + pw / 2 + 6, by - ph + 9, x, by - ph - 7).fillStyle(0xf2efe6).fillTriangle(x - pw / 2 + 1, by - ph + 9, x + pw / 2 - 1, by - ph + 9, x, by - ph - 2);
+      g.fillStyle(0xd8b24a).fillCircle(x, by - ph + 3, 2.2);
       node._inner.add(g);
     }
     for (const [id, v, dx, dy, w, h] of def.extra || []) { if (!sceneObj(id)) continue; const im = objectImage(scene, id, v, season, w ? { w } : { h }, cx + dx, foot + dy, night); if (im) { node._inner.addAt(im, dy > 0 ? node._inner.list.length : 1); parts.push([im, id, v, w ? { w } : { h }]); } }
