@@ -880,9 +880,9 @@
    "note": "the bee wall raised and thickened; the rope ring at 72.4,44.0 faces the bee walk"
   },
   "ld-treehouse": {
-   "x": 85,
+   "x": 84,
    "y": 46,
-   "w": 1,
+   "w": 2,
    "h": 1,
    "door": {
     "x": 84,
@@ -890,7 +890,7 @@
    },
    "tallH": 4.2,
    "tree": true,
-   "note": "sweet chestnut (crown 3.2 H) with the treehouse; ladder on the cove walk; kept off the pier apron"
+   "note": "sweet chestnut (crown 3.2 H) with the treehouse; ladder on the cove walk; kept off the pier apron; two cells wide, as wide as its drawn root bank (collision audit)"
   }
  },
  "newStatics": [

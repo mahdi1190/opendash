@@ -58,7 +58,10 @@
 
   // The folly: a round tower of pale stone on the ridge, a slate cap and a weathervane; a studded door kept locked,
   // and the camera obscura's high window under the cap.
-  ART['ld-folly'] = { box: [-46, -176, 48, 12], draw(B, o) {
+  // (round 3 layouts) drawn at the size standard on its 3 x 2 footprint on the ridge: about 2.5 H across and 7 H to the vane
+  // (the same drawing, scaled: 1.9 across, 1.6 up), so it stands over the orchard and what you click is the tower
+  ART['ld-folly'] = { box: [-88, -282, 92, 20], draw(B, o) {
+    B.cx.scale(1.9, 1.6);
     const r = KIT().rng(73), s = o.season, R = 26, top = -128;
     B.shadow(8, 2, 44, 9, .34);
     // the drum: shaded round, lit from the upper left
@@ -224,12 +227,13 @@
     const r = KIT().rng(107), s = o.season;
     B.shadow(3, 2, 24, 5, .3);
     for (const x of [-19, 15]) B.f(B.rect(x, -54, 4, 54), '#6a4e30').f(B.rect(x, -54, 1.3, 54), '#9a7a54', .8);
+    B.f(rr(-23, -3, 46, 5, 2), LIME.rockLo).f(B.rect(-23, -3, 46, 1.4), LIME.rockHi);   // (a stone kerb the posts are set in: its foot is the board's foot)
     B.f(B.poly([[-26, -52], [0, -62], [26, -52], [24, -49], [-24, -49]]), '#5a4434').f(B.poly([[-26, -52], [0, -62], [0, -58], [-24, -49]]), '#7a6250', .8);
     B.f(B.rect(-17, -48, 34, 28), '#7a5a3a').f(B.rect(-15.5, -46.5, 31, 25), '#2f3a34');
     B.s('M-12 -41h14M-12 -36h10', '#e8e4d8', 1.2, .85).f(B.circ(8, -39, 3), '#d0a040', .9);
     for (const [x, y, w, h, c] of [[-13, -31, 9, 9, '#efe6cc'], [-2, -32, 8, 10, '#f4e9a8'], [8, -30, 7, 8, '#f0dede']]) { B.f(B.rect(x, y, w, h), c).f(B.circ(x + w / 2, y + 1.2, .9), '#a03a2a'); B.s(`M${x + 1.4} ${y + 3.4}h${w - 3}M${x + 1.4} ${y + 5.6}h${w - 4}`, '#6a6050', .6, .7); }
     if (s === 'winter') B.f(B.poly([[-26, -53], [0, -63], [26, -53], [0, -59]]), '#f4f6f2', .9);
-    else B.tufts(r, -18, 1, 6, 5, ['#7c9a4e', '#9a9a52'], 5).tufts(r, 18, 1, 6, 5, ['#7c9a4e', '#9a9a52'], 5);
+    else B.tufts(r, -18, -1, 6, 4, ['#7c9a4e', '#9a9a52'], 5).tufts(r, 18, -1, 6, 4, ['#7c9a4e', '#9a9a52'], 5);
   } };
 
   // The cliff pippin: a small wild apple (2.2 H) leaning out to sea from a knuckle of rock and thrift at the cliff top.
@@ -246,7 +250,7 @@
   } };
 
   // Lit at night, as world point lights (94-garden-native-world.js reads a painted handle's lights): [dx, dy, radius] from the foot.
-  const LIGHTS = { 'ld-barrels': [[40, -52, 96]], 'ld-folly': [[0, -112, 70]], 'ld-treehouse': [[-26, -126, 64]] };
+  const LIGHTS = { 'ld-barrels': [[40, -52, 96]], 'ld-folly': [[0, -180, 90]], 'ld-treehouse': [[-26, -126, 64]] };
   const landmark = GardenPaintedMarks.landmark;
   GardenPaintedMarks.landmark = function (scene, prop, sc, element, W) {
     const h = landmark.apply(this, arguments), list = h && prop && LIGHTS[prop.id];
