@@ -371,6 +371,11 @@ window.GardenNativePainted = (function () {
         cx.strokeStyle = '#c0aa82'; cx.setLineDash([6.5, 2.4]); cx.lineWidth = 7; cx.stroke(U); cx.setLineDash([]);
         cx.restore();
       }
+      // the paved shape as a small mask, drawn once and read for every stone and every blade at the rim (asking the canvas
+      // whether each point lies in the path took about two seconds whenever the village ground was painted again, at a level-up)
+      const MK = .5, mkw = Math.ceil((b.w + 48) * MK), mkh = Math.ceil((b.h + 48) * MK), mk = document.createElement('canvas'); mk.width = mkw; mk.height = mkh;
+      const mkx = mk.getContext('2d', { willReadFrequently: true }); mkx.setTransform(MK, 0, 0, MK, -(b.x - 24) * MK, -(b.y - 24) * MK); mkx.fill(U, 'nonzero');
+      const mkd = mkx.getImageData(0, 0, mkw, mkh).data, inU = (x, y) => { const i = Math.floor((x - b.x + 24) * MK), k = Math.floor((y - b.y + 24) * MK); return i >= 0 && k >= 0 && i < mkw && k < mkh && mkd[(k * mkw + i) * 4 + 3] > 127; };
       cx.save(); cx.fillStyle = '#ae9c78'; cx.fill(U, 'nonzero'); cx.clip(U, 'nonzero');
       const inRose = (x, y) => !!rose && Math.hypot((x - ccx) / 46, (y - ccy) / 25.3) < 1;
       for (let y = b.y - 4; y < b.y + b.h + 4;) {
@@ -378,7 +383,7 @@ window.GardenNativePainted = (function () {
         while (x < b.x + b.w + 4) {
           const w = 8 + r() * 8, x0 = x + .9, y0 = y + .9, x1 = x + w - .9, y1 = y + rh - .9, mx = (x0 + x1) / 2, my = (y0 + y1) / 2; x += w;
           if (inRose(mx, my)) continue;
-          const inU = (x, y) => cx.isPointInPath(U, (x - B.x) * K, (y - B.y) * K), j = () => (r() - .5) * 1.4;
+          const j = () => (r() - .5) * 1.4;
           if (ribs.length && !inU(mx, my) && !inU(x0, y0) && !inU(x1, y1) && !inU(x1, y0) && !inU(x0, y1)) continue;   // (off the paving: nothing to lay)
           const d = ribs.length ? (Math.hypot((mx - ccx) / 150, (my - ccy) / 70) < 1 ? .3 : inU(mx, my - 6) && inU(mx, my + 6) && inU(mx - 9, my) && inU(mx + 9, my) ? .62 : 1) : Math.hypot((mx - pz.centre.x) / (b.w / 2), (my - pz.centre.y) / (b.h / 2));
           const tone = r(), base = tone < .15 ? '#c8b08a' : tone < .4 ? '#d4be96' : tone < .65 ? P.stone : tone < .82 ? '#dcc9a4' : tone < .93 ? '#cdb68e' : '#d8c2aa';
@@ -409,7 +414,7 @@ window.GardenNativePainted = (function () {
       cx.restore();
       if (ribs.length) {
         // turf growing in over the kerb from outside, all round the shape: blades rooted just off its edge
-        const inU = (x, y) => cx.isPointInPath(U, (x - B.x) * K, (y - B.y) * K), edge = [];
+        const edge = [];
         const q = pz.points; for (let i = 0; i < q.length; i++) { const a = q[i], c = q[(i + 1) % q.length], L = Math.hypot(c.x - a.x, c.y - a.y); for (let t = 0; t < L; t += 2.6) edge.push([a.x + (c.x - a.x) * t / L, a.y + (c.y - a.y) * t / L]); }
         for (const rt of ribs) for (let i = 1; i < rt.points.length; i++) { const a = rt.points[i - 1], c = rt.points[i], L = Math.hypot(c.x - a.x, c.y - a.y) || 1, nx = -(c.y - a.y) / L, ny = (c.x - a.x) / L; for (let t = 0; t < L; t += 2.6) for (const sd of [-1, 1]) { const h = (rt.half[i - 1] + (rt.half[i] - rt.half[i - 1]) * t / L) * sd; edge.push([a.x + (c.x - a.x) * t / L + nx * h, a.y + (c.y - a.y) * t / L + ny * h]); } }
         cx.lineCap = 'round';
