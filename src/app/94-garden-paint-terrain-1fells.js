@@ -700,9 +700,15 @@ window.GardenPaintedTerrain = (function () {
     const Ks = Math.abs(cx.getTransform().a) || 1, fb = kit.bboxOf(foot || [{ x: -w / 2, y: -d }, { x: w / 2, y: 0 }]);
     const ring = []; for (let k = 0; k <= 40; k++) { const a = Math.PI * k / 40; ring.push({ x: (fb[0] + fb[2]) / 2 - Math.cos(a) * (fb[2] - fb[0]) / 2 * 1.02, y: (fb[1] + fb[3]) / 2 + Math.sin(a) * (fb[3] - fb[1]) / 2 * 1.04 }); }
     const skirtCol = snowShare > .7 ? P.snow : '#a2a36a', skirtLo = snowShare > .7 ? P.snowSh : '#83875a';
-    cx.filter = 'blur(' + (2.6 * Ks).toFixed(2) + 'px)';
-    for (let i = 0; i < ring.length; i += 2) { const p = ring[i], rx = 10 + r() * 14, ry = 4 + r() * 5; B.f(B.blob(r, p.x + 3, p.y + 2, rx, ry, 8, .4), skirtLo, .45); B.f(B.blob(r, p.x, p.y - 2 - r() * 4, rx, ry, 8, .4), skirtCol, .7); }
-    cx.filter = 'none';
+    // (the skirt is laid soft on a canvas at a third of the resolution and stretched over the foot: a canvas blur at the
+    // sprite's own level took seconds when the sharpener painted a peak again at a close zoom; this is the same picture
+    // at every level for a few milliseconds)
+    const sk = [fb[0] - 50, fb[1] - 30, fb[2] + 50, fb[3] + 30], SQ = 3, sw = Math.ceil((sk[2] - sk[0]) / SQ), sh = Math.ceil((sk[3] - sk[1]) / SQ);
+    const sc = document.createElement('canvas'); sc.width = sw; sc.height = sh; const sx = sc.getContext('2d'); sx.setTransform(1 / SQ, 0, 0, 1 / SQ, -sk[0] / SQ, -sk[1] / SQ);
+    const sf = (d, col, a) => { sx.globalAlpha = a; sx.fillStyle = col; sx.fill(typeof d === 'string' ? new Path2D(d) : d); };
+    for (let i = 0; i < ring.length; i += 2) { const p = ring[i], rx = 10 + r() * 14, ry = 4 + r() * 5; sf(B.blob(r, p.x + 3, p.y + 2, rx, ry, 8, .4), skirtLo, .45); sf(B.blob(r, p.x, p.y - 2 - r() * 4, rx, ry, 8, .4), skirtCol, .7); }
+    const sc2 = document.createElement('canvas'); sc2.width = sw; sc2.height = sh; const s2 = sc2.getContext('2d'); s2.filter = 'blur(.9px)'; s2.drawImage(sc, 0, 0); s2.filter = 'none';
+    cx.save(); cx.globalAlpha = 1; cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high'; cx.drawImage(sc2, sk[0], sk[1], sw * SQ, sh * SQ); cx.restore(); void Ks;
     for (let i = 0; i < ring.length; i += 2) { const p = ring[i]; if (r() < .4) continue; if (snowShare > .7) B.f(B.blob(r, p.x, p.y - r() * 6, 5 + r() * 6, 1.6 + r() * 2, 6, .5), P.snowSh, .6); else B.heather(r, p.x + (r() - .5) * 8, p.y - r() * 8, 5 + r() * 5, Object.assign({}, P, { heather: kit.mix(P.heather, P.fell, .3), heatherLo: kit.mix(P.heatherLo, P.fellLo, .4) }), P.bloom && r() < .4 ? P.bloom : null); }
     for (let k = 0; k < 7; k++) { const p = ring[Math.floor(r() * ring.length)]; B.boulder(r, p.x + (r() - .5) * 24, p.y + 4 + r() * 10, 8 + r() * 12, 6 + r() * 7, P, snowShare > .7); }
   }
