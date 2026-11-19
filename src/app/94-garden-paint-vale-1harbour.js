@@ -337,7 +337,9 @@
         const rr = kit.rng(kit.hash(Math.round(posts[0].x), Math.round(posts[0].y), 47) | 1), H = posts.map(() => 13 + rr() * 5), lean = posts.map(() => (rr() - .5) * 2.4);
         posts.forEach((q, i) => { B.f(B.ell(q.x + 2, q.y + 1, 6, 1.8), '#3a3020', .22); if (rr() < .55) B.f(B.blob(rr, q.x - 1, q.y + .5, 5 + rr() * 3, 1.6, 7, .5), rr() < .5 ? '#5e6a3a' : '#7a6a48', .8); });
         for (let i = 1; i < posts.length; i++) { const a = posts[i - 1], b = posts[i], ya = a.y - H[i - 1] + 3, yb = b.y - H[i] + 3, mx = (a.x + b.x) / 2, my = (ya + yb) / 2 + 5;
-          B.s(`M${a.x + lean[i - 1]} ${ya}Q${mx} ${my} ${b.x + lean[i]} ${yb}`, '#5e4c36', 2.2, .35).s(`M${a.x + lean[i - 1]} ${ya - .6}Q${mx} ${my - .6} ${b.x + lean[i]} ${yb - .6}`, '#d8c8a0', 1.5, .95); }
+          B.s(`M${a.x + lean[i - 1]} ${ya}Q${mx} ${my} ${b.x + lean[i]} ${yb}`, '#5e4c36', 2.2, .35).s(`M${a.x + lean[i - 1]} ${ya - .6}Q${mx} ${my - .6} ${b.x + lean[i]} ${yb - .6}`, '#d8c8a0', 1.5, .95);
+          // faded pennants on the rope, so the line reads from across the beach even where it runs away from you
+          for (const t of [.3, .65]) { const u = 1 - t, px = u * u * (a.x + lean[i - 1]) + 2 * u * t * mx + t * t * (b.x + lean[i]), py = u * u * ya + 2 * u * t * my + t * t * yb; B.f(B.poly([[px - 2.6, py], [px + 2.6, py], [px, py + 5.4]]), t < .5 ? '#c8503a' : '#efe4c8', .92); } }
         posts.forEach((q, i) => { const h = H[i], lx = lean[i]; B.s(`M${q.x} ${q.y}L${q.x + lx} ${q.y - h}`, '#6e5a44', 3.6, .98).s(`M${q.x - .9} ${q.y}L${q.x + lx - .9} ${q.y - h}`, '#a89070', 1.2, .8).f(B.ell(q.x + lx, q.y - h, 1.9, 1), '#c8b494'); });
       }
     });

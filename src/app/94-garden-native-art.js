@@ -1110,7 +1110,7 @@ window.GardenNativeArt = (function () {
   }
   function releaseCache(node, keepBase) {
     const state = stateFor(node.scene), cache = node._cache;
-    const discard = capture => { for (const tile of capture.tiles) tile.destroy(); state.cacheBytes = Math.max(0, state.cacheBytes - capture.bytes); state.cachedTiles = Math.max(0, state.cachedTiles - capture.tiles.length); };
+    const discard = capture => { for (const tile of capture.tiles) retireTile(tile); state.cacheBytes = Math.max(0, state.cacheBytes - capture.bytes); state.cachedTiles = Math.max(0, state.cachedTiles - capture.tiles.length); };
     if (cache) {
       for (const child of cache.originals) if (child && child.active) { if (child._nativeCacheHiddenBy === node) delete child._nativeCacheHiddenBy; child.setVisible(cache.visible.get(child)); }
       discard(cache); node._cache = null; state.cachedNodes.delete(node);
@@ -1134,8 +1134,32 @@ window.GardenNativeArt = (function () {
     node._cache = cache; node._cacheBase = null; stateFor(node.scene).cachedNodes.add(node);
   }
   function capturePixels(size) { return Math.max(2, Math.ceil(size / 2) * 2); }
+  // (village fix round 3) Capture textures are kept for the next capture of the same size instead of being destroyed and
+  // made again: making one asks the graphics card to set up a new frame buffer and wait for it, 40 to 150 ms each time a
+  // view is captured again while you walk. A bounded pool (16 MB), per scene; anything over it is destroyed as before.
+  const RT_POOL_MAX = 16 * 1024 * 1024, rtPool = new Map(); let rtPoolBytes = 0;
+  function retireTile(tile) {
+    try {
+      const w = tile.width, h = tile.height, bytes = w * h * 4;
+      if (tile.scene && tile.active !== false && rtPoolBytes + bytes <= RT_POOL_MAX) {
+        if (tile.parentContainer) tile.parentContainer.remove(tile);
+        if (tile.removeFromDisplayList) tile.removeFromDisplayList();
+        tile.setVisible(false); const key = w + 'x' + h; let list = rtPool.get(key); if (!list) rtPool.set(key, list = []); list.push(tile); rtPoolBytes += bytes; return;
+      }
+    } catch (e) { /* destroyed below */ }
+    try { tile.destroy(); } catch (e) { /* already gone */ }
+  }
+  function pooledTile(scene, x, y, w, h) {
+    const list = rtPool.get(w + 'x' + h);
+    while (list && list.length) {
+      const rt = list.pop(); rtPoolBytes = Math.max(0, rtPoolBytes - w * h * 4);
+      if (rt.scene === scene && rt.active !== false) { rt.setPosition(x, y).setOrigin(0, 0).setScale(1).setRotation(0).setAlpha(1).setVisible(true); rt.clear(); return rt; }
+    }
+    return null;
+  }
   function captureTile(node, x, y, width, height) {
     const w = capturePixels(width), h = capturePixels(height);
+    { const rt = pooledTile(node.scene, x, y, w, h); if (rt) return rt; }
     // Phaser first allocates at the supplied size, then its default forceEven
     // setSize rounds odd sizes up and allocates again. Supply that same final
     // size immediately; tile coverage, pixels and scale stay unchanged.

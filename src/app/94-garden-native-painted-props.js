@@ -372,9 +372,11 @@ window.GardenPaintedProps = (function () {
       const P = PAINT[which], more = P.sig ? ok(() => P.sig(prop, sc)) || '' : '', key = bake(scene, which + '|' + season + '|' + (night ? 'n' : 'd') + more, P.box, B => P.draw(B, { season, night, prop, sc, more }));
       // The public board's two 7px posts stand at +/-36 and end at y=1.
       // Align those feet with its protected span, retaining the roof overhang.
-      const board = prop.id === 'notice-board' && which === 'board', scale = board ? prop.w * W.cellW / 79 : 1, artFoot = foot - (board ? scale : 0);
+      // (village fix round 3) the post box and the camera on its tripod at the size standard: a pillar box a little under the
+      // player's height, not half as tall again; the camera no bigger than a shoebox
+      const board = prop.id === 'notice-board' && which === 'board', scale = board ? prop.w * W.cellW / 79 : which === 'postbox' ? .74 : which === 'tripod' ? .8 : 1, artFoot = foot - (board ? scale : 0);
       const im = h.add(image(scene, key, fx, artFoot)); if (!im) { h.destroy(); return null; }
-      if (board) im.setScale(scale / K);
+      if (scale !== 1) im.setScale(scale / K);
       b = { x: fx + P.box[0] * scale, y: artFoot + P.box[1] * scale, width: (P.box[2] - P.box[0]) * scale, height: (P.box[3] - P.box[1]) * scale };
       // (round 3) the lake board's posts stood well right of its foot; the click area is what is drawn, not its canvas
       if (which === 'lakeboard') { const t0 = tightBox(im); if (t0 && Math.abs(t0.footX - fx) > 3) im.x += fx - t0.footX; }
