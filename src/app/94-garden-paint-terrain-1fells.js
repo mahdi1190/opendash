@@ -148,7 +148,7 @@ window.GardenPaintedTerrain = (function () {
           const x = tx + r() * 64, y = ty + r() * 64, pick = r(), sz = r(); if (!fellAt(x, y)) continue;
           const m = moor(x), row = (y - W.sky) / ch, tarnNear = Math.hypot(x / cw - 31, row - 11) < 7.5, wet = tarnNear || Math.hypot(x / cw - 73, row - 18) < 4.2;
           const drift = kit.fbm(x / 230, y / 150, 77), fern = kit.fbm(x / 210, y / 130, 91);
-          if ((m > .25 ? drift > .62 - m * .3 : drift > .74) && pick < .6) { B.cx.globalAlpha = 1; B.heather(r, x, y, 4 + sz * 5, m > .25 ? P : HP, P.bloom && drift > .62 && r() < .7 ? P.bloom : null); continue; }
+          if ((m > .25 ? drift > .56 - m * .06 : drift > .74) && pick < .6 + (drift - .56) * 1.5) { B.cx.globalAlpha = 1; B.heather(r, x, y, 4 + sz * 5 + Math.max(0, drift - .56) * 22, m > .25 ? P : HP, P.bloom && drift > .62 && r() < .7 ? P.bloom : null); continue; }
           if (pick < .5) { B.tufts(r, x, y, 10, 4 + Math.floor(sz * 4), [P.fellLo, P.fellHi, P.bleach], 5); continue; }
           if (pick < .62 && (peakNear(x, y) || row < 11 && x > 44 * cw && x < 56 * cw || r() < .25)) { B.stone(r, x, y, 2 + sz * 4, 1.2 + sz * 2.2, P); continue; }
           if (pick < .7 && wet) { B.f(B.blob(r, x, y, 5 + sz * 4, 2.6 + sz * 2, 7, .5), P.fellLo, .7); B.tufts(r, x, y - 1, 9, 7, ['#6f7f48', P.bleach], 7); if (season !== 'winter' && season !== 'autumn') for (let i = 0; i < 4; i++) B.f(B.circ(x + (r() - .5) * 10, y - 6 - r() * 4, 1.3), '#f6f4ec', .95); continue; }
@@ -567,8 +567,8 @@ window.GardenPaintedTerrain = (function () {
         const snowy = snowShare > 0 && z > snowLine - nz * H * .12 - Math.max(0, lap) * 3 && slope < 2.4 + snowShare * 3 - nz;
         if (snowy) { const s = lam > .62 ? COL.snow : COL.snowSh; rr = s[0]; gg = s[1]; bb = s[2]; }
         // light: lit faces warm, shaded faces cool, creases darker
-        const k = .6 + lam * .55, crease = Math.max(0, Math.min(.22, -lap * .03));
-        rr = rr * k * (1 - crease) + (lam > .6 ? 10 : -4); gg = gg * k * (1 - crease) + (lam > .6 ? 6 : -2); bb = bb * k * (1 - crease) + (lam > .6 ? -2 : 8);
+        const k = .68 + lam * .4, crease = Math.max(0, Math.min(.2, -lap * .03));
+        rr = rr * k * (1 - crease) + (lam > .6 ? 5 : -3); gg = gg * k * (1 - crease) + (lam > .6 ? 3 : -2); bb = bb * k * (1 - crease) + (lam > .6 ? -3 : 4);
         const yTop = Math.max(0, Math.floor(sy)), yBot = Math.min(PH, Math.ceil(ymin));
         for (let yy = yTop; yy < yBot; yy++) { const o = (yy * PW + col) * 4; px[o] = rr; px[o + 1] = gg; px[o + 2] = bb; px[o + 3] = 255; }
         ymin = sy;
