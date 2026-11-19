@@ -497,8 +497,9 @@ window.GardenNativePainted = (function () {
   // aprons, picking and depth stay where they were.
   const BUILD = {
     'garden-shop': { obj: 'building.green-cottage', v: 0, w: 200, wallWidth: 150, sign: 'Seed & Stem', extra: [['plant.planter', 1, -110, 0, 28], ['plant.planter', 0, 110, 0, 28], ['plant.rph-flower-tub', 1, -80, 8, 20]] },   // (four cells: a shop stands larger than the cottages)
-    'land-office': { obj: 'building.cottage', v: 1, w: 140, wallWidth: 160, sign: 'Land Office', extra: [['street.lamp', 0, -66, 4, 0, 70]] },   // (the lamp on the door's side of the west corner: the lake walk passes just outside it)
-    'tackle-shop': { obj: 'building.fpv-sailing-hut', v: 0, w: 150, wallWidth: 376, wallCenterX: -8, wallFootY: 14, sign: 'Tackle & Tide', extra: [['street.mqn-lifebuoy', 0, 80, 2, 0, 30]] },
+    // (the Land Office and Tackle & Tide four cells wide, round 3: shops stand larger than the cottages)
+    'land-office': { obj: 'building.cottage', v: 1, w: 190, wallWidth: 160, sign: 'Land Office', extra: [['street.lamp', 0, -102, 4, 0, 74]] },   // (the lamp on the door's side of the west corner: the lake walk passes just outside it)
+    'tackle-shop': { obj: 'building.fpv-sailing-hut', v: 0, w: 200, wallWidth: 376, wallCenterX: -8, wallFootY: 14, sign: 'Tackle & Tide', extra: [['street.mqn-lifebuoy', 0, 104, 2, 0, 32]] },
     'market-stall': { obj: 'structure.mcr-market-chalet', v: 1, w: 104, wallWidth: 200 },
     // the high street's cottages (2.74), each its own kind so the street is not one house four times. Three cells wide, so
     // the ridge stands about 3.5 times the player's height (common size standard); the low thatched kind would stay under 2.5.
@@ -508,11 +509,12 @@ window.GardenNativePainted = (function () {
     'ld-cottage-4': { obj: 'building.green-cottage', v: 2, w: 150, wallWidth: 150, extra: [['plant.rph-flower-tub', 0, -62, 6, 20]] },
   };
   const HALL = [
-    { obj: 'structure.wp-bivvy', v: 0, w: 96, wallWidth: 150, wallCenterX: 5 },
-    { obj: 'building.vale-hall-small', v: 0, w: 144, wallWidth: 160, sign: 'Lake Hall' },
-    { obj: 'building.thatched-cottage', v: 1, w: 150, wallWidth: 216, sign: 'Lake Hall' },
-    { obj: 'building.vale-hall-large', v: 0, w: 144, wallWidth: 240, sign: 'Lake Hall' },
-    { obj: 'building.vale-hall-large', v: 1, w: 144, wallWidth: 240, sign: 'Lake Hall' },
+    // (four cells wide from round 3: the hall stands larger than the cottages; w is its shadow's width)
+    { obj: 'structure.wp-bivvy', v: 0, w: 128, wallWidth: 150, wallCenterX: 5 },
+    { obj: 'building.vale-hall-small', v: 0, w: 192, wallWidth: 160, sign: 'Lake Hall' },
+    { obj: 'building.thatched-cottage', v: 1, w: 200, wallWidth: 216, sign: 'Lake Hall' },
+    { obj: 'building.vale-hall-large', v: 0, w: 192, wallWidth: 240, sign: 'Lake Hall' },
+    { obj: 'building.vale-hall-large', v: 1, w: 192, wallWidth: 240, sign: 'Lake Hall' },
   ];
   function hallTier(sc) { try { const ca = sc.ca || (typeof gardenCatchHere === 'function' ? gardenCatchHere() : null) || {}; return typeof gardenHallTier === 'function' ? Math.max(0, Math.min(HALL.length - 1, gardenHallTier(Number(ca.ha) || 0))) : 0; } catch (e) { return 0; } }
   function building(scene, prop, sc, element, W) {
