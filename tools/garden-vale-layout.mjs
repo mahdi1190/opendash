@@ -184,7 +184,7 @@ function oldwoodRoutes() {
 }
 // the walled garden's old brick wall on three sides (the ruin wall behind it is the fourth), its two green doors gaps in it
 { const e = VO.enclosures['garden-yard'], [w0, w1] = [e.poly[8], e.poly[0]], d = e.doors;
-  landforms.push(...wallSegments('garden-wall', 'southwest-ruins', 'ruin-wall', [[w1[0], w1[1] + .1], [w0[0], w0[1] + .05], [28.85, 67.8], [e.poly[4][0], e.poly[4][1]], [e.poly[3][0], e.poly[3][1] + .3]], [[d[0][0] - .05, d[0][1], .85], [d[1][0], d[1][1] + .05, .85]], .42, 12)); }
+  landforms.push(...wallSegments('garden-wall', 'southwest-ruins', 'ruin-wall', [[w1[0], w1[1] + .1], [w0[0], w0[1] + .05], [28.85, 67.8], [e.poly[4][0], e.poly[4][1]], [e.poly[3][0], e.poly[3][1] + .3]], [[d[0][0] - .05, d[0][1], .85], [d[1][0], d[1][1] + .05, .85]], .42, 4)); }
 const vPlaza = (id, width) => { const p = VV.plazas[id]; return route(id, 'plaza', p.spine, 0, { widthCells: width, shape: p.poly.map(q => q.map(r2)) }); };
 const GREEN = { x: 49, y: 51.6, rx: 6.6, ry: 4.4 };   // (the green's rough extent, for painters that only want a centre and radii)
 const routes = [
