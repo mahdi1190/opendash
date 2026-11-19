@@ -79,7 +79,9 @@
     const ringS = L.stat('ld-ring'), ringC = ringS ? { x: ringS.x + ringS.w / 2, y: ringS.y + .5 } : null;
     // (round 3 layouts) the ring's eight trunks and the Mother tree where the hand-authored orchard puts them (presentation.orchard)
     const OR = (L.D.presentation && L.D.presentation.orchard) || {}, MOM = OR.mother ? [OR.mother.x, OR.mother.y] : [84.6, 45.2], RINGT = OR.ring && OR.ring.trunks;
-    const clearOf = (x, y) => offPath(x, y, 5) && offSquare(x, y) && offGate(x, y) && dryLip(x, y);
+    // (round 3 layouts) no row tree stands on or just in front of one of the orchard's places (a crown hid the bell and the press)
+    const places = (L.D.static || []).filter(q => q.district === 'orchard-headland' && q.id !== 'ld-ring'), byPlace = (x, y) => places.some(q => x > q.x - 1.2 && x < q.x + q.w + 1.2 && y > q.y - .6 && y < q.y + q.h + 2.4);
+    const clearOf = (x, y) => offPath(x, y, 5) && offSquare(x, y) && offGate(x, y) && dryLip(x, y) && !byPlace(x, y);
     for (let y = 21.6, row = 0; y < 47; y += 1.75, row++) for (let x = 60 + (row % 2) * 1.15; x < 89; x += 2.3) {
       const jx = x + (kit.hash(Math.round(x * 10), Math.round(y * 10), 93) % 100) / 100 * .7 - .35, jy = y + (kit.hash(Math.round(x * 10), Math.round(y * 10), 94) % 100) / 100 * .5 - .25;
       const fx = Math.floor(jx), fy = Math.floor(jy);
