@@ -86,7 +86,7 @@ function gartActNearby() {
   const now = performance.now();
   if (!_ga.list || now - _ga.listT > 2500) { _ga.list = _gaStaticRows().concat(_gaDecorRows()); _ga.listT = now; }
   const px = _gw.px, py = _gw.py, d = (r) => Math.hypot(r.x - px, (r.y - py) * 1.3);
-  const rows = _ga.list.concat(_gaTreeRows(px, py)).filter(r => d(r) <= Math.max(GA_REACH, r.reach || 0));
+  const rows = _ga.list.concat(_gaTreeRows(px, py)).filter(r => d(r) <= Math.max(GA_REACH, r.reach || 0) && !gartActHidden(r.src));   // (a ball off rolling, a pile kicked apart: nothing to do there just now)
   rows.sort((a, b) => d(a) - d(b));
   if (!rows.length) return _gaWaterRows(px, py);
   return rows;
@@ -367,7 +367,7 @@ function gartActCarryFrame(body, L) {
 function gartActSetDown() {
   const c = _ga.carry; if (!c) return false;
   _ga.carry = null;
-  const W = GARDEN_WORLD, deg = (typeof gartMoveFacingDeg === 'function' ? gartMoveFacingDeg() : 90) * Math.PI / 180, x = _gw.px + Math.cos(deg) * 0.5, y = _gw.py + Math.sin(deg) * 0.35 + 0.05;
+  const W = GARDEN_WORLD, deg = (typeof gartMoveFacingDeg === 'function' ? gartMoveFacingDeg() : 90) * Math.PI / 180, x0 = _gw.px + Math.cos(deg) * 0.5, y0 = _gw.py + Math.sin(deg) * 0.35 + 0.05, clear = typeof _gwFree !== 'function' || _gwFree(x0, y0, 0.15), x = clear ? x0 : _gw.px, y = clear ? y0 : _gw.py + 0.08;   // (never into a post or a wall: at your feet then)
   _gaMoved.set(c.id, { x, y }); _gaHide.delete(c.id);
   try { const rec = _gaRec(c.id), row = gardenActWorldRows().find(r => r.id === c.id); if (rec && rec.root && row) { const r = rec.root; r.x += (x - (row.x0 != null ? row.x0 : row.x)) * W.cellW; r.y += 0; r.setAlpha(1); } } catch (e) { /* drawn at its new place on the next paint */ }
   try { if (typeof GardenNative !== 'undefined' && GardenNative.sync) GardenNative.sync(); } catch (e) { /* next paint */ }

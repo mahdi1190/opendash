@@ -20,7 +20,7 @@ const GARDEN_ACT_WORLD = Object.freeze([
   { id: 'ga-fire-hut', cell: [15.5, 78.5], at: [0, 0], act: 'warm', name: 'the campfire', stand: [0, -0.34], deg: 90, art: 'fire' },
   // (18) a leather ball on the grass by the green, and in autumn a pile of leaves beside it: kick them
   { id: 'ga-ball', anchor: 'sundial', at: [-4.3, 2.5], act: 'kick', name: 'the ball', stand: [0, -0.3], deg: 90, art: 'ball', kick: 'ball' },
-  { id: 'ga-leaves', anchor: 'sundial', at: [-6.4, 3.6], act: 'kick', name: 'the leaf pile', stand: [0, -0.32], deg: 90, art: 'leaves', kick: 'leaves', season: 'autumn' },
+  { id: 'ga-leaves', anchor: 'sundial', at: [-5.7, 0.2], act: 'kick', name: 'the leaf pile', stand: [0, -0.32], deg: 90, art: 'leaves', kick: 'leaves', season: 'autumn' },
   // (24) the busker's pitch by the market: a stool, an open fiddle case with a few coins, the fiddle on the stool
   { id: 'ga-busker', anchor: 'market-stall', at: [2.6, 1.2], act: 'play', name: 'the fiddle', stand: [0.9, 0.25], deg: 90, art: 'busker' },
   // (25) small things to pick up and carry: a basket of apples by the market, a shell on the quay beach, a log by the hut
