@@ -605,7 +605,9 @@ function _gldHedgeRow(p, sc) {
   return `<path fill="#1a2a14" fill-opacity="0.2" d="${A.ell((x0 + x1) / 2, by + 1, (x1 - x0) / 2 + 3, 3)}"/>` + A.P(c[0], A.rrect(x0, by - 13, x1 - x0, 14, 5)) + A.P(c[0], b) + A.P(c[1], t) + A.P(c[2], l, 0.7);
 }
 function _gldDraw(kind, p, sc, o) {
-  const fn = _GLD_PROP_ART[kind]; if (!fn) return '';
+  // (a thing with no classic drawing that the Vale paints itself, the region prizes among them, still needs its row, or the
+  // painted world never stands it: round 3, 19 Nov 2026, the prizes were won but never drawn)
+  const fn = _GLD_PROP_ART[kind]; if (!fn) return o && o.native && p && p.id && window.GardenPaintedMarks && GardenPaintedMarks.knows(p.id) ? '<g class="gd-painted-only"></g>' : '';
   const W = GARDEN_WORLD, cx = (p.x + p.w / 2) * W.cellW, by = W.sky + (p.y + p.h) * W.cellH - 3;
   const sh = `<ellipse cx="${_gwN(cx + 2)}" cy="${_gwN(by + 1)}" rx="${_gwN(p.w * W.cellW / 2 + 2)}" ry="4" fill="#1a2a14" fill-opacity="0.2"/>`;
   const art = fn(sc, o);
