@@ -312,13 +312,13 @@ window.GardenPaintWater = (function () {
       for (const t of near) { tx.fillStyle = t.fill; tx.fill(t.p); }
       const ty0 = Math.max(0, gy0 - TB), ty1 = Math.min(gh, gy1 + TB), tdat = tx.getImageData(0, 0, gw, gh).data, hS = scratch('hS', n), hD = scratch('hD', n), hR = scratch('hR', n), hW = scratch('hW', n);
       for (let y = ty0; y < ty1; y++) { let sS = 0, sD = 0, sR = 0, sW = 0; const o0 = y * gw; for (let x = gx0 - 2 * TB - 1; x < gx1; x++) { const ad = x + TB, sb = x - TB - 1; if (ad >= 0 && ad < gw) { const q = (o0 + ad) * 4, w8 = tdat[q + 3] / 255; sS += tdat[q] * w8; sD += tdat[q + 1] * w8; sR += tdat[q + 2] * w8; sW += w8; } if (sb >= gx0 - TB - 1 && sb >= 0 && sb < gw) { const q = (o0 + sb) * 4, w8 = tdat[q + 3] / 255; sS -= tdat[q] * w8; sD -= tdat[q + 1] * w8; sR -= tdat[q + 2] * w8; sW -= w8; } if (x >= gx0 && x < gx1) { hS[o0 + x] = sS; hD[o0 + x] = sD; hR[o0 + x] = sR; hW[o0 + x] = sW; } } }
-      const cn = cw * chh, tS = scratch('tS', cn, true), tD = scratch('tD', cn, true), tR = scratch('tR', cn, true), DS = scratch('DS', cn, true), MS = scratch('MS', cn, true);
+      const cn = cw * chh, tS = scratch('tS', cn, true), tD = scratch('tD', cn, true), tR = scratch('tR', cn, true), DS = scratch('DS', cn, true), MS = scratch('MS', cn, true), DW = scratch('DW', cn, true);
       for (let x = gx0; x < gx1; x++) { let sS = 0, sD = 0, sR = 0, sW = 0; for (let y = gy0 - 2 * TB - 1; y < gy1; y++) { const ad = y + TB, sb = y - TB - 1; if (ad >= ty0 && ad < ty1) { const q = ad * gw + x; sS += hS[q]; sD += hD[q]; sR += hR[q]; sW += hW[q]; } if (sb >= gy0 - TB - 1 && sb >= ty0 && sb < ty1) { const q = sb * gw + x; sS -= hS[q]; sD -= hD[q]; sR -= hR[q]; sW -= hW[q]; } if (y >= gy0 && y < gy1) { const j = (y - gy0) * cw + (x - gx0); tS[j] = sW > .01 ? sS / sW / 255 : 0; tD[j] = sW > .01 ? sD / sW / 255 : 0; tR[j] = sW > .01 ? sR / sW / 255 : 0; } } }
       // the colour of the water by how far it lies from the shore; its alpha is the smoothed outline itself, so the edge
       // is soft for a world pixel and then the wet line and the lap are drawn crisp over it
       const out = document.createElement('canvas'); out.width = cw; out.height = chh; const ox = out.getContext('2d'), img = ox.createImageData(cw, chh), o = img.data;
       for (let y = gy0; y < gy1; y++) { const wy = y0 + (y + .5) * FQ;
-        for (let x = gx0; x < gx1; x++) { const i = y * gw + x, tj = (y - gy0) * cw + (x - gx0), j = tj * 4, al = Fv[i]; DS[tj] = -1; if (al <= .004) { o[j + 3] = 0; continue; }
+        for (let x = gx0; x < gx1; x++) { const i = y * gw + x, tj = (y - gy0) * cw + (x - gx0), j = tj * 4, al = Fv[i]; DS[tj] = -1; DW[tj] = -1; if (al <= .004) { o[j + 3] = 0; continue; }
           const wx = x0 + (x + .5) * FQ, d = Math.min(DMAX, Math.max(0, (D[i] >= 1e8 ? DMAX : D[i]) * FQ - FQ * .5));
           // broad reaches of darker and paler water, and a finer ripple of tone, so no stretch is one flat colour
           const big = fbm(wx / 260, wy / 170, 41) - .5, fine = noise(wx / 46, wy / 30, 57) - .5, run = tR[tj];
@@ -335,7 +335,7 @@ window.GardenPaintWater = (function () {
           // the current: thin pale lines running with the banks, wavering and broken, and darker water between them
           if (run > .04 && d > 2) { const ph = d * .58 + (noise(wx / 64, wy / 64, 91) - .5) * 5.5, ln = Math.max(0, Math.sin(ph)) ** 5, brk = sstep(.42, .68, noise(wx / 24, wy / 24, 93)); lift += run * (ln * brk * .16 - .035 * (1 - ln)) * sstep(2, 9, d); }
           let al2 = Math.min(1, al * 1.25), mS = 0;
-          if (Mc) { mS = marine(wx, wy); MS[tj] = mS; const dS = d >= DMAX - 3 ? Math.max(d, samp(Dc, wx, wy, SEA_D / SQ) * SQ - SQ * .5) : d; DS[tj] = dS;
+          if (Mc) { mS = marine(wx, wy); MS[tj] = mS; const dS = d >= DMAX - 3 ? Math.max(d, samp(Dc, wx, wy, SEA_D / SQ) * SQ - SQ * .5) : d; DS[tj] = dS; DW[tj] = dS + (noise(wx / 58, wy / 40, 111) - .5) * 16 + (noise(wx / 17, wy / 12, 113) - .5) * 3;   // (a swell line wavers as it runs: one that follows a straight shore exactly reads as a streak)
             if (mS > .002) {
               // sand bars and channels: the shallows widen and narrow along the shore, and a finer unevenness on that
               const bar = fbm(wx / 230, wy / 160, 73) - .5, dn = Math.max(0, dS * (1 - bar * .8) + (noise(wx / 40, wy / 28, 79) - .5) * 9);
@@ -374,7 +374,7 @@ window.GardenPaintWater = (function () {
         const slope = (gx, gy) => Math.hypot(ds(gx + 1, gy) - ds(gx - 1, gy), ds(gx, gy + 1) - ds(gx, gy - 1)) / (2 * FQ);
         // (and off a shore that turns sharply, round a spit's point: there the line bends into a chevron; the bend of the distance field tells)
         const bend = (gx, gy) => (ds(gx + 2, gy) + ds(gx - 2, gy) + ds(gx, gy + 2) + ds(gx, gy - 2) - 4 * ds(gx, gy)) / (4 * FQ * FQ);
-        const swell = (lv, f, cut) => contour(ds, lv, (gx, gy, X, Y) => MS[loc(gx, gy)] > .96 && slope(gx, gy) > .86 && slope(gx + 1, gy + 1) > .86 && Math.abs(bend(gx, gy)) < .022 && noise(X / f, Y / (f * .62), 101 + lv) > cut ? 0 : -1)[0];
+        const dw = (gx, gy) => DW[loc(gx, gy)], swell = (lv, f, cut) => contour(dw, lv, (gx, gy, X, Y) => MS[loc(gx, gy)] > .96 && slope(gx, gy) > .86 && slope(gx + 1, gy + 1) > .86 && Math.abs(bend(gx, gy)) < .022 && noise(X / f, Y / (f * .62), 101 + lv) > cut ? 0 : -1)[0];
         const s1 = swell(20, 120, .5), s2 = swell(46, 150, .56), s3 = null;
         e.s1 = s1; e.s2 = s2; void s3;
       }
