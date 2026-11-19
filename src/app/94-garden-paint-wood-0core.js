@@ -424,7 +424,9 @@ window.GardenPaintWood = (function () {
     const mid = cells.reduce((a, c) => [a[0] + c[0] / cells.length, a[1] + c[1] / cells.length], [.5, .5]), pl = out.placeAt ? out.placeAt(mid[0], mid[1]) : null, own = pl ? pl.trees.filter(have).map(s => kitOf(s[0]) ? [s[0], 'young', .3, 1] : [s[0], Math.round(s[2] * .62), Math.round(s[2] * .8)]) : [];
     const TALL = own.length ? own : (light ? [['kit:hawthorn', 'young', .2, .9], ['kit:holly', 'young', .2, 1], ['kit:hawthorn', 'young', .4, 1], ['kit:holly', 'young', .5, 1], ['kit:birch', 'young', .3, 1]] : [['kit:yew', 'tree', 0, .4], ['kit:yew', 'tree', .1, .5], ['kit:holly', 'young', .4, 1], ['kit:oak', 'tree', .7, 1]]).filter(have);
     const BIG = (light ? [['kit:beech', 'tree', .2, .8], ['kit:oak', 'tree', .3, .9]] : [['kit:yew', 'tree', .2, .55]]).filter(have);
-    const LOW = (light ? [['plant.hedgerow-blackberry', 26, 36], ['plant.bracken', 26, 36], ['plant.fern', 24, 34], ['plant.bracken', 24, 32], ['plant.shrub', 26, 34]] : [['plant.hedgerow-blackberry', 24, 34], ['plant.bracken', 26, 36], ['plant.us-sword-fern', 24, 34], ['plant.bracken', 24, 32], ['plant.fern', 24, 30]]).filter(have);
+    // (19 Nov 2026, round 3 fixes: no hedgerow sprite in the tangle: its straight base read as a planter dropped on the floor;
+    //  low rounded bilberry and shrub among the bracken and fern instead, every one its own size)
+    const LOW = (light ? [['plant.bilberry', 22, 32], ['plant.bracken', 26, 36], ['plant.fern', 24, 34], ['plant.bracken', 24, 32], ['plant.shrub', 24, 32]] : [['plant.bilberry', 22, 30], ['plant.bracken', 26, 36], ['plant.us-sword-fern', 24, 34], ['plant.bracken', 24, 32], ['plant.fern', 24, 30]]).filter(have);
     if (!LOW.length) { for (const [x, y] of cells) thicket(out, x, y, px, py, region); return; }
     let x0 = 96, y0 = 96, x1 = 0, y1 = 0; for (const [x, y] of cells) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
     const set = new Set(cells.map(c => c[0] + ',' + c[1]));
@@ -441,10 +443,10 @@ window.GardenPaintWood = (function () {
   // A knot of bramble, holly and bracken filling one cell, drawn upright so it hides your feet like the real thing.
   // (19 Nov 2026: the holly in the knot is the tree kit's, a young holly at about one and a half times your height; the
   //  library's little holly read as a toy fir tree dotted along every unbought plot)
-  const THICKET = [['plant.hedgerow-blackberry', 32], ['kit:holly', 62], ['plant.shrub', 38], ['plant.hedgerow-blackberry', 30], ['kit:holly', 54], ['plant.bracken', 30]];
+  const THICKET = [['plant.bilberry', 30], ['kit:holly', 62], ['plant.shrub', 38], ['plant.bracken', 30], ['kit:holly', 54], ['plant.bracken', 30]];
   // Whispering woodland is a light birch wood: its unbought land is birch scrub (young birches no taller than you) in bracken and fern,
   // not the old woodland's bramble and holly knot (17 Nov 2026: one locked-land rule, in local dress)
-  const THICKET_LIGHT = [['kit:birch', 66], ['plant.bracken', 34], ['kit:hawthorn', 52], ['plant.fern', 30], ['plant.bracken', 30], ['kit:birch', 58], ['plant.hedgerow-blackberry', 30]];
+  const THICKET_LIGHT = [['kit:hawthorn', 60], ['plant.bracken', 34], ['kit:hawthorn', 52], ['plant.fern', 30], ['plant.bracken', 30], ['kit:birch', 58], ['plant.bilberry', 28]];
   function thicket(out, x, y, px, py, region) {
     const light = WOODS[region] && WOODS[region].mood === 'light';
     const have = (light ? THICKET_LIGHT : THICKET).filter(([id]) => kitOf(id) ? !!window.GardenPaintTrees : typeof sceneObj === 'function' && sceneObj(id)); if (!have.length) return;
