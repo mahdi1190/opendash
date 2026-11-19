@@ -8,9 +8,9 @@
   {"id":"east-road","tier":"lane","closed":false,"gateId":"island-mill","control":[[55.6,52.8],[57.8,53.6],[60.2,53.6],[62.4,54.3],[65,55.1],[69,56.6],[72,58.8]],"widths":[3,2.2,2,2,2.4,2,2]},
   {"id":"cottage-lane","tier":"lane","closed":false,"control":[[44.25,57.8],[43.7,60.2],[43.3,61.4],[42.2,64.4],[39.85,67.4],[38.3,70.6],[36.8,74.2]],"widths":[2.8,1.3,0.95,1.9,2,2,2.2]},
   {"id":"cottage-path","tier":"trail","closed":false,"control":[[39.4,53.8],[38.8,54.9],[38.6,55.8]],"widths":[1.6,1.2,1.2]},
-  {"id":"lake-walk-west","tier":"trail","closed":false,"control":[[45.1,48.5],[44.6,47],[43.4,47.1],[42.45,46.45],[42.45,44.9],[42.4,43.75],[41.5,43.45],[39.6,43.3],[38.6,42.4],[37.4,40.9],[36.1,39.7],[35.9,37.6],[36.5,35.6],[36.2,33.4],[37.05,30.7],[40,28.2],[42.2,27.2]],"widths":[1.8,1.5,1.3,0.9,0.8,0.85,0.95,1.3,1.4,1.3,1.2,1.3,1.3,1.1,1.1,1.4,2.2]},
+  {"id":"lake-walk-west","tier":"trail","closed":false,"control":[[45.1,48.5],[44.6,47],[43.4,47.1],[42.45,46.45],[42.28,44.9],[42.25,43.75],[41.5,43.45],[39.6,43.3],[38.6,42.4],[37.4,40.9],[36.1,39.7],[35.9,37.6],[36.5,35.6],[36.2,33.4],[37.05,30.7],[40,28.2],[42.2,27.2]],"widths":[1.8,1.5,1.3,0.9,0.75,0.8,0.95,1.3,1.4,1.3,1.2,1.3,1.3,1.1,1.1,1.4,2.2]},
   {"id":"lake-walk-east","tier":"trail","closed":false,"control":[[53.6,43.5],[55.8,43.5],[57.6,42.8],[58.9,42],[59.9,41.1]],"widths":[2,1.4,1.4,1.4,2]},
-  {"id":"south-common","tier":"trail","closed":false,"control":[[56.65,57.2],[56.85,59.6],[57.3,63.4],[56.85,66.6],[56.4,69.2],[55.6,71.35],[54,72.05],[52.3,72.15],[50.9,72.2]],"widths":[1.4,1.4,1.4,1.4,1.4,1.4,1.3,1.3,2]},
+  {"id":"south-common","tier":"trail","closed":false,"control":[[56.65,57.2],[56.85,59.6],[57.3,63.4],[56.85,66.6],[56.45,68.9],[55.75,70.6],[54.2,71.2],[52.4,71.35],[50.9,71.5]],"widths":[1.4,1.4,1.4,1.4,1.4,1.4,1.3,1.3,2]},
   {"id":"field-path","tier":"trail","closed":false,"control":[[41.7,65.7],[43.2,66.75],[45.6,66.95],[47.7,66.6]],"widths":[1.4,1.1,1.1,1.4]},
   {"id":"strand","tier":"trail","closed":false,"control":[[45,77.9],[43,78.5],[41.5,78.9],[39.9,79.8],[39.4,81.6]],"widths":[2,1.4,1.3,1.2,1.6]},
   {"id":"lighthouse-walk","tier":"trail","closed":false,"control":[[55.6,78.75],[57.6,79.35],[59.4,80.4],[60.8,82],[61.3,82.9]],"widths":[1.3,1.35,1.4,1.4,1.2]}
@@ -38,12 +38,12 @@
   {"id":"ld-cottage-1","x":43,"y":65,"w":3,"h":1,"col":"full","tall":3.6,"district":"south-grow-common","door":{"x":44,"y":66},"rearEnvelope":{"x":42.9,"y":60.4,"w":3.2,"h":4.6}},
   {"id":"ld-cottage-2","x":44,"y":72,"w":3,"h":1,"col":"full","tall":3.6,"district":"south-grow-common","door":{"x":45,"y":73},"rearEnvelope":{"x":43.9,"y":67.4,"w":3.2,"h":4.6}},
   {"id":"ld-cottage-3","x":49,"y":65,"w":3,"h":1,"col":"full","tall":3.6,"district":"south-grow-common","door":{"x":50,"y":66},"rearEnvelope":{"x":48.9,"y":60.4,"w":3.2,"h":4.6}},
-  {"id":"ld-cottage-4","x":52,"y":70,"w":3,"h":1,"col":"full","tall":3.6,"district":"south-grow-common","door":{"x":53,"y":71},"rearEnvelope":{"x":51.9,"y":65.4,"w":3.2,"h":4.6}}
+  {"id":"ld-cottage-4","x":52,"y":69,"w":3,"h":1,"col":"full","tall":3.6,"district":"south-grow-common","door":{"x":53,"y":70},"rearEnvelope":{"x":51.9,"y":64.4,"w":3.2,"h":4.6}}
  ],
  "fields": {
   "wren": {"name":"Wren's garden","edge":"box hedge with a wicket gate","col":"#9a6e4a","gateHint":[43,61]},
   "green": {"name":"The green borders","edge":"stone kerb, no fence (public planters)","col":"#d88aa0","gateHint":null},
-  "wood": {"name":"Shore wood","edge":"tree line and bracken; locked = deep bracken","col":"#4f7a3e","gateHint":[37,43]},
+  "wood": {"name":"Shore wood","edge":"tree line and bracken; locked = deep bracken","col":"#4f7a3e","gateHint":[33,41]},
   "mere": {"name":"Mere bank","edge":"reed fringe","col":"#7fae88","gateHint":[39,38]},
   "glass": {"name":"Glasshouse garden","edge":"old brick wall stub (the restore story)","col":"#bcd8d0","gateHint":[40,63]},
   "allot": {"name":"Allotment slope","edge":"curved strips; locked = long grass, one field gate","col":"#a37650","gateHint":[42,68]},
@@ -66,7 +66,7 @@
   "lc-shop-green": {"field":"green","cells":[[39,49],[40,49],[40,50],[39,50]]},
   "lc-notice-green": {"field":"green","cells":[[56,48],[56,47],[56,49],[56,46]]},
   "lc-shore-green": {"field":"green","cells":[[56,44],[57,44],[57,45],[56,45]]},
-  "lc-old-logs": {"field":"wood","cells":[[35,40],[35,41],[34,41],[33,41],[33,42],[33,43],[34,43],[34,45],[33,45],[34,44],[33,44],[34,42],[36,41]]},
+  "lc-old-logs": {"field":"wood","cells":[[33,41],[34,41],[32,42],[33,42],[34,42],[32,43],[33,43],[34,43],[32,44],[33,44],[34,44],[33,45],[34,45]]},
   "lc-deer-corner": {"field":"wood","cells":[[39,44],[40,44],[41,44],[41,45],[40,45],[39,45]]},
   "lc-badger-bank": {"field":"wood","cells":[[39,46],[40,46],[41,46],[41,47],[41,48],[40,48],[39,48],[40,47],[39,47]]},
   "lc-bracken-dip": {"field":"wood","cells":[[33,49],[32,49],[32,50],[33,50],[32,48]]},

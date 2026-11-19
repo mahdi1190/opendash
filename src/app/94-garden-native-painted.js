@@ -534,7 +534,9 @@ window.GardenNativePainted = (function () {
     }
     // lit windows spill a soft warm pool on the ground in front (added light, feathered: no disc)
     if (night && window.GardenPaintedProps) { const pk = GardenPaintedProps.poolKey(scene); if (pk) { const pool = scene.add.image(cx, foot + 10, pk).setOrigin(.5, .5).setScale(def.w * 1.1 / 256, def.w * .3 / 256).setAlpha(.3), layer = overLayer; if (layer) { layer.add(pool); pool.setDepth(80005); } else node._inner.add(pool); poolImages.push(pool); } }
-    const top = main.y - main.displayHeight * main.originY, b = { x: main.x - main.displayWidth * main.originX - 10, y: top - 4, width: main.displayWidth + 20, height: foot - top + 26 };
+    // the click area is the picture and its sign, no wider: the village's paths pass close by these houses now they stand at
+    // full size, and a click on the path beside one must walk there, not in at its door
+    const top = main.y - main.displayHeight * main.originY, b = { x: main.x - main.displayWidth * main.originX - 2, y: top, width: main.displayWidth + 4, height: foot - top + (def.sign ? 22 : 8) };
     node.nativeBounds = b;
     return { root: node.target, rootNode: node, bounds: b, painted: true, foot: { x: cx, y: foot }, update() {}, setLitWindows(on) { for (const [im, id, v, size] of parts) { const o = objectKey(scene, id, v, season, size, !!on); if (o && im.texture.key !== o.key) im.setTexture(o.key).setOrigin(o.meta.ox, o.meta.oy); } }, destroy() { for (const im of poolImages) im.destroy(); node.remove(); } };
   }
