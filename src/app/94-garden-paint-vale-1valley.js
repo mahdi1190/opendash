@@ -83,7 +83,7 @@
   // A valley field's hawthorn hedgerow (19 Nov 2026, the valley chain): not clipped, a lumpy living line whose height wanders
   // along its length (by place, so two cells' runs meet), dark at its foot and inside, sunlit on its upper left, with may
   // blossom in spring, dog-rose in summer and haws in autumn, and the meadow grown up its foot. hh tall.
-  const HAW = { summer: ['#2a4222', '#3a5a2c', '#527638', '#729848', '#9cbc6a'], spring: ['#2c4622', '#41622c', '#5a8238', '#7ea84a', '#aed072'], autumn: ['#3a2e1a', '#5a4422', '#7a6230', '#9e8240', '#c4a85e'], winter: ['#3a3428', '#4e4636', '#635a46', '#7a7058', '#958a6e'] };
+  const HAW = { summer: ['#2a4222', '#3a5a2c', '#527638', '#729848', '#9cbc6a'], spring: ['#2c4622', '#41622c', '#5a8238', '#7ea84a', '#aed072'], autumn: ['#2e3a1c', '#46522a', '#626a34', '#868440', '#aca45c'], winter: ['#3a3428', '#4e4636', '#635a46', '#7a7058', '#958a6e'] };
   function fieldHedge(B, r, P, x0, y0, horiz, len, season, hh) {
     if (len < 2) return;
     const C = HAW[season] || HAW.summer, G = window.GardenPaintGround, wob = (u, v) => G && G.noise ? G.noise(u / 26, v / 26, 4417) : .5;
