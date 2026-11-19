@@ -1,7 +1,7 @@
 {
  "note": "Fleetwater village, hand-authored (2.74). Cell coordinates. Read by tools/garden-vale-layout.mjs: route splines (control points, width per point; harbour-walk starts at the green end), plaza shapes, static moves, new statics, the 31 village sections grouped into fields, and each field's one gate. The generator writes island-v5.json from it; never read at run time.",
  "routes": [
-  {"id":"harbour-walk","tier":"main","closed":false,"control":[[48,59.7],[47.6,60.6],[47.5,61.6],[47.5,64.4],[48.22,67.6],[49.8,70.6],[50.6,73.8],[50.3,77]],"widths":[3,2.7,2.6,2.7,2.4,2.4,2.8,3.4]},
+  {"id":"harbour-walk","tier":"main","closed":false,"control":[[48,59.7],[47.6,60.6],[47.5,61.6],[47.5,64.4],[48.22,67.6],[49.8,70.6],[50.6,73.8],[50.3,77]],"widths":[3,2.6,2.3,2.3,2.3,2.4,2.8,3.4]},
   {"id":"plaza-loop","tier":"main","closed":true,"control":[[50,56],[46,56],[42.8,55],[42,52.8],[43.6,50],[46.2,47.8],[48.8,46.8],[52,47.8],[54.8,50.4],[56,53.2],[53.6,55.4]],"widths":[3,3,2.8,2.4,1.6,1.6,2.2,1.6,1.6,2.8,2.4]},
   {"id":"green-terrace","tier":"main","closed":false,"control":[[49.2,47],[48.6,45.6],[48.8,44.2]],"widths":[3.4,2.6,3.4]},
   {"id":"west-lane","tier":"lane","closed":false,"gateId":"island-woods","control":[[42,52.8],[39.6,53.6],[37,53.4],[34.8,52.4],[32.6,52],[30.4,52.4],[27,51],[22.6,48.6]],"widths":[3,2.2,2,2,2,2.4,2,2]},
