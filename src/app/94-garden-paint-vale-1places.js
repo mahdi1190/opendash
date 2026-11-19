@@ -217,6 +217,9 @@
     const { L, P, add, kit, thing } = C, cw = L.cw, ch = L.ch;
     for (const pz of L.pres.plazas || []) {
       const style = STYLE[pz.id]; if (!style) continue;
+      // (fix round 1: the village's own ground lays the Lakeside terrace's crescent in the same setts as its roads, as one
+      // surface with them; slabs and a kerb laid over that again read as a plaza set down on the end of the terrace road)
+      if (pz.id === 'lakeside-terrace' && Array.isArray(pz.shape) && pz.shape.length > 2) continue;
       const rt = L.routes.get(pz.route); if (!rt || !rt.points || rt.points.length < 2) continue;
       let a = L.pt(rt.points[0]); const b = L.pt(rt.points[rt.points.length - 1]), w = rt.widthCells || 4, seed = kit.hashStr(pz.id);
       // The land office stands on the terrace's west end: pave from its east wall, so the building is not set down on the flags
@@ -393,7 +396,8 @@
       B.f(B.poly(inner), C.season === 'winter' ? '#b8c2aa' : C.season === 'autumn' ? '#a4ae62' : '#9cba62', .16);   // (light: the village ground's painted sward shows through)
       // mown stripes, broad and soft, running across the green
       const w = bb[2] - bb[0], h = bb[3] - bb[1];
-      for (let k = -2; k < 16; k++) { const x = bb[0] + k * 34; B.f(`M${x} ${bb[1]}l34 0l${-h * .35} ${h}l-34 0z`, k % 2 ? '#ffffff' : '#2e4a20', k % 2 ? .035 : .03); }
+      // (fix round 1: strong enough to read as a mown green at the default camera; they were too faint to see)
+      B.cx.filter = 'blur(2.5px)'; for (let k = -3; k < 14; k++) { const x = bb[0] + k * 46; B.f(`M${x} ${bb[1]}l46 0l${-h * .35} ${h}l-46 0z`, k % 2 ? '#f6f8dc' : '#2e4a20', k % 2 ? .1 : .075); } B.cx.filter = 'none';
       // the worn line across the middle where everyone cuts over
       V.strokePts(B, [{ x: bb[0] + w * .16, y: cy0 + h * .18 }, { x: cx0 - w * .1, y: cy0 + 4 }, { x: cx0 + w * .14, y: cy0 - 6 }, { x: bb[2] - w * .14, y: cy0 - h * .2 }], '#b8a878', 10, .22);
       // daisies and clover in the sward

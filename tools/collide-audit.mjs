@@ -34,7 +34,10 @@ const OUT = arg('out', 'C:/tmp/collide'), LABEL = arg('label', 'audit'), THUMBS 
 const ENV_MODULE = arg('sandbox-env', 'C:/tmp/sandbox-env.mjs');
 const EDGE = arg('browser', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe');
 if (!fs.existsSync(ENV_MODULE)) { console.error('No sandbox environment module at ' + ENV_MODULE + ': refusing to start a server without it.'); process.exit(2); }
-const { sandboxEnv } = await import(pathToFileURL(ENV_MODULE).href);
+const { sandboxEnv, EDGE_SAFE_FLAGS } = await import(pathToFileURL(ENV_MODULE).href);
+// (the test browser's safe flags, straight after --headless=new: without them a fresh profile can sign in to the machine's
+// Microsoft account, turn on sync and install its extensions)
+if (!Array.isArray(EDGE_SAFE_FLAGS) || !EDGE_SAFE_FLAGS.length) { console.error('the sandbox module gives no EDGE_SAFE_FLAGS: refusing to start a browser'); process.exit(2); }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const WORK = path.join(OUT, 'run-' + LABEL), DATA = path.join(WORK, 'data-' + PORT), PROFILE = path.join(WORK, 'profile-' + CDP), THUMB_DIR = path.join(OUT, LABEL + '-thumbs');
 for (const d of [DATA, PROFILE, THUMB_DIR]) fs.rmSync(d, { recursive: true, force: true });
@@ -252,7 +255,7 @@ async function inPageAudit() {
 
 /* ---------- the sandbox ---------- */
 const srv = spawn(process.execPath, ['serve.mjs', '--port', String(PORT), '--no-open', '--data-dir', DATA], { cwd: REPO, stdio: 'ignore', env: sandboxEnv() });
-const br = spawn(EDGE, ['--headless=new', `--remote-debugging-port=${CDP}`, `--user-data-dir=${PROFILE}`, '--window-size=1500,900', 'about:blank'], { stdio: 'ignore' });
+const br = spawn(EDGE, ['--headless=new', ...EDGE_SAFE_FLAGS, `--remote-debugging-port=${CDP}`, `--user-data-dir=${PROFILE}`, '--window-size=1500,900', 'about:blank'], { stdio: 'ignore' });
 let finished = false;
 const stop = async code => { if (finished) return; finished = true; try { br.kill(); } catch { /* gone */ } try { srv.kill(); } catch { /* gone */ } await sleep(500); process.exit(code); };
 setTimeout(() => { console.error('overall timeout'); stop(3); }, 40 * 60 * 1000);

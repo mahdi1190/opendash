@@ -171,7 +171,7 @@
       for (let x = qx0; x < qx1; x += 6) if (r() < .7) B.f(B.blob(r, x, qy1 + face - 2, 4 + r() * 4, 2 + r() * 2.5, 6, .6), r() < .5 ? '#4a5a34' : '#6a7440', .8);
       for (let x = qx0 + 30; x < qx1 - 20; x += 70 + r() * 30) { B.s(`M${x} ${qy1 + 7}a3 3 0 1 0 0.1 0`, P.iron, 1.4, .9); B.s(`M${x} ${qy1 + 2}l0 2`, P.iron, 1.6, .9); }
       // the flags, then a kerb of long granite copes along the sea edge
-      B.cx.save(); B.cx.clip(new Path2D(quayShape)); V.flags(B, r, P, [qLeft, qTop, qRight, qy1], { row: 15, w: 30, salt: 41, moss: .06 });
+      B.cx.save(); B.cx.clip(new Path2D(quayShape)); V.flags(B, r, P, [qLeft, qTop, qRight, qy1], { row: 10, w: 19, salt: 41, moss: .08 });   // (fix round 1: flags at a real size beside the figure, not paving slabs half its height)
       // feet have worn a paler way from the promenade to the pier
       B.f(B.blob(r, (qx0 + qx1) / 2 - 20, (qy0 + qy1) / 2, 70, 26, 9, .3), P.stoneHi, .3);
       B.cx.restore();
@@ -185,7 +185,7 @@
 
     // 5. The lighthouse on its rocks: weed-dark boulders at the tide, turf with thrift above, a rock pool
     const lh = L.stat('ld-lighthouse');
-    if (lh) { const c = cpt(lh.x + .5, lh.y + 1.2);
+    if (lh) { const c = cpt(lh.x + .5, lh.y + (lh.h || 1) + .2);
       add([c.x - 170, c.y - 110, c.x + 190, c.y + 120], 43, (B, r) => {
         const P2 = { rock: '#a0988a', rockLo: '#7a7266', rockHi: '#cfc6b2', rockDk: '#4a443c', lichen: '#d8c86a' };
         // the rock pool

@@ -360,6 +360,7 @@ window.GardenNativePainted = (function () {
       const U = new Path2D(), ribs = pz.ribbons || [];
       { let q = pz.points, area = 0; for (let i = 0; i < q.length; i++) { const u = q[i], v = q[(i + 1) % q.length]; area += u.x * v.y - v.x * u.y; } if (area < 0) q = q.slice().reverse(); U.moveTo(q[0].x, q[0].y); for (let i = 1; i < q.length; i++) U.lineTo(q[i].x, q[i].y); U.closePath(); }
       for (const rt of ribs) U.addPath(ribbon(rt, 0));
+      for (let q of pz.extra || []) { let area = 0; for (let i = 0; i < q.length; i++) { const u = q[i], v = q[(i + 1) % q.length]; area += u.x * v.y - v.x * u.y; } if (area < 0) q = q.slice().reverse(); U.moveTo(q[0].x, q[0].y); for (let i = 1; i < q.length; i++) U.lineTo(q[i].x, q[i].y); U.closePath(); }   // (the terrace's crescent, fix round 1)
       // (the lawn inside the walk is the lawn's: the end of the terrace road never lies on it)
       cx.save(); if (pz.lawn) { cx.beginPath(); cx.rect(B.x, B.y, B.w, B.h); loop(pz.lawn); cx.clip('evenodd'); }
       cx.save(); cx.fillStyle = '#3e4a2a'; cx.globalAlpha = .28; cx.filter = 'blur(' + Math.round(4 * K) + 'px)'; cx.translate(3, 5); cx.fill(U, 'nonzero'); cx.restore();
@@ -378,24 +379,27 @@ window.GardenNativePainted = (function () {
       const mkd = mkx.getImageData(0, 0, mkw, mkh).data, inU = (x, y) => { const i = Math.floor((x - b.x + 24) * MK), k = Math.floor((y - b.y + 24) * MK); return i >= 0 && k >= 0 && i < mkw && k < mkh && mkd[(k * mkw + i) * 4 + 3] > 127; };
       cx.save(); cx.fillStyle = '#ae9c78'; cx.fill(U, 'nonzero'); cx.clip(U, 'nonzero');
       const inRose = (x, y) => !!rose && Math.hypot((x - ccx) / 46, (y - ccy) / 25.3) < 1;
+      // (fix round 1: setts at about a third of their old size, nearer a real sett beside the figure; the old ones were bricks
+      // twice to three times too big, laid in ruler-straight courses that filled the screen like wallpaper. Now the courses
+      // wander, the stones vary in size and tone in broad patches as old paving does, a worn granite slab is let in here
+      // and there, and moss lives in the joints towards the rim)
+      const patch = (x, y) => Math.sin(x * .013 + y * .021) + Math.sin(x * .031 - y * .017 + 1.3) * .6;
       for (let y = b.y - 4; y < b.y + b.h + 4;) {
-        const rh = 7.2 + r() * 2.6; let x = b.x - 4 - r() * 8;
+        const rh = 4.6 + r() * 1.6; let x = b.x - 4 - r() * 6;
         while (x < b.x + b.w + 4) {
-          const w = 8 + r() * 8, x0 = x + .9, y0 = y + .9, x1 = x + w - .9, y1 = y + rh - .9, mx = (x0 + x1) / 2, my = (y0 + y1) / 2; x += w;
+          const slab = r() < .012, w = slab ? 11 + r() * 6 : 4.6 + r() * 4.4, sag = Math.sin(x * .019 + y * .043) * 1.3, x0 = x + .7, y0 = y + .7 + sag, x1 = x + w - .7, y1 = y + (slab ? rh * 1.9 : rh) - .7 + sag, mx = (x0 + x1) / 2, my = (y0 + y1) / 2; x += w;
           if (inRose(mx, my)) continue;
-          const j = () => (r() - .5) * 1.4;
           if (ribs.length && !inU(mx, my) && !inU(x0, y0) && !inU(x1, y1) && !inU(x1, y0) && !inU(x0, y1)) continue;   // (off the paving: nothing to lay)
-          const d = ribs.length ? (Math.hypot((mx - ccx) / 150, (my - ccy) / 70) < 1 ? .3 : inU(mx, my - 6) && inU(mx, my + 6) && inU(mx - 9, my) && inU(mx + 9, my) ? .62 : 1) : Math.hypot((mx - pz.centre.x) / (b.w / 2), (my - pz.centre.y) / (b.h / 2));
-          const tone = r(), base = tone < .15 ? '#c8b08a' : tone < .4 ? '#d4be96' : tone < .65 ? P.stone : tone < .82 ? '#dcc9a4' : tone < .93 ? '#cdb68e' : '#d8c2aa';
-          cx.save(); cx.translate(mx, my); cx.rotate((r() - .5) * .05);
-          const sw = x1 - x0 + j() * .4, shh = y1 - y0 + j() * .3;
-          cx.globalAlpha = 1; cx.fillStyle = base; cx.beginPath(); cx.roundRect(-sw / 2, -shh / 2, sw, shh, 1.6); cx.fill();
-          cx.globalAlpha = .3; cx.fillStyle = P.stoneHi; cx.beginPath(); cx.roundRect(-sw / 2 + .5, -shh / 2 + .4, sw * .8, 2, 1); cx.fill();
-          cx.globalAlpha = .22; cx.fillStyle = '#7a6648'; cx.beginPath(); cx.roundRect(-sw / 2 + .4, shh / 2 - 1.7, sw - .8, 1.5, .8); cx.fill();
-          if (d < .55 && r() < .5) { cx.globalAlpha = .16; cx.fillStyle = '#f4e8c8'; cx.beginPath(); cx.roundRect(-sw / 2, -shh / 2, sw, shh, 1.6); cx.fill(); }   // polished by feet in the middle
-          cx.restore();
+          const d = ribs.length ? (Math.hypot((mx - ccx) / 150, (my - ccy) / 70) < 1 ? .3 : inU(mx, my - 5) && inU(mx, my + 5) && inU(mx - 7, my) && inU(mx + 7, my) ? .62 : 1) : Math.hypot((mx - pz.centre.x) / (b.w / 2), (my - pz.centre.y) / (b.h / 2));
+          const pv = patch(mx, my), tone = r() + pv * .12, base = slab ? (r() < .5 ? '#b8b0a0' : '#c4bcaa') : tone < .15 ? '#c8b08a' : tone < .4 ? '#d4be96' : tone < .65 ? P.stone : tone < .82 ? '#dcc9a4' : tone < .93 ? '#cdb68e' : '#d8c2aa';
+          const sw = x1 - x0 + (r() - .5) * .5, shh = y1 - y0 + (r() - .5) * .4, sx = mx - sw / 2, sy = my - shh / 2;
+          cx.globalAlpha = 1; cx.fillStyle = base; cx.beginPath(); cx.roundRect(sx, sy, sw, shh, 1.3); cx.fill();
+          cx.globalAlpha = .3; cx.fillStyle = P.stoneHi; cx.fillRect(sx + .5, sy + .3, sw * .75, 1.3);
+          cx.globalAlpha = .24; cx.fillStyle = '#7a6648'; cx.fillRect(sx + .4, sy + shh - 1.1, sw - .8, 1.1);
+          if (d < .55 && r() < .5) { cx.globalAlpha = .16; cx.fillStyle = '#f4e8c8'; cx.fillRect(sx, sy, sw, shh); }   // polished by feet in the middle
+          else if (pv < -1 && r() < .35) { cx.globalAlpha = .12; cx.fillStyle = '#6a5a40'; cx.fillRect(sx, sy, sw, shh); }   // an old darker patch
           // moss and weeds in the joints, more towards the rim
-          if (d > .7 && r() < (d - .6) * .9) { cx.globalAlpha = .7; cx.fillStyle = r() < .5 ? '#7d8f4e' : '#93a252'; cx.fill(path(sceneDraw.blob(r, x1 + .4, (y0 + y1) / 2 + j(), 1.6 + r() * 2, 1 + r(), 5, .5))); }
+          if (d > .7 && r() < (d - .6) * .7) { cx.globalAlpha = .7; cx.fillStyle = r() < .5 ? '#7d8f4e' : '#93a252'; cx.fill(path(sceneDraw.blob(r, x1 + .3, my + (r() - .5), 1.2 + r() * 1.6, .8 + r() * .7, 5, .5))); }
         }
         y += rh;
       }
@@ -415,7 +419,7 @@ window.GardenNativePainted = (function () {
       if (ribs.length) {
         // turf growing in over the kerb from outside, all round the shape: blades rooted just off its edge
         const edge = [];
-        const q = pz.points; for (let i = 0; i < q.length; i++) { const a = q[i], c = q[(i + 1) % q.length], L = Math.hypot(c.x - a.x, c.y - a.y); for (let t = 0; t < L; t += 2.6) edge.push([a.x + (c.x - a.x) * t / L, a.y + (c.y - a.y) * t / L]); }
+        for (const q of [pz.points].concat(pz.extra || [])) for (let i = 0; i < q.length; i++) { const a = q[i], c = q[(i + 1) % q.length], L = Math.hypot(c.x - a.x, c.y - a.y); for (let t = 0; t < L; t += 2.6) edge.push([a.x + (c.x - a.x) * t / L, a.y + (c.y - a.y) * t / L]); }
         for (const rt of ribs) for (let i = 1; i < rt.points.length; i++) { const a = rt.points[i - 1], c = rt.points[i], L = Math.hypot(c.x - a.x, c.y - a.y) || 1, nx = -(c.y - a.y) / L, ny = (c.x - a.x) / L; for (let t = 0; t < L; t += 2.6) for (const sd of [-1, 1]) { const h = (rt.half[i - 1] + (rt.half[i] - rt.half[i - 1]) * t / L) * sd; edge.push([a.x + (c.x - a.x) * t / L + nx * h, a.y + (c.y - a.y) * t / L + ny * h]); } }
         cx.lineCap = 'round';
         for (const [ex, ey] of edge) {
@@ -510,7 +514,7 @@ window.GardenNativePainted = (function () {
   };
   const HALL = [
     // (four cells wide from round 3: the hall stands larger than the cottages; w is its shadow's width)
-    { obj: 'structure.wp-bivvy', v: 0, w: 128, wallWidth: 150, wallCenterX: 5 },
+    { obj: 'structure.wp-bivvy', v: 0, w: 104, wallWidth: 205, wallCenterX: 5 },   // (fix round 1: smaller, an angler's tent pitched on the terrace's end, not a dome that fills it)
     { obj: 'building.vale-hall-small', v: 0, w: 192, wallWidth: 160, sign: 'Lake Hall' },
     { obj: 'building.thatched-cottage', v: 1, w: 200, wallWidth: 216, sign: 'Lake Hall' },
     { obj: 'building.vale-hall-large', v: 0, w: 192, wallWidth: 240, sign: 'Lake Hall' },

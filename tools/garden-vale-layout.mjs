@@ -295,11 +295,19 @@ for (const p of S) if (p.door === undefined) p.door = { x: p.x, y: p.y + 1 };
 // the hand-authored village (vale-village.json): statics that move to face the square, and the new cottages
 for (const [id, mv] of Object.entries(VV.staticMoves)) { const p = S.find(q => q.id === id); if (!p) { warn.push('static move: no static ' + id); continue; } Object.assign(p, mv); if (p.apron) p.apron = p.door && p.door.y < p.y ? { x: p.x - 1, y: p.y - 3, w: p.w + 2, h: 3 } : { x: p.x - 1, y: p.y + 1, w: p.w + 2, h: 3 }; }
 for (const ns of VV.newStatics) S.push(Object.assign(sightRow(ns.id), ns));
+// how deep a building stands on the ground (fix round 1): a house blocks its whole footprint, front wall to back wall, not
+// only the row along its front, so the feet stop where its walls stand and never step into the picture. The front row
+// (and so the foot it is drawn from, its door and its depth order) stays where it was; the rows behind it are added.
+for (const [id, d] of Object.entries(VV.depth || {})) {
+  const p = S.find(q => q.id === id); if (!p) { warn.push('depth: no static ' + id); continue; }
+  const foot = p.y + p.h; p.y = foot - d; p.h = d;
+  if (p.apron) p.apron = p.door && p.door.y < p.y ? { x: p.x - 1, y: p.y - 3, w: p.w + 2, h: 3 } : { x: p.x - 1, y: foot, w: p.w + 2, h: p.w <= 2 ? 1 : 3 };   // (a stall or a bench needs only the row it is used from)
+}
 // the story places that are part of something already drawn: points only, no art and no footprint (read by 94-garden-wonder-1kin.js _wkAnchor and the gates' finds)
 const storyAnchors = {
   'ld-ruined-arch': { x: 19.5, y: 67, of: 'island-ruins' }, 'ld-falls-cave': { x: 42.2, y: 26.4, of: 'fleet-falls' }, 'ld-lamp-room': { x: 61.5, y: 83.6, of: 'ld-lighthouse' },
   'ld-mill-office': { x: 76.5, y: 64.6, of: 'ld-mill' }, 'ld-hothouse': { x: 40.5, y: 65.6, of: 'lc-glasshouse' }, 'ld-terrace-bench': { x: 48.9, y: 43.6, of: 'lakeside-terrace' },
-  'lc-the-green': { x: 48.5, y: 53, of: 'the-green' },
+  'lc-the-green': { x: 49.7, y: 51.9, of: 'the-green' },   // (fix round 1: on the open lawn beside the sundial, not in front of it)
   'ld-quince': { x: 24.4, y: 71.5, of: 'ruins-pond' },   // (quince's brook: the old woodland pond past the ruined arch, out of sight of Hollin's hut)   // (the stories mean the village green, not the land section of that name)
 };
 
@@ -357,7 +365,9 @@ for (const [id, a] of Object.entries(VV.sections)) {
   const keep = [], why = (x, y) => { const c = C(x, y); return !c || !c.land ? 'sea' : c.fw ? 'water' : c.beach ? 'beach' : c.route ? 'route ' + c.route : c.st ? 'static ' + c.st : c.lf ? 'landform' : c.reserved ? 'reserved (apron or facade)' : c.zone !== 0 ? 'zone ' + c.zone : taken.has(K(x, y)) ? 'taken' : S.some(p => p.door && Math.floor(p.door.x) === x && Math.floor(p.door.y) === y) ? 'a door' : ''; };
   for (const [x, y] of a.cells) { const w = why(x, y); if (w) warn.push(`village section ${id} cell ${x},${y} is not free (${w})`); else { keep.push([x, y]); taken.add(K(x, y)); } }
   // a section short of its old size grows into free ground beside it, nearest its middle first
-  const need = Math.max(4, v4Cells[id].length), mx = a.cells.reduce((n, c) => n + c[0], 0) / a.cells.length, my = a.cells.reduce((n, c) => n + c[1], 0) / a.cells.length;
+  // (fix round 1: the green's borders are laid as authored, round the green's rim, and not grown back to their old size
+  // into the middle of the lawn: a green is lawn first, with borders round it)
+  const need = a.asAuthored ? a.cells.length : Math.max(4, v4Cells[id].length), mx = a.cells.reduce((n, c) => n + c[0], 0) / a.cells.length, my = a.cells.reduce((n, c) => n + c[1], 0) / a.cells.length;
   while (keep.length && keep.length < need) { let best = null; for (const [x, y] of keep) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (why(nx, ny)) continue; const d = Math.hypot(nx - mx, ny - my); if (!best || d < best[2]) best = [nx, ny, d]; } if (!best) break; keep.push([best[0], best[1]]); taken.add(K(best[0], best[1])); }
   if (keep.length < need) warn.push(`village section ${id} has ${keep.length} cells, fewer than its ${need}`);
   sectionCells[id] = keep;
