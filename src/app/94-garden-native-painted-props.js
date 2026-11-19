@@ -755,6 +755,10 @@ window.GardenPaintedProps = (function () {
       : kind === 'stair' ? [['tree.cherry', 0, { h: 104 }, -(side ? 30 : half * 1.55) - 58, -14, 'back'], ['tree.cherry', 1, { h: 96 }, (side ? 30 : half * 1.55) + 58, -10, 'back']]
       : kind === 'pass' ? (side ? [['tree.pine', 0, { h: 170 }, 34, -art.S - 20, 'back'], ['rock.boulder', 0, { w: 96 }, 0, -art.S * .8, 'back'], ['rock.boulder', 1, { w: 110 }, 0, art.S * .8 + 6, 'front']] : [['tree.pine', 0, { h: 170 }, -half - 50, -16, 'back'], ['rock.boulder', 0, { w: 100 }, -half, 2, 'back'], ['rock.boulder', 1, { w: 110 }, half, 4, 'back']])
       : kind === 'ruin' ? [['tree.proof-yew', 0, { h: 130 }, side ? 40 : half + 52, side ? -art.S : -6, 'back']] : [];
+    // what of the drawing blocks walking, [dx, dy, width] px from the crossing (read by gateTrees, so the feet follow the
+    // art): the side-on forest arch's north oak and its two hedge banks, so the way through is the gap between them only
+    art.feet = [];
+    if (kind === 'arch' && side) { const yn = -art.S - 10, ys = art.S + 4; art.feet.push([-12, yn, 26]); for (let y = yn - 104; y <= yn - 10; y += 6) art.feet.push([0, y, 58]); for (let y = ys + 8; y <= ys + 100; y += 6) art.feet.push([0, y, 58]); }
     // the box of the drawing round the crossing's centre
     const box = kind === 'arch' && side ? [-120, -240, 120, 176] : (kind === 'arch' || kind === 'ruin') && side ? [-half * .85 - 90, -art.S - 200, half * .85 + 90, art.S + 30] : side ? [kind === 'bridge' ? -150 : -100, -170 - half * .9, kind === 'bridge' ? 150 : 100, kind === 'bridge' ? frame.span + 28 : half * .9 + 22] : [-half - 90, -200, half + 90, kind === 'stair' ? 60 : 24];
     const base = (B) => {
@@ -1153,6 +1157,7 @@ window.GardenPaintedProps = (function () {
       const art = ok(() => gateArt(gateKind(g), g, frame, 'summer', true, null)); if (!art) continue;
       for (const [id, , size, dx, dy] of art.lib) if (/^tree\./.test(id)) out.push([+((frame.x + dx) / W.cellW).toFixed(2), +((frame.y + dy - W.sky) / W.cellH).toFixed(2), size.h > 140 ? .5 : .4]);
         else if (/^rock\./.test(id) && size.w) out.push([+((frame.x + dx) / W.cellW).toFixed(2), +((frame.y + dy + size.w * .26 - W.sky) / W.cellH).toFixed(2), +(size.w * .5 / W.cellW).toFixed(2)]);   // (the pass's boulders, drawn from their middle: a block along their foot, half the stone wide)
+      for (const [dx, dy, wpx] of art.feet || []) out.push([+((frame.x + dx) / W.cellW).toFixed(2), +((frame.y + dy - W.sky) / W.cellH).toFixed(2), +(wpx / W.cellW).toFixed(2)]);
     }
     gateTreesMemo = { d: D, out };
     return out.concat(fallsFeet);
