@@ -181,7 +181,9 @@ function _gwBuildSolids(m) {
   // like the old woodland's lamps, so you walk round the post and behind the lantern, not through it (their cell stays open)
   // the painted vale's standing things that name their foot (the cider press, the millstone, the maypole, the shore boulders...)
   if (island && typeof GardenPaintVale !== 'undefined' && GardenPaintVale && GardenPaintVale.feet) for (const f of GardenPaintVale.feet()) add(f.x0, f.y0, f.x1, f.y1, f.src);
-  for (const p of gardenPropsNow()) if (p.art === 'lamp' && /^ld-lamp-/.test(p.id)) { const x = p.x + .5, y = p.y + .7; add(x - .17, y - .2, x + .17, y + .04, 'street lamp post'); }
+  // (its front at the plinth's drawn foot, the line the lamp sorts by: 5 px short of it, someone standing at the front of the
+  // block with the smaller feet was drawn behind the lamp they stood in front of, the collision audit, 19 Nov 2026)
+  for (const p of gardenPropsNow()) if (p.art === 'lamp' && /^ld-lamp-/.test(p.id)) { const x = p.x + .5, y = p.y + .86; add(x - .17, y - .22, x + .17, y + .04, 'street lamp post'); }
   // The landforms (mountains, the scarp, the ruin and terrace walls) stop the feet along their own outline, the one their
   // painters draw (2.73: the cells whose middle fell inside a thin wall blocked whole, so a wall had gaps you walked
   // through and invisible ends a cell wide; the collision view showed it on every wall). Their cells stay solid for
@@ -304,7 +306,8 @@ function gardenWalkFolds(island) {
 // verifier, 19 Nov 2026). The milestone is a stone a third of a cell wide, not a cell; the old watchtower's stump stands
 // 0.4 of a cell in from each end of its three cells; the hollow oak's root flare is wider than its one cell; the charcoal
 // clamp's turf mound is nearly two cells wide on one (its ART box runs 46 px each side).
-const GW_PROP_FEET = Object.freeze({ 'ld-mile': [[-8, 8, 10]], 'ld-tower': [[-53, 53, 0]], 'ld-hollow': [[-30, 30, 0]], 'ld-clamp': [[-38, 38, 20]] });
+// The summit cairn's bottom ring of stones is drawn a cell and a quarter wide on its one cell (the collision audit).
+const GW_PROP_FEET = Object.freeze({ 'ld-mile': [[-8, 8, 10]], 'ld-tower': [[-53, 53, 0]], 'ld-hollow': [[-30, 30, 0]], 'ld-clamp': [[-38, 38, 20]], 'ld-cairn': [[-31, 31, 0]] });
 function gardenPropPaintedFeet(p) {
   if (!p || typeof GardenPaintedMarks === 'undefined' || !GardenPaintedMarks || !GardenPaintedMarks.ART || GARDEN_WORLD.v < 5) return null;
   const art = GardenPaintedMarks.ART[p.id] && GardenPaintedMarks.ART[p.id].foot ? GardenPaintedMarks.ART[p.id] : GW_PROP_FEET[p.id] ? { foot: GW_PROP_FEET[p.id] } : null; if (!art || !art.foot || gardenPropCol(p) !== 'full') return null;
@@ -711,6 +714,31 @@ function _gwMoveBy(dx, dy) {
   if (shore.shore && shore.moved && !backOnGive && gain(shore.x, shore.y) >= gain(x, y)) { _gw.px = shore.x; _gw.py = shore.y; return true; }
   if (x === x0 && y === y0) return false;
   _gw.px = x; _gw.py = y; return true;
+}
+/**
+ * Walking by the keys (or steering with the pointer) onto and along a crossing: where you press within 38 degrees of a
+ * crossing's own direction, from just short of one of its ends or on it, you walk along its middle line, not the way you
+ * press. A diagonal press runs at about 32 degrees (a cell across for a cell down), and stepping stones and footbridges
+ * run at their own angles: down-left at the north end of the west brook stones, their own direction, met the bank beside
+ * the first stone and slid you along it into the pump square (the verifier, 19 Nov 2026). (ux, uy): the direction you
+ * press, in screen px, unit length; returns the direction to walk, or null to walk as pressed.
+ */
+function _gwCrossingSteer(ux, uy) {
+  if (GARDEN_WORLD.v < 5 || typeof gardenIslandCrossingGeometry !== 'function' || !(ux || uy)) return null;
+  const W = GARDEN_WORLD, X = _gw.px * W.cellW, Y = W.sky + _gw.py * W.cellH;
+  for (const c of gardenIslandCrossingGeometry()) {
+    const L = Math.hypot(c.b.x - c.a.x, c.b.y - c.a.y); if (!(L > 1)) continue;
+    for (const [E, O] of [[c.a, c.b], [c.b, c.a]]) {
+      const tx = (O.x - E.x) / L, ty = (O.y - E.y) / L, rx = X - E.x, ry = Y - E.y, along = rx * tx + ry * ty, across = rx * ty - ry * tx;
+      if (along < -40 || along > L - 4 || Math.abs(across) > 30) continue;   // (from 40 px short of this end to the far end)
+      if (ux * tx + uy * ty < .79) continue;   // (within 38 degrees of the way in)
+      // aim at the middle line a little ahead of where you are along it
+      const aim = Math.max(0, along) + 16, gx = E.x + tx * aim - X, gy = E.y + ty * aim - Y, gl = Math.hypot(gx, gy);
+      if (gl < 1e-6) continue;
+      return [gx / gl, gy / gl];
+    }
+  }
+  return null;
 }
 /**
  * A diagonal step (dx, dy cells) that is shut whole and on each axis: the nearest way on along the edge that caught the

@@ -283,10 +283,16 @@
     // End by end: the size rule above lets a whole-cell block round a thing a third of a cell wide pass (the milestone, an
     // invisible wall 0.35 of a cell each side), and a block 0.4 of a cell past each end of a stump (the old watchtower), and
     // a mound or a root flare wider than its block (the charcoal clamp, the hollow oak): the verifier, 19 Nov 2026.
+    // (past an end: only where nothing at all is painted over the block's overhang, low down: a stall, a hide on stilts or a
+    // board on two posts has a narrow lowest run and its body over the rest of its block. Short of an end: only where the
+    // feet really stand on the drawn end.)
     else if (!extra && own && rs.length <= 1 && !['tree', 'wall', 'rock'].includes(o.kind)) {
-      const past = Math.max(a.x - bx0, bx1 - b.x), short = Math.max(bx0 - a.x, b.x - bx1);
-      if (past > .3 && bw > span + .45) push({ kind: 'block-size', ...base, detail: 'its block runs ' + past.toFixed(2) + ' cells past one end of its drawn base, where nothing is drawn (block ' + bw.toFixed(2) + ' wide, base ' + span.toFixed(2) + ')' });
-      else if (short > .14 && span > .3) push({ kind: 'block-size', ...base, detail: 'its drawn base runs ' + short.toFixed(2) + ' cells past one end of its block: the feet stand on it (block ' + bw.toFixed(2) + ' wide, base ' + span.toFixed(2) + ')' });
+      const nothingAt = x => { const p = toPx(x, yb); for (const dy of [-3, -10, -18, -28]) if (paintAt(p.X, p.Y + dy)) return false; return true; };
+      const pastW = a.x - bx0, pastE = bx1 - b.x, shortW = bx0 - a.x, shortE = b.x - bx1;
+      const past = pastW > .3 && nothingAt(bx0 + .12) ? pastW : pastE > .3 && nothingAt(bx1 - .12) ? pastE : 0;
+      const short = shortW > .14 && free(a.x + .06, yb - .06) && free(a.x + .06, yb - .16) ? shortW : shortE > .14 && free(b.x - .06, yb - .06) && free(b.x - .06, yb - .16) ? shortE : 0;
+      if (past && bw > span + .45) push({ kind: 'block-size', ...base, detail: 'its block runs ' + past.toFixed(2) + ' cells past one end of its drawn base, where nothing is drawn (block ' + bw.toFixed(2) + ' wide, base ' + span.toFixed(2) + ')' });
+      else if (short && span > .3) push({ kind: 'block-size', ...base, detail: 'its drawn base runs ' + short.toFixed(2) + ' cells past one end of its block, and the feet stand on it (block ' + bw.toFixed(2) + ' wide, base ' + span.toFixed(2) + ')' });
     }
   };
   for (const o of objs) {
