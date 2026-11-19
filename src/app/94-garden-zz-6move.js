@@ -15,7 +15,7 @@
    Reduced motion: no gait, no hop, no turning sweep (the drawing turns at once), as before.
    ============================================================ */
 const GPL_MOVE = Object.freeze({
-  turnRate: 760,          // degrees a second the heading swings
+  turnRate: 560,          // degrees a second the heading swings
   // per gait: stride as a share of the leg's length, the planted share of a leg's cycle, arm swing (deg), lean (deg), bob (px)
   walk: Object.freeze({ stride: 1.38, stance: 0.58, arm: 24, lean: 3, lift: 0.16 }),
   run: Object.freeze({ stride: 1.5, stance: 0.36, arm: 52, lean: 9, lift: 0.3, flight: 2.6 }),
