@@ -190,6 +190,17 @@ function _gplPaintFace(a) {
   return { skull, under, over };
 }
 
+/** KNEES (round 3, round 2 of the moves). One leg drawing, cut at the knee and hung on two joints: the thigh turns about the hip (the leg's own
+ * group, as before, so the walk and every move still drive it), the shin about the knee (.gpl-kn, inside it, so it rides the thigh). Both halves are
+ * the same painted leg, clipped: the thigh ends in a rounded knee that covers the joint whichever way the shin turns. kx, ky: the figure's units ->
+ * the walker's (across, down); x: the knee's middle; hx: the hip's x (the leg group's pivot). */
+const _GPL_KNEE = -17.2, _GPL_LEGW = 2.2;   // the figure kit's knee (70-scene-lib-people-0figure.js KNEE) and half the leg's width there
+function _gplKneed(art, x, hipY, ky, kx, cls, kcls, id, hx) {
+  const n = _gplN, k = _GPL_KNEE * ky, rx = _GPL_LEGW * Math.abs(kx), ry = _GPL_LEGW * ky * 1.1;
+  const clips = `<clipPath id="${id}t"><rect x="-60" y="-140" width="120" height="${n(140 + k)}"/><ellipse cx="${n(x)}" cy="${n(k)}" rx="${n(rx)}" ry="${n(ry)}"/></clipPath><clipPath id="${id}s"><rect x="-60" y="${n(k - 0.2)}" width="120" height="60"/></clipPath>`;
+  return `${clips}<g class="gpl-limb ${cls}" style="transform-origin:${n(hx == null ? 0 : hx)}px ${n(hipY)}px"><g class="gpl-kn ${kcls}" style="transform-origin:${n(x)}px ${n(k)}px"><g clip-path="url(#${id}s)">${art}</g></g><g clip-path="url(#${id}t)">${art}</g></g>`;
+}
+
 /* -- the whole person -- */
 function _gplDraw(a, dir, pose, o) {
   const fo = profileFigureOpts(a), PP = _pfSP;
@@ -223,7 +234,7 @@ function _gplDraw(a, dir, pose, o) {
   let legs = '', upper = '';   // the legs under the body: a hem or a hand always lies over a thigh
   if (side) {
     const KX = _GPL_KX, fig = _gplM(KX * S, KY * S, 0, 0), figL = _gplM(_GPL_KXL * S, KY * S, 0, 0), j = (p) => [p[0] * KX * S, p[1] * KY * S], len = 19.1 * KY * S;
-    legs = `<g class="gpl-limb gpl-lg gpl-b" style="transform-origin:0px ${_gplN(hipY)}px">${_gplG(figL, F.legB)}</g><g class="gpl-limb gpl-lg gpl-a" style="transform-origin:0px ${_gplN(hipY)}px">${_gplG(figL, F.legA)}</g>`;
+    legs = _gplKneed(_gplG(figL, F.legB), 0.2 * _GPL_KXL * S, hipY, KY * S, _GPL_KXL * S, 'gpl-lg gpl-b', 'is-b', uid + 'kb') + _gplKneed(_gplG(figL, F.legA), 0.2 * _GPL_KXL * S, hipY, KY * S, _GPL_KXL * S, 'gpl-lg gpl-a', 'is-a', uid + 'ka');
     const far = _gplG(fig, Fp.farArm), near = _gplG(fig, Fp.nearArm);
     const armFar = P ? _gplArm(far, j(F.shoulders.far), len, P.a[1] || '', P.a[0], P.a[2]) : _gplArm(far, j(F.shoulders.far), len, 'gpl-as gpl-a');
     const armNear = P ? _gplArm(near, j(F.shoulders.near), len, P.b[1] || '', P.b[0], P.tool || P.b[2]) : _gplArm(near, j(F.shoulders.near), len, 'gpl-as gpl-b', 0, held);
@@ -237,7 +248,7 @@ function _gplDraw(a, dir, pose, o) {
     const kb = _GPL_BUST[a.build] || 0.8, port = _gplPort(), bust = _gplPort(kb);
     const KXF = 3.0, dx = 9.4 * (kb / 0.8) * S;
     const legArt = (sgn) => _gplG(_gplM(sgn * KXF * S, KY * S, sgn * dx, 0), F.legA);
-    legs = `<g class="gpl-limb gpl-lf gpl-a" style="transform-origin:${_gplN(-dx)}px ${_gplN(hipY)}px">${legArt(-1)}</g><g class="gpl-limb gpl-lf gpl-b" style="transform-origin:${_gplN(dx)}px ${_gplN(hipY)}px">${legArt(1)}</g>`;
+    legs = _gplKneed(legArt(-1), -dx - 0.2 * KXF * S, hipY, KY * S, KXF * S, 'gpl-lf gpl-a', 'is-a', uid + 'ka', -dx) + _gplKneed(legArt(1), dx + 0.2 * KXF * S, hipY, KY * S, KXF * S, 'gpl-lf gpl-b', 'is-b', uid + 'kb', dx);
     // the arms: the figure's, without the fine pieces, as wide as the portrait's sleeves (its seams are at 24 and 76)
     const FpL = a.watch === 'none' ? Fp : profileFigureSvg(Object.assign({}, bare, { watch: 'none' }), { layers: true, arms: hang, uid: uid + 'b', size: 240, plain: true });
     const w = B.arm + T.g * 0.6, ax = (16.4 * kb / w) * S, ay = KY * S, jx = 34 * kb * S, jy = _gplY(88), sh = Fp.shoulders.near;

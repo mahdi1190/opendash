@@ -17,10 +17,10 @@
 const GPL_MOVE = Object.freeze({
   turnRate: 560,          // degrees a second the heading swings
   // per gait: stride as a share of the leg's length, the planted share of a leg's cycle, arm swing (deg), lean (deg), bob (px)
-  walk: Object.freeze({ stride: 1.38, stance: 0.58, arm: 24, lean: 3, lift: 0.16 }),
-  run: Object.freeze({ stride: 1.5, stance: 0.36, arm: 52, lean: 9, lift: 0.3, flight: 2.6 }),
-  creep: Object.freeze({ stride: 0.8, stance: 0.66, arm: 8, lean: 10, lift: 0.1, crouch: 0.9 }),
-  stairs: Object.freeze({ stride: 1.0, stance: 0.6, arm: 18, lean: 5, lift: 0.34 }),
+  walk: Object.freeze({ stride: 1.38, stance: 0.58, arm: 24, lean: 3, lift: 0.16, knee: 42 }),
+  run: Object.freeze({ stride: 1.5, stance: 0.36, arm: 52, lean: 9, lift: 0.3, flight: 2.6, knee: 88 }),
+  creep: Object.freeze({ stride: 0.8, stance: 0.66, arm: 8, lean: 10, lift: 0.1, crouch: 0.9, knee: 30 }),
+  stairs: Object.freeze({ stride: 1.0, stance: 0.6, arm: 18, lean: 5, lift: 0.34, knee: 60 }),
   hop: Object.freeze({ ms: 380, high: 15 }),
 });
 const _gmv = { h: 90, want: 90, last: 0, phase: 0, limbs: new WeakMap(), hop: 0, hopT: 0, gait: 'walk', sx: 1, stairs: null, stairT: 0, uphill: 0, dir: 's', face: 1, steer: null };
@@ -97,7 +97,8 @@ function _gmvLimbs(body) {
   L = { native, root: pick('.gpl-root'), up: pick('.gpl-up'), heads: [...body.querySelectorAll('.gpl-hd')].map(el => ({ el, ox: 0, oy: 0, tf: '' })),
     side: !!body.querySelector('.gpl-lg'),
     legA: pick('.gpl-lg.gpl-a') || pick('.gpl-lf.gpl-a'), legB: pick('.gpl-lg.gpl-b') || pick('.gpl-lf.gpl-b'),
-    armA: pick('.gpl-as.gpl-a') || pick('.gpl-af.gpl-b'), armB: pick('.gpl-as.gpl-b') || pick('.gpl-af.is-r') };
+    armA: pick('.gpl-as.gpl-a') || pick('.gpl-af.gpl-b'), armB: pick('.gpl-as.gpl-b') || pick('.gpl-af.is-r'),
+    kneeA: pick('.gpl-kn.is-a'), kneeB: pick('.gpl-kn.is-b') };
   _gmv.limbs.set(body, L);
   return L;
 }
@@ -175,7 +176,8 @@ function gartMoveFrame(inner, bob, gw, time) {
   const leg = (p) => {   // -> [angle (deg), knee (scaleY), planted]
     if (p < G.stance) { const x = stride / 2 - stride * (p / G.stance); return [Math.asin(Math.max(-0.98, Math.min(0.98, x / legLen))) * 180 / Math.PI, 1, x]; }
     const q = (p - G.stance) / (1 - G.stance), e = q * q * (3 - 2 * q), x = -stride / 2 + stride * e;
-    return [Math.asin(Math.max(-0.98, Math.min(0.98, x / legLen))) * 180 / Math.PI, 1 - G.lift * Math.sin(Math.PI * q), null];
+    const k = L.kneeA ? 0.35 : 1;   // with a knee the shin folds back instead (the leg is not squashed as much)
+    return [Math.asin(Math.max(-0.98, Math.min(0.98, x / legLen))) * 180 / Math.PI, 1 - G.lift * k * Math.sin(Math.PI * q), null, G.knee * Math.sin(Math.PI * Math.pow(q, 0.8))];
   };
   const pa = _gmv.phase, pb = (pa + 0.5) % 1, A = leg(pa), B = leg(pb);
   // the hip rides the planted leg (lower as the legs open); a run has a little flight between steps
@@ -189,6 +191,7 @@ function gartMoveFrame(inner, bob, gw, time) {
   if (side) {
     // side on (drawn facing east; the mirror flips it): legs turn about the hip, forward is +x, so a positive turn swings the foot back
     _gmvSet(L.legA, -A[0], A[1], 0, native); _gmvSet(L.legB, -B[0], B[1], 0, native);
+    _gmvSet(L.kneeA, A[3] || 0, null, 0, native); _gmvSet(L.kneeB, B[3] || 0, null, 0, native);   // the swinging shin folds back at the knee
     _gmvSet(L.armA, A[0] / 40 * G.arm, null, 0, native); _gmvSet(L.armB, B[0] / 40 * G.arm, null, 0, native);
     _gmvSet(L.up, lean, null, 0, native);
   } else {

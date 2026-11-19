@@ -1248,7 +1248,8 @@ window.GardenNativeWorld = (function () {
         if (record.behind !== behind) { record.behind = behind; record.root.setAlpha(behind ? .38 : 1); }
       }
       coveringCanopies.length = 0;
-      const probes = [{ x, y: y - playerOcclusionHeight * .81 }, { x, y: y - playerOcclusionHeight * .48 }, { x: x - 6, y: y - playerOcclusionHeight * .54 }, { x: x + 6, y: y - playerOcclusionHeight * .54 }];
+      const actLift = typeof gartActLift === 'function' ? gartActLift() : 0;   // a figure up on a branch or a seat is that much higher
+      const probes = [{ x, y: y - actLift - playerOcclusionHeight * .81 }, { x, y: y - actLift - playerOcclusionHeight * .48 }, { x: x - 6, y: y - actLift - playerOcclusionHeight * .54 }, { x: x + 6, y: y - actLift - playerOcclusionHeight * .54 }];
       for (const crown of canopyOccluders) {
         const b = crown.bounds;
         let covered = false;
@@ -1294,7 +1295,9 @@ window.GardenNativeWorld = (function () {
       }
       // A single faded crown stays natural. Only overlapping foreground
       // canopies need this subtle position cue, never roofs or empty ground.
-      const show = root.visible && playerNode.target.visible && externalCanopies.length > 0 && externalCanopies.length + coveringCanopies.length >= 2 && !(typeof gardenDesignOn === 'function' && gardenDesignOn());
+      // Round 3 (moves): the lead's ruling, "the figure must stay fully drawn, and a crown in front of it fades". The pale outline drawn over
+      // the figure read as a washed-out or second figure (and its box test fired with nothing really in front), so it is off; the crowns fade.
+      const show = false && root.visible && playerNode.target.visible && externalCanopies.length > 0 && externalCanopies.length + coveringCanopies.length >= 2 && !(typeof gardenDesignOn === 'function' && gardenDesignOn()) && !(typeof gartActBusy === 'function' && gartActBusy());   // (doing something, the figure is posed and lifted: a still outline of it standing would be a second, pale figure)
       if (!show) { silhouetteVisible = false; xray.target.setVisible(false); return; }
       const current = playerInner._nativePlayerCurrent, body = current ? current.node : playerInner.firstChild;
       if (!body) { silhouetteVisible = false; xray.target.setVisible(false); return; }
