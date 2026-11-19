@@ -255,7 +255,7 @@ const _PCFX = Object.freeze({
   bone: () => '<path d="M-4.600-1.200a1.500 1.500 0 1 1 1.600-1.600L3-1.300a1.500 1.500 0 1 1 1.600 1.600a1.500 1.500 0 1 1-1.600 1.600L-3 1.300a1.500 1.500 0 1 1-1.600-1.600z" fill="#f6ead0" stroke="#c8b48a" stroke-width=".45"/>',
   coin: () => '<circle r="3.300" fill="#f4c542" stroke="#b8861e" stroke-width=".6"/><path d="M-1.200-1.600h2.400M-1.200 0h2.400M-1.200 1.600h2.400" stroke="#d9a32a" stroke-width=".55"/>',
   worm: () => '<path d="M-4 1Q-2.600-2 -1 .6Q.6 3 2.200 .2Q3 -1.200 4-.6" stroke="#d98a8a" stroke-width="1.600" fill="none" stroke-linecap="round"/><circle cx="3.800" cy="-.7" r=".35" fill="#3a2a2a"/>',
-  twig: () => '<path d="M-5 1.200L5-1.200M1-.2L3.200-2.800M-2 .6L-3.400 2.800" stroke="#7a5432" stroke-width="1.200" stroke-linecap="round" fill="none"/><path d="M3.200-2.800q1.400-.6 1.600.6q-1.400.4 -1.600-.6z" fill="#7fb24a"/>',
+  twig: () => '<path d="M-5 1.200L5-1.200M1-.2L3.200-2.800M-2 .6L-3.400 2.800" stroke="#7a5432" stroke-width="2.100" stroke-linecap="round" fill="none"/><path d="M3.200-2.800q1.400-.6 1.600.6q-1.400.4 -1.600-.6z" fill="#7fb24a"/>',
   carrot: () => '<path d="M-4.400 2.400L3-1.600Q4.400-1.800 4.200-.4L-3.800 3.400Q-5 3.600 -4.400 2.400z" fill="#f08a3c"/><path d="M3.400-1.600Q3.600-4.200 5-4.600Q5-3 4.400-2Q6.400-2.400 6.800-1.400Q5.200-1 4.200-1z" fill="#5fae4a"/>',
   hat: () => '<path d="M-3.400 3L0-5.200L3.400 3z" fill="#e8508a"/><path d="M-2.600 1L2.600 1M-1.600-1.600L1.600-1.600" stroke="#ffd84a" stroke-width=".8"/><circle cy="-5.400" r="1.200" fill="#ffd84a"/>',
   hoop: () => '<ellipse rx="3.200" ry="6.400" fill="none" stroke="#e0473e" stroke-width="1.400"/><ellipse rx="3.200" ry="6.400" fill="none" stroke="#fff" stroke-width=".5" stroke-dasharray="1.400 2.200"/>',
@@ -376,6 +376,17 @@ function _pcNativeStillClock(root, ms, done) {
   events.on('update', update); events.once('shutdown', shutdown);
   return { stop };
 }
+/** Effects that read (round 3): the hundred things' clips (ids 'l-') and the clips the rows borrow draw their splashes, leaves, notes, coins and
+ *  sparkles about twice the size and throw them further, so they read beside the pet at the default camera rather than as specks. */
+const _PC_FX_BIG = new Set(['spin', 'jump', 'pounce', 'startled', 'zoomies', 'beg', 'rearup', 'dig', 'roll', 'chasetail', 'hiccup', 'playdead', 'bow', 'sneeze', 'yawn', 'stretch']);
+function _pcFxK(id, c) { if (c && c.fxK) return c.fxK; return /^l-/.test(String(id)) || _PC_FX_BIG.has(String(id)) ? 1.9 : 1; }
+function _pcFxBig(p, K) {
+  const q = Object.assign({}, p), m = Math.sqrt(K);
+  q.s = Math.min(4.6, (p.s || 1) * K);
+  if (p.dx != null) q.dx = p.dx * m; if (p.dy != null) q.dy = p.dy * m;
+  if (p.path) q.path = p.path.map(([x, y]) => [x * m, y * m]);
+  return q;
+}
 /** Play a clip on a drawn pet. Returns {ms, stop()}; o.done is called when it ends. Nothing is left behind. */
 function petClipRun(root, id, o) {
   o = o || {};
@@ -391,8 +402,9 @@ function petClipRun(root, id, o) {
   }
   if (c.fx && c.fx.length) {
     const fxp = (root.querySelector('.pt-fx') || {}).parentNode || root;
-    for (const [t, kind, p] of c.fx) {
-      const n = p.n || 1, gap = (p.gap || 0) / rate;
+    const K = _pcFxK(id, c);
+    for (const [t, kind, p0] of c.fx) {
+      const p = K === 1 || kind === 'tongue' ? p0 : _pcFxBig(p0, K), n = p.n || 1, gap = (p.gap || 0) / rate;
       for (let i = 0; i < n; i++) {
         const run = () => { if (root.isConnected) _pcSprite(fxp, kind, p.c, _pcAnchors(root), p, i); }, at = t * ms + i * gap;
         if (native) jobs.push({ at, run }); else timers.push(setTimeout(run, at));
