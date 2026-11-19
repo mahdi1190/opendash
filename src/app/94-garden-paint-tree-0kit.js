@@ -151,7 +151,12 @@ window.GardenPaintTrees = (function () {
         cx.globalAlpha = 1; cx.fillStyle = B[1]; cx.beginPath(); cx.moveTo(hi[0][0], hi[0][1]); for (const p of hi) cx.lineTo(p[0], p[1]); for (let i = lo.length - 1; i >= 0; i--) cx.lineTo(lo[i][0], lo[i][1]); cx.closePath(); cx.fill();
         cx.globalAlpha = .55; cx.fillStyle = B[0]; cx.beginPath(); cx.moveTo(lo[0][0], lo[0][1]); for (let i = 0; i < lo.length; i++) cx.lineTo(lo[i][0], lo[i][1]); for (let i = lo.length - 1; i >= 0; i--) cx.lineTo((lo[i][0] * 2 + hi[i][0]) / 3, (lo[i][1] * 2 + hi[i][1]) / 3); cx.closePath(); cx.fill();
         cx.globalAlpha = .5; cx.strokeStyle = B[3]; cx.lineWidth = Math.max(.7, tw * .035); cx.beginPath(); for (let i = 1; i < hi.length - 2; i++) { const p = hi[i], q = lo[i]; cx[i === 1 ? 'moveTo' : 'lineTo'](p[0] + (q[0] - p[0]) * .18, p[1] + (q[1] - p[1]) * .18); } cx.stroke();
+        // bark furrows along the bough, so it reads as wood and not as a smooth tube
+        cx.strokeStyle = B[0]; cx.lineWidth = Math.max(.6, tw * .022);
+        for (const f of [.42, .62, .78]) { cx.globalAlpha = .3; cx.beginPath(); for (let i = 0; i < hi.length - 1; i++) { const p = hi[i], q = lo[i], w = f + Math.sin(i * 1.7 + f * 9) * .05; cx[i ? 'lineTo' : 'moveTo'](p[0] + (q[0] - p[0]) * w, p[1] + (q[1] - p[1]) * w); } cx.stroke(); }
         cx.globalAlpha = 1;
+        // in winter the bough forks on from its tip into branches (bare, it otherwise ended in the air like a hammock's rope)
+        limbs.push([x1, y1, x1 + dir * H * .1, y1 - H * .2, tw * .16], [x1 * .8, y1 + H * .02, x1 * .8 + dir * H * .02, y1 - H * .18, tw * .12]);
       }
       for (const [bx, by, s] of [[-.26, .3, 1], [.2, .55, .8], [-.05, .72, .7]]) {
         const x = tw * bx + lean * by, y = -th * by, rx = tw * .13 * s, ry = tw * .1 * s;
@@ -254,7 +259,10 @@ window.GardenPaintTrees = (function () {
     };
     cx.lineCap = 'round';
     for (const [x0, y0, x1, y1, w] of base.limbs) fork(x0, y0, Math.atan2(y1 - y0, x1 - x0), Math.hypot(x1 - x0, y1 - y0) * .6, w, 1);
-    const F = FORM[sp]; cx.fillStyle = sp === 'birch' ? '#8a6a5a' : '#6e6252'; cx.globalAlpha = .16; cx.beginPath(); cx.ellipse(0, -H * F.cy, H * F.rx * .85, H * F.ry * .75, 0, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 1;
+    // (the haze fades out from the middle: a flat ellipse at a sixth read as a grey balloon behind every bare tree on snow;
+    //  19 Nov 2026, the woods chain)
+    const F = FORM[sp], hz = sp === 'birch' ? '138,106,90' : '110,98,82', hx = H * F.rx * .85, hy = H * F.ry * .75;
+    cx.save(); cx.translate(0, -H * F.cy); cx.scale(1, hy / hx); const hg = cx.createRadialGradient(0, 0, 0, 0, 0, hx); hg.addColorStop(0, 'rgba(' + hz + ',.2)'); hg.addColorStop(.55, 'rgba(' + hz + ',.12)'); hg.addColorStop(1, 'rgba(' + hz + ',0)'); cx.fillStyle = hg; cx.globalAlpha = 1; cx.beginPath(); cx.arc(0, 0, hx, 0, Math.PI * 2); cx.fill(); cx.restore();
   }
   /** Grass grown up round the foot, so the tree stands in the lawn rather than on it. */
   function footGrass(cx, r, H, flare, season) {

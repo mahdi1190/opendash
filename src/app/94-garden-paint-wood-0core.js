@@ -133,7 +133,7 @@ window.GardenPaintWood = (function () {
       const land = [], knots = new Map();
       for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
         if (!inside(x + .5, y + .5, poly)) continue; const c = cellAt(x, y); if (wet(c)) continue;
-        land.push([x, y]);
+        land.push([x, y, isPath(c) ? 2 : near(x, y, 1, isPath) ? 1 : 0]);   // (and whether it is a path, or by one: the spring flowers keep off the path)
         if (onWall(x + .5, y + 1)) continue;   // (a trunk never stands on a dry-stone terrace wall)
         // Land not yet bought in a wood is a wall to your feet: show it as one (brambles and holly in a knot), not open grass.
         // The map-wide rule (one look per kind of country): thicket in the woods (light and old), a post-and-rail fence
@@ -449,7 +449,7 @@ window.GardenPaintWood = (function () {
         cx.globalAlpha = 1;
       }
       // fine detail last, so no lobe covers it: litter flecks, moss, spring bluebells
-      for (const [x, y] of land) { yield;
+      for (const [x, y, pn] of land) { yield;
         const X = x * W.cellW + W.cellW / 2, Y = W.sky + y * W.cellH + W.cellH / 2; if (X < view.x || X > view.x + view.w || Y < view.y || Y > view.y + view.h) continue;
         const g = noise(x, y, 5, hash(f.region) & 1023), rr = rng(hash(f.region + 'f') ^ (x * 977 + y * 131));
         // leaf litter flecks and moss
@@ -458,7 +458,13 @@ window.GardenPaintWood = (function () {
         if (!window.GardenPaintGround) for (let i = 0; i < 6; i++) { cx.globalAlpha = .45; cx.fillStyle = F.leaf[i % 3]; const lx = X + (rr() - .5) * W.cellW, ly = Y + (rr() - .5) * W.cellH; cx.beginPath(); cx.ellipse(lx, ly, 1.6 + rr() * 1.6, .9 + rr() * .7, rr() * 3, 0, Math.PI * 2); cx.fill(); }
         if (noise(x, y, 2.6, 515) > (f.def.mood === 'old' ? .5 : .62) && rr() < .75) { cx.globalAlpha = .42;   /* (moss in drifts, not one pad a cell at random: an even scatter read as lily pads) */ cx.fillStyle = F.moss; cx.fill(new Path2D(sceneDraw.blob(rr, X + (rr() - .5) * 20, Y + (rr() - .5) * 10, 8 + rr() * 10, 4 + rr() * 4, 7, .5))); }
         // spring bluebells in drifts under the light wood
-        if (season === 'spring' && f.def.mood === 'light' && g > .4 && rr() < .5) for (let i = 0; i < 9; i++) { cx.globalAlpha = .85; cx.fillStyle = i % 3 ? '#6f78c8' : '#8c90da'; cx.beginPath(); cx.arc(X + (rr() - .5) * W.cellW, Y + (rr() - .5) * W.cellH, 1.3, 0, Math.PI * 2); cx.fill(); }
+        // (19 Nov 2026, round 2: in carpets, not confetti: where a slow drift field is high a violet haze lies on the litter and
+        //  the flowers crowd in it, thick at its heart and thinning out at its rim, each a nodding dab of two blues)
+        if (season === 'spring' && f.def.mood === 'light' && pn !== 2) { const d = noise(x, y, 3.2, 733) * .7 + g * .3, spill = pn ? .42 : .75; if (d > .5) {
+          const k = Math.min(1, (d - .5) * 3.2), hx = X + (rr() - .5) * 10, hy = Y + (rr() - .5) * 6, hr = W.cellW * (.9 + k * .4) * (pn ? .6 : 1);
+          cx.save(); cx.translate(hx, hy); cx.scale(1, .6); const hg = cx.createRadialGradient(0, 0, 0, 0, 0, hr); hg.addColorStop(0, 'rgba(112,108,196,' + (.28 * k).toFixed(3) + ')'); hg.addColorStop(1, 'rgba(112,108,196,0)'); cx.fillStyle = hg; cx.globalAlpha = 1; cx.fillRect(-hr, -hr, hr * 2, hr * 2); cx.restore();
+          for (let i = 0, n = Math.round((6 + k * 26) * (pn ? .5 : 1)); i < n; i++) { const a = rr() * 6.28, q = Math.sqrt(rr()), fx = X + Math.cos(a) * q * W.cellW * spill, fy = Y + Math.sin(a) * q * W.cellH * spill, s = .9 + rr() * .8; cx.globalAlpha = .9; cx.fillStyle = rr() < .3 ? '#9a9ae6' : rr() < .6 ? '#6c6cc8' : '#5a5ab4'; cx.beginPath(); cx.ellipse(fx, fy, s * .8, s, .3, 0, Math.PI * 2); cx.fill(); if (s > 1.3) { cx.fillStyle = '#c4c4f4'; cx.globalAlpha = .6; cx.beginPath(); cx.arc(fx - .3, fy - .4, s * .35, 0, Math.PI * 2); cx.fill(); } }
+        } }
       }
       cx.globalAlpha = 1;
       // Where a wood meets the village lawn its floor fades out over a few steps, instead of
