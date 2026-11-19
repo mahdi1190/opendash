@@ -91,6 +91,10 @@ window.GardenPaintWood = (function () {
       // how many path cells lie under the dense middle of a crown standing at (X, Y), H tall (world px)
       const crownOnPath = (X, Y, H, F) => { const cyp = Y - H * F.cy, rx = H * F.rx * .72, ry = H * F.ry * .72; let n = 0; for (let cy = Math.floor((cyp - ry - W.sky) / W.cellH); cy <= Math.floor((cyp + ry - W.sky) / W.cellH); cy++) for (let cx = Math.floor((X - rx) / W.cellW); cx <= Math.floor((X + rx) / W.cellW); cx++) { const mx = (cx + .5) * W.cellW, my = W.sky + (cy + .5) * W.cellH; if (((mx - X) / rx) ** 2 + ((my - cyp) / ry) ** 2 > 1) continue; if (isPath(cellAt(cx, cy))) n++; } return n; };
       const kitWood = species.some(s => kitOf(s[0]));
+      // the Great Oak stands alone at its clearing's edge (94-garden-paint-vale-1places.js paints it, its foot 2.9 cells east and
+      // 1.5 rows north of the clearing's middle): no tree in front of its bole, none under its crown, so the landmark reads at once
+      const goc = (pres.plazas || []).find(p => p.id === 'great-oak-clearing'), oakFoot = goc ? { x: goc.x + 2.9, y: goc.y - 1.5 } : null;
+      const byOak = (x, y) => !!oakFoot && kitWood && Math.abs(x + .5 - oakFoot.x) < 5.4 && y + 1 - oakFoot.y > -8.5 && y + 1 - oakFoot.y < 3.2;
       const clear = (x, y) => plazas.some(p => Math.hypot((x - p.x) / ((p.rx || 3.2) + 1), (y - p.y) / ((p.ry || 2.4) + 1)) < 1);
       // the gates stay in view: no tree stands on a gate, nor where its crown would hide the arch, bridge or stair (the canopy rises up the screen)
       const fl = pres.falls, byGate = (x, y) => (data.gates || []).some(g => Math.abs(x - g.x) <= 3 && y - g.y >= -2 && y - g.y <= (kitWood ? 7 : 5)) || !!(fl && x >= fl.x - 3 && x <= fl.x + (fl.w || 3) + 2 && y >= fl.y - 1 && y <= fl.y + (fl.h || 3) + 4);   // (nor over Fleet Falls)
@@ -107,7 +111,7 @@ window.GardenPaintWood = (function () {
         // The map-wide rule (one look per kind of country): thicket in the woods (light and old), a post-and-rail fence
         // everywhere else, the valley meadow included (94-garden-paint-vale-1valley.js, which skips THICKET_WOODS).
         if (def.mood !== 'meadow' && c.locked && c.row && /^l[sc]-/.test(c.row.id || '') && !c.plantingReserved && !isPath(c)) { thicket(out, x, y, px, py, region.id); continue; }
-        if (c.plantingReserved || isPath(c) || statics.has(x + ',' + y) || (c.row && c.row.plot && !c.locked) || clear(x + .5, y + .5) || byGate(x, y) || byFind(x, y)) continue;
+        if (c.plantingReserved || isPath(c) || statics.has(x + ',' + y) || (c.row && c.row.plot && !c.locked) || clear(x + .5, y + .5) || byGate(x, y) || byFind(x, y) || byOak(x, y)) continue;
         const grove = noise(x, y, 5, hash(region.id) & 1023), dense = noise(x, y, 2.2, 77), pathNear = near(x, y, 1, isPath), waterNear = near(x, y, 1, wet);
         // groves where the field is high, glades where it is low; a fringe of shrubs at path edges
         const bankNear = def.mood === 'meadow' && near(x, y, 2, wet) && !waterNear;
@@ -133,7 +137,11 @@ window.GardenPaintWood = (function () {
             let h = 0; for (let k = want; k >= want * .72; k -= 8) if (crownOnPath(tx, ty, k, F) <= 2) { h = k; break; }
             if (!h) continue;
             const trunk = { x0: (tx - half) / W.cellW, x1: (tx + half) / W.cellW, y0: (ty - 6 - W.sky) / W.cellH, y1: (ty + 1 - W.sky) / W.cellH };
-            const t = { id: sp[0], kit, v: Math.floor(h3(x, y, 5) * (kit === 'oak' || kit === 'beech' ? 3 : 2)), size: 0, h, x: tx, y: ty, flip: h3(x, y, 6) < .5, scale: 1, region: region.id, cx: x, cy: y, trunk };
+            // depth: a tree deep in a grove stands in its neighbours' shade, so it is darker and cooler than one at a glade's
+            // sunny edge; each tree a touch different again, so no two crowns of a kind are the same green (the wood read as one tree stamped)
+            const deep = Math.max(0, Math.min(1, (grove - .3) / .5)), f = (def.mood === 'old' ? .9 : 1) - deep * (def.mood === 'old' ? .24 : .17) - h3(x, y, 71) * .07, cool = deep * .05;
+            const tint = (Math.round(255 * f * (1 - cool)) << 16) | (Math.round(255 * f) << 8) | Math.round(255 * Math.min(1, f * (1 + cool)));
+            const t = { id: sp[0], kit, v: Math.floor(h3(x, y, 5) * (kit === 'oak' || kit === 'beech' ? 3 : 2)), size: 0, h, x: tx, y: ty, flip: h3(x, y, 6) < .5, scale: 1, region: region.id, cx: x, cy: y, trunk, tint };
             out.trees.push(t); placed.push({ x: tx, y: ty, gap: gap * .8 });
             // its undergrowth: ferns and bracken gathered in the shade at its foot (on the shadow side, lower right), each its own size
             const nU = kit === 'birch' ? 1 : 1 + Math.floor(h3(x, y, 61) * 2.4);
@@ -347,6 +355,7 @@ window.GardenPaintWood = (function () {
     const S = state;
     if (t.kit) {
       const im = ok(() => GardenPaintTrees.image(S.scene, { species: t.kit, season: S.season, v: t.v, h: t.h, x: t.x, y: t.y, flip: t.flip })); if (!im) return null;
+      if (t.tint != null && t.tint !== 0xffffff) im.setTint(t.tint);
       im.setDepth(t.y); S.objects.add(im); t.im = im; return im;
     }
     const GP = window.GardenNativePainted; if (!GP || !GP.objectImage) return null;

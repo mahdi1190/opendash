@@ -227,7 +227,7 @@
       add(bb, seed, (B, r) => {
         const path = new Path2D(B.poly(shape)), dry = new Path2D(); dry.rect(bb[0] - 10, bb[1] - 10, bb[2] - bb[0] + 20, bb[3] - bb[1] + 20); for (const w of L.D.freshwater || []) if (w.boundary) dry.addPath(V.loopPath([w.boundary.map(L.pt)]));
         B.cx.clip(dry, 'evenodd');
-        const kitYard = window.GardenPaintGround && (style === 'setts' || style === 'yard' || style === 'broken') ? GardenPaintGround.paths({ areas: [{ kind: 'setts', points: shape }], season: C.season, kindAt: () => 'meadow', box: { x: bb[0], y: bb[1], w: bb[2] - bb[0], h: bb[3] - bb[1] } }) : null;
+        const kitYard = window.GardenPaintGround && (style === 'setts' || style === 'yard') ? GardenPaintGround.paths({ areas: [{ kind: 'setts', points: shape }], season: C.season, kindAt: () => 'meadow', box: { x: bb[0], y: bb[1], w: bb[2] - bb[0], h: bb[3] - bb[1] } }) : null;
         if (kitYard) for (const o of kitYard) { B.cx.save(); o.draw(B, r, bb); B.cx.restore(); B.cx.globalAlpha = 1; }
         else if (style !== 'litter') { B.cx.filter = 'blur(3px)'; B.f(path, '#2e3420', .2); B.cx.filter = 'none'; }
         B.cx.save(); B.cx.clip(path);
@@ -247,10 +247,28 @@
           for (let k = 0; k < 18; k++) B.f(B.ell(rx(), ry(), 1.8 + r() * 1.4, 1.1 + r() * .6), ['#b0682a', '#d38f3a', '#8a5a2c', '#7d8f4e'][Math.floor(r() * 4)], .75);   // a few blown leaves
           for (let k = 0; k < 3; k++) { const x = rx(), y = ry(); B.f(B.blob(r, x, y, 12 + r() * 10, 4 + r() * 2, 8, .4), '#7e6a4a', .35).f(B.blob(r, x - 2, y - 1, 8 + r() * 6, 2.4, 8, .4), '#b6cbd0', .5); }   // rain puddles in the low setts
         }
-        // the ruin court: the kit's old stones (laid in courses, sunk and missing towards the edge, never a grid of bricks),
-        // then moss and turf grown in over them in drifts, thickest away from the middle where nobody walks
-        else if (style === 'broken' && kitYard) {
+        // the ruin court: old flags, worn and broken. Each stone's corners are shared with its neighbours and pulled well out of
+        // line, so the stones fit like crazy paving with a mossy joint between, never in courses (courses read as a brick wall
+        // laid flat); towards the edge more are sunk or gone to turf; then moss and grass grown in over them in drifts
+        else if (style === 'broken' && window.GardenPaintGround) {
           const mx = (bb[0] + bb[2]) / 2, my = (bb[1] + bb[3]) / 2, rx = (bb[2] - bb[0]) / 2, ry = (bb[3] - bb[1]) / 2;
+          const hh = (i, j, k) => { let n = Math.imul(i * 374761393 + j * 668265263 + k * 1442695041 + seed, 1) >>> 0; n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0; return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
+          const SW = 31, SH = 19, ni = Math.ceil((bb[2] - bb[0]) / SW) + 1, nj = Math.ceil((bb[3] - bb[1]) / SH) + 1;
+          const corner = (i, j) => ({ x: bb[0] - SW * .5 + i * SW + (hh(i, j, 1) - .5) * SW * .62, y: bb[1] - SH * .5 + j * SH + (hh(i, j, 2) - .5) * SH * .62 });
+          const STONE = ['#b9b3a0', '#aaa590', '#c6c1ae', '#9e9985', '#b4ae97', '#bdb59a'];
+          // (no fill under the stones: the joints and the gaps are the wood's own turf, so the court has no outline of its own)
+          for (let j = 0; j < nj; j++) for (let i = 0; i < ni; i++) {
+            const q = [corner(i, j), corner(i + 1, j), corner(i + 1, j + 1), corner(i, j + 1)], cxs = (q[0].x + q[1].x + q[2].x + q[3].x) / 4, cys = (q[0].y + q[1].y + q[2].y + q[3].y) / 4;
+            const e = Math.min(1, Math.hypot((cxs - mx) / rx, (cys - my) / ry)); if (hh(i, j, 3) < .06 + e * e * .4) continue;   // gone to turf
+            const s = q.map(p => ({ x: cxs + (p.x - cxs) * .88, y: cys + (p.y - cys) * .84 }));   // the joint
+            let d = ''; for (let k = 0; k < 4; k++) { const a = s[k], b = s[(k + 1) % 4], m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; d += (k ? 'Q' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) + ' ' : 'M') + m.x.toFixed(1) + ' ' + m.y.toFixed(1); }
+            d += 'Q' + s[0].x.toFixed(1) + ' ' + s[0].y.toFixed(1) + ' ' + ((s[0].x + s[1].x) / 2).toFixed(1) + ' ' + ((s[0].y + s[1].y) / 2).toFixed(1) + 'Z';
+            const tone = STONE[Math.floor(hh(i, j, 4) * STONE.length)], sunk = hh(i, j, 5) < .15 + e * .25;
+            B.f(d, '#3e4232', .4); B.cx.save(); B.cx.translate(-.4, -.8); B.f(d, sunk ? C.kit.mix(tone, '#7a7864', .35) : tone);
+            B.cx.save(); B.cx.clip(new Path2D(d)); B.f(B.ell(cxs - 4, cys - 3, SW * .42, SH * .3), '#ddd6c2', .22); B.cx.restore(); B.cx.restore();   // its lit upper-left face, inside the stone (an edge line read as a white outline)
+            if (hh(i, j, 6) < .3) B.f(B.blob(r, cxs + (hh(i, j, 7) - .5) * 12, cys + (hh(i, j, 8) - .5) * 6, 3 + hh(i, j, 9) * 5, 1.4 + hh(i, j, 10) * 2, 6, .5), '#8a8a74', .35);   // wear and lichen
+            if (hh(i, j, 11) < .12) B.s(`M${cxs - 6} ${cys - 2}l${5 + hh(i, j, 12) * 5} ${2 + hh(i, j, 13) * 3}`, '#5e5c4c', .9, .7);   // a crack
+          }
           for (let k = 0; k < 70; k++) { const x = bb[0] + r() * (bb[2] - bb[0]), y = bb[1] + r() * (bb[3] - bb[1]), e = Math.min(1, Math.hypot((x - mx) / rx, (y - my) / ry)); if (r() > .25 + e * .9) continue; B.f(B.blob(r, x, y, 6 + r() * 18 * (.5 + e), 2.5 + r() * 5, 8, .55), r() < .55 ? '#667c40' : r() < .7 ? '#8a9a56' : '#4e6634', .3 + e * .4); }
           for (let k = 0; k < 40; k++) B.f(B.blob(r, bb[0] + r() * (bb[2] - bb[0]), bb[1] + r() * (bb[3] - bb[1]), 2 + r() * 4, 1 + r() * 1.4, 5, .6), '#7d9248', .6);
           if (C.season !== 'winter') for (let k = 0; k < 10; k++) B.tufts(r, bb[0] + r() * (bb[2] - bb[0]), bb[1] + r() * (bb[3] - bb[1]), 8, 3, ['#7d9248', '#a0b060'], 5);
