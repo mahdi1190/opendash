@@ -244,8 +244,11 @@
     const wint = season === 'winter', water = wint ? '#a4b4ba' : '#6a8a92', sky = wint ? '#e4ecee' : '#b8d0d4', mud = wint ? '#6e6a58' : '#4e4630';
     const rush = wint ? ['#8a8660', '#a49c72', '#6e6a4a'] : season === 'autumn' ? ['#6e7436', '#8e8a44', '#4e5a2a'] : ['#3a6630', '#568a3a', '#2c4e26'];
     if (horiz) {
-      B.f(B.rect(x0, y0 - 5, len, 9.5), mud, .45);
-      B.f(B.rect(x0, y0 - 3.2, len, 6), '#2e3a30', .7).f(B.rect(x0, y0 - 2, len, 4.6), water, .95).f(B.rect(x0, y0 - 2, len, 1.6), '#24302a', .4).f(B.rect(x0, y0 + 1.2, len, 1.1), sky, .5);
+      // (a band that wanders a little, by place, so the ditch along a row of cells is one cut and never a ruled line)
+      const G = window.GardenPaintGround, wv = u => G && G.noise ? (G.noise(u / 14, y0 / 14, 4651) - .5) * 2.6 : 0;
+      const band = (a, b) => { const top = [], bot = []; for (let t = 0; t <= len + .01; t += 3) { const px = x0 + Math.min(t, len), d = wv(px); top.push([px, y0 + a + d]); bot.unshift([px, y0 + b + d * .7]); } return B.poly(top.concat(bot)); };
+      B.f(band(-5, 4.5), mud, .45);
+      B.f(band(-3.2, 2.8), '#2e3a30', .7).f(band(-2, 2.6), water, .95).f(band(-2, -.4), '#24302a', .4).f(band(1.2, 2.3), sky, .5);
       for (let t = 0; t < len; t += 5) if (r() < .5) B.f(B.ell(x0 + t + r() * 4, y0 + .3, 1.6 + r() * 2, .5), sky, .55);   // light on the water
       for (let t = 0; t < len; t += 2.2) {   // the grass leaning over both lips, rushes on the field side
         const px = x0 + t + r() * 1.5; B.s(`M${px} ${y0 + 5}q${(r() - .5) * 2} -2 ${(r() - .5) * 3} -4.5`, P.lawnLo || '#5a7a3a', 1, .85);
@@ -396,7 +399,8 @@
   const WET = { summer: ['#3e6a30', '#5a8a3a', '#7aa84a', '#2e5228'], spring: ['#46742e', '#64983c', '#88b450', '#345a26'], autumn: ['#5a6a30', '#7a8a3e', '#9aa04e', '#3e4a24'], winter: ['#6a7458', '#86907a', '#a4ac96', '#4e5640'] };
   function wetFill(B, r, p, season, X0, Y0, X1, Y1) {
     const n = String(p.id), C = WET[season] || WET.summer, wint = season === 'winter', w = X1 - X0, h = Y1 - Y0;
-    B.f(B.rect(X0, Y0, w, h), C[0]);
+    // (the lush wet sward in ragged lobes, so its edge is the grass's own and never the field's rectangle)
+    B.f(B.blob(r, X0 + w / 2, Y0 + h / 2, w * .5, h * .5, 12, .22), C[0]); for (let k = 0; k < 5; k++) B.f(B.blob(r, X0 + w * (.15 + r() * .7), Y0 + h * (.2 + r() * .6), w * (.18 + r() * .12), h * (.22 + r() * .15), 8, .35), C[k & 1 ? 0 : 3], .8);
     for (let i = 0; i < w * h / 60; i++) B.f(B.blob(r, X0 + r() * w, Y0 + r() * h, 3 + r() * 5, 1.5 + r() * 2, 6, .5), C[1 + Math.floor(r() * 2)], .45);
     // standing water: a pool or two with the sky in it, rushes round their edges
     const pools = /dragonfly|frog|heron|moorhen|bittern/.test(n) ? 2 : /lark|last/.test(n) ? 0 : 1;
@@ -422,7 +426,7 @@
   }
   function woodFill(B, r, p, season, X0, Y0, X1, Y1) {
     const wint = season === 'winter', w = X1 - X0, h = Y1 - Y0;
-    B.f(B.rect(X0, Y0, w, h), wint ? '#4e4a3a' : '#2e3e24');
+    B.f(B.blob(r, X0 + w / 2, Y0 + h / 2, w * .5, h * .5, 12, .2), wint ? '#4e4a3a' : '#2e3e24'); for (let k = 0; k < 4; k++) B.f(B.blob(r, X0 + w * (.2 + r() * .6), Y0 + h * (.2 + r() * .6), w * .2, h * .24, 8, .35), wint ? '#4e4a3a' : '#2e3e24', .9);
     for (let i = 0; i < w * h / 50; i++) B.f(B.blob(r, X0 + r() * w, Y0 + r() * h, 3 + r() * 5, 1.5 + r() * 2.5, 6, .5), wint ? (r() < .5 ? '#6a5a42' : '#5a5a48') : r() < .4 ? '#4e6a34' : r() < .7 ? '#3a5028' : '#5a4a30', .55);
     // a still black pool among the stools, the light let through in a few coins
     { const px = X0 + w * (.35 + r() * .3), py = Y0 + h * .62, rx = w * .14, ry = h * .08; B.f(B.blob(r, px, py, rx, ry, 8, .3), wint ? '#7a8a90' : '#24302c').f(B.ell(px - rx * .3, py - ry * .2, rx * .35, ry * .3), '#6e8a8e', .5); }
@@ -439,7 +443,7 @@
     // a fallen alder, mossed over
     { const x = X0 + w * .2 + r() * w * .3, y = Y1 - 10, L = Math.min(w * .4, 34); B.f(B.ell(x + L / 2 + 2, y + 2.5, L * .55, 2.4), '#141c10', .5).s(`M${x} ${y}l${L} -2`, '#4e463a', 4.6, .95).s(`M${x} ${y - 1.2}l${L} -2`, '#7a7262', 1.4, .7).s(`M${x + 3} ${y - 2}l${L * .6} -1.4`, wint ? '#c8ccc0' : '#6a8a3a', 1.6, .8); }
     // the shade over all of it, deepest at the back under the terrace or the thicket
-    const g = B.cx.createLinearGradient(0, Y0, 0, Y1); g.addColorStop(0, 'rgba(10,20,12,.34)'); g.addColorStop(1, 'rgba(10,20,12,.1)'); B.cx.fillStyle = g; B.cx.globalAlpha = 1; B.cx.fillRect(X0, Y0, w, h);
+    const g = B.cx.createLinearGradient(0, Y0, 0, Y1); g.addColorStop(0, 'rgba(10,20,12,.34)'); g.addColorStop(1, 'rgba(10,20,12,.1)'); B.cx.fillStyle = g; B.cx.globalAlpha = 1; B.cx.fill(new Path2D(B.blob(r, X0 + w / 2, Y0 + h / 2, w * .52, h * .52, 12, .2)));
   }
   // The fill of one field, clipped to its cells a little inside its edges (the boundary is painted after, over its rim).
   function fieldFill(B, P, p, W, season, cb, fk, extra) {

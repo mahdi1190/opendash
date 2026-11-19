@@ -388,6 +388,28 @@
       });
     }
 
+    // round 3: the ground the sights stand in, from their layout rows: the frog stone in a wet hollow (damp dark earth, a
+    // little pool on its sunny side with frogbit, rushes round its rim), the bee boles in a drift of lavender and borage
+    // with the bees' path worn in the grass; the stones' and walls' own art is the sights painter's
+    for (const s of statics) {
+      const sw = s.w || 1, sh = s.h || 1; if (!inRegion(s.x + sw / 2, s.y + sh / 2)) continue;
+      const id = String(s.id || ''), X = (s.x + sw / 2) * cw, Y = W.sky + (s.y + sh) * ch - 3, wint = season === 'winter';
+      // (nothing of it on a path, a field or the water: a mark is laid only on open grass)
+      const open = (px, py) => { const cx0 = Math.floor(px / cw), cy0 = Math.floor((py - W.sky) / ch), b = base(cx0, cy0); return !!(b && b.land && !b.freshwater && !b.beach && !plotAt(cx0, cy0)) && pathGap(px, py) > 7; };
+      if (/frog/.test(id)) add([X - 80, Y - 40, X + 80, Y + 40], 8491, (B, r) => {
+        B.f(B.blob(r, X + 4, Y + 2, 56, 20, 9, .35), wint ? '#6a6a52' : '#3e5a2e', .5).f(B.blob(r, X + 2, Y + 1, 40, 13, 8, .35), '#4a4632', .35);
+        const px = X - 34, py = Y + 9; if (open(px - 16, py) && open(px + 16, py) && open(px, py)) B.f(B.blob(r, px, py + 1, 19, 7.5, 8, .3), '#2a3424', .75).f(B.blob(r, px, py, 16, 6, 8, .3), wint ? '#a8b8be' : '#668892').f(B.ell(px - 5, py - 1.6, 6.5, 1.6), wint ? '#e8eef0' : '#b8d0d4', .6);
+        if (!wint && open(px, py)) for (let i = 0; i < 6; i++) { const lx = px + (r() - .5) * 22, ly = py + (r() - .5) * 7; B.f(B.ell(lx, ly, 2.2, 1.2), '#4e8a3a', .95).f(B.ell(lx - .6, ly - .3, .9, .4), '#8ab86a', .8); }
+        for (let i = 0; i < 26; i++) { const a = r() * Math.PI * 2, rx = X + Math.cos(a) * (44 + r() * 14), ry = Y + 2 + Math.sin(a) * (15 + r() * 6), l = 6 + r() * 8; if (!open(rx, ry)) continue; for (let b = -1; b <= 1; b++) B.s(`M${rx + b} ${ry}q${b * .5} ${-l * .5} ${b * 1.6} ${-l}`, wint ? '#8a8660' : r() < .5 ? '#2c4e26' : '#4a7a34', .9, .95); }
+      });
+      if (/boles/.test(id)) add([X - 80, Y - 30, X + 80, Y + 40], 8492, (B, r) => {
+        if (wint) { B.f(B.blob(r, X, Y + 6, 46, 9, 8, .4), '#7a7458', .3); return; }
+        B.f(B.blob(r, X, Y + 4, 50, 10, 8, .45), '#5e6a3a', .3);
+        for (let i = 0; i < 70; i++) { const a = r() * Math.PI * 2, d = .45 + r() * .55, px = X + Math.cos(a) * 60 * d, py = Y + Math.sin(a) * 18 * d; if (Math.abs(px - X) < 24 && py < Y + 3 || !open(px, py)) continue;
+          if (r() < .62) { B.f(B.blob(r, px, py - 2, 4, 2.4, 6, .4), '#7a8a6e', .95); if (season !== 'spring') for (let k2 = 0; k2 < 4; k2++) { const sx = px + (k2 - 1.5) * 1.5; B.s(`M${sx} ${py - 3}l${(k2 - 1.5) * .5} -5.5`, '#7a8a6e', .5, .9).f(B.ell(sx + (k2 - 1.5) * .5, py - 8.5, .8, 1.8), '#8a6ab8', .95); } }
+          else { B.s(`M${px} ${py}v-5`, '#5e7a3e', .7, .9); if (season === 'summer' || season === 'autumn') for (let k2 = 0; k2 < 5; k2++) { const t2 = k2 / 5 * Math.PI * 2; B.f(B.ell(px + Math.cos(t2) * 1.2, py - 5.5 + Math.sin(t2) * 1.2, .9, .9), '#5a7ad8', .95); } } }
+      });
+    }
     const dwMemo = new Map(), dwAt = (x, y) => { const k = x + ',' + y; let v = dwMemo.get(k); if (v === undefined) { v = distTo(x, y, 5, fresh); dwMemo.set(k, v); } return v; };
 
     // 6. what grows in the grass (round 2): every free cell of the valley floor gets the plants its place has, painted into
@@ -407,18 +429,20 @@
     // by a wooden hatch at the water. The three longest runs of open meadow that leave the bank square to the water, kept
     // apart; dry and grown with rushes while the race is silted. From the layout: the fresh water, the free cells, the paths.
     const ditches = [];
-    // (round 3: the ditches ran into the fields' hedges and the hatches stood on their corners; a ditch now keeps three quarters of a cell off any field)
+    // (round 3: the ditches ran into the fields' hedges and the hatches stood on their corners, wedged between two fields. A ditch now
+    //  keeps a third of a cell off any field, and a hatch is never put between a field above and one below: on today's layout that
+    //  leaves no bank cell for one, so there are none until the water meadows' layout gives them room)
     const nearPlot = (fx, fy, d) => { for (const dy of [-d, 0, d]) for (const dx of [-d, 0, d]) if (plotAt(Math.floor(fx + dx), Math.floor(fy + dy))) return true; return false; };
     { const cs = [];
       for (let y = by0; y <= by1; y++) for (let x = bx0; x <= bx1; x++) {
-        if (!freeOk(x, y) || dwAt(x, y) > 1.01 || nearPlot(x + .5, y + .5, 1.2)) continue;
+        if (!freeOk(x, y) || dwAt(x, y) > 1.01 || plotAt(x - 1, y) || plotAt(x + 1, y) || (plotAt(x, y - 1) || plotAt(x - 1, y - 1) || plotAt(x + 1, y - 1)) && (plotAt(x, y + 1) || plotAt(x - 1, y + 1) || plotAt(x + 1, y + 1))) continue;
         let vx = 0, vy = 0; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if ((dx || dy) && fresh(x + dx, y + dy)) { const d = Math.hypot(dx, dy); vx -= dx / d; vy -= dy / d; }
         const l = Math.hypot(vx, vy); if (l < .5) continue; vx /= l; vy /= l;
         // (the hatch stands at the foot of its cell, so its posts rise clear of a field's front hedge in the row above)
-        const y0 = plotAt(x, y - 1) || plotAt(x - 1, y - 1) || plotAt(x + 1, y - 1) ? .92 : .6, pts = [{ x: x + .5 - vx * .4, y: y + y0 }]; let px = x + .5, py = y + .55, ok = 0;
+        const y0 = plotAt(x, y - 1) || plotAt(x - 1, y - 1) || plotAt(x + 1, y - 1) ? .92 : plotAt(x, y + 1) || plotAt(x - 1, y + 1) || plotAt(x + 1, y + 1) ? .42 : .6,   /* (round 3: and high in its cell when a field lies below, so it never stands on the field's corner) */ pts = [{ x: x + .5 - vx * .4, y: y + y0 }]; let px = x + .5, py = y + .55, ok = 0;
         for (let k = 0; k < 16; k++) {
           const bend = (kit.noise(px / 2.5, py / 2.5, 871) - .5) * .5, ax = vx * Math.cos(bend) - vy * Math.sin(bend), ay = vx * Math.sin(bend) + vy * Math.cos(bend);
-          const nx = px + ax * .5, ny = py + ay * .5; if (!freeOk(Math.floor(nx), Math.floor(ny)) || nearPlot(nx, ny, .75) || pathGap(nx * cw, W.sky + ny * ch) < 9 || trees.some(t => Math.hypot(t.x - nx, (t.y - ny) * 1.4) < 1)) break;
+          const nx = px + ax * .5, ny = py + ay * .5; if (!freeOk(Math.floor(nx), Math.floor(ny)) || nearPlot(nx, ny, .3) || pathGap(nx * cw, W.sky + ny * ch) < 9 || trees.some(t => Math.hypot(t.x - nx, (t.y - ny) * 1.4) < 1)) break;
           px = nx; py = ny; ok++; pts.push({ x: px, y: py });
         }
         if (ok >= 2 && pts.length >= 3) cs.push({ x, y, len: ok * .5, pts });
