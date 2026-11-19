@@ -777,11 +777,11 @@
         const lip = wave(top, 1.4, 1), crest = wave(top - DEEP, 1.8, 2), foot = wave(0, 1, 3).reverse();
         // the face toward you: shaded, darker at the foot, its clipped surface in small leaf dabs
         B.f(B.poly([[-half, top + 4], ...lip, [half, top + 4], [half - 1, -3], ...foot, [-half + 1, -3]]), B.lin(0, top, 0, 0, [[0, Y[1]], [.7, Y[0]], [1, '#16301c']]));
-        for (let i = 0; i < w * 34; i++) { const x = -half + 2 + r() * (half * 2 - 4), y = top + 2 + r() * (HH - 4); B.f(B.ell(x, y, 1.6 + r(), 1 + r() * .6), r() < .5 ? Y[1] : Y[0], .8); }
+        for (let i = 0; i < w * 16; i++) { const x = -half + 2 + r() * (half * 2 - 4), y = top + 2 + r() * (HH - 4); B.f(B.ell(x, y, 1.6 + r(), 1 + r() * .6), r() < .5 ? Y[1] : Y[0], .8); }
         // the top, clipped flat and lit from the upper left, broad light and shade across it, its front edge catching the light
         B.f(B.poly([[-half - 1, top - DEEP + 5], ...crest, [half + 1, top - DEEP + 5], [half + 1, top + 1], ...lip.slice().reverse(), [-half - 1, top + 1]]), B.lin(-half, top - DEEP, half, top, [[0, Y[3]], [.4, Y[2]], [1, Y[1]]]));
         for (let i = 0; i < w * 2 + 1; i++) B.f(B.blob(r, -half + r() * half * 2, top - DEEP * (.25 + r() * .5), 8 + r() * 10, 4 + r() * 4, 8, .5), r() < .5 ? Y[1] : Y[3], .3);
-        for (let i = 0; i < w * 40; i++) { const x = -half + 2 + r() * (half * 2 - 4), y = top - DEEP + 3 + r() * (DEEP - 3); B.f(B.ell(x, y, 1.6 + r(), 1 + r() * .6), r() < .4 ? Y[3] : r() < .7 ? Y[2] : Y[1], .75); }
+        for (let i = 0; i < w * 20; i++) { const x = -half + 2 + r() * (half * 2 - 4), y = top - DEEP + 3 + r() * (DEEP - 3); B.f(B.ell(x, y, 1.6 + r(), 1 + r() * .6), r() < .4 ? Y[3] : r() < .7 ? Y[2] : Y[1], .75); }
         B.s(B.line(lip), Y[3], 1.2, .7).f(B.rect(half - 8, top - DEEP + 4, 8, DEEP + HH - 6), '#0a1a0e', .12);
         B.tufts(r, 0, 1, half * 2, w * 5, grass(s), 5);
         // a little unevenness where it was cut, a sprig grown out, a few flowers at the foot in summer
