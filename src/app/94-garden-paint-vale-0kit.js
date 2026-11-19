@@ -237,8 +237,8 @@ window.GardenPaintVale = (function () {
     // the composition is the same for the same picture: compose once, then a repaint (a gate opening) only places it
     let comp = memo.get(sig);
     if (!comp) {
-      comp = { L, ground: [], main: [], under: [], things: [] };
-      const ctx = { L, P, season, tod: info.tod, kit, W, sig, add: (bb, seed, draw, extra) => comp.ground.push(Object.assign({ bb, seed, draw }, extra || {})), main: (bb, seed, draw) => comp.main.push({ bb, seed, draw }), under: o => comp.under.push(o), thing: o => comp.things.push(o) };
+      comp = { L, ground: [], main: [], under: [], things: [], live: [] };
+      const ctx = { L, P, season, tod: info.tod, kit, W, sig, add: (bb, seed, draw, extra) => comp.ground.push(Object.assign({ bb, seed, draw }, extra || {})), main: (bb, seed, draw) => comp.main.push({ bb, seed, draw }), under: o => comp.under.push(o), thing: o => comp.things.push(o), live: o => comp.live.push(o) };   // (live: drawn each frame near the camera, the swash)
       for (const p of parts) ok(() => p.compose(ctx));
       memo.clear(); memo.set(sig, comp);
       // the standing things that say where their foot is: walking stops the feet there (_gwBuildSolids)
@@ -269,8 +269,10 @@ window.GardenPaintVale = (function () {
     stats = { sig, ground: ground.length, mainland: main.length, under: under.length, things: things.length, spritePx: 0 };
     for (const u of under) (scene.textures.exists(underSig + u.key) ? make(u, true) : queue.push([u, true]));
     for (const o of things) (o.make || scene.textures.exists(sig + '|t|' + o.key) ? make(o, false) : queue.push([o, false]));
+    // the live things (the swash on the beaches): one graphics each just over the ground, drawn by tick() near the camera only
+    const lives = []; for (const o of comp.live || []) { const h = ok(() => o.make(scene, root, DEPTH + .5)); if (h && h.obj) { sprites.push(h.obj); lives.push(h); } }
     if (root.sort) root.sort('depth'); if (objects && objects.sort) objects.sort('depth');
-    cur = { sig, groundSig, handles, groundHandle, sprites, scene, queue, make, objects, root, tall, shrink, bob, W, covering: [] };
+    cur = { sig, groundSig, handles, groundHandle, sprites, scene, queue, make, objects, root, tall, shrink, bob, lives, W, covering: [] };
     stats.buildMs = Math.round(performance.now() - t0);
   }
   function tick(time, view) {
@@ -279,6 +281,7 @@ window.GardenPaintVale = (function () {
     // full size from the walking zoom in, down to farShrink at the whole-map zoom (its foot stays put)
     // boats and buoys afloat ride a slow swell, each on its own beat: a pixel or two up and down and a little roll
     if (cur && cur.bob.length && time) for (const im of cur.bob) { if (!im.active || !im.visible) continue; const b = im._gpvBob, t = time / 1000 + b.ph; im.y = b.y + Math.sin(t * 1.3) * b.a; im.rotation = Math.sin(t * .9 + 1) * .012 * b.a; }
+    if (cur && cur.lives.length && time) for (const h of cur.lives) ok(() => h.update(time, view));
     if (cur && cur.shrink.length) { const z = cur.scene.cameras && cur.scene.cameras.main ? cur.scene.cameras.main.zoom : 1, t = Math.max(0, Math.min(1, (z - .25) / .45));
       for (const im of cur.shrink) if (im.active) { const k = im._gpvBase * (im._gpvShrink + (1 - im._gpvShrink) * t); if (Math.abs(im.scaleX - k) > 1e-4) im.setScale(k); } }
     if (cur && cur.tall.length && typeof _gw !== 'undefined') {

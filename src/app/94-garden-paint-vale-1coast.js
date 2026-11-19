@@ -215,3 +215,19 @@ function gardenIslandHarbourThings(data) {
   gardenIslandHarbourThings._m = { d: D, out };
   return out;
 }
+/** The harbour's lamps: an iron lamp post on the copes at each side of the pier head. From the layout alone (the quay
+ * plaza and the pier statics), so the painter (94-garden-paint-vale-1harbour.js), walking (each painted lamp's foot) and
+ * the night's lights (94-garden-native-world.js) agree. (The lantern at the pier's far end is drawn with the deck, which
+ * grows as the pier is built.) {key, x, y, h} in cells at the foot; h is the height of the lantern's glass in world px. */
+function gardenIslandHarbourLamps(data) {
+  const D = data || (typeof gardenIslandData === 'function' ? gardenIslandData() : null); if (!D || !D.static || D.version < 5) return [];
+  const memo = gardenIslandHarbourLamps._m; if (memo && memo.d === D) return memo.out;
+  const quay = ((D.presentation || {}).plazas || []).find(p => p.id === 'the-quay'), piers = D.static.filter(p => /^pier/.test(p.id)), out = [];
+  if (quay && piers.length) {
+    const x0 = Math.min(...piers.map(p => p.x)), x1 = Math.max(...piers.map(p => p.x + p.w));
+    const tall = typeof gardenSizePx === 'function' ? gardenSizePx('lamp', .5) : 78;
+    out.push({ key: 'quay-w', x: x0 - .7, y: quay.y + 1.5, h: tall - 8 }, { key: 'quay-e', x: x1 + .7, y: quay.y + 1.5, h: tall - 8 });
+  }
+  gardenIslandHarbourLamps._m = { d: D, out };
+  return out;
+}

@@ -780,7 +780,7 @@ window.GardenNativeWorld = (function () {
       for (const pier of decks) {
         const x = pier.x * W.cellW, y = W.sky + pier.y * W.cellH, w = pier.w * W.cellW, h = pier.h * W.cellH;
         const node = element(scene, 'g', { class: 'gd-pier-deck', 'data-pier': pier.id }), pg = scene.add.graphics();
-        const b = pier.side === 'south' ? { x: x - 6, y: y - 1, width: w + 17, height: h + 13 } : { x: x - 4, y: y - 5, width: w + 8, height: h + 14 };
+        const b = pier.side === 'south' ? { x: x - 16, y: y - 10, width: w + 32, height: h + 30 } : { x: x - 4, y: y - 5, width: w + 8, height: h + 14 };
         node.nativeBounds = b; pierBoards.appendChild(node); node._inner.add(pg);
         pierDeckRecords.set(pier.id, { node, bounds: b });
         // The parent union is diagnostic only; caches and culling use each deck.
@@ -795,8 +795,8 @@ window.GardenNativeWorld = (function () {
           const last = decks.reduce((m, p) => p.side === 'south' && p.y + p.h > m ? p.y + p.h : m, 0) === pier.y + pier.h;
           pg.fillStyle(0x234a48, .26).fillRoundedRect(x + 7, y + 9, w + 3, h + 2, 5).fillStyle(0x234a48, .14).fillRoundedRect(x + 4, y + 5, w + 6, h + 4, 7);
           pg.fillStyle(0x5a4c38).fillRoundedRect(x - 4, y, w + 8, h + 2, 3).fillStyle(0x6e5e44).fillRoundedRect(x - 4, y, w + 8, h, 3);
-          for (let yy = y + 2, row = 0; yy < y + h - 2; yy += 10.5, row++) {
-            const bh = Math.min(9.4, y + h - 2 - yy); if (bh < 2) break;
+          for (let yy = y + 2, row = 0; yy < y + h - 2; yy += 8, row++) {
+            const bh = Math.min(7, y + h - 2 - yy); if (bh < 2) break;
             // long planks laid across the deck, now and then two to a row where one was replaced
             for (let xx = x - 2 - (rnd() < .55 ? 0 : 30 + rnd() * 70); xx < x + w + 2; ) { const bw = xx < x ? w + 8 : 60 + rnd() * 120, x0 = Math.max(x - 2, xx), x1 = Math.min(x + w + 2, xx + bw); if (x1 - x0 > 3) {
               const t = tones[Math.floor(rnd() * tones.length)]; pg.fillStyle(t).fillRect(x0 + .6, yy, x1 - x0 - 1.2, bh);
@@ -804,16 +804,33 @@ window.GardenNativeWorld = (function () {
               if (rnd() < .28) pg.lineStyle(.7, 0x7a6a50, .45).lineBetween(x0 + 4 + rnd() * 6, yy + 3 + rnd() * 4, x1 - 4 - rnd() * 6, yy + 3 + rnd() * 4);
               if (rnd() < .12) pg.fillStyle(0x6a5a42, .6).fillEllipse(x0 + (x1 - x0) * (.2 + rnd() * .6), yy + bh / 2, 3.4, 1.8);
               pg.fillStyle(0x3a3226, .5).fillRect(x1 - .6, yy, 1.2, bh); } xx += bw; }
-            for (const nx of [x + 4, x + w / 2, x + w - 4]) if (bh > 6) pg.fillStyle(0x4a4236, .7).fillCircle(nx - 1.6, yy + bh / 2, .8).fillCircle(nx + 1.6, yy + bh / 2, .8);
+            for (const nx of [x + 4, x + w / 2, x + w - 4]) if (bh > 5) pg.fillStyle(0x4a4236, .7).fillCircle(nx - 1.6, yy + bh / 2, .8).fillCircle(nx + 1.6, yy + bh / 2, .8);
             pg.fillStyle(0x2e281e, .55).fillRect(x - 3, yy + bh, w + 6, 1.4);
           }
           pg.fillStyle(0x2e5a58, .16).fillRect(x - 3, y + h - 22, w + 6, 20);   // (wet towards the water's end)
+          // feet have worn the middle of the deck paler, down its length (round 2)
+          pg.fillStyle(0xf4e8c8, .07).fillRect(x + w * .28, y, w * .44, h).fillStyle(0xf4e8c8, .07).fillRect(x + w * .37, y, w * .26, h);
+          // the piles under the rails: a ring of ripple on the water beside each post
+          for (let yy = y + 6; yy < y + h - 4; yy += 37) { pg.lineStyle(.9, 0xe8f2ee, .32).strokeEllipse(x - 11, yy + 9, 11, 3).strokeEllipse(x + w + 12, yy + 9, 11, 3); }
           // rail posts down both sides with a rope rail between them, each post with a pale cap and its shadow to the lee
           const posts = []; for (let yy = y + 6; yy < y + h - 4; yy += 37) posts.push(yy);
           for (const xx of [x - 2, x + w + 2]) {
             for (const yy of posts) pg.fillStyle(0x234a48, .25).fillRect(xx + 2, yy + 2, 6, 10).fillStyle(0x5e4a34).fillRoundedRect(xx - 3, yy - 9, 6, 17, 1.6).fillStyle(0x8a7050, .7).fillRect(xx - 2.2, yy - 8, 1.6, 15).fillStyle(0xd0bd8c).fillEllipse(xx, yy - 9, 7, 3.6);
             pg.lineStyle(1.6, 0xc9b07a, .9); for (let i = 1; i < posts.length; i++) { const y0 = posts[i - 1] - 6, y1 = posts[i] - 6, sag = 3; pg.beginPath(); pg.moveTo(xx, y0); for (let k = 1; k <= 6; k++) { const u = k / 6; pg.lineTo(xx + Math.sin(u * Math.PI) * .8, y0 + (y1 - y0) * u + Math.sin(u * Math.PI) * sag); } pg.strokePath(); }
           }
+          // the deck's end: a fascia board and the piles it stands on going down into the water, dark and weedy at the
+          // waterline, each in its ring of ripple (round 2: the deck ended in a flat edge over the water, a raft)
+          if (last) { pg.fillStyle(0x4a3c2c).fillRect(x - 4, y + h + 1, w + 8, 4.5).fillStyle(0x8a7454, .6).fillRect(x - 3, y + h + 1.4, w + 6, 1);
+            for (const px of [x + 2, x + w / 2 - 3, x + w - 2]) { pg.fillStyle(0x3e3226).fillRect(px - 3, y + h + 5, 6, 9).fillStyle(0x6a563c, .7).fillRect(px - 2.4, y + h + 5, 1.6, 8).fillStyle(0x2e3e30, .85).fillRect(px - 3, y + h + 11, 6, 3); pg.lineStyle(1, 0xe8f2ee, .45).strokeEllipse(px, y + h + 14.5, 13, 3.6); }
+            // the end post of the east rail, taller and iron-banded, with a crook arm out over the deck and a ship's lantern
+            // hung from it (lit at dusk: 'pier-lantern' in sync), and a coil of rope on a peg
+            const px = x + w + 2, py = y + h - 6, ph = 46, lx = px - 15, g0 = py - ph + 8;
+            pg.fillStyle(0x234a48, .26).fillEllipse(px + 6, py + 3, 14, 4);
+            pg.fillStyle(0x5e4a34).fillRoundedRect(px - 3.4, py - ph, 6.8, ph + 2, 1.4).fillStyle(0x8a7050, .7).fillRect(px - 2.6, py - ph + 1, 1.8, ph).fillStyle(0x3a3a36, .9).fillRect(px - 3.6, py - 12, 7.2, 2).fillRect(px - 3.6, py - ph + 8, 7.2, 2).fillStyle(0xd0bd8c).fillEllipse(px, py - ph, 8, 3.6);
+            pg.lineStyle(1.8, 0x3c4246).lineBetween(px - 1, py - ph + 4, px - 16, py - ph + 4).lineStyle(1.1, 0x3c4246, .9).lineBetween(px - 2, py - ph + 12, px - 12, py - ph + 4).lineStyle(1, 0x3c4246).lineBetween(lx, py - ph + 4, lx, g0 - 2);
+            pg.fillStyle(0x3c4246).fillTriangle(lx - 4.2, g0 + 1, lx + 4.2, g0 + 1, lx, g0 - 3).fillStyle(0xf4e0a0).fillRoundedRect(lx - 3.8, g0 + 1, 7.6, 10, 1.6).fillStyle(0xfff6d4, .55).fillRect(lx - 3, g0 + 2, 2.4, 8);
+            pg.lineStyle(1, 0x3c4246).strokeRoundedRect(lx - 3.8, g0 + 1, 7.6, 10, 1.6).lineBetween(lx, g0 + 1, lx, g0 + 11).fillStyle(0x3c4246).fillRoundedRect(lx - 4.2, g0 + 11, 8.4, 2, 1);
+            for (let k = 0; k < 3; k++) pg.lineStyle(1.3, k % 2 ? 0xc9b07a : 0xa88a54, .9).strokeEllipse(px + 2, py - 22 + k * 1.4, 8.8 - k * 1.2, 12 - k * 1.6); }
           if (last) { const lx = x + w * .7; pg.fillStyle(0x234a48, .3).fillRect(lx - 6, y + h + 2, 14, 10); pg.fillStyle(0x4e3e2c).fillRect(lx - 6, y + h - 3, 2.4, 14).fillRect(lx + 4, y + h - 3, 2.4, 14); for (let k = 0; k < 3; k++) pg.fillStyle(0x7a6448).fillRect(lx - 5, y + h + 1 + k * 4, 10, 1.6); }
         } else {
           // Side decks retain a shallow timber edge and two water-end supports.
@@ -1196,6 +1213,9 @@ window.GardenNativeWorld = (function () {
       }
       // the old woodland's wayside lamps are painted scenery (94-garden-paint-vale-1places.js), lit here at dusk and night
       if (typeof gardenIslandOldWoodLamps === 'function' && window.GardenPaintVale && GardenPaintVale.wanted()) gardenIslandOldWoodLamps().forEach((q, i) => pointLights.push({ id: 'oldwood-lamp:' + i, x: q.x * W.cellW, y: W.sky + q.y * W.cellH - 44, ground: W.sky + q.y * W.cellH + 2, radius: 120, height: 40, color: nightMaterials ? 0xffc17a : 0xffd88e, intensity: .85 }));
+      // the harbour's lamps at the pier head and the lantern at the pier's end are painted too (94-garden-paint-vale-1harbour.js)
+      if (typeof gardenIslandHarbourLamps === 'function' && window.GardenPaintVale && GardenPaintVale.wanted()) gardenIslandHarbourLamps().forEach(q => pointLights.push({ id: 'harbour-lamp:' + q.key, x: q.x * W.cellW, y: W.sky + q.y * W.cellH - q.h, ground: W.sky + q.y * W.cellH + 4, radius: 118, height: q.h, color: nightMaterials ? 0xffc17a : 0xffd88e, intensity: .85 }));
+      { const d = typeof gardenIslandActive === 'function' && gardenIslandActive() && decks.find(p => p.side === 'south'); if (d) pointLights.push({ id: 'pier-lantern', x: (d.x + d.w) * W.cellW - 13, y: W.sky + (d.y + d.h) * W.cellH - 46, ground: W.sky + (d.y + d.h) * W.cellH + 10, radius: 100, height: 40, color: nightMaterials ? 0xffc17a : 0xffd88e, intensity: .8 }); }
       // and Hollin's window: someone lives in the hut
       { const hut = typeof gardenIslandLogStack === 'function' && GardenIslandLayout.data && (GardenIslandLayout.data.static || []).find(p => p.id === 'ld-woodhut'); if (hut && window.GardenPaintVale && GardenPaintVale.wanted()) pointLights.push({ id: 'oldwood-hut:window', x: (hut.x + hut.w / 2) * W.cellW, y: W.sky + (hut.y + hut.h) * W.cellH - 22, radius: 78, height: 20, color: 0xffc47c, intensity: .5 }); }
       _gw.grid = null; _gw.gq = null; _gw.solids = null; _gw.gridKey = ''; _gw.cam.dirty = true;

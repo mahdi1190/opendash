@@ -228,6 +228,39 @@
         // a rock pool caught between two of them, with the sky in it
         const a = pts[0], b = pts[pts.length - 1], px = (a.x + b.x) / 2 - g.ty * 14, py = (a.y + b.y) / 2 + g.tx * 10;
         if (rr() < .7) B.f(B.blob(rr, px, py, 11 * g.s, 4.4 * g.s, 9, .3), '#6f6a5c').f(B.blob(rr, px, py - .6, 9 * g.s, 3.4 * g.s, 9, .3), '#7fb3b4').f(B.ell(px - 3, py - 1.6, 4 * g.s, .9), '#e4f2ee', .7); });
+
+      // 2e. the swash, live: on every sand and shingle beach a thin sheet of water runs up the sand, its edge a line of
+      // foam, then slides back and the foam thins away; each stretch on its own beat, the waves running along the beach
+      // (round 2: the foam was painted into the ground and nothing moved). Drawn each frame near the camera only, in short
+      // pieces culled to the view, at most 30 times a second, and not at all when the whole map is in view.
+      if (C.live) {
+        const pieces = []; let run = [];
+        const flush = () => { if (run.length > 3) for (let i = 0; i < run.length - 1; i += 24) { const pts = run.slice(i, i + 25); if (pts.length > 2) pieces.push({ pts, bb: kit.bboxOf(pts, 30) }); } run = []; };
+        const wallAt = p => { const c = cellOf(p.x, p.y); return c[0] > quay.x - 6.6 && c[0] < quay.x + 6.8 && c[1] < quay.y + 3.4; };   // (not along the foot of the harbour wall)
+        for (let i = 0; i < seaW.length; i += 2) { const q = seaW[i], a = inl(q, 10), b = inl(q, 26);
+          if (kindAt(a.x, a.y) === 'beach' && kindAt(b.x, b.y) === 'beach' && !wallAt(q)) run.push({ x: q.x, y: q.y, tx: q.tx, ty: q.ty, s: i * 5, a: 6 + N(q.x, q.y, 260, 120) * 9, ph: F(q.x, q.y, 520, 121) * 1.7 }); else flush(); }
+        flush();
+        if (pieces.length) C.live({ make: (scene, root, depth) => {
+          const g = scene.add.graphics(); g.setDepth(depth); if (root && root.add) root.add(g);
+          let last = -1e9; const sheet = [], foam = [];
+          const reach = u => u < .3 ? Math.sin(u / .3 * Math.PI / 2) : 1 - (k => k * k * (3 - 2 * k))((u - .3) / .7);
+          return { obj: g, update(time, view) {
+            const z = scene.cameras && scene.cameras.main ? scene.cameras.main.zoom : 1;
+            if (z < 1.2 || !view) { if (g.visible) g.clear().setVisible(false); return; }
+            if (time - last < 33) return; last = time; g.clear().setVisible(true);
+            const t = time / 1000, m = 40;
+            for (const pc of pieces) { const bb = pc.bb; if (bb[2] < view.x - m || bb[0] > view.x + view.w + m || bb[3] < view.y - m || bb[1] > view.y + view.h + m) continue;
+              sheet.length = 0; foam.length = 0;
+              for (const q of pc.pts) { const u = ((t / 7.5 + q.ph + q.s / 1500) % 1 + 1) % 1, d = q.a * reach(u), fa = u < .3 ? .45 + .45 * u / .3 : .9 * Math.pow(1 - (u - .3) / .7, 1.6);
+                foam.push(q.x - q.ty * d, q.y + q.tx * d, fa); sheet.push({ x: q.x - q.ty * d, y: q.y + q.tx * d }); }
+              for (let i = pc.pts.length - 1; i >= 0; i--) { const q = pc.pts[i]; sheet.push({ x: q.x + q.ty * 3, y: q.y - q.tx * 3 }); }
+              g.fillStyle(0xd6efe8, .34).fillPoints(sheet, true);
+              for (let i = 0; i + 5 < foam.length; i += 3) { const a = (foam[i + 2] + foam[i + 5]) / 2; if (a < .04) continue;
+                g.lineStyle(3.4, 0xffffff, a * .28).lineBetween(foam[i], foam[i + 1], foam[i + 3], foam[i + 4]).lineStyle(1.3, 0xffffff, a).lineBetween(foam[i], foam[i + 1], foam[i + 3], foam[i + 4]); }
+            }
+          } };
+        } });
+      }
     }
 
     // 3. One promenade from the village to the quay. Its shoulders gradually
@@ -256,13 +289,55 @@
       B.f(B.rect(qx0, qy1 + face * .62, qx1 - qx0, 1.4), '#e4e0d2', .3);
       for (let x = qx0; x < qx1; x += 5) { if (r() < .75) B.f(B.blob(r, x, qy1 + face - 3, 3 + r() * 4, 2.4 + r() * 3, 6, .6), r() < .5 ? '#3e4e30' : '#5e6a3a', .85); if (r() < .3) B.f(B.circ(x + r() * 4, qy1 + face - 6 - r() * 4, .8), '#d8d4c6', .8); }
       for (let x = qx0 + 30; x < qx1 - 20; x += 70 + r() * 30) { B.s(`M${x} ${qy1 + 7}a3 3 0 1 0 0.1 0`, P.iron, 1.4, .9); B.s(`M${x} ${qy1 + 2}l0 2`, P.iron, 1.6, .9); }
-      // the flags, then a kerb of long granite copes along the sea edge
-      B.cx.save(); B.cx.clip(new Path2D(quayShape)); V.flags(B, r, P, [qx0, qy0, qx1, qy1], { row: 19, rowVar: .22, w: 46, salt: 41, moss: .08, pal: { stone: '#c4b89e', stoneLo: '#a89c84', stoneHi: '#dcd1b8', grout: '#6e6656' }, tones: ['#c2b69c', '#b4a88e', '#cfc4aa', '#c4b08e', '#b0a690', '#cbb996', '#b8ad96', '#a9a290'] });
-      // salt and spray darken the stone towards the sea edge; lichen on a few stones, gulls' white here and there
-      B.f(B.rect(qx0, qy1 - 22, qx1 - qx0, 22), B.lin(0, qy1 - 22, 0, qy1, [[0, 'rgba(70,74,66,0)'], [1, 'rgba(70,74,66,.22)']]));
-      kit.tiles([qx0, qy0, qx1, qy1], 60, 0, 42, (tx, ty, rr) => { const n = kit.fbm(tx / 220, ty / 220, 43); if (rr() > n) return; const x = tx + rr() * 60, y = ty + rr() * 60; B.f(B.blob(rr, x, y, 3 + rr() * 3, 1.6 + rr(), 6, .5), rr() < .6 ? '#c9a84e' : '#9aa46a', .45); if (rr() < .25) B.f(B.circ(x + 9, y + 3, .9), '#f4f2ea', .7); });
-      // feet have worn a paler way from the promenade to the pier
-      B.f(B.blob(r, (qx0 + qx1) / 2 - 20, (qy0 + qy1) / 2, 70, 26, 9, .3), P.stoneHi, .3);
+      // steps down the wall near each end
+      for (const sx of [qx0 + 24, qx1 - 40]) { B.f(B.rect(sx - 2, qy1, 24, face), '#3e4038', .35); for (let k = 0; k < 6; k++) B.f(B.rect(sx + k * .6, qy1 + k * 5, 20 - k * 1.2, 5.4), k > 3 ? '#5e6a50' : k % 2 ? '#9a9282' : '#c4bcaa').f(B.rect(sx + k * .6, qy1 + k * 5 + 4.2, 20 - k * 1.2, 1.2), '#3e3c34', .55); }
+      // the wall's two ends: quoins at the corner, long and short in turn, and where an end stands on the beach, sand
+      // banked up against it over the foot of the wall and back on to the strand, with pebbles, marram on the crest and
+      // weed along the wet foot (round 2: each end stopped square on the sand, a cut edge)
+      for (const [ex, dir] of [[qx0, 1], [qx1, -1]]) {
+        for (let k = 0; k < 4; k++) { const qw = k % 2 ? 12 : 21, x0 = dir > 0 ? ex : ex - qw, y = qy1 + k * ch4; B.f(B.rr(x0 + .5, y + .5, qw - 1, ch4 - 1, 1.4), k === 3 ? '#5a644e' : '#c6bead', .97).f(B.rect(x0 + 1, y + 1, qw - 2, 1.2), k === 3 ? '#76825e' : '#eee8da', .6).f(B.rect(x0 + 1, y + ch4 - 2, qw - 2, 1.1), '#46443c', .45); }
+        const eb = L.base((ex - dir * 16) / cw, (qy1 + face * .5 - W.sky) / ch); if (eb && eb.ocean) continue;   // (an end in the water keeps its face to the tide)
+        const top = qy1 + face * .3, foot = qy1 + face + 6, fx = ex - dir * 34, far = ex + dir * 74;
+        B.f(`M${fx} ${foot + 2}Q${ex - dir * 8} ${top - 4} ${ex + dir * 10} ${top}Q${ex + dir * 38} ${qy1 + face * .7} ${far} ${foot}Z`, B.lin(0, top, 0, foot, [[0, P.sand], [.65, P.sandDk], [1, P.sandWet]]), .97);
+        B.s(`M${ex - dir * 6} ${top + 2}Q${ex + dir * 22} ${top + 6} ${ex + dir * 46} ${qy1 + face * .8}`, '#fff4dc', 1.2, .42);
+        for (let k = 0; k < 8; k++) { const x = ex + dir * (r() * 62 - 12), y = top + 6 + r() * (foot - top - 8); B.f(B.ell(x, y, 1.4 + r() * 1.6, 1 + r() * .7), ['#a89c88', '#8c8474', '#c2b8a4', '#f2ebdc'][Math.floor(r() * 4)], .9); }
+        for (let k = 0; k < 4; k++) B.tufts(r, ex + dir * (r() * 26 - 8), top + 3 + r() * 5, 8, 3, ['#8fa058', '#b4b868', '#6f8a46'], 6 + r() * 5);
+        B.f(B.blob(r, ex + dir * 44, foot - 2, 18, 3, 7, .5), '#5e6a3a', .55);
+      }
+      // the top: big granite slabs in courses of three depths along the quay, each its own grey (blue-grey, buff, a warm
+      // pink now and then, the tone drifting across the quay by noise so it is never wallpaper), dark joints that read,
+      // every slab lit along its top and left and shaded at its foot, with flecks in the grain, a crack or a chipped corner
+      // (round 2: the flags were pale beige tiles at seven tenths, one flat floor; art round 3, 19 Nov 2026)
+      B.cx.save(); B.cx.clip(new Path2D(quayShape));
+      const GRAN = ['#b3ada2', '#a59f95', '#c0b9ab', '#9c978d', '#b9ae98', '#c4b8a0', '#aaa69c', '#bfb7a8', '#c9b9a2', '#a89c8a', '#b7a89a'];
+      B.f(B.rect(qx0, qy0, qx1 - qx0, qy1 - qy0), '#625d54');
+      for (let y = qy0 - 6; y < qy1; ) {
+        const rc = kit.rng(kit.hash(Math.round(y * 3), 11, 41)), h = 16 + Math.floor(rc() * 3) * 3.5;
+        for (let x = qx0 - rc() * 50; x < qx1; ) {
+          const w = h * (1.5 + rc() * 1.9), n = kit.fbm(x / 170, y / 170, 44), t = GRAN[Math.floor((rc() * .65 + n * .35) * GRAN.length) % GRAN.length];
+          const x0 = x + .9, y0 = y + .9, ww = w - 1.8, hh = h - 1.8;
+          B.f(B.rr(x0, y0, ww, hh, 2.4), t).f(B.rr(x0 + .8, y0 + .6, ww - 1.6, 2, 1), '#ede7d9', .4).f(B.rect(x0 + .5, y0 + 1.2, 1.5, hh - 2.6), '#e6dfce', .22).f(B.rr(x0 + 1, y0 + hh - 2.6, ww - 2, 2.2, 1), '#4a463e', .3);
+          for (let k = 0; k < 5; k++) B.f(B.rect(x0 + 2 + rc() * (ww - 4), y0 + 2.5 + rc() * (hh - 5), 1.3, 1), rc() < .5 ? '#77726a' : '#ece8de', .42);
+          if (rc() < .13) B.s(`M${x0 + ww * (.2 + rc() * .4)} ${y0 + 1}l${ww * .12} ${hh * .45}l${ww * .1} ${hh * .5}`, '#57534a', .8, .5);
+          if (rc() < .1) B.f(B.blob(rc, x0 + ww - 3, y0 + hh - 3, 4, 2.4, 6, .5), '#625d54', .85);
+          x += w;
+        }
+        y += h;
+      }
+      // weather in broad patches (damp and dark in the hollows, bleached on the crowns), soft, at low strength
+      kit.tiles([qx0, qy0, qx1, qy1], 110, 0, 45, (tx, ty, rr) => { for (let k = 0; k < 2; k++) { const x = tx + rr() * 110, y = ty + rr() * 110, n = kit.fbm(x / 140, y / 140, 46); B.f(B.blob(rr, x, y, 34 + rr() * 40, 12 + rr() * 12, 9, .5), n < .5 ? '#4e5a58' : '#f0e8d4', n < .5 ? .1 : .12); } });
+      // feet have worn a paler, smoother way from the promenade down to the pier head (soft: passes of falling width)
+      const road0 = (promenade.length > 1 ? promenade : []).reduce((m, p) => Math.abs(p.y - qy0) < Math.abs(m.y - qy0) ? p : m, { x: (qx0 + qx1) / 2, y: qy0 }), pierMid = (pierX0 + pierX1) / 2 * cw;
+      for (const [lw, la] of [[70, .06], [52, .07], [36, .08]]) B.s(`M${road0.x} ${qy0 - 4}C${road0.x} ${qy0 + 40} ${pierMid} ${qy1 - 50} ${pierMid} ${qy1 + 4}`, '#f2ead6', lw, la);
+      // salt and spray darken the stone towards the sea edge
+      B.f(B.rect(qx0, qy1 - 26, qx1 - qx0, 26), B.lin(0, qy1 - 26, 0, qy1, [[0, 'rgba(62,70,66,0)'], [1, 'rgba(62,70,66,.26)']]));
+      // puddles left by the last rain or a wave over the copes, in the hollows off the trodden way: each holds the sky
+      kit.tiles([qx0 + 20, qy0 + 20, qx1 - 20, qy1 - 8], 90, 0, 47, (tx, ty, rr) => { const x = tx + 10 + rr() * 70, y = ty + 6 + rr() * 60; if (y > qy1 - 10 || y < qy0 + 18 || Math.abs(x - pierMid) < 46 || rr() > .3) return;
+        const pw = 9 + rr() * 13, ph = 3 + rr() * 2.6; B.f(B.blob(rr, x + 1, y + .8, pw + 2, ph + 1.4, 9, .4), '#4a4c46', .28).f(B.blob(rr, x, y, pw, ph, 9, .35), '#93acb0', .85).f(B.blob(rr, x - pw * .2, y - ph * .25, pw * .55, ph * .45, 7, .4), '#d6eaec', .7).f(B.ell(x + pw * .35, y + ph * .3, pw * .3, .7), '#5e767a', .5); });
+      // lichen in drifts on the slabs out of the way of feet (golden and grey-green crust), gulls' white here and there
+      kit.tiles([qx0, qy0, qx1, qy1], 44, 0, 42, (tx, ty, rr) => { const n = kit.fbm(tx / 200, ty / 200, 43), away = Math.min(1, Math.abs(tx + 22 - pierMid) / 140); if (rr() > n * (.4 + away)) return;
+        for (let k = 0, m = 1 + Math.floor(rr() * 3); k < m; k++) { const x = tx + rr() * 44, y = ty + rr() * 44; B.f(B.blob(rr, x, y, 2.4 + rr() * 3.4, 1.4 + rr() * 1.2, 6, .5), rr() < .55 ? '#d4a23c' : rr() < .5 ? '#a4ae8c' : '#e2ddc8', .55); }
+        if (rr() < .2) B.f(B.circ(tx + rr() * 44, ty + rr() * 44, .9), '#f6f4ec', .75); });
       B.cx.restore();
       for (let x = qx0; x < qx1; ) { const w = 22 + r() * 14, ww = Math.min(w, qx1 - x); B.f(B.rr(x + .6, qy1 - 6, ww - 1.2, 7, 1.8), r() < .5 ? '#b0a894' : '#a0988a').f(B.rect(x + 1, qy1 - 5.6, ww - 2, 1.7), '#dcd6c6', .7).f(B.rect(x + 1, qy1 - .4, ww - 2, 1.2), '#4e4c44', .45); x += w; }
       // the kerb only down the ends and along the sea; on the landward side the lawn runs on to the flags in a broken,
@@ -275,8 +350,7 @@
         if (r() < .7) B.tufts(r, x, qy0 + dep * .6 + 2, 7, 3, [P.lawnLo, P.lawnHi], 4 + r() * 3);
         if (r() < .18) B.f(B.ell(x + 3, qy0 + dep + 4 + r() * 6, 2.2 + r() * 2, 1.4), P.lawnLo, .45 * near);   // (moss in the joints a stride out)
       }
-      // steps down the wall at each end, a rope coil and a lost glove
-      for (const sx of [qx0 + 24, qx1 - 40]) { B.f(B.rect(sx - 2, qy1, 24, face), '#3e4038', .35); for (let k = 0; k < 6; k++) B.f(B.rect(sx + k * .6, qy1 + k * 5, 20 - k * 1.2, 5.4), k > 3 ? '#5e6a50' : k % 2 ? '#9a9282' : '#c4bcaa').f(B.rect(sx + k * .6, qy1 + k * 5 + 4.2, 20 - k * 1.2, 1.2), '#3e3c34', .55); }
+      // a rope coil and a lost glove (the steps down the wall are laid with the wall, under the sand banked at its ends)
       const rc = { x: (qx0 + qx1) / 2 + 52, y: qy1 - 14 }; for (let k = 0; k < 4; k++) B.s(B.ell(rc.x, rc.y, 7 - k * 1.4, 3.6 - k * .7), k % 2 ? P.rope : '#a88a54', 1.6, .95);
       B.s(`M${rc.x + 6} ${rc.y}q12 2 18 9`, P.rope, 1.4, .9);
     });
@@ -316,7 +390,12 @@
     // 6. Things that stand up on the quay, the sand and the water
     const atCell = (x, y) => ({ x: x * cw, y: W.sky + y * ch });
     // bollards along the wall's top, clear of the pier
-    for (let x = quay.x - 5.4; x < quay.x + 6; x += 1.45) { if (x > pierX0 - .3 && x < pierX1 + .4) continue; const p = atCell(x, quay.y + 1.5); thing({ key: 'bollard', box: [-10, -22, 12, 6], foot: [-7, 9, 7], x: p.x, y: p.y, draw: drawBollard(P) }); }
+    // (clear of the two lamps that stand at the pier head)
+    const lamps = gardenIslandHarbourLamps(L.D);
+    for (let x = quay.x - 5.4; x < quay.x + 6; x += 1.45) { if (x > pierX0 - (lamps.length ? 1.3 : .3) && x < pierX1 + (lamps.length ? 1.3 : .4)) continue; const p = atCell(x, quay.y + 1.5); thing({ key: 'bollard', box: [-10, -22, 12, 6], foot: [-7, 9, 7], x: p.x, y: p.y, draw: drawBollard(P) }); }
+    // the harbour's lamps (gardenIslandHarbourLamps, lit at dusk by the world's lights): an iron post on each side of the
+    // pier head, each foot solid, so you walk round them (the lantern at the pier's end is drawn with the deck)
+    for (const q of lamps) { const p = atCell(q.x, q.y); thing({ key: 'harbour-lamp-' + q.key + '|' + C.season, x: p.x, y: p.y, box: [-15, -q.h - 20, 15, 6], foot: [-5, 5, 6], draw: drawQuayLamp(P, q.h) }); }
     // where each stands is shared with walking (gardenIslandHarbourThings), so the feet meet what is drawn
     const looks = { crates: [[-30, -46, 34, 8], drawCrates(P, 1)], pots: [[-28, -34, 30, 6], drawPots(P)], net: [[-42, -60, 44, 8], drawNet(P)], 'boat-sand': [[-46, -26, 48, 10], drawBoat(P, '#3f6f8a', false)],
       crate1: [[-16, -24, 18, 6], drawCrates(P, 0)], bench: [[-30, -30, 30, 6], drawBench(P)], anchor: [[-22, -44, 22, 6], drawAnchor(P)], fishbox: [[-16, -16, 18, 5], drawFishBox(P)] };
@@ -380,6 +459,19 @@
   const drawBench = P => B => { B.shadow(2, 1, 26, 4, .28); for (const x of [-20, 18]) B.f(B.rect(x - 1.6, -12, 3.2, 12), P.iron); B.f(B.rect(-24, -14, 48, 4), P.wood).f(B.rect(-24, -14, 48, 1.4), P.woodHi, .8).f(B.rect(-24, -26, 48, 3.4), P.wood).f(B.rect(-24, -21, 48, 3.4), P.woodLo).s('M-21 -26v12M19 -26v12', P.iron, 2.2); };
   const drawAnchor = P => B => { B.shadow(2, 1, 18, 4, .28); B.s('M0 -36V-2', '#3e4448', 4).s('M-16 -10Q0 6 16 -10', '#3e4448', 4).s('M-9 -30H9', '#3e4448', 3.4).s(B.ell(0, -38, 3.4, 3.4), '#3e4448', 2).s('M-2 -34V-4', '#7a8286', 1.2, .7); B.f('M-19 -14L-14 -8L-12 -14Z', '#3e4448').f('M19 -14L14 -8L12 -14Z', '#3e4448'); B.s('M0 -38q14 4 10 18q-4 14 8 22', P.rope, 1.6, .9); };
   const drawFishBox = P => B => { B.shadow(1, 1, 14, 3, .3); crate(B, -12, 0, 22, 9, P, 1); for (let k = 0; k < 4; k++) B.f(B.ell(-8 + k * 5, -10, 2.6, 1.2), '#c8d4dc').f(B.ell(-8 + k * 5, -10.4, 1.6, .5), '#fff', .7); };
+  // a harbour lamp about two of your heights: a granite plinth, a cast-iron column with collars and a scrolled bracket, and
+  // a lantern of four warm panes under a domed cap and finial (its light at dusk is the world's: 94-garden-native-world.js)
+  const drawQuayLamp = (P, h) => B => {
+    B.shadow(2, 1, 9, 3, .32);
+    B.f(B.rr(-8, -9, 16, 9, 2), '#a8a294').f(B.rect(-8, -9, 5, 9), '#cfc8b8', .5).f(B.rect(3, -9, 5, 9), '#6e6a60', .5).f(B.rr(-9, -11, 18, 3, 1.2), '#8e887c').f(B.blob(KIT_RNG(7), -2, -1, 9, 1.6, 6, .5), '#7a8a4e', .45);
+    B.f(`M-3.4 -11L-2.2 ${-h + 6}L2.2 ${-h + 6}L3.4 -11Z`, P.iron).s(`M-1.8 -12L-1 ${-h + 7}`, '#6e767a', 1, .8);
+    B.f(B.rr(-4.6, -24, 9.2, 3, 1.2), '#2a2e30').f(B.rr(-4, -h * .55, 8, 2.4, 1), '#2a2e30');
+    B.s(`M-2 ${-h + 8}q-6 -1 -6 -5M2 ${-h + 8}q6 -1 6 -5`, P.iron, 1.4, .95);
+    const g0 = -h - 7, g1 = -h + 5;
+    B.f(`M-6 ${g0}L6 ${g0}L4.6 ${g1}L-4.6 ${g1}Z`, '#f4e3a8', .96).f(`M-6 ${g0}L-1 ${g0}L-1.6 ${g1}L-4.6 ${g1}Z`, '#fff6d4', .55).s(`M-6 ${g0}L6 ${g0}L4.6 ${g1}L-4.6 ${g1}ZM0 ${g0}V${g1}`, P.iron, 1.2);
+    B.f(B.rr(-5.6, g1, 11.2, 2.4, 1), P.iron).f(`M-8 ${g0}Q0 ${g0 - 8} 8 ${g0}Z`, P.iron).f(`M-7 ${g0}Q-2 ${g0 - 6} 0 ${g0 - 5}L0 ${g0}Z`, '#6e767a', .5).f(B.circ(0, g0 - 7, 1.6), P.iron).s(`M0 ${g0 - 8}v-3`, P.iron, 1.2);
+  };
+  const KIT_RNG = s => window.GardenPaintTerrainKit.rng(s);
   const drawBuoy = P => B => { B.f(B.ell(0, 2, 8, 2.4), '#2e5a6a', .25); B.f(B.circ(0, -4, 5.4), '#c8402e').f(B.rect(-5.4, -5, 10.8, 2.2), '#f4efe2').f(B.circ(-1.8, -6, 1.6), '#fff', .5); B.s('M0 -9.4v-4', P.iron, 1.2); };
 
   V.parts.push({ id: 'harbour', compose });
