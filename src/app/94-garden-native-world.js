@@ -1110,6 +1110,13 @@ window.GardenNativeWorld = (function () {
           keep.add(key); if (old) old.handle.destroy(); (custom.kind === 'gate' ? rootNode : objects).appendChild(custom.rootNode); custom.root.setDepth(custom.kind === 'gate' ? 76000 : W.sky + row.z * W.cellH); const record = { id: key, source: signature, materialKey: custom.setLitWindows ? paneMaterialKey : '', handle: custom, root: custom.root, node: custom.rootNode, metadata: { kind: prop.act ? 'prop' : 'scenery', id, prop, model: prop, foot: custom.foot }, depth: custom.kind === 'gate' ? 76000 : W.sky + row.z * W.cellH, bounds: custom.bounds }; drawings.set(key, record); queueDrawing(record); sorted = true;
         } else add(key, row.html, { kind: prop && prop.act ? 'prop' : attribute(row.html, 'data-land') ? 'land' : 'scenery', id, prop, land: attribute(row.html, 'data-land'), model: prop }, W.sky + row.z * W.cellH);
       }
+      // What is built for the lake, painted where it stands by the pier (94-garden-fish-7gear.js says where; 94-garden-paint-terrain-5sights.js paints it)
+      if (paintedOn() && typeof gardenWorksArt === 'function' && window.GardenPaintedMarks) for (const r of gardenWorksArt(sc)) {
+        if (!GardenPaintedMarks.knows('work:' + r.id)) continue;
+        const key = 'work:' + r.key, wp = { id: 'work:' + r.id, x: r.x - .5, y: r.y - 1, w: 1, h: 1 };
+        const rec = paintedRecord(key, 'painted-work-1|' + key + '|' + sc.season + '|' + (nightMaterials ? 'n' : 'd'), () => GardenPaintedMarks.landmark(scene, wp, sc, element, W, rootNode._inner), { kind: 'scenery', id: wp.id, model: wp }, W.sky + r.y * W.cellH);
+        if (rec) keep.add(key);
+      }
       // Painted crossings stay standing once their region is yours: the
       // bridge, the arch, the stair are part of the land, now open.
       if (paintedOn() && typeof gardenIslandActive === 'function' && gardenIslandActive()) for (const g of gardenIslandData().gates || []) {

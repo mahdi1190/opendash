@@ -467,6 +467,41 @@ window.GardenPaintSeat = (function () {
     B.tufts(r, -66, 4, 12, 7, grass(s), 8).tufts(r, 90, 4, 10, 6, grass(s), 7);
   } };
 
+  /* ======== what is built for the lake (work:*), by the pier: in the water or on its planks, so no seat of grass ======== */
+  const ripples = (B, r, w) => { for (let k = 0; k < 3; k++) B.s(B.ell(0, 1 + k * .6, w * (.5 + k * .35), 1.6 + k * .9), '#e8f4f2', .8, .5 - k * .14); };
+  A['work:fish-feeder'] = { box: [-26, -66, 26, 8], seat: false, draw(B, o) {
+    const r = KIT().rng(301), top = -sz('door', 1) * 1.2;
+    ripples(B, r, 12); B.s('M0 2V' + (top + 14), OAK[1], 3.4).s('M-1 2V' + (top + 14), OAK[2], 1, .7).f(B.rect(-2.2, -4, 4.4, 6), '#3e5a5e', .5);
+    B.f(`M-11 ${top + 14}V${top + 2}Q0 ${top - 2} 11 ${top + 2}V${top + 14}Q0 ${top + 18} -11 ${top + 14}Z`, B.lin(-11, 0, 11, 0, [[0, '#c4ccd0'], [.4, '#9aa4a8'], [1, '#5e686c']]));
+    for (const y of [top + 4, top + 10]) B.s(`M-11 ${y}Q0 ${y + 4} 11 ${y}`, '#4e585c', .8, .7);
+    B.f(B.ell(0, top + 2, 11, 3), '#6e787c').f(B.ell(0, top + 1.4, 9, 2.2), '#8a6a3e');
+    B.f(B.ell(0, top + 18, 7, 1.6), '#4e585c').s(`M-6 ${top + 19}l-4 3M6 ${top + 19}l4 3`, '#8a6a3e', .8, .8);
+    for (let i = 0; i < 9; i++) B.f(B.circ(-16 + r() * 32, -3 + r() * 6, .8), '#a8844a', .9);
+  } };
+  A['work:reed-beds'] = { box: [-30, -64, 30, 8], seat: false, draw(B, o) {
+    const r = KIT().rng(307), s = o.season, G = s === 'winter' ? ['#9a9a78', '#b8b090'] : s === 'autumn' ? ['#a89a54', '#c8b064'] : ['#4f8a3f', '#6aa04a', '#3f7a35'];
+    ripples(B, r, 20);
+    for (let i = 0; i < 22; i++) { const x = -20 + r() * 40, h = 22 + r() * 34, lean = (r() - .5) * 8; B.s(`M${x} 2Q${x + lean * .4} ${-h * .5} ${x + lean} ${-h}`, G[i % G.length], 1.2 + r() * .8, .95); if (r() < .3) B.f(B.ell(x + lean, -h + 3, 1.6, 5), '#6a4a2a'); }
+    if (s === 'summer' || s === 'spring') { B.f(B.ell(16, 0, 6, 2.2), '#4a7a3a').f(B.circ(15, -1, 1.6), '#f4e8ec'); }
+  } };
+  A['work:fishing-station'] = { box: [-26, -40, 28, 6], seat: false, draw(B, o) {
+    const r = KIT().rng(311);
+    B.f(B.rr(-16, -14, 22, 14, 2), WOOD[1]).f(B.rr(-16, -14, 22, 3, 1.4), WOOD[2]).f(B.rr(-15, -18, 20, 5, 2.4), '#3f7a8a').f(B.rr(-15, -18, 20, 1.6, 1), '#6aa0ae');
+    for (const x of [10, 20]) B.s(`M${x} 0L${x} -18M${x - 3} -21L${x} -18L${x + 3} -21`, '#5a3e22', 1.4);
+    B.s('M8 -20L26 -36', '#2a2a2a', 1.2).f(B.circ(12, -21, 2), '#8a8a8a');
+    B.f(B.rr(-24, -12, 6, 12, 2), '#b84a2a').f(B.rect(-24, -13, 6, 2), '#5a5a5a').f(B.rr(-6, -4, 5, 4, 1), '#efe6cc');
+  } };
+  A['work:night-lantern'] = { box: [-18, -96, 18, 6], seat: false, lit: true, lights: [[0, -74, 120]], draw(B, o) {
+    const top = -sz('lamp', .5) * 1.05;
+    B.f(B.rr(-5, -4, 10, 5, 1.4), IRON[0]).s(`M0 -3V${top + 14}`, IRON[0], 2.6).s(`M-.8 -3V${top + 14}`, IRON[1], .8, .7).s(`M0 ${top + 14}q8 0 8 -6`, IRON[0], 1.6);
+    B.f(B.poly([[3, top + 6], [13, top + 6], [12, top - 6], [4, top - 6]]), o.night ? '#ffd27a' : '#d8e0d8').s(B.line([[3, top + 6], [13, top + 6], [12, top - 6], [4, top - 6], [3, top + 6]]), IRON[0], 1.2).s(`M8 ${top - 6}v12`, IRON[0], .7);
+    B.f(B.poly([[2, top - 6], [8, top - 11], [14, top - 6]]), IRON[0]);
+    if (o.night) B.f(B.circ(8, top, 9), 'rgba(255,214,140,.35)');
+  } };
+  A['work:pier-2'] = { box: [-10, -32, 10, 4], seat: false, draw(B) { B.post(0, -22, 0, 5, OAK).f(B.ell(0, -22, 3, 1.4), OAK[2]).s('M-3 -14q3 2 6 0', '#e8dcb0', 1.2); } };
+  A['work:pier-3'] = { box: [-6, -66, 26, 4], seat: false, draw(B) { const top = -sz('lamp', .5) * .75; B.s(`M0 0V${top}`, OAK[1], 2.2); B.f(`M1 ${top + 1}Q10 ${top - 2} 20 ${top + 3}Q12 ${top + 7} 20 ${top + 11}Q10 ${top + 8} 1 ${top + 11}Z`, '#d8452a').f(`M1 ${top + 4}h10v3h-10z`, '#fbf5e6'); } };
+  A['work:pool-stock'] = { box: [-16, -24, 16, 4], seat: false, draw(B) { B.f('M-9 0L-10 -12H10L9 0Z', B.lin(-10, 0, 10, 0, [[0, '#c4ccd0'], [1, '#6e787c']])).f(B.ell(0, -12, 10, 3), '#5e686c').f(B.ell(0, -12, 8.4, 2.2), '#4e7a7e').f(B.ell(-2, -12.4, 2.4, .9), '#e8a04a').s('M-9 -12Q0 -24 9 -12', IRON[1], 1); } };
+
   /* ======== what a player builds or wins (lf-*): set out anywhere, so each brings its own seat ======== */
   // the village well is the wishing well's sister: the same head and frame, no coins in it
   A['lf-well'] = Object.assign({}, A['ld-wish']);
