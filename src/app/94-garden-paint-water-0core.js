@@ -635,6 +635,27 @@ window.GardenPaintWater = (function () {
           cx.restore(); cx.globalAlpha = 1; });
       }
     }
+    tag = 'bar';
+    // 4c. Point bars: on the inside of each of the river's bends the current slackens and drops its gravel, a pale shoal
+    //     reaching in from the bank with a few stones on it; the outside of the bend keeps its deep water. From the line.
+    if ((kind === 'river' || kind === 'brook') && river) {
+      const hwp = river.hw * (W.cellW + W.cellH) / 2, step = kind === 'brook' ? 22 : 34;
+      for (let s = step + 6; s < river.len - step - 6; s += 12) {
+        const a = at(river, s - step), b = at(river, s + step), c = at(river, s), turn = a.tx * b.ty - a.ty * b.tx; if (Math.abs(turn) < .16) continue;
+        const side = Math.sign(turn), nx = -c.ty * side, ny = c.tx * side, x = c.x + nx * hwp * .58, y = c.y + ny * hwp * .58; if (!inside(x, y, pts)) continue;
+        const len = step * (1.1 + Math.min(1, Math.abs(turn)) * .8), wid = hwp * (.38 + Math.min(.3, Math.abs(turn) * .3)), ang = Math.atan2(c.ty, c.tx), peb = [];
+        for (let k = 0; k < 9; k++) peb.push([(r() - .5) * len * 1.2, (r() - .2) * wid * .8 * -1, 1 + r() * 1.8, r()]);
+        add({ x: x - len * 1.4, y: y - len * 1.4, w: len * 2.8, h: len * 2.8 }, (cx, C) => {
+          cx.save(); cx.clip(P); cx.translate(x, y); cx.rotate(ang); cx.scale(1, side);
+          const bc = rgbOf(mix(C.bed, '#d8cca6', .25)), cy1 = .35 * len / 1.15;
+          cx.save(); cx.scale(1, wid / len * 1.15); const g = cx.createRadialGradient(0, cy1, 0, 0, cy1, len);
+          g.addColorStop(0, 'rgba(' + bc + ',.55)'); g.addColorStop(.5, 'rgba(' + bc + ',.3)'); g.addColorStop(1, 'rgba(' + bc + ',0)');
+          cx.fillStyle = g; cx.beginPath(); cx.arc(0, cy1, len, 0, Math.PI * 2); cx.fill(); cx.restore();
+          for (const [px, py, pr, t] of peb) { cx.globalAlpha = .5; cx.fillStyle = t < .5 ? '#7c7462' : '#968c76'; cx.beginPath(); cx.ellipse(px, py + wid * .4, pr, pr * .6, 0, 0, Math.PI * 2); cx.fill(); }
+          cx.restore(); cx.globalAlpha = 1; });
+        s += step * 2.4;   // one bar a bend
+      }
+    }
     tag = 'rapid';
     // 5b. White water: standing waves across the current every few strides, each a few broken crests bowed downstream, and
     //     foam where the current runs against the bank's stones. The gorge runs white (it falls from the tarn to the falls);
