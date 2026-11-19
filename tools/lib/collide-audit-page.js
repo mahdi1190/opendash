@@ -280,6 +280,14 @@
     // (leaf litter or a root to one side of a sight widens its lowest paint, and a decoration drawn in parts has a narrow lowest run: a block under the middle of the body is in the right place)
     const bodyMid2 = toCell(o.bounds.x + o.bounds.w / 2, 0).x, underBody = (o.kind === 'landmark' || !!extra) && Math.abs(bc - bodyMid2) <= Math.max(.2, o.bounds.w / CW * .15);
     if (!underBody && Math.abs(bc - mid) > Math.max(.35, span * .4) && !(bx0 <= mid && bx1 >= mid)) push({ kind: extra ? 'decor-foot' : 'block-offset', ...base, detail: 'block centre ' + (bc - mid).toFixed(2) + ' cells from the base centre' });
+    // End by end: the size rule above lets a whole-cell block round a thing a third of a cell wide pass (the milestone, an
+    // invisible wall 0.35 of a cell each side), and a block 0.4 of a cell past each end of a stump (the old watchtower), and
+    // a mound or a root flare wider than its block (the charcoal clamp, the hollow oak): the verifier, 19 Nov 2026.
+    else if (!extra && own && rs.length <= 1 && !['tree', 'wall', 'rock'].includes(o.kind)) {
+      const past = Math.max(a.x - bx0, bx1 - b.x), short = Math.max(bx0 - a.x, b.x - bx1);
+      if (past > .3 && bw > span + .45) push({ kind: 'block-size', ...base, detail: 'its block runs ' + past.toFixed(2) + ' cells past one end of its drawn base, where nothing is drawn (block ' + bw.toFixed(2) + ' wide, base ' + span.toFixed(2) + ')' });
+      else if (short > .14 && span > .3) push({ kind: 'block-size', ...base, detail: 'its drawn base runs ' + short.toFixed(2) + ' cells past one end of its block: the feet stand on it (block ' + bw.toFixed(2) + ' wide, base ' + span.toFixed(2) + ')' });
+    }
   };
   for (const o of objs) {
     if (noBlock.has(o.kind) || softProp(o.prop) || o.heightPx < 14) continue;
@@ -581,7 +589,8 @@
   if (mosaic.ok) {
     const dryFloat = new Set();
     for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
-      const cx = x + .5, cy = y + .5; if (!gardenWaterContainsPoint(cx, cy)) continue;
+      // (what the cast accepts: open water, its float clear of the water's edge, 94-garden-fish-3game.js gardenFishOpenAt)
+      const cx = x + .5, cy = y + .5; if (!(typeof gardenFishOpenAt === 'function' ? gardenFishOpenAt(cx, cy) : gardenWaterContainsPoint(cx, cy))) continue;
       if (typeof _gwFishStoneCovered === 'function' && _gwFishStoneCovered(cx, cy)) continue;
       if (typeof gardenWaterNo === 'function' && gardenWaterNo(x, y, m)) continue;
       shore.casts++;
@@ -941,6 +950,15 @@
       // inside rock or a wall
       if (['tree', 'prop', 'harbour', 'landmark', 'building'].includes(t.o.kind)) for (const F of fullForms) { if (t.x < F.x0 || t.x > F.x1 || t.y < F.y0 || t.y > F.y1) continue; if (F.f.kind === 'ruin' || F.f.kind === 'mountain' || F.f.kind === 'rock-wall' && /\|pine\|/.test(t.o.key)) continue;   // (meant: a ruin's floor is grown over; the Edge's own wind-bent pines stand on its rock, 94-garden-paint-terrain-1fells.js)
         if (inLoop(t.x, t.y - .15, F.f.polygon) && inLoop(t.x - .2, t.y - .15, F.f.polygon) && inLoop(t.x + .2, t.y - .15, F.f.polygon)) { over('a thing inside another', t.tag, F.f.kind + ' ' + F.f.id, t.x, t.y, 'its drawn base stands inside the drawn ' + F.f.kind); break; } }
+      // on a field's fence or hedge: a standing thing whose drawn base crosses the ring drawn round a plot's edge cells (the
+      // frog stone on the top rail of the field below it, the Cloudbreak cairn on the thyme terrace's hedge corner: the
+      // verifier, 19 Nov 2026; a plot in the light woods has no ring, its edge is more wood)
+      if (['prop', 'landmark', 'rock', 'building', 'harbour'].includes(t.o.kind) && !/plot|fence|hedge|thicket|\|sign/.test(t.o.key) && typeof gardenLandCell === 'function') {
+        const plotOf = (x, y) => { const row = gardenLandCell(Math.floor(x), Math.floor(y)); return row && row.plot && !(typeof gardenLockedPlotOpenToFeet === 'function' && gardenLockedPlotOpenToFeet(x, y, row.id)) ? row.id : ''; };
+        const seen = new Map(); for (let j = 0; j < 3; j++) for (let i = 0; i <= 8; i++) { const x = t.x - t.w / 2 + .04 + (t.w - .08) * i / 8, y = t.y - .04 - j * .14, id = plotOf(x, y); seen.set(id, (seen.get(id) || 0) + 1); }
+        const plots = [...seen.keys()].filter(Boolean);
+        if (plots.length && seen.size > 1) over('a thing on a field’s fence', t.tag, 'plot ' + plots[0], t.x, t.y, 'its drawn base (' + Math.round(t.w * CW) + ' px) crosses the edge of the plot, where its fence, hedge or wall is drawn');
+      }
       const k = Math.floor(t.x) + ',' + Math.floor(t.y); (cellOf.get(k) || cellOf.set(k, []).get(k)).push(t);
     }
     // two drawn bases on the same ground (not parts of one thing)

@@ -299,9 +299,15 @@ function gardenWalkFolds(island) {
 /** A sight's painted base as boxes in cells, when its painting names one (ART[id].foot: [[left, right, depth]...] in px
  *  from the middle of its footprint's foot line; depth 0 = as deep as its footprint) and that painting is the one in
  *  use; else null and its layout cells stop the feet as before. */
+// Sights drawn by a painter that does not say where its base is, with the base it draws ([left, right, depth] in px from
+// the middle of the footprint's foot line, as ART[id].foot): their whole-cell blocks did not match the drawing (the
+// verifier, 19 Nov 2026). The milestone is a stone a third of a cell wide, not a cell; the old watchtower's stump stands
+// 0.4 of a cell in from each end of its three cells; the hollow oak's root flare is wider than its one cell; the charcoal
+// clamp's turf mound is nearly two cells wide on one (its ART box runs 46 px each side).
+const GW_PROP_FEET = Object.freeze({ 'ld-mile': [[-8, 8, 10]], 'ld-tower': [[-53, 53, 0]], 'ld-hollow': [[-30, 30, 0]], 'ld-clamp': [[-38, 38, 20]] });
 function gardenPropPaintedFeet(p) {
   if (!p || typeof GardenPaintedMarks === 'undefined' || !GardenPaintedMarks || !GardenPaintedMarks.ART || GARDEN_WORLD.v < 5) return null;
-  const art = GardenPaintedMarks.ART[p.id]; if (!art || !art.foot || gardenPropCol(p) !== 'full') return null;
+  const art = GardenPaintedMarks.ART[p.id] && GardenPaintedMarks.ART[p.id].foot ? GardenPaintedMarks.ART[p.id] : GW_PROP_FEET[p.id] ? { foot: GW_PROP_FEET[p.id] } : null; if (!art || !art.foot || gardenPropCol(p) !== 'full') return null;
   if (!(typeof GardenNativePainted !== 'undefined' && GardenNativePainted && GardenNativePainted.wanted && GardenNativePainted.wanted())) return null;
   if (p.needs && !gardenWorkOwned(p.needs)) return null;
   if (typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(p.id) || {}).some(Boolean)) return null;   // (a look of your own choosing is drawn by another painter)
@@ -630,7 +636,10 @@ function _gwNearestFree(x, y, maxR) {
 }
 
 /* ---------- free movement: feet are a small oval, not a cell ---------- */
-const GW_FOOT = Object.freeze({ x: 0.2, y: 0.12 });   // half the width and depth of your feet, in cells
+// half the width and depth of your feet, in cells: sized for the figure drawn at 0.8 of its old height (common rule 14,
+// the ART-SHARED change), about 1.3 times the width of the shoes as before. At 0.2 x 0.12 the oval would have been 1.7
+// times the smaller shoes and you would have stopped short of a wall, a trunk or a fence (the verifier, 19 Nov 2026).
+const GW_FOOT = Object.freeze({ x: 0.16, y: 0.1 });
 const GW_ACC = 1100;                                  // pixels a second, a second: how quickly you get going and stop
 const GW_CLEAR = 0.07;                                // planning keeps this much (cells) of room round corners, so a route never scrapes one
 /** Can the feet be here? Only the cells the oval touches count, so you can stand tight against a bench and slip past a plant. `m` fattens the feet (route planning). */
