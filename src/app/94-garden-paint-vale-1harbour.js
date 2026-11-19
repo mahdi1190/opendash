@@ -151,7 +151,7 @@
           for (let i = a; i <= b; i++) { const q = shoreW[i]; if (N(q.x, q.y, 55, 87) > .62 && beachAt(inl(q, 14))) run.push(inl(q, 3.5)); else flush(); } flush(); }
         // the wrack: weed and drift at the last high tide, in drifts along the shore with bare sand between
         for (let i = 0; i < shoreW.length; i++) { const q = shoreW[i]; if (!near(q, cb, 40)) continue; const n = F(q.x, q.y, 340, 95); if (n < .54) continue; const rr = prng(q, 72); if (rr() < .55 - (n - .54) * 1.2) continue;
-          const p = inl(q, 28 + N(q.x, q.y, 300, 96) * 18 + (rr() - .5) * 14); if (!beachAt(p) || fellsAt(p.x, p.y) || !plantable(p.x, p.y) && kindAt(p.x, p.y) !== 'path') continue;
+          const p = inl(q, 28 + N(q.x, q.y, 300, 96) * 18 + (rr() - .5) * 14); if (kindAt(p.x, p.y) !== 'beach' || fellsAt(p.x, p.y) || !plantable(p.x, p.y)) continue;   // (open sand only: never on a path)
           // a clump of wrack: a dark tangle with a few curled fronds and bladders, each its own size and turn (strands laid
           // along the shore read as scratches)
           B.f(B.blob(rr, p.x, p.y + 1, 9 + rr() * 8, 2.6 + rr() * 1.6, 8, .5), P.sandWet, .3);   // (the damp the weed keeps)
@@ -206,7 +206,7 @@
       for (let i = 0; i < shoreW.length; i += 7) { const q = shoreW[i], rr = prng(q, 103), p = inl(q, 40 + rr() * 22);
         if (rr() < .05 && kindAt(p.x, p.y) === 'beach' && plantable(p.x, p.y) && !fellsAt(p.x, p.y)) logs.push({ x: p.x, y: p.y, a: Math.atan2(q.ty, q.tx) + (rr() - .5) * .7, len: 26 + rr() * 26, seed: kit.hash(Math.round(p.x), Math.round(p.y), 104) }); }
       for (let i = 0; i < seaW.length; i += 14) { const q = seaW[i], n = F(q.x, q.y, 520, 105); if (n < .6) continue; const rr = prng(q, 106); if (rr() < .55) continue; const p = inl(q, 4), back = inl(q, 30);
-        if (!plantable(back.x, back.y) || !beachAt(inl(q, 14)) || !beachAt(inl(q, 34))) continue; if (ledges.some(l => Math.hypot(l.x - p.x, l.y - p.y) < 150)) continue; ledges.push({ x: p.x, y: p.y, tx: q.tx, ty: q.ty, s: .8 + rr() * .6, seed: kit.hash(Math.round(p.x), Math.round(p.y), 107) }); }
+        const sandy = d => kindAt(inl(q, d).x, inl(q, d).y) === 'beach'; if (!plantable(back.x, back.y) || !sandy(8) || !sandy(20) || !sandy(34)) continue; if (ledges.some(l => Math.hypot(l.x - p.x, l.y - p.y) < 150)) continue; ledges.push({ x: p.x, y: p.y, tx: q.tx, ty: q.ty, s: .8 + rr() * .6, seed: kit.hash(Math.round(p.x), Math.round(p.y), 107) }); }
       for (const g of logs) add([g.x - 70, g.y - 40, g.x + 70, g.y + 40], 36, (B) => { const rr = kit.rng(g.seed), ca = Math.cos(g.a), sa = Math.sin(g.a) * .55, hx = ca * g.len / 2, hy = sa * g.len / 2, x0 = g.x - hx, y0 = g.y - hy, x1 = g.x + hx, y1 = g.y + hy, t = 4.6 + rr() * 2;
         B.s(`M${x0 + 3} ${y0 + 3}L${x1 + 4} ${y1 + 3}`, '#4a4230', t + 3, .2).s(`M${x0} ${y0}L${x1} ${y1}`, '#8c806a', t, 1).s(`M${x0} ${y0 - t * .25}L${x1} ${y1 - t * .25}`, '#b8ab92', t * .5, .9).s(`M${x0 + ca * 3} ${y0 - t * .35}L${x1 - ca * 6} ${y1 - t * .35}`, '#ddd2bc', 1, .8);
         for (let k = 0; k < 4; k++) { const a = g.a + Math.PI + (rr() - .5) * 1.6, l = 4 + rr() * 6; B.s(`M${x0} ${y0}l${Math.cos(a) * l} ${Math.sin(a) * l * .6}`, '#8c806a', 1.6, .95); }
