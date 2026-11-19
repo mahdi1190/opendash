@@ -1004,7 +1004,10 @@
       if (faults.length === before && col !== 'none') {
         const yT = foot - .12, at = { obj: 'decor', name: o.name, family: fam, region: 'decorations (anywhere)', decor: u.def.id, turn: u.r, col };
         if (fam === 'fence' && u.def.rot && u.r % 2 === 1) { const open = [.15, .5, .85].filter(fy => free(u.x + w / 2, u.y + fy * h)); if (open.length) push({ kind: 'decor-foot', ...at, x: u.x + w / 2, y: u.y + .5, detail: 'turned edge-on, the feet can stand on its drawn line at ' + open.length + ' of 3 points along it: a run of them can be walked through' }); }
-        else if (fam === 'fence') { const ends = [u.x + .02, u.x + w - .02].filter(x => free(x, yT)); if (ends.length && a.x <= u.x + .2 && b.x >= u.x + w - .2) push({ kind: 'decor-foot', ...at, x: ends[0], y: yT, detail: 'drawn to the edge of its cell, but a foot on the joint line misses its block: a run of these has a gap at every joint' }); }
+        else if (fam === 'fence') { const ends = [u.x + .02, u.x + w - .02].filter(x => free(x, yT)); if (ends.length && a.x <= u.x + .2 && b.x >= u.x + w - .2) push({ kind: 'decor-foot', ...at, x: ends[0], y: yT, detail: 'drawn to the edge of its cell, but a foot on the joint line misses its block: a run of these has a gap at every joint' });
+          // and its block stops at the panel: a panel stands on its foot line, so behind it, two thirds of a cell back, is
+          // open ground (as whole cells, the feet stopped a cell short of a stone kerb drawn as one low line, 19 Nov 2026)
+          else if (!free(u.x + w / 2, foot - .66) && free(u.x + w / 2, foot - 1.3)) push({ kind: 'decor-foot', ...at, x: u.x + w / 2, y: foot - .66, detail: 'its block reaches two thirds of a cell behind the panel drawn on its foot line: an invisible wall behind it' }); }
         else if (w >= 2 && b.x - a.x >= 1.4) { const ends = [a.x + .15, b.x - .15].filter(x => free(x, yT)); if (ends.length) push({ kind: 'decor-foot', ...at, x: ends[0], y: yT, detail: 'drawn ' + (b.x - a.x).toFixed(2) + ' cells long, the feet can stand on ' + ends.length + ' of its drawn ends' }); }
       }
       if (faults.length > before) F.faults += faults.length - before;

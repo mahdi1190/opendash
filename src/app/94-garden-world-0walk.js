@@ -64,6 +64,24 @@ function gardenDecorCol(def) {
   if (GARDEN_COL_FULL.has(def.id) || def.cat === 'fence' || (def.effect && def.effect.kind === 'sit')) return 'full';
   return 'soft';
 }
+/**
+ * A painted fence, hedge or wall panel's block, in cells ({x0, y0, x1, y1}), or null. The painted panels
+ * (94-garden-native-painted-decor-9fences.js) stand on their cell's foot line, a little wider than the cell, or turned (rot
+ * 1 and 3) run up the middle of it from its foot to its far edge. As whole cells they stopped the feet up to a cell
+ * behind a stone kerb drawn as one low line (19 Nov 2026); as half-cell boxes a run of them had a gap at every joint (the
+ * verifier, 18 Nov 2026). The block is the panel's band: the cell's whole width (it meets its neighbours), as deep as the
+ * panel stands on the ground; turned, the cell's whole length, as thick as the panel.
+ */
+const GARDEN_FENCE_BAND = Object.freeze({ 'rw-fence-kerb': [.3, .16], 'box-hedge': [.46, .3], 'stone-wall': [.4, .26], 'dc-old-wall': [.4, .26], 'bamboo-screen': [.36, .2] });   // [depth front on, half width turned]
+function gardenFenceBand(dc) {
+  const def = dc && dc.def; if (!def || def.cat !== 'fence' || def.layer === 'ground' || gardenDecorCol(def) !== 'full') return null;
+  if (!(typeof GardenNativePainted !== 'undefined' && GardenNativePainted && GardenNativePainted.wanted && GardenNativePainted.wanted())) return null;
+  if (typeof GardenPaintedDecor !== 'undefined' && GardenPaintedDecor && GardenPaintedDecor.has && !GardenPaintedDecor.has(def.id)) return null;   // (not painted: its cell, as before)
+  if (typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf('decor:' + dc.uid) || {}).some(Boolean)) return null;
+  const w = def.w || 1, h = def.h || 1, foot = dc.y + h - .03, [depth, half] = GARDEN_FENCE_BAND[def.id] || [.36, .18];
+  if (def.rot && (Number(dc.r) || 0) % 2 === 1) { const cx = dc.x + w / 2; return { x0: cx - half, y0: dc.y - .02, x1: cx + half, y1: foot }; }
+  return { x0: dc.x - .02, y0: foot - depth, x1: dc.x + w + .02, y1: foot };
+}
 /** The boxes the feet are tested against besides the cell grid: [{x0, y0, x1, y1}] in cells, and which cells each touches. */
 function _gwBuildSolids(m) {
   const list = [], at = new Map(), painted = typeof GardenNativePainted !== 'undefined' && GardenNativePainted && GardenNativePainted.wanted && GardenNativePainted.wanted();
@@ -86,6 +104,7 @@ function _gwBuildSolids(m) {
     const long = def.id === 'planter-box', w = def.w || 1, h = def.h || 1, cx = dc.x + w / 2, foot = dc.y + h - 0.08, bw = long ? w - .04 : Math.min(w, 2) * 0.5, d = long ? .44 : 0.28 + (h > 1 ? 0.3 : 0);
     add(cx - bw / 2, foot - d, cx + bw / 2, foot, 'decoration: ' + (def.name || def.id));
   }
+  for (const dc of m.decor) { const b = gardenFenceBand(dc); if (b) add(b.x0, b.y0, b.x1, b.y1, 'decoration: ' + (dc.def.name || dc.def.id)); }
   for (const p of gardenPropsNow()) {
     if (p.needs && !gardenWorkOwned(p.needs)) continue;
     if (gardenPropCol(p) !== 'soft') continue;
@@ -356,6 +375,8 @@ function _gwBuildGrid(m) {
     g[y * W.cols + x] = blocked ? 1 : 0;
   }
   g.hard = g.slice();
+  // (a painted fence, hedge or wall panel: the feet stop at the panel as drawn, _gwBuildSolids; its cell stays shut to the routes' planner)
+  for (const dc of m.decor) { if (!gardenFenceBand(dc)) continue; const i = dc.y * W.cols + dc.x; if (dc.x >= 0 && dc.y >= 0 && dc.x < W.cols && dc.y < W.rows && !gardenAreaAt(dc.x, dc.y, lvl).startsWith('locked:') && !(gardenPropAt(dc.x, dc.y) && gardenPropCol(gardenPropAt(dc.x, dc.y)) === 'full')) g.hard[i] = 0; }
   // (a sight whose painting names its base: the feet stop at that base, _gwBuildSolids; its cells stay shut to the routes' planner)
   for (const p of gardenPropsNow()) { if (!gardenPropPaintedFeet(p)) continue; for (let y = p.y; y < p.y + (p.h || 1); y++) for (let x = p.x; x < p.x + (p.w || 1); x++) { if (x < 0 || y < 0 || x >= W.cols || y >= W.rows) continue; const a2 = gardenAreaAt(x, y, lvl), c2 = m.occ.get(x + ',' + y); if (!a2.startsWith('locked:') && !(c2 && c2.decor)) g.hard[y * W.cols + x] = 0; } }
   g.otherWater = otherWater; g.waterCover = waterCover; g.shore = shore; g.otherShapes = typeof gardenOtherWaterShapes === 'function' ? gardenOtherWaterShapes(m) : null; g.model = m; g.anchors = new Map(); g.probe = {}; g.contact = {};
