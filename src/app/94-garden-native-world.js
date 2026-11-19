@@ -369,7 +369,9 @@ window.GardenNativeWorld = (function () {
     function paintTerrain(sc) { if (!window.GardenPaintedTerrain) return; try { packTerrain = GardenPaintedTerrain.build(scene, rootNode._inner, sc, objects._inner || objects.target); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); } }
     function terrainMark(prop, sc) { if (!window.GardenPaintedMarks || !GardenPaintedMarks.knows(prop.id) || !packOn() || typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(prop.id)).some(Boolean)) return null; try { return GardenPaintedMarks.landmark(scene, prop, sc, element, W); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); return null; } }
     function terrainOwns(kind) { return !!(packTerrain && GardenPaintedTerrain.owns(kind)); }
-    function terrainOwnsRegion(id) { return !!(packTerrain && GardenPaintedTerrain.ownsRegion(id)); }
+    // (asked before the terrain is painted too: the base ground and its grove stands are drawn first, and with packTerrain
+    // still null the old generic star-crowned stands were planted on the fells under the painted ones; 19 Nov 2026)
+    function terrainOwnsRegion(id) { return !!(window.GardenPaintedTerrain && (packTerrain || GardenPaintedTerrain.wanted()) && GardenPaintedTerrain.ownsRegion(id)); }
     function packOn() { const on = !!(window.GardenNativePainted && GardenNativePainted.wanted() && GardenNativePainted.ready() && typeof gardenIslandActive === 'function' && gardenIslandActive()); if (on) GardenNativePainted.overLayer = rootNode._inner; return on; }
     function clearPack(repaint) { if (packGround) packGround.destroy(); if (packPlanting) packPlanting.destroy(); if (packTerrain) packTerrain.destroy(); packGround = packPlanting = packTerrain = null; if (window.GardenPaintNature) { if (repaint && GardenPaintNature.release) GardenPaintNature.release(); else GardenPaintNature.clear(); } }
     // Painted nature (94-garden-paint-*.js): the vale's water and woods, drawn from the layout.
