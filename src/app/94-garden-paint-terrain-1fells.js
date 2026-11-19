@@ -384,7 +384,7 @@ window.GardenPaintedTerrain = (function () {
       });
     }
     // pines along the Edge: a few wind-bent Scots pines leaning east, on the rock (occluders)
-    const pines = []; for (let i = 10; i < N - 10; i += 50 + Math.floor(R(i, 5)() * 90)) { const rr = R(i, 6); if (rr() < .55 || moor(L2[i].x) > .7) continue; pines.push({ x: L2[i].x + (F2[i].x - L2[i].x) * .3, y: L2[i].y + (F2[i].y - L2[i].y) * .55, h: 52 + rr() * 26, seed: seed * 7 + i }); }
+    const pines = []; for (let i = 10; i < N - 10; i += 50 + Math.floor(R(i, 5)() * 90)) { const rr = R(i, 6); if (rr() < .55 || moor(L2[i].x) > .7) continue; pines.push({ x: L2[i].x + (F2[i].x - L2[i].x) * .3, y: L2[i].y + (F2[i].y - L2[i].y) * .55, h: Math.round(gardenSizePx('tree', rr())), seed: seed * 7 + i }); }   // (at the size standard: a mature pine is 3.5 to 5 times your height)
     add(kit.bboxOf(L2, 10), seed + 3, () => {}, { decor: true, pines });
   }
 
@@ -631,26 +631,71 @@ window.GardenPaintedTerrain = (function () {
     for (let k = 0; k < 4; k++) B.boulder(r, (r() - .5) * w * 1.3, 3 + r() * 6, 6 + r() * 7, 4 + r() * 4, Object.assign({}, P, { rock: G.mid, rockLo: G.shade, rockHi: G.hi }), snowy);
     for (let k = 0; k < 10; k++) B.stone(r, (r() - .5) * w * 1.4, 2 + r() * 8, 1.2 + r() * 2.4, .8 + r() * 1.4, P, snowy && r() < .5 ? 'snow' : null);
   }
-  // a rowan on the gorge lip: a slender grey trunk, a light feathery crown; autumn turns it red, winter leaves only berries
+  // a rowan: a slender grey trunk forking low, a light feathery crown of small leaf masses lit on the upper left;
+  // autumn turns it red, winter leaves bare forks and berries. Drawn to its height (a young tree, 2 to 2.5 H).
   function rowanArt(B, h, P, seed, season) {
-    const kit = KIT(), r = kit.rng(seed), leaf = { spring: ['#5f8a44', '#86ad5c', '#b4cf84'], summer: ['#4f7a3c', '#6f9a4c', '#9cbf6c'], autumn: ['#a8442a', '#d0652e', '#eaa04a'], winter: null }[season];
-    B.shadow(8, 1, 18, 4, .3);
-    B.s(`M0 0Q-2 ${-h * .25} 1 ${-h * .45}`, '#7d7a72', 3).s(`M-.8 0Q-2.6 ${-h * .25} .2 ${-h * .45}`, '#b6b2a6', 1, .7);
-    const forks = [[1, -h * .4, -15, -h * .72], [1, -h * .42, 14, -h * .76], [1, -h * .45, 0, -h * .95]];
-    for (const [x0, y0, x1, y1] of forks) B.s(`M${x0} ${y0}Q${(x0 + x1) / 2} ${(y0 + y1) / 2 - 4} ${x1} ${y1}`, '#7d7a72', 1.6);
-    if (leaf) for (let k = 0; k < 13; k++) { const x = (r() - .5) * 38, y = -h * (.5 + r() * .45), rx = 8 + r() * 5;
-      B.f(B.blob(r, x + 1.5, y + 2, rx, rx * .6, 8, .5), leaf[0]).f(B.blob(r, x, y, rx * .85, rx * .5, 8, .5), leaf[1]).f(B.blob(r, x - 2, y - 2, rx * .4, rx * .25, 6, .5), leaf[2], .85); }
-    else B.s(D2().twigs ? D2().twigs(r, forks.map(([a, b, x, y]) => [x, y, -Math.PI / 2 + (x > 0 ? .5 : -.5), 9]), 2, .6) : '', '#6e6a62', .8, .8);
-    if (season === 'autumn' || season === 'winter') for (let k = 0; k < 6; k++) { const x = (r() - .5) * 32, y = -h * (.7 + (r() - .5) * .3); for (let j = 0; j < 6; j++) B.f(B.circ(x + (r() - .5) * 4, y + (r() - .5) * 3, 1.2), '#c42a22', .95); }
-    if (season === 'spring') for (let k = 0; k < 5; k++) B.f(B.blob(r, (r() - .5) * 24, -h * (.8 + (r() - .5) * .14), 3, 2, 6, .5), '#f4f0e2', .95);
+    const kit = KIT(), r = kit.rng(seed), s = h / 90, leaf = { spring: ['#4a7034', '#6e9a4c', '#9cc06c', '#c4dc94'], summer: ['#3c6230', '#5a8640', '#82aa58', '#b0cc7c'], autumn: ['#82301e', '#b84a26', '#de7a34', '#f0aa5a'], winter: null }[season];
+    const tw = 2.6 * s, lean = (r() - .5) * 6 * s;
+    B.s(`M0 0Q${-1.5 * s} ${-h * .22} ${lean * .4} ${-h * .42}`, '#6e6a62', tw * 1.5).s(`M${-tw * .4} 0Q${-2 * s} ${-h * .22} ${lean * .4 - tw * .3} ${-h * .42}`, '#c2beb2', tw * .5, .75);
+    const forks = []; for (let k = 0; k < 4; k++) { const a = -Math.PI / 2 + (k - 1.5) * .42 + (r() - .5) * .2, l = h * (.38 + r() * .16); forks.push([lean * .4, -h * .4, lean * .4 + Math.cos(a) * l * .7, -h * .4 + Math.sin(a) * l]); }
+    for (const [x0, y0, x1, y1] of forks) B.s(`M${x0} ${y0}Q${(x0 + x1) / 2 + 2 * s} ${(y0 + y1) / 2} ${x1} ${y1}`, '#7a766c', tw * .75);
+    if (leaf) {
+      const masses = []; for (let k = 0; k < 26; k++) { const f = forks[k % forks.length], t = .3 + r() * .8; masses.push({ x: f[0] + (f[2] - f[0]) * t + (r() - .5) * 20 * s, y: f[1] + (f[3] - f[1]) * t + (r() - .5) * 16 * s, rx: (11 + r() * 9) * s }); }
+      masses.sort((a, b) => a.y - b.y);
+      for (const m of masses) B.f(B.blob(r, m.x + 2 * s, m.y + 3 * s, m.rx * 1.05, m.rx * .7, 9, .55), leaf[0], .95);
+      for (const m of masses) { B.f(B.blob(r, m.x, m.y, m.rx * .9, m.rx * .58, 9, .55), m.x < lean ? leaf[2] : leaf[1]); B.f(B.blob(r, m.x - m.rx * .3, m.y - m.rx * .25, m.rx * .42, m.rx * .26, 7, .5), leaf[3], .8); }
+      for (let k = 0; k < 40; k++) { const m = masses[Math.floor(r() * masses.length)]; B.f(B.ell(m.x + (r() - .5) * m.rx * 1.6, m.y + (r() - .5) * m.rx, 1.6 * s, .9 * s), r() < .5 ? leaf[3] : leaf[0], .7); }
+    } else for (const [x0, y0, x1, y1] of forks) for (let k = 0; k < 3; k++) { const t = .4 + k * .25, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; B.s(`M${x} ${y}l${(r() - .5) * 14 * s} ${-8 * s - r() * 6 * s}`, '#7a766c', tw * .35, .8); }
+    if (season === 'autumn' || season === 'winter') for (let k = 0; k < 7; k++) { const f = forks[k % forks.length], x = f[2] + (r() - .5) * 10 * s, y = f[3] + 6 * s + r() * 8 * s; for (let j = 0; j < 7; j++) B.f(B.circ(x + (r() - .5) * 5 * s, y + (r() - .5) * 4 * s, 1.3 * s), '#c42a22', .95); }
+    if (season === 'spring') for (let k = 0; k < 6; k++) { const f = forks[k % forks.length]; B.f(B.blob(r, f[2] + (r() - .5) * 10 * s, f[3] + 4 * s, 4 * s, 2.6 * s, 6, .5), '#f4f0e2', .95); }
   }
+  // a Scots pine on the open fell, at the size standard's height: a tall trunk, grey and plated low down and orange in
+  // the crown, a few dead stubs, and a crown of flat, broken pads of needles at the top, each dark beneath and lit on
+  // its upper face, leaning a little away from the weather. Snow lies on the pads in deep winter.
   function pineArt(B, h, P, seed, snowy) {
-    const kit = KIT(), r = kit.rng(seed), lean = 6 + r() * 8;
-    B.shadow(8, 1, 16, 4, .3);
-    B.s(`M0 0Q${-2} ${-h * .4} ${lean} ${-h * .78}`, P.bark, 3.4).s(`M-1 0Q${-3} ${-h * .4} ${lean - 1} ${-h * .78}`, '#d08a52', 1.2, .8);
-    for (let k = 0; k < 4; k++) { const y = -h * (.55 + k * .14), x = lean * (.6 + k * .15) + (r() - .3) * 10, rx = 16 - k * 2.6 + r() * 5, ry = 4.6 + r() * 2;
-      B.s(`M${lean * .7} ${y + 6}L${x} ${y + 1}`, P.bark, 1.4, .9);
-      B.f(B.blob(r, x + 2, y + 2, rx, ry, 8, .45), '#2a4030').f(B.blob(r, x, y, rx * .92, ry * .85, 8, .45), P.pine).f(B.blob(r, x - rx * .25, y - ry * .3, rx * .55, ry * .4, 7, .45), snowy ? P.snow : P.pineHi, .9); }
+    const kit = KIT(), r = kit.rng(seed), s = h / 160, lean = (8 + r() * 14) * s, tw = Math.max(2.4, 5.2 * s);
+    const tx = t => lean * t * t, top = -h * .9;
+    // the trunk: grey bark low, orange high, lit on its west side
+    B.s(`M0 0Q${-1 * s} ${-h * .45} ${tx(.9)} ${top}`, '#5a4a3e', tw * 1.6).s(`M${-tw * .3} ${-h * .05}Q${-2 * s} ${-h * .45} ${tx(.9) - tw * .3} ${top}`, '#8a7a68', tw * .55, .8);
+    B.s(`M${tx(.45)} ${-h * .45}Q${tx(.6) - 1 * s} ${-h * .62} ${tx(.9)} ${top}`, '#b8683a', tw * 1.15).s(`M${tx(.45) - tw * .3} ${-h * .46}Q${tx(.6) - 1.6 * s} ${-h * .62} ${tx(.9) - tw * .3} ${top}`, '#e09a5e', tw * .4, .85);
+    for (let k = 0; k < 6; k++) { const y = -h * (.12 + r() * .3), x = tx(-y / h), d = r() < .5 ? -1 : 1; B.f(B.ell(x + d * tw * .2, y, tw * .3, tw * .14), '#3a2e26', .5); if (k < 3) B.s(`M${x} ${y}l${d * (6 + r() * 6) * s} ${-(2 + r() * 3) * s}`, '#6a5a4c', 1.2 * s + .5, .8); }
+    // the crown pads: flat, broken, clustered high, the topmost smallest
+    const pads = []; const n = 5 + Math.floor(r() * 3);
+    for (let k = 0; k < n; k++) { const t = k / (n - 1), y = -h * (.56 + t * .4) + (r() - .5) * 8 * s, side = k % 2 ? 1 : -1, x = tx(-y / h) + side * (6 + r() * 22) * s * (1.1 - t * .6), rx = (22 + r() * 18) * s * (1.15 - t * .55), ry = rx * (.3 + r() * .12); pads.push({ x, y, rx, ry, bx: tx(-y / h) }); }
+    for (const p of pads) B.s(`M${p.bx} ${p.y + p.ry * .6}Q${(p.bx + p.x) / 2} ${p.y + p.ry * .2} ${p.x} ${p.y}`, '#7a4a2c', 1.6 * s + .6, .9);
+    for (const p of pads) B.f(B.blob(r, p.x + 3 * s, p.y + p.ry * .55, p.rx * 1.04, p.ry * 1.1, 11, .5), '#1e2e22', .9);
+    for (const p of pads) { B.f(B.blob(r, p.x, p.y, p.rx, p.ry, 11, .55), '#33503a'); B.f(B.blob(r, p.x - p.rx * .12, p.y - p.ry * .3, p.rx * .78, p.ry * .6, 9, .5), snowy ? '#eef2f2' : '#4c6e46', .95); B.f(B.blob(r, p.x - p.rx * .35, p.y - p.ry * .5, p.rx * .38, p.ry * .3, 7, .5), snowy ? '#ffffff' : '#7a9a5c', .8);
+      for (let k = 0; k < 10; k++) B.s(`M${p.x + (r() - .5) * p.rx * 1.6} ${p.y + (r() - .3) * p.ry}l${(r() - .5) * 4 * s} ${-2.4 * s}`, r() < .5 ? '#5e7e50' : '#22342a', 1 * s + .3, .7); }
+  }
+  // Groves for the fells, from the layout: rowans and pines in small clusters along the gorge's banks, a shelter belt
+  // behind each hut, and a few wind-bent clumps of pine out on the moor where the ground is open. Every tree keeps off
+  // routes, plots, water, statics, peaks and the Edge, a cell and more from each, so nothing stands on a path or a plot.
+  function groves(L, season) {
+    const kit = KIT(), W = L.W, D = L.D, out = [], plots = new Set();
+    for (const cells of Object.values(D.sectionCells || {})) for (const [x, y] of cells) plots.add(x + ',' + y);
+    const statics = (D.static || []).filter(s => L.ids.has(s.district) || (gardenIslandBaseCell(s.x, s.y) || {}).region && L.ids.has((gardenIslandBaseCell(s.x, s.y) || {}).region));
+    const peakB = L.peaks.map(pk => kit.bboxOf(pk.pts, 30));
+    const okAt = (x, y) => {
+      if (y < 1.5) return false;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const c = gardenIslandBaseCell(Math.floor(x + dx * .9), Math.floor(y + dy * .9)); if (!c || !c.land || !L.ids.has(c.region) || c.freshwater || c.route || c.solid || c.landformId || c.staticId || c.beach) return false; if (plots.has(Math.floor(x + dx * .9) + ',' + Math.floor(y + dy * .9))) return false; }
+      if (statics.some(s => x > s.x - 1.6 && x < s.x + s.w + 1.6 && y > s.y - 1.2 && y < s.y + s.h + 1.6)) return false;
+      const p = L.cpt(x, y); if (peakB.some(b => p.x > b[0] && p.x < b[2] && p.y > b[1] && p.y < b[3] + 40)) return false;
+      return !out.some(t => Math.hypot(t.cx - x, (t.cy - y) * 1.3) < 1.25);
+    };
+    const put = (kind, x, y, t) => { if (!okAt(x, y)) return false; const p = L.cpt(x, y), sd = kit.hash(Math.round(x * 10), Math.round(y * 10), 71); out.push({ kind, x: p.x, y: p.y, cx: x, cy: y, h: Math.round(kind === 'pine' ? gardenSizePx('tree', t) : gardenSizePx('young', t)), seed: sd }); return true; };
+    const cluster = (x, y, n, mix, spread) => { const rr = kit.rng(kit.hash(Math.round(x * 10), Math.round(y * 10), 73)); let got = 0; for (let k = 0; k < n * 4 && got < n; k++) { const a = rr() * Math.PI * 2, d = got ? .9 + rr() * spread : 0; if (put(rr() < mix ? 'rowan' : 'pine', x + Math.cos(a) * d * 1.2, y + Math.sin(a) * d * .9, rr())) got++; } };
+    // the gorge: every few cells along its line, a cluster on one bank or the other, rowans more than pines
+    if (L.gorge && L.gorge.line) { const ln = kit.resample(L.gorge.line.map(p => ({ x: p[0], y: p[1] })), .5), hw = (L.gorge.halfWidth || .85);
+      for (let i = 3; i < ln.length - 3; i += 7) { const a = ln[i - 1], b = ln[i + 1], dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy) || 1, side = kit.hash(i, 3, 75) % 2 ? 1 : -1, off = hw + 1.4 + (kit.hash(i, 5, 75) % 10) / 10;
+        cluster(ln[i].x - dy / l * side * off, ln[i].y + dx / l * side * off, 2 + kit.hash(i, 7, 75) % 2, .65, 1.1); } }
+    // a shelter belt of pines behind (north and west of) each building on the fells
+    for (const s of statics) if (/hut|bothy|fold/.test(s.id)) { const rr = kit.rng(kit.hashStr(s.id)); for (let k = 0; k < 5; k++) put('pine', s.x - 1.4 - rr() * 2.6, s.y - 1.4 - rr() * 1.6, .5 + rr() * .5); }
+    // wind-bent clumps out on the open moor, where a broad noise says the ground is sheltered
+    const rb = kit.bboxOf(L.regionLoops.flat()); for (let y = 3; y < (rb[3] - W.sky) / W.cellH - 2; y += 4.5) for (let x = 2; x < W.cols - 2; x += 6.5) {
+      const jx = x + (kit.hash(x * 10, y * 10, 77) % 100) / 40 - 1.2, jy = y + (kit.hash(x * 10, y * 10, 78) % 100) / 50 - 1;
+      if (kit.fbm(jx / 9, jy / 6, 79) < .56) continue; cluster(jx, jy, 2 + kit.hash(x, y, 80) % 3, .2, 1.4);
+    }
+    return out.slice(0, 48);
   }
 
   /* ---------- the handle the world uses ---------- */
@@ -671,9 +716,9 @@ window.GardenPaintedTerrain = (function () {
     }
     // rowans on the gorge's far lip, where the river runs down to the falls
     // (the second stands back from the lip of Fleet Falls: at .84 it grew out of the falling water)
-    if (L.gorge && L.gorge.line) for (const [t, sd] of [[.5, 1], [.68, 2]]) { const ln = L.gorge.line, i = Math.floor((ln.length - 1) * t), a = ln[i], b = ln[Math.min(ln.length - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l, s2 = ny < 0 ? 1 : -1, hw = (L.gorge.halfWidth || .85) + .22, p = L.pt([a[0] + nx * s2 * hw, a[1] + ny * s2 * hw]), h = 50 + sd * 6;
-      out.push({ key: sig + '|rowan|' + sd, box: [-30, -h - 16, 34, 8], x: p.x, y: p.y, draw: B => rowanArt(B, h, P, 77 + sd, season) }); }
-    for (const op of ops) for (const p of op.pines || []) out.push({ key: sig + '|pine|' + p.seed, box: [-24, -p.h - 14, 44, 8], x: p.x, y: p.y, draw: B => pineArt(B, p.h, P, p.seed, snowy) });
+    // the groves: rowans and pines in clusters from the layout (groves()), each a standing sprite whose trunk blocks the feet
+    for (const g of groves(L, season)) out.push(g.kind === 'pine' ? { key: sig + '|pine|g' + g.seed, box: [-g.h * .4, -g.h - 10, g.h * .5, 8], x: g.x, y: g.y, draw: B => pineArt(B, g.h, P, g.seed, snowy) } : { key: sig + '|rowan|g' + g.seed, box: [-g.h * .45, -g.h - 8, g.h * .45, 8], x: g.x, y: g.y, draw: B => rowanArt(B, g.h, P, g.seed, season) });
+    for (const op of ops) for (const p of op.pines || []) out.push({ key: sig + '|pine|' + p.seed, box: [-p.h * .4, -p.h - 10, p.h * .5, 8], x: p.x, y: p.y, draw: B => pineArt(B, p.h, P, p.seed, snowy) });
     return out;
   }
   function build(scene, parent, sc, objParent) {
