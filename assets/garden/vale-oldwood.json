@@ -1100,11 +1100,11 @@
    "h": 1,
    "col": "soft",
    "door": {
-    "x": 31,
-    "y": 81
+    "x": 32,
+    "y": 80
    },
    "tall": 0.8,
-   "why": "becomes the sundial at the heart; the maze itself is the yard round it"
+   "why": "becomes the sundial at the heart; the maze itself is the yard round it (layout round 3: its door is on the turf inside the outer ring by the mouth, where you stand to see the heart; the cell below it is under the outer hedge)"
   }
  },
  "props": {
