@@ -255,7 +255,37 @@ window.GardenPaintedTerrain = (function () {
     //    path kit's (the same picture the map's ground has beneath, laid again over the rises painted above).
     // A yard (a plaza route: the beacon's, a fold's) is the kit's gravel laid the route's own width, so it frays into the
     // turf like a trail; as a dark-ringed pad of pale blobs it read as a fried egg (art director, 19 Nov 2026).
-    if (window.GardenPaintGround && snowRow < -5) { const G = GardenPaintGround; for (const o of G.paths({ routes: L.routes.map(rt => { const kind = rt.tier === 'plaza' ? 'gravel' : G.routeKind(rt); return { id: rt.id, kind, width: rt.tier === 'plaza' ? Math.max(G.ROUTE_WIDTH.gravel, rt.width * ch * .9) : G.ROUTE_WIDTH[kind], points: rt.points }; }), season, kindAt: () => 'moor', box: { x: fellBB[0], y: fellBB[1], w: fellBB[2] - fellBB[0], h: fellBB[3] - fellBB[1] } })) ops.push(o); }
+    if (window.GardenPaintGround && snowRow < -5) { const G = GardenPaintGround; for (const o of G.paths({ routes: L.routes.filter(rt => rt.tier !== 'plaza').map(rt => { const kind = G.routeKind(rt); return { id: rt.id, kind, width: G.ROUTE_WIDTH[kind], points: rt.points }; }), season, kindAt: () => 'moor', box: { x: fellBB[0], y: fellBB[1], w: fellBB[2] - fellBB[0], h: fellBB[3] - fellBB[1] } })) ops.push(o); }
+    // A top (a plaza route on the fells: the summit, a fold's yard) is worn, not laid: the turf bitten thin and trodden
+    // to bare peaty ground, the bedrock breaking through it in flat lichened slabs, loose stones, moss in the hollows.
+    // Its edge is the turf's own, soft and broken; a gravel pad read as a sandy blob with a ruled outline (19 Nov 2026).
+    if (snowRow < -5) for (const rt of L.routes.filter(rt => rt.tier === 'plaza' && rt.points && rt.points.length)) {
+      const pts = rt.points.length > 1 ? kit.resample(rt.points, 8) : rt.points, rx = Math.max(1.6, rt.width / 2) * cw * 1.05, ry = Math.max(1.6, rt.width / 2) * ch * 1.15, seed = 171 + rt.id.length * 7;
+      const bb = kit.bboxOf(pts, Math.max(rx, ry) + 30), a0 = pts[0], a1 = pts[pts.length - 1];
+      // how far inside the top a point is (1 at the middle line, 0 at the edge), its edge cut by noise so it is never an ellipse
+      const inside = (x, y) => { const dx = a1.x - a0.x, dy = a1.y - a0.y, l = dx * dx + dy * dy, t = l ? Math.max(0, Math.min(1, ((x - a0.x) * dx + (y - a0.y) * dy) / l)) : 0, ex = (x - a0.x - dx * t) / rx, ey = (y - a0.y - dy * t) / ry; return 1 - Math.hypot(ex, ey) / (.78 + kit.noise(x / 40, y / 26, seed) * .44); };
+      add(bb, seed, (B, r, cb) => {
+        clipFell(B);
+        soft(B, cb, true, S => { for (const p of pts) { const rr = kit.rng(kit.hash(Math.round(p.x), Math.round(p.y), seed)); S.f(B.blob(rr, p.x, p.y + 4, rx * 1.05, ry * 1.05, 12, .45), P.fellLo, .32).f(B.blob(rr, p.x - 4, p.y, rx * .82, ry * .8, 12, .5), kit.mix(P.peat, P.path, .55), .34).f(B.blob(rr, p.x - 8, p.y - 3, rx * .5, ry * .46, 10, .5), P.pathLo, .22); } });
+        // the bedrock: flat slabs at the surface, lit on their upper left, a dark joint on the lower right, lichen on them
+        kit.tiles(cb, 46, 30, seed + 1, (tx, ty, rr) => { for (let k = 0; k < 3; k++) {
+          const x = tx + rr() * 46, y = ty + rr() * 46, d = inside(x, y); if (d < .05 || kit.noise(x / 52, y / 34, seed + 2) < .4) continue;
+          const w = 7 + rr() * 15 * (.5 + d), h = w * (.38 + rr() * .18), n = 5 + Math.floor(rr() * 3), pt = [];
+          for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + rr() * .5; pt.push([x + Math.cos(a) * w * (.75 + rr() * .3), y + Math.sin(a) * h * (.75 + rr() * .3)]); }
+          const poly = 'M' + pt.map(q => q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join('L') + 'Z';
+          B.cx.save(); B.cx.translate(1.6, 2); B.f(poly, P.rockDk, .35); B.cx.restore();
+          B.f(poly, rr() < .5 ? P.rock : kit.mix(P.rock, P.rockLo, .4), 1);
+          B.cx.save(); B.cx.clip(new Path2D(poly)); B.f(B.ell(x - w * .35, y - h * .45, w * .7, h * .5), P.rockHi, .55); B.cx.restore();
+          if (rr() < .6) B.s(`M${x - w * .4} ${y + h * (rr() - .3) * .6}L${x + w * .5} ${y + h * (rr() - .5) * .6}`, P.rockDk, .9, .5);
+          for (let j = 0; j < 2; j++) if (rr() < .55) B.f(B.blob(rr, x + (rr() - .5) * w, y + (rr() - .6) * h, 1.6 + rr() * 2.4, 1 + rr(), 6, .5), j ? P.lichen : '#e2dcb4', .7);
+        } });
+        // loose stones and bitten turf in the hollows between the slabs; moss cushions towards the edge
+        kit.tiles(cb, 30, 16, seed + 3, (tx, ty, rr) => { for (let k = 0; k < 4; k++) { const x = tx + rr() * 30, y = ty + rr() * 30, d = inside(x, y); if (d < -.12) continue;
+          if (d > .1 && rr() < .45) B.stone(rr, x, y, 1.4 + rr() * 2.6, 1 + rr() * 1.6, P);
+          else if (d < .35 && rr() < .5) B.f(B.blob(rr, x, y, 3 + rr() * 4, 1.6 + rr() * 2, 7, .5), P.moss, .5);
+          else if (rr() < .6) B.tufts(rr, x, y, 7, 3, [P.fellLo, P.fell, P.bleach], 4 + rr() * 3); } });
+      });
+    }
     for (const rt of L.routes) {
       if (window.GardenPaintGround && snowRow < -5) continue;   // (the shared path kit paints the trails and the yards when no snow lies)
       const pts = kit.resample(rt.points, 5), bb = kit.bboxOf(pts, 30), plaza = rt.tier === 'plaza', wpx = plaza ? rt.width * ch * .9 : Math.max(16, rt.width * 14);
@@ -549,7 +579,7 @@ window.GardenPaintedTerrain = (function () {
     const RS = .55, L = [-.6, -.42, .68], snowLine = H * (1.02 - snowShare * 1.15);
     for (let i = 1; i < NX - 1; i++) {
       const col = Math.round((gx0 + i * ST - x0) / ST); if (col < 0 || col >= PW) continue;
-      let ymin = Math.min(PH, (gy0 + (NY - 1) * ST - y0) / ST), drawn = false;
+      let ymin = Math.min(PH, (gy0 + (NY - 1) * ST - y0) / ST), drawn = false, zc = 0;
       for (let j = NY - 2; j >= 1; j--) {
         const z = h[j * NX + i], sy = (gy0 + j * ST - z - y0) / ST; if (z <= .3) { ymin = Math.min(ymin, sy); continue; } if (sy >= ymin) continue;
         const dzx = (h[j * NX + i + 1] - h[j * NX + i - 1]) / (2 * ST) * RS, dzy = (h[(j + 1) * NX + i] - h[(j - 1) * NX + i]) / (2 * ST * 1.6) * RS;
@@ -558,7 +588,9 @@ window.GardenPaintedTerrain = (function () {
         const x = gx0 + i * ST, y = gy0 + j * ST, nz = kit.noise(x / 18, y / 11, sd + 11), t = z / H;
         const steep = Math.max(0, Math.min(1, (slope - 1.7 - nz * .8) / 1.2)), high = Math.max(0, Math.min(1, (t - .52 - nz * .14) / .25));
         const heathy = t < .22 && kit.noise(x / 40, y / 24, sd + 13) > .7;
-        const c = heathy ? COL.heath : t < .2 && kit.noise(x / 30, y / 18, sd + 17) > .6 ? COL.grassHi : COL.grass;
+        const c0 = heathy ? COL.heath : t < .2 && kit.noise(x / 30, y / 18, sd + 17) > .6 ? COL.grassHi : COL.grass;
+        // (higher up the turf thins and greys towards scree, so a flank reads as mountain, not a green hill)
+        const thin = Math.max(0, Math.min(1, (t - .28 - nz * .1) / .32)) * .55, c = [c0[0] + (COL.scree[0] - c0[0]) * thin, c0[1] + (COL.scree[1] - c0[1]) * thin, c0[2] + (COL.scree[2] - c0[2]) * thin];
         const rockMix = Math.min(1, steep * .9 + high * .55), stone = steep > .6 ? COL.rock : COL.scree;
         let rr = c[0] + (stone[0] - c[0]) * rockMix, gg = c[1] + (stone[1] - c[1]) * rockMix, bb = c[2] + (stone[2] - c[2]) * rockMix;
         // strata on the crags
@@ -571,9 +603,9 @@ window.GardenPaintedTerrain = (function () {
         rr = rr * k * (1 - crease) + (lam > .6 ? 5 : -3); gg = gg * k * (1 - crease) + (lam > .6 ? 3 : -2); bb = bb * k * (1 - crease) + (lam > .6 ? -3 : 4);
         const yTop = Math.max(0, Math.floor(sy)), yBot = Math.min(PH, Math.ceil(ymin));
         for (let yy = yTop; yy < yBot; yy++) { const o = (yy * PW + col) * 4; px[o] = rr; px[o + 1] = gg; px[o + 2] = bb; px[o + 3] = 255; }
-        ymin = sy; drawn = true;
+        ymin = sy; drawn = true; if (z > zc) zc = z;
       }
-      if (drawn) sky[col] = ymin;   // (a column with no mountain in it has no skyline: its rim drew a line across the moor)
+      if (drawn && zc > 6) sky[col] = ymin;   // (a column with hardly any mountain in it drew its rim as a dotted line along the back of the grid)   // (a column with no mountain in it has no skyline: its rim drew a line across the moor)
     }
     // fill single-column gaps the sampling left
     for (let yy = 0; yy < PH; yy++) for (let col = 1; col < PW - 1; col++) { const o = (yy * PW + col) * 4; if (px[o + 3] === 0 && px[o - 1] === 255 && px[o + 7] === 255) for (let q = 0; q < 4; q++) px[o + q] = (px[o - 4 + q] + px[o + 4 + q]) >> 1; }
@@ -705,7 +737,7 @@ window.GardenPaintedTerrain = (function () {
     for (const pk of L.peaks) {
       const b = kit.bboxOf(pk.pts), w = b[2] - b[0], d = b[3] - b[1], sharp = /east/.test(pk.id), H = sharp ? Math.min(400, w * .78) : Math.min(330, w * .64);
       const ox = (b[0] + b[2]) / 2, oy = b[3] - 4, foot = pk.pts.map(p => ({ x: p.x - ox, y: p.y - oy })), pbox = [-w / 2 - 40, -(d + H * 1.05) - 30, w / 2 + 50, 30];
-      out.push({ key: sig + '|peak|' + pk.id, box: pbox, x: ox, y: oy, K: 1.25, draw: B => peakArt(B, w, d, H, PEAK_SNOW[season] + (sharp ? .06 : 0), P, kit.hashStr(pk.id), sharp, foot, pbox) });
+      out.push({ key: sig + '|peak|' + pk.id, box: pbox, x: ox, y: oy, K: 1.25, draw: B => peakArt(B, w, d, H, PEAK_SNOW[season] + (sharp ? .06 : .2), P, kit.hashStr(pk.id), sharp, foot, pbox) });
     }
     // tors framing the gaps in the Edge: the pass and the falls cave stair stand between rock
     const gapAt = [].concat(L.gates.filter(g => g.kind === 'pass').map(g => [g.x + .5, g.y + .9]), L.falls && L.falls.caveStair ? [L.falls.caveStair] : []);
