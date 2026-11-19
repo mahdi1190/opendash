@@ -124,14 +124,22 @@
         }
         return;
       }
-      B.f(B.poly([q(0, -hw), q(1, -hw), q(1, hw), q(0, hw)]), '#817c6b');
+      // The estuary stones (round 3, the valley chain): big flat slabs of weathered stone, each its own rough shape and set a
+      // little askew, dark and wet at the waterline with weed on their sides and a ring of foam where the tide runs past;
+      // the walkable footing is still the whole support (each stone fills its slab), with only a finger of water between.
+      const tones = season === 'winter' ? ['#a6a296', '#b8b4a6', '#9a968a'] : ['#a09680', '#b0a68e', '#958c78', '#aaa088', '#9c9480'];
+      const weed = season === 'winter' ? '#5e6650' : season === 'autumn' ? '#6a6a36' : '#4e6236';
+      const flat = (lo, hi, k, ds, dt, jit, tw) => { const pts = []; for (let j = 0; j < 32; j++) { const a = j / 32 * Math.PI * 2, c = Math.cos(a), si = Math.sin(a), u = Math.sign(c) * Math.pow(Math.abs(c), .32), v = Math.sign(si) * Math.pow(Math.abs(si), .4), n = 1 + (jit[j % jit.length] - .5) * .16; pts.push(q((lo + hi) / 2 + dt + (u * (hi - lo) / 2 * k + v * tw) * n, ds + v * hw * k * n)); } return B.poly(pts); };
       for (let i = 0; i < count; i++) {
-        const lo = i * step + (i ? .35 / deck.length : 0), hi = (i + 1) * step - (i < count - 1 ? .35 / deck.length : 0), chip = 1.4 / deck.length, tone = r();
-        const face = B.poly([q(lo + chip, -hw), q(hi - chip, -hw), q(hi, -hw + 1.4), q(hi, hw - 1.4), q(hi - chip, hw), q(lo + chip, hw), q(lo, hw - 1.4), q(lo, -hw + 1.4)]);
-        B.f(face, tone < .3 ? '#aaa38f' : tone < .75 ? '#b8b09a' : '#c2b9a2');
-        V.strokePts(B, [q(lo + chip, -hw + 1.5), q(hi - chip, -hw + 1.5)], '#e1d6ba', 1.3, .72);
-        V.strokePts(B, [q(lo + chip, hw - 1.2), q(hi - chip, hw - 1.2)], '#676858', 1.8, .7);
-        if (tone < .34) { const p = q((lo + hi) / 2, hw * .62); B.f(B.ell(p.x, p.y, 3, 1.2), season === 'winter' ? '#e8ecef' : '#7d8b54', .62); }
+        const lo = i * step + (i ? .3 / deck.length : 0), hi = (i + 1) * step - (i < count - 1 ? .3 / deck.length : 0), jit = [r(), r(), r(), r(), r(), r(), r(), r(), r()], tone = r(), tw = (r() - .5) * .05;
+        B.s(flat(lo, hi, 1.12, 1, 0, jit, tw), P.foam || '#eef2e2', 1.8, .42);
+        B.f(flat(lo, hi, 1.04, 2.4, 0, jit, tw), '#2e2c26', .8);   // the wet dark foot in the water
+        B.f(flat(lo, hi, 1.02, 1.5, 0, jit, tw), weed, .9);           // weed on its sides
+        B.f(flat(lo, hi, .96, -.6, 0, jit, tw), tones[Math.floor(tone * tones.length)]);
+        B.f(flat(lo, hi, .66, -hw * .24, -(hi - lo) * .1, jit, tw), '#d2c8ae', .42);   // the lit top
+        B.f(flat(lo, hi, .5, hw * .42, (hi - lo) * .14, jit, tw), '#6e6656', .3);       // shade on its far side
+        for (let k = 0; k < 4; k++) { const p = q(lo + (hi - lo) * (.2 + r() * .6), (r() - .2) * hw * .7); B.f(B.circ(p.x, p.y, .45 + r() * .4), '#e4ded0', .7); }   // barnacles
+        if (tone < .4) { const p = q(lo + (hi - lo) * .7, hw * .55); B.f(B.ell(p.x, p.y, 3.4, 1.3), season === 'winter' ? '#e8ecef' : '#7d8b54', .55); }
       }
       return;
     }

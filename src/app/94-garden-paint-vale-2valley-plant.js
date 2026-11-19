@@ -138,9 +138,11 @@
       c.fillStyle = '#e8e2d4'; c.beginPath(); c.ellipse(.2, .6, 1.6, .5, 0, 0, Math.PI * 2); c.fill();   // the pale belly
     });
     mk('gpv-glow', 24, 24, c => { const g = c.createRadialGradient(12, 12, 0, 12, 12, 12); g.addColorStop(0, 'rgba(240,255,170,1)'); g.addColorStop(.18, 'rgba(210,250,110,.9)'); g.addColorStop(.5, 'rgba(160,230,80,.28)'); g.addColorStop(1, 'rgba(140,220,60,0)'); c.fillStyle = g; c.fillRect(0, 0, 24, 24); });
-    mk('gpv-mist', 256, 80, (c, w, h) => {
+    // (round 3: the wisp's puffs once ran off the texture's sides, so each wisp was a band with hard ends, a searchlight
+    //  beam over the river. Every puff now fades out well inside the picture, and the wisp is a loose row of small puffs.)
+    mk('gpv-mist', 384, 128, (c, w, h) => {
       const r = (a => () => (a = (a * 16807) % 2147483647) / 2147483647)(9157);
-      for (let i = 0; i < 9; i++) { const x = 40 + r() * 176, y = 30 + r() * 24, rx = 40 + r() * 46, ry = 14 + r() * 10, g = c.createRadialGradient(x, y, 0, x, y, rx); g.addColorStop(0, 'rgba(238,242,248,.7)'); g.addColorStop(.55, 'rgba(230,236,244,.34)'); g.addColorStop(1, 'rgba(228,234,242,0)'); c.save(); c.translate(x, y); c.scale(1, ry / rx); c.translate(-x, -y); c.fillStyle = g; c.beginPath(); c.arc(x, y, rx, 0, Math.PI * 2); c.fill(); c.restore(); }
+      for (let i = 0; i < 14; i++) { const u = i / 13, x = 92 + u * 200 + (r() - .5) * 30, y = 58 + Math.sin(u * 5.2) * 10 + (r() - .5) * 12, rx = (30 + r() * 34) * (1 - Math.abs(u - .5) * .8), ry = rx * (.36 + r() * .2), g = c.createRadialGradient(x, y, 0, x, y, rx); g.addColorStop(0, 'rgba(236,240,246,.34)'); g.addColorStop(.5, 'rgba(230,236,244,.16)'); g.addColorStop(1, 'rgba(228,234,242,0)'); c.save(); c.translate(x, y); c.scale(1, ry / rx); c.translate(-x, -y); c.fillStyle = g; c.beginPath(); c.arc(x, y, rx, 0, Math.PI * 2); c.fill(); c.restore(); }
     });
   }
   function life(scene, o) {
@@ -174,7 +176,7 @@
       // mist: from the turning hour to the morning, thickest in the small hours, drifting slowly downwind and breathing
       const mist = Math.max(0, Math.min(1, (.44 - light) / .34));
       for (const w of wisps) {
-        const a = mist * (.5 + .2 * Math.sin(t * .11 + w.p)), x = w.x + Math.sin(t * w.sp / 60 + w.p) * w.span, show = a > .01 && inView(x, w.y, 200);
+        const a = mist * (.62 + .2 * Math.sin(t * .11 + w.p)), x = w.x + Math.sin(t * w.sp / 60 + w.p) * w.span, show = a > .01 && inView(x, w.y, 200);
         if (w.im.visible !== show) w.im.setVisible(show); if (!show) continue;
         w.im.setPosition(x, w.y + Math.sin(t * .07 + w.p) * 4).setAlpha(a);
       }
@@ -345,6 +347,20 @@
       if (trees.some(t => Math.hypot(t.x - x, t.y - y) < .9)) continue;
       const pick = kit.hash(c.x, c.y, 832) % 4; lows.push({ id: ['plant.reed', 'plant.canal-view-meadowsweet', 'plant.reed', 'plant.bulrush'][pick], v: pick % 3, h: 30 + pick * 4, x: x * cw, y: W.sky + y * ch });
     }
+    // round 3: planting round the valley's sights, from their layout rows, so none stands on bare ground: reeds round the
+    // hide and the smokehouse, heather-purple and borage-blue drifts at the bee boles, rushes in the frog stone's hollow,
+    // cow parsley at the milk stand, nettles, bracken and bramble along the barn's sides (low, at the foot of each)
+    for (const s of statics) {
+      const sw = s.w || 1, sh = s.h || 1; if (!inRegion(s.x + sw / 2, s.y + sh / 2)) continue;
+      const id = String(s.id || ''), set = /hide|smoke/.test(id) ? ['plant.reed', 'plant.yg-reedbed', 'plant.bulrush', 'plant.reed'] : /boles/.test(id) ? ['plant.heather', 'plant.wildflowers', 'plant.mqn-buddleia', 'plant.daisies'] : /frog/.test(id) ? ['plant.proof-fleet-rush', 'plant.reed', 'plant.bulrush'] : /churn/.test(id) ? ['plant.yg-meadow', 'plant.wildflowers', 'plant.grass-long'] : /barn/.test(id) ? ['plant.bracken', 'plant.hedgerow-blackberry', 'plant.grass-long', 'plant.fern'] : null;
+      if (!set) continue;
+      const n = 4 + sw * 3;
+      for (let i = 0; i < n; i++) {
+        const u = (i + .5) / n, around = i % 3 === 2, x = around ? (i % 2 ? s.x - .3 : s.x + sw + .3) : s.x - .4 + u * (sw + .8), y = around ? s.y + .2 + ((kit.hash(i, s.x, 881) % 100) / 100) * (sh + .5) : s.y + sh + .12 + ((kit.hash(i, s.x, 881) % 100) / 100) * .35;
+        if (!lowOk(x, y, 24)) continue;
+        const pick = kit.hash(i, s.y, 882) % set.length; lows.push({ id: set[pick], v: pick % 3, h: (/reed|rush/.test(set[pick]) ? 30 : 20) + (kit.hash(i, 3, 883) % 9), x: x * cw, y: W.sky + y * ch });
+      }
+    }
     if (lows.length && window.GardenNativePainted && GardenNativePainted.objectCanvas) {
       const cans = new Map(), canOf = (i, m) => { const k = i.id + ':' + i.v + ':' + i.h + ':' + m; let o = cans.get(k); if (o === undefined) { o = V.ok(() => GardenNativePainted.objectCanvas(i.id, i.v, season, { h: i.h * m })); cans.set(k, o); } return o; };
       const tone = season === 'winter' ? ['#8a9878', '#a4ae90'] : season === 'autumn' ? ['#7e9446', '#9aaa58'] : ['#5e8a3e', '#7aa24c'];
@@ -384,16 +400,18 @@
     // by a wooden hatch at the water. The three longest runs of open meadow that leave the bank square to the water, kept
     // apart; dry and grown with rushes while the race is silted. From the layout: the fresh water, the free cells, the paths.
     const ditches = [];
+    // (round 3: the ditches ran into the fields' hedges and the hatches stood on their corners; a ditch now keeps three quarters of a cell off any field)
+    const nearPlot = (fx, fy, d) => { for (const dy of [-d, 0, d]) for (const dx of [-d, 0, d]) if (plotAt(Math.floor(fx + dx), Math.floor(fy + dy))) return true; return false; };
     { const cs = [];
       for (let y = by0; y <= by1; y++) for (let x = bx0; x <= bx1; x++) {
-        if (!freeOk(x, y) || dwAt(x, y) > 1.01 || plotAt(x - 1, y) || plotAt(x + 1, y)) continue;
+        if (!freeOk(x, y) || dwAt(x, y) > 1.01 || nearPlot(x + .5, y + .5, 1.2)) continue;
         let vx = 0, vy = 0; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if ((dx || dy) && fresh(x + dx, y + dy)) { const d = Math.hypot(dx, dy); vx -= dx / d; vy -= dy / d; }
         const l = Math.hypot(vx, vy); if (l < .5) continue; vx /= l; vy /= l;
         // (the hatch stands at the foot of its cell, so its posts rise clear of a field's front hedge in the row above)
         const y0 = plotAt(x, y - 1) || plotAt(x - 1, y - 1) || plotAt(x + 1, y - 1) ? .92 : .6, pts = [{ x: x + .5 - vx * .4, y: y + y0 }]; let px = x + .5, py = y + .55, ok = 0;
         for (let k = 0; k < 16; k++) {
           const bend = (kit.noise(px / 2.5, py / 2.5, 871) - .5) * .5, ax = vx * Math.cos(bend) - vy * Math.sin(bend), ay = vx * Math.sin(bend) + vy * Math.cos(bend);
-          const nx = px + ax * .5, ny = py + ay * .5; if (!freeOk(Math.floor(nx), Math.floor(ny)) || pathGap(nx * cw, W.sky + ny * ch) < 9 || trees.some(t => Math.hypot(t.x - nx, (t.y - ny) * 1.4) < 1)) break;
+          const nx = px + ax * .5, ny = py + ay * .5; if (!freeOk(Math.floor(nx), Math.floor(ny)) || nearPlot(nx, ny, .75) || pathGap(nx * cw, W.sky + ny * ch) < 9 || trees.some(t => Math.hypot(t.x - nx, (t.y - ny) * 1.4) < 1)) break;
           px = nx; py = ny; ok++; pts.push({ x: px, y: py });
         }
         if (ok >= 2 && pts.length >= 3) cs.push({ x, y, len: ok * .5, pts });
@@ -475,12 +493,16 @@
       // the hatch
       const h = pts[0], wd = ['#5a4632', '#7e6646', '#a48a62', '#3a2e22'], H = gardenSizePx('fence', 1), bw = 15;
       if (G0 && G0.castShadow) G0.castShadow(gx, h.x, h.y + 3, bw + 6, H, { a: .22 });
-      gx.globalAlpha = 1; gx.fillStyle = '#2e2a1c'; gx.fillRect(h.x - bw / 2, h.y - 3, bw, 7);   // the dark slot under the board
-      for (let i = 0; i < 3; i++) { const y0 = h.y + 2 - (i + 1) * (H * .55 / 3); gx.fillStyle = wd[i % 2 ? 1 : 0]; gx.fillRect(h.x - bw / 2 + 1, y0, bw - 2, H * .55 / 3 - .6); gx.fillStyle = wd[2]; gx.globalAlpha = .55; gx.fillRect(h.x - bw / 2 + 1, y0, bw - 2, .8); gx.globalAlpha = 1; }
+      // (round 3: it read as a crate. Now the cut runs on through it: stone cheeks either side, the board let down into the slot
+      //  between them so the ditch shows round its foot, the rack standing up through the beam with a hand wheel to wind it)
+      gx.globalAlpha = 1; gx.fillStyle = '#2e2a1c'; gx.fillRect(h.x - bw / 2 - 1, h.y - 2, bw + 2, 6);
+      for (const sx of [-1, 1]) { gx.fillStyle = '#8a8676'; gx.beginPath(); gx.ellipse(h.x + sx * (bw / 2 + 4.5), h.y + 1.5, 4.5, 3, 0, 0, Math.PI * 2); gx.fill(); gx.fillStyle = '#b4ae9a'; gx.beginPath(); gx.ellipse(h.x + sx * (bw / 2 + 4.5) - 1, h.y + .5, 2.6, 1.4, 0, 0, Math.PI * 2); gx.fill(); }
+      { const bh = H * .42, y0 = h.y + 1 - bh; gx.fillStyle = wd[0]; gx.fillRect(h.x - bw / 2 + 1.5, y0, bw - 3, bh); gx.fillStyle = wd[1]; gx.fillRect(h.x - bw / 2 + 1.5, y0, (bw - 3) / 2 - .4, bh); gx.fillStyle = wd[2]; gx.globalAlpha = .6; gx.fillRect(h.x - bw / 2 + 1.5, y0, bw - 3, .9); gx.globalAlpha = .5; gx.fillStyle = '#2e3a30'; gx.fillRect(h.x - bw / 2 + 1.5, h.y - 1.2, bw - 3, 2.2); gx.globalAlpha = 1; }
       for (const sx of [-1, 1]) { const px = h.x + sx * (bw / 2 + 1); gx.fillStyle = wd[3]; gx.fillRect(px - 1.8, h.y - H, 3.6, H + 3); gx.fillStyle = wd[1]; gx.globalAlpha = .75; gx.fillRect(px - 1.8, h.y - H, 1.3, H + 3); gx.globalAlpha = 1; gx.fillStyle = wd[2]; gx.beginPath(); gx.ellipse(px, h.y - H, 1.8, .8, 0, 0, Math.PI * 2); gx.fill(); }
       gx.fillStyle = wd[3]; gx.fillRect(h.x - bw / 2 - 3, h.y - H - 1, bw + 6, 2.6); gx.fillStyle = wd[2]; gx.globalAlpha = .6; gx.fillRect(h.x - bw / 2 - 3, h.y - H - 1, bw + 6, .9); gx.globalAlpha = 1;   // the cross beam
       gx.strokeStyle = '#3a3c3e'; gx.lineWidth = 1.2; gx.beginPath(); gx.moveTo(h.x, h.y - H * .55); gx.lineTo(h.x, h.y - H - 5); gx.stroke();   // the iron rack that lifts the board
-      gx.beginPath(); gx.arc(h.x + 2.5, h.y - H - 4, 2.4, 0, Math.PI * 2); gx.stroke();
+      for (let k = 0; k < 4; k++) { gx.beginPath(); gx.moveTo(h.x - 1.2, h.y - H * .6 - k * 2.6); gx.lineTo(h.x + 1.2, h.y - H * .6 - k * 2.6 - .8); gx.stroke(); }   // the rack's teeth
+      gx.lineWidth = .9; gx.beginPath(); gx.arc(h.x + bw / 2 + 2.5, h.y - H - 1, 3.4, 0, Math.PI * 2); gx.stroke(); gx.beginPath(); gx.moveTo(h.x + bw / 2 + 2.5 - 3.4, h.y - H - 1); gx.lineTo(h.x + bw / 2 + 2.5 + 3.4, h.y - H - 1); gx.moveTo(h.x + bw / 2 + 2.5, h.y - H - 4.4); gx.lineTo(h.x + bw / 2 + 2.5, h.y - H + 2.4); gx.stroke();   // the hand wheel
       // its number cut in the beam (1 at the top), as on Bramble's map
       gx.fillStyle = '#e2d6b8'; gx.globalAlpha = .8; for (let i = 0; i < n; i++) gx.fillRect(h.x - bw / 2 + 2 + i * 2.2, h.y - H - .4, .9, 1.6); gx.globalAlpha = 1;
     };
