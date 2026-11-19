@@ -87,7 +87,11 @@ function _gaWords(r) { const row = GARDEN_ACTS[r.act]; if (!row) return ''; cons
 function gartActFrame() {
   if (typeof _gw === 'undefined' || !_gw.on) return;
   const now = performance.now();
-  if (_ga.cur && _ga.cur.doing) { _gaTick(now); }
+  if (_ga.cur && _ga.cur.doing) {
+    const cur = _ga.cur;
+    if (!cur.H) { const inner = _gw.node && _gw.node.querySelector('.gd-pl-in'), k = (inner && inner._gplKey) || ''; if (k.startsWith('idle' + cur.wantDir) || now - cur.t0 > 600) { const gpl = _gaMyFigure(); if (gpl) cur.H = gartActPlay(gpl, cur.id); } }
+    _gaTick(now);
+  }
   if (now - _ga.t < 200) { if (_ga.near && _ga.el && !_ga.el.hidden) _gaPlace(); return; }
   _ga.t = now;
   const el = _gaPromptEl(); if (!el) return;
@@ -130,7 +134,8 @@ function gartActPlay(gpl, id, o) {
   // what it holds
   const prop = row.prop && GA_PROPS[row.prop];
   if (prop) {
-    const root = gpl.querySelector('.gpl-root') || gpl, g = typeof gardenSceneElement === 'function' && gardenVisualIsNative(gpl) ? gardenSceneElement('g') : document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const root = row.propGround ? gpl : gpl.querySelector('.gpl-root') || gpl,   // (a ladder stays on the ground; a held thing moves with the body)
+      g = typeof gardenSceneElement === 'function' && gardenVisualIsNative(gpl) ? gardenSceneElement('g') : document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.setAttribute('class', 'ga-prop ga-p-' + row.prop); g.innerHTML = prop;
     if (row.propBehind) root.insertBefore(g, root.firstChild); else root.appendChild(g);
     H.props.push(g);
@@ -167,12 +172,9 @@ function _gaStart(cur) {
   if (typeof _GPL !== 'undefined') { _GPL.pose = ''; _GPL.until = 0; }
   try { if (typeof _gwBody === 'function') _gwBody(); } catch (e) { /* no walker */ }
   cur.doing = true; cur.t0 = performance.now(); cur.x = _gw.px; cur.y = _gw.py;
-  // the figure is redrawn for its new way round on the next frame: play on that drawing
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    if (_ga.cur !== cur) return;
-    const gpl = _gaMyFigure(); if (!gpl) return;
-    cur.H = gartActPlay(gpl, cur.id);
-  }));
+  // the figure is redrawn for its new way round by the walker: gartActFrame plays on that drawing once it is showing
+  cur.wantDir = row.dir === 'n' ? 'n' : row.dir === 'e' || row.dir === 'w' ? 'e' : 's';
+  if (typeof _GPL !== 'undefined') { _GPL.lastX = _gw.px; _GPL.lastY = _gw.py; }
   if (row.sound) { try { gardenSfx(row.sound); } catch (e) { /* no such sound: quiet */ } }
   if (typeof gardenLiveEmoted === 'function') { try { gardenLiveEmoted(GA_WIRE + cur.id); } catch (e) { /* alone */ } }
   if (row.use && typeof gardenLiveFx === 'function' && (row.use === 'bell' || row.use === 'wish')) { try { gardenLiveFx('use', row.use, { x: Math.floor(_gw.px), y: Math.floor(_gw.py) }); } catch (e) { /* alone */ } }
