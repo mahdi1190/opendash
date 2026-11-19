@@ -374,7 +374,7 @@ window.GardenPaintedProps = (function () {
       // Align those feet with its protected span, retaining the roof overhang.
       // (village fix round 3) the post box and the camera on its tripod at the size standard: a pillar box a little under the
       // player's height, not half as tall again; the camera no bigger than a shoebox
-      const board = prop.id === 'notice-board' && which === 'board', scale = board ? prop.w * W.cellW / 79 : which === 'postbox' ? .74 : which === 'tripod' ? .8 : 1, artFoot = foot - (board ? scale : 0);
+      const board = prop.id === 'notice-board' && which === 'board', scale = board ? prop.w * W.cellW / 79 : which === 'postbox' ? .74 : which === 'tripod' ? .8 : P.scale ? ok(() => P.scale(prop)) || 1 : 1, artFoot = foot - (board ? scale : 0);
       const im = h.add(image(scene, key, fx, artFoot)); if (!im) { h.destroy(); return null; }
       if (scale !== 1) im.setScale(scale / K);
       b = { x: fx + P.box[0] * scale, y: artFoot + P.box[1] * scale, width: (P.box[2] - P.box[0]) * scale, height: (P.box[3] - P.box[1]) * scale };
@@ -382,7 +382,7 @@ window.GardenPaintedProps = (function () {
       if (which === 'lakeboard') { const t0 = tightBox(im); if (t0 && Math.abs(t0.footX - fx) > 3) im.x += fx - t0.footX; }
       { const t = tightBox(im); if (t) { visual = b; b = t; } }
       if (which === 'fountain') addDrops(scene, h, fx, foot - 52, 16);
-      if (P.extra) ok(() => P.extra(scene, h, fx, artFoot, { season, night, prop, sc, more, W }));
+      if (P.extra) ok(() => P.extra(scene, h, fx, artFoot, { season, night, prop, sc, more, W, scale }));
     }
     finish(h, b, { x: fx, y: foot }); if (visual) h.rootNode.nativeBounds = { x: Math.min(visual.x, b.x), y: Math.min(visual.y, b.y), width: Math.max(visual.x + visual.width, b.x + b.width) - Math.min(visual.x, b.x), height: Math.max(visual.y + visual.height, b.y + b.height) - Math.min(visual.y, b.y) };   // (the drawing keeps its whole canvas for caching)
     return h;

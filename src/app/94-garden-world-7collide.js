@@ -18,7 +18,7 @@
    ============================================================ */
 const _gcv = { on: false, g: null, nw: null, key: '', raf: 0, tip: null, legend: null, data: null, box: null, move: null, tap: null, tipT: 0 };
 const GCV_COL = Object.freeze({ block: 0xd8432f, water: 0x2f6fd8, click: 0x2a6fe0, door: 0x2fae4a, start: 0x1d8a3a });
-const _GCV_LANDFORM = Object.freeze({ 'ruin-wall': 'ruin wall', ruin: 'ruin', 'rock-wall': 'rock wall', 'terrace-wall': 'terrace wall', mountain: 'mountain' });
+const _GCV_LANDFORM = Object.freeze({ 'ruin-wall': 'ruin wall', ruin: 'ruin', 'rock-wall': 'rock wall', 'terrace-wall': 'terrace wall', mountain: 'mountain', screen: 'hedge, wall or reeds' });
 function gardenCollideOn() { return !!_gcv.on; }
 /** Why the walking grid blocks this cell (the same tests as _gwBuildGrid), in plain words; '' when it does not. */
 function _gcvCellWhy(x, y, m) {

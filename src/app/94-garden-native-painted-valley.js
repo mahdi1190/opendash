@@ -51,7 +51,8 @@
   const P = GP.paintTable;
   Object.assign(P, {
     /* ---------- the watermill ---------- */
-    'sight:mill': { box: [-124, -150, 92, 18],
+    // (round 3 layout: on its 5 x 3 footprint the mill stands at the size standard, its ridge about five and a half times the player)
+    'sight:mill': { box: [-124, -150, 92, 18], scale: prop => (prop.w >= 5 ? 1.6 : 1),
       sig: () => turning() ? '|turn' : '|still',
       draw(B, o) {
         const r = rng(hash('valley-mill')), lit = o.night && o.more === '|turn';
@@ -83,17 +84,17 @@
       },
       // the wheel is its own image so it can turn once the cog is in
       extra(scene, h, fx, foot, o) {
-        const turn = o.more === '|turn', key = K.bake(scene, 'sight-mill-wheel|' + (turn ? 't' : 's'), [-44, -44, 44, 44], B => wheel(B, 32, !turn));
-        const cx = fx - 79, cy = foot - 30, im = h.add(K.image(scene, key, cx, cy));
+        const turn = o.more === '|turn', key = K.bake(scene, 'sight-mill-wheel|' + (turn ? 't' : 's'), [-44, -44, 44, 44], B => wheel(B, 32, !turn)), s = o.scale || 1;
+        const cx = fx - 79 * s, cy = foot - 30 * s, im = h.add(K.image(scene, key, cx, cy)); if (im && s !== 1) im.setScale(im.scaleX * s);
         // the water in the pit laps over the wheel's foot
         const lap = K.bake(scene, 'sight-mill-lap', [-34, -6, 34, 10], B => { B.f(B.rr(-30, -2, 60, 9, 3), '#46686c', .92).f(B.rect(-30, -2, 60, 2), '#a8cace', .75); for (let x = -28; x < 28; x += 7) B.f(B.rr(x, 6, 6.4, 3.4, 1), x % 2 ? STONE[1] : STONE[3]); });
-        const water = h.add(K.image(scene, lap, cx, foot - 1));
+        const water = h.add(K.image(scene, lap, cx, foot - 1)); if (water && s !== 1) water.setScale(water.scaleX * s);
         if (turn && im) h.move(im, (node, t, motion) => { if (motion) node.setRotation(-t * .55); });
         if (turn && water) h.move(water, (node, t, motion) => { if (motion) node.setAlpha(.85 + Math.sin(t * 4) * .1); });
       },
     },
     /* ---------- the barn: red weatherboarding, a slate-grey roof, big doors, a hay ladder ---------- */
-    'sight:barn': { box: [-96, -128, 96, 14], draw(B, o) {
+    'sight:barn': { box: [-96, -128, 96, 14], scale: prop => (prop.w >= 6 ? 1.45 : 1), draw(B, o) {
       const r = rng(hash('valley-barn')), red = ['#9a3a2e', '#7e2e24', '#b85a48', '#5e2018'];
       B.shadow(4, 3, 90, 10, .26);
       B.f(B.rect(-74, -62, 148, 62), red[0]);

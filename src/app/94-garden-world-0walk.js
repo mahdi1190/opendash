@@ -180,7 +180,7 @@ function _gwPaintedTrunks(island) {
 /** A painted trunk's box width in cells from its drawn width in px: a little wider than the bark, so you stop at it, never narrower than a post nor wider than a stout oak. */
 function gardenTrunkBoxWidth(px) { return Math.max(.26, Math.min(.6, px / GARDEN_WORLD.cellW + .1)); }
 /** The landforms that stop the feet, as outlines in cells: [{poly: [[x, y]...], x0, y0, x1, y1, src}] (full colliders only). */
-const _GW_LANDFORM_NAME = Object.freeze({ 'ruin-wall': 'ruin wall', ruin: 'ruin', 'rock-wall': 'rock wall', 'terrace-wall': 'terrace wall', mountain: 'mountain' });
+const _GW_LANDFORM_NAME = Object.freeze({ 'ruin-wall': 'ruin wall', ruin: 'ruin', 'rock-wall': 'rock wall', 'terrace-wall': 'terrace wall', mountain: 'mountain', screen: 'hedge, wall or reeds' });
 function gardenWalkLandforms(island) {
   if (!island || island.version < 5) return [];
   if (island._walkForms) return island._walkForms;
