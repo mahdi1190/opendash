@@ -432,12 +432,17 @@ window.GardenPaintSeat = (function () {
     // the near (west and south) half: rubble courses, standing tall on the west, broken down to the east
     const edge = [[-62, 0], [-62, top * .96], [-52, top], [-44, top * .92], [-36, top * .8], [-24, top * .74], [-14, top * .6], [-2, top * .55], [10, top * .4], [24, top * .3], [36, top * .18], [48, top * .1], [62, -4], [62, 0]];
     B.f(B.poly(edge), P.rockLo);
-    for (let y = -4; y > top; y -= 6.5) for (let x = -62 + ((y / 6.5) & 1) * 4; x < 62; x += 7 + r() * 4) { const lim = edge.find((p, i) => i > 0 && p[0] >= x) || edge[edge.length - 1]; if (y < lim[1] + 3) continue; const sx = (x + 62) / 124; B.stone(r, x, y, 3.8 + r() * 1.4, 2.8, { rock: sx < .3 ? P.rockHi : P.rock, rockLo: P.rockLo, rockHi: sx < .3 ? '#d8d4bc' : P.rockHi, rockDk: P.rockDk }, null); }
+    // rubble courses: every stone its own size and weather, dark mortar between, the round of the tower lit on the west and
+    // turning into shade on the east, a band of bigger quoins every few courses (never one pebble stamped over a wall)
+    const tones = ['#a8a490', '#9a9682', '#8c8874', '#b8b49e', '#7e7a68', '#a09a7e'];
+    B.f(B.poly(edge), '#55534a');
+    for (let y = -3, row = 0; y > top; row++) { const ch = row % 5 === 4 ? 7.5 : 4.6 + r() * 2.4; for (let x = -62 - r() * 6; x < 62;) { const sw = (row % 5 === 4 ? 10 : 5) + r() * (row % 5 === 4 ? 6 : 8), cx = x + sw / 2, cy = y - ch / 2, lim = edge.find((p, i) => i > 0 && p[0] >= cx) || edge[edge.length - 1]; x += sw + .9; if (cy - ch / 2 < lim[1] + 1) continue; const round = Math.cos((cx / 62) * 1.25), lit = Math.max(0, Math.min(1, .62 - cx / 140)); let tone = tones[Math.floor(r() * tones.length)]; B.f(B.blob(r, cx, cy, sw * .5, ch * .48, 7, .16), tone).f(B.blob(r, cx - sw * .12, cy - ch * .2, sw * .32, ch * .2, 6, .3), '#e4dfc8', .18 + lit * .4).f(B.blob(r, cx + sw * .1, cy + ch * .22, sw * .4, ch * .16, 6, .3), '#3a382e', .2 + (1 - round) * .3); } y -= ch + .9; }
+    B.f(B.poly([[-62, 0], [-62, top * .96], [-40, top * .9], [-40, 0]]), '#ffffff', .06);
     B.f(B.poly([[30, 0], [36, top * .18], [48, top * .1], [62, -4], [62, 0]]), P.rockDk, .25);
     // arrow slits and a doorway at the foot (dark), the string course
     for (const [x, y] of [[-40, top * .7], [-14, top * .45], [-44, top * .35]]) B.f(B.rr(x - 1.8, y, 3.6, 14, 1.6), '#16140e');
     B.f(`M-12 0V-${sz('door', .4) - 6}a8 8 0 0 1 16 0V0Z`, '#1a1610');
-    B.f(B.rect(-62, top * .5, 74, 3), P.rockHi, .6);
+    B.f(B.rect(-62, top * .5, 62, 3), P.rockHi, .5);
     // ivy up the west, moss on the broken tops, ferns at the foot
     ivy(B, r, -56, -2, top * .9, s); ivy(B, r, -48, -2, top * .6, s); ivy(B, r, 44, -2, top * .08, s);
     mossOn(B, r, -60, top + 4, 20, 6, s); mossOn(B, r, -20, top * .6, 30, 6, s);
