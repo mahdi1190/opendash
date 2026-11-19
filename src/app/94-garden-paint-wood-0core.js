@@ -25,7 +25,7 @@ window.GardenPaintWood = (function () {
   // baked again, behind the old picture, when you zoom in; CAP_MB bounds what is held.
   const CH = 256, MAX_CHUNKS = 56, CAP_MB = 44, TEX = 'gpwd', BLEED = 2, FLOOR_REACH = 128;
   const slowStep = { ms: 0, at: '' };
-  let state = null, lastError = null, bakes = 0, bakeMs = 0, worstBake = 0, tickWorst = 0;
+  let leftover = null, state = null, lastError = null, bakes = 0, bakeMs = 0, worstBake = 0, tickWorst = 0;
   const ok = f => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
   function rng(seed) { let s = (seed >>> 0) % 2147483647 || 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
   function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -506,9 +506,11 @@ window.GardenPaintWood = (function () {
     S.scene.textures.addImage(key, c); ch.tex = key; ch.bytes = c.width * c.height * 4; ch.K = K;   // (never redrawn: no pixel read-back)
     // the canvas runs BLEED px past the chunk and shows only the chunk (a crop): edges meet exactly, and the edge
     // texels filter against real floor, so no line shows where chunks meet (an overlap drew a dark line, a bare edge a thin one)
+    if (S.stale.length) S.stale = S.stale.filter(o => { if (o.box.x !== B.x || o.box.y !== B.y) return true; dropStale(S.scene, o); return false; });
     ch.image = S.scene.add.image(B.x - E, B.y - E, key).setOrigin(0, 0).setScale(1 / K).setCrop(E * K, E * K, B.w * K, B.h * K).setDepth(-9594); S.root.add(ch.image); S.sortRoot = true;
     const ms = performance.now() - t0; bakes++; bakeMs += ms; worstBake = Math.max(worstBake, ms);
   }
+  function dropStale(scene, o) { ok(() => { o.image.destroy(); if (o.tex && scene.textures.exists(o.tex)) scene.textures.remove(o.tex); }); }
   function dropChunk(ch) { if (ch.image) ch.image.destroy(); if (ch.tex && state.scene.textures.exists(ch.tex)) state.scene.textures.remove(ch.tex); ch.image = null; ch.tex = null; ch.bytes = 0; }
 
   /* ---------- trees as sprites in the object layer ---------- */
@@ -537,9 +539,13 @@ window.GardenPaintWood = (function () {
 
   /* ---------- the public face ---------- */
   function paint(scene, root, info, objects) {
-    clear(); if (!info || !info.data || !info.cellAt || !objects) return null;
+    // (19 Nov 2026, round 2: a repaint of the same scene, a level gained or the hour turning, keeps the old floor pictures up
+    //  and bakes the new ones on the timer, each old one going as its chunk's new one is ready: baking every chunk round the
+    //  player at once made a repaint in the middle of a walk a quarter to a whole second long)
+    clear(); const stale = leftover && leftover.scene === scene ? leftover.list.filter(o => o.image && o.image.scene === scene && o.image.active !== false) : []; leftover = null;
+    if (!info || !info.data || !info.cellAt || !objects) { for (const o of stale) dropStale(scene, o); return null; }
     const t0 = performance.now();
-    const S = state = { scene, root, objects, W: info.W, season: info.season || 'summer', tod: info.tod || 'day', serial: 0, clock: 0, last: null, frame: 0, covering: [] };
+    const S = state = { stale, staleAt: performance.now(), scene, root, objects, W: info.W, season: info.season || 'summer', tod: info.tod || 'day', serial: 0, clock: 0, last: null, frame: 0, covering: [] };
     S.M = ok(() => build(info, info.cellAt)); if (!S.M) { state = null; return null; }
     // A lobe can cross a chunk even when no land-cell origin lies inside it.
     // Reserve every touched chunk, and bucket its contributors now: streaming
@@ -581,13 +587,18 @@ window.GardenPaintWood = (function () {
     // and every floor stamp (ferns, bracken, holly, grasses, the clearing's flowers)
     { const w0 = performance.now(); for (const f of S.M.floors) if (f.kind === 'stamp') stampCanvas(f.id, f.v, S.season, f.h); if (S.season !== 'winter') for (const id of ['plant.wildflowers', 'plant.daisies']) for (const v of [0, 1]) stampCanvas(id, v, S.season, 12); S.warmMs += Math.round(performance.now() - w0); }
     const here = window.GardenPaintWater && GardenPaintWater.startView ? GardenPaintWater.startView(S.W) : null;
-    if (here) for (const ch of S.chunks.values()) if (hit(ch.box, here)) ok(() => { const g = bakeChunk(ch); while (!g.next().done); });
+    if (here && !S.stale.length) for (const ch of S.chunks.values()) if (hit(ch.box, here)) ok(() => { const g = bakeChunk(ch); while (!g.next().done); });
     S.buildMs = Math.round(performance.now() - t0);
     return { destroy: clear };
   }
   function clear() {
     if (!state) return; const S = state; state = null;
-    for (const ch of S.chunks.values()) { if (ch.image) ch.image.destroy(); if (ch.tex && S.scene.textures.exists(ch.tex)) S.scene.textures.remove(ch.tex); }
+    // the floor pictures are handed on, not destroyed: a paint() straight after (a repaint) keeps them up until its own are
+    // baked; if none comes in this turn they go
+    const list = (S.stale || []).slice(); S.stale = [];
+    for (const ch of S.chunks.values()) { if (ch.image) list.push({ image: ch.image, tex: ch.tex, box: ch.box }); else if (ch.tex && S.scene.textures.exists(ch.tex)) S.scene.textures.remove(ch.tex); ch.image = null; ch.tex = null; }
+    if (leftover) for (const o of leftover.list) dropStale(leftover.scene, o);
+    const mine = leftover = { scene: S.scene, list }; setTimeout(() => { if (leftover !== mine) return; for (const o of mine.list) dropStale(mine.scene, o); leftover = null; }, 0);
     for (const t of S.M.trees) if (t.im) t.im.destroy(); for (const l of S.light) l.im.destroy();
   }
   function tick(time, view) {
@@ -608,6 +619,7 @@ window.GardenPaintWood = (function () {
       }
     }
     const wantK = S.wantK || 1;
+    if (S.stale.length && performance.now() - S.staleAt > 4000) { for (const o of S.stale) dropStale(S.scene, o); S.stale = []; }   // (any old picture left after four seconds goes)
     let resident = 0, budget = 1; const vx = view.x + view.w / 2, vy = view.y + view.h / 2, pick = () => { let best = null, bd = Infinity; for (const ch of S.chunks.values()) { const seen = hit(ch.box, view); if (ch.image && (ch.K >= wantK || !seen) || !hit(ch.box, near) || (S.job && S.job.ch === ch)) continue; const d = Math.hypot(ch.box.x + CH / 2 - vx, (ch.box.y + CH / 2 - vy) * 1.4) - (seen ? 1e6 : 0) + (ch.image ? 5e5 : 0); if (d < bd) { bd = d; best = ch; } } return best; };
     for (const ch of S.chunks.values()) if (ch.image) { resident++; if (hit(ch.box, view)) ch.used = S.frame; }
     const j0 = performance.now();
