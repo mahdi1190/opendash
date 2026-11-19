@@ -255,19 +255,20 @@
           const hh = (i, j, k) => { let n = Math.imul(i * 374761393 + j * 668265263 + k * 1442695041 + seed, 1) >>> 0; n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0; return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
           const SW = 31, SH = 19, ni = Math.ceil((bb[2] - bb[0]) / SW) + 1, nj = Math.ceil((bb[3] - bb[1]) / SH) + 1;
           const corner = (i, j) => ({ x: bb[0] - SW * .5 + i * SW + (hh(i, j, 1) - .5) * SW * .62, y: bb[1] - SH * .5 + j * SH + (hh(i, j, 2) - .5) * SH * .62 });
-          const STONE = ['#b9b3a0', '#aaa590', '#c6c1ae', '#9e9985', '#b4ae97', '#bdb59a'];
+          const STONE = ['#a9a391', '#9b9680', '#b5af9b', '#908b77', '#a59f88', '#aca58c'];
           // (no fill under the stones: the joints and the gaps are the wood's own turf, so the court has no outline of its own)
           for (let j = 0; j < nj; j++) for (let i = 0; i < ni; i++) {
             const q = [corner(i, j), corner(i + 1, j), corner(i + 1, j + 1), corner(i, j + 1)], cxs = (q[0].x + q[1].x + q[2].x + q[3].x) / 4, cys = (q[0].y + q[1].y + q[2].y + q[3].y) / 4;
             const e = Math.min(1, Math.hypot((cxs - mx) / rx, (cys - my) / ry)); if (hh(i, j, 3) < .06 + e * e * .4) continue;   // gone to turf
-            const s = q.map(p => ({ x: cxs + (p.x - cxs) * .88, y: cys + (p.y - cys) * .84 }));   // the joint
-            let d = ''; for (let k = 0; k < 4; k++) { const a = s[k], b = s[(k + 1) % 4], m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; d += (k ? 'Q' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) + ' ' : 'M') + m.x.toFixed(1) + ' ' + m.y.toFixed(1); }
-            d += 'Q' + s[0].x.toFixed(1) + ' ' + s[0].y.toFixed(1) + ' ' + ((s[0].x + s[1].x) / 2).toFixed(1) + ' ' + ((s[0].y + s[1].y) / 2).toFixed(1) + 'Z';
+            const s = q.map(p => ({ x: cxs + (p.x - cxs) * .95, y: cys + (p.y - cys) * .92 }));   // the joint, a thin one
+            // a flag with its corners worn round, not an oval (rounded through its edge midpoints the stones read as pebbles)
+            const P2 = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }); let d = '';
+            for (let k = 0; k < 4; k++) { const a = s[k], b = s[(k + 1) % 4], c2 = s[(k + 2) % 4], p0 = P2(a, b, .2), p1 = P2(a, b, .8), p2 = P2(b, c2, .2); d += (k ? 'L' : 'M') + p0.x.toFixed(1) + ' ' + p0.y.toFixed(1) + 'L' + p1.x.toFixed(1) + ' ' + p1.y.toFixed(1) + 'Q' + b.x.toFixed(1) + ' ' + b.y.toFixed(1) + ' ' + p2.x.toFixed(1) + ' ' + p2.y.toFixed(1); }
+            d += 'Z';
             const tone = STONE[Math.floor(hh(i, j, 4) * STONE.length)], sunk = hh(i, j, 5) < .15 + e * .25;
             B.f(d, '#3e4232', .4); B.cx.save(); B.cx.translate(-.4, -.8); B.f(d, sunk ? C.kit.mix(tone, '#7a7864', .35) : tone);
             B.cx.save(); B.cx.clip(new Path2D(d)); B.f(B.ell(cxs - 4, cys - 3, SW * .42, SH * .3), '#ddd6c2', .22); B.cx.restore(); B.cx.restore();   // its lit upper-left face, inside the stone (an edge line read as a white outline)
             if (hh(i, j, 6) < .3) B.f(B.blob(r, cxs + (hh(i, j, 7) - .5) * 12, cys + (hh(i, j, 8) - .5) * 6, 3 + hh(i, j, 9) * 5, 1.4 + hh(i, j, 10) * 2, 6, .5), '#8a8a74', .35);   // wear and lichen
-            if (hh(i, j, 11) < .12) B.s(`M${cxs - 6} ${cys - 2}l${5 + hh(i, j, 12) * 5} ${2 + hh(i, j, 13) * 3}`, '#5e5c4c', .9, .7);   // a crack
           }
           for (let k = 0; k < 70; k++) { const x = bb[0] + r() * (bb[2] - bb[0]), y = bb[1] + r() * (bb[3] - bb[1]), e = Math.min(1, Math.hypot((x - mx) / rx, (y - my) / ry)); if (r() > .25 + e * .9) continue; B.f(B.blob(r, x, y, 6 + r() * 18 * (.5 + e), 2.5 + r() * 5, 8, .55), r() < .55 ? '#667c40' : r() < .7 ? '#8a9a56' : '#4e6634', .3 + e * .4); }
           for (let k = 0; k < 40; k++) B.f(B.blob(r, bb[0] + r() * (bb[2] - bb[0]), bb[1] + r() * (bb[3] - bb[1]), 2 + r() * 4, 1 + r() * 1.4, 5, .6), '#7d9248', .6);

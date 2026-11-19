@@ -119,8 +119,8 @@ window.GardenPaintTrees = (function () {
       for (let k = 0; k < 2; k++) { const y = -th * (.35 + r() * .4), x = lean * (y / top) + (r() - .5) * tw * .4; cx.globalAlpha = .55; cx.fillStyle = B[0]; cx.beginPath(); cx.ellipse(x, y, tw * .1, tw * .07, 0, 0, Math.PI * 2); cx.fill(); }
       cx.globalAlpha = 1;
     } else {
-      cx.strokeStyle = B[0]; cx.lineWidth = .8;
-      for (let k = 0; k < 7; k++) { const x = (k / 6 - .5) * tw * .9, sway = (r() - .5) * 2; cx.globalAlpha = .35 + r() * .25; cx.beginPath(); cx.moveTo(x * 1.4, -1); cx.bezierCurveTo(x + sway, -th * .3, x + lean * .4 - sway, -th * .6, x * .8 + lean, top + 2); cx.stroke(); }
+      const great = sp === 'greatoak'; cx.strokeStyle = B[0]; cx.lineWidth = great ? Math.max(.8, tw * .035) : .8;
+      for (let k = 0, nf = great ? Math.max(7, Math.round(tw * .45)) : 7; k < nf; k++) {   /* (the Great Oak's vast bole gets furrows to its own width; every other tree keeps its seven, and so its shape) */ const x = (k / (nf - 1) - .5) * tw * .9, sway = (r() - .5) * (great ? tw * .1 : 2); cx.globalAlpha = .35 + r() * .25; cx.beginPath(); cx.moveTo(x * 1.4, -1); cx.bezierCurveTo(x + sway, -th * .3, x + lean * .4 - sway, -th * .6, x * .8 + lean, top + 2); cx.stroke(); }
       cx.globalAlpha = .25; cx.fillStyle = B[3]; cx.beginPath(); cx.ellipse(-tw * .3, -th * .35, tw * .16, th * .25, 0, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 1;
       if (sp === 'oak' && r() < .7) { cx.fillStyle = B[0]; cx.globalAlpha = .7; cx.beginPath(); cx.ellipse(tw * .1, -th * .5, tw * .16, tw * .28, 0, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 1; }
     }
