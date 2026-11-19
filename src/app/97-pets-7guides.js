@@ -267,8 +267,10 @@ function petGardenGuideAction(P, pat) {
 function petGardenActionMenu(P, pat) {
   if (!_ptwPlayOwned(P) || typeof gardenBubbleOpen !== 'function') return;
   const items = [], guide = petGardenGuideAction(P, pat), puddle = typeof petGardenPuddleAction === 'function' && petGardenPuddleAction(P, pat);
-  if (guide) items.push(guide); if (puddle) items.push(puddle); if (!items.length) return;
-  gardenBubbleOpen({ x: P.x, y: P.y - .7 }, { title: _ptwGuideName(P), sub: guide ? PET_GUIDES[P.look.species].hint : PET_PUDDLE_PLAY[P.look.species].hint, items });
+  if (guide) items.push(guide); if (puddle) items.push(puddle);
+  if (typeof petLifeMenuItems === 'function') items.push(...petLifeMenuItems(P));   // round 3: tug of war, belly rub, high five, play dead, beg, the hoop
+  if (!items.length) return;
+  gardenBubbleOpen({ x: P.x, y: P.y - .7 }, { title: _ptwGuideName(P), sub: guide ? PET_GUIDES[P.look.species].hint : puddle ? PET_PUDDLE_PLAY[P.look.species].hint : 'Play together', items });
 }
 function petGardenGuideState() {
   return _ptw.pets.map(P => ({ species: P.look.species, companion: !!P.me, slot: _ptwPlaySlot(P), invited: !!P.guideInvite, current: P.guide ? { id: P.guide.id, phase: P.guide.phase, age: +P.guide.age.toFixed(2), target: P.guide.target.id, name: P.guide.target.name, stand: P.guide.stand, perch: P.guide.target.perch || null, next: P.guide.next, path: P.guide.path } : null, returning: !!P.guideReturn, last: P.guideLast || null }));

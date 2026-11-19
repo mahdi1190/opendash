@@ -323,6 +323,7 @@ function _ptJournalLine(key, e, n, look) {
     case 'season': return { icon: 'gift', line: `${n} got something new for the season.` };
     case 'met': { const s = petSpecies(rest); return { icon: 'paw-print', line: s ? `${s.label} joined your collection.` : 'A new friend joined your collection.' }; }
     case 'bond': { const [sid, lv] = rest.split('-'), s = petSpecies(sid); return { icon: 'heart', line: `${s ? s.label : 'A pet'} reached friend level ${lv}.` }; }
+    case 'life': { const L = { firstcatch: 'watched you land your first catch together.', favspot: 'found a favourite spot of its own.' }, r = typeof PET_LIFE_BY !== 'undefined' && PET_LIFE_BY[rest]; return { icon: 'paw-print', line: `${n} ${L[rest] || (r && r.diary ? r.diary + '.' : 'did something new.')}` }; }   // round 3: the hundred things (97-pets-tricks-7life-2rows.js)
     case 'pal': return { icon: 'heart', line: `${n} and a friend\u2019s pet became ${rest.split('-')[0] === '3' ? 'best pals' : 'pals'}.` };   // (2.32: playdates in a live garden, 94-garden-live-7pals.js)
     default: return { icon: 'paw-print', line: `A good day with ${n}.` };
   }

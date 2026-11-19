@@ -66,6 +66,7 @@ function gartEmoteRun(id, o) {
   const row = o.seat ? _peOnSeat() : GART_EMOTES[id]; if (!row) return false;
   if (typeof _gw === 'undefined' || !_gw.on || !_gw.node) return false;
   if (!o.quiet && typeof gardenLiveEmoted === 'function') gardenLiveEmoted(id);   // friends here see it
+  if (!o.quiet && typeof petLifeEvent === 'function') petLifeEvent('emote-' + id);   // round 3: your pet joins in (dances when you dance, waves back, comes to sit with you)
   if (_gw.moving && !o.quiet) { _gw.path = []; _gw.then = null; }
   gartEmoteStop();
   // face front, in the plain idle drawing

@@ -473,6 +473,7 @@ function _ptwLifeGoal(P, dt) {
 function _ptwThink(P, W, dt) {
   if (typeof petGardenGuideTick === 'function') petGardenGuideTick(P, W, dt);
   if (typeof petGardenPlayTick === 'function') petGardenPlayTick(P, W, dt);
+  if (P.me && typeof petLifeTick === 'function') petLifeTick(P, W, dt);   // round 3: what you are doing, for the hundred things (97-pets-tricks-7life-1engine.js)
   if (P.me && !P.wow && typeof petCueCheck === 'function' && petCueCheck('garden')) return;   // the assistant asked: a dozing pet wakes for it
   if (_ptwFishingGoal(P, dt)) return;
   const guided = typeof petGardenGuideOwns === 'function' && petGardenGuideOwns(P);
@@ -489,6 +490,7 @@ function _ptwThink(P, W, dt) {
   const pl = _ptwPlayer();
   if (P.me && pl && (pl.moving || pl.busy)) { P.sit(); P.busy = 0.6; return; }
   if (P.me && typeof petSurpriseMaybe === 'function' && !_ptwVisiting() && !(_gw && _gw.reel) && petSurpriseMaybe('garden', 8)) return;
+  if (typeof petLifeThink === 'function' && petLifeThink(P, W)) return;   // round 3: one of the hundred things, now and then (97-pets-tricks-7life-*.js)
   if (P.pose === 'sleep' && W.night && !P.per.night) { P.busy = 12; return; }
   if (W.night && !P.per.night) { P.sleep(30); return; }   // bedtime
   if (W.rain && Math.random() < 0.35) { P.sit(); P.clip('shake', 900, () => { P.clip('shiver', 1800, () => { P.busy = 1; }); }); return; }
@@ -695,6 +697,7 @@ function _ptwClick(ev) {
   if (P.me) { const r = petPat(); if (r.ok && typeof _ptCheer === 'function') { /* the pet's joy is the feedback */ } if (typeof petBookTick === 'function') { const tt = petBookTick('pat'); for (const id of tt.secret) petSecretReveal(id); } }
   P.tx = null; P.arrive = null; P.sit({ eyes: 'happy', mouth: 'open' }); P.hearts();
   P.clip('jump', 800, () => { P.sit(); P.busy = 1.5; }, { quiet: true });
+  if (P.me && typeof petLifeEvent === 'function') petLifeEvent('pat');
   if (typeof petGardenActionMenu === 'function') petGardenActionMenu(P, P.cb); else if (typeof petGardenPuddleMenu === 'function') petGardenPuddleMenu(P, P.cb);
 }
 function _ptwCheck() {
@@ -704,7 +707,7 @@ function _ptwCheck() {
   const key = _ptwRosterKey();
   if (key !== _ptw.key) { _ptw.key = key; _ptwBuild(); }
   // 2.23: a secret that comes true while you are out in the garden with your pet
-  if (typeof petBookTick === 'function' && (_ptw.bookT = (_ptw.bookT || 0) + 1) % 60 === 5 && _ptw.pets.length) { const tt = petBookTick(''); for (const id of tt.secret) petSecretReveal(id); }
+  if (typeof petBookTick === 'function' && (_ptw.bookT = (_ptw.bookT || 0) + 1) % 60 === 5 && _ptw.pets.length) { const tt = petBookTick(''); for (const id of tt.secret) petSecretReveal(id); if (typeof petLifeCelebrate === 'function') for (const id of tt.earned) petLifeCelebrate(id); }
   for (const P of _ptw.pets) if (!P.node.isConnected) { P.z = -1; P.tf = null; _ptwPlace(P.node, P.y); }
   if (_ptw.enc && !_ptw.enc.node.isConnected) _ptwPlace(_ptw.enc.node, _ptw.enc.cell.y);
   if (!_ptw.pets.length) { try { const W = _ptwWorld(); if (W) _ptwEncounter(W); } catch (e) { /* later */ } return; }   // nobody out: no frames at all, but a rare visitor may still come
