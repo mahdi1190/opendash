@@ -347,6 +347,20 @@ window.GardenPaintSeat = (function () {
   /* ---------- the old gardener: a stone man with a stone trowel on a plinth, mossy, ivy up the plinth ---------- */
   A['ld-statue'] = { box: [-32, -118, 58, 6], door: { dx: 40, dy: 0 }, seat: { kind: 'moss', w: 40, front: 16 }, draw(B, o) {
     const r = KIT().rng(109), s = o.season, plinth = sz('wall', .4) * .9, fig = sz('door', 0) * 1.25, P = MOSSY, y0 = -plinth;
+    // the old hothouse itself, behind him: a lean-to of iron glazing bars on a brick sill, most of its panes gone, its
+    // doorway (below) the front corner of it. (The doorway stood alone on the paving, a door picture with no building:
+    // hunter, round 3.) Painted first, so he stands in front of it, glaring.
+    { const brick = ['#8e4a33', '#b86a4a', '#6e3424'], bar = '#2e3a36', xs = [-8, 4, 16, 28, 54];
+      B.f(B.rect(-10, -30, 68, 9), brick[0]).f(B.rect(-10, -30, 68, 1.6), brick[1]).f(B.rect(-10, -23, 68, 2), brick[2], .6);
+      for (let x = -8; x < 56; x += 7) B.s(`M${x} -29v7`, brick[2], .5, .5);
+      B.f(B.poly([[-10, -30], [-10, -5], [-4, -5], [-4, -24]]), brick[0], .9);   // the sill's west return, coming forward
+      for (const x of xs) B.s(`M${x} -30V-74`, bar, 1.6);
+      B.s('M-10 -74H58M-10 -52H30M-10 -30H58', bar, 1.3).s('M-8 -74L-8 -52M4 -74L4 -52M16 -74L16 -52M28 -74L30 -52M54 -74L52 -50', bar, 1.1);
+      const pane = (pts, a) => B.f(B.poly(pts), '#cfe4e0', a);
+      pane([[-7, -73], [3, -73], [3, -53], [-7, -53]], .34); pane([[17, -73], [27, -73], [28, -53], [17, -53]], .26); pane([[5, -50], [15, -50], [15, -32], [5, -32]], .3); pane([[29, -73], [53, -73], [51, -60], [30, -60]], .2);
+      B.s('M5 -73l9 14M17 -51l8 -6', '#e8f2f0', .7, .6);   // a cracked pane, a shard still in its frame
+      for (let i = 0; i < 4; i++) B.f(B.blob(r, -6 + r() * 60, -31 - r() * 4, 3, 1.4, 6, .5), '#9aa86a', .8);
+      ivy(B, r, -8, -30, -66, s); ivy(B, r, 54, -30, -70, s); }
     ashlar(B, r, -16, y0, 32, plinth, P, 6); B.f(B.rect(-19, y0 - 4, 38, 5), P.rockHi).f(B.rect(-19, y0 + 1, 38, 1.4), P.rockDk, .5).f(B.rect(-19, -4, 38, 4), P.rockLo);
     ivy(B, r, -12, -2, y0 + 4, s); ivy(B, r, -6, -2, y0 + 10, s);
     // the figure: boots, coat to the knee, a hat, one arm out with the trowel, the other on a spade's handle
