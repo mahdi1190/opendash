@@ -21,7 +21,7 @@ const GPL_MOVE = Object.freeze({
   run: Object.freeze({ stride: 1.5, stance: 0.36, arm: 52, lean: 9, lift: 0.3, flight: 2.6 }),
   creep: Object.freeze({ stride: 0.8, stance: 0.66, arm: 8, lean: 10, lift: 0.1, crouch: 0.9 }),
   stairs: Object.freeze({ stride: 1.0, stance: 0.6, arm: 18, lean: 5, lift: 0.34 }),
-  hop: Object.freeze({ ms: 360, high: 11 }),
+  hop: Object.freeze({ ms: 380, high: 15 }),
 });
 const _gmv = { h: 90, want: 90, last: 0, phase: 0, limbs: new WeakMap(), hop: 0, hopT: 0, gait: 'walk', sx: 1, stairs: null, stairT: 0, uphill: 0, dir: 's', face: 1, steer: null };
 function _gmvMotion() { try { return typeof _gartMotionOk === 'function' ? _gartMotionOk() : gardenMotionOn(); } catch (e) { return true; } }
@@ -159,7 +159,7 @@ function gartMoveFrame(inner, bob, gw, time) {
   const lift = typeof gartActLift === 'function' ? gartActLift() : 0;
   if (bob && (hopY || lift || _gmv.hopWas)) { bob.setAttribute('transform', `translate(0 ${_gmvN(hopY - lift)})`); _gmv.hopWas = !!(hopY || lift); }
   if (typeof gartActFrame === 'function') gartActFrame();
-  if (acting || !body || !motion || _GPL.pose !== 'stride' && !(inner._gplKey || '').startsWith('stride')) return;
+  if (acting || !body || !motion || _GPL.pose !== 'stride' && !(inner._gplKey || '').startsWith('stride')) { _gmv.lpx = _gmv.lpy = null; return; }
   const L = _gmvLimbs(body); if (!L.legA || !L.legB) return;
   // the gait: run, creep, stairs or walk; the stride follows the ground actually covered
   const v = gw.moving ? Math.max(0, gw.spd || 0) : 0;
@@ -167,8 +167,11 @@ function gartMoveFrame(inner, bob, gw, time) {
   const G = gw.sneak ? GPL_MOVE.creep : _gmv.onStairs ? GPL_MOVE.stairs : v > 205 ? GPL_MOVE.run : GPL_MOVE.walk;
   const legLen = Math.max(8, Math.abs(L.legA.oy) * S);   // the hip's height in world px
   const stride = G.stride * legLen;
-  _gmv.phase = (_gmv.phase + v * dt * G.stance / stride) % 1;
-  const side = L.side, native = L.native;
+  // the ground actually covered this frame (not the speed asked for: a wall, a slide along it, a diagonal), along the way the drawing faces
+  const side = L.side, native = L.native, Wd = GARDEN_WORLD;
+  const ddx = _gmv.lpx == null ? 0 : (gw.px - _gmv.lpx) * Wd.cellW, ddy = _gmv.lpy == null ? 0 : (gw.py - _gmv.lpy) * Wd.cellH; _gmv.lpx = gw.px; _gmv.lpy = gw.py;
+  const covered = Math.min(40, side ? Math.abs(ddx) : Math.hypot(ddx, ddy));
+  _gmv.phase = (_gmv.phase + (gw.moving ? covered : 0) * G.stance / stride) % 1;
   const leg = (p) => {   // -> [angle (deg), knee (scaleY), planted]
     if (p < G.stance) { const x = stride / 2 - stride * (p / G.stance); return [Math.asin(Math.max(-0.98, Math.min(0.98, x / legLen))) * 180 / Math.PI, 1, x]; }
     const q = (p - G.stance) / (1 - G.stance), e = q * q * (3 - 2 * q), x = -stride / 2 + stride * e;
@@ -181,6 +184,8 @@ function gartMoveFrame(inner, bob, gw, time) {
   if (!planted && G.flight) hip = -G.flight;
   if (_gmv.onStairs) hip += -Math.abs(Math.sin(pa * Math.PI * 2)) * 1.6;
   const lean = (G.lean + (_gmv.uphill > 0 ? 6 : _gmv.uphill < 0 ? -3 : 0)) * Math.min(1, v / 120);
+  // where the planted foot is on the ground (world px), for checks: it should not move while planted
+  { const wx = gw.px * GARDEN_WORLD.cellW, m = _gmv.mirror || 1; _gmv.feet = [A[2] != null ? wx + m * A[2] : null, B[2] != null ? wx + m * B[2] : null]; }
   if (side) {
     // side on (drawn facing east; the mirror flips it): legs turn about the hip, forward is +x, so a positive turn swings the foot back
     _gmvSet(L.legA, -A[0], A[1], 0, native); _gmvSet(L.legB, -B[0], B[1], 0, native);
@@ -197,4 +202,4 @@ function gartMoveFrame(inner, bob, gw, time) {
   _gmvSet(L.root, 0, null, hip, native);
 }
 /** How the walk is going, for checks: heading, drawing, gait, phase, stride (px). */
-function gartMoveState() { return { heading: Math.round(_gmv.h), want: Math.round(_gmv.want), dir: _GPL.dir, mirror: _gmv.mirror, sx: _gmv.sx, phase: _gmv.phase, stairs: !!_gmv.onStairs, uphill: _gmv.uphill, hop: _gmv.hop > 0 }; }
+function gartMoveState() { return { heading: Math.round(_gmv.h), want: Math.round(_gmv.want), dir: _GPL.dir, mirror: _gmv.mirror, sx: _gmv.sx, phase: _gmv.phase, stairs: !!_gmv.onStairs, uphill: _gmv.uphill, hop: _gmv.hop > 0, feet: _gmv.feet || null }; }

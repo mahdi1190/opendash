@@ -186,7 +186,7 @@ function _gaStart(cur) {
   cur.wantDir = row.dir === 'n' ? 'n' : row.dir === 'e' || row.dir === 'w' ? 'e' : 's';
   if (typeof _GPL !== 'undefined') { _GPL.lastX = _gw.px; _GPL.lastY = _gw.py; }
   if (row.sound) { try { gardenSfx(row.sound); } catch (e) { /* no such sound: quiet */ } }
-  if (typeof gardenLiveEmoted === 'function') { try { gardenLiveEmoted(GA_WIRE + cur.id); } catch (e) { /* alone */ } }
+  _gaTell(cur.id, spot && spot.stand ? _gw.px : null, spot && spot.stand ? _gw.py : null);
   if (row.use && typeof gardenLiveFx === 'function' && (row.use === 'bell' || row.use === 'wish')) { try { gardenLiveFx('use', row.use, { x: Math.floor(_gw.px), y: Math.floor(_gw.py) }); } catch (e) { /* alone */ } }
   if (row.skim) _gaSkim(cur);
   if (row.shake) _gaShake(cur);
@@ -246,6 +246,16 @@ function _gaFirst(cur) {
 /** The things you have done, for the journal: [{id, line, day}]. */
 function gartActDiary() { try { const g = _gdG(); return Object.keys(GARDEN_ACTS).filter(id => g.disc['act.' + id] && GARDEN_ACTS[id].first).map(id => ({ id, line: GARDEN_ACTS[id].first, day: g.disc['act.' + id] })); } catch (e) { return []; } }
 /* ---------- friends: what they see you do (and you see them) ---------- */
+/** One gl:em when it starts: the action's id, and where (a seat, a ladder) so their copy of you walks there first and does it in the same place. */
+function _gaTell(id, x, y) {
+  const body = { c: 'em', e: GA_WIRE + id };
+  if (x != null && Number.isFinite(x) && Number.isFinite(y)) { body.x = Math.round(x * 100) / 100; body.y = Math.round(y * 100) / 100; }
+  try {
+    if (typeof _gll === 'undefined') return;
+    if (_gll.role === 'visit') { if (typeof _glvLive === 'function' && _glvLive()) _glvSend('em', body); }
+    else if (typeof _glh !== 'undefined' && _glh.on && typeof _glhAnyone === 'function' && _glhAnyone()) _glhSend('all', 'em', body);
+  } catch (e) { /* alone */ }
+}
 function gartActRemote(A, id) {
   const row = GARDEN_ACTS[id]; if (!row || !A || !A.root) return false;
   if (typeof _gllEmoteStop === 'function') _gllEmoteStop(A);
@@ -253,6 +263,9 @@ function gartActRemote(A, id) {
   if (typeof _gllPaint === 'function') _gllPaint(A);
   const gpl = A.root.querySelector('.gpl'); if (!gpl) return false;
   const H = gartActPlay(gpl, id, { motion: typeof _gllReduced === 'function' ? !_gllReduced() : true });
+  // on a seat (or over the pier's edge) their figure is lifted as yours is: the same spot, found from where they are
+  let lift = 0; try { const near = _gaStaticRows().concat(_gaDecorRows()).filter(r => r.act === id && r.stand && Math.hypot(r.stand.x - A.x, r.stand.y - A.y) < 0.6)[0]; lift = near ? near.lift || 0 : 0; } catch (e) { lift = 0; }
+  if (lift && A.bob) { const bt = `translate(0 ${-lift})`; A.bob.setAttribute('transform', bt); A.bobT = bt; const undo = H.stop; H.stop = () => { undo(); if (A.bob && A.bobT === bt) { A.bob.setAttribute('transform', ''); A.bobT = ''; } }; }
   A.anims = H.anims; A.actUndo = H.stop; A.sit = !!row.hold; A.hold = '';
   if (!row.hold) A.animT = setTimeout(() => { if (typeof _gllEmoteStop === 'function') _gllEmoteStop(A); }, row.ms + 60);
   return true;
@@ -271,7 +284,7 @@ if (typeof gardenLifePetGoal === 'function') {
   };
 }
 /* ---------- the moves wheel: the ground actions are on it too ---------- */
-const GART_ACT_WHEEL = Object.freeze({ lie: { name: 'Lie down', icon: 'cloud' }, nap: { name: 'Nap', icon: 'moon' }, laugh: { name: 'Laugh', icon: 'smile' } });
+const GART_ACT_WHEEL = Object.freeze({ lie: { name: 'Lie down', icon: 'cloud' }, nap: { name: 'Nap', icon: 'moon' }, laugh: { name: 'Laugh', icon: 'smile' }, angel: { name: 'Snow angel', icon: 'snowflake', winter: true } });
 /** A click on a fixed thing with no door: do its first action (a bench: sit on it). */
 function gartActForProp(p) {
   if (!p || p.act || !GARDEN_ACT_BY_PROP[p.id]) return false;

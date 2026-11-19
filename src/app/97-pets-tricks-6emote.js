@@ -97,9 +97,9 @@ function _peSit() {
   gartEmoteRun('sit');
 }
 /* ---------- the wheel ---------- */
-const _PE_ORDER = Object.freeze(['wave', 'cheer', 'clap', 'sit', 'bow', 'shrug', 'laugh', 'lie', 'nap', 'dance', 'twirl', 'backflip', 'waltz', 'jazz']);
+const _PE_ORDER = Object.freeze(['wave', 'cheer', 'clap', 'sit', 'bow', 'shrug', 'laugh', 'lie', 'nap', 'angel', 'dance', 'twirl', 'backflip', 'waltz', 'jazz']);
 /** A wheel row: a move, or one of the ground actions (94-garden-zz-7act-1core.js GART_ACT_WHEEL), which are free. */
-function _peWheelRow(id) { if (GART_EMOTES[id]) return GART_EMOTES[id]; const a = typeof GART_ACT_WHEEL !== 'undefined' && GART_ACT_WHEEL[id]; return a ? { name: a.name, icon: a.icon, how: { free: 1 }, act: true } : null; }
+function _peWheelRow(id) { if (GART_EMOTES[id]) return GART_EMOTES[id]; const a = typeof GART_ACT_WHEEL !== 'undefined' && GART_ACT_WHEEL[id]; if (a && a.winter) { let w = false; try { w = gardenModel().season === 'winter'; } catch (e) { w = false; } if (!w) return null; } return a ? { name: a.name, icon: a.icon, how: { free: 1 }, act: true } : null; }
 function _peWheelClose(restore) {
   const wheel = _pe.wheel; _pe.wheel = null;
   if (wheel) wheel.remove(); document.removeEventListener('pointerdown', _peOutside, true);
