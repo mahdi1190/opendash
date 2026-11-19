@@ -91,6 +91,15 @@
     { summer: ['#1e3020', '#2c4430', '#3e5c40', '#587a52', '#7e9a70'], spring: ['#26382a', '#3a5038', '#567046', '#7e9466', '#e8ece0'], autumn: ['#262a1c', '#3a4026', '#545a30', '#74783e', '#94945a'], winter: ['#2e2a28', '#423c36', '#58504a', '#6e665e', '#88807a'], fl: { spring: '#fbfbf4', summer: null, autumn: '#3c3e66', winter: null }, k: 1.08 },
     { summer: ['#2e4824', '#46662e', '#62863c', '#86a84e', '#aec66e'], spring: ['#304c24', '#4a6e2e', '#68903e', '#8eb456', '#bcd67e'], autumn: ['#4a4420', '#74682a', '#a48a36', '#cca648', '#eaca6e'], winter: ['#4a4030', '#5e5440', '#74684e', '#8a7e60', '#a49878'], fl: { spring: '#e8d878', summer: null, autumn: '#8a6a3a', winter: null }, k: .86 }];
   let hedgeVar = 0;
+  // which hedge each field wears, by its first edge cell: by place, and never the same as the nearest field already given one
+  const hedgeOf = new Map();
+  function chooseHedges(list) {
+    hedgeOf.clear(); const G0 = window.GardenPaintGround, done = [];
+    for (const p of list) { const e0 = p.edges[0]; if (!e0) continue; const cx = p.cells.reduce((a, c) => a + c[0], 0) / p.cells.length, cy = p.cells.reduce((a, c) => a + c[1], 0) / p.cells.length;
+      const q = G0 && G0.hash ? G0.hash(e0[0], e0[1], 4471) % 20 : 0; let v = q < 10 ? 0 : q < 15 ? 1 : 2;
+      const nearOnes = done.filter(o => Math.hypot(o.x - cx, (o.y - cy) * 1.3) < 4.2).map(o => o.v); if (nearOnes.includes(v)) { const free = [0, 1, 2].filter(k => !nearOnes.includes(k)); v = free.length ? free[q % free.length] : v; }
+      done.push({ x: cx, y: cy, v }); hedgeOf.set(e0[0] + ',' + e0[1], v); }
+  }
   function fieldHedge(B, r, P, x0, y0, horiz, len, season, hh) {
     if (len < 2) return;
     const HV = HEDGES[hedgeVar], C = (HV && HV[season]) || HAW[season] || HAW.summer, flOf = s => HV ? HV.fl[s] : s === 'spring' ? '#f6f2e6' : s === 'summer' ? '#f2b8c4' : s === 'autumn' ? '#b02a22' : null; if (HV) hh *= HV.k;
@@ -161,7 +170,7 @@
     cx.fillStyle = '#3e2c1a'; cx.textBaseline = 'middle'; cx.fillText(txt, tx, y0 + 6.4); cx.restore();
   }
   function fence(B, r, P, edges, W, season, cb) {
-    { const G0 = window.GardenPaintGround, e0 = edges[0], q = e0 && G0 && G0.hash ? G0.hash(e0[0], e0[1], 4471) % 20 : 0; hedgeVar = q < 11 ? 0 : q < 16 ? 1 : 2; }
+    { const e0 = edges[0]; hedgeVar = e0 && hedgeOf.has(e0[0] + ',' + e0[1]) ? hedgeOf.get(e0[0] + ',' + e0[1]) : 0; }
     const cw = W.cellW, ch = W.cellH, lv = level(), wood = ['#8a7454', '#a88e66', '#5e4c36'], RH = RUN_H();
     const fronts = [], inset = 3, drawn = new Set();
     for (const [x, y, side, nx, ny] of edges) if (locked(x, y, lv) && !locked(nx, ny, lv)) drawn.add(x + ',' + y + side);
@@ -228,6 +237,7 @@
     if (typeof gardenLandCell !== 'function' || typeof gardenIslandBaseCell !== 'function') return;
     const { add, W, P, season } = C, cw = W.cellW, ch = W.cellH;
     plotsMemo = null;
+    chooseHedges(plots());
     for (const p of plots()) {
       if (!p.edges.length) continue;
       const xs = p.edges.map(e => e[0]), ys = p.edges.map(e => e[1]), bb = [Math.min(...xs) * cw - 16, W.sky + Math.min(...ys) * ch - 44,(Math.max(...xs) + 1) * cw + 8, W.sky + (Math.max(...ys) + 1) * ch + 8];

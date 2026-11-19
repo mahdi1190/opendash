@@ -137,9 +137,10 @@
       c.fillStyle = '#a8442e'; c.beginPath(); c.arc(3.4, .2, .7, 0, Math.PI * 2); c.fill();   // the red throat
       c.fillStyle = '#e8e2d4'; c.beginPath(); c.ellipse(.2, .6, 1.6, .5, 0, 0, Math.PI * 2); c.fill();   // the pale belly
     });
+    mk('gpv-glow', 24, 24, c => { const g = c.createRadialGradient(12, 12, 0, 12, 12, 12); g.addColorStop(0, 'rgba(240,255,170,1)'); g.addColorStop(.18, 'rgba(210,250,110,.9)'); g.addColorStop(.5, 'rgba(160,230,80,.28)'); g.addColorStop(1, 'rgba(140,220,60,0)'); c.fillStyle = g; c.fillRect(0, 0, 24, 24); });
     mk('gpv-mist', 256, 80, (c, w, h) => {
       const r = (a => () => (a = (a * 16807) % 2147483647) / 2147483647)(9157);
-      for (let i = 0; i < 9; i++) { const x = 40 + r() * 176, y = 30 + r() * 24, rx = 40 + r() * 46, ry = 14 + r() * 10, g = c.createRadialGradient(x, y, 0, x, y, rx); g.addColorStop(0, 'rgba(236,240,246,.55)'); g.addColorStop(.55, 'rgba(228,234,242,.25)'); g.addColorStop(1, 'rgba(228,234,242,0)'); c.save(); c.translate(x, y); c.scale(1, ry / rx); c.translate(-x, -y); c.fillStyle = g; c.beginPath(); c.arc(x, y, rx, 0, Math.PI * 2); c.fill(); c.restore(); }
+      for (let i = 0; i < 9; i++) { const x = 40 + r() * 176, y = 30 + r() * 24, rx = 40 + r() * 46, ry = 14 + r() * 10, g = c.createRadialGradient(x, y, 0, x, y, rx); g.addColorStop(0, 'rgba(238,242,248,.7)'); g.addColorStop(.55, 'rgba(230,236,244,.34)'); g.addColorStop(1, 'rgba(228,234,242,0)'); c.save(); c.translate(x, y); c.scale(1, ry / rx); c.translate(-x, -y); c.fillStyle = g; c.beginPath(); c.arc(x, y, rx, 0, Math.PI * 2); c.fill(); c.restore(); }
     });
   }
   function life(scene, o) {
@@ -147,7 +148,8 @@
     V.ok(() => lifeTextures(scene));
     const box = scene.add.container(0, 0), cam = scene.cameras && scene.cameras.main;
     const calm = (() => { try { return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } })();
-    const birds = [], wisps = [];
+    const birds = [], wisps = [], glows = [];
+    for (const q of o.glowAt || []) { const im = scene.add.image(q.x, q.y, 'gpv-glow').setVisible(false).setScale(.5).setBlendMode(1); box.add(im); glows.push({ im, p: (q.seed % 1000) / 160, sp: .25 + (q.seed % 7) / 30 }); }
     for (const [gi, g] of (o.flyAt || []).entries()) for (let i = 0; i < (gi ? 4 : 5); i++) {
       const im = scene.add.image(g.x, g.y, 'gpv-swallow-0').setScale(.26).setVisible(false); box.add(im);
       const k = gi * 7 + i; birds.push({ im, cx: g.x + (i - 2) * 30, cy: g.y + ((k * 37) % 5 - 2) * 14, ax: 150 + (k * 53) % 90, ay: 52 + (k * 29) % 34, w: .42 + ((k * 17) % 10) / 40, p: k * 1.7, p2: k * 2.9, lift: 34 + (k * 23) % 40 });
@@ -172,10 +174,13 @@
       // mist: from the turning hour to the morning, thickest in the small hours, drifting slowly downwind and breathing
       const mist = Math.max(0, Math.min(1, (.5 - light) / .35));
       for (const w of wisps) {
-        const a = mist * (.3 + .16 * Math.sin(t * .11 + w.p)), x = w.x + Math.sin(t * w.sp / 60 + w.p) * w.span, show = a > .01 && inView(x, w.y, 200);
+        const a = mist * (.62 + .22 * Math.sin(t * .11 + w.p)), x = w.x + Math.sin(t * w.sp / 60 + w.p) * w.span, show = a > .01 && inView(x, w.y, 200);
         if (w.im.visible !== show) w.im.setVisible(show); if (!show) continue;
         w.im.setPosition(x, w.y + Math.sin(t * .07 + w.p) * 4).setAlpha(a);
       }
+      // glow-worms in the hedge foot and the bank grass on summer nights, each glowing and fading on its own slow breath
+      const dark = Math.max(0, Math.min(1, (.25 - light) / .2));
+      for (const g of glows) { const a = dark * Math.max(0, Math.sin(t * g.sp + g.p) * .6 + .5), show = a > .02 && inView(g.im.x, g.im.y, 20); if (g.im.visible !== show) g.im.setVisible(show); if (show) g.im.setAlpha(Math.min(1, a)); }
     };
     scene.events.on('update', upd);
     box.once('destroy', () => scene.events.off('update', upd));
@@ -265,6 +270,10 @@
       else if (kind === 'bank') { sp = c.dw <= 1.5 ? (pick < .55 ? 'willow' : pick < .85 ? 'alder' : meadowSide ? 'pollard' : 'alder') : (pick < .4 ? 'pollard' : pick < .75 ? 'alder' : 'willow'); }
       else if (kind === 'edge') sp = pick < .3 ? 'oak' : pick < .55 ? 'hawthorn' : pick < .68 ? 'cherry' : pick < .8 ? 'alder' : pick < .9 ? 'plum' : 'chestnut';
       else sp = pick < .7 ? 'oak' : 'chestnut';
+      // a field named for its trees has them round it (the layout's own names: Far willows, the Alder carr, Walnut shade...)
+      { let named = ''; for (let dy = -2; dy <= 2 && !named; dy++) for (let dx = -2; dx <= 2 && !named; dx++) { const rw = row(x + dx, y + dy); if (rw && rw.plot && rw.id) named = String(rw.id); }
+        const pick2 = kit.hash(x, y, 829) / 4294967296;
+        if (/willow|osier|withy/.test(named)) sp = pick2 < .55 ? 'pollard' : 'willow'; else if (/alder|carr/.test(named)) sp = 'alder'; else if (/cherry/.test(named)) sp = 'cherry'; else if (/apple|orchard/.test(named)) sp = 'apple'; else if (/plum|damson|sloe/.test(named)) sp = 'plum'; else if (/oak/.test(named)) sp = 'oak'; else if (/birch/.test(named)) sp = 'birch'; else if (/thorn|may/.test(named)) sp = 'hawthorn'; }
       const t = kit.hash(x, y, 814) / 4294967296;
       h = sp === 'pollard' ? gardenSizePx('young', .5 + t * .5) : sp === 'hawthorn' || sp === 'cherry' ? gardenSizePx('young', .4 + t * .6) : sp === 'willow' ? gardenSizePx('tree', .15 + t * .5) : sp === 'alder' ? gardenSizePx('tree', .1 + t * .4) : gardenSizePx('tree', kind === 'field' ? .6 + t * .4 : .3 + t * .5);
       h = Math.round(h / 12) * 12;   // (a few heights per species, so trees share pictures)
@@ -397,12 +406,14 @@
     }
     const ditchPx = ditches.map(d => d.pts.map(q => ({ x: q.x * cw, y: W.sky + q.y * ch })));
     const onDitch = (X, Y) => ditchPx.some(pts => { for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i], dx = b.x - a.x, dy = b.y - a.y, l = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((X - a.x) * dx + (Y - a.y) * dy) / l)); if (Math.hypot(X - a.x - dx * t, Y - a.y - dy * t) < 9) return true; } return false; });
+    const glowAt = [];
     const blocks = new Map(), push = (it) => { const k = Math.floor(it.x / (cw * 4)) + ',' + Math.floor((it.y - W.sky) / (ch * 4)); let l = blocks.get(k); if (!l) blocks.set(k, l = []); l.push(it); };
     for (let y = by0; y <= by1; y++) for (let x = bx0; x <= bx1; x++) {
       if (!freeOk(x, y)) continue;
       const rr = kit.rng(kit.hash(x, y, 851)), dwc = dwAt(x, y), ctx = dwc <= 1.6 ? 'bank' : near(x, y, 1, plotAt) ? 'edge' : 'open';
+      if (ctx !== 'open' && kit.hash(x, y, 857) % 3 === 0) glowAt.push({ x: (x + .2 + rr() * .6) * cw, y: W.sky + (y + .6 + rr() * .3) * ch, seed: kit.hash(x, y, 858) });
       const drift = kit.noise(x / 3.2, y / 2.6, 852), list = S.flowers[ctx], flower = list[Math.floor(kit.noise(x / 4.5, y / 3.5, 853) * list.length * .999)];
-      const n = ctx === 'open' ? 3 + Math.floor(rr() * 3) : 3 + Math.floor(rr() * 2);
+      const n = ctx === 'open' ? 4 + Math.floor(rr() * 4) : 3 + Math.floor(rr() * 3);
       for (let i = 0; i < n; i++) {
         const fx = x + .1 + rr() * .8, fy = y + .25 + rr() * .7, X = fx * cw, Y = W.sky + fy * ch;
         if (pathGap(X, Y) < 5 || onDitch(X, Y)) continue;
@@ -484,7 +495,7 @@
     }
     const swallows = season === 'spring' || season === 'summer';
     // (two things: the mist lies under everything that stands, the swallows fly over it all)
-    if (mistAt.length) thing({ key: 'valley-mist', x: (bx0 + bx1) / 2 * cw, y: -9300, make: scene => life(scene, { mistAt, season }) });
+    if (mistAt.length) thing({ key: 'valley-mist', x: (bx0 + bx1) / 2 * cw, y: -9300, make: scene => life(scene, { mistAt, glowAt: season === 'summer' ? glowAt.slice(0, 28) : [], season }) });
     if (swallows && flyAt.length) thing({ key: 'valley-swallows', x: (bx0 + bx1) / 2 * cw, y: 1e6, make: scene => life(scene, { flyAt, season }) });
     V._valleyTrees.mist = mistAt.length; V._valleyTrees.swallowGroups = swallows ? flyAt.length : 0;
   }
@@ -520,8 +531,8 @@
         // accumulate over a clear pixel: the lush wet green, then the seed drifts (off the wet ground), then the hollows
         let R = 0, G = 0, Bl = 0, A = 0; const over = (col, a) => { if (a <= 0) return; const na = a + A * (1 - a); R = (col[0] * a + R * A * (1 - a)) / na; G = (col[1] * a + G * A * (1 - a)) / na; Bl = (col[2] * a + Bl * A * (1 - a)) / na; A = na; };
         over(lushC, wetK * (.2 + n2 * .14));
-        over(seedC, Math.max(0, Math.min(.3, (n1 - .53) * 1.5 + (n2 - .5) * .25)) * (1 - wetK * .8));
-        over(coolC, Math.max(0, Math.min(.2, (.42 - n1) * 1.1)));
+        over(seedC, Math.max(0, Math.min(.34, (n1 - .5) * 1.5 + (n2 - .5) * .3)) * (1 - wetK * .8));
+        over(coolC, Math.max(0, Math.min(.24, (.45 - n1) * 1.2 + (.5 - n2) * .1)));
         const o = (j * nx + i) * 4; d[o] = R; d[o + 1] = G; d[o + 2] = Bl; d[o + 3] = Math.round(A * 255);
       }
       g.putImageData(img, 0, 0);
