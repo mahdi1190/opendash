@@ -8,7 +8,7 @@
 @keyframes ga-zzz { from { transform: translate(0, 0); opacity: 0.2; } 50% { opacity: 1; } to { transform: translate(-6px, -12px); opacity: 0; } }
 /* Lying down (94-garden-zz-7act-1core.js _gaSky): cloud shadows drift over the ground; at night a shooting star now and then; a nap runs the light on a little. */
 .ga-sky { position: absolute; inset: 0; z-index: 12; pointer-events: none; overflow: hidden; }
-.ga-cloud { position: absolute; display: block; width: 46%; height: 34%; border-radius: 50%; background: radial-gradient(closest-side, rgba(20, 30, 40, 0.16), rgba(20, 30, 40, 0.08) 55%, transparent); animation: ga-cloud 38s linear infinite; }
+.ga-cloud { position: absolute; display: block; width: 46%; height: 34%; border-radius: 50%; background: radial-gradient(closest-side, rgba(20, 34, 30, 0.26), rgba(20, 34, 30, 0.13) 55%, transparent); animation: ga-cloud 38s linear infinite; }
 .ga-cloud.c1 { top: 8%; left: -50%; }
 .ga-cloud.c2 { top: 46%; left: -50%; width: 38%; animation-delay: -14s; animation-duration: 46s; }
 .ga-cloud.c3 { top: 66%; left: -50%; width: 52%; height: 28%; animation-delay: -27s; animation-duration: 52s; }

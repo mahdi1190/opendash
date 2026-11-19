@@ -122,7 +122,9 @@ function gartActFrame() {
 function _gaPlace() {
   const r = _ga.near, el = _ga.el; if (!r || !el) return;
   const s = typeof _ghProject === 'function' ? _ghProject(r.x, r.top != null ? Math.max(r.top + 0.55, r.y - 6) : r.src === 'tree' ? r.y - 3.2 : r.y - 1.9) : null; if (!s) return;
-  el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y)}px) translate(-50%, -100%)`;
+  // never under the garden's own messages strip at the top (a welcome, a find): below it, and above the thing's foot at most
+  let y = s.y; try { const m = _gw.box.querySelector('.gd-msgs'), mb = m && m.childElementCount ? m.getBoundingClientRect() : null, bb = _gw.box.getBoundingClientRect(); const floor = mb && mb.height ? mb.bottom - bb.top + 34 : 40; if (y < floor) { const foot = _ghProject(r.x, r.y); y = Math.min(Math.max(y, floor), foot ? foot.y - 6 : y); } } catch (e) { /* as it was */ }
+  el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(y)}px) translate(-50%, -100%)`;
 }
 /** E or Space: the prompt's action, if one is showing. Returns true when it did something. */
 function gartActInteract() {
@@ -148,7 +150,7 @@ function _gaCompile(id, part, tracks) { const k = id + ':' + part; let c = _gaCo
 /** Play an action's tracks on a drawn figure (yours or a friend's). Returns {anims, props, stop()}. */
 function gartActPlay(gpl, id, o) {
   o = o || {};
-  const row = GARDEN_ACTS[id], H = { anims: [], props: [], timers: [] }; if (!row || !gpl) return H;
+  const row = GARDEN_ACTS[id], H = { anims: [], panims: [], props: [], timers: [] }; if (!row || !gpl) return H;
   const motion = o.motion == null ? _gaMotion() : o.motion, sel = _GA_SEL[row.dir === 'e' || row.dir === 'w' ? 'e' : 's'];
   const play = (phase, tracks, loop) => {
     if (!tracks) return;
@@ -171,9 +173,13 @@ function gartActPlay(gpl, id, o) {
     H.props.push(g);
     if (row.prop === 'ducks') _gaDucks(g, H, motion, row.ms);
     if (row.skim) _gaSkimFly(g, H, motion, row.ms, o.skips || 3);
-    if (row.prop === 'swimwater') { if (motion) { try { H.anims.push(gardenVisualAnimate(g, [{ offset: 0, opacity: 0 }, { offset: 0.2, opacity: 0 }, { offset: 0.42, opacity: 1 }, { offset: 1, opacity: 1 }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* shows at once */ } } }
+    if (row.prop === 'stickfly' && motion) {   // the stick turns over and over through the air and lands out in front (where the pet runs to: _gaFetch)
+      const st = g.querySelector('.ga-stickfly') || g.firstChild; if (_ga.fetch) _ga.fetch.el = g;
+      try { H.panims.push(gardenVisualAnimate(st, [{ offset: 0, transform: 'translate(0px,0px) rotate(0deg)' }, { offset: 0.3, transform: 'translate(0px,-14px) rotate(-30deg)' }, { offset: 0.42, transform: 'translate(0px,-30px) rotate(90deg)' }, { offset: 0.55, transform: 'translate(0px,-10px) rotate(300deg)' }, { offset: 0.68, transform: 'translate(4px,90px) rotate(520deg)' }, { offset: 0.76, transform: 'translate(6px,158px) rotate(630deg)' }, { offset: 1, transform: 'translate(6px,158px) rotate(630deg)' }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* it just lands */ }
+    }
+    if (row.prop === 'swimwater') { if (motion) { try { H.panims.push(gardenVisualAnimate(g, [{ offset: 0, opacity: 0 }, { offset: 0.2, opacity: 0 }, { offset: 0.42, opacity: 1 }, { offset: 1, opacity: 1 }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* shows at once */ } } }
   }
-  H.stop = () => { for (const t of H.timers) clearTimeout(t); for (const a of H.anims) { try { a.cancel(); } catch (e) { /* gone */ } } for (const g of H.props) { try { if (g.parentNode) g.parentNode.removeChild(g); if (g.destroy) g.destroy(); } catch (e) { /* gone */ } } H.anims.length = 0; H.props.length = 0; };
+  H.stop = () => { for (const t of H.timers) clearTimeout(t); for (const a of H.anims.concat(H.panims)) { try { a.cancel(); } catch (e) { /* gone */ } } for (const g of H.props) { try { if (g.parentNode) g.parentNode.removeChild(g); if (g.destroy) g.destroy(); } catch (e) { /* gone */ } } H.anims.length = 0; H.props.length = 0; };
   return H;
 }
 function _gaFace(deg) {
@@ -196,9 +202,12 @@ function gartActRun(id, spot) {
   if (typeof gartEmoteStop === 'function') gartEmoteStop();
   const cur = _ga.cur = { id, row, spot: spot || null, doing: false, lift: row.seat != null ? _gaSeatLift(row) : spot && spot.lift ? spot.lift : 0, t0: 0, fxT: 0, fxI: 0 };
   const start = () => { if (_ga.cur === cur) _gaStart(cur); };
+  if (spot && spot.stand && typeof _gwFree === 'function' && !_gwFree(spot.stand.x, spot.stand.y) && typeof _gwNearestFreePt === 'function') {   // a place you cannot stand on: the nearest place you can
+    const f = _gwNearestFreePt(spot.stand.x, spot.stand.y, 2.6); if (f) { spot = Object.assign({}, spot, { stand: { x: f.x, y: f.y } }); cur.spot = spot; }
+  }
   if (spot && spot.stand) {
     const W = GARDEN_WORLD, far = Math.hypot((spot.stand.x - _gw.px) * W.cellW, (spot.stand.y - _gw.py) * W.cellH);
-    if (far < 14) start();
+    if (far < 14 || Math.hypot(spot.stand.x - _gw.px, spot.stand.y - _gw.py) < 0.8) start();
     else if (!gardenWalkToPoint(spot.stand, (ok) => { if (ok !== false) start(); }, { radius: 1.6 })) { _ga.cur = null; try { gameDeny(null, { say: 'You cannot get there.' }); } catch (e) { /* fine */ } return false; }
   } else start();
   return true;
@@ -278,13 +287,15 @@ function _gaShake(cur) {
 }
 /** The ducks swim in from further out (each from its own side), then dabble, tails up, where the crumbs fell. */
 function _gaDucks(g, H, motion, ms) {
+  // and fish: dark shapes come up under the crumbs and nose about
+  g.querySelectorAll('.ga-fish').forEach((el, i) => { if (!motion) { el.setAttribute('opacity', '1'); return; } try { H.panims.push(gardenVisualAnimate(el, [{ offset: 0, opacity: 0 }, { offset: 0.2 + i * 0.08, opacity: 0 }, { offset: 0.4 + i * 0.08, opacity: 1 }, { offset: 1, opacity: 1 }], { duration: ms, fill: 'forwards' })); } catch (e) { el.setAttribute('opacity', '1'); } });
   const ducks = [...g.querySelectorAll('.ga-duck')];
   ducks.forEach((el, i) => {
     const tf = el.getAttribute('transform') || '', m = /translate\((-?[\d.]+)[ ,]+(-?[\d.]+)\)/.exec(tf), x = m ? Number(m[1]) : 0, y = m ? Number(m[2]) : 0, fx = x + (i - 1) * 70 + (i === 1 ? 30 : 0), fy = y - 60 - i * 12;
     if (!motion) return;
     try {
-      H.anims.push(gardenVisualAnimate(el, [{ offset: 0, transform: `translate(${fx}px,${fy}px)`, opacity: 0 }, { offset: 0.08, transform: `translate(${fx}px,${fy}px)`, opacity: 1 }, { offset: 0.42 + i * 0.06, transform: `translate(${x}px,${y}px)`, opacity: 1, easing: 'ease-out' }, { offset: 1, transform: `translate(${x + (i - 1) * 4}px,${y + 3}px)`, opacity: 1 }], { duration: ms, fill: 'forwards', easing: 'linear' }));
-      const h = el.querySelector('.ga-duck-h'); if (h) H.anims.push(gardenVisualAnimate(h, [{ offset: 0, transform: 'rotate(0deg)' }, { offset: 0.5 + i * 0.05, transform: 'rotate(0deg)' }, { offset: 0.6 + i * 0.05, transform: 'rotate(75deg)' }, { offset: 0.72 + i * 0.05, transform: 'rotate(0deg)' }, { offset: 0.84, transform: 'rotate(75deg)' }, { offset: 1, transform: 'rotate(0deg)' }], { duration: ms, fill: 'forwards' }));
+      H.panims.push(gardenVisualAnimate(el, [{ offset: 0, transform: `translate(${fx}px,${fy}px)`, opacity: 0 }, { offset: 0.08, transform: `translate(${fx}px,${fy}px)`, opacity: 1 }, { offset: 0.42 + i * 0.06, transform: `translate(${x}px,${y}px)`, opacity: 1, easing: 'ease-out' }, { offset: 1, transform: `translate(${x + (i - 1) * 4}px,${y + 3}px)`, opacity: 1 }], { duration: ms, fill: 'forwards', easing: 'linear' }));
+      const h = el.querySelector('.ga-duck-h'); if (h) H.panims.push(gardenVisualAnimate(h, [{ offset: 0, transform: 'rotate(0deg)' }, { offset: 0.5 + i * 0.05, transform: 'rotate(0deg)' }, { offset: 0.6 + i * 0.05, transform: 'rotate(75deg)' }, { offset: 0.72 + i * 0.05, transform: 'rotate(0deg)' }, { offset: 0.84, transform: 'rotate(75deg)' }, { offset: 1, transform: 'rotate(0deg)' }], { duration: ms, fill: 'forwards' }));
     } catch (e) { /* they just sit there */ }
   });
 }
@@ -303,8 +314,8 @@ function _gaSkimFly(g, H, motion, ms, n) {
   let prev = [10, -40], pt = t0;
   P.forEach(([x, y], i) => { const mid = (pt + ts[i]) / 2, h = i === 0 ? 26 : 12 / (i + 1); kf.push({ offset: mid, transform: `translate(${(prev[0] + x) / 2}px,${(prev[1] + y) / 2 - h}px) scale(${1 - i * 0.08})`, opacity: 1 }, { offset: ts[i], transform: `translate(${x}px,${y}px) scale(${1 - i * 0.09})`, opacity: 1 }); prev = [x, y]; pt = ts[i]; });
   kf.push({ offset: Math.min(0.99, pt + 0.04), transform: `translate(${prev[0]}px,${prev[1] + 2}px) scale(0.5)`, opacity: 0 }, { offset: 1, transform: `translate(${prev[0]}px,${prev[1]}px)`, opacity: 0 });
-  try { H.anims.push(gardenVisualAnimate(st, kf, { duration: ms, fill: 'forwards', easing: 'linear' })); } catch (e) { /* no flight */ }
-  P.forEach((_, i) => { const r = g.querySelector('.ga-skr-' + i); if (!r) return; try { H.anims.push(gardenVisualAnimate(r, [{ offset: 0, opacity: 0, transform: 'scale(0.3)' }, { offset: ts[i], opacity: 0, transform: 'scale(0.3)' }, { offset: Math.min(0.995, ts[i] + 0.01), opacity: 0.9, transform: 'scale(0.4)' }, { offset: Math.min(1, ts[i] + 0.22), opacity: 0, transform: 'scale(1.5)' }, { offset: 1, opacity: 0, transform: 'scale(1.5)' }], { duration: ms, fill: 'forwards' })); } catch (e) { /* no ring */ } });
+  try { H.panims.push(gardenVisualAnimate(st, kf, { duration: ms, fill: 'forwards', easing: 'linear' })); } catch (e) { /* no flight */ }
+  P.forEach((_, i) => { const r = g.querySelector('.ga-skr-' + i); if (!r) return; try { H.panims.push(gardenVisualAnimate(r, [{ offset: 0, opacity: 0, transform: 'scale(0.3)' }, { offset: ts[i], opacity: 0, transform: 'scale(0.3)' }, { offset: Math.min(0.995, ts[i] + 0.01), opacity: 0.9, transform: 'scale(0.4)' }, { offset: Math.min(1, ts[i] + 0.22), opacity: 0, transform: 'scale(1.5)' }, { offset: 1, opacity: 0, transform: 'scale(1.5)' }], { duration: ms, fill: 'forwards' })); } catch (e) { /* no ring */ } });
 }
 /* ---------- round 2: the things the world now has ---------- */
 const _gaMoved = new Map(), _gaHide = new Map();
@@ -367,7 +378,7 @@ function gartActSetDown() {
 }
 /** Throw a stick: it lands a few steps away; your pet runs for it and brings it back; then the throw ends. */
 function _gaFetch(cur) {
-  const deg = _gaDirDeg(cur.row, cur.spot) * Math.PI / 180, x = _gw.px + Math.cos(deg) * 3.2, y = _gw.py + Math.sin(deg) * 2.4;
+  const deg = _gaDirDeg(cur.row, cur.spot) * Math.PI / 180, x = _gw.px + Math.cos(deg) * 3.2, y = _gw.py + Math.sin(deg) * 2.4 + 0.1;   // (south: 124 of the figure's units, where the stick's flight lands)
   _ga.fetch = { x, y, phase: 'wait', t0: performance.now(), cur };
   setTimeout(() => { if (_ga.fetch && _ga.fetch.cur === cur) _ga.fetch.phase = 'out'; try { if (window.GardenNativeActions) GardenNativeActions.effect('lift', x * GARDEN_WORLD.cellW, GARDEN_WORLD.sky + y * GARDEN_WORLD.cellH, { width: 18 }); } catch (e) { /* fine */ } }, 750);
   setTimeout(() => { if (_ga.cur === cur) gartActStop(true); }, 9000);   // a pet that will not fetch: the throw still ends
@@ -375,7 +386,7 @@ function _gaFetch(cur) {
 function _gaFetchGoal(P) {
   const f = _ga.fetch; if (!f || !P || !P.me) return null;
   if (f.phase === 'wait') return { x: P.x, y: P.y, near: 10 };
-  if (f.phase === 'out') { if (Math.hypot(P.x - f.x, P.y - f.y) < 0.5) { f.phase = 'back'; try { gardenToast('Got it!'); } catch (e) { /* fine */ } } return { x: f.x, y: f.y, near: 0.3, run: true }; }
+  if (f.phase === 'out') { if (Math.hypot(P.x - f.x, P.y - f.y) < 0.5) { f.phase = 'back'; try { if (f.el) f.el.setAttribute('opacity', '0'); } catch (e) { /* gone */ } try { gardenToast('Got it!'); } catch (e) { /* fine */ } } return { x: f.x, y: f.y, near: 0.3, run: true }; }
   if (Math.hypot(P.x - _gw.px, P.y - _gw.py) < 1) { const cur = f.cur; _ga.fetch = null; if (_ga.cur === cur) gartActStop(true); return null; }
   return { x: _gw.px + 0.6, y: _gw.py + 0.2, near: 0.5, run: true };
 }
@@ -440,10 +451,11 @@ function gartActRemote(A, id) {
   const H = gartActPlay(gpl, id, { motion: typeof _gllReduced === 'function' ? !_gllReduced() : true });
   // on a seat (or over the pier's edge) their figure is lifted as yours is: the same spot, found from where they are
   let lift = row.seat != null ? _gaSeatLift(row) : 0; if (!lift) try { const near = _gaStaticRows().concat(_gaDecorRows()).filter(r => r.act === id && r.stand && Math.hypot(r.stand.x - A.x, r.stand.y - A.y) < 0.6)[0]; lift = near ? near.lift || 0 : 0; } catch (e) { lift = 0; }
-  if (lift && A.bob) { const bt = `translate(0 ${-lift})`; A.bob.setAttribute('transform', bt); A.bobT = bt; const undo = H.stop; H.stop = () => { undo(); if (A.bob && A.bobT === bt) { A.bob.setAttribute('transform', ''); A.bobT = ''; } }; }
+  if (lift && A.bob) { const bt = `translate(0 ${-lift})`; A.actLift = lift; A.bob.setAttribute('transform', bt); A.bobT = bt; const undo = H.stop; H.stop = () => { undo(); A.actLift = 0; if (A.bob && A.bobT === bt) { A.bob.setAttribute('transform', ''); A.bobT = ''; } }; }
   const tag = A.root.querySelector('.gll-name');
   if (tag && (row.lying || lift)) { const y0 = tag.getAttribute('y'), y1 = row.lying ? String(Math.round(-26 * GARDEN_ACTOR_SCALE)) : String(Number(y0) - lift); tag.setAttribute('y', y1); const undo = H.stop; H.stop = () => { undo(); if (tag.getAttribute('y') === y1) tag.setAttribute('y', y0); }; }
-  A.anims = H.anims; A.actUndo = H.stop; A.sit = !!row.hold; A.hold = '';
+  A.actHold = row.hold ? id : ''; { const undo = H.stop; H.stop = () => { A.actHold = ''; undo(); }; }
+  A.anims = H.anims.concat(H.panims); A.actUndo = H.stop; A.sit = !!row.hold; A.hold = '';
   if (!row.hold) A.animT = setTimeout(() => { if (typeof _gllEmoteStop === 'function') _gllEmoteStop(A); }, row.ms + 60);
   return true;
 }

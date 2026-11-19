@@ -129,6 +129,7 @@ function _gllPaint(A) {
     if (!s) s = '<ellipse cx="0" cy="0.6" rx="11" ry="1.8" fill="#000000" opacity="0.14"/><rect x="-6" y="-40" width="12" height="26" rx="5" fill="#5a8a5a"/><circle cx="0" cy="-48" r="8" fill="#e8b890"/><rect x="-5" y="-14" width="4" height="14" rx="2" fill="#4a5a7a"/><rect x="1" y="-14" width="4" height="14" rx="2" fill="#4a5a7a"/>';
     A.inner.innerHTML = s;   // allow-listed ids through the avatar kit (profileAvatarNormalize), or the fixed figure above
     A.key = key;
+    if (A.actHold && typeof gartActRemote === 'function') { const id = A.actHold; setTimeout(() => { if (A.actHold === id) gartActRemote(A, id); }, 0); }   // a new drawing (they stopped walking, a look changed): the held move from the things-to-do table goes back on it
   }
   const crouch = A.sneakUntil > Date.now() && A.moving ? 0.93 : 1;   // clock-ok: a creep (the net's creep up on a bug)
   A.inner.setAttribute('transform', `scale(${dir === 'e' && A.face < 0 ? -GL_ACT_SCALE : GL_ACT_SCALE} ${GL_ACT_SCALE * crouch})`);
@@ -198,7 +199,7 @@ function _gllStep(A, dt, quiet) {
   }
   if (!moving && A.moving && A.tx == null && Date.now() < (A.stopAt || 0)) moving = true;   // clock-ok: as above
   if (moving !== A.moving) { A.moving = moving; A.key = ''; }
-  if (!quiet && A.bob) { const bt = moving && !_gllReduced() ? `translate(0 ${(-Math.abs(Math.sin(Date.now() / 90)) * 1.6).toFixed(2)})` : ''; if (A.bobT !== bt) { A.bobT = bt; A.bob.setAttribute('transform', bt); } }  // clock-ok: a little bob
+  if (!quiet && A.bob) { const bt = moving && !_gllReduced() ? `translate(0 ${(-Math.abs(Math.sin(Date.now() / 90)) * 1.6).toFixed(2)})` : A.actLift ? `translate(0 ${-A.actLift})` : '';   /* (on a seat or a branch: lifted to its height, 94-garden-zz-7act-1core.js) */ if (A.bobT !== bt) { A.bobT = bt; A.bob.setAttribute('transform', bt); } }  // clock-ok: a little bob
   if (!quiet && !A.key) _gllPaint(A);
   return moving;
 }
