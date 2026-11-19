@@ -735,4 +735,79 @@
     if (s !== 'winter') for (const x of [-30, -14, 14, 30]) { B.f(B.ell(x, -3, 6, 4), '#6a9a4a').f(B.ell(x - 1, -4, 4, 2.6), '#9ac46a').s(`M${x - 4} -3q4 -4 8 0`, '#4e7a3a', .6); }
     B.tufts(r, -44, 1, 6, 5, grass(s), 6).tufts(r, 46, 1, 6, 5, grass(s), 6);
   } };
+
+  /* ---------- small lives for the sights painted in earlier rounds (7b): each its own, gentle, only on screen ---------- */
+  // a gull standing on a ridge or a gunwale, turning its head now and then
+  const gullStand = at => ({ id: 'gull', box: [-8, -12, 8, 1], at, draw(B) { B.f(B.ell(0, -5, 6, 3.6), '#f4f4f0').f(B.ell(2, -5.6, 4.6, 2.4), '#9aa4aa').f(B.circ(-4.4, -8.4, 2.6), '#f8f8f4').f(B.poly([[-6.6, -8.4], [-10, -7.8], [-6.6, -7.4]]), '#e8b030').f(B.circ(-5, -9, .55), '#1a1a18').f(B.poly([[5, -6], [9, -4.6], [5, -4]]), '#2a2e30').s('M-1 -1.6v2M1.4 -1.6v2', '#d89a40', .7); },
+    anim(im, t, o) { const p = t % 5.2; im.setAlpha(o.night ? 0 : 1); im.setRotation(p < .6 ? -.12 : p > 2.6 && p < 3 ? .1 : 0); } });
+  // a bird in flight on a wide loop round a point (a gull, a swallow); day only
+  const flyer = (id, at, rx, ry, rate, cols, size) => ({ id, box: [-9, -5, 9, 4], at, draw(B) { const k = size || 1; B.s(`M${-8 * k} ${-1 * k}Q${-4 * k} ${-4 * k} 0 0Q${4 * k} ${-4 * k} ${8 * k} ${-1 * k}`, cols[0], 1.6 * k).f(B.ell(0, 0, 2.2 * k, 1.3 * k), cols[1]); },
+    anim(im, t, o) { const a = t * rate; im.setPosition(o.x + Math.cos(a) * rx, o.y + Math.sin(a) * ry + Math.sin(a * 3) * 2); im.setRotation(Math.cos(a) * .2); im.setAlpha(o.night ? 0 : .95); } });
+  const sparkle = (at, w) => ({ id: 'sparkle', box: [-w, -3, w, 3], at, draw(B) { for (const [x, y] of [[-w * .6, 0], [-w * .1, -1.4], [w * .5, .6]]) B.s(`M${x - 2} ${y}h4M${x} ${y - 1.4}v2.8`, '#ffffff', .7, .9); }, anim(im, t) { im.setAlpha(Math.max(0, Math.sin(t * 2.4)) * .8); } });
+  const addLife = (id, parts) => { const a = A[id]; if (a) a.parts = (a.parts || []).concat(parts); };
+  addLife('ld-woodhut', smokeParts([-46, -140], 3, 36, 10, .18));
+  addLife('ld-boathouse', [gullStand([16, -H * 3.45 + 10])]);
+  addLife('ld-lighthouse', [flyer('gull-fly', [0, -236], 46, 14, .5, ['#f4f4f0', '#dde2e4'], 1.1)]);
+  addLife('ld-hull', [gullStand([-6, -40])]);
+  addLife('ld-barn', [flyer('swallow', [10, -120], 60, 22, .9, ['#1e2a3a', '#c86a3a'], .7)]);
+  addLife('ld-chapel', [flyer('jackdaw', [0, -180], 54, 16, .4, ['#1e2226', '#2a2e30'], .8)]);
+  addLife('notice-board', [{ id: 'note', box: [-1, -1, 11, 11], at: [22, -46], draw(B) { B.f(B.rect(0, 0, 10, 10.6), '#f6efdc').s('M1.6 3h6.4M1.6 5.4h5M1.6 7.8h6', '#8e887c', .6).f(B.circ(5, 1, .9), '#3a7ac0'); }, anim(im, t) { im.setRotation(Math.sin(t * 2.1) * .12 + Math.sin(t * 4.7) * .04); } }]);
+  addLife('lf-fountain', [sparkle([-6, -H * .5 - 2], 24)]);
+  addLife('market-stall', [butterfly([-2, -24], 7, ['#f4f0e2', '#c8d8f0'])]);
+  addLife('ld-wish', [butterfly([-26, -20], 9, ['#e86a2a', '#f2a03a'])]);
+  addLife('lf-well', [butterfly([-26, -20], 11, ['#f2c63a', '#e8a838'])]);
+
+  /* ---------- the hedge maze: every run of hedge a clipped yew wall with its lit top and its shaded face, standing exactly
+     on the cells that block walking (GARDEN_LAND_MAZE, one row per run); the first run's seat lays the maze's gravel
+     walks and the grass round it, so the whole maze is one place; the chest at its heart iron-bound on a flag ---------- */
+  if (typeof GARDEN_LAND_MAZE !== 'undefined') {
+    const HH = H * .78, DEEP = 30, CW = 48, YEW = s => s === 'winter' ? ['#3e5244', '#55695a', '#7a8c7c', '#e8eeea'] : s === 'autumn' ? ['#2e4a2e', '#3e5e36', '#5e7a44', '#8a9a54'] : ['#244a2c', '#335e36', '#4e7e44', '#7aa458'];
+    const hedge = (w, seed, floor) => ({ box: [-w * CW / 2 - 4, -HH - DEEP - 6, w * CW / 2 + 4, 6], shade: true,
+      seat: floor ? { kind: 'earth', w: w * CW, front: 6, back: 4, stones: 0, way: false, box: [-w * CW / 2 - 30, -DEEP - 30, -w * CW / 2 + 8 * CW + 30, 4 * DEEP + 30], extra(B, r) {
+        // the walks: raked gravel in every open cell of the maze, a fringe of grass round the outside
+        const x0 = -w * CW / 2, y0 = -DEEP;
+        B.f(B.rr(x0 - 10, y0 - 8, 8 * CW + 20, 5 * DEEP + 16, 10), '#8a9a56', .35);
+        GARDEN_LAND_MAZE.forEach((row, dy) => { for (let dx = 0; dx < row.length; dx++) if (row[dx] !== '#') { const cx = x0 + dx * CW + CW / 2, cy = y0 + dy * DEEP + DEEP / 2; B.f(B.blob(r, cx, cy, CW * .56, DEEP * .56, 9, .2), '#c8b890', .95); for (let i = 0; i < 14; i++) B.f(B.circ(cx + (r() - .5) * CW, cy + (r() - .5) * DEEP, .5 + r() * .8), r() < .5 ? '#a8987a' : '#e4d8bc', .8); } });
+        for (let i = 0; i < 40; i++) { const a = r() * Math.PI * 2; B.tufts(r, x0 + 4 * CW + Math.cos(a) * (4 * CW + 8), y0 + 2.5 * DEEP + Math.sin(a) * (2.5 * DEEP + 6), 6, 3, grass('summer'), 5); }
+      } } : false,
+      draw(B, o) {
+        const r = KIT().rng(seed), s = o.season, Y = YEW(s), half = w * CW / 2, top = -HH;
+        // (clipped, but by hand: every edge a soft wave, the corners rounded, never a ruler-straight slab)
+        const wave = (y, amp, k) => { const pts = []; for (let x = -half + 3; x <= half - 3; x += 4) pts.push([x, y + Math.sin(x * .19 + seed + k) * amp + (r() - .5) * amp * .6]); return pts; };
+        const lip = wave(top, 1.4, 1), crest = wave(top - DEEP, 1.8, 2), foot = wave(0, 1, 3).reverse();
+        // the face toward you: shaded, darker at the foot, its clipped surface in small leaf dabs
+        B.f(B.poly([[-half, top + 4], ...lip, [half, top + 4], [half - 1, -3], ...foot, [-half + 1, -3]]), B.lin(0, top, 0, 0, [[0, Y[1]], [.7, Y[0]], [1, '#16301c']]));
+        for (let i = 0; i < w * 34; i++) { const x = -half + 2 + r() * (half * 2 - 4), y = top + 2 + r() * (HH - 4); B.f(B.ell(x, y, 1.6 + r(), 1 + r() * .6), r() < .5 ? Y[1] : Y[0], .8); }
+        // the top, clipped flat and lit from the upper left, broad light and shade across it, its front edge catching the light
+        B.f(B.poly([[-half - 1, top - DEEP + 5], ...crest, [half + 1, top - DEEP + 5], [half + 1, top + 1], ...lip.slice().reverse(), [-half - 1, top + 1]]), B.lin(-half, top - DEEP, half, top, [[0, Y[3]], [.4, Y[2]], [1, Y[1]]]));
+        for (let i = 0; i < w * 2 + 1; i++) B.f(B.blob(r, -half + r() * half * 2, top - DEEP * (.25 + r() * .5), 8 + r() * 10, 4 + r() * 4, 8, .5), r() < .5 ? Y[1] : Y[3], .3);
+        for (let i = 0; i < w * 40; i++) { const x = -half + 2 + r() * (half * 2 - 4), y = top - DEEP + 3 + r() * (DEEP - 3); B.f(B.ell(x, y, 1.6 + r(), 1 + r() * .6), r() < .4 ? Y[3] : r() < .7 ? Y[2] : Y[1], .75); }
+        B.s(B.line(lip), Y[3], 1.2, .7).f(B.rect(half - 8, top - DEEP + 4, 8, DEEP + HH - 6), '#0a1a0e', .12);
+        B.tufts(r, 0, 1, half * 2, w * 5, grass(s), 5);
+        // a little unevenness where it was cut, a sprig grown out, a few flowers at the foot in summer
+        for (let i = 0; i < w * 2; i++) B.s(`M${-half + r() * half * 2} ${top - DEEP + 1}l${(r() - .5) * 3} -3`, Y[2], 1, .8);
+        if (s === 'summer' || s === 'spring') for (let i = 0; i < w * 2; i++) B.f(B.circ(-half + r() * half * 2, -1 - r() * 2, 1), ['#f4f0e2', '#e8c84a'][i % 2], .9);
+      } });
+    let first = true;
+    GARDEN_LAND_MAZE.forEach((row, dy) => {
+      let x0 = -1;
+      for (let dx = 0; dx <= row.length; dx++) {
+        const isH = row[dx] === '#';
+        if (isH && x0 < 0) x0 = dx;
+        if (!isH && x0 >= 0) { A['lf-maze-h' + dy + '-' + x0] = hedge(dx - x0, 881 + dy * 10 + x0, first); first = false; x0 = -1; }
+      }
+    });
+    A['lf-chest'] = { box: [-20, -26, 20, 6], seat: { kind: 'flags', w: 26, front: 8, back: 6, stones: 0, way: false }, lit: true, lights: [[0, -12, 50]],
+      parts: [sparkle([0, -20], 10)],
+      draw(B, o) {
+        const r = KIT().rng(899), s = o.season;
+        B.f(B.rr(-13, -14, 26, 14, 1.6), '#7a4e2a').f(B.rect(-13, -14, 26, 2), '#a8703e').s('M-13 -7H13', '#4a2e18', .8);
+        B.f('M-13 -14Q-13 -22 0 -23Q13 -22 13 -14Z', '#8a5a32').f('M-13 -14Q-13 -21 -4 -22.4V-14Z', '#a8703e', .6);
+        for (const x of [-9, 9]) B.f(B.rect(x - 1.6, -22.6, 3.2, 22.6), '#5a5e60').f(B.rect(x - 1.6, -22.6, 1, 22.6), '#9aa0a2', .7);
+        B.f(B.rr(-3, -15, 6, 6, 1), '#c8a23a').f(B.circ(0, -12.6, 1), '#3a2810');
+        if (o.night) B.f(B.ell(0, -14, 14, 3), '#ffe08a', .25);
+        if (s !== 'winter') for (let i = 0; i < 6; i++) B.f(B.circ(-17 + r() * 34, -1 - r() * 2, 1), ['#f4f0e2', '#e8c84a', '#c86aa0'][i % 3]);
+        B.tufts(r, -16, 1, 5, 4, grass(s), 5).tufts(r, 16, 1, 5, 4, grass(s), 5);
+      } };
+  }
 })();
