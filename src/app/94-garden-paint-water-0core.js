@@ -182,7 +182,7 @@ window.GardenPaintWater = (function () {
   let fieldMask = null, fieldOut = null, fieldTone = null, fieldSea = null;
   // each water's own character, blended across joins: [shade under trees or peat, extra depth, running]. A woodland brook runs dark
   // under its canopy, a fell tarn is dark and peaty, the open Mere and the river take the sky; running water carries lines along its current.
-  const TONE = { mere: [0, 0, 0], river: [0, .04, .8], brook: [.5, .1, 1], spring: [.42, .06, .3], gorge: [.18, .1, 1], tarn: [.38, .34, 0], pool: [.12, .06, 0] }, SHADE = [44, 84, 74], TB = 8;
+  const TONE = { mere: [0, 0, 0], river: [.06, .08, .8], brook: [.72, .26, 1], spring: [.6, .14, .3], gorge: [.3, .16, 1], tarn: [.38, .34, 0], pool: [.12, .06, 0] }, SHADE = [44, 84, 74], STONE_WET = [104, 104, 86], TB = 8;
   // The open sea far out is the world's own sea fill under this layer (by season); the painted sea fades into it offshore.
   const SEA_BASE = { summer: '#599f9d', spring: '#599f9d', autumn: '#5b9b9a', winter: '#76a8ad' };
   function seaPalette(S) {
@@ -244,7 +244,10 @@ window.GardenPaintWater = (function () {
   function bodyDraw(S, U, sea) {
     const M = S.M, G = window.GardenPaintGround;
     const noise = G ? G.noise : () => .5, fbm = G ? G.fbm : () => .5, SP = sea ? seaPalette(S) : null;
-    const tones = M.waters.map(w => { const p = new Path2D(); w.pts.forEach((q, i) => i ? p.lineTo(q.x, q.y) : p.moveTo(q.x, q.y)); p.closePath(); const t = TONE[w.kind] || TONE.pool; return { p, b: w.bounds, fill: 'rgb(' + Math.round(t[0] * 255) + ',' + Math.round(t[1] * 255) + ',' + Math.round(t[2] * 255) + ')' }; });
+    const toneOf = (pts, kind, b) => { const p = new Path2D(); pts.forEach((q, i) => i ? p.lineTo(q.x, q.y) : p.moveTo(q.x, q.y)); p.closePath(); const t = TONE[kind] || TONE.pool; return { p, b, fill: 'rgb(' + Math.round(t[0] * 255) + ',' + Math.round(t[1] * 255) + ',' + Math.round(t[2] * 255) + ')' }; };
+    // a crossing strip (the water under a bridge or between stepping stones) takes the tone of the water it lies over
+    const overOf = c => { const cen = c.pts.reduce((a, q) => ({ x: a.x + q.x / c.pts.length, y: a.y + q.y / c.pts.length }), { x: 0, y: 0 }); let best = null, bd = Infinity; for (const w of M.waters) { if (!hit(w.bounds, { x: c.bounds.x - 40, y: c.bounds.y - 40, w: c.bounds.w + 80, h: c.bounds.h + 80 })) continue; const d = inside(cen.x, cen.y, w.pts) ? 0 : edgeDist(cen.x, cen.y, w.pts); if (d < bd) { bd = d; best = w; } } return best; };
+    const tones = M.waters.map(w => toneOf(w.pts, w.kind, w.bounds)).concat(M.crossings.filter(c => c.pts && c.pts.length > 2).map(c => { const w = overOf(c); return w ? toneOf(c.pts, w.kind, { x: c.bounds.x, y: c.bounds.y, w: c.bounds.w, h: c.bounds.h }) : null; }).filter(Boolean));
     return function (B, r, cb) {
       const cx = B.cx, P = S.P, bed = rgbOf(P.bed), sh = rgbOf(P.shallow), wa = rgbOf(P.water), dp = rgbOf(P.deep);
       const x0 = Math.floor((cb[0] - DMAX) / FQ) * FQ, y0 = Math.floor((cb[1] - DMAX) / FQ) * FQ, x1 = Math.ceil((cb[2] + DMAX) / FQ) * FQ, y1 = Math.ceil((cb[3] + DMAX) / FQ) * FQ, gw = (x1 - x0) / FQ, gh = (y1 - y0) / FQ, n = gw * gh;
@@ -310,7 +313,9 @@ window.GardenPaintWater = (function () {
           const big = fbm(wx / 260, wy / 170, 41) - .5, fine = noise(wx / 46, wy / 30, 57) - .5, run = tR[tj];
           // running water gets to its own colour within a stride of the bank (a brook is not a strip of sandy glass)
           const e = sstep(0, 7 - 4 * run, d), mm = sstep(3 - 2 * run, 24 - 12 * run, d), k = Math.min(1, Math.max(0, sstep(26, 100, d) * .9 + big * .35));
-          let rr = bed[0] + (sh[0] - bed[0]) * (.5 + .5 * e), gg = bed[1] + (sh[1] - bed[1]) * (.5 + .5 * e), bb = bed[2] + (sh[2] - bed[2]) * (.5 + .5 * e);
+          // (a running bank is wet stone and earth, not a pale sandy rim)
+          const bw = run * .65, b0 = bed[0] + (STONE_WET[0] - bed[0]) * bw, b1 = bed[1] + (STONE_WET[1] - bed[1]) * bw, b2 = bed[2] + (STONE_WET[2] - bed[2]) * bw;
+          let rr = b0 + (sh[0] - b0) * (.5 + .5 * e), gg = b1 + (sh[1] - b1) * (.5 + .5 * e), bb = b2 + (sh[2] - b2) * (.5 + .5 * e);
           rr += (wa[0] - rr) * mm; gg += (wa[1] - gg) * mm; bb += (wa[2] - bb) * mm;
           const kk = Math.min(1, k + tD[tj] * (1 - k) * sstep(4, 40, d)), shd = tS[tj] * .62 * (.4 + .6 * mm);
           rr += (dp[0] - rr) * kk; gg += (dp[1] - gg) * kk; bb += (dp[2] - bb) * kk;
@@ -363,7 +368,9 @@ window.GardenPaintWater = (function () {
         const ds = (gx, gy) => DS[loc(gx, gy)];
         // (kept off the creases where the distance from two shores meets, out of a river mouth or round a spit: a swell line there runs in a V)
         const slope = (gx, gy) => Math.hypot(ds(gx + 1, gy) - ds(gx - 1, gy), ds(gx, gy + 1) - ds(gx, gy - 1)) / (2 * FQ);
-        const swell = (lv, f, cut) => contour(ds, lv, (gx, gy, X, Y) => MS[loc(gx, gy)] > .6 && slope(gx, gy) > .86 && slope(gx + 1, gy + 1) > .86 && noise(X / f, Y / (f * .62), 101 + lv) > cut ? 0 : -1)[0];
+        // (and off a shore that turns sharply, round a spit's point: there the line bends into a chevron; the bend of the distance field tells)
+        const bend = (gx, gy) => (ds(gx + 2, gy) + ds(gx - 2, gy) + ds(gx, gy + 2) + ds(gx, gy - 2) - 4 * ds(gx, gy)) / (4 * FQ * FQ);
+        const swell = (lv, f, cut) => contour(ds, lv, (gx, gy, X, Y) => MS[loc(gx, gy)] > .96 && slope(gx, gy) > .86 && slope(gx + 1, gy + 1) > .86 && Math.abs(bend(gx, gy)) < .022 && noise(X / f, Y / (f * .62), 101 + lv) > cut ? 0 : -1)[0];
         const s1 = swell(20, 120, .5), s2 = swell(46, 150, .56), s3 = null;
         cx.strokeStyle = SP.foam; if (s1) { cx.globalAlpha = .16; cx.lineWidth = 6; cx.stroke(s1); cx.globalAlpha = .5; cx.lineWidth = 1.7; cx.stroke(s1); } if (s2) { cx.globalAlpha = .32; cx.lineWidth = 1.4; cx.stroke(s2); } if (s3) { cx.globalAlpha = .18; cx.lineWidth = 1.2; cx.stroke(s3); }
         cx.globalAlpha = 1;
@@ -373,7 +380,7 @@ window.GardenPaintWater = (function () {
       const wet = contour(fv, .3, shoreCls), lap = contour(fv, .78, shoreCls);
       for (const b of [0, 1]) if (wet[b]) { cx.strokeStyle = mix(P.bank, '#3e3626', .5); cx.globalAlpha = b ? .45 : .55; cx.lineWidth = b ? 2.6 : 3.2; cx.stroke(wet[b]); }
       if (lap[0]) { cx.strokeStyle = P.foam; cx.globalAlpha = .18; cx.lineWidth = 7; cx.stroke(lap[0]); cx.globalAlpha = .5; cx.lineWidth = 2.2; cx.stroke(lap[0]); }
-      if (lap[1]) { cx.strokeStyle = P.foam; cx.globalAlpha = .3; cx.lineWidth = 1.5; cx.stroke(lap[1]); }
+      if (lap[1]) { cx.strokeStyle = P.foam; cx.globalAlpha = .14; cx.lineWidth = 1.2; cx.stroke(lap[1]); }
       if (SP) { cx.strokeStyle = SP.foam; for (const [b, w, a] of [[2, 3.6, .92], [3, 2.6, .66], [4, 1.7, .36]]) if (lap[b]) { cx.globalAlpha = a * .3; cx.lineWidth = w * 3.2; cx.stroke(lap[b]); cx.globalAlpha = a; cx.lineWidth = w; cx.stroke(lap[b]); } }
       cx.globalAlpha = 1;
     };
@@ -533,8 +540,8 @@ window.GardenPaintWater = (function () {
       add(all, (cx, C) => { cx.save(); cx.clip(P); const g = cx.createRadialGradient(c0.x, c0.y, 0, c0.x, c0.y, all.w * .42); g.addColorStop(0, C.sky); g.addColorStop(1, 'rgba(255,255,255,0)'); cx.globalAlpha = kind === 'tarn' ? .14 : .28; cx.fillStyle = g; cx.save(); cx.translate(c0.x, c0.y); cx.scale(1, .5); cx.translate(-c0.x, -c0.y); cx.fillRect(all.x, all.y - all.h, all.w, all.h * 3); cx.restore(); cx.restore(); });
     } else if (river) {
       for (let s = r() * 30; s < river.len; s += 16 + r() * 22) {
-        const q = at(river, s), lat = (r() - .5) * 1.3 * river.hw, x = q.x - q.ty * lat * W.cellW * .9, y = q.y + q.tx * lat * W.cellH * .9, len = 4 + r() * 8, ang = Math.atan2(q.ty, q.tx), hi = r() < .35;
-        add({ x: x - len, y: y - len, w: len * 2, h: len * 2 }, (cx, C) => { cx.save(); cx.clip(P); cx.translate(x, y); cx.rotate(ang); cx.globalAlpha = hi ? .5 : .3; cx.fillStyle = hi ? C.skyHi : C.sky; cx.beginPath(); cx.ellipse(0, 0, len, .9, 0, 0, Math.PI * 2); cx.fill(); cx.restore(); });
+        const q = at(river, s), lat = (r() - .5) * 1.3 * river.hw, x = q.x - q.ty * lat * W.cellW * .9, y = q.y + q.tx * lat * W.cellH * .9, len = 2.5 + r() * 4, ang = Math.atan2(q.ty, q.tx), hi = r() < .35;   // (short: long pale dashes along a river read as rain)
+        add({ x: x - len, y: y - len, w: len * 2, h: len * 2 }, (cx, C) => { cx.save(); cx.clip(P); cx.translate(x, y); cx.rotate(ang); cx.globalAlpha = hi ? .36 : .22; cx.fillStyle = hi ? C.skyHi : C.sky; cx.beginPath(); cx.ellipse(0, 0, len, 1.1, 0, 0, Math.PI * 2); cx.fill(); cx.restore(); });
       }
     }
     tag = 'riffle';
@@ -645,6 +652,8 @@ window.GardenPaintWater = (function () {
       mist: make('mist2', 160, 80, (cx, w, h) => { const g = cx.createRadialGradient(80, 80, 0, 80, 80, 78); g.addColorStop(0, 'rgba(250,252,252,.85)'); g.addColorStop(.45, 'rgba(244,248,248,.4)'); g.addColorStop(1, 'rgba(244,248,248,0)'); cx.save(); cx.scale(1, .5); cx.fillStyle = g; cx.fillRect(0, 0, 160, 160); cx.restore(); }),
       foam: make('foam', 64, 32, (cx) => { const r = rng(77); for (let i = 0; i < 26; i++) { const x = 8 + r() * 48, y = 6 + r() * 20, rr = 2 + r() * 6; const g = cx.createRadialGradient(x, y, 0, x, y, rr); g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(1, 'rgba(255,255,255,0)'); cx.fillStyle = g; cx.beginPath(); cx.arc(x, y, rr, 0, Math.PI * 2); cx.fill(); } }),
       // a strip of white water that tiles along x: the weir and riffle foam scroll this
+      // a wave running up the sand: a soft white crescent, brightest along its leading edge, fading back into the sea
+      lap: make('lap', 64, 16, (cx) => { const g = cx.createLinearGradient(0, 3, 0, 15); g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(.3, 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)'); cx.fillStyle = g; cx.beginPath(); cx.moveTo(2, 9); cx.quadraticCurveTo(32, 1, 62, 9); cx.quadraticCurveTo(32, 18, 2, 9); cx.fill(); const e = cx.createLinearGradient(0, 0, 64, 0); e.addColorStop(0, 'rgba(0,0,0,1)'); e.addColorStop(.18, 'rgba(0,0,0,0)'); e.addColorStop(.82, 'rgba(0,0,0,0)'); e.addColorStop(1, 'rgba(0,0,0,1)'); cx.globalCompositeOperation = 'destination-out'; cx.fillStyle = e; cx.fillRect(0, 0, 64, 16); }),
       strip: make('strip', 128, 32, (cx) => { const r = rng(31); for (let i = 0; i < 70; i++) { const x = r() * 128, y = 4 + r() * 24, len = 4 + r() * 18, a = .25 + r() * .6; cx.strokeStyle = 'rgba(255,255,255,' + a + ')'; cx.lineWidth = .8 + r() * 1.8; cx.lineCap = 'round'; for (const ox of [0, -128, 128]) { cx.beginPath(); cx.moveTo(x + ox, y); cx.lineTo(x + ox + len, y + (r() - .5) * 2); cx.stroke(); } } }),
     };
   }
@@ -692,6 +701,29 @@ window.GardenPaintWater = (function () {
         }
       } });
     }
+    // The sea laps the sand: along every stretch of the real sea shore (never across a river mouth, where the coast's
+    // outline runs through water), soft foam runs a stride up the beach and falls back, a wave rolling along the shore.
+    if (S.M.coast.length) {
+      const fresh = (x, y) => S.M.waters.some(w => x >= w.bounds.x && y >= w.bounds.y && x <= w.bounds.x + w.bounds.w && y <= w.bounds.y + w.bounds.h && inside(x, y, w.pts));
+      const sea = (x, y) => !S.M.coast.some(loop => inside(x, y, loop)) && !fresh(x, y), land = (x, y) => S.M.coast.some(loop => inside(x, y, loop)) && !fresh(x, y);
+      for (const loop of S.M.coast) {
+        const r = rng(hash('lap' + loop.length)), pts = []; let acc = 0, arc = 0;
+        for (let i = 0; i < loop.length; i++) { const a = loop[i], b = loop[(i + 1) % loop.length], L = Math.hypot(b.x - a.x, b.y - a.y); if (L < .01) continue; const tx = (b.x - a.x) / L, ty = (b.y - a.y) / L;
+          for (let u = (26 - acc); u < L; u += 26) { const x = a.x + tx * u, y = a.y + ty * u; let nx = ty, ny = -tx; if (!sea(x + nx * 6, y + ny * 6)) { nx = -nx; ny = -ny; } if (sea(x + nx * 6, y + ny * 6) && land(x - nx * 6, y - ny * 6)) pts.push({ x, y, nx, ny, s: arc + u }); }
+          acc = (acc + L) % 26; arc += L; }
+        for (let i = 0; i < pts.length; i += 12) {
+          const run = pts.slice(i, i + 12), list = []; let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+          for (const p of run) { bx0 = Math.min(bx0, p.x); by0 = Math.min(by0, p.y); bx1 = Math.max(bx1, p.x); by1 = Math.max(by1, p.y);
+            list.push({ im: add(scene.add.image(p.x, p.y, T.lap)).setDepth(-9344).setTint(tint).setAlpha(0).setRotation(Math.atan2(-p.nx, p.ny)),   // (over the beach's wet sand, -9346, under every cast shadow)
+              p, k: .7 + r() * .55, ph: r() * .25, reach: 4 + r() * 5 }); }
+          out.push({ b: { x: bx0 - 20, y: by0 - 20, w: bx1 - bx0 + 40, h: by1 - by0 + 40 }, list, kind: 'lap', update(dt, t) {
+            for (const g of this.list) { const w = (Math.sin(t * .85 - g.p.s / 95 + g.ph * 6.28) + 1) / 2, run = w * w * (3 - 2 * w), off = 1.5 + run * g.reach;
+              g.im.setPosition(g.p.x - g.p.nx * (off - 3), g.p.y - g.p.ny * (off - 3)).setScale(g.k * (.8 + run * .3), .7 + run * .4).setAlpha((.12 + run * .5) * (night ? .55 : 1)); }
+          } });
+        }
+      }
+    }
+    S.sortParent = true;
     // Foam strips: the weir and the falls' landing (scrolling white water).
     for (const fx of S.foams) {
       const ts = put(scene.add.tileSprite(fx.x, fx.y, fx.w, 32, T.strip), fx.over).setRotation(fx.ang).setScale(1, fx.h / 32).setAlpha(.85);
