@@ -231,7 +231,7 @@ window.GardenPaintSeat = (function () {
     // roots: buttresses flaring into the ground on both sides
     for (const [x, d] of [[-30, -1], [-20, -1], [26, 1], [34, 1], [-6, 0]]) B.f(`M${x - 6} -2Q${x + d * 6} -18 ${x + d * 2} -26L${x + 8} -22Q${x + 10 + d * 4} -10 ${x + 10 + d * 10} 1Z`, bark[d < 0 ? 0 : 1]);
     // the bole: wide, fluted, lit on the west; the cut top a pale ring
-    B.f(`M-30 0Q-34 ${top * .5} -28 ${top}H28Q34 ${top * .5} 30 0Z`, bark[0]);
+    B.f(`M-24 0Q-30 ${top * .5} -27 ${top}H27Q30 ${top * .5} 24 0Z`, bark[0]);
     B.f(`M-30 0Q-34 ${top * .5} -28 ${top}H-10Q-14 ${top * .5} -12 0Z`, bark[2], .7).f(`M12 0Q16 ${top * .5} 12 ${top}H28Q34 ${top * .5} 30 0Z`, bark[1], .8);
     for (let i = 0; i < 9; i++) { const x = -24 + i * 6 + (r() - .5) * 2; B.s(`M${x} -2Q${x + (r() - .5) * 4} ${top * .5} ${x + (r() - .5) * 3} ${top + 2}`, bark[3], .8, .45); }
     B.f(B.ell(0, top, 28, 7), '#b49a70').f(B.ell(0, top, 24, 5.6), '#cdb488');
@@ -253,10 +253,10 @@ window.GardenPaintSeat = (function () {
   A['ld-hollow'] = { box: [-78, -196, 80, 8], seat: { kind: 'moss', w: 74, front: 18, stones: 0 }, draw(B, o) {
     const r = KIT().rng(103), s = o.season, L = leaf(s), top = -sz('tree', .2) * .86, bark = ['#6a5a46', '#4a3e30', '#8e7c62', '#2a221a'];
     // roots
-    for (const [x, d] of [[-36, -1], [-26, -1], [30, 1], [38, 1]]) B.f(`M${x - 7} -1Q${x + d * 8} -22 ${x + d * 2} -34L${x + 9} -28Q${x + 11 + d * 4} -12 ${x + 12 + d * 12} 2Z`, bark[d < 0 ? 0 : 1]);
+    for (const [x, d] of [[-30, -1], [-22, -1], [22, 1], [28, 1]]) B.f(`M${x - 7} 1Q${x + d * 6} -10 ${x + d * 2} -18L${x + 9} -14Q${x + 11 + d * 4} -6 ${x + 12 + d * 10} 2Z`, bark[d < 0 ? 0 : 1]);
     // the bole, broad and leaning a little, to a broken crown of pollard knuckles
-    B.f(`M-34 0Q-40 ${top * .4} -30 ${top * .8}Q-26 ${top} -12 ${top - 4}Q4 ${top - 10} 18 ${top - 2}Q30 ${top * .8} 32 ${top * .45}Q36 ${top * .2} 34 0Z`, bark[0]);
-    B.f(`M-34 0Q-40 ${top * .4} -30 ${top * .8}Q-24 ${top * .9} -16 ${top * .86}Q-22 ${top * .5} -16 0Z`, bark[2], .7).f(`M14 0Q20 ${top * .5} 18 ${top - 2}Q30 ${top * .8} 32 ${top * .45}Q36 ${top * .2} 34 0Z`, bark[1], .8);
+    B.f(`M-26 0Q-32 ${top * .4} -28 ${top * .8}Q-26 ${top} -12 ${top - 4}Q4 ${top - 10} 18 ${top - 2}Q30 ${top * .8} 30 ${top * .45}Q28 ${top * .2} 26 0Z`, bark[0]);
+    B.f(`M-26 0Q-32 ${top * .4} -28 ${top * .8}Q-24 ${top * .9} -16 ${top * .86}Q-20 ${top * .5} -14 0Z`, bark[2], .7).f(`M12 0Q18 ${top * .5} 18 ${top - 2}Q30 ${top * .8} 30 ${top * .45}Q28 ${top * .2} 26 0Z`, bark[1], .8);
     for (let i = 0; i < 12; i++) { const x = -30 + i * 5.4; B.s(`M${x} -2Q${x + (r() - .5) * 6} ${top * .5} ${x * .8 + (r() - .5) * 4} ${top * .85}`, bark[3], .9, .4); }
     // living limbs from the knuckles, with leafy sprays (not a full crown: the old tree's head was cut long ago)
     const limbs = [[-20, top - 2, -48, top - 44], [2, top - 8, 6, top - 62], [16, top - 4, 46, top - 40]];
@@ -432,19 +432,19 @@ window.GardenPaintSeat = (function () {
   A['ld-barn'] = { box: [-92, -176, 96, 10], door: { dx: 14, dy: 0 }, seat: { kind: 'earth', w: 140, front: 22 }, lit: true, lights: [[14, -26, 90]], draw(B, o) {
     const r = KIT().rng(283), s = o.season, wall = sz('eaves', 1) * 1.08, ridge = sz('hall', .45) * .98, red = ['#8e3428', '#6e261e', '#ac4e3e', '#4e1812'], L = leaf(s);
     // the lean-to on the east end, under its own lower roof
-    B.f(B.rect(58, -wall * .62, 26, wall * .62), red[1]); for (let x = 58; x < 84; x += 5) B.s(`M${x} ${-wall * .62}v${wall * .62}`, red[3], .6, .5);
-    B.f(B.poly([[56, -wall * .6], [56, -wall * .86], [88, -wall * .6]]), '#5d6366').s(`M56 ${-wall * .86}L88 ${-wall * .6}`, '#3c4244', 1.4);
-    for (let i = 0; i < 4; i++) B.f(B.rr(62 + i * 5, -10, 4.4, 10, 1), WOOD[i % 2], .95);
+    B.f(B.rect(56, -wall * .62, 16, wall * .62), red[1]); for (let x = 56; x < 72; x += 5) B.s(`M${x} ${-wall * .62}v${wall * .62}`, red[3], .6, .5);
+    B.f(B.poly([[54, -wall * .6], [54, -wall * .86], [76, -wall * .6]]), '#5d6366').s(`M54 ${-wall * .86}L76 ${-wall * .6}`, '#3c4244', 1.4);
+    for (let i = 0; i < 3; i++) B.f(B.rr(58 + i * 4.4, -10, 4, 10, 1), WOOD[i % 2], .95);
     // the plinth and the walls: vertical boards, each its own weather, lit to the west
-    ashlar(B, r, -64, -9, 128, 9, STONE, 4.5);
-    B.f(B.rect(-64, -wall, 128, wall - 9), red[0]);
-    for (let x = -64; x < 64; x += 5.6) { B.s(`M${x} ${-wall}v${wall - 9}`, red[3], .7, .5); if (r() < .4) B.f(B.rect(x + .6, -wall + r() * wall * .5, 4.4, wall * (.2 + r() * .3)), r() < .5 ? red[2] : red[1], .35); }
-    B.f(B.rect(-64, -wall, 26, wall - 9), '#ffffff', .07).f(B.rect(40, -wall, 24, wall - 9), '#000000', .16);
+    ashlar(B, r, -64, -9, 120, 9, STONE, 4.5);
+    B.f(B.rect(-64, -wall, 120, wall - 9), red[0]);
+    for (let x = -64; x < 56; x += 5.6) { B.s(`M${x} ${-wall}v${wall - 9}`, red[3], .7, .5); if (r() < .4) B.f(B.rect(x + .6, -wall + r() * wall * .5, 4.4, wall * (.2 + r() * .3)), r() < .5 ? red[2] : red[1], .35); }
+    B.f(B.rect(-64, -wall, 26, wall - 9), '#ffffff', .07).f(B.rect(36, -wall, 20, wall - 9), '#000000', .16);
     // the roof: a broad gable in old slates, mossed, a ridge of clay tiles, the gable's barge boards
-    B.f(B.poly([[-74, -wall + 3], [-40, -ridge], [40, -ridge], [74, -wall + 3]]), '#585e60');
-    for (let y = -wall - 1; y > -ridge + 2; y -= 4.6) { const k = (-wall + 3 - y) / (ridge - wall + 3), a0 = -74 + 34 * k, b0 = 74 - 34 * k; B.s(`M${a0} ${y}H${b0}`, '#454a4c', .8, .6); for (let x = a0 + r() * 6; x < b0; x += 6 + r() * 3) B.s(`M${x} ${y}v-4.6`, '#454a4c', .5, .35); }
+    B.f(B.poly([[-72, -wall + 3], [-40, -ridge], [32, -ridge], [64, -wall + 3]]), '#585e60');
+    for (let y = -wall - 1; y > -ridge + 2; y -= 4.6) { const k = (-wall + 3 - y) / (ridge - wall + 3), a0 = -72 + 32 * k, b0 = 64 - 32 * k; B.s(`M${a0} ${y}H${b0}`, '#454a4c', .8, .6); for (let x = a0 + r() * 6; x < b0; x += 6 + r() * 3) B.s(`M${x} ${y}v-4.6`, '#454a4c', .5, .35); }
     B.f(B.poly([[-74, -wall + 3], [-40, -ridge], [-30, -ridge], [-62, -wall + 3]]), '#7d8588', .4);
-    for (let x = -38; x < 38; x += 6) B.f(B.rr(x, -ridge - 3, 6.4, 4, 2), x % 4 ? '#9a5a3e' : '#8a4a32');
+    for (let x = -38; x < 32; x += 6) B.f(B.rr(x, -ridge - 3, 6.4, 4, 2), x % 4 ? '#9a5a3e' : '#8a4a32');
     for (let i = 0; i < 9; i++) B.f(B.blob(r, -58 + r() * 116, -wall - 4 - r() * (ridge - wall - 10), 6 + r() * 7, 2, 7, .5), s === 'winter' ? '#eef2ee' : i % 2 ? '#7d8f4e' : '#93a660', .75);
     // the great doors: one standing open on the dark and the hay, the other shut, a cart track worn to them
     const dh = sz('door', 1) * 1.45, dx0 = -6;
@@ -461,7 +461,7 @@ window.GardenPaintSeat = (function () {
     // a ladder against the wall, swallows' nests under the eaves, a water butt and nettles at the foot
     B.s(`M-58 -9L-52 ${-wall + 4}M-50 -9L-44 ${-wall + 4}`, OAK[1], 1.8); for (let k = 1; k < 7; k++) { const y = -9 - k * (wall - 13) / 7; B.s(`M${-58 + k * .9} ${y}h8`, OAK[1], 1.4); }
     for (const x of [-20, 30]) B.f(B.ell(x, -wall + 2, 3.4, 2.2), '#8a7454');
-    B.f(B.rr(44, -22, 12, 22, 3), '#5a6a54').s('M44 -16h12M44 -8h12', '#3e4a3a', .8);
+    B.f(B.rr(40, -22, 12, 22, 3), '#5a6a54').s('M40 -16h12M40 -8h12', '#3e4a3a', .8);
     if (o.night) B.f(B.rect(dx0 + 20, -9 - dh, 20, dh), 'rgba(255,200,110,.28)');
     for (let i = 0; i < 12; i++) { const x = (i < 6 ? -70 : 60) + r() * 14; B.s(`M${x} 2q${(r() - .5) * 3} -7 ${(r() - .5) * 4} -${9 + r() * 8}`, L[1], 1.3, .85); }
     B.tufts(r, -66, 4, 12, 7, grass(s), 8).tufts(r, 90, 4, 10, 6, grass(s), 7);
