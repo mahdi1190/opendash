@@ -210,6 +210,7 @@ function _gllPlace(svg, node, z) {
 /* ---------- what people do ---------- */
 function _gllEmote(A, id, instant) {
   if (!A.root || typeof GART_EMOTES === 'undefined') return false;
+  if (String(id).startsWith('act-') && typeof gartActRemote === 'function') return gartActRemote(A, String(id).slice(4));   // something done with the world (94-garden-zz-7act-1core.js)
   const row = GART_EMOTES[id]; if (!row) return false;
   _gllEmoteStop(A);
   A.dir = 's'; A.pose = ''; A.key = ''; _gllPaint(A);
@@ -223,7 +224,7 @@ function _gllEmote(A, id, instant) {
   if (!row.hold) A.animT = setTimeout(() => _gllEmoteStop(A), motion ? row.ms : 1200);
   return true;
 }
-function _gllEmoteStop(A) { clearTimeout(A.animT); for (const a of A.anims || []) { try { a.cancel(); } catch (e) { /* gone */ } } A.anims = null; A.hold = ''; }
+function _gllEmoteStop(A) { if (A.actUndo) { const u = A.actUndo; A.actUndo = null; try { u(); } catch (e) { /* gone */ } } clearTimeout(A.animT); for (const a of A.anims || []) { try { a.cancel(); } catch (e) { /* gone */ } } A.anims = null; A.hold = ''; }
 /** A move with a place (a seat): walk there first if they are not there yet, rather than jump. */
 function _gllEmoteAt(A, ev) {
   if (Number.isFinite(ev.x) && Math.hypot(ev.x - A.x, ev.y - A.y) > 0.05) { _gllWalkVia(A, null, ev.x, ev.y); A.then = () => _gllEmote(A, ev.e); return; }

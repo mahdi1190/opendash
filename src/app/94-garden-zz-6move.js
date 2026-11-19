@@ -156,8 +156,10 @@ function gartMoveFrame(inner, bob, gw, time) {
     hopY = -GPL_MOVE.hop.high * Math.sin(Math.PI * p);
     if (p >= 1) { _gmv.hop = 0; try { if (window.GardenNativeActions) GardenNativeActions.effect('lift', gw.px * GARDEN_WORLD.cellW, GARDEN_WORLD.sky + gw.py * GARDEN_WORLD.cellH, { width: 20 }); } catch (e) { /* only dust */ } }
   }
-  if (bob && (hopY || _gmv.hopWas)) { bob.setAttribute('transform', `translate(0 ${_gmvN(hopY)})`); _gmv.hopWas = !!hopY; }
-  if (!body || !motion || _GPL.pose !== 'stride' && !(inner._gplKey || '').startsWith('stride')) return;
+  const lift = typeof gartActLift === 'function' ? gartActLift() : 0;
+  if (bob && (hopY || lift || _gmv.hopWas)) { bob.setAttribute('transform', `translate(0 ${_gmvN(hopY - lift)})`); _gmv.hopWas = !!(hopY || lift); }
+  if (typeof gartActFrame === 'function') gartActFrame();
+  if (acting || !body || !motion || _GPL.pose !== 'stride' && !(inner._gplKey || '').startsWith('stride')) return;
   const L = _gmvLimbs(body); if (!L.legA || !L.legB) return;
   // the gait: run, creep, stairs or walk; the stride follows the ground actually covered
   const v = gw.moving ? Math.max(0, gw.spd || 0) : 0;

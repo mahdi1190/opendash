@@ -1592,6 +1592,7 @@ function gardenWorldClick(it, cell, ev, m) {
   // 1. a building, a board or a box: walk to its door and go in.
   // Picking already distinguishes its painted shape from transparent lawn;
   // use that same answer for hover, press and click, including a roof click.
+  if (k.kind === 'prop' && typeof gartActForProp === 'function' && gartActForProp(k.prop)) return true;   // a bench, a pump, a bell: do it
   if (k.kind === 'prop') { _gwGoToProp(k.prop); return true; }
   if (k.kind === 'seed') return false;   // planting is its own click
   // 2. a bug: creep up on it
@@ -1662,6 +1663,7 @@ function gardenWorldKey(ev, down, arrowsOnly) {
     if (down && ev.key === 'W') return false;   // Shift+W is "water everything": W alone walks
     // up lifts the bar while you reel; otherwise it walks
     if (dir === 'up' && _gw.reel) { _gw.reel.hold = !!down; ev.preventDefault(); return true; }
+    if (down && typeof gartActStop === 'function' && typeof gartActBusy === 'function' && gartActBusy()) gartActStop();   // any movement key ends what you are doing
     if (down) { _gw.keys.add(dir); if (ev.shiftKey) _gw.keys.add('shift'); else _gw.keys.delete('shift'); _gwEnsureLoop(); } else _gw.keys.delete(dir);
     ev.preventDefault(); return true;
   }
@@ -1684,6 +1686,7 @@ function gardenWorldKey(ev, down, arrowsOnly) {
 /** Space / E: do the sensible thing right here: a bite, a door beside you, a bug in reach, a ripe plant, water in front of you. */
 function gardenWorldInteract() {
   if (typeof _gwFishBusy === 'function' && _gwFishBusy()) { if (typeof _gwFishPress === 'function') _gwFishPress(); return; }
+  if (typeof gartActInteract === 'function' && gartActInteract()) return;   // the prompt's action: sit, climb, ring... (94-garden-zz-7act-1core.js)
   const m = gardenHere(), W = GARDEN_WORLD;
   const px = Math.floor(_gw.px), py = Math.floor(_gw.py);
   for (const p of gardenPropsNow()) if (p.act) { const door = _gwPropApproachPoint(p, false); if (door && Math.abs(door.x - .5 - px) <= 1 && Math.abs(door.y - .5 - py) <= 1) { _gwOpenProp(p); return; } }

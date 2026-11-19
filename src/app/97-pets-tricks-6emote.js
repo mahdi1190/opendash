@@ -97,7 +97,9 @@ function _peSit() {
   gartEmoteRun('sit');
 }
 /* ---------- the wheel ---------- */
-const _PE_ORDER = Object.freeze(['wave', 'cheer', 'clap', 'sit', 'bow', 'shrug', 'dance', 'twirl', 'backflip', 'waltz', 'jazz']);
+const _PE_ORDER = Object.freeze(['wave', 'cheer', 'clap', 'sit', 'bow', 'shrug', 'laugh', 'lie', 'nap', 'dance', 'twirl', 'backflip', 'waltz', 'jazz']);
+/** A wheel row: a move, or one of the ground actions (94-garden-zz-7act-1core.js GART_ACT_WHEEL), which are free. */
+function _peWheelRow(id) { if (GART_EMOTES[id]) return GART_EMOTES[id]; const a = typeof GART_ACT_WHEEL !== 'undefined' && GART_ACT_WHEEL[id]; return a ? { name: a.name, icon: a.icon, how: { free: 1 }, act: true } : null; }
 function _peWheelClose(restore) {
   const wheel = _pe.wheel; _pe.wheel = null;
   if (wheel) wheel.remove(); document.removeEventListener('pointerdown', _peOutside, true);
@@ -114,9 +116,9 @@ function gartEmoteWheel(force) {
   if (_pe.wheel) _peWheelClose(false);
   const w = _ptEl('div', 'pew'); w.setAttribute('role', 'menu'); w.setAttribute('aria-label', 'Moves');
   w._peOrigin = origin;
-  const ids = _PE_ORDER.filter(id => GART_EMOTES[id]), n = ids.length, R = 132;
+  const ids = _PE_ORDER.filter(id => _peWheelRow(id)), n = ids.length, R = 150;
   ids.forEach((id, i) => {
-    const e = GART_EMOTES[id], own = gartEmoteOwned(id), a = -Math.PI / 2 + (i / n) * Math.PI * 2;
+    const e = _peWheelRow(id), own = e.act || gartEmoteOwned(id), a = -Math.PI / 2 + (i / n) * Math.PI * 2;
     const want = own ? '' : e.how.craft ? 'made at the crafting bench' : e.how.treats ? `${e.how.treats} treats` : e.how.coins ? `${e.how.coins} coins` : '';
     const b = _ptEl('button', 'pew-b' + (own ? '' : ' is-locked')); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.setAttribute('data-tip', want ? `${e.name}: ${want}` : e.name); b.setAttribute('aria-label', want ? `${e.name}: ${want}` : e.name);
     b.style.setProperty('--x', Math.round(Math.cos(a) * R) + 'px'); b.style.setProperty('--y', Math.round(Math.sin(a) * R) + 'px'); b.style.setProperty('--i', i);
@@ -131,7 +133,7 @@ function gartEmoteWheel(force) {
         gameCheer(b, { text: 'New!', tone: 'gold', sound: true });
       }
       gartEmoteWheel();
-      if (id === 'sit') _peSit(); else gartEmoteRun(id);
+      if (e.act && typeof gartActRun === 'function') gartActRun(id); else if (id === 'sit') _peSit(); else gartEmoteRun(id);
     };
     w.appendChild(b);
   });
