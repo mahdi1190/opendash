@@ -1660,7 +1660,7 @@ function gardenWorldKey(ev, down, arrowsOnly) {
   if (ev.ctrlKey || ev.metaKey || ev.altKey) return false;
   const dir = _GW_KEYMAP[ev.key] && (!arrowsOnly || ev.key.startsWith('Arrow')) ? _GW_KEYMAP[ev.key] : null;
   if (dir) {
-    if (down && ev.key === 'W') return false;   // Shift+W is "water everything": W alone walks
+    if (down && ev.key === 'W' && !_gw.keys.size) return false;   // Shift+W standing still is "water everything"; while walking it runs north (round 3: Shift runs)
     // up lifts the bar while you reel; otherwise it walks
     if (dir === 'up' && _gw.reel) { _gw.reel.hold = !!down; ev.preventDefault(); return true; }
     if (down && typeof gartActStop === 'function' && typeof gartActBusy === 'function' && gartActBusy()) gartActStop();   // any movement key ends what you are doing
