@@ -100,7 +100,7 @@
     const inRing = (x, y, s) => !!ringC && ((x - ringC.x) / (4.6 * s)) ** 2 + ((y - ringC.y) / (3 * s)) ** 2 < 1;
 
     const ribbons = [...L.routes.values()].filter(rt => rt.points && rt.points.length > 1 && (rt.tier || rt.kind) !== 'plaza' && rt.points.some(p => inReg(p[0], p[1])))
-      .map(rt => { const G = window.GardenPaintGround, kind = G && G.routeKind ? G.routeKind(rt) : 'earth', painted = G && G.ROUTE_WIDTH ? G.ROUTE_WIDTH[kind] || 22 : 22; return { id: rt.id, w: rt.widthCells || 1.4, half: Math.max(painted / 2, (rt.widthCells || 1.4) / 2 * cw * .5), pts: gardenIslandRoutePath(rt).points }; });
+      .map(rt => { const G = window.GardenPaintGround, kind = G && G.routeKind ? G.routeKind(rt) : 'earth', painted = G && G.ROUTE_WIDTH ? G.ROUTE_WIDTH[kind] || 22 : 22; return { id: rt.id, w: rt.widthCells || 1.4, half: Math.max(painted / 2, (rt.widthCells || 1.4) / 2 * cw * .5), painted: painted / 2, pts: gardenIslandRoutePath(rt).points }; });
     const segD = (px, py, a, b) => { const ax = a.x * cw, ay = a.y * ch, bx = b.x * cw, by = b.y * ch, dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy, t = l ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l)) : 0; return Math.hypot(px - ax - t * dx, py - ay - t * dy); };
     // route segments filed by the cells they pass, so a test looks only at the few segments near it
     const segBins = new Map();
@@ -185,7 +185,8 @@
         const s = ((p.cx - a.x) * d2y - (p.cy - a.y) * d2x) / den, u = ((p.cx - a.x) * d1y - (p.cy - a.y) * d1x) / den;
         if (s < 0 || s > 1 || u < 0 || u > 1 || Math.min(p.t, q.t) < .35) continue;
         const X = (a.x + d1x * s) * cw, Y = W.sky + (a.y + d1y * s) * ch, len = Math.hypot(d1x * cw, d1y * ch) || 1, ux = d1x * cw / len, uy = d1y * ch / len, up = uy > 0 ? -1 : 1;
-        steps.push({ x: X, y: Y, ux: ux * up, uy: uy * up, half: rb2.half - 1, t: (p.t + q.t) / 2 });
+        const bl = Math.hypot(d2x * cw, d2y * ch) || 1; if (Math.abs(ux * d2x * cw / bl + uy * d2y * ch / bl) > .45) continue;   // (a path meeting a bank at a slant climbs it as a ramp: steps across a slant read as a rail)
+        steps.push({ x: X, y: Y, ux: ux * up, uy: uy * up, half: rb2.painted * .85, t: (p.t + q.t) / 2 });   // (as wide as the path is painted: wider, they read as rails laid across it)
       }
     }
     if (steps.length) add(kit.bboxOf(steps, 50), 931, (B, r) => {
@@ -200,7 +201,7 @@
           B.s(`M${cx - ex} ${cy - ey}L${cx + ex} ${cy + ey}`, '#7a6a4a', 4.6, .85).s(`M${cx - ex} ${cy - ey - 3.4}L${cx + ex} ${cy + ey - 3.4}`, '#cdbf98', 3.4, .9);
           B.s(`M${cx - ex * .45} ${cy - ey * .45 - 3.6}L${cx + ex * .45} ${cy + ey * .45 - 3.6}`, '#ece2c4', 2, .7);
           for (let q = -1; q <= 1; q += .5) B.s(`M${cx + ex * q - .6} ${cy + ey * q - 5}l0 7`, '#5e5038', .8, .35);
-          for (const sd of [-1, 1]) B.stone(r, cx + nx * (s.half + 4) * sd, cy + ny * (s.half + 4) * sd - 2, 4.6 + r() * 2, 3.2 + r(), LIME, j ? null : '#8a9a4e');
+          for (const sd of [-1, 1]) B.stone(r, cx + nx * (s.half + 3) * sd, cy + ny * (s.half + 3) * sd - 2, 3.4 + r() * 1.6, 2.6 + r() * .8, LIME, j ? null : '#8a9a4e');
         }
       }
     });
