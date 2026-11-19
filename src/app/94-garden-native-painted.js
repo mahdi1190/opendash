@@ -499,7 +499,7 @@ window.GardenNativePainted = (function () {
     'garden-shop': { obj: 'building.green-cottage', v: 0, w: 200, wallWidth: 150, sign: 'Seed & Stem', extra: [['plant.planter', 1, -110, 0, 28], ['plant.planter', 0, 110, 0, 28], ['plant.rph-flower-tub', 1, -80, 8, 20]] },   // (four cells: a shop stands larger than the cottages)
     // (the Land Office and Tackle & Tide four cells wide, round 3: shops stand larger than the cottages)
     'land-office': { obj: 'building.cottage', v: 1, w: 190, wallWidth: 160, sign: 'Land Office', extra: [['street.lamp', 0, -102, 4, 0, 74]] },   // (the lamp on the door's side of the west corner: the lake walk passes just outside it)
-    'tackle-shop': { obj: 'building.fpv-sailing-hut', v: 0, w: 200, wallWidth: 376, wallCenterX: -8, wallFootY: 14, sign: 'Tackle & Tide', extra: [['street.mqn-lifebuoy', 0, 104, 2, 0, 32]] },
+    'tackle-shop': { obj: 'building.fpv-sailing-hut', v: 0, w: 200, wallWidth: 376, wallCenterX: -8, wallFootY: 14, clickTop: .3, sign: 'Tackle & Tide', extra: [['street.mqn-lifebuoy', 0, 104, 2, 0, 32]] },
     'market-stall': { obj: 'structure.mcr-market-chalet', v: 1, w: 104, wallWidth: 200 },
     // the high street's cottages (2.74), each its own kind so the street is not one house four times. Three cells wide, so
     // the ridge stands about 3.5 times the player's height (common size standard); the low thatched kind would stay under 2.5.
@@ -543,7 +543,8 @@ window.GardenNativePainted = (function () {
     if (night && window.GardenPaintedProps) { const pk = GardenPaintedProps.poolKey(scene); if (pk) { const pool = scene.add.image(cx, foot + 10, pk).setOrigin(.5, .5).setScale(def.w * 1.1 / 256, def.w * .3 / 256).setAlpha(.3), layer = overLayer; if (layer) { layer.add(pool); pool.setDepth(80005); } else node._inner.add(pool); poolImages.push(pool); } }
     // the click area is the picture and its sign, no wider: the village's paths pass close by these houses now they stand at
     // full size, and a click on the path beside one must walk there, not in at its door
-    const top = main.y - main.displayHeight * main.originY, b = { x: main.x - main.displayWidth * main.originX - 2, y: top, width: main.displayWidth + 4, height: foot - top + (def.sign ? 22 : 8) };
+    // (clickTop: the share of the picture above the roof that is only a flagpole and its flag, not part of the house)
+    const top = main.y - main.displayHeight * main.originY + main.displayHeight * (def.clickTop || 0), b = { x: main.x - main.displayWidth * main.originX - 2, y: top, width: main.displayWidth + 4, height: foot - top + (def.sign ? 22 : 8) };
     node.nativeBounds = b;
     return { root: node.target, rootNode: node, bounds: b, painted: true, foot: { x: cx, y: foot }, update() {}, setLitWindows(on) { for (const [im, id, v, size] of parts) { const o = objectKey(scene, id, v, season, size, !!on); if (o && im.texture.key !== o.key) im.setTexture(o.key).setOrigin(o.meta.ox, o.meta.oy); } }, destroy() { for (const im of poolImages) im.destroy(); node.remove(); } };
   }
