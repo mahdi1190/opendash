@@ -721,17 +721,25 @@ function _gwMoveBy(dx, dy) {
  * press. A diagonal press runs at about 32 degrees (a cell across for a cell down), and stepping stones and footbridges
  * run at their own angles: down-left at the north end of the west brook stones, their own direction, met the bank beside
  * the first stone and slid you along it into the pump square (the verifier, 19 Nov 2026). (ux, uy): the direction you
- * press, in screen px, unit length; returns the direction to walk, or null to walk as pressed.
+ * press, in screen px, unit length; step: its length this frame, in px. Returns the direction to walk, or null to walk
+ * as pressed.
  */
-function _gwCrossingSteer(ux, uy) {
+function _gwCrossingSteer(ux, uy, step) {
   if (GARDEN_WORLD.v < 5 || typeof gardenIslandCrossingGeometry !== 'function' || !(ux || uy)) return null;
   const W = GARDEN_WORLD, X = _gw.px * W.cellW, Y = W.sky + _gw.py * W.cellH;
+  const shut = !!step && !_gwFree(_gw.px + ux * step / W.cellW, _gw.py + uy * step / W.cellH);
   for (const c of gardenIslandCrossingGeometry()) {
     const L = Math.hypot(c.b.x - c.a.x, c.b.y - c.a.y); if (!(L > 1)) continue;
     for (const [E, O] of [[c.a, c.b], [c.b, c.a]]) {
       const tx = (O.x - E.x) / L, ty = (O.y - E.y) / L, rx = X - E.x, ry = Y - E.y, along = rx * tx + ry * ty, across = rx * ty - ry * tx;
-      if (along < -40 || along > L - 4 || Math.abs(across) > 30) continue;   // (from 40 px short of this end to the far end)
-      if (ux * tx + uy * ty < .79) continue;   // (within 38 degrees of the way in)
+      if (along < -40 || along > L - 4 || Math.abs(across) > 34) continue;   // (from 40 px short of this end to the far end)
+      const dot = ux * tx + uy * ty, cr = ux * ty - uy * tx, hw = c.halfWidth || 14;
+      if (dot < .79) continue;   // (within 38 degrees of the way in)
+      // Only where the press as it is would miss: short of the end, its line meets the end more than 0.6 of the half width
+      // off the middle; on the crossing, the step is shut or leaves the stones or deck. Otherwise you walk as you press, so
+      // changing keys on a deck never swings you about.
+      const miss = along < 0 ? Math.abs(across + (-along / dot) * cr) > hw * .6 : shut || Math.abs(across + (step || 0) * cr) > hw * .7;
+      if (!miss) return null;
       // aim at the middle line a little ahead of where you are along it
       const aim = Math.max(0, along) + 16, gx = E.x + tx * aim - X, gy = E.y + ty * aim - Y, gl = Math.hypot(gx, gy);
       if (gl < 1e-6) continue;
