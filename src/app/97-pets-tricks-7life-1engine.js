@@ -115,6 +115,7 @@ function _plPlay(P, clips, rest, after) {
 }
 /** Walk beside a thing, face it, do it. False when there is no way there. */
 function _plGoDo(P, t, clips, rest, after, run) {
+  if (_pl.here) { _plPlay(P, clips, rest, after); return true; }   // (petLifeTry with here: the checking tool plays it where the pet stands)
   const near = t && (t.free ? t : _ptwBeside(t)); if (!near) return false;
   P.walkTo(near.x, near.y, !!run, () => { if (t.x !== near.x) P.dir = t.x >= P.x ? 1 : -1; _plPlay(P, clips, rest, after); });
   return true;
@@ -169,6 +170,7 @@ function petLifeTick(P, W, dt) {
   if (!P || !P.me || typeof _gw === 'undefined') return;
   const pl = _ptwPlayer(), doing = _plDoing();
   if (pl && pl.moving) { _pl.moveT += dt; _pl.stillT = 0; } else { if (_pl.moveT > 0) _pl.lastMoveT = _pl.moveT; _pl.moveT = 0; _pl.stillT += dt; }
+  if (_pl.stillT - dt < 30 && _pl.stillT >= 30 && !doing && Math.hypot(P.x - _gw.px, P.y - _gw.py) < 5) petLifeEvent('still');   // half a minute stood still: it comes to lie on your feet
   if (!_pl.greeted) { _pl.greeted = 1; _pl.built = Date.now(); if (!_ptwVisiting()) petLifeEvent('greet'); }   // clock-ok: a gap
   if (P.pose === 'sleep' && P.busy > 8 && !_ptS().lifeFav && !_ptwVisiting() && _ptwFree(P.x, P.y)) { const p = _ptS(true); p.lifeFav = [Math.round(P.x * 10) / 10, Math.round(P.y * 10) / 10]; _ptNote('life-favspot'); }
   const room = doing === 'room';
@@ -181,7 +183,7 @@ function petLifeTick(P, W, dt) {
   if (pl && !pl.moving && _pl.lastMoveT > 14 && !P.fishingWatch) { _pl.lastMoveT = 0; if (Math.random() < 0.6) petLifeEvent('tired'); }
   try { if (typeof gardenFacts === 'function' && (_pl.fTick = (_pl.fTick || 0) + 1) % 120 === 1) { const f = gardenFacts(), n = Number(f && f.fished) || 0; if (_pl.fished >= 0 && n > _pl.fished && Math.hypot(P.x - _gw.px, P.y - _gw.py) < 8) _ptNote('life-firstcatch'); _pl.fished = n; } } catch (e) { /* later */ }
 }
-const _PL_EVENTS = Object.freeze({ greet: 'greet', 'welcome-back': 'door-wait', goodbye: 'goodbye-wave', morning: 'morning', tired: 'run-tired', pat: 'happy-spin', photo: 'photo-pose', 'emote-dance': 'dance-with', 'emote-waltz': 'dance-with', 'emote-boogie': 'dance-with', 'emote-sit': 'bench-lap', 'emote-wave': 'wave-back', 'emote-cheer': 'cheer-with', 'emote-bow': 'bow-with', 'emote-clap': 'cheer-with' });
+const _PL_EVENTS = Object.freeze({ still: 'on-your-feet', greet: 'greet', 'welcome-back': 'door-wait', goodbye: 'goodbye-wave', morning: 'morning', tired: 'run-tired', pat: 'happy-spin', photo: 'photo-pose', 'emote-dance': 'dance-with', 'emote-waltz': 'dance-with', 'emote-boogie': 'dance-with', 'emote-sit': 'bench-lap', 'emote-wave': 'wave-back', 'emote-cheer': 'cheer-with', 'emote-bow': 'bow-with', 'emote-clap': 'cheer-with' });
 function petLifeEvent(kind) {
   if (kind === 'pat') _pl.lastPat = Date.now();   // clock-ok: a gap
   const id = _PL_EVENTS[kind]; if (!id || typeof PET_LIFE_BY === 'undefined' || !PET_LIFE_BY[id]) return;
@@ -200,7 +202,9 @@ function petLifeTry(id, o) {
   P.tx = null; P.arrive = null; P.busy = 0; P.cb = null; if (P.clipH) { try { P.clipH.stop(true); } catch (e) { /* gone */ } P.clipH = null; }
   for (const c of _plClips(row)) if (!_plSuits(P, c)) return { ok: false, why: 'does not suit a ' + P.look.species, clip: c };
   const C = _plCtx(P, W);
-  return { ok: _plStart(P, row, C, true), id: row.id, n: row.n, clip: _plClips(row) };
+  _pl.here = !!(o && o.here); let ok = false;
+  try { ok = _plStart(P, row, C, true); } finally { _pl.here = false; }
+  return { ok, id: row.id, n: row.n, clip: _plClips(row) };
 }
 function petLifeList() {
   if (typeof PET_LIFE === 'undefined') return [];
