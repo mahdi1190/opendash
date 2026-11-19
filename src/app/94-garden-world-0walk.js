@@ -189,6 +189,10 @@ function _gwBuildSolids(m) {
   // through and invisible ends a cell wide; the collision view showed it on every wall). Their cells stay solid for
   // building and planting (gardenIslandBaseCell), not for walking (_gwBuildGrid).
   for (const f of gardenWalkLandforms(island)) { const r = add(f.x0, f.y0, f.x1, f.y1, f.src); r.form = f; }
+  // The light woods run right to the map's west edge, from the fells down to the old woodland: the feet could stand on
+  // its last column with half the figure over the blank beyond the world. They stop half a cell in, among the trees
+  // drawn there (the north edge is the sky over the fells; the east and south are sea).
+  if (island && island.version >= 5) add(-1, -1, .34, GARDEN_WORLD.rows + 1, 'the edge of the map');
   return { list, at };
 }
 /** The one trunk-collision list for painted trees, in cells ({x0, y0, x1, y1, src}). Five painters plant trees, each
