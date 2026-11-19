@@ -71,8 +71,8 @@
     try {
       const w = fr.cutWidth, h = fr.cutHeight; if (!w || !h || w * h > 4e6) { pix.set(key, null); return null; }
       const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d', { willReadFrequently: true });
-      cx.drawImage(src, fr.cutX, fr.cutY, w, h, 0, 0, w, h); const data = cx.getImageData(0, 0, w, h).data, a = new Uint8Array(w * h);
-      for (let i = 0; i < a.length; i++) a[i] = data[i * 4 + 3];
+      cx.drawImage(src, fr.cutX, fr.cutY, w, h, 0, 0, w, h); const data = cx.getImageData(0, 0, w, h).data, a = new Uint8Array(w * h), gr = new Uint8Array(w * h);
+      for (let i = 0; i < a.length; i++) { a[i] = data[i * 4 + 3]; gr[i] = data[i * 4 + 1] > data[i * 4] + 8 && data[i * 4 + 1] >= data[i * 4 + 2] ? 1 : 0; }   // (gr: turf-green paint, a bank of grass you walk on)
       if (crop) for (let v = 0; v < h; v++) for (let u = 0; u < w; u++) if (u < crop.x || v < crop.y || u >= crop.x + crop.w || v >= crop.y + crop.h) a[v * w + u] = 0;
       // The drawn base: what stands on the ground. Solid paint only (alpha >= 160, so a soft shadow does not count).
       let top = h, bottom = -1;
@@ -100,7 +100,7 @@
           vLow = vb;
         }
       }
-      out = { w, h, a, vb, vLow: Math.max(vb, vLow), u0, u1, top, bottom };
+      out = { w, h, a, gr, vb, vLow: Math.max(vb, vLow), u0, u1, top, bottom };
     } catch (e) { out = null; }
     pix.set(key, out); return out;
   };
@@ -333,7 +333,7 @@
         const p = wp(u + .5, v + 1);
         // (a thing's drawn ends are where its paint ends, however low: a boulder's flank slopes down to the turf, and judged
         // by its 15 px columns only, its own block seemed to run on past its ends: the collision audit, 19 Nov 2026)
-        if ((v - up) * sc >= 4) colsLow.push({ u, X: p.X, Y: p.Y });
+        if ((v - up) * sc >= 4) { let green = 0; if (P.gr) for (let q = up; q <= v; q++) green += P.gr[q * P.w + u]; colsLow.push({ u, X: p.X, Y: p.Y, h8: (v - up) * sc >= 8 && green < (v - up + 1) * .5 }); }   // (a turf bank is ground you walk on, not a thing's end)
         if ((v - up) * sc < 15) continue;
         cols.push({ u, X: p.X, Y: p.Y });
       }
@@ -364,6 +364,16 @@
         for (let i = 1; i < Rs.length; i++) { const g0 = Rs[i - 1].list[Rs[i - 1].list.length - 1].X, g1 = Rs[i].list[0].X, gap = g1 - g0; if (gap < GW_FOOT.x * 2 * CW + 8) continue; const X = (g0 + g1) / 2; if (anyBlockAt(X) && cellFree(X, yb + GW_FOOT.y * CH + .6 * CH)) { const mc = toCell(X, yb); push({ kind: 'invisible-wall', obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: mc.x, y: mc.y, detail: 'blocked in the ' + Math.round(gap) + ' px gap between two of its drawn parts, with nothing drawn there' }); } }
         const lowAll = colsLow.filter(c => c.Y >= base - 14).concat(low), L = Math.min(...lowAll.map(c => c.X)), Rt = Math.max(...lowAll.map(c => c.X)), off = (GW_FOOT.x + .25) * CW, off2 = (GW_FOOT.x + .75) * CW;
         for (const [X, X2, side] of [[L - off, L - off2, 'west'], [Rt + off, Rt + off2, 'east']]) if (anyBlockAt(X) && cellFree(X2, yb)) { const mc = toCell(X, yb); push({ kind: 'invisible-wall', obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: mc.x, y: mc.y, detail: 'its block runs on more than ' + (.25).toFixed(2) + ' cells past its drawn ' + side + ' end, with nothing drawn there' }); }
+        // and the other way: the whole foot box fits on a drawn end of it, and stands there (the shepherd's hut blocked one
+        // cell under a hut drawn a cell and two thirds long, and the verifier walked through its wheel and steps, 18 Nov 2026)
+        // (its ends read from paint a step high and more, 8 px: a wheel's rim and spokes or a flight of steps are never
+        // 15 px of solid paint in one column, and the hut's were walked through)
+        const mid8 = colsLow.filter(c => c.h8 && c.Y >= base - 14), fw = GW_FOOT.x * CW, Lt = Math.min(...mid8.map(c => c.X), ...low.map(c => c.X)), Rtt = Math.max(...mid8.map(c => c.X), ...low.map(c => c.X));
+        if (Rtt - Lt > fw * 2 + 8) for (const [X, side] of [[Lt + fw + 2, 'west'], [Rtt - fw - 2, 'east']]) {
+          if (!mid8.concat(low).some(c => Math.abs(c.X - X) <= fw)) continue;   // (a gap there, not a drawn end)
+          // (free up to half a cell above its lowest paint: a sight's block may start that high over its skirt of grass, check 1)
+          if ([2, 8, 14].every(d => cellFree(X, yb - d)) && !wetPx(X, yb)) { const mc = toCell(X, yb); push({ kind: 'walk-through', obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: mc.x, y: mc.y, detail: 'the feet can stand on its drawn ' + side + ' end (its block stops short of it)' }); }
+        }
       }
     }
   }
