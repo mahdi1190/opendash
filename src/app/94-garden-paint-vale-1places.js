@@ -227,7 +227,7 @@
       add(bb, seed, (B, r) => {
         const path = new Path2D(B.poly(shape)), dry = new Path2D(); dry.rect(bb[0] - 10, bb[1] - 10, bb[2] - bb[0] + 20, bb[3] - bb[1] + 20); for (const w of L.D.freshwater || []) if (w.boundary) dry.addPath(V.loopPath([w.boundary.map(L.pt)]));
         B.cx.clip(dry, 'evenodd');
-        const kitYard = window.GardenPaintGround && (style === 'setts' || style === 'yard') ? GardenPaintGround.paths({ areas: [{ kind: 'setts', points: shape }], season: C.season, kindAt: () => 'meadow', box: { x: bb[0], y: bb[1], w: bb[2] - bb[0], h: bb[3] - bb[1] } }) : null;
+        const kitYard = window.GardenPaintGround && (style === 'setts' || style === 'yard' || style === 'broken') ? GardenPaintGround.paths({ areas: [{ kind: 'setts', points: shape }], season: C.season, kindAt: () => 'meadow', box: { x: bb[0], y: bb[1], w: bb[2] - bb[0], h: bb[3] - bb[1] } }) : null;
         if (kitYard) for (const o of kitYard) { B.cx.save(); o.draw(B, r, bb); B.cx.restore(); B.cx.globalAlpha = 1; }
         else if (style !== 'litter') { B.cx.filter = 'blur(3px)'; B.f(path, '#2e3420', .2); B.cx.filter = 'none'; }
         B.cx.save(); B.cx.clip(path);
@@ -247,13 +247,22 @@
           for (let k = 0; k < 18; k++) B.f(B.ell(rx(), ry(), 1.8 + r() * 1.4, 1.1 + r() * .6), ['#b0682a', '#d38f3a', '#8a5a2c', '#7d8f4e'][Math.floor(r() * 4)], .75);   // a few blown leaves
           for (let k = 0; k < 3; k++) { const x = rx(), y = ry(); B.f(B.blob(r, x, y, 12 + r() * 10, 4 + r() * 2, 8, .4), '#7e6a4a', .35).f(B.blob(r, x - 2, y - 1, 8 + r() * 6, 2.4, 8, .4), '#b6cbd0', .5); }   // rain puddles in the low setts
         }
+        // the ruin court: the kit's old stones (laid in courses, sunk and missing towards the edge, never a grid of bricks),
+        // then moss and turf grown in over them in drifts, thickest away from the middle where nobody walks
+        else if (style === 'broken' && kitYard) {
+          const mx = (bb[0] + bb[2]) / 2, my = (bb[1] + bb[3]) / 2, rx = (bb[2] - bb[0]) / 2, ry = (bb[3] - bb[1]) / 2;
+          for (let k = 0; k < 70; k++) { const x = bb[0] + r() * (bb[2] - bb[0]), y = bb[1] + r() * (bb[3] - bb[1]), e = Math.min(1, Math.hypot((x - mx) / rx, (y - my) / ry)); if (r() > .25 + e * .9) continue; B.f(B.blob(r, x, y, 6 + r() * 18 * (.5 + e), 2.5 + r() * 5, 8, .55), r() < .55 ? '#667c40' : r() < .7 ? '#8a9a56' : '#4e6634', .3 + e * .4); }
+          for (let k = 0; k < 40; k++) B.f(B.blob(r, bb[0] + r() * (bb[2] - bb[0]), bb[1] + r() * (bb[3] - bb[1]), 2 + r() * 4, 1 + r() * 1.4, 5, .6), '#7d9248', .6);
+          if (C.season !== 'winter') for (let k = 0; k < 10; k++) B.tufts(r, bb[0] + r() * (bb[2] - bb[0]), bb[1] + r() * (bb[3] - bb[1]), 8, 3, ['#7d9248', '#a0b060'], 5);
+        }
         else if (style === 'broken') { B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), P.lawnLo); V.flags(B, r, Object.assign({}, P, { stone: '#bdb8a4', stoneLo: '#a29e8a', stoneHi: '#d2cebc', grout: '#7d7a68' }), bb, { row: 13, w: 24, salt: seed, broken: .2, moss: .3 }); }
         else if (style === 'flags') V.flags(B, r, P, bb, { row: 14, w: 26, salt: seed, moss: .04 });
         else { // the clearing under the oak: leaf litter, moss, roots running out from the trunk
           B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), C.season === 'winter' ? '#9a9a84' : '#8a8a52', .55);
           const leaf = C.season === 'autumn' ? ['#b0682a', '#d38f3a', '#8a5a2c', '#e0b050'] : C.season === 'winter' ? ['#8a7a5a', '#a0906a', '#6e6450'] : ['#7d8f4e', '#6a7c40', '#94a058', '#8a7a4a'];
           for (let k = 0; k < (bb[2] - bb[0]) * (bb[3] - bb[1]) / 90; k++) B.f(B.ell(bb[0] + r() * (bb[2] - bb[0]), bb[1] + r() * (bb[3] - bb[1]), 1.6 + r() * 1.6, 1 + r() * .8), leaf[Math.floor(r() * leaf.length)], .8);
-          const o = oakAt(L, pz); for (let k = 0; k < 7; k++) { const ang = Math.PI * (.05 + k / 6 * .9), l = 60 + r() * 70; B.s(`M${o.x + Math.cos(ang) * 14} ${o.y}Q${o.x + Math.cos(ang) * l * .5} ${o.y + Math.sin(ang) * l * .25 + 6} ${o.x + Math.cos(ang) * l} ${o.y + Math.sin(ang) * l * .45}`, '#5a4632', 5 - k % 3, .55); }
+          // (the kit's Great Oak flares into its own roots: the long thin strokes run out over the litter read as a spider's legs)
+          const o = oakAt(L, pz); if (!window.GardenPaintTrees) for (let k = 0; k < 7; k++) { const ang = Math.PI * (.05 + k / 6 * .9), l = 60 + r() * 70; B.s(`M${o.x + Math.cos(ang) * 14} ${o.y}Q${o.x + Math.cos(ang) * l * .5} ${o.y + Math.sin(ang) * l * .25 + 6} ${o.x + Math.cos(ang) * l} ${o.y + Math.sin(ang) * l * .45}`, '#5a4632', 5 - k % 3, .55); }
         }
         B.cx.restore();
         if (!kitYard && (style === 'setts' || style === 'flags' || style === 'yard')) B.s(path, P.kerb, 3, .8);
@@ -264,7 +273,16 @@
       if (pz.id === 'cider-square') { put([[80.2, 36.4], [79.6, 35.4], [75.4, 37.6]], 'press', [-26, -50, 28, 6], drawPress(P), [-21, 23, 10]); put([[79.6, 38.3], [80.4, 38.6]], 'bell', [-14, -64, 16, 5], drawBell(P), [-6, 7, 6]); put([[76.9, 38.6], [78.2, 38.9]], 'baskets', [-24, -18, 26, 5], drawBaskets(P, C.season), [-18, 20, 8]); }
       if (pz.id === 'mill-yard') { put([[76.6, 64.6], [77.2, 65.2], [76.9, 66.8]], 'millstone', [-22, -40, 24, 6], drawMillstone(P), [-18, 20, 10]); put([[77.3, 66.9], [73.6, 67.4], [76.8, 67.6]], 'sacks', [-22, -24, 24, 5], drawSacks(P), [-18, 20, 8]); }
       if (pz.id === 'ruin-court') { const c = L.cpt(pz.x + 1.4, pz.y + .9); add([c.x - 60, c.y - 30, c.x + 60, c.y + 30], 75, (B, r) => { B.shadow(c.x + 4, c.y + 6, 46, 8, .3); B.f(B.rr(c.x - 44, c.y - 7, 80, 14, 7), RUIN.body).f(B.rr(c.x - 44, c.y - 7, 80, 5, 2.5), RUIN.hi, .8).f(B.ell(c.x + 38, c.y, 6, 7), RUIN.lo).f(B.ell(c.x + 38, c.y, 3.4, 4), RUIN.dk, .3); for (let k = -36; k < 34; k += 9) B.s(`M${c.x + k} ${c.y - 6}v12`, RUIN.lo, .8, .5); B.f(B.blob(r, c.x - 10, c.y - 6, 22, 3, 7, .5), RUIN.moss, .8); fern(B, r, c.x - 50, c.y + 6, C.season); fern(B, r, c.x + 20, c.y + 9, C.season); }); }
-      if (style === 'litter') { const o = oakAt(L, pz), S = OAK_SCALE; thing({ key: 'great-oak-5|' + C.season, x: o.x, y: o.y, box: [-250 * S, -360 * S, 250 * S, 40 * S].map(Math.round), crown: { x: 0, y: -230 * S, rx: 250 * S, ry: 145 * S }, farShrink: .6, K: .9, draw: B => { B.cx.save(); B.cx.scale(S, S); greatOak(B, kit.rng(seed + 9), P, C.season); B.cx.restore(); } }); }
+      // The Great Oak, painted by the shared tree kit at the size standard (at least 8 H): its crown in lit leaf masses far wider
+      // than it is tall, a vast bole flaring into roots, its shadow thrown along the one light by the shared shadow layer. Its
+      // foot stands where it always stood (the walking code's trunk box, 94-garden-world-0walk.js, reads the same place).
+      if (style === 'litter' && window.GardenPaintTrees && typeof gardenSizePx === 'function') {
+        const o = oakAt(L, pz), HG = Math.round(gardenSizePx('greatOak', .35)), F = GardenPaintTrees.form('greatoak'), half = Math.ceil(HG * Math.max(F.rx * 1.35, .3) + 8), up = Math.ceil(HG * (F.cy + F.ry * 1.25) + 8);
+        thing({ key: 'great-oak-kit|' + C.season, x: o.x, y: o.y, box: [-half, -up, half, 14], crown: { x: 0, y: -HG * F.cy, rx: HG * F.rx, ry: HG * F.ry }, farShrink: .6, K: .9, draw: B => {
+          const m = B.cx.getTransform(), sc = Math.max(1, Math.min(3, Math.hypot(m.a, m.b))), t = GardenPaintTrees.canvas({ species: 'greatoak', season: C.season, v: 1, h: HG, K: sc, seed: 4409 }); if (!t) return;
+          B.cx.drawImage(t.c, -t.ox / t.k, -t.oy / t.k, t.c.width / t.k, t.c.height / t.k);
+        } });
+      } else if (style === 'litter') { const o = oakAt(L, pz), S = OAK_SCALE; thing({ key: 'great-oak-5|' + C.season, x: o.x, y: o.y, box: [-250 * S, -360 * S, 250 * S, 40 * S].map(Math.round), crown: { x: 0, y: -230 * S, rx: 250 * S, ry: 145 * S }, farShrink: .6, K: .9, draw: B => { B.cx.save(); B.cx.scale(S, S); greatOak(B, kit.rng(seed + 9), P, C.season); B.cx.restore(); } }); }
     }
   }
   const drawPress = P => B => { B.shadow(4, 2, 24, 5, .3); B.f(B.rr(-18, -16, 36, 16, 3), P.wood).f(B.rect(-18, -16, 36, 3), P.woodHi, .7); for (const x of [-14, 12]) B.post(x, -46, -14, 5, [P.wood, P.woodLo, P.woodHi]); B.f(B.rect(-18, -50, 36, 6), P.woodLo).s('M0 -44V-20', P.iron, 3).s('M-10 -30H10', P.iron, 2.2).f(B.ell(0, -18, 12, 3), '#c8a04a', .8); };

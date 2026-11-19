@@ -31,9 +31,14 @@ window.GardenPaintTrees = (function () {
     apple: { summer: ['#22381e', '#38582c', '#527a3c', '#76a050', '#a6c674'], autumn: ['#34301a', '#5a5424', '#86782e', '#b0983c', '#d8c066'] },
     pear: { summer: ['#203a1e', '#36582c', '#4e7838', '#709c4a', '#9ec06a'], autumn: ['#3a2e16', '#64461e', '#946428', '#c28a36', '#e4b85a'] },
     plum: { summer: ['#1e321e', '#324c2c', '#4a6a3a', '#6a8c4a', '#94ae68'], autumn: ['#3a2418', '#623c22', '#8c5a2c', '#b47c3a', '#d4a85a'] },
+    // the woods: beech (fresh green, copper in autumn), yew (deep blue-green all year), holly (glossy, nearly black-green)
+    beech: { summer: ['#1a3218', '#2c5024', '#447432', '#66983e', '#94ba5a'], autumn: ['#3e1e0e', '#743816', '#a85a24', '#d08434', '#eeb056'] },
+    yew: { summer: ['#0e1c12', '#1a2c1c', '#27402c', '#3a583e', '#5c7c54'] },
+    holly: { summer: ['#0c1e12', '#16301c', '#24462a', '#386038', '#5e8a50'] },
   };
+  LEAF.greatoak = LEAF.oak;
   LEAF.spring = null;
-  const BARK = { oak: ['#3a2c20', '#5a4532', '#7e6448', '#a48862'], chestnut: ['#3a2a20', '#5c4230', '#80624a', '#a08466'], birch: ['#5a5650', '#c8c4b8', '#e8e4da', '#fbf8f0'], hawthorn: ['#2e2620', '#4c3e32', '#6e5a48', '#8e7660'], alder: ['#2e2a26', '#4a443c', '#6a6256', '#8a8274'], cherry: ['#3a2220', '#5e3a32', '#80564a', '#a07a6a'], apple: ['#3a2c20', '#5a4634', '#7a644c', '#9a8266'], pear: ['#322820', '#504032', '#705c4a', '#907a64'], plum: ['#30221e', '#4c3830', '#6a5246', '#8a705e'] };
+  const BARK = { oak: ['#3a2c20', '#5a4532', '#7e6448', '#a48862'], chestnut: ['#3a2a20', '#5c4230', '#80624a', '#a08466'], birch: ['#5a5650', '#c8c4b8', '#e8e4da', '#fbf8f0'], hawthorn: ['#2e2620', '#4c3e32', '#6e5a48', '#8e7660'], alder: ['#2e2a26', '#4a443c', '#6a6256', '#8a8274'], cherry: ['#3a2220', '#5e3a32', '#80564a', '#a07a6a'], apple: ['#3a2c20', '#5a4634', '#7a644c', '#9a8266'], pear: ['#322820', '#504032', '#705c4a', '#907a64'], plum: ['#30221e', '#4c3830', '#6a5246', '#8a705e'], beech: ['#4a4a44', '#76766c', '#9c9a8e', '#c6c4b8'], yew: ['#2a1810', '#48281a', '#663a26', '#865838'], holly: ['#3a3a34', '#5e5e56', '#80807a', '#a2a29a'], greatoak: ['#33261c', '#54412f', '#7a6046', '#a08460'] };
   // silhouette per species, in units of the tree's height: crown centre height, half width, half height, trunk height,
   // mass size, mass count, mass elongation (birch hangs), leaf dab size
   const FORM = {
@@ -46,12 +51,19 @@ window.GardenPaintTrees = (function () {
     apple: { cy: .55, rx: .42, ry: .3, tr: .34, m: .13, n: 22, el: .85, dab: .024, girth: .055 },
     pear: { cy: .6, rx: .3, ry: .38, tr: .36, m: .12, n: 22, el: 1.05, dab: .022, girth: .05 },
     plum: { cy: .56, rx: .38, ry: .3, tr: .34, m: .12, n: 22, el: .9, dab: .022, girth: .05 },
+    // (the woods: a beech is a broad layered dome on a smooth grey bole; a yew a low dark mound skirted almost to the ground
+    //  on a short fluted red trunk; a holly a narrow dark cone; the Great Oak a crown far wider than it is tall on a vast bole)
+    beech: { cy: .6, rx: .45, ry: .35, tr: .44, m: .14, n: 28, el: .82, dab: .022, girth: .06, smooth: true },
+    yew: { cy: .47, rx: .46, ry: .42, tr: .2, m: .15, n: 34, el: .78, dab: .018, girth: .09, evergreen: true },
+    holly: { cy: .5, rx: .27, ry: .42, tr: .16, m: .1, n: 30, el: 1, dab: .016, girth: .04, evergreen: true, cone: true, smooth: true },
+    greatoak: { cy: .56, rx: .64, ry: .34, tr: .36, m: .12, n: 54, el: .85, dab: .016, girth: .1 },
   };
-  const FRUIT = { apple: { summer: ['#7e9a38', '#a8c050', '#d6e08a'], autumn: ['#8e1e18', '#c8382a', '#f08a6a'] }, pear: { summer: ['#8aa040', '#b4c862', '#e2ea9a'], autumn: ['#a88a2a', '#d8b84a', '#f4e08e'] }, plum: { summer: ['#56602e', '#7a8a4a', '#aab47a'], autumn: ['#2e1438', '#5a2e5e', '#9a6aa0'] }, cherry: { summer: ['#6e1410', '#b42a22', '#ee7a6a'], autumn: ['#6e1410', '#b42a22', '#ee7a6a'] }, hawthorn: { autumn: ['#5a1010', '#9a2218', '#d0503a'] } };
+  const FRUIT = { apple: { summer: ['#7e9a38', '#a8c050', '#d6e08a'], autumn: ['#8e1e18', '#c8382a', '#f08a6a'] }, pear: { summer: ['#8aa040', '#b4c862', '#e2ea9a'], autumn: ['#a88a2a', '#d8b84a', '#f4e08e'] }, plum: { summer: ['#56602e', '#7a8a4a', '#aab47a'], autumn: ['#2e1438', '#5a2e5e', '#9a6aa0'] }, cherry: { summer: ['#6e1410', '#b42a22', '#ee7a6a'], autumn: ['#6e1410', '#b42a22', '#ee7a6a'] }, hawthorn: { autumn: ['#5a1010', '#9a2218', '#d0503a'] }, holly: { autumn: ['#5a0c0c', '#a8161a', '#e85a4a'], winter: ['#5a0c0c', '#a8161a', '#e85a4a'] } };
   const LIGHT = { x: -.6, y: -.8 };
 
   function ramp(species, season) {
     const L = LEAF[species] || LEAF.oak;
+    if (FORM[species] && FORM[species].evergreen) return L.summer;   // (yew and holly are the same dark green all year)
     if (season === 'spring') return L.summer.map((c, i) => mix(c, ['#3a5a2c', '#5a8a3a', '#7cb050', '#a6d06a', '#d4ec98'][i], .45));
     return L[season] || L.summer;
   }
@@ -65,7 +77,7 @@ window.GardenPaintTrees = (function () {
     const F = FORM[sp], B = BARK[sp] || BARK.oak, tw = Math.max(2.4, H * F.girth * 1.25), th = H * F.tr + H * F.ry * .5, top = -th, birch = sp === 'birch';
     // limbs into the crown (seen through its gaps), drawn under it
     const limbs = [];
-    const n = sp === 'birch' ? 3 : 4 + (r() < .5 ? 1 : 0);
+    const n = sp === 'birch' ? 3 : sp === 'greatoak' ? 7 : 4 + (r() < .5 ? 1 : 0);
     for (let i = 0; i < n; i++) {
       const a = -Math.PI / 2 + (i / (n - 1) - .5) * (sp === 'alder' || sp === 'birch' ? 1.1 : 2.1) + (r() - .5) * .25, len = H * F.ry * (.55 + r() * .35);
       const y0 = -H * F.tr * (.82 + r() * .2), x0 = lean * (y0 / top);
@@ -100,6 +112,12 @@ window.GardenPaintTrees = (function () {
     if (birch) {
       for (let k = 0; k < 9; k++) { const y = -tw - r() * (th - tw * 2), x = lean * (y / top) + (r() - .5) * tw * .7; cx.fillStyle = B[0]; cx.globalAlpha = .85; cx.beginPath(); cx.ellipse(x, y, tw * (.25 + r() * .25), .6 + r() * .6, 0, 0, Math.PI * 2); cx.fill(); }
       cx.globalAlpha = .45; cx.fillStyle = '#3a3630'; cx.beginPath(); cx.moveTo(-flare, 1.5); cx.quadraticCurveTo(-tw * .9, -tw * 1.2, -tw * .3, -tw * 1.6); cx.quadraticCurveTo(tw * .6, -tw * 1.1, flare, 1.5); cx.fill(); cx.globalAlpha = 1;
+    } else if (F.smooth) {
+      // beech and holly: smooth grey bark, a lit stripe up the sunny side, faint rings and a few dark eyes where limbs fell
+      cx.globalAlpha = .3; cx.fillStyle = B[3]; cx.beginPath(); cx.ellipse(-tw * .22 + lean * .5, -th * .45, tw * .13, th * .34, 0, 0, Math.PI * 2); cx.fill();
+      cx.strokeStyle = B[0]; cx.lineWidth = .6; for (let k = 0; k < 5; k++) { const y = -tw * 1.2 - r() * (th - tw * 2), x = lean * (y / top); cx.globalAlpha = .25 + r() * .2; cx.beginPath(); cx.moveTo(x - tw * .45, y); cx.quadraticCurveTo(x, y + 1.2, x + tw * .45, y - .4); cx.stroke(); }
+      for (let k = 0; k < 2; k++) { const y = -th * (.35 + r() * .4), x = lean * (y / top) + (r() - .5) * tw * .4; cx.globalAlpha = .55; cx.fillStyle = B[0]; cx.beginPath(); cx.ellipse(x, y, tw * .1, tw * .07, 0, 0, Math.PI * 2); cx.fill(); }
+      cx.globalAlpha = 1;
     } else {
       cx.strokeStyle = B[0]; cx.lineWidth = .8;
       for (let k = 0; k < 7; k++) { const x = (k / 6 - .5) * tw * .9, sway = (r() - .5) * 2; cx.globalAlpha = .35 + r() * .25; cx.beginPath(); cx.moveTo(x * 1.4, -1); cx.bezierCurveTo(x + sway, -th * .3, x + lean * .4 - sway, -th * .6, x * .8 + lean, top + 2); cx.stroke(); }
@@ -204,14 +222,14 @@ window.GardenPaintTrees = (function () {
     const r = rng(seed), lean = (v - 1) * H * .03 + (r() - .5) * H * .02;
     const base = trunk(cx, r, sp, H, lean, season);
     let info = null;
-    if (season === 'winter' && sp !== 'alder') bare(cx, r, sp, H, base);
+    if (season === 'winter' && sp !== 'alder' && !FORM[sp].evergreen) bare(cx, r, sp, H, base);
     else {
       // the crown on its own layer, so light and shade can be laid over the leaves only
       const F = FORM[sp], c = cx.canvas, off = document.createElement('canvas'); off.width = c.width; off.height = c.height;
       const ox = off.getContext('2d'); ox.setTransform(cx.getTransform());
       info = crown(ox, r, sp, season, H, lean, v);
       if (season === 'spring' && (sp === 'cherry' || sp === 'apple' || sp === 'pear' || sp === 'plum' || sp === 'hawthorn')) blossom(ox, r, sp, H, info);
-      if (season === 'autumn' || season === 'summer') fruit(ox, r, sp, season, H, info);
+      if (season === 'autumn' || season === 'summer' || season === 'winter') fruit(ox, r, sp, season, H, info);
       // shade wraps the lower right of the crown; warm sun on its upper left (on the leaves only)
       ox.globalCompositeOperation = 'source-atop';
       let g = ox.createRadialGradient(info.ccx - info.RX * .45, info.ccy - info.RY * .55, 0, info.ccx - info.RX * .45, info.ccy - info.RY * .55, Math.max(info.RX, info.RY) * 2.1);
