@@ -516,7 +516,7 @@ window.GardenNativePainted = (function () {
     // (four cells wide from round 3: the hall stands larger than the cottages; w is its shadow's width)
     // (village fix round 1: the anglers' first meeting place is a striped-awning stall on the terrace's end, timber and
     // canvas in the village's colours, not a dark green dome tent that read as a featureless blob)
-    { obj: 'structure.mcr-market-hut', v: 2, w: 110, wallWidth: 430 },
+    { obj: 'structure.mcr-market-hut', v: 2, w: 110, wallWidth: 430, extra: [['street.mqn-lifebuoy', 0, 64, 2, 0, 28]] },
     { obj: 'building.vale-hall-small', v: 0, w: 192, wallWidth: 160, sign: 'Lake Hall' },
     { obj: 'building.thatched-cottage', v: 1, w: 200, wallWidth: 216, sign: 'Lake Hall' },
     { obj: 'building.vale-hall-large', v: 0, w: 192, wallWidth: 240, sign: 'Lake Hall' },
@@ -542,12 +542,12 @@ window.GardenNativePainted = (function () {
     if (def.sign) {
       // (village fix round 1: a painted timber signboard on two oak posts standing in the ground in front of the house, with
       // their shadows, not a pale label lying at its foot)
-      const g = scene.add.graphics(), sy = foot + 10, tw = Math.max(54, def.sign.length * 6.4) / 2, px = tw * .78;
-      g.fillStyle(0x2a2418, .26).fillEllipse(cx - px + 2, sy + 9, 9, 3).fillEllipse(cx + px + 2, sy + 9, 9, 3).fillRoundedRect(cx - tw + 3, sy - 6, tw * 2, 14, 2);
-      for (const x of [cx - px, cx + px]) g.fillStyle(0x4e3e2a).fillRect(x - 1.6, sy - 13, 3.2, 22).fillStyle(0x8a7050, .8).fillRect(x - 1.6, sy - 13, 1.1, 22).fillStyle(0x6e5a3e).fillCircle(x, sy - 13, 1.9);
-      g.fillStyle(0x2f4a3a).fillRoundedRect(cx - tw, sy - 9, tw * 2, 15, 2).fillStyle(0x3e5e4a, .7).fillRect(cx - tw + 1, sy - 8.5, tw * 2 - 2, 2.2).lineStyle(1.1, 0xc8a868, 1).strokeRoundedRect(cx - tw + 1.8, sy - 7.4, tw * 2 - 3.6, 11.8, 1.5);
+      const g = scene.add.graphics(), sy = foot + 10, tw = Math.max(54, def.sign.length * 6.4) / 2, px = tw * .78, sx = cx + Math.max(0, prop.w * W.cellW / 2 - tw - 6);   // (beside the door, not standing in front of it)
+      g.fillStyle(0x2a2418, .26).fillEllipse(sx - px + 2, sy + 9, 9, 3).fillEllipse(sx + px + 2, sy + 9, 9, 3).fillRoundedRect(sx - tw + 3, sy - 6, tw * 2, 14, 2);
+      for (const x of [sx - px, sx + px]) g.fillStyle(0x4e3e2a).fillRect(x - 1.6, sy - 13, 3.2, 22).fillStyle(0x8a7050, .8).fillRect(x - 1.6, sy - 13, 1.1, 22).fillStyle(0x6e5a3e).fillCircle(x, sy - 13, 1.9);
+      g.fillStyle(0x2f4a3a).fillRoundedRect(sx - tw, sy - 9, tw * 2, 15, 2).fillStyle(0x3e5e4a, .7).fillRect(sx - tw + 1, sy - 8.5, tw * 2 - 2, 2.2).lineStyle(1.1, 0xc8a868, 1).strokeRoundedRect(sx - tw + 1.8, sy - 7.4, tw * 2 - 3.6, 11.8, 1.5);
       node._inner.add(g);
-      node._inner.add(scene.add.text(cx, sy - 1.5, def.sign, { fontFamily: 'Georgia, serif', fontSize: '10px', color: '#f3e6c4', resolution: 3 }).setOrigin(.5, .5));
+      node._inner.add(scene.add.text(sx, sy - 1.5, def.sign, { fontFamily: 'Georgia, serif', fontSize: '10px', color: '#f3e6c4', resolution: 3 }).setOrigin(.5, .5));
     }
     // lit windows spill a soft warm pool on the ground in front (added light, feathered: no disc)
     if (night && window.GardenPaintedProps) { const pk = GardenPaintedProps.poolKey(scene); if (pk) { const pool = scene.add.image(cx, foot + 10, pk).setOrigin(.5, .5).setScale(def.w * 1.1 / 256, def.w * .3 / 256).setAlpha(.3), layer = overLayer; if (layer) { layer.add(pool); pool.setDepth(80005); } else node._inner.add(pool); poolImages.push(pool); } }

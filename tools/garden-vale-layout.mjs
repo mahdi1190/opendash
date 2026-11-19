@@ -178,7 +178,7 @@ const routes = [
   route('woodland-loop', 'trail', [[14, 44.4], [11, 40.6], [9.6, 36.4], [10.3, 33.7], [13.6, 30.4], [20, 30.6], [24.6, 34.2], [25.6, 36.8], [27.2, 40.6], [25.4, 46], [22.6, 48.6]], 1),
   route('spring-trail', 'trail', [[11.4, 31.8], [8.6, 29.4]], 1),
   route('cove-trail', 'trail', [[11, 40.6], [7.8, 50], [6.2, 62], [5.2, 72], [6.2, 81.6]], 1),
-  route('brook-walk', 'trail', [[27.2, 40.6], [31.6, 39.4], [35.2, 38.2], [37.2, 37.4]], 1),
+  route('brook-walk', 'trail', [[27.2, 40.6], [31.6, 39.4], [34.6, 38.3], [35.95, 37.75]], 1),   // (village fix round 1: it ends at the lake walk by the footbridge; it ran a cell past it, a rounded stub on the grass beside the bridge's foot)
   // Old woodland (zone 3)
   route('ruins-lane', 'lane', [[17.2, 45.6], [18.2, 53], [19, 60], [19.6, 65.1], [21, 70.4], [22.2, 74.4]], 3, { gateId: 'island-ruins' }),
   route('ruin-court', 'plaza', [[21, 74.8], [23.6, 74.8]], 3, { widthCells: 4.4 }),
@@ -476,7 +476,7 @@ const presentation = {
   rivers: Object.fromEntries(Object.entries(ribbons).map(([id, [line, hw]]) => [id, { name: riverNames[id][0], halfWidth: hw, line: smooth(line, 4).map(p => [r2(p[0]), r2(p[1])]) }])),
   falls: { id: 'fleet-falls', name: 'Fleet Falls', x: 44, y: 24.6, w: 3, h: 3, pool: [45.4, 28.4], caveStair: [42.2, 25.9], note: 'Drops off the scarp into the NW corner of the Mere; the cave stair runs behind it on the west side.' },
   crossings: [
-    { id: 'falls-footbridge', kind: 'footbridge', over: 'brook', x: 37.4, y: 36, along: 'lake-walk-west' },
+    { id: 'falls-footbridge', kind: 'footbridge', over: 'brook', x: 36.3, y: 36.3, along: 'lake-walk-west' },   // (village fix round 1: where the lake walk crosses the brook; at 37.4 its landing lay a cell east of the deck's foot)
     { id: 'outlet-footbridge', kind: 'footbridge', over: 'river', x: 59.9, y: 41.1, along: 'lakeside-steps' },
     { id: 'millwater-bridge', kind: 'hump-bridge', over: 'river', x: 65, y: 55.1, along: 'east-road', gateId: 'island-mill' },
     { id: 'estuary-stones', kind: 'stepping-stones', over: 'river', x: 78.6, y: 80.4, along: 'coast-walk' },

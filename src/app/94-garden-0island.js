@@ -99,7 +99,7 @@ function gardenIslandPosternPiers(data) {
   data = data || (gardenIslandActive() ? gardenIslandData() : null);
   const sc = data && data.version >= 5 && ((data.presentation && data.presentation.shortcuts) || []).find(s => s.id === 'postern');
   if (!sc || !sc.at) return [];
-  return [[sc.at[0] + .3, sc.at[1] - 1.05], [sc.at[0] + .55, sc.at[1] + 1.25]].map(([x, y]) => ({ x, y, foot: { x0: x - .26, y0: y - .2, x1: x + .26, y1: y + .04 } }));
+  return [[sc.at[0] + .3, sc.at[1] - 1.05], [sc.at[0] + .55, sc.at[1] + 1.25]].map(([x, y]) => ({ x, y, foot: { x0: x - .28, y0: y - .34, x1: x + .28, y1: y + .14 } }));   // (village fix round 1: as deep as the pier stands on the ground, so the feet stop at its stones and never stand on its foot)
 }
 /** Optional decks use the displayed Garden's mechanics identity, never a visitor's ownership. */
 function gardenSidePierMechanicsReady(source) {

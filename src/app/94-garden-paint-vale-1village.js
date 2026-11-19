@@ -568,7 +568,7 @@
           placed.push([x, y]); made++;
           const p = L.cpt(x, y), key = 'vtree-' + sp + '-' + v + '-' + h + '|' + season, F = { birch: [.24, .38, .6], alder: [.27, .4, .58], oak: [.46, .33, .6], chestnut: [.38, .37, .6], hawthorn: [.4, .3, .52] }[sp] || [.4, .35, .6], TK = 1.3;
           add([p.x - h * .7, p.y - h * .3, p.x + h * .9, p.y + h * .35], kit.hashStr('vtree-shade|' + bi + '|' + made), B2 => { V.ok(() => GardenPaintTrees.groundShadow(B2.cx, p.x, p.y, h, { species: sp, season })); });
-          thing({ key, x: p.x, y: p.y, K: TK, box: [-Math.round(h * (F[0] + .15) + 12), -Math.round(h * 1.1 + 10), Math.round(h * (F[0] + .15) + 12), 18], foot: [-Math.max(5, Math.round(h * .035)), Math.max(5, Math.round(h * .035)), 7], crown: { x: 0, y: -h * F[2], rx: h * F[0], ry: h * F[1] }, draw: B2 => {
+          thing({ key, x: p.x, y: p.y, K: TK, box: [-Math.round(h * (F[0] + .15) + 12), -Math.round(h * 1.1 + 10), Math.round(h * (F[0] + .15) + 12), 18], foot: [-Math.max(7, Math.round(h * .058)), Math.max(7, Math.round(h * .058)), 8], crown: { x: 0, y: -h * F[2], rx: h * F[0], ry: h * F[1] }, draw: B2 => {
             const t = GardenPaintTrees.canvas({ species: sp, season, v, h, K: TK }); if (t) B2.cx.drawImage(t.c, -t.ox / t.k, -t.oy / t.k, t.c.width / t.k, t.c.height / t.k);
           } });
         }
