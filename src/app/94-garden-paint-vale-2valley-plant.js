@@ -157,6 +157,9 @@
       if (overPlot) { no('plot'); continue; }
       const dw = distTo(x, y, 3, fresh), dp = distTo(x, y, 2, (a, c) => pathAt(a, c) || plotAt(a, c));
       const kind = dw <= 2.3 ? 'bank' : dp <= 1.5 ? 'edge' : 'field';
+      // a wall's face hangs below its line: no trunk at its foot, no crown standing up over it (the terrace wall, the scarp; a willow
+      // at the river, where the wall ends, leans clear of it)
+      if (kind !== 'bank' && (near(x, y - 1, 1, (a, c) => { const bb = base(a, c); return !!(bb && bb.solid); }) || near(x, y - 2, 1, (a, c) => { const bb = base(a, c); return !!(bb && bb.solid); })) ) { no('wall'); continue; }
       cand.push({ x, y, kind, dw, small: bigOver, score: kit.hash(x, y, 811) / 4294967296 });
     }
     // 2. choose, best first, keeping each kind's own spacing and clear of paths, other trees and the woods' trees
@@ -186,7 +189,16 @@
       const gap = Math.max(spacing[kind], sp === 'pollard' ? 1.8 : 0);
       if (trees.some(o => Math.hypot(o.x - tx, (o.y - ty) * 1.3) < Math.max(gap, spacing[o.kind] * .8))) { no('spacing'); continue; }
       if (woodFeet.some(o => Math.hypot(o.x - tx, o.y - ty) < 2.8)) { no('wood'); continue; }
-      trees.push({ x: tx, y: ty, kind, sp, h, v: kit.hash(x, y, 817) % 3, flip: kit.hash(x, y, 818) % 2 === 1 });
+      trees.push({ x: tx, y: ty, kind, sp, h, v: kit.hash(x, y, 817) % 3, flip: kit.hash(x, y, 818) % 2 === 1, seed: kit.hash(x, y, 819) % 99991 });
+    }
+    // the open meadows each keep one old field oak, where the most open ground is round it (a field tree, not a scatter)
+    const opens = cand.filter(c => c.kind === 'field' && !c.small).map(c => Object.assign({ room: distTo(c.x, c.y, 3, (a, b) => pathAt(a, b) || plotAt(a, b) || held.has(a + ',' + b) || fresh(a, b)) }, c)).filter(c => c.room >= 2).sort((a, b) => b.room - a.room || a.score - b.score);
+    for (const c of opens) {
+      if (trees.filter(t => t.kind === 'field').length >= 4) break;
+      const tx = c.x + .5, ty = c.y + .85;
+      if (pathGap(tx * cw, W.sky + ty * ch) < 24 || trees.some(o => Math.hypot(o.x - tx, (o.y - ty) * 1.3) < (o.kind === 'field' ? 9 : 3.6)) || woodFeet.some(o => Math.hypot(o.x - tx, o.y - ty) < 3)) continue;
+      const t = kit.hash(c.x, c.y, 824) / 4294967296;
+      trees.push({ x: tx, y: ty, kind: 'field', sp: t < .75 ? 'oak' : 'chestnut', h: Math.round(gardenSizePx('tree', .55 + t * .45) / 12) * 12, v: kit.hash(c.x, c.y, 825) % 3, flip: kit.hash(c.x, c.y, 826) % 2 === 1, seed: kit.hash(c.x, c.y, 827) % 99991 });
     }
     // 3. stand them: a sprite each (shared by species, height and variant), its shadow along the light, its crown fading
     for (const t of trees) {
@@ -196,13 +208,13 @@
       else if (t.sp === 'pollard') { box = [-H * .5, -H * 1.02, H * .5, 8]; crown = { x: 0, y: -H * .66, rx: H * .36, ry: H * .3 }; half = Math.max(5, H * .1); }
       else { const f = F(t.sp), hw = H * Math.max(f.rx * 1.35, .3) + 6; box = [-hw, -(H * (f.cy + f.ry * 1.25) + 6), hw, 8]; crown = { x: 0, y: -H * f.cy, rx: H * f.rx, ry: H * f.ry }; half = Math.max(4, Math.min(11, H * f.girth * 1.4)); }
       box = box.map(Math.round);
-      const key = t.sp + '|' + season + '|' + t.v + '|' + H + (t.flip ? '|f' : '');
+      const key = t.sp + '|' + season + '|' + t.v + '|' + H + '|' + t.seed + (t.flip ? '|f' : '');   // (each tree its own picture: they are few and small, and no two hawthorns stand alike)
       thing({ key, x: p.x, y: p.y, box, K: 1.25, crown: crown && { x: crown.x, y: crown.y, rx: crown.rx, ry: crown.ry }, foot: [-half, half, 7], shade: { a: own ? .3 : .34 }, draw: B => {
-        const cx = B.cx, m = cx.getTransform(), sc = Math.hypot(m.a, m.b) || 1, r = kit.rng(kit.hash(t.v + 3, H, t.sp.length * 7 + 31));
+        const cx = B.cx, m = cx.getTransform(), sc = Math.hypot(m.a, m.b) || 1, r = kit.rng(kit.hash(t.v + 3, H, t.seed + 31));
         cx.save(); if (t.flip) cx.scale(-1, 1);
         if (t.sp === 'willow') weeping(cx, r, H, season, t.v);
         else if (t.sp === 'pollard') pollard(cx, r, H, season);
-        else { const c = GardenPaintTrees.canvas({ species: t.sp, season, v: t.v, h: H, K: Math.min(4, sc) }); if (c) cx.drawImage(c.c, -c.ox / c.k, -c.oy / c.k, c.c.width / c.k, c.c.height / c.k); }
+        else { const c = GardenPaintTrees.canvas({ species: t.sp, season, v: t.v, h: H, K: Math.min(4, sc), seed: t.seed }); if (c) cx.drawImage(c.c, -c.ox / c.k, -c.oy / c.k, c.c.width / c.k, c.c.height / c.k); }
         cx.restore();
       } });
     }
