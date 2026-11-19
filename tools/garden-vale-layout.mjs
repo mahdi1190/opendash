@@ -13,6 +13,8 @@ import { createHash } from 'node:crypto';
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const v4 = JSON.parse(readFileSync(join(root, 'assets/garden/island-v4.json'), 'utf8'));
 const W = { cols: 96, rows: 96, cellW: 48, cellH: 30 };
+// The High orchard (zone 4) is hand-authored in assets/garden/vale-orchard.json (round 3 layouts), as the village is.
+const VO = JSON.parse(readFileSync(join(root, 'assets/garden/vale-orchard.json'), 'utf8'));
 const r2 = n => Math.round(n * 100) / 100;
 const warn = [];
 
@@ -103,6 +105,7 @@ const freshwater = [
   basin('pond', smoothLoop(LAKE, 4), 1, { name: 'The Mere' }),
   basin('allotment-pool', smoothLoop(WOOD_POOL, 4), 10, { sectionIds: ['ls-lily-pool', 'ls-stone-pool'], name: 'The woodland pond' }),
   basin('orchard-pool', smoothLoop(ORCH_POOL, 4), 14, { sectionIds: ['ls-deep-pool', 'ls-clear-pool', 'ls-moon-pool', 'ls-sedge-pool'], name: 'The orchard pond' }),
+  ...VO.newWater.map(w => basin(w.id, smoothLoop(w.boundary, 4).map(p => p.map(r2)), w.level, { name: w.name })),   // (the dip: a warm pool under the orchard bank; the dip's fish live here)
   basin('tarn', smoothLoop(TARN, 4), 18, { name: 'The source tarn' }),
   basin('spring', smoothLoop(SPRING, 3), 3, { name: 'Foxglove spring' }),
 ];
@@ -165,6 +168,11 @@ function splineW(ctrl, widths, closed, step = .5) { // Catmull-Rom through the c
 const vRoute = id => { const a = VV.routes.find(r => r.id === id); if (!a) throw Error('vale-village.json has no route ' + id); const { pts, ws } = splineW(a.control, a.widths, !!a.closed);
   return route(id, a.tier, pts, 0, Object.assign({ widthCells: Math.max(...ws), widths: ws }, a.gateId ? { gateId: a.gateId } : {}, id === 'plaza-loop' ? { shape: VV.plazas['the-square'].poly.map(p => p.map(r2)) } : {})); };
 const vPlaza = (id, width) => { const p = VV.plazas[id]; return route(id, 'plaza', p.spine, 0, { widthCells: width, shape: p.poly.map(q => q.map(r2)) }); };
+// the High orchard's routes (vale-orchard.json): the same splines; orchard-stair keeps its valley stretch (mill yard to the gate) ahead of the authored climb
+const STAIR_VALLEY = { control: [[76.4, 65.8], [78, 61.4], [79.8, 56]], widths: [2, 2, 2] };
+const oRoute = a => { const ctrl = a.id === 'orchard-stair' ? STAIR_VALLEY.control.concat(a.control) : a.control, wd = a.id === 'orchard-stair' ? STAIR_VALLEY.widths.concat(a.widths) : a.widths, { pts, ws } = splineW(ctrl, wd, false);
+  return route(a.id, a.tier, pts, 4, Object.assign({ widthCells: Math.max(...ws), widths: ws }, a.gateId ? { gateId: a.gateId } : {}, a.surface ? { surface: a.surface } : {})); };
+const oPlaza = id => { const p = VO.plazas[id]; return route(id, 'plaza', p.spine, 4, { widthCells: 3, shape: p.poly.map(q => q.map(r2)) }); };
 const GREEN = { x: 49, y: 51.6, rx: 6.6, ry: 4.4 };   // (the green's rough extent, for painters that only want a centre and radii)
 const routes = [
   // the arrival spine: quay, high street, the square and the green, the Lakeside terrace (harbour-walk[0] is the green end)
@@ -195,14 +203,9 @@ const routes = [
   route('marsh-boardwalk', 'trail', [[81.4, 79.4], [84, 77.8], [86.2, 74.6], [85.6, 72]], 2),
   route('water-meadow', 'trail', [[67.4, 71], [70.6, 73.4], [72.6, 77.4], [71, 84.8]], 2),
   route('riverside', 'trail', [[66.4, 85.4], [67.2, 78], [67.4, 71], [64.2, 67.6], [57.2, 65.6]], 2),
-  // High orchard (zone 4)
-  route('orchard-stair', 'lane', [[76.4, 65.8], [78, 61.4], [79.8, 56], [80.2, 50.4], [79.6, 45], [78.4, 40], [77.8, 37]], 4, { gateId: 'island-orchard' }),
-  route('cider-square', 'plaza', [[76.6, 37], [79.2, 37]], 4, { widthCells: 4 }),
-  route('orchard-pass', 'trail', [[76.6, 37], [73.4, 35.8], [68.4, 35.4], [66, 31.4], [67.4, 27], [71, 23.6], [71, 21.3]], 4, { gateId: 'island-headland' }),
-  route('folly-trail', 'trail', [[79.2, 37], [82.6, 34.4], [84.8, 29.6]], 4),
-  route('east-beach', 'trail', [[79.2, 37], [82.4, 40.4], [85.6, 42.4]], 4),
-  route('lakeside-steps', 'trail', [[59.9, 41.1], [61, 38.4], [62.6, 35.6], [65.6, 34.4], [68.4, 35.4]], 4),
-  route('orchard-rows', 'trail', [[68, 42.4], [74, 41.4], [78.4, 40], [84, 45.6]], 4),
+  // High orchard (zone 4): hand-authored (vale-orchard.json); the stair's stretch through the valley below its gate is kept as it was
+  ...VO.routes.map(a => oRoute(a)),
+  oPlaza('cider-square'),
   // Cloudbreak mountains (zone 5)
   route('pass-summit', 'trail', [[71, 21.3], [70.6, 19.6], [66.4, 18.4], [60.6, 16.4], [56, 12.6], [51.6, 9.8]], 5),
   route('summit-cairn', 'plaza', [[49.6, 9.8], [51.6, 9.8]], 5, { widthCells: 3.6 }),
@@ -211,6 +214,18 @@ const routes = [
   route('cold-cove', 'trail', [[56, 12.6], [62, 15.6], [70.4, 14.6], [74.6, 10.6], [77.2, 9.6]], 5),
   route('moor-trail', 'trail', [[38.6, 12.4], [35.4, 7.2], [28, 6.4], [20, 12.6], [10, 14.6], [3, 14]], 5),
 ];
+
+// The High orchard's four new terrace walls (vale-orchard.json): thin (half a cell), they stop the feet along their own
+// line only, and open where a path climbs them (the painter lays steps in each opening). A piece shorter than a cell is left out.
+for (const w of VO.newLandforms) {
+  const L = smooth(w.line, 10), hw = (w.thickness || .5) / 2, near = routes.filter(r => r.zone === 4 && r.tier !== 'plaza');
+  const open = p => near.some(r => { const P = r.points, Wd = r.widths; for (let i = 1; i < P.length; i++) { const a = P[i - 1], b = P[i], dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1))), wd = Wd ? Wd[i - 1] + (Wd[i] - Wd[i - 1]) * t : r.widthCells; if (Math.hypot(p[0] - a[0] - dx * t, p[1] - a[1] - dy * t) <= wd / 2 + .3) return true; } return false; });
+  const runs = []; let run = [];
+  for (const p of L) { if (open(p)) { if (run.length) runs.push(run); run = []; } else run.push(p); }
+  if (run.length) runs.push(run);
+  const len = q => q.reduce((n, p, i) => i ? n + Math.hypot(p[0] - q[i - 1][0], p[1] - q[i - 1][1]) : 0, 0);
+  runs.filter(q => q.length >= 2 && len(q) >= 1).forEach((q, k) => landforms.push({ id: k ? `${w.id}-${'bcdef'[k - 1]}` : w.id, region: w.region, kind: w.kind, name: 'A terrace wall', polygon: ribbon(q, hw).map(p => [r2(p[0]), r2(p[1])]), col: 'full', reserved: true, thin: true }));
+}
 
 /* ------------------------------------------------------------ gates (ids, n and fromZone kept) */
 const gate = (id, name, n, x, y, dx, dy, door, district, fromZone, kind, h = 4) => {
@@ -295,6 +310,11 @@ for (const p of S) if (p.door === undefined) p.door = { x: p.x, y: p.y + 1 };
 // the hand-authored village (vale-village.json): statics that move to face the square, and the new cottages
 for (const [id, mv] of Object.entries(VV.staticMoves)) { const p = S.find(q => q.id === id); if (!p) { warn.push('static move: no static ' + id); continue; } Object.assign(p, mv); if (p.apron) p.apron = p.door && p.door.y < p.y ? { x: p.x - 1, y: p.y - 3, w: p.w + 2, h: 3 } : { x: p.x - 1, y: p.y + 1, w: p.w + 2, h: 3 }; }
 for (const ns of VV.newStatics) S.push(Object.assign(sightRow(ns.id), ns));
+// the hand-authored High orchard (vale-orchard.json): its sights moved onto the terraces, and its new places (Quince's
+// cottage, the press, the bell, the cider board, the bee boles in the bee wall, the cliff pippin). Notes stay in the file.
+const keepKeys = row => Object.fromEntries(Object.entries(row).filter(([k]) => ['x', 'y', 'w', 'h', 'door', 'col', 'walk', 'tall', 'district'].includes(k)));
+for (const [id, mv] of Object.entries(VO.staticMoves)) { const p = S.find(q => q.id === id); if (!p) { warn.push('orchard static move: no static ' + id); continue; } Object.assign(p, keepKeys(mv)); if (mv.walk) { p.walk = true; p.col = 'none'; } }
+for (const ns of VO.newStatics) S.push(Object.assign(sightRow(ns.id), keepKeys(ns), { id: ns.id }));
 // how deep a building stands on the ground (fix round 1): a house blocks its whole footprint, front wall to back wall, not
 // only the row along its front, so the feet stop where its walls stand and never step into the picture. The front row
 // (and so the foot it is drawn from, its door and its depth order) stays where it was; the rows behind it are added.
@@ -371,6 +391,13 @@ for (const [id, a] of Object.entries(VV.sections)) {
   while (keep.length && keep.length < need) { let best = null; for (const [x, y] of keep) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (why(nx, ny)) continue; const d = Math.hypot(nx - mx, ny - my); if (!best || d < best[2]) best = [nx, ny, d]; } if (!best) break; keep.push([best[0], best[1]]); taken.add(K(best[0], best[1])); }
   if (keep.length < need) warn.push(`village section ${id} has ${keep.length} cells, fewer than its ${need}`);
   sectionCells[id] = keep;
+}
+// the High orchard's 20 sections are hand-authored too, in eight fields (vale-orchard.json), laid as drawn (161 cells, was 84)
+for (const [id, a] of Object.entries(VO.sections)) {
+  const keep = [], why = (x, y) => { const c = C(x, y); return !c || !c.land ? 'sea' : c.fw ? 'water' : c.beach ? 'beach' : c.route ? 'route ' + c.route : c.st ? 'static ' + c.st : c.lf ? 'landform ' + c.lf : c.reserved ? 'reserved' : c.zone !== 4 ? 'zone ' + c.zone : taken.has(K(x, y)) ? 'taken' : S.some(p => p.door && Math.floor(p.door.x) === x && Math.floor(p.door.y) === y) ? 'a door' : ''; };
+  for (const [x, y] of a.cells) { const w = why(x, y); if (w) warn.push(`orchard section ${id} cell ${x},${y} is not free (${w})`); else { keep.push([x, y]); taken.add(K(x, y)); } }
+  if (keep.length < 4) warn.push(`orchard section ${id} has only ${keep.length} cells`);
+  sectionCells[id] = keep.sort((p, q) => p[1] - q[1] || p[0] - q[0]);
 }
 const fieldOf = Object.fromEntries(Object.entries(VV.sections).map(([id, a]) => [id, a.field]));
 const shapeOf = n => n >= 19 ? [5, 4] : n >= 14 ? [7, 2] : n >= 12 ? [4, 3] : n >= 9 ? [3, 3] : n >= 6 ? [3, 2] : [2, 2];
@@ -457,14 +484,18 @@ const greenLawn = (() => { const r = routes.find(q => q.id === 'plaza-loop'), P 
   for (let i = 0; i < n; i += 2) { const a = P[(i - 1 + n) % n], b = P[(i + 1) % n], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; let nx = -dy / l, ny = dx / l; if ((cx - P[i][0]) * nx + (cy - P[i][1]) * ny < 0) { nx = -nx; ny = -ny; } const h = r.widths[i] / 2; out.push([r2(P[i][0] + nx * h), r2(P[i][1] + ny * h)]); }
   return out; })();
 // Each field: its sections, how its locked land reads, and its one gate: the field cell beside walkable public ground nearest the authored hint.
+const ORCH_EDGE = { rows: 'long-grass', stair: 'long-grass', bank: 'meadow', walled: 'wall', pools: 'reeds', orchid: 'meadow', rise: 'meadow', thyme: 'bracken' };
 const EDGE = { wren: 'hedge', green: 'kerb', wood: 'bracken', mere: 'reeds', glass: 'wall', allot: 'long-grass', orchard: 'hedge-road', meadow: 'meadow', bridge: 'stile', light: 'drystone' };
-const fields = Object.entries(VV.fields).map(([id, f]) => {
-  const secs = Object.keys(VV.sections).filter(s => VV.sections[s].field === id), mine = new Set(secs.flatMap(s => sectionCells[s].map(c => K(c[0], c[1])))), cand = [];
-  for (const s of secs) for (const [x, y] of sectionCells[s]) for (const [dx, dy] of [[0, 1], [0, -1], [-1, 0], [1, 0]]) { const c = C(x + dx, y + dy); if (!c || mine.has(K(x + dx, y + dy)) || taken.has(K(x + dx, y + dy)) || !c.land || c.fw || c.st || c.lf || c.zone !== 0) continue; cand.push({ x, y, out: { x: x + dx, y: y + dy }, section: s, onRoute: !!c.route }); }
+const fieldRows = Object.entries(VV.fields).map(([id, f]) => [id, f, Object.keys(VV.sections).filter(s => VV.sections[s].field === id), 0])
+  // the High orchard's eight fields: locked land reads as rough grass, meadow, sedge, the old wall or heather; never a fence ring
+  .concat(Object.entries(VO.fields).map(([id, f]) => ['high-' + id, { name: f.name, gateHint: f.gate, edge: ORCH_EDGE[id] }, f.sections, 4]));
+const fields = fieldRows.map(([id, f, secs, zone]) => {
+  const mine = new Set(secs.flatMap(s => sectionCells[s].map(c => K(c[0], c[1])))), cand = [];
+  for (const s of secs) for (const [x, y] of sectionCells[s]) for (const [dx, dy] of [[0, 1], [0, -1], [-1, 0], [1, 0]]) { const c = C(x + dx, y + dy); if (!c || mine.has(K(x + dx, y + dy)) || taken.has(K(x + dx, y + dy)) || !c.land || c.fw || c.st || c.lf || c.zone !== zone) continue; cand.push({ x, y, out: { x: x + dx, y: y + dy }, section: s, onRoute: !!c.route }); }
   const hint = f.gateHint || null, score = q => (q.onRoute ? 0 : 2) + (hint ? Math.hypot(q.x - hint[0], q.y - hint[1]) : 0);
   const gate = hint && cand.length ? cand.sort((a, b) => score(a) - score(b))[0] : null;
   if (hint && !gate) warn.push('field ' + id + ' has no gate');
-  return { id, name: f.name, edge: EDGE[id] || 'hedge', sections: secs, gate: gate ? { x: gate.x, y: gate.y, out: gate.out, section: gate.section } : null };
+  return { id, name: f.name, edge: f.edge || EDGE[id] || 'hedge', sections: secs, gate: gate ? { x: gate.x, y: gate.y, out: gate.out, section: gate.section } : null };
 });
 for (const [id, a] of Object.entries(storyAnchors)) { const x = Math.floor(a.x), y = Math.floor(a.y); if (Object.entries(sectionCells).some(([, cs]) => cs.some(c => c[0] === x && c[1] === y))) warn.push(`story anchor ${id} stands in a field (${x},${y})`); }
 
@@ -491,7 +522,7 @@ const presentation = {
     { id: 'great-oak-clearing', route: 'great-oak-clearing', x: 15.3, y: 44.6, job: 'the Great Oak (draw a huge oak crown here, seen from the Forest arch)' },
     { id: 'mill-yard', route: 'mill-yard', x: 74.2, y: 65.8, job: 'the watermill and its turning wheel on the river' },
     { id: 'ruin-court', route: 'ruin-court', x: 22.3, y: 74.8, job: 'the chapel and old foundations' },
-    { id: 'cider-square', route: 'cider-square', x: 77.9, y: 37, job: 'barrels, the press' },
+    { id: 'cider-square', route: 'cider-square', x: 80.2, y: 37.4, shape: VO.plazas['cider-square'].poly.map(p => p.map(r2)), job: VO.presentation.plazas['cider-square'].job },
     { id: 'summit-cairn', route: 'summit-cairn', x: 50.6, y: 9.8, job: 'the cairn and the beacon' },
   ],
   fields,   // the village's sections grouped into fields: how locked land reads (edge) and the one way in (gate)
@@ -500,8 +531,13 @@ const presentation = {
     { id: 'coast-walk', route: 'coast-walk', from: 'east-mill', to: 'home-island', level: 6, note: 'estuary stepping stones to the lighthouse and quay' },
     { id: 'postern', route: 'ruins-circuit', from: 'southwest-ruins', to: 'home-island', level: 10, at: [35.8, 74.2], note: 'a gap in the ruin wall onto the cottage lane' },
     { id: 'lakeside-steps', route: 'lakeside-steps', from: 'orchard-headland', to: 'home-island', level: 14, at: [61, 38.4], note: 'steps down the orchard bank to the outlet footbridge' },
+    { id: 'cliff-steps', route: 'cliff-steps', from: 'orchard-headland', to: 'orchard-headland', level: 14, at: [86, 40.6], note: 'steps up the cliff from the cove to the pippin; the gate at their top is tied from the cliff side' },
     { id: 'falls-cave-stair', route: 'gorge-trail', from: 'north-headland', to: 'home-island', level: 18, at: [42.2, 25.9], note: 'behind the falls, down to the lake walk' },
   ],
+  // the High orchard's painted-only places (vale-orchard.json): the ring's eight perry pears and the Mother tree (painted trees,
+  // their trunks solid through the orchard painter), seats, lamps, the midsummer line the folly trail is mown along, the
+  // hurdle and the cliff gate, Quince's yard behind her cottage, the planting and the sight lines
+  orchard: { ring: VO.trees.ring, mother: VO.trees.mother, seats: VO.paintOnly.seats, lamps: VO.paintOnly.lamps, midsummerLine: VO.paintOnly.midsummerLine, hurdle: VO.paintOnly.hurdle, cliffGate: VO.paintOnly.cliffGate, yard: VO.hiddenGround, planting: VO.paintOnly.planting, sightLines: VO.presentation.sightLines, pierApron: VO.reservedPier.apron },
   landmarks: { lighthouse: 'ld-lighthouse', watchtower: 'ld-tower', folly: 'ld-folly', greatOak: 'great-oak-clearing', beacon: 'ld-beacon', millWheel: 'ld-mill', falls: 'ld-falls' },
   mist: 'Each closed region already gets mist from its polygon (94-garden-native-frontier.js).',
   millRace: millStretch.id,
