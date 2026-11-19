@@ -68,6 +68,8 @@ window.GardenPaintedDecor = (function () {
   };
   // fences stay full size so a row of them meets; everything else sits at the scale of the village's props
   const scaleOf = R => R.scale || (R.family === 'fences' ? 1 : .8);
+  // the size standard's height for a fence, hedge or wall (R.stand = [name, art height]): a vertical factor, so a fence is .6 H and a wall .8 H
+  const standOf = R => { if (!R || !R.stand || typeof gardenSizePx !== 'function') return 1; const [name, top] = R.stand; return +(gardenSizePx(name, name === 'wall' ? 0 : 1) / top).toFixed(3); };
   // Textures of another season or time of day are let go a little after the
   // village moves on (every decoration is redrawn then), so memory stays bounded.
   let lastMood = null;
@@ -97,12 +99,14 @@ window.GardenPaintedDecor = (function () {
     sweep(scene, mood); warmSoon();
     const h = K.handle(scene, o, 'decor:' + item.uid, { cls: 'decor' });
     let gone = false; const destroy = h.destroy; h.destroy = () => { gone = true; destroy(); };
-    const mainKey = 'dec|' + item.id + '|' + v + (side ? '|s' : '') + (tile ? '|t' + tile : '') + '|' + mood;
+    // fy: drawn to the size standard's height; a turned run is drawn deeper by 1/fy first, so after the factor it still spans its cell
+    const fy = flat ? 1 : standOf(R), box = side && fy !== 1 ? [P.box[0], P.box[1] - 28 * (1 / fy - 1), P.box[2], P.box[3]] : P.box;
+    const mainKey = 'dec|' + item.id + '|' + v + (side ? '|s' : '') + (tile ? '|t' + tile : '') + (fy !== 1 ? '|h' + fy : '') + '|' + mood;
     const paint = () => {
       if (gone) return; const t0 = performance.now();
-      const key = K.bake(scene, mainKey, P.box, B => P.draw(B, opts(K, item.id, season, night, v, side, false, tile)));
+      const key = K.bake(scene, mainKey, box, B => P.draw(B, Object.assign(opts(K, item.id, season, night, v, side, false, tile), side && fy !== 1 ? { depth: 28 / fy } : null)));
       const im = h.add(K.image(scene, key, fx, foot)); if (!im) return;
-      im.setScale(SC / 2); if (flip) im.setFlipX(true);
+      im.setScale(SC / 2, SC / 2 * fy); if (flip) im.setFlipX(true);
       if (!flat && K.castOf) K.castOf(scene, im, fx, foot, flip);   /* (its own shadow along the world's one light: no decoration stands on the grass without one) */
       (P.anim || []).forEach((a, i) => {
         const ak = K.bake(scene, 'dec|' + item.id + '|' + a.id + '|' + v + '|' + mood, a.box, B => a.draw(B, opts(K, item.id, season, night, v, side)));
@@ -114,8 +118,8 @@ window.GardenPaintedDecor = (function () {
     };
     if (scene.textures.exists('gpp|' + mainKey) || budget()) paint(); else { deferred++; queue.push(paint); pump(); }
     if (P.glow && night) { const hy = P.glow.halo == null ? null : foot + P.glow.halo * SC; K.glowPool(scene, h, fx, foot, Math.min(90, (P.glow.w || 70) * SC), hy); }   // like the village's lanterns: a pool and a halo, no extra light source (a cluster of them would wash the night out)
-    const [x0, y0, x1, y1] = P.box, bx0 = (flip ? -x1 : x0) * SC, bx1 = (flip ? -x0 : x1) * SC;
-    return K.finish(h, { x: fx + bx0, y: foot + y0 * SC, width: bx1 - bx0, height: (y1 - y0) * SC + 6 }, { x: fx, y: foot });
+    const [x0, y0, x1, y1] = box, bx0 = (flip ? -x1 : x0) * SC, bx1 = (flip ? -x0 : x1) * SC;
+    return K.finish(h, { x: fx + bx0, y: foot + y0 * SC * fy, width: bx1 - bx0, height: (y1 - y0) * SC * fy + 6 }, { x: fx, y: foot });
   }
   function ground(id) { const R = ROWS[id]; return !!(R && R.ground && !R.iconOnly); }
   function signature(item, sc, night) { const R = ROWS[item.id]; return R ? 'painted-decor-3|' + item.id + '|' + item.x + ',' + item.y + '|' + vOf(R, item.v) + (sideOf(R, item.r) ? 's' : '') + (!!item.flip !== turnFlip(R, item.r) ? 'f' : '') + '|' + sc.season + (night ? '|n' : '') : null; }

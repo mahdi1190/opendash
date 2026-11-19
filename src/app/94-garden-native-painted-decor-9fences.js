@@ -8,14 +8,19 @@ GardenPaintedDecor.add('fences', (function () {
   const WOOD = ['#9a7a54', '#7a5e40', '#c4a478', '#4a3a2c'], HAZEL = ['#9a7a4e', '#6a4e2e', '#c0a070', '#4a3420'];
   const STONE = ['#c9c1aa', '#a89f88', '#e4ddc8', '#867d69'], RUIN = ['#c4bca4', '#a39a82', '#ddd6c0', '#7e7662'], MOSS = ['#7d8f4e', '#a3b06a', '#5f723c'];
   const IRON = ['#2f3438', '#1e2224', '#5a6066'], DARK = ['#3a3a42', '#22222a', '#5a5a66'];
-  const D = 28;                                     // how far up the screen the far end of a turned run sits (one cell deep)
+  let D = 28;                                       // how far up the screen the far end of a turned run sits (one cell deep; a run drawn taller or lower is drawn with D/fy, so it still meets the next cell)
+  // The size standard (GARDEN_SIZE, docs/dev/PAINT_KIT.md "Scale"): [what it is, the art's height above its foot in px]. The world draws the
+  // piece that tall in H by a vertical factor (a row still meets its neighbours across and along the run). The gate is drawn by the picket's factor,
+  // so it stands in a picket fence; the bamboo screen and the kerb keep their size (a screen, a kerb).
+  const STAND = { 'picket-fence': ['fence', 34], 'wattle-fence': ['fence', 34], 'iron-railings': ['fence', 37], 'box-hedge': ['hedge', 37], 'rw-fence-hurdle': ['fence', 34], 'rw-fence-rope': ['fence', 33],
+    'dc-crooked-fence': ['fence', 40], 'dc-cottage-gate': ['fence', 34], 'stone-wall': ['wall', 27], 'dc-old-wall': ['wall', 28] };
   // the side view's frame: posts at the near and far end; f(t) gives the point t (0 near .. 1 far) along the run
   const run = t => [0, -t * D];
   const sidePosts = (B, h, pal, w) => { B.post(0, -D - h, -D, w * .85, pal).post(0, -h, 0, w, pal); };
   const tuftsAlong = (B, r, o, n) => { for (let i = 0; i < (n || 3); i++) B.tufts(r, (r() - .5) * 8, -i * D / ((n || 3) - 1) + 1, 8, 3, o.season); };
   const sideShadow = (B) => { B.shadow(2, -D / 2, 9, D / 2 + 4, .18); };
   const PICKET = [['#f4f0e4', '#cfc8b4', '#ffffff'], ['#a8c8e0', '#7a9ab8', '#d0e4f0'], ['#b4c8a8', '#8aa080', '#d4e2c8']];
-  return {
+  const rows = {
     'picket-fence': { v: 3, box: [-28, -40, 28, 6], draw(B, o) {
       const p = PICKET[o.v], r = o.r; B.shadow(0, 1, 26, 3, .2).beam(-26, -26, 52, 3, p).beam(-26, -12, 52, 3, p);
       for (let x = -23; x <= 23; x += 7.6) B.f(B.poly([[x - 2.6, 0], [x - 2.6, -30], [x, -34], [x + 2.6, -30], [x + 2.6, 0]]), p[0]).f(B.rect(x + 1, -30, 1.6, 30), p[1], .7).f(B.rect(x - 2.6, -30, .9, 30), p[2], .7);
@@ -137,6 +142,9 @@ GardenPaintedDecor.add('fences', (function () {
       tuftsAlong(B, r, o);
     } } },
   };
+  // o.depth: the run's depth the world asks for (D / fy), so a turned run drawn at the standard's height still reaches the next cell
+  for (const id of Object.keys(rows)) { const R = rows[id]; if (STAND[id]) R.stand = STAND[id]; const s = R.side; if (!s) continue; const d = s.draw; s.draw = (B, o) => { D = o && o.depth || 28; try { d(B, o); } finally { D = 28; } }; }
+  return rows;
   function OAK() { return ['#6a4a2a', '#4e3620', '#8a6642', '#3a2814']; }
   function H_cord(B, d) { B.s(d, '#8a7650', 2.6, .9).s(d, '#d8c48e', 1.8).s(d, '#f0e0b0', .5, .7); }
   function drywall(B, o, st, ruin) {

@@ -43,33 +43,41 @@
   const regionKind = (x, y) => { const r = typeof gardenIslandRegionAt === 'function' ? gardenIslandRegionAt(x + .5, y + .5) : null, id = r ? String(r.id) + ' ' + String(r.theme || '') : ''; return /mountain|north-headland/.test(id) ? 'wall' : /orchard/.test(id) ? 'hedge' : 'rail'; };
 
   const lighten = (c) => { const n = parseInt(c.slice(1), 16), f = v => Math.min(255, Math.round(v + (255 - v) * .25)); return '#' + [n >> 16, (n >> 8) & 255, n & 255].map(f).map(v => v.toString(16).padStart(2, '0')).join(''); };
-  // a dry-stone wall along one cell edge: (x0, y0) the run's start, along x (horiz) or along y, len px
-  function wallRun(B, r, P, x0, y0, horiz, len) {
-    const stone = ['#a8a090', '#8e8678', '#bdb5a3', '#7a7366'], n = Math.max(3, Math.round(len / 6));
+  // Heights from the size standard (GARDEN_SIZE in 94-garden-0camera.js, docs/dev/PAINT_KIT.md "Scale"): a fence or hedge .55 H, a field wall .8 H.
+  // These are painted into the ground, so a run along a plot's north edge stands far enough inside the plot that its top meets the edge:
+  // you stand behind it with nothing of it drawn over your feet.
+  const RUN_H = () => ({ rail: gardenSizePx('fence', .5), hedge: gardenSizePx('hedge', .5), wall: gardenSizePx('wall', 0) });
+  // a dry-stone wall along one cell edge: (x0, y0) the run's foot, along x (horiz) or along y, len px, hh tall
+  function wallRun(B, r, P, x0, y0, horiz, len, season, hh) {
+    hh = hh || 10; const stone = ['#a8a090', '#8e8678', '#bdb5a3', '#7a7366'], n = Math.max(3, Math.round(len / 7)), rows = Math.max(2, Math.round((hh - 3) / 4.6)), cy = k => y0 - 2.6 - k * (hh - 5) / rows;
     if (horiz) {
       B.s(`M${x0} ${y0 + 1.5}h${len}`, '#2e3420', 4, .14);
-      B.f(B.rr(x0 - 1, y0 - 8, len + 2, 9, 3), stone[3]);
-      for (let k = 0; k < n; k++) { const sx = x0 + (k + .5) * len / n + (r() - .5) * 1.5; B.f(B.ell(sx, y0 - 2.5, len / n * .55, 2.6), stone[Math.floor(r() * 3)]); }
-      for (let k = 0; k < n; k++) { const sx = x0 + (k + 1) * len / n - len / n * .5; B.f(B.ell(sx, y0 - 6.2, len / n * .5, 2.3), stone[Math.floor(r() * 3)]); }
-      for (let k = 0; k <= n; k++) { const sx = x0 + k * len / n + (r() - .5); B.f(B.ell(sx, y0 - 8.6, 2.6, 1.8), stone[2]).f(B.ell(sx - .6, y0 - 9.2, 1.4, .8), '#d8d2c2', .8); }   // the coping
-      if (r() < .35) B.f(B.blob(r, x0 + r() * len, y0 - 7, 3, 1.4, 6, .5), '#a8b06a', .7);   // lichen
+      B.f(B.rr(x0 - 1, y0 - hh + 1, len + 2, hh, 3), stone[3]);
+      for (let k = 0; k < rows; k++) for (let i = 0; i < n; i++) { const sx = x0 + (i + (k & 1 ? .95 : .5)) * len / n + (r() - .5) * 1.5, sy = cy(k); if (sx > x0 + len + 1) continue; B.f(B.ell(sx + .6, sy + .9, len / n * .52, 2.5), '#5e584e', .45).f(B.ell(sx, sy, len / n * .52, 2.5), stone[Math.floor(r() * 3)]).f(B.ell(sx - 1, sy - 1, len / n * .25, .9), '#d8d2c2', .45); }
+      for (let k = 0; k <= n; k++) { const sx = x0 + k * len / n + (r() - .5); B.f(B.ell(sx, y0 - hh + 1.4, 2.8, 2), stone[2]).f(B.ell(sx - .6, y0 - hh + .8, 1.5, .8), '#e2dccc', .8); }   // the coping, on edge
+      if (r() < .5) B.f(B.blob(r, x0 + r() * len, y0 - hh * (.3 + r() * .5), 3.4, 1.6, 6, .5), '#a8b06a', .7);   // lichen
+      if (season !== 'winter') B.f(B.blob(r, x0 + len * .5, y0 - .5, len * .55, 2.2, 8, .4), P.lawnLo || '#5a7a3a', .55);   // grass grown up its foot
     } else {
       B.s(`M${x0 + 1.5} ${y0}v${len}`, '#2e3420', 4, .14);
-      for (let t = 0; t <= len; t += 4.2) { const sy = y0 + t; B.f(B.ell(x0 + (r() - .5), sy - 3, 3.4, 4.2), stone[Math.floor(r() * 3)]).f(B.ell(x0 - .4, sy - 6.6, 2.6, 1.6), stone[2]); }
+      B.f(B.rr(x0 - 4, y0 - hh + 2, 8, len + hh - 2, 3), stone[3]);
+      for (let t = 0; t <= len; t += 4.4) { const sy = y0 + t; for (let k = 0; k < rows; k++) B.f(B.ell(x0 + (k & 1 ? .8 : -.8) + (r() - .5), sy - 2.6 - k * (hh - 5) / rows, 3.6, 2.6), stone[Math.floor(r() * 3)]); B.f(B.ell(x0 - .4, sy - hh + 1.6, 2.6, 1.6), stone[2]); }
     }
   }
-  // a clipped field hedge (hawthorn): haws in autumn, may blossom in spring
-  function hedgeRun(B, r, P, x0, y0, horiz, len, season) {
-    const leaf = season === 'autumn' ? ['#5e6a2e', '#7a7a34', '#8e5a2a'] : season === 'winter' ? ['#4a5236', '#5e6644', '#6e5a40'] : ['#3e6230', '#527a3a', '#6a9244'];
+  // a clipped field hedge (hawthorn): haws in autumn, may blossom in spring; hh tall
+  function hedgeRun(B, r, P, x0, y0, horiz, len, season, hh) {
+    hh = hh || 10; const leaf = season === 'autumn' ? ['#5e6a2e', '#7a7a34', '#8e5a2a'] : season === 'winter' ? ['#4a5236', '#5e6644', '#6e5a40'] : ['#3e6230', '#527a3a', '#6a9244'];
     if (horiz) {
       B.s(`M${x0} ${y0 + 1.5}h${len}`, '#2e3420', 5, .16);
-      B.f(B.rr(x0 - 1, y0 - 9, len + 2, 10, 4), leaf[0]);
-      for (let t = 0; t < len; t += 5) B.f(B.blob(r, x0 + t + 2.5, y0 - 8 + r() * 2, 4.2, 3, 7, .45), leaf[1 + (r() < .3 ? 1 : 0)], .95);
-      for (let t = 0; t < len; t += 7) B.f(B.blob(r, x0 + t + r() * 4, y0 - 10 + r() * 2, 2.4, 1.6, 6, .5), lighten(leaf[1]), .7);
-      if (season !== 'winter' && r() < .4) B.f(B.circ(x0 + r() * len, y0 - 6, 1), season === 'autumn' ? '#b03a2a' : '#f4f0e0', .9);
+      B.f(B.rr(x0 - 1, y0 - hh + 1, len + 2, hh, 5), leaf[0]);
+      for (let y = y0 - 3; y > y0 - hh + 3; y -= 4.5) for (let t = 0; t < len; t += 5) B.f(B.blob(r, x0 + t + 2.5 + (r() - .5) * 2, y + (r() - .5) * 2, 4.2, 3, 7, .45), leaf[(y < y0 - hh * .55 ? 1 : 0) + (r() < .3 ? 1 : 0)], .9);
+      for (let t = 0; t < len; t += 6) B.f(B.blob(r, x0 + t + r() * 4, y0 - hh + 1.5 + r() * 2, 2.8, 1.7, 6, .5), lighten(leaf[1]), .75);   // the lit, clipped top
+      B.f(B.rr(x0 - 1, y0 - 4, len + 2, 4, 2), 'rgba(24,36,16,.28)');   // the shade at its foot
+      if (season !== 'winter') for (let i = 0; i < 2; i++) if (r() < .45) B.f(B.circ(x0 + r() * len, y0 - hh * (.3 + r() * .5), 1), season === 'autumn' ? '#b03a2a' : '#f4f0e0', .9);
     } else {
       B.s(`M${x0 + 1.5} ${y0}v${len}`, '#2e3420', 5, .16);
-      for (let t = 0; t <= len; t += 4.5) B.f(B.blob(r, x0, y0 + t - 5, 4.6, 5, 7, .45), leaf[t % 9 < 4.5 ? 0 : 1], .95);
+      B.f(B.rr(x0 - 4.8, y0 - hh + 2, 9.6, len + hh - 2, 4), leaf[0]);
+      for (let t = 0; t <= len; t += 4.5) for (let y = -3; y > -hh + 3; y -= 5) B.f(B.blob(r, x0 + (r() - .5) * 2, y0 + t + y, 4.4, 3.2, 7, .45), leaf[y < -hh * .55 ? 1 : 0], .9);
+      for (let t = 0; t <= len; t += 5) B.f(B.blob(r, x0 - .5, y0 + t - hh + 2.5, 3, 1.8, 6, .5), lighten(leaf[1]), .7);
     }
   }
   // the sign on a locked plot's fence: a small board on a post saying what it needs, its level or (once you have that) its price
@@ -85,39 +93,46 @@
     cx.fillStyle = '#3e2c1a'; cx.textBaseline = 'middle'; cx.fillText(txt, tx, y0 + 6.4); cx.restore();
   }
   function fence(B, r, P, edges, W, season) {
-    const cw = W.cellW, ch = W.cellH, lv = level(), wood = ['#8a7454', '#a88e66', '#5e4c36'];
-    const fronts = [];
+    const cw = W.cellW, ch = W.cellH, lv = level(), wood = ['#8a7454', '#a88e66', '#5e4c36'], RH = RUN_H();
+    const fronts = [], inset = 3, drawn = new Set();
+    for (const [x, y, side, nx, ny] of edges) if (locked(x, y, lv) && !locked(nx, ny, lv)) drawn.add(x + ',' + y + side);
+    // a north run's foot: inside the plot by its height, so its top meets the plot's edge (it is painted into the ground; you stand behind it)
+    const northFoot = kind => Math.min(ch - 2, RH[kind] + 1);
+    // a run up the screen starts at the north run's foot where the cell has one, so no post stands out past the corner
+    const sideFrom = (x, y, kind) => drawn.has(x + ',' + y + 'n') ? northFoot(kind) : 0;
     // every run's shadow first, along the world's one light (the kit lays them in one soft fill), so no fence, wall or hedge stands on the grass without one
     if (window.GardenPaintGround && GardenPaintGround.castRuns) {
       const runs = [];
       for (const [x, y, side, nx, ny] of edges) {
         if (!locked(x, y, lv) || locked(nx, ny, lv)) continue;
-        const x0 = x * cw, y0 = W.sky + y * ch, kind = regionKind(x, y), h = kind === 'wall' ? 13 : kind === 'hedge' ? 15 : 12;
-        if (side === 's' || side === 'n') { const yy = side === 's' ? y0 + ch - 3 : y0 + 9; runs.push([x0, yy, x0 + cw, yy, h]); }
-        else { const xx = side === 'e' ? x0 + cw - 3 : x0 + 3; runs.push([xx, y0 - (kind === 'wall' || kind === 'hedge' ? 4 : 0), xx, y0 + ch, h]); }
+        const x0 = x * cw, y0 = W.sky + y * ch, kind = regionKind(x, y), h = RH[kind] * (kind === 'rail' ? .9 : 1.05);
+        if (side === 's' || side === 'n') { const yy = side === 's' ? y0 + ch - inset : y0 + northFoot(kind); runs.push([x0, yy, x0 + cw, yy, h]); }
+        else { const xx = side === 'e' ? x0 + cw - inset : x0 + inset; runs.push([xx, y0 + sideFrom(x, y, kind), xx, y0 + ch, h]); }
       }
       GardenPaintGround.castRuns(B.cx, runs, { a: .26 });
     }
     for (const [x, y, side, nx, ny] of edges) {
       if (!locked(x, y, lv) || locked(nx, ny, lv)) continue;   // (a plot that is yours, or two locked plots side by side: no fence between)
-      const inset = 3, x0 = x * cw, y0 = W.sky + y * ch, kind = regionKind(x, y);
+      const x0 = x * cw, y0 = W.sky + y * ch, kind = regionKind(x, y), hh = RH[kind], from = side === 'e' || side === 'w' ? sideFrom(x, y, kind) : 0;
       if (side === 's') fronts.push([x, y]);
       if (kind === 'wall' || kind === 'hedge') {
         const run = kind === 'wall' ? wallRun : hedgeRun;
-        if (side === 's' || side === 'n') run(B, r, P, x0, side === 's' ? y0 + ch - inset : y0 + inset + 6, true, cw, season);
-        else run(B, r, P, side === 'e' ? x0 + cw - inset : x0 + inset, y0, false, ch, season);
+        if (side === 's' || side === 'n') run(B, r, P, x0, side === 's' ? y0 + ch - inset : y0 + northFoot(kind), true, cw, season, hh);
+        else run(B, r, P, side === 'e' ? x0 + cw - inset : x0 + inset, y0 + from, false, ch - from, season, hh);
         continue;
       }
+      // post and rail: posts .55 H, two rails, the top one weathered paler
+      const pw = 3, rails = [hh * .36, hh * .74];
       if (side === 's' || side === 'n') {
-        const yy = side === 's' ? y0 + ch - inset : y0 + inset + 6;
-        B.s(`M${x0} ${yy + 1.5}h${cw}`, '#2e3420', 3, .12);
-        for (const h of [4, 8]) B.s(`M${x0 - 1} ${yy - h}h${cw + 2}`, wood[r() < .5 ? 0 : 1], 1.5, .95);
-        for (let t = 0; t <= cw; t += cw / 3) { const px = x0 + t + (r() - .5) * 1.2; B.f(B.rect(px - 1.2, yy - 10.5, 2.4, 10.5), wood[2]).f(B.rect(px - 1.2, yy - 10.5, 1, 10.5), wood[1], .7); }
+        const yy = side === 's' ? y0 + ch - inset : y0 + northFoot(kind);
+        B.s(`M${x0} ${yy + 1.5}h${cw}`, '#2e3420', 3.4, .14);
+        for (const h of rails) B.s(`M${x0 - 1} ${yy - h}h${cw + 2}`, wood[h > hh * .5 ? 1 : 0], 2, .95).s(`M${x0 - 1} ${yy - h - .7}h${cw + 2}`, '#c8b08a', .6, .55);
+        for (let t = 0; t <= cw; t += cw / 3) { const px = x0 + t + (r() - .5) * 1.2, ph = hh + (r() - .5) * 1.6; B.f(B.rect(px - pw / 2, yy - ph, pw, ph), wood[2]).f(B.rect(px - pw / 2, yy - ph, 1.1, ph), wood[1], .7).f(B.ell(px, yy - ph, pw / 2, .8), '#b49a72', .9); if (r() < .6) B.f(B.blob(r, px + .5, yy, 3.4, 1.6, 6, .5), P.lawnLo || '#5a7a3a', .7); }
       } else {
-        const xx = side === 'e' ? x0 + cw - inset : x0 + inset;
-        B.s(`M${xx + 1.5} ${y0}v${ch}`, '#2e3420', 3, .12);
-        B.s(`M${xx} ${y0 - 4}v${ch}M${xx} ${y0 - 8}v${ch}`, wood[0], 1.4, .9);
-        for (let t = 0; t <= ch; t += ch / 2) { const py = y0 + t; B.f(B.rect(xx - 1.2, py - 10.5, 2.4, 10.5), wood[2]).f(B.rect(xx - 1.2, py - 10.5, 1, 10.5), wood[1], .7); }
+        const xx = side === 'e' ? x0 + cw - inset : x0 + inset, ys = y0 + from, len = ch - from;
+        B.s(`M${xx + 1.5} ${ys}v${len}`, '#2e3420', 3.4, .14);
+        for (const h of rails) B.s(`M${xx} ${ys - h}v${len}`, wood[0], 1.8, .9);
+        for (let t = 0; t <= len + .1; t += len / 2) { const py = ys + t, ph = hh + (r() - .5) * 1.6; B.f(B.rect(xx - pw / 2, py - ph, pw, ph), wood[2]).f(B.rect(xx - pw / 2, py - ph, 1.1, ph), wood[1], .7).f(B.ell(xx, py - ph, pw / 2, .8), '#b49a72', .9); }
       }
       if (r() < .3) { const px = x * cw + r() * cw, py = W.sky + (side === 's' ? y + 1 : y) * ch; B.f(B.blob(r, px, py - 1, 4 + r() * 3, 2, 6, .5), P.lawnLo, .7); }
     }
@@ -133,7 +148,7 @@
     plotsMemo = null;
     for (const p of plots()) {
       if (!p.edges.length) continue;
-      const xs = p.edges.map(e => e[0]), ys = p.edges.map(e => e[1]), bb = [Math.min(...xs) * cw - 16, W.sky + Math.min(...ys) * ch - 30, (Math.max(...xs) + 1) * cw + 8, W.sky + (Math.max(...ys) + 1) * ch + 8];
+      const xs = p.edges.map(e => e[0]), ys = p.edges.map(e => e[1]), bb = [Math.min(...xs) * cw - 16, W.sky + Math.min(...ys) * ch - 44,(Math.max(...xs) + 1) * cw + 8, W.sky + (Math.max(...ys) + 1) * ch + 8];
       add(bb, 4100 + p.cells.length, (B, r) => fence(B, r, P, p.edges, W, season));
     }
     // meadow flowers in the free valley grass: drifts, each drift one colour
