@@ -466,8 +466,13 @@
     const tower = L.stat('ld-tower'), walk = L.routes.get('pond-walk');
     if (tower && tower.door && walk) {
       const pts = [[tower.x - .75, tower.y - .1], [tower.x - .7, tower.y + .75], [tower.x - .2, tower.y + 1.4], [tower.door.x, tower.y + 1.6]].map(L.pt);
-      add(C.kit.bboxOf(pts, 40), 79, (B, r) => {
-        V.strokePts(B, pts, '#6e5e3e', 30, .3); V.strokePts(B, pts, '#b8a478', 24, .9); V.strokePts(B, pts, '#d4c196', 16, .85); V.strokePts(B, pts, '#e2d2a8', 6, .5, -2, -1);
+      // (19 Nov 2026, round 3 fixes: it starts on the pond walk itself, at the walk's nearest point, and is laid by the shared
+      //  path kit as a worn-earth trail with soft trodden edges: a pale ribbon with a bright edge read as a stub ending in grass)
+      { const wp = L.routePts('pond-walk'); let best = null, bd = 1e9; for (let i = 1; i < wp.length; i++) { const a = wp[i - 1], b = wp[i], dx = b.x - a.x, dy = b.y - a.y, t = Math.max(0, Math.min(1, ((pts[0].x - a.x) * dx + (pts[0].y - a.y) * dy) / ((dx * dx + dy * dy) || 1))), q = { x: a.x + dx * t, y: a.y + dy * t }, d = Math.hypot(q.x - pts[0].x, q.y - pts[0].y); if (d < bd) { bd = d; best = q; } } if (best && bd < 3 * L.cw) pts.unshift(best); }
+      const kitWay = window.GardenPaintGround && GardenPaintGround.paths ? (bb => GardenPaintGround.paths({ routes: [{ id: 'tower-way', kind: 'earth', width: 20, points: pts.map(p => ({ x: p.x, y: p.y })) }], season: C.season, kindAt: () => 'oldwood', box: { x: bb[0], y: bb[1], w: bb[2] - bb[0], h: bb[3] - bb[1] } }))(C.kit.bboxOf(pts, 40)) : null;
+      if (kitWay && kitWay.length) for (const o of kitWay) add(o.bb, o.seed || 79, (B, r, chunkBB) => o.draw(B, r, chunkBB || o.bb), o.clip ? { clip: o.clip } : undefined);
+      else add(C.kit.bboxOf(pts, 40), 79, (B, r) => {
+        V.strokePts(B, pts, '#6e5e3e', 30, .3); V.strokePts(B, pts, '#b8a478', 24, .9); V.strokePts(B, pts, '#d4c196', 16, .85);
         for (let k = 0; k < 18; k++) { const t = r(), i = Math.min(2, Math.floor(t * 3)), a = pts[i], b = pts[i + 1], f = t * 3 - i; B.f(B.blob(r, a.x + (b.x - a.x) * f + (r() - .5) * 14, a.y + (b.y - a.y) * f + (r() - .5) * 8, 3 + r() * 3, 1.4 + r(), 6, .5), r() < .5 ? '#7d8f4e' : '#9a8a5e', .55); }
       });
     }
