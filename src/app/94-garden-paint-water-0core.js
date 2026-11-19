@@ -1025,6 +1025,35 @@ window.GardenPaintWater = (function () {
       mists.push({ x: pool.x + 30, y: pool.y + 30, rx: width * 1.6, ry: 18, n: 6, a: .26, speed: .03, drift: 70, rise: 4, depth: -9583 });
       S.fallsPool = pool;
     }
+    // The gorge tumbles to the falls: over its last stretch above the lip it drops down a few rock steps, each a ledge of
+    // wet boulders across the channel with glassy water held above it and white water spilling below, so the falls is the
+    // last and tallest of a run of drops. Driven by the gorge's line and the falls' lip (gardenFallsWater).
+    const gl = M.lines.gorge, fwl = data.version >= 5 && typeof gardenFallsWater === 'function' ? ok(() => gardenFallsWater(data)) : null;
+    if (gl && fwl && fwl.lip) {
+      const lip = nearestOn(gl, cx(fwl.lip.x), cy(fwl.lip.y)), r = rng(hash('cascade'));
+      for (const back of [44, 104, 176]) {
+        const s = lip.s - back; if (s < 30) continue;
+        const q = at(gl, s), ang = Math.atan2(q.ty, q.tx), nx = -q.ty, ny = q.tx, half = gl.hw * Math.hypot(nx * W.cellW, ny * W.cellH) * 1.08;
+        const wb = M.waters.find(w => w.kind === 'gorge' && inside(q.x, q.y, w.pts)); if (!wb) continue;
+        const tongues = []; for (let k = 0, nT = 4 + Math.floor(r() * 3); k < nT; k++) tongues.push([((k + .5) / nT - .5) * 2 * half * .95, half / nT * (.7 + r() * .5), 14 + r() * 16]);
+        const stones = []; for (let i = 0, nS = 5 + Math.floor(r() * 3); i <= nS; i++) { const t = i / nS - .5; stones.push([t * 2 * half + (r() - .5) * 4, (r() - .5) * 4, 4.5 + r() * 4.5, r()]); }
+        let clip = null; const box = { x: q.x - half - 50, y: q.y - half - 50, w: half * 2 + 100, h: half * 2 + 100 };
+        extras.push({ b: box, draw(c, C) {
+          if (!clip) { clip = new Path2D(); clip.moveTo(wb.pts[0].x, wb.pts[0].y); for (const z of wb.pts) clip.lineTo(z.x, z.y); clip.closePath(); }
+          c.save(); c.clip(clip); c.translate(q.x, q.y); c.rotate(ang);
+          // glassy held water above the ledge, a bright sky line along its brink, then the white spill below it
+          c.globalAlpha = .32; c.fillStyle = C.deep; c.fillRect(-34, -half * 1.4, 30, half * 2.8);
+          c.globalAlpha = .5; c.fillStyle = C.skyHi; c.fillRect(-6, -half * 1.2, 1.6, half * 2.4);
+          // the step's wet face just below the ledge, then the white spill off it, broken into tongues across the channel
+          c.globalAlpha = .45; c.fillStyle = '#28363a'; c.fillRect(3, -half * 1.3, 5, half * 2.6);
+          const g = c.createLinearGradient(7, 0, 30, 0); g.addColorStop(0, 'rgba(250,252,250,.9)'); g.addColorStop(.4, 'rgba(240,248,246,.42)'); g.addColorStop(1, 'rgba(240,248,246,0)');
+          c.globalAlpha = 1; c.fillStyle = g; for (let k = 0; k < tongues.length; k++) { const [y0, w0, l0] = tongues[k]; c.beginPath(); c.ellipse(7 + l0 * .5, y0, l0 * .5 + 2, w0, 0, 0, Math.PI * 2); c.fill(); }
+          // the ledge itself: wet boulders, lit from the upper left, darker downstream where the water pours off them
+          for (const [lat, dx, rr, t] of stones) { const x = dx, y = lat; c.fillStyle = '#2e2b25'; c.beginPath(); c.ellipse(x + 2, y + 1.5, rr, rr * .7, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = t < .5 ? '#55503f' : '#635d4c'; c.beginPath(); c.ellipse(x, y, rr * .9, rr * .62, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = '#9a927c'; c.globalAlpha = .6; c.beginPath(); c.ellipse(x - rr * .3, y - rr * .22, rr * .42, rr * .22, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; }
+          c.restore();
+        } });
+      }
+    }
     // Morning and evening mist lying on the Mere.
     if (S.tod === 'dawn' || S.tod === 'dusk') { const w = M.waters.find(w => w.kind === 'mere'); if (w) mists.push({ x: w.bounds.x + w.bounds.w / 2, y: w.bounds.y + w.bounds.h / 2, rx: w.bounds.w * .32, ry: w.bounds.h * .25, n: 9, a: .3, speed: .025, drift: 60, rise: 0 }); }
     return { extras, foams, mists };
