@@ -1337,10 +1337,11 @@ window.GardenNativeWorld = (function () {
       if (!show) { silhouetteVisible = false; xray.target.setVisible(false); return; }
       const current = playerInner._nativePlayerCurrent, body = current ? current.node : playerInner.firstChild;
       if (!body) { silhouetteVisible = false; xray.target.setVisible(false); return; }
-      const source = current ? current.source : playerInner.innerHTML;
+      // (behind a building the outline is dark slate: cream vanished on the lighthouse's white bands; cream under leaves)
+      const base = current ? current.source : playerInner.innerHTML, tone = propBehind > 0 ? 0x2e3a52 : 0xfff4d5, source = base + '|' + tone;
       if (silhouetteSource !== source) {
-        silhouetteSource = source; const shape = silhouetteBody(source, body);
-        silhouetteNode._uncache(false, true); silhouetteInk.clear().fillStyle(0xfff4d5, 1);
+        silhouetteSource = source; const shape = silhouetteBody(base, body);
+        silhouetteNode._uncache(false, true); silhouetteInk.clear().fillStyle(tone, 1);
         for (const points of shape.polygons) silhouetteInk.fillPoints(points, true, true);
         silhouetteNode.nativeBounds = shape.bounds;
         // The existing native cache queue admits one small capture when its
