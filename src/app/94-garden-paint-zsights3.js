@@ -256,7 +256,8 @@
      the plank house with its shingle roof among the limbs, a rope ladder down to the roots, a lantern on a cord from a
      branch (lit at night, swinging a little) and a pennant on the ridge ---------- */
   const TX = -12, DECK = -H * 2.35;
-  A['ld-treehouse'] = { box: [-130, -262, 126, 14], lit: true, lights: [[TX - 62, DECK - 30, 70], [TX + 26, DECK - 26, 80]],
+  // (its door is the rope ladder's foot: the rooms' way in stands there as a worn threshold, not a second little door picture)
+  A['ld-treehouse'] = { box: [-130, -262, 126, 14], door: { dx: TX - 43, dy: 0 }, lit: true, lights: [[TX - 62, DECK - 30, 70], [TX + 26, DECK - 26, 80]],
     seat: { kind: 'turf', w: 64, front: 18, back: 18, stones: 0, box: [-110, -26, 110, 36], extra(B, r) { roots(B, r, 8, TX - 24, TX + 24, 64, 'summer'); litter(B, r, 70, 18, 22, 'summer'); } },
     parts: [
       { id: 'lantern', box: [-8, -2, 8, 30], at: [TX - 62, DECK - 54], draw(B, o) { B.s('M0 0V14', '#c8b080', .9); B.f('M-4 14h8l-1 11h-6z', IRON[0]).f('M-3.2 15h6.4l-.8 9h-4.8z', o.night ? B.rad(0, 19.5, 6, [[0, '#fffbe6'], [.5, '#ffe08a'], [1, '#e8a44a']]) : '#8aa4a6').f('M-5 14Q0 9 5 14Z', IRON[1]).f(B.rect(-1.4, 25, 2.8, 1.6), IRON[0]); },
@@ -350,6 +351,238 @@
     crown(B, r, [[-74, -150, 24, 15], [68, -146, 22, 14], [-30, -214, 22, 14], [32, -214, 22, 14]], s, { litX: -20, litY: -200 });
     mossOn(B, r, -36, top * .3, 22, 8, s); for (let i = 0; i < 6; i++) B.f(B.blob(r, 28 + r() * 6, top * (.2 + r() * .5), 3, 4, 6, .5), s === 'winter' ? '#dfe8e4' : '#6f8446', .8);
     if (s !== 'winter') { ferns(B, r, -34, 2, 18, 4, s); ferns(B, r, 34, 2, 18, 4, s); }
-    B.tufts(r, -50, 4, 10, 6, grass(s), 7).tufts(r, 52, 4, 10, 6, grass(s), 7);
+    B.tufts(r, -50, 1, 10, 6, grass(s), 7).tufts(r, 52, 1, 10, 6, grass(s), 7);
+  } };
+
+  /* ---------- the warren bank: a long turf bank on the high flats, gorse on its crest, sandy scrapes, burrow mouths with
+     their spoil fanned out on the turf below; a rabbit comes out to sit, and another looks out of its hole ---------- */
+  const BURROWS = [[-44, -7], [-14, -15], [16, -12], [46, -6]];
+  const rabbit = (B, look) => {
+    const c = ['#8a7a62', '#6e604c', '#b4a488', '#f2ece0'];
+    if (look) { B.f(B.ell(0, -3, 4.4, 3.6), c[0]).f(B.ell(-1.4, -3.8, 2, 1.4), c[2], .7).f(B.ell(-1.6, -8.6, 1.1, 3.6), c[0]).f(B.ell(1.4, -8.4, 1.1, 3.4), c[1]).f(B.ell(-1.6, -8.6, .5, 2.6), '#d8a890', .7).f(B.circ(-1.8, -3.6, .7), '#1a1008').f(B.circ(-4, -2.6, .5), '#3a2a20'); return; }
+    B.f(B.ell(1.6, -4, 5.6, 4.4), c[0]).f(B.ell(.4, -5.2, 3.6, 2.4), c[2], .6).f(B.circ(6.6, -3.6, 1.8), c[3]);
+    B.f(B.ell(-3.4, -7.6, 3.2, 2.8), c[0]).f(B.ell(-4, -8.4, 1.6, 1.2), c[2], .7);
+    B.f(B.ell(-3, -13, 1, 3.6), c[0]).f(B.ell(-1.4, -12.6, 1, 3.4), c[1]).f(B.ell(-3, -13, .45, 2.6), '#d8a890', .7);
+    B.f(B.circ(-4.6, -8, .7), '#1a1008').f(B.circ(-6.4, -7.2, .5), '#3a2a20').f(B.ell(-1, -.6, 3, 1), c[1]);
+  };
+  A['ld-warren'] = { box: [-80, -46, 82, 4],
+    seat: { kind: 'turf', w: 128, front: 14, back: 10, stones: 0, way: false, box: [-92, -24, 92, 30], extra(B, r) {
+      // the spoil kicked out of each burrow, fanned over the turf below it, sandy and fresh; droppings and a few stones
+      for (const [x] of BURROWS) { B.f(B.blob(r, x + 2, 5, 12, 4, 9, .4), '#c4a878', .75).f(B.blob(r, x, 3, 7, 2.4, 8, .4), '#dcc49a', .7); for (let j = 0; j < 5; j++) B.f(B.circ(x - 8 + r() * 18, 6 + r() * 6, .7 + r() * .7), '#8a7a5a', .8); }
+      for (let k = 0; k < 6; k++) B.stone(r, -70 + r() * 140, 6 + r() * 8, 2.4 + r() * 2.4, 1.6 + r() * 1.2, STONE, r() < .4 ? '#cfc78a' : null);
+    } },
+    parts: [
+      { id: 'sitter', box: [-9, -18, 10, 2], at: [-28, -4], draw: B => rabbit(B, false),
+        anim(im, t, o) { const p = (t * .045) % 1, out = p > .12 && p < .7, k = out ? Math.min(1, (p - .12) / .04, (.7 - p) / .04) : 0; im.setAlpha(k); im.setPosition(o.x - (1 - k) * 6, o.y + (1 - k) * 3); im.setRotation(out && (t % 3.1) < .25 ? -.06 : 0); } },
+      { id: 'looker', box: [-6, -14, 6, 1], at: [BURROWS[2][0], BURROWS[2][1] + 1], draw: B => rabbit(B, true),
+        anim(im, t, o) { const p = (t * .07 + .5) % 1, k = p < .4 ? Math.min(1, p / .06, (.4 - p) / .06) : 0; im.setAlpha(k); im.setPosition(o.x, o.y + (1 - k) * 5); } },
+    ],
+    draw(B, o) {
+    const r = KIT().rng(761), s = o.season, snowy = s === 'winter', autumn = s === 'autumn', h = H * .95;
+    const turf = snowy ? ['#cfd3c8', '#e8ece6', '#a9b4b8'] : autumn ? ['#a69a62', '#c2b47a', '#7a7048'] : ['#8a9a56', '#aab870', '#66743e'];
+    // the bank: a long lumpy mound, lit on its west shoulder and along its crest, shaded down its east end
+    const crest = []; for (let x = -76; x <= 76; x += 4) crest.push([x, -h * Math.pow(Math.max(0, 1 - Math.pow(x / 78, 2)), .7) * (.8 + .2 * Math.sin(x * .09 + 1)) - 1]);
+    // (its foot is a soft, uneven line where the turf runs on into the grass, never a ruler-straight cut)
+    const foot = []; for (let x = 78; x >= -78; x -= 6) foot.push([x, 1.2 - Math.abs(Math.sin(x * .21 + 2)) * 2.2]);
+    B.f(B.poly([[-78, 1]].concat(crest, foot)), B.lin(-70, -h, 70, 0, [[0, turf[1]], [.45, turf[0]], [1, turf[2]]]));
+    for (let x = -76; x < 77; x += 3) B.s(`M${x} 1.4q${(r() - .5) * 2} -3 ${(r() - .5) * 3} ${-4 - r() * 4}`, snowy ? '#c8d0c4' : r() < .5 ? '#7d8f4e' : '#9aa86a', .9, .9);
+    B.f(B.poly([[-70, -2]].concat(crest.filter(p => p[0] < 10).map(([x, y]) => [x, y + 2]), [[10, -h * .6]])), '#ffffff', .07);
+    for (let i = 0; i < 70; i++) { const x = -70 + r() * 140, top = -h * Math.pow(Math.max(0, 1 - Math.pow(x / 78, 2)), .7) * .8, y = top + r() * (-top); B.s(`M${x} ${y}q${(r() - .5) * 2} -2.4 ${(r() - .5) * 3} -4`, r() < .5 ? turf[0] : turf[2], .8, .7); }
+    // sandy scrapes, a few bedded stones, the burrow mouths dark and round-topped with a lip of turf
+    for (let k = 0; k < 4; k++) B.f(B.blob(r, -50 + r() * 100, -h * .45 + r() * 10, 6 + r() * 6, 2.4, 8, .4), '#c8ae80', .65);
+    for (let k = 0; k < 4; k++) B.stone(r, -56 + r() * 112, -4 - r() * h * .4, 3 + r() * 2.4, 2 + r(), STONE, snowy ? 'snow' : r() < .5 ? '#cfc78a' : null);
+    for (const [x, y] of BURROWS) { B.f(`M${x - 7} ${y + 3}Q${x - 7} ${y - 6} ${x} ${y - 7}Q${x + 7} ${y - 6} ${x + 7} ${y + 3}Z`, '#2a2216').f(`M${x - 5} ${y + 3}Q${x - 5} ${y - 4} ${x} ${y - 5}Q${x + 5} ${y - 4} ${x + 5} ${y + 3}Z`, '#120c08'); B.f(B.blob(r, x, y + 3, 8, 1.6, 7, .4), '#c4a878', .9); B.s(`M${x - 8} ${y - 6}Q${x} ${y - 10} ${x + 8} ${y - 6}`, turf[2], 2, .8); }
+    // gorse along the crest, dark and spiny, in flower most of the year
+    for (const [x, sc] of [[-52, .8], [-30, 1], [6, 1.15], [34, .9], [60, .7]]) {
+      const y = -h * Math.pow(Math.max(0, 1 - Math.pow(x / 78, 2)), .7) * .86 + 2;
+      for (let k = 0; k < 6; k++) B.f(B.blob(r, x + (r() - .5) * 14 * sc, y - 6 * sc - r() * 6 * sc, 7 * sc, 5 * sc, 8, .6), k < 3 ? '#3e5430' : '#56703c', .95);
+      for (let k = 0; k < 14; k++) B.s(`M${x + (r() - .5) * 18 * sc} ${y - r() * 14 * sc}l${(r() - .5) * 3} ${-2 - r() * 2}`, '#2e4026', .6, .8);
+      if (!snowy && s !== 'autumn') for (let k = 0; k < 9; k++) B.f(B.circ(x + (r() - .5) * 16 * sc, y - 4 * sc - r() * 10 * sc, 1.1), r() < .7 ? '#f2c63a' : '#f8e07a', .95);
+      if (snowy) B.f(B.blob(r, x - 2, y - 12 * sc, 9 * sc, 3, 7, .4), '#f4f6f2', .9);
+    }
+    if (!snowy) B.tufts(r, -60, 1, 30, 10, grass(s), 5).tufts(r, 62, 1, 26, 9, grass(s), 5);
+  } };
+
+  /* ---------- the ring stone: at the heart of the ring of old pears, a standing stone with a ring cut in its face, ribbons
+     tied to the iron staple at its top from weddings nobody remembers, windfalls in the grass, a ring of trodden turf ---------- */
+  A['ld-ring'] = { box: [-46, -70, 48, 6],
+    seat: { kind: 'turf', w: 40, front: 14, back: 12, stones: 0, way: true, box: [-60, -24, 60, 26], extra(B, r) { for (let a = 0; a < Math.PI * 2; a += .2) B.f(B.blob(r, Math.cos(a) * 44, 2 + Math.sin(a) * 14, 6, 2.4, 7, .5), '#9c8a5c', .22); } },
+    parts: [{ id: 'ribbons', box: [-3, -2, 16, 22], at: [6, -60], draw(B) { for (const [dx, c, l] of [[0, '#d84a5a', 18], [2, '#3a7ac0', 15], [4, '#f2d04a', 13]]) B.s(`M${dx} 0q4 ${l * .4} ${2 + dx} ${l}`, c, 1.6); }, anim(im, t) { im.setRotation(Math.sin(t * 1.7) * .12 + Math.sin(t * 3.9) * .04); } }],
+    draw(B, o) {
+    const r = KIT().rng(771), s = o.season, top = -H * 1.45, P = { rock: '#a8a290', rockLo: '#827c6a', rockHi: '#cec8b2', rockDk: '#4e4a3e' };
+    // the stone: a tall slab, weathered to a soft outline, lit on its west face, its east edge in shade
+    const slab = `M-17 0Q-21 ${top * .5} -14 ${top + 6}Q-8 ${top - 2} 4 ${top}Q14 ${top + 3} 16 ${top * .6}Q20 ${top * .3} 17 0Z`;
+    B.f(slab, P.rockLo).f(`M-17 0Q-21 ${top * .5} -14 ${top + 6}Q-8 ${top - 2} 0 ${top}Q-4 ${top * .5} -2 0Z`, P.rock).f(`M-14 ${top * .3}Q-17 ${top * .6} -12 ${top + 8}Q-8 ${top + 3} -4 ${top + 4}Q-8 ${top * .5} -8 ${top * .3}Z`, P.rockHi, .6);
+    B.f(`M8 0Q14 ${top * .5} 4 ${top}Q14 ${top + 3} 16 ${top * .6}Q20 ${top * .3} 17 0Z`, P.rockDk, .35);
+    for (let i = 0; i < 6; i++) B.s(`M${-12 + r() * 24} ${-4 - r() * 10}l${(r() - .5) * 3} ${-8 - r() * 14}`, P.rockDk, .5, .4);
+    // the ring cut in its face, worn smooth by hands, a cup in its middle
+    B.s(B.ell(-1, top * .55, 8, 8.6), P.rockDk, 2.4, .7).s(B.ell(-1.6, top * .55 - .6, 8, 8.6), P.rockHi, .8, .6).f(B.ell(-1, top * .55, 2.4, 2.6), P.rockDk, .6);
+    // lichen in rosettes, moss at its foot, the iron staple at the top
+    for (let i = 0; i < 6; i++) { const x = -12 + r() * 24, y = top + 8 + r() * (-top - 20); B.f(B.blob(r, x, y, 2 + r() * 2.4, 1.4 + r(), 7, .6), r() < .5 ? '#cfc78a' : '#a8b47a', .6); }
+    mossOn(B, r, -16, -2, 32, 6, s);
+    B.s(`M3 ${top + 2}q3 -4 6 0`, IRON[1], 1.4);
+    // the flat offering stone in front with windfall pears on it, flowers and long grass round the foot
+    B.f(B.ell(-24, -2, 9, 3.4), P.rockLo).f(B.ell(-24.6, -3, 8, 2.6), P.rock);
+    if (s === 'summer' || s === 'autumn') for (const [x, y] of [[-27, -5], [-22, -4.4]]) B.f(B.ell(x, y, 2.2, 2.8), '#b8b03a').f(B.ell(x - .6, y - .8, .8, 1), '#f4f0b0', .7).s(`M${x} ${y - 2.8}l.6 -1.4`, '#5a4430', .6);
+    if (s !== 'winter') for (let i = 0; i < 10; i++) { const x = (r() < .5 ? -1 : 1) * (18 + r() * 20); B.s(`M${x} 1v-5`, '#5e8a3e', .6).f(B.circ(x, -5.4, 1.2), ['#f4f0e2', '#e8c84a', '#c86aa0', '#9a7ad0'][i % 4]); }
+    if (s === 'winter') B.f(`M-14 ${top + 6}Q-8 ${top - 2} 4 ${top}Q14 ${top + 3} 15 ${top + 8}Q2 ${top + 4} -14 ${top + 6}Z`, '#f4f6f2', .9);
+    B.tufts(r, -18, 1, 8, 6, grass(s), 8).tufts(r, 18, 1, 8, 6, grass(s), 8);
+  } };
+
+  /* ---------- the orchard wall: a length of old brick wall under a stone coping, two arched bee boles in it with their straw
+     skeps, a pear trained flat against the brick between them; bees come and go from the skeps ---------- */
+  const BOLES = [[-30, -24], [30, -24]];
+  const bees = i => ({ id: 'bees' + i, box: [-10, -8, 10, 6], at: [BOLES[i][0], BOLES[i][1] - 4], draw(B) { for (const [x, y] of [[-5, -2], [3, -4], [6, 2], [-2, 3]]) B.f(B.ell(x, y, 1.2, .8), '#3a2a10').f(B.ell(x - .3, y, .5, .7), '#f2c03a').f(B.ell(x, y - .9, 1, .5), '#ffffff', .6); },
+    anim(im, t, o) { const a = t * (1.6 + i * .3) + i * 2; im.setPosition(o.x + Math.cos(a) * 5, o.y + Math.sin(a * 1.7) * 3); im.setRotation(Math.sin(a * .5) * .3); } });
+  A['ld-orchard-wall'] = { box: [-64, -72, 66, 6],
+    seat: { kind: 'earth', w: 112, front: 14, back: 6 },
+    parts: [bees(0), bees(1)],
+    draw(B, o) {
+    const r = KIT().rng(781), s = o.season, L = leaf(s), top = -H * 1.3, BR = ['#b4623e', '#9a5236', '#c8784e', '#8a4a30', '#a85a3a'];
+    // the brickwork in English bond, every brick its own tone, the lime mortar weathered back, light from the west
+    B.f(B.rect(-56, top, 112, -top), '#cbbfa4');
+    for (let y = -2.6, row = 0; y > top + 1; y -= 3.4, row++) for (let x = -56 - (row & 1) * 3.6; x < 56; ) { const w = row & 1 ? 3.4 : 7.2; const x0 = Math.max(-56, x), x1 = Math.min(56, x + w - .5); if (x1 > x0) B.f(B.rect(x0, y - 2.8, x1 - x0, 2.8), BR[Math.floor(r() * BR.length)], .95); x += w; }
+    B.f(B.rect(-56, top, 26, -top), '#ffffff', .07).f(B.rect(34, top, 22, -top), '#2a1810', .16);
+    for (let i = 0; i < 5; i++) B.f(B.blob(r, -50 + r() * 100, top + 6 + r() * (-top - 12), 6 + r() * 6, 3 + r() * 3, 7, .5), '#7a8a4a', .35);
+    // the coping: dressed stone, overhanging a little, moss and stonecrop along it
+    B.f(B.rect(-60, top - 5, 120, 6), '#b0a890').f(B.rect(-60, top - 5, 120, 1.6), '#d8d0b8').f(B.rect(-60, top, 120, 1.4), '#4a4238', .5);
+    for (let x = -60; x < 60; x += 12 + r() * 4) B.s(`M${x} ${top - 5}v6`, '#7a7262', .5, .7);
+    mossOn(B, r, -56, top - 5, 112, 7, s);
+    // the espalier pear between the boles: a trunk and three tiers of arms tied along the brick, leaves and fruit on them
+    B.s(`M0 -1V${top + 8}`, '#5a4430', 3);
+    for (const y of [-14, -28, -42]) { B.s(`M0 ${y}Q-8 ${y - 2} -16 ${y}M0 ${y}Q8 ${y - 2} 16 ${y}`, '#5a4430', 1.8); if (s !== 'winter') for (let k = 0; k < 8; k++) { const x = -15 + k * 4.2 + (r() - .5); B.f(B.ell(x, y - 2.4, 2.4, 1.4), L[k % 2 ? 1 : 2], .95); } if (s === 'summer' || s === 'autumn') for (const x of [-10, 8]) B.f(B.ell(x, y + 2.4, 2, 2.6), '#b8b03a').f(B.ell(x - .5, y + 1.6, .7, .9), '#f4f0b0', .7); }
+    if (s === 'spring') for (let i = 0; i < 14; i++) B.f(B.circ(-15 + r() * 30, -44 + r() * 32, 1.2), '#fdfaf2', .95);
+    // the boles: round-headed niches with a stone sill, a straw skep in each, its doorway dark at the foot
+    for (const [x, y] of BOLES) {
+      B.f(`M${x - 13} ${y + 10}V${y - 8}A13 13 0 0 1 ${x + 13} ${y - 8}V${y + 10}Z`, '#d8ccb0').f(`M${x - 11} ${y + 9}V${y - 8}A11 11 0 0 1 ${x + 11} ${y - 8}V${y + 9}Z`, '#3a2a1e');
+      B.f(B.rect(x - 14, y + 9, 28, 3.4), '#c8c0a8').f(B.rect(x - 14, y + 9, 28, 1), '#e8e0c8');
+      B.f(`M${x - 9} ${y + 9}Q${x - 10} ${y - 8} ${x} ${y - 11}Q${x + 10} ${y - 8} ${x + 9} ${y + 9}Z`, B.lin(x - 9, 0, x + 9, 0, [[0, '#e8cc7a'], [.5, '#d4b05a'], [1, '#a8843a']]));
+      for (let k = 1; k < 6; k++) { const yy = y + 9 - k * 3.6, hw = 9 * Math.sqrt(Math.max(0, 1 - Math.pow((k * 3.6) / 20.5, 2))); B.s(`M${x - hw} ${yy}Q${x} ${yy + 1.2} ${x + hw} ${yy}`, '#9a7a34', .8, .8); }
+      B.f(`M${x - 2.6} ${y + 9}V${y + 6}a2.6 2.6 0 0 1 5.2 0V${y + 9}Z`, '#1a1008');
+    }
+    // a pot of lavender at its foot, the earth dug along the wall, long grass at the ends
+    if (s !== 'winter') { B.f('M-50 1L-52 -8H-40L-42 1Z', '#b4683e').f(B.ell(-46, -8, 6, 1.6), '#8a4a2a'); for (let i = 0; i < 9; i++) B.s(`M${-46 + (r() - .5) * 8} -8l${(r() - .5) * 3} ${-5 - r() * 4}`, '#8a7ad0', 1.2); }
+    B.tufts(r, -60, 1, 8, 6, grass(s), 7).tufts(r, 60, 1, 8, 6, grass(s), 7);
+  } };
+
+  /* ---------- the eel smokehouse: a tarred timber shed under red pantiles, the louvred smoke hood on its ridge breathing a
+     thread of oak smoke, the door ajar on the smoke and the glow of the fire, eels hung on the rack, willow eel traps
+     stacked by the wall, oak chips in a heap ---------- */
+  A['ld-smoke'] = { box: [-80, -156, 82, 6], door: { dx: -12, dy: 0 }, lit: true, lights: [[-12, -24, 70]],
+    seat: { kind: 'earth', w: 130, front: 18, extra(B, r) { for (let i = 0; i < 16; i++) B.f(B.ell(40 + r() * 30, 3 + r() * 7, 1.6, .9), '#c8a474', .9); B.f(B.blob(r, -12, 6, 12, 3, 8, .4), '#5a4a34', .25); } },
+    parts: smokeParts([0, -146], 4, 44, 12, .16),
+    draw(B, o) {
+    const r = KIT().rng(791), s = o.season, eaves = -H * 1.8, ridge = -H * 3.05, hw = 60, TAR = ['#3a332e', '#2a2420', '#5a5048', '#18140f'];
+    // the footing, the tarred boards (lapped, salt-greyed in streaks, lit on the west), a gable end facing west
+    ashlar(B, r, -hw, -8, hw * 2, 8, MOSSY, 4.4);
+    B.f(B.rect(-hw, eaves, hw * 2, -eaves - 8), B.lin(-hw, 0, hw, 0, [[0, TAR[2]], [.25, TAR[0]], [1, TAR[1]]]));
+    for (let y = -12; y > eaves; y -= 5) B.f(B.rect(-hw, y - 1.2, hw * 2, 1.2), TAR[3], .5).f(B.rect(-hw, y - 5, hw * 2, .8), '#8a8078', .2);
+    for (let i = 0; i < 9; i++) B.f(B.rect(-hw + 4 + r() * (hw * 2 - 8), eaves + r() * (-eaves - 30), 2 + r() * 4, 6 + r() * 16), '#9a9088', .16);
+    // the pantile roof: red clay in curving courses, darker in the troughs, the ridge tiles, a lichen bloom
+    const roofTop = ridge + 10;
+    B.f(B.poly([[-hw - 8, eaves + 2], [-hw + 6, roofTop], [hw - 6, roofTop], [hw + 8, eaves + 2]]), '#9a4a2e');
+    for (let k = 0; k < 6; k++) { const y = eaves + 2 - (eaves + 2 - roofTop) * k / 6, x0 = -hw - 8 + 14 * k / 6, x1 = hw + 8 - 14 * k / 6; for (let x = x0; x < x1; x += 6) B.f(`M${x} ${y}q3 ${-(eaves - roofTop) / 14} 6 0v${(roofTop - eaves) / 6}q-3 -1.4 -6 0z`, (x / 6 | 0) % 2 ? '#b85a36' : '#a85032', .95).s(`M${x + 6} ${y}v${(roofTop - eaves) / 6}`, '#6a2e1a', .6, .7); }
+    B.f(B.poly([[-hw - 8, eaves + 2], [-hw + 6, roofTop], [-hw + 30, roofTop], [-hw + 10, eaves + 2]]), '#ffffff', .08);
+    B.f(B.rect(-hw + 6, roofTop - 3, hw * 2 - 12, 4), '#7a3a22').f(B.rect(-hw + 6, roofTop - 3, hw * 2 - 12, 1.2), '#c87a52', .8);
+    if (s !== 'winter') for (let i = 0; i < 4; i++) B.f(B.blob(r, -40 + r() * 80, eaves - 6 - r() * 16, 4, 1.6, 6, .5), '#c8b870', .55);
+    else B.f(B.poly([[-hw - 4, eaves], [-hw + 8, roofTop + 2], [hw - 8, roofTop + 2], [hw + 4, eaves], [0, eaves - 6]]), '#f4f6f2', .9);
+    // the louvred smoke hood on the ridge: a little gabled box with slatted sides, black with soot
+    B.f(B.rect(-10, roofTop - 22, 20, 20), '#2a2420'); for (let y = roofTop - 19; y < roofTop - 3; y += 3.4) B.s(`M-9 ${y}h18`, '#6a5e54', 1.2).s(`M-9 ${y + 1.2}h18`, '#0e0a08', .8);
+    B.f(B.poly([[-14, roofTop - 21], [0, roofTop - 32], [14, roofTop - 21]]), '#9a4a2e').f(B.poly([[-14, roofTop - 21], [0, roofTop - 32], [0, roofTop - 21]]), '#b85a36');
+    // the door ajar: the dark of the smoke inside, the fire's glow at night, a hook with a lantern beside it
+    const dh = sz('door', .5), dx = -12;
+    B.f(B.rect(dx - 12, -8 - dh, 24, dh), '#140e0a').f(B.rect(dx - 10, -8 - dh * .55, 20, dh * .55), o.night ? B.rad(dx, -12, 20, [[0, '#ffb060'], [.5, '#c8602a'], [1, 'rgba(60,20,10,.2)']]) : 'rgba(80,60,48,.4)');
+    B.f(B.poly([[dx + 12, -8 - dh], [dx + 22, -6 - dh], [dx + 22, -6], [dx + 12, -8]]), TAR[2]).s(`M${dx + 12} ${-8 - dh * .7}l10 1.6M${dx + 12} ${-8 - dh * .3}l10 1.6`, '#1a1612', 1.2);
+    B.f(B.rect(dx - 14, -8 - dh - 3, 28, 3), '#5a5048');
+    // the rack along the east wall: two posts and a pole, the eels hung by their heads, smoked bronze
+    for (const x of [28, 56]) B.post(x, -64, 0, 3, ['#7a6a5a', '#4a3e34', '#9a8a78']);
+    B.s('M26 -62H58', '#6a5a4a', 2.4);
+    for (let k = 0; k < 6; k++) { const x = 31 + k * 4.6, l = 20 + r() * 8; B.s(`M${x} -61q${(r() - .5) * 3} ${l * .5} ${(r() - .5) * 2} ${l}`, k % 2 ? '#8a5a2a' : '#a86a32', 2); B.s(`M${x - .4} -60q${(r() - .5) * 2} ${l * .4} 0 ${l * .8}`, '#e0a860', .5, .6); }
+    // willow eel traps stacked on the west, a basket of oak chips, a split block
+    const trap = (x, y, l) => { B.f(`M${x} ${y}Q${x + l * .2} ${y - 7} ${x + l * .7} ${y - 4}L${x + l} ${y - 2}L${x + l * .7} ${y + 1}Q${x + l * .2} ${y + 2} ${x} ${y}Z`, '#b8945a'); for (let k = 1; k < 6; k++) B.s(`M${x + l * k / 7} ${y - 5 + k * .3}v${5 - k * .2}`, '#7a5a30', .8); B.s(`M${x} ${y - 3.4}q-2 2 0 3.4`, '#7a5a30', 1); };
+    trap(-hw - 18, -2, 28); trap(-hw - 14, -10, 26); trap(-hw - 2, -2, 22);
+    B.f(B.ell(66, -4, 8, 4), '#a8844e').f(B.ell(66, -7, 7, 2.4), '#c8a474');
+    if (s !== 'winter') mossOn(B, r, -hw, -8, hw * 2, 8, s);
+    B.tufts(r, -hw - 4, 1, 10, 7, grass(s), 6).tufts(r, hw + 12, 1, 10, 7, grass(s), 6);
+  } };
+
+  /* ---------- the bird hide: a weathered hut on short piles at the edge of the wet, a long viewing slot under its propped
+     flap, a turf roof gone to seed, steps up to its door, reeds round its feet; a heron fishes beside it ---------- */
+  A['ld-hide'] = { box: [-76, -100, 80, 6], door: { dx: -44, dy: 0 },
+    seat: { kind: 'moss', w: 110, front: 14, stones: 0, extra(B, r) { B.f(B.blob(r, 40, 6, 34, 6, 10, .4), '#4e6a5e', .3); for (let i = 0; i < 6; i++) B.s(B.ell(40 + (r() - .5) * 40, 6 + r() * 4, 4 + r() * 3, 1), '#cfe6e4', .5, .5); } },
+    parts: [{ id: 'heron', box: [-12, -46, 12, 2], at: [60, 2], draw(B) {
+      B.s('M-2 0L-1 -14M2 0L1 -14', '#6a6050', 1);
+      B.f('M-6 -14Q-8 -22 -2 -28Q6 -30 8 -22Q8 -14 0 -13Z', '#9aa0a2').f('M-6 -16Q-6 -24 -1 -27Q3 -24 2 -16Z', '#c8ccc8').f('M4 -26Q8 -20 6 -14', '#5a6064', 1.2);
+      B.s('M-1 -27Q-6 -34 -2 -38Q1 -41 -2 -44', '#e8eae4', 2.2).f(B.circ(-2, -44, 2.2), '#f2f2ec').s('M-3.4 -45l5 -1.2', '#2a2a2a', 1.2).s('M-2 -44L-10 -43', '#d8a030', 1.4).f(B.circ(-2.8, -44.4, .5), '#1a1a10');
+    }, anim(im, t) { const p = t % 9; im.setRotation(p > 6 && p < 7.6 ? -.22 * Math.sin((p - 6) / 1.6 * Math.PI) : 0); } }],
+    draw(B, o) {
+    const r = KIT().rng(801), s = o.season, floor = -H * .55, roofE = -H * 1.75, TIM = ['#8c826e', '#6c6454', '#b0a68e', '#3e3a30'], turf = s === 'winter' ? ['#8e9684', '#e8ece6'] : s === 'autumn' ? ['#7c8040', '#a49a52'] : ['#5f7c3c', '#86a452'];
+    // the piles into the wet, then the hut: vertical boards silvered by weather, lit on the west
+    for (const x of [-46, -16, 16, 46]) B.post(x, floor + 2, 0, 4, TIM).f(B.ell(x, 0, 4, 1.4), '#3e3a30', .5);
+    B.f(B.rect(-52, roofE + 6, 104, floor - roofE - 4), B.lin(-52, 0, 52, 0, [[0, TIM[2]], [.3, TIM[0]], [1, TIM[1]]]));
+    for (let x = -52; x < 52; x += 5) { B.s(`M${x} ${roofE + 6}V${floor + 2}`, TIM[3], .6, .5); if (r() < .4) B.f(B.rect(x + .6, roofE + 8 + r() * 10, 3.8, 10 + r() * 14), r() < .5 ? TIM[2] : TIM[1], .3); }
+    B.f(B.rect(-54, floor, 108, 3.4), TIM[1]).f(B.rect(-54, floor, 108, 1), TIM[2]);
+    // the viewing slot, long and dark, its flap propped up on two sticks
+    const sy = roofE + 22;
+    B.f(B.rect(-38, sy, 76, 8), '#120e0a').f(B.rect(-38, sy + 7, 76, 1.6), TIM[2], .8);
+    B.f(B.poly([[-40, sy], [40, sy], [44, sy - 9], [-36, sy - 9]]), TIM[0]).f(B.poly([[-40, sy], [40, sy], [41, sy - 2], [-39, sy - 2]]), TIM[3], .5);
+    for (const x of [-30, 30]) B.s(`M${x} ${sy + 1}l3 -9`, TIM[3], 1);
+    // the turf roof: a heavy lid of sod, its edge ragged, grasses and a few flowers gone to seed on it
+    B.f(`M-60 ${roofE + 8}Q-56 ${roofE - 6} -40 ${roofE - 9}H40Q56 ${roofE - 6} 60 ${roofE + 8}Q0 ${roofE + 12} -60 ${roofE + 8}Z`, turf[0]);
+    for (let i = 0; i < 16; i++) B.f(B.blob(r, -50 + r() * 100, roofE - 6 + r() * 12, 6 + r() * 6, 2.4, 7, .5), i % 2 ? turf[1] : turf[0], .85);
+    for (let x = -58; x < 60; x += 3) B.s(`M${x} ${roofE + 8 + Math.abs(x) * .04}q${(r() - .5) * 3} ${3 + r() * 4} ${(r() - .5) * 3} ${5 + r() * 4}`, turf[r() < .5 ? 0 : 1], .9, .9);
+    if (s !== 'winter') for (let i = 0; i < 12; i++) { const x = -48 + r() * 96; B.s(`M${x} ${roofE - 6}q${(r() - .5) * 3} -6 ${(r() - .5) * 4} -10`, '#a8a060', .7, .8); if (r() < .4) B.f(B.circ(x, roofE - 16, 1.2), ['#f4f0e2', '#c86aa0', '#e8c84a'][i % 3]); }
+    // the steps up to the door on the west end, the door, a sightings board on a post
+    B.f(B.rect(-52, floor - H * .95, 16, H * .95), '#3e3428').f(B.rect(-51, floor - H * .95 + 1, 14, H * .95 - 1), '#7a6a52').f(B.circ(-40, floor - H * .5, .8), '#c8a23a');
+    for (let k = 0; k < 3; k++) B.f(B.rect(-58 + k * 3, floor + 4 + k * 6.4, 20 - k * 3, 2.6), TIM[k % 2 ? 1 : 0]).f(B.rect(-58 + k * 3, floor + 4 + k * 6.4, 20 - k * 3, .8), TIM[2], .8);
+    B.post(-70, -36, 0, 2.6, TIM).f(B.rr(-78, -46, 16, 12, 1), '#3a4a40').s('M-75 -42h9M-75 -39h6', '#e8ece6', .6, .8).f(B.circ(-66, -39, 1), '#e8c84a');
+    // reeds round its feet, in front: stems, leaves and brown heads
+    if (s !== 'winter') for (let i = 0; i < 26; i++) { const x = -60 + r() * 130, h = 12 + r() * 14; B.s(`M${x} 2q${(r() - .5) * 4} ${-h * .6} ${(r() - .5) * 5} ${-h}`, i % 3 ? '#6a8a3e' : '#8aa456', 1, .95); if (r() < .35) B.f(B.ell(x + (r() - .5) * 2, -h + 1, 1.2, 3), '#7a5a36'); }
+    else for (let i = 0; i < 16; i++) { const x = -60 + r() * 130; B.s(`M${x} 2l${(r() - .5) * 4} ${-10 - r() * 10}`, '#b4a888', .9); }
+  } };
+
+  /* ---------- the shepherd's hut: on iron wheels on the high pasture, sage-painted planks under a curved tin roof, a stable
+     door at the top of its steps (the way in), a stove pipe breathing a thread of smoke, hurdles leant on the end,
+     a lantern by the door at night ---------- */
+  A['ld-hut'] = { box: [-70, -138, 72, 6], door: { dx: 15, dy: 0 }, lit: true, lights: [[-12, -62, 70], [30, -66, 50]],
+    seat: { kind: 'turf', w: 96, front: 16, extra(B, r) { for (let i = 0; i < 8; i++) B.f(B.ell(-50 + r() * 26, 3 + r() * 5, 1.8, 1), '#c8a474', .85); } },
+    parts: smokeParts([-22, -134], 3, 36, 10, .2),
+    draw(B, o) {
+    const r = KIT().rng(811), s = o.season, snowy = s === 'winter', floor = -H * .78, eaves = -H * 2.05, crown = -H * 2.55, W2 = 46;
+    const wall = ['#7e927e', '#5e705e', '#a2b4a0', '#3e4a3e'], roof = ['#7a8a86', '#56625e', '#a8b4b0'], IR = ['#2e2c2a', '#64605a'];
+    // the wheels: the far pair dark behind, the near pair spoked iron; the chassis beam
+    const wheel = (x, R, far) => { B.s(B.circ(x, -R, R), far ? '#24221f' : IR[0], far ? 2.4 : 3).s(B.circ(x, -R, R - 1.4), IR[1], .7, far ? .3 : .6); for (let a = 0; a < 8; a++) { const t = a * Math.PI / 4; B.s(`M${x} ${-R}l${Math.cos(t) * (R - 1)} ${Math.sin(t) * (R - 1)}`, far ? '#24221f' : IR[0], 1.1); } B.f(B.circ(x, -R, 2.4), IR[1]); };
+    wheel(-30, 12, true); wheel(32, 12, true);
+    B.f(B.rect(-W2 + 2, floor - 2, W2 * 2 - 4, 5), '#3e3428');
+    // the body: horizontal planks in sage paint, worn to wood at the corners, lit at the west end
+    B.f(B.rect(-W2, eaves, W2 * 2, floor - eaves), B.lin(-W2, 0, W2, 0, [[0, wall[2]], [.3, wall[0]], [1, wall[1]]]));
+    for (let y = floor - 5; y > eaves; y -= 5.4) B.f(B.rect(-W2, y - 1, W2 * 2, 1), wall[3], .45);
+    for (let i = 0; i < 7; i++) B.f(B.rect(-W2 + r() * (W2 * 2 - 10), eaves + r() * (floor - eaves - 4), 4 + r() * 8, 1.6), '#a8946a', .5);
+    // the curved tin roof, its ribs, a little rust, the overhang's shadow along the wall
+    B.f(`M${-W2 - 5} ${eaves + 3}Q${-W2 - 4} ${crown - 4} 0 ${crown - 6}Q${W2 + 4} ${crown - 4} ${W2 + 5} ${eaves + 3}Z`, B.lin(0, crown, 0, eaves, [[0, roof[2]], [.6, roof[0]], [1, roof[1]]]));
+    for (let x = -W2 + 2; x <= W2 - 2; x += 5.6) B.s(`M${x} ${eaves + 2}Q${x * .96} ${crown - 2 + Math.abs(x) * .1} ${x * .86} ${crown - 5}`, roof[1], .7, .55);
+    B.f(B.rect(-W2, eaves + 3, W2 * 2, 3), '#1a1a16', .3);
+    if (snowy) B.f(`M${-W2 - 4} ${eaves}Q${-W2 - 3} ${crown - 4} 0 ${crown - 6}Q${W2 + 3} ${crown - 4} ${W2 + 4} ${eaves}Q0 ${eaves - 10} ${-W2 - 4} ${eaves}Z`, '#f4f6f2', .95);
+    else B.f(B.blob(r, -18, crown + 4, 9, 2.6, 6, .4), '#a0623a', .35).f(B.blob(r, 24, eaves - 6, 7, 2.2, 6, .4), '#a0623a', .3);
+    // the stove pipe through the roof, its cap
+    B.f(B.rect(-25, crown - 20, 6, 22), B.lin(-25, 0, -19, 0, [[0, '#7a7e80'], [1, '#2e3234']])).f(B.rect(-27, crown - 23, 10, 3.4), '#2e3234');
+    // a window with curtains and a box of geraniums, warm at night
+    windowLit(B, -32, eaves + 10, 18, 15, o.night, '#e8e0c8'); B.f(B.rect(-32, eaves + 10, 4, 15), '#c84a4a', .8).f(B.rect(-18, eaves + 10, 4, 15), '#c84a4a', .8);
+    B.f(B.rect(-34, eaves + 26, 22, 4), '#6a5034'); if (!snowy) for (let i = 0; i < 6; i++) B.f(B.circ(-32 + i * 3.6, eaves + 25, 1.6), i % 2 ? '#d84a3a' : '#4e7a3a');
+    // the stable door (its top half open on the lamplit inside), the steps of plank down to the turf
+    const dx = 15, dh = sz('door', .2) * .92, dt = floor - dh;
+    B.f(B.rect(dx - 9, dt - 1, 18, dh + 1), '#3e3428').f(B.rect(dx - 8, dt + dh * .48, 16, dh * .52), '#5e705e').s(`M${dx - 8} ${dt + dh * .74}h16`, '#3e4a3e', .7);
+    B.f(B.rect(dx - 8, dt, 16, dh * .48), o.night ? B.rad(dx, dt + dh * .3, 12, [[0, '#ffe6a6'], [1, '#c8783a']]) : '#1e1a14');
+    B.f(B.poly([[dx + 8, dt], [dx + 15, dt + 2], [dx + 15, dt + dh * .48 + 1], [dx + 8, dt + dh * .48]]), '#7e927e').f(B.circ(dx + 6, dt + dh * .62, .8), '#c8a23a');
+    for (let k = 0; k < 4; k++) { const y = floor + 3 + k * (-floor - 3) / 4; B.f(B.rect(dx - 9 - k * .6, y, 18 + k * 1.2, 2.6), k % 2 ? '#8a6a46' : '#a8845a').f(B.rect(dx - 9 - k * .6, y, 18 + k * 1.2, .8), '#c8a474', .8); }
+    B.s(`M${dx - 9} ${floor + 2}l-2 ${-floor - 2}M${dx + 9} ${floor + 2}l2 ${-floor - 2}`, '#6a5034', 1.4);
+    // the lantern on its hook by the door
+    B.s(`M${dx + 18} ${dt + 2}h3v3`, IR[0], .9).f(B.rr(dx + 18.4, dt + 5, 5.2, 7, 1), IR[0]).f(B.rr(dx + 19.2, dt + 5.8, 3.6, 5.2, .6), o.night ? '#ffe08a' : '#8aa4a6');
+    // the near wheels over the body's foot, hurdles leant on the west end, logs under it, a bucket
+    wheel(-26, 13, false); wheel(28, 13, false);
+    for (let k = 0; k < 2; k++) { const x0 = -W2 - 20 + k * 6; for (const y of [-6, -16, -26]) B.s(`M${x0} ${y}l18 -3`, '#a8845a', 1.6); for (let i = 0; i < 4; i++) B.s(`M${x0 + i * 6} 0l2 -32`, '#8a6a46', 1.8); }
+    for (let k = 0; k < 6; k++) { const x = -16 + (k % 3) * 6 + (k > 2 ? 3 : 0), y = -3 - (k > 2 ? 5.4 : 0); B.f(B.circ(x, y, 3), '#8a6440').f(B.circ(x, y, 1.8), '#c49a66'); }
+    B.f('M50 1L49 -9H59L58 1Z', B.lin(49, 0, 59, 0, [[0, '#a8b0b4'], [1, '#5e686c']])).f(B.ell(54, -9, 5, 1.4), '#4e585c');
+    if (!snowy) B.tufts(r, -60, 1, 16, 8, grass(s), 6).tufts(r, 62, 1, 12, 7, grass(s), 6);
   } };
 })();

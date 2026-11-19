@@ -235,6 +235,20 @@ seats every one of them, and every painted prop, in the ground it stands on.
   `94-garden-native-painted-props.js`, leaves a thing unseated (afloat, in reeds).
 - Sizes come from `gardenSizePx`; a thing keeps its footprint, door and collision. If it needs more ground than its
   footprint, say so for the region's layout instead of drawing over a neighbour.
+- **Merge, do not place.** A thing is painted as one picture with what it belongs to: the stump with its roots in the
+  seat, the felled trunk and its own split logs; the pump against a wall in a yard of flags with its trough and bucket;
+  the treehouse built round a great tree's trunk. Roots, litter and wet flags that lie on the ground go in the seat's
+  `extra(B, r)` (drawn under every actor), never in the standing picture.
+- **Life.** `parts: [{ id, box, at: [dx, dy], draw(B, o), anim(im, t, o) }]` are small pictures of their own in front of
+  the body: `anim` sets their position, alpha or turn each frame (`o.x, o.y` the hub, `o.night` whether the lit picture
+  is up). They run only on screen and only while motion is on. Today: the pump's drip and its ring, the stump's chimney
+  smoke, the treehouse's lantern and pennant, the owl's head and blink (asleep by day). Never `setScale` a part (the
+  kit re-sharpens it).
+- **A way in.** An art row with `door: { dx, dy }` draws its own entrance; the rooms (`94-garden-world-6doors.js`) then
+  stand only a worn threshold there, not a second door picture on the grass. Every sight with a room has one.
+- **Gate signs** are fixed to what bars the way (`gateMount` in `94-garden-native-painted-props.js`): chains from the
+  arch, nailed to the bridge's post or the stair gate, on a stake in the ruin's heap, hung from the pass's rope. Their
+  words are on the board, dark on cream.
 
 ## The rules
 

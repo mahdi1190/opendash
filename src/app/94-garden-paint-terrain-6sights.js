@@ -283,7 +283,7 @@
   /* ---------- Hollin's hut among the yews: a low hut of split oak boards on a stone footing, a turf roof grown over with
      moss and ferns, the stack of split logs under the eaves, a chopping block with the axe in it, smoke from a stone
      chimney; the step is swept ---------- */
-  A['ld-woodhut'] = { box: [-74, -180, 76, 10], door: { dx: 8, dy: 0 }, seat: { kind: 'earth', w: 96, front: 20 }, lit: true, lights: [[-26, -58, 70]], draw(B, o) {
+  A['ld-woodhut'] = { box: [-74, -180, 76, 10], door: { dx: 8, dy: 0 }, seat: { kind: 'earth', w: 96, front: 20, extra(B, r) { for (let i = 0; i < 12; i++) B.f(B.ell(-58 + r() * 30, 2 + r() * 6, 1.6, .8), '#c8a474', .9); } }, lit: true, lights: [[-26, -58, 70]], draw(B, o) {
     const r = KIT().rng(361), s = o.season, L = leaf(s), eaves = sz('eaves', .5), ridge = sz('ridge', 0) * .92, oak = ['#6e5a42', '#4e3e2c', '#8e785a', '#2e2418'];
     // the stone chimney up the west end, behind the roof's edge
     rubble(B, r, -54, -38, -eaves + 6, () => -ridge - 20, ['#8c8874', '#7e7a66', '#9a9680'], { course: 4.4, edge: false });
@@ -308,10 +308,10 @@
     windowLit(B, -32, -eaves + 10, 12, 10, o.night, '#8a785a');
     // the stack of split logs under the east eave, the chopping block with the axe, chips on the ground
     for (let row = 0; row < 4; row++) for (let k = 0; k < 4; k++) { const x = 26 + k * 6 + (row & 1) * 3, y = -12 - row * 5.6; B.f(B.circ(x, y, 3), '#8a6440').f(B.circ(x - .4, y - .4, 2), '#d4aa74').f(B.circ(x, y, .5), '#8a6440'); }
-    for (let i = 0; i < 10; i++) B.f(B.ell(-58 + r() * 30, 2 + r() * 5, 1.6, .8), '#c8a474', .9);
+    // (the chips from the block lie in the seat, round 3)
     // yew needles and ivy at the corners, long grass along the footing
     ivy(B, r, -48, -8, -eaves + 4, s); ivy(B, r, 46, -8, -eaves * .6, s);
-    B.tufts(r, -62, 4, 12, 7, grass(s), 7).tufts(r, 62, 4, 12, 7, grass(s), 7);
+    B.tufts(r, -62, 1, 12, 7, grass(s), 7).tufts(r, 62, 1, 12, 7, grass(s), 7);
   } };
 
   Object.assign(M.SIGHT_KIT, { rubble, lancet, arch, ferns, brick, PALE });

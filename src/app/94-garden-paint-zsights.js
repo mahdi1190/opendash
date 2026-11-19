@@ -282,7 +282,11 @@
 
   /* ---------- the grotto: a mouth in a face of mossed gritstone under the Horn, ledges and a hanging garden of ferns over it,
      a trickle from its lip into a pool on the threshold; the mouth is the way in ---------- */
-  A['ld-grotto'] = { box: [-82, -128, 84, 14], door: { dx: 0, dy: 0 }, seat: { kind: 'moss', w: 104, front: 16, stones: 0 }, draw(B, o) {
+  A['ld-grotto'] = { box: [-82, -128, 84, 14], door: { dx: 0, dy: 0 }, seat: { kind: 'moss', w: 104, front: 16, stones: 0, extra(B, r) {
+      // (the spring's pool and the stepping stones out of the mouth lie in the ground, under every actor: round 3)
+      B.f(B.blob(r, 2, 4, 20, 4, 9, .3), '#3e6a6e', .9).f(B.blob(r, -2, 3, 13, 2, 8, .3), '#9ccad0', .55);
+      for (let k = 0; k < 7; k++) B.stone(r, -24 + k * 8 + (r() - .5) * 3, 7 + (k % 2) * 2, 3.4 + r() * 2, 2, { rock: '#7f8a86', rockLo: '#5e6662', rockHi: '#a8b4b0', rockDk: '#3a403e' }, r() < .4 ? '#7d8f4e' : null);
+    } }, draw(B, o) {
     const r = KIT().rng(511), s = o.season, snowy = s === 'winter', L = leaf(s), G = { rock: '#9a907c', rockLo: '#736a58', rockHi: '#c6ba9e', rockDk: '#3a342c', lichen: '#c9c48a', snow: '#fbfbf7' };
     const mh = H * 1.5, mw = 46, turf = snowy ? G.snow : s === 'autumn' ? '#9a9450' : '#7d8f4e', turfHi = snowy ? '#ffffff' : s === 'autumn' ? '#b8ac62' : '#9aae5e';
     // the knoll: rounded masses of gritstone heaped back to front, each lit on its west shoulder, bedding cracks across them,
@@ -308,10 +312,8 @@
     if (!snowy) { for (let k = 2; k < 17; k += 2) { const [x, y] = lip[k]; for (let jj = 0; jj < 3; jj++) B.s(`M${x} ${y}q${(jj - 1) * 3} 3 ${(jj - 1) * 4.6} ${7 + r() * 7}`, jj % 2 ? L[1] : L[2], 1.2, .9); }
       ferns(B, r, -56, -36, 18, 5, s); ferns(B, r, 56, -34, 16, 4, s); ferns(B, r, -24, -88, 20, 4, s); ferns(B, r, 30, -90, 16, 3, s); ivy(B, r, -70, -4, -40, s); ivy(B, r, 70, -6, -34, s); }
     else for (let k = 0; k < 9; k++) { const x = -mw / 2 + 5 + k * 4.4; B.f(`M${x - 1.2} ${-mh + 8}l1.2 ${6 + r() * 9}l1.2 ${-6 - r() * 9}z`, '#e6f3f8', .9); }
-    B.s(`M7 ${-mh + 6}q1 ${mh * .4} -1 ${mh - 8}`, '#bfe0e4', 1, .55);
-    B.f(B.blob(r, 2, 4, 20, 4, 9, .3), '#3e6a6e', .9).f(B.blob(r, -2, 3, 13, 2, 8, .3), '#9ccad0', .55);
-    for (let k = 0; k < 7; k++) B.stone(r, -24 + k * 8 + (r() - .5) * 3, 7 + (k % 2) * 2, 3.4 + r() * 2, 2, Object.assign({}, G, { rock: '#7f8a86', rockHi: '#a8b4b0' }), r() < .4 ? '#7d8f4e' : null);
-    B.boulder(r, -70, 8, 18, 13, G, snowy); B.boulder(r, 72, 8, 15, 10, G, snowy);
+    B.s(`M7 ${-mh + 6}q1 ${mh * .4} -1 ${mh - 8}`, '#bfe0e4', 1, .55);
+    B.boulder(r, -66, 1, 18, 13, G, snowy); B.boulder(r, 68, 1, 15, 10, G, snowy);
     lichenDots(B, r, -64, -110, 128, 90, 16, s);
   } };
 
