@@ -282,6 +282,8 @@ function _gwFishLost(msg) {
 function _gwFishStoneCovered(x, y) {
   if (GARDEN_WORLD.v < 5 || x >= GARDEN_ROOM_X || typeof gardenIslandCrossingGeometry !== 'function') return false;
   const W = GARDEN_WORLD, px = x * W.cellW, py = W.sky + y * W.cellH;
+  // the gorge's far wall and near lip are painted over the edge of its water: a float there sat on the stone bank (the verifier, 18 Nov 2026)
+  if (window.GardenPaintedTerrain && GardenPaintedTerrain.gorgeCovers && GardenPaintedTerrain.gorgeCovers(x, y)) return true;
   for (const c of gardenIslandCrossingGeometry()) {
     if (c.kind === 'footbridge' || c.kind === 'hump-bridge') {
       // A bridge's boards, rails and stonework are drawn over the water they span, and stand up from it: a float at a

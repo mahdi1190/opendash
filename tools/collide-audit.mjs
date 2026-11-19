@@ -23,6 +23,7 @@
  *   closed-edge, draw-order, slide-stall, slide-jitter, route-none, route-detour, route-stall
  *                           each region shut in turn; who is drawn in front of whom; how walking and click-to-walk feel
  *   overlap                 two drawn things on top of each other that are not meant to be (each pair once)
+ *   cast-on-dry             a float cast at a cell the game takes for water lands on drawn ground or rock
  * (the checks themselves: tools/lib/collide-audit-page.js; --no-decor and --no-picture skip the slow parts)
  * Writes <out>/<label>.json and <out>/<label>.html (a thumbnail per fault, with the collision view on).
  *
@@ -95,7 +96,7 @@ try {
   result.label = LABEL; result.clock = CLOCK; result.errors = errors.slice(0, 20); result.when = new Date().toISOString();
   console.log('faults', result.total, JSON.stringify(result.counts.byKind));
   // thumbnails with the collision view on, worst first (walk-through and invisible walls, then the rest)
-  const order = { 'walk-through': 0, 'invisible-wall': 1, 'water-walkable': 1, 'shore-blocked': 1, 'crossing-gap': 2, 'crossing-deck': 2, 'locked-edge': 2, 'path-blocked': 3, 'door-unreachable': 3, 'block-offset': 4, 'block-size': 5, 'drawn-blocked-walkable': 6, 'click-area': 7, 'decor-foot': 8, 'closed-edge': 2, 'draw-order': 3, overlap: 4, 'slide-stall': 6, 'slide-jitter': 6, 'route-none': 3, 'route-detour': 6, 'route-stall': 6 };
+  const order = { 'walk-through': 0, 'invisible-wall': 1, 'water-walkable': 1, 'shore-blocked': 1, 'cast-on-dry': 3, 'crossing-gap': 2, 'crossing-deck': 2, 'locked-edge': 2, 'path-blocked': 3, 'door-unreachable': 3, 'block-offset': 4, 'block-size': 5, 'drawn-blocked-walkable': 6, 'click-area': 7, 'decor-foot': 8, 'closed-edge': 2, 'draw-order': 3, overlap: 4, 'slide-stall': 6, 'slide-jitter': 6, 'route-none': 3, 'route-detour': 6, 'route-stall': 6 };
   const picks = result.faults.map((f, i) => ({ f, i })).filter(p => p.f.kind !== 'decor-foot').sort((a, b) => (order[a.f.kind] ?? 9) - (order[b.f.kind] ?? 9)).slice(0, THUMBS);
   await evq(`(()=>{const p=_gdpPrefs();p.cam='follow';p.zoom=4;_gw.cam.dirty=true;gardenCollideToggle(true);document.querySelectorAll('.gd-collide-key,.qs-card,[class*=quick-start]').forEach(e=>e.style.visibility='hidden');return gardenCollideOn()})()`);
   await sleep(1500);

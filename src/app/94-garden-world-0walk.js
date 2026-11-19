@@ -80,7 +80,9 @@ function _gwBuildSolids(m) {
   }
   for (const dc of m.decor) {
     const def = dc.def; if (!def || def.layer === 'ground' || gardenDecorCol(def) !== 'soft') continue;
-    const w = def.w || 1, h = def.h || 1, cx = dc.x + w / 2, foot = dc.y + h - 0.08, bw = Math.min(w, 2) * 0.5, d = 0.28 + (h > 1 ? 0.3 : 0);
+    // (the long wooden planter is a box of bedding drawn end to end across its two cells: it blocks end to end. Its
+    // half-size box left half a cell of drawn planter at each end to walk through: the verifier, 18 Nov 2026)
+    const w = def.w || 1, h = def.h || 1, cx = dc.x + w / 2, foot = dc.y + h - 0.08, bw = def.id === 'planter-box' ? w - .2 : Math.min(w, 2) * 0.5, d = 0.28 + (h > 1 ? 0.3 : 0);
     add(cx - bw / 2, foot - d, cx + bw / 2, foot, 'decoration: ' + (def.name || def.id));
   }
   for (const p of gardenPropsNow()) {

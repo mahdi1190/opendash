@@ -8,8 +8,10 @@
  *                    collision view off, read back as "is this pixel water-coloured")
  *   the walking side the real feet test (_gwFree), the boxes (_gwBuildSolids), the walking grid, the routes' planner
  * Checks (kind):
- *   walk-through, block-size, block-offset   a standing thing against the block at its drawn base
- *   invisible-wall                           a box, a blocked cell or a locked plot with nothing drawn on it
+ *   walk-through, block-size, block-offset   a standing thing against the block at its drawn base; a tree drawn as shapes
+ *                                            (1b); stonework (gates, walls) column by column along its drawn foot (1c)
+ *   invisible-wall                           a box, a blocked cell or a locked plot with nothing drawn on it; a block
+ *                                            between the drawn parts of a thing, or running on past its drawn ends (1c)
  *   drawn-blocked-walkable                   a drawn rock or wall (landform) the feet can walk into
  *   water-walkable, shore-blocked, shore-drawn-dry   every shoreline: feet on drawn water; feet stopped on dry land
  *                                            beside water; water drawn as dry ground
@@ -17,7 +19,9 @@
  *                                            paths; what you can walk on is the drawn deck
  *   locked-edge                              a locked plot edge that stops the feet where its painter draws no fence
  *   decor-foot                               every placeable decoration (each family, each way round): its block
- *                                            against its art
+ *                                            against its art; a fence's block reaches each joint of a run; a long
+ *                                            thing's drawn ends stop the feet
+ *   cast-on-dry                              a cell middle the cast accepts as water that is drawn as ground or rock
  *   door-unreachable                         a door, gate or arrival point you cannot walk to from where you arrive
  *   click-area                               a click area that is not on its art
  *   path-blocked                             a drawn path that is not walkable along its middle or across its width
@@ -272,6 +276,72 @@
     checked++; checkObject(o);
   }
 
+  /* ---------- 1b. drawings made of shapes, not pictures: the world's own big trees ---------- */
+  // (collect() reads pictures only. The big trees that stand where no painter plants a wood, twelve on the fells, are
+  // drawn as shapes, so check 1 never saw them and reported none while every one could be walked through: the
+  // verifier, 18 Nov 2026.) Their record names its foot; the trunk must stop the feet somewhere from a little above it
+  // down to its roots, like any tree in check 1.
+  const shapeTrees = { checked: 0 };
+  { const pictured = new Set(all.map(o => o.rec).filter(Boolean));
+    for (const r of nw.entities.values()) {
+      const md = r.metadata || {}; if (!md.foot || !md.tree || pictured.has(r)) continue;
+      const fx = md.foot.x / CW, fy = (md.foot.y - W.sky) / CH; if (fx < 0 || fy < 0 || fx >= W.cols || fy >= W.rows) continue;
+      let touch = false; for (const [dx, dy] of [[0, .3], [-.4, 0], [.4, 0], [0, -.4]]) if (free(fx + dx, fy + dy)) { touch = true; break; } if (!touch) continue;
+      shapeTrees.checked++;
+      let open = true; for (let y = fy - 14 / CH; y <= fy + 5 / CH && open; y += 2 / CH) if (!free(fx, y)) open = false;
+      if (open) push({ kind: 'walk-through', obj: 'tree', name: String(r.id), key: 'shape drawing', x: fx, y: fy, detail: 'a tree drawn as shapes (' + Math.round((r.bounds && r.bounds.height || 0) / CH * 10) / 10 + ' cells tall): the feet can stand on its trunk foot' });
+    }
+  }
+
+  /* ---------- 1c. standing stonework column by column: gates, walls, piers; and the gaps and ends of a thing in parts ---------- */
+  // Check 1 judges a thing by one base run, and passes every gate by. Stonework is judged here along its whole drawn foot,
+  // a column every 3 px: the feet may not stand on it (a gate's piers and wall stubs, the stair's cheeks), and must
+  // not stop well short of it on open ground in front (a ruin wall's block was its layout band, up to a cell in front of
+  // the wall drawn on its middle line: the verifier, 18 Nov 2026). For a thing in parts (standing stones, boulders) and
+  // a sight: no block between its drawn parts, and none running on past its drawn ends.
+  const parts = { columns: 0, objects: 0 };
+  { const wpOf = o => (u, v) => { const x = u - o.ox, y = v - o.oy; return { X: x * o.mx.a + y * o.mx.c + o.mx.e, Y: x * o.mx.b + y * o.mx.d + o.mx.f }; };
+    const bare = (X, Y) => !paintAt(X, Y) && !paintIn(floraBuckets, X, Y);
+    const cellFree = (X, Y) => { const c = toCell(X, Y); return c.x >= 0 && c.y >= 0 && c.x < W.cols && c.y < W.rows && free(c.x, c.y); };
+    const wetPx = (X, Y) => { const c = toCell(X, Y); return gardenWaterContainsPoint(c.x, c.y); };
+    const roadsAt = (island.routes || []).filter(r => r.points && r.points.length > 1).map(r => ({ pts: gardenIslandRoutePath(r).points, rad: gardenIslandRoadStyle(r).radius }));
+    const onRoad = (x, y, k) => roadsAt.some(R => { for (let i = 1; i < R.pts.length; i++) { const p = R.pts[i - 1], q = R.pts[i], ax = (q.x - p.x) * CW, ay = (q.y - p.y) * CH, bx = (x - p.x) * CW, by = (y - p.y) * CH, L = ax * ax + ay * ay || 1, t = Math.max(0, Math.min(1, (ax * bx + ay * by) / L)); if (Math.hypot(bx - ax * t, by - ay * t) < R.rad * CW * k) return true; } return false; });
+    const runsOf = (cols, from = 0) => { const out = []; let cur = null; for (const c of cols) { if (cur && c.u - cur.u1 <= 3 + from) { cur.u1 = c.u; cur.list.push(c); } else { cur = { u0: c.u, u1: c.u, list: [c] }; out.push(cur); } } return out; };
+    for (const o of objs) {
+      const stone = o.kind === 'gate' || o.kind === 'wall', inParts = o.kind === 'landmark' || o.kind === 'rock';
+      if (!stone && !inParts) continue;
+      if (/lightpool|\|block$|gatesign|\|falls\||\|peak\||\|crag\|/.test(o.key) || o.heightPx < 14) continue;   // (a peak or crag is its mountain's: check 4)
+      const P = o.P, wp = wpOf(o), cols = [];
+      // each column's lowest solid paint with at least 10 px of solid paint standing above it (a tuft or a pebble is not a wall)
+      for (let u = 0; u < P.w; u += 3) {
+        let v = P.h - 1; while (v >= 0 && P.a[v * P.w + u] < 160) v--; if (v < 0) continue;
+        let up = v; while (up > 0 && P.a[(up - 1) * P.w + u] >= 160) up--; if (v - up < 10) continue;
+        const p = wp(u + .5, v + 1); cols.push({ u, X: p.X, Y: p.Y });
+      }
+      if (!cols.length) continue;
+      parts.objects++; parts.columns += cols.length;
+      if (stone) {
+        const through = [], short = [], gateBase = Math.max(...cols.map(c => c.Y));
+        for (const c of cols) {
+          if (o.kind === 'gate' && c.Y < gateBase - 16) continue;   // (a gate's picture holds its trees too: a crown's lower edge is not a foot)
+          const cc = toCell(c.X, c.Y); if (o.kind === 'gate' && onRoad(cc.x, cc.y - .1, .95)) continue;   // (the gateway itself: the path runs through it)
+          if (cellFree(c.X, c.Y - 3) && cellFree(c.X, c.Y - 8)) through.push(c);
+          else { const F = c.Y + GW_FOOT.y * CH + .3 * CH, F2 = c.Y + GW_FOOT.y * CH + .8 * CH; if (!cellFree(c.X, F) && cellFree(c.X, F2) && bare(c.X, F) && bare(c.X, F - 6) && !wetPx(c.X, F)) { const why = gardenCollideAt(toCell(c.X, F).x, toCell(c.X, F).y).join('; '); if (why && !/water/.test(why)) short.push(Object.assign({ why }, c)); } }
+        }
+        for (const R of runsOf(through)) if (R.list.length >= 3) { const m = R.list[R.list.length >> 1], mc = toCell(m.X, m.Y); push({ kind: 'walk-through', obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: mc.x, y: mc.y, detail: (R.list.length * 3) + ' px of its drawn foot can be stood on (stonework judged column by column)' }); }
+        for (const R of runsOf(short)) if (R.list.length >= 4) { const m = R.list[R.list.length >> 1], mc = toCell(m.X, m.Y); push({ kind: 'block-offset', obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: mc.x, y: mc.y, detail: 'over ' + (R.list.length * 3) + ' px of its length the feet stop more than ' + (.3 + GW_FOOT.y).toFixed(2) + ' cells in front of its drawn foot, on open ground (' + m.why.slice(0, 80) + ')' }); }
+      } else {
+        // in parts: the gaps between its drawn parts, and past its drawn ends, at its base line
+        const base = Math.max(...cols.map(c => c.Y)), low = cols.filter(c => c.Y >= base - 10); if (!low.length) continue;
+        const Rs = runsOf(low, 3), yb = base - 4;
+        const anyBlockAt = X => !cellFree(X, yb) && bare(X, yb) && bare(X, yb - 10) && !wetPx(X, yb);
+        for (let i = 1; i < Rs.length; i++) { const g0 = Rs[i - 1].list[Rs[i - 1].list.length - 1].X, g1 = Rs[i].list[0].X, gap = g1 - g0; if (gap < GW_FOOT.x * 2 * CW + 8) continue; const X = (g0 + g1) / 2; if (anyBlockAt(X) && cellFree(X, yb + GW_FOOT.y * CH + .6 * CH)) { const mc = toCell(X, yb); push({ kind: 'invisible-wall', obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: mc.x, y: mc.y, detail: 'blocked in the ' + Math.round(gap) + ' px gap between two of its drawn parts, with nothing drawn there' }); } }
+        const L = Math.min(...low.map(c => c.X)), Rt = Math.max(...low.map(c => c.X)), off = (GW_FOOT.x + .25) * CW, off2 = (GW_FOOT.x + .75) * CW;
+        for (const [X, X2, side] of [[L - off, L - off2, 'west'], [Rt + off, Rt + off2, 'east']]) if (anyBlockAt(X) && cellFree(X2, yb)) { const mc = toCell(X, yb); push({ kind: 'invisible-wall', obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: mc.x, y: mc.y, detail: 'its block runs on more than ' + (.25).toFixed(2) + ' cells past its drawn ' + side + ' end, with nothing drawn there' }); }
+      }
+    }
+  }
+
   /* ---------- 2. invisible walls: boxes and cells that block where nothing is drawn ---------- */
   const painted = (x0, y0, x1, y1, above) => { for (const fy of [.15, .5, .85]) for (const fx of [.15, .5, .85]) { const p = toPx(x0 + (x1 - x0) * fx, y0 + (y1 - y0) * fy); if (paintAt(p.X, p.Y)) return true; } if (above) for (const up of [10, 20, 30]) for (const fx of [.2, .5, .8]) { const p = toPx(x0 + (x1 - x0) * fx, y0); if (paintAt(p.X, p.Y - up)) return true; } return false; };   // (above: the body of a thing on legs, a bench's seat over the box between them)
   for (const r of D.rects) {
@@ -423,6 +493,23 @@
     for (const c of clusters(dryBlocked, ST)) if (c.n >= 3) push({ kind: 'shore-blocked', obj: 'shore', name: 'dry ground beside water', x: c.x, y: c.y, detail: c.area.toFixed(2) + ' square cells of dry ground where only the water test stops the feet (no water within reach of them)' });
     // (not a fault on its own: a rock kerb along the gorge, wet sand at the tide line and reed beds are drawn inside the water's edge and are meant to stop the feet. Listed for the eye.)
     for (const c of clusters(drawnDry, ST)) if (c.n >= 12) shore.notes.push({ x: +c.x.toFixed(2), y: +c.y.toFixed(2), area: +c.area.toFixed(2), region: regionOf(c.x, c.y) });
+  }
+  // A float lands at the middle of the cell you cast at (94-garden-fish-3game.js _gwFishCast). Every cell middle the cast
+  // accepts must be drawn as water: where the water's edge is wider than its painting, the float sat on the drawn bank
+  // (the gorge: the verifier cast onto its stone bank, 18 Nov 2026; check 8 had listed those spots only as notes).
+  shore.casts = 0;
+  if (mosaic.ok) {
+    const dryFloat = new Set();
+    for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
+      const cx = x + .5, cy = y + .5; if (!gardenWaterContainsPoint(cx, cy)) continue;
+      if (typeof _gwFishStoneCovered === 'function' && _gwFishStoneCovered(cx, cy)) continue;
+      if (typeof gardenWaterNo === 'function' && gardenWaterNo(x, y, m)) continue;
+      shore.casts++;
+      const pw = pixWater(cx, cy, 5, 3); if (pw < 0 || pw >= .3) continue;
+      const p = toPx(cx, cy); if (anyPaint(p.X, p.Y)) continue;   // (a float among reeds or lily pads, or a crossing drawn over it: those are their own checks)
+      dryFloat.add(x + ',' + y);
+    }
+    for (const c of clusters(dryFloat, 1)) push({ kind: 'cast-on-dry', obj: 'shore', name: 'a cast lands on drawn ground', x: c.x + .5, y: c.y + .5, detail: c.n + ' cell middle(s) the cast accepts as water are drawn as ' + (regionOf(c.x + .5, c.y + .5) === 'north-headland' ? 'rock or bank' : 'ground') + ': the float sits on them' });
   }
 
   /* ---------- 9. every bridge, footbridge, stepping stones and pier: the deck you walk is the deck that is drawn, and both ends join ---------- */
@@ -810,6 +897,16 @@
       // its block's foot against its drawn foot
       const a = toCell(o.X0, o.Yb), b = toCell(o.X1, o.Yb), w = u.def.w || 1, h = u.def.h || 1, foot = u.y + h, mid = (a.x + b.x) / 2;   // (a turned decoration keeps its footprint: 94-garden-design-2tools.js; only its drawing turns)
       if (faults.length === before && Math.abs(a.y - foot) > .5) push({ kind: 'decor-foot', obj: 'decor', name: o.name, family: fam, region: 'decorations (anywhere)', decor: u.def.id, turn: u.r, col, x: mid, y: a.y, detail: 'its drawn base is ' + (a.y - foot).toFixed(2) + ' rows from the foot of its ' + w + ' x ' + h + ' footprint' });
+      // Placed in a run (a fence): the block must reach each joint, or a run of them has a gap at every joint (railings,
+      // the kerb, the hurdle: the verifier walked through every joint, 18 Nov 2026). A foot standing on the joint line
+      // with only this panel placed misses its block exactly when it would pass between two. Turned edge-on, the panel
+      // blocks along its drawn length. A long thing (a planter): the feet do not stand on its drawn ends.
+      if (faults.length === before && col !== 'none') {
+        const yT = foot - .12, at = { obj: 'decor', name: o.name, family: fam, region: 'decorations (anywhere)', decor: u.def.id, turn: u.r, col };
+        if (fam === 'fence' && u.def.rot && u.r % 2 === 1) { const open = [.15, .5, .85].filter(fy => free(u.x + w / 2, u.y + fy * h)); if (open.length) push({ kind: 'decor-foot', ...at, x: u.x + w / 2, y: u.y + .5, detail: 'turned edge-on, the feet can stand on its drawn line at ' + open.length + ' of 3 points along it: a run of them can be walked through' }); }
+        else if (fam === 'fence') { const ends = [u.x + .02, u.x + w - .02].filter(x => free(x, yT)); if (ends.length && a.x <= u.x + .2 && b.x >= u.x + w - .2) push({ kind: 'decor-foot', ...at, x: ends[0], y: yT, detail: 'drawn to the edge of its cell, but a foot on the joint line misses its block: a run of these has a gap at every joint' }); }
+        else if (w >= 2 && b.x - a.x >= 1.4) { const ends = [a.x + .15, b.x - .15].filter(x => free(x, yT)); if (ends.length) push({ kind: 'decor-foot', ...at, x: ends[0], y: yT, detail: 'drawn ' + (b.x - a.x).toFixed(2) + ' cells long, the feet can stand on ' + ends.length + ' of its drawn ends' }); }
+      }
       if (faults.length > before) F.faults += faults.length - before;
     }
     decor.keepForThumbs = !!opts.keepDecor;
@@ -821,5 +918,5 @@
   const counts = { byKind: {}, byRegion: {}, byObject: {}, byRegionKind: {} };
   for (const f of faults) { counts.byKind[f.kind] = (counts.byKind[f.kind] || 0) + 1; counts.byRegion[f.region] = (counts.byRegion[f.region] || 0) + 1; counts.byObject[f.obj] = (counts.byObject[f.obj] || 0) + 1; const k = f.region + ' / ' + f.kind; counts.byRegionKind[k] = (counts.byRegionKind[k] || 0) + 1; }
   const objKinds = {}; for (const o of all) objKinds[o.kind] = (objKinds[o.kind] || 0) + 1;
-  return { total: faults.length, counts, faults, scanned: { sprites: all.length, checked, byKind: objKinds, rects: D.rects.length, cells: D.cells.length, doors: doorsChecked, clicks: D.clicks.length, landforms: (island.landforms || []).length, routes: (island.routes || []).length, pathSamples, lockedPlots: plots.size, lockedEdges, shorePoints: shore.points, shoreDrawnDryNotes: shore.notes, crossings: crossingsChecked, decks: decksNow.length, picture: mosaic, decor, feel, walkTo, closed, order, overlap } };
+  return { total: faults.length, counts, faults, scanned: { sprites: all.length, checked, shapeTrees, parts, byKind: objKinds, rects: D.rects.length, cells: D.cells.length, doors: doorsChecked, clicks: D.clicks.length, landforms: (island.landforms || []).length, routes: (island.routes || []).length, pathSamples, lockedPlots: plots.size, lockedEdges, shorePoints: shore.points, shoreDrawnDryNotes: shore.notes, crossings: crossingsChecked, decks: decksNow.length, picture: mosaic, decor, feel, walkTo, closed, order, overlap } };
 })

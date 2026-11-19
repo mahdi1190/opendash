@@ -680,6 +680,32 @@ window.GardenPaintedTerrain = (function () {
     const h = current && current.handle, px = (h && h.texturePx || 0) + (stats.spritePx || 0);
     return Object.assign({}, stats, { wanted: wanted(), pending: h ? h.pending : null, live: h ? h.live : null, baked: h ? h.baked : null, evicted: h ? h.evicted : null, worstChunkMs: h ? h.worstMs : null, worstSliceMs: h ? h.sliceWorstMs : null, p95ChunkMs: h ? h.p95 : null, medianChunkMs: h ? h.median : null, bakeMs: h ? h.bakeMs : null, textureMB: Math.round(px * 4 / 1048576 * 10) / 10, lastError: lastError || (KIT() && KIT().lastError) });
   }
+  /**
+   * Is a point (cells) inside the gorge's channel but drawn as its rock, not its open water? The layout's water runs the
+   * channel's whole width (hw + .1 on the far side, hw + .05 on the near); the painting stands the far wall from that edge
+   * down to farIn (hw * (1 - 2 depth) from the middle, deeper towards the falls) and the near lip's undercut in to
+   * nearIn (hw * .78): gorgeOps above, the same numbers. A float cast at a cell centre in that band landed on the drawn
+   * stone bank (the verifier, 18 Nov 2026). Margin: a float's own half width.
+   */
+  let gorgeMemo = null;
+  function gorgeCovers(x, y) {
+    if (!GORGE_WATER || !wanted()) return false;
+    const D = gardenIslandData(), g = D && D.presentation && D.presentation.rivers && D.presentation.rivers.gorge; if (!g || !g.line || g.line.length < 2) return false;
+    if (!gorgeMemo || gorgeMemo.g !== g) { const kit = KIT(); gorgeMemo = { g, line: kit.resample(g.line.map(p => ({ x: p[0], y: p[1] })), .14).map(p => [p.x, p.y]) }; }
+    const line = gorgeMemo.line, n = line.length, hw = g.halfWidth || .85;
+    let best = null;
+    for (let i = 0; i < n - 1; i++) {
+      const a = line[i], b = line[i + 1], dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L)), qx = a[0] + dx * t, qy = a[1] + dy * t, d = Math.hypot(x - qx, y - qy);
+      if (!best || d < best.d) best = { d, i: i + t, qx, qy, dx, dy };
+    }
+    if (!best || best.d > hw + .2) return false;
+    // (the channel is not painted out into the tarn it leaves: open water there is the tarn's)
+    const inLoop = pts => { let on = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) on = !on; } return on; };
+    if ((D.freshwater || []).some(w => !w.river && w.boundary && w.boundary.length > 2 && inLoop(w.boundary))) return false;
+    const l = Math.hypot(best.dx, best.dy) || 1, nx = -best.dy / l, ny = best.dx / l, s = ny < 0 ? 1 : -1, off = (x - best.qx) * nx * s + (y - best.qy) * ny * s;   // (+: toward the far wall)
+    const depth = .3 + best.i / (n - 1) * .16, margin = .1;
+    return off > hw * (1 - depth * 2) - margin || off < -hw * .78 + margin;
+  }
   function roomEntrance(id) { return current && current.roomEntrances && current.roomEntrances[id] || null; }
-  return { wanted, build, paintTo, profile, owns, ownsRegion, status, compose, readLayout, roomEntrance, PAL, trunks: () => (wanted() && trunkFeet) || null, folds: () => (wanted() ? FOLDS : []), standing, standSig: () => (wanted() && standOps ? standSigNow : '') };
+  return { wanted, build, paintTo, profile, owns, ownsRegion, status, compose, readLayout, roomEntrance, PAL, trunks: () => (wanted() && trunkFeet) || null, folds: () => (wanted() ? FOLDS : []), standing, gorgeCovers, standSig: () => (wanted() && standOps ? standSigNow : '') };
 })();
