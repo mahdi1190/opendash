@@ -291,11 +291,20 @@
         // the shelf the tower and the keeper's cottage stand on: a low weathered platform of rock
         // reaching out over the tide, so neither building stands in the water
         const sx = c.x - 22, sy = c.y - 10;
-        B.f(B.blob(r, sx + 4, sy + 10, 96, 26, 14, .22), '#3e4a44', .3);
-        B.f(B.blob(r, sx, sy + 4, 92, 24, 14, .2), P2.rockDk).f(B.blob(r, sx - 3, sy, 88, 21, 14, .2), P2.rockLo).f(B.blob(r, sx - 10, sy - 5, 72, 15, 12, .25), P2.rock).f(B.blob(r, sx - 26, sy - 9, 40, 7, 9, .3), P2.rockHi, .8);
-        for (let i = 0; i < 9; i++) { const x = sx - 80 + r() * 160, y = sy - 4 + r() * 18; B.s(`M${x} ${y}l${6 + r() * 10} ${(r() - .5) * 4}`, P2.rockDk, 1, .45); }
-        for (let i = 0; i < 6; i++) B.f(B.blob(r, sx - 70 + r() * 140, sy + 16 + r() * 6, 8 + r() * 10, 2.4, 7, .5), '#4f5a36', .7);
-        B.f(B.blob(r, sx - 40, sy - 8, 14, 3, 7, .5), P2.lichen, .5).f(B.blob(r, sx + 30, sy - 4, 10, 2.4, 7, .5), P2.lichen, .45);
+        // (it was one grey disc with a darker rim: now a stepped outcrop, a dark seaward face cut by joints with weed and
+        // barnacles at its foot, and a top of separate slabs, each lit on its upper left, with turf and thrift in the joints)
+        B.f(B.blob(r, sx + 6, sy + 12, 98, 26, 14, .22), '#2e4a48', .3);
+        B.f(B.blob(r, sx, sy + 6, 92, 24, 14, .2), P2.rockDk).f(B.blob(r, sx - 2, sy + 2, 90, 21, 14, .2), '#5e584e');
+        for (let k = 0; k < 16; k++) { const a = Math.PI * (.08 + k / 16 * .84), x = sx + Math.cos(a) * 88, y = sy + 4 + Math.sin(a) * 22; B.s(`M${x} ${y - 6}l${(r() - .5) * 3} ${7 + r() * 6}`, '#2e2a24', 1.1, .6); }
+        for (let k = 0; k < 30; k++) { const a = Math.PI * (.06 + r() * .88), x = sx + Math.cos(a) * (86 + r() * 6), y = sy + 8 + Math.sin(a) * (22 + r() * 3); B.f(B.blob(r, x, y, 4 + r() * 5, 1.8 + r() * 1.4, 6, .5), r() < .6 ? '#3e4e30' : '#5a6a3a', .85); if (r() < .4) B.f(B.circ(x + (r() - .5) * 6, y - 3, .8), '#dcd8ca', .8); }
+        const slabs = []; for (let k = 0; k < 9; k++) { const a = r() * Math.PI * 2, d = Math.sqrt(r()) * .72; slabs.push({ x: sx - 6 + Math.cos(a) * 80 * d, y: sy - 3 + Math.sin(a) * 15 * d, w: 22 + r() * 22, h: 7 + r() * 5 }); }
+        slabs.sort((a, b) => a.y - b.y);
+        B.cx.save(); B.cx.clip(new Path2D(B.blob(r, sx - 3, sy + 1, 88, 20, 14, .18)));
+        B.f(B.blob(r, sx - 4, sy - 1, 86, 19, 14, .2), P2.rockLo);
+        for (const q of slabs) { B.f(B.blob(r, q.x + 2, q.y + 2, q.w, q.h, 8, .3), '#4e4a42', .7).f(B.blob(r, q.x, q.y, q.w, q.h, 8, .3), r() < .5 ? P2.rock : '#aaa294').f(B.blob(r, q.x - q.w * .25, q.y - q.h * .3, q.w * .55, q.h * .4, 7, .35), P2.rockHi, .75);
+          if (r() < .4) B.f(B.blob(r, q.x + q.w * .2, q.y - q.h * .1, 5, 1.8, 6, .5), P2.lichen, .5); B.s(`M${q.x - q.w * .9} ${q.y + q.h * .7}q${q.w * .9} ${2} ${q.w * 1.8} 0`, '#3e3a34', .9, .5); }
+        for (let k = 0; k < 14; k++) { const x = sx - 70 + r() * 140, y = sy - 14 + r() * 10; if (Math.abs(x - c.x) < 34 && y > sy - 12) continue; B.tufts(r, x, y, 8, 3, ['#6f8a4a', '#86a058', '#5f7a3e'], 4 + r() * 3); if (r() < .4) B.f(B.circ(x + (r() - .5) * 5, y - 4, 1.4), C.season === 'winter' ? '#c8c0b8' : '#e8a0b8', .95); }
+        B.cx.restore();
         const rocks = []; for (let i = 0; i < 26; i++) { const a = Math.PI * (.05 + r() * .9), d = 40 + r() * 110; rocks.push([c.x + Math.cos(a) * d * 1.3 - 10, c.y + Math.sin(a) * d * .7 + 6, 10 + r() * 18]); }
         rocks.sort((a, b) => a[1] - b[1]);
         for (const [x, y, s] of rocks) { B.boulder(r, x, y, s * 1.5, s * .8, P2, false); if (y > c.y + 40) B.f(B.blob(r, x, y - 1, s * .8, s * .2, 7, .5), '#4f5a36', .75); }
@@ -358,7 +367,8 @@
   };
   const drawBoat = (P, col, afloat) => B => {
     const hull = 'M-40 -6Q-38 -18 -14 -20L30 -18Q44 -14 44 -6Q42 4 26 6L-26 6Q-40 4 -40 -6Z', inner = 'M-34 -7Q-32 -15 -14 -16L28 -14Q38 -11 38 -6Q36 0 24 1L-24 1Q-34 0 -34 -7Z';
-    if (afloat) { B.f(B.ell(2, 4, 50, 7), '#2e5a6a', .25); B.s(B.ell(2, 4, 54, 8), '#e8f2ee', 1.2, .45); }
+    // afloat: its own darker water under it, a broken ring of ripple, and the mooring rope going down off the bow
+    if (afloat) { B.f(B.ell(2, 5, 50, 7), '#2e5a6a', .25); B.cx.setLineDash([16, 5, 9, 7]); B.s(B.ell(2, 4, 54, 8), '#e8f2ee', 1.2, .45); B.cx.setLineDash([]); B.s('M42 -8q10 4 12 13', P.rope, 1.2, .85).s('M54 5q2 2 1 5', P.rope, 1, .35); }
     else B.shadow(4, 5, 46, 7, .32);
     B.f(hull, col).f('M-40 -6Q-40 4 -26 6L26 6Q42 4 44 -6Q40 0 26 1L-24 1Q-38 0 -40 -6Z', '#000', .22).f('M-38 -10Q-36 -18 -14 -20L30 -18Q42 -15 43 -10', '#fff', .18);
     B.s('M-39 -8Q-36 -17 -14 -19L30 -17Q43 -13 43 -7', '#f4efe2', 1.6, .8);
