@@ -207,42 +207,51 @@ plot that its top meets the plot's edge: a player behind it is never drawn over 
    code reads, and check with Shift+C.
 8. Sizes come from `gardenSizePx`, never a number of your own; actors only from `GARDEN_ACTOR_SCALE`.
 
-## Numbers (1500 x 900 window, headless Edge with the GPU on, 18 Nov 2026)
+## Numbers (1500 x 900 window, headless Edge with the GPU on, 19 Nov 2026, after the scale change)
 
-Texture memory held by the kit (`GardenPaintGround.status()` and `GardenPaintTerrainKit.sharpStatus()`):
+The default camera now stands at zoom 2.5 on this window (the walking zoom); the closest is 3.9 on a 1x screen and
+7.8 in device pixels on a 2x screen. Texture memory held by the kit (`GardenPaintGround.status()` and
+`GardenPaintTerrainKit.sharpStatus()`):
 
-| | Walking zoom (2.0, level 2) | Closest zoom (3.9, level 3) | Whole map (0.87, level .75) |
-| --- | --- | --- | --- |
-| Shared ground (budget 64 MB; the whole map is kept at level .75 underneath) | 48 to 63 MB | 63 MB | 29 MB |
-| Vale places ground (budget 28 MB) | 27 to 28 MB | 27 MB | 23 MB |
-| Fells ground (budget 32 MB) | 15 MB | 21 MB | 12 MB |
-| Shadow layer (budget 10 MB, level .75) | 5 MB | 5 MB | 10 MB |
-| Sharpened sprites (bound 20 MB) | under 1 MB | under 1 MB | 0 |
-| **All paint-kit textures** | **96 to 110 MB** | **116 MB** | **74 MB** |
+| | Walking zoom (2.5, level 2) | Closest zoom (3.9, level 3) | 2x screen, walking (level 4) | 2x screen, closest (level 4) |
+| --- | --- | --- | --- | --- |
+| Shared ground (budget 64 MB; the whole map is kept at level .75 underneath) | 61 to 62 MB | 62 to 63 MB | 62 MB | 63 MB |
+| Vale places ground (budget 28 MB) | 28 MB | 26 to 27 MB | 27 MB | 26 MB |
+| Fells ground (budget 32 MB) | 12 MB | 11 to 18 MB | 29 MB | 29 MB |
+| Shadow layer (budget 10 MB, level .75) | 4 MB | 3 to 4 MB | 4 MB | 4 MB |
+| Sharpened sprites (bound 20 MB) | under 1 MB | under 1 MB | 0 | 0 |
+| **All paint-kit textures** | **106 MB** | **103 to 112 MB** | **123 MB** | **122 MB** |
 
-On a 2x screen (2504 x 1800 canvas, level 4 at the walking zoom and closer) the kit held 106 MB at both zooms, measured
-with the shared ground's budget at 48 MB; that budget is 64 MB now, so allow about 120 MB. A chunk is 0.15 MB at level
-.75, 1.1 MB at level 2, 2.4 MB at level 3 and 4.3 MB at level 4. The woods' own floor and the tree textures are not the
-kit's and are not counted here (`GardenPaintWood.status()`: 14 MB of a 44 MB cap, and 11 MB of trees).
+The whole-map view (0.87, level .75) held 74 MB in the last round and was not measured again. A chunk is 0.15 MB at
+level .75, 1.1 MB at level 2, 2.4 MB at level 3 and 4.3 MB at level 4. Not the kit's and not counted: the trees, 30 MB
+(the village's bigger trees share a picture every 48 px of height), and the woods' own floor (14 MB of a 44 MB cap).
 
-Bake times for a 256 px chunk of the shared ground, in total, spread over slices on a 34 ms timer: median 24 to 31 ms,
-95th percentile 47 to 63 ms. One slice is 8 to 10 ms by design, but a slice cannot stop inside an op: the longest single
-op measured was 22 ms at levels .75 to 2 and, in the worst case, 60 to 70 ms at level 3 (a band of ground where three
-kinds meet, or the earth-trail op over a chunk full of trails). Those ran while standing still; while you walk a chunk
-with a costly op is not re-baked sharper, and a bare one is baked at a lower level first. The shadow layer: 1 ms median,
-4 ms 95th percentile, 8 ms worst slice.
+Bake times for a 256 px chunk of the shared ground, in total, spread over slices on a 34 ms timer: median 23 to 36 ms,
+95th percentile 49 to 63 ms, worst chunk 61 to 97 ms (1x); median 43 ms, 95th percentile 69 to 71 ms, worst chunk 117 ms
+(2x, level 4). A slice is 8 to 10 ms by design but cannot stop inside an op. While you walk, a bare or repainted chunk is
+painted no sharper than level 2 when one of its ops is costly there or has never been timed, and nothing is re-painted
+sharper; it is made sharp when you stop. With that, the kit's slowest op over the final 1x runs was 17 to 25 ms and its
+slowest timer tick 22 to 33 ms; during a walk on the 2x screen its slowest tick was 21 ms. Standing still, single ops
+of up to 60 ms still run at level 3 (one vale-places op seen while the 2x view was loading). The plot fences are painted
+per chunk, only the runs a chunk shows, each from its own random stream (a big plot's whole fence ran in every chunk it
+touched: 42 ms). The shadow layer: 0 to 1 ms median, 2 ms worst slice.
 
-Walking with real keys round the green and down the harbour road, 24 s a run:
+Walking with real keys round the green and down the harbour road, 24 s a run, the final build:
 
 | Run | Long tasks (over 50 ms) | Frame gaps over 50 ms | Longest frame gap |
 | --- | --- | --- | --- |
-| Zoom 2.0, straight after loading | 1 (54 ms) | 12 | 182 ms |
-| Zoom 2.0 | 1 (58 ms) | 3 | 79 ms |
-| Zoom 2.0, again | 0 | 0 | 48 ms |
-| Zoom 3.9 | 0 | 1 | 55 ms |
-| 2x screen, walking zoom | 1 (51 ms) | 3 | 67 ms |
-| 2x screen, closest zoom | 1 (60 ms) | 2 | 73 ms |
+| 1x, zoom 3.9, just after loading | 0 | 1 | 67 ms |
+| 1x, zoom 3.9 (three more runs) | 0, 0, 0 | 0 to 1 | 49 to 127 ms |
+| 1x, walking zoom 2.5 | 2 (60, 50 ms) | 2 | 73 ms |
+| 1x, walking zoom 2.5, again | 1 (54 ms) | 1 | 55 ms |
+| 2x screen, walking zoom, just after loading | 4 (54 to 80 ms) | 19 | 115 ms |
+| 2x screen, walking zoom (two more runs) | 5 (51 to 94 ms); 3 (58 to 67 ms) | 12; 8 | 91; 85 ms |
+| 2x screen, closest zoom | 4 (50 to 59 ms) | 9 | 85 ms |
 
-So the rule of no task over 50 ms while walking is close but not met: about one task of 51 to 60 ms in some runs. The
-kit's own slowest timer tick in those runs was 15 to 30 ms, so the long task is not a single kit tick; what it is has
-not been found. Headless frame rates are not a measure of a real screen; the long tasks and gaps are.
+So the rule of no task over 50 ms while walking is met at the closest zoom on a 1x screen, missed by one or two tasks of
+50 to 60 ms a run at the walking zoom, and missed by three to five tasks of 50 to 94 ms a run on a 2x screen. These are
+not the ground kit's: its slowest tick in the same walks was 21 to 33 ms. A CPU profile of the 1x walks shows two other
+things in the long stretches: a garbage collection of 75 to 101 ms now and then (the page's script heap is 311 to 337 MB
+live), and a kit tick running straight into a frame's render (two tasks, each under 50 ms, back to back). On the 2x screen
+the frames themselves are about twice the cost (median 12 ms against 6). What the 2x long tasks are has not been pinned
+down. Headless frame rates are not a measure of a real screen; the long tasks and gaps are.

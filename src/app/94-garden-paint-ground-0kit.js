@@ -158,7 +158,10 @@ window.GardenPaintGround = (function () {
         const s = (inView ? 0 : 1e7) + need * 1e6 + dist(ch, v) - (ch.job ? 5e5 : 0); if (s < bs) { bs = s; best = ch; }
       }
       if (!best && opts.prebake && bakedPx < budget * .9 && !(typeof _gw !== 'undefined' && _gw.moving)) for (const ch of list) if (!ch.image) { const d = dist(ch, v); if (d < bs) { bs = d; best = ch; } }
-      if (best) { let k = follow && (best.low || !meets(best.bb, near)) ? Math.min(K, minK) : K; if (moving && follow && !best.image) for (const l of [2, 1.5, 1]) if (k > l && l >= minK && heavy(best, k)) k = l; bakeStep(best, k, slice); }
+      if (best) { let k = follow && (best.low || !meets(best.bb, near)) ? Math.min(K, minK) : K;
+        /* (while you walk, a bare or repainted chunk is painted no sharper than level 2 when one of its ops is costly there or has never been timed: one band of three kinds took 60 ms at level 3; it is made sharp when you stop) */
+        if (moving && follow && (!best.image || best.dirty)) for (const l of [2, 1.5, 1]) if (k > l && l >= minK && (heavy(best, k) || (k > 2 && best.ops.some(o => !(o.cost > 0))))) k = l;
+        bakeStep(best, k, slice); }
       // over the budget: let go the farthest, sharpest chunk that is off the screen (one well away first); short of room for the margin: one well away
       if (bakedPx > budget || wantRoom) { const over = bakedPx > budget; let far = null, fd = -1; for (const ch of list) { if (!ch.image || meets(ch.bb, v)) continue; const away = !meets(ch.bb, keep); if (!away && !over) continue; const d = dist(ch, v) * ch.K * (away ? 1 : .001); if (d > fd) { fd = d; far = ch; } } if (far) evict(far); }
     };
