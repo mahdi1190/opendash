@@ -365,7 +365,7 @@ window.GardenPaintWater = (function () {
         return ps; };
       const fv = (gx, gy) => Fv[gy * gw + gx], loc = (gx, gy) => (Math.min(chh - 1, gy - gy0)) * cw + Math.min(cw - 1, gx - gx0);
       // 0 a still bank, 1 a running bank, 2 to 4 the sea's lap: strong, middling, faint (by a noise along the shore)
-      const shoreCls = (gx, gy, X, Y) => { const ms = Mc ? marine(X, Y) : 0; if (ms > .5) { const v = noise(X / 64, Y / 44, 97); return v > .58 ? 2 : v > .4 ? 3 : 4; } return tR[loc(gx, gy)] > .45 ? 1 : 0; };
+      const shoreCls = (gx, gy, X, Y) => { const ms = Mc ? marine(X, Y) : 0; if (ms > .5) { const v = noise(X / 64, Y / 44, 97); return v > .58 ? 2 : v > .4 ? 3 : 4; } return tR[loc(gx, gy)] > .45 ? 1 : noise(X / 52, Y / 36, 99) > .5 ? 0 : 5; };
       const outer = contour(fv, .5, shoreCls);
       // swell lines out on the sea: two broken lines a little way off the sand, the nearer one brighter, as if a wave were coming in
       if (Mc) {
@@ -389,13 +389,15 @@ window.GardenPaintWater = (function () {
       cx.lineJoin = 'round'; cx.lineCap = 'round';
       // the bank: a damp earth band along a fresh shore (the water is laid over its inner half); the sea's sand only darkens
       // a little where the waves wet it (the shared ground already lays the tide's damp edge on the beach)
-      for (const b of [0, 1]) if (outer[b]) { cx.strokeStyle = P.bank; cx.globalAlpha = .24; cx.lineWidth = 24; cx.stroke(outer[b]); cx.globalAlpha = .4; cx.lineWidth = 12; cx.stroke(outer[b]); }
+      for (const b of [0, 1, 5]) if (outer[b]) { cx.strokeStyle = P.bank; cx.globalAlpha = .24; cx.lineWidth = 24; cx.stroke(outer[b]); cx.globalAlpha = .4; cx.lineWidth = 12; cx.stroke(outer[b]); }
       if (SP) for (const b of [2, 3, 4]) if (outer[b]) { cx.strokeStyle = SP.wet; cx.globalAlpha = .2; cx.lineWidth = 12; cx.stroke(outer[b]); cx.globalAlpha = .22; cx.lineWidth = 5; cx.stroke(outer[b]); }
       cx.globalAlpha = 1;
       cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high'; cx.drawImage(e.canvas, e.dst[0], e.dst[1], e.dst[2], e.dst[3]);
       if (s1 || s2) { cx.strokeStyle = SP.foam; if (s1) { cx.globalAlpha = .16; cx.lineWidth = 6; cx.stroke(s1); cx.globalAlpha = .5; cx.lineWidth = 1.7; cx.stroke(s1); } if (s2) { cx.globalAlpha = .32; cx.lineWidth = 1.4; cx.stroke(s2); } cx.globalAlpha = 1; }
-      for (const b of [0, 1]) if (wet[b]) { cx.strokeStyle = mix(P.bank, '#3e3626', .5); cx.globalAlpha = b ? .45 : .55; cx.lineWidth = b ? 2.6 : 3.2; cx.stroke(wet[b]); }
-      if (lap[0]) { cx.strokeStyle = P.foam; cx.globalAlpha = .18; cx.lineWidth = 7; cx.stroke(lap[0]); cx.globalAlpha = .5; cx.lineWidth = 2.2; cx.stroke(lap[0]); }
+      for (const b of [0, 1, 5]) if (wet[b]) { cx.strokeStyle = mix(P.bank, '#3e3626', .5); cx.globalAlpha = b === 1 ? .45 : .55; cx.lineWidth = b === 1 ? 2.6 : 3.2; cx.stroke(wet[b]); }
+      // (on still water the lap comes and goes along the shore: a whole bright ring round a pond reads as a pool's tiled edge)
+      if (lap[0]) { cx.strokeStyle = P.foam; cx.globalAlpha = .14; cx.lineWidth = 6; cx.stroke(lap[0]); cx.globalAlpha = .4; cx.lineWidth = 1.9; cx.stroke(lap[0]); }
+      if (lap[5]) { cx.strokeStyle = P.foam; cx.globalAlpha = .07; cx.lineWidth = 5; cx.stroke(lap[5]); cx.globalAlpha = .16; cx.lineWidth = 1.3; cx.stroke(lap[5]); }
       if (lap[1]) { cx.strokeStyle = P.foam; cx.globalAlpha = .14; cx.lineWidth = 1.2; cx.stroke(lap[1]); }
       if (SP) { cx.strokeStyle = SP.foam; for (const [b, w, a] of [[2, 3.6, .92], [3, 2.6, .66], [4, 1.7, .36]]) if (lap[b]) { cx.globalAlpha = a * .3; cx.lineWidth = w * 3.2; cx.stroke(lap[b]); cx.globalAlpha = a; cx.lineWidth = w; cx.stroke(lap[b]); } }
       cx.globalAlpha = 1;
@@ -814,9 +816,12 @@ window.GardenPaintWater = (function () {
         c.save(); c.translate(pool.x, pool.y); c.scale(1.35, .55); c.translate(-pool.x, -pool.y); c.globalAlpha = .6; c.fillStyle = g; c.beginPath(); c.arc(pool.x, pool.y, 120, 0, Math.PI * 2); c.fill(); c.restore();
         // foam spreading out from the landing: broken arcs of bubbles drifting away, thinning with distance
         c.globalAlpha = 1; c.strokeStyle = C.foam; c.fillStyle = C.foam; c.lineCap = 'round';
-        for (const [x, y, rr, t] of rafts) { const d = Math.hypot((x - pool.x) / 1.3, (y - pool.y) / .45) / 120, a0 = Math.atan2((y - pool.y) / .45, (x - pool.x) / 1.3), span = .12 + t * .3, R = Math.max(18, d * 120);
-          c.globalAlpha = Math.max(.08, .55 - d * .45); c.lineWidth = 1 + t * 1.4; c.beginPath(); c.ellipse(pool.x, pool.y + 6, R * 1.3, R * .45, 0, a0 - span, a0 + span); c.stroke();
-          for (let k = 0; k < 4; k++) { const a = a0 + (k / 3 - .5) * span * 2, rx = pool.x + Math.cos(a) * R * 1.3 * (1 + (t - .5) * .08), ry = pool.y + 6 + Math.sin(a) * R * .45; c.beginPath(); c.arc(rx, ry + (k % 2) * 2, .8 + t, 0, Math.PI * 2); c.fill(); } }
+        // (loose rafts of bubbles drifting out and thinning, each its own shape: whole or broken rings round the landing read as a target)
+        rafts.forEach(([x, y, rr, t], ri) => { const d = Math.hypot((x - pool.x) / 1.3, (y - pool.y) / .45) / 120, a0 = Math.atan2((y - pool.y) / .45, (x - pool.x) / 1.3), R = Math.max(18, d * 120), q = rng(hash('raft') + ri * 7919);
+          const px = pool.x + Math.cos(a0) * R * 1.3, py = pool.y + 6 + Math.sin(a0) * R * .45, ang = Math.atan2(Math.cos(a0) * .45, -Math.sin(a0) * 1.3), al = Math.max(.07, .6 - d * .5), n = 3 + Math.floor(q() * 6);
+          c.save(); c.translate(px, py); c.rotate(ang);
+          for (let k = 0; k < n; k++) { const bx = (q() - .5) * rr * 3.2, by = (q() - .5) * rr * .7, br = .9 + q() * (2.6 - d * 1.2); c.globalAlpha = al * (.45 + q() * .55); c.beginPath(); c.ellipse(bx, by, br * 1.5, br * .8, 0, 0, Math.PI * 2); c.fill(); }
+          c.restore(); });
         // (no whole rings drawn round it: three perfect ellipses read as a target; the broken arcs above are the spreading water)
         const g2 = c.createRadialGradient(pool.x, pool.y - 6, 0, pool.x, pool.y - 6, width * .9); g2.addColorStop(0, 'rgba(255,255,255,.95)'); g2.addColorStop(.6, 'rgba(245,250,248,.5)'); g2.addColorStop(1, 'rgba(245,250,248,0)');
         c.globalAlpha = 1; c.fillStyle = g2; c.save(); c.translate(pool.x, pool.y - 6); c.scale(1, .45); c.beginPath(); c.arc(0, 0, width * .9, 0, Math.PI * 2); c.fill(); c.restore();
