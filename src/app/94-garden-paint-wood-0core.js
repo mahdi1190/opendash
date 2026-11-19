@@ -253,6 +253,29 @@ window.GardenPaintWood = (function () {
         }
       }
       tm['cells:' + region.id] = Math.round(performance.now() - R0);
+      // The Hush (oldwood.md: past the Ruined arch the lane goes on between yews, dark and narrowing): yews stand either side of
+      // each old-wood lane that comes through a gate, two cells off it and a stride apart, their crowns leaning over the lane
+      // (they fade as you walk under them). The first few rows past the arch stay clear and the crowns are kept low enough that
+      // the arch is never hidden. Read from the layout's lanes and gates; nothing named.
+      if (def.mood === 'old' && kitWood && species.some(s => s[0] === 'kit:yew')) for (const g of data.gates || []) {
+        const lane = (data.routes || []).find(r => r.gateId === g.id && r.points && r.points.length > 1); if (!lane) continue;
+        const pts = gardenIslandRoutePath(lane).points; let walked = 0;
+        for (let i = 1; i < pts.length; i++) {
+          const a = pts[i - 1], b = pts[i], L = Math.hypot(b.x - a.x, b.y - a.y) || 1, tx = (b.x - a.x) / L, ty0 = (b.y - a.y) / L;
+          for (let s = 0; s < L; s += 1.7) {
+            const cx0 = a.x + tx * s, cy0 = a.y + ty0 * s; walked += 1.7; if (!inside(cx0, cy0, poly) || cy0 - g.y < 3.2 || Math.hypot(cx0 - g.x, cy0 - g.y) > 9) continue;
+            for (const side of [1, -1]) {
+              const ox = cx0 - ty0 * side * 2.05, oy = cy0 + tx * side * 2.05 * .8, X = Math.floor(ox), Y = Math.floor(oy), c = cellAt(X, Y);
+              if (wet(c) || isPath(c) || statics.has(X + ',' + Y) || (c.row && (c.row.plot || /^l[sc]-/.test(c.row.id || ''))) || byLamp(ox, oy + .5) || byPile(ox, oy + .5)) continue;
+              const fx = px(ox), fy = py(oy + .5); if (placed.some(q => Math.hypot(q.x - fx, (q.y - fy) * 1.5) < 40)) continue;
+              const F = GardenPaintTrees.form('yew'), room = (fy - py(g.y + 1.3)) / (F.cy + F.ry), h = Math.round(Math.min(gardenSizePx('tree', .15), room)); if (h < 84) continue;
+              const half = Math.max(4, Math.min(13, h * F.girth * .75)), trunk = { x0: (fx - half) / W.cellW, x1: (fx + half) / W.cellW, y0: (fy - 6 - W.sky) / W.cellH, y1: (fy + 1 - W.sky) / W.cellH };
+              out.trees.push({ id: 'kit:yew', kit: 'yew', v: Math.floor(h3(X, Y, 5) * 2), size: 0, h, x: fx, y: fy, flip: side < 0, scale: 1, region: region.id, cx: X, cy: Y, trunk, tint: 0xd2dce0, hush: true });
+              placed.push({ x: fx, y: fy, gap: 30 });
+            }
+          }
+        }
+      }
       for (const [id, cells] of knots) knot(out, id, cells, px, py, region.id);
       // The outer edge of the wood (not a border shared with another painted wood) fades into the lawn instead of a ruled line.
       const edge = new Path2D(), others = (data.regions || []).filter(o => o !== region && WOODS[o.id]).map(o => o.polygons[0]);
@@ -843,7 +866,7 @@ window.GardenPaintWood = (function () {
   /** What stands in a box of cells (a look for the dev tools): trees by species, floor stamps by kind, glows. */
   function probe(x0, y0, x1, y1) {
     const S = state; if (!S || !S.M) return null; const W = S.W, inb = (x, y) => x / W.cellW >= x0 && x / W.cellW < x1 && (y - W.sky) / W.cellH >= y0 && (y - W.sky) / W.cellH < y1, n = {};
-    for (const t of S.M.trees) if (inb(t.x, t.y)) n['tree:' + t.id + (t.thicket ? ':knot' : '')] = (n['tree:' + t.id + (t.thicket ? ':knot' : '')] || 0) + 1;
+    for (const t of S.M.trees) if (inb(t.x, t.y)) { const k = 'tree:' + t.id + (t.thicket ? ':knot' : ''); n[k] = (n[k] || 0) + 1; if (!t.thicket && t.kit) (n.at = n.at || []).push([t.kit, +(t.x / W.cellW).toFixed(1), +((t.y - W.sky) / W.cellH).toFixed(1), t.h]); }
     for (const f of S.M.floors) if (f.kind === 'stamp' && inb(f.x, f.y)) n['stamp:' + f.id] = (n['stamp:' + f.id] || 0) + 1;
     for (const g of S.M.glows || []) if (inb(g.x, g.y)) n['glow:' + g.kind] = (n['glow:' + g.kind] || 0) + 1;
     const bx = { x: x0 * W.cellW, y: W.sky + y0 * W.cellH, w: (x1 - x0) * W.cellW, h: (y1 - y0) * W.cellH }; n.chunks = [...S.chunks.values()].filter(c => hit(c.box, bx)).map(c => c.key + (c.image ? '@' + c.K : '-') + ':' + c.stamps.length + 's' + (c.shade ? (c.shade.visible ? '+sh' : '') : ''));
