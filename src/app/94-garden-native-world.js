@@ -898,6 +898,7 @@ window.GardenNativeWorld = (function () {
       const major = !gate, foot = gateCrossingFoot(gate);
       const handle = GardenNativeScenery.create(scene, { id: prop.id, kind, x: foot ? foot.x : (prop.x + prop.w / 2) * W.cellW, y: foot ? foot.y : W.sky + (prop.y + prop.h) * W.cellH - 4, width: gate ? gate.h > 1 ? 74 : 57 : prop.w * W.cellW, name: zone ? zone.name : prop.name, level: zone && zone.lv, showRequirement: false, open, major, gate, mirrorX: gardenPropMirrorX(prop), season: sc.season });
       if (handle && foot) handle.foot = foot;
+      if (handle && !gate) seatUnder(handle, prop, sc, { kind: kind === 'chapel' ? 'moss' : 'earth', w: prop.w * W.cellW * .9 });
       if (handle && ambientPause) handle.pauseAmbient(ambientPause); return handle;
     }
     // The Painted village's props, gates, falls and decorations
@@ -915,8 +916,15 @@ window.GardenNativeWorld = (function () {
       drawings.set(key, record); sorted = true; return record;
     }
     function paintedOn() { return packOn() && !!window.GardenPaintedProps; }
+    // a building or a big landmark stands in its own worn ground (94-garden-paint-terrain-5sights.js): the seat goes when it does
+    function seatUnder(handle, prop, sc, o) {
+      if (!window.GardenPaintSeat || !handle || !prop || !packOn()) return;
+      const foot = handle.foot || { x: (prop.x + prop.w / 2) * W.cellW, y: W.sky + (prop.y + prop.h) * W.cellH - 3 };
+      let seat = null; try { seat = GardenPaintSeat.add(scene, rootNode._inner, prop, W, Object.assign({ season: sc.season || 'summer', x: foot.x, foot: foot.y }, o)); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); }
+      if (seat) { const d0 = handle.destroy; handle.destroy = function () { seat.destroy(); return d0.apply(this, arguments); }; }
+    }
     function villageBuilding(prop, sc) {
-      if (prop && packOn() && GardenNativePainted.ready() && !(typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(prop.id)).some(Boolean))) { const packed = GardenNativePainted.building(scene, prop, sc, element, W); if (packed) return packed; }
+      if (prop && packOn() && GardenNativePainted.ready() && !(typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(prop.id)).some(Boolean))) { const packed = GardenNativePainted.building(scene, prop, sc, element, W); if (packed) { seatUnder(packed, prop, sc, { kind: 'flags', w: prop.w * W.cellW * .92, front: 22 }); return packed; } }
       if (!villageStyle(prop)) return null;
       if (typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(prop.id)).some(Boolean)) return null;
       const cw = prop.w * W.cellW, x = prop.x * W.cellW, foot = W.sky + (prop.y + prop.h) * W.cellH - 4, litWindows = sc.tod === 'dusk' || sc.tod === 'night';
