@@ -391,20 +391,25 @@
         // the shelf the tower and the keeper's cottage stand on: a low weathered platform of rock
         // reaching out over the tide, so neither building stands in the water
         const sx = c.x - 22, sy = c.y - 10;
-        // (it was one grey disc with a darker rim: now a stepped outcrop, a dark seaward face cut by joints with weed and
-        // barnacles at its foot, and a top of separate slabs, each lit on its upper left, with turf and thrift in the joints)
-        B.f(B.blob(r, sx + 6, sy + 12, 98, 26, 14, .22), '#2e4a48', .3);
-        B.f(B.blob(r, sx, sy + 6, 92, 24, 14, .2), P2.rockDk).f(B.blob(r, sx - 2, sy + 2, 90, 21, 14, .2), '#5e584e');
-        for (let k = 0; k < 16; k++) { const a = Math.PI * (.08 + k / 16 * .84), x = sx + Math.cos(a) * 88, y = sy + 4 + Math.sin(a) * 22; B.s(`M${x} ${y - 6}l${(r() - .5) * 3} ${7 + r() * 6}`, '#2e2a24', 1.1, .6); }
-        for (let k = 0; k < 30; k++) { const a = Math.PI * (.06 + r() * .88), x = sx + Math.cos(a) * (86 + r() * 6), y = sy + 8 + Math.sin(a) * (22 + r() * 3); B.f(B.blob(r, x, y, 4 + r() * 5, 1.8 + r() * 1.4, 6, .5), r() < .6 ? '#3e4e30' : '#5a6a3a', .85); if (r() < .4) B.f(B.circ(x + (r() - .5) * 6, y - 3, .8), '#dcd8ca', .8); }
-        const slabs = []; for (let k = 0; k < 9; k++) { const a = r() * Math.PI * 2, d = Math.sqrt(r()) * .72; slabs.push({ x: sx - 6 + Math.cos(a) * 80 * d, y: sy - 3 + Math.sin(a) * 15 * d, w: 22 + r() * 22, h: 7 + r() * 5 }); }
-        slabs.sort((a, b) => a.y - b.y);
-        B.cx.save(); B.cx.clip(new Path2D(B.blob(r, sx - 3, sy + 1, 88, 20, 14, .18)));
-        B.f(B.blob(r, sx - 4, sy - 1, 86, 19, 14, .2), P2.rockLo);
-        for (const q of slabs) { B.f(B.blob(r, q.x + 2, q.y + 2, q.w, q.h, 8, .3), '#4e4a42', .7).f(B.blob(r, q.x, q.y, q.w, q.h, 8, .3), r() < .5 ? P2.rock : '#aaa294').f(B.blob(r, q.x - q.w * .25, q.y - q.h * .3, q.w * .55, q.h * .4, 7, .35), P2.rockHi, .75);
-          if (r() < .4) B.f(B.blob(r, q.x + q.w * .2, q.y - q.h * .1, 5, 1.8, 6, .5), P2.lichen, .5); B.s(`M${q.x - q.w * .9} ${q.y + q.h * .7}q${q.w * .9} ${2} ${q.w * 1.8} 0`, '#3e3a34', .9, .5); }
-        for (let k = 0; k < 14; k++) { const x = sx - 70 + r() * 140, y = sy - 14 + r() * 10; if (Math.abs(x - c.x) < 34 && y > sy - 12) continue; B.tufts(r, x, y, 8, 3, ['#6f8a4a', '#86a058', '#5f7a3e'], 4 + r() * 3); if (r() < .4) B.f(B.circ(x + (r() - .5) * 5, y - 4, 1.4), C.season === 'winter' ? '#c8c0b8' : '#e8a0b8', .95); }
-        B.cx.restore();
+        // (round 2: a headland of separate blocks in three rows, not a disc with a rim: each block a faceted top lit on its
+        // upper left over a dark face to the south cut by joints, the faces stepping down to the tide with weed and barnacles
+        // at the foot, turf and thrift in the joints between the tops; the tower and the cottage stand on the middle row)
+        B.f(B.blob(r, sx + 8, sy + 18, 102, 26, 14, .25), '#2e4a48', .28);
+        const blocks = [], row = (n, y0, spread, wide, face, lift) => { for (let k = 0; k < n; k++) { const u = (k + .5) / n * 2 - 1; blocks.push({ x: sx + u * spread + (r() - .5) * 10, y: y0 + (1 - u * u) * lift + (r() - .5) * 4, w: wide + r() * 12, d: 8 + r() * 6, f: face + r() * 7 + (1 - Math.abs(u)) * 3, t: r() }); } };
+        row(6, sy - 14, 60, 18, 5, 2); row(8, sy - 2, 76, 17, 7, 4); row(9, sy + 10, 86, 15, 10, 6);
+        blocks.sort((a, b) => a.y - b.y);
+        for (const b of blocks) {
+          const j = () => (r() - .5) * 3, top = [[b.x - b.w + j(), b.y - b.d * .4 + j()], [b.x - b.w * .3 + j(), b.y - b.d + j()], [b.x + b.w * .7 + j(), b.y - b.d * .8 + j()], [b.x + b.w + j(), b.y + j()], [b.x - b.w * .8 + j(), b.y + b.d * .25 + j()]];
+          const bl = top[4], br = top[3], fl = top[0];
+          B.f(B.poly([fl, bl, br, [br[0] + 1, br[1] + b.f], [bl[0] - 1, bl[1] + b.f], [fl[0], fl[1] + b.f * .8]]), b.t < .5 ? '#5e584e' : '#4e4a42');
+          B.f(B.poly([bl, br, [br[0], br[1] + 2.4], [bl[0], bl[1] + 2.4]]), '#7a7266', .8);
+          for (let n = 0; n < 2; n++) { const t = .2 + r() * .6, fx = bl[0] + (br[0] - bl[0]) * t, fy = bl[1] + (br[1] - bl[1]) * t; B.s(`M${fx} ${fy + 2}l${(r() - .5) * 2} ${b.f - 3}`, '#2e2a24', .9, .55); }
+          B.f(B.poly(top), b.t < .35 ? P2.rock : b.t < .7 ? '#aaa294' : '#968e80').f(B.poly([top[0], top[1], [(top[1][0] + top[2][0]) / 2, (top[1][1] + top[2][1]) / 2], [b.x - b.w * .15, b.y - b.d * .2]]), P2.rockHi, .5);
+          B.s(B.poly(top), '#3e3a34', .8, .4);
+          if (r() < .45) B.f(B.blob(r, b.x + b.w * .15, b.y - b.d * .35, 5, 1.8, 6, .5), P2.lichen, .5);
+        }
+        for (const b of blocks) if (b.y > sy + 4) for (let k = 0; k < 4; k++) { const x = b.x - b.w * .8 + r() * b.w * 1.6, y = b.y + b.d * .25 + b.f - 2 + r() * 2; B.f(B.blob(r, x, y, 3 + r() * 4, 1.6 + r() * 1.2, 6, .5), r() < .6 ? '#3e4e30' : '#5a6a3a', .85); if (r() < .4) B.f(B.circ(x + (r() - .5) * 5, y - 2.5, .8), '#dcd8ca', .8); }
+        for (let k = 0; k < 18; k++) { const b = blocks[Math.floor(r() * blocks.length)], x = b.x + (r() < .5 ? -b.w : b.w) * .85, y = b.y - b.d * .3 + r() * 4; if (Math.abs(x - c.x) < 30 && Math.abs(y - (c.y - 12)) < 16) continue; B.tufts(r, x, y, 7, 3, ['#6f8a4a', '#86a058', '#5f7a3e'], 4 + r() * 3); if (r() < .45) B.f(B.circ(x + (r() - .5) * 5, y - 4, 1.4), C.season === 'winter' ? '#c8c0b8' : '#e8a0b8', .95); }
         const rocks = []; for (let i = 0; i < 26; i++) { const a = Math.PI * (.05 + r() * .9), d = 40 + r() * 110; rocks.push([c.x + Math.cos(a) * d * 1.3 - 10, c.y + Math.sin(a) * d * .7 + 6, 10 + r() * 18]); }
         rocks.sort((a, b) => a[1] - b[1]);
         for (const [x, y, s] of rocks) { B.boulder(r, x, y, s * 1.5, s * .8, P2, false); if (y > c.y + 40) B.f(B.blob(r, x, y - 1, s * .8, s * .2, 7, .5), '#4f5a36', .75); }
