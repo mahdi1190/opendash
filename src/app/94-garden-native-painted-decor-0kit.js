@@ -103,6 +103,7 @@ window.GardenPaintedDecor = (function () {
       const key = K.bake(scene, mainKey, P.box, B => P.draw(B, opts(K, item.id, season, night, v, side, false, tile)));
       const im = h.add(K.image(scene, key, fx, foot)); if (!im) return;
       im.setScale(SC / 2); if (flip) im.setFlipX(true);
+      if (!flat && K.castOf) K.castOf(scene, im, fx, foot, flip);   /* (its own shadow along the world's one light: no decoration stands on the grass without one) */
       (P.anim || []).forEach((a, i) => {
         const ak = K.bake(scene, 'dec|' + item.id + '|' + a.id + '|' + v + '|' + mood, a.box, B => a.draw(B, opts(K, item.id, season, night, v, side)));
         const x = fx + (flip ? -a.x : a.x) * SC, y = foot + a.y * SC, ai = h.add(K.image(scene, ak, x, y)); if (!ai) return;

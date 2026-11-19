@@ -137,6 +137,14 @@ window.GardenPaintedProps = (function () {
     return h;
   }
   function finish(h, b, foot) { h.bounds = b; h.rootNode.nativeBounds = b; if (foot) h.foot = foot; return h; }
+  /** A standing picture's own shadow on the ground (its silhouette laid over along the world's one light, with a contact at its foot),
+   *  gone when the picture is: a decoration picked up or moved leaves no shadow behind. (x, y): its foot in world px. */
+  function castOf(scene, im, x, y, flip, a) {
+    if (!im || !im.texture || !window.GardenPaintGround || !GardenPaintGround.cast) return null;
+    const dw = im.displayWidth, dh = im.displayHeight, ox = im.originX, oy = im.originY;
+    const id = GardenPaintGround.cast.add(scene, { key: im.texture.key, x, y, box: [-dw * ox, -dh * oy, dw * (1 - ox), dh * (1 - oy)], a: a == null ? .5 : a, flip: !!flip });
+    if (id) im.once('destroy', () => GardenPaintGround.cast.drop(id)); return id;
+  }
 
   /* ---------- the props of the village ---------- */
   const SIGN = (B, x, y, w, label, size) => { B.f(B.rr(x - w / 2 + 1, y - 6, w, 13, 2.5), 'rgba(40,32,20,.25)').f(B.rr(x - w / 2, y - 7.5, w, 13, 2.5), '#efe4c6').f(B.rect(x - w / 2 + 1, y - 7.5, w - 2, 1.4), '#fff8e6', .8).text(label, x, y - .8, size || 7.2, '#4a3b26'); };
@@ -369,6 +377,7 @@ window.GardenPaintedProps = (function () {
     gnome: ['paint', 'gnome'], wheelbarrow: ['paint', 'barrow'], 'water-butt': ['paint', 'butt'], 'bird-feeder': ['paint', 'feeder'], 'rose-arch': ['paint', 'rosearch'], 'bird-box': ['paint', 'birdbox'], 'compost-bin': ['paint', 'compost'],
     'log-pile': ['paint', 'logs'], 'rw-orn-logs': ['paint', 'logs'], 'hay-bale': ['paint', 'hay'], beehive: ['paint', 'hive'], 'bee-skep': ['paint', 'skep'],
   };
+  DECOR.lantern = ['lib', 'street.lamp', 0, { h: Math.round(gardenSizePx('lamp', .3) / .61) }];   /* (a lantern on a post is a lamp post: 1.8 to 2 times the player; the post is .61 of the library lamp's box) */
   Object.assign(PAINT, {
     stonebench: { box: [-50, -36, 50, 8], draw(B) { B.shadow(2, 1, 44, 7, .26); for (const x of [-32, 32]) B.f(B.rect(x - 6, -16, 12, 16), STONE[1]).f(B.rect(x - 6, -16, 4, 16), STONE[2], .6); B.f(B.rr(-44, -22, 88, 8, 2), STONE[0]).f(B.rect(-44, -22, 88, 2), STONE[2]).f(B.rect(-44, -16, 88, 2), STONE[3], .5); B.f(D().blob(rng(3), -30, -21, 9, 2.4, 7, .5), MOSS[1], .7); } },
     // the lantern's second style: a shepherd's crook of oiled oak with a pierced tin lantern hanging from it
@@ -416,6 +425,7 @@ window.GardenPaintedProps = (function () {
     else { const P = PAINT[d[1]]; im = h.add(image(scene, bake(scene, d[1] + '|' + season + '|' + (o.night ? 'n' : 'd'), P.box, B => P.draw(B, { season, night: o.night })), fx, foot)); if (d[1] === 'fountain') addDrops(scene, h, fx, foot - 52, 16); }
     if (!im) { h.destroy(); return null; }
     if (item.flip) im.setFlipX(true);
+    castOf(scene, im, fx, foot, !!item.flip);
     if ((item.id === 'lantern' || item.id === 'solar-lights') && o.night) glowPool(scene, h, fx, foot, item.id === 'lantern' ? 90 : 60, item.id === 'lantern' ? foot - ((Number(item.v) || 0) % 2 ? 63 : 58) : null);
     const top = foot - im.displayHeight * im.originY;
     return finish(h, { x: fx - im.displayWidth / 2 - 4, y: top - 2, width: im.displayWidth + 8, height: foot - top + 10 }, { x: fx, y: foot });
@@ -909,7 +919,7 @@ window.GardenPaintedProps = (function () {
    *   kit.glowPool(scene, h, x, y, w, haloY)  a soft light pool and halo at dusk and night
    *   kit.paintIntoGround(scene, fn(ctx, {box, meadow, palette, rng, path}))  paint straight into the composed ground picture
    *   kit.falls(scene, {id, x, y, width, season}, o)  the village waterfall (rock step, sheet, streaks, spray, ripples) */
-  const kit = Object.freeze({ brush, bake, image, libImage, handle, finish, glowPool, poolKey, rng, hash, leafOf, PALETTE: { WOOD, OAK, STONE, SLATE, IRON, MOSS, LEAF }, falls: (...a) => falls(...a), paintIntoGround: (scene, fn) => !!(window.GardenNativePainted && GardenNativePainted.paintIntoGround(scene, fn)) });
+  const kit = Object.freeze({ brush, bake, image, libImage, handle, finish, castOf, glowPool, poolKey, rng, hash, leafOf, PALETTE: { WOOD, OAK, STONE, SLATE, IRON, MOSS, LEAF }, falls: (...a) => falls(...a), paintIntoGround: (scene, fn) => !!(window.GardenNativePainted && GardenNativePainted.paintIntoGround(scene, fn)) });
   /** A gate's drawing as a data URL, for previews: GardenPaintedProps.gatePreview('arch', true, 'summer', false). */
   function gatePreview(kind, side, season, open, span) {
     const sp = span || (side ? 60 : 96), frame = { x: 0, y: 0, span: sp, ux: side ? .16 : 1, uy: side ? 1 : 0 }, art = gateArt(kind, { id: 'preview-' + kind }, frame, season || 'summer', !!open);

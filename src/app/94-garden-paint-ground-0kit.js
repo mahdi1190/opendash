@@ -218,7 +218,7 @@ window.GardenPaintGround = (function () {
         // (no pixel is read back from the sprite: reading one made the browser fetch the whole picture from the graphics card, 50 to 240 ms)
         const lay = (m, y0, n, alpha, blur) => {
           sc.setTransform(1, 0, 0, 1, 0, 0); sc.globalCompositeOperation = 'source-over'; sc.clearRect(0, 0, c.width, c.height);
-          sc.setTransform(cx.getTransform()); sc.transform(m[0], m[1], m[2], m[3], it.x, it.y); sc.imageSmoothingEnabled = true; sc.drawImage(src, 0, y0, src.width, n, it.box[0], it.box[1] + y0 / k, w, n / k);
+          sc.setTransform(cx.getTransform()); sc.transform(it.flip ? -m[0] : m[0], m[1], m[2], m[3], it.x, it.y);   /* (a sprite drawn flipped throws its mirror image) */ sc.imageSmoothingEnabled = true; sc.drawImage(src, 0, y0, src.width, n, it.box[0], it.box[1] + y0 / k, w, n / k);
           sc.setTransform(1, 0, 0, 1, 0, 0); sc.globalCompositeOperation = 'source-in'; sc.fillStyle = LIGHT.shade; sc.fillRect(0, 0, c.width, c.height); sc.globalCompositeOperation = 'source-over';
           cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); cx.globalAlpha = alpha; cx.filter = 'blur(' + (blur * K).toFixed(1) + 'px)'; cx.drawImage(s.c, 0, 0); cx.restore(); cx.filter = 'none'; cx.globalAlpha = 1;
         };
@@ -233,7 +233,7 @@ window.GardenPaintGround = (function () {
     function add(scene, o) {
       if (!o || !o.key || !o.box || !(o.box[1] < -6) || (o.box[2] - o.box[0]) * -o.box[1] > 5e5) return null; /* (nothing flat, and nothing as big as a hillside: that is terrain, with its own shade) */ const id = idOf(o), old = items.get(id); if (old) { old.gone = 0; return id; }
       const W = at && at.W || (typeof GARDEN_WORLD !== 'undefined' ? GARDEN_WORLD : null); if (W && typeof gardenIslandBaseCell === 'function') { const c = gardenIslandBaseCell(Math.floor(o.x / W.cellW), Math.floor((o.y - 3 - W.sky) / W.cellH)); if (c && (c.ocean || c.freshwater)) return null; }   // (afloat: the water chain owns what a boat does to the water)
-      const it = { id, scene, key: o.key, x: o.x, y: o.y, box: o.box.slice(), a: o.a == null ? .5 : o.a, gone: 0 }; items.set(id, it); if (L) L.set('s|' + id, opOf(it), id); return id;
+      const it = { id, scene, key: o.key, x: o.x, y: o.y, box: o.box.slice(), a: o.a == null ? .5 : o.a, flip: !!o.flip, gone: 0 }; items.set(id, it); if (L) L.set('s|' + id, opOf(it), id); return id;
     }
     /** Its sprite is gone. The shadow goes a moment later, unless the same sprite is stood again (a repaint), so nothing flickers. */
     function drop(id) { const it = items.get(id); if (!it) return; it.gone = performance.now(); arm(); }

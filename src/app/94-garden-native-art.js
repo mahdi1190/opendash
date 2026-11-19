@@ -1134,12 +1134,25 @@ window.GardenNativeArt = (function () {
     node._cache = cache; node._cacheBase = null; stateFor(node.scene).cachedNodes.add(node);
   }
   function capturePixels(size) { return Math.max(2, Math.ceil(size / 2) * 2); }
+  // Phaser checks every new framebuffer with gl.checkFramebufferStatus, and in the browser that call waits until the GPU process has
+  // done everything queued before it: 50 to 150 ms when a tile is made in a walking frame (a frame on a 2x screen queues a lot). A
+  // colour texture no larger than the card allows is always complete in WebGL, so a tile that size is made without the check.
+  let maxTexturePx = 0;
+  function withoutFramebufferWait(scene, w, h, make) {
+    const gl = scene.game && scene.game.renderer && scene.game.renderer.gl;
+    if (!gl || typeof gl.checkFramebufferStatus !== 'function') return make();
+    if (!maxTexturePx) { try { maxTexturePx = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096; } catch (e) { maxTexturePx = 4096; } }
+    if (w > maxTexturePx || h > maxTexturePx) return make();
+    const own = Object.prototype.hasOwnProperty.call(gl, 'checkFramebufferStatus'), was = gl.checkFramebufferStatus, complete = gl.FRAMEBUFFER_COMPLETE;
+    gl.checkFramebufferStatus = () => complete;
+    try { return make(); } finally { if (own) gl.checkFramebufferStatus = was; else delete gl.checkFramebufferStatus; }
+  }
   function captureTile(node, x, y, width, height) {
     const w = capturePixels(width), h = capturePixels(height);
     // Phaser first allocates at the supplied size, then its default forceEven
     // setSize rounds odd sizes up and allocates again. Supply that same final
     // size immediately; tile coverage, pixels and scale stay unchanged.
-    return node.scene.add.renderTexture(x, y, w, h).setOrigin(0, 0);
+    return withoutFramebufferWait(node.scene, w, h, () => node.scene.add.renderTexture(x, y, w, h).setOrigin(0, 0));
   }
   function baseFromCapture(node, cache, quality) {
     if (node._cacheBase || cache.cropped || cache.quality <= quality) return;
