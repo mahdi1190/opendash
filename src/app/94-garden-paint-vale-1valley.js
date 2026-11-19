@@ -439,7 +439,7 @@
     // a fallen alder, mossed over
     { const x = X0 + w * .2 + r() * w * .3, y = Y1 - 10, L = Math.min(w * .4, 34); B.f(B.ell(x + L / 2 + 2, y + 2.5, L * .55, 2.4), '#141c10', .5).s(`M${x} ${y}l${L} -2`, '#4e463a', 4.6, .95).s(`M${x} ${y - 1.2}l${L} -2`, '#7a7262', 1.4, .7).s(`M${x + 3} ${y - 2}l${L * .6} -1.4`, wint ? '#c8ccc0' : '#6a8a3a', 1.6, .8); }
     // the shade over all of it, deepest at the back under the terrace or the thicket
-    const g = B.cx.createLinearGradient(0, Y0, 0, Y1); g.addColorStop(0, 'rgba(10,20,12,.45)'); g.addColorStop(1, 'rgba(10,20,12,.18)'); B.cx.fillStyle = g; B.cx.globalAlpha = 1; B.cx.fillRect(X0, Y0, w, h);
+    const g = B.cx.createLinearGradient(0, Y0, 0, Y1); g.addColorStop(0, 'rgba(10,20,12,.34)'); g.addColorStop(1, 'rgba(10,20,12,.1)'); B.cx.fillStyle = g; B.cx.globalAlpha = 1; B.cx.fillRect(X0, Y0, w, h);
   }
   // The fill of one field, clipped to its cells a little inside its edges (the boundary is painted after, over its rim).
   function fieldFill(B, P, p, W, season, cb, fk, extra) {
@@ -484,7 +484,8 @@
     const has = new Set(runs.map(q => q.x + ',' + q.y + q.side));
     const fronts = runs.filter(q => q.side === 's'), yM = fronts.length ? Math.max(...fronts.map(q => q.y)) : 0, low = fronts.filter(q => q.y === yM).sort((a, b) => a.x - b.x), gate = low[low.length >> 1] || null;
     if (!front && fk !== 'wet' && G && G.castRuns) { const sh = []; for (const q of runs) { if (!seen(q.x, q.y)) continue; if (q.horiz) sh.push([q.x0, q.yy, q.x0 + cw, q.yy, hh * 1.05]); else { const from = has.has(q.x + ',' + q.y + 'n') ? northFoot : 0; sh.push([q.xx, q.y0 + from, q.xx, q.y0 + ch, hh * 1.05]); } } if (sh.length) G.castRuns(B.cx, sh, { a: .26 }); }
-    const runOf = fk === 'crop' ? fieldHedge : fk === 'allot' ? hurdleRun : fk === 'wet' ? rushRun : thicketRun;
+    const runOf0 = fk === 'crop' ? fieldHedge : fk === 'allot' ? hurdleRun : fk === 'wet' ? rushRun : thicketRun;
+    const runOf = (B, r, P, x0, y0, horiz, len, season, h) => (fk === 'wood' && !(horiz && y0 - W.sky < 0) && (horiz ? front : true) ? rushRun : runOf0)(B, r, P, x0, y0, horiz, len, season, fk === 'wood' && (horiz ? front : true) ? FH().wet : h);
     for (const q of runs) {
       if (!seen(q.x, q.y) || (q.side === 's') !== front) continue;
       const r = rOf(q.x, q.y, q.side), from = q.horiz ? 0 : has.has(q.x + ',' + q.y + 'n') ? northFoot : 0;
@@ -497,9 +498,9 @@
       }
       if (q.horiz && q === gate) {
         const gw = cw * (fk === 'crop' ? .62 : .42), gx = q.x0 + (cw - gw) / 2;
-        runOf(B, r, P, q.x0, q.yy, true, gx - q.x0, season, hh); runOf(B, r, P, gx + gw, q.yy, true, q.x0 + cw - gx - gw, season, hh);
+        const fh = fk === 'wood' ? hh * .62 : hh; runOf(B, r, P, q.x0, q.yy, true, gx - q.x0, season, fh); runOf(B, r, P, gx + gw, q.yy, true, q.x0 + cw - gx - gw, season, fh);
         if (fk === 'crop') fieldGate(B, gx, q.yy, gw, hh, season); else if (fk === 'allot') wicket(B, gx, q.yy, gw, hh); else stile(B, gx, q.yy, gw, hh);
-      } else if (q.horiz) runOf(B, r, P, q.x0, q.yy, true, cw, season, hh);
+      } else if (q.horiz) runOf(B, r, P, q.x0, q.yy, true, cw, season, fk === 'wood' && q.side === 's' ? hh * .62 : hh);
       else runOf(B, r, P, q.xx, q.y0 + from, false, ch - from, season, hh);
     }
     // its sign, a small weathered board on its own post just right of the way in

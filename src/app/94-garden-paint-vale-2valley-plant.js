@@ -81,7 +81,7 @@
     //  bole with a swollen knuckled head at about head height, and on it one dense rounded crown of straight young poles,
     //  upright in the middle and bowing out at the sides, in narrow silver-green leaves: a big soft ball on a fat post.)
     const C = WILLOW[season] || WILLOW.summer, bare = season === 'winter', th = H * .36, tw = H * .068, hy = -th - tw * .5;
-    const mx = (r() - .5) * H * .04, my = -H * .66, mrx = H * .48, mry = H * .32;
+    const mx = (r() - .5) * H * .04, my = -H * .63, mrx = H * .48, mry = H * .33;   // (round 3: its lower edge comes down over the head; it sat on it like a lid)
     cx.lineCap = 'round';
     // one leaf mass: a lumpy union of small rounds (its leafy edge), filled once
     const mass = (x, y, rx, ry, col, a) => { cx.globalAlpha = a; cx.fillStyle = col; cx.beginPath(); cx.ellipse(x, y, rx * .78, ry * .78, 0, 0, Math.PI * 2); const n = 9 + Math.floor(r() * 4); for (let i = 0; i < n; i++) { const t = i / n * Math.PI * 2 + r() * .3, px = x + Math.cos(t) * rx * .62, py = y + Math.sin(t) * ry * .62, q = Math.min(rx, ry) * (.34 + r() * .14); cx.moveTo(px + q, py); cx.arc(px, py, q, 0, Math.PI * 2); } cx.fill(); };
@@ -115,7 +115,10 @@
     cx.strokeStyle = WBARK[0]; cx.lineWidth = Math.max(.6, tw * .13); cx.globalAlpha = .55; for (let i = 0; i < 6; i++) { const x0 = (r() - .55) * tw * 1.8; cx.beginPath(); cx.moveTo(x0, 0); cx.quadraticCurveTo(x0 + (r() - .5) * tw * .8, -th * .5, x0 * .8, -th * (.8 + r() * .15)); cx.stroke(); }
     cx.globalAlpha = .5; cx.strokeStyle = WBARK[3]; cx.lineWidth = Math.max(.5, tw * .1); for (let i = 0; i < 3; i++) { const x0 = -tw * (.9 + r() * .3); cx.beginPath(); cx.moveTo(x0, -th * (.1 + i * .25)); cx.lineTo(x0 + tw * .1, -th * (.25 + i * .25)); cx.stroke(); }
     // the knuckled head where it has been cut for a hundred years, lit on top, the poles springing from it
-    for (let i = 0; i < 6; i++) { const x = (i / 5 - .5) * tw * 2.6, y = -th - tw * (.55 + r() * .35); cx.globalAlpha = 1; cx.fillStyle = WBARK[i < 3 ? 2 : 1]; cx.beginPath(); cx.ellipse(x, y, tw * .5, tw * .38, 0, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = .6; cx.fillStyle = WBARK[3]; cx.beginPath(); cx.ellipse(x - tw * .14, y - tw * .15, tw * .24, tw * .13, 0, 0, Math.PI * 2); cx.fill(); }
+    for (let i = 0; i < 9; i++) { const x = (i / 8 - .5) * tw * 3.4 + (r() - .5) * tw * .4, y = -th - tw * (.35 + r() * .6) + Math.abs(i / 8 - .5) * tw * .8; cx.globalAlpha = 1; cx.fillStyle = WBARK[i < 4 ? 2 : 1]; cx.beginPath(); cx.ellipse(x, y, tw * (.5 + r() * .25), tw * (.38 + r() * .2), (r() - .5) * .6, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = .6; cx.fillStyle = WBARK[3]; cx.beginPath(); cx.ellipse(x - tw * .14, y - tw * .15, tw * .24, tw * .13, 0, 0, Math.PI * 2); cx.fill(); }
+    // the cut stubs of old poles, and young poles springing from the head into the crown (so it grows from the head)
+    for (let i = 0; i < 7; i++) { const x = (r() - .5) * tw * 3, l = tw * (.6 + r() * .8); cx.globalAlpha = 1; cx.strokeStyle = WBARK[r() < .5 ? 1 : 2]; cx.lineWidth = Math.max(.8, tw * .28); cx.beginPath(); cx.moveTo(x, -th - tw * .5); cx.lineTo(x + (r() - .5) * tw * .6, -th - tw * .5 - l); cx.stroke(); }
+    if (!bare) for (let i = 0; i < 12; i++) { const x = (r() - .5) * tw * 2.8, lean = x / tw * .12; cx.globalAlpha = .9; cx.strokeStyle = '#5e5a36'; cx.lineWidth = Math.max(.6, H * .009); cx.beginPath(); cx.moveTo(x, -th - tw * .7); cx.lineTo(x + lean * H * .3, -th - H * .2); cx.stroke(); }
     // a skirt of leafy poles low over the head, so the crown sits on the bole and does not float
     if (!bare) for (let i = 0; i < 16; i++) { const u = (r() - .5) * 2, x = u * tw * 2.2, y = hy - tw * (.6 + r() * 1.4); leaf(x, y, Math.PI / 2 + u * .6 + (r() - .5) * .5, H * (.026 + r() * .01), C[u < 0 ? 3 : 1], .95); }
     cx.globalAlpha = 1;
@@ -151,7 +154,7 @@
     const box = scene.add.container(0, 0), cam = scene.cameras && scene.cameras.main;
     const calm = (() => { try { return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } })();
     const birds = [], wisps = [], glows = [];
-    for (const q of o.glowAt || []) { const im = scene.add.image(q.x, q.y, 'gpv-glow').setVisible(false).setScale(.5).setBlendMode(1); box.add(im); glows.push({ im, p: (q.seed % 1000) / 160, sp: .25 + (q.seed % 7) / 30 }); }
+    for (const q of o.glowAt || []) { const im = scene.add.image(q.x, q.y, 'gpv-glow').setVisible(false).setScale(.75).setBlendMode(1); box.add(im); glows.push({ im, p: (q.seed % 1000) / 160, sp: .25 + (q.seed % 7) / 30 }); }
     for (const [gi, g] of (o.flyAt || []).entries()) for (let i = 0; i < (gi ? 4 : 5); i++) {
       const im = scene.add.image(g.x, g.y, 'gpv-swallow-0').setScale(.26).setVisible(false); box.add(im);
       const k = gi * 7 + i; birds.push({ im, cx: g.x + (i - 2) * 30, cy: g.y + ((k * 37) % 5 - 2) * 14, ax: 150 + (k * 53) % 90, ay: 52 + (k * 29) % 34, w: .42 + ((k * 17) % 10) / 40, p: k * 1.7, p2: k * 2.9, lift: 34 + (k * 23) % 40 });
@@ -246,14 +249,18 @@
       // a wall's face hangs below its line: no trunk at its foot, no crown standing up over it (the terrace wall, the scarp; a willow
       // at the river, where the wall ends, leans clear of it)
       if (kind !== 'bank' && (near(x, y - 1, 1, (a, c) => { const bb = base(a, c); return !!(bb && bb.solid); }) || near(x, y - 2, 1, (a, c) => { const bb = base(a, c); return !!(bb && bb.solid); })) ) { no('wall'); continue; }
-      cand.push({ x, y, kind, dw, small: shore, score: kit.hash(x, y, 811) / 4294967296 });
+      // (round 3: beside a wet wood's field, the alder carr and the otter run, every free cell may carry an alder, close set, so the wood stands round its field)
+      const carr = near(x, y, 1, (a, c) => { const q = row(a, c); return !!(q && q.plot && /carr|alder|otter/.test(String(q.id || ''))); });
+      cand.push({ x, y, kind, dw, small: shore, carr, score: (carr ? -1 : 0) + kit.hash(x, y, 811) / 4294967296 });
     }
     // 2. choose, best first, keeping each kind's own spacing and clear of paths, other trees and the woods' trees
     const trees = [];
     // a crown's box over its foot, in world px, by species (the willow's curtain hangs nearly to the grass)
     // (its solid middle: the thin leafy rim may lean over a hedge's far edge, as a hedgerow tree's does, but never its body)
     const crownBox = (sp, H) => { if (sp === 'willow') return [-.42 * H, -.95 * H, .42 * H, -.3 * H]; if (sp === 'pollard') return [-.36 * H, -.95 * H, .36 * H, -.42 * H]; const f = GardenPaintTrees.form(sp); return [-f.rx * .75 * H, -(f.cy + f.ry * .8) * H, f.rx * .75 * H, -(f.cy - f.ry * .5) * H]; };
-    const crownHits = (sp, H, X, Y) => { const b = crownBox(sp, H), x0 = Math.floor((X + b[0]) / cw), x1 = Math.floor((X + b[2]) / cw), y0 = Math.floor((Y + b[1] - W.sky) / ch), y1 = Math.floor((Y + b[3] - W.sky) / ch); for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) if (plotAt(xx, yy)) return true; return false; };
+    // (round 3: an alder beside a wet wood's field may hold its crown over that wood: the carr is meant to stand in its shade)
+    const woodPlot = (a, c) => { const q = row(a, c); return !!(q && q.plot && /carr|alder|otter/.test(String(q.id || ''))); };
+    const crownHits = (sp, H, X, Y, carr) => { const b = crownBox(sp, H), x0 = Math.floor((X + b[0]) / cw), x1 = Math.floor((X + b[2]) / cw), y0 = Math.floor((Y + b[1] - W.sky) / ch), y1 = Math.floor((Y + b[3] - W.sky) / ch); for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) if (plotAt(xx, yy) && !(carr && woodPlot(xx, yy))) return true; return false; };
     const spacing = { bank: 1.75, edge: 2.7, field: 9 }, F = sp => GardenPaintTrees.form(sp);
     cand.sort((a, b) => a.score - b.score);
     for (const c of cand) {
@@ -262,7 +269,7 @@
       const group = N(x, y, kind === 'bank' ? 4.5 : 6, kind === 'bank' ? 3 : 5), roll = kit.hash(x, y, 812) / 4294967296;
       // (round 2: banks are planted most of their length, in groups with a gap now and then; the hedgerows carry a tree in most stretches)
       const want = kind === 'bank' ? (group > .42 ? .97 : group > .28 ? .75 : .35) : kind === 'edge' ? (group > .46 ? .85 : group > .3 ? .55 : .2) : (group > .7 ? .25 : 0);
-      if (roll > want) { no('want-' + kind); continue; }
+      if (roll > want && !c.carr) { no('want-' + kind); continue; }
       // the species: what grows there
       const pick = kit.hash(x, y, 813) / 4294967296, meadowSide = N(x, y, 9, 21) > .5;
       let sp, h;
@@ -281,21 +288,21 @@
       h = Math.round(h / 12) * 12;   // (a few heights per species, so trees share pictures)
       const jx = (kit.hash(x, y, 815) / 4294967296 - .5) * .5, jy = (kit.hash(x, y, 816) / 4294967296 - .5) * .3, tx = x + .5 + jx, ty = y + .85 + jy;
       const X = tx * cw, Y = W.sky + ty * ch;
-      if (pathGap(X, Y) < 12) { no('pathgap'); continue; }
+      if (pathGap(X, Y) < (sp === 'pollard' || sp === 'willow' ? 20 : 12)) { no('pathgap'); continue; }   // (round 3: a pollard's fat bole stood on a path's edge)
       // (round 2) nothing overlaps: a crown never stands over a field, its hedge or its sign. A tree whose crown would is
       // painted smaller (a hawthorn by a hedge, a pollard on a bank) if that clears it, and is left out if nothing does.
-      if (crownHits(sp, h, X, Y)) {
+      if (crownHits(sp, h, X, Y, c.carr)) {
         // first a tall narrow tree (an alder, now and then a birch), then a small one of the hedgerow's mix
         const q = kit.hash(x, y, 828) / 4294967296, R = v => Math.round(v / 12) * 12;
         const chain = kind === 'bank' ? [['alder', R(gardenSizePx('tree', .05 + t * .3))], ['pollard', R(gardenSizePx('young', .5))], ['alder', R(gardenSizePx('young', .9))]]
           : [[q < .8 ? 'alder' : 'birch', R(gardenSizePx('tree', t * .3))], [q < .4 ? 'hawthorn' : q < .6 ? 'cherry' : q < .8 ? 'plum' : 'apple', R(gardenSizePx('young', .2 + t * .4))], ['hawthorn', R(gardenSizePx('young', 0))]];
-        const fit = chain.find(([s3, h3]) => !crownHits(s3, h3, X, Y)); if (!fit) { no('crown'); continue; } sp = fit[0]; h = fit[1];
+        const fit = chain.find(([s3, h3]) => !crownHits(s3, h3, X, Y, c.carr)); if (!fit) { no('crown'); continue; } sp = fit[0]; h = fit[1];
       }
       if (wet(Math.floor(tx), Math.floor(ty)) || wet(Math.floor(tx + .3), Math.floor(ty)) || wet(Math.floor(tx - .3), Math.floor(ty))) continue;
-      const gap = Math.max(spacing[kind], sp === 'pollard' ? 1.8 : 0);
-      if (trees.some(o => Math.hypot(o.x - tx, (o.y - ty) * 1.3) < Math.max(gap, spacing[o.kind] * .8))) { no('spacing'); continue; }
+      const gap = c.carr ? 1.3 : Math.max(spacing[kind], sp === 'pollard' ? 1.8 : 0);
+      if (trees.some(o => Math.hypot(o.x - tx, (o.y - ty) * 1.3) < (c.carr && o.carr ? gap : Math.max(gap, spacing[o.kind] * .8)))) { no('spacing'); continue; }
       if (woodFeet.some(o => Math.hypot(o.x - tx, o.y - ty) < 2.8)) { no('wood'); continue; }
-      trees.push({ x: tx, y: ty, kind, sp, h, v: kit.hash(x, y, 817) % 3, flip: kit.hash(x, y, 818) % 2 === 1, seed: kit.hash(x, y, 819) % 99991 });
+      trees.push({ x: tx, y: ty, kind, sp, h, carr: !!c.carr, v: kit.hash(x, y, 817) % 3, flip: kit.hash(x, y, 818) % 2 === 1, seed: kit.hash(x, y, 819) % 99991 });
     }
     // the open meadows each keep one old field oak, where the most open ground is round it (a field tree, not a scatter)
     const opens = cand.filter(c => c.kind === 'field' && !c.small).map(c => Object.assign({ room: distTo(c.x, c.y, 3, (a, b) => pathAt(a, b) || plotAt(a, b) || held.has(a + ',' + b) || fresh(a, b)) }, c)).filter(c => c.room >= 2).sort((a, b) => b.room - a.room || a.score - b.score);
@@ -357,7 +364,7 @@
       const n = 4 + sw * 3;
       for (let i = 0; i < n; i++) {
         const u = (i + .5) / n, around = i % 3 === 2, x = around ? (i % 2 ? s.x - .3 : s.x + sw + .3) : s.x - .4 + u * (sw + .8), y = around ? s.y + .2 + ((kit.hash(i, s.x, 881) % 100) / 100) * (sh + .5) : s.y + sh + .12 + ((kit.hash(i, s.x, 881) % 100) / 100) * .35;
-        if (!lowOk(x, y, 24)) continue;
+        { const cx0 = Math.floor(x), cy0 = Math.floor(y), b = base(cx0, cy0), dr = s.door; if (!b || !b.land || b.freshwater || b.solid || plotAt(cx0, cy0) || (dr && cx0 === dr.x && cy0 === dr.y) || pathGap(x * cw, W.sky + y * ch) < 3) continue; }
         const pick = kit.hash(i, s.y, 882) % set.length; lows.push({ id: set[pick], v: pick % 3, h: (/reed|rush/.test(set[pick]) ? 30 : 20) + (kit.hash(i, 3, 883) % 9), x: x * cw, y: W.sky + y * ch });
       }
     }
@@ -527,7 +534,7 @@
     }
     const swallows = season === 'spring' || season === 'summer';
     // (two things: the mist lies under everything that stands, the swallows fly over it all)
-    if (mistAt.length) thing({ key: 'valley-mist', x: (bx0 + bx1) / 2 * cw, y: -9300, make: scene => life(scene, { mistAt, glowAt: season === 'summer' ? glowAt.slice(0, 28) : [], season }) });
+    if (mistAt.length) thing({ key: 'valley-mist', x: (bx0 + bx1) / 2 * cw, y: -9300, make: scene => life(scene, { mistAt, glowAt: season === 'summer' ? glowAt.slice(0, 40) : [], season }) });
     if (swallows && flyAt.length) thing({ key: 'valley-swallows', x: (bx0 + bx1) / 2 * cw, y: 1e6, make: scene => life(scene, { flyAt, season }) });
     V._valleyTrees.mist = mistAt.length; V._valleyTrees.swallowGroups = swallows ? flyAt.length : 0;
   }
