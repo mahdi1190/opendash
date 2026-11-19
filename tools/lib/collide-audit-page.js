@@ -33,6 +33,7 @@
  *   draw-order                               a standing thing that sorts above or below its own drawn base, where the
  *                                            feet can stand in between: you are drawn on the wrong side of it; and
  *                                            each gate again with its region shut (14b: a shut gate is drawn another way)
+ *   slide-inside                             a step along an edge that leaves the feet inside what blocks them
  *   slide-stall, slide-jitter                how walking feels: a diagonal press into an edge that stops dead where it
  *                                            could slide on, or shakes on the spot
  *   overlap                                  two drawn things on top of each other that are not meant to be: a field
@@ -674,7 +675,7 @@
   const feel = { starts: 0, runs: 0, stalls: 0, jitters: 0, ms: 0, of: 0 };
   if (!opts.noFeel) {
     const t0 = performance.now(), keepPos = { x: _gw.px, y: _gw.py }, stepPx = GW_SPEED.walk / 60, dd = stepPx / Math.hypot(CW, CH);
-    const stalls = new Map(), jitters = new Map(), edgePts = [];
+    const stalls = new Map(), jitters = new Map(), insides = new Map(), edgePts = [];
     for (let j = 1; j < NY - 1; j++) for (let i = 1; i < NX - 1; i++) {
       if (!lat[j * NX + i]) continue;
       let edge = false; for (let dj = -1; dj <= 1 && !edge; dj++) for (let di = -1; di <= 1; di++) if (!lat[(j + dj) * NX + i + di]) { edge = true; break; }
@@ -692,6 +693,9 @@
         let lastX = 0, lastY = 0, flips = 0, slow = 0, stall = null;
         for (let f = 0; f < 16; f++) {
           const bx = _gw.px, by = _gw.py; _gwMoveBy(sx * dd, sy * dd);
+          // (a step along an edge that leaves the feet inside a block: the bank's slide or a give pushed them into a trunk
+          // box, a fence or a plot's edge. The verifier's walks with real keys met it by the fells and the old woodland, 19 Nov 2026)
+          if (!free(_gw.px, _gw.py) && free(bx, by)) { const k = Math.round(_gw.px * 2) + ',' + Math.round(_gw.py * 2), g = insides.get(k) || insides.set(k, { n: 0, x: _gw.px, y: _gw.py, dir: (sy > 0 ? 'down' : 'up') + '-' + (sx > 0 ? 'right' : 'left'), from: [x, y, sx, sy] }).get(k); g.n++; feel.insides = (feel.insides || 0) + 1; }
           const mx = (_gw.px - bx) * CW, my = (_gw.py - by) * CH;
           // (a reversal you could see: three quarters of a pixel or more in a frame. Less is the last settling into a corner)
           if (Math.abs(mx) > .75) { if (lastX && Math.sign(mx) !== lastX) flips++; lastX = Math.sign(mx); }
@@ -715,6 +719,7 @@
     _gw.px = keepPos.x; _gw.py = keepPos.y; if (_gw.shoreMove) _gw.shoreMove = {};
     const whyAt = (x, y, sx, sy) => { for (const [ax, ay] of [[sx, sy], [sx, 0], [0, sy]]) { const w = gardenCollideAt(x + ax * .3, y + ay * .2); if (w.length) return w.slice(0, 2).join('; '); } return 'the edge of water or a box'; };
     for (const g of stalls.values()) { const s = g.first, sx = /right/.test(s.dir) ? 1 : -1, sy = /down/.test(s.dir) ? 1 : -1; push({ kind: 'slide-stall', obj: 'walking', from: s.from, name: 'pressing ' + s.dir + ' into ' + whyAt(s.x, s.y, sx, sy), x: s.x, y: s.y, detail: g.n + ' press(es) near here stop dead; the feet could go on ' + s.round }); }
+    for (const g of insides.values()) push({ kind: 'slide-inside', obj: 'walking', from: g.from, name: 'pressing ' + g.dir + ' beside ' + whyAt(g.x, g.y, /right/.test(g.dir) ? 1 : -1, /down/.test(g.dir) ? 1 : -1), x: +g.x.toFixed(2), y: +g.y.toFixed(2), detail: g.n + ' step(s) near here leave the feet inside what blocks them (' + (gardenCollideAt(g.x, g.y).slice(0, 2).join('; ') || 'the edge of water') + ')' });
     for (const g of jitters.values()) push({ kind: 'slide-jitter', obj: 'walking', from: g.from, name: 'pressing ' + g.dir + ' beside ' + whyAt(g.x, g.y, /right/.test(g.dir) ? 1 : -1, /down/.test(g.dir) ? 1 : -1), x: g.x, y: g.y, detail: g.n + ' press(es) near here change direction three times or more in a third of a second' });
     feel.ms = Math.round(performance.now() - t0);
   }
