@@ -898,6 +898,7 @@ window.GardenNativeWorld = (function () {
       const major = !gate, foot = gateCrossingFoot(gate);
       const handle = GardenNativeScenery.create(scene, { id: prop.id, kind, x: foot ? foot.x : (prop.x + prop.w / 2) * W.cellW, y: foot ? foot.y : W.sky + (prop.y + prop.h) * W.cellH - 4, width: gate ? gate.h > 1 ? 74 : 57 : prop.w * W.cellW, name: zone ? zone.name : prop.name, level: zone && zone.lv, showRequirement: false, open, major, gate, mirrorX: gardenPropMirrorX(prop), season: sc.season });
       if (handle && foot) handle.foot = foot;
+      if (handle && !handle.foot) handle.foot = { x: (prop.x + prop.w / 2) * W.cellW, y: W.sky + (prop.y + prop.h) * W.cellH - 4 };   // (where its own doorway is: the way in to a room behind it is drawn there, not as a second door)
       if (handle && !gate) seatUnder(handle, prop, sc, { kind: kind === 'chapel' ? 'moss' : 'earth', w: prop.w * W.cellW * .9 });
       if (handle && ambientPause) handle.pauseAmbient(ambientPause); return handle;
     }
