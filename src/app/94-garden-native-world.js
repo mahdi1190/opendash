@@ -795,9 +795,10 @@ window.GardenNativeWorld = (function () {
           const last = decks.reduce((m, p) => p.side === 'south' && p.y + p.h > m ? p.y + p.h : m, 0) === pier.y + pier.h;
           pg.fillStyle(0x234a48, .26).fillRoundedRect(x + 7, y + 9, w + 3, h + 2, 5).fillStyle(0x234a48, .14).fillRoundedRect(x + 4, y + 5, w + 6, h + 4, 7);
           pg.fillStyle(0x5a4c38).fillRoundedRect(x - 4, y, w + 8, h + 2, 3).fillStyle(0x6e5e44).fillRoundedRect(x - 4, y, w + 8, h, 3);
-          for (let yy = y + 2, row = 0; yy < y + h - 2; yy += 13, row++) {
-            const bh = Math.min(11.6, y + h - 2 - yy); if (bh < 2) break;
-            for (let xx = x - 2 - (row % 2) * 24 - rnd() * 10; xx < x + w + 2; ) { const bw = 30 + rnd() * 34, x0 = Math.max(x - 2, xx), x1 = Math.min(x + w + 2, xx + bw); if (x1 - x0 > 3) {
+          for (let yy = y + 2, row = 0; yy < y + h - 2; yy += 10.5, row++) {
+            const bh = Math.min(9.4, y + h - 2 - yy); if (bh < 2) break;
+            // long planks laid across the deck, now and then two to a row where one was replaced
+            for (let xx = x - 2 - (rnd() < .55 ? 0 : 30 + rnd() * 70); xx < x + w + 2; ) { const bw = xx < x ? w + 8 : 60 + rnd() * 120, x0 = Math.max(x - 2, xx), x1 = Math.min(x + w + 2, xx + bw); if (x1 - x0 > 3) {
               const t = tones[Math.floor(rnd() * tones.length)]; pg.fillStyle(t).fillRect(x0 + .6, yy, x1 - x0 - 1.2, bh);
               pg.fillStyle(0xf0e2bc, .32).fillRect(x0 + 1, yy + .6, x1 - x0 - 2, 1.3).fillStyle(0x4e4232, .28).fillRect(x0 + 1, yy + bh - 1.6, x1 - x0 - 2, 1.4);
               if (rnd() < .28) pg.lineStyle(.7, 0x7a6a50, .45).lineBetween(x0 + 4 + rnd() * 6, yy + 3 + rnd() * 4, x1 - 4 - rnd() * 6, yy + 3 + rnd() * 4);

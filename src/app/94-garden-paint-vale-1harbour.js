@@ -111,7 +111,9 @@
       bbs.forEach((bb, idx) => add(bb, 32, (B, r, cb) => {
         if (!firstFor(idx, cb)) return;
         B.cx.save(); B.cx.clip(outsideAll, 'evenodd');
-        const o30 = [], o14 = [], o6 = []; for (const [a, b] of spansOf(seaW, cb, 240)) { for (let i = a; i <= b; i++) { const q = seaW[i]; o30.push(out(q, 30)); o14.push(out(q, 14)); o6.push(out(q, 6)); } V.strokePts(B, o30, P.shallow, 150, .2); V.strokePts(B, o14, P.shallow, 80, .26); V.strokePts(B, o6, '#b7d8cf', 30, .3); o30.length = o14.length = o6.length = 0; }
+        // (a ramp of thin passes along one line, so the shallows fade out to the deep with no edge: three wide bands of one
+        // strength each ended in a hard line parallel to the coast)
+        for (const [a, b] of spansOf(seaW, cb, 240)) { const line = []; for (let i = a; i <= b; i++) line.push(out(seaW[i], 4)); for (let w = 220; w >= 20; w -= 20) V.strokePts(B, line, w > 80 ? P.shallow : '#b7d8cf', w, w > 80 ? .055 : .075); }
         for (let i = 0; i < seaW.length; i += 3) { const q = seaW[i]; if (!near(q, cb, 140)) continue; const n = F(q.x, q.y, 260, 81); if (n < .5) continue; const rr = prng(q, 82), c = out(q, 40 + rr() * 50);
           // a bar of pale sand under the water, or a darker weedy patch, here and there along the shore
           B.f(B.blob(rr, c.x, c.y, 30 + rr() * 40, 9 + rr() * 8, 9, .45), n > .6 ? '#c4dcd0' : P.shallow, (n - .5) * .7); }
@@ -255,7 +257,7 @@
       for (let x = qx0; x < qx1; x += 5) { if (r() < .75) B.f(B.blob(r, x, qy1 + face - 3, 3 + r() * 4, 2.4 + r() * 3, 6, .6), r() < .5 ? '#3e4e30' : '#5e6a3a', .85); if (r() < .3) B.f(B.circ(x + r() * 4, qy1 + face - 6 - r() * 4, .8), '#d8d4c6', .8); }
       for (let x = qx0 + 30; x < qx1 - 20; x += 70 + r() * 30) { B.s(`M${x} ${qy1 + 7}a3 3 0 1 0 0.1 0`, P.iron, 1.4, .9); B.s(`M${x} ${qy1 + 2}l0 2`, P.iron, 1.6, .9); }
       // the flags, then a kerb of long granite copes along the sea edge
-      B.cx.save(); B.cx.clip(new Path2D(quayShape)); V.flags(B, r, P, [qx0, qy0, qx1, qy1], { row: 19, w: 44, salt: 41, moss: .08, pal: { stone: '#bdb5a2', stoneLo: '#a39b88', stoneHi: '#d6cfbd', grout: '#6e695a' }, tones: ['#bdb5a2', '#ada592', '#c9c1ad', '#b9ad92', '#aaa69a', '#c6b89c', '#b2aa98'] });
+      B.cx.save(); B.cx.clip(new Path2D(quayShape)); V.flags(B, r, P, [qx0, qy0, qx1, qy1], { row: 19, rowVar: .22, w: 46, salt: 41, moss: .08, pal: { stone: '#c4b89e', stoneLo: '#a89c84', stoneHi: '#dcd1b8', grout: '#6e6656' }, tones: ['#c2b69c', '#b4a88e', '#cfc4aa', '#c4b08e', '#b0a690', '#cbb996', '#b8ad96', '#a9a290'] });
       // salt and spray darken the stone towards the sea edge; lichen on a few stones, gulls' white here and there
       B.f(B.rect(qx0, qy1 - 22, qx1 - qx0, 22), B.lin(0, qy1 - 22, 0, qy1, [[0, 'rgba(70,74,66,0)'], [1, 'rgba(70,74,66,.22)']]));
       kit.tiles([qx0, qy0, qx1, qy1], 60, 0, 42, (tx, ty, rr) => { const n = kit.fbm(tx / 220, ty / 220, 43); if (rr() > n) return; const x = tx + rr() * 60, y = ty + rr() * 60; B.f(B.blob(rr, x, y, 3 + rr() * 3, 1.6 + rr(), 6, .5), rr() < .6 ? '#c9a84e' : '#9aa46a', .45); if (rr() < .25) B.f(B.circ(x + 9, y + 3, .9), '#f4f2ea', .7); });
@@ -305,7 +307,7 @@
     // 6. Things that stand up on the quay, the sand and the water
     const atCell = (x, y) => ({ x: x * cw, y: W.sky + y * ch });
     // bollards along the wall's top, clear of the pier
-    for (let x = quay.x - 5.4; x < quay.x + 6; x += 1.45) { if (x > pierX0 - .3 && x < pierX1 + .4) continue; const p = atCell(x, quay.y + 1.5); thing({ key: 'bollard', box: [-8, -16, 10, 5], foot: [-6, 8, 6], x: p.x, y: p.y, draw: drawBollard(P) }); }
+    for (let x = quay.x - 5.4; x < quay.x + 6; x += 1.45) { if (x > pierX0 - .3 && x < pierX1 + .4) continue; const p = atCell(x, quay.y + 1.5); thing({ key: 'bollard', box: [-10, -22, 12, 6], foot: [-7, 9, 7], x: p.x, y: p.y, draw: drawBollard(P) }); }
     // where each stands is shared with walking (gardenIslandHarbourThings), so the feet meet what is drawn
     const looks = { crates: [[-30, -46, 34, 8], drawCrates(P, 1)], pots: [[-28, -34, 30, 6], drawPots(P)], net: [[-42, -60, 44, 8], drawNet(P)], 'boat-sand': [[-46, -26, 48, 10], drawBoat(P, '#3f6f8a', false)],
       crate1: [[-16, -24, 18, 6], drawCrates(P, 0)], bench: [[-30, -30, 30, 6], drawBench(P)], anchor: [[-22, -44, 22, 6], drawAnchor(P)], fishbox: [[-16, -16, 18, 5], drawFishBox(P)] };
@@ -324,7 +326,8 @@
   }
 
   /* ---------- the standing things ---------- */
-  const drawBollard = P => B => { B.shadow(3, 1, 8, 2.6, .32); B.f(B.rr(-4.2, -11, 8.4, 11, 2.4), P.iron).f(B.rect(-3.2, -10, 1.8, 9), '#5c6266', .8).f(B.ell(0, -11.4, 5.6, 2.2), '#3c4246').f(B.ell(-1, -12, 3, 1), '#6e767a', .8); };
+  // (a cast-iron bollard about 0.4 of your height, with its cap and a waist where the ropes go: it stood 11 px, a stud)
+  const drawBollard = P => B => { B.shadow(3, 1, 10, 3, .32); B.f(B.rr(-5.4, -16, 10.8, 16, 3), P.iron).f(B.rect(-4.2, -15, 2.2, 14), '#5c6266', .8).f(B.rect(-5.6, -9.6, 11.2, 1.6), '#1e2224', .6).f(B.ell(0, -16.4, 7.4, 2.8), '#3c4246').f(B.ell(-1.2, -17.2, 4, 1.3), '#6e767a', .8).f(B.rect(-5.4, -2.4, 10.8, 2.4), '#4a3e2c', .35); };
   function crate(B, x, y, w, h, P, tone) {
     const d = h * .38, c0 = tone ? P.woodHi : P.wood;
     B.f(B.poly([[x, y - h], [x + d * .6, y - h - d], [x + w + d * .6, y - h - d], [x + w, y - h]]), P.woodHi).f(B.poly([[x + w, y], [x + w, y - h], [x + w + d * .6, y - h - d], [x + w + d * .6, y - d]]), P.woodLo);

@@ -39,13 +39,15 @@
             const t = .1 + rc() * .8, side = rc() < .5 ? -1 : 1, x0 = a.x + (b.x - a.x) * t, y0 = a.y + (b.y - a.y) * t, len = 70 + rc() * 70, ang = Math.atan2(b.y - a.y, b.x - a.x) + side * (1.1 + rc() * .5);
             const pts = []; for (let s = 0; s <= 8; s++) { const u = s / 8, wob = Math.sin(u * 6 + i * 2 + k) * 10; pts.push({ x: x0 + Math.cos(ang) * (26 + len * u) - Math.sin(ang) * wob, y: y0 + Math.sin(ang) * (26 + len * u) * .8 + Math.cos(ang) * wob * .6 }); }
             if (pts.filter(p => open(p.x, p.y)).length < 7) continue;
-            V.strokePts(B, pts, pal.mudLo, 11, .55); V.strokePts(B, pts, pal.mud, 8, .9); V.strokePts(B, pts, pal.pool, 3, .9, 0, .6); V.strokePts(B, pts, pal.poolHi, 1, .55, -.6, -.2);
+            V.strokePts(B, pts, pal.mudLo, 11, .35); V.strokePts(B, pts, pal.mudHi, 10, .3, -1, -1); V.strokePts(B, pts, pal.mud, 8, .75); V.strokePts(B, pts, pal.pool, 3, .9, 0, .6); V.strokePts(B, pts, pal.poolHi, 1, .55, -.6, -.2);
             const end = pts[pts.length - 1]; B.f(B.blob(rc, end.x, end.y, 9 + rc() * 6, 4, 8, .4), pal.mud).f(B.blob(rc, end.x, end.y, 6, 2.4, 8, .4), pal.pool, .9).f(B.ell(end.x - 2, end.y - 1, 3, .7), pal.poolHi, .7);
           }
         }
         // salt pans: shallow still pools in the sward, sky in them
         kit.tiles(cb, 150, 0, 62, (tx, ty, rr) => { for (let k = 0; k < 2; k++) { const x = tx + 20 + rr() * 110, y = ty + 20 + rr() * 110; if (!open(x, y) || !open(x - 18, y) || !open(x + 18, y) || near(x, y) > 250 || near(x, y) < 34) continue;
-          B.f(B.blob(rr, x, y + 1, 18 + rr() * 8, 6 + rr() * 2, 9, .35), pal.mudLo, .8).f(B.blob(rr, x, y, 15 + rr() * 6, 5, 9, .35), pal.pool).f(B.ell(x - 4, y - 1.4, 6, 1.1), pal.poolHi, .75); } });
+          // (a soft muddy lip, lit on its sunny side, not a dark ring round a hole)
+          B.f(B.blob(rr, x + 1, y + 1.4, 19 + rr() * 8, 6.4 + rr() * 2, 9, .35), pal.mudLo, .4).f(B.blob(rr, x - 3, y - 1.4, 17 + rr() * 6, 5.4, 9, .35), pal.mudHi, .4).f(B.blob(rr, x, y, 15 + rr() * 6, 5, 9, .35), pal.pool).f(B.ell(x - 4, y - 1.4, 6, 1.1), pal.poolHi, .75);
+          for (let j = 0; j < 6; j++) { const a = rr() * Math.PI * 2; B.s(`M${x + Math.cos(a) * 19} ${y + Math.sin(a) * 6.5}l${(rr() - .5) * 2} ${-3 - rr() * 3}`, pal.samph, 1.4, .85); } } });
         // samphire, sea lavender and thrift, then rush tussocks and reeds standing in the wet
         kit.tiles(cb, 60, 10, 63, (tx, ty, rr) => { for (let k = 0; k < 12; k++) { const x = tx + rr() * 60, y = ty + rr() * 60; if (!marshy(x, y)) continue; const d = near(x, y); if (d > 270 || rr() * 270 < d - 70) continue; const t = rr();
           if (t < .3) { for (let j = 0; j < 5; j++) B.s(`M${x + (rr() - .5) * 8} ${y}l${(rr() - .5) * 2} ${-3 - rr() * 3}`, pal.samph, 1.6, .9); }

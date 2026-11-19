@@ -191,12 +191,13 @@ window.GardenPaintVale = (function () {
   }
   /** Flagstones in courses over a clip (world px box): pale stones with joints, some lit, some worn, moss in a few. */
   function flags(B, r, P, bb, o) {
-    o = o || {}; const rowH = o.row || 14, w0 = o.w || 26;
+    o = o || {}; const row0 = o.row || 14, w0 = o.w || 26; let rowH = row0;   // (rowVar: courses of different depths, as laid stone is)
     if (o.pal) P = Object.assign({}, P, o.pal);   // (a stone of its own: the quay's granite)
     B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), P.stone);
     // broad wear and weather first, so the stones sit in one light
     KIT().tiles(bb, 140, 0, (o.salt || 1) + 50, (tx, ty, rr) => { for (let k = 0; k < 3; k++) B.f(B.blob(rr, tx + rr() * 140, ty + rr() * 140, 30 + rr() * 50, 12 + rr() * 18, 9, .5), rr() < .5 ? P.stoneHi : P.stoneLo, .35); });
-    for (let y = Math.floor(bb[1] / rowH) * rowH; y < bb[3]; y += rowH) {
+    for (let y = Math.floor(bb[1] / row0) * row0; y < bb[3]; y += rowH) {
+      if (o.rowVar) rowH = Math.round(row0 * (1 - o.rowVar + 2 * o.rowVar * KIT().rng(KIT().hash(Math.round(y), 5, o.salt || 1))()));
       const rr = KIT().rng(KIT().hash(Math.round(y), 3, o.salt || 1));
       B.f(B.rect(bb[0], y + rowH - 1.1, bb[2] - bb[0], 1.1), o.grout || P.grout, .42);
       for (let x = Math.floor(bb[0] / w0) * w0 - rr() * w0; x < bb[2]; ) {
