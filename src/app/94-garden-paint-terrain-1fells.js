@@ -860,7 +860,7 @@ window.GardenPaintedTerrain = (function () {
   // autumn turns it red, winter leaves bare forks and berries. Drawn to its height (a young tree, 2 to 2.5 H).
   function rowanArt(B, h, P, seed, season) {
     const kit = KIT(), r = kit.rng(seed), s = h / 90, leaf = { spring: ['#4a7034', '#6e9a4c', '#9cc06c', '#c4dc94'], summer: ['#3c6230', '#5a8640', '#82aa58', '#b0cc7c'], autumn: ['#82301e', '#b84a26', '#de7a34', '#f0aa5a'], winter: null }[season];
-    const tw = 2.6 * s, lean = (r() - .5) * 6 * s;
+    const tw = 4 * s, lean = (r() - .5) * 6 * s;   // (a trunk a hand wide: at 2.6 the crown sat on a thin stick)
     B.s(`M0 0Q${-1.5 * s} ${-h * .22} ${lean * .4} ${-h * .42}`, '#6e6a62', tw * 1.5).s(`M${-tw * .4} 0Q${-2 * s} ${-h * .22} ${lean * .4 - tw * .3} ${-h * .42}`, '#c2beb2', tw * .5, .75);
     // (the forks spread wide and the leaf hangs round them in an open oval: close forks and stacked masses read as a poplar)
     const forks = []; for (let k = 0; k < 4; k++) { const a = -Math.PI / 2 + (k - 1.5) * .6 + (r() - .5) * .2, l = h * (.34 + r() * .14); forks.push([lean * .4, -h * .38, lean * .4 + Math.cos(a) * l * 1.05, -h * .38 + Math.sin(a) * l * .9]); }
@@ -868,11 +868,11 @@ window.GardenPaintedTerrain = (function () {
     if (leaf) {
       const cyc = -h * .64, masses = []; for (let k = 0; k < 24; k++) { const f = forks[k % forks.length], t = .35 + r() * .7, mx = f[0] + (f[2] - f[0]) * t + (r() - .5) * 22 * s, my = f[1] + (f[3] - f[1]) * t + (r() - .5) * 12 * s; masses.push({ x: mx, y: my + (cyc - my) * .25, rx: (12 + r() * 8) * s * (1 - Math.abs(my - cyc) / h * .5) }); }
       masses.sort((a, b) => a.y - b.y);
-      for (const m of masses) B.f(B.blob(r, m.x + 2 * s, m.y + 3 * s, m.rx * 1.05, m.rx * .7, 9, .55), leaf[0], .95);
-      for (const m of masses) { B.f(B.blob(r, m.x, m.y, m.rx * .9, m.rx * .58, 9, .55), m.x < lean ? leaf[2] : leaf[1]); B.f(B.blob(r, m.x - m.rx * .3, m.y - m.rx * .25, m.rx * .42, m.rx * .26, 7, .5), leaf[3], .8); }
+      for (const m of masses) B.f(B.blob(r, m.x + 2 * s, m.y + 3 * s, m.rx * 1.05, m.rx * .84, 9, .55), leaf[0], .95);   // (rounder masses: flat they read as pads)
+      for (const m of masses) { B.f(B.blob(r, m.x, m.y, m.rx * .9, m.rx * .72, 9, .55), m.x < lean ? leaf[2] : leaf[1]); B.f(B.blob(r, m.x - m.rx * .3, m.y - m.rx * .25, m.rx * .42, m.rx * .26, 7, .5), leaf[3], .8); }
       for (let k = 0; k < 40; k++) { const m = masses[Math.floor(r() * masses.length)]; B.f(B.ell(m.x + (r() - .5) * m.rx * 1.6, m.y + (r() - .5) * m.rx, 1.6 * s, .9 * s), r() < .5 ? leaf[3] : leaf[0], .7); }
     } else for (const [x0, y0, x1, y1] of forks) for (let k = 0; k < 3; k++) { const t = .4 + k * .25, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; B.s(`M${x} ${y}l${(r() - .5) * 14 * s} ${-8 * s - r() * 6 * s}`, '#7a766c', tw * .35, .8); }
-    if (season === 'autumn' || season === 'winter' || season === 'summer') for (let k = 0; k < (season === 'summer' ? 4 : 7); k++) { const f = forks[k % forks.length], x = f[2] + (r() - .5) * 10 * s, y = f[3] + 6 * s + r() * 8 * s; for (let j = 0; j < 7; j++) B.f(B.circ(x + (r() - .5) * 5 * s, y + (r() - .5) * 4 * s, 1.3 * s), '#c42a22', .95); }
+    if (season === 'autumn' || season === 'winter' || season === 'summer') for (let k = 0; k < (season === 'summer' ? 4 : 7); k++) { const f = forks[k % forks.length], x = f[2] + (r() - .5) * 10 * s, y = f[3] + 6 * s + r() * 8 * s; for (let j = 0; j < 9; j++) { const bx = x + (r() - .5) * 6 * s, by = y + (r() - .5) * 4.5 * s; B.f(B.circ(bx, by, .85 * s), j % 3 ? '#c42a22' : '#e0503a', .95); if (j % 4 === 0) B.f(B.circ(bx - .3 * s, by - .3 * s, .3 * s), '#ffd0b0', .8); } }   /* (bunches of small berries with a glint, not red blobs) */
     if (season === 'spring') for (let k = 0; k < 6; k++) { const f = forks[k % forks.length]; B.f(B.blob(r, f[2] + (r() - .5) * 10 * s, f[3] + 4 * s, 4 * s, 2.6 * s, 6, .5), '#f4f0e2', .95); }
   }
   // a Scots pine on the open fell, at the size standard's height: a tall trunk, grey and plated low down and orange in
