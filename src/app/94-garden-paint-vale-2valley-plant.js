@@ -154,7 +154,7 @@
       const im = scene.add.image(g.x, g.y, 'gpv-swallow-0').setScale(.26).setVisible(false); box.add(im);
       const k = gi * 7 + i; birds.push({ im, cx: g.x + (i - 2) * 30, cy: g.y + ((k * 37) % 5 - 2) * 14, ax: 150 + (k * 53) % 90, ay: 52 + (k * 29) % 34, w: .42 + ((k * 17) % 10) / 40, p: k * 1.7, p2: k * 2.9, lift: 34 + (k * 23) % 40 });
     }
-    for (const m of o.mistAt || []) { const im = scene.add.image(m.x, m.y, 'gpv-mist').setVisible(false).setAlpha(0); const k = m.seed % 1000; im.setScale(1 + (k % 7) / 10, .8 + (k % 5) / 10); box.add(im); wisps.push({ im, x: m.x, y: m.y, p: (k % 97) / 15, sp: 5 + k % 6, span: 46 + k % 40 }); }
+    for (const m of o.mistAt || []) { const im = scene.add.image(m.x, m.y, 'gpv-mist').setVisible(false).setAlpha(0); const k = m.seed % 1000; im.setScale(1.1 + (k % 7) / 9, 1 + (k % 5) / 8); box.add(im); wisps.push({ im, x: m.x, y: m.y, p: (k % 97) / 15, sp: 5 + k % 6, span: 46 + k % 40 }); }
     let light = 1, lastLight = -1e9, t0 = null;
     const upd = (time) => {
       if (!box.active) return;
@@ -172,9 +172,9 @@
         b.im.setPosition(x, y - lift).setTexture('gpv-swallow-' + f).setFlipX(vx < 0).setRotation(Math.atan2(vy, Math.abs(vx)) * (vx < 0 ? -.5 : .5));
       }
       // mist: from the turning hour to the morning, thickest in the small hours, drifting slowly downwind and breathing
-      const mist = Math.max(0, Math.min(1, (.5 - light) / .35));
+      const mist = Math.max(0, Math.min(1, (.44 - light) / .34));
       for (const w of wisps) {
-        const a = mist * (.62 + .22 * Math.sin(t * .11 + w.p)), x = w.x + Math.sin(t * w.sp / 60 + w.p) * w.span, show = a > .01 && inView(x, w.y, 200);
+        const a = mist * (.5 + .2 * Math.sin(t * .11 + w.p)), x = w.x + Math.sin(t * w.sp / 60 + w.p) * w.span, show = a > .01 && inView(x, w.y, 200);
         if (w.im.visible !== show) w.im.setVisible(show); if (!show) continue;
         w.im.setPosition(x, w.y + Math.sin(t * .07 + w.p) * 4).setAlpha(a);
       }
@@ -204,7 +204,7 @@
     for (const rt of D.routes || []) {
       if (!rt.points || rt.points.length < 2 || typeof gardenIslandRoutePath !== 'function') continue;
       const kind = window.GardenPaintGround ? GardenPaintGround.routeKind(rt) : 'earth', w = rt.tier === 'plaza' ? (Number(rt.widthCells) || 3) * cw : Number(rt.paintWidth) || (window.GardenPaintGround && GardenPaintGround.ROUTE_WIDTH[kind]) || 26;
-      ribbons.push({ half: w / 2, pts: gardenIslandRoutePath(rt).points.map(p => ({ x: p.x * cw, y: W.sky + p.y * ch })) });
+      ribbons.push({ half: w / 2, marsh: /marsh|reed|boardwalk/.test(String(rt.id || '')), pts: gardenIslandRoutePath(rt).points.map(p => ({ x: p.x * cw, y: W.sky + p.y * ch })) });
     }
     const pathGap = (X, Y) => { let best = Infinity; for (const rb of ribbons) for (let i = 1; i < rb.pts.length; i++) { const a = rb.pts[i - 1], b = rb.pts[i], dx = b.x - a.x, dy = b.y - a.y, l = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((X - a.x) * dx + (Y - a.y) * dy) / l)), d = Math.hypot(X - a.x - dx * t, Y - a.y - dy * t) - rb.half; if (d < best) best = d; } return best; };
     // statics with their aprons (and the four rows in front of them, where a crown would hide them), gates, crossings
@@ -384,7 +384,6 @@
     // by a wooden hatch at the water. The three longest runs of open meadow that leave the bank square to the water, kept
     // apart; dry and grown with rushes while the race is silted. From the layout: the fresh water, the free cells, the paths.
     const ditches = [];
-    const dTry = [];
     { const cs = [];
       for (let y = by0; y <= by1; y++) for (let x = bx0; x <= bx1; x++) {
         if (!freeOk(x, y) || dwAt(x, y) > 1.01 || plotAt(x - 1, y) || plotAt(x + 1, y)) continue;
@@ -398,7 +397,7 @@
           px = nx; py = ny; ok++; pts.push({ x: px, y: py });
         }
         if (ok >= 2 && pts.length >= 3) cs.push({ x, y, len: ok * .5, pts });
-        dTry.push(x + "," + y + ":" + ok);
+        
       }
       cs.sort((a, b) => b.len - a.len || kit.hash(a.x, a.y, 872) - kit.hash(b.x, b.y, 872));
       for (const c of cs) { if (ditches.length >= 3) break; if (ditches.some(d => Math.hypot(d.x - c.x, d.y - c.y) < 3)) continue; ditches.push(c); }
@@ -406,18 +405,23 @@
     }
     const ditchPx = ditches.map(d => d.pts.map(q => ({ x: q.x * cw, y: W.sky + q.y * ch })));
     const onDitch = (X, Y) => ditchPx.some(pts => { for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i], dx = b.x - a.x, dy = b.y - a.y, l = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((X - a.x) * dx + (Y - a.y) * dy) / l)); if (Math.hypot(X - a.x - dx * t, Y - a.y - dy * t) < 9) return true; } return false; });
+    // (a route's cells are wider than its painted way: their verges beyond the painting are grass, and get the verge's plants)
+    const freeLow = (x, y) => { if (!inRegion(x + .5, y + .5)) return false; const b = base(x, y), rw = row(x, y); return !(!b || !b.land || b.beach || b.freshwater || b.solid || b.ocean || L.kind(x + .5, y + .5) === 'water' || L.kind(x + .5, y + .5) === 'beach' || rw && (rw.plot || rw.solid) || held.has(x + ',' + y) || byCrossing(x, y)); };
     const glowAt = [];
+    // the reed marsh: free ground within a few strides of a route the layout calls a marsh (or a boardwalk through reeds)
+    const marshRibs = ribbons.filter(rb => rb.marsh), marshAt = (X, Y) => { for (const rb of marshRibs) for (let i = 1; i < rb.pts.length; i++) { const a = rb.pts[i - 1], b = rb.pts[i], dx = b.x - a.x, dy = b.y - a.y, l = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((X - a.x) * dx + (Y - a.y) * dy) / l)); if (Math.hypot(X - a.x - dx * t, (Y - a.y - dy * t) * 1.4) < cw * 2.6) return true; } return false; };
     const blocks = new Map(), push = (it) => { const k = Math.floor(it.x / (cw * 4)) + ',' + Math.floor((it.y - W.sky) / (ch * 4)); let l = blocks.get(k); if (!l) blocks.set(k, l = []); l.push(it); };
     for (let y = by0; y <= by1; y++) for (let x = bx0; x <= bx1; x++) {
-      if (!freeOk(x, y)) continue;
-      const rr = kit.rng(kit.hash(x, y, 851)), dwc = dwAt(x, y), ctx = dwc <= 1.6 ? 'bank' : near(x, y, 1, plotAt) ? 'edge' : 'open';
+      const onWay = !freeOk(x, y); if (onWay && !freeLow(x, y)) continue;
+      const rr = kit.rng(kit.hash(x, y, 851)), dwc = dwAt(x, y), reedy = marshRibs.length && marshAt((x + .5) * cw, W.sky + (y + .5) * ch), ctx = reedy ? 'marsh' : dwc <= 1.6 ? 'bank' : near(x, y, 1, plotAt) ? 'edge' : 'open';
       if (ctx !== 'open' && kit.hash(x, y, 857) % 3 === 0) glowAt.push({ x: (x + .2 + rr() * .6) * cw, y: W.sky + (y + .6 + rr() * .3) * ch, seed: kit.hash(x, y, 858) });
-      const drift = kit.noise(x / 3.2, y / 2.6, 852), list = S.flowers[ctx], flower = list[Math.floor(kit.noise(x / 4.5, y / 3.5, 853) * list.length * .999)];
-      const n = ctx === 'open' ? 4 + Math.floor(rr() * 4) : 3 + Math.floor(rr() * 3);
+      const drift = kit.noise(x / 3.2, y / 2.6, 852), list = S.flowers[ctx] || S.flowers.bank, flower = list[Math.floor(kit.noise(x / 4.5, y / 3.5, 853) * list.length * .999)];
+      const n = onWay ? 3 + Math.floor(rr() * 3) : ctx === 'open' ? 4 + Math.floor(rr() * 4) : ctx === 'marsh' ? 6 + Math.floor(rr() * 3) : 3 + Math.floor(rr() * 3);
       for (let i = 0; i < n; i++) {
         const fx = x + .1 + rr() * .8, fy = y + .25 + rr() * .7, X = fx * cw, Y = W.sky + fy * ch;
-        if (pathGap(X, Y) < 5 || onDitch(X, Y)) continue;
+        if (pathGap(X, Y) < (onWay ? 9 : 5) || onDitch(X, Y)) continue;
         if (plotAt(Math.floor(fx), Math.floor(fy - .4)) || plotAt(Math.floor(fx - .22), Math.floor(fy)) || plotAt(Math.floor(fx + .22), Math.floor(fy))) continue;   // (nothing standing up into a field's front hedge or leaning on its side)
+        if (ctx === 'marsh') { push({ x: X, y: Y, kind: rr() < .86 ? 'reedbed' : season === 'summer' ? 'loosestrife' : 'rush', s: .85 + rr() * .4, seed: kit.hash(x * 7 + i, y, 854), ctx }); continue; }
         const isFlower = ctx === 'bank' ? rr() < .55 : ctx === 'edge' ? rr() < .6 : drift > .5 && rr() < .7;
         push({ x: X, y: Y, kind: isFlower ? (ctx === 'open' ? flower : list[Math.floor(rr() * list.length)]) : 'tussock', s: .8 + rr() * .5, seed: kit.hash(x * 7 + i, y, 854), ctx });
       }
@@ -440,6 +444,12 @@
         case 'campion': blades(4, 7 * s, 5, [bl[0], bl[1]]); for (let k = 0; k < 3 + Math.floor(r() * 3); k++) { const p = stem(x + (r() - .5) * 7 * s, (9 + r() * 6) * s, bl[0]); dot(p.x, p.y, 1.4, '#d84a7a'); dot(p.x - .3, p.y - .3, .5, '#f4a0c0'); } break;
         case 'foxglove': blades(5, 6 * s, 6, [bl[0], bl[1]]); { const p = stem(x, (18 + r() * 6) * s, bl[0]); for (let q = 0; q < 6; q++) dot(p.x + (q % 2 ? 1.1 : -.3), p.y + q * 2.2, 1.3 - q * .06, q < 2 ? '#c87ab8' : '#a8508e'); } break;
         case 'nettle': for (let k = 0; k < 3 + Math.floor(r() * 3); k++) { const p = stem(x + (r() - .5) * 7 * s, (9 + r() * 7) * s, '#3e5a2a'); for (let q = 0; q < 3; q++) { const yy = y - (p.y < y ? (y - p.y) * (.3 + q * .25) : 0); gx.fillStyle = q === 2 ? '#4e7232' : '#38542a'; gx.beginPath(); gx.ellipse(p.x - 2, yy, 2, .9, .5, 0, Math.PI * 2); gx.ellipse(p.x + 2, yy, 2, .9, -.5, 0, Math.PI * 2); gx.fill(); } } break;
+        case 'reedbed': { const st = season === 'winter' ? ['#a89a70', '#c2b488', '#8a7e5a'] : season === 'autumn' ? ['#8e8a48', '#aaa05a', '#6e7036'] : ['#4e7a38', '#6a9444', '#3e6630'], pl = season === 'winter' ? '#d8ccb0' : season === 'autumn' ? '#c8b07a' : season === 'spring' ? null : '#8a5a5a', n = 14 + Math.floor(r() * 10), hgt = 22 * s;
+          gx.globalAlpha = .2; gx.fillStyle = '#26381c'; gx.beginPath(); gx.ellipse(x + 2, y, 12 * s, 2.4, 0, 0, Math.PI * 2); gx.fill(); gx.globalAlpha = .95;
+          for (let b = 0; b < n; b++) { const u = (b / (n - 1) - .5), px = x + u * 20 * s + (r() - .5) * 3, l = hgt * (.65 + r() * .45) * (1 - Math.abs(u) * .45), lean = u * 3 + (r() - .5) * 2.5; gx.strokeStyle = st[b % 3]; gx.lineWidth = .9; gx.beginPath(); gx.moveTo(px, y + .5); gx.quadraticCurveTo(px + lean * .3, y - l * .5, px + lean, y - l); gx.stroke();
+            if (r() < .5) { gx.strokeStyle = st[(b + 1) % 3]; gx.lineWidth = .8; gx.beginPath(); gx.moveTo(px + lean * .15, y - l * .35); gx.quadraticCurveTo(px + lean * .3 + (r() < .5 ? 4 : -4), y - l * .45, px + lean * .3 + (r() < .5 ? 6 : -6), y - l * .3); gx.stroke(); }
+            if (pl && r() < .55) { gx.fillStyle = pl; gx.globalAlpha = .85; gx.beginPath(); gx.ellipse(px + lean + .6, y - l - 1.8, 1.3, 3, lean * .08 + .2, 0, Math.PI * 2); gx.fill(); gx.globalAlpha = .95; } }
+          break; }
         case 'rush': blades(9 + Math.floor(r() * 6), 13 * s, 5 * s, ['#2e5228', '#3e6a30', '#4e7a36'], 1.1); if (r() < .5) dot(x + 2, y - 10 * s, 1, '#7a5a30'); break;
         case 'loosestrife': blades(5, 8 * s, 6, [bl[0], bl[1]]); for (let k = 0; k < 2 + Math.floor(r() * 2); k++) { const p = stem(x + (r() - .5) * 7 * s, (16 + r() * 6) * s, bl[0]); for (let q = 0; q < 5; q++) dot(p.x + (r() - .5) * .8, p.y + q * 1.8, 1.25 - q * .08, q < 2 ? '#c860b0' : '#a8429a'); } break;
         case 'flag': blades(7, 13 * s, 6, ['#3e6a34', '#4e7e3c', '#62904a'], 1.6); if (r() < .7) { dot(x + 1, y - 12 * s, 1.8, '#f2d02a'); dot(x + 2.2, y - 11 * s, 1.1, '#e8b81a'); } break;
@@ -458,8 +468,8 @@
       const wint = season === 'winter';
       // seen from the south: the damp dip in the grass, the far bank's lit lip and its shaded face below it, the silted bed with a
       // last thread of damp, and the near side hidden under the grass that leans over it
-      at(0, .5, wint ? '#7e8a6a' : '#55802f', 17, .3); at(0, 0, wint ? '#7a7458' : '#6a6436', 10, 1);
-      at(0, -3.6, wint ? '#c2c4a8' : '#a8bc5e', 2.2, .75); at(0, -2, wint ? '#4e4a3a' : '#3c3a1e', 3.4, .9); at(0, 1.2, wint ? '#8e8a6e' : '#7e7646', 4, .8); at(0, 1, wint ? '#b4c2c6' : '#8a9a7a', 1.1, .45);
+      at(0, .5, wint ? '#7e8a6a' : '#55802f', 19, .32); at(0, 0, wint ? '#7a7458' : '#6a6436', 11, 1);
+      at(0, -3.6, wint ? '#c2c4a8' : '#a8bc5e', 2.2, .75); at(0, -2, wint ? '#4e4a3a' : '#3c3a1e', 3.4, .9); at(0, 1.2, wint ? '#8e8a6e' : '#7e7646', 4, .8); at(0, 1.1, wint ? '#c4d2d6' : '#8eaab0', 2, .6); at(-.6, .6, '#d8e6e8', .8, .45);   // (a last thread of damp in the bed, catching the sky)
       for (const q of V.walk(pts, 2.6)) { const lean = (r() - .5) * 2.4; gx.globalAlpha = .9; gx.strokeStyle = S.blade[Math.floor(r() * 3)]; gx.lineWidth = 1; gx.beginPath(); gx.moveTo(q.x + lean, q.y + 6.5); gx.quadraticCurveTo(q.x + lean * .6, q.y + 3.5, q.x + lean * 1.4 + (r() - .5) * 2, q.y + 1.2 - r() * 2); gx.stroke(); if (r() < .5) { gx.beginPath(); gx.moveTo(q.x, q.y - 4.5); gx.quadraticCurveTo(q.x + lean, q.y - 6, q.x + lean * 1.6, q.y - 8 - r() * 3); gx.stroke(); } }
       for (const q of V.walk(pts, 8.5)) for (const side of [-1, 1]) { if (r() < .35) continue; const d = (6.5 + r() * 2) * side; tuft(gx, { x: q.x - q.ty * d, y: q.y + q.tx * d + (side > 0 ? 3 : -1), kind: r() < .2 && season === 'summer' ? 'meadowsweet' : wint ? 'seedhead' : 'rush', s: .6 + r() * .35, seed: kit.hash(Math.round(q.x), Math.round(q.y), 873 + side) }); }
       // the hatch
@@ -475,10 +485,10 @@
       gx.fillStyle = '#e2d6b8'; gx.globalAlpha = .8; for (let i = 0; i < n; i++) gx.fillRect(h.x - bw / 2 + 2 + i * 2.2, h.y - H - .4, .9, 1.6); gx.globalAlpha = 1;
     };
     ditchPx.forEach((pts, i) => { const dbb = kit.bboxOf(pts, 16); dbb[1] -= 30; dbb[3] += 14; add(dbb, 8470 + i, B => ditch(B.cx, pts, kit.hash(i, 7, 874), i + 1)); });
-    V._valleyTrees.ditches = ditches.map(d => d.x + ',' + d.y + ':' + d.len).join(' '); V._valleyTrees.ditchTry = dTry.join(' ');
+    V._valleyTrees.ditches = ditches.map(d => d.x + ',' + d.y + ':' + d.len).join(' ');
     for (const [k, items] of blocks) {
-      const ibb = kit.bboxOf(items.map(i => ({ x: i.x, y: i.y })), 4); ibb[0] -= 12; ibb[2] += 12; ibb[1] -= 26; ibb[3] += 4;
-      add(ibb, 8500 + blocks.size, (B, r0, cb) => { const gx = B.cx; for (const it of items) { if (cb && (it.x < cb[0] - 14 || it.x > cb[2] + 14 || it.y < cb[1] - 2 || it.y > cb[3] + 26)) continue; tuft(gx, it); } });
+      const ibb = kit.bboxOf(items.map(i => ({ x: i.x, y: i.y })), 4); ibb[0] -= 16; ibb[2] += 16; ibb[1] -= 38; ibb[3] += 4;
+      add(ibb, 8500 + blocks.size, (B, r0, cb) => { const gx = B.cx; for (const it of items) { if (cb && (it.x < cb[0] - 18 || it.x > cb[2] + 18 || it.y < cb[1] - 4 || it.y > cb[3] + 38)) continue; tuft(gx, it); } });
     }
     V._valleyTrees.lowCells = blocks.size; V._valleyTrees.lowItems = [...blocks.values()].reduce((a, l) => a + l.length, 0);
 
