@@ -92,7 +92,9 @@ window.GardenPaintTrees = (function () {
       for (let k = 0; k < 3; k++) { const t = .45 + k * .2, bx = x0 + (x1 - x0) * t, by = y0 + (y1 - y0) * t; cx.strokeStyle = B[1]; cx.lineWidth = w * .3; cx.beginPath(); cx.moveTo(bx, by); cx.lineTo(bx + (r() - .5) * H * .14, by - H * (.03 + r() * .06)); cx.stroke(); }
     }
     // the bole with its root flare: the base spreads and the roots run out and sink into the grass
-    const flare = tw * (birch ? 1.5 : 2.1), g = cx.createLinearGradient(-flare, 0, flare, 0);
+    // (the woods' own species, yew, beech and holly, sit on a tighter flare with shorter roots: at the old spread a yew stood
+    //  on a brown tent of roots twice as wide as its bole; the village's species keep theirs)
+    const great = sp === 'greatoak', tight = sp === 'yew' || sp === 'beech' || sp === 'holly', flare = tw * (birch ? 1.5 : great ? 1.4 : tight ? 1.55 : 2.1), g = cx.createLinearGradient(-flare, 0, flare, 0);
     if (birch) { g.addColorStop(0, B[3]); g.addColorStop(.45, B[2]); g.addColorStop(1, B[0]); } else { g.addColorStop(0, B[3]); g.addColorStop(.3, B[2]); g.addColorStop(.75, B[1]); g.addColorStop(1, B[0]); }
     cx.fillStyle = g; cx.beginPath();
     cx.moveTo(-flare, 1.5);
@@ -103,8 +105,18 @@ window.GardenPaintTrees = (function () {
     cx.bezierCurveTo(tw * .6, -tw * 1.2, tw * 1.05, -tw * .2, flare * 1.1, 1.5);
     cx.quadraticCurveTo(0, 3, -flare, 1.5); cx.fill();
     // root fingers, each with a dark crease where it leaves the bole
-    for (const [dir, len] of [[-1, 1.0], [1, 1.2], [-.35, .6], [.45, .7]]) {
-      const x0 = dir * tw * .5, x1 = dir * (flare + tw * len * .9);
+    if (great) {
+      // (19 Nov 2026, the woods chain: the Great Oak's roots are gnarled buttresses, each its own length and swell, a knuckle
+      //  where it bends into the ground and a dark crease each side; its long straight root wedges read as a tent's skirt)
+      for (const [dir, len, lift] of [[-1, .62, .5], [1, .74, .55], [-.62, .42, .8], [.66, .5, .75], [-.18, .26, 1], [.3, .32, .95]]) {
+        const x0 = dir * tw * .42, x1 = dir * (flare + tw * len * .55) + (r() - .5) * tw * .1, kx = x0 + (x1 - x0) * .62, ky = -tw * .16 * lift, w0 = tw * (.2 + .1 * lift);
+        cx.fillStyle = dir < 0 ? B[2] : B[1]; cx.beginPath(); cx.moveTo(x0 - w0, -tw * .75 * lift); cx.bezierCurveTo(x0 + (kx - x0) * .4, -tw * .55 * lift, kx - dir * w0 * .4, ky - w0 * .7, kx, ky - w0 * .45);
+        cx.quadraticCurveTo(x1 - dir * w0 * .2, ky * .4, x1, 1.8); cx.quadraticCurveTo(kx, 3, x0 + w0, .5); cx.closePath(); cx.fill();
+        cx.globalAlpha = .5; cx.fillStyle = dir < 0 ? B[3] : B[2]; cx.beginPath(); cx.ellipse(kx - dir * w0 * .15, ky - w0 * .4, w0 * .5, w0 * .28, -dir * .3, Math.PI, Math.PI * 2); cx.fill();   // (the lit top of the knuckle)
+        cx.globalAlpha = .55; cx.strokeStyle = B[0]; cx.lineWidth = Math.max(.7, tw * .025); cx.beginPath(); cx.moveTo(x0 + dir * w0 * .2, -tw * .6 * lift); cx.quadraticCurveTo(kx + dir * w0 * .3, ky + w0 * .1, x1 * .97, 1.6); cx.stroke(); cx.globalAlpha = 1;
+      }
+    } else for (const [dir, len] of [[-1, 1.0], [1, 1.2], [-.35, .6], [.45, .7]]) {
+      const x0 = dir * tw * .5, x1 = dir * (flare + tw * len * (tight ? .4 : .9));
       cx.fillStyle = dir < 0 ? B[2] : B[1]; cx.beginPath(); cx.moveTo(x0 - tw * .3, -tw * .6); cx.quadraticCurveTo(x1 * .7, -tw * .25, x1, 1.6); cx.quadraticCurveTo(x1 * .6, 2.2, x0 + tw * .3, 0); cx.closePath(); cx.fill();
       cx.strokeStyle = B[0]; cx.globalAlpha = .45; cx.lineWidth = .7; cx.beginPath(); cx.moveTo(x0, -tw * .5); cx.quadraticCurveTo(x1 * .6, -tw * .1, x1 * .9, 1.4); cx.stroke(); cx.globalAlpha = 1;
     }
@@ -119,10 +131,43 @@ window.GardenPaintTrees = (function () {
       for (let k = 0; k < 2; k++) { const y = -th * (.35 + r() * .4), x = lean * (y / top) + (r() - .5) * tw * .4; cx.globalAlpha = .55; cx.fillStyle = B[0]; cx.beginPath(); cx.ellipse(x, y, tw * .1, tw * .07, 0, 0, Math.PI * 2); cx.fill(); }
       cx.globalAlpha = 1;
     } else {
-      const great = sp === 'greatoak'; cx.strokeStyle = B[0]; cx.lineWidth = great ? Math.max(.8, tw * .035) : .8;
+      cx.strokeStyle = B[0]; cx.lineWidth = great ? Math.max(.8, tw * .035) : .8;
       for (let k = 0, nf = great ? Math.max(7, Math.round(tw * .45)) : 7; k < nf; k++) {   /* (the Great Oak's vast bole gets furrows to its own width; every other tree keeps its seven, and so its shape) */ const x = (k / (nf - 1) - .5) * tw * .9, sway = (r() - .5) * (great ? tw * .1 : 2); cx.globalAlpha = .35 + r() * .25; cx.beginPath(); cx.moveTo(x * 1.4, -1); cx.bezierCurveTo(x + sway, -th * .3, x + lean * .4 - sway, -th * .6, x * .8 + lean, top + 2); cx.stroke(); }
       cx.globalAlpha = .25; cx.fillStyle = B[3]; cx.beginPath(); cx.ellipse(-tw * .3, -th * .35, tw * .16, th * .25, 0, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 1;
       if (sp === 'oak' && r() < .7) { cx.fillStyle = B[0]; cx.globalAlpha = .7; cx.beginPath(); cx.ellipse(tw * .1, -th * .5, tw * .16, tw * .28, 0, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 1; }
+    }
+    if (great) {
+      // the Great Oak's character (woodland.md: huge, low limbs, the letters carved low on the trunk): two great limbs leave
+      // the bole low and sag out sideways under the crown's rim before they rise into it; burrs on the bole; W, a small t and
+      // a third letter scratched out, cut pale into the bark at about knee height
+      // (each limb a tapered bough, thick at the bole and thin where it goes into the leaves, lit along its top and shaded
+      //  under; drawn as strokes of one width they read as garden hoses)
+      for (const dir of [-1, 1]) {
+        const x0 = dir * tw * .3 + lean * .4, y0 = -th * (dir < 0 ? .36 : .32), x1 = dir * H * (dir < 0 ? .37 : .4), y1 = -H * (dir < 0 ? .37 : .35), mx = dir * H * .19, my = y0 + H * .014;
+        const P = t => [(1 - t) * (1 - t) * x0 + 2 * (1 - t) * t * mx + t * t * x1, (1 - t) * (1 - t) * y0 + 2 * (1 - t) * t * my + t * t * y1];
+        const top = [], bot = [], N = 14;
+        for (let i = 0; i <= N; i++) { const t = i / N, [x, y] = P(t), [xa, ya] = P(Math.min(1, t + .02)), [xb, yb] = P(Math.max(0, t - .02)), dx = xa - xb, dy = ya - yb, L = Math.hypot(dx, dy) || 1, w = tw * (.3 - .22 * t) * (1 + .18 * Math.sin(t * 9 + dir)); top.push([x + dy / L * w * dir, y - dx / L * w * dir]); bot.push([x - dy / L * w * dir, y + dx / L * w * dir]); }
+        const [hi, lo] = top[3][1] < bot[3][1] ? [top, bot] : [bot, top];
+        cx.globalAlpha = 1; cx.fillStyle = B[1]; cx.beginPath(); cx.moveTo(hi[0][0], hi[0][1]); for (const p of hi) cx.lineTo(p[0], p[1]); for (let i = lo.length - 1; i >= 0; i--) cx.lineTo(lo[i][0], lo[i][1]); cx.closePath(); cx.fill();
+        cx.globalAlpha = .55; cx.fillStyle = B[0]; cx.beginPath(); cx.moveTo(lo[0][0], lo[0][1]); for (let i = 0; i < lo.length; i++) cx.lineTo(lo[i][0], lo[i][1]); for (let i = lo.length - 1; i >= 0; i--) cx.lineTo((lo[i][0] * 2 + hi[i][0]) / 3, (lo[i][1] * 2 + hi[i][1]) / 3); cx.closePath(); cx.fill();
+        cx.globalAlpha = .5; cx.strokeStyle = B[3]; cx.lineWidth = Math.max(.7, tw * .035); cx.beginPath(); for (let i = 1; i < hi.length - 2; i++) { const p = hi[i], q = lo[i]; cx[i === 1 ? 'moveTo' : 'lineTo'](p[0] + (q[0] - p[0]) * .18, p[1] + (q[1] - p[1]) * .18); } cx.stroke();
+        cx.globalAlpha = 1;
+      }
+      for (const [bx, by, s] of [[-.26, .3, 1], [.2, .55, .8], [-.05, .72, .7]]) {
+        const x = tw * bx + lean * by, y = -th * by, rx = tw * .13 * s, ry = tw * .1 * s;
+        cx.fillStyle = B[0]; cx.globalAlpha = .75; cx.beginPath(); cx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); cx.fill();
+        cx.strokeStyle = B[3]; cx.globalAlpha = .5; cx.lineWidth = Math.max(.6, tw * .02); cx.beginPath(); cx.ellipse(x, y, rx * 1.15, ry * 1.15, 0, Math.PI * 1.05, Math.PI * 1.75); cx.stroke();
+      }
+      const L = tw * .15, lx = tw * .04, ly = -tw * .5;
+      cx.lineCap = 'round'; cx.lineJoin = 'round';
+      for (const [col, dx, dy, a] of [[B[0], .5, .6, .8], ['#c8a878', 0, 0, .9]]) {
+        cx.strokeStyle = col; cx.globalAlpha = a; cx.lineWidth = Math.max(.7, tw * .028); cx.beginPath();
+        cx.moveTo(lx - L * 1.1 + dx, ly - L + dy); cx.lineTo(lx - L * .8 + dx, ly + dy); cx.lineTo(lx - L * .55 + dx, ly - L * .55 + dy); cx.lineTo(lx - L * .3 + dx, ly + dy); cx.lineTo(lx + dx, ly - L + dy);   // W
+        cx.moveTo(lx + L * .45 + dx, ly - L * .75 + dy); cx.lineTo(lx + L * .45 + dx, ly + dy); cx.moveTo(lx + L * .25 + dx, ly - L * .5 + dy); cx.lineTo(lx + L * .65 + dx, ly - L * .5 + dy);   // t
+        for (let k = 0; k < 4; k++) { cx.moveTo(lx + L * (.9 + k * .12) + dx, ly - L * .85 + dy); cx.lineTo(lx + L * (.85 + k * .12) + dx, ly - L * .05 + dy); }   // the third, scratched out
+        cx.stroke();
+      }
+      cx.globalAlpha = 1;
     }
     // moss on the shaded north foot
     if (!birch) { cx.fillStyle = '#5e7a34'; cx.globalAlpha = .22; cx.beginPath(); cx.ellipse(tw * .5, -tw * .5, tw * .5, tw * .7, .3, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 1; }

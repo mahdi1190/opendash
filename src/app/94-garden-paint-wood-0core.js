@@ -42,7 +42,7 @@ window.GardenPaintWood = (function () {
     //  birch in about eight (woodland.md), the old wood is yew and ancient oak with holly under them)
     'west-woods': { name: 'Whispering woodland', mood: 'light', density: .4, trees: [['kit:beech', 4, 'tree', .3, .95], ['kit:oak', 3, 'tree', .5, 1], ['kit:chestnut', 1, 'tree', .35, .85], ['kit:birch', 1.2, 'tree', 0, .4], ['kit:hawthorn', .7, 'young', .4, 1], ['kit:holly', .5, 'young', .3, 1]], under: [['plant.fern', 3], ['plant.bracken', 2], ['plant.us-ozark-fern', 2]], floor: { litter: '#7d7a4a', shade: '#3f5232', moss: '#6f8a42', sun: '#e9e0a0', leaf: ['#9a8a4e', '#b39a5a', '#6f6a3c'] } },
     'east-mill': { name: 'Millwater valley', mood: 'meadow', density: .9, trees: [['tree.canal-willow', 3, 170], ['tree.green-willow', 2, 160], ['tree.green-alder', 2, 150], ['tree.pool-birch', 1, 140]], under: [['plant.grass', 3], ['plant.wildflowers', 2], ['plant.canal-view-meadowsweet', 1]], floor: { litter: '#8fa95a', shade: '#5f7f3e', moss: '#6f9446', sun: '#c8cf82', leaf: ['#a8b866', '#7f9a4c', '#b9b070'] } },
-    'southwest-ruins': { name: 'The old woodland', mood: 'old', density: .46, trees: [['kit:yew', 4, 'tree', 0, .45], ['kit:oak', 2.6, 'tree', .75, 1], ['kit:beech', 1.4, 'tree', .5, 1], ['kit:holly', 1.2, 'young', .4, 1], ['tree.wyv-snag', .5, 180]], under: [['plant.fern', 3], ['plant.us-sword-fern', 2], ['plant.bracken', 1]], floor: { litter: '#5f6a3e', shade: '#2c3c28', moss: '#5f7f3a', sun: '#d8dca0', leaf: ['#6f6a3c', '#857a44', '#4f5a32'] } },
+    'southwest-ruins': { name: 'The old woodland', mood: 'old', density: .62, trees: [['kit:yew', 4, 'tree', 0, .45], ['kit:oak', 2.6, 'tree', .75, 1], ['kit:beech', 1.4, 'tree', .5, 1], ['kit:holly', 1.2, 'young', .4, 1], ['tree.wyv-snag', .5, 180]], under: [['plant.fern', 3], ['plant.us-sword-fern', 2], ['plant.bracken', 1]], floor: { litter: '#5f6a3e', shade: '#2c3c28', moss: '#5f7f3a', sun: '#d8dca0', leaf: ['#6f6a3c', '#857a44', '#4f5a32'] } },
   };
   // The rhythm of each wood, by the layout's own plot ids (woodland.md section 3, oldwood.md): tight stretches and open
   // ones. A plot named here closes the canopy round it (dense) or opens it (open), and more or fewer trees stand there; a
@@ -90,16 +90,28 @@ window.GardenPaintWood = (function () {
     }
     // How far (world px) a trunk foot is from the edge of the nearest drawn path or plaza
     // line: a trunk never stands on a path's painted width, so it can collide without blocking it.
-    const pathGap = (X, Y) => { let best = Infinity; for (const r of routeLines) for (let i = 1; i < r.pts.length; i++) { const a = r.pts[i - 1], b = r.pts[i], dx = b.x - a.x, dy = b.y - a.y, L = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((X - a.x) * dx + (Y - a.y) * dy) / L)), d = Math.hypot(X - a.x - dx * t, Y - a.y - dy * t) - r.half; if (d < best) best = d; } return best; };
+    // (19 Nov 2026, round 2: the segments are bucketed in a 128 px grid, each in every bucket within its half-width and 96 px
+    //  of reach: every caller only asks whether a path is within a few tens of px, and scanning every segment of the map for
+    //  every tree and fern made the planting a quarter of a second)
+    const GB = 128, REACH = 96, segGrid = new Map();
+    for (const r of routeLines) for (let i = 1; i < r.pts.length; i++) {
+      const a = r.pts[i - 1], b = r.pts[i], pad = r.half + REACH, seg = [a, b, r.half];
+      for (let gy = Math.floor((Math.min(a.y, b.y) - pad) / GB); gy <= Math.floor((Math.max(a.y, b.y) + pad) / GB); gy++) for (let gx = Math.floor((Math.min(a.x, b.x) - pad) / GB); gx <= Math.floor((Math.max(a.x, b.x) + pad) / GB); gx++) { const k = gx + ',' + gy; let l = segGrid.get(k); if (!l) segGrid.set(k, l = []); l.push(seg); }
+    }
+    const pathGap = (X, Y) => { const l = segGrid.get(Math.floor(X / GB) + ',' + Math.floor(Y / GB)); if (!l) return REACH; let best = REACH; for (const [a, b, half] of l) { const dx = b.x - a.x, dy = b.y - a.y, L = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((X - a.x) * dx + (Y - a.y) * dy) / L)), d = Math.hypot(X - a.x - dx * t, Y - a.y - dy * t) - half; if (d < best) best = d; } return best; };
     // the rhythm plots (RHYTHM): how dense or open the wood is at a cell, from the plots named there
     const rhythm = [];
     for (const [id, cells] of Object.entries(data.sectionCells || {})) { const k = RHYTHM.dense[id] || -(RHYTHM.open[id] || 0); if (!k || !cells || !cells.length) continue; let sx = 0, sy = 0; for (const c of cells) { sx += c[0]; sy += c[1]; } rhythm.push({ x: sx / cells.length + .5, y: sy / cells.length + .5, k, R: k > 0 ? 4.6 + Math.sqrt(cells.length) * .4 : 3.2 + Math.sqrt(cells.length) * .4 }); }
     const moodAt = (x, y) => { let dense = 0, open = 0; for (const q of rhythm) { const d = Math.hypot(x - q.x, (y - q.y) * 1.25); if (d >= q.R) continue; const f = 1 - (d / q.R) * (d / q.R); if (q.k > 0) dense = Math.max(dense, q.k * f); else open = Math.max(open, -q.k * f); } return { dense, open }; };
     out.moodAt = moodAt;
     const wallPolys = (data.landforms || []).filter(f => f.kind === 'terrace-wall' && f.polygon && f.polygon.length > 2).map(f => f.polygon);
-    const onWall = (x, y) => wallPolys.some(p => [[0, 0], [.6, 0], [-.6, 0], [0, .5], [0, -.5]].some(([dx, dy]) => inside(x + dx, y + dy, p)));
+    // (each wall's bounding box first: every land cell of every wood tested against every terrace wall on the map was 145 ms)
+    const wallBox = wallPolys.map(p => { let a = 1e9, b = 1e9, c = -1e9, d = -1e9; for (const [x, y] of p) { a = Math.min(a, x); b = Math.min(b, y); c = Math.max(c, x); d = Math.max(d, y); } return [a - .7, b - .6, c + .7, d + .6]; });
+    const onWall = (x, y) => wallPolys.some((p, i) => { const k = wallBox[i]; return x >= k[0] && x <= k[2] && y >= k[1] && y <= k[3] && [[0, 0], [.6, 0], [-.6, 0], [0, .5], [0, -.5]].some(([dx, dy]) => inside(x + dx, y + dy, p)); });
+    const tm = out.tm = {}, T0 = performance.now();
     for (const region of data.regions || []) {
       const def = WOODS[region.id]; if (!def) continue;
+      const R0 = performance.now();
       const poly = region.polygons[0], season = info.season || 'summer';
       const species = def.trees.filter(([id]) => kitOf(id) ? !!window.GardenPaintTrees : typeof sceneObj === 'function' && sceneObj(id));
       if (!species.length) continue;
@@ -134,7 +146,7 @@ window.GardenPaintWood = (function () {
         // groves where the field is high, glades where it is low; a fringe of shrubs at path edges
         const bankNear = def.mood === 'meadow' && near(x, y, 2, wet) && !waterNear;
         const md = def.mood === 'meadow' ? { dense: 0, open: 0 } : moodAt(x + .5, y + .5);
-        const p = def.mood === 'meadow' ? (bankNear ? def.density * (grove > .45 ? .5 : .2) : 0) * (pathNear ? .3 : 1) : def.density * (grove > .62 ? 1.25 : grove > .42 ? .8 : .18 + md.dense * .9) * (pathNear ? .35 : 1) * (waterNear ? .5 : 1) * (1 + md.dense * .8) * (1 - md.open * .8);
+        const p = def.mood === 'meadow' ? (bankNear ? def.density * (grove > .45 ? .5 : .2) : 0) * (pathNear ? .3 : 1) : def.density * (grove > .62 ? 1.25 : grove > .42 ? (def.mood === 'old' ? 1 : .8) : (def.mood === 'old' ? .5 : .18) + md.dense * .9) * (pathNear ? (def.mood === 'old' ? .6 : .35) : 1) * (waterNear ? .5 : 1) * (1 + md.dense * .8) * (1 - md.open * .8);
         const roll = h3(x, y, 9);
         if (roll < p * (.55 + dense * .6)) {
           let pick = h3(x, y, 13) * total, sp = species[0]; for (const s of species) { if ((pick -= s[1]) <= 0) { sp = s; break; } }
@@ -153,7 +165,8 @@ window.GardenPaintWood = (function () {
             if (placed.some(q => Math.hypot(q.x - tx, (q.y - ty) * 1.5) < Math.max(gap, q.gap))) continue;
             const half = Math.max(4, Math.min(13, want * F.girth * .75));
             if (pathGap(tx, ty) < half + 10) continue;
-            let h = 0; for (let k = want; k >= want * .72; k -= 8) if (crownOnPath(tx, ty, k, F) <= 2) { h = k; break; }
+            // (the old wood's yews may close over its lane, the Hush, as a tunnel: a crown over a path fades as you walk under it)
+            let h = 0; for (let k = want; k >= want * .72; k -= 8) if (crownOnPath(tx, ty, k, F) <= (def.mood === 'old' ? 4 : 2)) { h = k; break; }
             if (!h) continue;
             const trunk = { x0: (tx - half) / W.cellW, x1: (tx + half) / W.cellW, y0: (ty - 6 - W.sky) / W.cellH, y1: (ty + 1 - W.sky) / W.cellH };
             // depth: a tree deep in a grove stands in its neighbours' shade, so it is darker and cooler than one at a glade's
@@ -181,6 +194,7 @@ window.GardenPaintWood = (function () {
           out.floors.push({ kind: 'stamp', id: u[0], v: Math.floor(h3(x, y, 34) * 3), h: 26 + h3(x, y, 35) * 16, x: px(x + .5) + (h3(x, y, 36) - .5) * 34, y: py(y + 1) - 6 - h3(x, y, 37) * 20 });   // (jittered both ways: ferns stood in rows)
         }
       }
+      tm['cells:' + region.id] = Math.round(performance.now() - R0);
       for (const [id, cells] of knots) knot(out, id, cells, px, py, region.id);
       // The outer edge of the wood (not a border shared with another painted wood) fades into the lawn instead of a ruled line.
       const edge = new Path2D(), others = (data.regions || []).filter(o => o !== region && WOODS[o.id]).map(o => o.polygons[0]);
@@ -206,13 +220,17 @@ window.GardenPaintWood = (function () {
       for (const q of rhythm) if (q.k < -.45 && def.mood !== 'meadow' && inside(q.x, q.y, poly)) out.shafts.push({ x: px(q.x), y: py(q.y), n: 2, region: region.id });
       // the light wood also gets shafts over its biggest glades (low grove field, many land cells)
       if (def.mood === 'light') for (const [x, y] of land) if (x % 7 === 0 && y % 6 === 0 && noise(x, y, 5, hash(region.id) & 1023) < .28 && !clear(x, y)) out.shafts.push({ x: px(x + .5), y: py(y + .5), n: 2, region: region.id });
+      tm[region.id] = Math.round(performance.now() - R0);
     }
+    tm.plant = Math.round(performance.now() - T0);
     keepOldWoodInView(out, data, W, (x, y) => { const c = cellAt(x, y), r = (data.regions || []).find(q => WOODS[q.id] && WOODS[q.id].mood === 'old'); return !!(c && r && inside(x + .5, y + .5, r.polygons[0]) && !wet(c) && !c.plantingReserved && !isPath(c) && !statics.has(x + ',' + y) && !(c.row && (c.row.plot || c.locked && /^l[sc]-/.test(c.row.id || ''))) && !near(x, y, 1, isPath) && !plazas.some(p => Math.hypot((x + .5 - p.x) / ((p.rx || 3.2) + 1), (y + .5 - p.y) / ((p.ry || 2.4) + 1)) < 1)); });
     // a crown that still reaches over a story house fades as you come near it (tick)
     for (const h of houses) { const hx = (h.x + (h.w || 1) / 2) * W.cellW, hy = W.sky + (h.y + .5) * W.cellH; for (const t of out.trees) { const H = t.h * t.scale; if (hy < t.y && hy > t.y - H * .95 && Math.abs(hx - t.x) < H * .5) t.hides = { x: hx, y: hy }; } }
     // the canopy's shade over the whole floor, from the trees that stand there (and the rhythm plots), and each tree as dark
     // as the shade it stands in: under a closed canopy the wood is dim, its glades and lanes are the light
+    tm.keep = Math.round(performance.now() - T0) - tm.plant;
     out.canopy = ok(() => canopyField(out, data, W, cellAt, plazas, moodAt, info.season || 'summer', wet, isPath));
+    tm.canopy = Math.round(performance.now() - T0) - tm.plant - tm.keep;
     if (out.canopy) for (const t of out.trees) {
       if (!t.kit && !t.thicket) continue; const o = WOODS[t.region] && WOODS[t.region].mood === 'old', v = Math.min(1, out.canopy.at(t.x, t.y - 8));
       const f = (o ? .93 : 1) - v * (o ? .3 : .2) * (t.thicket ? 1.3 : 1) - h3(t.cx, t.cy, 71) * .06, cool = o ? .04 + v * .05 : v * .03;
@@ -238,7 +256,7 @@ window.GardenPaintWood = (function () {
       const rg = woods.find(q => inside(x + .5, y + .5, q.polygons[0])); if (!rg) continue; const c = cellAt(x, y), i = (y - r0) * CW + x - c0, o = WOODS[rg.id].mood === 'old';
       oldC[i] = o ? 1 : 0; if (wet(c)) { mask[i] = shore(c) ? 0 : .45; continue; }
       const m = moodAt(x + .5, y + .5);
-      let b = (o ? .5 : .3) + m.dense * .45; if (isPath(c)) b *= o ? .9 : .72; b *= 1 - m.open * .85;
+      let b = (o ? .5 : .36) + m.dense * .45; if (isPath(c)) b *= o ? .9 : .72; b *= 1 - m.open * .85;
       let sh = 9; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (shore(cellAt(x + dx, y + dy))) sh = Math.min(sh, Math.hypot(dx, dy));
       if (sh < 9) b *= Math.min(1, .25 + sh * .28);   // (the shore is open sky)
       base[i] = b; mask[i] = sh < 9 ? Math.min(1, .3 + sh * .3) : 1;
@@ -287,7 +305,7 @@ window.GardenPaintWood = (function () {
           const x = tx + r() * T, y = ty + r() * T, v = CF.at(x, y); if (v < .2) continue;
           const rx = 2.5 + r() * r() * 9, ry = rx * (.42 + r() * .18), a = Math.min(.85, .3 + v * .5) * (.6 + r() * .4);
           o.save(); o.translate(x, y); o.rotate(.28 + (r() - .5) * .3); o.scale(1, ry / rx);
-          const gr = o.createRadialGradient(0, 0, 0, 0, 0, rx); gr.addColorStop(0, 'rgba(0,0,0,' + a.toFixed(3) + ')'); gr.addColorStop(.6, 'rgba(0,0,0,' + (a * .6).toFixed(3) + ')'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+          const gr = o.createRadialGradient(0, 0, 0, 0, 0, rx); gr.addColorStop(0, 'rgba(0,0,0,' + a.toFixed(3) + ')'); gr.addColorStop(.55, 'rgba(0,0,0,' + (a * .92).toFixed(3) + ')'); gr.addColorStop(.82, 'rgba(0,0,0,' + (a * .45).toFixed(3) + ')'); gr.addColorStop(1, 'rgba(0,0,0,0)');   // (a fleck has an edge: soft blobs read as smoke)
           o.fillStyle = gr; o.fillRect(-rx, -rx, rx * 2, rx * 2); o.restore();
         }
       }
@@ -301,14 +319,21 @@ window.GardenPaintWood = (function () {
   function knot(out, id, cells, px, py, region) {
     const light = WOODS[region] && WOODS[region].mood === 'light', r = rng(hash(id + '|' + region));
     const have = s => kitOf(s[0]) ? !!window.GardenPaintTrees : typeof sceneObj === 'function' && sceneObj(s[0]);
-    const TALL = (light ? [['kit:birch', 64, 92], ['kit:hawthorn', 52, 74], ['kit:holly', 54, 76], ['kit:birch', 58, 84]] : [['kit:holly', 60, 90], ['kit:yew', 58, 80], ['kit:holly', 52, 74]]).filter(have);
+    // (19 Nov 2026, round 2: the tall trees take their sizes from the size standard: young trees in the light wood's knots,
+    //  with one mature beech or oak at the back of a big one; in the old wood, where nearly all the free ground is unbought
+    //  plots, a knot is grown round a mature yew, or an ancient oak, so the wood is the dark yew ring its design asks for)
+    const sz = (row, a, b) => gardenSizePx(row, a + r() * (b - a));
+    const TALL = (light ? [['kit:birch', 'young', 0, 1], ['kit:hawthorn', 'young', .2, .9], ['kit:holly', 'young', .2, 1], ['kit:birch', 'young', .3, 1]] : [['kit:yew', 'tree', 0, .4], ['kit:yew', 'tree', .1, .5], ['kit:holly', 'young', .4, 1], ['kit:oak', 'tree', .7, 1]]).filter(have);
+    const BIG = (light ? [['kit:beech', 'tree', .2, .8], ['kit:oak', 'tree', .3, .9]] : [['kit:yew', 'tree', .2, .55]]).filter(have);
     const LOW = (light ? [['plant.hedgerow-blackberry', 26, 36], ['plant.bracken', 26, 36], ['plant.fern', 24, 34], ['plant.bracken', 24, 32], ['plant.shrub', 26, 34]] : [['plant.hedgerow-blackberry', 24, 34], ['plant.bracken', 26, 36], ['plant.us-sword-fern', 24, 34], ['plant.bracken', 24, 32], ['plant.fern', 24, 30]]).filter(have);
     if (!LOW.length) { for (const [x, y] of cells) thicket(out, x, y, px, py, region); return; }
     let x0 = 96, y0 = 96, x1 = 0, y1 = 0; for (const [x, y] of cells) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
     const set = new Set(cells.map(c => c[0] + ',' + c[1]));
     const spot = (yLo, yHi) => { for (let k = 0; k < 10; k++) { const cx = x0 + .12 + r() * (x1 - x0 + .76), cy = y0 + yLo + r() * (y1 - y0 + yHi - yLo); if (set.has(Math.floor(cx) + ',' + Math.floor(cy))) return [cx, cy]; } const c = cells[Math.floor(r() * cells.length)]; return [c[0] + .5, c[1] + .8]; };
-    const put = (s, cx, cy) => { const kit = kitOf(s[0]), h = s[1] + r() * (s[2] - s[1]); out.trees.push({ id: s[0], kit, v: Math.floor(r() * (kit ? 2 : 3)), size: 0, h: kit ? Math.round(h) : Math.round(h / 6) * 6, x: px(cx), y: py(cy), flip: r() < .5, scale: kit ? 1 : .88 + r() * .3, region, cx: Math.floor(cx), cy: Math.floor(cy), thicket: true }); };
+    const put = (s, cx, cy) => { const kit = kitOf(s[0]), h = typeof s[1] === 'string' ? sz(s[1], s[2], s[3]) : s[1] + r() * (s[2] - s[1]); out.trees.push({ id: s[0], kit, v: Math.floor(r() * (kit ? 2 : 3)), size: 0, h: kit ? Math.round(h) : Math.round(h / 6) * 6, x: px(cx), y: py(cy), flip: r() < .5, scale: kit ? 1 : .88 + r() * .3, region, cx: Math.floor(cx), cy: Math.floor(cy), thicket: true }); };
     const nT = TALL.length ? (cells.length > 4 ? 2 : 1) + (r() < .3 ? 1 : 0) : 0;
+    // the big tree stands at the back of the knot (its north row), so its crown rises behind the tangle, not over the lane in front
+    if (BIG.length && (!light || cells.length > 4)) { const [cx, cy] = spot(.3, .55 - (y1 - y0)); put(BIG[Math.floor(r() * BIG.length)], cx, cy); }
     for (let k = 0; k < nT; k++) { const [cx, cy] = spot(.35, .75); put(TALL[Math.floor(r() * TALL.length)], cx, cy); }
     const nL = Math.round(cells.length * 1.25 + 1 + r() * 2);
     for (let k = 0; k < nL; k++) { const [cx, cy] = spot(.5, .98); put(LOW[Math.floor(r() * LOW.length)], cx, cy); }
@@ -351,7 +376,9 @@ window.GardenPaintWood = (function () {
     const taken = new Set(out.trees.map(t => t.cx + ',' + t.cy)), moved = [];
     const yew = typeof sceneObj === 'function' && sceneObj('tree.proof-yew') ? 'tree.proof-yew' : null;
     out.trees = out.trees.filter(t => {
-      if (t.region !== region.id || t.thicket || !covers(t.x, t.y, t.h * t.scale)) return true;
+      if (t.region !== region.id || !covers(t.x, t.y, t.h * t.scale)) return true;
+      // a knot's tall tree that would hide a landmark is grown smaller instead (a young yew, or a holly), never moved off its plot
+      if (t.thicket) { if (!t.kit) return true; if (!covers(t.x, t.y, 100)) { t.h = Math.min(t.h, 92 + Math.round(h3(t.cx, t.cy, 7) * 14)); return true; } t.h = Math.min(t.h, 64); return true; }
       if (t.kit && !covers(t.x, t.y, 100)) { t.id = 'kit:yew'; t.kit = 'yew'; t.v = Math.floor(h3(t.cx, t.cy, 5) * 2); t.h = 92 + Math.round(h3(t.cx, t.cy, 7) * 14); t.scale = 1; t.flip = h3(t.cx, t.cy, 6) < .5; return true; }
       if (!t.kit && yew && !covers(t.x, t.y, 130 * .82)) { t.id = yew; t.v = Math.floor(h3(t.cx, t.cy, 5) * 2); t.h = 130; t.scale = .74 + h3(t.cx, t.cy, 7) * .12; t.flip = h3(t.cx, t.cy, 6) < .5; return true; }
       // else the same tree a step or two away (behind what it hid, first), if the ground there is free
@@ -402,6 +429,9 @@ window.GardenPaintWood = (function () {
         };
         // (the old wood: under the yews it is dusk at noon, so its canopy shade is deeper and wider, the court and glades the only sun)
         const old = f.def.mood === 'old';
+        // (19 Nov 2026, round 2: with the canopy field over a kit wood the shade and the sun are its; these per-cell soft
+        //  rounds on top of the shared forest floor read as smoke-puffs at the walking zoom, so a kit wood keeps only moss)
+        if (S.M.canopy && !meadow) { if (m > .62) blob(Math.min(.1, (m - .62) * .6), F.moss, 1.6, 1.2); continue; }
         if (g > (old ? .36 : .5)) blob(Math.min(meadow ? .055 : old ? .36 : .23, (g - (old ? .36 : .5)) * (old ? 1.2 : .8)), F.shade, old ? 1.9 : 1.5, old ? 1.7 : 1.4);
         else if (g < .36) blob(Math.min(meadow ? .06 : .24, (.36 - g) * .9), F.sun, 1.3, 1.1);
         if (m > .58) blob(Math.min(meadow ? .04 : .18, (m - .58) * .9), F.moss, 1.2, 1);
@@ -412,7 +442,7 @@ window.GardenPaintWood = (function () {
       for (const gl of f.glades || []) {
         if (!hit({ x: gl.x - gl.rx * 1.3, y: gl.y - gl.ry * 1.3, w: gl.rx * 2.6, h: gl.ry * 2.6 }, view)) continue; yield;
         const rr = rng(hash(f.region + 'glade' + gl.x)), lawn = season === 'autumn' ? '#9aa65a' : season === 'winter' ? '#a6b29a' : '#93ad5f';
-        for (const [k, a] of [[1.25, .35], [1.1, .55], [.95, .9], [.8, 1]]) { cx.globalAlpha = a; cx.fillStyle = lawn; cx.fill(new Path2D(sceneDraw.blob(rr, gl.x, gl.y, gl.rx * k, gl.ry * k, 12, .35))); }
+        for (const [k, a] of [[1.4, .1], [1.27, .18], [1.13, .3], [1, .5], [.88, .75], [.76, 1]]) {   /* (more, fainter rings: the outer one at .35 drew a line across the lane) */ cx.globalAlpha = a; cx.fillStyle = lawn; cx.fill(new Path2D(sceneDraw.blob(rr, gl.x, gl.y, gl.rx * k, gl.ry * k, 12, .35))); }
         const g = cx.createRadialGradient(gl.x - gl.rx * .2, gl.y - gl.ry * .2, 0, gl.x, gl.y, gl.rx); g.addColorStop(0, 'rgba(255,244,190,.4)'); g.addColorStop(1, 'rgba(255,244,190,0)'); cx.globalAlpha = 1; cx.fillStyle = g; cx.save(); cx.translate(gl.x, gl.y); cx.scale(1, gl.ry / gl.rx); cx.translate(-gl.x, -gl.y); cx.beginPath(); cx.arc(gl.x, gl.y, gl.rx, 0, Math.PI * 2); cx.fill(); cx.restore();
         yield; for (let i = 0; i < 160; i++) { const a = rr() * 6.28, d = Math.sqrt(rr()) * .9, x = gl.x + Math.cos(a) * gl.rx * d, y = gl.y + Math.sin(a) * gl.ry * d; cx.globalAlpha = .5; cx.strokeStyle = rr() < .5 ? '#7c9a4e' : '#b4c878'; cx.lineWidth = 1; cx.beginPath(); cx.moveTo(x, y); cx.quadraticCurveTo(x + 1, y - 2.5, x + (rr() - .5) * 3, y - 4); cx.stroke(); }
         yield; if (season !== 'winter') for (let i = 0; i < 26; i++) { const a = rr() * 6.28, d = Math.sqrt(rr()) * .85, x = gl.x + Math.cos(a) * gl.rx * d, y = gl.y + Math.sin(a) * gl.ry * d; const s = stampCanvas(rr() < .5 ? 'plant.wildflowers' : 'plant.daisies', Math.floor(rr() * 2), season, 12); if (s) { const k = (12 / s.hq) / 2; cx.globalAlpha = 1; cx.drawImage(s.c, x - s.ox * k, y - s.oy * k, s.c.width * k, s.c.height * k); } }
@@ -616,7 +646,7 @@ window.GardenPaintWood = (function () {
   }
   function memory() { const S = state; if (!S) return null; let bytes = 0, resident = 0; for (const c of S.chunks.values()) if (c.image) { bytes += c.bytes; resident++; } return { chunks: S.chunks.size, resident, mb: +(bytes / 1048576).toFixed(1), capMb: CAP_MB, level: S.wantK || 1 }; }
   function treeTextures() { const S = state; if (!S) return null; const keys = new Set(); let bytes = 0; for (const t of S.M.trees) if (t.im && t.im.texture && !keys.has(t.im.texture.key)) { keys.add(t.im.texture.key); const src = t.im.texture.getSourceImage(); bytes += (src.width || 0) * (src.height || 0) * 4; } return { textures: keys.size, mb: +(bytes / 1048576).toFixed(1) }; }
-  function status() { const S = state; return { slowStep, tw: S && S.tw, treeTex: treeTextures(), warm: S ? [S.warmCount, S.warmMs] : null, on: !!S, trees: S ? S.M.trees.length : 0, made: S ? S.M.trees.filter(t => t.im).length : 0, lights: S ? S.light.length : 0, buildMs: S && S.buildMs, bakes, bakeMs: Math.round(bakeMs), worstBake: Math.round(worstBake), tickWorst: +tickWorst.toFixed(1), memory: memory(), lastError }; }
+  function status() { const S = state; return { slowStep, tw: S && S.tw, parts: S && S.M && S.M.tm, treeTex: treeTextures(), warm: S ? [S.warmCount, S.warmMs] : null, on: !!S, trees: S ? S.M.trees.length : 0, made: S ? S.M.trees.filter(t => t.im).length : 0, lights: S ? S.light.length : 0, buildMs: S && S.buildMs, bakes, bakeMs: Math.round(bakeMs), worstBake: Math.round(worstBake), tickWorst: +tickWorst.toFixed(1), memory: memory(), lastError }; }
   /** True where a painted wood stands (the world then leaves out its own forest trees there). Cell units. */
   function covers(cx, cy) { const D = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data; if (!D || !D.regions) return false; for (const r of D.regions) { const def = WOODS[r.id]; if (def && def.mood !== 'meadow' && inside(cx, cy, r.polygons[0])) return true; } return false; }
   /** The painted trees' trunk feet, in cells ({x0, y0, x1, y1}), for the walking boxes (94-garden-world-0walk.js), and a
