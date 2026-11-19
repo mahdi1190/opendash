@@ -17,6 +17,8 @@ function _gaMotion() { try { return typeof _gartMotionOk === 'function' ? _gartM
 function gartActBusy() { return !!(_ga.cur && _ga.cur.doing); }
 /** Sat on a seat whose front edge is inside its own footing (a bench): the walker leaves the feet where they are until you get up. */
 function gartActSeatHeld() { const c = _ga.cur; return !!(c && c.doing && c.spot && c.spot.seated); }
+/** Something of the world's you are using right now (the busker's fiddle is in your hands, not on its stool). */
+function gartActInUse(id) { const c = _ga.cur; return !!(c && c.doing && c.spot && c.spot.src === id); }
 function gartActLift() { return _ga.cur && _ga.cur.doing ? _ga.cur.lift || 0 : 0; }
 function gartActRow(id) { return GARDEN_ACTS[id] || null; }
 /* ---------- what is in reach ---------- */
@@ -42,7 +44,7 @@ function _gaStaticRows() {
   }
   // what this branch draws for the moves (94-garden-zz-7act-2world.js): the telescope, the lighthouse ladder, the campfires
   let season = ''; try { season = gardenModel().season; } catch (e) { season = ''; }
-  if (typeof gardenActWorldRows === 'function') for (const w of gardenActWorldRows()) if (!(w.season && w.season !== season) && !gartActHidden(w.id)) out.push({ key: w.id + ':' + w.act, act: w.act, name: w.name, x: w.x, y: w.y, top: null, stand: { x: w.x + w.stand[0], y: w.y + w.stand[1] }, deg: w.deg, lift: _gaSeatLift(w), src: w.id, noProp: !!w.noProp, reach: w.reach || 0, kick: w.kick || '', carry: w.carry || '', art: w.art || '' });
+  if (typeof gardenActWorldRows === 'function') for (const w of gardenActWorldRows()) if (!(w.season && w.season !== season) && !gartActHidden(w.id)) out.push({ key: w.id + ':' + w.act, act: w.act, name: w.name, x: w.x, y: w.y, top: null, stand: { x: w.x + w.stand[0], y: w.y + w.stand[1] }, deg: w.deg, lift: _gaSeatLift(w), seated: w.seat != null || !!w.edge, src: w.id, noProp: !!w.noProp, reach: w.reach || 0, kick: w.kick || '', carry: w.carry || '', art: w.art || '' });
   // a thing that has its own (a lighthouse with a drawn ladder) takes that one, not the one carried in
   const own = new Set(out.filter(r => r.noProp).map(r => r.act + '@' + Math.round(r.stand.x) + ',' + Math.round(r.stand.y)));
   return out.filter(r => r.noProp || !own.has(r.act + '@' + Math.round(r.stand.x) + ',' + Math.round(r.stand.y)));
@@ -109,8 +111,9 @@ function gartActFrame() {
   const now = performance.now();
   if (_ga.cur && _ga.cur.doing) {
     const cur = _ga.cur;
-    if (!cur.H) { const inner = _gw.node && _gw.node.querySelector('.gd-pl-in'), k = (inner && inner._gplKey) || ''; if (k.startsWith('idle' + cur.wantDir) || now - cur.t0 > 600) { const gpl = _gaMyFigure(); if (gpl) cur.H = gartActPlay(gpl, cur.id, { noProp: !!(cur.spot && cur.spot.noProp), skips: cur.skips }); } }
+    if (!cur.H) { const inner = _gw.node && _gw.node.querySelector('.gd-pl-in'), k = (inner && inner._gplKey) || ''; if (k.startsWith('idle' + cur.wantDir) || now - cur.t0 > 600) { const gpl = _gaMyFigure(); if (gpl) cur.H = gartActPlay(gpl, cur.id, { noProp: !!(cur.spot && cur.spot.noProp), skips: cur.skips, leaves: !!(cur.spot && cur.spot.kick === 'leaves') }); } }
     _gaTick(now);
+    if (cur.row.rubPet) _gaRubTick(cur);
   }
   if (now - _ga.t < 200) { if (_ga.near && _ga.el && !_ga.el.hidden) _gaPlace(); return; }
   _ga.t = now;
@@ -181,6 +184,7 @@ function gartActPlay(gpl, id, o) {
     }
     if (row.prop === 'swimwater') { if (motion) { try { H.panims.push(gardenVisualAnimate(g, [{ offset: 0, opacity: 0 }, { offset: 0.2, opacity: 0 }, { offset: 0.42, opacity: 1 }, { offset: 1, opacity: 1 }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* shows at once */ } } }
   }
+  if (row.kick && o.leaves) _gaLeafBurst(gpl, H, motion, row.ms);
   H.stop = () => { for (const t of H.timers) clearTimeout(t); for (const a of H.anims.concat(H.panims)) { try { a.cancel(); } catch (e) { /* gone */ } } for (const g of H.props) { try { if (g.parentNode) g.parentNode.removeChild(g); if (g.destroy) g.destroy(); } catch (e) { /* gone */ } } H.anims.length = 0; H.props.length = 0; };
   return H;
 }
@@ -217,7 +221,7 @@ function gartActRun(id, spot) {
 function _gaStart(cur) {
   const row = cur.row, spot = cur.spot;
   // on the spot: the feet go exactly where the thing wants them (a seat's front edge), the figure faces the right way, standing still
-  if (spot && spot.stand && (row.hold || cur.lift || spot.noProp || Math.hypot(spot.stand.x - _gw.px, spot.stand.y - _gw.py) < 1.2)) { _gw.px = spot.stand.x; _gw.py = spot.stand.y; if (!cur.lift && typeof _gwNearestFreePt === 'function') { const f = _gwNearestFreePt(_gw.px, _gw.py, 0.4); if (f && Math.hypot(f.x - _gw.px, f.y - _gw.py) < 0.4) { _gw.px = f.x; _gw.py = f.y; } }  /* (on its own feet: never inside what blocks walking, or the walker nudges you out and that ends it) */ if (typeof _GPL !== 'undefined') { _GPL.lastX = _gw.px; _GPL.lastY = _gw.py; } }
+  if (spot && spot.stand && (row.hold || cur.lift || spot.noProp || Math.hypot(spot.stand.x - _gw.px, spot.stand.y - _gw.py) < 1.2)) { _gw.px = spot.stand.x; _gw.py = spot.stand.y; if (!cur.lift && !spot.seated && typeof _gwNearestFreePt === 'function') { const f = _gwNearestFreePt(_gw.px, _gw.py, 0.4); if (f && Math.hypot(f.x - _gw.px, f.y - _gw.py) < 0.4) { _gw.px = f.x; _gw.py = f.y; } }  /* (on its own feet: never inside what blocks walking, or the walker nudges you out and that ends it) */ if (typeof _GPL !== 'undefined') { _GPL.lastX = _gw.px; _GPL.lastY = _gw.py; } }
   _gw.path = []; _gw.then = null; _gw.spd = 0; _gw.moving = false;
   _gaFace(_gaDirDeg(row, spot));
   if (typeof _GPL !== 'undefined') { _GPL.pose = ''; _GPL.until = 0; }
@@ -235,6 +239,7 @@ function _gaStart(cur) {
   if (row.kick && spot) _gaKick(cur);
   if (row.carry && spot && spot.carry) _gaPick(cur);
   if (row.fetch) _gaFetch(cur);
+  if (row.prop === 'fiddle' || row.fiddle) _gaResync();
   if (row.clouds) _gaSky(cur, true);
   _gaFirst(cur);
   if (!row.hold) cur.endT = setTimeout(() => { if (_ga.cur !== cur) return; gartActStop(true); if (row.then && GARDEN_ACTS[row.then]) _gaThen(row.then, cur); }, (_gaMotion() ? row.ms : 1200) + 60);
@@ -264,6 +269,8 @@ function gartActStop(done) {
   _ga.cur = null; clearTimeout(cur.endT);
   if (cur.row.clouds) _gaSky(cur, false);
   if (cur.row.fetch) _ga.fetch = null;
+  if (cur.row.prop === 'fiddle') setTimeout(_gaResync, 0);
+  if (cur.row.rubPet) { try { const P = gpPetMe(); if (P && P.root && P.root._pcH && cur.rubH === P.root._pcH) petClipStop(P.root); } catch (e) { /* no pet */ } }
   if (cur.H && cur.H.stop) cur.H.stop();
   if (cur.row.after && done && window.GardenNativeActions && _gaMotion()) { const W = GARDEN_WORLD; for (let i = 0; i < 6; i++) setTimeout(() => { try { GardenNativeActions.effect('water', _gw.px * W.cellW, W.sky + _gw.py * W.cellH, { width: 16 }); } catch (e) { /* fine */ } }, i * 450); }
   if (cur.doing) { try { if (typeof _gwBody === 'function') _gwBody(); } catch (e) { /* fine */ } }
@@ -301,6 +308,28 @@ function _gaDucks(g, H, motion, ms) {
     } catch (e) { /* they just sit there */ }
   });
 }
+/** The leaf pile bursts (round 3: big enough to see): two dozen leaves fly up and out from where it lay, in front of your feet, turn over and
+ * flutter down round you; they are drawn with the figure, so they are always in front of the grass. Reduced motion: none. */
+function _gaLeafBurst(gpl, H, motion, ms) {
+  if (!motion) return;
+  let g; try { g = typeof gardenSceneElement === 'function' && gardenVisualIsNative(gpl) ? gardenSceneElement('g') : document.createElementNS('http://www.w3.org/2000/svg', 'g'); } catch (e) { return; }
+  const C = ['#c8642a', '#e0a038', '#a8441e', '#d8862e', '#b8742a', '#e8b848'], N = 26, x0 = 0, y0 = 22;
+  g.setAttribute('class', 'ga-prop ga-leafburst');
+  g.innerHTML = _GA_K(N, (i) => `<g class="ga-lf ga-lf-${i}" style="transform-origin:${x0}px ${y0}px" opacity="0"><ellipse cx="${x0}" cy="${y0}" rx="${3.4 + (i % 3) * 0.8}" ry="${1.8 + (i % 2) * 0.5}" fill="${C[i % C.length]}" stroke="#6a3010" stroke-width="0.35"/><path d="M${x0 - 2.6} ${y0}h5.2" stroke="#7a3a12" stroke-width="0.4" opacity="0.7"/></g>`).join('');
+  gpl.appendChild(g);
+  const t0 = 0.33, dur = ms * 2.6;
+  setTimeout(() => { try { if (g.parentNode) g.parentNode.removeChild(g); if (g.destroy) g.destroy(); } catch (e) { /* gone */ } }, dur + 80);   // (it outlives the kick: the leaves are still coming down as you walk off)
+  g.querySelectorAll('.ga-lf').forEach((el, i) => {
+    const a = -Math.PI / 2 + (i / N - 0.5) * 2.6 + Math.sin(i * 7.3) * 0.25, d = 26 + (i * 37 % 40), up = 30 + (i * 53 % 36);
+    const xt = Math.cos(a) * d * 1.5, yp = -up, yl = 4 + (i * 29 % 22), spin = (i % 2 ? 1 : -1) * (300 + i * 23);
+    const k = (f) => t0 / 2.6 + f * (1 - t0 / 2.6);
+    try { (gardenVisualAnimate(el, [{ offset: 0, opacity: 0, transform: 'translate(0px,0px) rotate(0deg)' }, { offset: k(0), opacity: 1, transform: 'translate(0px,0px) rotate(0deg)' },
+      { offset: k(0.22), opacity: 1, transform: `translate(${xt * 0.6}px,${yp}px) rotate(${spin * 0.4}deg)`, easing: 'ease-out' },
+      { offset: k(0.6), opacity: 1, transform: `translate(${xt * 0.85 + 6}px,${yp * 0.45}px) rotate(${spin * 0.8}deg)` },
+      { offset: k(0.9), opacity: 1, transform: `translate(${xt - 4}px,${yl}px) rotate(${spin}deg) scale(1,0.6)` },
+      { offset: 1, opacity: 0, transform: `translate(${xt - 4}px,${yl}px) rotate(${spin}deg) scale(1,0.6)` }], { duration: dur, fill: 'forwards', easing: 'linear' })); } catch (e) { /* no flight */ }
+  });
+}
 /** The skimmed stone, big enough to follow: it leaves the hand, skips n times out over the water (each skip a ring that spreads), and sinks. */
 function _gaSkimPts(n) { const out = []; let y = -40, x = 10; for (let i = 0; i < n; i++) { y -= 62 - i * 5; x += 6 - i * 3; out.push([x, y]); } return out; }
 function _gaSkimProp(n) {
@@ -327,6 +356,7 @@ function gartActHidden(id) { const t = _gaHide.get(id); return t != null && (t =
 function gartActCarried(id) { return _gaHide.get(id) === Infinity; }
 /** Where a carried thing was set down (this visit), or null. */
 function gartActMovedTo(id) { return _gaMoved.get(id) || null; }
+function _gaResync() { try { if (typeof GardenNative !== 'undefined' && GardenNative.sync) GardenNative.sync(); } catch (e) { /* next paint */ } }
 function _gaRec(id) { try { const w = GardenNative.world(), e = w && w.entities; return e instanceof Map ? e.get('prop:' + id) : null; } catch (e) { return null; } }
 function _gaShow(id, on) { const rec = _gaRec(id); if (rec && rec.root && rec.root.setAlpha) rec.root.setAlpha(on ? 1 : 0); }
 /** The ball flies off the foot and rolls back to its place; the leaves burst and settle back slowly. */
@@ -392,6 +422,24 @@ function _gaFetchGoal(P) {
   if (Math.hypot(P.x - _gw.px, P.y - _gw.py) < 1) { const cur = f.cur; _ga.fetch = null; if (_ga.cur === cur) gartActStop(true); return null; }
   return { x: _gw.px + 0.6, y: _gw.py + 0.2, near: 0.5, run: true };
 }
+/** Belly rubs: once your pet is at your hand, it rolls on to its back and kicks its legs (the pets' own clip l-belly, from feat/pets-life;
+ * on a branch without it, the same clip is added here the first time, so the two never differ), again and again while you rub. */
+function _gaBellyClip() {
+  try {
+    if (typeof petClipDef !== 'function') return null;
+    if (petClipDef('l-belly')) return 'l-belly';
+    if (typeof _pcR !== 'function' || typeof _pcSw !== 'function') return null;
+    _pcR('l-belly', 3600, 'walk', { nl: 1, not: { ids: ['snail', 'cloud', 'wisp', 'ghost', 'tortoise', 'crab'] }, face: _F_HAPPY, org: 'mid', body: [[0.06, { y: 2, sy: 0.86, sx: 1.1 }, 'io'], [0.2, { r: 170, y: -6, x: 6 }, 'o'], ...Array.from({ length: 8 }, (_, i) => [0.26 + i * 0.07, { r: i % 2 ? 166 : 176, y: -6, x: 6 }, 'io']), [0.84, { r: 176, y: -6, x: 6 }, 'i'], [0.92, { r: 360, y: 1, sx: 1.14, sy: 0.84 }, 'o'], [1, { r: 360 }]], paw: _pcSw(0.24, 0.84, 10, { r: -50 }, { r: 10 }, 'l'), legsF: _pcSw(0.26, 0.84, 10, { r: 10 }, { r: -50 }, 'l'), legsN: _pcSw(0.24, 0.84, 12, { r: 40 }, { r: -10 }, 'l'), legsG: _pcSw(0.26, 0.84, 12, { r: -10 }, { r: 40 }, 'l'), tail: _pcSw(0.2, 0.86, 12, { r: 24 }, { r: -24 }), fx: [[0.3, 'heart', { at: 'top', n: 4, gap: 320, dur: 900 }]] });
+    return petClipDef('l-belly') ? 'l-belly' : null;
+  } catch (e) { return null; }
+}
+function _gaRubTick(cur) {
+  let P = null; try { P = typeof gpPetMe === 'function' ? gpPetMe() : null; } catch (e) { P = null; }
+  if (!P || !P.root || (P.root._pcH && P.root._pcH === cur.rubH)) return;
+  if (P.root._pcH || Math.hypot(P.x - (_gw.px + 0.42), (P.y - (_gw.py + 0.04)) * 1.4) > 0.3) return;   // (still on its way, or busy with its own thing)
+  const id = _gaBellyClip() || 'rollover'; P.dir = -1; P.tx = null;
+  try { cur.rubH = P.clipH = petClipRun(P.root, id); } catch (e) { /* it just sits */ }
+}
 /* (2, 3) lying: cloud shadows go over; at night now and then a shooting star; a nap lets the light run on a little faster for a moment */
 function _gaSky(cur, on) {
   const box = _gw && _gw.box; if (!box) return;
@@ -407,7 +455,7 @@ function _gaSky(cur, on) {
   if (night) {
     let seen = 0;
     const star = () => { const s = document.createElement('i'); s.className = 'ga-star'; s.style.left = (15 + Math.random() * 60) + '%'; s.style.top = (6 + Math.random() * 24) + '%'; el.appendChild(s); setTimeout(() => s.remove(), 1600); if (!seen++) { try { gardenToast('A shooting star! Make a wish.'); } catch (e) { /* fine */ } try { const g = _gdG(); if (!g.disc['act.star']) { g.disc['act.star'] = _gdToday(); _gdSave(); } } catch (e) { /* fine */ } } };
-    setTimeout(star, 2500); _ga.skyT = setInterval(star, 9000);
+    setTimeout(star, 1800); _ga.skyT = setInterval(star, 6000);
   }
   if (cur.row.nap) setTimeout(() => { try { gardenToast('The shadows move round while you doze.'); } catch (e) { /* fine */ } }, 1800);
 }
@@ -419,6 +467,9 @@ function gartActGroundClear(x, y) {
     }
     for (const p of (gardenIslandData().presentation || {}).plazas || []) if (p.rx && ((x - p.x) / (p.rx + 0.6)) ** 2 + ((y - p.y) / ((p.ry || p.rx) + 0.6)) ** 2 < 1) return false;
     const near = (_ga.list || []).some(r => Math.hypot(r.x - x, (r.y - y) * 1.3) < 1.4); if (near) return false;
+    // never under a tree's crown (a tree just south of you is drawn over you): open sky, so you are seen and can see the clouds
+    let T = _ga.trunks; if (!T || !T.length) { try { T = _ga.trunks = typeof _gwPaintedTrunks === 'function' ? _gwPaintedTrunks(gardenIslandData()) : []; } catch (e) { T = []; } }
+    for (const b of T || []) { const fx = (b.x0 + b.x1) / 2, dy = b.y1 - y; if (dy > -0.3 && dy < 5.5 && Math.abs(fx - x) < 2.8) return false; }
   } catch (e) { return true; }
   return true;
 }
@@ -467,10 +518,11 @@ if (typeof gardenLifePetGoal === 'function') {
   gardenLifePetGoal = function (P, dt) {   // eslint-disable-line no-func-assign
     const fg = _gaFetchGoal(P); if (fg) return fg;
     const cur = _ga.cur;
-    if (cur && cur.doing && cur.row.pet && P && P.me) {
-      const x = _gw.px + 0.75, y = _gw.py + 0.15;
-      if (typeof _ptwFree !== 'function' || _ptwFree(x, y)) return { x, y, near: 10 };
-      return { x: _gw.px - 0.75, y: _gw.py + 0.15, near: 10 };
+    if (cur && cur.doing && cur.row.rubPet && P && P.me) return { x: _gw.px + 0.42, y: _gw.py + 0.04, near: 0.12 };   // (right in front of your hand: _gaRubTick rolls it over)
+    if (cur && cur.doing && P && P.me && !cur.row.fetch) {   // (every action: the pet waits beside you on open ground)
+      // beside you on open ground, never up on a thing (a pump, a bench, a wall): the walker's own map says what is solid
+      const ok = (x, y) => (typeof _ptwFree !== 'function' || _ptwFree(x, y)) && (typeof _gwFree !== 'function' || _gwFree(x, y, 0.2)) && !(_ga.list || []).some(r => r.act !== 'sit' && Math.hypot(r.x - x, (r.y - y) * 1.3) < 0.7);
+      for (const [dx, dy] of [[0.75, 0.15], [-0.75, 0.15], [0.7, 0.6], [-0.7, 0.6], [0, 0.85], [1.2, 0.3], [-1.2, 0.3]]) if (ok(_gw.px + dx, _gw.py + dy)) return { x: _gw.px + dx, y: _gw.py + dy, near: 10 };
     }
     return _gaPetGoal0(P, dt);
   };

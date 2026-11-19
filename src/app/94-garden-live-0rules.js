@@ -63,7 +63,9 @@ const GL_EMOTES = Object.freeze(['wave', 'cheer', 'clap', 'bow', 'shrug', 'sit',
   // round 3: things done with the world (GARDEN_ACTS, 94-garden-zz-7act-0table.js), one message when each starts; an older app ignores them
   'act-sit', 'act-dangle', 'act-lie', 'act-nap', 'act-ladder', 'act-shake', 'act-bell', 'act-pump', 'act-wish', 'act-warm', 'act-lean', 'act-read', 'act-look', 'act-feed', 'act-skim', 'act-shower', 'act-hide', 'act-climbtree', 'act-row', 'act-photo', 'act-laugh', 'act-angel',
   // round 3, round 2 of the moves: up the trunk then on the branch, a swim, a kick, a stick for the pet, belly rubs, the busker's fiddle, picking up, fishing side by side
-  'act-perch', 'act-swim', 'act-kick', 'act-throwstick', 'act-rub', 'act-play', 'act-carry', 'act-fishsit']);
+  'act-perch', 'act-swim', 'act-kick', 'act-throwstick', 'act-rub', 'act-play', 'act-carry', 'act-fishsit',
+  // round 3, round 3 of the moves: up the treehouse's ladder, up to the hay loft
+  'act-ladderhi', 'act-ladderlo']);
 const GL_PHRASES = Object.freeze([
   Object.freeze({ id: 'hi', t: 'Hello!' }), Object.freeze({ id: 'lovely', t: 'Your garden is lovely' }), Object.freeze({ id: 'look', t: 'Look at this!' }),
   Object.freeze({ id: 'help', t: 'Can I help?' }), Object.freeze({ id: 'thanks', t: 'Thank you!' }), Object.freeze({ id: 'follow', t: 'Follow me!' }),

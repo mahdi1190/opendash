@@ -31,7 +31,7 @@ const GA_PROPS = Object.freeze({
   // the ducks: three mallards that swim in from further out and dabble where the crumbs land (94-garden-zz-7act-1core.js moves them)
   ducks: [[-30, -88, 1], [6, -108, -1], [34, -84, -1]].map(([x, y, f], i) => `<g class="ga-duck ga-duck-${i}" transform="translate(${x} ${y})"><g transform="scale(${f} 1)"><ellipse cx="0" cy="3" rx="11" ry="2.4" fill="#0a2a46" opacity="0.22"/><path class="ga-duck-b" d="M-9 0Q-10 -7 -2 -7L5 -6Q10 -5 9 0Q0 3 -9 0z" fill="${i === 1 ? '#a07a52' : '#9a8a72'}" stroke="#4a3a2a" stroke-width="0.7"/><path d="M-6 -4Q-1 -6 4 -4" stroke="#e8e0d0" stroke-width="0.9" fill="none" opacity="0.7"/><g class="ga-duck-h" style="transform-origin:6px -5px"><path d="M5 -6Q5 -13 9 -13Q12 -13 12 -9L11 -6z" fill="${i === 1 ? '#8a6a4a' : '#2f6a3a'}" stroke="#1f3a22" stroke-width="0.6"/><path d="M11.5 -10l4 1l-4 1z" fill="#e0a830"/><circle cx="9.6" cy="-10.4" r="0.7" fill="#111"/>${i === 1 ? '' : '<path d="M5.4 -7h5" stroke="#f4f2e8" stroke-width="0.9"/>'}</g></g><ellipse class="ga-duck-r" cx="0" cy="2" rx="13" ry="3" fill="none" stroke="#ffffff" stroke-width="0.8" opacity="0.5"/></g>`).join('') + [[-10, -72, 20], [8, -80, -30], [18, -66, 150]].map(([x, y, r], i) => `<g class="ga-fish ga-fish-${i}" opacity="0" transform="translate(${x} ${y}) rotate(${r})"><path d="M-8 0Q-2 -3.4 5 0Q-2 3.4 -8 0zM5 0l4 -2.6v5.2z" fill="#1a3a4a" opacity="0.55"/></g>`).join(''),
   // a branch from the trunk under the hips (perched: the figure sits on it), bark and a tuft of leaves at its end
-  branch: '<g><path d="M-10 -26Q12 -26 44 -20Q48 -19 47 -16Q14 -19 -10 -17z" fill="#6a4a2e" stroke="#3a2818" stroke-width="0.8"/><path d="M-6 -24Q14 -24 40 -19" stroke="#8a6a46" stroke-width="1" fill="none" opacity="0.8"/><path d="M30 -19q8 -10 14 -14" stroke="#5a3e24" stroke-width="1.6" fill="none"/><g fill="#5a8a3a" stroke="#2f5a22" stroke-width="0.5"><ellipse cx="46" cy="-34" rx="8" ry="5"/><ellipse cx="52" cy="-26" rx="7" ry="4.6"/><ellipse cx="40" cy="-29" rx="6" ry="4"/></g><g fill="#7aaa4a"><ellipse cx="44" cy="-36" rx="4" ry="2.4"/><ellipse cx="51" cy="-28" rx="3.4" ry="2"/></g></g>',
+  branch: '<g><path d="M-5 -30Q14 -29 34 -25Q50 -22 60 -21Q61 -19.4 59 -19Q44 -19 30 -20Q12 -21 -5 -21z" fill="#6a4a2e" stroke="#3a2818" stroke-width="0.8"/><path d="M-3 -28Q18 -27 40 -23" stroke="#9a7a52" stroke-width="1.1" fill="none" opacity="0.75"/><path d="M-5 -30q-2 4 0 9" stroke="#3a2818" stroke-width="1.2" fill="none" opacity="0.6"/><path d="M38 -23q6 -9 12 -14M48 -21q5 -4 8 -10" stroke="#5a3e24" stroke-width="1.5" fill="none"/><g fill="#5a8a3a" stroke="#2f5a22" stroke-width="0.5"><ellipse cx="52" cy="-38" rx="8" ry="5"/><ellipse cx="60" cy="-33" rx="7" ry="4.6"/><ellipse cx="57" cy="-41" rx="6" ry="4"/><ellipse cx="64" cy="-24" rx="5" ry="3.4"/></g><g fill="#8ab84a"><ellipse cx="50" cy="-40" rx="3.6" ry="2"/><ellipse cx="59" cy="-35" rx="3" ry="1.8"/></g></g>',   // (round 3) a bough out of the trunk's side; you sit along it, astride, a hand either side
   // the fire's light on you (warming your hands)
   glow: '<g class="ga-glow"><ellipse cx="0" cy="2" rx="22" ry="7" fill="#ffb050" opacity="0.16"/><ellipse cx="0" cy="-16" rx="13" ry="16" fill="#ffb860" opacity="0.06"/></g>',
   zzz: '<g transform="translate(16 -62) rotate(90)"><g class="ga-zzz"><text x="0" y="0" font-size="8" font-weight="700" fill="#f4f0ff" stroke="#5a5a8a" stroke-width="0.4">z</text><text x="6" y="-7" font-size="10" font-weight="700" fill="#f4f0ff" stroke="#5a5a8a" stroke-width="0.4">z</text></g></g>',
@@ -63,10 +63,10 @@ const _GA_SITLOOP = (ms) => Object.assign({ ms }, _gaHoldPose(_GA_SITP, 0, 'l'),
   head: [[0, {}], [0.3, {}], [0.4, { r: 8 }, 'io'], [0.58, { r: 8 }], [0.68, { r: -4 }, 'io'], [0.8, {}, 'io'], [1, {}]] });
 /* the ladder: 14 rungs 9.4 apart from 6 up, the landing at 134 (the world draws both: 94-garden-zz-7act-2world.js) */
 const GA_LADDER = Object.freeze({ rungs: 14, first: 6, gap: 9.4, top: 134 });
-const _gaLadder = () => {
-  const N = GA_LADDER.rungs, up0 = 0.04, up1 = 0.44, dn0 = 0.62, dn1 = 0.97, root = [[0, {}]], legL = [[0, {}]], legR = [[0, {}]], kneeL = [[0, {}]], kneeR = [[0, {}]], armL = [[0, {}]], armR = [[0, {}]];
+const _gaLadder = (top) => {   // top: the landing's height in the figure's units (the rungs keep their spacing; round 3: one per ladder's height)
+  const T = top || GA_LADDER.top, N = Math.max(4, Math.round((T - GA_LADDER.first) / GA_LADDER.gap) + 1), up0 = 0.04, up1 = 0.44, dn0 = 0.62, dn1 = 0.97, root = [[0, {}]], legL = [[0, {}]], legR = [[0, {}]], kneeL = [[0, {}]], kneeR = [[0, {}]], armL = [[0, {}]], armR = [[0, {}]];
   const step = (t, k, last) => {   // feet on rung k (0: the ground), the leg that steps next bent up to the rung above, the opposite hand up a rung
-    const y = k >= N ? -GA_LADDER.top : k <= 0 ? 0 : -(GA_LADDER.first + (k - 1) * GA_LADDER.gap), odd = k % 2;
+    const y = k >= N ? -T : k <= 0 ? 0 : -(GA_LADDER.first + (k - 1) * GA_LADDER.gap), odd = k % 2;
     root.push([t, { y }, 'io']);
     const bent = { sy: 0.62 }, kb = { sy: 1.15 }, flat = {};
     legL.push([t, last ? flat : odd ? bent : flat, 'io']); kneeL.push([t, last ? flat : odd ? kb : flat, 'io']);
@@ -93,6 +93,9 @@ const GARDEN_ACTS = Object.freeze({
     enter: { root: [[0.4, { y: 10 }, 'io'], [0.85, { r: -90, x: 34, y: -8 }, 'o'], [1, { r: -90, x: 34, y: -8 }]], armL: [[0.85, { r: 20 }], [1, { r: 20 }]], armR: [[0.85, { r: -170 }], [1, { r: -170 }]], head: [[0.85, { r: -10 }], [1, { r: -10 }]] },
     loop: { ms: 3600, root: [[0, { r: -90, x: 34, y: -8 }], [0.5, { r: -90, x: 34, y: -9, sx: 1.02 }, 'io'], [1, { r: -90, x: 34, y: -8 }, 'io']], armL: [[0, { r: 20 }], [1, { r: 20 }]], armR: [[0, { r: -170 }], [1, { r: -170 }]], head: [[0, { r: -10 }], [1, { r: -10 }]] } },
   ladder: { verb: 'Climb the ladder', dir: 'n', ms: 9000, prop: 'ladder', propBehind: true, propGround: true, first: 'Climbed up for a look over the rooftops.', sound: 'step', enter: _gaLadder() },
+  // (round 3) the same climb up the treehouse's own painted ladder to its platform (192), and up the barn's side to the hay-loft door (96)
+  ladderhi: { verb: 'Climb up to the treehouse', dir: 'n', ms: 11500, first: 'Climbed up into the treehouse.', sound: 'step', enter: _gaLadder(192) },
+  ladderlo: { verb: 'Climb up to the hay loft', dir: 'n', ms: 7000, first: 'Climbed the ladder to the hay loft. It smells of summer.', sound: 'step', enter: _gaLadder(96) },
   shake: { verb: 'Shake the tree', dir: 'n', ms: 1700, first: 'Shook a fruit tree. Something fell out.', sound: 'rustle', shake: true,
     enter: { up: _GA_K(8, (i) => [0.1 + i * 0.1, { r: i % 2 ? 4 : -4, x: i % 2 ? 1 : -1 }, 'io']).concat([[1, {}]]), armL: [[0.1, { r: 120 }, 'o'], [0.9, { r: 120 }], [1, {}]], armR: [[0.1, { r: -120 }, 'o'], [0.9, { r: -120 }], [1, {}]], root: _GA_K(8, (i) => [0.1 + i * 0.1, { x: i % 2 ? 1.4 : -1.4 }, 'l']).concat([[1, {}]]) } },
   bell: { verb: 'Ring the bell', dir: 'n', ms: 2200, prop: 'rope', propBehind: true, propGround: true, first: 'Rang the bell. Half the vale looked up.', sound: 'bell', use: 'bell',
@@ -132,7 +135,9 @@ const GARDEN_ACTS = Object.freeze({
       legL: _GA_K(7, (i) => [0.08 + i * 0.13, { sy: i % 2 ? 0.62 : 1 }, 'io']).concat([[1, {}]]), legR: _GA_K(7, (i) => [0.08 + i * 0.13, { sy: i % 2 ? 1 : 0.62 }, 'io']).concat([[1, {}]]),
       kneeL: _GA_K(7, (i) => [0.08 + i * 0.13, { sy: i % 2 ? 1.15 : 1 }, 'io']).concat([[1, {}]]), kneeR: _GA_K(7, (i) => [0.08 + i * 0.13, { sy: i % 2 ? 1 : 1.15 }, 'io']).concat([[1, {}]]) } },
   perch: { verb: 'Sit on the branch', dir: 's', ms: 400, hold: true, prop: 'branch', propBehind: true, propGround: true, first: '', seat: 1.25,
-    enter: _gaHoldPose(_GA_SITP, 0.5), loop: _GA_SITLOOP(2600) },
+    // out along the bough from the trunk (the figure sits 16 to the right of it), hands down on the wood either side, the shins swinging
+    enter: _gaHoldPose(Object.assign({}, _GA_SITP, { root: { x: 16, y: 28 - GA_SEAT_HIP }, armL: { r: 18, sy: 0.84 }, armR: { r: -18, sy: 0.84 } }), 0.5),
+    loop: Object.assign(_GA_SITLOOP(2600), { root: [[0, { x: 16, y: 28 - GA_SEAT_HIP }], [1, { x: 16, y: 28 - GA_SEAT_HIP }]], armL: [[0, { r: 18, sy: 0.84 }], [1, { r: 18, sy: 0.84 }]], armR: [[0, { r: -18, sy: 0.84 }], [1, { r: -18, sy: 0.84 }]] }) },
   row: { verb: 'Take the oars', dir: 's', ms: 700, hold: true, prop: 'oars', first: 'Took the boat out on the water.', sound: 'splash', fx: { every: 1300, kind: 'water', dy: 0.2, width: 40 },
     enter: _GA_SIT,
     loop: { ms: 1300, root: [[0, { y: 14 }], [1, { y: 14 }]], legL: [[0, { sy: 0.52 }], [1, { sy: 0.52 }]], legR: [[0, { sy: 0.52 }], [1, { sy: 0.52 }]], up: [[0, { r: 0, y: 0 }], [0.45, { y: -3, sy: 1.02 }, 'io'], [1, { y: 0 }, 'io']], armL: [[0, { r: 70 }], [0.45, { r: 30 }, 'io'], [1, { r: 70 }, 'io']], armR: [[0, { r: -70 }], [0.45, { r: -30 }, 'io'], [1, { r: -70 }, 'io']] } },
@@ -154,10 +159,10 @@ const GARDEN_ACTS = Object.freeze({
   throwstick: { verb: 'Throw a stick', dir: 's', ms: 1500, hold: true, first: 'Threw a stick. It came back, very wet.', prop: 'stickfly', propGround: true, fetch: true,
     loop: { ms: 3000, head: [[0, {}], [0.5, { r: 5 }, 'io'], [1, {}, 'io']], armL: [[0, {}], [1, {}]] },
     enter: { armR: [[0.15, { r: 50 }, 'io'], [0.32, { r: -170 }, 'b'], [0.5, { r: -120 }, 'o'], [0.9, {}, 'io']], up: [[0.15, { r: 6 }], [0.32, { r: -6 }, 'o'], [0.9, {}, 'io']], legL: [[0.32, { r: 6 }], [0.9, {}]] } },
-  // (20) belly rubs: down on one knee, a hand rubbing; the pet rolls over beside you (its own belly-rub game is on the pet's menu)
-  rub: { verb: 'Give your pet a belly rub', dir: 's', ms: 600, hold: true, pet: 'sit', first: 'Gave my pet a belly rub. Its leg went.',
-    enter: { root: [[0.6, { y: 9 }, 'o'], [1, { y: 9 }]], legL: [[0.6, { sy: 0.4, r: 8 }, 'o'], [1, { sy: 0.4, r: 8 }]], kneeL: [[0.6, { sy: 2.4 }, 'o'], [1, { sy: 2.4 }]], legR: [[0.6, { sy: 0.7, r: -6 }, 'o'], [1, { sy: 0.7, r: -6 }]], kneeR: [[0.6, { sy: 0.8, r: 60 }, 'o'], [1, { sy: 0.8, r: 60 }]], armR: [[0.6, { r: -40, sy: 0.9 }, 'o'], [1, { r: -40, sy: 0.9 }]], up: [[0.6, { r: -6 }], [1, { r: -6 }]] },
-    loop: { ms: 700, root: [[0, { y: 9 }], [1, { y: 9 }]], legL: [[0, { sy: 0.4, r: 8 }], [1, { sy: 0.4, r: 8 }]], kneeL: [[0, { sy: 2.4 }], [1, { sy: 2.4 }]], legR: [[0, { sy: 0.7, r: -6 }], [1, { sy: 0.7, r: -6 }]], kneeR: [[0, { sy: 0.8, r: 60 }], [1, { sy: 0.8, r: 60 }]], up: [[0, { r: -6 }], [1, { r: -6 }]], armR: [[0, { r: -40, sy: 0.9 }], [0.5, { r: -54, sy: 0.9 }, 'io'], [1, { r: -40, sy: 0.9 }, 'io']] } },
+  // (20) belly rubs (round 3): side on, down on one knee on the grass beside your pet, which lies on its back (the pet's own clip, l-belly); one hand rubs its tummy
+  rub: { verb: 'Give your pet a belly rub', dir: 'e', ms: 700, hold: true, rubPet: true, first: 'Gave my pet a belly rub. Its leg went.',
+    enter: _gaHoldPose({ root: { y: 12.4 }, up: { r: 16, x: 1 }, head: { r: 8 }, legR: { r: -82 }, kneeR: { r: 84 }, legL: { r: 8 }, kneeL: { r: 84, sy: 0.95 }, armR: { r: -36, sy: 0.96 }, armL: { r: -18, sy: 0.9 } }, 0.7),
+    loop: Object.assign({ ms: 800 }, _gaHoldPose({ root: { y: 12.4 }, legR: { r: -82 }, kneeR: { r: 84 }, legL: { r: 8 }, kneeL: { r: 84, sy: 0.95 }, armL: { r: -18, sy: 0.9 } }, 0, 'l'), { up: [[0, { r: 16, x: 1 }], [0.5, { r: 19, x: 1.6 }, 'io'], [1, { r: 16, x: 1 }, 'io']], head: [[0, { r: 8 }], [0.5, { r: 12 }, 'io'], [1, { r: 8 }, 'io']], armR: [[0, { r: -30, sy: 0.96 }], [0.5, { r: -46, sy: 0.92 }, 'io'], [1, { r: -30, sy: 0.96 }, 'io']] }) },
   // (24) the busker's fiddle: under the chin, the bow arm saws; notes rise; a friend near you can dance (the moves wheel)
   play: { verb: 'Play the fiddle', dir: 's', ms: 600, hold: true, prop: 'fiddle', first: 'Played the busker\u2019s fiddle. Somebody clapped.', sound: 'chime', fx: { every: 900, kind: 'gold', dy: -2, width: 18 },
     enter: { armL: [[0.6, { r: -120, sy: 0.8 }, 'o'], [1, { r: -120, sy: 0.8 }]], armR: [[0.6, { r: -60, sy: 0.86 }, 'o'], [1, { r: -60, sy: 0.86 }]], head: [[0.6, { r: -10, x: -1 }], [1, { r: -10, x: -1 }]] },
@@ -166,10 +171,10 @@ const GARDEN_ACTS = Object.freeze({
   carry: { verb: 'Pick it up', dir: 's', ms: 900, first: 'Picked something up and carried it off.', carry: true,
     enter: { root: [[0.4, { y: 7 }, 'io'], [0.9, {}, 'io']], up: [[0.4, { r: 0, y: 3, sy: 0.92 }, 'io'], [0.9, {}, 'io']], legL: [[0.4, { sy: 0.72 }, 'io'], [0.9, {}, 'io']], kneeL: [[0.4, { sy: 1.2 }, 'io'], [0.9, {}, 'io']], legR: [[0.4, { sy: 0.72 }, 'io'], [0.9, {}, 'io']], kneeR: [[0.4, { sy: 1.2 }, 'io'], [0.9, {}, 'io']], armL: [[0.4, { r: -10, sy: 1.1 }, 'io'], [0.9, { r: -18, sy: 0.78 }, 'io'], [1, { r: -18, sy: 0.78 }]], armR: [[0.4, { r: 10, sy: 1.1 }, 'io'], [0.9, { r: 18, sy: 0.78 }, 'io'], [1, { r: 18, sy: 0.78 }]] } },
   // (29) sit on the bank with your legs over and fish; a friend on the other half of the bank sits beside you and fishes too
-  fishsit: { verb: 'Sit on the bank and fish', dir: 'n', ms: 700, hold: true, pet: 'sit', prop: 'bankrod', first: 'Sat on the bank and fished, legs over the water.',
-    // seen from behind, facing the water: the hips on the bank's lip, the thighs out over the edge (foreshortened, going away) and the shins down its far side, out of sight
-    enter: _gaHoldPose({ root: { y: 24.6 }, legL: { sy: 0.26, r: 4 }, legR: { sy: 0.26, r: -4 }, kneeL: { sy: 0.02 }, kneeR: { sy: 0.02 }, armL: { r: 20, sy: 0.9 }, armR: { r: -150, sy: 0.7 } }, 0.6),
-    loop: { ms: 4000, root: [[0, { y: 24.6 }], [1, { y: 24.6 }]], legL: [[0, { sy: 0.26, r: 4 }], [1, { sy: 0.26, r: 4 }]], legR: [[0, { sy: 0.26, r: -4 }], [1, { sy: 0.26, r: -4 }]], kneeL: [[0, { sy: 0.02 }], [1, { sy: 0.02 }]], kneeR: [[0, { sy: 0.02 }], [1, { sy: 0.02 }]], armL: [[0, { r: 20, sy: 0.9 }], [1, { r: 20, sy: 0.9 }]], armR: [[0, { r: -150, sy: 0.7 }], [0.45, { r: -146, sy: 0.7 }, 'io'], [0.5, { r: -158, sy: 0.7 }, 'b'], [0.6, { r: -150, sy: 0.7 }, 'io'], [1, { r: -150, sy: 0.7 }]], head: [[0, {}], [0.5, { r: 5 }, 'io'], [1, {}, 'io']] } },
+  fishsit: { verb: 'Sit on the bank and fish', dir: 'e', ms: 700, hold: true, pet: 'sit', prop: 'bankrod', first: 'Sat on the bank and fished, legs over the water.',
+    // (round 3) side on, sat on the grass of the bank with your knees up and your feet planted, the rod held out over the water; a friend sits along the bank beside you
+    enter: _gaHoldPose({ root: { y: 28 }, up: { r: -5 }, legR: { r: -135 }, kneeR: { r: 81 }, legL: { r: -128 }, kneeL: { r: 78 }, armL: { r: -48, sy: 0.9 }, armR: { r: -62, sy: 0.86 } }, 0.6),
+    loop: Object.assign({ ms: 4000 }, _gaHoldPose({ root: { y: 28 }, up: { r: -5 }, legR: { r: -135 }, kneeR: { r: 81 }, legL: { r: -128 }, kneeL: { r: 78 }, armL: { r: -48, sy: 0.9 }, armR: { r: -62, sy: 0.86 } }, 0, 'l'), { armR: [[0, { r: -62, sy: 0.86 }], [0.45, { r: -58, sy: 0.86 }, 'io'], [0.5, { r: -72, sy: 0.86 }, 'b'], [0.6, { r: -62, sy: 0.86 }, 'io'], [1, { r: -62, sy: 0.86 }]], head: [[0, {}], [0.5, { r: -5 }, 'io'], [1, {}, 'io']] }) },
   laugh: { verb: 'Laugh', dir: 's', ms: 1500, first: '', enter: { up: _GA_K(8, (i) => [0.08 + i * 0.1, { y: i % 2 ? 1 : -1, r: i % 2 ? 3 : 1 }, 'io']).concat([[1, {}]]), head: [[0.1, { r: -8 }, 'o'], [0.8, { r: -8 }], [1, {}]], armL: [[0.1, { r: 30 }, 'o'], [0.8, { r: 30 }], [1, {}]], armR: [[0.1, { r: -50 }, 'o'], [0.8, { r: -50 }], [1, {}]] } },
 });
 /** The fixed things of the layout and what each offers. stand: where the feet go (cells from the foot's middle), deg: the way you face. */
@@ -181,8 +186,6 @@ const GARDEN_ACT_BY_PROP = Object.freeze({
   'ld-wish': [{ act: 'wish', name: 'the wishing well', stand: [0, 0.95], deg: -90 }],   // (far enough back not to stand on its stones)
   'ld-chapel': [{ act: 'bell', name: 'the chapel bell', stand: [0, 0.6], deg: -90 }],
   'ld-lighthouse': [{ act: 'ladder', name: 'the lighthouse ladder', stand: [0.12, 0.1], deg: -90 }],
-  'ld-treehouse': [{ act: 'ladder', name: 'the treehouse ladder', stand: [0, 0.4], deg: -90 }],
-  'ld-barn': [{ act: 'ladder', name: 'the hay loft ladder', stand: [1.1, 0.4], deg: -90 }],
   pier: [{ act: 'dangle', name: 'the pier end', painted: true, pierEnd: true, stand: [0, -0.3], deg: 90, lift: 0 }],   // (the pier is painted with the coast, not a prop of its own)
   boat: [{ act: 'row', name: 'the boat', stand: [0.9, 0.2], deg: 180, boat: true }],   // the rowing boat you own (94-garden-fish-9world.js) takes you out
   'notice-board': [{ act: 'read', name: 'the notices', stand: [0, 0.6], deg: 90 }],
