@@ -20,7 +20,8 @@ function gtgGnomeSvg(seed, pennants) {
   const A = GART, hats = ['#c8382a', '#2a6ab4', '#3a8a4a', '#c88a1a', '#8a3ab4', '#d8588a'], hat = hats[Math.abs(seed) % hats.length], coat = ['#3a6a8a', '#8a4a2a', '#4a7a3a', '#6a4a8a'][Math.abs(seed >> 3) % 4];
   let s = A.P('#000000', A.ell(0, 1, 10, 3), 0.2) + A.P('#4a3a2a', A.rrect(-7, -5, 6, 5, 1) + A.rrect(1, -5, 6, 5, 1)) + A.P(coat, 'M-8 -5L-7 -18Q0 -21 7 -18L8 -5z') + A.P('#f0d8c0', A.circ(0, -21, 5.4)) + A.P('#f4f4ec', 'M-6 -21Q-7 -12 0 -9Q7 -12 6 -21Q0 -17 -6 -21z') + A.P('#e8a890', A.circ(0, -20.6, 1.6)) + A.P(hat, 'M-7 -24Q0 -22 7 -24L0 -42z');
   for (let i = 0; i < Math.min(6, pennants || 0); i++) s += A.P(['#f4d03a', '#ffffff', '#5a9ae8'][i % 3], `M${-3 + i * 1.2} ${-38 + i * 2.2}l-5 -2l5 -2z`);
-  return s;
+  // (village fix round 1: a garden gnome is knee high, not as tall as a child beside you)
+  return '<g transform="scale(0.6)">' + s + '</g>';
 }
 function _gtgnLeave(fid, m) {
   const W = _gtgW(); W['tg.gn'] = { at: fid, d: m.today }; _gdSave();
