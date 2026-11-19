@@ -628,17 +628,23 @@ window.GardenPaintedTerrain = (function () {
    * drawing is clipped to it); pebbles (the brush's stone) stay walked over.
    */
   let standOps = null, standMemo = null, standSigNow = '';
-  const STAND_MIN = Object.freeze({ w: 7, h: 5 });   // px: smaller than this is a stone you step over
+  // px: smaller than this is a stone you step over (the brush's smallest boulders, 7 to 12 px, are smaller than your feet:
+  // as blocks they were little walls with next to nothing drawn on them, the collision audit, 19 Nov 2026)
+  const STAND_MIN = Object.freeze({ w: 13, h: 7 });
   function standing() {
     const kit = KIT(); if (!kit || !wanted() || !standOps) return [];
     if (standMemo && standMemo.sig === standSigNow) return standMemo.list;
     const W = GARDEN_WORLD, list = [], c = document.createElement('canvas'); c.width = c.height = 2; const cx = c.getContext('2d'), B = kit.brush(cx), draw = B.boulder;
+    // (a slab or boulder painted on a path is flat in the path's ground and walked over: four of the outcrops stand on the
+    // pass's own path, and as blocks they shut it, so click-to-walk up to the grotto stood still: the collision audit, 19 Nov 2026)
+    const ways = (gardenIslandData().routes || []).filter(r => r.points && r.points.length > 1).map(r => ({ pts: gardenIslandRoutePath(r).points, rad: gardenIslandRoadStyle(r).radius * W.cellW }));
+    const onWay = (X, Y, half) => ways.some(R => { const x = X / W.cellW, y = (Y - W.sky) / W.cellH; for (let i = 1; i < R.pts.length; i++) { const p = R.pts[i - 1], q = R.pts[i], ax = (q.x - p.x) * W.cellW, ay = (q.y - p.y) * W.cellH, bx = (x - p.x) * W.cellW, by = (y - p.y) * W.cellH, L = ax * ax + ay * ay || 1, t = Math.max(0, Math.min(1, (ax * bx + ay * by) / L)); if (Math.hypot(bx - ax * t, by - ay * t) < R.rad + half + 4) return true; } return false; });
     const mine = (X, Y) => { const gx = X / W.cellW, gy = (Y - W.sky) / W.cellH; if (gx < 0 || gy < 0 || gx >= W.cols || gy >= W.rows || typeof gardenIslandRegionAt !== 'function') return false; const reg = gardenIslandRegionAt(gx, gy); return !!(reg && ownsRegion(reg.id)) && (typeof gardenIslandLandContains !== 'function' || gardenIslandLandContains(gx, gy)); };
     B.boulder = function (r, x, y, w, h) {
-      if (w >= STAND_MIN.w && h >= STAND_MIN.h) { const m = cx.getTransform(), X = m.a * x + m.c * y + m.e, Y = m.b * x + m.d * y + m.f; if (mine(X, Y - h / 2)) list.push([+((X - w * .52) / W.cellW).toFixed(3), +((Y - h - W.sky) / W.cellH).toFixed(3), +((X + w * .5) / W.cellW).toFixed(3), +((Y - W.sky) / W.cellH).toFixed(3)]); }
+      if (w >= STAND_MIN.w && h >= STAND_MIN.h) { const m = cx.getTransform(), X = m.a * x + m.c * y + m.e, Y = m.b * x + m.d * y + m.f; if (mine(X, Y - h / 2) && !onWay(X, Y - h / 2, w * .5)) list.push([+((X - w * .52) / W.cellW).toFixed(3), +((Y - h - W.sky) / W.cellH).toFixed(3), +((X + w * .5) / W.cellW).toFixed(3), +((Y - W.sky) / W.cellH).toFixed(3)]); }
       return draw.apply(B, arguments);
     };
-    B.stand = function (x, y, rx, ry) { const m = cx.getTransform(), X = m.a * x + m.c * y + m.e, Y = m.b * x + m.d * y + m.f; if (mine(X, Y)) list.push({ x: +(X / W.cellW).toFixed(3), y: +((Y - W.sky) / W.cellH).toFixed(3), rx: +(rx / W.cellW).toFixed(3), ry: +(ry / W.cellH).toFixed(3) }); };
+    B.stand = function (x, y, rx, ry) { const m = cx.getTransform(), X = m.a * x + m.c * y + m.e, Y = m.b * x + m.d * y + m.f; if (mine(X, Y) && !onWay(X, Y, rx)) list.push({ x: +(X / W.cellW).toFixed(3), y: +((Y - W.sky) / W.cellH).toFixed(3), rx: +(rx / W.cellW).toFixed(3), ry: +(ry / W.cellH).toFixed(3) }); };
     for (const o of standOps) ok(() => { cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); try { o.draw(B, kit.rng(o.seed || 1), o.bb); } finally { cx.restore(); cx.filter = 'none'; cx.globalAlpha = 1; } });
     standMemo = { sig: standSigNow, list };
     return list;

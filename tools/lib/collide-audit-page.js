@@ -322,13 +322,20 @@
       parts.objects++; parts.columns += cols.length;
       if (stone) {
         const through = [], short = [], gateBase = Math.max(...cols.map(c => c.Y));
+        // (a gate's own way through: a bridge's deck and parapet ends are walked on and beside, and the stair's treads are
+        // its steps; only its standing stonework, the piers, stubs, cheeks, posts and boulders, is held to its foot)
+        const G = o.kind === 'gate' ? (island.gates || []).find(g => o.key.includes(g.id) || o.name === g.id) : null, gk = G && window.GardenPaintedProps && GardenPaintedProps.gateKind ? GardenPaintedProps.gateKind(G) : '';
+        if (gk === 'bridge') continue;
+        // (a wall: a stone or two of rubble proud of its foot is not the wall, so it takes four columns in a row)
+        const fr = G && typeof _gldIslandGateFrame === 'function' ? (() => { try { return _gldIslandGateFrame(G); } catch (e) { return null; } })() : null, gHalf = fr ? Math.max(46, Math.min(80, fr.span * .62)) : 0;
         for (const c of cols) {
           if (o.kind === 'gate' && c.Y < gateBase - 16) continue;   // (a gate's picture holds its trees too: a crown's lower edge is not a foot)
+          if (gk === 'stair' && fr && Math.abs(c.X - fr.x) < gHalf * 1.55 - 4) continue;   // (the treads between its cheeks)
           const cc = toCell(c.X, c.Y); if (o.kind === 'gate' && onRoad(cc.x, cc.y - .1, .95)) continue;   // (the gateway itself: the path runs through it)
           if (cellFree(c.X, c.Y - 3) && cellFree(c.X, c.Y - 8)) through.push(c);
           else { const F = c.Y + GW_FOOT.y * CH + .3 * CH, F2 = c.Y + GW_FOOT.y * CH + .8 * CH; if (!cellFree(c.X, F) && cellFree(c.X, F2) && bare(c.X, F) && bare(c.X, F - 6) && !wetPx(c.X, F)) { const why = gardenCollideAt(toCell(c.X, F).x, toCell(c.X, F).y).join('; '); if (why && !/water/.test(why)) short.push(Object.assign({ why }, c)); } }
         }
-        for (const R of runsOf(through)) if (R.list.length >= 3) { const m = R.list[R.list.length >> 1], mc = toCell(m.X, m.Y); push({ kind: 'walk-through', obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: mc.x, y: mc.y, detail: (R.list.length * 3) + ' px of its drawn foot can be stood on (stonework judged column by column)' }); }
+        for (const R of runsOf(through)) if (R.list.length >= (o.kind === 'wall' ? 4 : 3)) { const m = R.list[R.list.length >> 1], mc = toCell(m.X, m.Y); push({ kind: 'walk-through', obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: mc.x, y: mc.y, detail: (R.list.length * 3) + ' px of its drawn foot can be stood on (stonework judged column by column)' }); }
         for (const R of runsOf(short)) if (R.list.length >= 4) { const m = R.list[R.list.length >> 1], mc = toCell(m.X, m.Y); push({ kind: 'block-offset', obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: mc.x, y: mc.y, detail: 'over ' + (R.list.length * 3) + ' px of its length the feet stop more than ' + (.3 + GW_FOOT.y).toFixed(2) + ' cells in front of its drawn foot, on open ground (' + m.why.slice(0, 80) + ')' }); }
       } else {
         // in parts: the gaps between its drawn parts, and past its drawn ends, at its base line
@@ -391,8 +398,14 @@
   }
 
   /* ---------- 4. landforms: the polygon is what is drawn (the painters draw it; layout contract) vs where the feet are stopped ---------- */
-  for (const f of island.landforms || []) {
-    if (!f.polygon || f.col !== 'full') continue;
+  // (a ruin wall's layout outline is a band a cell and a half thick; where the painted garden draws it, the wall stands on
+  // the band's middle line and that drawn foot is what stops the feet: gardenRuinWallFoot, 94-garden-world-0walk.js.
+  // Judged against the band, the open ground either side of the drawn wall read as "drawn rock you can walk on".
+  // Check 1c holds the wall's block to its picture.)
+  const thinWalls = typeof gardenRuinWallFoot === 'function' && window.GardenPaintVale && GardenPaintVale.owns && GardenPaintVale.owns('ruin-wall');
+  for (const f0 of island.landforms || []) {
+    if (!f0.polygon || f0.col !== 'full') continue;
+    const f = thinWalls && f0.kind === 'ruin-wall' ? Object.assign({}, f0, { polygon: gardenRuinWallFoot(f0.polygon) || f0.polygon }) : f0;
     const xs = f.polygon.map(p => p[0]), ys = f.polygon.map(p => p[1]); let walkIn = 0, ghost = 0, wx = 0, wy = 0, gx = 0, gy = 0; const st = .2, A = st * st;
     for (let y = Math.max(0, Math.min(...ys) - 1); y < Math.min(W.rows, Math.max(...ys) + 1); y += st) for (let x = Math.max(0, Math.min(...xs) - 1); x < Math.min(W.cols, Math.max(...xs) + 1); x += st) {
       const inside = inLoop(x, y, f.polygon), why = hardAt(x, y);
@@ -505,7 +518,9 @@
       if (typeof _gwFishStoneCovered === 'function' && _gwFishStoneCovered(cx, cy)) continue;
       if (typeof gardenWaterNo === 'function' && gardenWaterNo(x, y, m)) continue;
       shore.casts++;
-      const pw = pixWater(cx, cy, 5, 3); if (pw < 0 || pw >= .3) continue;
+      // (all but no water-coloured pixel near the float, and next to none round it: the Mere's and the sea's reflections of the
+      // bank and the sky's colours at the tide line are patchy and are not taken for ground)
+      const pw = pixWater(cx, cy, 5, 3); if (pw < 0 || pw > .05 || pixWater(cx, cy, 10, 6) >= .2) continue;
       const p = toPx(cx, cy); if (anyPaint(p.X, p.Y)) continue;   // (a float among reeds or lily pads, or a crossing drawn over it: those are their own checks)
       dryFloat.add(x + ',' + y);
     }

@@ -485,6 +485,13 @@ function _gwPrepareRouteGrid(grid) {
     const [x, y] = key.split(',').map(Number);
     if (x >= 0 && y >= 0 && x < GARDEN_WORLD.cols && y < GARDEN_WORLD.rows) shoreCells[y * GARDEN_WORLD.cols + x] = 1;
   }
+  // So do cells a solid box or outline touches: a ruin wall drawn thin on its line, a sheepfold ring, a trunk or a
+  // boulder can stand between two open cell centres, and the link between them went straight through it. Walking
+  // to the driftwood arch, click-to-walk planned through ruin-wall-6 and stood at it (the collision audit, 19 Nov 2026).
+  if (!grid.liquid && _gw.solids && _gw.solids.at) for (const key of _gw.solids.at.keys()) {
+    const [x, y] = key.split(',').map(Number);
+    if (x >= 0 && y >= 0 && x < GARDEN_WORLD.cols && y < GARDEN_WORLD.rows) shoreCells[y * GARDEN_WORLD.cols + x] = 1;
+  }
   const W = GARDEN_WORLD, candidate = (x, y) => _gwGridFeet(grid, x, y, GW_FOOT.x, GW_FOOT.y) && !_gwSolidHit(x, y, GW_FOOT.x, GW_FOOT.y) && (grid.liquid || gardenWonderWalkFine(x, y, GW_FOOT.y));
   const offsets = [.5, .25, .75, .08, .92];
   for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {

@@ -1007,7 +1007,12 @@ window.GardenPaintedProps = (function () {
       const kind = gateKind(g), side = Math.abs(frame.uy) > Math.abs(frame.ux), half = Math.max(46, Math.min(80, frame.span * .62)); if (side) continue;   // (seen side on, the arch's trunks are in the trunk list and the bridge is its crossing's)
       if (kind === 'ruin') { const pw = Math.max(12, half * .3), reach = half + pw + half * .7 + 12; for (const s of [-1, 1]) box(g, frame.x + (s < 0 ? -reach : half), frame.y - 8, frame.x + (s < 0 ? -half : reach), frame.y + 1, s < 0 ? 'west pier and wall' : 'east pier and wall'); }
       else if (kind === 'stair') { const sw = half * 1.55, dy = 52, top = dy - 6 * 9; for (const s of [-1, 1]) box(g, frame.x + (s < 0 ? -(sw + 47) : sw - 5), frame.y + top - 6, frame.x + (s < 0 ? -(sw - 5) : sw + 47), frame.y + dy, s < 0 ? 'west cheek and post' : 'east cheek and post'); }
-      else if (kind === 'pass') box(g, frame.x + half + 36 - 13, frame.y - 2 - 6, frame.x + half + 36 + 13, frame.y - 2 + 3, 'cairn');
+      else if (kind === 'pass') {
+        box(g, frame.x + half + 36 - 13, frame.y - 2 - 6, frame.x + half + 36 + 13, frame.y - 2 + 3, 'cairn');
+        // the two big boulders either side of the col (art.lib: rock.boulder 100 and 110 px wide at -half and +half): they
+        // had no block and were walked over (the collision audit, 19 Nov 2026). The col between them stays open.
+        for (const [s, w, dy] of [[-1, 100, 2], [1, 110, 4]]) { const inner = Math.max(26, half * .5), outer = half + w * .4; box(g, s < 0 ? frame.x - outer : frame.x + inner, frame.y + dy - 12, s < 0 ? frame.x - inner : frame.x + outer, frame.y + dy, s < 0 ? 'west boulder' : 'east boulder'); }
+      }
     }
     gateFeetMemo = { d: D, out };
     return out;
