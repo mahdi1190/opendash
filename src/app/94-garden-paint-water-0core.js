@@ -196,8 +196,8 @@ window.GardenPaintWater = (function () {
   // the clouds' reflections, broad patches lo..hi of a long, low noise; glow a wash of the sky's own colour over open water.
   const SKYR = {
     day: { a: .24, lo: .52, hi: .68, c0: '#eef8f4', c1: '#d2eaee', glow: 0, g: '#ffffff' },
-    dawn: { a: .5, lo: .5, hi: .64, c0: '#fad8c2', c1: '#f0bcbc', glow: .1, g: '#a8b4cc' },
-    dusk: { a: .62, lo: .5, hi: .63, c0: '#ffc888', c1: '#f3a0a8', glow: .16, g: '#97a3c6' },
+    dawn: { a: .46, lo: .55, hi: .66, c0: '#fde0cc', c1: '#f0c0d0', glow: .1, g: '#a8b4cc' },
+    dusk: { a: .5, lo: .56, hi: .66, c0: '#ffd2b0', c1: '#e8a4c0', glow: .16, g: '#8f9fc6' },   // (light peach and rose-lilac: a deep gold half-blended into teal read as mud)
     night: { a: .5, lo: .54, hi: .67, c0: '#c8d8ee', c1: '#a2b8da', glow: .24, g: '#26405e' },
   };
   function skyOf(S) { const R = SKYR[S.tod] || SKYR.day; let c0 = R.c0, c1 = R.c1; if (S.season === 'winter') { c0 = mix(c0, '#e4e8ea', .4); c1 = mix(c1, '#d4dce2', .4); } return { a: R.a, lo: R.lo, hi: R.hi, c0: rgbOf(c0), c1: rgbOf(c1), glow: R.glow, g: rgbOf(R.g) }; }
@@ -363,7 +363,7 @@ window.GardenPaintWater = (function () {
           if (SKY) {
             const open = (1 - mS) * mm * (1 - run * .62) * (1 - tS[tj] * .85) * (1 - tD[tj] * .45) + mS * (DS[tj] >= 0 ? sstep(6, 70, DS[tj]) : 1);
             if (open > .01) {
-              const sk = fbm(wx / 430, wy / 84, 131) + (noise(wx / 170, wy / 34, 137) - .5) * .2, cl = sstep(SKY.lo, SKY.hi, sk) * SKY.a * open, hue = sstep(.35, .65, noise(wx / 520, wy / 300, 139));
+              const sk = fbm(wx / 300, wy / 62, 131) + (noise(wx / 120, wy / 26, 137) - .5) * .26, cl = sstep(SKY.lo, SKY.hi, sk) * SKY.a * open, hue = sstep(.35, .65, noise(wx / 520, wy / 300, 139));
               const c0 = SKY.c0[0] + (SKY.c1[0] - SKY.c0[0]) * hue, c1 = SKY.c0[1] + (SKY.c1[1] - SKY.c0[1]) * hue, c2 = SKY.c0[2] + (SKY.c1[2] - SKY.c0[2]) * hue, gl = SKY.glow * open;
               if (gl) { rr += (SKY.g[0] - rr) * gl; gg += (SKY.g[1] - gg) * gl; bb += (SKY.g[2] - bb) * gl; }
               rr += (c0 - rr) * cl; gg += (c1 - gg) * cl; bb += (c2 - bb) * cl;
