@@ -175,7 +175,7 @@ const vPlaza = (id, width) => { const p = VV.plazas[id]; return route(id, 'plaza
 const wRoute = id => { const a = VW.routes.find(r => r.id === id); if (!a) throw Error('vale-woodland.json has no route ' + id); const { pts, ws } = splineW(a.control, a.widths, false);
   return route(id, a.tier, pts, a.zone, Object.assign({ widthCells: Math.max(...ws), widths: ws }, a.gateId ? { gateId: a.gateId } : {}, a.track ? { track: true } : {})); };
 // a shaped woodland plaza: its outline, and a spine through it for painters that want a line (the spine's width stays inside the outline)
-const wPlaza = (id, p, width) => { const sp = p.spine || (() => { const b = bbox(p.poly), cy = (b.y + b.y1) / 2; return [[b.x + .8, cy], [b.x1 - .8, cy]]; })(); return route(id, 'plaza', sp, 1, { widthCells: width, shape: p.poly.map(q => q.map(r2)) }); };
+const wPlaza = (id, p, width) => { const sp = p.spine || (() => { const b = bbox(p.poly), cy = (b.y + b.y1) / 2; return [[b.x + .8, cy], [b.x1 - .8, cy]]; })(); return route(id, 'plaza', sp, 1, { widthCells: width, shape: p.poly.map(q => q.map(r2)), surface: p.surface || 'earth' }); };   // (a clearing and a yard in the wood are trodden earth, not setts)
 const GREEN = { x: 49, y: 51.6, rx: 6.6, ry: 4.4 };   // (the green's rough extent, for painters that only want a centre and radii)
 const routes = [
   // the arrival spine: quay, high street, the square and the green, the Lakeside terrace (harbour-walk[0] is the green end)
