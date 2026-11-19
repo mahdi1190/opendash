@@ -146,7 +146,22 @@
     }
     // (round 3) the shut allotment is somebody's old plot gone to grass, not an empty block: bean-cane wigwams still
     // standing, a rhubarb clump (a forcing pot over it in winter), a pail left upside down; each seated in the grass
-    const remnants = () => { if (edge === 'long-grass') KIT().tiles(box, 92, 36, salt + 5, (tx, ty, r) => {
+    // (round 3) the shut orchard reads as an orchard from across the village: young fruit trees on stakes in loose rows,
+    // knee to shoulder high beside you, fruit on them in summer and autumn, bare in winter; each wholly inside the field's
+    // outline (painted into the ground, so nothing of it may stand where you can walk behind it)
+    const orchard = () => { if (edge === 'hedge-road') KIT().tiles(box, 50, 60, salt + 7, (tx, ty, r) => {
+      const x = tx + 8 + r() * 34, y = ty + 10 + r() * 32, h = 32 + r() * 10, cr = h * .3, cy = y - h * .7; if (r() < .1 || !inF(x, y) || !inF(x, y - h) || !inF(x - cr, cy) || !inF(x + cr, cy)) return;
+      B.f(B.ell(x + 7, y + 2, cr * 1.15, 3.6), '#22301a', .16).f(B.ell(x + 1, y + .8, 5, 1.6), '#22301a', .24);
+      const lean = (r() - .5) * 3; B.s('M' + x + ' ' + y + 'q' + (lean * .4) + ' ' + (-h * .3) + ' ' + lean + ' ' + (-h * .62), '#5e4c36', 2.2, .98).s('M' + (x - .6) + ' ' + y + 'q' + (lean * .4) + ' ' + (-h * .3) + ' ' + lean + ' ' + (-h * .6), '#8a7058', .8, .7);
+      B.f(B.rect(x + 3.4, y - h * .5, 1.5, h * .5), '#9a8462').s('M' + (x + 3.4) + ' ' + (y - h * .36) + 'L' + (x + lean * .5) + ' ' + (y - h * .38), '#cbb88a', .9, .9);
+      if (season === 'winter') { for (let j = 0; j < 6; j++) { const a = -Math.PI / 2 + (j - 2.5) * .42, L = cr * (.7 + r() * .4); B.s('M' + (x + lean) + ' ' + (y - h * .6) + 'l' + (Math.cos(a) * L) + ' ' + (Math.sin(a) * L * .9), '#6a5640', 1.1, .9); } }
+      else { const tones = [lt[0], lt[1], lt[2], lt[3] || lt[2]];
+        for (let j = 0; j < 9; j++) { const a = r() * Math.PI * 2, d = r() * .55; B.f(B.blob(r, x + lean + Math.cos(a) * cr * d, cy + Math.sin(a) * cr * .7 * d, cr * (.42 + r() * .2), cr * (.32 + r() * .14), 7, .45), tones[j < 3 ? 0 : j < 7 ? 1 : 2], .95); }
+        for (let j = 0; j < 3; j++) B.f(B.blob(r, x + lean - cr * .25 + (r() - .5) * cr * .5, cy - cr * .35 + (r() - .5) * 3, cr * .26, cr * .16, 6, .4), tones[3], .7);
+        const fruit = r() < .55 ? '#c8402e' : '#d8b040'; if (season !== 'spring') for (let j = 0; j < 6; j++) B.f(B.circ(x + lean + (r() - .5) * cr * 1.3, cy + (r() - .3) * cr * .8, 1.5), fruit, .95);
+        else for (let j = 0; j < 7; j++) B.f(B.circ(x + lean + (r() - .5) * cr * 1.4, cy + (r() - .5) * cr * .9, 1.3), '#f6e8ee', .95); }
+      B.tufts(r, x, y + 1, 12, 5, [P.lawnLo, '#566e30', st[1]], 8);
+    }); };    const remnants = () => { if (edge === 'long-grass') KIT().tiles(box, 92, 36, salt + 5, (tx, ty, r) => {
       const at = () => [tx + 10 + r() * 72, ty + 10 + r() * 72];
       { const [x, y] = at(); if (r() < .7 && inF(x, y) && inF(x - 9, y) && inF(x + 9, y) && inF(x, y - 30)) {
         const top = [x + (r() - .5) * 2, y - 25 - r() * 4], cane = '#a8875a', dk = '#6a5236';
@@ -187,7 +202,7 @@
         for (let k = 0; k < 2; k++) { const [x, y] = at(); if (!inF(x, y) || !inF(x, y - 10)) continue; B.tufts(r, x, y, 12, 6, [lt[1], lt[2], P.lawnLo], 9); if (season !== 'winter') for (let j = 0; j < 3; j++) B.f(B.circ(x + (r() - .5) * 10, y - 6 - r() * 4, 1.2), '#c79ac0', .9); }   // willowherb come up through the old beds
         { const [x, y] = at(); if (inF(x, y) && r() < .7) B.f(B.rr(x, y, 5.4, 3, 1), '#8a5642', .8).f(B.rr(x + 4, y + 2, 4.6, 2.6, 1), '#96604a', .8); }
       }
-      if (edge === 'hedge-road') for (let k = 0; k < 3; k++) {   // young trees: whips on stakes
+      if (edge === 'hedge-road') for (let k = 0; k < 1; k++) {   // young trees: whips on stakes (one here and there between the young fruit trees, round 3)
         const [x, y] = at(); if (r() < .25 || !inF(x, y) || !inF(x, y - 14)) continue;
         B.f(B.ell(x + 2, y + 1, 5, 1.6), '#22301a', .22).f(B.rect(x + 2.4, y - 11, 1.3, 11), '#8a7454').s(`M${x} ${y}q${-.6} ${-9} ${.4} ${-17}`, '#5e4c36', 1.3, .95);
         for (let j = 0; j < 5; j++) B.f(B.blob(r, x + (r() - .5) * 8, y - 12 - r() * 8, 2.6, 1.8, 6, .4), lt[1 + Math.floor(r() * 3)], .9);
@@ -202,7 +217,7 @@
         { const [x, y] = at(), go = r(); if (go < .45 && inF(x, y) && inF(x, y - 14)) { for (let j = 0; j < 3; j++) { const dx = (j - 1) * 2.4 + (r() - .5), hh = 10 + r() * 6; B.s(`M${x + dx} ${y}q${dx * .3} ${-hh * .5} ${dx * .8} ${-hh}`, '#5a6e3a', 1.3, .9); B.f(B.ell(x + dx * 1.8, y - hh - 1.5, 1.3, 3), season === 'winter' ? '#7a6a52' : '#8a5a3a', .9); } B.f(B.blob(r, x, y, 7, 2.6, 7, .4), lt[1], .8); } }   // a clump of dock gone to seed
       }
     });
-    remnants();   // (after the long grass, so they stand up out of it)
+    remnants(); orchard();   // (after the long grass, so they stand up out of it)
   }
   // the sign at a field's gate: a small board on a post saying what the next piece of it needs, its level or its price
   function sign(B, x, y, row, lv) {

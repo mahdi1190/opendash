@@ -551,7 +551,10 @@ window.GardenNativePainted = (function () {
 
   /* ---------- planting: groves, shrubs and reeds in deliberate groups ---------- */
   const GROVE = { summer: ['tree.green-oak', 'tree.green-birch', 'tree.green-chestnut', 'tree.hawthorn', 'tree.green-alder'], autumn: ['tree.green-oak', 'tree.green-birch', 'tree.green-chestnut', 'tree.hawthorn', 'tree.cherry'] };
-  const TREE_KIT = { 'tree.green-oak': 'oak', 'tree.green-birch': 'birch', 'tree.green-chestnut': 'chestnut', 'tree.hawthorn': 'hawthorn', 'tree.green-alder': 'alder', 'tree.cherry': 'cherry' };
+  const TREE_KIT = { 'tree.green-oak': 'oak', 'tree.green-birch': 'birch', 'tree.green-chestnut': 'chestnut', 'tree.hawthorn': 'hawthorn', 'tree.green-alder': 'alder', 'tree.cherry': 'cherry', 'tree.kit-apple': 'apple', 'tree.kit-pear': 'pear', 'tree.kit-plum': 'plum' };
+  // (round 3) the shut south common orchard is planted with fruit trees in rows, each section its own kind, instead of the
+  // grove's oaks and chestnuts: the tree kit paints apple, pear and plum (no library drawing: kit only)
+  const FRUIT_TREES = { 'lc-old-apple': 'tree.kit-apple', 'lc-pear-corner': 'tree.kit-pear', 'lc-plum-row': 'tree.kit-plum' };
   const SHRUB = ['plant.holly', 'plant.gorse', 'plant.hedge', 'plant.fern', 'plant.bracken'];
   /** Once a frame: a village crown you stand under fades, so you can always see yourself (as in the woods). */
   let plantingTall = [], fadeLast = 0;
@@ -569,7 +572,7 @@ window.GardenNativePainted = (function () {
     // are painted straight into the cached ground, so a frame never pays for them.
     const g = cachedGround && scene.textures.exists(cachedGround.key) ? cachedGround : null, gc = g && scene.textures.get(g.key).getSourceImage(), gx = gc && gc.getContext('2d'), paintLow = !!(gx && !g.low);
     const add = (id, v, size, x, y) => {
-      if (!sceneObj(id)) return;
+      if (!sceneObj(id) && !(TREE_KIT[id] && window.GardenPaintTrees && size.h >= 50)) return;
       if (size.h && size.h < 50 && gx) {
         if (!paintLow) return; const o = ok(() => objectCanvas(id, v, season, size)); if (!o) return;
         const k = K / OBJ_K, bx = (x - g.box.x) * K, by = (y - g.box.y) * K, bw = Math.min(o.c.width * k, size.h * K * 2.2);
@@ -595,11 +598,13 @@ window.GardenNativePainted = (function () {
     };
     const tall = plantingTall = [], trunks = [];
     const gates = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data && GardenIslandLayout.data.gates || [], fl = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data && (GardenIslandLayout.data.presentation || {}).falls, byGate = (x, y) => gates.some(g => Math.abs(x - g.x) <= 3 && y - g.y >= -2 && y - g.y <= 5) || !!(fl && x >= fl.x - 3 && x <= fl.x + (fl.w || 3) + 2 && y >= fl.y - 1 && y <= fl.y + (fl.h || 3) + 4);   // (nor over Fleet Falls)
+    let fruitAt = null; try { const D = typeof gardenIslandData === 'function' ? gardenIslandData() : null; if (D && D.sectionCells) { fruitAt = new Map(); for (const [id, cs] of Object.entries(D.sectionCells)) if (FRUIT_TREES[id]) for (const c of cs) fruitAt.set(c[0] + ',' + c[1], FRUIT_TREES[id]); } } catch (e) { fruitAt = null; }
     for (let cy = info.box.y0; cy <= info.box.y1; cy++) for (let cx = info.box.x0; cx <= info.box.x1; cx++) {
       const spot = info.spot(cx, cy); spotCounts[spot || 'none'] = (spotCounts[spot || 'none'] || 0) + 1; if (!spot) continue;
       if (spot === 'tree' && byGate(cx, cy)) continue;   // (a gate stays in view: no tree crown over the arch)
       const h = (a, b, k) => { let n = Math.imul(a * 374761393 + b * 668265263 + k * 1442695041, 1) >>> 0; n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0; return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
       const r = h(cx, cy, 11), cluster = h(Math.floor(cx / 3), Math.floor(cy / 2), 5), px = (cx + .5) * W.cellW + (h(cx, cy, 2) - .5) * 22, py = W.sky + (cy + 1) * W.cellH - 4 + (h(cx, cy, 3) - .5) * 8;
+      { const fruit = spot === 'tree' && fruitAt && fruitAt.get(cx + ',' + cy); if (fruit) { if (((cx + cy) & 1) === 0) add(fruit, Math.floor(r * 3), { h: 90 + r * 18 }, (cx + .5) * W.cellW + (h(cx, cy, 2) - .5) * 10, W.sky + (cy + 1) * W.cellH - 4); continue; } }
       // A grove where the cluster field is high (one species leads it), shrubs at its fringe.
       if (spot === 'tree' && cluster > .42) add(trees[Math.floor((cluster * 7 + r * 2) % trees.length)], Math.floor(r * 3), { h: 84 + r * 40 }, px, py);
       else if ((spot === 'tree' && cluster > .3 || spot === 'edge' && cluster > .35 || spot === 'wild' && r > .4) && r > .3) add(SHRUB[Math.floor(r * 53) % SHRUB.length], Math.floor(r * 7) % 3, { h: 26 + r * 16 }, px, py);
