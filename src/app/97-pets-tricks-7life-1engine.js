@@ -150,9 +150,12 @@ function _plStage(P, near, kind) {
  *  is a row nobody sees); when the thing is out of view, a row that brings its own (a puddle, flowers, a leaf pile) plays beside you instead. */
 function _plGoDo(P, t, clips, rest, after, run) {
   if (_pl.here) { _plPlay(P, clips, rest, after); return true; }   // (petLifeTry with here: the checking tool plays it where the pet stands)
-  const near = t && (t.free ? t : _ptwBeside(t));
   const row = P.lifeCur, pl = _ptwPlayer();
-  const dN = near && pl ? Math.hypot(near.x - pl.x, (near.y - pl.y) * 1.4) : 99, onYou = near && pl && Math.abs(near.x - pl.x) < 0.55 && Math.abs(near.y - pl.y) < 0.5;
+  // beside the thing, but not where you stand (round 3: walked up to the well yourself, the one spot beside it was yours, and the row gave up)
+  const clearOfYou = (q) => !pl || Math.abs(q.x - pl.x) > _plHalf(P) + 0.14 || Math.abs(q.y - pl.y) > 0.42;
+  const freeT = t && t.free ? (clearOfYou(t) ? t : [0.5, -0.5, 0.9, -0.9].map(k => ({ x: t.x + k + Math.sign(k) * _plHalf(P), y: t.y, free: true, stage: t.stage })).find(q => _ptwFree(q.x, q.y) && clearOfYou(q)) || t) : null;
+  const near = t && (t.free ? freeT : [[0, .8], [-.9, .5], [.9, .5], [0, 1.3], [-1.3, .8], [1.3, .8], [-1.6, .2], [1.6, .2], [0, 1.8]].map(([x, y]) => ({ x: t.x + x, y: t.y + y })).find(q => _ptwFree(q.x, q.y) && clearOfYou(q)));
+  const dN = near && pl ? Math.hypot(near.x - pl.x, (near.y - pl.y) * 1.4) : 99, onYou = near && !clearOfYou(near);
   if (P.me && pl && (!near || !_plSeen(near.x, near.y) || dN > ((row && (row.prop || row.propAlways)) ? 2.4 : 4.5) || onYou || t.free && !t.stage)) {
     if (!(row && (row.prop || row.propAlways || row.stageOk)) && !(near && t.free && _plSeen(near.x, near.y))) return false;
     const s = _plStage(P, !!(row && (row.group === 'you' || row.tight))); if (!s) return false;
@@ -160,7 +163,7 @@ function _plGoDo(P, t, clips, rest, after, run) {
     return true;
   }
   if (!near) return false;
-  P.walkTo(near.x, near.y, !!run, () => { if (t.x !== near.x) P.dir = t.x >= P.x ? 1 : -1; _plPlay(P, clips, rest, after, { at: 1 }); });
+  P.walkTo(near.x, near.y, !!run, () => { if (t.x !== near.x && !t.free) P.dir = t.x >= P.x ? 1 : -1; _plPlay(P, clips, rest, after, { at: 1 }); });
   return true;
 }
 /* Round 3, the critic: rows with you must really touch you (a pet landed on your head, stood on your leg, high-fived the air, waved from two
