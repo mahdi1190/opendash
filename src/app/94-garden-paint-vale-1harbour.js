@@ -251,6 +251,80 @@
         const a = pts[0], b = pts[pts.length - 1], px = (a.x + b.x) / 2 - g.ty * 14, py = (a.y + b.y) / 2 + g.tx * 10;
         if (rr() < .7) B.f(B.blob(rr, px, py, 11 * g.s, 4.4 * g.s, 9, .3), '#6f6a5c').f(B.blob(rr, px, py - .6, 9 * g.s, 3.4 * g.s, 9, .3), '#7fb3b4').f(B.ell(px - 3, py - 1.6, 4 * g.s, .9), '#e4f2ee', .7); });
 
+      // 2f. What people leave on a wide beach, and what stands off the shore (round 3: long stretches of bare sand with a log
+      // or two, and an empty sea). Along the sea coast, now and then where the beach is wide: a rowing boat drawn up, a net
+      // drying on its posts, a stack of pots, a sandcastle with its bucket, a striped windbreak in summer; each well clear
+      // of paths, plots, buildings and the harbour's own things, in its own scuffed sand. The bigger ones stop the feet
+      // (their foot is shared with walking through GardenPaintVale.feet). Out at sea, a few skerries: wet rock with weed at
+      // the tide, foam round it and a gull or a cormorant on top.
+      const pathNear = (x, y, r) => { for (let dy = -r; dy <= r; dy += r) for (let dx = -r; dx <= r; dx += r) { const k = kindAt(x + dx, y + dy); if (k === 'path' || k === 'water') return true; } return false; };
+      const left = [], harbourBox = c => c[0] > QUAY.x0 - 2 && c[0] < QUAY.x1 + 2 && c[1] > QUAY.y0 && c[1] < QUAY.y1 + 3;
+      // (clear of every door and the foot of every stair by three cells, and of the map's edges)
+      const doors = (L.D.static || []).filter(st => st.door).map(st => ({ x: (st.door.x + .5) * cw, y: W.sky + (st.door.y + .5) * ch })).concat((L.D.landforms || []).filter(f => /stair|step/.test(String(f.kind) + ' ' + String(f.id))).map(f => { const xs = (f.polygon || [[0, 0]]).map(p => p[0]), ys = (f.polygon || [[0, 0]]).map(p => p[1]); return { x: (Math.min(...xs) + Math.max(...xs)) / 2 * cw, y: W.sky + Math.max(...ys) * ch }; }));
+      for (let i = 0; i < seaW.length; i += 7) { const q = seaW[i]; if (F(q.x, q.y, 300, 141) < .34) continue; const rr = prng(q, 142); if (rr() < .3) continue;
+        const d = 32 + rr() * 30, p = inl(q, d), back = inl(q, d + 34), c0 = cellOf(p.x, p.y); if (kindAt(p.x, p.y) !== 'beach' || kindAt(back.x, back.y) === 'sea' || !plantable(p.x, p.y) || pathNear(p.x, p.y, 30) || harbourBox(c0)) continue;
+        if (c0[0] < 2.5 || c0[1] < 3 || c0[0] > W.cols - 2.5 || c0[1] > W.rows - 2 || doors.some(o => Math.abs(o.x - p.x) < 3 * cw && Math.abs(o.y - p.y) < 3 * ch)) continue;
+        let solid = false; for (let dy = -1.5; dy <= 1.5 && !solid; dy += .75) for (let dx = -1.5; dx <= 1.5 && !solid; dx += .75) { const b = L.base(c0[0] + dx, c0[1] + dy); if (b && (b.solid || b.staticId)) solid = true; }
+        if (solid || left.some(o => Math.hypot(o.x - p.x, o.y - p.y) < 5 * cw) || things.some(t => Math.hypot(t.x - p.x, t.y - p.y) < 160)) continue;
+        const cold = coldAt(p.x, p.y), pick = cold ? ['boat', 'net', 'pots'] : ['boat', 'net', 'pots', 'castle', C.season === 'summer' ? 'windbreak' : 'castle'];
+        left.push({ x: p.x, y: p.y, kind: pick[Math.floor(rr() * pick.length)], seed: kit.hash(Math.round(p.x), Math.round(p.y), 143) }); }
+      const BOATS = ['#3f6f8a', '#a8402e', '#2f6a5a', '#d8c890', '#5a6e8a', '#7a3a4a'];
+      const castle = B => { B.shadow(4, 1, 20, 4, .25); B.f('M-16 0L-15 -9L-9 -9L-9 -14L-4 -14L-4 -9L4 -9L4 -16L9 -16L9 -9L15 -9L16 0Z', '#d8c08a').f('M-16 0L-15 -9L-9 -9L-9 -14L-6 -14L-6 0Z', '#ecdcaa', .7).f('M9 -16L9 -9L15 -9L16 0L10 0Z', '#b49a64', .6);
+        for (const [x, y] of [[-12, -9], [-6, -14], [6, -16], [12, -9]]) B.f(B.rect(x - 1, y - 2, 2, 2), '#c8ae78'); B.s('M6.5 -16v-7', '#5a4630', .8).f('M6.5 -23l5 1.6l-5 1.6z', '#e0503a');
+        B.f(B.rr(20, -9, 9, 9, 2), '#3f8ac8').f(B.ell(24.5, -9, 4.5, 1.6), '#2c6aa0').s('M20.5 -8q4 -7 8 0', '#e8e4d8', .8, .9); B.s('M-22 -1l-6 -12', '#8a6a44', 1.6).f('M-30 -15l4 -1l1.4 5l-3.6 1z', '#e0503a'); };
+      const windbreak = seed => B => { B.shadow(8, 1, 34, 5, .26); const pair = [['#3a7ac0', '#f4efe2'], ['#d8503e', '#f4ead2'], ['#2f8a7a', '#f0e4c4'], ['#e0a030', '#f4efe2']][seed % 4];
+        // narrow stripes on canvas between the poles, sagging a little between them
+        for (let k = 0; k < 12; k++) { const x0 = -30 + k * 5, sag = Math.sin((k % 3 + .5) / 3 * Math.PI) * 1.4; B.f(`M${x0} ${-2 + k * .08}L${x0 + 5} ${-1.9 + k * .08}L${x0 + 5} ${-22 + sag}L${x0} ${-22.4 + sag}Z`, pair[k % 2], .96); }
+        B.f('M-30 -2L30 -1L30 -5L-30 -6Z', '#000', .12).f('M-30 -22L30 -21L30 -19L-30 -20Z', '#fff', .18);
+        for (let k = 0; k <= 4; k++) B.post(-30 + k * 15, -26, 1, 2, ['#9a7a54', '#6e5438', '#c4a478']);
+        B.f('M8 2L14 -10L24 -9L20 3Z', '#3a7ac0').f('M10 -2L14 -10L24 -9L22 -4Z', '#f4efe2', .9).s('M8 2L13 -10M20 3L24 -9M12 -3h11', '#8a6a44', 1.1); };
+      left.forEach((o, i) => {
+        // (each its own: a boat its own colour and size, drawn up facing either way; a windbreak its own stripes)
+        const rr = kit.rng(o.seed), flip = rr() < .5, z = .85 + rr() * .25, boat = drawBoat(P, BOATS[Math.floor(rr() * BOATS.length)], false), turned = d => B => { B.cx.save(); B.cx.scale(flip ? -z : z, z); d(B); B.cx.restore(); };
+        const look = o.kind === 'boat' ? [[-50, -28, 52, 12], turned(boat), [-36 * z, 38 * z, 10]] : o.kind === 'net' ? [[-46, -64, 48, 10], turned(drawNet(P)), [-34 * z, 34 * z, 6]] : o.kind === 'pots' ? [[-32, -38, 34, 8], turned(drawPots(P)), [-24 * z, 26 * z, 8]] : o.kind === 'castle' ? [[-36, -28, 34, 8], turned(castle), null] : [[-38, -32, 38, 10], turned(windbreak(o.seed >>> 0)), [-32 * z, 22 * z, 6]];
+        thing(Object.assign({ key: 'beach-' + o.kind + '-' + i, box: look[0], x: o.x, y: o.y, draw: look[1] }, look[2] ? { foot: look[2] } : {}));
+        add([o.x - 70, o.y - 30, o.x + 70, o.y + 24], 144, (B) => { const r2 = kit.rng(o.seed ^ 77); B.f(B.blob(r2, o.x + 4, o.y + 1, 44, 8, 9, .45), P.sandWet, .26).f(B.blob(r2, o.x - 3, o.y - 2, 32, 5, 9, .4), P.sandDk, .1);
+          for (let k = 0; k < 7; k++) B.f(B.ell(o.x + (r2() - .5) * 80, o.y + (r2() - .4) * 12, 1.3 + r2() * 1.4, .9 + r2() * .6), ['#a89c88', '#8c8474', '#c2b8a4', '#f2ebdc'][Math.floor(r2() * 4)], .9);
+          for (let k = 0; k < 6; k++) { const fx = o.x - 50 + k * 9 + r2() * 5, fy = o.y + 12 + r2() * 6; B.f(B.ell(fx, fy, 1.6, 1), '#a8946a', .35); } }); });
+      const skerries = [];
+      for (let i = 0; i < seaW.length; i += 20) { const q = seaW[i], rr = prng(q, 151); if (F(q.x, q.y, 700, 152) < .46 || rr() < .45) continue;
+        const p = out(q, 170 + rr() * 200), c = cellOf(p.x, p.y); if (c[0] < 1 || c[1] < 1 || c[0] > W.cols - 1 || c[1] > W.rows - .5 || harbourBox(c)) continue;
+        let wet = true; for (const [dx, dy] of [[0, 0], [-70, 0], [70, 0], [0, -50], [0, 40]]) { const b = L.base((p.x + dx) / cw, (p.y + dy - W.sky) / ch); if (!b || !b.ocean) wet = false; } if (!wet || skerries.some(o => Math.hypot(o.x - p.x, o.y - p.y) < 700)) continue;
+        skerries.push({ x: p.x, y: p.y, seed: kit.hash(Math.round(p.x), Math.round(p.y), 153) }); }
+      const SK = { rock: '#6e6a62', rockLo: '#4e4b46', rockHi: '#9a958a', rockDk: '#2e2c2a', lichen: '#d8d4c4' };
+      skerries.forEach((k, i) => thing({ key: 'skerry-' + i, x: k.x, y: k.y, box: [-70, -52, 70, 16], shade: false, draw: B => {
+        const rr = kit.rng(k.seed), n = 2 + Math.floor(rr() * 3), rocks = [];
+        for (let j = 0; j < n; j++) rocks.push({ x: (j - (n - 1) / 2) * (18 + rr() * 10) + (rr() - .5) * 8, y: (rr() - .5) * 6, w: 22 + rr() * 26 * (j === 1 ? 1.3 : 1), h: 12 + rr() * 16 * (j === 1 ? 1.4 : 1) });
+        rocks.sort((a, b) => a.y - b.y);
+        B.f(B.ell(0, 3, 60, 9), '#2e5a6a', .25);
+        for (const r of rocks) { B.boulder(rr, r.x, r.y + 2, r.w, r.h, SK, false); B.f(B.blob(rr, r.x, r.y + 1, r.w * .5, 2.6, 8, .5), '#33402a', .85); B.f(B.blob(rr, r.x - r.w * .1, r.y - r.h * .85, r.w * .22, r.h * .12, 6, .5), '#ecebe2', .75); }
+        for (let a = 0; a < 6.28; a += .5) { if (rr() < .35) continue; const x = Math.cos(a) * (46 + rr() * 10), y = 4 + Math.sin(a) * 8; B.s(`M${x - 5} ${y}q5 ${1.5 + rr()} 10 0`, P.foam, 1.2, .55); }
+        if (rr() < .7) { const top = rocks.reduce((m, r) => r.h > m.h ? r : m, rocks[0]), bx = top.x - 2, by = top.y + 2 - top.h; if (rr() < .5) { B.f(B.ell(bx, by - 4, 2.6, 4.2), '#24282a').f(B.circ(bx + .8, by - 9, 1.6), '#24282a').s(`M${bx + 1.6} ${by - 9}l3 .6`, '#c8a040', 1); } else for (const dx of [-5, 4]) B.f(B.ell(bx + dx, by - 3, 3, 2.2), '#f4f2ea').f(B.ell(bx + dx - 2, by - 3.4, 1.6, .9), '#9aa0a4').f(B.circ(bx + dx + 2.4, by - 4.6, 1.1), '#f4f2ea').s(`M${bx + dx + 3.4} ${by - 4.6}l1.4 .3`, '#e8a838', .8); }
+      } }));
+
+      // 2g. Where a river meets the sea: mud flats either side of its mouth, widening towards the sea, grey and wet, with
+      // little creeks draining into the channel and a sheen of sky on them, then a fringe of samphire and cord-grass where
+      // the mud meets the sand. Painted on the land only (the water is the water chain's): the mouth reads as an estuary
+      // opening out, not a canal cut through the beach (round 3).
+      const mouthD = (x, y) => typeof gardenIslandCoastDistance === 'function' ? gardenIslandCoastDistance(x / cw, (y - W.sky) / ch) : 1e9;
+      for (const f of L.D.freshwater || []) { if (!f.boundary || f.boundary.length < 3) continue;
+        const ring = f.boundary.map(L.pt), bank = V.walk(ring.concat([ring[0]]), 7).filter(q => { const b = L.base(q.x / cw, (q.y - W.sky) / ch); if (!b || !b.land) return false; q.d = mouthD(q.x, q.y); return q.d < 7 * cw; });
+        if (bank.length < 4) continue; const river = new Path2D(); river.rect(-2000, -2000, W.cols * cw + 4000, W.sky + W.rows * ch + 4000); river.addPath(V.loopPath([ring])); const bb = kit.bboxOf(bank, 120);
+        add(bb, 156, (B) => {
+          B.cx.save(); B.cx.clip(coastP); B.cx.clip(river, 'evenodd');
+          const near = q => 1 - Math.min(1, q.d / (7 * cw));
+          for (const q of bank) { const rr = prng(q, 157), k = near(q), w = 14 + k * k * 70; B.f(B.blob(rr, q.x, q.y, w, w * .45, 9, .45), '#8a7f66', .2 + k * .3); }
+          for (const q of bank) { const rr = prng(q, 158), k = near(q); if (k < .25) continue; B.f(B.blob(rr, q.x + (rr() - .5) * 20, q.y + (rr() - .5) * 8, 10 + k * 26, 4 + k * 8, 9, .5), '#6f6754', .18 + k * .2).f(B.blob(rr, q.x + (rr() - .5) * 30, q.y + (rr() - .5) * 10, 6 + k * 14, 1.6 + k * 2.6, 8, .5), '#aebcb6', .18 + k * .22); }
+          // creeks: thin winding channels from the flats down into the river, a thread of water in each
+          for (let i = 0; i < bank.length; i += 6) { const q = bank[i], rr = prng(q, 159), k = near(q); if (k < .3 || rr() < .4) continue; const len = 20 + k * 50, a = rr() * Math.PI * 2, pts = [];
+            for (let s = 0; s <= 6; s++) { const u = s / 6; pts.push({ x: q.x + Math.cos(a) * len * u + Math.sin(u * 5 + i) * 5, y: q.y + Math.sin(a) * len * u * .6 + Math.cos(u * 4 + i) * 3 }); }
+            V.strokePts(B, pts, '#5a5444', 4.4, .45); V.strokePts(B, pts, '#7fa6ac', 1.6, .7, 0, .3); }
+          // samphire and cord-grass along the landward edge of the mud
+          for (let i = 0; i < bank.length; i += 2) { const q = bank[i], rr = prng(q, 160), k = near(q); if (rr() > .55) continue; const a = rr() * Math.PI * 2, r0 = 18 + k * 62, x = q.x + Math.cos(a) * r0, y = q.y + Math.sin(a) * r0 * .45;
+            for (let j = 0; j < 4; j++) B.s(`M${x + (rr() - .5) * 8} ${y}l${(rr() - .5) * 2} ${-3 - rr() * 4}`, rr() < .5 ? '#8fae4a' : '#a8a050', 1.3, .8); }
+          B.cx.restore();
+        }); }
+
       // 2e. the swash, live: on every sand and shingle beach a thin sheet of water runs up the sand, its edge a line of
       // foam, then slides back and the foam thins away; each stretch on its own beat, the waves running along the beach
       // (round 2: the foam was painted into the ground and nothing moved). Drawn each frame near the camera only, in short
