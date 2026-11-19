@@ -28,9 +28,14 @@ function _gaStaticRows() {
   for (const r0 of rows) {
     const opts = GARDEN_ACT_BY_PROP[r0.id]; if (!opts) continue;
     const r = live.get(r0.id) || r0, rec = drawn && drawn.get('prop:' + r0.id);
-    if (drawn && drawn.size && !rec) continue;   // not drawn here (not built yet, or another painter's): nothing invisible can be used
+    if (drawn && drawn.size && !rec && !opts[0].painted) continue;   // not drawn here (not built yet, or another painter's): nothing invisible can be used
+    if (opts[0].pierEnd && typeof _gardenPierDecksNow === 'function') {   // the end of the pier as far as it is built today
+      const decks = _gardenPierDecksNow(), d = decks[decks.length - 1];
+      if (d) for (const o of opts) out.push({ key: 'pier-end:' + o.act, act: o.act, name: o.name, x: d.x + d.w / 2, y: d.y + d.h, stand: { x: d.x + d.w / 2 + o.stand[0], y: d.y + d.h + o.stand[1] }, deg: o.deg, lift: o.lift || 0, src: r0.id });   // (a negative lift: over the edge)
+      continue;
+    }
     const b = rec && rec.bounds, fx = b && b.width ? (b.x + b.width / 2) / W.cellW : r.x + r.w / 2, fy = b && b.height ? (b.y + b.height - W.sky) / W.cellH : r.y + r.h;
-    for (const o of opts) out.push({ key: r.id + ':' + o.act, act: o.act, name: o.name, x: fx, y: fy, stand: { x: fx + o.stand[0], y: fy + o.stand[1] }, deg: o.deg, lift: o.lift || 0, src: r.id });
+    for (const o of opts) out.push({ key: r.id + ':' + o.act, act: o.act, name: o.name, x: fx, y: fy, stand: { x: fx + o.stand[0], y: fy + o.stand[1] }, deg: o.deg, lift: o.lift || 0, src: r.id, boat: !!o.boat });
   }
   return out;
 }
@@ -153,6 +158,11 @@ function _gaDirDeg(row, spot) { return spot && spot.deg != null ? spot.deg : row
 function gartActRun(id, spot) {
   const row = GARDEN_ACTS[id]; if (!row || typeof _gw === 'undefined' || !_gw.on) return false;
   gartActStop();
+  if (spot && spot.boat) {   // the boat: your own rowing boat takes you out on the Mere (the boat game); without one, say where to get one
+    const go = () => { if (typeof gardenBoatAsk === 'function' && gardenBoatAsk()) { _gaFirst({ id, row }); return; } try { gardenToast('You need a rowing boat of your own. The tackle shop has one.'); } catch (e) { /* fine */ } };
+    if (!gardenWalkToPoint(spot.stand, go, { radius: 1.6 })) go();
+    return true;
+  }
   if (typeof gartEmoteStop === 'function') gartEmoteStop();
   const cur = _ga.cur = { id, row, spot: spot || null, doing: false, lift: spot && spot.lift ? spot.lift : 0, t0: 0, fxT: 0, fxI: 0 };
   const start = () => { if (_ga.cur === cur) _gaStart(cur); };

@@ -39,9 +39,10 @@ const GARDEN_ACTS = Object.freeze({
     enter: _GA_SIT,
     // swinging legs and a fidget: one leg, then the other, a look round now and then
     loop: { ms: 4200, legL: [[0, { sy: 0.52, r: 6 }], [0.12, { sy: 0.5, r: 18 }, 'io'], [0.24, { sy: 0.52, r: 4 }, 'io'], [0.36, { sy: 0.5, r: 16 }, 'io'], [0.48, { sy: 0.52, r: 6 }, 'io'], [1, { sy: 0.52, r: 6 }]], legR: [[0, { sy: 0.52, r: -6 }], [0.5, { sy: 0.52, r: -6 }], [0.62, { sy: 0.5, r: -18 }, 'io'], [0.74, { sy: 0.52, r: -4 }, 'io'], [0.86, { sy: 0.5, r: -16 }, 'io'], [1, { sy: 0.52, r: -6 }, 'io']], head: [[0, {}], [0.3, {}], [0.4, { r: 8 }, 'io'], [0.58, { r: 8 }], [0.68, { r: -4 }, 'io'], [0.8, {}, 'io'], [1, {}]], root: [[0, { y: 14 }], [1, { y: 14 }]], armL: [[0, { r: 16 }], [1, { r: 16 }]], armR: [[0, { r: -16 }], [1, { r: -16 }]] } },
-  dangle: { verb: 'Sit on the end and dangle your feet', dir: 'n', ms: 700, hold: true, pet: 'sit', first: 'Sat at the end of the pier, feet over the water.',
-    enter: { root: [[0.6, { y: 12 }, 'o'], [1, { y: 12 }]], legL: [[0.6, { sy: 0.8 }, 'o'], [1, { sy: 0.8 }]], legR: [[0.6, { sy: 0.8 }, 'o'], [1, { sy: 0.8 }]], armL: [[0.6, { r: 24 }, 'o'], [1, { r: 24 }]], armR: [[0.6, { r: -24 }, 'o'], [1, { r: -24 }]] },
-    loop: { ms: 2400, root: [[0, { y: 12 }], [1, { y: 12 }]], legL: [[0, { sy: 0.8 }], [0.25, { sy: 0.7, r: 8 }, 'io'], [0.5, { sy: 0.8 }, 'io'], [1, { sy: 0.8 }]], legR: [[0, { sy: 0.8 }], [0.5, { sy: 0.8 }], [0.75, { sy: 0.7, r: -8 }, 'io'], [1, { sy: 0.8 }, 'io']], armL: [[0, { r: 24 }], [1, { r: 24 }]], armR: [[0, { r: -24 }], [1, { r: -24 }]], head: [[0, {}], [0.5, { r: -5 }, 'io'], [1, {}, 'io']] }, fx: { every: 1200, kind: 'water', dy: 0.5, width: 30 } },
+  dangle: { verb: 'Sit on the end and dangle your feet', dir: 's', ms: 700, hold: true, pet: 'sit', first: 'Sat at the end of the pier, feet over the water.',
+    // the hips on the deck's edge, the legs hanging down over the water (the feet go below the planks)
+    enter: { root: [[0.6, { y: 25 }, 'o'], [1, { y: 25 }]], legL: [[0.6, { r: 4 }, 'o'], [1, { r: 4 }]], legR: [[0.6, { r: -4 }, 'o'], [1, { r: -4 }]], armL: [[0.6, { r: 30 }, 'o'], [1, { r: 30 }]], armR: [[0.6, { r: -30 }, 'o'], [1, { r: -30 }]] },
+    loop: { ms: 2400, root: [[0, { y: 25 }], [1, { y: 25 }]], legL: [[0, { r: 4 }], [0.25, { r: 16, sy: 0.92 }, 'io'], [0.5, { r: 4 }, 'io'], [1, { r: 4 }]], legR: [[0, { r: -4 }], [0.5, { r: -4 }], [0.75, { r: -16, sy: 0.92 }, 'io'], [1, { r: -4 }, 'io']], armL: [[0, { r: 30 }], [1, { r: 30 }]], armR: [[0, { r: -30 }], [1, { r: -30 }]], head: [[0, {}], [0.5, { r: -5 }, 'io'], [1, {}, 'io']] }, fx: { every: 1200, kind: 'water', dy: 0.9, width: 30 } },
   lie: { verb: 'Lie down and watch the clouds', dir: 's', ms: 900, hold: true, pet: 'sleep', first: 'Lay in the grass and watched the clouds go over.', blanket: false,
     enter: { root: [[0.35, { y: 6, sy: 0.9 }, 'io'], [0.8, { r: -90, x: 34, y: -8 }, 'o'], [1, { r: -90, x: 34, y: -8 }]], armL: [[0.8, { r: 150 }, 'o'], [1, { r: 150 }]], armR: [[0.8, { r: -150 }, 'o'], [1, { r: -150 }]], legL: [[0.8, { r: 4 }], [1, { r: 4 }]], legR: [[0.8, { r: 10 }], [1, { r: 10 }]] },
     loop: { ms: 5000, root: [[0, { r: -90, x: 34, y: -8 }], [0.5, { r: -90, x: 34, y: -8.6, sx: 1.01 }, 'io'], [1, { r: -90, x: 34, y: -8 }, 'io']], armL: [[0, { r: 150 }], [1, { r: 150 }]], armR: [[0, { r: -150 }], [1, { r: -150 }]], legR: [[0, { r: 10 }], [0.5, { r: 18 }, 'io'], [1, { r: 10 }, 'io']], legL: [[0, { r: 4 }], [1, { r: 4 }]] } },
@@ -104,8 +105,8 @@ const GARDEN_ACT_BY_PROP = Object.freeze({
   'ld-lighthouse': [{ act: 'ladder', name: 'the lighthouse ladder', stand: [0.12, 0.1], deg: -90 }],
   'ld-treehouse': [{ act: 'ladder', name: 'the treehouse ladder', stand: [0, 0.4], deg: -90 }],
   'ld-barn': [{ act: 'ladder', name: 'the hay loft ladder', stand: [1.1, 0.4], deg: -90 }],
-  'pier-3': [{ act: 'dangle', name: 'the pier end', at: 'top', stand: [0, 0.6], deg: -90 }],
-  boat: [{ act: 'row', name: 'the boat', stand: [0, -0.3], deg: 90, lift: 2 }],
+  pier: [{ act: 'dangle', name: 'the pier end', painted: true, pierEnd: true, stand: [0, -0.22], deg: 90, lift: -7 }],   // (the pier is painted with the coast, not a prop of its own)
+  boat: [{ act: 'row', name: 'the boat', stand: [0.9, 0.2], deg: 180, boat: true }],   // the rowing boat you own (94-garden-fish-9world.js) takes you out
   'notice-board': [{ act: 'read', name: 'the notices', stand: [0, 0.6], deg: 90 }],
   'lake-board': [{ act: 'read', name: 'the board', stand: [0, 0.6], deg: 90 }],
   'ld-sign-c': [{ act: 'read', name: 'the sign', stand: [0, 0.6], deg: 90 }],
@@ -123,7 +124,7 @@ const GARDEN_ACT_BY_DECOR = Object.freeze({ sit: [{ act: 'sit', name: 'the seat'
 /** Trees, by which painter drew them (_gwPaintedTrunks). */
 const GARDEN_ACT_BY_TREE = Object.freeze({
   orchard: [{ act: 'shake', name: 'the fruit tree', stand: [0, 0.32], deg: -90 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90 }],
-  wood: [{ act: 'climbtree', name: 'the tree', stand: [0, 0.3], deg: -90, big: 0.42 }, { act: 'hide', name: 'the tree', stand: [0, -0.5], deg: -90 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90 }],
+  wood: [{ act: 'climbtree', name: 'the tree', stand: [0, 0.3], deg: -90, big: 0.3 }, { act: 'hide', name: 'the tree', stand: [0, -0.5], deg: -90 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90 }],
   village: [{ act: 'hide', name: 'the tree', stand: [0, -0.5], deg: -90 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90 }],
   fells: [{ act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90 }],
 });
