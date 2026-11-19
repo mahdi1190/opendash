@@ -19,7 +19,9 @@ window.GardenPaintedTerrain = (function () {
   'use strict';
   const KIT = () => window.GardenPaintTerrainKit, D2 = () => sceneDraw;
   const K = 1.5, CHUNK = 256, DEPTH = -9350;
-  const GORGE_WATER = true;                // the gorge's water is painted with its walls; false leaves a hole for the water painter
+  const GORGE_WATER = false;               // the gorge's water is painted with its walls; false leaves a hole for the water painter
+  // (false since 19 Nov 2026: baked here, the gorge kept its daytime turquoise at dusk and at night beside the tarn's
+  // evening colours; the water painter draws it by the hour, with its flow, and this layer keeps the rock walls)
   let current = null, sprites = [], lastError = null, stats = {}, trunkFeet = [];
   const ok = f => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
 
@@ -145,7 +147,7 @@ window.GardenPaintedTerrain = (function () {
           const wx = cb[0] - pad + (i + .5) * Q, wy = cb[1] - pad + (j + .5) * Q, dr = kit.fbm(wx / 230, wy / 150, 77); if (dr < .53) continue;
           const m = moor(wx), th = heathAt(m), fine = kit.noise(wx / 7, wy / 4.5, 820), lump = kit.noise(wx / 15, wy / 9, 821);
           // (the drift's edge is lumpy and fairly sharp: a wide soft ramp read as a purple cloud airbrushed on the turf)
-          const aH = sm((dr - th + .02 + (lump - .5) * .07 + (fine - .5) * .03) / .028), aC = sm((dr - .535) / .045) * (1 - aH);
+          const aH = sm((dr - th + .02 + (lump - .5) * .07 + (fine - .5) * .03) / .045), aC = sm((dr - .535) / .045) * (1 - aH);
           // (heather is a dense dark mat, lit on its swells and in flower on top: as a translucent wash with big dark blotches it
           // read as a stain on the turf; the colour now breaks at the scale of a clump, not of a puddle)
           const n = kit.noise(wx / 8, wy / 5, 818), lit = kit.noise(wx / 70, wy / 44, 819), o = (j * w + i) * 4, past = 1 - sm((m - .1) / .35);
@@ -214,7 +216,7 @@ window.GardenPaintedTerrain = (function () {
           if (drift > hth && pick < .6 + (drift - .56) * 1.5) {
             B.cx.globalAlpha = 1;
             // inside a drift (1b lays its mass): fine sprigs, the odd spray of bloom; a real clump only at the drift's broken edge
-            if (!window.GardenPaintGround || snowRow > -5 || (drift < hth + .035 && r() < .35)) { B.heather(r, x, y, 3 + sz * 4, m > .25 ? P : HP, P.bloom && r() < .5 ? P.bloom : null); continue; }
+            if (!window.GardenPaintGround || snowRow > -5 || (drift < hth + .035 && r() < .12)) { B.heather(r, x, y, 3 + sz * 4, m > .25 ? P : HP, P.bloom && r() < .5 ? P.bloom : null); continue; }
             // a clump's woody sprigs, dark at the foot, and in summer its spikes of bell flowers on top
             for (let q = 0; q < 9; q++) { const px = x + (r() - .5) * 13, py = y + (r() - .5) * 6, hh = 1.8 + r() * 3.2, lx = (r() - .5) * 2; B.s(`M${px} ${py}l${lx} ${-hh}`, q % 3 === 1 ? P.heatherHi : q % 3 ? '#4a3e3c' : P.heatherLo, 1, .7);
               if (P.bloom && drift > .58 && q % 2 === 0) B.f(B.ell(px + lx, py - hh - .6, .7, 1.3), q % 4 ? P.bloom : kit.mix(P.bloom, '#ffffff', .3), .9); }
