@@ -331,7 +331,7 @@
       });
       const logs = gardenIslandLogStack(L.D), logAt = logs ? L.cpt(logs.x, logs.y) : { x: c.x + 2.2 * cw, y: c.y + .4 * ch };
       thing({ key: 'logstack', x: logAt.x, y: logAt.y, box: [-40, -54, 44, 8], draw: B => logStack(B, C.kit.rng(72), P) });
-      thing({ key: 'block', x: c.x - 1.9 * cw, y: c.y + 1.3 * ch, box: [-20, -34, 26, 8], foot: [-14, 18, 8], draw: B => chopBlock(B, P) });
+      thing({ key: 'block', x: c.x - 1.9 * cw, y: c.y + 1.3 * ch, box: [-20, -34, 26, 8], foot: [-11, 11, 8], draw: B => chopBlock(B, P) });   // (foot: the stump, 20 px wide; the chips on the ground are walked over and the axe's handle is in the air: the block ran 0.44 of a cell past the stump, the collision audit, 19 Nov 2026)
     }
     const ice = L.stat('ld-icehouse');
     if (ice) {
