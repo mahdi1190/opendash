@@ -139,8 +139,34 @@
     if (edge === 'long-grass') {
       // the slope's strips: long beds lying along the contour, gone back to grass, still showing in the sward
       const x0 = Math.floor((box[0] - 30) / 24) * 24;
-      for (let k = 0, y = bb[1] - 8; y < bb[3] + 8; y += 15, k++) { if (y < box[1] - 12 || y > box[3] + 12) continue; const pts = []; for (let x = x0; x <= box[2] + 30; x += 24) pts.push({ x, y: y + Math.sin(x * .011 + y * .004) * 6 }); V.strokePts(B, pts, k % 2 ? '#5a6e30' : st[2], 7, .16); }
+      // (round 3: the old bed lines further apart, fainter and broken where the grass has closed over them, so the field
+      // reads as an allotment gone back to grass and not as a striped block)
+      for (let k = 0, y = bb[1] - 4; y < bb[3] + 8; y += 27, k++) { if (y < box[1] - 12 || y > box[3] + 12) continue; let pts = []; const flush = () => { if (pts.length > 2) V.strokePts(B, pts, k % 2 ? '#5a6e30' : st[2], 6, .1); pts = []; };
+        for (let x = x0; x <= box[2] + 30; x += 24) { if (((Math.imul(x * 31 + y * 17 + salt, 2654435761) >>> 0) % 7) === 0) { flush(); continue; } pts.push({ x, y: y + Math.sin(x * .011 + y * .004) * 6 }); } flush(); }
     }
+    // (round 3) the shut allotment is somebody's old plot gone to grass, not an empty block: bean-cane wigwams still
+    // standing, a rhubarb clump (a forcing pot over it in winter), a pail left upside down; each seated in the grass
+    const remnants = () => { if (edge === 'long-grass') KIT().tiles(box, 92, 36, salt + 5, (tx, ty, r) => {
+      const at = () => [tx + 10 + r() * 72, ty + 10 + r() * 72];
+      { const [x, y] = at(); if (r() < .7 && inF(x, y) && inF(x - 9, y) && inF(x + 9, y) && inF(x, y - 30)) {
+        const top = [x + (r() - .5) * 2, y - 25 - r() * 4], cane = '#a8875a', dk = '#6a5236';
+        B.f(B.ell(x + 2, y + 1, 11, 3), '#22301a', .22);
+        for (const [bx, by] of [[-7, -1], [-2.5, 1.6], [3, 1.6], [7.5, -1]]) { const ex = top[0] + (top[0] - (x + bx)) * .12, ey = top[1] - 3; B.s(`M${x + bx} ${y + by}L${ex} ${ey}`, by > 0 ? cane : dk, 1.4, .95); }
+        B.f(B.circ(top[0], top[1], 1.4), '#5a4a30', .9);
+        const vine = season === 'winter' ? null : season === 'autumn' ? ['#6e5a2a', '#8a7034', '#a8823a'] : [lt[1], lt[2], '#4e6a2e'];
+        if (vine) for (let j = 0; j < 14; j++) { const t = .15 + r() * .75, side = [-7, -2.5, 3, 7.5][j % 4], vx = x + side + (top[0] - x - side) * t, vy = y + (top[1] - y) * t; B.f(B.blob(r, vx + (r() - .5) * 2.4, vy, 2 + r() * 1.2, 1.5 + r(), 5, .4), vine[j % 3], .9); }
+        if (season === 'summer') for (let j = 0; j < 3; j++) { const t = .3 + r() * .5; B.f(B.circ(x - 3 + r() * 7, y + (top[1] - y) * t, 1.1), '#d8402e', .9); }
+        B.tufts(r, x, y + 1, 14, 6, [P.lawnLo, '#566e30', st[1]], 8);
+      } }
+      { const [x, y] = at(); if (r() < .45 && inF(x, y) && inF(x - 8, y) && inF(x + 8, y) && inF(x, y - 14)) {
+        B.f(B.ell(x + 1.5, y + 1, 10, 2.8), '#22301a', .22);
+        if (season === 'winter') { B.f(`M${x - 6} ${y}L${x - 5} ${y - 11}Q${x} ${y - 13} ${x + 5} ${y - 11}L${x + 6} ${y}Z`, '#a8583a').f(B.ell(x, y - 11.5, 5.2, 1.6), '#c2704a').f(B.rect(x - 1, y - 14.5, 2, 3), '#8a4a32').f(`M${x - 6} ${y}L${x - 5} ${y - 11}L${x - 3} ${y - 11}L${x - 3.4} ${y}Z`, '#c8784e', .6); }
+        else { const leaf = season === 'autumn' ? ['#5e6a2a', '#7a7a32', '#4e5a26'] : ['#3e5a26', '#4e6a2e', '#5e7a34'];
+          for (let j = 0; j < 5; j++) { const a = -2.4 + j * .55 + (r() - .5) * .3, lx = x + Math.cos(a) * 6.5, ly = y - 4 + Math.sin(a) * 6; B.s(`M${x + (r() - .5) * 2} ${y}Q${(x + lx) / 2} ${ly + 2} ${lx} ${ly}`, '#a8443a', 1.2, .95); B.f(B.blob(r, lx, ly - 1, 5 + r() * 2, 3.4 + r(), 7, .45), leaf[j % 3], .96).f(B.blob(r, lx - 1, ly - 2, 2.4, 1.4, 5, .4), leaf[2], .5); } }
+        B.tufts(r, x, y + 1, 12, 5, [P.lawnLo, '#566e30', st[1]], 7);
+      } }
+      { const [x, y] = at(); if (r() < .14 && inF(x, y) && inF(x, y - 8)) { B.f(B.ell(x + 1, y + .8, 5, 1.6), '#22301a', .22).f(`M${x - 4} ${y}L${x - 3} ${y - 6}L${x + 3} ${y - 6}L${x + 4} ${y}Z`, '#7a8a90').f(B.ell(x, y - 6, 3, .9), '#9aa8ae').f(`M${x - 4} ${y}L${x - 3} ${y - 6}L${x - 1.6} ${y - 6}L${x - 2.4} ${y}Z`, '#aab8be', .55); B.tufts(r, x, y + 1, 9, 4, [P.lawnLo, st[1]], 6); } }
+    }); };
     KIT().tiles(box, T, 14, salt + 2, (tx, ty, r) => {
       const at = () => [tx + r() * T, ty + r() * T];
       if (edge !== 'bracken') for (let k = 0, n = tall ? 62 : 32; k < n; k++) { const [x, y] = at(), hh = 4 + r() * (tall ? 8 : 5), lean = (r() - .5) * 4, t = r(), t2 = r(); if (inF(x, y)) B.s(`M${x} ${y}q${lean * .3} ${-hh * .6} ${lean} ${-hh}`, t < .4 ? P.lawnLo : t < .7 ? '#566e30' : st[Math.floor(t2 * 3)], 1, .8); }
@@ -176,6 +202,7 @@
         { const [x, y] = at(), go = r(); if (go < .45 && inF(x, y) && inF(x, y - 14)) { for (let j = 0; j < 3; j++) { const dx = (j - 1) * 2.4 + (r() - .5), hh = 10 + r() * 6; B.s(`M${x + dx} ${y}q${dx * .3} ${-hh * .5} ${dx * .8} ${-hh}`, '#5a6e3a', 1.3, .9); B.f(B.ell(x + dx * 1.8, y - hh - 1.5, 1.3, 3), season === 'winter' ? '#7a6a52' : '#8a5a3a', .9); } B.f(B.blob(r, x, y, 7, 2.6, 7, .4), lt[1], .8); } }   // a clump of dock gone to seed
       }
     });
+    remnants();   // (after the long grass, so they stand up out of it)
   }
   // the sign at a field's gate: a small board on a post saying what the next piece of it needs, its level or its price
   function sign(B, x, y, row, lv) {
@@ -355,9 +382,14 @@
         if (season === 'winter' ? bloom < .08 : bloom < .5) B.f(B.circ(x + dx, y - up, 1.2 + bloom), col, .95); }
       B.cx.restore(); }
     // the edging: one low line of honey stone with its joints, lit along the top
-    B.s(path, '#4e4230', 4.2, .3).s(path, '#c9b68e', 2.8, 1);
-    B.cx.save(); B.cx.translate(-.3, -.7); B.s(path, '#efe2be', 1, .55); B.cx.restore();
-    for (const l of loops) for (const q of V.walk(l.concat([l[0]]), 6.4)) B.s(`M${q.x - q.ty * 1.5} ${q.y + q.tx * 1.5}L${q.x + q.ty * 1.5} ${q.y - q.tx * 1.5}`, '#8a7858', .8, .65);
+    // (round 3: weathered and half sunk in the turf, a quieter line than the bright ring it was, with the border's planting
+    // spilling over it and the lawn creeping onto it here and there, so the green reads as planted beds, not outlines)
+    B.s(path, '#4e4230', 4.2, .24).s(path, '#b4a27c', 2.6, .88);
+    B.cx.save(); B.cx.translate(-.3, -.7); B.s(path, '#e2d4ae', .9, .32); B.cx.restore();
+    for (const l of loops) for (const q of V.walk(l.concat([l[0]]), 6.4)) B.s(`M${q.x - q.ty * 1.5} ${q.y + q.tx * 1.5}L${q.x + q.ty * 1.5} ${q.y - q.tx * 1.5}`, '#8a7858', .8, .45);
+    for (const l of loops) for (const q of V.walk(l.concat([l[0]]), 8.5)) { const u = r(), t = r();
+      if (u < .34) { const w = 3.6 + t * 3.4; B.f(B.blob(r, q.x - q.ty * .6, q.y + q.tx * .6 - .6, w, 2.2 + t, 6, .45), lt[t < .5 ? 1 : 2], .95); if (season !== 'winter' && r() < .7) B.f(B.circ(q.x + (r() - .5) * w, q.y - 1.6 - r() * 1.4, 1.2 + r() * .5), flowers[Math.floor(r() * flowers.length)], .96); }
+      else if (u < .52) { const ox = q.ty, oy = -q.tx; B.f(B.blob(r, q.x + ox * 1.6, q.y + oy * 1.4, 3 + t * 2.6, 1.6 + t * .8, 6, .5), t < .5 ? C.P.lawn : C.P.lawnLo, .9); for (let k = 0; k < 3; k++) B.s(`M${q.x + ox * 1.2 + (k - 1) * 1.4} ${q.y + oy * 1.2}q${(r() - .5) * 2} ${-2} ${(r() - .5) * 3} ${-3.6 - r() * 2}`, k % 2 ? C.P.lawnLo : '#6f8a40', .9, .85); } }
     B.cx.restore();
   }
 
