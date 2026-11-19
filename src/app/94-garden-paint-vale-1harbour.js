@@ -260,12 +260,14 @@
       const pathNear = (x, y, r) => { for (let dy = -r; dy <= r; dy += r) for (let dx = -r; dx <= r; dx += r) { const k = kindAt(x + dx, y + dy); if (k === 'path' || k === 'water') return true; } return false; };
       const left = [], harbourBox = c => c[0] > QUAY.x0 - 2 && c[0] < QUAY.x1 + 2 && c[1] > QUAY.y0 && c[1] < QUAY.y1 + 3;
       // (clear of every door and the foot of every stair by three cells, and of the map's edges)
+      // (nor behind a tall thing's picture: a windbreak stood behind the folly's roof)
+      const tallBehind = (x, y) => (L.D.static || []).some(st => { const up = st.col === 'full' ? Math.max(7, (st.tall || 1) * 2.6) : Math.max(1.5, (st.tall || 1) * 2.6);   // (a building's picture can stand far taller than its layout height says) return x > (st.x - 1.2) * cw && x < (st.x + st.w + 1.2) * cw && y > W.sky + (st.y + st.h - up - 1) * ch && y < W.sky + (st.y + st.h) * ch; });
       const doors = (L.D.static || []).filter(st => st.door).map(st => ({ x: (st.door.x + .5) * cw, y: W.sky + (st.door.y + .5) * ch })).concat((L.D.landforms || []).filter(f => /stair|step/.test(String(f.kind) + ' ' + String(f.id))).map(f => { const xs = (f.polygon || [[0, 0]]).map(p => p[0]), ys = (f.polygon || [[0, 0]]).map(p => p[1]); return { x: (Math.min(...xs) + Math.max(...xs)) / 2 * cw, y: W.sky + Math.max(...ys) * ch }; }));
       for (let i = 0; i < seaW.length; i += 7) { const q = seaW[i]; if (F(q.x, q.y, 300, 141) < .34) continue; const rr = prng(q, 142); if (rr() < .3) continue;
         const d = 32 + rr() * 30, p = inl(q, d), back = inl(q, d + 34), c0 = cellOf(p.x, p.y); if (kindAt(p.x, p.y) !== 'beach' || kindAt(back.x, back.y) === 'sea' || !plantable(p.x, p.y) || pathNear(p.x, p.y, 30) || harbourBox(c0)) continue;
         if (c0[0] < 2.5 || c0[1] < 3 || c0[0] > W.cols - 2.5 || c0[1] > W.rows - 2 || doors.some(o => Math.abs(o.x - p.x) < 3 * cw && Math.abs(o.y - p.y) < 3 * ch)) continue;
         let solid = false; for (let dy = -1.5; dy <= 1.5 && !solid; dy += .75) for (let dx = -1.5; dx <= 1.5 && !solid; dx += .75) { const b = L.base(c0[0] + dx, c0[1] + dy); if (b && (b.solid || b.staticId)) solid = true; }
-        if (solid || left.some(o => Math.hypot(o.x - p.x, o.y - p.y) < 5 * cw) || things.some(t => Math.hypot(t.x - p.x, t.y - p.y) < 160)) continue;
+        if (solid || tallBehind(p.x, p.y) || left.some(o => Math.hypot(o.x - p.x, o.y - p.y) < 5 * cw) || things.some(t => Math.hypot(t.x - p.x, t.y - p.y) < 160)) continue;
         const cold = coldAt(p.x, p.y), pick = cold ? ['boat', 'net', 'pots'] : ['boat', 'net', 'pots', 'castle', C.season === 'summer' ? 'windbreak' : 'castle'];
         left.push({ x: p.x, y: p.y, kind: pick[Math.floor(rr() * pick.length)], seed: kit.hash(Math.round(p.x), Math.round(p.y), 143) }); }
       const BOATS = ['#3f6f8a', '#a8402e', '#2f6a5a', '#d8c890', '#5a6e8a', '#7a3a4a'];
@@ -287,9 +289,9 @@
           for (let k = 0; k < 7; k++) B.f(B.ell(o.x + (r2() - .5) * 80, o.y + (r2() - .4) * 12, 1.3 + r2() * 1.4, .9 + r2() * .6), ['#a89c88', '#8c8474', '#c2b8a4', '#f2ebdc'][Math.floor(r2() * 4)], .9);
           for (let k = 0; k < 6; k++) { const fx = o.x - 50 + k * 9 + r2() * 5, fy = o.y + 12 + r2() * 6; B.f(B.ell(fx, fy, 1.6, 1), '#a8946a', .35); } }); });
       const skerries = [];
-      for (let i = 0; i < seaW.length; i += 20) { const q = seaW[i], rr = prng(q, 151); if (F(q.x, q.y, 700, 152) < .46 || rr() < .45) continue;
-        const p = out(q, 170 + rr() * 200), c = cellOf(p.x, p.y); if (c[0] < 1 || c[1] < 1 || c[0] > W.cols - 1 || c[1] > W.rows - .5 || harbourBox(c)) continue;
-        let wet = true; for (const [dx, dy] of [[0, 0], [-70, 0], [70, 0], [0, -50], [0, 40]]) { const b = L.base((p.x + dx) / cw, (p.y + dy - W.sky) / ch); if (!b || !b.ocean) wet = false; } if (!wet || skerries.some(o => Math.hypot(o.x - p.x, o.y - p.y) < 700)) continue;
+      for (let i = 0; i < seaW.length; i += 16) { const q = seaW[i], rr = prng(q, 151); if (F(q.x, q.y, 700, 152) < .38 || rr() < .3) continue;
+        const p = out(q, 90 + rr() * 90), c = cellOf(p.x, p.y); if (c[0] < 1 || c[1] < 1 || c[0] > W.cols - 1 || c[1] > W.rows - .5 || harbourBox(c)) continue;
+        let wet = true; for (const [dx, dy] of [[0, 0], [-70, 0], [70, 0], [0, -50], [0, 40]]) { const b = L.base((p.x + dx) / cw, (p.y + dy - W.sky) / ch); if (!b || !b.ocean) wet = false; } if (!wet || skerries.some(o => Math.hypot(o.x - p.x, o.y - p.y) < 520)) continue;
         skerries.push({ x: p.x, y: p.y, seed: kit.hash(Math.round(p.x), Math.round(p.y), 153) }); }
       const SK = { rock: '#6e6a62', rockLo: '#4e4b46', rockHi: '#9a958a', rockDk: '#2e2c2a', lichen: '#d8d4c4' };
       skerries.forEach((k, i) => thing({ key: 'skerry-' + i, x: k.x, y: k.y, box: [-70, -52, 70, 16], shade: false, draw: B => {
