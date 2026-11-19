@@ -22,9 +22,10 @@
  * here runs at load. */
 window.GardenPaintWater = (function () {
   'use strict';
-  const K = 1.25, CH = 256, MAX_CHUNKS = 72, TEX = 'gpw';   // 256 px chunks: each upload is small enough for one frame
+  const TEX = 'gpw', BUDGET_MB = 24;   // the still picture's memory bound (the paint kit's layer keeps to it)
+  let serialAll = 0;
   const slowest = { ms: 0, what: '' };
-  let state = null, lastError = null, bakeMs = 0, bakes = 0, worstBake = 0, tickWorst = 0;
+  let state = null, lastError = null, tickWorst = 0;
   const ok = f => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
   function rng(seed) { let s = (seed >>> 0) % 2147483647 || 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
   function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -33,11 +34,14 @@ window.GardenPaintWater = (function () {
   const D = () => sceneDraw;
 
   /* ---------- palettes: the water takes the sky's colour by time of day ---------- */
+  // One water for the whole vale: the inland water is the sea's own teal, a little deeper and greener. The hour's colour
+  // is laid over the whole view by the light module (paintEvening), so dusk and night keep this water's hue and only
+  // change what it reflects (warm sky at dusk, a cool moonlit sky at night): never a slate grey that reads as a road.
   const TOD = {
-    day: { water: '#6b9fb1', deep: '#4b7f95', shallow: '#97c4bf', sky: '#d6eaea', skyHi: '#f4faf6', refl: '#4c6a44', reflDeep: '#3a5536', glint: '#ffffff', foam: '#f3f8f1', bed: '#a99a72' },
-    dawn: { water: '#87a3b6', deep: '#617f99', shallow: '#adc6c4', sky: '#f2dccb', skyHi: '#fff1e4', refl: '#56664a', reflDeep: '#46553e', glint: '#fff4e6', foam: '#f6f2ea', bed: '#a79a7a' },
-    dusk: { water: '#7b85a2', deep: '#565f80', shallow: '#a3a7b9', sky: '#f2bb92', skyHi: '#ffdcb6', refl: '#3f4a3a', reflDeep: '#323d31', glint: '#ffe2b8', foam: '#f2e8de', bed: '#8c8270' },
-    night: { water: '#3d5970', deep: '#2a4157', shallow: '#56738a', sky: '#7b93b0', skyHi: '#c9d8ee', refl: '#24322d', reflDeep: '#1b2622', glint: '#dfe8ff', foam: '#cfd8e2', bed: '#5f5a50' },
+    day: { water: '#5a9fab', deep: '#367a8c', shallow: '#8ec8bd', sky: '#d4ecea', skyHi: '#f4fbf6', refl: '#466c47', reflDeep: '#365738', glint: '#ffffff', foam: '#f3f8f1', bed: '#b9ad84' },
+    dawn: { water: '#5f9fae', deep: '#3a7a8e', shallow: '#97c6bf', sky: '#f4dcc8', skyHi: '#fff2e4', refl: '#4f6a48', reflDeep: '#3e573c', glint: '#fff4e6', foam: '#f6f2ea', bed: '#b4a886' },
+    dusk: { water: '#5d9cab', deep: '#38778b', shallow: '#94c4bd', sky: '#f7c39a', skyHi: '#ffe0bc', refl: '#3f5a40', reflDeep: '#304833', glint: '#ffe2b8', foam: '#f4ece2', bed: '#ab9f80' },
+    night: { water: '#4f8f9f', deep: '#326c80', shallow: '#78aeab', sky: '#a9c0d6', skyHi: '#e2ecf8', refl: '#2c4434', reflDeep: '#22372b', glint: '#e4ecff', foam: '#d8e2e6', bed: '#8a8470' },
   };
   const SEASON = {
     summer: { reed: ['#6d8a3e', '#8fa952', '#b4c472'], lily: ['#4f7c3e', '#6f9a4e', '#93b864'], flower: ['#fbfbf4', '#f6c9d6'], bank: '#8a7856', grass: '#6f8e45', moss: '#7d8f4e' },
@@ -149,15 +153,130 @@ window.GardenPaintWater = (function () {
       const ccw = signedArea(pts) > 0, river = lines[f.river || (kind === 'gorge' ? 'gorge' : kind === 'river' ? 'river' : kind === 'brook' ? 'brook' : '')] || null;
       waters.push({ id: f.id, kind, pts, bounds: b, ccw, river, feats: features(W, f, pts, kind, ccw, river, r, pres, data.version >= 5 ? shoreMasks.filter(c => c.f !== f && hit(c.bounds, b)) : [], onLand) });
     }
-    // The world box all chunks sit in.
+    // The world box the layer's chunks sit in.
     let all = null; for (const w of waters) all = all ? { x: Math.min(all.x, w.bounds.x), y: Math.min(all.y, w.bounds.y), x1: Math.max(all.x1, w.bounds.x + w.bounds.w), y1: Math.max(all.y1, w.bounds.y + w.bounds.h) } : { x: w.bounds.x, y: w.bounds.y, x1: w.bounds.x + w.bounds.w, y1: w.bounds.y + w.bounds.h };
-    const chunks = new Map();
-    if (all) for (let y = Math.floor(all.y / CH); y * CH < all.y1; y++) for (let x = Math.floor(all.x / CH); x * CH < all.x1; x++) {
-      const box = { x: x * CH, y: y * CH, w: CH, h: CH }, list = waters.filter(w => hit(w.bounds, box));
-      if (list.length) chunks.set(x + ',' + y, { key: x + ',' + y, box, list, image: null, tex: null, used: 0 });
-    }
-    const mouthFades = seaMouths.flatMap(m => waters.filter(w => w.river && w.river.id === m.id && inside(m.x, m.y, w.pts)).map(w => Object.assign({ bounds: w.bounds }, m)));
-    return { W, waters, lines, chunks, pres, coastPath, mouthFades };
+    // A river mouth: where its line leaves the land, with the river's width there (the plume spreads from it).
+    const mouths = seaMouths.map(m => { const L = lines[m.id]; return Object.assign({ hw: (L ? L.hw : 1) * (W.cellW + W.cellH) / 2 }, m); });
+    return { W, waters, lines, pres, coastPath, coast, mouths, crossings: crossingContours, all };
+  }
+
+  /* ---------- the body of the water: one picture for all the inland water at once ---------- */
+  // Every basin, crossing strip and brook is one union, so where two basins meet (the Mere and its outlet, the river
+  // under a bridge, the brook at its stepping stones) the water is one tone with no seam and no edge. Its colour comes
+  // from how far a point lies from the nearest real shore of that union: a sandy bed showing through at the edge,
+  // clear shallows, then the open water, and the deep in the middle of the Mere and the river's channel. Measured on a
+  // coarse field (FQ world px a step) for each chunk with a margin as wide as the deepest colour reaches, so two chunks
+  // agree along their edge, smoothed up and cut by the union's own outline, so the shore stays crisp.
+  const FQ = 2, DMAX = 104;
+  function orient(pts, outer) { return (signedArea(pts) > 0) === outer ? pts : pts.slice().reverse(); }
+  function unionPath(M) {
+    const p = new Path2D(), loop = q => { p.moveTo(q[0].x, q[0].y); for (let i = 1; i < q.length; i++) p.lineTo(q[i].x, q[i].y); p.closePath(); };
+    for (const w of M.waters) loop(orient(w.pts, true));
+    for (const c of M.crossings) { if (!c.pts || c.pts.length < 3) continue; loop(orient(c.pts, true)); for (const h of c.holes || []) if (h.length > 2) loop(orient(h, false)); }
+    return p;
+  }
+  const rgbOf = c => { const n = parseInt(c.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+  const sstep = (a, b, v) => { const t = Math.max(0, Math.min(1, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
+  let fieldMask = null, fieldOut = null;
+  function fieldCanvas(c, w, h) { if (!c) { c = document.createElement('canvas'); } if (c.width < w) c.width = w; if (c.height < h) c.height = h; return c; }
+  // One distance pass over a field: seed[i] = 1 where the distance is 0. Two sweeps of an eight-neighbour chamfer
+  // (within a few per cent of the true distance; the same lattice and values in every chunk). Field px.
+  const DG = Math.SQRT2;
+  function chamfer(seed, gw, gh, D) {
+    const n = gw * gh, INF = 1e9; for (let i = 0; i < n; i++) D[i] = seed[i] ? 0 : INF;
+    for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) { const i = y * gw + x; let d = D[i]; if (!d) continue; if (x) d = Math.min(d, D[i - 1] + 1); if (y) { d = Math.min(d, D[i - gw] + 1); if (x) d = Math.min(d, D[i - gw - 1] + DG); if (x < gw - 1) d = Math.min(d, D[i - gw + 1] + DG); } D[i] = d; }
+    for (let y = gh - 1; y >= 0; y--) for (let x = gw - 1; x >= 0; x--) { const i = y * gw + x; let d = D[i]; if (!d) continue; if (x < gw - 1) d = Math.min(d, D[i + 1] + 1); if (y < gh - 1) { d = Math.min(d, D[i + gw] + 1); if (x < gw - 1) d = Math.min(d, D[i + gw + 1] + DG); if (x) d = Math.min(d, D[i + gw - 1] + DG); } D[i] = d; }
+    return D;
+  }
+  const CLOSE_R = 16, OPEN_R = 9;   // world px: a land corner jutting into the water is rounded off this far, a water corner this far
+  let fieldBufs = null;
+  function bufs(n) { if (!fieldBufs || fieldBufs.n < n) fieldBufs = { n, a: new Float32Array(n), m: new Uint8Array(n), s: new Uint8Array(n), d: new Float32Array(n), e: new Float32Array(n), f: new Float32Array(n) }; return fieldBufs; }
+  function bodyOp(S) {
+    const M = S.M, U = unionPath(M), a = M.all, G = window.GardenPaintGround;
+    const noise = G ? G.noise : () => .5, fbm = G ? G.fbm : () => .5;
+    return { bb: [a.x - 24, a.y - 24, a.x1 + 24, a.y1 + 24], seed: 3, tag: 'water body', draw(B, r, cb) {
+      const cx = B.cx, P = S.P, bed = rgbOf(P.bed), sh = rgbOf(P.shallow), wa = rgbOf(P.water), dp = rgbOf(P.deep);
+      const x0 = Math.floor((cb[0] - DMAX) / FQ) * FQ, y0 = Math.floor((cb[1] - DMAX) / FQ) * FQ, x1 = Math.ceil((cb[2] + DMAX) / FQ) * FQ, y1 = Math.ceil((cb[3] + DMAX) / FQ) * FQ, gw = (x1 - x0) / FQ, gh = (y1 - y0) / FQ, n = gw * gh;
+      fieldMask = fieldCanvas(fieldMask, gw, gh); const mx = fieldMask.getContext('2d', { willReadFrequently: true });
+      mx.setTransform(1, 0, 0, 1, 0, 0); mx.clearRect(0, 0, gw, gh); mx.setTransform(1 / FQ, 0, 0, 1 / FQ, -x0 / FQ, -y0 / FQ); mx.fillStyle = '#fff'; mx.fill(U);
+      const src = mx.getImageData(0, 0, gw, gh).data, T = bufs(n), cov = T.a, m = T.m, sd = T.s, D = T.d, E = T.e, Fv = T.f;
+      let any = false; for (let i = 0; i < n; i++) { cov[i] = src[i * 4 + 3] / 255; m[i] = cov[i] > .5 ? 1 : 0; if (m[i]) any = true; }
+      if (!any) return;
+      // the one outline of all the water: closed (a land corner between two basins is filled with water, round) and then
+      // opened (a sharp water corner is rounded off), so no bank meets another at an angle
+      const rc = CLOSE_R / FQ, ro = OPEN_R / FQ;
+      chamfer(m, gw, gh, D); for (let i = 0; i < n; i++) sd[i] = D[i] > rc ? 1 : 0;        // land beyond the dilation
+      chamfer(sd, gw, gh, D); for (let i = 0; i < n; i++) sd[i] = D[i] > rc ? 0 : 1;        // not closed water
+      chamfer(sd, gw, gh, D); for (let i = 0; i < n; i++) sd[i] = D[i] > ro ? 1 : 0;        // eroded water
+      chamfer(sd, gw, gh, D); for (let i = 0; i < n; i++) { const w = D[i] <= ro; Fv[i] = w === !!m[i] ? cov[i] : w ? 1 : 0; }   // final, with the true edge's own coverage where it did not move
+      for (let i = 0; i < n; i++) sd[i] = Fv[i] > .5 ? 0 : 1;
+      chamfer(sd, gw, gh, D);   // D: how far inside the water, field px
+      // only this chunk's own area (and a little round it) is coloured and drawn
+      const gx0 = Math.max(0, Math.floor((cb[0] - 6 - x0) / FQ)), gx1 = Math.min(gw, Math.ceil((cb[2] + 6 - x0) / FQ)), gy0 = Math.max(0, Math.floor((cb[1] - 6 - y0) / FQ)), gy1 = Math.min(gh, Math.ceil((cb[3] + 6 - y0) / FQ)), cw = gx1 - gx0, chh = gy1 - gy0;
+      // a light 3 x 3 smoothing there, so the shore lines found below run smooth between the field's points
+      for (let y = Math.max(0, gy0 - 1); y < Math.min(gh, gy1 + 1); y++) for (let x = Math.max(0, gx0 - 1); x < Math.min(gw, gx1 + 1); x++) { let s = 0, k = 0; for (let j = -1; j <= 1; j++) { const yy = y + j; if (yy < 0 || yy >= gh) continue; for (let q = -1; q <= 1; q++) { const xx = x + q; if (xx < 0 || xx >= gw) continue; const wgt = (j || q) ? (j && q ? 1 : 2) : 4; s += Fv[yy * gw + xx] * wgt; k += wgt; } } E[y * gw + x] = s / k; }
+      for (let y = Math.max(0, gy0 - 1); y < Math.min(gh, gy1 + 1); y++) for (let x = Math.max(0, gx0 - 1); x < Math.min(gw, gx1 + 1); x++) Fv[y * gw + x] = E[y * gw + x];
+      // the shore lines, by marching squares on the smoothed field at a level (a little outside the water's edge for
+      // the wet dark line, a little inside it for the bright lap): segments in one path, stroked once, so no beading
+      const contour = level => { const p = new Path2D(); let k = 0;
+        for (let gy = gy0; gy < gy1 - 1; gy++) for (let gx = gx0; gx < gx1 - 1; gx++) {
+          const i = gy * gw + gx, a0 = Fv[i] - level, b0 = Fv[i + 1] - level, c0 = Fv[i + gw + 1] - level, d0 = Fv[i + gw] - level;
+          const s = (a0 > 0) + (b0 > 0) + (c0 > 0) + (d0 > 0); if (s === 0 || s === 4) continue;
+          const X = x0 + (gx + .5) * FQ, Y = y0 + (gy + .5) * FQ, cut = [], C4 = [[X, Y, a0], [X + FQ, Y, b0], [X + FQ, Y + FQ, c0], [X, Y + FQ, d0]];
+          for (let q = 0; q < 4; q++) { const A = C4[q], Bq = C4[(q + 1) % 4]; if ((A[2] > 0) !== (Bq[2] > 0)) { const t = A[2] / (A[2] - Bq[2]); cut.push(A[0] + (Bq[0] - A[0]) * t, A[1] + (Bq[1] - A[1]) * t); } }
+          for (let q = 0; q + 3 < cut.length; q += 4) { p.moveTo(cut[q], cut[q + 1]); p.lineTo(cut[q + 2], cut[q + 3]); k++; }
+        }
+        return k ? p : null; };
+      const outer = contour(.5);
+      // the colour of the water by how far it lies from the shore; its alpha is the smoothed outline itself, so the edge
+      // is soft for a world pixel and then the wet line and the lap are drawn crisp over it
+      fieldOut = fieldCanvas(fieldOut, cw, chh); const ox = fieldOut.getContext('2d'), img = ox.createImageData(cw, chh), o = img.data;
+      for (let y = gy0; y < gy1; y++) { const wy = y0 + (y + .5) * FQ;
+        for (let x = gx0; x < gx1; x++) { const i = y * gw + x, j = ((y - gy0) * cw + (x - gx0)) * 4, al = Fv[i]; if (al <= .004) { o[j + 3] = 0; continue; }
+          const wx = x0 + (x + .5) * FQ, d = Math.min(DMAX, Math.max(0, (D[i] >= 1e8 ? DMAX : D[i]) * FQ - FQ * .5));
+          // broad reaches of darker and paler water, and a finer ripple of tone, so no stretch is one flat colour
+          const big = fbm(wx / 260, wy / 170, 41) - .5, fine = noise(wx / 46, wy / 30, 57) - .5;
+          const e = sstep(0, 7, d), mm = sstep(3, 24, d), k = Math.min(1, Math.max(0, sstep(26, 100, d) * .9 + big * .35));
+          let rr = bed[0] + (sh[0] - bed[0]) * (.5 + .5 * e), gg = bed[1] + (sh[1] - bed[1]) * (.5 + .5 * e), bb = bed[2] + (sh[2] - bed[2]) * (.5 + .5 * e);
+          rr += (wa[0] - rr) * mm; gg += (wa[1] - gg) * mm; bb += (wa[2] - bb) * mm;
+          rr += (dp[0] - rr) * k; gg += (dp[1] - gg) * k; bb += (dp[2] - bb) * k;
+          const lift = 1 + big * .08 + fine * .045; o[j] = Math.min(255, rr * lift); o[j + 1] = Math.min(255, gg * lift); o[j + 2] = Math.min(255, bb * lift); o[j + 3] = Math.min(255, Math.round(al * 1.25 * 255));
+        } }
+      ox.putImageData(img, 0, 0);
+      cx.lineJoin = 'round'; cx.lineCap = 'round';
+      // the bank: a damp earth band along the shore (the water is laid over its inner half)
+      if (outer) { cx.strokeStyle = P.bank; cx.globalAlpha = .24; cx.lineWidth = 24; cx.stroke(outer); cx.globalAlpha = .4; cx.lineWidth = 12; cx.stroke(outer); cx.globalAlpha = 1; }
+      cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high'; cx.drawImage(fieldOut, 0, 0, cw, chh, x0 + gx0 * FQ, y0 + gy0 * FQ, cw * FQ, chh * FQ);
+      // the wet dark line at the water's edge, then the lap: a thin bright line just inside the water, a softer glow beside it
+      const wet = contour(.3), lap = contour(.78);
+      if (wet) { cx.strokeStyle = mix(P.bank, '#3e3626', .5); cx.globalAlpha = .55; cx.lineWidth = 3.2; cx.stroke(wet); }
+      if (lap) { cx.strokeStyle = P.foam; cx.globalAlpha = .18; cx.lineWidth = 7; cx.stroke(lap); cx.globalAlpha = .5; cx.lineWidth = 2.2; cx.stroke(lap); }
+      cx.globalAlpha = 1;
+    } };
+  }
+  // The sea: what this layer paints beyond the coast is let go, hard for the banks, softly for a river's own water,
+  // which runs on out into the sea and fades there in a widening plume, so a river mouth opens into the sea with no
+  // corner where the coast line crosses it.
+  function seaPath(M) { const a = M.all, p = new Path2D(); p.rect(a.x - 400, a.y - 400, a.x1 - a.x + 800, a.y1 - a.y + 800); for (const loop of M.coast) { p.moveTo(loop[0].x, loop[0].y); for (let i = 1; i < loop.length; i++) p.lineTo(loop[i].x, loop[i].y); p.closePath(); } return p; }
+  function seaCutOps(S) {
+    const M = S.M; if (!M.coast.length) return { hard: null, plume: [] };
+    const sea = seaPath(M), a = M.all, bb = [a.x - 8, a.y - 8, a.x1 + 8, a.y1 + 8], PL = 170;
+    const hard = { bb, seed: 5, decor: true, tag: 'water sea-cut', draw(B) { const cx = B.cx; cx.globalCompositeOperation = 'destination-out'; cx.fillStyle = '#000'; cx.fill(sea, 'evenodd'); } };
+    // the river's own water spreading into the sea from its mouth: a soft pool of its colour over the coast's point,
+    // so the line where the land meets the sea across the river is lost in water, then a fan out along the current
+    const soft = (cx, x, y, rx, ry, rot, col, stops) => { cx.save(); cx.translate(x, y); cx.rotate(rot); cx.scale(1, ry / rx); const g = cx.createRadialGradient(0, 0, 0, 0, 0, rx), c = rgbOf(col); for (const [t, al] of stops) g.addColorStop(t, `rgba(${c[0]},${c[1]},${c[2]},${al})`); cx.fillStyle = g; cx.beginPath(); cx.arc(0, 0, rx, 0, Math.PI * 2); cx.fill(); cx.restore(); };
+    const plume = M.mouths.map((m, i) => ({ bb: [m.x - PL * 1.5, m.y - PL * 1.5, m.x + PL * 1.5, m.y + PL * 1.5], seed: 7 + i, tag: 'water mouth', draw(B) {
+      const cx = B.cx, P = S.P, rot = Math.atan2(m.ty, m.tx), hw = m.hw; cx.save(); cx.clip(sea, 'evenodd');
+      soft(cx, m.x - m.tx * hw * .7, m.y - m.ty * hw * .7, hw * 2.3, hw * 2.3, rot, P.water, [[0, .95], [.45, .85], [.8, .35], [1, 0]]);
+      soft(cx, m.x + m.tx * PL * .32, m.y + m.ty * PL * .32, PL * .85, hw * 1.9, rot, P.water, [[0, .7], [.6, .3], [1, 0]]);
+      soft(cx, m.x + m.tx * PL * .12, m.y + m.ty * PL * .12, PL * .5, hw * .9, rot, P.deep, [[0, .35], [1, 0]]);
+      // the current's silt line, a pale tongue curling off each bank
+      cx.translate(m.x, m.y); cx.rotate(rot); cx.globalAlpha = .2; cx.strokeStyle = P.shallow; cx.lineCap = 'round'; cx.lineWidth = 5;
+      cx.beginPath(); cx.moveTo(-hw * .4, -hw * 1.05); cx.quadraticCurveTo(PL * .4, -hw * 1.5, PL * .75, -hw * .5); cx.stroke();
+      cx.beginPath(); cx.moveTo(-hw * .4, hw * 1.1); cx.quadraticCurveTo(PL * .35, hw * 1.6, PL * .65, hw * .7); cx.stroke();
+      cx.restore();
+    } }));
+    return { hard, plume };
   }
 
   /* ---------- the still picture of one water, as a list of features ---------- */
@@ -218,8 +337,10 @@ window.GardenPaintWater = (function () {
       }
     }
     const big = kind === 'mere' || kind === 'tarn';
-    // 1. The bank: a damp earth band outside the water, darker at the waterline.
-    add(all, (cx, C) => { cx.lineJoin = 'round'; cx.strokeStyle = C.bank; cx.globalAlpha = .28; cx.lineWidth = river_ ? 22 : 30; cx.stroke(bankP); cx.globalAlpha = .5; cx.lineWidth = river_ ? 12 : 16; cx.stroke(bankP); cx.globalAlpha = .55; cx.strokeStyle = mix(C.bank, '#3e3626', .45); cx.lineWidth = 5; cx.stroke(bankP); cx.globalAlpha = 1; });
+    // 1. The bank: a damp earth band outside the water, darker at the waterline (the body paints it now, along the
+    //    one outline of all the water; this basin's own band is kept for a painter without the body).
+    tag = 'bankband'; add(all, (cx, C) => { cx.lineJoin = 'round'; cx.strokeStyle = C.bank; cx.globalAlpha = .28; cx.lineWidth = river_ ? 22 : 30; cx.stroke(bankP); cx.globalAlpha = .5; cx.lineWidth = river_ ? 12 : 16; cx.stroke(bankP); cx.globalAlpha = .55; cx.strokeStyle = mix(C.bank, '#3e3626', .45); cx.lineWidth = 5; cx.stroke(bankP); cx.globalAlpha = 1; });
+    tag = 'bank';
     // pebbles and grass lobes on the land side of the waterline
     for (let i = 0; i < n; i += 1) {
       const a = pts[i], nn = norm(i), seg = Math.hypot(pts[(i + 1) % n].x - a.x, pts[(i + 1) % n].y - a.y), steps = Math.max(1, Math.round(seg / 12)); if (seg < 12 && r() > seg / 12) continue;
@@ -369,52 +490,19 @@ window.GardenPaintWater = (function () {
     if (stamps.size > 200) stamps.clear(); stamps.set(key, s); return s;
   }
 
-  /* ---------- chunks ---------- */
-  // A chunk is baked as a job that resumes across frames: it draws features
-  // until its slice of the frame (SLICE ms) is used, and becomes a texture only
-  // when it is complete, so no single frame pays for a whole chunk.
-  const SLICE = 7;
-  function startJob(ch) {
-    const S = state, B = ch.box, c = document.createElement('canvas'); c.width = Math.ceil(B.w * K); c.height = Math.ceil(B.h * K);
-    const cx = c.getContext('2d'); cx.setTransform(K, 0, 0, K, -B.x * K, -B.y * K);
-    const view = { x: B.x - 70, y: B.y - 70, w: B.w + 140, h: B.h + 140 }, list = [];
-    // every water's banks first, then the waters, so a river mouth's bank never paints over the lake it runs into
-    const later = []; for (const w of ch.list) w.feats.forEach((f, i) => { if (hit(f.b, view)) (i < 1 + bankCount(w) ? list : later).push(f); });
-    for (const e of S.extras) if (hit(e.b, view)) later.push(e);
-    return { ch, c, cx, list: list.concat(later), i: 0, ms: 0 };
+  /* ---------- the still picture: one layer that follows the zoom (GardenPaintGround.layer) ---------- */
+  // Every feature of every water becomes an op of the shared paint kit's chunked layer, which bakes it at the level the
+  // camera needs, in slices off the frame, inside a memory budget. Order matters within a chunk: every water's banks
+  // first, then the one body of water, then each water's dressing, the set pieces, the coast cut and the river mouths.
+  const SKIP = new Set(['bankband', 'fill', 'deep', 'channel', 'shallow', 'lap']);   // (the body paints these now, for all the water at once)
+  function stampCtx(S, cx) { return { stamp(id, v, h, x, y) { const s = stampCanvas(id, v, S.season, h); if (!s) return; const k = (h / s.hq) / 2; cx.drawImage(s.c, x - s.ox * k, y - s.oy * k, s.c.width * k, s.c.height * k); } }; }
+  function opOf(S, f, seed) { const b = f.b; return { bb: [b.x, b.y, b.x + b.w, b.y + b.h], seed, tag: 'water ' + (f.tag || 'set piece'), draw(B) { const f0 = performance.now(); f.draw(B.cx, S.P, stampCtx(S, B.cx)); const fd = performance.now() - f0; if (fd > slowest.ms) { slowest.ms = +fd.toFixed(1); slowest.what = f.tag || 'set piece'; } } }; }
+  function layerOps(S) {
+    const banks = [], dress = []; let seed = 11;
+    for (const w of S.M.waters) for (const f of w.feats) { if (SKIP.has(f.tag)) continue; (f.tag === 'bank' ? banks : dress).push(opOf(S, f, seed++)); }
+    const sea = seaCutOps(S), ops = banks.concat([bodyOp(S)], dress, S.extras.map(e => opOf(S, e, seed++)));
+    if (sea.hard) ops.push(sea.hard); return ops.concat(sea.plume);
   }
-  function stepJob(job, budget) {
-    const S = state, t0 = performance.now(), C = S.P, cx = job.cx;
-    const ctx = { stamp(id, v, h, x, y) { const s = stampCanvas(id, v, S.season, h); if (!s) return; const k = (h / s.hq) / 2; cx.drawImage(s.c, x - s.ox * k, y - s.oy * k, s.c.width * k, s.c.height * k); } };
-    while (job.i < job.list.length && performance.now() - t0 < budget) {
-      const f = job.list[job.i];
-      // a library stamp not yet drawn costs a frame of its own
-      const miss = f.needs && f.needs.find(q => !stamps.has(stampKey(q[0], q[1], S.season, q[2])));
-      if (miss) { stampCanvas(miss[0], miss[1], S.season, miss[2]); continue; }
-      job.i++; const f0 = performance.now(); ok(() => f.draw(cx, C, ctx)); cx.globalAlpha = 1; const fd = performance.now() - f0; if (fd > slowest.ms) { slowest.ms = +fd.toFixed(1); slowest.what = (f.tag || 'feature') + '@' + job.ch.key; }
-    }
-    job.ms += performance.now() - t0;
-    if (job.i < job.list.length) return false;
-    const ch = job.ch, B = ch.box, key = TEX + '-' + ch.key + '-' + (++S.serial), u0 = performance.now();
-    // Apply once at upload, not per feature/frame. The native sea beneath has
-    // the same base water colour as inland water, so the last reach can lose
-    // its freshwater shading gradually without a capped shoreline in the sea.
-    if (S.M.coastPath) {
-      cx.save(); cx.globalCompositeOperation = 'destination-in'; cx.globalAlpha = 1; cx.fillStyle = '#fff'; cx.fill(S.M.coastPath); cx.restore();
-      for (const m of S.M.mouthFades) if (hit(m.bounds, B)) {
-        cx.save(); cx.beginPath(); cx.rect(m.bounds.x, m.bounds.y, m.bounds.w, m.bounds.h); cx.clip();
-        const fade = cx.createLinearGradient(m.x - m.tx * 72, m.y - m.ty * 72, m.x, m.y);
-        fade.addColorStop(0, '#fff'); fade.addColorStop(1, 'rgba(255,255,255,0)');
-        cx.globalCompositeOperation = 'destination-in'; cx.fillStyle = fade; cx.fillRect(B.x, B.y, B.w, B.h); cx.restore();
-      }
-    }
-    S.scene.textures.addImage(key, job.c); ch.tex = key; ch.bytes = job.c.width * job.c.height * 4;   // (addImage: a baked chunk is never redrawn, and addCanvas reads every pixel back first: a quarter-second stall)
-    ch.image = S.scene.add.image(B.x, B.y, key).setOrigin(0, 0).setDisplaySize(B.w + 1, B.h + 1).setDepth(-9590); S.parent.add(ch.image); S.sortParent = true;
-    job.ms += performance.now() - u0; bakeMs += job.ms; bakes++; worstBake = Math.max(worstBake, performance.now() - t0);
-    return true;
-  }
-  function bankCount(w) { if (w._banks != null) return w._banks; let k = 0; for (let i = 1; i < w.feats.length; i++) { if (w.feats[i].b === w.feats[0].b) break; k++; } return (w._banks = k); }
-  function dropChunk(ch) { if (ch.image) ch.image.destroy(); if (ch.tex && state.scene.textures.exists(ch.tex)) state.scene.textures.remove(ch.tex); ch.image = null; ch.tex = null; ch.bytes = 0; }
 
   /* ---------- live layers ---------- */
   function liveTextures(scene) {
@@ -423,7 +511,9 @@ window.GardenPaintWater = (function () {
       glint: make('glint', 40, 8, (cx, w, h) => { const g = cx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.35, 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)'); cx.save(); cx.translate(w / 2, h / 2); cx.scale(1, h / w); cx.translate(-w / 2, -h / 2); cx.fillStyle = g; cx.fillRect(0, -w, w, w * 3); cx.restore(); }),
       spark: make('spark', 12, 12, (cx, w) => { const g = cx.createRadialGradient(6, 6, 0, 6, 6, 6); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.3, 'rgba(255,255,255,.6)'); g.addColorStop(1, 'rgba(255,255,255,0)'); cx.fillStyle = g; cx.fillRect(0, 0, w, w); cx.fillStyle = 'rgba(255,255,255,.8)'; cx.fillRect(5.5, 1, 1, 10); cx.fillRect(1, 5.5, 10, 1); }),
       ring: make('ring', 80, 24, (cx) => { cx.strokeStyle = 'rgba(240,248,246,.9)'; cx.lineWidth = 2; cx.beginPath(); cx.ellipse(40, 12, 36, 9, 0, 0, Math.PI * 2); cx.stroke(); cx.strokeStyle = 'rgba(40,60,70,.35)'; cx.lineWidth = 1.2; cx.beginPath(); cx.ellipse(40, 13.5, 35, 8.5, 0, .2, Math.PI - .2); cx.stroke(); }),
-      mist: make('mist', 160, 80, (cx, w, h) => { const g = cx.createRadialGradient(80, 40, 0, 80, 40, 80); g.addColorStop(0, 'rgba(250,252,252,.85)'); g.addColorStop(.45, 'rgba(244,248,248,.4)'); g.addColorStop(1, 'rgba(244,248,248,0)'); cx.save(); cx.scale(1, .5); cx.fillStyle = g; cx.fillRect(0, 0, 160, 160); cx.restore(); }),
+      // (centred in the squashed space, so the puff fades to nothing at every edge: centred at (80, 40) it was cut flat
+      //  along its top and every mist puff over the plunge pool showed as a pale rectangle)
+      mist: make('mist2', 160, 80, (cx, w, h) => { const g = cx.createRadialGradient(80, 80, 0, 80, 80, 78); g.addColorStop(0, 'rgba(250,252,252,.85)'); g.addColorStop(.45, 'rgba(244,248,248,.4)'); g.addColorStop(1, 'rgba(244,248,248,0)'); cx.save(); cx.scale(1, .5); cx.fillStyle = g; cx.fillRect(0, 0, 160, 160); cx.restore(); }),
       foam: make('foam', 64, 32, (cx) => { const r = rng(77); for (let i = 0; i < 26; i++) { const x = 8 + r() * 48, y = 6 + r() * 20, rr = 2 + r() * 6; const g = cx.createRadialGradient(x, y, 0, x, y, rr); g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(1, 'rgba(255,255,255,0)'); cx.fillStyle = g; cx.beginPath(); cx.arc(x, y, rr, 0, Math.PI * 2); cx.fill(); } }),
       // a strip of white water that tiles along x: the weir and riffle foam scroll this
       strip: make('strip', 128, 32, (cx) => { const r = rng(31); for (let i = 0; i < 70; i++) { const x = r() * 128, y = 4 + r() * 24, len = 4 + r() * 18, a = .25 + r() * .6; cx.strokeStyle = 'rgba(255,255,255,' + a + ')'; cx.lineWidth = .8 + r() * 1.8; cx.lineCap = 'round'; for (const ox of [0, -128, 128]) { cx.beginPath(); cx.moveTo(x + ox, y); cx.lineTo(x + ox + len, y + (r() - .5) * 2); cx.stroke(); } } }),
@@ -570,37 +660,29 @@ window.GardenPaintWater = (function () {
     if (!info || !info.data || !info.data.freshwater) return null;
     const t0 = performance.now();
     const S = state = { scene, parent, objects: objects || null, W: info.W, data: info.data, season: info.season || 'summer', tod: info.tod || 'day', serial: 0, clock: 0, last: null, sortParent: false };
-    S.P = palette(S.tod, S.season); S.M = ok(() => build(info.W, info.data)); if (!S.M) { state = null; return null; }
+    S.P = palette(S.tod, S.season); S.M = ok(() => build(info.W, info.data)); if (!S.M || !S.M.all) { state = null; return null; }
     const sp = ok(() => setPieces(S)) || { extras: [], foams: [], mists: [] }; S.extras = sp.extras; S.foams = sp.foams; S.mists = sp.mists;
     S.tex = liveTextures(scene); S.em = ok(() => emitters(S)) || [];
     // every reed stamp is drawn now, with the ground, so walking never pays for one
     { const w0 = performance.now(), need = new Set(); for (const w of S.M.waters) for (const f of w.feats) if (f.needs) for (const q of f.needs) need.add(stampKey(q[0], q[1], S.season, q[2]) + '#' + q.join('#')); for (const k of need) { const q = k.split('#').slice(1); stampCanvas(q[0], +q[1], S.season, +q[2]); } S.warmMs = Math.round(performance.now() - w0); S.warmCount = need.size; }
-    // the chunks round where you stand are baked now, with the ground, so the first frame has its water
-    const here = startView(info.W); if (here) for (const ch of S.M.chunks.values()) if (hit(ch.box, here)) { const job = ok(() => startJob(ch)); if (job) ok(() => stepJob(job, Infinity)); }
+    // the still picture: the paint kit's layer bakes it at the camera's level; the chunks on screen now are baked at once
+    // (lazy: false), so the first frame has its water
+    const G = window.GardenPaintGround, a = S.M.all, box = { x: Math.floor(a.x / 256) * 256, y: Math.floor(a.y / 256) * 256, w: 0, h: 0 }; box.w = Math.ceil((a.x1 + 200 - box.x) / 256) * 256; box.h = Math.ceil((a.y1 + 200 - box.y) / 256) * 256;
+    if (G && G.layer) S.layer = ok(() => G.layer(scene, parent, layerOps(S), { key: TEX + '|' + S.tod + '|' + S.season + '|' + (++serialAll), box, chunk: 256, depth: -9590, budgetMB: BUDGET_MB, slice: 8, lazy: false, minK: 1, maxK: 4 }));
     S.buildMs = Math.round(performance.now() - t0);
     return { destroy: clear };
   }
   function clear() {
     if (!state) return; const S = state; state = null;
-    for (const ch of S.M ? S.M.chunks.values() : []) { if (ch.image) ch.image.destroy(); if (ch.tex && S.scene.textures.exists(ch.tex)) S.scene.textures.remove(ch.tex); }
+    if (S.layer) ok(() => S.layer.destroy());
     for (const e of S.em || []) for (const g of e.list || []) g.im.destroy(); for (const e of S.em || []) for (const q of e.rings || []) q.im.destroy();
   }
-  /** Each frame: bake at most one chunk near the view, move the live layers in view. view: world rect {x, y, w, h}. */
+  /** Each frame: move the live layers in view (the still picture bakes itself on the paint kit's timer). view: world rect {x, y, w, h}. */
   function tick(time, view) {
     const S = state; if (!S || !view) return; const t0 = performance.now();
     const dt = S.last == null ? 0 : Math.min(.08, Math.max(0, (time - S.last) / 1000)); S.last = time;
     const motion = typeof gardenMotionOn !== 'function' || gardenMotionOn(); if (motion) S.clock += dt;
     S.frame = (S.frame || 0) + 1;
-    const near = { x: view.x - 384, y: view.y - 384, w: view.w + 768, h: view.h + 768 };
-    let resident = 0; const vx = view.x + view.w / 2, vy = view.y + view.h / 2, pick = () => { let best = null, bd = Infinity; for (const ch of S.M.chunks.values()) { if (ch.image || !hit(ch.box, near) || (S.job && S.job.ch === ch)) continue; const d = Math.hypot(ch.box.x + CH / 2 - vx, (ch.box.y + CH / 2 - vy) * 1.4) - (hit(ch.box, view) ? 1e6 : 0); if (d < bd) { bd = d; best = ch; } } return best; };
-    for (const ch of S.M.chunks.values()) if (ch.image) { resident++; if (hit(ch.box, view)) ch.used = S.frame; }
-    // nearest first (what you can see before the ring round it), several a frame while the slice lasts
-    const j0 = performance.now();
-    for (let n = 0; n < 6 && performance.now() - j0 < SLICE; n++) {
-      if (!S.job) { const todo = pick(); if (!todo) break; S.job = ok(() => startJob(todo)); if (!S.job) break; }
-      const done = ok(() => stepJob(S.job, SLICE - (performance.now() - j0))); if (done === false) break; if (S.job.ch) S.job.ch.used = S.frame; S.job = null; resident++;
-    }
-    if (resident > MAX_CHUNKS) { const far = [...S.M.chunks.values()].filter(c => c.image && !hit(c.box, near)).sort((a, b) => a.used - b.used); for (const c of far.slice(0, resident - MAX_CHUNKS)) dropChunk(c); }
     if (S.sortParent && S.parent.sort) { S.parent.sort('depth'); S.sortParent = false; }
     if (S.sortObjects && S.objects && S.objects.sort) { S.objects.sort('depth'); S.sortObjects = false; }
     const pad = { x: view.x - 60, y: view.y - 60, w: view.w + 120, h: view.h + 120 };
@@ -612,12 +694,12 @@ window.GardenPaintWater = (function () {
     tickWorst = Math.max(tickWorst, performance.now() - t0);
   }
   function memory() {
-    const S = state; if (!S) return null; let bytes = 0, resident = 0; for (const c of S.M.chunks.values()) if (c.image) { bytes += c.bytes; resident++; }
-    return { chunks: S.M.chunks.size, resident, mb: +(bytes / 1048576).toFixed(1), capMb: +(MAX_CHUNKS * CH * CH * K * K * 4 / 1048576).toFixed(1) };
+    const S = state, L = S && S.layer; if (!L) return null;
+    return { chunks: L.chunks, resident: L.live, level: L.level, mb: L.MB, capMb: BUDGET_MB, bakeMedianMs: L.median, bakeP95Ms: L.p95, worstChunkMs: L.worstMs, worstSliceMs: L.sliceWorstMs };
   }
   function status() {
     const S = state; let sprites = 0, visible = 0; if (S) for (const e of S.em) { sprites += e.list.length + (e.rings || []).length; if (e.vis) visible += e.list.length + (e.rings || []).length; }
-    return { slowest, warm: S ? [S.warmCount, S.warmMs] : null, on: !!S, tod: S && S.tod, waters: S ? S.M.waters.length : 0, buildMs: S && S.buildMs, bakes, bakeMs: Math.round(bakeMs), worstBake: Math.round(worstBake), tickWorst: +tickWorst.toFixed(1), sprites, visible, memory: memory(), weir: S && S.weir ? [Math.round(S.weir.x), Math.round(S.weir.y)] : null, lastError };
+    return { slowest, warm: S ? [S.warmCount, S.warmMs] : null, on: !!S, tod: S && S.tod, waters: S ? S.M.waters.length : 0, buildMs: S && S.buildMs, tickWorst: +tickWorst.toFixed(1), sprites, visible, memory: memory(), weir: S && S.weir ? [Math.round(S.weir.x), Math.round(S.weir.y)] : null, mouths: S ? S.M.mouths.map(m => [Math.round(m.x), Math.round(m.y), Math.round(m.hw)]) : null, lastError };
   }
   return { wanted, paint, tick, clear, status, memory, palette, startView, get lastError() { return lastError; } };
 })();
