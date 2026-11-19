@@ -128,7 +128,7 @@ const GARDEN_CREATURES = Object.freeze([
     book: { hint: 'Beside the water by day. Keep your pet close.', blurb: 'Honks first and asks questions never. Pets run.' } },
   { id: 'shore-crab', name: 'Shore crab', group: 'pond', rarity: 'common', tags: ['crab'], habitat: 'ground', speed: 0.6, foot: 0.14, count: [1, 2], max: 2, start: 'in-place',
     art: ['crab', { k: 0.95 }], when: { seasons: ['spring', 'summer', 'autumn'], tod: ['dawn', 'day', 'dusk'] }, needs: { near: ['water'] },
-    behaviours: [['wander', { pause: [2, 5], range: 1.6 }], ['peck', { weight: 1 }], ['startled-by-pet', { r: 1.2 }], ['startled-by-player', { r: 1 }], 'leave-when-over'], react: { clip: 'react', mark: 'bang', gift: 'snail-shell', chance: 0.3 },
+    behaviours: [['wander', { pause: [2, 5], range: 1.6 }], ['peck', { weight: 1 }], ['startled-by-pet', { r: 0.6 }], ['startled-by-player', { r: 1 }], 'leave-when-over'], react: { clip: 'react', mark: 'bang', gift: 'snail-shell', chance: 0.3 },
     book: { hint: 'On the sand and the stones at the water\u2019s edge, spring to autumn.', blurb: 'Goes sideways, holds its claws up, means it.' } },
 
   /* ---------- the guests that surprises bring (rarity legendary, come only through an easter egg: egg: true) ---------- */

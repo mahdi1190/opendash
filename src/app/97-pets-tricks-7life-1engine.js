@@ -255,9 +255,10 @@ function petLifeMenuItems(P) {
 function _plTreehouse(P) {
   let row = null, prop = null;
   try { row = (typeof GARDEN_LAND_SIGHTS !== 'undefined' ? GARDEN_LAND_SIGHTS : []).find(r => r.id === 'ld-treehouse'); prop = gardenLandProps().find(p => p.id === 'ld-treehouse'); } catch (e) { return false; }
-  const win = row && row.pet && row.pet.window; if (!win || !prop) return false;
+  if (!prop) return false;
+  const win = (prop.pet && prop.pet.window) || (row && row.pet && row.pet.window) || [-24, -126];
   const foot = { x: prop.x + prop.w / 2, y: prop.y + prop.h };
-  const near = _pl.here ? { x: P.x, y: P.y } : _ptwBeside(foot); if (!near) return false;
+  const near = _pl.here ? { x: P.x, y: P.y } : (_ptwBeside(foot) || (typeof gardenWorldNearestFree === 'function' ? gardenWorldNearestFree(foot.x, foot.y + 0.7, 2.5) : null)); if (!near) return false;
   const up = () => {
     const was = { x: P.x, y: P.y };
     P.dir = 1; P.x = foot.x; P.y = foot.y + 0.04;   // drawn just in front of the treehouse, at its foot
