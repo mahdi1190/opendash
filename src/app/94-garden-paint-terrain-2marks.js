@@ -155,7 +155,7 @@ window.GardenPaintedMarks = (function () {
     // moving parts (art.parts: [{ id, box, at: [dx, dy] (its hub from the foot), draw(B, o), spin(o, env) rad/s }]): each its own
     // picture in front of the body, turned about its hub every frame while motion is on (sails, a water wheel)
     const parts = [];
-    const makeParts = n => { for (const q of parts) if (q.im) q.im.destroy(); parts.length = 0; for (const p of art.parts || []) { const pim = kit.sprite(scene, host, keyOf(n) + '|' + p.id, p.box, B => p.draw(B, { season, night: n, prop, state }), x + p.at[0], foot + p.at[1], K, false); if (pim) { pim.setDepth(depthOf()); parts.push({ p, im: pim, turn: pim.rotation = p.phase || 0 }); } } };
+    const makeParts = n => { for (const q of parts) if (q.im) q.im.destroy(); parts.length = 0; for (const p of art.parts || []) { const pim = kit.sprite(scene, host, keyOf(n) + '|' + p.id, p.box, B => p.draw(B, { season, night: n, prop, state }), x + p.at[0], foot + p.at[1], p.K || (p.anim ? 4 : K), false); if (pim) { pim.setDepth(depthOf()); parts.push({ p, im: pim, turn: pim.rotation = p.phase || 0 }); } } };
     makeParts(night0);
     const seat = art.seat !== false && window.GardenPaintSeat && layer ? GardenPaintSeat.add(scene, layer, prop, W, Object.assign({ season, x, foot }, art.seat || {})) : null;
     const b = { x: x + art.box[0], y: foot + art.box[1], width: art.box[2] - art.box[0], height: art.box[3] - art.box[1] };
@@ -173,6 +173,8 @@ window.GardenPaintedMarks = (function () {
         if (art.state && time - checked > 1000) { checked = time; const now = stateOf(); if (now !== state) { state = now; repaint(lit); } }
         if (!node.target.visible || paused || typeof gardenMotionOn === 'function' && !gardenMotionOn()) return;
         for (const q of parts) { const w = q.p.spin ? q.p.spin({ state, season }, env || {}) : 0; if (w && q.im) { q.turn += w * dt; q.im.setRotation(q.turn); } }
+        // (a part with a life of its own is painted once at level 4, so the kit never sharpens it again while you walk: each
+        // sharpening reads the canvas back from the graphics card, which stalled a walk for up to 1.3 s in round 3)
         // art.parts[].anim(im, t, o): a small life of its own (a drip from a spout, an owl's blink, a lantern swinging, smoke);
         // o.x, o.y are its hub, o.night whether the lit picture is up. Only while it is on screen and motion is on (above).
         animT += dt;
