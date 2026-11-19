@@ -791,7 +791,7 @@ window.GardenPaintedTerrain = (function () {
     // (each run of the rim is one stroke, lit and shaded runs apart: a stroke for every pair of columns drew a dotted line)
     const rim = []; for (let c = 0; c < F.PW; c += 3) if (isFinite(F.sky[c]) && F.sky[c] < F.PH - 2) rim.push({ x: x0 + c * F.ST, y: y0 + F.sky[c] * F.ST });
     { let run = [], up0 = null; const flush = () => { if (run.length > 2) B.s(B.line(run), up0 ? (snowShare > .2 ? '#fbfbf6' : '#efe3c6') : '#4a4450', up0 ? 1.5 : 1, up0 ? .6 : .22); run = []; };
-      for (let i = 1; i < rim.length; i++) { const a = rim[i - 1], b = rim[i]; if (Math.abs(b.y - a.y) > 24 || b.x - a.x > F.ST * 4) { flush(); up0 = null; continue; } const up = b.y < a.y - .2; if (up !== up0) { flush(); up0 = up; run.push(a); } run.push(b); }
+      for (let i = 1; i < rim.length; i++) { const a = rim[i - 1], b = rim[i]; if (Math.abs(b.y - a.y) > 24 || b.x - a.x > F.ST * 4 || Math.abs(b.y - a.y) < .25) { flush(); up0 = null; continue; }   /* (a level run of rim is the field running out along its back, not a skyline: it drew a line out over the grass) */ const up = b.y < a.y - .2; if (up !== up0) { flush(); up0 = up; run.push(a); } run.push(b); }
       flush(); }
     // crisp brushwork over the soft picture, from what each visible point of the field is: courses and joints on the crags,
     // stones on the scree, tufts and sprigs on the turf and heather, so a flank close up is rock and turf, not a smear
@@ -940,7 +940,9 @@ window.GardenPaintedTerrain = (function () {
       // (the height field is made here, before the sprite's first painting is timed: with it inside, the painting took so long
       // that the sharpener never painted the peak again close up, and the flanks stayed a soft 1.25 px a world px)
       ok(() => peakField(w, d, H, snowS, P, seed, sharp, foot, pbox[0], pbox[1], pbox[2] - pbox[0], pbox[3] - pbox[1]));
-      out.push({ key: sig + '|peak|' + pk.id, box: pbox, x: ox, y: oy, K: 1.25, fade, fadeTo: .5, draw: B => peakArt(B, w, d, H, snowS, P, seed, sharp, foot, pbox) });
+      // (painted at 2 px a world px when the garden is built, so close up the brushwork is crisp without the sharpener painting it
+      // again: that repaint took 120 to 175 ms the moment you stopped near a peak)
+      out.push({ key: sig + '|peak|' + pk.id, box: pbox, x: ox, y: oy, K: 2, fade, fadeTo: .5, draw: B => peakArt(B, w, d, H, snowS, P, seed, sharp, foot, pbox) });
     }
     // tors framing the gaps in the Edge: the pass and the falls cave stair stand between rock
     const gapAt = [].concat(L.gates.filter(g => g.kind === 'pass').map(g => [g.x + .5, g.y + .9]), L.falls && L.falls.caveStair ? [L.falls.caveStair] : []);
