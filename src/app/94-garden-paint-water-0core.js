@@ -720,9 +720,11 @@ window.GardenPaintWater = (function () {
     if ((kind === 'river' || kind === 'brook') && river) {
       const hwp = river.hw * (W.cellW + W.cellH) / 2, per = kind === 'brook' ? 96 : 150; let side = r() < .5 ? -1 : 1;
       for (let s = per * (.3 + r() * .5); s < river.len - 40; s += per * (.65 + r() * .7)) {
-        side = -side; const c = at(river, s), nx = -c.ty * side, ny = c.tx * side, bx = c.x + nx * hwp * .98, by = c.y + ny * hwp * .98;
-        if (!inside(c.x + nx * hwp * .55, c.y + ny * hwp * .55, pts) || !inside(c.x, c.y, pts) || shoreCovered(bx, by)) continue;
-        const reach = hwp * (.28 + r() * .24), len = (kind === 'brook' ? 22 : 34) + r() * (kind === 'brook' ? 26 : 50), ang = Math.atan2(c.ty, c.tx), reedy = kind === 'brook' || r() < .62, peb = [], clump = [];
+        side = -side; const c = at(river, s), nx = -c.ty * side, ny = c.tx * side; if (!inside(c.x, c.y, pts)) continue;
+        // (the bank as painted: the basin's own outline, which is wider than the line's half width on the lower river)
+        let bd = 0; for (let d = 4; d < 260; d += 4) if (!inside(c.x + nx * d, c.y + ny * d, pts)) { bd = d - 3; break; } if (bd < 12) continue;
+        const bx = c.x + nx * bd, by = c.y + ny * bd; if (shoreCovered(bx + nx * 6, by + ny * 6) && onLand(bx + nx * 6, by + ny * 6)) continue;
+        const reach = bd * (.28 + r() * .24), len = (kind === 'brook' ? 22 : 34) + r() * (kind === 'brook' ? 26 : 50), ang = Math.atan2(c.ty, c.tx), reedy = kind === 'brook' || r() < .62, peb = [], clump = [];
         for (let k = 0; k < 12; k++) peb.push([(r() - .5) * len * 1.3, -r() * reach * .9, .9 + r() * 1.8, r()]);
         if (reedy) { const ids = ['plant.reed', 'plant.proof-fleet-rush', 'plant.bulrush', 'plant.reed']; for (let k = 0, cnt = 4 + Math.floor(r() * 5); k < cnt; k++) { const u = (r() - .5) * len * 1.1, v = -r() * reach * .75; clump.push([bx + Math.cos(ang) * u - Math.sin(ang) * v * side, by + Math.sin(ang) * u + Math.cos(ang) * v * side, ids[Math.floor(r() * ids.length)], r() < .5 ? 0 : 1, 22 + r() * 16]); } clump.sort((p, q) => p[1] - q[1]); }
         add({ x: bx - len * 1.6 - 60, y: by - len * 1.6 - 90, w: len * 3.2 + 120, h: len * 3.2 + 150 }, (cx, C, ctx) => {
