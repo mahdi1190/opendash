@@ -857,7 +857,7 @@ window.GardenPaintedProps = (function () {
         if (motion) node.setRotation(Math.sin(t * 1.3) * .03);
         if (typeof _gw === 'undefined' || !node.active) return;
         const X = _gw.px * o.W.cellW, Y = o.W.sky + _gw.py * o.W.cellH, w = node.displayWidth / 2, hh = node.displayHeight / 2;
-        const want = X + 10 > sx - w && X - 10 < sx + w && Y > sy - hh && Y - 48 < sy + hh ? .4 : 1, now = node.alpha;
+        const want = Math.abs(X - sx) < w - 4 && Math.abs(Y - 26 - sy) < hh ? .5 : 1, now = node.alpha;   // (only while it covers the middle of your body: standing at the hurdle you read it whole)
         if (Math.abs(want - now) > .01) node.setAlpha(Math.abs(want - now) < .03 ? want : now + (want - now) * .25);
       });
     } else if (was === false) {
