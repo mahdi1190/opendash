@@ -33,7 +33,12 @@ function _ptwCell(x, y) { const W = GARDEN_WORLD; return { x: x * W.cellW, y: W.
 function _ptwFree(x, y) { try { return gardenWorldFree(x, y, 0.14); } catch (e) { return true; } }
 function _ptwPlayer() { return typeof _gw !== 'undefined' && _gw && _gw.on !== false ? { x: _gw.px, y: _gw.py, moving: !!_gw.moving, busy: !!_gw.reel } : null; }
 /** A sprite's height in the garden's units: small things stay small, big things never tower over you. */
-function _ptwH(id) { const sp = petSpecies(id) || {}; return (24 + 20 * Math.min(1, Number(sp.h) || 0.3)) * (typeof GARDEN_ACTOR_SCALE === 'number' ? GARDEN_ACTOR_SCALE : 1); }
+/* How tall a pet is drawn in the garden (its picture box, world px). Round 3, sizes: against H, the player's height (about 29.6 world px at the
+   0.8 actor scale; a pet's visible body is about 0.55 of its box), a pet stands (visible) about 0.13 + 0.68 * h of H, h being its species' own size
+   (97-pets-0kitspecies*.js), never over 0.9: a hamster or a ladybird about a fifth of you, a cat a third, a dog under half, a pony three quarters.
+   The drawings do not change, only the size they are drawn at. PET_SIZE_H: species whose kit h is for the pet page, not for the world. */
+const PET_SIZE_H = Object.freeze({ tortoise: 0.35, dragon: 0.6, griffin: 0.7, yeti: 0.85, golem: 0.8 });
+function _ptwH(id) { const sp = petSpecies(id) || {}, h = PET_SIZE_H[id] != null ? PET_SIZE_H[id] : Number(sp.h) || 0.3; return 67.3 * (0.13 + 0.68 * Math.min(0.9, Math.max(0.05, h))) * (typeof GARDEN_ACTOR_SCALE === 'number' ? GARDEN_ACTOR_SCALE : 1); }
 
 /* ---------- a pet in the garden ---------- */
 function _ptwNew(look, me) {
