@@ -202,12 +202,14 @@ function gardenIslandHarbourThings(data) {
   // [key, candidates, wanted ground, half width and depth of the foot in px]
   const rows = [
     ['crates', [[44.3, 76.6], [43.6, 75.4], [57.3, 75.4]], ['path', 'grass', 'beach'], -28, 34, 12],
-    ['pots', [[47.5, 76.7], [45.3, 78.7], [57.6, 75.2], [43.2, 77.6]], ['path', 'grass', 'beach'], -24, 26, 9],
+    // (village fix round 2: each block as wide as the foot drawn on the ground: the audit found the pots' and the anchor's
+    // blocks two to six times their base, and the net's a wall on the sand between its two posts with nothing at its foot)
+    ['pots', [[47.5, 76.7], [45.3, 78.7], [57.6, 75.2], [43.2, 77.6]], ['path', 'grass', 'beach'], -11, 11, 7],
     ['net', [[38.6, 80.6], [39.4, 80.2], [37.6, 81.6]], ['beach', 'grass'], -36, 36, 5],
     ['boat-sand', [[38.4, 83.6], [37.4, 84.4], [42.6, 81.2]], ['beach'], -40, 44, 10],
     ['crate1', [[53.2, 76.1], [46.6, 77.9]], ['path', 'beach'], -10, 10, 8],
     ['bench', [[53.4, 78.55], [46.2, 78.6]], ['path', 'beach'], -24, 24, 6],
-    ['anchor', [[44.7, 78.7], [56.4, 76.4]], ['path', 'beach', 'grass'], -10, 10, 5],
+    ['anchor', [[44.7, 78.7], [56.4, 76.4]], ['path', 'beach', 'grass'], -4, 4, 4],
     ['fishbox', [[48.3, 78.6], [52.9, 77.2]], ['path', 'beach'], -12, 12, 6],
   ];
   const W = GARDEN_WORLD, out = [];

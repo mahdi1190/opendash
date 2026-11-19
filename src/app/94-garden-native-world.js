@@ -1293,9 +1293,11 @@ window.GardenNativeWorld = (function () {
         // body of its picture (its eaves, flower boxes and the air at the picture's sides left out), with your feet behind
         // its foot. Walking a lane beside a cottage, or standing at a door beside a tower, faded the whole building to
         // half see-through, grass showing through its walls, as if it were a fault in the drawing.
-        const footY = W.sky + (p.y + p.h) * W.cellH, inset = Math.max(6, b.width * .12), bx0 = b.x + inset, bx1 = b.x + b.width - inset, by0 = b.y + 18;
+        // (across: the walls stand on the building's own ground, its cells, not across the whole picture, which is wider than the
+        // house by its eaves, its planting and, for the lighthouse, the air either side of a narrow tower)
+        const footY = W.sky + (p.y + p.h) * W.cellH, bx0 = Math.max(b.x, p.x * W.cellW) + 3, bx1 = Math.min(b.x + b.width, (p.x + p.w) * W.cellW) - 3, by0 = b.y + 18;
         const ph = playerOcclusionHeight || 50, ox = Math.max(0, Math.min(sx + 7, bx1) - Math.max(sx - 7, bx0)), oy = Math.max(0, Math.min(sy, footY) - Math.max(sy - ph, by0));
-        let behind = sy < footY - 6 && ox * oy >= 14 * ph * .4;
+        let behind = sy < footY - 6 && sx > bx0 && sx < bx1 && ox >= 8 && oy >= ph * .4;
         if (behind && p.id === 'ld-falls' && record.handle.fallsCoversPlayer) behind = record.handle.fallsCoversPlayer(sx, sy);
         if (record.behind !== behind) { record.behind = behind; record.root.setAlpha(behind ? .38 : 1); }
       }

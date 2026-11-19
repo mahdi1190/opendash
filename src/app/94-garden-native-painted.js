@@ -227,7 +227,9 @@ window.GardenNativePainted = (function () {
     const key = TEX + '|' + id + '|' + v + '|' + season + '|' + Math.round(size.w || 0) + 'x' + Math.round(size.h || 0) + (night ? '|n' : '');
     if (scene.textures.exists(key)) return { key, meta: scene.textures.get(key).customData && scene.textures.get(key).customData.gdpaint };
     const made = ok(() => objectCanvas(id, v, season, size, night)); if (!made) return null;
-    const tex = scene.textures.addCanvas(key, made.c); const meta = { ox: made.ox / made.c.width, oy: made.oy / made.c.height, crown: made.crown };
+    // (addImage: no read back of every pixel from the graphics card as the texture is made; see the ground below)
+    const tex = scene.textures.addImage(key, made.c); if (tex && typeof tex.refresh !== 'function') tex.refresh = function () { for (const src of this.source) src.update(); return this; };
+    const meta = { ox: made.ox / made.c.width, oy: made.oy / made.c.height, crown: made.crown };
     tex.customData = Object.assign(tex.customData || {}, { gdpaint: meta }); return { key, meta };
   }
   function objectImage(scene, id, v, season, size, x, y, night) {
@@ -530,17 +532,17 @@ window.GardenNativePainted = (function () {
   // Library buildings, each its own kind, sized to the old footprint so doors,
   // aprons, picking and depth stay where they were.
   const BUILD = {
-    'garden-shop': { obj: 'building.green-cottage', v: 0, w: 200, wallWidth: 150, sign: 'Seed & Stem', extra: [['plant.planter', 1, -110, 0, 28], ['plant.planter', 0, 110, 0, 28], ['plant.rph-flower-tub', 1, -80, 8, 20]] },   // (four cells: a shop stands larger than the cottages)
+    'garden-shop': { obj: 'building.green-cottage', v: 0, w: 200, wallWidth: 150, door: '#2f5a3a', sign: 'Seed & Stem', extra: [['plant.planter', 1, -110, 0, 28], ['plant.planter', 0, 110, 0, 28], ['plant.rph-flower-tub', 1, -80, 8, 20]] },   // (four cells: a shop stands larger than the cottages)
     // (the Land Office and Tackle & Tide four cells wide, round 3: shops stand larger than the cottages)
-    'land-office': { obj: 'building.cottage', v: 1, w: 190, wallWidth: 160, sign: 'Land Office', extra: [['street.lamp', 0, -102, 4, 0, 74]] },   // (the lamp on the door's side of the west corner: the lake walk passes just outside it)
+    'land-office': { obj: 'building.cottage', v: 1, w: 190, wallWidth: 160, door: '#5a3a2a', sign: 'Land Office', extra: [['street.lamp', 0, -102, 4, 0, 74]] },   // (the lamp on the door's side of the west corner: the lake walk passes just outside it)
     'tackle-shop': { obj: 'building.fpv-sailing-hut', v: 0, w: 200, wallWidth: 376, wallCenterX: -8, wallFootY: 14, clickTop: .3, sign: 'Tackle & Tide', extra: [['street.mqn-lifebuoy', 0, 104, 2, 0, 32]] },
     'market-stall': { obj: 'structure.mcr-market-chalet', v: 1, w: 104, wallWidth: 200 },
     // the high street's cottages (2.74), each its own kind so the street is not one house four times. Three cells wide, so
     // the ridge stands about 3.5 times the player's height (common size standard); the low thatched kind would stay under 2.5.
-    'ld-cottage-1': { obj: 'building.cottage', v: 2, w: 150, wallWidth: 160, extra: [['plant.rph-flower-tub', 1, -62, 6, 20]] },
-    'ld-cottage-2': { obj: 'building.cottage', v: 0, w: 150, wallWidth: 160, extra: [['plant.planter', 1, 64, 0, 24]] },
-    'ld-cottage-3': { obj: 'building.cottage', v: 1, w: 150, wallWidth: 160, extra: [['plant.planter', 0, 64, 0, 24]] },
-    'ld-cottage-4': { obj: 'building.green-cottage', v: 2, w: 150, wallWidth: 150, extra: [['plant.rph-flower-tub', 0, -62, 6, 20]] },
+    'ld-cottage-1': { obj: 'building.cottage', v: 2, w: 150, wallWidth: 160, door: '#2f5a44', extra: [['plant.rph-flower-tub', 1, -62, 6, 20]] },
+    'ld-cottage-2': { obj: 'building.cottage', v: 0, w: 150, wallWidth: 160, door: '#2a3e66', extra: [['plant.planter', 1, 64, 0, 24]] },
+    'ld-cottage-3': { obj: 'building.cottage', v: 1, w: 150, wallWidth: 160, door: '#7a2e2a', extra: [['plant.planter', 0, 64, 0, 24]] },
+    'ld-cottage-4': { obj: 'building.green-cottage', v: 2, w: 150, wallWidth: 150, door: '#4a5a3a', extra: [['plant.rph-flower-tub', 0, -62, 6, 20]] },
   };
   const HALL = [
     // (four cells wide from round 3: the hall stands larger than the cottages; w is its shadow's width)
@@ -568,6 +570,23 @@ window.GardenNativePainted = (function () {
     const size = { w: shape ? (shape.box[2] - shape.box[0]) * scale : def.w };
     const main = objectImage(scene, def.obj, def.v, season, size, cx - (def.wallCenterX || 0) * scale, foot - (def.wallFootY || 0) * scale, night); if (!main) { node.remove(); return null; }
     node._inner.add(main); parts.push([main, def.obj, def.v, size]);
+    // (village fix round 2) the front door at the size standard, a quarter as tall again as the player will be (1.25 H): the
+    // houses' own doors came to about two thirds of the player's height. A panelled door with a fanlight in a stone
+    // surround, a stone step and a little gabled hood, painted over the picture's own door, which it covers
+    if (def.door) {
+      const H = 40, dh = H * 1.25, dw = dh * .46, x = cx - (def.wallCenterX || 0) * scale + (def.doorDx || 0), by = foot - (def.wallFootY || 0) * scale - 1;
+      const g = scene.add.graphics(), col = Phaser.Display.Color.HexStringToColor(def.door).color, dark = Phaser.Display.Color.HexStringToColor(def.door).darken(25).color;
+      g.fillStyle(0x2a2418, .25).fillRect(x - dw / 2 - 3, by - dh - 1, dw + 7, dh + 2);
+      g.fillStyle(0xe6dcc6).fillRect(x - dw / 2 - 3.2, by - dh - 2.6, dw + 6.4, dh + 2.6).fillStyle(0xc8bca4).fillRect(x + dw / 2 + 1.4, by - dh - 2.6, 1.8, dh + 2.6);
+      g.fillStyle(0x3a3a3a).fillRect(x - dw / 2, by - dh, dw, dh);
+      g.fillStyle(0xbcd4dc).fillRect(x - dw / 2 + 1, by - dh + 1, dw - 2, dh * .16).fillStyle(0xe6dcc6).fillRect(x - .6, by - dh + 1, 1.2, dh * .16);
+      g.fillStyle(col).fillRect(x - dw / 2 + .8, by - dh * .82, dw - 1.6, dh * .82 - .2);
+      for (const [px, py, pw, ph] of [[-.38, -.76, .32, .3], [.06, -.76, .32, .3], [-.38, -.38, .32, .3], [.06, -.38, .32, .3]]) g.fillStyle(dark).fillRect(x + px * dw, by + py * dh, pw * dw, ph * dh).fillStyle(0xffffff, .12).fillRect(x + px * dw, by + py * dh, pw * dw, 1);
+      g.fillStyle(0xd8b24a).fillCircle(x + dw * .3, by - dh * .42, 1.3).fillRect(x - dw * .14, by - dh * .5, dw * .28, 1.4);
+      g.fillStyle(0xc8bca4).fillRect(x - dw / 2 - 5, by - 1.5, dw + 10, 3.4).fillStyle(0xe0d6c0).fillRect(x - dw / 2 - 5, by - 1.5, dw + 10, 1);
+      g.fillStyle(0x4a3c32).fillTriangle(x - dw / 2 - 6, by - dh - 2.6, x + dw / 2 + 6, by - dh - 2.6, x, by - dh - 12).fillStyle(0x6a5646).fillTriangle(x - dw / 2 - 4, by - dh - 3.4, x, by - dh - 3.4, x, by - dh - 10.6);
+      node._inner.add(g);
+    }
     for (const [id, v, dx, dy, w, h] of def.extra || []) { if (!sceneObj(id)) continue; const im = objectImage(scene, id, v, season, w ? { w } : { h }, cx + dx, foot + dy, night); if (im) { node._inner.addAt(im, dy > 0 ? node._inner.list.length : 1); parts.push([im, id, v, w ? { w } : { h }]); } }
     if (def.sign) {
       // (village fix round 1: a painted timber signboard on two oak posts standing in the ground in front of the house, with

@@ -79,7 +79,10 @@ window.GardenPaintedProps = (function () {
     const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d');
     cx.setTransform(K, 0, 0, K, -x0 * K, -y0 * K);
     if (ok(() => draw(brush(cx), cx)) === false) return null;
-    const tex = scene.textures.addCanvas(full, c); tex.customData = Object.assign(tex.customData || {}, { gpp: { ox: -x0 / (x1 - x0), oy: -y0 / (y1 - y0) } });
+    // (village fix round 2) addImage, not addCanvas: a CanvasTexture reads every pixel back from the graphics card as it is
+    // made, and at a level-up, with the card busy, that read held the page up for many seconds (a gate's picture: 20 s+)
+    const tex = scene.textures.addImage(full, c); if (tex && typeof tex.refresh !== 'function') tex.refresh = function () { for (const src of this.source) src.update(); return this; };
+    tex.customData = Object.assign(tex.customData || {}, { gpp: { ox: -x0 / (x1 - x0), oy: -y0 / (y1 - y0) } });
     baked++; bakeMs += performance.now() - t0; return full;
   }
   function image(scene, key, x, y) {

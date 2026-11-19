@@ -270,12 +270,15 @@
   };
   const drawNet = P => B => {
     B.shadow(0, 1, 40, 6, .25);
+    // (fix round 2) the drying frame stands on a sill along the sand from post to post, the net's hem heaped on it: its
+    // foot is as long as the frame, so the frame's block on the sand meets something drawn on the ground
+    B.f(B.rr(-36, -3.2, 72, 4.2, 1.6), P.woodLo).f(B.rect(-35, -3.2, 70, 1.2), P.woodHi, .6);
     for (const x of [-34, 34]) { B.post(x, -52, 0, 3.4, [P.wood, P.woodLo, P.woodHi]); }
     B.s('M-34 -50L34 -50', P.woodLo, 2.4, .95);
     const net = 'M-33 -49Q0 -44 33 -49L30 -16Q4 -2 -26 -20Z';
     B.f(net, '#4f6a66', .35); B.cx.save(); B.cx.clip(new Path2D(net)); for (let k = -60; k < 60; k += 5) { B.s(`M${k} -52l40 50`, '#2f3e3a', .7, .6); B.s(`M${k} -52l-40 50`, '#2f3e3a', .7, .6); } B.cx.restore();
     for (let x = -30; x <= 30; x += 8) B.f(B.ell(x, -48 + Math.abs(x) * .05, 2.2, 1.6), '#d8a040');
-    B.f(B.ell(-12, -6, 8, 2.4), '#4f6a66', .4);
+    B.f(B.ell(-12, -6, 8, 2.4), '#4f6a66', .4).f(B.blob(window.GardenPaintTerrainKit ? window.GardenPaintTerrainKit.rng(55) : Math.random, -4, -4, 26, 3, 9, .4), '#4f6a66', .55).f(B.blob(window.GardenPaintTerrainKit ? window.GardenPaintTerrainKit.rng(56) : Math.random, 14, -4.4, 14, 2.4, 8, .4), '#3e5652', .5);
   };
   const drawBoat = (P, col, afloat) => B => {
     const hull = 'M-40 -6Q-38 -18 -14 -20L30 -18Q44 -14 44 -6Q42 4 26 6L-26 6Q-40 4 -40 -6Z', inner = 'M-34 -7Q-32 -15 -14 -16L28 -14Q38 -11 38 -6Q36 0 24 1L-24 1Q-34 0 -34 -7Z';

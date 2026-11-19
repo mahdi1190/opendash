@@ -382,6 +382,12 @@
         // the field's own ground, tended, its colour running out softly into the grass round it (no line round it)
         B.cx.save(); B.cx.filter = 'blur(6px)'; B.f(path, P.lawnHi, .22); B.cx.filter = 'none';
         B.cx.clip(path, 'nonzero'); fill(B, C, f, [x0 - 4, y0 - 4, x1 + 4, y1 + 4], cb, has, loops, true);
+        // the allotment, yours: its strips dug over and raked, ready, along the slope's contour, with grass walks between them
+        // (what grows there is still yours to plant; a strip you plant in is dug as a bed like any other)
+        if (f.edge === 'long-grass') { const salt = KIT().hashStr('strip|' + id) & 0xffff, xa = Math.floor((Math.max(x0, cb[0] - 30)) / 24) * 24, xb = Math.min(x1, cb[2] + 30);
+          for (let k = 0, y = y0 + 10; y < y1 - 4; y += 27, k++) { if (y < cb[1] - 20 || y > cb[3] + 20) continue; let top = [], bot = [];
+            const flush = () => { if (top.length > 2) { const poly = top.concat(bot.reverse()), P2 = new Path2D(); P2.moveTo(poly[0].x, poly[0].y); for (const q of poly) P2.lineTo(q.x, q.y); P2.closePath(); B.f(P2, '#7a5a3e', .9); V.strokePts(B, top.map(q => ({ x: q.x, y: q.y + 3 })), '#5e4430', 1, .5); V.strokePts(B, top.map(q => ({ x: q.x, y: q.y + 7 })), '#5e4430', 1, .45); V.strokePts(B, top, '#9a7a56', 1.4, .6); } top = []; bot = []; };
+            for (let x = xa; x <= xb; x += 12) { if (((Math.imul(Math.round(x / 72) * 31 + k * 17 + salt, 2654435761) >>> 0) % 5) === 0 && x % 72 === 0) { flush(); continue; } const yy = y + Math.sin(x * .011 + y * .004) * 6; top.push({ x, y: yy - 5.5 }); bot.push({ x, y: yy + 5.5 }); } flush(); } }
         // where the field is grass, the mower's stripes, wide and faint, slanting the same way across every piece
         if (f.edge !== 'meadow' && f.edge !== 'bracken' && f.edge !== 'reeds') { const band = 26; B.cx.filter = 'blur(2px)'; for (let k = 0, x = x0 - (y1 - y0) * .5 - band; x < x1 + band; x += band, k++) B.f(B.poly([[x, y1 + 6], [x + band, y1 + 6], [x + band + (y1 - y0 + 12) * .5, y0 - 6], [x + (y1 - y0 + 12) * .5, y0 - 6]]), k % 2 ? '#f2f4d2' : P.lawnLo, k % 2 ? .1 : .06); B.cx.filter = 'none'; }
         B.cx.filter = 'blur(3px)'; B.s(path, '#3a4a24', 7, .12); B.cx.filter = 'none';
@@ -394,6 +400,7 @@
         const ox = q.x + q.ty * 12, oy = q.y - q.tx * 9, ocx = Math.floor(ox / cw), ocy = Math.floor((oy - W.sky) / ch);
         if (fieldCells.get(ocx + ',' + ocy) === f) continue;   // (the next piece of this field: its own edge, or none, stands there)
         const b = gardenIslandBaseCell(ocx, ocy); if (!b || !b.land) continue;
+        if (ownedLow[f.edge] && !b.route) continue;   // (a raised edging only along a lane or a path: never a ring round the plot)
         if (gateHere && Math.hypot(q.x - gx, q.y - gy) < cw * .75) continue;   // the gateway, open
         const inset = Math.abs(q.tx) > Math.abs(q.ty) ? (q.tx > 0 ? 6 : 2) : 3.5; run.push({ x: q.x - q.ty * inset, y: q.y + q.tx * inset, tx: q.tx, ty: q.ty, i: run.length, big: .55 });
       }
