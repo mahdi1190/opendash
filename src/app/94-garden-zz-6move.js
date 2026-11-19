@@ -160,6 +160,8 @@ function gartMoveFrame(inner, bob, gw, time) {
   const lift = typeof gartActLift === 'function' ? gartActLift() : 0;
   if (bob && (hopY || lift || _gmv.hopWas)) { bob.setAttribute('transform', `translate(0 ${_gmvN(hopY - lift)})`); _gmv.hopWas = !!(hopY || lift); }
   if (typeof gartActFrame === 'function') gartActFrame();
+  if (body && gw.boat && !acting) { _gmvRow(body, gw, motion); return; }   // (16) in the boat: seated at the oars, pulling as it moves
+  if (body && typeof _ga !== 'undefined' && _ga.carry && !acting && !(_GPL.pose === 'stride' || (inner._gplKey || '').startsWith('stride'))) gartActCarryFrame(body, _gmvLimbs(body));
   if (acting || !body || !motion || _GPL.pose !== 'stride' && !(inner._gplKey || '').startsWith('stride')) { _gmv.lpx = _gmv.lpy = null; return; }
   const L = _gmvLimbs(body); if (!L.legA || !L.legB) return;
   // the gait: run, creep, stairs or walk; the stride follows the ground actually covered
@@ -203,6 +205,22 @@ function gartMoveFrame(inner, bob, gw, time) {
     _gmvSet(L.up, (pa < 0.5 ? 1 : -1) * Math.min(1.6, v / 90), null, 0, native);
   }
   _gmvSet(L.root, 0, null, hip, native);
+  if (typeof _ga !== 'undefined' && _ga.carry && typeof gartActCarryFrame === 'function') gartActCarryFrame(body, L);   // (25) carrying: both hands on it
+}
+/** (16) Rowing: seated low in the boat (the boat is drawn round the feet), the oars pulled through the water, a stroke every so much ground. */
+const _GMV_OARS = '<g class="gmv-oars"><path d="M-30 -18L30 -18" stroke="#8a6438" stroke-width="2" stroke-linecap="round"/><path d="M-36 -19l-7 -1l1 4zM36 -19l7 -1l-1 4z" fill="#a07a48" stroke="#5a3e22" stroke-width="0.5"/></g>';
+function _gmvRow(body, gw, motion) {
+  const L = _gmvLimbs(body); if (!L.legA) return;
+  if (!body._gmvOars || !body._gmvOars.parentNode) { try { const g = typeof gardenSceneElement === 'function' && L.native ? gardenSceneElement('g') : document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.innerHTML = _GMV_OARS; (body.querySelector('.gpl-up') || body).appendChild(g); body._gmvOars = g; } catch (e) { /* no oars */ } }
+  const Wd = GARDEN_WORLD, ddx = _gmv.rpx == null ? 0 : (gw.px - _gmv.rpx) * Wd.cellW, ddy = _gmv.rpy == null ? 0 : (gw.py - _gmv.rpy) * Wd.cellH; _gmv.rpx = gw.px; _gmv.rpy = gw.py;
+  if (motion) _gmv.rphase = ((_gmv.rphase || 0) + Math.min(30, Math.hypot(ddx, ddy)) / 46 + (gw.moving ? 0 : 0.004)) % 1;
+  const q = Math.sin((_gmv.rphase || 0) * Math.PI * 2), side = L.side, nat = L.native;
+  _gmvSet(L.root, 0, null, 12, nat);
+  _gmvSet(L.legA, side ? -70 : 0, side ? 1 : 0.4, 0, nat); _gmvSet(L.legB, side ? -64 : 0, side ? 1 : 0.4, 0, nat);
+  _gmvSet(L.kneeA, side ? 80 : 0, side ? null : 2.5, 0, nat); _gmvSet(L.kneeB, side ? 74 : 0, side ? null : 2.5, 0, nat);
+  _gmvSet(L.up, side ? -8 * q : 0, side ? null : 1 - 0.03 * q, 0, nat);
+  _gmvSet(L.armA, side ? -60 - 30 * q : 30 + 20 * q, side ? null : 0.85, 0, nat); _gmvSet(L.armB, side ? -60 - 30 * q : -30 - 20 * q, side ? null : 0.85, 0, nat);
+  if (body._gmvOars) { const tf = side ? `translate(${_gmvN(6 * q)} 0)` : `translate(0 ${_gmvN(2 * q)}) scale(${_gmvN(1 - 0.12 * q)} 1)`; if (body._gmvOars.getAttribute('transform') !== tf) body._gmvOars.setAttribute('transform', tf); }
 }
 /** How the walk is going, for checks: heading, drawing, gait, phase, stride (px). */
 function gartMoveState() { return { heading: Math.round(_gmv.h), want: Math.round(_gmv.want), dir: _GPL.dir, mirror: _gmv.mirror, sx: _gmv.sx, phase: _gmv.phase, stairs: !!_gmv.onStairs, uphill: _gmv.uphill, hop: _gmv.hop > 0, feet: _gmv.feet || null }; }

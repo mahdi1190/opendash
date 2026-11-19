@@ -39,6 +39,12 @@ const GA_PROPS = Object.freeze({
   drips: '<g class="ga-drips">' + _GA_K(6, (i) => `<path d="M${-8 + i * 3.2} ${-30 + (i % 3) * 9}q1 2 0 3q-1 -1 0 -3z" fill="#9ad4ee"/>`).join('') + '</g>',
   // the bell rope, hanging from the bell above to the hands (stays put while the arms pull)
   rope: '<g><path d="M0 -150Q1.4 -110 0 -66" stroke="#b08a58" stroke-width="2.2" fill="none"/><path d="M-2 -70h4l-.6 9h-2.8z" fill="#c84a3a" stroke="#7a2a20" stroke-width="0.5"/></g>',
+  // the water round a swimmer: the surface at the chest, a ripple ring, the body below it seen through the water
+  swimwater: '<g class="ga-swim"><ellipse cx="0" cy="-25" rx="19" ry="6.4" fill="#4f98ae" opacity="0.7"/><ellipse cx="0" cy="-26" rx="17" ry="4.4" fill="#8ccbdc" opacity="0.55"/><ellipse class="ga-swim-r" cx="0" cy="-26" rx="22" ry="5.6" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.75"/><path d="M-26 -22q5 2 10 0M14 -21q5 2 10 0" stroke="#e8f6fa" stroke-width="0.9" fill="none" opacity="0.7"/></g>',
+  stickfly: '<g class="ga-stickfly" style="transform-origin:12px -60px"><path d="M4 -60L20 -62" stroke="#7a5432" stroke-width="2" stroke-linecap="round"/><path d="M14 -61l3 -4" stroke="#7a5432" stroke-width="1.2"/></g>',
+  fiddle: '<g transform="translate(-4 -49) rotate(-30) scale(0.55)"><path d="M-3 -2Q-6 -2 -6 2Q-6 5 -3 5Q-4 8 -1 9L9 9Q12 8 11 5Q14 5 14 2Q14 -2 11 -2Q12 -5 9 -6L-1 -6Q-4 -5 -3 -2z" fill="#a8582a" stroke="#4a2210" stroke-width="0.7"/><path d="M14 1.6L27 1.6" stroke="#2a1a10" stroke-width="2.2"/><path d="M1 -2v7M7 -2v7" stroke="#2a1a10" stroke-width="0.6"/></g><g class="ga-bow"><path d="M4 -40L20 -52" stroke="#7a5a36" stroke-width="0.9"/></g>',
+  // the rod held out over the water in front (you face it), the line down to a float out on the water
+  bankrod: '<g><path d="M10 -30L30 -66" stroke="#7a5a34" stroke-width="1.8" stroke-linecap="round"/><path d="M30 -66Q36 -70 38 -96" stroke="#e8e8e0" stroke-width="0.6" fill="none" opacity="0.85"/><circle cx="38" cy="-97" r="2.2" fill="#d84a3a" stroke="#fff" stroke-width="0.6"/><ellipse class="ga-bob-r" cx="38" cy="-96" rx="7" ry="2.2" fill="none" stroke="#fff" stroke-width="0.7" opacity="0.6"/></g>',
   peek: '',
 });
 /* Parts: front on, root (feet at 0,0) / up (from the hips) / head / armL armR (hang from the shoulders: + turns the left arm out, - the right) / legL legR. */
@@ -135,6 +141,34 @@ const GARDEN_ACTS = Object.freeze({
   angel: { verb: 'Make a snow angel', dir: 's', ms: 900, hold: true, lying: true, first: 'Made a snow angel. It is still there, a bit wonky.', winter: true,
     enter: { root: [[0.4, { y: 6 }, 'io'], [0.85, { r: -90, x: 34, y: -8 }, 'o'], [1, { r: -90, x: 34, y: -8 }]], armL: [[0.85, { r: 60 }], [1, { r: 60 }]], armR: [[0.85, { r: -60 }], [1, { r: -60 }]] },
     loop: { ms: 1400, root: [[0, { r: -90, x: 34, y: -8 }], [1, { r: -90, x: 34, y: -8 }]], armL: [[0, { r: 60 }], [0.5, { r: 150 }, 'io'], [1, { r: 60 }, 'io']], armR: [[0, { r: -60 }], [0.5, { r: -150 }, 'io'], [1, { r: -60 }, 'io']], legL: [[0, {}], [0.5, { r: 20 }, 'io'], [1, {}, 'io']], legR: [[0, {}], [0.5, { r: -20 }, 'io'], [1, {}, 'io']] }, fx: { every: 1400, kind: 'place', dy: 0, width: 44 } },
+  // (7) swim: wade out from the bank until the water is at your chest, a few strokes, then float with your arms out (the water drawn round you)
+  swim: { verb: 'Go for a swim', dir: 'n', ms: 5200, hold: true, prop: 'swimwater', first: 'Went for a swim and floated on my back for a while.', sound: 'splash', fx: { every: 1500, kind: 'water', dy: -1.2, width: 34 }, deep: true,
+    enter: { root: [[0.05, {}], [0.45, { y: -46 }, 'io'], [0.8, { y: -50 }, 'io'], [1, { y: -50 }]], legL: [[0.05, {}], [0.12, { sy: 0.7 }, 'io'], [0.2, {}, 'io'], [0.42, { sy: 0.06 }, 'i'], [1, { sy: 0.06 }]], legR: [[0.1, {}], [0.17, { sy: 0.7 }, 'io'], [0.25, {}, 'io'], [0.42, { sy: 0.06 }, 'i'], [1, { sy: 0.06 }]],
+      armL: [[0.45, { r: 30 }], [0.52, { r: 170 }, 'io'], [0.6, { r: 40 }, 'io'], [0.68, { r: 170 }, 'io'], [0.76, { r: 40 }, 'io'], [0.9, { r: 84, sy: 0.9 }, 'io'], [1, { r: 84, sy: 0.9 }]], armR: [[0.45, { r: -30 }], [0.56, { r: -170 }, 'io'], [0.64, { r: -40 }, 'io'], [0.72, { r: -170 }, 'io'], [0.8, { r: -40 }, 'io'], [0.9, { r: -84, sy: 0.9 }, 'io'], [1, { r: -84, sy: 0.9 }]],
+      head: [[0.85, {}], [0.95, { y: 2, r: 4 }, 'io'], [1, { y: 2, r: 4 }]] },
+    loop: { ms: 3200, root: [[0, { y: -50 }], [0.5, { y: -48.6 }, 'io'], [1, { y: -50 }, 'io']], legL: [[0, { sy: 0.06 }], [1, { sy: 0.06 }]], legR: [[0, { sy: 0.06 }], [1, { sy: 0.06 }]], armL: [[0, { r: 84, sy: 0.9 }], [0.5, { r: 78, sy: 0.9 }, 'io'], [1, { r: 84, sy: 0.9 }, 'io']], armR: [[0, { r: -84, sy: 0.9 }], [0.5, { r: -78, sy: 0.9 }, 'io'], [1, { r: -84, sy: 0.9 }, 'io']], head: [[0, { y: 2, r: 4 }], [0.5, { y: 2, r: -4 }, 'io'], [1, { y: 2, r: 4 }, 'io']] } },
+  // (18) kick: a step, the knee comes through and the foot swings (the ball, or the leaves, fly: the core moves them)
+  kick: { verb: 'Kick it', dir: 's', ms: 1300, first: 'Kicked a ball across the green.', sound: 'pat', kick: true,
+    enter: { legR: [[0.15, { r: -14 }, 'io'], [0.35, { r: 30 }, 'b'], [0.5, { r: 22 }, 'o'], [0.8, {}, 'io']], kneeR: [[0.15, { r: 50 }, 'io'], [0.35, { r: -4 }, 'b'], [0.8, {}, 'io']], legL: [[0.35, { sy: 0.96 }], [0.8, {}]], armL: [[0.35, { r: 40 }, 'o'], [0.8, {}, 'io']], armR: [[0.35, { r: -30 }, 'o'], [0.8, {}, 'io']], up: [[0.15, { r: 4 }], [0.35, { r: -6 }, 'o'], [0.8, {}, 'io']] } },
+  // (20) throw a stick for your pet: wind up, the stick flies, the pet runs for it and brings it back (the core moves the pet)
+  throwstick: { verb: 'Throw a stick', dir: 's', ms: 1500, first: 'Threw a stick. It came back, very wet.', prop: 'stickfly', fetch: true,
+    enter: { armR: [[0.15, { r: 50 }, 'io'], [0.32, { r: -170 }, 'b'], [0.5, { r: -120 }, 'o'], [0.9, {}, 'io']], up: [[0.15, { r: 6 }], [0.32, { r: -6 }, 'o'], [0.9, {}, 'io']], legL: [[0.32, { r: 6 }], [0.9, {}]] } },
+  // (20) belly rubs: down on one knee, a hand rubbing; the pet rolls over beside you (its own belly-rub game is on the pet's menu)
+  rub: { verb: 'Give your pet a belly rub', dir: 's', ms: 600, hold: true, pet: 'sit', first: 'Gave my pet a belly rub. Its leg went.',
+    enter: { root: [[0.6, { y: 9 }, 'o'], [1, { y: 9 }]], legL: [[0.6, { sy: 0.4, r: 8 }, 'o'], [1, { sy: 0.4, r: 8 }]], kneeL: [[0.6, { sy: 2.4 }, 'o'], [1, { sy: 2.4 }]], legR: [[0.6, { sy: 0.7, r: -6 }, 'o'], [1, { sy: 0.7, r: -6 }]], kneeR: [[0.6, { sy: 0.8, r: 60 }, 'o'], [1, { sy: 0.8, r: 60 }]], armR: [[0.6, { r: -40, sy: 0.9 }, 'o'], [1, { r: -40, sy: 0.9 }]], up: [[0.6, { r: -6 }], [1, { r: -6 }]] },
+    loop: { ms: 700, root: [[0, { y: 9 }], [1, { y: 9 }]], legL: [[0, { sy: 0.4, r: 8 }], [1, { sy: 0.4, r: 8 }]], kneeL: [[0, { sy: 2.4 }], [1, { sy: 2.4 }]], legR: [[0, { sy: 0.7, r: -6 }], [1, { sy: 0.7, r: -6 }]], kneeR: [[0, { sy: 0.8, r: 60 }], [1, { sy: 0.8, r: 60 }]], up: [[0, { r: -6 }], [1, { r: -6 }]], armR: [[0, { r: -40, sy: 0.9 }], [0.5, { r: -54, sy: 0.9 }, 'io'], [1, { r: -40, sy: 0.9 }, 'io']] } },
+  // (24) the busker's fiddle: under the chin, the bow arm saws; notes rise; a friend near you can dance (the moves wheel)
+  play: { verb: 'Play the fiddle', dir: 's', ms: 600, hold: true, prop: 'fiddle', first: 'Played the busker\u2019s fiddle. Somebody clapped.', sound: 'chime', fx: { every: 900, kind: 'gold', dy: -2, width: 18 },
+    enter: { armL: [[0.6, { r: -120, sy: 0.8 }, 'o'], [1, { r: -120, sy: 0.8 }]], armR: [[0.6, { r: -60, sy: 0.86 }, 'o'], [1, { r: -60, sy: 0.86 }]], head: [[0.6, { r: -10, x: -1 }], [1, { r: -10, x: -1 }]] },
+    loop: { ms: 900, armL: [[0, { r: -120, sy: 0.8 }], [1, { r: -120, sy: 0.8 }]], armR: [[0, { r: -50, sy: 0.86 }], [0.5, { r: -80, sy: 0.86 }, 'io'], [1, { r: -50, sy: 0.86 }, 'io']], head: [[0, { r: -10, x: -1 }], [0.5, { r: -6, x: -1 }, 'io'], [1, { r: -10, x: -1 }, 'io']], up: [[0, {}], [0.5, { r: 2 }, 'io'], [1, {}, 'io']], root: [[0, {}], [0.25, { y: 0.8 }, 'io'], [0.5, {}, 'io'], [0.75, { y: 0.8 }, 'io'], [1, {}, 'io']] } },
+  // (25) pick up a small thing: bend, lift it, and walk off carrying it in both hands (E again sets it down where you stand)
+  carry: { verb: 'Pick it up', dir: 's', ms: 900, first: 'Picked something up and carried it off.', carry: true,
+    enter: { root: [[0.4, { y: 7 }, 'io'], [0.9, {}, 'io']], up: [[0.4, { r: 0, y: 3, sy: 0.92 }, 'io'], [0.9, {}, 'io']], legL: [[0.4, { sy: 0.72 }, 'io'], [0.9, {}, 'io']], kneeL: [[0.4, { sy: 1.2 }, 'io'], [0.9, {}, 'io']], legR: [[0.4, { sy: 0.72 }, 'io'], [0.9, {}, 'io']], kneeR: [[0.4, { sy: 1.2 }, 'io'], [0.9, {}, 'io']], armL: [[0.4, { r: -10, sy: 1.1 }, 'io'], [0.9, { r: -18, sy: 0.78 }, 'io'], [1, { r: -18, sy: 0.78 }]], armR: [[0.4, { r: 10, sy: 1.1 }, 'io'], [0.9, { r: 18, sy: 0.78 }, 'io'], [1, { r: 18, sy: 0.78 }]] } },
+  // (29) sit on the bank with your legs over and fish; a friend on the other half of the bank sits beside you and fishes too
+  fishsit: { verb: 'Sit on the bank and fish', dir: 'n', ms: 700, hold: true, pet: 'sit', prop: 'bankrod', first: 'Sat on the bank and fished, legs over the water.',
+    // seen from behind, facing the water: the hips on the bank's lip, the thighs out over the edge (foreshortened, going away) and the shins down its far side, out of sight
+    enter: _gaHoldPose({ root: { y: 24.6 }, legL: { sy: 0.26, r: 4 }, legR: { sy: 0.26, r: -4 }, kneeL: { sy: 0.02 }, kneeR: { sy: 0.02 }, armL: { r: 20, sy: 0.9 }, armR: { r: -150, sy: 0.7 } }, 0.6),
+    loop: { ms: 4000, root: [[0, { y: 24.6 }], [1, { y: 24.6 }]], legL: [[0, { sy: 0.26, r: 4 }], [1, { sy: 0.26, r: 4 }]], legR: [[0, { sy: 0.26, r: -4 }], [1, { sy: 0.26, r: -4 }]], kneeL: [[0, { sy: 0.02 }], [1, { sy: 0.02 }]], kneeR: [[0, { sy: 0.02 }], [1, { sy: 0.02 }]], armL: [[0, { r: 20, sy: 0.9 }], [1, { r: 20, sy: 0.9 }]], armR: [[0, { r: -150, sy: 0.7 }], [0.45, { r: -146, sy: 0.7 }, 'io'], [0.5, { r: -158, sy: 0.7 }, 'b'], [0.6, { r: -150, sy: 0.7 }, 'io'], [1, { r: -150, sy: 0.7 }]], head: [[0, {}], [0.5, { r: 5 }, 'io'], [1, {}, 'io']] } },
   laugh: { verb: 'Laugh', dir: 's', ms: 1500, first: '', enter: { up: _GA_K(8, (i) => [0.08 + i * 0.1, { y: i % 2 ? 1 : -1, r: i % 2 ? 3 : 1 }, 'io']).concat([[1, {}]]), head: [[0.1, { r: -8 }, 'o'], [0.8, { r: -8 }], [1, {}]], armL: [[0.1, { r: 30 }, 'o'], [0.8, { r: 30 }], [1, {}]], armR: [[0.1, { r: -50 }, 'o'], [0.8, { r: -50 }], [1, {}]] } },
 });
 /** The fixed things of the layout and what each offers. stand: where the feet go (cells from the foot's middle), deg: the way you face. */
@@ -170,9 +204,9 @@ const GARDEN_ACT_BY_TREE = Object.freeze({
   fells: [{ act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90 }],
 });
 /** The water's edge: wherever water is within reach in front of you (feed and skim face it; skim only on still water). */
-const GARDEN_ACT_WATER = Object.freeze([{ act: 'feed', name: 'the ducks' }, { act: 'skim', name: 'still water' }]);   // (they take turns: do one and the other is offered)
+const GARDEN_ACT_WATER = Object.freeze([{ act: 'feed', name: 'the ducks' }, { act: 'skim', name: 'still water' }, { act: 'swim', name: 'the water', deep: true }]);   // (they take turns: do one and the other is offered)
 /** Anywhere on open ground: these are on the moves wheel too. */
-const GARDEN_ACT_GROUND = Object.freeze(['lie', 'nap', 'laugh']);
+const GARDEN_ACT_GROUND = Object.freeze(['lie', 'nap', 'laugh', 'throwstick', 'rub']);
 /** Not in the world yet. A painter places each (art: true once drawn) and it joins the prompts; cells are suggestions from the region plans. */
 const GARDEN_ACT_SPOTS = Object.freeze([
   { id: 'rope-swing', act: 'swing', region: 'west-woods', near: 'ld-bridge', cell: [36, 34], art: false, note: 'a rope swing from an oak over the brook by the footbridge; swing, or let go and splash in' },
@@ -181,13 +215,13 @@ const GARDEN_ACT_SPOTS = Object.freeze([
   { id: 'harbour-bell', act: 'bell', region: 'home-island', near: 'tackle-shop', cell: [50, 78], art: false, note: 'a ship\'s bell on a post at the head of the pier' },
   { id: 'telescope-folly', act: 'look', region: 'east', near: 'ld-folly', cell: [86, 30], art: true, drawnBy: '94-garden-zz-7act-2world.js', note: 'the brass telescope on the folly lookout' },
   { id: 'telescope-quay', act: 'look', region: 'home-island', near: 'ld-lighthouse', cell: [60, 86], art: false, note: 'a coin telescope on the harbour wall, looking out to sea' },
-  { id: 'busker', act: 'play', region: 'home-island', near: 'market-stall', cell: [52, 60], art: false, note: 'a busker\'s pitch with a fiddle and an open case; play, and a friend can dance' },
-  { id: 'ball', act: 'kick', region: 'home-island', near: 'sundial', cell: [47, 52], art: false, note: 'a ball on the green' },
-  { id: 'leaf-pile', act: 'kick', region: 'home-island', near: 'sundial', cell: [45, 53], art: false, note: 'an autumn leaf pile that bursts' },
+  { id: 'busker', act: 'play', drawnBy: '94-garden-zz-7act-2world.js (or the water rows)', region: 'home-island', near: 'market-stall', cell: [52, 60], art: false, note: 'a busker\'s pitch with a fiddle and an open case; play, and a friend can dance' },
+  { id: 'ball', act: 'kick', drawnBy: '94-garden-zz-7act-2world.js (or the water rows)', region: 'home-island', near: 'sundial', cell: [47, 52], art: false, note: 'a ball on the green' },
+  { id: 'leaf-pile', act: 'kick', drawnBy: '94-garden-zz-7act-2world.js (or the water rows)', region: 'home-island', near: 'sundial', cell: [45, 53], art: false, note: 'an autumn leaf pile that bursts' },
   { id: 'grass-slope', act: 'roll', region: 'north-headland', near: 'ld-cairn', cell: [50, 12], art: false, note: 'a grassy slope to roll down (needs a height in the layout)' },
   { id: 'shallows-mere', act: 'paddle', region: 'home-island', near: 'reed-bank', cell: [40, 37], art: false, note: 'shallows to paddle and wade in, ripples round the legs (needs a depth in the water data)' },
-  { id: 'swim-mere', act: 'swim', region: 'home-island', near: 'lake-hall', cell: [48, 36], art: false, note: 'deep enough to swim and float on your back (swimming needs the walker to allow water)' },
+  { id: 'swim-mere', act: 'swim', drawnBy: '94-garden-zz-7act-2world.js (or the water rows)', region: 'home-island', near: 'lake-hall', cell: [48, 36], art: false, note: 'deep enough to swim and float on your back (swimming needs the walker to allow water)' },
   { id: 'mast', act: 'ladder', region: 'home-island', near: 'ld-hull', cell: [42, 80], art: false, note: 'a boat\'s mast with rungs' },
   { id: 'hay-loft', act: 'ladder', region: 'east-mill', near: 'ld-barn', cell: [83, 66], art: false, note: 'a ladder drawn on the barn\'s side up to the loft door' },
-  { id: 'fishing-bank', act: 'fishpair', region: 'home-island', near: 'reed-bank', cell: [41, 39], art: false, note: 'a grassy bank to sit and fish side by side, legs over' },
+  { id: 'fishing-bank', act: 'fishpair', drawnBy: '94-garden-zz-7act-2world.js (or the water rows)', region: 'home-island', near: 'reed-bank', cell: [41, 39], art: false, note: 'a grassy bank to sit and fish side by side, legs over' },
 ]);

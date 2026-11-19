@@ -39,7 +39,8 @@ function _gaStaticRows() {
     for (const o of opts) out.push({ key: r.id + ':' + o.act, act: o.act, name: o.name, x: fx, y: fy, top, stand: { x: fx + o.stand[0], y: fy + o.stand[1] }, deg: o.deg, lift: _gaSeatLift(o), src: r.id, boat: !!o.boat, reach: o.reach || 0, noProp: !!o.noProp });
   }
   // what this branch draws for the moves (94-garden-zz-7act-2world.js): the telescope, the lighthouse ladder, the campfires
-  if (typeof gardenActWorldRows === 'function') for (const w of gardenActWorldRows()) out.push({ key: w.id + ':' + w.act, act: w.act, name: w.name, x: w.x, y: w.y, top: null, stand: { x: w.x + w.stand[0], y: w.y + w.stand[1] }, deg: w.deg, lift: _gaSeatLift(w), src: w.id, noProp: !!w.noProp, reach: w.reach || 0 });
+  let season = ''; try { season = gardenModel().season; } catch (e) { season = ''; }
+  if (typeof gardenActWorldRows === 'function') for (const w of gardenActWorldRows()) if (!(w.season && w.season !== season) && !gartActHidden(w.id)) out.push({ key: w.id + ':' + w.act, act: w.act, name: w.name, x: w.x, y: w.y, top: null, stand: { x: w.x + w.stand[0], y: w.y + w.stand[1] }, deg: w.deg, lift: _gaSeatLift(w), src: w.id, noProp: !!w.noProp, reach: w.reach || 0, kick: w.kick || '', carry: w.carry || '', art: w.art || '' });
   // a thing that has its own (a lighthouse with a drawn ladder) takes that one, not the one carried in
   const own = new Set(out.filter(r => r.noProp).map(r => r.act + '@' + Math.round(r.stand.x) + ',' + Math.round(r.stand.y)));
   return out.filter(r => r.noProp || !own.has(r.act + '@' + Math.round(r.stand.x) + ',' + Math.round(r.stand.y)));
@@ -76,7 +77,7 @@ function _gaWaterRows(px, py) {
   if (wet(px, py)) return [];
   // not under or beside the falls (white water: no skimming, no ducks), and only water in front of you, out over the bank (you face it)
   try { const f = (gardenIslandData().static || []).find(r => r.id === 'ld-falls'); if (f && Math.hypot(px - (f.x + f.w / 2), (py - (f.y + f.h)) * 1.3) < Math.max(5, f.w)) return []; } catch (e) { /* no falls */ }
-  for (const [dx, dy, deg] of [[0, -1.1, -90], [0, -1.8, -90]]) if (wet(px + dx, py + dy) && wet(px + dx, py + dy - 1.6)) return (_ga.wt % 2 ? GARDEN_ACT_WATER.slice().reverse() : GARDEN_ACT_WATER).map(o => ({ key: 'water:' + o.act, act: o.act, name: o.name, x: px + dx, y: py + dy, stand: null, deg, lift: 0, src: 'water' }));
+  for (const [dx, dy, deg] of [[0, -1.1, -90], [0, -1.8, -90]]) if (wet(px + dx, py + dy) && wet(px + dx, py + dy - 1.6)) { const deep = wet(px + dx, py + dy - 2.8) && wet(px + dx, py + dy - 4.2), W3 = GARDEN_ACT_WATER.filter(o => !o.deep || deep), k = _ga.wt % W3.length; return W3.slice(k).concat(W3.slice(0, k)).map(o => ({ key: 'water:' + o.act, act: o.act, name: o.name, x: px + dx, y: py + dy, stand: null, deg, lift: 0, src: 'water' })); }
   return [];
 }
 /** Everything in reach, the nearest first (things with a place before the water's edge). */
@@ -99,7 +100,7 @@ function _gaPromptEl() {
   el.addEventListener('pointerdown', (ev) => ev.stopPropagation());
   box.appendChild(el); _ga.el = el; return el;
 }
-function _gaWords(r) { const row = GARDEN_ACTS[r.act]; if (!row) return ''; const v = row.verb; return /the |it$|a |under/.test(v) || !r.name ? v : r.act === 'sit' ? 'Sit on ' + r.name : v; }
+function _gaWords(r) { const row = GARDEN_ACTS[r.act]; if (!row) return ''; if (r.down) return 'Set it down'; const v = row.verb; return /the |it$|a |under/.test(v) || !r.name ? v : r.act === 'sit' ? 'Sit on ' + r.name : v; }
 /** Once a frame from the walker (cheap: looks round five times a second). */
 function gartActFrame() {
   if (typeof _gw === 'undefined' || !_gw.on) return;
@@ -113,7 +114,7 @@ function gartActFrame() {
   _ga.t = now;
   const el = _gaPromptEl(); if (!el) return;
   const busy = (_ga.cur && _ga.cur.doing) || (typeof _gwFishBusy === 'function' && _gwFishBusy()) || (typeof gardenDesignOn === 'function' && gardenDesignOn()) || (typeof GardenNative !== 'undefined' && GardenNative.inRoom && GardenNative.inRoom());
-  const near = busy ? null : gartActNearby()[0] || null;
+  const near = busy ? null : _ga.carry ? { key: 'carry-down', act: 'carry', name: '', x: _gw.px, y: _gw.py, down: true } : gartActNearby()[0] || null;
   if (!near) { _ga.near = null; el.hidden = true; return; }
   if (!_ga.near || _ga.near.key !== near.key) { _ga.near = near; el.innerHTML = `<kbd>E</kbd><span>${esc(_gaWords(near))}</span>`; el.setAttribute('aria-label', _gaWords(near) + ' (E)'); }
   el.hidden = false; _gaPlace();
@@ -125,6 +126,7 @@ function _gaPlace() {
 }
 /** E or Space: the prompt's action, if one is showing. Returns true when it did something. */
 function gartActInteract() {
+  if (_ga.carry && !(_ga.cur && _ga.cur.doing)) { gartActSetDown(); return true; }
   if (_ga.cur && _ga.cur.doing) { gartActStop(); return true; }
   if (!_ga.near || !_ga.el || _ga.el.hidden) return false;
   return gartActRun(_ga.near.act, _ga.near);
@@ -169,6 +171,7 @@ function gartActPlay(gpl, id, o) {
     H.props.push(g);
     if (row.prop === 'ducks') _gaDucks(g, H, motion, row.ms);
     if (row.skim) _gaSkimFly(g, H, motion, row.ms, o.skips || 3);
+    if (row.prop === 'swimwater') { if (motion) { try { H.anims.push(gardenVisualAnimate(g, [{ offset: 0, opacity: 0 }, { offset: 0.2, opacity: 0 }, { offset: 0.42, opacity: 1 }, { offset: 1, opacity: 1 }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* shows at once */ } } }
   }
   H.stop = () => { for (const t of H.timers) clearTimeout(t); for (const a of H.anims) { try { a.cancel(); } catch (e) { /* gone */ } } for (const g of H.props) { try { if (g.parentNode) g.parentNode.removeChild(g); if (g.destroy) g.destroy(); } catch (e) { /* gone */ } } H.anims.length = 0; H.props.length = 0; };
   return H;
@@ -188,6 +191,7 @@ function gartActRun(id, spot) {
     if (!gardenWalkToPoint(spot.stand, go, { radius: 1.6 })) go();
     return true;
   }
+  if (_ga.carry && !row.carry) gartActSetDown();   // (you put down what you carry to do something else)
   if (row.lying && !(spot && spot.stand) && !gartActGroundClear(_gw.px, _gw.py)) { try { gardenToast('Not here. Find some grass, or the beach, to lie down on.'); } catch (e) { /* fine */ } return false; }
   if (typeof gartEmoteStop === 'function') gartEmoteStop();
   const cur = _ga.cur = { id, row, spot: spot || null, doing: false, lift: row.seat != null ? _gaSeatLift(row) : spot && spot.lift ? spot.lift : 0, t0: 0, fxT: 0, fxI: 0 };
@@ -217,6 +221,10 @@ function _gaStart(cur) {
   if (row.skim) _gaSkim(cur);
   if (spot && spot.src === 'water') _ga.wt++;
   if (row.shake) _gaShake(cur);
+  if (row.kick && spot) _gaKick(cur);
+  if (row.carry && spot && spot.carry) _gaPick(cur);
+  if (row.fetch) _gaFetch(cur);
+  if (row.clouds) _gaSky(cur, true);
   _gaFirst(cur);
   if (!row.hold) cur.endT = setTimeout(() => { if (_ga.cur !== cur) return; gartActStop(true); if (row.then && GARDEN_ACTS[row.then]) _gaThen(row.then, cur); }, (_gaMotion() ? row.ms : 1200) + 60);
   if (row.nap) cur.endT = setTimeout(() => { if (_ga.cur === cur) { gartActStop(true); try { gardenToast('You wake up with a stretch.'); } catch (e) { /* fine */ } } }, row.nap);
@@ -243,6 +251,8 @@ function _gaTick(now) {
 function gartActStop(done) {
   const cur = _ga.cur; if (!cur) return;
   _ga.cur = null; clearTimeout(cur.endT);
+  if (cur.row.clouds) _gaSky(cur, false);
+  if (cur.row.fetch) _ga.fetch = null;
   if (cur.H && cur.H.stop) cur.H.stop();
   if (cur.row.after && done && window.GardenNativeActions && _gaMotion()) { const W = GARDEN_WORLD; for (let i = 0; i < 6; i++) setTimeout(() => { try { GardenNativeActions.effect('water', _gw.px * W.cellW, W.sky + _gw.py * W.cellH, { width: 16 }); } catch (e) { /* fine */ } }, i * 450); }
   if (cur.doing) { try { if (typeof _gwBody === 'function') _gwBody(); } catch (e) { /* fine */ } }
@@ -295,6 +305,98 @@ function _gaSkimFly(g, H, motion, ms, n) {
   kf.push({ offset: Math.min(0.99, pt + 0.04), transform: `translate(${prev[0]}px,${prev[1] + 2}px) scale(0.5)`, opacity: 0 }, { offset: 1, transform: `translate(${prev[0]}px,${prev[1]}px)`, opacity: 0 });
   try { H.anims.push(gardenVisualAnimate(st, kf, { duration: ms, fill: 'forwards', easing: 'linear' })); } catch (e) { /* no flight */ }
   P.forEach((_, i) => { const r = g.querySelector('.ga-skr-' + i); if (!r) return; try { H.anims.push(gardenVisualAnimate(r, [{ offset: 0, opacity: 0, transform: 'scale(0.3)' }, { offset: ts[i], opacity: 0, transform: 'scale(0.3)' }, { offset: Math.min(0.995, ts[i] + 0.01), opacity: 0.9, transform: 'scale(0.4)' }, { offset: Math.min(1, ts[i] + 0.22), opacity: 0, transform: 'scale(1.5)' }, { offset: 1, opacity: 0, transform: 'scale(1.5)' }], { duration: ms, fill: 'forwards' })); } catch (e) { /* no ring */ } });
+}
+/* ---------- round 2: the things the world now has ---------- */
+const _gaMoved = new Map(), _gaHide = new Map();
+/** A thing of 94-garden-zz-7act-2world.js that is out of sight now (carried, or kicked away for a moment). */
+function gartActHidden(id) { const t = _gaHide.get(id); return t != null && (t === Infinity || performance.now() < t); }
+/** Being carried: not drawn on the ground at all. */
+function gartActCarried(id) { return _gaHide.get(id) === Infinity; }
+/** Where a carried thing was set down (this visit), or null. */
+function gartActMovedTo(id) { return _gaMoved.get(id) || null; }
+function _gaRec(id) { try { const w = GardenNative.world(), e = w && w.entities; return e instanceof Map ? e.get('prop:' + id) : null; } catch (e) { return null; } }
+function _gaShow(id, on) { const rec = _gaRec(id); if (rec && rec.root && rec.root.setAlpha) rec.root.setAlpha(on ? 1 : 0); }
+/** The ball flies off the foot and rolls back to its place; the leaves burst and settle back slowly. */
+function _gaKick(cur) {
+  const sp = cur.spot, W = GARDEN_WORLD, id = sp.src, leaves = sp.kick === 'leaves';
+  setTimeout(() => {
+    if (leaves) { _gaHide.set(id, performance.now() + 20000); _gaShow(id, false); if (window.GardenNativeActions) for (let i = 0; i < 5; i++) setTimeout(() => { try { GardenNativeActions.effect(i % 2 ? 'harvest' : 'plant', (sp.x + (i - 2) * 0.3) * W.cellW, W.sky + sp.y * W.cellH, { width: 40 }); } catch (e) { /* fine */ } }, i * 90); setTimeout(() => { _gaHide.delete(id); _gaShow(id, true); }, 20000); return; }
+    _gaHide.set(id, performance.now() + 4200); _gaShow(id, false);
+    // the ball's flight: a native sprite of its own, from the world drawing
+    try {
+      const rec = _gaRec(id); if (!rec || !rec.root) return;
+      const r = rec.root, x0 = r.x, y0 = r.y, dx = (Math.random() < 0.5 ? -1 : 1) * (34 + Math.random() * 26), dy = 8 + Math.random() * 12, sc = r.scene;
+      r.setAlpha(1); _gaHide.set(id, performance.now() + 4200);
+      if (sc && sc.tweens && _gaMotion()) {
+        sc.tweens.add({ targets: r, x: x0 + dx, duration: 900, ease: 'Quad.out' });
+        sc.tweens.add({ targets: r, y: { from: y0, to: y0 + dy }, duration: 900, ease: 'Bounce.out', onComplete: () => sc.tweens.add({ targets: r, x: x0, y: y0, delay: 1600, duration: 1500, ease: 'Sine.inOut', onComplete: () => _gaHide.delete(id) }) });
+      } else _gaHide.delete(id);
+    } catch (e) { _gaHide.delete(id); _gaShow(id, true); }
+  }, 450);
+}
+/** Pick it up: it leaves the ground and is in your hands until you set it down (E). */
+function _gaPick(cur) {
+  const sp = cur.spot; _ga.carry = { id: sp.src, art: sp.art };
+  setTimeout(() => { _gaHide.set(sp.src, Infinity); _gaShow(sp.src, false); _ga.list = null; }, 380);
+}
+const _GA_CARRY_SVG = Object.freeze({
+  basket: '<g transform="translate(0 -30)"><path d="M-8 -9H8L6.2 0H-6.2z" fill="#c8924a" stroke="#6a4218" stroke-width="0.7"/><path d="M-7 -5.6H7M-6.6 -2.6H6.6" stroke="#8a5a2a" stroke-width="0.6"/><circle cx="-3" cy="-10" r="2.4" fill="#d8452a"/><circle cx="2" cy="-10.4" r="2.4" fill="#7ac24a"/></g>',
+  log: '<g transform="translate(0 -32)"><path d="M-14 -1Q-15 -8 -11 -8L11 -8Q15 -8 14 -1Q0 1 -14 -1z" fill="#7a5432" stroke="#3a2818" stroke-width="0.7"/><ellipse cx="12" cy="-4.4" rx="3" ry="3.6" fill="#c8a070" stroke="#6a4a2a" stroke-width="0.6"/></g>',
+});
+/** Once a walker frame while carrying: the thing in both hands, arms round it (from the moves frame). */
+function gartActCarryFrame(body, L) {
+  const c = _ga.carry; if (!c || !body) return;
+  if (!body._gaCarry || !body._gaCarry.parentNode) {
+    const up = body.querySelector('.gpl-up') || body; let g;
+    try { g = typeof gardenSceneElement === 'function' && gardenVisualIsNative(body) ? gardenSceneElement('g') : document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'ga-prop ga-carried'); g.innerHTML = _GA_CARRY_SVG[c.art] || _GA_CARRY_SVG.basket; up.appendChild(g); body._gaCarry = g; } catch (e) { return; }
+  }
+  if (L && L.armA && L.armB) { const side = L.side; _gmvSet(L.armA, side ? -50 : -20, side ? 1 : 0.8, 0, L.native); _gmvSet(L.armB, side ? -60 : 20, side ? 1 : 0.8, 0, L.native); }
+}
+/** E while carrying: set it down at your feet, just in front. It stays there for this visit. */
+function gartActSetDown() {
+  const c = _ga.carry; if (!c) return false;
+  _ga.carry = null;
+  const W = GARDEN_WORLD, deg = (typeof gartMoveFacingDeg === 'function' ? gartMoveFacingDeg() : 90) * Math.PI / 180, x = _gw.px + Math.cos(deg) * 0.5, y = _gw.py + Math.sin(deg) * 0.35 + 0.05;
+  _gaMoved.set(c.id, { x, y }); _gaHide.delete(c.id);
+  try { const rec = _gaRec(c.id), row = gardenActWorldRows().find(r => r.id === c.id); if (rec && rec.root && row) { const r = rec.root; r.x += (x - (row.x0 != null ? row.x0 : row.x)) * W.cellW; r.y += 0; r.setAlpha(1); } } catch (e) { /* drawn at its new place on the next paint */ }
+  try { if (typeof GardenNative !== 'undefined' && GardenNative.sync) GardenNative.sync(); } catch (e) { /* next paint */ }
+  try { const n = _gw.node && _gw.node.querySelector('.ga-carried'); if (n) { n.parentNode.removeChild(n); if (n.destroy) n.destroy(); } } catch (e) { /* gone */ }
+  try { if (typeof _gwBody === 'function') _gwBody(); } catch (e) { /* fine */ }
+  try { if (window.GardenNativeActions) GardenNativeActions.effect('place', x * W.cellW, W.sky + y * W.cellH, { width: 24 }); } catch (e) { /* fine */ }
+  _ga.list = null; return true;
+}
+/** Throw a stick: it lands a few steps away; your pet runs for it and brings it back; then the throw ends. */
+function _gaFetch(cur) {
+  const deg = _gaDirDeg(cur.row, cur.spot) * Math.PI / 180, x = _gw.px + Math.cos(deg) * 3.2, y = _gw.py + Math.sin(deg) * 2.4;
+  _ga.fetch = { x, y, phase: 'wait', t0: performance.now(), cur };
+  setTimeout(() => { if (_ga.fetch && _ga.fetch.cur === cur) _ga.fetch.phase = 'out'; try { if (window.GardenNativeActions) GardenNativeActions.effect('lift', x * GARDEN_WORLD.cellW, GARDEN_WORLD.sky + y * GARDEN_WORLD.cellH, { width: 18 }); } catch (e) { /* fine */ } }, 750);
+  setTimeout(() => { if (_ga.cur === cur) gartActStop(true); }, 9000);   // a pet that will not fetch: the throw still ends
+}
+function _gaFetchGoal(P) {
+  const f = _ga.fetch; if (!f || !P || !P.me) return null;
+  if (f.phase === 'wait') return { x: P.x, y: P.y, near: 10 };
+  if (f.phase === 'out') { if (Math.hypot(P.x - f.x, P.y - f.y) < 0.5) { f.phase = 'back'; try { gardenToast('Got it!'); } catch (e) { /* fine */ } } return { x: f.x, y: f.y, near: 0.3, run: true }; }
+  if (Math.hypot(P.x - _gw.px, P.y - _gw.py) < 1) { const cur = f.cur; _ga.fetch = null; if (_ga.cur === cur) gartActStop(true); return null; }
+  return { x: _gw.px + 0.6, y: _gw.py + 0.2, near: 0.5, run: true };
+}
+/* (2, 3) lying: cloud shadows go over; at night now and then a shooting star; a nap lets the light run on a little faster for a moment */
+function _gaSky(cur, on) {
+  const box = _gw && _gw.box; if (!box) return;
+  let el = box.querySelector('.ga-sky');
+  if (!on) { if (el) el.remove(); clearInterval(_ga.skyT); return; }
+  if (!_gaMotion()) return;
+  if (!el) { el = document.createElement('div'); el.className = 'ga-sky'; el.setAttribute('aria-hidden', 'true'); box.appendChild(el); }
+  let tod = 'day'; try { tod = gardenModel().tod; } catch (e) { /* day */ }
+  const night = tod === 'night';
+  el.innerHTML = (night ? '' : '<i class="ga-cloud c1"></i><i class="ga-cloud c2"></i><i class="ga-cloud c3"></i>') + (cur.row.nap ? '<i class="ga-lapse"></i>' : '');
+  if (cur.row.nap) el.classList.add('is-nap'); else el.classList.remove('is-nap');
+  clearInterval(_ga.skyT);
+  if (night) {
+    let seen = 0;
+    const star = () => { const s = document.createElement('i'); s.className = 'ga-star'; s.style.left = (15 + Math.random() * 60) + '%'; s.style.top = (6 + Math.random() * 24) + '%'; el.appendChild(s); setTimeout(() => s.remove(), 1600); if (!seen++) { try { gardenToast('A shooting star! Make a wish.'); } catch (e) { /* fine */ } try { const g = _gdG(); if (!g.disc['act.star']) { g.disc['act.star'] = _gdToday(); _gdSave(); } } catch (e) { /* fine */ } } };
+    setTimeout(star, 2500); _ga.skyT = setInterval(star, 9000);
+  }
+  if (cur.row.nap) setTimeout(() => { try { gardenToast('The shadows move round while you doze.'); } catch (e) { /* fine */ } }, 1800);
 }
 /** Lying down needs clear ground: grass, sand or snow, not a path, a plaza, a building's apron or a thing. */
 function gartActGroundClear(x, y) {
@@ -349,6 +451,7 @@ function gartActRemote(A, id) {
 if (typeof gardenLifePetGoal === 'function') {
   const _gaPetGoal0 = gardenLifePetGoal;
   gardenLifePetGoal = function (P, dt) {   // eslint-disable-line no-func-assign
+    const fg = _gaFetchGoal(P); if (fg) return fg;
     const cur = _ga.cur;
     if (cur && cur.doing && cur.row.pet && P && P.me) {
       const x = _gw.px + 0.75, y = _gw.py + 0.15;
