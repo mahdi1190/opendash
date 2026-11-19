@@ -54,8 +54,8 @@ void main () {
     // (village fix round 3: a second, closer wobble breaks a border along a straight run of cells into bays and spurs of
     // a cell or two; the thick of it builds up over two cells or so; and the edge of the shut land itself is feathered
     // instead of cut, so no straight or square edge of mist stands in the picture)
-    .replace(/float coreFade[\s\S]*?gl_FragColor = fragColor;/, `float wob = (texture2D(uMist, fract(p * vec2(0.29, 0.21))).r - 0.5) * 70.0 + (texture2D(uMist, fract(p * vec2(1.07, 0.83) + vec2(0.37, 0.61))).g - 0.5) * 64.0;
-  float coreFade = smoothstep(-16.0, 104.0, distance + wob + billow * 0.6 - uRetreat * 220.0);
+    .replace(/float coreFade[\s\S]*?gl_FragColor = fragColor;/, `float wob = (texture2D(uMist, fract(p * vec2(0.29, 0.21))).r - 0.5) * 130.0 + (texture2D(uMist, fract(p * vec2(1.07, 0.83) + vec2(0.37, 0.61))).g - 0.5) * 84.0;
+  float coreFade = smoothstep(-16.0, 140.0, distance + wob + billow * 0.6 - uRetreat * 220.0);
   float core = smoothstep(2.0, 124.0, distance + billow * 1.25 + wob * 0.4 - uRetreat * 260.0) * coreFade * smoothstep(-28.0, 8.0, distance);
   float edge = smoothstep(-34.0, 6.0, distance - uRetreat * 220.0) * (1.0 - smoothstep(18.0, 80.0, distance));
   float fringe = edge * smoothstep(0.3, 0.72, b * 0.4 + c * 0.6) * 0.16;
