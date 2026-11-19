@@ -20,12 +20,14 @@
     for (let y = y0 - .6, row = 0; y > lo; row++) {
       const big = o.quoin && row % 6 === 5, ch = big ? cw * 1.5 : cw * (.85 + r() * .5);
       for (let x = x0 - r() * 6; x < x1;) {
-        const sw = (big ? 2.2 : 1.2) * cw + r() * cw * (big ? 1.4 : 1.8), cx = x + sw / 2, cy = y - ch / 2; x += sw + .8;
-        if (cx < x0 + 1 || cx > x1 - 1 || cy - ch * .5 < top(cx) + .6) continue;
+        const pin = !big && r() < .12, sw = pin ? cw * (.7 + r() * .4) : (big ? 2.6 : 1.7) * cw + r() * cw * (big ? 1.4 : 2), hh = pin ? ch * .55 : ch, cx = x + sw / 2, cy = y - ch / 2 + (pin ? ch * .2 : (r() - .5) * .7); x += sw + .7;
+        if (cx < x0 + 1 || cx > x1 - 1 || cy - hh * .5 < top(cx) + .6) continue;
         const k = (cx - x0) / (x1 - x0), lit = Math.max(0, .7 - k), shade = Math.max(0, k - .55);
-        const tone = tones[Math.floor(r() * tones.length)], w = Math.min(sw, (x1 - x0)) * .5;
-        B.f(B.blob(r, cx, cy, w, ch * .47, 7, .14), tone).f(B.blob(r, cx - w * .2, cy - ch * .2, w * .62, ch * .2, 6, .3), '#f2ecd8', .12 + lit * .38).f(B.blob(r, cx + w * .2, cy + ch * .22, w * .8, ch * .16, 6, .3), '#2e2c24', .14 + shade * .5);
-        if (o.moss && r() < o.moss) B.f(B.blob(r, cx - w * .3, cy + ch * .2, w * .5, ch * .18, 6, .5), '#6f8446', .55);
+        const tone = tones[Math.floor(r() * tones.length)], w = Math.min(sw * .5, cx - x0, x1 - cx) - .3, t0 = cy - hh * .47;
+        if (w < 1) continue;
+        B.f(B.rr(cx - w, t0, w * 2, hh * .94, Math.min(1.8, hh * .32)), tone).f(B.rect(cx - w + .8, t0 + .4, w * 2 - 1.6, hh * .2), '#f2ecd8', .1 + lit * .32).f(B.rect(cx - w + .8, t0 + hh * .7, w * 2 - 1.6, hh * .22), '#2e2c24', .1 + shade * .42);
+        if (r() < .25) B.s(`M${cx - w * (.2 + r() * .4)} ${t0 + .6}l${(r() - .5) * 2} ${hh * .6}`, '#4a473c', .5, .4);
+        if (o.moss && r() < o.moss) B.f(B.blob(r, cx - w * .3, cy + hh * .3, w * .55, hh * .16, 6, .5), '#6f8446', .55);
       }
       y -= ch + .8;
     }
@@ -203,16 +205,18 @@
       } },
       { id: 'lap', box: [-44, -8, 44, 14], at: [MILL_WHEEL.x, 0], draw(B) {
         // the water in the pit laps over the wheel's foot, the near pit wall in front of it
-        B.f(B.rr(-38, -3, 76, 10, 3), '#3e6064', .94).f(B.rect(-38, -3, 76, 2), '#a8cace', .75);
-        for (let x = -40; x < 38; x += 7) B.f(B.rr(x, 6, 6.6, 4, 1), x % 2 ? STONE.rock : STONE.rockLo).f(B.rect(x + .5, 6, 5.6, 1), STONE.rockHi, .7);
+        const r = KIT().rng(337);
+        B.f(B.blob(r, -2, 2, 36, 5.4, 11, .2), '#3e6064', .92).f(B.blob(r, -6, 0, 26, 2, 9, .3), '#a8cace', .6);
+        for (let k = 0; k < 4; k++) B.s(`M${-30 + k * 16} ${-1 + (k % 2)}q4 -2 8 0`, '#e4f2f0', .9, .7);
+        for (let i = 0; i < 9; i++) { const px = -38 + i * 9 + (r() - .5) * 3; B.stone(r, px, 8 + (i % 2), 4.6 + r() * 1.4, 2.6, STONE, r() < .3 ? '#7d8f4e' : null); }
       } },
     ],
     draw(B, o) {
       const r = KIT().rng(341), s = o.season, lit = o.night && o.state === 'turn', SLATE = ['#5d666c', '#4a5258', '#7d878c', '#363e44'], BR = ['#a65a3e', '#8e4a33', '#c07656', '#6e3a28'];
       const f1 = -54, f2 = -100, eaves = -146, ridge = -sz('tower', 0) + 8, x0 = -58, x1 = 74;
       // the wheel pit: dark water between stone walls, open to the river on the west, the wet stain on the gable
-      B.f(B.poly([[-134, -16], [x0, -18], [x0, 10], [-130, 10]]), '#2e4a4e').f(B.poly([[-134, -16], [x0, -18], [x0, -12], [-133, -10]]), '#1e3236', .85);
-      for (let x = -132; x < x0 - 2; x += 7) B.f(B.rr(x, -21, 6.6, 4.4, 1), r() < .5 ? STONE.rock : STONE.rockLo).f(B.rect(x + .5, -21, 5.6, 1), STONE.rockHi, .7);
+      B.f(B.blob(r, -96, -3, 42, 14, 12, .14), '#24393c').f(B.blob(r, -97, -2, 38, 11, 12, .14), B.lin(0, -14, 0, 10, [[0, '#1e3236'], [.5, '#2e4a4e'], [1, '#3e6064']]));
+      for (let i = 0; i < 11; i++) { const a = Math.PI * (1.05 + i / 10 * .9), px = -96 + Math.cos(a) * 42, py = -4 + Math.sin(a) * 13; B.stone(r, px, py, 4.4 + r() * 1.6, 2.6, STONE, r() < .3 ? '#7d8f4e' : null); }
       // the plinth and three storeys of brick, stone quoins, string courses between the floors
       ashlar(B, r, x0, -10, x1 - x0, 10, STONE, 5);
       brick(B, r, x0, eaves, x1 - x0, eaves * -1 - 10, BR);
@@ -304,7 +308,6 @@
     windowLit(B, -32, -eaves + 10, 12, 10, o.night, '#8a785a');
     // the stack of split logs under the east eave, the chopping block with the axe, chips on the ground
     for (let row = 0; row < 4; row++) for (let k = 0; k < 4; k++) { const x = 26 + k * 6 + (row & 1) * 3, y = -12 - row * 5.6; B.f(B.circ(x, y, 3), '#8a6440').f(B.circ(x - .4, y - .4, 2), '#d4aa74').f(B.circ(x, y, .5), '#8a6440'); }
-    B.f(B.rr(-52, -12, 14, 12, 2), oak[1]).f(B.ell(-45, -12, 7, 2.4), '#b49470').s('M-46 -13L-40 -24', '#6a5034', 1.6).f(B.poly([[-41, -26], [-36, -24], [-38, -20], [-42, -22]]), '#8a9294');
     for (let i = 0; i < 10; i++) B.f(B.ell(-58 + r() * 30, 2 + r() * 5, 1.6, .8), '#c8a474', .9);
     // yew needles and ivy at the corners, long grass along the footing
     ivy(B, r, -48, -8, -eaves + 4, s); ivy(B, r, 46, -8, -eaves * .6, s);
