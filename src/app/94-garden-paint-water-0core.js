@@ -658,10 +658,10 @@ window.GardenPaintWater = (function () {
         if (r() > rate) continue;
         const q = at(river, s), lat = (r() - .5) * 1.1 * river.hw, x = q.x - q.ty * lat * W.cellW * .8, y = q.y + q.tx * lat * W.cellH * .8;
         if (!inside(x, y, pts)) continue;
-        const rx = (kind === 'gorge' ? 6 : 4) + r() * 7, sd = D().blob(r, x, y, rx, rx * .6, 7, .35), hl = D().blob(r, x - rx * .3, y - rx * .3, rx * .5, rx * .28, 6, .3), moss = D().blob(r, x - rx * .1, y - rx * .45, rx * .6, rx * .22, 6, .5), ang = Math.atan2(q.ty, q.tx), wake = 6 + r() * 9;
+        const rx = (kind === 'gorge' ? 6 : 4) + r() * 7, sd = D().blob(r, x, y, rx, rx * .6, 7, .35), hl = D().blob(r, x - rx * .3, y - rx * .3, rx * .5, rx * .28, 6, .3), moss = D().blob(r, x - rx * .1, y - rx * .45, rx * .6, rx * .22, 6, .5), ang = Math.atan2(q.ty, q.tx), wake = 3 + r() * 5;   // (a short wake: long trailing lines off a pale ring read as jellyfish)
         add({ x: x - 30, y: y - 30, w: 60, h: 60 }, (cx, C) => {
           // the V of white water downstream of the stone, then the stone itself
-          cx.save(); cx.translate(x, y); cx.rotate(ang); cx.globalAlpha = .4; cx.strokeStyle = C.foam; cx.lineWidth = 1.3; cx.lineCap = 'round';
+          cx.save(); cx.translate(x, y); cx.rotate(ang); cx.globalAlpha = .26; cx.strokeStyle = C.foam; cx.lineWidth = 1.1; cx.lineCap = 'round';
           cx.beginPath(); cx.moveTo(rx * .6, -rx * .5); cx.quadraticCurveTo(rx + wake * .5, -rx * .7, rx + wake, -rx * 1.2); cx.moveTo(rx * .6, rx * .5); cx.quadraticCurveTo(rx + wake * .5, rx * .7, rx + wake, rx * 1.2); cx.stroke();
           cx.globalAlpha = .35; cx.fillStyle = C.foam; cx.beginPath(); cx.ellipse(-rx * .9, 0, 2.5, rx * .8, 0, 0, Math.PI * 2); cx.fill(); cx.restore();
           cx.fillStyle = '#6f6a5c'; cx.fill(P2(sd)); cx.globalAlpha = .9; cx.fillStyle = '#9c9580'; cx.fill(P2(hl)); cx.globalAlpha = .8; cx.fillStyle = C.moss; cx.fill(P2(moss)); cx.globalAlpha = 1;
