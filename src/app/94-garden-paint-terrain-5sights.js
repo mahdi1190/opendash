@@ -79,10 +79,29 @@ window.GardenPaintSeat = (function () {
     const season = o.season || 'summer', seed = kit.hashStr(prop.id + ':' + Math.round(x) + ',' + Math.round(foot));
     const key = 'gps|' + prop.id + '|' + season + '|' + Math.round(x) + ',' + Math.round(foot) + (way ? '|' + way.map(Math.round).join(',') : '');
     const spec = Object.assign({}, o, { kind, w, front, back, door, way, seed, season });
-    const im = kit.sprite(scene, layer, key, box, B => drawSeat(B, spec), x, foot, 1.5, false); if (!im) return null;
-    im.setDepth(DEPTH); return im;
+    const make = () => { const im = kit.sprite(scene, layer, key, box, B => drawSeat(B, spec), x, foot, 1.5, false); if (im) im.setDepth(DEPTH); return im; };
+    if (scene.textures.exists(key)) return make();   // (painted already: only a picture to stand)
+    // A seat takes 5 to 10 ms to paint, and a whole garden has about a hundred: they are painted a few at a time, nearest
+    // the camera first, on a timer outside the frame, so opening the garden or walking never waits for them all.
+    const job = { scene, x, y: foot, make, im: null, dead: false, vis: true, alpha: 1 };
+    queue.push(job); if (!timer) timer = setInterval(pump, 34);
+    return { destroy() { job.dead = true; if (job.im) job.im.destroy(); job.im = null; }, setVisible(v) { job.vis = v; if (job.im) job.im.setVisible(v); return this; }, setAlpha(a) { job.alpha = a; if (job.im) job.im.setAlpha(a); return this; } };
   }
-  return { add, nearestRoute, SEAT, DEPTH };
+  const queue = []; let timer = null, pumped = 0, pumpWorst = 0;
+  function pump() {
+    const t0 = performance.now();
+    while (queue.length && performance.now() - t0 < 8) {
+      let best = 0, bd = Infinity;
+      for (let i = 0; i < queue.length; i++) { const j = queue[i], cam = j.scene && j.scene.cameras && j.scene.cameras.main, v = cam && cam.worldView; const d = v ? Math.hypot(j.x - v.centerX, j.y - v.centerY) : 0; if (j.dead) { best = i; bd = -1; break; } if (d < bd) { bd = d; best = i; } }
+      const j = queue.splice(best, 1)[0]; if (j.dead || !j.scene || !j.scene.sys || !j.scene.textures) continue;
+      try { j.im = j.make(); if (j.im) { j.im.setVisible(j.vis); j.im.setAlpha(j.alpha); } } catch (e) { /* the scene went while it waited */ }
+      pumped++;
+    }
+    pumpWorst = Math.max(pumpWorst, performance.now() - t0);
+    if (!queue.length) { clearInterval(timer); timer = null; }
+  }
+  const status = () => ({ waiting: queue.length, painted: pumped, worstTickMs: Math.round(pumpWorst) });
+  return { add, nearestRoute, status, SEAT, DEPTH };
 })();
 
 (function () {
@@ -478,10 +497,10 @@ window.GardenPaintSeat = (function () {
     B.f(B.ell(0, top + 18, 7, 1.6), '#4e585c').s(`M-6 ${top + 19}l-4 3M6 ${top + 19}l4 3`, '#8a6a3e', .8, .8);
     for (let i = 0; i < 9; i++) B.f(B.circ(-16 + r() * 32, -3 + r() * 6, .8), '#a8844a', .9);
   } };
-  A['work:reed-beds'] = { box: [-30, -64, 30, 8], seat: false, draw(B, o) {
+  A['work:reed-beds'] = { box: [-30, -40, 30, 8], seat: false, draw(B, o) {
     const r = KIT().rng(307), s = o.season, G = s === 'winter' ? ['#9a9a78', '#b8b090'] : s === 'autumn' ? ['#a89a54', '#c8b064'] : ['#4f8a3f', '#6aa04a', '#3f7a35'];
     ripples(B, r, 20);
-    for (let i = 0; i < 22; i++) { const x = -20 + r() * 40, h = 22 + r() * 34, lean = (r() - .5) * 8; B.s(`M${x} 2Q${x + lean * .4} ${-h * .5} ${x + lean} ${-h}`, G[i % G.length], 1.2 + r() * .8, .95); if (r() < .3) B.f(B.ell(x + lean, -h + 3, 1.6, 5), '#6a4a2a'); }
+    for (let i = 0; i < 22; i++) { const x = -20 + r() * 40, h = 12 + r() * 16, lean = (r() - .5) * 6; B.s(`M${x} 2Q${x + lean * .4} ${-h * .5} ${x + lean} ${-h}`, G[i % G.length], 1.2 + r() * .8, .95); if (r() < .3) B.f(B.ell(x + lean, -h + 3, 1.6, 5), '#6a4a2a'); }
     if (s === 'summer' || s === 'spring') { B.f(B.ell(16, 0, 6, 2.2), '#4a7a3a').f(B.circ(15, -1, 1.6), '#f4e8ec'); }
   } };
   A['work:fishing-station'] = { box: [-26, -40, 28, 6], seat: false, draw(B, o) {
