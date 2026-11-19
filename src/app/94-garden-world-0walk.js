@@ -312,8 +312,9 @@ function gardenWalkFolds(island) {
 // verifier, 19 Nov 2026). The milestone is a stone a third of a cell wide, not a cell; the old watchtower's stump stands
 // 0.4 of a cell in from each end of its three cells; the hollow oak's root flare is wider than its one cell; the charcoal
 // clamp's turf mound is nearly two cells wide on one (its ART box runs 46 px each side).
-// The summit cairn's bottom ring of stones is drawn a cell and a quarter wide on its one cell (the collision audit).
-const GW_PROP_FEET = Object.freeze({ 'ld-mile': [[-8, 8, 10]], 'ld-tower': [[-53, 53, 0]], 'ld-hollow': [[-30, 30, 0]], 'ld-clamp': [[-38, 38, 20]], 'ld-cairn': [[-31, 31, 0]] });
+// The summit cairn's bottom ring of stones is drawn a cell and a quarter wide on its one cell, and the woodcutter's hut
+// a fifth of a cell past each end of its two (the collision audit).
+const GW_PROP_FEET = Object.freeze({ 'ld-mile': [[-8, 8, 10]], 'ld-tower': [[-53, 53, 0]], 'ld-hollow': [[-30, 30, 0]], 'ld-clamp': [[-38, 38, 20]], 'ld-cairn': [[-31, 31, 0]], 'ld-woodhut': [[-58, 58, 0]] });
 function gardenPropPaintedFeet(p) {
   if (!p || typeof GardenPaintedMarks === 'undefined' || !GardenPaintedMarks || !GardenPaintedMarks.ART || GARDEN_WORLD.v < 5) return null;
   const art = GardenPaintedMarks.ART[p.id] && GardenPaintedMarks.ART[p.id].foot ? GardenPaintedMarks.ART[p.id] : GW_PROP_FEET[p.id] ? { foot: GW_PROP_FEET[p.id] } : null; if (!art || !art.foot || gardenPropCol(p) !== 'full') return null;
