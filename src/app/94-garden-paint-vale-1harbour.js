@@ -10,6 +10,38 @@
   'use strict';
   const V = window.GardenPaintVale; if (!V) return;
   const QUAY = { x0: 34, x1: 69, y0: 67, y1: 92 };
+  const TK = () => window.GardenPaintTerrainKit;
+  // (village fix round 1) The high street and the quay are laid in the same setts as the square, so the three are one
+  // paving with no seam where they meet: small stones (a sett is a hand's length, not half the figure's height) in courses
+  // that sag and wander, in broad patches of older and newer stone, worn paler where feet go, a granite slab let in here
+  // and there, moss in the joints, a shallow puddle now and then. (Flagstones half the figure's height in ruler-straight
+  // rows read as a brick wall papered over the ground.) Rows and stones are keyed by their place, so chunks meet exactly.
+  function paveSetts(B, P, bb, salt, moss) {
+    const cx = B.cx, K = TK(), rowH = 5.6, patch = (x, y) => Math.sin(x * .013 + y * .021) + Math.sin(x * .031 - y * .017 + 1.3) * .6;
+    const tones = ['#c8b08a', '#d4be96', P.stone, '#dcc9a4', '#cdb68e', '#d8c2aa'];
+    B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), '#a8977a');   // the mortar bed
+    for (let y = Math.floor(bb[1] / rowH) * rowH - rowH; y < bb[3] + rowH; y += rowH) {
+      const rr = K.rng(K.hash(Math.round(y * 10), 7, salt) | 1);
+      for (let x = Math.floor(bb[0] / 7) * 7 - rr() * 7; x < bb[2]; ) {
+        const slab = rr() < .012, w = slab ? 12 + rr() * 6 : 4.6 + rr() * 4.2, sag = Math.sin(x * .019 + y * .043) * 1.2, hh = slab ? rowH * 1.9 : rowH;
+        const x0 = x + .6, y0 = y + .6 + sag, sw = w - 1.2, sh = hh - 1.2; x += w;
+        if (y0 > bb[3] + 2 || y0 + sh < bb[1] - 2) continue;
+        const pv = patch(x0, y0), t = rr() + pv * .12;
+        cx.globalAlpha = 1; cx.fillStyle = slab ? (rr() < .5 ? '#b8b0a0' : '#c4bcaa') : tones[Math.max(0, Math.min(5, Math.floor(t * 6)))];
+        cx.beginPath(); cx.roundRect(x0, y0, sw, sh, 1.3); cx.fill();
+        cx.globalAlpha = .3; cx.fillStyle = P.stoneHi; cx.fillRect(x0 + .5, y0 + .3, sw * .75, 1.2);
+        cx.globalAlpha = .24; cx.fillStyle = '#7a6648'; cx.fillRect(x0 + .4, y0 + sh - 1.1, sw - .8, 1.1);
+        if (pv < -1 && rr() < .35) { cx.globalAlpha = .12; cx.fillStyle = '#6a5a40'; cx.fillRect(x0, y0, sw, sh); }
+        if (moss && rr() < moss) { cx.globalAlpha = .6; cx.fillStyle = rr() < .5 ? '#7d8f4e' : '#93a252'; cx.beginPath(); cx.ellipse(x0 + sw + .3, y0 + sh / 2, 1.1 + rr(), .8, 0, 0, 7); cx.fill(); }
+      }
+    }
+    cx.globalAlpha = 1;
+    // broad light and wear, and a puddle now and then where the stones have sunk
+    K.tiles(bb, 150, 0, salt + 90, (tx, ty, rr) => {
+      for (let k = 0; k < 2; k++) B.f(B.blob(rr, tx + rr() * 150, ty + rr() * 150, 30 + rr() * 40, 10 + rr() * 14, 9, .5), rr() < .55 ? '#f4e8c8' : '#7a6648', .1);
+      if (rr() < .3) { const px = tx + 20 + rr() * 110, py = ty + 20 + rr() * 110, w = 9 + rr() * 9; B.f(B.blob(rr, px, py, w, w * .36, 9, .35), '#8a9a98', .45).f(B.blob(rr, px - w * .2, py - 1, w * .5, w * .12, 7, .4), '#e8f0ee', .45); }
+    });
+  }
 
   function bayCoast(L) {
     // the longest run of coast points that faces the bay
@@ -109,7 +141,7 @@
       const band = V.loopPath([V.routeRibbon(L, promenadeRoute, false)]), kerb = V.loopPath([V.routeRibbon(L, promenadeRoute, true)]), bb = kit.bboxOf(promenade, 80);
       add(bb, 34, (B, r, cb) => {
         V.clipGround(B, L, cb); B.f(kerb, P.kerb); B.s(kerb, 'rgba(46,52,30,.18)', 2);
-        B.cx.save(); B.cx.clip(band); V.flags(B, r, P, [bb[0], Math.max(bb[1], cb[1] - 13), bb[2], Math.min(bb[3], cb[3] + 13)], { row: 13, w: 24, salt: 34, moss: .05 }); B.cx.restore();
+        B.cx.save(); B.cx.clip(band); paveSetts(B, P, [bb[0], Math.max(bb[1], cb[1] - 13), bb[2], Math.min(bb[3], cb[3] + 13)], 34, .04); B.cx.restore();
       });
     }
     // (the meadow's wash is not cut away along them, V.softRoutes: the turf runs on under the worn line, with no hard edge)
@@ -155,30 +187,40 @@
     // The quay's front is its authored shape (2.74): it bulges at the pier root and tapers into the strand and the
     // lighthouse walk; its sea edge stays the straight harbour wall, so the wall, steps and bollards keep their line.
     const front = Array.isArray(quay.shape) ? quay.shape.filter(p => p[1] < quay.y + .7).sort((a, b) => a[0] - b[0]) : [];
-    let quayShape = `M${qx0 + 26} ${qy0}L${qx1 - 26} ${qy0}Q${qx1} ${qy0} ${qx1} ${qy0 + 18}L${qx1} ${qy1}L${qx0} ${qy1}L${qx0} ${qy0 + 18}Q${qx0} ${qy0} ${qx0 + 26} ${qy0}Z`, qTop = qy0, qLeft = qx0, qRight = qx1;
+    // (village fix round 1: the sea edge is a harbour front, not a ruler: it bows gently out to sea, swells where the pier
+    // leaves it, and at both ends the wall sinks into the sand instead of stopping square)
+    const pier0 = L.stat('pier'), pc = pier0 ? (pier0.x + pier0.w / 2) * cw : (qx0 + qx1) / 2, mid = (qx0 + qx1) / 2, half = (qx1 - qx0) / 2 || 1;
+    const seaY = x => qy1 + 8 * (1 - Math.pow((x - mid) / half, 2)) + 11 * Math.exp(-Math.pow((x - pc) / 80, 2));
+    const faceH = x => face * Math.sqrt(Math.max(0, Math.min(1, (x - qx0) / 40, (qx1 - x) / 40)));
+    const seaEdge = (a, b) => { let d = ''; const n = Math.max(2, Math.round(Math.abs(b - a) / 6)); for (let i = 0; i <= n; i++) { const x = a + (b - a) * i / n; d += `L${x.toFixed(1)} ${seaY(x).toFixed(1)}`; } return d; };
+    let quayShape = `M${qx0 + 26} ${qy0}L${qx1 - 26} ${qy0}Q${qx1} ${qy0} ${qx1} ${qy0 + 18}` + seaEdge(qx1, qx0) + `L${qx0} ${qy0 + 18}Q${qx0} ${qy0} ${qx0 + 26} ${qy0}Z`, qTop = qy0, qLeft = qx0, qRight = qx1;
     if (front.length > 3) {
       const g = i => front[Math.max(0, Math.min(front.length - 1, i))], pts = [];
       for (let i = 0; i < front.length - 1; i++) { const p0 = g(i - 1), p1 = g(i), p2 = g(i + 1), p3 = g(i + 2); for (let k = 0; k < 6; k++) { const t = k / 6, t2 = t * t, t3 = t2 * t, c = j => .5 * ((2 * p1[j]) + (-p0[j] + p2[j]) * t + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * t2 + (-p0[j] + 3 * p1[j] - 3 * p2[j] + p3[j]) * t3); pts.push(cpt(c(0), c(1))); } }
       pts.push(cpt(front[front.length - 1][0], front[front.length - 1][1]));
-      quayShape = `M${qx0} ${qy1}` + pts.map(p => `L${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join('') + `L${qx1} ${qy1}Z`;
+      quayShape = `M${qx0} ${seaY(qx0)}` + pts.map(p => `L${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join('') + seaEdge(qx1, qx0) + 'Z';
       qTop = Math.min(...pts.map(p => p.y)); qLeft = Math.min(qx0, ...pts.map(p => p.x)); qRight = Math.max(qx1, ...pts.map(p => p.x));
     }
-    add([qLeft - 40, qTop - 30, qRight + 40, qy1 + face + 30], 41, (B, r) => {
-      B.cx.filter = 'blur(3px)'; B.f(B.rect(qx0 + 4, qy1 + 2, qx1 - qx0, face + 6), '#2e3a36', .25); B.cx.filter = 'none';
+    add([qLeft - 40, qTop - 30, qRight + 40, qy1 + face + 46], 41, (B, r) => {
+      // the face as a band under the curved edge, its height dying away into the sand at both ends
+      const faceD = (k, grow) => { let d = `M${qx0} ${seaY(qx0)}` + seaEdge(qx0, qx1); const n = Math.max(2, Math.round((qx1 - qx0) / 6)); for (let i = n; i >= 0; i--) { const x = qx0 + (qx1 - qx0) * i / n; d += `L${x.toFixed(1)} ${(seaY(x) + faceH(x) * k + grow).toFixed(1)}`; } return d + 'Z'; };
+      B.cx.filter = 'blur(3px)'; B.cx.save(); B.cx.translate(4, 3); B.f(faceD(1, 6), '#2e3a36', .25); B.cx.restore(); B.cx.filter = 'none';
       // the harbour wall's face: big dressed blocks, darker and weedy towards the tide, lit at the top
-      B.f(B.rect(qx0, qy1, qx1 - qx0, face), B.lin(0, qy1, 0, qy1 + face, [[0, P.wall], [.6, P.wallLo], [1, '#4e5a4a']]));
-      for (let row = 0; row < 3; row++) { const y = qy1 + row * face / 3; for (let x = qx0 + (row % 2) * 9; x < qx1; x += 16 + r() * 8) { const w = 14 + r() * 8; B.f(B.rr(x + 1, y + 1, Math.min(w, qx1 - x) - 2, face / 3 - 2, 1.5), row === 2 ? '#6e7462' : r() < .5 ? P.wall : P.wallHi, row === 2 ? .8 : .7); } }
-      for (let x = qx0; x < qx1; x += 6) if (r() < .7) B.f(B.blob(r, x, qy1 + face - 2, 4 + r() * 4, 2 + r() * 2.5, 6, .6), r() < .5 ? '#4a5a34' : '#6a7440', .8);
-      for (let x = qx0 + 30; x < qx1 - 20; x += 70 + r() * 30) { B.s(`M${x} ${qy1 + 7}a3 3 0 1 0 0.1 0`, P.iron, 1.4, .9); B.s(`M${x} ${qy1 + 2}l0 2`, P.iron, 1.6, .9); }
+      B.f(faceD(1, 0), B.lin(0, qy1, 0, qy1 + face + 8, [[0, P.wall], [.6, P.wallLo], [1, '#4e5a4a']]));
+      for (let row = 0; row < 3; row++) for (let x = qx0 + (row % 2) * 9; x < qx1; x += 16 + r() * 8) { const w = 14 + r() * 8, ww = Math.min(w, qx1 - x), fh = faceH(x + ww / 2); if ((fh < face * .55 && row === 2) || fh < face * .3) continue; const y = seaY(x + ww / 2) + row * fh / 3; B.f(B.rr(x + 1, y + 1, ww - 2, fh / 3 - 2, 1.5), row === 2 ? '#6e7462' : r() < .5 ? P.wall : P.wallHi, row === 2 ? .8 : .7); }
+      for (let x = qx0; x < qx1; x += 6) if (r() < .7 && faceH(x) > 4) B.f(B.blob(r, x, seaY(x) + faceH(x) - 2, 4 + r() * 4, 2 + r() * 2.5, 6, .6), r() < .5 ? '#4a5a34' : '#6a7440', .8);
+      for (let x = qx0 + 46; x < qx1 - 40; x += 70 + r() * 30) { const y = seaY(x); B.s(`M${x} ${y + 7}a3 3 0 1 0 0.1 0`, P.iron, 1.4, .9); B.s(`M${x} ${y + 2}l0 2`, P.iron, 1.6, .9); }
+      // sand drifted up against the wall's sunken ends
+      for (const [ex, dir] of [[qx0, 1], [qx1, -1]]) { B.cx.save(); B.cx.filter = 'blur(2px)'; B.f(B.blob(r, ex + dir * 16, seaY(ex) + 7, 26, 7, 9, .3), P.sand, .85); B.cx.restore(); }
       // the flags, then a kerb of long granite copes along the sea edge
-      B.cx.save(); B.cx.clip(new Path2D(quayShape)); V.flags(B, r, P, [qLeft, qTop, qRight, qy1], { row: 10, w: 19, salt: 41, moss: .08 });   // (fix round 1: flags at a real size beside the figure, not paving slabs half its height)
+      B.cx.save(); B.cx.clip(new Path2D(quayShape)); paveSetts(B, P, [qLeft, qTop, qRight, qy1 + 14], 41, .07);   // (fix round 1: the square's setts, see paveSetts)
       // feet have worn a paler way from the promenade to the pier
       B.f(B.blob(r, (qx0 + qx1) / 2 - 20, (qy0 + qy1) / 2, 70, 26, 9, .3), P.stoneHi, .3);
       B.cx.restore();
-      for (let x = qx0; x < qx1; ) { const w = 22 + r() * 14, ww = Math.min(w, qx1 - x); B.f(B.rr(x + .6, qy1 - 5, ww - 1.2, 6, 1.5), r() < .5 ? '#b4ab94' : '#a59c86').f(B.rect(x + 1, qy1 - 4.6, ww - 2, 1.6), P.stoneHi, .7); x += w; }
+      for (let x = qx0; x < qx1; ) { const w = 22 + r() * 14, ww = Math.min(w, qx1 - x), y = seaY(x + ww / 2); B.f(B.rr(x + .6, y - 5, ww - 1.2, 6, 1.5), r() < .5 ? '#b4ab94' : '#a59c86').f(B.rect(x + 1, y - 4.6, ww - 2, 1.6), P.stoneHi, .7); x += w; }
       B.s(quayShape, P.kerb, 2.2, .7);
       // steps down the wall at each end, a rope coil and a lost glove
-      for (const sx of [qx0 + 24, qx1 - 40]) for (let k = 0; k < 4; k++) B.f(B.rect(sx, qy1 + k * 4.6, 18, 5), k % 2 ? P.wallLo : P.wallHi).f(B.rect(sx, qy1 + k * 4.6 + 3.6, 18, 1.2), P.wallDk, .5);
+      for (const sx of [qx0 + 44, qx1 - 62]) { const y0 = seaY(sx + 9); for (let k = 0; k < 4; k++) B.f(B.rect(sx, y0 + k * 4.6, 18, 5), k % 2 ? P.wallLo : P.wallHi).f(B.rect(sx, y0 + k * 4.6 + 3.6, 18, 1.2), P.wallDk, .5); }
       const rc = { x: (qx0 + qx1) / 2 + 52, y: qy1 - 14 }; for (let k = 0; k < 4; k++) B.s(B.ell(rc.x, rc.y, 7 - k * 1.4, 3.6 - k * .7), k % 2 ? P.rope : '#a88a54', 1.6, .95);
       B.s(`M${rc.x + 6} ${rc.y}q12 2 18 9`, P.rope, 1.4, .9);
     });

@@ -36,9 +36,12 @@
   }
   const level = () => { try { return gardenModel().level.level; } catch (e) { return 1; } };
   const locked = (x, y, lv) => { try { return String(gardenAreaAt(x, y, lv)).startsWith('locked:'); } catch (e) { return false; } };
+  // (a plot past a gate that is still shut has no fence yet: the mist stands at that edge, and a fence there drew a ruled
+  // line of posts down the open meadow beside the village. It is fenced once its gate opens.)
+  const zoneShut = (x, y) => { try { return typeof gardenZoneLockAt === 'function' && !!gardenZoneLockAt(x, y); } catch (e) { return false; } };
   // The ground re-bakes when a valley plot opens or closes.
   // (and when you reach a plot's level: its sign turns from the level it needs to its price)
-  V.groundSigs.push(() => { if (typeof gardenAreaAt !== 'function') return ''; const lv = level(); let h = 0, n = 0; for (const p of plots()) { const c = p.cells[0]; if (locked(c[0], c[1], lv)) { const row = gardenLandCell(c[0], c[1]); h = (h * 31 + p.cells.length + c[0] * 97 + c[1] + (row && lv >= (row.lv || 0) ? 7 : 0)) >>> 0; n++; } } return '|vf' + n + ':' + h; });
+  V.groundSigs.push(() => { if (typeof gardenAreaAt !== 'function') return ''; const lv = level(); let h = 0, n = 0; for (const p of plots()) { const c = p.cells[0]; if (locked(c[0], c[1], lv)) { const row = gardenLandCell(c[0], c[1]); h = (h * 31 + p.cells.length + c[0] * 97 + c[1] + (row && lv >= (row.lv || 0) ? 7 : 0) + (zoneShut(c[0], c[1]) ? 3 : 0)) >>> 0; n++; } } return '|vf' + n + ':' + h; });
   // The fence wears the country it stands in: a dry-stone wall on the north moor, a hedge in the High orchard,
   // the weathered post-and-rail everywhere else (the village, the valley). One rule, local dress (17 Nov 2026).
   const regionKind = (x, y) => { const r = typeof gardenIslandRegionAt === 'function' ? gardenIslandRegionAt(x + .5, y + .5) : null, id = r ? String(r.id) + ' ' + String(r.theme || '') : ''; return /mountain|north-headland/.test(id) ? 'wall' : /orchard/.test(id) ? 'hedge' : 'rail'; };
@@ -89,7 +92,7 @@
     const cw = W.cellW, ch = W.cellH, lv = level(), wood = ['#8a7454', '#a88e66', '#5e4c36'];
     const fronts = [];
     for (const [x, y, side, nx, ny] of edges) {
-      if (!locked(x, y, lv) || locked(nx, ny, lv)) continue;   // (a plot that is yours, or two locked plots side by side: no fence between)
+      if (!locked(x, y, lv) || locked(nx, ny, lv) || zoneShut(x, y)) continue;   // (a plot that is yours, or two locked plots side by side, or a plot past a shut gate: no fence)
       const inset = 3, x0 = x * cw, y0 = W.sky + y * ch, kind = regionKind(x, y);
       if (side === 's') fronts.push([x, y]);
       if (kind === 'wall' || kind === 'hedge') {

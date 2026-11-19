@@ -813,9 +813,20 @@ window.GardenNativeWorld = (function () {
         const old = pierBoards.nativeBounds;
         pierBoards.nativeBounds = old ? { x: Math.min(old.x, b.x), y: Math.min(old.y, b.y), width: Math.max(old.x + old.width, b.x + b.width) - Math.min(old.x, b.x), height: Math.max(old.y + old.height, b.y + b.height) - Math.min(old.y, b.y) } : b;
         if (pier.side === 'south') {
-          pg.fillStyle(0x315d54, .22).fillRoundedRect(x + 9, y + 11, w + 1, h, 5).fillStyle(0x796c51).fillRoundedRect(x - 4, y, w + 8, h, 4);
+          // (village fix round 1: the pier stands on piles in the water, with its shadow and the piles' reflections, instead of
+          // a plank rectangle lying flat on the sea)
+          pg.fillStyle(0x0b2a3c, .12).fillRoundedRect(x + 2, y + 18, w + 16, h + 4, 9).fillStyle(0x0b2a3c, .18).fillRoundedRect(x + 6, y + 14, w + 6, h, 6);
+          const pile = (px, top, len) => {
+            pg.fillStyle(0x1f3a48, .3).fillRect(px - 2.4, top + len + 1.5, 4.8, 2.6).fillRect(px - 1.7, top + len + 5.5, 3.4, 1.8).fillRect(px - 2.1, top + len + 9, 4.2, 1.2);   // the reflection, broken by the ripples
+            pg.fillStyle(0x3b2a19).fillRect(px - 2.7, top, 5.4, len).fillStyle(0x8a6a42, .45).fillRect(px - 2.2, top, 1.5, len).fillStyle(0x2a4a30, .7).fillRect(px - 2.7, top + len - 3.5, 5.4, 3.5);   // the pile, weedy at the tide
+            pg.lineStyle(.9, 0xeaf6f4, .6).strokeEllipse(px, top + len, 10, 2.8);   // the ring where it meets the water
+          };
+          for (let yy = y + W.cellH * .7; yy < y + h - 6; yy += W.cellH * 1.25) for (const px of [x - 2, x + w + 2]) pile(px, yy, 11);
+          for (const px of [x + 3, x + w / 3, x + w * 2 / 3, x + w - 3]) pile(px, y + h, 12);
+          pg.fillStyle(0x796c51).fillRoundedRect(x - 4, y, w + 8, h, 4);
           for (let yy = y + 3; yy < y + h - 3; yy += 14) { const bh = Math.min(12.5, y + h - 3 - yy); pg.fillStyle(Math.floor(yy / 14) % 3 ? 0xb19a71 : 0xbda77c).fillRect(x + 1, yy, w - 2, bh); if (bh > 2.4) pg.lineStyle(.8, 0xe6d5a8, .42).lineBetween(x + 7, yy + 2, x + w - 7, yy + 2); if (bh > 8.8) pg.fillStyle(0x68694e, .55).fillCircle(x + 7, yy + 8, .8).fillCircle(x + w - 7, yy + 8, .8); }
           for (const xx of [x - 1, x + w + 1]) pg.fillStyle(0x716c50).fillRoundedRect(xx - 3, y + 4, 6, 16, 2).fillStyle(0xd0bd8c).fillEllipse(xx, y + 4, 7, 4);
+          pg.fillStyle(0x5a4630).fillRect(x - 4, y + h - 1, w + 8, 4).fillStyle(0x3a2c1c, .55).fillRect(x - 4, y + h + 3, w + 8, 1.2);   // the deck's end beam (the next length of pier, when built, lies over it)
         } else {
           // Side decks retain a shallow timber edge and two water-end supports.
           const waterEnd = pier.side === 'west' ? x + 3 : x + w - 3, endFace = pier.side === 'west' ? x - 3 : x + w - 1, endBevel = pier.side === 'west' ? x - .8 : x + w + .8;
@@ -1186,6 +1197,9 @@ window.GardenNativeWorld = (function () {
           if (meta.kind === 'prop' && ['shop', 'tackle'].includes(def.kind)) pointLights.push({ id: record.id + ':window', x, y: y - (record.handle.painted ? 48 : nightMaterials ? 76 : 28), radius: nightMaterials ? 96 : 72, color: nightMaterials ? 0xffc47c : 0xffdca3, intensity: .58 });
           // Painted village houses are lower: the glow sits on their window row.
           else if (record.handle.painted && meta.kind === 'prop' && ['lf-office', 'hall'].includes(def.kind)) pointLights.push({ id: record.id + ':window', x, y: y - 48, radius: nightMaterials ? 90 : 64, color: nightMaterials ? 0xffc47c : 0xffdca3, intensity: .55 });
+          // (village fix round 1: the high street's cottages and the market stall light their windows at dusk as well, so the
+          // street, the square and the quay are not left dark between the shops)
+          else if (record.handle.painted && meta.kind === 'prop' && /^(ld-cottage-d|market-stall|ld-boathouse)$/.test(def.id || source.id || '')) pointLights.push({ id: record.id + ':window', x, y: y - 44, radius: nightMaterials ? 86 : 62, color: nightMaterials ? 0xffc47c : 0xffdca3, intensity: .5 });
           if (meta.prop && /^(lamp|lampbox|beacon|lighthouse)$/.test(def.art || def.kind || '')) pointLights.push({ id: record.id + ':lamp', x, y: record.bounds.y + record.bounds.height * .3, radius: def.art === 'lighthouse' ? 175 : 110, height: record.bounds.height * .75, color: nightMaterials ? 0xffc17a : 0xffd88e, intensity: .8, flicker: def.art === 'beacon' });
         } else if (meta.kind === 'scenery' && record.bounds.width < 350 && record.bounds.height > 25) {
           const foot = meta.foot || { x: record.bounds.x + record.bounds.width / 2, y: record.bounds.y + record.bounds.height };

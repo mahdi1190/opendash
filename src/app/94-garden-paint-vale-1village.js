@@ -399,9 +399,9 @@
     // its border: a narrow bed of flowers all the way round, inside a low stone edging (a curved flower border, not a string of stones)
     B.cx.save(); B.cx.clip(path, 'nonzero');
     B.cx.filter = 'blur(1.5px)'; B.s(path, '#33281a', 21, .26); B.cx.filter = 'none';
-    B.s(path, season === 'winter' ? '#6e5c4a' : '#6b4f38', 15, .92);
+    B.s(path, season === 'winter' ? '#6e5c4a' : '#6b4f38', 10, .85);
     B.cx.restore();
-    for (const l of loops) for (const q of V.walk(l.concat([l[0]]), 4.4)) {
+    for (const l of loops) for (const q of V.walk(l.concat([l[0]]), 3.6)) {
       const o = 2 + r() * 4.2, x = q.x - q.ty * o, y = q.y + q.tx * o, t = r(), bloom = r(), dx = (r() - .5) * 4, up = 1.2 + r() * 1.8, sz = 1.3 + r() * .7, col = flowers[Math.floor(r() * flowers.length)];
       B.f(B.blob(r, x, y, 3.8 + t * 1.8, 2.5 + t, 6, .4), lt[t < .45 ? 1 : t < .85 ? 2 : 3], .94);
       if (season === 'winter' ? bloom < .1 : bloom < .78) B.f(B.circ(x + dx, y - up, sz), col, .96);
@@ -409,10 +409,14 @@
     // drifts of low planting across the middle: cushions of leaf with the same flowers, thinner than at the edge, so the
     // border reads as a bed and what you plant in it still stands clear
     { const xs = loops.flatMap(l => l.map(q => q.x)), ys = loops.flatMap(l => l.map(q => q.y)), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), n = Math.round((x1 - x0) * (y1 - y0) / 90);
-      B.cx.save(); B.cx.clip(path, 'nonzero'); B.f(path, season === 'winter' ? '#6e6450' : '#5e5236', .2);
-      for (let k = 0; k < n; k++) { const x = x0 + r() * (x1 - x0), y = y0 + r() * (y1 - y0), t = r(), w = 4.5 + r() * 4.5, bloom = r(), col = flowers[Math.floor(r() * flowers.length)], dx = (r() - .5) * 5, up = 1 + r() * 2, go = r(); if (go < .1) continue;
-        B.f(B.blob(r, x, y, w, 2.4 + t * 1.2, 6, .4), lt[t < .4 ? 0 : t < .8 ? 1 : 2], t < .4 ? .55 : .88);
-        if (season === 'winter' ? bloom < .08 : bloom < .5) B.f(B.circ(x + dx, y - up, 1.2 + bloom), col, .95); }
+      // (fix round 1: fuller and brighter, a cottage border in flower: mounds of leaf lit on top, flowers in loose
+      // drifts of one colour rather than confetti, and taller spires here and there, so a bed reads at the default camera)
+      B.cx.save(); B.cx.clip(path, 'nonzero');
+      const drift = (x, y) => flowers[Math.abs(Math.floor(Math.sin(x * .05 + y * .09) * 2.2 + Math.sin(x * .021 - y * .04) * 2.2)) % flowers.length];
+      for (let k = 0; k < n * 1.6; k++) { const x = x0 + r() * (x1 - x0), y = y0 + r() * (y1 - y0), t = r(), w = 4.5 + r() * 4.5, bloom = r(), col = r() < .75 ? drift(x, y) : flowers[Math.floor(r() * flowers.length)], dx = (r() - .5) * 5, up = 1 + r() * 2, go = r(); if (go < .06) continue;
+        B.f(B.blob(r, x, y, w, 2.4 + t * 1.2, 6, .4), lt[t < .3 ? 1 : t < .8 ? 2 : 3], .92); B.f(B.blob(r, x - w * .2, y - 1.4, w * .5, 1.2, 6, .4), lt[3], .5);
+        if (season === 'winter' ? bloom < .08 : bloom < .72) { B.f(B.circ(x + dx, y - up, 1.3 + bloom * .9), col, .97); if (bloom < .3) B.f(B.circ(x + dx + 2.2, y - up + .6, 1.1 + bloom), col, .95); }
+        if (season !== 'winter' && bloom > .93) { const sx = x + dx * .5, c2 = drift(x + 40, y); for (let j = 0; j < 4; j++) B.f(B.ell(sx, y - 3 - j * 2.6, 1.6 - j * .25, 1.4), c2, .95); B.s(`M${sx} ${y}v-${10}`, lt[1], .9, .8); } }
       B.cx.restore(); }
     // the edging: one low line of honey stone with its joints, lit along the top
     // (round 3: weathered and half sunk in the turf, a quieter line than the bright ring it was, with the border's planting
@@ -519,10 +523,15 @@
       thing({ key: 'village-lime|' + season, x: p.x, y: p.y, K: LK, box: [-104, -214, 104, 22], foot: [-17, 17, 9], crown: { x: 0, y: -H * .6, rx: H * .4, ry: H * .38 }, draw: B => {
         const t = GardenPaintTrees.canvas({ species, season, v: 1, h: H, K: LK }); if (t) B.cx.drawImage(t.c, -t.ox / t.k, -t.oy / t.k, t.c.width / t.k, t.c.height / t.k);
         // the seat round the trunk: a ring of boards on short legs (the back half is behind the trunk)
-        B.f(B.ell(1, 4, 25, 7), '#22301a', .28);
-        for (const x of [-17, -6, 6, 17]) B.f(B.rect(x - 1.2, -3, 2.4, 7), '#5e4c36');
-        B.cx.save(); const front = new Path2D(); front.rect(-40, -2.5, 80, 30); B.cx.clip(front);
-        B.f(B.ell(0, -2, 23, 6.4), '#8a6c46').f(B.ell(0, -3.4, 23, 6.4), '#b8976a').s(B.ell(0, -3.4, 16.5, 4.2), '#8a6c46', 1, .7).f(B.ell(-6, -5.2, 12, 2), '#d8bc8e', .5);
+        // (fix round 1: an open ring of slats on legs, the roots and the grass showing inside it, so it reads as a bench and
+        // not as a flat disc the tree stands on)
+        B.cx.save(); B.cx.filter = 'blur(2px)'; B.f(B.ell(3, 6, 27, 7.5), '#22301a', .3); B.cx.restore();
+        for (const x of [-20, -8, 8, 20]) B.f(B.rect(x - 1.3, -6, 2.6, 11), '#4e3e2a').f(B.rect(x - 1.3, -6, 1, 11), '#7a6446', .7);
+        B.cx.save(); const front = new Path2D(); front.rect(-40, -7, 80, 30); B.cx.clip(front);
+        const ringAt = dy => new Path2D(B.ell(0, dy, 24, 6.8) + B.ell(0, dy, 15.5, 4.1));
+        B.cx.fillStyle = '#6e5436'; B.cx.fill(ringAt(-4.6), 'evenodd'); B.cx.fillStyle = '#b8976a'; B.cx.fill(ringAt(-6.4), 'evenodd');
+        for (let k = 0; k <= 12; k++) { const a = Math.PI * k / 12, c = Math.cos(a), si = Math.sin(a); B.s(`M${(c * 15.5).toFixed(1)} ${(-6.4 + si * 4.1).toFixed(1)}L${(c * 24).toFixed(1)} ${(-6.4 + si * 6.8).toFixed(1)}`, '#7a5c3a', .7, .75); }
+        B.s(B.ell(0, -6.4, 24, 6.8), '#5e4630', .8, .6).f(B.ell(-9, -10.6, 9, 1.4), '#e0c698', .45);
         B.cx.restore();
       } });
     }

@@ -307,6 +307,9 @@ window.GardenPaintedProps = (function () {
     seat: ['street.bench', 0, { w: 84 }], lamp: ['street.lamp', 0, { h: 96 }], lampbox: ['street.lamp', 0, { h: 96 }], lighthouse: ['building.lighthouse', 0, { h: 190 }],
     reeds: null, boat: null,
   };
+  // (village fix round 1: the harbour's lighthouse is a tower, six and a half times the player, not a little taller than a
+  // cottage; the tall white one with the black lantern, which has no keeper's cottage leaning into the foot of its tower)
+  LIB.lighthouse = ['building.lighthouse', 1, { h: 300 }];
   function propPainter(prop) {
     if (!prop) return null;
     if (prop.id === 'craft-bench') return 'bench';
