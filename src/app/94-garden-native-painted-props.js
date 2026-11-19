@@ -503,6 +503,66 @@ window.GardenPaintedProps = (function () {
       if (season !== 'winter') for (let i = 0; i < 12; i++) { const a = Math.PI - r() * Math.PI, x = Math.cos(a) * (half + 12), y = -rise * .6 - Math.sin(a) * rise * .62; B.f(B.circ(x, y, 1.8), season === 'autumn' ? '#e0a040' : '#f4d8e0', .95); }
     }
   }
+  /** The forest arch where its way runs across the screen (the Vale's: you cross west into the woods). Seen side on, the
+   *  old face-on arch sheared into a tilted hoop of leaves standing alone at the mist (art director and hunter, round 3).
+   *  Now it is a gap in the woodland edge: a holly and hawthorn bank runs on north and south of the way, an old oak stands
+   *  either side of the path and their crowns meet over it in one canopy, ivy hanging. y runs down the screen, (0, 0) is
+   *  the middle of the way, S half the span. */
+  function woodArchSide(B, r, S, season, open) {
+    const L = leafOf(season), yn = -S - 10, ys = S + 4, bark = ['#6e5236', '#523c28', '#94744c', '#2e2418'], snowy = season === 'winter';
+    const bank = (y0, y1) => {   // a hedge bank from y0 to y1 (ascending), painted far to near
+      B.f(D().blob(r, 2, (y0 + y1) / 2 + 4, 34, (y1 - y0) / 2 + 8, 10, .3), '#4e6234', .5);
+      for (let y = y0; y <= y1; y += 6.5) { const h = 46 + r() * 12, w = 26 + r() * 9, x = (r() - .5) * 6;
+        B.f(D().blob(r, x + 3, y - h * .44, w, h * .56, 9, .42), L[0], .98).f(D().blob(r, x - 3, y - h * .6, w * .74, h * .38, 8, .45), L[1], .96).f(D().blob(r, x - 9, y - h * .76, w * .4, h * .2, 7, .5), L[2], .92);
+        if (r() < .35) B.f(D().blob(r, x - 12, y - h * .84, w * .16, h * .08, 6, .5), L[3], .8);
+        if (!snowy && r() < .55) for (let k = 0; k < 3; k++) B.f(B.circ(x + (r() - .5) * w * 1.3, y - h * (.3 + r() * .5), 1.5), season === 'autumn' ? '#b8302a' : season === 'spring' ? '#f6f2e8' : '#9e1e26', .95);
+        if (snowy) B.f(D().blob(r, x - 4, y - h * .9, w * .6, 3, 7, .5), '#eef2f0', .85);
+      }
+      for (let y = y0; y <= y1; y += 9) B.tufts(r, 22 + r() * 8, y + 2, 10, 4, season).tufts(r, -22 - r() * 8, y + 2, 10, 4, season);
+    };
+    const trunk = (x0, y0, x1, y1, w) => {
+      for (let i = 0; i < 4; i++) { const s = i % 2 ? 1 : -1; B.s(`M${x0 + s * w * .3} ${y0 - 4}q${s * (8 + i * 5)} 3 ${s * (16 + i * 7)} ${7 - i}`, bark[1], 6 - i, 1); }
+      B.shadow(x0 + 6, y0 + 2, w * 1.6, 6, .34);
+      B.f(`M${x0 - w * .62} ${y0}C${x0 - w * .5} ${(y0 + y1) / 2} ${x1 - w * .4} ${y1 + 20} ${x1 - w * .36} ${y1}L${x1 + w * .36} ${y1}C${x1 + w * .4} ${y1 + 20} ${x0 + w * .5} ${(y0 + y1) / 2} ${x0 + w * .62} ${y0}Z`, bark[1]);
+      B.f(`M${x0 - w * .62} ${y0}C${x0 - w * .5} ${(y0 + y1) / 2} ${x1 - w * .4} ${y1 + 20} ${x1 - w * .36} ${y1}L${x1 - w * .05} ${y1}C${x1 - w * .1} ${y1 + 22} ${x0 - w * .14} ${(y0 + y1) / 2} ${x0 - w * .2} ${y0}Z`, bark[2], .7);
+      for (let k = 0; k < 9; k++) { const t = .08 + k * .1, x = x0 + (x1 - x0) * t + (r() - .5) * w * .5, y = y0 + (y1 - y0) * t; B.s(`M${x} ${y}q${(r() - .5) * 3} -7 ${(r() - .5) * 2} -13`, bark[3], 1, .5); }
+      B.f(B.ell(x0 + (x1 - x0) * .45 + w * .1, y0 + (y1 - y0) * .45, 3, 4.4), bark[3], .7);
+      if (!snowy) for (let k = 0; k < 5; k++) B.f(D().blob(r, x0 - w * .3 + (r() - .5) * 4, y0 - 6 - k * 9, 4, 3, 6, .5), k % 2 ? MOSS[0] : MOSS[2], .8);   // moss up the shaded foot
+    };
+    // the woodland edge north of the way, the north oak, the canopy over the path, the south oak in front, the bank south
+    bank(yn - 104, yn - 8);
+    trunk(-12, yn, -6, -150, 24);
+    const canopy = [[-30, -176, 52, 34], [26, -170, 50, 32], [-4, -196, 46, 28], [-48, -146, 34, 26], [44, -142, 34, 24], [0, -150, 58, 30]];
+    for (const [x, y, rx, ry] of canopy) B.crown(r, x, y, rx, ry, season, 6);
+    // a bough from the south oak reaching over into the north oak's crown: the arch itself
+    B.s(`M10 -64C8 -108 -2 -132 -10 -150`, bark[3], 13).s(`M10 -64C8 -108 -2 -132 -10 -150`, bark[1], 10).s(`M7 -68C5 -108 -4 -130 -12 -148`, bark[2], 3, .55);
+    // ivy and old man's beard hanging from the canopy over the way (never down to head height)
+    for (let i = 0; i < 12; i++) { const x = -40 + i * 7 + (r() - .5) * 4, y = -126 - r() * 12, len = 10 + r() * 16; B.s(`M${x} ${y}q${(r() - .5) * 5} ${len * .5} ${(r() - .5) * 4} ${len}`, L[0], 1.3, .9); B.f(B.ell(x + (r() - .5) * 3, y + len * .85, 2, 1.5), L[1], .9); }
+    trunk(14, ys, 8, -118, 28);
+    B.crown(r, 18, -132, 44, 28, season, 6).crown(r, -6, -128, 30, 18, season, 4);
+    bank(ys + 10, ys + 104);
+    if (open) {
+      // cut: the bramble's stubs either side of the way, a heap of cut canes pushed to the bank, flowers where it was
+      for (const y of [yn + 14, ys - 12]) for (let i = 0; i < 6; i++) { const x = -26 + i * 9 + (r() - .5) * 4, h = 6 + r() * 7; B.s(`M${x} ${y}l${(r() - .5) * 3} ${-h}`, '#6a3a36', 1.8).f(B.circ(x + .6, y - h, 1), '#c8a888', .9); }
+      for (let i = 0; i < 7; i++) { const x = -34 + r() * 22, y = ys + 14 + r() * 8; B.s(`M${x} ${y}q${8 + r() * 8} ${-6 - r() * 6} ${16 + r() * 10} ${(r() - .5) * 4}`, '#5e3434', 1.6, .95); B.f(D().blob(r, x + 10, y - 4, 4, 2.4, 6, .5), '#2e4a26', .9); }
+      B.flowers(r, 0, yn + 22, 50, 6, snowy ? ['#f2f0e8'] : ['#e8c84a', '#f2f0e8', '#c86aa0']).flowers(r, 0, ys - 18, 50, 6, snowy ? ['#f2f0e8'] : ['#f2f0e8', '#e8c84a']);
+    }
+  }
+  /** Brambles grown right over the way between the two oaks (shut): a mound of arching thorny canes, leaves in threes,
+   *  white flowers and berries, canes climbing the trunks. Something shears can cut. */
+  function brambleSide(B, r, S, season) {
+    const yn = -S - 6, ys = S, cane = ['#5e2e30', '#7a3e3a', '#8e5446'], leaf = season === 'autumn' ? ['#5a3a24', '#8a4a2a', '#a8602e'] : season === 'winter' ? ['#3e4636', '#545c46', '#6a5644'] : ['#24401e', '#34582a', '#4e7438'];
+    B.shadow(4, 4, 46, ys - yn, .22);
+    for (let y = yn; y <= ys; y += 4.2) {
+      const mid = 1 - Math.abs(y - (yn + ys) / 2) / ((ys - yn) / 2), h = 22 + mid * 26 + r() * 6;
+      for (let k = 0; k < 3; k++) { const x0 = -40 + r() * 30, x1 = x0 + 30 + r() * 34, top = y - h * (.7 + r() * .4); B.s(`M${x0} ${y}Q${(x0 + x1) / 2} ${top} ${x1} ${y - 2 + r() * 4}`, cane[k % 3], 1.6 + r(), .95); for (let t = .2; t < .9; t += .17) { const px = x0 + (x1 - x0) * t, py = y + (top - y) * 4 * t * (1 - t) * .5; B.s(`M${px} ${py}l1.6 -1.4`, '#2a1618', .6, .9); } }
+      for (let k = 0; k < 4; k++) { const x = -38 + r() * 76, py = y - h * (.25 + r() * .7); for (let j = 0; j < 3; j++) { const a = -1.6 + j * 1.05 + (r() - .5) * .3; B.f(B.ell(x + Math.cos(a) * 3, py + Math.sin(a) * 2.2, 2.6, 1.6), leaf[(j + k) % 3], .96); } }
+      if (season !== 'winter' && r() < .7) { const x = -32 + r() * 64, py = y - h * (.4 + r() * .5); if (season === 'summer' || season === 'spring') B.f(B.circ(x, py, 1.8), '#f6f0f0').f(B.circ(x, py, .7), '#e8d070'); else B.f(B.circ(x, py, 1.9), '#1e1426').f(B.circ(x - .6, py - .6, .6), '#6a5a8a', .8); }
+      if (season === 'summer' && r() < .5) B.f(B.circ(-30 + r() * 60, y - h * (.3 + r() * .4), 1.7), r() < .5 ? '#b0283a' : '#2a1826');
+    }
+    // canes climbing the two trunks
+    for (const [x, y] of [[-12, yn - 4], [14, ys]]) for (let i = 0; i < 4; i++) B.s(`M${x + (r() - .5) * 10} ${y}q${(r() - .5) * 18} -26 ${(r() - .5) * 8} ${-44 - r() * 26}`, cane[i % 3], 1.5, .9);
+  }
   /** A gate drawn face on. side: the span runs down the screen, so the face is sheared to recede (back pier up the screen, front pier down). */
   function elevation(B, side, half, S, draw) {
     if (!side) return draw();
@@ -527,7 +587,7 @@ window.GardenPaintedProps = (function () {
     if (kind === 'ruin') return { how: 'stake', x: 4, y: -70, len: 22 };
     if (kind === 'stair') { const g = side ? 0 : 52; return { how: 'nails', x: 0, y: g - 79, len: 0 }; }
     // the pass: from the rope's middle
-    return side ? { how: 'cords', x: 7, y: 20, len: 15 } : { how: 'cords', x: 0, y: -16, len: 18 };
+    return side ? { how: 'cords', x: 7, y: 20, len: 15 } : { how: 'nails', x: -28, y: -24, len: 0 };   // (nailed to the tie post at the foot of the climb)
   }
   /** A shut gate's sign: a weathered oak board with a painted face, the padlock and what opens it written on the board
    *  itself in dark letters (a find), else the level it opens at in the HUD's gold badge. Drawn round the board's middle. */
@@ -604,6 +664,17 @@ window.GardenPaintedProps = (function () {
     }
     B.f(band(run(-hw * .38), run(hw * .38)), '#e0d3b0', .22);
     for (let i = 0; i < 26; i++) { const p = q(r() * L, (r() - .5) * hw * 1.6); B.f(B.ell(p[0], p[1], 2 + r() * 3, .9 + r()), r() < .5 ? '#a3967a' : '#efe4c4', .22); }
+    // the crown of the old arch fell in long ago and was patched in oak, planks laid across on two bearers; while the
+    // bridge is shut one plank is gone and the river shows through the gap (the gate's story: "a plank is missing")
+    { const T = millPlanks(L), [t0, t1] = T.span;
+      B.f(band(run(-hw, 0, t0 - 1, t1 + 1, 2), run(hw, 0, t0 - 1, t1 + 1, 2)), '#3e3020');
+      for (let i = 0; i < T.n; i++) { const [ta, tb] = T.plank(i), quad = [q(ta, -hw + .5), q(tb, -hw + .5), q(tb, hw - .5), q(ta, hw - .5)];
+        if (!open && i === T.gap) { B.f(B.poly(quad), B.lin(0, quad[0][1], 0, quad[2][1], [[0, '#0e1a1c'], [.5, '#22383c'], [1, '#365458']])); const g0 = q((ta + tb) / 2, -hw * .5), g1 = q((ta + tb) / 2, hw * .2); B.s(`M${g0[0]} ${g0[1]}L${g1[0]} ${g1[1]}`, '#9cc4c8', .9, .55); continue; }
+        B.f(B.poly(quad), ['#9a7a54', '#8a6c48', '#a88a60', '#93744e'][i % 4]);
+        const e0 = q(ta + .6, -hw + 1), e1 = q(ta + .6, hw - 1); B.s(`M${e0[0]} ${e0[1]}L${e1[0]} ${e1[1]}`, '#c8a878', .6, .6);
+        for (const s of [-hw * .62, hw * .62]) { const n = q((ta + tb) / 2, s); B.f(B.circ(n[0], n[1], .8), '#2a2420'); }
+        for (let k = 0; k < 2; k++) { const a = q(ta + 1 + r() * (tb - ta - 2), -hw * .9), b = q(ta + 1 + r() * (tb - ta - 2), hw * (.2 + r() * .6)); B.s(`M${a[0]} ${a[1]}L${b[0]} ${b[1]}`, '#5e4630', .45, .5); } }
+    }
     B.cx.restore();
     // 3. The upstream parapet: its inner face (lit, facing the road) and a coping.
     const farTop = run(-hw, t => PAR + hump(t)), farFoot = run(-hw, 0);
@@ -655,6 +726,8 @@ window.GardenPaintedProps = (function () {
     if (season !== 'winter') for (const t of [L * .86, L * .9]) { const p = q(t, hw, 2); B.s(`M${p[0]} ${p[1]}q-1 -5 1 -8M${p[0] + 2} ${p[1]}q2 -4 3 -6`, '#6a8a4a', 1, .9).f(B.circ(p[0] + .6, p[1] - 8.4, 1.8), '#c8506a', .95).f(B.circ(p[0] + 3, p[1] - 6.4, 1.4), '#d86a80', .95); }
     if (open) { const p = q(-2, -hw - 6), x = p[0], y = p[1]; B.post(x, y - 34, y, 3, IRON).f(B.rr(x - 4, y - 44, 8, 10, 1.5), '#f2e6b8').f(B.poly([[x - 6, y - 44], [x, y - 50], [x + 6, y - 44]]), IRON[0]); }
   }
+  /** Where the Millwater bridge's oak patch lies along its deck (t from its west end, px): the planks and the one that is missing. */
+  function millPlanks(L) { const t0 = L * .45, t1 = L * .55, n = 6, w = (t1 - t0) / n; return { span: [t0, t1], n, gap: 3, plank: i => [t0 + i * w + .35, t0 + (i + 1) * w - .35] }; }
   function gateArt(kind, g, frame, season, open, crossing) {
     const side = Math.abs(frame.uy) > Math.abs(frame.ux), half = Math.max(46, Math.min(80, frame.span * .62)), r = rng(hash(g.id + kind));
     const L = leafOf(season), art = { S: frame.span * .9 };
@@ -665,9 +738,10 @@ window.GardenPaintedProps = (function () {
       : kind === 'pass' ? (side ? [['tree.pine', 0, { h: 170 }, 34, -art.S - 20, 'back'], ['rock.boulder', 0, { w: 96 }, 0, -art.S * .8, 'back'], ['rock.boulder', 1, { w: 110 }, 0, art.S * .8 + 6, 'front']] : [['tree.pine', 0, { h: 170 }, -half - 50, -16, 'back'], ['rock.boulder', 0, { w: 100 }, -half, 2, 'back'], ['rock.boulder', 1, { w: 110 }, half, 4, 'back']])
       : kind === 'ruin' ? [['tree.proof-yew', 0, { h: 130 }, side ? 40 : half + 52, side ? -art.S : -6, 'back']] : [];
     // the box of the drawing round the crossing's centre
-    const box = (kind === 'arch' || kind === 'ruin') && side ? [-half * .85 - 90, -art.S - 200, half * .85 + 90, art.S + 30] : side ? [kind === 'bridge' ? -150 : -100, -170 - half * .9, kind === 'bridge' ? 150 : 100, kind === 'bridge' ? frame.span + 28 : half * .9 + 22] : [-half - 90, -200, half + 90, kind === 'stair' ? 60 : 24];
+    const box = kind === 'arch' && side ? [-120, -240, 120, 176] : (kind === 'arch' || kind === 'ruin') && side ? [-half * .85 - 90, -art.S - 200, half * .85 + 90, art.S + 30] : side ? [kind === 'bridge' ? -150 : -100, -170 - half * .9, kind === 'bridge' ? 150 : 100, kind === 'bridge' ? frame.span + 28 : half * .9 + 22] : [-half - 90, -200, half + 90, kind === 'stair' ? 60 : 24];
     const base = (B) => {
       if (kind === 'arch') {
+        if (side) { woodArchSide(B, r, art.S, season, open); return; }
         B.shadow(0, 2, half + 30, 10, .26);
         elevation(B, side, half, art.S, () => livingArch(B, r, half, 128, season, open, side));
       } else if (kind === 'bridge') {
@@ -750,6 +824,8 @@ window.GardenPaintedProps = (function () {
           B.f(B.rr(x - w + 2, y - 3.2, w * 2 - 4, 3.8, 1.9), STONE[3], .5);
           for (let sx0 = x - w + (r() - .5) * 3; sx0 < x + w - 3; ) { const sw2 = Math.min(x + w - sx0, 9 + r() * 15), mid = Math.abs(sx0 + sw2 / 2 - x) / w, tone = r();
             B.f(B.rr(sx0 + .6, y - 9 + r() * .8, sw2 - 1.2, 7.2, 2.8), mid > .7 ? STONE[1] : tone < .5 ? STONE[0] : STONE[1]).f(B.rr(sx0 + 1.4, y - 8.4, (sw2 - 2.8) * .7, 2, 1), STONE[2], mid < .4 ? .75 : .45);
+            // the riser: the step's face towards you, in its own shade under a lit nosing (a flat rectangle of setts read as no stair)
+            B.f(B.rr(sx0 + .8, y - 4.4, sw2 - 1.6, 4.2, 1.2), '#6e6656', .62).s(`M${sx0 + 1.2} ${y - 4.6}h${sw2 - 2.4}`, '#f2ecda', .7, .7);
             if (mid > .62 && r() < .7) B.f(D().blob(r, sx0 + sw2 / 2, y - 5, sw2 * .4, 2.6, 6, .5), MOSS[r() < .5 ? 0 : 1], .55);
             sx0 += sw2; }
           for (const s of [-1, 1]) if (r() < .75) B.tufts(r, x + s * (w - 2), y - 2, 8, 4, season);
@@ -761,6 +837,17 @@ window.GardenPaintedProps = (function () {
           if (season !== 'winter') for (let i = 0; i < 7; i++) B.f(B.circ(s * (sw + 28 + r() * 26), dy - 76 + (r() - .5) * 26, 1.6), season === 'autumn' ? '#c8402a' : '#f4d8e0', .95);
         }
         B.post(-sw + 2, top - 44, top + 2, 5, OAK).post(sw - 2, top - 44, top + 2, 5, OAK);
+        // the mill's leat down the east cheek in a stone channel, its sluice board at the top: shut and dry until the wheel
+        // turns (the gate's story: the stair waits on the mended mill), then lifted, the water running down step by step
+        { const lx = sw - 9, y0 = dy + 6, y1 = top - 8;
+          B.f(B.rr(lx - 6, y1, 12, y0 - y1, 3), '#6e6656').f(B.rr(lx - 4, y1 + 1, 8, y0 - y1 - 2, 2.4), open ? '#4e7e8a' : '#5e584a');
+          if (open) { for (let i = 0; i < steps; i++) { const yy = dy - i * 9; B.f(B.ell(lx, yy - 4.4, 3.6, 1.4), '#e6f2f0', .75).s(`M${lx - 2.4} ${yy - 3}v4M${lx + 1.6} ${yy - 3.4}v3.6`, '#cfe6e8', .8, .7); } B.f(B.ell(lx, y0 + 2, 9, 3), '#5f93a0', .7).f(B.ell(lx - 2, y0 + 1, 4, 1.2), '#e6f2f0', .6); }
+          else for (let i = 0; i < 5; i++) B.f(D().blob(r, lx + (r() - .5) * 4, y1 + 6 + r() * (y0 - y1 - 10), 2.6, 1.6, 6, .5), MOSS[i % 2], .8);
+          for (let y = y1 + 4; y < y0; y += 7) B.s(`M${lx - 6} ${y}h2M${lx + 4} ${y + 3}h2`, '#4e483c', .7, .6);
+          // the sluice: an oak frame across the channel's head, its board down (shut) or wound up on its rack (open)
+          B.post(lx - 7, y1 - 22, y1 + 4, 3, OAK).post(lx + 7, y1 - 22, y1 + 4, 3, OAK).beam(lx - 8, y1 - 24, 16, 3, OAK);
+          B.f(B.rect(lx - 5.5, open ? y1 - 19 : y1 - 6, 11, 9), WOOD[1]).f(B.rect(lx - 5.5, open ? y1 - 19 : y1 - 6, 11, 1.6), WOOD[2]).s(`M${lx} ${y1 - 24}v${open ? 5 : 18}`, IRON[1], 1.4);
+        }
       } else {
         // the pass: boulders either side of the col, scree, heather, a cairn of stacked stones
         const rock = ['#a8a698', '#848274', '#cfccbe', '#666456'], o = side ? [[0, -half * .8], [0, half * .8]] : [[-half, 0], [half, 0]];
@@ -769,10 +856,26 @@ window.GardenPaintedProps = (function () {
         const cxx = side ? 26 : half + 36, cyy = side ? half * .2 : -2; let y = cyy;
         for (const [w, h] of [[13, 6], [11, 5.4], [9, 5], [7, 4.4], [5, 3.8], [3.6, 3]]) { B.stone(r, cxx + (r() - .5) * 2, y, w, h, rock, null); y -= h * 1.5; }
         if (open) B.s(`M${cxx} ${y}v-18`, WOOD[1], 1.4).f(B.poly([[cxx, y - 18], [cxx + 12, y - 15], [cxx, y - 11]]), '#c84a3a');
+        if (!side) {
+          // the last climb: gritstone slabs stepping up the col, a smooth steep lip at the top that wants a rope
+          // (the pass was a sign between two posts over flat grass: hunter, round 3); a tie post at the foot, a stake at the top
+          for (let i = 0; i < 5; i++) { const yy = 24 - i * 11, w = 34 - i * 2; for (let x = -w; x < w;) { const sw2 = 10 + r() * 12; B.f(D().blob(r, x + sw2 / 2, yy - 3, sw2 * .5, 3.6, 7, .3), rock[i % 2 ? 0 : 1]).f(D().blob(r, x + sw2 / 2 - 1, yy - 4.4, sw2 * .34, 1.4, 6, .3), rock[2], .7); x += sw2; } B.f(B.rr(-w, yy - 1, w * 2, 2.6, 1), rock[3], .55); }
+          B.f(D().blob(r, 0, -34, 40, 7, 9, .25), rock[3]).f(D().blob(r, -2, -37, 38, 5, 9, .25), rock[1]).f(D().blob(r, -8, -39, 22, 2.4, 8, .3), rock[2], .8);
+          for (let i = 0; i < 4; i++) B.s(`M${-30 + i * 18} -32q2 4 0 7`, rock[3], .8, .6);
+          B.post(-28, -14, 24, 7, OAK).f(B.rect(-31.5, -16, 7, 3), OAK[2]).s('M-28 -2a3 3 0 1 0 .1 0', IRON[1], 1.4);   // the tie post and its iron ring
+          B.post(-20, -64, -38, 4, OAK);   // the stake at the top
+          if (open) {
+            // the rope tied at the ring, run up the slabs and over the lip to the stake, a coil left at the foot
+            B.s('M-27 -2C-36 -10 -28 -30 -20 -50', '#7a6440', 2.6).s('M-27 -2C-36 -10 -28 -30 -20 -50', '#d8c08a', 1.5);
+            B.s('M-26 -3l3 2M-26 -1l3 -2', '#7a6440', 1.4);
+            for (let i = 0; i < 3; i++) B.s(B.ell(-38, 22 - i * 1.6, 8 - i, 3 - i * .4), i % 2 ? '#d8c08a' : '#b89a6a', 1.6);
+          }
+        }
       }
     };
     const blocker = (B) => {
       if (kind === 'arch') {
+        if (side) { brambleSide(B, r, art.S, season); return; }
         // shut: a hurdle tied across the opening, brambles grown up through it, a fallen branch leaning in
         B.shadow(0, 2, half * .9, 8, .24);
         elevation(B, side, half, art.S, () => {
@@ -790,9 +893,10 @@ window.GardenPaintedProps = (function () {
           const W = GARDEN_WORLD, deck = typeof gardenIslandCrossingGeometry === 'function' ? gardenIslandCrossingGeometry().find(d => d.crossing.id === crossing.id) : null, narrow = deck && deck.halfWidth < 40;
           // On the lane-wide deck the pole spans parapet to parapet.
           const x = crossing.x * W.cellW - frame.x, y = W.sky + crossing.y * W.cellH - frame.y + (narrow ? deckCentreY(deck, crossing) : 0), a = y - (narrow ? deck.halfWidth - 3 : frame.span), b = y + (narrow ? deck.halfWidth - 3 : frame.span), height = 28;
-          B.post(x, a - 36, a, 5, OAK).post(x, b - 36, b, 5, OAK);
-          B.s(`M${x} ${a - height}L${x} ${b - height}`, '#f2ece0', 4.4);
-          for (let t = a; t < b; t += 24) B.s(`M${x} ${t - height}L${x} ${Math.min(b, t + 12) - height}`, '#c84a3a', 4.4);
+          // two oak posts at the gap with a rope slung between (it was a red-and-white barber's pole: hunter, round 3)
+          B.post(x - 12, a - 36, a, 5, OAK).post(x - 12, b - 36, b, 5, OAK);
+          B.s(`M${x - 12} ${a - height}Q${x - 7} ${(a + b) / 2 - height + 12} ${x - 12} ${b - height}`, '#7a6440', 2.6).s(`M${x - 12} ${a - height}Q${x - 7} ${(a + b) / 2 - height + 12} ${x - 12} ${b - height}`, '#d8c08a', 1.4);
+          for (const yy of [a, b]) B.f(B.circ(x - 12, yy - height, 2), '#b89a6a');
         } else if (side) { const x = -len * .55, y = -18 * (1 - .3) - 4; B.post(x - 6, y - 30, y + 2, 4, OAK).post(x + 6, y - 40, y - 10, 4, OAK); B.s(`M${x - 6} ${y - 22}L${x + 6} ${y - 34}`, '#f2ece0', 4.4); for (let i = 0; i < 3; i++) B.s(`M${x - 6 + i * 4} ${y - 22 - i * 4}l2 -2`, '#c84a3a', 4.4); }
         else { B.post(-len + 8, -38, 0, 5, OAK); B.beam(-len + 6, -36, len * 2 - 12, 6, ['#e8e0cc', '#b8ae98', '#ffffff']); for (let x = -len + 14; x < len - 10; x += 16) B.f(B.rect(x, -36, 8, 6), '#c84a3a'); }
       } else if (kind === 'ruin') {
@@ -809,6 +913,11 @@ window.GardenPaintedProps = (function () {
         for (let x = -sw + 8; x < sw - 6; x += 8) B.post(x, g - 94, g - 58, 3.4, OAK);
         B.s(`M${-sw + 6} ${g - 64}L${sw - 6} ${g - 90}`, OAK[1], 3);
         B.f(B.rr(-4, g - 82, 8, 7, 1.4), '#6a6e70');
+      } else if (!side) {
+        // shut: nothing across the way but the bare lip too steep to climb; a cord of pennants marks it from the post
+        B.s('M-28 -12Q-4 -24 22 -40', '#c8b080', 1.1);
+        for (let i = 1; i < 6; i++) { const t = i / 6, x = -28 + 50 * t, yy = -12 - 28 * t - Math.sin(t * Math.PI) * 6 + 6; B.f(B.poly([[x - 2.6, yy], [x + 2.6, yy], [x, yy + 7]]), ['#c84a3a', '#e8c84a', '#3a7ac0', '#f2f0e8'][i % 4]); }
+        B.post(22, -48, -32, 3, WOOD);
       } else {
         // a rope with prayer-flag pennants across the col
         const a = side ? [0, -half * .6] : [-half + 20, -40], b2 = side ? [0, half * .6] : [half - 20, -40];
@@ -862,6 +971,15 @@ window.GardenPaintedProps = (function () {
       const block = h.add(image(scene, blockKey, frame.x, frame.y)), sign = place(h.add(image(scene, signKey, sx, sy)));
       h.move(block, (node, t) => { const f = Math.min(1, t / 1.6); node.setAlpha(1 - f * f).setPosition(frame.x + (art.side ? 0 : f * 18), frame.y + f * 8); return f < 1; });
       h.move(sign, (node, t) => { const f = Math.min(1, t / 1.2); node.setAlpha(1 - f).setPosition(sx, sy + pivot + f * f * 40).setRotation(f * .6); return f < 1; });
+      const deck = kind === 'bridge' && crossing && typeof gardenIslandCrossingGeometry === 'function' ? gardenIslandCrossingGeometry().find(d => d.crossing.id === crossing.id) : null;
+      if (deck && deck.halfWidth < 40) {
+        const T = millPlanks(deck.length), [ta, tb] = T.plank(T.gap), pt = (t, s) => deck.deckPoint(t / deck.length, s), c = pt((ta + tb) / 2, 0), hw = deck.halfWidth;
+        const quad = [pt(ta, -hw + .5), pt(tb, -hw + .5), pt(tb, hw - .5), pt(ta, hw - .5)].map(p => [p.x - c.x, p.y - c.y]), xs = quad.map(p => p[0]), ys = quad.map(p => p[1]);
+        const pk = bake(scene, 'gateplank|' + Math.round(deck.length) + '|' + Math.round(hw), [Math.min(...xs) - 2, Math.min(...ys) - 2, Math.max(...xs) + 2, Math.max(...ys) + 3], B2 => { B2.f(B2.poly(quad.map(([x, y]) => [x + .6, y + 1.4])), 'rgba(30,24,16,.4)').f(B2.poly(quad), '#c4a272').s(`M${quad[0][0]} ${quad[0][1]}L${quad[3][0]} ${quad[3][1]}`, '#e8cc98', .8, .8); for (const p of [.2, .8]) { const x = quad[0][0] + (quad[3][0] - quad[0][0]) * p + 1, y = quad[0][1] + (quad[3][1] - quad[0][1]) * p; B2.f(B2.circ(x, y, .8), '#2a2420'); } });
+        const puff = bake(scene, 'gatedust', [-9, -6, 9, 6], B2 => B2.f(B2.ell(0, 0, 8, 5), B2.rad(0, 0, 8, [[0, 'rgba(214,200,170,.8)'], [1, 'rgba(214,200,170,0)']])));
+        const plank = h.add(image(scene, pk, c.x, c.y - 46));
+        h.move(plank, (node, t) => { const f = Math.min(1, t / .55); node.setPosition(c.x, c.y - 46 * (1 - f * f)).setAlpha(.4 + .6 * f); if (f >= 1 && !node._knocked) { node._knocked = true; for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2, d = h.add(image(scene, puff, c.x, c.y)); h.move(d, (n2, t2) => { const g = Math.min(1, (t2 - t) / .9); n2.setPosition(c.x + Math.cos(a) * (6 + g * 18), c.y + Math.sin(a) * (2 + g * 6) - g * 6).setAlpha((1 - g) * .8); return g < 1; }); } } return true; });
+      }
     }
     const [x0, y0, x1, y1] = art.box;
     return finish(h, { x: Math.min(frame.x, baseX) + x0, y: Math.min(frame.y, baseY) + y0, width: x1 - x0 + Math.abs(baseX - frame.x), height: y1 - y0 + Math.abs(baseY - frame.y) }, { x: frame.x, y: frame.y });

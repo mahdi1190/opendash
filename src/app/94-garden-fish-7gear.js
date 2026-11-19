@@ -109,7 +109,9 @@ function gardenWorksArt(sc) {
       snap = (x, y, bank) => { for (let r = 0; r <= 4; r++) for (let a = 0; a < Math.max(1, r * 8); a++) { const t = a / Math.max(1, r * 8) * Math.PI * 2, px = Math.floor(x + Math.cos(t) * r) + .5, py = Math.floor(y + Math.sin(t) * r) + .5; if (!wet(px, py) || onDeck(px, py)) continue; if (bank && wet(px - 1, py) && wet(px + 1, py) && wet(px, py - 1) && wet(px, py + 1)) continue; return [px, py]; } return null; };
     }
   }
-  const out = [], end = 25 + gardenPierMore(), put = (id, x0, y0, wetAs) => { if (!gardenWorkOwned(id)) return; let x = x0 + (wetAs === 'abs' ? 0 : mx), y = y0 + (wetAs === 'abs' ? 0 : my); if (snap && wetAs && wetAs !== 'abs') { const p = snap(x, y, wetAs === 'bank'); if (!p) return; [x, y] = p; } const svg = gardenWorkArt(id, sc); if (svg) out.push({ id, key: id + '-' + x + '-' + y, x, y, svg }); };
+  // (out.unbuilt: where a work you could build next will stand, for a marked-out place there; the piers are marked from their own rows)
+  const out = [], unbuilt = [], end = 25 + gardenPierMore(), put = (id, x0, y0, wetAs) => { const owned = gardenWorkOwned(id); if (!owned && (id === 'pool-stock' || /^pier-/.test(id) || unbuilt.some(u => u.id === id))) return; let x = x0 + (wetAs === 'abs' ? 0 : mx), y = y0 + (wetAs === 'abs' ? 0 : my); if (snap && wetAs && wetAs !== 'abs') { const p = snap(x, y, wetAs === 'bank'); if (!p) return; [x, y] = p; }
+    if (!owned) { const def = typeof gardenGearDef === 'function' ? gardenGearDef(id) : null; if (!(def && def.needs && !gardenWorkOwned(def.needs))) unbuilt.push({ id, key: 'plot-' + id, x, y, wet: !!wetAs && wetAs !== 'abs' }); return; } const svg = gardenWorkArt(id, sc); if (svg) out.push({ id, key: id + '-' + x + '-' + y, x, y, svg }); };
   put('pier-2', 24.1, 25.1);
   put('pier-3', 25.85, end - 0.4);
   put('fish-feeder', 21.6, 22.5, 'water');
@@ -118,6 +120,7 @@ function gardenWorksArt(sc) {
   put('night-lantern', 24.15, end - 0.15);
   const open = new Set(sc.areas || []);
   for (const a of GARDEN_AREAS) if (a.water && !a.fishing && open.has(a.id)) put('pool-stock', a.water.x - 0.5, a.water.y + a.water.h - 0.2, 'abs');
+  out.unbuilt = unbuilt;
   return out;
 }
 /* ---------- what someone carries ---------- */

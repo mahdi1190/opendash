@@ -84,8 +84,26 @@ function gardenFeatureRow(f) {
   const dx = f.door ? f.door.x - f.x : Math.floor((f.w || 1) / 2), dy = f.door ? f.door.y - f.y : f.h || 1;
   return Object.assign({}, f, { x: p[1], y: p[2], door: { x: p[1] + dx, y: p[2] + dy } });
 }
+/** Nothing overlaps (the owner): what a set-out thing's picture covers round its footprint must be clear ground. The
+ *  footprint alone was checked, so the windmill went up inside a great tree, the observatory over the drowned cellar's
+ *  pool, the bandstand inside a locked hedge plot and a way post on a fence corner (art director and hunter, round 3).
+ *  The ring is as wide as the picture's own foot (its art row's box) and one cell deep in front and behind. */
+function _gardenFeatureClearWhy(f, x, y, m) {
+  const W = GARDEN_WORLD, w = f.w || 1, h = f.h || 1, A = window.GardenPaintedMarks && GardenPaintedMarks.ART, art = A && A[f.id];
+  const half = art && art.box ? Math.max(-art.box[0], art.box[2]) / W.cellW : w / 2 + .3, reach = Math.max(1, Math.ceil(half - w / 2 - .2));
+  const lv = m && m.level ? m.level.level : 1, statics = (typeof gardenIslandData === 'function' && gardenIslandData().static) || [];
+  for (let cy = y - 1; cy <= y + h; cy++) for (let cx = x - reach; cx < x + w + reach; cx++) {
+    if (cx >= x && cx < x + w && cy >= y && cy < y + h) continue;   // (the footprint itself: _gdPlaceOk)
+    if (cx < 0 || cy < 0 || cx >= W.cols || cy >= W.rows) return 'Too near the edge of the garden';
+    if (String(gardenAreaAt(cx, cy, lv)).startsWith('locked:')) return 'Too close to land that is not yours yet';
+    const pr = gardenPropAt(cx, cy); if (pr && pr.id !== f.id) return `Too close to ${String(pr.name || 'something').replace(/^The /, 'the ')}`;
+    const st = statics.find(s => cx >= s.x - 1 && cx < s.x + (s.w || 1) + 1 && cy >= s.y && cy < s.y + (s.h || 1)); if (st) return 'Too close to something that stands there';
+    if (typeof _gwFree === 'function' && !_gwFree(cx + .5, cy + .5) && !(typeof gardenIsWater === 'function' && gardenIsWater(cx, cy))) return 'Too close to something in the way';
+  }
+  return '';
+}
 function gardenFeaturePlaceWhy(f, x, y, m) {
-  const why = _gdPlaceOk(m, { id: f.id, w: f.w || 1, h: f.h || 1, layer: 'main' }, x, y, 'decor');
+  const why = _gdPlaceOk(m, { id: f.id, w: f.w || 1, h: f.h || 1, layer: 'main' }, x, y, 'decor') || _gardenFeatureClearWhy(f, x, y, m);
   if (why) return why;
   const dx = f.door ? f.door.x - f.x : Math.floor((f.w || 1) / 2), dy = f.door ? f.door.y - f.y : f.h || 1;
   const door = { x: x + dx + .5, y: y + dy + .5 };

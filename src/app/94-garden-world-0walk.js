@@ -1685,6 +1685,13 @@ function gardenWorldInteract() {
   const m = gardenHere(), W = GARDEN_WORLD;
   const px = Math.floor(_gw.px), py = Math.floor(_gw.py);
   for (const p of gardenPropsNow()) if (p.act) { const door = _gwPropApproachPoint(p, false); if (door && Math.abs(door.x - .5 - px) <= 1 && Math.abs(door.y - .5 - py) <= 1) { _gwOpenProp(p); return; } }
+  // a way in to a side place beside you (the boat loft's doorway, the hothouse, the den's doors): E went past them to
+  // fishing off the quay, or to nothing at all (hunter, round 3). The way in stands where its sight paints its door.
+  if (typeof GRM_ROOMS !== 'undefined' && typeof _grd !== 'undefined' && typeof gardenRoomGo === 'function') {
+    let best = null, bd = 1.3;
+    for (const R of GRM_ROOMS) { const S = _grd.list.get(R.id); if (!S || !Number.isFinite(S.x) || !Number.isFinite(S.y)) continue; const d = Math.hypot(S.x - _gw.px, (S.y - _gw.py) * 1.3); if (d < bd) { bd = d; best = R; } }
+    if (best) { gardenRoomGo(best); return; }
+  }
   if (_gh.bubble) { const b = _gh.bubble.el.querySelector('.gd-bub-btn'); if (b) b.click(); return; }
   if (typeof gardenTravellerInteract === 'function' && gardenTravellerInteract()) return;
   if (_gw.bugs && _gw.bugs.size && typeof gardenNetSwing === 'function') { for (const b of _gw.bugs.values()) if (Math.hypot(b.x - _gw.px, (b.y - _gw.py) * 1.4) < gardenNet().st.reach * 1.35) { gardenNetSwing(null); return; } }

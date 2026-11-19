@@ -159,23 +159,42 @@ window.GardenPaintSeat = (function () {
   } };
 
   /* ---------- the sunken pool: a stone-lined pool let into the ground, three steps down on the near side (and, if you keep going, a fourth: the cellar) ---------- */
-  A['ld-sunk'] = { box: [-56, -40, 56, 10], shade: false, flat: true, door: { dx: -24, dy: -10 }, seat: { kind: 'flags', w: 92, front: 14, back: 30, stones: 0 }, draw(B, o) {
-    const r = KIT().rng(73), s = o.season, L = leaf(s);
-    // the kerb all round, sunk to the turf, and the water a step down inside it
-    B.f(B.blob(r, 0, -16, 52, 20, 12, .12), STONE.rockDk, .55);
-    B.f(B.blob(r, 0, -17, 49, 18, 14, .08), STONE.rockLo).f(B.blob(r, -1, -18, 45, 15.5, 14, .08), STONE.rock);
-    for (let i = 0; i < 22; i++) { const a = i / 22 * Math.PI * 2; B.f(B.blob(r, Math.cos(a) * 43, -17 + Math.sin(a) * 14.5, 5.4, 2.6, 6, .3), i % 3 ? STONE.rock : STONE.rockHi, .9).s(`M${Math.cos(a + .14) * 40} ${-17 + Math.sin(a + .14) * 13}l${Math.cos(a + .14) * 6} ${Math.sin(a + .14) * 2.4}`, STONE.rockDk, .6, .5); }
-    B.f(B.blob(r, 0, -17, 38, 11.5, 12, .1), STONE.rockDk).f(B.blob(r, 0, -16.5, 36, 10, 12, .1), B.lin(0, -27, 0, -7, [[0, '#23383c'], [.6, '#2e4a4e'], [1, '#3c5c5c']]));
-    B.f(B.ell(-12, -20, 16, 2), '#a8c8c8', .35).f(B.ell(14, -13, 9, 1.4), '#c8e0dc', .3);
-    if (s !== 'winter') for (const [x, y, k] of [[18, -20, 1], [26, -15, .8], [-26, -12, .9]]) { B.f(B.ell(x, y, 5 * k, 2.4 * k), L[1]).f(`M${x} ${y}l${4 * k} ${-1.4 * k}l0 ${1.6 * k}z`, '#2e4a4e'); if (k === 1) B.f(B.circ(x - 1, y - 1, 1.4), '#f4e2ea'); }
-    else B.f(B.blob(r, 0, -16.5, 35, 9.4, 12, .1), '#dfe9ee', .7);
-    // three steps down at the near left, worn in the middle, and a dark gap under the third
-    for (let i = 0; i < 3; i++) { const y = -6 - i * 5.5, x0 = -34 + i * 1.4, wd = 22 - i * 2.4; B.f(B.rect(x0, y - 4, wd, 4.6), i % 2 ? STONE.rock : STONE.rockHi).f(B.rect(x0, y + .6, wd, 1.2), STONE.rockDk, .6).f(B.ell(x0 + wd / 2, y - 2, wd * .25, 1), '#ffffff', .12); }
-    B.f(B.rect(-30, -24, 16, 2.4), '#0e1a1c', .85);
-    // the near coping stands a hand above the turf: the only part that stands
-    for (let x = -44; x < 44; x += 9 + r() * 3) { const y = -3 + Math.pow(x / 46, 2) * -5; B.f(B.blob(r, x + 4, y, 6, 3, 6, .3), STONE.rockLo).f(B.blob(r, x + 3.4, y - .8, 5, 1.6, 6, .3), STONE.rockHi, .85); }
-    mossOn(B, r, -48, -5, 96, 9, s);
-    B.tufts(r, -46, 3, 10, 5, grass(s), 6).tufts(r, 46, 3, 10, 5, grass(s), 6);
+  A['ld-sunk'] = { box: [-56, -42, 56, 10], shade: false, flat: true, door: { dx: -30, dy: -8 }, seat: { kind: 'flags', w: 96, front: 12, back: 30, stones: 0 }, draw(B, o) {
+    // The drowned cellar's way in, let into the ground: a square stone tank with a flight of steps going down into it at
+    // the near west end, and under its far wall a round-headed doorway half drowned, the cellar beyond it in the dark.
+    // (It read as a small round pond with a stone rim: nothing said it was a way in. Art director and hunter, round 3.)
+    const r = KIT().rng(73), s = o.season, L = leaf(s), snowy = s === 'winter';
+    // the sunk hollow's shade round the kerb, then the kerb itself: a ring of dressed coping slabs lit from the upper left
+    B.f(B.rr(-50, -40, 100, 39, 8), STONE.rockDk, .45);
+    B.f(B.rr(-47, -38, 94, 35, 6), STONE.rockLo).f(B.rr(-46, -38, 92, 32, 6), STONE.rock);
+    for (let x = -44; x < 44; ) { const w = 9 + r() * 6; B.s(`M${x + w} -37.4v4`, STONE.rockDk, .7, .55); B.s(`M${x + w} -9v4.4`, STONE.rockDk, .7, .55); x += w; }
+    for (let y = -33; y < -8; y += 7 + r() * 3) { B.s(`M-46 ${y}h5`, STONE.rockDk, .7, .55); B.s(`M41 ${y}h5`, STONE.rockDk, .7, .55); }
+    B.f(B.rr(-46, -38, 92, 2.4, 1.2), STONE.rockHi, .8).f(B.rect(-46, -38, 2.4, 32), STONE.rockHi, .45);
+    // the tank: its far wall's face (you look down on to it), coursed stone, darker towards the water
+    B.f(B.rr(-39, -32, 78, 25, 2.5), '#1a2628');
+    ashlar(B, r, -38, -31, 76, 12, STONE, 4);
+    B.f(B.rect(-38, -24, 76, 5), '#1e2a2c', .45);
+    // the doorway under the far wall: a round head of voussoirs and a keystone, black inside, the water running in under it
+    const dx0 = 4, dx1 = 24, spring = -24, top = -31;
+    B.f(`M${dx0} -19V${spring}A${(dx1 - dx0) / 2} ${spring - top} 0 0 1 ${dx1} ${spring}V-19Z`, '#06100f');
+    for (let i = 0; i <= 8; i++) { const a = Math.PI - i / 8 * Math.PI, rx = (dx1 - dx0) / 2 + 1.6, cx = (dx0 + dx1) / 2, x = cx + Math.cos(a) * rx, y = spring - Math.sin(a) * (spring - top + 1.2); B.f(B.circ(x, y, i === 4 ? 2.1 : 1.6), i === 4 ? STONE.rockHi : i % 2 ? STONE.rock : STONE.rockLo); }
+    B.s(`M${dx0 - 1} -19V${spring}M${dx1 + 1} -19V${spring}`, STONE.rockHi, 1.2, .7);
+    B.f(B.circ(dx1 + 5, -27, 1.3), '#2c3032').s(B.ell(dx1 + 5, -24.8, 1.6, 2), '#4a5054', .8);   // an iron ring by the door
+    // the water, a step down: dark and still, the doorway's reflection, the light along its near edge, lilies at the far end
+    B.f(B.rr(-38, -19.4, 76, 12.4, 2), B.lin(0, -19, 0, -7, [[0, '#1c3034'], [.6, '#2a464a'], [1, '#3a5a5a']]));
+    B.f(B.rect(dx0, -19, dx1 - dx0, 5), '#081414', .55).s(`M${dx0 + 2} -16.5h${dx1 - dx0 - 4}`, '#4e6e70', .7, .4);
+    B.s('M-20 -11h44', '#a8c8c8', .8, .35).s('M-8 -14.6h20', '#c8e0dc', .6, .3);
+    if (!snowy) for (const [x, y, k] of [[30, -13, 1], [34, -9.6, .8]]) { B.f(B.ell(x, y, 4.4 * k, 1.9 * k), L[1]).f(`M${x} ${y}l${3.6 * k} ${-1.1 * k}l0 ${1.3 * k}z`, '#2a464a'); if (k === 1) B.f(B.circ(x - 1, y - .8, 1.2), '#f4e2ea'); }
+    else B.f(B.rr(-37, -19, 74, 11, 2), '#dfe9ee', .7);
+    // the steps down at the near west end, each tread lit, each riser in shade, the third going under the water
+    for (let i = 0; i < 4; i++) { const y = -8 - i * 3.6, x0 = -38, w = 15 - i * .4, under = i >= 3;
+      B.f(B.rect(x0, y - 3.4, w, 3.6), under ? '#3e5a5c' : i % 2 ? STONE.rock : STONE.rockHi, under ? .8 : 1).f(B.rect(x0, y - .9, w, 1), STONE.rockDk, under ? .35 : .7);
+      if (!under) B.f(B.ell(x0 + w * .55, y - 2.2, w * .22, .7), '#ffffff', .14); }
+    B.f(B.rect(-38, -22, 15, 3), '#2a464a', .5);
+    // moss and ferns at the corners, a tuft at the top of the steps
+    mossOn(B, r, -46, -36, 30, 6, s); mossOn(B, r, 18, -36, 26, 5, s); mossOn(B, r, -46, -6, 18, 3, s);
+    if (!snowy) for (const [x, y, d] of [[46, -30, 1], [-47, -30, -1], [46, -8, 1]]) for (let k = 0; k < 4; k++) B.s(`M${x} ${y}q${d * (3 + k * 2)} -4 ${d * (6 + k * 2)} ${-1 - k * 2}`, '#5f7a3c', 1, .9);
+    B.tufts(r, -46, 3, 10, 5, grass(s), 6).tufts(r, 46, 3, 10, 5, grass(s), 6).tufts(r, -30, -2, 8, 3, grass(s), 4);
   } };
 
   /* ---------- the market cross: three octagonal steps, a tapering shaft worn smooth, a lantern head ---------- */
@@ -229,19 +248,35 @@ window.GardenPaintSeat = (function () {
   } };
 
   /* ---------- the milestone: a squat stone, a carved 0, lichen; the iron ring of the den's hatch in the flags behind it ---------- */
-  A['ld-mile'] = { box: [-22, -40, 22, 6], door: { dx: 27, dy: -13 }, seat: { kind: 'earth', w: 30, front: 14, back: 26, flags: true, box: [-20, -32, 52, 10], extra(B, r, P) {
-      // the hatch, laid flat behind the stone: an oak trap in a stone frame, an iron ring, a little worn
-      // (beside and behind the stone, where a figure standing at it can lift the ring)
-      B.f(B.poly([[13, -22], [41, -24], [43, -9], [11, -8]]), P.joint, .85).f(B.poly([[15, -21], [39, -22.6], [41, -10.4], [13, -9.6]]), '#6a5034').s('M21 -21.4l-1 11.6M27 -21.8l-.4 11.6M33 -22.2l.2 11.8', '#4a3622', .8, .8).f(B.poly([[15, -21], [39, -22.6], [39.2, -21], [15.2, -19.6]]), '#9a7a54', .7);
-      B.s(B.ell(27, -15.5, 3.2, 1.7), '#2c3032', 1.5).s(B.ell(26.6, -15.9, 3.2, 1.7), '#7a8084', .6, .8);
-      for (const [x, y] of [[12, -15], [42, -17], [26, -6]]) B.f(B.blob(r, x, y, 3, 1.4, 6, .5), '#6f8446', .7);
+  A['ld-mile'] = { box: [-24, -50, 64, 8], door: { dx: 30, dy: -2 }, seat: { kind: 'earth', w: 30, front: 14, back: 26, flags: true, box: [-20, -40, 60, 10], extra(B, r, P) {
+      for (const [x, y] of [[8, -6], [50, -8], [30, 2]]) B.f(B.blob(r, x, y, 3, 1.4, 6, .5), '#6f8446', .7);
     } }, draw(B, o) {
-    const r = KIT().rng(97), s = o.season, h = sz('wall', .2) * .72;
+    // The measurer's den: cellar doors let into the foot of a turf bank behind the milestone, two oak leaves sloping in a
+    // stone kerb, strap hinges and the iron ring, a worn step in front. (It was a small flat plank box on the forest floor
+    // that did not read as a way in: art director and hunter, round 3.)
+    const r = KIT().rng(97), s = o.season, h = sz('wall', .2) * .72, G = grass(s), snowy = s === 'winter';
+    // the bank the den is dug into, rising behind the doors, turf and a few stones over its back
+    B.f(B.blob(r, 32, -18, 30, 16, 12, .2), s === 'autumn' ? '#7a7a40' : snowy ? '#c8d0c8' : '#5e7a3a').f(B.blob(r, 28, -24, 22, 9, 10, .25), s === 'autumn' ? '#9a9450' : snowy ? '#e8eeea' : '#78964a', .9);
+    for (let i = 0; i < 5; i++) B.stone(r, 12 + r() * 40, -30 + r() * 12, 2.6 + r() * 2, 1.6 + r(), MOSSY, r() < .5 ? '#9aa86a' : null);
+    B.tufts(r, 32, -30, 40, 12, G, 6);
+    // the stone kerb round the doors, lit on its top edge
+    B.f(B.poly([[13, -2], [47, -2], [45, -21], [15, -21]]), MOSSY.rockLo).f(B.poly([[15, -21], [45, -21], [44.4, -19], [15.6, -19]]), MOSSY.rockHi, .85);
+    for (const x of [16, 22, 29, 36, 42]) B.s(`M${x} -21.4v2.2`, MOSSY.rockDk, .6, .6);
+    // the two doors, sloping down to you, planked, the one on the left a little lit
+    for (const [pts, tone] of [[[[16, -3.5], [30, -3.5], [30, -19], [17, -19]], '#7a5c3c'], [[[30, -3.5], [44, -3.5], [43, -19], [30, -19]], '#684c30']]) B.f(B.poly(pts), tone);
+    for (const x of [20.5, 25, 34.5, 39]) B.s(`M${x} -18.6L${x - (x < 30 ? .6 : -.4)} -4`, '#4a3622', .6, .7);
+    B.s('M30 -19V-3.5', '#2e2014', 1.1).f(B.poly([[16, -19], [30, -19], [30, -17.4], [16.4, -17.4]]), '#a8865a', .6);
+    for (const y of [-15, -7.4]) B.s(`M17 ${y}h9M34 ${y}h9`, '#2c3032', 1.2).f(B.circ(26.4, y, .8), '#5a5e60').f(B.circ(33.6, y, .8), '#5a5e60');
+    B.s(B.ell(30, -11, 2.6, 1.6), '#2c3032', 1.4).s(B.ell(29.6, -11.4, 2.6, 1.6), '#8a9094', .5, .8);
+    // a worn step of stone in front of them
+    B.f(B.rr(18, -3, 24, 4.4, 1.6), MOSSY.rock).f(B.rr(19, -3, 22, 1.4, .7), MOSSY.rockHi, .8);
+    // the milestone, its face to the road: 0
     const pts = [[-12, 0], [-12.6, -h * .55], [-9, -h * .94], [0, -h * 1.04], [9, -h * .94], [12.6, -h * .55], [12, 0]];
     B.f(B.poly(pts), MOSSY.rockLo).f(B.poly([[-12, 0], [-12.6, -h * .55], [-9, -h * .94], [-2, -h], [-3, 0]]), MOSSY.rock).f(B.poly([[-10.5, -h * .55], [-8, -h * .86], [-3, -h * .92], [-5, -h * .5]]), MOSSY.rockHi, .6);
     B.text('0', 0, -h * .52, 9, '#4a463a'); B.text('0', -.6, -h * .53, 9, 'rgba(255,255,255,.18)');
     for (let i = 0; i < 4; i++) B.f(B.blob(r, -8 + r() * 16, -h * (.2 + r() * .7), 1.6 + r() * 2, 1 + r(), 6, .5), r() < .5 ? '#c9c48a' : '#9aa86a', .75);
-    B.tufts(r, 0, 3, 28, 12, grass(s), 7);
+    B.tufts(r, 0, 3, 28, 12, G, 7).tufts(r, 50, 2, 14, 6, G, 6).tufts(r, 12, 1, 6, 3, G, 5);
+    if (!snowy) for (let k = 0; k < 4; k++) B.s(`M${52 + k * 2} 0q${3 + k} -6 ${6 + k * 2} -9`, '#5f7a3c', 1.1, .9);   // a fern at the bank's end
   } };
 
   /* ---------- the great stump: an old oak cut long ago, roots gripping the ground, moss, bracket fungus, a very small door with a lit window ---------- */
@@ -531,6 +566,46 @@ window.GardenPaintSeat = (function () {
   A['work:pier-2'] = { box: [-10, -32, 10, 4], seat: false, draw(B) { B.post(0, -22, 0, 5, OAK).f(B.ell(0, -22, 3, 1.4), OAK[2]).s('M-3 -14q3 2 6 0', '#e8dcb0', 1.2); } };
   A['work:pier-3'] = { box: [-6, -66, 26, 4], seat: false, draw(B) { const top = -sz('lamp', .5) * .75; B.s(`M0 0V${top}`, OAK[1], 2.2); B.f(`M1 ${top + 1}Q10 ${top - 2} 20 ${top + 3}Q12 ${top + 7} 20 ${top + 11}Q10 ${top + 8} 1 ${top + 11}Z`, '#d8452a').f(`M1 ${top + 4}h10v3h-10z`, '#fbf5e6'); } };
   A['work:pool-stock'] = { box: [-16, -24, 16, 4], seat: false, draw(B) { B.f('M-9 0L-10 -12H10L9 0Z', B.lin(-10, 0, 10, 0, [[0, '#c4ccd0'], [1, '#6e787c']])).f(B.ell(0, -12, 10, 3), '#5e686c').f(B.ell(0, -12, 8.4, 2.2), '#4e7a7e').f(B.ell(-2, -12.4, 2.4, .9), '#e8a04a').s('M-9 -12Q0 -24 9 -12', IRON[1], 1); } };
+
+  /* ======== not built yet: where a work for the lake will stand, marked out (plot:*) ========
+     The not-built state was simply absent: plain water at the pier's end, empty grass where the smoker goes (art
+     director, round 3). Each is a deliberate start: piles driven for a pier, a stake and a rag in the water, a chalked
+     square with planks stacked on the deck, pegs and string round a square of bare earth with bricks waiting. */
+  A['plot:water'] = { box: [-24, -50, 26, 8], seat: false, shade: false, draw(B, o) {
+    const r = KIT().rng(331);
+    ripples(B, r, 14);
+    B.s('M0 2V-34', OAK[1], 3).s('M-.8 2V-34', OAK[2], .9, .7).f(B.ell(0, -34, 1.6, .7), OAK[2]);
+    B.f('M1 -32q8 1 11 -3q-2 5 -10 7z', '#c8402e').f('M1 -32q5 .4 7 -1.6', '#e8705a', .7);   // a rag tied on: here it goes
+    B.s('M0 -14q7 4 11 13', '#d8c08a', .8).f(B.ell(12, 0, 3.4, 1.8), '#e8e0cc').f(B.ell(12, -.6, 3.4, 1), '#c8402e');   // and a float on a cord
+  } };
+  A['plot:deck'] = { box: [-30, -26, 30, 8], seat: false, shade: false, draw(B, o) {
+    const r = KIT().rng(337);
+    // a square chalked on the planks, a stack of new boards, a coil of rope and a box of nails
+    B.s('M-20 -2h30v-12h-30z', '#f4f0e2', .9, .7).s('M-18 -4l26 -8M-18 -12l26 8', '#f4f0e2', .5, .35);
+    for (let i = 0; i < 3; i++) B.f(B.rr(12, -4 - i * 3, 16, 3, .8), ['#d8b884', '#c8a472', '#e0c494'][i]).s(`M12.5 ${-2.6 - i * 3}h15`, '#8a6a46', .4, .6);
+    for (let i = 0; i < 3; i++) B.s(B.ell(-24, -3 - i * 1.2, 5 - i, 2 - i * .3), i % 2 ? '#d8c08a' : '#b89a6a', 1.3);
+    B.f(B.rr(2, -9, 7, 5, 1), '#6a4a2e').f(B.rr(2, -9, 7, 1.4, .6), '#8a6a46').f(B.circ(5.5, -8.6, .6), '#8a8e90');
+  } };
+  A['plot:land'] = { box: [-34, -30, 36, 10], seat: { kind: 'earth', w: 44, front: 14, back: 10, stones: 0, way: false }, shade: false, draw(B, o) {
+    const r = KIT().rng(341);
+    // four pegs and a string round a square of bare earth, bricks stacked and a bucket of mortar waiting
+    const pegs = [[-20, -14], [20, -14], [22, 2], [-22, 2]];
+    B.f(B.poly(pegs), '#8c7454', .35);
+    B.s(B.line(pegs.concat([pegs[0]])), '#f2ecd8', .7, .85);
+    for (const [x, y] of pegs) B.s(`M${x} ${y + 1}v-7`, OAK[1], 1.8).f(B.ell(x, y - 6, .9, .5), OAK[2]);
+    for (let row = 0; row < 3; row++) for (let i = 0; i < 3 - row; i++) B.f(B.rr(24 + i * 4.6 + row * 2.3, -4 - row * 2.8, 4.4, 2.8, .5), ['#b05a3c', '#a04e34', '#c06a48'][(row + i) % 3]).s(`M${24 + i * 4.6 + row * 2.3} ${-4 - row * 2.8 + 2.8}h4.4`, '#6e3a26', .4, .6);
+    B.f('M-30 0L-29 -8H-22L-23 0Z', '#6a6e70').f(B.ell(-25.5, -8, 3.6, 1.2), '#c8c0b0').s('M-29 -8q3.5 -6 7 0', IRON[0], .7);
+    B.tufts(r, -26, 4, 10, 4, grass(o.season), 5).tufts(r, 28, 4, 8, 3, grass(o.season), 5);
+  } };
+  A['plot:pier'] = { box: [-76, -150, 76, 10], seat: false, shade: false, draw(B, o) {
+    const r = KIT().rng(347), W = GARDEN_WORLD, p = o.prop || { w: 3, h: 4 }, hx = p.w * W.cellW / 2 - 6, top = -p.h * W.cellH;
+    // the next stretch of pier begun: its piles driven into the water two by two, a rope along their heads, a marker float at the end
+    const ys = [top + 16, top + 56, top + 96].filter(y => y < -8);
+    for (const y of ys) for (const x of [-hx, hx]) { B.s(B.ell(x, y + 2, 7, 2), '#e8f4f2', .8, .55); B.f(B.rect(x - 3, y - 22, 6, 24), OAK[1]).f(B.rect(x - 3, y - 22, 2, 24), OAK[2], .6).f(B.ell(x, y - 22, 3, 1.2), OAK[2]).f(B.rect(x - 3, y - 4, 6, 4), '#2e4a4e', .45); }
+    for (const x of [-hx, hx]) B.s(`M${x} ${ys[0] - 20}` + ys.slice(1).map(y => `Q${x + 4} ${y - 30} ${x} ${y - 20}`).join(''), '#d8c08a', 1.1, .9);
+    const yE = ys[ys.length - 1]; B.s(`M${-hx} ${yE - 18}Q0 ${yE - 8} ${hx} ${yE - 18}`, '#d8c08a', 1, .85);
+    B.f(B.ell(0, yE + 14, 4.4, 2.2), '#e8e0cc').f(B.ell(0, yE + 13.2, 4.4, 1.2), '#c8402e').s(B.ell(0, yE + 15, 8, 2), '#e8f4f2', .7, .5);
+  } };
 
   /* ======== what a player builds or wins (lf-*): set out anywhere, so each brings its own seat ======== */
   // the village well is the wishing well's sister: the same head and frame, no coins in it

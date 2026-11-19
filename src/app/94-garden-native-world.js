@@ -169,7 +169,7 @@ window.GardenNativeWorld = (function () {
     const xray = element(scene, 'g', { class: 'gd-pl-xray', 'pointer-events': 'none' }); xray.appendChild(element(scene, 'g')); xray.target.setVisible(false); xray.style.opacity = '.46'; ui.appendChild(xray);
     const silhouetteNode = xray.firstChild, silhouetteInk = scene.add.graphics(), silhouetteBodies = new Map();
     silhouetteNode._inner.add(silhouetteInk);
-    let silhouetteSource = null, silhouetteVisible = false, silhouetteBuilds = 0;
+    let silhouetteSource = null, silhouetteVisible = false, silhouetteBuilds = 0, propBehind = 0;
     const silhouetteWorldBounds = { x: 0, y: 0, width: 0, height: 0 };
     _gw.node = playerNode; _gw.bobEl = playerBob; _gw.xr = xray; _gw.z = -1;
 
@@ -1120,6 +1120,17 @@ window.GardenNativeWorld = (function () {
         const rec = paintedRecord(key, 'painted-work-1|' + key + '|' + sc.season + '|' + (nightMaterials ? 'n' : 'd'), () => GardenPaintedMarks.landmark(scene, wp, sc, element, W, rootNode._inner), { kind: 'scenery', id: wp.id, model: wp }, W.sky + r.y * W.cellH);
         if (rec) keep.add(key);
       }
+      // What could be built for the lake but is not yet stands marked out where it will go (art director, round 3: the
+      // not-built state was simply absent, plain water at the pier's end and empty grass where the smoker goes)
+      if (paintedOn() && typeof gardenWorksArt === 'function' && window.GardenPaintedMarks && GardenPaintedMarks.knows('plot:land') && typeof gardenIslandData === 'function' && !(typeof _gdv !== 'undefined' && _gdv && _gdv.on)) {
+        const plots = (gardenWorksArt(sc).unbuilt || []).map(r => ({ key: r.key, wp: { id: r.wet ? 'plot:water' : 'plot:deck', x: r.x - .5, y: r.y - 1, w: 1, h: 1 }, z: r.y }));
+        for (const s of gardenIslandData().static || []) {
+          if (!s.needs || gardenWorkOwned(s.needs)) continue;
+          const def = typeof gardenGearDef === 'function' ? gardenGearDef(s.needs) : null; if (def && def.needs && !gardenWorkOwned(def.needs)) continue;
+          plots.push({ key: 'plot-' + s.id, wp: { id: /^pier-/.test(s.id) ? 'plot:pier' : 'plot:land', x: s.x, y: s.y, w: s.w, h: s.h }, z: s.y + s.h });
+        }
+        for (const p of plots) { const key = 'plot:' + p.key, rec = paintedRecord(key, 'painted-plot-1|' + key + '|' + sc.season + '|' + (nightMaterials ? 'n' : 'd'), () => GardenPaintedMarks.landmark(scene, p.wp, sc, element, W, rootNode._inner), { kind: 'scenery', id: p.wp.id, model: p.wp }, W.sky + p.z * W.cellH); if (rec) keep.add(key); }
+      }
       // Painted crossings stay standing once their region is yours: the
       // bridge, the arch, the stair are part of the land, now open.
       if (paintedOn() && typeof gardenIslandActive === 'function' && gardenIslandActive()) for (const g of gardenIslandData().gates || []) {
@@ -1257,12 +1268,17 @@ window.GardenNativeWorld = (function () {
       if (z !== playerNode._nativeZ) { playerNode._nativeZ = z; sorted = true; }
       const bob = !playerInner.querySelector('.gpl-root') && _gw.moving && gardenMotionOn() ? -Math.abs(Math.sin(time / 1000 * (_gw.sneak ? 7 : 11))) * 1.6 : 0;
       playerBob.setAttribute('transform', 'translate(0 ' + bob + ')');
+      // A thing you stand behind (the lighthouse's door is at its back, the summer house's on its far side) stays
+      // nearly solid and your outline shows through it: at .38 it went to a pale ghost, and a player at its door
+      // seemed to stand inside a glass house (art director, round 3)
+      propBehind = 0;
       for (const record of fadingProps) {
         if (record.editorLifted) continue;
         const p = record.metadata.prop, b = record.bounds, sx = _gw.px * W.cellW, sy = W.sky + _gw.py * W.cellH;
         let behind = sx > b.x - 8 && sx < b.x + b.width + 8 && sy > b.y + 18 && sy < W.sky + (p.y + p.h) * W.cellH - 1.5;
         if (behind && p.id === 'ld-falls' && record.handle.fallsCoversPlayer) behind = record.handle.fallsCoversPlayer(sx, sy);
-        if (record.behind !== behind) { record.behind = behind; record.root.setAlpha(behind ? .38 : 1); }
+        if (record.behind !== behind) { record.behind = behind; record.root.setAlpha(behind ? .8 : 1); }
+        if (behind && sx > b.x + b.width * .12 && sx < b.x + b.width * .88 && sy - playerOcclusionHeight * .6 > b.y) propBehind++;
       }
       coveringCanopies.length = 0;
       const probes = [{ x, y: y - playerOcclusionHeight * .81 }, { x, y: y - playerOcclusionHeight * .48 }, { x: x - 6, y: y - playerOcclusionHeight * .54 }, { x: x + 6, y: y - playerOcclusionHeight * .54 }];
@@ -1311,7 +1327,7 @@ window.GardenNativeWorld = (function () {
       }
       // A single faded crown stays natural. Only overlapping foreground
       // canopies need this subtle position cue, never roofs or empty ground.
-      const show = root.visible && playerNode.target.visible && externalCanopies.length > 0 && externalCanopies.length + coveringCanopies.length >= 2 && !(typeof gardenDesignOn === 'function' && gardenDesignOn());
+      const show = root.visible && playerNode.target.visible && (propBehind > 0 || externalCanopies.length > 0 && externalCanopies.length + coveringCanopies.length >= 2) && !(typeof gardenDesignOn === 'function' && gardenDesignOn());
       if (!show) { silhouetteVisible = false; xray.target.setVisible(false); return; }
       const current = playerInner._nativePlayerCurrent, body = current ? current.node : playerInner.firstChild;
       if (!body) { silhouetteVisible = false; xray.target.setVisible(false); return; }
