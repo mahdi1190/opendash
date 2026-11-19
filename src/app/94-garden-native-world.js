@@ -1200,7 +1200,8 @@ window.GardenNativeWorld = (function () {
       if (!pushed && !casting && (dx || dy)) {
         _gw.path = []; _gw.then = null; _gw.netting = null; _gw.hold = null;
         const length = Math.hypot(dx * W.cellW, dy * W.cellH); ux = dx * W.cellW / length; uy = dy * W.cellH / length;
-        _gw.sneak = keys.has('shift'); want = _gw.sneak ? GW_SPEED.sneak : GW_SPEED.walk * _gwWalkBonus(); direct = true;
+        if (typeof gartMoveSteer === 'function') [ux, uy] = gartMoveSteer(ux, uy, dt);   // a turning circle, not a snap (94-garden-zz-6move.js)
+        _gw.sneak = keys.has('creep'); want = _gw.sneak ? GW_SPEED.sneak : (keys.has('shift') ? GW_SPEED.run : GW_SPEED.walk) * _gwWalkBonus(); direct = true;   // hold Shift to run, Z to creep
       } else if (!pushed && !casting && _gw.hold && _gw.hold.steer) {
         const pt = point(_gw.hold.cx, _gw.hold.cy); if (pt) { dx = (pt.x - _gw.px) * W.cellW; dy = (pt.y - _gw.py) * W.cellH; distance = Math.hypot(dx, dy); if (distance > 10) { ux = dx / distance; uy = dy / distance; direct = true; want = Math.min(distance > 150 ? GW_SPEED.run : GW_SPEED.walk, Math.sqrt(2 * GW_ACC * distance) + 34); } }
       } else if (!pushed && !casting && _gw.path.length) {
@@ -1238,6 +1239,7 @@ window.GardenNativeWorld = (function () {
       if (z !== playerNode._nativeZ) { playerNode._nativeZ = z; sorted = true; }
       const bob = !playerInner.querySelector('.gpl-root') && _gw.moving && gardenMotionOn() ? -Math.abs(Math.sin(time / 1000 * (_gw.sneak ? 7 : 11))) * 1.6 : 0;
       playerBob.setAttribute('transform', 'translate(0 ' + bob + ')');
+      if (typeof gartMoveFrame === 'function') gartMoveFrame(playerInner, playerBob, _gw, time);   // the turn, the stride, the hop
       for (const record of fadingProps) {
         if (record.editorLifted) continue;
         const p = record.metadata.prop, b = record.bounds, sx = _gw.px * W.cellW, sy = W.sky + _gw.py * W.cellH;
@@ -1657,7 +1659,7 @@ window.GardenNativeWorld = (function () {
       const avatar = _gplAvatar(), gear = typeof _gplMyGear === 'function' ? _gplMyGear() : null, motion = _gartMotionOk(), key = JSON.stringify([avatar, gear, motion]);
       if (!playerPosePreparation || playerPosePreparation.key !== key) {
         const poses = [];
-        for (const pose of ['idle', 'walk']) for (const dir of ['s', 'n', 'e']) poses.push({ pose, dir });
+        for (const pose of ['idle', 'stride']) for (const dir of ['s', 'n', 'e']) poses.push({ pose, dir });
         poses.push({ pose: 'fish', dir: 'e', stageRod: true });
         playerPosePreparation = { key, poses, next: 0, frame: -1 };
       }

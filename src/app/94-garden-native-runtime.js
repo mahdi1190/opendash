@@ -280,7 +280,7 @@ window.GardenNative = (function () {
       if (GardenNativeRooms.filterKey && GardenNativeRooms.filterKey(ev)) return;
       // Releasing a movement key still matters after focus moves into a field.
       if (!down) {
-        const dir = _GW_KEYMAP[ev.key]; if (dir) _gw.keys.delete(dir); if (ev.key === 'Shift') _gw.keys.delete('shift');
+        const dir = _GW_KEYMAP[ev.key]; if (dir) _gw.keys.delete(dir); if (ev.key === 'Shift') _gw.keys.delete('shift'); if (ev.key === 'z' || ev.key === 'Z') _gw.keys.delete('creep');
         if (inRoom()) { const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key; _grm.keys.delete(k); _ee.keys.delete(k); if (k === 'Shift') { _grm.keys.delete('shift'); _ee.keys.delete('shift'); } GardenNativeRooms.key(ev); }
         else if (ev.target && ev.target.closest && ev.target.closest('input,textarea,select,[contenteditable="true"]')) { const dir = _GW_KEYMAP[ev.key]; if (dir) _gw.keys.delete(dir); if (ev.key === 'Shift') _gw.keys.delete('shift'); if (ev.key === ' ' || /^e$/i.test(ev.key)) _gwFishRelease(); }
         else gardenWorldKey(ev, false);

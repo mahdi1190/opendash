@@ -91,7 +91,7 @@ function _glOwnWorld(m) {
     cell: (x, y) => { const g = W.grid; return !!g && x >= 0 && y >= 0 && x < G.cols && y < G.rows && !g[y * G.cols + x]; },
     water: (x, y) => { const cx = Math.floor(x), cy = Math.floor(y); return cx >= 0 && cy >= 0 && cx < G.cols && cy < G.rows && _glWaterPoint(W, x, y) && !String(gardenAreaAt(cx, cy, W.level)).startsWith('locked:'); },
     view: _glCamView,
-    player: () => (typeof _gw !== 'undefined' && _gw.on ? { x: _gw.px, y: _gw.py, moving: !!_gw.moving, sneak: !!_gw.sneak || (_gw.keys && _gw.keys.has('shift')), face: _gw.face } : null),
+    player: () => (typeof _gw !== 'undefined' && _gw.on ? { x: _gw.px, y: _gw.py, moving: !!_gw.moving, sneak: !!_gw.sneak || (_gw.keys && _gw.keys.has('creep')), face: _gw.face } : null),
     pets() {
       // your pets when they are out (97-pets-7roam.js), else the one that sits and follows you (motion off, or no roaming)
       const out = typeof petGardenPositions === 'function' ? petGardenPositions() : [];

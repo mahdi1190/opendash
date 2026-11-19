@@ -29,7 +29,7 @@ const _gw = {
   cam: { x: 0, y: 0, w: 0, h: 0, vh: 0, mode: 'follow', init: false, dirty: true },
   keys: new Set(), grid: null, gridKey: '', saveT: 0, size: { w: 0, h: 0 },
 };
-const GW_SPEED = Object.freeze({ walk: 215, sneak: 92, run: 300 });   // pixels of stage a second (a cell is 48 x 30 of them)
+const GW_SPEED = Object.freeze({ walk: 150, sneak: 70, run: 260 });   // (round 3: the walk now plants its feet, 94-garden-zz-6move.js; 215 could only slide them)   // pixels of stage a second (a cell is 48 x 30 of them)
 const GW_ZOOMS = Object.freeze([230, 290, 360, 450, 560, 690, 860, 1040]);   // how many stage units tall the window shows (2.23: two more steps: the world is bigger)
 const GW_FIGURE_ART = 0.74, GW_SCALE = GW_FIGURE_ART * GARDEN_ACTOR_SCALE;                                                // the figure's size: 70 units tall -> about 52 px
 const GW_PET_SCALE = 0.5 * GARDEN_ACTOR_SCALE;                                             // your pet, drawn at two thirds of the size the garden uses for a wandering one: it comes up to your knee
@@ -1666,6 +1666,8 @@ function gardenWorldKey(ev, down, arrowsOnly) {
     ev.preventDefault(); return true;
   }
   if (ev.key === 'Shift') { if (down) _gw.keys.add('shift'); else _gw.keys.delete('shift'); return false; }
+  if (ev.key === 'z' || ev.key === 'Z') { if (down) { _gw.keys.add('creep'); _gwEnsureLoop(); } else _gw.keys.delete('creep'); ev.preventDefault(); return true; }   // hold Z to creep up on something (Shift runs)
+  if (down && ev.key === ' ' && _gw.moving && _gw.keys.size && typeof gartMoveHop === 'function' && !(typeof _gwFishBusy === 'function' && _gwFishBusy())) { if (!ev.repeat) gartMoveHop(); ev.preventDefault(); return true; }   // Space while walking: a little hop
   if (!down) { if (ev.key === ' ' || ev.key === 'e' || ev.key === 'E') { if (typeof _gwFishRelease === 'function') _gwFishRelease(); return true; } return false; }
   const k = ev.key;
   if (k === '+' || k === '=') { gardenCamSet(null, -1); ev.preventDefault(); return true; }

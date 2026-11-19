@@ -20,7 +20,7 @@
    gpl-af / gpl-as (arms, front and side), gpl-lf / gpl-lg (legs). The moves (97-pets-tricks-6emote.js) and the walk both drive those. Reduced motion and the Fun level stop it with everything else.
    ============================================================ */
 const _GPL = { cache: new Map(), dir: 's', pose: '', until: 0, key: '', t: 0, lastX: null, lastY: null };
-const GPL_POSES = Object.freeze(['walk', 'water', 'dig', 'pick', 'fish', 'hold']);
+const GPL_POSES = Object.freeze(['walk', 'stride', 'water', 'dig', 'pick', 'fish', 'hold']);   // stride: the walk with its legs driven by the distance covered (94-garden-zz-6move.js), not a CSS clock
 /** Poses that face the camera whatever way the person was going (a catch held up: gartPlayerPaint and the other people's figures both ask). One row per pose; arms and class names are in _gplPoseArms. */
 const GPL_POSE_FRONT = Object.freeze(new Set(['hold']));
 /** The catch held up (AC-style, in our own drawing): both arms up and a little outward, stretched so the hands reach over the crown; the item sits between them. ang: how far the arms turn from hanging, k: how much longer they reach, y: where the item's middle is, in the walker's units (feet at 0). */
@@ -288,7 +288,7 @@ function gartPlayerPaint(inner, gw) {
     if (typeof profileAvatarNormalize !== 'function' || typeof profileFigureSvg !== 'function') return false;
     const motion = _gartMotionOk(), moving = gw.moving && motion;
     const now = Date.now();   // clock-ok: how long a pose lasts
-    let pose = moving ? 'walk' : 'idle', stageRod = false;
+    let pose = moving ? (typeof gartMoveFrame === 'function' ? 'stride' : 'walk') : 'idle', stageRod = false;
     if ((gw.fishing && gw.fishing.state !== 'idle') || gw.casting) { pose = 'fish'; stageRod = true; }   // the fishing game draws the rod and the line itself
     if (_GPL.pose && now < _GPL.until && !moving) pose = _GPL.pose;
     const av = _gplAvatar(), dir = GPL_POSE_FRONT.has(pose) ? 's' : stageRod ? 'e' : _GPL.dir;   // fishing is side on: the game's rod starts from the hand on the side you face; a catch held up faces you
@@ -308,6 +308,7 @@ function gartPlayerPaint(inner, gw) {
 /** Once per walker frame: which way are we going? Only a real change of direction redraws. */
 function gartPlayerStep(gw) {
   if (!gw) return;
+  if (typeof gartMoveStep === 'function') { if (gartMoveStep(gw) && typeof _gwBody === 'function') _gwBody(); return; }   // the heading swings round (94-garden-zz-6move.js)
   const x = gw.px, y = gw.py;
   if (_GPL.lastX == null) { _GPL.lastX = x; _GPL.lastY = y; return; }
   const dx = x - _GPL.lastX, dy = (y - _GPL.lastY) * 1.6;   // a row is shorter than a column on screen

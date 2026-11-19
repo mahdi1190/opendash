@@ -15,7 +15,7 @@ const _gll = {
   tipEl: null,
 };
 const _GL_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
-const GL_ACT_SPEED = 215, GL_ACT_RUN = 300, GL_ACT_SCALE = 0.74 * GARDEN_ACTOR_SCALE, GL_PET_H = 26 * GARDEN_ACTOR_SCALE;   // the walker's own speeds (GW_SPEED); a pet comes up to the knee
+const GL_ACT_SPEED = 150, GL_ACT_RUN = 260, GL_ACT_SCALE = 0.74 * GARDEN_ACTOR_SCALE, GL_PET_H = 26 * GARDEN_ACTOR_SCALE;   // the walker's own speeds (GW_SPEED); a pet comes up to the knee
 const _GLL_TAB = Math.floor(Math.random() * 2176782336).toString(36) + Math.floor(Math.random() * 2176782336).toString(36);   // this tab, to the server: one tab hosts
 function _gllNewId() { return Math.floor(Date.now()).toString(36).slice(-7) + Math.floor(Math.random() * 2176782336).toString(36);  /* clock-ok: only unique */ }
 function _gllApi(path, body, opts) { return _gscApi(path, body, opts); }

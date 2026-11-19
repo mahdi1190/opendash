@@ -828,7 +828,7 @@ function _gfsSay2(text) { if (typeof _gllFeed === 'function') _gllFeed(text); }
 /** Who is stomping about: you, unless you are creeping, and anyone in your garden. */
 function _gfsStomps() {
   const out = [], t = Date.now();   // clock-ok: how long a creep lasts
-  if (_gw.moving && !_gw.sneak && !_gw.boat && !_gw.keys.has('shift')) out.push({ x: _gw.px, y: _gw.py, me: true });
+  if (_gw.moving && !_gw.sneak && !_gw.boat && !_gw.keys.has('creep')) out.push({ x: _gw.px, y: _gw.py, me: true });
   if (typeof _gll !== 'undefined' && _gll.role === 'host') for (const A of _gll.actors.values()) if (A.moving && !A.stationaryPosition && !(A.sneakUntil > t)) { const point = gardenLiveActorPosition(A); if (point) out.push(point); }
   return out;
 }
