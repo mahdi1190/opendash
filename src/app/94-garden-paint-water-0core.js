@@ -555,10 +555,13 @@ window.GardenPaintWater = (function () {
     //    short pale dashes along the current.
     if (!river_) {
       // (a dark fell tarn holds fewer and fainter streaks of sky than the open Mere: a tarn full of them read as stripes)
-      for (let i = 0; i < (kind === 'tarn' ? 18 : big ? 46 : 10); i++) {
+      for (let i = 0; i < (kind === 'tarn' ? 18 : big ? 40 : 10); i++) {
         let x = 0, y = 0, tries = 0; do { x = all.x + r() * all.w; y = all.y + r() * all.h; tries++; } while (tries < 30 && !(inside(x, y, pts) && edgeDist(x, y, pts) > 18));
-        if (tries >= 30) continue; const rx = 18 + r() * (big ? 80 : 30), ry = .9 + r() * 1.6, hi = r() < .3;
-        add({ x: x - rx, y: y - 4, w: rx * 2, h: 8 }, (cx, C) => { cx.save(); cx.clip(P); cx.globalAlpha = (hi ? .5 : .32) * (C.warm || 1) * (kind === 'tarn' ? .38 : 1); cx.fillStyle = hi ? C.skyHi : C.sky; cx.beginPath(); cx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); cx.fill(); cx.restore(); });
+        // (each a soft streak, faded at both ends and a little tilted, of its own length and strength: hard-ended white ellipses
+        //  in even rows read as stripes painted on glass)
+        if (tries >= 30) continue; const rx = 16 + r() * r() * (big ? 110 : 34), ry = .8 + r() * 1.4, hi = r() < .25, tilt = (r() - .5) * .05, k = .55 + r() * .45, off = (r() - .5) * .5;
+        add({ x: x - rx, y: y - 6, w: rx * 2, h: 12 }, (cx, C) => { cx.save(); cx.clip(P); cx.translate(x, y); cx.rotate(tilt); const col = rgbOf(hi ? C.skyHi : C.sky), g = cx.createLinearGradient(-rx, 0, rx, 0); g.addColorStop(0, 'rgba(' + col + ',0)'); g.addColorStop(.5 + off * .5, 'rgba(' + col + ',1)'); g.addColorStop(1, 'rgba(' + col + ',0)'); cx.fillStyle = g;
+          const a = (hi ? .46 : .3) * k * (C.warm || 1) * (kind === 'tarn' ? .38 : 1); cx.globalAlpha = a * .35; cx.beginPath(); cx.ellipse(0, .4, rx * 1.05, ry * 2.6, 0, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = a; cx.beginPath(); cx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); cx.fill(); cx.restore(); });
       }
       // a broad pale sky sheen in the open middle (the brightest thing in the picture)
       const c0 = { x: all.x + all.w * .45, y: all.y + all.h * .5 };
