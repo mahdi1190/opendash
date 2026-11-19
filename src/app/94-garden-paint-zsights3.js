@@ -757,6 +757,44 @@
   addLife('ld-wish', [butterfly([-26, -20], 9, ['#e86a2a', '#f2a03a'])]);
   addLife('lf-well', [butterfly([-26, -20], 11, ['#f2c63a', '#e8a838'])]);
 
+  /* ---------- the old angler at the quay's edge: sat hunched on his bucket (a proper stool later, then his kettle beside
+     him, then his dog, at last a golden hat: he changes as your story goes on), oilskin and sou'wester, a white beard, his
+     pipe smoking; the rod's tip nods and the float rides the water. Sized as one of the vale's folk sitting down ---------- */
+  const anglerStage = () => { try { const ca = gardenCatchHere() || {}, n = Number(ca.aj) || 0; return n >= GARDEN_ANGLER_JOBS.length ? 4 : n >= 13 ? 3 : n >= 8 ? 2 : n >= 3 ? 1 : 0; } catch (e) { return 0; } };
+  A['old-angler'] = { box: [-34, -46, 30, 6], seat: false, state: () => 'a' + anglerStage(),
+    parts: [
+      { id: 'rod', box: [-2, -30, 44, 66], at: [3, -16], draw(B) { B.s('M33 -27Q38 6 39 63', '#fbfbf2', .6, .6).s('M0 0L33 -27', '#6e4c2a', 1.5).s('M0 0L12 -9.8', '#3a2a1a', 2.2).f(B.circ(5, -4, 1.6), '#8a949a'); }, anim(im, t, o) { im.setRotation(Math.sin(t * .9) * .03 + (Math.sin(t * .23) > .9 ? .06 : 0)); im.setAlpha(1); } },
+      { id: 'float', box: [-5, -4, 5, 3], at: [42, 47], draw(B) { B.f(B.ell(0, 0, 4.6, 1.4), 'rgba(16,40,56,.25)').f('M-1.6 0V-2.6a1.6 1.6 0 0 1 3.2 0V0Z', '#e8402a').f(B.rect(-1.6, -1, 3.2, 1), '#ffffff'); }, anim(im, t, o) { im.setPosition(o.x, o.y + Math.sin(t * 1.6) * .8 + (Math.sin(t * .31) > .94 ? 2.4 : 0)); } },
+      ...smokeParts([-8, -30], 2, 16, 5, .25).map(p => Object.assign(p, { draw: B => puff(B, 3.2) })),
+      { id: 'tail', box: [-8, -6, 1, 1], at: [-26, -4], draw(B, o) { if (o.state === 'a3' || o.state === 'a4') B.s('M0 0q-4 -2 -6 -5', '#a87c4f', 1.8); }, anim(im, t) { im.setRotation(Math.sin(t * 7) * .35); } },
+    ],
+    draw(B, o) {
+      const r = KIT().rng(941), s = o.season, st = Number(String(o.state || 'a0').slice(1)) || 0, k = .7;
+      B.shadow(-2, 1, 20, 3.4, .28, '#1a1208');
+      // the line down from the rod's tip to the water (the rod itself is a part that nods)
+      // what he sits on: an old bucket, then a proper three-legged stool
+      if (st >= 1) B.s(`M${-8 * k} ${-12 * k}h${16 * k}M${-6 * k} ${-12 * k}L${-8 * k} 0M${5 * k} ${-12 * k}L${7 * k} 0`, '#6e4c2a', 2);
+      else B.f(`M${-9 * k} 0L${-10 * k} ${-10 * k}H${9 * k}L${8 * k} 0Z`, B.lin(-8, 0, 8, 0, [[0, '#a8b0b4'], [1, '#5e686c']])).f(B.ell(-.5, -10 * k, 9.5 * k, 1.6), '#4e585c');
+      // his kettle on its little stove, his dog lying by him
+      if (st >= 2) { B.f(B.rr(12, -6, 9, 6, 1), '#3a3a42').f(`M13 -6Q16.5 -11 20 -6Z`, '#59636a').s('M20 -5l3 -2', '#3a3a42', 1.2); }
+      if (st >= 3) { B.f(B.ell(-20, -3.4, 7, 3.6), '#a87c4f').f(B.circ(-14, -6.6, 3.2), '#a87c4f').f(B.poly([[-13, -9.4], [-11, -11.6], [-11.4, -8]]), '#7a5636').f(B.circ(-12.6, -7, .5), '#1a1008').f(B.ell(-21, -4.6, 4, 1.4), '#c89a6a', .6); }
+      // boots and oilskin trousers, knees up, the coat hunched round him, lit from the west
+      B.f(`M${-4 * k} ${-12 * k}q${8 * k} -1 ${14 * k} 1l${5 * k} ${11 * k}h${-4 * k}l${-5 * k} ${-7 * k}q${-6 * k} 0 ${-10 * k} -3z`, '#3a4e66');
+      B.f(B.rr(10 * k, -3, 6, 3, 1), '#2a2420').f(B.rr(5 * k, -2.6, 5, 2.6, 1), '#2a2420');
+      B.f(`M${-8 * k} ${-31 * k}Q${-9 * k} ${-12 * k} ${-4 * k} ${-11 * k}H${6 * k}Q${8 * k} ${-22 * k} ${5 * k} ${-31 * k}Z`, B.lin(-8, 0, 6, 0, [[0, '#d8a44a'], [.5, '#b8843a'], [1, '#8a5e24']]));
+      B.s(`M${-7 * k} ${-24 * k}q${7 * k} 2 ${12 * k} 0`, '#8a5e24', .6, .7).s(`M${4 * k} ${-26 * k}l${6 * k} ${4 * k}`, '#b8843a', 2.4);
+      // the head: a weathered face, white beard and brows, an eye on his float, the pipe in his teeth
+      B.f(B.circ(-1 * k, -37 * k, 7 * k), '#e4c2a0').f(B.circ(-3 * k, -38.6 * k, 3 * k), '#f0d4b8', .6);
+      B.f(`M${-7 * k} ${-34 * k}q0 ${9 * k} ${7 * k} ${10 * k}q${7 * k} -1 ${7 * k} ${-9 * k}q${-3 * k} ${3 * k} ${-7 * k} ${2 * k}q${-4 * k} 1 ${-7 * k} ${-3 * k}z`, '#eeeae0');
+      B.f(B.circ(2.6 * k, -37.6 * k, .8), '#2a2018').s(`M${1 * k} ${-39.6 * k}h${3 * k}`, '#f4f0e8', .8);
+      B.s(`M${-3 * k} ${-32 * k}l${-6} 2`, '#5a3a22', 1.2).f(B.rr(-12, -26.6, 3.4, 2.8, .8), '#5a3a22');
+      // the sou'wester, gold at the last
+      const hat = st >= 4 ? ['#f2c432', '#d8a420'] : ['#e8c24a', '#c89a2a'];
+      B.f(`M${-11 * k} ${-39 * k}q${10 * k} ${-6 * k} ${21 * k} 0l${1 * k} ${2 * k}h${-23 * k}z`, hat[0]).f(`M${-7 * k} ${-40 * k}q${6 * k} ${-9 * k} ${14 * k} 0`, hat[1]).s(`M${-11 * k} ${-37 * k}h${22 * k}`, '#8a6a1a', .5, .7);
+      if (st >= 4) B.f(B.circ(-5 * k, -44 * k, 1), '#fff6c8', .9);
+      if (s === 'winter') B.f(`M${-7 * k} ${-41 * k}q${6 * k} ${-7 * k} ${12 * k} 0z`, '#f4f6f2', .8);
+    } };
+
   /* ---------- the pier's decks (the pier and the two lengths a player adds): oak planks laid across, each its own weathered
      tone, nail heads over the joists, a gap of dark water between boards, a fascia along each side, piles going down into
      the lake with rings of water round them, bollards and a ladder at the deep end. Drawn from the deck's own box (the

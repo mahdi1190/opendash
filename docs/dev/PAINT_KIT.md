@@ -243,7 +243,8 @@ seats every one of them, and every painted prop, in the ground it stands on.
   the body: `anim` sets their position, alpha or turn each frame (`o.x, o.y` the hub, `o.night` whether the lit picture
   is up). They run only on screen and only while motion is on. Today: the pump's drip and its ring, the stump's chimney
   smoke, the treehouse's lantern and pennant, the owl's head and blink (asleep by day). Never `setScale` a part (the
-  kit re-sharpens it).
+  kit re-sharpens it). A part with `anim` is painted once at level 4 and never re-sharpened: each sharpening reads the
+  canvas back from the graphics card (Phaser's `addCanvas`), and in round 3 one such read-back stalled a walk for 1.3 s.
 - **A way in.** An art row with `door: { dx, dy }` draws its own entrance; the rooms (`94-garden-world-6doors.js`) then
   stand only a worn threshold there, not a second door picture on the grass. Every sight with a room has one.
 - **Gate signs** are fixed to what bars the way (`gateMount` in `94-garden-native-painted-props.js`): chains from the
