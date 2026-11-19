@@ -207,51 +207,51 @@ plot that its top meets the plot's edge: a player behind it is never drawn over 
    code reads, and check with Shift+C.
 8. Sizes come from `gardenSizePx`, never a number of your own; actors only from `GARDEN_ACTOR_SCALE`.
 
-## Numbers (1500 x 900 window, headless Edge with the GPU on, 19 Nov 2026, after the scale change)
+## Numbers (1500 x 900 window, headless Edge with the GPU on, 19 Nov 2026, the final build of this round)
 
-The default camera now stands at zoom 2.5 on this window (the walking zoom); the closest is 3.9 on a 1x screen and
-7.8 in device pixels on a 2x screen. Texture memory held by the kit (`GardenPaintGround.status()` and
+The default camera stands at zoom 2.5 on this window (the walking zoom); the closest is 3.9 on a 1x screen and 7.8 in
+device pixels on a 2x screen. Texture memory held by the kit (`GardenPaintGround.status()`,
 `GardenPaintTerrainKit.sharpStatus()`):
 
-| | Walking zoom (2.5, level 2) | Closest zoom (3.9, level 3) | 2x screen, walking (level 4) | 2x screen, closest (level 4) |
-| --- | --- | --- | --- | --- |
-| Shared ground (budget 64 MB; the whole map is kept at level .75 underneath) | 61 to 62 MB | 62 to 63 MB | 62 MB | 63 MB |
-| Vale places ground (budget 28 MB) | 28 MB | 26 to 27 MB | 27 MB | 26 MB |
-| Fells ground (budget 32 MB) | 12 MB | 11 to 18 MB | 29 MB | 29 MB |
-| Shadow layer (budget 10 MB, level .75) | 4 MB | 3 to 4 MB | 4 MB | 4 MB |
-| Sharpened sprites (bound 20 MB) | under 1 MB | under 1 MB | 0 | 0 |
-| **All paint-kit textures** | **106 MB** | **103 to 112 MB** | **123 MB** | **122 MB** |
+| | Walking (2.5, level 2) | Closest (3.9, level 3) | Whole map (0.87, level .75) | 2x walking (level 4) | 2x closest (level 4) |
+| --- | --- | --- | --- | --- | --- |
+| Shared ground (budget 64 MB; the whole map is kept at level .75 underneath) | 63 MB | 62 MB | 29 MB | 62 MB | 63 MB |
+| Vale places ground (budget 28 MB) | 27 MB | 26 MB | 10 MB | 28 MB | 26 MB |
+| Fells ground (budget 32 MB) | 12 MB | 18 MB | 6 MB | 29 MB | 29 MB |
+| Shadow layer (budget 10 MB, level .75) | 4 MB | 4 MB | 8 MB | 4 MB | 4 MB |
+| Sharpened sprites (bound 20 MB) | under 1 MB | under 1 MB | 0 | under 1 MB | under 1 MB |
+| **All paint-kit textures** | **107 MB** | **110 MB** | **53 MB** | **123 MB** | **122 MB** |
 
-The whole-map view (0.87, level .75) held 74 MB in the last round and was not measured again. A chunk is 0.15 MB at
-level .75, 1.1 MB at level 2, 2.4 MB at level 3 and 4.3 MB at level 4. Not the kit's and not counted: the trees, 30 MB
-(the village's bigger trees share a picture every 48 px of height), and the woods' own floor (14 MB of a 44 MB cap).
+A chunk is 0.15 MB at level .75, 1.1 MB at level 2, 2.4 MB at level 3 and 4.3 MB at level 4. Spare chunk canvases are
+kept and painted into again (at most four of a size, twelve in all): after five walks and two zooms on the 2x screen
+460 canvases had been made and 296 reused. Not the kit's and not counted: the trees, 30 MB (the village's bigger trees
+share a picture every 48 px of height), and the woods' own floor (14 MB of a 44 MB cap).
 
-Bake times for a 256 px chunk of the shared ground, in total, spread over slices on a 34 ms timer: median 23 to 36 ms,
-95th percentile 49 to 63 ms, worst chunk 61 to 97 ms (1x); median 43 ms, 95th percentile 69 to 71 ms, worst chunk 117 ms
-(2x, level 4). A slice is 8 to 10 ms by design but cannot stop inside an op. While you walk, a bare or repainted chunk is
-painted no sharper than level 2 when one of its ops is costly there or has never been timed, and nothing is re-painted
-sharper; it is made sharp when you stop. With that, the kit's slowest op over the final 1x runs was 17 to 25 ms and its
-slowest timer tick 22 to 33 ms; during a walk on the 2x screen its slowest tick was 21 ms. Standing still, single ops
-of up to 60 ms still run at level 3 (one vale-places op seen while the 2x view was loading). The plot fences are painted
-per chunk, only the runs a chunk shows, each from its own random stream (a big plot's whole fence ran in every chunk it
-touched: 42 ms). The shadow layer: 0 to 1 ms median, 2 ms worst slice.
+Bake times for a 256 px chunk of the shared ground, in total, spread over slices on a 34 ms timer: median 24 to 27 ms,
+95th percentile 59 to 61 ms, worst chunk 89 to 97 ms on a 1x screen; median 36 to 40 ms, 95th percentile 62 to 67 ms,
+worst chunk 91 ms on a 2x screen (level 4). A slice is 8 to 10 ms by design but cannot stop inside an op. While you
+walk, a bare or repainted chunk is painted no sharper than level 2 when one of its ops is costly there or has never been
+timed, and nothing is re-painted sharper; it is made sharp when you stop. The kit's slowest timer tick during walks was
+21 to 33 ms. Standing still, one op can still take up to 48 ms at level 3 (a band of ground where three kinds meet). The
+plot fences are painted per chunk, only the runs a chunk shows, each from its own random stream. The shadow layer: 0 to
+1 ms median, 2 to 6 ms worst slice.
 
-Walking with real keys round the green and down the harbour road, 24 s a run, the final build:
+Walking with real keys round the green and down the harbour road, 24 s a run:
 
 | Run | Long tasks (over 50 ms) | Frame gaps over 50 ms | Longest frame gap |
 | --- | --- | --- | --- |
-| 1x, zoom 3.9, just after loading | 0 | 1 | 67 ms |
-| 1x, zoom 3.9 (three more runs) | 0, 0, 0 | 0 to 1 | 49 to 127 ms |
-| 1x, walking zoom 2.5 | 2 (60, 50 ms) | 2 | 73 ms |
-| 1x, walking zoom 2.5, again | 1 (54 ms) | 1 | 55 ms |
-| 2x screen, walking zoom, just after loading | 4 (54 to 80 ms) | 19 | 115 ms |
-| 2x screen, walking zoom (two more runs) | 5 (51 to 94 ms); 3 (58 to 67 ms) | 12; 8 | 91; 85 ms |
-| 2x screen, closest zoom | 4 (50 to 59 ms) | 9 | 85 ms |
+| 1x, walking zoom, straight after loading and opening the gates | 1 (56 ms) | 11 | 170 ms |
+| 1x, walking zoom, three more runs | 0, 0, 0 | 1, 0, 1 | 85, 37, 73 ms |
+| 1x, closest zoom, two runs | 0; 1 (52 ms) | 1; 3 | 55; 67 ms |
+| 2x screen, walking zoom, three runs | 0, 0, 0 | 3, 3, 3 | 55, 67, 67 ms |
+| 2x screen, closest zoom, two runs | 0, 0 | 1, 4 | 61, 73 ms |
 
-So the rule of no task over 50 ms while walking is met at the closest zoom on a 1x screen, missed by one or two tasks of
-50 to 60 ms a run at the walking zoom, and missed by three to five tasks of 50 to 94 ms a run on a 2x screen. These are
-not the ground kit's: its slowest tick in the same walks was 21 to 33 ms. A CPU profile of the 1x walks shows two other
-things in the long stretches: a garbage collection of 75 to 101 ms now and then (the page's script heap is 311 to 337 MB
-live), and a kit tick running straight into a frame's render (two tasks, each under 50 ms, back to back). On the 2x screen
-the frames themselves are about twice the cost (median 12 ms against 6). What the 2x long tasks are has not been pinned
-down. Headless frame rates are not a measure of a real screen; the long tasks and gaps are.
+Before this round's last fixes the same walks had 1 to 3 long tasks a run on a 1x screen and 3 to 5 (50 to 94 ms) on a
+2x screen. A Chrome trace named them: `gl.checkFramebufferStatus` waiting 28 to 69 ms for the graphics process inside a
+frame (now skipped for framebuffers that are always complete: `noFramebufferWait` in `94-garden-native-runtime.js`),
+memory-reducing whole-heap collections of 60 to 100 ms (fewer now that chunk canvases are reused), and a read-back of a
+graphics-card canvas for a decoration icon, 47 ms (icons are drawn in memory now). What is left is an ordinary
+whole-heap collection now and then (46 ms of collector in a 52 to 59 ms frame). The page allocates about 176 MB a second
+while walking, almost all of it in the per-frame render path (`renderNeutralInner` and Phaser's batching, in
+`94-garden-native-art.js`); the paint kit's share is about 1 percent. Headless frame rates are not a measure of a real
+screen; the long tasks and gaps are.
