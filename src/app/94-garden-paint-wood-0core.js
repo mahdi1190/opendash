@@ -868,7 +868,7 @@ window.GardenPaintWood = (function () {
     const FADE = Math.max(GARDEN_CROWN_FADE, .46), fadeTo = underN > 1 ? Math.max(.26, 1 - Math.pow(1 - FADE, 1 / Math.min(3, underN))) : FADE;
     for (const t of fading) { const a = t.fade ? fadeTo : 1; if (t.im.alpha !== a) t.im.setAlpha(t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8 || 1));
       // (and a fading crown goes deeper in tone, so it reads as shade over you, not a milky ghost of the tree)
-      if (t.dim !== !!t.fade && t.im.setTint) { t.dim = !!t.fade; const c = t.baseTint == null ? 0xffffff : t.baseTint; t.im.setTint(t.dim ? ((((c >> 16) & 255) * .66 | 0) << 16) | ((((c >> 8) & 255) * .72 | 0) << 8) | ((c & 255) * .78 | 0) : c); } }
+      if (t.dim !== !!t.fade && t.im.setTint) { t.dim = !!t.fade; const c = t.baseTint == null ? 0xffffff : t.baseTint; t.im.setTint(t.dim ? ((((c >> 16) & 255) * .8 | 0) << 16) | ((((c >> 8) & 255) * .84 | 0) << 8) | ((c & 255) * .88 | 0) : c); } }
     const tTrees = performance.now(); S.tw.trees = Math.max(S.tw.trees, tTrees - t0 - tBake);
     if (S.sortObjects && S.objects.sort) { S.objects.sort('depth'); S.sortObjects = false; }
     S.tw.sort = Math.max(S.tw.sort, performance.now() - tTrees);
