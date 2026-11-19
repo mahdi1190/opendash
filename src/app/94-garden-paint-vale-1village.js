@@ -350,7 +350,11 @@
       B.cx.filter = 'blur(2.5px)'; B.s(S.path, '#2a3a1c', 6, grown ? .1 : .22); B.cx.filter = 'none'; B.cx.restore();
       const g = S.gate, edge = STYLE[f.edge] || STYLE.hedge, kind = f.edge === 'hedge' ? 'wicket' : 'field';
       // the orchard keeps its hedge to the road side; away from the road the long grass is its edge
-      const paint = part => { if (!part.length) return; if (f.edge === 'hedge-road') { const road = part.filter(q => q.road), off = part.filter(q => !q.road); if (off.length) STYLE['long-grass'](B, off, C, { tall: 1.1 }); if (road.length) edge(B, road, C); } else edge(B, part, C); };
+      // (fix round 2) the lighthouse garden's dry-stone wall lies on the ground round the plot: full height along its front,
+      // lower down its sides and lowest at the back, so a narrow plot does not stand up as a tall stone arch like a portal
+      const dry = (B2, run) => { const front = run.filter(q => q.tx < -.7), side = run.filter(q => Math.abs(q.tx) <= .7), back = run.filter(q => q.tx > .7), D = { rag: .3, jit: .8, body: ['#8e8678', '#a8a090', '#7a7366', '#9a9282'], top: ['#bdb5a3', '#cfc8b6', '#b0a896'], lit: '#d8d2c2', round: 2.6 };
+        if (back.length) raised(B2, back, Object.assign({ w: 7.6, h: 3.6 }, D)); if (side.length) raised(B2, side, Object.assign({ w: 7.2, h: 4.6 }, D)); if (front.length) edge(B2, front, C); };
+      const paint = part => { if (!part.length) return; if (f.edge === 'hedge-road') { const road = part.filter(q => q.road), off = part.filter(q => !q.road); if (off.length) STYLE['long-grass'](B, off, C, { tall: 1.1 }); if (road.length) edge(B, road, C); } else if (f.edge === 'drystone') dry(B, part); else edge(B, part, C); };
       // back to front: the far edges, then the gate and its sign, then the near edges over them
       const gy = g ? g.y : Infinity, near = S.pieces.map(p => p.filter(q => inBox(q, cb)));
       for (const p of near) paint(p.filter(q => q.y <= gy));

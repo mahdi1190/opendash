@@ -55,35 +55,40 @@ window.GardenNativePainted = (function () {
     const hash = (a, b) => { let n = Math.imul(a * 374761393 + b * 668265263 + salt * 1442695041, 1) >>> 0; n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0; return (n ^ (n >>> 16)) >>> 0; };
     cx.save(); cx.globalAlpha = 1; cx.fillStyle = o.mortar || '#b3a07e'; cx.fillRect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]);
     const j0 = Math.floor((bb[1] - 4) / dy), j1 = Math.ceil((bb[3] + R * ys + 4) / dy);
+    // (one path per tone per row of fans, filled once: a stone at a time was four calls a stone, too slow for a chunk
+    // painted as you walk; the rows still go down in order, so the fans overlap as scales)
     for (let j = j0; j <= j1; j++) {
       const off = (j & 1) ? dx / 2 : 0, fy = j * dy, i0 = Math.floor((bb[0] - off - R) / dx), i1 = Math.ceil((bb[2] - off + R) / dx);
+      const byTone = tones.map(() => new Path2D()), hi = new Path2D(), lo = new Path2D(), wearP = new Path2D(), darkP = new Path2D(), mossP = new Path2D(); let any = false;
       for (let i = i0; i <= i1; i++) {
         const fx = i * dx + off, rr = rng(hash(i, j) | 1), age = patch(fx, fy);
-        // the fan: its courses from the outside in; the arc's crown at (fx, fy - r * ys), convex up the screen
         for (let k = 0; k < 4; k++) {
           const r0 = R - k * ring, r1 = r0 - ring + .85; if (r1 < 1.6) break;
           const rm = (r0 + r1) / 2, n = Math.max(2, Math.round(2 * half * rm / (4.6 + rr() * 1.2))), da = 2 * half / n;
-          for (let s = 0; s < n; s++) {
-            const a0 = Math.PI / 2 - half + s * da + .7 / rm, a1 = a0 + da - 1.1 / rm, am = (a0 + a1) / 2;
+          for (let q = 0; q < n; q++) {
+            const a0 = Math.PI / 2 - half + q * da + .7 / rm, a1 = a0 + da - 1.1 / rm, am = (a0 + a1) / 2, t = rr(), w0 = rr(), m0 = rr();
             const mx = fx + Math.cos(am) * rm, my = fy - Math.sin(am) * rm * ys; if (mx < bb[0] - 6 || mx > bb[2] + 6 || my < bb[1] - 5 || my > bb[3] + 5) continue;
             if (o.skip && o.skip(mx, my)) continue;
-            const t = rr() + age * .1, base = tones[Math.max(0, Math.min(tones.length - 1, Math.floor(t * tones.length)))];
-            const p0x = fx + Math.cos(a0) * r0, p0y = fy - Math.sin(a0) * r0 * ys, p1x = fx + Math.cos(a1) * r0, p1y = fy - Math.sin(a1) * r0 * ys, p2x = fx + Math.cos(a1) * r1, p2y = fy - Math.sin(a1) * r1 * ys, p3x = fx + Math.cos(a0) * r1, p3y = fy - Math.sin(a0) * r1 * ys;
-            const quad = () => { cx.beginPath(); cx.moveTo(p0x, p0y); cx.lineTo(p1x, p1y); cx.lineTo(p2x, p2y); cx.lineTo(p3x, p3y); cx.closePath(); };
-            cx.globalAlpha = 1; cx.fillStyle = base; quad(); cx.fill();
-            // lit along its top edge, a little shade along its foot: the stone has a face, a hand's width, and wear
-            cx.globalAlpha = .34; cx.strokeStyle = P.stoneHi || '#eddcb6'; cx.lineWidth = .9; cx.beginPath(); cx.moveTo(p0x, p0y + .4); cx.lineTo(p1x, p1y + .4); cx.stroke();
-            cx.globalAlpha = .2; cx.strokeStyle = '#6e5c42'; cx.beginPath(); cx.moveTo(p3x, p3y - .3); cx.lineTo(p2x, p2y - .3); cx.stroke();
+            const c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1);
+            const p0x = fx + c0 * r0, p0y = fy - s0 * r0 * ys, p1x = fx + c1 * r0, p1y = fy - s1 * r0 * ys, p2x = fx + c1 * r1, p2y = fy - s1 * r1 * ys, p3x = fx + c0 * r1, p3y = fy - s0 * r1 * ys;
+            const quad = P2 => { P2.moveTo(p0x, p0y); P2.lineTo(p1x, p1y); P2.lineTo(p2x, p2y); P2.lineTo(p3x, p3y); P2.closePath(); };
+            quad(byTone[Math.max(0, Math.min(tones.length - 1, Math.floor((t + age * .1) * tones.length)))]); any = true;
+            hi.moveTo(p0x, p0y + .4); hi.lineTo(p1x, p1y + .4); lo.moveTo(p3x, p3y - .3); lo.lineTo(p2x, p2y - .3);
             const w = o.wear ? o.wear(mx, my) : 0, rim = o.rim ? o.rim(mx, my) : 0;
-            if (w > 0 && rr() < w) { cx.globalAlpha = .14 + w * .1; cx.fillStyle = '#f6ecd0'; quad(); cx.fill(); }
-            else if (age < -.9 && rr() < .4) { cx.globalAlpha = .1; cx.fillStyle = '#6a5a40'; quad(); cx.fill(); }
-            if (rim > 0 && rr() < rim * .55) { cx.globalAlpha = .7; cx.fillStyle = rr() < .5 ? '#7d8f4e' : '#93a252'; cx.beginPath(); cx.ellipse(p1x + .2, (p1y + p2y) / 2, .9 + rr() * 1.2, .7 + rr() * .5, 0, 0, 7); cx.fill(); }
+            if (w > 0 && w0 < w) quad(wearP); else if (age < -.9 && w0 < .4) quad(darkP);
+            if (rim > 0 && m0 < rim * .55) { const ex = p1x + .2, ey = (p1y + p2y) / 2, erx = .9 + m0 * 1.2; mossP.moveTo(ex + erx, ey); mossP.ellipse(ex, ey, erx, .7 + m0 * .5, 0, 0, 7); }
           }
         }
       }
+      if (!any) continue;
+      cx.globalAlpha = 1; for (let k = 0; k < tones.length; k++) { cx.fillStyle = tones[k]; cx.fill(byTone[k]); }
+      cx.lineWidth = .9; cx.globalAlpha = .34; cx.strokeStyle = P.stoneHi || '#eddcb6'; cx.stroke(hi); cx.globalAlpha = .2; cx.strokeStyle = '#6e5c42'; cx.stroke(lo);
+      cx.globalAlpha = .2; cx.fillStyle = '#f6ecd0'; cx.fill(wearP); cx.globalAlpha = .1; cx.fillStyle = '#6a5a40'; cx.fill(darkP);
+      cx.globalAlpha = .7; cx.fillStyle = '#86984e'; cx.fill(mossP);
     }
     cx.restore();
   }
+
 
   /* ---------- library objects as baked sprites ---------- */
   const paths = new Map();
@@ -428,6 +433,20 @@ window.GardenNativePainted = (function () {
       const dOf = (x, y) => ribs.length ? (Math.hypot((x - ccx) / 150, (y - ccy) / 70) < 1 ? .3 : inU(x, y - 5) && inU(x, y + 5) && inU(x - 7, y) && inU(x + 7, y) ? .62 : 1) : Math.hypot((x - pz.centre.x) / (b.w / 2), (y - pz.centre.y) / (b.h / 2));
       fanSetts(cx, [b.x - 6, b.y - 6, b.x + b.w + 6, b.y + b.h + 6], { P, salt: 23, skip: (x, y) => inRose(x, y) || ribs.length > 0 && !inU(x, y) && !inU(x, y - 4) && !inU(x, y + 4) && !inU(x - 5, y) && !inU(x + 5, y),
         wear: (x, y) => dOf(x, y) < .55 ? .45 : 0, rim: (x, y) => { const d = dOf(x, y); return d > .7 ? (d - .6) * 1.2 : 0; } });
+      // (fix round 2) the square itself is a place of its own: its stone paler and worn smooth, framed by a band of
+      // darker setts on edge, while the walks round the green and the streets that leave it are in the fans
+      if (rose && ribs.length && pz.points && pz.points.length > 2) {
+        const sq = new Path2D(); sq.moveTo(pz.points[0].x, pz.points[0].y); for (const q of pz.points) sq.lineTo(q.x, q.y); sq.closePath();
+        cx.save(); cx.clip(sq); const xs = pz.points.map(q => q.x), ys = pz.points.map(q => q.y), X0 = Math.min(...xs) - 4, X1 = Math.max(...xs) + 4, Y0 = Math.min(...ys) - 4, Y1 = Math.max(...ys) + 4;
+        // (in the same fans as the streets, not in flags: flags in courses read as a brick wall again; the square is told by its
+        // frame of setts on edge and by its stone, paler and worn smooth by the market and the feet that cross it)
+        cx.globalAlpha = .16; cx.fillStyle = '#f6ecd2'; cx.fillRect(X0, Y0, X1 - X0, Y1 - Y0); const fr = rng(6131);
+        for (let k = 0; k < 10; k++) { const x = X0 + fr() * (X1 - X0), y = Y0 + fr() * (Y1 - Y0); cx.globalAlpha = .07 + fr() * .05; cx.fillStyle = fr() < .6 ? '#f4e8c8' : '#6a5a40'; cx.beginPath(); cx.ellipse(x, y, 30 + fr() * 40, 10 + fr() * 12, 0, 0, 7); cx.fill(); }
+        cx.restore();
+        // the band of setts on edge round it, a hand wide, darker and worn
+        cx.save(); cx.lineJoin = 'round'; cx.globalAlpha = .9; cx.strokeStyle = '#9c8a6a'; cx.lineWidth = 5; cx.stroke(sq); cx.strokeStyle = '#b8a582'; cx.setLineDash([3.4, 1.3]); cx.lineWidth = 3.6; cx.stroke(sq); cx.setLineDash([]); cx.restore();
+        cx.globalAlpha = 1;
+      }
       cx.globalAlpha = 1;
       // the rose: an inlaid ring of dark stone, a pale field, the points in honey stone, softened by wear
       if (rose) {
