@@ -487,7 +487,11 @@
     B.s('M-39 -8Q-36 -17 -14 -19L30 -17Q43 -13 43 -7', '#f4efe2', 1.6, .8);
     B.f(inner, P.woodHi).f('M-34 -7Q-32 -15 -14 -16L28 -14Q38 -11 38 -6', P.wood, .4);
     for (const x of [-16, 8]) B.f(B.rect(x, -16, 5, 17), P.wood).f(B.rect(x, -16, 2, 17), P.woodHi, .7);
-    B.s('M-24 -10L30 -3', P.woodLo, 2.2, .95).s('M-22 -4L32 -10', P.woodLo, 2.2, .9);
+    // two oars shipped along the boat with their blades to the bow, and a coil of rope in the stern (round 2: two dark
+    // strokes crossed over the thwarts read as an X painted on the boat)
+    B.s('M-30 -10.5L24 -12', '#5a4630', 2.1, .95).s('M-30 -5.5L24 -7', '#5a4630', 2.1, .95).s('M-30 -11L24 -12.6', P.woodHi, .7, .6).s('M-30 -6L24 -7.6', P.woodHi, .7, .6);
+    B.f(B.ell(28.5, -12.2, 5.4, 1.9), '#6a543a').f(B.ell(28.5, -7.2, 5.4, 1.9), '#6a543a').f(B.ell(27.6, -12.8, 3.6, .8), P.woodHi, .6).f(B.ell(27.6, -7.8, 3.6, .8), P.woodHi, .6);
+    for (let k = 0; k < 3; k++) B.s(B.ell(-26, -8.5, 4.4 - k * 1.1, 2.6 - k * .6), k % 2 ? P.rope : '#a88a54', 1.1, .9);
     if (afloat) B.f('M-40 -2Q-40 4 -26 6L26 6Q42 4 44 -2Z', '#3f7a8c', .45);
   };
   const drawBench = P => B => { B.shadow(2, 1, 26, 4, .28); for (const x of [-20, 18]) B.f(B.rect(x - 1.6, -12, 3.2, 12), P.iron); B.f(B.rect(-24, -14, 48, 4), P.wood).f(B.rect(-24, -14, 48, 1.4), P.woodHi, .8).f(B.rect(-24, -26, 48, 3.4), P.wood).f(B.rect(-24, -21, 48, 3.4), P.woodLo).s('M-21 -26v12M19 -26v12', P.iron, 2.2); };
