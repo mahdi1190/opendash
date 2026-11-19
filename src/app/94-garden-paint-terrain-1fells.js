@@ -187,8 +187,11 @@ window.GardenPaintedTerrain = (function () {
       add([cx0 - rx - 30, cy0 - ry - 30, cx0 + rx + 30, cy0 + ry + 40], 160 + pk.id.length, (B, r, cb) => {
         clipFell(B);
         soft(B, cb, !!window.GardenPaintGround, S => { for (let k = 0; k < 4; k++) { const s = 1 - k * .2; S.f(B.blob(r, cx0 + k * 4, cy0 + k * 6, rx * s, ry * s, 12, .35), k < 2 ? P.fellLo : kit.mix(P.rock, P.fell, .5), .12 + k * .06); } });
-        for (let k = 0; k < 140; k++) { const a = r() * Math.PI * 2, d = Math.sqrt(r()), x = cx0 + Math.cos(a) * rx * d, y = cy0 + Math.sin(a) * ry * d + ry * .2; if (!fellAt(x, y)) continue;
-          if (d < .75 && r() < .25) B.boulder(r, x, y, 6 + r() * 9, 4 + r() * 6, P, snowRow > 90); else B.stone(r, x, y, 1.4 + r() * 3.4, .9 + r() * 2, P, snowRow > 90 ? 'snow' : null); }
+        // (each stone from its own random stream, and only the stones this chunk can show: all 140 in every chunk the apron
+        // touched made it the slowest op on the fells, 83 ms)
+        for (let k = 0; k < 140; k++) { const rk = kit.rng(kit.hash(k, pk.id.length, 1601)), a = rk() * Math.PI * 2, d = Math.sqrt(rk()), x = cx0 + Math.cos(a) * rx * d, y = cy0 + Math.sin(a) * ry * d + ry * .2;
+          if (x < cb[0] - 30 || x > cb[2] + 30 || y < cb[1] - 24 || y > cb[3] + 24 || !fellAt(x, y)) continue;
+          if (d < .75 && rk() < .25) B.boulder(rk, x, y, 6 + rk() * 9, 4 + rk() * 6, P, snowRow > 90); else B.stone(rk, x, y, 1.4 + rk() * 3.4, .9 + rk() * 2, P, snowRow > 90 ? 'snow' : null); }
       }); }
     // 3. The near ground: heather clumps, tussocks, turf, stones, sheep trods, peat hags, cotton grass and bracken, by hashed tiles.
     add(fellBB, 21, (B, r0, cb) => {
