@@ -74,6 +74,7 @@
       const A = deck ? deck.a : { x: (mid.x + nx * span) * cw, y: W.sky + (mid.y + ny * span) * ch }, Bp = deck ? deck.b : { x: (mid.x - nx * span) * cw, y: W.sky + (mid.y - ny * span) * ch };
       const box = [Math.min(A.x, Bp.x) - 40, Math.min(A.y, Bp.y) - 40, Math.max(A.x, Bp.x) + 40, Math.max(A.y, Bp.y) + 40];
       if (c.kind === 'footbridge') add(box, 61, (B, r) => footbridge(B, r, P, A, Bp, deck));
+      else if (c.kind === 'log' && V.fallenLog) add(box, 62, (B, r) => V.fallenLog(B, r, P, A, Bp, C.season, deck));   // (round 3: Wren's log, 94-garden-paint-vale-1woodland.js)
       else add(box, 62, (B, r) => stones(B, r, P, A, Bp, C.season, deck));
     }
   }

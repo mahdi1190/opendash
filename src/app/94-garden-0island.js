@@ -79,16 +79,18 @@ const _GD_OLDWOOD_LAMPS = [[21.6, 66.6], [19.1, 69.6], [23.6, 77.1], [18.6, 80.6
 function gardenIslandOldWoodLamps(data) {
   data = data || (gardenIslandActive() ? gardenIslandData() : null);
   if (!data || data.version < 5 || !(data.regions || []).some(r => r.id === 'southwest-ruins')) return [];
+  // (round 3: the Whispering woodland's forks have the same lamps, at the spots its layout names: presentation.woodland.lamps)
+  const wood = (data.presentation && data.presentation.woodland && data.presentation.woodland.lamps) || [];
   if (data._oldLamps) return data._oldLamps;
-  const ok = (x, y) => {
-    const c = gardenIslandBaseCell(x, y); if (!c || !c.land || c.freshwater || c.beach || c.route || c.reservation || c.solid || c.region !== 'southwest-ruins') return false;
+  const ok = (x, y, region) => {
+    const c = gardenIslandBaseCell(x, y); if (!c || !c.land || c.freshwater || c.beach || c.route || c.reservation || c.solid || c.region !== region) return false;
     const row = typeof gardenLandCell === 'function' ? gardenLandCell(Math.floor(x), Math.floor(y)) : null;
     return !(row && /^l[sct]-/.test(row.id || ''));
   };
   const out = [];
-  for (const [ax, ay] of _GD_OLDWOOD_LAMPS) {
+  for (const [ax, ay, region] of _GD_OLDWOOD_LAMPS.map(p => p.concat('southwest-ruins')).concat(wood.map(p => [p[0], p[1], 'west-woods']))) {
     let best = null;
-    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const x = Math.floor(ax) + dx, y = Math.floor(ay) + dy; if (!ok(x, y)) continue; const d = Math.hypot(x + .5 - ax, y + .5 - ay); if (!best || d < best.d) best = { x: x + .5, y: y + .7, d }; }
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const x = Math.floor(ax) + dx, y = Math.floor(ay) + dy; if (!ok(x, y, region)) continue; const d = Math.hypot(x + .5 - ax, y + .5 - ay); if (!best || d < best.d) best = { x: x + .5, y: y + .7, d }; }
     if (best) out.push({ x: best.x, y: best.y, foot: { x0: best.x - .2, y0: best.y - .22, x1: best.x + .2, y1: best.y + .04 } });
   }
   try { Object.defineProperty(data, '_oldLamps', { value: out, enumerable: false }); } catch (e) { /* frozen layout: recompute */ }
