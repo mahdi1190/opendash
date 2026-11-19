@@ -130,28 +130,43 @@
       if (!lit(x, y) || byStatic(x + .5, y + .5)) continue;
       const r = rngAt(x, y, 1), x0 = x * cw, y0 = W.sky + y * ch, front = !has(x, y + 1), back = !has(x, y - 1), west = !has(x - 1, y), east = !has(x + 1, y);
       // set in from every open side by a lumpy margin, so the mass is never ruled along the cell grid
-      const inset = (e, a, b) => e ? 3 + nz(a / 7, b / 7, 495) * 6 : -2;
-      const L0 = x0 + inset(west, x0, y0), R0 = x0 + cw - inset(east, x0 + cw, y0), T0 = y0 + inset(back, x0, y0) + (back ? HH * .5 : 0), F0 = y0 + ch - inset(front, x0, y0 + ch);
+      // (each clump keeps a margin from every open side that wanders with the place, wider at a corner: the mass is a lump of
+      // scrub, never a block cut on the plot's square)
+      const L0 = x0 + (west ? 2 : -2), R0 = x0 + cw - (east ? 2 : -2), T0 = y0 + (back ? 2 + HH * .5 : -2), F0 = y0 + ch - (front ? 2 : -2);
       if (R0 - L0 < 4 || F0 - T0 < 3) continue;
-      const n = Math.round((R0 - L0) * (F0 - T0) / 34) + 3;
+      const n = Math.round((R0 - L0) * (F0 - T0) / 30) + 3;
       for (let k = 0; k < n; k++) {
         const fx = L0 + r() * (R0 - L0), fy = T0 + Math.pow(r(), .7) * (F0 - T0), s = 3.2 + r() * 3.6, hgt = (fy - T0) / Math.max(1, F0 - T0), up = HH * (.45 + hgt * .55) * (.7 + r() * .5);
+        const m = 3 + nz(fx / 11, fy / 8, 495) * 14, dW = west ? fx - x0 : 99, dE = east ? x0 + cw - fx : 99, dB = back ? fy - y0 - HH * .4 : 99, dF = front ? y0 + ch - fy : 99, d1 = Math.min(dW, dE), d2 = Math.min(dB, dF);
+        if (d1 < m || d2 < m * .7 || d1 < m * 1.7 && d2 < m * 1.2) continue;
+        const kind = fell ? (nz(fx / 26, fy / 19, 496) > .62 ? 'heath' : nz(fx / 23, fy / 17, 497) > .55 ? 'bracken' : 'gorse') : 'bramble';
+        const lv2 = kind === 'heath' ? ['#4a3c40', '#5e4a56', '#7a5e72', '#9a7a90'] : kind === 'bracken' ? (season === 'autumn' ? ['#6a4424', '#8a5a2e', '#a8703a', '#c88e4a'] : ['#405a2a', '#587838', '#74944a', '#98b05e']) : leaf;
         // a clump: its shade, then its body rising from the ground, lit upper left
-        B.f(B.blob(r, fx + 1.5, fy + 1, s * 1.15, s * .55, 7, .45), leaf[0], .9);
-        for (let q = 0; q < 3; q++) { const yy = fy - up * q / 3, ss = s * (1 - q * .18); B.f(B.blob(r, fx + (r() - .5) * 2, yy - ss * .3, ss, ss * .72, 8, .45), leaf[q === 0 ? 1 : q === 1 ? 1 + (r() < .5 ? 1 : 0) : 2], .95); }
-        B.f(B.blob(r, fx - s * .35, fy - up * .7 - s * .5, s * .5, s * .34, 6, .5), leaf[3], .8);
-        if (fell && !winter && r() < .3) { const a = -Math.PI / 2 + (r() - .5) * 1.2, l = 5 + r() * 4; B.s(`M${fx} ${fy}q${Math.cos(a) * l * .4 + 1.4} ${-l * .5} ${Math.cos(a) * l} ${Math.sin(a) * l}`, season === 'autumn' ? '#b0683a' : '#86964c', 1, .85); }   // a bracken frond
-        if (bloom && r() < (fell ? .55 : .35)) for (let b = 0; b < (fell ? 3 : 2); b++) B.f(B.circ(fx + (r() - .5) * s * 1.4, fy - up * (.4 + r() * .6) - s * .3, fell ? .8 + r() * .5 : .9 + r() * .5), bloom, .95);
-        if (!fell && !winter && r() < .12) B.s(`M${fx} ${fy - up}q${3 + r() * 3} ${-3 - r() * 3} ${6 + r() * 5} ${-1 - r() * 2}`, '#5a3a36', .9, .8);   // a bramble's arching stem
+        B.f(B.blob(r, fx + 1.5, fy + 1, s * 1.15, s * .55, 7, .45), lv2[0], .9);
+        for (let q = 0; q < 3; q++) { const yy = fy - up * q / 3, ss = s * (1 - q * .18); B.f(B.blob(r, fx + (r() - .5) * 2, yy - ss * .3, ss, ss * .72, 8, .45), lv2[q === 0 ? 1 : q === 1 ? 1 + (r() < .5 ? 1 : 0) : 2], .95); }
+        B.f(B.blob(r, fx - s * .35, fy - up * .7 - s * .5, s * .5, s * .34, 6, .5), lv2[3], .8);
+        if (kind === 'heath' && P.bloom !== null && (season === 'summer' || season === 'autumn') && r() < .6) for (let b = 0; b < 3; b++) B.f(B.circ(fx + (r() - .5) * s * 1.4, fy - up * (.5 + r() * .5) - s * .3, .8), '#c08ac4', .9);
+        if (kind === 'gorse' && bloom && r() < .3) for (let b = 0; b < 2; b++) B.f(B.circ(fx + (r() - .5) * s * 1.2, fy - up * (.5 + r() * .5) - s * .3, .75 + r() * .4), bloom, .9);
+        if (kind === 'bracken' && !winter) for (let f = 0; f < 3; f++) { const a = -Math.PI / 2 + (f - 1) * .7 + (r() - .5) * .3, l = 5 + r() * 4; B.s(`M${fx} ${fy - up * .4}q${Math.cos(a) * l * .4 + 1.4} ${-l * .5} ${Math.cos(a) * l} ${Math.sin(a) * l}`, lv2[3], 1, .85); }
+        if (fell) continue;
+        if (bloom && r() < .35) for (let b = 0; b < 2; b++) B.f(B.circ(fx + (r() - .5) * s * 1.4, fy - up * (.4 + r() * .6) - s * .3, .9 + r() * .5), bloom, .95);   // dog-roses, may blossom or blackberries
+        if (!winter && r() < .12) B.s(`M${fx} ${fy - up}q${3 + r() * 3} ${-3 - r() * 3} ${6 + r() * 5} ${-1 - r() * 2}`, '#5a3a36', .9, .8);   // a bramble's arching stem
       }
       if (fell && r() < .35) { const sx = L0 + r() * (R0 - L0), sy = T0 + (F0 - T0) * (.5 + r() * .5); B.stone(r, sx, sy, 3.6 + r() * 3, 2.4 + r() * 1.4, { rock: '#a8a294', rockLo: '#848072', rockHi: '#cac4b4', rockDk: '#4e4a42' }, winter ? '#f2f4f6' : '#b8b46a'); }
       // its foot: darker, with long grass and nettles where it meets the turf
       if (front) { B.f(B.blob(r, (L0 + R0) / 2, F0, (R0 - L0) * .55, 2.6, 8, .45), 'rgba(26,36,18,.32)'); if (!winter) for (let k = 0; k < 4; k++) { const px = L0 + r() * (R0 - L0); B.s(`M${px} ${F0 + 1.5}l${(r() - .5) * 2} ${-4 - r() * 3}M${px + 1.4} ${F0 + 1.5}l${(r() - .5) * 2} ${-3 - r() * 3}`, r() < .5 ? '#5e7a36' : '#86964c', 1, .85); } }
     }
     // the sign: at the thicket's front, on a stretch clear of squares and landmarks
-    const fronts = edges.filter(e => e[2] === 's').map(e => [e[0], e[1]]); if (!fronts.length) return;
-    const yMax = Math.max(...fronts.map(f => f[1])), low = fronts.filter(f => f[1] === yMax && !inPlaza(f[0] + .5, f[1] + 1) && !byStatic(f[0] + .5, f[1] + 1.2)).sort((a, b) => a[0] - b[0]), at = low[low.length >> 1];
-    const row = at && gardenLandCell(at[0], at[1]); if (row && lit(at[0], at[1])) sign(B, (at[0] + .5) * cw, W.sky + (at[1] + 1) * ch + 1, row, lv);
+    const at = signSpot(plot, edges), row = at && gardenLandCell(at[0], at[1]); if (!row || !lit(at[0], at[1])) return;
+    // (two thickets side by side read as one: the second of two signs saying the same thing a step apart is left out)
+    const twin = plots().some(q => q !== plot && q.id < plot.id && q.edges.length && regionKind(q.cells[0][0], q.cells[0][1]) !== 'rail' && locked(q.cells[0][0], q.cells[0][1], lv) && (gardenLandCell(q.cells[0][0], q.cells[0][1]) || {}).lv === row.lv && (() => { const s = signSpot(q, q.edges.filter(([x, y, side]) => !byStatic(x + (side === 'e' ? 1 : side === 'w' ? 0 : .5), y + (side === 's' ? 1 : side === 'n' ? 0 : .5)))); return s && Math.hypot(s[0] - at[0], (s[1] - at[1]) * 1.3) < 3.2; })());
+    if (!twin) sign(B, (at[0] + .5) * cw, W.sky + (at[1] + 1) * ch + 1, row, lv);
+  }
+  function signSpot(plot, edges) {
+    if (plot._sign !== undefined) return plot._sign;
+    const fronts = edges.filter(e => e[2] === 's').map(e => [e[0], e[1]]); if (!fronts.length) return plot._sign = null;
+    const yMax = Math.max(...fronts.map(f => f[1])), low = fronts.filter(f => f[1] === yMax && !inPlaza(f[0] + .5, f[1] + 1) && !byStatic(f[0] + .5, f[1] + 1.2)).sort((a, b) => a[0] - b[0]);
+    return plot._sign = low[low.length >> 1] || null;
   }
   function fence(B, r, P, edges, W, season, cb, plot) {
     const cw = W.cellW, ch = W.cellH, lv = level(), wood = ['#8a7454', '#a88e66', '#5e4c36'], RH = RUN_H();

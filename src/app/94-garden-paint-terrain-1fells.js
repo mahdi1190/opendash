@@ -149,7 +149,7 @@ window.GardenPaintedTerrain = (function () {
           // (heather is a dense dark mat, lit on its swells and in flower on top: as a translucent wash with big dark blotches it
           // read as a stain on the turf; the colour now breaks at the scale of a clump, not of a puddle)
           const n = kit.noise(wx / 8, wy / 5, 818), lit = kit.noise(wx / 70, wy / 44, 819), o = (j * w + i) * 4, past = 1 - sm((m - .1) / .35);
-          const hcol = n < .3 && lit < .5 ? HL : lit > .5 && n > .5 ? HH : HM, fcol = n < .35 ? FL : n > .7 ? FH : FM, k = .9 + lit * .18 + (fine - .5) * .22;
+          const hcol = n < .3 && lit < .5 ? HL : lit > .5 && n > .5 ? HH : HM, fcol = n < .35 ? FL : n > .7 ? FH : FM, k = .9 + lit * .18 + (fine - .5) * .22 + (kit.noise(wx / 4.2, wy / 2.8, 822) - .5) * .26;   // (and a clump's own light and shade, so close up the mass is plants, not a wash)
           const hA = aH * (.8 + n * .12 + (fine - .5) * .1) * (1 - past * .3), tot = hA + aC * .7; if (tot <= .01) continue;
           const fh = hA / tot * (1 - past * .3);   // (on the pasture the heather is short and dull, half turf)
           d[o] = (hcol[0] * fh + fcol[0] * (1 - fh)) * k; d[o + 1] = (hcol[1] * fh + fcol[1] * (1 - fh)) * k; d[o + 2] = (hcol[2] * fh + fcol[2] * (1 - fh)) * k; d[o + 3] = Math.min(1, tot) * 255;
@@ -199,6 +199,12 @@ window.GardenPaintedTerrain = (function () {
     add(fellBB, 21, (B, r0, cb) => {
       clipFell(B);
       const peakNear = (x, y) => L.peaks.some(pk => { const b = kit.bboxOf(pk.pts); return x > b[0] - 90 && x < b[2] + 90 && y > b[1] - 40 && y < b[3] + 70; });
+      // inside the heather's mass, its plants: dense woody sprigs dark at the foot and lit at the tip, and in summer the
+      // spikes of bell flowers on the swells, so close up a drift is heather and never a purple wash (19 Nov 2026)
+      if (window.GardenPaintGround && snowRow <= -5) kit.tiles(cb, 40, 10, 17, (tx, ty, r) => { for (let k = 0; k < 16; k++) { const x = tx + r() * 40, y = ty + r() * 40, d = kit.fbm(x / 230, y / 150, 77), th = heathAt(moor(x)); if (d < th + .02 || !fellAt(x, y)) { r(); r(); continue; }
+        const hh = 2.2 + r() * 3.2, lx = (r() - .5) * 2.4, tone = r(), lit = kit.noise(x / 70, y / 44, 819) > .5;
+        B.s(`M${x} ${y}l${lx * .5} ${-hh * .5}`, '#3e3436', 1.1, .7).s(`M${x + lx * .5} ${y - hh * .5}l${lx * .5} ${-hh * .5}`, tone < .5 ? P.heatherLo : P.heatherHi || P.heather, 1, .75);
+        if (P.bloom && lit && tone > .45) B.f(B.ell(x + lx, y - hh - .5, .75, 1.5), tone > .8 ? kit.mix(P.bloom, '#ffffff', .25) : P.bloom, .92); } });
       kit.tiles(cb, 64, 24, 7, (tx, ty, r) => {
         for (let k = 0; k < 7; k++) {
           const x = tx + r() * 64, y = ty + r() * 64, pick = r(), sz = r(); if (!fellAt(x, y)) continue;
@@ -425,7 +431,7 @@ window.GardenPaintedTerrain = (function () {
     const kit = KIT(), W = L.W, hw = L.gorge.halfWidth || .85, line0 = kit.resample(raw, .14).map(p => [p.x, p.y]), n = line0.length;
     const line = line0.map((p, i) => { const a = line0[Math.max(0, i - 1)], b = line0[Math.min(n - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1, e = Math.min(1, Math.min(i, n - 1 - i) / 12), m = (kit.noise(i * .045, 3.3, 451) - .5) * .26 * e; return [p[0] - dy / l * m, p[1] + dx / l * m]; });
     // the banks pinch and widen, never inside the layout's own water (the fell's paint has a hole there: a narrower bank showed it)
-    const wid = i => 1 + (.14 + kit.noise(i * .06, 7.7, 452) * .24 * Math.min(1, Math.min(i, n - 1 - i) / 10)) / hw;
+    const wid = (i, salt) => 1 + (.14 + kit.noise(i * .06, 7.7 + salt, 452) * .24 * Math.min(1, Math.max(0, Math.min(i, n - 1 - i)) / 10)) / hw;
     // banks in cell space (the cells are not square), then world px
     const nrm = line.map((p, i) => { const a = line[Math.max(0, i - 1)], b = line[Math.min(n - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return [-dy / l, dx / l]; });
     const far = [], farIn = [], near = [], nearIn = [], mid = [];
@@ -434,7 +440,7 @@ window.GardenPaintedTerrain = (function () {
     const sAll = nrm.reduce((a, q) => a + q[1], 0) < 0 ? 1 : -1;
     line.forEach((p, i) => {
       const [nx, ny] = nrm[i], t = i / (n - 1), s = sAll;
-      const depth = (.3 + t * .16) * (.75 + kit.noise(i * .09, 1.1, 453) * .5), wf = wid(i), wn = wid(i + 500);
+      const depth = (.3 + t * .16) * (.75 + kit.noise(i * .09, 1.1, 453) * .5), wf = wid(i, 0), wn = wid(i, 5.3);
       far.push(L.pt([p[0] + nx * s * (hw * wf + .1), p[1] + ny * s * (hw * wf + .1)])); farIn.push(L.pt([p[0] + nx * s * hw * wf * (1 - depth * 2), p[1] + ny * s * hw * wf * (1 - depth * 2)]));
       near.push(L.pt([p[0] - nx * s * (hw * wn + .05), p[1] - ny * s * (hw * wn + .05)])); nearIn.push(L.pt([p[0] - nx * s * hw * wn * .78, p[1] - ny * s * hw * wn * .78])); mid.push(L.pt(p));
     });
@@ -766,12 +772,14 @@ window.GardenPaintedTerrain = (function () {
       flush(); }
     // crisp brushwork over the soft picture, from what each visible point of the field is: courses and joints on the crags,
     // stones on the scree, tufts and sprigs on the turf and heather, so a flank close up is rock and turf, not a smear
-    { const rr = kit.rng(seed + 77), N = F.NX * F.NY, n = Math.min(5200, Math.round(N / 26));
+    // (sparse and low in contrast: at one mark in 26 points the scree read as a rash of dots from afar, and a sharper
+    // repaint of the Horn took 124 ms)
+    { const rr = kit.rng(seed + 77), N = F.NX * F.NY, n = Math.min(2400, Math.round(N / 60));
       const turf = [kit.mix(P.fellLo, '#6e7a40', .3), kit.mix(P.fellHi, '#d8d2a0', .2)], heath = [P.heatherLo, P.heatherHi || P.heather];
       for (let k = 0; k < n; k++) { const q = Math.floor(rr() * N), c = F.cls[q]; if (!c) continue; const i = q % F.NX, j = (q / F.NX) | 0, z = F.h[q];
         const X = F.gx0 + i * F.ST, Y = F.gy0 + j * F.ST - z, s = .7 + rr() * .7, t = rr();
-        if (c === 4) { const w = 2.4 + rr() * 3.4, hh = 1.6 + rr() * 2.2; B.f(B.blob(rr, X + w * .25, Y + hh * .35, w, hh, 6, .3), '#4a443c', .42).f(B.blob(rr, X, Y, w * .9, hh * .85, 6, .3), t < .5 ? '#a89e8c' : '#9a9080', .8).f(B.blob(rr, X - w * .3, Y - hh * .35, w * .45, hh * .3, 5, .35), '#ddd4c0', .6); }   // a block of the crag, lit on its upper left
-        else if (c === 3) { B.f(B.ell(X + .5, Y + .6, 1.6 * s, .9 * s), '#5e564c', .32).f(B.ell(X, Y, 1.5 * s, .85 * s), t < .5 ? '#c8bea8' : '#a89e8c', .7); }
+        if (c === 4) { const w = 2.4 + rr() * 3.4, hh = 1.6 + rr() * 2.2; B.f(B.blob(rr, X + w * .25, Y + hh * .35, w, hh, 6, .3), '#4a443c', .3).f(B.blob(rr, X, Y, w * .9, hh * .85, 6, .3), t < .5 ? '#a89e8c' : '#9a9080', .55).f(B.blob(rr, X - w * .3, Y - hh * .35, w * .45, hh * .3, 5, .35), '#ddd4c0', .45); }   // a block of the crag, lit on its upper left
+        else if (c === 3) { if (t < .6) B.s(`M${X - 2.4 * s} ${Y + .4}q${2.4 * s} ${-.9} ${4.8 * s} ${(rr() - .5) * .8}`, t < .3 ? '#8a8070' : '#cfc6b0', .9, .45); else B.f(B.ell(X + .4, Y + .5, 1.3 * s, .6 * s), '#5e564c', .22).f(B.ell(X, Y, 1.2 * s, .55 * s), '#c4baa4', .5); }   // a scree runnel or a loose stone
         else if (c === 5) { if (t < .4) B.s(`M${X - 3} ${Y}q3 -.8 6 0`, P.snowSh, .9, .55); }
         else { const col = c === 2 ? heath[t < .5 ? 0 : 1] : turf[t < .55 ? 0 : 1]; for (let b = 0; b < 3; b++) B.s(`M${X + (b - 1) * 1.3} ${Y}l${(b - 1) * .9 + (rr() - .5) * .6} ${-(2 + rr() * 2.2) * s}`, col, .8, .55); }
       } }
