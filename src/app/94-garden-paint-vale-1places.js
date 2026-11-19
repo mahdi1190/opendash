@@ -233,7 +233,11 @@
       if (office && office.x < rt.points[0][0] + 1 && office.x + office.w > rt.points[0][0]) a = L.pt([office.x + office.w + .5, rt.points[0][1]]);
       const shape = V.capsule(kit.rng(seed), a, b, w / 2 * cw * .95 + 8, w / 2 * ch * 1.05 + 4, style === 'broken' || style === 'litter' ? .3 : .08), bb = kit.bboxOf(shape, 30);
       add(bb, seed, (B, r) => {
-        const path = new Path2D(B.poly(shape)), dry = new Path2D(); dry.rect(bb[0] - 10, bb[1] - 10, bb[2] - bb[0] + 20, bb[3] - bb[1] + 20); for (const w of L.D.freshwater || []) if (w.boundary) dry.addPath(V.loopPath([w.boundary.map(L.pt)]));
+        // (round 3, the valley chain: a working yard by a river meets it in one smooth quay line, its edge stones laid as a coping;
+        //  the water's cell outline made a stepped, jagged edge along the mill race. Other plazas keep the outline as it was.)
+        const smooth = style === 'yard', chaikin = pts => { let p = pts; for (let k = 0; k < 3; k++) { const q = []; for (let i = 0; i < p.length; i++) { const u = p[i], v = p[(i + 1) % p.length]; q.push({ x: u.x * .75 + v.x * .25, y: u.y * .75 + v.y * .25 }, { x: u.x * .25 + v.x * .75, y: u.y * .25 + v.y * .75 }); } p = q; } return p; };
+        const loops = (L.D.freshwater || []).filter(w => w.boundary).map(w => { const pts = w.boundary.map(L.pt); return smooth ? chaikin(pts) : pts; });
+        const path = new Path2D(B.poly(shape)), dry = new Path2D(); dry.rect(bb[0] - 10, bb[1] - 10, bb[2] - bb[0] + 20, bb[3] - bb[1] + 20); for (const lp of loops) dry.addPath(V.loopPath([lp]));
         B.cx.clip(dry, 'evenodd');
         const kitYard = window.GardenPaintGround && (style === 'setts' || style === 'yard') ? GardenPaintGround.paths({ areas: [{ kind: 'setts', points: shape }], season: C.season, kindAt: () => 'meadow', box: { x: bb[0], y: bb[1], w: bb[2] - bb[0], h: bb[3] - bb[1] } }) : null;
         if (kitYard) for (const o of kitYard) { B.cx.save(); o.draw(B, r, bb); B.cx.restore(); B.cx.globalAlpha = 1; }
@@ -253,6 +257,10 @@
           for (let k = 0; k < 40; k++) { const x = a.x + (r() - .3) * (b.x - a.x + 80), y = a.y + (r() - .5) * 50; B.f(B.blob(r, x, y, 2 + r() * 5, 1 + r() * 1.8, 6, .6), '#f8f0dc', .1 + r() * .14); }
           for (let k = 0; k < 70; k++) { const x = rx(), y = ry(); B.s(`M${x} ${y}l${(r() - .5) * 9} ${(r() - .5) * 3}`, r() < .7 ? '#e2bc5a' : '#c89a3c', 1.1, .8); }   // spilt straw
           for (let k = 0; k < 18; k++) B.f(B.ell(rx(), ry(), 1.8 + r() * 1.4, 1.1 + r() * .6), ['#b0682a', '#d38f3a', '#8a5a2c', '#7d8f4e'][Math.floor(r() * 4)], .75);   // a few blown leaves
+          // the coping along the race: dressed edge stones, lit on top, a wet dark lip where they meet the water, moss in the joints
+          for (const lp of loops) { if (!lp.some(q => q.x > bb[0] - 20 && q.x < bb[2] + 20 && q.y > bb[1] - 20 && q.y < bb[3] + 20)) continue; const lpPath = new Path2D(V.loopPath([lp]));
+            B.cx.save(); B.cx.lineJoin = 'round'; B.cx.globalAlpha = .6; B.cx.strokeStyle = '#2e3a36'; B.cx.lineWidth = 15; B.cx.stroke(lpPath); B.cx.strokeStyle = '#a8a088'; B.cx.lineWidth = 12; B.cx.stroke(lpPath); B.cx.strokeStyle = '#cfc6aa'; B.cx.lineWidth = 7; B.cx.globalAlpha = .8; B.cx.stroke(lpPath);
+            B.cx.setLineDash([2, 13]); B.cx.strokeStyle = '#6e6a58'; B.cx.lineWidth = 12; B.cx.globalAlpha = .7; B.cx.stroke(lpPath); B.cx.setLineDash([]); B.cx.restore(); }
           for (let k = 0; k < 3; k++) { const x = rx(), y = ry(); B.f(B.blob(r, x, y, 12 + r() * 10, 4 + r() * 2, 8, .4), '#7e6a4a', .35).f(B.blob(r, x - 2, y - 1, 8 + r() * 6, 2.4, 8, .4), '#b6cbd0', .5); }   // rain puddles in the low setts
         }
         else if (style === 'broken') { B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), P.lawnLo); V.flags(B, r, Object.assign({}, P, { stone: '#bdb8a4', stoneLo: '#a29e8a', stoneHi: '#d2cebc', grout: '#7d7a68' }), bb, { row: 13, w: 24, salt: seed, broken: .2, moss: .3 }); }
