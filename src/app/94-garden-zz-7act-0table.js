@@ -176,9 +176,7 @@ const GARDEN_ACTS = Object.freeze({
 const GARDEN_ACT_BY_PROP = Object.freeze({
   'ld-bench-a': [{ act: 'sit', name: 'the bench', stand: [0, -0.16], deg: 90, seat: 0.36 }],
   'ld-bench-b': [{ act: 'sit', name: 'the bench', stand: [0, -0.16], deg: 90, seat: 0.36 }],   // seat: the seat's height as drawn today, a share of the figure's height (the size standard asks 0.3 H: a painter who lowers it changes this one number)
-  'ld-stump': [{ act: 'sit', name: 'the stump', stand: [0, 0.06], deg: 90, seat: 0.34 }],
-  'ld-driftwood': [{ act: 'sit', name: 'the driftwood', stand: [0, 0.1], deg: 90, seat: 0.3 }],
-  'ld-boles': [{ act: 'sit', name: 'the log', stand: [0, 0.1], deg: 90, seat: 0.32 }],
+  'ld-stump': [{ act: 'sit', name: 'the stump', stand: [-0.2, 0.45], deg: 90, seat: 0.9 }],   // up on the top, to the left of its little door, legs down the front
   'ld-pump': [{ act: 'pump', name: 'the pump', stand: [0, 0.5], deg: -90 }],
   'ld-wish': [{ act: 'wish', name: 'the wishing well', stand: [0, 0.95], deg: -90 }],   // (far enough back not to stand on its stones)
   'ld-chapel': [{ act: 'bell', name: 'the chapel bell', stand: [0, 0.6], deg: -90 }],
