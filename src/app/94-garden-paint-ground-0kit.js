@@ -639,7 +639,7 @@ window.GardenPaintGround = (function () {
     // The stones: courses that run across the screen, every stone its own width, tone and corners, lit on its upper left.
     // A stone is laid where its middle is on the road, so the road's edge is the stones' own edge, never a ruled line.
     const TONES = ['#bfa97f', '#c9b489', '#d4c097', '#cebc98', '#b59d76', '#c6bda6', '#afa48e', '#d0b9a0'], GRANITE = ['#b4ada0', '#a8a294', '#c4beb0', '#9c968a'], mixMemo = new Map();
-    const mixQ = (a, b, t) => { const q = Math.round(clamp(t) * 8), k = a + b + q; let c = mixMemo.get(k); if (!c) { c = mix(a, b, q / 8); mixMemo.set(k, c); } return c; };
+    const mixQ = (a, b, t) => { const q = Math.round(clamp(t, 0, 1) * 8), k = a + b + q; let c = mixMemo.get(k); if (!c) { c = mix(a, b, q / 8); mixMemo.set(k, c); } return c; };
     const stones = (kind, phase) => ({ bb: bbAll, seed: 740 + phase, name: kind + ' stones ' + phase, draw(B, r0, cb) {
       const cov = coverage(cb, kind); if (!cov) return; const cx = B.cx, winter = season === 'winter', fine = scaleOf(cx) >= 1.3, over = kind === 'cobble' && kindsUsed.has('setts') ? coverage(cb, 'setts') : null; clips(cx);
       const setts = kind === 'setts', rowH = setts ? 8.4 : 6.6, tw = 96, y0 = Math.floor((cb[1] - 8) / rowH), y1 = Math.floor((cb[3] + 8) / rowH);
@@ -648,7 +648,7 @@ window.GardenPaintGround = (function () {
           for (const w0 of ws) { const w = w0 * f, mx = x + w / 2 + (r() - .5) * .5, my = (ry + .5) * rowH + (r() - .5) * .9, tone = r(), c1 = r(), j = r(); x += w; if (mx < cb[0] - 8 || mx > cb[2] + 8) continue; const v = cov.sample(mx, my); if (v < .5 + (j - .5) * .12 || over && over.sample(mx, my) > .46) continue;
             // (not wallpaper: the stone changes in patches a few strides across, greyer granite here, darker honey there, and
             // towards the edge stones are smaller, sunk and now and then missing; 19 Nov 2026)
-            const patch = noise(mx / 150, my / 105, 147), edgeK = clamp((.8 - v) / .3); if (edgeK > 0 && j < edgeK * .22) continue;
+            const patch = noise(mx / 150, my / 105, 147), edgeK = clamp((.8 - v) / .3, 0, 1); if (edgeK > 0 && j < edgeK * .22) continue;
             const pick = TONES[tone < .14 ? 0 : tone < .36 ? 1 : tone < .58 ? 2 : tone < .72 ? 3 : tone < .82 ? 4 : tone < .9 ? 5 : tone < .96 ? 6 : 7], base = patch > .6 ? mixQ(pick, GRANITE[Math.floor(tone * 4)], (patch - .6) * 2.2) : patch < .38 ? mixQ(pick, '#a08460', (.38 - patch) * 1.6) : pick;
             const sw = (w - 1.1 - j * .5) * (1 - edgeK * .18), sh = (rowH - 1.1 - (1 - j) * .5) * (1 - edgeK * .12), x0 = mx - sw / 2, yy = my - sh / 2;
             const rad = fine ? [1 + c1 * 1.6, 1 + j * 1.6, 1 + (1 - c1) * 1.6, 1 + (1 - j) * 1.6] : 1.4;

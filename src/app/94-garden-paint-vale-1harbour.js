@@ -54,7 +54,22 @@
     };
 
     // 1. Grass over the plain ground between the village and the beach
-    add(box, 31, (B, r, cb) => { B.cx.clip(coastP); V.lawn(B, r, L, P, cb, (x, y) => y >= QUAY.y0 && L.kind(x + .5, y + .5) === 'grass', fade, { salt: 31, wash }); });
+    // (the roads are not cut out of it on their ribbons' hard outline: the lawn is laid over them and then faded off each
+    // one in a soft band a little narrower than the road, so the road's own trodden edge and grass show; 19 Nov 2026)
+    const Gk = window.GardenPaintGround, roadLines = Gk ? [...L.routes.values()].filter(rt => rt.points && rt.points.length > 1 && rt.tier !== 'plaza').map(rt => { const pts = L.routePts(rt.id), k = Gk.routeKind(rt); return { pts, w: (Gk.ROUTE_WIDTH[k] || 30) * .82, bb: kit.bboxOf(pts, 60) }; }).filter(o => o.pts.length > 1) : [];
+    let lawnCanvas = null, lawnBrush = null;
+    add(box, 31, (B, r, cb) => {
+      const near = roadLines.filter(o => kit.meets(o.bb, cb));
+      if (!near.length) { B.cx.clip(coastP); V.lawn(B, r, L, P, cb, (x, y) => y >= QUAY.y0 && L.kind(x + .5, y + .5) === 'grass', fade, { salt: 31, wash }); return; }
+      // the lawn on a canvas of its own, the roads faded out of it there, then laid on this layer (nothing else is erased)
+      const c = B.cx.canvas; if (!lawnCanvas) lawnCanvas = document.createElement('canvas'); if (lawnCanvas.width !== c.width || lawnCanvas.height !== c.height) { lawnCanvas.width = c.width; lawnCanvas.height = c.height; }
+      const lx = lawnCanvas.getContext('2d'), T = B.cx.getTransform(), K = Math.abs(T.a) || 1; lx.setTransform(1, 0, 0, 1, 0, 0); lx.globalCompositeOperation = 'source-over'; lx.globalAlpha = 1; lx.filter = 'none'; lx.clearRect(0, 0, c.width, c.height); lx.setTransform(T);
+      if (!lawnBrush || lawnBrush.cx !== lx) lawnBrush = kit.brush(lx);
+      lx.save(); lx.clip(coastP); V.lawn(lawnBrush, r, L, P, cb, (x, y) => y >= QUAY.y0 && L.kind(x + .5, y + .5) === 'grass', fade, { salt: 31, wash, soft: true }); lx.restore();
+      lx.save(); lx.globalCompositeOperation = 'destination-out'; lx.filter = 'blur(' + (4 * K).toFixed(2) + 'px)'; lx.lineCap = 'round'; lx.lineJoin = 'round'; lx.strokeStyle = '#000';
+      for (const o of near) { lx.lineWidth = o.w; lx.beginPath(); o.pts.forEach((p, i) => i ? lx.lineTo(p.x, p.y) : lx.moveTo(p.x, p.y)); lx.stroke(); }
+      lx.restore(); B.cx.save(); B.cx.setTransform(1, 0, 0, 1, 0, 0); B.cx.drawImage(lawnCanvas, 0, 0); B.cx.restore();
+    });
 
     // 2. The sea edge all round: shallows and a lace of foam outside the coast, wet sand,
     // a wrack line and shells inside it. One continuous run of the sea coast (the bay and
@@ -107,11 +122,8 @@
     // It is the shared path kit's cobbled main road (94-garden-paint-ground-0kit.js), laid again on this layer over the
     // harbour's lawn: it had its own flags inside a dark kerb ribbon, a hard brown outline down both sides (art director,
     // 19 Nov 2026). The kit's road has a soft trodden edge with grass growing in, the same as every other road.
-    const promenade = L.routePts('harbour-walk'), G = window.GardenPaintGround;
-    if (promenade.length > 1 && G) {
-      const kind = G.routeKind(L.routes.get('harbour-walk') || { tier: 'main' }), bb = kit.bboxOf(promenade, 90);
-      for (const o of G.paths({ routes: [{ id: 'harbour-walk', kind, width: G.ROUTE_WIDTH[kind], points: promenade }], season: C.season, kindAt: () => 'lawn', box: { x: bb[0], y: bb[1], w: bb[2] - bb[0], h: bb[3] - bb[1] } })) add(o.bb, o.seed, o.draw, { clip: o.clip, tag: o.tag, name: o.name });
-    }
+    // The lawn above (1.) is taken off every road in a soft band, so the shared ground's road shows with its own edge.
+    const promenade = L.routePts('harbour-walk');
     for (const id of ['strand', 'lighthouse-walk', 'coast-walk']) {
       const pts = L.routePts(id); if (pts.length < 2) continue;
       add(kit.bboxOf(pts, 40), 35 + id.length, (B, r, cb) => {

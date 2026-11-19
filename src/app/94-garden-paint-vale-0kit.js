@@ -169,7 +169,7 @@ window.GardenPaintVale = (function () {
    *  test(x, y) places details; fade(x, y) feathers into the village ground. */
   function lawn(B, r, L, P, cb, test, fade, o) {
     o = o || {}; const W = L.W, cw = L.cw, ch = L.ch;
-    B.cx.save(); clipGround(B, L, cb, true);
+    B.cx.save(); clipGround(B, L, cb, true, !!o.soft);   // (soft: the caller fades the roads out itself)
     // (noBase: the shared ground's own kind shows through, painted with its light and shade; a flat fill here hid it)
     if (o.wash) o.wash(B, cb, o.base || P.lawn);
     else if (!o.noBase) B.f(B.rect(cb[0], cb[1], cb[2] - cb[0], cb[3] - cb[1]), o.base || P.lawn);

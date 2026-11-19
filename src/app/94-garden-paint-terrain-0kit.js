@@ -76,8 +76,8 @@ window.GardenPaintTerrainKit = (function () {
       // two translucent ellipses and six sticks read as one vector stamp repeated over the moor; 19 Nov 2026)
       heather(r, x, y, rx, P, bloom) {
         rx *= .75 + r() * .5; const ry = rx * (.4 + r() * .2), lobes = 2 + Math.floor(r() * 3), mid = mix(P.heather, P.heatherLo, .35);
-        B.f(D().blob(r, x + rx * .16, y + ry * .26, rx * 1.05, ry * .7, 9, .6), P.heatherLo, .75);
-        for (let i = 0; i < lobes; i++) { const ox = (r() - .5) * rx * 1.1, oy = (r() - .5) * ry * .5, s = .42 + r() * .38; B.f(D().blob(r, x + ox, y + oy - ry * .12, rx * s, ry * s, 8, .65), i % 2 ? P.heather : mid, .92); }
+        B.f(D().blob(r, x + rx * .16, y + ry * .26, rx * 1.05, ry * .7, 9, .6), P.heatherLo, .45);
+        for (let i = 0; i < lobes; i++) { const ox = (r() - .5) * rx * 1.1, oy = (r() - .5) * ry * .5, s = .42 + r() * .38; B.f(D().blob(r, x + ox, y + oy - ry * .12, rx * s, ry * s, 8, .65), i % 2 ? P.heather : mid, .62); }
         B.f(D().blob(r, x - rx * .3, y - ry * .38, rx * (.25 + r() * .2), ry * .26, 7, .6), P.heatherHi, .45);
         // the sprigs fan up and out from the cushion, dark at the root side, lit towards the light
         for (let i = 0, n = 7 + Math.floor(rx * 1.1 + r() * 4); i < n; i++) { const a = -1.5708 + (r() - .5) * 2, px = x + (r() - .5) * rx * 1.7, py = y + (r() - .25) * ry * .8, h = 1.4 + r() * 2.6, t = r(); B.s(`M${px} ${py}l${(Math.cos(a) * h).toFixed(2)} ${(Math.sin(a) * h).toFixed(2)}`, t < .4 ? P.heatherLo : t < .75 ? mid : P.heatherHi, .7 + r() * .4, .75); }

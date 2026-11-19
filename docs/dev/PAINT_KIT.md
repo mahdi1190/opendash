@@ -65,8 +65,9 @@ Two rules for an op, or chunks will not meet:
 
 Kinds: `lawn`, `meadow`, `forest`, `oldwood`, `moor`, `marsh`, `soil`, `sand`, `shingle`.
 
-Each is painted the same way: a colour field at three scales (broad light and shade, patches of richer and thinner
-growth, a fine grain), then its own brushwork by hashed tiles (the sward and clover of a lawn, the leaning grass and
+Each is painted the same way: a colour field at four scales (whole sunlit and shaded reaches several screens across,
+broad light and shade, patches of richer and thinner growth, a fine grain), its lit swells going towards a sunny straw
+and its hollows towards a deep cool green, then its own brushwork by hashed tiles (the sward and clover of a lawn, the leaning grass and
 flower drifts of a meadow, leaf litter and moss, heather and tussocks, pools and rushes, furrows, wind ripples and
 shells, packed pebbles). No flat fill, no repeat, no seam.
 
@@ -92,6 +93,15 @@ Which kind lies where comes from the layout, in `layoutKinds(W, data)`:
 
 To change the ground of a place, change the layout data (add a `presentation.ground` polygon), not the painter.
 
+A region layer that dresses ground (mowing bands, tufts) leaves the kit's ground showing: `GardenPaintVale.lawn(...,
+{ noBase: true })` adds the drifts and tufts without its old flat fill (the orchard does this). Broad colour a region lays
+over the kit's ground (heather drifts, the rises round a peak, scree aprons) is laid soft, at low resolution and
+stretched (`soft()` in `94-garden-paint-terrain-1fells.js`), never as hard-edged translucent ellipses. A dressing scatter
+(litter, flowers) is in drifts by noise, each mark its own size and turn, never one mark repeated evenly.
+
+A terrace wall that runs north and south (the orchard's banks) is drawn as a turf bank with a low dry-stone foot along
+its low side (`bankOps`), because this camera sees such a wall edge on; one that runs east and west keeps its face.
+
 ## 3. Paths: `paths(env)`
 
 `env = { routes: [{ id, kind, width, points: [{ x, y, w? }], closed? }], areas: [{ kind, points | ellipse }], season,
@@ -113,6 +123,13 @@ is where that coverage passes a half. So:
   is laid only where its middle is on the road, so the road's edge is the stones' own edge.
 
 `allow` and `within` are `Path2D` clips (both must hold); `kindAt(px, py)` tells the kit what grows at an edge.
+
+Cobbles and setts change stone in patches a few strides across (greyer granite, darker honey), are worn paler down the
+middle, and towards the edge are smaller, sunk and now and then missing, so a big square is not wallpaper. A yard on the
+fells (a plaza route there) is the kit's gravel at the route's width. A layer that paints lawn over the roads (the
+harbour) fades it off each road in a soft band a little narrower than the road (`destination-out` with a blur scaled by
+the level, on a canvas of its own so nothing else on the layer is erased), so the shared road shows with its own edge:
+never a road of its own inside a kerb ribbon, never a lawn cut on a ribbon's hard outline.
 
 A region painter that has painted something opaque over the shared ground (a rise, a terrace) can lay the same
 paths again on its own layer: the fells do, in `94-garden-paint-terrain-1fells.js`.
@@ -148,7 +165,14 @@ shadow that moves and a shadow that is painted fall the same way at every hour; 
   make its random numbers inside `draw` from a fixed seed, and scale any `ctx.filter` blur by the canvas scale.
 - `contact(ctx, x, y, rx, ry, a)`: the contact shadow alone.
 - `lightPool(ctx, x, y, rx, ry, a, colour)`: a soft pool of warm light for art baked for dusk and night. Lamps and
-  windows that are lit live are the light module's (`pointLights`); do not paint a second pool under them.
+  windows that are lit live are the light module's (`pointLights`); do not paint a second pool under them. Every painted
+  cottage and hall gets a lit window there at night, not only the shops and the land office.
+- **The turning hour** is the light module's, over the whole view (`paintEvening` in `94-garden-native-light.js`): a
+  multiply gradient stretched over the camera every frame, gold on the sun's side (upper left), rose along the top, amber
+  low on the left and violet on the far side while the sun is low (daylight about .5); rose, lilac and indigo once it has
+  set (about .2); and a warm glow added from the sun's side. The night's blue comes in only under daylight .22, so the
+  hour turns through violet and never through grey. Shadows stay long and readable at sunset. Paint nothing of your own
+  for dusk; a baked dusk picture is only for windows and lamp pools.
 
 Light a thing from the upper left: lit face and highlights up and left, shade down and right.
 
@@ -245,6 +269,11 @@ Walking with real keys round the green and down the harbour road, 24 s a run:
 | 1x, closest zoom, two runs | 0; 1 (52 ms) | 1; 3 | 55; 67 ms |
 | 2x screen, walking zoom, three runs | 0, 0, 0 | 3, 3, 3 | 55, 67, 67 ms |
 | 2x screen, closest zoom, two runs | 0, 0 | 1, 4 | 61, 73 ms |
+
+After the art director's round-1 fixes (19 Nov 2026, 1x, walking zoom, one 23.5 s real-key walk round the green): 0 long
+tasks, 0 frame gaps over 50 ms, longest gap 36 ms. Standing still, two ops are slow and were not fixed in that round: a
+vale-layer op with seed 61 near the mill (the marsh margin in `94-garden-paint-vale-1coast.js` or the mill footbridge in
+`-1places.js`) took 252 ms in one bake, and the shared ground's worst slice was 104 ms; neither ran during the walk.
 
 Before this round's last fixes the same walks had 1 to 3 long tasks a run on a 1x screen and 3 to 5 (50 to 94 ms) on a
 2x screen. A Chrome trace named them: `gl.checkFramebufferStatus` waiting 28 to 69 ms for the graphics process inside a
