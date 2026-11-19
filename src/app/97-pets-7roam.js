@@ -67,7 +67,9 @@ function _ptwNew(look, me) {
       const was = P.pose, mood = P.lastMood;
       if (lib.pose !== was || lib.face) P.draw(lib.pose, lib.face || mood || { eyes: 'open', mouth: 'smile' });
       let seen = true;
-      try { const r = P.node.getBoundingClientRect(); seen = r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight; } catch (e) { seen = true; }
+      // in view by the camera, in world cells (round 3: the native node's box is in canvas pixels, so on a screen with a pixel ratio above 1 a pet on the right half
+      // of the view read as off screen and never played its clips); the page box only when there is no camera
+      try { if (typeof _gwInView === 'function' && _gw && _gw.cam && _gw.cam.w) seen = _gwInView(P.x, P.y, 1.5); else { const r = P.node.getBoundingClientRect(); seen = r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight; } } catch (e) { seen = true; }
       if (seen && P.root) P.clipH = petClipRun(P.root, name);
       P.busy = lib.ms / 1000; P.cb = () => { if (lib.pose !== was || lib.face) P.draw(was || 'sit', mood || { eyes: 'open', mouth: 'smile' }); if (then) then(); };
       if (typeof petGardenPlayClip === 'function') petGardenPlayClip(P, name, o);
@@ -480,7 +482,7 @@ function _ptwThink(P, W, dt) {
   if (P.seatRecovery && (P.arrive !== P.seatRecovery.advance || P.tx == null)) P.seatRecovery = null;
   if (!guided && _ptwSeatRecover(P)) return;
   const recovering = P.seatRecovery && P.arrive === P.seatRecovery.advance && P.tx != null;
-  if (!guided && !recovering && _ptwLifeGoal(P, dt)) return;
+  if (!guided && !recovering && !(P.lifeHold > performance.now()) && _ptwLifeGoal(P, dt)) return;   // (round 3: one of the hundred things is playing; a passing butterfly waits)
   if (!guided && !recovering && _ptwComeAlong(P)) return;
   if (P.busy > 0) { P.busy -= dt; if (P.busy <= 0 && P.cb) { const c = P.cb; P.cb = null; c(); } if (P.busy > 0) return; }
   if (typeof petGardenGuideReady === 'function' && petGardenGuideReady(P, W)) return;

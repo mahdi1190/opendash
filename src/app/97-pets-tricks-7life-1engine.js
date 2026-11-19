@@ -138,7 +138,7 @@ function _plStart(P, row, C, forced) {
     else if (row.at) { const t = forced ? (_plNear(P, row.at, 40) || _plSpotNear(P)) : _plNear(P, row.at); ok = !!t && _plGoDo(P, t, _plClips(row), row.rest); }
     else { _plPlay(P, _plClips(row), row.rest); ok = true; }
   } catch (e) { ok = false; try { console.error('[pet life]', row.id, e); } catch (x) { /* quiet */ } }
-  if (ok) { _plDiary(row); P.lifeRow = row.id; P.lifeAt = performance.now(); }
+  if (ok) { _plDiary(row); P.lifeRow = row.id; P.lifeAt = performance.now(); P.lifeHold = P.lifeAt + Math.min(12000, 2500 + _plClips(row).reduce((t, c) => t + ((typeof petClipDef === 'function' && petClipDef(c) || {}).ms || 1200), 0)); }
   return ok;
 }
 function _plPickable(P, row, C) {
