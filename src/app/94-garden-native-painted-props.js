@@ -315,8 +315,11 @@ window.GardenPaintedProps = (function () {
     seat: ['street.bench', 0, { w: 84 }], lamp: ['street.lamp', 0, { h: Math.round(gardenSizePx('lamp') / .61) }], lampbox: ['street.lamp', 0, { h: Math.round(gardenSizePx('lamp') / .61) }],   /* (a lamp post is 1.8 to 2 times the player; the post is .61 of the library lamp's box) */ lighthouse: ['building.lighthouse', 0, { h: 190 }],
     reeds: null, boat: null,
   };
+  // what each painter's thing stands in (GardenPaintSeat): false for things afloat or in reeds
+  const SEATS = { postbox: { kind: 'flags', w: 24 }, lectern: { kind: 'flags', w: 30 }, sundial: { kind: 'flags', w: 34 }, tripod: { kind: 'earth', w: 28, way: false }, board: { kind: 'earth', w: 84 }, lakeboard: { kind: 'flags', w: 30 }, smoker: { kind: 'earth', w: 34 }, well: { kind: 'flags', w: 50 }, sign: { kind: 'turf', w: 20, stones: 3 }, fountain: { kind: 'flags', w: 90 }, bench: { kind: 'earth', w: 84 }, 'sight:mill': { kind: 'earth', w: 176, stones: 0 }, 'sight:barn': { kind: 'earth', w: 148 }, 'sight:smoke': { kind: 'earth', w: 112 }, 'sight:hide': { kind: 'turf', w: 80, stones: 0 }, 'sight:churn': { kind: 'flags', w: 50 }, 'sight:frogstone': { kind: 'moss', w: 48, stones: 0, way: false }, 'lib:seat': { kind: 'earth', w: 76, stones: 0 }, 'lib:lamp': { kind: 'flags', w: 14, stones: 2, way: false }, 'lib:lampbox': { kind: 'flags', w: 14, stones: 2, way: false }, 'lib:lighthouse': { kind: 'flags', w: 60 }, 'lib:reeds': false, 'lib:boat': false, post: { kind: 'earth', w: 12, stones: 0, way: false } };
   function propPainter(prop) {
     if (!prop) return null;
+    if (window.GardenPaintedMarks && GardenPaintedMarks.knows(prop.id)) return null;   // (a sight painted into its place: 94-garden-paint-terrain-5sights.js)
     if (prop.id === 'craft-bench') return 'bench';
     if (prop.id === 'jetty-post') return 'post';
     const k = prop.art || String(prop.kind || '').replace(/^l[df]-/, '');
@@ -361,6 +364,8 @@ window.GardenPaintedProps = (function () {
       if (which === 'fountain') addDrops(scene, h, fx, foot - 52, 16);
       if (P.extra) ok(() => P.extra(scene, h, fx, artFoot, { season, night, prop, sc, more, W }));
     }
+    // seated in the ground it stands on (94-garden-paint-terrain-5sights.js): a worn apron, foundation, contact, growth, a way to the path
+    { const st = SEATS[which]; if (st !== false && window.GardenPaintSeat && o.layer) { const seat = ok(() => GardenPaintSeat.add(scene, o.layer, prop, W, Object.assign({ season, x: fx, foot }, st || {}))); if (seat) { const d0 = h.destroy; h.destroy = () => { seat.destroy(); d0(); }; } } }
     return finish(h, b, { x: fx, y: foot });
   }
   function addDrops(scene, h, x, y, spread) {

@@ -133,17 +133,28 @@ window.GardenPaintedMarks = (function () {
   function knows(id) { return !!ART[id]; }
   /** Where a painted landmark's own door is, as an offset from its foot (world px), or null when it has none. */
   function wayIn(id) { const a = ART[id]; return a ? a.door || (id === 'ld-grotto' ? { dx: 0, dy: 0 } : null) : null; }
-  /** A painted landmark as a world handle (the same shape the village's painted buildings return). */
-  function landmark(scene, prop, sc, element, W) {
+  /** A painted landmark as a world handle (the same shape the village's painted buildings return).
+   *  layer: the ground's container, for the seat under it (GardenPaintSeat, 94-garden-paint-terrain-5sights.js). An art
+   *  with `lit` has a second picture for dusk and night (lit windows, a lamp), swapped by setLitWindows; `lights` are
+   *  its live warm lights at night, as offsets from its foot; `seat` says what it stands in (false: nothing). */
+  function landmark(scene, prop, sc, element, W, layer) {
     const kit = KIT(), art = prop && ART[prop.id]; if (!kit || !art) return null;
-    const season = sc.season || 'summer', key = 'gpm|' + prop.id + '|' + season;
+    const season = sc.season || 'summer', night0 = !!art.lit && (sc.tod === 'dusk' || sc.tod === 'night'), keyOf = n => 'gpm|' + prop.id + '|' + season + (n ? '|n' : '');
     const node = element(scene, 'g', { class: 'gd-it gd-prop gd-painted gd-painted-mark', 'data-prop': prop.id, 'data-z': prop.y + prop.h, 'data-x': prop.x });
-    const x = (prop.x + prop.w / 2) * W.cellW, foot = W.sky + (prop.y + prop.h) * W.cellH - 2;
-    const im = kit.sprite(scene, node._inner, key, art.box, B => art.draw(B, { season }), x, foot, K, art.shade !== false); if (!im) { node.remove(); return null; }
-    im.setDepth(0);
+    const x = (prop.x + prop.w / 2) * W.cellW + (art.dx || 0), foot = W.sky + (prop.y + prop.h) * W.cellH - 2;
+    // a flat sight (a pool let into the ground, a turf maze) lies in the ground's container with its seat: under every actor
+    const host = art.flat && layer ? layer : node._inner, depthOf = () => art.flat && layer ? (window.GardenPaintSeat ? GardenPaintSeat.DEPTH + 1 : -9344) : 0;
+    let im = kit.sprite(scene, host, keyOf(night0), art.box, B => art.draw(B, { season, night: night0, prop }), x, foot, K, art.shade !== false); if (!im) { node.remove(); return null; }
+    im.setDepth(depthOf());
+    const seat = art.seat !== false && window.GardenPaintSeat && layer ? GardenPaintSeat.add(scene, layer, prop, W, Object.assign({ season, x, foot }, art.seat || {})) : null;
     const b = { x: x + art.box[0], y: foot + art.box[1], width: art.box[2] - art.box[0], height: art.box[3] - art.box[1] };
     node.nativeBounds = b;
-    return { root: node.target, rootNode: node, bounds: b, painted: true, shaded: art.shade !== false, foot: { x, y: foot }, update() {}, destroy() { node.remove(); } };
+    let lit = night0;
+    const lights = night0 && art.lights ? art.lights.map(([dx, dy, r]) => ({ x: x + dx, y: foot + dy, radius: r || 110, pool: true })) : [];
+    const h = { root: node.target, rootNode: node, bounds: b, painted: true, shaded: art.shade !== false, foot: { x, y: foot }, lights, update() { if (seat) { seat.setVisible(node.target.visible); seat.setAlpha(node.target.alpha); } },
+      setLitWindows(on) { on = !!on && !!art.lit; if (on === lit) return; lit = on; const next = kit.sprite(scene, host, keyOf(on), art.box, B => art.draw(B, { season, night: on, prop }), x, foot, K, art.shade !== false); if (!next) return; next.setDepth(depthOf()); im.destroy(); im = next; h.lights.length = 0; if (on && art.lights) for (const [dx, dy, r] of art.lights) h.lights.push({ x: x + dx, y: foot + dy, radius: r || 110, pool: true }); },
+      destroy() { if (seat) seat.destroy(); if (host !== node._inner) im.destroy(); node.remove(); } };
+    return h;
   }
   return { knows, landmark, wayIn, ART };
 })();
