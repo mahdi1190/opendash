@@ -112,7 +112,13 @@ function _plPlay(P, clips, rest, after, o) {
   clips = clips.filter(c => _plSuits(P, c) && (typeof petClipDef !== 'function' || petClipDef(c) || PET_CLIPS[c]));
   const tight = !!(P.lifeCur && (P.lifeCur.group === 'you' || P.lifeCur.tight));
   if (P.me && !_pl.here && !o.at && !o.staged && !(P.lifeCur && P.lifeCur.stay) && _plFar(P, tight)) { const t = _plStage(P, tight); if (t) { P.lifeStaged = 1; P.walkTo(t.x, t.y, true, () => { _plFacePlayer(P); _plPlay(P, clips, rest, after, Object.assign({}, o, { staged: 1 })); }); return; } }
-  const row = P.lifeCur, kind = o.prop || row && (row.propAlways || (P.lifeStaged || _pl.here) && row.prop);
+  let row = P.lifeCur, kind = o.prop || row && (row.propAlways || (P.lifeStaged || _pl.here) && row.prop);
+  // the thing it needs goes only on ground where it makes sense: if where it stands is a road, a plaza or a bed's edge, it moves to a spot
+  // beside you where the thing fits; with none in reach the row plays without it
+  if (kind && P.me && !_pl.here && !o.noProp && !o.fitted && typeof _plGroundOk === 'function') {
+    const pl = _ptwPlayer(), side = pl ? (P.x >= pl.x ? 1 : -1) : 1;
+    if (!_plGroundOk(kind, P.x, P.y, side, P)) { const t = _plStage(P, false, kind); if (t && Math.hypot(t.x - P.x, t.y - P.y) > 0.05) { P.walkTo(t.x, t.y, true, () => { _plFacePlayer(P); _plPlay(P, clips, rest, after, Object.assign({}, o, { staged: 1, fitted: 1 })); }); return; } if (!t) kind = ''; }
+  }
   const next = (i) => {
     if (i >= clips.length) { P.sit(); P.busy = rest == null ? 1.2 : rest; if (after) after(); return; }
     P.clip(clips[i], _plMs(clips[i]), () => next(i + 1), i > 0 ? { quiet: true } : undefined);
@@ -130,11 +136,15 @@ function _plStandOk(x, y) { try { if (typeof gardenWorldFree === 'function' ? !g
 /** Too far from you to read (over two cells, or out of view), or so close it would stand on you. */
 function _plFar(P, tight) { const pl = _ptwPlayer(); if (!pl) return false; const d = Math.hypot(pl.x - P.x, (pl.y - P.y) * 1.4); return d > (tight ? 1.15 : 2.1) || Math.abs(pl.x - P.x) < 0.5 && Math.abs(pl.y - P.y) < 0.6 || !_plSeen(P.x, P.y); }
 /** Your companion's stage: just beside you (two thirds of a cell to a cell off, a little in front), on the side it is already on. */
-function _plStage(P, near) {
+function _plStage(P, near, kind) {
   const pl = _ptwPlayer(); if (!pl) return null;
-  const s = P.x >= pl.x ? 1 : -1, ring = near ? [[0.62, 0.12], [0.58, 0.3], [0.72, -0.08]] : [[0.78, 0.1], [0.7, 0.32], [0.95, -0.06], [1.05, 0.34], [1.25, 0.12]];
-  for (const [a, b] of ring) for (const k of [s, -s]) { const x = pl.x + a * k, y = pl.y + b; if (_plStandOk(x, y)) return { x, y, free: true, stage: 1 }; }
-  return null;
+  if (kind === '-') kind = ''; else if (!kind && P.lifeCur && !_pl.here) kind = P.lifeCur.propAlways || P.lifeCur.prop || '';
+  const s = P.x >= pl.x ? 1 : -1, sz = typeof _ptwH === 'function' ? Math.max(0, (_ptwH(P.look.species) - 32) / 48) : 0;
+  // bigger pets stand a little further off so the two figures never overlap (round 3: pets drawn larger)
+  let ring = near ? [[0.62, 0.12], [0.58, 0.3], [0.72, -0.08]] : [[0.78, 0.1], [0.7, 0.32], [0.95, -0.06], [1.05, 0.34], [1.25, 0.12]];
+  if (kind) ring = [[0.85, 0.12], [1.0, 0.3], [1.0, -0.1], [1.25, 0.15], [1.2, 0.45], [1.5, 0.1], [1.4, -0.25], [1.7, 0.35], [2.0, 0.1]];
+  for (const [a0, b] of ring) for (const k of [s, -s]) { const a = a0 + sz, x = pl.x + a * k, y = pl.y + b; if (_plStandOk(x, y) && (!kind || typeof _plGroundOk !== 'function' || _plGroundOk(kind, x, y, k, P))) return { x, y, free: true, stage: 1 }; }
+  return kind && arguments.length < 3 ? _plStage(P, near, '-') : null;   // no ground for the thing near you: stand beside you anyway (the row then plays without it)
 }
 /** Walk beside a thing, face it, do it. False when there is no way there. Your companion only goes to a thing you can see (a row played off screen
  *  is a row nobody sees); when the thing is out of view, a row that brings its own (a puddle, flowers, a leaf pile) plays beside you instead. */
@@ -151,6 +161,26 @@ function _plGoDo(P, t, clips, rest, after, run) {
   }
   if (!near) return false;
   P.walkTo(near.x, near.y, !!run, () => { if (t.x !== near.x) P.dir = t.x >= P.x ? 1 : -1; _plPlay(P, clips, rest, after, { at: 1 }); });
+  return true;
+}
+/* Round 3, the critic: rows with you must really touch you (a pet landed on your head, stood on your leg, high-fived the air, waved from two
+   cells off). _plTouch: the spot beside you for a kind of contact, from the pet's own drawn size: 'side' (spin, wave, bow, cheer: close, never
+   overlapping), 'five' (its raised paw meets your hand), 'lap' (beside you on the bench, its head across your lap), 'feet' (just in front of you,
+   its chin on your shoes). It comes there, faces you, and only then plays. */
+function _plHalf(P) { const W = typeof GARDEN_WORLD !== 'undefined' ? GARDEN_WORLD.cellW : 48; return (typeof _ptwH === 'function' ? _ptwH(P.look.species) : 32) * 0.46 / W; }
+const _PL_TOUCH = Object.freeze({ side: [1, 0.24, 0.04], five: [0.62, 0.2, 0.03], lap: [0.55, 0.12, 0.08], feet: [0.5, 0.02, 0.16] });
+function _plTouch(P, how) {
+  const pl = _ptwPlayer(); if (!pl) return null;
+  const [k, add, dy] = _PL_TOUCH[how] || _PL_TOUCH.side, d = _plHalf(P) * k + add, s = P.x >= pl.x ? 1 : -1;
+  for (const side of [s, -s]) for (const ey of [0, 0.08, -0.06]) { const x = pl.x + side * d, y = pl.y + dy + ey; if (_ptwFree(x, y)) return { x, y, side }; }
+  return null;
+}
+/** Come to the touch spot, face you, then play the clips (after: when done). False when there is no room beside you. */
+function _plCome(P, how, clips, rest, after) {
+  const t = _plTouch(P, how); if (!t) return false;
+  const go = () => { P.dir = -t.side; _plPlay(P, clips, rest, after, { at: 1, noProp: 1 }); };
+  if (Math.hypot(t.x - P.x, (t.y - P.y) * 1.4) < 0.06) { P.x = t.x; P.y = t.y; go(); return true; }
+  P.walkTo(t.x, t.y, Math.hypot(t.x - P.x, t.y - P.y) > 1.5, go);
   return true;
 }
 function _plSpotNear(P, r) { for (let i = 0; i < 8; i++) { const a = Math.random() * 6.28, d = 0.8 + Math.random() * (r || 1.6), x = P.x + Math.cos(a) * d, y = P.y + Math.sin(a) * d * 0.7; if (_ptwFree(x, y)) return { x, y, free: true }; } return null; }
@@ -207,6 +237,9 @@ function petLifeTick(P, W, dt) {
   const pl = _ptwPlayer(), doing = _plDoing();
   if (pl && pl.moving) { _pl.moveT += dt; _pl.stillT = 0; } else { if (_pl.moveT > 0) _pl.lastMoveT = _pl.moveT; _pl.moveT = 0; _pl.stillT += dt; }
   if (_pl.stillT - dt < 30 && _pl.stillT >= 30 && !doing && Math.hypot(P.x - _gw.px, P.y - _gw.py) < 5) petLifeEvent('still');   // half a minute stood still: it comes to lie on your feet
+  // 46: it greets you each time you come into the garden (the first time, and again when you come back from another page: the loop stops while
+  // the garden is shut, so a gap of a few seconds between ticks is a return)
+  const tNow = performance.now(); if (_pl.lastTick && tNow - _pl.lastTick > 3000 && state && state.view === 'garden') _pl.greeted = 0; _pl.lastTick = tNow;
   if (!_pl.greeted) { _pl.greeted = 1; _pl.built = Date.now(); if (!_ptwVisiting()) petLifeEvent('greet'); }   // clock-ok: a gap
   if (P.pose === 'sleep' && P.busy > 8 && !_ptS().lifeFav && !_ptwVisiting() && _ptwFree(P.x, P.y)) { const p = _ptS(true); p.lifeFav = [Math.round(P.x * 10) / 10, Math.round(P.y * 10) / 10]; _ptNote('life-favspot'); }
   const room = doing === 'room';
@@ -221,7 +254,8 @@ function petLifeTick(P, W, dt) {
 }
 const _PL_EVENTS = Object.freeze({ still: 'on-your-feet', greet: 'greet', 'welcome-back': 'door-wait', goodbye: 'goodbye-wave', morning: 'morning', tired: 'run-tired', pat: 'happy-spin', photo: 'photo-pose', 'emote-dance': 'dance-with', 'emote-waltz': 'dance-with', 'emote-boogie': 'dance-with', 'emote-sit': 'bench-lap', 'emote-wave': 'wave-back', 'emote-cheer': 'cheer-with', 'emote-bow': 'bow-with', 'emote-clap': 'cheer-with' });
 function petLifeEvent(kind) {
-  if (kind === 'pat') _pl.lastPat = Date.now();   // clock-ok: a gap
+  // 47: every third pat in a row (each within a few seconds of the last) and it spins for joy; the pats in between are its little hop
+  if (kind === 'pat') { const now = Date.now(); _plPatN = now - (_pl.lastPat || 0) < 6000 ? _plPatN + 1 : 1; _pl.lastPat = now; if (_plPatN % 3) return; }   // clock-ok: a gap
   const id = _PL_EVENTS[kind]; if (!id || typeof PET_LIFE_BY === 'undefined' || !PET_LIFE_BY[id]) return;
   if (_pl.q.includes(id) || _pl.q.length > 3) return;
   _pl.q.push(id);
@@ -278,7 +312,7 @@ function petLifeMenuItems(P) {
     if (typeof gardenBubbleClose === 'function') gardenBubbleClose();
     P.tx = null; P.arrive = null; P.busy = 0; P.cb = null; P.lifeCur = null; _plFacePlayer(P); _plDiary(r);
     if (r.id === 'belly-rub' && typeof petBondGive === 'function') { try { petBondGive('pat'); } catch (e) { /* only a moment */ } }
-    _plPlay(P, _plClips(r), 1.5, () => P.hearts());
+    if (!_plCome(P, r.id === 'high-five' ? 'five' : 'side', _plClips(r), 1.5, () => P.hearts())) _plPlay(P, _plClips(r), 1.5, () => P.hearts());
   } }));
 }
 
@@ -333,8 +367,8 @@ function _plGoodbye(go) {
     P.tx = null; P.arrive = null; P.busy = 0; P.cb = null; P.perch = null;
     P.lifeCur = null;
     // more than a step away: it trots over first, so the wave is beside you and to you (the page waits a little longer for it)
-    const t = _plFar(P, true) && _plStage(P, true), pl = _ptwPlayer();
-    if (t && pl && Math.hypot(t.x - P.x, t.y - P.y) < 4) { P.walkTo(t.x, t.y, true, () => { _plFacePlayer(P); _plPlay(P, ['l-wave'], 1.5, null, { at: 1 }); }); setTimeout(go, 1350 + Math.min(1300, Math.hypot(t.x - P.x, t.y - P.y) * 420)); }
+    const t = _plTouch(P, 'side'), pl = _ptwPlayer();
+    if (t && pl && Math.hypot(t.x - P.x, t.y - P.y) > 0.08 && Math.hypot(t.x - P.x, t.y - P.y) < 4) { P.walkTo(t.x, t.y, true, () => { P.dir = -t.side; _plPlay(P, ['l-wave'], 1.5, null, { at: 1 }); }); setTimeout(go, 1350 + Math.min(1300, Math.hypot(t.x - P.x, t.y - P.y) * 420)); }
     else { _plFacePlayer(P); _plPlay(P, ['l-wave'], 1.5, null, { at: 1 }); setTimeout(go, 1350); }
     return true;
   } catch (e) { return false; }

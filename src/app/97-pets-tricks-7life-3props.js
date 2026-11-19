@@ -51,8 +51,8 @@ const _PLP_ART = Object.freeze({
     anim: 'flicker',
   },
 });
-/** Draw a row's thing at the pet's feet for ms, faded in and out. The pet's picture flips with it, so the thing stays in front of its nose. */
-function _plProp(P, kind, ms) {
+/** The old way, in the pet's own picture and units (the treehouse sill only: it belongs with the perched pose). */
+function _plPropIn(P, kind, ms) {
   const art = _PLP_ART[kind], root = P && P.root; if (!art || !root || !root.querySelector) return;
   try {
     const fxp = (root.querySelector('.pt-fx') || {}).parentNode || root;
@@ -64,14 +64,174 @@ function _plProp(P, kind, ms) {
       const total = Math.max(1200, ms + 300), fade = Math.min(0.12, 260 / total);
       const a = gardenVisualAnimate(g, [{ offset: 0, opacity: 0 }, { offset: fade, opacity: 1 }, { offset: 1 - fade, opacity: 1 }, { offset: 1, opacity: 0 }], { duration: total, easing: 'linear', fill: 'both' });
       a.onfinish = () => g.remove(); a.oncancel = () => g.remove();
-      if (art.anim && typeof _pcMotionOn === 'function' && _pcMotionOn()) {
-        const kids = g.querySelectorAll ? [...g.querySelectorAll(art.anim === 'flicker' ? '.plp-flame' : 'g, path')].slice(0, 6) : [];
-        for (const [i, k] of kids.entries()) { try { if (!native) { k.style.transformBox = 'fill-box'; k.style.transformOrigin = '50% 100%'; } gardenVisualAnimate(k, art.anim === 'flicker' ? [{ transform: 'scale(1,1)' }, { transform: 'scale(1.08,0.9)' }, { transform: 'scale(0.94,1.1)' }, { transform: 'scale(1,1)' }] : art.anim === 'ripple' ? [{ opacity: 1 }, { opacity: 0.7 }, { opacity: 1 }] : [{ transform: 'rotate(0deg)' }, { transform: `rotate(${i % 2 ? 4 : -4}deg)` }, { transform: 'rotate(0deg)' }], { duration: art.anim === 'flicker' ? 420 + i * 60 : 1400 + i * 170, iterations: Math.ceil(total / 400), easing: 'ease-in-out' }); } catch (e) { /* still */ } }
-      }
       return g;
     };
     if (art.back) make(art.back, false);
     if (art.front) make(art.front, true);
+  } catch (e) { /* a thing it can do without */ }
+}
+/* ---------- round 3 (the critic): the things, painted to the vale's standard, on the pet's OUTER node ----------
+   The thing is a child of the pet's own place in the world (P.node), not of its pose picture, so a clip that changes the pose (sit, lie, doze)
+   no longer takes the campfire away, and a dive does not squash the leaf pile with the pet. World px, the pet's feet at (0, 0), +x away from you
+   (the pet stands beside you, so the thing goes on its far side and never reaches your feet). Sized from the pet (u: a dog is 1) but never to a
+   speck. Built once per kind and size, kept as text. */
+const _PLQ = { cache: new Map(), live: [] };
+function _plRnd(seed) { let a = seed >>> 0; return () => { a = (a * 1664525 + 1013904223) >>> 0; return a / 4294967296; }; }
+const _plF = (v) => (Math.round(v * 10) / 10).toString();
+/** A small leaf, pointed both ends, at (x, y), rotated a degrees, length l. */
+function _plLeaf(x, y, a, l, fill, vein) { const w = l * 0.42; return `<g transform="translate(${_plF(x)} ${_plF(y)}) rotate(${Math.round(a)})"><path d="M${_plF(-l / 2)} 0Q0 ${_plF(-w)} ${_plF(l / 2)} 0Q0 ${_plF(w)} ${_plF(-l / 2)} 0z" fill="${fill}"/>${vein ? `<path d="M${_plF(-l / 2.4)} 0H${_plF(l / 2.4)}" stroke="${vein}" stroke-width="0.35" opacity="0.6"/>` : ''}</g>`; }
+const _PLQ_ART = {
+  // a real muddy puddle on soil: a darker wet rim, the mud, water holding the sky, a glint, tufts of grass and pebbles at its edge
+  puddle(u) {
+    const r = _plRnd(7), W = 24 * u, Hh = 6.2 * u, blob = (k, dy) => { let d = ''; for (let i = 0; i <= 12; i++) { const t = i / 12 * Math.PI * 2, w = i === 12 ? 1 : 1 + (r() - 0.5) * 0.16; d += (i ? 'L' : 'M') + _plF(Math.cos(t) * W * k * w) + ' ' + _plF(Math.sin(t) * Hh * k * w + dy); } return d + 'z'; };
+    return { back: `<ellipse cx="0" cy="0.6" rx="${_plF(W * 1.22)}" ry="${_plF(Hh * 1.4)}" fill="#5c4630" opacity="0.32"/><path d="${blob(1.08, 0.3)}" fill="#6a5034" opacity="0.85"/><path d="${blob(0.96, 0.2)}" fill="#4a3826"/>`
+      + `<path d="${blob(0.86, 0.1)}" fill="#5d7f90"/><path d="M${_plF(-W * 0.72)} ${_plF(-Hh * 0.18)}Q${_plF(-W * 0.1)} ${_plF(-Hh * 0.95)} ${_plF(W * 0.66)} ${_plF(-Hh * 0.3)}Q${_plF(W * 0.1)} ${_plF(Hh * 0.05)} ${_plF(-W * 0.72)} ${_plF(-Hh * 0.18)}z" fill="#a9cbd9" opacity="0.9"/>`
+      + `<path d="M${_plF(-W * 0.5)} ${_plF(Hh * 0.38)}Q0 ${_plF(Hh * 0.72)} ${_plF(W * 0.55)} ${_plF(Hh * 0.3)}" stroke="#3e5a68" stroke-width="${_plF(1.1 * u)}" fill="none" opacity="0.55"/>`
+      + `<path d="M${_plF(-W * 0.42)} ${_plF(-Hh * 0.42)}q${_plF(W * 0.16)} ${_plF(-Hh * 0.22)} ${_plF(W * 0.34)} ${_plF(-Hh * 0.1)}" stroke="#f4fbff" stroke-width="${_plF(1.1 * u)}" stroke-linecap="round" fill="none"/><circle cx="${_plF(W * 0.36)}" cy="${_plF(-Hh * 0.2)}" r="${_plF(0.8 * u)}" fill="#f4fbff"/>`
+      + `<g stroke="#5b8f3a" stroke-width="${_plF(1.1 * u)}" stroke-linecap="round" fill="none"><path d="M${_plF(-W * 0.98)} ${_plF(-Hh * 0.2)}q-1 -5 1 -8M${_plF(-W * 0.9)} ${_plF(-Hh * 0.3)}q1 -4 3 -6M${_plF(-W * 1.04)} ${_plF(-Hh * 0.1)}q-2 -3 -3 -5M${_plF(W * 0.94)} ${_plF(-Hh * 0.6)}q0 -4 -2 -7M${_plF(W * 1.0)} ${_plF(-Hh * 0.5)}q2 -3 3 -5"/></g>`
+      + `<ellipse cx="${_plF(W * 0.82)}" cy="${_plF(Hh * 0.62)}" rx="${_plF(2.2 * u)}" ry="${_plF(1.4 * u)}" fill="#9a958a"/><ellipse cx="${_plF(W * 0.8)}" cy="${_plF(Hh * 0.5)}" rx="${_plF(1.3 * u)}" ry="${_plF(0.6 * u)}" fill="#c9c4b8"/><ellipse cx="${_plF(-W * 0.72)}" cy="${_plF(Hh * 0.82)}" rx="${_plF(1.6 * u)}" ry="${_plF(1 * u)}" fill="#8a857a"/>`,
+      rings: [[-W * 0.25, 0.2, W * 0.32, Hh * 0.32], [W * 0.3, -0.4, W * 0.24, Hh * 0.26]], w: W * 1.1 };
+  },
+  // a drink: a smaller puddle out in front of the nose
+  pool(u) { const Q = _PLQ_ART.puddle(u * 0.62); return { back: `<g transform="translate(${_plF(17 * u)} 0)">${Q.back}</g>`, rings: Q.rings.map(([x, y, a, b]) => [x + 17 * u, y, a, b]), w: 17 * u + Q.w, off: 17 * u }; },
+  // a heaped pile of autumn leaves: separate leaves on a dark mound, more spilled round its foot; the back half behind the pet, the front half over it
+  leaves(u) {
+    const r = _plRnd(21), W = 25 * u, Ht = 13 * u, cols = ['#c8642a', '#e0913a', '#b8452a', '#f0c048', '#9a3e22', '#d47a2e', '#e8a840'];
+    let back = `<ellipse cx="0" cy="0.8" rx="${_plF(W * 1.25)}" ry="${_plF(4.4 * u)}" fill="#3a2a1a" opacity="0.26"/><path d="M${_plF(-W)} 1Q${_plF(-W * 0.7)} ${_plF(-Ht)} 0 ${_plF(-Ht * 1.05)}Q${_plF(W * 0.7)} ${_plF(-Ht)} ${_plF(W)} 1z" fill="#7a3a1e"/>`, front = '';
+    for (let i = 0; i < 70; i++) {
+      const x = (r() * 2 - 1) * W, top = -Ht * Math.sqrt(Math.max(0, 1 - (x / W) ** 2)), y = top + r() * (-top + 1.5 * u);
+      const leaf = _plLeaf(x, y, r() * 360, (3.4 + r() * 2.2) * u, cols[Math.floor(r() * cols.length)], '#5a2a14');
+      if (y > top * 0.45) front += leaf; else back += leaf;
+    }
+    for (let i = 0; i < 9; i++) { const a = r() * Math.PI * 2, d = W * (1.05 + r() * 0.35); front += _plLeaf(Math.cos(a) * d, Math.sin(a) * 4 * u + 1.5 * u, r() * 360, 3.6 * u, cols[i % cols.length], '#5a2a14'); }
+    return { back, front, w: W * 1.4 };
+  },
+  // a clump of real flowers: leafy foot, stems, five-petal blooms in several colours and a spray of forget-me-nots, in front of the nose
+  flowers(u) {
+    const r = _plRnd(5), cx = 15 * u; let s = `<ellipse cx="${_plF(cx)}" cy="0.6" rx="${_plF(10 * u)}" ry="${_plF(2.6 * u)}" fill="#2f4a22" opacity="0.26"/>`;
+    let stems = '', leaves = '', blooms = '';
+    const kinds = [['#f2a7c3', '#f6d35e'], ['#fff6f0', '#f2b83a'], ['#c9a6e8', '#f6d35e'], ['#f6c845', '#d0702a'], ['#f28a9a', '#f6d35e']];
+    for (let i = 0; i < 6; i++) {
+      const x = cx + (i - 2.5) * 2.6 * u + (r() - 0.5) * 1.5 * u, hgt = (9 + r() * 7) * u, bx = x + (r() - 0.5) * 3 * u, [pc, cc] = kinds[i % kinds.length], pr = (2.0 + r() * 0.6) * u;
+      stems += `<path d="M${_plF(x)} 0Q${_plF(x + (bx - x) * 0.2)} ${_plF(-hgt * 0.5)} ${_plF(bx)} ${_plF(-hgt)}" stroke="#4f8a34" stroke-width="${_plF(0.9 * u)}" fill="none" stroke-linecap="round"/>`;
+      leaves += _plLeaf(x + (r() < 0.5 ? -1 : 1) * 1.8 * u, -hgt * (0.25 + r() * 0.25), r() < 0.5 ? -35 : 35, 4.4 * u, i % 2 ? '#6aa846' : '#5a9a3c');
+      let pet = ''; for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2 + r(); pet += `<ellipse cx="${_plF(bx + Math.cos(a) * pr * 0.75)}" cy="${_plF(-hgt + Math.sin(a) * pr * 0.6)}" rx="${_plF(pr * 0.62)}" ry="${_plF(pr * 0.48)}" fill="${pc}"/>`; }
+      blooms += `<g class="plq-bloom">${pet}<circle cx="${_plF(bx)}" cy="${_plF(-hgt)}" r="${_plF(pr * 0.42)}" fill="${cc}"/></g>`;
+    }
+    for (let i = 0; i < 6; i++) leaves += _plLeaf(cx + (r() - 0.5) * 16 * u, -(0.6 + r() * 2.4) * u, (r() - 0.5) * 70, 5 * u, i % 2 ? '#5f9e40' : '#4f8a34');
+    let fmn = ''; for (let i = 0; i < 7; i++) fmn += `<circle cx="${_plF(cx + 6 * u + r() * 4 * u)}" cy="${_plF(-(5 + r() * 4) * u)}" r="${_plF(0.9 * u)}" fill="#7fb2e6"/>`;
+    return { back: s + stems + leaves + blooms + fmn, w: cx + 11 * u, off: cx };
+  },
+  // swaying grass to bat at, with seed heads
+  grass(u) {
+    const r = _plRnd(11), cx = 12 * u; let b = '', f = '';
+    for (let i = 0; i < 14; i++) { const x = cx + (r() - 0.5) * 16 * u, h = (8 + r() * 9) * u, bend = (r() - 0.5) * 7 * u, line = `<g><path d="M${_plF(x)} 0Q${_plF(x + bend * 0.2)} ${_plF(-h * 0.6)} ${_plF(x + bend)} ${_plF(-h)}" stroke="${i % 3 ? '#5fa040' : '#86c45a'}" stroke-width="${_plF(1.1 * u)}" fill="none" stroke-linecap="round"/>` + (i % 4 === 0 ? `<ellipse cx="${_plF(x + bend)}" cy="${_plF(-h - 1.4 * u)}" rx="${_plF(0.9 * u)}" ry="${_plF(2 * u)}" fill="#d8cf96"/>` : '') + '</g>'; if (i % 2) f += line; else b += line; }
+    return { back: `<ellipse cx="${_plF(cx)}" cy="0.5" rx="${_plF(10 * u)}" ry="${_plF(2.2 * u)}" fill="#2f4a22" opacity="0.2"/>` + b, front: f, sway: true, w: cx + 10 * u, off: cx };
+  },
+  // long grass to hide in: it covers the whole pet but the ears
+  tall(u, ph) {
+    const r = _plRnd(13), W = 15 * u, top = Math.max(10 * u, ph * 0.8); let b = '', f = '';
+    for (let i = 0; i < 34; i++) { const x = (r() * 2 - 1) * W, h = top * (0.75 + r() * 0.4) * (1 - Math.abs(x / W) * 0.35), bend = (r() - 0.5) * 6 * u, line = `<g><path d="M${_plF(x)} 0.5Q${_plF(x + bend * 0.2)} ${_plF(-h * 0.6)} ${_plF(x + bend)} ${_plF(-h)}" stroke="${['#5c9c3e', '#4f8a34', '#86c45a', '#6fae48'][i % 4]}" stroke-width="${_plF(1.4 * u)}" fill="none" stroke-linecap="round"/>` + (i % 6 === 0 ? `<ellipse cx="${_plF(x + bend)}" cy="${_plF(-h - 1.6 * u)}" rx="${_plF(1 * u)}" ry="${_plF(2.3 * u)}" fill="#d8cf96"/>` : '') + '</g>'; if (i < 10) b += line; else f += line; }
+    return { back: `<ellipse cx="0" cy="0.6" rx="${_plF(W * 1.15)}" ry="${_plF(3 * u)}" fill="#2f4a22" opacity="0.24"/>` + b, front: f, sway: true, w: W * 1.2 };
+  },
+  // a dug hole: thrown-back soil, the dark hole, crumbs
+  hole(u) {
+    const cx = 13 * u, r = _plRnd(3); let crumbs = ''; for (let i = 0; i < 8; i++) crumbs += `<ellipse cx="${_plF(-6 * u + (r() - 0.5) * 18 * u)}" cy="${_plF((r() - 0.5) * 3 * u)}" rx="${_plF((0.7 + r() * 0.7) * u)}" ry="${_plF(0.6 * u)}" fill="${r() < 0.5 ? '#7a5634' : '#5a3e24'}"/>`;
+    return { back: `<ellipse cx="${_plF(cx)}" cy="0.3" rx="${_plF(8.5 * u)}" ry="${_plF(3 * u)}" fill="#6e4e30"/><ellipse cx="${_plF(cx)}" cy="0.5" rx="${_plF(6.4 * u)}" ry="${_plF(2 * u)}" fill="#2a1a0e"/><path d="M${_plF(cx - 8.5 * u)} 0.3Q${_plF(cx)} ${_plF(-3.6 * u)} ${_plF(cx + 8.5 * u)} 0.3" stroke="#3c2816" stroke-width="${_plF(0.7 * u)}" fill="none"/>`
+      + `<path d="M${_plF(-14 * u)} 1Q${_plF(-10 * u)} ${_plF(-6 * u)} ${_plF(-4 * u)} ${_plF(-5.4 * u)}Q${_plF(1 * u)} ${_plF(-4 * u)} ${_plF(3 * u)} 1z" fill="#8a6440"/><path d="M${_plF(-11 * u)} 0Q${_plF(-8 * u)} ${_plF(-4.4 * u)} ${_plF(-4 * u)} ${_plF(-4 * u)}Q${_plF(-1 * u)} ${_plF(-3 * u)} 0 0z" fill="#a47a4e"/>` + crumbs, w: cx + 9 * u, off: 0, lo: -15 * u };
+  },
+  // a little ring-of-stones fire: stones lit on the fire side, crossed charred logs, a three-colour flame that flickers, smoke that rises, glow on the ground
+  fire(u) {
+    const cx = 22 * u, r = _plRnd(17); let stones = '';
+    for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2, x = cx + Math.cos(a) * 8.6 * u, y = Math.sin(a) * 3.4 * u, sz = (2.2 + r() * 0.8) * u; stones += `<ellipse cx="${_plF(x)}" cy="${_plF(y)}" rx="${_plF(sz)}" ry="${_plF(sz * 0.7)}" fill="${i % 2 ? '#8e8a82' : '#7a766e'}"/><ellipse cx="${_plF(x - sz * 0.15)}" cy="${_plF(y - sz * 0.3)}" rx="${_plF(sz * 0.6)}" ry="${_plF(sz * 0.3)}" fill="${Math.sin(a) < 0 ? '#e8b070' : '#b8b2a6'}" opacity="0.8"/>`; }
+    const back = `<ellipse cx="${_plF(cx)}" cy="0.5" rx="${_plF(19 * u)}" ry="${_plF(6.5 * u)}" fill="#ffb24a" opacity="0.16"/><ellipse cx="${_plF(cx)}" cy="0" rx="${_plF(7.4 * u)}" ry="${_plF(2.6 * u)}" fill="#2a1e14"/>` + stones
+      + `<path d="M${_plF(cx - 6 * u)} ${_plF(0.6 * u)}L${_plF(cx + 6 * u)} ${_plF(-2.2 * u)}" stroke="#4a2c18" stroke-width="${_plF(2.4 * u)}" stroke-linecap="round"/><path d="M${_plF(cx - 6 * u)} ${_plF(-2.2 * u)}L${_plF(cx + 6 * u)} ${_plF(0.6 * u)}" stroke="#5e3a20" stroke-width="${_plF(2.4 * u)}" stroke-linecap="round"/><circle cx="${_plF(cx - 4 * u)}" cy="${_plF(-0.4 * u)}" r="${_plF(0.9 * u)}" fill="#f06a2a"/><circle cx="${_plF(cx + 3.6 * u)}" cy="${_plF(-0.6 * u)}" r="${_plF(0.8 * u)}" fill="#f8a03a"/>`
+      + `<g transform="translate(${_plF(cx)} ${_plF(-1 * u)})"><g class="plq-flame"><path d="M0 0C${_plF(-6 * u)} 0 ${_plF(-6 * u)} ${_plF(-7 * u)} ${_plF(-2 * u)} ${_plF(-12 * u)}C${_plF(-2 * u)} ${_plF(-8 * u)} 0 ${_plF(-8 * u)} ${_plF(0.6 * u)} ${_plF(-15 * u)}C${_plF(2.6 * u)} ${_plF(-9 * u)} ${_plF(6 * u)} ${_plF(-6 * u)} ${_plF(4.6 * u)} ${_plF(-2 * u)}C${_plF(4 * u)} 0 ${_plF(2 * u)} 0 0 0z" fill="#e8562a"/>`
+      + `<path d="M0 0C${_plF(-4 * u)} 0 ${_plF(-4 * u)} ${_plF(-5 * u)} ${_plF(-1 * u)} ${_plF(-9 * u)}C0 ${_plF(-6 * u)} ${_plF(1 * u)} ${_plF(-7 * u)} ${_plF(1.6 * u)} ${_plF(-11 * u)}C${_plF(3 * u)} ${_plF(-6 * u)} ${_plF(4 * u)} ${_plF(-3 * u)} ${_plF(3 * u)} ${_plF(-1 * u)}C${_plF(2 * u)} 0 ${_plF(1 * u)} 0 0 0z" fill="#f8a03a"/><path d="M0 0C${_plF(-2 * u)} 0 ${_plF(-2 * u)} ${_plF(-3 * u)} 0 ${_plF(-6 * u)}C${_plF(1 * u)} ${_plF(-3 * u)} ${_plF(2 * u)} ${_plF(-2 * u)} ${_plF(1.4 * u)} ${_plF(-0.6 * u)}z" fill="#ffe27a"/></g></g>`;
+    return { back, smoke: [cx, -16 * u, u], w: cx + 10 * u, off: cx, lo: cx - 10 * u };
+  },
+};
+function _plU(P) { const h = typeof _ptwH === 'function' ? _ptwH(P.look.species) : 30; return Math.max(0.8, Math.min(1.5, h / 32)); }
+function _plArtAt(kind, u, P) {
+  const ph = P && typeof _ptwH === 'function' ? _ptwH(P.look.species) * 0.6 : 18, key = kind + '|' + u.toFixed(2) + '|' + Math.round(ph);
+  let a = _PLQ.cache.get(key); if (!a) { a = _PLQ_ART[kind](u, ph); _PLQ.cache.set(key, a); if (_PLQ.cache.size > 60) _PLQ.cache.delete(_PLQ.cache.keys().next().value); }
+  return a;
+}
+/** The thing's reach in cells either side of the pet's feet, drawn on side (+1: towards +x). */
+function _plPropReach(P, kind, side) {
+  if (!_PLQ_ART[kind]) return [0, 0];
+  const art = _plArtAt(kind, _plU(P), P), W = typeof GARDEN_WORLD !== 'undefined' ? GARDEN_WORLD.cellW : 48;
+  const lo = (art.lo != null ? art.lo : art.off != null ? Math.min(-8, art.off - (art.w - art.off)) : -art.w) / W, hi = art.w / W;
+  return side > 0 ? [lo, hi] : [-hi, -lo];
+}
+/** Where the thing may lie: open soil or grass nobody walks through (no road, lane, plaza, beach or water), clear of anything that blocks
+ *  walking, clear of you and of another thing already drawn. */
+function _plGroundOk(kind, x, y, side, P) {
+  try {
+    const [x0, x1] = _plPropReach(P, kind, side), pl = _ptwPlayer();
+    for (let k = 0; k <= 4; k++) {
+      const gx = x + x0 + (x1 - x0) * k / 4;
+      if (typeof _gdzsPlazaAt === 'function' && _gdzsPlazaAt(gx, y) < 1.2) return false;   // a plaza's laid stones
+      // a road or lane is painted wider than its cells: its neighbours count too
+      for (const [ox, oy] of [[0, 0], [-0.45, 0], [0.45, 0], [0, -0.55], [0, 0.55]]) {
+        const cx = Math.floor(gx + ox), cy = Math.floor(y + oy);
+        const c = typeof gardenIslandBaseCell === 'function' ? gardenIslandBaseCell(cx, cy) : null;
+        if (!c || c.ocean || c.freshwater || c.solid || c.route || c.reservation === 'apron' || c.beach && kind !== 'puddle' && kind !== 'hole') return false;
+        if (typeof gardenLandPathAt === 'function' && gardenLandPathAt(cx, cy)) return false;
+        const lc = typeof gardenLandCell === 'function' ? gardenLandCell(cx, cy) : null; if (lc && (lc.lane || lc.trail)) return false;
+      }
+      if (typeof gardenWorldFree === 'function' && !gardenWorldFree(gx, y, 0.1)) return false;
+      if (pl && Math.abs(gx - pl.x) < 0.32 && Math.abs(y - pl.y) < 0.4) return false;
+    }
+    for (const q of _PLQ.live) if (q.g.isConnected && Math.abs(q.y - y) < 0.5 && x + x1 > q.x0 && x + x0 < q.x1) return false;
+    return true;
+  } catch (e) { return true; }
+}
+/** Draw a row's thing beside the pet for ms, on its outer node, on the side away from you; faded in and out, then gone. */
+function _plProp(P, kind, ms) {
+  if (kind === '_one') return _plPropIn(P, kind, ms);
+  if (!_PLQ_ART[kind] || !P || !P.node || !P.lift) return;
+  try {
+    const u = _plU(P), art = _plArtAt(kind, u, P), native = typeof gardenVisualIsNative === 'function' && gardenVisualIsNative(P.node);
+    const pl = _ptwPlayer(), side = P.propSide || (pl ? (P.x >= pl.x ? 1 : -1) : P.dir || 1);
+    if (art.off) P.dir = side;   // a thing in front of the nose: it faces the thing
+    const total = Math.max(1400, ms + 500), fade = Math.min(0.12, 300 / total), motion = typeof _pcMotionOn !== 'function' || _pcMotionOn();
+    const reach = _plPropReach(P, kind, side), rec = { x0: P.x + reach[0], x1: P.x + reach[1], y: P.y, g: null };
+    const make = (html, front) => {
+      const g = native ? gardenSceneElement('g') : document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('class', 'pt-lprop plq-' + kind); if (side < 0) g.setAttribute('transform', 'scale(-1 1)');
+      g.innerHTML = html;
+      if (front) P.node.appendChild(g); else P.node.insertBefore(g, P.lift);
+      const a = gardenVisualAnimate(g, [{ offset: 0, opacity: 0 }, { offset: fade, opacity: 1 }, { offset: 1 - fade, opacity: 1 }, { offset: 1, opacity: 0 }], { duration: total, easing: 'linear', fill: 'both' });
+      const gone = () => { g.remove(); _PLQ.live = _PLQ.live.filter(q => q.g !== g); };
+      a.onfinish = gone; a.oncancel = gone;
+      return g;
+    };
+    const mk = (tag) => native ? gardenSceneElement(tag) : document.createElementNS('http://www.w3.org/2000/svg', tag);
+    const back = make(art.back, false); rec.g = back; _PLQ.live.push(rec);
+    const front = art.front ? make(art.front, true) : null;
+    P.propUntil = performance.now() + total;
+    if (!motion) return;
+    const reps = Math.ceil(total / 900);
+    // rings on the puddle's water
+    for (const [i, [x, y, rx, ry]] of (art.rings || []).entries()) {
+      const at = mk('g'); at.setAttribute('transform', `translate(${_plF(x)} ${_plF(y)})`);
+      const e = mk('ellipse'); e.setAttribute('cx', '0'); e.setAttribute('cy', '0'); e.setAttribute('rx', _plF(rx)); e.setAttribute('ry', _plF(ry)); e.setAttribute('fill', 'none'); e.setAttribute('stroke', '#eaf6fc'); e.setAttribute('stroke-width', _plF(0.8 * u));
+      at.appendChild(e); back.appendChild(at);
+      try { gardenVisualAnimate(e, [{ transform: 'scale(0.2)', opacity: 0.95 }, { transform: 'scale(1)', opacity: 0 }], { duration: 1100 + i * 260, delay: i * 420, iterations: reps, easing: 'ease-out' }); } catch (x) { /* still */ }
+    }
+    if (art.sway) for (const [i, k] of [...(front || back).children].slice(0, 10).entries()) { try { if (!native) { k.style.transformBox = 'fill-box'; k.style.transformOrigin = '50% 100%'; } gardenVisualAnimate(k, [{ transform: 'rotate(0deg)' }, { transform: `rotate(${i % 2 ? 3 : -3}deg)` }, { transform: 'rotate(0deg)' }], { duration: 1300 + i * 170, iterations: Math.ceil(total / 1300), easing: 'ease-in-out' }); } catch (x) { /* still */ } }
+    const fl = back.querySelector && back.querySelector('.plq-flame');
+    if (fl) { try { gardenVisualAnimate(fl, [{ transform: 'scale(1,1)' }, { transform: 'scale(1.1,0.88)' }, { transform: 'scale(0.92,1.12)' }, { transform: 'scale(1,1)' }], { duration: 420, iterations: Math.ceil(total / 420), easing: 'ease-in-out' }); } catch (x) { /* still */ } }
+    if (art.smoke) {
+      const [sx, sy, su] = art.smoke;
+      for (let i = 0; i < 3; i++) {
+        const at = mk('g'); at.setAttribute('transform', `translate(${_plF(sx)} ${_plF(sy)})`);
+        const c = mk('circle'); c.setAttribute('cx', '0'); c.setAttribute('cy', '0'); c.setAttribute('r', _plF(2.6 * su)); c.setAttribute('fill', '#c8c2ba'); c.setAttribute('opacity', '0');
+        at.appendChild(c); back.appendChild(at);
+        try { gardenVisualAnimate(c, [{ transform: 'translate(0px,0px) scale(0.6)', opacity: 0.55 }, { transform: `translate(${_plF((2 + i) * su)}px,${_plF(-14 * su)}px) scale(1.6)`, opacity: 0 }], { duration: 1800, delay: i * 600, iterations: Math.ceil(total / 1800), easing: 'ease-out' }); } catch (x) { /* still */ }
+      }
+    }
   } catch (e) { /* a thing it can do without */ }
 }
 /** 85: the treehouse window, drawn in. The painted window (94-garden-paint-terrain-3orchard.js: 12 by 11 world px, its foot 121 px up) gets a

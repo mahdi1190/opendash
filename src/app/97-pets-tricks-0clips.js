@@ -248,7 +248,7 @@ const _PCFX = Object.freeze({
   rainbow: () => '<path d="M0-3.600Q.4-.4 3.600 0Q.4 .4 0 3.600Q-.4 .4 -3.600 0Q-.4-.4 0-3.600z" fill="#fff"/>',
   ha: () => '<path d="M-3.500-2.500V2.500M-3.500 0H-.8M-.8-2.500V2.500M1 2.500L2.600-2.500L4.200 2.500M1.500 1H3.700" fill="none" stroke="#e8965a" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>',
   // round 3, the hundred things (97-pets-tricks-7life-*.js): what a pet finds, carries, wears and kicks up
-  leaf: (c) => `<path d="M-4 3Q-4.400-3.600 4-4.200Q3.600 3 -4 3z" fill="${c || '#d9782e'}"/><path d="M-3.400 2.400L3 -3.400" stroke="#8a4a1e" stroke-width=".5" fill="none"/>`,
+  leaf: (c) => `<path d="M-4.200 0Q-1.400-2.600 3.600-.4Q-1 2.400 -4.200 0z" fill="${c || '#d9782e'}"/><path d="M-4.200 0Q-.4-.4 3.600-.4" stroke="#7a3a16" stroke-width=".45" fill="none" opacity=".7"/><path d="M-4.200 0L-5.400 .5" stroke="#7a3a16" stroke-width=".5" stroke-linecap="round"/>`,
   flake: () => '<path d="M0-4V4M-3.500-2L3.500 2M-3.500 2L3.500-2" stroke="#ffffff" stroke-width="1" stroke-linecap="round"/><circle r=".9" fill="#e8f4ff"/>',
   petal: (c) => `<path d="M0-3.200Q2.600-1 0 3.200Q-2.600-1 0-3.200z" fill="${c || '#f6a7c0'}"/>`,
   fluff: () => '<circle r="1" fill="#fffdf2"/><path d="M0 0L0-3.600M0 0L3-2M0 0L-3-2M0 0L3.200 1M0 0L-3.200 1" stroke="#fffdf2" stroke-width=".45" stroke-linecap="round" opacity=".9"/>',
@@ -379,7 +379,7 @@ function _pcNativeStillClock(root, ms, done) {
 /** Effects that read (round 3): the hundred things' clips (ids 'l-') and the clips the rows borrow draw their splashes, leaves, notes, coins and
  *  sparkles about twice the size and throw them further, so they read beside the pet at the default camera rather than as specks. */
 const _PC_FX_BIG = new Set(['spin', 'jump', 'pounce', 'startled', 'zoomies', 'beg', 'rearup', 'dig', 'roll', 'chasetail', 'hiccup', 'playdead', 'bow', 'sneeze', 'yawn', 'stretch']);
-function _pcFxK(id, c) { if (c && c.fxK) return c.fxK; return /^l-/.test(String(id)) || _PC_FX_BIG.has(String(id)) ? 1.9 : 1; }
+function _pcFxK(id, c) { if (c && c.fxK) return c.fxK; return /^l-/.test(String(id)) || _PC_FX_BIG.has(String(id)) ? 1.5 : 1; }   // (round 3: the pets are drawn larger, so 1.5 of a bigger pet is the old 1.9)
 function _pcFxBig(p, K) {
   const q = Object.assign({}, p), m = Math.sqrt(K);
   q.s = Math.min(4.6, (p.s || 1) * K);

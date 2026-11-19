@@ -35,10 +35,11 @@ function _ptwPlayer() { return typeof _gw !== 'undefined' && _gw && _gw.on !== f
 /** A sprite's height in the garden's units: small things stay small, big things never tower over you. */
 /* How tall a pet is drawn in the garden (its picture box, world px). Round 3, sizes: against H, the player's height (about 29.6 world px at the
    0.8 actor scale; a pet's visible body is about 0.55 of its box), a pet stands (visible) about 0.13 + 0.68 * h of H, h being its species' own size
-   (97-pets-0kitspecies*.js), never over 0.9: a hamster or a ladybird about a fifth of you, a cat a third, a dog under half, a pony three quarters.
+   (97-pets-0kitspecies*.js), never over 0.9. Round 3, the lead's call: drawn larger, 0.225 + 0.75 * h of H, so a dog stands about 0.6 H, a cat
+   0.45 H, a hamster or a frog over a quarter of you and a pony about 0.9 H; the order of sizes is kept.
    The drawings do not change, only the size they are drawn at. PET_SIZE_H: species whose kit h is for the pet page, not for the world. */
 const PET_SIZE_H = Object.freeze({ tortoise: 0.35, dragon: 0.6, griffin: 0.7, yeti: 0.85, golem: 0.8 });
-function _ptwH(id) { const sp = petSpecies(id) || {}, h = PET_SIZE_H[id] != null ? PET_SIZE_H[id] : Number(sp.h) || 0.3; return 67.3 * (0.13 + 0.68 * Math.min(0.9, Math.max(0.05, h))) * (typeof GARDEN_ACTOR_SCALE === 'number' ? GARDEN_ACTOR_SCALE : 1); }
+function _ptwH(id) { const sp = petSpecies(id) || {}, h = PET_SIZE_H[id] != null ? PET_SIZE_H[id] : Number(sp.h) || 0.3; return 67.3 * (0.225 + 0.75 * Math.min(0.9, Math.max(0.05, h))) * (typeof GARDEN_ACTOR_SCALE === 'number' ? GARDEN_ACTOR_SCALE : 1); }
 
 /* ---------- a pet in the garden ---------- */
 function _ptwNew(look, me) {
@@ -377,6 +378,15 @@ function _ptwComeAlong(P) {
     const nearest = !_ptwFlier(P) && !_ptwHas(P, 'swim') && typeof gardenWorldNearestFree === 'function' ? gardenWorldNearestFree : typeof _gwNearestFreePt === 'function' ? _gwNearestFreePt : null;
     const f = nearest ? nearest(pl.x - .8, pl.y + .3, 2) : null;
     if (f) { P.x = f.x; P.y = f.y; P.tx = null; P.z = -1; }
+  }
+  // round 3: never stood on you. You stopped where it sits (or it sat down on your spot): it steps aside to stand beside you. Rows that are
+  // meant to touch you (asleep on your feet, head on your lap, curled up beside you) keep their place.
+  if (!pl.moving && P.tx == null && !(P.root && P.root._pcH) && P.pose !== 'sleep' && typeof _plTouch === 'function' && !(P.lifeCur && /^(on-your-feet|head-on-lap|bench-lap|lie-beside)$/.test(P.lifeCur.id))) {
+    const half = typeof _plHalf === 'function' ? _plHalf(P) : 0.3;
+    if (Math.abs(pl.x - P.x) < half + 0.1 && Math.abs(pl.y - P.y) < 0.42 && (P.moveAsideT || 0) < performance.now()) {
+      P.moveAsideT = performance.now() + 1500;
+      const t = _plTouch(P, 'side'); if (t) { if (P.busy > 0) { P.busy = 0; P.cb = null; if (P.act) P.setAct(''); } P.walkTo(t.x, t.y, false, () => { P.dir = -t.side; P.sit(); P.busy = 1.5; }); return true; }
+    }
   }
   if (d <= (pl.moving ? 2 : 5)) return false;
   if (P.busy > 0) { P.busy = 0; P.cb = null; if (P.act) P.setAct(''); }

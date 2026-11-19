@@ -48,7 +48,10 @@ window.GardenNative = (function () {
     const transform = node.target.getWorldTransformMatrix(), local = matrix(transform);
     if (!screen) return local;
     const cam = node.scene.cameras.main, o = cam.getWorldPoint(0, 0), x = cam.getWorldPoint(1, 0), y = cam.getWorldPoint(0, 1), inv = GardenNativeArt.inverse({ a: x.x - o.x, b: x.y - o.y, c: y.x - o.x, d: y.y - o.y, e: o.x, f: o.y });
-    const box = node.scene.game.canvas.getBoundingClientRect(); return matrix({ a: 1, b: 0, c: 0, d: 1, e: box.left, f: box.top }).multiply(inv).multiply(local);
+    // (round 3, pets: the camera works in the canvas's own pixels, which are the screen's pixel ratio times page pixels; without this scale a
+    // pet's box on a high pixel-ratio screen was twice too big and off to the side, so tapping your pet did nothing there)
+    const canvas = node.scene.game.canvas, box = canvas.getBoundingClientRect(), k = canvas.width ? box.width / canvas.width : 1;
+    return matrix({ a: k, b: 0, c: 0, d: k, e: box.left, f: box.top }).multiply(inv).multiply(local);
   }
   function installComponents() {
     const p = GardenNativeArt.Node.prototype; if (p._gameApi) return; p._gameApi = true;
