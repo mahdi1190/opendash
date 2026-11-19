@@ -612,6 +612,59 @@ window.GardenPaintWater = (function () {
         });
       }
     }
+    tag = 'bed';
+    // 4b. The bed in the shallows: clusters of pebbles and the odd larger stone seen through clear water a stride inside the
+    //     shore, softer and bluer the deeper they lie; now and then one breaks the surface, wet and dark at the waterline.
+    //     Thickest on a fell tarn and in running water, fewer on the Mere's open bays. From the basin's own outline.
+    if (kind !== 'spring') {
+      const per = kind === 'tarn' ? 16 : river_ ? 20 : kind === 'mere' ? 30 : 22, seedB = hash(f.id + 'bed');
+      for (let i = 0, acc = 0; i < n; i++) { acc += Math.hypot(pts[(i + 1) % n].x - pts[i].x, pts[(i + 1) % n].y - pts[i].y); if (acc < per) continue; acc = 0;
+        if (mouths.has(i) || shoreCovered(pts[i].x, pts[i].y)) continue;
+        const gate = ((Math.imul(i + (seedB & 1023), 2246822519) >>> 0) % 100) / 100; if (gate < (kind === 'mere' ? .45 : .25)) continue;
+        const a = pts[i], nn = norm(i), stones = [], cnt = 2 + Math.floor(r() * 5);
+        for (let k = 0; k < cnt; k++) { const o = 4 + r() * (river_ ? 9 : 15), along = (r() - .5) * 16, x = a.x - nn.x * o - nn.y * along, y = a.y - nn.y * o + nn.x * along, big = r() < (kind === 'tarn' || kind === 'gorge' ? .22 : .1);
+          if (!inside(x, y, pts)) continue; const rr = big ? 3.5 + r() * 4 : 1.2 + r() * 2.2; stones.push([x, y, rr, Math.min(1, o / 18), big && o < 9 && r() < .6, r()]); }
+        if (!stones.length) continue;
+        add({ x: a.x - 32, y: a.y - 32, w: 64, h: 64 }, (cx, C) => { cx.save(); cx.clip(P);
+          for (const [x, y, rr, deep, wet, t] of stones) {
+            const body = mix(mix(C.bed, t < .5 ? '#4e4a3e' : '#5e5848', .55 + t * .2), C.deep, deep * .5), top = mix(C.bed, C.shallow, .3 + deep * .5);
+            cx.globalAlpha = wet ? .95 : .62 - deep * .3; cx.fillStyle = body; cx.beginPath(); cx.ellipse(x, y, rr, rr * .62, 0, 0, Math.PI * 2); cx.fill();
+            cx.globalAlpha = wet ? .85 : .28 - deep * .16; cx.fillStyle = wet ? mix(C.bed, '#e8e0c8', .5) : top; cx.beginPath(); cx.ellipse(x - rr * .28, y - rr * .22, rr * .48, rr * .26, 0, 0, Math.PI * 2); cx.fill();
+            if (wet) { cx.globalAlpha = .5; cx.strokeStyle = C.foam; cx.lineWidth = .9; cx.beginPath(); cx.ellipse(x, y + rr * .12, rr * 1.15, rr * .7, 0, .15, Math.PI - .15); cx.stroke(); }
+          }
+          cx.restore(); cx.globalAlpha = 1; });
+      }
+    }
+    tag = 'rapid';
+    // 5b. White water: standing waves across the current every few strides, each a few broken crests bowed downstream, and
+    //     foam where the current runs against the bank's stones. The gorge runs white (it falls from the tarn to the falls);
+    //     the brook and the river carry fainter, fewer ones. All from the river's line and the basin's own outline.
+    if (river_ && river) {
+      const G = kind === 'gorge', every = G ? [30, 34] : kind === 'brook' ? [64, 80] : [120, 160], strength = G ? 1 : kind === 'brook' ? .55 : .32, hwp = river.hw * (W.cellW + W.cellH) / 2;
+      for (let s = 12 + r() * every[0]; s < river.len; s += every[0] + r() * every[1]) {
+        const q = at(river, s), ang = Math.atan2(q.ty, q.tx); if (!inside(q.x, q.y, pts)) continue;
+        const dashes = [], nd = (G ? 4 : 2) + Math.floor(r() * (G ? 4 : 3));
+        // (low arcs in a loose row across the current: tightly curled ones read as scribbles)
+        for (let k = 0; k < nd; k++) { const len = (G ? 5 : 4) + r() * (G ? 8 : 6); dashes.push([(k / Math.max(1, nd - 1) - .5) * 1.4 * hwp + (r() - .5) * hwp * .25, len, len * (.1 + r() * .14), (.3 + r() * .5) * strength, (r() - .5) * 4]); }
+        add({ x: q.x - hwp * 1.6 - 14, y: q.y - hwp * 1.6 - 14, w: hwp * 3.2 + 28, h: hwp * 3.2 + 28 }, (cx, C) => {
+          cx.save(); cx.clip(P); cx.translate(q.x, q.y); cx.rotate(ang); cx.lineCap = 'round'; cx.strokeStyle = C.foam;
+          for (const [lat, len, bow, a, dx] of dashes) {
+            const crest = () => { cx.beginPath(); cx.moveTo(dx - bow, lat - len / 2); cx.quadraticCurveTo(dx + bow, lat, dx - bow, lat + len / 2); cx.stroke(); };
+            cx.globalAlpha = a * .3; cx.lineWidth = 3.6; crest(); cx.globalAlpha = a; cx.lineWidth = 1.25; crest();
+            // the darker trough just upstream of the crest, so the wave stands up out of the water
+            cx.globalAlpha = a * .32; cx.strokeStyle = C.deep; cx.lineWidth = 1.6; cx.save(); cx.translate(-3.2, 0); crest(); cx.restore(); cx.strokeStyle = C.foam;
+          }
+          cx.restore(); cx.globalAlpha = 1; });
+      }
+      // foam against the banks: short broken runs just inside the water, by a noise along the shore
+      const runs = []; let run = null;
+      for (let i = 0, arc = 0; i < n; i++) { const a = pts[i], b = pts[(i + 1) % n], L = Math.hypot(b.x - a.x, b.y - a.y); arc += L;
+        const on = !mouths.has(i) && ((Math.imul(Math.floor(arc / 9) + (hash(f.id) & 255), 2654435761) >>> 0) % 100) / 100 < (G ? .5 : .22) && L > .5;
+        if (on) { const nn = norm(i), o = 1.8; if (!run) { run = []; runs.push(run); } run.push([a.x - nn.x * o, a.y - nn.y * o], [b.x - nn.x * o, b.y - nn.y * o]); } else run = null; }
+      if (runs.length) add(all, (cx, C) => { cx.save(); cx.clip(P); cx.lineCap = 'round'; cx.lineJoin = 'round'; cx.strokeStyle = C.foam;
+        for (const [w, a] of [[3.4, .14 * strength], [1.3, .5 * strength]]) { cx.globalAlpha = a; cx.lineWidth = w; cx.beginPath(); for (const rn of runs) { cx.moveTo(rn[0][0], rn[0][1]); for (const p of rn) cx.lineTo(p[0], p[1]); } cx.stroke(); }
+        cx.restore(); cx.globalAlpha = 1; });
+    }
     tag = 'lily';
     // 6. Lily pads where the water is warm and still (the Mere's east bank, the pools).
     if (kind === 'mere' || kind === 'pool') {
