@@ -261,15 +261,15 @@
         flush();
         if (pieces.length) C.live({ make: (scene, root, depth) => {
           const g = scene.add.graphics(); g.setDepth(depth); if (root && root.add) root.add(g);
-          let last = -1e9; const sheet = [], foam = [];
+          let last = -1e9, drawn = 0, ms = 0; const sheet = [], foam = [];
           const reach = u => u < .3 ? Math.sin(u / .3 * Math.PI / 2) : 1 - (k => k * k * (3 - 2 * k))((u - .3) / .7);
-          return { obj: g, update(time, view) {
+          return { obj: g, stat: () => ({ pieces: pieces.length, drawn, ms: +ms.toFixed(2), visible: g.visible }), update(time, view) {
             const z = scene.cameras && scene.cameras.main ? scene.cameras.main.zoom : 1;
             if (z < 1.2 || !view) { if (g.visible) g.clear().setVisible(false); return; }
-            if (time - last < 33) return; last = time; g.clear().setVisible(true);
+            if (time - last < 33) return; last = time; g.clear().setVisible(true); const t0 = performance.now(); drawn = 0;
             const t = time / 1000, m = 40;
             for (const pc of pieces) { const bb = pc.bb; if (bb[2] < view.x - m || bb[0] > view.x + view.w + m || bb[3] < view.y - m || bb[1] > view.y + view.h + m) continue;
-              foam.length = 0;
+              foam.length = 0; drawn++;
               for (const q of pc.pts) { const u = ((t / 7.5 + q.ph + q.s / 1500) % 1 + 1) % 1, d = q.a * reach(u) + (q.a > 1 ? Math.sin(q.s / 23 + t * 1.1) * .9 : 0), fa = (u < .3 ? .35 + .4 * u / .3 : .75 * Math.pow(1 - (u - .3) / .7, 1.6)) * Math.min(1, q.a / 5);
                 foam.push(q, d, fa); }
               // the sheet of water in two films, thicker towards the sea, so it has no edge of its own: only the foam has one
@@ -281,6 +281,7 @@
                 const x1 = q.x - q.ty * d, y1 = q.y + q.tx * d, x2 = q2.x - q2.ty * d2, y2 = q2.y + q2.tx * d2;
                 g.lineStyle(3.2, 0xffffff, a * .22).lineBetween(x1, y1, x2, y2).lineStyle(1.1, 0xffffff, a).lineBetween(x1, y1, x2, y2); }
             }
+            ms = performance.now() - t0;
           } };
         } });
       }

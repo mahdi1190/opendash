@@ -309,7 +309,7 @@ window.GardenPaintVale = (function () {
   function pendingGround() { return cur && cur.groundHandle ? cur.groundHandle.pendingInView() : 0; }
   function status() {
     const hs = cur ? cur.handles : [], px = hs.reduce((s, h) => s + (h.texturePx || 0), 0) + (stats.spritePx || 0);
-    return Object.assign({}, stats, { wanted: wanted(), on: !!cur, afloat: cur ? cur.bob.map(im => +(im.y - im._gpvBob.y).toFixed(2)) : [], chunks: hs.map(h => h.chunks), live: hs.map(h => h.live), pending: hs.map(h => h.pending), worstSliceMs: Math.max(0, ...hs.map(h => h.sliceWorstMs || 0)), worstChunkMs: Math.max(0, ...hs.map(h => h.worstMs || 0)), textureMB: Math.round(px * 4 / 1048576 * 10) / 10, lastError: lastError || (KIT() && KIT().lastError) });
+    return Object.assign({}, stats, { wanted: wanted(), on: !!cur, afloat: cur ? cur.bob.map(im => +(im.y - im._gpvBob.y).toFixed(2)) : [], swash: cur ? cur.lives.map(h => h.stat ? h.stat() : null) : [], chunks: hs.map(h => h.chunks), live: hs.map(h => h.live), pending: hs.map(h => h.pending), worstSliceMs: Math.max(0, ...hs.map(h => h.sliceWorstMs || 0)), worstChunkMs: Math.max(0, ...hs.map(h => h.worstMs || 0)), textureMB: Math.round(px * 4 / 1048576 * 10) / 10, lastError: lastError || (KIT() && KIT().lastError) });
   }
   /** Draw the ground picture of a box straight into a 2D context (no scene), for previews: GardenPaintVale.paintTo(ctx, [x0, y0, x1, y1], 1). */
   function paintTo(cx, box, k, season) {
