@@ -142,7 +142,7 @@ function _plStage(P, near, kind) {
   const s = P.x >= pl.x ? 1 : -1, sz = typeof _ptwH === 'function' ? Math.max(0, (_ptwH(P.look.species) - 32) / 48) : 0;
   // bigger pets stand a little further off so the two figures never overlap (round 3: pets drawn larger)
   let ring = near ? [[0.62, 0.12], [0.58, 0.3], [0.72, -0.08]] : [[0.78, 0.1], [0.7, 0.32], [0.95, -0.06], [1.05, 0.34], [1.25, 0.12]];
-  if (kind) ring = [[0.85, 0.12], [1.0, 0.3], [1.0, -0.1], [1.25, 0.15], [1.2, 0.45], [1.5, 0.1], [1.4, -0.25], [1.7, 0.35], [2.0, 0.1]];
+  if (kind) ring = [[0.85, 0.12], [1.0, 0.3], [1.0, -0.1], [1.25, 0.15], [1.2, 0.45], [1.5, 0.1], [1.4, -0.25], [1.7, 0.35], [2.0, 0.1], [2.4, 0.25], [2.8, -0.15]];
   for (const [a0, b] of ring) for (const k of [s, -s]) { const a = a0 + sz, x = pl.x + a * k, y = pl.y + b; if (_plStandOk(x, y) && (!kind || typeof _plGroundOk !== 'function' || _plGroundOk(kind, x, y, k, P))) return { x, y, free: true, stage: 1 }; }
   return kind && arguments.length < 3 ? _plStage(P, near, '-') : null;   // no ground for the thing near you: stand beside you anyway (the row then plays without it)
 }

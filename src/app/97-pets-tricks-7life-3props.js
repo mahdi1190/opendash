@@ -164,6 +164,25 @@ function _plPropReach(P, kind, side) {
   const lo = (art.lo != null ? art.lo : art.off != null ? Math.min(-8, art.off - (art.w - art.off)) : -art.w) / W, hi = art.w / W;
   return side > 0 ? [lo, hi] : [-hi, -lo];
 }
+/** True where the vale is painted with laid stone or a worn way: inside a plaza's paved oval, or within a road's, lane's or trail's painted width
+ *  (from the layout's own route centre lines and widths, the ones the ground painter uses), with a little margin. */
+let _plStoneD = null;
+function _plStoneAt(x, y) {
+  try {
+    if (!_plStoneD) {
+      const D = GardenIslandLayout.data, wid = { main: 2.6, lane: 2, trail: 1.4, plaza: 4 }, ovals = [], lines = [];
+      for (const pz of (D.presentation && D.presentation.plazas) || []) if (pz.rx) ovals.push([pz.x, pz.y, pz.rx + 0.3, pz.ry + 0.25]);
+      for (const r of D.routes || []) if (r.points && r.points.length > 1) lines.push([r.points, (Number(r.widthCells) || wid[r.tier] || 1.6) / 2 + 0.12]);
+      _plStoneD = { ovals, lines };
+    }
+    for (const [cx, cy, rx, ry] of _plStoneD.ovals) if (((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 < 1) return true;
+    for (const [P, half] of _plStoneD.lines) for (let i = 1; i < P.length; i++) {
+      const a = P[i - 1], b = P[i], dx = b[0] - a[0], dy = b[1] - a[1], l = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / l));
+      if (Math.hypot(a[0] + t * dx - x, (a[1] + t * dy - y) * 0.625) < half) return true;
+    }
+  } catch (e) { return false; }
+  return false;
+}
 /** Where the thing may lie: open soil or grass nobody walks through (no road, lane, plaza, beach or water), clear of anything that blocks
  *  walking, clear of you and of another thing already drawn. */
 function _plGroundOk(kind, x, y, side, P) {
@@ -172,11 +191,12 @@ function _plGroundOk(kind, x, y, side, P) {
     for (let k = 0; k <= 4; k++) {
       const gx = x + x0 + (x1 - x0) * k / 4;
       if (typeof _gdzsPlazaAt === 'function' && _gdzsPlazaAt(gx, y) < 1.2) return false;   // a plaza's laid stones
+      if (_plStoneAt(gx, y)) return false;
       // a road or lane is painted wider than its cells: its neighbours count too
       for (const [ox, oy] of [[0, 0], [-0.45, 0], [0.45, 0], [0, -0.55], [0, 0.55]]) {
         const cx = Math.floor(gx + ox), cy = Math.floor(y + oy);
         const c = typeof gardenIslandBaseCell === 'function' ? gardenIslandBaseCell(cx, cy) : null;
-        if (!c || c.ocean || c.freshwater || c.solid || c.route || c.reservation === 'apron' || c.beach && kind !== 'puddle' && kind !== 'hole') return false;
+        if (!c || c.ocean || c.freshwater || c.solid || c.beach && kind !== 'puddle' && kind !== 'hole') return false;
         if (typeof gardenLandPathAt === 'function' && gardenLandPathAt(cx, cy)) return false;
         const lc = typeof gardenLandCell === 'function' ? gardenLandCell(cx, cy) : null; if (lc && (lc.lane || lc.trail)) return false;
       }
