@@ -432,5 +432,6 @@ window.GardenPaintWood = (function () {
   /** The painted trees' trunk feet, in cells ({x0, y0, x1, y1}), for the walking boxes (94-garden-world-0walk.js), and a
    * signature that changes only when the trees do (a repaint with the same trees keeps the route grid). */
   function trunks() { const S = state; if (!S || !S.M) return null; if (!S.trunks) { const list = S.M.trees.filter(t => t.trunk).map(t => t.trunk); let h = list.length; for (const b of list) h = (Math.imul(h, 31) + Math.round(b.x0 * 64) * 7 + Math.round(b.y0 * 64)) | 0; S.trunks = { list, sig: list.length + ':' + h }; } return S.trunks; }
-  return { paint, tick, clear, playerCanopies: () => state ? state.covering : null, status, memory, covers, trunks, WOODS, thicketWood: id => !!(WOODS[id] && WOODS[id].mood !== 'meadow'), get lastError() { return lastError; } };
+  // (read only: where every tree of the woods stands, in cells, for what is set out near them: 94-garden-1stored.js)
+  return { paint, tick, clear, playerCanopies: () => state ? state.covering : null, status, memory, covers, trunks, WOODS, standing: () => state && state.M ? state.M.trees : null, thicketWood: id => !!(WOODS[id] && WOODS[id].mood !== 'meadow'), get lastError() { return lastError; } };
 })();

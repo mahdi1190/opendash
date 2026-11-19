@@ -100,6 +100,9 @@ function _gardenFeatureClearWhy(f, x, y, m) {
   // no tree stands in it or just in front of it (the windmill inside a great tree, the savings oak and the hill flag lost
   // under the wood's canopy), and no tall building in front hides it (the bandstand behind the land office's roof)
   if (typeof _gwPaintedTrunks === 'function') { let feet = []; try { feet = _gwPaintedTrunks(true) || []; } catch (e) { /* no painted trees yet */ } for (const t of feet) if (t.x > x - reach - .8 && t.x < x + w + reach + .8 && t.y > y - up && t.y < y + h + 3) return 'Too close to a tree'; }
+  if (typeof GardenPaintWood !== 'undefined' && GardenPaintWood && GardenPaintWood.standing) { const trees = GardenPaintWood.standing() || []; for (const t of trees) if (!t.thicket && t.cx > x - reach - 1.2 && t.cx < x + w + reach + 1.2 && t.cy > y - up - 1 && t.cy < y + h + 3) return 'Too close to a tree'; }
+  // nor on a village square's setts (the hill flag and the observatory went up on the green)
+  { const plazas = (typeof gardenIslandData === 'function' && gardenIslandData().presentation && gardenIslandData().presentation.plazas) || []; for (let cy = y; cy < y + h; cy++) for (let cx = x; cx < x + w; cx++) for (const p of plazas) if (p.rx && p.ry && Math.pow((cx + .5 - p.x) / (p.rx + .6), 2) + Math.pow((cy + .5 - p.y) / (p.ry + .6), 2) <= 1) return 'Keep the square clear'; }
   for (const s of statics) { const sf = s.y + (s.h || 1), tall = (s.tall || 1) >= 1.8 || !!(window.GardenPaintedMarks && GardenPaintedMarks.ART[s.id] && -GardenPaintedMarks.ART[s.id].box[1] > 90); if (tall && sf > y + h && sf <= y + h + 4 && s.x + (s.w || 1) + 1 > x - reach && s.x - 1 < x + w + reach) return `Too close behind ${String(s.name || 'a building').replace(/^The /, 'the ')}`; }
   for (let cy = y - up; cy < y - 1; cy++) for (let cx = x - reach; cx < x + w + reach; cx++) {
     if (cx < 0 || cy < 0 || cx >= W.cols || cy >= W.rows) continue;
