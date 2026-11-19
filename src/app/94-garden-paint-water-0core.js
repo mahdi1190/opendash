@@ -177,7 +177,10 @@ window.GardenPaintWater = (function () {
   }
   const rgbOf = c => { const n = parseInt(c.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
   const sstep = (a, b, v) => { const t = Math.max(0, Math.min(1, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
-  let fieldMask = null, fieldOut = null;
+  let fieldMask = null, fieldOut = null, fieldTone = null;
+  // each water's own character, blended across joins: [shade under trees or peat, extra depth]. A woodland brook runs dark
+  // under its canopy, a fell tarn is dark and peaty, the open Mere and the river take the sky.
+  const TONE = { mere: [0, 0], river: [0, .04], brook: [.5, .1], spring: [.42, .06], gorge: [.18, .1], tarn: [.38, .34], pool: [.12, .06] }, SHADE = [44, 84, 74], TB = 12;
   function fieldCanvas(c, w, h) { if (!c) { c = document.createElement('canvas'); } if (c.width < w) c.width = w; if (c.height < h) c.height = h; return c; }
   // One distance pass over a field: seed[i] = 1 where the distance is 0. Two sweeps of an eight-neighbour chamfer
   // (within a few per cent of the true distance; the same lattice and values in every chunk). Field px.
@@ -194,6 +197,7 @@ window.GardenPaintWater = (function () {
   function bodyOp(S) {
     const M = S.M, U = unionPath(M), a = M.all, G = window.GardenPaintGround;
     const noise = G ? G.noise : () => .5, fbm = G ? G.fbm : () => .5;
+    const tones = M.waters.map(w => { const p = new Path2D(); w.pts.forEach((q, i) => i ? p.lineTo(q.x, q.y) : p.moveTo(q.x, q.y)); p.closePath(); const t = TONE[w.kind] || TONE.pool; return { p, b: w.bounds, fill: 'rgb(' + Math.round(t[0] * 255) + ',' + Math.round(t[1] * 255) + ',0)' }; });
     return { bb: [a.x - 24, a.y - 24, a.x1 + 24, a.y1 + 24], seed: 3, tag: 'water body', draw(B, r, cb) {
       const cx = B.cx, P = S.P, bed = rgbOf(P.bed), sh = rgbOf(P.shallow), wa = rgbOf(P.water), dp = rgbOf(P.deep);
       const x0 = Math.floor((cb[0] - DMAX) / FQ) * FQ, y0 = Math.floor((cb[1] - DMAX) / FQ) * FQ, x1 = Math.ceil((cb[2] + DMAX) / FQ) * FQ, y1 = Math.ceil((cb[3] + DMAX) / FQ) * FQ, gw = (x1 - x0) / FQ, gh = (y1 - y0) / FQ, n = gw * gh;
@@ -228,6 +232,13 @@ window.GardenPaintWater = (function () {
         }
         return k ? p : null; };
       const outer = contour(.5);
+      // each water's tone, blurred so a brook turns into the Mere over a few strides (only this chunk's area)
+      fieldTone = fieldCanvas(fieldTone, gw, gh); const tx = fieldTone.getContext('2d', { willReadFrequently: true }); tx.setTransform(1, 0, 0, 1, 0, 0); tx.clearRect(0, 0, gw, gh); tx.setTransform(1 / FQ, 0, 0, 1 / FQ, -x0 / FQ, -y0 / FQ);
+      for (const t of tones) if (t.b.x < x1 && t.b.x + t.b.w > x0 && t.b.y < y1 && t.b.y + t.b.h > y0) { tx.fillStyle = t.fill; tx.fill(t.p); }
+      const ty0 = Math.max(0, gy0 - TB), ty1 = Math.min(gh, gy1 + TB), tdat = tx.getImageData(0, 0, gw, gh).data, hS = new Float32Array(n), hD = new Float32Array(n), hW = new Float32Array(n);
+      for (let y = ty0; y < ty1; y++) { let sS = 0, sD = 0, sW = 0; const o0 = y * gw; for (let x = gx0 - 2 * TB - 1; x < gx1; x++) { const ad = x + TB, sb = x - TB - 1; if (ad >= 0 && ad < gw) { const q = (o0 + ad) * 4, w8 = tdat[q + 3] / 255; sS += tdat[q] * w8; sD += tdat[q + 1] * w8; sW += w8; } if (sb >= 0 && sb < gw) { const q = (o0 + sb) * 4, w8 = tdat[q + 3] / 255; sS -= tdat[q] * w8; sD -= tdat[q + 1] * w8; sW -= w8; } if (x >= gx0 && x < gx1) { hS[o0 + x] = sS; hD[o0 + x] = sD; hW[o0 + x] = sW; } } }
+      const tS = new Float32Array(cw * chh), tD = new Float32Array(cw * chh);
+      for (let x = gx0; x < gx1; x++) { let sS = 0, sD = 0, sW = 0; for (let y = gy0 - 2 * TB - 1; y < gy1; y++) { const ad = y + TB, sb = y - TB - 1; if (ad >= ty0 && ad < ty1) { const q = ad * gw + x; sS += hS[q]; sD += hD[q]; sW += hW[q]; } if (sb >= ty0 && sb < ty1) { const q = sb * gw + x; sS -= hS[q]; sD -= hD[q]; sW -= hW[q]; } if (y >= gy0 && y < gy1) { const j = (y - gy0) * cw + (x - gx0); tS[j] = sW > .01 ? sS / sW / 255 : 0; tD[j] = sW > .01 ? sD / sW / 255 : 0; } } }
       // the colour of the water by how far it lies from the shore; its alpha is the smoothed outline itself, so the edge
       // is soft for a world pixel and then the wet line and the lap are drawn crisp over it
       fieldOut = fieldCanvas(fieldOut, cw, chh); const ox = fieldOut.getContext('2d'), img = ox.createImageData(cw, chh), o = img.data;
@@ -239,7 +250,9 @@ window.GardenPaintWater = (function () {
           const e = sstep(0, 7, d), mm = sstep(3, 24, d), k = Math.min(1, Math.max(0, sstep(26, 100, d) * .9 + big * .35));
           let rr = bed[0] + (sh[0] - bed[0]) * (.5 + .5 * e), gg = bed[1] + (sh[1] - bed[1]) * (.5 + .5 * e), bb = bed[2] + (sh[2] - bed[2]) * (.5 + .5 * e);
           rr += (wa[0] - rr) * mm; gg += (wa[1] - gg) * mm; bb += (wa[2] - bb) * mm;
-          rr += (dp[0] - rr) * k; gg += (dp[1] - gg) * k; bb += (dp[2] - bb) * k;
+          const tj = (y - gy0) * cw + (x - gx0), kk = Math.min(1, k + tD[tj] * (1 - k) * sstep(4, 40, d)), shd = tS[tj] * .62 * (.4 + .6 * mm);
+          rr += (dp[0] - rr) * kk; gg += (dp[1] - gg) * kk; bb += (dp[2] - bb) * kk;
+          rr += (SHADE[0] - rr) * shd; gg += (SHADE[1] - gg) * shd; bb += (SHADE[2] - bb) * shd;
           const lift = 1 + big * .08 + fine * .045; o[j] = Math.min(255, rr * lift); o[j + 1] = Math.min(255, gg * lift); o[j + 2] = Math.min(255, bb * lift); o[j + 3] = Math.min(255, Math.round(al * 1.25 * 255));
         } }
       ox.putImageData(img, 0, 0);
@@ -390,7 +403,10 @@ window.GardenPaintWater = (function () {
       if (r() < (river_ ? .45 : .2)) continue;
       const deep = (river_ ? 10 : 16) + r() * (river_ ? 14 : 34), rx = (river_ ? 10 : 16) + r() * (river_ ? 10 : 22), x = a.x + (r() - .5) * 8, y = a.y + deep * .55;
       const d = D().blob(r, x, y, rx, deep * .62, 8, .45), d2 = D().blob(r, x + (r() - .5) * rx * .5, y - deep * .2, rx * .55, deep * .4, 7, .4);
-      if (!mouths.has(i) && !shoreCovered(a.x, a.y)) add({ x: x - rx - 4, y: a.y - 6, w: rx * 2 + 8, h: deep * 1.4 + 12 }, (cx, C) => { cx.save(); cx.clip(P); cx.globalAlpha = .38; cx.fillStyle = C.refl; cx.fill(P2(d)); cx.globalAlpha = .3; cx.fillStyle = C.reflDeep; cx.fill(P2(d2)); cx.restore(); });
+      if (!mouths.has(i) && !shoreCovered(a.x, a.y)) { void d; void d2; const dx = (r() - .5) * rx * .5; add({ x: x - rx * 1.3 - 4, y: a.y - 6, w: rx * 2.6 + 8, h: deep * 1.8 + 12 }, (cx, C) => {
+        // soft, hanging down from the shore: the tree or reed bed above, upside down, fading into the water's own sky
+        cx.save(); cx.clip(P); const lobe = (cx0, cy0, rxx, ryy, col, al) => { cx.save(); cx.translate(cx0, cy0); cx.scale(1, ryy / rxx); const g = cx.createRadialGradient(0, -rxx * .35, 0, 0, -rxx * .2, rxx); const c = rgbOf(col); g.addColorStop(0, 'rgba(' + c + ',' + al + ')'); g.addColorStop(.6, 'rgba(' + c + ',' + al * .55 + ')'); g.addColorStop(1, 'rgba(' + c + ',0)'); cx.fillStyle = g; cx.beginPath(); cx.arc(0, 0, rxx, 0, Math.PI * 2); cx.fill(); cx.restore(); };
+        lobe(x, y, rx * 1.25, deep * .9, C.refl, .3); lobe(x + dx, y - deep * .15, rx * .7, deep * .6, C.reflDeep, .26); cx.restore(); }); }
     }
     tag = 'sky';
     // 4. Sky streaks: on still water long horizontal wind lines, on running water
@@ -399,11 +415,11 @@ window.GardenPaintWater = (function () {
       for (let i = 0; i < (big ? 46 : 10); i++) {
         let x = 0, y = 0, tries = 0; do { x = all.x + r() * all.w; y = all.y + r() * all.h; tries++; } while (tries < 30 && !(inside(x, y, pts) && edgeDist(x, y, pts) > 18));
         if (tries >= 30) continue; const rx = 18 + r() * (big ? 80 : 30), ry = .9 + r() * 1.6, hi = r() < .3;
-        add({ x: x - rx, y: y - 4, w: rx * 2, h: 8 }, (cx, C) => { cx.save(); cx.clip(P); cx.globalAlpha = (hi ? .5 : .32) * (C.warm || 1); cx.fillStyle = hi ? C.skyHi : C.sky; cx.beginPath(); cx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); cx.fill(); cx.restore(); });
+        add({ x: x - rx, y: y - 4, w: rx * 2, h: 8 }, (cx, C) => { cx.save(); cx.clip(P); cx.globalAlpha = (hi ? .5 : .32) * (C.warm || 1) * (kind === 'tarn' ? .55 : 1); cx.fillStyle = hi ? C.skyHi : C.sky; cx.beginPath(); cx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); cx.fill(); cx.restore(); });
       }
       // a broad pale sky sheen in the open middle (the brightest thing in the picture)
       const c0 = { x: all.x + all.w * .45, y: all.y + all.h * .5 };
-      add(all, (cx, C) => { cx.save(); cx.clip(P); const g = cx.createRadialGradient(c0.x, c0.y, 0, c0.x, c0.y, all.w * .42); g.addColorStop(0, C.sky); g.addColorStop(1, 'rgba(255,255,255,0)'); cx.globalAlpha = .28; cx.fillStyle = g; cx.save(); cx.translate(c0.x, c0.y); cx.scale(1, .5); cx.translate(-c0.x, -c0.y); cx.fillRect(all.x, all.y - all.h, all.w, all.h * 3); cx.restore(); cx.restore(); });
+      add(all, (cx, C) => { cx.save(); cx.clip(P); const g = cx.createRadialGradient(c0.x, c0.y, 0, c0.x, c0.y, all.w * .42); g.addColorStop(0, C.sky); g.addColorStop(1, 'rgba(255,255,255,0)'); cx.globalAlpha = kind === 'tarn' ? .14 : .28; cx.fillStyle = g; cx.save(); cx.translate(c0.x, c0.y); cx.scale(1, .5); cx.translate(-c0.x, -c0.y); cx.fillRect(all.x, all.y - all.h, all.w, all.h * 3); cx.restore(); cx.restore(); });
     } else if (river) {
       for (let s = r() * 30; s < river.len; s += 16 + r() * 22) {
         const q = at(river, s), lat = (r() - .5) * 1.3 * river.hw, x = q.x - q.ty * lat * W.cellW * .9, y = q.y + q.tx * lat * W.cellH * .9, len = 4 + r() * 8, ang = Math.atan2(q.ty, q.tx), hi = r() < .35;
@@ -634,15 +650,15 @@ window.GardenPaintWater = (function () {
         for (const [x, y, rr, t] of rafts) { const d = Math.hypot((x - pool.x) / 1.3, (y - pool.y) / .45) / 120, a0 = Math.atan2((y - pool.y) / .45, (x - pool.x) / 1.3), span = .12 + t * .3, R = Math.max(18, d * 120);
           c.globalAlpha = Math.max(.08, .55 - d * .45); c.lineWidth = 1 + t * 1.4; c.beginPath(); c.ellipse(pool.x, pool.y + 6, R * 1.3, R * .45, 0, a0 - span, a0 + span); c.stroke();
           for (let k = 0; k < 4; k++) { const a = a0 + (k / 3 - .5) * span * 2, rx = pool.x + Math.cos(a) * R * 1.3 * (1 + (t - .5) * .08), ry = pool.y + 6 + Math.sin(a) * R * .45; c.beginPath(); c.arc(rx, ry + (k % 2) * 2, .8 + t, 0, Math.PI * 2); c.fill(); } }
-        c.globalAlpha = .8; c.strokeStyle = C.foam; c.lineWidth = 2; for (const k of [.45, .75, 1.05]) { c.globalAlpha = .5 / k; c.beginPath(); c.ellipse(pool.x, pool.y + 4, width * k * 1.2, width * k * .38, 0, 0, Math.PI * 2); c.stroke(); }
+        // (no whole rings drawn round it: three perfect ellipses read as a target; the broken arcs above are the spreading water)
         const g2 = c.createRadialGradient(pool.x, pool.y - 6, 0, pool.x, pool.y - 6, width * .9); g2.addColorStop(0, 'rgba(255,255,255,.95)'); g2.addColorStop(.6, 'rgba(245,250,248,.5)'); g2.addColorStop(1, 'rgba(245,250,248,0)');
         c.globalAlpha = 1; c.fillStyle = g2; c.save(); c.translate(pool.x, pool.y - 6); c.scale(1, .45); c.beginPath(); c.arc(0, 0, width * .9, 0, Math.PI * 2); c.fill(); c.restore();
         if (w) c.restore(); c.globalAlpha = 1;
       } });
       foams.push({ x: pool.x, y: pool.y - 4, w: width * 1.1, h: 22, ang: 0, speed: 38, puffs: 9, drift: 16, over: pool.y + 30 });
       // spray boiling up off the pool in front of the sheet, a veil drifting up its face, and a low mist lying out over the water
-      mists.push({ x: pool.x, y: pool.y - 14, rx: width * .6, ry: 10, n: 7, a: .5, speed: .11, drift: 0, rise: 70, over: pool.y + 40 });
-      mists.push({ x: pool.x, y: pool.y - 90, rx: width * .55, ry: 50, n: 5, a: .22, speed: .05, drift: 0, rise: 80, over: pool.y + 41 });
+      mists.push({ x: pool.x, y: pool.y - 14, rx: width * .45, ry: 8, n: 6, a: .34, speed: .11, drift: 0, rise: 56, over: pool.y + 40 });
+      mists.push({ x: pool.x, y: pool.y - 70, rx: width * .3, ry: 36, n: 4, a: .12, speed: .05, drift: 0, rise: 60, over: pool.y + 41 });
       mists.push({ x: pool.x + 30, y: pool.y + 30, rx: width * 1.6, ry: 18, n: 6, a: .26, speed: .03, drift: 70, rise: 4, depth: -9583 });
       S.fallsPool = pool;
     }

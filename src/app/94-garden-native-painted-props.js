@@ -821,7 +821,7 @@ window.GardenPaintedProps = (function () {
     const h = handle(scene, o, spec.id, { cls: 'falls', kind: 'falls' });
     const rock = ['#a39a86', '#7e7664', '#cbc3ad', '#5e584a'];
     const rockReach = Math.ceil(Wd / 2 + 130) + (fed ? 60 : 0), box = [-rockReach, -H - 50, rockReach, 40];
-    const baseKey = bake(scene, 'falls|' + season + '|' + Wd + '|' + H + '|' + S + '|' + Math.round(lipX) + '|' + fed + '|' + sharedPool, box, B => {
+    const baseKey = bake(scene, 'falls2|' + season + '|' + Wd + '|' + H + '|' + S + '|' + Math.round(lipX) + '|' + fed + '|' + sharedPool, box, B => {
       // the plunge pool and its pale lip
       if (!sharedPool) B.f(B.ell(0, 8, 86, 22), '#4e7e8c').f(B.ell(0, 6, 74, 17), '#5f93a0').f(B.ell(-14, 4, 40, 7), '#88b8c0', .55).s(B.ell(0, 8, 86, 22), '#cfe2dc', 2, .5);
       // Keep the scarp at its original landscape anchor while the sheet reaches the Mere.
@@ -846,13 +846,22 @@ window.GardenPaintedProps = (function () {
       B.cx.restore();
       // A wet cleft follows the falling water instead of framing it with straight posts.
       const sheet = `M${lipX - Wd / 2} ${-H}h${Wd}C${lipX + Wd / 2 - 4} ${-H * .7} ${Wd / 2 - 7} ${-H * .3} ${Wd / 2 + 4} -8q${-Wd / 2 - 4} 10 ${-Wd - 8} 0C${-Wd / 2 + 7} ${-H * .3} ${lipX - Wd / 2 + 4} ${-H * .7} ${lipX - Wd / 2} ${-H}z`;
-      B.s(sheet, '#3e4a4a', 5, .65);
-      // the falling sheet: a pale gradient, brightest at the lip, a green-blue core
-      B.f(sheet, B.lin(0, -H, 0, 0, [[0, '#e8f4ee'], [.12, '#b6dcd8'], [.6, '#8cc4c4'], [1, '#d8eeea']]));
-      B.f(`M${-Wd / 2 + 6} ${-H + 4}h${Wd * .3}l-2 ${H - 16}h${-Wd * .3}z`, '#eef8f2', .35);
-      B.f(B.ell(lipX, -H, Wd / 2 + 4, 4), '#f2faf6', .9);
-      // the foam where it lands
-      for (let i = 0; i < 9; i++) B.f(D().blob(r, (r() - .5) * Wd * 1.6, -2 + (r() - .5) * 6, 10 + r() * 8, 4 + r() * 3, 7, .5), '#f4faf6', .7);
+      // the wet rock the water runs over shows dark at its edges (a soft cleft, never an outline round the sheet)
+      { const cl = B.cx; cl.save(); cl.filter = 'blur(' + (3 * K).toFixed(1) + 'px)'; B.f(sheet, '#2f3d3c', .5); cl.restore(); cl.filter = 'none'; }
+      // the falling sheet: brightest where it curls over the lip, a deep green-blue body, white again where it breaks below
+      B.f(sheet, B.lin(0, -H, 0, 0, [[0, '#f2faf6'], [.07, '#cfeae4'], [.2, '#93c9c6'], [.55, '#79b6b8'], [.8, '#a9d6d2'], [1, '#eef8f4']]));
+      // lit from the upper left: the left of the sheet catches the sky, the right falls into shade
+      B.f(sheet, B.lin(-Wd / 2, 0, Wd / 2, 0, [[0, 'rgba(255,255,255,.34)'], [.45, 'rgba(255,255,255,0)'], [.7, 'rgba(24,58,66,0)'], [1, 'rgba(24,58,66,.3)']]));
+      // ribbons of water down its face, each following the sheet's own curve, paler and darker, broken where they thin
+      { const cl = B.cx; cl.save(); cl.clip(new Path2D(sheet));
+        for (let i = 0; i < 15; i++) { const u = (i + .5) / 15 - .5 + (r() - .5) * .04, top = lipX + u * Wd, mid = u * (Wd - 10) * .92, bot = u * (Wd + 8), pale = i % 3 !== 1, w = pale ? 1.4 + r() * 2.2 : 2.6 + r() * 2.6, t0 = -H + 4 + r() * H * .12, t1 = -6 - r() * H * .15;
+          B.s(`M${top} ${t0}C${top + (mid - top) * .6} ${-H * .62} ${mid} ${-H * .3} ${bot} ${t1}`, pale ? '#f4fbf8' : '#5d9ea4', w, pale ? .32 + r() * .3 : .22 + r() * .14); }
+        cl.restore(); }
+      // the lip: water bending over the edge, a bright roll and the thin dark line just under it
+      B.f(B.ell(lipX, -H + 1, Wd / 2 + 3, 4.5), '#f6fcf9', .95);
+      B.s(`M${lipX - Wd / 2 + 2} ${-H + 6}q${Wd / 2} 4 ${Wd - 4} 0`, '#4d8d93', 1.6, .45);
+      // the foam where it lands: a churned white skirt wider than the sheet, puffed up where the water strikes
+      for (let i = 0; i < 16; i++) { const sx = (r() - .5) * Wd * 1.8, rx = 8 + r() * 12; B.f(D().blob(r, sx, -4 + (r() - .5) * 8 - Math.max(0, 1 - Math.abs(sx) / Wd) * 6, rx, 4 + r() * 4, 7, .5), i % 4 ? '#f4faf6' : '#dceee9', .75); }
       // Standalone falls have a stone rim; the Mere already owns its real shoreline.
       if (!sharedPool) for (let i = 0; i < 8; i++) { const a = Math.PI * (.08 + .84 * r()), px = Math.cos(a) * 92 * (r() < .5 ? -1 : 1), py = 14 + Math.sin(a) * 14; B.stone(r, px, py, 7 + r() * 5, 4 + r() * 2, STONE, r() < .5 ? MOSS : null); }
     });
