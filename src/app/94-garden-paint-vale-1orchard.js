@@ -132,7 +132,9 @@
       flush();
     }
     for (const b of banks) { const n = b.pts.length; b.pts.forEach((p, i) => { const q = L.cpt(p.cx, p.cy); p.x = q.x; p.y = q.y; p.t = smooth(Math.min(i, n - 1 - i) / 5) * (.8 + kit.noise(p.cx / 2.2, b.k * 3, 812) * .4); }); }
-    const FACE = 17, SHADE = 16, flowers = season === 'spring' ? ['#f0d24a', '#f8f4e8', '#f4c6d2'] : season === 'summer' ? ['#f8f4e8', '#c79ac0', '#f0d24a'] : season === 'autumn' ? ['#c79ac0', '#e8d8a0'] : [];
+    // (a terrace is a step of the hill, so its bank stands up: 17 px read as a faint line on one flat lawn; 0.6 H now, with
+    // a broader shade on the terrace below so each level reads)
+    const FACE = Math.round(typeof gardenSizePx === 'function' ? gardenSizePx('hedge', 1) : 25), SHADE = 24, flowers = season === 'spring' ? ['#f0d24a', '#f8f4e8', '#f4c6d2'] : season === 'summer' ? ['#f8f4e8', '#c79ac0', '#f0d24a'] : season === 'autumn' ? ['#c79ac0', '#e8d8a0'] : [];
     for (const b of banks) {
       const bb = kit.bboxOf(b.pts, 40); bb[1] -= FACE + 12;
       add(bb, 900 + b.k * 31 + Math.round(b.pts[0].cx * 3), (B, r, cb) => {
@@ -169,13 +171,21 @@
           const drift = kit.noise(p.cx / 2.6, b.k * 5.1, 813);
           if (flowers.length && drift > .56 && r() < .7) for (let f = 0; f < 3; f++) B.f(B.circ(p.x + (r() - .5) * 12, p.y - fh * (.25 + r() * .6), 1.3 + r() * .5), flowers[Math.floor(r() * flowers.length)], .92);
           const foot = kit.noise(p.cx / 1.7, b.k * 2.3, 814);
-          if (p.t > .45 && foot > .42 && i % 2 === 0 && offPath(p.cx, p.cy, 6)) {
-            // a short course of flat stones laid end to end, a second course above where the bank is highest
-            for (let c = 0; c < (foot > .62 ? 2 : 1); c++) { let x = p.x - 7 + c * 3; while (x < p.x + 7) { const sw = 3.4 + r() * 2.6, sh = 2 + r() * .8; B.stone(r, x + sw, p.y - 1.6 - c * 3.6 - sh * .4, sw, sh, FOOT, foot > .74 && !winter && r() < .4 ? '#8a9a4e' : null); x += sw * 2 + .6; } }
+          if (p.t > .35 && foot > .22 && i % 2 === 0 && offPath(p.cx, p.cy, 6)) {
+            // the dry-stone revetment along the bank's foot: courses of flat stones laid end to end, three where the bank is highest
+            for (let c = 0; c < (foot > .6 ? 3 : foot > .38 ? 2 : 1); c++) { let x = p.x - 7 + c * 3; while (x < p.x + 7) { const sw = 3.4 + r() * 2.6, sh = 2 + r() * .8; B.stone(r, x + sw, p.y - 1.6 - c * 3.6 - sh * .4, sw, sh, FOOT, foot > .74 && !winter && r() < .4 ? '#8a9a4e' : null); x += sw * 2 + .6; } }
           }
         }
       });
     }
+    // A route the layout calls "steps" is a long trail round the pond, not one flight: painted as steps along its whole
+    // length it read as a picket fence laid on the grass (art director, 19 Nov 2026). It is laid again here as the kit's
+    // gravel, a little wider than the planks so none shows at its edge; it gets real steps where it climbs a bank, below.
+    { const G = window.GardenPaintGround;
+      if (G && G.paths && G.routeKind) for (const rt of L.D.routes || []) { if (!rt.points || rt.points.length < 2 || G.routeKind(rt) !== 'steps' || !rt.points.some(p => inReg(p[0], p[1]) || inReg(p[0] + 1, p[1]) || inReg(p[0], p[1] + 1))) continue;
+        const pts = gardenIslandRoutePath(rt).points.map(p => L.cpt(p.x, p.y)), bb = kit.bboxOf(pts, 50);
+        for (const o of G.paths({ routes: [{ id: rt.id + '-laid', kind: 'gravel', width: (G.ROUTE_WIDTH.steps || 24) + 8, points: pts }], season, kindAt: () => 'meadow', box: { x: bb[0], y: bb[1], w: bb[2] - bb[0], h: bb[3] - bb[1] } })) add(o.bb || bb, 925, (B, r, cb) => { B.cx.save(); o.draw(B, r, cb); B.cx.restore(); B.cx.globalAlpha = 1; });
+      } }
     // worn steps where a path climbs a bank: two treads across the path's painted width, cheek stones at their ends
     const steps = [];
     for (const b of banks) for (const rb2 of ribbons) for (let i = 1; i < rb2.pts.length; i++) {
@@ -249,12 +259,12 @@
       return true;
     };
     const spaced = (x, y, sp, h) => { const rx = h * F(sp).rx / cw; return trees.every(t => { const w = rx + t.h * F(t.kind).rx / cw; return ((t.x - x) / (w * .92 + .2)) ** 2 + ((t.y - y) / 1.25) ** 2 >= 1; }); };
-    const trunkOK = (x, y) => inReg(x, y) && grass(Math.floor(x), Math.floor(y)) && L.free(x, y) && !L.plot(x, y) && !L.plot(x, y + .4) && offPath(x, y, 7) && offSquare(x, y, .2) && offGate(x, y) && dry(x, y, 1) && !nearWall(x, y, .85);
+    const trunkOK = (x, y) => inReg(x, y) && grass(Math.floor(x), Math.floor(y)) && L.free(x, y) && !L.plot(x, y) && !L.plot(x, y + .4) && offPath(x, y, 7) && offSquare(x, y, .9) && offGate(x, y) && dry(x, y, 1) && !nearWall(x, y, .85);
     // the ring of eight old perry pears round the mown centre (mature trees: 3.5 to 5 times the player)
     if (ringC) {
       const c = L.cpt(ringC.x, ringC.y);
       add([c.x - 170, c.y - 80, c.x + 170, c.y + 80], 99, (B, r) => { B.f(B.blob(r, c.x, c.y, 150, 58, 14, .12), season === 'winter' ? '#c4cab8' : '#b8c47a', .45); B.s(B.blob(r, c.x, c.y, 150, 58, 14, .12), P.lawnLo, 5, .25); for (let k = 0; k < 40; k++) { const a = r() * Math.PI * 2, d = 150 + r() * 16; B.tufts(r, c.x + Math.cos(a) * d, c.y + Math.sin(a) * d * .4, 8, 4, [P.lawnLo, '#9a9a52'], 8); } });
-      for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + .2, x = ringC.x + Math.cos(a) * 3.1, y = ringC.y + Math.sin(a) * 1.9; const h = Math.round(size('tree', .15 + (i * 3 % 8) / 8 * .4)); if (inReg(x, y) && L.kind(x, y) !== 'path' && !L.plot(x, y) && !L.plot(x, y + .4) && offPath(x, y, 4) && offSquare(x, y, 0) && crownClear(x, y, 'pear', h * .8)) trees.push({ x, y, kind: 'pear', h, v: i % 3, old: true }); }
+      for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + .2, x = ringC.x + Math.cos(a) * 3.1, y = ringC.y + Math.sin(a) * 1.9; const h = Math.round(size('tree', .5 + (i * 3 % 8) / 8 * .5)); /* (huge old perry pears, the tallest of the orchard: at .15 to .55 they were no bigger than the rows) */ if (inReg(x, y) && L.kind(x, y) !== 'path' && !L.plot(x, y) && !L.plot(x, y + .4) && offPath(x, y, 4) && offSquare(x, y, 0) && crownClear(x, y, 'pear', h * .8)) trees.push({ x, y, kind: 'pear', h, v: i % 3, old: true }); }
     }
     // the Mother tree: the oldest apple, at the far end of the orchard rows, leaning on her crutch
     const rowsRt = [...L.routes.values()].find(rt => /orchard-rows|rows/.test(rt.id) && rt.points && rt.points.length > 1 && inReg(rt.points[rt.points.length - 1][0], rt.points[rt.points.length - 1][1]));
@@ -276,7 +286,7 @@
         const h = Math.round(size('young', Math.max(0, Math.min(1, rowAge + (((hs >> 4) % 100) / 100 - .5) * .3)))), v = (hs >> 12) % 3;   // (a row was planted together: one age, a little give)
         const base = line(k, jx) + (shift[k] || 0), deep = base - (k + 1 <= T.N ? line(k + 1, jx) + (shift[k + 1] || 0) : base - 4); if (row && deep < 3.5) continue; const at = row ? deep * .66 : Math.min(off, deep * .3); let jy = null; for (const d of [0, -.25, .25, -.5, .5]) { const y = base - at + d; if (onTop(jx, y) || inRise(jx, y) || onRidge(jx, y) || inRing(jx, y, .8)) continue; if (trunkOK(jx, y) && crownClear(jx, y, kind, h) && spaced(jx, y, kind, h)) { jy = y; break; } }
         if (jy == null) { const y = base - at; if (onTop(jx, y) || inRise(jx, y) || onRidge(jx, y) || inRing(jx, y, .8)) continue; jy = y; }
-        const why = !inReg(jx, jy) ? 'reg' : !grass(Math.floor(jx), Math.floor(jy)) ? 'grass' : !L.free(jx, jy) ? 'stat' : L.plot(jx, jy) || L.plot(jx, jy + .4) ? 'plot' : !offPath(jx, jy, 7) ? 'path' : !offSquare(jx, jy, .2) ? 'sq' : !offGate(jx, jy) ? 'gate' : !dry(jx, jy, 1) ? 'wet' : nearWall(jx, jy, 1.3) ? 'wall' : !crownClear(jx, jy, kind, h) ? 'crown' : !spaced(jx, jy, kind, h) ? 'space' : '';
+        const why = !inReg(jx, jy) ? 'reg' : !grass(Math.floor(jx), Math.floor(jy)) ? 'grass' : !L.free(jx, jy) ? 'stat' : L.plot(jx, jy) || L.plot(jx, jy + .4) ? 'plot' : !offPath(jx, jy, 7) ? 'path' : !offSquare(jx, jy, .9) ? 'sq' : !offGate(jx, jy) ? 'gate' : !dry(jx, jy, 1) ? 'wet' : nearWall(jx, jy, 1.3) ? 'wall' : !crownClear(jx, jy, kind, h) ? 'crown' : !spaced(jx, jy, kind, h) ? 'space' : '';
         if (why) { rej[k + why] = (rej[k + why] || 0) + 1; continue; }
         trees.push({ x: jx, y: jy, kind, h, v });
       }

@@ -38,8 +38,9 @@
   // The ground re-bakes when a valley plot opens or closes.
   // (and when you reach a plot's level: its sign turns from the level it needs to its price)
   V.groundSigs.push(() => { if (typeof gardenAreaAt !== 'function') return ''; const lv = level(); let h = 0, n = 0; for (const p of plots()) { const c = p.cells[0]; if (locked(c[0], c[1], lv)) { const row = gardenLandCell(c[0], c[1]); h = (h * 31 + p.cells.length + c[0] * 97 + c[1] + (row && lv >= (row.lv || 0) ? 7 : 0)) >>> 0; n++; } } return '|vf' + n + ':' + h; });
-  // The fence wears the country it stands in: a dry-stone wall on the north moor, a hedge in the High orchard,
-  // the weathered post-and-rail everywhere else (the village, the valley). One rule, local dress (17 Nov 2026).
+  // The fence wears the country it stands in: on the north moor and in the High orchard the plot is a thicket of gorse or
+  // bramble (scrub(); kinds 'wall' and 'hedge' name the two), the weathered post-and-rail everywhere else (the village, the
+  // valley). One rule, local dress (17 Nov 2026; thickets in the high country 19 Nov 2026).
   const regionKind = (x, y) => { const r = typeof gardenIslandRegionAt === 'function' ? gardenIslandRegionAt(x + .5, y + .5) : null, id = r ? String(r.id) + ' ' + String(r.theme || '') : ''; return /mountain|north-headland/.test(id) ? 'wall' : /orchard/.test(id) ? 'hedge' : 'rail'; };
 
   const lighten = (c) => { const n = parseInt(c.slice(1), 16), f = v => Math.min(255, Math.round(v + (255 - v) * .25)); return '#' + [n >> 16, (n >> 8) & 255, n & 255].map(f).map(v => v.toString(16).padStart(2, '0')).join(''); };
@@ -47,7 +48,12 @@
   // These are painted into the ground, so a run along a plot's north edge stands far enough inside the plot that its top meets the edge:
   // you stand behind it with nothing of it drawn over your feet.
   const RUN_H = () => ({ rail: gardenSizePx('fence', .5), hedge: gardenSizePx('hedge', .5), wall: gardenSizePx('wall', 0) });
+  // (highlands fix round 1: every locked plot of the high country was the same box, one stamp of a dry-stone wall or a
+  // clipped hedge, five to seven to a screen; they are thickets now, see scrub() below. wallRun and hedgeRun stay for
+  // anything else that wants them.)
+  const G0 = () => window.GardenPaintGround;
   // a dry-stone wall along one cell edge: (x0, y0) the run's foot, along x (horiz) or along y, len px, hh tall
+  const nz = (x, y, s) => { const G = G0(); return G && G.noise ? G.noise(x, y, s) : .5; };
   function wallRun(B, r, P, x0, y0, horiz, len, season, hh) {
     hh = hh || 10; const stone = ['#a8a090', '#8e8678', '#bdb5a3', '#7a7366'], n = Math.max(3, Math.round(len / 7)), rows = Math.max(2, Math.round((hh - 3) / 4.6)), cy = k => y0 - 2.6 - k * (hh - 5) / rows;
     if (horiz) {
@@ -92,9 +98,69 @@
     if (coin) { B.f(B.circ(tx + 2.5, y0 + 6, 2.8), '#e8b830').f(B.circ(tx + 2.5, y0 + 6, 1.5), '#f6d870'); tx += 7; }
     cx.fillStyle = '#3e2c1a'; cx.textBaseline = 'middle'; cx.fillText(txt, tx, y0 + 6.4); cx.restore();
   }
-  function fence(B, r, P, edges, W, season, cb) {
+  // Where a landmark stands at a plot's edge, the plot's wall or hedge stops short of it (a hedge ran into the folly's side,
+  // a wall was drawn against the hut's wheel, the standing stones stood through a wall): the landmark is the edge there.
+  // How far up a landmark is drawn, in cells, decides how much of the plot's edge behind it stays clear.
+  let statMemo = null;
+  const statics = () => statMemo || (statMemo = ((typeof gardenIslandData === 'function' ? gardenIslandData() : {}).static || []).map(s => ({ x0: s.x - .45, x1: s.x + s.w + .45, y0: s.y - (/folly|tower|treehouse|mill|lighthouse/.test(s.id) ? 4.2 : /hut|stones|wall|cairn|beacon|grotto|falls/.test(s.id) ? 2.2 : 1.4), y1: s.y + s.h + .45 })));
+  const byStatic = (x, y) => statics().some(s => x > s.x0 && x < s.x1 && y > s.y0 && y < s.y1);
+  // the way into a plaza: a sign never stands in a square (it stood in the cider square's lantern)
+  let plazaMemo = null;
+  const plazas = () => plazaMemo || (plazaMemo = ((typeof gardenIslandData === 'function' ? gardenIslandData() : {}).routes || []).filter(rt => rt.tier === 'plaza' && rt.points && rt.points.length > 1).map(rt => ({ a: rt.points[0], b: rt.points[rt.points.length - 1], r: (rt.widthCells || 3) / 2 + 1.2 })));
+  const inPlaza = (x, y) => plazas().some(q => { const dx = q.b[0] - q.a[0], dy = q.b[1] - q.a[1], l = dx * dx + dy * dy, t = l ? Math.max(0, Math.min(1, ((x - q.a[0]) * dx + (y - q.a[1]) * dy) / l)) : 0; return Math.hypot(x - q.a[0] - t * dx, (y - q.a[1] - t * dy) * 1.2) < q.r; });
+  // Locked land in the high country is land not yet taken in: a thicket grown over it (round 1 of the highlands fixes; the
+  // same rule the woods follow). In the orchard, bramble and blackthorn scrub with dog-roses or blackberries; on the fells,
+  // gorse in flower, bracken and a lichened rock or two. Its edge is lumpy and set in from the plot's edge, its front stands
+  // up as a bank of growth about half your height, darker at its foot; no rectangle of hedge or wall, so twenty plots read as
+  // scrub left among the trees and on the fell, not as boxes. The sign stands at its front, clear of squares and landmarks.
+  function scrub(B, P, plot, edges, W, season, cb, lv, tone) {
+    const cw = W.cellW, ch = W.cellH, G = G0(), fell = regionKind(plot.cells[0][0], plot.cells[0][1]) === 'wall', winter = season === 'winter';
+    const cells = new Set(plot.cells.map(c => c[0] + ',' + c[1])), has = (x, y) => cells.has(x + ',' + y);
+    const rngAt = (x, y, k) => G && G.rng ? G.rng(G.hash(x + 13, y + 17, 4400 + k)) : Math.random;
+    const leaf = fell ? (season === 'autumn' ? ['#4a4a26', '#6a6230', '#8a7a3a', '#b08a46'] : winter ? ['#3e4430', '#545a3e', '#6a6e4e', '#8a8a6a'] : ['#33452a', '#46603a', '#5e7a44', '#86a05a'])
+      : (season === 'autumn' ? ['#3e4a26', '#5a6230', '#7a7434', '#a8843a'] : winter ? ['#3e4632', '#525a40', '#6a6e52', '#8c8a6e'] : tone > .5 ? ['#2e4a26', '#3e6230', '#56803e', '#7ea256'] : ['#30482c', '#426036', '#5a7c44', '#82a05e']);
+    const bloom = fell ? (season === 'spring' || season === 'summer' ? '#f2cc3a' : season === 'winter' ? null : '#e4c040') : season === 'spring' ? '#f6f2ea' : season === 'summer' ? '#f2c6d0' : season === 'autumn' ? '#3a2242' : null;
+    const lit = (x, y) => !(cb && (x * cw + cw + 30 < cb[0] || x * cw - 30 > cb[2] || W.sky + y * ch + ch + 30 < cb[1] || W.sky + y * ch - 40 > cb[3]));
+    const HH = gardenSizePx('hedge', .5);
+    // the shade the thicket throws, along the world's light
+    if (G && G.castRuns) { const runs = []; for (const [x, y, side] of edges) if (side === 's' && !byStatic(x + .5, y + 1)) runs.push([x * cw + 4, W.sky + (y + 1) * ch - 5, x * cw + cw - 4, W.sky + (y + 1) * ch - 5, HH]); if (runs.length) G.castRuns(B.cx, runs, { a: .22 }); }
+    // back to front, so the front of the thicket stands over what grows behind it
+    const order = plot.cells.slice().sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+    for (const [x, y] of order) {
+      if (!lit(x, y) || byStatic(x + .5, y + .5)) continue;
+      const r = rngAt(x, y, 1), x0 = x * cw, y0 = W.sky + y * ch, front = !has(x, y + 1), back = !has(x, y - 1), west = !has(x - 1, y), east = !has(x + 1, y);
+      // set in from every open side by a lumpy margin, so the mass is never ruled along the cell grid
+      const inset = (e, a, b) => e ? 3 + nz(a / 7, b / 7, 495) * 6 : -2;
+      const L0 = x0 + inset(west, x0, y0), R0 = x0 + cw - inset(east, x0 + cw, y0), T0 = y0 + inset(back, x0, y0) + (back ? HH * .5 : 0), F0 = y0 + ch - inset(front, x0, y0 + ch);
+      if (R0 - L0 < 4 || F0 - T0 < 3) continue;
+      const n = Math.round((R0 - L0) * (F0 - T0) / 34) + 3;
+      for (let k = 0; k < n; k++) {
+        const fx = L0 + r() * (R0 - L0), fy = T0 + Math.pow(r(), .7) * (F0 - T0), s = 3.2 + r() * 3.6, hgt = (fy - T0) / Math.max(1, F0 - T0), up = HH * (.45 + hgt * .55) * (.7 + r() * .5);
+        // a clump: its shade, then its body rising from the ground, lit upper left
+        B.f(B.blob(r, fx + 1.5, fy + 1, s * 1.15, s * .55, 7, .45), leaf[0], .9);
+        for (let q = 0; q < 3; q++) { const yy = fy - up * q / 3, ss = s * (1 - q * .18); B.f(B.blob(r, fx + (r() - .5) * 2, yy - ss * .3, ss, ss * .72, 8, .45), leaf[q === 0 ? 1 : q === 1 ? 1 + (r() < .5 ? 1 : 0) : 2], .95); }
+        B.f(B.blob(r, fx - s * .35, fy - up * .7 - s * .5, s * .5, s * .34, 6, .5), leaf[3], .8);
+        if (fell && !winter && r() < .3) { const a = -Math.PI / 2 + (r() - .5) * 1.2, l = 5 + r() * 4; B.s(`M${fx} ${fy}q${Math.cos(a) * l * .4 + 1.4} ${-l * .5} ${Math.cos(a) * l} ${Math.sin(a) * l}`, season === 'autumn' ? '#b0683a' : '#86964c', 1, .85); }   // a bracken frond
+        if (bloom && r() < (fell ? .55 : .35)) for (let b = 0; b < (fell ? 3 : 2); b++) B.f(B.circ(fx + (r() - .5) * s * 1.4, fy - up * (.4 + r() * .6) - s * .3, fell ? .8 + r() * .5 : .9 + r() * .5), bloom, .95);
+        if (!fell && !winter && r() < .12) B.s(`M${fx} ${fy - up}q${3 + r() * 3} ${-3 - r() * 3} ${6 + r() * 5} ${-1 - r() * 2}`, '#5a3a36', .9, .8);   // a bramble's arching stem
+      }
+      if (fell && r() < .35) { const sx = L0 + r() * (R0 - L0), sy = T0 + (F0 - T0) * (.5 + r() * .5); B.stone(r, sx, sy, 3.6 + r() * 3, 2.4 + r() * 1.4, { rock: '#a8a294', rockLo: '#848072', rockHi: '#cac4b4', rockDk: '#4e4a42' }, winter ? '#f2f4f6' : '#b8b46a'); }
+      // its foot: darker, with long grass and nettles where it meets the turf
+      if (front) { B.f(B.blob(r, (L0 + R0) / 2, F0, (R0 - L0) * .55, 2.6, 8, .45), 'rgba(26,36,18,.32)'); if (!winter) for (let k = 0; k < 4; k++) { const px = L0 + r() * (R0 - L0); B.s(`M${px} ${F0 + 1.5}l${(r() - .5) * 2} ${-4 - r() * 3}M${px + 1.4} ${F0 + 1.5}l${(r() - .5) * 2} ${-3 - r() * 3}`, r() < .5 ? '#5e7a36' : '#86964c', 1, .85); } }
+    }
+    // the sign: at the thicket's front, on a stretch clear of squares and landmarks
+    const fronts = edges.filter(e => e[2] === 's').map(e => [e[0], e[1]]); if (!fronts.length) return;
+    const yMax = Math.max(...fronts.map(f => f[1])), low = fronts.filter(f => f[1] === yMax && !inPlaza(f[0] + .5, f[1] + 1) && !byStatic(f[0] + .5, f[1] + 1.2)).sort((a, b) => a[0] - b[0]), at = low[low.length >> 1];
+    const row = at && gardenLandCell(at[0], at[1]); if (row && lit(at[0], at[1])) sign(B, (at[0] + .5) * cw, W.sky + (at[1] + 1) * ch + 1, row, lv);
+  }
+  function fence(B, r, P, edges, W, season, cb, plot) {
     const cw = W.cellW, ch = W.cellH, lv = level(), wood = ['#8a7454', '#a88e66', '#5e4c36'], RH = RUN_H();
     const fronts = [], inset = 3, drawn = new Set();
+    // in the high country a run beside a landmark is left out (see byStatic)
+    const high = edges.length && regionKind(edges[0][0], edges[0][1]) !== 'rail';
+    if (high) edges = edges.filter(([x, y, side]) => { const mx = x + (side === 'e' ? 1 : side === 'w' ? 0 : .5), my = y + (side === 's' ? 1 : side === 'n' ? 0 : .5); return !byStatic(mx, my); });
+    const tone = plot ? nz(plot.cells[0][0] / 3.7, plot.cells[0][1] / 2.9, 493) : .5;
+    if (high && plot) { if (locked(plot.cells[0][0], plot.cells[0][1], lv)) scrub(B, P, plot, edges, W, season, cb, lv, tone); return; }
     for (const [x, y, side, nx, ny] of edges) if (locked(x, y, lv) && !locked(nx, ny, lv)) drawn.add(x + ',' + y + side);
     // a north run's foot: inside the plot by its height, so its top meets the plot's edge (it is painted into the ground; you stand behind it)
     const northFoot = kind => Math.min(ch - 2, RH[kind] + 1);
@@ -143,8 +209,10 @@
     }
     // one sign per plot, on the front (south) fence, the middle of its lowest run
     if (fronts.length) {
-      const yMax = Math.max(...fronts.map(f => f[1])), low = fronts.filter(f => f[1] === yMax).sort((a, b) => a[0] - b[0]), at = low[low.length >> 1];
-      const row = gardenLandCell(at[0], at[1]); if (row) sign(B, (at[0] + .5) * cw + (low.length % 2 ? 0 : -cw / 2), W.sky + (at[1] + 1) * ch - 1, row, lv);
+      const yMax = Math.max(...fronts.map(f => f[1])), low = fronts.filter(f => f[1] === yMax).sort((a, b) => a[0] - b[0]);
+      // (in the high country the sign stands on a stretch of the front run clear of squares and landmarks, or on none)
+      const clear = high ? low.filter(f => !inPlaza(f[0] + .5, f[1] + 1) && !byStatic(f[0] + .5, f[1] + 1.2)) : low, at = clear[clear.length >> 1];
+      const row = at && gardenLandCell(at[0], at[1]); if (row) sign(B, (at[0] + .5) * cw + (clear.length % 2 || high ? 0 : -cw / 2), W.sky + (at[1] + 1) * ch - 1, row, lv);
     }
   }
   function compose(C) {
@@ -154,7 +222,7 @@
     for (const p of plots()) {
       if (!p.edges.length) continue;
       const xs = p.edges.map(e => e[0]), ys = p.edges.map(e => e[1]), bb = [Math.min(...xs) * cw - 16, W.sky + Math.min(...ys) * ch - 44,(Math.max(...xs) + 1) * cw + 8, W.sky + (Math.max(...ys) + 1) * ch + 8];
-      add(bb, 4100 + p.cells.length, (B, r, cb) => fence(B, r, P, p.edges, W, season, cb));
+      add(bb, 4100 + p.cells.length, (B, r, cb) => fence(B, r, P, p.edges, W, season, cb, p));
     }
     // meadow flowers in the free valley grass: drifts, each drift one colour
     const data = gardenIslandData(), statics = data.static || [], free = [];

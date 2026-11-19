@@ -133,11 +133,11 @@ window.GardenPaintedTerrain = (function () {
     const heathAt = m => { const t = Math.max(0, Math.min(1, (m - .08) / .34)), u = t * t * (3 - 2 * t); return .74 + (.56 - m * .06 - .74) * u; };
     if (window.GardenPaintGround && snowRow <= -5) {
       const hexA = c => { const n = parseInt(c.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }, sm = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
-      const HL = hexA(P.heatherLo), HM = hexA(kit.mix(P.heather, P.heatherLo, .2)), HH = hexA(P.bloom ? kit.mix(P.heather, P.bloom, .55) : P.heatherHi), FL = hexA(P.fellLo), FM = hexA(P.fell), FH = hexA(kit.mix(P.fellHi, P.bleach, .3));
+      const HL = hexA(kit.mix(P.heatherLo, '#3a3c26', .35)), HM = hexA(kit.mix(kit.mix(P.heather, P.heatherLo, .2), '#5e5a3a', .3)), HH = hexA(P.bloom ? kit.mix(P.heather, P.bloom, .75) : P.heatherHi), FL = hexA(P.fellLo), FM = hexA(P.fell), FH = hexA(kit.mix(P.fellHi, P.bleach, .3));
       let hc = null, hb = null;
       add(fellBB, 13, (B, r, cb) => {
         clipFell(B);
-        const Q = 3, pad = 12, w = Math.ceil((cb[2] - cb[0] + pad * 2) / Q), h = Math.ceil((cb[3] - cb[1] + pad * 2) / Q);
+        const Q = 2, pad = 12, w = Math.ceil((cb[2] - cb[0] + pad * 2) / Q), h = Math.ceil((cb[3] - cb[1] + pad * 2) / Q);
         if (!hc) { hc = document.createElement('canvas'); hb = document.createElement('canvas'); }
         for (const c of [hc, hb]) if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
         const x = hc.getContext('2d'), img = x.createImageData(w, h), d = img.data;
@@ -146,9 +146,11 @@ window.GardenPaintedTerrain = (function () {
           const m = moor(wx), th = heathAt(m), fine = kit.noise(wx / 7, wy / 4.5, 820), lump = kit.noise(wx / 15, wy / 9, 821);
           // (the drift's edge is lumpy and fairly sharp: a wide soft ramp read as a purple cloud airbrushed on the turf)
           const aH = sm((dr - th + .02 + (lump - .5) * .07 + (fine - .5) * .03) / .028), aC = sm((dr - .535) / .045) * (1 - aH);
-          const n = kit.noise(wx / 22, wy / 13, 818), lit = kit.noise(wx / 70, wy / 44, 819), o = (j * w + i) * 4, past = 1 - sm((m - .1) / .35);
-          const hcol = n < .4 ? HL : lit > .58 && n > .55 ? HH : HM, fcol = n < .35 ? FL : n > .7 ? FH : FM, k = .88 + lit * .16 + (fine - .5) * .16;
-          const hA = aH * (.52 + n * .3 + (fine - .5) * .14) * (1 - past * .3), tot = hA + aC * .7; if (tot <= .01) continue;
+          // (heather is a dense dark mat, lit on its swells and in flower on top: as a translucent wash with big dark blotches it
+          // read as a stain on the turf; the colour now breaks at the scale of a clump, not of a puddle)
+          const n = kit.noise(wx / 8, wy / 5, 818), lit = kit.noise(wx / 70, wy / 44, 819), o = (j * w + i) * 4, past = 1 - sm((m - .1) / .35);
+          const hcol = n < .3 && lit < .5 ? HL : lit > .5 && n > .5 ? HH : HM, fcol = n < .35 ? FL : n > .7 ? FH : FM, k = .9 + lit * .18 + (fine - .5) * .22;
+          const hA = aH * (.8 + n * .12 + (fine - .5) * .1) * (1 - past * .3), tot = hA + aC * .7; if (tot <= .01) continue;
           const fh = hA / tot * (1 - past * .3);   // (on the pasture the heather is short and dull, half turf)
           d[o] = (hcol[0] * fh + fcol[0] * (1 - fh)) * k; d[o + 1] = (hcol[1] * fh + fcol[1] * (1 - fh)) * k; d[o + 2] = (hcol[2] * fh + fcol[2] * (1 - fh)) * k; d[o + 3] = Math.min(1, tot) * 255;
         }
@@ -207,8 +209,9 @@ window.GardenPaintedTerrain = (function () {
             B.cx.globalAlpha = 1;
             // inside a drift (1b lays its mass): fine sprigs, the odd spray of bloom; a real clump only at the drift's broken edge
             if (!window.GardenPaintGround || snowRow > -5 || (drift < hth + .035 && r() < .35)) { B.heather(r, x, y, 3 + sz * 4, m > .25 ? P : HP, P.bloom && r() < .5 ? P.bloom : null); continue; }
-            for (let q = 0; q < 5; q++) { const px = x + (r() - .5) * 11, py = y + (r() - .5) * 5, hh = 1.6 + r() * 2.8; B.s(`M${px} ${py}l${(r() - .5) * 1.8} ${-hh}`, q % 3 === 1 ? P.heatherHi : P.heatherLo, 1.1, .62); }
-            if (P.bloom && drift > .6 && r() < .3) B.f(B.circ(x + (r() - .5) * 6, y - 2.5, 1.1), P.bloom, .75);
+            // a clump's woody sprigs, dark at the foot, and in summer its spikes of bell flowers on top
+            for (let q = 0; q < 9; q++) { const px = x + (r() - .5) * 13, py = y + (r() - .5) * 6, hh = 1.8 + r() * 3.2, lx = (r() - .5) * 2; B.s(`M${px} ${py}l${lx} ${-hh}`, q % 3 === 1 ? P.heatherHi : q % 3 ? '#4a3e3c' : P.heatherLo, 1, .7);
+              if (P.bloom && drift > .58 && q % 2 === 0) B.f(B.ell(px + lx, py - hh - .6, .7, 1.3), q % 4 ? P.bloom : kit.mix(P.bloom, '#ffffff', .3), .9); }
             continue;
           }
           if (pick < .5) { B.tufts(r, x, y, 10, 4 + Math.floor(sz * 4), [P.fellLo, P.fellHi, P.bleach], 5); continue; }
@@ -240,11 +243,23 @@ window.GardenPaintedTerrain = (function () {
       for (let k = 0; ok && k < 12; k++) { const q = k / 12 * Math.PI * 2, px = fx + Math.cos(q) * (fr + .5), py = fy + Math.sin(q) * (fr + .5) * .95; if (L.plotAt(px, py) || !fellAt(px * cw, W.sky + py * ch) || L.statics.some(t => px > t.x - .3 && px < t.x + t.w + .3 && py > t.y - .3 && py < t.y + t.h + .3)) ok = false; }
       if (ok) folds.push([fx, fy, fr]);
     }
+    L.folds = folds;   // (the groves keep their trunks off the rings)
     for (const [fx, fy, frx] of folds) { const c = L.cpt(fx, fy), RX = frx * cw, RY = frx * ch * .95;
       add([c.x - RX - 20, c.y - RY - 20, c.x + RX + 20, c.y + RY + 24], 190 + fx, (B, r) => {
-        clipFell(B); const sn = snowAt(c.x, c.y) > .6, ring = []; for (let k = 0; k <= 40; k++) { const a = k / 40 * Math.PI * 2; if (k > 33 && k < 37) { ring.push(null); continue; } ring.push({ x: c.x + Math.cos(a) * RX, y: c.y + Math.sin(a) * RY }); }
-        // the fold's turf is greener (sheltered), then the wall: a shaded outer face to the south, the stones, the cope
+        clipFell(B); const sn = snowAt(c.x, c.y) > .6, ring = [], fs = Math.round(fx * 7 + fy * 3);
+        // (a lumpy ring, not a hoop: the wall bulges and slumps; its gateway faces the way to the hut, south-west)
+        const gapA = Math.atan2(-.6, -1) + Math.PI * 2, rOf = a => 1 + (kit.noise(Math.cos(a) * 1.6 + fs, Math.sin(a) * 1.6, 431) - .5) * .22;
+        for (let k = 0; k <= 40; k++) { const a = k / 40 * Math.PI * 2, da = Math.abs(((a - gapA) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI); if (da < .3) { ring.push(null); continue; } const q = rOf(a); ring.push({ x: c.x + Math.cos(a) * RX * q, y: c.y + Math.sin(a) * RY * q }); }
+        // the fold's turf is greener (sheltered) and trodden bare through its gateway and round the trough, then the wall
         B.f(B.ell(c.x, c.y, RX * .92, RY * .9), sn ? P.snowSh : P.fellHi, .45);
+        if (!sn) { const gx = c.x + Math.cos(gapA) * RX, gy = c.y + Math.sin(gapA) * RY;
+          for (let k = 0; k < 7; k++) { const t = k / 6, x = gx + (c.x - gx) * t * .7, y = gy + (c.y - gy) * t * .7; B.f(B.blob(r, x, y, 9 - t * 3, 4.5 - t, 8, .45), P.peat, .22 + (1 - t) * .14); }
+          for (let k = 0; k < 3; k++) B.f(B.blob(r, gx + (r() - .5) * 18, gy + 4 + r() * 6, 7 + r() * 5, 3, 7, .5), P.pathLo, .3);
+          // a wattle hurdle leant across half the gateway, and two ewes resting in the lee of the wall
+          const hx = gx + 3, hy = gy + 1; B.s(`M${hx - 7} ${hy + 1}l13 -2`, '#3a2e20', 3, .25); for (let k = 0; k < 4; k++) B.s(`M${hx - 6 + k * 3.8} ${hy + 1 - k * .6}l.6 -7`, '#6e5638', 1.3, .95); for (let k = 0; k < 3; k++) B.s(`M${hx - 7} ${hy - 1.5 - k * 2}q6.5 ${k & 1 ? 1 : -1} 13 -2`, '#8a6e46', 1.1, .9);
+          if (frx > 1.4) for (const [ox, oy] of [[-.35, -.2], [.25, .15]]) { const sx = c.x + ox * RX, sy = c.y + oy * RY, fl = ox > 0 ? -1 : 1;
+            B.f(B.ell(sx + 2, sy + 2.4, 8, 2.6), '#2e3420', .28).f(B.blob(r, sx, sy - 2.6, 7.4, 4.2, 9, .3), '#e6e0d0').f(B.blob(r, sx - 1.6, sy - 4, 4.4, 2.4, 7, .4), '#f6f2e8', .9)
+              .f(B.ell(sx + fl * 7.4, sy - 4.2, 2.3, 1.9), '#3a3430').f(B.ell(sx + fl * 8.4, sy - 4.8, .8, .5), '#5a524c', .9).f(B.ell(sx + fl * 5.8, sy - 5.6, 1.4, .7), '#2e2a26'); } }
         let seg = []; const flush = () => { if (seg.length > 1) { const fine = kit.resample(seg, 3.4); B.s(B.line(seg.map(p => ({ x: p.x + 2, y: p.y + 4.5 }))), '#3e3a32', 10, .3).s(B.line(seg), '#7d7464', 9, 1); for (const off of [2.2, -2.2]) for (const p of fine) B.stone(r, p.x + (r() - .5) * 2.4, p.y - 1 + off * .6 + (r() - .5) * 1.5, 2.6 + r() * 2.4, 1.8 + r() * 1.3, P, sn ? 'snow' : r() < .25 ? P.lichen : null); for (let i = 0; i < fine.length; i += 3) { const p = fine[i]; B.f(B.rect(p.x - 2, p.y - 6.5, 4, 3.2), r() < .5 ? '#a39a84' : '#bdb39c', .9); } } seg = []; };
         for (const p of ring) { if (!p) { flush(); continue; } seg.push(p); } flush();
       }); }
@@ -278,8 +293,15 @@ window.GardenPaintedTerrain = (function () {
         B.f(body, B.lin(0, base - amp, 0, foot, [[0, 'rgba(232,238,240,0)'], [1, kit.rgba('#e6ecee', [.55, .38, .2][layer])]]));
       }
       // the near range's foot melts into the fell's own colour, under a low bank of mist, so the backdrop has no ruled line where the walkable fell begins
-      B.f(B.rect(xs0, W.sky - 46, xs1 - xs0 + 70, 52), B.lin(0, W.sky - 46, 0, foot + 2, [[0, kit.rgba(snowRow > 0 ? P.snow : P.fell, 0)], [1, kit.rgba(snowRow > 0 ? P.snow : P.fell, .92)]]));
-      B.f(B.rect(xs0, W.sky - 34, xs1 - xs0 + 70, 70), B.lin(0, W.sky - 34, 0, W.sky + 36, [[0, kit.rgba('#e4eaec', 0)], [.5, kit.rgba('#e4eaec', .42)], [1, kit.rgba('#e4eaec', 0)]]));
+      // (the wash fades out again below the foot, and the mist bank is broken along its length: each ended on a ruled line)
+      const fellC = snowRow > 0 ? P.snow : P.fell;
+      B.f(B.rect(xs0, W.sky - 46, xs1 - xs0 + 70, 76), B.lin(0, W.sky - 46, 0, W.sky + 30, [[0, kit.rgba(fellC, 0)], [.6, kit.rgba(fellC, .9)], [.8, kit.rgba(fellC, .45)], [1, kit.rgba(fellC, 0)]]));
+      for (let x = xs0; x < xs1 + 60; x += 46) { const n = kit.noise(x / 160, 2.2, 63), w = 70 + n * 60, y = W.sky - 6 + (kit.noise(x / 90, 4.4, 64) - .5) * 16;
+        B.cx.save(); B.cx.translate(x, y); B.cx.scale(1, (15 + n * 10) / w); B.f(B.circ(0, 0, w), B.rad(0, 0, w, [[0, kit.rgba('#e8eef0', .26 + n * .16)], [1, kit.rgba('#e8eef0', 0)]])); B.cx.restore(); }
+      // the far fells end soft where the land runs out east, over the sea, never on a vertical cut
+      B.cx.globalCompositeOperation = 'destination-out';
+      B.f(B.rect(xs1 - 220, top - 60, 400, W.sky - top + 110), B.lin(xs1 - 220, 0, xs1 + 40, 0, [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,1)']]));
+      B.cx.globalCompositeOperation = 'source-over';
     });
     // 5. Snow above the snow line: a white blanket with a ragged edge, blue shade in the south-east falls, rock and heather through it.
     if (snowRow > -5) add(fellBB, 41, (B, r0, cb) => {
@@ -309,11 +331,13 @@ window.GardenPaintedTerrain = (function () {
       B.cx.globalCompositeOperation = 'source-over';
     });
     for (const w of L.water) if (!w.river) {
-      const ring = kit.resample(w.pts.concat([w.pts[0]]), 7);
+      // (the layout's outline is a polygon: its corners rounded first, so the shore is not faceted like a paddling pool)
+      let sm = w.pts.slice(); for (let it = 0; it < 3; it++) { const o = []; for (let i = 0; i < sm.length; i++) { const a = sm[i], b = sm[(i + 1) % sm.length]; o.push({ x: a.x * .75 + b.x * .25, y: a.y * .75 + b.y * .25 }, { x: a.x * .25 + b.x * .75, y: a.y * .25 + b.y * .75 }); } sm = o; }
+      const ring = kit.resample(sm.concat([sm[0]]), 7);
       add(kit.bboxOf(w.pts, 30), 61 + w.id.length, (B, r) => {
-        // A natural stony shore, not a bead necklace: a soft damp margin, then stones in
+        // A natural stony shore, not a bead necklace: a damp margin that widens and narrows, then stones in
         // clusters of different sizes with gaps of turf and the odd boulder between them.
-        B.s(B.line(ring), snowRow > 90 ? P.snowSh : '#9c937c', 12, .35).s(B.line(ring), snowRow > 90 ? P.snow : '#c4bba2', 5, .45);
+        for (let i = 0; i < ring.length; i++) { const p = ring[i], m = kit.noise(i * .21, w.id.length, 455); B.f(B.blob(r, p.x, p.y + 1, 5 + m * 9, 2.4 + m * 4, 7, .5), snowRow > 90 ? P.snowSh : m > .55 ? '#8e8670' : '#9c937c', .2 + m * .18); if (m > .4) B.f(B.blob(r, p.x, p.y, 2 + m * 4, 1.2 + m * 1.6, 6, .5), snowRow > 90 ? P.snow : '#c4bba2', .4); }
         const field = i => Math.sin(i * .37 + w.id.length) + Math.sin(i * .113 + 2.1) * .8;
         for (let i = 0; i < ring.length; i++) {
           const p = ring[i], f = field(i); if (f < -.55 || r() < .3) continue;
@@ -394,15 +418,25 @@ window.GardenPaintedTerrain = (function () {
 
   /* ---------- the gorge ---------- */
   function gorgeOps(L, P, ops, add, season, snowy) {
-    const kit = KIT(), W = L.W, hw = L.gorge.halfWidth || .85, line = kit.resample(L.gorge.line.map(p => ({ x: p[0], y: p[1] })), .14).map(p => [p.x, p.y]), n = line.length;
+    // (the layout's line is a few straight legs: corners rounded and a gentle wander added, so the gorge is not a canal;
+    // the river's cells stay what they are, the wander is well inside a cell)
+    let raw = L.gorge.line.map(p => ({ x: p[0], y: p[1] }));
+    for (let it = 0; it < 3 && raw.length > 2; it++) { const o = [raw[0]]; for (let i = 0; i < raw.length - 1; i++) { const a = raw[i], b = raw[i + 1]; o.push({ x: a.x * .75 + b.x * .25, y: a.y * .75 + b.y * .25 }, { x: a.x * .25 + b.x * .75, y: a.y * .25 + b.y * .75 }); } o.push(raw[raw.length - 1]); raw = o; }
+    const kit = KIT(), W = L.W, hw = L.gorge.halfWidth || .85, line0 = kit.resample(raw, .14).map(p => [p.x, p.y]), n = line0.length;
+    const line = line0.map((p, i) => { const a = line0[Math.max(0, i - 1)], b = line0[Math.min(n - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1, e = Math.min(1, Math.min(i, n - 1 - i) / 12), m = (kit.noise(i * .045, 3.3, 451) - .5) * .26 * e; return [p[0] - dy / l * m, p[1] + dx / l * m]; });
+    // the banks pinch and widen, never inside the layout's own water (the fell's paint has a hole there: a narrower bank showed it)
+    const wid = i => 1 + (.14 + kit.noise(i * .06, 7.7, 452) * .24 * Math.min(1, Math.min(i, n - 1 - i) / 10)) / hw;
     // banks in cell space (the cells are not square), then world px
     const nrm = line.map((p, i) => { const a = line[Math.max(0, i - 1)], b = line[Math.min(n - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return [-dy / l, dx / l]; });
     const far = [], farIn = [], near = [], nearIn = [], mid = [];
+    // s points the normal to the far (northern, upper) bank: one side for the whole river (taken point by point, a rounded
+    // bend where the line turned flat swapped the banks and filled a sheet of water across the fell)
+    const sAll = nrm.reduce((a, q) => a + q[1], 0) < 0 ? 1 : -1;
     line.forEach((p, i) => {
-      const [nx, ny] = nrm[i], t = i / (n - 1), s = ny < 0 ? 1 : -1;      // s points the normal to the far (northern, upper) bank
-      const depth = .3 + t * .16;
-      far.push(L.pt([p[0] + nx * s * (hw + .1), p[1] + ny * s * (hw + .1)])); farIn.push(L.pt([p[0] + nx * s * hw * (1 - depth * 2), p[1] + ny * s * hw * (1 - depth * 2)]));
-      near.push(L.pt([p[0] - nx * s * (hw + .05), p[1] - ny * s * (hw + .05)])); nearIn.push(L.pt([p[0] - nx * s * hw * .78, p[1] - ny * s * hw * .78])); mid.push(L.pt(p));
+      const [nx, ny] = nrm[i], t = i / (n - 1), s = sAll;
+      const depth = (.3 + t * .16) * (.75 + kit.noise(i * .09, 1.1, 453) * .5), wf = wid(i), wn = wid(i + 500);
+      far.push(L.pt([p[0] + nx * s * (hw * wf + .1), p[1] + ny * s * (hw * wf + .1)])); farIn.push(L.pt([p[0] + nx * s * hw * wf * (1 - depth * 2), p[1] + ny * s * hw * wf * (1 - depth * 2)]));
+      near.push(L.pt([p[0] - nx * s * (hw * wn + .05), p[1] - ny * s * (hw * wn + .05)])); nearIn.push(L.pt([p[0] - nx * s * hw * wn * .78, p[1] - ny * s * hw * wn * .78])); mid.push(L.pt(p));
     });
     const bb = kit.bboxOf(far.concat(near), 40);
     // the ford at the stepping stones: the river runs on through the path's gap as shallows, with flat stones across
@@ -488,7 +522,7 @@ window.GardenPaintedTerrain = (function () {
       });
     }
     // pines along the Edge: a few wind-bent Scots pines leaning east, on the rock (occluders)
-    const pines = []; for (let i = 10; i < N - 10; i += 50 + Math.floor(R(i, 5)() * 90)) { const rr = R(i, 6); if (rr() < .55 || moor(L2[i].x) > .7) continue; pines.push({ x: L2[i].x + (F2[i].x - L2[i].x) * .3, y: L2[i].y + (F2[i].y - L2[i].y) * .55, h: Math.round(gardenSizePx('tree', rr())), seed: seed * 7 + i }); }   // (at the size standard: a mature pine is 3.5 to 5 times your height)
+    const pines = []; for (let i = 10; i < N - 10; i += 50 + Math.floor(R(i, 5)() * 90)) { const rr = R(i, 6); if (rr() < .55 || moor(L2[i].x) > .7) continue; { const px = (L2[i].x + (F2[i].x - L2[i].x) * .3) / W.cellW, py = (L2[i].y + (F2[i].y - L2[i].y) * .55 - W.sky) / W.cellH; if ([[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1]].some(([dx, dy]) => L.plotAt(px + dx, py + dy))) continue; }   /* (never through a plot) */ pines.push({ x: L2[i].x + (F2[i].x - L2[i].x) * .3, y: L2[i].y + (F2[i].y - L2[i].y) * .55, h: Math.round(gardenSizePx('tree', rr())), seed: seed * 7 + i }); }   // (at the size standard: a mature pine is 3.5 to 5 times your height)
     add(kit.bboxOf(L2, 10), seed + 3, () => {}, { decor: true, pines });
   }
 
@@ -554,9 +588,18 @@ window.GardenPaintedTerrain = (function () {
       const mask = loopPath([points]); mask.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]); return mask;
     });
     if (!along) { bankOps(L, P, add, t, a.map(L.pt), b.map(L.pt), bb, dry, season, snowy); return; }
+    // Where a way runs through the wall, the wall stops either side of it with a squared end and the way climbs through on
+    // stone steps (a solid wall was painted straight across the orchard stair's lane, and you walked through it)
+    const gaps = [];
+    for (const rt of L.D.routes || []) { if (!rt.points || rt.points.length < 2 || rt.tier === 'plaza') continue; const pts = (typeof gardenIslandRoutePath === 'function' ? gardenIslandRoutePath(rt).points : rt.points.map(q => ({ x: q[0], y: q[1] }))).map(q => L.cpt(q.x, q.y));
+      const G0 = window.GardenPaintGround, kind = G0 && G0.routeKind ? G0.routeKind(rt) : 'earth', half = (G0 && G0.ROUTE_WIDTH ? G0.ROUTE_WIDTH[kind] || 24 : 24) / 2 + 3;
+      for (let i = 1; i < pts.length; i++) { const p = pts[i - 1], q = pts[i]; for (let j = 1; j < upper.length; j++) { const u = upper[j - 1], v = upper[j], d1x = q.x - p.x, d1y = q.y - p.y, d2x = v.x - u.x, d2y = v.y - u.y, den = d1x * d2y - d1y * d2x; if (Math.abs(den) < 1e-6) continue;
+        const s = ((u.x - p.x) * d2y - (u.y - p.y) * d2x) / den, w = ((u.x - p.x) * d1y - (u.y - p.y) * d1x) / den; if (s < -.15 || s > 1.15 || w < 0 || w > 1) continue;
+        gaps.push({ x: p.x + d1x * s, y: p.y + d1y * s, half, lowY: lower.reduce((m, o) => Math.abs(o.x - (p.x + d1x * s)) < Math.abs(m.x - (p.x + d1x * s)) ? o : m, lower[0]).y }); } } }
     add(bb, 500 + t.id.length * 7, (B, r) => {
       // Separate clips subtract the union, including overlapping basins.
       for (const mask of dry) B.cx.clip(mask, 'evenodd');
+      if (gaps.length) { const cut = new Path2D(); cut.rect(bb[0] - 10, bb[1] - 40, bb[2] - bb[0] + 20, bb[3] - bb[1] + 80); for (const g of gaps) cut.rect(g.x - g.half, bb[1] - 30, g.half * 2, bb[3] - bb[1] + 60); B.cx.clip(cut, 'evenodd'); }
       const face = B.poly(upper.concat(lower.slice().reverse()));
       B.cx.filter = 'blur(4px)'; B.f(B.poly(lower.map(p => ({ x: p.x + 3, y: p.y - 3 })).concat(lower.slice().reverse().map(p => ({ x: p.x + 9, y: p.y + 12 })))), '#2e3420', .22); B.cx.filter = 'none';
       B.f(face, B.lin(0, bb[1], 0, bb[3], [[0, '#9c9480'], [1, '#6e6858']]));
@@ -578,6 +621,22 @@ window.GardenPaintedTerrain = (function () {
       for (let i = 0; i < top.length; i += 2) { const p = top[i]; if (r() < .4) B.f(B.blob(r, p.x, p.y - 3, 3 + r() * 3, 1.2 + r(), 6, .5), snowy ? P.snow : r() < .5 ? P.moss : '#8fa860', .9); }
       if (snowy) B.s(B.line(top.map(p => ({ x: p.x, y: p.y - 4.5 }))), P.snow, 2.6, .9);
       B.s(B.line(kit.resample(lower, 6)), '#4a463a', 1.8, .45);
+    });
+    if (gaps.length) add(kit.bboxOf(gaps.flatMap(g => [{ x: g.x - g.half - 14, y: g.y - 30 }, { x: g.x + g.half + 14, y: g.lowY + 20 }]), 6), 520 + t.id.length * 7, (B, r) => {
+      for (const g of gaps) {
+        const top = g.y, low = Math.max(g.lowY, top + 8), hgt = low - top, x0 = g.x - g.half, x1 = g.x + g.half, n = Math.max(2, Math.min(4, Math.round(hgt / 6)));
+        // the wall's two squared ends: big quoins laid long and short, lit on the west face
+        for (const [ex, dir] of [[x0, -1], [x1, 1]]) { for (let k = 0; k < Math.ceil((hgt + 6) / 5.4); k++) { const y = low - 2 - k * 5.4, w = k % 2 ? 7 : 10; B.f(B.rect(ex + (dir < 0 ? -w : 0), y - 5, w, 5), k % 2 ? '#a89f88' : '#bdb49c').f(B.rect(ex + (dir < 0 ? -w : 0), y - 5, w, 1.3), '#ddd5c0', .7); }
+          B.f(B.rect(ex + (dir < 0 ? -1.4 : 0), top - 6, 1.4, hgt + 8), dir < 0 ? '#5e584a' : '#e2dac4', .45); }
+        // the steps: worn flags, each tread lit and its riser in shade, climbing from the lane below to the terrace above
+        B.f(B.rect(x0, top - 4, x1 - x0, hgt + 6), '#6e6656', .55);
+        for (let k = 0; k < n; k++) { const yT = top - 2 + k * (hgt + 2) / n, th = (hgt + 2) / n, inset = 1 + k * .6;
+          B.f(B.rect(x0 + inset, yT, x1 - x0 - inset * 2, th * .62), k % 2 ? '#c9c0a8' : '#d3cab2').f(B.rect(x0 + inset, yT + th * .62, x1 - x0 - inset * 2, th * .38), '#7a7260', .9);
+          B.f(B.ell(g.x + (r() - .5) * 4, yT + th * .3, (x1 - x0) * .22, th * .16), '#e8e0cc', .45);
+          for (let c = 0; c < 2; c++) B.s(`M${x0 + inset + 3 + r() * (x1 - x0 - 10)} ${yT + .6}l${1.5 + r() * 3} ${th * .4}`, '#8a826e', .6, .5); }
+        if (season !== 'winter') for (let k = 0; k < 6; k++) B.tufts(r, (r() < .5 ? x0 + 2 : x1 - 2) + (r() - .5) * 3, top + r() * hgt, 5, 3, [P.fellLo, '#9cb062'], 4);
+        else B.f(B.rect(x0, top - 3, x1 - x0, 2.4), P.snow, .9);
+      }
     });
   }
 
@@ -629,7 +688,7 @@ window.GardenPaintedTerrain = (function () {
   const PEAK_FIELDS = new Map();
   function peakField(w, d, H, snowShare, P, seed, sharp, foot, x0, y0, cw, chh) {
     const key = [seed, w, d, H, snowShare, P.fell].join('|'); if (PEAK_FIELDS.has(key)) return PEAK_FIELDS.get(key);
-    const kit = KIT(), sd = seed % 997, ST = 1.25;
+    const kit = KIT(), sd = seed % 997, ST = .8;   // (a sample every 1.25 world px smeared the flanks into streaks close up: highlands fix round 1)
     const hexA = c => { const n = parseInt(c.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
     const COL = { grass: hexA(kit.mix(P.fell, '#9aa466', .3)), grassHi: hexA(P.fellHi), heath: hexA(kit.mix(P.heather, P.fell, .3)), scree: hexA('#bdb29c'), rock: hexA('#a89c8a'), snow: hexA(P.snow), snowSh: hexA(P.snowSh) };
     const fb = kit.bboxOf(foot || [{ x: -w / 2, y: -d }, { x: w / 2, y: 0 }]), cxF = (fb[0] + fb[2]) / 2, cyF = (fb[1] + fb[3]) / 2, rx = (fb[2] - fb[0]) / 2 * .98, ry = (fb[3] - fb[1]) / 2 * 1.02;
@@ -649,11 +708,11 @@ window.GardenPaintedTerrain = (function () {
     }
     // the picture: per column, walk from the front row to the back, painting each point up to the lowest skyline so far
     const PW = Math.ceil(cw / ST), PH = Math.ceil(chh / ST), cv = document.createElement('canvas'); cv.width = PW; cv.height = PH;
-    const cx = cv.getContext('2d'), img = cx.createImageData(PW, PH), px = img.data, sky = new Float32Array(PW).fill(Infinity);
+    const cx = cv.getContext('2d'), img = cx.createImageData(PW, PH), px = img.data, sky = new Float32Array(PW).fill(Infinity), top = new Float32Array(PW).fill(Infinity), cls = new Uint8Array(NX * NY);
     const RS = .55, L = [-.6, -.42, .68], snowLine = H * (1.02 - snowShare * 1.15);
     for (let i = 1; i < NX - 1; i++) {
       const col = Math.round((gx0 + i * ST - x0) / ST); if (col < 0 || col >= PW) continue;
-      let ymin = Math.min(PH, (gy0 + (NY - 1) * ST - y0) / ST), drawn = false, zc = 0;
+      let ymin = Math.min(PH, (gy0 + (NY - 1) * ST - y0) / ST), drawn = false, zc = 0, yHi = Infinity;
       for (let j = NY - 2; j >= 1; j--) {
         const z = h[j * NX + i], sy = (gy0 + j * ST - z - y0) / ST; if (z <= .3) { ymin = Math.min(ymin, sy); continue; } if (sy >= ymin) continue;
         const dzx = (h[j * NX + i + 1] - h[j * NX + i - 1]) / (2 * ST) * RS, dzy = (h[(j + 1) * NX + i] - h[(j - 1) * NX + i]) / (2 * ST * 1.6) * RS;
@@ -677,16 +736,19 @@ window.GardenPaintedTerrain = (function () {
         rr = rr * k * (1 - crease) + (lam > .6 ? 5 : -3); gg = gg * k * (1 - crease) + (lam > .6 ? 3 : -2); bb = bb * k * (1 - crease) + (lam > .6 ? -3 : 4);
         const yTop = Math.max(0, Math.floor(sy)), yBot = Math.min(PH, Math.ceil(ymin));
         for (let yy = yTop; yy < yBot; yy++) { const o = (yy * PW + col) * 4; px[o] = rr; px[o + 1] = gg; px[o + 2] = bb; px[o + 3] = 255; }
-        ymin = sy; drawn = true; if (z > zc) zc = z;
+        // what this visible point is, for the crisp brushwork laid over the picture (1 turf, 2 heather, 3 scree, 4 crag, 5 snow)
+        if (yBot > yTop) cls[j * NX + i] = snowy ? 5 : steep > .55 ? 4 : rockMix > .4 || thin > .3 ? 3 : heathy ? 2 : 1;
+        ymin = sy; drawn = true; if (z > zc) zc = z; if (z > 18) yHi = sy;   // (yHi: the top of what stands higher than your knees in this column, for the fade)
       }
-      if (drawn && zc > 6) sky[col] = ymin;   // (a column with hardly any mountain in it drew its rim as a dotted line along the back of the grid)   // (a column with no mountain in it has no skyline: its rim drew a line across the moor)
+      if (drawn && isFinite(yHi)) top[col] = yHi;
+      if (drawn && zc > Math.max(6, H * .16)) sky[col] = ymin;   // (a column only a little mountain high has no rim either: where the flank met the moor its rim ran on out over the grass as a dotted line)   // (a column with hardly any mountain in it drew its rim as a dotted line along the back of the grid)   // (a column with no mountain in it has no skyline: its rim drew a line across the moor)
     }
     // fill single-column gaps the sampling left
     for (let yy = 0; yy < PH; yy++) for (let col = 1; col < PW - 1; col++) { const o = (yy * PW + col) * 4; if (px[o + 3] === 0 && px[o - 1] === 255 && px[o + 7] === 255) for (let q = 0; q < 4; q++) px[o + q] = (px[o - 4 + q] + px[o + 4 + q]) >> 1; }
     cx.putImageData(img, 0, 0);
     // a breath of blur, so the long spans of a steep face do not read as stripes
     const cv2 = document.createElement('canvas'); cv2.width = PW; cv2.height = PH; const c2 = cv2.getContext('2d'); c2.filter = 'blur(.8px)'; c2.drawImage(cv, 0, 0); c2.filter = 'none'; c2.globalAlpha = .55; c2.drawImage(cv, 0, 0); c2.globalAlpha = 1;
-    const out = { cv: cv2, ST, sky, PW, PH, h, NX, NY, gx0, gy0 };
+    const out = { cv: cv2, ST, sky, top, cls, PW, PH, h, NX, NY, gx0, gy0 };
     PEAK_FIELDS.set(key, out); if (PEAK_FIELDS.size > 8) PEAK_FIELDS.delete(PEAK_FIELDS.keys().next().value);
     return out;
   }
@@ -697,8 +759,22 @@ window.GardenPaintedTerrain = (function () {
     B.shadow(w * .16, 2, w * .62, 16, .34);
     cx.save(); cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high'; cx.drawImage(F.cv, x0, y0, F.PW * F.ST, F.PH * F.ST); cx.restore();
     // the skyline's rim: lit where it climbs from the west, a dark edge where it falls away east
-    const rim = []; for (let c = 0; c < F.PW; c += 2) if (isFinite(F.sky[c]) && F.sky[c] < F.PH - 2) rim.push({ x: x0 + c * F.ST, y: y0 + F.sky[c] * F.ST });
-    for (let i = 1; i < rim.length; i++) { const a = rim[i - 1], b = rim[i]; if (Math.abs(b.y - a.y) > 30) continue; const up = b.y < a.y - .2; B.s(`M${a.x} ${a.y + .8}L${b.x} ${b.y + .8}`, up ? (snowShare > .2 && b.y < y0 + chh * .35 ? '#ffffff' : '#efe3c6') : '#3c3842', up ? 1.6 : 1.1, up ? .7 : .35); }
+    // (each run of the rim is one stroke, lit and shaded runs apart: a stroke for every pair of columns drew a dotted line)
+    const rim = []; for (let c = 0; c < F.PW; c += 3) if (isFinite(F.sky[c]) && F.sky[c] < F.PH - 2) rim.push({ x: x0 + c * F.ST, y: y0 + F.sky[c] * F.ST });
+    { let run = [], up0 = null; const flush = () => { if (run.length > 2) B.s(B.line(run), up0 ? (snowShare > .2 ? '#fbfbf6' : '#efe3c6') : '#4a4450', up0 ? 1.5 : 1, up0 ? .6 : .22); run = []; };
+      for (let i = 1; i < rim.length; i++) { const a = rim[i - 1], b = rim[i]; if (Math.abs(b.y - a.y) > 24 || b.x - a.x > F.ST * 4) { flush(); up0 = null; continue; } const up = b.y < a.y - .2; if (up !== up0) { flush(); up0 = up; run.push(a); } run.push(b); }
+      flush(); }
+    // crisp brushwork over the soft picture, from what each visible point of the field is: courses and joints on the crags,
+    // stones on the scree, tufts and sprigs on the turf and heather, so a flank close up is rock and turf, not a smear
+    { const rr = kit.rng(seed + 77), N = F.NX * F.NY, n = Math.min(5200, Math.round(N / 26));
+      const turf = [kit.mix(P.fellLo, '#6e7a40', .3), kit.mix(P.fellHi, '#d8d2a0', .2)], heath = [P.heatherLo, P.heatherHi || P.heather];
+      for (let k = 0; k < n; k++) { const q = Math.floor(rr() * N), c = F.cls[q]; if (!c) continue; const i = q % F.NX, j = (q / F.NX) | 0, z = F.h[q];
+        const X = F.gx0 + i * F.ST, Y = F.gy0 + j * F.ST - z, s = .7 + rr() * .7, t = rr();
+        if (c === 4) { const w = 2.4 + rr() * 3.4, hh = 1.6 + rr() * 2.2; B.f(B.blob(rr, X + w * .25, Y + hh * .35, w, hh, 6, .3), '#4a443c', .42).f(B.blob(rr, X, Y, w * .9, hh * .85, 6, .3), t < .5 ? '#a89e8c' : '#9a9080', .8).f(B.blob(rr, X - w * .3, Y - hh * .35, w * .45, hh * .3, 5, .35), '#ddd4c0', .6); }   // a block of the crag, lit on its upper left
+        else if (c === 3) { B.f(B.ell(X + .5, Y + .6, 1.6 * s, .9 * s), '#5e564c', .32).f(B.ell(X, Y, 1.5 * s, .85 * s), t < .5 ? '#c8bea8' : '#a89e8c', .7); }
+        else if (c === 5) { if (t < .4) B.s(`M${X - 3} ${Y}q3 -.8 6 0`, P.snowSh, .9, .55); }
+        else { const col = c === 2 ? heath[t < .5 ? 0 : 1] : turf[t < .55 ? 0 : 1]; for (let b = 0; b < 3; b++) B.s(`M${X + (b - 1) * 1.3} ${Y}l${(b - 1) * .9 + (rr() - .5) * .6} ${-(2 + rr() * 2.2) * s}`, col, .8, .55); }
+      } }
     // the foot: fell and heather lapping up in soft lobes, boulders fallen out on to the moor
     const Ks = Math.abs(cx.getTransform().a) || 1, fb = kit.bboxOf(foot || [{ x: -w / 2, y: -d }, { x: w / 2, y: 0 }]);
     const ring = []; for (let k = 0; k <= 40; k++) { const a = Math.PI * k / 40; ring.push({ x: (fb[0] + fb[2]) / 2 - Math.cos(a) * (fb[2] - fb[0]) / 2 * 1.02, y: (fb[1] + fb[3]) / 2 + Math.sin(a) * (fb[3] - fb[1]) / 2 * 1.04 }); }
@@ -706,7 +782,7 @@ window.GardenPaintedTerrain = (function () {
     // (the skirt is laid soft on a canvas at a third of the resolution and stretched over the foot: a canvas blur at the
     // sprite's own level took seconds when the sharpener painted a peak again at a close zoom; this is the same picture
     // at every level for a few milliseconds)
-    const sk = [fb[0] - 50, fb[1] - 30, fb[2] + 50, fb[3] + 30], SQ = 3, sw = Math.ceil((sk[2] - sk[0]) / SQ), sh = Math.ceil((sk[3] - sk[1]) / SQ);
+    const sk = [fb[0] - 50, fb[1] - 30, fb[2] + 50, fb[3] + 30], SQ = 1.5, sw = Math.ceil((sk[2] - sk[0]) / SQ), sh = Math.ceil((sk[3] - sk[1]) / SQ);
     const sc = document.createElement('canvas'); sc.width = sw; sc.height = sh; const sx = sc.getContext('2d'); sx.setTransform(1 / SQ, 0, 0, 1 / SQ, -sk[0] / SQ, -sk[1] / SQ);
     const sf = (d, col, a) => { sx.globalAlpha = a; sx.fillStyle = col; sx.fill(typeof d === 'string' ? new Path2D(d) : d); };
     for (let i = 0; i < ring.length; i += 2) { const p = ring[i], rx = 10 + r() * 14, ry = 4 + r() * 5; sf(B.blob(r, p.x + 3, p.y + 2, rx, ry, 8, .4), skirtLo, .45); sf(B.blob(r, p.x, p.y - 2 - r() * 4, rx, ry, 8, .4), skirtCol, .7); }
@@ -793,9 +869,15 @@ window.GardenPaintedTerrain = (function () {
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const c = gardenIslandBaseCell(Math.floor(x + dx * .9), Math.floor(y + dy * .9)); if (!c || !c.land || !L.ids.has(c.region) || c.freshwater || c.route || c.solid || c.landformId || c.staticId || c.beach) return false; if (plots.has(Math.floor(x + dx * .9) + ',' + Math.floor(y + dy * .9))) return false; }
       if (statics.some(s => x > s.x - 1.6 && x < s.x + s.w + 1.6 && y > s.y - 1.2 && y < s.y + s.h + 1.6)) return false;
       const p = L.cpt(x, y); if (peakB.some(b => p.x > b[0] && p.x < b[2] && p.y > b[1] && p.y < b[3] + 40)) return false;
-      return !out.some(t => Math.hypot(t.cx - x, (t.cy - y) * 1.3) < 1.25);
+      // a trunk stands clear of every trail (the moor trail had pines in its middle) and of the sheepfolds' rings
+      if (L.routes.some(rt => rt.points.some((q, i) => i > 0 && segDist(p, rt.points[i - 1], q) < (rt.tier === 'plaza' ? rt.width * W.cellW * .5 : 13) + 16))) return false;
+      if ((L.folds || []).some(f => Math.hypot(f[0] - x, (f[1] - y) * 1.3) < f[2] + 1.3)) return false;
+      // crowns do not grow into each other: never one straight above another (that read as one tree with two crowns)
+      return !out.some(t => { const dx = Math.abs(t.x - p.x), dy = Math.abs(t.y - p.y), s = t.h + h; return Math.hypot(dx, dy * 1.5) < s * .2 || dx < s * .2 && dy < s * .5; });
     };
-    const put = (kind, x, y, t) => { if (!okAt(x, y)) return false; const p = L.cpt(x, y), sd = kit.hash(Math.round(x * 10), Math.round(y * 10), 71); out.push({ kind, x: p.x, y: p.y, cx: x, cy: y, h: Math.round(kind === 'pine' ? gardenSizePx('tree', t) : gardenSizePx('young', t)), seed: sd }); return true; };
+    const segDist = (p, a, b) => { const dx = b.x - a.x, dy = b.y - a.y, l = dx * dx + dy * dy, t = l ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l)) : 0; return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy); };
+    let h = 0;
+    const put = (kind, x, y, t) => { h = Math.round(kind === 'pine' ? gardenSizePx('tree', t) : gardenSizePx('young', t)); if (!okAt(x, y)) return false; const p = L.cpt(x, y), sd = kit.hash(Math.round(x * 10), Math.round(y * 10), 71); out.push({ kind, x: p.x, y: p.y, cx: x, cy: y, h, seed: sd }); return true; };
     const cluster = (x, y, n, mix, spread) => { const rr = kit.rng(kit.hash(Math.round(x * 10), Math.round(y * 10), 73)); let got = 0; for (let k = 0; k < n * 4 && got < n; k++) { const a = rr() * Math.PI * 2, d = got ? .9 + rr() * spread : 0; if (put(rr() < mix ? 'rowan' : 'pine', x + Math.cos(a) * d * 1.2, y + Math.sin(a) * d * .9, rr())) got++; } };
     // the gorge: every few cells along its line, a cluster on one bank or the other, rowans more than pines
     if (L.gorge && L.gorge.line) { const ln = kit.resample(L.gorge.line.map(p => ({ x: p[0], y: p[1] })), .5), hw = (L.gorge.halfWidth || .85);
@@ -818,27 +900,36 @@ window.GardenPaintedTerrain = (function () {
     for (const pk of L.peaks) {
       const b = kit.bboxOf(pk.pts), w = b[2] - b[0], d = b[3] - b[1], sharp = /east/.test(pk.id), H = sharp ? Math.min(400, w * .78) : Math.min(330, w * .64);
       const ox = (b[0] + b[2]) / 2, oy = b[3] - 4, foot = pk.pts.map(p => ({ x: p.x - ox, y: p.y - oy })), pbox = [-w / 2 - 40, -(d + H * 1.05) - 30, w / 2 + 50, 30];
-      out.push({ key: sig + '|peak|' + pk.id, box: pbox, x: ox, y: oy, K: 1.25, draw: B => peakArt(B, w, d, H, PEAK_SNOW[season] + (sharp ? .06 : .2), P, kit.hashStr(pk.id), sharp, foot, pbox) });
+      const snowS = PEAK_SNOW[season] + (sharp ? .06 : .2), seed = kit.hashStr(pk.id);
+      // (behind it and inside its picture: the field's top edge in your column is above your middle)
+      const fade = (x, y) => { if (y > oy - 6) return false; const lx = x - ox; if (lx < pbox[0] || lx > pbox[2]) return false; const F = PEAK_FIELDS.get([seed, w, d, H, snowS, P.fell].join('|')); if (!F) return false; const t = F.top[Math.max(0, Math.min(F.PW - 1, Math.round((lx - pbox[0]) / F.ST)))]; return isFinite(t) && y - oy - 18 > pbox[1] + t * F.ST; };
+      // (the height field is made here, before the sprite's first painting is timed: with it inside, the painting took so long
+      // that the sharpener never painted the peak again close up, and the flanks stayed a soft 1.25 px a world px)
+      ok(() => peakField(w, d, H, snowS, P, seed, sharp, foot, pbox[0], pbox[1], pbox[2] - pbox[0], pbox[3] - pbox[1]));
+      out.push({ key: sig + '|peak|' + pk.id, box: pbox, x: ox, y: oy, K: 1.25, fade, fadeTo: .5, draw: B => peakArt(B, w, d, H, snowS, P, seed, sharp, foot, pbox) });
     }
     // tors framing the gaps in the Edge: the pass and the falls cave stair stand between rock
     const gapAt = [].concat(L.gates.filter(g => g.kind === 'pass').map(g => [g.x + .5, g.y + .9]), L.falls && L.falls.caveStair ? [L.falls.caveStair] : []);
     for (const run of L.runs) for (const end of [run[0], run[run.length - 1]]) for (const gp of gapAt) {
       const c = L.cpt(gp[0], gp[1]); if (Math.hypot(end.lip.x - c.x, (end.lip.y - c.y) * 1.4) > 150) continue;
       const sd = kit.hash(Math.round(end.lip.x), Math.round(end.lip.y), 3), w = 40 + sd % 18, h = 58 + sd % 26;
+      // (a tor never stands on a plot: one stood on the back of the thyme terrace's hedge and read as a cairn on it)
+      { const tx = (end.lip.x + (end.lip.x < c.x ? -w * .3 : w * .3)) / L.W.cellW, ty = (end.foot.y - 2 - L.W.sky) / L.W.cellH; let hit = false; for (let yy = ty - 1.6; yy <= ty + .2 && !hit; yy += .4) for (let xx = tx - w / L.W.cellW; xx <= tx + w / L.W.cellW && !hit; xx += .4) if (L.plotAt(xx, yy)) hit = true; if (hit) continue; }
       out.push({ key: sig + '|crag|' + sd, box: [-w, -h * 1.5 - 10, w, 16], x: end.lip.x + (end.lip.x < c.x ? -w * .3 : w * .3), y: end.foot.y - 2, draw: B => cragArt(B, w, h, P, sd, snowy, false) });
     }
     // rowans on the gorge's far lip, where the river runs down to the falls
     // (the second stands back from the lip of Fleet Falls: at .84 it grew out of the falling water)
     // the groves: rowans and pines in clusters from the layout (groves()), each a standing sprite whose trunk blocks the feet
-    for (const g of groves(L, season)) out.push(g.kind === 'pine' ? { key: sig + '|pine|g' + g.seed, box: [-g.h * .72, -g.h - 14, g.h * .85, 10], x: g.x, y: g.y, draw: B => pineArt(B, g.h, P, g.seed, snowy) } : { key: sig + '|rowan|g' + g.seed, box: [-g.h * .78, -g.h * 1.08 - 10, g.h * .78, 10], x: g.x, y: g.y, draw: B => rowanArt(B, g.h, P, g.seed, season) });
-    for (const op of ops) for (const p of op.pines || []) out.push({ key: sig + '|pine|' + p.seed, box: [-p.h * .72, -p.h - 14, p.h * .85, 10], x: p.x, y: p.y, draw: B => pineArt(B, p.h, P, p.seed, snowy) });
+    const crownFade = (h, wd) => (x, y, im) => typeof gardenCrownCovers === 'function' && gardenCrownCovers(x, y, im.x, im.y, h, wd);
+    for (const g of groves(L, season)) out.push(g.kind === 'pine' ? { key: sig + '|pine|g' + g.seed, box: [-g.h * .72, -g.h - 14, g.h * .85, 10], x: g.x, y: g.y, fade: crownFade(g.h, g.h * .9), draw: B => pineArt(B, g.h, P, g.seed, snowy) } : { key: sig + '|rowan|g' + g.seed, box: [-g.h * .78, -g.h * 1.08 - 10, g.h * .78, 10], x: g.x, y: g.y, fade: crownFade(g.h, g.h * 1.1), draw: B => rowanArt(B, g.h, P, g.seed, season) });
+    for (const op of ops) for (const p of op.pines || []) out.push({ key: sig + '|pine|' + p.seed, box: [-p.h * .72, -p.h - 14, p.h * .85, 10], x: p.x, y: p.y, fade: crownFade(p.h, p.h * .9), draw: B => pineArt(B, p.h, P, p.seed, snowy) });
     return out;
   }
   function build(scene, parent, sc, objParent) {
     const t0 = performance.now(), kit = KIT(); if (!kit || !wanted()) return null;
     const W = GARDEN_WORLD, L = readLayout(W); if (!L) return null;
     const season = sc.season || 'summer', sig = 'gpt-3|' + season + '|' + (GardenIslandLayout.fingerprint || '');
-    const old = current; if (old) { old.roomEntrances = null; old.handle.destroy(old.sig === sig); for (const s of sprites) s.destroy(); sprites = []; if (old.sig !== sig) for (const k of old.spriteKeys) if (scene.textures.exists(k)) scene.textures.remove(k); }
+    const old = current; if (old) { if (old.fadeTick && old.scene && old.scene.events) old.scene.events.off('update', old.fadeTick); old.roomEntrances = null; old.handle.destroy(old.sig === sig); for (const s of sprites) s.destroy(); sprites = []; if (old.sig !== sig) for (const k of old.spriteKeys) if (scene.textures.exists(k)) scene.textures.remove(k); }
     const ops = ok(() => compose(L, season)); if (!ops) return null;
     const rb = kit.bboxOf(L.regionLoops.flat().concat(L.terraces.flatMap(t => t.pts)));
     const box = { x: 0, y: W.sky - 150, w: W.cols * W.cellW, h: Math.min(W.sky + W.rows * W.cellH, rb[3] + 80) - (W.sky - 150) };
@@ -850,13 +941,19 @@ window.GardenPaintedTerrain = (function () {
     const standIn = objParent || parent;
     const occ = occluders(L, ops, season, sig);
     // (each lays its shadow on the ground through the shared kit, but not a peak: that is a hillside, painted with its own shade, and laying so large a picture over cost 55 ms)
-    for (const o of occ) { const im = kit.sprite(scene, standIn, o.key, o.box, o.draw, o.x, o.y, o.K, !o.key.includes('|peak|')); if (im) { sprites.push(im); keys.push(o.key); spritePx += im._gptPx || 0; } }
+    const fades = [];
+    for (const o of occ) { const im = kit.sprite(scene, standIn, o.key, o.box, o.draw, o.x, o.y, o.K, !o.key.includes('|peak|')); if (im) { sprites.push(im); keys.push(o.key); spritePx += im._gptPx || 0; if (o.fade) fades.push({ im, f: o.fade, to: o.fadeTo }); } }
+    // you can always see yourself: a peak you walk behind (the grotto's ledge, the Horn's back) and a pine or rowan whose
+    // crown you stand under fade while you are there (they were drawn over you, and you vanished behind the Horn)
+    const fadeTick = () => { if (typeof _gw === 'undefined' || !fades.length) return; const x = _gw.px * W.cellW, y = W.sky + _gw.py * W.cellH;
+      for (const q of fades) { const im = q.im; if (!im.active) continue; const a = q.f(x, y, im) ? q.to || (typeof GARDEN_CROWN_FADE === 'number' ? GARDEN_CROWN_FADE : .34) : 1; if (im.alpha !== a) im.setAlpha(Math.abs(a - im.alpha) < .03 ? a : im.alpha + (a - im.alpha) * .25); } };
+    if (scene.events) scene.events.on('update', fadeTick);
     // the pines and rowans' trunk feet, in cells ([x, y, width]), for the one trunk-collision list (94-garden-world-0walk.js _gwPaintedTrunks)
     trunkFeet = occ.filter(o => /\|(pine|rowan)\|/.test(o.key)).map(o => [+(o.x / W.cellW).toFixed(2), +((o.y - W.sky) / W.cellH).toFixed(2), .34]);
     if (parent.sort) parent.sort('depth'); if (standIn !== parent && standIn.sort) standIn.sort('depth');
-    current = { sig, handle, spriteKeys: keys, roomEntrances: L.falls && L.falls.caveStair ? { falls: caveMouthAt(L, L.falls.caveStair) } : {} };
+    current = { sig, handle, spriteKeys: keys, fadeTick, scene, roomEntrances: L.falls && L.falls.caveStair ? { falls: caveMouthAt(L, L.falls.caveStair) } : {} };
     stats = { sig, chunks: handle.chunks, buildMs: Math.round(performance.now() - t0), sprites: sprites.length, spritePx };
-    return { destroy() { handle.destroy(true); for (const s of sprites) s.destroy(); sprites = []; current = current && current.handle === handle ? Object.assign(current, { handle: { destroy() {} }, roomEntrances: null }) : current; } };
+    return { destroy() { if (scene.events) scene.events.off('update', fadeTick); handle.destroy(true); for (const s of sprites) s.destroy(); sprites = []; current = current && current.handle === handle ? Object.assign(current, { handle: { destroy() {} }, roomEntrances: null }) : current; } };
   }
   /**
    * The showcase: paint a box of the high ground straight into a 2D context (no scene needed), the ground then the
