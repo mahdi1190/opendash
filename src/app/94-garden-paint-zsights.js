@@ -526,4 +526,5 @@
     for (let i = 0; i < 3; i++) B.f(B.circ(-38 + r() * 10, 1 + r() * 3, 1.8), '#c8a030');
     B.tufts(r, -38, 1, 6, 5, grass(s), 6).tufts(r, 52, 1, 6, 5, grass(s), 6);
   } };
+  Object.assign(M.SIGHT_KIT, { shingleRoof, drum, SLATE, lichenDots });
 })();

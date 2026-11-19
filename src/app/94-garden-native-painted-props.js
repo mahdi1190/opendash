@@ -508,15 +508,68 @@ window.GardenPaintedProps = (function () {
     if (!side) return draw();
     B.cx.save(); B.cx.transform(.85, S / half * .8, 0, 1, 0, 0); try { draw(); } finally { B.cx.restore(); }
   }
-  function needSign(B, x, y, lv, name, have) {
-    // a hanging sign anyone reads at a glance: a padlock and what opens it (the find), else the level it opens at, the HUD's gold badge
-    B.s(`M${x - 13} ${y - 22}L${x - 11} ${y - 12}M${x + 13} ${y - 22}L${x + 11} ${y - 12}`, '#8a7a5a', 1);
-    B.f(B.rr(x - 21, y - 13, 42, 26, 3), 'rgba(40,30,20,.25)').f(B.rr(x - 22, y - 14, 42, 26, 3), '#6a5034').f(B.rr(x - 20, y - 12, 38, 22, 2.4), '#efe4c6').f(B.rect(x - 20, y - 12, 38, 1.6), '#fff8e6');
-    // the padlock
-    B.s(have ? `M${x - 13} ${y - 3}v-6a4 4 0 0 1 8 0v-1` : `M${x - 13} ${y - 3}v-3a4 4 0 0 1 8 0v3`, '#6a6e70', 1.8).f(B.rr(x - 15.4, y - 3.4, 12.8, 10, 1.8), '#c89a3a').f(B.rect(x - 15.4, y - 3.4, 12.8, 2.4), '#e8c060').f(B.circ(x - 9, y + 1.4, 1.4), '#5a4020');
-    // the gold level badge, like the one at the top of the screen
-    if (!name) B.f(B.circ(x + 7, y - 1, 8), '#6a5034').f(B.circ(x + 7, y - 1, 7), '#e8b530').f(B.circ(x + 5.6, y - 2.6, 3.8), '#f6d468', .6).text(String(lv || '?'), x + 7, y - .6, lv >= 10 ? 8 : 9.5, '#4a3010', 'Inter, sans-serif', '800');
-    B.text(have ? 'Ready to open' : name ? 'Needs ' + name : 'Level ' + (lv || '?'), x - 1, y + 16.5, 7, '#f4ecd8', 'Inter, sans-serif', '700');   // (have: the shackle stands open, and the sign says so)
+  /** Where a shut gate's sign is fixed, from the shape of what bars the way (never in the air over the path):
+   *  chains from the arch's crown, nailed to the bridge's post or the stair gate, on a stake in the ruin's heap,
+   *  hung from the middle of the pass's rope. { x, y } is the board's middle from the gate's frame point; len is how
+   *  far the chains, cords or stake run from the board's top (or bottom, for a stake). */
+  function gateMount(kind, art, frame, crossing) {
+    const side = art.side, half = art.half;
+    if (kind === 'arch') return { how: 'chains', x: 0, y: -80, len: 30 };
+    if (kind === 'bridge') {
+      if (side && crossing) {
+        const W = GARDEN_WORLD, deck = typeof gardenIslandCrossingGeometry === 'function' ? gardenIslandCrossingGeometry().find(d => d.crossing.id === crossing.id) : null, narrow = deck && deck.halfWidth < 40;
+        const x = crossing.x * W.cellW - frame.x, y = W.sky + crossing.y * W.cellH - frame.y + (narrow ? deckCentreY(deck, crossing) : 0), a = y - (narrow ? deck.halfWidth - 3 : frame.span);
+        return { how: 'post', x, y: a - 40, len: 0, post: [x, a - 50, a - 36] };
+      }
+      const len = side ? 74 : half;
+      return side ? { how: 'post', x: -len * .55 + 6, y: -18 * .7 - 4 - 44, len: 0, post: [-len * .55 + 6, -18 * .7 - 4 - 54, -18 * .7 - 4 - 40] } : { how: 'post', x: -len + 8, y: -48, len: 0, post: [-len + 8, -58, -38] };
+    }
+    if (kind === 'ruin') return { how: 'stake', x: 4, y: -70, len: 22 };
+    if (kind === 'stair') { const g = side ? 0 : 52; return { how: 'nails', x: 0, y: g - 79, len: 0 }; }
+    // the pass: from the rope's middle
+    return side ? { how: 'cords', x: 7, y: 20, len: 15 } : { how: 'cords', x: 0, y: -16, len: 18 };
+  }
+  /** A shut gate's sign: a weathered oak board with a painted face, the padlock and what opens it written on the board
+   *  itself in dark letters (a find), else the level it opens at in the HUD's gold badge. Drawn round the board's middle. */
+  function needSign(B, lv, name, have, m) {
+    const W2 = 31, H2 = 19, r = rng(hash('gatesign' + (name || lv) + m.how));
+    // what holds it: chains or cords up to the arch or the rope, a stake down into the stones, a post behind it
+    if (m.how === 'chains' || m.how === 'cords') {
+      const top = -H2 - m.len;
+      for (const sx of [-W2 + 9, W2 - 9]) {
+        if (m.how === 'chains') for (let y = -H2; y > top; y -= 3.6) B.f(B.ell(sx + (y - -H2) * (sx < 0 ? -.06 : .06), y - 1.8, 1, 1.9), '#3e4246').f(B.ell(sx + (y - -H2) * (sx < 0 ? -.06 : .06) - .3, y - 2.2, .4, 1), '#8a9094', .8);
+        else B.s(`M${sx} ${-H2}L${sx * .4} ${top}`, '#c8b080', 1.3).s(`M${sx} ${-H2}L${sx * .4} ${top}`, '#7a6440', .5, .7);
+      }
+      if (m.how === 'cords') B.f(B.circ(0, top, 2.2), '#b89a6a');
+    }
+    if (m.how === 'stake') B.post(0, H2 - 4, H2 + m.len, 5, OAK).f(B.poly([[-2.5, H2 + m.len], [2.5, H2 + m.len], [0, H2 + m.len + 4]]), OAK[1]);
+    if (m.how === 'post') B.post(0, -H2 - 6, H2 + 8, 7, OAK).f(B.rect(-4, -H2 - 8, 8, 3), OAK[2]);
+    // the board: two oak planks, end grain at the corners, a dark edge on the shaded side
+    B.f(B.rr(-W2 - 1.2, -H2 - .4, W2 * 2 + 2.6, H2 * 2 + 2.4, 3), 'rgba(30,22,14,.35)');
+    B.f(B.rr(-W2, -H2, W2 * 2, H2 * 2, 2.6), OAK[1]);
+    for (const [y0, h, c] of [[-H2, H2, '#8e6c48'], [0, H2, '#7e5e3e']]) { B.f(B.rect(-W2 + 1, y0 + .8, W2 * 2 - 2, h - 1.6), c); for (let i = 0; i < 5; i++) { const yy = y0 + 2 + r() * (h - 4); B.s(`M${-W2 + 2 + r() * 8} ${yy}q${W2 * .6} ${(r() - .5) * 2} ${W2 * (1.2 + r() * .6)} ${(r() - .5) * 1.5}`, '#5e4430', .5, .45); } }
+    B.s(`M${-W2 + 1} 0H${W2 - 1}`, '#3e2c1c', .9, .7).f(B.rect(-W2, -H2, W2 * 2, 1.6), '#c8a476', .65).f(B.rect(W2 - 5, -H2, 5, H2 * 2), '#2e2014', .2);
+    // the painted face, cream gone soft at its edges, light falling across it from the upper left
+    B.f(B.rr(-W2 + 4, -H2 + 4, W2 * 2 - 8, H2 * 2 - 8, 2), '#efe2c0').f(B.rr(-W2 + 4, -H2 + 4, W2 * 2 - 8, H2 * 2 - 8, 2), B.lin(-W2, -H2, W2, H2, [[0, 'rgba(255,250,232,.35)'], [.6, 'rgba(255,250,232,0)'], [1, 'rgba(90,64,36,.22)']]));
+    for (let i = 0; i < 9; i++) B.f(B.circ(-W2 + 5 + r() * (W2 * 2 - 10), -H2 + 5 + r() * (H2 * 2 - 10), .5 + r() * .7), '#b89a70', .35);
+    // iron nails or ring bolts at the corners
+    for (const [nx, ny] of m.how === 'chains' || m.how === 'cords' ? [[-W2 + 9, -H2 + 2.2], [W2 - 9, -H2 + 2.2]] : [[-W2 + 2.4, -H2 + 2.4], [W2 - 2.4, -H2 + 2.4], [-W2 + 2.4, H2 - 2.4], [W2 - 2.4, H2 - 2.4]]) B.f(B.circ(nx, ny, 1.3), '#3a3e40').f(B.circ(nx - .4, ny - .4, .5), '#9aa0a2');
+    // the padlock (its shackle open once you hold what opens it)
+    const lx = -W2 + 13, ly = 2;
+    B.s(have ? `M${lx - 4} ${ly - 3}v-6a4 4 0 0 1 8 0v-1` : `M${lx - 4} ${ly - 3}v-3a4 4 0 0 1 8 0v3`, '#5a5e60', 2).f(B.rr(lx - 6.4, ly - 3.4, 12.8, 10, 1.8), have ? '#6a9a4a' : '#c89a3a').f(B.rect(lx - 6.4, ly - 3.4, 12.8, 2.4), have ? '#9ac46a' : '#e8c060').f(B.circ(lx, ly + 1.2, 1.4), '#3a2810').f(B.rect(lx - .5, ly + 1.6, 1, 2.6), '#3a2810');
+    // the words, dark on the cream, shrunk to fit the face
+    const tx = 7, fit = (t, size, weight) => { const cx = B.cx; let s = size; cx.font = weight + ' ' + s + 'px Inter, sans-serif'; const wd = cx.measureText(t).width; if (wd > 34) s = s * 34 / wd; return s; };
+    if (!name && !have) {
+      B.text('Opens at', tx, -7.4, fit('Opens at', 6.2, '700'), '#6a5034', 'Inter, sans-serif', '700');
+      B.f(B.circ(tx, 5, 8.4), '#5a4024').f(B.circ(tx, 5, 7.4), '#e8b530').f(B.circ(tx - 1.6, 3.2, 3.8), '#f6d468', .6).text(String(lv || '?'), tx, 5.4, lv >= 10 ? 8 : 9.5, '#3a2408', 'Inter, sans-serif', '800');
+      B.text('level', tx + 15.5, 9.6, 4.6, '#6a5034', 'Inter, sans-serif', '700');
+    } else {
+      const top = have ? 'Ready' : 'Needs', low = have ? 'to open' : name;
+      B.text(top, tx, -6.2, fit(top, 7, '700'), '#6a5034', 'Inter, sans-serif', '700');
+      B.text(low, tx, 5.6, fit(low, 9.6, '800'), '#3a2614', 'Inter, sans-serif', '800');
+    }
+    // weather: a lichen crust on the top plank, a drip stain under a nail
+    B.f(D().blob(r, W2 - 7, -H2 + 2, 3.6, 1.4, 6, .5), '#b8b878', .55).s(`M${-W2 + 2.4} ${-H2 + 4}q.4 6 -.2 10`, '#4a3626', .6, .35);
   }
   /** One gate as base art + (closed) a blocker + its sign. side: the span runs down the screen (you cross left to right). */
   /** The deck's centre line at the crossing's x, as a y offset (px) from the crossing point. */
@@ -766,7 +819,7 @@ window.GardenPaintedProps = (function () {
     };
     return Object.assign(art, { box, base, blocker, side, half });
   }
-  function gateSignature(g, open, sc) { let have = ''; try { const rule = !open && typeof gardenGateRule === 'function' ? gardenGateRule(g) : null; if (rule && typeof gardenGateHas === 'function' && gardenGateHas(rule.key)) have = '|have'; } catch (e) { /* the sign as before */ } return 'painted-gate-4|' + g.id + '|' + gateKind(g) + '|' + (open ? 'open' : 'shut') + '|' + sc.season + '|' + (g.crossSpan || []).join(';') + have; }
+  function gateSignature(g, open, sc) { let have = ''; try { const rule = !open && typeof gardenGateRule === 'function' ? gardenGateRule(g) : null; if (rule && typeof gardenGateHas === 'function' && gardenGateHas(rule.key)) have = '|have'; } catch (e) { /* the sign as before */ } return 'painted-gate-5|' + g.id + '|' + gateKind(g) + '|' + (open ? 'open' : 'shut') + '|' + sc.season + '|' + (g.crossSpan || []).join(';') + have; }
   /** A gate as a handle. open: the region beyond is yours. */
   function gate(scene, g, sc, o, open) {
     open = !!open;
@@ -790,18 +843,25 @@ window.GardenPaintedProps = (function () {
     const blockKey = bake(scene, stem + '|block', art.box, B => art.blocker(B));
     const rule = typeof gardenGateRule === 'function' ? gardenGateRule(g) : null, item = rule && typeof GARDEN_GATE_ITEMS !== 'undefined' && GARDEN_GATE_ITEMS[rule.key], need = item ? item.tag || item.name.replace(/^(A|An|The) /, '').toLowerCase() : '';   // (the item's own few words: 'Needs a plank', not 'Needs stout plank')   // (feat/find-gates: the gate opens with a find)
     const have = !!(need && typeof gardenGateHas === 'function' && gardenGateHas(rule.key));
-    const signBox = [-40, -30, 40, 26], signKey = bake(scene, 'gatesign|' + (lv || 0) + '|' + need + (have ? '|have' : ''), signBox, B => needSign(B, 0, 0, lv, need, have));
-    const sx = frame.x + (art.side ? 0 : 0), sy = frame.y - (kind === 'arch' ? 84 : kind === 'stair' ? 74 : kind === 'ruin' ? 72 : 70) + (art.side && kind !== 'stair' && kind !== 'arch' && kind !== 'ruin' ? -art.half * .2 : 0);
+    // (the sign is fixed to what bars the way, gateMount: chains, cords, a stake, a post or nails; 19 Nov 2026, round 3:
+    // it used to hang in the air over the path with its words in white on the ground below it)
+    const mount = gateMount(kind, art, frame, crossing), hangs = mount.how === 'chains' || mount.how === 'cords';
+    const signBox = [-36, -24 - (hangs ? mount.len + 4 : mount.how === 'post' ? 12 : 2), 36, 24 + (mount.how === 'stake' ? mount.len + 6 : mount.how === 'post' ? 12 : 2)];
+    const signKey = bake(scene, 'gatesign2|' + (lv || 0) + '|' + need + (have ? '|have' : '') + '|' + mount.how + mount.len, signBox, B => needSign(B, lv, need, have, mount));
+    const sx = frame.x + mount.x, sy = frame.y + mount.y;
+    // a hanging board swings from its chains' top, so it turns about that point
+    const pivot = hangs ? -19 - mount.len : 0;
+    const place = sign => { if (sign && hangs) { const meta = scene.textures.get(signKey).customData.gpp; sign.setOrigin(meta.ox, (pivot - signBox[1]) / (signBox[3] - signBox[1])).setPosition(sx, sy + pivot); } return sign; };
     if (!open) {
       h.add(image(scene, blockKey, frame.x, frame.y));
-      const sign = h.add(image(scene, signKey, sx, sy)); sign.setScale(1.7 / K);
-      // the sign sways on its hooks, barely
-      h.move(sign, (node, t, motion) => { if (motion) node.setRotation(Math.sin(t * 1.3) * .03); });
+      const sign = place(h.add(image(scene, signKey, sx, sy)));
+      // a board on chains or cords sways, barely; one nailed or staked keeps still
+      if (hangs) h.move(sign, (node, t, motion) => { if (motion) node.setRotation(Math.sin(t * 1.3) * .03); });
     } else if (was === false) {
       // it has just opened: the barrier goes and the sign drops away
-      const block = h.add(image(scene, blockKey, frame.x, frame.y)), sign = h.add(image(scene, signKey, sx, sy)); sign.setScale(1.7 / K);
+      const block = h.add(image(scene, blockKey, frame.x, frame.y)), sign = place(h.add(image(scene, signKey, sx, sy)));
       h.move(block, (node, t) => { const f = Math.min(1, t / 1.6); node.setAlpha(1 - f * f).setPosition(frame.x + (art.side ? 0 : f * 18), frame.y + f * 8); return f < 1; });
-      h.move(sign, (node, t) => { const f = Math.min(1, t / 1.2); node.setAlpha(1 - f).setPosition(sx, sy + f * f * 40).setRotation(f * .6); return f < 1; });
+      h.move(sign, (node, t) => { const f = Math.min(1, t / 1.2); node.setAlpha(1 - f).setPosition(sx, sy + pivot + f * f * 40).setRotation(f * .6); return f < 1; });
     }
     const [x0, y0, x1, y1] = art.box;
     return finish(h, { x: Math.min(frame.x, baseX) + x0, y: Math.min(frame.y, baseY) + y0, width: x1 - x0 + Math.abs(baseX - frame.x), height: y1 - y0 + Math.abs(baseY - frame.y) }, { x: frame.x, y: frame.y });
