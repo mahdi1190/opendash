@@ -157,7 +157,7 @@ window.GardenNativeWorld = (function () {
     const effectIds = new WeakMap(), creatureMotion = new WeakMap();
     const chunkWidth = W.cellW * 4, chunkHeight = W.cellH * 6;
     const route = scene.add.graphics(); route.setDepth(89000); root.add(route);
-    let model = null, modelKey = '', terrainKey = '', terrainVisit = '', terrainLater = false, terrainStillAt = 0, shorelineRevision = 0, sorted = false, dead = false, routeKey = '', fishZoom = 1, wasFishing = false, fishViewMode = '', playerViewKey = '', playerProfile = null, playerWardrobe = null, visibleStatic = 0, visibleTerrain = 0, cacheQuality = 0, terrainBaseQuality = 1, terrainBaseReady = 0;
+    let model = null, modelKey = '', terrainKey = '', terrainVisit = '', terrainLater = false, terrainStillAt = 0, terrainLawnMemo = null, shorelineRevision = 0, sorted = false, dead = false, routeKey = '', fishZoom = 1, wasFishing = false, fishViewMode = '', playerViewKey = '', playerProfile = null, playerWardrobe = null, visibleStatic = 0, visibleTerrain = 0, cacheQuality = 0, terrainBaseQuality = 1, terrainBaseReady = 0;
     let camera = { x: 0, y: 0, w: 800, h: 600, scale: 1, left: 0, top: 0 }, zoomInputAt = 0, activityCamera = null, cameraUiMode = '', cameraUiZoomIn = null, cameraUiZoomOut = null, size = { w: options.width || scene.scale.width || 1000, h: options.height || scene.scale.height || 700 };
     const playerNode = element(scene, 'g', { class: 'gd-player', 'data-live': '1' });
     // The Painted village stands the figure in the scenes' soft contact shadow; the pale halo read as a sticker's edge (94-garden-art-g-paint.js).
@@ -560,16 +560,26 @@ window.GardenNativeWorld = (function () {
       // water, cultivated soil and the narrower roads still paint above it.
       let fillLawnPiece = null;
       if (island) {
-        const lawnPieces = [];
-        fillOutlines({ fillStyle() {}, fillTriangle(ax, ay, bx, by, cx, cy) {
-          const points = [{ x: ax, y: ay }, { x: bx, y: by }, { x: cx, y: cy }];
-          lawnPieces.push({ points, bounds: terrainBox(points) });
-        } }, coast.map(loop => insetTerrainContour(loop, island.beachWidthPx)), 0);
+        // (village fix round 3) the coast's lawn pieces and the regions' floor cut to them are the same shapes until the
+        // coast or the season changes: kept from the last time, and looked up through a coarse grid, instead of being cut
+        // again piece against piece at every level and every opened field (about a quarter of a second each time)
+        const lawnKey = (island.revision || '') + '|' + island.beachWidthPx + '|' + coast.length + '|' + coast.reduce((n, l) => n + l.length, 0);
+        if (!terrainLawnMemo || terrainLawnMemo.key !== lawnKey) {
+          const pieces = [];
+          fillOutlines({ fillStyle() {}, fillTriangle(ax, ay, bx, by, cx, cy) {
+            const points = [{ x: ax, y: ay }, { x: bx, y: by }, { x: cx, y: cy }];
+            pieces.push({ points, bounds: terrainBox(points) });
+          } }, coast.map(loop => insetTerrainContour(loop, island.beachWidthPx)), 0);
+          const grid = new Map(), G = 256; pieces.forEach((piece, i) => { const b = piece.bounds; for (let gy = Math.floor(b.y / G); gy <= Math.floor((b.y + b.height) / G); gy++) for (let gx = Math.floor(b.x / G); gx <= Math.floor((b.x + b.width) / G); gx++) { const k = gx + ',' + gy; let a = grid.get(k); if (!a) grid.set(k, a = []); a.push(i); } });
+          terrainLawnMemo = { key: lawnKey, pieces, grid, G, regions: new Map() };
+        }
+        const lawnPieces = terrainLawnMemo.pieces, lawnGrid = terrainLawnMemo.grid, LG = terrainLawnMemo.G;
+        const nearPieces = bounds => { const seen = new Set(), out = []; for (let gy = Math.floor(bounds.y / LG); gy <= Math.floor((bounds.y + bounds.height) / LG); gy++) for (let gx = Math.floor(bounds.x / LG); gx <= Math.floor((bounds.x + bounds.width) / LG); gx++) for (const i of lawnGrid.get(gx + ',' + gy) || []) if (!seen.has(i)) { seen.add(i); out.push(lawnPieces[i]); } return out; };
         // Reuse these coast pieces for the few route strips crossing beach
         // cells; their centres must not impose square cuts on inland road.
         fillLawnPiece = points => {
           const bounds = terrainBox(points);
-          for (const piece of lawnPieces) {
+          for (const piece of nearPieces(bounds)) {
             const b = piece.bounds;
             if (bounds.x >= b.x + b.width || bounds.x + bounds.width <= b.x || bounds.y >= b.y + b.height || bounds.y + bounds.height <= b.y) continue;
             const clipped = clipTerrainConvex(points, piece.points);
@@ -583,10 +593,19 @@ window.GardenNativeWorld = (function () {
           fillStyle(color) { g.fillStyle(color); },
           fillTriangle(ax, ay, bx, by, cx, cy) { fillLawnPiece([{ x: ax, y: ay }, { x: bx, y: by }, { x: cx, y: cy }]); },
         };
-        for (const region of authoredRegions) {
-          const tone = parseInt(_gldIslandRegionTone(region.region, sc.season).slice(1), 16);
-          fillOutlines(regionPaint, [region.points], woodlandFloorTone(p.lawn, tone, .42));
+        // (the regions' floor, cut to the lawn: the triangles kept per season and lawn tone, replayed after)
+        const regionKey = sc.season + '|' + p.lawn + '|' + authoredRegions.map(r => r.id + ':' + r.points.length).join(',');
+        let tris = terrainLawnMemo.regions.get(regionKey);
+        if (!tris) {
+          tris = []; let col = 0; const rec = { fillStyle(c) { col = c; tris.push([c]); }, fillTriangle(ax, ay, bx, by, cx, cy) { tris[tris.length - 1].push(ax, ay, bx, by, cx, cy); } };
+          const capture = { fillStyle(c) { rec.fillStyle(c); }, fillTriangle(ax, ay, bx, by, cx, cy) { const bounds = terrainBox([{ x: ax, y: ay }, { x: bx, y: by }, { x: cx, y: cy }]); for (const piece of nearPieces(bounds)) { const b = piece.bounds; if (bounds.x >= b.x + b.width || bounds.x + bounds.width <= b.x || bounds.y >= b.y + b.height || bounds.y + bounds.height <= b.y) continue; const clipped = clipTerrainConvex([{ x: ax, y: ay }, { x: bx, y: by }, { x: cx, y: cy }], piece.points); for (let i = 1; i + 1 < clipped.length; i++) rec.fillTriangle(clipped[0].x, clipped[0].y, clipped[i].x, clipped[i].y, clipped[i + 1].x, clipped[i + 1].y); } } };
+          for (const region of authoredRegions) {
+            const tone = parseInt(_gldIslandRegionTone(region.region, sc.season).slice(1), 16);
+            fillOutlines(capture, [region.points], woodlandFloorTone(p.lawn, tone, .42));
+          }
+          void col; if (terrainLawnMemo.regions.size > 6) terrainLawnMemo.regions.clear(); terrainLawnMemo.regions.set(regionKey, tris);
         }
+        for (const run of tris) { g.fillStyle(run[0]); for (let i = 1; i + 5 < run.length; i += 6) g.fillTriangle(run[i], run[i + 1], run[i + 2], run[i + 3], run[i + 4], run[i + 5]); }
       }
       const borders = new Map();
       // Wood, dell and wild share one floor colour: join their visual floor
@@ -1232,8 +1251,9 @@ window.GardenNativeWorld = (function () {
           // Painted village houses are lower: the glow sits on their window row.
           else if (record.handle.painted && meta.kind === 'prop' && ['lf-office', 'hall'].includes(def.kind)) pointLights.push({ id: record.id + ':window', x, y: y - 48, radius: nightMaterials ? 90 : 64, color: nightMaterials ? 0xffc47c : 0xffdca3, intensity: .55 });
           // (village fix round 1: the high street's cottages and the market stall light their windows at dusk as well, so the
-          // street, the square and the quay are not left dark between the shops)
-          else if (record.handle.painted && meta.kind === 'prop' && /^(ld-cottage-d|market-stall|ld-boathouse)$/.test(def.id || source.id || '')) pointLights.push({ id: record.id + ':window', x, y: y - 44, radius: nightMaterials ? 86 : 62, color: nightMaterials ? 0xffc47c : 0xffdca3, intensity: .5 });
+          // street, the square and the quay are not left dark between the shops; round 3: the pattern named a cottage 'd'
+          // that does not exist, so none of the four lit up)
+          else if (record.handle.painted && meta.kind === 'prop' && /^(ld-cottage-[0-9]|market-stall|ld-boathouse)$/.test(def.id || source.id || '')) pointLights.push({ id: record.id + ':window', x, y: y - 44, radius: nightMaterials ? 86 : 62, color: nightMaterials ? 0xffc47c : 0xffdca3, intensity: .5 });
           if (meta.prop && /^(lamp|lampbox|beacon|lighthouse)$/.test(def.art || def.kind || '')) pointLights.push({ id: record.id + ':lamp', x, y: record.bounds.y + record.bounds.height * .3, radius: def.art === 'lighthouse' ? 175 : 110, height: record.bounds.height * .75, color: nightMaterials ? 0xffc17a : 0xffd88e, intensity: .8, flicker: def.art === 'beacon' });
         } else if (meta.kind === 'scenery' && record.bounds.width < 350 && record.bounds.height > 25) {
           const foot = meta.foot || { x: record.bounds.x + record.bounds.width / 2, y: record.bounds.y + record.bounds.height };

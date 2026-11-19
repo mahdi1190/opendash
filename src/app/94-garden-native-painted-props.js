@@ -141,6 +141,21 @@ window.GardenPaintedProps = (function () {
     return h;
   }
   function finish(h, b, foot) { h.bounds = b; h.rootNode.nativeBounds = b; if (foot) h.foot = foot; return h; }
+  /** (village fix round 3) The box round what is really drawn in an image (its opaque pixels, the same test the click
+   * uses), in world px; worked out once per texture from the canvas kept in memory. The click area is this box, not the
+   * picture's padded canvas: the notice board's, the post box's and the lamp's took in the empty paving round them. */
+  function tightBox(im) {
+    try {
+      const tex = im && im.texture, src = tex && tex.getSourceImage(); if (!src || !src.getContext) return null;
+      const cd = tex.customData || (tex.customData = {}); let T = cd.gppTight;
+      if (T === undefined) { T = null; const w = src.width, hh = src.height, d = src.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, hh).data; let a0 = w, b0 = hh, a1 = -1, b1 = -1;
+        for (let y = 0; y < hh; y += 2) for (let x = 0; x < w; x += 2) if (d[(y * w + x) * 4 + 3] >= 96) { if (x < a0) a0 = x; if (x > a1) a1 = x; if (y < b0) b0 = y; if (y > b1) b1 = y; }
+        if (a1 >= 0) { let f0 = w, f1 = -1; const fy = Math.max(b0, b1 - Math.max(4, (b1 - b0) * .15)); for (let y = Math.floor(fy / 2) * 2; y <= b1; y += 2) for (let x = 0; x < w; x += 2) if (d[(y * w + x) * 4 + 3] >= 96) { if (x < f0) f0 = x; if (x > f1) f1 = x; } T = [a0, b0, Math.min(w, a1 + 2), Math.min(hh, b1 + 2), f0, Math.min(w, f1 + 2)]; }
+        cd.gppTight = T; }
+      if (!T) return null; const sx = im.scaleX, sy = im.scaleY, left = im.x - im.displayOriginX * sx, top = im.y - im.displayOriginY * sy;
+      return { x: left + T[0] * sx - 3, y: top + T[1] * sy - 3, width: (T[2] - T[0]) * sx + 6, height: (T[3] - T[1]) * sy + 6, footX: left + (T[4] + T[5]) / 2 * sx };
+    } catch (e) { return null; }
+  }
 
   /* ---------- the props of the village ---------- */
   const SIGN = (B, x, y, w, label, size) => { B.f(B.rr(x - w / 2 + 1, y - 6, w, 13, 2.5), 'rgba(40,32,20,.25)').f(B.rr(x - w / 2, y - 7.5, w, 13, 2.5), '#efe4c6').f(B.rect(x - w / 2 + 1, y - 7.5, w - 2, 1.4), '#fff8e6', .8).text(label, x, y - .8, size || 7.2, '#4a3b26'); };
@@ -331,7 +346,7 @@ window.GardenPaintedProps = (function () {
     const season = sc.season || 'summer', night = !!o.night, W = o.W;
     const fx = (prop.x + prop.w / 2) * W.cellW, foot = W.sky + (prop.y + prop.h) * W.cellH - 3;
     const h = handle(scene, o, prop.id, { cls: which.replace(':', '-') });
-    let b;
+    let b, visual = null;
     if (which.startsWith('lib:')) {
       const k = which.slice(4);
       if (k === 'reeds') {
@@ -348,6 +363,9 @@ window.GardenPaintedProps = (function () {
       } else {
         const [id, v, size] = LIB[k], im = h.add(libImage(scene, id, v, season, size, fx, foot, night)); if (!im) { h.destroy(); return null; }
         const top = foot - im.displayHeight * im.originY; b = { x: fx - im.displayWidth / 2 - 6, y: top - 4, width: im.displayWidth + 12, height: foot - top + 12 };
+        // (round 3) a seat's picture stood two thirds of a cell to the right of its own foot: its legs over the block
+        if (k === 'seat') { const t0 = tightBox(im); if (t0 && Math.abs(t0.footX - fx) > 3) im.x += fx - t0.footX; }
+        { const t = tightBox(im); if (t) { visual = b; b = t; } }
         if (k === 'lamp' || k === 'lampbox') { h.lights.push({ x: fx, y: top + 14, radius: 120, pool: true }); if (night) glowPool(scene, h, fx, foot, 110, top + 12); }
       }
     } else {
@@ -358,10 +376,14 @@ window.GardenPaintedProps = (function () {
       const im = h.add(image(scene, key, fx, artFoot)); if (!im) { h.destroy(); return null; }
       if (board) im.setScale(scale / K);
       b = { x: fx + P.box[0] * scale, y: artFoot + P.box[1] * scale, width: (P.box[2] - P.box[0]) * scale, height: (P.box[3] - P.box[1]) * scale };
+      // (round 3) the lake board's posts stood well right of its foot; the click area is what is drawn, not its canvas
+      if (which === 'lakeboard') { const t0 = tightBox(im); if (t0 && Math.abs(t0.footX - fx) > 3) im.x += fx - t0.footX; }
+      { const t = tightBox(im); if (t) { visual = b; b = t; } }
       if (which === 'fountain') addDrops(scene, h, fx, foot - 52, 16);
       if (P.extra) ok(() => P.extra(scene, h, fx, artFoot, { season, night, prop, sc, more, W }));
     }
-    return finish(h, b, { x: fx, y: foot });
+    finish(h, b, { x: fx, y: foot }); if (visual) h.rootNode.nativeBounds = { x: Math.min(visual.x, b.x), y: Math.min(visual.y, b.y), width: Math.max(visual.x + visual.width, b.x + b.width) - Math.min(visual.x, b.x), height: Math.max(visual.y + visual.height, b.y + b.height) - Math.min(visual.y, b.y) };   // (the drawing keeps its whole canvas for caching)
+    return h;
   }
   function addDrops(scene, h, x, y, spread) {
     const key = bake(scene, 'drop', [-2, -3, 2, 3], B => B.f(B.ell(0, 0, 1.1, 2.2), '#eaf6f6', .9));

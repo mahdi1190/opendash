@@ -493,6 +493,33 @@ window.GardenNativePainted = (function () {
           const bx = x + ox / out * .9, by = y + oy / out * .9 + 1.5, hh = 2.5 + r() * 4.5;
           cx.globalAlpha = .8; cx.strokeStyle = r() < .5 ? P.lawnLo : '#6f8a40'; cx.lineWidth = 1; cx.beginPath(); cx.moveTo(bx, by + 2); cx.quadraticCurveTo(bx + (r() - .5) * 2, by - hh * .4, bx + (r() - .5) * 4, by - hh); cx.stroke();
         }
+        // (village fix round 3) the lakeside terrace dressed as a place to sit by the water: along its shore edge a coping
+        // of dressed stone with iron mooring rings, and on the terrace half-barrel planters spilling flowers and short lantern
+        // posts (it was an empty pad of paving with one stall on it)
+        for (const q of pz.extra || []) {
+          const tr = rng(4409), n = q.length, north = [];
+          for (let i = 0; i < n; i++) { const a = q[i], c = q[(i + 1) % n], L = Math.hypot(c.x - a.x, c.y - a.y) || 1; if ((c.x - a.x) / L < .35) continue; for (let t = 0; t < L; t += 3) north.push({ x: a.x + (c.x - a.x) * t / L, y: a.y + (c.y - a.y) * t / L, tx: (c.x - a.x) / L, ty: (c.y - a.y) / L }); }
+          // the coping: blocks along the edge facing the water (the upper run of the crescent, drawn left to right)
+          let k = 0; for (const p of north) { if (k++ % 3) continue; const len = 8.6;
+            cx.globalAlpha = .35; cx.strokeStyle = '#3e3626'; cx.lineWidth = 6; cx.beginPath(); cx.moveTo(p.x + .5, p.y + 1.6); cx.lineTo(p.x + p.tx * len + .5, p.y + p.ty * len + 1.6); cx.stroke();
+            cx.globalAlpha = 1; cx.strokeStyle = tr() < .5 ? '#bcae90' : '#aea082'; cx.lineWidth = 5; cx.beginPath(); cx.moveTo(p.x, p.y); cx.lineTo(p.x + p.tx * len - .8, p.y + p.ty * len); cx.stroke();
+            cx.globalAlpha = .7; cx.strokeStyle = '#e8dcbc'; cx.lineWidth = 1.2; cx.beginPath(); cx.moveTo(p.x, p.y - 1.8); cx.lineTo(p.x + p.tx * len - .8, p.y + p.ty * len - 1.8); cx.stroke(); }
+          for (let i = 6; i < north.length - 4; i += 17) { const p = north[i]; cx.globalAlpha = 1; cx.strokeStyle = '#3a3a38'; cx.lineWidth = 1.3; cx.beginPath(); cx.ellipse(p.x, p.y - 4.4, 2.6, 2, 0, 0, 7); cx.stroke(); cx.fillStyle = '#4a4a46'; cx.fillRect(p.x - 1.2, p.y - 2.4, 2.4, 1.6); }
+          // planters and lantern posts, a little in from the water's edge, spaced along it
+          const inner = north.filter((p, i) => i % 23 === 7);
+          inner.forEach((p, i) => { const x = p.x + 2 - p.ty * 0, y = p.y + 16;
+            if (!inU(x, y) || !inU(x - 10, y) || !inU(x + 10, y)) return;
+            if (i % 2 === 0) {   // a half-barrel planter
+              cx.globalAlpha = .28; cx.fillStyle = '#2a2418'; cx.beginPath(); cx.ellipse(x + 2, y + 1.5, 10, 3, 0, 0, 7); cx.fill(); cx.globalAlpha = 1;
+              cx.fillStyle = '#7a5434'; cx.fillRect(x - 8, y - 9, 16, 9); cx.fillStyle = '#5e3e24'; cx.fillRect(x - 8, y - 9, 16, 1.6); cx.fillRect(x - 8, y - 3, 16, 1.4); cx.fillStyle = '#9a7048'; cx.fillRect(x - 7, y - 8, 2.4, 7);
+              const fl = ['#e8553a', '#f4f0e0', '#f0c84a', '#c86aa0']; for (let j = 0; j < 9; j++) { cx.fillStyle = j < 5 ? '#4e7a34' : '#6a9a44'; cx.beginPath(); cx.ellipse(x - 7 + tr() * 14, y - 10 - tr() * 5, 3, 2.2, 0, 0, 7); cx.fill(); }
+              for (let j = 0; j < 7; j++) { cx.fillStyle = fl[Math.floor(tr() * fl.length)]; cx.beginPath(); cx.arc(x - 7 + tr() * 14, y - 11 - tr() * 6, 1.4, 0, 7); cx.fill(); }
+            } else {   // a short lantern post
+              cx.globalAlpha = .28; cx.fillStyle = '#2a2418'; cx.beginPath(); cx.ellipse(x + 2, y + 1, 5, 1.8, 0, 0, 7); cx.fill(); cx.globalAlpha = 1;
+              cx.fillStyle = '#34322e'; cx.fillRect(x - 1.3, y - 22, 2.6, 22); cx.fillRect(x - 3, y - 1.6, 6, 1.6); cx.fillStyle = '#2a2826'; cx.fillRect(x - 3.6, y - 30, 7.2, 8); cx.fillStyle = '#f4dc9a'; cx.fillRect(x - 2.4, y - 28.6, 4.8, 5.4); cx.fillStyle = '#2a2826'; cx.beginPath(); cx.moveTo(x - 4.4, y - 30); cx.lineTo(x, y - 33.6); cx.lineTo(x + 4.4, y - 30); cx.fill();
+            } });
+          cx.globalAlpha = 1;
+        }
         cx.globalAlpha = 1; cx.restore(); continue;
       }
       cx.restore();
@@ -579,8 +606,9 @@ window.GardenNativePainted = (function () {
   const HALL = [
     // (four cells wide from round 3: the hall stands larger than the cottages; w is its shadow's width)
     // (village fix round 1: the anglers' first meeting place is a striped-awning stall on the terrace's end, timber and
-    // canvas in the village's colours, not a dark green dome tent that read as a featureless blob)
-    { obj: 'structure.mcr-market-hut', v: 2, w: 110, wallWidth: 430, extra: [['street.mqn-lifebuoy', 0, 64, 2, 0, 28]] },
+    // canvas in the village's colours, not a dark green dome tent that read as a featureless blob; round 3: drawn across
+    // its whole four cells, the width its block takes, where it stood a cell narrower than the ground it stops you on)
+    { obj: 'structure.mcr-market-hut', v: 2, w: 170, wallWidth: 300, extra: [['street.mqn-lifebuoy', 0, 64, 2, 0, 28]] },
     { obj: 'building.vale-hall-small', v: 0, w: 192, wallWidth: 160, sign: 'Lake Hall' },
     { obj: 'building.thatched-cottage', v: 1, w: 200, wallWidth: 216, sign: 'Lake Hall' },
     { obj: 'building.vale-hall-large', v: 0, w: 192, wallWidth: 240, sign: 'Lake Hall' },
@@ -673,7 +701,7 @@ window.GardenNativePainted = (function () {
   // (round 3) the shut south common orchard is planted with fruit trees in rows, each section its own kind, instead of the
   // grove's oaks and chestnuts: the tree kit paints apple, pear and plum (no library drawing: kit only)
   const FRUIT_TREES = { 'lc-old-apple': 'tree.kit-apple', 'lc-pear-corner': 'tree.kit-pear', 'lc-plum-row': 'tree.kit-plum' };
-  const SHRUB = ['plant.holly', 'plant.gorse', 'plant.hedge', 'plant.fern', 'plant.bracken'];
+  const SHRUB = ['plant.holly', 'plant.gorse', 'plant.fern', 'plant.bracken'];   // (village fix round 3: no box-hedge piece set loose on the grass as a shrub)
   /** Once a frame: a village crown you stand under fades, so you can always see yourself (as in the woods). */
   let plantingTall = [], fadeLast = 0;
   const plantingCoverage = [];

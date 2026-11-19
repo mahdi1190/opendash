@@ -140,7 +140,7 @@
           B.s(`M${x} ${y}q${lean * .3} ${-h * .6} ${lean} ${-h}`, j === 0 ? '#566e30' : j === 1 ? lo : st[Math.floor(r() * st.length)], 1.1, .9);
           if (r() < .22 * k) B.f(B.ell(x + lean, y - h - 1, .9, 1.9), st[2], .95); }
         if (bloom && r() < .1) B.f(B.circ(q.x + (r() - .5) * 8, q.y - 3 - r() * 6, 1.3), bloom[Math.floor(r() * bloom.length)], .95);
-        if (k > .7 && r() < .07) {   // a bramble or a shrub where the growth is thickest
+        if (k > .78 && r() < .022) {   // a bramble or a shrub where the growth is thickest (now and then: a run of them read as hedge)
           const w = 7 + r() * 6, h = 7 + r() * 5, x = q.x + (r() - .5) * 4, y = q.y + 1;
           B.f(B.ell(x + 2, y + .6, w * 1.1, 2.4), '#22301a', .2).f(B.blob(r, x, y - h * .45, w, h * .55, 8, .45), lt[0], .95).f(B.blob(r, x - 1.2, y - h * .62, w * .72, h * .4, 7, .45), lt[1], .95).f(B.blob(r, x - 2.2, y - h * .78, w * .42, h * .22, 6, .4), lt[2], .8);
           if (berry) for (let j = 0; j < 4; j++) B.f(B.circ(x + (r() - .5) * w * 1.2, y - h * .5 + (r() - .5) * h * .5, .9), berry, .9);
