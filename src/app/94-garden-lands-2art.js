@@ -485,9 +485,9 @@ const _GLD_PROP_ART = {
   // (village fix round 2) a village market cross, not a headstone: three worn steps of honey limestone, a socket stone, a
   // tall tapering shaft and a little carved lantern head with its cross, lichen on the steps and the treads worn hollow
   cross() { const A = GART, L = ['#8c8068', '#b4a68a', '#cdbf9f', '#e2d6ba'], dk = '#5e5444', moss = '#7d8a4a';
-    let s = A.P('#000000', A.ell(3, 1, 30, 5), 0.22);
-    for (const [w, y, h] of [[52, -7, 7], [40, -14, 7], [28, -21, 7]]) { s += A.P(L[1], A.rrect(-w / 2, y, w, h, 1.2)) + A.P(L[3], A.rrect(-w / 2 + 1, y, w - 2, 2.2, 1), 0.85) + A.P(L[0], A.rect(-w / 2, y + h - 1.6, w, 1.6), 0.7) + A.S(dk, 0.6, `M${-w / 2 + w * .3} ${y + 1}v${h - 2}M${w * .18} ${y + 1}v${h - 2}`, 0.35) + A.P(L[2], A.ell(-w * .05, y + 1.4, w * .22, 1), 0.6); }
-    s += A.P(moss, A.ell(-21, -2, 4, 1.4), 0.75) + A.P(moss, A.ell(14, -9, 3, 1.1), 0.6) + A.P('#c8b85a', A.ell(-9, -16, 2.2, 0.9), 0.7) + A.P('#c8b85a', A.ell(17, -2.6, 2.4, 1), 0.6);
+    let s = A.P('#000000', A.ell(3, 1, 23, 4.4), 0.22);
+    for (const [w, y, h] of [[38, -7, 7], [30, -14, 7], [22, -21, 7]]) { /* (the bottom step as wide as the cross's block on the ground) */ s += A.P(L[1], A.rrect(-w / 2, y, w, h, 1.2)) + A.P(L[3], A.rrect(-w / 2 + 1, y, w - 2, 2.2, 1), 0.85) + A.P(L[0], A.rect(-w / 2, y + h - 1.6, w, 1.6), 0.7) + A.S(dk, 0.6, `M${-w / 2 + w * .3} ${y + 1}v${h - 2}M${w * .18} ${y + 1}v${h - 2}`, 0.35) + A.P(L[2], A.ell(-w * .05, y + 1.4, w * .22, 1), 0.6); }
+    s += A.P(moss, A.ell(-15, -2, 3.4, 1.3), 0.75) + A.P(moss, A.ell(11, -9, 2.6, 1.1), 0.6) + A.P('#c8b85a', A.ell(-7, -16, 2, 0.9), 0.7) + A.P('#c8b85a', A.ell(13, -2.6, 2.2, 1), 0.6);
     s += A.P(L[1], A.rrect(-8, -30, 16, 9, 1)) + A.P(L[3], A.rect(-7, -30, 14, 2), 0.8) + A.P(L[0], A.rect(4, -30, 4, 9), 0.5);
     s += A.P(L[2], 'M-3.6 -30L-2.4 -80H2.4L3.6 -30z') + A.P(L[3], 'M-3.6 -30L-2.4 -80H-0.6L-1.4 -30z', 0.8) + A.P(L[0], 'M1.6 -30L1.2 -80H2.4L3.6 -30z', 0.6);
     s += A.P(L[1], A.rrect(-4.6, -83, 9.2, 3.4, 1)) + A.P(L[2], A.rect(-5.4, -96, 10.8, 13)) + A.P(L[3], A.rect(-5.4, -96, 3, 13), 0.7) + A.P(dk, 'M-2.4 -85v-6.6q2.4 -2.8 4.8 0v6.6z', 0.75);

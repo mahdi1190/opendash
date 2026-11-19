@@ -76,12 +76,13 @@ window.GardenPaintedProps = (function () {
     if (scene.textures.exists(full)) return full;
     const t0 = performance.now(), [x0, y0, x1, y1] = box, w = Math.ceil((x1 - x0) * K), h = Math.ceil((y1 - y0) * K);
     if (w < 2 || h < 2 || w > 4096 || h > 4096) return null;
-    const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d');
+    // (village fix round 2: drawn on a canvas kept in memory: the texture made from it, and the click test that reads its pixels, never wait on the graphics card, which held a level-up for many seconds)
+    const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d', { willReadFrequently: true });
     cx.setTransform(K, 0, 0, K, -x0 * K, -y0 * K);
     if (ok(() => draw(brush(cx), cx)) === false) return null;
     // (village fix round 2) addImage, not addCanvas: a CanvasTexture reads every pixel back from the graphics card as it is
     // made, and at a level-up, with the card busy, that read held the page up for many seconds (a gate's picture: 20 s+)
-    const tex = scene.textures.addImage(full, c); if (tex && typeof tex.refresh !== 'function') tex.refresh = function () { for (const src of this.source) src.update(); return this; };
+    const tex = scene.textures.addCanvas(full, c);
     tex.customData = Object.assign(tex.customData || {}, { gpp: { ox: -x0 / (x1 - x0), oy: -y0 / (y1 - y0) } });
     baked++; bakeMs += performance.now() - t0; return full;
   }
@@ -145,8 +146,8 @@ window.GardenPaintedProps = (function () {
   const SIGN = (B, x, y, w, label, size) => { B.f(B.rr(x - w / 2 + 1, y - 6, w, 13, 2.5), 'rgba(40,32,20,.25)').f(B.rr(x - w / 2, y - 7.5, w, 13, 2.5), '#efe4c6').f(B.rect(x - w / 2 + 1, y - 7.5, w - 2, 1.4), '#fff8e6', .8).text(label, x, y - .8, size || 7.2, '#4a3b26'); };
   const PAINT = {
     // UK pillar box: a red drum with a domed cap, the slot, a white plate, a black plinth
-    postbox: { box: [-20, -64, 24, 8], draw(B, o) {
-      const r = rng(5); B.shadow(2, 1, 17, 5, .3);
+    postbox: { box: [-12.5, -64, 12.5, 8], draw(B, o) {   // (fix round 2: as wide as the box itself now no letter lies beside it, so its click area is the box)
+      const r = rng(5); B.shadow(1, 1, 11, 4, .32);
       B.f(B.rr(-10, -6, 20, 7, 1.5), IRON[0]).f(B.rect(-10, -6, 20, 1.2), IRON[1]);
       B.f(B.rect(-9, -44, 18, 39), B.lin(-9, 0, 9, 0, [[0, '#d65a48'], [.35, '#c03a2e'], [1, '#86241c']]));
       B.f(B.ell(0, -44, 9, 3), '#a42c22').f('M-10 -45q0 -12 10 -12q10 0 10 12z', B.lin(-10, -57, 8, -45, [[0, '#dc6450'], [1, '#922820']])).f(B.ell(-3, -52, 3, 1.6), '#f08a72', .55);

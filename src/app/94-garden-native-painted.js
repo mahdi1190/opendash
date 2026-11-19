@@ -48,46 +48,47 @@ window.GardenNativePainted = (function () {
    * tone wanders in broad patches of older and newer stone; feet polish a paler way; moss and the odd weed live in the
    * joints towards the rim. Every fan is seeded by its place, so ground chunks painted apart meet exactly.
    * o: { salt, P (palette), skip(x, y): leave a stone out (the rose), wear(x, y): 0..1 polish, rim(x, y): 0..1 towards the edge } */
-  function fanSetts(cx, bb, o) {
-    o = o || {}; const P = o.P || PAL.summer, salt = o.salt | 0, R = 21, ring = 4.4, half = 1.2, dx = R * 2 * Math.sin(half) * .82, ys = .6, dy = R * ys * .62;
-    const tones = o.tones || ['#c6b08a', '#cfb993', '#d6c39e', '#ccb690', '#d2bfa2', '#c2ab86', '#d9c8a6'];
-    const patch = (x, y) => Math.sin(x * .011 + y * .019) + Math.sin(x * .027 - y * .015 + 1.3) * .6 + Math.sin(x * .061 + y * .052 + .4) * .25;
-    const hash = (a, b) => { let n = Math.imul(a * 374761393 + b * 668265263 + salt * 1442695041, 1) >>> 0; n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0; return (n ^ (n >>> 16)) >>> 0; };
-    cx.save(); cx.globalAlpha = 1; cx.fillStyle = o.mortar || '#b3a07e'; cx.fillRect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]);
-    const j0 = Math.floor((bb[1] - 4) / dy), j1 = Math.ceil((bb[3] + R * ys + 4) / dy);
-    // (one path per tone per row of fans, filled once: a stone at a time was four calls a stone, too slow for a chunk
-    // painted as you walk; the rows still go down in order, so the fans overlap as scales)
-    for (let j = j0; j <= j1; j++) {
-      const off = (j & 1) ? dx / 2 : 0, fy = j * dy, i0 = Math.floor((bb[0] - off - R) / dx), i1 = Math.ceil((bb[2] - off + R) / dx);
-      const byTone = tones.map(() => new Path2D()), hi = new Path2D(), lo = new Path2D(), wearP = new Path2D(), darkP = new Path2D(), mossP = new Path2D(); let any = false;
-      for (let i = i0; i <= i1; i++) {
-        const fx = i * dx + off, rr = rng(hash(i, j) | 1), age = patch(fx, fy);
-        for (let k = 0; k < 4; k++) {
-          const r0 = R - k * ring, r1 = r0 - ring + .85; if (r1 < 1.6) break;
+  // (village fix round 2, speed) the fans are laid once into a tile (8 fans by 16 rows, seamless: the lattice repeats on it) and
+  // the paving is filled with that tile as a pattern fixed to the world, one fill per piece: laid a stone at a time, the
+  // thousands of little paths kept the graphics card so busy that walking past the square stalled for seconds
+  const fanTiles = new Map();
+  function fanTile(P, k) {
+    const key = k.toFixed(3) + '|' + (P.stoneHi || ''); let t = fanTiles.get(key); if (t) return t;
+    const R = 21, ring = 4.4, half = 1.2, ys = .6, dx = 32, dy = 8, NI = 8, NJ = 16, TW = dx * NI, TH = dy * NJ;
+    const c = document.createElement('canvas'); c.width = Math.round(TW * k); c.height = Math.round(TH * k); const tx = c.getContext('2d');
+    tx.setTransform(c.width / TW, 0, 0, c.height / TH, 0, 0); tx.fillStyle = '#b3a07e'; tx.fillRect(0, 0, TW, TH);
+    const tones = ['#c6b08a', '#cfb993', '#d6c39e', '#ccb690', '#d2bfa2', '#c2ab86', '#d9c8a6'];
+    const hash = (a, b) => { let n = Math.imul(a * 374761393 + b * 668265263 + 1442695041 * 23, 1) >>> 0; n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0; return (n ^ (n >>> 16)) >>> 0; };
+    for (let j = -1; j <= NJ + 2; j++) {
+      const off = (j & 1) ? dx / 2 : 0, fy = j * dy, byTone = tones.map(() => new Path2D()), hi = new Path2D(), lo = new Path2D();
+      for (let i = -1; i <= NI + 1; i++) {
+        const fx = i * dx + off, rr = rng(hash(((i % NI) + NI) % NI, ((j % NJ) + NJ) % NJ) | 1), age = Math.sin(((i % NI) + NI) % NI * 1.7 + (((j % NJ) + NJ) % NJ) * .9) * .5;
+        for (let q = 0; q < 4; q++) {
+          const r0 = R - q * ring, r1 = r0 - ring + .85; if (r1 < 1.6) break;
           const rm = (r0 + r1) / 2, n = Math.max(2, Math.round(2 * half * rm / (4.6 + rr() * 1.2))), da = 2 * half / n;
-          for (let q = 0; q < n; q++) {
-            const a0 = Math.PI / 2 - half + q * da + .7 / rm, a1 = a0 + da - 1.1 / rm, am = (a0 + a1) / 2, t = rr(), w0 = rr(), m0 = rr();
-            const mx = fx + Math.cos(am) * rm, my = fy - Math.sin(am) * rm * ys; if (mx < bb[0] - 6 || mx > bb[2] + 6 || my < bb[1] - 5 || my > bb[3] + 5) continue;
-            if (o.skip && o.skip(mx, my)) continue;
-            const c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1);
-            const p0x = fx + c0 * r0, p0y = fy - s0 * r0 * ys, p1x = fx + c1 * r0, p1y = fy - s1 * r0 * ys, p2x = fx + c1 * r1, p2y = fy - s1 * r1 * ys, p3x = fx + c0 * r1, p3y = fy - s0 * r1 * ys;
-            const quad = P2 => { P2.moveTo(p0x, p0y); P2.lineTo(p1x, p1y); P2.lineTo(p2x, p2y); P2.lineTo(p3x, p3y); P2.closePath(); };
-            quad(byTone[Math.max(0, Math.min(tones.length - 1, Math.floor((t + age * .1) * tones.length)))]); any = true;
-            hi.moveTo(p0x, p0y + .4); hi.lineTo(p1x, p1y + .4); lo.moveTo(p3x, p3y - .3); lo.lineTo(p2x, p2y - .3);
-            const w = o.wear ? o.wear(mx, my) : 0, rim = o.rim ? o.rim(mx, my) : 0;
-            if (w > 0 && w0 < w) quad(wearP); else if (age < -.9 && w0 < .4) quad(darkP);
-            if (rim > 0 && m0 < rim * .55) { const ex = p1x + .2, ey = (p1y + p2y) / 2, erx = .9 + m0 * 1.2; mossP.moveTo(ex + erx, ey); mossP.ellipse(ex, ey, erx, .7 + m0 * .5, 0, 0, 7); }
+          for (let m = 0; m < n; m++) {
+            const a0 = Math.PI / 2 - half + m * da + .7 / rm, a1 = a0 + da - 1.1 / rm, t0 = rr();
+            const c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1), P2 = byTone[Math.max(0, Math.min(tones.length - 1, Math.floor((t0 + age * .1) * tones.length)))];
+            P2.moveTo(fx + c0 * r0, fy - s0 * r0 * ys); P2.lineTo(fx + c1 * r0, fy - s1 * r0 * ys); P2.lineTo(fx + c1 * r1, fy - s1 * r1 * ys); P2.lineTo(fx + c0 * r1, fy - s0 * r1 * ys); P2.closePath();
+            hi.moveTo(fx + c0 * r0, fy - s0 * r0 * ys + .4); hi.lineTo(fx + c1 * r0, fy - s1 * r0 * ys + .4); lo.moveTo(fx + c0 * r1, fy - s0 * r1 * ys - .3); lo.lineTo(fx + c1 * r1, fy - s1 * r1 * ys - .3);
           }
         }
       }
-      if (!any) continue;
-      cx.globalAlpha = 1; for (let k = 0; k < tones.length; k++) { cx.fillStyle = tones[k]; cx.fill(byTone[k]); }
-      cx.lineWidth = .9; cx.globalAlpha = .34; cx.strokeStyle = P.stoneHi || '#eddcb6'; cx.stroke(hi); cx.globalAlpha = .2; cx.strokeStyle = '#6e5c42'; cx.stroke(lo);
-      cx.globalAlpha = .2; cx.fillStyle = '#f6ecd0'; cx.fill(wearP); cx.globalAlpha = .1; cx.fillStyle = '#6a5a40'; cx.fill(darkP);
-      cx.globalAlpha = .7; cx.fillStyle = '#86984e'; cx.fill(mossP);
+      tx.globalAlpha = 1; for (let q = 0; q < tones.length; q++) { tx.fillStyle = tones[q]; tx.fill(byTone[q]); }
+      tx.lineWidth = .9; tx.globalAlpha = .34; tx.strokeStyle = P.stoneHi || '#eddcb6'; tx.stroke(hi); tx.globalAlpha = .2; tx.strokeStyle = '#6e5c42'; tx.stroke(lo);
     }
+    t = { c, TW, TH }; fanTiles.set(key, t); return t;
+  }
+  function fanSetts(cx, bb, o) {
+    o = o || {}; const P = o.P || PAL.summer, m = cx.getTransform(), k = Math.max(.25, Math.hypot(m.a, m.b)), T = fanTile(P, k);
+    const pat = cx.createPattern(T.c, 'repeat'); if (!pat) return; pat.setTransform(new DOMMatrix([T.TW / T.c.width, 0, 0, T.TH / T.c.height, 0, 0]));
+    cx.save(); cx.globalAlpha = 1; cx.fillStyle = pat; cx.fillRect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]);
+    // the tone wanders in broad patches of older and newer stone, so the tile's repeat never shows; feet polish a paler way
+    const r = rng((Math.round(bb[0] * 7 + bb[1] * 13) | 0) ^ 0x5bd1), area = (bb[2] - bb[0]) * (bb[3] - bb[1]);
+    for (let q = 0, n = Math.max(2, Math.round(area / 9000)); q < n; q++) { const x = bb[0] + r() * (bb[2] - bb[0]), y = bb[1] + r() * (bb[3] - bb[1]), light = r() < .55, w = o.wear ? o.wear(x, y) : 0; cx.globalAlpha = (light ? .09 : .07) + w * .12; cx.fillStyle = light || w > 0 ? '#f6ecd0' : '#6a5a40'; cx.beginPath(); cx.ellipse(x, y, 24 + r() * 46, 8 + r() * 14, (r() - .5) * .4, 0, 7); cx.fill(); }
     cx.restore();
   }
+
 
 
   /* ---------- library objects as baked sprites ---------- */
@@ -195,7 +196,7 @@ window.GardenNativePainted = (function () {
     const [x0, y0, x1, y1] = sh.box, k = (size.w ? size.w / (x1 - x0) : size.h / (y1 - y0)) * OBJ_K;
     const pad = 4, w = Math.ceil((x1 - x0) * k) + pad * 2, h = Math.ceil((y1 - y0) * k) + pad * 2;
     if (w > 4096 || h > 4096 || w < 2 || h < 2) return null;
-    const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d');
+    const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d', { willReadFrequently: true });   // (in memory: its texture and pixel reads never wait on the graphics card, fix round 2)
     cx.setTransform(k, 0, 0, k, pad - x0 * k, pad - y0 * k);
     for (const n of names) drawShapes(cx, sh.parts[n] || [], night && n !== 'lit');
     return { c, ox: pad - x0 * k, oy: pad - y0 * k, k, crown: id.startsWith('tree.') ? crownGeometry(sh, k) : null };
@@ -233,7 +234,7 @@ window.GardenNativePainted = (function () {
     if (scene.textures.exists(key)) return { key, meta: scene.textures.get(key).customData && scene.textures.get(key).customData.gdpaint };
     const made = ok(() => objectCanvas(id, v, season, size, night)); if (!made) return null;
     // (addImage: no read back of every pixel from the graphics card as the texture is made; see the ground below)
-    const tex = scene.textures.addImage(key, made.c); if (tex && typeof tex.refresh !== 'function') tex.refresh = function () { for (const src of this.source) src.update(); return this; };
+    const tex = scene.textures.addCanvas(key, made.c);
     const meta = { ox: made.ox / made.c.width, oy: made.oy / made.c.height, crown: made.crown };
     tex.customData = Object.assign(tex.customData || {}, { gdpaint: meta }); return { key, meta };
   }
