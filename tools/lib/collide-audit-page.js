@@ -169,7 +169,7 @@
   const paintAt = (X, Y, except) => paintIn(buckets, X, Y, except);
 
   /* ---------- the picture: the whole map as the game draws it, read back as "water-coloured or not" ---------- */
-  const MS = 2, MW = Math.ceil(W.cols * CW / MS), MH = Math.ceil((W.sky + W.rows * CH) / MS), mask = new Uint8Array(MW * MH);   // 0 not seen, 1 water colour, 2 anything else
+  const MS = 2, MW = Math.ceil(W.cols * CW / MS), MH = Math.ceil((W.sky + W.rows * CH) / MS), mask = new Uint8Array(MW * MH);   // 0 not seen, 1 water colour, 3 pale or green-tinted water (shallows, surf, a tarn's rim), 2 anything else
   const mosaic = { tiles: 0, seen: 0, ok: false, note: '' };
   if (!opts.noPicture) try {
     const prefs = _gdpPrefs(), keep = { cam: prefs.cam, zoom: prefs.zoom, x: _gw.px, y: _gw.py }, wasOn = gardenCollideOn();
@@ -190,7 +190,7 @@
         if (sx < 4 || sy < 4 || sx >= img.width - 4 || sy >= img.height - 4) continue;
         const o = (sy * img.width + sx) * 4, r = data[o], g = data[o + 1], b = data[o + 2];
         if (!mask[j * MW + i]) mosaic.seen++;
-        mask[j * MW + i] = b >= r + 12 && b >= g - 25 ? 1 : 2;
+        mask[j * MW + i] = b >= r + 12 && b >= g - 25 ? 1 : b >= r - 4 && Math.max(r, g, b) - Math.min(r, g, b) > 12 ? 3 : 2;   // (3: sand, grass, bark and stone all have less blue than red)
       }
       mosaic.tiles++;
     }
@@ -199,9 +199,9 @@
     mosaic.ok = mosaic.seen > MW * MH * .5; mosaic.share = +(mosaic.seen / (MW * MH)).toFixed(3);
   } catch (e) { mosaic.note = String(e && e.message || e); }
   /** Share of water-coloured pixels round a cell point (rx, ry in world px); -1 when the picture has no pixels there. */
-  const pixWater = (x, y, rx, ry) => {
+  const pixWater = (x, y, rx, ry, loose) => {
     const p = toPx(x, y), i0 = Math.floor((p.X - rx) / MS), i1 = Math.floor((p.X + rx) / MS), j0 = Math.floor((p.Y - ry) / MS), j1 = Math.floor((p.Y + ry) / MS); let wet = 0, n = 0;
-    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { if (i < 0 || j < 0 || i >= MW || j >= MH) continue; const v = mask[j * MW + i]; if (!v) continue; n++; if (v === 1) wet++; }
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { if (i < 0 || j < 0 || i >= MW || j >= MH) continue; const v = mask[j * MW + i]; if (!v) continue; n++; if (v === 1 || loose && v === 3) wet++; }
     return n >= 4 ? wet / n : -1;
   };
   /** Group flagged lattice points (key "i,j") into touching clusters: [{n, x, y}] in cells. */
@@ -306,16 +306,19 @@
     const wetPx = (X, Y) => { const c = toCell(X, Y); return gardenWaterContainsPoint(c.x, c.y); };
     const roadsAt = (island.routes || []).filter(r => r.points && r.points.length > 1).map(r => ({ pts: gardenIslandRoutePath(r).points, rad: gardenIslandRoadStyle(r).radius }));
     const onRoad = (x, y, k) => roadsAt.some(R => { for (let i = 1; i < R.pts.length; i++) { const p = R.pts[i - 1], q = R.pts[i], ax = (q.x - p.x) * CW, ay = (q.y - p.y) * CH, bx = (x - p.x) * CW, by = (y - p.y) * CH, L = ax * ax + ay * ay || 1, t = Math.max(0, Math.min(1, (ax * bx + ay * by) / L)); if (Math.hypot(bx - ax * t, by - ay * t) < R.rad * CW * k) return true; } return false; });
-    const runsOf = (cols, from = 0) => { const out = []; let cur = null; for (const c of cols) { if (cur && c.u - cur.u1 <= 3 + from) { cur.u1 = c.u; cur.list.push(c); } else { cur = { u0: c.u, u1: c.u, list: [c] }; out.push(cur); } } return out; };
+    const runsOf = (cols, from = 0, step = 3) => { const out = []; let cur = null; for (const c of cols) { if (cur && c.u - cur.u1 <= step + from) { cur.u1 = c.u; cur.list.push(c); } else { cur = { u0: c.u, u1: c.u, list: [c] }; out.push(cur); } } return out; };
     for (const o of objs) {
       const stone = o.kind === 'gate' || o.kind === 'wall', inParts = o.kind === 'landmark' || o.kind === 'rock';
       if (!stone && !inParts) continue;
       if (/lightpool|\|block$|gatesign|\|falls\||\|peak\||\|crag\|/.test(o.key) || o.heightPx < 14) continue;   // (a peak or crag is its mountain's: check 4)
       const P = o.P, wp = wpOf(o), cols = [];
-      // each column's lowest solid paint with at least 10 px of solid paint standing above it (a tuft or a pebble is not a wall)
-      for (let u = 0; u < P.w; u += 3) {
+      // each column's lowest solid paint with at least 15 world px of solid paint standing above it, a third of the
+      // player's height: a tuft, a pebble or the scree of a col is stepped over, not a wall (the picture may be drawn at
+      // twice the world's scale or more: the height is measured in world px)
+      const sc = Math.hypot(o.mx.a, o.mx.b) || 1, stepU = Math.max(1, Math.round(3 / sc));
+      for (let u = 0; u < P.w; u += stepU) {
         let v = P.h - 1; while (v >= 0 && P.a[v * P.w + u] < 160) v--; if (v < 0) continue;
-        let up = v; while (up > 0 && P.a[(up - 1) * P.w + u] >= 160) up--; if (v - up < 10) continue;
+        let up = v; while (up > 0 && P.a[(up - 1) * P.w + u] >= 160) up--; if ((v - up) * sc < 15) continue;
         const p = wp(u + .5, v + 1); cols.push({ u, X: p.X, Y: p.Y });
       }
       if (!cols.length) continue;
@@ -335,12 +338,12 @@
           if (cellFree(c.X, c.Y - 3) && cellFree(c.X, c.Y - 8)) through.push(c);
           else { const F = c.Y + GW_FOOT.y * CH + .3 * CH, F2 = c.Y + GW_FOOT.y * CH + .8 * CH; if (!cellFree(c.X, F) && cellFree(c.X, F2) && bare(c.X, F) && bare(c.X, F - 6) && !wetPx(c.X, F)) { const why = gardenCollideAt(toCell(c.X, F).x, toCell(c.X, F).y).join('; '); if (why && !/water/.test(why)) short.push(Object.assign({ why }, c)); } }
         }
-        for (const R of runsOf(through)) if (R.list.length >= (o.kind === 'wall' ? 4 : 3)) { const m = R.list[R.list.length >> 1], mc = toCell(m.X, m.Y); push({ kind: 'walk-through', obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: mc.x, y: mc.y, detail: (R.list.length * 3) + ' px of its drawn foot can be stood on (stonework judged column by column)' }); }
-        for (const R of runsOf(short)) if (R.list.length >= 4) { const m = R.list[R.list.length >> 1], mc = toCell(m.X, m.Y); push({ kind: 'block-offset', obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: mc.x, y: mc.y, detail: 'over ' + (R.list.length * 3) + ' px of its length the feet stop more than ' + (.3 + GW_FOOT.y).toFixed(2) + ' cells in front of its drawn foot, on open ground (' + m.why.slice(0, 80) + ')' }); }
+        for (const R of runsOf(through, 0, stepU)) if (R.list.length >= (o.kind === 'wall' ? 4 : 3)) { const m = R.list[R.list.length >> 1], mc = toCell(m.X, m.Y); push({ kind: 'walk-through', obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: mc.x, y: mc.y, detail: (R.list.length * 3) + ' px of its drawn foot can be stood on (stonework judged column by column)' }); }
+        for (const R of runsOf(short, 0, stepU)) if (R.list.length >= 4) { const m = R.list[R.list.length >> 1], mc = toCell(m.X, m.Y); push({ kind: 'block-offset', obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: mc.x, y: mc.y, detail: 'over ' + (R.list.length * 3) + ' px of its length the feet stop more than ' + (.3 + GW_FOOT.y).toFixed(2) + ' cells in front of its drawn foot, on open ground (' + m.why.slice(0, 80) + ')' }); }
       } else {
         // in parts: the gaps between its drawn parts, and past its drawn ends, at its base line
         const base = Math.max(...cols.map(c => c.Y)), low = cols.filter(c => c.Y >= base - 10); if (!low.length) continue;
-        const Rs = runsOf(low, 3), yb = base - 4;
+        const Rs = runsOf(low, stepU, stepU), yb = base - 4;
         const anyBlockAt = X => !cellFree(X, yb) && bare(X, yb) && bare(X, yb - 10) && !wetPx(X, yb);
         for (let i = 1; i < Rs.length; i++) { const g0 = Rs[i - 1].list[Rs[i - 1].list.length - 1].X, g1 = Rs[i].list[0].X, gap = g1 - g0; if (gap < GW_FOOT.x * 2 * CW + 8) continue; const X = (g0 + g1) / 2; if (anyBlockAt(X) && cellFree(X, yb + GW_FOOT.y * CH + .6 * CH)) { const mc = toCell(X, yb); push({ kind: 'invisible-wall', obj: o.kind, name: o.name, key: o.key.slice(0, 90), x: mc.x, y: mc.y, detail: 'blocked in the ' + Math.round(gap) + ' px gap between two of its drawn parts, with nothing drawn there' }); } }
         const L = Math.min(...low.map(c => c.X)), Rt = Math.max(...low.map(c => c.X)), off = (GW_FOOT.x + .25) * CW, off2 = (GW_FOOT.x + .75) * CW;
@@ -520,7 +523,7 @@
       shore.casts++;
       // (all but no water-coloured pixel near the float, and next to none round it: the Mere's and the sea's reflections of the
       // bank and the sky's colours at the tide line are patchy and are not taken for ground)
-      const pw = pixWater(cx, cy, 5, 3); if (pw < 0 || pw > .05 || pixWater(cx, cy, 10, 6) >= .2) continue;
+      const pw = pixWater(cx, cy, 5, 3, true); if (pw < 0 || pw > .05 || pixWater(cx, cy, 10, 6, true) >= .2) continue;
       const p = toPx(cx, cy); if (anyPaint(p.X, p.Y)) continue;   // (a float among reeds or lily pads, or a crossing drawn over it: those are their own checks)
       dryFloat.add(x + ',' + y);
     }

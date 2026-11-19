@@ -1005,13 +1005,16 @@ window.GardenPaintedProps = (function () {
     for (const g of D.gates) {
       const frame = g.crossSpan ? ok(() => _gldIslandGateFrame(g)) : null; if (!frame) continue;
       const kind = gateKind(g), side = Math.abs(frame.uy) > Math.abs(frame.ux), half = Math.max(46, Math.min(80, frame.span * .62)); if (side) continue;   // (seen side on, the arch's trunks are in the trunk list and the bridge is its crossing's)
-      if (kind === 'ruin') { const pw = Math.max(12, half * .3), reach = half + pw + half * .7 + 12; for (const s of [-1, 1]) box(g, frame.x + (s < 0 ? -reach : half), frame.y - 8, frame.x + (s < 0 ? -half : reach), frame.y + 1, s < 0 ? 'west pier and wall' : 'east pier and wall'); }
+      // (the ruin's reach +20: the wall stub's last stones stand a few pixels past its end)
+      if (kind === 'ruin') { const pw = Math.max(12, half * .3), reach = half + pw + half * .7 + 20; for (const s of [-1, 1]) box(g, frame.x + (s < 0 ? -reach : half), frame.y - 8, frame.x + (s < 0 ? -half : reach), frame.y + 1, s < 0 ? 'west pier and wall' : 'east pier and wall'); }
       else if (kind === 'stair') { const sw = half * 1.55, dy = 52, top = dy - 6 * 9; for (const s of [-1, 1]) box(g, frame.x + (s < 0 ? -(sw + 47) : sw - 5), frame.y + top - 6, frame.x + (s < 0 ? -(sw - 5) : sw + 47), frame.y + dy, s < 0 ? 'west cheek and post' : 'east cheek and post'); }
       else if (kind === 'pass') {
-        box(g, frame.x + half + 36 - 13, frame.y - 2 - 6, frame.x + half + 36 + 13, frame.y - 2 + 3, 'cairn');
-        // the two big boulders either side of the col (art.lib: rock.boulder 100 and 110 px wide at -half and +half): they
-        // had no block and were walked over (the collision audit, 19 Nov 2026). The col between them stays open.
-        for (const [s, w, dy] of [[-1, 100, 2], [1, 110, 4]]) { const inner = Math.max(26, half * .5), outer = half + w * .4; box(g, s < 0 ? frame.x - outer : frame.x + inner, frame.y + dy - 12, s < 0 ? frame.x - inner : frame.x + outer, frame.y + dy, s < 0 ? 'west boulder' : 'east boulder'); }
+        // the cairn (stacked from frame.y - 2 up; its bottom stone's foot lies 2 to 4 px below that)
+        box(g, frame.x + half + 36 - 10, frame.y - 7, frame.x + half + 36 + 9, frame.y + 5, 'cairn');
+        // the two big boulders either side of the col (art.lib: rock.boulder 100 px at -half, 2 and 110 px at +half, 4; each
+        // is drawn about two fifths of its library width across, its foot a pixel or two below its point). They had no
+        // block and were walked over (the collision audit, 19 Nov 2026). The col between them stays open.
+        for (const [s, w, dy] of [[-1, 100, 2], [1, 110, 4]]) { const c = frame.x + s * half + (s < 0 ? -2 : .5), r = w * .2 + 1; box(g, c - r, frame.y + dy - 10, c + r, frame.y + dy + 2, s < 0 ? 'west boulder' : 'east boulder'); }
       }
     }
     gateFeetMemo = { d: D, out };
