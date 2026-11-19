@@ -66,15 +66,19 @@
     const trees = [], kinds = GardenPaintWood.orchardKinds || ['apple'];
     // What the rows keep clear of, measured from the painted shapes, not cell centres: a trunk never stands on a
     // path's ribbon or the cider square's setts, in the stair's mouth, at the pond's lip or crowding the ring.
-    const ROUTE_IDS = ['orchard-stair', 'orchard-pass', 'folly-trail', 'east-beach', 'lakeside-steps', 'orchard-rows', 'pass-summit'];
+    // (round 3 layouts: every path of the orchard, the hand-authored ones included, and the climb to the pass)
+    const ROUTE_IDS = [...L.routes.values()].filter(rt => rt.zone === 4 && rt.tier !== 'plaza' || rt.id === 'pass-summit').map(rt => rt.id);
     const ribbons = ROUTE_IDS.map(id => { const rt = L.routes.get(id); return rt && rt.points && rt.points.length > 1 ? { w: rt.widthCells || 1.4, pts: gardenIslandRoutePath(rt).points } : null; }).filter(Boolean);
     const segD = (px, py, a, b) => { const ax = a.x * cw, ay = a.y * ch, bx = b.x * cw, by = b.y * ch, dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy, t = l ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l)) : 0; return Math.hypot(px - ax - t * dx, py - ay - t * dy); };
     const offPath = (x, y, pad) => ribbons.every(rb2 => { const lim = rb2.w / 2 * cw * .5 + pad; for (let i = 1; i < rb2.pts.length; i++) if (segD(x * cw, y * ch, rb2.pts[i - 1], rb2.pts[i]) < lim) return false; return true; });
     const sq = L.routes.get('cider-square'), sqA = sq && sq.points ? sq.points[0] : null, sqB = sq && sq.points ? sq.points[sq.points.length - 1] : null;
-    const offSquare = (x, y) => { if (!sqA) return true; const cx = Math.max(sqA[0], Math.min(sqB[0], x)), cy = sqA[1] + (sqB[1] - sqA[1]) * ((cx - sqA[0]) / ((sqB[0] - sqA[0]) || 1)); return ((x - cx) / 2.7) ** 2 + ((y - cy) / 2.5) ** 2 > 1; };
+    const sqShape = sq && sq.shape, inPoly = (x, y, pts) => { let on = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const a = pts[i], b = pts[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) on = !on; } return on; };
+    const offSquare = (x, y) => { if (sqShape) return ![[0, 0], [.9, 0], [-.9, 0], [0, .7], [0, -.7]].some(([dx, dy]) => inPoly(x + dx, y + dy, sqShape)); if (!sqA) return true; const cx = Math.max(sqA[0], Math.min(sqB[0], x)), cy = sqA[1] + (sqB[1] - sqA[1]) * ((cx - sqA[0]) / ((sqB[0] - sqA[0]) || 1)); return ((x - cx) / 2.7) ** 2 + ((y - cy) / 2.5) ** 2 > 1; };
     const gate = (L.D.gates || []).find(g => g.id === 'island-orchard'), offGate = (x, y) => !gate || Math.abs(x - gate.x - .5) > 3.4 || y < gate.y - 3.2 || y > gate.y + 2;
     const dryLip = (x, y) => [[0, 0], [1.1, 0], [-1.1, 0], [0, 1], [0, -1.2], [.8, .8], [-.8, .8]].every(([dx, dy]) => L.kind(x + dx, y + dy) !== 'water');
     const ringS = L.stat('ld-ring'), ringC = ringS ? { x: ringS.x + ringS.w / 2, y: ringS.y + .5 } : null;
+    // (round 3 layouts) the ring's eight trunks and the Mother tree where the hand-authored orchard puts them (presentation.orchard)
+    const OR = (L.D.presentation && L.D.presentation.orchard) || {}, MOM = OR.mother ? [OR.mother.x, OR.mother.y] : [84.6, 45.2], RINGT = OR.ring && OR.ring.trunks;
     const clearOf = (x, y) => offPath(x, y, 5) && offSquare(x, y) && offGate(x, y) && dryLip(x, y);
     for (let y = 21.6, row = 0; y < 47; y += 1.75, row++) for (let x = 60 + (row % 2) * 1.15; x < 89; x += 2.3) {
       const jx = x + (kit.hash(Math.round(x * 10), Math.round(y * 10), 93) % 100) / 100 * .7 - .35, jy = y + (kit.hash(Math.round(x * 10), Math.round(y * 10), 94) % 100) / 100 * .5 - .25;
@@ -86,7 +90,7 @@
       if (jy < 25 || (jx > 81.5 && jy > 33.5 && jy < 39.5) || (jx > 82 && jy < 33.5)) continue;
       if (!clearOf(jx, jy)) continue;
       if (ringC && ((jx - ringC.x) / 4.6) ** 2 + ((jy - ringC.y) / 3) ** 2 < 1) continue;   // the ring is its own eight pears
-      if (Math.hypot(jx - 84.6, (jy - 45.2) * 1.4) < 2.4) continue;   // room round the Mother tree
+      if (Math.hypot(jx - MOM[0], (jy - MOM[1]) * 1.4) < 2.4) continue;   // room round the Mother tree
       if (kit.hash(fx, fy, 95) % 8 === 0) continue;   // a gap now and then, so rows read as planted, not stamped
       trees.push({ x: jx, y: jy, kind: ROWS[row % ROWS.length], h: 92 + kit.hash(fx, fy, 96) % 36, v: kit.hash(fx, fy, 97) % 3 });
     }
@@ -96,7 +100,7 @@
       const jx = x + (kit.hash(Math.round(x * 10), Math.round(y * 10), 98) % 100) / 100 * .4 - .2, jy = y + (kit.hash(Math.round(x * 10), Math.round(y * 10), 99) % 100) / 100 * .3 - .15, fx = Math.floor(jx), fy = Math.floor(jy);
       if (!(inReg(fx, fy) && grass(fx, fy)) || !L.free(jx, jy) || L.plot(jx, jy) || L.plot(jx, jy - 1) || L.plot(jx - .8, jy) || L.plot(jx + .8, jy) || nearWall(jx, jy, 1.3)) continue;
       if ((jx > 81.5 && jy > 33.5 && jy < 39.5) || (jx > 82 && jy < 33.5) || !clearOf(jx, jy)) continue;
-      if (ringC && ((jx - ringC.x) / 4.6) ** 2 + ((jy - ringC.y) / 3) ** 2 < 1 || Math.hypot(jx - 84.6, (jy - 45.2) * 1.4) < 2.4) continue;
+      if (ringC && ((jx - ringC.x) / 4.6) ** 2 + ((jy - ringC.y) / 3) ** 2 < 1 || Math.hypot(jx - MOM[0], (jy - MOM[1]) * 1.4) < 2.4) continue;
       if (trees.some(t => ((t.x - jx) / 2.05) ** 2 + ((t.y - jy) / 1.6) ** 2 < 1)) continue;
       const row = Math.round((jy - 21.6) / 1.75);
       trees.push({ x: jx, y: jy, kind: ROWS[((row % ROWS.length) + ROWS.length) % ROWS.length], h: 88 + kit.hash(fx, fy, 96) % 36, v: kit.hash(fx, fy, 97) % 3 });
@@ -104,15 +108,16 @@
     // the ring of eight old perry pears round the mown centre
     const ring = L.stat('ld-ring');
     if (ring) { const c = L.cpt(ring.x + ring.w / 2, ring.y + .5); add([c.x - 170, c.y - 80, c.x + 170, c.y + 80], 99, (B, r) => { B.f(B.blob(r, c.x, c.y, 150, 58, 14, .12), season === 'winter' ? '#c4cab8' : '#b8c47a', .45); B.s(B.blob(r, c.x, c.y, 150, 58, 14, .12), P.lawnLo, 5, .25); for (let k = 0; k < 40; k++) { const a = r() * Math.PI * 2, d = 150 + r() * 16; B.tufts(r, c.x + Math.cos(a) * d, c.y + Math.sin(a) * d * .4, 8, 4, [P.lawnLo, '#9a9a52'], 8); } }); }
-    if (ring) { const c = { x: ring.x + ring.w / 2, y: ring.y + .5 }; for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + .2, x = c.x + Math.cos(a) * 3.1, y = c.y + Math.sin(a) * 1.9; if (inReg(x, y) && L.kind(x, y) !== 'path' && offPath(x, y, 4) && offSquare(x, y)) trees.push({ x, y, kind: 'pear', h: 132 + (i * 7) % 20, v: i % 3 }); } }
+    if (ring && RINGT) RINGT.forEach(([x, y], i) => { if (inReg(x, y)) trees.push({ x, y, kind: 'pear', h: 168 + (i * 7) % 18, v: i % 3 }); });   // (4.2 H perry pears, round the mown centre)
+    else if (ring) { const c = { x: ring.x + ring.w / 2, y: ring.y + .5 }; for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + .2, x = c.x + Math.cos(a) * 3.1, y = c.y + Math.sin(a) * 1.9; if (inReg(x, y) && L.kind(x, y) !== 'path' && offPath(x, y, 4) && offSquare(x, y)) trees.push({ x, y, kind: 'pear', h: 132 + (i * 7) % 20, v: i % 3 }); } }
     // their trunks are solid where they stand (the leaves are for walking behind): GardenPaintVale.orchardTrunks(), 94-garden-world-0walk.js
-    trunks = trees.map(t => [+t.x.toFixed(2), +t.y.toFixed(2), t.h > 125 ? .42 : .32]).concat(inReg(84.6, 45.2) ? [[84.6, 45.2, .5]] : []);
+    trunks = trees.map(t => [+t.x.toFixed(2), +t.y.toFixed(2), t.h > 125 ? .42 : .32]).concat(inReg(MOM[0], MOM[1]) ? [[MOM[0], MOM[1], .5]] : []);
     for (const t of trees) { const p = L.cpt(t.x, t.y); thing({ y: p.y, make: scene => GardenPaintWood.orchardTree(scene, { kind: kinds.includes(t.kind) ? t.kind : 'apple', season, h: t.h, x: p.x, y: p.y, v: t.v, flip: (Math.round(t.x * 7) % 2) === 1 }) }); }
     // windfalls under the trees in autumn
     if (season === 'autumn' && trees.length) add(kit.bboxOf(trees.map(t => L.cpt(t.x, t.y)), 40), 98, (B, r) => { for (const t of trees) { const p = L.cpt(t.x, t.y); for (let k = 0; k < 5; k++) B.f(B.circ(p.x + (r() - .5) * 40, p.y + (r() - .3) * 10, 2.2), r() < .6 ? '#c8442e' : '#e0b23a', .9); } });
     // the Mother tree: the oldest apple, leaning, propped on a crutch
-    const mt = L.cpt(84.6, 45.2);
-    if (inReg(84.6, 45.2)) {
+    const mt = L.cpt(MOM[0], MOM[1]);
+    if (inReg(MOM[0], MOM[1])) {
       thing({ y: mt.y, make: scene => { const im = GardenPaintWood.orchardTree(scene, { kind: 'apple', season, h: 170, x: mt.x, y: mt.y, v: 2 }); if (im) im.setAngle(-9); return im; } });
       thing({ key: 'crutch', x: mt.x + 26, y: mt.y + 2, box: [-30, -80, 10, 6], draw: B => { B.s('M0 0L-22 -66', '#6a5034', 4).s('M-28 -64L-15 -70', '#6a5034', 4).s('M0 0L-22 -66', '#9a7a54', 1.4, .7); } });
     }

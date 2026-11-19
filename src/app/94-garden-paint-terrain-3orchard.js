@@ -155,6 +155,96 @@
     B.f(B.rect(36, -58, 9, 11), '#f2e2a8').f(B.poly([[35, -58], [40.5, -63], [46, -58]]), '#2f3336').f(B.rect(36, -48, 9, 1.6), '#2f3336').s('M38.5 -57V-49M42.5 -57V-49', '#2f3336', .7, .7);
   } };
 
+  // (round 3 layouts) the High orchard's new places, at the size standard (H, the player after the 0.8 change, about 40 px):
+  // the bee boles in the bee wall, the cider press and the orchard bell on the square, the cider board, the cliff pippin.
+  // The bee boles: six arched alcoves in a stretch of the bee wall (1.2 H), a straw skep in each, the middle one with a
+  // slate where "tell the bees" is scratched, lavender and thyme at the foot.
+  ART['ld-bee-boles'] = { box: [-100, -64, 100, 10], draw(B, o) {
+    const r = KIT().rng(97), s = o.season, winter = s === 'winter', x0 = -94, x1 = 94, top = -48;
+    B.shadow(4, 3, 96, 7, .3);
+    B.f(B.rect(x0, top, x1 - x0, -top), LIME.rockLo);
+    courses(B, r, x0, x1, top, 0, LIME, winter ? null : '#7a8a4a');
+    // the cope: flat stones on edge, turf and stonecrop on top
+    for (let x = x0; x < x1; x += 5 + r() * 2) B.f(B.rect(x, top - 6, 4.6, 7), r() < .5 ? LIME.rock : LIME.rockLo).f(B.rect(x, top - 6, 1.4, 7), LIME.rockHi, .7);
+    if (!winter) for (let k = 0; k < 9; k++) B.f(B.blob(r, x0 + 8 + r() * (x1 - x0 - 16), top - 7, 6 + r() * 6, 2, 6, .5), r() < .5 ? '#7c9a4e' : '#a2b45e', .9);
+    else B.f(B.rect(x0, top - 8, x1 - x0, 3), '#f4f6f2', .9);
+    // six alcoves, round headed, with a skep sitting on each sill
+    for (let i = 0; i < 6; i++) {
+      const cx = x0 + 16 + i * 32.4, sill = -12;
+      B.f(`M${cx - 11} ${sill}V${sill - 18}Q${cx - 11} ${sill - 30} ${cx} ${sill - 30}Q${cx + 11} ${sill - 30} ${cx + 11} ${sill - 18}V${sill}Z`, '#3a2e22');
+      B.f(`M${cx - 11} ${sill}V${sill - 18}Q${cx - 11} ${sill - 30} ${cx} ${sill - 30}L${cx} ${sill}Z`, '#4a3c2c', .7);
+      B.s(`M${cx - 12.5} ${sill}V${sill - 18}Q${cx - 12.5} ${sill - 31.5} ${cx} ${sill - 31.5}Q${cx + 12.5} ${sill - 31.5} ${cx + 12.5} ${sill - 18}V${sill}`, LIME.rockHi, 2, .9);
+      B.f(B.rect(cx - 13, sill, 26, 3.4), LIME.rockHi).f(B.rect(cx - 13, sill + 3.4, 26, 1.2), LIME.rockDk, .5);
+      skep(B, cx, sill, .82, !winter && (s === 'spring' || s === 'summer') ? [[-9, -22], [8, -18], [12, -26]] : null);
+      if (i === 2) B.f(B.rect(cx - 7, sill - 41, 14, 7), '#4a4e56').s(`M${cx - 4.5} ${sill - 37.5}h9`, '#c8ccd0', .8, .8);
+    }
+    // a worn bench stone under the middle alcoves, and lavender and thyme at the foot
+    B.f(B.rect(-22, -4, 44, 4), LIME.rock).f(B.rect(-22, -4, 44, 1.2), LIME.rockHi);
+    if (!winter) for (let k = 0; k < 14; k++) { const x = x0 + 4 + r() * (x1 - x0 - 8); if (Math.abs(x) < 24) continue; B.tufts(r, x, 2, 6, 5, s === 'summer' ? ['#8a7ab8', '#a898d0', '#6a7a4a'] : ['#7c9a4e', '#8a9a5a'], 5); }
+  } };
+
+  // The cider press: a stone bed on a timber frame, the great oak screw and its capstan bar, the cheese of pomace under
+  // straw, a tub at the spout. About 1.5 H, a cell wide.
+  ART['ld-press'] = { box: [-30, -70, 32, 8], draw(B, o) {
+    const r = KIT().rng(101), s = o.season;
+    B.shadow(3, 2, 28, 6, .32);
+    for (const x of [-22, 16]) B.f(B.rect(x, -60, 7, 60), '#6a4e30').f(B.rect(x, -60, 2.2, 60), '#9a7a54', .8);
+    B.f(B.rect(-25, -64, 51, 8), '#5a4028').f(B.rect(-25, -64, 51, 2.4), '#8a6a44', .8);
+    B.f(B.rect(-4, -56, 8, 30), '#7a5a38').f(B.rect(-4, -56, 2.6, 30), '#a8865c', .8);
+    for (let y = -54; y < -28; y += 4) B.s(`M-4 ${y}l8 2.4`, '#4a3622', .8, .8);
+    B.s('M-20 -27H22', '#6a4e30', 3.2).s('M-20 -28H22', '#a8865c', 1, .7);
+    B.f(B.rect(-15, -26, 30, 4), '#8a6a44');
+    for (let k = 0; k < 3; k++) B.f(B.rect(-14, -22 + k * 5, 28, 3.2), s === 'autumn' ? '#9a6a34' : '#8a6a3c').f(B.rect(-15, -18.8 + k * 5, 30, 1.8), '#d8b468');
+    B.f(rr(-20, -8, 40, 8, 2), '#b9ad8f').f(B.rect(-20, -8, 40, 2), '#ddd2b4');
+    B.f(B.poly([[18, -6], [26, -4], [26, -2], [18, -3]]), '#9a8e70');
+    B.f(rr(20, -9, 10, 9, 2), '#7a5434').f(B.rect(19.6, -7, 10.8, 1.4), '#3a3a3c').f(B.ell(25, -8.6, 4, 1.1), s === 'autumn' ? '#c89a3a' : '#5a4a32', .9);
+    B.tufts(r, -24, 2, 8, 5, ['#7c9a4e', '#9a9a52'], 5).tufts(r, 26, 2, 6, 4, ['#7c9a4e', '#9a9a52'], 4);
+  } };
+
+  // The orchard bell: an oak post on a stone footing at the top of the stair, a little shingled hood over a bronze bell,
+  // its rope looped on a cleat. About 2 H.
+  ART['ld-bell'] = { box: [-26, -92, 26, 8], draw(B, o) {
+    const r = KIT().rng(103), s = o.season;
+    B.shadow(3, 2, 18, 5, .3);
+    B.f(rr(-11, -6, 22, 7, 2), LIME.rockLo).f(B.rect(-11, -6, 22, 2), LIME.rockHi);
+    B.f(B.rect(-3, -78, 6, 72), '#6a4e30').f(B.rect(-3, -78, 2, 72), '#9a7a54', .8);
+    B.s('M3 -40l5 0', '#3a2e22', 2).s('M3 -36l5 0', '#3a2e22', 2);
+    B.f(B.poly([[-20, -70], [0, -86], [20, -70], [16, -68], [0, -80], [-16, -68]]), '#5a4434');
+    B.f(B.poly([[-20, -70], [0, -86], [0, -80], [-16, -68]]), '#7a6250', .8);
+    for (let k = 0; k < 3; k++) B.s(`M${-17 + k * 3} ${-69 - k * 3.6}L${-3} ${-79 - k * 1.6}`, '#3e2e22', .7, .5);
+    B.f('M-9 -50Q-9 -66 0 -67Q9 -66 9 -50L11 -48H-11Z', '#9a7432').f('M-9 -50Q-9 -66 0 -67L-2 -50Z', '#d8b45a', .8).f(B.rect(-11, -49.4, 22, 1.6), '#6a4e22');
+    B.f(B.circ(0, -46, 2.2), '#5a4420');
+    B.s('M7 -58Q12 -48 7 -38Q4 -30 7 -24', '#c8b07a', 1.4).s('M7 -24q3 6 -1 9', '#c8b07a', 1.2, .9);
+    if (s === 'winter') B.f(B.poly([[-20, -71], [0, -87], [20, -71], [0, -83]]), '#f4f6f2', .9);
+    else B.tufts(r, -12, 1, 7, 5, ['#7c9a4e', '#9a9a52'], 5).tufts(r, 12, 1, 7, 5, ['#7c9a4e', '#a8a860'], 5);
+  } };
+
+  // The cider board: two posts and a little roof over a board of pinned notes, this year's fair chalked large.
+  ART['ld-cider-board'] = { box: [-28, -66, 28, 8], draw(B, o) {
+    const r = KIT().rng(107), s = o.season;
+    B.shadow(3, 2, 24, 5, .3);
+    for (const x of [-19, 15]) B.f(B.rect(x, -54, 4, 54), '#6a4e30').f(B.rect(x, -54, 1.3, 54), '#9a7a54', .8);
+    B.f(B.poly([[-26, -52], [0, -62], [26, -52], [24, -49], [-24, -49]]), '#5a4434').f(B.poly([[-26, -52], [0, -62], [0, -58], [-24, -49]]), '#7a6250', .8);
+    B.f(B.rect(-17, -48, 34, 28), '#7a5a3a').f(B.rect(-15.5, -46.5, 31, 25), '#2f3a34');
+    B.s('M-12 -41h14M-12 -36h10', '#e8e4d8', 1.2, .85).f(B.circ(8, -39, 3), '#d0a040', .9);
+    for (const [x, y, w, h, c] of [[-13, -31, 9, 9, '#efe6cc'], [-2, -32, 8, 10, '#f4e9a8'], [8, -30, 7, 8, '#f0dede']]) { B.f(B.rect(x, y, w, h), c).f(B.circ(x + w / 2, y + 1.2, .9), '#a03a2a'); B.s(`M${x + 1.4} ${y + 3.4}h${w - 3}M${x + 1.4} ${y + 5.6}h${w - 4}`, '#6a6050', .6, .7); }
+    if (s === 'winter') B.f(B.poly([[-26, -53], [0, -63], [26, -53], [0, -59]]), '#f4f6f2', .9);
+    else B.tufts(r, -18, 1, 6, 5, ['#7c9a4e', '#9a9a52'], 5).tufts(r, 18, 1, 6, 5, ['#7c9a4e', '#9a9a52'], 5);
+  } };
+
+  // The cliff pippin: a small wild apple (2.2 H) leaning out to sea from a knuckle of rock and thrift at the cliff top.
+  ART['ld-pippin'] = { box: [-70, -116, 76, 12], draw(B, o) {
+    const r = KIT().rng(109), s = o.season, T = window.GardenPaintTrees, H = 88;
+    B.f(B.blob(r, -4, 1, 24, 6, 9, .3), LIME.rockLo).f(B.blob(r, -8, -1, 15, 4, 8, .3), LIME.rock).f(B.blob(r, -12, -3, 7, 2, 6, .3), LIME.rockHi, .8);
+    if (s !== 'winter') for (let k = 0; k < 8; k++) B.f(B.circ(-24 + r() * 44, 2 + r() * 3, 1.3), '#e0a0b8', .9);
+    if (!T || !T.canvas) { B.f(B.rect(-3, -50, 6, 50), '#5a4232').f(B.blob(r, 8, -66, 34, 26, 10, .3), leafOf(s) ? leafOf(s)[1] : '#6a5a4a'); return; }
+    const m = T.canvas({ species: 'apple', season: s, v: 1, h: H }); if (!m) return;
+    T.groundShadow(B.cx, 2, 0, H, { species: 'apple', season: s });
+    B.cx.save(); B.cx.rotate(.16);
+    B.cx.drawImage(m.c, -m.ox / m.k, -m.oy / m.k, m.c.width / m.k, m.c.height / m.k);
+    B.cx.restore();
+  } };
+
   // Lit at night, as world point lights (94-garden-native-world.js reads a painted handle's lights): [dx, dy, radius] from the foot.
   const LIGHTS = { 'ld-barrels': [[40, -52, 96]], 'ld-folly': [[0, -112, 70]], 'ld-treehouse': [[-26, -126, 64]] };
   const landmark = GardenPaintedMarks.landmark;
