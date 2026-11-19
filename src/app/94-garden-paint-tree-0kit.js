@@ -36,7 +36,9 @@ window.GardenPaintTrees = (function () {
     yew: { summer: ['#0e1c12', '#1a2c1c', '#27402c', '#3a583e', '#5c7c54'] },
     holly: { summer: ['#0c1e12', '#16301c', '#24462a', '#386038', '#5e8a50'] },
   };
-  LEAF.greatoak = LEAF.oak;
+  // (the Great Oak an older, deeper green than any oak round it, gold on its sunlit caps, so the vale's landmark reads apart
+  //  from the wood from far off; 19 Nov 2026, the woods chain)
+  LEAF.greatoak = { summer: ['#16260f', '#2a4220', '#44632f', '#6c8c3e', '#b4c266'], autumn: ['#3a2410', '#6a4018', '#a06426', '#d0923a', '#f0c464'] };
   LEAF.spring = null;
   const BARK = { oak: ['#3a2c20', '#5a4532', '#7e6448', '#a48862'], chestnut: ['#3a2a20', '#5c4230', '#80624a', '#a08466'], birch: ['#5a5650', '#c8c4b8', '#e8e4da', '#fbf8f0'], hawthorn: ['#2e2620', '#4c3e32', '#6e5a48', '#8e7660'], alder: ['#2e2a26', '#4a443c', '#6a6256', '#8a8274'], cherry: ['#3a2220', '#5e3a32', '#80564a', '#a07a6a'], apple: ['#3a2c20', '#5a4634', '#7a644c', '#9a8266'], pear: ['#322820', '#504032', '#705c4a', '#907a64'], plum: ['#30221e', '#4c3830', '#6a5246', '#8a705e'], beech: ['#4a4a44', '#76766c', '#9c9a8e', '#c6c4b8'], yew: ['#2a1810', '#48281a', '#663a26', '#865838'], holly: ['#3a3a34', '#5e5e56', '#80807a', '#a2a29a'], greatoak: ['#33261c', '#54412f', '#7a6046', '#a08460'] };
   // silhouette per species, in units of the tree's height: crown centre height, half width, half height, trunk height,
@@ -56,7 +58,7 @@ window.GardenPaintTrees = (function () {
     beech: { cy: .6, rx: .45, ry: .35, tr: .44, m: .14, n: 28, el: .82, dab: .022, girth: .06, smooth: true },
     yew: { cy: .47, rx: .46, ry: .42, tr: .2, m: .15, n: 34, el: .78, dab: .018, girth: .09, evergreen: true },
     holly: { cy: .5, rx: .27, ry: .42, tr: .16, m: .1, n: 30, el: 1, dab: .016, girth: .04, evergreen: true, cone: true, smooth: true },
-    greatoak: { cy: .56, rx: .64, ry: .34, tr: .36, m: .12, n: 54, el: .85, dab: .016, girth: .1 },
+    greatoak: { cy: .56, rx: .74, ry: .36, tr: .36, m: .12, n: 54, el: .85, dab: .016, girth: .1 },
   };
   const FRUIT = { apple: { summer: ['#7e9a38', '#a8c050', '#d6e08a'], autumn: ['#8e1e18', '#c8382a', '#f08a6a'] }, pear: { summer: ['#8aa040', '#b4c862', '#e2ea9a'], autumn: ['#a88a2a', '#d8b84a', '#f4e08e'] }, plum: { summer: ['#56602e', '#7a8a4a', '#aab47a'], autumn: ['#2e1438', '#5a2e5e', '#9a6aa0'] }, cherry: { summer: ['#6e1410', '#b42a22', '#ee7a6a'], autumn: ['#6e1410', '#b42a22', '#ee7a6a'] }, hawthorn: { autumn: ['#5a1010', '#9a2218', '#d0503a'] }, holly: { autumn: ['#5a0c0c', '#a8161a', '#e85a4a'], winter: ['#5a0c0c', '#a8161a', '#e85a4a'] } };
   const LIGHT = { x: -.6, y: -.8 };

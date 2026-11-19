@@ -177,6 +177,10 @@ window.GardenPaintGround = (function () {
       }
       if (!best && opts.prebake && bakedPx < budget * .9 && !(typeof _gw !== 'undefined' && _gw.moving)) for (const ch of list) if (!ch.image) { const d = dist(ch, v); if (d < bs) { bs = d; best = ch; } }
       if (best) { let k = follow && (best.low || !meets(best.bb, near)) ? Math.min(K, minK) : K;
+        /* (a bare chunk on the screen gets a quick picture at level 1 first and is made sharp on the next ticks: baked straight at
+            level 3, a chunk took up to half a second, and after a jump the game's flat background showed through in straight-edged
+            squares at the woods' edge meanwhile; 19 Nov 2026, the woods chain) */
+        if (follow && !best.image && K > 1.5 && meets(best.bb, v)) k = best.job ? best.job.K : Math.min(K, 1);
         /* (while you walk, a bare or repainted chunk is painted no sharper than level 2 when one of its ops is costly there or has never been timed: one band of three kinds took 60 ms at level 3; it is made sharp when you stop) */
         if (moving && follow && (!best.image || best.dirty)) for (const l of [2, 1.5, 1]) if (k > l && l >= minK && (heavy(best, k) || (k > 2 && best.ops.some(o => !(o.cost > 0))))) k = l;
         bakeStep(best, k, slice); }
@@ -380,7 +384,13 @@ window.GardenPaintGround = (function () {
     // a woodland floor: leaf litter, moss cushions, twigs, pools of light that got through the leaves
     forest(cx, cb, P, env) {
       const old = P.kind === 'oldwood'; wash(cx, cb, P, old ? 71 : 61, 1.25);
-      tiles(cb, 128, 60, 63, (tx, ty, r) => { for (let i = 0; i < 2; i++) { const x = tx + r() * 128, y = ty + r() * 128, s = 26 + r() * 40; blob(cx, r, x, y, s, s * .5, 8, .5, old ? '#3c4f34' : '#4a5c36', .16 + r() * .1); if (!old || r() < .4) blob(cx, r, x + s * .9, y - s * .4, s * .7, s * .32, 8, .5, '#e6dc98', old ? .08 : .14); } });
+      // leaf shade in drifts: where a slow field is high, a cluster of small long flecks lying along the light, each its own size
+      // and turn, with sun flecks between them (19 Nov 2026, round 3 fixes, the woods chain: two big soft rounds a tile, all
+      // over, read as polka dots and smoke puffs on the floor)
+      tiles(cb, 96, 40, 63, (tx, ty, r) => { const x0 = tx + r() * 96, y0 = ty + r() * 96, d = fbm(x0 / 170, y0 / 120, old ? 64 : 62); if (d < .5) { r(); return; }
+        const n = 3 + Math.floor((d - .5) * 22 * (.6 + r() * .6)), shade = old ? '#2e4030' : '#3e5232', sun = old ? '#c8cc90' : '#ece2a0';
+        for (let k = 0; k < n; k++) { const q = Math.sqrt(r()), a = r() * 6.283, x = x0 + Math.cos(a) * q * 40, y = y0 + Math.sin(a) * q * 20, l = 3 + r() * r() * 13, th = l * (.22 + r() * .2), rot = .25 + (r() - .5) * .5, lit = r() < (old ? .18 : .3);
+          cx.save(); cx.translate(x, y); cx.rotate(rot); cx.globalAlpha = lit ? .16 + r() * .12 : .1 + r() * .1; cx.fillStyle = lit ? sun : shade; cx.beginPath(); cx.ellipse(0, 0, l, th, 0, 0, 6.283); cx.fill(); cx.restore(); } });
       const litter = P.season === 'winter' ? ['#8a7a5c', '#9c8c6c', '#6e6048'] : old ? ['#7a5c34', '#8f7440', '#5c4a30', '#6f7a3e'] : ['#a8763a', '#c09848', '#8a5c30', '#9aa04e', '#b88a40'];
       // leaf litter lies in drifts (thick in hollows and against roots, bare where feet and rain have cleared it), each leaf
       // its own size, turn and tone with a lit half: an even scatter of one flat oval read as polka dots (19 Nov 2026)

@@ -17,7 +17,7 @@
 (function () {
   'use strict';
   const V = window.GardenPaintVale; if (!V) return;
-  const RUIN = { body: '#a7a491', lo: '#7d7b6b', hi: '#ccc8b4', dk: '#555547', moss: '#6f8446', mossHi: '#93a85a', ivy: '#3c5a32', ivyHi: '#5a7e44' };
+  const RUIN = { body: '#a7a491', lo: '#7d7b6b', hi: '#ccc8b4', dk: '#555547', moss: '#6f8446', mossHi: '#93a85a', ivy: '#3c5a32', ivyHi: '#5a7e44' }, RUIN0 = RUIN;
 
   /* ---------- crossings ---------- */
   function lineOf(cells) { const cum = [0]; for (let i = 1; i < cells.length; i++) cum.push(cum[i - 1] + Math.hypot(cells[i][0] - cells[i - 1][0], cells[i][1] - cells[i - 1][1])); return { cells, cum, len: cum[cum.length - 1] }; }
@@ -158,8 +158,11 @@
       if (!f.polygon || f.polygon.length < 4) continue;
       if (f.kind === 'ruin-wall') {
         const n = f.polygon.length >> 1, a = f.polygon.slice(0, n).map(L.pt), b = f.polygon.slice(n).reverse().map(L.pt), m = Math.min(a.length, b.length);
-        const mid = []; for (let i = 0; i < m; i += 2) mid.push({ x: (a[i].x + b[i].x) / 2, y: (a[i].y + b[i].y) / 2 });
-        if (m % 2 === 0) mid.push({ x: (a[m - 1].x + b[m - 1].x) / 2, y: (a[m - 1].y + b[m - 1].y) / 2 });
+        // (and each point's two sides of the walking block, so the rubble at the wall's foot fills the whole block: 19 Nov 2026,
+        //  round 3 fixes, round 2: a thin wall in a block three times its width stopped you at nothing you could see)
+        const mid = [], band = [], pushMid = i => { const x = (a[i].x + b[i].x) / 2, y = (a[i].y + b[i].y) / 2; mid.push({ x, y }); band.push([{ x: a[i].x - x, y: a[i].y - y }, { x: b[i].x - x, y: b[i].y - y }]); };
+        for (let i = 0; i < m; i += 2) pushMid(i);
+        if (m % 2 === 0) pushMid(m - 1);
         let foot = mid[0]; for (const p of mid) if (p.y > foot.y) foot = p;
         const seed = kit.hashStr(f.id), rr = kit.rng(seed), H = [];
         // a ruined profile: high runs and tumbled gaps, never the same twice
@@ -168,11 +171,14 @@
         const WH = typeof gardenSizePx === 'function' ? [gardenSizePx('wall', 0), gardenSizePx('wall', 1)] : [33, 50];
         let h = WH[0] + rr() * (WH[1] - WH[0]) * .6; for (let i = 0; i < mid.length; i++) { h += (rr() - .5) * 12; if (rr() < .1) h = 9 + rr() * 6; if (rr() < .12) h = WH[1] - rr() * 6; h = Math.max(8, Math.min(WH[1], h)); H.push(h); }
         for (let k = 0; k < 2; k++) for (let i = 1; i < H.length - 1; i++) H[i] = (H[i - 1] + H[i] * 2 + H[i + 1]) / 4;
+        // an end that is not at a gate tumbles down into its own rubble (the wall west of Hollin's hut stopped dead on the sand)
+        const atGate = p => (L.D.gates || []).some(g => Math.hypot(p.x - L.pt([g.x, g.y]).x, (p.y - L.pt([g.x, g.y]).y) * 1.4) < 150);
+        for (const [i, j] of [[0, 1], [H.length - 1, H.length - 2]]) if (H.length > 3 && !atGate(mid[i])) { H[i] = Math.min(H[i], 9); H[j] = Math.min(H[j], 20); }
         // in pieces of six stretches: each bakes quickly and sorts by its own foot
         for (let g = 0; g < mid.length - 1; g += 6) {
-          const sub = mid.slice(g, g + 7), hs = H.slice(g, g + 7); let ft = sub[0]; for (const p of sub) if (p.y > ft.y) ft = p;
-          const C2 = sub.map(p => ({ x: p.x - ft.x, y: p.y - ft.y })), bb = kit.bboxOf(C2);
-          thing({ key: 'ruin3|' + f.id + '|' + g, x: ft.x, y: ft.y, box: [bb[0] - 30, bb[1] - 64, bb[2] + 30, bb[3] + 20], K: 1.1, draw: B => ruinWall(B, kit.rng(seed + 1 + g), C2, hs, C.P, C.season) });
+          const sub = mid.slice(g, g + 7), hs = H.slice(g, g + 7), bs = band.slice(g, g + 7); let ft = sub[0]; for (const p of sub) if (p.y > ft.y) ft = p;
+          const C2 = sub.map(p => ({ x: p.x - ft.x, y: p.y - ft.y })), bb = kit.bboxOf(C2), ends = [g === 0 && !atGate(mid[0]), g + 7 >= mid.length && !atGate(mid[mid.length - 1])];
+          thing({ key: 'ruin4|' + f.id + '|' + g, x: ft.x, y: ft.y, box: [bb[0] - 52, bb[1] - 64, bb[2] + 52, bb[3] + 34], K: 1.1, draw: B => ruinWall(B, kit.rng(seed + 1 + g), C2, hs, C.P, C.season, bs, ends) });
         }
       } else if (f.kind === 'ruin') {
         // (19 Nov 2026, round 3 fixes: the old hall's footings stand up out of the grass as low broken walls, knee high, with a
@@ -186,16 +192,54 @@
       }
     }
   }
-  function ruinWall(B, r, C2, H, P, season) {
-    const T = 7, ST = { rock: RUIN.body, rockLo: RUIN.lo, rockHi: RUIN.hi, rockDk: RUIN.dk };
+  // The old wall's own stone: older and darker than the footings' (a pale wall with a flat moss band on top read as a raised
+  // road; 19 Nov 2026, round 3 fixes, round 2)
+  const WALL = { body: '#959079', lo: '#6d6957', hi: '#b6b098', dk: '#47463a', moss: '#5e7a3c', mossHi: '#86a04e', ivy: '#34522e', ivyHi: '#55783e' };
+  // The rubble at a wall's foot, over the whole of its walking block on both sides: tumbled stones (bigger and closer near the
+  // wall), bramble and fern at the block's outer edge, grass between. Items behind the wall's line come back first, those in
+  // front last, so the wall stands in its rubble. band: for each centre point its two side offsets (px).
+  function wallRubble(r, C2, band, season, ends) {
+    const items = [], n = C2.length;
+    for (let i = 0; i < n - 1; i++) {
+      const p = C2[i], q = C2[i + 1], L = Math.hypot(q.x - p.x, q.y - p.y) || 1;
+      for (let s = 0; s < L; s += 6) {
+        const t = s / L, cx = p.x + (q.x - p.x) * t, cy = p.y + (q.y - p.y) * t;
+        for (const side of [0, 1]) {
+          const o0 = band[i][side], o1 = band[i + 1][side], ox = o0.x + (o1.x - o0.x) * t, oy = o0.y + (o1.y - o0.y) * t, reach = Math.hypot(ox, oy); if (reach < 10) continue;
+          const d = .32 + Math.pow(r(), 1.3) * .72, x = cx + ox * d + (r() - .5) * 4, y = cy + oy * d + (r() - .5) * 3, near = 1 - d;
+          if (r() < .16 + near * .34) items.push({ y, k: 'stone', x, s: 3 + r() * 3 + near * 4.5, dark: r() < .6, behind: y < cy - 2 });
+          if (d > .55 && r() < .3) items.push({ y: y + 1, k: r() < .5 ? 'bramble' : 'fern', x, behind: y < cy - 2 });
+          else if (r() < .32) items.push({ y, k: 'tuft', x, behind: y < cy - 2 });
+        }
+      }
+    }
+    // past an end that is not at a gate, the last stones lie spread out along the line it would have run
+    for (const [on, a, b] of [[ends && ends[0], C2[0], C2[1]], [ends && ends[1], C2[n - 1], C2[n - 2]]]) {
+      if (!on || !a || !b) continue; const L = Math.hypot(a.x - b.x, a.y - b.y) || 1, ux = (a.x - b.x) / L, uy = (a.y - b.y) / L;
+      for (let k = 0; k < 9; k++) { const s = 4 + r() * 34, x = a.x + ux * s + (r() - .5) * 18, y = a.y + uy * s + (r() - .5) * 10; items.push({ y, k: 'stone', x, s: 2.4 + r() * 4 * (1 - s / 40), behind: false }); }
+      items.push({ y: a.y + 3, k: 'fern', x: a.x + ux * 10, behind: false });
+    }
+    return items.sort((p, q) => p.y - q.y);
+  }
+  function drawRubble(B, r, it, season) {
+    const ST = { rock: WALL.body, rockLo: WALL.lo, rockHi: WALL.hi, rockDk: WALL.dk };
+    if (it.k === 'stone') { B.shadow(it.x + it.s * .3, it.y + it.s * .3, it.s * 1.2, it.s * .45, .26); B.stone(r, it.x, it.y, it.s, it.s * (.55 + r() * .2), it.dark ? { rock: WALL.lo, rockLo: WALL.dk, rockHi: WALL.body, rockDk: '#33322a' } : ST, season === 'winter' ? null : r() < .6 ? WALL.moss : null); }
+    else if (it.k === 'fern') fern(B, r, it.x, it.y, season);
+    else if (it.k === 'bramble') { if (season === 'winter') return; for (let k = 0; k < 4; k++) { const a = -Math.PI * (.15 + r() * .7), l = 8 + r() * 9; B.s(`M${it.x} ${it.y}q${Math.cos(a) * l * .6} ${Math.sin(a) * l - 4} ${Math.cos(a) * l} ${Math.sin(a) * l * .7}`, '#5a3a2a', 1.2, .85); } for (let k = 0; k < 6; k++) B.f(B.blob(r, it.x + (r() - .5) * 14, it.y - 3 - r() * 7, 3 + r() * 2, 2 + r() * 1.4, 6, .5), r() < .5 ? '#3e5a2c' : '#56743a', .92); if (season === 'summer' && r() < .5) B.f(B.circ(it.x + (r() - .5) * 8, it.y - 6, 1.3), '#2a1a2a', .9); }
+    else if (season !== 'winter') B.tufts(r, it.x, it.y, 8, 3, ['#6f8446', '#8a9a58'], 5);
+  }
+  function ruinWall(B, r, C2, H, P, season, band, ends) {
+    const T = band ? 9 : 7, RUIN = band ? WALL : RUIN0, ST = { rock: RUIN.body, rockLo: RUIN.lo, rockHi: RUIN.hi, rockDk: RUIN.dk };
     // contact shade along the foot
     V.strokePts(B, C2, '#24301e', 18, .16, 3, 4); V.strokePts(B, C2, '#24301e', 9, .18, 2, 3);
+    const rubble = band ? wallRubble(r, C2, band, season, ends) : [];
+    for (const it of rubble) if (it.behind) drawRubble(B, r, it, season);
     // the wall as short boxes along its centre line, drawn back to front; each box: lit or shaded faces, a mossy top
     const segs = []; for (let i = 0; i < C2.length - 1; i++) segs.push(i); segs.sort((i, j) => (C2[i].y + C2[i + 1].y) - (C2[j].y + C2[j + 1].y));
     for (const i of segs) {
       const p = C2[i], q = C2[i + 1], L = Math.hypot(q.x - p.x, q.y - p.y) || 1, nx = -(q.y - p.y) / L * T, ny = (q.x - p.x) / L * T * .6, h0 = H[i], h1 = H[i + 1];
       const foot = [{ x: p.x + nx, y: p.y + ny }, { x: q.x + nx, y: q.y + ny }, { x: q.x - nx, y: q.y - ny }, { x: p.x - nx, y: p.y - ny }], hs = [h0, h1, h1, h0];
-      const up = (v, k) => ({ x: v.x - hs[k] * .32, y: v.y - hs[k] });   // a touch of oblique, so walls running north-south show their east face
+      const ob = band && Math.abs(q.y - p.y) > Math.abs(q.x - p.x) * .8 ? .6 : .32, up = (v, k) => ({ x: v.x - hs[k] * ob, y: v.y - hs[k] });   // (the old wall's north-south runs lean their east face further into view, or they read as a kerb)   // a touch of oblique, so walls running north-south show their east face
       for (let e = 0; e < 4; e++) {
         if ((e === 1 && i < C2.length - 2) || (e === 3 && i > 0)) continue;   // the ends between two stretches are inside the wall
         const v0 = foot[e], v1 = foot[(e + 1) % 4], ex = v1.x - v0.x, ey = v1.y - v0.y, onx = ey, ony = -ex;   // outward normal for a clockwise loop
@@ -205,16 +249,30 @@
         B.f(B.poly(face), B.lin(0, Math.min(face[2].y, face[3].y), 0, Math.max(v0.y, v1.y), [[0, lit ? RUIN.hi : RUIN.lo], [.35, lit ? RUIN.body : '#6a685a'], [.8, lit ? RUIN.lo : '#56554a'], [1, RUIN.dk]]));
         B.cx.save(); B.cx.clip(new Path2D(B.poly(face)));
         const len = Math.hypot(ex, ey), hh = Math.max(hs[e], hs[(e + 1) % 4]);
-        for (let y = 0; y < hh; y += 6.5) for (let t = (Math.round(y / 6.5) % 2) * 5; t < len; t += 10 + r() * 5) { const x0 = v0.x + ex * t / len, y0 = v0.y + ey * t / len - y - 3; if (r() < .3) continue; B.f(B.ell(x0, y0, 4.4 + r() * 2.4, 2.5), r() < .4 ? RUIN.lo : r() < .8 ? RUIN.body : RUIN.hi, .75).f(B.rect(x0 - 4, y0 + 2.3, 8, .9), RUIN.dk, .35); }
-        B.f(B.poly([v0, v1, { x: v1.x, y: v1.y - 7 }, { x: v0.x, y: v0.y - 7 }]), RUIN.moss, .4);
+        for (let y = 0; y < hh; y += 6.5) for (let t = (Math.round(y / 6.5) % 2) * 5; t < len; t += 10 + r() * 5) { const x0 = v0.x + ex * t / len, y0 = v0.y + ey * t / len - y - 3; if (r() < .3) continue; if (band && r() < .1) { B.f(B.ell(x0, y0, 3.6 + r() * 2, 2.2), RUIN.dk, .7); continue; } B.f(B.ell(x0, y0, (band ? 3.2 + r() * 4 : 4.4 + r() * 2.4), band ? 2 + r() * 1.3 : 2.5), r() < .4 ? RUIN.lo : r() < .8 ? RUIN.body : RUIN.hi, .75).f(B.rect(x0 - 4, y0 + 2.3, 8, .9), RUIN.dk, .35); }
+        // (the old wall: rain streaks down its face from the broken top, and lichen in patches)
+        if (band) for (let k = 0, nS = Math.round(len / 9); k < nS; k++) { const t = r(), x = v0.x + ex * t, yb = v0.y + ey * t, hT = Math.min(hs[e], hs[(e + 1) % 4]), l = hT * (.3 + r() * .6); B.s(`M${x} ${yb - hT + 1}l${(r() - .5) * 1.5} ${l}`, r() < .7 ? '#3e3d32' : '#c8c49c', 1.2 + r() * 1.6, .18 + r() * .14); if (r() < .3) B.f(B.blob(r, x + 2, yb - hT * r(), 3 + r() * 3, 1.6 + r(), 6, .5), r() < .5 ? '#b4b47a' : '#8e9c64', .5); }
+        B.f(B.poly([v0, v1, { x: v1.x, y: v1.y - 7 }, { x: v0.x, y: v0.y - 7 }]), RUIN.moss, band ? .5 : .4);
         if (r() < .5) { const t = r(), x = v0.x + ex * t, yTop = v0.y + ey * t - Math.min(hs[e], hs[(e + 1) % 4]), d = 8 + r() * 16; B.f(`M${x - 6} ${yTop}Q${x - 8} ${yTop + d * .7} ${x} ${yTop + d}Q${x + 8} ${yTop + d * .6} ${x + 7} ${yTop}Z`, RUIN.ivy, .92); for (let k = 0; k < 5; k++) B.f(B.blob(r, x + (r() - .5) * 11, yTop + r() * d, 2.6, 2, 6, .5), r() < .5 ? RUIN.ivyHi : RUIN.ivy, .95); }
         B.cx.restore();
       }
       const top = foot.map((v, k) => up(v, k));
-      B.f(B.poly(top), RUIN.body).f(B.poly(top), season === 'winter' ? '#f4f6f2' : RUIN.moss, season === 'winter' ? .9 : .55);
-      if (season !== 'winter' && r() < .35) B.tufts(r, (top[0].x + top[2].x) / 2, (top[0].y + top[2].y) / 2 + 2, 10, 4, [RUIN.mossHi, '#8a9a58'], 6);
+      if (!band) {
+        B.f(B.poly(top), RUIN.body).f(B.poly(top), season === 'winter' ? '#f4f6f2' : RUIN.moss, season === 'winter' ? .9 : .55);
+        if (season !== 'winter' && r() < .35) B.tufts(r, (top[0].x + top[2].x) / 2, (top[0].y + top[2].y) / 2 + 2, 10, 4, [RUIN.mossHi, '#8a9a58'], 6);
+        continue;
+      }
+      // the old wall's broken top: its core shaded, then loose capstones along it with gaps between them, a stone gone here and
+      // there, moss and grass only in clumps (a flat moss band all along read as the top of a raised road)
+      B.f(B.poly(top), RUIN.lo);
+      const a0 = { x: (top[0].x + top[3].x) / 2, y: (top[0].y + top[3].y) / 2 }, a1 = { x: (top[1].x + top[2].x) / 2, y: (top[1].y + top[2].y) / 2 }, tl = Math.hypot(a1.x - a0.x, a1.y - a0.y) || 1;
+      for (let s = r() * 4; s < tl; s += 6 + r() * 5) { if (r() < .14) continue; const t = s / tl, x = a0.x + (a1.x - a0.x) * t, y = a0.y + (a1.y - a0.y) * t + (r() - .5) * 2, w = 3.2 + r() * 3.4, hgt = 1.8 + r() * 1.8;
+        B.f(B.blob(r, x + .6, y + 1, w, hgt, 6, .3), RUIN.dk, .6).f(B.blob(r, x, y, w * .94, hgt * .9, 6, .3), r() < .6 ? RUIN.lo : RUIN.body).f(B.ell(x - w * .3, y - hgt * .35, w * .4, hgt * .3), '#c8c2a8', .25);
+        if (season === 'winter') B.f(B.ell(x, y - hgt * .4, w * .8, hgt * .5), '#f4f6f2', .85); else if (r() < .22) B.f(B.blob(r, x + (r() - .5) * 3, y - hgt * .3, 2.4 + r() * 2.6, 1.3 + r(), 6, .5), r() < .5 ? RUIN.moss : RUIN.mossHi, .85); }
+      if (season !== 'winter' && r() < .3) B.tufts(r, (a0.x + a1.x) / 2, (a0.y + a1.y) / 2 + 1, 8, 4, [RUIN.mossHi, '#8a9a58'], 5);
     }
-    // tumbled stones and ferns at the foot
+    // tumbled stones and ferns at the foot (the old wall: its rubble in front of it, over its whole block)
+    if (band) { for (const it of rubble) if (!it.behind) drawRubble(B, r, it, season); return; }
     for (let i = 0; i < C2.length; i++) { const p = C2[i]; if (r() < .6) B.stone(r, p.x + (r() - .5) * 16, p.y + 8 + r() * 8, 4 + r() * 4, 2.6 + r() * 1.6, ST, RUIN.moss); if (r() < .45) fern(B, r, p.x + (r() - .5) * 18, p.y + 10, season); }
   }
   function fern(B, r, x, y, season) {
@@ -347,7 +405,7 @@
       // than it is tall, a vast bole flaring into roots, its shadow thrown along the one light by the shared shadow layer. Its
       // foot stands where it always stood (the walking code's trunk box, 94-garden-world-0walk.js, reads the same place).
       if (style === 'litter' && window.GardenPaintTrees && typeof gardenSizePx === 'function') {
-        const o = oakAt(L, pz), HG = Math.round(gardenSizePx('greatOak', .35)), F = GardenPaintTrees.form('greatoak'), half = Math.ceil(HG * Math.max(F.rx * 1.35, .3) + 8), up = Math.ceil(HG * (F.cy + F.ry * 1.25) + 8);
+        const o = oakAt(L, pz), HG = Math.round(gardenSizePx('greatOak', 1)), F = GardenPaintTrees.form('greatoak'), half = Math.ceil(HG * Math.max(F.rx * 1.35, .3) + 8), up = Math.ceil(HG * (F.cy + F.ry * 1.25) + 8);
         // (shade: false: the woods' floor throws its shadow, the kit tree's own crown shade laid along the light and long at dusk;
         //  the shared layer's squashed silhouette of a tree this size lay as a flat band with a straight top edge; 19 Nov 2026)
         thing({ key: 'great-oak-kit|' + C.season, x: o.x, y: o.y, box: [-half, -up, half, 14], shade: window.GardenPaintWood && GardenPaintWood.shadesOak ? false : undefined, crown: { x: 0, y: -HG * F.cy, rx: HG * F.rx, ry: HG * F.ry }, farShrink: .6, K: .9, draw: B => {
@@ -417,7 +475,12 @@
     // the long cordwood stack between two stakes
     B.shadow(6, 1, 36, 5, .3);
     for (const x of [-30, 30]) B.f(B.rect(x - 1.8, -27, 3.6, 28), P.woodDk);
-    let y = -2; for (let row = 0; row < 4; row++) { let x = -28 + r() * 2, rowH = 0; while (x < 26) { const rad = 2.6 + r() * r() * 2.8, cx0 = x + rad, cy0 = y - rad + (r() - .5); if (cx0 + rad > 29) break; const face = r() < .3 ? '#d8c6a0' : r() < .6 ? '#c8b088' : '#b49870'; B.f(B.circ(cx0, cy0, rad), r() < .5 ? '#6e5236' : '#82623e').f(B.circ(cx0 - .3, cy0 - .3, rad * .8), face).f(B.circ(cx0 - .3, cy0 - .3, rad * .4), C2(face), .45); x += rad * 2 + .2 + r() * .6; rowH = Math.max(rowH, rad * 2); } y -= Math.max(5, rowH * .86); }
+    let y = -2; for (let row = 0; row < 4; row++) { let x = -28 + r() * 2, rowH = 0; while (x < 26) { const rad = 2.6 + r() * r() * 2.8, cx0 = x + rad, cy0 = y - rad + (r() - .5); if (cx0 + rad > 29) break; const face = r() < .3 ? '#d2bc92' : r() < .6 ? '#c0a47a' : '#a88c64', bark = r() < .5 ? '#5a4230' : '#6e5236';
+            // (a sawn log end: rough bark round it, the face lit on its upper left and shaded to the lower right, two growth rings
+            //  and a split; flat pale discs read as coins; 19 Nov 2026, round 3 fixes, round 2)
+            B.f(B.circ(cx0 + .5, cy0 + .5, rad * 1.04), '#3a2c20').f(B.blob(r, cx0, cy0, rad, rad * .98, 9, .12), bark).f(B.circ(cx0 - .25, cy0 - .25, rad * .78), face).f(B.circ(cx0 + rad * .16, cy0 + rad * .18, rad * .6), C2(face), .38).f(B.circ(cx0 - rad * .3, cy0 - rad * .3, rad * .32), '#ecdcb4', .4);
+            if (rad > 3) { B.s(`M${cx0 - .25 + rad * .48} ${cy0 - .25}A${rad * .48} ${rad * .48} 0 1 1 ${cx0 - .25 + rad * .48} ${cy0 - .26}`, '#8a6c46', .45, .55); B.s(`M${cx0 - .25} ${cy0 - .25}l${(r() - .5) * rad} ${rad * .7}`, '#6a5034', .5, .5); }
+            if (r() < .15) B.f(B.blob(r, cx0 - rad * .4, cy0 - rad * .8, rad * .7, rad * .3, 6, .5), '#6f8a42', .8); x += rad * 2 + .2 + r() * .6; rowH = Math.max(rowH, rad * 2); } y -= Math.max(5, rowH * .86); }
     // the sawhorse, a log across it, sawdust under the cut
     const sx = 50; B.shadow(sx + 3, 1, 16, 3.5, .28);
     for (const [a, b] of [[-9, 6], [9, -6]]) { B.s(`M${sx + a} 0L${sx + b} -17`, P.woodDk, 2.6); B.s(`M${sx + a + 4} 1L${sx + b + 4} -16`, '#6e5236', 2.2); }
