@@ -202,6 +202,8 @@ function _gwForm(pts, src) {
 /** The village's shut fields as outlines (94-garden-paint-vale-1village.js fieldForms: the line each field's ground is drawn to),
  *  with the cells under each: a shut field stops the feet at its painted hedge, long grass or reeds, not at its square cells. */
 function _gwFieldForms() {
+  // (in a friend's garden their fields are shut by their level, not yours: whole cells, as before)
+  if (typeof gardenVisitOn === 'function' && gardenVisitOn()) return [];
   const list = typeof GardenPaintVale !== 'undefined' && GardenPaintVale && GardenPaintVale.fieldForms ? GardenPaintVale.fieldForms() : [];
   if (_gw.fieldFormsOf === list) return _gw.fieldForms;
   const out = list.map(f => ({ form: _gwForm(f.poly, f.src), cells: f.cells }));
