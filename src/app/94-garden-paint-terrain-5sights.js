@@ -446,14 +446,31 @@ window.GardenPaintSeat = (function () {
   } };
 
   /* ---------- the driftwood arch: two bleached trunks leaned together on the shingle, lashed, floats and a bell hung from it ---------- */
-  A['ld-driftwood'] = { box: [-60, -104, 60, 8], seat: { kind: 'sand', w: 84, front: 14, stones: 4 }, draw(B, o) {
-    const r = KIT().rng(139), top = -sz('door', 1) * 1.6, bone = ['#d8cfbc', '#a8a08e', '#f0eadc', '#7a7466'];
-    for (const [x0, x1] of [[-40, 6], [40, -6]]) { B.s(`M${x0} 0Q${x0 * .6} ${top * .6} ${x1} ${top}`, bone[3], 9).s(`M${x0} 0Q${x0 * .6} ${top * .6} ${x1} ${top}`, bone[1], 7).s(`M${x0 - 2} 0Q${x0 * .6 - 2} ${top * .6} ${x1 - 1} ${top + 1}`, bone[2], 2, .7); for (let k = 0; k < 3; k++) B.s(`M${x0 * (.8 - k * .2)} ${top * (.2 + k * .25)}q${x0 > 0 ? 6 : -6} -3 ${x0 > 0 ? 9 : -9} -10`, bone[1], 2.4); }
-    B.s(`M-6 ${top + 4}l12 4M-6 ${top + 8}l12 -4`, '#8a7a58', 1.6);
+  A['ld-driftwood'] = { box: [-62, -108, 62, 8], seat: { kind: 'sand', w: 88, front: 14, stones: 4 }, draw(B, o) {
+    // A lean-to of driftwood with its open side to the sea behind (its way in is round the back): from the path you see its
+    // roof of grey poles laid close, an old sail lashed over the top, floats and a lamp hung on it. (It was two thin
+    // arcs of stick, a faint outline even from afar: art director, round 3.)
+    const r = KIT().rng(139), top = -sz('door', 1) * 1.6, bone = ['#d8cfbc', '#a8a08e', '#f0eadc', '#7a7466', '#c2b8a2'];
+    // the dark inside showing between the poles, and the shade under the eaves
+    B.f(B.poly([[-44, 0], [0, top + 2], [44, 0]]), '#3e3a30');
+    // the poles: laid side by side from each foot up to the ridge, each its own grey, the lit face to the upper left
+    for (let i = 0; i < 13; i++) { const t = i / 12, x0 = -46 + t * 92, lean = x0 < 0 ? 1 : -1, x1 = x0 * .1 + lean * (2 + r() * 3), w = 5 + r() * 2.4, c = bone[[0, 1, 4, 0, 4][i % 5]];
+      B.s(`M${x0} 1L${x1} ${top - 3 - r() * 6}`, bone[3], w + 1.6).s(`M${x0} 1L${x1} ${top - 3 - r() * 4}`, c, w).s(`M${x0 - 1.2} 0L${x1 - 1} ${top - 2}`, bone[2], 1.1, .55);
+      if (r() < .5) B.f(B.ell(x0 + (x1 - x0) * .35, top * .35 - 2, 1.4, .9), bone[3], .7); }
+    // the ridge pole and its lashings
+    B.s(`M-14 ${top + 2}L16 ${top - 1}`, bone[3], 6).s(`M-14 ${top + 1}L16 ${top - 2}`, bone[1], 4.4).s(`M-14 ${top}L16 ${top - 3}`, bone[2], 1, .7);
+    for (const x of [-8, 0, 8]) B.s(`M${x - 2} ${top - 4}l4 7M${x + 2} ${top - 4}l-4 7`, '#8a7a58', 1.1);
+    // an old sail lashed over the top, faded ochre with a darker patch, its loose corner lifting
+    B.f(`M-30 ${top * .42}Q-16 ${top * .9} 2 ${top + 4}L12 ${top * .7}Q-4 ${top * .45} -24 ${top * .22}Z`, '#c89a52', .92).f(`M-18 ${top * .5}l10 -8l6 6l-9 7z`, '#a87a3a', .8).s(`M-30 ${top * .42}Q-16 ${top * .9} 2 ${top + 4}`, '#8e6a34', 1, .7);
+    B.s(`M-24 ${top * .22}l-6 6`, '#8a7a58', .9);
+    // floats on a cord, a lamp on a hook
+    B.s(`M10 ${top * .5}q14 6 26 4`, '#8a7a58', .8);
+    for (const [x, y, c] of [[18, top * .5 + 4.6, '#e0782a'], [26, top * .5 + 5.6, '#f4f0e6'], [34, top * .5 + 4.6, '#3f7486']]) B.f(B.circ(x, y + 3, 2.8), c).f(B.circ(x - .8, y + 2.2, .9), '#ffffff', .5);
     B.s(`M0 ${top + 6}v14`, '#8a7a58', .8).f(`M-3 ${top + 20}h6l1 6h-8z`, '#b8862a').f(B.circ(0, top + 27, 1.2), '#5a4018');
-    for (const [x, y, c] of [[-26, top * .4, '#e0782a'], [-30, top * .3, '#f4f0e6'], [28, top * .45, '#3f7486']]) B.s(`M${x} ${y}v6`, '#8a7a58', .6).f(B.circ(x, y + 8, 2.6), c);
+    // shells, a crab-pot and marram at its foot
     for (let i = 0; i < 8; i++) B.f(B.ell(-30 + r() * 60, 2 + r() * 2, 1.6, 1), ['#f4ece0', '#e8c8b8', '#d8d0c0'][i % 3]);
-    B.tufts(r, -46, 3, 10, 5, ['#a8a868', '#c8c080'], 8).tufts(r, 46, 3, 10, 5, ['#a8a868', '#c8c080'], 8);
+    B.f(B.rr(38, -10, 14, 10, 3), '#6a5a40').s('M39 -6h12M39 -2h12M42 -10v10M47 -10v10', '#a89870', .7);
+    B.tufts(r, -50, 3, 12, 6, ['#a8a868', '#c8c080'], 9).tufts(r, 50, 3, 12, 6, ['#a8a868', '#c8c080'], 9);
   } };
 
   /* ---------- the old watchtower: half a round tower of rubble stone standing in the wood, a stair winding up inside it, arrow slits, ivy ---------- */

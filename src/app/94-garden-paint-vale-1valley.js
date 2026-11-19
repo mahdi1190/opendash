@@ -161,6 +161,8 @@
       if (hidden(pos[0], pos[1] - 20)) {
         const mx = (low.reduce((s, f) => s + f[0], 0) / low.length + .5) * cw, tries = [];
         for (const f of fronts) for (const dx of [0, -cw * .34, cw * .34]) { const p = at(f, dx); if (!hidden(p[0], p[1] - 20)) tries.push({ f, p, score: (yMax - f[1]) * 4 * cw + Math.abs(p[0] - mx) }); }
+        // no clear place on the front: the board goes on the far (north) run, standing up over the plot behind the sight
+        if (!tries.length) for (const [x, y, side, nx, ny] of edges) { if (side !== 'n' || !locked(x, y, lv) || locked(nx, ny, lv)) continue; for (const dx of [0, -cw * .34, cw * .34]) { const p = [(x + .5) * cw + dx, W.sky + y * ch + 4]; if (!hidden(p[0], p[1] - 20)) tries.push({ f: [x, y], p, score: Math.abs(p[0] - mx) }); } }
         tries.sort((a, b) => a.score - b.score); if (tries.length) { spot = tries[0].f; pos = tries[0].p; }
       }
       const row = gardenLandCell(spot[0], spot[1]); if (row) sign(B, pos[0], pos[1], row, lv);

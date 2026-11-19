@@ -95,10 +95,20 @@ function _gardenFeatureClearWhy(f, x, y, m) {
   // never on a path (a footprint on the lane put the observatory across it), never in a gate's crossing (a prize board stood in the forest arch)
   for (let cy = y; cy < y + h; cy++) for (let cx = x; cx < x + w; cx++) { const base = typeof gardenIslandBaseCell === 'function' ? gardenIslandBaseCell(cx, cy) : null; if (base && (base.route || base.reservation === 'apron')) return 'Keep the path clear'; }
   for (const g of (typeof GARDEN_ZONE_GATES !== 'undefined' ? GARDEN_ZONE_GATES : [])) { if (!g.crossSpan) continue; const xs = g.crossSpan.map(p => p[0]), ys = g.crossSpan.map(p => p[1]); if (x + w > Math.min(...xs) - 2.5 && x < Math.max(...xs) + 2.5 && y + h > Math.min(...ys) - 2.5 && y < Math.max(...ys) + 2.5) return 'Too close to the gate'; }
+  // a tall picture covers the ground behind it as well: a windmill went up in front of a scarecrow, its sails over it
+  const up = art && art.box ? 1 + Math.floor(Math.max(0, -art.box[1] - 60) / W.cellH / 2) : 1;
+  for (let cy = y - up; cy < y - 1; cy++) for (let cx = x - reach; cx < x + w + reach; cx++) {
+    if (cx < 0 || cy < 0 || cx >= W.cols || cy >= W.rows) continue;
+    const pr = gardenPropAt(cx, cy); if (pr && pr.id !== f.id) return `Too close to ${String(pr.name || 'something').replace(/^The /, 'the ')}`;
+    const c = m && m.occ ? m.occ.get(cx + ',' + cy) : null; if (c && c.decor) return 'Too close to something you have put out';
+  }
   for (let cy = y - 1; cy <= y + h; cy++) for (let cx = x - reach; cx < x + w + reach; cx++) {
     if (cx >= x && cx < x + w && cy >= y && cy < y + h) continue;   // (the footprint itself: _gdPlaceOk)
     if (cx < 0 || cy < 0 || cx >= W.cols || cy >= W.rows) return 'Too near the edge of the garden';
+    { const c = m && m.occ ? m.occ.get(cx + ',' + cy) : null; if (c && c.decor) return 'Too close to something you have put out'; }   // (the bandstand went up against the maypole)
     if (String(gardenAreaAt(cx, cy, lv)).startsWith('locked:')) return 'Too close to land that is not yours yet';
+    // a tall thing set right at a road's edge in front of it stood over the road (the observatory on the west lane): a cell clear behind it
+    if (cy === y - 1 && art && art.box && -art.box[1] > 70 && typeof gardenIslandBaseCell === 'function') { const base = gardenIslandBaseCell(cx, cy); if (base && base.route) return 'Too close to the path behind it'; }
     const pr = gardenPropAt(cx, cy); if (pr && pr.id !== f.id) return `Too close to ${String(pr.name || 'something').replace(/^The /, 'the ')}`;
     const st = statics.find(s => cx >= s.x - 1 && cx < s.x + (s.w || 1) + 1 && cy >= s.y && cy < s.y + (s.h || 1)); if (st) return 'Too close to something that stands there';
     if (typeof _gwFree === 'function' && !_gwFree(cx + .5, cy + .5) && !(typeof gardenIsWater === 'function' && gardenIsWater(cx, cy))) return 'Too close to something in the way';
