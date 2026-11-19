@@ -1109,7 +1109,7 @@ window.GardenNativeWorld = (function () {
         if (rec) keep.add(key);
       }
       if (typeof gardenIslandActive === 'function' && gardenIslandActive() && (gardenIslandData().regions || []).length) {
-        for (const row of _gldIslandUnderstoryRows(sc)) if (!terrainOwnsRegion(row.region)) add('ground:understory:' + row.id, row.html, { kind: 'ground', id: row.id }, -9340);
+        for (const row of _gldIslandUnderstoryRows(sc)) if (!terrainOwnsRegion(row.region) && !(window.GardenPaintWood && GardenPaintWood.ownsRegion && GardenPaintWood.ownsRegion(row.region))) add('ground:understory:' + row.id, row.html, { kind: 'ground', id: row.id }, -9340);
         for (const row of _gldIslandLandformRows(sc)) if (!terrainOwns(row.landformKind)) add('landform:' + row.id, row.html, { kind: 'scenery', id: row.id, model: { id: row.id, kind: row.kind, x: row.x, y: row.y, w: row.w, h: row.h }, foot: row.foot }, row.foot.y - 2);
       }
       for (const spec of forestRows) {

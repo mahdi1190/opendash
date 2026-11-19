@@ -321,7 +321,8 @@ window.GardenPaintTrees = (function () {
    * and a tight dark contact where the roots meet the grass. */
   function groundShadow(cx, x, y, H, o) {
     const sp = FORM[o && o.species] ? o.species : 'oak', F = FORM[sp], r = rng(Math.round(x * 13 + y * 7)), bare = o && o.season === 'winter' && sp !== 'alder';
-    const sx = x + H * .22, sy = y + H * .05, rx = H * F.rx * 1.05, ry = H * F.rx * .42;
+    // (o.len stretches the shadow along the light: a low sun at dusk throws it long; 1 is the day's)
+    const len = Math.max(1, o && o.len || 1), sx = x + H * .22 * len, sy = y + H * .05 * len, rx = H * F.rx * 1.05 * (1 + (len - 1) * .6), ry = H * F.rx * .42;
     cx.save();
     const m = cx.getTransform(), sc = Math.max(1, Math.hypot(m.a, m.b)), pad = H * .08, bw = rx * 2.4 + pad * 2, bh = ry * 2.4 + pad * 2, sh = document.createElement('canvas');
     sh.width = Math.ceil(bw * sc); sh.height = Math.ceil(bh * sc); const s = sh.getContext('2d'); s.setTransform(sc, 0, 0, sc, (bw / 2 - sx) * sc, (bh / 2 - sy) * sc);
@@ -329,7 +330,7 @@ window.GardenPaintTrees = (function () {
     s.beginPath(); for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2 + r(), px = sx + Math.cos(a) * rx * .55, py = sy + Math.sin(a) * ry * .5; s.moveTo(px + rx * .5, py); s.ellipse(px, py, rx * .5, ry * .55, 0, 0, Math.PI * 2); } s.fill();
     // flecks of sun through the leaves
     if (!bare) { s.globalCompositeOperation = 'destination-out'; s.globalAlpha = .55; for (let i = 0; i < 9; i++) { s.beginPath(); s.ellipse(sx + (r() - .5) * rx * 1.3, sy + (r() - .5) * ry * 1.1, H * .02 + r() * H * .02, H * .012 + r() * H * .008, 0, 0, Math.PI * 2); s.fill(); } }
-    cx.globalAlpha = bare ? .1 : .3; cx.drawImage(sh, sx - bw / 2, sy - bh / 2, bw, bh); cx.globalAlpha = 1;
+    cx.globalAlpha = (bare ? .1 : .3) * (o && o.a || 1); cx.drawImage(sh, sx - bw / 2, sy - bh / 2, bw, bh); cx.globalAlpha = 1;
     // the contact: dark and tight round the roots (ambient occlusion)
     cx.filter = 'blur(' + Math.max(1, H * .012).toFixed(1) + 'px)';
     cx.globalAlpha = .45; cx.fillStyle = '#1c2614'; cx.beginPath(); cx.ellipse(x + H * .01, y + 1, H * F.girth * 2.6, H * F.girth * .9, 0, 0, Math.PI * 2); cx.fill();
