@@ -544,9 +544,9 @@ window.GardenPaintedProps = (function () {
     for (const [x, y, rx, ry] of canopy) B.crown(r, x, y, rx, ry, season, 6);
     // the arch itself: the north oak's great bough reaching out over the way and coming down into the south bank (a second
     // trunk on the near side stood across the path in this view: round 3, first look)
-    const bough = `M-6 -150C14 -168 40 -128 30 -84C26 -62 22 ${ys - 30} 16 ${ys - 12}`;
-    B.s(bough, bark[3], 13).s(bough, bark[1], 10).s(`M-6 -153C14 -171 37 -130 27 -86`, bark[2], 3, .55);
-    for (const [x, y, rx, ry] of [[22, -150, 34, 22], [36, -112, 22, 18], [30, -80, 16, 14]]) B.crown(r, x, y, rx, ry, season, 5);
+    const bough = `M-6 -150C14 -168 40 -128 32 -88C30 -78 28 -70 26 -64`;
+    B.s(bough, bark[3], 13).s(bough, bark[1], 10).s(`M-6 -153C14 -171 37 -130 29 -90`, bark[2], 3, .55);
+    for (const [x, y, rx, ry] of [[22, -150, 34, 22], [38, -114, 26, 20], [28, -76, 28, 20], [6, -84, 22, 14]]) B.crown(r, x, y, rx, ry, season, 5);
     // ivy and old man's beard hanging from the canopy over the way (never down to head height)
     for (let i = 0; i < 12; i++) { const x = -40 + i * 7 + (r() - .5) * 4, y = -126 - r() * 12, len = 10 + r() * 16; B.s(`M${x} ${y}q${(r() - .5) * 5} ${len * .5} ${(r() - .5) * 4} ${len}`, L[0], 1.3, .9); B.f(B.ell(x + (r() - .5) * 3, y + len * .85, 2, 1.5), L[1], .9); }
     bank(ys - 6, ys + 100);
