@@ -387,7 +387,7 @@
       // the kind's own reeds, bracken or long grass standing in it here and there where it grows thickest
       const thickAt = q => .5 + .5 * (Math.sin(q.ox * .037 + q.oy * .051) * .6 + Math.sin(q.ox * .013 - q.oy * .029 + 2.1) * .4);
       const paint = part => { if (!part.length) return; const front = part.filter(q => q.front), back = part.filter(q => !q.front);
-        if (back.length) { STYLE.margin(B, back, C, f.edge); if (grown) { const tuft = back.filter(q => thickAt(q) > .62); if (tuft.length) (f.edge === 'long-grass' || f.edge === 'meadow' ? (B2, r2, C2) => STYLE['long-grass'](B2, r2, C2, { tall: .8 }) : edge)(B, tuft, C); } }
+        if (back.length) { STYLE.margin(B, back, C, f.edge); if (grown) { const tuft = back.filter(q => thickAt(q) > .62); if (tuft.length) (f.edge === 'bracken' || f.edge === 'reeds' ? edge : (B2, r2, C2) => STYLE['long-grass'](B2, r2, C2, { tall: .8 }))(B, tuft, C);   /* (the orchard's and the bridge plot's hawthorn only at the front: tufts of it here read as a ring of hedge again) */ } }
         if (front.length) edge(B, front, C); };
       // back to front: the far edges, then the gate and its sign, then the near edges over them
       const gy = g ? g.y : Infinity, near = S.pieces.map(p => p.filter(q => inBox(q, cb)));
