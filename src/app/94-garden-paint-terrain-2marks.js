@@ -132,7 +132,9 @@ window.GardenPaintedMarks = (function () {
   } };
   function knows(id) { return !!ART[id]; }
   /** Where a painted landmark's own door is, as an offset from its foot (world px), or null when it has none. */
-  function wayIn(id) { const a = ART[id]; return a ? a.door || (id === 'ld-grotto' ? { dx: 0, dy: 0 } : null) : null; }
+  // buildings painted elsewhere whose own doorway is their way in (offsets from their foot): no second door picture is stood on the grass in front of them
+  const WAYIN = { 'ld-chapel': { dx: 0, dy: -2 }, 'ld-lighthouse': { dx: 0, dy: -1 }, 'lf-windmill': { dx: 0, dy: -1 } };
+  function wayIn(id) { const a = ART[id]; return a ? a.door || (id === 'ld-grotto' ? { dx: 0, dy: 0 } : null) : WAYIN[id] || null; }
   /** A painted landmark as a world handle (the same shape the village's painted buildings return).
    *  layer: the ground's container, for the seat under it (GardenPaintSeat, 94-garden-paint-terrain-5sights.js). An art
    *  with `lit` has a second picture for dusk and night (lit windows, a lamp), swapped by setLitWindows; `lights` are
