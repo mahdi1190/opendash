@@ -248,18 +248,22 @@ window.GardenPaintVale = (function () {
   function paint(scene, root, info, objects) {
     if (!wanted() || !info || !info.data || window.__gpvOff) { clear(); return; }
     const t0 = performance.now(), kit = KIT(), W = info.W, season = info.season || 'summer', P = PAL[season] || PAL.summer;
-    const L = readLayout(W, info.data, info.cellAt), sig = 'gpv-1|' + season + '|' + (GardenIslandLayout.fingerprint || ''), groundSig = sig + '|g|' + L.soil.sig + groundSigs.map(f => ok(f) || '').join('');   // (an area part whose ground follows the garden adds its key: 94-garden-paint-vale-1valley.js)
+    // stateSig: what the parts' level-tied art says about the garden now (a rope that comes down at a level, a stone rolled
+    // back into the line, a field's fence). The composition is memoised on it too, so when the level changes during a
+    // session the next repaint composes again and nothing stays drawn that the walk has already opened (round 3 review).
+    const stateSig = groundSigs.map(f => ok(f) || '').join('');
+    const L = readLayout(W, info.data, info.cellAt), sig = 'gpv-1|' + season + '|' + (GardenIslandLayout.fingerprint || ''), groundSig = sig + '|g|' + L.soil.sig + stateSig, compSig = sig + '|s|' + stateSig;   // (an area part whose ground follows the garden adds its key: 94-garden-paint-vale-1valley.js)
     clear(groundSig);
     // Only crossing water uses the four water-light palettes. Keep the ground
     // and standing-object caches unchanged when that discrete bucket changes.
     const waterTod = ['dawn', 'dusk', 'night'].includes(info.tod) ? info.tod : 'day', underSig = sig + '|u|' + waterTod + '|';
     // the composition is the same for the same picture: compose once, then a repaint (a gate opening) only places it
-    let comp = memo.get(sig);
+    let comp = memo.get(compSig);
     if (!comp) {
       comp = { L, ground: [], main: [], under: [], things: [] };
       const ctx = { L, P, season, tod: info.tod, kit, W, sig, add: (bb, seed, draw, extra) => comp.ground.push(Object.assign({ bb, seed, draw }, extra || {})), main: (bb, seed, draw) => comp.main.push({ bb, seed, draw }), under: o => comp.under.push(o), thing: o => comp.things.push(o) };
       for (const p of parts) ok(() => p.compose(ctx));
-      memo.clear(); memo.set(sig, comp);
+      memo.clear(); memo.set(compSig, comp);
       // the standing things that say where their foot is: walking stops the feet there (_gwBuildSolids)
       const cw = W.cellW, ch = W.cellH, names = { 'cold-cove-rock': 'shore boulder', block: 'chopping block', 'chapel-stone': 'chapel stone' };
       feetNow = comp.things.filter(o => o.foot && o.key).map(o => { const id = o.key.split('|')[0], name = names[id.replace(/-\d+$/, '')] || id; return Object.freeze({ x0: (o.x + o.foot[0]) / cw, y0: (o.y - o.foot[2] - W.sky) / ch, x1: (o.x + o.foot[1]) / cw, y1: (o.y + 2 - W.sky) / ch, src: 'painted ' + name }); });
