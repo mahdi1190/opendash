@@ -196,12 +196,19 @@
           for (let k = 0; k < 7; k++) B.f(B.blob(r, c.x - 6 + k * 2 - r() * 4, c.y - 8 - r() * 10, 9 + r() * 5, 6 + r() * 3, 7, .45), k < 3 ? '#3f4e2e' : k < 5 ? '#55663a' : '#6a7a46', .95);
           if (season === 'spring') for (let k = 0; k < 14; k++) B.f(B.circ(c.x - 14 + r() * 26, c.y - 20 + r() * 14, 1.3), '#fbf7ee', .95);
           else if (season === 'autumn') for (let k = 0; k < 8; k++) B.f(B.circ(c.x - 12 + r() * 22, c.y - 16 + r() * 10, 1.6), '#3e4a7a', .95); }
-        // the cliff top's edge above the beach walk: a low blackthorn hedge, knee high (it stops the feet: 94-garden-wonder-7shortcuts.js)
-        for (let y = 36.6; y < 40.4; y += .3) { const c = L.cpt(85.25 + Math.sin(y * 3.1) * .06, y); B.f(B.ell(c.x + 4, c.y + 2, 13, 4), '#22301a', .2);
-          for (let k = 0; k < 4; k++) B.f(B.blob(r, c.x - 4 + r() * 8, c.y - 6 - r() * 12, 7 + r() * 4, 5 + r() * 3, 7, .45), k < 2 ? '#3f4e2e' : k < 3 ? '#55663a' : '#6a7a46', .97);
-          if (season === 'spring') for (let k = 0; k < 4; k++) B.f(B.circ(c.x - 7 + r() * 14, c.y - 18 + r() * 10, 1.3), '#fbf7ee', .95);
-          else if (season === 'autumn' && r() < .6) B.f(B.circ(c.x - 5 + r() * 10, c.y - 12 + r() * 6, 1.6), '#3e4a7a', .95); }
       }, {});
+      // the cliff top's edge above the cottage yard: a blackthorn hedge, standing (it stops the feet: 94-garden-wonder-7shortcuts.js).
+      // (vale final, east) painted into the ground it lay under the yard wall and the treehouse's crown, so the feet stopped at
+      // nothing seen: it stands now, in short lengths each sorted at its own foot, half a figure high and lumpy, with sloes.
+      for (let y0 = 36.5; y0 < 40.3; y0 += .55) { const y1 = Math.min(40.35, y0 + .55), c0 = L.cpt(85.25, y0), c1 = L.cpt(85.25, y1), hh = gardenSizePx('hedge', .9), salt = Math.round(y0 * 100);
+        thing({ key: 'cliff-blackthorn-' + salt + '|' + season, x: c1.x, y: c1.y, box: [-18, c0.y - c1.y - hh - 12, 20, 8], draw: B => { const r = kit.rng(salt + 7);
+          B.f(B.ell(3, 2, 14, 4), '#22301a', .25);
+          for (let yy = c0.y - c1.y; yy <= 0; yy += 3.2) { const sw = Math.sin((c1.y + yy) * .21) * 2;
+            for (let k = 0; k < 3; k++) B.f(B.blob(r, sw - 3 + r() * 6, yy - hh * (.25 + k * .25) - r() * 3, 7 + r() * 3, 5 + r() * 2, 7, .45), k === 0 ? '#2f3e24' : k === 1 ? '#46582f' : '#5f7040', .97);
+            if (r() < .5) B.f(B.blob(r, sw - 4 + r() * 3, yy - hh * .85, 3.4, 2, 6, .5), '#7d8c52', .9);
+            if (season === 'spring' && r() < .7) { for (let k = 0; k < 3; k++) B.f(B.circ(sw - 6 + r() * 12, yy - hh * (.4 + r() * .5), 1.2), '#fbf7ee', .95); }
+            else if (season === 'autumn' && r() < .5) B.f(B.circ(sw - 5 + r() * 10, yy - hh * (.3 + r() * .5), 1.5), '#3e4a7a', .95); }
+          if (season !== 'winter') B.tufts(r, 0, 3, 14, 4, ['#6f8a44', '#8c9a56'], 6); } }); }
       // A rock face falling from a lip (pts, px, in order along it) to its foot: broken into facets of their own height and tone, a
       // lit, broken lip, bedding ledges and cracks, darker toward the foot, wet and foamed where it meets the water (sea true) or
       // with tufts and fallen stones where it meets sand. Drawn in the thing's own space (origin ox, oy).
