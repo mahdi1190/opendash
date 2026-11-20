@@ -319,11 +319,10 @@ function _gaStart(cur) {
   if (typeof _GPL !== 'undefined') { _GPL.lastX = _gw.px; _GPL.lastY = _gw.py; }
   if (row.sound) { try { gardenSfx(row.sound); } catch (e) { /* no such sound: quiet */ } }
   _gaTell(cur.id, spot && spot.stand ? _gw.px : null, spot && spot.stand ? _gw.py : null);
-  if (row.use && typeof gardenLiveFx === 'function' && (row.use === 'bell' || row.use === 'wish')) { try { gardenLiveFx('use', row.use, { x: Math.floor(_gw.px), y: Math.floor(_gw.py) }); } catch (e) { /* alone */ } }
+  if (row.use && typeof gardenLiveFx === 'function' && (row.use === 'bell' || row.use === 'wish')) { try { const on = spot && Number.isFinite(spot.x) && Number.isFinite(spot.y) ? spot : { x: _gw.px, y: _gw.py }; gardenLiveFx('use', row.use, { x: Math.floor(on.x), y: Math.floor(on.y) });   /* (at the thing itself: the wish shows over the well's mouth on their screen, not beside it) */ } catch (e) { /* alone */ } }
   if (row.skim) _gaSkim(cur);
   if (spot && spot.src === 'water') _ga.wt++;
   if (row.shake) _gaShake(cur);
-  if (row.pumpWorks && spot && spot.src) _gaPumpWorks(cur);
   if (row.kick && spot) _gaKick(cur);
   if (row.carry && spot && spot.carry) _gaPick(cur);
   if (row.fetch) _gaFetch(cur);
@@ -351,7 +350,8 @@ function _gaTick(now) {
   const cur = _ga.cur, fx = cur.row.fx; if (!fx || !window.GardenNativeActions || !_gaMotion()) return;
   const t = now - cur.t0, W = GARDEN_WORLD, deg = _gaDirDeg(cur.row, cur.spot) * Math.PI / 180;
   const sp = fx.spot && cur.spot && Number.isFinite(cur.spot.x) ? cur.spot : null;   // (fixed to the thing used: the pump's spout)
-  const at = (k) => sp ? GardenNativeActions.effect(fx.kind, (sp.x + fx.spot[0]) * W.cellW, W.sky + (sp.y + fx.spot[1]) * W.cellH + k, { width: fx.width || 24 }) : GardenNativeActions.effect(fx.kind, (_gw.px + Math.cos(deg) * 0.7) * W.cellW, W.sky + (_gw.py + Math.sin(deg) * 0.5 + (fx.dy || 0)) * W.cellH + k, { width: fx.width || 24 });
+  const sy = sp && fx.mouth != null && Number.isFinite(sp.top) && sp.top < sp.y ? sp.top + (sp.y - sp.top) * fx.mouth : sp ? sp.y + fx.spot[1] : 0;   // (into the thing as drawn: a well's mouth)
+  const at = (k) => sp ? GardenNativeActions.effect(fx.kind, (sp.x + fx.spot[0]) * W.cellW, W.sky + sy * W.cellH + k, { width: fx.width || 24 }) : GardenNativeActions.effect(fx.kind, (_gw.px + Math.cos(deg) * 0.7) * W.cellW, W.sky + (_gw.py + Math.sin(deg) * 0.5 + (fx.dy || 0)) * W.cellH + k, { width: fx.width || 24 });
   if (fx.every) { if (t - cur.fxT > fx.every) { cur.fxT = t; at(cur.fxI++ % 3); } }
   else if (fx.at && cur.fxI < fx.at.length && t > fx.at[cur.fxI] * cur.row.ms) { at(cur.fxI); cur.fxI++; }
 }
@@ -359,7 +359,6 @@ function gartActStop(done) {
   const cur = _ga.cur; if (!cur) return;
   _ga.cur = null; clearTimeout(cur.endT);
   if (cur.row.clouds) _gaSky(cur, false);
-  if (cur.pump) { try { cur.pump.remove(); } catch (e) { /* gone */ } cur.pump = null; _gaShow(cur.spot.src, true); }
   if (cur.row.fetch) _ga.fetch = null;
   if (cur.row.prop === 'fiddle') setTimeout(_gaResync, 0);
   if (cur.row.rubPet) { try { const P = gpPetMe(); if (P && P.root && P.root._pcH && cur.rubH === P.root._pcH) petClipStop(P.root); } catch (e) { /* no pet */ } }
@@ -480,27 +479,8 @@ function _gaSkimFly(g, H, motion, ms, n) {
   try { H.panims.push(gardenVisualAnimate(st, kf, { duration: ms, fill: 'forwards', easing: 'linear' })); } catch (e) { /* no flight */ }
   P.forEach((_, i) => { const r = g.querySelector('.ga-skr-' + i); if (!r) return; try { H.panims.push(gardenVisualAnimate(r, [{ offset: 0, opacity: 0, transform: 'scale(0.3)' }, { offset: ts[i], opacity: 0, transform: 'scale(0.3)' }, { offset: Math.min(0.995, ts[i] + 0.01), opacity: 0.9, transform: 'scale(0.4)' }, { offset: Math.min(1, ts[i] + 0.22), opacity: 0, transform: 'scale(1.5)' }, { offset: 1, opacity: 0, transform: 'scale(1.5)' }], { duration: ms, fill: 'forwards' })); } catch (e) { /* no ring */ } });
 }
-/** The pump at work (round 6): while you use it, the pump is drawn as a thing of its own with the lever moving with your hand (the same
- * picture as the still one, gardenPumpArt) and the water running from the spout into the bucket; the still one is hidden meanwhile. */
-const GA_PUMP_LEVER = Object.freeze([[0, 0], [0.08, 20], [0.2, -20], [0.32, 20], [0.44, -20], [0.56, 20], [0.66, -12], [0.72, 0], [1, 0]]);
-function _gaPumpWorks(cur) {
-  if (typeof gardenPumpArt !== 'function' || typeof gardenWorldAdd !== 'function' || typeof _gwInked !== 'function') return;
-  const rec = _gaRec(cur.spot.src), W = GARDEN_WORLD; if (!rec || !rec.root) return;
-  let foot = null; try { const r = (gardenIslandData().static || []).find(q => q.id === cur.spot.src); if (r) foot = { x: r.x + r.w / 2, y: r.y + r.h - 3 / W.cellH }; } catch (e) { foot = null; }
-  if (!foot) return;
-  const ms = cur.row.ms, lerp = (K, t) => { for (let i = 1; i < K.length; i++) if (t <= K[i][0]) { const a = K[i - 1], b = K[i], k = (t - a[0]) / Math.max(1e-6, b[0] - a[0]), e = k * k * (3 - 2 * k); return a[1] + (b[1] - a[1]) * e; } return K[K.length - 1][1]; };
-  let last = '';
-  const art = (lv, fl) => `<ellipse cx="2" cy="1" rx="${W.cellW / 2 + 2}" ry="4" fill="#1a2a14" fill-opacity="0.2"/>` + _gwInked(0, 0, gardenPumpArt(lv, fl));
-  rec.root.setAlpha(0);
-  cur.pump = gardenWorldAdd({ id: 'ga-pump', x: foot.x, y: foot.y, z: foot.y, lift: 0, ground: false, svg: art(0, 0),
-    update(dt, Sp) {
-      if (_ga.cur !== cur) { Sp.remove(); return; }
-      const t = !_gaMotion() ? 0.5 : cur.H && cur.H.t0 ? (performance.now() - cur.H.t0) / ms : 0;
-      const lv = _gaMotion() ? lerp(GA_PUMP_LEVER, Math.max(0, Math.min(1, t))) : 0, fl = !_gaMotion() ? 1 : t < 0.2 ? 0 : t < 0.26 ? (t - 0.2) / 0.06 : t < 0.72 ? 1 : t < 0.82 ? (0.82 - t) / 0.1 : 0;
-      const key = Math.round(lv) + '|' + Math.round(fl * 5);   // (only the lever's turn and the water's strength change: two attributes, never a redraw)
-      if (key !== last && Sp.node) { last = key; try { const L = Sp.node.querySelector('.ga-lever'), F = Sp.node.querySelector('.ga-flow'); if (L) L.setAttribute('transform', `rotate(${Math.round(lv)} -8 -22)`); if (F) F.setAttribute('opacity', String(Math.round(fl * 5) / 5)); } catch (e) { /* as drawn */ } }
-    } });
-}
+/* (the pump at work: its own painted picture stays as it is while you work it, 20 Nov: the owner, "it changes the pump". The water runs from
+   its spout (the row's fx) and the figure works the handle; no second drawing of a pump is put in its place.) */
 /* ---------- round 2: the things the world now has ---------- */
 const _gaMoved = new Map(), _gaHide = new Map();
 /** A thing of 94-garden-zz-7act-2world.js that is out of sight now (carried, or kicked away for a moment). */
@@ -734,6 +714,9 @@ function _gaTell(id, x, y) {
 function gartActRemote(A, id) {
   const row = GARDEN_ACTS[id]; if (!row || !A || !A.root) return false;
   if (typeof _gllEmoteStop === 'function') _gllEmoteStop(A);
+  // just arrived from walking there: they stand still now, or the walk's last moment repaints the figure and wipes the move off it (a
+  // climb up a tree was never seen, only the sit on the branch that is held and so put back)
+  if (A.tx == null) { A.stopAt = 0; A.moving = false; }
   A.dir = row.dir === 'n' ? 'n' : row.dir === 'e' || row.dir === 'w' ? 'e' : 's'; A.pose = ''; A.key = '';
   if (typeof _gllPaint === 'function') _gllPaint(A);
   const gpl = A.root.querySelector('.gpl'); if (!gpl) return false;

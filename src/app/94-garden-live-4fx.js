@@ -151,7 +151,7 @@ function _gllFxPlay(A, ev) {
 }
 /** Something someone set going in the world: their figure does it, and everyone hears and sees it there. Nothing else changes: what it gives is theirs alone. */
 function _gllUseFx(A, e, ev) {
-  _gllPose(A, 'pick', 760);
+  if (!(A.anims && A.anims.length)) _gllPose(A, 'pick', 760);   // (a move already playing on them, a coin thrown into the well: not wiped by a second pose)
   if (e === 'bell') { const S = typeof _wdi !== 'undefined' && _wdi.S ? _wdi.S.bell : null; if (S && typeof _wdBellRing === 'function') _wdBellRing(S, true); return; }
   if (_gllOffscreen(A)) return;
   _gllFloat(_gw.svg, ev.x, ev.y - 1, { wish: '✨', collect: '🧺', machine: '⚙️' }[e] || '', '');

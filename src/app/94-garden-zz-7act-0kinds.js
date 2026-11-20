@@ -54,7 +54,7 @@ const GARDEN_KINDS = Object.freeze({
   'log-pile': { name: 'the log pile', decor: ['log-pile', 'rw-orn-logs'], words: ['logpile', 'logstack', 'woodpile', 'logs'], pet: 'stump' },
   /* water you work, wish in or drink from */
   pump: { name: 'the pump', arts: ['pump'], decor: ['water-pump'], words: ['pump'], acts: [{ act: 'pump', stand: [-0.74, 0.12], deg: 0, edge: true }], pet: 'pump', drink: true },   // side on at the lever's end
-  well: { name: 'the wishing well', arts: ['wish'], paint: 'wish', w: 1.4, h: 0.8, words: ['well', 'wish'], acts: [{ act: 'wish', stand: [0.45, 0.95], deg: -90, reach: 3.2 }], pet: 'well', drink: true },
+  well: { name: 'the wishing well', arts: ['wish'], paint: 'wish', w: 1.4, h: 0.8, words: ['well', 'wish'], acts: [{ act: 'wish', stand: [0, 0.95], deg: -90, reach: 3.2 }], pet: 'well', drink: true },
   'garden-well': { name: 'the well', decor: ['wishing-well'], effects: ['wish'], acts: [{ act: 'wish', stand: [0, 0.5], deg: -90 }], pet: 'well', drink: true },
   'village-well': { name: 'the well', arts: ['well'], pet: 'well', drink: true },   // a well with its own use (draw a bucket): the pets drink there
   trough: { name: 'the trough', arts: ['churn'], decor: ['water-butt', 'dc-milk-churns'], words: ['trough', 'churn'], pet: 'trough', drink: true },
