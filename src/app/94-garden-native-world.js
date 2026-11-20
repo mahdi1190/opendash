@@ -1188,7 +1188,7 @@ window.GardenNativeWorld = (function () {
       const lake = typeof gardenLakeGeometry === 'function' ? gardenLakeGeometry(m) : null;
       const surfaceKey = (typeof _GD_ICE === 'undefined' ? 0 : _GD_ICE.size) + ':' + (typeof _GD_WALK_EXTRA === 'undefined' ? 0 : _GD_WALK_EXTRA.size);
       const decks = gardenPierDecks(m.works || [], m), deckKey = decks.map(p => [p.id, p.x, p.y, p.w, p.h].join(',')).join(';');
-      const key = (m.visit ? m.visit.key : _gd.memoKey || _gd.rev) + '|' + designRev + '|' + m.tod + '|' + m.season + '|' + surfaceKey + '|' + (lake && lake.revision || 0) + '|' + deckKey;
+      const key = (m.visit ? m.visit.key : _gd.memoKey || _gd.rev) + '|' + designRev + '|' + m.tod + '|' + m.season + '|' + surfaceKey + '|' + (lake && lake.revision || 0) + '|' + deckKey + '|' + (typeof gardenAffordRev === 'function' ? gardenAffordRev() : 0);   // (a placed thing moved aside: 94-garden-zz-7act-0scan.js)
       if (model === m && modelKey === key) return;
       model = m; modelKey = key;
       const sc = gardenSceneFromModel(m), opts = { uid: 'gnative', size: 'l', crop: 'world', interactive: true, still: false, native: true, readOnly: !!m.visit, friend: m.visit && m.visit.drawFriend };
@@ -1217,7 +1217,7 @@ window.GardenNativeWorld = (function () {
         add('decor:' + item.uid, _gdrItem('decor', item, sc, opts), { kind: 'decor', uid: item.uid, id: item.id, model: modelDecor.get(item.uid) }, ground ? -9200 : W.sky + (item.y + (def && def.h || 1)) * W.cellH, ground ? design : objects); }
       const props = new Map(gardenPropsNow().map(p => [p.id, p]));
       for (const row of gardenWorldProps(sc, opts)) {
-        const id = attribute(row.html, 'data-prop'), prop = props.get(id) || (typeof gardenLandSiteProp === 'function' ? gardenLandSiteProp(id) : null), key = 'prop:' + id;
+        const id = attribute(row.html, 'data-prop'), prop = props.get(id) || (typeof gardenLandSiteProp === 'function' ? gardenLandSiteProp(id) : null) || (typeof gardenActThingProp === 'function' ? gardenActThingProp(id) : null), key = 'prop:' + id;   // (a bench or a well placed as layout data: 94-garden-zz-7act-2world.js)
         // Vale's physical plank crossing owns this fixed bridge's picture.
         // Keep its story interaction on the actual boards, without a second arch.
         if (prop && prop.id === 'ld-bridge' && paintedOn() && window.GardenPaintVale && GardenPaintVale.status().on && typeof gardenIslandCrossingGeometry === 'function' && !(typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(prop.id) || {}).some(Boolean))) {
@@ -1380,7 +1380,8 @@ window.GardenNativeWorld = (function () {
       if (!pushed && !casting && (dx || dy)) {
         _gw.path = []; _gw.then = null; _gw.netting = null; _gw.hold = null;
         const length = Math.hypot(dx * W.cellW, dy * W.cellH); ux = dx * W.cellW / length; uy = dy * W.cellH / length;
-        _gw.sneak = keys.has('shift'); want = _gw.sneak ? GW_SPEED.sneak : GW_SPEED.walk * _gwWalkBonus(); direct = true;
+        if (typeof gartMoveSteer === 'function') [ux, uy] = gartMoveSteer(ux, uy, dt);   // a turning circle, not a snap (94-garden-zz-6move.js)
+        _gw.sneak = keys.has('creep'); want = _gw.sneak ? GW_SPEED.sneak : (keys.has('shift') ? GW_SPEED.run : GW_SPEED.walk) * _gwWalkBonus(); direct = true;   // hold Shift to run, Z to creep
       } else if (!pushed && !casting && _gw.hold && _gw.hold.steer) {
         const pt = point(_gw.hold.cx, _gw.hold.cy); if (pt) { dx = (pt.x - _gw.px) * W.cellW; dy = (pt.y - _gw.py) * W.cellH; distance = Math.hypot(dx, dy); if (distance > 10) { ux = dx / distance; uy = dy / distance; direct = true; want = Math.min(distance > 150 ? GW_SPEED.run : GW_SPEED.walk, Math.sqrt(2 * GW_ACC * distance) + 34); } }
       } else if (!pushed && !casting && _gw.path.length) {
@@ -1419,6 +1420,7 @@ window.GardenNativeWorld = (function () {
       if (z !== playerNode._nativeZ) { playerNode._nativeZ = z; sorted = true; }
       const bob = !playerInner.querySelector('.gpl-root') && _gw.moving && gardenMotionOn() ? -Math.abs(Math.sin(time / 1000 * (_gw.sneak ? 7 : 11))) * 1.6 : 0;
       playerBob.setAttribute('transform', 'translate(0 ' + bob + ')');
+      if (typeof gartMoveFrame === 'function') gartMoveFrame(playerInner, playerBob, _gw, time);   // the turn, the stride, the hop
       // A thing you stand behind (the lighthouse's door is at its back, the summer house's on its far side) stays
       // nearly solid and your outline shows through it: at .38 it went to a pale ghost, and a player at its door
       // seemed to stand inside a glass house (art director, round 3)
@@ -1452,7 +1454,8 @@ window.GardenNativeWorld = (function () {
         if (behind) propBehind++;
       }
       coveringCanopies.length = 0;
-      const probes = [{ x, y: y - playerOcclusionHeight * .81 }, { x, y: y - playerOcclusionHeight * .48 }, { x: x - 6, y: y - playerOcclusionHeight * .54 }, { x: x + 6, y: y - playerOcclusionHeight * .54 }];
+      const actLift = typeof gartActLift === 'function' ? gartActLift() : 0;   // a figure up on a branch or a seat is that much higher
+      const probes = [{ x, y: y - actLift - playerOcclusionHeight * .81 }, { x, y: y - actLift - playerOcclusionHeight * .48 }, { x: x - 6, y: y - actLift - playerOcclusionHeight * .54 }, { x: x + 6, y: y - actLift - playerOcclusionHeight * .54 }];
       for (const crown of canopyOccluders) {
         const b = crown.bounds;
         let covered = false;
@@ -1463,6 +1466,16 @@ window.GardenNativeWorld = (function () {
         const alpha = crown.normalAlpha * (covered ? .24 : 1);
         if (crown.faded !== covered || Math.abs(crown.node.target.alpha - alpha) > .0001) { crown.faded = covered; crown.node.target.setAlpha(alpha); }
         if (covered) coveringCanopies.push(crown.id);
+      }
+      // (moves, round 5) while you do something the figure is the picture: whatever has faded because you are behind it (a crown, a rock, a painted canopy)
+      // is drawn under you, so a see-through crown or trunk never lies over the figure and washes it out. Hiding is the one move that wants the tree in front.
+      const doing = !(typeof _ga !== 'undefined' && _ga.cur && _ga.cur.doing && _ga.cur.row && _ga.cur.row.hideBehind);   // (round 6: always, not only during a move: a faded crown never lies over you, and you never turn see-through green)
+      if (doing) {
+        let top = y + .001;
+        for (const record of fadingProps) if (record.behind && record.root && Number.isFinite(record.root.depth)) top = Math.max(top, record.root.depth + .002);
+        for (const crown of canopyOccluders) if (crown.faded && Number.isFinite(crown.record.depth)) top = Math.max(top, crown.record.depth + .002);
+        for (const im of externalCanopies) if (Number.isFinite(im.depth)) top = Math.max(top, im.depth + .002);
+        if (top !== y + .001) playerNode.target.setDepth(top);
       }
     }
     function restoreCanopyAlpha() { for (const crown of canopyOccluders) { if (crown.node.target.active) crown.node.target.setAlpha(crown.normalAlpha); crown.faded = false; } coveringCanopies.length = 0; externalCanopies.length = 0; silhouetteVisible = false; xray.target.setVisible(false); }
@@ -1498,7 +1511,9 @@ window.GardenNativeWorld = (function () {
       }
       // A single faded crown stays natural. Only overlapping foreground
       // canopies need this subtle position cue, never roofs or empty ground.
-      const show = root.visible && playerNode.target.visible && (propBehind > 0 || externalCanopies.length > 0 && externalCanopies.length + coveringCanopies.length >= 2) && !(typeof gardenDesignOn === 'function' && gardenDesignOn());
+      // Round 3 (moves): the lead's ruling, "the figure must stay fully drawn, and a crown in front of it fades". The pale outline drawn over
+      // the figure read as a washed-out or second figure (and its box test fired with nothing really in front), so it is off; the crowns fade.
+      const show = false && root.visible && playerNode.target.visible && externalCanopies.length > 0 && externalCanopies.length + coveringCanopies.length >= 2 && !(typeof gardenDesignOn === 'function' && gardenDesignOn()) && !(typeof gartActBusy === 'function' && gartActBusy());   // (doing something, the figure is posed and lifted: a still outline of it standing would be a second, pale figure)
       if (!show) { silhouetteVisible = false; xray.target.setVisible(false); return; }
       const current = playerInner._nativePlayerCurrent, body = current ? current.node : playerInner.firstChild;
       if (!body) { silhouetteVisible = false; xray.target.setVisible(false); return; }
@@ -1866,7 +1881,7 @@ window.GardenNativeWorld = (function () {
       const avatar = _gplAvatar(), gear = typeof _gplMyGear === 'function' ? _gplMyGear() : null, motion = _gartMotionOk(), key = JSON.stringify([avatar, gear, motion]);
       if (!playerPosePreparation || playerPosePreparation.key !== key) {
         const poses = [];
-        for (const pose of ['idle', 'walk']) for (const dir of ['s', 'n', 'e']) poses.push({ pose, dir });
+        for (const pose of ['idle', 'stride']) for (const dir of ['s', 'n', 'e']) poses.push({ pose, dir });
         poses.push({ pose: 'fish', dir: 'e', stageRod: true });
         playerPosePreparation = { key, poses, next: 0, frame: -1 };
       }
@@ -2020,6 +2035,7 @@ window.GardenNativeWorld = (function () {
     function playerOcclusionState() { return { active: coveringCanopies.length + externalCanopies.length > 0, occluders: coveringCanopies.slice(), tracked: canopyOccluders.length, externalCoverage: externalCanopies.length, overlapping: externalCanopies.length > 0 && externalCanopies.length + coveringCanopies.length >= 2, silhouetteVisible, silhouetteBuilds, outline: silhouetteVisible, silhouetteBodies: silhouetteBodies.size, treeRootAlphaUnchanged: true, fadedCrowns: canopyOccluders.filter(crown => crown.faded).map(crown => ({ id: crown.id, alpha: crown.node.target.alpha, normalAlpha: crown.normalAlpha })) }; }
     const api = { root, rootNode, objectsNode: objects, actorsNode: actors, petsNode: pets, uiNode: ui, effectsNode: effects, playerNode, sync, update, prepareRender, prepareCaches, walkTo, actor, spawn: spec => actor(spec.id, spec.svg || '', spec.x, spec.y, spec), remove, point, project, pick, bounds, resize, cameraSet, cameraControls, zoom: step => cameraSet(null, step), camera: () => ({ ...camera }), model: () => model, playerState: () => ({ x: _gw.px, y: _gw.py, face: _gw.face, moving: _gw.moving }), entities: drawings, dynamic, occluders, forestTrunks: () => forestRows.filter(spec => drawings.has(spec.id)).map(spec => [+(spec.x / W.cellW).toFixed(2), +((spec.y - W.sky) / W.cellH).toFixed(2), gardenTrunkBoxWidth(17)]) /* (their drawn trunk is 17 px wide at the foot: 94-garden-native-scenery.js) */, lightSources: () => pointLights, renderStats: () => ({ staticObjects: drawings.size, visibleStatic, terrainChunks: terrainChunks.size, visibleTerrain, cacheQuality, terrainBaseQuality, terrainBaseReady, queuedTerrainBase: terrainBaseQueue.size, queuedCaches: cacheQueue.size, needGroundRings: needRings.size, mainCameraCull: { cameraId: mainExclusionCameraId, guardWorldPx: mainDrawingGuard, excludedDrawings: mainExcludedDrawings, specialActors: specialMainStatus() }, playerOcclusion: playerOcclusionState() }), setVisible: value => root.setVisible(value), depthChanged: () => { sorted = true; }, flushDepth: sortObjects, stopMoving: () => { _gw.path = []; _gw.then = null; _gw.hold = null; _gw.keys.clear(); _gw.spd = 0; }, destroy };
     api.effectsState = effectsState;
+    api.waterAt = (x, y) => waterRegions.length ? containsWater(x * GARDEN_WORLD.cellW, GARDEN_WORLD.sky + y * GARDEN_WORLD.cellH) : null;   // the water AS PAINTED (cells), null before it is drawn
     api.frontierState = () => frontierMetadata;
     api.syncNeedRings = syncNeedRings;
     api.playerOcclusionState = playerOcclusionState;

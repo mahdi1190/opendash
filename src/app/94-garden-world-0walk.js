@@ -29,7 +29,7 @@ const _gw = {
   cam: { x: 0, y: 0, w: 0, h: 0, vh: 0, mode: 'follow', init: false, dirty: true },
   keys: new Set(), grid: null, gridKey: '', saveT: 0, size: { w: 0, h: 0 },
 };
-const GW_SPEED = Object.freeze({ walk: 215, sneak: 92, run: 300 });   // pixels of stage a second (a cell is 48 x 30 of them)
+const GW_SPEED = Object.freeze({ walk: 150, sneak: 70, run: 260 });   // (round 3: the walk now plants its feet, 94-garden-zz-6move.js; 215 could only slide them)   // pixels of stage a second (a cell is 48 x 30 of them)
 const GW_ZOOMS = Object.freeze([230, 290, 360, 450, 560, 690, 860, 1040]);   // how many stage units tall the window shows (2.23: two more steps: the world is bigger)
 const GW_FIGURE_ART = 0.74, GW_SCALE = GW_FIGURE_ART * GARDEN_ACTOR_SCALE;                                                // the figure's size: 70 units tall -> about 52 px
 const GW_PET_SCALE = 0.5 * GARDEN_ACTOR_SCALE;                                             // your pet, drawn at two thirds of the size the garden uses for a wandering one: it comes up to your knee
@@ -208,6 +208,7 @@ function _gwBuildSolids(m) {
   if (island && typeof GardenPaintedTerrain !== 'undefined' && GardenPaintedTerrain && GardenPaintedTerrain.feet) for (const f of GardenPaintedTerrain.feet()) add(f.x0, f.y0, f.x1, f.y1, f.src);
   // the High orchard's cliff at the head of the cove, and its two shortcuts while shut (94-garden-wonder-7shortcuts.js)
   if (island && typeof gardenOrchardShortcutBlocks === 'function') for (const b of gardenOrchardShortcutBlocks()) add(b.x0, b.y0, b.x1, b.y1, b.src);
+  if (typeof gardenActThingSolids === 'function') for (const b of gardenActThingSolids()) add(b.x0, b.y0, b.x1, b.y1, b.src);   // a bench or a well placed as layout data
   // (its front at the plinth's drawn foot, the line the lamp sorts by: 5 px short of it, someone standing at the front of the
   // block with the smaller feet was drawn behind the lamp they stood in front of, the collision audit, 19 Nov 2026)
   for (const p of gardenPropsNow()) if (p.art === 'lamp' && /^ld-lamp-/.test(p.id)) { const x = p.x + .5, y = p.y + .86; add(x - .17, y - .22, x + .17, y + .04, 'street lamp post'); }
@@ -256,20 +257,20 @@ function _gwPaintedTrunks(island) {
   const wood = typeof GardenPaintWood !== 'undefined' && GardenPaintWood && GardenPaintWood.trunks ? GardenPaintWood.trunks() : null;
   const orch = typeof GardenPaintVale !== 'undefined' && GardenPaintVale && typeof GardenPaintVale.orchardTrunks === 'function' ? GardenPaintVale.orchardTrunks() : null;
   // the woods and the orchard are listed first: their boxes were measured against their own drawn trunks
-  if (wood && wood.list) for (const b of wood.list) feet.push({ x: (b.x0 + b.x1) / 2, y: b.y1, w: Math.max(.3, b.x1 - b.x0), src: 'wood' });
-  if (Array.isArray(orch)) for (const [x, y, w] of orch) feet.push({ x, y: y + .04, w, src: 'orchard' });
-  { const vt = typeof GardenPaintVale !== 'undefined' && GardenPaintVale && typeof GardenPaintVale.valleyTrunks === 'function' ? GardenPaintVale.valleyTrunks() : null; if (Array.isArray(vt)) for (const [x, y, w] of vt) feet.push({ x, y: y + .04, w, src: 'valley' }); }   // (round 3: the valley's trees)
-  if (nat && nat.list) for (const t of nat.list) feet.push({ x: t.x, y: t.y - .02, w: t.w, src: 'village' });
-  for (const [x, y, w] of _gwFellTrunks()) feet.push({ x, y, w, src: 'fells' });
-  for (const [x, y, w] of _gwGateTrunks()) feet.push({ x, y, w, src: 'gate' });
-  for (const [x, y, w] of _gwForestTrunks()) feet.push({ x, y, w, src: 'forest' });
+  if (wood && wood.list) for (const b of wood.list) feet.push({ x: (b.x0 + b.x1) / 2, y: b.y1, w: Math.max(.3, b.x1 - b.x0), src: 'wood', sp: b.sp || '' });
+  if (Array.isArray(orch)) for (const [x, y, w, sp] of orch) feet.push({ x, y: y + .04, w, src: 'orchard', sp: sp || '' });
+  { const vt = typeof GardenPaintVale !== 'undefined' && GardenPaintVale && typeof GardenPaintVale.valleyTrunks === 'function' ? GardenPaintVale.valleyTrunks() : null; if (Array.isArray(vt)) for (const [x, y, w, sp] of vt) feet.push({ x, y: y + .04, w, src: 'valley', sp: sp || '' }); }   // (round 3: the valley's trees)
+  if (nat && nat.list) for (const t of nat.list) feet.push({ x: t.x, y: t.y - .02, w: t.w, src: 'village', sp: t.sp || '' });
+  for (const [x, y, w, sp] of _gwFellTrunks()) feet.push({ x, y, w, src: 'fells', sp: sp || '' });
+  for (const [x, y, w, sp] of _gwGateTrunks()) feet.push({ x, y, w, src: 'gate', sp: sp || '' });
+  for (const [x, y, w, sp] of _gwForestTrunks()) feet.push({ x, y, w, src: 'forest', sp: sp || '' });
   const out = [], seen = new Map();
   for (const f of feet) {
     const k = Math.floor(f.x) + ',' + Math.floor(f.y); let dup = false;
     for (let dy = -1; dy <= 1 && !dup; dy++) for (let dx = -1; dx <= 1 && !dup; dx++) for (const o of seen.get((Math.floor(f.x) + dx) + ',' + (Math.floor(f.y) + dy)) || []) if (Math.abs(o.x - f.x) < .5 && Math.abs(o.y - f.y) < .35) { dup = true; break; }
     if (dup) continue;
     (seen.get(k) || seen.set(k, []).get(k)).push(f);
-    out.push({ x0: f.x - f.w / 2, y0: f.y - .28, x1: f.x + f.w / 2, y1: f.y, src: f.src });
+    out.push({ x0: f.x - f.w / 2, y0: f.y - .28, x1: f.x + f.w / 2, y1: f.y, src: f.src, sp: f.sp });   // (sp: the tree's species, what it offers comes from that and its size: 94-garden-zz-7act-0kinds.js gardenTreeKind)
   }
   return out;
 }
@@ -702,6 +703,21 @@ function gardenReachable(x, y) {
   const W = GARDEN_WORLD; if (x < 0 || y < 0 || x >= W.cols || y >= W.rows) return false;
   return !!_gwReach()[y * W.cols + x];
 }
+/** Can (x, y) be walked to from the layout's arrival point (anchors.start), over the land open now? Unlike gardenReachable this never
+ *  depends on where the player happens to be (in a boat, on a pier): what a layout offers is the same whoever stands where. */
+function gardenReachableFromArrival(x, y) {
+  const W = GARDEN_WORLD, C = W.cols, R = W.rows; if (x < 0 || y < 0 || x >= C || y >= R) return false;
+  const grid = _gwGrid(gardenHere());
+  if (!_gw.reachA || _gw.reachAGrid !== grid) {
+    let D = null; try { D = gardenIslandData(); } catch (e) { D = null; }
+    const st = (D && D.anchors && D.anchors.start) || W.start || { x: C / 2, y: R / 2 };
+    let s0 = -1; for (let r = 0; r <= 6 && s0 < 0; r++) for (let dy = -r; dy <= r && s0 < 0; dy++) for (let dx = -r; dx <= r; dx++) { const cx = Math.floor(st.x) + dx, cy = Math.floor(st.y) + dy; if (cx >= 0 && cy >= 0 && cx < C && cy < R && !grid[cy * C + cx]) { s0 = cy * C + cx; break; } }
+    const seen = new Uint8Array(C * R);
+    if (s0 >= 0) { const stack = [s0]; seen[s0] = 1; while (stack.length) { const i = stack.pop(), qx = i % C, qy = (i - qx) / C; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = qx + dx, ny = qy + dy; if (nx < 0 || ny < 0 || nx >= C || ny >= R) continue; const j = ny * C + nx; if (seen[j] || grid[j]) continue; if (!_gwRouteEdgeClear({ x: qx, y: qy }, { x: nx, y: ny }, grid)) continue; seen[j] = 1; stack.push(j); } } }
+    _gw.reachA = seen; _gw.reachAGrid = grid;
+  }
+  return !!_gw.reachA[y * C + x];
+}
 function _gwNearestFree(x, y, maxR) {
   // the nearest walkable cell to (x, y), by rings (the click was on a plant, a bench, the water...)
   const W = GARDEN_WORLD, grid = _gwGridNow(); let best = null, bd = 1e9;
@@ -926,6 +942,7 @@ function gardenWorldSlide(x, y, dx, dy, r, out) {
 }
 /** The feet are inside something (a plant grew where you stood, a decoration was put down): glide out to the nearest open ground. */
 function _gwPushOut(dt) {
+  if (typeof gartActSeatHeld === 'function' && gartActSeatHeld()) return false;   // sat on a bench: the hips are over its footing on purpose (getting up glides you out)
   if (_gwFree(_gw.px, _gw.py)) {
     if (_gw.replan) { _gw.replan = false; _gw.repaths = 0; if (!_gwRepath()) { _gw.path = []; _gw.then = null; } }
     return false;
@@ -1917,6 +1934,7 @@ function gardenWorldClick(it, cell, ev, m) {
   // 1. a building, a board or a box: walk to its door and go in.
   // Picking already distinguishes its painted shape from transparent lawn;
   // use that same answer for hover, press and click, including a roof click.
+  if (k.kind === 'prop' && typeof gartActForProp === 'function' && gartActForProp(k.prop)) return true;   // a bench, a pump, a bell: do it
   if (k.kind === 'prop') { _gwGoToProp(k.prop); return true; }
   if (k.kind === 'seed') return false;   // planting is its own click
   // 2. a bug: creep up on it
@@ -1984,13 +2002,16 @@ function gardenWorldKey(ev, down, arrowsOnly) {
   if (ev.ctrlKey || ev.metaKey || ev.altKey) return false;
   const dir = _GW_KEYMAP[ev.key] && (!arrowsOnly || ev.key.startsWith('Arrow')) ? _GW_KEYMAP[ev.key] : null;
   if (dir) {
-    if (down && ev.key === 'W') return false;   // Shift+W is "water everything": W alone walks
+    if (down && ev.key === 'W' && !_gw.keys.size) return false;   // Shift+W standing still is "water everything"; while walking it runs north (round 3: Shift runs)
     // up lifts the bar while you reel; otherwise it walks
     if (dir === 'up' && _gw.reel) { _gw.reel.hold = !!down; ev.preventDefault(); return true; }
+    if (down && typeof gartActStop === 'function' && typeof gartActBusy === 'function' && gartActBusy()) gartActStop();   // any movement key ends what you are doing
     if (down) { _gw.keys.add(dir); if (ev.shiftKey) _gw.keys.add('shift'); else _gw.keys.delete('shift'); _gwEnsureLoop(); } else _gw.keys.delete(dir);
     ev.preventDefault(); return true;
   }
   if (ev.key === 'Shift') { if (down) _gw.keys.add('shift'); else _gw.keys.delete('shift'); return false; }
+  if (ev.key === 'z' || ev.key === 'Z') { if (down) { _gw.keys.add('creep'); _gwEnsureLoop(); } else _gw.keys.delete('creep'); ev.preventDefault(); return true; }   // hold Z to creep up on something (Shift runs)
+  if (down && ev.key === ' ' && _gw.moving && _gw.keys.size && typeof gartMoveHop === 'function' && !(typeof _gwFishBusy === 'function' && _gwFishBusy())) { if (!ev.repeat) gartMoveHop(); ev.preventDefault(); return true; }   // Space while walking: a little hop
   if (!down) { if (ev.key === ' ' || ev.key === 'e' || ev.key === 'E') { if (typeof _gwFishRelease === 'function') _gwFishRelease(); return true; } return false; }
   const k = ev.key;
   if (k === '+' || k === '=') { gardenCamSet(null, -1); ev.preventDefault(); return true; }
@@ -2007,6 +2028,7 @@ function gardenWorldKey(ev, down, arrowsOnly) {
 /** Space / E: do the sensible thing right here: a bite, a door beside you, a bug in reach, a ripe plant, water in front of you. */
 function gardenWorldInteract() {
   if (typeof _gwFishBusy === 'function' && _gwFishBusy()) { if (typeof _gwFishPress === 'function') _gwFishPress(); return; }
+  if (typeof gartActInteract === 'function' && gartActInteract()) return;   // the prompt's action: sit, climb, ring... (94-garden-zz-7act-1core.js)
   const m = gardenHere(), W = GARDEN_WORLD;
   const px = Math.floor(_gw.px), py = Math.floor(_gw.py);
   for (const p of gardenPropsNow()) if (p.act) { const door = _gwPropApproachPoint(p, false); if (door && Math.abs(door.x - .5 - px) <= 1 && Math.abs(door.y - .5 - py) <= 1) { _gwOpenProp(p); return; } }

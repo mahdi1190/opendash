@@ -4,11 +4,22 @@
    THE BOTTLE. Pick a friend and a line from the book (never free text: GTG_BOTTLE_LINES, the index goes on the wire) and it sets off. Three days later it is bobbing in their lake (frozen in, in winter). Snapshot `bt` [[mark, line, day sent]], the last three; `bw` how many wait unread, so a visitor sees them too.
    ============================================================ */
 const GTG_GN = Object.freeze({ days: 3, hostTicket: 3, homeTicket: 6, at3: Object.freeze({ 'mat:stone': 2 }), at6: Object.freeze({ 'mat:stone': 5 }) });
-// (village fix round 2) your gnome stands on the turf at the corner of your bed by the welcome sign, not out in the square's paving
-// (read when it is drawn: the layout's bed is there by then; a sight such as the welcome sign may not be among the props at load)
-const GTG_GN_AT = Object.freeze({ get x() { return _gtgnHome().x; }, get y() { return _gtgnHome().y; }, guest: _wdPt('notice-board', -3.4, 0.5) });
-function _gtgnHome() { try { const b = gardenIslandData().anchors.bed; if (b) return { x: b.x + b.w - 0.45, y: b.y - 0.35 }; } catch (e) { /* the old place */ } return _wdPt('post-box', 1.1, 0.5); }   // world cells: yours at home; those staying with you stand in a row from here
-const GTG_BOTTLE_AT = Object.freeze([[19, 23.4], [31.5, 22.6], [23, 26.6]]);   // world cells: where a bottle comes to rest
+// (village fix round 2) your gnome stands on the turf at the corner of your bed (the layout's bed anchor), not out in the square's
+// paving; on a layout with no bed anchor, by a post box. Those staying with you stand in a row from a notice board. By KIND on any layout.
+const _gtgnKind = _wdKindPt(['postbox'], 1.1, 0.5);
+function _gtgnBed() { try { const b = gardenIslandData().anchors.bed; if (b) return { x: b.x + b.w - 0.45, y: b.y - 0.35 }; } catch (e) { /* no layout yet */ } return null; }
+const GTG_GN_AT = Object.freeze({ get x() { return (_gtgnBed() || _gtgnKind).x; }, get y() { return (_gtgnBed() || _gtgnKind).y; }, get ok() { return !!_gtgnBed() || !!_gtgnKind.ok; }, guest: _wdKindPt(['notice-board'], -3.4, 0.5) });   // world cells
+const GTG_BOTTLE_N = 3;   // how many bottles can bob at once
+/** Where a bottle comes to rest, read from the layout's own water (any layout): open water a step out from the shore nearest the arrival
+ *  point, three spots a few cells apart. [[x, y]] world cells; [] on a layout with no water near enough. */
+const _gtgbAt = { D: null, at: [] };
+function _gtgbSpots() {
+  let D = null; try { D = gardenIslandData(); } catch (e) { return []; }
+  if (_gtgbAt.D === D) return _gtgbAt.at;
+  const at = [], st = (D.anchors && D.anchors.start) || { x: GARDEN_WORLD.cols / 2, y: GARDEN_WORLD.rows / 2 }, wet = (x, y) => { try { return typeof gardenTerrainAt === 'function' ? /^(water|deep)$/.test(gardenTerrainAt(x, y)) : false; } catch (e) { return false; } };
+  for (let r = 2; r < 48 && at.length < GTG_BOTTLE_N; r++) for (let i = 0; i < r * 8 && at.length < GTG_BOTTLE_N; i++) { const a = i / (r * 8) * Math.PI * 2, x = Math.round((st.x + Math.cos(a) * r) * 2) / 2, y = Math.round((st.y + Math.sin(a) * r) * 2) / 2; if (!wet(x, y) || !wet(x, y - 1) || !wet(x - 0.8, y) || !wet(x + 0.8, y) || wet(x, y + 2.2) || at.some(q => Math.hypot(q[0] - x, q[1] - y) < 3.5)) continue; at.push([x, y]); }   // (out on the water, the bank a couple of cells in front, so it is seen)
+  _gtgbAt.D = D; _gtgbAt.at = at; return at;
+}
 const GTG_BOTTLE = Object.freeze({ days: 3, keep: 3, read: 3, send: 1 });
 /* Append only: the index is what is sent. No names, no links, nothing but kindness. */
 const GTG_BOTTLE_LINES = Object.freeze(['Thinking of you.', 'Your garden looked lovely last time.', 'Hope today was kind to you.', 'Well done, by the way.', 'Come round soon.', 'Saw a fish that reminded me of you.', 'I owe you a cup of tea.', 'Keep going. It is worth it.', 'I hope it stops raining where you are.', 'Nothing to say. Just this bottle.', 'Happy whatever it is today.', 'Your tomatoes are better than mine and I have made my peace with it.']);
@@ -35,7 +46,7 @@ function _gtgnLeave(fid, m) {
     try { const G = _gtgnSpot(0), blob = await _glsBlob(_glsFrame(Math.round(G.x), Math.round(G.y))); await memPhotoKeep(blob, { iso: _gdToday(), ts: Clock.now(), kind: 'garden', at: fid }); gardenToast('A photo of your gnome is in your Memories', { icon: 'camera', timeout: 5000, action: { label: 'See it', run: () => setView('memories:photos') } }); } catch (e) { /* only a postcard */ }
   }, 1200);
 }
-function _gtgnSpot(i) { const g = GTG_GN_AT.guest; return { x: g.x - i * 0.9, y: g.y + (i % 2) * 0.35 }; }
+function _gtgnSpot(i) { const g = GTG_GN_AT.guest.ok ? GTG_GN_AT.guest : { x: GTG_GN_AT.x - 4.5, y: GTG_GN_AT.y }; return { x: g.x - i * 0.9, y: g.y + (i % 2) * 0.35 }; }   // (no notice board: a row along from the post box)
 function _gtgnHomeTick(m) {
   const a = _gtgnAway(); if (!a || m.visit) return;
   if (_wdDaysBetween(a.d, m.today) < GTG_GN.days) return;
@@ -49,6 +60,7 @@ function _gtgnHomeTick(m) {
   wdWhisper(first ? `Your gnome is home from ${who}’s, with a new pennant on its hat.` : `Your gnome is home from ${who}’s, and will not say what happened.`, 8000);
 }
 function _gtgnDraw(m) {
+  if (!GTG_GN_AT.ok) { for (let i = 0; i < 5; i++) gtgSprite('gn-g' + i, null); gtgSprite('gn-me', null); return; }   // (no post box in this layout: no gnome stands anywhere)
   const a = _gtgnAway(), theirs = _gtgTheirs(m), n = _gtgnStamps(), seed = gardenHash('gn|' + (gtgMeId() || 'me')) >>> 0;
   if (m.visit) {
     const fid = m.visit.fid, here = !!a && a.at === fid, list = (theirs.gs || []).slice(0, 4);
@@ -60,7 +72,7 @@ function _gtgnDraw(m) {
       gtgSprite('gn-g' + i, { x: P.x, y: P.y, z: P.y, hit: 0.6, hitUp: 12, label: mine ? 'Your gnome' : 'A gnome', svg: gtgGnomeSvg(v, mine ? n : 0), onClick: () => wdTalk({ lines: [mine ? `Your gnome. It is staying for ${GTG_GN.days} days, and seems to be enjoying the view.` : 'Someone’s gnome. It has come to stay for a few days, and it is not telling you whose.'], bye: 'Leave it' }) });
     }
     if (!a && gtgFriendList().some(f => f.id === fid)) {   // it came along
-      const x = GTG_GN_AT.guest.x + 1, y = GTG_GN_AT.guest.y;
+      const x = _gtgnSpot(0).x + 1, y = _gtgnSpot(0).y;
       gtgSprite('gn-me', { x, y, z: y, hit: 0.6, hitUp: 12, label: 'Your gnome came with you', svg: gtgGnomeSvg(seed, n), onClick: () => wdTalk({ lines: ['Your gnome came along. It would like to stay here a few days, if nobody minds.'], actions: [{ label: 'Leave it here', primary: true, run: () => { wdTalkClose(true); _gtgnLeave(fid, m); } }], bye: 'Not this time' }) });
     } else gtgSprite('gn-me', null);
     return;
@@ -93,12 +105,12 @@ function _gtgbWaiting() {
     const h = gtgPair(f.id); if (!h) continue;
     for (const r of f.tg.bt) if (r[0] === h && now >= r[2] + GTG_BOTTLE.days && !W[`tg.br.${f.id}.${r[2]}`] && GTG_BOTTLE_LINES[r[1]]) out.push({ fid: f.id, name: f.name, l: r[1], dn: r[2] });
   }
-  return out.slice(0, GTG_BOTTLE_AT.length);
+  return out.slice(0, _gtgbSpots().length);
 }
 function _gtgbSvg() { const A = GART; return A.P('#0a2a3a', A.ell(0, 2, 13, 3), 0.25) + `<g transform="rotate(-24)">` + A.P('#6a9a7a', A.rrect(-10, -5, 15, 10, 3), 0.85) + A.P('#6a9a7a', A.rrect(4, -2.4, 7, 4.8, 1), 0.85) + A.P('#b88a4a', A.rrect(10, -2, 3, 4, 0.6)) + A.P('#f4ead0', A.rrect(-7, -2.6, 9, 5, 0.5)) + A.P('#ffffff', A.rrect(-8, -4, 9, 1.2, 0.5), 0.6) + '</g>'; }
 function _gtgbDraw(m) {
-  const rows = m.visit ? new Array(Math.min(GTG_BOTTLE_AT.length, Number(_gtgTheirs(m).bw) || 0)).fill(null) : _gtgbWaiting();
-  GTG_BOTTLE_AT.forEach(([x, y], i) => {
+  const rows = m.visit ? new Array(Math.min(_gtgbSpots().length, Number(_gtgTheirs(m).bw) || 0)).fill(null) : _gtgbWaiting();
+  _gtgbSpots().forEach(([x, y], i) => {
     const B = rows[i];
     if (i >= rows.length) { gtgSprite('bt-' + i, null); return; }
     gtgSprite('bt-' + i, { x, y, z: y, hit: 0.9, hitUp: 2, label: 'A bottle in the water', svg: _gtgbSvg(), onClick: () => {

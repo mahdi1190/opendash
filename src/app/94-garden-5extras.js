@@ -399,6 +399,7 @@ function _gdxSavePhoto(sc, st) {
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     gardenToast('Saved to your downloads', { icon: 'camera', kind: 'ok', now: true });
     try { if (typeof gardenLiveCheer === 'function') gardenLiveCheer('photo'); } catch (e) { /* only a moment */ }   // 2.29.0: the others in a live garden see the flash
+    try { if (typeof petLifeEvent === 'function') petLifeEvent('photo'); } catch (e) { /* only a moment */ }   // round 3: your pet poses (or photobombs)
   }).catch(() => { if (typeof busy === 'function') busy(); gardenToast('The photo could not be saved.', { kind: 'err', retry: () => _gdxSavePhoto(sc, st) }); });
 }
 

@@ -612,7 +612,7 @@ window.GardenNativePainted = (function () {
       }
       if (!im) im = objectImage(scene, id, v, season, size, x, y, false);
       if (!im) return; im.setDepth(y); parent.add(im); made.push(im);
-      if (size.h >= 50) { tall.push({ im, x, y, h: size.h }); trunks.push(Object.freeze({ x: x / W.cellW, y: (y - W.sky) / W.cellH, w: (size.was || size.h) > 100 ? .5 : .4 })); }
+      if (size.h >= 50) { tall.push({ im, x, y, h: size.h }); trunks.push(Object.freeze({ x: x / W.cellW, y: (y - W.sky) / W.cellH, w: (size.was || size.h) > 100 ? .5 : .4, sp: String(species || id || '') })); }
     };
     const tall = plantingTall = [], trunks = [];
     // Nothing overlaps: a tree stands 3.5 to 5 times the player (gardenSizePx), but never so tall that its crown covers a building,
@@ -702,5 +702,5 @@ window.GardenNativePainted = (function () {
   function memory(scene) { const l = cachedGround && cachedGround.layer; return { groundBytes: l ? l.texturePx * 4 : 0, groundTextures: l ? l.live : 0 }; }
   function pendingGround() { const l = cachedGround && cachedGround.layer; return l && !retiring ? l.pendingInView() : 0; }
   function status() { const l = cachedGround && cachedGround.layer; return { wanted: wanted(), ready: ready(), groundMs, composeMs, K: l ? l.level : K, ground: l ? { level: l.level, chunks: l.chunks, live: l.live, MB: l.MB, medianMs: l.median, p95Ms: l.p95, worstSliceMs: l.sliceWorstMs } : null, planted: lastPlanting.length, spots: spotCounts, rebuilds, lastError: lastError || (window.GardenPaintGround && GardenPaintGround.lastError) || null }; }
-  return { wanted, ready, preload, ground, building, planting, fanSetts, trunks: () => plantingTrunks, trunkFoot, fadeUnder, crownCovers, fishingCrownCovers, playerCanopies: () => plantingCoverage, status, objectImage, objectCanvas, paintIntoGround, compose, memory, pendingGround, get lastError() { return lastError; }, set lastError(v) { lastError = v; }, set overLayer(v) { overLayer = v; } };
+  return { wanted, ready, preload, ground, building, planting, fanSetts, trunks: () => plantingTrunks, tall: () => plantingTall.map(t => ({ x: t.x, y: t.y, h: t.h, w: t.im && t.im.displayWidth || t.h })), trunkFoot, fadeUnder, crownCovers, fishingCrownCovers, playerCanopies: () => plantingCoverage, status, objectImage, objectCanvas, paintIntoGround, compose, memory, pendingGround, get lastError() { return lastError; }, set lastError(v) { lastError = v; }, set overLayer(v) { overLayer = v; } };
 })();

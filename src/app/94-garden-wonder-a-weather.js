@@ -80,12 +80,12 @@ function _wdBirdOff() { const B = _wdw.bird; if (!B) return; B.leaving = true; }
 function _wdBirdCome(m) {
   const def = GL_CREATURE.get('robin') || GL_CREATURE.get('blackbird'); if (!def) return;
   let art = ''; try { art = gardenLifeArt(def).svg; } catch (e) { return; }
-  const S = wdSprite({ id: 'wd-bird', x: _gw.px, y: _gw.py, lift: 240, svg: `<g transform="scale(${_gw.face || 1} 1)"><g class="gl-art gl-still" data-clip="">${art}</g></g>`, z: _gw.py + 0.05, t: 0,
+  const S = wdSprite({ id: 'wd-bird', x: _gw.px, y: _gw.py, lift: 240, svg: `<g transform="scale(${(_gw.face || 1) * (typeof GARDEN_ACTOR_SCALE === 'number' ? GARDEN_ACTOR_SCALE : 1)} ${typeof GARDEN_ACTOR_SCALE === 'number' ? GARDEN_ACTOR_SCALE : 1})"><g class="gl-art gl-still" data-clip="">${art}</g></g>`, z: _gw.py + 0.05, t: 0,
     update(dt, Sp) {
       Sp.t += dt;
       Sp.x = _gw.px; Sp.y = _gw.py; Sp.z = _gw.py + 0.05;
       if (Sp.leaving) { Sp.lift += 260 * dt; Sp.x += 0.8 * Sp.t * 0.1; if (Sp.lift > 300) { Sp.remove(); _wdw.bird = null; } return; }
-      const head = 53; if (Sp.lift > head) Sp.lift = Math.max(head, Sp.lift - 170 * dt);
+      const head = 53 * (typeof GARDEN_ACTOR_SCALE === 'number' ? GARDEN_ACTOR_SCALE : 1); if (Sp.lift > head) Sp.lift = Math.max(head, Sp.lift - 170 * dt);
     } });
   _wdw.bird = S;
   void m;
@@ -144,7 +144,7 @@ wdMod({
   begin() { _wdw.bird = null; _wdw.still = 0; _wdw.birdT = 0; },
   tick(m) {
     if (m.visit) return;
-    const idle = !_gw.moving && !_gw.path.length && !(_gw.fishing && _gw.fishing.state !== 'idle') && !(typeof _gdp !== 'undefined' && _gdp.pop) && !_wdk.el && !_wd.talk;
+    const idle = !_gw.moving && !_gw.path.length && !(_gw.fishing && _gw.fishing.state !== 'idle') && !(typeof _gdp !== 'undefined' && _gdp.pop) && !_wdk.el && !_wd.talk && !(typeof gartActBusy === 'function' && (gartActBusy() || _ga.cur));   // (doing something, sat, climbing, lying: no bird lands on you or on what you use)
     _wdw.still = idle ? _wdw.still + 1 : 0;
     if (_wdw.bird && _wdw.still === 0) _wdBirdOff();
     const need = _wd.still ? 25 : 45;

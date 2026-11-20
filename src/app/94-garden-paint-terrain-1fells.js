@@ -1194,7 +1194,7 @@ window.GardenPaintedTerrain = (function () {
     // the pines and rowans' trunk feet, in cells ([x, y, width]), for the one trunk-collision list (94-garden-world-0walk.js _gwPaintedTrunks)
     // (round 3 layouts: a crag by the pass stands on open ground now, so its foot is solid too, at the
     // stones it lays in front of its foot)
-    trunkFeet = occ.filter(o => /\|(pine|rowan|crag)\|/.test(o.key)).map(o => { const crag = /\|crag\|/.test(o.key); return [+((o.x + (crag && o.side > 0 ? o.box[2] * .2 + 20 : 0)) / W.cellW).toFixed(2), +((o.y + (crag ? o.box[3] : 0) - W.sky) / W.cellH).toFixed(2), crag ? .6 : .34]; });
+    trunkFeet = occ.filter(o => /\|(pine|rowan|crag)\|/.test(o.key)).map(o => { const crag = /\|crag\|/.test(o.key); return [+((o.x + (crag && o.side > 0 ? o.box[2] * .2 + 20 : 0)) / W.cellW).toFixed(2), +((o.y + (crag ? o.box[3] : 0) - W.sky) / W.cellH).toFixed(2), crag ? .6 : .34, crag ? 'rock' : /\|pine\|/.test(o.key) ? 'pine' : 'rowan']; });
     if (parent.sort) parent.sort('depth'); if (standIn !== parent && standIn.sort) standIn.sort('depth');
     current = { sig, handle, spriteKeys: keys, fadeTick, scene, roomEntrances: L.falls && L.falls.caveStair ? { falls: caveMouthAt(L, L.falls.caveStair) } : {} };
     stats = { sig, chunks: handle.chunks, buildMs: Math.round(performance.now() - t0), sprites: sprites.length, spritePx };

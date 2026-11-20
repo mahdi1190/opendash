@@ -2,7 +2,7 @@
    PHOTO MODE, IN THE WORLD: stand where you like, hold up something you caught, frame the shot, pick a filter, keep it in Memories. It draws the live stage the way the group photo does (_glsBlob in 94-garden-live-7snap.js), so the people and pets in it are real; only your own computer keeps the picture, and nothing is sent. Friends here see the flash.
    THE GHOST IN THE PHOTOGRAPH (HUNDRED_WORLD.md row 29): at dusk, by the sundial, the camera sees someone you do not. Only in the picture, in every photo taken then, including a group photo, so two of you can each have her. No cross on any map: a line about the camera going cold when you are close.
    ============================================================ */
-const GTG_GHOST_AT = Object.freeze(_wdPt('sundial', -1.1, -0.2));   // world cells
+const GTG_GHOST_AT = _wdKindPt(['sundial'], -1.1, -0.2);   // world cells: by a sundial (any layout's; none, no ghost)
 const GTG_POSE = Object.freeze({
   zooms: Object.freeze([[0.6, 'Close'], [1, 'Middle'], [1.7, 'Wide']]),
   filters: Object.freeze([['', 'As it is'], ['saturate(1.25) sepia(.18) brightness(1.04)', 'Warm'], ['sepia(.75) contrast(.92) brightness(1.02)', 'Old'], ['grayscale(1) contrast(1.12)', 'Black and white'], ['saturate(1.5) brightness(1.1) contrast(.94)', 'Dream'], ['hue-rotate(195deg) saturate(.55) brightness(.82)', 'Moonlight']]),
@@ -162,7 +162,7 @@ gardenPlayAdd({ id: 'tg-pose', name: 'Photo mode', icon: 'camera', group: 'secre
 registerCommand({ id: 'garden-pose', label: 'Pose in the garden with a catch', icon: 'camera', keywords: 'garden photo pose catch filter memories', run: () => gardenPoseOpen() });
 /* ---------- the ghost ---------- */
 function _gtgGhostIn(frame, m) {
-  if (!m || m.tod !== 'dusk' || !frame) return false;
+  if (!m || m.tod !== 'dusk' || !frame || !GTG_GHOST_AT.ok) return false;
   const W = GARDEN_WORLD, x = GTG_GHOST_AT.x * W.cellW, y = W.sky + GTG_GHOST_AT.y * W.cellH;
   return x > frame.x + 12 && x < frame.x + frame.w - 12 && y > frame.y + 50 && y < frame.y + frame.h;
 }

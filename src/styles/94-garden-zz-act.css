@@ -1,0 +1,26 @@
+/* The action prompt over the thing in reach (94-garden-zz-7act-1core.js): plain words, the key to press. */
+.ga-prompt { position: absolute; left: 0; top: 0; z-index: 30; display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px 5px 6px; border: 2px solid #d9c49a; border-radius: 999px; background: #fdf4e3; color: #3a2c1c; font: 600 13px/1.2 system-ui, sans-serif; box-shadow: 0 2px 8px rgba(40, 28, 10, 0.22); cursor: pointer; white-space: nowrap; pointer-events: auto; transition: opacity .15s; }
+.ga-prompt[hidden] { display: none; }
+.ga-prompt kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; border-radius: 6px; background: #5a4630; color: #fff7e6; font: 700 11px/1 system-ui, sans-serif; }
+.ga-prompt:hover, .ga-prompt:focus-visible { background: #fff; outline: 2px solid #c89a4a; }
+/* (the world's own bubbles are cream by day and night, in either theme: the prompt is one of them) */
+.ga-zzz { animation: ga-zzz 2.4s ease-in-out infinite; }
+@keyframes ga-zzz { from { transform: translate(0, 0); opacity: 0.2; } 50% { opacity: 1; } to { transform: translate(-6px, -12px); opacity: 0; } }
+/* Lying down (94-garden-zz-7act-1core.js _gaSky): clouds go over high in the sky; at night a shooting star now and then; a nap runs the light on a little. */
+.ga-sky { position: absolute; inset: 0; z-index: 12; pointer-events: none; overflow: hidden; }
+.ga-cloud { position: absolute; display: block; width: 30%; aspect-ratio: 200 / 96; height: auto; background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 96'><g fill='%23dfe8f2'><circle cx='52' cy='62' r='26'/><circle cx='88' cy='46' r='34'/><circle cx='128' cy='50' r='30'/><circle cx='158' cy='64' r='22'/><rect x='30' y='60' width='150' height='26' rx='13'/></g><g fill='%23ffffff'><circle cx='52' cy='58' r='24'/><circle cx='88' cy='42' r='32'/><circle cx='128' cy='46' r='28'/><circle cx='158' cy='60' r='20'/><rect x='32' y='56' width='146' height='22' rx='11'/></g><g fill='%23ffffff' opacity='.9'><circle cx='80' cy='30' r='12'/><circle cx='120' cy='34' r='10'/></g></svg>") center / contain no-repeat; filter: drop-shadow(0 3px 0 rgba(120, 150, 180, 0.35)); animation: ga-cloud 34s linear infinite; }
+/* (round 4) crisp cartoon clouds high across the top of the view, drawn over everything as sky (no mist on the grass, no shadow blobs) */
+.ga-cloud.c1 { top: 3%; left: -32%; animation-delay: -9s; }
+.ga-cloud.c2 { top: 14%; left: -32%; width: 22%; animation-name: ga-cloud2; animation-delay: -24s; animation-duration: 44s; }
+.ga-cloud.c3 { top: 7%; left: -32%; width: 26%; animation-delay: -3s; animation-duration: 52s; }
+.ga-sky.is-nap .ga-cloud { animation-duration: 9s; }
+.ga-sky.is-nap .ga-cloud.c2 { animation-duration: 12s; }
+.ga-sky.is-nap .ga-cloud.c3 { animation-duration: 14s; }
+@keyframes ga-cloud { from { transform: translateX(0); } to { transform: translateX(560%); } }
+@keyframes ga-cloud2 { from { transform: translateX(0); } to { transform: translateX(720%); } }
+.ga-lapse { position: absolute; inset: 0; display: block; background: linear-gradient(100deg, rgba(255, 190, 110, 0) 30%, rgba(255, 190, 110, 0.16) 50%, rgba(255, 190, 110, 0) 70%); background-size: 300% 100%; animation: ga-lapse 6s ease-in-out 1; }
+@keyframes ga-lapse { from { background-position: 100% 0; } to { background-position: 0 0; } }
+.ga-star { position: absolute; display: block; width: 170px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 250, 220, 0.5) 60%, #fffef4); box-shadow: 0 0 8px 1px rgba(255, 246, 200, 0.55); transform: rotate(24deg); transform-origin: 100% 50%; animation: ga-star 1.4s ease-out forwards; opacity: 0; }
+.ga-star::after { content: ''; position: absolute; right: -4px; top: -3px; width: 9px; height: 9px; border-radius: 50%; background: #fffef0; box-shadow: 0 0 10px 4px rgba(255, 244, 190, 0.8); }
+@keyframes ga-star { 0% { opacity: 0; translate: 0 0; } 12% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; translate: 220px 98px; } }
+@media (prefers-reduced-motion: reduce) { .ga-cloud, .ga-lapse, .ga-star { animation: none; } .ga-star { display: none; } }

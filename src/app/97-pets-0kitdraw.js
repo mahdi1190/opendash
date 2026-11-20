@@ -455,12 +455,16 @@ function petSvg(pet, o) {
  * The same drawing as a <g> string with its feet at (0, 0) in the caller's units: o {h (the pet's height there, default 24),
  * pose, mood, face (1 right, -1 left), shadow, cls}. For the garden (petGardenSprite) and other SVG scenes of the page.
  */
-/** The garden sprite; in the Painted village it is painted into the scene's light (94-garden-art-g-paint.js), elsewhere the drawing as it is. */
+/** The garden sprite. Round 3 (Nov 2026): the owner preferred the pets as they were before the 12 Nov redraw ("cuter, more personality, not
+ *  over-engineered"), so the garden draws the rig's own drawing again, with every pose, walk, idle and trick it had. The Painted village redraw
+ *  (97-pets-0kitpaint*.js) and its shading pass stay only behind o.painted: true, for the before-and-after sheet. The garden adds the pet's soft
+ *  contact shadow (the pt-shadow below, and the native world's baked contact) so it sits on the painted ground. */
 function petSvgGroup(pet, o) {
-  const painted = o && o.painted != null ? !!o.painted : !(o && o.flat) && typeof gardenFigurePaintOn === 'function' && gardenFigurePaintOn();
+  const painted = !!(o && o.painted);
   let s; _PT_PAINT.on = painted; try { s = _petSvgGroupRaw(pet, o); } finally { _PT_PAINT.on = false; }
-  if (s && painted) { const sp = petSpecies(petNormalize(pet).species); if (sp && (sp.id === 'duck' || (typeof _ppArtFor === 'function' && _ppArtFor(sp)))) s = s.replace('class="pt-g ', 'class="pt-g pt-pp '); }   // redrawn: the painter adds no second shading
-  return s && !(o && o.flat) && typeof gardenFigurePaintIf === 'function' ? gardenFigurePaintIf(s, 'pet') : s; }
+  if (!painted) return s;
+  { const sp = petSpecies(petNormalize(pet).species); if (s && sp && (sp.id === 'duck' || (typeof _ppArtFor === 'function' && _ppArtFor(sp)))) s = s.replace('class="pt-g ', 'class="pt-g pt-pp '); }   // redrawn: the painter adds no second shading
+  return s && !(o && o.flat) && typeof gardenFigurePaint === 'function' ? gardenFigurePaint(s, 'pet') : s; }
 function _petSvgGroupRaw(pet, o) {
   o = o || {};
   const A = petArt(pet, o.pose || 'walk', o.mood);

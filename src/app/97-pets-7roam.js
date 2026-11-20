@@ -30,10 +30,16 @@ function petGardenWorldOwns() { return _ptw.on && _ptwMotion() && _ptw.pets.leng
 function _ptwGone(P) { return !!P.me && typeof gpPetAway === 'function' && gpPetAway(); }   // on a little journey (94-garden-play-1pet.js): it is not here to do anything
 function petGardenPositions() { return _ptw.pets.filter(P => !_ptwGone(P)).map(P => ({ x: P.x, y: P.y, species: P.look.species, me: !!P.me, moving: P.tx != null })); }
 function _ptwCell(x, y) { const W = GARDEN_WORLD; return { x: x * W.cellW, y: W.sky + y * W.cellH }; }
-function _ptwFree(x, y) { try { return gardenWorldFree(x, y, 0.14); } catch (e) { return true; } }
+function _ptwFree(x, y) { try { return gardenWorldFree(x, y, 0.14) && !(typeof _plInRibbons === 'function' && _plInRibbons(x, y, true)); } catch (e) { return true; } }   // (round 6: never in among the maypole's ribbons)
 function _ptwPlayer() { return typeof _gw !== 'undefined' && _gw && _gw.on !== false ? { x: _gw.px, y: _gw.py, moving: !!_gw.moving, busy: !!_gw.reel } : null; }
 /** A sprite's height in the garden's units: small things stay small, big things never tower over you. */
-function _ptwH(id) { const sp = petSpecies(id) || {}; return (24 + 20 * Math.min(1, Number(sp.h) || 0.3)) * (typeof GARDEN_ACTOR_SCALE === 'number' ? GARDEN_ACTOR_SCALE : 1); }
+/* How tall a pet is drawn in the garden (its picture box, world px). Round 3, sizes: against H, the player's height (about 29.6 world px at the
+   0.8 actor scale; a pet's visible body is about 0.55 of its box), a pet stands (visible) about 0.13 + 0.68 * h of H, h being its species' own size
+   (97-pets-0kitspecies*.js), never over 0.9. Round 3, the lead's call: drawn larger, 0.225 + 0.75 * h of H, so a dog stands about 0.6 H, a cat
+   0.45 H, a hamster or a frog over a quarter of you and a pony about 0.9 H; the order of sizes is kept.
+   The drawings do not change, only the size they are drawn at. PET_SIZE_H: species whose kit h is for the pet page, not for the world. */
+const PET_SIZE_H = Object.freeze({ tortoise: 0.35, dragon: 0.6, griffin: 0.7, yeti: 0.85, golem: 0.8 });
+function _ptwH(id) { const sp = petSpecies(id) || {}, h = PET_SIZE_H[id] != null ? PET_SIZE_H[id] : Number(sp.h) || 0.3; return 67.3 * (0.225 + 0.75 * Math.min(0.9, Math.max(0.05, h))) * (typeof GARDEN_ACTOR_SCALE === 'number' ? GARDEN_ACTOR_SCALE : 1); }
 
 /* ---------- a pet in the garden ---------- */
 function _ptwNew(look, me) {
@@ -55,7 +61,7 @@ function _ptwNew(look, me) {
     if (!P.cache[k]) P.cache[k] = petSvgGroup(look, { h: _ptwH(look.species), pose, mood: mood || { eyes: 'open', mouth: 'smile' }, cls: 'pt-live pt-fun-' + _ptFun() });
     if (gardenVisualIsNative(face) && P.clipH) { P.clipH.stop(true); P.clipH = null; }
     face.innerHTML = P.cache[k];   // allow-listed ids and numbers only
-    P.root = face.firstChild;
+    P.root = face.querySelector(":scope > g") || face.firstElementChild;   // (the drawn pet, not the colour defs the painted coats put first: a clip on the defs never moved the pet)
     if (P.root) { if (P.act) P.root.classList.add('pt-act-' + P.act); if (P.run) P.root.classList.add('pt-run'); }
   };
   P.clip = (name, ms, then, o) => {
@@ -67,7 +73,9 @@ function _ptwNew(look, me) {
       const was = P.pose, mood = P.lastMood;
       if (lib.pose !== was || lib.face) P.draw(lib.pose, lib.face || mood || { eyes: 'open', mouth: 'smile' });
       let seen = true;
-      try { const r = P.node.getBoundingClientRect(); seen = r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight; } catch (e) { seen = true; }
+      // in view by the camera, in world cells (round 3: the native node's box is in canvas pixels, so on a screen with a pixel ratio above 1 a pet on the right half
+      // of the view read as off screen and never played its clips); the page box only when there is no camera
+      try { if (typeof _gwInView === 'function' && _gw && _gw.cam && _gw.cam.w) seen = _gwInView(P.x, P.y, 1.5); else { const r = P.node.getBoundingClientRect(); seen = r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight; } } catch (e) { seen = true; }
       if (seen && P.root) P.clipH = petClipRun(P.root, name);
       P.busy = lib.ms / 1000; P.cb = () => { if (lib.pose !== was || lib.face) P.draw(was || 'sit', mood || { eyes: 'open', mouth: 'smile' }); if (then) then(); };
       if (typeof petGardenPlayClip === 'function') petGardenPlayClip(P, name, o);
@@ -77,7 +85,7 @@ function _ptwNew(look, me) {
     if (typeof petGardenPlayClip === 'function') petGardenPlayClip(P, name, o);
   };
   P.setAct = (n) => { if (P.root && P.act) P.root.classList.remove('pt-act-' + P.act); P.act = n || ''; if (P.root && n) P.root.classList.add('pt-act-' + n); };
-  P.walkTo = (x, y, run, then) => { P.ecology = ''; P.ecologyLift = 0; P.tx = x; P.ty = y; P.run = !!run; P.speed = run ? 2 : 1; P.stuck = 0; P.draw('walk'); if (P.root) P.root.classList.toggle('pt-run', P.run); P.arrive = then || null; };
+  P.walkTo = (x, y, run, then) => { if (typeof _plPropsDrop === 'function') _plPropsDrop(P); P.ecology = ''; P.ecologyLift = 0; P.tx = x; P.ty = y; P.run = !!run; P.speed = run ? 2 : 1; P.stuck = 0; P.draw('walk'); if (P.root) P.root.classList.toggle('pt-run', P.run); P.arrive = then || null; };
   P.sit = (mood) => { P.tx = null; P.run = false; P.draw('sit', mood); };
   P.sleep = (s) => { if (P.me && typeof gardenLivePet === 'function') gardenLivePet('nap', 'on'); P.tx = null; P.draw('sleep', { eyes: 'closed', mouth: 'calm', extra: 'zzz' }); P.busy = s; P.cb = null; };
   P.hearts = () => _ptwHearts(P);
@@ -105,8 +113,12 @@ function _ptwFlier(P) { return P.per.flies || _ptwHas(P, 'perch'); }
 /* How high up the top of each drawn thing is (stage pixels above its foot), and for what you can sit on, the seat. From the drawings in 94-garden-lands-2art.js; anything not here goes by its `tall`. */
 const PET_TOPS = Object.freeze({ lamp: 33, cross: 44, statue: 56, topiary: 44, gate: 50, cairn: 33, stump: 24, wall: 24, hay: 38, barrels: 30, picnic: 22, mile: 26, finger: 40, seat: 28 });
 const PET_SEATS = Object.freeze({ seat: 15, wall: 24, stump: 24, picnic: 22, mile: 26, hay: 38, barrels: 30 });
-const PET_NOT_PERCH = new Set(['boat', 'reed-bank', 'old-angler', 'jetty-post', 'ld-bridge', 'ld-rope', 'ld-sunk', 'ld-labyrinth', 'lf-rill', 'land-finds']);
-const PET_DRINKS = new Set(['fountain', 'bird-bath', 'mini-pond', 'wishing-well', 'lf-fountain', 'lf-well', 'ld-wish', 'ld-pump']);
+/* What a pet does with a thing goes by the thing's KIND (94-garden-zz-7act-0kinds.js GARDEN_KINDS: noPerch, drink, warm), never its name. */
+function _ptwKind(o, land) {
+  try { if (land) return gardenKindOf({ id: o.id, art: o.art || o.kind }); if (o.kind === 'decor') { const d = gardenDecor(o.id); return gardenKindOf({ decor: o.id, effect: d && d.effect && d.effect.kind, id: o.id }); } if (o.kind === 'prop') return gardenKindOf({ id: o.id, art: o.def && o.def.kind }); } catch (e) { /* unknown */ }
+  return '';
+}
+function _ptwKindIs(k, flag) { const K = k && typeof GARDEN_KINDS !== 'undefined' && GARDEN_KINDS[k]; return !!(K && K[flag]); }
 const _ptwS = { at: 0, built: 0, key: '', water: null, shore: [], perch: [], seat: [], drink: [], warm: [], shade: [], top: new Map() };
 const _ptwTenth = (v) => Math.round(v * 10) / 10;
 function _ptwSpots() {
@@ -132,19 +144,24 @@ function _ptwSpots() {
   let rows = []; try { rows = gardenWorldObjects(m); } catch (e) { rows = []; }
   for (const o of rows) {
     if (zoneOk(o.top.x, o.top.y)) {
-      if (o.id === 'fire-pit') warm.push({ x: o.top.x, y: o.y + o.h, name: o.name });
+      if (o.kind !== 'plant' && _ptwKindIs(_ptwKind(o), 'warm')) warm.push({ x: o.top.x, y: o.y + o.h, name: o.name });
       if (o.kind === 'plant' && o.height >= 60) shade.push({ x: o.top.x, y: o.y + o.h, name: o.name });
     }
-    if (PET_NOT_PERCH.has(o.id) || (o.kind === 'plant' && o.height < 28)) continue;
+    const ok = o.kind === 'plant' ? '' : _ptwKind(o);
+    if (_ptwKindIs(ok, 'noPerch') || (o.kind === 'plant' && o.height < 28)) continue;
     add(o.uid, o.top.x, o.top.y, o.z, o.top.lift, o.kind === 'decor' && gardenDecor(o.id) && gardenDecor(o.id).effect && gardenDecor(o.id).effect.kind === 'sit' ? o.top.lift : 0, o.name, { x: o.x, y: o.y, w: o.w || 1, h: o.h || 1 });
-    if (PET_DRINKS.has(o.id)) drink.push({ x: o.top.x, y: o.y + o.h, name: o.name });
+    if (_ptwKindIs(ok, 'drink')) drink.push({ x: o.top.x, y: o.y + o.h, name: o.name });
   }
   for (const p of gardenLandProps()) {
-    if (PET_NOT_PERCH.has(p.id) || !p.tall || p.walk) continue;
+    const pk = _ptwKind(p, true);
+    if (_ptwKindIs(pk, 'warm')) warm.push({ x: p.x + p.w / 2, y: p.y + p.h, name: p.name });
+    if (_ptwKindIs(pk, 'noPerch') || !p.tall || p.walk) continue;
     const art = String(p.kind || '').replace(/^l[df]-/, ''), x = p.x + p.w / 2, y = p.y + p.h - 0.1;
     add(p.id, x, y, p.y + p.h, PET_TOPS[art] != null ? PET_TOPS[art] : p.tall * 48 * 0.9, PET_SEATS[art] || 0, p.name, { x: p.x, y: p.y, w: p.w || 1, h: p.h || 1 });
-    if (PET_DRINKS.has(p.id)) drink.push({ x, y: p.y + p.h, name: p.name });
+    if (_ptwKindIs(pk, 'drink')) drink.push({ x, y: p.y + p.h, name: p.name });
   }
+  // the things placed through layout data (a campfire, a log seat ...): by their kind, like everything else
+  try { if (typeof gardenThingsPlaced === 'function') for (const t of gardenAffordThings()) { if (t.src !== 'thing' || !zoneOk(t.x, t.y)) continue; if (_ptwKindIs(t.kind, 'warm')) warm.push({ x: t.x, y: t.y + 0.1, name: t.name || GARDEN_KINDS[t.kind].name }); if (_ptwKindIs(t.kind, 'drink')) drink.push({ x: t.x, y: t.y, name: t.name || GARDEN_KINDS[t.kind].name }); } } catch (e) { /* none */ }
   Object.assign(_ptwS, { water, shore, perch, seat, drink, warm, shade, top, model: m });
   return _ptwS;
 }
@@ -368,13 +385,26 @@ function _ptwComeAlong(P) {
   if (!P.guideNoWarp && (d > 9 || P.lost)) {
     P.lost = false;
     const nearest = !_ptwFlier(P) && !_ptwHas(P, 'swim') && typeof gardenWorldNearestFree === 'function' ? gardenWorldNearestFree : typeof _gwNearestFreePt === 'function' ? _gwNearestFreePt : null;
-    const f = nearest ? nearest(pl.x - .8, pl.y + .3, 2) : null;
+    let f = nearest ? nearest(pl.x - .8, pl.y + .3, 2) : null;
+    if (f && typeof _plBehindYou === 'function' && _plBehindYou(f.x, f.y, P)) f = nearest(pl.x + .8, pl.y + .3, 2) || f;
     if (f) { P.x = f.x; P.y = f.y; P.tx = null; P.z = -1; }
+  }
+  // round 3: never stood on you. You stopped where it sits (or it sat down on your spot): it steps aside to stand beside you. Rows that are
+  // meant to touch you (asleep on your feet, head on your lap, curled up beside you) keep their place.
+  if (!pl.moving && P.tx == null && !(P.root && P.root._pcH) && P.pose !== 'sleep' && typeof _plTouch === 'function' && !(P.lifeCur && /^(on-your-feet|head-on-lap|bench-lap|lie-beside)$/.test(P.lifeCur.id))) {
+    const half = typeof _plHalf === 'function' ? _plHalf(P) : 0.3;
+    // (round 5, the critic: a cell straight behind you reads as sitting on your head at the default camera: it steps out from there too)
+    const behind = typeof _plBehindYou === 'function' && _plBehindYou(P.x, P.y, P) && !(P.lifeCur && P.lifeCur.stay);
+    if ((Math.abs(pl.x - P.x) < half + 0.1 && Math.abs(pl.y - P.y) < 0.42 || behind) && (P.moveAsideT || 0) < performance.now()) {
+      P.moveAsideT = performance.now() + 1500;
+      const t = _plTouch(P, 'side'); if (t) { if (P.busy > 0) { P.busy = 0; P.cb = null; if (P.act) P.setAct(''); } P.walkTo(t.x, t.y, false, () => { P.dir = -t.side; P.sit(); P.busy = 1.5; }); return true; }
+    }
   }
   if (d <= (pl.moving ? 2 : 5)) return false;
   if (P.busy > 0) { P.busy = 0; P.cb = null; if (P.act) P.setAct(''); }
-  const a = Math.atan2(P.y - pl.y, P.x - pl.x);
-  P.walkTo(pl.x + Math.cos(a) * 1.1, pl.y + Math.sin(a) * 0.7, d > 4);
+  // it catches up to your side, a little in front, never to the spot straight behind you (round 5: from the north it ended on your head)
+  const a = Math.atan2(P.y - pl.y, P.x - pl.x), sx = P.x >= pl.x ? 1 : -1, cx = Math.cos(a) * 1.1, cy = Math.max(-0.15, Math.min(0.5, Math.sin(a) * 0.7));
+  P.walkTo(pl.x + sx * Math.max(0.85, Math.abs(cx)), pl.y + cy, d > 4);
   return true;
 }
 function _ptwFishingPath(P, target) {
@@ -473,13 +503,20 @@ function _ptwLifeGoal(P, dt) {
 function _ptwThink(P, W, dt) {
   if (typeof petGardenGuideTick === 'function') petGardenGuideTick(P, W, dt);
   if (typeof petGardenPlayTick === 'function') petGardenPlayTick(P, W, dt);
+  if (P.me && typeof petLifeTick === 'function') petLifeTick(P, W, dt);   // round 3: what you are doing, for the hundred things (97-pets-tricks-7life-1engine.js)
   if (P.me && !P.wow && typeof petCueCheck === 'function' && petCueCheck('garden')) return;   // the assistant asked: a dozing pet wakes for it
   if (_ptwFishingGoal(P, dt)) return;
   const guided = typeof petGardenGuideOwns === 'function' && petGardenGuideOwns(P);
   if (P.seatRecovery && (P.arrive !== P.seatRecovery.advance || P.tx == null)) P.seatRecovery = null;
   if (!guided && _ptwSeatRecover(P)) return;
   const recovering = P.seatRecovery && P.arrive === P.seatRecovery.advance && P.tx != null;
-  if (!guided && !recovering && _ptwLifeGoal(P, dt)) return;
+  // (round 5) its games are open over it: it waits there, sitting, until you pick one, close them or walk off
+  if (P.menuHold) {
+    const B = typeof _gh !== 'undefined' && _gh.bubble, pl0 = _ptwPlayer();
+    if (B && B.el && B.el._petMenu === P && B.el.isConnected && P.menuHold > performance.now() && !(pl0 && pl0.moving)) { if (P.tx == null && P.busy < 0.5) P.busy = 0.5; return; }
+    P.menuHold = 0; if (P.busy > 2 && !P.lifeCur) P.busy = 0.4;
+  }
+  if (!guided && !recovering && !(P.lifeHold > performance.now()) && _ptwLifeGoal(P, dt)) return;   // (round 3: one of the hundred things is playing; a passing butterfly waits)
   if (!guided && !recovering && _ptwComeAlong(P)) return;
   if (P.busy > 0) { P.busy -= dt; if (P.busy <= 0 && P.cb) { const c = P.cb; P.cb = null; c(); } if (P.busy > 0) return; }
   if (typeof petGardenGuideReady === 'function' && petGardenGuideReady(P, W)) return;
@@ -489,6 +526,7 @@ function _ptwThink(P, W, dt) {
   const pl = _ptwPlayer();
   if (P.me && pl && (pl.moving || pl.busy)) { P.sit(); P.busy = 0.6; return; }
   if (P.me && typeof petSurpriseMaybe === 'function' && !_ptwVisiting() && !(_gw && _gw.reel) && petSurpriseMaybe('garden', 8)) return;
+  if (typeof petLifeThink === 'function' && petLifeThink(P, W)) return;   // round 3: one of the hundred things, now and then (97-pets-tricks-7life-*.js)
   if (P.pose === 'sleep' && W.night && !P.per.night) { P.busy = 12; return; }
   if (W.night && !P.per.night) { P.sleep(30); return; }   // bedtime
   if (W.rain && Math.random() < 0.35) { P.sit(); P.clip('shake', 900, () => { P.clip('shiver', 1800, () => { P.busy = 1; }); }); return; }
@@ -522,7 +560,10 @@ function _ptwStep(P, dt, t) {
   if (typeof petGardenMotionStep === 'function') petGardenMotionStep(P, dt, t, P.x - x0, P.y - y0, T);
   if (typeof petGardenPlayContact === 'function') petGardenPlayContact(P, dt);
   if (off && P.node.isConnected) return;   // (far from the view: it carries on with its day, off the page)
-  const pos = _ptwCell(P.x, P.y), tf = `translate(${pos.x.toFixed(1)} ${(pos.y - T.up + T.sink).toFixed(1)})`;
+  // a perch (up in a window) belongs to the spot it was taken at: the pet walked, was called or followed you off it, so it is on the ground again
+  // (20 Nov: it went on being drawn up at the treehouse's deck beside you, and asleep up there on your feet after you came down)
+  if (P.perch && (P.tx != null || Math.abs((P.perch.x == null ? P.x : P.perch.x) - P.x) > 0.05 || Math.abs((P.perch.y == null ? P.y : P.perch.y) - P.y) > 0.05)) { P.perch = null; try { for (const g of (P.root || P.node).querySelectorAll('.pt-lprop')) g.remove(); } catch (e) { /* none: the window's sill goes with it */ } }
+  const pos = _ptwCell(P.x, P.y), pk = P.perch, tf = `translate(${(pos.x + (pk ? pk.dx : 0)).toFixed(1)} ${(pos.y - T.up + T.sink - (pk ? pk.up : 0)).toFixed(1)})`;   // perch (round 3, 85): up in a window, the pet's spot stays its foot
   if (tf !== P.tf) { P.tf = tf; P.node.setAttribute('transform', tf); P.node.setAttribute('data-z', (T.z + 0.002).toFixed(2)); }
   let fd = P.dir < 0 ? 'scale(-1 1)' : '';
   if (gardenVisualIsNative(P.face)) {
@@ -562,6 +603,7 @@ function _ptwFlies(dt, t) {
   for (const F of _ptw.flies) {
     F.life -= dt; F.a += dt * 1.1;
     F.x += Math.cos(F.a * 1.7) * dt * 1.5; F.y += Math.sin(F.a * 1.1) * dt * 0.9;
+    if (F.home) { const dx = F.home.x - F.x, dy = F.home.y - F.y; if (Math.hypot(dx, dy) > 1.1) { F.x += dx * Math.min(1, dt * 1.6); F.y += dy * Math.min(1, dt * 1.6); } }   // (round 6: the butterfly row's butterfly stays round you)
     F.x = Math.max(1, Math.min(GARDEN_WORLD.cols - 2, F.x)); F.y = Math.max(1, Math.min(GARDEN_WORLD.rows - 2, F.y));
     const pos = _ptwCell(F.x, F.y);
     F.node.setAttribute('transform', `translate(${pos.x.toFixed(1)} ${(pos.y - 18 - Math.sin(t * 3 + F.a) * 4).toFixed(1)})`);
@@ -694,7 +736,9 @@ function _ptwClick(ev) {
   if (typeof petGardenPlaySuspend === 'function') petGardenPlaySuspend(P);
   if (P.me) { const r = petPat(); if (r.ok && typeof _ptCheer === 'function') { /* the pet's joy is the feedback */ } if (typeof petBookTick === 'function') { const tt = petBookTick('pat'); for (const id of tt.secret) petSecretReveal(id); } }
   P.tx = null; P.arrive = null; P.sit({ eyes: 'happy', mouth: 'open' }); P.hearts();
-  P.clip('jump', 800, () => { P.sit(); P.busy = 1.5; }, { quiet: true });
+  P.clip('jump', 800, () => { P.sit(); P.busy = P.menuHold > performance.now() ? (P.menuHold - performance.now()) / 1000 : 1.5; }, { quiet: true });
+  if (P.me && typeof petLifeEvent === 'function') petLifeEvent('pat');
+  if (P.me && typeof _plPatN !== 'undefined' && _plPatN > 0 && _plPatN % 3 === 0) return;   // the third pat: it spins for you, no menu over it
   if (typeof petGardenActionMenu === 'function') petGardenActionMenu(P, P.cb); else if (typeof petGardenPuddleMenu === 'function') petGardenPuddleMenu(P, P.cb);
 }
 function _ptwCheck() {
@@ -704,7 +748,7 @@ function _ptwCheck() {
   const key = _ptwRosterKey();
   if (key !== _ptw.key) { _ptw.key = key; _ptwBuild(); }
   // 2.23: a secret that comes true while you are out in the garden with your pet
-  if (typeof petBookTick === 'function' && (_ptw.bookT = (_ptw.bookT || 0) + 1) % 60 === 5 && _ptw.pets.length) { const tt = petBookTick(''); for (const id of tt.secret) petSecretReveal(id); }
+  if (typeof petBookTick === 'function' && (_ptw.bookT = (_ptw.bookT || 0) + 1) % 60 === 5 && _ptw.pets.length) { const tt = petBookTick(''); for (const id of tt.secret) petSecretReveal(id); if (typeof petLifeCelebrate === 'function') for (const id of tt.earned) petLifeCelebrate(id); }
   for (const P of _ptw.pets) if (!P.node.isConnected) { P.z = -1; P.tf = null; _ptwPlace(P.node, P.y); }
   if (_ptw.enc && !_ptw.enc.node.isConnected) _ptwPlace(_ptw.enc.node, _ptw.enc.cell.y);
   if (!_ptw.pets.length) { try { const W = _ptwWorld(); if (W) _ptwEncounter(W); } catch (e) { /* later */ } return; }   // nobody out: no frames at all, but a rare visitor may still come

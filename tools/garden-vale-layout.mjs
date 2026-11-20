@@ -753,3 +753,14 @@ if (svgAt > 0) {
   s += '</svg>';
   writeFileSync(process.argv[svgAt + 1], s);
 }
+
+/* ------------------------------------------------------------ placed things (not part of the identity) */
+// The ball, the log seats, the campfires, the telescope ... are rows of a KIND in assets/garden/vale-things.json or in a region
+// file's own `things` (lib/garden-things.mjs). They are not written into island-v5.json, so placing one never starts a garden
+// again. Each row: { id, kind, x, y } or { id, kind, on: '<a static id>', at: [dx, dy] }. Check them: node tools/affordance-audit.mjs
+{
+  const { loadGardenThings } = await import('../lib/garden-things.mjs');
+  const T = loadGardenThings(root), ids = new Set(S.map(p => p.id));
+  const lost = T.things.filter(t => t.on && !ids.has(t.on)).map(t => t.id + ' (on ' + t.on + ')');
+  console.log('placed things', T.things.length, 'from', T.from.join(' '), lost.length ? 'ANCHOR MISSING: ' + lost.join(', ') : '');
+}

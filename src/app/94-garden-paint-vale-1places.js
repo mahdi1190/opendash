@@ -854,6 +854,7 @@
     const { L, P, add, kit, thing } = C, pz = (L.pres.plazas || []).find(p => p.id === 'the-green'); if (!pz) return;
     const loop = L.routePts(pz.route); if (loop.length < 6) return;
     const c = L.cpt(pz.x, pz.y), cx0 = loop.reduce((s, q) => s + q.x, 0) / loop.length, cy0 = loop.reduce((s, q) => s + q.y, 0) / loop.length;
+    { const q = L.cpt(pz.x + .9, pz.y + 3.3), R = [q.x - 4 * L.cw, q.y - 3.3 * L.ch, q.x + 4 * L.cw, q.y + 3.3 * L.ch]; const all = window.GardenPaintPaved || (window.GardenPaintPaved = []); if (!all.some(o => o.id === pz.id)) all.push({ id: pz.id, rect: R }); }   // (the paved circle below: the pets' ground rule reads it, so nothing is laid on it)
     // the sward: the loop pulled in from the path's edge
     // (2.74: the lawn is authored, the inside edge of the flagged walk; the square lies outside it, at its foot)
     const inner = Array.isArray(pz.lawn) && pz.lawn.length > 2 ? V.shapeLoop(L, pz.lawn, 3) : loop.map(q => ({ x: cx0 + (q.x - cx0) * .9, y: cy0 + (q.y - cy0) * .86 })), bb = kit.bboxOf(loop, 20), seed = kit.hashStr('the-green');
@@ -890,7 +891,10 @@
     // (the tallest thing on the green throws a shadow you can see, pole and ribbons, and each ribbon's peg sits in the turf
     // with its own contact; the ribbons are drawn a little wider with a soft dark underside, so on a 2x screen a thin
     // diagonal does not break into steps)
-    if (spot && !pz.lime) thing({ key: 'maypole|' + C.season, x: spot.x, y: spot.y, box: [-46, -150, 46, 14], foot: [-6, 6, 6], shade: { a: 1 }, draw: B => {
+    // (round 5, pets: the foot is the ribbons' ring of pegs, not only the pole: you and your pet walked inside the ribbons and stood half hidden there)
+    // (round 6: the ring of pegs is the foot, a little wider than the pegs; standing behind it, the ribbons fade like a tree's crown so you are
+    // seen through them and never look as if you stood inside the pole)
+    if (spot && !pz.lime) thing({ key: 'maypole|' + C.season, x: spot.x, y: spot.y, box: [-46, -150, 46, 14], foot: [-38, 38, 12], crown: { x: 0, y: -46, rx: 46, ry: 48 }, shade: { a: 1 }, draw: B => {
       const rr = kit.rng(seed + 3), cols = ['#c84a3a', '#e8c84a', '#3a7ac0', '#f2f0e8', '#5e9a54', '#c86aa0'];
       B.shadow(1.5, 2, 12, 4, .45);
       for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2, ex = Math.cos(a) * 34, ey = Math.sin(a) * 9 + 2; B.shadow(ex + 1, ey + .8, 3.4, 1.4, .5); B.s(`M0 -128Q${ex * .6} ${-60 + ey} ${ex} ${ey}`, '#3a3428', 3, .16).s(`M0 -128Q${ex * .6} ${-60 + ey} ${ex} ${ey}`, cols[k], 2.1, .95).f(B.circ(ex, ey, 1.8), '#6a5034').f(B.circ(ex - .5, ey - .6, .7), '#a8845a'); }

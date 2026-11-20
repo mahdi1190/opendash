@@ -15,7 +15,7 @@ const _gll = {
   tipEl: null,
 };
 const _GL_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
-const GL_ACT_SPEED = 215, GL_ACT_RUN = 300, GL_ACT_SCALE = 0.74 * GARDEN_ACTOR_SCALE, GL_PET_H = 26 * GARDEN_ACTOR_SCALE;   // the walker's own speeds (GW_SPEED); a pet comes up to the knee
+const GL_ACT_SPEED = 150, GL_ACT_RUN = 260, GL_ACT_SCALE = 0.74 * GARDEN_ACTOR_SCALE, GL_PET_H = 26 * GARDEN_ACTOR_SCALE;   // the walker's own speeds (GW_SPEED); a pet comes up to the knee
 const _GLL_TAB = Math.floor(Math.random() * 2176782336).toString(36) + Math.floor(Math.random() * 2176782336).toString(36);   // this tab, to the server: one tab hosts
 function _gllNewId() { return Math.floor(Date.now()).toString(36).slice(-7) + Math.floor(Math.random() * 2176782336).toString(36);  /* clock-ok: only unique */ }
 function _gllApi(path, body, opts) { return _gscApi(path, body, opts); }
@@ -129,6 +129,7 @@ function _gllPaint(A) {
     if (!s) s = '<ellipse cx="0" cy="0.6" rx="11" ry="1.8" fill="#000000" opacity="0.14"/><rect x="-6" y="-40" width="12" height="26" rx="5" fill="#5a8a5a"/><circle cx="0" cy="-48" r="8" fill="#e8b890"/><rect x="-5" y="-14" width="4" height="14" rx="2" fill="#4a5a7a"/><rect x="1" y="-14" width="4" height="14" rx="2" fill="#4a5a7a"/>';
     A.inner.innerHTML = s;   // allow-listed ids through the avatar kit (profileAvatarNormalize), or the fixed figure above
     A.key = key;
+    if (A.actHold && typeof gartActRemote === 'function') { const id = A.actHold; setTimeout(() => { if (A.actHold === id) gartActRemote(A, id); }, 0); }   // a new drawing (they stopped walking, a look changed): the held move from the things-to-do table goes back on it
   }
   const crouch = A.sneakUntil > Date.now() && A.moving ? 0.93 : 1;   // clock-ok: a creep (the net's creep up on a bug)
   A.inner.setAttribute('transform', `scale(${dir === 'e' && A.face < 0 ? -GL_ACT_SCALE : GL_ACT_SCALE} ${GL_ACT_SCALE * crouch})`);
@@ -198,7 +199,7 @@ function _gllStep(A, dt, quiet) {
   }
   if (!moving && A.moving && A.tx == null && Date.now() < (A.stopAt || 0)) moving = true;   // clock-ok: as above
   if (moving !== A.moving) { A.moving = moving; A.key = ''; }
-  if (!quiet && A.bob) { const bt = moving && !_gllReduced() ? `translate(0 ${(-Math.abs(Math.sin(Date.now() / 90)) * 1.6).toFixed(2)})` : ''; if (A.bobT !== bt) { A.bobT = bt; A.bob.setAttribute('transform', bt); } }  // clock-ok: a little bob
+  if (!quiet && A.bob) { const bt = moving && !_gllReduced() ? `translate(0 ${(-Math.abs(Math.sin(Date.now() / 90)) * 1.6).toFixed(2)})` : A.actLift ? `translate(0 ${-A.actLift})` : '';   /* (on a seat or a branch: lifted to its height, 94-garden-zz-7act-1core.js) */ if (A.bobT !== bt) { A.bobT = bt; A.bob.setAttribute('transform', bt); } }  // clock-ok: a little bob
   if (!quiet && !A.key) _gllPaint(A);
   return moving;
 }
@@ -210,6 +211,7 @@ function _gllPlace(svg, node, z) {
 /* ---------- what people do ---------- */
 function _gllEmote(A, id, instant) {
   if (!A.root || typeof GART_EMOTES === 'undefined') return false;
+  if (String(id).startsWith('act-') && typeof gartActRemote === 'function') return gartActRemote(A, String(id).slice(4));   // something done with the world (94-garden-zz-7act-1core.js)
   const row = GART_EMOTES[id]; if (!row) return false;
   _gllEmoteStop(A);
   A.dir = 's'; A.pose = ''; A.key = ''; _gllPaint(A);
@@ -223,7 +225,7 @@ function _gllEmote(A, id, instant) {
   if (!row.hold) A.animT = setTimeout(() => _gllEmoteStop(A), motion ? row.ms : 1200);
   return true;
 }
-function _gllEmoteStop(A) { clearTimeout(A.animT); for (const a of A.anims || []) { try { a.cancel(); } catch (e) { /* gone */ } } A.anims = null; A.hold = ''; }
+function _gllEmoteStop(A) { if (A.actUndo) { const u = A.actUndo; A.actUndo = null; try { u(); } catch (e) { /* gone */ } } clearTimeout(A.animT); for (const a of A.anims || []) { try { a.cancel(); } catch (e) { /* gone */ } } A.anims = null; A.hold = ''; }
 /** A move with a place (a seat): walk there first if they are not there yet, rather than jump. */
 function _gllEmoteAt(A, ev) {
   if (Number.isFinite(ev.x) && Math.hypot(ev.x - A.x, ev.y - A.y) > 0.05) { _gllWalkVia(A, null, ev.x, ev.y); A.then = () => _gllEmote(A, ev.e); return; }
