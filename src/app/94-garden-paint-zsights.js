@@ -399,7 +399,7 @@
 
   /* ---------- the benches: oak slats on cast-iron scroll ends, the seat at a third of the player's height, a brass plate on
      the back rail, the grass in front worn to earth by feet ---------- */
-  const benchArt = seed => ({ box: [-44, -40, 44, 6], seat: { kind: 'earth', w: 72, front: 16, stones: 0, way: false }, draw(B, o) {
+  const benchArt = seed => ({ box: [-44, -40, 44, 6], foot: [[-38, 40, 10]], seat: { kind: 'earth', w: 72, front: 16, stones: 0, way: false }, draw(B, o) {
     const r = KIT().rng(seed), s = o.season, seat = -H * .3, back = -H * .78, OAKB = ['#a07a52', '#7e5e3c', '#c8a070', '#4a3624'];
     // the far iron end, the back slats, then the seat slats coming toward us, the near end over them
     const end = (x, near) => { const c = near ? '#22282a' : '#3a4244'; B.s(`M${x} 0Q${x - 3} ${seat * .5} ${x + 1} ${seat}L${x - 1} ${back}`, c, 2.4).s(`M${x + 1} ${seat}Q${x + 7} ${seat * .6} ${x + 6} 0`, c, 2).f(B.circ(x - 1, back, 1.8), c); if (near) B.s(`M${x - .6} ${seat * .6}q3 -3 1 -6`, '#5e6a6c', .7, .6); };
