@@ -230,6 +230,16 @@ function gardenFallsWater(data) {
   if (!Number.isFinite(lx)) return null;
   return { lip: { x: lx, y: F.y }, foot: { x: lx + .15, y: F.pool[1] } };
 }
+/** (vale final fix 1, rule 14) Where a fed falls lands when open water lies below its foot: the sheet goes on down a rock prow
+ * into the water until the whole drop is at least 8 H (8.4 x 40 px), as far as the water reaches below it. World px y of that
+ * landing, or null when there is no room (the falls then land at their own foot). Read from the water cells, never a place. */
+function gardenFallsDeepFoot(data) {
+  const fw = gardenFallsWater(data), W = typeof GARDEN_WORLD !== 'undefined' && GARDEN_WORLD; if (!fw || !W || typeof gardenTerrainAt !== 'function') return null;
+  const lipY = W.sky + fw.lip.y * W.cellH - 6, y0 = W.sky + fw.foot.y * W.cellH - 8, fx = fw.foot.x, want = Math.round(8.4 * 40);
+  const wet = (cx, py) => { const t = gardenTerrainAt(Math.floor(cx), Math.floor((py + 30 - W.sky) / W.cellH)); return t === 'water' || t === 'deep'; };
+  let yy = y0; while (yy - lipY < want && wet(fx, yy) && wet(fx - 1.6, yy) && wet(fx + 1.8, yy) && yy < y0 + 14 * W.cellH) yy += 10;
+  return yy - y0 >= 3 * W.cellH ? yy : null;
+}
 /** Retained river water and the precise standing surfaces crossing it. */
 function gardenIslandCrossingGeometry() {
   if (_gardenIslandDerived.crossings) return _gardenIslandDerived.crossings;

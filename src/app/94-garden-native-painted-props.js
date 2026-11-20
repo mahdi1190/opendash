@@ -1185,7 +1185,7 @@ window.GardenPaintedProps = (function () {
 
   /* ---------- Fleet Falls: rock step, falling sheet, spray, plunge pool ---------- */
   function falls(scene, spec, o) {
-    const season = spec.season || 'summer', Wd = Math.round(Math.max(40, Math.min(110, (spec.width || 96) * .55))), r = rng(hash(spec.id || 'falls'));
+    const season = spec.season || 'summer', Wd0 = Math.round(Math.max(40, Math.min(110, (spec.width || 96) * .55))), r = rng(hash(spec.id || 'falls'));
     let x = spec.x, y = spec.y, H = 176, authoredPool = false, ax = spec.x, ay = spec.y, S = 176, fed = false;   // (ax, ay): the rock step's foot; S: its height
     const data = typeof GardenIslandLayout !== 'undefined' && GardenIslandLayout.data, W = typeof GARDEN_WORLD !== 'undefined' && GARDEN_WORLD;
     const fixed = data && data.version >= 5 && spec.id === 'ld-falls' && (data.static || []).find(p => p.id === spec.id), pool = fixed && data.presentation && data.presentation.falls && data.presentation.falls.pool;
@@ -1198,13 +1198,48 @@ window.GardenPaintedProps = (function () {
       const fw = typeof gardenFallsWater === 'function' && gardenFallsWater(data);
       if (fw) { fed = true; ax = fw.lip.x * W.cellW; S = Math.max(64, Math.round(spec.y - (W.sky + fw.lip.y * W.cellH)) + 6); x = fw.foot.x * W.cellW; y = W.sky + fw.foot.y * W.cellH - 8; H = y - (ay - S); }
     }
-    const sharedPool = authoredPool && typeof GardenPaintWater !== 'undefined', lipX = ax - x, k = S / 176;
+    // (vale final fix 1, rule 14: Fleet Falls at least 8 H) The scarp gives the water under four rows to fall, about 2.5 H. Where open
+    // water lies below the foot, the falls go on down a rock prow that stands out into it, the sheet landing in the deep water
+    // well out, so the whole drop is 8 H or more: read from the water cells below the foot (any falls with a lake below it),
+    // never from a place. The prow stands only on water, so nothing that is walked on lies under it.
+    let deep = 0; const oldY = y;
+    if (fed && W && typeof gardenFallsDeepFoot === 'function') { const yy = gardenFallsDeepFoot(data); if (yy && yy - y >= 3 * W.cellH) { deep = yy - y; y = yy; H = y - (ay - S); } }
+    const Wd = deep ? Math.max(Wd0, 78) : Wd0, sharedPool = authoredPool && typeof GardenPaintWater !== 'undefined', lipX = ax - x, k = S / 176;
     const h = handle(scene, o, spec.id, { cls: 'falls', kind: 'falls' });
     const rock = ['#a39a86', '#7e7664', '#cbc3ad', '#5e584a'];
     const rockReach = Math.ceil(Wd / 2 + 130) + (fed ? 60 : 0), box = [-rockReach, -H - 50, rockReach, 40];
-    const baseKey = bake(scene, 'falls4|' + season + '|' + Wd + '|' + H + '|' + S + '|' + Math.round(lipX) + '|' + fed + '|' + sharedPool, box, B => {
+    const baseKey = bake(scene, 'falls5|' + season + '|' + Wd + '|' + H + '|' + S + '|' + Math.round(lipX) + '|' + fed + '|' + sharedPool + '|' + deep, box, B => {
+      if (deep) {
+        // the prow: a tall face of rock from the scarp's foot down into the deep water, in courses lit from the upper left,
+        // narrow at its top (the shore path beside it stays clear) and spreading at the waterline; wet and dark beside the
+        // sheet, mossed and ferned on its ledges, with a darker reflection and a ring of churned water at its foot
+        const top = -deep - 6, west = -Wd / 2 - 44, eastTop = Math.min(Wd / 2 + 18, 58), eastFoot = Wd / 2 + 96, westFoot = -Wd / 2 - 70;
+        // (its outline is the boulders' own: each course a row of lobed masses, so no edge of it runs as a ruled line)
+        const rows = Math.max(5, Math.round(deep / 30)), course = i => { const yy = top + 6 + (i + .5) * (-top - 8) / rows, t = Math.min(1, (yy - top) / -top); return { yy, wl: west + (westFoot - west) * Math.pow(t, 1.4) + (r() - .5) * 10, we: eastTop + (eastFoot - eastTop) * Math.pow(t, 1.6) + (r() - .5) * 10 }; };
+        { const g = B.cx.createRadialGradient(0, 6, 4, 0, 6, (eastFoot - westFoot) * .7); g.addColorStop(0, 'rgba(26,52,60,.38)'); g.addColorStop(1, 'rgba(26,52,60,0)'); B.cx.save(); B.cx.fillStyle = g; B.cx.scale(1, .28); B.cx.beginPath(); B.cx.arc(0, 6 / .28, (eastFoot - westFoot) * .7, 0, Math.PI * 2); B.cx.fill(); B.cx.restore(); }   // its reflection darkening the water
+        const C0 = []; for (let i = 0; i < rows; i++) C0.push(course(i));
+        for (const c of C0) { const hh = (-top - 8) / rows; B.f(D().blob(r, (c.wl + c.we) / 2, c.yy + 2, (c.we - c.wl) / 2 + 6, hh * .78, 14, .22), rock[3]); }
+        for (const c of C0) { const hh = (-top - 8) / rows; for (let xx = c.wl + 4; xx < c.we; xx += 22 + r() * 16) B.f(D().blob(r, xx, c.yy, 18 + r() * 10, hh * .62, 9, .3), rock[1]); }
+        B.cx.save(); B.cx.globalCompositeOperation = 'source-atop';
+        B.f(B.rect(westFoot - 20, top - 20, eastFoot - westFoot + 40, -top + 40), B.lin(westFoot, 0, eastFoot, 0, [[0, 'rgba(203,195,173,.45)'], [.35, 'rgba(203,195,173,.08)'], [.6, 'rgba(30,28,24,.12)'], [1, 'rgba(30,28,24,.4)']]));
+        B.f(B.rect(westFoot - 20, -30, eastFoot - westFoot + 40, 40), B.lin(0, -30, 0, 6, [[0, 'rgba(20,30,30,0)'], [1, 'rgba(20,30,30,.45)']]));   // wet and dark at the waterline
+        B.cx.restore();
+        for (let i = 0; i < rows; i++) { const { yy, wl, we } = C0[i];
+          // (slabs of the scarp's own bedded rock, wide and flat-topped and set like courses, a dark joint under each; not round cobbles)
+          for (let xx = wl + 10 + (i % 2) * 14; xx < we - 8; xx += 34 + r() * 18) { if (Math.abs(xx) < Wd / 2 + 6) continue; const rx = 18 + r() * 14, ry = 7 + r() * 4;
+            B.f(D().blob(r, xx + 2, yy + ry * .9, rx, ry * .55, 8, .25), '#3a372f', .55).f(D().blob(r, xx, yy, rx, ry, 8, .22), rock[1]).f(D().blob(r, xx - rx * .12, yy - ry * .45, rx * .82, ry * .42, 8, .25), rock[2], .85);
+            if (r() < .4) B.f(D().blob(r, xx - rx * .2, yy - ry * .62, rx * .5, ry * .22, 7, .4), MOSS[0], .8); }
+          for (const sgn of [-1, 1]) { const lx = sgn < 0 ? (wl + (-Wd / 2)) / 2 : (we + Wd / 2) / 2, lw = Math.abs(sgn < 0 ? -Wd / 2 - wl : we - Wd / 2) * .8; if (lw < 14) continue; B.f(D().blob(r, lx, yy + 9, lw / 2, 4, 9, .3), rock[3], .4).f(D().blob(r, lx, yy + 5, lw / 2, 3, 9, .3), rock[2], .6); if (r() < .6) B.s(`M${lx - 6} ${yy + 4}q-3 -9 1 -14M${lx} ${yy + 4}q1 -10 5 -13M${lx + 5} ${yy + 4}q4 -7 8 -9`, leafOf(season)[0], 1.6, .85); } }
+        // wet black rock either side of the sheet, streaked with runnels
+        for (const sgn of [-1, 1]) { B.f(`M${sgn * (Wd / 2 - 2)} ${top}L${sgn * (Wd / 2 + 16)} ${top + 10}L${sgn * (Wd / 2 + 22)} -4L${sgn * (Wd / 2 - 2)} -2Z`, '#2f3d3c', .55); for (let i = 0; i < 5; i++) { const xx = sgn * (Wd / 2 + 4 + r() * 16); B.s(`M${xx} ${top + r() * 40}q${(r() - .5) * 4} ${-top * .3} ${(r() - .5) * 3} ${-top * .5}`, '#9cc6c6', 1, .35); } }
+        // ivy and ferns hanging from the top courses
+        for (let i = 0; i < 7; i++) { const xx = west + 6 + r() * (eastTop - west - 12); if (Math.abs(xx) < Wd / 2 + 2) continue; B.s(`M${xx} ${top + 4}q${(r() - .5) * 8} ${20 + r() * 20} ${(r() - .5) * 6} ${36 + r() * 40}`, '#4e6a36', 1.8, .8); }
+        // the waterline: a pale lip of water round the prow's foot, and boulders half under it
+        for (let i = 0; i < 12; i++) { const xx = westFoot + 6 + r() * (eastFoot - westFoot - 12); B.f(B.ell(xx, 4 + r() * 4, 6 + r() * 8, 1.6 + r()), '#e2f0ec', .35 + r() * .3); }
+        for (let i = 0; i < 9; i++) { const xx = westFoot + 10 + r() * (eastFoot - westFoot - 20); if (Math.abs(xx) < Wd / 2 + 10) continue; B.stone(r, xx, 4 + r() * 6, 9 + r() * 7, 5 + r() * 3, ['#6f6a5c', '#4e4a40', '#9c9580', '#3a372f'], r() < .4 ? MOSS : null); }
+      }
       // the plunge pool and its pale lip
-      if (!sharedPool) B.f(B.ell(0, 8, 86, 22), '#4e7e8c').f(B.ell(0, 6, 74, 17), '#5f93a0').f(B.ell(-14, 4, 40, 7), '#88b8c0', .55).s(B.ell(0, 8, 86, 22), '#cfe2dc', 2, .5);
+      if (!sharedPool && !deep) B.f(B.ell(0, 8, 86, 22), '#4e7e8c').f(B.ell(0, 6, 74, 17), '#5f93a0').f(B.ell(-14, 4, 40, 7), '#88b8c0', .55).s(B.ell(0, 8, 86, 22), '#cfe2dc', 2, .5);
       // Keep the scarp at its original landscape anchor while the sheet reaches the Mere.
       B.cx.save(); B.cx.translate(ax - x, ay - y);
       // the rock step: big lobed masses lit from the upper left, darker in the cleft behind the water
@@ -1258,7 +1293,7 @@ window.GardenPaintedProps = (function () {
       { const cl = B.cx; for (let i = 0; i < 18; i++) { const sx = (r() - .5) * Wd * 1.9, rx = 9 + r() * 13, ry = 4 + r() * 4, sy = -4 + (r() - .5) * 8 - Math.max(0, 1 - Math.abs(sx) / Wd) * 7, g = cl.createRadialGradient(sx, sy, 0, sx, sy, rx); g.addColorStop(0, 'rgba(250,253,251,.78)'); g.addColorStop(.55, 'rgba(238,247,245,.4)'); g.addColorStop(1, 'rgba(238,247,245,0)'); cl.save(); cl.translate(sx, sy); cl.scale(1, ry / rx); cl.translate(-sx, -sy); cl.fillStyle = g; cl.beginPath(); cl.arc(sx, sy, rx, 0, Math.PI * 2); cl.fill(); cl.restore(); } }
       for (let i = 0; i < 14; i++) { const sx = (r() - .5) * Wd * 1.5, rr = 1 + r() * 2.2; B.f(B.ell(sx, -5 + (r() - .5) * 8, rr * 1.4, rr), '#ffffff', .55 + r() * .35); }
       // Standalone falls have a stone rim; the Mere already owns its real shoreline.
-      if (!sharedPool) for (let i = 0; i < 8; i++) { const a = Math.PI * (.08 + .84 * r()), px = Math.cos(a) * 92 * (r() < .5 ? -1 : 1), py = 14 + Math.sin(a) * 14; B.stone(r, px, py, 7 + r() * 5, 4 + r() * 2, STONE, r() < .5 ? MOSS : null); }
+      if (!sharedPool && !deep) for (let i = 0; i < 8; i++) { const a = Math.PI * (.08 + .84 * r()), px = Math.cos(a) * 92 * (r() < .5 ? -1 : 1), py = 14 + Math.sin(a) * 14; B.stone(r, px, py, 7 + r() * 5, 4 + r() * 2, STONE, r() < .5 ? MOSS : null); }
     });
     // trees on the scarp top are the library's own, like the planting round them (their trunks join the one trunk list: gateTrees)
     fallsFeet = [];
@@ -1266,8 +1301,12 @@ window.GardenPaintedProps = (function () {
     // The falling sheet stops the feet from its foot up to the cave stair's sill, so nobody walks into the water and stands
     // inside the falls (a gap was left between the rock's block and the pool's edge under it; water hunter, round 3). Shared
     // with the walking through the one trunk list (rows of boxes the sheet's width), like the scarp-top trees above.
-    if (fed && o.W) { const wC = (Wd + 6) / o.W.cellW, footY = (y - o.W.sky) / o.W.cellH, cX = x / o.W.cellW; for (let yy = footY - 1.5; yy <= footY - .1; yy += .36) fallsFeet.push([+cX.toFixed(2), +yy.toFixed(2), +wC.toFixed(2)]); }
-    const base = h.add(image(scene, baseKey, x, y));
+    if (fed && o.W) { const wC = (Wd0 + 6) / o.W.cellW, footY = (oldY - o.W.sky) / o.W.cellH, cX = x / o.W.cellW; for (let yy = footY - 1.5; yy <= footY - .1; yy += .36) fallsFeet.push([+cX.toFixed(2), +yy.toFixed(2), +wC.toFixed(2)]); }
+    // (a deep falls is one picture shown as two crops: down to the scarp's foot it stands where the falls always stood, so you walk
+    // in front of its rock step on the shore; the prow below stands at its own foot out in the water, in front of what swims behind it)
+    // (both crops stand in the object layer, so they are lit alike: the upper one at the falls' own foot, as before)
+    const base = deep ? h.standing(image(scene, baseKey, x, y), spec.y + 4, true) : h.add(image(scene, baseKey, x, y)), live = (im, dz) => deep ? h.standing(im, y + dz) : h.add(im);
+    if (deep && base) { const tw = base.width, th = base.height, sr = Math.max(1, Math.min(th - 1, Math.round((oldY - 10 - y - box[1]) * K))); base.setCrop(0, 0, tw, sr); const low = h.standing(image(scene, baseKey, x, y), y, true); if (low) low.setCrop(0, sr, tw, th - sr); }
     // The fixed falls' canvas includes empty padding beside the cave stair.
     // Keep its solid rock/sheet mask once per existing texture; frame probes
     // read this CPU array, never canvas pixels or the current faded alpha.
@@ -1301,17 +1340,21 @@ window.GardenPaintedProps = (function () {
       cx.globalCompositeOperation = 'destination-in'; cx.fillStyle = B.lin(0, 0, Wd, 0, [[0, 'rgba(0,0,0,0)'], [.15, 'rgba(0,0,0,1)'], [.85, 'rgba(0,0,0,1)'], [1, 'rgba(0,0,0,0)']]); cx.fillRect(0, 0, Wd, 64); cx.globalCompositeOperation = 'source-over';
     });
     if (streakKey && scene.add.tileSprite) {
-      const ts = scene.add.tileSprite(x, y - H / 2 - 4, Wd * K, (H - 8) * K, streakKey).setScale(1 / K).setAlpha(.8);
-      h.add(ts); h.move(ts, (node, t, motion) => { if (motion) node.tilePositionY = -t * 150; });
+      // (a deep falls: the streaks in two lengths, each with its own crop of the picture, the lower one's pattern carried on from the upper)
+      const yTop = y - H + 4, ySplit = deep ? oldY - 10 : y - 4;
+      for (const [y0, y1, low] of deep ? [[yTop, ySplit, false], [ySplit, y - 4, true]] : [[yTop, y - 4, false]]) {
+        const ts = scene.add.tileSprite(x, (y0 + y1) / 2, Wd * K, (y1 - y0) * K, streakKey).setScale(1 / K).setAlpha(.8), off = (y0 - yTop) * K;
+        if (low) live(ts, .1); else if (deep) h.standing(ts, spec.y + 4.1); else h.add(ts); h.move(ts, (node, t, motion) => { if (motion) node.tilePositionY = -t * 150 + off; });
+      }
     }
     // The authored Mere painter owns pool spray/rings; standalone falls keep these.
     if (!sharedPool) {
     // spray: soft puffs rising and spreading where the water lands
     const puff = bake(scene, 'puff', [-16, -10, 16, 10], B => { B.cx.fillStyle = B.rad(0, 0, 16, [[0, 'rgba(250,253,252,.9)'], [.5, 'rgba(240,248,246,.45)'], [1, 'rgba(240,248,246,0)']]); B.cx.save(); B.cx.scale(1, .62); B.cx.beginPath(); B.cx.arc(0, 0, 16, 0, Math.PI * 2); B.cx.fill(); B.cx.restore(); });
-    for (let i = 0; i < 7; i++) { const im = h.add(image(scene, puff, x, y)), ph = i / 7, side = i % 2 ? 1 : -1; h.move(im, (node, t, motion) => { const f = ((motion ? t : 1.3) * .32 + ph) % 1; node.setPosition(x + side * (4 + f * (18 + (i % 3) * 8)), y - 4 - f * 34).setScale((.7 + f * 1.4) / K).setAlpha(Math.sin(f * Math.PI) * .55); }); }
+    for (let i = 0; i < 7; i++) { const im = live(image(scene, puff, x, y), .2), ph = i / 7, side = i % 2 ? 1 : -1; h.move(im, (node, t, motion) => { const f = ((motion ? t : 1.3) * .32 + ph) % 1; node.setPosition(x + side * (4 + f * (18 + (i % 3) * 8)), y - 4 - f * 34).setScale((.7 + f * 1.4) / K).setAlpha(Math.sin(f * Math.PI) * .55); }); }
     // ripples spreading over the pool
     const ring = bake(scene, 'ripple', [-40, -12, 40, 12], B => B.s(B.ell(0, 0, 36, 9), '#eef8f4', 1.6, .8));
-    for (let i = 0; i < 3; i++) { const im = h.add(image(scene, ring, x, y + 10)), ph = i / 3; h.move(im, (node, t, motion) => { const f = ((motion ? t : .5) * .4 + ph) % 1; node.setScale((.4 + f * 1.2) / K, (.4 + f * 1.1) / K).setAlpha((1 - f) * .5); }); }
+    for (let i = 0; i < 3; i++) { const im = live(image(scene, ring, x, y + 10), .05), ph = i / 3; h.move(im, (node, t, motion) => { const f = ((motion ? t : .5) * .4 + ph) % 1; node.setScale((.4 + f * 1.2) / K, (.4 + f * 1.1) / K).setAlpha((1 - f) * .5); }); }
     }
     return finish(h, { x: x + box[0], y: y + box[1], width: box[2] - box[0], height: box[3] - box[1] }, { x: spec.x, y: spec.y });
   }

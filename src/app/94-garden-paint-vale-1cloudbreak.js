@@ -334,10 +334,17 @@
     const c = (L.pres && L.pres.crossings || []).find(q => q.id === 'lip-stones'); if (!c) return;
     const p = L.cpt(c.x, c.y + .36), hw = .46 * L.cw, ht = .78 * L.ch, snowy = C.season === 'winter';
     thing({ key: 'lip-gap-water|' + C.season, x: p.x, y: p.y, box: [-hw - 6, -ht - 10, hw + 6, 4], draw: B => { const r = kit.rng(611);
-      B.f(B.rr(-hw, -ht, hw * 2, ht + 1, 6), snowy ? '#5c7c84' : '#3f6670', .95);
-      for (let k = 0; k < 5; k++) { const y = -ht + 3 + k * (ht - 4) / 4; B.s(`M${-hw + 2} ${y + 1.5}q${hw * .5} ${-3 - r() * 2} ${hw} 0t${hw} 0`, '#d8e6e4', 1.6 + r(), .85).s(`M${-hw + 6 + r() * 6} ${y - .8}l${6 + r() * 6} -1`, '#ffffff', 1, .9); }
-      for (let k = 0; k < 7; k++) B.f(B.ell(-hw + r() * hw * 2, -ht + r() * ht, 2.4 + r() * 2, 1.4 + r()), '#f2f6f2', .9);   // spray standing off the water
-      B.f(B.rect(-hw, -ht, hw * 2, 2), '#eef2e2', .8).f(B.rect(-hw, -1, hw * 2, 2), '#eef2e2', .7);
+      // (vale final fix 1) a chute of fast water through the gap, not a striped panel: a ragged, bowed body of dark water between
+      // the stones either side, a standing wave across it, white tongues pulled downstream and spray at its edges
+      const edge = (n, rx, ry, cy, j) => { let d = ''; for (let k = 0; k <= n; k++) { const a = k / n * Math.PI * 2, w = 1 + (r() - .5) * j; d += (k ? 'L' : 'M') + (Math.cos(a) * rx * w).toFixed(1) + ' ' + (cy + Math.sin(a) * ry * w).toFixed(1); } return d + 'Z'; };
+      const body = edge(14, hw * .98, ht * .52, -ht * .5, .22);
+      B.f(edge(14, hw * 1.08, ht * .6, -ht * .48, .3), '#eef2e2', .5).f(body, snowy ? '#5c7c84' : '#35606a', .95);
+      B.cx.save(); B.cx.clip(new Path2D(body));
+      B.f(B.ell(-hw * .3, -ht * .72, hw * .7, ht * .22), snowy ? '#7e9ca2' : '#4f8590', .7);
+      for (let k = 0; k < 6; k++) { const x0 = -hw + r() * hw * 1.6, y0 = -ht * .9 + r() * ht * .7; B.s(`M${x0} ${y0}q${4 + r() * 4} ${2 + r() * 2} ${9 + r() * 7} ${4 + r() * 3}`, '#f4f8f4', 1.2 + r() * 1.2, .7 + r() * .25); }
+      B.s(`M${-hw} ${-ht * .45}q${hw * .5} ${-5} ${hw} ${-1}t${hw} ${1}`, '#ffffff', 2.4, .85);
+      B.cx.restore();
+      for (let k = 0; k < 9; k++) { const a = r() * Math.PI * 2; B.f(B.ell(Math.cos(a) * hw * (.8 + r() * .3), -ht * .5 + Math.sin(a) * ht * .5, 1.4 + r() * 1.8, 1 + r()), '#f2f6f2', .85); }   // spray standing off the water
     } });
   }
   // (layout fix, north) a pass gate, once open, keeps its story: the rope you tied runs as a handline up the steep bit beside
