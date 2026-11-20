@@ -711,7 +711,7 @@ const presentation = {
 /* ------------------------------------------------------------ write */
 const out = {
   id: 'island-v5-fleetwater-vale', version: 5,
-  mechanics: { revision: 4, predecessorLayout: '6e944bb9572a554637db8684', contract: 'fleetwater-vale-fresh-start-v1', village: 'hand-authored (assets/garden/vale-village.json)' },
+  mechanics: { revision: 5, predecessorLayout: '6e944bb9572a554637db8684', contract: 'fleetwater-vale-fresh-start-v2', village: 'hand-authored (assets/garden/vale-village.json)', regions: 'hand-authored, one file each (assets/garden/vale-woodland.json, vale-valley.json, vale-oldwood.json, vale-orchard.json, vale-mountains.json); every garden starts fresh (approved reset, 19 Nov 2026)' },
   world: Object.assign({}, v4.world, { v: 5, start }),
   anchors: { heart: HEART, bed: BED, start },
   coast: { land, oceanBounds: v4.coast.oceanBounds, visualOceanBounds: v4.coast.visualOceanBounds, beachWidthPx: 76 },
