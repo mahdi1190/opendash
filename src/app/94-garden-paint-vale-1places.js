@@ -384,13 +384,17 @@
     const { L, P, add, kit, thing } = C, cw = L.cw, ch = L.ch;
     for (const pz of L.pres.plazas || []) {
       const style = STYLE[pz.id]; if (!style) continue;
+      // (fix round 1: the village's own ground lays the Lakeside terrace's crescent in the same setts as its roads, as one
+      // surface with them; slabs and a kerb laid over that again read as a plaza set down on the end of the terrace road)
+      if (pz.id === 'lakeside-terrace' && Array.isArray(pz.shape) && pz.shape.length > 2) continue;
       const rt = L.routes.get(pz.route); if (!rt || !rt.points || rt.points.length < 2) continue;
       let a = L.pt(rt.points[0]); const b = L.pt(rt.points[rt.points.length - 1]), w = rt.widthCells || 4, seed = kit.hashStr(pz.id);
       // The land office stands on the terrace's west end: pave from its east wall, so the building is not set down on the flags
       // (the lake walk's sandy road carries on behind it).
       const office = pz.id === 'lakeside-terrace' && L.stat('land-office');
       if (office && office.x < rt.points[0][0] + 1 && office.x + office.w > rt.points[0][0]) a = L.pt([office.x + office.w + .5, rt.points[0][1]]);
-      const shape = V.capsule(kit.rng(seed), a, b, w / 2 * cw * .95 + 8, w / 2 * ch * 1.05 + 4, style === 'broken' || style === 'litter' ? .3 : pz.id === 'cider-square' ? .24 : .08), bb = kit.bboxOf(shape, 30);   // (the cider square a little uneven at its edge: a ruled rectangle of setts read as a wall laid flat: highlands round 2)
+      // a shaped plaza (the Lakeside terrace's crescent, 2.74) is laid to its own outline; the rest are capsules along their spine
+      const shape = Array.isArray(pz.shape) && pz.shape.length > 2 ? V.shapeLoop(L, pz.shape) : V.capsule(kit.rng(seed), a, b, w / 2 * cw * .95 + 8, w / 2 * ch * 1.05 + 4, style === 'broken' || style === 'litter' ? .3 : pz.id === 'cider-square' ? .24 : .08), bb = kit.bboxOf(shape, 30);
       add(bb, seed, (B, r) => {
         // (round 3, the valley chain: a working yard by a river meets it in one smooth quay line, its edge stones laid as a coping;
         //  the water's cell outline made a stepped, jagged edge along the mill race. Other plazas keep the outline as it was.)
@@ -723,17 +727,19 @@
     const loop = L.routePts(pz.route); if (loop.length < 6) return;
     const c = L.cpt(pz.x, pz.y), cx0 = loop.reduce((s, q) => s + q.x, 0) / loop.length, cy0 = loop.reduce((s, q) => s + q.y, 0) / loop.length;
     // the sward: the loop pulled in from the path's edge
-    const inner = loop.map(q => ({ x: cx0 + (q.x - cx0) * .9, y: cy0 + (q.y - cy0) * .86 })), bb = kit.bboxOf(loop, 20), seed = kit.hashStr('the-green');
+    // (2.74: the lawn is authored, the inside edge of the flagged walk; the square lies outside it, at its foot)
+    const inner = Array.isArray(pz.lawn) && pz.lawn.length > 2 ? V.shapeLoop(L, pz.lawn, 3) : loop.map(q => ({ x: cx0 + (q.x - cx0) * .9, y: cy0 + (q.y - cy0) * .86 })), bb = kit.bboxOf(loop, 20), seed = kit.hashStr('the-green');
     const flowers = C.season === 'winter' ? ['#f4f6f2', '#e8ecef'] : C.season === 'autumn' ? ['#e8dcc0', '#d8a040', '#a8503a', '#e0c070'] : ['#f4f0e0', '#f0d24a', '#c79ac0', '#e88a8a', '#8ab0e0'];
     add(bb, seed, (B, r) => {
       // the sward, less the paved circle at the green's foot (the village ground's compass stone: about 8 by 6.6 cells)
-      const path = new Path2D(B.poly(inner)), pad = L.cpt(pz.x + .9, pz.y + 3.3), cut = new Path2D(); cut.rect(bb[0] - 40, bb[1] - 40, bb[2] - bb[0] + 80, bb[3] - bb[1] + 80); cut.addPath(new Path2D(B.rr ? B.rr(pad.x - 4 * L.cw, pad.y - 3.3 * L.ch, 8 * L.cw, 6.6 * L.ch, 40) : B.rect(pad.x - 4 * L.cw, pad.y - 3.3 * L.ch, 8 * L.cw, 6.6 * L.ch)));
+      const path = new Path2D(B.poly(inner)), pad = L.cpt(pz.x + .9, pz.y + 3.3), cut = new Path2D(); cut.rect(bb[0] - 40, bb[1] - 40, bb[2] - bb[0] + 80, bb[3] - bb[1] + 80); if (!pz.lawn) cut.addPath(new Path2D(B.rr ? B.rr(pad.x - 4 * L.cw, pad.y - 3.3 * L.ch, 8 * L.cw, 6.6 * L.ch, 40) : B.rect(pad.x - 4 * L.cw, pad.y - 3.3 * L.ch, 8 * L.cw, 6.6 * L.ch)));
       B.cx.save(); B.cx.clip(path); B.cx.clip(cut, 'evenodd');
       // a richer, greener sward than the ground round it
       B.f(B.poly(inner), C.season === 'winter' ? '#b8c2aa' : C.season === 'autumn' ? '#a4ae62' : '#9cba62', .16);   // (light: the village ground's painted sward shows through)
       // mown stripes, broad and soft, running across the green
       const w = bb[2] - bb[0], h = bb[3] - bb[1];
-      for (let k = -2; k < 16; k++) { const x = bb[0] + k * 34; B.f(`M${x} ${bb[1]}l34 0l${-h * .35} ${h}l-34 0z`, k % 2 ? '#ffffff' : '#2e4a20', k % 2 ? .035 : .03); }
+      // (fix round 1: strong enough to read as a mown green at the default camera; they were too faint to see)
+      B.cx.filter = 'blur(2.5px)'; for (let k = -3; k < 14; k++) { const x = bb[0] + k * 46; B.f(`M${x} ${bb[1]}l46 0l${-h * .35} ${h}l-46 0z`, k % 2 ? '#f6f8dc' : '#2e4a20', k % 2 ? .1 : .075); } B.cx.filter = 'none';
       // the worn line across the middle where everyone cuts over
       V.strokePts(B, [{ x: bb[0] + w * .16, y: cy0 + h * .18 }, { x: cx0 - w * .1, y: cy0 + 4 }, { x: cx0 + w * .14, y: cy0 - 6 }, { x: bb[2] - w * .14, y: cy0 - h * .2 }], '#b8a878', 10, .22);
       // clover in the sward (its daisies are the village ground's own, in drifts: a dot sprinkled every few steps read as confetti)
@@ -744,7 +750,7 @@
       // cottage flowers just inside the path in clumps and runs of their own lengths, some of the edge bare grass: a clump
       // every eleven px all the way round, each with three bright dots, traced the lawn's edge like a bead necklace
       const leafy = C.season === 'winter' ? '#7a8a6e' : '#5e8040', soft = c => kit.mix(c, '#9cb070', .25);
-      for (const q of V.walk(inner.concat([inner[0]]), 7)) { if (q.y > cy0 && Math.abs(q.x - cx0) < w * .21) continue;   // (not across the paved circle at the green's foot)
+      for (const q of V.walk(inner.concat([inner[0]]), 7)) { if (!pz.lawn && q.y > cy0 && Math.abs(q.x - cx0) < w * .21) continue;   // (not across the paved circle at the green's foot)
         const run = kit.noise(q.x / 70, q.y / 50, 404); if (run < .5 || r() < .35) continue;
         const o = 2 + r() * 12 + (run - .5) * 10, x = q.x - q.ty * o + (r() - .5) * 4, y = q.y + q.tx * o, s = .7 + r() * .7;
         B.f(B.blob(r, x + 1, y + 1.2, 6 * s, 3.2 * s, 7, .5), '#3e5a2c', .3).f(B.blob(r, x, y, 6 * s, 3.4 * s, 7, .5), leafy, .8).f(B.blob(r, x - 1.5 * s, y - 1.2 * s, 3.2 * s, 1.5 * s, 6, .5), '#86a85a', .6);
@@ -756,7 +762,7 @@
     // (the tallest thing on the green throws a shadow you can see, pole and ribbons, and each ribbon's peg sits in the turf
     // with its own contact; the ribbons are drawn a little wider with a soft dark underside, so on a 2x screen a thin
     // diagonal does not break into steps)
-    if (spot) thing({ key: 'maypole|' + C.season, x: spot.x, y: spot.y, box: [-46, -150, 46, 14], foot: [-6, 6, 6], shade: { a: 1 }, draw: B => {
+    if (spot && !pz.lime) thing({ key: 'maypole|' + C.season, x: spot.x, y: spot.y, box: [-46, -150, 46, 14], foot: [-6, 6, 6], shade: { a: 1 }, draw: B => {
       const rr = kit.rng(seed + 3), cols = ['#c84a3a', '#e8c84a', '#3a7ac0', '#f2f0e8', '#5e9a54', '#c86aa0'];
       B.shadow(1.5, 2, 12, 4, .45);
       for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2, ex = Math.cos(a) * 34, ey = Math.sin(a) * 9 + 2; B.shadow(ex + 1, ey + .8, 3.4, 1.4, .5); B.s(`M0 -128Q${ex * .6} ${-60 + ey} ${ex} ${ey}`, '#3a3428', 3, .16).s(`M0 -128Q${ex * .6} ${-60 + ey} ${ex} ${ey}`, cols[k], 2.1, .95).f(B.circ(ex, ey, 1.8), '#6a5034').f(B.circ(ex - .5, ey - .6, .7), '#a8845a'); }

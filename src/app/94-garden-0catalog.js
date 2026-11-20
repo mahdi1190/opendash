@@ -601,7 +601,8 @@ function gardenWorksSet(ids, source) {
 }
 function gardenWorkOwned(id, works) { return works === undefined ? _GD_WORKS.has(id) : Array.isArray(works) ? works.includes(id) : works instanceof Set ? works.has(id) : false; }
 /** How many cells the main pier has grown (resident, or explicitly displayed works). */
-function gardenPierMore(works) { return gardenWorkOwned('pier-3', works) ? 8 : gardenWorkOwned('pier-2', works) ? 4 : 0; }
+// (village fix round 3: the lengths come from the layout's own pier pieces, so a longer first pier grows on by its pieces)
+function gardenPierMore(works) { const len = (id, d) => { try { const q = typeof gardenIslandActive === 'function' && gardenIslandActive() ? gardenIslandData().static.find(r => r.id === id) : null; return q && q.h > 0 ? q.h : d; } catch (e) { return d; } }; return gardenWorkOwned('pier-3', works) ? len('pier-2', 4) + len('pier-3', 4) : gardenWorkOwned('pier-2', works) ? len('pier-2', 4) : 0; }
 /* Fixed things in the world (not in your bag, not movable): the pier you walk out on, the tackle shop. x, y, w, h in cells.
    walk: you can stand on it; door: the cell you stand on to knock; act: what the page does when you get there.
    col (2.28.1, what it does to your feet): 'full' (the default: its whole footprint is a wall: a shop, a stall, the bench), 'soft' (a small box at its base:

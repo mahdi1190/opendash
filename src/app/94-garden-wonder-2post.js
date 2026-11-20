@@ -117,7 +117,7 @@ function _wdPostFlag() {
   if (!un) { if (_wdp.flag) { _wdp.flag.remove(); _wdp.flag = null; } return; }
   if (_wdp.flag || !_wd.on) return;
   _wdp.flag = wdSprite({ id: 'wd-flag', x: WD_AT.postFlag.x, y: WD_AT.postFlag.y, z: WD_AT.postFlag.y + 0.08, lift: 0, still: true, hit: 0.5, hitUp: 26, label: 'Something in the post box', cursor: 'hand',
-    svg: '<g transform="translate(9 -38)"><rect x="-1" y="0" width="1.6" height="15" fill="#7a5a38"/><path d="M0.6 0h10l-2.4 3.2l2.4 3.2h-10z" fill="#d8402f"/></g>',
+    svg: '<g transform="translate(7 -30)"><rect x="-1" y="0" width="1.6" height="13" fill="#7a5a38"/><path d="M0.6 0h10l-2.4 3.2l2.4 3.2h-10z" fill="#d8402f"/></g>',
     onClick: () => { const un2 = _wdLettersHad().filter(r => !_wdGet('lr.' + r.id)); if (un2.length) wdLetterPage(un2[un2.length - 1]); } });
 }
 wdMod({

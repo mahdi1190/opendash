@@ -26,7 +26,7 @@ window.GardenPaintVale = (function () {
   'use strict';
   const KIT = () => window.GardenPaintTerrainKit;
   const DEPTH = -9346, UNDER = -9592, MAIN_DEPTH = -9268;
-  const parts = [], groundSigs = [];
+  const parts = [], groundSigs = [], softRoutes = new Set();
   let cur = null, heldGround = null, lastError = null, stats = {}, feetNow = [], feetSig = '';
   const memo = new Map();
   const ok = f => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
@@ -78,15 +78,33 @@ window.GardenPaintVale = (function () {
   // Actual soil stays visible through decorative meadow and road overlays.
   function cultivatedGround(W, cellAt) {
     if (!cellAt) return { sig: '0', path: null };
-    const kinds = new Set(['bed', 'patch', 'veg', 'rich', 'herb', 'berry']), path = new Path2D(); let hash = 2166136261, count = 0;
+    const kinds = new Set(['bed', 'patch', 'veg', 'rich', 'herb', 'berry']), path = new Path2D(), has = new Set(); let hash = 2166136261, count = 0;
     const bb = [Infinity, Infinity, -Infinity, -Infinity]; path.rect(0, 0, W.cols * W.cellW, W.sky + W.rows * W.cellH);
-    for (let y = 0; y < W.rows; y++) {
-      let start = -1;
-      for (let x = 0; x <= W.cols; x++) {
-        const c = x < W.cols ? cellAt(x, y) : null, soil = !!(c && kinds.has(c.material));
-        if (soil) { if (start < 0) start = x; hash = Math.imul(hash ^ (y * W.cols + x), 16777619); count++; }
-        if (!soil && start >= 0) { const px = start * W.cellW, py = W.sky + y * W.cellH; path.rect(px, py, (x - start) * W.cellW, W.cellH); bb[0] = Math.min(bb[0], px); bb[1] = Math.min(bb[1], py); bb[2] = Math.max(bb[2], x * W.cellW); bb[3] = Math.max(bb[3], py + W.cellH); start = -1; }
+    for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
+      const c = cellAt(x, y); if (!c || !kinds.has(c.material)) continue;
+      has.add(x + ',' + y); hash = Math.imul(hash ^ (y * W.cols + x), 16777619); count++;
+      const px = x * W.cellW, py = W.sky + y * W.cellH; bb[0] = Math.min(bb[0], px); bb[1] = Math.min(bb[1], py); bb[2] = Math.max(bb[2], px + W.cellW); bb[3] = Math.max(bb[3], py + W.cellH);
+    }
+    // The soil's outline with its corners rounded as the bed's own edge is (2.74): cut out cell by cell it left a small
+    // square of bare lawn at every corner of a bed.
+    const next = new Map(), edge = (x0, y0, x1, y1) => { const k = x0 + ',' + y0; let a = next.get(k); if (!a) next.set(k, a = []); a.push([x1, y1]); };
+    for (const k of has) { const [x, y] = k.split(',').map(Number);
+      if (!has.has(x + ',' + (y - 1))) edge(x, y, x + 1, y); if (!has.has((x + 1) + ',' + y)) edge(x + 1, y, x + 1, y + 1);
+      if (!has.has(x + ',' + (y + 1))) edge(x + 1, y + 1, x, y + 1); if (!has.has((x - 1) + ',' + y)) edge(x, y + 1, x, y); }
+    for (const [k0, outs] of next) while (outs.length) {
+      const start = k0.split(',').map(Number); let loop = [start], cur = start, to = outs.pop(), dir = [to[0] - cur[0], to[1] - cur[1]];
+      for (let guard = 0; guard < 20000; guard++) {
+        cur = to; if (cur[0] === start[0] && cur[1] === start[1]) break; loop.push(cur);
+        const o = next.get(cur[0] + ',' + cur[1]); if (!o || !o.length) break;
+        let pick = 0; if (o.length > 1) pick = Math.max(0, o.findIndex(q => q[0] - cur[0] === -dir[1] && q[1] - cur[1] === dir[0]));
+        to = o.splice(pick, 1)[0]; dir = [to[0] - cur[0], to[1] - cur[1]];
       }
+      loop = loop.filter((p, i) => { const a = loop[(i - 1 + loop.length) % loop.length], b = loop[(i + 1) % loop.length]; return (p[0] - a[0]) * (b[1] - p[1]) !== (p[1] - a[1]) * (b[0] - p[0]); });
+      if (loop.length < 4) continue;
+      const P = loop.map(p => ({ x: p[0] * W.cellW, y: W.sky + p[1] * W.cellH })), m = P.length, mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }), s0 = mid(P[m - 1], P[0]);
+      path.moveTo(s0.x, s0.y);
+      for (let i = 0; i < m; i++) { const a = P[(i - 1 + m) % m], p = P[i], b = P[(i + 1) % m], q = mid(p, b), rad = Math.min(12, Math.hypot(p.x - a.x, p.y - a.y) / 2, Math.hypot(b.x - p.x, b.y - p.y) / 2); path.arcTo(p.x, p.y, q.x, q.y, rad); path.lineTo(q.x, q.y); }
+      path.closePath();
     }
     return { sig: count ? count + ':' + (hash >>> 0) : '0', path: count ? path : null, bb };
   }
@@ -94,6 +112,8 @@ window.GardenPaintVale = (function () {
   const strokePts = (B, pts, col, w, op, dx, dy) => { if (pts.length < 2) return; const p = new Path2D(); p.moveTo(pts[0].x + (dx || 0), pts[0].y + (dy || 0)); for (let i = 1; i < pts.length; i++) p.lineTo(pts[i].x + (dx || 0), pts[i].y + (dy || 0)); B.s(p, col, w, op); };
   // Match the native road outside the village and its narrower painted road
   // inside. The same ninety-pixel feather makes their shoulders meet gently.
+  /** A closed polygon in cells, smoothed (Catmull-Rom) and in px: the shaped plazas (2.74). */
+  function shapeLoop(L, poly, n) { const out = [], m = poly.length, k = n || 6; for (let i = 0; i < m; i++) { const p0 = poly[(i - 1 + m) % m], p1 = poly[i], p2 = poly[(i + 1) % m], p3 = poly[(i + 2) % m]; for (let j = 0; j < k; j++) { const t = j / k, t2 = t * t, t3 = t2 * t, f = q => .5 * ((2 * p1[q]) + (-p0[q] + p2[q]) * t + (2 * p0[q] - 5 * p1[q] + 4 * p2[q] - p3[q]) * t2 + (-p0[q] + 3 * p1[q] - 3 * p2[q] + p3[q]) * t3); out.push(L.cpt(f(0), f(1))); } } return out; }
   function routeRibbon(L, route, edge) {
     const sampled = gardenIslandRoutePath(route), pts = sampled.points, st = gardenIslandRoadStyle(route), start = L.D.anchors.start, left = [], right = [];
     for (let i = 0; i < pts.length; i++) {
@@ -101,7 +121,9 @@ window.GardenPaintVale = (function () {
       const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1, pxLen = Math.hypot(dx * L.cw, dy * L.ch) || 1, q = L.cpt(p.x, p.y);
       const inset = Math.min((p.x - start.x + 18) * L.cw, (start.x + 19 - p.x) * L.cw, (p.y - start.y + 26) * L.ch, (start.y + 18 - p.y) * L.ch);
       const fade = Math.max(0, Math.min(1, inset / 90)), t = fade * fade * (3 - 2 * fade), radius = edge ? st.edgeRadius : st.radius, half = (st.main ? 20 : 13) + (edge ? 2.5 : 0);
-      const ox = -dy / len * radius * L.cw * (1 - t) - dy * L.ch / pxLen * half * t, oy = dx / len * radius * L.ch * (1 - t) + dx * L.cw / pxLen * half * t;
+      // an authored route (the village, 2.74) has its own width at every point, the same inside the village ground and out
+      const aw = Array.isArray(route.widths) ? gardenIslandRouteWidthAt(route, p.x, p.y) * .46 + (edge ? .06 : 0) : 0;
+      const ox = aw ? -dy / len * aw * L.cw : -dy / len * radius * L.cw * (1 - t) - dy * L.ch / pxLen * half * t, oy = aw ? dx / len * aw * L.ch : dx / len * radius * L.ch * (1 - t) + dx * L.cw / pxLen * half * t;
       left.push({ x: q.x + ox, y: q.y + oy }); right.push({ x: q.x - ox, y: q.y - oy });
     }
     return left.concat(right.reverse());
@@ -120,7 +142,7 @@ window.GardenPaintVale = (function () {
     const crossings = W.v >= 5 && typeof gardenIslandCrossingGeometry === 'function' ? gardenIslandCrossingGeometry() : [], supports = crossings.map(c => c.support.map(p => L.cpt(p.x, p.y)));
     for (const f of L.D.freshwater || []) if (f.boundary && f.boundary.length > 2) cuts.push(outside(f.boundary.map(L.pt), supports));
     for (const c of crossings) cuts.push(outside(c.points.map(p => L.cpt(p.x, p.y)), supports));
-    for (const route of L.routes.values()) if (route.points && route.points.length > 1) lanes.push(outside(routeRibbon(L, route, true)));
+    for (const route of L.routes.values()) if (route.points && route.points.length > 1 && !softRoutes.has(route.id)) lanes.push(outside(routeRibbon(L, route, true)));   // (a soft route is a worn line painted over the turf: the wash runs on under it)
     // Only the visible doorway forecourt stays bare, rather than a rectangular
     // hole round the building's entire physical reservation.
     for (const prop of L.D.static || []) {
@@ -333,5 +355,5 @@ window.GardenPaintVale = (function () {
   }
   /** Landform kinds painted here (the world skips its own art for them). */
   function owns(kind) { return (kind === 'ruin-wall' || kind === 'ruin') && wanted(); }
-  return { feet: () => (wanted() ? feetNow : []), feetSig: () => (wanted() ? feetSig : ''), parts, groundSigs, PAL, wanted, paint, tick, clear, pendingGround, playerCanopies: () => cur ? cur.covering : null, status, paintTo, owns, readLayout, loopPath, smoothLoop, strokePts, routeRibbon, clipGround, walk, lobe, capsule, hull, lawn, flags, setts, ok, get lastError() { return lastError; } };
+  return { feet: () => (wanted() ? feetNow : []), feetSig: () => (wanted() ? feetSig : ''), parts, groundSigs, softRoutes, PAL, wanted, paint, tick, clear, pendingGround, playerCanopies: () => cur ? cur.covering : null, status, paintTo, owns, readLayout, loopPath, smoothLoop, strokePts, routeRibbon, clipGround, walk, lobe, capsule, hull, lawn, flags, setts, ok, get lastError() { return lastError; } };
 })();

@@ -181,7 +181,7 @@ function _wdFolkPick(m) {
 const WD_FOLK_MEET = Object.freeze({
   tam: Object.freeze(['market-stall', 1.2, 1.1]),
   bramble: Object.freeze(['notice-board', -1.6, 1.1]),
-  pip: Object.freeze(['tackle-shop', -1.6, 1.1]),
+  pip: Object.freeze(['lake-board', -1.4, 1.2]),   // (village fix round 2: by the Mere, not down at the quay's end, where Pip stood on the old angler)
   thistle: Object.freeze(['post-box', 1.6, 1.1]),
   wick: Object.freeze(['sundial', -1.6, 1.1]),
   quince: Object.freeze(['sundial', 1.6, 1.1]),

@@ -44,8 +44,9 @@ const ENV_MODULE = arg('sandbox-env', 'C:/tmp/sandbox-env.mjs');
 const EDGE = arg('browser', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe');
 if (!fs.existsSync(ENV_MODULE)) { console.error('No sandbox environment module at ' + ENV_MODULE + ': refusing to start a server without it.'); process.exit(2); }
 const { sandboxEnv, EDGE_SAFE_FLAGS } = await import(pathToFileURL(ENV_MODULE).href);
-// (a fresh browser profile must never sign in, sync or install extensions: the module's own list when it has one)
-const SAFE_FLAGS = Array.isArray(EDGE_SAFE_FLAGS) && EDGE_SAFE_FLAGS.length ? EDGE_SAFE_FLAGS : ['--disable-extensions', '--disable-sync', '--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--disable-component-update', '--disable-features=msImplicitSignin'];
+// (the test browser's safe flags, straight after --headless=new: without them a fresh profile can sign in to the machine's
+// Microsoft account, turn on sync and install its extensions)
+if (!Array.isArray(EDGE_SAFE_FLAGS) || !EDGE_SAFE_FLAGS.length) { console.error('the sandbox module gives no EDGE_SAFE_FLAGS: refusing to start a browser'); process.exit(2); }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const WORK = path.join(OUT, 'run-' + LABEL), DATA = path.join(WORK, 'data-' + PORT), PROFILE = path.join(WORK, 'profile-' + CDP), THUMB_DIR = path.join(OUT, LABEL + '-thumbs');
 for (const d of [DATA, PROFILE, THUMB_DIR]) fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 });
@@ -56,7 +57,7 @@ const PAGE = fs.readFileSync(new URL('./lib/collide-audit-page.js', import.meta.
 
 /* ---------- the sandbox ---------- */
 const srv = spawn(process.execPath, ['serve.mjs', '--port', String(PORT), '--no-open', '--data-dir', DATA], { cwd: REPO, stdio: 'ignore', env: sandboxEnv() });
-const br = spawn(EDGE, ['--headless=new', ...SAFE_FLAGS, `--remote-debugging-port=${CDP}`, `--user-data-dir=${PROFILE}`, '--window-size=1500,900', 'about:blank'], { stdio: 'ignore' });
+const br = spawn(EDGE, ['--headless=new', ...EDGE_SAFE_FLAGS, `--remote-debugging-port=${CDP}`, `--user-data-dir=${PROFILE}`, '--window-size=1500,900', 'about:blank'], { stdio: 'ignore' });
 let finished = false;
 // (the whole browser, not only its first process: the rest held the profile folder open and the next run could not clear it; then the profile goes too)
 const stop = async code => {

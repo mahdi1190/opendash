@@ -76,10 +76,14 @@ window.GardenPaintedProps = (function () {
     if (scene.textures.exists(full)) return full;
     const t0 = performance.now(), [x0, y0, x1, y1] = box, w = Math.ceil((x1 - x0) * K), h = Math.ceil((y1 - y0) * K);
     if (w < 2 || h < 2 || w > 4096 || h > 4096) return null;
-    const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d');
+    // (village fix round 2: drawn on a canvas kept in memory: the texture made from it, and the click test that reads its pixels, never wait on the graphics card, which held a level-up for many seconds)
+    const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d', { willReadFrequently: true });
     cx.setTransform(K, 0, 0, K, -x0 * K, -y0 * K);
     if (ok(() => draw(brush(cx), cx)) === false) return null;
-    const tex = scene.textures.addCanvas(full, c); tex.customData = Object.assign(tex.customData || {}, { gpp: { ox: -x0 / (x1 - x0), oy: -y0 / (y1 - y0) } });
+    // (village fix round 2) addImage, not addCanvas: a CanvasTexture reads every pixel back from the graphics card as it is
+    // made, and at a level-up, with the card busy, that read held the page up for many seconds (a gate's picture: 20 s+)
+    const tex = scene.textures.addCanvas(full, c);
+    tex.customData = Object.assign(tex.customData || {}, { gpp: { ox: -x0 / (x1 - x0), oy: -y0 / (y1 - y0) } });
     baked++; bakeMs += performance.now() - t0; return full;
   }
   function image(scene, key, x, y) {
@@ -148,22 +152,37 @@ window.GardenPaintedProps = (function () {
     const id = GardenPaintGround.cast.add(scene, { key: im.texture.key, x, y, box: [-dw * ox, -dh * oy, dw * (1 - ox), dh * (1 - oy)], a: a == null ? .5 : a, flip: !!flip });
     if (id) im.once('destroy', () => GardenPaintGround.cast.drop(id)); return id;
   }
+  /** (village fix round 3) The box round what is really drawn in an image (its opaque pixels, the same test the click
+   * uses), in world px; worked out once per texture from the canvas kept in memory. The click area is this box, not the
+   * picture's padded canvas: the notice board's, the post box's and the lamp's took in the empty paving round them. */
+  function tightBox(im) {
+    try {
+      const tex = im && im.texture, src = tex && tex.getSourceImage(); if (!src || !src.getContext) return null;
+      const cd = tex.customData || (tex.customData = {}); let T = cd.gppTight;
+      if (T === undefined) { T = null; const w = src.width, hh = src.height, d = src.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, hh).data; let a0 = w, b0 = hh, a1 = -1, b1 = -1;
+        for (let y = 0; y < hh; y += 2) for (let x = 0; x < w; x += 2) if (d[(y * w + x) * 4 + 3] >= 96) { if (x < a0) a0 = x; if (x > a1) a1 = x; if (y < b0) b0 = y; if (y > b1) b1 = y; }
+        if (a1 >= 0) { let f0 = w, f1 = -1; const fy = Math.max(b0, b1 - Math.max(4, (b1 - b0) * .15)); for (let y = Math.floor(fy / 2) * 2; y <= b1; y += 2) for (let x = 0; x < w; x += 2) if (d[(y * w + x) * 4 + 3] >= 96) { if (x < f0) f0 = x; if (x > f1) f1 = x; } T = [a0, b0, Math.min(w, a1 + 2), Math.min(hh, b1 + 2), f0, Math.min(w, f1 + 2)]; }
+        cd.gppTight = T; }
+      if (!T) return null; const sx = im.scaleX, sy = im.scaleY, left = im.x - im.displayOriginX * sx, top = im.y - im.displayOriginY * sy;
+      return { x: left + T[0] * sx - 3, y: top + T[1] * sy - 3, width: (T[2] - T[0]) * sx + 6, height: (T[3] - T[1]) * sy + 6, footX: left + (T[4] + T[5]) / 2 * sx };
+    } catch (e) { return null; }
+  }
 
   /* ---------- the props of the village ---------- */
   const SIGN = (B, x, y, w, label, size) => { B.f(B.rr(x - w / 2 + 1, y - 6, w, 13, 2.5), 'rgba(40,32,20,.25)').f(B.rr(x - w / 2, y - 7.5, w, 13, 2.5), '#efe4c6').f(B.rect(x - w / 2 + 1, y - 7.5, w - 2, 1.4), '#fff8e6', .8).text(label, x, y - .8, size || 7.2, '#4a3b26'); };
   const PAINT = {
     // UK pillar box: a red drum with a domed cap, the slot, a white plate, a black plinth
-    postbox: { box: [-20, -64, 24, 8], draw(B, o) {
-      const r = rng(5); B.shadow(2, 1, 17, 5, .3);
+    postbox: { box: [-12.5, -64, 12.5, 8], draw(B, o) {   // (fix round 2: as wide as the box itself now no letter lies beside it, so its click area is the box)
+      const r = rng(5); B.shadow(1, 1, 11, 4, .32);
       B.f(B.rr(-10, -6, 20, 7, 1.5), IRON[0]).f(B.rect(-10, -6, 20, 1.2), IRON[1]);
       B.f(B.rect(-9, -44, 18, 39), B.lin(-9, 0, 9, 0, [[0, '#d65a48'], [.35, '#c03a2e'], [1, '#86241c']]));
       B.f(B.ell(0, -44, 9, 3), '#a42c22').f('M-10 -45q0 -12 10 -12q10 0 10 12z', B.lin(-10, -57, 8, -45, [[0, '#dc6450'], [1, '#922820']])).f(B.ell(-3, -52, 3, 1.6), '#f08a72', .55);
       B.f(B.rect(-10, -46, 20, 2.4), '#8e2820').f(B.rr(-6, -38, 12, 2.6, 1), '#2a1a16').f(B.rect(-6, -38, 12, .8), '#6a2a22');
       B.f(B.rr(-5, -31, 10, 8, 1), '#f4eee0').s('M-3 -28h6M-3 -25.5h4', '#8a8478', .7).f(B.rect(-9, -10, 18, 2), '#8e2820');
       B.f(B.rect(-8.2, -43, 2.2, 36), '#ee8a70', .35);
-      // a letter waiting on the plinth, and grass at the foot
-      B.f(B.poly([[7, -4], [17, -7], [19, -1], [9, 2]]), '#fbf6ea').s('M7 -4l6 1.5l6 -4.5', '#c8bfa8', .7);
-      B.tufts(r, 0, 1, 26, 9, o.season);
+      // (village fix round 2) it stands on the square's paving: no grass growing out of the stones at its foot, and no white
+      // letter lying on the ground beside it (the flag on the box says when there is post); the plinth's worn foot instead
+      void r; B.f(B.ell(0, 1.2, 12, 2.2), '#6a5a44', .22).f(B.rect(-10, -1.2, 20, 1.2), '#5a5048', .5);
     } },
     // the field journal: an oak lectern, the book open on fish and bugs, a quill
     lectern: { box: [-26, -64, 26, 8], draw(B, o) {
@@ -320,6 +339,9 @@ window.GardenPaintedProps = (function () {
   };
   // what each painter's thing stands in (GardenPaintSeat): false for things afloat or in reeds
   const SEATS = { postbox: { kind: 'flags', w: 24 }, lectern: { kind: 'flags', w: 30 }, sundial: { kind: 'flags', w: 34 }, tripod: { kind: 'earth', w: 28, way: false }, board: { kind: 'earth', w: 84 }, lakeboard: { kind: 'flags', w: 30 }, smoker: { kind: 'earth', w: 34 }, well: { kind: 'flags', w: 50 }, sign: { kind: 'turf', w: 20, stones: 3 }, fountain: { kind: 'flags', w: 90 }, bench: { kind: 'earth', w: 84 }, 'sight:mill': { kind: 'earth', w: 176, stones: 0 }, 'sight:barn': { kind: 'earth', w: 148 }, 'sight:smoke': { kind: 'earth', w: 112 }, 'sight:hide': { kind: 'turf', w: 80, stones: 0 }, 'sight:churn': { kind: 'flags', w: 50 }, 'sight:frogstone': { kind: 'moss', w: 48, stones: 0, way: false }, 'lib:seat': { kind: 'earth', w: 76, stones: 0 }, 'lib:lamp': { kind: 'flags', w: 14, stones: 2, way: false }, 'lib:lampbox': { kind: 'flags', w: 14, stones: 2, way: false }, 'lib:lighthouse': { kind: 'flags', w: 60 }, 'lib:reeds': false, 'lib:boat': false, post: { kind: 'earth', w: 12, stones: 0, way: false } };
+  // (village fix round 1: the harbour's lighthouse is a tower, six and a half times the player, not a little taller than a
+  // cottage; the tall white one with the black lantern, which has no keeper's cottage leaning into the foot of its tower)
+  LIB.lighthouse = ['building.lighthouse', 1, { h: 300 }];
   function propPainter(prop) {
     if (!prop) return null;
     if (window.GardenPaintedMarks && GardenPaintedMarks.knows(prop.id)) return null;   // (a sight painted into its place: 94-garden-paint-terrain-5sights.js)
@@ -337,7 +359,7 @@ window.GardenPaintedProps = (function () {
     const season = sc.season || 'summer', night = !!o.night, W = o.W;
     const fx = (prop.x + prop.w / 2) * W.cellW, foot = W.sky + (prop.y + prop.h) * W.cellH - 3;
     const h = handle(scene, o, prop.id, { cls: which.replace(':', '-') });
-    let b;
+    let b, visual = null;
     if (which.startsWith('lib:')) {
       const k = which.slice(4);
       if (k === 'reeds') {
@@ -354,22 +376,31 @@ window.GardenPaintedProps = (function () {
       } else {
         const [id, v, size] = LIB[k], im = h.add(libImage(scene, id, v, season, size, fx, foot, night)); if (!im) { h.destroy(); return null; }
         const top = foot - im.displayHeight * im.originY; b = { x: fx - im.displayWidth / 2 - 6, y: top - 4, width: im.displayWidth + 12, height: foot - top + 12 };
+        // (round 3) a seat's picture stood two thirds of a cell to the right of its own foot: its legs over the block
+        if (k === 'seat') { const t0 = tightBox(im); if (t0 && Math.abs(t0.footX - fx) > 3) im.x += fx - t0.footX; }
+        { const t = tightBox(im); if (t) { visual = b; b = t; } }
         if (k === 'lamp' || k === 'lampbox') { h.lights.push({ x: fx, y: top + 14, radius: 120, pool: true }); if (night) glowPool(scene, h, fx, foot, 110, top + 12); }
       }
     } else {
       const P = PAINT[which], more = P.sig ? ok(() => P.sig(prop, sc)) || '' : '', key = bake(scene, which + '|' + season + '|' + (night ? 'n' : 'd') + more, P.box, B => P.draw(B, { season, night, prop, sc, more }));
       // The public board's two 7px posts stand at +/-36 and end at y=1.
       // Align those feet with its protected span, retaining the roof overhang.
-      const board = prop.id === 'notice-board' && which === 'board', scale = board ? prop.w * W.cellW / 79 : 1, artFoot = foot - (board ? scale : 0);
+      // (village fix round 3) the post box and the camera on its tripod at the size standard: a pillar box a little under the
+      // player's height, not half as tall again; the camera no bigger than a shoebox
+      const board = prop.id === 'notice-board' && which === 'board', scale = board ? prop.w * W.cellW / 79 : which === 'postbox' ? .74 : which === 'tripod' ? .8 : 1, artFoot = foot - (board ? scale : 0);
       const im = h.add(image(scene, key, fx, artFoot)); if (!im) { h.destroy(); return null; }
-      if (board) im.setScale(scale / K);
+      if (scale !== 1) im.setScale(scale / K);
       b = { x: fx + P.box[0] * scale, y: artFoot + P.box[1] * scale, width: (P.box[2] - P.box[0]) * scale, height: (P.box[3] - P.box[1]) * scale };
+      // (round 3) the lake board's posts stood well right of its foot; the click area is what is drawn, not its canvas
+      if (which === 'lakeboard') { const t0 = tightBox(im); if (t0 && Math.abs(t0.footX - fx) > 3) im.x += fx - t0.footX; }
+      { const t = tightBox(im); if (t) { visual = b; b = t; } }
       if (which === 'fountain') addDrops(scene, h, fx, foot - 52, 16);
       if (P.extra) ok(() => P.extra(scene, h, fx, artFoot, { season, night, prop, sc, more, W }));
     }
     // seated in the ground it stands on (94-garden-paint-terrain-5sights.js): a worn apron, foundation, contact, growth, a way to the path
     { const st = SEATS[which]; if (st !== false && window.GardenPaintSeat && o.layer) { const seat = ok(() => GardenPaintSeat.add(scene, o.layer, prop, W, Object.assign({ season, x: fx, foot }, st || {}))); if (seat) { const d0 = h.destroy; h.destroy = () => { seat.destroy(); d0(); }; } } }
-    return finish(h, b, { x: fx, y: foot });
+    finish(h, b, { x: fx, y: foot }); if (visual) h.rootNode.nativeBounds = { x: Math.min(visual.x, b.x), y: Math.min(visual.y, b.y), width: Math.max(visual.x + visual.width, b.x + b.width) - Math.min(visual.x, b.x), height: Math.max(visual.y + visual.height, b.y + b.height) - Math.min(visual.y, b.y) };   // (the drawing keeps its whole canvas for caching)
+    return h;
   }
   function addDrops(scene, h, x, y, spread) {
     const key = bake(scene, 'drop', [-2, -3, 2, 3], B => B.f(B.ell(0, 0, 1.1, 2.2), '#eaf6f6', .9));

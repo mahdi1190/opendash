@@ -146,32 +146,39 @@ const route = (id, tier, points, zone, extra = {}) => {
   const r = { id, tier, level: 1, widthCells, points: points.map(p => [r2(p[0]), r2(p[1])]), public: zone === 0, zone };
   Object.assign(r, extra); r.widthCells = widthCells; return r;
 };
-const GREEN = { x: 48, y: 52, rx: 7.2, ry: 4.6 };
-const greenRing = (() => { const pts = []; for (let i = 0; i <= 16; i++) { const a = Math.PI / 2 + i * Math.PI * 2 / 16; pts.push([GREEN.x + Math.cos(a) * GREEN.rx * (1 + .04 * Math.sin(i * 2.3)), GREEN.y + Math.sin(a) * GREEN.ry]); } pts[16] = pts[0].slice(); return pts; })();
+// The village (zone 0) is hand-authored in assets/garden/vale-village.json (2.74): splines with a width at each
+// control point, resampled here into dense points (about 0.5 cells apart) and a width per point (route.widths;
+// widthCells keeps the widest), plaza shapes, the 31 village sections grouped into fields, and the static moves.
+const VV = JSON.parse(readFileSync(join(root, 'assets/garden/vale-village.json'), 'utf8'));
+function splineW(ctrl, widths, closed, step = .5) { // Catmull-Rom through the control points; width interpolated by parameter
+  const n = ctrl.length, g = i => closed ? ctrl[(i + n) % n] : ctrl[Math.max(0, Math.min(n - 1, i))], gw = i => closed ? widths[(i + n) % n] : widths[Math.max(0, Math.min(n - 1, i))], pts = [], ws = [];
+  for (let i = 0; i < (closed ? n : n - 1); i++) {
+    const p0 = g(i - 1), p1 = g(i), p2 = g(i + 1), p3 = g(i + 2), k = Math.max(2, Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / step));
+    for (let s = 0; s < k; s++) {
+      const t = s / k, t2 = t * t, t3 = t2 * t, f = (a, b, c, d) => .5 * ((2 * b) + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+      pts.push([r2(f(p0[0], p1[0], p2[0], p3[0])), r2(f(p0[1], p1[1], p2[1], p3[1]))]); ws.push(r2(gw(i) * (1 - t) + gw(i + 1) * t));
+    }
+  }
+  if (closed) { pts.push(pts[0].slice()); ws.push(ws[0]); } else { pts.push(ctrl[n - 1].map(r2)); ws.push(r2(widths[n - 1])); }
+  return { pts, ws };
+}
+const vRoute = id => { const a = VV.routes.find(r => r.id === id); if (!a) throw Error('vale-village.json has no route ' + id); const { pts, ws } = splineW(a.control, a.widths, !!a.closed);
+  return route(id, a.tier, pts, 0, Object.assign({ widthCells: Math.max(...ws), widths: ws }, a.gateId ? { gateId: a.gateId } : {}, id === 'plaza-loop' ? { shape: VV.plazas['the-square'].poly.map(p => p.map(r2)) } : {})); };
+const vPlaza = (id, width) => { const p = VV.plazas[id]; return route(id, 'plaza', p.spine, 0, { widthCells: width, shape: p.poly.map(q => q.map(r2)) }); };
+const GREEN = { x: 49, y: 51.6, rx: 6.6, ry: 4.4 };   // (the green's rough extent, for painters that only want a centre and radii)
 const routes = [
-  // the arrival spine: quay, high street, the green, the Lakeside terrace (harbour-walk[0] is the green end)
-  route('harbour-walk', 'main', [[48, 57.4], [48.4, 61.6], [49.2, 66.6], [50, 71.6], [50.4, 76.4]], 0),
-  route('plaza-loop', 'main', greenRing, 0, { widthCells: 2.6 }),
-  route('green-terrace', 'main', [[48, 47.2], [48.2, 45.4], [48.4, 43.8]], 0),
-  route('lakeside-terrace', 'plaza', [[44.4, 43.6], [52.8, 43.6]], 0, { widthCells: 3.6 }),
-  route('the-quay', 'plaza', [[44.6, 77.6], [56, 77.6]], 0, { widthCells: 3.4 }),
+  // the arrival spine: quay, high street, the square and the green, the Lakeside terrace (harbour-walk[0] is the green end)
+  vRoute('harbour-walk'), vRoute('plaza-loop'), vRoute('green-terrace'), vPlaza('lakeside-terrace', 1.6), vPlaza('the-quay', 2),
   // village lanes and walks
-  route('west-lane', 'lane', [[40.8, 52.4], [37.4, 52.8], [34, 53.2], [31, 52.4], [27, 51], [22.6, 48.6]], 0, { gateId: 'island-woods' }),
-  route('east-road', 'lane', [[55.2, 52.6], [58.4, 53.4], [61.6, 54.4], [65, 55.1], [69, 56.6], [72, 58.8]], 0, { gateId: 'island-mill' }),
-  route('cottage-lane', 'lane', [[45.4, 56.4], [44.2, 62.2], [41.6, 66], [38.8, 70.2], [36.6, 74.2]], 0),
-  route('lake-walk-west', 'trail', [[44.4, 43.6], [40.8, 43.6], [37, 42.2], [35.6, 38.4], [36.6, 36], [36.6, 33.4], [37.6, 30.2], [40.2, 28], [42.2, 27.2]], 0),
-  route('lake-walk-east', 'trail', [[52.8, 43.6], [55.6, 42.8], [58.2, 42], [59.9, 41.1]], 0),
-  route('south-common', 'trail', [[53.6, 56], [56.4, 60.4], [57.2, 65.6], [55, 70.4], [50.2, 72]], 0),
-  route('strand', 'trail', [[44.6, 77.6], [41.8, 79.2], [39.4, 81.6]], 0),
-  route('lighthouse-walk', 'trail', [[56, 77.6], [58.2, 80], [60.4, 82.6]], 0),
-  route('field-path', 'trail', [[41.6, 66], [46, 68.4], [49.4, 68.6]], 0),
+  vRoute('west-lane'), vRoute('east-road'), vRoute('cottage-lane'), vRoute('cottage-path'),
+  vRoute('lake-walk-west'), vRoute('lake-walk-east'), vRoute('south-common'), vRoute('strand'), vRoute('lighthouse-walk'), vRoute('field-path'),
   // Whispering woodland (zone 1)
   route('woods-lane', 'lane', [[22.6, 48.6], [19.4, 46.6], [16.6, 44.8]], 1),
   route('great-oak-clearing', 'plaza', [[14, 44.4], [16.6, 44.8]], 1, { widthCells: 4.6 }),
   route('woodland-loop', 'trail', [[14, 44.4], [11, 40.6], [9.6, 36.4], [10.3, 33.7], [13.6, 30.4], [20, 30.6], [24.6, 34.2], [25.6, 36.8], [27.2, 40.6], [25.4, 46], [22.6, 48.6]], 1),
   route('spring-trail', 'trail', [[11.4, 31.8], [8.6, 29.4]], 1),
   route('cove-trail', 'trail', [[11, 40.6], [7.8, 50], [6.2, 62], [5.2, 72], [6.2, 81.6]], 1),
-  route('brook-walk', 'trail', [[27.2, 40.6], [31.6, 39.4], [35.2, 38.2], [37.2, 37.4]], 1),
+  route('brook-walk', 'trail', [[27.2, 40.6], [31.6, 39.4], [34.6, 38.3], [35.95, 37.75]], 1),   // (village fix round 1: it ends at the lake walk by the footbridge; it ran a cell past it, a rounded stub on the grass beside the bridge's foot)
   // Old woodland (zone 3)
   route('ruins-lane', 'lane', [[17.2, 45.6], [18.2, 53], [19, 60], [19.6, 65.1], [21, 70.4], [22.2, 74.4]], 3, { gateId: 'island-ruins' }),
   route('ruin-court', 'plaza', [[21, 74.8], [23.6, 74.8]], 3, { widthCells: 4.4 }),
@@ -183,7 +190,7 @@ const routes = [
   route('mill-yard', 'plaza', [[74, 65.8], [76.4, 65.8]], 2, { widthCells: 4 }),
   route('estuary-lane', 'lane', [[73.8, 65.4], [76.6, 69], [78.8, 73.2], [80.2, 77], [81.4, 79.4]], 2),
   route('valley-meadow', 'trail', [[76.4, 65.8], [80, 64], [84.6, 62.4], [86.4, 66.4], [85.6, 72], [82.4, 75.4], [78.8, 73.2]], 2),
-  route('coast-walk', 'trail', [[81.4, 79.4], [78.6, 80.4], [76, 82.4], [71, 84.8], [66.4, 85.4], [63.8, 84.6], [61.6, 83.6]], 2),
+  route('coast-walk', 'trail', [[81.4, 79.4], [78.6, 80.4], [76, 82.4], [71, 84.8], [66.4, 85.4], [64.2, 84.6], [63.15, 84.4]], 2),   // (village fix round 3: it ends at the lighthouse's door, not inside its tower)
   route('field-track', 'trail', [[79.8, 56], [84.4, 55.2], [88, 57.8], [87.4, 62], [84.6, 62.4]], 2),
   route('marsh-boardwalk', 'trail', [[81.4, 79.4], [84, 77.8], [86.2, 74.6], [85.6, 72]], 2),
   route('water-meadow', 'trail', [[67.4, 71], [70.6, 73.4], [72.6, 77.4], [71, 84.8]], 2),
@@ -231,9 +238,9 @@ function stat(id, x, y, extra = {}) {
   S.push(row); return row;
 }
 // the quay and harbour
-stat('pier', 49, 79, { h: 5, door: { x: 50, y: 78 } });
-stat('pier-2', 49, 84, { h: 4, door: null });
-stat('pier-3', 49, 88, { h: 4, door: null });
+stat('pier', 49, 79, { w: 2, h: 8, door: { x: 50, y: 78 } });   // (village fix round 3: a long pier from the start, as in the plan, not a stubby square, and two cells wide, so it reads as a pier; it grows on from there)
+stat('pier-2', 49, 87, { w: 2, h: 3, door: null });
+stat('pier-3', 49, 90, { w: 2, h: 3, door: null });
 stat('tackle-shop', 52, 74, { district: 'harbour-bay' });
 stat('old-angler', 56, 79, { door: { x: 54.6, y: 78.8 }, district: 'harbour-bay' });   // (you stand beside him, not on him)
 stat('jetty-post', 48, 81, { door: null, district: 'harbour-bay' });
@@ -285,11 +292,22 @@ const SIGHTS = [
 ];
 for (const [id, x, y, w, district, door, col] of SIGHTS) stat(id, x, y, Object.assign(sightRow(id), { w, district, door: door === undefined ? undefined : door, col: col || 'full' }));
 for (const p of S) if (p.door === undefined) p.door = { x: p.x, y: p.y + 1 };
+// the hand-authored village (vale-village.json): statics that move to face the square, and the new cottages
+for (const [id, mv] of Object.entries(VV.staticMoves)) { const p = S.find(q => q.id === id); if (!p) { warn.push('static move: no static ' + id); continue; } Object.assign(p, mv); if (p.apron) p.apron = p.door && p.door.y < p.y ? { x: p.x - 1, y: p.y - 3, w: p.w + 2, h: 3 } : { x: p.x - 1, y: p.y + 1, w: p.w + 2, h: 3 }; }
+for (const ns of VV.newStatics) S.push(Object.assign(sightRow(ns.id), ns));
+// how deep a building stands on the ground (fix round 1): a house blocks its whole footprint, front wall to back wall, not
+// only the row along its front, so the feet stop where its walls stand and never step into the picture. The front row
+// (and so the foot it is drawn from, its door and its depth order) stays where it was; the rows behind it are added.
+for (const [id, d] of Object.entries(VV.depth || {})) {
+  const p = S.find(q => q.id === id); if (!p) { warn.push('depth: no static ' + id); continue; }
+  const foot = p.y + p.h; p.y = foot - d; p.h = d;
+  if (p.apron) p.apron = p.door && p.door.y < p.y ? { x: p.x - 1, y: p.y - 3, w: p.w + 2, h: 3 } : { x: p.x - 1, y: foot, w: p.w + 2, h: p.w <= 2 ? 1 : 3 };   // (a stall or a bench needs only the row it is used from)
+}
 // the story places that are part of something already drawn: points only, no art and no footprint (read by 94-garden-wonder-1kin.js _wkAnchor and the gates' finds)
 const storyAnchors = {
   'ld-ruined-arch': { x: 19.5, y: 67, of: 'island-ruins' }, 'ld-falls-cave': { x: 42.2, y: 26.4, of: 'fleet-falls' }, 'ld-lamp-room': { x: 61.5, y: 83.6, of: 'ld-lighthouse' },
-  'ld-mill-office': { x: 76.5, y: 64.6, of: 'ld-mill' }, 'ld-hothouse': { x: 39.5, y: 63.5, of: 'lc-glasshouse' }, 'ld-terrace-bench': { x: 47.5, y: 43.6, of: 'lakeside-terrace' },
-  'lc-the-green': { x: 48.5, y: 53, of: 'the-green' },
+  'ld-mill-office': { x: 76.5, y: 64.6, of: 'ld-mill' }, 'ld-hothouse': { x: 40.5, y: 65.6, of: 'lc-glasshouse' }, 'ld-terrace-bench': { x: 48.9, y: 43.6, of: 'lakeside-terrace' },
+  'lc-the-green': { x: 49.7, y: 51.9, of: 'the-green' },   // (fix round 1: on the open lawn beside the sundial, not in front of it)
   'ld-quince': { x: 24.4, y: 71.5, of: 'ruins-pond' },   // (quince's brook: the old woodland pond past the ruined arch, out of sight of Hollin's hut)   // (the stories mean the village green, not the land section of that name)
 };
 
@@ -305,7 +323,10 @@ const landLoop = smoothLoop(COAST, 4).map(p => p.map(r2)), land = [signedArea(la
 const landAt = (x, y) => inLoop(x, y, land[0]);
 const coastD = (x, y) => { let d = Infinity; for (let i = 0; i < land[0].length; i++) { const a = land[0][i], b = land[0][(i + 1) % land[0].length], ax = a[0] * W.cellW, ay = a[1] * W.cellH, dx = (b[0] - a[0]) * W.cellW, dy = (b[1] - a[1]) * W.cellH, t = Math.max(0, Math.min(1, ((x * W.cellW - ax) * dx + (y * W.cellH - ay) * dy) / (dx * dx + dy * dy || 1))); d = Math.min(d, Math.hypot(x * W.cellW - ax - dx * t, y * W.cellH - ay - dy * t)); } return d; };
 const inRect = (x, y, r) => r && x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h;
-const onRoute = (x, y, r) => lineD(x, y, r.points) <= r.widthCells / 2;
+// On a route: inside its shape (a plaza), or within the local half width of its centreline (route.widths, per point).
+const onRoute = (x, y, r) => { if (r.shape && inLoop(x, y, r.shape)) return true; const P = r.points, Wd = r.widths;
+  for (let i = 1; i < P.length; i++) { const a = P[i - 1], b = P[i], dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy || 1))), w = Wd ? Wd[i - 1] + (Wd[i] - Wd[i - 1]) * t : r.widthCells; if (Math.hypot(x - a[0] - dx * t, y - a[1] - dy * t) <= w / 2) return true; }
+  return false; };
 const cells = [];
 for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
   const cx = x + .5, cy = y + .5, l = landAt(cx, cy), fw = l && freshwater.some(b => inLoop(cx, cy, b.boundary)), beach = l && !fw && coastD(cx, cy) <= 76;
@@ -338,6 +359,20 @@ const HEART = { x: BED.x + 1, y: BED.y };
 sectionCells['lc-front-bed'] = []; sectionCells['lc-cottage-bed'] = [];
 for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 7; dx++) { sectionCells['lc-front-bed'].push([BED.x + dx, BED.y + dy]); sectionCells['lc-cottage-bed'].push([BED.x + dx, BED.y + 2 + dy]); }
 for (const id of ['lc-front-bed', 'lc-cottage-bed']) for (const [x, y] of sectionCells[id]) { const c = C(x, y); if (!c.land || c.fw || c.beach || c.reserved) warn.push(`starter bed ${id} cell ${x},${y} is not free (${c.route || c.st || c.lf || (c.beach ? 'beach' : '')})`); taken.add(K(x, y)); }
+// the village's 31 sections are hand-authored, in fields (vale-village.json); each cell must be free village ground
+for (const [id, a] of Object.entries(VV.sections)) {
+  if (id === 'lc-front-bed' || id === 'lc-cottage-bed') { if (JSON.stringify(a.cells) !== JSON.stringify(sectionCells[id])) warn.push('starter bed ' + id + ' differs from the 7 x 2 bed'); continue; }
+  const keep = [], why = (x, y) => { const c = C(x, y); return !c || !c.land ? 'sea' : c.fw ? 'water' : c.beach ? 'beach' : c.route ? 'route ' + c.route : c.st ? 'static ' + c.st : c.lf ? 'landform' : c.reserved ? 'reserved (apron or facade)' : c.zone !== 0 ? 'zone ' + c.zone : taken.has(K(x, y)) ? 'taken' : S.some(p => p.door && Math.floor(p.door.x) === x && Math.floor(p.door.y) === y) ? 'a door' : ''; };
+  for (const [x, y] of a.cells) { const w = why(x, y); if (w) warn.push(`village section ${id} cell ${x},${y} is not free (${w})`); else { keep.push([x, y]); taken.add(K(x, y)); } }
+  // a section short of its old size grows into free ground beside it, nearest its middle first
+  // (fix round 1: the green's borders are laid as authored, round the green's rim, and not grown back to their old size
+  // into the middle of the lawn: a green is lawn first, with borders round it)
+  const need = a.asAuthored ? a.cells.length : Math.max(4, v4Cells[id].length), mx = a.cells.reduce((n, c) => n + c[0], 0) / a.cells.length, my = a.cells.reduce((n, c) => n + c[1], 0) / a.cells.length;
+  while (keep.length && keep.length < need) { let best = null; for (const [x, y] of keep) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (why(nx, ny)) continue; const d = Math.hypot(nx - mx, ny - my); if (!best || d < best[2]) best = [nx, ny, d]; } if (!best) break; keep.push([best[0], best[1]]); taken.add(K(best[0], best[1])); }
+  if (keep.length < need) warn.push(`village section ${id} has ${keep.length} cells, fewer than its ${need}`);
+  sectionCells[id] = keep;
+}
+const fieldOf = Object.fromEntries(Object.entries(VV.sections).map(([id, a]) => [id, a.field]));
 const shapeOf = n => n >= 19 ? [5, 4] : n >= 14 ? [7, 2] : n >= 12 ? [4, 3] : n >= 9 ? [3, 3] : n >= 6 ? [3, 2] : [2, 2];
 const free = (x, y, zone) => { const c = C(x, y); return !!c && c.land && !c.fw && !c.beach && !c.reserved && c.zone === zone && !taken.has(K(x, y)) && x >= 1 && y >= 1 && x < W.cols - 1 && y < W.rows - 1; };
 const routeD = (x, y, zone) => { let d = Infinity; for (const r of routes) if (r.zone === zone || (zone === 0 && r.public)) d = Math.min(d, lineD(x, y, r.points) - r.widthCells / 2); return d; };
@@ -361,7 +396,7 @@ function score(kind, id, x, y, zone) {
   return s;
 }
 // The pond plot follows the Mere's bank: a connected run of free bank cells (any shape).
-{ const n = v4Cells['lc-pond'].length, bank = (x, y) => free(x, y, 0) && waterD(x + .5, y + .5, ['pond']) <= 2.4 && !taken.has(K(x - 1, y)) || false;
+if (!sectionCells['lc-pond']) { const n = v4Cells['lc-pond'].length, bank = (x, y) => free(x, y, 0) && waterD(x + .5, y + .5, ['pond']) <= 2.4 && !taken.has(K(x - 1, y)) || false;
   const seeds = cells.filter(c => bank(c.x, c.y)).sort((a, b) => Math.hypot(a.x - 38, a.y - 39) - Math.hypot(b.x - 38, b.y - 39)), got = [], seen = new Set();
   const queue = seeds.length ? [[seeds[0].x, seeds[0].y]] : [];
   while (queue.length && got.length < n) { const [x, y] = queue.shift(), k = K(x, y); if (seen.has(k) || !bank(x, y)) continue; seen.add(k); got.push([x, y]); for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) queue.push([x + dx, y + dy]); }
@@ -416,6 +451,23 @@ const districts = [
 /* ------------------------------------------------------------ the regions */
 const regions = v4.regions.map(r => Object.assign({}, r, { polygons: [REG[r.id]] }, r.id === 'home-island' ? { name: 'Fleetwater' } : {}));
 
+/* ------------------------------------------------------------ the village green's lawn and the fields (presentation) */
+// The lawn is the inside edge of the flagged walk round the green (plaza-loop's ribbon, pulled in from its local half width).
+const greenLawn = (() => { const r = routes.find(q => q.id === 'plaza-loop'), P = r.points.slice(0, -1), n = P.length, cx = P.reduce((a, p) => a + p[0], 0) / n, cy = P.reduce((a, p) => a + p[1], 0) / n, out = [];
+  for (let i = 0; i < n; i += 2) { const a = P[(i - 1 + n) % n], b = P[(i + 1) % n], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; let nx = -dy / l, ny = dx / l; if ((cx - P[i][0]) * nx + (cy - P[i][1]) * ny < 0) { nx = -nx; ny = -ny; } const h = r.widths[i] / 2; out.push([r2(P[i][0] + nx * h), r2(P[i][1] + ny * h)]); }
+  return out; })();
+// Each field: its sections, how its locked land reads, and its one gate: the field cell beside walkable public ground nearest the authored hint.
+const EDGE = { wren: 'hedge', green: 'kerb', wood: 'bracken', mere: 'reeds', glass: 'wall', allot: 'long-grass', orchard: 'hedge-road', meadow: 'meadow', bridge: 'stile', light: 'drystone' };
+const fields = Object.entries(VV.fields).map(([id, f]) => {
+  const secs = Object.keys(VV.sections).filter(s => VV.sections[s].field === id), mine = new Set(secs.flatMap(s => sectionCells[s].map(c => K(c[0], c[1])))), cand = [];
+  for (const s of secs) for (const [x, y] of sectionCells[s]) for (const [dx, dy] of [[0, 1], [0, -1], [-1, 0], [1, 0]]) { const c = C(x + dx, y + dy); if (!c || mine.has(K(x + dx, y + dy)) || taken.has(K(x + dx, y + dy)) || !c.land || c.fw || c.st || c.lf || c.zone !== 0) continue; cand.push({ x, y, out: { x: x + dx, y: y + dy }, section: s, onRoute: !!c.route }); }
+  const hint = f.gateHint || null, score = q => (q.onRoute ? 0 : 2) + (hint ? Math.hypot(q.x - hint[0], q.y - hint[1]) : 0);
+  const gate = hint && cand.length ? cand.sort((a, b) => score(a) - score(b))[0] : null;
+  if (hint && !gate) warn.push('field ' + id + ' has no gate');
+  return { id, name: f.name, edge: EDGE[id] || 'hedge', sections: secs, gate: gate ? { x: gate.x, y: gate.y, out: gate.out, section: gate.section } : null };
+});
+for (const [id, a] of Object.entries(storyAnchors)) { const x = Math.floor(a.x), y = Math.floor(a.y); if (Object.entries(sectionCells).some(([, cs]) => cs.some(c => c[0] === x && c[1] === y))) warn.push(`story anchor ${id} stands in a field (${x},${y})`); }
+
 /* ------------------------------------------------------------ what the painter reads (presentation only, no collision) */
 const presentation = {
   name: 'Fleetwater Vale',
@@ -424,7 +476,7 @@ const presentation = {
   rivers: Object.fromEntries(Object.entries(ribbons).map(([id, [line, hw]]) => [id, { name: riverNames[id][0], halfWidth: hw, line: smooth(line, 4).map(p => [r2(p[0]), r2(p[1])]) }])),
   falls: { id: 'fleet-falls', name: 'Fleet Falls', x: 44, y: 24.6, w: 3, h: 3, pool: [45.4, 28.4], caveStair: [42.2, 25.9], note: 'Drops off the scarp into the NW corner of the Mere; the cave stair runs behind it on the west side.' },
   crossings: [
-    { id: 'falls-footbridge', kind: 'footbridge', over: 'brook', x: 37.4, y: 36, along: 'lake-walk-west' },
+    { id: 'falls-footbridge', kind: 'footbridge', over: 'brook', x: 36.3, y: 36.3, along: 'lake-walk-west' },   // (village fix round 1: where the lake walk crosses the brook; at 37.4 its landing lay a cell east of the deck's foot)
     { id: 'outlet-footbridge', kind: 'footbridge', over: 'river', x: 59.9, y: 41.1, along: 'lakeside-steps' },
     { id: 'millwater-bridge', kind: 'hump-bridge', over: 'river', x: 65, y: 55.1, along: 'east-road', gateId: 'island-mill' },
     { id: 'estuary-stones', kind: 'stepping-stones', over: 'river', x: 78.6, y: 80.4, along: 'coast-walk' },
@@ -433,15 +485,16 @@ const presentation = {
     { id: 'brook-stones-east', kind: 'stepping-stones', over: 'brook', x: 25.6, y: 36.8, along: 'woodland-loop' },
   ],
   plazas: [
-    { id: 'the-green', route: 'plaza-loop', x: GREEN.x, y: GREEN.y, rx: GREEN.rx - 1.3, ry: GREEN.ry - 1.3, job: 'hub: garden shop W, land office NW (the falls behind it), notice board E, market and post S; a great lime and the sundial fountain in the middle' },
-    { id: 'the-quay', route: 'the-quay', x: 50.3, y: 77.6, job: 'pier, tackle shop, boathouse; travellers and friends land here' },
-    { id: 'lakeside-terrace', route: 'lakeside-terrace', x: 48.6, y: 43.6, job: 'lake hall facing the water, the bench with the falls view' },
+    { id: 'the-green', route: 'plaza-loop', x: GREEN.x, y: GREEN.y, rx: GREEN.rx - 1.3, ry: GREEN.ry - 1.3, lawn: greenLawn, lime: VV.lime, square: VV.plazas['the-square'].poly.map(p => p.map(r2)), rose: { x: 48.8, y: 57.9 }, job: 'an English village green: a rounded triangle of striped lawn inside a flagged walk, the great lime and the sundial on it; the square at its foot, where the high street arrives, with the market, the craft bench, the post box and the cross facing onto it' },
+    { id: 'the-quay', route: 'the-quay', x: 50.3, y: 77.6, shape: VV.plazas['the-quay'].poly.map(p => p.map(r2)), job: 'a harbour front bulging at the pier root and tapering into the strand and the lighthouse walk; pier, tackle shop, boathouse; travellers and friends land here' },
+    { id: 'lakeside-terrace', route: 'lakeside-terrace', x: 48.6, y: 43.6, shape: VV.plazas['lakeside-terrace'].poly.map(p => p.map(r2)), job: 'a crescent along the Mere shore: lake hall facing the water, the bench with the falls view' },
     { id: 'great-oak-clearing', route: 'great-oak-clearing', x: 15.3, y: 44.6, job: 'the Great Oak (draw a huge oak crown here, seen from the Forest arch)' },
     { id: 'mill-yard', route: 'mill-yard', x: 74.2, y: 65.8, job: 'the watermill and its turning wheel on the river' },
     { id: 'ruin-court', route: 'ruin-court', x: 22.3, y: 74.8, job: 'the chapel and old foundations' },
     { id: 'cider-square', route: 'cider-square', x: 77.9, y: 37, job: 'barrels, the press' },
     { id: 'summit-cairn', route: 'summit-cairn', x: 50.6, y: 9.8, job: 'the cairn and the beacon' },
   ],
+  fields,   // the village's sections grouped into fields: how locked land reads (edge) and the one way in (gate)
   gateKinds: Object.fromEntries(gates.map(g => [g.id, g.kind])),
   shortcuts: [
     { id: 'coast-walk', route: 'coast-walk', from: 'east-mill', to: 'home-island', level: 6, note: 'estuary stepping stones to the lighthouse and quay' },
@@ -457,7 +510,7 @@ const presentation = {
 /* ------------------------------------------------------------ write */
 const out = {
   id: 'island-v5-fleetwater-vale', version: 5,
-  mechanics: { revision: 3, predecessorLayout: 'cbc9629edd7fb57272e9d21b', contract: 'fleetwater-vale-fresh-start-v1' },
+  mechanics: { revision: 4, predecessorLayout: '6e944bb9572a554637db8684', contract: 'fleetwater-vale-fresh-start-v1', village: 'hand-authored (assets/garden/vale-village.json)' },
   world: Object.assign({}, v4.world, { v: 5, start }),
   anchors: { heart: HEART, bed: BED, start },
   coast: { land, oceanBounds: v4.coast.oceanBounds, visualOceanBounds: v4.coast.visualOceanBounds, beachWidthPx: 76 },
@@ -468,7 +521,7 @@ const out = {
   featurePolicy: Object.assign({}, v4.featurePolicy, { defaultStaticIds: S.map(p => p.id) }),
   physicalContract: Object.assign({}, v4.physicalContract, { gateCrossings: 'Each gate stands on its path at a natural crossing (arch, bridge, stair, pass). A closed region is locked whole; walls and the scarp keep open regions to their paths and shortcuts.', fresh: 'Gardens from earlier layouts start fresh here; nothing is carried over.' }),
   gates, sectionCells,
-  allotmentPolicy: Object.assign({}, v4.allotmentPolicy, { assignedCells: Object.values(sectionCells).reduce((n, c) => n + c.length, 0), treePriority: 'Every section has a coherent 2x2 or larger footprint, packed by kind near its paths. Starter beds stay 7x2 each.' }),
+  allotmentPolicy: Object.assign({}, v4.allotmentPolicy, { assignedCells: Object.values(sectionCells).reduce((n, c) => n + c.length, 0), treePriority: 'Village sections are hand-authored fields that follow lanes, shore and slope (vale-village.json); the rest are coherent 2x2 or larger footprints, packed by kind near their paths. Starter beds stay 7x2 each.' }),
   regions, landforms,
   placementAnchors: { policy: v4.placementAnchors.policy, features: {}, sights: {} },
   presentation,

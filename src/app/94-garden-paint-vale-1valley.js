@@ -23,6 +23,7 @@
     const W = GARDEN_WORLD, byId = new Map();
     for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
       const row = typeof gardenLandCell === 'function' ? gardenLandCell(x, y) : null; if (!row || !row.plot || !fenced(x, y)) continue;
+      if (V.villageSection && V.villageSection(row.id)) continue;   // (a village field wears its own edge: 94-garden-paint-vale-1village.js)
       let p = byId.get(row.id); if (!p) byId.set(row.id, p = { id: row.id, cells: [], edges: [] }); p.cells.push([x, y]);
       for (const [dx, dy, side] of [[0, 1, 's'], [0, -1, 'n'], [1, 0, 'e'], [-1, 0, 'w']]) {
         const nx = x + dx, ny = y + dy, nrow = gardenLandCell(nx, ny), base = gardenIslandBaseCell(nx, ny);
@@ -35,9 +36,12 @@
   }
   const level = () => { try { return gardenModel().level.level; } catch (e) { return 1; } };
   const locked = (x, y, lv) => { try { return String(gardenAreaAt(x, y, lv)).startsWith('locked:'); } catch (e) { return false; } };
+  // (a plot past a gate that is still shut has no fence yet: the mist stands at that edge, and a fence there drew a ruled
+  // line of posts down the open meadow beside the village. It is fenced once its gate opens.)
+  const zoneShut = (x, y) => { try { return typeof gardenZoneLockAt === 'function' && !!gardenZoneLockAt(x, y); } catch (e) { return false; } };
   // The ground re-bakes when a valley plot opens or closes.
   // (and when you reach a plot's level: its sign turns from the level it needs to its price)
-  V.groundSigs.push(() => { if (typeof gardenAreaAt !== 'function') return ''; const lv = level(); let h = 0, n = 0; for (const p of plots()) { const c = p.cells[0]; if (locked(c[0], c[1], lv)) { const row = gardenLandCell(c[0], c[1]); h = (h * 31 + p.cells.length + c[0] * 97 + c[1] + (row && lv >= (row.lv || 0) ? 7 : 0)) >>> 0; n++; } } return '|vf' + n + ':' + h; });
+  V.groundSigs.push(() => { if (typeof gardenAreaAt !== 'function') return ''; const lv = level(); let h = 0, n = 0; for (const p of plots()) { const c = p.cells[0]; if (locked(c[0], c[1], lv)) { const row = gardenLandCell(c[0], c[1]); h = (h * 31 + p.cells.length + c[0] * 97 + c[1] + (row && lv >= (row.lv || 0) ? 7 : 0) + (zoneShut(c[0], c[1]) ? 3 : 0)) >>> 0; n++; } } return '|vf' + n + ':' + h; });
   // The fence wears the country it stands in: on the north moor and in the High orchard the plot is a thicket of gorse or
   // bramble (scrub(); kinds 'wall' and 'hedge' name the two), a valley field its own ring ('field'), the weathered
   // post-and-rail everywhere else (the village). One rule, local dress (17 Nov 2026; thickets in the high country 19 Nov 2026).
@@ -771,7 +775,7 @@
     if (high) edges = edges.filter(([x, y, side]) => { const mx = x + (side === 'e' ? 1 : side === 'w' ? 0 : .5), my = y + (side === 's' ? 1 : side === 'n' ? 0 : .5); return !byStatic(mx, my); });
     const tone = plot ? nz(plot.cells[0][0] / 3.7, plot.cells[0][1] / 2.9, 493) : .5;
     if (high && plot) { if (locked(plot.cells[0][0], plot.cells[0][1], lv)) scrub(B, P, plot, edges, W, season, cb, lv, tone); return; }
-    for (const [x, y, side, nx, ny] of edges) if (locked(x, y, lv) && !locked(nx, ny, lv)) drawn.add(x + ',' + y + side);
+    for (const [x, y, side, nx, ny] of edges) if (locked(x, y, lv) && !locked(nx, ny, lv) && !zoneShut(x, y)) drawn.add(x + ',' + y + side);
     // A wall or hedge round a plot one or two cells deep stood as a solid box of stones, its far run and its near run
     // meeting over the land (art director, round 3: "not a wall round land"). Each run is only as tall as leaves the
     // plot's own ground showing between them: the full .8 H on a plot three cells deep, lower on a shallower one.
@@ -791,7 +795,7 @@
     if (window.GardenPaintGround && GardenPaintGround.castRuns) {
       const runs = [];
       for (const [x, y, side, nx, ny] of edges) {
-        if (!locked(x, y, lv) || locked(nx, ny, lv) || !seen(x, y)) continue;
+        if (!locked(x, y, lv) || locked(nx, ny, lv) || zoneShut(x, y) || !seen(x, y)) continue;
         at(x); const x0 = x * cw, y0 = W.sky + y * ch, kind = regionKind(x, y), h = RH[kind] * (kind === 'rail' ? .9 : 1.05);
         if (side === 's' || side === 'n') { const yy = side === 's' ? y0 + ch - inset : y0 + northFoot(kind); runs.push([x0, yy, x0 + cw, yy, h]); }
         else { const xx = side === 'e' ? x0 + cw - inset : x0 + inset; runs.push([xx, y0 + sideFrom(x, y, kind), xx, y0 + ch, h]); }
@@ -801,7 +805,7 @@
     let gateAt = '', gateShift = 0;
     { const fr = edges.filter(([x, y, side, nx, ny]) => side === 's' && locked(x, y, lv) && !locked(nx, ny, lv)); if (fr.length && regionKind(fr[0][0], fr[0][1]) === 'field') { const yM = Math.max(...fr.map(f => f[1])), lo = fr.filter(f => f[1] === yM).sort((a, b) => a[0] - b[0]), at = lo[lo.length >> 1]; gateAt = at[0] + ',' + at[1] + 's'; gateShift = 0; } }
     for (const [x, y, side, nx, ny] of edges) {
-      if (!locked(x, y, lv) || locked(nx, ny, lv)) continue;   // (a plot that is yours, or two locked plots side by side: no fence between)
+      if (!locked(x, y, lv) || locked(nx, ny, lv) || zoneShut(x, y)) continue;   // (a plot that is yours, or two locked plots side by side, or a plot past a shut gate: no fence)
       if (side === 's') fronts.push([x, y]);
       if (!seen(x, y)) continue;
       at(x); const r = rOf(x, y, side), x0 = x * cw, y0 = W.sky + y * ch, kind = regionKind(x, y), hh = RH[kind], from = side === 'e' || side === 'w' ? sideFrom(x, y, kind) : 0;

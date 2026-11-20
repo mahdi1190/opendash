@@ -199,6 +199,7 @@ function _gwBuildSolids(m) {
   // its last column with half the figure over the blank beyond the world. They stop half a cell in, among the trees
   // drawn there (the north edge is the sky over the fells; the east and south are sea).
   if (island && island.version >= 5) add(-1, -1, .34, GARDEN_WORLD.rows + 1, 'the edge of the map');
+  for (const { form: f } of _gwFieldForms()) { const r = add(f.x0, f.y0, f.x1, f.y1, f.src); r.form = f; }
   return { list, at };
 }
 /** The one trunk-collision list for painted trees, in cells ({x0, y0, x1, y1, src}). Five painters plant trees, each
@@ -328,6 +329,16 @@ function gardenPropPaintedFeet(p) {
   const W = GARDEN_WORLD, cx = p.x + (p.w || 1) / 2, foot = p.y + (p.h || 1);
   return art.foot.map(([l, r, d]) => ({ x0: cx + l / W.cellW, y0: d ? foot - d / W.cellH : p.y, x1: cx + r / W.cellW, y1: foot - .02 }));
 }
+/** The village's shut fields as outlines (94-garden-paint-vale-1village.js fieldForms: the line each field's ground is drawn to),
+ *  with the cells under each: a shut field stops the feet at its painted hedge, long grass or reeds, not at its square cells. */
+function _gwFieldForms() {
+  // (in a friend's garden their fields are shut by their level, not yours: whole cells, as before)
+  if (typeof gardenVisitOn === 'function' && gardenVisitOn()) return [];
+  const list = typeof GardenPaintVale !== 'undefined' && GardenPaintVale && GardenPaintVale.fieldForms ? GardenPaintVale.fieldForms() : [];
+  if (_gw.fieldFormsOf === list) return _gw.fieldForms;
+  const out = list.map(f => ({ form: _gwForm(f.poly, f.src), cells: f.cells }));
+  _gw.fieldFormsOf = list; _gw.fieldForms = out; return out;
+}
 /** Is a landform cell solid only because of its landform (so the outline, not the cell, stops the feet)? */
 function _gwLandformCell(x, y) { const c = typeof gardenIslandBaseCell === 'function' ? gardenIslandBaseCell(x, y) : null; return !!(c && c.solid && c.landformId && GARDEN_WORLD.v >= 5); }
 function _gwInPoly(x, y, pts) { let on = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const xi = pts[i][0], yi = pts[i][1], xj = pts[j][0], yj = pts[j][1]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) on = !on; } return on; }
@@ -379,10 +390,14 @@ function gardenLockedPlotOpenToFeet(x, y, id) {
 function _gwBuildGrid(m) {
   const W = GARDEN_WORLD, g = new Uint8Array(W.cols * W.rows), otherWater = new Uint8Array(g.length), waterCover = new Uint8Array(g.length), shore = typeof gardenLakeGeometry === 'function' ? gardenLakeGeometry(m) : null;
   const lvl = m.level.level;
+  // a shut village field stops the feet along its painted outline (_gwBuildSolids); its cells only steer the routes round it
+  const fieldOf = new Map(); for (const ff of _gwFieldForms()) for (const c of ff.cells) { const i = c[1] * W.cols + c[0]; (fieldOf.get(i) || fieldOf.set(i, []).get(i)).push(ff.form); }
+  const fieldShut = [];
   for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
     let blocked = false;
     const a = gardenAreaAt(x, y, lvl);
-    if (a.startsWith('locked:') && !(a === 'locked:' + GARDEN_LAND_THICKET.id && _gwLandformCell(x, y)) && !gardenLockedPlotOpenToFeet(x, y, a.slice(7))) blocked = true;   // behind the little fence (a landform stops the feet along its outline: _gwBuildSolids)
+    if (a.startsWith('locked:') && fieldOf.has(y * W.cols + x)) fieldShut.push(y * W.cols + x);
+    else if (a.startsWith('locked:') && !(a === 'locked:' + GARDEN_LAND_THICKET.id && _gwLandformCell(x, y)) && !gardenLockedPlotOpenToFeet(x, y, a.slice(7))) blocked = true;   // behind the little fence (a landform stops the feet along its outline: _gwBuildSolids)
     const pr = gardenPropAt(x, y), pc = pr ? gardenPropCol(pr) : '';
     if (pc === 'full') blocked = true;                                // (a shop is a wall; a lectern is a box, the mooring post, the reeds and the boat nothing: _gwBuildSolids)
     const water = (!pr || pc === 'none' && !pr.walk) && gardenIsWater(x, y);
@@ -399,6 +414,9 @@ function _gwBuildGrid(m) {
   for (const dc of m.decor) { if (!gardenFenceBand(dc)) continue; const i = dc.y * W.cols + dc.x; if (dc.x >= 0 && dc.y >= 0 && dc.x < W.cols && dc.y < W.rows && !gardenAreaAt(dc.x, dc.y, lvl).startsWith('locked:') && !(gardenPropAt(dc.x, dc.y) && gardenPropCol(gardenPropAt(dc.x, dc.y)) === 'full')) g.hard[i] = 0; }
   // (a sight whose painting names its base: the feet stop at that base, _gwBuildSolids; its cells stay shut to the routes' planner)
   for (const p of gardenPropsNow()) { if (!gardenPropPaintedFeet(p)) continue; for (let y = p.y; y < p.y + (p.h || 1); y++) for (let x = p.x; x < p.x + (p.w || 1); x++) { if (x < 0 || y < 0 || x >= W.cols || y >= W.rows) continue; const a2 = gardenAreaAt(x, y, lvl), c2 = m.occ.get(x + ',' + y); if (!a2.startsWith('locked:') && !(c2 && c2.decor)) g.hard[y * W.cols + x] = 0; } }
+  // (routes keep out of a field cell whose middle lies inside the painted line; the feet are stopped by the line itself)
+  g.fieldSteer = new Set();
+  for (const i of fieldShut) if (!g[i]) { const x = i % W.cols, y = (i - x) / W.cols; if (fieldOf.get(i).some(f => _gwInPoly(x + .5, y + .5, f.poly))) { g[i] = 1; g.fieldSteer.add(i); } }
   g.otherWater = otherWater; g.waterCover = waterCover; g.shore = shore; g.otherShapes = typeof gardenOtherWaterShapes === 'function' ? gardenOtherWaterShapes(m) : null; g.model = m; g.anchors = new Map(); g.probe = {}; g.contact = {};
   g.otherBuckets = new Map(); g.noShapes = [];
   if (g.otherShapes) for (const shape of g.otherShapes) { const b = shape.bounds; if (!b) continue; for (let y = Math.max(0, Math.floor(b.y - 1)); y <= Math.min(W.rows - 1, Math.ceil(b.y + b.height + 1)); y++) for (let x = Math.max(0, Math.floor(b.x - 1)); x <= Math.min(W.cols - 1, Math.ceil(b.x + b.width + 1)); x++) { const index = y * W.cols + x; let list = g.otherBuckets.get(index); if (!list) { list = []; g.otherBuckets.set(index, list); } list.push(shape); } }
@@ -2135,3 +2153,5 @@ function gardenWorldPainted(m) {
   if (typeof gardenLiveHostPainted === 'function') gardenLiveHostPainted(m);   // friends in your garden (94-garden-live-3host.js)
   _gwEnsureLoop();
 }
+/** (the village's name for the same thing: 94-garden-world-0walk.js _gwFieldForms) */
+function _gwForm(pts, src) { return _gwFormOf(pts, src); }

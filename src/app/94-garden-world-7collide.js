@@ -45,7 +45,7 @@ function gardenCollideData(mArg) {
   for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
     const i = y * W.cols + x;
     if (grid.hard[i]) { const why = _gcvCellWhy(x, y, m) || 'blocked cell ' + x + ',' + y; cells.push({ x, y, src: why }); seen.set(i, why); }
-    else if (grid[i]) water.push({ x, y, src: grid.otherWater[i] || gardenIsWater(x, y) ? 'water' : 'water edge (no room for feet)' });
+    else if (grid[i] && !(grid.fieldSteer && grid.fieldSteer.has(i))) water.push({ x, y, src: grid.otherWater[i] || gardenIsWater(x, y) ? 'water' : 'water edge (no room for feet)' });
   }
   const rects = solids ? solids.list.map(r => ({ x0: r.x0, y0: r.y0, x1: r.x1, y1: r.y1, src: r.src || 'something solid', form: r.form || null })) : [];
   const shores = [];
@@ -79,7 +79,7 @@ function gardenCollideAt(x, y, mArg) {
   const cx = Math.floor(x), cy = Math.floor(y), i = cy * W.cols + cx;
   if (cx >= 0 && cy >= 0 && cx < W.cols && cy < W.rows) {
     if (D.cellWhy.has(i)) out.push(D.cellWhy.get(i));
-    else if (D.grid[i] || !(D.grid.shore ? gardenShoreFootProbe(D.grid.shore, x, y, .02, .02, false, D.grid.waterCover, {}).free : true)) out.push(D.grid.otherWater[i] || gardenIsWater(cx, cy) ? 'water' : 'water edge (no room for feet)');
+    else if (D.grid[i] && !(D.grid.fieldSteer && D.grid.fieldSteer.has(i)) || !(D.grid.shore ? gardenShoreFootProbe(D.grid.shore, x, y, .02, .02, false, D.grid.waterCover, {}).free : true)) out.push(D.grid.otherWater[i] || gardenIsWater(cx, cy) ? 'water' : 'water edge (no room for feet)');
   }
   return out;
 }

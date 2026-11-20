@@ -59,9 +59,7 @@ function gardenIslandStaticRow(row) {
   // The v5 well moved to the village but retained a doorway ten cells east.
   // Repair only that authored row; later Designer placements keep their own doors.
   if (data.version === 5 && p.id === 'ld-wish' && p.x === 33 && p.y === 58 && p.w === 1 && p.h === 1 && p.door && p.door.x === 43 && p.door.y === 58) next.door = Object.freeze({ x: p.x, y: p.y + p.h });
-  // The v5 shore bench stood behind the land office's roof (only its end showed). Presentation and seating only:
-  // it sits a few steps west on open ground by the lake walk, facing the water; the layout file is unchanged.
-  if (data.version === 5 && p.id === 'ld-bench-b' && p.x === 45 && p.y === 42 && p.w === 2) { next.x = 40.6; next.y = 42; next.door = Object.freeze({ x: 41, y: 43 }); }
+  // (2.74: the shore bench stands by the lake walk in the layout itself, vale-village.json, so it needs no move here)
   return next;
 }
 /** The woodpile's authored anchor and ground contact, shared by paint and feet. */
@@ -103,7 +101,7 @@ function gardenIslandPosternPiers(data) {
   data = data || (gardenIslandActive() ? gardenIslandData() : null);
   const sc = data && data.version >= 5 && ((data.presentation && data.presentation.shortcuts) || []).find(s => s.id === 'postern');
   if (!sc || !sc.at) return [];
-  return [[sc.at[0] + .3, sc.at[1] - 1.05], [sc.at[0] + .55, sc.at[1] + 1.25]].map(([x, y]) => ({ x, y, foot: { x0: x - .26, y0: y - .2, x1: x + .26, y1: y + .04 } }));
+  return [[sc.at[0] + .3, sc.at[1] - 1.05], [sc.at[0] + .55, sc.at[1] + 1.25]].map(([x, y]) => ({ x, y, foot: { x0: x - .28, y0: y - .34, x1: x + .28, y1: y + .14 } }));   // (village fix round 1: as deep as the pier stands on the ground, so the feet stop at its stones and never stand on its foot)
 }
 /** Optional decks use the displayed Garden's mechanics identity, never a visitor's ownership. */
 function gardenSidePierMechanicsReady(source) {
@@ -321,11 +319,21 @@ function gardenIslandCoastDistance(x, y) {
   for (const points of gardenIslandGeometry().land) for (let i = 0; i < points.length; i++) { const a = points[i], b = points[(i + 1) % points.length], ax = a[0] * W.cellW, ay = a[1] * W.cellH, dx = (b[0] - a[0]) * W.cellW, dy = (b[1] - a[1]) * W.cellH, t = Math.max(0, Math.min(1, ((x * W.cellW - ax) * dx + (y * W.cellH - ay) * dy) / (dx * dx + dy * dy || 1))); distance = Math.min(distance, Math.hypot(x * W.cellW - ax - dx * t, y * W.cellH - ay - dy * t)); }
   return distance;
 }
+// A route covers its shape (a plaza: the square, the terrace, the quay) and its centreline out to the local half width
+// (route.widths, one per point, from the hand-authored village; otherwise widthCells). Same rule as tools/garden-vale-layout.mjs.
 function _gardenIslandOnRoute(x, y, route) {
   if (!route.points) return false;
-  const radius2 = (route.widthCells * .5) ** 2;
-  for (let i = 1; i < route.points.length; i++) { const a = route.points[i - 1], b = route.points[i], dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy || 1))); if ((x - a[0] - dx * t) ** 2 + (y - a[1] - dy * t) ** 2 <= radius2) return true; }
+  if (route.shape && _gardenIslandInLoop(x, y, route.shape)) return true;
+  const widths = Array.isArray(route.widths) && route.widths.length === route.points.length ? route.widths : null, radius2 = (route.widthCells * .5) ** 2;
+  for (let i = 1; i < route.points.length; i++) { const a = route.points[i - 1], b = route.points[i], dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy || 1))), d2 = (x - a[0] - dx * t) ** 2 + (y - a[1] - dy * t) ** 2; if (d2 <= (widths ? ((widths[i - 1] + (widths[i] - widths[i - 1]) * t) * .5) ** 2 : radius2)) return true; }
   return false;
+}
+/** The route's full width (cells) at the point of its centreline nearest x, y: route.widths where authored, else widthCells. */
+function gardenIslandRouteWidthAt(route, x, y) {
+  const P = route && route.points, Wd = route && Array.isArray(route.widths) && route.widths.length === P.length ? route.widths : null; if (!P || !Wd) return Number(route && route.widthCells) || 2;
+  let best = Infinity, w = Wd[0];
+  for (let i = 1; i < P.length; i++) { const a = P[i - 1], b = P[i], dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy || 1))), d = (x - a[0] - dx * t) ** 2 + (y - a[1] - dy * t) ** 2; if (d < best) { best = d; w = Wd[i - 1] + (Wd[i] - Wd[i - 1]) * t; } }
+  return w;
 }
 /** Exact cell-centre beach membership, prepared once from every coast segment.
  * Bounding boxes only select candidates. The final anisotropic pixel distance

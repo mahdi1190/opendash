@@ -4,7 +4,10 @@
    THE BOTTLE. Pick a friend and a line from the book (never free text: GTG_BOTTLE_LINES, the index goes on the wire) and it sets off. Three days later it is bobbing in their lake (frozen in, in winter). Snapshot `bt` [[mark, line, day sent]], the last three; `bw` how many wait unread, so a visitor sees them too.
    ============================================================ */
 const GTG_GN = Object.freeze({ days: 3, hostTicket: 3, homeTicket: 6, at3: Object.freeze({ 'mat:stone': 2 }), at6: Object.freeze({ 'mat:stone': 5 }) });
-const GTG_GN_AT = Object.freeze(Object.assign(_wdPt('post-box', 1.1, 0.5), { guest: _wdPt('notice-board', -3.4, 0.5) }));   // world cells: yours at home; those staying with you stand in a row from here
+// (village fix round 2) your gnome stands on the turf at the corner of your bed by the welcome sign, not out in the square's paving
+// (read when it is drawn: the layout's bed is there by then; a sight such as the welcome sign may not be among the props at load)
+const GTG_GN_AT = Object.freeze({ get x() { return _gtgnHome().x; }, get y() { return _gtgnHome().y; }, guest: _wdPt('notice-board', -3.4, 0.5) });
+function _gtgnHome() { try { const b = gardenIslandData().anchors.bed; if (b) return { x: b.x + b.w - 0.45, y: b.y - 0.35 }; } catch (e) { /* the old place */ } return _wdPt('post-box', 1.1, 0.5); }   // world cells: yours at home; those staying with you stand in a row from here
 const GTG_BOTTLE_AT = Object.freeze([[19, 23.4], [31.5, 22.6], [23, 26.6]]);   // world cells: where a bottle comes to rest
 const GTG_BOTTLE = Object.freeze({ days: 3, keep: 3, read: 3, send: 1 });
 /* Append only: the index is what is sent. No names, no links, nothing but kindness. */
@@ -20,7 +23,8 @@ function gtgGnomeSvg(seed, pennants) {
   const A = GART, hats = ['#c8382a', '#2a6ab4', '#3a8a4a', '#c88a1a', '#8a3ab4', '#d8588a'], hat = hats[Math.abs(seed) % hats.length], coat = ['#3a6a8a', '#8a4a2a', '#4a7a3a', '#6a4a8a'][Math.abs(seed >> 3) % 4];
   let s = A.P('#000000', A.ell(0, 1, 10, 3), 0.2) + A.P('#4a3a2a', A.rrect(-7, -5, 6, 5, 1) + A.rrect(1, -5, 6, 5, 1)) + A.P(coat, 'M-8 -5L-7 -18Q0 -21 7 -18L8 -5z') + A.P('#f0d8c0', A.circ(0, -21, 5.4)) + A.P('#f4f4ec', 'M-6 -21Q-7 -12 0 -9Q7 -12 6 -21Q0 -17 -6 -21z') + A.P('#e8a890', A.circ(0, -20.6, 1.6)) + A.P(hat, 'M-7 -24Q0 -22 7 -24L0 -42z');
   for (let i = 0; i < Math.min(6, pennants || 0); i++) s += A.P(['#f4d03a', '#ffffff', '#5a9ae8'][i % 3], `M${-3 + i * 1.2} ${-38 + i * 2.2}l-5 -2l5 -2z`);
-  return s;
+  // (village fix round 1: a garden gnome is knee high, not as tall as a child beside you)
+  return '<g transform="scale(0.6)">' + s + '</g>';
 }
 function _gtgnLeave(fid, m) {
   const W = _gtgW(); W['tg.gn'] = { at: fid, d: m.today }; _gdSave();
