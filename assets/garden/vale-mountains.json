@@ -639,7 +639,7 @@
    "y": 8,
    "w": 1,
    "h": 1,
-   "col": "full",
+   "col": "soft",
    "tall": 0.8,
    "district": "north-headland",
    "door": {
@@ -671,25 +671,6 @@
     [77.6, 6.6],
     [76.2, 6.9],
     [75.4, 7.5]
-   ],
-   "halfWidth": 0.4
-  },
-  {
-   "id": "cove-cliff-s",
-   "kind": "rock-wall",
-   "line": [
-    [75, 10.9],
-    [75.1, 11.6],
-    [75.5, 12.2]
-   ],
-   "halfWidth": 0.4
-  },
-  {
-   "id": "cove-cliff-e",
-   "kind": "rock-wall",
-   "line": [
-    [78.5, 12.9],
-    [79, 12.9]
    ],
    "halfWidth": 0.4
   },

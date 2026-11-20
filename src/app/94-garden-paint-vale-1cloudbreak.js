@@ -42,7 +42,8 @@
     // a plank seat on two stone legs, worn pale on top; turf round the legs
     const seat = -H * .3, w = 30;
     B.shadow(2, 1, 30, 5, .3);
-    for (const x of [-w + 6, w - 6]) { B.f(B.rect(x - 4, seat, 8, -seat), '#8a8272').f(B.rect(x - 4, seat, 2.4, -seat), '#b4ac98', .8).f(B.rect(x + 2, seat, 2, -seat), '#5e584c', .7); }
+    B.f(B.rect(-w + 2, -3, w * 2 - 4, 3), '#6a6254').f(B.rect(-w + 2, -3, w * 2 - 4, 1), '#8a8272', .8);   // the footing stones, the length of the seat
+    for (const x of [-w + 6, w - 6]) { B.f(B.rect(x - 4, seat, 8, -seat - 2), '#8a8272').f(B.rect(x - 4, seat, 2.4, -seat - 2), '#b4ac98', .8).f(B.rect(x + 2, seat, 2, -seat - 2), '#5e584c', .7); }
     B.f(B.rr(-w, seat - 4, w * 2, 5, 1.6), WOOD[0]).f(B.rect(-w + 1, seat - 4, w * 2 - 2, 1.4), snowy ? STONE.snow : WOOD[2], .9).f(B.rect(-w, seat, w * 2, 1.4), WOOD[1], .8);
     if (!snowy) B.tufts(r, 0, 1, 70, 10, ['#8c9a5e', '#c2c78e'], 5);
   }
@@ -62,7 +63,7 @@
     (M.seats || []).forEach((s, i) => {
       const rock = /rock/.test(s.what), at = settle(L, s.at[0], s.at[1], rock ? .5 : .65); if (!at) return;
       const p = L.cpt(at[0], at[1]);
-      thing({ key: 'fell-seat-' + i + '|' + C.season, x: p.x, y: p.y, box: rock ? [-30, -24, 32, 8] : [-36, -H * .3 - 12, 38, 8], foot: rock ? [-22, 22, 8] : [-30, 30, 6], draw: B => (rock ? picnicRock : bench)(B, kit.rng(950 + i), snowy) });
+      thing({ key: 'fell-seat-' + i + '|' + C.season, x: p.x, y: p.y, box: rock ? [-30, -24, 32, 8] : [-36, -H * .3 - 12, 38, 8], foot: rock ? [-20, 20, 8] : [-28, 28, 6], draw: B => (rock ? picnicRock : bench)(B, kit.rng(950 + i), snowy) });
     });
     // the standing stones: each stone's foot, where 94-garden-paint-terrain-2marks.js draws it (the picture is the landmark's)
     (M.stones || []).forEach((s, i) => { const p = L.cpt(s[0], s[1]), hw = s[2] * L.cw; thing({ key: 'stone-foot-' + i, x: p.x, y: p.y - 2, box: [-2, -2, 2, 2], foot: [-hw, hw, 8], draw: () => {} }); });
@@ -75,9 +76,10 @@
   const MK = window.GardenPaintedMarks; if (!MK || !MK.ART) return;
   // the bothy: a roofless shepherds' shelter of fell stone, two gable ends standing, the side walls broken down to waist
   // height, a doorway in the front with a lintel, a hearth stone and a few roof slates in the grass
-  MK.ART['ld-bothy'] = { box: [-84, -124, 84, 12], door: { dx: 0, dy: 0 }, draw(B, o) {
+  MK.ART['ld-bothy'] = { box: [-76, -124, 76, 10], door: { dx: 0, dy: 0 }, draw(B, o) {
     const kit = KIT(), r = kit.rng(71), snowy = o.season === 'winter', eaves = -H * 1.5, ridge = -H * 2.6;
-    B.shadow(6, 2, 82, 12, .34);
+    B.shadow(6, 2, 74, 10, .34);
+    B.cx.save(); B.cx.scale(.9, 1);   // (the walls stand within the bothy's three cells, so its feet stop at the stone)
     const course = (x0, x1, top, base, tone) => { for (let y = base - 5; y > top; y -= 6) for (let x = x0 + ((Math.round(y) / 6) % 2 ? 4 : 0); x < x1 - 2; x += 8 + r() * 4) { const w = Math.min(8 + r() * 4, x1 - x); B.f(B.rr(x, y - 5, w - 1, 5.2, 1.6), tone[Math.floor(r() * tone.length)]); } };
     const tones = ['#9c927f', '#8a806e', '#aaa08c', '#7c7364'], shade = ['#7a7162', '#6a6254', '#857b6a'];
     // the back wall (seen over the broken front), the far gable
@@ -99,9 +101,10 @@
     for (const x of [-16, 12]) B.f(B.rect(x, -H * 1.1, 4, H * 1.1), '#8a806e');
     // moss and turf on the wall heads, a few slates and stones fallen in the grass
     for (let k = 0; k < 8; k++) B.f(B.blob(r, -60 + r() * 120, waist - 4 + r() * 4, 6 + r() * 6, 2 + r() * 1.4, 6, .5), snowy ? STONE.snow : k % 2 ? '#7d8f4e' : '#93a660', .9);
-    for (let k = 0; k < 5; k++) B.f(B.poly([[0, 0], [9, -1], [10, 3], [1, 4]].map(([x, y]) => [x - 70 + r() * 140, y + 4 + r() * 4])), '#5a6268', .9);
-    for (let k = 0; k < 4; k++) B.stone(r, -74 + r() * 148, 4 + r() * 4, 3 + r() * 2.4, 2 + r(), STONE, snowy ? 'snow' : null);
-    if (!snowy) B.tufts(r, 0, 2, 170, 26, ['#8c9a5e', '#c2c78e', '#7d8f4e'], 7);
+    for (let k = 0; k < 5; k++) B.f(B.poly([[0, 0], [9, -1], [10, 3], [1, 4]].map(([x, y]) => [x - 70 + r() * 130, y - 5 + r() * 2])), '#5a6268', .9);
+    for (let k = 0; k < 4; k++) B.stone(r, -70 + r() * 140, -3 + r() * 2, 3 + r() * 2.4, 2 + r(), STONE, snowy ? 'snow' : null);
+    if (!snowy) B.tufts(r, 0, 0, 150, 26, ['#8c9a5e', '#c2c78e', '#7d8f4e'], 7);
+    B.cx.restore();
   } };
   // the toposcope: a round stone pillar at waist height, a brass plate on top engraved with the view, a little verdigris
   MK.ART['ld-toposcope'] = { box: [-24, -50, 26, 10], draw(B, o) {
@@ -115,24 +118,26 @@
   } };
   // the moor's end gate: two stone gateposts in the last dry-stone wall, a weathered five-bar gate shut between them (seen
   // a little side on), the wall running off north and south, and the fingerpost: "The Long Road", pointing on west
-  MK.ART['ld-moor-gate'] = { box: [-58, -96, 58, 10], draw(B, o) {
+  MK.ART['ld-moor-gate'] = { box: [-30, -96, 30, 8], draw(B, o) {
     const kit = KIT(), r = kit.rng(79), snowy = o.season === 'winter', postTop = -H * 1.3, gateTop = -H * 1.1;
-    B.shadow(4, 2, 50, 8, .3);
-    // the wall: rough coursed stones running up and down the slope behind and in front of the posts, a cope of on-edge stones
-    const wall = (x0, y0, x1, y1) => { const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 7); for (let i = 0; i <= n; i++) { const t = i / n, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; for (let k = 0; k < 4; k++) B.stone(r, x + (r() - .5) * 3, y - 4 - k * 6.5, 4 + r() * 1.6, 3 + r() * .8, STONE, snowy && k === 3 ? 'snow' : k === 3 && r() < .4 ? STONE.lichen : null); } };
-    wall(-8, -40, -6, -30); wall(-4, 4, 0, 10);
+    B.shadow(2, 0, 26, 7, .3);
+    // the last wall: rough coursed stones running up the slope (north) behind the gate and down to its foot in front
+    const wall = (x0, y0, x1, y1) => { const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 6); for (let i = 0; i <= n; i++) { const t = i / n, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; for (let k = 0; k < 4; k++) B.stone(r, x + (r() - .5) * 2, y - 3 - k * 6.2, 3.8 + r() * 1.4, 2.8 + r() * .8, STONE, snowy && k === 3 ? 'snow' : k === 3 && r() < .4 ? STONE.lichen : null); } };
+    wall(-14, -58, -10, -40);
     // the gateposts: squared stone, lit on the west face
-    for (const [x, y] of [[-10, -26], [-2, 2]]) { B.f(B.rect(x - 4, y + postTop, 8, -postTop), '#a49a86').f(B.rect(x - 4, y + postTop, 2.6, -postTop), '#d0c6b0', .8).f(B.rect(x + 2, y + postTop, 2, -postTop), '#6a6254', .8).f(B.ell(x, y + postTop, 4.6, 1.8), '#8a806e'); }
-    // the gate: five bars and a brace, hung between the posts, seen side on (it runs down the slope toward you)
-    const gx0 = -8, gy0 = -24, gx1 = -4, gy1 = 0;
+    for (const [x, y] of [[-9, -36], [-3, -6]]) { B.f(B.rect(x - 4, y + postTop, 8, -postTop), '#a49a86').f(B.rect(x - 4, y + postTop, 2.6, -postTop), '#d0c6b0', .8).f(B.rect(x + 2, y + postTop, 2, -postTop), '#6a6254', .8).f(B.ell(x, y + postTop, 4.6, 1.8), '#8a806e'); }
+    // the gate: five bars and a brace hung between the posts, seen side on (it runs down the slope toward you)
+    const gx0 = -7, gy0 = -34, gx1 = -5, gy1 = -8;
     for (let k = 0; k < 5; k++) { const h = 4 + k * (-gateTop - 6) / 4; B.s(`M${gx0} ${gy0 - h}L${gx1} ${gy1 - h}`, k === 4 ? WOOD[2] : WOOD[0], 2.2, .98); }
-    B.s(`M${gx0} ${gy0 - 4}L${gx1} ${gy1 + gateTop + 2}`, WOOD[1], 1.8, .9).s(`M${gx0 + 1} ${gy0 - 4}V${gy0 + gateTop + 2}M${gx1 - 1} ${gy1 - 4}V${gy1 + gateTop + 2}`, WOOD[1], 2, .9);
-    // the fingerpost on the near side, one arm pointing west: THE LONG ROAD
-    const fx = 26, fTop = -H * 1.9;
-    B.f(B.rect(fx - 2.4, fTop, 4.8, -fTop), WOOD[0]).f(B.rect(fx - 2.4, fTop, 1.4, -fTop), WOOD[2], .7);
-    B.f(B.poly([[fx + 2, fTop + 6], [fx - 44, fTop + 6], [fx - 50, fTop + 11.5], [fx - 44, fTop + 17], [fx + 2, fTop + 17]]), '#ece2c8').s(B.poly([[fx + 2, fTop + 6], [fx - 44, fTop + 6], [fx - 50, fTop + 11.5], [fx - 44, fTop + 17], [fx + 2, fTop + 17]]), '#5e4a34', 1, .8);
-    B.text('THE LONG ROAD', fx - 22, fTop + 11.8, 6.4, '#3a2c1e');
-    if (snowy) B.f(B.rect(fx - 46, fTop + 4.4, 48, 2), STONE.snow, .95);
-    if (!snowy) B.tufts(r, 0, 2, 100, 18, ['#8c9a5e', '#c2c78e', '#7d8f4e'], 6);
+    B.s(`M${gx0} ${gy0 - 4}L${gx1} ${gy1 + gateTop + 2}`, WOOD[1], 1.8, .9);
+    wall(-4, -4, -2, 0);
+    // the fingerpost by the gate's foot, one arm pointing west, on into the hills: THE LONG ROAD
+    const fx = 14, fTop = -H * 1.9;
+    B.f(B.rect(fx - 2.4, fTop, 4.8, -fTop), WOOD[0]).f(B.rect(fx - 2.4, fTop, 1.4, -fTop), WOOD[2], .7).f(B.ell(fx, 0, 5, 1.6), '#5e584c', .5);
+    const arm = [[fx + 2, fTop + 6], [fx - 40, fTop + 6], [fx - 46, fTop + 11.5], [fx - 40, fTop + 17], [fx + 2, fTop + 17]];
+    B.f(B.poly(arm), '#ece2c8').s(B.poly(arm), '#5e4a34', 1, .8);
+    B.text('THE LONG ROAD', fx - 20, fTop + 11.8, 6, '#3a2c1e');
+    if (snowy) B.f(B.rect(fx - 42, fTop + 4.4, 44, 2), STONE.snow, .95);
+    if (!snowy) B.tufts(r, -2, 0, 40, 14, ['#8c9a5e', '#c2c78e', '#7d8f4e'], 6);
   } };
 })();

@@ -432,7 +432,7 @@ const GARDEN_LAND_SIGHTS = _gdMovable([
   { id: 'ld-warren', art: 'warren', name: 'The warren bank', x: 32, y: 4, col: 'full', tall: 0.5, say: 'More holes than bank. Something thumps twice underground when you stop.' },
   // Cloudbreak's three new places (the hand-authored mountains, vale-mountains.json): painted by 94-garden-paint-vale-1cloudbreak.js
   { id: 'ld-bothy', art: 'bothy', name: 'The old bothy', x: 30, y: 2, w: 3, col: 'full', tall: 2.6, say: 'Two gable ends and no roof. Shepherds sheltered here once; the hearth stone is still warm on a sunny day.' },
-  { id: 'ld-toposcope', art: 'toposcope', name: 'The toposcope', x: 27, y: 2, col: 'full', tall: 0.8, say: 'A brass plate on a pillar, with every hill you can see named on it, and one you cannot.' },
+  { id: 'ld-toposcope', art: 'toposcope', name: 'The toposcope', x: 27, y: 2, col: 'soft', tall: 0.8, say: 'A brass plate on a pillar, with every hill you can see named on it, and one you cannot.' },
   { id: 'ld-moor-gate', art: 'moorgate', name: 'The moor’s end gate', x: 0, y: 2, col: 'full', tall: 1.1, say: 'The last gate in the last wall. The fingerpost beside it says: The Long Road.' },
   // east
   { id: 'ld-ring', art: 'ring', name: 'The ring of old trees', x: 48, y: 1, w: 4, col: 'full', tall: 1.8, say: 'Five huge trunks in a perfect ring. Nobody planted them on purpose, surely.', egg: { verb: 'Stand in the middle', x: 8, found: 'It goes very quiet. When you step out, it has been a bit longer than you thought.' } },
