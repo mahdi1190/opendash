@@ -1345,7 +1345,7 @@ window.GardenNativeWorld = (function () {
         if (behind && p.id === 'ld-falls' && record.handle.fallsCoversPlayer) behind = record.handle.fallsCoversPlayer(sx, sy);
         // (High orchard fix round 1) the treehouse chestnut fades by its crown, which spreads well past its two cells: walking the
         // beach or the mother walk beside it you went behind the crown unseen, and standing at the trunk the whole tree faded
-        if (p.id === 'ld-treehouse') { const tx = (p.x + p.w / 2) * W.cellW, ty = footY - 160; behind = sy < footY - 6 && ((sx - tx) / 122) ** 2 + ((sy - 28 - ty) / 96) ** 2 < 1; }
+        if (p.id === 'ld-treehouse') { const tx = (p.x + p.w / 2) * W.cellW, ty = footY - 170; behind = sy < footY - 6 && ((sx - tx) / 122) ** 2 + ((sy - 28 - ty) / 84) ** 2 < 1; }
         if (record.behind !== behind) { record.behind = behind; record.root.setAlpha(behind ? .38 : 1); }
       }
       coveringCanopies.length = 0;
