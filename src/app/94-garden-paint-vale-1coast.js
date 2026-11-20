@@ -63,7 +63,21 @@
           B.s(`M${q.x - nx} ${q.y - ny}L${q.x + nx} ${q.y + ny}`, tone < .3 ? '#a49a84' : tone < .7 ? '#b3a88f' : '#c4baa2', 5.2, 1, 'butt');
           B.s(`M${q.x - nx} ${q.y - ny + 2.4}L${q.x + nx} ${q.y + ny + 2.4}`, '#5e5242', .8, .55, 'butt'); }
         V.strokePts(B, walk, '#6e604a', 1.2, .6, 0, 0);
+        // (layfix east) its far end steps down onto the meadow trail: a last plank as a step, a post either side (it stopped cut square)
+        { const e = walk[walk.length - 1], p0 = walk[walk.length - 2], l = Math.hypot(e.x - p0.x, e.y - p0.y) || 1, tx = (e.x - p0.x) / l, ty = (e.y - p0.y) / l, nx = -ty * 15, ny = tx * 11;
+          B.f(B.poly([[e.x - nx + tx * 2, e.y - ny + ty * 2], [e.x + nx + tx * 2, e.y + ny + ty * 2], [e.x + nx + tx * 9, e.y + ny + ty * 9 + 2], [e.x - nx + tx * 9, e.y - ny + ty * 9 + 2]]), '#8f8068').s(`M${e.x - nx + tx * 9} ${e.y - ny + ty * 9 + 2}L${e.x + nx + tx * 9} ${e.y + ny + ty * 9 + 2}`, '#5e5242', 1, .7);
+          for (const sd of [-1, 1]) { const x = e.x + nx * sd * 1.05, y = e.y + ny * sd * 1.05; B.f(B.rr(x - 2.6, y - 10, 5.2, 12, 1.4), '#4e4436').f(B.rect(x - 2.6, y - 10, 1.6, 12), '#7a6a54', .7).f(B.ell(x, y - 10, 2.6, 1.1), '#a49a84'); } }
       });
+        // (layfix east) where the boardwalk meets the stones over the river: a landing stage (lying flat, above the paths' own ground, whose round end lay there as a bare disc of sand) of the same silver planks on its piles,
+        // square to the stones' line, so the crossing steps straight onto timber (a bare disc of sand lay between them)
+      { const cr = ((L.D.presentation || {}).crossings || []).find(c => c.along && L.routes.get(c.along) && Math.hypot(c.x * cw - walk[0].x, W.sky + c.y * ch - walk[0].y) < cw * 4);
+          if (cr) C.thing({ key: 'boardwalk-landing', depth: -9000, x: walk[0].x, y: walk[0].y, box: [-80, -70, 80, 70], K: 1.2, draw: B => { B.cx.save(); B.cx.translate(-walk[0].x, -walk[0].y); const c0 = L.cpt(cr.x, cr.y), dx = walk[0].x - c0.x, dy = walk[0].y - c0.y, l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l, vx = -uy, vy = ux, o = { x: walk[0].x - ux * 4, y: walk[0].y - uy * 4 };
+            const at = (a, b) => [o.x + ux * a + vx * b, o.y + uy * a * .9 + vy * b * .8], hl = 30, hw2 = 36;
+            B.f(B.poly([at(-hl, -hw2), at(hl, -hw2), at(hl, hw2), at(-hl, hw2)].map(([x, y]) => [x + 2, y + 5])), 'rgba(40,46,32,.3)');
+            B.f(B.poly([at(-hl, -hw2), at(hl, -hw2), at(hl, hw2), at(-hl, hw2)]), '#6e604a');
+            for (let a = -hl + 3; a < hl; a += 6.2) { const tone = kit.rng(kit.hash(Math.round(a * 10), 65))(); B.s(`M${at(a, -hw2 + 1).join(' ')}L${at(a, hw2 - 1).join(' ')}`, tone < .3 ? '#a49a84' : tone < .7 ? '#b3a88f' : '#c4baa2', 5, 1, 'butt'); B.s(`M${at(a + 2.4, -hw2 + 1).join(' ')}L${at(a + 2.4, hw2 - 1).join(' ')}`, '#5e5242', .7, .5, 'butt'); }
+            for (const [a, b] of [[-hl, -hw2], [hl, -hw2], [hl, hw2], [-hl, hw2]]) { const [x, y] = at(a, b); B.f(B.rr(x - 2.6, y - 9, 5.2, 12, 1.4), '#4e4436').f(B.rect(x - 2.6, y - 9, 1.6, 12), '#7a6a54', .7).f(B.ell(x, y - 9, 2.6, 1.1), '#a49a84'); }
+            V.strokePts(B, [{ x: at(-hl, hw2)[0], y: at(-hl, hw2)[1] }, { x: at(hl, hw2)[0], y: at(hl, hw2)[1] }], '#4e4436', 1.6, .8); B.cx.restore(); } }); }
     }
 
     // 2. The cold cove: grey shingle and weed-dark boulders where the moor drops to the sea

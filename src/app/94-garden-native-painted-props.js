@@ -622,6 +622,15 @@ window.GardenPaintedProps = (function () {
     if (season !== 'winter') for (const t of [L * .86, L * .9]) { const p = q(t, hw, 2); B.s(`M${p[0]} ${p[1]}q-1 -5 1 -8M${p[0] + 2} ${p[1]}q2 -4 3 -6`, '#6a8a4a', 1, .9).f(B.circ(p[0] + .6, p[1] - 8.4, 1.8), '#c8506a', .95).f(B.circ(p[0] + 3, p[1] - 6.4, 1.4), '#d86a80', .95); }
     if (open) { const p = q(-2, -hw - 6), x = p[0], y = p[1]; B.post(x, y - 34, y, 3, IRON).f(B.rr(x - 4, y - 44, 8, 10, 1.5), '#f2e6b8').f(B.poly([[x - 6, y - 44], [x, y - 50], [x + 6, y - 44]]), IRON[0]); }
   }
+  /** A stair crossing's flight: centred on the path that climbs it (the route through the gate, read from the layout) and as
+   *  wide as that path, not the whole gap in the wall; px from the gate's frame centre. */
+  function stairFit(g, frame, half) {
+    const W = GARDEN_WORLD, D0 = typeof gardenIslandData === 'function' ? gardenIslandData() : null, cy = (frame.y - W.sky) / W.cellH;
+    let best = null;
+    for (const rt of (D0 && D0.routes) || []) { if (rt.gateId !== g.id || !rt.points) continue; for (const p of rt.points) { const x = Array.isArray(p) ? p[0] : p.x, y = Array.isArray(p) ? p[1] : p.y, d = Math.abs(y - cy) + Math.abs(x * W.cellW - frame.x) / W.cellW * .2; if (!best || d < best.d) best = { d, x, w: rt.widthCells || 2.4 }; } }
+    if (!best || best.d > 2) return { cx: 0, sw: half * 1.55 };
+    return { cx: Math.max(-half, Math.min(half, best.x * W.cellW - frame.x)), sw: Math.min(half * 1.55, Math.min(best.w, 2.6) * W.cellW * .5 * .66 + 2) };   // (the art is drawn a little larger than the cells: this matches the lane's painted width)
+  }
   function gateArt(kind, g, frame, season, open, crossing) {
     const side = Math.abs(frame.uy) > Math.abs(frame.ux), half = Math.max(46, Math.min(80, frame.span * .62)), r = rng(hash(g.id + kind));
     const L = leafOf(season), art = { S: frame.span * .9 };
@@ -706,17 +715,34 @@ window.GardenPaintedProps = (function () {
         elevation(B, side, half, art.S, () => ruinedArch(B, r, half, 124, season, open));
         for (let i = 0; i < 4; i++) B.stone(r, (side ? 20 : half + 18) + i * 9 * (side ? 0 : 1), (side ? half * .6 + i * 8 : 2 - i * 2), 7 - i, 4.4 - i * .5, STONE, i < 2 ? MOSS : null);
       } else if (kind === 'stair') {
-        // stone steps climbing through the gap in the terrace wall: they fill the wall's opening (its faces stand a
-        // cell below the crossing line), their cheeks overlap the wall ends, a small oak gate at the top
-        const steps = 6, sw = side ? 30 : half * 1.55, dy = side ? 0 : 52, top = dy - steps * 9;
-        for (let i = 0; i < steps; i++) { const y = dy - i * 9, x = side ? -24 + i * 8 : 0, w = sw - i * 1.5; B.f(B.rect(x - w, y - 9, w * 2, 9), STONE[1]).f(B.rect(x - w, y - 9, w * 2, 3), STONE[2]).f(B.rect(x - w, y - 2, w * 2, 2), STONE[3], .4); }
-        for (const s of [-1, 1]) {
-          for (let row = 0; row < 7; row++) for (let i = 0; i < 4; i++) { const x = s * (sw + 8 + i * 11) + (row & 1) * 4 * s, y = dy - 4 - row * 7.6; B.f(D().blob(r, x, y, 6.4, 3.8, 6, .3), (row + i) % 3 ? STONE[0] : STONE[1]).f(D().blob(r, x - 1.4, y - 1.2, 3.6, 1.6, 6, .3), STONE[2], .55); }
-          B.f(D().blob(r, s * (sw + 22), dy - 58, 22, 7, 9, .5), MOSS[0], .85).f(D().blob(r, s * (sw + 18), dy - 61, 12, 3.6, 7, .5), MOSS[1], .85);
-          B.crown(r, s * (sw + 40), dy - 74, 26, 20, season, 4);
-          if (season !== 'winter') for (let i = 0; i < 7; i++) B.f(B.circ(s * (sw + 28 + r() * 26), dy - 76 + (r() - .5) * 26, 1.6), season === 'autumn' ? '#c8402a' : '#f4d8e0', .95);
+        // stone steps climbing through the gap in the terrace wall, as wide as the path that climbs them (layfix east: a flight
+        // the width of the whole wall gap read as flat cream bars pasted wider than the lane), the wall's rubble filling the gap
+        // either side down to its cut ends; each step a block of dressed stone, its tread lit, its riser in shade, joints between
+        // the blocks, worn hollow in the middle, moss at the ends; a landing of flags at the foot and a worn sill at the top
+        const st = stairFit(g, frame, half), steps = 7, sw = st.sw, cx = st.cx, dy = side ? 0 : 52, rise = 8.4, top = dy - steps * rise, outer = half * 1.55 + 44;
+        const TONE = ['#c9bfa6', '#b7ad94', '#8f8672', '#5e574a'];
+        if (!side) {
+          // the landing at the foot: big worn flags, grass in the joints
+          B.f(D().blob(r, cx, dy + 7, sw + 10, 9, 10, .25), '#9a917c', .9);
+          for (let i = 0; i < 5; i++) { const x = cx - sw + 6 + i * (sw * 2 - 12) / 4 + (r() - .5) * 4; B.f(D().blob(r, x, dy + 6 + (r() - .5) * 2, sw / 4.4, 5, 7, .3), i & 1 ? TONE[0] : TONE[1]).f(D().blob(r, x - 2, dy + 4.6, sw / 7, 1.8, 6, .3), '#e4dcc6', .55); }
         }
-        B.post(-sw + 2, top - 44, top + 2, 5, OAK).post(sw - 2, top - 44, top + 2, 5, OAK);
+        for (let i = 0; i < steps; i++) { const y = dy - i * rise, x = side ? -24 + i * 8 : cx, w = sw - i * .9;
+          B.f(B.rect(x - w, y - rise, w * 2, rise), TONE[2]);   // the riser, in shade
+          B.f(B.rect(x - w, y - rise, w * 2, rise * .45), i & 1 ? TONE[0] : TONE[1]);   // the tread, lit
+          B.s(`M${x - w} ${y - rise}H${x + w}`, '#efe7d2', 1.2, .9);   // its nosing catching the light
+          B.s(`M${x - w} ${y}H${x + w}`, TONE[3], 1, .55);
+          let j = x - w + 10 + r() * 14; while (j < x + w - 8) { B.s(`M${j} ${y - rise}v${rise}`, TONE[3], .8, .5); j += 18 + r() * 16; }   // joints between the blocks
+          B.f(B.ell(x + (r() - .5) * 6, y - rise * .78, w * .32, 1.4), '#e9e1cb', .45);   // worn pale in the middle
+          if (season !== 'winter') for (const s of [-1, 1]) if (r() < .6) B.f(D().blob(r, x + s * (w - 4), y - rise * .6, 5, 1.8, 6, .5), MOSS[r() < .5 ? 0 : 1], .85);
+        }
+        for (const s of [-1, 1]) {
+          // the wall's rubble either side of the flight, out to the wall's cut ends, a coping stone along its top
+          for (let row = 0; row < 7; row++) for (let x = (side ? sw + 8 : sw + 6); x < (side ? sw + 44 : outer + (s < 0 ? cx : -cx)); x += 11) { const px = cx * (side ? 0 : 1) + s * (x + (row & 1) * 4), py = dy - 4 - row * 7.6; B.f(D().blob(r, px, py, 6.4, 3.8, 6, .3), (row + Math.round(x)) % 3 ? STONE[0] : STONE[1]).f(D().blob(r, px - 1.4, py - 1.2, 3.6, 1.6, 6, .3), STONE[2], .55); }
+          B.f(B.rect(cx + s * (sw + 1) - 4, top - 8, 8, dy - top + 8), STONE[1]).f(B.rect(cx + s * (sw + 1) - 4, top - 8, 8, 2.4), STONE[2], .9).f(B.rect(cx + s * (sw + 1) + (s > 0 ? 2 : -4), top - 6, 2, dy - top + 4), STONE[3], .35);   // the cheek stones, proud of the treads
+          B.f(D().blob(r, cx + s * (sw + 22), dy - 58, 22, 7, 9, .5), MOSS[0], .85).f(D().blob(r, cx + s * (sw + 18), dy - 61, 12, 3.6, 7, .5), MOSS[1], .85);
+          if (season !== 'winter') for (let i = 0; i < 4; i++) B.f(D().blob(r, cx + s * (sw + 4 + r() * 6), dy + 2 - r() * 4, 4, 2.4, 6, .5), '#7c9a4e', .9);
+        }
+        B.post(cx - sw + 2, top - 44, top + 2, 5, OAK).post(cx + sw - 2, top - 44, top + 2, 5, OAK);
       } else {
         // the pass: boulders either side of the col, scree, heather, a cairn of stacked stones
         const rock = ['#a8a698', '#848274', '#cfccbe', '#666456'], o = side ? [[0, -half * .8], [0, half * .8]] : [[-half, 0], [half, 0]];
@@ -761,10 +787,10 @@ window.GardenPaintedProps = (function () {
         });
       } else if (kind === 'stair') {
         // the oak gate at the top of the steps, shut
-        const sw = side ? 30 : half * 1.55, g = side ? 0 : 52 - 6 * 9 + 54; B.beam(-sw + 4, g - 92, sw * 2 - 8, 5, OAK).beam(-sw + 4, g - 66, sw * 2 - 8, 5, OAK);
-        for (let x = -sw + 8; x < sw - 6; x += 8) B.post(x, g - 94, g - 58, 3.4, OAK);
-        B.s(`M${-sw + 6} ${g - 64}L${sw - 6} ${g - 90}`, OAK[1], 3);
-        B.f(B.rr(-4, g - 82, 8, 7, 1.4), '#6a6e70');
+        const st = stairFit(g, frame, half), sw = st.sw, cx = st.cx, g0 = side ? 0 : 52 - 7 * 8.4 + 54; B.beam(cx - sw + 4, g0 - 92, sw * 2 - 8, 5, OAK).beam(cx - sw + 4, g0 - 66, sw * 2 - 8, 5, OAK);
+        for (let x = cx - sw + 8; x < cx + sw - 6; x += 8) B.post(x, g0 - 94, g0 - 58, 3.4, OAK);
+        B.s(`M${cx - sw + 6} ${g0 - 64}L${cx + sw - 6} ${g0 - 90}`, OAK[1], 3);
+        B.f(B.rr(cx - 4, g0 - 82, 8, 7, 1.4), '#6a6e70');
       } else {
         // a rope with prayer-flag pennants across the col
         const a = side ? [0, -half * .6] : [-half + 20, -40], b2 = side ? [0, half * .6] : [half - 20, -40];

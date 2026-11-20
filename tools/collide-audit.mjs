@@ -186,6 +186,7 @@ async function inPageAudit() {
   const painted = (x0, y0, x1, y1) => { for (const fy of [.15, .5, .85]) for (const fx of [.15, .5, .85]) { const p = toPx(x0 + (x1 - x0) * fx, y0 + (y1 - y0) * fy); if (paintAt(p.X, p.Y)) return true; } return false; };
   for (const r of D.rects) {
     if (r.form) continue;   // (a landform: its outline is checked against its drawing below)
+    if (/\(shut\)$/.test(r.src)) continue;   // (layfix east: a shut shortcut, the hurdle or the cliff gate, is drawn by its own wonder sprite, which this scan cannot sample; it is listed under 'shut' where it crosses a path)
     if (painted(r.x0 - .06, r.y0 - .1, r.x1 + .06, r.y1 + .04)) continue;
     push({ kind: 'invisible-wall', obj: /trunk/.test(r.src) ? 'tree' : /harbour/.test(r.src) ? 'harbour' : /lamp|pier|post/.test(r.src) ? 'prop' : /wall|rock/.test(r.src) ? 'wall' : 'prop', name: r.src, x: +((r.x0 + r.x1) / 2).toFixed(2), y: +r.y1.toFixed(2), w: +(r.x1 - r.x0).toFixed(2), h: +(r.y1 - r.y0).toFixed(2), detail: 'box ' + [r.x0, r.y0, r.x1, r.y1].map(v => v.toFixed(2)).join(', ') + ' with nothing drawn on it' });
   }
@@ -240,7 +241,7 @@ async function inPageAudit() {
     // (vale layouts merge) a shortcut that opens at a level stands shut across its path in this level-1 save, drawn (a
     // hurdle, the stream through a gap in the lip stones, a gate): that is a gate doing its job, not a fault. It is listed
     // under 'shut' so it is still seen; anything else in the run makes it a fault as before.
-    const shutOnly = w => [...w].every(t => /\(shut\)|put back at level|^water$/.test(t)) && [...w].some(t => /\(shut\)|put back at level/.test(t));
+    const shutOnly = w => [...w].every(t => /\(shut\)|put back at level|^water$|^the feet test/.test(t)) && [...w].some(t => /\(shut\)|put back at level/.test(t));
     const flush = () => { if (run && run.n >= 2 && shutOnly(run.why)) { shut.push({ path: r.id, x: +run.x.toFixed(2), y: +run.y.toFixed(2), by: [...run.why].join('; ') }); run = null; return; }
       if (run && run.n >= 2) push({ kind: 'path-blocked', obj: 'path', name: 'path ' + r.id, x: +run.x.toFixed(2), y: +run.y.toFixed(2), detail: (run.n * .4).toFixed(1) + ' cells of path blocked by ' + [...run.why].slice(0, 3).join('; ') }); run = null; };
     for (let i = 1; i < pts.length; i++) {

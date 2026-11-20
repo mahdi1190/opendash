@@ -291,16 +291,20 @@
   }
   // the sign at a field's gate: a small board on a post saying what the next piece of it needs, its level or its price
   function sign(B, x, y, row, lv) {
+    // (layfix east) a small tag on a short stake at the gate, dark weathered wood with the price cut in pale letters: the big
+    // yellow boards stood out in the scenery like stickers, five to a view
     const lvNeed = row.lv || 0, coin = lv >= lvNeed && !!row.buy, txt = lv < lvNeed ? 'Lv ' + lvNeed : row.buy ? String(row.buy) : ''; if (!txt) return;
-    B.f(B.ell(x + 1, y + 1, 7, 2), 'rgba(40,40,24,.25)');
-    B.f(B.rect(x - 1.2, y - 17, 2.4, 17), '#5e4c36').f(B.rect(x - 1.2, y - 17, 1, 17), '#8a7454', .7);
-    const cx = B.cx; cx.save(); cx.font = '700 7.5px system-ui, sans-serif';
-    const w = Math.max(16, cx.measureText(txt).width + (coin ? 7 : 0) + 6), x0 = x - w / 2, y0 = y - 29;
-    B.f(B.rr(x0 + .8, y0 + 1, w, 12, 2), 'rgba(30,24,16,.3)').f(B.rr(x0, y0, w, 12, 2), '#c9a876').f(B.rr(x0, y0, w, 3.5, 1.5), '#dcc092', .8).s(B.rr(x0, y0, w, 12, 2), '#6e5434', .8, .9);
-    let tx = x0 + 3;
-    if (coin) { B.f(B.circ(tx + 2.5, y0 + 6, 2.8), '#e8b830').f(B.circ(tx + 2.5, y0 + 6, 1.5), '#f6d870'); tx += 7; }
-    cx.fillStyle = '#3e2c1a'; cx.textAlign = 'left'; cx.textBaseline = 'middle'; cx.fillText(txt, tx, y0 + 6.4); cx.restore();
+    B.f(B.ell(x + 1, y + .8, 4.5, 1.4), 'rgba(40,40,24,.25)');
+    B.f(B.rect(x - .9, y - 11, 1.8, 11), '#5e4c36').f(B.rect(x - .9, y - 11, .7, 11), '#8a7454', .7);
+    const cx = B.cx; cx.save(); cx.font = '700 5.6px system-ui, sans-serif';
+    const w = Math.max(11, cx.measureText(txt).width + (coin ? 5 : 0) + 4), x0 = x - w / 2, y0 = y - 18;
+    B.f(B.rr(x0 + .6, y0 + .8, w, 8, 1.4), 'rgba(30,24,16,.3)').f(B.rr(x0, y0, w, 8, 1.4), '#6e5638').f(B.rr(x0, y0, w, 2, 1), '#8a6e4a', .8).s(B.rr(x0, y0, w, 8, 1.4), '#3e2e1e', .6, .9);
+    B.f(B.circ(x0 + 1.6, y0 + 4, .5), '#2e2418').f(B.circ(x0 + w - 1.6, y0 + 4, .5), '#2e2418');
+    let tx = x0 + 2.4;
+    if (coin) { B.f(B.circ(tx + 1.6, y0 + 4.1, 1.7), '#d8a830').f(B.circ(tx + 1.6, y0 + 4.1, .8), '#f0d070'); tx += 4.4; }
+    cx.fillStyle = '#f2e8d0'; cx.textAlign = 'left'; cx.textBaseline = 'middle'; cx.fillText(txt, tx, y0 + 4.3); cx.restore();
   }
+
   // the one gate: across a cell's edge (g.horiz: seen from the front) or along it (seen from the side)
   function gate(B, g, kind) {
     // (round 3) a woodland field's way in: two sawn log posts and an old mossy log lying across the gap between them

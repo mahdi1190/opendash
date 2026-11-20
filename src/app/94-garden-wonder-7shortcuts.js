@@ -11,7 +11,11 @@
    only: in a friend's garden both stand open. The state is one ledger line each ('sc.' + id), saved with the garden.
    ============================================================ */
 const GARDEN_ORCHARD_SHORTCUTS = Object.freeze([
-  Object.freeze({ id: 'hurdle', pres: 'hurdle', name: 'The lakeside hurdle', box: [60.62, 37.4, 61.38, 39.4], at: [61, 38.4], from: (x, y) => x > 61.3 && x < 63.4 && Math.abs(y - 38.1) < 1.5,
+  // (layfix east) the steps climb straight up the screen from the footbridge between the lake and the fence, and the hurdle stands
+  // square across their head, seen face on (set on the slant beside a flight that ran up the bank it read as a side rail): one
+  // box across the gap from the water to the fence. From the orchard side: above it.
+  Object.freeze({ id: 'hurdle', pres: 'hurdle', name: 'The lakeside hurdle', box: [59.68, 38.62, 61.12, 38.92], at: [60.4, 38.86],
+    from: (x, y) => y < 38.6 && y > 36.9 && x > 59.6 && x < 63.4,
     open: 'You lift the hurdle aside. The steps down to the lake are a short way now.', shut: 'A hurdle across the steps, pegged from the orchard side.' }),
   Object.freeze({ id: 'cliff', pres: 'cliffGate', name: 'The cliff gate', box: [85.2, 40.42, 87.12, 40.72], at: [86.15, 40.55], from: (x, y) => y < 40.4 && y > 38.2 && Math.abs(x - 86.2) < 1.3,
     open: 'You untie the cliff gate and swing it back. The steps go down to the cove now.', shut: 'A little gate, its rope knotted on the cliff side. Someone untied it from the top, once.' }),
@@ -31,7 +35,7 @@ function gardenShortcutOpen(id) { try { const m = typeof gardenHere === 'functio
 function gardenOrchardShortcutBlocks() {
   const O = _gscOrchard(); if (!O) return [];
   const out = GARDEN_ORCHARD_CLIFF.map(c => ({ x0: c.box[0], y0: c.box[1], x1: c.box[2], y1: c.box[3], src: c.src }));
-  for (const s of GARDEN_ORCHARD_SHORTCUTS) if (O[s.pres] && !gardenShortcutOpen(s.id)) out.push({ x0: s.box[0], y0: s.box[1], x1: s.box[2], y1: s.box[3], src: s.name.toLowerCase() + ' (shut)' });
+  for (const s of GARDEN_ORCHARD_SHORTCUTS) if (O[s.pres] && !gardenShortcutOpen(s.id)) for (const b of s.boxes || [s.box]) out.push({ x0: b[0], y0: b[1], x1: b[2], y1: b[3], src: s.name.toLowerCase() + ' (shut)' });
   return out;
 }
 /** A signature of the shortcuts' state, so the walking grid is made again when one opens. */
@@ -52,7 +56,7 @@ function _gscArt(id, open) {
       s += `<path d="M${x0} ${y0 - h - 1}L${x1} ${y1 - h - 1}" stroke="#d8b47a" stroke-width="2.4" stroke-linecap="round"/>`;
       return s;
     };
-    const A = [-19, -24], Bp = [19, 24], H = 26;
+    const A = [-33, 0], Bp = [33, 0], H = 24;   // (layfix east: square across the head of the flight, the water's edge to the fence)
     if (open) return `${post(A[0], A[1], H + 6)}${post(Bp[0], Bp[1], H + 6)}<ellipse cx="${Bp[0] + 10}" cy="${Bp[1] + 6}" rx="18" ry="3" fill="#22301a" opacity=".22"/>${panel(Bp[0] + 2, Bp[1] - 14, Bp[0] + 24, Bp[1] + 8, 20)}`;
     // shut: a peg through its top binding into the post on the orchard side, with a twist of withy
     return `${post(A[0], A[1], H + 6)}${panel(A[0], A[1], Bp[0], Bp[1], H)}${post(Bp[0], Bp[1], H + 6)}<path d="M${Bp[0] - 4} ${Bp[1] - H + 2}h9" stroke="#e8d2a0" stroke-width="2.6" stroke-linecap="round"/><path d="M${Bp[0] + 2} ${Bp[1] - H - 3}q4 4 0 8" stroke="#c9b07a" stroke-width="1.6" fill="none"/>`;
