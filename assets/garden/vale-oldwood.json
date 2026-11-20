@@ -473,40 +473,45 @@
    "control": [
     [
      21.3,
-     67.6
+     67.4
     ],
     [
-     22.9,
-     67
+     22.75,
+     66.8
     ],
     [
-     24.8,
-     66.75
+     24.4,
+     66.65
     ],
     [
-     26.6,
-     66.75
+     26.2,
+     66.65
     ],
     [
-     27.8,
+     27.3,
      67.15
     ],
     [
-     28.5,
-     68.05
+     27.75,
+     67.95
+    ],
+    [
+     28.4,
+     68.6
     ],
     [
      29.6,
-     68.2
+     68.45
     ]
    ],
    "widths": [
     1.8,
-    1.6,
-    1.6,
-    1.6,
-    1.6,
-    1.6,
+    1.2,
+    1.5,
+    1.5,
+    1.4,
+    1.1,
+    1.4,
     1.8
    ],
    "note": "NEW, later: through the walled garden; closes the pond walk into a ring and is the quick way from the arch to the tower"
@@ -720,8 +725,8 @@
    "label": "Walled garden",
    "poly": [
     [
-     22.9,
-     64.5
+     22.75,
+     64.4
     ],
     [
      24.6,
@@ -732,40 +737,114 @@
      63.6
     ],
     [
-     28.9,
-     63.2
+     28.6,
+     63.3
     ],
     [
-     28.9,
+     28.6,
      66
     ],
     [
-     28.8,
-     67.75
+     28.6,
+     67.7
     ],
     [
      27,
-     67.75
+     67.95
     ],
     [
      24.8,
-     67.75
+     67.95
     ],
     [
-     23,
-     67.75
+     22.75,
+     67.95
     ]
    ],
    "doors": [
     [
-     23,
-     67
+     22.75,
+     66.75
     ],
     [
-     28.15,
-     67.75
+     27.6,
+     67.95
     ]
-   ]
+   ],
+   "wallsNote": "layout round 3 fixes: the old brick wall laid in straight lengths, each one block and one drawing, 0.4 cells thick, never curved round its corners; the west door faces the Hush, the south-east door the tower; the garden walk runs inside it a quarter cell clear of its foot",
+   "walls": [
+    {
+     "id": "garden-wall-1",
+     "line": [
+      [
+       22.75,
+       64.4
+      ],
+      [
+       22.75,
+       66
+      ]
+     ],
+     "pier": [
+      "b"
+     ],
+     "door": [
+      "b"
+     ]
+    },
+    {
+     "id": "garden-wall-2",
+     "line": [
+      [
+       22.75,
+       67.5
+      ],
+      [
+       22.75,
+       67.75
+      ]
+     ],
+     "pier": [
+      "a"
+     ]
+    },
+    {
+     "id": "garden-wall-3",
+     "line": [
+      [
+       22.55,
+       67.95
+      ],
+      [
+       26.85,
+       67.95
+      ]
+     ],
+     "pier": [
+      "b"
+     ],
+     "door": [
+      "b"
+     ]
+    },
+    {
+     "id": "garden-wall-4",
+     "line": [
+      [
+       28.6,
+       63.3
+      ],
+      [
+       28.6,
+       67.7
+      ]
+     ],
+     "pier": [
+      "b"
+     ]
+    }
+   ],
+   "thick": 0.4
   }
  },
  "glades": {
@@ -1100,11 +1179,11 @@
    "h": 1,
    "col": "soft",
    "door": {
-    "x": 32,
+    "x": 33,
     "y": 80
    },
    "tall": 0.8,
-   "why": "becomes the sundial at the heart; the maze itself is the yard round it (layout round 3: its door is on the turf inside the outer ring by the mouth, where you stand to see the heart; the cell below it is under the outer hedge)"
+   "why": "becomes the sundial at the heart; the maze itself is the yard round it (layout round 3: its door is on the turf inside the outer ring by the mouth, where you stand to see the heart; the cell below it is under the outer hedge) (layout round 3 fixes: the arrival is in the outer ring's mouth on the round, clear of both hedges)"
   }
  },
  "props": {
@@ -1151,10 +1230,6 @@
    ]
   ],
   "fingerPosts": [
-   [
-    22.5,
-    78.8
-   ],
    [
     16.5,
     84.6
@@ -1420,14 +1495,6 @@
    "was": 4,
    "cells": [
     [
-     23,
-     64
-    ],
-    [
-     24,
-     64
-    ],
-    [
      25,
      64
     ],
@@ -1440,23 +1507,7 @@
      64
     ],
     [
-     28,
-     64
-    ],
-    [
-     28,
-     65
-    ],
-    [
-     27,
-     65
-    ],
-    [
-     26,
-     65
-    ],
-    [
-     25,
+     23,
      65
     ],
     [
@@ -1464,7 +1515,15 @@
      65
     ],
     [
-     23,
+     25,
+     65
+    ],
+    [
+     26,
+     65
+    ],
+    [
+     27,
      65
     ]
    ]
@@ -1477,11 +1536,7 @@
    "cells": [
     [
      23,
-     68
-    ],
-    [
-     24,
-     68
+     69
     ],
     [
      24,
@@ -1489,7 +1544,11 @@
     ],
     [
      23,
-     69
+     70
+    ],
+    [
+     24,
+     70
     ]
    ]
   },
@@ -2467,5 +2526,70 @@
    60
   ]
  ],
- "ruinsLaneNorthNote": "the woods part of ruins-lane (west-woods, another region's plan): kept as it is on feat/village-layout; the woodland plan redraws it to end at 18.9,62.6, where this file takes over"
+ "ruinsLaneNorthNote": "the woods part of ruins-lane (west-woods, another region's plan): kept as it is on feat/village-layout; the woodland plan redraws it to end at 18.9,62.6, where this file takes over",
+ "treeless": [
+  {
+   "why": "the court: no crown over its flags",
+   "box": [
+    19.6,
+    73.4,
+    25.8,
+    81.4
+   ]
+  },
+  {
+   "why": "the pond east bank: the view across the pond to the tower",
+   "box": [
+    30.2,
+    68.4,
+    35.2,
+    76.2
+   ]
+  },
+  {
+   "why": "the Hush window: the tower shows across the pond",
+   "box": [
+    23.2,
+    68,
+    26.2,
+    73.6
+   ]
+  },
+  {
+   "why": "the walled garden, its wall and the tower front",
+   "box": [
+    22.3,
+    63,
+    32.6,
+    69.6
+   ]
+  },
+  {
+   "why": "the maze yard",
+   "box": [
+    28.4,
+    77.8,
+    34.2,
+    83.4
+   ]
+  },
+  {
+   "why": "the postern yard",
+   "box": [
+    32.8,
+    72.6,
+    36.4,
+    77.2
+   ]
+  },
+  {
+   "why": "the chapel step and garth front",
+   "box": [
+    15.4,
+    72.6,
+    21,
+    76.4
+   ]
+  }
+ ]
 }

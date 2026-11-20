@@ -149,6 +149,7 @@
     const { L, add, thing, kit } = C, W = L.W;
     for (const f of L.D.landforms || []) {
       if (!f.polygon || f.polygon.length < 4) continue;
+      if (f.brick) continue;   // (the walled garden's brick wall: 94-garden-paint-vale-1oldwood.js)
       if (f.kind === 'ruin-wall') {
         const n = f.polygon.length >> 1, a = f.polygon.slice(0, n).map(L.pt), b = f.polygon.slice(n).reverse().map(L.pt), m = Math.min(a.length, b.length);
         const mid = []; for (let i = 0; i < m; i += 2) mid.push({ x: (a[i].x + b[i].x) / 2, y: (a[i].y + b[i].y) / 2 });
@@ -367,6 +368,7 @@
   function logStack(B, r, P) {
     B.shadow(4, 1, 40, 6, .3);
     for (const x of [-34, 34]) B.f(B.rect(x - 2, -40, 4, 40), P.woodDk);
+    B.f(B.rr(-38, -3.4, 76, 4.4, 1.6), '#6a5034').f(B.rect(-38, -3.4, 76, 1.2), '#9a7a54', .7);   // (the sill log the stack stands on: its foot is as wide as its block)
     for (let row = 0; row < 5; row++) for (let k = 0; k < 7; k++) { const x = -29 + k * 9.6 + (row % 2) * 4.8, y = -5 - row * 8.4; if (x > 30) continue; B.f(B.circ(x, y, 4.6), '#8a6a46').f(B.circ(x - .4, y - .4, 3.6), '#d8b884').f(B.circ(x - .4, y - .4, 1.6), '#b8925e', .8); }
     B.f('M-40 -42L0 -52L42 -42L40 -38L0 -47L-38 -38Z', '#5e5040');
   }

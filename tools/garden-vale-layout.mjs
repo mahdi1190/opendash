@@ -179,12 +179,19 @@ function oldwoodRoutes() {
     out.push(route(a.id, a.tier === 'track' ? 'trail' : a.tier, pts, 3, Object.assign({ widthCells: Math.max(...ws), widths: ws }, a.gateId ? { gateId: a.gateId } : {}, a.tier === 'track' ? { worn: 'earth', unsigned: true } : {})));
   }
   // the two yards: the postern yard where the round and the pond walk meet, and the yew maze's yard
-  for (const [id, y] of Object.entries(VO.yards)) { const b = bbox(y.poly), cy = r2((b.y + b.y1) / 2); out.push(route(id, 'plaza', [[r2(b.x + .4), cy], [r2(b.x1 - .4), cy]], 3, { widthCells: 1, shape: y.poly.map(p => p.map(r2)), yard: true })); }
+  // (the maze's spine is the turf in its mouth, between the outer ring's gap and the inner hedge: a spine across the whole
+  //  yard ran under both rings of hedge)
+  for (const [id, y] of Object.entries(VO.yards)) { const b = bbox(y.poly), cy = r2((b.y + b.y1) / 2); out.push(route(id, 'plaza', id === 'maze-yard' ? [[32.75, cy], [r2(b.x1), cy]] : [[r2(b.x + .4), cy], [r2(b.x1 - .4), cy]], 3, { widthCells: 1, shape: y.poly.map(p => p.map(r2)), yard: true })); }
   return out;
 }
 // the walled garden's old brick wall on three sides (the ruin wall behind it is the fourth), its two green doors gaps in it
-{ const e = VO.enclosures['garden-yard'], [w0, w1] = [e.poly[8], e.poly[0]], d = e.doors;
-  landforms.push(...wallSegments('garden-wall', 'southwest-ruins', 'ruin-wall', [[w1[0], w1[1] + .1], [w0[0], w0[1] + .05], [28.85, 67.8], [e.poly[4][0], e.poly[4][1]], [e.poly[3][0], e.poly[3][1] + .3]], [[d[0][0] - .05, d[0][1], .85], [d[1][0], d[1][1] + .05, .85]], .42, 4)); }
+// (layout round 3 fixes: laid in straight lengths, each one block and one drawing (94-garden-paint-vale-1oldwood.js), so
+//  the feet stop exactly at the brick that is drawn; a smoothed line bent round its corners and stood a cell off its art)
+{ const e = VO.enclosures['garden-yard'], hw = (e.thick || .4) / 2;
+  for (const w of e.walls) {
+    const [[x0, y0], [x1, y1]] = w.line, L = Math.hypot(x1 - x0, y1 - y0) || 1, nx = -(y1 - y0) / L * hw, ny = (x1 - x0) / L * hw;
+    landforms.push({ id: w.id, region: 'southwest-ruins', kind: 'ruin-wall', brick: true, line: w.line.map(p => p.map(r2)), pier: w.pier || [], door: w.door || [], polygon: [[x0 + nx, y0 + ny], [x1 + nx, y1 + ny], [x1 - nx, y1 - ny], [x0 - nx, y0 - ny]].map(p => p.map(r2)), col: 'full', reserved: true });
+  } }
 const vPlaza = (id, width) => { const p = VV.plazas[id]; return route(id, 'plaza', p.spine, 0, { widthCells: width, shape: p.poly.map(q => q.map(r2)) }); };
 const GREEN = { x: 49, y: 51.6, rx: 6.6, ry: 4.4 };   // (the green's rough extent, for painters that only want a centre and radii)
 const routes = [
@@ -546,7 +553,7 @@ const presentation = {
   landmarks: { lighthouse: 'ld-lighthouse', watchtower: 'ld-tower', folly: 'ld-folly', greatOak: 'great-oak-clearing', beacon: 'ld-beacon', millWheel: 'ld-mill', falls: 'ld-falls' },
   // the old woodland's own things for its painters (vale-oldwood.json): lamps, finger posts, benches, the well head, the
   // carved birds and the bell rim (the two secrets), the garden's green doors, the maze, the Old Man and the sea steps
-  oldwood: { lamps: VO.props.lamps.map(([x, y, what]) => ({ x, y, what })), fingerPosts: VO.props.fingerPosts, benches: VO.props.benches, wellHead: VO.props.wellHead, smallStone: VO.props.smallStone,
+  oldwood: { treeless: VO.treeless || [], gardenWalls: VO.enclosures['garden-yard'].walls.map(w => w.id), lamps: VO.props.lamps.map(([x, y, what]) => ({ x, y, what })), fingerPosts: VO.props.fingerPosts, benches: VO.props.benches, wellHead: VO.props.wellHead, smallStone: VO.props.smallStone,
     carvedBirds: VO.props.carvedBirds, bellRim: VO.props.bellRim, gardenDoors: VO.enclosures['garden-yard'].doors, oldMan: VO.props.oldMan, seaSteps: VO.props.seaSteps,
     maze: { x: 31.2, y: 80.05, rx: 2.3, ry: 1.67, mouth: 'east', note: 'two low clipped yew rings and the sundial at the heart; the east mouth opens on the round, the west ring stays shut' },
     focalPoints: VO.focalPoints, secrets: VO.secrets, glades: VO.glades, planting: VO.planting, hollinsTrack: 'hollins-track' },
