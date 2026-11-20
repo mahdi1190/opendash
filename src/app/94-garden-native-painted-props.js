@@ -333,6 +333,8 @@ window.GardenPaintedProps = (function () {
   function propPainter(prop) {
     if (!prop) return null;
     if (prop.id === 'craft-bench') return 'bench';
+    // (the old woodland's hut and ice house are drawn to the size standard by 94-garden-paint-vale-1oldwood.js, layout round 3)
+    if ((prop.id === 'ld-woodhut' || prop.id === 'ld-icehouse') && window.GardenPaintedMarks && GardenPaintedMarks.knows(prop.id)) return null;
     if (prop.id === 'jetty-post') return 'post';
     const k = prop.art || String(prop.kind || '').replace(/^l[df]-/, '');
     if (PAINT[KIND[k] || ''] ) return KIND[k];

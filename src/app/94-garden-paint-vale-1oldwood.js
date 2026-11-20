@@ -18,7 +18,7 @@
     const lab = L.stat('ld-labyrinth'), cx = lab ? lab.x + lab.w / 2 - .15 : m.x, cy = lab ? lab.y + lab.h - .55 : m.y;
     // (layout round 3 fixes: the rings as big as the maze's yard allows, so the inner hedge stands clear of the heart and the
     //  arrival in the outer ring's mouth is on open turf)
-    return { cx, cy, turf: { rx: 2.4, ry: 1.7 }, rings: [{ rx: 2.18, ry: 1.52, gap: 0, half: .34 }, { rx: 1.2, ry: .82, gap: Math.PI, half: .58 }] };
+    return { cx, cy, turf: { rx: 2.4, ry: 1.7 }, rings: [{ rx: 2.18, ry: 1.52, gap: 0, half: .34 }, { rx: 1.5, ry: 1.0, gap: Math.PI, half: .5 }] };
   }
   V.oldwoodMaze = mazeOf;
 
@@ -43,7 +43,7 @@
       for (let i = 0; i < n; i++) {
         const a = i / n * Math.PI * 2, d = Math.atan2(Math.sin(a - ring.gap), Math.cos(a - ring.gap)); if (Math.abs(d) < ring.half) continue;
         const x = c.x + Math.cos(a) * ring.rx * cw, y = c.y + Math.sin(a) * ring.ry * ch, end = Math.abs(Math.abs(d) - ring.half) < .3;
-        const w = 9.5, h = (ri ? 16 : 21) + Math.sin(i * 1.7) * 1.2;   // (a hedge 0.4 to 0.5 of your height: you see over it into the maze)
+        const w = 9.5, h = (ri ? 21 : 24) + Math.sin(i * 1.7) * 1.2;   // (a hedge 0.4 to 0.5 of your height: you see over it into the maze)
         thing({ key: 'ow-hedge|' + ri + '|' + i + '|' + season, x: Math.round(x), y: Math.round(y), box: [-16, -h - 8, 16, 7], foot: [-8, 8, 6], draw: B => {
           const r = kit.rng(seed + ri * 97 + i);
           B.shadow(2, 2, 13, 3.4, .3);
@@ -130,7 +130,9 @@
   }
   function brickRun(B, r, A, Bq, h, thick, season, opts) {
     // a straight length from A to Bq (local px, the foot's centre line), thick px deep on the ground, h px high
-    const L = Math.hypot(Bq.x - A.x, Bq.y - A.y) || 1, dx = (Bq.x - A.x) / L, dy = (Bq.y - A.y) / L, nx = -dy * thick / 2, ny = dx * thick / 2, lean = -h * .18;
+    const L = Math.hypot(Bq.x - A.x, Bq.y - A.y) || 1, dx = (Bq.x - A.x) / L, dy = (Bq.y - A.y) / L, nx = -dy * thick / 2, ny = dx * thick / 2, ns = !!(opts && opts.ns), lean = -h * (ns ? .5 : .18);
+    // (critic 2: a north-south length leant only a fifth of its height, so its brick face was a sliver and its long pale coping
+    //  stood up the screen as a stone slab; it leans half its height, so its east face shows its brick, under a brick top)
     const foot = [{ x: A.x + nx, y: A.y + ny }, { x: Bq.x + nx, y: Bq.y + ny }, { x: Bq.x - nx, y: Bq.y - ny }, { x: A.x - nx, y: A.y - ny }];
     const up = v => ({ x: v.x + lean, y: v.y - h }), mid = { x: (foot[0].x + foot[2].x) / 2, y: (foot[0].y + foot[2].y) / 2 };
     // contact shade, then the faces turned to the camera (south and east), then the coping
@@ -140,8 +142,14 @@
     faces.sort((p, q) => (p.v0.y + p.v1.y) - (q.v0.y + q.v1.y));
     for (const fc of faces) { const a = fc.v0.y > fc.v1.y || (fc.v0.y === fc.v1.y && fc.v0.x < fc.v1.x) ? fc.v0 : fc.v1, b = a === fc.v0 ? fc.v1 : fc.v0; brickFace(B, r, [a, b, up(b), up(a)], h, Math.hypot(b.x - a.x, b.y - a.y), season, fc.south); }
     const top = foot.map(up), cope = top.map(v => ({ x: v.x + Math.sign(v.x - (top[0].x + top[2].x) / 2) * 1.6, y: v.y + Math.sign(v.y - (top[0].y + top[2].y) / 2) * 1.2 }));
-    B.f(B.poly(cope.map(v => ({ x: v.x, y: v.y + 3 }))), BRICK.copeLo).f(B.poly(cope), season === 'winter' ? '#f2f4f0' : BRICK.cope);
-    B.s(`M${cope[0].x} ${cope[0].y}L${cope[1].x} ${cope[1].y}`, BRICK.copeHi, 1.2, .8);
+    if (ns) {   // a north-south length's top: brick on edge, with a thin worn coping line down its middle
+      B.f(B.poly(cope.map(v => ({ x: v.x, y: v.y + 3 }))), BRICK.dk, .9).f(B.poly(cope), season === 'winter' ? '#f2f4f0' : BRICK.lo);
+      const c0 = { x: (cope[0].x + cope[3].x) / 2, y: (cope[0].y + cope[3].y) / 2 }, c1 = { x: (cope[1].x + cope[2].x) / 2, y: (cope[1].y + cope[2].y) / 2 };
+      if (season !== 'winter') { for (let y = Math.min(c0.y, c1.y) + 3; y < Math.max(c0.y, c1.y); y += 4.6) B.s(`M${Math.min(cope[0].x, cope[3].x)} ${y}h${Math.abs(cope[0].x - cope[3].x)}`, BRICK.mortar, .6, .35); B.s(`M${c0.x} ${c0.y}L${c1.x} ${c1.y}`, BRICK.cope, 2.2, .7); }
+    } else {
+      B.f(B.poly(cope.map(v => ({ x: v.x, y: v.y + 3 }))), BRICK.copeLo).f(B.poly(cope), season === 'winter' ? '#f2f4f0' : BRICK.cope);
+      B.s(`M${cope[0].x} ${cope[0].y}L${cope[1].x} ${cope[1].y}`, BRICK.copeHi, 1.2, .8);
+    }
     if (season !== 'winter') for (let k = 0; k < L / 30; k++) { const u = r(); B.f(B.blob(r, cope[0].x + (cope[1].x - cope[0].x) * u, cope[0].y + (cope[1].y - cope[0].y) * u + 1, 3.4, 1.4, 6, .5), BRICK.moss, .6); }
     for (const P of (opts && opts.pier) || []) {   // a pier at a door: wider, taller, a cap stone and a ball on it
       const c = P === 'a' ? A : Bq, w = Math.max(thick * .5, 6) + 3, hh = h + 9, by = c.y + Math.abs(ny) * .9;
@@ -181,7 +189,7 @@
         const pier = []; if (i === 0 && isPier(A)) pier.push('a'); if (i === n - 1 && isPier(Bq)) pier.push('b');
         const door = i === 0 && isDoor(A) ? 'a' : i === n - 1 && isDoor(Bq) ? 'b' : null;
         const la = lp(P0), lb = lp(P1), x0 = Math.round(Math.min(la.x, lb.x) - 44), x1 = Math.round(Math.max(la.x, lb.x) + 44), y0 = Math.round(Math.min(la.y, lb.y) - h - 30);
-        thing({ key: 'ow-brick|' + f.id + '|' + i + '|' + C.season, x: ft.x, y: ft.y, box: [x0, y0, x1, 10], K: 1.1, draw: B => brickRun(B, kit.rng(seed + i), la, lb, h, thick, C.season, { pier, door }) });
+        thing({ key: 'ow-brick|' + f.id + '|' + i + '|' + C.season, x: ft.x, y: ft.y, box: [x0, y0, x1, 10], K: 1.1, draw: B => brickRun(B, kit.rng(seed + i), la, lb, h, thick, C.season, { pier, door, ns }) });
       }
     }
   }
@@ -315,8 +323,10 @@
    *  own stones, mossy and grown through with fern, and the heap is what stops the feet past the wall's end. */
   function wallEnds(C) {
     const { L, thing, kit } = C;
-    for (const f of L.D.landforms || []) {
-      if (f.id !== 'postern-wall-4' || !f.polygon) continue;
+    // (the last piece of the postern wall: the wall is laid in short pieces, numbered from the north)
+    const last = (L.D.landforms || []).filter(f => /^postern-wall-\d+$/.test(f.id)).sort((p, q) => +q.id.split('-')[2] - +p.id.split('-')[2])[0];
+    for (const f of last ? [last] : []) {
+      if (!f.polygon) continue;
       const n = f.polygon.length >> 1, a = f.polygon[n - 1], b = f.polygon[n], e = L.pt([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + .32]), seed = kit.hashStr(f.id + '|end');
       thing({ key: 'ow-wallend|' + f.id + '|' + C.season, x: Math.round(e.x), y: Math.round(e.y), box: [-34, -34, 34, 6], foot: [-17, 17, 9], draw: B => {
         const r = kit.rng(seed);
@@ -328,5 +338,31 @@
     }
   }
 
+  /** The walled garden's walk (critic 2): a raked gravel walk as wide as the route, between the green doors, edged both sides
+   *  with a low line of clipped box, its ends running out under the door gaps. Painted after the fields (see below), so the
+   *  garden's flowers grow beside it and never across it. */
+  function gardenWalk(C) {
+    const { L, add, kit } = C, rt = L.routes.get('garden-walk'); if (!rt) return;
+    const rib = V.routeRibbon(L, rt, false), edge = V.routeRibbon(L, rt, true), bb = kit.bboxOf(edge, 16), seed = kit.hashStr('ow-garden-walk'), season = C.season;
+    const pts = gardenIslandRoutePath(rt).points.map(p => L.cpt(p.x, p.y)), n = rib.length >> 1, left = rib.slice(0, n), right = rib.slice(n).reverse();
+    add(bb, seed, (B, r) => {
+      B.cx.save(); B.cx.filter = 'blur(3px)'; B.f(B.poly(edge), '#3e3a26', .22); B.cx.filter = 'none'; B.cx.restore();
+      B.f(B.poly(rib), season === 'winter' ? '#d8d6cc' : '#c9b48a').f(B.poly(rib), B.lin(0, bb[1], 0, bb[3], [[0, '#d8c69c'], [1, '#b39e74']]), .55);
+      B.cx.save(); B.cx.clip(new Path2D(B.poly(rib)));
+      for (let k = 0; k < 520; k++) { const i = Math.floor(r() * (pts.length - 1)), t = r(), a = pts[i], b = pts[i + 1], x = a.x + (b.x - a.x) * t + (r() - .5) * 60, y = a.y + (b.y - a.y) * t + (r() - .5) * 40; B.f(B.circ(x, y, .7 + r() * 1.1), r() < .5 ? '#a8946a' : r() < .8 ? '#e6d8b4' : '#8c7a56', .7); }
+      V.strokePts(B, pts, '#a08a60', 7, .18);   // the raked line down its middle, worn by feet
+      B.cx.restore();
+      if (season === 'winter') return;
+      const g0 = L.cpt(22.95, 63), g1 = L.cpt(28.4, 67.75); B.cx.save(); B.cx.beginPath(); B.cx.rect(g0.x, g0.y, g1.x - g0.x, g1.y - g0.y); B.cx.clip();   // (inside the walls only)
+      for (const side of [left, right]) {   // a clipped box edging, ankle high, one soft roll of leaf with a lit top
+        V.strokePts(B, side, '#2f4a24', 6.5, .95); V.strokePts(B, side.map(p => ({ x: p.x, y: p.y - 2 })), '#4c7034', 4.4, .95); V.strokePts(B, side.map(p => ({ x: p.x, y: p.y - 3.2 })), '#7a9e4c', 1.6, .7);
+      }
+      B.cx.restore();
+    });
+  }
+
   V.parts.push({ id: 'oldwood-brick', compose: brickWalls }, { id: 'oldwood-wallends', compose: wallEnds }, { id: 'oldwood-maze', compose: maze }, { id: 'oldwood-posts', compose: fingerPosts }, { id: 'oldwood-oldman', compose: oldMan });
+  // (the garden walk paints over the ground the field painters lay, whose files load after this one: moved to the end of
+  //  the list once every painter has joined it)
+  setTimeout(() => { const i = V.parts.findIndex(q => q.id === 'oldwood-garden-walk'); if (i >= 0) V.parts.push(V.parts.splice(i, 1)[0]); else V.parts.push({ id: 'oldwood-garden-walk', compose: gardenWalk }); }, 0);
 })();

@@ -171,9 +171,6 @@ async function inPageAudit() {
     if (!(bx1 > bx0)) {
       // nothing under the base, though the feet cannot stand there (water or the shore): fine; otherwise look a little round it
       const near = solidsNear(a.x - .6, band.y0 - .4, b.x + .6, band.y1 + .3); if (!near.length) continue;
-      // (a landform's box is the bounds of its whole outline, not a block: a long wall sprite whose base stands inside the
-      //  wall's own outline is blocked right under its base, however far the outline's middle lies from that base)
-      if (!midFree && near.some(r => r.form && r.form.poly && _gwInPoly(mid, yTest, r.form.poly))) continue;
       let c0 = Infinity, c1 = -Infinity; for (const r of near) { c0 = Math.min(c0, r.x0); c1 = Math.max(c1, r.x1); }
       if (Math.abs((c0 + c1) / 2 - mid) > .25) push({ kind: 'block-offset', ...base, detail: 'its block stands ' + ((c0 + c1) / 2 - mid).toFixed(2) + ' cells beside the drawn base' });
       continue;
