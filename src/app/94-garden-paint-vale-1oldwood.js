@@ -380,7 +380,7 @@
     });
     (ow.carvedBirds || []).forEach(([sx, sy], i) => {
       const p = L.cpt(sx, sy);
-      thing({ key: 'ow-birdstone|' + i + '|' + season, x: Math.round(p.x), y: Math.round(p.y), box: [-16, -24, 16, 6], draw: B => {
+      thing({ key: 'ow-birdstone|' + i + '|' + season, x: Math.round(p.x), y: Math.round(p.y), box: [-16, -24, 16, 6], foot: [-9, 9, 5], draw: B => {
         const r = kit.rng(850 + i);
         B.shadow(1, 1, 11, 3, .3);
         B.f('M-9 1Q-11 -12 -6 -17Q0 -21 6 -17Q11 -12 9 1Z', STONE.body).f('M-9 1Q-11 -12 -6 -17Q-2 -19 0 -19L-2 1Z', STONE.hi, .45).f('M4 -16Q10 -12 9 1L5 1Z', STONE.lo, .55);
@@ -412,7 +412,10 @@
         const h = half(q);
         for (let k = 0; k < 3; k++) { const o = (r() - .5) * 1.7 * h; B.f(B.ell(q.x - q.ty * o, q.y + q.tx * o, 1 + r() * 1.4, .7 + r() * .6), r() < .5 ? '#4a3c26' : autumn ? '#b8642a' : '#9a8458', .6); }   // grit and leaf litter
         for (const sd of [-1, 1]) { if (r() < .35) continue; const o = (h - r() * 4) * sd, x = q.x - q.ty * o, y = q.y + q.tx * o, hh = 3 + r() * 5; B.s(`M${x} ${y + 1}q${(r() - .5) * 2} ${-hh * .5} ${(r() - .5) * 4} ${-hh}`, wint ? '#9aa696' : r() < .5 ? P.lawnLo : '#6f8a40', 1.1, .8); }   // turf growing in
-        if (i % 9 === 4 && !wint) { const a = q.ty, b = -q.tx, o = h * 1.1; B.s(`M${q.x - a * o} ${q.y - b * o}q${a * o * .6 + 3} ${b * o * .6 - 2} ${a * o * 2} ${b * o * 2}`, '#4e3a26', 2.6, .75).s(`M${q.x - a * o} ${q.y - b * o - 1}q${a * o * .6 + 3} ${b * o * .6 - 2} ${a * o * 2} ${b * o * 2}`, '#8a6a46', .9, .6); }   // a root across it
+        if (i % 13 === 6 && !wint) {   // a root across it, from the turf on one side, sinking into the earth before the other
+          const a = -q.ty, b = q.tx, o = h * .95, x0 = q.x + a * o, y0 = q.y + b * o, x1 = q.x - a * o * .2 + q.tx * 4, y1 = q.y - b * o * .2 + q.ty * 4, mx = (x0 + x1) / 2 + q.tx * 5, my = (y0 + y1) / 2 + q.ty * 5;
+          B.s(`M${x0} ${y0}Q${mx} ${my} ${x1} ${y1}`, '#4e3a26', 3, .7).s(`M${x0} ${y0 - 1}Q${mx} ${my - 1} ${x1} ${y1 - 1}`, '#9a7a52', 1, .55);
+        }
       });
     });
   }
@@ -421,8 +424,21 @@
   /** The walled garden's walk (critic 2): a raked gravel walk as wide as the route, between the green doors, edged both sides
    *  with a low line of clipped box, its ends running out under the door gaps. Painted after the fields (see below), so the
    *  garden's flowers grow beside it and never across it. */
+  /** The watchtower's doorstep (critic 2: its forecourt was a flat pale pad with rounded corners on the grass): big worn
+   *  flags laid loose before the door, turf and moss in their joints, the outer ones half sunk in the grass, so the bare
+   *  doorway ground under them never shows its square edge. */
+  function towerStep(C) {
+    const { L, add, kit } = C, t = L.stat('ld-tower'); if (!t || !t.apron || !t.door) return;
+    const a = t.apron, c = L.cpt(t.door.x + .5, t.y + t.h + .65), wint = C.season === 'winter', bw = Math.min(2.8, t.w + .4) * L.cw, bh = 1.25 * L.ch;
+    add([c.x - bw, c.y - bh, c.x + bw, c.y + bh], 991, (B, r) => {
+      B.cx.save(); B.cx.filter = 'blur(4px)'; B.f(B.ell(c.x, c.y, bw * .55, bh * .58), wint ? '#c8ccc2' : '#7e7a52', .9); B.cx.filter = 'none'; B.cx.restore();   // trodden earth and moss between the flags, soft at its edge
+      const flags = []; for (let row = -1; row <= 1; row++) for (let k = -2; k <= 2; k++) { const x = c.x + k * 21 + (row & 1) * 10 + (r() - .5) * 5, y = c.y + row * 13 + (r() - .5) * 3, e = Math.hypot((x - c.x) / (bw * .5), (y - c.y) / (bh * .5)); if (e < 1.02) flags.push([x, y, e]); }
+      for (const [x, y, e] of flags) { const w = 9 + r() * 2, h = 5.4 + r(), sunk = e > .72; B.f(B.blob(r, x, y + 1.2, w, h, 7, .14), '#4e4a3e', .5).f(B.blob(r, x, y, w * (sunk ? .8 : 1), h * (sunk ? .8 : 1), 7, .14), sunk ? '#9a9684' : '#b4ae98').f(B.blob(r, x - 2, y - 1.6, w * .5, h * .4, 6, .3), '#d0cab4', .55); if (!wint && r() < .4) B.f(B.blob(r, x + w * .4, y + h * .3, 3, 1.6, 6, .5), STONE.moss, .7); }
+      if (!wint) B.tufts(r, c.x, c.y + bh * .45, bw * .9, 14, ['#566e30', '#7d9a4e'], 5);
+    });
+  }
   function gardenWalk(C) {
-    hollinsTrack(C);
+    hollinsTrack(C); towerStep(C);
     const { L, add, kit } = C, rt = L.routes.get('garden-walk'); if (!rt) return;
     const rib = V.routeRibbon(L, rt, false), edge = V.routeRibbon(L, rt, true), bb = kit.bboxOf(edge, 16), seed = kit.hashStr('ow-garden-walk'), season = C.season;
     const pts = gardenIslandRoutePath(rt).points.map(p => L.cpt(p.x, p.y)), n = rib.length >> 1, left = rib.slice(0, n), right = rib.slice(n).reverse();

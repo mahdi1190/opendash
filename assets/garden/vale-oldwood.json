@@ -1212,8 +1212,8 @@
   ],
   "fingerPosts": [
    [
-    16.5,
-    84.6
+    16.45,
+    85.15
    ],
    [
     25.6,
@@ -1230,8 +1230,8 @@
     76.6
    ],
    [
-    26.4,
-    68.5
+    25.2,
+    68.55
    ],
    [
     23.4,
@@ -2487,8 +2487,8 @@
  "fieldEdges": {
   "garden": "meadow",
   "pond": "reeds",
-  "garth": "bracken",
-  "hut": "bracken",
+  "garth": "drystone",
+  "hut": "long-grass",
   "hanger": "bracken",
   "slack": "reeds",
   "shore": "long-grass",
@@ -2574,5 +2574,6 @@
     76.4
    ]
   }
- ]
+ ],
+ "fieldEdgesNote2": "critic 2 (the same berry row and little conifer in every plot): the chapel garth is walled in old dry stone like the ruins round it, Hollin's side runs to long grass and bracken, the beech hanger stays bracken, the slack and the pond reeds, the shore and the cove long grass"
 }
