@@ -472,10 +472,12 @@ function _gaBellyClip() {
     return petClipDef('l-belly') ? 'l-belly' : null;
   } catch (e) { return null; }
 }
+/** Where the pet lies for a belly rub (cells from your feet): beside your knee, in front of your hand, a touch behind you so your hand is over its tummy. */
+const GA_RUB_AT = Object.freeze([0.6, -0.05]);
 function _gaRubTick(cur) {
   let P = null; try { P = typeof gpPetMe === 'function' ? gpPetMe() : null; } catch (e) { P = null; }
   if (!P || !P.root || (P.root._pcH && P.root._pcH === cur.rubH) || (cur.rubT && performance.now() - cur.rubT < 3700)) return;
-  if (Math.hypot(P.x - (_gw.px + 0.34), (P.y - (_gw.py + 0.04)) * 1.4) > 0.3) return;   // (still on its way)
+  if (Math.hypot(P.x - (_gw.px + GA_RUB_AT[0]), (P.y - (_gw.py + GA_RUB_AT[1])) * 1.4) > 0.22) return;   // (still on its way)
   if (P.root._pcH && typeof petClipStop === 'function') petClipStop(P.root);   // (whatever it was doing: it rolls over for you)
   const id = _gaBellyClip() || 'rollover'; P.dir = -1; P.tx = null; cur.rubT = performance.now();
   P.lifeGoal = false;
@@ -561,7 +563,7 @@ if (typeof gardenLifePetGoal === 'function') {
   gardenLifePetGoal = function (P, dt) {   // eslint-disable-line no-func-assign
     const fg = _gaFetchGoal(P); if (fg) return fg;
     const cur = _ga.cur;
-    if (cur && cur.doing && cur.row.rubPet && P && P.me) { if (P.root && P.root._pcH) return null; return { x: _gw.px + 0.34, y: _gw.py + 0.04, near: 0.12 }; }   // (on its back: no goal, so the pets' own clip runs its course; _gaRubTick clears lifeGoal first so nothing sits it up)   // (right in front of your hand: _gaRubTick rolls it over)
+    if (cur && cur.doing && cur.row.rubPet && P && P.me) { if (P.root && P.root._pcH) return null; return { x: _gw.px + GA_RUB_AT[0], y: _gw.py + GA_RUB_AT[1], near: 0.08 }; }   // (on its back: no goal, so the pets' own clip runs its course; _gaRubTick clears lifeGoal first so nothing sits it up)   // (right in front of your hand: _gaRubTick rolls it over)
     if (cur && cur.doing && P && P.me && !cur.row.fetch) {   // (every action: the pet waits beside you on open ground)
       // beside you on open ground, never up on a thing (a pump, a bench, a wall): the walker's own map says what is solid
       const ok = (x, y) => (typeof _ptwFree !== 'function' || _ptwFree(x, y)) && (typeof _gwFree !== 'function' || _gwFree(x, y, 0.2)) && !(_ga.list || []).some(r => r.act !== 'sit' && Math.hypot(r.x - x, (r.y - y) * 1.3) < 0.7);
