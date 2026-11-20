@@ -473,31 +473,31 @@
    "control": [
     [
      21.3,
-     67.4
+     67.6
     ],
     [
      22.75,
-     66.75
+     67.15
     ],
     [
      24.4,
-     66.75
+     67.15
     ],
     [
      26.1,
-     66.75
+     67.15
     ],
     [
-     27.3,
-     67.25
+     27.2,
+     67.5
     ],
     [
-     27.7,
-     68.0
+     27.75,
+     68.2
     ],
     [
      28.4,
-     68.6
+     68.5
     ],
     [
      29.6,
@@ -511,7 +511,7 @@
     1.6,
     1.6,
     1.6,
-    1.6,
+    1.4,
     1.8
    ],
    "note": "NEW, later: through the walled garden; closes the pond walk into a ring and is the quick way from the arch to the tower",
@@ -751,25 +751,25 @@
     ],
     [
      27,
-     67.95
+     68.45
     ],
     [
      24.8,
-     67.95
+     68.45
     ],
     [
      22.75,
-     67.95
+     68.45
     ]
    ],
    "doors": [
     [
      22.75,
-     66.75
+     67.1
     ],
     [
-     27.6,
-     67.95
+     27.7,
+     68.45
     ]
    ],
    "wallsNote": "layout round 3 fixes: the old brick wall laid in straight lengths, each one block and one drawing, 0.4 cells thick, never curved round its corners; the west door faces the Hush, the south-east door the tower; the garden walk runs inside it a quarter cell clear of its foot",
@@ -798,11 +798,11 @@
      "line": [
       [
        22.55,
-       67.95
+       68.45
       ],
       [
        26.85,
-       67.95
+       68.45
       ]
      ],
      "pier": [
@@ -830,7 +830,8 @@
     }
    ],
    "thick": 0.4,
-   "wallsNote2": "critic 2: the west door runs from the north length's pier down to the south length (the quarter-cell stub between them dropped), so the walk passes it friend-wide"
+   "wallsNote2": "critic 2: the west door runs from the north length's pier down to the south length (the quarter-cell stub between them dropped), so the walk passes it friend-wide",
+   "wallsNote3": "critic 2: the south length half a cell further south, so the walk runs friend-wide between the shut plot's edge and the brick"
   }
  },
  "glades": {
@@ -1231,7 +1232,7 @@
    ],
    [
     25.2,
-    68.55
+    69.0
    ],
    [
     23.4,

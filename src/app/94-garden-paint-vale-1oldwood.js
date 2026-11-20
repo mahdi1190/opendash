@@ -437,8 +437,21 @@
       if (!wint) B.tufts(r, c.x, c.y + bh * .45, bw * .9, 14, ['#566e30', '#7d9a4e'], 5);
     });
   }
+  /** The ruin court's edge (critic 2: a flat pale ellipse with a hard cut edge): the outer flags broken and sunk, turf and
+   *  moss creeping in over the rim in soft tongues, so the court lies in the grass rather than on it. */
+  function courtEdge(C) {
+    const { L, add, kit } = C, rt = L.routes.get('ruin-court'); if (!rt || !rt.shape) return;
+    const loop = V.shapeLoop(L, rt.shape, 6), bb = kit.bboxOf(loop, 30), wint = C.season === 'winter', grass = wint ? '#d8dcd4' : '#7c9a4a', moss = wint ? '#c8ccc2' : '#6f8446';
+    add(bb, 993, (B, r) => {
+      B.cx.save(); B.cx.clip(new Path2D(B.poly(loop)));
+      B.cx.filter = 'blur(5px)'; V.strokePts(B, loop.concat([loop[0]]), grass, 22, .55); B.cx.filter = 'none';
+      for (let i = 0; i < loop.length; i += 2) { const p = loop[i], q = loop[(i + 1) % loop.length], c = { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 }; if (r() < .55) B.f(B.blob(r, c.x + (r() - .5) * 8, c.y + (r() - .5) * 6, 7 + r() * 9, 3 + r() * 4, 7, .45), r() < .5 ? grass : moss, .75); }
+      B.cx.restore();
+      if (!wint) for (let i = 0; i < loop.length; i += 3) { const p = loop[i]; B.tufts(r, p.x, p.y + 2, 16, 4, ['#566e30', '#7d9a4e'], 6); }
+    });
+  }
   function gardenWalk(C) {
-    hollinsTrack(C); towerStep(C);
+    hollinsTrack(C); towerStep(C); courtEdge(C);
     const { L, add, kit } = C, rt = L.routes.get('garden-walk'); if (!rt) return;
     const rib = V.routeRibbon(L, rt, false), edge = V.routeRibbon(L, rt, true), bb = kit.bboxOf(edge, 16), seed = kit.hashStr('ow-garden-walk'), season = C.season;
     const pts = gardenIslandRoutePath(rt).points.map(p => L.cpt(p.x, p.y)), n = rib.length >> 1, left = rib.slice(0, n), right = rib.slice(n).reverse();
@@ -450,7 +463,7 @@
       V.strokePts(B, pts, '#a08a60', 7, .18);   // the raked line down its middle, worn by feet
       B.cx.restore();
       if (season === 'winter') return;
-      const g0 = L.cpt(22.95, 63), g1 = L.cpt(28.4, 67.75); B.cx.save(); B.cx.beginPath(); B.cx.rect(g0.x, g0.y, g1.x - g0.x, g1.y - g0.y); B.cx.clip();   // (inside the walls only)
+      const g0 = L.cpt(22.95, 63), g1 = L.cpt(28.4, 68.25); B.cx.save(); B.cx.beginPath(); B.cx.rect(g0.x, g0.y, g1.x - g0.x, g1.y - g0.y); B.cx.clip();   // (inside the walls only)
       for (const side of [left, right]) {   // a clipped box edging, ankle high, one soft roll of leaf with a lit top
         V.strokePts(B, side, '#2f4a24', 6.5, .95); V.strokePts(B, side.map(p => ({ x: p.x, y: p.y - 2 })), '#4c7034', 4.4, .95); V.strokePts(B, side.map(p => ({ x: p.x, y: p.y - 3.2 })), '#7a9e4c', 1.6, .7);
       }
