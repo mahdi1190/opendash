@@ -267,7 +267,7 @@ stat('ld-falls', 44, 26, { w: 3, door: { x: 42, y: 27 }, district: 'pond-grove' 
 stat('ld-bench-a', 15, 41, { door: { x: 15, y: 42 }, district: 'west-woods' });
 stat('ld-mill', 72, 63, { door: { x: 73, y: 64 }, district: 'east-mill' });
 stat('smoker', 82, 77, { door: { x: 82, y: 78 }, district: 'east-mill' });
-stat('ld-tower', 28, 77, { door: { x: 29, y: 78 }, district: 'southwest-ruins' });
+stat('ld-tower', 28, 78, { door: { x: 29, y: 79 }, district: 'southwest-ruins' });   // (round 3 integration: a row south, off the pond walk's drawn width)
 const sightRow = id => ({ id, w: 1, h: 1, col: 'full', walk: false, level: 1, needs: null, tall: 1 });
 const SIGHTS = [
   // [id, x, y, w, district, door?, col?]
@@ -279,10 +279,10 @@ const SIGHTS = [
   ['ld-driftwood', 5, 82, 2, 'west-woods', { x: 6, y: 81 }],
   ['ld-chapel', 19, 72, 3, 'southwest-ruins', { x: 20, y: 73 }], ['ld-icehouse', 26, 84, 2, 'southwest-ruins', { x: 26, y: 85 }], ['ld-statue', 24, 73, 1, 'southwest-ruins', { x: 24, y: 74 }],
   ['ld-labyrinth', 30, 80, 3, 'southwest-ruins', { x: 31, y: 81 }],
-  ['ld-hide', 82, 80, 2, 'east-mill', { x: 81, y: 80 }], ['ld-frog', 69, 77, 1, 'east-mill', { x: 68, y: 77 }], ['ld-boles', 86, 61, 1, 'east-mill', { x: 85, y: 62 }],
+  ['ld-hide', 82, 80, 2, 'east-mill', { x: 81, y: 80 }], ['ld-frog', 69, 77, 1, 'east-mill', { x: 68, y: 77 }], ['ld-boles', 85, 60, 1, 'east-mill', { x: 85, y: 61 }],
   ['ld-barn', 82, 66, 3, 'east-mill', { x: 83, y: 67 }], ['ld-churn', 78, 63, 1, 'east-mill', { x: 78, y: 64 }], ['ld-smoke', 84, 76, 3, 'east-mill', { x: 85, y: 77 }],
   ['ld-barrels', 76, 35, 1, 'orchard-headland', { x: 76, y: 36 }], ['ld-folly', 84, 28, 2, 'orchard-headland', { x: 84, y: 30 }], ['ld-ring', 70, 39, 4, 'orchard-headland', { x: 71, y: 40 }],
-  ['ld-clamp', 66, 29, 1, 'orchard-headland', { x: 66, y: 30 }], ['ld-orchard-wall', 72, 44, 2, 'orchard-headland', { x: 72, y: 45 }], ['ld-treehouse', 86, 46, 2, 'orchard-headland', { x: 86, y: 47 }],
+  ['ld-clamp', 68, 29, 1, 'orchard-headland', { x: 68, y: 30 }], ['ld-orchard-wall', 72, 44, 2, 'orchard-headland', { x: 72, y: 45 }], ['ld-treehouse', 86, 46, 2, 'orchard-headland', { x: 86, y: 47 }],
   ['ld-beacon', 52, 8, 1, 'north-headland', { x: 52, y: 9 }], ['ld-cairn', 48, 8, 1, 'north-headland', { x: 48, y: 9 }], ['ld-stones', 44, 9, 4, 'north-headland', { x: 45, y: 11 }],
   ['ld-hut', 59, 17, 1, 'north-headland', { x: 59, y: 18 }], ['ld-grotto', 65, 13, 2, 'north-headland', { x: 65, y: 14 }], ['ld-warren', 30, 4, 1, 'north-headland', { x: 30, y: 5 }],
   ['ld-mile', 2, 52, 1, 'west-woods', { x: 3, y: 52 }],
