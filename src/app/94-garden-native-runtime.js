@@ -371,7 +371,7 @@ window.GardenNative = (function () {
       typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0,
       state.profile, state.wardrobe, state.pet, state.game && state.game.seen,
       typeof _gm !== 'undefined' && _gm.rev, gardenFun(), gardenMotionOn(), ui,
-      weather && weather.today && [weather.today.sunrise, weather.today.sunset], typeof gardenSocialBadge === 'function' ? gardenSocialBadge() : 0,
+      weather && weather.today && [weather.today.sunrise, weather.today.sunset], typeof gardenSocialBadge === 'function' ? gardenSocialBadge() : 0, typeof gardenActDrawRev === 'function' ? gardenActDrawRev() : 0,
     ], (key, value) => key === 'def' && value && value.id ? value.id : value);
   }
   function refreshLiveHud(s, model) {
@@ -384,7 +384,9 @@ window.GardenNative = (function () {
     if (typeof _ptwCheck === 'function') _ptwCheck();
   }
   function sync(model) {
-    const s = live; if (!s || s.dead) return; s.model = model;
+    const s = live; if (!s || s.dead) return;
+    if (!model) { try { model = gardenHere(); } catch (e) { model = null; } if (!model) return; }   // (a bare sync() means "the garden as it is now": it used to hand undefined to every layer, the life layer included)
+    s.model = model;
     if (!s.world) return;
     let key = null;
     try { key = presentationKey(model); } catch (error) { /* Unknown model extensions take the full paint path. */ }

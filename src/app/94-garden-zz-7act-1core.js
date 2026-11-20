@@ -455,7 +455,11 @@ function gartActHidden(id) { const t = _gaHide.get(id); return t != null && (t =
 function gartActCarried(id) { return _gaHide.get(id) === Infinity; }
 /** Where a carried thing was set down (this visit), or null. */
 function gartActMovedTo(id) { return _gaMoved.get(id) || null; }
-function _gaResync() { try { if (typeof GardenNative !== 'undefined' && GardenNative.sync) GardenNative.sync(); } catch (e) { /* next paint */ } }
+/** Draw the world again now: something an act changes in a drawing (an instrument in someone's hands, a thing in use) is not in the garden's
+ *  model, so the drawing revision below is part of both repaint keys (94-garden-native-runtime.js, 94-garden-native-world.js); without it the
+ *  repaint was skipped until the next minute. The model is passed, never nothing (a sync with no model reached the life layer as undefined). */
+function _gaResync() { gardenActDrawRev.n = (gardenActDrawRev.n || 0) + 1; try { if (typeof GardenNative !== 'undefined' && GardenNative.sync && typeof gardenHere === 'function') GardenNative.sync(gardenHere()); } catch (e) { /* next paint */ } }
+function gardenActDrawRev() { return gardenActDrawRev.n || 0; }
 function _gaRec(id) { try { const w = GardenNative.world(), e = w && w.entities; return e instanceof Map ? e.get('prop:' + id) : null; } catch (e) { return null; } }
 function _gaShow(id, on) { const rec = _gaRec(id); if (rec && rec.root && rec.root.setAlpha) rec.root.setAlpha(on ? 1 : 0); }
 /** The ball flies off the foot and rolls back to its place; the leaves burst and settle back slowly. */
