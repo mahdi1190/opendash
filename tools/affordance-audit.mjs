@@ -97,7 +97,7 @@ const placeFault = (K, x, y, w, h, self) => {
   for (const [px, py] of pts) { const c = cell(px, py); let fresh = false; try { fresh = isl.fresh(px, py) || !isl.land(px, py); } catch (e) { fresh = !!(c && c.freshwater); } if (fresh) return 'in the water'; if (!c || !c.land) return 'off the land'; if (c.solid) return 'on rock or a wall'; if (!K.onPath && c.route) return 'on a path (' + c.route + ')'; if (c.staticId && c.staticId !== self) { const st = statById.get(c.staticId); if (st && (st.col || 'full') === 'full' && !st.walk) return 'on ' + c.staticId; } }
   for (const f of wallForms) for (const [px, py] of pts) if (inPoly(px, py, f.polygon)) return 'on the ' + f.kind + ' ' + f.id;
   for (const o of things) { if (o.id === self) continue; if (ctx.meet(x, y, w, h, o.x, o.y, o.w || 1, o.h || 1)) return 'on ' + o.id; }   // (as drawn: the game's own gardenKindBoxesMeet)
-  if (!K.onPath) for (const [px, py] of pts) if (stoneAt(px, py)) return 'on paving';
+  if (!K.onPath) for (const [px, py] of pts.concat([[x - hw - 0.45, y - 0.1], [x + hw + 0.45, y - 0.1], [x, y + 0.4], [x, y - h - 0.45]])) if (stoneAt(px, py)) return 'on paving';   // (the game's own margin: a walled yard's rim)
   // where you stand to use it can be walked to from the arrival point (the game asks the same, over the land open now)
   if (K.acts) { const kid = Object.keys(ctx.K).find(k => ctx.K[k] === K); for (const sp of ctx.spots({ kind: kid, x, y, w })) { if (sp.pierEnd || sp.wade || sp.boat) continue; if (!reachable(sp.stand.x, sp.stand.y)) return 'its standing spot cannot be walked to from the arrival point (shut in)'; } }
   return '';
