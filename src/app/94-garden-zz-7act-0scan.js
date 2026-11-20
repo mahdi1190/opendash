@@ -88,7 +88,7 @@ function _gksPlaceFault(K, x, y, w, h, list, self) {
   for (const o of list) { if (o.id === self || o.src === 'decor') continue; const ow = (o.w || 1) / 2, oh = o.h || 1; if (x + hw > o.x - ow && x - hw < o.x + ow && y > o.y - oh && y - h < o.y) return 'on ' + o.id; }
   if (!K.onPath) for (const [px, py] of pts) if (typeof _plStoneAt === 'function' && _plStoneAt(px, py)) return 'on paving';
   // where you stand to use it is open ground on the same side of any wall (a fire with its warming spot over a wall is no use)
-  if (walker && K.acts) { const kid = Object.keys(GARDEN_KINDS).find(k => GARDEN_KINDS[k] === K); for (const sp of gardenKindSpots({ kind: kid, x, y, w })) { if (sp.pierEnd || sp.wade || sp.boat) continue; for (let i = 1; i <= 4; i++) { const qx = x + (sp.stand.x - x) * i / 4, qy = y - 0.05 + (sp.stand.y - y + 0.05) * i / 4; if (_gksSolidAt(qx, qy, self)) return 'its standing spot is behind something solid'; } } }
+  if (walker && K.acts) { const kid = Object.keys(GARDEN_KINDS).find(k => GARDEN_KINDS[k] === K); for (const sp of gardenKindSpots({ kind: kid, x, y, w })) { if (sp.pierEnd || sp.wade || sp.boat) continue; for (let i = 1; i <= 4; i++) { const qx = x + (sp.stand.x - x) * i / 4, qy = y - 0.05 + (sp.stand.y - y + 0.05) * i / 4; if (_gksSolidAt(qx, qy, self)) return 'its standing spot is behind something solid'; } try { if (typeof gardenReachable === 'function' && !gardenReachable(Math.floor(sp.stand.x), Math.floor(sp.stand.y))) return 'its standing spot cannot be walked to (shut in)'; } catch (e) { /* no map */ } } }
   return '';
 }
 /** Is (x, y) inside something that stops the feet (the walker's boxes and wall outlines), other than the thing itself? */
