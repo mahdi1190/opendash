@@ -186,6 +186,21 @@
       const cs = rpts('cliff-steps'); if (cs) flight(cs, { step: 9, salt: 5, rock: true });
     }
 
+    // 1g. The hurdle fence down the gap from the orchard bank's end to the outlet: two woven hazel hurdles on stakes, standing
+    // either side of the lakeside hurdle (the shortcut itself, 94-garden-wonder-7shortcuts.js); their feet stop yours
+    if (L.D.presentation && L.D.presentation.orchard && L.D.presentation.orchard.hurdle) for (const [y0, y1] of [[36.15, 37.4], [39.4, 40.2]]) {
+      const top = L.cpt(61, y0), foot = L.cpt(61, y1), len = foot.y - top.y;
+      thing({ key: 'hurdle-fence', x: foot.x, y: foot.y, box: [-14, -len - 30, 14, 6], foot: [-.38 * cw, .38 * cw, len], draw: B => {
+        const r = kit.rng(Math.round(y0 * 10)), hgt = 22;
+        B.f(B.ell(4, -len / 2, 7, len / 2 + 3), '#22301a', .16);
+        B.f(B.poly([[-3, -len], [3, 0], [3, -hgt], [-3, -len - hgt]]), '#8a6a40');
+        for (let k = 0; k < 6; k++) { const o = 3 + k * (hgt - 4) / 5; B.s(`M-3 ${-len - o}L3 ${-o}`, k % 2 ? '#b08a56' : '#9a7448', 2.6, 1); }
+        for (let k = 0; k <= 4; k++) { const t = k / 4, x = -3 + 6 * t, y = -len * (1 - t); B.s(`M${x} ${y}V${y - hgt - 3}`, '#5a4028', 1.6, 1); }
+        for (const [x, y] of [[-3, -len], [3, 0]]) B.f(B.rect(x - 2.2, y - hgt - 6, 4.4, hgt + 6), '#6a5034').f(B.rect(x - 2.2, y - hgt - 6, 1.5, hgt + 6), '#9a7a54');
+        if (season !== 'winter') B.tufts(r, 2, 2, 8, 4, [P.lawnLo, '#9a9a52'], 6);
+      } });
+    }
+
     // 1f. The dip's steam: soft wisps lifting off the warm water, thicker on a cold morning
     { const dip = (L.D.freshwater || []).find(w => w.id === 'orchard-dip'); if (dip && dip.boundary) { const pts = dip.boundary.map(L.pt), bb = kit.bboxOf(pts, 50);
       add([bb[0], bb[1] - 60, bb[2], bb[3]], 99, (B, r) => { const cx0 = (bb[0] + bb[2]) / 2, cy0 = (bb[1] + bb[3]) / 2, a = season === 'winter' ? .34 : season === 'autumn' ? .26 : .16;
