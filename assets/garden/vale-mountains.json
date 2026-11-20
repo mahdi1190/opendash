@@ -526,23 +526,24 @@
    "kind": "fold",
    "edge": "drystone",
    "plan": "the last dry-stone wall, on its west side only",
-   "gateHint": [3.5, 12.6],
+   "gateHint": [4.2, 12.6],
    "cells": [
-    [0, 10],
-    [1, 10],
+    [2, 9],
+    [3, 9],
+    [4, 9],
+    [5, 9],
     [2, 10],
     [3, 10],
     [4, 10],
-    [0, 11],
-    [1, 11],
+    [5, 10],
     [2, 11],
     [3, 11],
     [4, 11],
-    [0, 12],
-    [1, 12],
+    [5, 11],
     [2, 12],
     [3, 12],
-    [4, 12]
+    [4, 12],
+    [5, 12]
    ],
    "moved": "north of the moor road: south of it the woodland crowns below the Edge hid it from the camera"
   }
