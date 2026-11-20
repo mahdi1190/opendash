@@ -307,7 +307,7 @@ wdMod({
   id: 'tales', pref: 'folk',
   begin() { _wt.near.clear(); _wt.res.clear(); },
   tick(m) {
-    if (m.visit || _wd.still) return;
+    if (m.visit || _wd.still || wdWalkingLately()) return;
     try { _wtPlaces(m); _wtTravellers(m); for (const r of WD_TALE_RESIDENTS.values()) _wtResPlace(r, m); } catch (e) { console.error('[garden stories]', e); }
   },
   end() { for (const S of _wt.res.values()) S.remove(); _wt.res.clear(); if (_wt.trav) { _wt.trav.S.remove(); _wt.trav = null; } },

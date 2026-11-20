@@ -96,6 +96,29 @@ window.GardenPaintGround = (function () {
     if (!key || !scene.textures.exists(key)) return; let c = null; try { c = scene.textures.get(key).getSourceImage(); } catch (e) { c = null; }
     scene.textures.remove(key); if (c && c._gpkMine) { c._gpkSpare = false; giveCanvas(c); }
   }
+  // (vale final fix 1, rule 16) A layer let go for a new one (a gate opens, land is bought, the level changes what is drawn): its
+  // pictures stay on the stage a little under the new layer, each until the new layer has painted that box (or a few seconds pass),
+  // so the frame after the click shows the old painting, never flat lawn or square bare tiles.
+  const ghosts = []; let ghostTimer = null;
+  function ghost(scene, im, bb, depth, tex) {
+    if (!im || !im.active || ghosts.length > 400) return false;
+    im.setDepth(depth - .5); ghosts.push({ scene, im, bb, depth, tex, t: performance.now() });
+    if (!ghostTimer) ghostTimer = setInterval(() => ok(sweepGhosts), 120);
+    return true;
+  }
+  // a texture a ghost still shows is let go with the ghost
+  function ghostHolds(scene, key) { for (const g of ghosts) if (g.scene === scene && g.im.active && g.im.texture && g.im.texture.key === key) { g.tex = key; return true; } return false; }
+  function sweepGhosts() {
+    const now = performance.now();
+    for (let i = ghosts.length - 1; i >= 0; i--) {
+      const g = ghosts[i]; let gone = !g.im.active || now - g.t > 5000 || (g.tex && !g.scene.textures.exists(g.tex));
+      if (!gone) { let heir = null; for (const h of registry) if (h.scene === g.scene && Math.abs(h.depth - g.depth) < 1) { heir = h; if (h.readyIn(g.bb)) { gone = true; break; } } if (!heir && now - g.t > 1000) gone = true; }
+      if (!gone) continue;
+      ghosts.splice(i, 1); ok(() => g.im.destroy());
+      if (g.tex) { let used = false; for (const h of registry) if (h.scene === g.scene && h.uses && h.uses(g.tex)) { used = true; break; } if (!used) ok(() => dropTexture(g.scene, g.tex)); }
+    }
+    if (!ghosts.length) { clearInterval(ghostTimer); ghostTimer = null; }
+  }
   // ops: [{ bb: [x0, y0, x1, y1] world px, seed, clip, tag, draw(B, r, chunkBB) }]   (the shape GardenPaintTerrainKit.chunked takes)
   // opts: { key, box, chunk, depth, budgetMB, slice, lazy, prebake, K (fixed level when follow is false), minK, maxK, follow }
   function layer(scene, parent, ops, opts) {
@@ -115,8 +138,9 @@ window.GardenPaintGround = (function () {
     for (const ch of list) for (const l of LEVELS.concat(follow ? [] : [fixedK])) { const k = opts.key + '|' + ch.id + '|' + l; if (scene.textures.exists(k)) { ch.cached = { key: k, K: l }; } }
     let bakedPx = 0, baked = 0, evicted = 0, worst = 0, sliceWorst = 0, bakeMs = 0, dead = false, host = parent, serial = 0, wantK = follow ? 0 : fixedK, zoomSeen = 0, zoomAt = 0, held = 0;
     const times = [], cam = scene.cameras && scene.cameras.main, budget = (opts.budgetMB || 32) * 1048576 / 4;
+    let lowHidden = false;
     const place = (ch, key, K, w, h) => {
-      const p = PAD * K, im = scene.add.image(ch.bb[0], ch.bb[1], key).setOrigin(0, 0).setScale(1 / K).setDepth(opts.depth).setCrop(p, p, w - 2 * p, h - 2 * p);
+      const p = PAD * K, im = scene.add.image(ch.bb[0], ch.bb[1], key).setOrigin(0, 0).setScale(1 / K).setDepth(opts.depth).setCrop(p, p, w - 2 * p, h - 2 * p).setVisible(!lowHidden);
       if (ch.image) ch.image.destroy(); if (ch.tex && ch.tex !== key) dropTexture(scene, ch.tex);
       bakedPx += w * h - ch.px; ch.px = w * h; ch.image = im; ch.tex = key; ch.K = K; ch.dirty = false; if (host) { host.add(im); if (host.sort) host.sort('depth'); }
     };
@@ -162,6 +186,7 @@ window.GardenPaintGround = (function () {
     const heavy = (ch, k) => { const lim = HEAVY_MS / (k * k); for (const o of ch.ops) if (o.cost > lim) return true; return false; };
     const tick = () => {
       if (dead || !host) return; if (!scene.textures || !scene.textures.game) { dead = true; clearInterval(timer); registry.delete(handle); return; }   /* (its scene is gone: stop, quietly) */
+      if (lowHidden) return;   /* (a soft copy stands in for this whole layer at the whole-map zoom: nothing to paint) */
       const v = viewBox(.05), near = viewBox(.35), keep = viewBox(.7); if (!v) return; const K = level(), moving = typeof _gw !== 'undefined' && !!_gw.moving;
       { const t0 = performance.now(); for (const ch of list) { if (ch.image || !ch.cached || !meets(ch.bb, near)) continue; adopt(ch); if (performance.now() - t0 > 4) break; } }
       // one chunk a tick: on screen and bare first, then on screen and at the wrong sharpness or repainted, then the margin
@@ -192,7 +217,7 @@ window.GardenPaintGround = (function () {
     };
     const timer = setInterval(() => { const t0 = performance.now(); ok(tick); const d = performance.now() - t0; if (d > slow.tickMs) slow.tickMs = +d.toFixed(1); }, 34);
     const handle = {
-      key: opts.key, follow,
+      key: opts.key, follow, scene, depth: opts.depth, uses(k) { for (const ch of list) if (ch.tex === k || ch.cached && ch.cached.key === k) return true; return false; },
       // an op added later is baked into every chunk it touches; a chunk already painted is painted again behind its old picture, in slices
       add(o) { all.push(o); reach(o.bb, (i, j) => { const ch = chunkAt(i, j); if (!meets(o.bb, ch.bb)) return; ch.ops.push(o); if (ch.cached) { if (scene.textures.exists(ch.cached.key)) scene.textures.remove(ch.cached.key); ch.cached = null; } if (ch.image && !ch.job) ch.dirty = true; }); return o; },
       /** Replace the op with this tag (null removes it). The same sig again is a no-op; a change repaints the chunks it touches. */
@@ -205,6 +230,10 @@ window.GardenPaintGround = (function () {
       attach(p) { host = p; if (!p) return; const v = viewBox(.4); for (const ch of list) if (!ch.image && ch.cached && (!v || meets(ch.bb, v))) adopt(ch); },
       /** Take the pictures off the stage but keep them (the world is being rebuilt round them). */
       detach() { if (!host) return; for (const ch of list) if (ch.image) { ch.image.destroy(); ch.image = null; if (ch.tex) ch.cached = { key: ch.tex, K: ch.K }; ch.tex = null; bakedPx -= ch.px; ch.px = 0; ch.K = 0; ch.job = null; } host = null; },
+      /** (vale final fix 1) hide the whole layer while a soft copy of it stands in (the whole-map zoom), so the map shows one even
+       *  painting and never squares of the sharp picture among squares of the soft one */
+      lowHide(on) { on = !!on; if (on === lowHidden) return; lowHidden = on; for (const ch of list) if (ch.image) ch.image.setVisible(!on); },
+      get lowHidden() { return lowHidden; },
       pendingInView() { const v = viewBox(.05); if (dead || !v) return 0; let n = 0; for (const ch of list) if (!ch.image && meets(ch.bb, v)) n++; return n; },
       // (vale final, rule 16) every chunk of this layer that meets the box (inside its bleed) is on the stage: a soft placeholder
       // layer under this one (94-garden-paint-terrain-0kit.js opts.under) hides its own chunk there
@@ -216,7 +245,7 @@ window.GardenPaintGround = (function () {
       get baked() { return baked; }, get evicted() { return evicted; }, get held() { return held; }, get live() { return list.filter(c => c.image).length; },
       /** Stop painting but stay on the stage (a newer layer is taking over); destroy() follows. */
       retire() { dead = true; clearInterval(timer); for (const ch of list) ch.job = null; },
-      destroy(keepTextures) { dead = true; clearInterval(timer); registry.delete(handle); for (const ch of list) { if (ch.image) ch.image.destroy(); ch.image = null; ch.job = null; if (!keepTextures) { if (ch.tex && scene.textures.exists(ch.tex)) scene.textures.remove(ch.tex); if (ch.cached && scene.textures.exists(ch.cached.key)) scene.textures.remove(ch.cached.key); } } },
+      destroy(keepTextures) { dead = true; clearInterval(timer); registry.delete(handle); for (const ch of list) { if (ch.image) { if (!ghost(scene, ch.image, ch.bb, opts.depth, keepTextures ? null : ch.tex)) { ch.image.destroy(); if (!keepTextures && ch.tex && scene.textures.exists(ch.tex)) scene.textures.remove(ch.tex); } } else if (!keepTextures && ch.tex && scene.textures.exists(ch.tex) && !ghostHolds(scene, ch.tex)) scene.textures.remove(ch.tex); ch.image = null; ch.job = null; if (!keepTextures && ch.cached && scene.textures.exists(ch.cached.key)) scene.textures.remove(ch.cached.key); } },
     };
     registry.add(handle); return handle;
   }

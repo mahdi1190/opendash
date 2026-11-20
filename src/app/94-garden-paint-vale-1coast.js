@@ -482,7 +482,7 @@ function gardenIslandHarbourThings(data) {
     ['crates', [[44.3, 76.6], [43.6, 75.4], [57.3, 75.4]], ['path', 'grass', 'beach'], -28, 34, 12],
     // (village fix round 2: each block as wide as the foot drawn on the ground: the audit found the pots' and the anchor's
     // blocks two to six times their base, and the net's a wall on the sand between its two posts with nothing at its foot)
-    ['pots', [[43.2, 77.6], [47.5, 76.7], [57.6, 75.2], [45.3, 78.7]], ['path', 'grass', 'beach'], -11, 11, 7],
+    ['pots', [[43.2, 77.6], [47.5, 76.7], [57.6, 75.2], [45.3, 78.7]], ['path', 'grass', 'beach'], -21, 21, 7],   // (vale final fix 1: as wide as the stack's drawn base, 0.9 of a cell; at 0.46 the feet stood on the pots)
     ['net', [[38.6, 82.4], [37.6, 81.6], [39.4, 81.4]], ['beach'], -36, 36, 5],   // (a drying net stands on the shingle by the boat, never out on the grass: layout round 3, critic 2)
     ['boat-sand', [[38.4, 83.6], [37.4, 84.4], [42.6, 81.2]], ['beach'], -40, 44, 10],
     ['crate1', [[53.2, 76.1], [46.6, 77.9]], ['path', 'beach'], -10, 10, 8],

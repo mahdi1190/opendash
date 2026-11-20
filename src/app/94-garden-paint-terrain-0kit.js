@@ -213,7 +213,11 @@ window.GardenPaintTerrainKit = (function () {
       if (bakedPx > budget) { let far = null, fd = -1; for (const ch of list) if (ch.live && !meets(ch.bb, keep)) { const d = dist(ch, v); if (d > fd) { fd = d; far = ch; } } if (far) evict(far); }
       // opts.under (rule 16): this layer is a soft placeholder under a sharper one, shown only where that one has a chunk
       // still to paint (so you see the painted ground, a little soft, never bare lawn), and hidden once it is all there
-      if (opts.under) for (const ch of list) if (ch.image) { const show = !ok(() => opts.under.readyIn(ch.bb)); if (ch.image.visible !== show) ch.image.setVisible(show); }
+      // (vale final fix 1) at the whole-map zoom this soft copy is sharp enough on its own: it shows everywhere and the sharp layer
+      // stands aside, so the map is one even painting (squares of the two side by side read as lighter and darker tiles)
+      const low = !!(opts.under && opts.under.lowHide && cam && cam.zoom < .42 && !list.some(ch => !ch.live && meets(ch.bb, v)));
+      if (opts.under && opts.under.lowHide) ok(() => opts.under.lowHide(low));
+      if (opts.under) for (const ch of list) if (ch.image) { const show = low || !ok(() => opts.under.readyIn(ch.bb)); if (ch.image.visible !== show) ch.image.setVisible(show); }
     };
     const timer = setInterval(() => ok(tick), 34);
     return {

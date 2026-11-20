@@ -197,11 +197,15 @@ function _wdFolkMeeting(row) {
     const prop = GARDEN_PROPS.find(p => p.id === at[0]);
     if (!prop || prop.needs && !gardenWorkOwned(prop.needs)) continue;
     const want = _wdPt(at[0], at[1], at[2]), to = wdFreeNear(want.x, want.y, 1.25); if (!to || !gardenIslandPublicCell(Math.floor(to.x), Math.floor(to.y))) continue;
+    if (Math.hypot(to.x - _gw.px, (to.y - _gw.py) * 1.4) < 1.3) continue;   // (vale final fix 1: never on the very spot you stand, as at the quay)
     let route = null; try { route = _gwRoute({ x: _gw.px, y: _gw.py }, to); } catch (e) { /* try the next public meeting point */ }
     if (route) return to;
   }
   return null;
 }
+// (vale final fix 1, rule 8) a figure arriving finds its way with the route search and builds its picture: never while
+// you walk (a 95 ms stretch on the ruins lane), only once you have stood a moment
+function wdWalkingLately() { const now = performance.now(); if (typeof _gw !== 'undefined' && _gw && (_gw.moving || (_gw.keys && _gw.keys.size) || (_gw.path && _gw.path.length))) _wdf.mv = now; return now - (_wdf.mv || 0) < 1500; }
 function _wdFolkSpawn(row) {
   const v = _glCamView(); let to = null;
   if (GARDEN_WORLD.v >= 3) to = _wdFolkMeeting(row);
@@ -305,7 +309,7 @@ wdMod({
   begin() { _wdf.S = null; },
   tick(m) {
     if (_wdf.S || _wd.t < 22 || (_gw.fishing && _gw.fishing.state !== 'idle')) return;
-    if (_wd.still) return;
+    if (_wd.still || wdWalkingLately()) return;
     const r = _wdFolkPick(m); if (r) _wdFolkSpawn(r);
   },
   end() { _wdf.S = null; },

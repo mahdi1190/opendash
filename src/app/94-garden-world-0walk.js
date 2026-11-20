@@ -373,7 +373,7 @@ function gardenWalkFolds(island) {
 // watchtower are drawn wider than their old feet; the great stump, the old gardener, the moor gate and the beacon by their drawn bases)
 const GW_PROP_FEET = Object.freeze({ 'ld-mile': [[-12, 42, 10]], 'ld-tower': [[-70, 72, 0]], 'ld-hollow': [[-44, 50, 0]], 'ld-clamp': [[-38, 52, 20]], 'ld-cairn': [[-31, 31, 0]], 'ld-woodhut': [[-58, 58, 0]], 'ld-stump': [[-60, 56, 14]], 'ld-statue': [[-26, 42, 10]], 'ld-moor-gate': [[-24, 52, 12]], 'ld-beacon': [[-24, 8, 12]] });
 // soft things (a bench's seat) whose drawing is wider than the usual half their width: [w, d] in cells
-const GW_SOFT_BLOCK = Object.freeze({ 'ld-bench-a': [1.2, .3], 'ld-bench-b': [1.2, .3] });
+const GW_SOFT_BLOCK = Object.freeze({ 'ld-bench-a': [1.2, .3], 'ld-bench-b': [1.5, .62], 'ld-cross': [.9, .32] });   // (vale final fix 1: the shore bench's drawn ends and the market cross's bottom step, measured by the collision audit)
 function gardenPropPaintedFeet(p) {
   if (!p || typeof GardenPaintedMarks === 'undefined' || !GardenPaintedMarks || !GardenPaintedMarks.ART || GARDEN_WORLD.v < 5) return null;
   const art = GardenPaintedMarks.ART[p.id] && GardenPaintedMarks.ART[p.id].foot ? GardenPaintedMarks.ART[p.id] : GW_PROP_FEET[p.id] ? { foot: GW_PROP_FEET[p.id] } : null; if (!art || !art.foot || gardenPropCol(p) !== 'full') return null;
@@ -812,7 +812,19 @@ function _gwMoveBy(dx, dy) {
   // the way they are getting on: it and the give took turns for four frames, a 2 px shake at one kink of the Millwater's
   // bank by the estuary, the last jitter the collision audit found, 18 Nov 2026)
   const backOnGive = held && (held === 'x' ? (shore.y - y0) * dy : (shore.x - x0) * dx) < 0;
-  if (shore.shore && shore.moved && !backOnGive && gain(shore.x, shore.y) >= gain(x, y)) { _gw.px = shore.x; _gw.py = shore.y; return true; }
+  // (vale final fix 1) last of all, a diagonal press that would stop dead (or crawl) where the feet plainly could go on along the
+  // edge: across with a give of up to 3.5 px against the up-and-down part (an edge up to about 50 degrees from level), or up and
+  // down with a give under a pixel against the across part, open for three steps running. A wall met square and a true inside
+  // corner are still honest stops. (The collision audit's slide-stall: 106 of them, most at banks the shore slide met at a kink.)
+  const useShore = shore.shore && shore.moved && !backOnGive && gain(shore.x, shore.y) >= gain(x, y), mx = useShore ? shore.x : x, my = useShore ? shore.y : y;
+  if (dx && dy && Math.hypot((mx - x0) * W.cellW, (my - y0) * W.cellH) < Math.hypot(dx * W.cellW, dy * W.cellH) * .15) {
+    const vx = dx * W.cellW, vy = dy * W.cellH, sx = Math.sign(dx), sy = Math.sign(dy), open3 = (ax, ay) => _gwFree(x0 + ax / W.cellW, y0 + ay / W.cellH) && _gwFree(x0 + 2 * ax / W.cellW, y0 + 2 * ay / W.cellH) && _gwFree(x0 + 3 * ax / W.cellW, y0 + 3 * ay / W.cellH);
+    let g2 = null;
+    for (let g = .5; g <= 3.5 && !g2; g += .5) if (open3(vx, -sy * g)) g2 = { x: x0 + vx / W.cellW, y: y0 - sy * g / W.cellH, kind: 'y' };
+    for (let g = .25; g <= .75 && !g2; g += .25) if (open3(-sx * g, vy)) g2 = { x: x0 - sx * g / W.cellW, y: y0 + vy / W.cellH, kind: 'x' };
+    if (g2) { _gw.px = g2.x; _gw.py = g2.y; _gw.slideHold = { sx, sy, kind: g2.kind }; return true; }
+  }
+  if (useShore) { _gw.px = shore.x; _gw.py = shore.y; return true; }
   if (x === x0 && y === y0) return false;
   _gw.px = x; _gw.py = y; return true;
 }

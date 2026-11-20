@@ -415,7 +415,7 @@ wdMod({
   id: 'kin', pref: 'folk',
   begin() { },
   tick(m) {
-    if (m.visit || _wd.t < 30 || _wd.still) return;
+    if (m.visit || _wd.t < 30 || _wd.still || wdWalkingLately()) return;
     const W = _wdG(), st = typeof wdTaleMainNext === 'function' ? wdTaleMainNext(m) : null; if (!st || st.b.who !== 'angler' || W['tw.angler'] === m.today) return;
     W['tw.angler'] = m.today; _wdSave();
     wdAmbient('The old angler on the pier lifts his hat to you. He looks as if he has a story.', 9000, 'folk');
