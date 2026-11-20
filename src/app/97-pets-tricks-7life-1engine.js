@@ -162,7 +162,7 @@ function _plStage(P, near, kind) {
   // bigger pets stand a little further off so the two figures never overlap (round 3: pets drawn larger)
   let ring = near ? [[0.62, 0.12], [0.58, 0.3], [0.72, -0.08]] : [[0.78, 0.1], [0.7, 0.32], [0.95, -0.06], [1.05, 0.34], [1.25, 0.12]];
   // (with a thing to draw: still within a cell and a half of you, so the row is in the frame round you; in front of you as well as beside)
-  if (kind) ring = [[0.85, 0.12], [1.0, 0.3], [1.0, -0.1], [1.25, 0.15], [1.2, 0.45], [0.7, 0.7], [1.0, 0.75], [1.5, 0.1], [1.4, -0.25], [1.5, 0.5], [0.4, 0.95], [1.3, 0.95], [1.9, 0.2], [1.8, 0.7], [2.2, 0.35], [0.9, 1.3], [2.0, -0.3], [2.4, 0.1]];   // (round 6: on a wide lane the grass is a little further off)
+  if (kind) ring = [[0.85, 0.12], [1.0, 0.3], [1.0, -0.1], [1.25, 0.15], [1.2, 0.45], [0.7, 0.7], [1.0, 0.75], [1.5, 0.1], [1.4, -0.25], [1.5, 0.5], [0.4, 0.95], [1.3, 0.95], [1.9, 0.2], [1.8, 0.7], [2.2, 0.35], [0.9, 1.3], [2.0, -0.3], [2.4, 0.1], [1.0, -0.65], [1.4, -0.9], [1.9, -0.8], [1.2, -1.2]];   // (round 6: on a wide lane the grass is a little further off)
   for (const [a0, b] of ring) for (const k of [s, -s]) { const a = a0 + sz, x = pl.x + a * k, y = pl.y + b; if (_plStandOk(x, y) && (!kind || typeof _plGroundOk !== 'function' || _plGroundOk(kind, x, y, k, P))) return { x, y, free: true, stage: 1 }; }
   return kind && arguments.length < 3 ? _plStage(P, near, '-') : null;   // no ground for the thing near you: stand beside you anyway (the row then plays without it)
 }
@@ -258,10 +258,13 @@ function petLifeThink(P, W) {
   if (P.me && _pl.q.length) { const id = _pl.q.shift(), row = PET_LIFE_BY[id]; if (row && _plOwned(row)) { const C = _plCtx(P, W); if (_plStart(P, row, C)) return true; } }
   if (P.lifeNext && now < P.lifeNext) return false;
   P.lifeNext = now + 4000 + Math.random() * 7000;   // a few seconds between ideas: the old habits (sniff, nap, wander) still fill the rest
-  if (Math.random() < 0.35) return false;
+  if (Math.random() < 0.2) return false;
   const C = _plCtx(P, W), pool = [];
   let sum = 0;
-  for (const row of PET_LIFE) if (_plPickable(P, row, C)) { const w = row.w || 1; pool.push([row, w]); sum += w; }
+  // (round 6, the critic: stood by the well for 35 s and the well row never came. A row whose own place is right by you (within three cells,
+  // in view) is much the likeliest thing it does there)
+  const pl = P.me ? _ptwPlayer() : null, byPlace = (row) => { if (!pl || !row.at || row.propAlways) return false; const t = _plNear(P, row.at, 3); return !!t && _plSeen(t.x, t.y); };
+  for (const row of PET_LIFE) if (_plPickable(P, row, C)) { const w = (row.w || 1) * (byPlace(row) ? 12 : 1); pool.push([row, w]); sum += w; }
   if (!pool.length) return false;
   let r = Math.random() * sum;
   for (const [row, w] of pool) { r -= w; if (r <= 0) return _plStart(P, row, C); }
@@ -393,6 +396,7 @@ function _plTreehouse(P) {
   if (!prop) return false;
   const win = (prop.pet && prop.pet.window) || (row && row.pet && row.pet.window) || [-24, -126];
   const foot = { x: prop.x + prop.w / 2, y: prop.y + prop.h };
+  { const pl = P.me ? _ptwPlayer() : null; if (pl && !_pl.here && (Math.hypot(foot.x - pl.x, foot.y - pl.y) > 5 || !_plSeen(foot.x, foot.y - 1))) return false; }   // (round 6: it ran off across the map to a treehouse out of sight)
   const near = _pl.here ? { x: P.x, y: P.y } : (_ptwBeside(foot) || (typeof gardenWorldNearestFree === 'function' ? gardenWorldNearestFree(foot.x, foot.y + 0.7, 2.5) : null)); if (!near) return false;
   const up = () => {
     const was = { x: P.x, y: P.y };
