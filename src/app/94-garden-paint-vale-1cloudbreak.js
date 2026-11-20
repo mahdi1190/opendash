@@ -131,6 +131,24 @@
       C.add(bb, seed, (B, r, cb) => { const path = new Path2D(B.poly(rib)), box = within(bb, cb, 30); if (!box) return; B.cx.save(); B.cx.clip(path); B.f(B.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]), snowy ? '#c8ccc4' : '#6e6b5a');
         slabs(B, box, { s: 24, cover: .99, salt: seed, tones: GREY, snowy }); B.cx.restore(); B.s(path, '#4e4a40', 1.6, .45); });
     }
+    // the other ways each in their own ground, so the fells are not one web of the same beige ribbon: the turf trails
+    // (the Edge walk, Skylark path, the cove cliff path) a trodden line in the grass, the moor road dark peat with heather
+    // at its edges, the stony lanes and trails scattered with fell stones
+    const SURF = { turf: { base: '#a6b066', mid: '#c2b27e', a: .9 }, peat: { base: '#7a644a', mid: '#94785a', a: .85 } };
+    for (const a of (L.D.routes || [])) {
+      if (a.zone !== 5 || a.tier === 'plaza' || !a.points || a.points.length < 2 || a.id === 'pass-summit') continue;
+      const o = SURF[a.surface], rib = V.routeRibbon(L, a, false), bb = kit.bboxOf(rib, 8), seed = kit.hashStr('way|' + a.id);
+      C.add(bb, seed, (B, r, cb) => { const box = within(bb, cb, 20); if (!box) return; const path = new Path2D(B.poly(rib)); B.cx.save(); B.cx.clip(path);
+        const K = KIT();
+        if (o && !snowy) {
+          B.f(B.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]), o.base, o.a);
+          K.tiles(box, 40, 0, seed + 3, (tx, ty, rr) => { for (let k = 0; k < 5; k++) { const x = tx + rr() * 40, y = ty + rr() * 40; if (a.surface === 'turf') B.tufts(rr, x, y, 10, 4, ['#8c9a5e', '#b8c07a', '#7d8f4e'], 4); else B.f(B.blob(rr, x, y, 5 + rr() * 6, 1.6 + rr(), 6, .5), rr() < .5 ? '#5e4a36' : '#8e7458', .7); } });
+          // the worn line feet keep to, down the middle
+          const mid = new Path2D(B.poly(V.routeRibbon(L, Object.assign({}, a, { widths: a.widths.map(w => w * .38) }), false))); B.f(mid, o.mid, .75);
+        }
+        if (a.surface === 'stony') K.tiles(box, 34, 0, seed + 5, (tx, ty, rr) => { for (let k = 0; k < 2; k++) { const x = tx + rr() * 34, y = ty + rr() * 34, w = 3 + rr() * 5; B.f(B.ell(x + .8, y + 1.2, w, w * .5), '#4e4a40', .35).f(B.ell(x, y, w, w * .5), GREY[Math.floor(rr() * GREY.length)], .95).f(B.ell(x - w * .25, y - w * .15, w * .45, w * .2), '#e8e4d8', .4); } });
+        B.cx.restore(); });
+    }
     const TOP = { 'summit-cairn': { s: 40, cover: .86, base: '#8a9458' }, 'long-view': { s: 46, cover: .95, base: '#6e6b5a' }, 'falls-top': { s: 36, cover: .9, wet: true, base: '#5e5c50' }, 'wick-yard': { s: 22, cover: .99, base: '#6e6b5a' }, 'cloudbreak-col': { s: 24, cover: .99, base: '#6e6b5a' }, 'moor-end': { s: 30, cover: .7, base: '#7a6a4e', peat: true }, 'cove-shingle': null };
     for (const pz of L.pres.plazas || []) {
       const o = TOP[pz.id]; if (!o || !Array.isArray(pz.shape)) continue;
