@@ -58,6 +58,16 @@
         B.cx.restore();
         // (the boardwalk is the shared path kit's, laid by the shared ground: a second one here had a dark round end like a pill)
       });
+        // (layfix east) where the boardwalk meets the stones over the river: a landing stage (lying flat, above the paths' own ground, whose round end lay there as a bare disc of sand) of the same silver planks on its piles,
+        // square to the stones' line, so the crossing steps straight onto timber (a bare disc of sand lay between them)
+      { const cr = ((L.D.presentation || {}).crossings || []).find(c => c.along && L.routes.get(c.along) && Math.hypot(c.x * cw - walk[0].x, W.sky + c.y * ch - walk[0].y) < cw * 4);
+          if (cr) C.thing({ key: 'boardwalk-landing', depth: -9000, x: walk[0].x, y: walk[0].y, box: [-80, -70, 80, 70], K: 1.2, draw: B => { B.cx.save(); B.cx.translate(-walk[0].x, -walk[0].y); const c0 = L.cpt(cr.x, cr.y), dx = walk[0].x - c0.x, dy = walk[0].y - c0.y, l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l, vx = -uy, vy = ux, o = { x: walk[0].x - ux * 4, y: walk[0].y - uy * 4 };
+            const at = (a, b) => [o.x + ux * a + vx * b, o.y + uy * a * .9 + vy * b * .8], hl = 30, hw2 = 36;
+            B.f(B.poly([at(-hl, -hw2), at(hl, -hw2), at(hl, hw2), at(-hl, hw2)].map(([x, y]) => [x + 2, y + 5])), 'rgba(40,46,32,.3)');
+            B.f(B.poly([at(-hl, -hw2), at(hl, -hw2), at(hl, hw2), at(-hl, hw2)]), '#6e604a');
+            for (let a = -hl + 3; a < hl; a += 6.2) { const tone = kit.rng(kit.hash(Math.round(a * 10), 65))(); B.s(`M${at(a, -hw2 + 1).join(' ')}L${at(a, hw2 - 1).join(' ')}`, tone < .3 ? '#a49a84' : tone < .7 ? '#b3a88f' : '#c4baa2', 5, 1, 'butt'); B.s(`M${at(a + 2.4, -hw2 + 1).join(' ')}L${at(a + 2.4, hw2 - 1).join(' ')}`, '#5e5242', .7, .5, 'butt'); }
+            for (const [a, b] of [[-hl, -hw2], [hl, -hw2], [hl, hw2], [-hl, hw2]]) { const [x, y] = at(a, b); B.f(B.rr(x - 2.6, y - 9, 5.2, 12, 1.4), '#4e4436').f(B.rect(x - 2.6, y - 9, 1.6, 12), '#7a6a54', .7).f(B.ell(x, y - 9, 2.6, 1.1), '#a49a84'); }
+            V.strokePts(B, [{ x: at(-hl, hw2)[0], y: at(-hl, hw2)[1] }, { x: at(hl, hw2)[0], y: at(hl, hw2)[1] }], '#4e4436', 1.6, .8); B.cx.restore(); } }); }
     }
 
     // 2. The cold cove: grey shingle and weed-dark boulders where the moor drops to the sea
@@ -98,7 +108,8 @@
       // or a rusty one now and then; weed only on the ones the tide reaches, at their foot. (round 3 fix: one grey boulder
       // with the same moss band and a white foam plate across its foot stood in a necklace along the water)
       const ROCKS = [R, { rock: '#8f8c86', rockLo: '#66645f', rockHi: '#bdb9b0', rockDk: '#3a3936', lichen: '#b8b884' }, { rock: '#a39684', rockLo: '#776b5c', rockHi: '#cdbfa8', rockDk: '#433a30', lichen: '#d0b85e' }];
-      rocks.forEach((k, i) => { const rr0 = kit.rng(k.seed ^ 0x5bd1), form = rr0(), kc = cell(k.x, k.y), wet = typeof gardenIslandCoastDistance === 'function' && gardenIslandCoastDistance(kc.x, kc.y) < 22, w =k.s * (form < .3 ? 1.1 : form < .7 ? 1.7 : 2.1), h = k.s * (form < .3 ? 1.25 : form < .7 ? .85 : .55);
+      // (High orchard fix round 1: none on the orchard's own shore past the Edge, where one stood with a block far wider than the little of it drawn)
+      rocks.forEach((k, i) => { { const c0 = cell(k.x, k.y), b0 = typeof gardenIslandBaseCell === 'function' ? gardenIslandBaseCell(Math.floor(c0.x), Math.floor(c0.y)) : null; if (b0 && b0.region === 'orchard-headland') return; } const rr0 = kit.rng(k.seed ^ 0x5bd1), form = rr0(), kc = cell(k.x, k.y), wet = typeof gardenIslandCoastDistance === 'function' && gardenIslandCoastDistance(kc.x, kc.y) < 22, w =k.s * (form < .3 ? 1.1 : form < .7 ? 1.7 : 2.1), h = k.s * (form < .3 ? 1.25 : form < .7 ? .85 : .55);
         C.thing({ key: 'cold-cove-rock-' + i, x: k.x, y: k.y + 2, box: [-w * .7, -h * 1.35, w * .7, 8], foot: [-w * .55, w * .55, Math.max(6, h * .45)], draw: B => {
           const rr = kit.rng(k.seed), pal = ROCKS[Math.floor(rr0() * 3)];
           if (form < .7) B.boulder(rr, 0, -1, w, h, pal, C.season === 'winter' && rr() < .4); else B.stone(rr, 0, -h * .4, w * .5, h * .55, pal, rr() < .4 ? pal.lichen : null);
@@ -469,7 +480,7 @@ function gardenIslandHarbourThings(data) {
     // (village fix round 2: each block as wide as the foot drawn on the ground: the audit found the pots' and the anchor's
     // blocks two to six times their base, and the net's a wall on the sand between its two posts with nothing at its foot)
     ['pots', [[43.2, 77.6], [47.5, 76.7], [57.6, 75.2], [45.3, 78.7]], ['path', 'grass', 'beach'], -11, 11, 7],
-    ['net', [[38.6, 80.6], [39.4, 80.2], [37.6, 81.6]], ['beach', 'grass'], -36, 36, 5],
+    ['net', [[38.6, 82.4], [37.6, 81.6], [39.4, 81.4]], ['beach'], -36, 36, 5],   // (a drying net stands on the shingle by the boat, never out on the grass: layout round 3, critic 2)
     ['boat-sand', [[38.4, 83.6], [37.4, 84.4], [42.6, 81.2]], ['beach'], -40, 44, 10],
     ['crate1', [[53.2, 76.1], [46.6, 77.9]], ['path', 'beach'], -10, 10, 8],
     ['bench', [[53.4, 78.55], [46.2, 78.6]], ['path', 'beach'], -24, 24, 6],

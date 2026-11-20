@@ -1,0 +1,2580 @@
+{
+ "note": "Hand-authored old woodland (zone 3, southwest-ruins), read by tools/garden-vale-layout.mjs like vale-village.json. Built from the approved plan C:/tmp/layouts/oldwood/final (19 Nov 2026). Hand-authored old woodland (southwest-ruins), FINAL (judge, 19 Nov 2026). Base: design A (the explorer), with grafts from B (the painter) and C (the gardener). Cell coordinates of island-v5 (origin/main). Routes: spline control points + width per point; the generator resamples them into route.points (dense) and route.widths. The gate, the region polygon, the walls, the pond, the footings and every point where a path leaves the region are unchanged.",
+ "region": "southwest-ruins",
+ "base": "A, the explorer",
+ "grafts": {
+  "fromB": [
+   "tall things at the back: a cell check that no plot, door or pond cell lies in the rows a building draws over",
+   "shore plots of the rock kinds may lie on beach cells, the sea left open at the foot of the ride",
+   "a sand strip at the tide line",
+   "one focal point per screenful (focalPoints)"
+  ],
+  "fromC": [
+   "friend-wide trails, 1.7 to 1.8 cells, flaring to 2.2 to 2.4 at every fork and door",
+   "Hollins track widened to 1.3 to 1.6 and drawn as worn earth",
+   "a lamp or a finger post at every fork",
+   "field edge material only on the side that faces a path, so each plot opens off the walk and no field has a ring"
+  ]
+ },
+ "focalPoints": [
+  {
+   "n": 1,
+   "what": "the lamp-bearer at the mouth of the Hush",
+   "x": 24.4,
+   "y": 73.2
+  },
+  {
+   "n": 2,
+   "what": "the chapel gable and its empty bell-cote",
+   "x": 17.4,
+   "y": 71.2
+  },
+  {
+   "n": 3,
+   "what": "the tower across the pond and its reflection",
+   "x": 30.4,
+   "y": 66
+  },
+  {
+   "n": 4,
+   "what": "the frosted door of the ice house",
+   "x": 28.5,
+   "y": 85.6
+  },
+  {
+   "n": 5,
+   "what": "the maze rings and the sundial",
+   "x": 31.2,
+   "y": 80
+  },
+  {
+   "n": 6,
+   "what": "the Old Man sea stack, down the ride",
+   "x": 22.4,
+   "y": 94.6
+  },
+  {
+   "n": 7,
+   "what": "Hollins hut under its yew",
+   "x": 14,
+   "y": 76
+  }
+ ],
+ "unchanged": {
+  "gate": "island-ruins 19,65 door 19,62, crossing 19.6,65.1",
+  "crossings": [
+   "ruins-lane 18.9,62.6 (the woodland plan's point) then 19.6,65.1",
+   "ruins-circuit passes the postern 35.8,74.2 and ends on the approved cottage-lane end 36.8,74.2",
+   "west-shore ends at 13.6,87.6 (pier entry; the woodland plan's cove-link lands here)"
+  ],
+  "water": "allotment-pool boundary",
+  "landforms": "all ruin walls, postern walls and woodland-old-foundation",
+  "statics": [
+   "ld-statue 24,73 door 24,74"
+  ]
+ },
+ "routes": [
+  {
+   "id": "ruins-lane",
+   "tier": "lane",
+   "zone": 3,
+   "gateId": "island-ruins",
+   "isNew": false,
+   "opens": "with the region",
+   "control": [
+    [
+     18.9,
+     62.6
+    ],
+    [
+     19.6,
+     65.1
+    ],
+    [
+     20.5,
+     67.2
+    ],
+    [
+     21.6,
+     69.4
+    ],
+    [
+     22.4,
+     71.4
+    ],
+    [
+     22.8,
+     73
+    ],
+    [
+     22.8,
+     74.5
+    ]
+   ],
+   "widths": [
+    2.4,
+    2.2,
+    2,
+    2,
+    2,
+    2.2,
+    2.6
+   ],
+   "note": "the Hush: 18.9,62.6 is the woodland plan's point and 19.6,65.1 the gate crossing, both by value; the tunnel aims at the lamp-bearer on the pond edge, so her glint is the light at its end"
+  },
+  {
+   "id": "ruin-court",
+   "tier": "plaza",
+   "zone": 3,
+   "isNew": false,
+   "opens": "with the region",
+   "control": [
+    [
+     21.2,
+     75.9
+    ],
+    [
+     22.7,
+     75.9
+    ],
+    [
+     24.2,
+     75.9
+    ]
+   ],
+   "widths": [
+    2,
+    2,
+    2
+   ],
+   "note": "spine only; the walk cells are the court polygon"
+  },
+  {
+   "id": "pond-walk",
+   "tier": "trail",
+   "zone": 3,
+   "isNew": false,
+   "opens": "with the region",
+   "control": [
+    [
+     24.8,
+     75.7
+    ],
+    [
+     26.6,
+     75.9
+    ],
+    [
+     28.6,
+     75.9
+    ],
+    [
+     30.2,
+     76.55
+    ],
+    [
+     31.9,
+     77.2
+    ],
+    [
+     33.65,
+     76.55
+    ],
+    [
+     34.3,
+     75
+    ],
+    [
+     33.9,
+     73.3
+    ],
+    [
+     33.25,
+     71.6
+    ],
+    [
+     32.7,
+     69.9
+    ],
+    [
+     31.9,
+     68.6
+    ],
+    [
+     30.5,
+     67.95
+    ]
+   ],
+   "widths": [
+    2.4,
+    1.8,
+    1.7,
+    1.7,
+    1.7,
+    1.8,
+    2.4,
+    1.7,
+    1.6,
+    1.6,
+    1.7,
+    2.2
+   ],
+   "note": "friend-wide (two figures abreast, design C); along the south bank, through the postern yard and up the east shelf to the tower doorstep; no longer runs through the tower"
+  },
+  {
+   "id": "ruins-circuit",
+   "tier": "trail",
+   "zone": 3,
+   "isNew": false,
+   "opens": "with the region",
+   "control": [
+    [
+     23.6,
+     77.9
+    ],
+    [
+     25.35,
+     78.4
+    ],
+    [
+     26.95,
+     79.7
+    ],
+    [
+     27.2,
+     81.2
+    ],
+    [
+     26.45,
+     83
+    ],
+    [
+     25.85,
+     85
+    ],
+    [
+     26.15,
+     86.35
+    ],
+    [
+     27.6,
+     86.9
+    ],
+    [
+     29.2,
+     86.95
+    ],
+    [
+     31,
+     86.6
+    ],
+    [
+     33.2,
+     85.25
+    ],
+    [
+     34,
+     83.2
+    ],
+    [
+     34.4,
+     81
+    ],
+    [
+     34.3,
+     78.8
+    ],
+    [
+     34.1,
+     76.8
+    ],
+    [
+     34.4,
+     75.2
+    ],
+    [
+     35.8,
+     74.2
+    ],
+    [
+     36.8,
+     74.2
+    ]
+   ],
+   "widths": [
+    2.4,
+    1.8,
+    1.8,
+    2.2,
+    1.7,
+    1.7,
+    1.8,
+    1.8,
+    1.8,
+    1.8,
+    1.8,
+    1.7,
+    2,
+    1.7,
+    1.7,
+    2,
+    2,
+    2.2
+   ],
+   "note": "the lantern round: leaves the court as the beech ride, dead straight from 27.2,81.2 to 25.95,85 and aimed at the Old Man sea stack; then the shore, up under the east wall to the postern yard; 35.8,74.2 kept, ends on the approved cottage-lane end 36.8,74.2"
+  },
+  {
+   "id": "west-shore",
+   "tier": "trail",
+   "zone": 3,
+   "isNew": false,
+   "opens": "with the region",
+   "control": [
+    [
+     26,
+     86
+    ],
+    [
+     24.4,
+     85.8
+    ],
+    [
+     22.4,
+     85.8
+    ],
+    [
+     20.2,
+     85.8
+    ],
+    [
+     18.2,
+     85.8
+    ],
+    [
+     16.4,
+     86.68
+    ],
+    [
+     15,
+     87.3
+    ],
+    [
+     13.6,
+     87.6
+    ]
+   ],
+   "widths": [
+    2.2,
+    1.8,
+    1.7,
+    1.7,
+    1.7,
+    1.8,
+    1.7,
+    1.8
+   ],
+   "note": "from the foot of the ride west behind the shore gardens; ends at 13.6,87.6 as today (the pier entry; the woodland plan's cove-link lands here)"
+  },
+  {
+   "id": "chapel-step",
+   "tier": "trail",
+   "zone": 3,
+   "isNew": true,
+   "opens": "with the region",
+   "control": [
+    [
+     20.5,
+     75.2
+    ],
+    [
+     19.4,
+     74.5
+    ],
+    [
+     18.5,
+     73.8
+    ]
+   ],
+   "widths": [
+    2.2,
+    1.8,
+    1.8
+   ],
+   "note": "NEW: court to the chapel door"
+  },
+  {
+   "id": "hollins-track",
+   "tier": "track",
+   "zone": 3,
+   "isNew": true,
+   "opens": "with the region",
+   "control": [
+    [
+     18,
+     74.2
+    ],
+    [
+     16.5,
+     74.4
+    ],
+    [
+     15.6,
+     75.4
+    ],
+    [
+     15.8,
+     77
+    ],
+    [
+     14.9,
+     77.85
+    ],
+    [
+     15.7,
+     78.8
+    ],
+    [
+     16.9,
+     79.7
+    ],
+    [
+     17.6,
+     81.3
+    ],
+    [
+     17.75,
+     83.2
+    ],
+    [
+     17.6,
+     85.25
+    ]
+   ],
+   "widths": [
+    1.5,
+    1.3,
+    1.3,
+    1.3,
+    1.5,
+    1.3,
+    1.3,
+    1.3,
+    1.3,
+    1.6
+   ],
+   "note": "NEW, always open, never signposted but lit at its top (a lamp at the chapel step) and worn wide enough to read as a path: one man's worn line from the chapel step to his hut, through the birches and down to the shore. It is the only way down the west side. Secret in plain sight: carved birds on three stones mark it"
+  },
+  {
+   "id": "garden-walk",
+   "tier": "trail",
+   "zone": 3,
+   "isNew": true,
+   "opens": "when the lamp-bearer's lamp is lit (her key opens both green doors)",
+   "control": [
+    [
+     21.3,
+     67.6
+    ],
+    [
+     22.75,
+     67.15
+    ],
+    [
+     24.4,
+     67.15
+    ],
+    [
+     26.1,
+     67.15
+    ],
+    [
+     27.2,
+     67.5
+    ],
+    [
+     27.75,
+     68.2
+    ],
+    [
+     28.4,
+     68.5
+    ],
+    [
+     29.6,
+     68.45
+    ]
+   ],
+   "widths": [
+    1.8,
+    1.6,
+    1.6,
+    1.6,
+    1.6,
+    1.6,
+    1.4,
+    1.8
+   ],
+   "note": "NEW, later: through the walled garden; closes the pond walk into a ring and is the quick way from the arch to the tower",
+   "note2": "critic 2: friend-wide (1.6) all the way, its line a cell clear of the south wall's foot, so you are never behind the brick"
+  },
+  {
+   "id": "maze-mouth",
+   "tier": "trail",
+   "zone": 3,
+   "isNew": true,
+   "opens": "with the region",
+   "control": [
+    [
+     34,
+     80.4
+    ],
+    [
+     33.3,
+     80.2
+    ]
+   ],
+   "widths": [
+    1.8,
+    1.6
+   ],
+   "note": "NEW: the maze's east mouth on the round"
+  },
+  {
+   "id": "maze-gap",
+   "tier": "trail",
+   "zone": 3,
+   "isNew": true,
+   "opens": "when the heart of the maze is found (the last hedge is cut back)",
+   "control": [
+    [
+     27.9,
+     80.7
+    ],
+    [
+     29.1,
+     80.4
+    ]
+   ],
+   "widths": [
+    1.8,
+    1.6
+   ],
+   "note": "NEW, later: the solved maze becomes a way through from the ride to the east wall"
+  }
+ ],
+ "plazas": {
+  "ruin-court": {
+   "route": "ruin-court",
+   "label": "Ruin court",
+   "job": "the one sunny clearing: well-head, bench, the lamp-bearer on its pond corner; five ways leave it",
+   "poly": [
+    [
+     21.3,
+     74.4
+    ],
+    [
+     23.4,
+     73.8
+    ],
+    [
+     24.9,
+     74.2
+    ],
+    [
+     25.2,
+     75.8
+    ],
+    [
+     24.7,
+     77.2
+    ],
+    [
+     23.4,
+     78.1
+    ],
+    [
+     21.6,
+     77.9
+    ],
+    [
+     20.3,
+     76.9
+    ],
+    [
+     20.1,
+     75.4
+    ]
+   ]
+  }
+ },
+ "yards": {
+  "postern-yard": {
+   "label": "Postern yard",
+   "job": "where the round and the pond walk meet inside the door home",
+   "poly": [
+    [
+     33.4,
+     73.9
+    ],
+    [
+     34.5,
+     73.4
+    ],
+    [
+     35.4,
+     73.7
+    ],
+    [
+     35.6,
+     74.7
+    ],
+    [
+     35.2,
+     75.8
+    ],
+    [
+     34.2,
+     76.2
+    ],
+    [
+     33.4,
+     75.4
+    ]
+   ]
+  },
+  "maze-yard": {
+   "label": "Yew maze",
+   "job": "two low hedge rings and the heart; hedges are low full colliders, the yard is walk cells",
+   "poly": [
+    [
+     33.5,
+     80.05
+    ],
+    [
+     33.36,
+     80.63
+    ],
+    [
+     32.96,
+     81.14
+    ],
+    [
+     32.35,
+     81.52
+    ],
+    [
+     31.6,
+     81.72
+    ],
+    [
+     30.8,
+     81.72
+    ],
+    [
+     30.05,
+     81.52
+    ],
+    [
+     29.44,
+     81.14
+    ],
+    [
+     29.04,
+     80.63
+    ],
+    [
+     28.9,
+     80.05
+    ],
+    [
+     29.04,
+     79.47
+    ],
+    [
+     29.44,
+     78.96
+    ],
+    [
+     30.05,
+     78.58
+    ],
+    [
+     30.8,
+     78.38
+    ],
+    [
+     31.6,
+     78.38
+    ],
+    [
+     32.35,
+     78.58
+    ],
+    [
+     32.96,
+     78.96
+    ],
+    [
+     33.36,
+     79.47
+    ]
+   ]
+  }
+ },
+ "enclosures": {
+  "garden-yard": {
+   "label": "Walled garden",
+   "poly": [
+    [
+     22.75,
+     64.4
+    ],
+    [
+     24.6,
+     64
+    ],
+    [
+     26.6,
+     63.6
+    ],
+    [
+     28.6,
+     63.3
+    ],
+    [
+     28.6,
+     66
+    ],
+    [
+     28.6,
+     67.7
+    ],
+    [
+     27,
+     68.45
+    ],
+    [
+     24.8,
+     68.45
+    ],
+    [
+     22.75,
+     68.45
+    ]
+   ],
+   "doors": [
+    [
+     22.75,
+     67.1
+    ],
+    [
+     27.7,
+     68.45
+    ]
+   ],
+   "wallsNote": "layout round 3 fixes: the old brick wall laid in straight lengths, each one block and one drawing, 0.4 cells thick, never curved round its corners; the west door faces the Hush, the south-east door the tower; the garden walk runs inside it a quarter cell clear of its foot",
+   "walls": [
+    {
+     "id": "garden-wall-1",
+     "line": [
+      [
+       22.75,
+       64.4
+      ],
+      [
+       22.75,
+       65.9
+      ]
+     ],
+     "pier": [
+      "b"
+     ],
+     "door": [
+      "b"
+     ]
+    },
+    {
+     "id": "garden-wall-3",
+     "line": [
+      [
+       22.55,
+       68.45
+      ],
+      [
+       26.85,
+       68.45
+      ]
+     ],
+     "pier": [
+      "b"
+     ],
+     "door": [
+      "b"
+     ]
+    },
+    {
+     "id": "garden-wall-4",
+     "line": [
+      [
+       28.6,
+       63.3
+      ],
+      [
+       28.6,
+       67.7
+      ]
+     ],
+     "pier": [
+      "b"
+     ]
+    }
+   ],
+   "thick": 0.4,
+   "wallsNote2": "critic 2: the west door runs from the north length's pier down to the south length (the quarter-cell stub between them dropped), so the walk passes it friend-wide",
+   "wallsNote3": "critic 2: the south length half a cell further south, so the walk runs friend-wide between the shut plot's edge and the brick"
+  }
+ },
+ "glades": {
+  "chapel-garth": [
+   [
+    20.8,
+    74.2
+   ],
+   [
+    20.61,
+    74.78
+   ],
+   [
+    20.05,
+    75.29
+   ],
+   [
+    19.2,
+    75.67
+   ],
+   [
+    18.16,
+    75.87
+   ],
+   [
+    17.04,
+    75.87
+   ],
+   [
+    16,
+    75.67
+   ],
+   [
+    15.15,
+    75.29
+   ],
+   [
+    14.59,
+    74.78
+   ],
+   [
+    14.4,
+    74.2
+   ],
+   [
+    14.59,
+    73.62
+   ],
+   [
+    15.15,
+    73.11
+   ],
+   [
+    16,
+    72.73
+   ],
+   [
+    17.04,
+    72.53
+   ],
+   [
+    18.16,
+    72.53
+   ],
+   [
+    19.2,
+    72.73
+   ],
+   [
+    20.05,
+    73.11
+   ],
+   [
+    20.61,
+    73.62
+   ]
+  ],
+  "hut-garth": [
+   [
+    17.4,
+    78.2
+   ],
+   [
+    17.27,
+    78.75
+   ],
+   [
+    16.89,
+    79.23
+   ],
+   [
+    16.3,
+    79.59
+   ],
+   [
+    15.58,
+    79.78
+   ],
+   [
+    14.82,
+    79.78
+   ],
+   [
+    14.1,
+    79.59
+   ],
+   [
+    13.51,
+    79.23
+   ],
+   [
+    13.13,
+    78.75
+   ],
+   [
+    13,
+    78.2
+   ],
+   [
+    13.13,
+    77.65
+   ],
+   [
+    13.51,
+    77.17
+   ],
+   [
+    14.1,
+    76.81
+   ],
+   [
+    14.82,
+    76.62
+   ],
+   [
+    15.58,
+    76.62
+   ],
+   [
+    16.3,
+    76.81
+   ],
+   [
+    16.89,
+    77.17
+   ],
+   [
+    17.27,
+    77.65
+   ]
+  ],
+  "shore-turf": [
+   [
+    14,
+    86.2
+   ],
+   [
+    18,
+    86.4
+   ],
+   [
+    24,
+    87
+   ],
+   [
+    30,
+    86.4
+   ],
+   [
+    33.6,
+    84.6
+   ],
+   [
+    35.6,
+    84.4
+   ],
+   [
+    34,
+    87.4
+   ],
+   [
+    29,
+    89.4
+   ],
+   [
+    23,
+    90.2
+   ],
+   [
+    17,
+    89.2
+   ],
+   [
+    13.6,
+    88.2
+   ]
+  ],
+  "tower-step": [
+   [
+    32.8,
+    67.7
+   ],
+   [
+    32.67,
+    68.01
+   ],
+   [
+    32.29,
+    68.28
+   ],
+   [
+    31.7,
+    68.48
+   ],
+   [
+    30.98,
+    68.59
+   ],
+   [
+    30.22,
+    68.59
+   ],
+   [
+    29.5,
+    68.48
+   ],
+   [
+    28.91,
+    68.28
+   ],
+   [
+    28.53,
+    68.01
+   ],
+   [
+    28.4,
+    67.7
+   ],
+   [
+    28.53,
+    67.39
+   ],
+   [
+    28.91,
+    67.12
+   ],
+   [
+    29.5,
+    66.92
+   ],
+   [
+    30.22,
+    66.81
+   ],
+   [
+    30.98,
+    66.81
+   ],
+   [
+    31.7,
+    66.92
+   ],
+   [
+    32.29,
+    67.12
+   ],
+   [
+    32.67,
+    67.39
+   ]
+  ]
+ },
+ "staticMoves": {
+  "ld-chapel": {
+   "x": 16,
+   "y": 71,
+   "w": 4,
+   "h": 2,
+   "door": {
+    "x": 18,
+    "y": 73
+   },
+   "tall": 4,
+   "why": "was under the lane (cell 21,72); now 1.5 cells west of it, gable to the Hush; 4 x 2 for a ridge of 3.5 H"
+  },
+  "ld-tower": {
+   "x": 29,
+   "y": 65,
+   "w": 3,
+   "h": 2,
+   "door": {
+    "x": 30,
+    "y": 67
+   },
+   "tall": 7,
+   "apron": {
+    "x": 29,
+    "y": 67,
+    "w": 3,
+    "h": 1
+   },
+   "why": "the pond walk ran through it; now on the pond's north-east bank, so every path that touches the water sees it across the pond with its reflection; 3 x 2 for 6 to 7 H"
+  },
+  "ld-icehouse": {
+   "x": 27,
+   "y": 84,
+   "w": 3,
+   "h": 2,
+   "door": {
+    "x": 28,
+    "y": 86
+   },
+   "tall": 1.6,
+   "why": "a 3 x 2 mound two cells from where it is; the frosted door faces the shore walk and the camera"
+  },
+  "ld-woodhut": {
+   "x": 13,
+   "y": 75,
+   "w": 2,
+   "h": 2,
+   "door": {
+    "x": 14,
+    "y": 77
+   },
+   "tall": 2.6,
+   "why": "grows from 2 x 1 to 2 x 2 for a turf ridge of 2.6 H (rule 14); same door cell, the hut garth in front"
+  },
+  "ld-labyrinth": {
+   "x": 31,
+   "y": 80,
+   "w": 1,
+   "h": 1,
+   "col": "soft",
+   "door": {
+    "x": 33,
+    "y": 80
+   },
+   "tall": 0.8,
+   "why": "becomes the sundial at the heart; the maze itself is the yard round it (layout round 3: its door is on the turf inside the outer ring by the mouth, where you stand to see the heart; the cell below it is under the outer hedge) (layout round 3 fixes: the arrival is in the outer ring's mouth on the round, clear of both hedges)"
+  }
+ },
+ "props": {
+  "lamps": [
+   [
+    21.3,
+    64.9,
+    "arch"
+   ],
+   [
+    20.3,
+    70.2,
+    "the Hush"
+   ],
+   [
+    25.65,
+    77.1,
+    "court"
+   ],
+   [
+    16.55,
+    81.0,
+    "birches"
+   ],
+   [
+    18.55,
+    84.7,
+    "shore"
+   ],
+   [
+    31.1,
+    85.45,
+    "ice house"
+   ],
+   [
+    35.15,
+    72.75,
+    "postern"
+   ]
+  ],
+  "fingerPosts": [
+   [
+    16.45,
+    85.15
+   ],
+   [
+    25.6,
+    87.4
+   ],
+   [
+    32.9,
+    78.3
+   ]
+  ],
+  "benches": [
+   [
+    22.3,
+    76.6
+   ],
+   [
+    25.2,
+    69.0
+   ],
+   [
+    23.4,
+    86.95
+   ]
+  ],
+  "smallStone": [
+   17.4,
+   75.3
+  ],
+  "wellHead": [
+   23.4,
+   76.2
+  ],
+  "carvedBirds": [
+   [
+    18.6,
+    75.5
+   ],
+   [
+    16.6,
+    73.5
+   ],
+   [
+    14.8,
+    79.4
+   ]
+  ],
+  "bellRim": [
+   30,
+   71
+  ],
+  "doorNoHandle": [
+   28.45,
+   67.75
+  ],
+  "oldMan": [
+   22.4,
+   94.6
+  ],
+  "seaSteps": [
+   34.6,
+   89.6
+  ],
+  "lampsNote": "critic 2: no lamp post at the lamp-bearer: she carries her own lamp (a post stood inside her)",
+  "lampsNote2": "critic 2: the birches, shore and ice-house lamps stand on the open verge of their path, clear of every plot's edge planting"
+ },
+ "sightLines": [
+  {
+   "from": [
+    19.6,
+    65.3
+   ],
+   "to": [
+    24.4,
+    73.2
+   ],
+   "sees": "the lamp-bearer's glint at the end of the Hush",
+   "reach": "at once (the gate's target)"
+  },
+  {
+   "from": [
+    21.9,
+    68.6
+   ],
+   "to": [
+    26.4,
+    66.6
+   ],
+   "sees": "sweet peas over the garden wall",
+   "reach": "her key"
+  },
+  {
+   "from": [
+    23.6,
+    72.4
+   ],
+   "to": [
+    30.3,
+    68
+   ],
+   "sees": "the watchtower across the pond, doubled in the water",
+   "reach": "the pond walk"
+  },
+  {
+   "from": [
+    27.1,
+    81.6
+   ],
+   "to": [
+    22.9,
+    94
+   ],
+   "sees": "the Old Man sea stack, dead ahead down the ride",
+   "reach": "never"
+  },
+  {
+   "from": [
+    31,
+    69
+   ],
+   "to": [
+    28.6,
+    67.8
+   ],
+   "sees": "a green door with no handle; a bronze rim under the water",
+   "reach": "her key; the rope and pulley"
+  },
+  {
+   "from": [
+    34.9,
+    74.3
+   ],
+   "to": [
+    38.6,
+    71
+   ],
+   "sees": "the cottage lane through the postern",
+   "reach": "lift the bar from inside"
+  }
+ ],
+ "secrets": [
+  {
+   "n": 1,
+   "x": 18,
+   "y": 75.6,
+   "what": "carved birds on three stones mark Hollin's track"
+  },
+  {
+   "n": 2,
+   "x": 29.4,
+   "y": 70.4,
+   "what": "the bronze rim of the chapel bell, under the water"
+  }
+ ],
+ "opensLater": [
+  {
+   "n": 3,
+   "x": 25.8,
+   "y": 66.5,
+   "what": "the garden's green doors: the pond walk becomes a ring"
+  },
+  {
+   "n": 4,
+   "x": 36.4,
+   "y": 73.2,
+   "what": "the postern: three steps from the cottage lane"
+  },
+  {
+   "n": 5,
+   "x": 28.5,
+   "y": 80.3,
+   "what": "the solved maze: a way through"
+  },
+  {
+   "n": 6,
+   "x": 11.4,
+   "y": 86.6,
+   "what": "the cove link along the beach (woodland plan)"
+  }
+ ],
+ "loops": [
+  "pond ring: court, south bank, postern yard, east shelf, tower, through the walled garden, the Hush (after the key)",
+  "lantern round: court, the beech ride, the shore, the east wall, postern yard, pond walk",
+  "west ring: court, chapel, Hollin's track past the hut and the birches, the west shore walk, the ride",
+  "tide loop by the cove link; home loop by the postern"
+ ],
+ "planting": {
+  "yew": "north and west of y 79.5, and along both walls: dark, low-skirted, the Hush is a tunnel of them",
+  "beech": "the middle, either side of the ride; copper in autumn",
+  "birch": "south-west of the footings, pale against the yews; they line Hollin's track",
+  "paths": "trunks stand at the verge, at least 0.18 cells clear of a path edge; a crown may arch over a trail or the lane (it fades when walked under), never over the court, the yards, the garden walk, the maze, the chapel step or a plot",
+  "light": "six fixed painted shafts from the upper left, ending in warm pools on the court, the chapel garth, the hut garth, the foot of the ride, the maze and the pond edge",
+  "never": [
+   "a crown over a plot, a door, a post or a bench",
+   "a trunk on a wall or the footings; a crown over the garden wall; a tree standing in front of a building",
+   "a plot cell with any corner in the pond (the two pools are 2 x 2 for that reason)",
+   "a tree in the Hush window (23.2 to 26.2, 68 to 73.6): the tower must show across the pond",
+   "a tree within 1.5 cells of the ride's line south of y 84: the Old Man must show",
+   "anything but trees in the 3 rows behind the chapel and the tower"
+  ]
+ },
+ "footprintsNeeded": {
+  "ld-tower": "3 x 2 cells, 6 to 7 H tall; 3 rows behind it kept for its art",
+  "ld-chapel": "4 x 2 cells, gable 3.5 H; 3 rows behind it kept",
+  "ld-icehouse": "3 x 2 mound, 1.6 H",
+  "ld-woodhut": "2 x 2 (was 2 x 1), turf ridge 2.6 H; same door cell 14,77",
+  "maze": "4.6 x 3.4 cell yard centred 31.2,80.05: two rings and the heart (three rings need 7 x 5.6 and do not fit)",
+  "Ruined arch": "the 4-cell span as today, 3 H",
+  "ruins-lane": "2 cells or more",
+  "trails": "1.5 cells or more"
+ },
+ "lockedExamplesDrawn": [
+  "ls-otter-holt",
+  "ls-hermit-corner"
+ ],
+ "fields": {
+  "garden": {
+   "name": "Walled garden",
+   "edge": "old brick on three sides, the ruin wall behind; locked = sweet peas run wild over the wall, the green door shut",
+   "col": "#b77a5c"
+  },
+  "pond": {
+   "name": "Pond pools",
+   "edge": "a stone kerb, a step back from the pond and never touching it; locked = uncut rushes",
+   "col": "#5e8a4c"
+  },
+  "garth": {
+   "name": "Chapel garth",
+   "edge": "fallen stones and a yew; locked = ivy and bramble over the stones",
+   "col": "#6d8a4a"
+  },
+  "hut": {
+   "name": "Hollin's side",
+   "edge": "a split-log edge, his woodpile; locked = bracken",
+   "col": "#8a6a44"
+  },
+  "hanger": {
+   "name": "Beech hanger",
+   "edge": "a leaf-litter line; locked = holly and fern, no light shaft yet",
+   "col": "#b0703a"
+  },
+  "slack": {
+   "name": "Reed slack (isle and flats)",
+   "edge": "reed fringe; locked = standing reed",
+   "col": "#9fb87a"
+  },
+  "shore": {
+   "name": "The spit",
+   "edge": "a driftwood tideline on the walk side; locked = bare shingle and kelp",
+   "col": "#857e70"
+  },
+  "cove": {
+   "name": "Otter cove",
+   "edge": "kelp-strewn rocks under the east wall; locked = bare rock",
+   "col": "#7a7468"
+  }
+ },
+ "sections": {
+  "ls-walled-garden": {
+   "field": "garden",
+   "kind": "suntrap",
+   "level": 10,
+   "was": 4,
+   "cells": [
+    [
+     25,
+     64
+    ],
+    [
+     26,
+     64
+    ],
+    [
+     27,
+     64
+    ],
+    [
+     23,
+     65
+    ],
+    [
+     24,
+     65
+    ],
+    [
+     25,
+     65
+    ],
+    [
+     26,
+     65
+    ],
+    [
+     27,
+     65
+    ]
+   ]
+  },
+  "ls-lily-pool": {
+   "field": "pond",
+   "kind": "pool",
+   "level": 10,
+   "was": 4,
+   "cells": [
+    [
+     23,
+     69
+    ],
+    [
+     24,
+     69
+    ],
+    [
+     23,
+     70
+    ],
+    [
+     24,
+     70
+    ]
+   ]
+  },
+  "ls-stone-pool": {
+   "field": "pond",
+   "kind": "pool",
+   "level": 10,
+   "was": 4,
+   "cells": [
+    [
+     31,
+     74
+    ],
+    [
+     32,
+     74
+    ],
+    [
+     32,
+     75
+    ],
+    [
+     31,
+     75
+    ]
+   ]
+  },
+  "ls-wader-flats": {
+   "field": "slack",
+   "kind": "reed",
+   "level": 18,
+   "was": 4,
+   "cells": [
+    [
+     30,
+     82
+    ],
+    [
+     31,
+     82
+    ],
+    [
+     32,
+     82
+    ],
+    [
+     32,
+     83
+    ],
+    [
+     31,
+     83
+    ],
+    [
+     31,
+     84
+    ],
+    [
+     30,
+     84
+    ],
+    [
+     30,
+     83
+    ]
+   ]
+  },
+  "ls-otter-holt": {
+   "field": "garth",
+   "kind": "wood",
+   "level": 14,
+   "was": 6,
+   "cells": [
+    [
+     14,
+     70
+    ],
+    [
+     15,
+     70
+    ],
+    [
+     15,
+     71
+    ],
+    [
+     15,
+     72
+    ],
+    [
+     14,
+     72
+    ],
+    [
+     13,
+     72
+    ],
+    [
+     13,
+     71
+    ],
+    [
+     13,
+     73
+    ],
+    [
+     14,
+     73
+    ],
+    [
+     15,
+     73
+    ],
+    [
+     14,
+     71
+    ]
+   ]
+  },
+  "ls-hazel-isle": {
+   "field": "garth",
+   "kind": "wood",
+   "level": 14,
+   "was": 4,
+   "cells": [
+    [
+     17,
+     76
+    ],
+    [
+     18,
+     76
+    ],
+    [
+     19,
+     76
+    ],
+    [
+     19,
+     77
+    ],
+    [
+     18,
+     77
+    ],
+    [
+     18,
+     78
+    ],
+    [
+     17,
+     78
+    ],
+    [
+     17,
+     77
+    ]
+   ]
+  },
+  "ls-hermit-corner": {
+   "field": "hut",
+   "kind": "exotic",
+   "level": 18,
+   "was": 4,
+   "cells": [
+    [
+     13,
+     80
+    ],
+    [
+     14,
+     80
+    ],
+    [
+     15,
+     80
+    ],
+    [
+     15,
+     81
+    ],
+    [
+     14,
+     81
+    ],
+    [
+     13,
+     81
+    ]
+   ]
+  },
+  "ls-silver-birches": {
+   "field": "hut",
+   "kind": "wood",
+   "level": 18,
+   "was": 4,
+   "cells": [
+    [
+     14,
+     82
+    ],
+    [
+     15,
+     82
+    ],
+    [
+     16,
+     82
+    ],
+    [
+     16,
+     83
+    ],
+    [
+     15,
+     83
+    ],
+    [
+     15,
+     84
+    ],
+    [
+     14,
+     84
+    ],
+    [
+     13,
+     84
+    ],
+    [
+     13,
+     85
+    ],
+    [
+     14,
+     85
+    ],
+    [
+     15,
+     85
+    ],
+    [
+     14,
+     83
+    ]
+   ]
+  },
+  "ls-gull-rest": {
+   "field": "shore",
+   "kind": "rock",
+   "level": 6,
+   "was": 4,
+   "cells": [
+    [
+     18,
+     88
+    ],
+    [
+     17,
+     88
+    ],
+    [
+     16,
+     88
+    ],
+    [
+     16,
+     89
+    ],
+    [
+     17,
+     89
+    ],
+    [
+     18,
+     89
+    ]
+   ]
+  },
+  "ls-ferny-way": {
+   "field": "hanger",
+   "kind": "dell",
+   "level": 18,
+   "was": 4,
+   "cells": [
+    [
+     19,
+     78
+    ],
+    [
+     20,
+     78
+    ],
+    [
+     21,
+     78
+    ],
+    [
+     21,
+     79
+    ],
+    [
+     21,
+     80
+    ],
+    [
+     20,
+     80
+    ],
+    [
+     19,
+     80
+    ],
+    [
+     20,
+     81
+    ],
+    [
+     21,
+     81
+    ],
+    [
+     20,
+     79
+    ],
+    [
+     19,
+     79
+    ]
+   ]
+  },
+  "ls-heronry": {
+   "field": "hanger",
+   "kind": "wood",
+   "level": 14,
+   "was": 4,
+   "cells": [
+    [
+     19,
+     82
+    ],
+    [
+     20,
+     82
+    ],
+    [
+     20,
+     83
+    ],
+    [
+     21,
+     83
+    ],
+    [
+     21,
+     84
+    ],
+    [
+     20,
+     84
+    ],
+    [
+     19,
+     84
+    ],
+    [
+     19,
+     83
+    ]
+   ]
+  },
+  "ls-exotic-glade": {
+   "field": "hanger",
+   "kind": "exotic",
+   "level": 18,
+   "was": 4,
+   "cells": [
+    [
+     22,
+     83
+    ],
+    [
+     23,
+     83
+    ],
+    [
+     24,
+     83
+    ],
+    [
+     24,
+     84
+    ],
+    [
+     23,
+     84
+    ],
+    [
+     22,
+     84
+    ]
+   ]
+  },
+  "ls-otter-beach": {
+   "field": "cove",
+   "kind": "rock",
+   "level": 18,
+   "was": 4,
+   "cells": [
+    [
+     32,
+     87
+    ],
+    [
+     33,
+     87
+    ],
+    [
+     33,
+     88
+    ],
+    [
+     32,
+     88
+    ],
+    [
+     31,
+     88
+    ],
+    [
+     30,
+     88
+    ],
+    [
+     29,
+     88
+    ],
+    [
+     29,
+     89
+    ],
+    [
+     30,
+     89
+    ],
+    [
+     31,
+     89
+    ]
+   ]
+  },
+  "ls-tiny-isle": {
+   "field": "slack",
+   "kind": "reed",
+   "level": 14,
+   "was": 4,
+   "cells": [
+    [
+     28,
+     82
+    ],
+    [
+     29,
+     82
+    ],
+    [
+     29,
+     83
+    ],
+    [
+     28,
+     83
+    ]
+   ]
+  },
+  "ls-cockle-bank": {
+   "field": "cove",
+   "kind": "rock",
+   "level": 18,
+   "was": 4,
+   "cells": [
+    [
+     26,
+     88
+    ],
+    [
+     27,
+     88
+    ],
+    [
+     28,
+     88
+    ],
+    [
+     28,
+     89
+    ],
+    [
+     28,
+     90
+    ],
+    [
+     27,
+     90
+    ],
+    [
+     26,
+     90
+    ],
+    [
+     27,
+     89
+    ],
+    [
+     26,
+     89
+    ]
+   ]
+  },
+  "ls-sandy-spit": {
+   "field": "shore",
+   "kind": "rock",
+   "level": 10,
+   "was": 4,
+   "cells": [
+    [
+     19,
+     87
+    ],
+    [
+     20,
+     87
+    ],
+    [
+     21,
+     87
+    ],
+    [
+     21,
+     88
+    ],
+    [
+     21,
+     89
+    ],
+    [
+     20,
+     89
+    ],
+    [
+     19,
+     89
+    ],
+    [
+     20,
+     88
+    ],
+    [
+     19,
+     88
+    ]
+   ]
+  },
+  "ls-spit-end": {
+   "field": "shore",
+   "kind": "rock",
+   "level": 18,
+   "was": 4,
+   "cells": [
+    [
+     22,
+     87
+    ],
+    [
+     23,
+     87
+    ],
+    [
+     24,
+     87
+    ],
+    [
+     24,
+     88
+    ],
+    [
+     24,
+     89
+    ],
+    [
+     23,
+     89
+    ],
+    [
+     22,
+     89
+    ],
+    [
+     22,
+     90
+    ],
+    [
+     23,
+     90
+    ],
+    [
+     23,
+     88
+    ],
+    [
+     22,
+     88
+    ]
+   ]
+  }
+ },
+ "check": {
+  "sections": 17,
+  "cells": 139,
+  "was": 70,
+  "smallestPlot": 4,
+  "rule": "cells are tested as whole squares, not centres: a path, court or yard edge may run at most 0.25 of a cell into a plot cell or a building footprint (the plot edge gives way to the verge); no corner of a plot cell may lie in the pond",
+  "plotSquareToPathEdge": {
+   "ls-walled-garden": -0.07,
+   "ls-lily-pool": 0.08,
+   "ls-stone-pool": -0.05,
+   "ls-wader-flats": -0.09,
+   "ls-otter-holt": -0.03,
+   "ls-hazel-isle": -0.11,
+   "ls-hermit-corner": 0.21,
+   "ls-silver-birches": -0.08,
+   "ls-gull-rest": 0.17,
+   "ls-ferny-way": 0.08,
+   "ls-heronry": -0.09,
+   "ls-exotic-glade": -0.09,
+   "ls-otter-beach": -0.09,
+   "ls-tiny-isle": -0.02,
+   "ls-cockle-bank": 0.14,
+   "ls-sandy-spit": 0.37,
+   "ls-spit-end": 0.17
+  },
+  "buildingToPathEdge": {
+   "ld-tower": -0.13,
+   "ld-chapel": -0.08,
+   "ld-icehouse": -0.14,
+   "ld-woodhut": -0.13
+  },
+  "propsLeastCellsFromAPathEdge": {
+   "lamp": 0.25,
+   "finger post": 0.24,
+   "bench": -1,
+   "small stone": 0.36,
+   "carved bird": 0.23
+  },
+  "walkCellsInRegion": 201,
+  "routeCells": {
+   "ruins-lane": 19,
+   "garden-walk": 15,
+   "pond-walk": 33,
+   "chapel-step": 6,
+   "postern-yard": 6,
+   "ruins-circuit": 54,
+   "hollins-track": 16,
+   "ruin-court": 17,
+   "maze-yard": 12,
+   "maze-gap": 1,
+   "west-shore": 22
+  },
+  "routes": [
+   {
+    "id": "ruins-lane",
+    "length": 12.7,
+    "wallGap": 1.92,
+    "waterGap": 1
+   },
+   {
+    "id": "ruin-court",
+    "length": 3,
+    "wallGap": 2.61,
+    "waterGap": 1.66
+   },
+   {
+    "id": "pond-walk",
+    "length": 19.5,
+    "wallGap": 0.2,
+    "waterGap": 0.28
+   },
+   {
+    "id": "ruins-circuit",
+    "length": 31.6,
+    "wallGap": 0.25,
+    "waterGap": 2.41
+   },
+   {
+    "id": "west-shore",
+    "length": 12.8,
+    "wallGap": 2.22,
+    "waterGap": 10.33
+   },
+   {
+    "id": "chapel-step",
+    "length": 2.4,
+    "wallGap": 4.7,
+    "waterGap": 4.09
+   },
+   {
+    "id": "hollins-track",
+    "length": 14.3,
+    "wallGap": 1.42,
+    "waterGap": 6.31
+   },
+   {
+    "id": "garden-walk",
+    "length": 9,
+    "wallGap": 1.51,
+    "waterGap": 0.21
+   },
+   {
+    "id": "maze-mouth",
+    "length": 0.7,
+    "wallGap": 1.17,
+    "waterGap": 5.68
+   },
+   {
+    "id": "maze-gap",
+    "length": 1.2,
+    "wallGap": 1.3,
+    "waterGap": 4.89
+   }
+  ],
+  "ends": [
+   {
+    "id": "ruins-lane",
+    "at": [
+     18.9,
+     62.6
+    ],
+    "meets": "ruins-lane-n",
+    "gap": -1.6
+   },
+   {
+    "id": "ruins-lane",
+    "at": [
+     22.8,
+     74.5
+    ],
+    "meets": "ruin-court",
+    "gap": -1
+   },
+   {
+    "id": "ruin-court",
+    "at": [
+     21.2,
+     75.9
+    ],
+    "meets": "ruin-court",
+    "gap": -1
+   },
+   {
+    "id": "ruin-court",
+    "at": [
+     24.2,
+     75.9
+    ],
+    "meets": "ruin-court",
+    "gap": -1
+   },
+   {
+    "id": "pond-walk",
+    "at": [
+     24.8,
+     75.7
+    ],
+    "meets": "ruin-court",
+    "gap": -1
+   },
+   {
+    "id": "pond-walk",
+    "at": [
+     30.5,
+     67.95
+    ],
+    "meets": "the tower door",
+    "gap": 6.12
+   },
+   {
+    "id": "ruins-circuit",
+    "at": [
+     23.6,
+     77.9
+    ],
+    "meets": "ruin-court",
+    "gap": -1
+   },
+   {
+    "id": "ruins-circuit",
+    "at": [
+     36.8,
+     74.2
+    ],
+    "meets": "cottage-lane",
+    "gap": -1.7
+   },
+   {
+    "id": "west-shore",
+    "at": [
+     26,
+     86
+    ],
+    "meets": "ruins-circuit",
+    "gap": -1.44
+   },
+   {
+    "id": "west-shore",
+    "at": [
+     13.6,
+     87.6
+    ],
+    "meets": "cove-link",
+    "gap": -1.1
+   },
+   {
+    "id": "chapel-step",
+    "at": [
+     20.5,
+     75.2
+    ],
+    "meets": "ruin-court",
+    "gap": -1
+   },
+   {
+    "id": "chapel-step",
+    "at": [
+     18.5,
+     73.8
+    ],
+    "meets": "the chapel door",
+    "gap": -0.46
+   },
+   {
+    "id": "hollins-track",
+    "at": [
+     18,
+     74.2
+    ],
+    "meets": "chapel-step",
+    "gap": -0.76
+   },
+   {
+    "id": "hollins-track",
+    "at": [
+     17.6,
+     85.25
+    ],
+    "meets": "west-shore",
+    "gap": -0.69
+   },
+   {
+    "id": "garden-walk",
+    "at": [
+     21.3,
+     67.6
+    ],
+    "meets": "ruins-lane",
+    "gap": -1.06
+   },
+   {
+    "id": "garden-walk",
+    "at": [
+     29.6,
+     68.2
+    ],
+    "meets": "pond-walk",
+    "gap": -0.57
+   },
+   {
+    "id": "maze-mouth",
+    "at": [
+     34,
+     80.4
+    ],
+    "meets": "ruins-circuit",
+    "gap": -1.09
+   },
+   {
+    "id": "maze-mouth",
+    "at": [
+     33.3,
+     80.2
+    ],
+    "meets": "maze-yard",
+    "gap": -1
+   },
+   {
+    "id": "maze-gap",
+    "at": [
+     27.9,
+     80.7
+    ],
+    "meets": "ruins-circuit",
+    "gap": -0.84
+   },
+   {
+    "id": "maze-gap",
+    "at": [
+     29.1,
+     80.4
+    ],
+    "meets": "maze-yard",
+    "gap": -1
+   }
+  ],
+  "doors": [
+   {
+    "id": "ld-tower",
+    "cell": "30,67",
+    "reachable": true,
+    "cellsFromPath": 0
+   },
+   {
+    "id": "ld-chapel",
+    "cell": "18,73",
+    "reachable": true,
+    "cellsFromPath": 0
+   },
+   {
+    "id": "ld-icehouse",
+    "cell": "28,86",
+    "reachable": true,
+    "cellsFromPath": 0
+   },
+   {
+    "id": "ld-statue",
+    "cell": "24,74",
+    "reachable": true,
+    "cellsFromPath": 0
+   },
+   {
+    "id": "ld-labyrinth",
+    "cell": "31,81",
+    "reachable": true,
+    "cellsFromPath": 0
+   },
+   {
+    "id": "ld-woodhut",
+    "cell": "14,77",
+    "reachable": true,
+    "cellsFromPath": 0
+   }
+  ],
+  "warnings": []
+ },
+ "fieldEdges": {
+  "garden": "meadow",
+  "pond": "reeds",
+  "garth": "drystone",
+  "hut": "long-grass",
+  "hanger": "bracken",
+  "slack": "reeds",
+  "shore": "long-grass",
+  "cove": "long-grass"
+ },
+ "fieldEdgesNote": "the edge kinds the field painter draws (94-garden-paint-vale-1village.js): the walled garden runs wild in sweet peas and long grass, the pond pools and the reed slack in standing reed, the garth, Hollin's side and the hanger in bracken, the spit and the cove in marram (long grass) at the tideline",
+ "ruinsLaneNorth": [
+  [
+   17.2,
+   45.6
+  ],
+  [
+   18.2,
+   53
+  ],
+  [
+   19,
+   60
+  ]
+ ],
+ "ruinsLaneNorthNote": "the woods part of ruins-lane (west-woods, another region's plan): kept as it is on feat/village-layout; the woodland plan redraws it to end at 18.9,62.6, where this file takes over",
+ "treeless": [
+  {
+   "why": "the court: no crown over its flags (a crown rises five rows, so nothing for five rows south of it)",
+   "box": [
+    19.6,
+    73.4,
+    25.8,
+    83.6
+   ]
+  },
+  {
+   "why": "the pond east bank: the view across the pond to the tower",
+   "box": [
+    30.2,
+    68.4,
+    35.2,
+    76.2
+   ]
+  },
+  {
+   "why": "the Hush window: the tower shows across the pond",
+   "box": [
+    23.2,
+    68,
+    26.2,
+    73.6
+   ]
+  },
+  {
+   "why": "the walled garden, its wall and the tower front",
+   "box": [
+    22.3,
+    63,
+    32.6,
+    69.6
+   ]
+  },
+  {
+   "why": "the maze yard",
+   "box": [
+    28.4,
+    77.8,
+    34.2,
+    83.4
+   ]
+  },
+  {
+   "why": "the postern yard",
+   "box": [
+    32.8,
+    72.6,
+    36.4,
+    77.2
+   ]
+  },
+  {
+   "why": "the chapel step and garth front",
+   "box": [
+    15.4,
+    72.6,
+    21,
+    76.4
+   ]
+  }
+ ],
+ "fieldEdgesNote2": "critic 2 (the same berry row and little conifer in every plot): the chapel garth is walled in old dry stone like the ruins round it, Hollin's side runs to long grass and bracken, the beech hanger stays bracken, the slack and the pond reeds, the shore and the cove long grass"
+}

@@ -1254,7 +1254,7 @@ window.GardenPaintWater = (function () {
     // and the river's line (a sill square to the current at the nearest point).
     const mill = (data.static || []).find(s => s.id === 'ld-mill'), river = M.lines.river;
     if (mill && river) {
-      const mx = cx(mill.x + mill.w / 2 - .5), my = cy(mill.y + 2.6), near = nearestOn(river, mx, my), q = at(river, near.s + 30), ang = Math.atan2(q.ty, q.tx), nx = -q.ty, ny = q.tx;
+      const wp = Array.isArray(pres.weir) ? pres.weir : null, mx = wp ? cx(wp[0]) : cx(mill.x + mill.w / 2 - .5), my = wp ? cy(wp[1]) : cy(mill.y + 2.6), near = nearestOn(river, mx, my), q = at(river, near.s + (wp ? 0 : 30)), ang = Math.atan2(q.ty, q.tx), nx = -q.ty, ny = q.tx;
       const half = river.hw * Math.hypot(nx * W.cellW, ny * W.cellH) * 1.05, r = rng(hash('weir'));
       const span = (k) => ({ x: q.x + nx * half * k, y: q.y + ny * half * k });
       // (old weathered stones of their own sizes, a few lower ones the river pours through: eleven equal stones in a row and a
@@ -1270,8 +1270,9 @@ window.GardenPaintWater = (function () {
         // the sill: weathered stones lit from the upper left, a dark wet face downstream, moss on the older ones
         for (const [x, y, rr, t, low] of stones) { c.fillStyle = '#4c483e'; c.beginPath(); c.ellipse(x + 1.5, y + 2.4, rr * 1.02, rr * .6, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = low ? '#7e7866' : t < .5 ? '#a8a08a' : '#99917b'; c.beginPath(); c.ellipse(x, y, rr, rr * (.5 + t * .12), (t - .5) * .4, 0, Math.PI * 2); c.fill(); c.fillStyle = '#d2cab2'; c.globalAlpha = low ? .35 : .7; c.beginPath(); c.ellipse(x - rr * .3, y - rr * .2, rr * .46, rr * .2, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; if (t > .55) { c.fillStyle = C.moss; c.globalAlpha = .7; c.beginPath(); c.ellipse(x + rr * .15, y - rr * .3, rr * .45, rr * .18, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; } if (low) { c.strokeStyle = C.foam; c.globalAlpha = .7; c.lineWidth = 1.2; c.beginPath(); c.ellipse(x, y - 1, rr * .8, rr * .35, 0, Math.PI * 1.1, Math.PI * 1.9); c.stroke(); c.globalAlpha = 1; } }
       } });
-      foams.push({ x: q.x + q.tx * 16, y: q.y + q.ty * 16, w: half * 1.7, h: 26, ang: ang + Math.PI / 2, speed: 26, puffs: 16, drift: 34, noStrip: true });
-      mists.push({ x: q.x + q.tx * 26, y: q.y + q.ty * 26, rx: half * .6, ry: 8, n: 3, a: .22, speed: .06, drift: 18, rise: 10 });
+      // (round 3: the white water and its puffs kept inside the river's banks, and no mist at a laid weir: they lay across the mill yard's setts as pale smears)
+      foams.push({ x: q.x + q.tx * (wp ? 14 : 16), y: q.y + q.ty * (wp ? 14 : 16), w: half * (wp ? 1.5 : 1.7), h: wp ? 20 : 26, ang: ang + Math.PI / 2, speed: 26, puffs: wp ? 6 : 16, drift: wp ? 16 : 34, noStrip: true });
+      if (!wp) mists.push({ x: q.x + q.tx * 26, y: q.y + q.ty * 26, rx: half * .6, ry: 8, n: 3, a: .22, speed: .06, drift: 18, rise: 10 });
       S.weir = { x: q.x, y: q.y, ang, half };
     }
     // Fleet Falls' plunge pool: churned white water where the sheet lands, foam

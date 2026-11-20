@@ -1223,10 +1223,15 @@ window.GardenNativeArt = (function () {
     for (const candidate of candidates) { releaseCache(candidate.node, true); restoreBase(candidate.node); state.cacheEvictions = (state.cacheEvictions || 0) + 1; candidate.node._cacheRetryAfter = now + 300; if (state.cacheBytes + additional <= state.cacheBudget) return true; }
     return state.cacheBytes + additional <= state.cacheBudget;
   }
+  function walkingNow() { try { return typeof _gw !== 'undefined' && !!_gw && !!_gw.on && !!(_gw.moving || (_gw.keys && _gw.keys.size) || (_gw.path && _gw.path.length)); } catch (e) { return false; } }
   function cacheAllowance(node, options, take) {
     const state = stateFor(node.scene), loop = node.scene.game && node.scene.game.loop, frame = loop && Number.isFinite(loop.frame) ? loop.frame : node.scene.time && node.scene.time.now;
     if (state.captureFrame !== frame || !state.captureLimit) { state.captureFrame = frame; state.captureCount = 0; state.captureLimit = 1; }
     if (options.preparing) state.captureLimit = 6;
+    // (rule 16, layout fix west) no new capture while you walk: making a capture's render texture asks the graphics card for
+    // a new frame buffer and waits for it (36 to 276 ms each, measured on a walk through the woods, 17 of them over 9 ms).
+    // Until you stop, a node shows its own drawing (always its fallback) or the capture it already has; then it is taken.
+    if (!options.preparing && walkingNow()) { state.walkDeferrals = (state.walkDeferrals || 0) + 1; return false; }
     if ((state.captureCount || 0) >= state.captureLimit) return false;
     if (take) state.captureCount = (state.captureCount || 0) + 1;
     return true;

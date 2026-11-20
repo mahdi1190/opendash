@@ -336,7 +336,7 @@ window.GardenNativeWorld = (function () {
     // read this allowance. Regional locks and physical surfaces still win.
     function routePaintAllowance(cells, sc, cultivated) {
       // A post or a cross standing on a road cell keeps the road under it: cutting its cell out left a square of bare ground in the paving.
-      const statics = new Map(gardenIslandData().static.map(p => [p.id, p])), smallSight = base => { const p = base.route && statics.get(base.staticId); return !!p && p.w === 1 && p.h === 1 && p.col !== 'full'; };
+      const statics = new Map(gardenIslandData().static.map(p => [p.id, p])), smallSight = base => { const p = statics.get(base.staticId); return !!p && (base.route && p.w === 1 && p.h === 1 && p.col !== 'full' || p.col === 'soft' || p.col === 'none'); };   // (round 3: a bench or a lamp beside a path never cuts a square out of its verge)
       const open = new Set(sc.areas || []), allowed = new Uint8Array(cells.length);
       const SOIL_MATERIALS = new Set(['bed', 'patch', 'veg', 'rich', 'herb', 'berry']), fieldIds = new Set(((gardenIslandData().presentation || {}).fields || []).flatMap(f => f.sections));
       for (let i = 0; i < cells.length; i++) {
@@ -454,7 +454,9 @@ window.GardenNativeWorld = (function () {
       const villagePaved = new Set(); for (const pz of plazas) { villagePaved.add(pz.id); for (const q of pz.ribbons || []) villagePaved.add(q.id); if ((pz.extra || []).length) villagePaved.add('lakeside-terrace'); }
       // every route in the kit's terms: its surface (the layout's own if it names one, else by tier and name) and painted width;
       // yards and plazas are still painted by their region (94-garden-paint-vale-1places.js)
-      const laid = G.layoutPaths(W, D, { skip: r => villagePaved.has(r.id) }), routes = laid.routes;
+      // (vale layouts: not the woods' earth clearings and yards, laid to their own outline by the painted vale, nor the woodland's
+      // deer track, grass trodden flat: 94-garden-paint-vale-1woodland.js)
+      const laid = G.layoutPaths(W, D, { skip: r => villagePaved.has(r.id) || r.surface === 'earth' || (r.track && r.zone === 1 && r.id !== 'wren-log') }), routes = laid.routes;
       const kinds = packKinds || (packKinds = G.layoutKinds(W, D));
       const pc = pt({ x: start.x + .5, y: start.y + .5 }), pw = 250, ph = 130;
       const plaza = plazas.length ? null : { centre: pc, bounds: { x: pc.x - pw / 2, y: pc.y - ph / 2, w: pw, h: ph }, points: terrainRoundedRect(pc.x - pw / 2, pc.y - ph / 2, pw, ph, 40) };
@@ -559,19 +561,19 @@ window.GardenNativeWorld = (function () {
         const row = typeof gardenLandCell === 'function' ? gardenLandCell(x, y) : null, area = gardenAreaAt(x, y, level), locked = String(area).startsWith('locked:');
         const islandCell = island ? gardenIslandBaseCell(x, y) : null;
         const water = gardenIsWater(x, y), iceCell = typeof _GD_ICE !== 'undefined' && _GD_ICE.has(x + ',' + y), fixedLand = typeof _GD_WALK_EXTRA !== 'undefined' && _GD_WALK_EXTRA.has(x + ',' + y), prop = iceCell && typeof gardenPropAt === 'function' ? gardenPropAt(x, y) : null, frozen = iceCell && (island || !lake || lake.cellContains(x, y)) && !fixedLand && !(prop && prop.walk), path = !!(row && (row.lane || row.trail)) && !locked && !(islandCell && islandCell.staticId);   // (a sight standing on an old lane cell is lawn round its foot: the road paint keeps clear of it, and a bare lane cell drew a pale square under the signpost and the market cross)
-        let material = frozen ? 'ice' : islandCell && islandCell.ocean ? 'ocean' : water ? lake && lake.cellContains(x, y) ? 'lake' : 'water' : islandCell && islandCell.beach ? 'beach' : path ? 'path' : row && row.solid ? 'wild' : row && row.kind || 'green';
+        let material = frozen ? 'ice' : islandCell && islandCell.ocean ? 'ocean' : water ? lake && lake.cellContains(x, y) ? 'lake' : 'water' : islandCell && islandCell.beach ? 'beach' : path ? 'path' : islandCell && /^screen-/.test(islandCell.landformId || '') ? 'green' : row && row.solid ? 'wild' : row && row.kind || 'green';   // (round 3: a valley screen is painted by its own painter, 94-garden-paint-vale-2valley-screens.js, not as woodland with crowns laid on the ground)
         // Future growing plots stay part of the landscape until they open;
         // a map full of tiny unowned soil patches overwhelms the village.
         if (island && row && soilKinds.has(row.kind) && (locked || !cultivated.has(row.id))) material = 'green';
         // Scenic planting respects physical reservations even while a route is locked.
         const route = !!(islandCell && islandCell.route), plantingReserved = !!(islandCell && (route || ['static', 'apron', 'facade', 'future-pier'].includes(islandCell.reservation)));
-        cells[y * W.cols + x] = { material, locked, area, row, water, route, plantingReserved }; kinds.add(material);
+        cells[y * W.cols + x] = { material, locked, area, row, water, route, plantingReserved, screen: !!(islandCell && /^screen-/.test(islandCell.landformId || '')) }; kinds.add(material);
       }
       const routePaint = island ? routePaintAllowance(cells, sc, cultivated) : null;
       const lakeHoles = lake && !island ? outlines(cells.map((c, index) => ({ material: lake.cellContains(index % W.cols, Math.floor(index / W.cols)) && (!c.water || c.material === 'ice') ? 'hole' : '' })), 'hole', W, true).filter(loop => polygonArea(loop) > 0).map(loop => loop.slice().reverse()) : [];
       const frozenLake = lake && kinds.has('ice') && !kinds.has('lake');
       const cellAt = (x, y) => x >= 0 && y >= 0 && x < W.cols && y < W.rows ? cells[y * W.cols + x] : null;
-      const woodland = (x, y) => { const c = cellAt(x, y); return !!c && !c.water && c.material !== 'ice' && (!island || !['ocean', 'beach'].includes(c.material)) && (!island && c.locked || c.row && c.row.solid || woods.has(c.material)); };
+      const woodland = (x, y) => { const c = cellAt(x, y); return !!c && !c.water && !c.screen && c.material !== 'ice' && (!island || !['ocean', 'beach'].includes(c.material)) && (!island && c.locked || c.row && c.row.solid || woods.has(c.material)); };
       const lockedCells = cells.map((c, index) => ({ material: c.locked && (!island || !gardenIslandOceanCell(index % W.cols, Math.floor(index / W.cols))) ? c.area.slice(7) : '' }));
       const authoredRegions = island && typeof _gldIslandRegionGeometry === 'function' ? _gldIslandRegionGeometry() : [];
       const regionOpen = new Set(sc.areas || []);
@@ -703,7 +705,9 @@ window.GardenNativeWorld = (function () {
             }
           }
         };
-        const routes = GardenIslandLayout.data.routes.filter(route => route.points && route.points.length > 1);
+        // (round 3: a clearing or yard of trodden earth in the woods, surface 'earth', is not laid as a paved band along its spine:
+        // the painted vale lays it to its own outline, soft-edged; a band here read as a hard pale rectangle under it)
+        const routes = GardenIslandLayout.data.routes.filter(route => route.points && route.points.length > 1 && route.surface !== 'earth' && !(route.track && route.zone === 1 && route.id !== 'wren-log'));   // (and not the woodland's deer track: it is grass trodden flat, 94-garden-paint-vale-1woodland.js)
         for (const route of routes) { const style = gardenIslandRoadStyle(route); paintRoute(route, style.edgeRadius, style.main ? woodlandFloorTone(p.lawn, 0x9b9273, .56) : routeEdge); }
         for (const route of routes) { const style = gardenIslandRoadStyle(route); paintRoute(route, style.radius, style.main ? woodlandFloorTone(p.stone, 0xd9cca9, .68) : routeColor); }
         // Quiet paving joints identify the main arrival road at walking scale.
@@ -1436,11 +1440,15 @@ window.GardenNativeWorld = (function () {
         if (behind && p.id !== 'ld-falls') behind = sx > b.x + b.width * .12 && sx < b.x + b.width * .88 && sy - playerOcclusionHeight * .6 > b.y;
         // (a lamp post or a finger post hides nothing: standing at the old lamp turned you into the dark outline, hunter, round 3)
         if (behind && (p.art === 'lamp' || p.art === 'finger' || b.width < 46)) behind = false;
+        // (High orchard fix round 1) the treehouse chestnut fades by its crown, which spreads well past its two cells: walking the
+        // beach or the mother walk beside it you went behind the crown unseen, and standing at the trunk the whole tree faded
+        // (layfix east: the crown as drawn now, rounder and over its own trunk: standing at the ladder or on the beach beside it no longer ghosts the house)
+        else if (p.id === 'ld-treehouse') { const tx = (p.x + p.w / 2) * W.cellW - 92, ty = footY - 176; behind = sy < footY - 6 && ((sx - tx) / 92) ** 2 + ((sy - 30 - ty) / 78) ** 2 < 1; }
         // a painted building fades only where its own picture covers you (head, chest or hips), not over the whole box round
         // it: the lighthouse, its cottage and its rocks went ghostly whenever you stood beside the tower (coast round 3).
         // Tested again only when you have moved a pixel, a handful of reads of one texture.
         else if (behind && record.handle.hitPoint) { const k = Math.round(sx) + ',' + Math.round(sy); if (record._fadeAt !== k) { record._fadeAt = k; record._fadeHit = [.85, .55, .25].some(f => record.handle.hitPoint(sx, sy - playerOcclusionHeight * f)); } behind = record._fadeHit; }
-        if (record.behind !== behind) { record.behind = behind; record.root.setAlpha(behind ? .8 : 1); }
+        if (record.behind !== behind) { record.behind = behind; record.root.setAlpha(behind ? (p.id === 'ld-treehouse' ? .55 : .8) : 1); }
         if (behind) propBehind++;
       }
       coveringCanopies.length = 0;

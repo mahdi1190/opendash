@@ -401,11 +401,25 @@ const GARDEN_LAND_SIGHTS = _gdMovable([
   { id: 'ld-stump', art: 'stump', name: 'A great stump', x: 47, y: 2, col: 'full', tall: 0.7, say: 'It must have been the biggest tree for miles. There is a very small door in it.', egg: { verb: 'Knock on the small door', c: 7, found: 'A very small voice says “not today, thank you”. Seven very small coins are pushed out.' } },
   { id: 'ld-woodhut', art: 'smoke', name: 'The woodcutter’s hut', x: 49, y: 2, w: 2, col: 'full', tall: 1.5, say: 'A low hut among the yews, with a stack of split logs under the eaves. Somebody keeps the step swept.' },   // (Hollin's home: docs/dev/STORIES.md)
   { id: 'ld-oldhouse', art: 'oldhouse', name: 'The old house', x: 2, y: 28, w: 2, col: 'full', tall: 1.5, say: 'Ivy to the eaves and a door that has not been opened in years. The garden still comes up through the step.' },   // (Mother Thistle's old house)
+  // the woodland's round 3 places (vale-woodland.json): Wren's seat across the brook, the woodshed on its yard by the yew lane, a bench at four forks
+  { id: 'ld-wrenseat', art: 'seat', name: 'Wren’s seat', x: 6, y: 28, col: 'soft', tall: 0.6, say: 'A seat cut into a fallen trunk, facing the brook. Somebody small sat here a lot, and carved a wren on the arm.', egg: { verb: 'Look along the arm', c: 3, found: 'Three coins in a knot hole, under the wren. It looks pleased about it.' } },
+  { id: 'ld-woodshed', art: 'smoke', name: 'The woodshed', x: 8, y: 28, w: 2, col: 'full', tall: 1.4, say: 'Split logs stacked to the roof, bark side up, the way it should be done. The axe is in the block.' },
+  { id: 'ld-woodbench-1', art: 'seat', name: 'The milestone bench', x: 10, y: 28, w: 2, col: 'soft', tall: 0.8, say: 'A plank on two stumps, by the milestone. Out here the wood goes quiet.' },
+  { id: 'ld-woodbench-2', art: 'seat', name: 'The glade bench', x: 12, y: 28, w: 2, col: 'soft', tall: 0.8, say: 'You can hear the brook from here and see the buttercups. Somebody sits here at dusk; the grass is worn.' },
+  { id: 'ld-woodbench-3', art: 'seat', name: 'The wall bench', x: 14, y: 28, w: 2, col: 'soft', tall: 0.8, say: 'Over the old wall, between the trees, the top of something made of stone.' },
+  { id: 'ld-woodbench-4', art: 'seat', name: 'The brook walk bench', x: 16, y: 28, w: 2, col: 'soft', tall: 0.8, say: 'Half in the wood and half out. On a still day you can see the Mere through the trees.' },
   // the high street's four cottages (the hand-authored village, 2.74): lived in, so no eggs; they pinch the road between the quay and the square
   { id: 'ld-cottage-1', art: 'oldhouse', name: 'Rose cottage', x: 20, y: 30, w: 3, col: 'full', tall: 3.6, say: 'Roses round the door and a cat on the sill. The cat does not look up.' },
   { id: 'ld-cottage-2', art: 'oldhouse', name: 'The baker’s cottage', x: 23, y: 30, w: 3, col: 'full', tall: 3.6, say: 'It smells of bread, every morning, whether anyone has baked or not.' },
   { id: 'ld-cottage-3', art: 'oldhouse', name: 'Ivy cottage', x: 20, y: 33, w: 3, col: 'full', tall: 3.6, say: 'A boot scraper by the step and boots by the scraper. Somebody has just come in from the fields.' },
   { id: 'ld-cottage-4', art: 'oldhouse', name: 'The harbour master’s cottage', x: 23, y: 33, w: 3, col: 'full', tall: 3.6, say: 'A brass telescope in the window, pointed at the quay. It has seen everything.' },
+  // the High orchard's new places (round 3 layouts, assets/garden/vale-orchard.json): Quince's cottage and its square
+  { id: 'ld-quince-house', art: 'oldhouse', name: 'Quince’s cottage', x: 40, y: 12, w: 3, col: 'full', tall: 3.6, say: 'Whitewashed, with a bee painted on the door. The step is warm and smells faintly of apples.' },
+  { id: 'ld-press', art: 'cider-press', name: 'The cider press', x: 43, y: 12, col: 'soft', tall: 1.5, say: 'A great oak screw and a stone bed, sticky every October.' },
+  { id: 'ld-bell', art: 'orchard-bell', name: 'The orchard bell', x: 44, y: 13, col: 'soft', tall: 2, say: 'Rung for the picking, and once for the wassail. The rope is worn shiny.' },
+  { id: 'ld-cider-board', art: 'cider-board', name: 'The cider board', x: 45, y: 13, col: 'soft', tall: 1.4, say: 'Pinned notes: the picking rota, a lost glove, and this year’s fair, chalked in large letters.' },
+  { id: 'ld-bee-boles', art: 'bee-boles', name: 'The bee boles', x: 46, y: 13, w: 4, col: 'full', tall: 1.2, say: 'Six little alcoves in the old wall, each with a straw skep in it. The middle one is where you tell the bees the news.' },
+  { id: 'ld-pippin', art: 'cliff-pippin', name: 'The cliff pippin', x: 47, y: 13, col: 'soft', tall: 2.2, say: 'A wild apple leaning out over the sea. Its apples are small, sour and the best on the hill.' },
   { id: 'ld-orchard-wall', art: 'wall', name: 'The orchard wall', x: 45, y: 12, w: 2, col: 'full', tall: 0.6, say: 'Dry stone, and older than the trees.', egg: { verb: 'Look on top', c: 3, found: 'One sock, and three coins in the sock. Nobody has come back for it.' } },
   { id: 'ld-arch-e', art: 'gate', name: 'The orchard gate', x: 43, y: 18, col: 'none', tall: 1.9, say: 'The way up into the orchards.' },
   // west: the fields
@@ -430,6 +444,10 @@ const GARDEN_LAND_SIGHTS = _gdMovable([
   { id: 'ld-folly', art: 'folly', name: 'The hilltop folly', x: 37, y: 1, w: 2, col: 'full', tall: 2.6, say: 'A tower with no stairs, put up to look nice from the village. It does.' },
   { id: 'ld-beacon', art: 'beacon', name: 'The old beacon', x: 29, y: 0, col: 'full', tall: 1.3, say: 'An iron basket on a post, for sending news a long way.', egg: { verb: 'Light it', tod: 'night', c: 11, found: 'It catches at once. Far off, somebody lights another. Eleven coins were left in the ash.', soon: 'Nobody would see it by day. Come back after dark.' } },
   { id: 'ld-warren', art: 'warren', name: 'The warren bank', x: 32, y: 4, col: 'full', tall: 0.5, say: 'More holes than bank. Something thumps twice underground when you stop.' },
+  // Cloudbreak's three new places (the hand-authored mountains, vale-mountains.json): painted by 94-garden-paint-vale-1cloudbreak.js
+  { id: 'ld-bothy', art: 'bothy', name: 'The old bothy', x: 30, y: 2, w: 3, col: 'full', tall: 2.6, say: 'Two gable ends and no roof. Shepherds sheltered here once; the hearth stone is still warm on a sunny day.' },
+  { id: 'ld-toposcope', art: 'toposcope', name: 'The toposcope', x: 27, y: 2, col: 'soft', tall: 0.8, say: 'A brass plate on a pillar, with every hill you can see named on it, and one you cannot.' },
+  { id: 'ld-moor-gate', art: 'moorgate', name: 'The moor’s end gate', x: 0, y: 2, col: 'full', tall: 1.1, say: 'The last gate in the last wall. The fingerpost beside it says: The Long Road.' },
   // east
   { id: 'ld-ring', art: 'ring', name: 'The ring of old trees', x: 48, y: 1, w: 4, col: 'full', tall: 1.8, say: 'Five huge trunks in a perfect ring. Nobody planted them on purpose, surely.', egg: { verb: 'Stand in the middle', x: 8, found: 'It goes very quiet. When you step out, it has been a bit longer than you thought.' } },
   { id: 'ld-hollow', art: 'hollow', name: 'The hollow oak', x: 41, y: 2, col: 'full', tall: 2.2, say: 'Big enough for a child to stand in. Somebody once did: there is a shelf.', egg: { verb: 'Feel along the shelf', curio: 1, found: 'Tucked at the back of the shelf' } },
@@ -448,6 +466,17 @@ const GARDEN_LAND_SIGHTS = _gdMovable([
   { id: 'ld-icehouse', art: 'ice', name: 'The ice house', x: 10, y: 35, w: 2, col: 'full', tall: 1, say: 'A turf dome with a very thick door. In summer it still breathes cold.', egg: { verb: 'Open the door a crack', c: 8, found: 'Cold air, the smell of straw, and a purse someone kept very safe. Eight coins.' } },
   { id: 'ld-frog', art: 'frogstone', name: 'The frog stone', x: 7, y: 25, col: 'full', tall: 0.8, say: 'A big stone that somebody thought looked like a frog, and helped along a bit.', egg: { verb: 'Sit and listen', tod: 'dusk', c: 6, found: 'At dusk every frog on the marsh starts up at once, and stops when you stand. Six coins on the stone.', soon: 'It only makes sense at dusk, people say.' } },
   { id: 'ld-churn', art: 'churn', name: 'The milk stand', x: 9, y: 23, col: 'full', tall: 0.9, say: 'Two churns, still waiting to be collected.' },
+  // Millwater valley's seats and lamps (round 3 layout, vale-valley.json): a bench for two facing one view each, a lamp by each turning
+  { id: 'ld-vseat-1', art: 'vseat', name: 'A bench by the bridge', x: 30, y: 0, w: 2, col: 'soft', tall: 0.8, block: [1.15, .3], say: 'Down the race to the still wheel. Somebody sat here every day waiting for it to turn.' },
+  { id: 'ld-vseat-2', art: 'vseat', name: 'The yard bench', x: 30, y: 0, w: 2, col: 'soft', tall: 0.8, block: [1.15, .3], say: 'Across the weir, Pip’s hat on the bank. Pip is never under it when you look.' },
+  { id: 'ld-vseat-3', art: 'vseat', name: 'The ditch bench', x: 30, y: 0, w: 2, col: 'soft', tall: 0.8, block: [1.15, .3], say: 'The frog stone among the ditches. At dusk the whole meadow sings.' },
+  { id: 'ld-vseat-4', art: 'vseat', name: 'The stair bench', x: 30, y: 0, w: 2, col: 'soft', tall: 0.8, block: [1.15, .3], say: 'Up the stair to the blossom over the wall.' },
+  { id: 'ld-vseat-7', art: 'vseat', name: 'The coast seat', x: 30, y: 0, w: 2, col: 'soft', tall: 0.8, block: [1.15, .3], say: 'All along the coast walk to the lighthouse.' },
+  { id: 'ld-vlamp-1', art: 'vlamp', name: 'A lamp', x: 31, y: 0, col: 'soft', block: [.26, .2], hit: [.06, 2.3], tall: 1, say: 'Lit at dusk by somebody nobody has seen.' },
+  { id: 'ld-vlamp-2', art: 'vlamp', name: 'A lamp', x: 31, y: 0, col: 'soft', block: [.26, .2], hit: [.06, 2.3], tall: 1, say: 'Lit at dusk by somebody nobody has seen.' },
+  { id: 'ld-vlamp-3', art: 'vlamp', name: 'A lamp', x: 31, y: 0, col: 'soft', block: [.26, .2], hit: [.06, 2.3], tall: 1, say: 'Lit at dusk by somebody nobody has seen.' },
+  { id: 'ld-vlamp-4', art: 'vlamp', name: 'A lamp', x: 31, y: 0, col: 'soft', block: [.26, .2], hit: [.06, 2.3], tall: 1, say: 'Lit at dusk by somebody nobody has seen.' },
+  { id: 'ld-vlamp-5', art: 'vlamp', name: 'A lamp', x: 31, y: 0, col: 'soft', block: [.26, .2], hit: [.06, 2.3], tall: 1, say: 'Lit at dusk by somebody nobody has seen.' },
   { id: 'ld-driftwood', art: 'drift', name: 'The driftwood arch', x: 0, y: 34, w: 2, col: 'full', tall: 1.4, say: 'Somebody has been building this from what the marsh gives up, for years.' },
   { id: 'ld-sunk', art: 'sunken', name: 'The sunken pool', x: 30, y: 18, w: 2, col: 'full', tall: 0.2, say: 'Three stone steps down to a square of still water, right behind the shops. Everyone forgets it is there.', egg: { verb: 'Look in the water', c: 3, found: 'Three old coins on the bottom, and your own face looking pleased.' } },
   { id: 'ld-picnic', art: 'picnic', name: 'The picnic table', x: 33, y: 12, w: 2, col: 'soft', tall: 0.8, say: 'Somebody has carved a draughts board in the top.' },

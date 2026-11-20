@@ -19,7 +19,7 @@
   const data = () => (typeof gardenIslandData === 'function' ? gardenIslandData() : null);
   const fields = () => { try { return (data().presentation || {}).fields || []; } catch (e) { return []; } };
   let secSet = null, cellField = null; const memo = new Map();
-  const RANK = { hedge: 6, wall: 5, 'hedge-road': 4, stile: 4, drystone: 3, bracken: 2, reeds: 2, 'long-grass': 1, meadow: 1, kerb: 0 };
+  const RANK = { hedge: 6, wall: 5, 'hedge-road': 4, stile: 4, hurdle: 3, drystone: 3, bracken: 2, heather: 2, reeds: 2, 'long-grass': 1, meadow: 1, kerb: 0 };
   const fieldOfCell = () => { if (!cellField) { cellField = new Map(); for (const f of fields()) for (const s of f.sections) for (const c of cellsOf(s)) cellField.set(c[0] + ',' + c[1], f); } return cellField; };
   /** A section of a village field: it wears its field's edge, so the valley's fences leave it alone. */
   V.villageSection = id => { if (!secSet) secSet = new Set(fields().flatMap(f => f.sections)); return secSet.has(id); };
@@ -62,7 +62,7 @@
   function soften(loop, cut, first) { let p = loop; for (let k = 0; k < 3; k++) { const o = [], c = cut / (k * 1.2 + 1); for (let i = 0; i < p.length; i++) { const a = p[i], b = p[(i + 1) % p.length], L = Math.hypot(b.x - a.x, b.y - a.y) || 1, d = Math.min(c, L * (k ? .3 : first || .42)) / L; o.push({ x: a.x + (b.x - a.x) * d, y: a.y + (b.y - a.y) * d }, { x: b.x - (b.x - a.x) * d, y: b.y - (b.y - a.y) * d }); } p = o; } return p; }
   /** The same loop with a point every few px, each moved a little across the line by where it is: grown, not ruled. */
   function wander(loop, amp) { const out = []; for (let i = 0; i < loop.length; i++) { const a = loop[i], b = loop[(i + 1) % loop.length], L = Math.hypot(b.x - a.x, b.y - a.y); if (L < .01) continue; const n = Math.max(1, Math.round(L / 9)), nx = -(b.y - a.y) / L, ny = (b.x - a.x) / L; for (let j = 0; j < n; j++) { const t = j / n, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, w = (Math.sin(x * .071 + y * .043) + Math.sin(x * .029 - y * .083 + 1.7) * .8 + Math.sin(x * .19 + y * .13 + .6) * .35) * amp * .5; out.push({ x: x + nx * w, y: y + ny * w * .7 }); } } return out; }
-  const SOFT = new Set(['long-grass', 'meadow', 'reeds', 'bracken', 'hedge-road', 'stile']);
+  const SOFT = new Set(['long-grass', 'meadow', 'reeds', 'bracken', 'heather', 'hedge-road', 'stile']);
   const ROPED = new Set(['long-grass', 'meadow', 'hedge-road', 'stile']);   // (growth too low or too thin to read as where walking stops)
   const pathOf = loops => { const p = new Path2D(); for (const l of loops) { p.moveTo(l[0].x, l[0].y); for (let i = 1; i < l.length; i++) p.lineTo(l[i].x, l[i].y); p.closePath(); } return p; };
   const inPoly = (x, y, P) => { let ins = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) ins = !ins; } return ins; };
@@ -118,6 +118,17 @@
       const alt = C.season === 'autumn' ? ['#7e8440', '#9a9a4a', '#66703a'] : C.season === 'winter' ? ['#7a705c', '#8e8468', '#5e5648'] : ['#557a34', '#86a84e', '#a2b860'];
       for (const q of s) { const r = rngAt(q, 19), big = (q.big || 1) * (.8 + r() * .55), x0 = q.x + (r() - .5) * 5, y0 = q.y + (r() - .5) * 3, pal = r() < .32 ? alt : col; for (let k = 0; k < 5; k++) { const a = -Math.PI / 2 + (k - 2) * .5 + (r() - .5) * .3, l = (8 + r() * 7) * big, ex = x0 + Math.cos(a) * l * 1.25, ey = y0 + Math.sin(a) * l; B.s(`M${x0} ${y0}Q${(x0 + ex) / 2} ${ey - 3} ${ex} ${ey}`, pal[k % pal.length], 2.1, .92); B.s(`M${(x0 + ex) / 2} ${(y0 + ey) / 2 - 2}l${(ex - x0) * .25} ${-2.4}`, pal[(k + 1) % pal.length], 1, .7); } }
     },
+    // (fix round 1) the High orchard's thyme terrace: low cushions of heather and wild thyme, purple in summer, rust in
+    // autumn, with a sprig of gorse here and there (green bracken there read as any other field)
+    heather: (B, run, C) => {
+      const sea = C.season, bloom = sea === 'summer' ? ['#a86aa8', '#c48ac0', '#8a4f8e'] : sea === 'autumn' ? ['#8a5a62', '#a8705a', '#6e4a52'] : sea === 'winter' ? ['#6e5a5e', '#7e6a6a', '#5a4a50'] : ['#7a5a7e', '#946e94', '#5f4a62'];
+      const leaf = sea === 'winter' ? ['#5e5a48', '#6e6a54'] : ['#4f5e3a', '#62724a'], s = run.slice().sort((a, b) => a.y - b.y);
+      for (const q of s) B.f(B.ell(q.x + 1, q.y + 1, 8, 2.6), '#22301a', .2);
+      for (const q of s) { const r = rngAt(q, 29), big = (q.big || 1) * (.8 + r() * .5), x0 = q.x + (r() - .5) * 6, y0 = q.y + (r() - .5) * 3;
+        B.f(B.ell(x0, y0 - 3 * big, 8 * big, 4.4 * big), leaf[r() < .5 ? 0 : 1], .95);
+        for (let k = 0; k < 9; k++) { const a = r() * Math.PI, d = r(); B.f(B.circ(x0 + Math.cos(a) * 7 * big * d, y0 - 3 * big - Math.sin(a) * 4.4 * big * d - 1, (1.3 + r() * 1.1) * big), bloom[k % 3], .95); }
+        if (r() < .14 && sea !== 'winter') { for (let k = 0; k < 5; k++) B.s(`M${x0 + 6} ${y0}l${(k - 2) * 1.6} ${-8 - r() * 5}`, '#4a5e2a', 1.1, .9); if (sea === 'spring' || sea === 'summer') for (let k = 0; k < 4; k++) B.f(B.circ(x0 + 6 + (r() - .5) * 7, y0 - 7 - r() * 6, 1.4), '#f0c832', .95); } }
+    },
     // the Mere bank: reeds and reedmace
     reeds: (B, run, C) => {
       const col = C.season === 'winter' ? ['#a89a6a', '#c0b282'] : C.season === 'autumn' ? ['#8a8a40', '#b4a050'] : ['#557a3a', '#7aa04a'], s = run.slice().sort((a, b) => a.y - b.y);
@@ -137,6 +148,20 @@
     // (village fix round 3) the rough edge of a field away from its front: its own growth thinning out into the lawn in
     // clumps and drifts (long grass, seed heads, a bramble or a shrub here and there, a stone by the wall), never one even
     // band, so the line where the feet stop is the edge of the rough ground and not a drawn ring
+    // (round 3, Millwater valley) a hazel hurdle: woven panels on stakes a little over knee high, standing all along a shut
+    // field's side where you walk, so the stop is plain to see (rule 15); its foot grown in with grass and a poppy or two
+    hurdle: (B, run, C) => {
+      const s = run.slice().sort((a, b) => a.y - b.y), wood = C.season === 'winter' ? ['#6a5a48', '#84725a', '#9c8a6e', '#4e4236'] : ['#6e5638', '#8a6c46', '#a8875a', '#4a3a26'];
+      for (const q of s) B.f(B.ell(q.x + 1.4, q.y + 1, 4.2, 1.8), '#22301a', .2);
+      for (const q of s) {
+        const steep = Math.abs(q.ty) > Math.abs(q.tx) * 1.3, h = steep ? 13 : 19, r = rngAt(q, 41), w = steep ? 5.4 : 5.6;
+        B.f(B.rect(q.x - w / 2, q.y - h, w, h + .5), wood[0]);
+        for (let y = q.y - h + 1.5, k = 0; y < q.y - 1; y += 3, k++) B.f(B.rr(q.x - w / 2 - .3, y + ((q.i + k) & 1) * .7, w + .6, 1.9, .9), wood[1 + ((q.i + k) & 1)], .95);
+        if (q.i % 6 === 0) B.f(B.rr(q.x - 1.2, q.y - h - 3, 2.4, h + 3.5, .8), wood[3]).f(B.rect(q.x - 1.2, q.y - h - 3, .9, h + 3), wood[2], .6);
+        if (r() < .55) for (let j = 0; j < 3; j++) B.s(`M${q.x + (r() - .5) * 5} ${q.y + .8}q${(r() - .5) * 2} -3 ${(r() - .5) * 3} -${3 + r() * 4}`, C.season === 'winter' ? '#8a9070' : '#5e8a3e', 1, .9);
+        if (C.season === 'summer' && r() < .08) B.f(B.circ(q.x + (r() - .5) * 4, q.y - 3 - r() * 3, 1.3), '#d8402e', .95);
+      }
+    },
     margin: (B, run, C, kind) => {
       const st = strawTones(C.season), lt = leafTones(C.season), lo = C.P.lawnLo, s = run.slice().sort((a, b) => a.y - b.y);
       const thick = q => { const x = q.ox || q.x, y = q.oy || q.y; return .5 + .5 * (Math.sin(x * .037 + y * .051) * .6 + Math.sin(x * .013 - y * .029 + 2.1) * .4); };
@@ -169,11 +194,24 @@
     const box = [Math.max(bb[0], cb[0] - 4), Math.max(bb[1], cb[1] - 4), Math.min(bb[2], cb[2] + 4), Math.min(bb[3], cb[3] + 4)]; if (box[2] <= box[0] || box[3] <= box[1]) return;
     const inCell = (x, y) => has.has(Math.floor(x / cw) + ',' + Math.floor((y - sky) / ch)), inF = loops ? (x, y) => { if (!inCell(x, y) && !inCell(x + 14, y) && !inCell(x - 14, y) && !inCell(x, y + 10) && !inCell(x, y - 10)) return false; for (const l of loops) if (inPoly(x, y, l)) return true; return false; } : inCell;
     const wash = tame ? (edge === 'bracken' ? [P.floor, .4] : edge === 'reeds' ? ['#7e8a52', .3] : edge === 'meadow' ? [st[1], .3] : [P.lawnHi, .3])
-      : edge === 'bracken' ? [P.floor, .78] : edge === 'reeds' ? ['#7e8a52', .7] : edge === 'meadow' ? [st[1], .6] : edge === 'long-grass' || edge === 'hedge-road' ? [st[0], .5] : [P.lawnLo, .5];
+      : edge === 'heather' ? ['#6e5e58', .5] : edge === 'bracken' ? [P.floor, .78] : edge === 'reeds' ? ['#7e8a52', .7] : edge === 'meadow' ? [st[1], .6] : edge === 'long-grass' || edge === 'hedge-road' ? [st[0], .5] : [P.lawnLo, .5];
     B.f(B.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]), P.lawn).f(B.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]), wash[0], wash[1]);
     const T = 60, tall = !tame && (edge === 'meadow' || edge === 'long-grass' || edge === 'hedge-road'), salt = KIT().hashStr('fill|' + f.id) & 0xffff;
+    // (Cloudbreak's shut fields, vale-mountains.json kind: the rock gardens are slabs and wind-cut stones in thin turf, the
+    // mist meadow is bog, peat pools and cotton grass; not the lush meadow every other field has)
+    if (!tame && f.kind === 'rock') { B.f(B.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]), '#a8a47c', .45);
+      KIT().tiles(box, 54, 30, salt + 9, (tx, ty, r) => { for (let k = 0; k < 4; k++) { const x = tx + r() * 54, y = ty + r() * 54; if (!inF(x, y)) continue; const w = 12 + r() * 20, h = w * (.36 + r() * .14), upright = r() < .18;
+        if (upright) { B.f(B.ell(x + 3, y + 1, w * .45, 3), '#3e3a32', .3).f(B.poly([[x - w * .22, y], [x - w * .16, y - w * .9], [x + w * .05, y - w * 1.05], [x + w * .2, y - w * .7], [x + w * .24, y]]), '#a59e8c').f(B.poly([[x - w * .16, y - w * .9], [x + w * .05, y - w * 1.05], [x, y]]), '#c8c1ae', .6); continue; }
+        B.f(B.blob(r, x + 1.5, y + 2, w, h, 7, .3), '#3e3a32', .35).f(B.blob(r, x, y, w, h, 7, .3), ['#b4ad9c', '#a59e8c', '#c2bba8', '#9a9484'][Math.floor(r() * 4)]).f(B.blob(r, x - w * .2, y - h * .3, w * .5, h * .35, 6, .4), '#e4e0d0', .35);
+        if (r() < .35) B.f(B.ell(x + (r() - .5) * w * .6, y + (r() - .5) * h * .4, 2.6, 1.4), '#c9c48a', .75); } }); }
+    if (!tame && f.kind === 'bog') { B.f(B.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]), '#6e7046', .5);
+      KIT().tiles(box, 60, 30, salt + 11, (tx, ty, r) => { for (let k = 0; k < 2; k++) { const x = tx + r() * 60, y = ty + r() * 60; if (!inF(x, y)) continue; const w = 12 + r() * 16;
+        B.f(B.blob(r, x, y + 1, w + 3, w * .36 + 2, 8, .4), '#4a4434', .7).f(B.blob(r, x, y, w, w * .32, 8, .4), season === 'winter' ? '#c8d4d8' : '#5e7a7c').f(B.ell(x - w * .3, y - w * .08, w * .3, 1.2), '#b8d0d0', .5); }
+        for (let k = 0; k < 6; k++) { const x = tx + r() * 60, y = ty + r() * 60; if (!inF(x, y)) continue; B.f(B.blob(r, x, y, 5 + r() * 5, 2, 6, .5), ['#9a8a3a', '#b0703a', '#8a9a3e'][Math.floor(r() * 3)], .7); if (season !== 'winter' && r() < .6) { B.s(`M${x} ${y}v-7`, '#7d8f4e', .8, .9); B.f(B.circ(x, y - 8, 1.7), '#f6f4ec', .95); } } }); }
     // light and shade in soft drifts, so no field is one flat colour (from the tiles round about too: a drift is wide)
     KIT().tiles(box, T, 46, salt + 1, (tx, ty, r) => { for (let k = 0; k < 2; k++) { const x = tx + r() * T, y = ty + r() * T, rx = 26 + r() * 30, ry = 9 + r() * 10, lift = r() < .5, a = .12 + r() * .08; if (inF(x, y)) B.f(B.blob(r, x, y, rx, ry, 8, .5), lift ? P.lawnHi : '#3e5a2a', a); } });
+    // (fix round 1) the thyme terrace: heather and thyme cushions all through it, close set, with bare stony turf between
+    if (edge === 'heather') KIT().tiles(box, 22, 52, salt + 3, (tx, ty, r) => { for (let k = 0; k < 2; k++) { const x = tx + r() * 22, y = ty + r() * 22; if (inF(x, y) && r() < (tame ? .45 : .9)) STYLE.heather(B, [{ x, y, big: .7 + r() * .6 }], C); } });
     if (edge === 'long-grass') {
       // the slope's strips: long beds lying along the contour, gone back to grass, still showing in the sward
       const x0 = Math.floor((box[0] - 30) / 24) * 24;
@@ -263,18 +301,53 @@
   }
   // the sign at a field's gate: a small board on a post saying what the next piece of it needs, its level or its price
   function sign(B, x, y, row, lv) {
+    // (layfix east) a small tag on a short stake at the gate, dark weathered wood with the price cut in pale letters: the big
+    // yellow boards stood out in the scenery like stickers, five to a view
     const lvNeed = row.lv || 0, coin = lv >= lvNeed && !!row.buy, txt = lv < lvNeed ? 'Lv ' + lvNeed : row.buy ? String(row.buy) : ''; if (!txt) return;
-    B.f(B.ell(x + 1, y + 1, 7, 2), 'rgba(40,40,24,.25)');
-    B.f(B.rect(x - 1.2, y - 17, 2.4, 17), '#5e4c36').f(B.rect(x - 1.2, y - 17, 1, 17), '#8a7454', .7);
-    const cx = B.cx; cx.save(); cx.font = '700 7.5px system-ui, sans-serif';
-    const w = Math.max(16, cx.measureText(txt).width + (coin ? 7 : 0) + 6), x0 = x - w / 2, y0 = y - 29;
-    B.f(B.rr(x0 + .8, y0 + 1, w, 12, 2), 'rgba(30,24,16,.3)').f(B.rr(x0, y0, w, 12, 2), '#c9a876').f(B.rr(x0, y0, w, 3.5, 1.5), '#dcc092', .8).s(B.rr(x0, y0, w, 12, 2), '#6e5434', .8, .9);
-    let tx = x0 + 3;
-    if (coin) { B.f(B.circ(tx + 2.5, y0 + 6, 2.8), '#e8b830').f(B.circ(tx + 2.5, y0 + 6, 1.5), '#f6d870'); tx += 7; }
-    cx.fillStyle = '#3e2c1a'; cx.textAlign = 'left'; cx.textBaseline = 'middle'; cx.fillText(txt, tx, y0 + 6.4); cx.restore();
+    B.f(B.ell(x + 1, y + .8, 4.5, 1.4), 'rgba(40,40,24,.25)');
+    B.f(B.rect(x - .9, y - 11, 1.8, 11), '#5e4c36').f(B.rect(x - .9, y - 11, .7, 11), '#8a7454', .7);
+    const cx = B.cx; cx.save(); cx.font = '700 5.6px system-ui, sans-serif';
+    const w = Math.max(11, cx.measureText(txt).width + (coin ? 5 : 0) + 4), x0 = x - w / 2, y0 = y - 18;
+    B.f(B.rr(x0 + .6, y0 + .8, w, 8, 1.4), 'rgba(30,24,16,.3)').f(B.rr(x0, y0, w, 8, 1.4), '#6e5638').f(B.rr(x0, y0, w, 2, 1), '#8a6e4a', .8).s(B.rr(x0, y0, w, 8, 1.4), '#3e2e1e', .6, .9);
+    B.f(B.circ(x0 + 1.6, y0 + 4, .5), '#2e2418').f(B.circ(x0 + w - 1.6, y0 + 4, .5), '#2e2418');
+    let tx = x0 + 2.4;
+    if (coin) { B.f(B.circ(tx + 1.6, y0 + 4.1, 1.7), '#d8a830').f(B.circ(tx + 1.6, y0 + 4.1, .8), '#f0d070'); tx += 4.4; }
+    cx.fillStyle = '#f2e8d0'; cx.textAlign = 'left'; cx.textBaseline = 'middle'; cx.fillText(txt, tx, y0 + 4.3); cx.restore();
   }
+
   // the one gate: across a cell's edge (g.horiz: seen from the front) or along it (seen from the side)
   function gate(B, g, kind) {
+    // (round 3) a woodland field's way in: two sawn log posts and an old mossy log lying across the gap between them
+    if (kind === 'log') {
+      const moss = ['#6f8a42', '#86a052'], bark = ['#7a6248', '#5e4a34', '#9a8262'], grain = '#d2bc90';
+      const ends = g.horiz ? [[g.x - g.len / 2 + 3, g.y], [g.x + g.len / 2 - 3, g.y]] : [[g.x, g.y - g.len / 2 + 2], [g.x, g.y + g.len / 2 - 1]];
+      B.f(B.ell(g.x + 2, g.y + 1.6, (g.horiz ? g.len : 8) * .5, 2.6), '#22301a', .24);
+      const post = ([x, y]) => { B.f(B.rr(x - 3.4, y - 10, 6.8, 10.5, 2), bark[0]).f(B.rect(x - 3.4, y - 9, 2, 9), bark[2], .6).f(B.ell(x, y - 10, 3.4, 1.5), grain).f(B.ell(x + 1, y - 6, 1.8, 2.4), moss[0], .8); };
+      post(ends[0]);
+      if (g.horiz) { const x0 = ends[0][0] + 1, x1 = ends[1][0] - 1, y = g.y - 3.2;
+        B.f(B.rr(x0, y - 3.4, x1 - x0, 6.8, 3.4), bark[1]).f(B.rr(x0, y - 3.4, x1 - x0, 3, 1.6), bark[0]).f(B.ell(x1, y, 1.6, 3.2), grain);
+        for (let x = x0 + 2; x < x1 - 2; x += 3.5) B.f(B.ell(x + 1, y - 3.2, 2.2, 1.2), x % 2 < 1 ? moss[0] : moss[1], .9);
+      } else { const y0 = ends[0][1], y1 = ends[1][1], x = g.x;
+        B.f(B.rr(x - 3.2, y0 - 6, 6.4, y1 - y0, 3.2), bark[1]).f(B.rr(x - 3.2, y0 - 6, 2.6, y1 - y0, 1.4), bark[0]);
+        for (let y = y0; y < y1 - 6; y += 3.2) B.f(B.ell(x + .6, y - 4, 1.8, 1.6), moss[(y | 0) % 2], .9);
+      }
+      for (const [x, y] of ends) for (let k = 0; k < 3; k++) { const a = -2.3 + k * .5; B.s(`M${x} ${y}q${Math.cos(a) * 3} ${Math.sin(a) * 4} ${Math.cos(a) * 6} ${Math.sin(a) * 8}`, '#5e8a44', 1.1, .85); }
+      post(ends[1]);
+      return;
+    }
+    // (High orchard fix round 2) the orchard's fields each shut in their own way, so the same field gate is not stamped by every
+    // one: a woven hurdle in the rows, a stile into the meadows, a rope between two posts on the heather, a weathered board gate at the pond
+    if (kind === 'hurdle' || kind === 'stile' || kind === 'rope') {
+      const P2 = ['#6e5a40', '#4e3e2c', '#927a58'], h = 12;
+      const ends = g.horiz ? [[g.x - g.len / 2 + 3, g.y], [g.x + g.len / 2 - 3, g.y]] : [[g.x, g.y - g.len / 2 + 2], [g.x, g.y + g.len / 2 - 1]];
+      const [[ax, ay], [bx, by]] = ends;
+      B.f(B.ell((ax + bx) / 2 + 2, (ay + by) / 2 + 1.6, Math.abs(bx - ax) / 2 + 3, Math.abs(by - ay) / 2 + 2.4), '#22301a', .2);
+      if (kind === 'hurdle') { B.f(B.poly([[ax, ay], [bx, by], [bx, by - h], [ax, ay - h]]), '#7a5a34'); for (let k = 0; k < 5; k++) { const o = 2 + k * (h - 3) / 4; B.s(`M${ax} ${ay - o}L${bx} ${by - o}`, k % 2 ? '#c49a62' : '#a07a4a', 2.2, 1); } for (let k = 1; k < 5; k++) { const t = k / 5, x = ax + (bx - ax) * t, y = ay + (by - ay) * t; B.s(`M${x} ${y + .5}V${y - h - 1.5}`, '#4e3620', 1.2, 1); } }
+      else if (kind === 'stile') { B.s(`M${ax} ${ay - 5}L${bx} ${by - 5}M${ax} ${ay - 11}L${bx} ${by - 11}`, '#8a7454', 1.8, 1); if (g.horiz) { const mx = (ax + bx) / 2; B.f(B.rect(mx - 7, ay - 4.5, 14, 2.6), '#a88e66').f(B.rect(mx - 7, ay - 4.5, 14, .9), '#c8b08a').f(B.rect(mx - 5.5, ay - 2, 1.6, 2.4), '#5e4c36').f(B.rect(mx + 4, ay - 2, 1.6, 2.4), '#5e4c36'); } }
+      else { const sag = (x0, y0, x1, y1, d) => `M${x0} ${y0}Q${(x0 + x1) / 2} ${(y0 + y1) / 2 + d} ${x1} ${y1}`; B.s(sag(ax, ay - 10, bx, by - 10, 4), '#c9b07a', 1.6, 1).s(sag(ax, ay - 10.6, bx, by - 10.6, 4), '#e8d6a6', .6, .8); B.s(`M${bx - 1} ${by - 10}q2 3 0 6`, '#c9b07a', 1.2, .9); }
+      for (const [x, y] of ends) B.post(x, y - h - 2.5, y + .5, 3.2, P2).f(B.ell(x, y - h - 2.5, 1.9, 1.1), P2[2]);
+      return;
+    }
     const wood = kind === 'wicket' ? ['#e4dcc8', '#f4eee0', '#b8ae96'] : ['#8a7454', '#a88e66', '#5e4c36'], post = kind === 'wicket' ? ['#cfc6b0', '#b0a68e', '#f0eada'] : ['#6e5a40', '#4e3e2c', '#927a58'];
     if (g.horiz) {
       const x0 = g.x - g.len / 2 + 3, x1 = g.x + g.len / 2 - 3, y = g.y, h = kind === 'wicket' ? 13 : 12;
@@ -317,12 +390,15 @@
     // where this field meets another field that is also shut, the firmer of the two edges stands on the line between them
     // (so Wren's hedge runs all the way round, and the old wall of the glasshouse garden is built up against it)
     const mineRank = RANK[f.edge] || 0, shutNeighbour = (x, y) => { if (mineRank < 3) return false; const cx = Math.floor(x / cw), cy = Math.floor((y - W.sky) / ch), o = fieldOfCell().get(cx + ',' + cy); return !!o && o !== f && mineRank > (RANK[o.edge] || 0) && lockedAt(cx, cy, lv); };
+    // (round 3) a valley field's hurdle leaves a gap where a bench, a lamp or a sight stands at its edge (it ran through the
+    // ditch bench's back and under the frog stone)
+    const near = (((data() || {}).static) || []).filter(p => p.district === 'east-mill' || /^ld-(frog|vseat|vlamp|churn|boles|hide)/.test(p.id)), byStatic = (x, y) => { const cx = x / cw, cy = (y - W.sky) / ch; return near.some(p => cx > p.x - .45 && cx < p.x + (p.w || 1) + .45 && cy > p.y - .6 && cy < p.y + (p.h || 1) + .35); };
     // the edge stands just inside the outline (so its top never reaches over ground you stand on behind it)
     const runs = [], all = []; let n = 0;
     for (const l of loops) {
       const pts = V.walk(l.concat([l[0]]), f.edge === 'long-grass' || f.edge === 'meadow' || f.edge === 'reeds' ? 3.6 : f.edge === 'bracken' ? 9 : 4.4); let run = [];
       for (const q of pts) {
-        const open = walk(q.x + q.ty * 12, q.y - q.tx * 9) || shutNeighbour(q.x + q.ty * 12, q.y - q.tx * 9), inset = Math.abs(q.tx) > Math.abs(q.ty) ? (q.tx > 0 ? 8.5 : 2.5) : 4.5;   // (the north side stands further in: the piece is drawn upward from its foot)
+        const open = (walk(q.x + q.ty * 12, q.y - q.tx * 9) || shutNeighbour(q.x + q.ty * 12, q.y - q.tx * 9)) && !(f.edgeAll && byStatic(q.x, q.y)), inset = Math.abs(q.tx) > Math.abs(q.ty) ? (q.tx > 0 ? 8.5 : 2.5) : 4.5;   // (the north side stands further in: the piece is drawn upward from its foot)
         const s = { x: q.x - q.ty * inset, y: q.y + q.tx * inset, tx: q.tx, ty: q.ty, ox: q.x, oy: q.y, i: n++, road: roadAt(q.x + q.ty * 30, q.y - q.tx * 20) };
         if (open) { run.push(s); all.push(s); } else if (run.length) { runs.push(run); run = []; }
       }
@@ -347,7 +423,7 @@
     // its lane). Only there does it wear its built edge (the hedge, the wall, the dry-stone wall); everywhere else its own
     // rough growth runs out into the grass in clumps, so no field is a pen with a ring of hedge or wall round it
     // (only the side the gate is on: a small field is all within a couple of cells of its gate)
-    { const gn = g ? (g.horiz ? [0, g.south ? 1 : -1] : [g.east ? 1 : -1, 0]) : null; for (const s of all) s.front = !!g && Math.hypot(s.x - g.x, s.y - g.y) < cw * 2.2 && s.ty * gn[0] - s.tx * gn[1] > .45; }
+    { const gn = g ? (g.horiz ? [0, g.south ? 1 : -1] : [g.east ? 1 : -1, 0]) : null; for (const s of all) s.front = !!f.edgeAll || !!g && Math.hypot(s.x - g.x, s.y - g.y) < cw * 2.2 && s.ty * gn[0] - s.tx * gn[1] > .45; }   // (round 3: a valley field with edgeAll wears its edge all along where you walk, so no stop is invisible)
     // back to front: pieces of edge with the gate's gap cut out of them
     const gap = q => g && Math.abs(q.x - g.x) < (g.horiz ? g.len / 2 + 1 : 7) && Math.abs(q.y - g.y) < (g.horiz ? 8 : g.len / 2 + 1);
     const pieces = []; for (const run of runs) { let cur = []; for (const q of run) { if (gap(q)) { if (cur.length) pieces.push(cur); cur = []; } else cur.push(q); } if (cur.length) pieces.push(cur); }
@@ -393,7 +469,7 @@
       B.cx.save(); B.cx.clip(S.path, 'nonzero'); fill(B, C, f, bb, cb, S.has, S.loops);
       // a soft shade just inside the edge, so the field sits in the ground
       B.cx.filter = 'blur(2.5px)'; B.s(S.path, '#2a3a1c', 6, .1); B.cx.filter = 'none'; B.cx.restore();
-      const g = S.gate, edge = STYLE[f.edge] || STYLE.hedge, kind = f.edge === 'hedge' ? 'wicket' : 'field';
+      const g = S.gate, edge = STYLE[f.edge] || STYLE.hedge, kind = f.edge === 'hedge' ? 'wicket' : /^w-/.test(f.id || '') ? 'log' : /^high-/.test(f.id || '') ? ({ 'long-grass': 'hurdle', meadow: 'stile', heather: 'rope' }[f.edge] || 'field') : 'field';   // (round 3: the Whispering woodland's fields, w-*, a mossy log across the way in; the High orchard's, high-*, each shut its own way)
       // (round 3) the built edge (or the kind's own thick growth) only along the front; the rest is the rough margin, with
       // the kind's own reeds, bracken or long grass standing in it here and there where it grows thickest
       const thickAt = q => .5 + .5 * (Math.sin(q.ox * .037 + q.oy * .051) * .6 + Math.sin(q.ox * .013 - q.oy * .029 + 2.1) * .4);
@@ -408,8 +484,9 @@
         gate(B, g, kind);
       }
       for (const p of near) paint(p.filter(q => q.y > gy));
-      // (the sign last: reeds, long grass or a hedge end right beside the gate never stand across its board)
-      if (g && S.next && g.x > cb[0] - 60 && g.x < cb[2] + 60 && g.y > cb[1] - 20 && g.y < cb[3] + 50) { const sx = g.horiz ? g.x + g.len / 2 + 5 : g.x + (g.east ? 8 : -8), sy = g.horiz ? g.y + 1 : g.y + g.len / 2 + 3; sign(B, sx, sy, S.next, lv); }
+      // (the sign last: reeds, long grass or a hedge end right beside the gate never stand across its board; round 3, critic
+      // round 2: a woodland field shows its board only once it can be bought, not 'Lv 3/6/10/18' on every screen of the wood)
+      if (g && S.next && !(/^w-/.test(f.id) && lv < (S.next.lv || 0)) && g.x > cb[0] - 60 && g.x < cb[2] + 60 && g.y > cb[1] - 20 && g.y < cb[3] + 50) { const sx = g.horiz ? g.x + g.len / 2 + 5 : g.x + (g.east ? 8 : -8), sy = g.horiz ? g.y + 1 : g.y + g.len / 2 + 3; sign(B, sx, sy, S.next, lv); }
       if (f.edge === 'meadow') { B.cx.save(); const out = new Path2D(); out.rect(bb[0] - 60, bb[1] - 60, bb[2] - bb[0] + 120, bb[3] - bb[1] + 120); out.addPath(S.path); B.cx.clip(out, 'evenodd'); B.cx.filter = 'blur(4px)'; B.s(S.path, C.P.lawnHi, 10, .22); B.cx.filter = 'none'; B.cx.restore(); }   // the mown edge round the uncut meadow
     }
     // Land of this field that is yours. (Village fix round 2: it went to a plain striped lawn, the orchard lost its trees and
@@ -419,7 +496,7 @@
     // a low laid hawthorn by the road, a stone kerb for a walled plot, a fringe of grass for the strips and the meadow),
     // knee high or less, so it reads as yours and you can see it is a thing you step over; its gate stands open.
     const ownedLow = { hedge: { w: 8.6, h: 5.6, round: 2.6, tone: 'box' }, 'hedge-road': { w: 9, h: 6.4, round: 3, tone: 'leaf' }, stile: { w: 9, h: 6.4, round: 3, tone: 'leaf' },
-      wall: { w: 8, h: 4.2, round: 1, tone: 'brick' }, drystone: { w: 7.6, h: 4.4, round: 2, tone: 'stone' } };
+      wall: { w: 8, h: 4.2, round: 1, tone: 'brick' }, drystone: { w: 7.6, h: 4.4, round: 2, tone: 'stone' }, hurdle: { w: 7.6, h: 4.6, round: 2, tone: 'leaf' } };
     const fieldCells = fieldOfCell();
     for (const id of f.sections) {
       const row = rowOf(id), cs = cellsOf(id); if (!row || row.kind === 'green' || !cs.length || lockedAt(cs[0][0], cs[0][1], lv)) continue;

@@ -346,8 +346,11 @@ window.GardenPaintedProps = (function () {
     if (!prop) return null;
     if (window.GardenPaintedMarks && GardenPaintedMarks.knows(prop.id)) return null;   // (a sight painted into its place: 94-garden-paint-terrain-5sights.js)
     if (prop.id === 'craft-bench') return 'bench';
+    // (the old woodland's hut and ice house are drawn to the size standard by 94-garden-paint-vale-1oldwood.js, layout round 3)
+    if ((prop.id === 'ld-woodhut' || prop.id === 'ld-icehouse') && window.GardenPaintedMarks && GardenPaintedMarks.knows(prop.id)) return null;
     if (prop.id === 'jetty-post') return 'post';
     const k = prop.art || String(prop.kind || '').replace(/^l[df]-/, '');
+    if (PAINT['sight:prop-' + prop.id]) return 'sight:prop-' + prop.id;   // (round 3: a place's own drawing, e.g. the woodland's log benches, 94-garden-paint-vale-1woodland.js)
     if (PAINT[KIND[k] || ''] ) return KIND[k];
     if (PAINT['sight:' + k]) return 'sight:' + k;   // (landmark painters registered by area files, e.g. 94-garden-native-painted-valley.js)
     if (k in LIB) return 'lib:' + k;
@@ -387,7 +390,7 @@ window.GardenPaintedProps = (function () {
       // Align those feet with its protected span, retaining the roof overhang.
       // (village fix round 3) the post box and the camera on its tripod at the size standard: a pillar box a little under the
       // player's height, not half as tall again; the camera no bigger than a shoebox
-      const board = prop.id === 'notice-board' && which === 'board', scale = board ? prop.w * W.cellW / 79 : which === 'postbox' ? .74 : which === 'tripod' ? .8 : 1, artFoot = foot - (board ? scale : 0);
+      const board = prop.id === 'notice-board' && which === 'board', scale = board ? prop.w * W.cellW / 79 : which === 'postbox' ? .74 : which === 'tripod' ? .8 : P.scale ? ok(() => P.scale(prop)) || 1 : 1, artFoot = foot - (board ? scale : 0) - (P.lift ? ok(() => P.lift(prop)) || 0 : 0);   // (lift: a drawing whose base runs below its foot, raised onto its own footprint)
       const im = h.add(image(scene, key, fx, artFoot)); if (!im) { h.destroy(); return null; }
       if (scale !== 1) im.setScale(scale / K);
       b = { x: fx + P.box[0] * scale, y: artFoot + P.box[1] * scale, width: (P.box[2] - P.box[0]) * scale, height: (P.box[3] - P.box[1]) * scale };
@@ -395,7 +398,7 @@ window.GardenPaintedProps = (function () {
       if (which === 'lakeboard') { const t0 = tightBox(im); if (t0 && Math.abs(t0.footX - fx) > 3) im.x += fx - t0.footX; }
       { const t = tightBox(im); if (t) { visual = b; b = t; } }
       if (which === 'fountain') addDrops(scene, h, fx, foot - 52, 16);
-      if (P.extra) ok(() => P.extra(scene, h, fx, artFoot, { season, night, prop, sc, more, W }));
+      if (P.extra) ok(() => P.extra(scene, h, fx, artFoot, { season, night, prop, sc, more, W, scale }));
     }
     // seated in the ground it stands on (94-garden-paint-terrain-5sights.js): a worn apron, foundation, contact, growth, a way to the path
     { const st = SEATS[which]; if (st !== false && window.GardenPaintSeat && o.layer) { const seat = ok(() => GardenPaintSeat.add(scene, o.layer, prop, W, Object.assign({ season, x: fx, foot }, st || {}))); if (seat) { const d0 = h.destroy; h.destroy = () => { seat.destroy(); d0(); }; } } }
@@ -795,6 +798,15 @@ window.GardenPaintedProps = (function () {
   }
   /** Where the Millwater bridge's oak patch lies along its deck (t from its west end, px): the planks and the one that is missing. */
   function millPlanks(L) { const t0 = L * .43, t1 = L * .57, n = 6, w = (t1 - t0) / n; return { span: [t0, t1], n, gap: 3, plank: i => [t0 + i * w + .35, t0 + (i + 1) * w - .35] }; }
+  /** A stair crossing's flight: centred on the path that climbs it (the route through the gate, read from the layout) and as
+   *  wide as that path, not the whole gap in the wall; px from the gate's frame centre. */
+  function stairFit(g, frame, half) {
+    const W = GARDEN_WORLD, D0 = typeof gardenIslandData === 'function' ? gardenIslandData() : null, cy = (frame.y - W.sky) / W.cellH;
+    let best = null;
+    for (const rt of (D0 && D0.routes) || []) { if (rt.gateId !== g.id || !rt.points) continue; for (const p of rt.points) { const x = Array.isArray(p) ? p[0] : p.x, y = Array.isArray(p) ? p[1] : p.y, d = Math.abs(y - cy) + Math.abs(x * W.cellW - frame.x) / W.cellW * .2; if (!best || d < best.d) best = { d, x, w: rt.widthCells || 2.4 }; } }
+    if (!best || best.d > 2) return { cx: 0, sw: half * 1.55 };
+    return { cx: Math.max(-half, Math.min(half, best.x * W.cellW - frame.x)), sw: Math.min(half * 1.55, Math.min(best.w, 2.6) * W.cellW * .5 * .66 + 2) };   // (the art is drawn a little larger than the cells: this matches the lane's painted width)
+  }
   function gateArt(kind, g, frame, season, open, crossing) {
     const side = Math.abs(frame.uy) > Math.abs(frame.ux), half = Math.max(46, Math.min(80, frame.span * .62)), r = rng(hash(g.id + kind));
     const L = leafOf(season), art = { S: frame.span * .9 };
@@ -802,7 +814,7 @@ window.GardenPaintedProps = (function () {
     // library objects standing in the crossing: [id, variant, size, dx, dy, 'back' | 'front']
     art.lib = kind === 'arch' ? []
       : kind === 'stair' ? [['tree.cherry', 0, { h: 104 }, -(side ? 30 : half * 1.55) - 58, -14, 'back'], ['tree.cherry', 1, { h: 96 }, (side ? 30 : half * 1.55) + 58, -10, 'back']]
-      : kind === 'pass' ? (side ? [['tree.pine', 0, { h: 170 }, 34, -art.S - 20, 'back'], ['rock.boulder', 0, { w: 96 }, 0, -art.S * .8, 'back'], ['rock.boulder', 1, { w: 110 }, 0, art.S * .8 + 6, 'front']] : [['tree.pine', 0, { h: 170 }, -half - 66, -16, 'back'], ['rock.boulder', 0, { w: 100 }, -half - 16, 2, 'back'], ['rock.boulder', 1, { w: 110 }, half + 18, 4, 'back']])   // (the boulders flank the stair, clear of its steps: the way up was a narrow gap, hunter, round 3)
+      : kind === 'pass' ? (side ? [['tree.pine', 0, { h: 170 }, 34, -art.S - 20, 'back'], ['rock.boulder', 0, { w: 96 }, 0, -art.S * .8, 'back'], ['rock.boulder', 1, { w: 110 }, 0, art.S * .8 + 6, 'front']] : [['rock.boulder', 0, { w: 100 }, -half - 24, 2, 'back']]   /* (Cloudbreak layout: no pine at the pass, its crown stood over the Way's fork; the west boulder a half cell further out, flanking the Way, not on it; no east boulder: its stack stood on the orchard field's hedge corner) */)
       : kind === 'ruin' ? [['tree.proof-yew', 0, { h: 130 }, side ? 40 : half + 52, side ? -art.S : -6, 'back']] : [];
     // what of the drawing blocks walking, [dx, dy, width] px from the crossing (read by gateTrees, so the feet follow the
     // art): the side-on forest arch's north oak and its two hedge banks, so the way through is the gap between them only
@@ -889,7 +901,10 @@ window.GardenPaintedProps = (function () {
       } else if (kind === 'stair') {
         // stone steps climbing through the gap in the terrace wall: they fill the wall's opening (its faces stand a
         // cell below the crossing line), their cheeks overlap the wall ends, a small oak gate at the top
-        const steps = 6, sw = side ? 30 : half * 1.55, dy = side ? 0 : 52, top = dy - steps * 9;
+        // (vale layouts: as wide as the path that climbs them and centred on it, stairFit: a flight the width of the whole wall
+        // gap read as flat bars pasted wider than the lane)
+        const st = side ? null : stairFit(g, frame, half), steps = 6, sw = side ? 30 : st.sw, dy = side ? 0 : 52, top = dy - steps * 9;
+        B.cx.save(); if (st) B.cx.translate(st.cx, 0);
         // (each tread is laid of slabs of their own widths with rounded ends, worn pale where the trail runs up the middle,
         // the outer slabs mossed and grassed over; the trail is trodden bare on to the bottom step and off the top one. A
         // flat striped rectangle with square ends, wider than its trail, read as pasted on; 19 Nov 2026)
@@ -936,15 +951,18 @@ window.GardenPaintedProps = (function () {
           B.post(lx - 7, y1 - 22, y1 + 4, 3, OAK).post(lx + 7, y1 - 22, y1 + 4, 3, OAK).beam(lx - 8, y1 - 24, 16, 3, OAK);
           B.f(B.rect(lx - 5.5, open ? y1 - 19 : y1 - 6, 11, 9), WOOD[1]).f(B.rect(lx - 5.5, open ? y1 - 19 : y1 - 6, 11, 1.6), WOOD[2]).s(`M${lx} ${y1 - 24}v${open ? 5 : 18}`, IRON[1], 1.4);
         }
+        B.cx.restore();
       } else {
         // the pass: boulders either side of the col, scree, heather, a cairn of stacked stones
         const rock = ['#a8a698', '#848274', '#cfccbe', '#666456'], o = side ? [[0, -half * .8], [0, half * .8]] : [[-half, 0], [half, 0]];
         for (const [x, y] of o) { B.shadow(x + 6, y + 2, 44, 10, .3); for (let i = 0; i < 6; i++) B.f(D().blob(r, x + (r() - .5) * 70, y + 6 + r() * 8, 9, 3.4, 7, .5), i % 2 ? '#8a6a8a' : '#a884a8', .85); }
         for (let i = 0; i < 14; i++) B.stone(r, (r() - .5) * (side ? 40 : half * 1.6), (side ? (r() - .5) * half * 1.4 : 4 + r() * 6), 2.6 + r() * 2, 1.8 + r(), rock, null);
         // (the cairn stood on the right half of the opened stair, over the boulder that blocks walking: it stands out past the boulder)
-        const cxx = side ? 26 : half + 78, cyy = side ? half * .2 : -6; let y = cyy;
-        for (const [w, h] of [[13, 6], [11, 5.4], [9, 5], [7, 4.4], [5, 3.8], [3.6, 3]]) { B.stone(r, cxx + (r() - .5) * 2, y, w, h, rock, null); y -= h * 1.5; }
-        if (open) B.s(`M${cxx} ${y}v-18`, WOOD[1], 1.4).f(B.poly([[cxx, y - 18], [cxx + 12, y - 15], [cxx, y - 11]]), '#c84a3a');
+        // (Cloudbreak layout: no marker cairn across a horizontal pass: east of the lane it stood against the scarp's end and the orchard
+        // field's hedge, west of it on the Way's paving; the Way's own cairns mark the col)
+        const cxx = side ? 26 : -half - 64, cyy = side ? half * .2 : -6; let y = cyy;
+        if (side) for (const [w, h] of [[13, 6], [11, 5.4], [9, 5], [7, 4.4], [5, 3.8], [3.6, 3]]) { B.stone(r, cxx + (r() - .5) * 2, y, w, h, rock, null); y -= h * 1.5; }
+        if (open && side) B.s(`M${cxx} ${y}v-18`, WOOD[1], 1.4).f(B.poly([[cxx, y - 18], [cxx + 12, y - 15], [cxx, y - 11]]), '#c84a3a');
         if (!side) {
           // the last climb: gritstone slabs stepping up the col, a smooth steep lip at the top that wants a rope
           // (the pass was a sign between two posts over flat grass: hunter, round 3); a tie post at the foot, a stake at the top
@@ -998,10 +1016,10 @@ window.GardenPaintedProps = (function () {
         });
       } else if (kind === 'stair') {
         // the oak gate at the top of the steps, shut
-        const sw = side ? 30 : half * 1.55, g = side ? 0 : 52 - 6 * 9 + 54; B.beam(-sw + 4, g - 92, sw * 2 - 8, 5, OAK).beam(-sw + 4, g - 66, sw * 2 - 8, 5, OAK);
-        for (let x = -sw + 8; x < sw - 6; x += 8) B.post(x, g - 94, g - 58, 3.4, OAK);
-        B.s(`M${-sw + 6} ${g - 64}L${sw - 6} ${g - 90}`, OAK[1], 3);
-        B.f(B.rr(-4, g - 82, 8, 7, 1.4), '#6a6e70');
+        const st = stairFit(g, frame, half), sw = st.sw, cx = st.cx, g0 = side ? 0 : 52 - 7 * 8.4 + 54; B.beam(cx - sw + 4, g0 - 92, sw * 2 - 8, 5, OAK).beam(cx - sw + 4, g0 - 66, sw * 2 - 8, 5, OAK);
+        for (let x = cx - sw + 8; x < cx + sw - 6; x += 8) B.post(x, g0 - 94, g0 - 58, 3.4, OAK);
+        B.s(`M${cx - sw + 6} ${g0 - 64}L${cx + sw - 6} ${g0 - 90}`, OAK[1], 3);
+        B.f(B.rr(cx - 4, g0 - 82, 8, 7, 1.4), '#6a6e70');
       } else if (!side) {
         // shut: nothing across the way but the bare lip too steep to climb; a cord of pennants marks it from the post
         B.s('M-28 -12Q-4 -24 22 -40', '#c8b080', 1.1);
@@ -1243,7 +1261,7 @@ window.GardenPaintedProps = (function () {
     });
     // trees on the scarp top are the library's own, like the planting round them (their trunks join the one trunk list: gateTrees)
     fallsFeet = [];
-    for (const [id, v, hh, dx, dy] of (fed ? [[season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 96, -S + 10], ['tree.pine', 1, 120, 150, -S - 4]] : [['tree.pine', 0, 150, -84, -S + 8], [season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 86, -S + 14], ['tree.pine', 1, 120, 30 + Wd / 2, -S - 6]])) { h.standing(libImage(scene, id, v, season, { h: hh }, ax + dx, ay + dy, false), ay + dy); fallsFeet.push([+((ax + dx) / o.W.cellW).toFixed(2), +((ay + dy - o.W.sky) / o.W.cellH).toFixed(2), hh > 140 ? .5 : .4]); }
+    for (const [id, v, hh, dx, dy] of (fed ? []   /* (Cloudbreak layout: no birch or pine on the lip beside the Edge walk: the birch's trunk stood on the scarp's face, the pine's crown over the walk; the plan's pines stand back from it) */ : [['tree.pine', 0, 150, -84, -S + 8], [season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 86, -S + 14], ['tree.pine', 1, 120, 30 + Wd / 2, -S - 6]])) { h.standing(libImage(scene, id, v, season, { h: hh }, ax + dx, ay + dy, false), ay + dy); fallsFeet.push([+((ax + dx) / o.W.cellW).toFixed(2), +((ay + dy - o.W.sky) / o.W.cellH).toFixed(2), hh > 140 ? .5 : .4]); }
     // The falling sheet stops the feet from its foot up to the cave stair's sill, so nobody walks into the water and stands
     // inside the falls (a gap was left between the rock's block and the pool's edge under it; water hunter, round 3). Shared
     // with the walking through the one trunk list (rows of boxes the sheet's width), like the scarp-top trees above.
@@ -1365,7 +1383,7 @@ window.GardenPaintedProps = (function () {
       const frame = g.crossSpan ? ok(() => _gldIslandGateFrame(g)) : null; if (!frame) continue;
       const art = ok(() => gateArt(gateKind(g), g, frame, 'summer', true, null)); if (!art) continue;
       for (const [id, , size, dx, dy] of art.lib) if (/^tree\./.test(id)) out.push([+((frame.x + dx) / W.cellW).toFixed(2), +((frame.y + dy - W.sky) / W.cellH).toFixed(2), size.h > 140 ? .5 : .4]);
-        else if (/^rock\./.test(id) && size.w) out.push([+((frame.x + dx) / W.cellW).toFixed(2), +((frame.y + dy + 1 - W.sky) / W.cellH).toFixed(2), +(size.w * .5 / W.cellW).toFixed(2)]);   // (the pass's boulders stand on (dx, dy) like the trees do: a block along that foot, half the stone wide. It used to sit a quarter of the stone's width lower, most of a row below the drawn boulder: the collision audit, 18 Nov 2026)
+        else if (/^rock\./.test(id) && size.w) { const side = Math.abs(frame.uy) > Math.abs(frame.ux); out.push([+((frame.x + dx) / W.cellW).toFixed(2), +((frame.y + dy + (side ? size.w * .26 : 6) - W.sky) / W.cellH).toFixed(2), +(size.w * .5 / W.cellW).toFixed(2)]); }   // (Cloudbreak layout: across a horizontal pass the boulders are drawn from their foot, so the block is at the foot, not 0.9 cells below it)   // (the pass's boulders, drawn from their middle: a block along their foot, half the stone wide)
       for (const [dx, dy, wpx] of art.feet || []) out.push([+((frame.x + dx) / W.cellW).toFixed(2), +((frame.y + dy - W.sky) / W.cellH).toFixed(2), +(wpx / W.cellW).toFixed(2)]);
     }
     gateTreesMemo = { d: D, out };

@@ -96,6 +96,7 @@ try {
   const result = await ev(`(${PAGE})(${JSON.stringify({ noDecor: process.argv.includes('--no-decor'), noPicture: process.argv.includes('--no-picture'), ...more })})`, 900000);
   result.label = LABEL; result.clock = CLOCK; result.errors = errors.slice(0, 20); result.when = new Date().toISOString();
   console.log('faults', result.total, JSON.stringify(result.counts.byKind));
+  if (result.shut && result.shut.length) console.log('shut until a level (not faults):', JSON.stringify(result.shut));
   // thumbnails with the collision view on, worst first (walk-through and invisible walls, then the rest)
   const order = { 'walk-through': 0, 'invisible-wall': 1, 'water-walkable': 1, 'shore-blocked': 1, 'cast-on-dry': 3, 'crossing-gap': 2, 'crossing-deck': 2, 'locked-edge': 2, 'path-blocked': 3, 'door-unreachable': 3, 'block-offset': 4, 'block-size': 5, 'drawn-blocked-walkable': 6, 'click-area': 7, 'decor-foot': 8, 'closed-edge': 2, 'draw-order': 3, overlap: 4, 'slide-stall': 6, 'slide-jitter': 6, 'route-none': 3, 'route-detour': 6, 'route-stall': 6 };
   const picks = result.faults.map((f, i) => ({ f, i })).filter(p => p.f.kind !== 'decor-foot').sort((a, b) => (order[a.f.kind] ?? 9) - (order[b.f.kind] ?? 9)).slice(0, THUMBS);

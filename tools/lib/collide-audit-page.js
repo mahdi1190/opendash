@@ -437,6 +437,7 @@
   const painted = (x0, y0, x1, y1, above) => { for (const fy of [.15, .5, .85]) for (const fx of [.15, .5, .85]) { const p = toPx(x0 + (x1 - x0) * fx, y0 + (y1 - y0) * fy); if (paintAt(p.X, p.Y)) return true; } if (above) for (const up of [10, 20, 30]) for (const fx of [.2, .5, .8]) { const p = toPx(x0 + (x1 - x0) * fx, y0); if (paintAt(p.X, p.Y - up)) return true; } return false; };   // (above: the body of a thing on legs, a bench's seat over the box between them)
   for (const r of D.rects) {
     if (r.form) continue;   // (a landform: its outline is checked against its drawing below)
+    if (/\(shut\)$/.test(r.src)) continue;   // (layfix east: a shut shortcut, the hurdle or the cliff gate, is drawn by its own wonder sprite, which this scan cannot sample; it is listed under 'shut' where it crosses a path)
     if (painted(r.x0 - .06, r.y0 - .1, r.x1 + .06, r.y1 + .04, true)) continue;
     if (mosaic.ok && !gardenIslandLandContains((r.x0 + r.x1) / 2, r.y1) && pixWater((r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2, (r.x1 - r.x0) * CW / 2, (r.y1 - r.y0) * CH / 2) < .3) continue;   // (out past the coast and the picture is not water: a wall painted into the ground, like the quay's sea wall)
     push({ kind: 'invisible-wall', obj: /trunk/.test(r.src) ? 'tree' : /harbour/.test(r.src) ? 'harbour' : /lamp|pier|post/.test(r.src) ? 'prop' : /wall|rock/.test(r.src) ? 'wall' : 'prop', name: r.src, x: (r.x0 + r.x1) / 2, y: r.y1, w: +(r.x1 - r.x0).toFixed(2), h: +(r.y1 - r.y0).toFixed(2), detail: 'box ' + [r.x0, r.y0, r.x1, r.y1].map(v => v.toFixed(2)).join(', ') + ' with nothing drawn on it' });
@@ -540,13 +541,17 @@
   const nearCrossing = (x, y) => crossGeo.some(c => { const ax = c.a.x / CW, ay = (c.a.y - W.sky) / CH, bx = c.b.x / CW, by = (c.b.y - W.sky) / CH, dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy || 1, t = Math.max(-.15, Math.min(1.15, ((x - ax) * dx + (y - ay) * dy) / L)); return Math.hypot((ax + dx * t - x) * CW, (ay + dy * t - y) * CH) < 60; });
   const decksNow = typeof gardenPierDecks === 'function' ? gardenPierDecks() : [];
   const onDeck = (x, y) => decksNow.some(p => x >= p.x - .2 && x <= p.x + p.w + .2 && y >= p.y - .2 && y <= p.y + p.h + .2);
-  let pathSamples = 0;
+  let pathSamples = 0; const shut = [];
+  // (vale layouts merge) a shortcut that opens at a level stands shut across its path in this level-1 save, drawn (a
+  // hurdle, the stream through a gap in the lip stones, a gate): that is a gate doing its job, not a fault. It is listed
+  // under 'shut' so it is still seen; anything else in the run makes it a fault as before.
+  const shutOnly = w => [...w].every(t => /\(shut\)|put back at level|^water$|^the feet test/.test(t)) && [...w].some(t => /\(shut\)|put back at level/.test(t));
   for (const r of island.routes || []) {
     if (!r.points || r.points.length < 2) continue;
     const pts = gardenIslandRoutePath(r).points, style = gardenIslandRoadStyle(r), half = Math.max(0, style.radius - GW_FOOT.x - .08);
     for (const lane of ['middle', 'edge']) {
       let run = null;
-      const flush = () => { if (run && run.n >= (lane === 'middle' ? 2 : 4)) push({ kind: 'path-blocked', obj: 'path', name: 'path ' + r.id + (lane === 'edge' ? ' (its width)' : ''), x: run.x, y: run.y, detail: (run.n * .4).toFixed(1) + ' cells of the path' + (lane === 'edge' ? '’s drawn width (' + (style.radius * 2).toFixed(1) + ' cells) cannot be walked: ' : ' blocked by ') + [...run.why].slice(0, 3).join('; ') }); run = null; };
+      const flush = () => { if (run && run.n >= 2 && shutOnly(run.why)) { if (lane === 'middle') shut.push({ path: r.id, x: +run.x.toFixed(2), y: +run.y.toFixed(2), by: [...run.why].join('; ') }); run = null; return; } if (run && run.n >= (lane === 'middle' ? 2 : 4)) push({ kind: 'path-blocked', obj: 'path', name: 'path ' + r.id + (lane === 'edge' ? ' (its width)' : ''), x: run.x, y: run.y, detail: (run.n * .4).toFixed(1) + ' cells of the path' + (lane === 'edge' ? '’s drawn width (' + (style.radius * 2).toFixed(1) + ' cells) cannot be walked: ' : ' blocked by ') + [...run.why].slice(0, 3).join('; ') }); run = null; };
       if (lane === 'edge' && half < .2) continue;
       for (let i = 1; i < pts.length; i++) {
         const p = pts[i - 1], q = pts[i], len = Math.hypot(q.x - p.x, q.y - p.y), n = Math.max(1, Math.round(len / .4)), ux = (q.x - p.x) * CW, uy = (q.y - p.y) * CH, ul = Math.hypot(ux, uy) || 1, nx = -uy / ul / CW, ny = ux / ul / CH;
@@ -1122,5 +1127,5 @@
   const counts = { byKind: {}, byRegion: {}, byObject: {}, byRegionKind: {} };
   for (const f of faults) { counts.byKind[f.kind] = (counts.byKind[f.kind] || 0) + 1; counts.byRegion[f.region] = (counts.byRegion[f.region] || 0) + 1; counts.byObject[f.obj] = (counts.byObject[f.obj] || 0) + 1; const k = f.region + ' / ' + f.kind; counts.byRegionKind[k] = (counts.byRegionKind[k] || 0) + 1; }
   const objKinds = {}; for (const o of all) objKinds[o.kind] = (objKinds[o.kind] || 0) + 1;
-  return { total: faults.length, counts, faults, scanned: { sprites: all.length, checked, shapeTrees, parts, groundRocks, byKind: objKinds, rects: D.rects.length, cells: D.cells.length, doors: doorsChecked, clicks: D.clicks.length, landforms: (island.landforms || []).length, routes: (island.routes || []).length, pathSamples, lockedPlots: plots.size, lockedEdges, shorePoints: shore.points, shoreDrawnDryNotes: shore.notes, crossings: crossingsChecked, decks: decksNow.length, picture: mosaic, decor, feel, walkTo, closed, order, shutOrder, overlap, wallLow } };
+  return { total: faults.length, counts, faults, shut, scanned: { sprites: all.length, checked, shapeTrees, parts, groundRocks, byKind: objKinds, rects: D.rects.length, cells: D.cells.length, doors: doorsChecked, clicks: D.clicks.length, landforms: (island.landforms || []).length, routes: (island.routes || []).length, pathSamples, lockedPlots: plots.size, lockedEdges, shorePoints: shore.points, shoreDrawnDryNotes: shore.notes, crossings: crossingsChecked, decks: decksNow.length, picture: mosaic, decor, feel, walkTo, closed, order, shutOrder, overlap, wallLow } };
 })

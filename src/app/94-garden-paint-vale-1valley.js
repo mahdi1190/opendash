@@ -914,6 +914,18 @@
       if (p.cells.length && regionKind(p.cells[0][0], p.cells[0][1]) === 'field') add(bb, 4000 + p.cells.length, (B, r0, cb) => fallow(B, P, p.cells, W, season, cb));
       add(bb, 4100 + p.cells.length, (B, r, cb) => fence(B, r, P, p.edges, W, season, cb, p));
     }
+    // (layfix east) where the valley's turf meets the beach the cells met in ruled square notches (a grass rectangle cut into the
+    // sand by the barn): the edge is blended, a feathered band of sandy turf with marram tufts on the sand side
+    { const edges = [];
+      for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) { if (!inValley(x, y)) continue; const b = gardenIslandBaseCell(x, y); if (!b || !b.land || b.beach || b.freshwater) continue;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = gardenIslandBaseCell(x + dx, y + dy); if (n && n.land && n.beach && !n.freshwater) edges.push([x, y, dx, dy]); } }
+      if (edges.length) { const xs = edges.map(e => e[0]), ys = edges.map(e => e[1]), bb = [Math.min(...xs) * cw - 40, W.sky + Math.min(...ys) * ch - 40, (Math.max(...xs) + 1) * cw + 40, W.sky + (Math.max(...ys) + 1) * ch + 40];
+        add(bb, 5190, (B, r) => {
+          B.cx.filter = 'blur(7px)';
+          for (const [x, y, dx, dy] of edges) { const cx0 = (x + .5 + dx * .5) * cw, cy0 = W.sky + (y + .5 + dy * .5) * ch; B.f(B.ell(cx0, cy0, dx ? 12 : cw * .62, dy ? 8 : ch * .62), season === 'winter' ? '#cfc8ae' : '#d6c896', .55); }
+          B.cx.filter = 'none';
+          if (season !== 'winter') for (const [x, y, dx, dy] of edges) for (let k = 0; k < 3; k++) { const t = r(), px = (x + .5 + dx * (.55 + r() * .3)) * cw + (dx ? 0 : (t - .5) * cw), py = W.sky + (y + .5 + dy * (.55 + r() * .3)) * ch + (dy ? 0 : (t - .5) * ch); for (let j = 0; j < 4; j++) B.s(`M${px + (r() - .5) * 6} ${py}q${(r() - .5) * 4} -5 ${(r() - .5) * 7} -${7 + r() * 5}`, r() < .5 ? '#9aa262' : '#b8b47a', 1, .85); }
+        }); } }
     // meadow flowers in the free valley grass: drifts, each drift one colour
     const data = gardenIslandData(), statics = data.static || [], free = [];
     const near = (x, y) => statics.some(s => x >= s.x - 1 && x <= s.x + s.w && y >= s.y - 1 && y <= s.y + s.h + 1 || s.apron && x >= s.apron.x && x < s.apron.x + s.apron.w && y >= s.apron.y && y < s.apron.y + s.apron.h);

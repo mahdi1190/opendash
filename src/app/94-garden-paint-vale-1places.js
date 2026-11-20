@@ -74,6 +74,7 @@
       const A = deck ? deck.a : { x: (mid.x + nx * span) * cw, y: W.sky + (mid.y + ny * span) * ch }, Bp = deck ? deck.b : { x: (mid.x - nx * span) * cw, y: W.sky + (mid.y - ny * span) * ch };
       const box = [Math.min(A.x, Bp.x) - 40, Math.min(A.y, Bp.y) - 40, Math.max(A.x, Bp.x) + 40, Math.max(A.y, Bp.y) + 40];
       if (c.kind === 'footbridge') { add(box, 61, (B, r) => footbridge(B, r, P, A, Bp, deck)); nearRail(thing, c, P, A, Bp, deck); }
+      else if (c.kind === 'log' && V.fallenLog) add(box, 62, (B, r) => V.fallenLog(B, r, P, A, Bp, C.season, deck));   // (round 3: Wren's log, 94-garden-paint-vale-1woodland.js)
       else add(box, 62, (B, r) => stones(B, r, P, A, Bp, C.season, deck));
     }
   }
@@ -139,6 +140,47 @@
       // Close-set low slabs expose the exact ford. The old oversized ellipses
       // hung beyond its edges and left invisible support between the stones.
       const { count, acrossRadius: hw } = deck.stones, q = (t, s) => deck.deckPoint(t, s), step = 1 / count;
+      const cid = deck.crossing && deck.crossing.id;
+      if (cid === 'lip-stones') {
+        // Cloudbreak's lip stones, a little above the falls: boulders of fell rock, each its own size and set a little off
+        // the line, sitting in the stream (the water breaks white on their upstream side and runs dark between them),
+        // their tops worn flat where feet go; together they still cover the whole footing
+        const tones = season === 'winter' ? ['#a9a89c', '#bdbcb0', '#9a9a8e'] : ['#8e877a', '#9c9484', '#857e70', '#a39a88'];
+        const gap = typeof window.gardenCloudbreakLipGap === 'function' && window.gardenCloudbreakLipGap() ? Math.floor(count / 2) : -1;   // (shortcut A: one stone rolled out of the line until level 6)
+        for (let i = 0; i < count; i++) {
+          const lo = i * step, hi = (i + 1) * step, mid = (lo + hi) / 2, off = (r() - .5) * hw * .35, sz = .9 + r() * .3, n = 9, a0 = r() * 6.3, pts = [];
+          if (i === gap) { for (let k = 0; k < 3; k++) { const p = q(mid + (k - 1) * (hi - lo) * .3, (r() - .5) * hw); B.s(`M${p.x - 6} ${p.y}q6 -3 12 0`, P.foam || '#eef2e2', 1.4, .7); } const p = q(mid + (hi - lo) * .2, hw * 1.5); B.stone(r, p.x, p.y + 4, 9, 5, { rock: '#8e877a', rockLo: '#5e584e', rockHi: '#b8b0a0', rockDk: '#2e2c28' }, null); continue; }
+          // (layout fix, north) each a flat-topped stone with running water showing between it and the next, in a line
+          // across the stream (set close and as wide as the ford they read as one heap of boulders); a stride apart
+          for (let j = 0; j < n; j++) { const a = a0 + j / n * Math.PI * 2, k = (.88 + r() * .18) * sz; pts.push([mid + Math.cos(a) * (hi - lo) * .4 * k, off * .5 + Math.sin(a) * hw * .78 * k]); }
+          { const p0 = q(lo + (hi - lo) * .04, 0), p1 = q(hi - (hi - lo) * .04, 0); if (i > 0 && i - 1 !== gap) B.s(`M${p0.x - 5} ${p0.y - 2}q4 3 8 0`, P.foam || '#eef2e2', 1.3, .8); void p1; }
+          const at = (pp, dy) => pp.map(([t, ds]) => { const p = q(t, ds); return [p.x, p.y + (dy || 0)]; });
+          B.f(B.poly(at(pts.map(([t, ds]) => [t, ds * 1.12]), 2)), P.foam || '#eef2e2', .55);   // the white water round its foot
+          B.f(B.poly(at(pts, 3.2)), '#3a3830', .9);   // its wet flank, standing out of the water
+          B.f(B.poly(at(pts)), tones[Math.floor(r() * tones.length)]);
+          B.f(B.poly(at(pts.map(([t, ds]) => [mid + (t - mid) * .8, off * .5 + (ds - off * .5) * .72 - hw * .1]))), '#c8c0aa', .7);   // the worn, flat, dry top
+          if (r() < .55) B.f(B.poly(at(pts.map(([t, ds]) => [mid + (t - mid) * .36, off + (ds - off) * .3 + hw * .45]))), season === 'winter' ? '#e8ecef' : '#5f7440', .55);   // moss on the shaded side
+        }
+        return;
+      }
+      if (cid === 'gorge-stones') {
+        // Cloudbreak's clapper bridge: two long granite slabs laid end to end on a pier stone in the stream and an abutment
+        // of piled stones on each bank, grey and lichened, a dark gap of water under each slab, worn pale along the middle
+        const tones = season === 'winter' ? ['#b8b8b0', '#c6c6be'] : ['#9a958a', '#a8a294'];
+        const at = (t, ds, dy) => { const p = q(t, ds); return [p.x, p.y + (dy || 0)]; };
+        for (const t of [0, .5, 1]) { const w0 = t === .5 ? .1 : .14; for (let k = 0; k < 4; k++) { const tt = t + (r() - .5) * w0, ds = (k / 3 - .5) * hw * 2.3; B.stone(r, ...at(Math.max(-.06, Math.min(1.06, tt)), ds, 5), 7 + r() * 3, 4 + r() * 2, { rock: '#8a8478', rockLo: '#5e594f', rockHi: '#b8b2a2', rockDk: '#2e2c28', lichen: '#c9c48a' }, season === 'winter' ? 'snow' : r() < .4 ? '#c9c48a' : null); } }
+        for (const [lo, hi] of [[-.02, .51], [.49, 1.02]]) {
+          const top = [at(lo, -hw), at(hi, -hw * .96), at(hi, hw * .98), at(lo, hw)];
+          B.f(B.poly(top.map(([x, y]) => [x + 1, y + 7])), '#22201c', .5);   // the gap under the slab
+          B.f(B.poly([top[3], top[2], [top[2][0], top[2][1] + 5], [top[3][0], top[3][1] + 5]]), '#6a655a');   // its front edge, the slab's thickness
+          B.f(B.poly(top), tones[lo < .2 ? 0 : 1]);
+          V.strokePts(B, [at(lo + .04, 0), at(hi - .04, 0)], '#cfc8b4', hw * .9, .45);   // worn pale along the middle
+          V.strokePts(B, [at(lo + .02, -hw + 1.4), at(hi - .02, -hw * .96 + 1.4)], '#e0d8c2', 1.3, .6);
+          for (let k = 0; k < 5; k++) { const [x, y] = at(lo + (hi - lo) * r(), (r() - .5) * hw * 1.6); B.f(B.blob(r, x, y, 2.4 + r() * 4, 1.2 + r() * 1.4, 6, .4), season === 'winter' ? '#e8ecef' : r() < .6 ? '#c9c48a' : '#9aa65a', .6); }
+          for (let k = 0; k < 3; k++) { const [x, y] = at(lo + (hi - lo) * (.2 + r() * .6), (r() - .5) * hw * 1.4); B.s(`M${x} ${y}l${3 + r() * 5} ${(r() - .5) * 3}`, '#5e594f', .9, .5); }
+        }
+        return;
+      }
       // (the estuary's stones too, in sea-grey granite with green weed at the tide: round 2 of the coast, 19 Nov 2026; they were
       // pale slabs on one dark bed, a plank causeway across the river mouth)
       if (deck.over === 'river') {
@@ -219,6 +261,7 @@
     const { L, add, thing, kit } = C, W = L.W;
     for (const f of L.D.landforms || []) {
       if (!f.polygon || f.polygon.length < 4) continue;
+      if (f.brick) continue;   // (the walled garden's brick wall: 94-garden-paint-vale-1oldwood.js)
       if (f.kind === 'ruin-wall') {
         const n = f.polygon.length >> 1, a = f.polygon.slice(0, n).map(L.pt), b = f.polygon.slice(n).reverse().map(L.pt), m = Math.min(a.length, b.length);
         // (and each point's two sides of the walking block, so the rubble at the wall's foot fills the whole block: 19 Nov 2026,
@@ -304,7 +347,9 @@
     for (const i of segs) {
       const p = C2[i], q = C2[i + 1], L = Math.hypot(q.x - p.x, q.y - p.y) || 1, nx = -(q.y - p.y) / L * T, ny = (q.x - p.x) / L * T * .6, h0 = H[i], h1 = H[i + 1];
       const foot = [{ x: p.x + nx, y: p.y + ny }, { x: q.x + nx, y: q.y + ny }, { x: q.x - nx, y: q.y - ny }, { x: p.x - nx, y: p.y - ny }], hs = [h0, h1, h1, h0];
-      const ob = band && Math.abs(q.y - p.y) > Math.abs(q.x - p.x) * .8 ? .6 : .32, up = (v, k) => ({ x: v.x - hs[k] * ob, y: v.y - hs[k] });   // (the old wall's north-south runs lean their east face further into view, or they read as a kerb)   // a touch of oblique, so walls running north-south show their east face
+      // a touch of oblique, so walls running north-south show their east face; more the more north-south the stretch runs
+      // (critic 3: the postern wall leant a third of its height and read as a flat line of low stones; the old wall's north-south runs further still)
+      const lean = band && Math.abs(q.y - p.y) > Math.abs(q.x - p.x) * .8 ? .6 : .32 + .3 * Math.abs(q.y - p.y) / L, up = (v, k) => ({ x: v.x - hs[k] * lean, y: v.y - hs[k] });
       for (let e = 0; e < 4; e++) {
         if ((e === 1 && i < C2.length - 2) || (e === 3 && i > 0)) continue;   // the ends between two stretches are inside the wall
         const v0 = foot[e], v1 = foot[(e + 1) % 4], ex = v1.x - v0.x, ey = v1.y - v0.y, onx = ey, ony = -ex;   // outward normal for a clockwise loop
@@ -338,7 +383,9 @@
     }
     // tumbled stones and ferns at the foot (the old wall: its rubble in front of it, over its whole block)
     if (band) { for (const it of rubble) if (!it.behind) drawRubble(B, r, it, season); return; }
-    for (let i = 0; i < C2.length; i++) { const p = C2[i]; if (r() < .6) B.stone(r, p.x + (r() - .5) * 16, p.y + 8 + r() * 8, 4 + r() * 4, 2.6 + r() * 1.6, ST, RUIN.moss); if (r() < .45) fern(B, r, p.x + (r() - .5) * 18, p.y + 10, season); }
+    // tumbled stones and ferns against the foot (layout round 3, critic 3: they lay up to half a cell out on the grass in front
+    // of the wall, where the feet walked over them; now they lean on the foot, where the wall stops the feet)
+    for (let i = 0; i < C2.length; i++) { const p = C2[i]; if (r() < .6) B.stone(r, p.x + (r() - .5) * 16, p.y + 1 + r() * 3, 4 + r() * 4, 2.6 + r() * 1.6, ST, RUIN.moss); if (r() < .45) fern(B, r, p.x + (r() - .5) * 18, p.y + 5, season); }
   }
   function fern(B, r, x, y, season) {
     const col = season === 'autumn' ? '#a8703a' : season === 'winter' ? '#8a6a4a' : '#4f7a3a', hi = season === 'autumn' ? '#c8904a' : '#7aa255';
@@ -378,8 +425,29 @@
     for (let i = 0; i < pts.length; i++) { if (Math.sin(i * .37) > .78) continue; const p = pts[i]; B.stone(r, p.x + (r() - .5) * 3, p.y + (r() - .5) * 2, 4.6 + r() * 2.6, 3 + r() * 1.2, { rock: RUIN.body, rockLo: RUIN.lo, rockHi: RUIN.hi, rockDk: RUIN.dk }, r() < .5 ? RUIN.moss : null); if (r() < .1) fern(B, r, p.x, p.y + 2, season); }
   }
 
+  // (layout fix, west) old flags lying in trodden earth (the ruin court, the postern yard): laid one by one, close in the
+  // middle and fewer toward the edge, where grass has taken them, so the paving thins out into the paths and the grass
+  // round it. A sheet of flags cut to the yard's outline over a lawn-coloured fill read as a round stone disc stamped on
+  // the junction, half on the path and half on the grass.
+  function brokenFlags(B, r, shape, bb, season) {
+    const pts = shape.map(p => Array.isArray(p) ? p : [p.x, p.y]), n = pts.length;
+    const inside = (x, y) => { let c = false; for (let i = 0, j = n - 1; i < n; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi || 1e-9) + xi) c = !c; } return c; };
+    const tones = season === 'winter' ? ['#c4c2b4', '#b0ae9e', '#d4d2c6'] : ['#bdb8a4', '#a9a490', '#cbc6b2', '#b3ae98'], moss = season === 'winter' ? '#e4e8e6' : season === 'autumn' ? '#8a8a46' : '#6f8a42';
+    for (let y = bb[1] + 4, row = 0; y < bb[3]; y += 11, row++) for (let x = bb[0] + (row % 2) * 12; x < bb[2]; x += 23 + r() * 4) {
+      const fx = x + r() * 3, fy = y + r() * 1.6; if (!inside(fx, fy)) continue;
+      let depth = 0; for (const d of [12, 24, 36]) if (inside(fx + d, fy) && inside(fx - d, fy) && inside(fx, fy + d * .62) && inside(fx, fy - d * .62)) depth++;
+      if (r() > [.3, .62, .88, .97][depth]) continue;   // the edge: mostly gone to grass
+      const w = 9.5 + r() * 3.5, h = 4.2 + r() * 1.2, tilt = (r() - .5) * .8;
+      B.f(B.ell(fx + 1, fy + 1.4, w, h), '#3a3a2a', .22);
+      B.f(`M${fx - w} ${fy + tilt}L${fx - w + 2} ${fy - h}L${fx + w - 1} ${fy - h - tilt}L${fx + w} ${fy + h * .4}L${fx + w - 2} ${fy + h}L${fx - w + 1} ${fy + h - .4}Z`, tones[Math.floor(r() * tones.length)]);
+      B.f(`M${fx - w + 2.5} ${fy - h + 1}L${fx + w - 2} ${fy - h + .6}L${fx + w - 3} ${fy - h + 2.2}L${fx - w + 2.5} ${fy - h + 2.6}Z`, '#e0dccb', .55);
+      if (r() < .18) B.s(`M${fx - w * .3} ${fy - h + 1}l${w * .5} ${h * 1.4}`, '#6a6656', .7, .6);   // a crack
+      if (r() < .45 || depth < 2) B.f(B.blob(r, fx + (r() - .5) * w, fy + h * .7, 3 + r() * 4, 1.2 + r() * .8, 6, .5), moss, .7);   // moss creeping in the joints
+    }
+    for (let k = 0; k < 16; k++) { const x = bb[0] + r() * (bb[2] - bb[0]), y = bb[1] + r() * (bb[3] - bb[1]); if (!inside(x, y)) continue; B.s(`M${x} ${y}q${(r() - .5) * 3} -3 ${(r() - .5) * 4} ${-4 - r() * 3}`, season === 'winter' ? '#b8b4a0' : '#6f8a42', 1.1, .85); }
+  }
   /* ---------- plazas and the Great Oak ---------- */
-  const STYLE = { 'cider-square': 'setts', 'mill-yard': 'yard', 'ruin-court': 'broken', 'lakeside-terrace': 'flags', 'great-oak-clearing': 'litter' };
+  const STYLE = { 'cider-square': 'setts', 'mill-yard': 'yard', 'ruin-court': 'broken', 'postern-yard': 'broken', 'lakeside-terrace': 'flags', 'great-oak-clearing': 'litter', 'woodpile-yard': 'earth', 'arch-forecourt': 'earth' };
   function plazas(C) {
     const { L, P, add, kit, thing } = C, cw = L.cw, ch = L.ch;
     for (const pz of L.pres.plazas || []) {
@@ -394,7 +462,7 @@
       const office = pz.id === 'lakeside-terrace' && L.stat('land-office');
       if (office && office.x < rt.points[0][0] + 1 && office.x + office.w > rt.points[0][0]) a = L.pt([office.x + office.w + .5, rt.points[0][1]]);
       // a shaped plaza (the Lakeside terrace's crescent, 2.74) is laid to its own outline; the rest are capsules along their spine
-      const shape = Array.isArray(pz.shape) && pz.shape.length > 2 ? V.shapeLoop(L, pz.shape) : V.capsule(kit.rng(seed), a, b, w / 2 * cw * .95 + 8, w / 2 * ch * 1.05 + 4, style === 'broken' || style === 'litter' ? .3 : pz.id === 'cider-square' ? .24 : .08), bb = kit.bboxOf(shape, 30);
+      const shape = Array.isArray(pz.shape) && pz.shape.length > 2 ? V.shapeLoop(L, pz.shape) : V.capsule(kit.rng(seed), a, b, w / 2 * cw * .95 + 8, w / 2 * ch * 1.05 + 4, style === 'broken' || style === 'litter' ? .3 : pz.id === 'cider-square' ? .24 : .08), bb = kit.bboxOf(shape, 40), soft = style === 'litter' || style === 'earth';
       add(bb, seed, (B, r) => {
         // (round 3, the valley chain: a working yard by a river meets it in one smooth quay line, its edge stones laid as a coping;
         //  the water's cell outline made a stepped, jagged edge along the mill race. Other plazas keep the outline as it was.)
@@ -404,7 +472,14 @@
         B.cx.clip(dry, 'evenodd');
         const kitYard = window.GardenPaintGround && (style === 'setts' || style === 'yard') ? GardenPaintGround.paths({ areas: [{ kind: 'setts', points: shape }], season: C.season, kindAt: () => 'meadow', box: { x: bb[0], y: bb[1], w: bb[2] - bb[0], h: bb[3] - bb[1] } }) : null;
         if (kitYard) for (const o of kitYard) { B.cx.save(); o.draw(B, r, bb); B.cx.restore(); B.cx.globalAlpha = 1; }
-        else if (style !== 'litter') { B.cx.filter = 'blur(3px)'; B.f(path, '#2e3420', .2); B.cx.filter = 'none'; }
+        else if (style !== 'litter' && style !== 'broken') { B.cx.filter = 'blur(3px)'; B.f(path, '#2e3420', .2); B.cx.filter = 'none'; }
+        // (round 3) a clearing or yard in the wood is trodden earth that thins into the grass at its edge: laid soft, in two
+        // blurred washes to its outline, not cut to it (a hard pale shape on the lawn)
+        if (soft) {
+          const tone = C.season === 'winter' ? ['#9a9a84', '#b0ae98'] : style === 'earth' ? ['#8a7650', '#a08a5e'] : ['#7e7a48', '#9a8a56'];
+          B.cx.filter = 'blur(9px)'; B.f(path, tone[0], .5); B.cx.filter = 'blur(4px)'; B.cx.save(); B.cx.translate(0, 0); B.f(path, tone[1], .42); B.cx.restore(); B.cx.filter = 'none';
+          for (let k = 0; k < 14; k++) { const x = bb[0] + 30 + r() * (bb[2] - bb[0] - 60), y = bb[1] + 30 + r() * (bb[3] - bb[1] - 60); if (B.cx.isPointInPath(path, x, y)) B.f(B.blob(r, x, y, 10 + r() * 18, 4 + r() * 6, 7, .5), r() < .5 ? '#6f8a42' : tone[0], .22); }   // grass coming back in patches, darker trodden hollows
+        }
         B.cx.save(); B.cx.clip(path);
         if (style === 'setts') { if (!kitYard) V.setts(B, r, P, bb, { size: 11, salt: seed, grout: '#a8987a', cols: ['#c9b994', '#c2b28c', '#d2c5a2', '#bcac86'] }); for (let k = 0; k < 18; k++) B.f(B.blob(r, bb[0] + r() * (bb[2] - bb[0]), bb[1] + r() * (bb[3] - bb[1]), 14 + r() * 20, 4 + r() * 5, 7, .5), r() < .5 ? '#e0d4b2' : '#9c8c68', .25);
           if (pz.id === 'cider-square') { const bw = bb[2] - bb[0], bh = bb[3] - bb[1];
@@ -420,8 +495,8 @@
           // (two long even brown lines read as rails laid across the yard; 19 Nov 2026)
           for (const o of [-9, 9]) { const pts = [{ x: a.x - 50, y: a.y + o + 7 }, { x: (a.x + b.x) / 2, y: a.y + o + 2 }, { x: b.x + 50, y: b.y + o - 8 }], run = V.walk(pts, 3);
             for (let i = 1; i < run.length; i++) { const t = i / run.length, e = Math.min(1, Math.min(t, 1 - t) * 5), n = kit.noise(run[i].x / 26, o, 233); if (n < .38) continue; const p = run[i - 1], q = run[i]; B.s(`M${p.x} ${p.y}L${q.x} ${q.y}`, '#7a5c3c', 3.4 + n * 2, .16 * e * n); if (n > .62) B.s(`M${p.x} ${p.y - 1}L${q.x} ${q.y - 1}`, '#f0e2bc', .9, .22 * e); } }
-          // flour: a fine dusting by the door, thickest at the sill, never a white puddle
-          for (let k = 0; k < 40; k++) { const x = a.x + (r() - .3) * (b.x - a.x + 80), y = a.y + (r() - .5) * 50; B.f(B.blob(r, x, y, 2 + r() * 5, 1 + r() * 1.8, 6, .6), '#f8f0dc', .1 + r() * .14); }
+          // (round 3, critic fix: flour blown right across the court read as white smears on the setts: a dusting on the step, only at the door)
+          { const mill = L.stat('ld-mill'), dx = mill && mill.door ? L.cpt(mill.door.x + .5, mill.door.y + .15) : null; if (dx) for (let k = 0; k < 6; k++) B.f(B.ell(dx.x + (r() - .5) * 34, dx.y + r() * 9, 3 + r() * 4, 1.2 + r() * 1.2), '#f4ead0', .55); }
           for (let k = 0; k < 70; k++) { const x = rx(), y = ry(); B.s(`M${x} ${y}l${(r() - .5) * 9} ${(r() - .5) * 3}`, r() < .7 ? '#e2bc5a' : '#c89a3c', 1.1, .8); }   // spilt straw
           for (let k = 0; k < 18; k++) B.f(B.ell(rx(), ry(), 1.8 + r() * 1.4, 1.1 + r() * .6), ['#b0682a', '#d38f3a', '#8a5a2c', '#7d8f4e'][Math.floor(r() * 4)], .75);   // a few blown leaves
           // the coping along the race: dressed edge stones, lit on top, a wet dark lip where they meet the water, moss in the joints
@@ -470,6 +545,14 @@
         }
         else if (style === 'broken') { B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), P.lawnLo); V.flags(B, r, Object.assign({}, P, { stone: '#bdb8a4', stoneLo: '#a29e8a', stoneHi: '#d2cebc', grout: '#7d7a68' }), bb, { row: 13, w: 24, salt: seed, broken: .2, moss: .3 }); }
         else if (style === 'flags') V.flags(B, r, P, bb, { row: 14, w: 26, salt: seed, moss: .04 });
+        else if (style === 'earth') {   // a woodland yard: wood chips and bark, sawdust by the block, leaves blown in, two cart ruts
+          const bw = bb[2] - bb[0], bh = bb[3] - bb[1], rx = () => bb[0] + r() * bw, ry = () => bb[1] + r() * bh;
+          for (let k = 0; k < bw * bh / 260; k++) { const x = rx(), y = ry(); B.s(`M${x} ${y}l${(r() - .5) * 6} ${(r() - .5) * 2.4}`, r() < .5 ? '#d8c08a' : '#7a5e3c', 1.6, .55); }
+          for (let k = 0; k < 6; k++) B.f(B.blob(r, rx(), ry(), 8 + r() * 10, 3 + r() * 3, 7, .5), '#e2cc96', .3);
+          // (critic round 2: no cart ruts: two straight lines across the yard read as ruled stripes)
+          const leaf = C.season === 'autumn' ? ['#b0682a', '#d38f3a', '#8a5a2c'] : ['#7d8f4e', '#8a7a4a'];
+          for (let k = 0; k < bw * bh / 500; k++) B.f(B.ell(rx(), ry(), 1.6 + r() * 1.4, 1 + r() * .6), leaf[Math.floor(r() * leaf.length)], .7);
+        }
         else { // the clearing under the oak: leaf litter, moss, roots running out from the trunk
           // (19 Nov 2026, round 3 fixes: no fill of its own, so no straight-edged lighter shape on the floor; the oak's litter lies
           //  in drifts round its foot, thick near the bole and thinning out to nothing well before the clearing's edge, each
@@ -494,7 +577,7 @@
       // dressing by job: the cider square's press, bell and lanterns; the mill yard's millstone and sacks; the court's fallen column
       const spot = (x, y) => L.free(x, y) && ['grass', 'path'].includes(L.kind(x, y));
       const put = (cands, key, box, draw, foot, ok) => { for (const [x, y] of cands) if ((ok || spot)(x, y)) { const p = L.cpt(x, y); thing({ key, box, x: p.x, y: p.y, draw, foot }); return; } };   // foot: [left, right, depth] px the feet cannot enter (GardenPaintVale.feet)
-      if (pz.id === 'cider-square') { put([[80.2, 36.4], [79.6, 35.4], [75.4, 37.6]], 'press', [-26, -50, 28, 6], drawPress(P), [-21, 23, 10]); put([[79.6, 38.3], [80.4, 38.6]], 'bell', [-14, -64, 16, 5], drawBell(P), [-6, 7, 6]); put([[76.9, 38.6], [78.2, 38.9]], 'baskets', [-24, -18, 26, 5], drawBaskets(P, C.season), [-18, 20, 8]); }
+      if (pz.id === 'cider-square') { if (!L.stat('ld-press')) put([[80.2, 36.4], [79.6, 35.4], [75.4, 37.6]], 'press', [-26, -50, 28, 6], drawPress(P), [-21, 23, 10]); if (!L.stat('ld-bell')) put([[79.6, 38.3], [80.4, 38.6]], 'bell', [-14, -64, 16, 5], drawBell(P), [-6, 7, 6]); /* (round 3 layouts: the hand-authored orchard has its own press and bell, ld-press and ld-bell) */ put([[77.1, 36.3], [76.3, 38.75]], 'baskets',   /* (High orchard fix round 2: by the lamp at the square's back edge, where the barrels are) */ [-24, -18, 26, 5], drawBaskets(P, C.season), [-18, 20, 8]); }
       if (pz.id === 'mill-yard') {
         // (round 3: the millstone stood alone in the middle of the yard. It leans on the mill's front wall now, past the door, and
         //  the sacks wait by the door: both from the mill's own layout row, the old spots kept only if the wall's foot is taken)
@@ -503,6 +586,21 @@
         // (the mill's front is its yard's apron, held for its door: these stand on it, against the wall, never on the door's own cell)
         const apron = (x, y) => { const b = typeof gardenIslandBaseCell === 'function' ? gardenIslandBaseCell(Math.floor(x), Math.floor(y)) : null; return !!(b && b.land && !b.freshwater && !b.solid && !(door && Math.floor(x) === door.x && Math.floor(y) === door.y)) || spot(x, y); };
         put([...atWall, [76.6, 64.6], [77.2, 65.2]], 'millstone', [-22, -40, 24, 6], drawMillstone(P), [-12, 11, 8], apron); put([...byDoor, [77.3, 66.9], [73.6, 67.4]], 'sacks', [-22, -24, 24, 5], drawSacks(P), [-18, 20, 8], apron);
+        // (layfix east) the yard at work, not a bare plaza: a hay wain unhitched by the barn, a stone trough and pump against the
+        // lamp in the yard's middle, barrels and a sack barrow by the mill's doors; the setts give way to weeds at the yard's edges
+        put([[87.1, 65.6], [86.9, 66], [87.3, 65.2]], 'yard-wain|' + C.season, [-72, -58, 52, 8], drawWain(P, C.season), [-38, 38, 10]);
+        put([[84.7, 67.1], [84.2, 66.9]], 'yard-trough', [-30, -50, 26, 6], drawTrough(P), [-26, 20, 8]);
+        put([[82.6, 67.5], [83.2, 67.3]], 'yard-sacks2', [-22, -24, 24, 5], drawSacks(P), [-18, 20, 8]);
+        put([[82.4, 64.9], [82.9, 65.0]], 'yard-barrels', [-22, -30, 22, 5], drawBarrels(P), [-17, 17, 8]);
+        { const sh = shape; if (sh && sh.length > 2) add(kit.bboxOf(sh, 30), seed + 3, (B, r) => { const path = new Path2D(B.poly(sh)); B.cx.save(); B.cx.clip(path);
+          // grass and weeds creep in round the edges and against the walls, where no wheel goes
+          for (let i = 0; i < sh.length; i++) { const a0 = sh[i], b0 = sh[(i + 1) % sh.length], l = Math.hypot(b0.x - a0.x, b0.y - a0.y); for (let t = 0; t < l; t += 9) { const x = a0.x + (b0.x - a0.x) * t / l + (r() - .5) * 10, y = a0.y + (b0.y - a0.y) * t / l + (r() - .5) * 6; if (r() < .7) B.f(B.blob(r, x, y, 6 + r() * 9, 2.4 + r() * 2, 7, .5), r() < .5 ? '#7d8a44' : '#96a052', .55); if (r() < .3) B.tufts(r, x, y + 2, 7, 3, ['#6f8a42', '#9cb062'], 5); } }
+          // the setts settled unevenly: grass grown up in the low joints in broad patches, a damp dark run below the trough
+          for (let k = 0; k < 9; k++) { const q = sh[Math.floor(r() * sh.length)], c = sh.reduce((m, p) => ({ x: m.x + p.x / sh.length, y: m.y + p.y / sh.length }), { x: 0, y: 0 }), t = .35 + r() * .45, x = q.x + (c.x - q.x) * t, y = q.y + (c.y - q.y) * t;
+            for (let j = 0; j < 14; j++) B.f(B.blob(r, x + (r() - .5) * 46, y + (r() - .5) * 16, 3 + r() * 4, 1.2 + r(), 5, .5), r() < .5 ? '#7d8a44' : '#96a052', .5); }
+          // a trodden band from the lane to the barn's doors, the setts darker and polished where the carts go
+          const a1 = L.cpt(80.4, 65.4), b1 = L.cpt(84.9, 64.6); B.cx.filter = 'blur(6px)'; V.strokePts(B, [a1, { x: (a1.x + b1.x) / 2, y: (a1.y + b1.y) / 2 + 8 }, b1], '#7a603c', 40, .14); B.cx.filter = 'none';
+          B.cx.restore(); }, {}); }
       }
       if (pz.id === 'ruin-court') { const c = L.cpt(pz.x + 1.4, pz.y + .9); add([c.x - 60, c.y - 30, c.x + 60, c.y + 30], 75, (B, r) => { B.shadow(c.x + 4, c.y + 6, 46, 8, .3); B.f(B.rr(c.x - 44, c.y - 7, 80, 14, 7), RUIN.body).f(B.rr(c.x - 44, c.y - 7, 80, 5, 2.5), RUIN.hi, .8).f(B.ell(c.x + 38, c.y, 6, 7), RUIN.lo).f(B.ell(c.x + 38, c.y, 3.4, 4), RUIN.dk, .3); for (let k = -36; k < 34; k += 9) B.s(`M${c.x + k} ${c.y - 6}v12`, RUIN.lo, .8, .5); B.f(B.blob(r, c.x - 10, c.y - 6, 22, 3, 7, .5), RUIN.moss, .8); fern(B, r, c.x - 50, c.y + 6, C.season); fern(B, r, c.x + 20, c.y + 9, C.season); }); }
       // The Great Oak, painted by the shared tree kit at the size standard (at least 8 H): its crown in lit leaf masses far wider
@@ -534,6 +632,33 @@
      .f(`M${x - 8 * s} ${y - 1}Q${x - 10 * s} ${y - 11 * s} ${x - 5 * s} ${y - 15 * s}L${x - 2 * s} ${y - 15 * s}Q${x - 6 * s} ${y - 10 * s} ${x - 4 * s} ${y - 1}Z`, '#f4ead0', .55)
      .f(`M${x - 2 * s} ${y - 16 * s}L${x - 4.5 * s} ${y - 19.5 * s}L${x - .5 * s} ${y - 17.5 * s}L${x + 1.5 * s} ${y - 19.8 * s}L${x + 2.5 * s} ${y - 16 * s}Z`, '#b8a47c').s(`M${x - 4 * s} ${y - 16 * s}l${8 * s} 0`, '#6a5434', 1.4)
      .s(`M${x + 1 * s} ${y - 14 * s}Q${x + 3 * s} ${y - 7 * s} ${x + 2 * s} ${y - 1}`, '#8a7650', .6, .5).f(B.ell(x - 3 * s, y - 4 * s, 4 * s, 1.6 * s), '#fbf6e8', .3); } };
+  // (layfix east) the mill yard's working things
+  const drawWain = (P, season) => B => { B.shadow(6, 3, 46, 7, .32);
+    B.f(B.ell(0, 2, 38, 3.4), season === 'winter' ? '#a89870' : '#c8a850').f(B.ell(-4, 1.4, 30, 2), season === 'winter' ? '#c0b08a' : '#e0c470', .9);   // (a bed of straw under it, its whole length)
+    for (let k = 0; k < 26; k++) { const x = -40 + k * 3.1; B.s(`M${x} ${2 + (k % 3)}l${(k % 2 ? 4 : -3)} ${-1 - (k % 2)}`, season === 'winter' ? '#b0a07a' : '#d8bc6a', 1.2, .95); }   // (straw dropped under it, along its whole length)
+    const wd = ['#8a6a44', '#6a5034', '#a8865a', '#4a3828'];
+    B.s('M-46 -8L-70 -2', wd[1], 3);   // the shafts down on the setts
+    B.s('M-44 -12L-68 -6', wd[1], 2.6);
+    B.f(B.poly([[-40, -30], [40, -30], [44, -14], [-44, -14]]), wd[0]).f(B.poly([[-40, -30], [40, -30], [41, -26], [-41, -26]]), wd[2], .8);
+    for (let x = -36; x < 40; x += 9) B.s(`M${x} -29V-15`, wd[3], .8, .5);
+    // its load of hay, combed and roped
+    B.f('M-38 -30Q-36 -52 -6 -54Q30 -54 38 -30Z', season === 'winter' ? '#b0a07a' : '#d8bc6a').f('M-34 -32Q-32 -48 -8 -50Q-12 -40 -10 -32Z', '#ecd894', .6);
+    for (let k = 0; k < 14; k++) B.s(`M${-30 + k * 4.6} -32l${(k % 3) - 1} -${8 + (k % 4) * 3}`, '#b89a54', .8, .6);
+    B.s('M-20 -50L-26 -30M14 -52L20 -30', '#6e5634', 1, .7);
+    for (const x of [-26, 26]) { B.f(B.circ(x, -8, 11), wd[3]).f(B.circ(x, -8, 9), 'rgba(0,0,0,0)'); B.s(B.circ(x, -8, 10), wd[1], 3); for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; B.s(`M${x} -8l${Math.cos(a) * 9} ${Math.sin(a) * 9}`, wd[0], 1.6); } B.f(B.circ(x, -8, 2.4), wd[3]); }
+  };
+  const drawTrough = P => B => { B.shadow(4, 2, 28, 5, .3);
+    B.f(B.rr(-26, -16, 40, 16, 3), '#8e8a7c').f(B.rr(-26, -16, 40, 4, 2), '#b8b4a2').f(B.rr(-23, -14, 34, 4, 1.6), '#46686c').f(B.rect(-23, -14, 34, 1.2), '#a8cace', .8);
+    B.f(B.ell(-18, -3, 5, 1.6), '#6f8a42', .6);
+    // the pump: a cast-iron column with a long handle, its spout over the trough
+    B.f(B.rr(10, -44, 9, 44, 2), '#3e4446').f(B.rect(10, -44, 3, 44), '#6a7274', .7).f(B.rr(8, -48, 13, 5, 2), '#2e3436');
+    B.s('M19 -40Q30 -46 34 -30', '#2e3436', 2.4).s('M10 -30h-8v4', '#2e3436', 3);
+    B.f(B.ell(2, -17, 2, 1), '#d4e6e4', .8);
+  };
+  const drawBarrels = P => B => { B.shadow(3, 1, 20, 4, .3);
+    for (const [x, y, k] of [[-9, 0, 1], [9, 0, 1], [0, -16, .9]]) { const w = 8.5 * k, h = 15 * k; B.f(B.rr(x - w, y - h, w * 2, h, 3), '#8a6236').f(B.rr(x - w, y - h, w * .7, h, 2), '#a87a46', .7); for (const t of [.2, .8]) B.s(`M${x - w} ${y - h * t}h${w * 2}`, '#3e3a36', 1.4); B.f(B.ell(x, y - h, w, 2.4), '#6e4e2a').f(B.ell(x, y - h, w - 1.6, 1.6), '#9a7044', .8); }
+  };
+  // (round 3, critic round 2: the crown's fade reaches its whole drawn underside: on the deer track the player's head was lost in it)
   const OAK_SCALE = 1.75;   // the vale's landmark tree: its crown stands over the woods, seen from the arch and from the green zoomed out
   const oakAt = (L, pz) => L.cpt(pz.x + 2.9, pz.y - 1.5);   // at the clearing's north-east edge, clear of the bench and the hollow oak
   function greatOak(B, r, P, season) {
@@ -556,7 +681,9 @@
     for (let i = 0; i < 26; i++) B.f(B.blob(r, -150 + r() * 220, -320 + r() * 120, 12, 8, 6, .5), L[3], .8);
     // sky gaps through the crown and limbs showing through them
     for (let i = 0; i < 7; i++) { const x = -150 + r() * 300, y = -300 + r() * 140, rx = 9 + r() * 8, ry = 6 + r() * 5; B.f(B.blob(r, x, y + 2, rx * 1.5, ry * 1.3, 8, .5), L[0], .38); B.s(`M${x - 12} ${y + 7}q9 -2 22 -11`, bark[0], 2.6, .55); }   // (shaded pockets with a limb in them: cut-out holes showed the lawn through the crown as grey patches)
-    if (season === 'autumn') for (let i = 0; i < 40; i++) B.f(B.ell(-200 + r() * 400, 2 + r() * 26, 2, 1.2), L[1 + Math.floor(r() * 3)], .85);
+    // (round 3) the fallen leaves round its foot under the alpha that reads as something standing: at .85 the lowest leaves
+    // were taken for the tree's own base, a cell in front of its trunk, where the feet could stand on it
+    if (season === 'autumn') for (let i = 0; i < 40; i++) B.f(B.ell(-200 + r() * 400, 2 + r() * 26, 2, 1.2), L[1 + Math.floor(r() * 3)], .3);
   }
 
   /* ---------- Hollin's woodpile by the ruins lane (woodland.md 17: stacked logs, a sawhorse, a kettle on a fire) ----------
@@ -625,10 +752,11 @@
       const c = L.cpt(ice.x + ice.w / 2, ice.y + ice.h);
       add([c.x - 120, c.y - 50, c.x + 120, c.y + 100], 73, (B, r) => {
         // a sunken way down to the door: two stone wing walls, worn steps, ferns and a drip of damp
-        const shape = `M${c.x - 26} ${c.y}L${c.x + 26} ${c.y}L${c.x + 40} ${c.y + 66}L${c.x - 40} ${c.y + 66}Z`;
+        // (layout round 3: four steps, so the way down ends at the round in front of the door and never runs on over the shore plots below it)
+        const shape = `M${c.x - 26} ${c.y}L${c.x + 26} ${c.y}L${c.x + 36} ${c.y + 42}L${c.x - 36} ${c.y + 42}Z`;
         B.f(shape, '#5e5a4c', .55);
-        for (let k = 0; k < 6; k++) { const y = c.y + 6 + k * 10, w = 26 + k * 2.4; B.f(B.rect(c.x - w, y, w * 2, 6), k % 2 ? '#a7a491' : '#bdb9a6').f(B.rect(c.x - w, y + 5, w * 2, 1.4), '#4e4a3e', .5); }
-        for (const s of [-1, 1]) for (let k = 0; k < 8; k++) { const t = k / 7, x = c.x + s * (28 + t * 16), y = c.y + t * 64; B.stone(r, x, y, 6, 4, { rock: RUIN.body, rockLo: RUIN.lo, rockHi: RUIN.hi, rockDk: RUIN.dk }, r() < .5 ? RUIN.moss : null); if (r() < .4) fern(B, r, x + s * 10, y + 4, C.season); }
+        for (let k = 0; k < 4; k++) { const y = c.y + 6 + k * 9, w = 26 + k * 2.4; B.f(B.rect(c.x - w, y, w * 2, 6), k % 2 ? '#a7a491' : '#bdb9a6').f(B.rect(c.x - w, y + 5, w * 2, 1.4), '#4e4a3e', .5); }
+        for (const s of [-1, 1]) for (let k = 0; k < 6; k++) { const t = k / 5, x = c.x + s * (28 + t * 12), y = c.y + t * 40; B.stone(r, x, y, 6, 4, { rock: RUIN.body, rockLo: RUIN.lo, rockHi: RUIN.hi, rockDk: RUIN.dk }, r() < .5 ? RUIN.moss : null); if (r() < .4) fern(B, r, x + s * 10, y + 4, C.season); }
         B.f(B.blob(r, c.x, c.y + 4, 22, 5, 7, .4), '#3e4a3a', .5);
       });
     }

@@ -262,18 +262,22 @@ window.GardenPaintVale = (function () {
   function paint(scene, root, info, objects) {
     if (!wanted() || !info || !info.data || window.__gpvOff) { clear(); return; }
     const t0 = performance.now(), kit = KIT(), W = info.W, season = info.season || 'summer', P = PAL[season] || PAL.summer;
-    const L = readLayout(W, info.data, info.cellAt), sig = 'gpv-1|' + season + '|' + (GardenIslandLayout.fingerprint || ''), groundSig = sig + '|g|' + L.soil.sig + groundSigs.map(f => ok(f) || '').join('');   // (an area part whose ground follows the garden adds its key: 94-garden-paint-vale-1valley.js)
+    // stateSig: what the parts' level-tied art says about the garden now (a rope that comes down at a level, a stone rolled
+    // back into the line, a field's fence). The composition is memoised on it too, so when the level changes during a
+    // session the next repaint composes again and nothing stays drawn that the walk has already opened (round 3 review).
+    const stateSig = groundSigs.map(f => ok(f) || '').join('');
+    const L = readLayout(W, info.data, info.cellAt), sig = 'gpv-1|' + season + '|' + (GardenIslandLayout.fingerprint || ''), groundSig = sig + '|g|' + L.soil.sig + stateSig, compSig = sig + '|s|' + stateSig;   // (an area part whose ground follows the garden adds its key: 94-garden-paint-vale-1valley.js)
     clear(groundSig);
     // Only crossing water uses the four water-light palettes. Keep the ground
     // and standing-object caches unchanged when that discrete bucket changes.
     const waterTod = ['dawn', 'dusk', 'night'].includes(info.tod) ? info.tod : 'day', underSig = sig + '|u|' + waterTod + '|';
     // the composition is the same for the same picture: compose once, then a repaint (a gate opening) only places it
-    let comp = memo.get(sig);
+    let comp = memo.get(compSig);
     if (!comp) {
       comp = { L, ground: [], main: [], under: [], things: [], live: [] };
       const ctx = { L, P, season, tod: info.tod, kit, W, sig, add: (bb, seed, draw, extra) => comp.ground.push(Object.assign({ bb, seed, draw }, extra || {})), main: (bb, seed, draw) => comp.main.push({ bb, seed, draw }), under: o => comp.under.push(o), thing: o => comp.things.push(o), live: o => comp.live.push(o) };   // (live: drawn each frame near the camera, the swash)
       for (const p of parts) ok(() => p.compose(ctx));
-      memo.clear(); memo.set(sig, comp);
+      memo.clear(); memo.set(compSig, comp);
       // the standing things that say where their foot is: walking stops the feet there (_gwBuildSolids)
       const cw = W.cellW, ch = W.cellH, names = { 'cold-cove-rock': 'shore boulder', block: 'chopping block', 'chapel-stone': 'chapel stone' };
       feetNow = comp.things.filter(o => o.foot && o.key).map(o => { const id = o.key.split('|')[0], name = names[id.replace(/-\d+$/, '')] || id; return Object.freeze({ x0: (o.x + o.foot[0]) / cw, y0: (o.y - o.foot[2] - W.sky) / ch, x1: (o.x + o.foot[1]) / cw, y1: (o.y + 2 - W.sky) / ch, src: 'painted ' + name }); });
@@ -282,8 +286,11 @@ window.GardenPaintVale = (function () {
     const { ground, main, under, things } = comp;
     const worldBox = { x: -1800, y: -1200, w: W.cols * W.cellW + 4800, h: W.sky + W.rows * W.cellH + 2600 };
     const gBox = { x: 0, y: 0, w: W.cols * W.cellW, h: W.sky + W.rows * W.cellH };
-    const handles = []; let groundHandle = null;
-    if (ground.length) handles.push(groundHandle = kit.chunked(scene, root, ground, { key: groundSig, box: gBox, K: 1.1, chunk: 256, depth: DEPTH, budgetMB: 28, lazy: true, slice: 10 }));
+    const handles = []; let groundHandle = null, softHandle = null;
+    if (ground.length) handles.push(groundHandle = kit.chunked(scene, root, ground, { key: groundSig, box: gBox, K: 1.1, chunk: 256, depth: DEPTH, budgetMB: 24, lazy: true, slice: 8 }));
+    // (rule 16) a soft copy of the same ground at a quarter of the detail, in big chunks that bake ahead while you stand still:
+    // where a sharp chunk is still to come (walking fast, a repaint at a new level) you see this, never flat lawn
+    if (ground.length) handles.push(softHandle = kit.chunked(scene, root, ground, { key: groundSig + '|soft', box: gBox, K: .28, chunk: 768, depth: DEPTH - 1, budgetMB: 6, lazy: true, slice: 6, prebake: true, under: groundHandle }));
     if (main.length) handles.push(kit.chunked(scene, root, main, { key: sig + '|m', box: worldBox, K: .35, chunk: 512, depth: MAIN_DEPTH, budgetMB: 10, lazy: true, slice: 10, prebake: true }));
     // Standing things and the crossings' water: a texture already baked is shown at once; a new one waits in a queue
     // that tick() bakes nearest the camera first, a few milliseconds a frame (so a repaint never freezes a frame).
@@ -305,7 +312,7 @@ window.GardenPaintVale = (function () {
     // the live things (the swash on the beaches): one graphics each just over the ground, drawn by tick() near the camera only
     const lives = []; for (const o of comp.live || []) { const h = ok(() => o.make(scene, root, DEPTH + .5)); if (h && h.obj) { sprites.push(h.obj); lives.push(h); } }
     if (root.sort) root.sort('depth'); if (objects && objects.sort) objects.sort('depth');
-    cur = { sig, groundSig, handles, groundHandle, sprites, scene, queue, make, objects, root, tall, shrink, bob, lives, W, covering: [] };
+    cur = { sig, groundSig, handles, groundHandle, softHandle, sprites, scene, queue, make, objects, root, tall, shrink, bob, lives, W, covering: [] };
     stats.buildMs = Math.round(performance.now() - t0);
   }
   function tick(time, view) {
@@ -333,11 +340,11 @@ window.GardenPaintVale = (function () {
     if (cur) {
       for (const h of cur.handles) ok(() => h.destroy(true));
       for (const s of cur.sprites) ok(() => s.destroy());
-      heldGround = { sig: cur.groundSig, handle: cur.groundHandle }; cur = null;
+      heldGround = { sig: cur.groundSig, handle: cur.groundHandle, soft: cur.softHandle }; cur = null;
     }
     // Nature releases the old scene before calling paint. Retain its handle
     // until the next signature is known, then discard obsolete soil masks.
-    if (nextGroundSig && heldGround && heldGround.sig !== nextGroundSig) { if (heldGround.handle) ok(() => heldGround.handle.destroy(false)); heldGround = null; }
+    if (nextGroundSig && heldGround && heldGround.sig !== nextGroundSig) { if (heldGround.handle) ok(() => heldGround.handle.destroy(false)); if (heldGround.soft) ok(() => heldGround.soft.destroy(false)); heldGround = null; }
   }
   function pendingGround() { return cur && cur.groundHandle ? cur.groundHandle.pendingInView() : 0; }
   function status() {
@@ -354,6 +361,6 @@ window.GardenPaintVale = (function () {
     cx.restore(); return { ops: ops.length, lastError };
   }
   /** Landform kinds painted here (the world skips its own art for them). */
-  function owns(kind) { return (kind === 'ruin-wall' || kind === 'ruin') && wanted(); }
+  function owns(kind) { return (kind === 'ruin-wall' || kind === 'ruin' || kind === 'screen') && wanted(); }   // (round 3: the valley's screens, 94-garden-paint-vale-2valley-screens.js)
   return { feet: () => (wanted() ? feetNow : []), feetSig: () => (wanted() ? feetSig : ''), parts, groundSigs, softRoutes, PAL, wanted, paint, tick, clear, pendingGround, playerCanopies: () => cur ? cur.covering : null, status, paintTo, owns, readLayout, loopPath, smoothLoop, strokePts, routeRibbon, shapeLoop, clipGround, groundClips, walk, lobe, capsule, hull, lawn, flags, setts, ok, get lastError() { return lastError; } };
 })();

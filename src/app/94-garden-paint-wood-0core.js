@@ -95,7 +95,8 @@ window.GardenPaintWood = (function () {
     // a story house in the woods (Hollin's hut, Thistle's old house) stands in a small glade, open to the south so the canopy never hides it
     const houses = (data.static || []).filter(s => /^ld-(woodhut|oldhouse|house)$/.test(s.id));   // (ld-house: the shut cottage up by Foxglove spring was hidden behind a row of crowns)
     for (const h of houses) plazas.push({ id: h.id + '-glade', x: h.x + (h.w || 1) / 2, y: h.y + 2.4, rx: 2.8, ry: 3, house: true });
-    const statics = new Set(); for (const s of data.static || []) for (const b of [s, s.apron].filter(Boolean)) for (let y = Math.floor(b.y) - 1; y <= b.y + (b.h || 1) + 4; y++) for (let x = Math.floor(b.x) - (y > b.y + (b.h || 1) ? 2 : 1); x <= b.x + (b.w || 1) + (y > b.y + (b.h || 1) ? 1 : 0); x++) statics.add(x + ',' + y);
+    // (round 3, critic round 2: a low seat keeps a row clear in front of it, not four: the bare strip in front of Wren's seat read as a dark band)
+    const statics = new Set(); for (const s of data.static || []) for (const b of [s, s.apron].filter(Boolean)) for (let y = Math.floor(b.y) - 1, low = (Number(s.tall) || 1) < 1; y <= b.y + (b.h || 1) + (low ? 1 : 4); y++) for (let x = Math.floor(b.x) - (y > b.y + (b.h || 1) ? 2 : 1); x <= b.x + (b.w || 1) + (y > b.y + (b.h || 1) ? 1 : 0); x++) statics.add(x + ',' + y);
     const wet = c => !c || c.water || ['ocean', 'water', 'pool', 'lake', 'ice', 'beach'].includes(c.material);
     const isPath = c => c && (c.route || c.material === 'path');
     const near = (x, y, r, test) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (test(cellAt(x + dx, y + dy))) return true; return false; };
@@ -109,6 +110,7 @@ window.GardenPaintWood = (function () {
     const routeLines = [];
     for (const route of data.routes || []) {
       if (!route.points || route.points.length < 2) continue;
+      if (route.track && route.zone === 1 && route.id !== 'wren-log') continue;   // (round 3: the woodland's deer track is the floor trodden flat, not a cut through it)
       const pts = gardenIslandRoutePath(route).points, p = new Path2D(); if (pts.length < 2) continue;
       p.moveTo(px(pts[0].x), py(pts[0].y)); for (let i = 1; i < pts.length; i++) p.lineTo(px(pts[i].x), py(pts[i].y));
       const width = gardenIslandRoadStyle(route).main ? 40 : 26;
@@ -161,7 +163,9 @@ window.GardenPaintWood = (function () {
       // 1.5 rows north of the clearing's middle): no tree in front of its bole, none under its crown, so the landmark reads at once
       const goc = (pres.plazas || []).find(p => p.id === 'great-oak-clearing'), oakFoot = goc ? { x: goc.x + 2.9, y: goc.y - 1.5 } : null;
       const byOak = (x, y) => !!oakFoot && kitWood && Math.abs(x + .5 - oakFoot.x) < 6.8 && y + 1 - oakFoot.y > -9.5 && y + 1 - oakFoot.y < 3.6;
-      const clear = (x, y) => plazas.some(p => Math.hypot((x - p.x) / ((p.rx || 3.2) + 1), (y - p.y) / ((p.ry || 2.4) + 1)) < 1);
+      // (the old woodland's planting rules: no crown over its court, yards, garden, maze, chapel step or the view across the pond)
+      const treeless = (pres.oldwood && pres.oldwood.treeless || []).map(t => t.box);
+      const clear = (x, y) => plazas.some(p => Math.hypot((x - p.x) / ((p.rx || 3.2) + 1), (y - p.y) / ((p.ry || 2.4) + 1)) < 1) || treeless.some(b => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]);
       // the gates stay in view: no tree stands on a gate, nor where its crown would hide the arch, bridge or stair (the canopy rises up the screen)
       // (in the old wood, a few rows past its arch, yews may stand two cells off the lane and lean over it: the Hush is a yew
       //  tunnel, its crowns fading as you walk under them; nearer the arch, and anywhere else, the gate stays clear)
@@ -180,7 +184,12 @@ window.GardenPaintWood = (function () {
         // everywhere else, the valley meadow included (94-garden-paint-vale-1valley.js, which skips THICKET_WOODS).
         // (19 Nov 2026, round 2: one knot is composed for each plot, not one bush a cell: a plot of two rows read as two
         //  ruled bramble strips, repeated down every unbought plot in the wood)
-        if (def.mood !== 'meadow' && c.locked && c.row && /^l[sc]-/.test(c.row.id || '') && !c.plantingReserved && !isPath(c)) { if (!window.GardenPaintTrees) { thicket(out, x, y, px, py, region.id); continue; } const k = c.row.id; if (!knots.has(k)) knots.set(k, []); knots.get(k).push([x, y]); continue; }
+        if (def.mood !== 'meadow' && c.locked && c.row && /^l[sc]-/.test(c.row.id || '') && !c.plantingReserved && !isPath(c)) {
+          // (layout round 3 fixes: in the old wood a shut plot is a tangle of bracken and fern, waist high, with a holly or
+          //  a bramble knot only here and there: a shrub on every cell stood in rows like a nursery)
+          if (def.mood === 'old' && h3(x, y, 61) > .38) { for (let k = 0; k < 2; k++) out.floors.push({ kind: 'stamp', id: h3(x, y, 62 + k) < .65 ? 'plant.bracken' : 'plant.fern', v: Math.floor(h3(x, y, 64 + k) * 3), h: 30 + h3(x, y, 66 + k) * 14, x: px(x + .25 + k * .5) + (h3(x, y, 68 + k) - .5) * 16, y: py(y + .55 + k * .4) + (h3(x, y, 70 + k) - .5) * 8 }); continue; }
+          if (!window.GardenPaintTrees) { thicket(out, x, y, px, py, region.id); continue; } const k = c.row.id; if (!knots.has(k)) knots.set(k, []); knots.get(k).push([x, y]); continue;
+        }
         if (c.plantingReserved || isPath(c) || statics.has(x + ',' + y) || (c.row && c.row.plot && !c.locked) || clear(x + .5, y + .5) || byGate(x, y) || byFind(x, y) || byOak(x, y) || byLamp(x + .5, y + 1) || byPile(x + .5, y + 1)) continue;
         const grove = noise(x, y, 5, hash(region.id) & 1023), dense = noise(x, y, 2.2, 77), pathNear = near(x, y, 1, isPath), waterNear = near(x, y, 1, wet);
         // groves where the field is high, glades where it is low; a fringe of shrubs at path edges

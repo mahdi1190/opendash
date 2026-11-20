@@ -18,7 +18,7 @@
    ============================================================ */
 const _gcv = { on: false, g: null, feet: null, nw: null, key: '', raf: 0, tip: null, legend: null, data: null, box: null, move: null, tap: null, tipT: 0 };
 const GCV_COL = Object.freeze({ block: 0xd8432f, water: 0x2f6fd8, click: 0x2a6fe0, door: 0x2fae4a, start: 0x1d8a3a });
-const _GCV_LANDFORM = Object.freeze({ 'ruin-wall': 'ruin wall', ruin: 'ruin', 'rock-wall': 'rock wall', 'terrace-wall': 'terrace wall', mountain: 'mountain' });
+const _GCV_LANDFORM = Object.freeze({ 'ruin-wall': 'ruin wall', ruin: 'ruin', 'rock-wall': 'rock wall', 'terrace-wall': 'terrace wall', mountain: 'mountain', screen: 'hedge, wall or reeds' });
 function gardenCollideOn() { return !!_gcv.on; }
 /** Why the walking grid blocks this cell (the same tests as _gwBuildGrid), in plain words; '' when it does not. */
 function _gcvCellWhy(x, y, m) {
@@ -58,7 +58,7 @@ function gardenCollideData(mArg) {
     let own, poly = null;
     // (a crossing's click area is its own deck, not its cell: 94-garden-native-world.js pick)
     if (md.crossingSupport && md.crossingSupport.length > 2) { poly = md.crossingSupport.map(q => ({ x: q.x / W.cellW, y: (q.y - W.sky) / W.cellH })); own = { x0: Math.min(...poly.map(q => q.x)), y0: Math.min(...poly.map(q => q.y)), x1: Math.max(...poly.map(q => q.x)), y1: Math.max(...poly.map(q => q.y)) }; }
-    else if (gardenPropCol(p) === 'soft') { const cx = p.x + (p.w || 1) / 2, foot = p.y + (p.h || 1) - .08; own = { x0: cx - .3, y0: foot - .55, x1: cx + .3, y1: foot + .05 }; }
+    else if (gardenPropCol(p) === 'soft') { const cx = p.x + (p.w || 1) / 2, foot = p.y + (p.h || 1) - .08, hw = p.hit ? p.hit[0] : .3, hh = p.hit ? p.hit[1] : .55; own = { x0: cx - hw, y0: foot - hh, x1: cx + hw, y1: foot + .05 }; }
     else own = { x0: p.x, y0: p.y, x1: p.x + (p.w || 1), y1: p.y + (p.h || 1) };
     clicks.push({ id: p.id, name: p.name || p.id, own, poly, art, door: p.door ? { x0: p.door.x + .08, y0: p.door.y + .16, x1: p.door.x + .92, y1: p.door.y + .84 } : null, act: !!p.act });
   }

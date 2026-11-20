@@ -1,0 +1,2171 @@
+{
+ "note": "High orchard, hand-authored (round 3 layouts, 19 Nov 2026; plan C:/tmp/layouts/orchard/final). Cell coordinates. Read by tools/garden-vale-layout.mjs (never at run time): route splines (control points, a width per point), the cider square shape, the four terrace walls (thin: they block their line, open where a path climbs them), the dip, static moves and new statics, the 20 orchard sections in 8 fields, and presentation points for the ring and the Mother tree (painted trees, not statics).",
+ "region": "orchard-headland",
+ "figureHeightRows": 1.7,
+ "routes": [
+  {
+   "id": "orchard-stair",
+   "tier": "lane",
+   "gateId": "island-orchard",
+   "surface": "steps",
+   "control": [
+    [
+     80.2,
+     50.4
+    ],
+    [
+     79.9,
+     48.4
+    ],
+    [
+     79.6,
+     46.4
+    ],
+    [
+     79.2,
+     44.2
+    ],
+    [
+     78.9,
+     42.2
+    ],
+    [
+     78.7,
+     40.2
+    ],
+    [
+     78.6,
+     38.6
+    ]
+   ],
+   "widths": [
+    2.6,
+    2.4,
+    3.2,
+    2.4,
+    2.8,
+    2.4,
+    3.2
+   ],
+   "fixed": [
+    [
+     80.2,
+     50.4
+    ]
+   ]
+  },
+  {
+   "id": "orchard-rows",
+   "tier": "trail",
+   "control": [
+    [
+     78.6,
+     45.6
+    ],
+    [
+     75.6,
+     45.35
+    ],
+    [
+     72.4,
+     45.35
+    ],
+    [
+     69.2,
+     45.35
+    ],
+    [
+     66.4,
+     45.35
+    ],
+    [
+     64.6,
+     45.1
+    ],
+    [
+     63.5,
+     43.8
+    ],
+    [
+     63.4,
+     41.6
+    ],
+    [
+     63.4,
+     39.6
+    ],
+    [
+     64,
+     38.2
+    ],
+    [
+     65.6,
+     37.9
+    ],
+    [
+     67.6,
+     37.9
+    ],
+    [
+     69.8,
+     38.3
+    ],
+    [
+     71.6,
+     39.4
+    ],
+    [
+     73.2,
+     38.3
+    ],
+    [
+     74.4,
+     37.9
+    ],
+    [
+     75.6,
+     37.8
+    ]
+   ],
+   "widths": [
+    2.4,
+    2,
+    2,
+    2,
+    2,
+    2,
+    1.8,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2.6,
+    2,
+    2,
+    2.4
+   ]
+  },
+  {
+   "id": "mother-walk",
+   "tier": "trail",
+   "isNew": true,
+   "control": [
+    [
+     80.6,
+     45.8
+    ],
+    [
+     82.2,
+     45.5
+    ],
+    [
+     83.8,
+     44.7
+    ],
+    [
+     85,
+     43.5
+    ],
+    [
+     85.8,
+     42.4
+    ]
+   ],
+   "widths": [
+    2.6,
+    2.4,
+    2.4,
+    2.2,
+    2.6
+   ]
+  },
+  {
+   "id": "east-beach",
+   "tier": "trail",
+   "control": [
+    [
+     81.6,
+     38.4
+    ],
+    [
+     82.8,
+     39.6
+    ],
+    [
+     84,
+     40.6
+    ],
+    [
+     85,
+     41.4
+    ],
+    [
+     85.8,
+     42.4
+    ]
+   ],
+   "widths": [
+    2.4,
+    2,
+    2,
+    2,
+    2.6
+   ]
+  },
+  {
+   "id": "cliff-steps",
+   "tier": "trail",
+   "surface": "steps",
+   "isNew": true,
+   "optional": true,
+   "opens": "from the top, the first time you reach the pippin",
+   "control": [
+    [
+     85.8,
+     42.4
+    ],
+    [
+     86.1,
+     40.8
+    ],
+    [
+     86.4,
+     39.2
+    ]
+   ],
+   "widths": [
+    2,
+    1.8,
+    2
+   ]
+  },
+  {
+   "id": "cliff-walk",
+   "tier": "trail",
+   "isNew": true,
+   "control": [
+    [
+     86.4,
+     39.2
+    ],
+    [
+     87.2,
+     37.6
+    ],
+    [
+     88,
+     35.6
+    ],
+    [
+     88.2,
+     33.2
+    ],
+    [
+     87.6,
+     31
+    ],
+    [
+     86.2,
+     29.4
+    ],
+    [
+     85,
+     27.7
+    ]
+   ],
+   "widths": [
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2.4
+   ]
+  },
+  {
+   "id": "folly-trail",
+   "tier": "trail",
+   "surface": "grass",
+   "control": [
+    [
+     76,
+     36.2
+    ],
+    [
+     77,
+     33.9
+    ],
+    [
+     79,
+     31.8
+    ],
+    [
+     81,
+     29.7
+    ],
+    [
+     82.6,
+     28.2
+    ],
+    [
+     84.1,
+     27.6
+    ]
+   ],
+   "widths": [
+    2.4,
+    2,
+    2,
+    2,
+    2.2,
+    2.4
+   ]
+  },
+  {
+   "id": "ridge-path",
+   "tier": "trail",
+   "surface": "grass",
+   "isNew": true,
+   "control": [
+    [
+     83.7,
+     27.7
+    ],
+    [
+     81.4,
+     26.4
+    ],
+    [
+     79.4,
+     25.4
+    ],
+    [
+     76.8,
+     24.9
+    ],
+    [
+     74.2,
+     24.6
+    ],
+    [
+     72.4,
+     23.9
+    ],
+    [
+     71.3,
+     23.2
+    ]
+   ],
+   "widths": [
+    2.4,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2.4
+   ]
+  },
+  {
+   "id": "orchard-pass",
+   "tier": "lane",
+   "gateId": "island-headland",
+   "control": [
+    [
+     75.4,
+     36.8
+    ],
+    [
+     73.6,
+     35.3
+    ],
+    [
+     71.2,
+     35
+    ],
+    [
+     68.6,
+     35
+    ],
+    [
+     66.4,
+     34.6
+    ],
+    [
+     65.2,
+     33.2
+    ],
+    [
+     65,
+     31.4
+    ],
+    [
+     65.2,
+     29.6
+    ],
+    [
+     66.6,
+     28.2
+    ],
+    [
+     68.6,
+     27.6
+    ],
+    [
+     69.5,
+     26.3
+    ],
+    [
+     70.2,
+     25.2
+    ],
+    [
+     71,
+     24.2
+    ],
+    [
+     71.3,
+     23.2
+    ],
+    [
+     71,
+     21.3
+    ]
+   ],
+   "widths": [
+    2.4,
+    2,
+    2,
+    2,
+    2.4,
+    2.2,
+    2.2,
+    2.2,
+    2.2,
+    2.2,
+    2,
+    2.2,
+    2.2,
+    2,
+    1.6
+   ],
+   "fixed": [
+    [
+     71,
+     21.3
+    ]
+   ]
+  },
+  {
+   "id": "lakeside-steps",
+   "tier": "trail",
+   "surface": "steps",
+   "control": [
+    [
+     59.9,
+     41.1
+    ],
+    [
+     61,
+     38.4
+    ],
+    [
+     62.4,
+     37.6
+    ],
+    [
+     63.3,
+     36.6
+    ],
+    [
+     64.2,
+     35.6
+    ],
+    [
+     65.8,
+     34.9
+    ]
+   ],
+   "widths": [
+    2,
+    1.8,
+    2.2,
+    1.8,
+    1.8,
+    2.4
+   ],
+   "fixed": [
+    [
+     59.9,
+     41.1
+    ],
+    [
+     61,
+     38.4
+    ]
+   ]
+  }
+ ],
+ "unchanged": {
+  "gates": [
+   "island-orchard 80,49 door 80,52 (crossSpan 78.5-82.5 at 49.5)",
+   "island-headland 71,20 door 71,23 (crossSpan 69.5-73.5 at 20.5)"
+  ],
+  "boundaryPoints": {
+   "orchard-stair": [
+    80.2,
+    50.4
+   ],
+   "lakeside-steps": [
+    [
+     59.9,
+     41.1
+    ],
+    [
+     61,
+     38.4
+    ]
+   ],
+   "orchard-pass": [
+    71,
+    21.3
+   ]
+  },
+  "crossings": [
+   "outlet-footbridge 59.9,41.1 along lakeside-steps"
+  ],
+  "water": [
+   "orchard-pool basin and its four sectionIds",
+   "river line and river-1/2",
+   "the Mere"
+  ],
+  "landforms": [
+   "terrace-wall-1..5 (bottom wall)",
+   "orchard-bank-1..4 (west bank)",
+   "fell-scarp-* (north edge)"
+  ],
+  "reserved": [
+   "reserved-east-pier: reserved 87,42 7x2, entry 86,42, apron 83,41 3x4 (kept clear)"
+  ],
+  "region": "orchard-headland polygon, zone 4, level 14"
+ },
+ "plazas": {
+  "cider-square": {
+   "route": "cider-square",
+   "label": "Cider square",
+   "spine": [
+    [
+     76.6,
+     37.2
+    ],
+    [
+     80.4,
+     37.2
+    ],
+    [
+     83.4,
+     37
+    ]
+   ],
+   "poly": [
+    [
+     75,
+     36.9
+    ],
+    [
+     75.8,
+     36
+    ],
+    [
+     77.4,
+     35.95
+    ],
+    [
+     79.4,
+     35.95
+    ],
+    [
+     81.4,
+     35.95
+    ],
+    [
+     83,
+     35.95
+    ],
+    [
+     84.8,
+     36
+    ],
+    [
+     85.4,
+     36.9
+    ],
+    [
+     84.9,
+     37.9
+    ],
+    [
+     83.6,
+     38.5
+    ],
+    [
+     82,
+     38.8
+    ],
+    [
+     80.8,
+     38.9
+    ],
+    [
+     79.6,
+     39.3
+    ],
+    [
+     78.4,
+     39.5
+    ],
+    [
+     77.2,
+     39.2
+    ],
+    [
+     76,
+     38.8
+    ],
+    [
+     75.2,
+     38.1
+    ]
+   ]
+  }
+ },
+ "newLandforms": [
+  {
+   "id": "terrace-wall-6",
+   "region": "orchard-headland",
+   "kind": "terrace-wall",
+   "col": "full",
+   "thickness": 0.5,
+   "name": "the bee wall (boles in its south face)",
+   "line": [
+    [
+     63,
+     44.1
+    ],
+    [
+     64.6,
+     44
+    ],
+    [
+     66.2,
+     44
+    ],
+    [
+     70,
+     44
+    ],
+    [
+     73.6,
+     43.9
+    ],
+    [
+     77.3,
+     43.7
+    ],
+    [
+     78.6,
+     43.5
+    ]
+   ]
+  },
+  {
+   "id": "terrace-wall-7",
+   "region": "orchard-headland",
+   "kind": "terrace-wall",
+   "col": "full",
+   "thickness": 0.5,
+   "name": "the bee wall, east of the stair",
+   "line": [
+    [
+     80.9,
+     43.6
+    ],
+    [
+     81.8,
+     43.4
+    ],
+    [
+     82.8,
+     43
+    ],
+    [
+     83.8,
+     42.65
+    ],
+    [
+     84.7,
+     42.5
+    ]
+   ],
+   "note": "(fix round 2: runs on east to where the mother walk and the beach path meet; it stood alone as a two-cell stub with grass at both ends)"
+  },
+  {
+   "id": "terrace-wall-8",
+   "region": "orchard-headland",
+   "kind": "terrace-wall",
+   "col": "full",
+   "thickness": 0.5,
+   "name": "the cottage wall",
+   "line": [
+    [
+     62,
+     36.7
+    ],
+    [
+     64.6,
+     36.5
+    ],
+    [
+     67,
+     36.5
+    ],
+    [
+     70,
+     36.55
+    ],
+    [
+     72.8,
+     36.7
+    ],
+    [
+     74.8,
+     37.1
+    ]
+   ]
+  },
+  {
+   "id": "terrace-wall-9",
+   "region": "orchard-headland",
+   "kind": "terrace-wall",
+   "col": "full",
+   "thickness": 0.5,
+   "name": "the thyme wall; the pass climbs it by steps at 69.4; its sunny face is the brick espalier wall from 75.6 to 79.9",
+   "line": [
+    [
+     61.9,
+     25.9
+    ],
+    [
+     63,
+     26
+    ],
+    [
+     65.6,
+     26.2
+    ],
+    [
+     67.6,
+     26.4
+    ],
+    [
+     69.4,
+     26.4
+    ],
+    [
+     71.2,
+     26.1
+    ],
+    [
+     73,
+     26
+    ],
+    [
+     75,
+     26.2
+    ],
+    [
+     77.4,
+     26.5
+    ],
+    [
+     79.9,
+     27
+    ],
+    [
+     81.2,
+     27.4
+    ]
+   ],
+   "brick": [
+    75.6,
+    79.9
+   ]
+  }
+ ],
+ "newWater": [
+  {
+   "id": "orchard-dip",
+   "level": 14,
+   "name": "The dip",
+   "boundary": [
+    [
+     62.6,
+     30.7
+    ],
+    [
+     63.2,
+     30.5
+    ],
+    [
+     63.6,
+     31.1
+    ],
+    [
+     63.6,
+     31.9
+    ],
+    [
+     63.1,
+     32.4
+    ],
+    [
+     62.6,
+     32.2
+    ],
+    [
+     62.4,
+     31.4
+    ]
+   ],
+   "region": "orchard-headland",
+   "fishRow": "dip",
+   "note": "warm pool under orchard-bank-3; the dip water row moves here"
+  }
+ ],
+ "staticMoves": {
+  "ld-barrels": {
+   "x": 78,
+   "y": 35,
+   "w": 2,
+   "h": 1,
+   "door": {
+    "x": 79,
+    "y": 36
+   },
+   "tallH": 0.6,
+   "note": "by the cottage west gable with a little room round them (fix round 1: they stood into the wall), facing the square (fix round 2: two cells, the square lamp on the west one, a stride clear of the casks; its pole rose out of the barrels)"
+  },
+  "ld-folly": {
+   "x": 83,
+   "y": 25,
+   "w": 3,
+   "h": 2,
+   "door": {
+    "x": 84,
+    "y": 27
+   },
+   "tallH": 6.5,
+   "note": "round tower 2.6 H across on the ridge top; door SW where the folly trail, ridge path and cliff walk meet; lit window faces west"
+  },
+  "ld-ring": {
+   "x": 71,
+   "y": 39,
+   "w": 1,
+   "h": 1,
+   "door": {
+    "x": 71,
+    "y": 39
+   },
+   "walk": true,
+   "tallH": 0,
+   "note": "the mown centre (walkable marker); the eight perry pears are ring-tree statics round it"
+  },
+  "ld-clamp": {
+   "x": 66,
+   "y": 31,
+   "w": 2,
+   "h": 1,
+   "door": {
+    "x": 65,
+    "y": 31
+   },
+   "tallH": 0.7,
+   "note": "the straw mound on the pass path, between the dip and the pond"
+  },
+  "ld-orchard-wall": {
+   "x": 72,
+   "y": 43,
+   "w": 3,
+   "h": 1,
+   "door": {
+    "x": 72,
+    "y": 44
+   },
+   "tallH": 1.3,
+   "inWall": true,
+   "note": "the bee wall runs on east of the boles, the same height and courses, with Hollin's rope on its ring (no boles of its own: six in all)"
+  },
+  "ld-treehouse": {
+   "x": 84,
+   "y": 46,
+   "w": 2,
+   "h": 1,
+   "door": {
+    "x": 84,
+    "y": 45
+   },
+   "tallH": 4.2,
+   "tree": true,
+   "note": "sweet chestnut (crown 3.2 H) with the treehouse; ladder on the cove walk; kept off the pier apron; two cells wide, as wide as its drawn root bank (collision audit)"
+  }
+ },
+ "newStatics": [
+  {
+   "id": "ld-quince-house",
+   "x": 81,
+   "y": 34,
+   "w": 3,
+   "h": 2,
+   "col": "full",
+   "tall": 3.6,
+   "district": "orchard-headland",
+   "door": {
+    "x": 82,
+    "y": 36
+   },
+   "tallH": 3.3,
+   "note": "whitewashed cottage, a bee painted on the door; east of the midsummer line so nothing tall stands on it"
+  },
+  {
+   "id": "ld-press",
+   "x": 84,
+   "y": 35,
+   "w": 1,
+   "h": 1,
+   "col": "full",
+   "tall": 1.5,
+   "district": "orchard-headland",
+   "door": {
+    "x": 84,
+    "y": 36
+   },
+   "tallH": 1.5,
+   "note": "the screw press against the cottage east gable, facing the square"
+  },
+  {
+   "id": "ld-bell",
+   "x": 80,
+   "y": 39,
+   "w": 1,
+   "h": 1,
+   "col": "soft",
+   "tall": 2,
+   "district": "orchard-headland",
+   "door": {
+    "x": 80,
+    "y": 38
+   },
+   "tallH": 2,
+   "note": "the orchard bell on its post at the top of the stair, seen all the way up"
+  },
+  {
+   "id": "ld-cider-board",
+   "x": 75,
+   "y": 39,
+   "w": 1,
+   "h": 1,
+   "col": "soft",
+   "tall": 1.4,
+   "district": "orchard-headland",
+   "door": {
+    "x": 76,
+    "y": 38
+   },
+   "tallH": 1.4,
+   "note": "notice board where the fair poster goes up"
+  },
+  {
+   "id": "ld-bee-boles",
+   "x": 68,
+   "y": 43,
+   "w": 4,
+   "h": 1,
+   "col": "full",
+   "tall": 1.2,
+   "district": "orchard-headland",
+   "door": {
+    "x": 70,
+    "y": 44
+   },
+   "tallH": 1.2,
+   "inWall": true,
+   "note": "six niches with skeps in the bee wall; the middle one is \"tell the bees\"; the rope wall (ld-orchard-wall) runs on from its east end as one wall"
+  },
+  {
+   "id": "ld-pippin",
+   "x": 87,
+   "y": 39,
+   "w": 1,
+   "h": 1,
+   "col": "soft",
+   "tall": 2.2,
+   "district": "orchard-headland",
+   "door": {
+    "x": 86,
+    "y": 39
+   },
+   "tallH": 2.2,
+   "note": "the wild cliff apple leaning over the sea at the top of the cliff steps"
+  }
+ ],
+ "removed": {
+  "routes": [],
+  "statics": [],
+  "note": "nothing removed; design A's dip-walk and ld-dip were never in the game and are not carried over"
+ },
+ "hiddenGround": {
+  "id": "quince-yard",
+  "poly": [
+   [
+    82,
+    30.3
+   ],
+   [
+    84.3,
+    30.3
+   ],
+   [
+    84.3,
+    34
+   ],
+   [
+    82,
+    34
+   ]
+  ],
+  "note": "Quince's back garden behind the cottage: hedged, two skeps and her quince tree. Not walkable; it is the ground the cottage roof hides from the camera."
+ },
+ "reservedPier": {
+  "apron": {
+   "x": 83,
+   "y": 41,
+   "w": 3,
+   "h": 4
+  },
+  "entry": {
+   "x": 86,
+   "y": 42
+  }
+ },
+ "paintOnly": {
+  "seats": [
+   {
+    "at": [
+     86.3,
+     27.4
+    ],
+    "looks": "the folly bench: the vale as a map, the Mere, the sea arch"
+   },
+   {
+    "at": [
+     89.3,
+     33.4
+    ],
+    "looks": "the cliff bench: the sea, the pippin and the far-coast smoke"
+   },
+   {
+    "at": [
+     63,
+     33.2
+    ],
+    "looks": "warm hands at the dip"
+   },
+   {
+    "at": [
+     62.6,
+     35.4
+    ],
+    "looks": "the hurdle seat: the Mere, the village roofs and the falls below"
+   },
+   {
+    "at": [
+     81.4,
+     48.2
+    ],
+    "looks": "wassail bench under the Mother tree, looking down the stair to the mill"
+   }
+  ],
+  "lamps": [
+   [
+    77.2,
+    38.6
+   ],
+   [
+    85.2,
+    38.7
+   ],
+   [
+    78.4,
+    34.6
+   ]
+  ],
+  "midsummerLine": {
+   "from": [
+    84.5,
+    26
+   ],
+   "to": [
+    71.6,
+    39.6
+   ],
+   "alongRoute": "folly-trail",
+   "hiddenByBuildings": 0,
+   "length": 18.7,
+   "note": "the folly trail is a mown grass lane on this line; nothing tall stands on it; the shadow tip falls in the ring centre"
+  },
+  "hurdle": {
+   "at": [
+    61.8,
+    37.9
+   ],
+   "route": "lakeside-steps",
+   "note": "lifted aside from the orchard side the first time (existing shortcut rule)"
+  },
+  "cliffGate": {
+   "at": [
+    86,
+    40.6
+   ],
+   "route": "cliff-steps",
+   "note": "tied from the top; untie it from the pippin side (same one-way rule as the hurdle)"
+  },
+  "planting": [
+   "gatepost pears at the stair foot 78,49.6 and 82,49.4",
+   "wild cherry 82.6,42.8",
+   "alder 64.8,46.9 at the bee walk west end",
+   "shelter pines under the scarp 62-68 x 23-26 and behind the folly",
+   "blackthorn on the cliff top 88.6-89.4 x 30-37",
+   "low flowers only on the open lawn of the middle terrace"
+  ]
+ },
+ "presentation": {
+  "plazas": {
+   "cider-square": {
+    "x": 80.2,
+    "y": 37.4,
+    "job": "Quince's cottage door on the north, barrels and press at its gables, the bell at the top of the stair, the notice board on the SW; every path meets here"
+   }
+  },
+  "shortcuts": [
+   {
+    "id": "lakeside-steps",
+    "note": "unchanged rule"
+   },
+   {
+    "id": "cliff-steps",
+    "route": "cliff-steps",
+    "from": "orchard-headland",
+    "to": "orchard-headland",
+    "level": 14,
+    "at": [
+     86,
+     40.6
+    ],
+    "note": "cove to the cliff pippin; opened from the top"
+   }
+  ],
+  "sightLines": [
+   {
+    "from": [
+     80,
+     52.6
+    ],
+    "to": [
+     84.5,
+     22
+    ],
+    "what": "from the stair foot in the valley: the folly on the skyline above the blossom"
+   },
+   {
+    "from": [
+     58.6,
+     42.4
+    ],
+    "to": [
+     62.8,
+     31.4
+    ],
+    "what": "from the lake walk: steam over the bank wall (the dip) and the hurdle at the top of the steps"
+   },
+   {
+    "from": [
+     85.4,
+     43
+    ],
+    "to": [
+     87.4,
+     38.4
+    ],
+    "what": "from the cove: the pippin on the cliff, and steps with a tied gate"
+   },
+   {
+    "from": [
+     79,
+     45
+    ],
+    "to": [
+     71.2,
+     38.2
+    ],
+    "what": "from the stair landing: the great pears of the ring"
+   },
+   {
+    "from": [
+     72,
+     24.2
+    ],
+    "to": [
+     71,
+     19.6
+    ],
+    "what": "cloud in the pass and Wick's chimney smoke"
+   }
+  ],
+  "landmarks": {
+   "folly": "ld-folly (now 3 x 2, 6.5 H)",
+   "ring": "ld-ring + ld-ring-pear-1..8",
+   "motherTree": "ld-mother-tree",
+   "bell": "ld-bell"
+  },
+  "storyAnchors": {
+   "ld-quince-house": {
+    "x": 82.5,
+    "y": 36.4,
+    "of": "cider-square"
+   }
+  }
+ },
+ "fields": {
+  "rows": {
+   "name": "The lower rows",
+   "edge": "the walk on three sides, the bee wall below; locked = rough grass under unpruned trees; open = mown alleys between the rows",
+   "gate": [
+    66,
+    39
+   ],
+   "sections": [
+    "ls-crab-row",
+    "ls-damson-dip",
+    "ls-apple-row",
+    "ls-windfall"
+   ]
+  },
+  "stair": {
+   "name": "Stair rows",
+   "edge": "stone kerb on the stair; locked = cherry and plum in uncut grass",
+   "gate": [
+    77.3,
+    41
+   ],
+   "sections": [
+    "ls-cherry-row",
+    "ls-old-plum"
+   ]
+  },
+  "bank": {
+   "name": "The bee bank",
+   "edge": "south-facing bank of cowslips above the bottom wall; locked = long grass",
+   "gate": [
+    72.5,
+    46
+   ],
+   "sections": [
+    "ls-gate-pear",
+    "ls-bee-bank",
+    "ls-cider-nook",
+    "ls-medlar-strip"
+   ]
+  },
+  "walled": {
+   "name": "Espalier garden",
+   "edge": "the brick espalier wall behind, fan trees on it; nursery beds and cold frames at its foot; locked = rough grass and a stack of empty pots",
+   "gate": [
+    79,
+    29.5
+   ],
+   "sections": [
+    "ls-espalier",
+    "ls-nursery"
+   ]
+  },
+  "pools": {
+   "name": "Pond margins",
+   "edge": "sedge and flag iris; locked = uncut sedge",
+   "gate": [
+    67,
+    33.5
+   ],
+   "sections": [
+    "ls-moon-pool",
+    "ls-clear-pool",
+    "ls-sedge-pool",
+    "ls-deep-pool"
+   ]
+  },
+  "orchid": {
+   "name": "Orchid slope",
+   "edge": "under the thyme wall; locked = rough turf",
+   "gate": [
+    65,
+    28.5
+   ],
+   "sections": [
+    "ls-orchid-slope"
+   ]
+  },
+  "rise": {
+   "name": "Cowslip rise",
+   "edge": "uncut hay, a mown edge along the cliff walk; the fair field",
+   "gate": [
+    85,
+    36.5
+   ],
+   "sections": [
+    "ls-sun-terrace",
+    "ls-cowslip-rise"
+   ]
+  },
+  "thyme": {
+   "name": "Thyme terrace",
+   "edge": "heather and gorse under the scarp; locked = heather",
+   "gate": [
+    77,
+    24
+   ],
+   "sections": [
+    "ls-thyme-terrace"
+   ]
+  }
+ },
+ "sections": {
+  "ls-crab-row": {
+   "field": "rows",
+   "cells": [
+    [
+     64,
+     39
+    ],
+    [
+     64,
+     40
+    ],
+    [
+     64,
+     41
+    ],
+    [
+     64,
+     42
+    ],
+    [
+     64,
+     43
+    ]
+   ],
+   "facesPath": true
+  },
+  "ls-damson-dip": {
+   "field": "rows",
+   "cells": [
+    [
+     65,
+     39
+    ],
+    [
+     65,
+     40
+    ],
+    [
+     65,
+     41
+    ],
+    [
+     65,
+     42
+    ],
+    [
+     65,
+     43
+    ]
+   ],
+   "facesPath": true
+  },
+  "ls-apple-row": {
+   "field": "rows",
+   "cells": [
+    [
+     66,
+     39
+    ],
+    [
+     67,
+     39
+    ],
+    [
+     67,
+     40
+    ],
+    [
+     67,
+     41
+    ],
+    [
+     66,
+     41
+    ],
+    [
+     66,
+     42
+    ],
+    [
+     66,
+     43
+    ],
+    [
+     67,
+     42
+    ],
+    [
+     66,
+     40
+    ]
+   ],
+   "facesPath": true
+  },
+  "ls-windfall": {
+   "field": "rows",
+   "cells": [
+    [
+     68,
+     39
+    ],
+    [
+     68,
+     40
+    ],
+    [
+     68,
+     41
+    ],
+    [
+     68,
+     42
+    ],
+    [
+     69,
+     42
+    ]
+   ],
+   "facesPath": true
+  },
+  "ls-cherry-row": {
+   "field": "stair",
+   "cells": [
+    [
+     76,
+     39
+    ],
+    [
+     76,
+     40
+    ],
+    [
+     75,
+     40
+    ],
+    [
+     74,
+     40
+    ],
+    [
+     74,
+     41
+    ],
+    [
+     73,
+     41
+    ],
+    [
+     75,
+     41
+    ],
+    [
+     76,
+     41
+    ]
+   ],
+   "facesPath": true
+  },
+  "ls-old-plum": {
+   "field": "stair",
+   "cells": [
+    [
+     73,
+     42
+    ],
+    [
+     74,
+     42
+    ],
+    [
+     75,
+     42
+    ],
+    [
+     76,
+     42
+    ],
+    [
+     77,
+     42
+    ]
+   ],
+   "facesPath": true
+  },
+  "ls-gate-pear": {
+   "field": "bank",
+   "cells": [
+    [
+     66,
+     46
+    ],
+    [
+     67,
+     46
+    ],
+    [
+     68,
+     46
+    ],
+    [
+     69,
+     46
+    ],
+    [
+     69,
+     47
+    ],
+    [
+     68,
+     47
+    ],
+    [
+     67,
+     47
+    ]
+   ],
+   "facesPath": true
+  },
+  "ls-bee-bank": {
+   "field": "bank",
+   "cells": [
+    [
+     70,
+     46
+    ],
+    [
+     71,
+     46
+    ],
+    [
+     72,
+     46
+    ],
+    [
+     72,
+     47
+    ],
+    [
+     72,
+     48
+    ],
+    [
+     71,
+     47
+    ],
+    [
+     70,
+     47
+    ]
+   ],
+   "facesPath": true
+  },
+  "ls-cider-nook": {
+   "field": "bank",
+   "cells": [
+    [
+     73,
+     46
+    ],
+    [
+     74,
+     46
+    ],
+    [
+     74,
+     47
+    ],
+    [
+     74,
+     48
+    ],
+    [
+     73,
+     48
+    ],
+    [
+     73,
+     47
+    ]
+   ],
+   "facesPath": true
+  },
+  "ls-medlar-strip": {
+   "field": "bank",
+   "cells": [
+    [
+     75,
+     46
+    ],
+    [
+     76,
+     46
+    ],
+    [
+     76,
+     47
+    ],
+    [
+     77,
+     47
+    ],
+    [
+     77,
+     48
+    ],
+    [
+     76,
+     48
+    ],
+    [
+     75,
+     48
+    ],
+    [
+     75,
+     47
+    ]
+   ],
+   "facesPath": true
+  },
+  "ls-espalier": {
+   "field": "walled",
+   "cells": [
+    [
+     76,
+     27
+    ],
+    [
+     77,
+     27
+    ],
+    [
+     78,
+     27
+    ],
+    [
+     79,
+     27
+    ],
+    [
+     80,
+     27
+    ]
+   ],
+   "facesPath": true
+  },
+  "ls-nursery": {
+   "field": "walled",
+   "cells": [
+    [
+     80,
+     28
+    ],
+    [
+     79,
+     28
+    ],
+    [
+     78,
+     28
+    ],
+    [
+     77,
+     28
+    ],
+    [
+     76,
+     28
+    ],
+    [
+     76,
+     29
+    ],
+    [
+     77,
+     29
+    ],
+    [
+     78,
+     29
+    ],
+    [
+     79,
+     29
+    ]
+   ],
+   "facesPath": true
+  },
+  "ls-moon-pool": {
+   "field": "pools",
+   "cells": [
+    [
+     68,
+     33
+    ],
+    [
+     67,
+     33
+    ],
+    [
+     67,
+     32
+    ],
+    [
+     68,
+     32
+    ],
+    [
+     68,
+     31
+    ],
+    [
+     68,
+     30
+    ],
+    [
+     67,
+     30
+    ]
+   ],
+   "facesPath": true
+  },
+  "ls-clear-pool": {
+   "field": "pools",
+   "cells": [
+    [
+     67,
+     29
+    ],
+    [
+     68,
+     29
+    ],
+    [
+     69,
+     29
+    ],
+    [
+     69,
+     28
+    ],
+    [
+     70,
+     28
+    ],
+    [
+     71,
+     28
+    ],
+    [
+     71,
+     27
+    ],
+    [
+     70,
+     27
+    ]
+   ],
+   "facesPath": true
+  },
+  "ls-sedge-pool": {
+   "field": "pools",
+   "cells": [
+    [
+     72,
+     27
+    ],
+    [
+     73,
+     27
+    ],
+    [
+     74,
+     27
+    ],
+    [
+     75,
+     27
+    ],
+    [
+     75,
+     28
+    ],
+    [
+     74,
+     28
+    ],
+    [
+     73,
+     28
+    ],
+    [
+     72,
+     28
+    ]
+   ],
+   "facesPath": false
+  },
+  "ls-deep-pool": {
+   "field": "pools",
+   "cells": [
+    [
+     76,
+     30
+    ],
+    [
+     77,
+     30
+    ],
+    [
+     77,
+     31
+    ],
+    [
+     76,
+     31
+    ],
+    [
+     76,
+     32
+    ]
+   ],
+   "facesPath": true
+  },
+  "ls-orchid-slope": {
+   "field": "orchid",
+   "cells": [
+    [
+     62,
+     27
+    ],
+    [
+     63,
+     27
+    ],
+    [
+     64,
+     27
+    ],
+    [
+     64,
+     28
+    ],
+    [
+     63,
+     28
+    ],
+    [
+     63,
+     29
+    ],
+    [
+     62,
+     29
+    ],
+    [
+     62,
+     28
+    ]
+   ],
+   "facesPath": true
+  },
+  "ls-sun-terrace": {
+   "field": "rise",
+   "cells": [
+    [
+     84,
+     30
+    ],
+    [
+     85,
+     30
+    ],
+    [
+     85,
+     31
+    ],
+    [
+     86,
+     31
+    ],
+    [
+     86,
+     32
+    ],
+    [
+     85,
+     32
+    ],
+    [
+     84,
+     32
+    ],
+    [
+     84,
+     31
+    ]
+   ],
+   "facesPath": true
+  },
+  "ls-cowslip-rise": {
+   "field": "rise",
+   "cells": [
+    [
+     86,
+     33
+    ],
+    [
+     85,
+     33
+    ],
+    [
+     84,
+     33
+    ],
+    [
+     84,
+     34
+    ],
+    [
+     85,
+     34
+    ],
+    [
+     85,
+     35
+    ],
+    [
+     86,
+     35
+    ],
+    [
+     86,
+     36
+    ],
+    [
+     86,
+     34
+    ]
+   ],
+   "facesPath": true
+  },
+  "ls-thyme-terrace": {
+   "field": "thyme",
+   "cells": [
+    [
+     75,
+     22
+    ],
+    [
+     76,
+     22
+    ],
+    [
+     77,
+     22
+    ],
+    [
+     78,
+     22
+    ],
+    [
+     79,
+     22
+    ],
+    [
+     80,
+     22
+    ],
+    [
+     81,
+     22
+    ],
+    [
+     81,
+     21
+    ],
+    [
+     81,
+     23
+    ],
+    [
+     80,
+     21
+    ],
+    [
+     80,
+     20
+    ],
+    [
+     79,
+     20
+    ],
+    [
+     78,
+     20
+    ],
+    [
+     80,
+     23
+    ],
+    [
+     79,
+     21
+    ],
+    [
+     79,
+     23
+    ],
+    [
+     78,
+     21
+    ],
+    [
+     78,
+     23
+    ],
+    [
+     77,
+     21
+    ],
+    [
+     77,
+     23
+    ],
+    [
+     76,
+     21
+    ],
+    [
+     76,
+     23
+    ],
+    [
+     75,
+     21
+    ],
+    [
+     75,
+     23
+    ],
+    [
+     74,
+     23
+    ],
+    [
+     82,
+     22
+    ],
+    [
+     82,
+     23
+    ],
+    [
+     77,
+     20
+    ],
+    [
+     76,
+     20
+    ]
+   ],
+   "facesPath": true,
+   "note": "kept a cell clear of the crag at the pass gap's east lip (it stood on the plot)"
+  }
+ },
+ "trees": {
+  "ring": {
+   "c": [
+    71.6,
+    39.6
+   ],
+   "r": 2.5,
+   "trunks": [
+    [
+     73.91,
+     40.44
+    ],
+    [
+     72.56,
+     41.63
+    ],
+    [
+     70.64,
+     41.63
+    ],
+    [
+     69.29,
+     40.44
+    ],
+    [
+     69.29,
+     38.76
+    ],
+    [
+     70.64,
+     37.57
+    ],
+    [
+     72.56,
+     37.57
+    ],
+    [
+     73.91,
+     38.76
+    ]
+   ],
+   "note": "eight perry pears 4.2 H, painted by the orchard painter; the three south crowns fade when walked under",
+   "ry": 2.2
+  },
+  "mother": {
+   "x": 82.6,
+   "y": 47.4,
+   "lean": "west",
+   "note": "the oldest apple, half-fallen on a crutch, leaning west over the stair landing (the wassail clearing)"
+  }
+ }
+}
