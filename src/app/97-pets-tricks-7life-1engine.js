@@ -485,11 +485,22 @@ function _plChase(P, Q) {
   const leg = (n) => {
     const run = n % 2 ? Q : P, after = n % 2 ? P : Q, t = n < 4 && spot(run);
     if (!t) { for (const R of [P, Q]) { R.dir = (R === P ? Q : P).x >= R.x ? 1 : -1; _plPlay(R, ['jump'], 1.2, R === P ? () => { P.hearts(); P.lifeCur = null; } : null, { at: 1, noProp: 1 }); } return; }
-    let done = 0; const both = () => { if (++done === 2) leg(n + 1); };
-    run.walkTo(t.x, t.y, true, both);
+    let done = 0; const both = function () { this.busy = 30; if (++done === 2) { P.busy = 0; Q.busy = 0; leg(n + 1); } };
+    run.busy = 0; after.busy = 0;
+    run.walkTo(t.x, t.y, true, both.bind(run));
     const dx = t.x - after.x, dy = t.y - after.y, d = Math.hypot(dx, dy) || 1, bx = t.x - dx / d * 0.75, by = t.y - dy / d * 0.4;
-    after.walkTo(_ptwFree(bx, by) ? bx : after.x, _ptwFree(bx, by) ? by : after.y, true, both);
+    after.walkTo(_ptwFree(bx, by) ? bx : after.x, _ptwFree(bx, by) ? by : after.y, true, both.bind(after));
   };
   leg(0);
   return true;
+}
+/** The other pet (round 6: sniffing noses, chase and a nap together played six cells off, out of the picture): it trots over to a spot round you
+ *  first, and the row starts when it is there. */
+function _plBringNear(Q, then) {
+  const pl = _ptwPlayer(), now = performance.now();
+  Q.tx = null; Q.arrive = null; Q.cb = null; Q.busy = 0; Q.lifeCur = null; Q.perch = null; Q.lifeNext = now + 20000; Q.lifeHold = now + 20000;
+  if (!pl || Math.hypot(Q.x - pl.x, Q.y - pl.y) < 2.2) { then(); return; }
+  let s = null; for (let i = 0; i < 14 && !s; i++) { const a = Math.random() * 6.28, d = 1.1 + Math.random() * 0.8, x = pl.x + Math.cos(a) * d, y = pl.y + 0.25 + Math.sin(a) * d * 0.5; if (_plStandOk(x, y)) s = { x, y }; }
+  if (!s) { then(); return; }
+  Q.walkTo(s.x, s.y, true, () => { Q.busy = 0.3; then(); });
 }
