@@ -118,7 +118,7 @@ function gartActFrame() {
   if (now - _ga.t < 200) { if (_ga.near && _ga.el && !_ga.el.hidden) _gaPlace(); return; }
   _ga.t = now;
   const el = _gaPromptEl(); if (!el) return;
-  const busy = (_ga.cur && _ga.cur.doing) || (typeof _gwFishBusy === 'function' && _gwFishBusy()) || (typeof gardenDesignOn === 'function' && gardenDesignOn()) || (typeof GardenNative !== 'undefined' && GardenNative.inRoom && GardenNative.inRoom());
+  const busy = (_ga.cur && _ga.cur.doing) || !!_gw.boat || (typeof _gwFishBusy === 'function' && _gwFishBusy()) || (typeof gardenDesignOn === 'function' && gardenDesignOn()) || (typeof GardenNative !== 'undefined' && GardenNative.inRoom && GardenNative.inRoom());
   const near = busy ? null : _ga.carry ? { key: 'carry-down', act: 'carry', name: '', x: _gw.px, y: _gw.py, down: true } : gartActNearby()[0] || null;
   if (!near) { _ga.near = null; el.hidden = true; return; }
   if (!_ga.near || _ga.near.key !== near.key) { _ga.near = near; el.innerHTML = `<kbd>E</kbd><span>${esc(_gaWords(near))}</span>`; el.setAttribute('aria-label', _gaWords(near) + ' (E)'); }
@@ -196,7 +196,7 @@ function _gaFace(deg) {
 }
 function _gaDirDeg(row, spot) { return spot && spot.deg != null ? spot.deg : row.dir === 'n' ? -90 : row.dir === 'e' ? 0 : row.dir === 'w' ? 180 : 90; }
 function gartActRun(id, spot) {
-  const row = GARDEN_ACTS[id]; if (!row || typeof _gw === 'undefined' || !_gw.on) return false;
+  const row = GARDEN_ACTS[id]; if (!row || typeof _gw === 'undefined' || !_gw.on || _gw.boat) return false;   // (out on the water in your boat: the oars are your only move)
   gartActStop();
   if (spot && spot.boat) {   // the boat: your own rowing boat takes you out on the Mere (the boat game); without one, say where to get one
     const go = () => { if (typeof gardenBoatAsk === 'function' && gardenBoatAsk()) { _gaFirst({ id, row }); return; } try { gardenToast('You need a rowing boat of your own. The tackle shop has one.'); } catch (e) { /* fine */ } };
