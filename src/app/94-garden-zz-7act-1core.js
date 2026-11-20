@@ -493,14 +493,17 @@ function _gaFigureFlip(gpl) {
 function _gaBellyClip() {
   try {
     if (typeof petClipDef !== 'function') return null;
-    if (petClipDef('l-belly')) return 'l-belly';
-    if (typeof _pcR !== 'function' || typeof _pcSw !== 'function') return null;
-    _pcR('l-belly', 3600, 'walk', { nl: 1, not: { ids: ['snail', 'cloud', 'wisp', 'ghost', 'tortoise', 'crab'] }, face: _F_HAPPY, org: 'mid', body: [[0.06, { y: 2, sy: 0.86, sx: 1.1 }, 'io'], [0.2, { r: 170, y: -6, x: 6 }, 'o'], ...Array.from({ length: 8 }, (_, i) => [0.26 + i * 0.07, { r: i % 2 ? 166 : 176, y: -6, x: 6 }, 'io']), [0.84, { r: 176, y: -6, x: 6 }, 'i'], [0.92, { r: 360, y: 1, sx: 1.14, sy: 0.84 }, 'o'], [1, { r: 360 }]], paw: _pcSw(0.24, 0.84, 10, { r: -50 }, { r: 10 }, 'l'), legsF: _pcSw(0.26, 0.84, 10, { r: 10 }, { r: -50 }, 'l'), legsN: _pcSw(0.24, 0.84, 12, { r: 40 }, { r: -10 }, 'l'), legsG: _pcSw(0.26, 0.84, 12, { r: -10 }, { r: 40 }, 'l'), tail: _pcSw(0.2, 0.86, 12, { r: 24 }, { r: -24 }), fx: [[0.3, 'heart', { at: 'top', n: 4, gap: 320, dur: 900 }]] });
-    return petClipDef('l-belly') ? 'l-belly' : null;
+    if (petClipDef('ga-belly')) return 'ga-belly';
+    if (typeof _pcR !== 'function' || typeof _pcSw !== 'function') return petClipDef('l-belly') ? 'l-belly' : null;
+    // (round 5) the pets' l-belly turns about the body's middle, which the garden's drawer lifts clear of the grass (the pet stood on its head in the air);
+    // this one turns about the middle of the body's own box and lays the back on the grass: rump and tail down on one side, head down on the other, all four paws up and kicking
+    const K = (r, y) => ({ r, y });
+    _pcR('ga-belly', 3600, 'walk', { nl: 1, still: 0.5, not: { ids: ['snail', 'cloud', 'wisp', 'ghost', 'tortoise', 'crab'] }, face: _F_HAPPY, org: 'box', body: [[0.06, { y: 1, sy: 0.88, sx: 1.08 }, 'io'], [0.14, K(90, 4), 'i'], [0.22, K(168, 8), 'o'], ...Array.from({ length: 8 }, (_, i) => [0.28 + i * 0.07, K(i % 2 ? 164 : 171, 8), 'io']), [0.84, K(168, 8), 'i'], [0.92, K(270, 4), 'o'], [1, K(360, 0)]], paw: _pcSw(0.24, 0.84, 10, { r: -50 }, { r: 10 }, 'l'), legsF: _pcSw(0.26, 0.84, 10, { r: 10 }, { r: -50 }, 'l'), legsN: _pcSw(0.24, 0.84, 12, { r: 40 }, { r: -10 }, 'l'), legsG: _pcSw(0.26, 0.84, 12, { r: -10 }, { r: 40 }, 'l'), tail: _pcSw(0.2, 0.86, 12, { r: 24 }, { r: -24 }), fx: [[0.3, 'heart', { at: 'top', n: 4, gap: 320, dur: 900 }]] });
+    return petClipDef('ga-belly') ? 'ga-belly' : (petClipDef('l-belly') ? 'l-belly' : null);
   } catch (e) { return null; }
 }
 /** Where the pet lies for a belly rub (cells from your feet): beside your knee, in front of your hand, a touch behind you so your hand is over its tummy. */
-const GA_RUB_AT = Object.freeze([0.6, -0.05]);
+const GA_RUB_AT = Object.freeze([0.46, -0.04]);
 function _gaRubTick(cur) {
   let P = null; try { P = typeof gpPetMe === 'function' ? gpPetMe() : null; } catch (e) { P = null; }
   if (!P || !P.root || (P.root._pcH && P.root._pcH === cur.rubH) || (cur.rubT && performance.now() - cur.rubT < 3700)) return;

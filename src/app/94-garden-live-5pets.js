@@ -101,6 +101,7 @@ function _gllPetFx(A, ev) {
   P.tx = null;
   if (e === 'pat') { P.sit({ eyes: 'happy', mouth: 'open' }); P.hearts(); P.clip('jump', 800, () => _gllPetClipDone(P, 1.5)); return; }
   if (e === 'eat') { P.sit(); P.clip('eat', 1500, () => P.clip('jump', 780, () => _gllPetClipDone(P, 1.5))); return; }
+  if (e === 'ga-belly' && typeof _gaBellyClip === 'function') _gaBellyClip();   // (the belly-rub pose is added the first time it is needed, here too)
   if (typeof petClipDef !== 'function' || !petClipDef(e) || (typeof petClipSuits === 'function' && !petClipSuits(e, P.look.species))) return;   // an id this version has not heard of: nothing
   const c = petClipDef(e);
   P.sit(); P.clip(e, c.ms, () => _gllPetClipDone(P));

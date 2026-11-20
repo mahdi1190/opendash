@@ -55,7 +55,7 @@ function _ptwNew(look, me) {
     if (!P.cache[k]) P.cache[k] = petSvgGroup(look, { h: _ptwH(look.species), pose, mood: mood || { eyes: 'open', mouth: 'smile' }, cls: 'pt-live pt-fun-' + _ptFun() });
     if (gardenVisualIsNative(face) && P.clipH) { P.clipH.stop(true); P.clipH = null; }
     face.innerHTML = P.cache[k];   // allow-listed ids and numbers only
-    P.root = face.firstChild;
+    P.root = face.querySelector(":scope > g") || face.firstElementChild;   // (the drawn pet, not the colour defs the painted coats put first: a clip on the defs never moved the pet)
     if (P.root) { if (P.act) P.root.classList.add('pt-act-' + P.act); if (P.run) P.root.classList.add('pt-run'); }
   };
   P.clip = (name, ms, then, o) => {

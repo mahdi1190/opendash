@@ -306,6 +306,7 @@ function _pcSprite(parent, kind, c, A, o, i) {
 function _pcMotionOn() { try { if (typeof _ptMotionOk === 'function' && !_ptMotionOk()) return false; if (typeof _ptFun === 'function' && _ptFun() === 'off') return false; } catch (e) { /* on */ } return true; }
 function _pcOrg(root, c) {
   if (c.org == null) return 0;
+  if (c.org === 'box') return 0;   // (turns about the middle of the body's own box: set on the element by petClipRun)
   if (c.org !== 'mid') return Number(c.org) || 0;
   try { const b = root.querySelector('.pt-bodyg').getBBox(); return Math.min(44, Math.round(Math.abs(b.y) * 0.5 / 3) * 3); } catch (e) { return 28; }
 }
@@ -359,11 +360,11 @@ function petClipRun(root, id, o) {
   if (!c || !root || !root.querySelectorAll || !root.animate) { if (o.done) o.done(); return { ms: 0, stop() {} }; }
   if (o.still || !_pcMotionOn()) return petClipStill(root, id, o.ms || Math.min(1400, c.ms), o.done);
   const comp = _pcCompile(c, _pcOrg(root, c)), rate = o.rate || 1, ms = c.ms / rate;
-  const anims = [], timers = [], jobs = [], native = gardenVisualIsNative(root);
+  const anims = [], timers = [], jobs = [], boxed = [], native = gardenVisualIsNative(root);
   petClipStop(root);
   root.classList.add('pt-clip');
   for (const [part, frames] of comp.tracks) {
-    for (const el of root.querySelectorAll(_PC_SEL[part])) { try { if (part === 'shadow') { el.style.transformBox = 'fill-box'; el.style.transformOrigin = '50% 50%'; } anims.push(gardenVisualAnimate(el, frames, { duration: ms, easing: 'linear' })); } catch (e) { /* an old browser keeps the CSS */ } }
+    for (const el of root.querySelectorAll(_PC_SEL[part])) { try { if (part === 'shadow' || (part === 'body' && c.org === 'box')) { el.style.transformBox = 'fill-box'; el.style.transformOrigin = '50% 50%'; if (part === 'body') boxed.push(el); } anims.push(gardenVisualAnimate(el, frames, { duration: ms, easing: 'linear' })); } catch (e) { /* an old browser keeps the CSS */ } }
   }
   if (c.fx && c.fx.length) {
     const fxp = (root.querySelector('.pt-fx') || {}).parentNode || root;
@@ -376,7 +377,7 @@ function petClipRun(root, id, o) {
     }
   }
   let live = true, timeline = null;
-  const H = { ms, stop(keep) { if (!live) return; live = false; if (timeline) timeline.stop(); for (const t of timers) clearTimeout(t); for (const a of anims) { try { a.cancel(); } catch (e) { /* gone */ } } root.classList.remove('pt-clip'); if (root._pcH === H) root._pcH = null; if (!keep && o.done) o.done(); } };
+  const H = { ms, stop(keep) { if (!live) return; live = false; if (timeline) timeline.stop(); for (const t of timers) clearTimeout(t); for (const a of anims) { try { a.cancel(); } catch (e) { /* gone */ } } for (const el of boxed) { el.style.transformBox = ''; el.style.transformOrigin = ''; } root.classList.remove('pt-clip'); if (root._pcH === H) root._pcH = null; if (!keep && o.done) o.done(); } };
   root._pcH = H;
   if (native) timeline = _pcNativeClipClock(root, anims, ms, jobs, keep => H.stop(keep));
   if (!timeline) { for (const job of jobs) timers.push(setTimeout(job.run, job.at)); timers.push(setTimeout(() => H.stop(), ms)); }
@@ -390,7 +391,7 @@ function petClipStill(root, id, ms, done) {
   const comp = _pcCompile(c, _pcOrg(root, c)), at = (c.still == null ? 0.5 : c.still) * c.ms, anims = [];
   petClipStop(root);
   root.classList.add('pt-clip');
-  for (const [part, frames] of comp.tracks) for (const el of root.querySelectorAll(_PC_SEL[part])) { try { const a = gardenVisualAnimate(el, frames, { duration: c.ms, fill: 'both' }); a.pause(); a.currentTime = at; anims.push(a); } catch (e) { /* no pose */ } }
+  for (const [part, frames] of comp.tracks) for (const el of root.querySelectorAll(_PC_SEL[part])) { try { if (part === 'body' && c.org === 'box') { el.style.transformBox = 'fill-box'; el.style.transformOrigin = '50% 50%'; } const a = gardenVisualAnimate(el, frames, { duration: c.ms, fill: 'both' }); a.pause(); a.currentTime = at; anims.push(a); } catch (e) { /* no pose */ } }
   let live = true, T = 0, timeline = null;
   const H = { ms, stop(keep) { if (!live) return; live = false; if (timeline) timeline.stop(); clearTimeout(T); for (const a of anims) { try { a.cancel(); } catch (e) { /* gone */ } } root.classList.remove('pt-clip'); if (root._pcH === H) root._pcH = null; if (!keep && done) done(); } };
   root._pcH = H;
