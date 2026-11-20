@@ -486,7 +486,10 @@
     if (cells.length !== (cx1 - cx0 + 1) * (cy1 - cy0 + 1)) return null;   // (every valley field is a rectangle of cells today; any other keeps the old runs)
     const key = p.id + '|' + lv; if (ringMemo.has(key)) return ringMemo.get(key);
     const fk = fieldKindOf(p.id), hf = RING()[fk], hb = hf * .62, G = window.GardenPaintGround, nz = (u, v, s, k) => G && G.noise ? G.noise(u / s, v / s, k) : .5;
-    const runAt = new Set(p.edges.filter(e => locked(e[0], e[1], lv) && !locked(e[3], e[4], lv)).map(e => e[0] + ',' + e[1] + e[2]));
+    // (a run wherever the field meets anything but another locked field: a closed region next door is not a field, and reading it as
+    //  one left rings with whole sides missing when they were painted before the gates' state came in)
+    const lockedPlot = (x, y) => { const rw = gardenLandCell(x, y); return !!(rw && rw.plot) && locked(x, y, lv); };
+    const runAt = new Set(p.edges.filter(e => locked(e[0], e[1], lv) && !lockedPlot(e[3], e[4])).map(e => e[0] + ',' + e[1] + e[2]));
     const X0 = cx0 * cw + 4, X1 = (cx1 + 1) * cw - 4, Yb = W.sky + cy0 * ch + Math.min(ch - 6, hb * .8 + 2), Yf = W.sky + (cy1 + 1) * ch - 3, R = Math.min(15, (X1 - X0) / 4, (Yf - Yb) / 2.4);
     // the gate: the middle of the lowest front run (a run onto walkable ground), a gap a little under half a cell wide
     const fronts = [...runAt].filter(k => k.endsWith('s')).map(k => k.slice(0, -1).split(',').map(Number)).filter(c => c[1] === cy1).sort((a, b) => a[0] - b[0]);
@@ -573,8 +576,8 @@
       const row = gardenLandCell(o.gc[0], o.gc[1]); if (row) sign(B, o.gx + o.gw / 2, y - o.hf * (o.fk === 'crop' ? .42 : .3), row, lv, true);
     }
     else if (!o.gc) {   // (no front onto walkable ground, e.g. a field against the water: the tag stands on its lowest side run)
-      const side = fr.filter(q => q.side === 'e' || q.side === 'w').sort((a, b) => b.y - a.y)[Math.floor(fr.length / 12)] || fr[fr.length - 1];
-      if (side) { const row = gardenLandCell(o.cells[0][0], o.cells[0][1]); if (row) sign(B, side.x + side.nx * 6, side.y + 2, row, lv); }
+      const side = fr.filter(q => q.side === 'e' || q.side === 'w').sort((a, b) => b.y - a.y)[Math.floor(fr.length / 12)] || fr[fr.length - 1] || (() => { const nb = o.pts.filter(q => q.on && q.side === 'n' && !covered(q.x, q.y - 4)); return nb[nb.length >> 1]; })();   // (or, with only its back open, the middle of the back run)
+      if (side) { const row = gardenLandCell(o.cells[0][0], o.cells[0][1]), sx = side.x + side.nx * 5, sy = side.y + 2; if (row) { B.f(B.ell(sx + 1, sy, 3, 1), 'rgba(30,30,20,.3)').f(B.rect(sx - 1, sy - 13, 2.2, 13.5), '#5e4c36').f(B.rect(sx - 1, sy - 13, .9, 13.5), '#8a7454', .7); sign(B, sx, sy - 6, row, lv, true); } }   // (a small tag on a stake, the size of the gate tags)
     }
   }
   // the field's own ground inside the ring: a sward first, then what the field is, clipped to the ring's outline pulled in,
@@ -756,6 +759,21 @@
       if (!base || !base.land || base.beach || base.freshwater || base.solid || base.reserved || row && (row.plot || row.trail || row.lane || row.solid) || near(x, y)) continue;
       free.push([x, y]);
     }
+    lampMemo = null;
+    for (const [i, q] of lamps().entries()) {
+      const px = q.x * cw, py = W.sky + q.y * ch, Hh = q.h;
+      C.thing({ key: 'vale-lamp|' + i + '|' + season + '|' + Math.round(Hh), x: px, y: py, box: [-16, -Math.ceil(Hh) - 8, 16, 8], foot: [-4, 4, 5], draw: B => {
+        const iron = ['#2a2e30', '#4a5054', '#1a1c1e'], r = C.kit.rng(700 + i);
+        B.f(B.ell(1, 1, 8, 2.6), 'rgba(30,30,20,.3)');
+        B.f(B.rr(-5.5, -8, 11, 8, 2), '#8e8676').f(B.rect(-5.5, -8, 3.5, 8), '#b0a894', .6).f(B.rr(-6.5, -10, 13, 3, 1.2), '#6e685a');   // a dressed stone foot
+        const T = -Hh + 2, Bt = -Hh + 12;
+        B.s(`M0 -10V${Bt}`, iron[0], 3.2).s(`M-.9 -10V${Bt}`, iron[1], 1, .7).f(B.rr(-2.6, -Hh * .45, 5.2, 3, 1), iron[0]);
+        B.s(`M0 ${Bt + 2}q5 -3 9 0`, iron[0], 1.6);   // the scroll under the lantern
+        B.f(`M-6 ${T}L6 ${T}L5 ${Bt}L-5 ${Bt}Z`, '#f2d36b', .95).f(`M-6 ${T}L-1 ${T}L-1.5 ${Bt}L-5 ${Bt}Z`, '#fff2c0', .6).s(`M-6 ${T}L6 ${T}L5 ${Bt}L-5 ${Bt}ZM0 ${T}V${Bt}`, iron[0], 1.1);
+        B.f(`M-8 ${T}L0 ${T - 6}L8 ${T}Z`, iron[0]).f(B.circ(0, T - 7, 1.6), iron[0]).f(B.rect(-5.5, Bt - .5, 11, 2), iron[0]);
+        if (season !== 'winter') for (let k = 0; k < 7; k++) { const gx = -7 + r() * 14, l = 3 + r() * 4; B.s(`M${gx} 1q${(r() - .5) * 2} ${-l * .5} ${(r() - .5) * 3} ${-l}`, k & 1 ? '#6f8a40' : '#5a7a3a', 1, .9); }
+      } });
+    }
     if (!free.length) return;
     const colours = season === 'winter' ? [] : season === 'spring' ? ['#f2d43a', '#f0c8d8', '#fbfbf2'] : season === 'summer' ? ['#f2d43a', '#fbfbf2', '#d8a0c8'] : ['#e8c050', '#f4ecd8'];
     const rr = C.kit.rng(C.kit.hash('valley-meadow'));
@@ -787,6 +805,27 @@
     cutMemo.set(r, out); return out;
   }
   if (window.GardenPaintGround && GardenPaintGround.setRouteHook) GardenPaintGround.setRouteHook(paintRoute);
+  // The valley's lanterns (fix round 2: at night the valley had no light of its own). From the layout's rows: one beside the door
+  // a painted way now ends at (the boardwalk at the smokehouse), and one at the far corner of a working yard by the water (the
+  // mill yard), each where nothing else stands: off every painted way, off the water, clear of buildings, doors and fields.
+  // Painted here as scenery whose foot stops the feet; the world lights them at dusk and night (94-garden-native-world.js).
+  let lampMemo = null;
+  function lamps() {
+    if (lampMemo) return lampMemo; const out = [], D = typeof gardenIslandData === 'function' ? gardenIslandData() : null; if (!D) return out;
+    const st = D.static || [], cw = GARDEN_WORLD.cellW, ch = GARDEN_WORLD.cellH, H = gardenSizePx('lamp', .15);
+    const loops = (D.freshwater || []).filter(w => w.boundary && w.boundary.length > 2).map(w => w.boundary), inPoly = (x, y, poly) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], b = poly[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
+    const wet = (x, y) => loops.some(p => inPoly(x, y, p)), routes = (D.routes || []).map(paintRoute);
+    const gap = (x, y, skip) => { let best = 99; for (const r of routes) { if (r === skip || r.tier === 'plaza' || !r.points) continue; const P = r.points, hw = r.tier === 'main' ? .5 : r.tier === 'lane' ? .34 : .24; for (let i = 1; i < P.length; i++) { const a = P[i - 1], b = P[i], dx = (b[0] - a[0]) * cw, dy = (b[1] - a[1]) * ch, l = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, (((x - a[0]) * cw) * dx + ((y - a[1]) * ch) * dy) / l)); best = Math.min(best, Math.hypot((x - a[0]) * cw - dx * t, (y - a[1]) * ch - dy * t) / cw - hw); } } return best; };
+    const clear = (x, y) => !wet(x, y) && !wet(x - .4, y) && !wet(x + .4, y) && gap(x, y) > .3 && !st.some(q => x > q.x - .7 && x < q.x + (q.w || 1) + .7 && y > q.y - .3 && y < q.y + (q.h || 1) + .9 || q.door && Math.hypot(q.door.x + .5 - x, q.door.y + .5 - y) < 1) && ![0, -1, -2].some(dy => [-1, 0, 1].some(dx => { const rw = gardenLandCell(Math.floor(x) + dx, Math.floor(y) + dy); return rw && rw.plot; }));
+    for (const r of D.routes || []) { const p = paintRoute(r); if (!p.cutAt) continue; const s = st.find(q => q.id === p.cutAt), d = s && s.door; if (!d) continue;
+      const end = p.points[p.points.length - 2] || p.points[0], side = end[0] < d.x + .5 ? 1 : -1;   // (on the side the way does not come from)
+      for (const dx of [1.6, 1.9, .95]) { const x = d.x + .5 + side * dx, y = d.y + .55; if (!wet(x, y)) { out.push({ x, y, h: H, why: s.id }); break; } } }
+    for (const pz of (D.routes || []).filter(r => r.tier === 'plaza' && r.points && r.points.length > 1 && inValley(Math.floor(r.points[0][0]), Math.floor(r.points[0][1])))) {
+      const a = pz.points[0], b = pz.points[pz.points.length - 1], half = (pz.widthCells || 4) / 2 - .45;
+      for (const t of [1, .9, .8, .7, .6]) { const x = a[0] + (b[0] - a[0]) * t, y = a[1] + (b[1] - a[1]) * t + half; if (clear(x, y)) { out.push({ x, y, h: H, why: pz.id }); break; } } }
+    return lampMemo = out;
+  }
+  V.lamps = () => lamps();
   V.parts.push({ id: 'valley', compose });
   // (a look inside for the dev tools: each valley field's ring, how many of its points stand and on which sides)
   V._rings = () => { const W = GARDEN_WORLD, lv = level(); return plots().map(p => { const o = ringOf(p, W, lv); if (!o) return p.id + ':none'; const by = {}; for (const q of o.pts) { const k = q.side + (q.on ? '+' : '-') + (q.on && covered(q.x, q.y - 4) ? 'c' : ''); by[k] = (by[k] || 0) + 1; } return p.id + ' ' + o.fk + ' gate:' + (o.gc ? o.gc.join() : '-') + ' edges:' + p.edges.map(e => e[2] + (locked(e[3], e[4], lv) ? 'L' : '')).join('') + ' ' + JSON.stringify(by); }); };
