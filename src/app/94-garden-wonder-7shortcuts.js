@@ -18,7 +18,7 @@ const GARDEN_ORCHARD_SHORTCUTS = Object.freeze([
     from: (x, y) => y < 38.6 && y > 36.9 && x > 59.6 && x < 63.4,
     open: 'You lift the hurdle aside. The steps down to the lake are a short way now.', shut: 'A hurdle across the steps, pegged from the orchard side.' }),
   Object.freeze({ id: 'cliff', pres: 'cliffGate', name: 'The cliff gate', box: [85.2, 40.42, 87.12, 40.72], at: [86.15, 40.55], from: (x, y) => y < 40.4 && y > 38.2 && Math.abs(x - 86.2) < 1.3,
-    open: 'You untie the cliff gate and swing it back. The steps go down to the cove now.', shut: 'A little gate, its rope knotted on the cliff side. Someone untied it from the top, once.' }),
+    open: 'You untie the cliff gate and swing it back. The steps go down to the cove now.', shut: 'A little gate, its rope knotted on the cliff side. Go round by the cliff walk and untie it from the top.' }),
 ]);
 /** The cliff at the head of the cove (east of the steps to the sea, and the nick west of them) and the blackthorn along the
  *  cliff top's edge above the beach walk: always solid, drawn by the orchard painter (94-garden-paint-vale-1orchard.js 1e). */

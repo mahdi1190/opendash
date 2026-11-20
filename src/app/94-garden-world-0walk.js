@@ -450,7 +450,8 @@ function _gwBuildGrid(m) {
   for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
     let blocked = false;
     const a = gardenAreaAt(x, y, lvl);
-    if (a.startsWith('locked:') && fieldOf.has(y * W.cols + x)) fieldShut.push(y * W.cols + x);
+    if (a.startsWith('locked:zn-')) blocked = true;   // (vale final, east: land past a shut gate stops the feet at its cells, where its hedge is painted, even under a field's outline; 2 cells of the shut valley were walkable)
+    else if (a.startsWith('locked:') && fieldOf.has(y * W.cols + x)) fieldShut.push(y * W.cols + x);
     else if (a.startsWith('locked:') && !(a === 'locked:' + GARDEN_LAND_THICKET.id && _gwLandformCell(x, y)) && !gardenLockedPlotOpenToFeet(x, y, a.slice(7))) blocked = true;   // behind the little fence (a landform stops the feet along its outline: _gwBuildSolids)
     const pr = gardenPropAt(x, y), pc = pr ? gardenPropCol(pr) : '';
     if (pc === 'full') blocked = true;                                // (a shop is a wall; a lectern is a box, the mooring post, the reeds and the boat nothing: _gwBuildSolids)

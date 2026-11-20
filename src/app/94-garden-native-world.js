@@ -1445,7 +1445,11 @@ window.GardenNativeWorld = (function () {
         // (High orchard fix round 1) the treehouse chestnut fades by its crown, which spreads well past its two cells: walking the
         // beach or the mother walk beside it you went behind the crown unseen, and standing at the trunk the whole tree faded
         // (layfix east: the crown as drawn now, rounder and over its own trunk: standing at the ladder or on the beach beside it no longer ghosts the house)
-        else if (p.id === 'ld-treehouse') { const tx = (p.x + p.w / 2) * W.cellW - 92, ty = footY - 176; behind = sy < footY - 6 && ((sx - tx) / 92) ** 2 + ((sy - 30 - ty) / 78) ** 2 < 1; }
+        // (vale final, east: the crown as drawn by the round 3 sights, 94-garden-paint-zsights3.js, spreads east over the cliff steps and
+        //  the gate; the old oval sat west of it, so a figure at the gate vanished into the leaves. Now by the picture's own pixels.)
+        else if (p.id === 'ld-treehouse') { behind = sy < footY - 6 && sx > b.x && sx < b.x + b.width && sy - ph * .9 < footY - 60;
+          if (behind && record.handle.hitPoint) { const k = Math.round(sx) + ',' + Math.round(sy); if (record._fadeAt !== k) { record._fadeAt = k; record._fadeHit = [.85, .55, .25].some(f => record.handle.hitPoint(sx, sy - ph * f)); } behind = record._fadeHit; }
+          else if (behind) { const tx = (p.x + p.w / 2) * W.cellW - 2, ty = footY - 170; behind = ((sx - tx) / 130) ** 2 + ((sy - 30 - ty) / 95) ** 2 < 1; } }
         // a painted building fades only where its own picture covers you (head, chest or hips), not over the whole box round
         // it: the lighthouse, its cottage and its rocks went ghostly whenever you stood beside the tower (coast round 3).
         // Tested again only when you have moved a pixel, a handful of reads of one texture.
