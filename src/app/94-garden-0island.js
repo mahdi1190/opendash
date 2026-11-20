@@ -390,6 +390,13 @@ function gardenIslandSightGround() {
     const c0 = Math.min(p.x, Math.floor((mid + b[0] + 10) / W.cellW)), c1 = Math.max(p.x + w - 1, Math.floor((mid + b[2] - 10) / W.cellW)), back = Math.max(1, Math.min(3, Math.ceil(-b[1] / W.cellH - .6)));
     for (let y = p.y - back; y <= p.y + h; y++) for (let x = c0; x <= c1; x++) out.add(x + ',' + y);
   }
+  // and a gate's crossing, two cells on along the way either side: the Cloudbreak stair climbed into a locked plot's wall
+  // (or, where the fells drew none, an invisible wall) at its head, a hedged plot stood against its foot (hunter, round 3)
+  if (data.version >= 5) for (const g of data.gates || []) {
+    const sp = g.crossSpan; if (!sp || !sp.length) continue;
+    const xs = sp.map(p => p[0]), ys = sp.map(p => p[1]), ax = g.dx ? 2 : 0, ay = g.dy ? 2 : 0;
+    for (let y = Math.floor(Math.min(...ys)) - ay; y <= Math.floor(Math.max(...ys)) + ay; y++) for (let x = Math.floor(Math.min(...xs)) - ax; x <= Math.floor(Math.max(...xs)) + ax; x++) out.add(x + ',' + y);
+  }
   return _gardenIslandDerived.sightGround = out;
 }
 function gardenIslandSectionRow(row) {

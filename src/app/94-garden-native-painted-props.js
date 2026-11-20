@@ -516,6 +516,13 @@ window.GardenPaintedProps = (function () {
    *  Now it is a gap in the woodland edge: a holly and hawthorn bank runs on north and south of the way, an old oak stands
    *  either side of the path and their crowns meet over it in one canopy, ivy hanging. y runs down the screen, (0, 0) is
    *  the middle of the way, S half the span. */
+  /** The forest arch seen side on: its feet aslant across the way (north-west and south-east of the crossing) and the
+   *  curve between them as screen points, its crown about 3 H over the way. Shared by the art and what blocks walking. */
+  function archSide(S) {
+    const n = [-34, -S - 12], s = [34, S + 6], HA = 150, pts = [];
+    for (let i = 0; i <= 24; i++) { const t = i / 24, z = HA * Math.pow(Math.sin(Math.PI * t), .55); pts.push([n[0] + (s[0] - n[0]) * t, n[1] + (s[1] - n[1]) * t - z]); }
+    return { n, s, pts };
+  }
   function woodArchSide(B, r, S, season, open) {
     const L = leafOf(season), yn = -S - 10, ys = S + 4, bark = ['#6e5236', '#523c28', '#94744c', '#2e2418'], snowy = season === 'winter';
     const bank = (y0, y1) => {   // a hedge bank from y0 to y1 (ascending), painted far to near
@@ -537,23 +544,29 @@ window.GardenPaintedProps = (function () {
       B.f(B.ell(x0 + (x1 - x0) * .45 + w * .1, y0 + (y1 - y0) * .45, 3, 4.4), bark[3], .7);
       if (!snowy) for (let k = 0; k < 5; k++) B.f(D().blob(r, x0 - w * .3 + (r() - .5) * 4, y0 - 6 - k * 9, 4, 3, 6, .5), k % 2 ? MOSS[0] : MOSS[2], .8);   // moss up the shaded foot
     };
-    // the woodland edge north of the way, the north oak, the canopy over the path, the south oak in front, the bank south
-    bank(yn - 104, yn - 8);
-    trunk(-12, yn, -6, -150, 24);
-    const canopy = [[-30, -176, 52, 34], [26, -170, 50, 32], [-4, -196, 46, 28], [-48, -146, 34, 26], [44, -142, 34, 24], [0, -150, 58, 30]];
-    for (const [x, y, rx, ry] of canopy) B.crown(r, x, y, rx, ry, season, 6);
-    // the arch itself: the north oak's great bough reaching out over the way and coming down into the south bank (a second
-    // trunk on the near side stood across the path in this view: round 3, first look)
-    const bough = `M-6 -150C14 -168 40 -128 32 -88C30 -78 28 -70 26 -64`;
-    B.s(bough, bark[3], 13).s(bough, bark[1], 10).s(`M-6 -153C14 -171 37 -130 29 -90`, bark[2], 3, .55);
-    for (const [x, y, rx, ry] of [[22, -150, 34, 22], [38, -114, 26, 20], [28, -76, 28, 20], [6, -84, 22, 14]]) B.crown(r, x, y, rx, ry, season, 5);
-    // ivy and old man's beard hanging from the canopy over the way (never down to head height)
-    for (let i = 0; i < 12; i++) { const x = -40 + i * 7 + (r() - .5) * 4, y = -126 - r() * 12, len = 10 + r() * 16; B.s(`M${x} ${y}q${(r() - .5) * 5} ${len * .5} ${(r() - .5) * 4} ${len}`, L[0], 1.3, .9); B.f(B.ell(x + (r() - .5) * 3, y + len * .85, 2, 1.5), L[1], .9); }
-    bank(ys - 6, ys + 100);
+    // Round 4 (art director: "a tall foliage column ... no arch appears at all"): the arch is a hooped arbour of bent hazel
+    // set a little aslant across the way, its far foot north-west and its near foot south-east, so from the south you see
+    // its curve and the path running on through it, not a stack of banks and crowns. Low hedge banks run off either side.
+    const arch = archSide(S), foot = (p, w) => { B.shadow(p[0] + 4, p[1] + 1, w, 4, .3); for (let i = 0; i < 4; i++) B.f(D().blob(r, p[0] + (r() - .5) * 14, p[1] + 1, 5, 2.4, 6, .4), i % 2 ? MOSS[0] : MOSS[2], .85); };
+    bank(yn - 70, yn - 18);
+    foot(arch.n, 16);
+    // the hoops: three bent rods side by side along the way (it has depth), the far one darkest, tied across with withies
+    const hoop = (dx, col, wd) => B.s(arch.pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x + dx} ${y}`).join(''), col, wd);
+    hoop(-7, bark[3], 5); hoop(-7, bark[1], 3.2);
+    for (let i = 2; i < arch.pts.length - 2; i += 3) { const [x, y] = arch.pts[i]; B.s(`M${x - 7} ${y}L${x + 7} ${y}`, bark[2], 1.6, .9); }
+    hoop(0, bark[3], 5.4); hoop(0, bark[1], 3.6); hoop(0, bark[2], 1.2);
+    // leaves, honeysuckle and dog roses grown along the rods (never a mass: you see through it)
+    for (let i = 1; i < arch.pts.length - 1; i++) { const [x, y] = arch.pts[i]; if (r() < .6) B.crown(r, x + (r() - .5) * 8, y - 2, 7 + r() * 5, 5 + r() * 3, season, 3); if (!snowy && season !== 'winter' && r() < .3) B.f(B.circ(x + (r() - .5) * 10, y - 4, 1.8), season === 'autumn' ? '#c8402a' : '#f2c8d0').f(B.circ(x + (r() - .5) * 10, y - 1, 1.4), '#f6e6a0'); }
+    bank(ys + 10, ys + 64);
+    foot(arch.s, 18);
+    hoop(7, bark[3], 5.6); hoop(7, bark[1], 3.8); hoop(7, bark[2], 1.4);
+    for (let i = arch.pts.length - 8; i < arch.pts.length - 1; i++) { const [x, y] = arch.pts[i]; if (r() < .7) B.crown(r, x + 7 + (r() - .5) * 8, y, 8 + r() * 5, 6 + r() * 3, season, 3); }
+    if (snowy) for (let i = 2; i < arch.pts.length - 2; i += 2) { const [x, y] = arch.pts[i]; B.f(D().blob(r, x, y - 3, 6, 1.8, 6, .5), '#eef2f0', .9); }
     if (open) {
       // cut: the bramble's stubs either side of the way, a heap of cut canes pushed to the bank, flowers where it was
       for (const y of [yn + 14, ys - 12]) for (let i = 0; i < 6; i++) { const x = -26 + i * 9 + (r() - .5) * 4, h = 6 + r() * 7; B.s(`M${x} ${y}l${(r() - .5) * 3} ${-h}`, '#6a3a36', 1.8).f(B.circ(x + .6, y - h, 1), '#c8a888', .9); }
-      for (let i = 0; i < 7; i++) { const x = -34 + r() * 22, y = ys + 14 + r() * 8; B.s(`M${x} ${y}q${8 + r() * 8} ${-6 - r() * 6} ${16 + r() * 10} ${(r() - .5) * 4}`, '#5e3434', 1.6, .95); B.f(D().blob(r, x + 10, y - 4, 4, 2.4, 6, .5), '#2e4a26', .9); }
+      for (let i = 0; i < 7; i++) { const x = -86 + r() * 22, y = ys - 4 + r() * 6;   // (laid on the grass west of the near foot, not on the hedge bank: hunter, round 3)
+        B.s(`M${x} ${y}q${8 + r() * 8} ${-6 - r() * 6} ${16 + r() * 10} ${(r() - .5) * 4}`, '#5e3434', 1.6, .95); B.f(D().blob(r, x + 10, y - 4, 4, 2.4, 6, .5), '#2e4a26', .9); }
       B.flowers(r, 0, yn + 22, 50, 6, snowy ? ['#f2f0e8'] : ['#e8c84a', '#f2f0e8', '#c86aa0']).flowers(r, 0, ys - 18, 50, 6, snowy ? ['#f2f0e8'] : ['#f2f0e8', '#e8c84a']);
     }
   }
@@ -571,8 +584,10 @@ window.GardenPaintedProps = (function () {
       if (season !== 'winter' && r() < .7) { const x = -32 + r() * 64, py = y - h * (.4 + r() * .5); if (season === 'summer' || season === 'spring') B.f(B.circ(x, py, 1.8), '#f6f0f0').f(B.circ(x, py, .7), '#e8d070'); else B.f(B.circ(x, py, 1.9), '#1e1426').f(B.circ(x - .6, py - .6, .6), '#6a5a8a', .8); }
       if (season === 'summer' && r() < .5) B.f(B.circ(-30 + r() * 60, y - h * (.3 + r() * .4), 1.7), r() < .5 ? '#b0283a' : '#2a1826');
     }
-    // canes climbing the two trunks
-    for (const [x, y] of [[-12, yn - 4], [14, ys]]) for (let i = 0; i < 4; i++) B.s(`M${x + (r() - .5) * 10} ${y}q${(r() - .5) * 18} -26 ${(r() - .5) * 8} ${-44 - r() * 26}`, cane[i % 3], 1.5, .9);
+    // canes climbing the arch's hoops from both feet and hanging off its crown over the way
+    const A = archSide(S);
+    for (let i = 0; i < A.pts.length - 1; i++) { if (r() < .35) continue; const [x0, y0] = A.pts[i], [x1, y1] = A.pts[i + 1]; B.s(`M${x0 + (r() - .5) * 6} ${y0}Q${(x0 + x1) / 2 + (r() - .5) * 14} ${(y0 + y1) / 2 + (r() - .5) * 10} ${x1} ${y1}`, cane[i % 3], 1.5, .9); if (r() < .5) B.f(B.ell(x0 + (r() - .5) * 8, y0 + (r() - .5) * 6, 3, 2), leaf[i % 3], .95); }
+    for (let i = 8; i < 17; i += 2) { const [x, y] = A.pts[i], len = 10 + r() * 16; B.s(`M${x} ${y}q${(r() - .5) * 8} ${len * .6} ${(r() - .5) * 6} ${len}`, cane[i % 3], 1.3, .9).f(B.ell(x + (r() - .5) * 4, y + len, 2.6, 1.7), leaf[1], .9); }
   }
   /** A gate drawn face on. side: the span runs down the screen, so the face is sheared to recede (back pier up the screen, front pier down). */
   function elevation(B, side, half, S, draw) {
@@ -585,7 +600,7 @@ window.GardenPaintedProps = (function () {
    *  far the chains, cords or stake run from the board's top (or bottom, for a stake). */
   function gateMount(kind, art, frame, crossing) {
     const side = art.side, half = art.half;
-    if (kind === 'arch') return { how: 'chains', x: 0, y: -80, len: 30 };
+    if (kind === 'arch') return side ? { how: 'chains', x: 0, y: -94, len: 38 } : { how: 'chains', x: 0, y: -80, len: 30 };   // (side on: from the hoops' crown)
     if (kind === 'bridge') {
       if (side && crossing) {
         const W = GARDEN_WORLD, deck = typeof gardenIslandCrossingGeometry === 'function' ? gardenIslandCrossingGeometry().find(d => d.crossing.id === crossing.id) : null, narrow = deck && deck.halfWidth < 40;
@@ -753,12 +768,12 @@ window.GardenPaintedProps = (function () {
     // library objects standing in the crossing: [id, variant, size, dx, dy, 'back' | 'front']
     art.lib = kind === 'arch' ? []
       : kind === 'stair' ? [['tree.cherry', 0, { h: 104 }, -(side ? 30 : half * 1.55) - 58, -14, 'back'], ['tree.cherry', 1, { h: 96 }, (side ? 30 : half * 1.55) + 58, -10, 'back']]
-      : kind === 'pass' ? (side ? [['tree.pine', 0, { h: 170 }, 34, -art.S - 20, 'back'], ['rock.boulder', 0, { w: 96 }, 0, -art.S * .8, 'back'], ['rock.boulder', 1, { w: 110 }, 0, art.S * .8 + 6, 'front']] : [['tree.pine', 0, { h: 170 }, -half - 50, -16, 'back'], ['rock.boulder', 0, { w: 100 }, -half, 2, 'back'], ['rock.boulder', 1, { w: 110 }, half, 4, 'back']])
+      : kind === 'pass' ? (side ? [['tree.pine', 0, { h: 170 }, 34, -art.S - 20, 'back'], ['rock.boulder', 0, { w: 96 }, 0, -art.S * .8, 'back'], ['rock.boulder', 1, { w: 110 }, 0, art.S * .8 + 6, 'front']] : [['tree.pine', 0, { h: 170 }, -half - 66, -16, 'back'], ['rock.boulder', 0, { w: 100 }, -half - 16, 2, 'back'], ['rock.boulder', 1, { w: 110 }, half + 18, 4, 'back']])   // (the boulders flank the stair, clear of its steps: the way up was a narrow gap, hunter, round 3)
       : kind === 'ruin' ? [['tree.proof-yew', 0, { h: 130 }, side ? 40 : half + 52, side ? -art.S : -6, 'back']] : [];
     // what of the drawing blocks walking, [dx, dy, width] px from the crossing (read by gateTrees, so the feet follow the
     // art): the side-on forest arch's north oak and its two hedge banks, so the way through is the gap between them only
     art.feet = [];
-    if (kind === 'arch' && side) { const yn = -art.S - 10, ys = art.S + 4; art.feet.push([-12, yn, 26]); for (let y = yn - 104; y <= yn - 10; y += 6) art.feet.push([0, y, 58]); for (let y = ys + 8; y <= ys + 100; y += 6) art.feet.push([0, y, 58]); }
+    if (kind === 'arch' && side) { const yn = -art.S - 10, ys = art.S + 4, A = archSide(art.S); art.feet.push([A.n[0], A.n[1], 14], [A.s[0], A.s[1], 16]); for (let y = yn - 70; y <= yn - 18; y += 6) art.feet.push([0, y, 58]); for (let y = ys + 10; y <= ys + 64; y += 6) art.feet.push([0, y, 58]); }
     // the box of the drawing round the crossing's centre
     const box = kind === 'arch' && side ? [-120, -240, 120, 176] : (kind === 'arch' || kind === 'ruin') && side ? [-half * .85 - 90, -art.S - 200, half * .85 + 90, art.S + 30] : side ? [kind === 'bridge' ? -150 : -100, -170 - half * .9, kind === 'bridge' ? 150 : 100, kind === 'bridge' ? frame.span + 28 : half * .9 + 22] : [-half - 90, -200, half + 90, kind === 'stair' ? 60 : 24];
     const base = (B) => {
@@ -875,7 +890,8 @@ window.GardenPaintedProps = (function () {
         const rock = ['#a8a698', '#848274', '#cfccbe', '#666456'], o = side ? [[0, -half * .8], [0, half * .8]] : [[-half, 0], [half, 0]];
         for (const [x, y] of o) { B.shadow(x + 6, y + 2, 44, 10, .3); for (let i = 0; i < 6; i++) B.f(D().blob(r, x + (r() - .5) * 70, y + 6 + r() * 8, 9, 3.4, 7, .5), i % 2 ? '#8a6a8a' : '#a884a8', .85); }
         for (let i = 0; i < 14; i++) B.stone(r, (r() - .5) * (side ? 40 : half * 1.6), (side ? (r() - .5) * half * 1.4 : 4 + r() * 6), 2.6 + r() * 2, 1.8 + r(), rock, null);
-        const cxx = side ? 26 : half + 36, cyy = side ? half * .2 : -2; let y = cyy;
+        // (the cairn stood on the right half of the opened stair, over the boulder that blocks walking: it stands out past the boulder)
+        const cxx = side ? 26 : half + 78, cyy = side ? half * .2 : -6; let y = cyy;
         for (const [w, h] of [[13, 6], [11, 5.4], [9, 5], [7, 4.4], [5, 3.8], [3.6, 3]]) { B.stone(r, cxx + (r() - .5) * 2, y, w, h, rock, null); y -= h * 1.5; }
         if (open) B.s(`M${cxx} ${y}v-18`, WOOD[1], 1.4).f(B.poly([[cxx, y - 18], [cxx + 12, y - 15], [cxx, y - 11]]), '#c84a3a');
         if (!side) {

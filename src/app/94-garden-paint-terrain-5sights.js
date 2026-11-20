@@ -248,7 +248,7 @@ window.GardenPaintSeat = (function () {
   } };
 
   /* ---------- the milestone: a squat stone, a carved 0, lichen; the iron ring of the den's hatch in the flags behind it ---------- */
-  A['ld-mile'] = { box: [-24, -50, 64, 8], door: { dx: 30, dy: -2 }, seat: { kind: 'earth', w: 30, front: 14, back: 26, flags: true, box: [-20, -40, 60, 10], extra(B, r, P) {
+  A['ld-mile'] = { box: [-24, -56, 66, 8], door: { dx: 31, dy: -2 }, lit: true, lights: [[31, -18, 44]], seat: { kind: 'earth', w: 30, front: 14, back: 26, flags: true, box: [-20, -40, 60, 10], extra(B, r, P) {
       for (const [x, y] of [[8, -6], [50, -8], [30, 2]]) B.f(B.blob(r, x, y, 3, 1.4, 6, .5), '#6f8446', .7);
     } }, draw(B, o) {
     // The measurer's den: cellar doors let into the foot of a turf bank behind the milestone, two oak leaves sloping in a
@@ -259,17 +259,24 @@ window.GardenPaintSeat = (function () {
     B.f(B.blob(r, 32, -18, 30, 16, 12, .2), s === 'autumn' ? '#7a7a40' : snowy ? '#c8d0c8' : '#5e7a3a').f(B.blob(r, 28, -24, 22, 9, 10, .25), s === 'autumn' ? '#9a9450' : snowy ? '#e8eeea' : '#78964a', .9);
     for (let i = 0; i < 5; i++) B.stone(r, 12 + r() * 40, -30 + r() * 12, 2.6 + r() * 2, 1.6 + r(), MOSSY, r() < .5 ? '#9aa86a' : null);
     B.tufts(r, 32, -30, 40, 12, G, 6);
-    // the stone kerb round the doors, lit on its top edge
-    B.f(B.poly([[13, -2], [47, -2], [45, -21], [15, -21]]), MOSSY.rockLo).f(B.poly([[15, -21], [45, -21], [44.4, -19], [15.6, -19]]), MOSSY.rockHi, .85);
-    for (const x of [16, 22, 29, 36, 42]) B.s(`M${x} -21.4v2.2`, MOSSY.rockDk, .6, .6);
-    // the two doors, sloping down to you, planked, the one on the left a little lit
-    for (const [pts, tone] of [[[[16, -3.5], [30, -3.5], [30, -19], [17, -19]], '#7a5c3c'], [[[30, -3.5], [44, -3.5], [43, -19], [30, -19]], '#684c30']]) B.f(B.poly(pts), tone);
-    for (const x of [20.5, 25, 34.5, 39]) B.s(`M${x} -18.6L${x - (x < 30 ? .6 : -.4)} -4`, '#4a3622', .6, .7);
-    B.s('M30 -19V-3.5', '#2e2014', 1.1).f(B.poly([[16, -19], [30, -19], [30, -17.4], [16.4, -17.4]]), '#a8865a', .6);
-    for (const y of [-15, -7.4]) B.s(`M17 ${y}h9M34 ${y}h9`, '#2c3032', 1.2).f(B.circ(26.4, y, .8), '#5a5e60').f(B.circ(33.6, y, .8), '#5a5e60');
-    B.s(B.ell(30, -11, 2.6, 1.6), '#2c3032', 1.4).s(B.ell(29.6, -11.4, 2.6, 1.6), '#8a9094', .5, .8);
-    // a worn step of stone in front of them
-    B.f(B.rr(18, -3, 24, 4.4, 1.6), MOSSY.rock).f(B.rr(19, -3, 22, 1.4, .7), MOSSY.rockHi, .8);
+    // the stone kerb round the way down, lit on its top edge
+    // (round 4: shut doors 30 px wide under the fog read as a grey box and a chest, art director: the doors stand open now,
+    // propped back against the bank, and you look down stone steps into the dark with a lamp lit at the bottom)
+    B.f(B.poly([[9, -1], [53, -1], [50, -29], [12, -29]]), MOSSY.rockLo).f(B.poly([[12, -29], [50, -29], [49.4, -26.6], [12.6, -26.6]]), MOSSY.rockHi, .85);
+    for (const x of [13, 20, 28, 36, 44, 49]) B.s(`M${x} -29.4v2.6`, MOSSY.rockDk, .6, .6);
+    // the two leaves swung up and back against the bank, planked, strap hinges, the iron ring hanging from the right one
+    for (const [pts, tone, hi] of [[[[14, -27], [30.5, -27], [29.5, -47], [13, -45]], '#6e5236', '#9a7a52'], [[[31.5, -27], [48, -27], [49, -45], [32.5, -47]], '#5e4630', '#86684a']]) {
+      B.f(B.poly(pts.map(([x, y]) => [x + 2, y + 2])), '#1a140c', .35).f(B.poly(pts), tone).f(B.poly([pts[0], pts[1], [pts[1][0], pts[1][1] - 2], [pts[0][0], pts[0][1] - 2]]), hi, .7);
+      for (let k = 1; k < 4; k++) { const t = k / 4, x0 = pts[0][0] + (pts[1][0] - pts[0][0]) * t, x1 = pts[3][0] + (pts[2][0] - pts[3][0]) * t; B.s(`M${x0} ${pts[0][1]}L${x1} ${pts[3][1] + (pts[2][1] - pts[3][1]) * t}`, '#3a2a18', .7, .7); }
+    }
+    for (const y of [-31, -40]) B.s(`M15 ${y}h11M35 ${y}h11`, '#2c3032', 1.3);
+    B.s(B.ell(40, -36, 3, 1.8), '#2c3032', 1.4).s(B.ell(39.6, -36.4, 3, 1.8), '#8a9094', .5, .8);
+    // the mouth: dark, the steps going down into it, each narrower and darker, a lamp's warm light on the lowest
+    B.f(B.poly([[14, -2.5], [48, -2.5], [46.5, -26.5], [15.5, -26.5]]), '#140e0a');
+    for (let k = 0; k < 4; k++) { const y = -5 - k * 5.6, inset = 3 + k * 2.2, tone = ['#8a8476', '#6e695e', '#504c44', '#38352f'][k]; B.f(B.rect(14 + inset, y - 2.6, 34 - inset * 2, 3.2), tone).f(B.rect(14 + inset, y - 2.6, 34 - inset * 2, .9), '#b4ae9e', .5 - k * .1); }
+    B.f(B.ell(31, -24, 9, 2.6), o.night ? 'rgba(255,200,110,.75)' : 'rgba(255,190,100,.38)').f(B.rr(29.4, -25.6, 3.2, 3.6, .8), '#2c2a26').f(B.circ(31, -24, 1.1), '#ffd88a');
+    // a worn step of stone in front of it
+    B.f(B.rr(14, -1.5, 34, 4.6, 1.6), MOSSY.rock).f(B.rr(15, -1.5, 32, 1.4, .7), MOSSY.rockHi, .8);
     // the milestone, its face to the road: 0
     const pts = [[-12, 0], [-12.6, -h * .55], [-9, -h * .94], [0, -h * 1.04], [9, -h * .94], [12.6, -h * .55], [12, 0]];
     B.f(B.poly(pts), MOSSY.rockLo).f(B.poly([[-12, 0], [-12.6, -h * .55], [-9, -h * .94], [-2, -h], [-3, 0]]), MOSSY.rock).f(B.poly([[-10.5, -h * .55], [-8, -h * .86], [-3, -h * .92], [-5, -h * .5]]), MOSSY.rockHi, .6);
