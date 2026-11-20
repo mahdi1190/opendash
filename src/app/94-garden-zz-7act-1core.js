@@ -118,7 +118,10 @@ function gartActNearby() {
   const rows = _ga.list.concat(_gaTreeRows(px, py)).filter(r => d(r) <= Math.max(GA_REACH, r.reach || 0) && !gartActHidden(r.src));   // (a ball off rolling, a pile kicked apart: nothing to do there just now)
   // where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near; and a tree offers each
   // of its moves where you would do it (in front of the trunk: climb; at its side: hide behind it; out under the crown: a nap)
-  const ds = (r) => !r.stand ? d(r) : r.src === 'tree' ? Math.hypot(r.stand.x - px, (r.stand.y - py) * 1.3) : Math.min(d(r), Math.hypot(r.stand.x - px, (r.stand.y - py) * 1.3));   // (where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near)
+  // (a thing with several places, each its own (a band's pitch: one instrument each, a long bench's seats): only where you would stand counts,
+  // or every place is as near as the thing's middle and the first in the list was offered wherever you stood)
+  const many = new Map(); for (const r of rows) if (r.stand && r.src) many.set(r.src, (many.get(r.src) || 0) + 1);
+  const ds = (r) => !r.stand ? d(r) : r.src === 'tree' || many.get(r.src) > 1 ? Math.hypot(r.stand.x - px, (r.stand.y - py) * 1.3) : Math.min(d(r), Math.hypot(r.stand.x - px, (r.stand.y - py) * 1.3));   // (where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near)
   rows.sort((a, b) => ds(a) - (a.pri || 0) - ds(b) + (b.pri || 0));   // (pri: a wall before the tree that grows against it)
   if (!rows.length) return _gaWaterRows(px, py);
   return rows;
