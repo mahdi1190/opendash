@@ -2529,12 +2529,12 @@
  "ruinsLaneNorthNote": "the woods part of ruins-lane (west-woods, another region's plan): kept as it is on feat/village-layout; the woodland plan redraws it to end at 18.9,62.6, where this file takes over",
  "treeless": [
   {
-   "why": "the court: no crown over its flags",
+   "why": "the court: no crown over its flags (a crown rises five rows, so nothing for five rows south of it)",
    "box": [
     19.6,
     73.4,
     25.8,
-    81.4
+    83.6
    ]
   },
   {
