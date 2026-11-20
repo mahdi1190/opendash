@@ -275,7 +275,7 @@ const SIGHTS = [
   ['ld-lamp-a', 47, 44, 1, 'east-hall', { x: 47, y: 45 }, 'none'], ['ld-lamp-b', 50, 76, 1, 'harbour-bay', { x: 50, y: 77 }, 'none'],
   ['ld-sunk', 34, 47, 2, 'plaza-village', { x: 35, y: 48 }], ['ld-wish', 33, 58, 1, 'plaza-village', { x: 43, y: 58 }],
   ['ld-boathouse', 55, 77, 3, 'harbour-bay', null], ['ld-bridge', 37, 36, 1, 'pond-grove', null, 'none'],
-  ['ld-hollow', 13, 43, 1, 'west-woods', { x: 13, y: 44 }], ['ld-house', 6, 28, 2, 'west-woods', { x: 6, y: 27 }], ['ld-pump', 9, 30, 1, 'west-woods', { x: 10, y: 31 }],
+  ['ld-hollow', 13, 43, 1, 'west-woods', { x: 13, y: 44 }], ['ld-house', 6, 28, 2, 'west-woods', { x: 6, y: 27 }], ['ld-pump', 8, 31, 1, 'west-woods', { x: 9, y: 32 }],
   ['ld-driftwood', 5, 82, 2, 'west-woods', { x: 6, y: 81 }],
   ['ld-chapel', 19, 72, 3, 'southwest-ruins', { x: 20, y: 73 }], ['ld-icehouse', 26, 84, 2, 'southwest-ruins', { x: 26, y: 85 }], ['ld-statue', 24, 73, 1, 'southwest-ruins', { x: 24, y: 74 }],
   ['ld-labyrinth', 30, 80, 3, 'southwest-ruins', { x: 31, y: 81 }],
