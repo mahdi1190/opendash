@@ -19,7 +19,7 @@
   const data = () => (typeof gardenIslandData === 'function' ? gardenIslandData() : null);
   const fields = () => { try { return (data().presentation || {}).fields || []; } catch (e) { return []; } };
   let secSet = null, cellField = null; const memo = new Map();
-  const RANK = { hedge: 6, wall: 5, 'hedge-road': 4, stile: 4, drystone: 3, bracken: 2, reeds: 2, 'long-grass': 1, meadow: 1, kerb: 0 };
+  const RANK = { hedge: 6, wall: 5, 'hedge-road': 4, stile: 4, hurdle: 3, drystone: 3, bracken: 2, reeds: 2, 'long-grass': 1, meadow: 1, kerb: 0 };
   const fieldOfCell = () => { if (!cellField) { cellField = new Map(); for (const f of fields()) for (const s of f.sections) for (const c of cellsOf(s)) cellField.set(c[0] + ',' + c[1], f); } return cellField; };
   /** A section of a village field: it wears its field's edge, so the valley's fences leave it alone. */
   V.villageSection = id => { if (!secSet) secSet = new Set(fields().flatMap(f => f.sections)); return secSet.has(id); };
@@ -127,6 +127,20 @@
     // (village fix round 3) the rough edge of a field away from its front: its own growth thinning out into the lawn in
     // clumps and drifts (long grass, seed heads, a bramble or a shrub here and there, a stone by the wall), never one even
     // band, so the line where the feet stop is the edge of the rough ground and not a drawn ring
+    // (round 3, Millwater valley) a hazel hurdle: woven panels on stakes a little over knee high, standing all along a shut
+    // field's side where you walk, so the stop is plain to see (rule 15); its foot grown in with grass and a poppy or two
+    hurdle: (B, run, C) => {
+      const s = run.slice().sort((a, b) => a.y - b.y), wood = C.season === 'winter' ? ['#6a5a48', '#84725a', '#9c8a6e', '#4e4236'] : ['#6e5638', '#8a6c46', '#a8875a', '#4a3a26'];
+      for (const q of s) B.f(B.ell(q.x + 1.4, q.y + 1, 4.2, 1.8), '#22301a', .2);
+      for (const q of s) {
+        const steep = Math.abs(q.ty) > Math.abs(q.tx) * 1.3, h = steep ? 13 : 19, r = rngAt(q, 41), w = steep ? 5.4 : 5.6;
+        B.f(B.rect(q.x - w / 2, q.y - h, w, h + .5), wood[0]);
+        for (let y = q.y - h + 1.5, k = 0; y < q.y - 1; y += 3, k++) B.f(B.rr(q.x - w / 2 - .3, y + ((q.i + k) & 1) * .7, w + .6, 1.9, .9), wood[1 + ((q.i + k) & 1)], .95);
+        if (q.i % 6 === 0) B.f(B.rr(q.x - 1.2, q.y - h - 3, 2.4, h + 3.5, .8), wood[3]).f(B.rect(q.x - 1.2, q.y - h - 3, .9, h + 3), wood[2], .6);
+        if (r() < .55) for (let j = 0; j < 3; j++) B.s(`M${q.x + (r() - .5) * 5} ${q.y + .8}q${(r() - .5) * 2} -3 ${(r() - .5) * 3} -${3 + r() * 4}`, C.season === 'winter' ? '#8a9070' : '#5e8a3e', 1, .9);
+        if (C.season === 'summer' && r() < .08) B.f(B.circ(q.x + (r() - .5) * 4, q.y - 3 - r() * 3, 1.3), '#d8402e', .95);
+      }
+    },
     margin: (B, run, C, kind) => {
       const st = strawTones(C.season), lt = leafTones(C.season), lo = C.P.lawnLo, s = run.slice().sort((a, b) => a.y - b.y);
       const thick = q => { const x = q.ox || q.x, y = q.oy || q.y; return .5 + .5 * (Math.sin(x * .037 + y * .051) * .6 + Math.sin(x * .013 - y * .029 + 2.1) * .4); };
@@ -325,12 +339,15 @@
     // where this field meets another field that is also shut, the firmer of the two edges stands on the line between them
     // (so Wren's hedge runs all the way round, and the old wall of the glasshouse garden is built up against it)
     const mineRank = RANK[f.edge] || 0, shutNeighbour = (x, y) => { if (mineRank < 3) return false; const cx = Math.floor(x / cw), cy = Math.floor((y - W.sky) / ch), o = fieldOfCell().get(cx + ',' + cy); return !!o && o !== f && mineRank > (RANK[o.edge] || 0) && lockedAt(cx, cy, lv); };
+    // (round 3) a valley field's hurdle leaves a gap where a bench, a lamp or a sight stands at its edge (it ran through the
+    // ditch bench's back and under the frog stone)
+    const near = (((data() || {}).static) || []).filter(p => p.district === 'east-mill' || /^ld-(frog|vseat|vlamp|churn|boles|hide)/.test(p.id)), byStatic = (x, y) => { const cx = x / cw, cy = (y - W.sky) / ch; return near.some(p => cx > p.x - .45 && cx < p.x + (p.w || 1) + .45 && cy > p.y - .6 && cy < p.y + (p.h || 1) + .35); };
     // the edge stands just inside the outline (so its top never reaches over ground you stand on behind it)
     const runs = [], all = []; let n = 0;
     for (const l of loops) {
       const pts = V.walk(l.concat([l[0]]), f.edge === 'long-grass' || f.edge === 'meadow' || f.edge === 'reeds' ? 3.6 : f.edge === 'bracken' ? 9 : 4.4); let run = [];
       for (const q of pts) {
-        const open = walk(q.x + q.ty * 12, q.y - q.tx * 9) || shutNeighbour(q.x + q.ty * 12, q.y - q.tx * 9), inset = Math.abs(q.tx) > Math.abs(q.ty) ? (q.tx > 0 ? 8.5 : 2.5) : 4.5;   // (the north side stands further in: the piece is drawn upward from its foot)
+        const open = (walk(q.x + q.ty * 12, q.y - q.tx * 9) || shutNeighbour(q.x + q.ty * 12, q.y - q.tx * 9)) && !(f.edgeAll && byStatic(q.x, q.y)), inset = Math.abs(q.tx) > Math.abs(q.ty) ? (q.tx > 0 ? 8.5 : 2.5) : 4.5;   // (the north side stands further in: the piece is drawn upward from its foot)
         const s = { x: q.x - q.ty * inset, y: q.y + q.tx * inset, tx: q.tx, ty: q.ty, ox: q.x, oy: q.y, i: n++, road: roadAt(q.x + q.ty * 30, q.y - q.tx * 20) };
         if (open) { run.push(s); all.push(s); } else if (run.length) { runs.push(run); run = []; }
       }
@@ -355,7 +372,7 @@
     // its lane). Only there does it wear its built edge (the hedge, the wall, the dry-stone wall); everywhere else its own
     // rough growth runs out into the grass in clumps, so no field is a pen with a ring of hedge or wall round it
     // (only the side the gate is on: a small field is all within a couple of cells of its gate)
-    { const gn = g ? (g.horiz ? [0, g.south ? 1 : -1] : [g.east ? 1 : -1, 0]) : null; for (const s of all) s.front = !!g && Math.hypot(s.x - g.x, s.y - g.y) < cw * 2.2 && s.ty * gn[0] - s.tx * gn[1] > .45; }
+    { const gn = g ? (g.horiz ? [0, g.south ? 1 : -1] : [g.east ? 1 : -1, 0]) : null; for (const s of all) s.front = !!f.edgeAll || !!g && Math.hypot(s.x - g.x, s.y - g.y) < cw * 2.2 && s.ty * gn[0] - s.tx * gn[1] > .45; }   // (round 3: a valley field with edgeAll wears its edge all along where you walk, so no stop is invisible)
     // back to front: pieces of edge with the gate's gap cut out of them
     const gap = q => g && Math.abs(q.x - g.x) < (g.horiz ? g.len / 2 + 1 : 7) && Math.abs(q.y - g.y) < (g.horiz ? 8 : g.len / 2 + 1);
     const pieces = []; for (const run of runs) { let cur = []; for (const q of run) { if (gap(q)) { if (cur.length) pieces.push(cur); cur = []; } else cur.push(q); } if (cur.length) pieces.push(cur); }
@@ -426,7 +443,7 @@
     // a low laid hawthorn by the road, a stone kerb for a walled plot, a fringe of grass for the strips and the meadow),
     // knee high or less, so it reads as yours and you can see it is a thing you step over; its gate stands open.
     const ownedLow = { hedge: { w: 8.6, h: 5.6, round: 2.6, tone: 'box' }, 'hedge-road': { w: 9, h: 6.4, round: 3, tone: 'leaf' }, stile: { w: 9, h: 6.4, round: 3, tone: 'leaf' },
-      wall: { w: 8, h: 4.2, round: 1, tone: 'brick' }, drystone: { w: 7.6, h: 4.4, round: 2, tone: 'stone' } };
+      wall: { w: 8, h: 4.2, round: 1, tone: 'brick' }, drystone: { w: 7.6, h: 4.4, round: 2, tone: 'stone' }, hurdle: { w: 7.6, h: 4.6, round: 2, tone: 'leaf' } };
     const fieldCells = fieldOfCell();
     for (const id of f.sections) {
       const row = rowOf(id), cs = cellsOf(id); if (!row || row.kind === 'green' || !cs.length || lockedAt(cs[0][0], cs[0][1], lv)) continue;

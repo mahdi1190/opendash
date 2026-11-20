@@ -333,6 +333,6 @@ window.GardenPaintVale = (function () {
     cx.restore(); return { ops: ops.length, lastError };
   }
   /** Landform kinds painted here (the world skips its own art for them). */
-  function owns(kind) { return (kind === 'ruin-wall' || kind === 'ruin') && wanted(); }
+  function owns(kind) { return (kind === 'ruin-wall' || kind === 'ruin' || kind === 'screen') && wanted(); }   // (round 3: the valley's screens, 94-garden-paint-vale-2valley-screens.js)
   return { feet: () => (wanted() ? feetNow : []), feetSig: () => (wanted() ? feetSig : ''), parts, groundSigs, softRoutes, PAL, wanted, paint, tick, clear, pendingGround, playerCanopies: () => cur ? cur.covering : null, status, paintTo, owns, readLayout, loopPath, strokePts, routeRibbon, shapeLoop, clipGround, groundClips, walk, lobe, capsule, hull, lawn, flags, setts, ok, get lastError() { return lastError; } };
 })();

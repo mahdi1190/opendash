@@ -504,7 +504,7 @@ window.GardenPaintWater = (function () {
     // and the river's line (a sill square to the current at the nearest point).
     const mill = (data.static || []).find(s => s.id === 'ld-mill'), river = M.lines.river;
     if (mill && river) {
-      const mx = cx(mill.x + mill.w / 2 - .5), my = cy(mill.y + 2.6), near = nearestOn(river, mx, my), q = at(river, near.s + 30), ang = Math.atan2(q.ty, q.tx), nx = -q.ty, ny = q.tx;
+      const wp = Array.isArray(pres.weir) ? pres.weir : null, mx = wp ? cx(wp[0]) : cx(mill.x + mill.w / 2 - .5), my = wp ? cy(wp[1]) : cy(mill.y + 2.6), near = nearestOn(river, mx, my), q = at(river, near.s + (wp ? 0 : 30)), ang = Math.atan2(q.ty, q.tx), nx = -q.ty, ny = q.tx;
       const half = river.hw * Math.hypot(nx * W.cellW, ny * W.cellH) * 1.05, r = rng(hash('weir'));
       const span = (k) => ({ x: q.x + nx * half * k, y: q.y + ny * half * k });
       const a = span(-1), b = span(1), stones = []; for (let i = 0; i <= 10; i++) { const t = i / 10, p = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }; stones.push([p.x, p.y, 7 + r() * 3, r()]); }
@@ -524,8 +524,9 @@ window.GardenPaintWater = (function () {
         // the sill: dressed stones lit from the upper left, a dark wet face downstream
         for (const [x, y, rr, t] of stones) { c.fillStyle = '#5c584c'; c.beginPath(); c.ellipse(x + 2, y + 3, rr, rr * .6, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = t < .5 ? '#b3ab94' : '#a39b85'; c.beginPath(); c.ellipse(x, y, rr, rr * .55, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = '#d8d0b8'; c.globalAlpha = .8; c.beginPath(); c.ellipse(x - rr * .3, y - rr * .2, rr * .5, rr * .22, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; if (t > .6) { c.fillStyle = C.moss; c.globalAlpha = .7; c.beginPath(); c.ellipse(x + rr * .2, y - rr * .3, rr * .4, rr * .18, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; } }
       } });
-      foams.push({ x: q.x + q.tx * 16, y: q.y + q.ty * 16, w: half * 2.2, h: 26, ang: ang + Math.PI / 2, speed: 26, puffs: 12, drift: 34 });
-      mists.push({ x: q.x + q.tx * 26, y: q.y + q.ty * 26, rx: half * .6, ry: 8, n: 3, a: .22, speed: .06, drift: 18, rise: 10 });
+      // (round 3: the white water and its puffs kept inside the river's banks, and no mist: they lay across the mill yard's setts as pale smears)
+      foams.push({ x: q.x + q.tx * 14, y: q.y + q.ty * 14, w: half * 1.5, h: 20, ang: ang + Math.PI / 2, speed: 26, puffs: wp ? 6 : 12, drift: wp ? 16 : 34 });
+      if (!wp) mists.push({ x: q.x + q.tx * 26, y: q.y + q.ty * 26, rx: half * .6, ry: 8, n: 3, a: .22, speed: .06, drift: 18, rise: 10 });
       S.weir = { x: q.x, y: q.y, ang, half };
     }
     // Fleet Falls' plunge pool: churned white water where the sheet lands, foam

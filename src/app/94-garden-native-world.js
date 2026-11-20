@@ -336,7 +336,7 @@ window.GardenNativeWorld = (function () {
     // read this allowance. Regional locks and physical surfaces still win.
     function routePaintAllowance(cells, sc, cultivated) {
       // A post or a cross standing on a road cell keeps the road under it: cutting its cell out left a square of bare ground in the paving.
-      const statics = new Map(gardenIslandData().static.map(p => [p.id, p])), smallSight = base => { const p = base.route && statics.get(base.staticId); return !!p && p.w === 1 && p.h === 1 && p.col !== 'full'; };
+      const statics = new Map(gardenIslandData().static.map(p => [p.id, p])), smallSight = base => { const p = statics.get(base.staticId); return !!p && (base.route && p.w === 1 && p.h === 1 && p.col !== 'full' || p.col === 'soft' || p.col === 'none'); };   // (round 3: a bench or a lamp beside a path never cuts a square out of its verge)
       const open = new Set(sc.areas || []), allowed = new Uint8Array(cells.length);
       const SOIL_MATERIALS = new Set(['bed', 'patch', 'veg', 'rich', 'herb', 'berry']), fieldIds = new Set(((gardenIslandData().presentation || {}).fields || []).flatMap(f => f.sections));
       for (let i = 0; i < cells.length; i++) {
@@ -534,19 +534,19 @@ window.GardenNativeWorld = (function () {
         const row = typeof gardenLandCell === 'function' ? gardenLandCell(x, y) : null, area = gardenAreaAt(x, y, level), locked = String(area).startsWith('locked:');
         const islandCell = island ? gardenIslandBaseCell(x, y) : null;
         const water = gardenIsWater(x, y), iceCell = typeof _GD_ICE !== 'undefined' && _GD_ICE.has(x + ',' + y), fixedLand = typeof _GD_WALK_EXTRA !== 'undefined' && _GD_WALK_EXTRA.has(x + ',' + y), prop = iceCell && typeof gardenPropAt === 'function' ? gardenPropAt(x, y) : null, frozen = iceCell && (island || !lake || lake.cellContains(x, y)) && !fixedLand && !(prop && prop.walk), path = !!(row && (row.lane || row.trail)) && !locked && !(islandCell && islandCell.staticId);   // (a sight standing on an old lane cell is lawn round its foot: the road paint keeps clear of it, and a bare lane cell drew a pale square under the signpost and the market cross)
-        let material = frozen ? 'ice' : islandCell && islandCell.ocean ? 'ocean' : water ? lake && lake.cellContains(x, y) ? 'lake' : 'water' : islandCell && islandCell.beach ? 'beach' : path ? 'path' : row && row.solid ? 'wild' : row && row.kind || 'green';
+        let material = frozen ? 'ice' : islandCell && islandCell.ocean ? 'ocean' : water ? lake && lake.cellContains(x, y) ? 'lake' : 'water' : islandCell && islandCell.beach ? 'beach' : path ? 'path' : islandCell && /^screen-/.test(islandCell.landformId || '') ? 'green' : row && row.solid ? 'wild' : row && row.kind || 'green';   // (round 3: a valley screen is painted by its own painter, 94-garden-paint-vale-2valley-screens.js, not as woodland with crowns laid on the ground)
         // Future growing plots stay part of the landscape until they open;
         // a map full of tiny unowned soil patches overwhelms the village.
         if (island && row && soilKinds.has(row.kind) && (locked || !cultivated.has(row.id))) material = 'green';
         // Scenic planting respects physical reservations even while a route is locked.
         const route = !!(islandCell && islandCell.route), plantingReserved = !!(islandCell && (route || ['static', 'apron', 'facade', 'future-pier'].includes(islandCell.reservation)));
-        cells[y * W.cols + x] = { material, locked, area, row, water, route, plantingReserved }; kinds.add(material);
+        cells[y * W.cols + x] = { material, locked, area, row, water, route, plantingReserved, screen: !!(islandCell && /^screen-/.test(islandCell.landformId || '')) }; kinds.add(material);
       }
       const routePaint = island ? routePaintAllowance(cells, sc, cultivated) : null;
       const lakeHoles = lake && !island ? outlines(cells.map((c, index) => ({ material: lake.cellContains(index % W.cols, Math.floor(index / W.cols)) && (!c.water || c.material === 'ice') ? 'hole' : '' })), 'hole', W, true).filter(loop => polygonArea(loop) > 0).map(loop => loop.slice().reverse()) : [];
       const frozenLake = lake && kinds.has('ice') && !kinds.has('lake');
       const cellAt = (x, y) => x >= 0 && y >= 0 && x < W.cols && y < W.rows ? cells[y * W.cols + x] : null;
-      const woodland = (x, y) => { const c = cellAt(x, y); return !!c && !c.water && c.material !== 'ice' && (!island || !['ocean', 'beach'].includes(c.material)) && (!island && c.locked || c.row && c.row.solid || woods.has(c.material)); };
+      const woodland = (x, y) => { const c = cellAt(x, y); return !!c && !c.water && !c.screen && c.material !== 'ice' && (!island || !['ocean', 'beach'].includes(c.material)) && (!island && c.locked || c.row && c.row.solid || woods.has(c.material)); };
       const lockedCells = cells.map((c, index) => ({ material: c.locked && (!island || !gardenIslandOceanCell(index % W.cols, Math.floor(index / W.cols))) ? c.area.slice(7) : '' }));
       const authoredRegions = island && typeof _gldIslandRegionGeometry === 'function' ? _gldIslandRegionGeometry() : [];
       const regionOpen = new Set(sc.areas || []);

@@ -134,7 +134,8 @@
     // (the meadow's wash is not cut away along them, V.softRoutes: the turf runs on under the worn line, with no hard edge)
     // The village's two shore trails (2.74) are worn ways, not laid ones: trodden earth on the turf, a packed damp line and
     // footprints on the sand, soft at both edges, as wide as the route is there, and dying away where the trail ends.
-    for (const id of ['strand', 'lighthouse-walk']) {
+    // (round 3: any region's shore trail can be a worn way the same: V.wornWays, e.g. the valley's field track along the beach)
+    for (const id of ['strand', 'lighthouse-walk', ...(V.wornWays || [])]) {
       const pts = L.routePts(id), route = L.routes.get(id); if (pts.length < 2 || !route || !Array.isArray(route.widths)) continue;
       const qs = V.walk(pts, 5), n = qs.length; if (n < 3) continue;
       const sandAt = q => L.kind(q.x / cw, (q.y - W.sky) / ch) === 'beach';
