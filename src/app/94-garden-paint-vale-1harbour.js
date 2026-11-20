@@ -296,13 +296,17 @@
         // (never the same kind twice running along a shore, and a drying net or a fire only now and then: five identical net
         // frames stood round the coast)
         let kind = byPath ? 'castle' : pick[Math.floor(rr() * pick.length)];
-        if (!byPath && rr() < .5 && !left.some(o => o.kind === 'fire' && Math.hypot(o.x - p.x, o.y - p.y) < 16 * cw)) kind = 'fire';   // (a fire on most stretches of shore, so every cove has a light after dark)
+        if (!byPath && rr() < .5 && !left.some(o => o.kind === 'fire' && Math.hypot(o.x - p.x, o.y - p.y) < 11 * cw)) kind = 'fire';   // (a fire on most stretches of shore, so every cove has a light after dark)
         const prev = left[left.length - 1]; if (prev && prev.kind === kind && Math.hypot(prev.x - p.x, prev.y - p.y) < 22 * cw) kind = pick[(pick.indexOf(kind) + 1 + Math.floor(rr() * (pick.length - 1))) % pick.length];
-        if ((kind === 'net' && left.some(o => o.kind === 'net' && Math.hypot(o.x - p.x, o.y - p.y) < 26 * cw)) || (kind === 'fire' && left.some(o => o.kind === 'fire' && Math.hypot(o.x - p.x, o.y - p.y) < 18 * cw))) kind = byPath ? 'castle' : cold ? 'pots' : 'castle';
+        if ((kind === 'net' && left.some(o => o.kind === 'net' && Math.hypot(o.x - p.x, o.y - p.y) < 26 * cw)) || (kind === 'fire' && left.some(o => o.kind === 'fire' && Math.hypot(o.x - p.x, o.y - p.y) < 11 * cw))) kind = byPath ? 'castle' : cold ? 'pots' : 'castle';
         left.push({ x: p.x, y: p.y, kind, seed: kit.hash(Math.round(p.x), Math.round(p.y), 143) }); }
       // where the coast is lit after dark (the coast's night part reads it): each fire, and a lantern by each net and boat
       V.coastClutter = { placed: left.length, skipped, kinds: left.map(o => o.kind).join(',') };
-      V.coastLights = left.filter(o => o.kind === 'fire' || o.kind === 'net' || o.kind === 'boat').map(o => ({ x: o.x, y: o.y, fire: o.kind === 'fire' }));
+      // (coast fix round 2: a lantern on a stake beside each net and beached boat, a fire every eleven cells or so along the
+      // shore, so no cove is dark at night: Wren cove had no light at all)
+      const LANT = 62;
+      for (const o of left) if (o.kind === 'net' || o.kind === 'boat') { const dx = [LANT, -LANT].find(d => kindAt(o.x + d, o.y) === 'beach' && kindAt(o.x + d * 1.3, o.y) !== 'sea' && plantable(o.x + d, o.y)); if (dx) o.lx = dx; }
+      V.coastLights = left.filter(o => o.kind === 'fire' || o.lx).map(o => o.kind === 'fire' ? { x: o.x, y: o.y, fire: true } : { x: o.x + o.lx, y: o.y + 2, fire: false });
       const BOATS = ['#3f6f8a', '#a8402e', '#2f6a5a', '#d8c890', '#5a6e8a', '#7a3a4a'];
       // a sandcastle: a heap of damp sand patted up, two or three bucket turrets on it, a moat scraped round its foot, the
       // bucket tipped over against it and the spade stuck in (coast fix round 2: a crenellated pale block with the bucket
@@ -339,6 +343,12 @@
         const v = Math.floor(rr() * 3), boat2 = v === 2 ? drawBoatUp(P, BOATS[Math.floor(rr() * BOATS.length)], .8 + rr() * .4) : boat;
         const look = o.kind === 'boat' ? [[-50, -30, 52, 12], turned(boat2), [-36 * z, 38 * z, 10]] : o.kind === 'net' ? [[-50, -66, 52, 10], turned(drawNet(P, v, o.seed >>> 0)), v === 0 ? [-34 * z, 34 * z, 6] : [-26 * z, 26 * z, 7]] : o.kind === 'pots' ? [[-36, -40, 38, 8], turned(drawPots(P, o.seed >>> 0)), [-24 * z, 26 * z, 8]] : o.kind === 'castle' ? [[-36, -30, 34, 8], turned(castle(o.seed >>> 0)), null] : o.kind === 'fire' ? [[-20, -12, 40, 10], turned(fire(o.seed >>> 0)), null] : [[-38, -32, 38, 10], turned(windbreak(o.seed >>> 0)), [-32 * z, 32 * z, 7]];
         thing(Object.assign({ key: 'beach-' + o.kind + '-' + i, box: look[0], x: o.x, y: o.y, draw: look[1] }, look[2] ? { foot: look[2] } : {}));
+        // a storm lantern hung on a driftwood stake beside a net or a beached boat (lit after dark by the coast's night part)
+        if (o.lx) thing({ key: 'beach-lantern-' + i, x: o.x + o.lx, y: o.y + 2, box: [-12, -42, 12, 6], draw: B => { const r3 = kit.rng(o.seed ^ 91);
+          B.shadow(2, 1, 6, 2, .3); B.f(B.ell(0, 1, 5, 1.6), '#7a6a50', .35);
+          B.s(`M0 1L${(r3() - .5) * 2} -34`, '#5e4c38', 2.6).s(`M-.6 0L${(r3() - .5) * 2 - .6} -33`, '#8a7454', .9, .7).s('M0 -31l7 1.4', '#5e4c38', 1.8);
+          B.s('M7 -29.6v3', '#3a3430', .7).f(B.rr(4, -27, 6, 8, 1.2), '#3a3430').f(B.rr(4.9, -25.8, 4.2, 5.6, .8), '#f0c870', .9).f(B.rect(4, -27.6, 6, 1.2), '#2a2622').f(B.ell(7, -19, 3.2, .9), '#2a2622');
+          for (let k = 0; k < 3; k++) B.tufts(r3, (r3() - .5) * 10, 2, 5, 2, ['#8fa058', '#b4b868'], 4 + r3() * 4); } });
         add([o.x - 70, o.y - 30, o.x + 70, o.y + 24], 144, (B) => { const r2 = kit.rng(o.seed ^ 77); B.f(B.blob(r2, o.x + 4, o.y + 1, 44, 8, 9, .45), P.sandWet, .26).f(B.blob(r2, o.x - 3, o.y - 2, 32, 5, 9, .4), P.sandDk, .1);
           for (let k = 0; k < 7; k++) B.f(B.ell(o.x + (r2() - .5) * 80, o.y + (r2() - .4) * 12, 1.3 + r2() * 1.4, .9 + r2() * .6), ['#a89c88', '#8c8474', '#c2b8a4', '#f2ebdc'][Math.floor(r2() * 4)], .9);
           for (let k = 0; k < 6; k++) { const fx = o.x - 50 + k * 9 + r2() * 5, fy = o.y + 12 + r2() * 6; B.f(B.ell(fx, fy, 1.6, 1), '#a8946a', .35); } }); });

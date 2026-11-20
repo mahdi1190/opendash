@@ -829,9 +829,11 @@ window.GardenNativeWorld = (function () {
           // the piles under the rails: a ring of ripple on the water beside each post
           for (let yy = y + 6; yy < y + h - 4; yy += 37) { pg.lineStyle(.9, 0xe8f2ee, .32).strokeEllipse(x - 11, yy + 9, 11, 3).strokeEllipse(x + w + 12, yy + 9, 11, 3); }
           // rail posts down both sides with a rope rail between them, each post with a pale cap and its shadow to the lee
+          // (coast fix round 2: each post's shadow a soft oval at its foot; small rectangles in the water down the pier's side
+          // read as a strip of another tone by day and pale boxes at night)
           const posts = []; for (let yy = y + 6; yy < y + h - 4; yy += 37) posts.push(yy);
           for (const xx of [x - 2, x + w + 2]) {
-            for (const yy of posts) pg.fillStyle(0x234a48, .25).fillRect(xx + 2, yy + 2, 6, 10).fillStyle(0x5e4a34).fillRoundedRect(xx - 3, yy - 9, 6, 17, 1.6).fillStyle(0x8a7050, .7).fillRect(xx - 2.2, yy - 8, 1.6, 15).fillStyle(0xd0bd8c).fillEllipse(xx, yy - 9, 7, 3.6);
+            for (const yy of posts) pg.fillStyle(0x234a48, .18).fillEllipse(xx + 4, yy + 5, 8, 4.4).fillStyle(0x5e4a34).fillRoundedRect(xx - 3, yy - 9, 6, 17, 1.6).fillStyle(0x8a7050, .7).fillRect(xx - 2.2, yy - 8, 1.6, 15).fillStyle(0xd0bd8c).fillEllipse(xx, yy - 9, 7, 3.6);
             pg.lineStyle(1.6, 0xc9b07a, .9); for (let i = 1; i < posts.length; i++) { const y0 = posts[i - 1] - 6, y1 = posts[i] - 6, sag = 3; pg.beginPath(); pg.moveTo(xx, y0); for (let k = 1; k <= 6; k++) { const u = k / 6; pg.lineTo(xx + Math.sin(u * Math.PI) * .8, y0 + (y1 - y0) * u + Math.sin(u * Math.PI) * sag); } pg.strokePath(); }
           }
           // the deck's end: a fascia board and the piles it stands on going down into the water, dark and weedy at the

@@ -297,7 +297,7 @@
       if (!scene.textures.exists(GLOW)) { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,214,140,.95)'); g.addColorStop(.3, 'rgba(255,190,110,.45)'); g.addColorStop(1, 'rgba(255,170,90,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); scene.textures.addCanvas(GLOW, c); }
       if (!scene.textures.exists(SPARK)) { const c = document.createElement('canvas'); c.width = 32; c.height = 8; const x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 32, 0); g.addColorStop(0, 'rgba(230,240,255,0)'); g.addColorStop(.5, 'rgba(240,246,255,1)'); g.addColorStop(1, 'rgba(230,240,255,0)'); x.fillStyle = g; x.beginPath(); x.ellipse(16, 4, 16, 2.2, 0, 0, Math.PI * 2); x.fill(); scene.textures.addCanvas(SPARK, c); }
       const FLAME = 'gpv-coast-flame';
-      if (!scene.textures.exists(FLAME)) { const c = document.createElement('canvas'); c.width = 24; c.height = 40; const x = c.getContext('2d'), g = x.createRadialGradient(12, 30, 1, 12, 26, 18); g.addColorStop(0, 'rgba(255,250,220,1)'); g.addColorStop(.35, 'rgba(255,200,90,.95)'); g.addColorStop(.7, 'rgba(240,110,40,.6)'); g.addColorStop(1, 'rgba(200,60,20,0)'); x.fillStyle = g; x.beginPath(); x.moveTo(12, 2); x.quadraticCurveTo(22, 20, 19, 31); x.quadraticCurveTo(12, 40, 5, 31); x.quadraticCurveTo(2, 20, 12, 2); x.fill(); scene.textures.addCanvas(FLAME, c); }
+      if (!scene.textures.exists(FLAME)) { const c = document.createElement('canvas'); c.width = 24; c.height = 40; const x = c.getContext('2d'), g = x.createRadialGradient(12, 30, 1, 12, 26, 18); g.addColorStop(0, 'rgba(255,232,160,1)'); g.addColorStop(.3, 'rgba(255,168,64,.95)'); g.addColorStop(.7, 'rgba(226,92,34,.6)'); g.addColorStop(1, 'rgba(200,60,20,0)'); x.fillStyle = g; x.beginPath(); x.moveTo(12, 2); x.quadraticCurveTo(22, 20, 19, 31); x.quadraticCurveTo(12, 40, 5, 31); x.quadraticCurveTo(2, 20, 12, 2); x.fill(); scene.textures.addCanvas(FLAME, c); }
       const root = scene.add.container(0, 0).setDepth(80006).setVisible(false), glows = [], sparks = [], fires = [];
       for (let i = 0; i < 70; i++) { const im = scene.add.image(0, 0, SPARK).setBlendMode(Phaser.BlendModes.ADD).setVisible(false); root.add(im); sparks.push(im); }
       let night = 0, checked = -1e9, placed = false;
@@ -308,8 +308,11 @@
         // the beach fires (where the harbour painter laid them: GardenPaintVale.coastLights): a pool of firelight on the sand
         // and a flame that flickers on its own beat (coast fix round 2: the coves had no light at all after dark)
         for (const f of (V.coastLights || []).filter(o => o.fire)) { const pool = scene.add.image(f.x, f.y - 2, GLOW).setBlendMode(Phaser.BlendModes.ADD).setScale(3.4, 1.5); const halo = scene.add.image(f.x, f.y - 10, GLOW).setBlendMode(Phaser.BlendModes.ADD).setScale(1.2, 1.4);
-          const fl = [0, 1, 2].map(k => scene.add.image(f.x + (k - 1) * 4, f.y - 3, FLAME).setOrigin(.5, .9).setBlendMode(Phaser.BlendModes.ADD).setScale(.5 + (k === 1 ? .2 : 0)));
+          const fl = [0, 1, 2].map(k => scene.add.image(f.x + (k - 1) * 4, f.y - 3, FLAME).setOrigin(.5, .9).setBlendMode(Phaser.BlendModes.ADD).setScale(.36 + (k === 1 ? .14 : 0)));
           for (const im of [pool, halo, ...fl]) root.add(im); fires.push({ pool, halo, fl, ph: (f.x * 7 + f.y * 3) % 6.28 }); }
+        // the storm lanterns on their stakes beside nets and boats: a small warm glass and a pool on the sand below
+        for (const f of (V.coastLights || []).filter(o => !o.fire)) { const pool = scene.add.image(f.x + 4, f.y - 1, GLOW).setBlendMode(Phaser.BlendModes.ADD).setScale(2.6, 1.05), halo = scene.add.image(f.x + 7, f.y - 23, GLOW).setBlendMode(Phaser.BlendModes.ADD).setScale(.75);
+          pool._a = .5; halo._a = .85; root.add(pool); root.add(halo); glows.push(pool, halo); }
         return true; };
       return { obj: root, stat: () => ({ night: +night.toFixed(2), glows: glows.length }), update(time, view) {
         if (time - checked > 1000) { checked = time; try { const lt = window.GardenNative && GardenNative.lighting && GardenNative.lighting(), d = lt && lt.environment ? lt.environment().daylight : 1; night = Math.max(0, Math.min(1, (.4 - (d == null ? 1 : d)) / .28)); } catch (e) { night = 0; } }
@@ -319,8 +322,8 @@
         const flick = .92 + Math.sin(time / 310) * .04 + Math.sin(time / 97) * .03;
         for (const g of glows) g.setAlpha(g._a * night * flick);
         for (const f of fires) { const t = time / 1000 + f.ph, k = .85 + Math.sin(t * 7.3) * .08 + Math.sin(t * 13.1) * .05 + Math.sin(t * 2.3) * .04;
-          f.pool.setAlpha(.55 * night * k); f.halo.setAlpha(.5 * night * k);
-          f.fl.forEach((im, j) => { const s = (.42 + (j === 1 ? .2 : 0)) * (.85 + Math.sin(t * (9 + j * 3.1) + j) * .15); im.setScale(s * (1 + Math.sin(t * 5 + j) * .08), s).setAlpha(Math.max(night, .25) * (.75 + Math.sin(t * 11 + j * 2) * .2)); }); }
+          f.pool.setAlpha(.55 * night * k); f.halo.setAlpha(.35 * night * k);
+          f.fl.forEach((im, j) => { const s = (.32 + (j === 1 ? .14 : 0)) * (.85 + Math.sin(t * (9 + j * 3.1) + j) * .15); im.setScale(s * (1 + Math.sin(t * 5 + j) * .08), s).setAlpha(Math.max(night, .25) * (.58 + Math.sin(t * 11 + j * 2) * .16)); }); }
         // the moon's path: below the moon (towards the top right of the view), a column of glints on open sea only
         const t = time / 1000, mx = view.x + view.w * .68; let k = 0;
         for (let i = 0; i < sparks.length; i++) { const u = (i * .618 + Math.floor(t / 2.2 + i * .37) * .31) % 1, row = i / sparks.length, y = view.y + view.h * (.08 + row * .9), spread = 18 + row * view.w * .09, x = mx + (u - .5) * 2 * spread + Math.sin(t * .7 + i) * 4;
@@ -462,7 +465,11 @@ function gardenIslandHarbourThings(data) {
   ];
   const W = GARDEN_WORLD, out = [], gap = .55;
   const lamps = typeof gardenIslandHarbourLamps === 'function' ? gardenIslandHarbourLamps(D).map(q => [q.x - .3, q.y - .5, q.x + .3, q.y]) : [];
-  const clear = f => out.every(o => f[2] + gap < o.foot[0] || f[0] - gap > o.foot[2] || f[3] + gap < o.foot[1] || f[1] - gap > o.foot[3]) && lamps.every(o => f[2] + gap < o[0] || f[0] - gap > o[2] || f[3] + gap < o[1] || f[1] - gap > o[3]);
+  // (coast fix round 2: on the quay or off it, never across its edge: the crates stood half on the lawn and half over the
+  // quay's corner. The quay's box is the harbour painter's: the-quay's centre, 6.1 west, 6.3 east, 1.9 north, 1.65 south)
+  const qp = ((D.presentation || {}).plazas || []).find(p => p.id === 'the-quay'), qr = qp ? [qp.x - 6.1, qp.y - 1.9, qp.x + 6.3, qp.y + 1.65] : null;
+  const across = f => { if (!qr) return false; const m = .3, hit = f[2] + m > qr[0] && f[0] - m < qr[2] && f[3] + m > qr[1] && f[1] - m < qr[3], within = f[0] > qr[0] + m && f[2] < qr[2] - m && f[1] > qr[1] - 1 && f[3] < qr[3] - m; return hit && !within; };
+  const clear = f => !across(f) && out.every(o => f[2] + gap < o.foot[0] || f[0] - gap > o.foot[2] || f[3] + gap < o.foot[1] || f[1] - gap > o.foot[3]) && lamps.every(o => f[2] + gap < o[0] || f[0] - gap > o[2] || f[3] + gap < o[1] || f[1] - gap > o[3]);
   for (const [key, cands, want, l, r, d] of rows) { for (const [x, y] of cands) { const foot = [x + l / W.cellW, y - d / W.cellH, x + r / W.cellW, y]; if (spot(x, y, want) && clear(foot)) { out.push({ key, x, y, foot }); break; } } }
   gardenIslandHarbourThings._m = { d: D, out };
   return out;
