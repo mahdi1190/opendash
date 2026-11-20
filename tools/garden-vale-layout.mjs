@@ -487,7 +487,7 @@ const greenLawn = (() => { const r = routes.find(q => q.id === 'plaza-loop'), P 
   for (let i = 0; i < n; i += 2) { const a = P[(i - 1 + n) % n], b = P[(i + 1) % n], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; let nx = -dy / l, ny = dx / l; if ((cx - P[i][0]) * nx + (cy - P[i][1]) * ny < 0) { nx = -nx; ny = -ny; } const h = r.widths[i] / 2; out.push([r2(P[i][0] + nx * h), r2(P[i][1] + ny * h)]); }
   return out; })();
 // Each field: its sections, how its locked land reads, and its one gate: the field cell beside walkable public ground nearest the authored hint.
-const ORCH_EDGE = { rows: 'long-grass', stair: 'long-grass', bank: 'meadow', walled: 'wall', pools: 'reeds', orchid: 'meadow', rise: 'meadow', thyme: 'heather' };
+const ORCH_EDGE = { rows: 'long-grass', stair: 'long-grass', bank: 'meadow', walled: 'long-grass',   /* (fix round 2: the espalier garden's wall is the thyme wall's brick face, painted by the orchard painter; a brick edge round the field stood alone as a knee-high stub) */ pools: 'reeds', orchid: 'meadow', rise: 'meadow', thyme: 'heather' };
 const EDGE = { wren: 'hedge', green: 'kerb', wood: 'bracken', mere: 'reeds', glass: 'wall', allot: 'long-grass', orchard: 'hedge-road', meadow: 'meadow', bridge: 'stile', light: 'drystone' };
 const fieldRows = Object.entries(VV.fields).map(([id, f]) => [id, f, Object.keys(VV.sections).filter(s => VV.sections[s].field === id), 0])
   // the High orchard's eight fields: locked land reads as rough grass, meadow, sedge, the old wall or heather; never a fence ring

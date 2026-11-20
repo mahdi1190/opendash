@@ -99,15 +99,17 @@
     B.f(`M${tx - 17} 0Q${tx - 12} -50 ${tx - 9} -96L${tx + 9} -96Q${tx + 12} -50 ${tx + 19} 0Z`, '#5a4232');
     B.f(`M${tx - 15} 0Q${tx - 10} -50 ${tx - 7} -96L${tx - 1} -96Q${tx - 4} -50 ${tx - 6} 0Z`, '#7a5c44', .7);
     for (let k = 0; k < 7; k++) B.s(`M${tx - 14 + k * 4} -4Q${tx - 6 + k * 3} -40 ${tx + 4 + k * 2} -90`, '#3e2e22', .9, .5);
-    for (const [dx, dy, w] of [[-58, -150, 9], [6, -176, 8], [58, -146, 8]]) B.s(`M${tx} -92Q${tx + dx * .4} ${-92 + (dy + 92) * .6} ${tx + dx} ${dy}`, '#5a4232', w);
+    for (const [dx, dy, w] of [[-84, -148, 9], [-22, -180, 8], [24, -150, 7]]) B.s(`M${tx} -92Q${tx + dx * .4} ${-92 + (dy + 92) * .6} ${tx + dx} ${dy}`, '#5a4232', w);
     // the crown (bare branches in winter), drawn before the house so the house sits in the fork
     if (leaf) {
-      const lobes = []; for (let i = 0; i < 13; i++) { const a = r() * Math.PI * 2, d = Math.sqrt(r()); lobes.push([tx + Math.cos(a) * 74 * d, -158 + Math.sin(a) * 46 * d, 30 + r() * 14, 22 + r() * 9]); }
+      // (fix round 2) the crown spreads west over the mother walk and stops short of the cliff steps east of it: spread evenly
+      // round the fork, it stood over the cliff gate, which then showed ghosted through the faded leaves
+      const lobes = []; for (let i = 0; i < 13; i++) { const a = r() * Math.PI * 2, d = Math.sqrt(r()), rx = 30 + r() * 14; lobes.push([Math.min(tx - 34 + Math.cos(a) * 80 * d, tx + 24 - rx), -158 + Math.sin(a) * 46 * d, rx, 22 + r() * 9]); }
       for (const [x, y, rx, ry] of lobes) B.f(B.blob(r, x + 4, y + 5, rx, ry, 9, .35), leaf[0]);
       for (const [x, y, rx, ry] of lobes) B.f(B.blob(r, x, y, rx * .86, ry * .84, 9, .35), leaf[1]);
       for (const [x, y, rx, ry] of lobes) if (x < tx + 10 || y < -170) B.f(B.blob(r, x - rx * .25, y - ry * .3, rx * .5, ry * .44, 8, .4), leaf[2], .9);
-      for (let i = 0; i < 9; i++) B.f(B.blob(r, tx - 50 + r() * 60, -196 + r() * 30, 7, 5, 6, .5), leaf[3], .85);
-      if (s === 'summer') for (let i = 0; i < 20; i++) B.s(`M${tx - 60 + r() * 120} ${-190 + r() * 70}l${(r() - .5) * 4} 7`, '#f0e2a0', 1.4, .9);   // chestnut catkins
+      for (let i = 0; i < 9; i++) B.f(B.blob(r, tx - 80 + r() * 60, -196 + r() * 30, 7, 5, 6, .5), leaf[3], .85);
+      if (s === 'summer') for (let i = 0; i < 20; i++) B.s(`M${tx - 100 + r() * 110} ${-190 + r() * 70}l${(r() - .5) * 4} 7`, '#f0e2a0', 1.4, .9);   // chestnut catkins
       if (s === 'autumn') for (let i = 0; i < 9; i++) B.f(B.circ(tx - 50 + r() * 100, -150 + r() * 40, 2.4), '#9ab040').f(B.circ(tx - 60 + r() * 120, 4 + r() * 6, 1.8), '#7a4a24', .9);
     } else for (let i = 0; i < 16; i++) { const a = -Math.PI * (.15 + r() * .7), l = 40 + r() * 46; B.s(`M${tx} -120l${Math.cos(a) * l} ${Math.sin(a) * l * .9}`, '#6a5444', 2, .8); }
     // the house: a plank platform on the fork, crooked walls, a felt roof, a window with a curtain
@@ -126,20 +128,28 @@
 
   // The clamp: a long low mound of straw over the stored apples, turf laid on the ends to hold it down; in winter
   // it is opened and the apples show.
-  ART['ld-clamp'] = { box: [-46, -30, 46, 8], draw(B, o) {
+  ART['ld-clamp'] = { box: [-60, -44, 50, 14], draw(B, o) {
     const r = KIT().rng(83), s = o.season;
+    // (fix round 2) its yard: earth trodden bare round it from the pass path, loose straw blown about, a crate and a fork
+    // left against it, nettles at its back (alone on the grass, it read as a mound set down at the verge)
+    B.f(B.blob(r, -6, 2, 52, 10, 10, .3), s === 'winter' ? '#a39a86' : '#a08c62', .75).f(B.blob(r, -10, 1, 38, 6, 9, .3), '#b8a478', .5);
+    for (let k = 0; k < 26; k++) { const x = -50 + r() * 96, y = -2 + r() * 10; B.s(`M${x} ${y}l${(r() - .5) * 8} ${(r() - .5) * 2}`, r() < .6 ? '#e0c070' : '#b8924a', .8, .8); }
+    if (s !== 'winter') B.tufts(r, -20, -22, 26, 8, ['#4e6a34', '#6a8a44'], 8).tufts(r, 22, -16, 20, 7, ['#4e6a34', '#6a8a44'], 7);
     B.shadow(4, 2, 44, 7, .3);
     B.f('M-40 0Q-38 -22 -10 -26Q20 -28 38 -14Q42 -6 40 0Z', '#b08a44');
     B.f('M-40 0Q-38 -22 -10 -26Q4 -27 10 -24Q-14 -18 -20 0Z', '#d8b468', .9);
     for (let k = 0; k < 40; k++) { const x = -36 + r() * 72, y = -2 - r() * 20 * (1 - Math.abs(x) / 44); B.s(`M${x} ${y}l${(r() - .5) * 10} ${(r() - .5) * 3}`, r() < .6 ? '#e8c878' : '#9a7434', .9, .85); }
     for (const x of [-34, 32]) B.f(B.blob(r, x, -6, 10, 6, 7, .4), '#6a7a3c').f(B.blob(r, x - 2, -8, 7, 3, 6, .4), '#8a9a52', .9);
     B.s('M-24 -18Q0 -30 26 -14', '#7a5a2c', 1.2, .6);
+    B.f(rr(30, -10, 16, 11, 1.5), '#9a7448').f(B.rect(30, -10, 16, 2), '#c49a62').s('M30 -5h16', '#6a4e30', .8);   // an apple crate
+    if (s === 'autumn' || s === 'summer') for (let k = 0; k < 4; k++) B.f(B.circ(33 + k * 3.4, -11, 2), k % 2 ? '#c8442e' : '#d8b040');
+    B.s('M-44 2L-30 -30', '#6e5438', 2.2).s('M-31 -30l-3 -6M-31 -30l1 -7M-31 -30l4 -5', '#5a5a5e', 1.2);   // a fork against it
     if (s === 'winter') { B.f('M-6 -24Q4 -30 16 -22L10 -12Q2 -16 -6 -14Z', '#6a4e2a'); for (let k = 0; k < 6; k++) B.f(B.circ(-2 + k * 3, -18 + (k % 2) * 2, 2.2), k % 2 ? '#c8442e' : '#e0b23a'); B.f(B.blob(r, -6, -26, 22, 3, 7, .4), '#f4f6f2', .8); }
     else if (s === 'autumn') for (let k = 0; k < 4; k++) B.f(B.circ(30 + k * 3, 2, 2), k % 2 ? '#c8442e' : '#e0b23a', .9);
   } };
 
   // The cider barrels: three oak casks stacked by the press, iron hoops, a spigot and a drip on the setts.
-  ART['ld-barrels'] = { box: [-34, -72, 50, 8], draw(B, o) {
+  ART['ld-barrels'] = { box: [-62, -86, 34, 8], draw(B, o) {
     const r = KIT().rng(89);
     B.shadow(3, 2, 32, 6, .32);
     const cask = (x, y, k) => {
@@ -151,8 +161,11 @@
     B.f(B.rect(10, -12, 5, 3), '#4a3a2a').f(B.ell(13, 3, 4, 1.3), '#c8a050', .6);
     for (let k = 0; k < 4; k++) B.f(B.blob(r, -26 + r() * 52, 2 + r() * 4, 3, 1.2, 5, .5), '#8a6a3a', .35);
     // the square's lantern post: an oak post, an iron arm, a pierced tin lantern (lit at night: LIGHTS below)
-    B.f(B.rect(26, -66, 4, 66), '#6e5438').f(B.rect(26, -66, 1.4, 66), '#9a7a54', .8).s('M28 -62H42', '#2f3336', 1.6).s('M40 -62V-58', '#2f3336', 1);
-    B.f(B.rect(36, -58, 9, 11), '#f2e2a8').f(B.poly([[35, -58], [40.5, -63], [46, -58]]), '#2f3336').f(B.rect(36, -48, 9, 1.6), '#2f3336').s('M38.5 -57V-49M42.5 -57V-49', '#2f3336', .7, .7);
+    // (fix round 2) on the square's side of the stack, a clear stride from the casks (its pole rose out of the barrels), on a
+    // stone footing, 1.9 H to the lantern
+    B.f(B.ell(-38, 1, 9, 2.6), '#22301a', .28).f(rr(-45, -5, 14, 6, 2), '#a8956c').f(B.rect(-45, -5, 14, 1.6), '#e4d8b6');
+    B.f(B.rect(-40, -78, 4, 74), '#6e5438').f(B.rect(-40, -78, 1.4, 74), '#9a7a54', .8).s('M-38 -74H-50', '#2f3336', 1.6).s('M-48 -74V-70', '#2f3336', 1);
+    B.f(B.rect(-53, -70, 9, 11), '#f2e2a8').f(B.poly([[-54, -70], [-48.5, -75], [-43, -70]]), '#2f3336').f(B.rect(-53, -60, 9, 1.6), '#2f3336').s('M-50.5 -69V-61M-46.5 -69V-61', '#2f3336', .7, .7);
   } };
 
   // (round 3 layouts) the High orchard's new places, at the size standard (H, the player after the 0.8 change, about 40 px):
@@ -187,30 +200,30 @@
   // screw press on the square, a heavy oak beam on two posts, the great wooden screw rising through it with its thread cut
   // deep and a long capstan bar through its head, the cheese of pomace in straw under the board, on a round stone bed
   // with a lip and a spout to a tub; baskets of apples waiting beside it. About 2.4 H to the bar.
-  ART['ld-press'] = { box: [-30, -104, 42, 8], draw(B, o) {
-    const r = KIT().rng(101), s = o.season, X = 4;
+  ART['ld-press'] = { box: [-26, -104, 50, 8], draw(B, o) {
+    const r = KIT().rng(101), s = o.season, X = 10;   // (fix round 2: a stride clear of the cottage's gable; it stood hard against it)
     B.shadow(X + 3, 2, 34, 7, .34);
     B.cx.save(); B.cx.translate(X, 0);
     // the round stone bed, its lip and spout, the tub under the spout
-    B.f(B.ell(0, -4, 26, 8), '#8c8270').f(B.ell(0, -7, 26, 8), '#b9ad8f').f(B.ell(0, -7.6, 21, 6), '#9a8e70').f(B.ell(-4, -9, 10, 2.6), '#ddd2b4', .5);
+    B.f(B.ell(0, -4, 22, 7), '#8c8270').f(B.ell(0, -7, 22, 7), '#b9ad8f').f(B.ell(0, -7.6, 18, 5), '#9a8e70').f(B.ell(-4, -9, 10, 2.6), '#ddd2b4', .5);
     B.f(B.poly([[20, -6], [30, -3], [30, -1], [20, -3]]), '#8c8270');
     B.f(rr(25, -10, 12, 10, 2), '#7a5434').f(B.rect(24.6, -7.6, 12.8, 1.5), '#3a3a3c').f(B.ell(31, -9.6, 4.6, 1.3), s === 'autumn' || s === 'summer' ? '#c89a3a' : '#5a4a32', .95);
     // the cheese: layers of pomace and straw under the board
     for (let k = 0; k < 4; k++) B.f(rr(-15, -14 - k * 5.4, 30, 4.4, 1.6), s === 'autumn' ? '#a8703a' : '#94703e').f(B.rect(-16, -10.2 - k * 5.4, 32, 1.4), '#e0c070');
     B.f(B.rect(-17, -38, 34, 4.6), '#7a5a38').f(B.rect(-17, -38, 34, 1.4), '#a8865c');
     // two posts and the great beam, pegged through
-    for (const x of [-24, 18]) B.f(B.rect(x, -74, 7, 74), '#5e4428').f(B.rect(x, -74, 2.4, 74), '#8e6e48', .85).f(B.rect(x - 1, -2, 9, 3), '#4a3622', .7);
-    B.f(B.rect(-28, -80, 56, 10), '#5a4028').f(B.rect(-28, -80, 56, 3), '#8a6a44', .9).f(B.rect(-28, -71, 56, 1.6), '#3a2a18', .6);
-    for (const x of [-20.5, 21.5]) B.f(B.circ(x, -75, 1.6), '#2a1e12');
+    for (const x of [-20, 14]) B.f(B.rect(x, -74, 7, 74), '#5e4428').f(B.rect(x, -74, 2.4, 74), '#8e6e48', .85).f(B.rect(x - 1, -2, 9, 3), '#4a3622', .7);
+    B.f(B.rect(-24, -80, 48, 10), '#5a4028').f(B.rect(-24, -80, 48, 3), '#8a6a44', .9).f(B.rect(-24, -71, 48, 1.6), '#3a2a18', .6);
+    for (const x of [-16.5, 17.5]) B.f(B.circ(x, -75, 1.6), '#2a1e12');
     // the screw: a thick wooden thread from the board up through the beam to its head
     B.f(B.rect(-4.6, -96, 9.2, 58), '#8a6a44').f(B.rect(-4.6, -96, 3, 58), '#b08a5c', .8);
     for (let y = -95; y < -40; y += 4.2) B.s(`M-4.6 ${y}L4.6 ${y + 3}`, '#4a3622', 1.3, .85).s(`M-4.6 ${y + .9}L4.6 ${y + 3.9}`, '#c8a070', .6, .6);
     // its head and the capstan bar through it, worn pale at the ends where hands push
     B.f(rr(-7, -100, 14, 7, 2), '#6a4e30').f(rr(-7, -100, 14, 2.4, 1), '#9a7a54', .9);
-    B.s('M-30 -97L30 -95', '#6a4e30', 3.4).s('M-30 -98L30 -96', '#a8865c', 1.1, .8).f(B.circ(-30, -97, 2.4), '#c8a878').f(B.circ(30, -95, 2.4), '#c8a878');
+    B.s('M-24 -97L28 -95', '#6a4e30', 3.4).s('M-24 -98L28 -96', '#a8865c', 1.1, .8).f(B.circ(-24, -97, 2.4), '#c8a878').f(B.circ(28, -95, 2.4), '#c8a878');
     B.cx.restore();
-    // baskets of apples by it, on the square's side
-    for (const [x, k] of [[-12, 1], [-2, .85]]) { B.f(rr(x - 7 * k, -11 * k, 14 * k, 11 * k, 3), '#a07a42').s(`M${x - 7 * k} ${-6 * k}h${14 * k}`, '#7a5a30', .8, .8); if (s !== 'spring') for (let j = 0; j < 5; j++) B.f(B.circ(x - 4.5 * k + j * 2.3 * k, -11.5 * k - (j % 2) * 1.6, 2.4 * k), j % 2 ? '#c8442e' : '#d8b040'); }
+
+    // (fix round 2: no baskets beside it: there is no room between the bed, the tub and the gable)
     B.tufts(r, -16, 2, 8, 5, ['#7c9a4e', '#9a9a52'], 5).tufts(r, X + 30, 2, 6, 4, ['#7c9a4e', '#9a9a52'], 4);
   } };
 
@@ -260,7 +273,7 @@
   } };
 
   // Lit at night, as world point lights (94-garden-native-world.js reads a painted handle's lights): [dx, dy, radius] from the foot.
-  const LIGHTS = { 'ld-barrels': [[40, -52, 96]], 'ld-folly': [[0, -180, 90]], 'ld-treehouse': [[-26, -126, 64]] };
+  const LIGHTS = { 'ld-barrels': [[-48, -64, 96]], 'ld-folly': [[0, -180, 90]], 'ld-treehouse': [[-26, -126, 64]] };
   const landmark = GardenPaintedMarks.landmark;
   GardenPaintedMarks.landmark = function (scene, prop, sc, element, W) {
     const h = landmark.apply(this, arguments), list = h && prop && LIGHTS[prop.id];

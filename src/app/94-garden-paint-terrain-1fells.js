@@ -438,6 +438,19 @@ window.GardenPaintedTerrain = (function () {
       B.cx.save(); B.cx.clip(new Path2D(face));
       // courses of irregular stones, a through-stone now and then
       const U = kit.resample(upper, 5), Lw = kit.resample(lower, 5), m = Math.min(U.length, Lw.length), rows = along ? 4 : 2;
+      // (High orchard fix round 2) a thin wall is a standing dry-stone wall seen from the front: level courses of squared stones
+      // with dark joints, lit at the top and in shade at the foot, so it reads as a wall holding up the terrace above (rounded
+      // stones scattered over the face read as a raft of rubble lying on the grass)
+      if (lift) {
+        const yAt = (A, x) => { let best = A[0]; for (const q of A) if (Math.abs(q.x - x) < Math.abs(best.x - x)) best = q; return best.y; };
+        B.f(face, B.lin(0, bb[1] + 10, 0, bb[3] - 20, [[0, '#a89f88'], [.55, '#8a826e'], [1, '#5c5648']]));
+        const x0 = Math.min(upper[0].x, lower[0].x), x1 = Math.max(upper[upper.length - 1].x, lower[lower.length - 1].x), CR = 6;
+        for (let row = 0; row < CR; row++) for (let x = x0 - (row & 1) * 5; x < x1; ) { const w = 7 + r() * 8, xm = x + w / 2, top = yAt(U, xm), bot = yAt(Lw, xm), hh = (bot - top) / CR, y = top + row * hh;
+          const tone = r(); B.f(B.rect(x + .6, y + .6, w - 1.2, hh - 1.2), tone < .3 ? '#b9b19a' : tone < .7 ? '#a39b85' : '#c8c0a8', .97).f(B.rect(x + .6, y + .6, w - 1.2, Math.min(1.4, hh * .3)), '#e0d8c2', .55).f(B.rect(x + .6, y + hh - 1.6, w - 1.2, 1), '#4e4a3e', .35);
+          if (r() < .05) B.f(B.blob(r, xm, y + hh / 2, 3, 1.4, 6, .5), P.moss, .7);
+          x += w; }
+        B.f(B.poly(lower.map(p => ({ x: p.x, y: p.y - 9 })).concat(lower.slice().reverse())), '#2e3420', .22);   // the foot in shade
+      } else
       for (let row = 0; row < rows; row++) for (let i = 0; i < m; i += 1 + Math.floor(r() * 2)) {
         const t0 = (row + .5) / rows, p = { x: U[i].x + (Lw[i].x - U[i].x) * t0, y: U[i].y + (Lw[i].y - U[i].y) * t0 }, hgt = Math.abs(Lw[i].y - U[i].y) / rows, w = 4 + r() * 5;
         const tone = r(); B.f(B.blob(r, p.x + (row & 1) * 2, p.y, w, Math.max(1.6, hgt * .42), 6, .3), tone < .3 ? '#b8b09a' : tone < .7 ? '#a39b85' : '#c9c2ac', .95).f(B.ell(p.x - w * .3, p.y - hgt * .18, w * .4, Math.max(.6, hgt * .12)), '#ddd6c2', .6);
@@ -449,9 +462,11 @@ window.GardenPaintedTerrain = (function () {
       B.cx.restore();
       // cope: a row of upright stones on top, lit from the left; moss and turf from the terrace above
       const top = kit.resample(upper, 3.4);
-      for (let i = 0; i < top.length; i += 2) { const p = top[i], h = 3.6 + r() * 2.4, w = 3.2 + r() * 2; B.f(`M${p.x - w / 2} ${p.y + 1}L${p.x - w / 2} ${p.y - h + 1.4}Q${p.x} ${p.y - h - .6} ${p.x + w / 2} ${p.y - h + 1.2}L${p.x + w / 2} ${p.y + 1}Z`, r() < .5 ? '#a39a84' : '#8f8672').f(B.rect(p.x - w / 2, p.y - h + 1.4, w * .35, h - .4), '#d6cfb8', .7).f(B.rect(p.x + w / 2 - w * .25, p.y - h + 1.6, w * .25, h - .6), '#5e574a', .5); }
+      for (let i = 0; i < top.length; i += lift ? 1 : 2) { const p = top[i], h = (lift ? 6 : 3.6) + r() * 2.4, w = (lift ? 4.2 : 3.2) + r() * 2; B.f(`M${p.x - w / 2} ${p.y + 1}L${p.x - w / 2} ${p.y - h + 1.4}Q${p.x} ${p.y - h - .6} ${p.x + w / 2} ${p.y - h + 1.2}L${p.x + w / 2} ${p.y + 1}Z`, r() < .5 ? '#a39a84' : '#8f8672').f(B.rect(p.x - w / 2, p.y - h + 1.4, w * .35, h - .4), '#d6cfb8', .7).f(B.rect(p.x + w / 2 - w * .25, p.y - h + 1.6, w * .25, h - .6), '#5e574a', .5); }
       for (let i = 0; i < top.length; i += 2) { const p = top[i]; if (r() < .4) B.f(B.blob(r, p.x, p.y - 3, 3 + r() * 3, 1.2 + r(), 6, .5), snowy ? P.snow : r() < .5 ? P.moss : '#8fa860', .9); }
       if (snowy) B.s(B.line(top.map(p => ({ x: p.x, y: p.y - 4.5 }))), P.snow, 2.6, .9);
+      // (fix round 2) the terrace's turf comes over the cope's back, so the ground above reads as held up by the wall
+      if (lift && !snowy) { for (let i = 0; i < top.length; i += 1) { const p = top[i]; if (r() < .7) B.f(B.blob(r, p.x, p.y - 7, 4 + r() * 4, 2 + r() * 1.4, 6, .5), r() < .5 ? '#7c9a4e' : '#93ad5c', .95); } }
       B.s(B.line(kit.resample(lower, 6)), '#4a463a', 1.8, .45);
     });
   }

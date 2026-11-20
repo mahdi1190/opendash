@@ -278,6 +278,19 @@
   }
   // the one gate: across a cell's edge (g.horiz: seen from the front) or along it (seen from the side)
   function gate(B, g, kind) {
+    // (High orchard fix round 2) the orchard's fields each shut in their own way, so the same field gate is not stamped by every
+    // one: a woven hurdle in the rows, a stile into the meadows, a rope between two posts on the heather, a weathered board gate at the pond
+    if (kind === 'hurdle' || kind === 'stile' || kind === 'rope') {
+      const P2 = ['#6e5a40', '#4e3e2c', '#927a58'], h = 12;
+      const ends = g.horiz ? [[g.x - g.len / 2 + 3, g.y], [g.x + g.len / 2 - 3, g.y]] : [[g.x, g.y - g.len / 2 + 2], [g.x, g.y + g.len / 2 - 1]];
+      const [[ax, ay], [bx, by]] = ends;
+      B.f(B.ell((ax + bx) / 2 + 2, (ay + by) / 2 + 1.6, Math.abs(bx - ax) / 2 + 3, Math.abs(by - ay) / 2 + 2.4), '#22301a', .2);
+      if (kind === 'hurdle') { B.f(B.poly([[ax, ay], [bx, by], [bx, by - h], [ax, ay - h]]), '#7a5a34'); for (let k = 0; k < 5; k++) { const o = 2 + k * (h - 3) / 4; B.s(`M${ax} ${ay - o}L${bx} ${by - o}`, k % 2 ? '#c49a62' : '#a07a4a', 2.2, 1); } for (let k = 1; k < 5; k++) { const t = k / 5, x = ax + (bx - ax) * t, y = ay + (by - ay) * t; B.s(`M${x} ${y + .5}V${y - h - 1.5}`, '#4e3620', 1.2, 1); } }
+      else if (kind === 'stile') { B.s(`M${ax} ${ay - 5}L${bx} ${by - 5}M${ax} ${ay - 11}L${bx} ${by - 11}`, '#8a7454', 1.8, 1); if (g.horiz) { const mx = (ax + bx) / 2; B.f(B.rect(mx - 7, ay - 4.5, 14, 2.6), '#a88e66').f(B.rect(mx - 7, ay - 4.5, 14, .9), '#c8b08a').f(B.rect(mx - 5.5, ay - 2, 1.6, 2.4), '#5e4c36').f(B.rect(mx + 4, ay - 2, 1.6, 2.4), '#5e4c36'); } }
+      else { const sag = (x0, y0, x1, y1, d) => `M${x0} ${y0}Q${(x0 + x1) / 2} ${(y0 + y1) / 2 + d} ${x1} ${y1}`; B.s(sag(ax, ay - 10, bx, by - 10, 4), '#c9b07a', 1.6, 1).s(sag(ax, ay - 10.6, bx, by - 10.6, 4), '#e8d6a6', .6, .8); B.s(`M${bx - 1} ${by - 10}q2 3 0 6`, '#c9b07a', 1.2, .9); }
+      for (const [x, y] of ends) B.post(x, y - h - 2.5, y + .5, 3.2, P2).f(B.ell(x, y - h - 2.5, 1.9, 1.1), P2[2]);
+      return;
+    }
     const wood = kind === 'wicket' ? ['#e4dcc8', '#f4eee0', '#b8ae96'] : ['#8a7454', '#a88e66', '#5e4c36'], post = kind === 'wicket' ? ['#cfc6b0', '#b0a68e', '#f0eada'] : ['#6e5a40', '#4e3e2c', '#927a58'];
     if (g.horiz) {
       const x0 = g.x - g.len / 2 + 3, x1 = g.x + g.len / 2 - 3, y = g.y, h = kind === 'wicket' ? 13 : 12;
@@ -395,7 +408,7 @@
       B.cx.save(); B.cx.clip(S.path, 'nonzero'); fill(B, C, f, bb, cb, S.has, S.loops);
       // a soft shade just inside the edge, so the field sits in the ground
       B.cx.filter = 'blur(2.5px)'; B.s(S.path, '#2a3a1c', 6, .1); B.cx.filter = 'none'; B.cx.restore();
-      const g = S.gate, edge = STYLE[f.edge] || STYLE.hedge, kind = f.edge === 'hedge' ? 'wicket' : 'field';
+      const g = S.gate, edge = STYLE[f.edge] || STYLE.hedge, kind = f.edge === 'hedge' ? 'wicket' : /^high-/.test(f.id || '') ? ({ 'long-grass': 'hurdle', meadow: 'stile', heather: 'rope' }[f.edge] || 'field') : 'field';
       // (round 3) the built edge (or the kind's own thick growth) only along the front; the rest is the rough margin, with
       // the kind's own reeds, bracken or long grass standing in it here and there where it grows thickest
       const thickAt = q => .5 + .5 * (Math.sin(q.ox * .037 + q.oy * .051) * .6 + Math.sin(q.ox * .013 - q.oy * .029 + 2.1) * .4);

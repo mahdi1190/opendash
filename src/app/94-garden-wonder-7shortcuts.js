@@ -20,7 +20,7 @@ const GARDEN_ORCHARD_SHORTCUTS = Object.freeze([
  *  cliff top's edge above the beach walk: always solid, drawn by the orchard painter (94-garden-paint-vale-1orchard.js 1e). */
 const GARDEN_ORCHARD_CLIFF = Object.freeze([
   // (the hurdle fence either side of the lakeside hurdle is the orchard painter's, its feet solid through GardenPaintVale.feet)
-  Object.freeze({ box: [87.12, 40.3, 91.5, 40.8], src: 'the cliff at the head of the cove' }),
+  Object.freeze({ box: [87.12, 40.3, 91.5, 41.9], src: 'the cliff at the head of the cove' }),   // (fix round 2: as tall as its face is drawn)
   Object.freeze({ box: [84.95, 40.3, 85.2, 40.8], src: 'the cliff at the head of the cove' }),
   Object.freeze({ box: [85.05, 36.5, 85.45, 40.35], src: 'blackthorn on the cliff top' }),
 ]);
@@ -40,13 +40,21 @@ function gardenOrchardShortcutSig() { return _gscOrchard() ? GARDEN_ORCHARD_SHOR
 function _gscArt(id, open) {
   const post = (x, y, h) => `<rect x="${x - 2.2}" y="${y - h}" width="4.4" height="${h}" rx="1" fill="#6a5034"/><rect x="${x - 2.2}" y="${y - h}" width="1.5" height="${h}" fill="#9a7a54"/><ellipse cx="${x + 2}" cy="${y + .6}" rx="5" ry="1.6" fill="#22301a" opacity=".3"/>`;
   if (id === 'hurdle') {
-    // seen end on (the gap runs up the screen): a panel of woven hazel, its stakes and the withies across them
-    const panel = (x0, y0, x1, y1, h) => { let s = `<path d="M${x0} ${y0}L${x1} ${y1}L${x1} ${y1 - h}L${x0} ${y0 - h}Z" fill="#8a6a40"/>`; for (let k = 1; k < 6; k++) { const t = k / 6, y = y0 + (y1 - y0) * t, x = x0 + (x1 - x0) * t; s += `<path d="M${x} ${y}V${y - h - 2}" stroke="#5a4028" stroke-width="1.6"/>`; } for (let k = 0; k < 6; k++) { const o = 3 + k * (h - 4) / 5; s += `<path d="M${x0} ${y0 - o}L${x1} ${y1 - o}" stroke="${k % 2 ? '#b08a56' : '#9a7448'}" stroke-width="2.6" stroke-linecap="round"/>`; } return s; };
-    // a fence of three hurdles down the gap from the bank's end to the outlet; the middle one is the shortcut: shut across
-    // the steps, or lifted aside and leant on its neighbour
-    const fence = `${post(-2, -30, 26)}${post(3, 31, 26)}`;
-    return open ? `<ellipse cx="18" cy="8" rx="16" ry="3" fill="#22301a" opacity=".24"/>${fence}${panel(8, 2, 30, 12, 20)}`
-      : `<path d="M-6 -66L6 54" stroke="#22301a" stroke-width="9" opacity=".16" transform="translate(6 3)"/>${fence}${panel(-2, -30, 3, 31, 22)}`;
+    // (fix round 2) the gap runs up the screen, so a hurdle set straight along it was seen end on, a thin stick. It stands
+    // across the gap on the slant, from the fence post by the bank's end to the post by the outlet, so its woven face shows:
+    // a panel of hazel rods woven through upright sails, a lit binding along its top, its shadow on the steps.
+    const panel = (x0, y0, x1, y1, h) => {
+      let s = `<path d="M${x0 + 4} ${y0 + 2}L${x1 + 10} ${y1 + 3}L${x1 + 20} ${y1 + 1}L${x0 + 14} ${y0}Z" fill="#22301a" opacity=".2"/>`;
+      s += `<path d="M${x0} ${y0}L${x1} ${y1}L${x1} ${y1 - h}L${x0} ${y0 - h}Z" fill="#7a5a34"/>`;
+      for (let k = 0; k < 7; k++) { const o = 2.5 + k * (h - 4) / 6; s += `<path d="M${x0} ${y0 - o}L${x1} ${y1 - o}" stroke="${k % 2 ? '#c49a62' : '#a07a4a'}" stroke-width="3.2" stroke-linecap="round"/>`; }
+      for (let k = 1; k < 7; k++) { const t = k / 7, y = y0 + (y1 - y0) * t, x = x0 + (x1 - x0) * t; s += `<path d="M${x} ${y + 1}V${y - h - 3}" stroke="#4e3620" stroke-width="1.8"/>`; }
+      s += `<path d="M${x0} ${y0 - h - 1}L${x1} ${y1 - h - 1}" stroke="#d8b47a" stroke-width="2.4" stroke-linecap="round"/>`;
+      return s;
+    };
+    const A = [-19, -24], Bp = [19, 24], H = 26;
+    if (open) return `${post(A[0], A[1], H + 6)}${post(Bp[0], Bp[1], H + 6)}<ellipse cx="${Bp[0] + 10}" cy="${Bp[1] + 6}" rx="18" ry="3" fill="#22301a" opacity=".22"/>${panel(Bp[0] + 2, Bp[1] - 14, Bp[0] + 24, Bp[1] + 8, 20)}`;
+    // shut: a peg through its top binding into the post on the orchard side, with a twist of withy
+    return `${post(A[0], A[1], H + 6)}${panel(A[0], A[1], Bp[0], Bp[1], H)}${post(Bp[0], Bp[1], H + 6)}<path d="M${Bp[0] - 4} ${Bp[1] - H + 2}h9" stroke="#e8d2a0" stroke-width="2.6" stroke-linecap="round"/><path d="M${Bp[0] + 2} ${Bp[1] - H - 3}q4 4 0 8" stroke="#c9b07a" stroke-width="1.6" fill="none"/>`;
   }
   // the cliff gate: seen face on across the steps; shut, a rope knotted round its latch post; open, swung back against the rock
   const bars = (x0, x1, top, bot) => [0, 1, 2, 3].map(k => `<path d="M${x0} ${bot - 3 - k * (bot - top - 6) / 3}H${x1}" stroke="${k % 2 ? '#c2b08a' : '#a8946c'}" stroke-width="2.6" stroke-linecap="round"/>`).join('') + `<path d="M${x0 + 2} ${bot - 3}L${x1 - 2} ${top + 3}" stroke="#a8946c" stroke-width="2.4"/>`;

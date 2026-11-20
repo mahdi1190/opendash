@@ -700,8 +700,17 @@
     [
      82.8,
      43
+    ],
+    [
+     83.8,
+     42.65
+    ],
+    [
+     84.7,
+     42.5
     ]
-   ]
+   ],
+   "note": "(fix round 2: runs on east to where the mother walk and the beach path meet; it stood alone as a two-cell stub with grass at both ends)"
   },
   {
    "id": "terrace-wall-8",

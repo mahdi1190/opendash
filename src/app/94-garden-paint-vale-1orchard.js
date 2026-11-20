@@ -11,6 +11,7 @@
 
   function compose(C) {
     const { L, P, kit, add, thing, season } = C, cw = L.cw, ch = L.ch, W = L.W;
+    const STONE = { rock: '#b4aa94', rockLo: '#8c8270', rockHi: '#d8cfb8', rockDk: '#4e483e', lichen: '#d8c86a' };
     const reg = (L.D.regions || []).find(r => r.id === 'orchard-headland'); if (!reg || !window.GardenPaintWood || !GardenPaintWood.orchardTree) return;
     const loops = (reg.polygons || []).map(l => l.map(L.pt)), regP = V.loopPath(loops), coastP = V.loopPath(L.coast), rb = kit.bboxOf(loops.flat(), 20);
     const wallRows = (L.D.landforms || []).filter(f => f.kind === 'terrace-wall' && f.polygon), walls = wallRows.map(f => f.polygon);
@@ -25,6 +26,14 @@
       // terraceOps draws upright coping up to six pixels above the upper rim.
       groundCuts.push(upper.map((p, i, A) => ({ x: p.x, y: p.y - 7 - lift * Math.min(1, i / 3, (A.length - 1 - i) / 3) })).concat(lower.slice().reverse()));
     }
+    // (fix round 2) where one path runs into another, the corners are worn round: a disc of the path's own ground left bare
+    // round the meeting point (two straight ribbons butted together met in ruled right angles, a flat cross of sand)
+    { const RT = [...L.routes.values()].filter(rt => rt.zone === 4 && rt.tier !== 'plaza' && rt.points && rt.points.length > 1).map(rt => ({ rt, pts: gardenIslandRoutePath(rt).points, w: rt.widthCells || 2 }));
+      const dSeg = (p, a, b) => { const dx = b.x - a.x, dy = b.y - a.y, l = dx * dx + dy * dy, t = l ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l)) : 0; return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy); };
+      for (const A of RT) for (const e of [A.pts[0], A.pts[A.pts.length - 1]]) for (const O of RT) { if (O === A) continue; let d = 9; for (let i = 1; i < O.pts.length; i++) d = Math.min(d, dSeg(e, O.pts[i - 1], O.pts[i]));
+        const wo = typeof gardenIslandRouteWidthAt === 'function' ? gardenIslandRouteWidthAt(O.rt, e.x, e.y) : O.w, wa = typeof gardenIslandRouteWidthAt === 'function' ? gardenIslandRouteWidthAt(A.rt, e.x, e.y) : A.w;
+        if (d > wo * .5) continue; const R = Math.min(wa, wo) * .5 + .5, c = L.cpt(e.x, e.y);
+        groundCuts.push(Array.from({ length: 20 }, (_, k) => ({ x: c.x + Math.cos(k / 20 * Math.PI * 2) * R * cw, y: c.y + Math.sin(k / 20 * Math.PI * 2) * R * ch }))); } }
     const groundClips = groundCuts.map(poly => {
       const cut = new Path2D(); cut.rect(rb[0], rb[1], rb[2] - rb[0], rb[3] - rb[1]);
       cut.addPath(V.loopPath([poly])); return cut;
@@ -47,6 +56,12 @@
       kit.tiles(cb, 100, 20, 92, (tx, ty, rr) => { for (let k = 0; k < 8; k++) { const x = tx + rr() * 100, y = ty + rr() * 100, cx = x / cw, cy = (y - W.sky) / ch; if (!grass(Math.floor(cx), Math.floor(cy))) continue;
         if (cy < 25 && cx > 69 && cx < 79) { B.heather(rr, x, y, 7 + rr() * 5, { heather: '#8d6a92', heatherLo: '#5f4a62', heatherHi: '#b07ab8' }, season === 'summer' ? '#c79ac0' : null); continue; }
         if (cx > 81.5 && cy > 33.5 && cy < 39.5) { if (season === 'spring' || season === 'summer') for (let f = 0; f < 5; f++) B.f(B.circ(x + (rr() - .5) * 14, y + (rr() - .5) * 6, 1.6), f % 3 ? '#f0d24a' : '#f8f4e8', .95); B.tufts(rr, x, y, 10, 4, [P.lawnLo, '#9a9a52'], 7); continue; }
+        // (fix round 2) the ridge round the folly is downland, not bare lawn: cushions of thyme, gorse, harebells, a grey stone
+        if (cy < 29.6 && cx > 71.5) { const t = rr();
+          if (t < .16) { B.f(B.ell(x + 3, y + 2, 9, 2.6), '#22301a', .18); for (let k = 0; k < 5; k++) B.f(B.blob(rr, x - 6 + k * 3, y - 3 - rr() * 5, 5 + rr() * 2, 4 + rr() * 2, 6, .5), k < 2 ? '#3e5a2a' : '#56743a', .95); if (season === 'spring' || season === 'summer') for (let k = 0; k < 8; k++) B.f(B.circ(x - 8 + rr() * 16, y - 9 + rr() * 8, 1.2), '#f0c830', .95); continue; }
+          if (t < .4) { B.f(B.blob(rr, x, y, 7 + rr() * 4, 3, 7, .4), '#7a8a52', .9); if (season === 'summer') for (let k = 0; k < 6; k++) B.f(B.circ(x - 6 + rr() * 12, y - 1 - rr() * 2, 1), '#b88ac0', .95); continue; }
+          if (t < .47) { B.stone(rr, x, y, 4 + rr() * 3, 2.4 + rr() * 1.4, STONE, null); continue; }
+          if (t < .6 && season === 'summer') { for (let k = 0; k < 3; k++) B.f(B.circ(x + (rr() - .5) * 10, y - 4 - rr() * 4, 1.3), '#7a8ad0', .95); } }
         if (rr() < .3) B.tufts(rr, x, y, 10, 4, [P.lawnLo, P.lawnHi], 6); } });
     }, {});
 
@@ -56,9 +71,12 @@
     for (const pool of (L.D.freshwater || []).filter(w => (w.id === 'orchard-pool' || w.id === 'orchard-dip') && w.boundary && w.boundary.length > 2)) {
       const pts = pool.boundary.map(L.pt), loop = V.loopPath([pts]), bb = kit.bboxOf(pts, 40);
       add(bb, 97, (B, r) => {
+        // (fix round 2) the dip lies in a hollow: the turf falls to it from every side, darker as it goes down, the north bank
+        // lit; sedge in clumps round the water, only a few stones (a neat ring of stones read as a disc dropped on the grass)
+        if (pool.id === 'orchard-dip') { const c0 = { x: (bb[0] + bb[2]) / 2, y: (bb[1] + bb[3]) / 2 }; B.cx.filter = 'blur(10px)'; B.f(B.ell(c0.x, c0.y + 4, (bb[2] - bb[0]) / 2 + 6, (bb[3] - bb[1]) / 2 + 2), '#4e6432', .45); B.f(B.ell(c0.x - 6, c0.y - (bb[3] - bb[1]) / 2 + 26, (bb[2] - bb[0]) / 2 - 14, 10), '#c8d08a', .35); B.cx.filter = 'none'; }
         B.s(loop, season === 'winter' ? '#8e8a74' : '#8a7a52', 26, .5).s(loop, '#6e6040', 12, .55).s(loop, '#5a5238', 4, .45);
         for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; for (let t = 0; t < 1; t += .34) { const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, cx = (bb[0] + bb[2]) / 2, cy = (bb[1] + bb[3]) / 2, d = Math.hypot(x - cx, (y - cy) * 1.6) || 1, ox = (x - cx) / d, oy = (y - cy) * 1.6 / d;
-          if (r() < .32) B.stone(r, x + ox * 9, y + oy * 5, 3 + r() * 3, 2 + r() * 1.4, { rock: '#b4aa94', rockLo: '#8c8270', rockHi: '#d8cfb8', rockDk: '#4e483e' }, null);
+          if (r() < (pool.id === 'orchard-dip' ? .1 : .32)) B.stone(r, x + ox * 9, y + oy * 5, 3 + r() * 3, 2 + r() * 1.4, { rock: '#b4aa94', rockLo: '#8c8270', rockHi: '#d8cfb8', rockDk: '#4e483e' }, null);
           if (season !== 'winter' && r() < .7) B.tufts(r, x + ox * (14 + r() * 8), y + oy * (8 + r() * 5), 12, 6, ['#9a9a52', '#7c8a44', season === 'autumn' ? '#b8a05a' : '#a8b468'], 9); } }
       });
     }
@@ -70,7 +88,6 @@
     const across = (pts, i) => { const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy) || 1; return { tx: dx / l, ty: dy / l, nx: -dy / l, ny: dx / l }; };
     // the half width of a path in px across its line (cells are wider than deep)
     const halfPx = (q, d) => q.w * .5 * Math.hypot(d.ny * cw, d.nx * ch);
-    const STONE = { rock: '#b4aa94', rockLo: '#8c8270', rockHi: '#d8cfb8', rockDk: '#4e483e', lichen: '#d8c86a' };
 
     // 1c. The grass lanes (the folly trail on the midsummer line, the ridge path): mown turf, the mower's passes along
     // them light and dark, a soft longer edge, never the bare earth of the other walks.
@@ -83,15 +100,18 @@
       add(bb, 93, (B, r) => {
         B.cx.save(); B.cx.clip(coastP); B.cx.lineCap = 'round'; B.cx.lineJoin = 'round';
         const lane = (k, col, a) => { for (let i = 1; i < ev.length; i++) { if (Math.hypot(ev[i].x - ev[i - 1].x, ev[i].y - ev[i - 1].y) > 14) continue; const d = across(ev, i), h = halfPx(ev[i], d) * k; B.s(`M${ev[i - 1].x} ${ev[i - 1].y}L${ev[i].x} ${ev[i].y}`, col, h * 2, a); } };
-        B.cx.filter = 'blur(5px)'; lane(1.18, kit.mix(P.lawn, P.lawnLo, .4), .9); B.cx.filter = 'none';
-        lane(1, P.lawn, 1); lane(.92, kit.mix(P.lawn, P.lawnHi, .35), 1);
+        // (fix round 2) the uncut meadow either side stands taller and darker, so the lane's two edges read from the camera
+        // (a faint lighter green with no edge was all but invisible)
+        B.cx.filter = 'blur(4px)'; lane(1.42, kit.mix(P.lawnLo, '#5f7a3a', .5), .75); B.cx.filter = 'none';
+        lane(1.12, kit.mix(P.lawnLo, '#6f8a44', .4), .9);
+        lane(1, kit.mix(P.lawn, P.lawnHi, .3), 1); lane(.9, season === 'winter' ? '#cdd2c0' : kit.mix(P.lawnHi, '#dfe6a6', .35), 1);
         // the mower's passes: two stripes along the lane, one lit and one in shade
         const runs = []; let cur = [ev[0]]; for (let i = 1; i < ev.length; i++) { if (Math.hypot(ev[i].x - ev[i - 1].x, ev[i].y - ev[i - 1].y) > 14) { runs.push(cur); cur = []; } cur.push(ev[i]); } runs.push(cur);
         for (const run of runs.filter(q => q.length > 1)) for (const [o, col, a] of [[-.45, season === 'winter' ? '#c4cab8' : kit.mix(P.lawnHi, '#d8e0a0', .3), .55], [.45, P.lawnLo, .32]]) { const line = run.map((q, i) => { const d = across(run, i), h = halfPx(q, d); return { x: q.x + d.nx * h * o, y: q.y + d.ny * h * o }; }); V.strokePts(B, line, col, Math.max(6, halfPx(run[0], across(run, 0)) * .8), a); }
         // daisies and clover in the sward, tufts of longer grass at the edges
         for (let i = 0; i < ev.length; i += 2) { const q = ev[i], d = across(ev, i), h = halfPx(q, d);
           if (season !== 'winter' && r() < .5) B.f(B.circ(q.x + d.nx * h * (r() - .5) * 1.4, q.y + d.ny * h * (r() - .5) * 1.4, 1.2), r() < .7 ? '#f8f4e8' : '#f0d24a', .9);
-          for (const sd of [-1, 1]) if (r() < .45) B.tufts(r, q.x + d.nx * h * sd * 1.05, q.y + d.ny * h * sd * 1.05 + 2, 8, 3, [P.lawnLo, '#9a9a52'], 6); }
+          for (const sd of [-1, 1]) { B.tufts(r, q.x + d.nx * h * sd * 1.1, q.y + d.ny * h * sd * 1.1 + 2, 10, 5, [P.lawnLo, '#7c8a44', '#9a9a52'], 7); if (season !== 'winter' && r() < .25) B.f(B.circ(q.x + d.nx * h * sd * 1.25, q.y + d.ny * h * sd * 1.25 - 3, 1.5), r() < .5 ? '#f0d24a' : '#c8a0d8', .95); } }
         B.cx.restore();
       }, {});
     }
@@ -99,36 +119,53 @@
     // 1d. Flights of steps: stone treads across the way, each lit on its top and shaded on its riser, worn hollow in the
     // middle, with grass and a stone cheek at either end. The lakeside steps climb the bank to the pass; the cliff steps
     // climb the rock from the cove to the pippin.
+    // (fix round 2) a flight is one straight run of squared stone steps between two stone cheeks, every tread parallel and
+    // touching the next (treads laid square to a curving path fanned out like loose laths, and with grass between them they read
+    // as planks dropped on the path). opts.climb: the screen rise of the whole flight, when it climbs a wall face (drawn as
+    // level treads stacked up the face, the wall's two cut ends either side).
     const flight = (pts, opts) => {
-      const ev = even(pts, opts.step || 10), bb = kit.bboxOf(ev, 60);
+      const a0 = pts[0], a1 = pts[pts.length - 1], dx = a1.x - a0.x, dy = a1.y - a0.y, l = Math.hypot(dx, dy) || 1;
+      const half = pts.reduce((m, q, i) => m + halfPx(q, across(pts, i)), 0) / pts.length * (opts.k || .82);
+      let tx = dx / l, ty = dy / l; if (opts.climb) { tx = 0; ty = -1; }
+      const nx = -ty, ny = tx, n = opts.n || Math.max(3, Math.round(l / (opts.step || 12)));
+      const c0 = opts.climb ? { x: (a0.x + a1.x) / 2, y: opts.foot } : { x: a0.x, y: a0.y }, len = opts.climb ? opts.climb : l;
+      const bb = [Math.min(a0.x, a1.x) - half - 30, Math.min(a0.y, a1.y, c0.y - len) - 40, Math.max(a0.x, a1.x) + half + 30, Math.max(a0.y, a1.y, c0.y) + 30];
       add(bb, 94 + (opts.salt || 0), (B, r) => {
         B.cx.save(); B.cx.clip(coastP);
-        const tread = opts.rock ? ['#a89c86', '#b5a990', '#8c8270'] : ['#b8ad94', '#c4b99e', '#a39880'];
-        // the bed the steps are set in: trodden earth between them, soft at its edges
-        B.cx.lineCap = 'butt'; B.cx.filter = 'blur(3px)'; if (opts.rock) for (let i = 1; i < ev.length; i++) { const d = across(ev, i), h = halfPx(ev[i], d) * .98; B.s(`M${ev[i - 1].x} ${ev[i - 1].y}L${ev[i].x} ${ev[i].y}`, opts.rock ? '#8a8070' : '#a08e6a', h * 2, .75); } B.cx.filter = 'none';
-        if (opts.rock) for (let i = 0; i < ev.length; i += 2) { const q = ev[i], d = across(ev, i), h = halfPx(q, d); for (const sd of [-1, 1]) B.boulder(r, q.x + d.nx * (h + 7) * sd, q.y + d.ny * (h + 7) * sd + 4, 14 + r() * 10, 12 + r() * 9, STONE, false); }
-        // back to front, so each nearer step overlaps the one above it
-        const order = ev.map((q, i) => i).sort((a, b) => ev[a].y - ev[b].y);
-        for (const i of order) { const q = ev[i], d = across(ev, i), h = halfPx(q, d) * .84, dep = (opts.step || 10) * .5, up = d.ty < 0 ? 1 : -1;
-          const ax = q.x - d.nx * h, ay = q.y - d.ny * h, bx = q.x + d.nx * h, by = q.y + d.ny * h, ux = d.tx * dep * up, uy = d.ty * dep * up;
-          const tone = tread[Math.floor(r() * 2)];
-          B.f(B.poly([[ax, ay + 3], [bx, by + 3], [bx, by], [ax, ay]]), opts.rock ? '#6e665a' : '#8a8068', .85);   // the riser in shade
-          B.f(B.poly([[ax, ay], [bx, by], [bx + ux, by + uy], [ax + ux, ay + uy]]), tone);   // the tread
-          B.f(B.poly([[ax, ay], [bx, by], [bx + ux * .25, by + uy * .25], [ax + ux * .25, ay + uy * .25]]), tread[1], .7);   // its lit nosing
-          B.f(B.ell(q.x + ux * .5, q.y + uy * .5, h * .34, dep * .22), '#e8e0cc', .35);   // worn pale in the middle
-          for (let c = 0; c < 2; c++) { const t0 = r(); B.s(`M${ax + (bx - ax) * t0} ${ay + (by - ay) * t0}l${ux * .5} ${uy * .5}`, '#8a826e', .6, .5); }
-          for (const [x, y] of [[ax, ay], [bx, by]]) { B.stone(r, x, y + 1, 4 + r() * 2.4, 3 + r() * 1.4, STONE, null); if (season !== 'winter') B.tufts(r, x, y + 3, 6, 3, [P.lawnLo, '#9cb062'], 5); }
+        const P0 = t => ({ x: c0.x + tx * len * t, y: c0.y + ty * len * t });
+        const quad = (t0, t1, h0, h1) => { const p = P0(t0), q = P0(t1); return B.poly([[p.x - nx * h0, p.y - ny * h0], [p.x + nx * h0, p.y + ny * h0], [q.x + nx * h1, q.y + ny * h1], [q.x - nx * h1, q.y - ny * h1]]); };
+        const tone = opts.rock ? ['#a89c86', '#b8ad96', '#8c8270', '#5e564a'] : ['#bdb39a', '#cfc6ac', '#a39880', '#6e6656'];
+        // the bed and its shadow, then the cheeks: dressed stones either side, a little proud of the treads
+        B.cx.filter = 'blur(4px)'; B.f(quad(-.04, 1.04, half + 10, half + 10), '#2e3420', .28); B.cx.filter = 'none';
+        B.f(quad(0, 1, half + 7, half + 7), tone[3]);
+        // the treads, from the far end to the near so each nearer one laps the one beyond; each a lit top, a nosing and a riser in shade
+        for (let k = n - 1; k >= 0; k--) { const t0 = k / n, t1 = (k + 1) / n, tm = t0 + (t1 - t0) * (opts.climb ? .5 : .32), p = P0(t0), q = P0(t1), m = P0(tm);
+          const tp = r(); B.f(quad(tm, t1, half, half), tp < .5 ? tone[0] : tone[1]);   // the tread's top
+          B.f(quad(t0, tm, half, half), tone[2]);   // its riser, in shade
+          B.s(`M${p.x - nx * half} ${p.y - ny * half}L${p.x + nx * half} ${p.y + ny * half}`, tone[3], 1.2, .6);
+          B.s(`M${m.x - nx * half} ${m.y - ny * half}L${m.x + nx * half} ${m.y + ny * half}`, '#efe8d4', 1.4, .85);   // the lit nosing
+          B.f(B.ell((m.x + q.x) / 2, (m.y + q.y) / 2, half * .3, Math.max(1, Math.abs(q.y - m.y) * .25)), '#ece4ce', .35);   // worn pale in the middle
+          for (let c = 0; c < 2; c++) { const s0 = (r() - .5) * 1.6 * half; B.s(`M${m.x + nx * s0} ${m.y + ny * s0}l${(q.x - m.x) * .9} ${(q.y - m.y) * .9}`, '#7e7662', .7, .45); }
+        }
+        for (const sd of [-1, 1]) { const ch0 = half + 1, ch1 = half + 9;
+          for (let k = 0; k < n + 1; k++) { const t = Math.min(1, k / n), p = P0(t), cx0 = p.x + nx * sd * (ch0 + ch1) / 2, cy0 = p.y + ny * sd * (ch0 + ch1) / 2;
+            B.f(B.rect(cx0 - 5, cy0 - 7, 10, 9), r() < .5 ? STONE.rock : STONE.rockLo).f(B.rect(cx0 - 5, cy0 - 7, 10, 2.4), STONE.rockHi, .9).f(B.rect(cx0 + 3, cy0 - 5, 2, 7), STONE.rockDk, .35); }
+          if (season !== 'winter') for (let k = 0; k <= n; k += 2) { const p = P0(k / n); B.tufts(r, p.x + nx * sd * (half + 13), p.y + ny * sd * (half + 13) + 3, 7, 3, [P.lawnLo, '#9cb062'], 5); }
         }
         B.cx.restore();
       }, {});
     };
-    // (the lakeside steps are a path with one short flight, where they climb through the gap in the orchard bank)
-    { const ls = rpts('lakeside-steps'), g = L.cpt(61, 38.4); if (ls) { const seg = ls.filter(q => Math.hypot((q.x - g.x) / cw, (q.y - g.y) / ch) < 1.5); if (seg.length > 2) flight(seg, { step: 13, salt: 1 }); } }
-    // where a path climbs through a thin terrace wall: the wall's two ends squared off and a short flight up through the gap
+    // (the lakeside steps are a path with one short flight, where they climb through the gap in the orchard bank: one straight
+    // run up the gap from the outlet to the hurdle)
+    { const ls = rpts('lakeside-steps'), g = L.cpt(61, 38.4); if (ls) { const seg = ls.filter(q => Math.hypot((q.x - g.x) / cw, (q.y - g.y) / ch) < 1.3 && q.y >= g.y - 4); if (seg.length > 2) flight(seg, { step: 11, salt: 1, k: .78 }); } }
+    // where a path climbs through a thin terrace wall: a short flight up the wall's face through the gap, the wall's two cut ends
+    // either side (not on the orchard stair, which is steps all the way)
     { const thin = wallRows.filter(f => f.thin).map(f => { const n = f.polygon.length >> 1, a = f.polygon.slice(0, n); return { id: f.id, a: a[0], b: a[a.length - 1] }; });
       for (const w of thin) for (const o of thin) { if (o === w || o.a[0] <= w.b[0] || o.a[0] - w.b[0] > 4.5 || Math.abs(o.a[1] - w.b[1]) > 1.2) continue;
-        const near = [...L.routes.values()].filter(rt => rt.zone === 4 && rt.tier !== 'plaza' && rt.points).map(rt => ({ rt, pts: rpts(rt.id) })).filter(q => q.pts).map(q => ({ q, i: q.pts.reduce((m, p, k) => { const c = { x: p.x / cw, y: (p.y - W.sky) / ch }; const dd = Math.hypot(c.x - (w.b[0] + o.a[0]) / 2, c.y - (w.b[1] + o.a[1]) / 2); return dd < m.d ? { d: dd, k } : m; }, { d: 9, k: -1 }) })).filter(z => z.i.k >= 0 && z.i.d < 1.2).sort((a, b) => a.i.d - b.i.d)[0];
-        if (!near) continue; const pts = near.q.pts, k = near.i.k, seg = pts.slice(Math.max(0, k - 5), Math.min(pts.length, k + 6)); if (seg.length > 2) flight(seg, { step: 9, salt: 3 }); } }
+        const mid = [(w.b[0] + o.a[0]) / 2, (w.b[1] + o.a[1]) / 2];
+        const near = [...L.routes.values()].filter(rt => rt.zone === 4 && rt.tier !== 'plaza' && rt.surface !== 'steps' && rt.points).map(rt => ({ rt, pts: rpts(rt.id) })).filter(q => q.pts).map(q => ({ q, i: q.pts.reduce((m, p, k) => { const c = { x: p.x / cw, y: (p.y - W.sky) / ch }; const dd = Math.hypot(c.x - mid[0], c.y - mid[1]); return dd < m.d ? { d: dd, k } : m; }, { d: 9, k: -1 }) })).filter(z => z.i.k >= 0 && z.i.d < 1.2).sort((a, b) => a.i.d - b.i.d)[0];
+        if (!near) continue; const pts = near.q.pts, k = near.i.k, seg = pts.slice(Math.max(0, k - 2), Math.min(pts.length, k + 3));
+        const foot = L.cpt(mid[0], mid[1] + .5).y; if (seg.length > 1) flight(seg, { salt: 3, climb: 26 + ch * .5, foot, n: 5, k: .7 }); } }
 
     // 1e. The cliff top, east of the cowslip rise: bare rock and thrift where the sand gave out, a lit lip at the sea edge
     // with the face falling away under it, blackthorn bent by the wind, a trod worn along the cliff walk; and across the
@@ -140,9 +177,9 @@
         B.cx.save(); B.cx.clip(coastP);
         // the rock floor, its edge on the grass soft and broken (a ruled line read as a cut-out): broad slabs, cracked,
         // lichened, with thrift and turf in the joints, thinning out over the edge
-        B.cx.filter = 'blur(7px)'; B.f(cl, '#9a917c', .96); B.cx.filter = 'none';
+        B.cx.filter = 'blur(7px)'; B.f(cl, season === 'winter' ? '#a3aa94' : '#8e9a62', .96); B.cx.filter = 'none';   // (fix round 2: a headland's sward of turf and thrift over the rock, not stones laid on sand)
         const inCl = (x, y) => { let o = false; for (let i = 0, j = CLIFF.length - 1; i < CLIFF.length; j = i++) { const a = CLIFF[i], b = CLIFF[j]; if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) o = !o; } return o; };
-        kit.tiles(cb, 40, 30, 96, (tx, ty, rr) => { for (let k = 0; k < 3; k++) { const x = tx + rr() * 40, y = ty + rr() * 40; if (!on(x, y) || !inCl(x + (rr() - .5) * 30, y + (rr() - .5) * 20)) continue; const t = rr(); B.f(B.blob(rr, x, y, 10 + rr() * 12, 5 + rr() * 5, 7, .35), t < .33 ? STONE.rock : t < .66 ? '#a59b85' : STONE.rockLo, .9).f(B.blob(rr, x - 3, y - 2, 6 + rr() * 5, 2.4 + rr() * 2, 6, .4), STONE.rockHi, .55);
+        kit.tiles(cb, 40, 30, 96, (tx, ty, rr) => { for (let k = 0; k < 3; k++) { const x = tx + rr() * 40, y = ty + rr() * 40; if (!on(x, y) || !inCl(x + (rr() - .5) * 30, y + (rr() - .5) * 20)) continue; if (rr() < .62) { B.tufts(rr, x, y, 12, 5, ['#6f7e44', '#8c9a56', '#a4a862'], 8); continue; } const t = rr(); B.f(B.blob(rr, x, y, 10 + rr() * 12, 5 + rr() * 5, 7, .35), t < .33 ? STONE.rock : t < .66 ? '#a59b85' : STONE.rockLo, .9).f(B.blob(rr, x - 3, y - 2, 6 + rr() * 5, 2.4 + rr() * 2, 6, .4), STONE.rockHi, .55);
           if (rr() < .35) B.s(`M${x - 8} ${y + 1}l${6 + rr() * 6} ${(rr() - .5) * 3}`, STONE.rockDk, .7, .45);
           if (rr() < .4) B.f(B.blob(rr, x + 6, y - 1, 3 + rr() * 2, 1.4, 6, .5), season === 'winter' ? '#dfe2da' : STONE.lichen, .6);
           if (season !== 'winter' && rr() < .32) { const cx0 = x + (rr() - .5) * 14, cy0 = y + 4; B.f(B.blob(rr, cx0, cy0, 5, 2.6, 7, .4), '#6a7e44', .95); if (season !== 'autumn') for (let j = 0; j < 5; j++) B.f(B.circ(cx0 + (rr() - .5) * 7, cy0 - 1.4 - rr() * 2, 1.3), '#e8a0b8', .95); }
@@ -152,8 +189,8 @@
         B.cx.restore();
         // the sea edge: a lit lip, the face stepping down under it in beds, darker as it goes, spray at its foot
         for (const l of L.coast) { const near = l.filter(p => p.x > cb[0] - 60 && p.x < cb[2] + 60 && p.y > bb[1] && p.y < bb[3] && p.x > 86.6 * cw); if (near.length < 2) continue;
-          for (const [dx, dy, col, w, a] of [[16, 30, '#3e3a34', 14, .55], [12, 22, '#5a5348', 12, .9], [8, 14, '#746b5c', 10, 1], [4, 7, '#8c8270', 8, 1], [1, 2, STONE.rockHi, 3, .9]]) V.strokePts(B, near.map(p => ({ x: p.x + dx, y: p.y + dy })), col, w, a);
-          for (let i = 0; i < near.length; i += 2) { const p = near[i]; B.s(`M${p.x + 3} ${p.y + 6}l${(r() - .5) * 3} ${10 + r() * 14}`, '#3e3a34', 1, .45); if (r() < .4) B.f(B.blob(r, p.x + 18, p.y + 32, 8, 3, 6, .5), '#f2f6f4', .55); } }
+          for (const [dx, dy, col, w, a] of [[22, 92, '#2a2824', 16, .45], [20, 80, '#38342e', 16, .95], [17, 66, '#4a453c', 16, 1], [14, 52, '#5e574b', 16, 1], [11, 38, '#746b5c', 16, 1], [7, 24, '#8a8070', 16, 1], [4, 11, '#a39784', 12, 1], [1, 2, STONE.rockHi, 4, .95]]) V.strokePts(B, near.map(p => ({ x: p.x + dx, y: p.y + dy })), col, w, a);
+          for (let i = 0; i < near.length; i += 2) { const p = near[i]; B.s(`M${p.x + 3} ${p.y + 6}l${(r() - .5) * 4} ${30 + r() * 50}`, '#2e2b26', 1.1, .5); if (r() < .5) B.s(`M${p.x + 6} ${p.y + 20 + r() * 50}l${8 + r() * 6} ${r() * 2}`, '#c2b8a2', 1.2, .55); if (r() < .5) B.f(B.blob(r, p.x + 24, p.y + 96, 10, 3.4, 6, .5), '#f2f6f4', .65); } }
         // blackthorn bent by the wind on the cliff top, its back to the sea
         for (const [x, y] of [[89.2, 30.6], [89.6, 33.8], [88.9, 36.2]]) { const c = L.cpt(x, y); if (!on(c.x, c.y)) continue; B.shadow(c.x + 6, c.y + 2, 20, 5, .3);
           for (let k = 0; k < 7; k++) B.f(B.blob(r, c.x - 6 + k * 2 - r() * 4, c.y - 8 - r() * 10, 9 + r() * 5, 6 + r() * 3, 7, .45), k < 3 ? '#3f4e2e' : k < 5 ? '#55663a' : '#6a7a46', .95);
@@ -170,16 +207,16 @@
       add(kit.bboxOf(fpts, 70), 96, (B, r) => {
         B.cx.save(); B.cx.clip(coastP);
         const sl = rpts('cliff-steps'), gap = sl ? (() => { const q = sl.reduce((m, p) => Math.abs(p.y - L.cpt(0, FACE_Y).y) < Math.abs(m.y - L.cpt(0, FACE_Y).y) ? p : m, sl[0]); return [q.x - halfPx(q, { nx: 1, ny: 0 }) - 2, q.x + halfPx(q, { nx: 1, ny: 0 }) + 2]; })() : [0, 0];
-        for (const seg of [fpts.filter(p => p.x < gap[0]), fpts.filter(p => p.x > gap[1])]) { if (seg.length < 2) continue; const top = seg.map(p => ({ x: p.x, y: p.y - 4 })), foot = seg.map(p => ({ x: p.x, y: p.y + 36 }));
+        for (const seg of [fpts.filter(p => p.x < gap[0]), fpts.filter(p => p.x > gap[1])]) { if (seg.length < 2) continue; const top = seg.map(p => ({ x: p.x, y: p.y - 4 })), foot = seg.map(p => ({ x: p.x, y: p.y + 44 }));   // (fix round 2: taller, to the cliff's block: 94-garden-wonder-7shortcuts.js)
           B.cx.filter = 'blur(5px)'; B.f(B.poly(foot.map(p => ({ x: p.x, y: p.y - 6 })).concat(foot.slice().reverse().map(p => ({ x: p.x + 6, y: p.y + 10 })))), '#2e3420', .3); B.cx.filter = 'none';
           B.f(B.poly(top.concat(foot.slice().reverse())), B.lin(0, top[0].y, 0, foot[0].y, [[0, '#a89c86'], [.35, '#8c8270'], [1, '#5e564a']]));
           // its beds: ledges along it, cracks down it, a lit edge on each ledge
-          for (let k = 1; k < 4; k++) V.strokePts(B, seg.map((p, i) => ({ x: p.x, y: p.y - 4 + k * 10 + Math.sin(i * .9 + k) * 1.6 })), '#d0c6ae', 1.4, .5);
-          for (let i = 0; i < seg.length; i += 1 + Math.floor(r() * 2)) { const p = seg[i]; B.s(`M${p.x} ${p.y}l${(r() - .5) * 3} ${12 + r() * 20}`, '#3e3a34', .9, .55); }
+          for (let k = 1; k < 5; k++) V.strokePts(B, seg.map((p, i) => ({ x: p.x, y: p.y - 4 + k * 9.6 + Math.sin(i * .9 + k) * 1.6 })), '#d0c6ae', 1.4, .5);
+          for (let i = 0; i < seg.length; i += 1 + Math.floor(r() * 2)) { const p = seg[i]; B.s(`M${p.x} ${p.y}l${(r() - .5) * 3} ${16 + r() * 26}`, '#3e3a34', .9, .55); }
           V.strokePts(B, top, STONE.rockHi, 3, .95);
-          if (season !== 'winter') for (let i = 0; i < seg.length; i += 3) { const p = seg[i]; if (r() < .5) B.f(B.blob(r, p.x, p.y - 4, 4 + r() * 3, 1.6, 6, .5), '#7c8a44', .9); if (r() < .4) B.tufts(r, p.x, p.y + 38, 8, 3, ['#7c8a44', '#a8a860'], 5); }
+          if (season !== 'winter') for (let i = 0; i < seg.length; i += 3) { const p = seg[i]; if (r() < .5) B.f(B.blob(r, p.x, p.y - 4, 4 + r() * 3, 1.6, 6, .5), '#7c8a44', .9); if (r() < .4) B.tufts(r, p.x, p.y + 46, 8, 3, ['#7c8a44', '#a8a860'], 5); }
           // boulders fallen at its foot on the sand
-          for (let i = 2; i < seg.length; i += 5) if (r() < .55) B.boulder(r, seg[i].x + (r() - .5) * 8, seg[i].y + 44, 12 + r() * 10, 8 + r() * 6, STONE, false);
+          for (let i = 2; i < seg.length; i += 5) if (r() < .55) B.boulder(r, seg[i].x + (r() - .5) * 8, seg[i].y + 50, 12 + r() * 10, 8 + r() * 6, STONE, false);
         }
         B.cx.restore();
       }, {});
@@ -188,18 +225,57 @@
 
     // 1g. The hurdle fence down the gap from the orchard bank's end to the outlet: two woven hazel hurdles on stakes, standing
     // either side of the lakeside hurdle (the shortcut itself, 94-garden-wonder-7shortcuts.js); their feet stop yours
-    if (L.D.presentation && L.D.presentation.orchard && L.D.presentation.orchard.hurdle) for (const [y0, y1] of [[36.15, 37.4], [39.4, 40.2]]) {
-      const top = L.cpt(61, y0), foot = L.cpt(61, y1), len = foot.y - top.y;
-      thing({ key: 'hurdle-fence', x: foot.x, y: foot.y, box: [-14, -len - 30, 14, 6], foot: [-.38 * cw, .38 * cw, len], draw: B => {
-        const r = kit.rng(Math.round(y0 * 10)), hgt = 22;
-        B.f(B.ell(4, -len / 2, 7, len / 2 + 3), '#22301a', .16);
-        B.f(B.poly([[-3, -len], [3, 0], [3, -hgt], [-3, -len - hgt]]), '#8a6a40');
-        for (let k = 0; k < 6; k++) { const o = 3 + k * (hgt - 4) / 5; B.s(`M-3 ${-len - o}L3 ${-o}`, k % 2 ? '#b08a56' : '#9a7448', 2.6, 1); }
-        for (let k = 0; k <= 4; k++) { const t = k / 4, x = -3 + 6 * t, y = -len * (1 - t); B.s(`M${x} ${y}V${y - hgt - 3}`, '#5a4028', 1.6, 1); }
-        for (const [x, y] of [[-3, -len], [3, 0]]) B.f(B.rect(x - 2.2, y - hgt - 6, 4.4, hgt + 6), '#6a5034').f(B.rect(x - 2.2, y - hgt - 6, 1.5, hgt + 6), '#9a7a54');
-        if (season !== 'winter') B.tufts(r, 2, 2, 8, 4, [P.lawnLo, '#9a9a52'], 6);
+    // (fix round 2) the fence runs on from the hurdle's two posts, which stand on the slant across the gap (a fence set straight
+    // up the screen is seen end on, a row of bare stakes): each stretch a woven hazel panel with its face showing
+    if (L.D.presentation && L.D.presentation.orchard && L.D.presentation.orchard.hurdle) for (const [x0, y0, x1, y1] of [[61, 36.15, 61 - 19 / cw, 38.4 - 24 / ch], [61 + 19 / cw, 38.4 + 24 / ch, 61, 40.2]]) {
+      const top = L.cpt(x0, y0), foot = L.cpt(x1, y1), len = foot.y - top.y, dx = top.x - foot.x;
+      thing({ key: 'hurdle-fence', x: foot.x, y: foot.y, box: [Math.min(dx, 0) - 14, -len - 34, Math.max(dx, 0) + 14, 8], foot: [-.38 * cw, .38 * cw, len], draw: B => {
+        const r = kit.rng(Math.round(y0 * 10)), hgt = 24;
+        B.f(B.poly([[dx + 4, -len + 2], [10, 3], [20, 1], [dx + 14, -len]]), '#22301a', .2);
+        B.f(B.poly([[dx, -len], [0, 0], [0, -hgt], [dx, -len - hgt]]), '#7a5a34');
+        for (let k = 0; k < 7; k++) { const o = 2.5 + k * (hgt - 4) / 6; B.s(`M${dx} ${-len - o}L0 ${-o}`, k % 2 ? '#c49a62' : '#a07a4a', 3.2, 1); }
+        for (let k = 1; k < 5; k++) { const t = k / 5, x = dx * (1 - t), y = -len * (1 - t); B.s(`M${x} ${y + 1}V${y - hgt - 3}`, '#4e3620', 1.8, 1); }
+        B.s(`M${dx} ${-len - hgt - 1}L0 ${-hgt - 1}`, '#d8b47a', 2.4, 1);
+        for (const [x, y] of [[dx, -len], [0, 0]]) B.f(B.rect(x - 2.4, y - hgt - 7, 4.8, hgt + 7), '#6a5034').f(B.rect(x - 2.4, y - hgt - 7, 1.6, hgt + 7), '#9a7a54').f(B.ell(x + 2, y + .6, 5, 1.6), '#22301a', .3);
+        if (season !== 'winter') { B.tufts(r, 2, 2, 8, 4, [P.lawnLo, '#9a9a52'], 6); B.tufts(r, dx, -len + 2, 8, 4, [P.lawnLo, '#9a9a52'], 5); }
       } });
     }
+
+    // (fix round 2) Quince's yard: a clipped box hedge, knee high, along the cottage's west side and across the back, so the
+    // cottage stands in its own hedged garden and not on bare grass behind the square (the plan's hedged yard). Solid at its foot.
+    const rr0 = (x, y, w, h, q) => { q = Math.min(q, w / 2, h / 2); return `M${x + q} ${y}H${x + w - q}Q${x + w} ${y} ${x + w} ${y + q}V${y + h - q}Q${x + w} ${y + h} ${x + w - q} ${y + h}H${x + q}Q${x} ${y + h} ${x} ${y + h - q}V${y + q}Q${x} ${y} ${x + q} ${y}Z`; };
+    if (L.stat('ld-quince-house')) for (const [x0, y0, x1, y1] of [[80.7, 33.4, 80.7, 35.7], [81.1, 31.3, 83.9, 31.3]]) {
+      const a = L.cpt(x0, y0), b = L.cpt(x1, y1), along = x1 - x0 > .5, len = along ? b.x - a.x : b.y - a.y, hh = 22;
+      thing({ key: 'yard-hedge', x: along ? a.x : b.x, y: b.y, box: along ? [-10, -hh - 12, len + 10, 10] : [-14, -len - hh - 12, 14, 10], foot: along ? [0, len, 9] : [-.2 * cw, .2 * cw, len], draw: B => {
+        const r = kit.rng(Math.round(x0 * 10 + y0)), G = season === 'winter' ? ['#4e5e46', '#66765a', '#7e8e70'] : ['#3e5e30', '#5a8040', '#86a85a'];
+        if (along) { B.f(B.ell(len / 2 + 4, 3, len / 2 + 10, 5), '#22301a', .25); B.f(rr0(-6, -hh, len + 12, hh + 4, 7), G[0]); B.f(rr0(-5, -hh - 2, len + 10, 9, 5), G[1]); for (let x = 0; x < len; x += 7) B.f(B.blob(r, x + r() * 4, -hh + 2 + r() * 3, 5, 3, 6, .5), G[2], .8); }
+        else { B.f(B.ell(5, -len / 2, 13, len / 2 + 6), '#22301a', .22); B.f(rr0(-9, -len - hh, 18, len + hh + 4, 8), G[0]); B.f(rr0(-8, -len - hh - 2, 16, len + 2, 7), G[1]); B.f(rr0(-6, -len - hh, 9, len - 2, 4), G[2], .7); for (let y = -len; y < 0; y += 7) B.f(B.blob(r, -3 + r() * 6, y - hh + 4 + r() * 3, 5, 3, 6, .5), G[2], .8); }
+        if (season === 'spring' || season === 'summer') B.tufts(r, along ? len / 2 : 0, 3, along ? len / 2 : 8, 4, [P.lawnLo, '#9cb062'], 8);
+      } });
+    }
+
+    // (fix round 2) the espalier wall: the thyme wall's sunny face, from 75.6 to 79.9, is old brick, warm in the sun, with fan
+    // trained pears and apricots tied flat to it on wires (the plan; a brick edge round the field read as a stub on its own)
+    { const f9 = wallRows.find(f => f.id === 'terrace-wall-9-b'); if (f9) { const n = f9.polygon.length >> 1, a9 = f9.polygon.slice(0, n), b9 = f9.polygon.slice(n).reverse();
+      const north = a9.reduce((q, p) => q + p[1], 0) <= b9.reduce((q, p) => q + p[1], 0), up = (north ? a9 : b9).filter(p => p[0] >= 75.6 && p[0] <= 79.9), lo = (north ? b9 : a9).filter(p => p[0] >= 75.6 && p[0] <= 79.9);
+      if (up.length > 2 && lo.length > 2) { const U = up.map(L.pt).map(p => ({ x: p.x, y: p.y - 26 })), Lw = lo.map(L.pt), face = B0 => B0.poly(U.concat(Lw.slice().reverse())), bb = kit.bboxOf(U.concat(Lw), 40);
+        const yAt = (A, x) => A.reduce((m, q) => Math.abs(q.x - x) < Math.abs(m.x - x) ? q : m, A[0]).y;
+        add(bb, 92, (B, r) => {
+          B.cx.save(); B.cx.clip(new Path2D(face(B)));
+          B.f(face(B), B.lin(0, bb[1], 0, bb[3], [[0, '#b0644a'], [1, '#7a3e2e']]));
+          for (let row = 0, y0 = Math.min(...U.map(p => p.y)) - 2; y0 < Math.max(...Lw.map(p => p.y)) + 4; row++, y0 += 5.2) for (let x = bb[0] + (row & 1) * 5; x < bb[2]; x += 10) { const t = r(); B.f(B.rect(x + .5, y0 + .5, 9, 4.2), t < .3 ? '#c2785a' : t < .7 ? '#a95c44' : '#b86a4e', .95).f(B.rect(x + .5, y0 + .5, 9, 1), '#dc9a78', .5); }
+          B.cx.filter = 'blur(3px)'; B.f(B.poly(Lw.map(p => ({ x: p.x, y: p.y - 10 })).concat(Lw.slice().reverse())), '#2e2018', .3); B.cx.filter = 'none';
+          // the wires, then a fan trained tree every stride: a short stem, ribs splayed flat against the brick, leaves and fruit on them
+          for (let k = 1; k < 4; k++) V.strokePts(B, U.map((p, i) => ({ x: p.x, y: p.y + k * (yAt(Lw, p.x) - p.y) / 4 })), '#5a5a5e', .5, .6);
+          if (season !== 'winter') for (let x = U[0].x + 30; x < U[U.length - 1].x - 20; x += 64) { const top = yAt(U, x) + 4, foot = yAt(Lw, x) - 1;
+            for (let k = -3; k <= 3; k++) { const ex = x + k * 9, ey = top + Math.abs(k) * 2.2; B.s(`M${x} ${foot}Q${x + k * 2} ${(foot + ey) / 2} ${ex} ${ey}`, '#5a4232', 1.3, .95); for (let j = 0; j < 4; j++) { const t = .35 + j * .18, lx = x + (ex - x) * t, ly = foot + (ey - foot) * t; B.f(B.ell(lx + (r() - .5) * 3, ly, 2.6, 1.6), r() < .5 ? '#4e7a38' : '#6a9a48', .95); } }
+            if (season === 'summer' || season === 'autumn') for (let j = 0; j < 5; j++) B.f(B.circ(x + (r() - .5) * 46, top + 6 + r() * (foot - top - 10), 1.8), season === 'autumn' ? '#e0a040' : '#b8c058'); }
+          B.cx.restore();
+          // the cope: a course of bricks on edge, a lit top
+          for (let i = 0; i < U.length; i++) { const p = U[i]; B.f(B.rect(p.x - 2, p.y - 6, 4.4, 7), r() < .5 ? '#a0503a' : '#8e4834').f(B.rect(p.x - 2, p.y - 6, 4.4, 1.6), '#d08a6a', .8); }
+          if (season !== 'winter') for (let i = 0; i < Lw.length; i += 2) B.tufts(r, Lw[i].x, Lw[i].y + 3, 7, 3, [P.lawnLo, '#9cb062'], 5);
+        }, {});
+      } } }
 
     // 1f. The dip's steam: soft wisps lifting off the warm water, thicker on a cold morning
     { const dip = (L.D.freshwater || []).find(w => w.id === 'orchard-dip'); if (dip && dip.boundary) { const pts = dip.boundary.map(L.pt), bb = kit.bboxOf(pts, 50);
@@ -225,7 +301,9 @@
     const OR = (L.D.presentation && L.D.presentation.orchard) || {}, MOM = OR.mother ? [OR.mother.x, OR.mother.y] : [84.6, 45.2], RINGT = OR.ring && OR.ring.trunks;
     // (round 3 layouts) no row tree stands on or just in front of one of the orchard's places (a crown hid the bell and the press)
     const places = (L.D.static || []).filter(q => q.district === 'orchard-headland' && q.id !== 'ld-ring'), byPlace = (x, y) => places.some(q => x > q.x - 1.2 && x < q.x + q.w + 1.2 && y > q.y - .6 && y < q.y + q.h + 2.4);
-    const clearOf = (x, y) => offPath(x, y, 5) && offSquare(x, y) && offGate(x, y) && dryLip(x, y) && !byPlace(x, y);
+    // (fix round 2) and none at the top of the lakeside steps by the hurdle fence (a trunk stood on the steps' stones, its crown over them)
+    const offHurdle = (x, y) => Math.hypot(x - 61.8, (y - 38.2) * 1.2) > 2.3;
+    const clearOf = (x, y) => offPath(x, y, 5) && offSquare(x, y) && offGate(x, y) && dryLip(x, y) && !byPlace(x, y) && offHurdle(x, y);
     for (let y = 21.6, row = 0; y < 47; y += 1.75, row++) for (let x = 60 + (row % 2) * 1.15; x < 89; x += 2.3) {
       const jx = x + (kit.hash(Math.round(x * 10), Math.round(y * 10), 93) % 100) / 100 * .7 - .35, jy = y + (kit.hash(Math.round(x * 10), Math.round(y * 10), 94) % 100) / 100 * .5 - .25;
       const fx = Math.floor(jx), fy = Math.floor(jy);
@@ -256,7 +334,7 @@
     if (ring) { const c = L.cpt(ring.x + ring.w / 2, ring.y + .5); add([c.x - 170, c.y - 80, c.x + 170, c.y + 80], 99, (B, r) => { B.f(B.blob(r, c.x, c.y, 150, 58, 14, .12), season === 'winter' ? '#c4cab8' : '#b8c47a', .45); B.s(B.blob(r, c.x, c.y, 150, 58, 14, .12), P.lawnLo, 5, .25); for (let k = 0; k < 40; k++) { const a = r() * Math.PI * 2, d = 150 + r() * 16; B.tufts(r, c.x + Math.cos(a) * d, c.y + Math.sin(a) * d * .4, 8, 4, [P.lawnLo, '#9a9a52'], 8); }
       // (fix round 1) mown in rings round the stone, light and dark, so the centre reads as kept lawn among the pears
       for (let k = 1; k < 5; k++) B.s(B.ell(c.x, c.y, k * 28, k * 11.5), k % 2 ? (season === 'winter' ? '#d0d6c4' : '#c8d48c') : P.lawnLo, 9, k % 2 ? .4 : .22); }); }
-    if (ring && RINGT) RINGT.forEach(([x, y], i) => { if (inReg(x, y)) trees.push({ x, y, kind: 'pear', h: 168 + (i * 7) % 18, v: i % 3 }); });   // (4.2 H perry pears, round the mown centre)
+    if (ring && RINGT) RINGT.forEach(([x, y], i) => { if (inReg(x, y)) trees.push({ x, y, kind: 'pear', h: (y < ringC.y - 1 ? 118 : 132) + (i * 7) % 12, v: i % 3 }); });   // (fix round 2: 3 to 3.4 H perry pears, slim and tall, so the ring reads as eight trees round a mown centre and not one clump; the north pair lower, under the cottage wall)
     else if (ring) { const c = { x: ring.x + ring.w / 2, y: ring.y + .5 }; for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + .2, x = c.x + Math.cos(a) * 3.1, y = c.y + Math.sin(a) * 1.9; if (inReg(x, y) && L.kind(x, y) !== 'path' && offPath(x, y, 4) && offSquare(x, y)) trees.push({ x, y, kind: 'pear', h: 132 + (i * 7) % 20, v: i % 3 }); } }
     // their trunks are solid where they stand (the leaves are for walking behind): GardenPaintVale.orchardTrunks(), 94-garden-world-0walk.js
     trunks = trees.map(t => [+t.x.toFixed(2), +t.y.toFixed(2), t.h > 125 ? .42 : .32]).concat(inReg(MOM[0], MOM[1]) ? [[MOM[0], MOM[1], .5], [MOM[0] + 26 / cw, MOM[1] + .05, .22]] : []);   // (and the crutch's foot: you walked through it)
