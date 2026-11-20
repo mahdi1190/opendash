@@ -39,6 +39,10 @@
   // (a plot past a gate that is still shut has no fence yet: the mist stands at that edge, and a fence there drew a ruled
   // line of posts down the open meadow beside the village. It is fenced once its gate opens.)
   const zoneShut = (x, y) => { try { return typeof gardenZoneLockAt === 'function' && !!gardenZoneLockAt(x, y); } catch (e) { return false; } };
+  // (merge 1) the shut-land hedges re-bake with the open zones. Read from the open land itself, never from what compose found:
+  // a key that only appeared during the first compose changed the ground's key straight after it, so the whole vale composed
+  // and baked a second time while walking (a 2 to 3.6 s task).
+  V.groundSigs.push(() => { try { return '|zh:' + (typeof _GD_LAND !== 'undefined' && _GD_LAND ? [..._GD_LAND].filter(a => /^zn-/.test(a)).sort().join(',') : ''); } catch (e) { return ''; } });
   // The ground re-bakes when a valley plot opens or closes.
   // (and when you reach a plot's level: its sign turns from the level it needs to its price)
   V.groundSigs.push(() => { if (typeof gardenAreaAt !== 'function') return ''; const lv = level(); let h = 0, n = 0; for (const p of plots()) { const c = p.cells[0]; if (locked(c[0], c[1], lv)) { const row = gardenLandCell(c[0], c[1]); h = (h * 31 + p.cells.length + c[0] * 97 + c[1] + (row && lv >= (row.lv || 0) ? 7 : 0) + (zoneShut(c[0], c[1]) ? 3 : 0)) >>> 0; n++; } } return '|vf' + n + ':' + h; });
@@ -878,7 +882,6 @@
       const row = spot && gardenLandCell(spot[0], spot[1]); if (row) sign(B, pos[0], pos[1], row, lv);
     }
   }
-  let zoneEdgeOne = [], zoneSigOn = false;
   function compose(C) {
     if (typeof gardenLandCell !== 'function' || typeof gardenIslandBaseCell !== 'function') return;
     const { add, W, P, season } = C, cw = W.cellW, ch = W.cellH;
@@ -928,7 +931,7 @@
         for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (!dry(nx, ny) || gardenZoneLockOf(nx, ny, none) === z || atGate(x, y) || atGate(nx, ny)) continue;
           const b = gardenIslandBaseCell(x, y), bn = gardenIslandBaseCell(nx, ny); edges.push({ x, y, dx, dy, z, path: !!(b.route && bn.route) }); } }
       // the ground re-bakes when one of these zones opens
-      zoneEdgeOne = [...new Set(edges.map(e => e.z))].map(z => edges.find(q => q.z === z)); if (!zoneSigOn) { zoneSigOn = true; V.groundSigs.push(() => '|zh' + zoneEdgeOne.map(e => zoneShut(e.x, e.y) ? 1 : 0).join('')); }
+      // (the ground re-bakes when one of these zones opens: the '|zh' key registered with the module, below zoneShut)
       const hh = gardenSizePx('hedge', .8);
       for (const e of edges) { const X = e.x * cw, Y = W.sky + e.y * ch, bb = [X - 30, Y - hh - 10, X + cw + 30, Y + ch + 14];
         add(bb, 4150, (B, r) => { if (!zoneShut(e.x, e.y)) return;
