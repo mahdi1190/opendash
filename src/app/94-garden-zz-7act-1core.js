@@ -253,6 +253,7 @@ function _gaStart(cur) {
   if (row.kick && spot) _gaKick(cur);
   if (row.carry && spot && spot.carry) _gaPick(cur);
   if (row.fetch) _gaFetch(cur);
+  if (row.rubPet) { try { const P = typeof gpPetMe === 'function' ? gpPetMe() : null; if (P) { if (P.clipH) { try { P.clipH.stop(true); } catch (e) { /* gone */ } P.clipH = null; } if (typeof _plPropsDrop === 'function') _plPropsDrop(P); P.lifeCur = null; P.lifeHold = 0; P.busy = 0; P.cb = null; P.tx = null; P.perch = null; } } catch (e) { /* no pet */ } }   // (whatever row it was playing, it drops it and comes to your hand)
   if (row.prop === 'fiddle' || row.fiddle) _gaResync();
   if (row.clouds) _gaSky(cur, true);
   _gaFirst(cur);
@@ -588,7 +589,7 @@ function _gaFigureFlip(gpl) {
  * (97-pets-tricks-7life-0clips.js), the same one the pet's own game plays, again and again while you rub. */
 function _gaBellyClip() { try { return typeof petClipDef === 'function' && petClipDef('l-belly') ? 'l-belly' : null; } catch (e) { return null; } }
 /** Where the pet lies for a belly rub (cells from your feet): beside your knee, in front of your hand, a touch behind you so your hand is over its tummy. */
-const GA_RUB_AT = [0.4, -0.04];   // (round 6: right under the reaching hand, the tummy beneath the palm)
+const GA_RUB_AT = [0.78, 0.02];   // (round 6: right under the reaching hand; 20 Nov: the bigger pets of feat/pets-life lay over the kneeling figure at 0.4, so a body length on: its tummy under the palm, its back clear of your knee)
 function _gaRubTick(cur) {
   let P = null; try { P = typeof gpPetMe === 'function' ? gpPetMe() : null; } catch (e) { P = null; }
   if (!P || !P.root || (P.root._pcH && P.root._pcH === cur.rubH) || (cur.rubT && performance.now() - cur.rubT < 6100)) return;
