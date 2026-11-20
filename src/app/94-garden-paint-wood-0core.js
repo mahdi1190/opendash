@@ -475,7 +475,12 @@ window.GardenPaintWood = (function () {
     let x0 = 96, y0 = 96, x1 = 0, y1 = 0; for (const [x, y] of cells) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
     const set = new Set(cells.map(c => c[0] + ',' + c[1]));
     const spot = (yLo, yHi) => { for (let k = 0; k < 10; k++) { const cx = x0 + .12 + r() * (x1 - x0 + .76), cy = y0 + yLo + r() * (y1 - y0 + yHi - yLo); if (set.has(Math.floor(cx) + ',' + Math.floor(cy))) return [cx, cy]; } const c = cells[Math.floor(r() * cells.length)]; return [c[0] + .5, c[1] + .8]; };
-    const put = (s, cx, cy) => { const kit = kitOf(s[0]), h = typeof s[1] === 'string' ? sz(s[1], s[2], s[3]) : s[1] + r() * (s[2] - s[1]); out.trees.push({ id: s[0], kit, v: Math.floor(r() * 3), size: 0, h: kit ? Math.round(h) : Math.round(h / 6) * 6, x: px(cx), y: py(cy), flip: r() < .5, scale: kit ? 1 : .88 + r() * .3, region, cx: Math.floor(cx), cy: Math.floor(cy), thicket: true }); };
+    // (a tree in the knot, the big yew or beech at its back and the tall ones in it, has a trunk the feet stop at, like every
+    //  other painted tree: walked through, they were the audit's walk-through trees in the woods; round 3 integration)
+    const put = (s, cx, cy) => { const kit = kitOf(s[0]), h = typeof s[1] === 'string' ? sz(s[1], s[2], s[3]) : s[1] + r() * (s[2] - s[1]), X = px(cx), Y = py(cy), GW = GARDEN_WORLD;
+      const F = kit && window.GardenPaintTrees && GardenPaintTrees.form ? GardenPaintTrees.form(kit) : null, half = kit ? Math.max(4, Math.min(13, h * ((F && F.girth) || .08) * .75)) : 0;
+      const trunk = kit && h >= 50 ? { x0: (X - half) / GW.cellW, x1: (X + half) / GW.cellW, y0: (Y - 6 - GW.sky) / GW.cellH, y1: (Y + 1 - GW.sky) / GW.cellH } : null;
+      out.trees.push({ id: s[0], kit, v: Math.floor(r() * 3), size: 0, h: kit ? Math.round(h) : Math.round(h / 6) * 6, x: X, y: Y, flip: r() < .5, scale: kit ? 1 : .88 + r() * .3, region, cx: Math.floor(cx), cy: Math.floor(cy), thicket: true, trunk }); };
     const nT = TALL.length ? (cells.length > 4 ? 2 : 1) + (r() < .3 ? 1 : 0) : 0;
     // the big tree stands at the back of the knot (its north row), so its crown rises behind the tangle, not over the lane in front
     if (BIG.length && (!light || cells.length > 4)) { const [cx, cy] = spot(.3, .55 - (y1 - y0)); put(BIG[Math.floor(r() * BIG.length)], cx, cy); }
