@@ -199,10 +199,6 @@
       // a little plaque, and reeds at its feet
       B.f(B.rr(-6, -18, 12, 6, 1), '#e8dcc0').f(B.rect(-4, -16, 8, .8), '#6a5e4a', .7).f(B.rect(-4, -14, 6, .8), '#6a5e4a', .6);
       for (let i = 0; i < 12; i++) { const x = -56 + r() * 112, h = 10 + r() * 12; if (Math.abs(x) < 46 && r() < .6) continue; B.s(`M${x} 2q${(r() - .5) * 3} ${-h * .6} ${(r() - .5) * 4} ${-h}`, o.season === 'winter' ? '#b8a888' : '#9a8e52', 1.2, .9); }
-      // (layfix east) its stilts stand in a low dune of marram and sea holly blown up round them, not on bare sand
-      B.f(B.ell(0, 3, 58, 7), '#c8b888', .7).f(B.ell(-6, 1, 44, 4), '#dccc9c', .6);
-      for (let i = 0; i < 40; i++) { const x = -58 + r() * 116, h = 8 + r() * 12, lean = (r() - .5) * 8; B.s(`M${x} ${4 + r() * 3}q${lean * .3} ${-h * .6} ${lean} ${-h}`, o.season === 'winter' ? '#b8ae88' : r() < .5 ? '#8e9a5a' : '#a8a874', 1.1, .9); }
-      if (o.season === 'summer') for (let i = 0; i < 4; i++) { const x = -50 + r() * 100; B.f(B.circ(x, -2, 2.2), '#9aa6c8', .9).f(B.circ(x, -2, 1), '#6a7aa8'); }
       tufts(B, r, 0, 3, 90, 9, o.season);
     } },
   });

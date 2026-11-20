@@ -156,9 +156,13 @@
       if (o.night) B.f(B.rect(-46, -36, 22, 4), '#e8a050', .7);
     } },
     /* ---------- the bird hide: a weathered timber box on short legs, the long viewing slot, a list of birds ---------- */
-    'sight:hide': { box: [-62, -62, 62, 10], draw(B, o) {
+    'sight:hide': { box: [-72, -62, 72, 12], draw(B, o) {
       const r = rng(hash('valley-hide'));
       B.shadow(2, 2, 52, 6, .26);
+      // (layfix east) it stands in the top of the dune, marram and sea holly blown up round its feet (on bare sand it looked set down)
+      B.f(D().blob(r, 0, 2, 62, 7, 10, .3), '#b8a878', .85).f(D().blob(r, -4, 0, 50, 4, 9, .3), '#d4c494', .8);
+      for (let i = 0; i < 46; i++) { const x = -62 + r() * 124, h = 7 + r() * 11, lean = (r() - .5) * 9; B.s(`M${x} ${3 + r() * 4}q${lean * .3} ${-h * .6} ${lean} ${-h}`, o.season === 'winter' ? '#b8ae88' : r() < .5 ? '#7e8e4e' : '#a4a46a', 1.1, .95); }
+      if (o.season === 'summer') for (let i = 0; i < 5; i++) { const x = -56 + r() * 112; B.f(B.circ(x, 0, 2.4), '#9aa6c8', .95).f(B.circ(x, 0, 1.1), '#6a7aa8'); }
       for (const x of [-38, 38]) B.post(x, -14, 0, 4, OAK);
       // (round 3) boarded down to its sill on the marsh, a dark gap under the boards: it stands on its own feet, not on stilts in the air
       B.f(B.rect(-42, -13, 84, 10), '#5a4834').f(B.rect(-42, -4, 84, 4), '#2e261c', .9); for (let x = -40; x < 42; x += 7) B.s(`M${x} -13v9`, '#3e3226', .7, .7);

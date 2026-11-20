@@ -348,7 +348,7 @@
         // (layfix east) the yard at work, not a bare plaza: a hay wain unhitched by the barn, a stone trough and pump against the
         // lamp in the yard's middle, barrels and a sack barrow by the mill's doors; the setts give way to weeds at the yard's edges
         put([[87.1, 65.6], [86.9, 66], [87.3, 65.2]], 'yard-wain|' + C.season, [-72, -58, 52, 8], drawWain(P, C.season), [-38, 38, 10]);
-        put([[79.3, 66], [79.5, 66.3], [77.6, 69.3]], 'yard-trough', [-30, -50, 26, 6], drawTrough(P), [-26, 20, 8]);
+        put([[84.7, 67.1], [84.2, 66.9]], 'yard-trough', [-30, -50, 26, 6], drawTrough(P), [-26, 20, 8]);
         put([[82.6, 67.5], [83.2, 67.3]], 'yard-sacks2', [-22, -24, 24, 5], drawSacks(P), [-18, 20, 8]);
         put([[82.4, 64.9], [82.9, 65.0]], 'yard-barrels', [-22, -30, 22, 5], drawBarrels(P), [-17, 17, 8]);
         { const sh = shape; if (sh && sh.length > 2) add(kit.bboxOf(sh, 30), seed + 3, (B, r) => { const path = new Path2D(B.poly(sh)); B.cx.save(); B.cx.clip(path);
