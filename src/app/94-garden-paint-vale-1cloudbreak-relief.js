@@ -124,7 +124,7 @@
         const d = j * SD, t = z / H, v = (z + d * ch) / H, nz = kit.noise(x * 2.3, v * 1.4, 511);
         const steep = Math.max(0, Math.min(1, (slope - 1.05 - nz * .6) / .9)), low = d < .6;
         // ground: grass and heather on the ledges and low down, bracken in autumn on the lower slopes, scree in the aprons
-        const hn = kit.noise(x / 1.1, v / .8, 513) * .8 + kit.noise(x * 3.3, v * 3, 514) * .2, heathy = t < 2.6 && hn > .6, base = heathy ? (season === 'autumn' && t < 1.4 && hn > .72 ? CC.bracken : CC.heath) : t > 3.5 ? CC.grassHi : CC.grass;
+        const hn = kit.noise(x / 1.1, v / .8, 513) * .8 + kit.noise(x * 3.3, v * 3, 514) * .2, heathy = t < 2.6 && v > 1.3 && hn > .6, base = heathy ? (season === 'autumn' && t < 1.4 && hn > .72 ? CC.bracken : CC.heath) : t > 3.5 ? CC.grassHi : CC.grass;
         const thin = Math.max(0, Math.min(1, (t - 2.6 - nz * .8) / 2.4)) * .6;
         const c = [base[0] + (CC.scree[0] - base[0]) * thin, base[1] + (CC.scree[1] - base[1]) * thin, base[2] + (CC.scree[2] - base[2]) * thin];
         const apronScree = low ? Math.max(0, Math.min(.9, (kit.noise(x * 1.1, v * 1.5, 515) - .3) * 3)) : 0;
@@ -203,6 +203,8 @@
       let ok = true;
       for (let dy = -.9; dy <= .7 && ok; dy += .35) for (let dx = -1.75; dx <= 1.75 && ok; dx += .35) if (!freeAt(L, jx + dx, jy + dy)) ok = false;
       for (let dy = 1; dy <= 4.2 && ok; dy += .4) for (let dx = -1.4; dx <= 1.4 && ok; dx += .7) { const b = L.base(jx + dx, jy - dy); if (b && (b.route || b.staticId || b.freshwater || L.plot(jx + dx, jy - dy))) ok = false; }
+      // (and no building in the rows in front whose picture would stand over it: a tor stood on the bothy's roof)
+      for (let dy = .5; dy <= 4.5 && ok; dy += .5) for (let dx = -2.6; dx <= 2.6 && ok; dx += .65) { const b = L.base(jx + dx, jy + dy); if (b && b.staticId) ok = false; }
       if (!ok || taken.some(t => Math.hypot(t[0] - jx, (t[1] - jy) * 1.3) < 2.6) || (M.trees || []).some(t => Math.abs(t.at[0] - jx) < (t.w || 2.6) * .5 + 1.8 && t.at[1] - jy > -1.2 && t.at[1] - jy < (t.h || 4) * 1.6 + 1)) continue;   // (no tree's crown hangs over a tor: crown ghosts lay over one)
       cand.push({ x: jx, y: jy, rank: r() });
     }

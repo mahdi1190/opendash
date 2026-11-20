@@ -917,7 +917,10 @@
     }
     overlap.roads = roads.length;
     const distPx = (R, x, y) => { let best = Infinity; for (let i = 1; i < R.pts.length; i++) { const p = R.pts[i - 1], q = R.pts[i], ax = (q.x - p.x) * CW, ay = (q.y - p.y) * CH, bx = (x - p.x) * CW, by = (y - p.y) * CH, L = ax * ax + ay * ay || 1, t = Math.max(0, Math.min(1, (ax * bx + ay * by) / L)), d = Math.hypot(bx - ax * t, by - ay * t); if (d < best) best = d; } return best; };
-    const inSquare = (x, y, k) => plazas.find(p => ((x - p.x) / (p.rx || 3.2)) ** 2 + ((y - p.y) / (p.ry || 2.4)) ** 2 <= (k || 1));   // (a square with no size of its own: the painters' default, 94-garden-paint-wood-0core.js)
+    // (a square drawn from its own outline is judged by that outline, scaled about its middle by k: the default ellipse ran
+    // far past the small shaped squares of the fells and counted their neighbours' paths as running across them)
+    const inShape = (x, y, p, k) => { const sc = Math.sqrt(k || 1), pg = p.shape; let o = false; for (let i = 0, j = pg.length - 1; i < pg.length; j = i++) { const ax = p.x + (pg[i][0] - p.x) * sc, ay = p.y + (pg[i][1] - p.y) * sc, bx = p.x + (pg[j][0] - p.x) * sc, by = p.y + (pg[j][1] - p.y) * sc; if ((ay > y) !== (by > y) && x < (bx - ax) * (y - ay) / (by - ay) + ax) o = !o; } return o; };
+    const inSquare = (x, y, k) => plazas.find(p => Array.isArray(p.shape) && p.shape.length > 2 ? inShape(x, y, p, k) : ((x - p.x) / (p.rx || 3.2)) ** 2 + ((y - p.y) / (p.ry || 2.4)) ** 2 <= (k || 1));   // (a square with no size of its own: the painters' default, 94-garden-paint-wood-0core.js)
     /** How much of a rectangle (cells) lies under a path's drawn band, in square cells, and where. `k`: share of the half width that counts. */
     const under = (R, x0, y0, x1, y1, k) => { if (x1 < R.x0 || x0 > R.x1 || y1 < R.y0 || y0 > R.y1) return null; const N = 5; let on = 0, sx = 0, sy = 0; for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const x = x0 + (x1 - x0) * (i + .5) / N, y = y0 + (y1 - y0) * (j + .5) / N; if (distPx(R, x, y) < R.rad * CW * k) { on++; sx += x; sy += y; } } return on ? { area: on / (N * N) * (x1 - x0) * (y1 - y0), x: sx / on, y: sy / on } : null; };
     // a field over a path; a field over water (its fence or hedge is drawn across the water)
