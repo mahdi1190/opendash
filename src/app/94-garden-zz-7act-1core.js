@@ -683,6 +683,9 @@ function gartActGroundClear(x, y) {
     }
     for (const p of (gardenIslandData().presentation || {}).plazas || []) if (p.rx && ((x - p.x) / (p.rx + 0.6)) ** 2 + ((y - p.y) / ((p.ry || p.rx) + 0.6)) ** 2 < 1) return false;
     const near = (_ga.list || []).some(r => Math.hypot(r.x - x, (r.y - y) * 1.3) < 1.4); if (near) return false;
+    // nor just behind anything that stands (a big oak drawn as a sight, a house, a wall, a fence): whatever's foot is a little south of you
+    // is drawn over you lying there, so a friend saw only an arm and a head poking out past its side. Read from what blocks the feet, any kind.
+    { const S = _gw.solids; if (S && S.at) for (let cy = Math.floor(y); cy <= Math.floor(y + 3); cy++) for (let cx = Math.floor(x - 2); cx <= Math.floor(x + 1); cx++) for (const r of S.at.get(cx + ',' + cy) || []) { if (r.form) continue; const dy = r.y1 - y; if (dy > -0.1 && dy < 3 && x > r.x0 - 1.5 && x < r.x1 + 0.6) return false; } }
     // never under a tree's crown (a tree just south of you is drawn over you): open sky, so you are seen and can see the clouds
     let T = _ga.trunks; if (!T || !T.length) { try { T = _ga.trunks = typeof _gwPaintedTrunks === 'function' ? _gwPaintedTrunks(gardenIslandData()) : []; } catch (e) { T = []; } }
     for (const b of T || []) { const fx = (b.x0 + b.x1) / 2, dy = b.y1 - y; if (dy > -0.3 && dy < 5.5 && Math.abs(fx - x) < 2.8) return false; }

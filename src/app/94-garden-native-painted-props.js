@@ -822,8 +822,8 @@ window.GardenPaintedProps = (function () {
     art.feet = [];
     // the orchard stair's two dry-stone cheeks block walking where they are drawn: east of the leat you walked up onto
     // the wall (hunter, round 3). One box per course, as wide as the cheek's stones.
-    if (kind === 'stair' && !side) { const sw = half * 1.55, dy = 52; for (const s of [-1, 1]) for (let row = 0; row < 7; row++) art.feet.push([s * (sw + 24), dy - 4 - row * 7.6, 44]); }
-    if (kind === 'arch' && side) { const yn = -art.S - 10, ys = art.S + 4, A = archSide(art.S); art.feet.push([A.n[0], A.n[1], 14], [A.s[0], A.s[1], 16]); for (let y = yn - 70; y <= yn - 18; y += 6) art.feet.push([0, y, 58]); for (let y = ys + 10; y <= ys + 64; y += 6) art.feet.push([0, y, 58]); }
+    if (kind === 'stair' && !side) { const sw = half * 1.55, dy = 52; for (const s of [-1, 1]) for (let row = 0; row < 7; row++) art.feet.push([s * (sw + 24), dy - 4 - row * 7.6, 44, 'wall']); }
+    if (kind === 'arch' && side) { const yn = -art.S - 10, ys = art.S + 4, A = archSide(art.S); art.feet.push([A.n[0], A.n[1], 14, 'oak'], [A.s[0], A.s[1], 16, 'oak']); for (let y = yn - 70; y <= yn - 18; y += 6) art.feet.push([0, y, 58, 'hedge']); for (let y = ys + 10; y <= ys + 64; y += 6) art.feet.push([0, y, 58, 'hedge']); }
     // the box of the drawing round the crossing's centre
     const box = kind === 'arch' && side ? [-120, -240, 120, 176] : (kind === 'arch' || kind === 'ruin') && side ? [-half * .85 - 90, -art.S - 200, half * .85 + 90, art.S + 30] : side ? [kind === 'bridge' ? -150 : -100, -170 - half * .9, kind === 'bridge' ? 150 : 100, kind === 'bridge' ? frame.span + 28 : half * .9 + 22] : [-half - 90, -200, half + 90, kind === 'stair' ? 60 : 24];
     const base = (B) => {
@@ -1266,7 +1266,7 @@ window.GardenPaintedProps = (function () {
     // The falling sheet stops the feet from its foot up to the cave stair's sill, so nobody walks into the water and stands
     // inside the falls (a gap was left between the rock's block and the pool's edge under it; water hunter, round 3). Shared
     // with the walking through the one trunk list (rows of boxes the sheet's width), like the scarp-top trees above.
-    if (fed && o.W) { const wC = (Wd + 6) / o.W.cellW, footY = (y - o.W.sky) / o.W.cellH, cX = x / o.W.cellW; for (let yy = footY - 1.5; yy <= footY - .1; yy += .36) fallsFeet.push([+cX.toFixed(2), +yy.toFixed(2), +wC.toFixed(2)]); }
+    if (fed && o.W) { const wC = (Wd + 6) / o.W.cellW, footY = (y - o.W.sky) / o.W.cellH, cX = x / o.W.cellW; for (let yy = footY - 1.5; yy <= footY - .1; yy += .36) fallsFeet.push([+cX.toFixed(2), +yy.toFixed(2), +wC.toFixed(2), 'falls']); }   // ('falls': the falling water, no tree: nothing offered to climb, hide behind or nap under there)
     const base = h.add(image(scene, baseKey, x, y));
     // The fixed falls' canvas includes empty padding beside the cave stair.
     // Keep its solid rock/sheet mask once per existing texture; frame probes
@@ -1385,7 +1385,7 @@ window.GardenPaintedProps = (function () {
       const art = ok(() => gateArt(gateKind(g), g, frame, 'summer', true, null)); if (!art) continue;
       for (const [id, , size, dx, dy] of art.lib) if (/^tree\./.test(id)) out.push([+((frame.x + dx) / W.cellW).toFixed(2), +((frame.y + dy - W.sky) / W.cellH).toFixed(2), size.h > 140 ? .5 : .4, id.slice(5)]);
         else if (/^rock\./.test(id) && size.w) { const side = Math.abs(frame.uy) > Math.abs(frame.ux); out.push([+((frame.x + dx) / W.cellW).toFixed(2), +((frame.y + dy + (side ? size.w * .26 : 6) - W.sky) / W.cellH).toFixed(2), +(size.w * .5 / W.cellW).toFixed(2), 'rock']); }   // (Cloudbreak layout: across a horizontal pass the boulders are drawn from their foot, so the block is at the foot, not 0.9 cells below it)   // (the pass's boulders, drawn from their middle: a block along their foot, half the stone wide)
-      for (const [dx, dy, wpx] of art.feet || []) out.push([+((frame.x + dx) / W.cellW).toFixed(2), +((frame.y + dy - W.sky) / W.cellH).toFixed(2), +(wpx / W.cellW).toFixed(2)]);
+      for (const [dx, dy, wpx, what] of art.feet || []) out.push([+((frame.x + dx) / W.cellW).toFixed(2), +((frame.y + dy - W.sky) / W.cellH).toFixed(2), +(wpx / W.cellW).toFixed(2), what || 'wall']);   // (what it is: an oak is a tree to climb, a hedge bank or a wall's course is not)
     }
     gateTreesMemo = { d: D, out };
     return out.concat(fallsFeet);

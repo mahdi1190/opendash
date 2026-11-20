@@ -197,7 +197,7 @@ function _gwBuildSolids(m) {
   }
   // Every painted tree on the map (village planting, the three painted woods, the orchard rows) has one trunk box at
   // its foot, from one list (_gwPaintedTrunks): the crowns are for walking behind.
-  for (const b of _gwPaintedTrunks(island)) add(b.x0, b.y0, b.x1, b.y1, 'tree trunk (' + ({ wood: 'painted wood', orchard: 'orchard', village: 'village', fells: 'fells', gate: 'crossing', forest: 'a big tree' }[b.src] || b.src) + ')');
+  for (const b of _gwPaintedTrunks(island)) add(b.x0, b.y0, b.x1, b.y1, b.sp && typeof gardenTreeKind === 'function' && !gardenTreeKind(b.sp) ? ({ falls: 'the falling water', hedge: 'a hedge bank', wall: 'a dry-stone wall' }[b.sp] || 'a rock') + ' (' + ({ gate: 'crossing', fells: 'fells' }[b.src] || b.src) + ')' : 'tree trunk (' + ({ wood: 'painted wood', orchard: 'orchard', village: 'village', fells: 'fells', gate: 'crossing', forest: 'a big tree' }[b.src] || b.src) + ')');
   // the old woodland's lamp plinths (94-garden-0island.js): a small block at the foot, the lantern above is walked behind
   if (typeof gardenIslandOldWoodLamps === 'function') { const lamps = gardenIslandOldWoodLamps(island); for (const q of lamps.concat(gardenIslandPosternPiers(island))) add(q.foot.x0, q.foot.y0, q.foot.x1, q.foot.y1, lamps.includes(q) ? 'lamp plinth' : 'postern pier'); }
   // the village's street lamps (ld-lamp-a by the Land Office, ld-lamp-b by the quay): an iron post on a small plinth, a block at its foot

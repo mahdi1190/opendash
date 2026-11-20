@@ -172,7 +172,7 @@ function gardenKindOf(t) {   // t.head: only the last word counts (a painter's '
  *  a kind whose `species` names a word of it, else the kind with '*' (any tree). A trunk list's rock (a pass's boulder) is no tree: ''. */
 function gardenTreeKind(sp) {
   const toks = String(sp || '').toLowerCase().replace(/^tree\./, '').split(/[^a-z]+/).filter(Boolean);
-  if (toks.some(w => /^(rock|boulder|stone|stones)$/.test(w))) return '';
+  if (toks.some(w => /^(rock|boulder|stone|stones|wall|hedge|falls|water)$/.test(w))) return '';   // (nor a hedge bank, a wall's course or a falling sheet of water: blocks in the same list, no tree)
   for (const w of toks) for (const [s, k] of _GK_SPECIES) if (w === s) return k;
   for (const [k, v] of Object.entries(GARDEN_KINDS)) if ((v.species || []).includes('*')) return k;
   return '';
@@ -228,7 +228,7 @@ function gardenKindSnap(kind, x, y, w, wet, front) {
  *  a kind whose `species` names a word of it, else the kind with '*' (any tree). A trunk list's rock (a pass's boulder) is no tree: ''. */
 function gardenTreeKind(sp) {
   const toks = String(sp || '').toLowerCase().replace(/^tree\./, '').split(/[^a-z]+/).filter(Boolean);
-  if (toks.some(w => /^(rock|boulder|stone|stones)$/.test(w))) return '';
+  if (toks.some(w => /^(rock|boulder|stone|stones|wall|hedge|falls|water)$/.test(w))) return '';   // (nor a hedge bank, a wall's course or a falling sheet of water: blocks in the same list, no tree)
   for (const w of toks) for (const [s, k] of _GK_SPECIES) if (w === s) return k;
   for (const [k, v] of Object.entries(GARDEN_KINDS)) if ((v.species || []).includes('*')) return k;
   return '';
