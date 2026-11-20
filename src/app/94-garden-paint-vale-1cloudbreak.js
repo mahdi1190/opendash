@@ -53,12 +53,14 @@
     B.shadow(half * .25, 2, half * 1.35, Math.max(4, half * .3), .34);
     // a rubble skirt wider than the pile, then courses on a rounded (not stepped) profile, each slab its own size
     for (let k = 0; k < 9; k++) { const a = (k / 9 - .5) * 2.6; slab(B, r, Math.sin(a) * half * 1.1, 2 + Math.cos(a) * 2 + r() * 2, 6 + r() * 8, 2.6 + r() * 2, snowy); }
-    const rows = Math.max(4, Math.round(h / 11)), rh = h / rows;
-    for (let row = 0; row < rows; row++) {
-      const t = row / rows, y = -row * rh, hw = half * Math.pow(1 - t * t, .9) * (1 - t * .35) * (.9 + r() * .18) + 3, sw0 = Math.max(8, half * .5);
-      let x = -hw - r() * 3;
-      while (x < hw - 2) { const sw = Math.min(hw - x, sw0 * (.5 + r() * .7)); if (sw > 3) slab(B, r, x + sw / 2, y + (r() - .5) * 2.4, sw + 2, rh * (.9 + r() * .55), snowy); x += sw; }
-    }
+    // the heap: a rounded silhouette in shade, then stones of every size laid into it from the top down, so the lower ones
+    // overlap those above (a heap, not courses in steps)
+    const prof = y => half * Math.pow(Math.max(0, 1 - Math.pow(-y / h, 1.6)), .7);
+    { const pts = []; for (let k = 0; k <= 16; k++) { const y = -h * k / 16; pts.push([prof(y) + 1, y]); } for (let k = 16; k >= 0; k--) { const y = -h * k / 16; pts.unshift([-prof(y) - 1, y]); } B.f(B.poly(pts), '#5a5244'); }
+    const n = Math.round(h * half / 26), st = []; for (let k = 0; k < n; k++) { const y = -h * Math.pow(r(), .9) * .97, w = prof(y); st.push([(r() * 2 - 1) * w * .92, y]); }
+    st.sort((a, b) => a[1] - b[1]);
+    for (const [x, y] of st) { const sz = 1 - (-y / h) * .45; slab(B, r, x, y + 3, (7 + r() * 9) * sz, (3.2 + r() * 3.4) * sz, snowy); }
+    const rh = 7;
     slab(B, r, (r() - .5) * 2, -h + rh * .4, Math.max(8, half * .5), rh * 1.3, snowy);   // the capstone
     B.f(B.poly([[half * .15, 0], [half, 0], [half * .3, -h * .95], [half * .12, -h * .6]]), STONE.rockDk, .16);   // the east side in shade
     for (let k = 0; k < 4; k++) { const sg = k % 2 ? 1 : -1; slab(B, r, sg * (half + 2 + r() * half * .4), 2 + r() * 2, 5 + r() * 5, 2.4 + r() * 1.6, snowy); }
@@ -258,7 +260,7 @@
       // walked. Each run's foot stops a fifth of a cell short of its ends, so each block is its own; the map's edge is
       // right behind the wall, so the notch between two runs leads nowhere)
       if (x0 !== null) for (let a0 = x0; a0 < x1; a0 += 6) { const a1 = Math.min(x1, a0 + 6), wpx = (a1 - a0) * L.cw, p = L.cpt((a0 + a1) / 2, .55), inA = a0 > x0 ? .2 * L.cw : 0, inB = a1 < x1 ? .2 * L.cw : 0;
-        thing({ key: 'march-wall-' + a0 + '|' + C.season, x: p.x, y: p.y, K: 1, box: [-wpx / 2 - 4, -H9 - 6, wpx / 2 + 6, 8], foot: [-wpx / 2 + inA, wpx / 2 - inB, 14], draw: B => wallRun(B, kit.rng(990 + a0), wpx, 0, H9, snowy) }); }
+        thing({ key: 'march-wall-' + a0 + '|' + C.season, x: p.x, y: p.y, K: 1, box: [-wpx / 2 - 12, -H9 - 6, wpx / 2 + 14, 8], foot: [-wpx / 2 + inA, wpx / 2 - inB, 14], draw: B => wallRun(B, kit.rng(990 + a0), wpx + (a0 > x0 ? 8 : 0) + (a1 < x1 ? 8 : 0), 0, H9, snowy) }); }   // (each run drawn a little past its ends, so no seam shows where two meet)
     }
     // Wick's steps (the plan's shortcut B): a flight of rough rock steps where the cove path drops to the shingle, the
     // bottom three slabs slipped and lying askew on the shingle
@@ -392,7 +394,7 @@
   } };
   // the moor's end gate: two stone gateposts in the last dry-stone wall, a weathered five-bar gate shut between them (seen
   // a little side on), the wall running off north and south, and the fingerpost: "The Long Road", pointing on west
-  MK.ART['ld-moor-gate'] = { box: [-24, -122, 64, 12], draw(B, o) {
+  MK.ART['ld-moor-gate'] = { box: [-24, -122, 76, 12], draw(B, o) {
     const kit = KIT(), r = kit.rng(79), snowy = o.season === 'winter', postTop = -H * 1.3, gateTop = -H * 1.1;
     B.shadow(2, 0, 26, 7, .3);
     // the gateposts: squared stone, lit on the west face
@@ -410,7 +412,7 @@
     B.s(`M${gx1 - 1} ${gy1 + gateTop * .55}q5 3 9 -1q-4 -5 -9 -2`, '#c8b078', 1.8, 1).f(B.rect(gx1 - 3, gy1 + gateTop * .7, 7, 2.4), '#3a3a38', .9);
     post(posts[1]);
     // the fingerpost on the moor side, east of the gate and clear of its posts, one arm pointing west: THE LONG ROAD
-    const fx = 50, fTop = -H * 2.2;   // (its arm above the gate's top rail, not across it)
+    const fx = 62, fTop = -H * 2.2;   // (its arm above the gate's top rail, not across it)
     B.f(B.rect(fx - 2.4, fTop, 4.8, -fTop), WOOD[0]).f(B.rect(fx - 2.4, fTop, 1.4, -fTop), WOOD[2], .7).f(B.ell(fx, 0, 5, 1.6), '#5e584c', .5);
     const arm = [[fx + 3, fTop + 6], [fx - 26, fTop + 6], [fx - 31, fTop + 11.5], [fx - 26, fTop + 17], [fx + 3, fTop + 17]];
     B.f(B.poly(arm), '#ece2c8').s(B.poly(arm), '#5e4a34', 1, .8);

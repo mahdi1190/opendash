@@ -626,7 +626,7 @@ window.GardenPaintedProps = (function () {
     // library objects standing in the crossing: [id, variant, size, dx, dy, 'back' | 'front']
     art.lib = kind === 'arch' ? []
       : kind === 'stair' ? [['tree.cherry', 0, { h: 104 }, -(side ? 30 : half * 1.55) - 58, -14, 'back'], ['tree.cherry', 1, { h: 96 }, (side ? 30 : half * 1.55) + 58, -10, 'back']]
-      : kind === 'pass' ? (side ? [['tree.pine', 0, { h: 170 }, 34, -art.S - 20, 'back'], ['rock.boulder', 0, { w: 96 }, 0, -art.S * .8, 'back'], ['rock.boulder', 1, { w: 110 }, 0, art.S * .8 + 6, 'front']] : [['rock.boulder', 0, { w: 100 }, -half - 24, 2, 'back'], ['rock.boulder', 1, { w: 96 }, half + 2, 4, 'back']]   /* (Cloudbreak layout: no pine at the pass, its crown stood over the Way's fork; the west boulder a half cell further out, flanking the Way, not on it; the east one close in, clear of the orchard field's hedge corner) */)
+      : kind === 'pass' ? (side ? [['tree.pine', 0, { h: 170 }, 34, -art.S - 20, 'back'], ['rock.boulder', 0, { w: 96 }, 0, -art.S * .8, 'back'], ['rock.boulder', 1, { w: 110 }, 0, art.S * .8 + 6, 'front']] : [['rock.boulder', 0, { w: 100 }, -half - 24, 2, 'back']]   /* (Cloudbreak layout: no pine at the pass, its crown stood over the Way's fork; the west boulder a half cell further out, flanking the Way, not on it; no east boulder: its stack stood on the orchard field's hedge corner) */)
       : kind === 'ruin' ? [['tree.proof-yew', 0, { h: 130 }, side ? 40 : half + 52, side ? -art.S : -6, 'back']] : [];
     // the box of the drawing round the crossing's centre
     const box = (kind === 'arch' || kind === 'ruin') && side ? [-half * .85 - 90, -art.S - 200, half * .85 + 90, art.S + 30] : side ? [kind === 'bridge' ? -150 : -100, -170 - half * .9, kind === 'bridge' ? 150 : 100, kind === 'bridge' ? frame.span + 28 : half * .9 + 22] : [-half - 90, -200, half + 90, kind === 'stair' ? 60 : 24];
@@ -719,7 +719,7 @@ window.GardenPaintedProps = (function () {
         const rock = ['#a8a698', '#848274', '#cfccbe', '#666456'], o = side ? [[0, -half * .8], [0, half * .8]] : [[-half, 0], [half, 0]];
         for (const [x, y] of o) { B.shadow(x + 6, y + 2, 44, 10, .3); for (let i = 0; i < 6; i++) B.f(D().blob(r, x + (r() - .5) * 70, y + 6 + r() * 8, 9, 3.4, 7, .5), i % 2 ? '#8a6a8a' : '#a884a8', .85); }
         for (let i = 0; i < 14; i++) B.stone(r, (r() - .5) * (side ? 40 : half * 1.6), (side ? (r() - .5) * half * 1.4 : 4 + r() * 6), 2.6 + r() * 2, 1.8 + r(), rock, null);
-        const cxx = side ? 26 : half + 22, cyy = side ? half * .2 : -16; let y = cyy;   // (Cloudbreak layout: the cairn a little up the slope, clear of the orchard field's hedge corner below the pass)
+        const cxx = side ? 26 : half + 6, cyy = side ? half * .2 : -2; let y = cyy;   // (Cloudbreak layout: the cairn close beside the lane, clear of the orchard field's hedge corner and the mist meadow)
         for (const [w, h] of [[13, 6], [11, 5.4], [9, 5], [7, 4.4], [5, 3.8], [3.6, 3]]) { B.stone(r, cxx + (r() - .5) * 2, y, w, h, rock, null); y -= h * 1.5; }
         if (open) B.s(`M${cxx} ${y}v-18`, WOOD[1], 1.4).f(B.poly([[cxx, y - 18], [cxx + 12, y - 15], [cxx, y - 11]]), '#c84a3a');
       }
