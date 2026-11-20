@@ -50,7 +50,8 @@ window.GardenPaintWood = (function () {
     // a story house in the woods (Hollin's hut, Thistle's old house) stands in a small glade, open to the south so the canopy never hides it
     const houses = (data.static || []).filter(s => /^ld-(woodhut|oldhouse|house)$/.test(s.id));   // (ld-house: the shut cottage up by Foxglove spring was hidden behind a row of crowns)
     for (const h of houses) plazas.push({ id: h.id + '-glade', x: h.x + (h.w || 1) / 2, y: h.y + 2.4, rx: 2.8, ry: 3, house: true });
-    const statics = new Set(); for (const s of data.static || []) for (const b of [s, s.apron].filter(Boolean)) for (let y = Math.floor(b.y) - 1; y <= b.y + (b.h || 1) + 4; y++) for (let x = Math.floor(b.x) - (y > b.y + (b.h || 1) ? 2 : 1); x <= b.x + (b.w || 1) + (y > b.y + (b.h || 1) ? 1 : 0); x++) statics.add(x + ',' + y);
+    // (round 3, critic round 2: a low seat keeps a row clear in front of it, not four: the bare strip in front of Wren's seat read as a dark band)
+    const statics = new Set(); for (const s of data.static || []) for (const b of [s, s.apron].filter(Boolean)) for (let y = Math.floor(b.y) - 1, low = (Number(s.tall) || 1) < 1; y <= b.y + (b.h || 1) + (low ? 1 : 4); y++) for (let x = Math.floor(b.x) - (y > b.y + (b.h || 1) ? 2 : 1); x <= b.x + (b.w || 1) + (y > b.y + (b.h || 1) ? 1 : 0); x++) statics.add(x + ',' + y);
     const wet = c => !c || c.water || ['ocean', 'water', 'pool', 'lake', 'ice', 'beach'].includes(c.material);
     const isPath = c => c && (c.route || c.material === 'path');
     const near = (x, y, r, test) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (test(cellAt(x + dx, y + dy))) return true; return false; };
@@ -64,6 +65,7 @@ window.GardenPaintWood = (function () {
     const routeLines = [];
     for (const route of data.routes || []) {
       if (!route.points || route.points.length < 2) continue;
+      if (route.track && route.zone === 1 && route.id !== 'wren-log') continue;   // (round 3: the woodland's deer track is the floor trodden flat, not a cut through it)
       const pts = gardenIslandRoutePath(route).points, p = new Path2D(); if (pts.length < 2) continue;
       p.moveTo(px(pts[0].x), py(pts[0].y)); for (let i = 1; i < pts.length; i++) p.lineTo(px(pts[i].x), py(pts[i].y));
       const width = gardenIslandRoadStyle(route).main ? 40 : 26;

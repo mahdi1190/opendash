@@ -116,15 +116,28 @@
         const tones = season === 'winter' ? ['#a9a89c', '#bdbcb0', '#9a9a8e'] : ['#a19a84', '#b3ab93', '#958f7b', '#aaa088'];
         // (round 3) two abreast, each a half of the deck's width, set a little out of line so they read as stones and not tiles
         const sq = (lo, hi, k, ds, dt, jit, ac) => { const pts = []; for (let j = 0; j < 28; j++) { const a = j / 28 * Math.PI * 2, c = Math.cos(a), si = Math.sin(a), u = Math.sign(c) * Math.pow(Math.abs(c), .72), v = Math.sign(si) * Math.pow(Math.abs(si), .72), n = 1 + (jit ? (jit[j % jit.length] - .5) * .06 : 0); pts.push(q((lo + hi) / 2 + dt + u * (hi - lo) / 2 * k * n, ds + v * ac * k * n)); } return B.poly(pts); };
-        const sides = hw >= 20 ? [-1, 1] : [0];
+        // (critic round 2) boulders, not a block of tiles: each its own lumpy shape and size, staggered, sitting IN the stream
+        // with a dark wet foot at the waterline, the brook breaking white round their upstream shoulders and running off in a
+        // riffle of streaks downstream between them; a few smaller stones awash beside the line. The footing is still the deck.
+        const sides = hw >= 20 ? [-1, 1] : [0], flow = (deck.flow || 1);
+        const lump = (lo, hi, k, ds, ac, jit) => { const pts = []; for (let j = 0; j < 22; j++) { const a = j / 22 * Math.PI * 2, c = Math.cos(a), si = Math.sin(a), u = Math.sign(c) * Math.pow(Math.abs(c), .8), v = Math.sign(si) * Math.pow(Math.abs(si), .8), n = 1 + (jit[j % jit.length] - .5) * .26; pts.push(q((lo + hi) / 2 + u * (hi - lo) / 2 * k * n, ds + v * ac * k * n)); } return B.poly(pts); };
+        const rocks = [];
         for (let i = 0; i < count; i++) for (const sd of sides) {
-          const nudge = sd ? (r() - .5) * .3 * step : 0, lo = i * step + (i ? .25 / deck.length : 0) + nudge, hi = (i + 1) * step - (i < count - 1 ? .25 / deck.length : 0) + nudge, jit = [r(), r(), r(), r(), r(), r(), r()], tone = r();
-          const ac = sd ? hw * .5 - .6 : hw, c0 = sd * hw * .5, k0 = .98 + r() * .05;
-          B.s(sq(lo, hi, 1.08 * k0, c0, 0, jit, ac), P.foam || '#eef2e2', 1.6, .5);
-          B.f(sq(lo, hi, k0, c0 + 1.2, 0, jit, ac), '#4e4a40', .85);
-          B.f(sq(lo, hi, .97 * k0, c0, 0, jit, ac), tones[Math.floor(tone * tones.length)]);
-          B.f(sq(lo, hi, .6 * k0, c0 - ac * .22, -(hi - lo) * .08, jit, ac), '#d4ccb4', .5);
-          if (tone < .45) B.f(sq(lo, hi, .42 * k0, c0 + ac * .5, (hi - lo) * .1, jit, ac), season === 'winter' ? '#e8ecef' : '#6f8446', .6);
+          const nudge = sd ? (r() - .5) * .45 * step : 0, lo = i * step + (i ? .25 / deck.length : 0) + nudge, hi = (i + 1) * step - (i < count - 1 ? .25 / deck.length : 0) + nudge;
+          rocks.push({ lo, hi, ac: sd ? hw * .5 - .6 + (r() - .5) * 3 : hw, c0: sd * hw * .5 + (r() - .5) * 3, k0: .9 + r() * .2, jit: [r(), r(), r(), r(), r(), r(), r(), r(), r()], tone: r() });
+        }
+        // the riffle first, under the stones: white streaks off their downstream side and darker slack water behind them
+        for (const k of rocks) for (let j = 0; j < 3; j++) { const t = k.lo + (k.hi - k.lo) * (.2 + j * .3), a = q(t, k.c0 + flow * (k.ac + 1)), b = q(t + (r() - .5) * .03, k.c0 + flow * (k.ac + 9 + r() * 10)); B.s(`M${a.x} ${a.y}L${b.x} ${b.y}`, P.foam || '#eef2e2', 1.3, .55); }
+        for (const k of rocks) B.f(lump(k.lo, k.hi, k.k0 * 1.02, k.c0 + flow * 5, k.ac, k.jit), '#3e5a5e', .22);
+        for (let i = 0; i < 5; i++) { const t = r(), sd = (r() < .5 ? -1 : 1) * (hw + 6 + r() * 8), p = q(t, sd); B.f(B.ell(p.x, p.y, 2.6 + r() * 2, 1.6 + r()), '#8e8878', .8).f(B.ell(p.x - .6, p.y - .6, 1.4, .8), '#c8c2ae', .7); }
+        for (const k of rocks) {
+          const tone = tones[Math.floor(k.tone * tones.length)];
+          B.f(lump(k.lo, k.hi, k.k0 * 1.04, k.c0 + 1.6, k.ac, k.jit), '#3a3830', .9);
+          B.f(lump(k.lo, k.hi, k.k0, k.c0, k.ac, k.jit), tone);
+          B.f(lump(k.lo, k.hi, k.k0 * .62, k.c0 - k.ac * .26, k.ac, k.jit), '#d4ccb4', .45);
+          B.f(lump(k.lo, k.hi, k.k0 * .9, k.c0 + k.ac * .3, k.ac * .5, k.jit), '#5e584a', .35);
+          if (k.tone < .45) B.f(lump(k.lo, k.hi, k.k0 * .4, k.c0 + k.ac * .5, k.ac, k.jit), season === 'winter' ? '#e8ecef' : '#6f8446', .6);
+          const u = q((k.lo + k.hi) / 2, k.c0 - flow * (k.ac * k.k0 + 1)); B.s(`M${u.x - 6} ${u.y}q6 -2.4 12 0`, P.foam || '#eef2e2', 1.4, .7);
         }
         return;
       }
@@ -263,7 +276,7 @@
           const bw = bb[2] - bb[0], bh = bb[3] - bb[1], rx = () => bb[0] + r() * bw, ry = () => bb[1] + r() * bh;
           for (let k = 0; k < bw * bh / 260; k++) { const x = rx(), y = ry(); B.s(`M${x} ${y}l${(r() - .5) * 6} ${(r() - .5) * 2.4}`, r() < .5 ? '#d8c08a' : '#7a5e3c', 1.6, .55); }
           for (let k = 0; k < 6; k++) B.f(B.blob(r, rx(), ry(), 8 + r() * 10, 3 + r() * 3, 7, .5), '#e2cc96', .3);
-          for (const o of [-8, 8]) { const pts = [{ x: bb[0] + 20, y: (bb[1] + bb[3]) / 2 + o + 6 }, { x: (bb[0] + bb[2]) / 2, y: (bb[1] + bb[3]) / 2 + o }, { x: bb[2] - 20, y: (bb[1] + bb[3]) / 2 + o - 4 }]; V.strokePts(B, pts, '#6a5236', 4, .22); }
+          // (critic round 2: no cart ruts: two straight lines across the yard read as ruled stripes)
           const leaf = C.season === 'autumn' ? ['#b0682a', '#d38f3a', '#8a5a2c'] : ['#7d8f4e', '#8a7a4a'];
           for (let k = 0; k < bw * bh / 500; k++) B.f(B.ell(rx(), ry(), 1.6 + r() * 1.4, 1 + r() * .6), leaf[Math.floor(r() * leaf.length)], .7);
         }
@@ -281,7 +294,7 @@
       if (pz.id === 'cider-square') { put([[80.2, 36.4], [79.6, 35.4], [75.4, 37.6]], 'press', [-26, -50, 28, 6], drawPress(P), [-21, 23, 10]); put([[79.6, 38.3], [80.4, 38.6]], 'bell', [-14, -64, 16, 5], drawBell(P), [-6, 7, 6]); put([[76.9, 38.6], [78.2, 38.9]], 'baskets', [-24, -18, 26, 5], drawBaskets(P, C.season), [-18, 20, 8]); }
       if (pz.id === 'mill-yard') { put([[76.6, 64.6], [77.2, 65.2], [76.9, 66.8]], 'millstone', [-22, -40, 24, 6], drawMillstone(P), [-18, 20, 10]); put([[77.3, 66.9], [73.6, 67.4], [76.8, 67.6]], 'sacks', [-22, -24, 24, 5], drawSacks(P), [-18, 20, 8]); }
       if (pz.id === 'ruin-court') { const c = L.cpt(pz.x + 1.4, pz.y + .9); add([c.x - 60, c.y - 30, c.x + 60, c.y + 30], 75, (B, r) => { B.shadow(c.x + 4, c.y + 6, 46, 8, .3); B.f(B.rr(c.x - 44, c.y - 7, 80, 14, 7), RUIN.body).f(B.rr(c.x - 44, c.y - 7, 80, 5, 2.5), RUIN.hi, .8).f(B.ell(c.x + 38, c.y, 6, 7), RUIN.lo).f(B.ell(c.x + 38, c.y, 3.4, 4), RUIN.dk, .3); for (let k = -36; k < 34; k += 9) B.s(`M${c.x + k} ${c.y - 6}v12`, RUIN.lo, .8, .5); B.f(B.blob(r, c.x - 10, c.y - 6, 22, 3, 7, .5), RUIN.moss, .8); fern(B, r, c.x - 50, c.y + 6, C.season); fern(B, r, c.x + 20, c.y + 9, C.season); }); }
-      if (style === 'litter') { const o = oakAt(L, pz), S = OAK_SCALE; thing({ key: 'great-oak-5|' + C.season, x: o.x, y: o.y, box: [-250 * S, -360 * S, 250 * S, 40 * S].map(Math.round), crown: { x: 0, y: -230 * S, rx: 250 * S, ry: 145 * S }, farShrink: .6, K: .9, draw: B => { B.cx.save(); B.cx.scale(S, S); greatOak(B, kit.rng(seed + 9), P, C.season); B.cx.restore(); } }); }
+      if (style === 'litter') { const o = oakAt(L, pz), S = OAK_SCALE; thing({ key: 'great-oak-5|' + C.season, x: o.x, y: o.y, box: [-250 * S, -360 * S, 250 * S, 40 * S].map(Math.round), crown: { x: 0, y: -215 * S, rx: 270 * S, ry: 195 * S }, farShrink: .6, K: .9, draw: B => { B.cx.save(); B.cx.scale(S, S); greatOak(B, kit.rng(seed + 9), P, C.season); B.cx.restore(); } }); }
     }
   }
   const drawPress = P => B => { B.shadow(4, 2, 24, 5, .3); B.f(B.rr(-18, -16, 36, 16, 3), P.wood).f(B.rect(-18, -16, 36, 3), P.woodHi, .7); for (const x of [-14, 12]) B.post(x, -46, -14, 5, [P.wood, P.woodLo, P.woodHi]); B.f(B.rect(-18, -50, 36, 6), P.woodLo).s('M0 -44V-20', P.iron, 3).s('M-10 -30H10', P.iron, 2.2).f(B.ell(0, -18, 12, 3), '#c8a04a', .8); };
@@ -289,6 +302,7 @@
   const drawBaskets = (P, season) => B => { B.shadow(2, 1, 22, 4, .3); for (const x of [-12, 10]) { B.f(`M${x - 10} -12L${x + 10} -12L${x + 8} 0L${x - 8} 0Z`, '#a8844e').s(`M${x - 9} -8H${x + 9}M${x - 8.5} -4H${x + 8.5}`, '#7a5e34', .8, .8); for (let k = 0; k < 5; k++) B.f(B.circ(x - 7 + k * 3.5, -13 - (k % 2) * 1.6, 2.6), season === 'autumn' ? (k % 2 ? '#c8402e' : '#e0b23a') : '#9cbc4a'); } };
   const drawMillstone = P => B => { B.shadow(6, 2, 20, 5, .3); B.f(B.ell(0, -18, 12, 18), '#8e8a7c').f(B.ell(-2, -19, 11, 17), '#b4ae9c').f(B.ell(-2, -19, 3.4, 5), '#5e5a4e'); for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; B.s(`M${-2 + Math.cos(a) * 4} ${-19 + Math.sin(a) * 6}L${-2 + Math.cos(a + .3) * 10} ${-19 + Math.sin(a + .3) * 15}`, '#7a7668', 1, .7); } };
   const drawSacks = P => B => { B.shadow(2, 1, 22, 5, .3); for (const [x, y, s] of [[-10, 0, 1], [9, 0, .95], [0, -11, .9]]) { B.f(`M${x - 9 * s} ${y}Q${x - 11 * s} ${y - 12 * s} ${x - 5 * s} ${y - 16 * s}L${x + 5 * s} ${y - 16 * s}Q${x + 11 * s} ${y - 12 * s} ${x + 9 * s} ${y}Z`, '#e4dcc4').f(`M${x - 8 * s} ${y}Q${x - 10 * s} ${y - 11 * s} ${x - 5 * s} ${y - 15 * s}L${x - 2 * s} ${y - 15 * s}Q${x - 6 * s} ${y - 10 * s} ${x - 4 * s} ${y}Z`, '#fff', .5).s(`M${x - 4 * s} ${y - 16 * s}l${8 * s} 0`, '#a08a5a', 1.4); } };
+  // (round 3, critic round 2: the crown's fade reaches its whole drawn underside: on the deer track the player's head was lost in it)
   const OAK_SCALE = 1.75;   // the vale's landmark tree: its crown stands over the woods, seen from the arch and from the green zoomed out
   const oakAt = (L, pz) => L.cpt(pz.x + 2.9, pz.y - 1.5);   // at the clearing's north-east edge, clear of the bench and the hollow oak
   function greatOak(B, r, P, season) {

@@ -414,8 +414,9 @@
         gate(B, g, kind);
       }
       for (const p of near) paint(p.filter(q => q.y > gy));
-      // (the sign last: reeds, long grass or a hedge end right beside the gate never stand across its board)
-      if (g && S.next && g.x > cb[0] - 60 && g.x < cb[2] + 60 && g.y > cb[1] - 20 && g.y < cb[3] + 50) { const sx = g.horiz ? g.x + g.len / 2 + 5 : g.x + (g.east ? 8 : -8), sy = g.horiz ? g.y + 1 : g.y + g.len / 2 + 3; sign(B, sx, sy, S.next, lv); }
+      // (the sign last: reeds, long grass or a hedge end right beside the gate never stand across its board; round 3, critic
+      // round 2: a woodland field shows its board only once it can be bought, not 'Lv 3/6/10/18' on every screen of the wood)
+      if (g && S.next && !(/^w-/.test(f.id) && lv < (S.next.lv || 0)) && g.x > cb[0] - 60 && g.x < cb[2] + 60 && g.y > cb[1] - 20 && g.y < cb[3] + 50) { const sx = g.horiz ? g.x + g.len / 2 + 5 : g.x + (g.east ? 8 : -8), sy = g.horiz ? g.y + 1 : g.y + g.len / 2 + 3; sign(B, sx, sy, S.next, lv); }
       if (f.edge === 'meadow') { B.cx.save(); const out = new Path2D(); out.rect(bb[0] - 60, bb[1] - 60, bb[2] - bb[0] + 120, bb[3] - bb[1] + 120); out.addPath(S.path); B.cx.clip(out, 'evenodd'); B.cx.filter = 'blur(4px)'; B.s(S.path, C.P.lawnHi, 10, .22); B.cx.filter = 'none'; B.cx.restore(); }   // the mown edge round the uncut meadow
     }
     // Land of this field that is yours. (Village fix round 2: it went to a plain striped lawn, the orchard lost its trees and

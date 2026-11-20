@@ -162,9 +162,11 @@
   'use strict';
   const V = window.GardenPaintVale; if (!V) return;
   function marks(C) {
-    const { L, thing, kit } = C, wd = L.pres && L.pres.woodland; if (!wd) return;
-    const ok = (x, y) => L.free(x, y) && !L.plot(x, y) && L.kind(x, y) === 'grass';
-    const near = (x, y, avoid) => { let best = null; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const cx = Math.floor(x) + dx, cy = Math.floor(y) + dy; if (!ok(cx + .5, cy + .5) || (avoid && avoid(cx + .5, cy + .5))) continue; const d = Math.hypot(cx + .5 - x, cy + .5 - y); if (!best || d < best.d) best = { x: cx + .5, y: cy + .8, d }; } return best; };
+    const { L, thing, kit, add } = C, wd = L.pres && L.pres.woodland; if (!wd) return;
+    // (critic round 2) a cell and a half clear of any water: a ringed birch stood with its foot on the brook's waterline
+    const dry = (x, y) => { for (let dy = -1.5; dy <= 1.5; dy += .5) for (let dx = -1.5; dx <= 1.5; dx += .5) if (L.kind(x + dx, y + dy) === 'water') return false; return true; };
+    const ok = (x, y) => L.free(x, y) && !L.plot(x, y) && L.kind(x, y) === 'grass' && dry(x, y);
+    const near = (x, y, avoid) => { let best = null; for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const cx = Math.floor(x) + dx, cy = Math.floor(y) + dy; if (!ok(cx + .5, cy + .5) || (avoid && avoid(cx + .5, cy + .5))) continue; const d = Math.hypot(cx + .5 - x, cy + .5 - y); if (!best || d < best.d) best = { x: cx + .5, y: cy + .8, d }; } return best; };
     const used = [], clear = (x, y) => used.some(u => Math.hypot(u[0] - x, u[1] - y) < 1.2);
     const lamps = typeof gardenIslandOldWoodLamps === 'function' ? gardenIslandOldWoodLamps(L.D) : [];
     for (const l of lamps) used.push([l.x, l.y]);
@@ -195,12 +197,45 @@
         if (leaf) for (let k = 0; k < 26; k++) { const a = r() * Math.PI * 2, d = Math.sqrt(r()); B.f(B.ell(Math.cos(a) * 30 * d, -84 + Math.sin(a) * 24 * d, 3.4, 2.2), leaf[Math.floor(r() * 3)], .92); }
       } });
     });
+    // (critic round 2) the deer track to Wren's seat (a route marked track: wren-way, wren-log): no laid path, only grass
+    // trodden flatter and yellower along a narrow line, bare slots where the hooves go, the odd broken fern; the path kits skip it
+    for (const rt of (L.D.routes || []).filter(q => q.track && q.zone === 1 && q.id !== 'wren-log')) {
+      const pts = L.routePts(rt.id); if (pts.length < 2) continue; const bb = kit.bboxOf(pts, 30);
+      add(bb, 88, (B, r) => {
+        const dull = season === 'winter' ? '#c8c6b4' : season === 'autumn' ? '#a89a5a' : '#9aa25a';
+        B.cx.save(); B.cx.filter = 'blur(5px)'; V.strokePts(B, pts, dull, 16, .32); B.cx.filter = 'blur(2px)'; V.strokePts(B, pts, season === 'winter' ? '#b4ae98' : '#8a8452', 5, .22); B.cx.restore();
+        const steps = V.walk(pts, 7); for (let i = 0; i < steps.length; i++) { const q = steps[i]; if (r() < .35) continue; const sd = i % 2 ? 2.6 : -2.6; B.f(B.ell(q.x + sd + (r() - .5) * 2, q.y + (r() - .5) * 1.5, 1.6, 1.1), '#5e4e34', .45); }
+        for (let i = 0; i < steps.length; i += 3) { const q = steps[i]; if (r() < .5) continue; const x = q.x + (r() - .5) * 18, y = q.y + (r() - .5) * 8; B.s(`M${x} ${y}l${(r() - .5) * 8} ${(r() - .5) * 3}`, season === 'winter' ? '#b8b4a0' : '#7a8a3e', 1.2, .7); }
+      });
+    }
+    // (critic round 2) Foxglove spring's shore: the pool had a hard bevelled rim and no bank. A muddy margin trodden soft,
+    // mossy stones half in the water, sedge and marsh marigolds round it, two lily pads and the spring's own ring of ripple
+    { const sp = (L.D.freshwater || []).find(b => b.id === 'spring'); if (sp && sp.boundary && sp.boundary.length > 2) {
+      const ring = sp.boundary.map(L.pt), loop = ring.concat([ring[0]]), bb = kit.bboxOf(ring, 40), cx0 = ring.reduce((a, q) => a + q.x, 0) / ring.length, cy0 = ring.reduce((a, q) => a + q.y, 0) / ring.length;
+      add(bb, 89, (B, r) => {
+        const mud = season === 'winter' ? '#a8a494' : '#6e5e40', sedge = season === 'autumn' ? '#a89a4a' : season === 'winter' ? '#b4b0a0' : '#5e8a3a';
+        B.cx.save(); B.cx.filter = 'blur(4px)'; V.strokePts(B, loop, mud, 16, .42); B.cx.filter = 'blur(1.5px)'; V.strokePts(B, loop, '#3e4a3a', 5, .35); B.cx.restore();
+        const edge = V.walk(loop, 13);
+        for (const q of edge) { const ox = q.x - cx0, oy = q.y - cy0, d = Math.hypot(ox, oy / .62) || 1, nx = ox / d, ny = oy / d;
+          if (r() < .6) { const x = q.x + nx * (r() * 4 - 1), y = q.y + ny * (r() * 3 - .5), w = 5 + r() * 5; B.f(B.ell(x + 1, y + 2, w, w * .5), '#2e3a2e', .35).f(B.blob(r, x, y, w, w * .55, 7, .3), r() < .5 ? '#9a9484' : '#b0aa98').f(B.blob(r, x - 1, y - 1.5, w * .55, w * .25, 6, .3), '#cfc8b6', .7); if (season !== 'winter' && r() < .6) B.f(B.blob(r, x + w * .3, y - w * .2, w * .5, w * .25, 6, .5), '#6f8a42', .85); }
+          else for (let k = 0; k < 5; k++) { const x = q.x + nx * (5 + r() * 4), y = q.y + ny * (3 + r() * 3); B.s(`M${x} ${y}q${(r() - .5) * 4} -7 ${(r() - .5) * 7} ${-11 - r() * 7}`, sedge, 1.2, .9); }
+          if (season === 'spring' || season === 'summer') if (r() < .18) { const x = q.x + nx * 9, y = q.y + ny * 6; B.f(B.circ(x, y - 8, 2.2), '#f2c832').f(B.circ(x, y - 8, .9), '#e09a2a'); }
+        }
+        if (season !== 'winter') for (const [fx, fy] of [[-.35, .1], [.25, .25]]) { const x = cx0 + fx * (bb[2] - bb[0] - 80), y = cy0 + fy * (bb[3] - bb[1] - 80); B.f(B.ell(x, y, 7, 3.4), '#4e7a3a').f(B.poly([[x, y], [x + 7, y - 1.2], [x + 7, y + 1.2]]), '#5a8aa0').f(B.ell(x - 1.5, y - .8, 3, 1.2), '#6f9a4a', .8); }
+        B.s(`M${cx0 - 10} ${cy0}a10 4 0 1 0 20 0a10 4 0 1 0 -20 0`, '#e8f2f0', 1, .45);
+      });
+    } }
     // Thistle's soup camp
     if (wd.soupCamp) {
       const oak = (L.pres.plazas || []).find(p => p.id === 'great-oak-clearing'), ox = oak && oak.oak ? oak.oak[0] : wd.soupCamp[0], oy = oak && oak.oak ? oak.oak[1] : wd.soupCamp[1];
       const s = near(ox + 3.6, oy + 1.2, (x, y) => clear(x, y) || Math.hypot(x - ox, y - oy) < 2.6) || near(ox - 3.4, oy + 1.4, (x, y) => clear(x, y) || Math.hypot(x - ox, y - oy) < 2.6);
       if (s) { used.push([s.x, s.y]); const p = L.cpt(s.x, s.y), r0 = kit.hashStr('soupcamp');
         thing({ key: 'wood-soupcamp|' + season, x: p.x, y: p.y, box: [-40, -50, 40, 10], foot: [-16, 16, 7], draw: B => { const r = kit.rng(r0);
+          // (critic round 2) set into a trodden patch of its own, ash blown out over it, a little stack of split wood and bracken behind
+          B.cx.save(); B.cx.filter = 'blur(4px)'; B.f(B.ell(4, 2, 46, 10), season === 'winter' ? '#c8c4b4' : '#7a6646', .42); B.cx.restore();
+          for (let k = 0; k < 14; k++) B.f(B.ell(-30 + r() * 64, -4 + r() * 10, 1.8, .9), k % 3 ? '#8a8478' : '#b0aa9c', .5);
+          for (const [x, y] of [[-30, -4], [-22, -4], [-26, -10]]) B.f(B.rr(x - 5, y - 4, 10, 5, 2.4), '#7a6248').f(B.ell(x + 5, y - 1.5, 1.8, 2.4), '#d2bc90');
+          for (let k = 0; k < 5; k++) { const a = -2.5 + k * .28; B.s(`M-36 -2q${Math.cos(a) * 7} ${Math.sin(a) * 10} ${Math.cos(a) * 13} ${Math.sin(a) * 16}`, season === 'autumn' ? '#a8823a' : season === 'winter' ? '#9a9884' : '#4f7a3a', 1.5, .9); }
           B.f(B.ell(0, 1, 34, 7), '#5e4e38', .35).f(B.ell(0, 0, 16, 4.6), '#3a3026');
           for (let k = 0; k < 10; k++) { const a = Math.PI * 2 * k / 10; B.stone(r, Math.cos(a) * 15, Math.sin(a) * 4.4, 3.4, 2.4, { rock: '#9a9484', rockLo: '#7a7468', rockHi: '#c2bcae', rockDk: '#5e584c' }); }
           B.f(B.ell(0, -1, 9, 2.6), '#c8502a', .8).f(B.ell(-1, -1.4, 5, 1.4), '#f0a040', .9);
@@ -212,5 +247,101 @@
         } }); }
     }
   }
+  V.softRoutes.add('wren-way');   // (the meadow runs on under the deer track: no cut edge)
   V.parts.push({ id: 'woodland-marks', compose: marks });
+})();
+
+/* The woodland's three buildings at the size standard (round 3, critic round 2: each stood about the player's own height and
+ * read as a toy). H, the player after the 0.8 change, is about 44 px:
+ *  - Thistle's old house (ld-oldhouse): the classic picture of the low rubble cottage, laid again at 2.2 times its size, so
+ *    its eaves stand at 1.7 H and its ridge at 3.3 H, the door 1.5 H; a worn doorstep of old flags down to the loop
+ *  - the summer house (ld-house): its picture at 2.3 times on a brick plinth, eaves 1.5 H, the finial at 3 H, gravel at its foot
+ *  - the woodshed (ld-woodshed): an open-fronted log store of its own (it borrowed the eel smokehouse's picture), eaves 2.4 H,
+ *    three bays stacked to the roof with split logs end on, the block and axe at its corner at knee height, chips and bark
+ * The two old pictures are replayed from the classic art's own paths (94-garden-lands-2art.js) at the new scale into one baked
+ * picture; their footprints grew in vale-woodland.json (four, four and three cells wide) so the walls block where they stand. */
+(function () {
+  'use strict';
+  const GP = window.GardenPaintedProps; if (!GP || !GP.paintTable || !GP.kit) return;
+  const K = GP.kit, { rng, hash } = K, P = GP.paintTable, D = () => sceneDraw;
+  // replay a classic picture's <path> list on the canvas at scale k (fills, strokes and their opacity; these pictures have no groups)
+  const attr = (s, n) => { const m = new RegExp(' ' + n + '="([^"]*)"').exec(s); return m ? m[1] : null; };
+  function replay(B, svg, k) {
+    const cx = B.cx; cx.save(); cx.scale(k, k);
+    for (const m of String(svg || '').matchAll(/<path\b[^>]*>/g)) {
+      const s = m[0], d = attr(s, 'd'); if (!d) continue; let p; try { p = new Path2D(d); } catch (e) { continue; }
+      const fill = attr(s, 'fill'), stroke = attr(s, 'stroke'), o = Number(attr(s, 'opacity') || attr(s, 'fill-opacity') || 1);
+      cx.globalAlpha = Number.isFinite(o) ? o : 1;
+      if (fill && fill !== 'none') { cx.fillStyle = fill; cx.fill(p); }
+      if (stroke && stroke !== 'none') { cx.strokeStyle = stroke; cx.lineWidth = Number(attr(s, 'stroke-width') || 1); cx.lineCap = attr(s, 'stroke-linecap') || 'round'; cx.lineJoin = 'round'; cx.stroke(p); }
+    }
+    cx.restore(); cx.globalAlpha = 1;
+  }
+  const classic = (art, season) => { try { return typeof _GLD_PROP_ART !== 'undefined' && _GLD_PROP_ART[art] ? _GLD_PROP_ART[art]({ season, tod: 'day' }) : ''; } catch (e) { return ''; } };
+  const tuftCol = s => s === 'winter' ? '#b8b4a0' : s === 'autumn' ? '#9a9a4a' : '#5e8a3a';
+  const tufts = (B, r, x0, x1, y, s, n) => { for (let k = 0; k < n; k++) { const x = x0 + r() * (x1 - x0); B.s(`M${x} ${y}q${(r() - .5) * 3} -5 ${(r() - .5) * 5} ${-6 - r() * 6}`, tuftCol(s), 1.4, .9); } };
+  function flags(B, r, x, y, n, s) {   // old flags in a short run down from a door, grass in their joints
+    for (let i = 0; i < n; i++) { const fx = x + (r() - .5) * 8, fy = y + i * 9, w = 13 + r() * 5;
+      B.f(B.ell(fx + 1, fy + 1.6, w, 4.4), '#3a3a2a', .25).f(D().blob(r, fx, fy, w, 4, 7, .25), r() < .5 ? '#b4ab94' : '#a59c84').f(D().blob(r, fx - 2, fy - 1, w * .6, 1.8, 6, .3), '#cfc6ae', .7);
+      if (s !== 'winter') B.f(D().blob(r, fx + w * .7, fy + 1, 4, 1.6, 6, .5), '#6f8a42', .8); }
+  }
+  P['sight:prop-ld-oldhouse'] = { box: [-118, -178, 118, 40], draw(B, o) {
+    const s = o.season, r = rng(hash('oldhouse-big'));
+    B.f(B.ell(4, 2, 112, 13), '#22301a', .3);
+    replay(B, classic('oldhouse', s), 2.2);
+    flags(B, r, 22, 10, 3, s);
+    tufts(B, r, -110, -60, 3, s, 10); tufts(B, r, 64, 110, 3, s, 10);
+  } };
+  P['sight:prop-ld-house'] = { box: [-96, -144, 96, 22], draw(B, o) {
+    const s = o.season, r = rng(hash('summerhouse-big'));
+    B.f(B.ell(2, 3, 96, 12), '#22301a', .3);
+    // a gravel apron round its foot, the boards lifted on a low brick plinth
+    B.f(D().blob(r, 0, 6, 92, 11, 10, .2), s === 'winter' ? '#d8d6cc' : '#cbbf9e', .75);
+    for (let k = 0; k < 40; k++) B.f(B.circ(-84 + r() * 168, 1 + r() * 12, .9 + r() * .9), r() < .5 ? '#a89a78' : '#e2d8bc', .9);
+    B.cx.save(); B.cx.translate(0, -6); replay(B, classic('summer', s), 2.3); B.cx.restore();
+    // (its classic picture is a plain cream box with a dark door: weatherboards, a pair of glazed doors standing open, a window
+    // either side with a box of flowers, and a finial on its roof, so it reads as a garden building at this size)
+    for (let y = -68; y < -10; y += 6.5) B.s(`M-66 ${y}H66`, '#cbbfa4', 1, .8);
+    for (const sx of [-1, 1]) { const x0 = sx < 0 ? -26 : 0; B.f(B.rect(x0 + 1, -60, 25, 52), '#4a5a52').f(B.rect(x0 + 3, -58, 21, 22), '#9cc0c4', .85).f(B.rect(x0 + 3, -33, 21, 22), '#9cc0c4', .7).s(`M${x0 + 13.5} -58v47M${x0 + 3} -36h21`, '#e8e0cc', 1.6); }
+    for (const x of [-56, 34]) { B.f(B.rect(x, -54, 22, 24), '#e8e0cc').f(B.rect(x + 2, -52, 18, 20), '#8fb4ba').s(`M${x + 11} -52v20M${x + 2} -42h18`, '#e8e0cc', 1.4).f(B.rect(x - 2, -30, 26, 6), '#7a5a3a');
+      if (s !== 'winter') for (let k = 0; k < 6; k++) B.f(B.circ(x + 2 + k * 3.8, -31 - r() * 3, 2), s === 'autumn' ? '#d8783a' : ['#e86a8a', '#f2d24a', '#f4f0e8'][k % 3], .95); }
+    B.f(B.rect(-72, -7, 144, 8), '#9a5a40').f(B.rect(-72, -7, 144, 2), '#b8745a', .8);
+    for (let x = -70; x < 72; x += 9) B.s(`M${x} -7v8`, '#6a3a28', .7, .6);
+    // the step up to its door
+    B.f(B.rr(-24, -2, 48, 7, 2), '#b9b09a').f(B.rect(-24, -2, 48, 2), '#d6ceb8', .8);
+    tufts(B, r, -94, -74, 4, s, 7); tufts(B, r, 74, 94, 4, s, 7);
+    if (s !== 'winter') for (const x of [-82, 84]) for (let k = 0; k < 4; k++) B.f(B.circ(x + (r() - .5) * 10, -6 - r() * 10, 2), s === 'autumn' ? '#c8783a' : '#e8a0c0', .9);
+  } };
+  P['sight:prop-ld-woodshed'] = { box: [-84, -132, 96, 18], draw(B, o) {
+    const s = o.season, r = rng(hash('woodshed-big')), oak = ['#7a6248', '#5e4a34', '#9a8262', '#3e3022'], end = ['#c8a87c', '#b89468', '#d6bc8e', '#a8865c'];
+    B.f(B.ell(2, 3, 84, 11), '#22301a', .32);
+    // chips, bark and sawdust trodden into the ground in front of it
+    B.f(D().blob(r, 0, 6, 82, 10, 9, .3), '#8a7454', .35);
+    for (let k = 0; k < 50; k++) B.s(`M${-78 + r() * 156} ${2 + r() * 12}l${(r() - .5) * 6} ${(r() - .5) * 2}`, r() < .5 ? '#e0c898' : '#6a5034', 1.6, .7);
+    // the back wall of tarred boards, in shade under the roof
+    B.f(B.rect(-64, -100, 128, 96), '#3a2e24'); for (let x = -60; x < 64; x += 8) B.s(`M${x} -100v96`, '#2a2018', 1, .7);
+    // three bays stacked with split logs, end on, to the roof
+    for (const [bx0, bx1] of [[-62, -22], [-19, 19], [22, 62]]) for (let y = -8, row = 0; y > -97; y -= 6.4, row++) for (let x = bx0 + 4 + (row % 2) * 3.4; x < bx1 - 3; x += 6.8) {
+      const rx = 3.2 + r() * 1, ry = 2.9 + r() * .8; B.f(B.ell(x + .8, y + .8, rx, ry), oak[1]).f(B.ell(x, y, rx - .8, ry - .8), end[Math.floor(r() * 3)]);
+      if (r() < .5) B.s(`M${x - rx * .5} ${y}a${rx * .5} ${ry * .4} 0 1 0 ${rx} 0`, '#a8844e', .6, .6); if (r() < .2) B.s(`M${x} ${y - ry + 1}l${(r() - .5) * 2} ${ry * 1.4}`, '#8a6a44', .6, .7); }
+    // a low footing of field stones
+    for (let x = -66; x < 66; x += 11) B.f(D().blob(r, x + 5, -3, 6.5, 4, 6, .3), r() < .5 ? '#9a9484' : '#b0aa98');
+    // the posts and the plate under the roof
+    for (const x of [-66, -21, 21, 66]) B.f(B.rect(x - 3.5, -106, 7, 106), oak[0]).f(B.rect(x - 3.5, -106, 2.4, 106), oak[2], .7).f(B.rect(x + 1.6, -106, 1.9, 106), oak[3], .5);
+    B.f(B.rect(-70, -108, 140, 6), oak[1]).f(B.rect(-70, -108, 140, 2), oak[2], .8);
+    // the roof: old cedar shingles, mossed, seen from in front and a little above
+    B.f(B.poly([[-80, -106], [80, -106], [72, -130], [-72, -130]]), '#5a4a3a');
+    for (let k = 0; k < 4; k++) { const y = -110 - k * 5.6, x0 = -79 + k * 2, x1 = 79 - k * 2; B.s(`M${x0} ${y}H${x1}`, '#3e3226', 1, .8); for (let x = x0 + 3 + (k % 2) * 4; x < x1; x += 8) B.s(`M${x} ${y}v-5`, '#3e3226', .6, .5); }
+    B.f(B.poly([[-72, -130], [-40, -130], [-46, -106], [-80, -106]]), '#7a6650', .35);
+    if (s === 'winter') B.f(B.poly([[-74, -128], [74, -128], [72, -132], [-72, -132]]), '#f2f4f4').f(B.rr(-78, -110, 156, 3, 1.5), '#f2f4f4', .9);
+    else for (let k = 0; k < 9; k++) B.f(D().blob(r, -66 + r() * 132, -114 - r() * 12, 5 + r() * 5, 2, 6, .5), s === 'autumn' ? '#8a8a46' : '#6f8a42', .85);
+    B.s('M-80 -106L80 -106', '#2e261e', 2, .9);
+    // the block and axe at the near corner, knee high, a split log or two beside it
+    { const x = 80, y = 8; B.f(B.ell(x + 1, y + 1.5, 12, 3.4), '#22301a', .3).f(B.rr(x - 10, y - 18, 20, 18, 3), oak[0]).f(B.rect(x - 10, y - 16, 6, 16), oak[2], .5).f(B.ell(x, y - 18, 10, 3.6), end[0]).s(`M${x - 5} ${y - 18}a5 2 0 1 0 10 0`, '#a8844e', .6, .7);
+      B.s(`M${x + 1} ${y - 19}l-9 -16`, '#8a6a44', 2.6).f(B.poly([[x - 2, y - 19], [x + 7, y - 21], [x + 6, y - 15], [x, y - 15]]), '#8a9094').s(`M${x - 1} ${y - 18}l7 -2`, '#c8ced2', .8);
+      B.f(B.rr(x - 32, y - 6, 18, 6, 2.5), oak[0]).f(B.ell(x - 14, y - 3, 2.4, 3), end[1]); }
+    // fern at its back corner
+    for (let k = 0; k < 6; k++) { const a = -2.6 + k * .3; B.s(`M-74 0q${Math.cos(a) * 7} ${Math.sin(a) * 10} ${Math.cos(a) * 13} ${Math.sin(a) * 17}`, s === 'autumn' ? '#a8823a' : s === 'winter' ? '#9a9884' : '#4f7a3a', 1.6, .9); }
+    tufts(B, r, -80, 80, 2, s, 16);
+  } };
 })();

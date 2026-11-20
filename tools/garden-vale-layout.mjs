@@ -108,7 +108,7 @@ const freshwater = [
   basin('allotment-pool', smoothLoop(WOOD_POOL, 4), 10, { sectionIds: ['ls-lily-pool', 'ls-stone-pool'], name: 'The woodland pond' }),
   basin('orchard-pool', smoothLoop(ORCH_POOL, 4), 14, { sectionIds: ['ls-deep-pool', 'ls-clear-pool', 'ls-moon-pool', 'ls-sedge-pool'], name: 'The orchard pond' }),
   basin('tarn', smoothLoop(TARN, 4), 18, { name: 'The source tarn' }),
-  basin('spring', smoothLoop(SPRING, 3), 3, { name: 'Foxglove spring' }),
+  basin('spring', smoothLoop(SPRING, 5), 3, { name: 'Foxglove spring' }),
 ];
 const riverNames = { gorge: ['The gorge', 18], river: ['Millwater river', 1], brook: ['The woodland brook', 3] };
 const riverParts = {};

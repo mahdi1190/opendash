@@ -81,8 +81,8 @@
      31.6
     ],
     [
-     22.6,
-     28.9
+     23.2,
+     28.4
     ],
     [
      25.2,
@@ -310,8 +310,8 @@
      79.4
     ],
     [
-     6.2,
-     81.6
+     6.3,
+     80.7
     ]
    ],
    "widths": [
@@ -329,7 +329,7 @@
     1.5,
     1.6
    ],
-   "note": "leaves the clearing itself; passes the milestone door; ends at 6.2,81.6 as today"
+   "note": "leaves the clearing itself; passes the milestone door; ends at 6.2,81.6 as today (critic round 2: it ends in front of the driftwood arch, not under it)"
   },
   {
    "id": "ruins-lane",
@@ -452,20 +452,12 @@
      73.2
     ],
     [
-     8.2,
-     76
+     7.4,
+     75.4
     ],
     [
-     8.4,
-     78.6
-    ],
-    [
-     7.6,
-     80.4
-    ],
-    [
-     6.2,
-     81.6
+     5.4,
+     77.2
     ]
    ],
    "widths": [
@@ -474,13 +466,11 @@
     1.4,
     1.4,
     1.4,
-    1.8,
+    1.6,
     1.4,
-    1.4,
-    1.4,
-    1.6
+    1.8
    ],
-   "note": "NEW (design A): along the west face of the old wall, a full cell clear of it, from the Ruined arch forecourt to Wren cove"
+   "note": "NEW (design A): along the west face of the old wall, a full cell clear of it, from the Ruined arch forecourt to Wren cove (critic round 2: it joins the cove trail at 5.4,77.2 instead of running beside it to the arch, two ribbons a few cells apart)"
   },
   {
    "id": "wren-way",
@@ -565,8 +555,8 @@
    "zone": 1,
    "control": [
     [
-     7.4,
-     81.2
+     7.6,
+     80.9
     ],
     [
      9,
@@ -1003,9 +993,9 @@
  },
  "staticMoves": {
   "ld-house": {
-   "x": 4,
+   "x": 3,
    "y": 24,
-   "w": 3,
+   "w": 4,
    "h": 2,
    "door": {
     "x": 5,
@@ -1015,10 +1005,10 @@
   "ld-oldhouse": {
    "x": 21,
    "y": 24,
-   "w": 3,
+   "w": 4,
    "h": 3,
    "door": {
-    "x": 22,
+    "x": 23,
     "y": 27
    }
   },
@@ -1046,7 +1036,7 @@
    "y": 37,
    "w": 2,
    "h": 1,
-   "col": "soft",
+   "col": "full",
    "tall": 0.6,
    "district": "west-woods",
    "door": {
@@ -1056,15 +1046,15 @@
   },
   {
    "id": "ld-woodshed",
-   "x": 15,
+   "x": 14,
    "y": 55,
-   "w": 2,
+   "w": 3,
    "h": 2,
    "col": "full",
-   "tall": 1.4,
+   "tall": 2.6,
    "district": "west-woods",
    "door": {
-    "x": 16,
+    "x": 15,
     "y": 57
    }
   },
