@@ -62,10 +62,6 @@
     const top = [], footL = []; for (let x = a0 - .25; x <= a1 + .25 + 1e-6; x += .125) { const j = (kit.noise(x * 6.3, 2.2, 331) - .5) * 7; top.push([X(x), TY(x) + j]); footL.push([X(x), FY(x) + (kit.noise(x * 4.1, 7.7, 337) - .5) * 4]); }
     const face = top.concat(footL.slice().reverse()), faceP = new Path2D(B.poly(face)), w = (a1 - a0) * cw;
     B.cx.save(); B.cx.beginPath(); B.cx.rect(0, -900, w, 1200); B.cx.clip();   // each run paints exactly its own columns
-    // the scree skirt first, on the turf in front of the foot: fans below the gullies, a grey wash the rest of the way
-    for (let x = Math.floor(a0) - 1; x <= a1 + 1; x += .5) { const r = kit.rng(kit.hash(Math.round(x * 4), 3, 341)); const fx = X(x), fy = FY(x);
-      B.f(B.blob(r, fx, fy + 3, cw * .42, 7 + r() * 5, 8, .4), snowy ? '#dfe5ea' : ROCK.screeLo, .28);
-      for (let k = 0; k < 6; k++) B.stone(r, fx + (r() - .5) * cw * .6, fy + 2 + r() * 12, 1.4 + r() * 3.2, 1 + r() * 1.8, STONEP, snowy && r() < .6 ? 'snow' : r() < .2 ? STONEP.lichen : null); }
     // the higher fells behind, in haze: their tops show over the saddles of the front ridge, so the range goes back
     { const bk = []; for (let x = a0 - .25; x <= a1 + .25 + 1e-6; x += .125) bk.push([X(x), FY(x) - H * (4.6 + 1.6 * kit.fbm(x / 6.5, 9.1, 461)) - (kit.noise(x * 2.2, 3, 463) - .5) * 10]);
       const bp = B.poly(bk.concat(footL.slice().reverse())); B.f(bp, snowy ? '#dfe6ec' : '#a8b0b4', .95);
@@ -107,6 +103,18 @@
     // the ridge line, lit, and the foot, where turf and heather lap up onto the rock
     B.s(B.line(top.map(([x, y]) => ({ x, y }))), snowy ? '#ffffff' : ROCK.litHi, 1.8, .7);
     B.s(B.line(footL.map(([x, y]) => ({ x, y: y - 1 }))), ROCK.deep, 2.6, .35);
+    B.cx.restore();
+  }
+
+  // the range's foot on the ground (not in its picture, so its picture ends where its feet stop): scree in fans and a grey
+  // wash on the turf in front of the rock, turf and heather lapping up to it
+  function rangeSkirt(B, kit, L, R, a0, a1, ox, oy, season) {
+    const cw = L.cw, ch = L.ch, snowy = season === 'winter', X = x => (x - a0) * cw, FY = x => (R.footAt(x) * ch + L.cpt(0, 0).y) - oy, w = (a1 - a0) * cw;
+    B.cx.save(); B.cx.translate(ox, oy); B.cx.beginPath(); B.cx.rect(0, -60, w, 120); B.cx.clip();
+    // the scree skirt first, on the turf in front of the foot: fans below the gullies, a grey wash the rest of the way
+    for (let x = Math.floor(a0) - 1; x <= a1 + 1; x += .5) { const r = kit.rng(kit.hash(Math.round(x * 4), 3, 341)); const fx = X(x), fy = FY(x);
+      B.f(B.blob(r, fx, fy + 3, cw * .42, 7 + r() * 5, 8, .4), snowy ? '#dfe5ea' : ROCK.screeLo, .28);
+      for (let k = 0; k < 6; k++) B.stone(r, fx + (r() - .5) * cw * .6, fy + 2 + r() * 12, 1.4 + r() * 3.2, 1 + r() * 1.8, STONEP, snowy && r() < .6 ? 'snow' : r() < .2 ? STONEP.lichen : null); }
     if (!snowy) for (let x = a0 - .25; x < a1 + .25; x += .2) { const r = kit.rng(kit.hash(Math.round(x * 20), 13, 383)); const fx = X(x), fy = FY(x); if (r() < .55) B.tufts(r, fx, fy + 1, 12, 4, ['#8c9a5e', '#c2c78e', '#7d8f4e'], 6); else if (r() < .5) B.heather(r, fx, fy - 2 + r() * 4, 4 + r() * 4, { heather: '#8d6a92', heatherHi: '#b07ab8', heatherLo: '#5f4a62', fell: '#a6b276', fellLo: '#8c9a5e', fellHi: '#c2c78e' }, season === 'summer' && r() < .5 ? '#b98cc0' : null); }
     B.cx.restore();
   }
@@ -129,12 +137,18 @@
     const out = []; for (const c of cand) { if (R && c.y < R.footAt(Math.max(R.x0, Math.min(R.x1, c.x))) + 3.6) continue; if (out.some(o => Math.hypot(o.x - c.x, (o.y - c.y) * 1.4) < 8)) continue; out.push(c); if (out.length >= 8) break; }
     return out;
   }
-  function torArt(B, kit, w, h, seed, season, moorish) {
-    const r = kit.rng(seed), snowy = season === 'winter';
-    B.shadow(w * .2, 3, w * .82, 9, .36);
+  function torGround(B, kit, w, seed, season, moorish) {
+    const r = kit.rng(seed + 7), snowy = season === 'winter';
+    B.shadow(w * .2, 3, w * .82, 9, .36).shadow(w * .1, 1, w * .58, 6, .42);
     // the scree fan and fallen blocks round the foot first
     B.f(B.blob(r, w * .08, 4, w * .78, 9, 10, .4), snowy ? '#dfe5ea' : ROCK.scree, .55);
     for (let k = 0; k < 18; k++) B.stone(r, (r() - .5) * w * 1.5, 1 + r() * 10, 1.4 + r() * 3, 1 + r() * 1.7, STONEP, snowy && r() < .5 ? 'snow' : r() < .25 ? STONEP.lichen : null);
+    for (let k = 0; k < 3; k++) B.boulder(r, (r() > .5 ? 1 : -1) * (w * .5 + r() * w * .25), 2 + r() * 5, 6 + r() * 6, 4 + r() * 3, Object.assign({}, STONEP, { rock: GRIT.mid, rockLo: GRIT.shade, rockHi: GRIT.hi }), snowy);
+    if (!snowy) { B.tufts(r, 0, 3, w * 1.7, 14, ['#8c9a5e', '#c2c78e', '#7d8f4e'], 6); if (moorish || r() < .5) for (let k = 0; k < 4; k++) B.heather(r, (r() - .5) * w * 1.4, 2 + r() * 6, 4 + r() * 4, { heather: '#8d6a92', heatherHi: '#b07ab8', heatherLo: '#5f4a62', fell: '#a6b276', fellLo: '#8c9a5e', fellHi: '#c2c78e' }, season === 'summer' ? '#b98cc0' : null); }
+  }
+  function torArt(B, kit, w, h, seed, season, moorish) {
+    const r = kit.rng(seed), snowy = season === 'winter';
+    // (its contact shadow is on the ground with its scree: torGround)
     // woolpacks: courses of wide, flat gritstone slabs with rounded ends, each course stepped back and narrower, split by
     // vertical joints, a deep undercut under each course, lit on the top and the west, the east end in shade
     let y = 0, bw = w * .92, cx0 = 0; const tiers = 4 + Math.floor(r() * 2), th = h / tiers;
@@ -156,8 +170,6 @@
     }
     const topM = tops[tops.length - 1];
     if (!snowy) B.f(B.blob(r, topM.x, topM.y, topM.w * .38, 2.6, 7, .5), moorish ? '#8d6a92' : '#8c9a5e', .95).f(B.blob(r, topM.x - topM.w * .1, topM.y - 1.2, topM.w * .22, 1.4, 6, .5), moorish ? '#b07ab8' : '#c2c78e', .85);
-    for (let k = 0; k < 3; k++) B.boulder(r, (r() > .5 ? 1 : -1) * (w * .5 + r() * w * .25), 2 + r() * 5, 6 + r() * 6, 4 + r() * 3, Object.assign({}, STONEP, { rock: GRIT.mid, rockLo: GRIT.shade, rockHi: GRIT.hi }), snowy);
-    if (!snowy) { B.tufts(r, 0, 3, w * 1.7, 14, ['#8c9a5e', '#c2c78e', '#7d8f4e'], 6); if (moorish || r() < .5) for (let k = 0; k < 4; k++) B.heather(r, (r() - .5) * w * 1.4, 2 + r() * 6, 4 + r() * 4, { heather: '#8d6a92', heatherHi: '#b07ab8', heatherLo: '#5f4a62', fell: '#a6b276', fellLo: '#8c9a5e', fellHi: '#c2c78e' }, season === 'summer' ? '#b98cc0' : null); }
   }
 
   /* ---------- the tiers: low banks across the open fell ---------- */
@@ -200,16 +212,18 @@
         const a1 = Math.min(R.x1, a0 + 5); let fMin = 9, fMax = 0; for (let x = a0; x <= a1 + 1e-6; x += .25) { const f = R.footAt(x); fMin = Math.min(fMin, f); fMax = Math.max(fMax, f); }
         let hMax = 0; for (let x = a0 - .3; x <= a1 + .3; x += .25) hMax = Math.max(hMax, ridgeH(kit, x, R.summits));
         const p = L.cpt(a0, fMin), wpx = (a1 - a0) * L.cw, down = (fMax - fMin) * L.ch;
-        thing({ key: 'fell-range-' + a0 + '|' + season, x: p.x, y: p.y, K: 1.1, box: [-2, -hMax - 24, wpx + 2, down + 26], draw: B => rangeRun(B, kit, L, R, a0, a1, p.x, p.y, season) });
+        thing({ key: 'fell-range-' + a0 + '|' + season, x: p.x, y: p.y, K: 1.1, box: [-2, -hMax - 24, wpx + 2, down + 6], draw: B => rangeRun(B, kit, L, R, a0, a1, p.x, p.y, season) });
+        C.add([p.x - 40, p.y - 40, p.x + wpx + 40, p.y + down + 50], kit.hash(a0, 7, 487), B => rangeSkirt(B, kit, L, R, a0, a1, p.x, p.y, season));
       }
       // its feet: half-cell steps along the drawn foot, so walking stops at the rock where it is drawn
-      for (let x = R.x0; x < R.x1; x += .5) { let f = 9; for (let t = x; t <= x + .5 + 1e-6; t += .125) f = Math.min(f, R.footAt(Math.min(R.x1, t))); f -= .12;
+      for (let x = R.x0; x < R.x1; x += .5) { let f = 9; for (let t = x; t <= x + .5 + 1e-6; t += .125) f = Math.min(f, R.footAt(Math.min(R.x1, t))); f += .06;
         const p = L.cpt(x, f); thing({ key: 'fell-range-foot-' + Math.round(x * 2), x: p.x, y: p.y - 2, foot: [0, .5 * L.cw, (f + .6) * L.ch], make: () => null }); }
     }
     // the tors
     torSpots(L, kit, M, R).forEach((s, i) => {
       const r = kit.rng(kit.hash(Math.round(s.x * 10), Math.round(s.y * 10), 419)), w = L.cw * (2.1 + r() * .5), h = H * (3 + r() * .5), p = L.cpt(s.x, s.y + .35), moorish = s.x < 28;
-      thing({ key: 'fell-tor-' + i + '|' + season, x: p.x, y: p.y, K: 1.25, box: [-w * 1.05 - 10, -h * 1.12 - 12, w * 1.05 + 14, 18], foot: [-w * .42, w * .42, .62 * L.ch], draw: B => torArt(B, kit, w, h, 4300 + i, season, moorish) });
+      thing({ key: 'fell-tor-' + i + '|' + season, x: p.x, y: p.y, K: 1.25, box: [-w * .7, -h * 1.12 - 12, w * .7, 6], foot: [-w * .47, w * .47, .62 * L.ch], draw: B => torArt(B, kit, w, h, 4300 + i, season, moorish) });
+      C.add([p.x - w * 1.3, p.y - 30, p.x + w * 1.3, p.y + 30], 4400 + i, B => { B.cx.save(); B.cx.translate(p.x, p.y); torGround(B, kit, w, 4300 + i, season, moorish); B.cx.restore(); });
     });
   }
   V.parts.push({ id: 'cloudbreak-relief', compose });
