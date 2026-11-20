@@ -295,7 +295,9 @@ window.GardenNativePainted = (function () {
     const lampLights = [];   /* (a street lamp standing by a building is lit at dusk and night like any other: no dark lamp beside a lit one) */
     for (const [id, v, dx, dy, w, h] of def.extra || []) { if (!sceneObj(id)) continue; const im = objectImage(scene, id, v, season, w ? { w } : { h }, cx + dx, foot + dy, night); if (im) { node._inner.addAt(im, dy > 0 ? node._inner.list.length : 1); parts.push([im, id, v, w ? { w } : { h }]); if (id === 'street.lamp') lampLights.push({ x: cx + dx, y: foot + dy - im.displayHeight * im.originY + 14, radius: 120, pool: true }); } }
     if (def.sign) {
-      const g = scene.add.graphics(), sy = foot + 12, tw = Math.max(54, def.sign.length * 6.4) / 2;
+      // a fascia board on the wall over the door (it lay on the ground across the doorway, so you stood on it: hunter, round 3)
+      const doorH = typeof gardenSizePx === 'function' ? gardenSizePx('door') : 44, g = scene.add.graphics(), sy = foot - Math.round(doorH * 1.1) - 10, tw = Math.max(54, def.sign.length * 6.4) / 2;
+      g.fillStyle(0x2e2418, .9).fillRect(cx - tw + 4, sy - 12, 2, 4).fillRect(cx + tw - 6, sy - 12, 2, 4);
       g.fillStyle(0x3d3424, .22).fillRoundedRect(cx - tw + 2, sy - 7, tw * 2, 15, 4).fillStyle(0xf3ead2).fillRoundedRect(cx - tw, sy - 9, tw * 2, 15, 4).lineStyle(1, 0xb9a57c, 1).strokeRoundedRect(cx - tw, sy - 9, tw * 2, 15, 4);
       node._inner.add(g);
       node._inner.add(scene.add.text(cx, sy - 1.5, def.sign, { fontFamily: 'Georgia, serif', fontSize: '10px', color: '#4a3b26', resolution: 3 }).setOrigin(.5, .5));

@@ -41,8 +41,20 @@ function gardenEarlyGiftOpen() {
   if (G.keepsake && typeof gardenLifeFound === 'function') gardenLifeFound('k', G.keepsake, { quiet: true });   // the keepsake goes in the book (94-garden-life-6book.js)
   return true;
 }
+// The starter kit: an oak crate stood in the grass, the rod and the watering can's rose poking out of it, a blue cloth
+// tied over the seeds with a yellow ribbon and a name tag. Its foot sits on a soft contact shadow, with grass grown up
+// round it, so it reads as set down on the ground, not floating (rule 13 of the round 3 brief).
 function _wdgArt() {
-  return `<g class="gl-gift">${GART.P('#2f6f8e', GART.rrect(-9, -14, 18, 14, 1.6))}${GART.P('#f2c432', GART.rect(-1.6, -14, 3.2, 14) + GART.rect(-9, -8.6, 18, 2.8))}${GART.P('#f2c432', 'M0 -14C-7 -21 -9 -14 0 -14C9 -14 7 -21 0 -14z')}</g><g class="gl-twinkle" transform="translate(9 -20)"><path d="M0 -6L1.4 -1.4L6 0L1.4 1.4L0 6L-1.4 1.4L-6 0L-1.4 -1.4z" fill="#fff4b8"/></g>`;
+  return `<g class="gl-gift"><ellipse cx="1" cy="0.4" rx="13" ry="2.8" fill="#2a3018" opacity=".32"/>`
+    + `<path d="M-3 -15L-6 -33" stroke="#8a6a46" stroke-width="1.1" stroke-linecap="round"/><path d="M-6 -33q4 4 3 9" stroke="#e8e2d0" stroke-width=".4" fill="none"/>`
+    + `<path d="M6 -14l3 -6l4 -1l-1 3l-3 1z" fill="#5e8aa8"/><ellipse cx="12.4" cy="-20.4" rx="1.6" ry="2.2" fill="#3e6a88"/>`
+    + `<path d="M-10 -13.4L-9.4 0H9.4L10 -13.4Z" fill="#a07a52"/><path d="M-10 -13.4L-9.4 0H-6L-6.4 -13.4Z" fill="#c8a070" opacity=".8"/><path d="M6.4 -13.4L6 0H9.4L10 -13.4Z" fill="#6e5236"/>`
+    + `<path d="M-9.8 -9.4H9.8M-9.6 -4.8H9.6" stroke="#5e4630" stroke-width=".7"/><path d="M-10.4 -14.6H10.4V-12.6H-10.4Z" fill="#7e5e3c"/>`
+    + `<path d="M-7 -13Q-8 -19 0 -19.6Q8 -19 7 -13Z" fill="#2f6f8e"/><path d="M-7 -13Q-7.6 -17.6 -2 -18.8L-3 -13Z" fill="#5a98b8" opacity=".8"/>`
+    + `<path d="M-1 -19.4V-13" stroke="#f2c432" stroke-width="1.6"/><path d="M-1 -19C-6 -24 -8 -19 -1 -19C6 -24 6 -19 -1 -19z" fill="#f2c432"/><path d="M-1 -19l-3 4M-1 -19l2.6 4.4" stroke="#e0a820" stroke-width=".9"/>`
+    + `<path d="M5.4 -8.6l4.6 -1v3.4l-4.6 .6z" fill="#f6efdc"/><path d="M5.4 -8.6l-1.6 -1.4" stroke="#c8bfa8" stroke-width=".4"/>`
+    + `<path d="M-12 .6q1 -4 0 -6M-10.6 .8q1.6 -3 1 -5M11 .6q-1 -4 0 -6M12.6 .8q0 -3 1.4 -4.4M-2 .8q.4 -2.4 -.6 -3.6" stroke="#6e9a46" stroke-width=".8" fill="none" stroke-linecap="round"/></g>`
+    + `<g class="gl-twinkle" transform="translate(11 -26)"><path d="M0 -5L1.2 -1.2L5 0L1.2 1.2L0 5L-1.2 1.2L-5 0L-1.2 -1.2z" fill="#fff4b8"/></g>`;
 }
 function _wdgDrop() { if (_wdg.S) { _wdg.S.remove(); _wdg.S = null; } _wdg.at = null; }
 function _wdgOpen() {

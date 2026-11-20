@@ -764,7 +764,7 @@
   }
   function fence(B, r, P, edges, W, season, cb, plot) {
     { const e0 = edges[0]; hedgeVar = e0 && hedgeOf.has(e0[0] + ',' + e0[1]) ? hedgeOf.get(e0[0] + ',' + e0[1]) : 0; }
-    const cw = W.cellW, ch = W.cellH, lv = level(), wood = ['#8a7454', '#a88e66', '#5e4c36'], RH = RUN_H();
+    const cw = W.cellW, ch = W.cellH, lv = level(), wood = ['#8a7454', '#a88e66', '#5e4c36'], RH0 = RUN_H();
     const fronts = [], inset = 3, drawn = new Set();
     // in the high country a run beside a landmark is left out (see byStatic)
     const high = edges.length && /^(wall|hedge)$/.test(regionKind(edges[0][0], edges[0][1]));   // (the high country's thickets only: a valley field, a shore plot's rope or paling and the village's rail are drawn below)
@@ -772,6 +772,13 @@
     const tone = plot ? nz(plot.cells[0][0] / 3.7, plot.cells[0][1] / 2.9, 493) : .5;
     if (high && plot) { if (locked(plot.cells[0][0], plot.cells[0][1], lv)) scrub(B, P, plot, edges, W, season, cb, lv, tone); return; }
     for (const [x, y, side, nx, ny] of edges) if (locked(x, y, lv) && !locked(nx, ny, lv)) drawn.add(x + ',' + y + side);
+    // A wall or hedge round a plot one or two cells deep stood as a solid box of stones, its far run and its near run
+    // meeting over the land (art director, round 3: "not a wall round land"). Each run is only as tall as leaves the
+    // plot's own ground showing between them: the full .8 H on a plot three cells deep, lower on a shallower one.
+    const depth = new Map(); if (plot) for (const [x] of plot.cells) depth.set(x, (depth.get(x) || 0) + 1);
+    const hOf = (kind, x) => kind === 'rail' || !depth.has(x) ? RH0[kind] : Math.min(RH0[kind], Math.max(13, (depth.get(x) * ch - 12) / 2.4));
+    let RH = RH0;
+    const at = x => (RH = Object.assign({}, RH0, { hedge: hOf('hedge', x), wall: hOf('wall', x) }));   // (every kind's height kept: a valley field's, a shore plot's rope or paling)
     // a north run's foot: inside the plot by its height, so its top meets the plot's edge (it is painted into the ground; you stand behind it)
     const northFoot = kind => Math.min(ch - 2, RH[kind] + 1);
     // a run up the screen starts at the north run's foot where the cell has one, so no post stands out past the corner
@@ -785,7 +792,7 @@
       const runs = [];
       for (const [x, y, side, nx, ny] of edges) {
         if (!locked(x, y, lv) || locked(nx, ny, lv) || !seen(x, y)) continue;
-        const x0 = x * cw, y0 = W.sky + y * ch, kind = regionKind(x, y), h = RH[kind] * (kind === 'rail' ? .9 : 1.05);
+        at(x); const x0 = x * cw, y0 = W.sky + y * ch, kind = regionKind(x, y), h = RH[kind] * (kind === 'rail' ? .9 : 1.05);
         if (side === 's' || side === 'n') { const yy = side === 's' ? y0 + ch - inset : y0 + northFoot(kind); runs.push([x0, yy, x0 + cw, yy, h]); }
         else { const xx = side === 'e' ? x0 + cw - inset : x0 + inset; runs.push([xx, y0 + sideFrom(x, y, kind), xx, y0 + ch, h]); }
       }
@@ -797,7 +804,7 @@
       if (!locked(x, y, lv) || locked(nx, ny, lv)) continue;   // (a plot that is yours, or two locked plots side by side: no fence between)
       if (side === 's') fronts.push([x, y]);
       if (!seen(x, y)) continue;
-      const r = rOf(x, y, side), x0 = x * cw, y0 = W.sky + y * ch, kind = regionKind(x, y), hh = RH[kind], from = side === 'e' || side === 'w' ? sideFrom(x, y, kind) : 0;
+      at(x); const r = rOf(x, y, side), x0 = x * cw, y0 = W.sky + y * ch, kind = regionKind(x, y), hh = RH[kind], from = side === 'e' || side === 'w' ? sideFrom(x, y, kind) : 0;
       if (kind === 'field') {
         // the valley's fields: a hawthorn hedgerow, with a field gate in the front hedge where the sign hangs
         if (side === 's' || side === 'n') { const yy = side === 's' ? y0 + ch - inset : y0 + northFoot(kind); if (gateAt === x + ',' + y + side) { const gw = cw * .62, gx = x0 + (cw - gw) / 2 + gateShift; fieldHedge(B, r, P, x0, yy, true, gx - x0, season, hh); fieldHedge(B, r, P, gx + gw, yy, true, x0 + cw - gx - gw, season, hh); fieldGate(B, gx, yy, gw, hh, season); } else fieldHedge(B, r, P, x0, yy, true, cw, season, hh); }
@@ -843,12 +850,28 @@
       }
       if (r() < .3) { const px = x * cw + r() * cw, py = W.sky + (side === 's' ? y + 1 : y) * ch; B.f(B.blob(r, px, py - 1, 4 + r() * 3, 2, 6, .5), P.lawnLo, .7); }
     }
-    // one sign per plot, on the front (south) fence, the middle of its lowest run
+    // one sign per plot, on the front (south) fence, the middle of its lowest run, but never where a sight stands in front
+    // of it (the lighthouse's tower over the '360', the well's roof over the 'Lv 3': art director, round 3)
     if (fronts.length) {
-      const yMax = Math.max(...fronts.map(f => f[1])), low = fronts.filter(f => f[1] === yMax).sort((a, b) => a[0] - b[0]);
+      // a sight's painted picture (its art row's box, a little inside its padding), else a cell either side and five rows up
+      const statics = (typeof gardenIslandData === 'function' && gardenIslandData().static) || [], ART = window.GardenPaintedMarks && GardenPaintedMarks.ART;
+      const reach = statics.map(s => { const a = ART && ART[s.id], cx = (s.x + (s.w || 1) / 2) * cw, foot = W.sky + (s.y + (s.h || 1)) * ch; return a && a.box ? [cx + a.box[0] * .8 - 14, cx + a.box[2] * .8 + 14, foot + a.box[1], foot] : [(s.x - 1) * cw, (s.x + (s.w || 1) + 1) * cw, foot - 6 * ch, foot]; });
+      const hidden = (px, py) => reach.some(q => px > q[0] && px < q[1] && py > q[2] && py < q[3]);
+      const yMax = Math.max(...fronts.map(f => f[1])), low0 = fronts.filter(f => f[1] === yMax).sort((a, b) => a[0] - b[0]);
       // (in the high country the sign stands on a stretch of the front run clear of squares and landmarks, or on none)
-      const clear = high ? low.filter(f => !inPlaza(f[0] + .5, f[1] + 1) && !byStatic(f[0] + .5, f[1] + 1.2)) : low, at = clear[clear.length >> 1], fld = !!at && regionKind(at[0], at[1]) === 'field';
-      const row = at && gardenLandCell(at[0], at[1]); if (row) sign(B, (at[0] + .5) * cw + (clear.length % 2 || high || fld ? 0 : -cw / 2), W.sky + (at[1] + 1) * ch - 1 - (fld ? inset + 1 : 0), row, lv);
+      const low = high ? low0.filter(f => !inPlaza(f[0] + .5, f[1] + 1) && !byStatic(f[0] + .5, f[1] + 1.2)) : low0;
+      const at = (f, dx) => [(f[0] + .5) * cw + dx, W.sky + (f[1] + 1) * ch - 1];
+      let spot = low[low.length >> 1] || null; const fld = !!spot && regionKind(spot[0], spot[1]) === 'field';
+      let pos = spot ? at(spot, low.length % 2 || high || fld ? 0 : -cw / 2) : null; if (pos && fld) pos[1] -= inset + 1;   // (a valley field's tag sits on its ring, inside the edge)
+      // (a sight's picture over the front: the board moves along the front, or to the far run, so the sight never hides it; sights, round 3)
+      if (spot && hidden(pos[0], pos[1] - 20)) {
+        const mx = (low.reduce((s, f) => s + f[0], 0) / low.length + .5) * cw, tries = [];
+        for (const f of fronts) for (const dx of [0, -cw * .34, cw * .34]) { const p = at(f, dx); if (!hidden(p[0], p[1] - 20)) tries.push({ f, p, score: (yMax - f[1]) * 4 * cw + Math.abs(p[0] - mx) }); }
+        // no clear place on the front: the board goes on the far (north) run, standing up over the plot behind the sight
+        if (!tries.length) for (const [x, y, side, nx, ny] of edges) { if (side !== 'n' || !locked(x, y, lv) || locked(nx, ny, lv)) continue; for (const dx of [0, -cw * .34, cw * .34]) { const p = [(x + .5) * cw + dx, W.sky + y * ch + 4]; if (!hidden(p[0], p[1] - 20)) tries.push({ f: [x, y], p, score: Math.abs(p[0] - mx) }); } }
+        tries.sort((a, b) => a.score - b.score); if (tries.length) { spot = tries[0].f; pos = tries[0].p; }
+      }
+      const row = spot && gardenLandCell(spot[0], spot[1]); if (row) sign(B, pos[0], pos[1], row, lv);
     }
   }
   function compose(C) {

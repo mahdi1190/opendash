@@ -216,6 +216,61 @@ on its decoration row); its view along the run is drawn deeper first so a turned
 Anything painted into the ground that stands up (a plot's fence along its north edge) stands far enough inside its
 plot that its top meets the plot's edge: a player behind it is never drawn over it.
 
+## 6. Sights and what a player builds: `GardenPaintSeat` and `GardenPaintedMarks.ART`
+
+`src/app/94-garden-paint-terrain-5sights.js` paints the sights (`ld-*`), the things a player builds or wins (`lf-*`) and
+seats every one of them, and every painted prop, in the ground it stands on.
+
+- **A painting** is a row in `GardenPaintedMarks.ART[id]`: `{ box, draw(B, o), seat, lit, lights, flat, shade }`, drawn in
+  the fells' brush with its base on y = 0 at the middle of its footprint. It wins over the older painted-prop drawing
+  of the same thing. No shadow is painted inside a standing picture: the shared light lays its silhouette. `lit` gives
+  it a second picture for dusk and night; `lights` are its warm live lights, as offsets from its foot. `flat: true`
+  is for a thing that lies in the ground (a sunken pool, a turf maze, a ring of low stones): it is drawn with its seat,
+  under every actor.
+- **A seat** (`GardenPaintSeat.add(scene, layer, prop, W, o)`) is one picture at depth -9345, over every region's
+  ground and under the shadows and every actor: trodden earth or laid flags round the foot (`kind`: `flags`, `earth`,
+  `moss`, `sand`, `turf`), foundation stones, a dark contact exactly as wide as what stands there, grass grown in over
+  the edges, and a worn way from the thing's door to the nearest path or plaza of the layout (`way: false` for none).
+  It follows the zoom like any sprite. `seat: false` on an art row, or `false` in `SEATS` in
+  `94-garden-native-painted-props.js`, leaves a thing unseated (afloat, in reeds).
+- Sizes come from `gardenSizePx`; a thing keeps its footprint, door and collision. If it needs more ground than its
+  footprint, say so for the region's layout instead of drawing over a neighbour.
+- **Merge, do not place.** A thing is painted as one picture with what it belongs to: the stump with its roots in the
+  seat, the felled trunk and its own split logs; the pump against a wall in a yard of flags with its trough and bucket;
+  the treehouse built round a great tree's trunk. Roots, litter and wet flags that lie on the ground go in the seat's
+  `extra(B, r)` (drawn under every actor), never in the standing picture.
+- **Life.** `parts: [{ id, box, at: [dx, dy], draw(B, o), anim(im, t, o) }]` are small pictures of their own in front of
+  the body: `anim` sets their position, alpha or turn each frame (`o.x, o.y` the hub, `o.night` whether the lit picture
+  is up). They run only on screen and only while motion is on. Today: the pump's drip and its ring, the stump's chimney
+  smoke, the treehouse's lantern and pennant, the owl's head and blink (asleep by day). Never `setScale` a part (the
+  kit re-sharpens it). A part with `anim` is painted once at level 4 and never re-sharpened: each sharpening reads the
+  canvas back from the graphics card (Phaser's `addCanvas`), and in round 3 one such read-back stalled a walk for 1.3 s.
+- **A way in.** An art row with `door: { dx, dy }` draws its own entrance; the rooms (`94-garden-world-6doors.js`) then
+  stand only a worn threshold there, not a second door picture on the grass. Every sight with a room has one.
+- **Gate signs** are fixed to what bars the way (`gateMount` in `94-garden-native-painted-props.js`): chains from the
+  arch, nailed to the bridge's post or the stair gate, on a stake in the ruin's heap, nailed to the pass's tie post.
+  Their words are on the board, dark on cream. E opens a way in within about a cell of where its sight paints its door
+  (`gardenWorldInteract`), before plants and fishing.
+- **Gates tell their own story** (`gateArt`): a crossing seen side on (its span runs down the screen) is never a face-on
+  arch sheared to recede; the forest arch is a gap in a woodland edge (hedge banks north and south, an oak whose bough
+  arches over the way into the south bank), with a bramble mound in the gap while shut. The Millwater bridge has an oak
+  patch in its crown with one plank missing (`millPlanks`); opening drops the plank in with dust. The orchard stair has
+  risers and the mill's leat with its sluice, dry until the wheel turns. The pass has a rock step, a tie post and,
+  once open, the rope run up to a stake. The ruined arch is dark with an empty lantern hook until it opens.
+- **Standing behind a thing** fades it only to .8 and shows your outline over it (`propBehind` in
+  `94-garden-native-world.js`): a sight whose door is at its back must never go to a ghost.
+- **Not built yet** (`plot:*` rows): a work for the lake that you could build next stands marked out where it will go,
+  from `gardenWorksArt(sc).unbuilt` and the layout's statics with `needs`: piles and rope for the next pier, a stake and
+  rag in the water, a chalked square with planks on the deck, pegs, string and bricks on land. A land feature has no
+  place until you set it out, so it has no marked plot.
+- **Setting out** (`_gardenFeatureClearWhy` in `94-garden-1stored.js`): the ground a feature's picture covers (its art
+  row's box, a cell in front, and as far behind as its height reaches) must be free of locked land, props, sights,
+  decorations, paths under the footprint, a village square, a gate's crossing, the woods' trees (`GardenPaintWood.standing`)
+  and any painted trunk, and it must not stand right behind a tall building.
+- **Locked plots near sights** (`94-garden-paint-vale-1valley.js`): a plot's wall or hedge is only as tall as leaves its
+  own ground showing (full height on a plot three cells deep), and its sign moves along the front, then to the far run,
+  until no sight's painted box stands in front of it. A plot that crowds a sight is a layout fault: list the cells.
+
 ## The rules
 
 1. Drive everything from layout data: regions, routes, statics, landforms, `presentation`. **No hard-coded cells.**

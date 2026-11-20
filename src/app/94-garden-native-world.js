@@ -169,7 +169,7 @@ window.GardenNativeWorld = (function () {
     const xray = element(scene, 'g', { class: 'gd-pl-xray', 'pointer-events': 'none' }); xray.appendChild(element(scene, 'g')); xray.target.setVisible(false); xray.style.opacity = '.46'; ui.appendChild(xray);
     const silhouetteNode = xray.firstChild, silhouetteInk = scene.add.graphics(), silhouetteBodies = new Map();
     silhouetteNode._inner.add(silhouetteInk);
-    let silhouetteSource = null, silhouetteVisible = false, silhouetteBuilds = 0;
+    let silhouetteSource = null, silhouetteVisible = false, silhouetteBuilds = 0, propBehind = 0;
     const silhouetteWorldBounds = { x: 0, y: 0, width: 0, height: 0 };
     _gw.node = playerNode; _gw.bobEl = playerBob; _gw.xr = xray; _gw.z = -1;
 
@@ -367,7 +367,7 @@ window.GardenNativeWorld = (function () {
     let packGround = null, packPlanting = null, packTerrain = null, packKinds = null;
     // High ground in the same style (94-garden-paint-terrain-*.js): the fells, the Edge, the gorge, peaks and terraces.
     function paintTerrain(sc) { if (!window.GardenPaintedTerrain) return; try { packTerrain = GardenPaintedTerrain.build(scene, rootNode._inner, sc, objects._inner || objects.target); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); } }
-    function terrainMark(prop, sc) { if (!window.GardenPaintedMarks || !GardenPaintedMarks.knows(prop.id) || !packOn() || typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(prop.id)).some(Boolean)) return null; try { return GardenPaintedMarks.landmark(scene, prop, sc, element, W); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); return null; } }
+    function terrainMark(prop, sc) { if (!window.GardenPaintedMarks || !GardenPaintedMarks.knows(prop.id) || !packOn() || typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(prop.id)).some(Boolean)) return null; try { return GardenPaintedMarks.landmark(scene, prop, sc, element, W, rootNode._inner); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); return null; } }
     function terrainOwns(kind) { return !!(packTerrain && GardenPaintedTerrain.owns(kind)); }
     // (asked before the terrain is painted too: the base ground and its grove stands are drawn first, and with packTerrain
     // still null the old generic star-crowned stands were planted on the fells under the painted ones; 19 Nov 2026)
@@ -803,7 +803,11 @@ window.GardenNativeWorld = (function () {
         // The parent union is diagnostic only; caches and culling use each deck.
         const old = pierBoards.nativeBounds;
         pierBoards.nativeBounds = old ? { x: Math.min(old.x, b.x), y: Math.min(old.y, b.y), width: Math.max(old.x + old.width, b.x + b.width) - Math.min(old.x, b.x), height: Math.max(old.y + old.height, b.y + b.height) - Math.min(old.y, b.y) } : b;
-        if (pier.side === 'south') {
+        // (a side pier is painted plank by plank, 94-garden-paint-zsights3.js, sights round 3; the long south pier is the coast's own
+        //  below, with its end-post lantern that the pier-lantern light hangs on: round 3 integration keeps one painter a deck)
+        const lastDeck = pier.side === 'south' && !decks.some(d => d !== pier && d.side === 'south' && Math.abs(d.y - (pier.y + pier.h)) < .01);
+        if ((pier.side === 'west' || pier.side === 'east') && window.GardenPaintedMarks && GardenPaintedMarks.pierDeck && GardenPaintedMarks.pierDeck(scene, node._inner, pier, x, y, w, h, sc.season || 'summer', false)) { /* painted (a side pier: its piles, shadow and rail) */ }
+        else if (pier.side === 'south') {
           // Weathered boards of different lengths with staggered joints and dark gaps, nail lines at the joists, rail posts
           // and a rope rail down both sides, its shadow on the water to the lee, and a ladder down from the last deck's end
           // (it was flat bands of one tone: art round 3, 19 Nov 2026). Only drawing: the deck walks as before.
@@ -960,6 +964,8 @@ window.GardenNativeWorld = (function () {
       const major = !gate, foot = gateCrossingFoot(gate);
       const handle = GardenNativeScenery.create(scene, { id: prop.id, kind, x: foot ? foot.x : (prop.x + prop.w / 2) * W.cellW, y: foot ? foot.y : W.sky + (prop.y + prop.h) * W.cellH - 4, width: gate ? gate.h > 1 ? 74 : 57 : prop.w * W.cellW, name: zone ? zone.name : prop.name, level: zone && zone.lv, showRequirement: false, open, major, gate, mirrorX: gardenPropMirrorX(prop), season: sc.season });
       if (handle && foot) handle.foot = foot;
+      if (handle && !handle.foot) handle.foot = { x: (prop.x + prop.w / 2) * W.cellW, y: W.sky + (prop.y + prop.h) * W.cellH - 4 };   // (where its own doorway is: the way in to a room behind it is drawn there, not as a second door)
+      if (handle && !gate) seatUnder(handle, prop, sc, { kind: kind === 'chapel' ? 'moss' : 'earth', w: prop.w * W.cellW * .9 });
       if (handle && ambientPause) handle.pauseAmbient(ambientPause); return handle;
     }
     // The Painted village's props, gates, falls and decorations
@@ -977,8 +983,15 @@ window.GardenNativeWorld = (function () {
       drawings.set(key, record); sorted = true; return record;
     }
     function paintedOn() { return packOn() && !!window.GardenPaintedProps; }
+    // a building or a big landmark stands in its own worn ground (94-garden-paint-terrain-5sights.js): the seat goes when it does
+    function seatUnder(handle, prop, sc, o) {
+      if (!window.GardenPaintSeat || !handle || !prop || !packOn()) return;
+      const foot = handle.foot || { x: (prop.x + prop.w / 2) * W.cellW, y: W.sky + (prop.y + prop.h) * W.cellH - 3 };
+      let seat = null; try { seat = GardenPaintSeat.add(scene, rootNode._inner, prop, W, Object.assign({ season: sc.season || 'summer', x: foot.x, foot: foot.y }, o)); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); }
+      if (seat) { const d0 = handle.destroy; handle.destroy = function () { seat.destroy(); return d0.apply(this, arguments); }; }
+    }
     function villageBuilding(prop, sc) {
-      if (prop && packOn() && GardenNativePainted.ready() && !(typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(prop.id)).some(Boolean))) { const packed = GardenNativePainted.building(scene, prop, sc, element, W); if (packed) return packed; }
+      if (prop && packOn() && GardenNativePainted.ready() && !(typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(prop.id)).some(Boolean))) { const packed = GardenNativePainted.building(scene, prop, sc, element, W); if (packed) { seatUnder(packed, prop, sc, { kind: 'flags', w: prop.w * W.cellW * .92, front: 22 }); return packed; } }
       if (!villageStyle(prop)) return null;
       if (typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(prop.id)).some(Boolean)) return null;
       const cw = prop.w * W.cellW, x = prop.x * W.cellW, foot = W.sky + (prop.y + prop.h) * W.cellH - 4, litWindows = sc.tod === 'dusk' || sc.tod === 'night';
@@ -1095,7 +1108,11 @@ window.GardenNativeWorld = (function () {
         node.appendChild(skin);
       }
       const b = { x: x - 14, y: foot - h - 4, width: cw + 32, height: h + 16 }; node.nativeBounds = b;
-      return { root: node.target, rootNode: node, bounds: b, update() {}, destroy() { node.remove(); } };
+      // the stall, the notice board and the craft bench stood on bare grass (art director, round 3): each stands in its own
+      // apron of flags or trodden earth, with a worn way to the nearest path
+      const made = { root: node.target, rootNode: node, bounds: b, update() {}, destroy() { node.remove(); } };
+      seatUnder(made, prop, sc, prop.kind === 'bench' ? { kind: 'earth', w: cw * .9, front: 18 } : { kind: 'flags', w: cw * .86, front: prop.kind === 'board' ? 16 : 20 });
+      return made;
     }
     function sync(next) {
       if (dead) return;
@@ -1163,6 +1180,24 @@ window.GardenNativeWorld = (function () {
           keep.add(key); if (old) old.handle.destroy(); (custom.kind === 'gate' ? rootNode : objects).appendChild(custom.rootNode); custom.root.setDepth(custom.kind === 'gate' ? 76000 : W.sky + row.z * W.cellH); const record = { id: key, source: signature, materialKey: custom.setLitWindows ? paneMaterialKey : '', handle: custom, root: custom.root, node: custom.rootNode, metadata: { kind: prop.act ? 'prop' : 'scenery', id, prop, model: prop, foot: custom.foot }, depth: custom.kind === 'gate' ? 76000 : W.sky + row.z * W.cellH, bounds: custom.bounds }; drawings.set(key, record); queueDrawing(record); sorted = true;
         } else add(key, row.html, { kind: prop && prop.act ? 'prop' : attribute(row.html, 'data-land') ? 'land' : 'scenery', id, prop, land: attribute(row.html, 'data-land'), model: prop }, W.sky + row.z * W.cellH);
       }
+      // What is built for the lake, painted where it stands by the pier (94-garden-fish-7gear.js says where; 94-garden-paint-terrain-5sights.js paints it)
+      if (paintedOn() && typeof gardenWorksArt === 'function' && window.GardenPaintedMarks) for (const r of gardenWorksArt(sc)) {
+        if (!GardenPaintedMarks.knows('work:' + r.id)) continue;
+        const key = 'work:' + r.key, wp = { id: 'work:' + r.id, x: r.x - .5, y: r.y - 1, w: 1, h: 1 };
+        const rec = paintedRecord(key, 'painted-work-1|' + key + '|' + sc.season + '|' + (nightMaterials ? 'n' : 'd'), () => GardenPaintedMarks.landmark(scene, wp, sc, element, W, rootNode._inner), { kind: 'scenery', id: wp.id, model: wp }, W.sky + r.y * W.cellH);
+        if (rec) keep.add(key);
+      }
+      // What could be built for the lake but is not yet stands marked out where it will go (art director, round 3: the
+      // not-built state was simply absent, plain water at the pier's end and empty grass where the smoker goes)
+      if (paintedOn() && typeof gardenWorksArt === 'function' && window.GardenPaintedMarks && GardenPaintedMarks.knows('plot:land') && typeof gardenIslandData === 'function' && !(typeof _gdv !== 'undefined' && _gdv && _gdv.on)) {
+        const plots = (gardenWorksArt(sc).unbuilt || []).map(r => ({ key: r.key, wp: { id: r.wet ? 'plot:water' : 'plot:deck', x: r.x - .5, y: r.y - 1, w: 1, h: 1 }, z: r.y }));
+        for (const s of gardenIslandData().static || []) {
+          if (!s.needs || gardenWorkOwned(s.needs)) continue;
+          const def = typeof gardenGearDef === 'function' ? gardenGearDef(s.needs) : null; if (def && def.needs && !gardenWorkOwned(def.needs)) continue;
+          plots.push({ key: 'plot-' + s.id, wp: { id: /^pier-/.test(s.id) ? 'plot:pier' : 'plot:land', x: s.x, y: s.y, w: s.w, h: s.h }, z: s.y + s.h });
+        }
+        for (const p of plots) { const key = 'plot:' + p.key, rec = paintedRecord(key, 'painted-plot-1|' + key + '|' + sc.season + '|' + (nightMaterials ? 'n' : 'd'), () => GardenPaintedMarks.landmark(scene, p.wp, sc, element, W, rootNode._inner), { kind: 'scenery', id: p.wp.id, model: p.wp }, W.sky + p.z * W.cellH); if (rec) keep.add(key); }
+      }
       // Painted crossings stay standing once their region is yours: the
       // bridge, the arch, the stair are part of the land, now open.
       if (paintedOn() && typeof gardenIslandActive === 'function' && gardenIslandActive()) for (const g of gardenIslandData().gates || []) {
@@ -1208,7 +1243,7 @@ window.GardenNativeWorld = (function () {
           const gate = gateRows.find(g => g.id === meta.id); if (gate) { gate.root = record.root; gate.bounds = record.bounds; gate.depth = 76000; }
         }
         if (meta.prop && meta.prop.kind) fadingProps.push(record);
-        if (record.handle.painted && record.handle.lights) record.handle.lights.forEach((l, i) => pointLights.push({ id: record.id + ':pl' + i, x: l.x, y: l.y, radius: l.radius, color: nightMaterials ? 0xffc17a : 0xffd88e, intensity: .8 }));
+        if (record.handle.painted && record.handle.lights) record.handle.lights.forEach((l, i) => pointLights.push({ id: record.id + ':pl' + i, x: l.x, y: l.y, ground: l.ground, radius: l.radius, color: nightMaterials ? 0xffc17a : 0xffd88e, intensity: .9 }));
         if (record.handle.canopyOcclusion) {
           const crown = record.handle.canopyOcclusion;
           canopyOccluders.push({ id: record.id, record, node: crown.node, polygons: crown.polygons, bounds: terrainBox(crown.polygons.flat()), normalAlpha: crown.node.target.alpha, faded: false });
@@ -1307,16 +1342,25 @@ window.GardenNativeWorld = (function () {
       if (z !== playerNode._nativeZ) { playerNode._nativeZ = z; sorted = true; }
       const bob = !playerInner.querySelector('.gpl-root') && _gw.moving && gardenMotionOn() ? -Math.abs(Math.sin(time / 1000 * (_gw.sneak ? 7 : 11))) * 1.6 : 0;
       playerBob.setAttribute('transform', 'translate(0 ' + bob + ')');
+      // A thing you stand behind (the lighthouse's door is at its back, the summer house's on its far side) stays
+      // nearly solid and your outline shows through it: at .38 it went to a pale ghost, and a player at its door
+      // seemed to stand inside a glass house (art director, round 3)
+      propBehind = 0;
       for (const record of fadingProps) {
         if (record.editorLifted) continue;
         const p = record.metadata.prop, b = record.bounds, sx = _gw.px * W.cellW, sy = W.sky + _gw.py * W.cellH;
         let behind = sx > b.x - 8 && sx < b.x + b.width + 8 && sy > b.y + 18 && sy < W.sky + (p.y + p.h) * W.cellH - 1.5;
         if (behind && p.id === 'ld-falls' && record.handle.fallsCoversPlayer) behind = record.handle.fallsCoversPlayer(sx, sy);
+        // (only when you are within the middle of it and under its top: beside a barn's gable it faded with nothing hidden)
+        if (behind && p.id !== 'ld-falls') behind = sx > b.x + b.width * .12 && sx < b.x + b.width * .88 && sy - playerOcclusionHeight * .6 > b.y;
+        // (a lamp post or a finger post hides nothing: standing at the old lamp turned you into the dark outline, hunter, round 3)
+        if (behind && (p.art === 'lamp' || p.art === 'finger' || b.width < 46)) behind = false;
         // a painted building fades only where its own picture covers you (head, chest or hips), not over the whole box round
         // it: the lighthouse, its cottage and its rocks went ghostly whenever you stood beside the tower (coast round 3).
         // Tested again only when you have moved a pixel, a handful of reads of one texture.
         else if (behind && record.handle.hitPoint) { const k = Math.round(sx) + ',' + Math.round(sy); if (record._fadeAt !== k) { record._fadeAt = k; record._fadeHit = [.85, .55, .25].some(f => record.handle.hitPoint(sx, sy - playerOcclusionHeight * f)); } behind = record._fadeHit; }
-        if (record.behind !== behind) { record.behind = behind; record.root.setAlpha(behind ? (record.handle.hitPoint ? .45 : .38) : 1); }
+        if (record.behind !== behind) { record.behind = behind; record.root.setAlpha(behind ? .8 : 1); }
+        if (behind) propBehind++;
       }
       coveringCanopies.length = 0;
       const probes = [{ x, y: y - playerOcclusionHeight * .81 }, { x, y: y - playerOcclusionHeight * .48 }, { x: x - 6, y: y - playerOcclusionHeight * .54 }, { x: x + 6, y: y - playerOcclusionHeight * .54 }];
@@ -1365,14 +1409,15 @@ window.GardenNativeWorld = (function () {
       }
       // A single faded crown stays natural. Only overlapping foreground
       // canopies need this subtle position cue, never roofs or empty ground.
-      const show = root.visible && playerNode.target.visible && externalCanopies.length > 0 && externalCanopies.length + coveringCanopies.length >= 2 && !(typeof gardenDesignOn === 'function' && gardenDesignOn());
+      const show = root.visible && playerNode.target.visible && (propBehind > 0 || externalCanopies.length > 0 && externalCanopies.length + coveringCanopies.length >= 2) && !(typeof gardenDesignOn === 'function' && gardenDesignOn());
       if (!show) { silhouetteVisible = false; xray.target.setVisible(false); return; }
       const current = playerInner._nativePlayerCurrent, body = current ? current.node : playerInner.firstChild;
       if (!body) { silhouetteVisible = false; xray.target.setVisible(false); return; }
-      const source = current ? current.source : playerInner.innerHTML;
+      // (behind a building the outline is dark slate: cream vanished on the lighthouse's white bands; cream under leaves)
+      const base = current ? current.source : playerInner.innerHTML, tone = propBehind > 0 ? 0x2e3a52 : 0xfff4d5, source = base + '|' + tone;
       if (silhouetteSource !== source) {
-        silhouetteSource = source; const shape = silhouetteBody(source, body);
-        silhouetteNode._uncache(false, true); silhouetteInk.clear().fillStyle(0xfff4d5, 1);
+        silhouetteSource = source; const shape = silhouetteBody(base, body);
+        silhouetteNode._uncache(false, true); silhouetteInk.clear().fillStyle(tone, 1);
         for (const points of shape.polygons) silhouetteInk.fillPoints(points, true, true);
         silhouetteNode.nativeBounds = shape.bounds;
         // The existing native cache queue admits one small capture when its

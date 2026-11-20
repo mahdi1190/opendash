@@ -274,12 +274,14 @@ window.GardenPaintedTerrain = (function () {
     });
     // the old sheepfolds of the high pasture: two rings of dry stone near the shepherd's hut, each where its whole ring
     // is clear of plots, paths, statics and water (a fold laid over a plot's wall was an overlap)
+    // and never on a sight's own ground (the shepherd's hut's wheels stood on its wall: art director, round 3)
+    const sightGround = typeof gardenIslandSightGround === 'function' ? gardenIslandSightGround() : new Set(), foldClear = (fx, fy, frx) => { for (let y = Math.floor(fy - frx); y <= Math.floor(fy + frx); y++) for (let x = Math.floor(fx - frx); x <= Math.floor(fx + frx); x++) if (sightGround.has(x + ',' + y)) return false; return true; };
     const hut = L.statics.find(c => /hut|bothy/.test(c.id)), folds = [];
     if (hut) for (const fr of [1.6, 1.2]) for (let d = 3; d < 7.5 && folds.length < (fr === 1.6 ? 1 : 2); d += .5) for (let a = 0; a < 16 && folds.length < (fr === 1.6 ? 1 : 2); a++) {
       const fx = hut.x + .5 + Math.cos(a / 16 * Math.PI * 2 + 2.2) * d, fy = hut.y + .5 + Math.sin(a / 16 * Math.PI * 2 + 2.2) * d * .7, c = L.cpt(fx, fy);
       let ok = fellAt(c.x, c.y) && !inPeak(fx, fy) && !routeNear(c.x, c.y, fr * cw + 30) && folds.every(f => Math.hypot(f[0] - fx, (f[1] - fy) * 1.6) > f[2] + fr + 1.5);
       for (let k = 0; ok && k < 12; k++) { const q = k / 12 * Math.PI * 2, px = fx + Math.cos(q) * (fr + .5), py = fy + Math.sin(q) * (fr + .5) * .95; if (L.plotAt(px, py) || !fellAt(px * cw, W.sky + py * ch) || L.statics.some(t => px > t.x - .3 && px < t.x + t.w + .3 && py > t.y - .3 && py < t.y + t.h + .3)) ok = false; }
-      if (ok) folds.push([fx, fy, fr]);
+      if (ok && foldClear(fx, fy, fr + .5)) folds.push([fx, fy, fr]);
     }
     L.folds = folds;   // (the groves keep their trunks off the rings)
     // (highlands fix round 2: the fold walls were a stroke on the turf about a third of your height, the gate a hurdle

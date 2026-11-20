@@ -1,6 +1,6 @@
 /* Canonical island geometry and physical reservations. Pure derived data:
  * no model construction, renderer, save mutation or owner-specific coast. */
-const _gardenIslandDerived = { geometry: null, base: null, beachCells: null, ocean: null, sectionZones: null, arrivalRoad: null, routePaths: new WeakMap(), roadJoints: new WeakMap() };
+const _gardenIslandDerived = { geometry: null, base: null, sightGround: null, beachCells: null, ocean: null, sectionZones: null, arrivalRoad: null, routePaths: new WeakMap(), roadJoints: new WeakMap() };
 function gardenIslandData() { return GardenIslandLayout.data; }
 function gardenIslandActive() { return typeof GardenIslandLayout !== 'undefined' && !!(GardenIslandLayout.data && GardenIslandLayout.data.version >= 3); }
 function gardenCanonicalWorld() { const island = typeof GardenIslandCanonicalLayout !== 'undefined' ? GardenIslandCanonicalLayout : GardenIslandLayout; return { wv: island.data.world.v, lh: island.fingerprint }; }
@@ -53,6 +53,8 @@ function gardenIslandStaticRow(row) {
   if (!p) return row;
   const next = Object.assign({}, row, { x: p.x, y: p.y, w: p.w, h: p.h, col: p.col, walk: p.walk ? 1 : 0 });
   if (p.door) next.door = Object.freeze({ x: p.door.x, y: p.door.y });
+  // The old angler sits on the quay as one of the vale's folk: you walk round him, not onto his lap (hunter, round 3).
+  if (data.version === 5 && p.id === 'old-angler' && p.col === 'none') next.col = 'soft';
   else if (data.version >= 5 && p.door === null) next.door = null;   // an explicit removal must not retain a pre-island doorway
   // The v5 well moved to the village but retained a doorway ten cells east.
   // Repair only that authored row; later Designer placements keep their own doors.
@@ -373,8 +375,36 @@ function gardenIslandZoneAt(x, y) {
   if (!_gardenIslandDerived.sectionZones) { const W = GARDEN_WORLD, data = gardenIslandData(), zones = new Int8Array(W.cols * W.rows).fill(-1); for (const [id, points] of Object.entries(data.sectionCells || {})) for (const [cx, cy] of points) zones[cy * W.cols + cx] = data.sectionZones[id] || 0; _gardenIslandDerived.sectionZones = zones; }
   const zone = _gardenIslandDerived.sectionZones[Math.floor(y) * GARDEN_WORLD.cols + Math.floor(x)]; return zone < 0 ? null : zone;
 }
+/* A sight's own ground. The layout put small plots right behind or beside some sights (the wishing well inside a 'Lv 3'
+ * fence, a walled plot among the hill stones, a wall into the shepherd's hut's wheels, a hedge into the folly). No plot
+ * takes the cells a sight's picture stands over: its footprint, the columns its picture spans, as many rows behind as its
+ * height reaches (up to three) and the row in front where you stand to look at it; a plot left smaller than the layout's
+ * smallest (2 x 2) is withdrawn, so the region's layout redesign can give it a place of its own. The reach is each sight's painted box
+ * in px from the middle of its foot ([left, top, right], the art rows in 94-garden-paint-terrain-5sights.js and
+ * 94-garden-paint-zsights*.js). Presentation, walking and buying only: the layout file and its identity are unchanged. */
+const GARDEN_SIGHT_REACH = Object.freeze({ 'ld-barn': [-92, -176, 96], 'ld-barrels': [-42, -84, 56], 'ld-beacon': [-34, -134, 36], 'ld-boathouse': [-84, -190, 86], 'ld-boles': [-70, -60, 72], 'ld-cairn': [-42, -96, 46], 'ld-chapel': [-84, -204, 84], 'ld-churn': [-34, -56, 34], 'ld-clamp': [-52, -44, 66], 'ld-cross': [-34, -120, 36], 'ld-driftwood': [-62, -108, 62], 'ld-folly': [-52, -272, 54], 'ld-frog': [-44, -54, 46], 'ld-grotto': [-82, -128, 84], 'ld-hide': [-76, -100, 80], 'ld-hollow': [-104, -246, 106], 'ld-house': [-62, -140, 64], 'ld-hull': [-60, -58, 62], 'ld-hut': [-70, -138, 72], 'ld-icehouse': [-66, -84, 66], 'ld-labyrinth': [-74, -66, 76], 'ld-lighthouse': [-46, -274, 48], 'ld-mile': [-24, -50, 64], 'ld-mill': [-134, -224, 92], 'ld-oldhouse': [-64, -146, 64], 'ld-orchard-wall': [-64, -72, 66], 'ld-pump': [-66, -94, 68], 'ld-ring': [-46, -70, 48], 'ld-smoke': [-80, -156, 82], 'ld-statue': [-32, -118, 58], 'ld-stones': [-112, -104, 118], 'ld-stump': [-72, -92, 74], 'ld-sunk': [-56, -42, 56], 'ld-tower': [-84, -250, 86], 'ld-treehouse': [-130, -262, 126], 'ld-warren': [-80, -46, 82], 'ld-wish': [-36, -96, 36], 'ld-woodhut': [-74, -180, 76] });
+function gardenIslandSightGround() {
+  if (_gardenIslandDerived.sightGround) return _gardenIslandDerived.sightGround;
+  const data = gardenIslandData(), W = data.world, out = new Set();
+  if (data.version >= 5) for (const p of data.static || []) {
+    const b = GARDEN_SIGHT_REACH[p.id]; if (!b || p.col === 'none') continue;
+    const w = p.w || 1, h = p.h || 1, mid = (p.x + w / 2) * W.cellW;
+    const c0 = Math.min(p.x, Math.floor((mid + b[0] + 4) / W.cellW)), c1 = Math.max(p.x + w - 1, Math.floor((mid + b[2] - 4) / W.cellW)), back = Math.max(1, Math.min(3, Math.ceil(-b[1] / W.cellH - .6)));
+    for (let y = p.y - back; y <= p.y + h; y++) for (let x = c0; x <= c1; x++) out.add(x + ',' + y);
+  }
+  // and a gate's crossing, two cells on along the way either side: the Cloudbreak stair climbed into a locked plot's wall
+  // (or, where the fells drew none, an invisible wall) at its head, a hedged plot stood against its foot (hunter, round 3)
+  if (data.version >= 5) for (const g of data.gates || []) {
+    const sp = g.crossSpan; if (!sp || !sp.length) continue;
+    const xs = sp.map(p => p[0]), ys = sp.map(p => p[1]), ax = g.dx ? 2 : 0, ay = g.dy ? 2 : 0;
+    for (let y = Math.floor(Math.min(...ys)) - ay; y <= Math.floor(Math.max(...ys)) + ay; y++) for (let x = Math.floor(Math.min(...xs)) - ax; x <= Math.floor(Math.max(...xs)) + ax; x++) out.add(x + ',' + y);
+  }
+  return _gardenIslandDerived.sightGround = out;
+}
 function gardenIslandSectionRow(row) {
-  const authored = gardenIslandData().sectionCells, cells = authored && authored[row.id] ? authored[row.id].slice() : row.cells.filter(([x, y]) => { const cell = gardenIslandBaseCell(x, y); return cell && cell.land && !cell.beach && !cell.reserved; });
+  const authored = gardenIslandData().sectionCells, ground = gardenIslandSightGround();
+  let cells = authored && authored[row.id] ? authored[row.id].slice() : row.cells.filter(([x, y]) => { const cell = gardenIslandBaseCell(x, y); return cell && cell.land && !cell.beach && !cell.reserved; });
+  if (ground.size && cells.some(([x, y]) => ground.has(x + ',' + y))) { cells = cells.filter(([x, y]) => !ground.has(x + ',' + y)); if (cells.length < ((gardenIslandData().allotmentPolicy || {}).minimumCells || 4)) cells = []; }   // (a plot is 2 x 2 at least: what is left of one that crowded a sight is not offered; owned, it stays in the land book)
   const next = Object.assign({}, row, { cells: Object.freeze(cells), originalCellCount: row.cells.length, relayoutEmpty: !cells.length });
   if (gardenIslandData().version >= 4) {
     const zone = (gardenIslandData().sectionZones || {})[row.id], region = gardenIslandRegionForZone(zone);

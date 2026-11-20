@@ -154,7 +154,9 @@ function _gwBuildSolids(m) {
   const frame = woodsGate && typeof _gldIslandGateFrame === 'function' && typeof GardenNativePainted !== 'undefined' && GardenNativePainted.wanted && GardenNativePainted.wanted() ? _gldIslandGateFrame(woodsGate) : null;
   if (frame) {
     const W = GARDEN_WORLD, side = Math.abs(frame.uy) > Math.abs(frame.ux), half = Math.max(46, Math.min(80, frame.span * .62)), S = frame.span * .9;
-    for (const sgn of [-1, 1]) { const lx = frame.x + sgn * (side ? .85 : 1) * (half + 2), ly = frame.y + 2 + (side ? sgn * (S / half * .8) * (half + 2) : 0); add((lx - 9) / W.cellW, (ly - 7 - W.sky) / W.cellH, (lx + 9) / W.cellW, (ly + 2 - W.sky) / W.cellH, 'Forest arch trunk'); }
+    // (seen side on, the arch is a gap in a woodland edge whose oak and hedge banks block through the gate's own feet,
+    // GardenPaintedProps.gateTrees: the two sheared trunks no longer stand there)
+    if (!side) for (const sgn of [-1, 1]) { const lx = frame.x + sgn * (half + 2), ly = frame.y + 2; add((lx - 9) / W.cellW, (ly - 7 - W.sky) / W.cellH, (lx + 9) / W.cellW, (ly + 2 - W.sky) / W.cellH, 'Forest arch trunk'); }
   }
   // The crossings' own standing stonework (94-garden-native-painted-props.js gateFeet): the Ruined arch's two piers and the
   // wall stubs beside them, the stone cheeks and oak posts either side of the Orchard stair, the cairn on the pass. They
@@ -1939,6 +1941,13 @@ function gardenWorldInteract() {
   const m = gardenHere(), W = GARDEN_WORLD;
   const px = Math.floor(_gw.px), py = Math.floor(_gw.py);
   for (const p of gardenPropsNow()) if (p.act) { const door = _gwPropApproachPoint(p, false); if (door && Math.abs(door.x - .5 - px) <= 1 && Math.abs(door.y - .5 - py) <= 1) { _gwOpenProp(p); return; } }
+  // a way in to a side place beside you (the boat loft's doorway, the hothouse, the den's doors): E went past them to
+  // fishing off the quay, or to nothing at all (hunter, round 3). The way in stands where its sight paints its door.
+  if (typeof GRM_ROOMS !== 'undefined' && typeof _grd !== 'undefined' && typeof gardenRoomGo === 'function') {
+    let best = null, bd = 1.3;
+    for (const R of GRM_ROOMS) { const S = _grd.list.get(R.id); if (!S || !Number.isFinite(S.x) || !Number.isFinite(S.y)) continue; const d = Math.hypot(S.x - _gw.px, (S.y - _gw.py) * 1.3); if (d < bd) { bd = d; best = R; } }
+    if (best) { gardenRoomGo(best); return; }
+  }
   if (_gh.bubble) { const b = _gh.bubble.el.querySelector('.gd-bub-btn'); if (b) b.click(); return; }
   if (typeof gardenTravellerInteract === 'function' && gardenTravellerInteract()) return;
   if (_gw.bugs && _gw.bugs.size && typeof gardenNetSwing === 'function') { for (const b of _gw.bugs.values()) if (Math.hypot(b.x - _gw.px, (b.y - _gw.py) * 1.4) < gardenNet().st.reach * 1.35) { gardenNetSwing(null); return; } }

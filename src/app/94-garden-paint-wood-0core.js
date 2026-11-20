@@ -923,5 +923,6 @@ window.GardenPaintWood = (function () {
   /** The cells a thicket knot is drawn on (cy * cols + cx), from the same model as the trees: unbought land in the old
    *  woodland stops the feet where its knot is drawn and nowhere else (94-garden-world-0walk.js gardenLockedPlotOpenToFeet). */
   function thicketCells() { const S = state; if (!S || !S.M) return null; if (!S.thicketCells) { const set = new Set(), cols = GARDEN_WORLD.cols; for (const t of S.M.trees) if (t.thicket) set.add(t.cy * cols + t.cx); S.thicketCells = set; } return S.thicketCells; }
-  return { shadesOak: true, ownsRegion, probe, paint, tick, clear, playerCanopies: () => null, coveringCrowns: () => state ? state.covering : null, status, memory, covers, trunks, thicketCells, WOODS, canopyAt, thicketWood: id => !!(WOODS[id] && WOODS[id].mood !== 'meadow'), get lastError() { return lastError; } };
+  // (read only: where every tree of the woods stands, in cells, for what is set out near them: 94-garden-1stored.js)
+  return { shadesOak: true, ownsRegion, probe, paint, tick, clear, playerCanopies: () => null, coveringCrowns: () => state ? state.covering : null, status, memory, covers, trunks, thicketCells, WOODS, canopyAt, standing: () => state && state.M ? state.M.trees : null, thicketWood: id => !!(WOODS[id] && WOODS[id].mood !== 'meadow'), get lastError() { return lastError; } };
 })();
