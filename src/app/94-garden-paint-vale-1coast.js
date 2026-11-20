@@ -300,7 +300,7 @@
       if (!scene.textures.exists(FLAME)) { const c = document.createElement('canvas'); c.width = 24; c.height = 40; const x = c.getContext('2d'), g = x.createRadialGradient(12, 30, 1, 12, 26, 18); g.addColorStop(0, 'rgba(255,232,160,1)'); g.addColorStop(.3, 'rgba(255,168,64,.95)'); g.addColorStop(.7, 'rgba(226,92,34,.6)'); g.addColorStop(1, 'rgba(200,60,20,0)'); x.fillStyle = g; x.beginPath(); x.moveTo(12, 2); x.quadraticCurveTo(22, 20, 19, 31); x.quadraticCurveTo(12, 40, 5, 31); x.quadraticCurveTo(2, 20, 12, 2); x.fill(); scene.textures.addCanvas(FLAME, c); }
       const root = scene.add.container(0, 0).setDepth(80006).setVisible(false), glows = [], sparks = [], fires = [];
       for (let i = 0; i < 70; i++) { const im = scene.add.image(0, 0, SPARK).setBlendMode(Phaser.BlendModes.ADD).setVisible(false); root.add(im); sparks.push(im); }
-      let night = 0, checked = -1e9, placed = false;
+      let night = 0, dusk = 0, checked = -1e9, placed = false, sunMode = false, colAt = -1e9, colF = -1;
       const place = () => { const nw = typeof _gw !== 'undefined' && _gw.nativeWorld; if (!nw || !nw.entities) return false;
         for (const p of lit) { const rec = nw.entities.get('prop:' + p.id); if (!rec || !rec.bounds) continue; const b = rec.bounds, cx = b.x + b.width / 2, foot = b.y + b.height;
           // a window or a lit door low in the front wall, and a soft spill on the ground in front
@@ -315,9 +315,11 @@
           pool._a = .5; halo._a = .85; root.add(pool); root.add(halo); glows.push(pool, halo); }
         return true; };
       return { obj: root, stat: () => ({ night: +night.toFixed(2), glows: glows.length }), update(time, view) {
-        if (time - checked > 1000) { checked = time; try { const lt = window.GardenNative && GardenNative.lighting && GardenNative.lighting(), d = lt && lt.environment ? lt.environment().daylight : 1; night = Math.max(0, Math.min(1, (.4 - (d == null ? 1 : d)) / .28)); } catch (e) { night = 0; } }
+        // (coast fix round 2: and at dusk, the low sun's path on the sea: a broad column of gold glints on the west side of the
+        // view, so the sea takes the evening sky's light, not only a warm wash over the day picture)
+        if (time - checked > 1000) { checked = time; try { const lt = window.GardenNative && GardenNative.lighting && GardenNative.lighting(), e = lt && lt.environment ? lt.environment() : null, d = e && e.daylight != null ? e.daylight : 1; night = Math.max(0, Math.min(1, (.4 - d) / .28)); dusk = e && e.hour >= 14 && !e.rain && !e.snow ? Math.max(0, Math.min(1, 1 - Math.abs(d - .45) / .32)) : 0; } catch (e) { night = 0; dusk = 0; } }
         const z = scene.cameras && scene.cameras.main ? scene.cameras.main.zoom : 1;
-        if (night < .02 || !view || z < 1 || typeof _gw !== 'undefined' && _gw.room) { if (root.visible) root.setVisible(false); return; }
+        if (night < .02 && dusk < .02 || !view || z < 1 || typeof _gw !== 'undefined' && _gw.room) { if (root.visible) root.setVisible(false); return; }
         if (!placed) placed = place(); root.setVisible(true);
         const flick = .92 + Math.sin(time / 310) * .04 + Math.sin(time / 97) * .03;
         for (const g of glows) g.setAlpha(g._a * night * flick);
@@ -325,12 +327,17 @@
           f.pool.setAlpha(.55 * night * k); f.halo.setAlpha(.35 * night * k);
           f.fl.forEach((im, j) => { const s = (.32 + (j === 1 ? .14 : 0)) * (.85 + Math.sin(t * (9 + j * 3.1) + j) * .15); im.setScale(s * (1 + Math.sin(t * 5 + j) * .08), s).setAlpha(Math.max(night, .25) * (.58 + Math.sin(t * 11 + j * 2) * .16)); }); }
         // the moon's path: below the moon (towards the top right of the view), a column of glints on open sea only
-        const t = time / 1000, mx = view.x + view.w * .68; let k = 0;
-        for (let i = 0; i < sparks.length; i++) { const u = (i * .618 + Math.floor(t / 2.2 + i * .37) * .31) % 1, row = i / sparks.length, y = view.y + view.h * (.08 + row * .9), spread = 18 + row * view.w * .09, x = mx + (u - .5) * 2 * spread + Math.sin(t * .7 + i) * 4;
+        const sun = dusk > night, t = time / 1000, lightK = sun ? dusk * .9 : night; let k = 0;
+        // (the column stands where this view has open sea, the sun's on the west side if it can, the moon's on the east)
+        if (time - colAt > 500) { colAt = time; colF = -1; const sea = (x, y) => { const b = L.base(x / L.cw, (y - W.sky) / L.ch); return !!(b && b.ocean && !b.staticId); };
+          for (const f of (sun ? [.3, .2, .42, .55, .7, .82] : [.68, .8, .56, .44, .3, .2])) { let n = 0; for (let j = 0; j < 5; j++) if (sea(view.x + view.w * f, view.y + view.h * (.28 + j * .14))) n++; if (n >= 3) { colF = f; break; } } }
+        const mx = view.x + view.w * colF;
+        if (sun !== sunMode) { sunMode = sun; for (const im of sparks) sun ? im.setTint(0xffc06a) : im.clearTint(); }
+        for (let i = 0; i < sparks.length; i++) { if (colF < 0) { sparks[i].setVisible(false); continue; } const u = (i * .618 + Math.floor(t / 2.2 + i * .37) * .31) % 1, row = i / sparks.length, y = view.y + view.h * (.08 + row * .9), spread = (sun ? 30 : 18) + row * view.w * (sun ? .12 : .09), x = mx + (u - .5) * 2 * spread + Math.sin(t * .7 + i) * 4;
           const c = { x: x / L.cw, y: (y - W.sky) / L.ch }, b = L.base(c.x, c.y), im = sparks[i];
           const built = (dx) => { const q = L.base(c.x + dx, c.y); return !!(q && (q.staticId || q.route)); };   // (coast fix round 2: never on the pier's deck or a mooring: the column fell on the deck by the pier lantern and read as its light in a strip)
           if (!b || !b.ocean || built(0) || built(-.7) || built(.7) || typeof gardenIslandCoastDistance === 'function' && gardenIslandCoastDistance(c.x, c.y) < 30) { im.setVisible(false); continue; }
-          const tw = Math.max(0, Math.sin(t * 2.1 + i * 1.7)); im.setVisible(true).setPosition(x, y).setScale(.6 + (1 - Math.abs(u - .5) * 2) * .9, 1).setAlpha(night * (.12 + tw * .38) * (1 - Math.abs(u - .5) * 1.4)); k++; }
+          const tw = Math.max(0, Math.sin(t * 2.1 + i * 1.7)); im.setVisible(true).setPosition(x, y).setScale((.6 + (1 - Math.abs(u - .5) * 2) * .9) * (sun ? 1.5 : 1), 1).setAlpha(lightK * (.12 + tw * .38) * (1 - Math.abs(u - .5) * 1.4)); k++; }
         void k; void kit;
       } };
     } });
