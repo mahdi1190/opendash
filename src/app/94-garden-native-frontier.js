@@ -50,7 +50,10 @@ void main () {
   const paintedFragment = fragment
     .replace('uniform float uTime;', 'uniform float uTime;\nuniform float uRetreat;\nuniform vec3 uTint;')   // (uFade is in the base mist already)
     .replace(/float coreFade[\s\S]*?gl_FragColor = fragColor;/, `float coreFade = smoothstep(-6.0, 64.0, distance + billow * 0.9 - uRetreat * 220.0);
-  float core = smoothstep(2.0, 96.0, distance + billow * 1.25 - uRetreat * 260.0) * coreFade * step(0.5, land.g);
+  // (no hard cut on exact membership here: the core's faint start, cut on the region's straight cell edge, showed as a ruled
+  // line through whatever stood on it, the Forest arch's brambles half washed and half bright: final review, round 3. The
+  // signed distance already keeps it off open land: under 3 per cent of a step past the edge)
+  float core = smoothstep(2.0, 96.0, distance + billow * 1.25 - uRetreat * 260.0) * coreFade * smoothstep(-26.0, 10.0, distance + billow * 0.6);
   float edge = smoothstep(-34.0, 6.0, distance - uRetreat * 220.0) * (1.0 - smoothstep(18.0, 80.0, distance));
   float fringe = edge * smoothstep(0.3, 0.72, b * 0.4 + c * 0.6) * 0.16;
   float layer = smoothstep(0.35, 0.8, b * 0.55 + a * 0.45);

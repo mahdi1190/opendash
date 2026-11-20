@@ -1043,7 +1043,10 @@ window.GardenPaintedProps = (function () {
       base.setCrop(0, 0, mid, texH); near.setCrop(mid, 0, texW - mid, texH);
       const nearDepth = frame.y + art.S * .8 + 2;
       split = { mid, texW, texH, nearDepth, fadeWith: [] };
-      if (open) h.standing(base, frame.y - art.S * .8 + 2, true); else h.add(base);
+      // (shut as well as open: the far half stood with the shut gate over the mist and the near half in the world under it, so
+      // the mist cut the arch down its middle, half washed and half bright: final review, round 3. Both halves now sort by their
+      // own trunk's foot and take the same mist; only the board stays over it)
+      h.standing(base, frame.y - art.S * .8 + 2, true);
       h.standing(near, nearDepth, true);
       // Walking through, you pass behind the near trunk and its leaves: they thin while they cover you, like any
       // crown you stand under, so you never vanish behind your own gate.
@@ -1098,7 +1101,7 @@ window.GardenPaintedProps = (function () {
       // everyone, they hid you a step to the near side of the hurdle (the audit's shut-gate drawing order, 19 Nov 2026):
       // their near half sorts and thins with the near trunk, the far half stays with the shut gate)
       const blk = image(scene, blockKey, frame.x, frame.y), nb = split && blk && baseX === frame.x && baseY === frame.y ? image(scene, blockKey, frame.x, frame.y) : null;
-      if (nb) { blk.setCrop(0, 0, split.mid, split.texH); nb.setCrop(split.mid, 0, split.texW - split.mid, split.texH); h.add(blk); h.standing(nb, split.nearDepth, true); split.fadeWith.push(nb); }
+      if (nb) { blk.setCrop(0, 0, split.mid, split.texH); nb.setCrop(split.mid, 0, split.texW - split.mid, split.texH); h.standing(blk, frame.y - art.S * .8 + 3, true); h.standing(nb, split.nearDepth, true); split.fadeWith.push(nb); }
       else h.add(blk);
       const sign = place(h.add(image(scene, signKey, sx, sy)));
       // a board on chains or cords sways, barely; one nailed or staked keeps still (sights, round 3). It stands over everyone,
