@@ -41,7 +41,6 @@ const GA_PROPS = Object.freeze({
   rope: '<g><path d="M0 -150Q1.4 -110 0 -66" stroke="#b08a58" stroke-width="2.2" fill="none"/><path d="M-2 -70h4l-.6 9h-2.8z" fill="#c84a3a" stroke="#7a2a20" stroke-width="0.5"/></g>',
   // the water round a swimmer: the surface at the chest, a ripple ring, the body below it seen through the water
   swimwater: '<g class="ga-swim"><ellipse cx="0" cy="-25" rx="19" ry="6.4" fill="#4f98ae" opacity="0.7"/><ellipse cx="0" cy="-26" rx="17" ry="4.4" fill="#8ccbdc" opacity="0.55"/><ellipse class="ga-swim-r" cx="0" cy="-26" rx="22" ry="5.6" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.75"/><path d="M-26 -22q5 2 10 0M14 -21q5 2 10 0" stroke="#e8f6fa" stroke-width="0.9" fill="none" opacity="0.7"/></g>',
-  stickfly: '<g class="ga-stickfly" style="transform-origin:12px -34px"><path d="M4 -34L20 -36" stroke="#7a5432" stroke-width="2" stroke-linecap="round"/><path d="M14 -35l3 -4" stroke="#7a5432" stroke-width="1.2"/></g>',
   fiddle: '<g transform="translate(-4 -49) rotate(-30) scale(0.55)"><path d="M-3 -2Q-6 -2 -6 2Q-6 5 -3 5Q-4 8 -1 9L9 9Q12 8 11 5Q14 5 14 2Q14 -2 11 -2Q12 -5 9 -6L-1 -6Q-4 -5 -3 -2z" fill="#a8582a" stroke="#4a2210" stroke-width="0.7"/><path d="M14 1.6L27 1.6" stroke="#2a1a10" stroke-width="2.2"/><path d="M1 -2v7M7 -2v7" stroke="#2a1a10" stroke-width="0.6"/></g><g class="ga-bow"><path d="M4 -40L20 -52" stroke="#7a5a36" stroke-width="0.9"/></g>',
   // the rod held out over the water in front (you face it), the line down to a float out on the water
   bankrod: '<g><path d="M10 -30L30 -66" stroke="#7a5a34" stroke-width="1.8" stroke-linecap="round"/><path d="M30 -66Q36 -70 38 -96" stroke="#e8e8e0" stroke-width="0.6" fill="none" opacity="0.85"/><circle cx="38" cy="-97" r="2.2" fill="#d84a3a" stroke="#fff" stroke-width="0.6"/><ellipse class="ga-bob-r" cx="38" cy="-96" rx="7" ry="2.2" fill="none" stroke="#fff" stroke-width="0.7" opacity="0.6"/></g>',
@@ -156,7 +155,8 @@ const GARDEN_ACTS = Object.freeze({
   kick: { verb: 'Kick it', dir: 's', ms: 1300, first: 'Kicked a ball across the green.', sound: 'pat', kick: true,
     enter: { legR: [[0.15, { r: -14 }, 'io'], [0.35, { r: 30 }, 'b'], [0.5, { r: 22 }, 'o'], [0.8, {}, 'io']], kneeR: [[0.15, { r: 50 }, 'io'], [0.35, { r: -4 }, 'b'], [0.8, {}, 'io']], legL: [[0.35, { sy: 0.96 }], [0.8, {}]], armL: [[0.35, { r: 40 }, 'o'], [0.8, {}, 'io']], armR: [[0.35, { r: -30 }, 'o'], [0.8, {}, 'io']], up: [[0.15, { r: 4 }], [0.35, { r: -6 }, 'o'], [0.8, {}, 'io']] } },
   // (20) throw a stick for your pet: wind up, the stick flies, the pet runs for it and brings it back (the core moves the pet)
-  throwstick: { verb: 'Throw a stick', dir: 's', ms: 1500, hold: true, first: 'Threw a stick. It came back, very wet.', prop: 'stickfly', propGround: true, fetch: true,
+  throwstick: { verb: 'Throw a stick', dir: 's', ms: 1500, hold: true, first: 'Threw a stick. It came back, very wet.', fetch: true,   // (the stick itself: 94-garden-zz-7act-1core.js _gaFetchDraw, in hand, flying, in the grass, in the pet's mouth)
+
     loop: { ms: 3000, head: [[0, {}], [0.5, { r: 5 }, 'io'], [1, {}, 'io']], armL: [[0, {}], [1, {}]] },
     enter: { armR: [[0.15, { r: 50 }, 'io'], [0.32, { r: -170 }, 'b'], [0.5, { r: -120 }, 'o'], [0.9, {}, 'io']], up: [[0.15, { r: 6 }], [0.32, { r: -6 }, 'o'], [0.9, {}, 'io']], legL: [[0.32, { r: 6 }], [0.9, {}]] } },
   // (20) belly rubs (round 3): side on, down on one knee on the grass beside your pet, which lies on its back (the pet's own clip, l-belly); one hand rubs its tummy

@@ -114,6 +114,7 @@ function gartActFrame() {
     if (!cur.H) { const inner = _gw.node && _gw.node.querySelector('.gd-pl-in'), k = (inner && inner._gplKey) || ''; if (k.startsWith('idle' + cur.wantDir) || now - cur.t0 > 600) { const gpl = _gaMyFigure(); if (gpl) cur.H = gartActPlay(gpl, cur.id, { noProp: !!(cur.spot && cur.spot.noProp), skips: cur.skips, leaves: !!(cur.spot && cur.spot.kick === 'leaves') }); } }
     _gaTick(now);
     if (cur.row.rubPet) _gaRubTick(cur);
+    if (cur.row.fetch) _gaFetchDraw();
   }
   if (now - _ga.t < 200) { if (_ga.near && _ga.el && !_ga.el.hidden) _gaPlace(); return; }
   _ga.t = now;
@@ -178,10 +179,6 @@ function gartActPlay(gpl, id, o) {
     H.props.push(g);
     if (row.prop === 'ducks') _gaDucks(g, H, motion, row.ms);
     if (row.skim) _gaSkimFly(g, H, motion, row.ms, o.skips || 3);
-    if (row.prop === 'stickfly' && motion) {   // the stick turns over and over through the air and lands out in front (where the pet runs to: _gaFetch)
-      const st = g.querySelector('.ga-stickfly') || g.firstChild; if (_ga.fetch) _ga.fetch.el = g;
-      try { H.panims.push(gardenVisualAnimate(st, [{ offset: 0, transform: 'translate(0px,0px) rotate(0deg)' }, { offset: 0.3, transform: 'translate(0px,-14px) rotate(-30deg)' }, { offset: 0.42, transform: 'translate(0px,-30px) rotate(90deg)' }, { offset: 0.55, transform: 'translate(0px,-10px) rotate(300deg)' }, { offset: 0.68, transform: 'translate(4px,90px) rotate(520deg)' }, { offset: 0.76, transform: 'translate(6px,158px) rotate(630deg)' }, { offset: 1, transform: 'translate(6px,158px) rotate(630deg)' }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* it just lands */ }
-    }
     if (row.prop === 'swimwater') { if (motion) { try { H.panims.push(gardenVisualAnimate(g, [{ offset: 0, opacity: 0 }, { offset: 0.2, opacity: 0 }, { offset: 0.42, opacity: 1 }, { offset: 1, opacity: 1 }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* shows at once */ } } }
   }
   if (row.kick && o.leaves) _gaLeafBurst(gpl, H, motion, row.ms);
@@ -222,6 +219,7 @@ function _gaStart(cur) {
   const row = cur.row, spot = cur.spot;
   // on the spot: the feet go exactly where the thing wants them (a seat's front edge), the figure faces the right way, standing still
   if (spot && spot.stand && (row.hold || cur.lift || spot.noProp || Math.hypot(spot.stand.x - _gw.px, spot.stand.y - _gw.py) < 1.2)) { _gw.px = spot.stand.x; _gw.py = spot.stand.y; if (!cur.lift && !spot.seated && typeof _gwNearestFreePt === 'function') { const f = _gwNearestFreePt(_gw.px, _gw.py, 0.4); if (f && Math.hypot(f.x - _gw.px, f.y - _gw.py) < 0.4) { _gw.px = f.x; _gw.py = f.y; } }  /* (on its own feet: never inside what blocks walking, or the walker nudges you out and that ends it) */ if (typeof _GPL !== 'undefined') { _GPL.lastX = _gw.px; _GPL.lastY = _gw.py; } }
+  if (!(spot && spot.stand) && typeof _gwFree === 'function' && !_gwFree(_gw.px, _gw.py) && typeof _gwNearestFreePt === 'function') { const f = _gwNearestFreePt(_gw.px, _gw.py, 1); if (f) { _gw.px = f.x; _gw.py = f.y; if (typeof _GPL !== 'undefined') { _GPL.lastX = f.x; _GPL.lastY = f.y; } } }   // (round 4: on the spot, where the walker would nudge you anyway, so the nudge does not end it at once)
   _gw.path = []; _gw.then = null; _gw.spd = 0; _gw.moving = false;
   _gaFace(_gaDirDeg(row, spot));
   if (typeof _GPL !== 'undefined') { _GPL.pose = ''; _GPL.until = 0; }
@@ -408,19 +406,60 @@ function gartActSetDown() {
   try { if (window.GardenNativeActions) GardenNativeActions.effect('place', x * W.cellW, W.sky + y * W.cellH, { width: 24 }); } catch (e) { /* fine */ }
   _ga.list = null; return true;
 }
-/** Throw a stick: it lands a few steps away; your pet runs for it and brings it back; then the throw ends. */
+/** Throw a stick (round 4): it flies out in front and lies in the grass; your pet waits for it to land, runs for it, picks it up (the stick
+ * is then in its mouth) and trots back to drop it at your feet; the throw lasts until it is back (or 14 s for a pet that will not fetch). */
+const GA_STICK_LAND = 0.76;   // when the stick lands, a share of the throw (the stickfly prop's flight)
 function _gaFetch(cur) {
-  const deg = _gaDirDeg(cur.row, cur.spot) * Math.PI / 180, x = _gw.px + Math.cos(deg) * 3.2, y = _gw.py + Math.sin(deg) * 2.4 + 0.1;   // (south: 124 of the figure's units, where the stick's flight lands)
+  const deg = _gaDirDeg(cur.row, cur.spot) * Math.PI / 180, x = _gw.px + Math.cos(deg) * 1.6 + 1.5, y = _gw.py + Math.sin(deg) * 1.5 + 0.1;   // (round 4: out to one side in front, near enough to see it land, fetched and brought back)
   _ga.fetch = { x, y, phase: 'wait', t0: performance.now(), cur };
-  setTimeout(() => { if (_ga.fetch && _ga.fetch.cur === cur) _ga.fetch.phase = 'out'; try { if (window.GardenNativeActions) GardenNativeActions.effect('lift', x * GARDEN_WORLD.cellW, GARDEN_WORLD.sky + y * GARDEN_WORLD.cellH, { width: 18 }); } catch (e) { /* fine */ } }, 750);
-  setTimeout(() => { if (_ga.cur === cur) gartActStop(true); }, 9000);   // a pet that will not fetch: the throw still ends
+  setTimeout(() => { if (_ga.cur === cur) gartActStop(true); }, 14000);   // a pet that will not fetch: the throw still ends
+}
+const _GA_MOUTH_STICK = '<g class="ga-mstick"><path d="M-11 0.6L11 -0.6" stroke="#5a3a1e" stroke-width="2.6" stroke-linecap="round"/><path d="M-11 0.6L11 -0.6" stroke="#9a7044" stroke-width="1.1" stroke-linecap="round"/><path d="M5 -0.4l3 -3.4" stroke="#7a5432" stroke-width="1.1" stroke-linecap="round"/></g>';
+/** The stick in the pet's mouth on the way back: drawn with your figure, at the pet's head (figure units: world px / GW_SCALE). */
+function _gaFetchDraw() {
+  const f = _ga.fetch, cur = f && f.cur; if (!f || !cur || !cur.H) return;
+  const gpl = _gaMyFigure(); if (!gpl) return;
+  if (!f.mouth || !f.mouth.parentNode) {   // one stick, drawn with your figure: in your hand, flying, in the grass, in the pet's mouth
+    try { const g = typeof gardenSceneElement === 'function' && gardenVisualIsNative(gpl) ? gardenSceneElement('g') : document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'ga-prop ga-p-mouth'); g.innerHTML = _GA_MOUTH_STICK; gpl.appendChild(g); f.mouth = g; cur.H.props.push(g); f.flip = _gaFigureFlip(gpl); if (!f.playT) f.playT = performance.now(); } catch (e) { return; }
+  }
+  const S = typeof GW_SCALE === 'number' ? GW_SCALE : 0.592, W = GARDEN_WORLD, flip = f.flip || 1, ms = cur.row.ms, t = (performance.now() - f.playT) / ms;
+  const U = (wx, wy) => [(wx - _gw.px) * W.cellW / S * flip, (wy - _gw.py) * W.cellH / S];   // cells -> the figure's units
+  let x, y, r = 0;
+  if (f.phase === 'back' || f.phase === 'home') {
+    let P = null; try { P = gpPetMe(); } catch (e) { P = null; } if (!P) return;
+    const face = (P.visualFace != null ? P.visualFace : P.dir) < 0 ? -1 : 1, sat = f.phase === 'home', q = U(P.x, P.y);
+    x = q[0] + face * (sat ? 4 : 7) * flip; y = q[1] - (sat ? 22 : 15);
+  } else {
+    const R = 0.32, L = GA_STICK_LAND, hand = [8, -72], land = U(f.x, f.y);
+    if (!_gaMotion() || t >= L) { x = land[0]; y = land[1] - 1.5; r = 8; }
+    else if (t < R) { const k = t / R; x = hand[0] - 14 * Math.sin(k * Math.PI / 2); y = hand[1] + 30 - 30 * k; r = -40 - 60 * k; }   // (back over the shoulder as the arm winds up)
+    else { const k = (t - R) / (L - R); x = hand[0] + (land[0] - hand[0]) * k; y = hand[1] + (land[1] - hand[1]) * k - 90 * Math.sin(Math.PI * k); r = -100 + 760 * k; }
+  }
+  try { f.mouth.setAttribute('transform', `translate(${Math.round(x * 10) / 10} ${Math.round(y * 10) / 10}) rotate(${Math.round(r)})`); } catch (e) { /* gone */ }
 }
 function _gaFetchGoal(P) {
   const f = _ga.fetch; if (!f || !P || !P.me) return null;
-  if (f.phase === 'wait') return { x: P.x, y: P.y, near: 10 };
-  if (f.phase === 'out') { if (Math.hypot(P.x - f.x, P.y - f.y) < 0.5) { f.phase = 'back'; try { if (f.el) f.el.setAttribute('opacity', '0'); } catch (e) { /* gone */ } try { gardenToast('Got it!'); } catch (e) { /* fine */ } } return { x: f.x, y: f.y, near: 0.3, run: true }; }
-  if (Math.hypot(P.x - _gw.px, P.y - _gw.py) < 1) { const cur = f.cur; _ga.fetch = null; if (_ga.cur === cur) gartActStop(true); return null; }
-  return { x: _gw.px + 0.6, y: _gw.py + 0.2, near: 0.5, run: true };
+  if (f.phase === 'wait') { if (f.playT && performance.now() > f.playT + (_gaMotion() ? f.cur.row.ms * GA_STICK_LAND : 0)) { f.phase = 'out'; try { if (window.GardenNativeActions) GardenNativeActions.effect('lift', f.x * GARDEN_WORLD.cellW, GARDEN_WORLD.sky + f.y * GARDEN_WORLD.cellH, { width: 18 }); } catch (e) { /* fine */ } } return { x: P.x, y: P.y, near: 10 }; }
+  if (f.phase === 'out') {
+    if (Math.hypot(P.x - f.x, P.y - f.y) < 0.22) {   // got it: off the grass and into its mouth
+      f.phase = 'back';
+      try { gardenToast('Got it!'); } catch (e) { /* fine */ }
+    }
+    return { x: f.x, y: f.y, near: 0.08, run: true };
+  }
+  if (f.phase === 'back' && Math.hypot(P.x - (_gw.px + 0.7), (P.y - (_gw.py + 0.25)) * 1.3) < 0.35) {   // at your feet: it drops the stick and sits, pleased with itself
+    f.phase = 'home'; const cur = f.cur;
+    try { if (P.root && typeof petClipRun === 'function' && typeof petClipDef === 'function' && petClipDef('petted')) petClipRun(P.root, 'petted'); } catch (e) { /* it just sits */ }
+    try { gardenToast('Good fetch!'); } catch (e) { /* fine */ }
+    setTimeout(() => { if (_ga.fetch === f) _ga.fetch = null; if (_ga.cur === cur) gartActStop(true); }, 1400);
+  }
+  if (f.phase === 'home') return null;
+  return { x: _gw.px + 0.7, y: _gw.py + 0.25, near: 0.2, run: true };
+}
+/** Is the figure drawn mirrored (its x axis runs right to left on screen)? -1 then, else 1. */
+function _gaFigureFlip(gpl) {
+  try { let n = gpl; for (let i = 0; i < 6 && n; i++, n = n.parentNode) { const t = n.getAttribute && n.getAttribute('transform'); if (t && /scale\(\s*-1/.test(t)) return -1; } } catch (e) { /* as drawn */ }
+  return 1;
 }
 /** Belly rubs: once your pet is at your hand, it rolls on to its back and kicks its legs (the pets' own clip l-belly, from feat/pets-life;
  * on a branch without it, the same clip is added here the first time, so the two never differ), again and again while you rub. */
@@ -532,7 +571,7 @@ if (typeof gardenLifePetGoal === 'function') {
   };
 }
 /* ---------- the moves wheel: the ground actions are on it too ---------- */
-const GART_ACT_WHEEL = Object.freeze({ lie: { name: 'Lie down', icon: 'cloud' }, nap: { name: 'Nap', icon: 'moon' }, laugh: { name: 'Laugh', icon: 'smile' }, angel: { name: 'Snow angel', icon: 'snowflake', winter: true } });
+const GART_ACT_WHEEL = Object.freeze({ lie: { name: 'Lie down', icon: 'cloud' }, nap: { name: 'Nap', icon: 'moon' }, throwstick: { name: 'Throw a stick', icon: 'paw-print', pet: true }, rub: { name: 'Belly rub', icon: 'heart', pet: true }, laugh: { name: 'Laugh', icon: 'smile' }, angel: { name: 'Snow angel', icon: 'snowflake', winter: true } });
 /** A click on a fixed thing with no door: do its first action (a bench: sit on it). */
 function gartActForProp(p) {
   if (!p || p.act || !GARDEN_ACT_BY_PROP[p.id]) return false;
