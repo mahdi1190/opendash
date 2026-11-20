@@ -379,7 +379,7 @@ function _plTreehouse(P) {
   const up = () => {
     const was = { x: P.x, y: P.y };
     P.dir = 1; P.x = foot.x; P.y = foot.y + 0.04;   // drawn just in front of the treehouse, at its foot
-    P.perch = { dx: win[0], up: -win[1] - 4 };   // feet just below the window's bottom edge: the wall and sill hide the body, the head shows in the window
+    P.perch = { dx: win[0], up: -win[1] - 4, x: P.x, y: P.y };   // feet just below the window's bottom edge: the wall and sill hide the body, the head shows in the window
     _plPlay(P, ['l-window'], 0, () => { P.perch = null; P.x = was.x; P.y = was.y; _plPlay(P, ['jump'], 0.6); }, { at: 1 });
     _plSill(P, _plMs('l-window'));
   };

@@ -560,6 +560,9 @@ function _ptwStep(P, dt, t) {
   if (typeof petGardenMotionStep === 'function') petGardenMotionStep(P, dt, t, P.x - x0, P.y - y0, T);
   if (typeof petGardenPlayContact === 'function') petGardenPlayContact(P, dt);
   if (off && P.node.isConnected) return;   // (far from the view: it carries on with its day, off the page)
+  // a perch (up in a window) belongs to the spot it was taken at: the pet walked, was called or followed you off it, so it is on the ground again
+  // (20 Nov: it went on being drawn up at the treehouse's deck beside you, and asleep up there on your feet after you came down)
+  if (P.perch && (P.tx != null || Math.abs((P.perch.x == null ? P.x : P.perch.x) - P.x) > 0.05 || Math.abs((P.perch.y == null ? P.y : P.perch.y) - P.y) > 0.05)) { P.perch = null; try { for (const g of (P.root || P.node).querySelectorAll('.pt-lprop')) g.remove(); } catch (e) { /* none: the window's sill goes with it */ } }
   const pos = _ptwCell(P.x, P.y), pk = P.perch, tf = `translate(${(pos.x + (pk ? pk.dx : 0)).toFixed(1)} ${(pos.y - T.up + T.sink - (pk ? pk.up : 0)).toFixed(1)})`;   // perch (round 3, 85): up in a window, the pet's spot stays its foot
   if (tf !== P.tf) { P.tf = tf; P.node.setAttribute('transform', tf); P.node.setAttribute('data-z', (T.z + 0.002).toFixed(2)); }
   let fd = P.dir < 0 ? 'scale(-1 1)' : '';
