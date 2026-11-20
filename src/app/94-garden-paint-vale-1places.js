@@ -42,12 +42,19 @@
     for (const c of L.pres.crossings || []) {
       const riv = L.pres.rivers && L.pres.rivers[c.over]; if (!riv || !riv.line) continue;
       const deck = physical.find(g => g.crossing.id === c.id);
-      const { Ln, n0, s0, s1 } = deck ? deck.span : crossingWaterSpan(L.pres, c, L.base), hw = riv.halfWidth || 1;
+      const sp0 = deck ? deck.span : crossingWaterSpan(L.pres, c, L.base), { Ln, n0 } = sp0, hw = riv.halfWidth || 1; let { s0, s1 } = sp0;
+      // (vale final, north) over a gorge the water under the stones runs on along the channel until it meets the painted
+      // water bodies either side: it filled only the stones' own deck, and the brook ended on a square cut beside them
+      const gorgeFill = !!deck && c.over === 'gorge';
+      if (gorgeFill) { const bodies = ((L.D && L.D.freshwater) || []).filter(b => b.boundary && b.boundary.length > 2), inPoly = (x, y, pg) => { let o = false; for (let i = 0, j = pg.length - 1; i < pg.length; j = i++) { const a = pg[i], b = pg[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) o = !o; } return o; };
+        const wet = s => { const p = at(Ln, s); return bodies.some(b => inPoly(p.x, p.y, b.boundary)); };
+        let a = n0.s, b = n0.s; for (let k = 0; k < 60 && a > 0 && !wet(a); k++) a -= .12; for (let k = 0; k < 60 && b < Ln.len && !wet(b); k++) b += .12;
+        s0 = Math.min(s0, Math.max(0, a - .45)); s1 = Math.max(s1, Math.min(Ln.len, b + .45)); }
       const mid = at(Ln, n0.s), anchor = { x: mid.x * cw, y: W.sky + mid.y * ch }, px = (x, y) => ({ x: x * cw - anchor.x, y: W.sky + y * ch - anchor.y });
       const left = [], right = [], centre = [];
       for (let s = s0; s <= s1 + 1e-6; s += .2) { const p = at(Ln, s), nx = -p.ty, ny = p.tx, k = hw * (1 + .06 * Math.sin(s * 3.1)); left.push(px(p.x + nx * k, p.y + ny * k)); right.push(px(p.x - nx * k, p.y - ny * k)); centre.push(px(p.x, p.y)); }
       if (left.length < 2) continue;
-      const strip = deck ? deck.points.map(p => px(p.x, p.y)) : left.concat(right.slice().reverse()), bb = V.hull(strip.map(q => ({ x: q.x, y: q.y }))).reduce((b, q) => [Math.min(b[0], q.x), Math.min(b[1], q.y), Math.max(b[2], q.x), Math.max(b[3], q.y)], [1e9, 1e9, -1e9, -1e9]);
+      const strip = deck && !gorgeFill ? deck.points.map(p => px(p.x, p.y)) : left.concat(right.slice().reverse()), bb = V.hull(strip.map(q => ({ x: q.x, y: q.y }))).reduce((b, q) => [Math.min(b[0], q.x), Math.min(b[1], q.y), Math.max(b[2], q.x), Math.max(b[3], q.y)], [1e9, 1e9, -1e9, -1e9]);
       // the water under the crossing: drawn under the painted river, so its banks lap over the ends
       under({ key: 'cross-water|' + c.id, x: anchor.x, y: anchor.y, box: [bb[0] - 16, bb[1] - 16, bb[2] + 16, bb[3] + 16], draw: (B, tod) => {
         const shape = B.poly(strip);

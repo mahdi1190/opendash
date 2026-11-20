@@ -61,7 +61,7 @@ const GARDEN_KINDS = Object.freeze({
   bath: { name: 'the bird bath', arts: ['fountain'], paint: 'fountain', w: 1.2, h: 0.6, decor: ['bird-bath', 'fountain', 'mini-pond'], words: ['fountain', 'birdbath'], pet: 'bath', drink: true },
   /* fire */
   campfire: { name: 'the campfire', art: 'fire', place: true, w: 1, h: 0.4, acts: [{ act: 'warm', stand: [0, -0.68], deg: 90 }], pet: 'fire', warm: true, noPerch: true, solid: 'block' },   // back from the ring of stones, the flames clear of your feet
-  fire: { name: 'the fire', arts: ['clamp'], decor: ['fire-pit', 'dc-clay-oven', 'dc-cauldron'], words: ['fire', 'firepit', 'firering', 'bonfire', 'campfire', 'brazier', 'soupcamp', 'firecamp', 'hearth'], pet: 'fire', warm: true, noPerch: true },
+  fire: { name: 'the fire', arts: ['clamp'], decor: ['fire-pit', 'dc-clay-oven', 'dc-cauldron'], words: ['fire', 'firepit', 'firering', 'bonfire', 'campfire', 'brazier', 'beacon', 'soupcamp', 'firecamp', 'hearth'], pet: 'fire', warm: true, noPerch: true },
   /* things that ring, play or chime */
   chapel: { name: 'the chapel bell', arts: ['chapel'], words: ['chapel'], acts: [{ act: 'bell', stand: [0, 0.6], deg: -90 }], pet: 'bell' },
   bell: { name: 'the bell', art: 'bell', place: true, words: ['bell'], acts: [{ act: 'bell', stand: [0, 0.6], deg: -90 }], pet: 'bell' },   // a ship's bell on a post (no drawing yet: offers nothing until one is drawn)
