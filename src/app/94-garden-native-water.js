@@ -353,6 +353,10 @@ window.GardenNativeWater = (function () {
     }
     function surfGlow(clock, daylight, wet) {
       if (!surfSegments) return;
+      // The painted water (94-garden-paint-water-0core.js) lays the sea's own foam and swell along the sand; these offset
+      // copies of the coast outline would only add rows of dashes, and follow its corners where a river runs out.
+      if (!room && window.GardenPaintWater && GardenPaintWater.paintsSea && GardenPaintWater.paintsSea()) { shore.setVisible(false); return; }
+      shore.setVisible(true);
       // The three retained water-only contours gently brighten toward shore;
       // no geometry, captures or shoreline queries run on an ambient tick.
       const light = .48 + daylight * .52, weather = .88 + wet * .12;

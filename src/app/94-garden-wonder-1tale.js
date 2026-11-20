@@ -278,7 +278,7 @@ function _wtTravellers(m) {
     if (W[`sx.${t.s.id}.${t.b.id}`]) return;   // heard already (it goes at the next tick)
     const o = wdTaleTell(t.s, t.b); wdTalk({ name, art: _wdFolkArt(look), lines: o.lines, actions: o.actions, at: { x: S.x, y: S.y }, bye: 'Goodbye' });
   };
-  const W = _wtW(), S = wdSprite({ id: 'wt-trav', x: to.x, y: to.y, still: true, hit: 0.75, hitUp: 16, label: name, cursor: 'hand', svg: _wdFolkArt(look), onClick: open });
+  const W = _wtW(), S = wdSprite({ id: 'wt-trav', x: to.x, y: to.y, still: true, hit: 0.75, hitUp: 16, label: name, cursor: 'hand', svg: gardenActorSized(_wdFolkArt(look)), onClick: open });
   _wt.trav = { key: t.s.id + '.' + t.b.id, S, open };
 }
 /* ---------- residents: found at home, never calling ---------- */
@@ -290,7 +290,7 @@ function _wtResPlace(r, m) {
   const p = _wtAnchorPt(r.home.near); if (!p) return;
   const to = wdFreeNear(p.x, p.y, 2); if (!to) return;
   if (typeof gardenAreaOpenAt === 'function' && !gardenAreaOpenAt(Math.floor(to.x), Math.floor(to.y))) return;
-  const S = wdSprite({ id: 'wt-' + r.id, x: to.x, y: to.y, still: true, hit: 0.75, hitUp: 16, label: r.name, cursor: 'hand', svg: r.art(), onClick: () => _wtResTalk(r, S) });
+  const S = wdSprite({ id: 'wt-' + r.id, x: to.x, y: to.y, still: true, hit: 0.75, hitUp: 16, label: r.name, cursor: 'hand', svg: gardenActorSized(r.art()), onClick: () => _wtResTalk(r, S) });
   _wt.res.set(r.id, S);
 }
 function _wtResTalk(r, S) {

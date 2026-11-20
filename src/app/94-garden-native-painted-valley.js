@@ -51,14 +51,17 @@
   const P = GP.paintTable;
   Object.assign(P, {
     /* ---------- the watermill ---------- */
-    'sight:mill': { box: [-124, -150, 92, 18],
+    // (round 3 layout: on its 5 x 3 footprint the mill stands at the size standard, its ridge about five and a half times the player)
+    'sight:mill': { box: [-124, -150, 92, 18], scale: prop => (prop.w >= 5 ? 1.6 : 1), lift: () => 0,   // (round 3, critic fix: its wall's foot on the front of its footprint, where the feet stop and the yard's setts begin; raised 16 px, a band of grass lay between the doors and the setts. Vale layouts merge: lowered 14 px further it stood half a cell out on the yard, its wheel pit a cell out over the weir walk's planks, where the feet walked through it)
+     
       sig: () => turning() ? '|turn' : '|still',
       draw(B, o) {
         const r = rng(hash('valley-mill')), lit = o.night && o.more === '|turn';
         B.shadow(6, 4, 92, 12, .26);
+        B.cx.filter = 'blur(3px)'; B.f(B.rect(-56, -3, 128, 9), '#3a2e22', .22); B.cx.filter = 'none';   // (layfix east: the wall's foot sits in a damp shadow on the setts, not a ruled line)
         // the wheel pit against the gable: dark water between stone walls, open to the river on the west
-        B.f(B.poly([[-118, -10], [-56, -12], [-56, 10], [-112, 10]]), '#3f5f64').f(B.poly([[-118, -10], [-56, -12], [-56, -8], [-117, -6]]), '#2c4448', .8);
-        for (let x = -114; x < -58; x += 7) B.f(B.rr(x, -15, 6.4, 3.8, 1), r() < .5 ? STONE[0] : STONE[1]).f(B.rr(x + 1, 8, 6.4, 3.4, 1), r() < .5 ? STONE[1] : STONE[3]);
+        B.f(B.poly([[-118, -10], [-56, -12], [-56, 4], [-112, 4]]), '#6a665a').f(B.poly([[-118, -10], [-56, -12], [-56, -8], [-117, -6]]), '#4a463e', .8); for (let y = -8; y < 4; y += 4) B.s(`M-116 ${y}L-56 ${y - 1}`, '#5a564c', .7, .6); for (let x = -110; x < -58; x += 9) B.s(`M${x} -9v12`, '#5a564c', .6, .5);   // (layfix east: the pit's walls in shaded stone; its water is the lap in front of the wheel, so no teal tub stands up behind it)
+        for (let x = -114; x < -58; x += 7) B.f(B.rr(x, -15, 6.4, 3.8, 1), r() < .5 ? STONE[0] : STONE[1]).f(B.rr(x + 1, 1.6, 6.4, 3.2, 1), r() < .5 ? STONE[1] : STONE[3]);   // (its near kerb on the mill's own front line, not out over the planks)
         // the body: two storeys of brick, stone quoins, a slate roof with a lucam
         bricks(B, r, -56, -78, 128, 78, BRICK);
         for (let y = -78; y < 0; y += 9) for (const x of [-56, 66]) B.f(B.rect(x, y, 6, 4.4), (y / 9) & 1 ? STONE[0] : STONE[2]).f(B.rect(x, y + 4.4, 6, .6), STONE[3], .6);
@@ -83,17 +86,24 @@
       },
       // the wheel is its own image so it can turn once the cog is in
       extra(scene, h, fx, foot, o) {
-        const turn = o.more === '|turn', key = K.bake(scene, 'sight-mill-wheel|' + (turn ? 't' : 's'), [-44, -44, 44, 44], B => wheel(B, 32, !turn));
-        const cx = fx - 79, cy = foot - 30, im = h.add(K.image(scene, key, cx, cy));
+        const turn = o.more === '|turn', key = K.bake(scene, 'sight-mill-wheel|' + (turn ? 't' : 's'), [-44, -44, 44, 44], B => wheel(B, 32, !turn)), s = o.scale || 1;
+        const up = o.prop && o.prop.w >= 5 ? 22 : 0, cx = fx - 79 * s, cy = foot - up - 30 * s, im = h.add(K.image(scene, key, cx, cy)); if (im && s !== 1) im.setScale(im.scaleX * s);
         // the water in the pit laps over the wheel's foot
-        const lap = K.bake(scene, 'sight-mill-lap', [-34, -6, 34, 10], B => { B.f(B.rr(-30, -2, 60, 9, 3), '#46686c', .92).f(B.rect(-30, -2, 60, 2), '#a8cace', .75); for (let x = -28; x < 28; x += 7) B.f(B.rr(x, 6, 6.4, 3.4, 1), x % 2 ? STONE[1] : STONE[3]); });
-        const water = h.add(K.image(scene, lap, cx, foot - 1));
+        const lap = K.bake(scene, 'sight-mill-lap3', [-40, -12, 40, 14], B => {
+          // the pit's water round the wheel's foot: churned white where the paddles dip, darker at the sides under the walls, its
+          // near edge a kerb of dressed stones with lit tops (no box: the water's top is broken by the foam, not ruled)
+          B.f('M-34 -2Q-30 -7 -18 -6Q0 -9 18 -6Q30 -7 34 -2L34 6L-34 6Z', '#3e5e62', .95).f('M-30 -2Q0 -6 30 -2L30 3L-30 3Z', '#5a8488', .8);
+          for (let k = 0; k < 11; k++) { const x = -22 + k * 4.4, w = 3 + (k * 7 % 5); B.f(B.ell(x, -4 + (k % 3), w, 1.6 + (k % 2)), '#eef6f4', .6 + (k % 3) * .1); }
+          B.f(B.ell(0, -7, 12, 2.4), '#ffffff', .55).f(B.ell(-8, -9, 4, 1.4), '#ffffff', .4).f(B.ell(9, -9, 3, 1.2), '#ffffff', .4);
+          for (let x = -36, k = 0; x < 34; x += 7.4, k++) { const h = 4 + (k % 3) * .6; B.f(B.rr(x, 5 - (k % 2) * .5, 7, h + 2, 1.4), k % 2 ? STONE[1] : STONE[3]).f(B.rr(x, 5 - (k % 2) * .5, 7, 1.6, .8), STONE[2], .85); }
+          B.f(B.ell(-30, 6, 4, 1.6), MOSS[0], .7).f(B.ell(24, 6.4, 5, 1.6), MOSS[1], .6); });   // (layfix east: the wheel up a further 14 px, so its pit shows between it and the weir walk's rail: dark water churned white round the paddles, its kerb of stones)   // (vale layouts merge: the wheel up 8 px and the lap's kerb on the mill's own front line, so neither stands out over the weir walk's planks where the feet go)
+        const water = h.add(K.image(scene, lap, cx, foot - up - 1)); if (water && s !== 1) water.setScale(water.scaleX * s);   // (the lap at the mill's scale, as the wheel)
         if (turn && im) h.move(im, (node, t, motion) => { if (motion) node.setRotation(-t * .55); });
         if (turn && water) h.move(water, (node, t, motion) => { if (motion) node.setAlpha(.85 + Math.sin(t * 4) * .1); });
       },
     },
     /* ---------- the barn: red weatherboarding, a slate-grey roof, big doors, a hay ladder ---------- */
-    'sight:barn': { box: [-96, -128, 96, 14], draw(B, o) {
+    'sight:barn': { box: [-96, -128, 96, 16], scale: prop => (prop.w >= 6 ? 1.45 : 1), draw(B, o) {
       const r = rng(hash('valley-barn')), red = ['#9a3a2e', '#7e2e24', '#b85a48', '#5e2018'];
       B.shadow(4, 3, 90, 10, .26);
       B.f(B.rect(-74, -62, 148, 62), red[0]);
@@ -108,7 +118,18 @@
       B.f(B.rect(-24, -50, 48, 50), red[3]).f(B.rect(-24, -50, 24, 50), red[1]).s('M-24 -50L0 0M0 -50L-24 0', '#e8dcc0', 1.6, .9).s('M-24 -50h24v50h-24z', '#e8dcc0', 1.4, .9);
       B.f(B.rect(0, -50, 24, 50), '#2a1c14').f(B.poly([[2, 0], [10, -14], [22, -10], [24, 0]]), '#d8b860').f(B.poly([[4, 0], [10, -10], [16, -8], [18, 0]]), '#ecd27a', .8);
       B.f(B.rect(-56, -50, 18, 14), '#2a1c14').s('M-56 -50h18v14h-18z', '#e8dcc0', 1.2);
-      B.post(-62, -50, 0, 2, OAK).post(-50, -50, 0, 2, OAK); for (let y = -44; y < 0; y += 8) B.s(`M-62 ${y}h12`, OAK[1], 1.6);
+      // (layfix east) the hay ladder leans out from the wall, its feet out on the setts and its top on the loft hatch's sill, with
+      // its shadow on the boards (stood flat on the wall it read as a ladder leaning on nothing)
+      B.s('M-60 -36L-66 2M-48 -36L-52 2', '#22180f', 2.2, .25);
+      B.s('M-62 -49L-68 1M-50 -49L-54 1', OAK[0], 2.6).s('M-62 -49L-68 1M-50 -49L-54 1', OAK[2], .8, .7); for (let t = .1; t < .95; t += .14) B.s(`M${-62 - 6 * t} ${-49 + 50 * t}L${-50 - 4 * t} ${-49 + 50 * t}`, OAK[1], 1.6);
+      B.f(B.rect(-58, -37, 22, 2.4), OAK[1]);   // the hatch's sill
+      // the boards weathered: darker toward the foot where the rain splashes, a lighter streak under each eave, a green stain
+      B.f(B.rect(-74, -62, 148, 62), B.lin(0, -62, 0, 0, [[0, 'rgba(255,220,200,.08)'], [.7, 'rgba(0,0,0,0)'], [1, 'rgba(40,20,10,.28)']]));
+      B.f(B.rect(52, -62, 22, 62), 'rgba(30,10,8,.16)');
+      B.f(D().blob(r, -66, -4, 14, 4, 7, .5), MOSS[0], .5).f(D().blob(r, 60, -3, 12, 3, 7, .5), MOSS[2], .45);
+      // sacks and a cart at the door, straw blown out over the setts
+      for (const [x, y] of [[-34, 0], [-40, -1], [-37, -8]]) B.f(B.rr(x - 5, y - 9, 10, 11, 4), '#d9caa0').f(B.rr(x - 5, y - 9, 4, 11, 3), '#efe4c6', .7);
+      for (let i = 0; i < 18; i++) { const x = -6 + r() * 40, y = 2 + r() * 10; B.s(`M${x} ${y}l${(r() - .5) * 6} ${(r() - .5) * 2}`, '#d8b860', .9, .8); }
       // swallows' nests under the eave, an old tractor seat by the door, nettles and elder
       for (const x of [-30, 40]) B.f(B.ell(x, -59, 3.2, 2.2), '#8a7454');
       B.s('M36 -2v-8', IRON[1], 1.4).f(B.rr(31, -14, 10, 4, 2), '#b84a2a');
@@ -135,10 +156,16 @@
       if (o.night) B.f(B.rect(-46, -36, 22, 4), '#e8a050', .7);
     } },
     /* ---------- the bird hide: a weathered timber box on short legs, the long viewing slot, a list of birds ---------- */
-    'sight:hide': { box: [-62, -62, 62, 10], draw(B, o) {
+    'sight:hide': { box: [-72, -62, 72, 12], draw(B, o) {
       const r = rng(hash('valley-hide'));
       B.shadow(2, 2, 52, 6, .26);
+      // (layfix east) it stands in the top of the dune, marram and sea holly blown up round its feet (on bare sand it looked set down)
+      B.f(D().blob(r, 0, 1, 62, 6, 10, .3), '#b8a878', .4).f(D().blob(r, -4, 0, 50, 4, 9, .3), '#d4c494', .35);   // (faint: the dune is ground, its foot is not the hide's)
+      for (let i = 0; i < 46; i++) { const x = -62 + r() * 124, h = 7 + r() * 11, lean = (r() - .5) * 9; B.s(`M${x} ${1 - r() * 3}q${lean * .3} ${-h * .6} ${lean} ${-h}`, o.season === 'winter' ? '#b8ae88' : r() < .5 ? '#7e8e4e' : '#a4a46a', 1.1, .95); }
+      if (o.season === 'summer') for (let i = 0; i < 5; i++) { const x = -56 + r() * 112; B.f(B.circ(x, -3, 2.4), '#9aa6c8', .95).f(B.circ(x, -3, 1.1), '#6a7aa8'); }
       for (const x of [-38, 38]) B.post(x, -14, 0, 4, OAK);
+      // (round 3) boarded down to its sill on the marsh, a dark gap under the boards: it stands on its own feet, not on stilts in the air
+      B.f(B.rect(-42, -13, 84, 10), '#5a4834').f(B.rect(-42, -4, 84, 4), '#2e261c', .9); for (let x = -40; x < 42; x += 7) B.s(`M${x} -13v9`, '#3e3226', .7, .7);
       B.f(B.rect(-44, -44, 88, 32), '#7a6446');
       for (let y = -40; y < -12; y += 5) B.s(`M-44 ${y}h88`, '#5a4834', .8, .7).s(`M-44 ${y + 1}h88`, '#9a8462', .5, .45);
       B.f(B.poly([[-50, -42], [-44, -54], [44, -54], [50, -42]]), '#4c5a3a').f(B.poly([[-50, -42], [-44, -54], [-36, -54], [-42, -42]]), '#6a7a50', .6);
@@ -157,7 +184,74 @@
         B.f(B.rect(x - 5, -48, 10, 3), '#7a8488').s(`M${x - 8.6} -28h17.2`, '#8a9498', 1);
       }
       B.f(D().blob(r, -24, -1, 7, 3, 7, .5), MOSS[0], .7);
+      // (round 3) its foot: the verge trodden bare where the churns were lifted down, lichen on the stone, dock and cow parsley
+      // grown up round the back corners, a lid fallen against the step
+      B.f(B.ell(2, 3, 30, 4.5), '#9a8a66', .45).f(B.ell(-6, 2, 14, 2.4), '#b4a47c', .4);
+      for (const [x, y, rr] of [[-16, -8, 3], [6, -12, 2.4], [18, -5, 2.6]]) B.f(B.circ(x, y, rr), '#c8c49a', .55);
+      for (const x of [-27, 27]) { for (let j = 0; j < 4; j++) B.f(D().blob(r, x + (r() - .5) * 6, -4 - j * 3, 5, 2.2, 6, .4), j & 1 ? '#4e7a38' : '#5e8a42', .95); if (o.season !== 'winter') for (let j = 0; j < 5; j++) B.f(B.circ(x + (r() - .5) * 10, -16 - r() * 6, 1.6), '#f2efe2', .95); }
+      B.f(B.ell(-30, -3, 4.5, 4), '#8a9498').f(B.ell(-30, -3, 3, 2.6), '#c4ccd0');
+      B.tufts(r, 0, 3, 34, 6, o.season);
     } },
+    /* ---------- the valley's seats: an oak bench on a low dry-stone bank, set into the verge (round 3 layout) ---------- */
+    // (the bank is solid to the ground, so the feet stop at the stone you see and a click on the bench finds it)
+    'sight:vseat': { box: [-48, -50, 48, 10], draw(B, o) {
+      const r = rng(hash('vseat|' + (o.prop && o.prop.id))), leaf = leafOf(o.season);
+      B.f(B.ell(0, 3, 42, 7), '#a89a74', .45).f(B.ell(-4, 2, 26, 4), '#bcae86', .35);   // the trodden ground in front
+      B.shadow(3, 1, 36, 6, .3);
+      // the bank: two courses of rough stone under the seat, a coping stone at each end
+      B.f(B.rr(-31, -14, 62, 14, 3), STONE[1]);
+      for (let row = 0; row < 2; row++) for (let x = -30 + (row & 1) * 5; x < 29; x += 10) B.f(B.rr(x, -13 + row * 6.5, 9 + r() * 2, 5.6, 1.8), STONE[Math.floor(r() * 3)]).s(`M${x + 1} ${-7.6 + row * 6.5}h8`, STONE[3], .5, .45);
+      B.f(B.rect(-31, -2, 62, 2), STONE[3], .5);
+      for (const x of [-26, 14]) B.f(D().blob(r, x + r() * 10, -12, 6, 2, 6, .4), MOSS[r() < .5 ? 0 : 1], .8);
+      // the seat: one oak plank on the bank, the back two rails on oak posts set in the stone
+      for (const x of [-27, 27]) B.post(x, -40, -14, 3.6, OAK);
+      B.f(B.rr(-36, -19, 72, 5, 1.6), OAK[1]).f(B.rect(-35, -19, 70, 1.6), OAK[2], .8).s('M-36 -14.4h72', OAK[3], .8, .7);
+      for (const y of [-38, -30]) B.f(B.rr(-32, y, 64, 4.4, 1.4), OAK[1]).f(B.rect(-31, y, 62, 1.3), OAK[2], .7);
+      // growth at the foot: grass against the stone at each end, ivy up one post
+      for (const x of [-33, 33]) for (let j = 0; j < 6; j++) B.s(`M${x + (r() - .5) * 8} 1q${(r() - .5) * 3} -5 ${(r() - .5) * 4} -${6 + r() * 6}`, leaf[1], 1.2, .9);
+      B.s('M27 -14q-3 -8 1 -14q3 -6 -1 -12', leaf[0], 1.6, .9); for (let j = 0; j < 4; j++) B.f(B.ell(26 + (r() - .5) * 4, -16 - j * 6, 2.4, 1.6), leaf[j & 1 ? 1 : 2], .95);
+      if (o.season !== 'winter') B.flowers(r, -38, 1, 8, 3, ['#e8c84a', '#f2f0e8']);
+    } },
+    /* ---------- the valley's lamps: a lantern hung from an oak post set in a stone (round 3 layout) ---------- */
+    'sight:vlamp': { box: [-24, -132, 30, 8], scale: () => .72, draw(B, o) {   // (round 3 fix: drawn at .72, the post about twice the player's height after the figures shrink, rule 14; it stood 2.8 H)
+      const r = rng(hash('vlamp|' + (o.prop && o.prop.id))), leaf = leafOf(o.season);
+      B.shadow(2, 1, 12, 3.5, .3);
+      B.f(B.rr(-9, -7, 18, 8, 2.4), STONE[1]).f(B.rect(-8, -7, 16, 2), STONE[2], .7);   // the set stone
+      B.f(B.rr(-3.5, -112, 7, 108, 1.4), OAK[1]).f(B.rect(-3.5, -112, 2.4, 108), OAK[2], .7).s('M2 -100v86', OAK[3], .7, .6);
+      B.f(B.rr(-5, -116, 10, 5, 1.6), OAK[0]);   // the cap
+      B.s('M3 -106h14M3 -98l9 -8', IRON[1], 1.8);   // the bracket
+      B.s('M15 -106v4', IRON[1], 1.2);
+      B.f(B.poly([[10, -102], [20, -102], [18, -86], [12, -86]]), o.night ? '#ffd27a' : '#c8d4d0', o.night ? 1 : .8).s('M10 -102h10M12 -86h6M15 -102v16', IRON[1], 1.1);
+      B.f(B.poly([[9, -102], [15, -108], [21, -102]]), IRON[1]);
+      for (let j = 0; j < 7; j++) B.s(`M${(r() - .5) * 18} 1q${(r() - .5) * 3} -5 ${(r() - .5) * 4} -${5 + r() * 7}`, leaf[1], 1.1, .9);
+      if (o.night) B.f(B.circ(15, -94, 14), '#ffd27a', .18);
+    },
+      extra(scene, h, fx, foot, o) { const k = (o && o.scale) || 1; if (h.lights) h.lights.push({ x: fx + 15 * k, y: foot - 94 * k, radius: 110, pool: true }); } },
+    /* ---------- the bee boles: niches in an old wall against the carr, straw skeps in them (round 3 layout) ---------- */
+    'sight:boles': { box: [-82, -84, 82, 10], draw(B, o) {
+      const r = rng(hash('valley-boles')), leaf = leafOf(o.season);
+      // the carr behind: alder stems and leaves showing over the coping
+      for (const x of [-58, -20, 30, 62]) B.f(B.rect(x - 2.5, -74, 5, 30), '#5a5048').f(D().blob(r, x, -72, 16, 8, 8, .4), leaf[0], .95).f(D().blob(r, x - 5, -76, 10, 5, 7, .4), leaf[2], .8);
+      B.shadow(4, 2, 74, 7, .3);
+      // the wall: rough coursed stone a little over the player's waist, a coping of edge stones
+      B.f(B.rr(-72, -46, 144, 46, 3), STONE[1]);
+      for (let row = 0; row < 6; row++) for (let x = -71 + (row & 1) * 6; x < 70; x += 12) B.f(B.rr(x, -45 + row * 7.6, 10.5 + r() * 2, 6.6, 2), STONE[Math.floor(r() * 3)]).s(`M${x + 1} ${-38.6 + row * 7.6}h10`, STONE[3], .5, .45);
+      for (let x = -72; x < 72; x += 5) B.f(B.rr(x, -51, 4.4, 7, 1.2), x % 2 ? STONE[2] : STONE[0]);
+      // three arched niches, a straw skep in each, a bee or two at the door
+      for (const x of [-42, 0, 42]) {
+        B.f(`M${x - 13} -8V-28Q${x} -42 ${x + 13} -28V-8Z`, '#2e2a24').f(B.rect(x - 15, -9, 30, 3), STONE[2]);
+        B.f(`M${x - 10} -9Q${x - 11} -30 ${x} -32Q${x + 11} -30 ${x + 10} -9Z`, '#c8a45a');
+        for (let y = -12; y > -30; y -= 4) B.s(`M${x - 10} ${y}Q${x} ${y - 2} ${x + 10} ${y}`, '#9a7a3a', .8, .8);
+        B.f(B.ell(x, -10, 2.2, 1.4), '#2a1c10');
+        if (o.season !== 'winter') for (let j = 0; j < 2; j++) B.f(B.ell(x + 6 + r() * 10, -18 - r() * 14, 1.4, 1), '#2a2418').f(B.ell(x + 5 + r() * 10, -20 - r() * 12, 1.2, .7), '#f4e8a0', .8);
+      }
+      // ivy over one end, moss on the coping, fern at the foot
+      B.s('M66 -50q-6 14 -2 26q4 10 -3 22', leaf[3], 2, .9); for (let j = 0; j < 9; j++) B.f(B.ell(60 + r() * 12, -50 + r() * 44, 3, 2.2), leaf[j % 3], .95);
+      for (let j = 0; j < 5; j++) B.f(D().blob(r, -64 + r() * 120, -50, 6, 2, 6, .4), MOSS[j & 1], .85);
+      for (const x of [-76, 76]) for (let j = 0; j < 5; j++) { const a = -Math.PI / 2 + (j - 2) * .45; B.s(`M${x} 0q${Math.cos(a) * 7} ${Math.sin(a) * 7} ${Math.cos(a) * 13} ${Math.sin(a) * 11 + 4}`, o.season === 'winter' ? '#8a7a4a' : '#5a8a3a', 2, .9); }
+      B.tufts(r, 0, 2, 70, 7, o.season);
+    } },
+
     /* ---------- the frog stone: a big mossy boulder with a carved, helped-along face, in a wet hollow ---------- */
     'sight:frogstone': { box: [-34, -40, 34, 10], draw(B, o) {
       const r = rng(hash('valley-frog')), rock = ['#9a9886', '#76745f', '#bcb8a2', '#5a584a'];

@@ -3,6 +3,23 @@
  * mounted, measured, watched or rasterized by this runtime. */
 /** Device pixels per CSS pixel the garden's canvas is drawn at (at most 2: four times the pixels is the fill-rate ceiling). */
 function gardenNativePixelRatio() { return Math.max(1, Math.min(2, Number(window.devicePixelRatio) || 1)); }
+/* Phaser checks a new or resized framebuffer with gl.checkFramebufferStatus, and in the browser that call waits for the
+ * graphics process to finish everything queued before it: 28 to 69 ms inside a walking frame on a 2x screen (most of the
+ * long tasks left while walking). A colour texture no larger than the card allows, with a depth or stencil buffer of the
+ * same size, is always complete in WebGL, so such a framebuffer is made without the wait. Anything else is checked as before. */
+function noFramebufferWait() {
+  const R = window.Phaser && Phaser.Renderer && Phaser.Renderer.WebGL && Phaser.Renderer.WebGL.Wrappers, F = R && R.WebGLFramebufferWrapper, P = F && F.prototype;
+  if (!P || typeof P.createResource !== 'function' || P._gardenNoWait) return; const make = P.createResource; let max = 0;
+  P.createResource = function () {
+    const gl = this.renderer && this.renderer.gl; if (!gl || typeof gl.checkFramebufferStatus !== 'function') return make.apply(this, arguments);
+    if (!max) { try { max = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096; } catch (e) { max = 4096; } }
+    if (!(this.width >= 1 && this.height >= 1 && this.width <= max && this.height <= max) || !(this.attachments || []).every(a => !a.texture || a.texture.webGLTexture)) return make.apply(this, arguments);
+    const own = Object.prototype.hasOwnProperty.call(gl, 'checkFramebufferStatus'), was = gl.checkFramebufferStatus, complete = gl.FRAMEBUFFER_COMPLETE;
+    gl.checkFramebufferStatus = () => complete;
+    try { return make.apply(this, arguments); } finally { if (own) gl.checkFramebufferStatus = was; else delete gl.checkFramebufferStatus; }
+  };
+  P._gardenNoWait = true;
+}
 function gardenSceneElement(tag, attrs) {
   if (window.GardenNative && GardenNative.scene()) return GardenNativeArt.element(GardenNative.scene(), tag, attrs || {});
   const node = document.createElementNS('http://www.w3.org/2000/svg', tag);
@@ -31,7 +48,10 @@ window.GardenNative = (function () {
     const transform = node.target.getWorldTransformMatrix(), local = matrix(transform);
     if (!screen) return local;
     const cam = node.scene.cameras.main, o = cam.getWorldPoint(0, 0), x = cam.getWorldPoint(1, 0), y = cam.getWorldPoint(0, 1), inv = GardenNativeArt.inverse({ a: x.x - o.x, b: x.y - o.y, c: y.x - o.x, d: y.y - o.y, e: o.x, f: o.y });
-    const box = node.scene.game.canvas.getBoundingClientRect(); return matrix({ a: 1, b: 0, c: 0, d: 1, e: box.left, f: box.top }).multiply(inv).multiply(local);
+    // (round 3, pets: the camera works in the canvas's own pixels, which are the screen's pixel ratio times page pixels; without this scale a
+    // pet's box on a high pixel-ratio screen was twice too big and off to the side, so tapping your pet did nothing there)
+    const canvas = node.scene.game.canvas, box = canvas.getBoundingClientRect(), k = canvas.width ? box.width / canvas.width : 1;
+    return matrix({ a: k, b: 0, c: 0, d: k, e: box.left, f: box.top }).multiply(inv).multiply(local);
   }
   function installComponents() {
     const p = GardenNativeArt.Node.prototype; if (p._gameApi) return; p._gameApi = true;
@@ -225,6 +245,7 @@ window.GardenNative = (function () {
     const designing = () => typeof gardenDesignOn === 'function' && gardenDesignOn();
     s.scene.input.on('pointerdown', pointer => {
       if (!active()) return; if (designing()) { touches.clear(); pinch = null; return; } const ev = normalizeEvent(pointer); s.box.focus({ preventScroll: true });
+      if (typeof gardenUiSwallow === 'function' && gardenUiSwallow(ev.clientX, ev.clientY)) { _gdp.press = null; return; }   // (a card that just went from here: the press was for its button)
       if (inRoom()) { GardenNativeRooms.pointer(ev); return; } if (_gdpPopOpen()) return;
       touches.set(pointer.id, { x: ev.clientX, y: ev.clientY });
       if (touches.size === 2) { const [a, b] = [...touches.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); gardenHoldEnd(); _gdpDragCancel(_gdp.press); _gdp.press = null; return; }
@@ -263,7 +284,7 @@ window.GardenNative = (function () {
       if (GardenNativeRooms.filterKey && GardenNativeRooms.filterKey(ev)) return;
       // Releasing a movement key still matters after focus moves into a field.
       if (!down) {
-        const dir = _GW_KEYMAP[ev.key]; if (dir) _gw.keys.delete(dir); if (ev.key === 'Shift') _gw.keys.delete('shift');
+        const dir = _GW_KEYMAP[ev.key]; if (dir) _gw.keys.delete(dir); if (ev.key === 'Shift') _gw.keys.delete('shift'); if (ev.key === 'z' || ev.key === 'Z') _gw.keys.delete('creep');
         if (inRoom()) { const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key; _grm.keys.delete(k); _ee.keys.delete(k); if (k === 'Shift') { _grm.keys.delete('shift'); _ee.keys.delete('shift'); } GardenNativeRooms.key(ev); }
         else if (ev.target && ev.target.closest && ev.target.closest('input,textarea,select,[contenteditable="true"]')) { const dir = _GW_KEYMAP[ev.key]; if (dir) _gw.keys.delete(dir); if (ev.key === 'Shift') _gw.keys.delete('shift'); if (ev.key === ' ' || /^e$/i.test(ev.key)) _gwFishRelease(); }
         else gardenWorldKey(ev, false);
@@ -569,6 +590,7 @@ window.GardenNative = (function () {
       // (zoom 1 / ratio), so a HiDPI screen no longer upscales a CSS-sized canvas (the blur close up). The world's camera
       // multiplies its zoom by the same ratio (94-garden-native-world.js updateCamera).
       const dpr = gardenNativePixelRatio();
+      noFramebufferWait();
       s.game = new Phaser.Game({ type: Phaser.WEBGL, parent: host, width: Math.max(1, Math.round(box.clientWidth * dpr)), height: Math.max(1, Math.round(box.clientHeight * dpr)), zoom: 1 / dpr, backgroundColor: '#87aa78', antialias: true, resolution: dpr, powerPreference: 'high-performance', maxTextures: 4, audio: { noAudio: true }, input: { keyboard: true, mouse: { preventDefaultWheel: true }, touch: true, activePointers: 3, gamepad: false }, scene: config, fps: { target: 60, min: 15, limit: 0, smoothStep: false }, banner: false });
       s.resize = new ResizeObserver(() => { if (s.dead || !s.world || s.capturing) return; const w = box.clientWidth, h = box.clientHeight; if (!w || !h) return; const ratio = gardenNativePixelRatio(); s.game.scale.setZoom(1 / ratio); s.game.scale.resize(Math.round(w * ratio), Math.round(h * ratio)); if (!inRoom()) s.world.resize(w, h); }); s.resize.observe(box);
       s.visibility = () => { if (s.dead || !s.game) return; if (document.hidden) { if (s.blur) s.blur(); s.game.loop.sleep(); } else s.game.loop.wake(); }; document.addEventListener('visibilitychange', s.visibility);
@@ -588,6 +610,21 @@ window.GardenNative = (function () {
           const local = GardenNativeArt.point(GardenNativeArt.inverse(transform), p.x * W.cellW, W.sky + p.y * W.cellH);
           if (node.paintedHit(local.x, local.y)) pet = { kind: 'pet', node, depth };
         }
+      }
+      // (pets, round 5: a tap between a pet's legs, on a sleeping pet's back or just off its ear found nothing, so tapping a moving pet often
+      // did nothing. A tap on the pet's body box, from where it stands and how tall it is drawn, is a tap on the pet unless something stands
+      // in front of it there)
+      if (!pet && typeof _ptw !== 'undefined' && _ptw.pets && typeof _ptwH === 'function') {
+        let best = null, bd = 9;
+        for (const P of _ptw.pets) {
+          if (!P.node || !P.node.target || !P.node.target.visible) continue;
+          const h = _ptwH(P.look.species) / W.cellH, hw = Math.max(0.32, _ptwH(P.look.species) * 0.5 / W.cellW), lift = ((P.up || 0) + (P.perch ? P.perch.up : 0)) / W.cellH;
+          const top = P.y - lift - h * (P.pose === 'sleep' ? 0.62 : 0.95), dx = Math.abs(p.x - P.x);
+          if (dx > hw || p.y < top || p.y > P.y + 0.14) continue;
+          const depth = P.node.target.depth; if (hit && hit.kind !== 'land' && depth < hit.depth) continue;
+          if (dx < bd) { bd = dx; best = { kind: 'pet', node: P.node, depth }; }
+        }
+        pet = best;
       }
     }
     if (pet) return pet;

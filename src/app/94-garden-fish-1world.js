@@ -357,7 +357,8 @@ function gardenWorldProps(sc, o) {
   if (typeof gardenLandWorldProps === 'function') for (const r of gardenLandWorldProps(sc, o)) out.push(wrap(r.cls, r.z, r.x, typeof gardenBuildDress === 'function' ? gardenBuildDress(r.key, r.inner) : r.inner, r.key));   // the land office and what has been built on the land
   if (typeof gardenDesignWorldProps === 'function') for (const r of gardenDesignWorldProps(sc)) out.push(wrap(r.cls, r.z, r.x, r.inner, r.key));   // what you made in the designer
   // what has been built for the lake stands where it is (94-garden-fish-7gear.js). pointer-events: a click there is still a click on the water
-  if (typeof gardenWorksArt === 'function') for (const r of gardenWorksArt(sc)) out.push(wrap('gd-prop-work', r.y, r.x, `<g pointer-events="none" transform="translate(${_gwN(r.x * cw)} ${_gwN(base + r.y * ch)})">${r.svg}</g>`, 'work-' + r.key));
+  if (typeof gardenWorksArt === 'function') for (const r of gardenWorksArt(sc)) if (!(o && o.native && window.GardenPaintedMarks && GardenPaintedMarks.knows('work:' + r.id))) out.push(wrap('gd-prop-work', r.y, r.x, `<g pointer-events="none" transform="translate(${_gwN(r.x * cw)} ${_gwN(base + r.y * ch)})">${r.svg}</g>`, 'work-' + r.key));
+  if (typeof gardenActWorldProps === 'function') for (const r of gardenActWorldProps(sc, o)) out.push(r);   // what the moves need: a telescope, a ladder, a campfire (94-garden-zz-7act-2world.js)
   if (typeof gardenCatchWorldArt === 'function') for (const r of gardenCatchWorldArt(sc, o)) { const it = wrap('gd-prop-work', r.z, r.x, r.svg, 'ca-' + r.key); if (r.wide) it.html = it.html.replace(/ data-x="[^"]*"/, ''); out.push(it); }   // spots, events, the rack: 94-garden-fish-9world.js
   // trees in the thickets, all over the map (94-garden-lands-0table.js): woodland is spread about, not a wall
   const pal = (GART_PAL.leaf[sc.season] || GART_PAL.leaf.summer);

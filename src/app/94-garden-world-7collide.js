@@ -16,9 +16,9 @@
    widths) changes; nothing runs while it is off. Hovering or tapping a red area names what it is.
    Only the outdoor native (Phaser) world draws it.
    ============================================================ */
-const _gcv = { on: false, g: null, nw: null, key: '', raf: 0, tip: null, legend: null, data: null, box: null, move: null, tap: null, tipT: 0 };
+const _gcv = { on: false, g: null, feet: null, nw: null, key: '', raf: 0, tip: null, legend: null, data: null, box: null, move: null, tap: null, tipT: 0 };
 const GCV_COL = Object.freeze({ block: 0xd8432f, water: 0x2f6fd8, click: 0x2a6fe0, door: 0x2fae4a, start: 0x1d8a3a });
-const _GCV_LANDFORM = Object.freeze({ 'ruin-wall': 'ruin wall', ruin: 'ruin', 'rock-wall': 'rock wall', 'terrace-wall': 'terrace wall', mountain: 'mountain' });
+const _GCV_LANDFORM = Object.freeze({ 'ruin-wall': 'ruin wall', ruin: 'ruin', 'rock-wall': 'rock wall', 'terrace-wall': 'terrace wall', mountain: 'mountain', screen: 'hedge, wall or reeds' });
 function gardenCollideOn() { return !!_gcv.on; }
 /** Why the walking grid blocks this cell (the same tests as _gwBuildGrid), in plain words; '' when it does not. */
 function _gcvCellWhy(x, y, m) {
@@ -45,7 +45,7 @@ function gardenCollideData(mArg) {
   for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
     const i = y * W.cols + x;
     if (grid.hard[i]) { const why = _gcvCellWhy(x, y, m) || 'blocked cell ' + x + ',' + y; cells.push({ x, y, src: why }); seen.set(i, why); }
-    else if (grid[i]) water.push({ x, y, src: grid.otherWater[i] || gardenIsWater(x, y) ? 'water' : 'water edge (no room for feet)' });
+    else if (grid[i] && !(grid.fieldSteer && grid.fieldSteer.has(i))) water.push({ x, y, src: grid.otherWater[i] || gardenIsWater(x, y) ? 'water' : 'water edge (no room for feet)' });
   }
   const rects = solids ? solids.list.map(r => ({ x0: r.x0, y0: r.y0, x1: r.x1, y1: r.y1, src: r.src || 'something solid', form: r.form || null })) : [];
   const shores = [];
@@ -55,10 +55,12 @@ function gardenCollideData(mArg) {
   if (nw && nw.entities) for (const row of nw.entities.values()) {
     const md = row.metadata || {}, p = md.prop; if (md.kind !== 'prop' || !p || p.site) continue;
     const b = row.bounds, art = b ? { x0: b.x / W.cellW, y0: (b.y - W.sky) / W.cellH, x1: (b.x + b.width) / W.cellW, y1: (b.y + b.height - W.sky) / W.cellH } : null;
-    let own;
-    if (gardenPropCol(p) === 'soft') { const cx = p.x + (p.w || 1) / 2, foot = p.y + (p.h || 1) - .08; own = { x0: cx - .3, y0: foot - .55, x1: cx + .3, y1: foot + .05 }; }
+    let own, poly = null;
+    // (a crossing's click area is its own deck, not its cell: 94-garden-native-world.js pick)
+    if (md.crossingSupport && md.crossingSupport.length > 2) { poly = md.crossingSupport.map(q => ({ x: q.x / W.cellW, y: (q.y - W.sky) / W.cellH })); own = { x0: Math.min(...poly.map(q => q.x)), y0: Math.min(...poly.map(q => q.y)), x1: Math.max(...poly.map(q => q.x)), y1: Math.max(...poly.map(q => q.y)) }; }
+    else if (gardenPropCol(p) === 'soft') { const cx = p.x + (p.w || 1) / 2, foot = p.y + (p.h || 1) - .08, hw = p.hit ? p.hit[0] : .3, hh = p.hit ? p.hit[1] : .55; own = { x0: cx - hw, y0: foot - hh, x1: cx + hw, y1: foot + .05 }; }
     else own = { x0: p.x, y0: p.y, x1: p.x + (p.w || 1), y1: p.y + (p.h || 1) };
-    clicks.push({ id: p.id, name: p.name || p.id, own, art, door: p.door ? { x0: p.door.x + .08, y0: p.door.y + .16, x1: p.door.x + .92, y1: p.door.y + .84 } : null, act: !!p.act });
+    clicks.push({ id: p.id, name: p.name || p.id, own, poly, art, door: p.door ? { x0: p.door.x + .08, y0: p.door.y + .16, x1: p.door.x + .92, y1: p.door.y + .84 } : null, act: !!p.act });
   }
   for (const p of gardenPropsNow()) {
     if (!p.act || p.site || p.needs && !gardenWorkOwned(p.needs)) continue;
@@ -77,7 +79,7 @@ function gardenCollideAt(x, y, mArg) {
   const cx = Math.floor(x), cy = Math.floor(y), i = cy * W.cols + cx;
   if (cx >= 0 && cy >= 0 && cx < W.cols && cy < W.rows) {
     if (D.cellWhy.has(i)) out.push(D.cellWhy.get(i));
-    else if (D.grid[i] || !(D.grid.shore ? gardenShoreFootProbe(D.grid.shore, x, y, .02, .02, false, D.grid.waterCover, {}).free : true)) out.push(D.grid.otherWater[i] || gardenIsWater(cx, cy) ? 'water' : 'water edge (no room for feet)');
+    else if (D.grid[i] && !(D.grid.fieldSteer && D.grid.fieldSteer.has(i)) || !(D.grid.shore ? gardenShoreFootProbe(D.grid.shore, x, y, .02, .02, false, D.grid.waterCover, {}).free : true)) out.push(D.grid.otherWater[i] || gardenIsWater(cx, cy) ? 'water' : 'water edge (no room for feet)');
   }
   return out;
 }
@@ -103,7 +105,9 @@ function _gcvDraw(g, D, scale) {
   // clickable areas in blue: the ground a click owns (solid line), its painted art (faint), its door step (dotted feel: thin)
   for (const c of D.clicks) {
     if (c.art) { g.lineStyle(lw * .8, GCV_COL.click, .28); g.strokeRect(X(c.art.x0), Y(c.art.y0), (c.art.x1 - c.art.x0) * W.cellW, (c.art.y1 - c.art.y0) * W.cellH); }
-    g.lineStyle(lw * 1.4, GCV_COL.click, .9); g.strokeRect(X(c.own.x0), Y(c.own.y0), (c.own.x1 - c.own.x0) * W.cellW, (c.own.y1 - c.own.y0) * W.cellH);
+    g.lineStyle(lw * 1.4, GCV_COL.click, .9);
+    if (c.poly) { g.beginPath(); g.moveTo(X(c.poly[0].x), Y(c.poly[0].y)); for (let k = 1; k < c.poly.length; k++) g.lineTo(X(c.poly[k].x), Y(c.poly[k].y)); g.closePath(); g.strokePath(); }
+    else g.strokeRect(X(c.own.x0), Y(c.own.y0), (c.own.x1 - c.own.x0) * W.cellW, (c.own.y1 - c.own.y0) * W.cellH);
     if (c.door) { g.lineStyle(lw, GCV_COL.click, .6); g.strokeRect(X(c.door.x0), Y(c.door.y0), (c.door.x1 - c.door.x0) * W.cellW, (c.door.y1 - c.door.y0) * W.cellH); }
   }
   // doors and arrival points in green
@@ -117,6 +121,7 @@ function _gcvFrame() {
   if (_gw.box && _gcv.box !== _gw.box) _gcvBind(_gw.box);
   if (_gcv.nw !== nw || !_gcv.g || !_gcv.g.scene) {
     if (_gcv.g) try { _gcv.g.destroy(); } catch (e) { /* the scene went with it */ }
+    if (_gcv.feet) { try { _gcv.feet.destroy(); } catch (e) { /* the scene went with it */ } _gcv.feet = null; }
     _gcv.nw = nw; _gcv.g = nw.root.scene.add.graphics(); _gcv.g.setDepth(89500); nw.root.add(_gcv.g); _gcv.key = '';
   }
   const inRoom = typeof _grm !== 'undefined' && _grm.me, cam = nw.camera(), step = Math.round(Math.log2(cam.scale || 1) * 2);
@@ -127,6 +132,16 @@ function _gcvFrame() {
       _gcv.data = gardenCollideData(); _gcv.gridRef = _gw.grid; _gcv.solidRef = _gw.solids; _gcv.key = key;
       _gcvDraw(_gcv.g, _gcv.data, cam.scale);
     }
+  }
+  // your own feet, every frame: the small oval that is tested against everything above (so its size can be judged
+  // against the figure, and you can see what caught it)
+  if (!_gcv.feet || !_gcv.feet.scene) { _gcv.feet = nw.root.scene.add.graphics(); _gcv.feet.setDepth(89501); nw.root.add(_gcv.feet); }
+  _gcv.feet.setVisible(!inRoom);
+  if (!inRoom && typeof GW_FOOT !== 'undefined') {
+    const W = GARDEN_WORLD, fx = _gw.px * W.cellW, fy = W.sky + _gw.py * W.cellH, lw = Math.max(1, 1.5 / (cam.scale || 1));
+    _gcv.feet.clear(); _gcv.feet.fillStyle(0xffffff, .35); _gcv.feet.fillEllipse(fx, fy, GW_FOOT.x * 2 * W.cellW, GW_FOOT.y * 2 * W.cellH);
+    _gcv.feet.lineStyle(lw * 2.2, 0x2b2118, .9); _gcv.feet.strokeEllipse(fx, fy, GW_FOOT.x * 2 * W.cellW, GW_FOOT.y * 2 * W.cellH);
+    _gcv.feet.lineStyle(lw, 0xffffff, 1); _gcv.feet.strokeEllipse(fx, fy, GW_FOOT.x * 2 * W.cellW, GW_FOOT.y * 2 * W.cellH);
   }
   _gcv.raf = requestAnimationFrame(_gcvFrame);
 }
@@ -148,7 +163,7 @@ function _gcvLegend(on) {
   if (!on) { if (el) el.remove(); _gcv.legend = null; if (_gcv.tip) { _gcv.tip.remove(); _gcv.tip = null; } return; }
   if (!el || !el.isConnected) {
     el = _gcv.legend = document.createElement('div'); el.className = 'gd-collide-key';
-    el.innerHTML = '<b>What blocks walking</b><span><i class="is-block"></i>blocks your feet</span><span><i class="is-water"></i>water</span><span><i class="is-click"></i>click area</span><span><i class="is-door"></i>door or arrival</span><button type="button" data-collide-off>Hide <kbd>Shift</kbd>+<kbd>C</kbd></button>';
+    el.innerHTML = '<b>What blocks walking</b><span><i class="is-block"></i>blocks your feet</span><span><i class="is-water"></i>water</span><span><i class="is-click"></i>click area</span><span><i class="is-door"></i>door or arrival</span><span><i class="is-feet"></i>your feet</span><button type="button" data-collide-off>Hide <kbd>Shift</kbd>+<kbd>C</kbd></button>';
     el.addEventListener('click', ev => { if (ev.target.closest('[data-collide-off]')) gardenCollideToggle(false); });
     box.appendChild(el);
   }
@@ -174,6 +189,7 @@ function gardenCollideToggle(on) {
   } else {
     if (_gcv.raf) { cancelAnimationFrame(_gcv.raf); clearTimeout(_gcv.raf); } _gcv.raf = 0;
     if (_gcv.g) { try { _gcv.g.destroy(); } catch (e) { /* gone with the scene */ } _gcv.g = null; }
+    if (_gcv.feet) { try { _gcv.feet.destroy(); } catch (e) { /* gone with the scene */ } _gcv.feet = null; }
     _gcvBind(null); _gcv.nw = null; _gcv.data = null;
   }
   const hud = typeof _ghBox === 'function' && _ghBox();

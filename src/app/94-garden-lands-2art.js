@@ -482,7 +482,18 @@ const _GLD_PROP_ART = {
   bandstand(sc) { const A = GART, Wd = GART_PAL.wood, snow = sc.season === 'winter'; let c = ''; for (const x of [-34, -12, 12, 34]) c += A.S('#e8e0d0', 3, `M${x} -10V-44`); return A.P(Wd[1], A.ell(0, -5, 44, 9)) + A.P(Wd[3], A.ell(-6, -8, 30, 4), 0.5) + c + A.P('#c8483a', 'M-42 -44Q-20 -60 0 -72Q20 -60 42 -44Q0 -50 -42 -44z') + A.P('#f4e8d0', 'M-14 -46Q-8 -60 0 -72Q8 -60 14 -46Q0 -49 -14 -46z', 0.9) + (snow ? A.P(GART_PAL.snow, 'M-30 -52Q-10 -64 0 -72Q10 -64 30 -52Q0 -60 -30 -52z') : '') + A.P('#f2c432', A.circ(0, -74, 2.500)); },
   fountain(sc) { const A = GART, St = GART_PAL.stone, frozen = sc.season === 'winter'; return A.P(St[1], A.ell(0, -5, 40, 9)) + A.P(frozen ? '#d6e8f0' : '#5fb0cc', A.ell(0, -7, 34, 6.500)) + A.P(St[2], A.rrect(-5, -30, 10, 24, 2)) + A.P(St[1], A.ell(0, -30, 15, 4)) + A.P(frozen ? '#d6e8f0' : '#9ad4ee', A.ell(0, -31, 12, 2.800)) + (frozen ? '' : A.S('#bfe8f6', 1.3, 'M-4 -33Q-14 -42 -17 -14M4 -33Q14 -42 17 -14M0 -34V-44', 0.9)) + A.P('#f2c432', A.circ(-14, -7, 1.300) + A.circ(11, -6, 1.300)); },
   windmill(sc) { const A = GART, St = GART_PAL.stone, Wd = GART_PAL.wood; const sail = (a) => `<g transform="translate(0 -70) rotate(${a})">${A.P(Wd[0], A.rect(-1.500, -44, 3, 44))}${A.P('#f4ecd8', A.rect(1.500, -42, 10, 32))}${A.S(Wd[0], 0.6, 'M1.500 -32H11.500M1.500 -22H11.500', 0.7)}</g>`; return A.P(St[2], 'M-20 0L-13 -66H13L20 0z') + A.P(St[3], 'M-17 -2L-11 -64H-5L-9 -2z', 0.7) + A.P(Wd[1], A.rrect(-6, -22, 12, 22, 5)) + A.P('#8a4a30', 'M-16 -64Q0 -86 16 -64z') + (sc.season === 'winter' ? A.P(GART_PAL.snow, 'M-15 -65Q0 -86 15 -65Q0 -74 -15 -65z') : '') + sail(20) + sail(110) + sail(200) + sail(290) + A.P(Wd[3], A.circ(0, -70, 3)); },
-  cross() { const A = GART, St = GART_PAL.stone; return A.P(St[1], A.rrect(-14, -6, 28, 6, 1.500)) + A.P(St[2], A.rrect(-10, -11, 20, 6, 1.500)) + A.P(St[2], A.rect(-3, -42, 6, 32)) + A.P(St[3], A.rect(-2.400, -42, 2, 32), 0.7) + A.P(St[2], A.rrect(-11, -38, 22, 6, 1.500)) + A.S(St[0], 0.9, 'M-5 -7h10', 0.7); },
+  // (village fix round 2) a village market cross, not a headstone: three worn steps of honey limestone, a socket stone, a
+  // tall tapering shaft and a little carved lantern head with its cross, lichen on the steps and the treads worn hollow
+  cross() { const A = GART, L = ['#8c8068', '#b4a68a', '#cdbf9f', '#e2d6ba'], dk = '#5e5444', moss = '#7d8a4a';
+    let s = A.P('#000000', A.ell(3, 1, 23, 4.4), 0.22);
+    for (const [w, y, h] of [[38, -7, 7], [30, -14, 7], [22, -21, 7]]) { /* (the bottom step as wide as the cross's block on the ground) */ s += A.P(L[1], A.rrect(-w / 2, y, w, h, 1.2)) + A.P(L[3], A.rrect(-w / 2 + 1, y, w - 2, 2.2, 1), 0.85) + A.P(L[0], A.rect(-w / 2, y + h - 1.6, w, 1.6), 0.7) + A.S(dk, 0.6, `M${-w / 2 + w * .3} ${y + 1}v${h - 2}M${w * .18} ${y + 1}v${h - 2}`, 0.35) + A.P(L[2], A.ell(-w * .05, y + 1.4, w * .22, 1), 0.6); }
+    s += A.P(moss, A.ell(-15, -2, 3.4, 1.3), 0.75) + A.P(moss, A.ell(11, -9, 2.6, 1.1), 0.6) + A.P('#c8b85a', A.ell(-7, -16, 2, 0.9), 0.7) + A.P('#c8b85a', A.ell(13, -2.6, 2.2, 1), 0.6);
+    s += A.P(L[1], A.rrect(-8, -30, 16, 9, 1)) + A.P(L[3], A.rect(-7, -30, 14, 2), 0.8) + A.P(L[0], A.rect(4, -30, 4, 9), 0.5);
+    s += A.P(L[2], 'M-3.6 -30L-2.4 -80H2.4L3.6 -30z') + A.P(L[3], 'M-3.6 -30L-2.4 -80H-0.6L-1.4 -30z', 0.8) + A.P(L[0], 'M1.6 -30L1.2 -80H2.4L3.6 -30z', 0.6);
+    s += A.P(L[1], A.rrect(-4.6, -83, 9.2, 3.4, 1)) + A.P(L[2], A.rect(-5.4, -96, 10.8, 13)) + A.P(L[3], A.rect(-5.4, -96, 3, 13), 0.7) + A.P(dk, 'M-2.4 -85v-6.6q2.4 -2.8 4.8 0v6.6z', 0.75);
+    s += A.P(L[1], 'M-7 -96L0 -102L7 -96z') + A.P(L[3], 'M-7 -96L0 -102L0 -96z', 0.6);
+    s += A.P(L[2], A.rect(-1.1, -113, 2.2, 12)) + A.P(L[2], A.rect(-4.4, -109.5, 8.8, 2.2)) + A.P(L[3], A.rect(-1.1, -113, 0.9, 12), 0.7);
+    return s; },
   finger() { const A = GART, Wd = GART_PAL.wood; return _gwWoodPost(0, 40, 4.5) + A.P(Wd[1], 'M2 -37H20L24 -34L20 -31H2z') + A.P(Wd[3], 'M-2 -29H-20L-24 -26L-20 -23H-2z') + A.P(Wd[2], 'M2 -21H18L22 -18L18 -15H2z') + A.S(Wd[0], 0.8, 'M6 -34h10M-6 -26h-10M6 -18h8', 0.7); },
   seat() { const A = GART, Wd = GART_PAL.wood; return A.P(Wd[0], A.rect(-30, -9, 4, 9) ) + A.P(Wd[0], A.rect(26, -9, 4, 9)) + A.P(Wd[1], A.rrect(-34, -13, 68, 5, 1.500)) + A.P(Wd[1], A.rrect(-34, -28, 68, 6, 1.500)) + A.P(Wd[3], A.rect(-32, -27, 64, 1.400), 0.7) + A.S(Wd[0], 3, 'M-28 -13V-26M28 -13V-26'); },
   topiary(sc) { const A = GART, c = sc.season === 'winter' ? '#6f8470' : '#3f7a3e', l = sc.season === 'winter' ? '#94a48c' : '#5f9a52'; return A.P('#8a5a3a', 'M-9 0L-7 -9H7L9 0z') + A.P(c, A.circ(0, -20, 13) + A.circ(-2, -35, 8)) + A.P(l, A.circ(-4, -24, 6) + A.circ(-4, -38, 3.500), 0.9); },
@@ -535,7 +546,7 @@ const _GLD_PROP_ART = {
   treehouse(sc) { const A = GART, Wd = GART_PAL.wood, lf = sc.season === 'winter' ? '#9aa890' : sc.season === 'autumn' ? '#c8802e' : '#4f8a44'; return A.P('#5a3f28', 'M-10 0L-7 -66H7L10 0z') + A.P(lf, A.blob(A.rng(4), 0, -92, 44, 26, 11, 0.2)) + A.P(Wd[1], A.rrect(-30, -60, 60, 4, 1)) + A.P(Wd[3], A.rrect(-22, -82, 44, 22, 1.500)) + A.P('#3a2a1a', A.rect(-5, -76, 10, 16)) + A.P('#8a4a30', 'M-28 -80L0 -96L28 -80z') + A.S(Wd[0], 1.300, 'M22 -56V-14M28 -56V-14M22 -46H28M22 -36H28M22 -26H28') + A.S('#c8bc90', 0.7, 'M-26 -56V-12'); },
   clamp() { const A = GART; return A.P('#5a5a3a', 'M-34 0Q-24 -24 0 -26Q24 -24 34 0z') + A.P('#3a3a2a', 'M-12 -24Q0 -28 12 -24Q6 -20 -6 -20z') + A.P('#7a7a4a', 'M-28 -2Q-20 -18 -8 -22Q-14 -10 -16 -2z', 0.7); },
   barrels() { const A = GART, Wd = GART_PAL.wood; const b = (x, y) => A.P(Wd[1], A.rrect(x - 9, y - 18, 18, 18, 5)) + A.S('#3a3f44', 1.300, `M${x - 9} ${y - 13}h18M${x - 9} ${y - 5}h18`) + A.P(Wd[3], A.rect(x - 6, y - 16, 3, 14), 0.5); return b(-12, 0) + b(9, 0) + b(-2, -17); },
-  pump() { const A = GART; return A.P('#3f6f5a', A.rrect(-6, -36, 12, 36, 2)) + A.P('#2f5a48', A.rrect(-8, -40, 16, 5, 2)) + A.S('#2f5a48', 3, 'M6 -30L16 -24M-6 -36L-22 -46') + A.P('#7a8288', 'M12 -8L26 -8L24 0H14z') + A.P('#5fb0cc', A.ell(19, -7, 5, 1.300)); },
+  pump() { return gardenPumpArt(0, null); },
   boles(sc) { const A = GART, St = GART_PAL.stone; return A.P(St[1], A.rrect(-22, -32, 44, 32, 2)) + A.P('#3a3a30', A.rrect(-17, -24, 14, 18, 6)) + A.P('#3a3a30', A.rrect(3, -24, 14, 18, 6)) + A.P('#c89a4a', 'M-15 -6Q-15 -20 -10 -20Q-5 -20 -5 -6z') + A.P('#c89a4a', 'M5 -6Q5 -20 10 -20Q15 -20 15 -6z'); },
   wish() { const A = GART, St = GART_PAL.stone, Wd = GART_PAL.wood; return A.P(St[2], A.rrect(-16, -14, 32, 14, 7)) + A.P('#12222e', A.ell(0, -14, 13, 4)) + A.S(Wd[0], 2.600, 'M-14 -12V-38M14 -12V-38M-14 -32H14') + A.P('#a8483a', 'M-22 -36L0 -50L22 -36z') + A.S('#6a4a2e', 1, 'M0 -32V-20') + A.P('#f2c432', A.circ(-20, -3, 1.500) + A.circ(19, -2, 1.200)); },
   mill() { const A = GART, Wd = GART_PAL.wood, St = GART_PAL.stone; let sp = ''; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; sp += `M42 -18L${42 + Math.cos(a) * 16} ${-18 + Math.sin(a) * 16}`; } return A.P(St[1], A.rect(-48, -40, 76, 40)) + A.P(St[3], A.rect(-46, -38, 12, 36), 0.5) + A.P('#8a4a30', 'M-54 -38L-10 -62L34 -38z') + A.P(Wd[1], A.rrect(-14, -24, 14, 24, 2)) + A.P('#3a4a5a', A.rect(-38, -30, 10, 10)) + A.S(Wd[0], 3, A.circ(42, -18, 16)) + A.S(Wd[0], 1.800, sp); },
@@ -574,7 +585,20 @@ const _GLD_PROP_ART = {
   frogstone() { const A = GART, St = GART_PAL.stone; return A.P(St[1], 'M-18 0Q-20 -16 -6 -20Q10 -22 18 -8Q20 -2 18 0z') + A.P(St[3], A.circ(-8, -21, 4) + A.circ(4, -22, 4)) + A.P('#2a2a2a', A.circ(-8, -21, 1.500) + A.circ(4, -22, 1.500)) + A.S(St[0], 1, 'M-12 -11Q0 -6 12 -10'); },
   churn() { const A = GART; const c = (x) => A.P('#a8b0b6', `M${x - 6} 0L${x - 7} -14L${x - 3} -20V-24H${x + 3}V-20L${x + 7} -14L${x + 6} 0z`) + A.P('#7a8288', A.rect(x - 4, -26, 8, 2.500)) + A.P('#ffffff', A.rect(x - 4.500, -14, 2, 12), 0.4); return A.P('#8a6a44', A.rrect(-16, -2, 32, 3, 1)) + c(-7) + c(8); },
   drift() { const A = GART; return A.S('#b8ae98', 4.400, 'M-34 0Q-30 -34 -6 -48') + A.S('#a89e88', 3.800, 'M32 0Q30 -30 2 -50') + A.S('#c8bea8', 2.200, 'M-20 -14L24 -18M-10 -34L16 -30M-30 -8L-38 -22M28 -8L38 -20'); },
-  sunken() { const A = GART, St = GART_PAL.stone; return A.P(St[0], A.rrect(-40, -14, 80, 20, 5)) + A.P(St[1], A.rrect(-34, -11, 68, 15, 4)) + A.P(St[2], A.rrect(-28, -8, 56, 10, 3)) + A.P('#4f93be', A.rrect(-22, -6, 44, 7, 2)) + A.P('#ffffff', A.rect(-16, -5, 18, 0.900), 0.6); },
+  // (village fix round 2) let into the ground, not a blue capsule floating on the shrubs: a ring of worn flags flush with the
+  // turf, the inner walls going down in shade (the far wall dark, the near one lit), three steps down on the left, dark still
+  // water with the sky in it, moss and ferns growing in over the rim and a fringe of grass all round its edge
+  sunken() { const A = GART, flag = ['#a49c88', '#b8b09c', '#8e8674', '#c6bea8'], R = A.rng ? A.rng(47) : Math.random;
+    let s = A.P('#3a4a2a', A.ell(1, -2, 46, 15), 0.22) + A.P('#6e6656', A.ell(0, -3, 42, 13));
+    for (let i = 0; i < 14; i++) { const a0 = i / 14 * Math.PI * 2, a1 = (i + 1) / 14 * Math.PI * 2 - .07, pt = (a, rx, ry) => `${(Math.cos(a) * rx).toFixed(1)} ${(Math.sin(a) * ry - 3).toFixed(1)}`; s += A.P(flag[i % 4], `M${pt(a0, 41, 12.6)}A41 12.6 0 0 1 ${pt(a1, 41, 12.6)}L${pt(a1, 30, 8.4)}A30 8.4 0 0 0 ${pt(a0, 30, 8.4)}Z`); }
+    s += A.P('#efe8d4', 'M-40 -5A41 12.6 0 0 1 0 -15.6A41 12.6 0 0 1 36 -9', 0) + A.S('#e4dcc6', 1, 'M-36 -8A40 12 0 0 1 30 -12.5', 0.5);
+    s += A.P('#2e3832', A.ell(0, -3, 30, 8.4)) + A.P('#4a5248', 'M-30 -3A30 8.4 0 0 1 30 -3L26 -1A26 6 0 0 0 -26 -1Z', 0.9) + A.P('#7a7262', 'M-30 -3A30 8.4 0 0 0 30 -3L26 -4A26 6 0 0 1 -26 -4Z', 0.55);
+    s += A.P('#2c5a66', A.ell(1, -1.6, 24, 5.6)) + A.P('#3e7482', A.ell(-4, -2.6, 16, 3.2), 0.7) + A.P('#cfe6ea', A.ell(-8, -3.4, 7, 0.9), 0.55) + A.P('#cfe6ea', A.ell(6, -0.6, 4, 0.6), 0.4);
+    for (let k = 0; k < 3; k++) s += A.P(k % 2 ? '#9a927e' : '#b0a892', A.rect(-29 + k * 3.2, -6.4 + k * 2.2, 7, 2.2)) + A.P('#5e584a', A.rect(-29 + k * 3.2, -4.4 + k * 2.2, 7, .7), 0.6);
+    for (const [x, y, w] of [[-34, -9, 5], [24, -12, 4], [36, -4, 4.5], [-12, -14.6, 3.5], [10, 7, 4]]) s += A.P('#6f8a44', A.ell(x, y, w, 1.5), 0.85) + A.P('#8fa858', A.ell(x - 1, y - .6, w * .55, .8), 0.8);
+    for (let i = 0; i < 22; i++) { const a = i / 22 * Math.PI * 2 + .1, x = Math.cos(a) * 43, y = Math.sin(a) * 13.6 - 3, h = 3 + (i * 7 % 5); s += A.S(i % 3 ? '#5e7a3a' : '#7a9a48', 1, `M${x.toFixed(1)} ${y.toFixed(1)}q${(Math.cos(a) * 1.5).toFixed(1)} ${(-h * .6).toFixed(1)} ${(Math.cos(a) * 2.5).toFixed(1)} ${(-h).toFixed(1)}`, 0.9); }
+    for (const [x, y, sc] of [[-42, -6, 1], [40, -8, .85]]) for (let j = 0; j < 5; j++) { const a = -Math.PI / 2 + (j - 2) * .5; s += A.S('#4e7a34', 1.6, `M${x} ${y}q${(Math.cos(a) * 5 * sc).toFixed(1)} ${(Math.sin(a) * 4 * sc - 2).toFixed(1)} ${(Math.cos(a) * 9 * sc).toFixed(1)} ${(Math.sin(a) * 8 * sc).toFixed(1)}`, 0.9); }
+    void R; return s; },
   picnic() { const A = GART, Wd = GART_PAL.wood; return A.P(Wd[1], A.rrect(-30, -22, 60, 5, 1.500)) + A.P(Wd[3], A.rect(-28, -21.500, 56, 1.200), 0.7) + A.S(Wd[0], 2.800, 'M-20 -18L-26 0M20 -18L26 0') + A.P(Wd[1], A.rrect(-40, -9, 80, 4, 1.300)) + A.P('#d83a3a', A.rect(-8, -23, 16, 1.400)); },
   mile() { const A = GART, St = GART_PAL.stone; return A.P(St[1], 'M-8 0V-20Q0 -28 8 -20V0z') + A.P(St[3], 'M-6 -2V-20Q-3 -24 -1 -24V-2z', 0.6) + A.S(St[0], 1.400, A.ell(0, -13, 2.400, 3.400)); },
   boots() { const A = GART, c = '#6a4a2e', d = '#4a3220'; const one = (x) => A.P(c, `M${x - 4} -15H${x + 3}V-6L${x + 8} -3V0H${x - 4}z`) + A.P(d, A.rect(x - 4, -1.500, 12, 1.700)) + A.S('#c8a06a', 0.8, `M${x - 3} -12h5M${x - 3} -9h5`, 0.9); return A.P('#8a7a5a', A.rrect(-15, -1, 30, 2.400, 1)) + one(-9) + one(3); },
@@ -597,6 +621,8 @@ const _GLD_PROP_ART = {
   office(sc, o) { const A = GART, Wd = GART_PAL.wood, snow = sc.season === 'winter', night = sc.tod === 'night' || sc.tod === 'dusk'; return A.P('#d8c490', A.rrect(-52, -48, 104, 48, 3)) + A.S(Wd[0], 1, 'M-52 -36H52M-52 -24H52M-52 -12H52', 0.3) + A.P(Wd[1], A.rrect(-9, -32, 18, 32, 2)) + A.P(Wd[3], A.circ(5, -15, 1.400)) + A.P(night ? '#ffe08a' : '#a8c8d8', A.rrect(-40, -36, 20, 16, 2)) + A.P(night ? '#ffe08a' : '#a8c8d8', A.rrect(20, -36, 20, 16, 2)) + A.S(Wd[0], 1.2, 'M-30 -36V-20M-40 -28H-20M30 -36V-20M20 -28H40') + A.P('#7a5a3a', 'M-60 -46Q-30 -78 0 -80Q30 -78 60 -46Q0 -56 -60 -46z') + A.P('#a07a50', 'M-54 -48Q-30 -72 -6 -76Q-22 -62 -28 -50z', 0.7) + (snow ? A.P(GART_PAL.snow, 'M-58 -47Q-30 -78 0 -80Q30 -78 58 -47Q0 -66 -58 -47z') : '') + (typeof gardenCraftBuildingSkin === 'function' ? gardenCraftBuildingSkin({ id: 'land-office' }, sc, { left: -52, right: 52, eave: -47, peak: -80, foot: 0, roofLeft: -60, roofRight: 60, roof: '#7a5a3a', wood: Wd[1], windows: [{ x: -40, y: -36, w: 20, h: 16 }, { x: 20, y: -36, w: 20, h: 16 }], door: { x: -9, y: -32, w: 18, h: 32 } }) : '') + `<g transform="translate(0 -60)">${A.P('#f8ecc8', A.rrect(-11, -8, 22, 15, 3))}${A.S('#6a8a4a', 1.6, 'M-7 3Q-3 -5 0 -1T7 -4')}${A.P('#c8352a', A.circ(3, -3, 1.700))}</g>`; },
   lamp(sc) { const A = GART, on = sc.tod === 'night' || sc.tod === 'dusk'; return A.S('#2f3438', 2.2, 'M0 0V-28M0 -28Q6 -32 7 -28') + A.P('#2f3438', A.rrect(3.400, -28, 7, 3, 1)) + A.P(on ? '#ffd36a' : '#d8d4c4', A.rrect(4, -25, 6, 7, 1.500)) + (on ? A.P('#ffd36a', A.circ(7, -22, 8), 0.22) : ''); },
 };
+// (round 3) the valley's painted seats and lamps draw as the classic bench and lamp when the painted garden is off
+_GLD_PROP_ART.vseat = _GLD_PROP_ART.seat; _GLD_PROP_ART.vlamp = _GLD_PROP_ART.lamp;
 function _gldHedgeRow(p, sc) {
   const A = GART, W = GARDEN_WORLD, x0 = p.x * W.cellW, x1 = (p.x + p.w) * W.cellW, by = W.sky + (p.y + 1) * W.cellH - 2, c = sc.season === 'winter' ? ['#55695a', '#6f8470', '#94a48c'] : sc.season === 'autumn' ? ['#5f6a34', '#7f8a40', '#a8a450'] : ['#3a6a3a', '#4f8446', '#74a858'], r = A.rng(A.hash(p.id));
   let b = '', t = '', l = '';
@@ -604,8 +630,23 @@ function _gldHedgeRow(p, sc) {
   for (let i = 0; i < (x1 - x0) / 5; i++) l += A.leaf(x0 + r() * (x1 - x0), by - 4 - r() * 20, r() * 6.2, 2.6, 0.8);
   return `<path fill="#1a2a14" fill-opacity="0.2" d="${A.ell((x0 + x1) / 2, by + 1, (x1 - x0) / 2 + 3, 3)}"/>` + A.P(c[0], A.rrect(x0, by - 13, x1 - x0, 14, 5)) + A.P(c[0], b) + A.P(c[1], t) + A.P(c[2], l, 0.7);
 }
+/** The village pump (round 6, the player's moves): the lever out on the left at shoulder height (lever: its turn in degrees about the pivot,
+ * + lifts the end), a spout on the right with the bucket right under its mouth, and (flow 0 to 1) the water running from the spout into it.
+ * World px, feet at 0,0. The pump action draws the same picture with the lever moving (94-garden-zz-7act-1core.js _gaPumpWorks). */
+function gardenPumpArt(lever, flow) {
+  const A = GART, a = Math.round((lever || 0) * 10) / 10, f = flow == null ? -1 : Math.max(0, Math.min(1, flow));
+  return A.P('#7a8288', 'M9 -8L22 -8L20.4 0H10.6z') + A.S('#4a5258', 1, 'M9.6 -5.4H21.4') + A.P('#5fb0cc', A.ell(15.5, -7.4, 5.4, 1.4))
+    + A.P('#3f6f5a', A.rrect(-6, -36, 12, 36, 2)) + A.P('#4f8a70', A.rect(-4.6, -34, 2.6, 32), 0.7) + A.P('#2f5a48', A.rrect(-8, -40, 16, 5, 2))
+    + A.P('#2f5a48', 'M5 -28H14Q17.4 -28 17.4 -24.6V-20.4H14V-24.4H5z') + A.P('#1e3a2e', A.ell(15.7, -20.4, 1.9, 0.7))
+    + (f >= 0 ? `<g class="ga-flow" opacity="${Math.round(f * 100) / 100}">` + A.P('#9ad4ee', 'M14.5 -20.4Q15.5 -14 14.9 -7.6H16.6Q16.2 -14 16.9 -20.4z', 0.9) + A.P('#ffffff', A.ell(15.6, -7.6, 3.4, 0.9), 0.7) + '</g>' : '')
+    + A.P('#2f5a48', 'M-6 -25.4L-9.4 -23.6V-20.4L-6 -18.6z')   // (the lever's bracket on the body's side, at shoulder height for you)
+    + `<g class="ga-lever" transform="rotate(${a} -8 -22)">` + A.S('#2f5a48', 3, 'M-8 -22L-22.6 -20') + A.P('#24463a', A.ell(-23.2, -19.9, 2.3, 2)) + '</g>' + A.P('#24463a', A.ell(-8, -22, 1.9, 1.9));
+}
 function _gldDraw(kind, p, sc, o) {
-  const fn = _GLD_PROP_ART[kind]; if (!fn) return '';
+  // (a thing with no classic drawing that the Vale paints itself, the region prizes among them, still needs its row, or the
+  // painted world never stands it: round 3, 19 Nov 2026, the prizes were won but never drawn)
+  // (round 3 layouts) the High orchard's new places are painted (94-garden-paint-terrain-3orchard.js); drawn plainly, they borrow a near kind
+  const fn = _GLD_PROP_ART[kind] || _GLD_PROP_ART[{ 'cider-press': 'barrels', 'orchard-bell': 'post', 'cider-board': 'post', 'bee-boles': 'skeps', 'cliff-pippin': 'oak' }[kind]]; if (!fn) return o && o.native && p && p.id && window.GardenPaintedMarks && GardenPaintedMarks.knows(p.id) ? '<g class="gd-painted-only"></g>' : '';
   const W = GARDEN_WORLD, cx = (p.x + p.w / 2) * W.cellW, by = W.sky + (p.y + p.h) * W.cellH - 3;
   const sh = `<ellipse cx="${_gwN(cx + 2)}" cy="${_gwN(by + 1)}" rx="${_gwN(p.w * W.cellW / 2 + 2)}" ry="4" fill="#1a2a14" fill-opacity="0.2"/>`;
   const art = fn(sc, o);
@@ -685,7 +726,8 @@ function _gldIslandRegionStands() {
       : orchard ? { maximum: 18, heights: [184, 164, 144], gapX: 3.35, gapY: 3.7, rows: true }
         : /ruin/.test(theme) ? { maximum: 16, heights: [218, 186, 156], gapX: 2.55, gapY: 3.1, edge: true }
           : /valley|mill/.test(theme) ? { maximum: 10, heights: [198, 174, 150], gapX: 2.75, gapY: 3.3, edge: true }
-            : mountain ? { maximum: 12, heights: [210, 180, 152], gapX: 2.6, gapY: 3.1, edge: true } : null;
+            : null;   // (the fells: no generic grove trees; Cloudbreak's own painter plants the plan's Scots pine groups, and a
+            // crown here rose out of the bothy's roof)
     // The home village intentionally keeps its broad open green.
     if (!profile || !region.zone) continue;
     const points = region.polygons.flat(), xs = points.map(p => p[0]), ys = points.map(p => p[1]);

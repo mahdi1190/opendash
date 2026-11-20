@@ -76,6 +76,7 @@ function _gfsWant(b, m) {
 function _gfsPlaceKey() { return typeof _gll === 'undefined' ? 'own' : _gll.role === 'visit' ? 'v|' + (_glv.fid || '') : 'own'; }
 
 /* ---------- the shadows ---------- */
+const GFS_WORLD_SHOW = .5;   // how big an outdoor fish shadow is drawn against its stage length (_gfsVisualStep)
 function _gfsLen(cm) { return 10 + 5.2 * Math.sqrt(Math.max(1, Number(cm) || 1)); }   // stage units: a 5 cm minnow about 22 (half a cell), a 1 m carp 62, a 2.8 m sturgeon 97
 /** The raised, swept dorsal overlay belongs to large sharks. Other families keep their own shadow anatomy. */
 function gardenFishFin(def) { return !!def && def.cat === 'fish' && def.look.s === 'shark' && def.cm[1] >= 120; }
@@ -108,7 +109,10 @@ function _gfsLayer() {
   if (_gfs.layer && _gfs.layer.isConnected && _gfs.layer.ownerSVGElement === _gw.svg) { if (!native) _gfsPierClip(_gw.svg, _gfs.layer); return _gfs.layer; }
   const objs = _gw.svg.querySelector('.gd-objects'); if (!objs || !objs.parentNode) return null;
   const g = _gwEl('g', Object.assign({ class: 'gd-school', 'pointer-events': 'none', 'aria-hidden': 'true' }, native ? {} : { 'clip-path': 'url(#gd-school-clip)' }));
-  if (native && g.target) g.target.setDepth(-9300);
+  // Over the painted water (-9590 .. -9583) and under the painted ground (-9350, -9346), which holds the footbridges'
+  // decks and rails, the stepping stones, the banks and the quay: at -9300 the fish swam over a bridge's boards and
+  // over the shadows things cast on the water (18 Nov 2026).
+  if (native && g.target) g.target.setDepth(-9360);
   // The same displayed decks cut fish shadows; the sea remains continuous.
   if (!native) _gfsPierClip(_gw.svg, objs);
   objs.parentNode.insertBefore(g, objs);
@@ -167,7 +171,9 @@ function _gfsVisualStep(f, state, dt, time, motion) {
   state.turn = turn; state.wobble = motion ? Math.sin(state.phase) * (f.st === GF_ST.hooked ? 4.5 : 1.25) * gardenFishWobble(f.def) : 0;
   state.angle = state.heading + state.wobble * Math.PI / 180;
   state.side = motion && f.st === GF_ST.swim ? Math.sin(state.phase * .47 + f.seed) * Math.min(1.5, _gfsLen(f.cm) * .025) + Math.sin(turn) * 2 : 0;
-  state.size = 1 - (f.x < GARDEN_ROOM_X ? Math.max(0, Math.min(.055, (f.y - 23) * .004)) : 0);
+  // (outdoors a shadow is drawn at half its stage length, to the world's scale: at full length a 30 cm fish was nearly the
+  //  player's height, so a narrow stream or a garden pool held sharks; a room's water keeps its own close-up size)
+  state.size = f.x < GARDEN_ROOM_X ? GFS_WORLD_SHOW * (1 - Math.max(0, Math.min(.055, (f.y - 23) * .004))) : 1;
   _gfsVisualInteraction(f, state, dt, motion, distance);
   f.face = Math.cos(state.heading) < 0 ? -1 : 1;
   return state;
@@ -828,7 +834,7 @@ function _gfsSay2(text) { if (typeof _gllFeed === 'function') _gllFeed(text); }
 /** Who is stomping about: you, unless you are creeping, and anyone in your garden. */
 function _gfsStomps() {
   const out = [], t = Date.now();   // clock-ok: how long a creep lasts
-  if (_gw.moving && !_gw.sneak && !_gw.boat && !_gw.keys.has('shift')) out.push({ x: _gw.px, y: _gw.py, me: true });
+  if (_gw.moving && !_gw.sneak && !_gw.boat && !_gw.keys.has('creep')) out.push({ x: _gw.px, y: _gw.py, me: true });
   if (typeof _gll !== 'undefined' && _gll.role === 'host') for (const A of _gll.actors.values()) if (A.moving && !A.stationaryPosition && !(A.sneakUntil > t)) { const point = gardenLiveActorPosition(A); if (point) out.push(point); }
   return out;
 }

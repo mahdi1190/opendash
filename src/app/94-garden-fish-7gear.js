@@ -95,15 +95,32 @@ function gardenWorkSvg(id, px) {
 }
 /** Where they stand: [{id, x, y, svg}] in cells. Beside the pier they follow its end; a pond's stock stands by each pond you have. */
 function gardenWorksArt(sc) {
-  const out = [], end = 25 + gardenPierMore(), put = (id, x, y) => { if (gardenWorkOwned(id)) { const svg = gardenWorkArt(id, sc); if (svg) out.push({ id, key: id + '-' + x + '-' + y, x, y, svg }); } };
+  // The places below are the first garden's, round its pier at x 24 ending at row 25. On the island the pier is where its
+  // layout row says: everything moves with it, and the feeder and the reed beds go to the nearest water (a reed bed in
+  // the shallows by the bank), never up on dry land, where they once stood on the fells.
+  let mx = 0, my = 0, snap = null;
+  if (GARDEN_WORLD.v >= 5 && typeof gardenIslandData === 'function') {
+    const pier = (gardenIslandData().static || []).find(p => p.id === 'pier');
+    if (pier) {
+      mx = pier.x - 24; my = pier.y + pier.h - 25;
+      // (and two cells clear of any landmark or building: a reed bed in front of the lighthouse hid its rock)
+      const stood = (gardenIslandData().static || []).filter(p => p.id !== 'pier' && !/^pier-/.test(p.id) && !p.walk);
+      const wet = (x, y) => typeof gardenIsWater === 'function' && gardenIsWater(Math.floor(x), Math.floor(y)), onDeck = (x, y) => x >= pier.x - .2 && x < pier.x + pier.w + .2 && y >= pier.y - .5 || stood.some(p => x > p.x - 2 && x < p.x + p.w + 2 && y > p.y - 2 && y < p.y + p.h + 2);
+      snap = (x, y, bank) => { for (let r = 0; r <= 4; r++) for (let a = 0; a < Math.max(1, r * 8); a++) { const t = a / Math.max(1, r * 8) * Math.PI * 2, px = Math.floor(x + Math.cos(t) * r) + .5, py = Math.floor(y + Math.sin(t) * r) + .5; if (!wet(px, py) || onDeck(px, py)) continue; if (bank && wet(px - 1, py) && wet(px + 1, py) && wet(px, py - 1) && wet(px, py + 1)) continue; return [px, py]; } return null; };
+    }
+  }
+  // (out.unbuilt: where a work you could build next will stand, for a marked-out place there; the piers are marked from their own rows)
+  const out = [], unbuilt = [], end = 25 + gardenPierMore(), put = (id, x0, y0, wetAs) => { const owned = gardenWorkOwned(id); if (!owned && (id === 'pool-stock' || /^pier-/.test(id) || unbuilt.some(u => u.id === id))) return; let x = x0 + (wetAs === 'abs' ? 0 : mx), y = y0 + (wetAs === 'abs' ? 0 : my); if (snap && wetAs && wetAs !== 'abs') { const p = snap(x, y, wetAs === 'bank'); if (!p) return; [x, y] = p; }
+    if (!owned) { const def = typeof gardenGearDef === 'function' ? gardenGearDef(id) : null; if (!(def && def.needs && !gardenWorkOwned(def.needs))) unbuilt.push({ id, key: 'plot-' + id, x, y, wet: !!wetAs && wetAs !== 'abs' }); return; } const svg = gardenWorkArt(id, sc); if (svg) out.push({ id, key: id + '-' + x + '-' + y, x, y, svg }); };
   put('pier-2', 24.1, 25.1);
   put('pier-3', 25.85, end - 0.4);
-  put('fish-feeder', 21.6, 22.5);
-  put('reed-beds', 15.4, 23.2); put('reed-beds', 30.6, 22.6); put('reed-beds', 37, 23.6);
+  put('fish-feeder', 21.6, 22.5, 'water');
+  put('reed-beds', 15.4, 23.2, 'bank'); put('reed-beds', 30.6, 22.6, 'bank'); put('reed-beds', 37, 23.6, 'bank');
   put('fishing-station', 25.45, end - 1);
   put('night-lantern', 24.15, end - 0.15);
   const open = new Set(sc.areas || []);
-  for (const a of GARDEN_AREAS) if (a.water && !a.fishing && open.has(a.id)) put('pool-stock', a.water.x - 0.5, a.water.y + a.water.h - 0.2);
+  for (const a of GARDEN_AREAS) if (a.water && !a.fishing && open.has(a.id)) put('pool-stock', a.water.x - 0.5, a.water.y + a.water.h - 0.2, 'abs');
+  out.unbuilt = unbuilt;
   return out;
 }
 /* ---------- what someone carries ---------- */

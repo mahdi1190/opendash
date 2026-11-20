@@ -181,7 +181,7 @@ function _wdFolkPick(m) {
 const WD_FOLK_MEET = Object.freeze({
   tam: Object.freeze(['market-stall', 1.2, 1.1]),
   bramble: Object.freeze(['notice-board', -1.6, 1.1]),
-  pip: Object.freeze(['tackle-shop', -1.6, 1.1]),
+  pip: Object.freeze(['lake-board', -1.4, 1.2]),   // (village fix round 2: by the Mere, not down at the quay's end, where Pip stood on the old angler)
   thistle: Object.freeze(['post-box', 1.6, 1.1]),
   wick: Object.freeze(['sundial', -1.6, 1.1]),
   quince: Object.freeze(['sundial', 1.6, 1.1]),
@@ -240,7 +240,7 @@ function _wdFolkSpawn(row) {
   };
   _wdf.S = wdSprite(spec); _wdf.row = row; _wdf.S.home = from;
 }
-function _wdFolkMarkup(row, mark) { return _wdFolkArt(row) + (mark ? '<g class="wd-mark" transform="translate(0 ' + (typeof gardenCastOn === 'function' && gardenCastOn() ? -gardenCastTop(row.id) - 6 : -56) + ')"><rect x="-9" y="-6" width="18" height="11" rx="5.5" fill="#fffdf4" stroke="#6a5a44" stroke-width="0.6"/><circle cx="-4" cy="-0.5" r="1.1" fill="#6a5a44"/><circle cy="-0.5" r="1.1" fill="#6a5a44"/><circle cx="4" cy="-0.5" r="1.1" fill="#6a5a44"/></g>' : ''); }
+function _wdFolkMarkup(row, mark) { return gardenActorSized(_wdFolkArt(row) + (mark ? '<g class="wd-mark" transform="translate(0 ' + (typeof gardenCastOn === 'function' && gardenCastOn() ? -gardenCastTop(row.id) - 6 : -56) + ')"><rect x="-9" y="-6" width="18" height="11" rx="5.5" fill="#fffdf4" stroke="#6a5a44" stroke-width="0.6"/><circle cx="-4" cy="-0.5" r="1.1" fill="#6a5a44"/><circle cy="-0.5" r="1.1" fill="#6a5a44"/><circle cx="4" cy="-0.5" r="1.1" fill="#6a5a44"/></g>' : '')); }
 function _wdFolkLeave(S) {
   if (S.gone) return;
   S.gone = true; S.hold = false; S.hit = 0;

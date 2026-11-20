@@ -433,17 +433,26 @@ function gardenFreshNote() {
   const g = _gdG(), key = 'gd-fresh-note:' + GARDEN_WORLD.lh;
   if (_gd.freshNoted || typeof document === 'undefined' || !g.seen || g.seen.fresh !== GARDEN_WORLD.lh) return;
   _gd.freshNoted = true;
-  try { if (localStorage.getItem(key)) return; localStorage.setItem(key, '1'); } catch (e) { /* private mode: once per page */ }
-  // Over the garden when it is open (an app toast sits under the full-screen garden and is never seen); the garden may
-  // still be opening, so wait for it a little; anywhere else, the app's own toast.
-  const msg = 'Your garden has a new home in Fleetwater Vale. Gardens start fresh in this version.';
+  try { if (localStorage.getItem(key)) return; } catch (e) { /* private mode: once per page */ }
+  // (marked as seen only once it is on screen: the fresh start runs while the app is still starting, when the home page
+  // asks the garden for its numbers, and a toast then had nowhere to go, so the note was used up unseen)
+  const seen = () => { try { localStorage.setItem(key, '1'); } catch (e) { /* private mode */ } };
+  // Over the garden when it is open (an app toast sits under the full-screen garden and is never seen); wait for the garden
+  // to open, a few minutes at most; then the app's own toast, once the app can show one.
+  const msg = 'Fleetwater Vale has been rebuilt, the village and every region round it. Gardens start fresh in this version.';
   let tries = 0;
   const shown = gardenShownNow;
   const say = () => {
-    if (shown() && typeof gardenMessage === 'function' && gardenMessage(msg, { icon: 'sprout', ms: 12000, log: true })) return;
-    const opening = typeof state !== 'undefined' && state && state.view === 'garden' || typeof _gdOnPage === 'function' && _gdOnPage();
-    if (opening && ++tries < 240) { setTimeout(say, 500); return; }   // (a first open can take a while: up to two minutes, then the app's toast)
-    if (typeof toast === 'function') toast(msg, { icon: 'sprout' });
+    // held over the garden's passing notes for twelve seconds (as a plain message the walking hint and the welcome replaced
+    // it at once, so nobody saw it), and kept in the recent list
+    if (shown() && typeof gardenMessageHold === 'function' && typeof _gmsgWhere === 'function' && _gmsgWhere()) {
+      seen(); gardenMessageHold('fresh-start', msg, { urgent: true }); setTimeout(() => gardenMessageDrop('fresh-start'), 12000);
+      if (typeof _toastRemember === 'function') _toastRemember(msg, '', 'sprout');
+      return;
+    }
+    if (shown() && typeof gardenMessage === 'function' && gardenMessage(msg, { icon: 'sprout', ms: 12000, log: true })) { seen(); return; }
+    if (++tries < 360) { setTimeout(say, 1000); return; }
+    if (typeof toast === 'function' && document.getElementById('toast-host')) { seen(); toast(msg, { icon: 'sprout' }); }
   };
   say();
 }

@@ -59,7 +59,13 @@ const GL_QUEUE = Object.freeze({ acts: Object.freeze(['plant', 'place', 'water']
 /** Room messages a host's rooms carry in a day, what it sends and what arrives from visitors: 80,000 is 4,000 of Cloudflare's 100,000 free requests (incoming socket messages count 20 to 1). Over thin, walking sends less. guestDay: one visitor's share (the relay holds them to it too: ROOM.guestDay). */
 const GL_BUDGET = Object.freeze({ day: 1e9, thin: 1e9, guestDay: 1e9, restMs: 15 * 60000 });   // no daily limits on people you have let in (the owner's choice); the relay stops rooms before Cloudflare's free day
 const GL_WALK_GAP = Object.freeze({ normal: 250, thin: 1500 });     // the least time between two destinations, ms
-const GL_EMOTES = Object.freeze(['wave', 'cheer', 'clap', 'bow', 'shrug', 'sit', 'dance', 'twirl', 'backflip', 'waltz', 'jazz']);
+const GL_EMOTES = Object.freeze(['wave', 'cheer', 'clap', 'bow', 'shrug', 'sit', 'dance', 'twirl', 'backflip', 'waltz', 'jazz',
+  // round 3: things done with the world (GARDEN_ACTS, 94-garden-zz-7act-0table.js), one message when each starts; an older app ignores them
+  'act-sit', 'act-dangle', 'act-lie', 'act-nap', 'act-ladder', 'act-shake', 'act-bell', 'act-pump', 'act-wish', 'act-warm', 'act-lean', 'act-read', 'act-look', 'act-feed', 'act-skim', 'act-shower', 'act-hide', 'act-climbtree', 'act-row', 'act-photo', 'act-laugh', 'act-angel',
+  // round 3, round 2 of the moves: up the trunk then on the branch, a swim, a kick, a stick for the pet, belly rubs, the busker's fiddle, picking up, fishing side by side
+  'act-perch', 'act-swim', 'act-kick', 'act-throwstick', 'act-rub', 'act-play', 'act-carry', 'act-fishsit', 'act-fishsitfront',
+  // round 3, round 3 of the moves: up the treehouse's ladder, up to the hay loft
+  'act-ladderhi', 'act-ladderlo']);
 const GL_PHRASES = Object.freeze([
   Object.freeze({ id: 'hi', t: 'Hello!' }), Object.freeze({ id: 'lovely', t: 'Your garden is lovely' }), Object.freeze({ id: 'look', t: 'Look at this!' }),
   Object.freeze({ id: 'help', t: 'Can I help?' }), Object.freeze({ id: 'thanks', t: 'Thank you!' }), Object.freeze({ id: 'follow', t: 'Follow me!' }),

@@ -146,7 +146,7 @@
       // Keep the western mainland beach; the northern backdrop needs no bright diagonal ribbon.
       main(band, 86 + i, (B) => { B.cx.clip(bandClip); for (const sh of [shoreS]) { V.strokePts(B, sh, P.shallow, 120, .3); V.strokePts(B, sh, P.sand, 60, 1); V.strokePts(B, sh, P.sandWet, 22, .5, 0, 18); B.cx.setLineDash([16, 8]); V.strokePts(B, sh, P.foam, 3, .7, 0, 32); B.cx.setLineDash([]); } });
       // the north-east headland meets the sea in low dark rock and a broken line of surf, misted like the land behind it
-      if (i) main(band, 88, (B) => { B.cx.clip(bandClip); V.strokePts(B, shoreNE, P.shallow, 90, .28); V.strokePts(B, shoreNE, kit.mix('#6f6a60', P.haze, .35), 18, .9); V.strokePts(B, shoreNE, kit.mix('#9a9284', P.haze, .4), 7, .7, -3); B.cx.setLineDash([10, 14]); V.strokePts(B, shoreNE, P.foam, 3, .55, 9); B.cx.setLineDash([]); });
+      if (i) main(band, 88, (B) => { B.cx.clip(bandClip); V.strokePts(B, shoreNE, P.shallow, 90, .1); V.strokePts(B, shoreNE, kit.mix('#6f6a60', P.haze, .62), 18, .42); V.strokePts(B, shoreNE, kit.mix('#9a9284', P.haze, .65), 7, .32, -3); B.cx.setLineDash([10, 14]); V.strokePts(B, shoreNE, P.foam, 3, .25, 9);   /* (misted far off: at full strength its shallows and rock read as a pale angular shape and a hard dark band over the sea in the north-east corner) */ B.cx.setLineDash([]); });
       for (let part = 0; part < 4; part++) {
         main(band, 90 + i * 10 + part, (B, r, cb) => { B.cx.clip(bandClip); B.cx.clip(bigP); B.cx.clip(outGrid, 'evenodd'); paintLand(B, r, cb, part); });
         // inside the grid's corners, only where the island's coast leaves sea
@@ -169,8 +169,15 @@
     // mainland's meet under it, so the whole map shows no straight edge where the cells end
     const rows = W.sky + W.rows * ch, haze = kit.rgba(P.haze, 0), hz = a => kit.rgba(P.haze, a);
     if (C.thing) {
-      C.thing({ key: 'mainland-haze-w', x: 0, y: rows, depth: 89990, K: .25, box: [-300, -rows - 800, 260, 0], draw: B => { B.f(B.rect(-300, -rows - 800, 560, rows + 800), B.lin(-300, 0, 260, 0, [[0, haze], [.42, hz(.5)], [.58, hz(.42)], [1, haze]])); } });
-      C.thing({ key: 'mainland-haze-n', x: 0, y: 420, depth: 89991, K: .2, box: [-2400, -1400, W.cols * cw + 2400, 0], draw: B => { B.f(B.rect(-2400, -1400, W.cols * cw + 4800, 1400), B.lin(0, -1400, 0, 0, [[0, haze], [.55, hz(.26)], [.73, hz(.34)], [.84, hz(.26)], [1, haze]])); } });
+      // (layout fix, north) the west bank lies over the mainland, thinning to nothing a cell inside the island, its inner edge
+      // wandering in soft lobes (a straight gradient five cells deep stood over the woods as a pale band with the trees cut
+      // at a ruled line, and over you when you walked the west edge)
+      C.thing({ key: 'mainland-haze-w', x: 0, y: rows, depth: 89990, K: .25, box: [-340, -rows - 800, 140, 0], draw: B => { const r = kit.rng(5303);
+        B.f(B.rect(-340, -rows - 800, 300, rows + 800), B.lin(-340, 0, -40, 0, [[0, haze], [.35, hz(.42)], [1, hz(.3)]]));
+        for (let y = -rows - 800; y < 40; y += 70 + r() * 60) { const rx = 70 + r() * 70, ry = 90 + r() * 80, x = -40 + (r() - .3) * 50;
+          B.cx.save(); B.cx.translate(x, y); B.cx.scale(1, ry / rx); B.cx.fillStyle = B.rad(0, 0, rx, [[0, hz(.3)], [.6, hz(.16)], [1, haze]]); B.cx.beginPath(); B.cx.arc(0, 0, rx, 0, Math.PI * 2); B.cx.fill(); B.cx.restore(); } } });
+      // the north bank stays above the island's top row (over the far fells and the summits of the range), gone by the range's foot
+      C.thing({ key: 'mainland-haze-n', x: 0, y: W.sky + 40, depth: 89991, K: .2, box: [-2400, -1400, W.cols * cw + 2400, 0], draw: B => { B.f(B.rect(-2400, -1400, W.cols * cw + 4800, 1400), B.lin(0, -1400, 0, 0, [[0, haze], [.55, hz(.24)], [.82, hz(.28)], [1, haze]])); } });
     }
   }
   function B0(pts) { return 'M' + pts.map(p => p.x.toFixed(1) + ' ' + p.y.toFixed(1)).join('L') + 'Z'; }

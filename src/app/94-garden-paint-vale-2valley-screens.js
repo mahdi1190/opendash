@@ -1,0 +1,222 @@
+/* Painted vale: Millwater valley's screens (round 3 layout, assets/garden/vale-valley.json). The ground a tall roof would
+ * hide is closed with something that belongs there, so nobody walks out of sight behind a building and no stop is invisible:
+ *   the Ham        a hay paddock behind the mill: cut hay in windrows and haycocks inside a hawthorn hedge
+ *   the wheel pit  the stone pit beside the wheel: wet flags, ferns and alder roots inside a low dry-stone wall
+ *   the rickyard   behind the barn: two thatched hay ricks, nettles and elder inside a post-and-rail fence
+ *   the reed bed   behind the smokehouse: reeds too thick to push through
+ * Each screen is a landform (kind 'screen', a full collider), so the feet stop at its outline; what stands on that outline
+ * here is the reason they stop. An edge against the building it lies behind is left bare (the wall is the reason there).
+ * Ground pieces bake into the ground chunks; the hedge, wall, fence, ricks and reeds are standing sprites sorted by their
+ * foot, so you pass in front of them and they never cover you from behind. Nothing here runs at load. */
+(function () {
+  'use strict';
+  const V = window.GardenPaintVale; if (!V) return;
+  // the part of a piece whose foot is within a few px of its lowest point: that is where it stands on the ground
+  const footOf = (A, Bq) => { const lo = A.y >= Bq.y ? A : Bq, hi = lo === A ? Bq : A, dy = Math.abs(A.y - Bq.y), dx = hi.x - lo.x, k = dy > 5 ? 5 / dy : 1, x2 = lo.x + dx * k; return [Math.min(lo.x, x2) - 2, Math.max(lo.x, x2) + 2, 9]; };
+  const NAME = { 'the-ham': 'the Ham hedge', 'wheel-pit': 'wheel pit wall', rickyard: 'rickyard fence', 'reed-bed': 'reed bed' };
+  function compose(C) {
+    const { L, kit, add, thing } = C, W = L.W, cw = L.cw, ch = L.ch, season = C.season;
+    const forms = (L.D.landforms || []).filter(f => f.kind === 'screen' && f.polygon && f.polygon.length > 2); if (!forms.length) return;
+    const winter = season === 'winter', autumn = season === 'autumn';
+    const leaf = winter ? ['#4e5a3a', '#5e6a44', '#6e7a4e', '#3e4830'] : autumn ? ['#5e6a32', '#7a7a3a', '#94843e', '#46502a'] : ['#3f6a32', '#4f7c3a', '#679046', '#2f5226'];
+    const hay = winter ? ['#a89870', '#8a7c58', '#c2b48a'] : ['#d8c07a', '#b89a54', '#ecd894'], stone = ['#9a9684', '#7e7a6a', '#b8b4a0', '#5e5a4e'];
+    const reed = winter ? ['#b8a47a', '#9a8a62', '#d0bc8a'] : autumn ? ['#a89a5a', '#8a7e44', '#c4b06a'] : ['#7e8a4e', '#5c6a3a', '#a4ad62'];
+    const building = (x, y) => (L.D.static || []).some(p => p.col === 'full' && x >= p.x - .05 && x < p.x + p.w + .05 && y >= p.y - .05 && y < p.y + p.h + .05);
+    for (const f of forms) {
+      const id = f.screen || f.id, poly = f.polygon, P = poly.map(L.pt), bb = kit.bboxOf(P, 40), seed = kit.hashStr('screen|' + id), clip = V.loopPath([P]);
+      const inF = (x, y) => gardenIslandInPolygon ? gardenIslandInPolygon(x / cw, (y - W.sky) / ch, poly.map(([a, b]) => ({ x: a, y: b }))) : true;
+      // 1. the ground inside, baked with the ground
+      add(bb, seed & 0xffff, (B, r, cb) => {
+        // (layfix east) the rickyard's trodden ground fades out into the field at its open edges (cut to its outline, it showed as a
+        // square notch of darker grass beside the barn's roof)
+        if (id === 'rickyard') { B.cx.filter = 'blur(9px)'; B.f(V.loopPath([P]), winter ? '#7a7454' : '#8a8048', .5); B.cx.filter = 'none'; }
+        B.cx.save(); B.cx.clip(clip);
+        if (id === 'the-ham') {
+          B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), winter ? '#9a9a6a' : '#b8b468', .9);
+          for (let y = bb[1] + 6; y < bb[3]; y += 11) { const rr = kit.rng(kit.hash(7, Math.round(y), seed)); B.s(`M${bb[0]} ${y}Q${(bb[0] + bb[2]) / 2} ${y + (rr() - .5) * 6} ${bb[2]} ${y + (rr() - .5) * 4}`, hay[1], 3.2, .55).s(`M${bb[0]} ${y - 1.4}H${bb[2]}`, hay[2], 1, .35); }
+          kit.tiles(cb, 40, 6, seed & 255, (tx, ty, rr) => { for (let k = 0; k < 10; k++) { const x = tx + rr() * 40, y = ty + rr() * 40; B.s(`M${x} ${y}l${(rr() - .5) * 2} -${2 + rr() * 3}`, rr() < .5 ? hay[0] : '#8a9a4a', .9, .8); } });
+        } else if (id === 'wheel-pit') {
+          // (round 3 fix) a damp green bank, fern and alder roots, a few wet stones near the wheel: a grey stone fill read as a tower behind the wheel
+          B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), winter ? '#6a7452' : '#5c7a40', .95);
+          // (round 3, critic fix) the race: water led off the river above, along the pit in a stone channel under the wheel and back
+          // into the river below it, so the wheel stands in running water, not in a grass pit
+          { const xs = poly.map(p => p[0]), ys = poly.map(p => p[1]), y0 = Math.min(...ys), y1 = Math.max(...ys), xm = (Math.min(...xs) + Math.max(...xs)) / 2 + .15;
+            const line = [[xm - .55, y0 - .3], [xm - .1, y0 + .8], [xm + .15, (y0 + y1) / 2], [xm, y1 - .7], [xm - .45, y1 + .3]].map(L.pt);
+            V.strokePts(B, line, '#6e6a5c', 30, .95); V.strokePts(B, line, '#8e8a78', 26, .9);
+            for (const q of V.walk(line, 9)) for (const sd of [-1, 1]) B.f(B.rr(q.x - q.ty * 12.5 * sd - 4, q.y + q.tx * 12.5 * sd - 2.4, 8, 4.8, 1.6), sd < 0 ? stone[2] : stone[0], .95);
+            V.strokePts(B, line, winter ? '#5a7a80' : '#4a7276', 19, 1); V.strokePts(B, line, '#6e9ea4', 12, .9);
+            for (const q of V.walk(line, 7)) B.s(`M${q.x - q.ty * (r() - .5) * 10} ${q.y + q.tx * (r() - .5) * 10}l${q.tx * 5} ${q.ty * 5}`, '#d4e6e4', 1, .6); }
+          kit.tiles(cb, 30, 4, seed & 255, (tx, ty, rr) => { for (let k = 0; k < 4; k++) { const x = tx + rr() * 30, y = ty + rr() * 30; B.f(B.blob(rr, x, y, 9, 4, 7, .4), rr() < .5 ? '#4e6e36' : '#6a8a48', .7); } });
+          kit.tiles(cb, 40, 10, (seed + 5) & 255, (tx, ty, rr) => { if (rr() < .55) return; const x = tx + rr() * 40, y = ty + rr() * 40; B.f(B.rr(x - 7, y - 3, 13 + rr() * 5, 7, 3), stone[1], .8).f(B.rect(x - 5, y - 3, 8, 1.6), stone[2], .4); });
+          kit.tiles(cb, 36, 8, (seed + 3) & 255, (tx, ty, rr) => { for (let k = 0; k < 2; k++) { const x = tx + rr() * 36, y = ty + rr() * 36; for (let j = 0; j < 5; j++) { const a = -Math.PI / 2 + (j - 2) * .42; B.s(`M${x} ${y}q${Math.cos(a) * 5} ${Math.sin(a) * 5} ${Math.cos(a) * 10} ${Math.sin(a) * 8 + 3}`, winter ? '#8a7a4a' : '#3e6a2e', 1.8, .85); } } });
+        } else if (id === 'rickyard') {
+          kit.tiles(cb, 44, 8, seed & 255, (tx, ty, rr) => { for (let k = 0; k < 7; k++) { const x = tx + rr() * 44, y = ty + rr() * 44; if (rr() < .55) { B.f(B.blob(rr, x, y, 8, 4, 7, .45), leaf[rr() < .5 ? 0 : 3], .8); for (let j = 0; j < 5; j++) B.s(`M${x + (rr() - .5) * 10} ${y}l${(rr() - .5) * 3} -${5 + rr() * 6}`, leaf[1], 1.4, .9); } else B.f(B.ell(x, y, 5, 2), hay[1], .55); } });
+        } else {
+          B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), '#5c6a3a', .85);
+          kit.tiles(cb, 30, 6, seed & 255, (tx, ty, rr) => { for (let k = 0; k < 14; k++) { const x = tx + rr() * 30, y = ty + rr() * 30; B.s(`M${x} ${y}l${(rr() - .5) * 3} -${6 + rr() * 8}`, reed[Math.floor(rr() * 3)], 1.1, .9); } });
+        }
+        B.cx.restore();
+      });
+      // 2. what stands on the outline, where it meets ground you can walk on, in pieces sorted by their foot
+      const pieces = [];
+      for (let i = 0; i < poly.length; i++) {
+        // (one piece per edge: an edge cut into short pieces stood each piece's foot against its neighbours')
+        const a = poly[i], b = poly[(i + 1) % poly.length], len = Math.hypot((b[0] - a[0]) * cw, (b[1] - a[1]) * ch), n = Math.max(1, Math.ceil(len / 400));
+        for (let k = 0; k < n; k++) {
+          const p = [a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n], q = [a[0] + (b[0] - a[0]) * (k + 1) / n, a[1] + (b[1] - a[1]) * (k + 1) / n];
+          const mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2, nx = -(q[1] - p[1]), ny = q[0] - p[0], nl = Math.hypot(nx, ny) || 1;
+          // the outward side: the one that is not inside the screen
+          let ox = nx / nl, oy = ny / nl; if (gardenIslandInPolygon(mx + ox * .3, my + oy * .3, poly.map(([u, v]) => ({ x: u, y: v })))) { ox = -ox; oy = -oy; }
+          if (id === 'reed-bed') continue;   // (the reed bed has no edge of its own: its rows run out to the outline, so no side stands up as a wall seen end on)
+          if ([.2, .5, .8].filter(t => building(p[0] + (q[0] - p[0]) * t + ox * .5, p[1] + (q[1] - p[1]) * t + oy * .5)).length >= 2) continue;   // against the building it lies behind: its wall is the stop
+          // drawn a third of a cell inside the outline: it stands on the ground the feet cannot reach, its foot on the line where they stop
+          const ix = -ox * .34, iy = -oy * .34; pieces.push([L.cpt(p[0] + ix, p[1] + iy), L.cpt(q[0] + ix, q[1] + iy)]);
+        }
+      }
+      pieces.forEach(([p, q], i) => {
+        const x0 = Math.min(p.x, q.x), x1 = Math.max(p.x, q.x), foot = Math.max(p.y, q.y), top = Math.min(p.y, q.y), ox = x0, oy = foot, rel = z => ({ x: z.x - ox, y: z.y - oy }), A = rel(p), Bq = rel(q), r0 = kit.rng(seed + i * 31);
+        const tallPx = id === 'the-ham' ? 30 : id === 'wheel-pit' ? 26 : id === 'rickyard' ? 30 : 58;
+        const box = [-14, top - foot - tallPx - 10, x1 - x0 + 14, 10];
+        // (foot: the feet stop on what is drawn here, as they do on the screen's outline; walking (_gwBuildSolids) reads it)
+        thing({ key: NAME[id] + '|' + id + '|' + i + '|' + season, x: ox, y: oy, depth: oy - 2, box, K: 1.4, foot: footOf(A, Bq), draw: B => {
+          // the foot: a solid band where it meets the ground (hedge bottom, footing course, grass along the rails, wet reed bases)
+          B.f(B.poly([[A.x, A.y - 5], [Bq.x, Bq.y - 5], [Bq.x, Bq.y + 1], [A.x, A.y + 1]]), id === 'the-ham' ? leaf[3] : id === 'wheel-pit' ? stone[1] : id === 'rickyard' ? leaf[3] : '#4e5a32');
+          const along = n => { const out = []; for (let s = 0; s <= n; s++) { const t = s / n; out.push({ x: A.x + (Bq.x - A.x) * t, y: A.y + (Bq.y - A.y) * t }); } return out; };
+          const steps = Math.max(2, Math.round(Math.hypot(Bq.x - A.x, Bq.y - A.y) / 9)), pts = along(steps), steep = Math.abs(Bq.y - A.y) > Math.abs(Bq.x - A.x), lo = steep ? .62 : 1;   // (a hedge or a wall running up the view is seen end on: lower and fuller, a band, not a column)
+          if (id === 'the-ham') {   // a hawthorn hedge, clipped, half the player's height, with haws in autumn and may blossom in spring
+            for (const z of pts) B.shadow(z.x + 4, z.y + 2, 14, 4, .22);
+            for (const z of pts) { const h = (22 + r0() * 8) * lo; B.f(B.blob(r0, z.x, z.y - h * .45, steep ? 13 : 9, h * .5, 8, .35), leaf[3]); }
+            for (const z of pts) { const h = (22 + r0() * 8) * lo; B.f(B.blob(r0, z.x - 1, z.y - h * .55, 7.5, h * .42, 8, .35), leaf[0]).f(B.blob(r0, z.x - 3, z.y - h * .72, 5, h * .22, 7, .35), leaf[2], .9);
+              if (autumn && r0() < .6) for (let j = 0; j < 3; j++) B.f(B.circ(z.x + (r0() - .5) * 12, z.y - h * (.3 + r0() * .5), 1.3), '#a83228');
+              if (season === 'spring' && r0() < .6) for (let j = 0; j < 4; j++) B.f(B.circ(z.x + (r0() - .5) * 12, z.y - h * (.4 + r0() * .5), 1.4), '#f4ece0', .95); }
+          } else if (id === 'wheel-pit' && steep) {   // (round 3, critic fix) seen end on: a kerb of edge stones lying along the race's lip, knee high, no column
+            for (const z of pts) B.shadow(z.x + 3, z.y + 2, 9, 3, .22);
+            for (const z of pts) B.f(B.rr(z.x - 6, z.y - 7, 12, 7.5, 2.4), stone[Math.floor(r0() * 3)]).f(B.rr(z.x - 5, z.y - 7, 9, 2, 1), stone[2], .7);
+            for (const z of pts) if (r0() < .3) for (let j = 0; j < 4; j++) { const a = -Math.PI / 2 + (j - 1.5) * .45; B.s(`M${z.x} ${z.y - 1}q${Math.cos(a) * 5} ${Math.sin(a) * 5} ${Math.cos(a) * 10} ${Math.sin(a) * 8 + 3}`, winter ? '#8a7a4a' : '#5a8a3a', 1.8, .9); }
+          } else if (id === 'wheel-pit') {   // a low dry-stone wall with a coping of edge stones, moss and a fern at its foot
+            for (const z of pts) B.shadow(z.x + 4, z.y + 2, 12, 4, .25);
+            for (let row = 0; row < (steep ? 1 : 2); row++) for (const z of pts) B.f(B.rr(z.x - 6 + (row & 1) * 3, z.y - 9 - row * 8, 11 + r0() * 3, 8, 2.4), stone[Math.floor(r0() * 3)]).s(`M${z.x - 5} ${z.y - 2 - row * 8}h9`, stone[3], .6, .5);
+            const cap = steep ? 17 : 25; for (const z of pts) { B.f(B.rr(z.x - 4, z.y - cap, 4, 9, 1.2), stone[2]).f(B.rr(z.x + 1, z.y - cap + 1, 4, 8, 1.2), stone[0]); if (r0() < .3) B.f(B.blob(r0, z.x, z.y - cap + 7, 6, 2, 6, .4), '#6a8a3a', .8); }
+            for (const z of pts) if (r0() < .35) for (let j = 0; j < 5; j++) { const a = -Math.PI / 2 + (j - 2) * .4; B.s(`M${z.x} ${z.y - 1}q${Math.cos(a) * 6} ${Math.sin(a) * 6} ${Math.cos(a) * 12} ${Math.sin(a) * 10 + 4}`, winter ? '#8a7a4a' : '#5a8a3a', 2, .9); }
+          } else if (id === 'rickyard') {   // a post-and-rail fence, weathered grey, nettles at its foot
+            for (const z of pts) B.shadow(z.x + 3, z.y + 2, 9, 3, .18);
+            const posts = pts.filter((z, j) => j % 3 === 0 || j === pts.length - 1);
+            for (const k of [11, 21]) { const path = posts.map((z, j) => (j ? 'L' : 'M') + z.x + ' ' + (z.y - k)).join(''); B.s(path, '#5e5446', 3.4).s(path, '#9a8e78', 1.6, .9); }
+            for (const z of posts) B.f(B.rr(z.x - 2.2, z.y - 27, 4.4, 28, 1.2), '#6a5e4c').f(B.rect(z.x - 2.2, z.y - 27, 1.6, 27), '#a09682', .6);
+            for (const z of pts) if (r0() < .6) for (let j = 0; j < 4; j++) B.s(`M${z.x + (r0() - .5) * 8} ${z.y - 1}l${(r0() - .5) * 3} -${7 + r0() * 8}`, leaf[1], 1.6, .9);
+          } else {   // reeds standing thick: a waving wall a figure and a half high, plumes on top
+            for (const z of pts) B.shadow(z.x + 5, z.y + 2, 14, 4, .2);
+            for (let row = 0; row < 2; row++) for (const z of pts) for (let j = 0; j < 7; j++) { const x = z.x + (r0() - .5) * 12, h = 40 + r0() * 18 - row * 6, lean = (r0() - .5) * 8; B.s(`M${x} ${z.y - row * 4}q${lean * .3} ${-h * .6} ${lean} ${-h}`, reed[Math.floor(r0() * 3)], 1.3, .95); if (r0() < .4) B.f(B.ell(x + lean, z.y - row * 4 - h + 2, 1.8, 5), winter ? '#c8b48a' : '#8a6a3a', .9); }
+          }
+        } });
+      });
+      // the reed bed is reeds right through: rows of standing reeds over the whole bed, each row its own sprite sorted by its foot
+      if (id === 'reed-bed') for (let y = bb[1] + 40 + 10, k = 0; y <= bb[3] - 40 - 2; y += 14, k++) {
+        const xs = []; for (let x = bb[0] + 40; x < bb[2] - 40; x += 7) if (inF(x - 5, y) && inF(x + 5, y) && inF(x, y - ch * .5) && inF(x, y + 3)) xs.push(x); if (xs.length < 2) continue;   // (out to the outline: the rows are the bed's edge too)
+        const ox = xs[0], r2 = kit.rng(seed + 501 + k * 17);
+        thing({ key: 'reed bed|reeds|row' + k + '|' + season, x: ox, y, depth: y - 1, box: [-12, -70, xs[xs.length - 1] - ox + 12, 6], K: 1.4, foot: [-4, xs[xs.length - 1] - ox + 4, 9], draw: B => {
+          B.f(B.rect(-4, -4, xs[xs.length - 1] - ox + 8, 5), '#4e5a32');
+          for (const [n, x0] of xs.entries()) { const e = Math.min(n, xs.length - 1 - n), f = Math.min(1, .45 + e * .14); for (let j = 0; j < (e < 2 ? 2 : 3); j++) { const x = x0 - ox + (r2() - .5) * 7, h = (42 + r2() * 20) * f, lean = (r2() - .5) * 9 - (n < 3 ? 5 : n > xs.length - 4 ? -5 : 0); B.s(`M${x} 0q${lean * .3} ${-h * .6} ${lean} ${-h}`, reed[Math.floor(r2() * 3)], 1.3, .95); if (r2() < .3) B.f(B.ell(x + lean, -h + 2, 1.8, 5), winter ? '#c8b48a' : '#8a6a3a', .9); } }
+        } });
+      }
+      // 3. what stands inside and shows over the roof: the Ham's haycocks, the rickyard's two ricks
+      const inner = id === 'the-ham' ? 3 : id === 'rickyard' ? 2 : 0, placed = [];
+      for (let k = 0; k < inner; k++) {
+        const r1 = kit.rng(seed + 977 + k * 13), big = id === 'rickyard'; let at = null;
+        if (big && f.ricks && f.ricks[k]) at = L.cpt(f.ricks[k][0], f.ricks[k][1]);
+        const m = big ? 1.4 : .9; for (let t = 0; t < 80 && !at; t++) { const x = bb[0] + 50 + r1() * (bb[2] - bb[0] - 100), y = bb[1] + 40 + r1() * Math.max(10, (bb[3] - bb[1]) * (big ? .75 : .5)); if (inF(x, y) && inF(x - cw * m, y) && inF(x + cw * m, y) && inF(x, y - ch * (big ? 1.7 : .8)) && inF(x, y + ch * .6) && !placed.some(q => Math.abs(q.x - x) < cw * (big ? 2.4 : 1.6) && Math.abs(q.y - y) < ch * (big ? 3.6 : 1.4))) at = { x, y }; }
+        if (!at) continue; placed.push(at);
+        thing({ key: (big ? 'hay rick' : 'haycock') + '|' + id + '|in' + k + '|' + season, x: at.x, y: at.y, box: big ? [-56, -100, 70, 10] : [-22, -34, 22, 6], K: big ? 1.15 : 1.4, foot: big ? [-42, 42, 14] : [-17, 17, 8], draw: B => {
+          if (big) {   // a hay rick: a rounded stack under a thatched ridge, pegged ropes down its side
+            // (layfix east) each rick its own: one long and ridged, one round with a conical cap, built to a different height, lit
+            // from the west with its shaded side, combed straw and the ropes weighted with stones (two flat identical pyramids read
+            // as cut-outs stood side by side)
+            const q = kit.rng(seed + k * 31), round = k % 2 === 1, sc = round ? .82 : .92, hw = (round ? 34 : 42) * sc, hh = (round ? 44 : 50) * sc;
+            B.shadow(8, 2, hw + 8, 8, .3);
+            B.f(`M${-hw} 0L${-hw - 2} ${-hh * .8}Q${-hw + 4} ${-hh} 0 ${-hh - 2}Q${hw - 4} ${-hh} ${hw + 2} ${-hh * .8}L${hw} 0Z`, hay[1]);
+            B.f(`M${-hw + 2} -2L${-hw} ${-hh * .78}Q${-hw + 6} ${-hh * .96} ${-hw * .2} ${-hh}L${-hw * .25} -2Z`, hay[2], .55);   // the lit west side
+            B.f(`M${hw * .35} -2L${hw * .4} ${-hh * .96}Q${hw - 4} ${-hh * .94} ${hw + 2} ${-hh * .8}L${hw} 0Z`, '#6e5a30', .28);   // the shaded east side
+            for (let y = -6; y > -hh * .9; y -= 5) B.s(`M${-hw - 1} ${y}Q0 ${y - 2.5} ${hw + 1} ${y}`, hay[0], .8, .35);
+            for (let j = 0; j < 22; j++) { const x = -hw + q() * hw * 2, y = -4 - q() * hh * .8; B.s(`M${x} ${y}l${(q() - .5) * 3} -${4 + q() * 4}`, q() < .5 ? hay[2] : hay[0], .7, .6); }
+            B.f(B.ell(0, -1, hw + 1, 3), '#7a6a3a', .35);   // trodden straw round its foot
+            const cap = round ? `M${-hw - 6} ${-hh * .78}Q${-hw * .3} ${-hh - 34 * sc} 0 ${-hh - 40 * sc}Q${hw * .3} ${-hh - 34 * sc} ${hw + 6} ${-hh * .78}Q0 ${-hh * .9} ${-hw - 6} ${-hh * .78}Z`
+              : `M${-hw - 8} ${-hh * .8}L${-hw * .2} ${-hh - 36 * sc}L${hw * .2} ${-hh - 36 * sc}L${hw + 8} ${-hh * .8}Q0 ${-hh * .9} ${-hw - 8} ${-hh * .8}Z`;
+            B.f(cap, winter ? '#8a7a56' : '#9a7c40').f(round ? `M${-hw - 6} ${-hh * .78}Q${-hw * .3} ${-hh - 34 * sc} 0 ${-hh - 40 * sc}L-4 ${-hh * .88}Z` : `M${-hw - 8} ${-hh * .8}L${-hw * .2} ${-hh - 36 * sc}L-6 ${-hh * .86}Z`, '#c4a660', .45);
+            for (let x = -hw; x <= hw; x += 5) B.s(`M${x * 1.1} ${-hh * .8 - (hw - Math.abs(x)) * .08}L${x * .3} ${-hh - 30 * sc + Math.abs(x) * .15}`, '#6e5630', .6, .45);
+            B.s(`M${-hw - 7} ${-hh * .79}Q0 ${-hh * .9} ${hw + 7} ${-hh * .79}`, '#5e4a26', 1.4, .6);   // the thatch's dripping eave
+            if (!round) B.s(`M${-hw * .2} ${-hh - 36 * sc}H${hw * .2}`, '#5e4a2a', 2.4, .9);
+            for (const sx of round ? [-.5, .55] : [-.7, -.1, .5]) { const x = sx * hw; B.s(`M${x * .6} ${-hh * .86}Q${x * 1.02} ${-hh * .45} ${x * 1.04} -8`, '#4e3e22', .8, .7); B.f(B.ell(x * 1.04, -6, 2.6, 2), '#8e8a7c').f(B.ell(x * 1.04 - .8, -6.8, 1.2, .8), '#c8c4b4', .8); }
+            if (!round) { B.s(`M${hw - 4} 0L${hw + 12} ${-hh * .9}M${hw + 2} 0L${hw + 18} ${-hh * .9}`, '#6a5034', 1.6); for (let t = .15; t < .9; t += .15) B.s(`M${hw - 4 + 16 * t} ${-hh * .9 * t}h6`, '#8a6a44', 1.3); }   // a ladder left against it
+          } else {   // a haycock: a small rounded heap of cut hay
+            B.shadow(4, 1, 20, 4, .24);
+            B.f('M-18 0Q-20 -22 0 -28Q20 -22 18 0Z', hay[1]).f('M-14 -2Q-16 -20 -2 -25Q-6 -12 -4 -2Z', hay[2], .6);
+            for (let j = 0; j < 8; j++) B.s(`M${-14 + j * 4} -2l${(j % 3) - 1} -${10 + (j % 4) * 3}`, hay[0], .7, .5);
+          }
+        } });
+      }
+    }
+  }
+  /* The water meadows' carriers (vale-valley.json carriers): a ditch from each hatch on the river side, along the top of its set of
+   * panes, a thread of water in it, the turf lipping over its banks, little gutters spilling down the pane below; a timber
+   * hatch at its head. And the race path's fishing stage: a few old planks out over the bank at the path's end. Ground only. */
+  function meadows(C) {
+    const { L, kit, add, thing } = C, W = L.W, season = C.season, pres = L.D.presentation || {}, winter = season === 'winter';
+    for (const c of pres.carriers || []) {
+      const P = c.pts.map(p => L.pt(p)), bb = kit.bboxOf(P, 40), seed = kit.hashStr('carrier|' + c.id);
+      add(bb, seed & 0xffff, (B, r) => {
+        V.strokePts(B, P, '#4a5e32', 13, .45); V.strokePts(B, P, '#6a6248', 9, .9); V.strokePts(B, P, winter ? '#9ab4b8' : '#6e9ea4', 5, .95); V.strokePts(B, P, '#d4e6e4', 1.2, .55, -.8, -.6);
+        for (const q of V.walk(P, 14)) { if (r() < .35) continue; const nx = -q.ty, ny = q.tx; B.s(`M${q.x + nx * 3} ${q.y + ny * 3 + 2}l${(r() - .5) * 4} ${8 + r() * 10}`, '#6e9ea4', 1.2, .45); B.s(`M${q.x - nx * 6} ${q.y - ny * 6}l${(r() - .5) * 3} -${3 + r() * 4}`, '#5e8a3e', 1.2, .9); }
+      });
+      const h = P[0];
+      thing({ key: 'hatch|' + c.id + '|' + season, x: h.x, y: h.y + 4, box: [-18, -30, 18, 6], K: 1.4, foot: [-10, 10, 6], draw: B => {
+        B.shadow(1, 1, 12, 3, .25);
+        for (const x of [-8, 8]) B.f(B.rr(x - 2, -22, 4, 22, 1), '#5e5040').f(B.rect(x - 2, -22, 1.4, 22), '#8a7a62', .6);
+        B.f(B.rr(-7, -16, 14, 10, 1), '#7a6448').s('M-7 -11h14', '#4e4234', .8).f(B.rect(-1, -26, 2, 10), '#4e4234').f(B.circ(0, -27, 2.4), '#3a3028');
+        B.f(B.ell(0, 1, 9, 2.4), '#6e9ea4', .7);
+      } });
+    }
+    const st = pres.stage; if (st && st.at) {
+      const p = L.pt(st.at), r = kit.rng(kit.hashStr('race-stage'));
+      add([p.x - 60, p.y - 40, p.x + 60, p.y + 50], 7101, B => {
+        B.f(B.poly([[p.x - 26, p.y - 8], [p.x + 20, p.y - 14], [p.x + 30, p.y + 22], [p.x - 18, p.y + 28]]), 'rgba(30,40,40,.25)');
+        for (let k = 0; k < 7; k++) { const t = k / 7, x0 = p.x - 24 + t * 46, y0 = p.y - 9 - t * 5; B.f(B.poly([[x0, y0], [x0 + 6, y0 - .8], [x0 + 15, y0 + 32], [x0 + 9, y0 + 33]]), r() < .3 ? '#a08a68' : r() < .6 ? '#8a7456' : '#7a654a').s(`M${x0 + 1} ${y0}l9 32`, '#5a4a36', .6, .6); }
+        for (const [dx, dy] of [[-16, 26], [26, 18]]) B.f(B.rect(p.x + dx - 2, p.y + dy, 4, 9), '#4e4234').f(B.ell(p.x + dx, p.y + dy + 9, 4, 1.4), '#d4e6e4', .5);
+      });
+    }
+  }
+  /* The valley's trees (vale-valley.json trees, presentation.valleyTrees): the alder carr along the terrace wall behind the bee
+   * boles, alders down the water meadows, one over the fishing stage, the far willows' alder by the yard. Painted with the
+   * tree kit (lit leaf masses on a rooted trunk), their dappled shadow baked into the ground; a crown you stand under fades.
+   * Their trunks stop the feet (V.valleyTrunks, read by 94-garden-world-0walk.js). */
+  let trunks = null;
+  function trees(C) {
+    const { L, add, thing, season } = C, list = ((L.D.presentation || {}).valleyTrees || []).filter(t => Array.isArray(t) && t.length >= 4);
+    trunks = list.map(t => [+t[0], +t[1], t[3] > 180 ? .5 : .42]);
+    if (!window.GardenPaintTrees) return;
+    list.forEach((t, i) => {
+      const p = L.cpt(t[0], t[1]), sp = t[2], h = t[3], v = i % 3;
+      add([p.x - h * .8, p.y - h * .3, p.x + h * .9, p.y + h * .4], 7300 + i, B => { try { GardenPaintTrees.groundShadow(B.cx, p.x, p.y, h, { species: sp, season }); } catch (e) { /* no shadow */ } });
+      thing({ y: p.y, make: scene => GardenPaintTrees.image(scene, { species: sp, season, v, h, x: p.x, y: p.y, flip: (i & 1) === 1 }) });
+    });
+  }
+  V.valleyTrunks = () => (V.wanted() && trunks) || null;
+  /* The weir walk while it is shut (crossings 'mill-weir' shut, until the sluice is up): a rope across each end of the planks
+   * on two stakes, a plank or two lifted out in the middle and a small board, so you can see why you stop there. */
+  const weirShut = () => typeof gardenWeirShutBox === 'function' && !!gardenWeirShutBox();
+  V.groundSigs.push(() => '|weir' + (weirShut() ? 1 : 0));
+  function weir(C) {
+    const { L, thing, season } = C; if (!weirShut()) return;
+    const c = ((L.D.presentation || {}).crossings || []).find(q => q.id === 'mill-weir'); if (!c || !c.shut) return;
+    const [x0, y0, x1, y1] = c.shut, ym = (y0 + y1) / 2;
+    for (const [x, east] of [[x0 + .05, false], [x1 - .05, true]]) {
+      const top = L.cpt(x, y0 + .25), bot = L.cpt(x, y1 - .15), dy = bot.y - top.y;
+      thing({ key: 'weir rope|' + (east ? 'e' : 'w') + '|' + season, x: top.x, y: bot.y, box: [-22, -dy - 34, 22, 6], K: 1.4, foot: [-4, 4, 6], draw: B => {
+        for (const yy of [-dy, 0]) { B.shadow(1, yy + 1, 5, 2, .3); B.f(B.rr(-2, yy - 22, 4, 23, 1), '#5e4c36').f(B.rect(-2, yy - 22, 1.4, 22), '#8a7454', .7).f(B.circ(0, yy - 22, 2.2), '#4a3a28'); }
+        B.s(`M0 ${-dy - 18}Q${east ? -3 : 3} ${-dy / 2 - 10} 0 -18`, '#3a2e22', 2.6).s(`M0 ${-dy - 18}Q${east ? -3 : 3} ${-dy / 2 - 10} 0 -18`, '#c8b088', 1.4);
+        B.f(B.poly([[-1, -dy / 2 - 12], [5, -dy / 2 - 9], [-1, -dy / 2 - 5]]), '#c8442e');   // a red rag on the rope
+        if (east) { B.f(B.rect(9, -30, 2.4, 30), '#5e4c36'); B.f(B.rr(2, -38, 18, 11, 2), '#c9a876').s(B.rr(2, -38, 18, 11, 2), '#6e5434', .8); B.s('M5 -34.5h12M5 -31.5h9', '#3e2c1a', 1.1, .8); }   // a board: the planks are up
+      } });
+    }
+  }
+  V.parts.push({ id: 'valley-screens', compose: C => { compose(C); meadows(C); trees(C); weir(C); } });
+})();

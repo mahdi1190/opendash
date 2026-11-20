@@ -72,12 +72,16 @@ window.GardenPaintTerrainKit = (function () {
       },
       tufts(r, x, y, w, n, cols, h) { for (let i = 0; i < n; i++) { const px = x + (r() - .5) * w, hh = (h || 5) * (.6 + r() * .6); B.s(`M${px} ${y}q${(r() - .5) * 3} ${-hh * .6} ${(r() - .5) * 5} ${-hh}`, cols[i % cols.length], 1, .85); } return B; },
       // a heather clump: dark mound, mid lobes, lit lobes, bloom specks
+      // (a low cushion built of a few lobes in three tones with many fanned sprigs, its shape and size its own each time:
+      // two translucent ellipses and six sticks read as one vector stamp repeated over the moor; 19 Nov 2026)
       heather(r, x, y, rx, P, bloom) {
-        const ry = rx * .55;
-        B.f(D().blob(r, x + rx * .1, y + ry * .15, rx, ry, 9, .7), P.heatherLo, .5).f(D().blob(r, x - rx * .05, y - ry * .1, rx * .82, ry * .78, 9, .7), P.heather, .65);
-        // the sprigs: short upright strokes, dark at the root, lit at the tip, so a clump has texture and no outline
-        for (let i = 0; i < 6; i++) { const px = x + (r() - .5) * rx * 1.5, py = y + (r() - .5) * ry * .9, h = 2 + r() * 2.6; B.s(`M${px} ${py}l${(r() - .5) * 1.4} ${-h}`, r() < .5 ? P.heatherLo : P.heatherHi, .9, .8); }
-        if (bloom) for (let i = 0; i < 7; i++) B.f(B.circ(x + (r() - .5) * rx * 1.4, y + (r() - .7) * ry, .5 + r() * .5), bloom, .75);
+        rx *= .75 + r() * .5; const ry = rx * (.4 + r() * .2), lobes = 2 + Math.floor(r() * 3), mid = mix(P.heather, P.heatherLo, .35);
+        B.f(D().blob(r, x + rx * .16, y + ry * .26, rx * 1.05, ry * .7, 9, .6), P.heatherLo, .45);
+        for (let i = 0; i < lobes; i++) { const ox = (r() - .5) * rx * 1.1, oy = (r() - .5) * ry * .5, s = .42 + r() * .38; B.f(D().blob(r, x + ox, y + oy - ry * .12, rx * s, ry * s, 8, .65), i % 2 ? P.heather : mid, .62); }
+        B.f(D().blob(r, x - rx * .3, y - ry * .38, rx * (.25 + r() * .2), ry * .26, 7, .6), P.heatherHi, .45);
+        // the sprigs fan up and out from the cushion, dark at the root side, lit towards the light
+        for (let i = 0, n = 7 + Math.floor(rx * 1.1 + r() * 4); i < n; i++) { const a = -1.5708 + (r() - .5) * 2, px = x + (r() - .5) * rx * 1.7, py = y + (r() - .25) * ry * .8, h = 1.4 + r() * 2.6, t = r(); B.s(`M${px} ${py}l${(Math.cos(a) * h).toFixed(2)} ${(Math.sin(a) * h).toFixed(2)}`, t < .4 ? P.heatherLo : t < .75 ? mid : P.heatherHi, .7 + r() * .4, .75); }
+        if (bloom) for (let i = 0, n = 3 + Math.floor(r() * 8); i < n; i++) B.f(B.circ(x - rx * .15 + (r() - .5) * rx * 1.2, y + (r() - .8) * ry, .45 + r() * .5), bloom, .8);
         return B;
       },
       rr(x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); return `M${x + r} ${y}h${w - 2 * r}q${r} 0 ${r} ${r}v${h - 2 * r}q0 ${r} ${-r} ${r}h${-(w - 2 * r)}q${-r} 0 ${-r} ${-r}v${-(h - 2 * r)}q0 ${-r} ${r} ${-r}z`; },
@@ -152,6 +156,9 @@ window.GardenPaintTerrainKit = (function () {
   // opts: { key, box: {x, y, w, h}, K, chunk (world px), depth }
   const PAD = 2;
   function chunked(scene, parent, ops, opts) {
+    // Layers baked at 1 px a world px or more follow the camera's zoom through the shared kit (crisp at every zoom, the same
+    // slices, streaming and budget); a far backdrop baked small on purpose (K under 1) keeps this fixed baker.
+    if (window.GardenPaintGround && opts.follow !== false && (opts.K || 1.5) >= 1) return GardenPaintGround.layer(scene, parent, ops, opts);
     const K = opts.K || 1.5, size = opts.chunk || 512, box = opts.box, cols = Math.ceil(box.w / size), rows = Math.ceil(box.h / size), list = [];
     const t0 = performance.now(); let worst = 0, bakedPx = 0, bakeMs = 0;
     for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
@@ -204,11 +211,16 @@ window.GardenPaintTerrainKit = (function () {
       if (!best && opts.prebake && bakedPx < budget * .92 && !(typeof _gw !== 'undefined' && _gw.moving)) for (const ch of list) if (!ch.live) { const d = dist(ch, v); if (d < bd) { bd = d; best = ch; } }
       if (best && bakeOne(best, opts.slice || 12) && parent.sort) parent.sort('depth');
       if (bakedPx > budget) { let far = null, fd = -1; for (const ch of list) if (ch.live && !meets(ch.bb, keep)) { const d = dist(ch, v); if (d > fd) { fd = d; far = ch; } } if (far) evict(far); }
+      // opts.under (rule 16): this layer is a soft placeholder under a sharper one, shown only where that one has a chunk
+      // still to paint (so you see the painted ground, a little soft, never bare lawn), and hidden once it is all there
+      if (opts.under) for (const ch of list) if (ch.image) { const show = !ok(() => opts.under.readyIn(ch.bb)); if (ch.image.visible !== show) ch.image.setVisible(show); }
     };
     const timer = setInterval(() => ok(tick), 34);
     return {
       // Readiness follows the same current-view margin as the existing streamer.
       pendingInView() { const v = viewBox(.05); if (dead || !v) return 0; let count = 0; for (const ch of list) if (!ch.live && meets(ch.bb, v)) count++; return count; },
+      // every chunk of this layer that meets the box (inside its bleed) is painted and placed
+      readyIn(bb) { const inner = [bb[0] + PAD, bb[1] + PAD, bb[2] - PAD, bb[3] - PAD]; for (const ch of list) if (!ch.live && meets([ch.bb[0] + PAD, ch.bb[1] + PAD, ch.bb[2] - PAD, ch.bb[3] - PAD], inner)) return false; return true; },
       chunks: list.length, get pending() { return list.filter(c => !c.live).length; }, get worstMs() { return Math.round(worst); }, get sliceWorstMs() { return Math.round(sliceWorst); }, get bakeMs() { return Math.round(bakeMs); }, buildMs: Math.round(performance.now() - t0),
       get texturePx() { return bakedPx; }, get p95() { const t = times.slice(-200).sort((a, b) => a - b); return t.length ? t[Math.floor(t.length * .95)] : 0; }, get median() { const t = times.slice(-200).sort((a, b) => a - b); return t.length ? t[t.length >> 1] : 0; }, get baked() { return baked; }, get evicted() { return evicted; }, get live() { return list.filter(c => c.live).length; },
       destroy(keepTextures) { dead = true; clearInterval(timer); for (const ch of list) { if (ch.image) ch.image.destroy(); ch.image = null; ch.live = false; if (!keepTextures && scene.textures.exists(ch.key)) scene.textures.remove(ch.key); } },
@@ -217,18 +229,52 @@ window.GardenPaintTerrainKit = (function () {
 
   /* ---------- occluder sprites ---------- */
   // box [x0, y0, x1, y1] round the anchor (the base line point); returns an image whose depth is its base line
-  function sprite(scene, parent, key, box, draw, x, y, K) {
+  // shade: true (or { a }) when it stands on the ground: the shared kit lays its shadow there (GardenPaintGround.cast).
+  // Its picture follows the camera like the ground does: close up it is painted again at the level the zoom needs (sharpen).
+  const sharp = new Map();   // texture key -> { scene, key, box, draw, K0, K, images: Set, seen }
+  let sharpTimer = null, sharpPx = 0, sharpWorst = 0, sharpWorstKey = '', sharpWalkWorst = 0, lastMove = 0; const firstMs = new Map();
+  const SHARP_BUDGET = 20 * 1048576 / 4, SHARP_ONE = 2.6e6;
+  // show every image of a sprite at another picture of it, keeping whatever scaling its painter gave it
+  const swap = (S, tex, K) => { const f = S.K / K; for (const im of S.images) { if (!im.active) continue; im.setTexture(tex).setScale(im.scaleX * f, im.scaleY * f); if (im._gpvBase) im._gpvBase *= f; } };
+  const plain = S => { swap(S, S.key, S.K0); if (S.tex && S.scene.textures.exists(S.tex)) S.scene.textures.remove(S.tex); sharpPx -= S.px; S.tex = null; S.K = S.K0; S.px = 0; };
+  function sharpen() {
+    const G = window.GardenPaintGround; if (!G || !sharp.size) return; const now = performance.now(); let best = null, bd = Infinity, moving = typeof _gw !== 'undefined' && !!_gw.moving; if (moving) lastMove = now; const settled = now - lastMove > 900;
+    for (const [key, S] of sharp) {
+      for (const im of S.images) if (!im.active) S.images.delete(im);
+      if (!S.images.size) { if (S.tex) { sharpPx -= S.px; ok(() => { if (S.scene.textures.exists(S.tex)) S.scene.textures.remove(S.tex); }); } sharp.delete(key); continue; }   /* (its scene may be gone with it) */
+      const cam = S.scene.cameras && S.scene.cameras.main, v = cam && cam.worldView; if (!v || !v.width) continue;
+      const w = S.box[2] - S.box[0], h = S.box[3] - S.box[1]; let want = G.levelFor(cam.zoom, S.K0, 4); while (want > S.K0 && (w * h * want * want > SHARP_ONE || S.ms0 * (want / S.K0) ** 2 > 40)) want = G.LEVELS[G.LEVELS.indexOf(want) - 1] || S.K0; /* (never a painting that would take a long task: its first painting was timed) */ if (want < S.K0) want = S.K0;
+      let d = Infinity; for (const im of S.images) { if (im.x + S.box[2] < v.x || im.x + S.box[0] > v.right || im.y + S.box[3] < v.y || im.y + S.box[1] > v.bottom) continue; d = Math.min(d, Math.hypot(im.x - v.centerX, im.y - v.centerY)); }
+      if (d < Infinity) S.seen = now;
+      // out of sight for a while, or over the budget: back to the picture it was first painted at
+      if (S.tex && (now - S.seen > 12000 || sharpPx > SHARP_BUDGET && d === Infinity)) { plain(S); continue; }
+      // (while you walk, and for a moment after you stop, only a sprite known to paint in a few milliseconds is painted again: its first painting was timed)
+      if (d < bd && S.K !== want && (want > S.K || S.tex) && !(!settled && want > S.K0 && !(S.ms0 * (want / S.K0) ** 2 < 9))) { bd = d; best = S; S.want = want; }
+    }
+    if (!best) return; const S = best, K = S.want, t0 = performance.now();
+    if (K <= S.K0) { plain(S); return; }
+    const [x0, y0, x1, y1] = S.box, w = Math.ceil((x1 - x0) * K), h = Math.ceil((y1 - y0) * K), c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d', { willReadFrequently: true }); cx.setTransform(K, 0, 0, K, -x0 * K, -y0 * K);   // (in memory: a canvas texture reads every pixel back as it is made, and from the graphics card that read was most of a 1.8 s stall while walking; round 3 integration, CPU profile)
+    if (ok(() => (S.draw(brush(cx)), 1)) == null) { S.K0 = 99; return; }   // (it would not paint again: leave it as it is)
+    const tex = S.key + '|x' + K; if (S.scene.textures.exists(tex)) S.scene.textures.remove(tex); S.scene.textures.addImage(tex, c);   // (vale final: addImage, no read-back, rule 16)
+    swap(S, tex, K);
+    if (S.tex) { S.scene.textures.remove(S.tex); sharpPx -= S.px; } S.tex = tex; S.K = K; S.px = w * h; sharpPx += S.px; { const ms = performance.now() - t0; if (ms > sharpWorst) sharpWorstKey = S.key + ' x' + K; sharpWorst = Math.max(sharpWorst, ms); if (moving) sharpWalkWorst = Math.max(sharpWalkWorst, ms); if (!(S.ms0 >= 0)) S.ms0 = ms / (K / S.K0) ** 2; }
+  }
+  function sprite(scene, parent, key, box, draw, x, y, K, shade) {
     K = K || 1.5; let px = 0;
     if (!scene.textures.exists(key)) {
       const [x0, y0, x1, y1] = box, w = Math.ceil((x1 - x0) * K), h = Math.ceil((y1 - y0) * K); if (w < 2 || h < 2 || w > 4096 || h > 4096) return null;
       const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d'); cx.setTransform(K, 0, 0, K, -x0 * K, -y0 * K);
-      if (ok(() => (draw(brush(cx)), 1)) == null) return null;
-      scene.textures.addCanvas(key, c); px = w * h;
+      const d0 = performance.now(); if (ok(() => (draw(brush(cx)), 1)) == null) return null;
+      scene.textures.addImage(key, c); px = w * h; firstMs.set(key, performance.now() - d0); if (firstMs.size > 600) firstMs.delete(firstMs.keys().next().value);   // (rule 16: addImage, as the chunks do; a CanvasTexture reads every pixel back as it is made, up to seconds with the card busy)
     }
     const [x0, y0, x1, y1] = box;
     const im = scene.add.image(x, y, key).setOrigin(-x0 / (x1 - x0), -y0 / (y1 - y0)).setScale(1 / K).setDepth(y);
-    parent.add(im); im._gptPx = px; return im;
+    parent.add(im); im._gptPx = px;
+    if (K >= .75 && K < 4) { let S = sharp.get(key); if (!S || S.scene !== scene) { if (S && S.tex && S.scene.textures.exists(S.tex)) { S.scene.textures.remove(S.tex); sharpPx -= S.px; } S = { scene, key, box, draw, K0: K, K, images: new Set(), seen: performance.now(), tex: null, px: 0, ms0: firstMs.get(key) }; sharp.set(key, S); } S.images.add(im); if (S.tex) im.setTexture(S.tex).setScale(im.scaleX * S.K0 / S.K); if (!sharpTimer) sharpTimer = setInterval(() => ok(sharpen), 90); }
+    if (shade && window.GardenPaintGround && GardenPaintGround.cast) { const id = GardenPaintGround.cast.add(scene, { key, x, y, box, a: shade.a }); if (id) im.once('destroy', () => GardenPaintGround.cast.drop(id)); }
+    return im;
   }
+  const sharpStatus = () => ({ sprites: sharp.size, sharp: [...sharp.values()].filter(S => S.tex).length, MB: +(sharpPx * 4 / 1048576).toFixed(1), worstMs: Math.round(sharpWorst), worst: sharpWorstKey, worstWalkingMs: Math.round(sharpWalkWorst) });
 
-  return { rng, hash, hashStr, noise, fbm, brush, rockBand, resample, normals, bboxOf, meets, tiles, chunked, sprite, mix, rgba, P2, get lastError() { return lastError; }, set lastError(v) { lastError = v; } };
+  return { rng, hash, hashStr, noise, fbm, brush, rockBand, resample, normals, bboxOf, meets, tiles, chunked, sprite, sharpStatus, mix, rgba, P2, get lastError() { return lastError; }, set lastError(v) { lastError = v; } };
 })();

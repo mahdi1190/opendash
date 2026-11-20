@@ -47,10 +47,16 @@ void main () {
   // scenes' morning haze. What lies beyond shows only as shapes through it;
   // its edge is feathered along the region's own border, and it rolls back
   // (uRetreat) and fades (uFade) when a gate opens, on the same tiles.
+  // (village fix round 1: the thick of it builds up over a cell or so in from the border, by a slow wandering amount, so a
+  // border that runs straight along a column of cells does not show as a straight white wall standing in the picture)
   const paintedFragment = fragment
     .replace('uniform float uTime;', 'uniform float uTime;\nuniform float uRetreat;\nuniform vec3 uTint;')   // (uFade is in the base mist already)
-    .replace(/float coreFade[\s\S]*?gl_FragColor = fragColor;/, `float coreFade = smoothstep(-6.0, 30.0, distance - uRetreat * 220.0);
-  float core = smoothstep(2.0, 96.0, distance + billow * 1.25 - uRetreat * 260.0) * coreFade * step(0.5, land.g);
+    // (village fix round 3: a second, closer wobble breaks a border along a straight run of cells into bays and spurs of
+    // a cell or two; the thick of it builds up over two cells or so; and the edge of the shut land itself is feathered
+    // instead of cut, so no straight or square edge of mist stands in the picture)
+    .replace(/float coreFade[\s\S]*?gl_FragColor = fragColor;/, `float wob = (texture2D(uMist, fract(p * vec2(0.29, 0.21))).r - 0.5) * 130.0 + (texture2D(uMist, fract(p * vec2(1.07, 0.83) + vec2(0.37, 0.61))).g - 0.5) * 84.0;
+  float coreFade = smoothstep(-16.0, 140.0, distance + wob + billow * 0.6 - uRetreat * 220.0);
+  float core = smoothstep(2.0, 124.0, distance + billow * 1.25 + wob * 0.4 - uRetreat * 260.0) * coreFade * smoothstep(-28.0, 8.0, distance);
   float edge = smoothstep(-34.0, 6.0, distance - uRetreat * 220.0) * (1.0 - smoothstep(18.0, 80.0, distance));
   float fringe = edge * smoothstep(0.3, 0.72, b * 0.4 + c * 0.6) * 0.16;
   float layer = smoothstep(0.35, 0.8, b * 0.55 + a * 0.45);
@@ -104,7 +110,9 @@ void main () {
     const reduced = matchMedia('(prefers-reduced-motion: reduce)'), tiles = new Map(), parent = options.world.rootNode._inner || options.world.root;
     let regions = null, revision = -1, boundary = null, count = 0, districtGate = '', room = false, paused = false, elapsed = 0, dead = false, builds = 0, buildMs = 0, reuses = 0, visible = 0, gen = 0, tint = [.9, .92, .9], tintAt = -1;
     const painted = !!(window.GardenNativePainted && GardenNativePainted.wanted() && typeof gardenIslandActive === 'function' && gardenIslandActive()), leaving = [];
-    const TINT = { day: [.9, .92, .9], dawn: [.92, .88, .86], dusk: [.86, .8, .8], night: [.44, .5, .58] };
+    // (night darker: the pale blue mist over the shut land stood out against the dark open land in a hard seam; its edge
+    // also takes the billows now, so a straight region edge is not a ruled line: coast round 3)
+    const TINT = { day: [.9, .92, .9], dawn: [.92, .88, .86], dusk: [.8, .74, .76], night: [.27, .32, .4] };
     function retire(tile) { if (tile.shader) tile.shader.destroy(); if (tile.texture) scene.textures.remove(tile.key); }
     function clearTiles() {
       for (const tile of [...tiles.values(), ...leaving]) retire(tile);
@@ -179,7 +187,7 @@ void main () {
       const view = options.world.camera(), overlaps = (tile, margin) => tile.x + tileSize >= view.x - margin && tile.x <= view.x + view.w + margin && tile.y + tileSize >= view.y - margin && tile.y <= view.y + view.h + margin;
       visible = 0; let prepared = false;
       for (const tile of tiles.values()) {
-        const on = !room && overlaps(tile, 16);
+        const on = !room && overlaps(tile, 64);
         // Visible fields are prepared together. While walking, warm
         // one nearby field on the shared clock before it enters the camera.
         if (!tile.built && on) buildTile(tile);

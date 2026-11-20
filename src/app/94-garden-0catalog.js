@@ -478,7 +478,7 @@ const GARDEN_DECOR = _gdRows([
   _gD('dc-milk-churns', 'Milk churns', 'ornament', { price: 16, lv: 3, look: { c: '#b8c0c6', c2: '#8a9298', h: 0.7 }, blurb: 'Cottage. Waiting at the gate for a cart that has stopped coming.' }),
   _gD('dc-washing-line', 'Washing line', 'structure', { w: 2, price: 22, lv: 4, look: { c: '#7a5a3a', c2: '#e8607a', h: 1.1 }, blurb: 'Cottage. Friends can see your socks.' }),
   _gD('dc-clay-oven', 'Clay oven', 'structure', { price: 40, lv: 7, effect: { kind: 'light' }, look: { c: '#c8855a', c2: '#a39b8c', h: 0.9 }, blurb: 'Cottage. It glows at dusk and smells of bread.' }),
-  _gD('dc-cottage-gate', 'Cottage gate', 'fence', { craft: 1, price: 0, rot: 1, look: { c: '#efe8d8', c2: '#6a4a2a', h: 0.8 }, blurb: 'Cottage. White pickets, and it never quite shuts.' }),
+  _gD('dc-cottage-gate', 'Cottage gate', 'fence', { craft: 1, price: 0, rot: 1, col: 'none', look: { c: '#efe8d8', c2: '#6a4a2a', h: 0.8 }, blurb: 'Cottage. White pickets, and it never quite shuts.' }),
   _gD('dc-tea-table', 'Tea table', 'seat', { price: 20, lv: 4, look: { c: '#fbf5ec', c2: '#3a8ac4', h: 0.8 }, blurb: 'Cottage. The pot is still warm.' }),
   _gD('dc-sleeping-cat', 'Sleeping cat', 'ornament', { price: 30, lv: 6, look: { c: '#e8903a', c2: '#fbf5ec', h: 0.4 }, blurb: 'Cottage. Made of stone, painted ginger, and just as hard to move.' }),
   _gD('dc-lavender-tub', 'Lavender tub', 'planter', { craft: 1, price: 0, look: { c: '#a87c4f', c2: '#8a6ac8', h: 0.8 }, blurb: 'Cottage. A half barrel of purple.' }),
@@ -601,7 +601,8 @@ function gardenWorksSet(ids, source) {
 }
 function gardenWorkOwned(id, works) { return works === undefined ? _GD_WORKS.has(id) : Array.isArray(works) ? works.includes(id) : works instanceof Set ? works.has(id) : false; }
 /** How many cells the main pier has grown (resident, or explicitly displayed works). */
-function gardenPierMore(works) { return gardenWorkOwned('pier-3', works) ? 8 : gardenWorkOwned('pier-2', works) ? 4 : 0; }
+// (village fix round 3: the lengths come from the layout's own pier pieces, so a longer first pier grows on by its pieces)
+function gardenPierMore(works) { const len = (id, d) => { try { const q = typeof gardenIslandActive === 'function' && gardenIslandActive() ? gardenIslandData().static.find(r => r.id === id) : null; return q && q.h > 0 ? q.h : d; } catch (e) { return d; } }; return gardenWorkOwned('pier-3', works) ? len('pier-2', 4) + len('pier-3', 4) : gardenWorkOwned('pier-2', works) ? len('pier-2', 4) : 0; }
 /* Fixed things in the world (not in your bag, not movable): the pier you walk out on, the tackle shop. x, y, w, h in cells.
    walk: you can stand on it; door: the cell you stand on to knock; act: what the page does when you get there.
    col (2.28.1, what it does to your feet): 'full' (the default: its whole footprint is a wall: a shop, a stall, the bench), 'soft' (a small box at its base:
@@ -900,6 +901,10 @@ function gardenPropCol(p) {
   // The labyrinth is a spiral worn into level turf. Its reserved placement
   // stays intact, but that reservation must not become an invisible wall.
   if (!p || p.art === 'turf' || p.kind === 'ld-turf') return 'none';
+  // The ring of old trees: in the painted garden it is a low carved stone at the heart of a ring of pears
+  // (94-garden-paint-terrain-2marks.js), not five trunks side by side, yet its four cells stopped the feet as one slab
+  // with bare grass on most of it. There it is a small block at the stone, like a lectern (the collision audit, 18 Nov 2026).
+  if (p.id === 'ld-ring' && typeof GardenNativePainted !== 'undefined' && GardenNativePainted && GardenNativePainted.wanted && GardenNativePainted.wanted()) return 'soft';
   return p.col === 'none' || p.col === 'soft' || p.col === 'full' ? p.col : p.walk ? 'none' : 'full';
 }
 /** The fixed east-bank mill presents its wheel to the river on its left. */

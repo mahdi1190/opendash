@@ -318,6 +318,15 @@ function _gjPlaces(left, right, m) {
   const sg = sky.appendChild(_gjEl('div', 'gj-skylist'));
   for (const r of stars) { const k = typeof _wdSkyKnown === 'function' && _wdSkyKnown(r.id); sg.appendChild(_gjEl('span', 'gj-star' + (k ? ' is-on' : ''), k ? r.name : '· · ·')); }
   if (!stars.length) sg.appendChild(_gjEl('small', null, 'Look up on a clear night.'));
+  // round 3: the little things you have done round the vale, in your own hand, the first time each (94-garden-zz-7act-1core.js)
+  if (typeof gartActDiary === 'function') {
+    const done = gartActDiary(), dd = right.appendChild(_gjEl('div', 'gj-done'));
+    dd.appendChild(_gjEl('h3', null, 'Little things I did'));
+    if (!done.length) dd.appendChild(_gjEl('small', 'gj-hand', 'Sit on a bench. Ring a bell. Skim a stone.'));
+    for (const r of done) dd.appendChild(_gjEl('p', 'gj-hand', r.line));
+    const left2 = typeof GARDEN_ACTS !== 'undefined' ? Object.values(GARDEN_ACTS).filter(a => a.first).length - done.length : 0;
+    if (done.length && left2 > 0) dd.appendChild(_gjEl('small', 'muted', `${left2} more to find.`));
+  }
   const yr = right.appendChild(_gjEl('div', 'gj-year'));
   yr.appendChild(_gjEl('h3', null, 'The year'));
   if (typeof wdBoxDays === 'function') { try { wdBoxDays(yr, m); } catch (e) { /* later */ } }

@@ -29,11 +29,16 @@ const _GCW_SPOT = Object.freeze({
     void o; return out;
   },
   'weed-bed': (s, o) => {
-    const r = gardenRand('sp-weed'); let d = '';
-    for (let i = 0; i < 14; i++) { const x = (r() - 0.5) * s.r * 70, y = (r() - 0.5) * 30; d += `M${_gcwN(x)} ${_gcwN(y)}q${_gcwN(5 + r() * 6)} -6 ${_gcwN(2 + r() * 7)} -13q-6 -5 -2 -12`; }
-    return (_gcwNativeWaterDepth('weed-bed', s.r * 42, 20, o) || `<ellipse cx="0" cy="0" rx="${_gcwN(s.r * 42)}" ry="20" fill="#1f5a3a" fill-opacity=".28"/>`) + `<g class="${o.still ? '' : 'gda-sway'}"><path d="${d}" stroke="#2f7a4a" stroke-opacity=".8" stroke-width="2" fill="none" stroke-linecap="round"/></g>`;
+    // fronds lying under the surface, soft and dim through the water, all leaning with the current (they were bright green
+    // zigzag strokes on top of the water, read as scribbles: coast round 3)
+    const r = gardenRand('sp-weed'); let d = '', t = '';
+    for (let i = 0; i < 16; i++) { const x = (r() - 0.5) * s.r * 66, y = (r() - 0.5) * 26, l = 9 + r() * 10, w = 2 + r() * 1.6, a = -0.35 + (r() - 0.5) * 0.5, cx = Math.cos(a), sn = Math.sin(a);
+      d += `M${_gcwN(x)} ${_gcwN(y)}q${_gcwN(cx * l * .5 - sn * w)} ${_gcwN(sn * l * .5 + cx * w)} ${_gcwN(cx * l)} ${_gcwN(sn * l)}q${_gcwN(-cx * l * .5 - sn * w)} ${_gcwN(-sn * l * .5 + cx * w)} ${_gcwN(-cx * l)} ${_gcwN(-sn * l)}z`;
+      if (r() < .4) t += `M${_gcwN(x + cx * l * .55)} ${_gcwN(y + sn * l * .55)}l${_gcwN(cx * l * .4)} ${_gcwN(sn * l * .4)}`; }
+    return (_gcwNativeWaterDepth('weed-bed', s.r * 42, 20, o) || `<ellipse cx="0" cy="0" rx="${_gcwN(s.r * 42)}" ry="20" fill="#1f5a3a" fill-opacity=".28"/>`) + `<g class="${o.still ? '' : 'gda-sway'}"><path d="${d}" fill="#24563c" fill-opacity=".34"/><path d="${t}" stroke="#5f8e5a" stroke-opacity=".3" stroke-width="1.4" fill="none" stroke-linecap="round"/></g>`;
   },
-  'sunken-log': () => '<ellipse cx="0" cy="7" rx="44" ry="8" fill="#0a2a46" fill-opacity=".25"/><path d="M-40 6Q-42 -6 -30 -8L30 -14Q42 -14 42 -4Q42 4 32 4L-30 10Q-38 10 -40 6z" fill="#6a4a2e" stroke="#3a2818" stroke-width="1"/><ellipse cx="34" cy="-5" rx="8" ry="9" fill="#a87c4f" stroke="#3a2818" stroke-width="1"/><ellipse cx="34" cy="-5" rx="4" ry="5" fill="none" stroke="#6a4a2e" stroke-width="1"/><path d="M-20 -6q10 -3 22 -4M-24 2q14 -3 36 -6" stroke="#3a2818" stroke-width="1" fill="none"/><path d="M-6 -11l-4 -9M-10 -20l5 -3" stroke="#6a4a2e" stroke-width="2" stroke-linecap="round"/><path d="M-46 10q10 3 22 0M6 8q12 3 26 0" stroke="#ffffff" stroke-opacity=".6" stroke-width="1.2" fill="none" stroke-linecap="round"/>',
+  // (under the water: dim, the river's colour over it, a ring where it breaks the surface; it read as a log floating on top)
+  'sunken-log': () => '<g opacity=".55">' + '<ellipse cx="0" cy="7" rx="44" ry="8" fill="#0a2a46" fill-opacity=".25"/><path d="M-40 6Q-42 -6 -30 -8L30 -14Q42 -14 42 -4Q42 4 32 4L-30 10Q-38 10 -40 6z" fill="#6a4a2e" stroke="#3a2818" stroke-width="1"/><ellipse cx="34" cy="-5" rx="8" ry="9" fill="#a87c4f" stroke="#3a2818" stroke-width="1"/><ellipse cx="34" cy="-5" rx="4" ry="5" fill="none" stroke="#6a4a2e" stroke-width="1"/><path d="M-20 -6q10 -3 22 -4M-24 2q14 -3 36 -6" stroke="#3a2818" stroke-width="1" fill="none"/><path d="M-6 -11l-4 -9M-10 -20l5 -3" stroke="#6a4a2e" stroke-width="2" stroke-linecap="round"/></g><path d="M-40 6Q-42 -6 -30 -8L30 -14Q42 -14 42 -4Q42 4 32 4L-30 10Q-38 10 -40 6z" fill="#3e7a86" fill-opacity=".3"/><path d="M-46 10q10 3 22 0M6 8q12 3 26 0" stroke="#ffffff" stroke-opacity=".45" stroke-width="1.1" fill="none" stroke-linecap="round"/>',
   'cold-spring': (s, o) => {
     let b = ''; for (let i = 0; i < 6; i++) b += `<circle class="${o.still ? '' : 'gda-bob'}" cx="${(i - 2.5) * 7}" cy="${(i % 3) * -4 - 1}" r="${1.4 + (i % 3) * 0.7}" fill="#ffffff" fill-opacity=".7" stroke="#8ad0ff" stroke-width=".5" style="animation-delay:-${i * 0.5}s"/>`;
     const nativeDepth = _gcwNativeWaterDepth('cold-spring', 32, 14, o);
@@ -106,7 +111,8 @@ function gardenCatchWorldArt(sc, o) {
   }
   for (const id of list) { const svg = _gcwEvent(id, sc, o); if (svg) push('ev' + id, id === 'festival' ? 13 : 29, 0, svg, true); }
   if (Array.isArray(ca.sg)) { const [sx, sy] = _gcwP(ca.sg[0] + 0.5, ca.sg[1] + 1); push('sugar' + ca.sg.join('-'), ca.sg[1] + 2, ca.sg[0], `<g transform="translate(${_gcwN(sx)} ${_gcwN(sy)})"><ellipse cx="0" cy="-18" rx="5.4" ry="9" fill="#6a3a14" fill-opacity=".85"/><path d="M-3 -10q1 5 0 8M3 -11q1 4 0 6" stroke="#6a3a14" stroke-width="1.4" fill="none" stroke-linecap="round"/><ellipse cx="-1.6" cy="-21" rx="1.5" ry="2.6" fill="#ffe9a8"/></g>`); }   // the sugar on a tree: it glistens
-  if (gardenWorkOwned('rowing-boat')) { const bp = GARDEN_PROPS.find(q => q.id === 'boat'); if (bp) { const [bx, by] = _gcwP(bp.x + bp.w / 2, bp.y + 0.4); push('boatflag', Math.ceil(bp.y + bp.h), bp.x, `<g transform="translate(${_gcwN(bx)} ${_gcwN(by)})"><path d="M18 2V-22" stroke="#6e4c2a" stroke-width="1.8"/><path d="M18 -22l14 4l-14 4z" fill="#d8452a"/><path d="M-10 -3L16 6M10 -3L-16 6" stroke="#5a3a20" stroke-width="2" stroke-linecap="round"/></g>`); } }   // it is yours: a flag on the mast, and oars
+  // (the painted boat, 94-garden-paint-zsights.js, flies its own pennant and has its oars aboard: no flag and crossed oars laid over it)
+  if (gardenWorkOwned('rowing-boat') && !(o && o.native && window.GardenPaintedMarks && GardenPaintedMarks.knows('boat'))) { const bp = GARDEN_PROPS.find(q => q.id === 'boat'); if (bp) { const [bx, by] = _gcwP(bp.x + bp.w / 2, bp.y + 0.4); push('boatflag', Math.ceil(bp.y + bp.h), bp.x, `<g transform="translate(${_gcwN(bx)} ${_gcwN(by)})"><path d="M18 2V-22" stroke="#6e4c2a" stroke-width="1.8"/><path d="M18 -22l14 4l-14 4z" fill="#d8452a"/><path d="M-10 -3L16 6M10 -3L-16 6" stroke="#5a3a20" stroke-width="2" stroke-linecap="round"/></g>`); } }   // it is yours: a flag on the mast, and oars
   if (Array.isArray(ca.rk) && ca.rk.length) push('rk' + gardenHash(JSON.stringify(ca.rk)).toString(36), Math.ceil(GARDEN_CATCH_CELLS.rack.y), GARDEN_CATCH_CELLS.rack.x, _gcwRack(ca.rk));
   return out;
 }

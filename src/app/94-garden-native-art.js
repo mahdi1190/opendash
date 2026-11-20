@@ -1110,7 +1110,7 @@ window.GardenNativeArt = (function () {
   }
   function releaseCache(node, keepBase) {
     const state = stateFor(node.scene), cache = node._cache;
-    const discard = capture => { for (const tile of capture.tiles) tile.destroy(); state.cacheBytes = Math.max(0, state.cacheBytes - capture.bytes); state.cachedTiles = Math.max(0, state.cachedTiles - capture.tiles.length); };
+    const discard = capture => { for (const tile of capture.tiles) retireTile(tile); state.cacheBytes = Math.max(0, state.cacheBytes - capture.bytes); state.cachedTiles = Math.max(0, state.cachedTiles - capture.tiles.length); };
     if (cache) {
       for (const child of cache.originals) if (child && child.active) { if (child._nativeCacheHiddenBy === node) delete child._nativeCacheHiddenBy; child.setVisible(cache.visible.get(child)); }
       discard(cache); node._cache = null; state.cachedNodes.delete(node);
@@ -1134,12 +1134,49 @@ window.GardenNativeArt = (function () {
     node._cache = cache; node._cacheBase = null; stateFor(node.scene).cachedNodes.add(node);
   }
   function capturePixels(size) { return Math.max(2, Math.ceil(size / 2) * 2); }
+  // Phaser checks every new framebuffer with gl.checkFramebufferStatus, and in the browser that call waits until the GPU process has
+  // done everything queued before it: 50 to 150 ms when a tile is made in a walking frame (a frame on a 2x screen queues a lot). A
+  // colour texture no larger than the card allows is always complete in WebGL, so a tile that size is made without the check.
+  let maxTexturePx = 0;
+  function withoutFramebufferWait(scene, w, h, make) {
+    const gl = scene.game && scene.game.renderer && scene.game.renderer.gl;
+    if (!gl || typeof gl.checkFramebufferStatus !== 'function') return make();
+    if (!maxTexturePx) { try { maxTexturePx = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096; } catch (e) { maxTexturePx = 4096; } }
+    if (w > maxTexturePx || h > maxTexturePx) return make();
+    const own = Object.prototype.hasOwnProperty.call(gl, 'checkFramebufferStatus'), was = gl.checkFramebufferStatus, complete = gl.FRAMEBUFFER_COMPLETE;
+    gl.checkFramebufferStatus = () => complete;
+    try { return make(); } finally { if (own) gl.checkFramebufferStatus = was; else delete gl.checkFramebufferStatus; }
+  }
+  // (village fix round 3) Capture textures are kept for the next capture of the same size instead of being destroyed and
+  // made again: making one asks the graphics card to set up a new frame buffer and wait for it, 40 to 150 ms each time a
+  // view is captured again while you walk. A bounded pool (16 MB), per scene; anything over it is destroyed as before.
+  const RT_POOL_MAX = 16 * 1024 * 1024, rtPool = new Map(); let rtPoolBytes = 0;
+  function retireTile(tile) {
+    try {
+      const w = tile.width, h = tile.height, bytes = w * h * 4;
+      if (tile.scene && tile.active !== false && rtPoolBytes + bytes <= RT_POOL_MAX) {
+        if (tile.parentContainer) tile.parentContainer.remove(tile);
+        if (tile.removeFromDisplayList) tile.removeFromDisplayList();
+        tile.setVisible(false); const key = w + 'x' + h; let list = rtPool.get(key); if (!list) rtPool.set(key, list = []); list.push(tile); rtPoolBytes += bytes; return;
+      }
+    } catch (e) { /* destroyed below */ }
+    try { tile.destroy(); } catch (e) { /* already gone */ }
+  }
+  function pooledTile(scene, x, y, w, h) {
+    const list = rtPool.get(w + 'x' + h);
+    while (list && list.length) {
+      const rt = list.pop(); rtPoolBytes = Math.max(0, rtPoolBytes - w * h * 4);
+      if (rt.scene === scene && rt.active !== false) { rt.setPosition(x, y).setOrigin(0, 0).setScale(1).setRotation(0).setAlpha(1).setVisible(true); rt.clear(); return rt; }
+    }
+    return null;
+  }
   function captureTile(node, x, y, width, height) {
     const w = capturePixels(width), h = capturePixels(height);
+    { const rt = pooledTile(node.scene, x, y, w, h); if (rt) return rt; }
     // Phaser first allocates at the supplied size, then its default forceEven
     // setSize rounds odd sizes up and allocates again. Supply that same final
     // size immediately; tile coverage, pixels and scale stay unchanged.
-    return node.scene.add.renderTexture(x, y, w, h).setOrigin(0, 0);
+    return withoutFramebufferWait(node.scene, w, h, () => node.scene.add.renderTexture(x, y, w, h).setOrigin(0, 0));
   }
   function baseFromCapture(node, cache, quality) {
     if (node._cacheBase || cache.cropped || cache.quality <= quality) return;
@@ -1186,10 +1223,15 @@ window.GardenNativeArt = (function () {
     for (const candidate of candidates) { releaseCache(candidate.node, true); restoreBase(candidate.node); state.cacheEvictions = (state.cacheEvictions || 0) + 1; candidate.node._cacheRetryAfter = now + 300; if (state.cacheBytes + additional <= state.cacheBudget) return true; }
     return state.cacheBytes + additional <= state.cacheBudget;
   }
+  function walkingNow() { try { return typeof _gw !== 'undefined' && !!_gw && !!_gw.on && !!(_gw.moving || (_gw.keys && _gw.keys.size) || (_gw.path && _gw.path.length)); } catch (e) { return false; } }
   function cacheAllowance(node, options, take) {
     const state = stateFor(node.scene), loop = node.scene.game && node.scene.game.loop, frame = loop && Number.isFinite(loop.frame) ? loop.frame : node.scene.time && node.scene.time.now;
     if (state.captureFrame !== frame || !state.captureLimit) { state.captureFrame = frame; state.captureCount = 0; state.captureLimit = 1; }
     if (options.preparing) state.captureLimit = 6;
+    // (rule 16, layout fix west) no new capture while you walk: making a capture's render texture asks the graphics card for
+    // a new frame buffer and waits for it (36 to 276 ms each, measured on a walk through the woods, 17 of them over 9 ms).
+    // Until you stop, a node shows its own drawing (always its fallback) or the capture it already has; then it is taken.
+    if (!options.preparing && walkingNow()) { state.walkDeferrals = (state.walkDeferrals || 0) + 1; return false; }
     if ((state.captureCount || 0) >= state.captureLimit) return false;
     if (take) state.captureCount = (state.captureCount || 0) + 1;
     return true;

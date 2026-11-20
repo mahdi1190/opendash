@@ -33,7 +33,9 @@ window.GardenPaintedMarks = (function () {
       B.tufts(r, 0, 1, 50, 12, ['#8c9a5e', '#c2c78e'], 6);
     } },
     // four standing stones in a row, leaning, lichened, each throwing its shadow to the south-east
-    'ld-stones': { box: [-110, -64, 120, 16], draw(B, o) {
+    // (foot: each stone's own base, [left, right, depth] in px from the middle of the footprint's foot line: the feet stop
+    // at the four stones, not at one slab four cells long with the gaps between them shut: 94-garden-world-0walk.js)
+    'ld-stones': { box: [-110, -64, 120, 16], foot: [[-81, -63, 9], [-37, -15, 9], [12, 32, 9], [60, 76, 9]], draw(B, o) {
       const kit = KIT(), r = kit.rng(41), snowy = o.season === 'winter';
       [[-72, 34, 9, -.12], [-26, 46, 11, .05], [22, 38, 10, -.08], [68, 28, 8, .14]].forEach(([x, h, w, lean]) => {
         B.f(B.poly([[x - w * .6, 0], [x + w * .6, 0], [x + w * .6 + 22, 8], [x - w * .2 + 22, 9]]), 'rgba(40,46,30,.22)');
@@ -97,7 +99,8 @@ window.GardenPaintedMarks = (function () {
   } };
   // Wick's shepherd's hut on the high pasture: weathered planks, a curved tin roof, iron wheels, plank steps up to
   // the door, a stove pipe, a log pile under the end; its door is its way in (wayIn), so no extra door is drawn on it
-  ART['ld-hut'] = { box: [-56, -116, 60, 14], door: { dx: 15, dy: 0 }, draw(B, o) {
+  // (foot: the hut's body from end to end, a cell and a half; its one layout cell left both ends, a wheel and the steps, open)
+  ART['ld-hut'] = { box: [-56, -116, 60, 14], foot: [[-38, 38, 0]], door: { dx: 15, dy: 0 }, draw(B, o) {
     const kit = KIT(), r = kit.rng(61), snowy = o.season === 'winter', iron = '#2e2c2a', ironHi = '#64605a';
     const wall = '#6f8274', wallLo = '#4f6052', wallHi = '#93a596', roof = '#8a8f92', roofLo = '#5f6468', roofHi = '#b9bec0';
     B.shadow(4, 2, 52, 9, .34);
@@ -125,6 +128,7 @@ window.GardenPaintedMarks = (function () {
     B.f(B.poly([[4, -24], [26, -24], [28, -17], [2, -17]]), '#7a5a3a').f(B.poly([[2, -16], [28, -16], [30, -9], [0, -9]]), '#6e5234').f(B.poly([[0, -8], [30, -8], [32, 0], [-2, 0]]), '#62482e');
     B.s('M4 -24h22M2 -16h26M0 -8h30', '#a07a50', 1, .8);
     // logs stacked under the west end, a bucket, turf round the wheels
+    B.shadow(-43, 1, 13, 3.2, .5).shadow(43, 1, 7, 2.2, .45).shadow(16, 1.4, 19, 3.6, .42);   // (layout fix, north) each stands on the ground: a contact shadow under the logs, the bucket and the steps
     for (let k = 0; k < 5; k++) { const x = -48 + (k % 3) * 6 + (k > 2 ? 3 : 0), y = -3 - (k > 2 ? 5.4 : 0); B.f(B.circ(x, y, 3), '#8a6440').f(B.circ(x, y, 1.8), '#c49a66'); }
     B.f(B.poly([[38, 0], [39, -8], [47, -8], [46, 0]]), '#6a6e70').s('M38.5 -8h9', '#9a9ea0', 1);
     if (!snowy) B.tufts(r, 0, 1, 104, 22, ['#8c9a5e', '#c2c78e', '#7d8f4e'], 6);
@@ -132,18 +136,61 @@ window.GardenPaintedMarks = (function () {
   } };
   function knows(id) { return !!ART[id]; }
   /** Where a painted landmark's own door is, as an offset from its foot (world px), or null when it has none. */
-  function wayIn(id) { const a = ART[id]; return a ? a.door || (id === 'ld-grotto' ? { dx: 0, dy: 0 } : null) : null; }
-  /** A painted landmark as a world handle (the same shape the village's painted buildings return). */
-  function landmark(scene, prop, sc, element, W) {
+  // buildings painted elsewhere whose own doorway is their way in (offsets from their foot): no second door picture is stood on the grass in front of them
+  const WAYIN = { 'ld-chapel': { dx: 0, dy: -2 }, 'ld-lighthouse': { dx: 0, dy: -1 }, 'lf-windmill': { dx: 0, dy: -1 } };
+  function wayIn(id) { const a = ART[id]; return a ? a.door || (id === 'ld-grotto' ? { dx: 0, dy: 0 } : null) : WAYIN[id] || null; }
+  /** A painted landmark as a world handle (the same shape the village's painted buildings return).
+   *  layer: the ground's container, for the seat under it (GardenPaintSeat, 94-garden-paint-terrain-5sights.js). An art
+   *  with `lit` has a second picture for dusk and night (lit windows, a lamp), swapped by setLitWindows; `lights` are
+   *  its live warm lights at night, as offsets from its foot; `seat` says what it stands in (false: nothing). */
+  function landmark(scene, prop, sc, element, W, layer) {
     const kit = KIT(), art = prop && ART[prop.id]; if (!kit || !art) return null;
-    const season = sc.season || 'summer', key = 'gpm|' + prop.id + '|' + season;
+    // art.state(): what it shows that can change while it stands (the mill's wheel once the cog is in); part of its picture's name
+    const stateOf = () => { try { return art.state ? String(art.state() || '') : ''; } catch (e) { return ''; } };
+    let state = stateOf();
+    const season = sc.season || 'summer', night0 = !!art.lit && (sc.tod === 'dusk' || sc.tod === 'night'), keyOf = n => 'gpm|' + prop.id + '|' + season + (n ? '|n' : '') + (state ? '|' + state : '');
     const node = element(scene, 'g', { class: 'gd-it gd-prop gd-painted gd-painted-mark', 'data-prop': prop.id, 'data-z': prop.y + prop.h, 'data-x': prop.x });
-    const x = (prop.x + prop.w / 2) * W.cellW, foot = W.sky + (prop.y + prop.h) * W.cellH - 2;
-    const im = kit.sprite(scene, node._inner, key, art.box, B => art.draw(B, { season }), x, foot, K); if (!im) { node.remove(); return null; }
-    im.setDepth(0);
+    const x = (prop.x + prop.w / 2) * W.cellW + (art.dx || 0), foot = W.sky + (prop.y + prop.h) * W.cellH - 2;
+    // a flat sight (a pool let into the ground, a turf maze) lies in the ground's container with its seat: under every actor
+    const host = art.flat && layer ? layer : node._inner, depthOf = () => art.flat && layer ? (window.GardenPaintSeat ? GardenPaintSeat.DEPTH + 1 : -9344) : 0;
+    const body = n => kit.sprite(scene, host, keyOf(n), art.box, B => art.draw(B, { season, night: n, prop, state }), x, foot, K, art.shade !== false);
+    let im = body(night0); if (!im) { node.remove(); return null; }
+    im.setDepth(depthOf());
+    // moving parts (art.parts: [{ id, box, at: [dx, dy] (its hub from the foot), draw(B, o), spin(o, env) rad/s }]): each its own
+    // picture in front of the body, turned about its hub every frame while motion is on (sails, a water wheel)
+    const parts = [];
+    const makeParts = n => { for (const q of parts) if (q.im) q.im.destroy(); parts.length = 0; for (const p of art.parts || []) { const pim = kit.sprite(scene, host, keyOf(n) + '|' + p.id, p.box, B => p.draw(B, { season, night: n, prop, state }), x + p.at[0], foot + p.at[1], p.K || (p.anim ? 4 : K), false); if (pim) { pim.setDepth(depthOf()); parts.push({ p, im: pim, turn: pim.rotation = p.phase || 0 }); } } };
+    makeParts(night0);
+    const seat = art.seat !== false && window.GardenPaintSeat && layer ? GardenPaintSeat.add(scene, layer, prop, W, Object.assign({ season, x, foot }, art.seat || {})) : null;
     const b = { x: x + art.box[0], y: foot + art.box[1], width: art.box[2] - art.box[0], height: art.box[3] - art.box[1] };
     node.nativeBounds = b;
-    return { root: node.target, rootNode: node, bounds: b, painted: true, foot: { x, y: foot }, update() {}, destroy() { node.remove(); } };
+    let lit = night0, last = null, paused = false, checked = 0, animT = 0;
+    // (lit windows threw almost no light on the ground: art director, round 3. Each light now reaches half as far again)
+    const lights = night0 && art.lights ? art.lights.map(([dx, dy, r]) => ({ x: x + dx, y: foot + dy, ground: foot + 8, radius: (r || 110) * 1.5, pool: true })) : [];
+    const repaint = on => { const next = body(on); if (!next) return false; next.setDepth(depthOf()); im.destroy(); im = next; makeParts(on); return true; };
+    const h = { root: node.target, rootNode: node, bounds: b, painted: true, shaded: art.shade !== false || !!art.flat, foot: { x, y: foot }, lights,
+      update(time, env) {
+        if (seat) { seat.setVisible(node.target.visible); seat.setAlpha(node.target.alpha); }
+        // art.bob: a thing afloat rides the water a little (the rowing boat), as the library boat did
+        if (art.bob && im && !paused && !(typeof gardenMotionOn === 'function' && !gardenMotionOn())) { const t = time / 1000; im.y = foot + Math.sin(t * 1.3) * art.bob; im.setRotation(Math.sin(t * .9) * .018); }
+        if (!parts.length && !art.state) return;
+        const dt = last == null ? 0 : Math.min(.08, Math.max(0, (time - last) / 1000)); last = time;
+        if (art.state && time - checked > 1000) { checked = time; const now = stateOf(); if (now !== state) { state = now; repaint(lit); } }
+        if (!node.target.visible || paused || typeof gardenMotionOn === 'function' && !gardenMotionOn()) return;
+        for (const q of parts) { const w = q.p.spin ? q.p.spin({ state, season }, env || {}) : 0; if (w && q.im) { q.turn += w * dt; q.im.setRotation(q.turn); } }
+        // (a part with a life of its own is painted once at level 4, so the kit never sharpens it again while you walk: each
+        // sharpening reads the canvas back from the graphics card, which stalled a walk for up to 1.3 s in round 3)
+        // art.parts[].anim(im, t, o): a small life of its own (a drip from a spout, an owl's blink, a lantern swinging, smoke);
+        // o.x, o.y are its hub, o.night whether the lit picture is up. Only while it is on screen and motion is on (above).
+        animT += dt;
+        for (const q of parts) if (q.p.anim && q.im) q.p.anim(q.im, animT, { x: x + q.p.at[0], y: foot + q.p.at[1], night: lit, state, season });
+      },
+      pauseAmbient(st) { paused = !!(st && (st.hush || st.frozen)); },
+      setLitWindows(on) { on = !!on && !!art.lit; if (on === lit) return; lit = on; if (!repaint(on)) return; h.lights.length = 0; if (on && art.lights) for (const [dx, dy, r] of art.lights) h.lights.push({ x: x + dx, y: foot + dy, ground: foot + 8, radius: (r || 110) * 1.5, pool: true }); },
+      destroy() { if (seat) seat.destroy(); if (host !== node._inner) { im.destroy(); for (const q of parts) if (q.im) q.im.destroy(); } node.remove(); } };
+    // (a thing with moving parts or a changing state is called every frame, as the painted props with motion are)
+    if (parts.length || art.state || art.bob) { h.kind = 'painted'; h.dynamic = true; }
+    return h;
   }
   return { knows, landmark, wayIn, ART };
 })();

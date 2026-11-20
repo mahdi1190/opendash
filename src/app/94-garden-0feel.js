@@ -106,6 +106,12 @@ const _GF_LOCK = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="t
  *   gardenMessageHost()           the column it sits in, so the Nature book card and the connection strip stack with it
  *   gardenToast(msg, o)           takes toast's arguments: the line in the garden, the app's toast anywhere else, and for a running wait with its Cancel
  */
+/* A card, a message with a button, or a talk box that goes away keeps the world from taking a press where it stood, for a moment:
+   the press meant for its button (it faded, was replaced, or its speaker walked off just as you clicked) walked you to the spot under it
+   (final review, round 3: "Take me there" left you under the button; "Thank you" opened the Land Office). Any card that closes calls gardenUiGone(el). */
+const _gUiGone = [];
+function gardenUiGone(el) { try { if (!el || !el.isConnected) return; const r = el.getBoundingClientRect(); if (!(r.width > 0 && r.height > 0)) return; _gUiGone.push({ l: r.left - 14, t: r.top - 14, r: r.right + 14, b: r.bottom + 14, at: performance.now() }); if (_gUiGone.length > 8) _gUiGone.shift(); } catch (e) { /* no layout: nothing to guard */ } }   // clock-ok: a short input guard
+function gardenUiSwallow(x, y) { const now = performance.now(); for (let i = _gUiGone.length - 1; i >= 0; i--) { const g = _gUiGone[i]; if (now - g.at > 1200) { _gUiGone.splice(i, 1); continue; } if (x >= g.l && x <= g.r && y >= g.t && y <= g.b) return true; } return false; }   // clock-ok: a short input guard
 const _gmsg = { host: null, el: null, temp: null, hold: null, shown: null, t: 0, outT: 0, ambient: new Map() };
 function _gmsgWhere() {
   const room = document.querySelector('.ee-room'); if (room) return room;   // (a room is drawn over the stage)
@@ -135,12 +141,14 @@ function _gmsgArm() {
 }
 function _gmsgPaint() {
   const H = _gmsg.hold, M = H && H.urgent ? H : _gmsg.temp || H;
-  if (!M) { _gmsg.shown = null; clearTimeout(_gmsg.t); clearTimeout(_gmsg.outT); if (_gmsg.el) { _gmsg.el.remove(); _gmsg.el = null; } return; }
+  if (!M) { if (_gmsg.el && _gmsg.shown && _gmsg.shown.acts.length) gardenUiGone(_gmsg.el); _gmsg.shown = null; clearTimeout(_gmsg.t); clearTimeout(_gmsg.outT); if (_gmsg.el) { _gmsg.el.remove(); _gmsg.el = null; } return; }
   const host = gardenMessageHost(); if (!host) return;
   if (_gmsg.shown === M && _gmsg.el && _gmsg.el.parentNode === host) return;
   const fresh = !_gmsg.el || !_gmsg.el.isConnected;
   let el = _gmsg.el;
-  if (!el) { el = _gmsg.el = document.createElement('div'); el.onpointerenter = () => clearTimeout(_gmsg.t); el.onpointerleave = _gmsgArm; }
+  if (el && _gmsg.shown && _gmsg.shown !== M && _gmsg.shown.acts.length) gardenUiGone(el);
+  // (the pointer over a line that is fading brings it back: it was going just as you reached for its button)
+  if (!el) { el = _gmsg.el = document.createElement('div'); el.onpointerenter = () => { clearTimeout(_gmsg.t); clearTimeout(_gmsg.outT); el.classList.remove('is-out'); }; el.onpointerleave = _gmsgArm; }
   if (el.parentNode !== host) host.appendChild(el);
   clearTimeout(_gmsg.outT);
   // (a fresh line eases in; a change of words on a line already there, or "Now!", is simply there)

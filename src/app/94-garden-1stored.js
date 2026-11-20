@@ -84,8 +84,65 @@ function gardenFeatureRow(f) {
   const dx = f.door ? f.door.x - f.x : Math.floor((f.w || 1) / 2), dy = f.door ? f.door.y - f.y : f.h || 1;
   return Object.assign({}, f, { x: p[1], y: p[2], door: { x: p[1] + dx, y: p[2] + dy } });
 }
+/** Nothing overlaps (the owner): what a set-out thing's picture covers round its footprint must be clear ground. The
+ *  footprint alone was checked, so the windmill went up inside a great tree, the observatory over the drowned cellar's
+ *  pool, the bandstand inside a locked hedge plot and a way post on a fence corner (art director and hunter, round 3).
+ *  The ring is as wide as the picture's own foot (its art row's box) and one cell deep in front and behind. */
+/** A standing thing's painted box in world px, [x0, y0, x1, y1]: its art row's box from the middle of its foot, else its footprint and height. */
+function _gardenPictureBox(id, x, y, w, h, tall) {
+  const W = GARDEN_WORLD, A = window.GardenPaintedMarks && GardenPaintedMarks.ART, b = A && A[id] && A[id].box, cx = (x + w / 2) * W.cellW, foot = (y + h) * W.cellH;
+  return b ? [cx + b[0] * .9, foot + b[1] * .92, cx + b[2] * .9, foot] : [x * W.cellW, foot - Math.max(1, tall || 1) * 56, (x + w) * W.cellW, foot];
+}
+function _gardenFeatureClearWhy(f, x, y, m) {
+  const W = GARDEN_WORLD, w = f.w || 1, h = f.h || 1, A = window.GardenPaintedMarks && GardenPaintedMarks.ART, art = A && A[f.id];
+  const half = art && art.box ? Math.max(-art.box[0], art.box[2]) / W.cellW : w / 2 + .3, reach = Math.max(1, Math.ceil(half - w / 2 - .2));
+  const lv = m && m.level ? m.level.level : 1, statics = (typeof gardenIslandData === 'function' && gardenIslandData().static) || [];
+  // never on a path (a footprint on the lane put the observatory across it), never in a gate's crossing (a prize board stood in the forest arch)
+  for (let cy = y; cy < y + h; cy++) for (let cx = x; cx < x + w; cx++) { const base = typeof gardenIslandBaseCell === 'function' ? gardenIslandBaseCell(cx, cy) : null; if (base && (base.route || base.reservation === 'apron')) return 'Keep the path clear'; }
+  for (const g of (typeof GARDEN_ZONE_GATES !== 'undefined' ? GARDEN_ZONE_GATES : [])) { if (!g.crossSpan) continue; const xs = g.crossSpan.map(p => p[0]), ys = g.crossSpan.map(p => p[1]); if (x + w > Math.min(...xs) - 2.5 && x < Math.max(...xs) + 2.5 && y + h > Math.min(...ys) - 2.5 && y < Math.max(...ys) + 2.5) return 'Too close to the gate'; }
+  // a tall picture covers the ground behind it as well: a windmill went up in front of a scarecrow, its sails over it
+  const up = art && art.box ? 1 + Math.floor(Math.max(0, -art.box[1] - 60) / W.cellH / 2) : 1;
+  // no tree stands in it or just in front of it (the windmill inside a great tree, the savings oak and the hill flag lost
+  // under the wood's canopy), and no tall building in front hides it (the bandstand behind the land office's roof)
+  // (a trunk is a box {x0, y0, x1, y1}: this read t.x and t.y, which a box has not, so an orchard tree's crown stood in
+  // front of the bandstand: art director, round 3. A crown is about three cells across, so its trunk keeps 1.5 cells off.)
+  if (typeof _gwPaintedTrunks === 'function') { let feet = []; try { feet = _gwPaintedTrunks(true) || []; } catch (e) { /* no painted trees yet */ } for (const t of feet) { const tx = (t.x0 + t.x1) / 2, ty = t.y1; if (tx > x - reach - 1.5 && tx < x + w + reach + 1.5 && ty > y - up && ty < y + h + 3.5) return 'Too close to a tree'; } }
+  if (typeof GardenPaintWood !== 'undefined' && GardenPaintWood && GardenPaintWood.standing) { const trees = GardenPaintWood.standing() || []; for (const t of trees) if (!t.thicket && t.cx > x - reach - 1.2 && t.cx < x + w + reach + 1.2 && t.cy > y - up - 1 && t.cy < y + h + 3) return 'Too close to a tree'; }
+  // nor on a village square's setts (the hill flag and the observatory went up on the green)
+  { const plazas = (typeof gardenIslandData === 'function' && gardenIslandData().presentation && gardenIslandData().presentation.plazas) || []; for (let cy = y; cy < y + h; cy++) for (let cx = x; cx < x + w; cx++) for (const p of plazas) if (p.rx && p.ry && Math.pow((cx + .5 - p.x) / (p.rx + .6), 2) + Math.pow((cy + .5 - p.y) / (p.ry + .6), 2) <= 1) return 'Keep the square clear'; }
+  // no picture over another: the observatory and the museum went up right behind the watermill (the mill's roof over
+  // their doors, the dome seeming to sit on the mill), the heron post against the observatory's wall (round 3). Each
+  // standing thing's painted box, the sights' and the other things you have set out, must not cross this one's.
+  { const me = _gardenPictureBox(f.id, x, y, w, h, f.tall), name = s => String(s.name || (typeof gardenLandSight === 'function' && gardenLandSight(s.id) || {}).name || 'something').replace(/^The /, 'the ');
+    const cross = o => Math.min(me[2], o[2]) - Math.max(me[0], o[0]) > 8 && Math.min(me[3], o[3]) - Math.max(me[1], o[1]) > 8;
+    for (const s of statics) { if (s.id === f.id || s.col === 'none' && !(s.tall >= 1.5)) continue; const o = _gardenPictureBox(s.id, s.x, s.y, s.w || 1, s.h || 1, s.tall); if (cross(o)) return (s.y + (s.h || 1) > y + h ? 'Too close behind ' : 'Too close to ') + name(s); }
+    for (const g of (typeof GARDEN_LAND_FEATURES !== 'undefined' ? GARDEN_LAND_FEATURES : [])) { if (g.id === f.id || !gardenFeatureIsSetOut(g.id)) continue; const r = gardenFeatureRow(g); if (!r || r.x == null) continue; const o = _gardenPictureBox(g.id, r.x, r.y, r.w || 1, r.h || 1, r.tall); if (cross(o)) return 'Too close to ' + String(g.name || 'something').replace(/^The /, 'the ').toLowerCase(); }
+  }
+  // never on the beds you grow in (the lookout's legs and the fountain's basin stood on the starter bed: hunter, round 3),
+  // nor at the end of a bridge or stepping stones (a rain barrel stood on the little bridge's landing)
+  for (let cy = y - 1; cy <= y + h; cy++) for (let cx = x - reach; cx < x + w + reach; cx++) { const row = typeof gardenLandCell === 'function' ? gardenLandCell(cx, cy) : null; if (row && row.plot && row.cats && row.cats.length) return 'Keep the growing beds for planting'; }
+  { const P = typeof gardenIslandData === 'function' && gardenIslandData().presentation, A = typeof gardenIslandData === 'function' && gardenIslandData().anchors; if (A && A.bed && x + w + reach > A.bed.x - .5 && x - reach < A.bed.x + A.bed.w + .5 && y + h > A.bed.y - 1 && y - 1 < A.bed.y + A.bed.h) return 'Keep the growing beds for planting';
+    for (const c of (P && P.crossings) || []) if (Math.hypot(c.x - (x + w / 2), (c.y - (y + h / 2)) * 1.4) < 3.2 + w / 2) return 'Too close to the bridge'; }
+  for (let cy = y - up; cy < y - 1; cy++) for (let cx = x - reach; cx < x + w + reach; cx++) {
+    if (cx < 0 || cy < 0 || cx >= W.cols || cy >= W.rows) continue;
+    const pr = gardenPropAt(cx, cy); if (pr && pr.id !== f.id) return `Too close to ${String(pr.name || 'something').replace(/^The /, 'the ')}`;
+    const c = m && m.occ ? m.occ.get(cx + ',' + cy) : null; if (c && c.decor) return 'Too close to something you have put out';
+  }
+  for (let cy = y - 1; cy <= y + h; cy++) for (let cx = x - reach; cx < x + w + reach; cx++) {
+    if (cx >= x && cx < x + w && cy >= y && cy < y + h) continue;   // (the footprint itself: _gdPlaceOk)
+    if (cx < 0 || cy < 0 || cx >= W.cols || cy >= W.rows) return 'Too near the edge of the garden';
+    { const c = m && m.occ ? m.occ.get(cx + ',' + cy) : null; if (c && c.decor) return 'Too close to something you have put out'; }   // (the bandstand went up against the maypole)
+    if (String(gardenAreaAt(cx, cy, lv)).startsWith('locked:')) return 'Too close to land that is not yours yet';
+    // a tall thing set right at a road's edge in front of it stood over the road (the observatory on the west lane): a cell clear behind it
+    if (cy === y - 1 && art && art.box && -art.box[1] > 70 && typeof gardenIslandBaseCell === 'function') { const base = gardenIslandBaseCell(cx, cy); if (base && base.route) return 'Too close to the path behind it'; }
+    const pr = gardenPropAt(cx, cy); if (pr && pr.id !== f.id) return `Too close to ${String(pr.name || 'something').replace(/^The /, 'the ')}`;
+    const st = statics.find(s => cx >= s.x - 1 && cx < s.x + (s.w || 1) + 1 && cy >= s.y && cy < s.y + (s.h || 1)); if (st) return 'Too close to something that stands there';
+    if (typeof _gwFree === 'function' && !_gwFree(cx + .5, cy + .5) && !(typeof gardenIsWater === 'function' && gardenIsWater(cx, cy))) return 'Too close to something in the way';
+  }
+  return '';
+}
 function gardenFeaturePlaceWhy(f, x, y, m) {
-  const why = _gdPlaceOk(m, { id: f.id, w: f.w || 1, h: f.h || 1, layer: 'main' }, x, y, 'decor');
+  const why = _gdPlaceOk(m, { id: f.id, w: f.w || 1, h: f.h || 1, layer: 'main' }, x, y, 'decor') || _gardenFeatureClearWhy(f, x, y, m);
   if (why) return why;
   const dx = f.door ? f.door.x - f.x : Math.floor((f.w || 1) / 2), dy = f.door ? f.door.y - f.y : f.h || 1;
   const door = { x: x + dx + .5, y: y + dy + .5 };

@@ -137,8 +137,8 @@ window.GardenNativeRooms = (function () {
   function nativeActor(s, M) {
     if (s.people.has(M)) return s.people.get(M);
     const root = s.context.scene.add.container(M.x, M.y), body = s.context.scene.add.container(0, 0);
-    const shadow = s.context.scene.add.ellipse(0, 1, 34, 9, 0x111511, .24);
-    const label = s.context.scene.add.text(0, -112, M.me ? 'You' : M.n, { fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#fff2d8', stroke: '#22180f', strokeThickness: 3 }).setOrigin(.5, 1);
+    const shadow = s.context.scene.add.ellipse(0, 1, 34 * GARDEN_ACTOR_SCALE, 9 * GARDEN_ACTOR_SCALE, 0x111511, .24);
+    const label = s.context.scene.add.text(0, -112 * GARDEN_ACTOR_SCALE - 4, M.me ? 'You' : M.n, { fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#fff2d8', stroke: '#22180f', strokeThickness: 3 }).setOrigin(.5, 1);
     root.add([shadow, body, label]); s.root.add(root);
     const N = { root, body, label, shadow, poses: new Map(), active: null, key: '', dead: false, effect: { id: 'room:' + s.serial + ':actor:' + (M.me ? 'local' : M.w), source: body, bounds: {}, kind: 'actor', dynamic: true, bakedContact: true } };
     const ref = { target: root, get isConnected() { return !N.dead && !s.dead; }, remove() { if (!N.dead) { N.dead = true; clearPeerFishing(M); for (const handle of N.poses.values()) removeHandle(handle); root.destroy(); s.people.delete(M); s.effectRevision++; } }, querySelector(selector) { return selector === '.ee-pname' ? { style: { set display(value) { label.setVisible(value !== 'none'); } } } : null; } };
@@ -327,7 +327,7 @@ window.GardenNativeRooms = (function () {
   function up() { const s = current(); if (s && !s.music) { _gwFishRelease(); _grmUp(); } }
   function swing(M) {
     const s = current(); if (!s || !M) return;
-    const handle = art(s.context.scene, '<g transform="translate(0 -52) scale(' + ((M.face < 0 ? -1 : 1) * EE.fig) + ' ' + EE.fig + ')"><path d="M6 8Q30 -16 30 -34" stroke="#fbfbf2" stroke-width="2.6" fill="none"/>' + (typeof gardenLookNetSwing === 'function' ? gardenLookNetSwing(gardenLookWorn('net')) : '') + '</g>', s.root, 2000 + M.y);
+    const handle = art(s.context.scene, '<g transform="translate(0 ' + (-40 * EE.fig) + ') scale(' + ((M.face < 0 ? -1 : 1) * EE.fig) + ' ' + EE.fig + ')"><path d="M6 8Q30 -16 30 -34" stroke="#fbfbf2" stroke-width="2.6" fill="none"/>' + (typeof gardenLookNetSwing === 'function' ? gardenLookNetSwing(gardenLookWorn('net')) : '') + '</g>', s.root, 2000 + M.y);
     handle.root.setPosition(M.x, M.y); s.effects.push({ art: handle, until: s.now + 360 });
   }
   function bugs(dt) {

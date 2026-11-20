@@ -29,6 +29,26 @@ function _wdDaysBetween(a, b) { const x = Date.parse(a + 'T12:00:00Z'), y = Date
 function _wdFriendId() { try { return typeof _gsvIdOf === 'function' ? _gsvIdOf(state.view) : null; } catch (e) { return null; } }
 /* ---------- world cells: every place these files use, worked out from GARDEN_AREAS and GARDEN_PROPS, so a moved map moves them too. List of tables: WD_AT here, WD_FINDS in 3finds. ---------- */
 function _wdPt(id, dx, dy) { const p = GARDEN_PROPS.find(x => x.id === id), b = !p ? { x: 10, y: 12 } : p.door ? { x: p.door.x + 0.5, y: p.door.y + 0.5 } : { x: p.x + p.w / 2, y: p.y + p.h / 2 }; return { x: b.x + (dx || 0), y: b.y + (dy || 0) }; }
+/** A place by the nearest thing of a KIND to the arrival point (94-garden-zz-7act-0scan.js gardenAffordThings), worked out when it is
+ *  asked for, on whatever layout is loaded: { x, y (world cells: the thing's middle plus dx, dy), ok }. No thing of that kind: ok false and
+ *  x, y NaN (the feature is not shown; never a fixed corner of the map). more: extra fields (a second place). */
+function _wdKindPt(kinds, dx, dy, more) {
+  const K = new Set(kinds), memo = { key: null, p: null };
+  const find = () => {
+    let key = ''; try { key = typeof _gks !== 'undefined' ? String(_gks.key) : ''; } catch (e) { key = ''; }
+    if (memo.p && memo.key === key && key) return memo.p;
+    let best = null;
+    try {
+      const st = (gardenIslandData().anchors || {}).start || GARDEN_WORLD.start || { x: GARDEN_WORLD.cols / 2, y: GARDEN_WORLD.rows / 2 }; let bd = 1e9;
+      for (const t of gardenAffordThings()) { if (!K.has(t.kind)) continue; const d = Math.hypot(t.x - st.x, t.y - st.y); if (d < bd) { bd = d; best = t; } }
+    } catch (e) { best = null; }
+    memo.key = key; memo.p = best ? { x: best.x + (dx || 0), y: best.y - (best.h || 1) / 2 + (dy || 0) } : null;
+    if (!best && !memo.said) { memo.said = 1; try { console.info('[garden] no ' + kinds.join(' or ') + ' in this layout: what stands by one is not shown'); } catch (e) { /* none */ } }
+    return memo.p;
+  };
+  const o = { get x() { const p = find(); return p ? p.x : NaN; }, get y() { const p = find(); return p ? p.y : NaN; }, get ok() { return !!find(); } };
+  return Object.assign(o, more || {});
+}
 const _WD_LAKE = (GARDEN_AREAS.find(a => a.id === 'lake') || {}).water || { x: 0, y: 13, w: 28, h: 17 };
 const _WD_ISLE_C = Object.freeze({ cx: _WD_LAKE.x + _WD_LAKE.w * 0.786, cy: _WD_LAKE.y + _WD_LAKE.h * 0.535, rx: 3.5, ry: 2.3 });
 const WD_AT = Object.freeze({   // world cells
@@ -40,7 +60,9 @@ const WD_AT = Object.freeze({   // world cells
   rowboat: Object.freeze({ x: _WD_ISLE_C.cx - 0.7, y: _WD_ISLE_C.cy - 2 }),
   rowHome: _wdPt('tackle-shop', -0.9, 0),
   postWalk: _wdPt('post-box', -0.1, 0.2),
-  postFlag: _wdPt('post-box', 0, -0.58),
+  // the little red flag stands on the post box itself, at its foot (from its door it floated on the paving a cell above the
+  // box once the rebuilt village turned the box to face the square, door on its north side)
+  postFlag: (() => { const p = GARDEN_PROPS.find(x => x.id === 'post-box'); return p ? { x: p.x + p.w / 2, y: p.y + (p.h || 1) - 0.08 } : _wdPt('post-box', 0, -0.58); })(),
   bench: _wdPt('reed-bank', -0.3, 0.4),
   trunk: _wdPt('reed-bank', 1.2, -0.58),
   rug: _wdPt('notice-board', -1, -2.8),
@@ -191,7 +213,7 @@ function wdTalk(o) {
   if (pv) { try { const b = pv.getBBox(); if (b.height > 0 && (b.y < -54 || b.y + b.height > 6)) { const y0 = Math.min(-54, b.y - 2), y1 = Math.max(6, b.y + b.height + 2), h = y1 - y0, w = Math.max(h * 0.8, 2 * Math.max(-b.x, b.x + b.width) + 4); pv.setAttribute('viewBox', `${-w / 2} ${y0} ${w} ${h}`); } } catch (e) { /* not drawn yet: the fixed frame stays */ } }
   return T;
 }
-function wdTalkClose(quiet) { const T = _wd.talk; if (!T) return; _wd.talk = null; const had = T.el.contains(document.activeElement); T.el.remove(); if (had) { try { const b = typeof _gw !== 'undefined' && _gw.box && _gw.box.isConnected ? _gw.box : _wdBox(); if (b && b.focus) b.focus({ preventScroll: true }); } catch (e) { /* no stage */ } }   // (the keys go back to the garden: M, E and walking work at once)
+function wdTalkClose(quiet) { const T = _wd.talk; if (!T) return; _wd.talk = null; const had = T.el.contains(document.activeElement); gardenUiGone(T.el); T.el.remove(); if (had) { try { const b = typeof _gw !== 'undefined' && _gw.box && _gw.box.isConnected ? _gw.box : _wdBox(); if (b && b.focus) b.focus({ preventScroll: true }); } catch (e) { /* no stage */ } }   // (the keys go back to the garden: M, E and walking work at once)
   if (T.o.onClose && !quiet) { try { T.o.onClose(); } catch (e) { console.error('[garden wonder]', e); } } else if (T.o.onClose && quiet === true && T.o.closeQuiet) T.o.onClose(); }
 /** Walked away from whoever you were talking to: they stop. */
 function _wdTalkCheck() { const T = _wd.talk; if (!T) return; const a = T.o.at; if (a && !wdNear(a.x, a.y, 6)) wdTalkClose(); else if (!T.el.isConnected) { const box = _wdBox(); if (box) box.appendChild(T.el); } }

@@ -70,7 +70,7 @@ function _gllPetStep(A, dt, svg) {
   void W;
 }
 function _gllPetFx(A, ev) {
-  const e = String(ev.e || '');
+  const e = String(ev.e || '') === 'ga-belly' ? 'l-belly' : String(ev.e || '');   // (a friend on an older version sends the player branch's old id: there is one belly rub now)
   if (ev.c === 'pet' && (e === 'away' || e === 'back')) { A.petAway = e === 'away'; if (A.petAway) _gllPetDrop(A); return; }   // their pet went on a little journey, or came home: as they see it, so do you
   let P = A.pp;
   if (ev.c === 'petplay' && ev.u != null) {

@@ -35,7 +35,7 @@ function gardenIslandBasinHomeIds(id) {
   // Fleetwater Vale (v5) gives the waters their own places along the river; v4 kept them in three basins.
   if (GARDEN_WORLD.v >= 5) {
     const pres = gardenIslandData().presentation || {}, race = pres.millRace || '';
-    const homes = { pond: ['pond', 'falls'], tarn: ['tarn'], spring: ['spring'], 'brook-2': ['brook'], 'allotment-pool': ['folly', 'light'], 'river-4': ['frogpool'], 'orchard-pool': ['cider', 'dip'] };   // (the frog pool's kinds are on the Field Journal's Millwater page: the marsh below the bird hide)
+    const homes = { pond: ['pond', 'falls'], tarn: ['tarn'], spring: ['spring'], 'brook-2': ['brook'], 'allotment-pool': ['folly', 'light'], 'river-4': ['frogpool'], 'orchard-pool': ['cider'], 'orchard-dip': ['dip'] };   // (round 3: the dip is its own warm pool under the orchard bank, vale-orchard.json) (the frog pool's kinds are on the Field Journal's Millwater page: the marsh below the bird hide)
     if (race) homes[race] = ['race'];
     return homes[id] || [];
   }
@@ -99,6 +99,7 @@ function gardenIslandBasinPatchHomes(pool, centre) {
   if (GARDEN_WORLD.v >= 5 && pool.id === 'allotment-pool') return centre.x < mx ? ['folly'] : ['folly', 'light'];   // (the frog pool's kinds live in the valley marsh, river-4: the journal's Millwater page)
   if (pool.id === 'pond') return ['pond'].concat(centre.y < my ? ['spring', 'tarn'] : [], centre.x >= mx ? ['falls'] : []);
   if (pool.id === 'allotment-pool') return centre.x < mx ? ['frogpool', 'race', 'brook'] : ['folly', 'light'];
+  if (GARDEN_WORLD.v >= 5 && pool.id === 'orchard-pool' && (gardenIslandData().freshwater || []).some(w => w.id === 'orchard-dip')) return ['cider'];
   if (pool.id === 'orchard-pool') return centre.y < my ? ['dip'] : ['cider'];
   return gardenIslandBasinHomeIds(pool.id).slice();
 }
