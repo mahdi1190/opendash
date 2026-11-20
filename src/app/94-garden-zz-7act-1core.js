@@ -119,7 +119,11 @@ function gartActNearby() {
   // where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near; and a tree offers each
   // of its moves where you would do it (in front of the trunk: climb; at its side: hide behind it; out under the crown: a nap)
   const ds = (r) => !r.stand ? d(r) : r.src === 'tree' ? Math.hypot(r.stand.x - px, (r.stand.y - py) * 1.3) : Math.min(d(r), Math.hypot(r.stand.x - px, (r.stand.y - py) * 1.3));   // (where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near)
-  rows.sort((a, b) => ds(a) - (a.pri || 0) - ds(b) + (b.pri || 0));   // (pri: a wall before the tree that grows against it)
+  // (vale final fix 1, by kind) a big thing that answers from further off (its reach: the falls) is measured against that reach, and a
+  // tree's moves give way to a made thing at about the same distance: trees stand everywhere, and their climb or nap took the prompt
+  // from the falls' shower, the notices on a board and the camera's photo
+  const score = (r) => (r.reach > GA_REACH ? ds(r) * GA_REACH / r.reach : ds(r)) + (r.src === 'tree' ? 0.7 : 0) - (r.pri || 0);
+  rows.sort((a, b) => score(a) - score(b));   // (pri: a wall before the tree that grows against it)
   if (!rows.length) return _gaWaterRows(px, py);
   return rows;
 }

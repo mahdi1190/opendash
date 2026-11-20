@@ -10,13 +10,13 @@ const GTG_VEG = Object.freeze({ min: 7, tickets: 60, perDay: 8, focus: 30, kinds
 const _gtgvAtM = { D: null, p: null };
 function _gtgvAt() {
   let D = null; try { D = gardenIslandData(); } catch (e) { return null; }
-  if (_gtgvAtM.D === D && _gtgvAtM.p) return _gtgvAtM.p;
+  if (_gtgvAtM.D === D && (_gtgvAtM.p || _gtgvAtM.none)) return _gtgvAtM.p;   // (vale final fix 1: a layout with no spot was searched again on every repaint, 40 ms of _plStoneAt mid-walk)
   const st = (D.anchors && D.anchors.start) || { x: GARDEN_WORLD.cols / 2, y: GARDEN_WORLD.rows / 2 };
   let from = null; try { for (const k of ['barn', 'trough', 'hay']) { from = gardenAffordNear(k, st.x, st.y, 200); if (from) break; } } catch (e) { from = null; }
   const o = from ? { x: from.x + (from.w || 1) / 2 + 1.2, y: from.y + 1 } : { x: st.x + 3, y: st.y + 2 };
   let p = null;
   try { for (let r = 0; r < 8 && !p; r += 0.5) for (let i = 0; i < 16 && !p; i++) { const a = i / 16 * Math.PI * 2, x = Math.round((o.x + Math.cos(a) * r) * 10) / 10, y = Math.round((o.y + Math.sin(a) * r * 0.75) * 10) / 10; if (gardenTerrainTakes('veg', x, y) && gardenTerrainTakes('veg', x - 0.6, y) && gardenTerrainTakes('veg', x + 0.6, y)) p = { x, y }; } } catch (e) { p = null; }
-  _gtgvAtM.D = D; _gtgvAtM.p = p; return p;
+  _gtgvAtM.D = D; _gtgvAtM.p = p; _gtgvAtM.none = !p; return p;
 }
 function _gtgvGet() { const P = _gtgW()['tg.pv']; return P && P.k ? P : null; }
 function _gtgvUnits() { const W = _gtgW(), P = _gtgvGet(); if (!P) return 0; let n = 0; for (const k of Object.keys(W)) if (k.startsWith('tg.pt.') && k.slice(6) >= P.d) n += Number(W[k]) || 0; return n; }

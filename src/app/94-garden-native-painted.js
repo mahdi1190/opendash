@@ -489,9 +489,11 @@ window.GardenNativePainted = (function () {
     // (village fix round 1: the anglers' first meeting place is a striped-awning stall on the terrace's end, timber and
     // canvas in the village's colours, not a dark green dome tent that read as a featureless blob; round 3: drawn across
     // its whole four cells, the width its block takes, where it stood a cell narrower than the ground it stops you on)
-    { obj: 'structure.mcr-market-hut', v: 2, w: 170, wallWidth: 300, extra: [['street.mqn-lifebuoy', 0, 64, 2, 0, 28]] },
+    // (vale final fix 1: the striped market hut read as a placeholder box with a blank front; the hall is a real building
+    // from the first day, the small plastered hall with its slate roof, and grows into the large one)
     { obj: 'building.vale-hall-small', v: 0, w: 192, wallWidth: 160, sign: 'Lake Hall' },
-    { obj: 'building.thatched-cottage', v: 1, w: 200, wallWidth: 216, sign: 'Lake Hall' },
+    { obj: 'building.vale-hall-small', v: 0, w: 192, wallWidth: 160, sign: 'Lake Hall', extra: [['street.mqn-lifebuoy', 0, 92, 2, 0, 24]] },
+    { obj: 'building.vale-hall-large', v: 0, w: 192, wallWidth: 240, sign: 'Lake Hall' },
     { obj: 'building.vale-hall-large', v: 0, w: 192, wallWidth: 240, sign: 'Lake Hall' },
     { obj: 'building.vale-hall-large', v: 1, w: 192, wallWidth: 240, sign: 'Lake Hall' },
   ];
