@@ -384,7 +384,10 @@ window.GardenNative = (function () {
     if (typeof _ptwCheck === 'function') _ptwCheck();
   }
   function sync(model) {
-    const s = live; if (!s || s.dead) return; s.model = model;
+    const s = live; if (!s || s.dead) return;
+    // (2.74.1) a bare sync() (a placed thing moved, an action ended) means the garden on screen now: never an empty model, which left the create() of a slow first load painting nothing and the life engine reading undefined.tod
+    if (!model) { try { model = gardenHere(); } catch (error) { model = null; } if (!model) model = s.model; if (!model) return; }
+    s.model = model;
     if (!s.world) return;
     let key = null;
     try { key = presentationKey(model); } catch (error) { /* Unknown model extensions take the full paint path. */ }
