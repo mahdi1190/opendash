@@ -73,7 +73,7 @@ function gardenAffordThings() {
   _gks.list = list; _gks.unknown = list.filter(t => !t.kind).map(t => t.src + ':' + t.id);
   // a placed thing moved aside once the walker knew what stops the feet: the world draws it again where it now lies
   const placedSig = list.filter(t => t.src === 'thing').map(t => t.id + '@' + t.x + ',' + t.y).join('|');
-  if (_gks.placedSig != null && _gks.placedSig !== placedSig && typeof gardenRepaintSoon === 'function') { try { gardenRepaintSoon(); } catch (e) { /* drawn next time */ } }
+  if (_gks.placedSig != null && _gks.placedSig !== placedSig) { _gks.rev = (_gks.rev || 0) + 1; if (typeof gardenRepaintSoon === 'function') try { gardenRepaintSoon(); } catch (e) { /* drawn next time */ } }
   _gks.placedSig = placedSig;
   if (_gks.unknown.length && _gks.said !== _gks.unknown.join()) { _gks.said = _gks.unknown.join(); try { console.info('[garden] things of no known kind (they offer nothing; give them a kind in the layout or a word in GARDEN_KINDS): ' + _gks.unknown.join(', ')); } catch (e) { /* no console */ } }
   return list;
@@ -105,6 +105,8 @@ function _gksPlaceNear(K, x, y, w, h, list, self) {
   for (let r = 0.35; r <= 3.01; r += 0.35) for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2 + r, qx = Math.round((x + Math.cos(a) * r) * 100) / 100, qy = Math.round((y + Math.sin(a) * r * 0.75) * 100) / 100; if (!_gksPlaceFault(K, qx, qy, w, h, list, self)) return { x: qx, y: qy }; }
   return null;
 }
+/** Bumped when a placed thing lies somewhere new (the stage's cache key: 94-garden-4page.js), so the world draws it there. */
+function gardenAffordRev() { return _gks.rev || 0; }
 /** Rebuild on the next look (the layout or the land changed). */
 function gardenAffordReset() { _gks.key = null; _gks.t = 0; }
 /** The pets' word for a thing -> every found thing it counts as. */

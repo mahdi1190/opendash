@@ -318,7 +318,7 @@ function _gdpPaintStage(m, force) {
   const mode = _gdpMode(), still = !gardenMotionOn();
   const sc = gardenSceneFromModel(m);
   _gdp.lightKey = _gdpLightKey(m);
-  const parts = gardenSceneParts(sc, { size: 'l', crop: 'all', interactive: true, fit: 'xMidYMid meet', still, uid: 'gdp', label: `${m.visit ? m.visit.name + "'s" : 'Your'} garden: ${m.plants.length} plants, level ${m.level.level}`, cacheKey: (m.visit ? m.visit.key : _gd.memoKey) + '|' + mode + '|' + (still ? 1 : 0) + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0), friend: m.visit ? m.visit.drawFriend : undefined, readOnly: !!m.visit });
+  const parts = gardenSceneParts(sc, { size: 'l', crop: 'all', interactive: true, fit: 'xMidYMid meet', still, uid: 'gdp', label: `${m.visit ? m.visit.name + "'s" : 'Your'} garden: ${m.plants.length} plants, level ${m.level.level}`, cacheKey: (m.visit ? m.visit.key : _gd.memoKey) + '|' + mode + '|' + (still ? 1 : 0) + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0) + '|' + (typeof gardenAffordRev === 'function' ? gardenAffordRev() : 0), friend: m.visit ? m.visit.drawFriend : undefined, readOnly: !!m.visit });
   if (!_gdp.svg || !_gdp.svg.isConnected || force && mode !== (_gdp.svg.dataset.mode || '')) _gdp.svg = gardenSvgMount(inner, parts);
   else _gdp.svg = gardenSvgPatch(_gdp.svg, parts);
   if (_gdp.svg) _gdp.svg.dataset.mode = mode;
