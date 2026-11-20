@@ -87,7 +87,7 @@ function _glvTake(d) {
   const hold = _glv.state !== 'live' && _glv.why === 'lost';
   if (_glv.here && _glv.state !== 'live' && !hold) { _glv.here = false; if (typeof _gltLost === 'function') _gltLost(); _glvPeopleOut(); _glv.snap = null; _gll.by.clear(); _glv.pending.clear(); _glv.doQ.length = 0; if (typeof _gsvPaint === 'function') _gsvPaint(); }
   if (_glv.state === 'live') _glv.here = true;
-  if (was !== 'live' && _glv.state === 'live') { _glv.lookSig = _glvLookSig(_glvLook()); _glvResend(); _glvWatchStart(); if (!_glv.snap) _glvSend('me', _glvLook()); if (typeof _gltResume === 'function') _gltResume(); if (typeof _gloResume === 'function') _gloResume(); }   // (this page may be new to a visit the server already has: tell me who is here, and the garden as it is)
+  if (was !== 'live' && _glv.state === 'live') { _glv.lookSig = _glvLookSig(_glvLook()); _glvResend(); _glvWatchStart(); if (!_glv.snap) _glvSend('me', _glvLook()); if (typeof _gltResume === 'function') _gltResume(); }   // (this page may be new to a visit the server already has: tell me who is here, and the garden as it is)
   else if (was === 'live' && _glv.state === 'live' && wasWhy === 'resume' && !_glv.why) { _glvResend(); if (typeof _gltResume === 'function') _gltResume(); }   // (back: what I asked for and never heard about, with the same ids)
   if (wasGen != null && wasGen !== _glv.gen && _glv.state === 'live') _glvRosterAgain();
   _glvHud();
@@ -326,8 +326,6 @@ function _glvPersonMenu(A) {
     go(_glv.follow === A.w ? 'Stop following' : 'Follow', 'footprints', () => { _glv.follow = _glv.follow === A.w ? null : A.w; _glvSend('em', { c: 'do', e: _glv.follow != null ? 'follow' : 'unfollow', to: A.w }); if (_glv.follow != null) _glvFollowGo(A.x - 0.8, A.y + 0.3); });
     if (!glMayDo(_glv.lv, 'drop')) go('Give something', 'gift', () => _glvGiveMenu(A));
     if (glAtLeast(_glv.lv, GL_TRADE.lv)) go('Trade', 'repeat', () => gardenLiveTradeOpen(A));
-    if (A.w === 0 && typeof gardenLotPick === 'function' && glAtLeast(_glv.lv, GL_LOT.lv)) go('Buy a plot here', 'fence', () => gardenLotPick());   // a little plot of their garden, with their yes (94-garden-live-7lots.js)
-    if (A.w === 0 && typeof _gloMinePaid === 'function') for (const L of _gloMinePaid(_glv.fid).slice(0, 2)) go(`Give my ${L.w} × ${L.h} plot back`, 'undo-2', () => _gloDrop(L.i));
     el.appendChild(r);
   }, { align: 'center' });
 }
@@ -442,7 +440,6 @@ function _glvEvent(ev) {
     case 'snap-missed': if (typeof _glyAsk === 'function') _glyAsk(false); return;
     case 'pp': _gllPlacesIn(ev); return;
     case 'tr': if (typeof _gltFromHost === 'function') _gltFromHost(ev); return;
-    case 'lot': if (typeof _gloFromHost === 'function') _gloFromHost(ev); return;   // a plot (94-garden-live-7lots.js)
     case 'goal': if (typeof _glgGuestIn === 'function') _glgGuestIn(ev); return;
     case 'fx': {
       if (!gardenActivityFxAllowed(ev.c)) return;

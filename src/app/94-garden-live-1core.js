@@ -336,12 +336,6 @@ function _gllApplyPosts() {
       g.led[key] = { d: today, k: 'gl', n: 0 }; done.push(p.id); changed = true;
       continue;
     }
-    if (p.why === 'lot') {
-      // the owner's word about a plot you asked for: yes, no, or they gave it back and your coins come home (94-garden-live-7lots.js; only the friend your record names)
-      if (typeof gardenLiveLotPost === 'function') gardenLiveLotPost(p);
-      g.led[key] = { d: today, k: 'gl', n: 0 }; done.push(p.id); changed = true;
-      continue;
-    }
     if (p.why === 'trade') {
       // the host's decision about a trade you held things for: it goes, or it does not (94-garden-live-7trade.js; only the host the hold names may decide)
       if (typeof gardenLiveTradePost === 'function') gardenLiveTradePost(p);
