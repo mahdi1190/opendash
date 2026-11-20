@@ -196,7 +196,8 @@ function gartActPlay(gpl, id, o) {
     }
   };
   play('enter', row.enter, false);
-  if (row.loop && motion) H.timers.push(setTimeout(() => { for (const a of H.anims) { try { a.cancel(); } catch (e) { /* gone */ } } H.anims.length = 0; play('loop', row.loop, true); }, row.ms));
+  const loopAt = row.music && row.loop && typeof gmLoopAt === 'function' ? gmLoopAt(row.ms, row.loop.ms || 2000) : row.ms;   // (an instrument: the loop starts on the tune's beat, so a bow stroke or a drum hit lands with the note, on every screen)
+  if (row.loop && motion) H.timers.push(setTimeout(() => { for (const a of H.anims) { try { a.cancel(); } catch (e) { /* gone */ } } H.anims.length = 0; play('loop', row.loop, true); }, loopAt));
   else if (row.loop && !motion) { /* the end pose holds */ }
   // what it holds
   const prop = row.skim ? _gaSkimProp(o.skips || 3) : row.prop && !o.noProp && GA_PROPS[row.prop];
@@ -210,7 +211,7 @@ function gartActPlay(gpl, id, o) {
     if (row.prop === 'ducks') _gaDucks(g, H, motion, row.ms);
     if (row.skim) _gaSkimFly(g, H, motion, row.ms, o.skips || 3);
     if (row.bow && motion) { const bw = g.querySelector('.ga-bow'); if (bw) H.timers.push(setTimeout(() => { try { H.panims.push(gardenVisualAnimate(bw, [{ offset: 0, transform: 'translate(4px,3px)' }, { offset: 0.5, transform: 'translate(-5px,-4px)', easing: 'ease-in-out' }, { offset: 1, transform: 'translate(4px,3px)' }], { duration: 900, iterations: Infinity, easing: 'ease-in-out' })); } catch (e) { /* the bow rests */ } }, row.ms)); }   // the bow saws along its length, with the arm
-    if (row.propMove && motion) for (const m of row.propMove) { const el = g.querySelector(m.sel); if (el) H.timers.push(setTimeout(() => { try { H.panims.push(gardenVisualAnimate(el, m.frames, { duration: m.ms, iterations: Infinity, easing: 'ease-in-out' })); } catch (e) { /* it rests */ } }, row.ms)); }   // a held thing's own parts (a squeezebox's bellows, a drum's tipper), in time with the arms
+    if (row.propMove && motion) for (const m of row.propMove) { const el = g.querySelector(m.sel); if (el) H.timers.push(setTimeout(() => { try { H.panims.push(gardenVisualAnimate(el, m.frames, { duration: m.ms, iterations: Infinity, easing: 'ease-in-out' })); } catch (e) { /* it rests */ } }, row.music && typeof gmLoopAt === 'function' ? gmLoopAt(row.ms, m.ms) : row.ms)); }   // a held thing's own parts (a squeezebox's bellows, a drum's tipper), in time with the arms
     if (row.prop === 'swimwater' && motion) { const wd = g.querySelector('.ga-wade'); if (wd) try { H.panims.push(gardenVisualAnimate(wd, [{ offset: 0, opacity: 0 }, { offset: 0.06, opacity: 1 }, { offset: 0.3, opacity: 1 }, { offset: 0.4, opacity: 0 }, { offset: 1, opacity: 0 }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* no wading ring */ } }
     if (row.prop === 'swimwater') { if (motion) { try { H.panims.push(gardenVisualAnimate(g.querySelector('.ga-swim') || g, [{ offset: 0, opacity: 0 }, { offset: 0.2, opacity: 0 }, { offset: 0.42, opacity: 1 }, { offset: 1, opacity: 1 }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* shows at once */ } } }
   }

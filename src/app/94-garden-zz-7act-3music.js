@@ -29,16 +29,16 @@
    gardenMusicRender(voices, secs)                 the tune drawn into an OfflineAudioContext: for checking levels with no speakers
    ============================================================ */
 const GMU = Object.freeze({ bpm: 96, steps: 8, bars: 16, ear: 7, far: 20, ahead: 0.35, tickMs: 100, beatMs: 9000, staleMs: 26000, pingMs: 8000, walkOff: 1.2 });
-const GM_STEP = 60000 / GMU.bpm / 2, GM_LOOP = GM_STEP * GMU.steps * GMU.bars, GM_NSTEP = GMU.steps * GMU.bars;
+const GM_STEP = 60000 / GMU.bpm / 2, GM_LOOP = GM_STEP * GMU.steps * GMU.bars, GM_NSTEP = GMU.steps * GMU.bars, GM_SYNC = GM_LOOP * 2;   // (the clock is told modulo two times round, so every screen is on the same time round too: the descant is on the second)
 // the chord of each bar, and what is in it (MIDI notes): roots low for the bass, the triad round middle D
 const GM_BARS = Object.freeze(['D', 'G', 'D', 'A', 'D', 'G', 'A', 'D', 'Bm', 'G', 'D', 'A', 'Bm', 'G', 'A', 'D']);
 const GM_CHORDS = Object.freeze({ D: Object.freeze({ root: 50, fifth: 57, tri: [62, 66, 69] }), G: Object.freeze({ root: 43, fifth: 50, tri: [62, 67, 71] }), A: Object.freeze({ root: 45, fifth: 52, tri: [61, 64, 69] }), Bm: Object.freeze({ root: 47, fifth: 54, tri: [62, 66, 71] }) });
 // the melody, eight eighths a bar: a note, -1 to hold the one before, 0 a rest
 const GM_TUNE = Object.freeze([
-  69, 66, 69, 74, 73, 74, 76, 74,   71, 74, 71, 67, 69, 71, 74, 71,   69, 66, 69, 74, 76, 78, 76, 74,   73, 69, 71, 73, 76, -1, 73, 69,
-  69, 66, 69, 74, 73, 74, 76, 74,   71, 74, 79, 78, 76, 74, 71, 74,   76, 73, 69, 73, 76, 78, 76, 73,   74, -1, 69, 66, 62, -1, 0, 0,
-  78, 76, 74, 78, 76, 74, 71, 74,   79, 78, 76, 74, 71, 74, 79, 78,   78, -1, 74, 78, 81, 78, 76, 74,   76, 73, 69, 73, 76, -1, 73, 76,
-  78, 76, 74, 78, 76, 74, 71, 74,   79, -1, 78, 76, 74, 76, 78, 79,   81, 78, 76, 73, 69, 71, 73, 76,   74, -1, -1, -1, 74, 0, 0, 0]);
+  69, 66, 69, 74, 78, 74, 76, 74,   71, 74, 71, 67, 71, 69, 67, 71,   69, 66, 69, 74, 78, 76, 74, 76,   73, 69, 71, 73, 76, -1, 73, 69,
+  69, 66, 69, 74, 78, 74, 76, 74,   71, 74, 79, 78, 79, 76, 74, 71,   76, 73, 69, 73, 76, 78, 76, 73,   74, -1, 69, 66, 62, -1, 0, 0,
+  78, 76, 74, 78, 74, 73, 71, 74,   79, 78, 76, 74, 71, 74, 79, 78,   78, -1, 74, 78, 81, 78, 76, 74,   76, 73, 69, 73, 76, -1, 73, 76,
+  78, 76, 74, 78, 74, 73, 71, 74,   79, -1, 78, 76, 74, 76, 78, 79,   81, 78, 76, 73, 69, 71, 73, 76,   74, -1, -1, -1, 74, 0, 0, 0]);   // (every note on the first and third beat is in that bar's chord)
 const GM_SCALE = Object.freeze([2, 4, 6, 7, 9, 11, 1]);   // D major's notes (pitch classes), for the harmony
 const GM_DRUM = Object.freeze({ low: Object.freeze([1, 0, 0.5, 0, 0.85, 0, 0.5, 0.35]), full: Object.freeze([1, 0.4, 0.6, 0.4, 0.9, 0.4, 0.6, 0.45]) });
 const _gmu = { me: null, them: new Map(), off: 0, samples: [], synced: false, iv: 0, next: -1, ac: null, bus: null, band: null, pingT: 0, pingAt: 0, beatT: 0, pings: new Map(), notes: 0, lastRoles: '', heldSig: '' };
@@ -186,6 +186,8 @@ function _gmLive() { try { return typeof _gll !== 'undefined' && (_gll.role === 
 function _gmVisitor() { return typeof _gll !== 'undefined' && _gll.role === 'visit'; }
 /** The tune's clock here: the host's, in ms. */
 function gmNow() { return performance.now() + (_gmVisitor() ? _gmu.off : 0); }
+/** ms from now until a loop of `period` ms should start, at least `min` from now: on the tune's beat (song time 0 is the start of a bar). */
+function gmLoopAt(min, period) { const p = Math.max(1, period || GM_STEP * 2), t = gmNow() + min; return Math.round(min + ((p - (t % p)) % p)); }
 function _gmPing() {
   if (!_gmVisitor() || !_gmLive()) return;
   const v = Math.floor(Math.random() * 36 ** 6).toString(36); _gmu.pings.set(v, performance.now());
@@ -197,11 +199,11 @@ function _gmPong(ev) {
   const t0 = _gmu.pings.get(String(ev.v)); if (t0 == null) return; _gmu.pings.delete(String(ev.v));
   const t1 = performance.now(), rtt = t1 - t0, host = (Number(ev.tt) || 0) * 1000 + (Number(ev.n) || 0);
   if (!(rtt >= 0 && rtt < 8000)) return;
-  const off = ((host + rtt / 2 - t1) % GM_LOOP + GM_LOOP) % GM_LOOP;
+  const off = ((host + rtt / 2 - t1) % GM_SYNC + GM_SYNC) % GM_SYNC;
   _gmu.samples.push({ rtt, off, at: t1 }); _gmu.samples = _gmu.samples.filter(s => t1 - s.at < 40000).slice(-8);
   const best = _gmu.samples.reduce((a, s) => (!a || s.rtt < a.rtt ? s : a), null);
   const was = _gmu.off; _gmu.off = best.off; _gmu.synced = true;
-  const jump = Math.abs(((_gmu.off - was) % GM_LOOP + GM_LOOP * 1.5) % GM_LOOP - GM_LOOP / 2);
+  const jump = Math.abs(((_gmu.off - was) % GM_SYNC + GM_SYNC * 1.5) % GM_SYNC - GM_SYNC / 2);
   if (jump > 25) _gmu.next = -1;   // (a new clock: start scheduling again from now, so nothing plays twice)
 }
 
@@ -215,6 +217,8 @@ function gardenMusicStart(cur) {
     clearInterval(_gmu.beatT); _gmu.beatT = setInterval(() => { if (_gmu.me) _gmTell('on'); else clearInterval(_gmu.beatT); }, GMU.beatMs);
     if (_gmVisitor()) { _gmPing(); setTimeout(_gmPing, 450); setTimeout(_gmPing, 1000); }
     _gmWake(); _gmHeldSync();
+    // the app's Sounds switch is off by default: say once how to hear the band (plain words, what to press)
+    try { if (!_gmu.told && typeof _gsPrefs === 'function' && !_gsPrefs().on) { _gmu.told = true; gardenToast('You are playing, but Sounds are off. To hear the band: Menu, View & help, Sound.'); } } catch (e) { /* fine */ }
   } catch (e) { console.error('[garden music]', e); }
 }
 function gardenMusicStop(cur) {
@@ -232,7 +236,7 @@ function gardenMusicHeard(A, ev) {
     if (!ev || ev.c !== 'tune') return;
     if (ev.e === 'ping') {   // (you are the host: your clock, to the one who asked)
       if (_gmVisitor() || !A || !A.f || typeof _glhSend !== 'function') return;
-      const ph = Math.floor(((performance.now() % GM_LOOP) + GM_LOOP) % GM_LOOP);
+      const ph = Math.floor(((performance.now() % GM_SYNC) + GM_SYNC) % GM_SYNC);
       _glhSend(A.f, 'fx', { c: 'tune', e: 'pong', v: String(ev.v), tt: Math.floor(ph / 1000), n: ph % 1000 });
       return;
     }
