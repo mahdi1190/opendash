@@ -55,7 +55,7 @@ window.GardenPaintedTerrain = (function () {
     }).sort((p, q) => p[0].lip.x - q[0].lip.x);
     const runs = [];
     for (const s of segs) { const last = runs[runs.length - 1], end = last && last[last.length - 1]; if (end && Math.hypot(end.lip.x - s[0].lip.x, end.lip.y - s[0].lip.y) < 14) last.push(...s.slice(1)); else runs.push(s.slice()); }
-    const terraces = forms.filter(f => f.kind === 'terrace-wall' && f.polygon).map(f => ({ id: f.id, pts: f.polygon.map(pt), cells: f.polygon }));
+    const terraces = forms.filter(f => f.kind === 'terrace-wall' && f.polygon).map(f => ({ id: f.id, pts: f.polygon.map(pt), cells: f.polygon, thin: !!f.thin }));
     const inRegion = (x, y) => { const c = gardenIslandBaseCell(x, y); return !!(c && ids.has(c.region)); };
     const water = (D.freshwater || []).filter(b => b.boundary && inRegion(b.boundary[0][0], b.boundary[0][1]) || b.river === 'gorge').map(b => ({ id: b.id, river: b.river || '', pts: b.boundary.map(pt) }));
     const gorge = D.presentation && D.presentation.rivers && D.presentation.rivers.gorge;
@@ -413,25 +413,44 @@ window.GardenPaintedTerrain = (function () {
   }
 
   /* ---------- the high orchard's terraces ---------- */
+  const THIN_LIFT = 26;   // px a thin terrace wall's face stands above its line (with the half cell it is deep: about 1 H)
   function terraceOps(L, P, add, t, season, snowy) {
     const kit = KIT(), W = L.W, n = t.cells.length >> 1;
     const a = t.cells.slice(0, n), b = t.cells.slice(n).reverse();
-    const north = a.reduce((s, p) => s + p[1], 0) <= b.reduce((s, p) => s + p[1], 0), upper = (north ? a : b).map(L.pt), lower = (north ? b : a).map(L.pt);
+    const north = a.reduce((s, p) => s + p[1], 0) <= b.reduce((s, p) => s + p[1], 0), lower = (north ? b : a).map(L.pt);
+    // (High orchard fix round 1) a thin terrace wall (half a cell: what stops the feet) stands a wall's height (about 1 H)
+    // above its line, so the terrace above reads as higher ground it holds up; its face eases down to nothing over the last
+    // stretch at each end, where it dies into the bank (a flat strip on the grass, stopping dead, read as nothing)
+    const lift = t.thin ? THIN_LIFT : 0, upper = (north ? a : b).map(L.pt).map((p, i, A) => lift ? { x: p.x, y: p.y - lift * Math.min(1, i / 3, (A.length - 1 - i) / 3) } : p);
     const bb = kit.bboxOf(upper.concat(lower), 30), along = Math.abs(upper[upper.length - 1].x - upper[0].x) > Math.abs(upper[upper.length - 1].y - upper[0].y);
     // Terrace ribbons can meet a river. Keep their masonry and shadow on
     // the authored dry bank instead of painting a solid wall over the water.
     const dry = (L.D.freshwater || []).filter(basin => basin.boundary).map(basin => basin.boundary.map(L.pt)).filter(points => kit.meets(kit.bboxOf(points), bb)).map(points => {
       const mask = loopPath([points]); mask.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]); return mask;
     });
+    if (!along && !t.thin) { bankOps(L, P, add, t, a.map(L.pt), b.map(L.pt), bb, dry, season, snowy); return; }
     add(bb, 500 + t.id.length * 7, (B, r) => {
       // Separate clips subtract the union, including overlapping basins.
       for (const mask of dry) B.cx.clip(mask, 'evenodd');
       const face = B.poly(upper.concat(lower.slice().reverse()));
-      B.cx.filter = 'blur(4px)'; B.f(B.poly(lower.map(p => ({ x: p.x + 3, y: p.y - 3 })).concat(lower.slice().reverse().map(p => ({ x: p.x + 9, y: p.y + 12 })))), '#2e3420', .22); B.cx.filter = 'none';
+      B.cx.filter = 'blur(4px)'; B.f(B.poly(lower.map(p => ({ x: p.x + 3, y: p.y - 3 })).concat(lower.slice().reverse().map(p => ({ x: p.x + (lift ? 12 : 9), y: p.y + (lift ? 20 : 12) })))), '#2e3420', lift ? .32 : .22); B.cx.filter = 'none';
       B.f(face, B.lin(0, bb[1], 0, bb[3], [[0, '#9c9480'], [1, '#6e6858']]));
       B.cx.save(); B.cx.clip(new Path2D(face));
       // courses of irregular stones, a through-stone now and then
       const U = kit.resample(upper, 5), Lw = kit.resample(lower, 5), m = Math.min(U.length, Lw.length), rows = along ? 4 : 2;
+      // (High orchard fix round 2) a thin wall is a standing dry-stone wall seen from the front: level courses of squared stones
+      // with dark joints, lit at the top and in shade at the foot, so it reads as a wall holding up the terrace above (rounded
+      // stones scattered over the face read as a raft of rubble lying on the grass)
+      if (lift) {
+        const yAt = (A, x) => { let best = A[0]; for (const q of A) if (Math.abs(q.x - x) < Math.abs(best.x - x)) best = q; return best.y; };
+        B.f(face, B.lin(0, bb[1] + 10, 0, bb[3] - 20, [[0, '#a89f88'], [.55, '#8a826e'], [1, '#5c5648']]));
+        const x0 = Math.min(upper[0].x, lower[0].x), x1 = Math.max(upper[upper.length - 1].x, lower[lower.length - 1].x), CR = 6;
+        for (let row = 0; row < CR; row++) for (let x = x0 - (row & 1) * 5; x < x1; ) { const w = 7 + r() * 8, xm = x + w / 2, top = yAt(U, xm), bot = yAt(Lw, xm), hh = (bot - top) / CR, y = top + row * hh;
+          const tone = r(); B.f(B.rect(x + .6, y + .6, w - 1.2, hh - 1.2), tone < .3 ? '#b9b19a' : tone < .7 ? '#a39b85' : '#c8c0a8', .97).f(B.rect(x + .6, y + .6, w - 1.2, Math.min(1.4, hh * .3)), '#e0d8c2', .55).f(B.rect(x + .6, y + hh - 1.6, w - 1.2, 1), '#4e4a3e', .35);
+          if (r() < .05) B.f(B.blob(r, xm, y + hh / 2, 3, 1.4, 6, .5), P.moss, .7);
+          x += w; }
+        B.f(B.poly(lower.map(p => ({ x: p.x, y: p.y - 9 })).concat(lower.slice().reverse())), '#2e3420', .22);   // the foot in shade
+      } else
       for (let row = 0; row < rows; row++) for (let i = 0; i < m; i += 1 + Math.floor(r() * 2)) {
         const t0 = (row + .5) / rows, p = { x: U[i].x + (Lw[i].x - U[i].x) * t0, y: U[i].y + (Lw[i].y - U[i].y) * t0 }, hgt = Math.abs(Lw[i].y - U[i].y) / rows, w = 4 + r() * 5;
         const tone = r(); B.f(B.blob(r, p.x + (row & 1) * 2, p.y, w, Math.max(1.6, hgt * .42), 6, .3), tone < .3 ? '#b8b09a' : tone < .7 ? '#a39b85' : '#c9c2ac', .95).f(B.ell(p.x - w * .3, p.y - hgt * .18, w * .4, Math.max(.6, hgt * .12)), '#ddd6c2', .6);
@@ -443,10 +462,35 @@ window.GardenPaintedTerrain = (function () {
       B.cx.restore();
       // cope: a row of upright stones on top, lit from the left; moss and turf from the terrace above
       const top = kit.resample(upper, 3.4);
-      for (let i = 0; i < top.length; i += 2) { const p = top[i], h = 3.6 + r() * 2.4, w = 3.2 + r() * 2; B.f(`M${p.x - w / 2} ${p.y + 1}L${p.x - w / 2} ${p.y - h + 1.4}Q${p.x} ${p.y - h - .6} ${p.x + w / 2} ${p.y - h + 1.2}L${p.x + w / 2} ${p.y + 1}Z`, r() < .5 ? '#a39a84' : '#8f8672').f(B.rect(p.x - w / 2, p.y - h + 1.4, w * .35, h - .4), '#d6cfb8', .7).f(B.rect(p.x + w / 2 - w * .25, p.y - h + 1.6, w * .25, h - .6), '#5e574a', .5); }
+      for (let i = 0; i < top.length; i += lift ? 1 : 2) { const p = top[i], h = (lift ? 6 : 3.6) + r() * 2.4, w = (lift ? 4.2 : 3.2) + r() * 2; B.f(`M${p.x - w / 2} ${p.y + 1}L${p.x - w / 2} ${p.y - h + 1.4}Q${p.x} ${p.y - h - .6} ${p.x + w / 2} ${p.y - h + 1.2}L${p.x + w / 2} ${p.y + 1}Z`, r() < .5 ? '#a39a84' : '#8f8672').f(B.rect(p.x - w / 2, p.y - h + 1.4, w * .35, h - .4), '#d6cfb8', .7).f(B.rect(p.x + w / 2 - w * .25, p.y - h + 1.6, w * .25, h - .6), '#5e574a', .5); }
       for (let i = 0; i < top.length; i += 2) { const p = top[i]; if (r() < .4) B.f(B.blob(r, p.x, p.y - 3, 3 + r() * 3, 1.2 + r(), 6, .5), snowy ? P.snow : r() < .5 ? P.moss : '#8fa860', .9); }
       if (snowy) B.s(B.line(top.map(p => ({ x: p.x, y: p.y - 4.5 }))), P.snow, 2.6, .9);
+      // (fix round 2) the terrace's turf comes over the cope's back, so the ground above reads as held up by the wall
+      if (lift && !snowy) { for (let i = 0; i < top.length; i += 1) { const p = top[i]; if (r() < .7) B.f(B.blob(r, p.x, p.y - 7, 4 + r() * 4, 2 + r() * 1.4, 6, .5), r() < .5 ? '#7c9a4e' : '#93ad5c', .95); } }
       B.s(B.line(kit.resample(lower, 6)), '#4a463a', 1.8, .45);
+    });
+  }
+
+  // (High orchard fix round 1) a wall that runs up the screen (the orchard bank above the Mere) is seen from above, so a
+  // face of masonry painted across it read as a grey cut-stone causeway laid along the shore. It is a grass bank falling
+  // to the low side, warm where it faces the sun, combed downhill, with a dry-stone foot along its bottom that thins out
+  // at each end. (The same idea as the highlands art's bankOps, kept small here.)
+  function bankOps(L, P, add, t, sideA, sideB, bb, dry, season, snowy) {
+    const kit = KIT(), avg = side => side.reduce((s, p) => ({ x: s.x + p.x / side.length, y: s.y + p.y / side.length }), { x: 0, y: 0 });
+    const da = avg(sideA), db = avg(sideB), aLow = da.x < db.x, low = aLow ? sideA : sideB, high = aLow ? sideB : sideA;   // (the orchard's banks fall west, to the Mere)
+    const face = high.concat(low.slice().reverse()), turf = snowy ? '#e4eaee' : season === 'autumn' ? '#9a9a5a' : season === 'winter' ? '#a6b29a' : '#8fa85a';
+    add(bb, 500 + t.id.length * 7, (B, r) => {
+      for (const mask of dry) B.cx.clip(mask, 'evenodd');
+      B.cx.save(); B.cx.clip(new Path2D(B.poly(face)));
+      B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), turf);
+      const hm = avg(high), lm = avg(low); B.f(B.poly(face), B.lin(hm.x, hm.y, lm.x, lm.y, [[0, 'rgba(255,240,190,0)'], [.7, 'rgba(255,236,178,.18)'], [1, 'rgba(60,70,40,.18)']]));
+      const H = kit.resample(high, 6), Lw = kit.resample(low, 6), m = Math.min(H.length, Lw.length);
+      for (let i = 0; i < m; i++) for (let k = 0; k < 2; k++) { const s0 = .2 + r() * .6, x = H[i].x + (Lw[i].x - H[i].x) * s0 + (r() - .5) * 5, y = H[i].y + (Lw[i].y - H[i].y) * s0 + (r() - .5) * 5; B.s(`M${x} ${y}l${(Lw[i].x - H[i].x) * .12} ${2 + r() * 2}`, r() < .5 ? '#6f8a44' : '#a6bc6c', 1, .7); }
+      B.cx.restore();
+      const foot = kit.resample(low, 4.2), n = foot.length, P2 = { rock: '#b4ab95', rockLo: '#8e8672', rockHi: '#d8d0ba', rockDk: '#4a463a' };
+      for (let i = 0; i < n; i++) { const e = Math.min(i, n - 1 - i) / Math.max(1, n * .2); if (e < 1 && r() > e * e) continue; const p = foot[i];
+        for (let row = 0; row < 2; row++) { if (row && r() < .35) continue; B.stone(r, p.x + (r() - .5) * 2, p.y + (row ? -3.4 : 0), 2.6 + r() * 2.2, 1.7 + r(), P2, null); } }
+      if (!snowy) for (let i = 0; i < n; i += 2) if (r() < .5) B.tufts(r, foot[i].x + (r() - .5) * 4, foot[i].y + 3, 6, 3, ['#6f8a44', '#9cb062'], 5);
     });
   }
 
@@ -579,7 +623,7 @@ window.GardenPaintedTerrain = (function () {
     for (const run of L.runs) for (const end of [run[0], run[run.length - 1]]) for (const gp of gapAt) {
       const c = L.cpt(gp[0], gp[1]); if (Math.hypot(end.lip.x - c.x, (end.lip.y - c.y) * 1.4) > 150) continue;
       const sd = kit.hash(Math.round(end.lip.x), Math.round(end.lip.y), 3), w = 40 + sd % 18, h = 58 + sd % 26;
-      out.push({ key: sig + '|crag|' + sd, box: [-w, -h * 1.5 - 10, w, 16], x: end.lip.x + (end.lip.x < c.x ? -w * .3 : w * .3), y: end.foot.y - 2, draw: B => cragArt(B, w, h, P, sd, snowy, false) });
+      out.push({ key: sig + '|crag|' + sd, side: end.lip.x < c.x ? -1 : 1, box: [-w, -h * 1.5 - 10, w, 16], x: end.lip.x + (end.lip.x < c.x ? -w * .3 : w * .3), y: end.foot.y - 2, draw: B => cragArt(B, w, h, P, sd, snowy, false) });
     }
     // rowans on the gorge's far lip, where the river runs down to the falls
     // (the second stands back from the lip of Fleet Falls: at .84 it grew out of the falling water)
@@ -605,7 +649,9 @@ window.GardenPaintedTerrain = (function () {
     const occ = occluders(L, ops, season, sig);
     for (const o of occ) { const im = kit.sprite(scene, standIn, o.key, o.box, o.draw, o.x, o.y, o.K); if (im) { sprites.push(im); keys.push(o.key); spritePx += im._gptPx || 0; } }
     // the pines and rowans' trunk feet, in cells ([x, y, width]), for the one trunk-collision list (94-garden-world-0walk.js _gwPaintedTrunks)
-    trunkFeet = occ.filter(o => /\|(pine|rowan)\|/.test(o.key)).map(o => [+(o.x / W.cellW).toFixed(2), +((o.y - W.sky) / W.cellH).toFixed(2), .34]);
+    // (round 3 layouts: a crag by the pass stands on open ground now, so its foot is solid too, at the
+    // stones it lays in front of its foot)
+    trunkFeet = occ.filter(o => /\|(pine|rowan|crag)\|/.test(o.key)).map(o => { const crag = /\|crag\|/.test(o.key); return [+((o.x + (crag && o.side > 0 ? o.box[2] * .2 + 20 : 0)) / W.cellW).toFixed(2), +((o.y + (crag ? o.box[3] : 0) - W.sky) / W.cellH).toFixed(2), crag ? .6 : .34]; });
     if (parent.sort) parent.sort('depth'); if (standIn !== parent && standIn.sort) standIn.sort('depth');
     current = { sig, handle, spriteKeys: keys, roomEntrances: L.falls && L.falls.caveStair ? { falls: caveMouthAt(L, L.falls.caveStair) } : {} };
     stats = { sig, chunks: handle.chunks, buildMs: Math.round(performance.now() - t0), sprites: sprites.length, spritePx };

@@ -413,6 +413,13 @@ const GARDEN_LAND_SIGHTS = _gdMovable([
   { id: 'ld-cottage-2', art: 'oldhouse', name: 'The baker’s cottage', x: 23, y: 30, w: 3, col: 'full', tall: 3.6, say: 'It smells of bread, every morning, whether anyone has baked or not.' },
   { id: 'ld-cottage-3', art: 'oldhouse', name: 'Ivy cottage', x: 20, y: 33, w: 3, col: 'full', tall: 3.6, say: 'A boot scraper by the step and boots by the scraper. Somebody has just come in from the fields.' },
   { id: 'ld-cottage-4', art: 'oldhouse', name: 'The harbour master’s cottage', x: 23, y: 33, w: 3, col: 'full', tall: 3.6, say: 'A brass telescope in the window, pointed at the quay. It has seen everything.' },
+  // the High orchard's new places (round 3 layouts, assets/garden/vale-orchard.json): Quince's cottage and its square
+  { id: 'ld-quince-house', art: 'oldhouse', name: 'Quince’s cottage', x: 40, y: 12, w: 3, col: 'full', tall: 3.6, say: 'Whitewashed, with a bee painted on the door. The step is warm and smells faintly of apples.' },
+  { id: 'ld-press', art: 'cider-press', name: 'The cider press', x: 43, y: 12, col: 'soft', tall: 1.5, say: 'A great oak screw and a stone bed, sticky every October.' },
+  { id: 'ld-bell', art: 'orchard-bell', name: 'The orchard bell', x: 44, y: 13, col: 'soft', tall: 2, say: 'Rung for the picking, and once for the wassail. The rope is worn shiny.' },
+  { id: 'ld-cider-board', art: 'cider-board', name: 'The cider board', x: 45, y: 13, col: 'soft', tall: 1.4, say: 'Pinned notes: the picking rota, a lost glove, and this year’s fair, chalked in large letters.' },
+  { id: 'ld-bee-boles', art: 'bee-boles', name: 'The bee boles', x: 46, y: 13, w: 4, col: 'full', tall: 1.2, say: 'Six little alcoves in the old wall, each with a straw skep in it. The middle one is where you tell the bees the news.' },
+  { id: 'ld-pippin', art: 'cliff-pippin', name: 'The cliff pippin', x: 47, y: 13, col: 'soft', tall: 2.2, say: 'A wild apple leaning out over the sea. Its apples are small, sour and the best on the hill.' },
   { id: 'ld-orchard-wall', art: 'wall', name: 'The orchard wall', x: 45, y: 12, w: 2, col: 'full', tall: 0.6, say: 'Dry stone, and older than the trees.', egg: { verb: 'Look on top', c: 3, found: 'One sock, and three coins in the sock. Nobody has come back for it.' } },
   { id: 'ld-arch-e', art: 'gate', name: 'The orchard gate', x: 43, y: 18, col: 'none', tall: 1.9, say: 'The way up into the orchards.' },
   // west: the fields

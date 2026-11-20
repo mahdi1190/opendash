@@ -1346,6 +1346,9 @@ window.GardenNativeWorld = (function () {
         const ph = playerOcclusionHeight || 50, ox = Math.max(0, Math.min(sx + 7, bx1) - Math.max(sx - 7, bx0)), oy = Math.max(0, Math.min(sy, footY) - Math.max(sy - ph, by0));
         let behind = sy < footY - 6 && sx > bx0 && sx < bx1 && ox >= 8 && oy >= ph * .4;
         if (behind && p.id === 'ld-falls' && record.handle.fallsCoversPlayer) behind = record.handle.fallsCoversPlayer(sx, sy);
+        // (High orchard fix round 1) the treehouse chestnut fades by its crown, which spreads well past its two cells: walking the
+        // beach or the mother walk beside it you went behind the crown unseen, and standing at the trunk the whole tree faded
+        if (p.id === 'ld-treehouse') { const tx = (p.x + p.w / 2) * W.cellW - 50, ty = footY - 170; behind = sy < footY - 6 && ((sx - tx) / 100) ** 2 + ((sy - 28 - ty) / 84) ** 2 < 1; }
         if (record.behind !== behind) { record.behind = behind; record.root.setAlpha(behind ? .38 : 1); }
       }
       coveringCanopies.length = 0;

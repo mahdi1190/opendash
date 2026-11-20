@@ -631,7 +631,8 @@ function _gldHedgeRow(p, sc) {
   return `<path fill="#1a2a14" fill-opacity="0.2" d="${A.ell((x0 + x1) / 2, by + 1, (x1 - x0) / 2 + 3, 3)}"/>` + A.P(c[0], A.rrect(x0, by - 13, x1 - x0, 14, 5)) + A.P(c[0], b) + A.P(c[1], t) + A.P(c[2], l, 0.7);
 }
 function _gldDraw(kind, p, sc, o) {
-  const fn = _GLD_PROP_ART[kind]; if (!fn) return '';
+  // (round 3 layouts) the High orchard's new places are painted (94-garden-paint-terrain-3orchard.js); drawn plainly, they borrow a near kind
+  const fn = _GLD_PROP_ART[kind] || _GLD_PROP_ART[{ 'cider-press': 'barrels', 'orchard-bell': 'post', 'cider-board': 'post', 'bee-boles': 'skeps', 'cliff-pippin': 'oak' }[kind]]; if (!fn) return '';
   const W = GARDEN_WORLD, cx = (p.x + p.w / 2) * W.cellW, by = W.sky + (p.y + p.h) * W.cellH - 3;
   const sh = `<ellipse cx="${_gwN(cx + 2)}" cy="${_gwN(by + 1)}" rx="${_gwN(p.w * W.cellW / 2 + 2)}" ry="4" fill="#1a2a14" fill-opacity="0.2"/>`;
   const art = fn(sc, o);

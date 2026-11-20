@@ -19,7 +19,7 @@
   const data = () => (typeof gardenIslandData === 'function' ? gardenIslandData() : null);
   const fields = () => { try { return (data().presentation || {}).fields || []; } catch (e) { return []; } };
   let secSet = null, cellField = null; const memo = new Map();
-  const RANK = { hedge: 6, wall: 5, 'hedge-road': 4, stile: 4, hurdle: 3, drystone: 3, bracken: 2, reeds: 2, 'long-grass': 1, meadow: 1, kerb: 0 };
+  const RANK = { hedge: 6, wall: 5, 'hedge-road': 4, stile: 4, hurdle: 3, drystone: 3, bracken: 2, heather: 2, reeds: 2, 'long-grass': 1, meadow: 1, kerb: 0 };
   const fieldOfCell = () => { if (!cellField) { cellField = new Map(); for (const f of fields()) for (const s of f.sections) for (const c of cellsOf(s)) cellField.set(c[0] + ',' + c[1], f); } return cellField; };
   /** A section of a village field: it wears its field's edge, so the valley's fences leave it alone. */
   V.villageSection = id => { if (!secSet) secSet = new Set(fields().flatMap(f => f.sections)); return secSet.has(id); };
@@ -62,7 +62,7 @@
   function soften(loop, cut, first) { let p = loop; for (let k = 0; k < 3; k++) { const o = [], c = cut / (k * 1.2 + 1); for (let i = 0; i < p.length; i++) { const a = p[i], b = p[(i + 1) % p.length], L = Math.hypot(b.x - a.x, b.y - a.y) || 1, d = Math.min(c, L * (k ? .3 : first || .42)) / L; o.push({ x: a.x + (b.x - a.x) * d, y: a.y + (b.y - a.y) * d }, { x: b.x - (b.x - a.x) * d, y: b.y - (b.y - a.y) * d }); } p = o; } return p; }
   /** The same loop with a point every few px, each moved a little across the line by where it is: grown, not ruled. */
   function wander(loop, amp) { const out = []; for (let i = 0; i < loop.length; i++) { const a = loop[i], b = loop[(i + 1) % loop.length], L = Math.hypot(b.x - a.x, b.y - a.y); if (L < .01) continue; const n = Math.max(1, Math.round(L / 9)), nx = -(b.y - a.y) / L, ny = (b.x - a.x) / L; for (let j = 0; j < n; j++) { const t = j / n, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, w = (Math.sin(x * .071 + y * .043) + Math.sin(x * .029 - y * .083 + 1.7) * .8 + Math.sin(x * .19 + y * .13 + .6) * .35) * amp * .5; out.push({ x: x + nx * w, y: y + ny * w * .7 }); } } return out; }
-  const SOFT = new Set(['long-grass', 'meadow', 'reeds', 'bracken', 'hedge-road', 'stile']);
+  const SOFT = new Set(['long-grass', 'meadow', 'reeds', 'bracken', 'heather', 'hedge-road', 'stile']);
   const pathOf = loops => { const p = new Path2D(); for (const l of loops) { p.moveTo(l[0].x, l[0].y); for (let i = 1; i < l.length; i++) p.lineTo(l[i].x, l[i].y); p.closePath(); } return p; };
   const inPoly = (x, y, P) => { let ins = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) ins = !ins; } return ins; };
 
@@ -116,6 +116,17 @@
       for (const q of s) B.f(B.ell(q.x + 1, q.y + .8, 7, 2.2), '#22301a', .22);
       const alt = C.season === 'autumn' ? ['#7e8440', '#9a9a4a', '#66703a'] : C.season === 'winter' ? ['#7a705c', '#8e8468', '#5e5648'] : ['#557a34', '#86a84e', '#a2b860'];
       for (const q of s) { const r = rngAt(q, 19), big = (q.big || 1) * (.8 + r() * .55), x0 = q.x + (r() - .5) * 5, y0 = q.y + (r() - .5) * 3, pal = r() < .32 ? alt : col; for (let k = 0; k < 5; k++) { const a = -Math.PI / 2 + (k - 2) * .5 + (r() - .5) * .3, l = (8 + r() * 7) * big, ex = x0 + Math.cos(a) * l * 1.25, ey = y0 + Math.sin(a) * l; B.s(`M${x0} ${y0}Q${(x0 + ex) / 2} ${ey - 3} ${ex} ${ey}`, pal[k % pal.length], 2.1, .92); B.s(`M${(x0 + ex) / 2} ${(y0 + ey) / 2 - 2}l${(ex - x0) * .25} ${-2.4}`, pal[(k + 1) % pal.length], 1, .7); } }
+    },
+    // (fix round 1) the High orchard's thyme terrace: low cushions of heather and wild thyme, purple in summer, rust in
+    // autumn, with a sprig of gorse here and there (green bracken there read as any other field)
+    heather: (B, run, C) => {
+      const sea = C.season, bloom = sea === 'summer' ? ['#a86aa8', '#c48ac0', '#8a4f8e'] : sea === 'autumn' ? ['#8a5a62', '#a8705a', '#6e4a52'] : sea === 'winter' ? ['#6e5a5e', '#7e6a6a', '#5a4a50'] : ['#7a5a7e', '#946e94', '#5f4a62'];
+      const leaf = sea === 'winter' ? ['#5e5a48', '#6e6a54'] : ['#4f5e3a', '#62724a'], s = run.slice().sort((a, b) => a.y - b.y);
+      for (const q of s) B.f(B.ell(q.x + 1, q.y + 1, 8, 2.6), '#22301a', .2);
+      for (const q of s) { const r = rngAt(q, 29), big = (q.big || 1) * (.8 + r() * .5), x0 = q.x + (r() - .5) * 6, y0 = q.y + (r() - .5) * 3;
+        B.f(B.ell(x0, y0 - 3 * big, 8 * big, 4.4 * big), leaf[r() < .5 ? 0 : 1], .95);
+        for (let k = 0; k < 9; k++) { const a = r() * Math.PI, d = r(); B.f(B.circ(x0 + Math.cos(a) * 7 * big * d, y0 - 3 * big - Math.sin(a) * 4.4 * big * d - 1, (1.3 + r() * 1.1) * big), bloom[k % 3], .95); }
+        if (r() < .14 && sea !== 'winter') { for (let k = 0; k < 5; k++) B.s(`M${x0 + 6} ${y0}l${(k - 2) * 1.6} ${-8 - r() * 5}`, '#4a5e2a', 1.1, .9); if (sea === 'spring' || sea === 'summer') for (let k = 0; k < 4; k++) B.f(B.circ(x0 + 6 + (r() - .5) * 7, y0 - 7 - r() * 6, 1.4), '#f0c832', .95); } }
     },
     // the Mere bank: reeds and reedmace
     reeds: (B, run, C) => {
@@ -173,11 +184,13 @@
     const box = [Math.max(bb[0], cb[0] - 4), Math.max(bb[1], cb[1] - 4), Math.min(bb[2], cb[2] + 4), Math.min(bb[3], cb[3] + 4)]; if (box[2] <= box[0] || box[3] <= box[1]) return;
     const inCell = (x, y) => has.has(Math.floor(x / cw) + ',' + Math.floor((y - sky) / ch)), inF = loops ? (x, y) => { if (!inCell(x, y) && !inCell(x + 14, y) && !inCell(x - 14, y) && !inCell(x, y + 10) && !inCell(x, y - 10)) return false; for (const l of loops) if (inPoly(x, y, l)) return true; return false; } : inCell;
     const wash = tame ? (edge === 'bracken' ? [P.floor, .4] : edge === 'reeds' ? ['#7e8a52', .3] : edge === 'meadow' ? [st[1], .3] : [P.lawnHi, .3])
-      : edge === 'bracken' ? [P.floor, .78] : edge === 'reeds' ? ['#7e8a52', .7] : edge === 'meadow' ? [st[1], .6] : edge === 'long-grass' || edge === 'hedge-road' ? [st[0], .5] : [P.lawnLo, .5];
+      : edge === 'heather' ? ['#6e5e58', .5] : edge === 'bracken' ? [P.floor, .78] : edge === 'reeds' ? ['#7e8a52', .7] : edge === 'meadow' ? [st[1], .6] : edge === 'long-grass' || edge === 'hedge-road' ? [st[0], .5] : [P.lawnLo, .5];
     B.f(B.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]), P.lawn).f(B.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]), wash[0], wash[1]);
     const T = 60, tall = !tame && (edge === 'meadow' || edge === 'long-grass' || edge === 'hedge-road'), salt = KIT().hashStr('fill|' + f.id) & 0xffff;
     // light and shade in soft drifts, so no field is one flat colour (from the tiles round about too: a drift is wide)
     KIT().tiles(box, T, 46, salt + 1, (tx, ty, r) => { for (let k = 0; k < 2; k++) { const x = tx + r() * T, y = ty + r() * T, rx = 26 + r() * 30, ry = 9 + r() * 10, lift = r() < .5, a = .12 + r() * .08; if (inF(x, y)) B.f(B.blob(r, x, y, rx, ry, 8, .5), lift ? P.lawnHi : '#3e5a2a', a); } });
+    // (fix round 1) the thyme terrace: heather and thyme cushions all through it, close set, with bare stony turf between
+    if (edge === 'heather') KIT().tiles(box, 22, 52, salt + 3, (tx, ty, r) => { for (let k = 0; k < 2; k++) { const x = tx + r() * 22, y = ty + r() * 22; if (inF(x, y) && r() < (tame ? .45 : .9)) STYLE.heather(B, [{ x, y, big: .7 + r() * .6 }], C); } });
     if (edge === 'long-grass') {
       // the slope's strips: long beds lying along the contour, gone back to grass, still showing in the sward
       const x0 = Math.floor((box[0] - 30) / 24) * 24;
@@ -295,6 +308,19 @@
       }
       for (const [x, y] of ends) for (let k = 0; k < 3; k++) { const a = -2.3 + k * .5; B.s(`M${x} ${y}q${Math.cos(a) * 3} ${Math.sin(a) * 4} ${Math.cos(a) * 6} ${Math.sin(a) * 8}`, '#5e8a44', 1.1, .85); }
       post(ends[1]);
+      return;
+    }
+    // (High orchard fix round 2) the orchard's fields each shut in their own way, so the same field gate is not stamped by every
+    // one: a woven hurdle in the rows, a stile into the meadows, a rope between two posts on the heather, a weathered board gate at the pond
+    if (kind === 'hurdle' || kind === 'stile' || kind === 'rope') {
+      const P2 = ['#6e5a40', '#4e3e2c', '#927a58'], h = 12;
+      const ends = g.horiz ? [[g.x - g.len / 2 + 3, g.y], [g.x + g.len / 2 - 3, g.y]] : [[g.x, g.y - g.len / 2 + 2], [g.x, g.y + g.len / 2 - 1]];
+      const [[ax, ay], [bx, by]] = ends;
+      B.f(B.ell((ax + bx) / 2 + 2, (ay + by) / 2 + 1.6, Math.abs(bx - ax) / 2 + 3, Math.abs(by - ay) / 2 + 2.4), '#22301a', .2);
+      if (kind === 'hurdle') { B.f(B.poly([[ax, ay], [bx, by], [bx, by - h], [ax, ay - h]]), '#7a5a34'); for (let k = 0; k < 5; k++) { const o = 2 + k * (h - 3) / 4; B.s(`M${ax} ${ay - o}L${bx} ${by - o}`, k % 2 ? '#c49a62' : '#a07a4a', 2.2, 1); } for (let k = 1; k < 5; k++) { const t = k / 5, x = ax + (bx - ax) * t, y = ay + (by - ay) * t; B.s(`M${x} ${y + .5}V${y - h - 1.5}`, '#4e3620', 1.2, 1); } }
+      else if (kind === 'stile') { B.s(`M${ax} ${ay - 5}L${bx} ${by - 5}M${ax} ${ay - 11}L${bx} ${by - 11}`, '#8a7454', 1.8, 1); if (g.horiz) { const mx = (ax + bx) / 2; B.f(B.rect(mx - 7, ay - 4.5, 14, 2.6), '#a88e66').f(B.rect(mx - 7, ay - 4.5, 14, .9), '#c8b08a').f(B.rect(mx - 5.5, ay - 2, 1.6, 2.4), '#5e4c36').f(B.rect(mx + 4, ay - 2, 1.6, 2.4), '#5e4c36'); } }
+      else { const sag = (x0, y0, x1, y1, d) => `M${x0} ${y0}Q${(x0 + x1) / 2} ${(y0 + y1) / 2 + d} ${x1} ${y1}`; B.s(sag(ax, ay - 10, bx, by - 10, 4), '#c9b07a', 1.6, 1).s(sag(ax, ay - 10.6, bx, by - 10.6, 4), '#e8d6a6', .6, .8); B.s(`M${bx - 1} ${by - 10}q2 3 0 6`, '#c9b07a', 1.2, .9); }
+      for (const [x, y] of ends) B.post(x, y - h - 2.5, y + .5, 3.2, P2).f(B.ell(x, y - h - 2.5, 1.9, 1.1), P2[2]);
       return;
     }
     const wood = kind === 'wicket' ? ['#e4dcc8', '#f4eee0', '#b8ae96'] : ['#8a7454', '#a88e66', '#5e4c36'], post = kind === 'wicket' ? ['#cfc6b0', '#b0a68e', '#f0eada'] : ['#6e5a40', '#4e3e2c', '#927a58'];
@@ -417,7 +443,7 @@
       B.cx.save(); B.cx.clip(S.path, 'nonzero'); fill(B, C, f, bb, cb, S.has, S.loops);
       // a soft shade just inside the edge, so the field sits in the ground
       B.cx.filter = 'blur(2.5px)'; B.s(S.path, '#2a3a1c', 6, .1); B.cx.filter = 'none'; B.cx.restore();
-      const g = S.gate, edge = STYLE[f.edge] || STYLE.hedge, kind = f.edge === 'hedge' ? 'wicket' : /^w-/.test(f.id) ? 'log' : 'field';   // (round 3: the Whispering woodland's fields, w-*, a mossy log across the way in)
+      const g = S.gate, edge = STYLE[f.edge] || STYLE.hedge, kind = f.edge === 'hedge' ? 'wicket' : /^w-/.test(f.id || '') ? 'log' : /^high-/.test(f.id || '') ? ({ 'long-grass': 'hurdle', meadow: 'stile', heather: 'rope' }[f.edge] || 'field') : 'field';   // (round 3: the Whispering woodland's fields, w-*, a mossy log across the way in; the High orchard's, high-*, each shut its own way)
       // (round 3) the built edge (or the kind's own thick growth) only along the front; the rest is the rough margin, with
       // the kind's own reeds, bracken or long grass standing in it here and there where it grows thickest
       const thickAt = q => .5 + .5 * (Math.sin(q.ox * .037 + q.oy * .051) * .6 + Math.sin(q.ox * .013 - q.oy * .029 + 2.1) * .4);

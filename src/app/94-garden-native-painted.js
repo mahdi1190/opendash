@@ -601,6 +601,8 @@ window.GardenNativePainted = (function () {
     'ld-cottage-1': { obj: 'building.thatched-cottage', v: 1, w: 160, wallWidth: 216, door: '#2f5a44', extra: [['plant.rph-flower-tub', 1, -62, 6, 20]] },
     'ld-cottage-2': { obj: 'building.cottage', v: 0, w: 150, wallWidth: 160, door: '#2a3e66', extra: [['plant.planter', 1, 64, 0, 24]] },
     'ld-cottage-3': { obj: 'building.cottage', v: 1, w: 150, wallWidth: 160, door: '#7a2e2a', extra: [['plant.planter', 0, 64, 0, 24]] },
+    // (round 3 layouts) Quince's whitewashed cottage on the cider square in the High orchard, its honey-coloured door facing the square
+    'ld-quince-house': { obj: 'building.cottage', v: 0, w: 150, wallWidth: 150, door: '#c8962e', extra: [['plant.rph-flower-tub', 0, -64, 6, 20]] },   // (fix round 1: the stone cottage of the high street drawn as wide as its three cells, so its eaves stand near 1.8 H and its ridge about 3.4 H; the low thatched kind stood at 2.5)
     'ld-cottage-4': { obj: 'building.green-cottage', v: 2, w: 150, wallWidth: 150, door: '#2e4a6a', porch: 1, extra: [['plant.rph-flower-tub', 0, -62, 6, 20], ['street.mqn-lifebuoy', 0, 60, 2, 0, 22]] },
   };
   const HALL = [
