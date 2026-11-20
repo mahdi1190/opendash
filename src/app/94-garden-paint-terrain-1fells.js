@@ -375,7 +375,9 @@ window.GardenPaintedTerrain = (function () {
       if (e && rows.length > 4) {
         const yTop = W.sky + rows[0] * ch, yBot = W.sky + (rows[rows.length - 1] + .25) * ch, gy = e.y + 4, hh = gardenSizePx('wall', .2), wx = 76;   // (in from the edge: at 36 px the map's own haze hid it, and the audit found its feet an invisible wall; round 3 integration)
         L.moorEnd = { gate: { x: wx, y: gy }, end: e, post: { x: Math.max(wx + 26, e.x - 34), y: e.y - 20 }, feet: [] };
-        for (let y = yTop; y < yBot; y += 12) L.moorEnd.feet.push({ x0: -.3, y0: (y - W.sky) / ch, x1: (wx + 6) / cw, y1: (Math.min(yBot, y + 12) - W.sky) / ch, src: "the moor's end wall" });
+        // (the feet stop at the wall as drawn, a column of stones a hand wide: from the map's edge to past the wall they stopped you
+        //  over bare turf; the strip behind it is shut in by the wall, the map's edge and the march wall, round 3 integration)
+        for (let y = yTop; y < yBot; y += 12) L.moorEnd.feet.push({ x0: (wx - 7) / cw, y0: (y - W.sky) / ch, x1: (wx + 7) / cw, y1: (Math.min(yBot, y + 12) - W.sky) / ch, src: "the moor's end wall" });
         add([-20, yTop - hh - 20, e.x + 30, yBot + 20], 35, (B, r0, cb) => {
           B.cx.clip(coastP, 'evenodd');
           // the track worn on from the trail's end to the gate
