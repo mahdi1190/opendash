@@ -113,8 +113,12 @@ function _ptwFlier(P) { return P.per.flies || _ptwHas(P, 'perch'); }
 /* How high up the top of each drawn thing is (stage pixels above its foot), and for what you can sit on, the seat. From the drawings in 94-garden-lands-2art.js; anything not here goes by its `tall`. */
 const PET_TOPS = Object.freeze({ lamp: 33, cross: 44, statue: 56, topiary: 44, gate: 50, cairn: 33, stump: 24, wall: 24, hay: 38, barrels: 30, picnic: 22, mile: 26, finger: 40, seat: 28 });
 const PET_SEATS = Object.freeze({ seat: 15, wall: 24, stump: 24, picnic: 22, mile: 26, hay: 38, barrels: 30 });
-const PET_NOT_PERCH = new Set(['boat', 'reed-bank', 'old-angler', 'jetty-post', 'ld-bridge', 'ld-rope', 'ld-sunk', 'ld-labyrinth', 'lf-rill', 'land-finds']);
-const PET_DRINKS = new Set(['fountain', 'bird-bath', 'mini-pond', 'wishing-well', 'lf-fountain', 'lf-well', 'ld-wish', 'ld-pump']);
+/* What a pet does with a thing goes by the thing's KIND (94-garden-zz-7act-0kinds.js GARDEN_KINDS: noPerch, drink, warm), never its name. */
+function _ptwKind(o, land) {
+  try { if (land) return gardenKindOf({ id: o.id, art: o.art || o.kind }); if (o.kind === 'decor') { const d = gardenDecor(o.id); return gardenKindOf({ decor: o.id, effect: d && d.effect && d.effect.kind, id: o.id }); } if (o.kind === 'prop') return gardenKindOf({ id: o.id, art: o.def && o.def.kind }); } catch (e) { /* unknown */ }
+  return '';
+}
+function _ptwKindIs(k, flag) { const K = k && typeof GARDEN_KINDS !== 'undefined' && GARDEN_KINDS[k]; return !!(K && K[flag]); }
 const _ptwS = { at: 0, built: 0, key: '', water: null, shore: [], perch: [], seat: [], drink: [], warm: [], shade: [], top: new Map() };
 const _ptwTenth = (v) => Math.round(v * 10) / 10;
 function _ptwSpots() {
@@ -140,19 +144,24 @@ function _ptwSpots() {
   let rows = []; try { rows = gardenWorldObjects(m); } catch (e) { rows = []; }
   for (const o of rows) {
     if (zoneOk(o.top.x, o.top.y)) {
-      if (o.id === 'fire-pit') warm.push({ x: o.top.x, y: o.y + o.h, name: o.name });
+      if (o.kind !== 'plant' && _ptwKindIs(_ptwKind(o), 'warm')) warm.push({ x: o.top.x, y: o.y + o.h, name: o.name });
       if (o.kind === 'plant' && o.height >= 60) shade.push({ x: o.top.x, y: o.y + o.h, name: o.name });
     }
-    if (PET_NOT_PERCH.has(o.id) || (o.kind === 'plant' && o.height < 28)) continue;
+    const ok = o.kind === 'plant' ? '' : _ptwKind(o);
+    if (_ptwKindIs(ok, 'noPerch') || (o.kind === 'plant' && o.height < 28)) continue;
     add(o.uid, o.top.x, o.top.y, o.z, o.top.lift, o.kind === 'decor' && gardenDecor(o.id) && gardenDecor(o.id).effect && gardenDecor(o.id).effect.kind === 'sit' ? o.top.lift : 0, o.name, { x: o.x, y: o.y, w: o.w || 1, h: o.h || 1 });
-    if (PET_DRINKS.has(o.id)) drink.push({ x: o.top.x, y: o.y + o.h, name: o.name });
+    if (_ptwKindIs(ok, 'drink')) drink.push({ x: o.top.x, y: o.y + o.h, name: o.name });
   }
   for (const p of gardenLandProps()) {
-    if (PET_NOT_PERCH.has(p.id) || !p.tall || p.walk) continue;
+    const pk = _ptwKind(p, true);
+    if (_ptwKindIs(pk, 'warm')) warm.push({ x: p.x + p.w / 2, y: p.y + p.h, name: p.name });
+    if (_ptwKindIs(pk, 'noPerch') || !p.tall || p.walk) continue;
     const art = String(p.kind || '').replace(/^l[df]-/, ''), x = p.x + p.w / 2, y = p.y + p.h - 0.1;
     add(p.id, x, y, p.y + p.h, PET_TOPS[art] != null ? PET_TOPS[art] : p.tall * 48 * 0.9, PET_SEATS[art] || 0, p.name, { x: p.x, y: p.y, w: p.w || 1, h: p.h || 1 });
-    if (PET_DRINKS.has(p.id)) drink.push({ x, y: p.y + p.h, name: p.name });
+    if (_ptwKindIs(pk, 'drink')) drink.push({ x, y: p.y + p.h, name: p.name });
   }
+  // the things placed through layout data (a campfire, a log seat ...): by their kind, like everything else
+  try { if (typeof gardenThingsPlaced === 'function') for (const t of gardenAffordThings()) { if (t.src !== 'thing' || !zoneOk(t.x, t.y)) continue; if (_ptwKindIs(t.kind, 'warm')) warm.push({ x: t.x, y: t.y + 0.1, name: t.name || GARDEN_KINDS[t.kind].name }); if (_ptwKindIs(t.kind, 'drink')) drink.push({ x: t.x, y: t.y, name: t.name || GARDEN_KINDS[t.kind].name }); } } catch (e) { /* none */ }
   Object.assign(_ptwS, { water, shore, perch, seat, drink, warm, shade, top, model: m });
   return _ptwS;
 }

@@ -8,13 +8,9 @@
                          [t, {x y r sx sy s}, ease] per part: root, up, head, armL, armR, legL, legR), how long (ms; hold: until you move),
                          what it holds (prop: SVG in the figure's units, feet at 0,0, about 70 tall), what it does to the world (fx),
                          whether the pet comes (pet), the line it writes in your journal the first time (first), and a sound.
-   GARDEN_ACT_BY_PROP    the layout's fixed things (island-v5.json static ids) and what each offers, with where you stand (dx, dy from the
-                         foot's middle, cells) and which way you face (deg: 0 east, 90 south, 180 west, -90 north). Moving a thing in the
-                         layout moves its action with it: positions are read from the layout row at run time, never written here.
-   GARDEN_ACT_BY_DECOR   placed decorations by their effect kind (a bench is effect 'sit'), and trees by their painter (the trunk lists
-                         the walker already reads: orchard trees shake, wood trees can be climbed, hidden behind, slept under).
-   GARDEN_ACT_SPOTS      things the world does not have yet: a row each, with a suggested cell, for the painters to place (art: false
-                         keeps them out of the prompts until they are drawn; nothing invisible can be used).
+   GARDEN_KINDS / GARDEN_TERRAIN (94-garden-zz-7act-0kinds.js): which of these any kind of thing, or any type of ground, offers. Things are
+                         found where they stand on whatever layout is loaded (94-garden-zz-7act-0scan.js); placeable things (a ball, a log
+                         seat, a campfire) are rows of layout data (assets/garden/vale-things.json), never cells in code.
    ============================================================ */
 const _GA_K = (n, f) => Array.from({ length: n }, (_, i) => f(i, n));
 /* small held things, in the figure's units (front on: the right hand is near x 10, y -38 hanging; raised to the face, about y -50) */
@@ -196,53 +192,7 @@ const GARDEN_ACTS = Object.freeze({
     loop: Object.assign({ ms: 4000 }, _gaHoldPose({ root: { y: 25 }, legL: { sy: 0.12 }, legR: { sy: 0.12 }, kneeL: { sy: 0.4 }, kneeR: { sy: 0.4 }, up: { y: 0.5 }, armL: { r: 150, sy: 0.42 } }, 0, 'l'), { armR: [[0, { r: -150, sy: 0.42 }], [0.45, { r: -146, sy: 0.44 }, 'io'], [0.5, { r: -160, sy: 0.4 }, 'b'], [0.6, { r: -150, sy: 0.42 }, 'io'], [1, { r: -150, sy: 0.42 }]], head: [[0, {}], [0.5, { r: -5 }, 'io'], [1, {}, 'io']] }) },
   laugh: { verb: 'Laugh', dir: 's', ms: 1500, first: '', enter: { up: _GA_K(8, (i) => [0.08 + i * 0.1, { y: i % 2 ? 1 : -1, r: i % 2 ? 3 : 1 }, 'io']).concat([[1, {}]]), head: [[0.1, { r: -8 }, 'o'], [0.8, { r: -8 }], [1, {}]], armL: [[0.1, { r: 30 }, 'o'], [0.8, { r: 30 }], [1, {}]], armR: [[0.1, { r: -50 }, 'o'], [0.8, { r: -50 }], [1, {}]] } },
 });
-/** The fixed things of the layout and what each offers. stand: where the feet go (cells from the foot's middle), deg: the way you face. */
-const GARDEN_ACT_BY_PROP = Object.freeze({
-  'ld-bench-a': [{ act: 'sit', name: 'the bench', stand: [0, -0.16], deg: 90, seat: 0.36 }],
-  'ld-bench-b': [{ act: 'sit', name: 'the bench', stand: [0, -0.16], deg: 90, seat: 0.36 }],   // seat: the seat's height as drawn today, a share of the figure's height (the size standard asks 0.3 H: a painter who lowers it changes this one number)
-  'ld-stump': [{ act: 'sit', name: 'the stump', stand: [-0.1, 0.45], deg: 90, seat: 0.9 }],   // up on the top (round 4: all of you on it, over its little door, legs down the front)
-  'ld-pump': [{ act: 'pump', name: 'the pump', stand: [-0.74, 0.12], deg: 0, edge: true }],   // (round 6: side on at the lever's end, on the pump's left)
-  'ld-wish': [{ act: 'wish', name: 'the wishing well', stand: [0.45, 0.95], deg: -90, reach: 3.2 }],   // (round 6: off the sticks on the ground, its prompt from further out on the way in)   // (far enough back not to stand on its stones)
-  'ld-chapel': [{ act: 'bell', name: 'the chapel bell', stand: [0, 0.6], deg: -90 }],
-  'ld-lighthouse': [{ act: 'ladder', name: 'the lighthouse ladder', stand: [0.12, 0.1], deg: -90 }],
-  pier: [{ act: 'dangle', name: 'the pier end', painted: true, pierEnd: true, stand: [0, -0.3], deg: 90, lift: 0 }],   // (the pier is painted with the coast, not a prop of its own)
-  boat: [{ act: 'row', name: 'the boat', stand: [0.9, 0.2], deg: 180, boat: true }],   // the rowing boat you own (94-garden-fish-9world.js) takes you out
-  'notice-board': [{ act: 'read', name: 'the notices', stand: [0, 0.6], deg: 90 }],
-  'lake-board': [{ act: 'read', name: 'the board', stand: [0, 0.6], deg: 90 }],
-  'ld-sign-c': [{ act: 'read', name: 'the sign', stand: [0, 0.6], deg: 90 }],
-  'ld-mile': [{ act: 'read', name: 'the milestone', stand: [0, 0.6], deg: 90 }],
-  'ld-orchard-wall': [{ act: 'lean', name: 'the wall', stand: [-0.5, 0.03], deg: 90, pri: 1.2, edge: true }],   // (round 6: right against it, back to it; pri: its prompt before the fruit tree's beside it)
-  'ld-falls': [{ act: 'shower', name: 'the falls', stand: [0, 0.4], deg: 90, reach: 3.4 }],   // (its prompt reaches all the way under it)
-  'camera-tripod': [{ act: 'photo', name: 'the camera', stand: [-0.3, 1.25], deg: 90 }],   // (round 6: clear of the anchor and the lobster pot, in reach of the prompt)
-});
-/** Placed decorations, by their effect kind (gardenDecor(id).effect.kind). */
-const GARDEN_ACT_BY_DECOR = Object.freeze({ sit: [{ act: 'sit', name: 'the seat', stand: [0, 0.06], deg: 90, seat: 0.45 }], wish: [{ act: 'wish', name: 'the well', stand: [0, 0.5], deg: -90 }] });
-/** Trees, by which painter drew them (_gwPaintedTrunks). */
-const GARDEN_ACT_BY_TREE = Object.freeze({
-  orchard: [{ act: 'shake', name: 'the fruit tree', stand: [0, 0.32], deg: -90 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90 }],
-  wood: [{ act: 'climbtree', name: 'the tree', stand: [0, 0.3], deg: -90, big: 0.3 }, { act: 'hide', name: 'the tree', stand: [-0.02, -0.1], side: 1, edge: true, deg: 90 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90 }],
-  village: [{ act: 'hide', name: 'the tree', stand: [-0.02, -0.1], side: 1, edge: true, deg: 90 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90 }],
-  fells: [{ act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90 }],
-});
-/** The water's edge: wherever water is within reach in front of you (feed and skim face it; skim only on still water). */
-const GARDEN_ACT_WATER = Object.freeze([{ act: 'feed', name: 'the ducks' }, { act: 'skim', name: 'still water' }, { act: 'swim', name: 'the water', deep: true }]);   // (they take turns: do one and the other is offered)
-/** Anywhere on open ground: these are on the moves wheel too. */
-const GARDEN_ACT_GROUND = Object.freeze(['lie', 'nap', 'laugh', 'throwstick', 'rub']);
-/** Not in the world yet. A painter places each (art: true once drawn) and it joins the prompts; cells are suggestions from the region plans. */
-const GARDEN_ACT_SPOTS = Object.freeze([
-  { id: 'rope-swing', act: 'swing', region: 'west-woods', near: 'ld-bridge', cell: [36, 34], art: false, note: 'a rope swing from an oak over the brook by the footbridge; swing, or let go and splash in' },
-  { id: 'hammock', act: 'nap', region: 'orchard-headland', near: 'ld-treehouse', cell: [84, 47], art: false, note: 'a hammock slung between two orchard trees' },
-  { id: 'campfire', act: 'warm', region: 'west-woods', near: 'ld-woodhut', cell: [15, 78], art: true, drawnBy: '94-garden-zz-7act-2world.js', note: 'a ring of stones and a fire by Hollin\'s hut (marshmallows)' },
-  { id: 'harbour-bell', act: 'bell', region: 'home-island', near: 'tackle-shop', cell: [50, 78], art: false, note: 'a ship\'s bell on a post at the head of the pier' },
-  { id: 'telescope-folly', act: 'look', region: 'east', near: 'ld-folly', cell: [86, 30], art: true, drawnBy: '94-garden-zz-7act-2world.js', note: 'the brass telescope on the folly lookout' },
-  { id: 'telescope-quay', act: 'look', region: 'home-island', near: 'ld-lighthouse', cell: [60, 86], art: false, note: 'a coin telescope on the harbour wall, looking out to sea' },
-  { id: 'busker', act: 'play', drawnBy: '94-garden-zz-7act-2world.js (or the water rows)', region: 'home-island', near: 'market-stall', cell: [52, 60], art: false, note: 'a busker\'s pitch with a fiddle and an open case; play, and a friend can dance' },
-  { id: 'ball', act: 'kick', drawnBy: '94-garden-zz-7act-2world.js (or the water rows)', region: 'home-island', near: 'sundial', cell: [47, 52], art: false, note: 'a ball on the green' },
-  { id: 'leaf-pile', act: 'kick', drawnBy: '94-garden-zz-7act-2world.js (or the water rows)', region: 'home-island', near: 'sundial', cell: [45, 53], art: false, note: 'an autumn leaf pile that bursts' },
-  { id: 'grass-slope', act: 'roll', region: 'north-headland', near: 'ld-cairn', cell: [50, 12], art: false, note: 'a grassy slope to roll down (needs a height in the layout)' },
-  { id: 'shallows-mere', act: 'paddle', region: 'home-island', near: 'reed-bank', cell: [40, 37], art: false, note: 'shallows to paddle and wade in, ripples round the legs (needs a depth in the water data)' },
-  { id: 'swim-mere', act: 'swim', drawnBy: '94-garden-zz-7act-2world.js (or the water rows)', region: 'home-island', near: 'lake-hall', cell: [48, 36], art: false, note: 'deep enough to swim and float on your back (swimming needs the walker to allow water)' },
-  { id: 'mast', act: 'ladder', region: 'home-island', near: 'ld-hull', cell: [42, 80], art: false, note: 'a boat\'s mast with rungs' },
-  { id: 'hay-loft', act: 'ladder', region: 'east-mill', near: 'ld-barn', cell: [83, 66], art: false, note: 'a ladder drawn on the barn\'s side up to the loft door' },
-  { id: 'fishing-bank', act: 'fishpair', drawnBy: '94-garden-zz-7act-2world.js (or the water rows)', region: 'home-island', near: 'reed-bank', cell: [41, 39], art: false, note: 'a grassy bank to sit and fish side by side, legs over' },
-]);
+/* What each KIND of thing offers (where you stand, which way you face, what it needs) is in 94-garden-zz-7act-0kinds.js (GARDEN_KINDS, and
+   GARDEN_TERRAIN for the ground: the water's edge, deep water, open grass, sand, snow); the things are found where they stand
+   (94-garden-zz-7act-0scan.js). Nothing here names a place. */
+

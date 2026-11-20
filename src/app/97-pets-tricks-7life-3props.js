@@ -254,6 +254,7 @@ function _plGroundOk(kind, x, y, side, P) {
       // clear where it lies, and of anything standing just in front of it whose top would cover it (the campfire was laid against the sundial)
       if (typeof gardenWorldFree === 'function' && (!gardenWorldFree(gx, y, 0.1) || !gardenWorldFree(gx, y + 0.45, 0.2) || !gardenWorldFree(gx, y + 0.9, 0.25) || !gardenWorldFree(gx, y + 1.35, 0.25))) return false;
       if (pl && Math.abs(gx - pl.x) < 0.32 && Math.abs(y - pl.y) < 0.4) return false;
+      if (typeof gardenAffordOverlap === 'function' && gardenAffordOverlap(gx, y, 0.15)) return false;   // (the same rule as every thing of the world: never laid on top of one found standing there)
     }
     for (const q of _PLQ.live) if (q.g.isConnected && Math.abs(q.y - y) < 0.5 && x + x1 > q.x0 && x + x0 < q.x1) return false;
     return true;

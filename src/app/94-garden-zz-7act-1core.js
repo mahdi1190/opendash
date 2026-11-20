@@ -21,48 +21,56 @@ function gartActSeatHeld() { const c = _ga.cur; return !!(c && c.doing && c.spot
 function gartActInUse(id) { const c = _ga.cur; return !!(c && c.doing && c.spot && c.spot.src === id); }
 function gartActLift() { return _ga.cur && _ga.cur.doing ? _ga.cur.lift || 0 : 0; }
 function gartActRow(id) { return GARDEN_ACTS[id] || null; }
-/* ---------- what is in reach ---------- */
+/* ---------- what is in reach: every thing found where it stands, by its KIND (94-garden-zz-7act-0kinds.js, 0scan.js) ---------- */
+function _gaCtx() {
+  let m = null; try { m = gardenModel(); } catch (e) { m = null; }
+  let night = null; try { night = typeof gardenIsNight === 'function' ? !!gardenIsNight() : null; } catch (e) { night = null; }
+  return { season: (m && m.season) || '', level: m && m.level, night };
+}
 function _gaStaticRows() {
   const out = [];
-  let rows = []; try { rows = (gardenIslandData().static || []); } catch (e) { return out; }
-  const live = typeof GARDEN_PROPS !== 'undefined' ? new Map(GARDEN_PROPS.map(p => [p.id, p])) : new Map();
-  // where it is really drawn: the native world's record of it (its painted bounds), else the layout row
+  if (typeof gardenAffordThings !== 'function') return out;
+  // where it is really drawn: the native world's record of it (its painted bounds), else where the layout puts it
   let drawn = null; try { const w = window.GardenNative && GardenNative.world(), e = w && w.entities; drawn = e instanceof Map ? e : null; } catch (e) { drawn = null; }
-  const W = GARDEN_WORLD;
-  for (const r0 of rows) {
-    const opts = GARDEN_ACT_BY_PROP[r0.id]; if (!opts) continue;
-    const r = live.get(r0.id) || r0, rec = drawn && drawn.get('prop:' + r0.id);
-    if (drawn && drawn.size && !rec && !opts[0].painted) continue;   // not drawn here (not built yet, or another painter's): nothing invisible can be used
-    if (opts[0].pierEnd && typeof _gardenPierDecksNow === 'function') {   // the end of the pier as far as it is built today
-      const decks = _gardenPierDecksNow(), d = decks[decks.length - 1];
-      if (d) for (const o of opts) out.push({ key: 'pier-end:' + o.act, act: o.act, name: o.name, x: d.x + d.w / 2, y: d.y + d.h, stand: { x: d.x + d.w / 2 + o.stand[0], y: d.y + d.h + o.stand[1] }, deg: o.deg, lift: o.lift || 0, src: r0.id });   // (a negative lift: over the edge)
-      continue;
+  const W = GARDEN_WORLD, ctx = _gaCtx(), once = new Set();
+  for (const t of gardenAffordThings()) {
+    const K = t.kind && GARDEN_KINDS[t.kind]; if (!K || !K.acts) continue;
+    if (t.season && ctx.season && t.season !== ctx.season) continue;
+    let foot = { x: t.x, y: t.y }, top = null;
+    if (t.static) {
+      const rec = drawn && drawn.get('prop:' + t.id), painted = K.acts.some(a => a.pierEnd);
+      if (drawn && drawn.size && !rec && !painted) continue;   // not drawn here (not built yet, or another painter's): nothing invisible can be used
+      const b = rec && rec.bounds;
+      if (b && b.width) foot = { x: (b.x + b.width / 2) / W.cellW, y: b.height ? (b.y + b.height - W.sky) / W.cellH : t.y };
+      if (b && b.height) top = (b.y - W.sky) / W.cellH;   // the drawn top: the prompt sits just above it
+    } else if (t.src === 'thing') {
+      if (K.place && t.drawn !== false && !(typeof _GAW_ART !== 'undefined' && _GAW_ART[K.art])) continue;   // a kind nobody has drawn yet: nothing invisible can be used
+      if (gartActHidden(t.id)) continue;
+      const mv = gartActMovedTo(t.id); if (mv) foot = mv;   // a thing you carried off and set down is where you left it (this visit)
     }
-    const b = rec && rec.bounds, fx = b && b.width ? (b.x + b.width / 2) / W.cellW : r.x + r.w / 2, fy = b && b.height ? (b.y + b.height - W.sky) / W.cellH : r.y + r.h;
-    const top = b && b.height ? (b.y - W.sky) / W.cellH : null;   // the drawn top: the prompt sits just above it
-    for (const o of opts) out.push({ key: r.id + ':' + o.act, act: o.act, name: o.name, x: fx, y: fy, top, stand: { x: fx + o.stand[0], y: fy + o.stand[1] }, deg: o.deg, lift: _gaSeatLift(o), seated: o.seat != null || !!o.edge, src: r.id, boat: !!o.boat, reach: o.reach || 0, noProp: !!o.noProp, pri: o.pri || 0 });
+    // a part this branch draws on the thing (a ladder up a lighthouse) is fixed to the footprint the painter builds on; the rest to what is drawn
+    const onFoot = gardenKindSpots({ kind: t.kind, x: foot.x, y: foot.y, w: t.w, front: t.front }), onPlan = gardenKindSpots({ kind: t.kind, x: t.x, y: t.y, w: t.w, front: t.front });
+    onFoot.forEach((s0, i) => {
+      const s = s0.at ? onPlan[i] : s0;
+      if (!gardenKindNeedsOk(s.needs, ctx)) return;
+      if (s.pierEnd) {   // the end of the pier as far as it is built today (one for the whole pier, whichever of its boards is found)
+        if (once.has('pier-end:' + s.act) || typeof _gardenPierDecksNow !== 'function') return; once.add('pier-end:' + s.act);
+        const decks = _gardenPierDecksNow(), d = decks[decks.length - 1]; if (!d) return;
+        out.push({ key: 'pier-end:' + s.act, act: s.act, name: s.name, x: d.x + d.w / 2, y: d.y + d.h, stand: { x: d.x + d.w / 2 + s0.stand.x - foot.x, y: d.y + d.h + s0.stand.y - foot.y }, deg: s.deg, lift: s.lift || 0, src: t.id, kind: t.kind });   // (a negative lift: over the edge)
+        return;
+      }
+      out.push({ key: t.id + ':' + s.act + (s.i ? ':' + s.i : ''), act: s.act, name: (t.src === 'decor' && t.name) || s.name, x: s.x, y: s.y, top: s.at ? null : top, stand: s.stand, deg: s.deg, lift: _gaSeatLift(s), seated: s.seat != null || !!s.edge, src: t.id, kind: t.kind, boat: !!s.boat, reach: s.reach || 0, noProp: !!s.noProp, pri: s.pri || 0, kick: s.kick || '', carry: s.carry || '', art: K.art || '' });
+    });
   }
-  // what this branch draws for the moves (94-garden-zz-7act-2world.js): the telescope, the lighthouse ladder, the campfires
-  let season = ''; try { season = gardenModel().season; } catch (e) { season = ''; }
-  if (typeof gardenActWorldRows === 'function') for (const w of gardenActWorldRows()) if (!(w.season && w.season !== season) && !gartActHidden(w.id)) out.push({ key: w.id + ':' + w.act, act: w.act, name: w.name, x: w.x, y: w.y, top: null, stand: { x: w.x + w.stand[0], y: w.y + w.stand[1] }, deg: w.deg, lift: _gaSeatLift(w), seated: w.seat != null || !!w.edge, src: w.id, noProp: !!w.noProp, reach: w.reach || 0, kick: w.kick || '', carry: w.carry || '', art: w.art || '' });
-  // a thing that has its own (a lighthouse with a drawn ladder) takes that one, not the one carried in
-  const own = new Set(out.filter(r => r.noProp).map(r => r.act + '@' + Math.round(r.stand.x) + ',' + Math.round(r.stand.y)));
-  return out.filter(r => r.noProp || !own.has(r.act + '@' + Math.round(r.stand.x) + ',' + Math.round(r.stand.y)));
+  return out;
 }
 /** A seat's height (a share of the figure's height above where the feet go) -> how far the seated figure is lifted, in px. */
 function _gaSeatLift(o) {
   if (o && o.seat != null) { const S = typeof GW_SCALE === 'number' ? GW_SCALE : 0.592; return Math.max(0, Math.round(S * (70 * o.seat - GA_SEAT_HIP) * 10) / 10); }
   return (o && o.lift) || 0;
 }
-function _gaDecorRows() {
-  const out = []; let m; try { m = gardenHere(); } catch (e) { return out; }
-  for (const d of (m && m.decor) || []) {
-    const k = d.def && d.def.effect && d.def.effect.kind, opts = k && GARDEN_ACT_BY_DECOR[k]; if (!opts) continue;
-    const w = d.def.w || 1, h = d.def.h || 1, fx = d.x + w / 2, fy = d.y + h;
-    for (const o of opts) out.push({ key: d.uid + ':' + o.act, act: o.act, name: (d.def.name ? 'the ' + String(d.def.name).toLowerCase() : o.name), x: fx, y: fy, stand: { x: fx + o.stand[0], y: fy + o.stand[1] }, deg: o.deg, lift: _gaSeatLift(o), src: d.uid });
-  }
-  return out;
-}
+/** (decorations are found with everything else: _gaStaticRows) */
+function _gaDecorRows() { return []; }
 function _gaTreeRows(px, py) {
   try {
     const sig = typeof _gwTrunkSig === 'function' ? _gwTrunkSig() : '';
@@ -71,24 +79,25 @@ function _gaTreeRows(px, py) {
   const out = [];
   for (const b of _ga.trunks) {
     const fx = (b.x0 + b.x1) / 2, fy = b.y1; if (Math.abs(fx - px) > GA_REACH + 1 || Math.abs(fy - py) > GA_REACH + 1) continue;
-    for (const o of GARDEN_ACT_BY_TREE[b.src] || []) { if (o.big && b.x1 - b.x0 < o.big) continue; if (o.act === 'hide' && _ga.trunks.some(t => t !== b && t.y1 > fy + 0.3 && t.y1 < fy + 2.6 && Math.abs((t.x0 + t.x1) / 2 - fx - 0.15) < 1.4)) continue;   /* (round 4: not where another tree just in front would bury you in its leaves: you must be seen peeking) */ out.push({ key: 'tree:' + fx.toFixed(1) + ',' + fy.toFixed(1) + ':' + o.act, act: o.act, name: o.name, x: fx, y: fy, stand: { x: fx + (o.side ? o.side * (b.x1 - b.x0) / 2 : 0) + o.stand[0], y: fy + o.stand[1] }, deg: o.deg, lift: 0, src: 'tree', tree: b, seated: !!o.edge }); }
+    const kind = gardenKindOf({ trunk: b.src }), K = GARDEN_KINDS[kind]; if (!K || !K.acts) continue;   // a tree's kind is the painter that drew it (fruit trees shake, wood trees climb)
+    for (const o of K.acts) { if (o.big && b.x1 - b.x0 < o.big) continue; if (o.act === 'hide' && _ga.trunks.some(t => t !== b && t.y1 > fy + 0.3 && t.y1 < fy + 2.6 && Math.abs((t.x0 + t.x1) / 2 - fx - 0.15) < 1.4)) continue;   /* (round 4: not where another tree just in front would bury you in its leaves: you must be seen peeking) */ out.push({ key: 'tree:' + fx.toFixed(1) + ',' + fy.toFixed(1) + ':' + o.act, act: o.act, name: o.name || K.name, x: fx, y: fy, stand: { x: fx + (o.side ? o.side * (b.x1 - b.x0) / 2 : 0) + o.stand[0], y: fy + o.stand[1] }, deg: o.deg, lift: 0, src: 'tree', seated: !!o.edge, tree: b, kind }); }
   }
   return out;
 }
+/** The water's edge, read from the ground (GARDEN_TERRAIN): water within reach in front of you, out over the bank (you face it). */
 function _gaWaterRows(px, py) {
-  if (typeof gardenWaterContainsPoint !== 'function') return [];
-  const wet = (x, y) => { try { return gardenWaterContainsPoint(x, y); } catch (e) { return false; } };
-  if (wet(px, py)) return [];
-  // not under or beside the falls (white water: no skimming, no ducks), and only water in front of you, out over the bank (you face it)
-  try { const f = (gardenIslandData().static || []).find(r => r.id === 'ld-falls'); if (f && Math.hypot(px - (f.x + f.w / 2), (py - (f.y + f.h)) * 1.3) < Math.max(5, f.w)) return []; } catch (e) { /* no falls */ }
-  for (const [dx, dy, deg] of [[0, -1.1, -90], [0, -1.8, -90]]) if (wet(px + dx, py + dy) && wet(px + dx, py + dy - 1.6)) { const deep = wet(px + dx, py + dy - 2.8) && wet(px + dx, py + dy - 4.2), W3 = GARDEN_ACT_WATER.filter(o => !o.deep || deep), k = _ga.wt % W3.length; return W3.slice(k).concat(W3.slice(0, k)).map(o => ({ key: 'water:' + o.act, act: o.act, name: o.name, x: px + dx, y: py + dy, stand: null, deg, lift: 0, src: 'water' })); }
-  return [];
+  if (typeof gardenTerrainWaterAhead !== 'function') return [];
+  // not by white water (anything whose kind calms the water round it: falls): no skimming, no ducks
+  try { for (const t of gardenAffordThings()) { const K = GARDEN_KINDS[t.kind]; if (K && K.calmsWater && Math.hypot(px - t.x, (py - t.y) * 1.3) < Math.max(K.calmsWater, t.w || 1)) return []; } } catch (e) { /* none */ }
+  const w = gardenTerrainWaterAhead(px, py); if (!w) return [];
+  const W3 = GARDEN_TERRAIN['water-edge'].acts.concat(w.deep ? GARDEN_TERRAIN.deep.acts : []), k = _ga.wt % W3.length;
+  return W3.slice(k).concat(W3.slice(0, k)).map(o => ({ key: 'water:' + o.act, act: o.act, name: o.name, x: w.x, y: w.y, stand: null, deg: w.deg, lift: 0, src: 'water' }));
 }
 /** Everything in reach, the nearest first (things with a place before the water's edge). */
 function gartActNearby() {
   if (typeof _gw === 'undefined' || !_gw.on) return [];
   const now = performance.now();
-  if (!_ga.list || now - _ga.listT > 2500) { _ga.list = _gaStaticRows().concat(_gaDecorRows()); _ga.listT = now; }
+  if (!_ga.list || now - _ga.listT > 2500) { _ga.list = _gaStaticRows(); _ga.listT = now; }
   const px = _gw.px, py = _gw.py, d = (r) => Math.hypot(r.x - px, (r.y - py) * 1.3);
   const rows = _ga.list.concat(_gaTreeRows(px, py)).filter(r => d(r) <= Math.max(GA_REACH, r.reach || 0) && !gartActHidden(r.src));   // (a ball off rolling, a pile kicked apart: nothing to do there just now)
   rows.sort((a, b) => d(a) - (a.pri || 0) - d(b) + (b.pri || 0));   // (pri: a wall before the tree that grows against it)
@@ -475,7 +484,7 @@ function _gaCarriedSweep(now) {
 /** A thing you set down: drawn at its new place as a sprite of the world (sorted by its foot like everything else), with the same picture. */
 function _gaSetDownDraw(id, x, y) {
   if (typeof gardenWorldAdd !== 'function' || typeof _GAW_ART === 'undefined') return;
-  const row = GARDEN_ACT_WORLD.find(r => r.id === id); if (!row || !_GAW_ART[row.art]) return;
+  const t = gardenAffordThings().find(q => q.id === id), K = t && GARDEN_KINDS[t.kind], row = K ? { art: K.art } : null; if (!row || !_GAW_ART[row.art]) return;
   _ga.down = _ga.down || new Map();
   const old = _ga.down.get(id); if (old) { try { old.remove(); } catch (e) { /* gone */ } }
   try { _ga.down.set(id, gardenWorldAdd({ id: 'ga-down-' + id, x, y, z: y, lift: 0, ground: false, svg: _GAW_ART[row.art]({}, false, row), update(dt, Sp) { if (!_ga.down || _ga.down.get(id) !== Sp) Sp.remove(); } })); } catch (e) { /* drawn on the next paint */ }
@@ -574,24 +583,9 @@ function _gaFigureFlip(gpl) {
   try { let n = gpl; for (let i = 0; i < 6 && n; i++, n = n.parentNode) { const t = n.getAttribute && n.getAttribute('transform'); if (t && /scale\(\s*-1/.test(t)) return -1; } } catch (e) { /* as drawn */ }
   return 1;
 }
-/** Belly rubs: once your pet is at your hand, it rolls on to its back and kicks its legs (the pets' own clip l-belly, from feat/pets-life;
- * on a branch without it, the same clip is added here the first time, so the two never differ), again and again while you rub. */
-function _gaBellyClip() {
-  try {
-    if (typeof petClipDef !== 'function') return null;
-    if (petClipDef('ga-belly')) return 'ga-belly';
-    if (typeof _pcR !== 'function' || typeof _pcSw !== 'function') return petClipDef('l-belly') ? 'l-belly' : null;
-    // (round 6) rolled on to its back for real: the whole body flipped top to bottom about the line that lays its spine on the grass (org 'back'),
-    // so the back is on the ground, the tummy up and all four paws in the air, kicking; the head turned the right way up again at the neck end,
-    // looking at you. A little wriggle side to side on its back; it rolls back up only at the very end.
-    const B = (r) => ({ sy: -1, r: r || 0 }), HB = { sy: -1 };
-    _pcR('ga-belly', 6000, 'walk', { nl: 1, still: 0.5, not: { ids: ['snail', 'cloud', 'wisp', 'ghost', 'tortoise', 'crab'] }, face: _F_HAPPY, org: 'back',
-      body: [[0.04, { y: 1, sy: 0.9, sx: 1.06 }, 'io'], [0.1, { sy: 0.05, sx: 1.08 }, 'i'], [0.15, B(), 'o'], ...Array.from({ length: 10 }, (_, i) => [0.2 + i * 0.065, B(i % 2 ? 3 : -3), 'io']), [0.88, B(), 'io'], [0.93, { sy: 0.05, sx: 1.08 }, 'i'], [0.98, {}, 'o'], [1, {}]],
-      head: [[0.1, {}, 'i'], [0.15, HB, 'o'], [0.4, HB], [0.47, { sy: -1, r: 10 }, 'io'], [0.6, { sy: -1, r: 10 }], [0.67, HB, 'io'], [0.88, HB, 'io'], [0.93, {}, 'i'], [1, {}]],
-      paw: _pcSw(0.16, 0.87, 16, { r: -38 }, { r: 8 }, 'io'), legsF: _pcSw(0.17, 0.87, 16, { r: 8 }, { r: -38 }, 'io'), legsN: _pcSw(0.16, 0.87, 14, { r: 30 }, { r: -6 }, 'io'), legsG: _pcSw(0.17, 0.87, 14, { r: -6 }, { r: 30 }, 'io'), tail: _pcSw(0.15, 0.88, 10, { r: 20 }, { r: -20 }), fx: [[0.3, 'heart', { at: 'top', n: 4, gap: 600, dur: 900 }]] });
-    return petClipDef('ga-belly') ? 'ga-belly' : (petClipDef('l-belly') ? 'l-belly' : null);
-  } catch (e) { return null; }
-}
+/** Belly rubs: once your pet is at your hand, it rolls on to its back and kicks its legs: the one belly-rub clip, l-belly
+ * (97-pets-tricks-7life-0clips.js), the same one the pet's own game plays, again and again while you rub. */
+function _gaBellyClip() { try { return typeof petClipDef === 'function' && petClipDef('l-belly') ? 'l-belly' : null; } catch (e) { return null; } }
 /** Where the pet lies for a belly rub (cells from your feet): beside your knee, in front of your hand, a touch behind you so your hand is over its tummy. */
 const GA_RUB_AT = [0.4, -0.04];   // (round 6: right under the reaching hand, the tummy beneath the palm)
 function _gaRubTick(cur) {
@@ -696,6 +690,6 @@ if (typeof gardenLifePetGoal === 'function') {
 const GART_ACT_WHEEL = Object.freeze({ lie: { name: 'Lie down', icon: 'cloud' }, nap: { name: 'Nap', icon: 'moon' }, throwstick: { name: 'Throw a stick', icon: 'paw-print', pet: true }, rub: { name: 'Belly rub', icon: 'heart', pet: true }, laugh: { name: 'Laugh', icon: 'smile' }, angel: { name: 'Snow angel', icon: 'snowflake', winter: true } });
 /** A click on a fixed thing with no door: do its first action (a bench: sit on it). */
 function gartActForProp(p) {
-  if (!p || p.act || !GARDEN_ACT_BY_PROP[p.id]) return false;
+  if (!p || p.act) return false;
   const spot = _gaStaticRows().find(r => r.src === p.id); return !!spot && gartActRun(spot.act, spot);
 }

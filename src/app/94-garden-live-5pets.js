@@ -70,7 +70,7 @@ function _gllPetStep(A, dt, svg) {
   void W;
 }
 function _gllPetFx(A, ev) {
-  const e = String(ev.e || '');
+  const e = String(ev.e || '') === 'ga-belly' ? 'l-belly' : String(ev.e || '');   // (a friend on an older version sends the player branch's old id: there is one belly rub now)
   if (ev.c === 'pet' && (e === 'away' || e === 'back')) { A.petAway = e === 'away'; if (A.petAway) _gllPetDrop(A); return; }   // their pet went on a little journey, or came home: as they see it, so do you
   let P = A.pp;
   if (ev.c === 'petplay' && ev.u != null) {
@@ -101,7 +101,6 @@ function _gllPetFx(A, ev) {
   P.tx = null;
   if (e === 'pat') { P.sit({ eyes: 'happy', mouth: 'open' }); P.hearts(); P.clip('jump', 800, () => _gllPetClipDone(P, 1.5)); return; }
   if (e === 'eat') { P.sit(); P.clip('eat', 1500, () => P.clip('jump', 780, () => _gllPetClipDone(P, 1.5))); return; }
-  if (e === 'ga-belly' && typeof _gaBellyClip === 'function') _gaBellyClip();   // (the belly-rub pose is added the first time it is needed, here too)
   if (typeof petClipDef !== 'function' || !petClipDef(e) || (typeof petClipSuits === 'function' && !petClipSuits(e, P.look.species))) return;   // an id this version has not heard of: nothing
   const c = petClipDef(e);
   P.sit(); P.clip(e, c.ms, () => _gllPetClipDone(P));

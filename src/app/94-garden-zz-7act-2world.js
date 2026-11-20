@@ -1,40 +1,12 @@
 /* ============================================================
-   THINGS THE MOVES NEED THAT THE WORLD DID NOT HAVE (round 3, "player" branch, round 2). Drawn here, standing in the world all the time
-   (not only while you use them: nothing appears out of nowhere), each painted with a base that meets the ground, a contact shadow and a
-   little wear or growth round its foot. Each is placed against a fixed thing of the layout (anchor + at, in cells), so when a painter
-   moves that thing, these move with it; a painter who draws their own may set `drawn: false` on the row and keep the action.
-
-   GARDEN_ACT_WORLD rows: { id, anchor (a static id) | cell [x, y], at [dx, dy] (cells from the anchor's foot middle), act, name,
-     stand [dx, dy] (cells from this thing's foot), deg, art (a drawing below), noProp (the figure holds nothing: the world has it) }.
+   THE DRAWINGS OF PLACEABLE THINGS AND OF THE PARTS A KIND CARRIES (round 3, "player" branch; made general 20 Nov 2026).
+   Nothing here says where anything is. A placeable thing (a ball, a campfire, a log seat, a telescope, a busker's pitch, a basket) is a row of
+   layout data (assets/garden/vale-things.json, or a layout's own `things`) of a kind whose `art` names a drawing below; it is drawn wherever
+   that row puts it, standing in the world all the time, with a base that meets the ground, a contact shadow and wear or growth at its foot.
+   A kind's part with an `art` (GARDEN_KINDS lighthouse: a ladder up its side) is drawn on every thing of that kind, fixed to its footprint.
    gardenActWorldProps(sc, o) -> rows for gardenWorldProps (94-garden-fish-1world.js): [{z, x, html}] in world px.
-   gardenActWorldRows() -> the rows placed: [{ ...row, x, y }] (cells, the foot), for the action table (94-garden-zz-7act-1core.js).
+   gardenActWorldRows()       -> what is drawn: [{ id, kind, art, x, y (cells, the foot), row (the part's own numbers) }].
    ============================================================ */
-const GARDEN_ACT_WORLD = Object.freeze([
-  // a brass telescope on a tripod on the folly's lookout, aimed at the far hills: you put your eye to it
-  { id: 'ga-scope', anchor: 'ld-folly', at: [0.95, 0.55], act: 'look', name: 'the telescope', stand: [-0.31, 0.06], deg: 0, art: 'scope', noProp: true },   // (round 6: side on at the eyepiece)
-  // a ladder up the lighthouse's side to a plank landing with a rail: you climb the rungs and stand on the landing
-  { id: 'ga-lh-ladder', anchor: 'ld-lighthouse', at: [0.22, 0.13], act: 'ladder', name: 'the lighthouse ladder', stand: [0, 0.03], deg: -90, art: 'ladder', noProp: true },
-  // (round 3) the treehouse's and the hay loft's ladders, drawn standing there all the time like the lighthouse's (not only while you climb)
-  { id: 'ga-th-ladder', anchor: 'ld-treehouse', at: [0.35, 0.2], act: 'ladderhi', name: 'the treehouse ladder', stand: [0, 0.03], deg: -90, noProp: true, edge: true },   // (the treehouse's painter draws this ladder: no art here)
-  { id: 'ga-barn-ladder', anchor: 'ld-barn', at: [1.1, 0.37], act: 'ladderlo', name: 'the hay loft ladder', stand: [0, 0.03], deg: -90, art: 'ladder', top: 96, loft: true, noProp: true, edge: true },
-  // a campfire in a ring of stones beside the beacon, a log to one side: warm your hands, toast a marshmallow
-  { id: 'ga-fire-beacon', anchor: 'ld-beacon', at: [1.9, 1.5], act: 'warm', name: 'the campfire', stand: [0, -0.68], deg: 90, art: 'fire' },   // (round 6: back from the ring of stones, the flames clear of your feet)
-  // and one by the woodsman's hut in the west woods
-  { id: 'ga-fire-hut', cell: [15.5, 78.5], at: [0, 0], act: 'warm', name: 'the campfire', stand: [0, -0.68], deg: 90, art: 'fire' },
-  // (1) a log laid by the fire to sit on (round 3: the bee boles and the driftwood arch are not seats; this is), its top at 0.3 of your height
-  { id: 'ga-logseat', cell: [15.5, 78.5], at: [-1.45, -0.15], act: 'sit', name: 'the log', stand: [0, 0.12], deg: 90, art: 'logseat', seat: 0.42 },
-  // (18) a leather ball on the grass by the green, and in autumn a pile of leaves beside it: kick them
-  { id: 'ga-ball', anchor: 'sundial', at: [-4.3, 2.5], act: 'kick', name: 'the ball', stand: [0, -0.3], deg: 90, art: 'ball', kick: 'ball' },
-  { id: 'ga-leaves', anchor: 'sundial', at: [-5.7, 0.2], act: 'kick', name: 'the leaf pile', stand: [0, -0.32], deg: 90, art: 'leaves', kick: 'leaves', season: 'autumn' },
-  // (24) the busker's pitch by the market: a stool, an open fiddle case with a few coins, the fiddle on the stool
-  { id: 'ga-busker', anchor: 'market-stall', at: [2.6, 1.2], act: 'play', name: 'the fiddle', stand: [0.9, 0.25], deg: 90, art: 'busker' },
-  // (25) small things to pick up and carry: a basket of apples by the market, a shell on the quay beach, a log by the hut
-  { id: 'ga-basket', anchor: 'market-stall', at: [-1.4, 1.3], act: 'carry', name: 'the basket', stand: [0, 0.36], deg: 90, art: 'basket', carry: 'basket' },
-  { id: 'ga-log', anchor: 'ld-woodhut', at: [2.4, 1.6], act: 'carry', name: 'the log', stand: [0, 0.36], deg: 90, art: 'log', carry: 'log' },
-  // (29) a worn grassy bank on the Mere's south shore, room for two side by side, legs over the water (round 3: right on the water's edge, the hips on the lip; edge: the walker leaves you there)
-  { id: 'ga-bank-l', anchor: 'lake-board', at: [-4.6, -2.0], act: 'fishsit', name: 'the bank', stand: [0, 0], deg: -90, edge: true },   // (round 3: no drawn strip of its own: it lay over whoever sat there; the bank's own grass is the seat)
-  { id: 'ga-bank-r', anchor: 'lake-board', at: [-3.4, -2.0], act: 'fishsit', name: 'the bank', stand: [0, 0], deg: -90, edge: true },
-]);
 const _GAW_ART = Object.freeze({
   scope: () => '<ellipse cx="0" cy="1" rx="13" ry="3.2" fill="#1a1408" opacity="0.22"/><path d="M-12 1q4 -3 9 -1q5 -2 9 0q5 -1 7 1" stroke="#6a8a3a" stroke-width="1.4" fill="none" opacity="0.8"/>'
     + '<path d="M0 -24L-9 0M0 -24L9 0M0 -24L1 1" stroke="#5a3e22" stroke-width="1.8" stroke-linecap="round"/><path d="M-9 0h-1.6M9 0h1.6" stroke="#2a1e10" stroke-width="1.4"/>'
@@ -68,17 +40,16 @@ const _GAW_ART = Object.freeze({
   bank: () => '<path d="M-26 -4Q-12 -9 0 -7Q14 -9 46 -4L48 2Q10 6 -28 2z" fill="#6a9a3a" opacity="0.9"/><path d="M-24 -2Q8 -6 44 -2" stroke="#8a6a3a" stroke-width="2.2" fill="none" opacity="0.7"/><path d="M-20 2q2 -5 4 0M-4 2q2 -6 3 0M14 2q1 -5 3 0M30 2q2 -6 3 0" stroke="#4a7a2a" stroke-width="1.1" fill="none"/><path d="M22 -6L26 -12M24 -6L22 -12" stroke="#6a4a2a" stroke-width="1"/>',
 });
 const _gawN = (v) => String(Math.round(v * 10) / 10);
-/** Where each row is today, from the layout (or its own cell). */
+/** What is drawn today: the placed things of a kind with a drawing, and the drawn parts of every found thing. */
 function gardenActWorldRows() {
-  let stat = []; try { stat = gardenIslandData().static || []; } catch (e) { stat = []; }
-  const live = typeof GARDEN_PROPS !== 'undefined' ? new Map(GARDEN_PROPS.map(p => [p.id, p])) : new Map(), byId = new Map(stat.map(r => [r.id, r]));
-  const out = [];
-  for (const w of GARDEN_ACT_WORLD) {
-    let fx, fy;
-    if (w.cell) { fx = w.cell[0]; fy = w.cell[1]; }
-    else { const r = live.get(w.anchor) || byId.get(w.anchor); if (!r) continue; fx = r.x + r.w / 2; fy = r.y + r.h; }
-    const mv = typeof gartActMovedTo === 'function' ? gartActMovedTo(w.id) : null;   // a thing you carried off and set down is where you left it (this visit)
-    out.push(Object.assign({}, w, mv ? { x: mv.x, y: mv.y } : { x: fx + w.at[0], y: fy + w.at[1] }));
+  const out = []; if (typeof gardenAffordThings !== 'function') return out;
+  for (const t of gardenAffordThings()) {
+    const K = t.kind && GARDEN_KINDS[t.kind]; if (!K) continue;
+    if (t.src === 'thing' && K.art && t.drawn !== false) {
+      const mv = typeof gartActMovedTo === 'function' ? gartActMovedTo(t.id) : null;
+      out.push({ id: t.id, kind: t.kind, art: K.art, x: mv ? mv.x : t.x, y: mv ? mv.y : t.y, season: t.season || '', carry: (K.acts || []).some(a => a.carry), flat: !!K.flat, row: {} });
+    }
+    if (t.static) for (const s of gardenKindSpots({ kind: t.kind, x: t.x, y: t.y, w: t.w, front: t.front })) if (s.at && s.art && s.drawn !== false) out.push({ id: 'part-' + t.id + '-' + s.i, owner: t.id, kind: t.kind, art: s.art, x: s.x, y: s.y, row: s });
   }
   return out;
 }
@@ -86,9 +57,9 @@ function gardenActWorldRows() {
 function gardenActWorldProps(sc, o) {
   const W = GARDEN_WORLD, out = [];
   for (const r of gardenActWorldRows()) {
-    if (r.drawn === false || !_GAW_ART[r.art] || (r.season && sc && sc.season !== r.season) || (typeof gartActCarried === 'function' && gartActCarried(r.id)) || (r.carry && typeof gartActMovedTo === 'function' && gartActMovedTo(r.id))) continue;   // (one set down elsewhere is drawn there as a sprite of its own)
+    if (!_GAW_ART[r.art] || (r.season && sc && sc.season !== r.season) || (typeof gartActCarried === 'function' && gartActCarried(r.id)) || (r.carry && typeof gartActMovedTo === 'function' && gartActMovedTo(r.id))) continue;   // (one set down elsewhere is drawn there as a sprite of its own)
     const x = r.x * W.cellW, y = W.sky + r.y * W.cellH;
-    out.push({ z: r.flat ? r.y - 1.2 : r.y, x: Math.floor(r.x), html: `<g class="gd-it gd-prop gd-prop-work" data-prop="${r.id}" data-z="${_gawN(r.y)}" pointer-events="none"><g transform="translate(${_gawN(x)} ${_gawN(y)})">${_GAW_ART[r.art](o, typeof gartActInUse === 'function' && gartActInUse(r.id), r)}</g></g>` });
+    out.push({ z: r.flat ? r.y - 1.2 : r.y, x: Math.floor(r.x), html: `<g class="gd-it gd-prop gd-prop-work" data-prop="${r.id}" data-z="${_gawN(r.y)}" pointer-events="none"><g transform="translate(${_gawN(x)} ${_gawN(y)})">${_GAW_ART[r.art](o, typeof gartActInUse === 'function' && gartActInUse(r.id), r.row)}</g></g>` });
   }
   return out;
 }

@@ -20,62 +20,35 @@
    run, so none of this does. OFF SCREEN: P.clip plays nothing for a pet out of view, and the rows only read a few numbers.
    ============================================================ */
 const _pl = { q: [], stillT: 0, moveT: 0, lastMoveT: 0, room: false, tod: '', bite: false, built: 0, thingsKey: '', things: null, fished: -1, festSeen: '', greeted: 0, lastPat: 0, sulked: 0, tries: 0, cel: [] };
-/** Kinds of thing in the world a row can go to, matched on a landmark's kind or a placed thing's id. A kind with no match yet is a data row for
- *  the painters (PET_LIFE_SPOTS below): place a landmark or decoration with that id and the rows that wait for it start on their own. */
-const PET_LIFE_KINDS = Object.freeze([
-  ['bench', /^(ld-seat|bench|stone-bench|driftwood-seat|picnic-blanket|deckchair|bistro-set|gazebo)$/],
-  ['well', /^(ld-wish|wishing-well)$/],
-  ['pump', /^(ld-pump|water-pump|water-butt)$/],
-  ['trough', /trough|^ld-churn$/],
-  ['fire', /^(fire-pit|ld-clamp|dc-clay-oven|dc-cauldron)$/],
-  ['bell', /bell|^ld-chapel$/],
-  ['maypole', /maypole/],
-  ['mill', /^ld-mill$|play-mill/],
-  ['hay', /^ld-barn$|hay/],
-  ['chime', /chime/],
-  ['board', /^(notice-board|lake-board|ld-finger|ld-mile)$/],
-  ['lighthouse', /^ld-lighthouse$|^dc-lighthouse$/],
-  ['treehouse', /^ld-treehouse$|^ld-hollow$/],
-  ['stall', /^(market-stall|garden-shop|tackle-shop)$/],
-  ['maze', /^ld-turf$|maze|^box-hedge$/],
-  ['stump', /^ld-stump$|^log-pile$/],
-  ['wall', /^ld-wall$|^ld-stones$/],
-  ['music', /music|^dc-gramophone$/],
-  ['bed', /pet-bed|pet-basket|basket/],
-  ['slide', /slide/],
-  ['swing', /^(swing-seat|rope-swing|hammock)$/],
-  ['pier', /^ld-pier$|jetty-end/],   // (round 4: the pier's own end, below; the lake hall's paved quay was not a pier)
-  ['falls', /^ld-falls$/],
-  ['leaves', /^leaf-pile$/],
-  ['bath', /^(bird-bath|fountain|mini-pond)$/],
-  ['chair', /^(play-chair|deckchair)$/],
-]);
-/** World objects some rows want that the map does not have yet: the painters place one (a landmark or decoration with a matching id) and the row runs. */
+/** Kinds of thing in the world a row can go to: the pets' word for each (a row's `at`) is the `pet` of a kind in the one registry
+ *  (94-garden-zz-7act-0kinds.js GARDEN_KINDS), and every thing found standing (94-garden-zz-7act-0scan.js), on any layout, of a kind with
+ *  that word counts. Nothing is matched on a place's name. Words no thing has yet are data rows for the layout's authors (PET_LIFE_SPOTS):
+ *  place a thing of that kind (a layout row, a decoration, or a row in assets/garden/vale-things.json) and the rows that wait for it start. */
 const PET_LIFE_SPOTS = Object.freeze([
-  { kind: 'slide', rows: [66], ask: 'A playground slide (or garden steps) a pet can try to climb: id containing "slide".' },
-  { kind: 'swing', rows: [67], ask: 'A rope swing over the brook (id "rope-swing"); the swing seat and hammock count meanwhile.' },
-  { kind: 'bell', rows: [71], ask: 'A bell that rings (id containing "bell"); the ruined chapel stands in for it meanwhile.' },
-  { kind: 'maypole', rows: [77], ask: 'The maypole on the green as its own landmark (id "ld-maypole"): today it is painted into the green, so pets cannot find it.' },
-  { kind: 'chime', rows: [80], ask: 'A wind chime a pet can bump (id containing "chime").' },
-  { kind: 'bed', rows: [76], ask: 'A pet bed or basket to place (decoration id "pet-bed").' },
-  { kind: 'music', rows: [99], ask: 'A music box to place or find (id containing "music").' },
-  { kind: 'pier', rows: [69], ask: 'The end of the pier as a spot (id "ld-pier"); the boathouse and the lake hall stand in meanwhile.' },
+  { kind: 'slide', rows: [66], ask: 'A playground slide (kind "slide") a pet can try to climb.' },
+  { kind: 'swing', rows: [67], ask: 'A rope swing (kind "swing"); the swing seat and hammock count meanwhile.' },
+  { kind: 'bell', rows: [71], ask: 'A bell that rings (kind "bell", a ship\u2019s bell on a post); any chapel counts meanwhile.' },
+  { kind: 'maypole', rows: [77], ask: 'A maypole as a thing of its own (kind "maypole"): one painted into a green with a foot is found too.' },
+  { kind: 'chime', rows: [80], ask: 'Wind chimes a pet can bump (kind "chime").' },
+  { kind: 'bed', rows: [76], ask: 'A pet bed or basket (kind "pet-bed" or "basket").' },
+  { kind: 'music', rows: [99], ask: 'A music box or a busker\u2019s pitch (kind "music-box" or "busker").' },
+  { kind: 'pier', rows: [69], ask: 'A pier (kind "pier"): its far end, as far as it is built.' },
 ]);
 function _plSoon(P, id, secs) { const k = 'at_l-' + id; return !P[k] || performance.now() - P[k] > secs * 1000; }
 function _plMark(P, id) { P['at_l-' + id] = performance.now(); }
-/** Every thing a row can go to, by kind, read once each time the garden changes (the roaming loop's own key). */
+/** Every thing a row can go to, by the pets' word for its kind, read once each time the garden changes (the roaming loop's own key). */
 function _plThings() {
   let S = null; try { S = _ptwSpots(); } catch (e) { return {}; }
-  if (_pl.things && _pl.thingsKey === S.key) return _pl.things;
-  const out = {}, put = (kind, x, y, name) => { (out[kind] || (out[kind] = [])).push({ x, y, name }); };
-  const match = (id, x, y, name) => { for (const [kind, re] of PET_LIFE_KINDS) if (re.test(id)) put(kind, x, y, name); };
-  try { for (const p of gardenLandProps()) match(String(p.kind || ''), p.x + p.w / 2, p.y + p.h, p.name); } catch (e) { /* none */ }
-  try { for (const o of gardenWorldObjects(S.model)) { if (o.kind === 'plant') continue; match(String(o.id || ''), o.top.x, o.y + (o.h || 1), o.name); } } catch (e) { /* none */ }
-  // the end of the pier: the last of the layout's pier boards, just short of the end (round 4, the critic: pier-watch played on the quay)
-  try { const ps = (GardenIslandLayout.data.static || []).filter(p => /^pier(-\d+)?$/.test(p.id)).sort((a, b) => (b.y + b.h) - (a.y + a.h)); if (ps[0]) (out.pier || (out.pier = [])).push({ x: ps[0].x + ps[0].w / 2, y: ps[0].y + ps[0].h - 0.9, name: 'The end of the pier', free: true, stage: 1 }); } catch (e) { /* none */ }
-  // the water's edge where it is soft (grass, sand, a reed bank), not the paved quay: paddling and fish-watching want a real shore
+  const key = S.key + '|' + (typeof _gks !== 'undefined' ? _gks.key : '');
+  if (_pl.things && _pl.thingsKey === key) return _pl.things;
+  const out = {}, put = (kind, x, y, name, extra) => { (out[kind] || (out[kind] = [])).push(Object.assign({ x, y, name }, extra || {})); };
+  let season = ''; try { season = gardenModel().season || ''; } catch (e) { season = ''; }
+  try { for (const t of gardenAffordThings()) { const K = GARDEN_KINDS[t.kind]; if (!K || !K.pet || K.pet === 'pier' || (t.season && season && t.season !== season)) continue; put(K.pet, t.x, t.y, t.name || K.name, { kind: t.kind, id: t.id }); } } catch (e) { /* none */ }
+  // the end of a pier: as far as it is built, just short of the end (round 4, the critic: pier-watch played on the quay)
+  try { const decks = typeof _gardenPierDecksNow === 'function' ? _gardenPierDecksNow() : [], d = decks[decks.length - 1]; if (d && gardenAffordOfPet('pier').length) put('pier', d.x + d.w / 2, d.y + d.h - 0.9, 'The end of the pier', { free: true, stage: 1 }); } catch (e) { /* none */ }
+  // the water's edge where it is soft (grass, sand, a reed bank), not a paved quay: paddling and fish-watching want a real shore
   out.tree = S.shade.slice(); out.shore = S.shore.filter(q => typeof _plStoneAt !== 'function' || !_plStoneAt(q.x, q.y)); if (!out.shore.length) out.shore = S.shore.slice(); out.drink = S.drink.slice(); out.warm = S.warm.slice();
-  _pl.things = out; _pl.thingsKey = S.key;
+  _pl.things = out; _pl.thingsKey = key;
   return out;
 }
 /** The nearest thing of a kind within the pet's reach (a pet that follows you stays near you). */
@@ -367,6 +340,9 @@ function _plGame(P, r) {
   P.lifeCur = r; P.lifeRow = r.id; P.lifeAt = performance.now(); P.lifeHold = P.lifeAt + 9000; P.lifeNext = P.lifeAt + 9000; P.lifeStaged = 0;
   _plFacePlayer(P); _plDiary(r);
   if (r.id === 'belly-rub' && typeof petBondGive === 'function') { try { petBondGive('pat'); } catch (e) { /* only a moment */ } }
+  // one belly rub: picked from the pet's bubble, you kneel and rub as the moves wheel's belly rub does (94-garden-zz-7act-1core.js, act
+  // 'rub'): the pet comes to your hand and rolls on to its back with the same clip
+  if (r.id === 'belly-rub' && typeof gartActRun === 'function' && typeof _gw !== 'undefined' && _gw.on && !_gw.boat) { P.lifeCur = null; P.lifeHold = 0; if (gartActRun('rub', null)) return true; P.lifeCur = r; }
   const done = () => { P.hearts(); P.lifeCur = null; };
   if (_plCome(P, r.id === 'high-five' ? 'five' : 'side', _plClips(r), 1.5, done)) return true;
   const t = _plStage(P, true, '-');
@@ -392,7 +368,7 @@ function petLifeMenuItems(P) {
  *  pixels from its foot); the pet goes to the foot of the ladder, hops, and is up at the window with the sill in front of it, then comes down. */
 function _plTreehouse(P) {
   let row = null, prop = null;
-  try { row = (typeof GARDEN_LAND_SIGHTS !== 'undefined' ? GARDEN_LAND_SIGHTS : []).find(r => r.id === 'ld-treehouse'); prop = gardenLandProps().find(p => p.id === 'ld-treehouse'); } catch (e) { return false; }
+  try { const pl0 = _ptwPlayer() || P, th = gardenAffordNear(GARDEN_KIND_BY_PET.treehouse || [], pl0.x, pl0.y, 12); if (!th || th.kind !== 'treehouse') return false; row = (typeof GARDEN_LAND_SIGHTS !== 'undefined' ? GARDEN_LAND_SIGHTS : []).find(r => r.id === th.id) || null; prop = gardenLandProps().find(p => p.id === th.id) || { id: th.id, x: th.x - th.w / 2, y: th.y - th.h, w: th.w, h: th.h }; } catch (e) { return false; }   // (any treehouse: the nearest one to you)
   if (!prop) return false;
   const win = (prop.pet && prop.pet.window) || (row && row.pet && row.pet.window) || [-24, -126];
   const foot = { x: prop.x + prop.w / 2, y: prop.y + prop.h };
