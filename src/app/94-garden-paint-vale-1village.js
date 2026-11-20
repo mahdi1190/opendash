@@ -63,6 +63,7 @@
   /** The same loop with a point every few px, each moved a little across the line by where it is: grown, not ruled. */
   function wander(loop, amp) { const out = []; for (let i = 0; i < loop.length; i++) { const a = loop[i], b = loop[(i + 1) % loop.length], L = Math.hypot(b.x - a.x, b.y - a.y); if (L < .01) continue; const n = Math.max(1, Math.round(L / 9)), nx = -(b.y - a.y) / L, ny = (b.x - a.x) / L; for (let j = 0; j < n; j++) { const t = j / n, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, w = (Math.sin(x * .071 + y * .043) + Math.sin(x * .029 - y * .083 + 1.7) * .8 + Math.sin(x * .19 + y * .13 + .6) * .35) * amp * .5; out.push({ x: x + nx * w, y: y + ny * w * .7 }); } } return out; }
   const SOFT = new Set(['long-grass', 'meadow', 'reeds', 'bracken', 'hedge-road', 'stile']);
+  const ROPED = new Set(['long-grass', 'meadow', 'hedge-road', 'stile']);   // (growth too low or too thin to read as where walking stops)
   const pathOf = loops => { const p = new Path2D(); for (const l of loops) { p.moveTo(l[0].x, l[0].y); for (let i = 1; i < l.length; i++) p.lineTo(l[i].x, l[i].y); p.closePath(); } return p; };
   const inPoly = (x, y, P) => { let ins = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) ins = !ins; } return ins; };
 
@@ -124,6 +125,15 @@
       for (const q of s) { const r = rngAt(q, 23); for (let k = 0; k < 4; k++) { const x = q.x + (r() - .5) * 7, h = 13 + r() * 10, lean = (r() - .5) * 4; B.s(`M${x} ${q.y}q${lean * .3} ${-h * .6} ${lean} ${-h}`, col[k % 2], 1.2, .95); if (r() < .3) B.f(B.rr(x + lean - 1.1, q.y - h - 4, 2.2, 5.5, 1.1), '#6e4a2c', .95); } }
     },
     kerb: () => {},
+    // (final review, round 3) where a field of soft growth stops the feet, a line of stakes with a rope slung between them, knee
+    // high: the long grass alone read as lawn and the walk stopped at a wall you could not see (rule 15). A stake every eleventh
+    // point of the edge (by its place along the whole edge, so the chunks meet), the rope sagging between them
+    rope: (B, run, C) => {
+      const N = 11, H = 10.5, wood = C.season === 'winter' ? ['#6a5a48', '#8a7862'] : ['#6e5638', '#94784e'], rope = C.season === 'winter' ? '#b8ab90' : '#c8b48a';
+      const at = q => { const t = (((q.i % N) + N) % N) / N; return q.y - H + 2.6 * 4 * t * (1 - t); };
+      for (let k = 1; k < run.length; k++) { const a = run[k - 1], b = run[k]; if (b.i !== a.i + 1) continue; B.s(`M${a.x} ${at(a) + .9}L${b.x} ${at(b) + .9}`, '#2a2418', 1.5, .18).s(`M${a.x} ${at(a)}L${b.x} ${at(b)}`, rope, 1.15, .95); }
+      for (const q of run) if (q.i % N === 0) { B.f(B.ell(q.x + 1.2, q.y + .8, 3.2, 1.2), '#22301a', .28).f(B.rr(q.x - 1.3, q.y - H - 3, 2.6, H + 3.6, 1), wood[0]).f(B.rect(q.x - 1.3, q.y - H - 2.5, 1, H + 2.6), wood[1], .8).f(B.ell(q.x, q.y - H - 3, 1.3, .6), wood[1]); B.s(`M${q.x - 1.4} ${q.y - H + .3}h2.8`, rope, 1.2, .95); }
+    },
     // (village fix round 3) the rough edge of a field away from its front: its own growth thinning out into the lawn in
     // clumps and drifts (long grass, seed heads, a bramble or a shrub here and there, a stone by the wall), never one even
     // band, so the line where the feet stop is the edge of the rough ground and not a drawn ring
@@ -343,6 +353,7 @@
     const pieces = []; for (const run of runs) { let cur = []; for (const q of run) { if (gap(q)) { if (cur.length) pieces.push(cur); cur = []; } else cur.push(q); } if (cur.length) pieces.push(cur); }
     const rows = lockedSecs.map(rowOf).filter(Boolean).sort((a, b) => (a.lv || 0) - (b.lv || 0) || (a.buy || 0) - (b.buy || 0));
     const out = { has: mine, loops, path: pathOf(loops), pieces, gate: g, next: rows[0] || null };
+    (V._fieldShapes || (V._fieldShapes = {}))[f.id] = { gate: g, next: out.next && out.next.id, pieces: pieces.length, points: all.length };   // (dev: what each shut field is now)
     if (memo.size > 60) memo.clear(); memo.set(key, out); return out;
   }
   /** Dug beds in a field: a spade's edge is never ruled. Crumbs of soil lie out on the grass, turf creeps back in over
@@ -388,7 +399,8 @@
       const thickAt = q => .5 + .5 * (Math.sin(q.ox * .037 + q.oy * .051) * .6 + Math.sin(q.ox * .013 - q.oy * .029 + 2.1) * .4);
       const paint = part => { if (!part.length) return; const front = part.filter(q => q.front), back = part.filter(q => !q.front);
         if (back.length) { STYLE.margin(B, back, C, f.edge); if (grown) { const tuft = back.filter(q => thickAt(q) > .62); if (tuft.length) (f.edge === 'bracken' || f.edge === 'reeds' ? edge : (B2, r2, C2) => STYLE['long-grass'](B2, r2, C2, { tall: .8 }))(B, tuft, C);   /* (the orchard's and the bridge plot's hawthorn only at the front: tufts of it here read as a ring of hedge again) */ } }
-        if (front.length) edge(B, front, C); };
+        if (front.length) edge(B, front, C);
+        if (ROPED.has(f.edge)) STYLE.rope(B, part, C); };
       // back to front: the far edges, then the gate and its sign, then the near edges over them
       const gy = g ? g.y : Infinity, near = S.pieces.map(p => p.filter(q => inBox(q, cb)));
       for (const p of near) paint(p.filter(q => q.y <= gy));

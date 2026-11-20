@@ -80,14 +80,17 @@
     // one in a soft band a little narrower than the road, so the road's own trodden edge and grass show; 19 Nov 2026)
     const Gk = window.GardenPaintGround, roadLines = Gk ? [...L.routes.values()].filter(rt => rt.points && rt.points.length > 1 && rt.tier !== 'plaza').map(rt => { const pts = L.routePts(rt.id), k = Gk.routeKind(rt); return { pts, w: (Gk.ROUTE_WIDTH[k] || 30) * .82, bb: kit.bboxOf(pts, 60) }; }).filter(o => o.pts.length > 1) : [];
     let lawnCanvas = null, lawnBrush = null;
+    // (final review, round 3: the lawn between the village and the beach was laid over the bottom rows of the village's fields,
+    // so the Allotment's last rows showed as plain lawn while they still stopped the feet: a field's own painter keeps its cells)
+    const fieldCells = new Set(((L.pres || {}).fields || []).flatMap(f => (f.sections || []).flatMap(s => ((L.D.sectionCells || {})[s] || []).map(c => c[0] + ',' + c[1]))));
     add(box, 31, (B, r, cb) => {
       const near = roadLines.filter(o => kit.meets(o.bb, cb));
-      if (!near.length) { B.cx.clip(coastP); V.lawn(B, r, L, P, cb, (x, y) => y >= QUAY.y0 && L.kind(x + .5, y + .5) === 'grass', fade, { salt: 31, wash }); return; }
+      if (!near.length) { B.cx.clip(coastP); V.lawn(B, r, L, P, cb, (x, y) => y >= QUAY.y0 && L.kind(x + .5, y + .5) === 'grass' && !fieldCells.has(x + ',' + y), fade, { salt: 31, wash }); return; }
       // the lawn on a canvas of its own, the roads faded out of it there, then laid on this layer (nothing else is erased)
       const c = B.cx.canvas; if (!lawnCanvas) lawnCanvas = document.createElement('canvas'); if (lawnCanvas.width !== c.width || lawnCanvas.height !== c.height) { lawnCanvas.width = c.width; lawnCanvas.height = c.height; }
       const lx = lawnCanvas.getContext('2d'), T = B.cx.getTransform(), K = Math.abs(T.a) || 1; lx.setTransform(1, 0, 0, 1, 0, 0); lx.globalCompositeOperation = 'source-over'; lx.globalAlpha = 1; lx.filter = 'none'; lx.clearRect(0, 0, c.width, c.height); lx.setTransform(T);
       if (!lawnBrush || lawnBrush.cx !== lx) lawnBrush = kit.brush(lx);
-      lx.save(); lx.clip(coastP); V.lawn(lawnBrush, r, L, P, cb, (x, y) => y >= QUAY.y0 && L.kind(x + .5, y + .5) === 'grass', fade, { salt: 31, wash, soft: true }); lx.restore();
+      lx.save(); lx.clip(coastP); V.lawn(lawnBrush, r, L, P, cb, (x, y) => y >= QUAY.y0 && L.kind(x + .5, y + .5) === 'grass' && !fieldCells.has(x + ',' + y), fade, { salt: 31, wash, soft: true }); lx.restore();
       lx.save(); lx.globalCompositeOperation = 'destination-out'; lx.filter = 'blur(' + (4 * K).toFixed(2) + 'px)'; lx.lineCap = 'round'; lx.lineJoin = 'round'; lx.strokeStyle = '#000';
       for (const o of near) { lx.lineWidth = o.w; lx.beginPath(); o.pts.forEach((p, i) => i ? lx.lineTo(p.x, p.y) : lx.moveTo(p.x, p.y)); lx.stroke(); }
       lx.restore(); B.cx.save(); B.cx.setTransform(1, 0, 0, 1, 0, 0); B.cx.drawImage(lawnCanvas, 0, 0); B.cx.restore();
