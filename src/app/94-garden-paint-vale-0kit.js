@@ -26,7 +26,7 @@ window.GardenPaintVale = (function () {
   'use strict';
   const KIT = () => window.GardenPaintTerrainKit;
   const DEPTH = -9346, UNDER = -9592, MAIN_DEPTH = -9268;
-  const parts = [], groundSigs = [], softRoutes = new Set();
+  const parts = [], groundSigs = [], composeSigs = [], softRoutes = new Set();
   let cur = null, heldGround = null, lastError = null, stats = {}, feetNow = [], feetSig = '';
   const memo = new Map();
   const ok = f => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
@@ -254,12 +254,16 @@ window.GardenPaintVale = (function () {
     // and standing-object caches unchanged when that discrete bucket changes.
     const waterTod = ['dawn', 'dusk', 'night'].includes(info.tod) ? info.tod : 'day', underSig = sig + '|u|' + waterTod + '|';
     // the composition is the same for the same picture: compose once, then a repaint (a gate opening) only places it
-    let comp = memo.get(sig);
+    // (layout fix, north) keyed too by the state a part composes from (composeSigs: a shortcut's rope, a lip stone set back at a
+    // level): with the picture's key alone, a shortcut opened during a session kept its rope and its stop's white water drawn
+    // until a reload. (groundSigs only re-bake the ground: their draws read the state when they run.)
+    const compKey = sig + '|s|' + composeSigs.map(f => ok(f) || '').join('');
+    let comp = memo.get(compKey);
     if (!comp) {
       comp = { L, ground: [], main: [], under: [], things: [] };
       const ctx = { L, P, season, tod: info.tod, kit, W, sig, add: (bb, seed, draw, extra) => comp.ground.push(Object.assign({ bb, seed, draw }, extra || {})), main: (bb, seed, draw) => comp.main.push({ bb, seed, draw }), under: o => comp.under.push(o), thing: o => comp.things.push(o) };
       for (const p of parts) ok(() => p.compose(ctx));
-      memo.clear(); memo.set(sig, comp);
+      memo.clear(); memo.set(compKey, comp);
       // the standing things that say where their foot is: walking stops the feet there (_gwBuildSolids)
       const cw = W.cellW, ch = W.cellH, names = { 'cold-cove-rock': 'shore boulder', block: 'chopping block', 'chapel-stone': 'chapel stone' };
       feetNow = comp.things.filter(o => o.foot && o.key).map(o => { const id = o.key.split('|')[0], name = names[id.replace(/-\d+$/, '')] || id; return Object.freeze({ x0: (o.x + o.foot[0]) / cw, y0: (o.y - o.foot[2] - W.sky) / ch, x1: (o.x + o.foot[1]) / cw, y1: (o.y + 2 - W.sky) / ch, src: 'painted ' + name }); });
@@ -334,5 +338,5 @@ window.GardenPaintVale = (function () {
   }
   /** Landform kinds painted here (the world skips its own art for them). */
   function owns(kind) { return (kind === 'ruin-wall' || kind === 'ruin' || kind === 'screen') && wanted(); }   // (round 3: the valley's screens, 94-garden-paint-vale-2valley-screens.js)
-  return { feet: () => (wanted() ? feetNow : []), feetSig: () => (wanted() ? feetSig : ''), parts, groundSigs, softRoutes, PAL, wanted, paint, tick, clear, pendingGround, playerCanopies: () => cur ? cur.covering : null, status, paintTo, owns, readLayout, loopPath, strokePts, routeRibbon, shapeLoop, clipGround, groundClips, walk, lobe, capsule, hull, lawn, flags, setts, ok, get lastError() { return lastError; } };
+  return { feet: () => (wanted() ? feetNow : []), feetSig: () => (wanted() ? feetSig : ''), parts, groundSigs, composeSigs, softRoutes, PAL, wanted, paint, tick, clear, pendingGround, playerCanopies: () => cur ? cur.covering : null, status, paintTo, owns, readLayout, loopPath, strokePts, routeRibbon, shapeLoop, clipGround, groundClips, walk, lobe, capsule, hull, lawn, flags, setts, ok, get lastError() { return lastError; } };
 })();

@@ -251,19 +251,8 @@
       const len = (r1 - r0) * L.ch, p = L.cpt(mg.x + mg.w / 2 + wx / L.cw, r1);
       thing({ key: 'moor-wall-' + r0 + '|' + C.season, x: p.x, y: p.y, K: 1.25, box: [-14, -len - H9 - 6, 24, 8], foot: [-10, 10, len], draw: B => wallRun(B, kit.rng(970 + r0), 20, Math.max(0, len - H9), H9, snowy) });
     }
-    // the march wall along the fells' north edge (row 0): you stop at an old boundary wall, not in the sky's haze. One
-    // picture and one foot along the whole run of fell land at the top of the map.
-    // (feat/art3-highlands paints its own march wall in the fells painter; when that lands, this run is dropped: set window.__fellsMarchWall)
-    if (!window.__fellsMarchWall) {
-      let x0 = null, x1 = null; for (let x = 0; x < W_COLS(C); x++) { const b = L.base(x + .5, 0); const ok2 = b && b.land && !b.freshwater && (b.zone === undefined || b.zone === 5); if (ok2) { if (x0 === null) x0 = x; x1 = x + 1; } else if (x0 !== null) break; }
-      // (in runs of six cells, each its own picture: one picture the whole width took 122 ms to make, a long task while you
-      // walked. Each run's foot stops a fifth of a cell short of its ends, so each block is its own; the map's edge is
-      // right behind the wall, so the notch between two runs leads nowhere. (vale layouts merge: each run drawn exactly its own
-      // six cells, and its foot a sixth of a cell short of an inner end: the notch, a third of a cell, is narrower than your feet,
-      // and no run's picture reaches over its neighbour's block, which read as one block three runs wide under it)
-      if (x0 !== null) for (let a0 = x0; a0 < x1; a0 += 6) { const a1 = Math.min(x1, a0 + 6), wpx = (a1 - a0) * L.cw, p = L.cpt((a0 + a1) / 2, .55), inA = a0 > x0 ? .16 * L.cw : 0, inB = a1 < x1 ? .16 * L.cw : 0;
-        thing({ key: 'march-wall-' + a0 + '|' + C.season, x: p.x, y: p.y, K: 1, box: [-wpx / 2 - 12, -H9 - 6, wpx / 2 + 14, 8], foot: [-wpx / 2 + inA, wpx / 2 - inB, 14], draw: B => wallRun(B, kit.rng(990 + a0), wpx, 0, H9, snowy) }); }   // (no longer drawn past its ends: see above; was: so no seam shows where two meet)
-    }
+    // (layout fix, north: no march wall ruled along the north edge any more; the range closes it,
+    // 94-garden-paint-vale-1cloudbreak-relief.js)
     // Wick's steps (the plan's shortcut B): a flight of rough rock steps where the cove path drops to the shingle, the
     // bottom three slabs slipped and lying askew on the shingle
     const cc = L.routes.get('cove-cliff');
@@ -302,7 +291,9 @@
   }
   const lvNow = () => { try { return gardenModel().level.level; } catch (e) { return 1; } };
   const STAIR_LV = 18, LIP_LV = 6;   // shortcut C (the falls cave stair) and shortcut A (the lip stones: one has rolled out of the line)
-  if (V && V.groundSigs) V.groundSigs.push(() => (lvNow() >= STAIR_LV ? 'cs1' : 'cs0') + (lvNow() >= LIP_LV ? 'la1' : 'la0'));
+  const shortcutSig = () => (lvNow() >= STAIR_LV ? 'cs1' : 'cs0') + (lvNow() >= LIP_LV ? 'la1' : 'la0');
+  if (V && V.groundSigs) V.groundSigs.push(shortcutSig);
+  if (V && V.composeSigs) V.composeSigs.push(shortcutSig);   // (the ropes and the gap's water are composed by level: compose again when it crosses)
   window.gardenCloudbreakLipGap = () => lvNow() < LIP_LV;
   function ropeLine(B, r, a, b, snowy) {
     const np = Math.max(2, Math.round(Math.abs(b.x - a.x) / 44)) + 1, posts = []; for (let i = 0; i < np; i++) posts.push({ x: a.x + (b.x - a.x) * i / (np - 1), y: a.y + (b.y - a.y) * i / (np - 1) + (i % 2 ? 2 : 0) });
