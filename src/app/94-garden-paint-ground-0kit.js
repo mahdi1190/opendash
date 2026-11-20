@@ -542,9 +542,13 @@ window.GardenPaintGround = (function () {
    *  A route's painted width is the layout's own where it has one (route.widths: cells, one a point, the hand-drawn layouts;
    *  or route.paintWidth: px), else the surface's usual width. A route with a drawn outline (route.shape: a polygon in cells,
    *  a square or a yard) gives an area of its surface. o: { skip(route), plazas: true to keep plaza-tier centre lines } */
+  // The route as it is painted: a region painter may give one a painted line of its own (setRouteHook), e.g. stopping it at a
+  // building's front where the layout runs it through the building. Walking always reads the layout's own route.
+  let routeHook = null; const paintRoute = r => { if (!routeHook || !r) return r; try { return routeHook(r) || r; } catch (e) { return r; } };
   function layoutPaths(W, data, o) {
     o = o || {}; const routes = [], areas = [], px = q => ({ x: q[0] * W.cellW, y: W.sky + q[1] * W.cellH });
-    for (const r of data.routes || []) {
+    for (const r0 of data.routes || []) {
+      const r = paintRoute(r0);
       if (!r.points || r.points.length < 2 || o.skip && o.skip(r)) continue; const kind = routeKind(r);
       if (Array.isArray(r.shape) && r.shape.length > 2) areas.push({ id: r.id, kind: PATH[kind].planks ? 'setts' : kind, points: r.shape.map(px) });
       if (r.tier === 'plaza' && !o.plazas) continue;
@@ -697,5 +701,5 @@ window.GardenPaintGround = (function () {
   }
 
   function status() { const layers = [...registry].map(h => ({ key: String(h.key).slice(0, 24), level: h.level, chunks: h.chunks, live: h.live, MB: h.MB, baked: h.baked, evicted: h.evicted, medianMs: h.median, p95Ms: h.p95, worstChunkMs: h.worstMs, worstSliceMs: h.sliceWorstMs })); return { layers, MB: +layers.reduce((a, l) => a + l.MB, 0).toFixed(1), slow: Object.assign({}, slow), canvases: { made, reused, spare: spareN }, lastError }; }
-  return { resetSlow() { slow.opMs = 0; slow.op = ''; slow.uploadMs = 0; slow.tickMs = 0; }, LIGHT, contact, castShadow, castRuns, lightPool, cast, layer, levelFor, LEVELS, KINDS, palette, paintKind, wash, kindGrid, layoutKinds, layoutPaths, routeKind, ROUTE_WIDTH, ground, paths, flower, softCut, centreLine, tiles, rng, hash, hashStr, noise, fbm, mix, scratch, status, get lastError() { return lastError; }, set lastError(v) { lastError = v; } };
+  return { paintRoute, setRouteHook(fn) { routeHook = typeof fn === 'function' ? fn : null; }, resetSlow() { slow.opMs = 0; slow.op = ''; slow.uploadMs = 0; slow.tickMs = 0; }, LIGHT, contact, castShadow, castRuns, lightPool, cast, layer, levelFor, LEVELS, KINDS, palette, paintKind, wash, kindGrid, layoutKinds, layoutPaths, routeKind, ROUTE_WIDTH, ground, paths, flower, softCut, centreLine, tiles, rng, hash, hashStr, noise, fbm, mix, scratch, status, get lastError() { return lastError; }, set lastError(v) { lastError = v; } };
 })();

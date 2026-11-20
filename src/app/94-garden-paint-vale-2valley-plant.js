@@ -206,7 +206,8 @@
     const pathAt = (x, y) => { const rw = row(x, y); return !!(rw && (rw.trail || rw.lane)) || L.mat(x, y) === 'path'; };
     // every route's painted ribbon, in world px: nothing stands on a path's width
     const ribbons = [];
-    for (const rt of D.routes || []) {
+    for (const rt0 of D.routes || []) {
+      const rt = window.GardenPaintGround && GardenPaintGround.paintRoute ? GardenPaintGround.paintRoute(rt0) : rt0;
       if (!rt.points || rt.points.length < 2 || typeof gardenIslandRoutePath !== 'function') continue;
       const kind = window.GardenPaintGround ? GardenPaintGround.routeKind(rt) : 'earth', w = rt.tier === 'plaza' ? (Number(rt.widthCells) || 3) * cw : Number(rt.paintWidth) || (window.GardenPaintGround && GardenPaintGround.ROUTE_WIDTH[kind]) || 26;
       ribbons.push({ half: w / 2, marsh: /marsh|reed|boardwalk/.test(String(rt.id || '')), pts: gardenIslandRoutePath(rt).points.map(p => ({ x: p.x * cw, y: W.sky + p.y * ch })) });

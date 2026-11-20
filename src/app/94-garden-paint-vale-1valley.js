@@ -768,6 +768,25 @@
       });
     }
   }
+  // A painted way never runs under a building (fix round 2, rule 12). Where a valley route's line runs in through the front
+  // of a building that stops walking (the layout runs the marsh boardwalk in at the eel smokehouse's front and out behind its
+  // chimney), its painting stops at the building's front and turns to the door; a short stretch beyond, hidden behind the
+  // building, is not painted. Walking is unchanged: the building already stops the feet there, and the way round is open
+  // ground. From the layout's own rows (statics that block, their doors); a route that goes on a long way past is left alone.
+  const cutMemo = new WeakMap();
+  function paintRoute(r) {
+    if (!r || !Array.isArray(r.points) || r.points.length < 2) return r; if (cutMemo.has(r)) return cutMemo.get(r);
+    let out = r; const Pt = r.points, blds = ((typeof gardenIslandData === 'function' && gardenIslandData().static) || []).filter(q => q.col === 'full' && (q.w || 1) >= 2 && inValley(Math.floor(q.x + (q.w || 1) / 2), q.y));
+    const inside = (x, y) => blds.find(q => x > q.x + .04 && x < q.x + (q.w || 1) - .04 && y > q.y + .04 && y < q.y + (q.h || 1) - .04);
+    scan: for (let i = 1; i < Pt.length; i++) { const a = Pt[i - 1], b = Pt[i], n = Math.max(2, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) * 12)); let px = a[0], py = a[1];
+      for (let k = 1; k <= n; k++) { const x = a[0] + (b[0] - a[0]) * k / n, y = a[1] + (b[1] - a[1]) * k / n, s = inside(x, y); if (!s) { px = x; py = y; continue; }
+        if (py < s.y + (s.h || 1) - .12) break scan;   // (only a way that comes in at the front)
+        let rest = Math.hypot(b[0] - x, b[1] - y); for (let j = i; j < Pt.length - 1; j++) rest += Math.hypot(Pt[j + 1][0] - Pt[j][0], Pt[j + 1][1] - Pt[j][1]); if (rest > 6) break scan;
+        const pts = Pt.slice(0, i).concat([[+px.toFixed(2), +py.toFixed(2)]]), d = s.door; if (d && Math.hypot(d.x + .5 - px, d.y + .45 - py) < 1.8) pts.push([d.x + .5, d.y + .42]);
+        out = Object.assign({}, r, { points: pts, cutAt: s.id }); break scan; } }
+    cutMemo.set(r, out); return out;
+  }
+  if (window.GardenPaintGround && GardenPaintGround.setRouteHook) GardenPaintGround.setRouteHook(paintRoute);
   V.parts.push({ id: 'valley', compose });
   // (a look inside for the dev tools: each valley field's ring, how many of its points stand and on which sides)
   V._rings = () => { const W = GARDEN_WORLD, lv = level(); return plots().map(p => { const o = ringOf(p, W, lv); if (!o) return p.id + ':none'; const by = {}; for (const q of o.pts) { const k = q.side + (q.on ? '+' : '-') + (q.on && covered(q.x, q.y - 4) ? 'c' : ''); by[k] = (by[k] || 0) + 1; } return p.id + ' ' + o.fk + ' gate:' + (o.gc ? o.gc.join() : '-') + ' edges:' + p.edges.map(e => e[2] + (locked(e[3], e[4], lv) ? 'L' : '')).join('') + ' ' + JSON.stringify(by); }); };

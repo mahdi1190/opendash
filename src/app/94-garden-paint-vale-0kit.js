@@ -56,7 +56,7 @@ window.GardenPaintVale = (function () {
     const coast = ((data.coast && data.coast.land) || []).map(l => l.map(pt));
     const mat = (x, y) => { const c = L.cellAt ? L.cellAt(Math.floor(x), Math.floor(y)) : null; return c ? c.material : ''; };
     const statics = data.static || [], stat = id => statics.find(s => s.id === id);
-    const routes = new Map((data.routes || []).map(r => [r.id, r]));
+    const routes = new Map((data.routes || []).map(r => [r.id, window.GardenPaintGround && GardenPaintGround.paintRoute ? GardenPaintGround.paintRoute(r) : r]));   // (as painted: see GardenPaintGround.setRouteHook)
     const routePts = id => { const r = routes.get(id); return r && r.points && r.points.length > 1 ? gardenIslandRoutePath(r).points.map(p => cpt(p.x, p.y)) : []; };
     // what a spot is: 'grass' (land the painters may dress), 'path', 'beach', 'water', '' (off the island)
     const kind = (x, y) => {
