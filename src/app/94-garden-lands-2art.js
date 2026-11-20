@@ -695,11 +695,6 @@ function _gldIslandRegionStands() {
         || x * W.cellW < trunk.x1 && (x + 1) * W.cellW > trunk.x0 && y * W.cellH < trunk.y1 && (y + 1) * W.cellH > trunk.y0;
       if (touches && (x < 0 || y < 0 || x >= W.cols || y >= W.rows || cells[y * W.cols + x] !== region.id)) return false;
     }
-    // On the fells a building stands far taller than its cells: no crown behind one (a crown rose out of the bothy's roof)
-    if (/mount|headland|peak/.test(String(region.theme || region.id)) && !/orchard/.test(String(region.theme || region.id))) {
-      const c0 = (crown.x - crown.rx) / W.cellW, c1 = (crown.x + crown.rx) / W.cellW, r0 = (crown.y - crown.ry) / W.cellH, r1 = (shadow.y + shadow.ry) / W.cellH;
-      if ((data.static || []).some(p => c1 > p.x - .4 && c0 < p.x + p.w + .4 && r1 > p.y + p.h - Math.max(4, (p.tall || 2) * 2.2) && r0 < p.y + p.h + .4)) return false;
-    }
     // Cell-centre classification remains a lookup aid. Rounded continuous coast
     // and freshwater boundaries stay authoritative at the actual crown edge.
     for (let i = 0; i < 20; i++) {
@@ -714,7 +709,8 @@ function _gldIslandRegionStands() {
       : orchard ? { maximum: 18, heights: [184, 164, 144], gapX: 3.35, gapY: 3.7, rows: true }
         : /ruin/.test(theme) ? { maximum: 16, heights: [218, 186, 156], gapX: 2.55, gapY: 3.1, edge: true }
           : /valley|mill/.test(theme) ? { maximum: 10, heights: [198, 174, 150], gapX: 2.75, gapY: 3.3, edge: true }
-            : mountain ? { maximum: 12, heights: [210, 180, 152], gapX: 2.6, gapY: 3.1, edge: true } : null;
+            : null;   // (the fells: no generic grove trees; Cloudbreak's own painter plants the plan's Scots pine groups, and a
+            // crown here rose out of the bothy's roof)
     // The home village intentionally keeps its broad open green.
     if (!profile || !region.zone) continue;
     const points = region.polygons.flat(), xs = points.map(p => p[0]), ys = points.map(p => p[1]);
