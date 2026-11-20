@@ -60,7 +60,7 @@
         B.shadow(6, 4, 92, 12, .26);
         B.cx.filter = 'blur(3px)'; B.f(B.rect(-56, -3, 128, 9), '#3a2e22', .22); B.cx.filter = 'none';   // (layfix east: the wall's foot sits in a damp shadow on the setts, not a ruled line)
         // the wheel pit against the gable: dark water between stone walls, open to the river on the west
-        B.f(B.poly([[-118, -10], [-56, -12], [-56, 4], [-112, 4]]), '#3f5f64').f(B.poly([[-118, -10], [-56, -12], [-56, -8], [-117, -6]]), '#2c4448', .8);
+        B.f(B.poly([[-118, -10], [-56, -12], [-56, 4], [-112, 4]]), '#6a665a').f(B.poly([[-118, -10], [-56, -12], [-56, -8], [-117, -6]]), '#4a463e', .8); for (let y = -8; y < 4; y += 4) B.s(`M-116 ${y}L-56 ${y - 1}`, '#5a564c', .7, .6); for (let x = -110; x < -58; x += 9) B.s(`M${x} -9v12`, '#5a564c', .6, .5);   // (layfix east: the pit's walls in shaded stone; its water is the lap in front of the wheel, so no teal tub stands up behind it)
         for (let x = -114; x < -58; x += 7) B.f(B.rr(x, -15, 6.4, 3.8, 1), r() < .5 ? STONE[0] : STONE[1]).f(B.rr(x + 1, 1.6, 6.4, 3.2, 1), r() < .5 ? STONE[1] : STONE[3]);   // (its near kerb on the mill's own front line, not out over the planks)
         // the body: two storeys of brick, stone quoins, a slate roof with a lucam
         bricks(B, r, -56, -78, 128, 78, BRICK);

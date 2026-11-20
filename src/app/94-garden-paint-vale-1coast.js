@@ -63,6 +63,10 @@
           B.s(`M${q.x - nx} ${q.y - ny}L${q.x + nx} ${q.y + ny}`, tone < .3 ? '#a49a84' : tone < .7 ? '#b3a88f' : '#c4baa2', 5.2, 1, 'butt');
           B.s(`M${q.x - nx} ${q.y - ny + 2.4}L${q.x + nx} ${q.y + ny + 2.4}`, '#5e5242', .8, .55, 'butt'); }
         V.strokePts(B, walk, '#6e604a', 1.2, .6, 0, 0);
+        // (layfix east) its far end steps down onto the meadow trail: a last plank as a step, a post either side (it stopped cut square)
+        { const e = walk[walk.length - 1], p0 = walk[walk.length - 2], l = Math.hypot(e.x - p0.x, e.y - p0.y) || 1, tx = (e.x - p0.x) / l, ty = (e.y - p0.y) / l, nx = -ty * 15, ny = tx * 11;
+          B.f(B.poly([[e.x - nx + tx * 2, e.y - ny + ty * 2], [e.x + nx + tx * 2, e.y + ny + ty * 2], [e.x + nx + tx * 9, e.y + ny + ty * 9 + 2], [e.x - nx + tx * 9, e.y - ny + ty * 9 + 2]]), '#8f8068').s(`M${e.x - nx + tx * 9} ${e.y - ny + ty * 9 + 2}L${e.x + nx + tx * 9} ${e.y + ny + ty * 9 + 2}`, '#5e5242', 1, .7);
+          for (const sd of [-1, 1]) { const x = e.x + nx * sd * 1.05, y = e.y + ny * sd * 1.05; B.f(B.rr(x - 2.6, y - 10, 5.2, 12, 1.4), '#4e4436').f(B.rect(x - 2.6, y - 10, 1.6, 12), '#7a6a54', .7).f(B.ell(x, y - 10, 2.6, 1.1), '#a49a84'); } }
       });
         // (layfix east) where the boardwalk meets the stones over the river: a landing stage (lying flat, above the paths' own ground, whose round end lay there as a bare disc of sand) of the same silver planks on its piles,
         // square to the stones' line, so the crossing steps straight onto timber (a bare disc of sand lay between them)
@@ -195,6 +199,10 @@
       // a little plaque, and reeds at its feet
       B.f(B.rr(-6, -18, 12, 6, 1), '#e8dcc0').f(B.rect(-4, -16, 8, .8), '#6a5e4a', .7).f(B.rect(-4, -14, 6, .8), '#6a5e4a', .6);
       for (let i = 0; i < 12; i++) { const x = -56 + r() * 112, h = 10 + r() * 12; if (Math.abs(x) < 46 && r() < .6) continue; B.s(`M${x} 2q${(r() - .5) * 3} ${-h * .6} ${(r() - .5) * 4} ${-h}`, o.season === 'winter' ? '#b8a888' : '#9a8e52', 1.2, .9); }
+      // (layfix east) its stilts stand in a low dune of marram and sea holly blown up round them, not on bare sand
+      B.f(B.ell(0, 3, 58, 7), '#c8b888', .7).f(B.ell(-6, 1, 44, 4), '#dccc9c', .6);
+      for (let i = 0; i < 40; i++) { const x = -58 + r() * 116, h = 8 + r() * 12, lean = (r() - .5) * 8; B.s(`M${x} ${4 + r() * 3}q${lean * .3} ${-h * .6} ${lean} ${-h}`, o.season === 'winter' ? '#b8ae88' : r() < .5 ? '#8e9a5a' : '#a8a874', 1.1, .9); }
+      if (o.season === 'summer') for (let i = 0; i < 4; i++) { const x = -50 + r() * 100; B.f(B.circ(x, -2, 2.2), '#9aa6c8', .9).f(B.circ(x, -2, 1), '#6a7aa8'); }
       tufts(B, r, 0, 3, 90, 9, o.season);
     } },
   });

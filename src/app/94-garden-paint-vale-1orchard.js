@@ -158,7 +158,8 @@
     };
     // (the lakeside steps are a path with one short flight, where they climb through the gap in the orchard bank: one straight
     // run up the gap from the outlet to the hurdle)
-    { const ls = rpts('lakeside-steps'), g = L.cpt(61, 38.4); if (ls) { const seg = ls.filter(q => Math.hypot((q.x - g.x) / cw, (q.y - g.y) / ch) < 1.3 && q.y >= g.y - 4); if (seg.length > 2) flight(seg, { step: 11, salt: 1, k: .78 }); } }
+    // (layfix east) the flight runs straight up the screen from the footbridge's end to the hurdle across its head (seen face on)
+    { const a = L.cpt(60.3, 40.12), b = L.cpt(60.42, 38.9); flight([{ x: a.x, y: a.y, w: 2.05 }, { x: b.x, y: b.y, w: 2.05 }], { step: 8.5, salt: 1, k: .95 }); }
     // where a path climbs through a thin terrace wall: a short flight up the wall's face through the gap, the wall's two cut ends
     // either side (not on the orchard stair, which is steps all the way)
     { const thin = wallRows.filter(f => f.thin).map(f => { const n = f.polygon.length >> 1, a = f.polygon.slice(0, n); return { id: f.id, a: a[0], b: a[a.length - 1] }; });
@@ -205,7 +206,7 @@
       // lit, broken lip, bedding ledges and cracks, darker toward the foot, wet and foamed where it meets the water (sea true) or
       // with tufts and fallen stones where it meets sand. Drawn in the thing's own space (origin ox, oy).
       const rockFace = (B, r, pts, ox, oy, o) => {
-        const D0 = o.depth, out = o.lean || 0, seg = pts.map((p, i) => { const h = D0 * (.72 + r() * .5) * (o.taper ? Math.min(1, (i + 1) / 3, (pts.length - i) / 3) : 1); return { x: p.x - ox, y: p.y - oy + (r() - .5) * (o.rough || 4), h }; });
+        const D0 = o.depth, out = o.lean || 0, vary = o.vary == null ? .5 : o.vary, seg = pts.map((p, i) => { const h = D0 * (1 - vary * .56 + r() * vary) * (o.taper ? Math.min(1, (i + 1) / 3, (pts.length - i) / 3) : 1); return { x: p.x - ox, y: p.y - oy + (r() - .5) * (o.rough || 4), h }; });
         for (let i = 1; i < seg.length - 1; i++) seg[i].h = (seg[i - 1].h + seg[i].h * 2 + seg[i + 1].h) / 4;   // (neighbours agree, so the foot wanders, not saws)
         const foot = seg.map(p => ({ x: p.x + out * p.h / D0, y: p.y + p.h }));
         B.cx.filter = 'blur(5px)'; B.f(B.poly(foot.map(p => ({ x: p.x, y: p.y - 4 })).concat(foot.slice().reverse().map(p => ({ x: p.x + 8, y: p.y + 8 })))), o.sea ? '#1e3a40' : '#2e3420', .3); B.cx.filter = 'none';
@@ -252,7 +253,7 @@
         B.cx.save(); B.cx.translate(-fox, -foy); B.cx.clip(coastP);
         const sl = rpts('cliff-steps'), gap = sl ? (() => { const q = sl.reduce((m, p) => Math.abs(p.y - L.cpt(0, FACE_Y).y) < Math.abs(m.y - L.cpt(0, FACE_Y).y) ? p : m, sl[0]); return [q.x - halfPx(q, { nx: 1, ny: 0 }) - 2, q.x + halfPx(q, { nx: 1, ny: 0 }) + 2]; })() : [0, 0];
         // (layfix east: broken into facets of their own height, its lip broken, not a ruled grey slab)
-        for (const seg of [fpts.filter(p => p.x < gap[0]), fpts.filter(p => p.x > gap[1])]) { if (seg.length < 2) continue; rockFace(B, r, seg.map(p => ({ x: p.x, y: p.y - 4 })), 0, 0, { depth: 44, lean: 2, rough: 5, taper: true, season }); }
+        for (const seg of [fpts.filter(p => p.x < gap[0]), fpts.filter(p => p.x > gap[1])]) { if (seg.length < 2) continue; rockFace(B, r, seg.map(p => ({ x: p.x, y: p.y - 4 })), 0, 0, { depth: 46, lean: 2, rough: 4, vary: .16, season }); }
         B.cx.restore();
       } });
       const cs = rpts('cliff-steps'); if (cs) flight(cs, { step: 9, salt: 5, rock: true });
@@ -262,9 +263,9 @@
     // either side of the lakeside hurdle (the shortcut itself, 94-garden-wonder-7shortcuts.js); their feet stop yours
     // (fix round 2) the fence runs on from the hurdle's two posts, which stand on the slant across the gap (a fence set straight
     // up the screen is seen end on, a row of bare stakes): each stretch a woven hazel panel with its face showing
-    if (L.D.presentation && L.D.presentation.orchard && L.D.presentation.orchard.hurdle) for (const [x0, y0, x1, y1] of [[61, 36.15, 61 - 35 / cw, 38.4 - 28 / ch], [61 + 35 / cw, 38.4 + 28 / ch, 61, 40.2]]) {   // (layfix east: from the hurdle's posts at the ends of the flight's top tread)
+    if (L.D.presentation && L.D.presentation.orchard && L.D.presentation.orchard.hurdle) for (const [x0, y0, x1, y1] of [[61.08, 38.86, 61, 40.2]]) {   // (layfix east: one run, from the hurdle's east post down the flight's side to the outlet; above the hurdle is the orchard's own side)
       const top = L.cpt(x0, y0), foot = L.cpt(x1, y1), len = foot.y - top.y, dx = top.x - foot.x;
-      thing({ key: 'hurdle-fence', x: foot.x, y: foot.y, box: [Math.min(dx, 0) - 14, -len - 34, Math.max(dx, 0) + 14, 8], foot: [Math.min(dx, 0) - .25 * cw, Math.max(dx, 0) + .25 * cw, len], draw: B => {   // (layfix east: its foot the panel's whole drift, now the fence slants to the hurdle's posts)
+      thing({ key: 'hurdle-fence', x: foot.x, y: foot.y, box: [Math.min(dx, 0) - 14, -len - 34, Math.max(dx, 0) + 14, 8], foot: [-.25 * cw, .25 * cw, len], draw: B => {   // (layfix east: its foot at its lower post, the run up to the bank closed by the bank and the hurdle's own end box)
           // (vale layouts merge: its block as wide as the panel's drift across the screen, not a cell out past the post it ends in)
         // (layfix east) the fence either side is a low post-and-rail in weathered grey oak, so the woven hurdle (the way through,
         // pegged shut) stands out from it across the head of the steps; woven panels both sides read as one long side rail

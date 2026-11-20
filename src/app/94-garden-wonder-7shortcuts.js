@@ -11,11 +11,11 @@
    only: in a friend's garden both stand open. The state is one ledger line each ('sc.' + id), saved with the garden.
    ============================================================ */
 const GARDEN_ORCHARD_SHORTCUTS = Object.freeze([
-  // (layfix east) the hurdle stands across the head of the flight, along its top tread (from 35, 28 px up-left of its middle to
-  // 35, 28 px down-right), the hurdle fence running on from its two posts; it stops the feet in four short boxes along that line.
-  // From the orchard side: up and to the right of that line.
-  Object.freeze({ id: 'hurdle', pres: 'hurdle', name: 'The lakeside hurdle', boxes: [-.75, -.25, .25, .75].map(t => [61 + t * 35 / 48 - .2, 38.4 + t * 28 / 30 - .27, 61 + t * 35 / 48 + .2, 38.4 + t * 28 / 30 + .27]), at: [61, 38.4],
-    from: (x, y) => { const X = (x - 61) * 48, Y = (y - 38.4) * 30; return .78 * Y - .62 * X < -6 && Math.hypot(X, Y) < 110; },
+  // (layfix east) the steps climb straight up the screen from the footbridge between the lake and the fence, and the hurdle stands
+  // square across their head, seen face on (set on the slant beside a flight that ran up the bank it read as a side rail): one
+  // box across the gap from the water to the fence. From the orchard side: above it.
+  Object.freeze({ id: 'hurdle', pres: 'hurdle', name: 'The lakeside hurdle', box: [59.68, 38.62, 61.12, 38.92], at: [60.4, 38.86],
+    from: (x, y) => y < 38.6 && y > 36.9 && x > 59.6 && x < 63.4,
     open: 'You lift the hurdle aside. The steps down to the lake are a short way now.', shut: 'A hurdle across the steps, pegged from the orchard side.' }),
   Object.freeze({ id: 'cliff', pres: 'cliffGate', name: 'The cliff gate', box: [85.2, 40.42, 87.12, 40.72], at: [86.15, 40.55], from: (x, y) => y < 40.4 && y > 38.2 && Math.abs(x - 86.2) < 1.3,
     open: 'You untie the cliff gate and swing it back. The steps go down to the cove now.', shut: 'A little gate, its rope knotted on the cliff side. Someone untied it from the top, once.' }),
@@ -56,7 +56,7 @@ function _gscArt(id, open) {
       s += `<path d="M${x0} ${y0 - h - 1}L${x1} ${y1 - h - 1}" stroke="#d8b47a" stroke-width="2.4" stroke-linecap="round"/>`;
       return s;
     };
-    const A = [-35, -28], Bp = [35, 28], H = 26;   // (layfix east: along the flight's top tread, the full width of the steps)
+    const A = [-33, 0], Bp = [33, 0], H = 24;   // (layfix east: square across the head of the flight, the water's edge to the fence)
     if (open) return `${post(A[0], A[1], H + 6)}${post(Bp[0], Bp[1], H + 6)}<ellipse cx="${Bp[0] + 10}" cy="${Bp[1] + 6}" rx="18" ry="3" fill="#22301a" opacity=".22"/>${panel(Bp[0] + 2, Bp[1] - 14, Bp[0] + 24, Bp[1] + 8, 20)}`;
     // shut: a peg through its top binding into the post on the orchard side, with a twist of withy
     return `${post(A[0], A[1], H + 6)}${panel(A[0], A[1], Bp[0], Bp[1], H)}${post(Bp[0], Bp[1], H + 6)}<path d="M${Bp[0] - 4} ${Bp[1] - H + 2}h9" stroke="#e8d2a0" stroke-width="2.6" stroke-linecap="round"/><path d="M${Bp[0] + 2} ${Bp[1] - H - 3}q4 4 0 8" stroke="#c9b07a" stroke-width="1.6" fill="none"/>`;

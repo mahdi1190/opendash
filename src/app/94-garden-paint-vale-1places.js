@@ -182,16 +182,18 @@
       // (layfix east) over a river: a clapper causeway, a long slab of grey stone on each pier of piled stones, the water running
       // dark under each slab and breaking white on the piers' upstream side, lichen and worn pale tops; one slab a little askew
       // (a flat strip of pale tiles over a grey band read as a plain concrete slab bridge)
-      const tones = season === 'winter' ? ['#b8b8b0', '#c6c6be', '#aeaea6'] : ['#9a958a', '#a8a294', '#928c80'];
+      const tones = season === 'winter' ? ['#b8b8b0', '#c6c6be', '#aeaea6'] : ['#a8a294', '#b6b0a0', '#9c968a'];
       const at = (t, ds, dy) => { const p = q(t, ds); return [p.x, p.y + (dy || 0)]; }, RK = { rock: '#8a8478', rockLo: '#5e594f', rockHi: '#b8b2a2', rockDk: '#2e2c28', lichen: '#c9c48a' };
       for (let i = 0; i <= count; i++) { const t = i / count; for (let k = 0; k < 3; k++) { const ds = (k / 2 - .5) * hw * 2.2; B.f(B.ell(...at(t + (r() - .5) * .04, ds - hw * .35, 7), 9, 2.4), P.foam || '#eef2e2', .5); B.stone(r, ...at(Math.max(-.04, Math.min(1.04, t + (r() - .5) * .05)), ds, 6), 7 + r() * 3, 4 + r() * 2, RK, season === 'winter' ? 'snow' : r() < .4 ? '#c9c48a' : null); } }
       for (let i = 0; i < count; i++) {
         const lo = i / count - (i ? .012 : .02), hi = (i + 1) / count + (i < count - 1 ? .012 : .02), sk = i === Math.floor(count / 2) ? .05 : 0;
         const top = [at(lo, -hw + sk * hw * 4), at(hi, -hw * .96), at(hi, hw * .98), at(lo, hw + sk * hw * 4)];
         B.f(B.poly(top.map(([x, y]) => [x + 1, y + 8])), '#1e2a2c', .5);   // the dark water under the slab
-        B.f(B.poly([top[3], top[2], [top[2][0], top[2][1] + 5], [top[3][0], top[3][1] + 5]]), '#5e5a50');   // its front edge, the slab's thickness
+        B.f(B.poly([top[3], top[2], [top[2][0], top[2][1] + 8], [top[3][0], top[3][1] + 8]]), '#4e4a42');   // its front edge, the slab's thickness, wet and dark
+        B.f(B.poly([top[3], top[2], [top[2][0], top[2][1] + 3], [top[3][0], top[3][1] + 3]]), '#6e695e');
         B.f(B.poly(top), tones[i % 3]);
-        V.strokePts(B, [at(lo + .02, 0), at(hi - .02, 0)], '#cfc8b4', hw * .8, .35);   // worn pale along the middle
+        B.s(B.poly(top), '#3e3a34', 1.2, .8);
+        V.strokePts(B, [at(lo + .02, 0), at(hi - .02, 0)], '#d8d2c0', hw * .8, .5);   // worn pale along the middle
         V.strokePts(B, [at(lo + .01, -hw + 1.4), at(hi - .01, -hw * .96 + 1.4)], '#e0d8c2', 1.3, .6);
         for (let k = 0; k < 4; k++) { const [x, y] = at(lo + (hi - lo) * r(), (r() - .5) * hw * 1.6); B.f(B.blob(r, x, y, 2.4 + r() * 4, 1.2 + r() * 1.4, 6, .4), season === 'winter' ? '#e8ecef' : r() < .6 ? '#c9c48a' : '#9aa65a', .6); }
         for (let k = 0; k < 2; k++) { const [x, y] = at(lo + (hi - lo) * (.2 + r() * .6), (r() - .5) * hw * 1.4); B.s(`M${x} ${y}l${3 + r() * 5} ${(r() - .5) * 3}`, '#5e594f', .9, .5); }
@@ -346,7 +348,7 @@
         // (layfix east) the yard at work, not a bare plaza: a hay wain unhitched by the barn, a stone trough and pump against the
         // lamp in the yard's middle, barrels and a sack barrow by the mill's doors; the setts give way to weeds at the yard's edges
         put([[87.1, 65.6], [86.9, 66], [87.3, 65.2]], 'yard-wain|' + C.season, [-48, -46, 50, 8], drawWain(P, C.season), [-40, 40, 10]);
-        put([[77.6, 69.3], [77.2, 69.1], [78.4, 66.7]], 'yard-trough', [-30, -50, 26, 6], drawTrough(P), [-26, 20, 8]);
+        put([[79.3, 66], [79.5, 66.3], [77.6, 69.3]], 'yard-trough', [-30, -50, 26, 6], drawTrough(P), [-26, 20, 8]);
         put([[82.6, 67.5], [83.2, 67.3]], 'yard-sacks2', [-22, -24, 24, 5], drawSacks(P), [-18, 20, 8]);
         put([[82.4, 64.9], [82.9, 65.0]], 'yard-barrels', [-22, -30, 22, 5], drawBarrels(P), [-17, 17, 8]);
         { const sh = shape; if (sh && sh.length > 2) add(kit.bboxOf(sh, 30), seed + 3, (B, r) => { const path = new Path2D(B.poly(sh)); B.cx.save(); B.cx.clip(path);
@@ -369,6 +371,7 @@
   const drawMillstone = P => B => { B.shadow(6, 2, 20, 5, .3); B.f(B.ell(0, -18, 12, 18), '#8e8a7c').f(B.ell(-2, -19, 11, 17), '#b4ae9c').f(B.ell(-2, -19, 3.4, 5), '#5e5a4e'); for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; B.s(`M${-2 + Math.cos(a) * 4} ${-19 + Math.sin(a) * 6}L${-2 + Math.cos(a + .3) * 10} ${-19 + Math.sin(a + .3) * 15}`, '#7a7668', 1, .7); } };
   // (layfix east) the mill yard's working things
   const drawWain = (P, season) => B => { B.shadow(6, 3, 46, 7, .32);
+    for (let k = 0; k < 26; k++) { const x = -40 + k * 3.1; B.s(`M${x} ${2 + (k % 3)}l${(k % 2 ? 4 : -3)} ${-1 - (k % 2)}`, season === 'winter' ? '#b0a07a' : '#d8bc6a', 1.2, .95); }   // (straw dropped under it, along its whole length)
     const wd = ['#8a6a44', '#6a5034', '#a8865a', '#4a3828'];
     B.s('M-46 -8L-70 -2', wd[1], 3);   // the shafts down on the setts
     B.s('M-44 -12L-68 -6', wd[1], 2.6);
