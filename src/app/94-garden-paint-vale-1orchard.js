@@ -74,7 +74,8 @@
         // (fix round 2) the dip lies in a hollow: the turf falls to it from every side, darker as it goes down, the north bank
         // lit; sedge in clumps round the water, only a few stones (a neat ring of stones read as a disc dropped on the grass)
         if (pool.id === 'orchard-dip') { const c0 = { x: (bb[0] + bb[2]) / 2, y: (bb[1] + bb[3]) / 2 }; B.cx.filter = 'blur(10px)'; B.f(B.ell(c0.x, c0.y + 4, (bb[2] - bb[0]) / 2 + 6, (bb[3] - bb[1]) / 2 + 2), '#4e6432', .45); B.f(B.ell(c0.x - 6, c0.y - (bb[3] - bb[1]) / 2 + 26, (bb[2] - bb[0]) / 2 - 14, 10), '#c8d08a', .35); B.cx.filter = 'none'; }
-        B.s(loop, season === 'winter' ? '#8e8a74' : '#8a7a52', 26, .5).s(loop, '#6e6040', 12, .55).s(loop, '#5a5238', 4, .45);
+        if (pool.id === 'orchard-dip') B.s(loop, season === 'winter' ? '#8e8a74' : '#7a7a4a', 20, .35).s(loop, '#5e6038', 8, .35);   // (a soft earth lip, no ruled ring)
+        else B.s(loop, season === 'winter' ? '#8e8a74' : '#8a7a52', 26, .5).s(loop, '#6e6040', 12, .55).s(loop, '#5a5238', 4, .45);
         for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; for (let t = 0; t < 1; t += .34) { const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, cx = (bb[0] + bb[2]) / 2, cy = (bb[1] + bb[3]) / 2, d = Math.hypot(x - cx, (y - cy) * 1.6) || 1, ox = (x - cx) / d, oy = (y - cy) * 1.6 / d;
           if (r() < (pool.id === 'orchard-dip' ? .1 : .32)) B.stone(r, x + ox * 9, y + oy * 5, 3 + r() * 3, 2 + r() * 1.4, { rock: '#b4aa94', rockLo: '#8c8270', rockHi: '#d8cfb8', rockDk: '#4e483e' }, null);
           if (season !== 'winter' && r() < .7) B.tufts(r, x + ox * (14 + r() * 8), y + oy * (8 + r() * 5), 12, 6, ['#9a9a52', '#7c8a44', season === 'autumn' ? '#b8a05a' : '#a8b468'], 9); } }
@@ -244,7 +245,7 @@
     // (fix round 2) Quince's yard: a clipped box hedge, knee high, along the cottage's west side and across the back, so the
     // cottage stands in its own hedged garden and not on bare grass behind the square (the plan's hedged yard). Solid at its foot.
     const rr0 = (x, y, w, h, q) => { q = Math.min(q, w / 2, h / 2); return `M${x + q} ${y}H${x + w - q}Q${x + w} ${y} ${x + w} ${y + q}V${y + h - q}Q${x + w} ${y + h} ${x + w - q} ${y + h}H${x + q}Q${x} ${y + h} ${x} ${y + h - q}V${y + q}Q${x} ${y} ${x + q} ${y}Z`; };
-    if (L.stat('ld-quince-house')) for (const [x0, y0, x1, y1] of [[80.7, 33.4, 80.7, 35.7], [81.1, 31.3, 83.9, 31.3]]) {
+    if (L.stat('ld-quince-house')) for (const [x0, y0, x1, y1] of [[81.1, 31.3, 83.9, 31.3]]   /* (the back only: a hedge running up the screen beside the gable is seen end on, a green pillar) */) {
       const a = L.cpt(x0, y0), b = L.cpt(x1, y1), along = x1 - x0 > .5, len = along ? b.x - a.x : b.y - a.y, hh = 22;
       thing({ key: 'yard-hedge', x: along ? a.x : b.x, y: b.y, box: along ? [-10, -hh - 12, len + 10, 10] : [-14, -len - hh - 12, 14, 10], foot: along ? [0, len, 9] : [-.2 * cw, .2 * cw, len], draw: B => {
         const r = kit.rng(Math.round(x0 * 10 + y0)), G = season === 'winter' ? ['#4e5e46', '#66765a', '#7e8e70'] : ['#3e5e30', '#5a8040', '#86a85a'];
