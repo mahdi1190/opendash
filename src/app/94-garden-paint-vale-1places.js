@@ -131,13 +131,14 @@
       const weed = season === 'winter' ? '#5e6650' : season === 'autumn' ? '#6a6a36' : '#4e6236';
       const flat = (lo, hi, k, ds, dt, jit, tw) => { const pts = []; for (let j = 0; j < 32; j++) { const a = j / 32 * Math.PI * 2, c = Math.cos(a), si = Math.sin(a), u = Math.sign(c) * Math.pow(Math.abs(c), .32), v = Math.sign(si) * Math.pow(Math.abs(si), .4), n = 1 + (jit[j % jit.length] - .5) * .16; pts.push(q((lo + hi) / 2 + dt + (u * (hi - lo) / 2 * k + v * tw) * n, ds + v * hw * k * n)); } return B.poly(pts); };
       for (let i = 0; i < count; i++) {
-        const lo = i * step + (i ? .3 / deck.length : 0), hi = (i + 1) * step - (i < count - 1 ? .3 / deck.length : 0), jit = [r(), r(), r(), r(), r(), r(), r(), r(), r()], tone = r(), tw = (r() - .5) * .05;
-        B.s(flat(lo, hi, 1.12, 1, 0, jit, tw), P.foam || '#eef2e2', 1.8, .42);
-        B.f(flat(lo, hi, 1.04, 2.4, 0, jit, tw), '#2e2c26', .8);   // the wet dark foot in the water
-        B.f(flat(lo, hi, 1.02, 1.5, 0, jit, tw), weed, .9);           // weed on its sides
-        B.f(flat(lo, hi, .96, -.6, 0, jit, tw), tones[Math.floor(tone * tones.length)]);
-        B.f(flat(lo, hi, .66, -hw * .24, -(hi - lo) * .1, jit, tw), '#d2c8ae', .42);   // the lit top
-        B.f(flat(lo, hi, .5, hw * .42, (hi - lo) * .14, jit, tw), '#6e6656', .3);       // shade on its far side
+        // (fix round 2: each stone also its own size, set a little off the line, turned its own way and lumpier, so the row is laid stones, not one slab stamped nine times)
+        const sk = .88 + r() * .2, lo = i * step + (i ? .3 / deck.length : 0) + step * (1 - sk) * r() * .5, hi = (i + 1) * step - (i < count - 1 ? .3 / deck.length : 0) - step * (1 - sk) * r() * .5, jit = [r(), r(), r(), r(), r(), r(), r(), r(), r()].map(v => .5 + (v - .5) * 1.25), tone = r(), tw = (r() - .5) * .16, off = (r() - .5) * hw * .28;
+        B.s(flat(lo, hi, 1.12 * sk, 1 + off, 0, jit, tw), P.foam || '#eef2e2', 1.8, .42);
+        B.f(flat(lo, hi, 1.04 * sk, 2.4 + off, 0, jit, tw), '#2e2c26', .8);   // the wet dark foot in the water
+        B.f(flat(lo, hi, 1.02 * sk, 1.5 + off, 0, jit, tw), weed, .9);           // weed on its sides
+        B.f(flat(lo, hi, .96 * sk, -.6 + off, 0, jit, tw), tones[Math.floor(tone * tones.length)]);
+        B.f(flat(lo, hi, .66 * sk, -hw * .24 + off, -(hi - lo) * (.04 + r() * .14), jit, tw), '#d2c8ae', .42);   // the lit top
+        B.f(flat(lo, hi, .5 * sk, hw * .42 + off, (hi - lo) * .14, jit, tw), '#6e6656', .3);       // shade on its far side
         for (let k = 0; k < 4; k++) { const p = q(lo + (hi - lo) * (.2 + r() * .6), (r() - .2) * hw * .7); B.f(B.circ(p.x, p.y, .45 + r() * .4), '#e4ded0', .7); }   // barnacles
         if (tone < .4) { const p = q(lo + (hi - lo) * .7, hw * .55); B.f(B.ell(p.x, p.y, 3.4, 1.3), season === 'winter' ? '#e8ecef' : '#7d8b54', .55); }
       }
@@ -260,7 +261,18 @@
           // the coping along the race: dressed edge stones, lit on top, a wet dark lip where they meet the water, moss in the joints
           for (const lp of loops) { if (!lp.some(q => q.x > bb[0] - 20 && q.x < bb[2] + 20 && q.y > bb[1] - 20 && q.y < bb[3] + 20)) continue; const lpPath = new Path2D(V.loopPath([lp]));
             B.cx.save(); B.cx.lineJoin = 'round'; B.cx.globalAlpha = .6; B.cx.strokeStyle = '#2e3a36'; B.cx.lineWidth = 15; B.cx.stroke(lpPath); B.cx.strokeStyle = '#a8a088'; B.cx.lineWidth = 12; B.cx.stroke(lpPath); B.cx.strokeStyle = '#cfc6aa'; B.cx.lineWidth = 7; B.cx.globalAlpha = .8; B.cx.stroke(lpPath);
-            B.cx.setLineDash([2, 13]); B.cx.strokeStyle = '#6e6a58'; B.cx.lineWidth = 12; B.cx.globalAlpha = .7; B.cx.stroke(lpPath); B.cx.setLineDash([]); B.cx.restore(); }
+            B.cx.restore();
+            // (fix round 2: the joints were one dash pattern, a row of identical round stones. Each stone is now its own length, a
+            //  little proud or sunk, its own tone, lit on its top edge, with a dark joint and now and then moss or a chipped corner)
+            const inB = q => q.x > bb[0] - 12 && q.x < bb[2] + 12 && q.y > bb[1] - 12 && q.y < bb[3] + 12, cum = [0]; let k0 = lp.findIndex(q => !inB(q)); if (k0 < 0) k0 = 0;
+            const line = []; for (let i = 1; i <= lp.length; i++) { const q = lp[(k0 + i) % lp.length]; if (inB(q)) line.push(q); else if (line.length) break; }
+            for (let i = 1; i < line.length; i++) cum.push(cum[i - 1] + Math.hypot(line[i].x - line[i - 1].x, line[i].y - line[i - 1].y));
+            const at = d => { let i = 1; while (i < line.length - 1 && cum[i] < d) i++; const a = line[i - 1], b = line[i], u = Math.max(0, Math.min(1, (d - cum[i - 1]) / ((cum[i] - cum[i - 1]) || 1))); return { x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u, ang: Math.atan2(b.y - a.y, b.x - a.x) }; };
+            const LL = cum[cum.length - 1] || 0; let t = 0;
+            while (line.length > 1 && t < LL) { const len = 7 + r() * 9, t1 = Math.min(LL, t + len), c = at((t + t1) / 2), hl = (t1 - t) / 2 - .8, wd = 4.6 + r() * 1.4, tone = ['#b8b098', '#a8a08a', '#c6bea6', '#9a9480', '#b0a890'][Math.floor(r() * 5)];
+              if (hl > 1) { B.cx.save(); B.cx.translate(c.x, c.y); B.cx.rotate(c.ang); B.f(B.rr(-hl, -wd + .8, hl * 2, wd * 2, 1.6), '#4a463a', .55).f(B.rr(-hl, -wd, hl * 2, wd * 2 - .6, 1.8), tone).f(B.rr(-hl + .6, -wd, hl * 2 - 1.2, 1.6, .8), '#ddd4bc', .55);
+                if (r() < .22) B.f(B.ell(-hl + 1.5 + r() * hl, wd - 1.2, 2.4, 1), '#6f8446', .6); if (r() < .15) B.f(B.poly([[hl - 2.5, -wd], [hl, -wd], [hl, -wd + 2.5]]), '#7a7462', .8); B.cx.restore(); }
+              t = t1 + .9; } }
           for (let k = 0; k < 3; k++) { const x = rx(), y = ry(); B.f(B.blob(r, x, y, 12 + r() * 10, 4 + r() * 2, 8, .4), '#7e6a4a', .35).f(B.blob(r, x - 2, y - 1, 8 + r() * 6, 2.4, 8, .4), '#b6cbd0', .5); }   // rain puddles in the low setts
         }
         else if (style === 'broken') { B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), P.lawnLo); V.flags(B, r, Object.assign({}, P, { stone: '#bdb8a4', stoneLo: '#a29e8a', stoneHi: '#d2cebc', grout: '#7d7a68' }), bb, { row: 13, w: 24, salt: seed, broken: .2, moss: .3 }); }
@@ -282,7 +294,7 @@
         // (round 3: the millstone stood alone in the middle of the yard. It leans on the mill's front wall now, past the door, and
         //  the sacks wait by the door: both from the mill's own layout row, the old spots kept only if the wall's foot is taken)
         const mill = (L.D.static || []).find(q => /mill/.test(String(q.id || '')) && Math.hypot(q.x + (q.w || 1) / 2 - pz.x, q.y - pz.y) < 6), wf = mill ? mill.y + (mill.h || 1) + .14 : 0, door = mill && mill.door;
-        const atWall = mill ? [[mill.x + (mill.w || 1) - .3, wf], [mill.x + (mill.w || 1) + .1, wf]] : [], byDoor = door ? [[door.x - .45, wf + .04], [door.x + 1.4, wf + .04]] : [];
+        const atWall = mill ? [[mill.x + (mill.w || 1) - .3, wf], [mill.x + (mill.w || 1) + .1, wf]] : [], byDoor = door ? [[door.x - .08, wf + .5], [door.x + 1.4, wf + .04]] : [];   // (fix round 2: beside the door, a stride out from the wall, clear of the wheel and its pit; they stood over the pit)
         // (the mill's front is its yard's apron, held for its door: these stand on it, against the wall, never on the door's own cell)
         const apron = (x, y) => { const b = typeof gardenIslandBaseCell === 'function' ? gardenIslandBaseCell(Math.floor(x), Math.floor(y)) : null; return !!(b && b.land && !b.freshwater && !b.solid && !(door && Math.floor(x) === door.x && Math.floor(y) === door.y)) || spot(x, y); };
         put([...atWall, [76.6, 64.6], [77.2, 65.2]], 'millstone', [-22, -40, 24, 6], drawMillstone(P), [-18, 20, 8], apron); put([...byDoor, [77.3, 66.9], [73.6, 67.4]], 'sacks', [-22, -24, 24, 5], drawSacks(P), [-18, 20, 8], apron);

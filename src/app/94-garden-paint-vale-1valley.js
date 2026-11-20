@@ -163,12 +163,13 @@
   function sign(B, x, y, row, lv, hung) {
     const lvNeed = row.lv || 0, coin = lv >= lvNeed && !!row.buy, txt = lv < lvNeed ? 'Lv ' + lvNeed : row.buy ? String(row.buy) : ''; if (!txt) return;
     if (hung) {   // (round 3: a small weathered board wired to the gate's top rail, not a plate on its own post)
-      const cx = B.cx; cx.save(); cx.font = '700 6.6px system-ui, sans-serif';
-      const w = Math.max(14, cx.measureText(txt).width + (coin ? 6 : 0) + 5), x0 = x - w / 2, y0 = y - 10;
-      B.s(`M${x0 + 2} ${y0 + 1}l1.5 -2.5M${x0 + w - 2} ${y0 + 1}l-1.5 -2.5`, '#4a4a46', .5, .9);
-      B.f(B.rr(x0 + .7, y0 + .9, w, 9.5, 1.5), 'rgba(30,24,16,.3)').f(B.rr(x0, y0, w, 9.5, 1.5), '#bfa070').f(B.rr(x0, y0, w, 2.6, 1.2), '#d4b888', .7).s(B.rr(x0, y0, w, 9.5, 1.5), '#6e5434', .7, .9);
-      let tx = x0 + 2.5; if (coin) { B.f(B.circ(tx + 2.2, y0 + 4.8, 2.3), '#e8b830').f(B.circ(tx + 2.2, y0 + 4.8, 1.2), '#f6d870'); tx += 6; }
-      cx.fillStyle = '#3e2c1a'; cx.textBaseline = 'middle'; cx.fillText(txt, tx, y0 + 5.1); cx.restore(); return;
+      // (fix round 2: smaller and in the gate's own weathered wood, a tag rather than a plate: it was the loudest thing in every frame)
+      const cx = B.cx; cx.save(); cx.font = '700 5.4px system-ui, sans-serif';
+      const w = Math.max(12, cx.measureText(txt).width + (coin ? 5 : 0) + 4), x0 = x - w / 2, y0 = y - 8.5;
+      B.s(`M${x0 + 2} ${y0 + 1}l1.2 -2M${x0 + w - 2} ${y0 + 1}l-1.2 -2`, '#4a4a46', .5, .9);
+      B.f(B.rr(x0 + .6, y0 + .8, w, 7.6, 1.3), 'rgba(30,24,16,.26)').f(B.rr(x0, y0, w, 7.6, 1.3), '#ad9268').f(B.rr(x0, y0, w, 2, 1), '#c4aa7e', .6).s(B.rr(x0, y0, w, 7.6, 1.3), '#5e4a30', .6, .85);
+      let tx = x0 + 2; if (coin) { B.f(B.circ(tx + 1.8, y0 + 3.9, 1.8), '#d8a830').f(B.circ(tx + 1.8, y0 + 3.9, .9), '#f0d070'); tx += 5; }
+      cx.fillStyle = '#3a2a18'; cx.textBaseline = 'middle'; cx.fillText(txt, tx, y0 + 4.1); cx.restore(); return;
     }
     if (window.GardenPaintGround && GardenPaintGround.castShadow) GardenPaintGround.castShadow(B.cx, x, y, 14, 26, { a: .24 }); else B.f(B.ell(x + 1, y + 1, 7, 2), 'rgba(40,40,24,.25)');   /* (the board's shadow, thrown the way every other is) */
     B.f(B.rect(x - 1.2, y - 15, 2.4, 15), '#5e4c36').f(B.rect(x - 1.2, y - 15, 1, 15), '#8a7454', .7);
@@ -410,11 +411,11 @@
     const top = Y0 + 4;   // (nothing stands above the field's top)
     const dom = /kingcup|marigold/.test(n) ? 'kingcup' : /iris/.test(n) ? 'iris' : /bulrush|sedge|reach|isle|heron|bittern|moorhen|boat|reed/.test(n) ? 'reed' : /lark/.test(n) ? 'tussock' : /last|bank/.test(n) ? 'sweet' : 'kingcup';
     const G = window.GardenPaintGround, drift = (x, y) => G && G.noise ? G.noise(x / 22, y / 16, 4637) : .5, spots = [];
-    for (let i = 0; i < w * h / 34; i++) spots.push([X0 + 2 + r() * (w - 4), top + 7 + r() * Math.max(1, Y1 - top - 9)]);
+    for (let i = 0; i < w * h / 62; i++) spots.push([X0 + 2 + r() * (w - 4), top + 7 + r() * Math.max(1, Y1 - top - 9)]);
     spots.sort((a, b) => a[1] - b[1]);
     for (const [x, y] of spots) {
-      const room = y - top, roll = r(); if (dom !== 'reed' && drift(x, y) < .42) { if (roll < .5) tuftAt(x, y, Math.min(room, 5 + r() * 5)); continue; }
-      if (dom === 'reed') { const l = Math.min(room, 14 + r() * 10); const st = wint ? '#b4a478' : season === 'autumn' ? '#a8984e' : '#5a8a3a'; for (let b = 0; b < 5; b++) { const bx = x + (b - 2) * 1.4; B.s(`M${bx} ${y}q${(r() - .5) * 2} ${-l * .5} ${(r() - .5) * 2.5} ${-l}`, st, .9, .95); if (/bulrush/.test(n) && b === 2) B.f(B.rr(bx - 1.1, y - l - .5, 2.2, 5.5, 1), '#5a3a22'); else if (b % 2 === 0) B.f(B.ell(bx + .4, y - l, 1.2, 2.4), wint ? '#d8cca8' : '#a8946a', .9); } continue; }
+      const room = (y - top) * (.55 + drift(x * 1.7, y) * .45), roll = r(); if (dom !== 'reed' && drift(x, y) < .42) { if (roll < .5) tuftAt(x, y, Math.min(room, 5 + r() * 5)); continue; }
+      if (dom === 'reed') { const l = Math.min(room * (.5 + drift(x, y) * .5), 10 + r() * 12);   /* (fix round 2: tips capped at the back edge made one ruled line along the top; now they wander below it) */ const st = wint ? '#b4a478' : season === 'autumn' ? '#a8984e' : '#5a8a3a'; for (let b = 0; b < 5; b++) { const bx = x + (b - 2) * 1.4; B.s(`M${bx} ${y}q${(r() - .5) * 2} ${-l * .5} ${(r() - .5) * 2.5} ${-l}`, st, .9, .95); if (/bulrush/.test(n) && b === 2) B.f(B.rr(bx - 1.1, y - l - .5, 2.2, 5.5, 1), '#5a3a22'); else if (b === 2 && r() < .45) B.f(B.ell(bx + .4, y - l, 1.1, 2.2), wint ? '#d8cca8' : '#a8946a', .85); } continue; }
       if (roll < .3) { tuftAt(x, y, Math.min(room, 7 + r() * 5)); continue; }
       if (dom === 'kingcup' && !wint) { B.f(B.blob(r, x, y - 2, 3.6, 2, 7, .4), '#2e5a2a').f(B.blob(r, x - .6, y - 2.6, 2.2, 1.2, 6, .4), '#4e7a3a', .9); if (season !== 'autumn') for (let k = 0; k < 3; k++) B.f(B.circ(x + (k - 1) * 2.2, y - 3.8 - (k & 1), 1.25), '#f2c81e').f(B.circ(x + (k - 1) * 2.2 - .3, y - 4.1 - (k & 1), .5), '#fbe878', .9); continue; }
       if (dom === 'iris') { const l = Math.min(room, 12 + r() * 5); for (let b = -2; b <= 2; b++) B.s(`M${x + b} ${y}q${b * .3} ${-l * .5} ${b * 1.2} ${-l}`, wint ? '#8a8a5e' : '#4e7a3e', 1.2, .95); if (season === 'summer' || season === 'spring') B.f(B.ell(x + 1, y - l * .8, 1.8, 1.4), '#f2d43a').f(B.ell(x + 2.2, y - l * .8 + 1, 1, 1.4), '#e8b41e', .9); continue; }
@@ -422,11 +423,16 @@
       if (dom === 'sweet') { tuftAt(x, y, Math.min(room, 6)); if (season === 'summer') B.f(B.blob(r, x + 1, y - Math.min(room - 1, 9), 3, 2, 7, .5), '#f4ecd2').f(B.blob(r, x, y - Math.min(room - 1, 9.6), 1.8, 1.1, 6, .5), '#fffaf0', .9); continue; }
       tuftAt(x, y, Math.min(room, 6 + r() * 6));
     }
-    if (/boat/.test(n)) { const x = X0 + w * .55, y = Y1 - 8; B.f(B.ell(x + 2, y + 2.5, 15, 3), '#1e2418', .35).f(B.poly([[x - 14, y], [x + 14, y], [x + 11, y - 6], [x - 11, y - 6]]), '#4e6a7a').f(B.poly([[x - 14, y], [x + 14, y], [x + 13, y - 2], [x - 13, y - 2]]), '#2e4048').s(`M${x - 11} ${y - 6}H${x + 11}`, '#e8e2d0', .9, .8); for (let k = -2; k <= 2; k++) B.s(`M${x + k * 4} ${y + 1}q.5 -3 -.5 -6`, '#5a8a3a', 1, .9); }   // an old boat turned over in the grass
+    if (/boat/.test(n)) {   // an old tarred boat turned over in the grass: a long rounded hull, its keel along the top, strakes lapped down its side, grass grown up round it (fix round 2: it was a blue box)
+      const x = X0 + w * .5, y = Y0 + h * .62, L = Math.min(w * .32, 24); B.f(B.ell(x + 3, y + 2.6, L + 2, 3.4), '#1e2418', .35);
+      B.f(B.poly([[x - L, y], [x - L * .7, y - 6.5], [x + L * .55, y - 7.5], [x + L, y - 2], [x + L * .9, y + .6], [x - L * .9, y + .8]]), '#3e3a32').f(B.poly([[x - L * .8, y - 4.5], [x - L * .65, y - 6.6], [x + L * .55, y - 7.4], [x + L * .85, y - 3.5]]), '#5e564a', .9);
+      for (let k = 1; k < 4; k++) B.s(`M${x - L * (.95 - k * .05)} ${y - k * 1.6}Q${x} ${y - k * 1.6 - 1.2} ${x + L * (.95 - k * .07)} ${y - 1.5 - k * 1.5}`, '#2a2620', .6, .7);
+      B.s(`M${x - L * .7} ${y - 6.6}L${x + L * .6} ${y - 7.6}`, '#7a6e5a', 1.2, .9); for (let k = -3; k <= 3; k++) B.s(`M${x + k * L / 3.4} ${y + 1}q.5 -3 -.5 -6`, '#5a8a3a', 1, .9); }   // an old boat turned over in the grass
   }
   function woodFill(B, r, p, season, X0, Y0, X1, Y1) {
     const wint = season === 'winter', w = X1 - X0, h = Y1 - Y0;
-    B.f(B.blob(r, X0 + w / 2, Y0 + h / 2, w * .5, h * .5, 12, .2), wint ? '#4e4a3a' : '#2e3e24'); for (let k = 0; k < 4; k++) B.f(B.blob(r, X0 + w * (.2 + r() * .6), Y0 + h * (.2 + r() * .6), w * .2, h * .24, 8, .35), wint ? '#4e4a3a' : '#2e3e24', .9);
+    // (fix round 2: a lighter, mossier floor with the sun let through; the near-black floor read as a hole in the meadow)
+    B.f(B.blob(r, X0 + w / 2, Y0 + h / 2, w * .5, h * .5, 12, .2), wint ? '#5a5644' : '#3e5630'); for (let k = 0; k < 4; k++) B.f(B.blob(r, X0 + w * (.2 + r() * .6), Y0 + h * (.2 + r() * .6), w * .2, h * .24, 8, .35), wint ? '#4e4a3a' : r() < .5 ? '#34482a' : '#4e6a36', .8);
     for (let i = 0; i < w * h / 50; i++) B.f(B.blob(r, X0 + r() * w, Y0 + r() * h, 3 + r() * 5, 1.5 + r() * 2.5, 6, .5), wint ? (r() < .5 ? '#6a5a42' : '#5a5a48') : r() < .4 ? '#4e6a34' : r() < .7 ? '#3a5028' : '#5a4a30', .55);
     // a still black pool among the stools, the light let through in a few coins
     { const px = X0 + w * (.35 + r() * .3), py = Y0 + h * .62, rx = w * .14, ry = h * .08; B.f(B.blob(r, px, py, rx, ry, 8, .3), wint ? '#7a8a90' : '#24302c').f(B.ell(px - rx * .3, py - ry * .2, rx * .35, ry * .3), '#6e8a8e', .5); }
@@ -443,7 +449,7 @@
     // a fallen alder, mossed over
     { const x = X0 + w * .2 + r() * w * .3, y = Y1 - 10, L = Math.min(w * .4, 34); B.f(B.ell(x + L / 2 + 2, y + 2.5, L * .55, 2.4), '#141c10', .5).s(`M${x} ${y}l${L} -2`, '#4e463a', 4.6, .95).s(`M${x} ${y - 1.2}l${L} -2`, '#7a7262', 1.4, .7).s(`M${x + 3} ${y - 2}l${L * .6} -1.4`, wint ? '#c8ccc0' : '#6a8a3a', 1.6, .8); }
     // the shade over all of it, deepest at the back under the terrace or the thicket
-    const g = B.cx.createLinearGradient(0, Y0, 0, Y1); g.addColorStop(0, 'rgba(10,20,12,.34)'); g.addColorStop(1, 'rgba(10,20,12,.1)'); B.cx.fillStyle = g; B.cx.globalAlpha = 1; B.cx.fill(new Path2D(B.blob(r, X0 + w / 2, Y0 + h / 2, w * .52, h * .52, 12, .2)));
+    const g = B.cx.createLinearGradient(0, Y0, 0, Y1); g.addColorStop(0, 'rgba(10,20,12,.2)'); g.addColorStop(1, 'rgba(10,20,12,.04)'); B.cx.fillStyle = g; B.cx.globalAlpha = 1; B.cx.fill(new Path2D(B.blob(r, X0 + w / 2, Y0 + h / 2, w * .52, h * .52, 12, .2)));
   }
   // The fill of one field, clipped to its cells a little inside its edges (the boundary is painted after, over its rim).
   function fieldFill(B, P, p, W, season, cb, fk, extra) {
@@ -463,10 +469,141 @@
     if (fk === 'allot') allotFill(B, r, p, season, X0, Y0, X1, Y1, extra || {}); else if (fk === 'crop') cropFill(B, r, p, season, X0, Y0, X1, Y1); else if (fk === 'wet') wetFill(B, r, p, season, X0, Y0, X1, Y1); else woodFill(B, r, p, season, X0, Y0, X1, Y1);
     cx.restore();
   }
+  /* ---------- round 3, fix 2 (19 Nov 2026): fields that are not boxes ---------- */
+  // The critics on round 3: some thirty locked fields still read as crates stamped over the meadow (hurdle boxes, rush
+  // boxes with a blue ditch strip along the foot, dark wood boxes, each with a big plate), in neat rows. A field's edge is
+  // now a living ring stood on a soft outline with rounded corners that wanders in and out by place: clumps of hedge, rush,
+  // fruit bush or scrub, each its own height, lower at the back than the front, so the field's own ground shows inside.
+  // The fill is clipped to that outline (no square corner, no straight foot, no ditch strip, never over the water or under
+  // a landmark's picture), and there is one gap at the front with a small gate and a little tag. Walking stops at the
+  // cells' edge, and the ring stands on it: its clumps reach from a few px inside the edge to a px or two beyond.
+  const RING = () => { const h = gardenSizePx('hedge', 0); return { crop: h, allot: h * .78, wet: h * .8, wood: h * .95 }; };
+  const RING_STYLE = { crop: 'hedge', allot: 'bush', wet: 'rush', wood: 'scrub' };
+  const ringMemo = new Map();
+  function ringOf(p, W, lv) {
+    const cw = W.cellW, ch = W.cellH, cells = p.cells.filter(([x, y]) => locked(x, y, lv)); if (!cells.length) return null;
+    const xs = cells.map(c => c[0]), ys = cells.map(c => c[1]), cx0 = Math.min(...xs), cx1 = Math.max(...xs), cy0 = Math.min(...ys), cy1 = Math.max(...ys);
+    if (cells.length !== (cx1 - cx0 + 1) * (cy1 - cy0 + 1)) return null;   // (every valley field is a rectangle of cells today; any other keeps the old runs)
+    const key = p.id + '|' + lv; if (ringMemo.has(key)) return ringMemo.get(key);
+    const fk = fieldKindOf(p.id), hf = RING()[fk], hb = hf * .62, G = window.GardenPaintGround, nz = (u, v, s, k) => G && G.noise ? G.noise(u / s, v / s, k) : .5;
+    const runAt = new Set(p.edges.filter(e => locked(e[0], e[1], lv) && !locked(e[3], e[4], lv)).map(e => e[0] + ',' + e[1] + e[2]));
+    const X0 = cx0 * cw + 4, X1 = (cx1 + 1) * cw - 4, Yb = W.sky + cy0 * ch + Math.min(ch - 6, hb * .8 + 2), Yf = W.sky + (cy1 + 1) * ch - 3, R = Math.min(15, (X1 - X0) / 4, (Yf - Yb) / 2.4);
+    // the gate: the middle of the lowest front run (a run onto walkable ground), a gap a little under half a cell wide
+    const fronts = [...runAt].filter(k => k.endsWith('s')).map(k => k.slice(0, -1).split(',').map(Number)).filter(c => c[1] === cy1).sort((a, b) => a[0] - b[0]);
+    const gc = fronts[fronts.length >> 1] || null, gw = cw * (fk === 'crop' ? .56 : .4), gx = gc ? gc[0] * cw + (cw - gw) / 2 + (nz(gc[0], gc[1], 1, 4701) - .5) * cw * .3 : null;
+    const pts = [], seed = G && G.hash ? G.hash(cx0, cy0, 4703) : 1;
+    const push = (x, y, nx, ny, side, h) => {
+      // the outline wanders in and out by place (a slow bulge and a quicker wobble), never more than 3 px past the cells' edge
+      const j = Math.max(-4, Math.min(2.6, (nz(x, y, 34, 4705) - .5) * 5 + (nz(x, y, 9, 4707) - .5) * 3));
+      const cx = Math.min(cx1, Math.max(cx0, Math.floor(x / cw))), cy = Math.min(cy1, Math.max(cy0, Math.floor((y - W.sky) / ch)));
+      const on = side.length > 1 ? [...side].some(s => runAt.has((s === 'e' ? cx1 : s === 'w' ? cx0 : cx) + ',' + (s === 's' ? cy1 : s === 'n' ? cy0 : cy) + s)) : runAt.has(cx + ',' + cy + side);
+      const gap = side === 's' && gc && cx === gc[0] && x > gx - 1 && x < gx + gw + 1;
+      pts.push({ x: x + nx * j, y: y + ny * j, nx, ny, side, h, on: on && !gap, gap });
+    };
+    const step = 3.4, hAt = y => hb + (hf - hb) * Math.max(0, Math.min(1, (y - Yb) / Math.max(1, Yf - Yb)));
+    const arc = (cx, cy, a0, a1, side) => { const n = Math.max(3, Math.round(R * Math.abs(a1 - a0) / step)); for (let i = 1; i < n; i++) { const a = a0 + (a1 - a0) * i / n, x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R; push(x, y, Math.cos(a), Math.sin(a), side, hAt(y)); } };
+    for (let x = X0 + R; x <= X1 - R; x += step) push(x, Yb, 0, -1, 'n', hb);
+    arc(X1 - R, Yb + R, -Math.PI / 2, 0, 'ne');
+    for (let y = Yb + R; y <= Yf - R; y += step) push(X1, y, 1, 0, 'e', hAt(y));
+    arc(X1 - R, Yf - R, 0, Math.PI / 2, 'se');
+    for (let x = X1 - R; x >= X0 + R; x -= step) push(x, Yf, 0, 1, 's', hf);
+    arc(X0 + R, Yf - R, Math.PI / 2, Math.PI, 'sw');
+    for (let y = Yf - R; y >= Yb + R; y -= step) push(X0, y, -1, 0, 'w', hAt(y));
+    arc(X0 + R, Yb + R, Math.PI, Math.PI * 1.5, 'nw');
+    const o = { fk, style: RING_STYLE[fk], pts, X0, X1, Yb, Yf, R, hf, hb, gc, gx, gw, seed, cells, box: [cx0 * cw - 6, W.sky + cy0 * ch - hf, (cx1 + 1) * cw + 6, W.sky + (cy1 + 1) * ch + 6] };
+    ringMemo.set(key, o); return o;
+  }
+  // the outline as a path, pulled in by `inset` px (the fill's clip)
+  function ringPath(o, inset) { const pa = new Path2D(); o.pts.forEach((q, i) => { const x = q.x - q.nx * inset, y = q.y - q.ny * inset; if (i) pa.lineTo(x, y); else pa.moveTo(x, y); }); pa.closePath(); return pa; }
+  // one clump of the ring, its foot at (x, y), h tall, in the field's own kind
+  function ringClump(B, r, P, o, q, season, pass) {
+    const G = window.GardenPaintGround, n1 = G && G.noise ? G.noise(q.x / 14, q.y / 14, 4711) : .5, h = q.h * (.72 + n1 * .5) * (.9 + r() * .2), x = q.x, y = q.y, wint = season === 'winter';
+    if (o.style === 'hedge' || o.style === 'scrub') {
+      const HV = HEDGES[o.style === 'scrub' ? 3 : hedgeVar], C = (HV && HV[season]) || HAW[season] || HAW.summer;
+      if (pass === 0) B.f(B.blob(r, x + .8, y - h * .4, 5.8 + r() * 1.4, h * .46, 7, .35), C[0], .85).f(B.blob(r, x - .4, y - h * .48, 5 + r(), h * .42, 7, .35), C[1], 1);   /* (fix round 2: a lighter body, the darkest green only in its shaded lower right: the ring read as a black outline from afar) */
+      else if (pass === 1) B.f(B.blob(r, x - .8, y - h * .62, 4.4 + r(), h * .34, 7, .4), C[2 + (r() < .35 ? 1 : 0)], .95);
+      else {
+        B.f(B.blob(r, x - 1.6, y - h * .8, 3 + r(), h * .17, 6, .45), C[3], .9); if (r() < .5) B.f(B.blob(r, x - 2.2, y - h * .9, 1.8, h * .08, 6, .5), C[4], .85);
+        const fl = HV ? HV.fl[season] : season === 'spring' ? '#f6f2e6' : season === 'summer' ? '#f2b8c4' : season === 'autumn' ? '#b02a22' : null;
+        if (fl && r() < (season === 'spring' ? .5 : .22)) B.f(B.circ(x + (r() - .5) * 6, y - h * (.45 + r() * .4), season === 'summer' ? 1.4 : 1), fl, .95);
+        if (o.style === 'scrub' && r() < .3) { const dx = (r() - .5) * 14, hh = h * (.5 + r() * .4); B.s(`M${x} ${y - hh * .6}q${dx * .5} ${-hh * .5} ${dx} ${-hh * .1 + 4}`, wint ? '#6a4a3a' : '#5a3a2e', 1, .9); }
+        if (!wint && q.ny >= 0 && r() < .7) { const l = 3 + r() * 4; B.s(`M${x + (r() - .5) * 4} ${y + 1}q${(r() - .5) * 2} ${-l * .5} ${(r() - .5) * 3} ${-l}`, P.lawnLo || '#5a7a3a', 1, .9); }
+      }
+      return;
+    }
+    if (o.style === 'bush') {   // an allotment's edge: currant and gooseberry bushes, a cane or two, the grass between
+      if ((q.i & 1) && pass !== 2) return;
+      const C = wint ? ['#4a4436', '#5e5646', '#7a705a'] : season === 'autumn' ? ['#4a5226', '#6e7030', '#9a8a3e'] : ['#2e4c26', '#46682e', '#6a9040'];
+      if (pass === 0 && !(q.i & 1)) B.f(B.blob(r, x, y - h * .4, 6.4 + r() * 1.5, h * .44, 8, .35), C[0], 1);
+      else if (pass === 1 && !(q.i & 1)) B.f(B.blob(r, x - 1, y - h * .56, 4.8, h * .3, 7, .4), C[1], .95);
+      else if (pass === 2) {
+        if (!(q.i & 1)) { B.f(B.blob(r, x - 1.8, y - h * .72, 3, h * .14, 6, .45), C[2], .9);
+          if (season === 'summer' && r() < .6) for (let k = 0; k < 4; k++) B.f(B.circ(x + (r() - .5) * 8, y - h * (.3 + r() * .4), .9), r() < .6 ? '#c8282e' : '#2a1e30', .95);
+          else if (season === 'spring' && r() < .4) for (let k = 0; k < 3; k++) B.f(B.circ(x + (r() - .5) * 8, y - h * (.4 + r() * .4), .8), '#f4ecd8', .95);
+          if (r() < .06) { const ch2 = h * (1.6 + r() * .6); B.s(`M${x + 2} ${y}l${(r() - .5) * 2} ${-ch2}`, wint ? '#8a7a5e' : '#9a8a64', .9, .95); if (!wint) for (let k = 0; k < 4; k++) B.f(B.blob(r, x + 2 + (r() - .5) * 3, y - ch2 * (.4 + k * .15), 1.8, 1.3, 6, .4), '#3e7a32', .95); } }
+        else if (!wint) for (let b = 0; b < 3; b++) { const l = 3 + r() * 4; B.s(`M${x + (b - 1) * 1.2} ${y + .5}q${(r() - .5) * 2} ${-l * .5} ${(b - 1) * 1.5} ${-l}`, b & 1 ? '#6f8a40' : (P.lawnLo || '#5a7a3a'), .9, .9); }
+      }
+      return;
+    }
+    // rushes, sedge and yellow flag round a wet field, its edge broken by tussocks; a bulrush now and then
+    const C = wint ? ['#7a7656', '#948e68', '#a8a07a', '#5e5a42'] : season === 'autumn' ? ['#5a6230', '#7a7a3a', '#9a9048', '#3e4626'] : ['#2c4e26', '#3e6a30', '#5a8a3a', '#203a1e'];
+    if (pass === 0) { B.f(B.blob(r, x, y - 1.5, 4.2, 2.2, 6, .4), C[3], .6); return; }
+    if (pass === 1) { for (let b = 0; b < (n1 > .55 ? 3 : 2); b++) { const l = h * (.4 + r() * .6), lean = (r() - .5) * 5 + q.nx * 2; B.s(`M${x + (r() - .5) * 3} ${y}q${lean * .3} ${-l * .55} ${lean} ${-l}`, C[Math.floor(r() * 3)], 1.05, .95); } return; }
+    if (r() < .1 && !wint) { const l = h * (1 + r() * .3); B.s(`M${x} ${y}l${(r() - .5) * 2} ${-l}`, '#5a7a3a', 1, .95).f(B.rr(x - 1.1, y - l - 1, 2.2, 5.5, 1), '#5a3a22'); }
+    else if (r() < .14 && (season === 'summer' || season === 'spring')) { const l = h * (.6 + r() * .3); B.f(B.ell(x + 1, y - l, 1.7, 1.3), '#f2d43a').f(B.ell(x + 2.1, y - l + 1, .9, 1.2), '#e8b41e', .9); }
+    else if (r() < .1 && season === 'summer') { const l = h * (.6 + r() * .3); for (let k = 0; k < 3; k++) B.f(B.ell(x + (r() - .5) * 2, y - l - k * 2, .9, 1.3), '#b04a9a', .95); }
+  }
+  // the ring's shade (cast along the light) and its back half: before the fill
+  function ringBack(B, r0, P, o, W, season, cb) {
+    const G = window.GardenPaintGround, runs = [];
+    for (let i = 0; i < o.pts.length; i++) { const a = o.pts[i], b = o.pts[(i + 1) % o.pts.length]; if (a.on && b.on) runs.push([a.x, a.y, b.x, b.y, a.h * 1.05]); }
+    if (G && G.castRuns && o.style !== 'rush') G.castRuns(B.cx, runs, { a: .24 });
+    const back = o.pts.map((q, i) => Object.assign(q, { i })).filter(q => q.on && q.side.includes('n') && !covered(q.x, q.y - 4));
+    for (const pass of [0, 1, 2]) for (const q of back) ringClump(B, G.rng(G.hash(Math.round(q.x), Math.round(q.y), 4720 + pass)), P, o, q, season, pass);
+  }
+  // the ring's sides and front, sorted down the screen so a nearer clump stands over a farther one, the gate and the tag
+  function ringFront(B, r0, P, o, W, season, cb, lv) {
+    const G = window.GardenPaintGround, fr = o.pts.map((q, i) => Object.assign(q, { i })).filter(q => q.on && !q.side.includes('n') && !covered(q.x, q.y - 4)).sort((a, b) => a.y - b.y);
+    // (three passes by bands of rows, so the dark body of a lower clump never covers the lit top of the one behind it only partly)
+    for (let s = 0; s < fr.length; ) { let e = s; while (e < fr.length && fr[e].y - fr[s].y < 6) e++; for (const pass of [0, 1, 2]) for (let k = s; k < e; k++) ringClump(B, G.rng(G.hash(Math.round(fr[k].x), Math.round(fr[k].y), 4720 + pass)), P, o, fr[k], season, pass); s = e; }
+    if (o.gc && !covered(o.gx + o.gw / 2, o.Yf - 6)) {
+      const y = o.Yf + .5;
+      if (o.fk === 'crop') fieldGate(B, o.gx, y, o.gw, o.hf * .92, season); else if (o.fk === 'wood') stile(B, o.gx, y, o.gw, o.hf * .8); else wicket(B, o.gx + 1, y, o.gw - 2, o.hf * (o.fk === 'wet' ? .7 : .82));
+      if (o.fk === 'wet') { B.f(B.rr(o.gx + 1, y - 2.6, o.gw - 2, 4, 1.5), '#8e7654').f(B.rr(o.gx + 1, y - 2.6, o.gw - 2, 1.3, .6), '#b49c76', .7); }   // a board laid over the wet at the way in
+      const row = gardenLandCell(o.gc[0], o.gc[1]); if (row) sign(B, o.gx + o.gw / 2, y - o.hf * (o.fk === 'crop' ? .42 : .3), row, lv, true);
+    }
+    else if (!o.gc) {   // (no front onto walkable ground, e.g. a field against the water: the tag stands on its lowest side run)
+      const side = fr.filter(q => q.side === 'e' || q.side === 'w').sort((a, b) => b.y - a.y)[Math.floor(fr.length / 12)] || fr[fr.length - 1];
+      if (side) { const row = gardenLandCell(o.cells[0][0], o.cells[0][1]); if (row) sign(B, side.x + side.nx * 6, side.y + 2, row, lv); }
+    }
+  }
+  // the field's own ground inside the ring: a sward first, then what the field is, clipped to the ring's outline pulled in,
+  // never over the water's drawn edge or under a landmark's picture
+  function ringFill(B, P, p, o, W, season, extra) {
+    const G = window.GardenPaintGround, cx = B.cx; cx.save();
+    const clip = ringPath(o, 2.5); cx.clip(clip);
+    const cut = new Path2D(); let cuts = 0; cut.rect(o.box[0] - 20, o.box[1] - 20, o.box[2] - o.box[0] + 40, o.box[3] - o.box[1] + 40);
+    for (const w of (typeof gardenIslandData === 'function' ? gardenIslandData().freshwater || [] : [])) { if (!w.boundary || w.boundary.length < 3) continue; const bx = w.boundary.map(q => q[0] * W.cellW), by = w.boundary.map(q => W.sky + q[1] * W.cellH); if (Math.max(...bx) < o.box[0] || Math.min(...bx) > o.box[2] || Math.max(...by) < o.box[1] || Math.min(...by) > o.box[3]) continue; w.boundary.forEach((q, i) => i ? cut.lineTo(q[0] * W.cellW, W.sky + q[1] * W.cellH) : cut.moveTo(q[0] * W.cellW, W.sky + q[1] * W.cellH)); cut.closePath(); cuts++; }
+    for (const b of covers()) if (b[2] > o.box[0] && b[0] < o.box[2] && b[3] > o.box[1] && b[1] < o.box[3]) { cut.rect(b[0], b[1], b[2] - b[0], b[3] - b[1]); cuts++; }
+    if (cuts) cx.clip(cut, 'evenodd');
+    const r = G.rng(G.hash(Math.round(o.X0), Math.round(o.Yb), 4601)), wint = season === 'winter';
+    // a sward of the field's own, a shade darker than the meadow, with the ring's shadow lying in along its back
+    const sw = o.fk === 'wet' ? (WET[season] || WET.summer)[0] : o.fk === 'wood' ? (wint ? '#5a5844' : '#40583a') : wint ? '#7a8466' : season === 'autumn' ? '#7a8a46' : '#5e8a3a';
+    cx.globalAlpha = .9; cx.fillStyle = sw; cx.fill(clip); cx.globalAlpha = 1;
+    for (let i = 0; i < (o.X1 - o.X0) * (o.Yf - o.Yb) / 70; i++) B.f(B.blob(r, o.X0 + r() * (o.X1 - o.X0), o.Yb + r() * (o.Yf - o.Yb), 3 + r() * 5, 1.4 + r() * 1.6, 6, .5), r() < .5 ? (P.lawnLo || '#4e7a32') : (P.lawnHi || '#8aae52'), .25);
+    const m = 6, X0 = o.X0 + m, X1 = o.X1 - m, Y0 = o.Yb + 2, Y1 = o.Yf - 4;
+    if (o.fk === 'allot') { cx.save(); const bed = ringPath(o, 7); cx.clip(bed); allotFill(B, r, p, season, X0, Y0, X1, Y1, extra || {}); cx.restore(); }
+    else if (o.fk === 'crop') { cx.save(); cx.clip(ringPath(o, 5)); cropFill(B, r, p, season, X0 - 2, Y0, X1 + 2, Y1); cx.restore(); }
+    else if (o.fk === 'wet') wetFill(B, r, p, season, o.X0 + 2, Y0, o.X1 - 2, Y1 + 2);
+    else woodFill(B, r, p, season, o.X0 + 2, Y0, o.X1 - 2, Y1 + 2);
+    // the ring's own shade lying in along its back and down its sunny side, so the fill sits under the ring, not beside it
+    cx.globalAlpha = .22; cx.lineWidth = 9; cx.strokeStyle = '#1a2a12'; cx.stroke(clip); cx.globalAlpha = 1;
+    cx.restore();
+  }
   // the wet wood's shade spills a little way out over the grass round it, along the light (to the right and down)
   function woodShade(B, p, W) {
     const cw = W.cellW, ch = W.cellH, xs = p.cells.map(c => c[0]), ys = p.cells.map(c => c[1]), X0 = Math.min(...xs) * cw, X1 = (Math.max(...xs) + 1) * cw, Y0 = W.sky + Math.min(...ys) * ch, Y1 = W.sky + (Math.max(...ys) + 1) * ch;
-    const cx = B.cx, m = cx.getTransform(), K = Math.hypot(m.a, m.b) || 1; cx.save(); cx.filter = 'blur(' + (10 * K).toFixed(1) + 'px)'; cx.globalAlpha = .3; cx.fillStyle = '#0e1a0e';
+    const cx = B.cx, m = cx.getTransform(), K = Math.hypot(m.a, m.b) || 1; cx.save(); cx.filter = 'blur(' + (10 * K).toFixed(1) + 'px)'; cx.globalAlpha = .18; cx.fillStyle = '#0e1a0e';
     cx.beginPath(); cx.ellipse((X0 + X1) / 2 + 14, (Y0 + Y1) / 2 + 8, (X1 - X0) / 2 + 18, (Y1 - Y0) / 2 + 12, 0, 0, Math.PI * 2); cx.fill(); cx.restore();
   }
   // A valley field's edge, by its kind: the runs that show (not under a landmark's painting), each run's shadow first
@@ -577,7 +714,7 @@
   function compose(C) {
     if (typeof gardenLandCell !== 'function' || typeof gardenIslandBaseCell !== 'function') return;
     const { add, W, P, season } = C, cw = W.cellW, ch = W.cellH;
-    plotsMemo = null; coverMemo = null;
+    plotsMemo = null; coverMemo = null; ringMemo.clear();
     chooseHedges(plots());
     // round 3: the valley's fields by kind (fieldKindOf), the Furrows' shed, scarecrow and water butts given to its allotments
     const fieldPlots = new Set(), extras = new Map();
@@ -591,6 +728,14 @@
       if (fieldPlots.has(p)) {
         const fk = fieldKindOf(p.id), cx = p.cells.map(c => c[0]), cy = p.cells.map(c => c[1]), fb = [Math.min(...cx) * cw - 18, W.sky + Math.min(...cy) * ch - 30, (Math.max(...cx) + 1) * cw + 18, W.sky + (Math.max(...cy) + 1) * ch + 10];
         if (fk === 'wood') add([fb[0] - 30, fb[1], fb[2] + 50, fb[3] + 34], 3990 + p.cells.length, B => { if (p.cells.some(c => locked(c[0], c[1], level()))) woodShade(B, p, W); });
+        // (fix round 2: a rectangle of cells gets the ring; anything else keeps the runs along its cell edges)
+        if (ringOf(p, W, level())) {
+          const pick = () => { const e0 = p.edges[0]; hedgeVar = fk === 'crop' && e0 && hedgeOf.has(e0[0] + ',' + e0[1]) ? hedgeOf.get(e0[0] + ',' + e0[1]) : 0; };
+          add(fb, 3995 + p.cells.length, (B, r) => { const o = ringOf(p, W, level()); if (o) { pick(); ringBack(B, r, P, o, W, season); } });
+          add(fb, 4000 + p.cells.length, B => { const o = ringOf(p, W, level()); if (o) ringFill(B, P, p, o, W, season, extras.get(p)); });
+          add(fb, 4100 + p.cells.length, (B, r, cb) => { const o = ringOf(p, W, level()); if (o) { pick(); ringFront(B, r, P, o, W, season, cb, level()); } });
+          continue;
+        }
         add(fb, 3995 + p.cells.length, (B, r, cb) => fieldFence(B, r, P, p, W, season, cb, 'back'));
         add(fb, 4000 + p.cells.length, (B, r0, cb) => fieldFill(B, P, p, W, season, cb, fk, extras.get(p)));
         add(fb, 4100 + p.cells.length, (B, r, cb) => fieldFence(B, r, P, p, W, season, cb, 'front'));
@@ -624,4 +769,6 @@
     }
   }
   V.parts.push({ id: 'valley', compose });
+  // (a look inside for the dev tools: each valley field's ring, how many of its points stand and on which sides)
+  V._rings = () => { const W = GARDEN_WORLD, lv = level(); return plots().map(p => { const o = ringOf(p, W, lv); if (!o) return p.id + ':none'; const by = {}; for (const q of o.pts) { const k = q.side + (q.on ? '+' : '-') + (q.on && covered(q.x, q.y - 4) ? 'c' : ''); by[k] = (by[k] || 0) + 1; } return p.id + ' ' + o.fk + ' gate:' + (o.gc ? o.gc.join() : '-') + ' edges:' + p.edges.map(e => e[2] + (locked(e[3], e[4], lv) ? 'L' : '')).join('') + ' ' + JSON.stringify(by); }); };
 })();

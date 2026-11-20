@@ -337,7 +337,9 @@
     // 4. the low planting at their feet and along the water and the hedge lines, painted into the ground (walked over)
     const lows = [];
     // a low plant stands on open ground only: never on a plot or its fence, a path's cells, a doorway or the water
-    const lowOk = (x, y, h) => { const hw = h * .6 / cw; for (const dx of [-hw, 0, hw]) for (const dy of [0, -.45]) { const cx = Math.floor(x + dx), cy = Math.floor(y + dy), b = base(cx, cy); if (!b || !b.land || b.freshwater || b.beach || b.reserved || plotAt(cx, cy) || held.has(cx + ',' + cy)) return false; } return pathGap(x * cw, W.sky + y * ch) > 6; };
+    // (fix round 2: and never inside the river's drawn edge, which runs through its bank cells: a shrub stood in the race)
+    const wetLoops = (D.freshwater || []).filter(w => w.boundary && w.boundary.length > 2).map(w => w.boundary), inWater = (x, y) => wetLoops.some(poly => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], b = poly[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; });
+    const lowOk = (x, y, h) => { const hw = h * .6 / cw; for (const dx of [-hw, 0, hw]) for (const dy of [0, -.45]) { const cx = Math.floor(x + dx), cy = Math.floor(y + dy), b = base(cx, cy); if (!b || !b.land || b.freshwater || b.beach || b.reserved || plotAt(cx, cy) || held.has(cx + ',' + cy) || inWater(x + dx, y + dy * .5)) return false; } return pathGap(x * cw, W.sky + y * ch) > 6; };
     for (const t of trees) {
       const n = t.kind === 'edge' ? 3 : t.kind === 'bank' ? 2 : 1;
       for (let i = 0; i < n; i++) {
@@ -397,10 +399,16 @@
       // (nothing of it on a path, a field or the water: a mark is laid only on open grass)
       const open = (px, py) => { const cx0 = Math.floor(px / cw), cy0 = Math.floor((py - W.sky) / ch), b = base(cx0, cy0); return !!(b && b.land && !b.freshwater && !b.beach && !plotAt(cx0, cy0)) && pathGap(px, py) > 7; };
       if (/frog/.test(id)) add([X - 80, Y - 40, X + 80, Y + 40], 8491, (B, r) => {
-        B.f(B.blob(r, X + 4, Y + 2, 56, 20, 9, .35), wint ? '#6a6a52' : '#3e5a2e', .5).f(B.blob(r, X + 2, Y + 1, 40, 13, 8, .35), '#4a4632', .35);
-        const px = X - 34, py = Y + 9; if (open(px - 16, py) && open(px + 16, py) && open(px, py)) B.f(B.blob(r, px, py + 1, 19, 7.5, 8, .3), '#2a3424', .75).f(B.blob(r, px, py, 16, 6, 8, .3), wint ? '#a8b8be' : '#668892').f(B.ell(px - 5, py - 1.6, 6.5, 1.6), wint ? '#e8eef0' : '#b8d0d4', .6);
+        // (fix round 2: the hollow lay over the back of the field below the stone. It is cut off every field's cells, with the
+        //  height of that field's back run kept clear above it, so it stops at the field's edge)
+        const cut = new Path2D(); cut.rect(X - 100, Y - 60, 200, 120);
+        for (let cy0 = Math.floor((Y - 60 - W.sky) / ch); cy0 <= Math.floor((Y + 60 - W.sky) / ch); cy0++) for (let cx0 = Math.floor((X - 100) / cw); cx0 <= Math.floor((X + 100) / cw); cx0++) if (plotAt(cx0, cy0)) cut.rect(cx0 * cw - 3, W.sky + cy0 * ch - 4, cw + 6, ch + 4);
+        B.cx.save(); B.cx.clip(cut, 'evenodd');
+        B.f(B.blob(r, X + 4, Y, 50, 13, 9, .35), wint ? '#6a6a52' : '#3e5a2e', .5).f(B.blob(r, X + 2, Y, 36, 9, 8, .35), '#4a4632', .35);
+        const [px, py] = [[X + 40, Y - 2], [X - 40, Y - 2], [X - 34, Y + 9]].find(([u, v]) => open(u - 16, v) && open(u + 16, v) && open(u, v)) || [X - 34, Y + 9]; if (open(px - 16, py) && open(px + 16, py) && open(px, py)) B.f(B.blob(r, px, py + 1, 19, 7.5, 8, .3), '#2a3424', .75).f(B.blob(r, px, py, 16, 6, 8, .3), wint ? '#a8b8be' : '#668892').f(B.ell(px - 5, py - 1.6, 6.5, 1.6), wint ? '#e8eef0' : '#b8d0d4', .6);
         if (!wint && open(px, py)) for (let i = 0; i < 6; i++) { const lx = px + (r() - .5) * 22, ly = py + (r() - .5) * 7; B.f(B.ell(lx, ly, 2.2, 1.2), '#4e8a3a', .95).f(B.ell(lx - .6, ly - .3, .9, .4), '#8ab86a', .8); }
         for (let i = 0; i < 26; i++) { const a = r() * Math.PI * 2, rx = X + Math.cos(a) * (44 + r() * 14), ry = Y + 2 + Math.sin(a) * (15 + r() * 6), l = 6 + r() * 8; if (!open(rx, ry)) continue; for (let b = -1; b <= 1; b++) B.s(`M${rx + b} ${ry}q${b * .5} ${-l * .5} ${b * 1.6} ${-l}`, wint ? '#8a8660' : r() < .5 ? '#2c4e26' : '#4a7a34', .9, .95); }
+        B.cx.restore();
       });
       if (/boles/.test(id)) add([X - 80, Y - 30, X + 80, Y + 40], 8492, (B, r) => {
         if (wint) { B.f(B.blob(r, X, Y + 6, 46, 9, 8, .4), '#7a7458', .3); return; }
@@ -465,13 +473,18 @@
       const rr = kit.rng(kit.hash(x, y, 851)), dwc = dwAt(x, y), reedy = marshRibs.length && marshAt((x + .5) * cw, W.sky + (y + .5) * ch), ctx = reedy ? 'marsh' : dwc <= 1.6 ? 'bank' : near(x, y, 1, plotAt) ? 'edge' : 'open';
       if (ctx !== 'open' && kit.hash(x, y, 857) % 3 === 0) glowAt.push({ x: (x + .2 + rr() * .6) * cw, y: W.sky + (y + .6 + rr() * .3) * ch, seed: kit.hash(x, y, 858) });
       const drift = kit.noise(x / 3.2, y / 2.6, 852), list = S.flowers[ctx] || S.flowers.bank, flower = list[Math.floor(kit.noise(x / 4.5, y / 3.5, 853) * list.length * .999)];
-      const n = onWay ? 3 + Math.floor(rr() * 3) : ctx === 'open' ? 4 + Math.floor(rr() * 4) : ctx === 'marsh' ? 6 + Math.floor(rr() * 3) : 3 + Math.floor(rr() * 3);
+      // (fix round 2: the open meadow was one even confetti. It now has calm stretches of plain mown-looking grass between the
+      //  drifts, and the drifts are fuller: rest for the eye, and one field not the same as the next)
+      const calm = ctx === 'open' && !onWay && kit.noise(x / 6.5, y / 5.5, 859) < .44;
+      const n = calm ? (rr() < .35 ? 1 : 0) : onWay ? 3 + Math.floor(rr() * 3) : ctx === 'open' ? (drift > .5 ? 6 : 3) + Math.floor(rr() * 4) : ctx === 'marsh' ? 6 + Math.floor(rr() * 3) : 3 + Math.floor(rr() * 3);
       for (let i = 0; i < n; i++) {
         const fx = x + .1 + rr() * .8, fy = y + .25 + rr() * .7, X = fx * cw, Y = W.sky + fy * ch;
-        if (pathGap(X, Y) < (onWay ? 9 : 5) || onDitch(X, Y)) continue;
+        if (pathGap(X, Y) < (onWay ? 9 : ctx === 'marsh' ? 15 : 5) || onDitch(X, Y)) continue;
+        if (ctx === 'marsh' && pathGap(X, Y - 16) < 8) continue;
+        if (inWater(fx, fy) || inWater(fx, fy - .35)) continue;   // (fix round 2: nothing grows in the drawn water past a bank cell's edge)   // (fix round 2: a reed bed stands up three rows: never in front of a path, burying it)
         if (plotAt(Math.floor(fx), Math.floor(fy - .4)) || plotAt(Math.floor(fx - .22), Math.floor(fy)) || plotAt(Math.floor(fx + .22), Math.floor(fy))) continue;   // (nothing standing up into a field's front hedge or leaning on its side)
         if (ctx === 'marsh') { push({ x: X, y: Y, kind: rr() < .86 ? 'reedbed' : season === 'summer' ? 'loosestrife' : 'rush', s: .85 + rr() * .4, seed: kit.hash(x * 7 + i, y, 854), ctx }); continue; }
-        const isFlower = ctx === 'bank' ? rr() < .55 : ctx === 'edge' ? rr() < .6 : drift > .5 && rr() < .7;
+        const isFlower = !calm && (ctx === 'bank' ? rr() < .55 : ctx === 'edge' ? rr() < .6 : drift > .5 && rr() < .8);
         push({ x: X, y: Y, kind: isFlower ? (ctx === 'open' ? flower : list[Math.floor(rr() * list.length)]) : 'tussock', s: .8 + rr() * .5, seed: kit.hash(x * 7 + i, y, 854), ctx });
       }
     }
