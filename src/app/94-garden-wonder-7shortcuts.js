@@ -20,7 +20,8 @@ const GARDEN_ORCHARD_SHORTCUTS = Object.freeze([
  *  cliff top's edge above the beach walk: always solid, drawn by the orchard painter (94-garden-paint-vale-1orchard.js 1e). */
 const GARDEN_ORCHARD_CLIFF = Object.freeze([
   // (the hurdle fence either side of the lakeside hurdle is the orchard painter's, its feet solid through GardenPaintVale.feet)
-  Object.freeze({ box: [87.12, 40.3, 91.5, 41.9], src: 'the cliff at the head of the cove' }),   // (fix round 2: as tall as its face is drawn)
+  // (vale layouts merge: the box east of the steps, 87.12 to 91.5, is gone: the coast ends at 87.15 there, so it stood only over
+  //  the sea, where nothing is drawn standing and the sea stops the feet anyway; the steps fill the face from the nick to the coast)
   Object.freeze({ box: [84.95, 40.3, 85.2, 40.8], src: 'the cliff at the head of the cove' }),
   Object.freeze({ box: [85.05, 36.5, 85.45, 40.35], src: 'blackthorn on the cliff top' }),
 ]);

@@ -233,10 +233,16 @@ async function inPageAudit() {
   }
   _gw.px = keep.px; _gw.py = keep.py; _gw.reach = null;
   // paths drawn but not walkable (sampled along each route's middle line)
+  const shut = [];
   for (const r of island.routes || []) {
     if (!r.points || r.points.length < 2) continue;
     const pts = gardenIslandRoutePath(r).points; let run = null;
-    const flush = () => { if (run && run.n >= 2) push({ kind: 'path-blocked', obj: 'path', name: 'path ' + r.id, x: +run.x.toFixed(2), y: +run.y.toFixed(2), detail: (run.n * .4).toFixed(1) + ' cells of path blocked by ' + [...run.why].slice(0, 3).join('; ') }); run = null; };
+    // (vale layouts merge) a shortcut that opens at a level stands shut across its path in this level-1 save, drawn (a
+    // hurdle, the stream through a gap in the lip stones, a gate): that is a gate doing its job, not a fault. It is listed
+    // under 'shut' so it is still seen; anything else in the run makes it a fault as before.
+    const shutOnly = w => [...w].every(t => /\(shut\)|put back at level|^water$/.test(t)) && [...w].some(t => /\(shut\)|put back at level/.test(t));
+    const flush = () => { if (run && run.n >= 2 && shutOnly(run.why)) { shut.push({ path: r.id, x: +run.x.toFixed(2), y: +run.y.toFixed(2), by: [...run.why].join('; ') }); run = null; return; }
+      if (run && run.n >= 2) push({ kind: 'path-blocked', obj: 'path', name: 'path ' + r.id, x: +run.x.toFixed(2), y: +run.y.toFixed(2), detail: (run.n * .4).toFixed(1) + ' cells of path blocked by ' + [...run.why].slice(0, 3).join('; ') }); run = null; };
     for (let i = 1; i < pts.length; i++) {
       const p = pts[i - 1], q = pts[i], len = Math.hypot(q.x - p.x, q.y - p.y), n = Math.max(1, Math.round(len / .4));
       for (let k = 0; k < n; k++) {
@@ -252,7 +258,7 @@ async function inPageAudit() {
   const counts = { byKind: {}, byRegion: {}, byObject: {}, byRegionKind: {} };
   for (const f of faults) { counts.byKind[f.kind] = (counts.byKind[f.kind] || 0) + 1; counts.byRegion[f.region] = (counts.byRegion[f.region] || 0) + 1; counts.byObject[f.obj] = (counts.byObject[f.obj] || 0) + 1; const k = f.region + ' / ' + f.kind; counts.byRegionKind[k] = (counts.byRegionKind[k] || 0) + 1; }
   const objKinds = {}; for (const o of objs) objKinds[o.kind] = (objKinds[o.kind] || 0) + 1;
-  return { total: faults.length, counts, faults, scanned: { sprites: objs.length, checked, byKind: objKinds, rects: D.rects.length, cells: D.cells.length, doors: D.doors.length, clicks: D.clicks.length, landforms: (island.landforms || []).length, routes: (island.routes || []).length } };
+  return { total: faults.length, counts, faults, shut, scanned: { sprites: objs.length, checked, byKind: objKinds, rects: D.rects.length, cells: D.cells.length, doors: D.doors.length, clicks: D.clicks.length, landforms: (island.landforms || []).length, routes: (island.routes || []).length } };
 }
 
 /* ---------- the sandbox ---------- */
@@ -286,6 +292,7 @@ try {
   const result = await ev(`(${inPageAudit.toString()})()`, 600000);
   result.label = LABEL; result.clock = CLOCK; result.errors = errors.slice(0, 20); result.when = new Date().toISOString();
   console.log('faults', result.total, JSON.stringify(result.counts.byKind));
+  if (result.shut && result.shut.length) console.log('shut until a level (not faults):', JSON.stringify(result.shut));
   // thumbnails with the collision view on, worst first (walk-through and invisible walls, then the rest)
   const order = { 'walk-through': 0, 'invisible-wall': 1, 'path-blocked': 2, 'door-unreachable': 3, 'block-offset': 4, 'block-size': 5, 'drawn-blocked-walkable': 6, 'click-area': 7 };
   const picks = result.faults.map((f, i) => ({ f, i })).sort((a, b) => (order[a.f.kind] ?? 9) - (order[b.f.kind] ?? 9)).slice(0, THUMBS);
