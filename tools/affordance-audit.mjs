@@ -33,7 +33,10 @@ const data = JSON.parse(islandText);
 /* ---------- the registry, as the game has it ---------- */
 const ctx = { console, Math, Object, Array, Map, Set, Number, String, JSON, Infinity, NaN, isFinite, parseFloat };
 vm.createContext(ctx);
-vm.runInContext(readFileSync(join(root, 'src/app/94-garden-zz-7act-0kinds.js'), 'utf8') + '\n;this.K=GARDEN_KINDS;this.T=GARDEN_TERRAIN;this.kindOf=gardenKindOf;this.spots=gardenKindSpots;this.snap=gardenKindSnap;this.byPet=GARDEN_KIND_BY_PET;', ctx);
+vm.runInContext(readFileSync(join(root, 'src/app/94-garden-zz-7act-0kinds.js'), 'utf8') + '\n;this.K=GARDEN_KINDS;this.T=GARDEN_TERRAIN;this.kindOf=gardenKindOf;this.spots=gardenKindSpots;this.snap=gardenKindSnap;this.byPet=GARDEN_KIND_BY_PET;this.rise=gardenRiseAt;this.meet=gardenKindBoxesMeet;this.drawable=gardenKindDrawable;', ctx);
+// the drawings of placeable things, as the game has them (94-garden-zz-7act-2world.js _GAW_ART): a kind whose drawing is not there is left out
+let ARTS = null;
+try { const a = { Object, Math, String, Number, Array, JSON }; vm.createContext(a); vm.runInContext(readFileSync(join(root, 'src/app/94-garden-zz-7act-2world.js'), 'utf8').split('\nconst _gawN')[0] + '\n;this.A=_GAW_ART;', a); ARTS = a.A; } catch (e) { ARTS = null; }
 
 /* ---------- the cell model, as the game has it (94-garden-0island.js) ---------- */
 const W = Object.assign({}, data.world);
@@ -41,6 +44,15 @@ const isl = { GARDEN_WORLD: W, GardenIslandLayout: { data }, GardenIslandCanonic
 vm.createContext(isl);
 vm.runInContext(readFileSync(join(root, 'src/app/94-garden-0island.js'), 'utf8') + '\n;this.cell=gardenIslandBaseCell;this.land=gardenIslandLandContains;this.fresh=gardenIslandFreshwaterContains;', isl);
 const cell = (x, y) => { try { return isl.cell(x, y); } catch (e) { return null; } };
+// painted paving (roads, lanes, plazas, the arrival square), as the game reads it: the ground kit's own laid paths (94-garden-paint-ground-0kit.js)
+// and the pets' _plStoneAt (97-pets-tricks-7life-3props.js), the same source text run on this layout. A placed thing is kept off it.
+let stoneAt = () => false;
+try {
+  isl.window = isl;
+  vm.runInContext(readFileSync(join(root, 'src/app/94-garden-paint-ground-0kit.js'), 'utf8'), isl);
+  const pr = readFileSync(join(root, 'src/app/97-pets-tricks-7life-3props.js'), 'utf8'), a = pr.indexOf('let _plStoneD'), b = pr.indexOf('\n/** Where the thing may lie');
+  vm.runInContext(pr.slice(a, b) + '\n;this.stoneAt=_plStoneAt;', isl); stoneAt = (x, y) => { try { return !!isl.stoneAt(x, y); } catch (e) { return false; } };
+} catch (e) { console.error('(paving not read: ' + e.message + ')'); }
 const statById = new Map((data.static || []).map(r => [r.id, r]));
 const walkOn = (data.static || []).filter(r => r.walk);   // a pier's boards: walked on over the water
 const blocks = (x, y) => {
@@ -84,17 +96,21 @@ const placeFault = (K, x, y, w, h, self) => {
   const hw = w / 2, pts = [[x, y - 0.06], [x - hw * 0.85, y - 0.06], [x + hw * 0.85, y - 0.06], [x, y - h * 0.9]];
   for (const [px, py] of pts) { const c = cell(px, py); let fresh = false; try { fresh = isl.fresh(px, py) || !isl.land(px, py); } catch (e) { fresh = !!(c && c.freshwater); } if (fresh) return 'in the water'; if (!c || !c.land) return 'off the land'; if (c.solid) return 'on rock or a wall'; if (!K.onPath && c.route) return 'on a path (' + c.route + ')'; if (c.staticId && c.staticId !== self) { const st = statById.get(c.staticId); if (st && (st.col || 'full') === 'full' && !st.walk) return 'on ' + c.staticId; } }
   for (const f of wallForms) for (const [px, py] of pts) if (inPoly(px, py, f.polygon)) return 'on the ' + f.kind + ' ' + f.id;
-  for (const o of things) { if (o.id === self) continue; const ow = (o.w || 1) / 2, oh = o.h || 1; if (x + hw > o.x - ow && x - hw < o.x + ow && y > o.y - oh && y - h < o.y) return 'on ' + o.id; }
+  for (const o of things) { if (o.id === self) continue; if (ctx.meet(x, y, w, h, o.x, o.y, o.w || 1, o.h || 1)) return 'on ' + o.id; }   // (as drawn: the game's own gardenKindBoxesMeet)
+  if (!K.onPath) for (const [px, py] of pts) if (stoneAt(px, py)) return 'on paving';
+  // where you stand to use it can be walked to from the arrival point (the game asks the same, over the land open now)
+  if (K.acts) { const kid = Object.keys(ctx.K).find(k => ctx.K[k] === K); for (const sp of ctx.spots({ kind: kid, x, y, w })) { if (sp.pierEnd || sp.wade || sp.boat) continue; if (!reachable(sp.stand.x, sp.stand.y)) return 'its standing spot cannot be walked to from the arrival point (shut in)'; } }
   return '';
 };
 const placeNear = (K, x, y, w, h, self) => { for (let r = 0.35; r <= 3.01; r += 0.35) for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2 + r, qx = Math.round((x + Math.cos(a) * r) * 100) / 100, qy = Math.round((y + Math.sin(a) * r * 0.75) * 100) / 100; if (!placeFault(K, qx, qy, w, h, self)) return { x: qx, y: qy }; } return null; };
 const orphans = [];
 const report = { layout: data.id, ref: REF || '(worktree)', file: arg('--island', REF ? REF + ':assets/garden/island-v5.json' : 'assets/garden/island-v5.json'), things: [], unknown: [], orphans, faults: [], terrain: {}, kinds: {}, missingKinds: [], notDrawn: [], painted: [], paintedUnknown: [] };
-for (const r of placed.values()) {
+for (let r of placed.values()) {
   let x = Number(r.x), y = Number(r.y);
   if (r.on) { const a = things.find(t => t.id === r.on); if (!a) { orphans.push(r.id + ' (on ' + r.on + ', not in this layout)'); continue; } x = a.x + ((r.at || [])[0] || 0); y = a.y + ((r.at || [])[1] || 0); }
   const K = ctx.K[r.kind];
-  if (K && K.ground) { const wetp = (px, py) => { try { return isl.fresh(px, py) || !isl.land(px, py); } catch (e) { return false; } }; const sn = ctx.snap(r.kind, x, y, Number(r.w) || K.w, wetp); if (!sn) { report.faults.push(`${r.id} (${r.kind}): no ${K.ground} within 4 cells of where its row puts it: it is left out`); continue; } if (sn.moved) report.faults.push(`${r.id} (${r.kind}): its row puts it off the ${K.ground}; the game moves it ${Math.round(Math.hypot(sn.x - x, sn.y - y) * 10) / 10} cells to ${sn.x},${sn.y} (move the row there)`); x = sn.x; y = sn.y; }
+  if (K && K.ground) { const wetp = (px, py) => { try { return isl.fresh(px, py) || !isl.land(px, py); } catch (e) { return false; } }; const sn = ctx.snap(r.kind, x, y, Number(r.w) || K.w, wetp, r.front); if (!sn) { report.faults.push(`${r.id} (${r.kind}): no ${K.ground} within 4 cells of where its row puts it: it is left out`); continue; } if (sn.moved) report.faults.push(`${r.id} (${r.kind}): its row puts it off the ${K.ground}; the game moves it ${Math.round(Math.hypot(sn.x - x, sn.y - y) * 10) / 10} cells to ${sn.x},${sn.y} (move the row there)`); x = sn.x; y = sn.y; if (sn.front != null) r = Object.assign({}, r, { front: sn.front }); }
+  if (K && !ctx.drawable(r.kind, ARTS)) { report.faults.push(`${r.id} (${r.kind}): kind ${r.kind} has no drawing to place (nothing invisible is used): the game leaves it out`); continue; }
   if (K && !K.ground) { const w0 = Number(r.w) || K.w || 1, h0 = Number(r.h) || K.h || 1, why = placeFault(K, x, y, w0, h0, r.id); if (why) { const q = placeNear(K, x, y, w0, h0, r.id); if (!q) { report.faults.push(`${r.id} (${r.kind}): its row puts it ${why}, and there is no clear ground within 3 cells: the game leaves it out`); continue; } report.faults.push(`${r.id} (${r.kind}): its row puts it ${why}: the game moves it to ${q.x},${q.y} (put it there, or somewhere better, in the layout)`); x = q.x; y = q.y; } }
   things.push({ id: r.id, src: 'thing', kind: K ? r.kind : '', x, y, w: Number(r.w) || (K && K.w) || 1, h: Number(r.h) || (K && K.h) || 1, front: r.front, season: r.season || '', region: (cell(x, y - 0.1) || {}).region || '' });
 }
@@ -107,7 +123,6 @@ for (const t of things) {
   if (!K) { report.unknown.push(t.id + (t.art ? ' (art ' + t.art + ')' : '')); report.things.push(row); continue; }
   report.kinds[t.kind] = (report.kinds[t.kind] || 0) + 1;
   if (K.pet) row.pets.push(K.pet); if (K.drink) row.pets.push('drink'); if (K.warm) row.pets.push('warm'); if (!K.noPerch && (K.top || K.petSeat)) row.pets.push('perch');
-  if (K.place && K.art && !/^(scope|ladder|fire|ball|leaves|busker|logseat|basket|log|bank)$/.test(K.art) && t.src === 'thing' && !K.paint) report.faults.push(`${t.id}: kind ${t.kind} has no drawing yet (art '${K.art}'): it offers nothing in the game until one is drawn`);
   if (t.src === 'thing') {   // a placed thing's own ground
     const c = cell(t.x, t.y - 0.1);
     if (!c || !c.land) report.faults.push(`${t.id} (${t.kind}): its foot ${round(t.x)},${round(t.y)} is off the land`);
@@ -149,7 +164,7 @@ for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
   if (c.freshwater) { if (wet(x + 0.5, y - 1) && wet(x + 0.5, y - 2) && wet(x + 1.5, y - 1) && wet(x - 0.5, y - 1)) terr.deep++; continue; }
   if (!c.land) continue;
   if (c.solid) { terr.rock++; continue; }
-  if (c.slope || /slope|hill/i.test(c.landformId || '')) terr.slope++;
+  if (ctx.rise(data, cell, x + 0.5, y + 0.5)) terr.slope++;   // (the game's own gardenRiseAt: ground you walk on that rises)
   if (wet(x + 0.5, y - 0.6) && wet(x + 0.5, y - 2.1) && reach[y * W.cols + x]) terr['water-edge']++;
   if (c.beach) terr.sand++; else if (c.route) terr.path++; else if (!c.reserved && !c.staticId) terr['open-grass']++;
 }
@@ -171,6 +186,7 @@ out.push(`PAINTED THINGS (found in the game by their painted foot): ${report.pai
 out.push(`PAINTED THINGS OF NO KNOWN KIND (they offer nothing: give the name a word in GARDEN_KINDS): ${report.paintedUnknown.join(', ') || 'none'}`);
 out.push(`PLACED ROWS WHOSE ANCHOR IS NOT IN THIS LAYOUT: ${orphans.join(', ') || 'none'}`);
 out.push(`KINDS THIS LAYOUT HAS NONE OF: ${report.missingKinds.join(', ')}`);
+out.push(`PAVING (the game's own laid paths and plazas, kept clear of placed things): ${stoneAt(start.x + 0.5, start.y + 0.5) ? 'read' : 'NOT READ: placed things on paving are not caught here'}`);
 out.push('', 'FAULTS'); for (const f of report.faults) out.push('  ' + f); if (!report.faults.length) out.push('  none');
 out.push('', 'GROUND (cells, read from the layout)'); for (const [k, v] of Object.entries(report.terrain)) out.push(`  ${k}: ${v}`);
 console.log(out.join('\n'));

@@ -1,7 +1,7 @@
 {
   "about": "Things placed through layout data, each of a kind (src/app/94-garden-zz-7act-0kinds.js GARDEN_KINDS) that brings its own moves and pet behaviours. Not part of the saved-world identity. A row: id, kind, x and y (the foot's middle, in cells) or on (a fixed thing's id) with at [dx, dy] cells from that thing's foot middle; optional w, h, front (degrees the front faces, 90 = towards you), season, level, drawn (false: a painter draws it). A region file (assets/garden/vale-<region>.json) may carry its own `things` array the same way. Check them with: node tools/affordance-audit.mjs",
   "things": [
-    { "id": "ga-scope", "kind": "telescope", "on": "ld-folly", "at": [0.95, 0.55], "note": "on the folly's lookout, aimed at the far hills" },
+    { "id": "ga-scope", "kind": "telescope", "on": "ld-folly", "at": [1.01, 0.81], "note": "on the folly's lookout, aimed at the far hills" },
     { "id": "ga-fire-beacon", "kind": "campfire", "on": "ld-beacon", "at": [2.25, 1.6], "note": "a ring of stones beside the beacon" },
     { "id": "ga-fire-hut", "kind": "campfire", "on": "ld-woodhut", "at": [3.15, 1.2], "note": "by the woodsman's hut" },
     { "id": "ga-logseat", "kind": "log-seat", "on": "ld-woodhut", "at": [0.05, 1.35], "note": "laid by the hut's fire" },
@@ -9,7 +9,7 @@
     { "id": "ga-leaves", "kind": "leaf-pile", "on": "sundial", "at": [-5.7, 0.2], "season": "autumn", "note": "inside the green, autumn only" },
     { "id": "ga-busker", "kind": "busker", "on": "market-stall", "at": [2.6, 1.2], "note": "the busker's pitch by the market" },
     { "id": "ga-basket", "kind": "basket", "on": "market-stall", "at": [-1.4, 1.3], "note": "a basket of apples to carry off" },
-    { "id": "ga-log", "kind": "log", "on": "ld-woodhut", "at": [3.45, 1.6], "note": "a log to carry, by the hut" },
-    { "id": "ga-bank", "kind": "fishing-bank", "on": "lake-board", "at": [-4.0, -2.0], "note": "the Mere's south shore, legs over the water" }
+    { "id": "ga-log", "kind": "log", "on": "ld-woodhut", "at": [3.0, 2.0], "note": "a log to carry, by the hut" },
+    { "id": "ga-bank", "kind": "fishing-bank", "on": "lake-board", "at": [-4.0, -2.0], "front": -90, "note": "the Mere's south shore, legs over the water" }
   ]
 }

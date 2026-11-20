@@ -47,7 +47,7 @@ function _plThings() {
   // the end of a pier: as far as it is built, just short of the end (round 4, the critic: pier-watch played on the quay)
   try { const decks = typeof _gardenPierDecksNow === 'function' ? _gardenPierDecksNow() : [], d = decks[decks.length - 1]; if (d && gardenAffordOfPet('pier').length) put('pier', d.x + d.w / 2, d.y + d.h - 0.9, 'The end of the pier', { free: true, stage: 1 }); } catch (e) { /* none */ }
   // the water's edge where it is soft (grass, sand, a reed bank), not a paved quay: paddling and fish-watching want a real shore
-  out.tree = S.shade.slice();
+  out.tree = S.shade.concat(out.tree || []);   // (a found thing of a kind the pets call a tree, a hollow oak, stays in)
   try { if (typeof _gwPaintedTrunks === 'function') for (const b of _gwPaintedTrunks(gardenIslandData())) { const kind = gardenKindOf({ tree: b.sp || '' }), K = GARDEN_KINDS[kind]; if (K && K.pet === 'tree') out.tree.push({ x: (b.x0 + b.x1) / 2, y: b.y1, name: K.name, kind }); } } catch (e) { /* no painted trees */ }   // (every tree a painter drew counts, by its kind)
   out.shore = S.shore.filter(q => typeof _plStoneAt !== 'function' || !_plStoneAt(q.x, q.y)); if (!out.shore.length) out.shore = S.shore.slice(); out.drink = S.drink.slice(); out.warm = S.warm.slice();
   _pl.things = out; _pl.thingsKey = key;
@@ -370,7 +370,7 @@ function petLifeMenuItems(P) {
  *  pixels from its foot); the pet goes to the foot of the ladder, hops, and is up at the window with the sill in front of it, then comes down. */
 function _plTreehouse(P) {
   let row = null, prop = null;
-  try { const pl0 = _ptwPlayer() || P, th = gardenAffordNear('treehouse', pl0.x, pl0.y, 12); if (!th) return false; row = (typeof GARDEN_LAND_SIGHTS !== 'undefined' ? GARDEN_LAND_SIGHTS : []).find(r => r.id === th.id) || null; prop = gardenLandProps().find(p => p.id === th.id) || { id: th.id, x: th.x - th.w / 2, y: th.y - th.h, w: th.w, h: th.h }; } catch (e) { return false; }   // (any treehouse: the nearest one to you)
+  try { const pl0 = _ptwPlayer() || P, th = gardenAffordNear({ pet: 'treehouse' }, pl0.x, pl0.y, 12); if (!th) return false; row = (typeof GARDEN_LAND_SIGHTS !== 'undefined' ? GARDEN_LAND_SIGHTS : []).find(r => r.id === th.id) || null; prop = gardenLandProps().find(p => p.id === th.id) || { id: th.id, x: th.x - th.w / 2, y: th.y - th.h, w: th.w, h: th.h }; } catch (e) { return false; }   // (any treehouse: the nearest one to you)
   if (!prop) return false;
   const win = (prop.pet && prop.pet.window) || (row && row.pet && row.pet.window) || [-24, -126];
   const foot = { x: prop.x + prop.w / 2, y: prop.y + prop.h };

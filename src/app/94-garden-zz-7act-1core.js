@@ -60,10 +60,19 @@ function _gaStaticRows() {
         out.push({ key: 'pier-end:' + s.act, act: s.act, name: s.name, x: d.x + d.w / 2, y: d.y + d.h, stand: { x: d.x + d.w / 2 + s0.stand.x - foot.x, y: d.y + d.h + s0.stand.y - foot.y }, deg: s.deg, lift: s.lift || 0, src: t.id, kind: t.kind });   // (a negative lift: over the edge)
         return;
       }
-      out.push({ key: t.id + ':' + s.act + (s.i ? ':' + s.i : ''), act: s.act, name: (t.src === 'decor' && t.name) || s.name, x: s.x, y: s.y, top: s.at ? null : top, stand: s.stand, deg: s.deg, lift: _gaSeatLift(s), seated: s.seat != null || !!s.edge, src: t.id, kind: t.kind, boat: !!s.boat, reach: s.reach || 0, noProp: !!s.noProp, pri: s.pri || 0, kick: s.kick || '', carry: s.carry || '', art: K.art || '' });
+      // where you stand is open ground (a camera's posing spot that a re-laid quay put inside a bench is moved to the nearest clear ground
+      // beside it, facing the same way; none within reach: that move is not offered there). Seats, edges and wading are on the thing on purpose.
+      let stand = s.stand;
+      if (stand && s.seat == null && !s.edge && !s.wade && !s.boat && typeof _gksSolidAt === 'function' && _gksSolidAt(stand.x, stand.y, t.id)) { stand = _gaClearStand(stand, t.id); if (!stand) return; }
+      out.push({ key: t.id + ':' + s.act + (s.i ? ':' + s.i : ''), act: s.act, name: (t.src === 'decor' && t.name) || s.name, x: s.x, y: s.y, top: s.at ? null : top, stand, deg: s.deg, lift: _gaSeatLift(s), seated: s.seat != null || !!s.edge, src: t.id, kind: t.kind, boat: !!s.boat, reach: s.reach || 0, noProp: !!s.noProp, pri: s.pri || 0, kick: s.kick || '', carry: s.carry || '', art: K.art || '' });
     });
   }
   return out;
+}
+/** The nearest open ground to a stand point that lies inside something solid, within 0.9 of a cell (rings outward), or null. */
+function _gaClearStand(st, self) {
+  for (let r = 0.15; r <= 0.91; r += 0.15) for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2, qx = st.x + Math.cos(a) * r, qy = st.y + Math.sin(a) * r * 0.7; if (!_gksSolidAt(qx, qy, self) && !_gksSolidAt(qx - 0.12, qy, self) && !_gksSolidAt(qx + 0.12, qy, self)) return { x: Math.round(qx * 100) / 100, y: Math.round(qy * 100) / 100, moved: true }; }
+  return null;
 }
 /** A seat's height (a share of the figure's height above where the feet go) -> how far the seated figure is lifted, in px. */
 function _gaSeatLift(o) {

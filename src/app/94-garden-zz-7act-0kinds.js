@@ -82,7 +82,7 @@ const GARDEN_KINDS = Object.freeze({
     dw: 3.82, acts: [{ act: 'ladder', name: 'the lighthouse ladder', at: [0.0576, 0.13], art: 'ladder', stand: [0.0576, 0.16], deg: -90, noProp: true }] },   // a ladder up its side to a plank landing with a rail (u: a share of the tower as drawn)
   treehouse: { name: 'the treehouse', arts: ['treehouse'], words: ['treehouse'], pet: 'treehouse',
     dw: 4.79, acts: [{ act: 'ladderhi', name: 'the treehouse ladder', at: [0.073, 0.2], drawn: false, stand: [0.073, 0.23], deg: -90, noProp: true, edge: true }] },   // (the treehouse's own painter draws its ladder)
-  hollow: { name: 'the hollow tree', arts: ['hollow'], words: ['hollow'], pet: 'treehouse' },
+  hollow: { name: 'the hollow tree', arts: ['hollow'], words: ['hollow'], pet: 'tree' },   // (the pets treat it as a tree: the treehouse's peek needs a window it has not got)
   barn: { name: 'the barn', arts: ['barn'], words: ['barn'], pet: 'hay',
     dw: 4, acts: [{ act: 'ladderlo', name: 'the hay loft ladder', at: [0.275, 0.37], art: 'ladder', top: 96, loft: true, stand: [0.275, 0.4], deg: -90, noProp: true, edge: true }] },   // (u: a share of the barn as drawn)
   hay: { name: 'the hay', arts: ['hay'], decor: ['hay-bale'], words: ['hay', 'haybale'], pet: 'hay', top: 38, petSeat: 38 },
@@ -218,8 +218,9 @@ function gardenKindSnap(kind, x, y, w, wet, front) {
   // along the shore (px, py) the thing's width, the water out in front (dx, dy): dry under it, wet half a cell out and further out
   const ok = (px, py, d) => { const ax = -d[2], ay = d[1], q = (s, o) => [px + ax * hw * s + d[1] * o, py + ay * hw * s + d[2] * o]; return !wet(...q(0, 0)) && !wet(...q(-1, 0)) && !wet(...q(1, 0)) && wet(...q(0, 0.5)) && wet(...q(-1, 0.5)) && wet(...q(1, 0.5)) && wet(...q(0, 1.6)); };
   for (const d of order) if (ok(x, y, d)) return { x, y, moved: false, front: d[0] };
-  let best = null, bd = 4.01;
-  for (let dy = -4; dy <= 4; dy += 0.1) for (let dx = -4; dx <= 4; dx += 0.25) { const dd = Math.hypot(dx, dy); if (dd >= bd) continue; for (const d of order) if (ok(x + dx, y + dy, d)) { bd = dd; best = { x: x + dx, y: y + dy, moved: true, front: d[0], d }; break; } }
+  let best = null;
+  // the row's own side first (a bank the layout says faces north stays on a north shore when there is one within reach), then any side
+  for (const set of want == null ? [D] : [D.filter(d => d[0] === want), D]) { let bd = 4.01; for (let dy = -4; dy <= 4; dy += 0.1) for (let dx = -4; dx <= 4; dx += 0.25) { const dd = Math.hypot(dx, dy); if (dd >= bd) continue; for (const d of set) if (ok(x + dx, y + dy, d)) { bd = dd; best = { x: x + dx, y: y + dy, moved: true, front: d[0], d }; break; } } if (best) break; }
   if (best) { const d = best.d; let k = 0; while (k < 25 && !wet(best.x + d[1] * (k * 0.02 + 0.14), best.y + d[2] * (k * 0.02 + 0.14))) k++; best.x = Math.round((best.x + d[1] * k * 0.02) * 100) / 100; best.y = Math.round((best.y + d[2] * k * 0.02) * 100) / 100; delete best.d; }   // (right up to the lip)
   return best;
 }
@@ -290,4 +291,19 @@ function gardenRiseAt(D, cellAt, x, y) {
     const l = Math.hypot(mx - x, my - y); return l > 0.5 ? { x: (mx - x) / l, y: (my - y) / l, hill: true } : null;
   }
   return null;
+}
+/** Can a thing of this kind placed through layout data be seen? Its own drawing (art, and the drawings table has it when one is given),
+ *  a painter that draws it (paint), or ground it is made of (a bank). Pure: the game (with _GAW_ART) and the audit (the same table) ask. */
+function gardenKindDrawable(kind, arts) {
+  const K = GARDEN_KINDS[kind]; if (!K) return false;
+  if (K.paint || K.ground) return true;
+  if (!K.art) return false;
+  return arts ? !!arts[K.art] : true;
+}
+/** Do two things' boxes meet AS DRAWN? Each is { foot middle x, foot y, width w, height h } in cells; a drawing reaches a little past its
+ *  footprint every way (a fire's ring of stones and its shadow below its foot, a log's ends), so a margin keeps them apart. Pure. */
+const GARDEN_DRAWN_MARGIN = 0.25;
+function gardenKindBoxesMeet(x, y, w, h, ox, oy, ow, oh) {
+  const m = GARDEN_DRAWN_MARGIN;
+  return x + w / 2 + m > ox - ow / 2 && x - w / 2 - m < ox + ow / 2 && y + m > oy - oh && y - h - m < oy + m;
 }
