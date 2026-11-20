@@ -539,13 +539,13 @@ window.GardenNativeWorld = (function () {
         if (island && row && soilKinds.has(row.kind) && (locked || !cultivated.has(row.id))) material = 'green';
         // Scenic planting respects physical reservations even while a route is locked.
         const route = !!(islandCell && islandCell.route), plantingReserved = !!(islandCell && (route || ['static', 'apron', 'facade', 'future-pier'].includes(islandCell.reservation)));
-        cells[y * W.cols + x] = { material, locked, area, row, water, route, plantingReserved }; kinds.add(material);
+        cells[y * W.cols + x] = { material, locked, area, row, water, route, plantingReserved, screen: !!(islandCell && /^screen-/.test(islandCell.landformId || '')) }; kinds.add(material);
       }
       const routePaint = island ? routePaintAllowance(cells, sc, cultivated) : null;
       const lakeHoles = lake && !island ? outlines(cells.map((c, index) => ({ material: lake.cellContains(index % W.cols, Math.floor(index / W.cols)) && (!c.water || c.material === 'ice') ? 'hole' : '' })), 'hole', W, true).filter(loop => polygonArea(loop) > 0).map(loop => loop.slice().reverse()) : [];
       const frozenLake = lake && kinds.has('ice') && !kinds.has('lake');
       const cellAt = (x, y) => x >= 0 && y >= 0 && x < W.cols && y < W.rows ? cells[y * W.cols + x] : null;
-      const woodland = (x, y) => { const c = cellAt(x, y); return !!c && !c.water && c.material !== 'ice' && (!island || !['ocean', 'beach'].includes(c.material)) && (!island && c.locked || c.row && c.row.solid || woods.has(c.material)); };
+      const woodland = (x, y) => { const c = cellAt(x, y); return !!c && !c.water && !c.screen && c.material !== 'ice' && (!island || !['ocean', 'beach'].includes(c.material)) && (!island && c.locked || c.row && c.row.solid || woods.has(c.material)); };
       const lockedCells = cells.map((c, index) => ({ material: c.locked && (!island || !gardenIslandOceanCell(index % W.cols, Math.floor(index / W.cols))) ? c.area.slice(7) : '' }));
       const authoredRegions = island && typeof _gldIslandRegionGeometry === 'function' ? _gldIslandRegionGeometry() : [];
       const regionOpen = new Set(sc.areas || []);
