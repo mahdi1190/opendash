@@ -90,7 +90,9 @@ function _gwBuildSolids(m) {
   const oak = island && island.version >= 5 && island.presentation && (island.presentation.plazas || []).find(p => p.id === 'great-oak-clearing');
   if (oak) {
     const W = GARDEN_WORLD, scale = 1.75, x = oak.x + 2.9, y = oak.y - 1.5;
-    add(x - 20 * scale / W.cellW, y - 8 * scale / W.cellH, x + 20 * scale / W.cellW, y + 2 * scale / W.cellH, 'the Great Oak trunk');
+    // (round 3) down to where its roots meet the ground (they flare to 8 below the bole's foot): the box stopped above
+    // them and the feet stood on the drawn roots
+    add(x - 20 * scale / W.cellW, y - 6 * scale / W.cellH, x + 20 * scale / W.cellW, y + 8 * scale / W.cellH, 'the Great Oak trunk');
   }
   const logs = typeof gardenIslandLogStack === 'function' ? gardenIslandLogStack(island) : null;
   if (logs) { const f = logs.foot; add(f.x0, f.y0, f.x1, f.y1, 'log stack'); }

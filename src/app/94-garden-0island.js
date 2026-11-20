@@ -247,7 +247,7 @@ function gardenIslandCrossingGeometry() {
     // The Millwater hump bridge carries its lane between two parapets: its
     // standing deck is a lane-wide band from bank to bank, as drawn, not the
     // gate's four-cell lock span (which read as a square slab on the river).
-    const mid = at(n0.s), span = c.kind === 'footbridge' ? hw + .7 : hw + .15, points = left.concat(right.reverse()), halfWidth = c.kind === 'footbridge' ? 17 : c.kind === 'hump-bridge' ? 24 : 14;
+    const mid = at(n0.s), span = c.kind === 'footbridge' ? hw + .7 : hw + .15, points = left.concat(right.reverse()), halfWidth = c.kind === 'footbridge' ? 17 : c.kind === 'hump-bridge' ? 24 : c.over === 'brook' ? 25 : 14;   // (round 3: the woodland brook's stones two abreast, wide enough for a friend beside you)
     const approach = _gardenIslandCrossingRouteSpan(c, points, halfWidth);
     const a = approach ? approach.a : { x: (mid.x - mid.ty * span) * W.cellW, y: W.sky + (mid.y + mid.tx * span) * W.cellH }, b = approach ? approach.b : { x: (mid.x + mid.ty * span) * W.cellW, y: W.sky + (mid.y - mid.tx * span) * W.cellH };
     const length = Math.hypot(b.x - a.x, b.y - a.y), ux = (b.x - a.x) / length, uy = (b.y - a.y) / length;

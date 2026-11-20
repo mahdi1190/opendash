@@ -170,7 +170,9 @@ async function inPageAudit() {
     for (const x of cellsUnder) { bx0 = Math.min(bx0, x); bx1 = Math.max(bx1, x + 1); }
     if (!(bx1 > bx0)) {
       // nothing under the base, though the feet cannot stand there (water or the shore): fine; otherwise look a little round it
-      const near = solidsNear(a.x - .6, band.y0 - .4, b.x + .6, band.y1 + .3); if (!near.length) continue;
+      // (round 3: not a landform's or a shut field's box either, as above: scrub standing in shut land is stopped by the
+      // field's own outline, and the field's bounding box is not a block beside it)
+      const near = solidsNear(a.x - .6, band.y0 - .4, b.x + .6, band.y1 + .3).filter(r => !r.form); if (!near.length) continue;
       let c0 = Infinity, c1 = -Infinity; for (const r of near) { c0 = Math.min(c0, r.x0); c1 = Math.max(c1, r.x1); }
       if (Math.abs((c0 + c1) / 2 - mid) > .25) push({ kind: 'block-offset', ...base, detail: 'its block stands ' + ((c0 + c1) / 2 - mid).toFixed(2) + ' cells beside the drawn base' });
       continue;

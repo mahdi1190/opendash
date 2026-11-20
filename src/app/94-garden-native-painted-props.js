@@ -335,6 +335,7 @@ window.GardenPaintedProps = (function () {
     if (prop.id === 'craft-bench') return 'bench';
     if (prop.id === 'jetty-post') return 'post';
     const k = prop.art || String(prop.kind || '').replace(/^l[df]-/, '');
+    if (PAINT['sight:prop-' + prop.id]) return 'sight:prop-' + prop.id;   // (round 3: a place's own drawing, e.g. the woodland's log benches, 94-garden-paint-vale-1woodland.js)
     if (PAINT[KIND[k] || ''] ) return KIND[k];
     if (PAINT['sight:' + k]) return 'sight:' + k;   // (landmark painters registered by area files, e.g. 94-garden-native-painted-valley.js)
     if (k in LIB) return 'lib:' + k;

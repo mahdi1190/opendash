@@ -114,14 +114,17 @@
         // The woodland brook: rounded, water-worn stones (a squircle filling each slab, so the footing is still the
         // whole support), wet dark feet, a ring of ripple where the water meets them, moss on the shaded side.
         const tones = season === 'winter' ? ['#a9a89c', '#bdbcb0', '#9a9a8e'] : ['#a19a84', '#b3ab93', '#958f7b', '#aaa088'];
-        const sq = (lo, hi, k, ds, dt, jit) => { const pts = []; for (let j = 0; j < 28; j++) { const a = j / 28 * Math.PI * 2, c = Math.cos(a), si = Math.sin(a), u = Math.sign(c) * Math.pow(Math.abs(c), .5), v = Math.sign(si) * Math.pow(Math.abs(si), .5), n = 1 + (jit ? (jit[j % jit.length] - .5) * .06 : 0); pts.push(q((lo + hi) / 2 + dt + u * (hi - lo) / 2 * k * n, ds + v * hw * k * n)); } return B.poly(pts); };
-        for (let i = 0; i < count; i++) {
-          const lo = i * step + (i ? .25 / deck.length : 0), hi = (i + 1) * step - (i < count - 1 ? .25 / deck.length : 0), jit = [r(), r(), r(), r(), r(), r(), r()], tone = r();
-          B.s(sq(lo, hi, 1.08, 0, 0, jit), P.foam || '#eef2e2', 1.6, .5);
-          B.f(sq(lo, hi, 1, 1.2, 0, jit), '#4e4a40', .85);
-          B.f(sq(lo, hi, .97, 0, 0, jit), tones[Math.floor(tone * tones.length)]);
-          B.f(sq(lo, hi, .6, -hw * .22, -(hi - lo) * .08, jit), '#d4ccb4', .5);
-          if (tone < .45) B.f(sq(lo, hi, .42, hw * .5, (hi - lo) * .1, jit), season === 'winter' ? '#e8ecef' : '#6f8446', .6);
+        // (round 3) two abreast, each a half of the deck's width, set a little out of line so they read as stones and not tiles
+        const sq = (lo, hi, k, ds, dt, jit, ac) => { const pts = []; for (let j = 0; j < 28; j++) { const a = j / 28 * Math.PI * 2, c = Math.cos(a), si = Math.sin(a), u = Math.sign(c) * Math.pow(Math.abs(c), .5), v = Math.sign(si) * Math.pow(Math.abs(si), .5), n = 1 + (jit ? (jit[j % jit.length] - .5) * .06 : 0); pts.push(q((lo + hi) / 2 + dt + u * (hi - lo) / 2 * k * n, ds + v * ac * k * n)); } return B.poly(pts); };
+        const sides = hw >= 20 ? [-1, 1] : [0];
+        for (let i = 0; i < count; i++) for (const sd of sides) {
+          const nudge = sd ? (r() - .5) * .3 * step : 0, lo = i * step + (i ? .25 / deck.length : 0) + nudge, hi = (i + 1) * step - (i < count - 1 ? .25 / deck.length : 0) + nudge, jit = [r(), r(), r(), r(), r(), r(), r()], tone = r();
+          const ac = sd ? hw * .5 - .6 : hw, c0 = sd * hw * .5, k0 = .98 + r() * .05;
+          B.s(sq(lo, hi, 1.08 * k0, c0, 0, jit, ac), P.foam || '#eef2e2', 1.6, .5);
+          B.f(sq(lo, hi, k0, c0 + 1.2, 0, jit, ac), '#4e4a40', .85);
+          B.f(sq(lo, hi, .97 * k0, c0, 0, jit, ac), tones[Math.floor(tone * tones.length)]);
+          B.f(sq(lo, hi, .6 * k0, c0 - ac * .22, -(hi - lo) * .08, jit, ac), '#d4ccb4', .5);
+          if (tone < .45) B.f(sq(lo, hi, .42 * k0, c0 + ac * .5, (hi - lo) * .1, jit, ac), season === 'winter' ? '#e8ecef' : '#6f8446', .6);
         }
         return;
       }
@@ -293,7 +296,9 @@
     for (let i = 0; i < 26; i++) B.f(B.blob(r, -150 + r() * 220, -320 + r() * 120, 12, 8, 6, .5), L[3], .8);
     // sky gaps through the crown and limbs showing through them
     for (let i = 0; i < 7; i++) { const x = -150 + r() * 300, y = -300 + r() * 140, rx = 9 + r() * 8, ry = 6 + r() * 5; B.f(B.blob(r, x, y + 2, rx * 1.5, ry * 1.3, 8, .5), L[0], .38); B.s(`M${x - 12} ${y + 7}q9 -2 22 -11`, bark[0], 2.6, .55); }   // (shaded pockets with a limb in them: cut-out holes showed the lawn through the crown as grey patches)
-    if (season === 'autumn') for (let i = 0; i < 40; i++) B.f(B.ell(-200 + r() * 400, 2 + r() * 26, 2, 1.2), L[1 + Math.floor(r() * 3)], .85);
+    // (round 3) the fallen leaves round its foot under the alpha that reads as something standing: at .85 the lowest leaves
+    // were taken for the tree's own base, a cell in front of its trunk, where the feet could stand on it
+    if (season === 'autumn') for (let i = 0; i < 40; i++) B.f(B.ell(-200 + r() * 400, 2 + r() * 26, 2, 1.2), L[1 + Math.floor(r() * 3)], .56);
   }
 
   /* ---------- Hollin's hut and the ice house: their surroundings ---------- */

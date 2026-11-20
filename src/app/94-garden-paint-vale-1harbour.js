@@ -303,6 +303,8 @@
   // and goes when that country opens.
   const shutKey = () => { try { return (gardenModel().areas || []).filter(a => /^zn-/.test(a)).sort().join(','); } catch (e) { return ''; } };
   V.groundSigs.push(() => '|rope:' + shutKey());
+  // (round 3) and where Wren cove's beach runs on into the old woodland's shore, west of the village
+  const ROPE_BOXES = [QUAY, { x0: 0, x1: 20, y0: 76, y1: 92 }];
   let ropeKey = null, ropeRuns = [];
   function ropeLine(W) {
     const k = shutKey(); if (k === ropeKey) return ropeRuns; ropeKey = k; ropeRuns = [];
@@ -311,7 +313,7 @@
     const shut = (x, y) => { const b = base(x, y); if (!b || !b.land || b.ocean) return false; try { return /^locked:zn-/.test(String(gardenAreaAt(x, y, lv))); } catch (e) { return false; } };
     const sand = (x, y) => { const b = base(x, y); return !!b && b.land && !b.ocean && !!b.beach && !shut(x, y); };
     const pts = [], cw = W.cellW, ch = W.cellH;
-    for (let y = QUAY.y0; y <= QUAY.y1; y++) for (let x = QUAY.x0; x <= QUAY.x1; x++) {
+    for (const R of ROPE_BOXES) for (let y = R.y0; y <= R.y1; y++) for (let x = R.x0; x <= R.x1; x++) {
       if (!sand(x, y)) continue;
       // a point every third of a cell along each edge it shares with shut land, set a little into the shut side
       if (shut(x + 1, y)) for (const t of [.17, .5, .83]) pts.push({ x: (x + 1.12) * cw, y: W.sky + (y + t) * ch });
@@ -329,8 +331,8 @@
     return ropeRuns;
   }
   function composeRope(C) {
-    const { kit, W, add, P } = C, box = [QUAY.x0 * W.cellW, W.sky + QUAY.y0 * W.cellH, QUAY.x1 * W.cellW, W.sky + QUAY.y1 * W.cellH];
-    add(box, 47, (B, r, cb) => {
+    const { kit, W, add, P } = C;
+    for (const R of ROPE_BOXES) add([R.x0 * W.cellW, W.sky + R.y0 * W.cellH, R.x1 * W.cellW, W.sky + R.y1 * W.cellH], 47, (B, r, cb) => {
       for (const run of ropeLine(W)) {
         const posts = V.walk(run, 21); if (posts.length < 2) continue;
         const near = posts.filter(q => q.x > cb[0] - 40 && q.x < cb[2] + 40 && q.y > cb[1] - 30 && q.y < cb[3] + 40); if (!near.length) continue;
