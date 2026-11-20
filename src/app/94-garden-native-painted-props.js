@@ -590,15 +590,32 @@ window.GardenPaintedProps = (function () {
     foot(arch.n, 16);
     // the hoops: three bent rods side by side along the way (it has depth), the far one darkest, tied across with withies
     const hoop = (dx, col, wd) => B.s(arch.pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x + dx} ${y}`).join(''), col, wd);
-    hoop(-7, bark[3], 5); hoop(-7, bark[1], 3.2);
-    for (let i = 2; i < arch.pts.length - 2; i += 3) { const [x, y] = arch.pts[i]; B.s(`M${x - 7} ${y}L${x + 7} ${y}`, bark[2], 1.6, .9); }
+    // (fix loop 1, west: three rods 7 px apart are one thin bent line from the lane, the curve hidden in itself because a
+    // hoop across an east-west way stands edge on to the camera. It is a short tunnel now: three hoops a long stride apart
+    // along the way, a roof of leaves grown over the three, so from the lane you see a leafy arch with depth, its posts
+    // at the feet, the dark way under it and the path running on through it)
+    const GAP = 24, n = arch.pts.length - 1, Ld = leafOf(season);
+    hoop(-GAP, bark[3], 5); hoop(-GAP, bark[1], 3.2);
     hoop(0, bark[3], 5.4); hoop(0, bark[1], 3.6); hoop(0, bark[2], 1.2);
-    // leaves, honeysuckle and dog roses grown along the rods (never a mass: you see through it)
-    for (let i = 1; i < arch.pts.length - 1; i++) { const [x, y] = arch.pts[i]; if (r() < .6) B.crown(r, x + (r() - .5) * 8, y - 2, 7 + r() * 5, 5 + r() * 3, season, 3); if (!snowy && season !== 'winter' && r() < .3) B.f(B.circ(x + (r() - .5) * 10, y - 4, 1.8), season === 'autumn' ? '#c8402a' : '#f2c8d0').f(B.circ(x + (r() - .5) * 10, y - 1, 1.4), '#f6e6a0'); }
+    // withies tied across from hoop to hoop up the sides
+    for (let i = 2; i < n - 1; i += 3) { const [x, y] = arch.pts[i]; B.s(`M${x - GAP} ${y}L${x} ${y}`, bark[2], 1.6, .9); }
+    // the roof: the shade under it first (you look up into it), then lit leaf masses over the whole width, fullest over the crown
+    for (let i = 3; i < n - 2; i++) { const [x, y] = arch.pts[i], t = i / n, k = 1 - Math.abs(t - .5) * 1.6; if (k <= 0) continue;
+      B.f(D().blob(r, x, y + 6, GAP * .9 + 8, 7 + k * 6, 9, .35), Ld[0], .95); }
+    for (let i = 3; i < n - 2; i++) { const [x, y] = arch.pts[i], t = i / n, k = 1 - Math.abs(t - .5) * 1.6; if (k <= 0) continue;
+      for (let dx = -GAP - 4; dx <= GAP + 4; dx += 9) { const rr2 = 6 + k * 7 + r() * 3; B.crown(r, x + dx + (r() - .5) * 5, y - 3 - k * 3 + (r() - .5) * 4, rr2, rr2 * .72, season, 3); }
+      if (!snowy && season !== 'winter' && r() < .6) B.f(B.circ(x + (r() - .5) * GAP * 2, y - 6 - r() * 6, 1.9), season === 'autumn' ? '#c8402a' : '#f2c8d0').f(B.circ(x + (r() - .5) * GAP * 2, y - 3, 1.4), '#f6e6a0'); }
+    // leaves climbing the far posts from their feet
+    for (let i = 1; i < 6; i++) for (const dx of [-GAP, 0]) { const [x, y] = arch.pts[i]; if (r() < .7) B.crown(r, x + dx + (r() - .5) * 5, y, 5 + r() * 3, 4 + r() * 2, season, 3); }
+    // trails hanging off the roof's underside over the way
+    for (let i = 7; i < n - 6; i += 2) for (const dx of [-GAP * .6, GAP * .4]) { const [x, y] = arch.pts[i], len = 8 + r() * 16; B.s(`M${x + dx} ${y + 8}q${(r() - .5) * 6} ${len * .5} ${(r() - .5) * 4} ${len}`, Ld[0], 1.4, .9).f(B.ell(x + dx + (r() - .5) * 3, y + 8 + len, 2.4, 1.7), Ld[1], .9); }
     bank(ys + 10, ys + 64);
-    foot(arch.s, 18);
-    hoop(7, bark[3], 5.6); hoop(7, bark[1], 3.8); hoop(7, bark[2], 1.4);
-    for (let i = arch.pts.length - 8; i < arch.pts.length - 1; i++) { const [x, y] = arch.pts[i]; if (r() < .7) B.crown(r, x + 7 + (r() - .5) * 8, y, 8 + r() * 5, 6 + r() * 3, season, 3); }
+    foot(arch.s, 18); foot([arch.s[0] + GAP, arch.s[1]], 16);
+    // the near hoop, in front of the way: its post bare at the foot, leafed over the top
+    hoop(GAP, bark[3], 5.6); hoop(GAP, bark[1], 3.8); hoop(GAP, bark[2], 1.4);
+    for (let i = 2; i < n - 1; i += 3) { const [x, y] = arch.pts[i]; if (i > n * .2 && i < n * .8) continue; B.s(`M${x} ${y}L${x + GAP} ${y}`, bark[2], 1.6, .9); }
+    for (let i = 4; i < n - 3; i++) { const [x, y] = arch.pts[i], t = i / n, k = 1 - Math.abs(t - .5) * 1.7; if (k <= 0 || r() < .25) continue; B.crown(r, x + GAP + (r() - .5) * 6, y - 1, 6 + k * 6, 5 + k * 4, season, 3); }
+    for (let i = n - 7; i < n; i++) { const [x, y] = arch.pts[i]; if (r() < .6) B.crown(r, x + GAP + (r() - .5) * 6, y, 6 + r() * 4, 5 + r() * 2, season, 3); }
     if (snowy) for (let i = 2; i < arch.pts.length - 2; i += 2) { const [x, y] = arch.pts[i]; B.f(D().blob(r, x, y - 3, 6, 1.8, 6, .5), '#eef2f0', .9); }
     if (open) {
       // cut: the bramble's stubs either side of the way, a heap of cut canes pushed to the bank, flowers where it was
@@ -612,16 +629,24 @@ window.GardenPaintedProps = (function () {
    *  white flowers and berries, canes climbing the trunks. Something shears can cut. */
   function brambleSide(B, r, S, season) {
     const yn = -S - 6, ys = S, cane = ['#5e2e30', '#7a3e3a', '#8e5446'], leaf = season === 'autumn' ? ['#5a3a24', '#8a4a2a', '#a8602e'] : season === 'winter' ? ['#3e4636', '#545c46', '#6a5644'] : ['#24401e', '#34582a', '#4e7438'];
-    B.shadow(4, 4, 46, ys - yn, .22);
+    // (fix loop 1, west: the mound stood 48 px tall and 92 wide down the whole span, so from the lane it read as a column
+    // of berries filling the arch. It is a sprawling thicket now: low (it lies under the arch's crown, the opening shows
+    // over it), wide along the way, tapering into the grass at both ends with canes arching out over the path)
+    const WX = 64;
+    B.cx.save(); B.cx.translate(-18, 0);   // (it lies mostly on the shut side: the open lane's side stays walkable to its edge)
+    B.shadow(4, 4, WX + 8, ys - yn, .22);
     // a low dark mound of leaves first, so the canes arch out of it, not a stack of red strokes (round 3, first look)
-    for (let y = yn; y <= ys; y += 6) { const mid = 1 - Math.abs(y - (yn + ys) / 2) / ((ys - yn) / 2), h = 20 + mid * 22; B.f(D().blob(r, 0, y - h * .45, 36 + mid * 12, h * .55, 10, .4), leaf[0], .97).f(D().blob(r, -6, y - h * .62, 24 + mid * 8, h * .3, 9, .45), leaf[1], .9); }
+    for (let y = yn; y <= ys; y += 6) { const mid = 1 - Math.abs(y - (yn + ys) / 2) / ((ys - yn) / 2), h = 14 + mid * 14; B.f(D().blob(r, 0, y - h * .45, WX * .62 + mid * 16, h * .55, 10, .4), leaf[0], .97).f(D().blob(r, -6, y - h * .62, WX * .4 + mid * 10, h * .3, 9, .45), leaf[1], .9); }
     for (let y = yn; y <= ys; y += 4.2) {
-      const mid = 1 - Math.abs(y - (yn + ys) / 2) / ((ys - yn) / 2), h = 22 + mid * 26 + r() * 6;
-      if ((Math.round(y) & 3) < 2) { const k = Math.round(y) & 1, x0 = -46 + r() * 30, x1 = x0 + 34 + r() * 38, top = y - h * (.8 + r() * .5); B.s(`M${x0} ${y}Q${(x0 + x1) / 2} ${top} ${x1} ${y - 2 + r() * 4}`, cane[k], 1.3 + r() * .6, .9); for (let t = .2; t < .9; t += .2) { const px = x0 + (x1 - x0) * t, py = y + (top - y) * 4 * t * (1 - t) * .5; B.s(`M${px} ${py}l1.6 -1.4`, '#2a1618', .6, .9); } }
-      for (let k = 0; k < 6; k++) { const x = -42 + r() * 84, py = y - h * (.2 + r() * .75); for (let j = 0; j < 3; j++) { const a = -1.6 + j * 1.05 + (r() - .5) * .3; B.f(B.ell(x + Math.cos(a) * 3.6, py + Math.sin(a) * 2.6, 3.2, 2), leaf[(j + k) % 3], .97); } }
-      if (season !== 'winter' && r() < .7) { const x = -32 + r() * 64, py = y - h * (.4 + r() * .5); if (season === 'summer' || season === 'spring') B.f(B.circ(x, py, 1.8), '#f6f0f0').f(B.circ(x, py, .7), '#e8d070'); else B.f(B.circ(x, py, 1.9), '#1e1426').f(B.circ(x - .6, py - .6, .6), '#6a5a8a', .8); }
-      if (season === 'summer' && r() < .5) B.f(B.circ(-30 + r() * 60, y - h * (.3 + r() * .4), 1.7), r() < .5 ? '#b0283a' : '#2a1826');
+      const mid = 1 - Math.abs(y - (yn + ys) / 2) / ((ys - yn) / 2), h = 15 + mid * 16 + r() * 5;
+      if ((Math.round(y) & 3) < 2) { const k = Math.round(y) & 1, x0 = -WX - 4 + r() * 40, x1 = x0 + 40 + r() * 46, top = y - h * (.8 + r() * .5); B.s(`M${x0} ${y}Q${(x0 + x1) / 2} ${top} ${x1} ${y - 2 + r() * 4}`, cane[k], 1.3 + r() * .6, .9); for (let t = .2; t < .9; t += .2) { const px = x0 + (x1 - x0) * t, py = y + (top - y) * 4 * t * (1 - t) * .5; B.s(`M${px} ${py}l1.6 -1.4`, '#2a1618', .6, .9); } }
+      for (let k = 0; k < 7; k++) { const u = r() * 2 - 1, x = u * WX * .92, py = y - h * (1 - Math.abs(u) * .6) * (.2 + r() * .75); for (let j = 0; j < 3; j++) { const a = -1.6 + j * 1.05 + (r() - .5) * .3; B.f(B.ell(x + Math.cos(a) * 3.6, py + Math.sin(a) * 2.6, 3.2, 2), leaf[(j + k) % 3], .97); } }
+      if (season !== 'winter' && r() < .55) { const x = (r() - .5) * WX * 1.3, py = y - h * (.4 + r() * .5); if (season === 'summer' || season === 'spring') B.f(B.circ(x, py, 1.8), '#f6f0f0').f(B.circ(x, py, .7), '#e8d070'); else B.f(B.circ(x, py, 1.9), '#1e1426').f(B.circ(x - .6, py - .6, .6), '#6a5a8a', .8); }
+      if (season === 'summer' && r() < .5) B.f(B.circ((r() - .5) * WX * 1.2, y - h * (.3 + r() * .4), 1.7), r() < .5 ? '#b0283a' : '#2a1826');
     }
+    // long canes reaching out over the lane at both ends, rooting where they touch the ground
+    for (const s of [-1, 1]) for (let i = 0; i < 5; i++) { const y = yn + 8 + r() * (ys - yn - 16), x0 = s * WX * .6, x1 = s * (WX + 14 + r() * 18), top = y - 14 - r() * 10; B.s(`M${x0} ${y - 6}Q${(x0 + x1) / 2} ${top} ${x1} ${y + 1}`, cane[i % 3], 1.3, .9); B.f(B.ell(x1, y + 1, 2.6, 1.4), leaf[i % 3], .9); }
+    B.cx.restore();
     // canes climbing the arch's hoops from both feet and hanging off its crown over the way
     const A = archSide(S);
     for (let i = 0; i < A.pts.length - 1; i++) { if (r() < .35) continue; const [x0, y0] = A.pts[i], [x1, y1] = A.pts[i + 1]; B.s(`M${x0 + (r() - .5) * 6} ${y0}Q${(x0 + x1) / 2 + (r() - .5) * 14} ${(y0 + y1) / 2 + (r() - .5) * 10} ${x1} ${y1}`, cane[i % 3], 1.5, .9); if (r() < .5) B.f(B.ell(x0 + (r() - .5) * 8, y0 + (r() - .5) * 6, 3, 2), leaf[i % 3], .95); }
@@ -823,7 +848,7 @@ window.GardenPaintedProps = (function () {
     // the orchard stair's two dry-stone cheeks block walking where they are drawn: east of the leat you walked up onto
     // the wall (hunter, round 3). One box per course, as wide as the cheek's stones.
     if (kind === 'stair' && !side) { const sw = half * 1.55, dy = 52; for (const s of [-1, 1]) for (let row = 0; row < 7; row++) art.feet.push([s * (sw + 24), dy - 4 - row * 7.6, 44]); }
-    if (kind === 'arch' && side) { const yn = -art.S - 10, ys = art.S + 4, A = archSide(art.S); art.feet.push([A.n[0], A.n[1], 14], [A.s[0], A.s[1], 16]); for (let y = yn - 70; y <= yn - 18; y += 6) art.feet.push([0, y, 58]); for (let y = ys + 10; y <= ys + 64; y += 6) art.feet.push([0, y, 58]); }
+    if (kind === 'arch' && side) { const yn = -art.S - 10, ys = art.S + 4, A = archSide(art.S); art.feet.push([A.n[0], A.n[1], 14], [A.s[0], A.s[1], 16], [A.n[0] - 24, A.n[1], 12], [A.s[0] + 24, A.s[1], 14]);   /* (each hoop's posts: woodArchSide's GAP) */ for (let y = yn - 70; y <= yn - 18; y += 6) art.feet.push([0, y, 58]); for (let y = ys + 10; y <= ys + 64; y += 6) art.feet.push([0, y, 58]); }
     // the box of the drawing round the crossing's centre
     const box = kind === 'arch' && side ? [-120, -240, 120, 176] : (kind === 'arch' || kind === 'ruin') && side ? [-half * .85 - 90, -art.S - 200, half * .85 + 90, art.S + 30] : side ? [kind === 'bridge' ? -150 : -100, -170 - half * .9, kind === 'bridge' ? 150 : 100, kind === 'bridge' ? frame.span + 28 : half * .9 + 22] : [-half - 90, -200, half + 90, kind === 'stair' ? 60 : 24];
     const base = (B) => {

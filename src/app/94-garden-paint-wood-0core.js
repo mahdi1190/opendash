@@ -165,7 +165,12 @@ window.GardenPaintWood = (function () {
       const byOak = (x, y) => !!oakFoot && kitWood && Math.abs(x + .5 - oakFoot.x) < 6.8 && y + 1 - oakFoot.y > -9.5 && y + 1 - oakFoot.y < 3.6;
       // (the old woodland's planting rules: no crown over its court, yards, garden, maze, chapel step or the view across the pond)
       const treeless = (pres.oldwood && pres.oldwood.treeless || []).map(t => t.box);
-      const clear = (x, y) => plazas.some(p => Math.hypot((x - p.x) / ((p.rx || 3.2) + 1), (y - p.y) / ((p.ry || 2.4) + 1)) < 1) || treeless.some(b => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]);
+      // (fix loop 1, west: and no tree stands in a paved place's own shape, nor just below it where its crown would rise over
+      //  the paving: an oak four rows south of the Great Oak's clearing stood its faded crown over the whole clearing, a muddy
+      //  blob you walked about inside. By the shape the layout gives any place, not by name.)
+      const shaped = (pres.plazas || []).filter(p => Array.isArray(p.shape) && p.shape.length > 2).map(p => { let a = 1e9, b = 1e9, c = -1e9, d = -1e9; for (const [sx, sy] of p.shape) { a = Math.min(a, sx); b = Math.min(b, sy); c = Math.max(c, sx); d = Math.max(d, sy); } return { poly: p.shape, x0: a, y0: b, x1: c, y1: d }; });
+      const overPlace = (x, y) => shaped.some(s => x >= s.x0 - .6 && x <= s.x1 + .6 && (inside(x, y, s.poly) || y > s.y1 - .4 && y < s.y1 + 4.2));
+      const clear = (x, y) => plazas.some(p => Math.hypot((x - p.x) / ((p.rx || 3.2) + 1), (y - p.y) / ((p.ry || 2.4) + 1)) < 1) || treeless.some(b => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]) || overPlace(x, y + .5);
       // the gates stay in view: no tree stands on a gate, nor where its crown would hide the arch, bridge or stair (the canopy rises up the screen)
       // (in the old wood, a few rows past its arch, yews may stand two cells off the lane and lean over it: the Hush is a yew
       //  tunnel, its crowns fading as you walk under them; nearer the arch, and anywhere else, the gate stays clear)
@@ -295,6 +300,7 @@ window.GardenPaintWood = (function () {
           }
         }
       }
+      out.overPlace = overPlace;
       for (const [id, cells] of knots) knot(out, id, cells, px, py, region.id);
       // The outer edge of the wood (not a border shared with another painted wood) fades into the lawn instead of a ruled line.
       const edge = new Path2D(), others = (data.regions || []).filter(o => o !== region && WOODS[o.id]).map(o => o.polygons[0]);
@@ -486,7 +492,9 @@ window.GardenPaintWood = (function () {
     const spot = (yLo, yHi) => { for (let k = 0; k < 10; k++) { const cx = x0 + .12 + r() * (x1 - x0 + .76), cy = y0 + yLo + r() * (y1 - y0 + yHi - yLo); if (set.has(Math.floor(cx) + ',' + Math.floor(cy))) return [cx, cy]; } const c = cells[Math.floor(r() * cells.length)]; return [c[0] + .5, c[1] + .8]; };
     // (a tree in the knot, the big yew or beech at its back and the tall ones in it, has a trunk the feet stop at, like every
     //  other painted tree: walked through, they were the audit's walk-through trees in the woods; round 3 integration)
-    const put = (s, cx, cy) => { const kit = kitOf(s[0]), h = typeof s[1] === 'string' ? sz(s[1], s[2], s[3]) : s[1] + r() * (s[2] - s[1]), X = px(cx), Y = py(cy), GW = GARDEN_WORLD;
+    const put = (s, cx, cy) => { const kit = kitOf(s[0]), h0 = typeof s[1] === 'string' ? sz(s[1], s[2], s[3]) : s[1] + r() * (s[2] - s[1]), X = px(cx), Y = py(cy), GW = GARDEN_WORLD;
+      // (fix loop 1, west: a knot just below a paved place grows only low trees, so no crown rises over the paving)
+      const h = kit && out.overPlace && out.overPlace(cx, cy) ? Math.min(h0, 62) : h0;
       const F = kit && window.GardenPaintTrees && GardenPaintTrees.form ? GardenPaintTrees.form(kit) : null, half = kit ? Math.max(4, Math.min(13, h * ((F && F.girth) || .08) * .75)) : 0;
       const trunk = kit && h >= 50 ? { x0: (X - half) / GW.cellW, x1: (X + half) / GW.cellW, y0: (Y - 6 - GW.sky) / GW.cellH, y1: (Y + 1 - GW.sky) / GW.cellH } : null;
       out.trees.push({ id: s[0], kit, v: Math.floor(r() * 3), size: 0, h: kit ? Math.round(h) : Math.round(h / 6) * 6, x: X, y: Y, flip: r() < .5, scale: kit ? 1 : .88 + r() * .3, region, cx: Math.floor(cx), cy: Math.floor(cy), thicket: true, trunk }); };

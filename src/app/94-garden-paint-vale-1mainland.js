@@ -172,10 +172,14 @@
       // (layout fix, north) the west bank lies over the mainland, thinning to nothing a cell inside the island, its inner edge
       // wandering in soft lobes (a straight gradient five cells deep stood over the woods as a pale band with the trees cut
       // at a ruled line, and over you when you walked the west edge)
-      C.thing({ key: 'mainland-haze-w', x: 0, y: rows, depth: 89990, K: .25, box: [-340, -rows - 800, 140, 0], draw: B => { const r = kit.rng(5303);
-        B.f(B.rect(-340, -rows - 800, 300, rows + 800), B.lin(-340, 0, -40, 0, [[0, haze], [.35, hz(.42)], [1, hz(.3)]]));
-        for (let y = -rows - 800; y < 40; y += 70 + r() * 60) { const rx = 70 + r() * 70, ry = 90 + r() * 80, x = -40 + (r() - .3) * 50;
-          B.cx.save(); B.cx.translate(x, y); B.cx.scale(1, ry / rx); B.cx.fillStyle = B.rad(0, 0, rx, [[0, hz(.3)], [.6, hz(.16)], [1, haze]]); B.cx.beginPath(); B.cx.arc(0, 0, rx, 0, Math.PI * 2); B.cx.fill(); B.cx.restore(); } } });
+      // (fix loop 1, west: the pale bank read from the overview as a blurred orange-brown smear down the whole west edge, the map
+      // ending in fog. It is the deep wood's shade now: the mainland's trees go into dark under-canopy westwards, its inner
+      // edge wandering in lobes over the island's own edge, so the woods run on into the dark of a bigger forest)
+      const deep = a => kit.rgba('#22301c', a);
+      C.thing({ key: 'mainland-haze-w2', x: 0, y: rows, depth: 89990, K: .25, box: [-340, -rows - 800, 140, 0], draw: B => { const r = kit.rng(5303);
+        B.f(B.rect(-340, -rows - 800, 340, rows + 800), B.lin(-340, 0, 0, 0, [[0, deep(.72)], [.55, deep(.56)], [.82, deep(.34)], [.95, deep(.12)], [1, deep(0)]]));
+        for (let y = -rows - 800; y < 40; y += 60 + r() * 50) { const rx = 50 + r() * 60, ry = 70 + r() * 70, x = -60 + (r() - .4) * 60;
+          B.cx.save(); B.cx.translate(x, y); B.cx.scale(1, ry / rx); B.cx.fillStyle = B.rad(0, 0, rx, [[0, deep(.22)], [.6, deep(.1)], [1, deep(0)]]); B.cx.beginPath(); B.cx.arc(0, 0, rx, 0, Math.PI * 2); B.cx.fill(); B.cx.restore(); } } });
       // the north bank stays above the island's top row (over the far fells and the summits of the range), gone by the range's foot
       C.thing({ key: 'mainland-haze-n', x: 0, y: W.sky + 40, depth: 89991, K: .2, box: [-2400, -1400, W.cols * cw + 2400, 0], draw: B => { B.f(B.rect(-2400, -1400, W.cols * cw + 4800, 1400), B.lin(0, -1400, 0, 0, [[0, haze], [.55, hz(.24)], [.82, hz(.28)], [1, haze]])); } });
     }

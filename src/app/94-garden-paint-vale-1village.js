@@ -737,6 +737,11 @@
       const routeNear = (x, y) => { for (const [dx, dy] of [[0, 0], [.6, 0], [-.6, 0], [0, .5], [0, -.5]]) { const k = L.kind(x + dx, y + dy); if (k !== 'grass') return true; } return false; };
       const behind = (x, y) => (D.static || []).some(p => p.rearEnvelope && x > p.rearEnvelope.x - .8 && x < p.rearEnvelope.x + p.rearEnvelope.w + .8 && y > p.rearEnvelope.y - .5 && y < p.rearEnvelope.y + p.rearEnvelope.h + 1.2);
       const fieldNear = (x, y) => { for (const [dx, dy] of [[0, 0], [.7, 0], [-.7, 0], [0, .6]]) if (L.plot(x + dx, y + dy) || fieldOfCell().has(Math.floor(x + dx) + ',' + Math.floor(y + dy))) return true; return false; };
+      // (fix loop 1, west) a gate stays in view: no belt tree within a few strides of any gate's way or the ground in front of
+      // it (two chestnuts by the forest arch faded to smoky blobs over the arch and you at the default camera)
+      const gateWays = (D.gates || []).map(g => [...(g.crossSpan || [[g.x, g.y]]), [g.x, g.y], g.door ? [g.door.x, g.door.y] : [g.x, g.y]]);
+      // (and no crown reaches up over it from in front: a tall birch south of the arch stood its faded crown over the way)
+      const gateNear = (x, y, h) => gateWays.some(pts => pts.some(([gx, gy]) => Math.hypot(x - gx, (y - gy) * 1.2) < 4.2 || Math.abs(x - gx) < 4.5 && y > gy && y - gy < h * 1.1 / ch + 1));
       const placed = [], season = C.season, lime = green && green.lime;
       if (lime) placed.push([lime.x, lime.y]);
       BELTS.forEach((b, bi) => {
@@ -745,7 +750,7 @@
         for (let tries = 0; tries < b.n * 6 && made < b.n; tries++) {
           let s = rr() * tot, q = null; for (const [a, c, l] of segs) { if (s <= l) { const t = s / l; q = [a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * t]; break; } s -= l; } if (!q) continue;
           const x = q[0] + (rr() - .5) * (b.jit || 1.6), y = q[1] + (rr() - .5) * 1.2, sp = b.sp[Math.floor(rr() * b.sp.length)], v = Math.floor(rr() * 3), h = Math.round((b.h[0] + rr() * (b.h[1] - b.h[0])) / 15) * 15;
-          if (!L.free(x, y) || routeNear(x, y) || fieldNear(x, y) || behind(x, y) || placed.some(([px, py]) => Math.hypot((px - x) * 1, (py - y) * 1.5) < 2)) continue;
+          if (!L.free(x, y) || gateNear(x, y, h) || routeNear(x, y) || fieldNear(x, y) || behind(x, y) || placed.some(([px, py]) => Math.hypot((px - x) * 1, (py - y) * 1.5) < 2)) continue;
           placed.push([x, y]); made++;
           const p = L.cpt(x, y), key = 'vtree-' + sp + '-' + v + '-' + h + '|' + season, F = { birch: [.24, .38, .6], alder: [.27, .4, .58], oak: [.46, .33, .6], chestnut: [.38, .37, .6], hawthorn: [.4, .3, .52] }[sp] || [.4, .35, .6], TK = 1.3;
           add([p.x - h * .7, p.y - h * .3, p.x + h * .9, p.y + h * .35], kit.hashStr('vtree-shade|' + bi + '|' + made), B2 => { V.ok(() => GardenPaintTrees.groundShadow(B2.cx, p.x, p.y, h, { species: sp, season })); });

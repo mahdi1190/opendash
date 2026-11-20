@@ -187,7 +187,10 @@
     // the rope while the land beyond is shut: drawn when the ground is baked, from what is open then (the ground bakes again
     // when a region opens: the key below)
     const lockedAt = (x, y) => { try { return String(gardenAreaAt(Math.floor(x), Math.floor(y), (gardenModel().level || {}).level || 1)).startsWith('locked:zn-'); } catch (e) { return false; } };
-    const plotAt = (x, y) => { const r = typeof gardenLandCell === 'function' ? gardenLandCell(Math.floor(x), Math.floor(y)) : null; return !!(r && r.plot); };
+    const plotAt = (x, y) => { const r = typeof gardenLandCell === 'function' ? gardenLandCell(Math.floor(x), Math.floor(y)) : null; if (!(r && r.plot)) return false;
+      // (fix loop 1, west: a shut plot in a wood is drawn as a thicket knot on its own cells, not a fence along its edge, so
+      //  the rope still runs there: on the cove beach the feet stopped at a shut field's edge with open sand drawn on it)
+      const rg = typeof gardenIslandRegionAt === 'function' ? gardenIslandRegionAt(x, y) : null; return !(rg && window.GardenPaintWood && GardenPaintWood.thicketWood && GardenPaintWood.thicketWood(rg.id)); };
     const roped = lines.map(pts => pts.filter(p => p && p.k !== 'sea' && p.k !== 'water' && p.d < 9 * cw));
     roped.forEach((pts, li) => { if (pts.length < 3) return; const bb = kit.bboxOf(pts, 40);
       add(bb, 52, (B) => {
