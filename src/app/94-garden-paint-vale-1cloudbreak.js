@@ -55,9 +55,9 @@
     for (let k = 0; k < 9; k++) { const a = (k / 9 - .5) * 2.6; slab(B, r, Math.sin(a) * half * 1.1, 2 + Math.cos(a) * 2 + r() * 2, 6 + r() * 8, 2.6 + r() * 2, snowy); }
     // the heap: a rounded silhouette in shade, then stones of every size laid into it from the top down, so the lower ones
     // overlap those above (a heap, not courses in steps)
-    const prof = y => half * Math.pow(Math.max(0, 1 - Math.pow(-y / h, 1.6)), .7);
-    { const pts = []; for (let k = 0; k <= 16; k++) { const y = -h * k / 16; pts.push([prof(y) + 1, y]); } for (let k = 16; k >= 0; k--) { const y = -h * k / 16; pts.unshift([-prof(y) - 1, y]); } B.f(B.poly(pts), '#5a5244'); }
-    const n = Math.round(h * half / 26), st = []; for (let k = 0; k < n; k++) { const y = -h * Math.pow(r(), .9) * .97, w = prof(y); st.push([(r() * 2 - 1) * w * .92, y]); }
+    const prof = y => half * Math.pow(Math.max(0, 1 - Math.pow(-y / h, 1.25)), .85);
+    { const pts = []; for (let k = 0; k <= 16; k++) { const y = -h * k / 16; pts.push([prof(y) + 1, y]); } for (let k = 16; k >= 0; k--) { const y = -h * k / 16; pts.unshift([-prof(y) - 1, y]); } B.f(B.poly(pts), '#8a8272'); }
+    const n = Math.round(h * half / 17), st = []; for (let k = 0; k < n; k++) { const y = -h * Math.pow(r(), .9) * .97, w = prof(y); st.push([(r() * 2 - 1) * w, y]); }
     st.sort((a, b) => a[1] - b[1]);
     for (const [x, y] of st) { const sz = 1 - (-y / h) * .45; slab(B, r, x, y + 3, (7 + r() * 9) * sz, (3.2 + r() * 3.4) * sz, snowy); }
     const rh = 7;
