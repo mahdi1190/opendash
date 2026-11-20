@@ -254,8 +254,9 @@
     // (feat/art3-highlands paints its own march wall in the fells painter; when that lands, this run is dropped: set window.__fellsMarchWall)
     if (!window.__fellsMarchWall) {
       let x0 = null, x1 = null; for (let x = 0; x < W_COLS(C); x++) { const b = L.base(x + .5, 0); const ok2 = b && b.land && !b.freshwater && (b.zone === undefined || b.zone === 5); if (ok2) { if (x0 === null) x0 = x; x1 = x + 1; } else if (x0 !== null) break; }
-      if (x0 !== null) { const wpx = (x1 - x0) * L.cw, p = L.cpt((x0 + x1) / 2, .55);
-        thing({ key: 'march-wall|' + C.season, x: p.x, y: p.y, K: 1, box: [-wpx / 2 - 4, -H9 - 6, wpx / 2 + 6, 8], foot: [-wpx / 2, wpx / 2, 14], draw: B => wallRun(B, kit.rng(990), wpx, 0, H9, snowy) }); }
+      // (in runs of six cells, each its own picture and foot: one picture the whole width took 122 ms to make, a long task while you walked)
+      if (x0 !== null) for (let a0 = x0; a0 < x1; a0 += 6) { const a1 = Math.min(x1, a0 + 6), wpx = (a1 - a0) * L.cw, p = L.cpt((a0 + a1) / 2, .55);
+        thing({ key: 'march-wall-' + a0 + '|' + C.season, x: p.x, y: p.y, K: 1, box: [-wpx / 2 - 4, -H9 - 6, wpx / 2 + 6, 8], foot: [-wpx / 2, wpx / 2, 14], draw: B => wallRun(B, kit.rng(990 + a0), wpx, 0, H9, snowy) }); }
     }
     // Wick's steps (the plan's shortcut B): a flight of rough rock steps where the cove path drops to the shingle, the
     // bottom three slabs slipped and lying askew on the shingle
