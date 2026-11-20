@@ -1261,6 +1261,16 @@ window.GardenNativeWorld = (function () {
         if (crown.faded !== covered || Math.abs(crown.node.target.alpha - alpha) > .0001) { crown.faded = covered; crown.node.target.setAlpha(alpha); }
         if (covered) coveringCanopies.push(crown.id);
       }
+      // (moves, round 5) while you do something the figure is the picture: whatever has faded because you are behind it (a crown, a rock, a painted canopy)
+      // is drawn under you, so a see-through crown or trunk never lies over the figure and washes it out. Hiding is the one move that wants the tree in front.
+      const doing = typeof gartActBusy === 'function' && gartActBusy() && !(_ga.cur && _ga.cur.row && _ga.cur.row.hideBehind);
+      if (doing) {
+        let top = y + .001;
+        for (const record of fadingProps) if (record.behind && record.root && Number.isFinite(record.root.depth)) top = Math.max(top, record.root.depth + .002);
+        for (const crown of canopyOccluders) if (crown.faded && Number.isFinite(crown.record.depth)) top = Math.max(top, crown.record.depth + .002);
+        for (const im of externalCanopies) if (Number.isFinite(im.depth)) top = Math.max(top, im.depth + .002);
+        if (top !== y + .001) playerNode.target.setDepth(top);
+      }
     }
     function restoreCanopyAlpha() { for (const crown of canopyOccluders) { if (crown.node.target.active) crown.node.target.setAlpha(crown.normalAlpha); crown.faded = false; } coveringCanopies.length = 0; externalCanopies.length = 0; silhouetteVisible = false; xray.target.setVisible(false); }
     function silhouetteBody(source, body) {

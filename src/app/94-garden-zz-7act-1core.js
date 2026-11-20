@@ -262,7 +262,8 @@ function _gaMyFigure() {
 function _gaTick(now) {
   const cur = _ga.cur, fx = cur.row.fx; if (!fx || !window.GardenNativeActions || !_gaMotion()) return;
   const t = now - cur.t0, W = GARDEN_WORLD, deg = _gaDirDeg(cur.row, cur.spot) * Math.PI / 180;
-  const at = (k) => GardenNativeActions.effect(fx.kind, (_gw.px + Math.cos(deg) * 0.7) * W.cellW, W.sky + (_gw.py + Math.sin(deg) * 0.5 + (fx.dy || 0)) * W.cellH + k, { width: fx.width || 24 });
+  const sp = fx.spot && cur.spot && Number.isFinite(cur.spot.x) ? cur.spot : null;   // (fixed to the thing used: the pump's spout)
+  const at = (k) => sp ? GardenNativeActions.effect(fx.kind, (sp.x + fx.spot[0]) * W.cellW, W.sky + (sp.y + fx.spot[1]) * W.cellH + k, { width: fx.width || 24 }) : GardenNativeActions.effect(fx.kind, (_gw.px + Math.cos(deg) * 0.7) * W.cellW, W.sky + (_gw.py + Math.sin(deg) * 0.5 + (fx.dy || 0)) * W.cellH + k, { width: fx.width || 24 });
   if (fx.every) { if (t - cur.fxT > fx.every) { cur.fxT = t; at(cur.fxI++ % 3); } }
   else if (fx.at && cur.fxI < fx.at.length && t > fx.at[cur.fxI] * cur.row.ms) { at(cur.fxI); cur.fxI++; }
 }
@@ -437,7 +438,7 @@ function gartActSetDown() {
  * is then in its mouth) and trots back to drop it at your feet; the throw lasts until it is back (or 14 s for a pet that will not fetch). */
 const GA_STICK_LAND = 0.76;   // when the stick lands, a share of the throw (the stickfly prop's flight)
 function _gaFetch(cur) {
-  const deg = _gaDirDeg(cur.row, cur.spot) * Math.PI / 180, x = _gw.px + Math.cos(deg) * 1.6 + 1.5, y = _gw.py + Math.sin(deg) * 1.5 + 0.1;   // (round 4: out to one side in front, near enough to see it land, fetched and brought back)
+  const deg = _gaDirDeg(cur.row, cur.spot) * Math.PI / 180, x = _gw.px + Math.cos(deg) * 1.1 + 1.5, y = _gw.py + Math.sin(deg) * 0.6 + 0.1;   // (round 5: a shorter throw, so you see it land, picked up and brought back)   // (round 4: out to one side in front, near enough to see it land, fetched and brought back)
   _ga.fetch = { x, y, phase: 'wait', t0: performance.now(), cur };
   setTimeout(() => { if (_ga.cur === cur) gartActStop(true); }, 14000);   // a pet that will not fetch: the throw still ends
 }
@@ -452,6 +453,23 @@ function _gaFetchDraw() {
   const S = typeof GW_SCALE === 'number' ? GW_SCALE : 0.592, W = GARDEN_WORLD, flip = f.flip || 1, ms = cur.row.ms, t = (performance.now() - f.playT) / ms;
   const U = (wx, wy) => [(wx - _gw.px) * W.cellW / S * flip, (wy - _gw.py) * W.cellH / S];   // cells -> the figure's units
   let x, y, r = 0;
+  // (round 5) once it leaves your hand the stick is a thing of the world, not of your figure: drawn with the figure it was cut off by the
+  // figure's own frame, so it vanished in the air and was never seen in the grass. Flying and lying, it is its own sprite; in your hand and in the pet's mouth, part of you.
+  const loose = (f.phase === 'wait' || f.phase === 'out') && (!_gaMotion() || t >= 0.32);
+  if (loose && !f.spr && typeof gardenWorldAdd === 'function') {
+    const A = typeof GARDEN_ACTOR_SCALE === 'number' ? GARDEN_ACTOR_SCALE : 1;
+    try {
+      f.spr = gardenWorldAdd({ id: 'ga-stick', x: f.x, y: f.y, z: f.y, lift: 0, ground: false, svg: `<g transform="scale(${A})">${_GA_MOUTH_STICK}</g>`,
+        update(dt, Sp) {
+          if (_ga.fetch !== f || f.phase === 'back' || f.phase === 'home') { f.spr = null; Sp.remove(); return; }
+          const tt = (performance.now() - f.playT) / ms, R0 = 0.32, k = !_gaMotion() ? 1 : Math.max(0, Math.min(1, (tt - R0) / (GA_STICK_LAND - R0)));
+          const hx = _gw.px + 8 * S / W.cellW * flip, hy = _gw.py + 0.02;
+          Sp.x = hx + (f.x - hx) * k; Sp.y = hy + (f.y - hy) * k; Sp.z = Sp.y + 0.02;
+          Sp.lift = k >= 1 ? 1 : (72 * S) * (1 - k) + 90 * S * Math.sin(Math.PI * k);
+        } });
+    } catch (e) { f.spr = null; }
+  }
+  try { f.mouth.setAttribute('opacity', loose && f.spr ? '0' : '1'); } catch (e) { /* fine */ }
   if (f.phase === 'back' || f.phase === 'home') {
     let P = null; try { P = gpPetMe(); } catch (e) { P = null; } if (!P) return;
     const face = (P.visualFace != null ? P.visualFace : P.dir) < 0 ? -1 : 1, sat = f.phase === 'home', q = U(P.x, P.y);
@@ -459,7 +477,7 @@ function _gaFetchDraw() {
   } else {
     const R = 0.32, L = GA_STICK_LAND, hand = [8, -72], land = U(f.x, f.y);
     if (!_gaMotion() || t >= L) { x = land[0]; y = land[1] - 1.5; r = 8; }
-    else if (t < R) { const k = t / R; x = hand[0] - 14 * Math.sin(k * Math.PI / 2); y = hand[1] + 30 - 30 * k; r = -40 - 60 * k; }   // (back over the shoulder as the arm winds up)
+    else if (t < R) { const k = t / R; x = hand[0] + 10 + 4 * Math.sin(k * Math.PI / 2); y = hand[1] + 26 - 22 * k; r = -30 - 50 * k; }   // (back over the shoulder as the arm winds up)
     else { const k = (t - R) / (L - R); x = hand[0] + (land[0] - hand[0]) * k; y = hand[1] + (land[1] - hand[1]) * k - 90 * Math.sin(Math.PI * k); r = -100 + 760 * k; }
   }
   try { f.mouth.setAttribute('transform', `translate(${Math.round(x * 10) / 10} ${Math.round(y * 10) / 10}) rotate(${Math.round(r)})`); } catch (e) { /* gone */ }
