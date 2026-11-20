@@ -849,10 +849,10 @@
           const g2 = _gwGrid(gardenHere(), true), zoneOf = (x, y) => { const a = String(gardenAreaAt(x, y, lvl)); return /^locked:zn-/.test(a) ? a.slice(7) : ''; };
           _gw.px = start.x; _gw.py = start.y; const reach2 = _gwReach(); closed.zones++;
           // nobody gets in: no cell of the closed region can be reached, and none lets the feet stand
-          const leak = new Set(); let cellsIn = 0;
+          const leak = new Set(); let cellsIn = 0; const fieldCells = new Set(); for (const ff of _gwFieldForms()) for (const c of ff.cells) fieldCells.add(c[1] * W.cols + c[0]);
           for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
             if (zoneOf(x, y) !== z) continue; cellsIn++;
-            if (reach2[y * W.cols + x] || !g2.hard[y * W.cols + x] || free(x + .5, y + .5)) leak.add(x + ',' + y);
+            if (reach2[y * W.cols + x] || !g2.hard[y * W.cols + x] && !fieldCells.has(y * W.cols + x) || free(x + .5, y + .5)) leak.add(x + ',' + y);   // (vale final: a shut field's cells are not hard by design, its painted outline stops the feet: _gwBuildGrid fieldShut; it leaks only if reached or stood on)
             for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < W.cols && ny < W.rows && !zoneOf(nx, ny) && reach2[ny * W.cols + nx]) { closed.edgeCells++; break; } }
           }
           if (!cellsIn) push({ kind: 'closed-edge', obj: 'closed region', name: z + ' has no cells when shut', x: start.x, y: start.y, detail: 'shutting this region closes nothing' });

@@ -857,7 +857,7 @@ function _gwCrossingSteer(ux, uy, step) {
  * `want` ('x' or 'y') asks for that kind only: _gwMoveBy keeps to the kind it took the frame before while it lasts.
  */
 function _gwGiveSlide(x0, y0, dx, dy, want) {
-  const W = GARDEN_WORLD, vx = dx * W.cellW, vy = dy * W.cellH, sp = Math.hypot(vx, vy), maxGive = Math.max(3, sp * 1.6);
+  const W = GARDEN_WORLD, vx = dx * W.cellW, vy = dy * W.cellH, sp = Math.hypot(vx, vy), maxGive = Math.max(6, sp * 2.4);   // (vale final: a give of a few px whatever the pace: at the planted walk's slower 150 px a second, 1.6 steps was under 4 px and 270 slanted edges stopped a diagonal press dead)
   const open = (px, py) => _gwFree(x0 + px / W.cellW, y0 + py / W.cellH);
   // the first way on of each kind (its smallest give, so the one that goes furthest the way you press)
   const best = [null, null];
