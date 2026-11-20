@@ -61,8 +61,10 @@ function _gaStaticRows() {
     // a part (a ladder up a lighthouse) and its stand point are on the thing as its painter drew it (gardenAffordDrawnBase), the same place
     // the part is drawn; the rest on the drawn foot
     const onFoot = gardenKindSpots({ kind: t.kind, x: foot.x, y: foot.y, w: t.w, front: t.front }), DB = t.static && K.acts.some(a => a.at) ? gardenAffordDrawnBase(t) : null, onDrawn = DB ? gardenKindSpots({ kind: t.kind, x: DB.x, y: DB.y, w: DB.w, front: t.front }) : onFoot;
+    // (a seat on a part of the drawing, the log against a stump: across as drawn, and down at the drawn foot, where the picture meets the ground)
+    const onSeat = DB && K.acts.some(a => a.at && a.seat != null) ? gardenKindSpots({ kind: t.kind, x: DB.x, y: foot.y, w: DB.w, front: t.front }) : null;
     onFoot.forEach((s0, i) => {
-      const s = s0.at ? onDrawn[i] : s0;
+      const s = s0.at ? (s0.seat != null && onSeat ? onSeat[i] : onDrawn[i]) : s0;
       if (!gardenKindNeedsOk(s.needs, ctx)) return;
       if (s.pierEnd) {   // the end of the pier as far as it is built today (one for the whole pier, whichever of its boards is found)
         if (once.has('pier-end:' + s.act) || typeof _gardenPierDecksNow !== 'function') return; once.add('pier-end:' + s.act);

@@ -49,7 +49,7 @@ const GARDEN_KINDS = Object.freeze({
   swing: { name: 'the swing', decor: ['swing-seat'], words: ['swing'], acts: [{ act: 'sit', stand: [0, 0.06], deg: 90, seat: 0.45 }], pet: 'swing' },
   hammock: { name: 'the hammock', decor: ['hammock'], words: ['hammock'], acts: [{ act: 'sit', stand: [0, 0.06], deg: 90, seat: 0.45 }], pet: 'swing' },
   picnic: { name: 'the picnic rug', arts: ['picnic'], words: ['picnic'], pet: 'bench', top: 22, petSeat: 22 },
-  stump: { name: 'the stump', arts: ['stump'], words: ['stump'], acts: [{ act: 'sit', stand: [-0.1, 0.45], deg: 90, seat: 0.9 }], pet: 'stump', top: 24, petSeat: 24 },   // up on the top, legs down the front
+  stump: { name: 'the stump', arts: ['stump'], words: ['stump'], acts: [{ act: 'sit', at: [-0.38, 0], drawn: false, stand: [-0.38, -0.02], deg: 90, seat: 0.5 }], pet: 'stump', top: 24, petSeat: 24 },   // on the fallen log its painter lays against the stump's left side (u: a share of the stump as drawn), legs down its front
   'log-seat': { name: 'the log', art: 'logseat', place: true, w: 1.8, h: 0.4, acts: [{ act: 'sit', stand: [-0.25, 0.12], deg: 90, seat: 0.42 }, { act: 'sit', stand: [0.25, 0.12], deg: 90, seat: 0.42 }], pet: 'stump', solid: 'block' },   // a log laid by a fire to sit on
   'log-pile': { name: 'the log pile', decor: ['log-pile', 'rw-orn-logs'], words: ['logpile', 'logstack', 'woodpile', 'logs'], pet: 'stump' },
   /* water you work, wish in or drink from */
