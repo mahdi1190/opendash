@@ -180,7 +180,9 @@
     for (const i of segs) {
       const p = C2[i], q = C2[i + 1], L = Math.hypot(q.x - p.x, q.y - p.y) || 1, nx = -(q.y - p.y) / L * T, ny = (q.x - p.x) / L * T * .6, h0 = H[i], h1 = H[i + 1];
       const foot = [{ x: p.x + nx, y: p.y + ny }, { x: q.x + nx, y: q.y + ny }, { x: q.x - nx, y: q.y - ny }, { x: p.x - nx, y: p.y - ny }], hs = [h0, h1, h1, h0];
-      const up = (v, k) => ({ x: v.x - hs[k] * .32, y: v.y - hs[k] });   // a touch of oblique, so walls running north-south show their east face
+      // a touch of oblique, so walls running north-south show their east face; more the more north-south the stretch runs
+      // (critic 3: the postern wall, running north-south, leant a third of its height and read as a flat line of low stones)
+      const lean = .32 + .3 * Math.abs(q.y - p.y) / L, up = (v, k) => ({ x: v.x - hs[k] * lean, y: v.y - hs[k] });
       for (let e = 0; e < 4; e++) {
         if ((e === 1 && i < C2.length - 2) || (e === 3 && i > 0)) continue;   // the ends between two stretches are inside the wall
         const v0 = foot[e], v1 = foot[(e + 1) % 4], ex = v1.x - v0.x, ey = v1.y - v0.y, onx = ey, ony = -ex;   // outward normal for a clockwise loop

@@ -343,6 +343,7 @@ const storyAnchors = {
   'ld-ruined-arch': { x: 19.5, y: 67, of: 'island-ruins' }, 'ld-falls-cave': { x: 42.2, y: 26.4, of: 'fleet-falls' }, 'ld-lamp-room': { x: 61.5, y: 83.6, of: 'ld-lighthouse' },
   'ld-mill-office': { x: 76.5, y: 64.6, of: 'ld-mill' }, 'ld-hothouse': { x: 40.5, y: 65.6, of: 'lc-glasshouse' }, 'ld-terrace-bench': { x: 48.9, y: 43.6, of: 'lakeside-terrace' },
   'lc-the-green': { x: 49.7, y: 51.9, of: 'the-green' },   // (fix round 1: on the open lawn beside the sundial, not in front of it)
+  'ld-hollin-yard': { x: 15.05, y: 78.5, of: 'ld-woodhut' },   // (layout round 3, critic 3: Hollin works in his yard between the door and the log store; he stood in his own doorway, over the wall and the door)
   'ld-quince': { x: 24.4, y: 71.5, of: 'ruins-pond' },   // (quince's brook: the old woodland pond past the ruined arch, out of sight of Hollin's hut)   // (the stories mean the village green, not the land section of that name)
 };
 
