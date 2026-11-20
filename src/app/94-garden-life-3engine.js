@@ -314,7 +314,8 @@ function _glCanLand(c, W, p) { const v = W.view(); return W.find(p.on).some(o =>
 function _glInView(pt, v, m) { return pt.x > v.x0 - m && pt.x < v.x1 + m && pt.y > v.y0 - m && pt.y < v.y1 + m; }
 function _glPickSurface(c, W, p) {
   const v = W.view(), m = c.def.start === 'in-place' && !c.t ? 2 : 3;
-  const cand = W.find(p.on).filter(o => _glInView(o.top, v, m) && _glInReach(c, o, p) && (W.taken.get(o.uid) || 0) < _glCap(o));
+  const busy = typeof gartActBusy === 'function' && gartActBusy() && typeof _gw !== 'undefined';   // (round 4: never on to the thing you are using, nor on you)
+  const cand = W.find(p.on).filter(o => _glInView(o.top, v, m) && _glInReach(c, o, p) && (W.taken.get(o.uid) || 0) < _glCap(o) && !(busy && Math.hypot(o.top.x - _gw.px, (o.top.y - _gw.py) * 1.3) < 2.6));
   if (!cand.length) return null;
   // nearer is likelier, not certain: they don't all pile onto the first thing they see
   cand.sort((a, b) => _glDist(a.top.x, a.top.y, c.S.x, c.S.y) - _glDist(b.top.x, b.top.y, c.S.x, c.S.y));
@@ -474,6 +475,7 @@ function _glStep(c, dt, W) {
   if (c.greeted > 0) c.greeted -= dt;
   if (c.reacting > 0) { c.reacting -= dt; if (c.reacting <= 0) { _glClip(c, c.after || 'rest'); c.after = ''; } }
   if (c.alarm) { c.alarm.t -= dt; if (c.alarm.t <= 0) { const a = c.alarm; c.alarm = null; _glScareOne(c, W, a.x, a.y); } }
+  if (!(c.scared > 0) && c.S && typeof gartActBusy === 'function' && gartActBusy() && typeof _gw !== 'undefined' && Math.hypot(c.S.x - _gw.px, (c.S.y - _gw.py) * 1.3) < 2.4) _glScareOne(c, W, _gw.px, _gw.py);   // (round 4, the moves) while you do something, birds and butterflies keep off you and what you are using
   if (c.hop) { _glHopStep(c, W, dt); if (c.hop) return; }   // a hop always finishes: behaviours only ever see it on the ground
   if (c.reacting > 0) return;
   // reflexes first: they interrupt anything

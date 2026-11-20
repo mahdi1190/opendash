@@ -116,6 +116,7 @@ function gartActFrame() {
     if (cur.row.rubPet) _gaRubTick(cur);
     if (cur.row.fetch) _gaFetchDraw();
   }
+  if (!_ga.carry) _gaCarriedSweep(false);
   if (now - _ga.t < 200) { if (_ga.near && _ga.el && !_ga.el.hidden) _gaPlace(); return; }
   _ga.t = now;
   const el = _gaPromptEl(); if (!el) return;
@@ -180,7 +181,8 @@ function gartActPlay(gpl, id, o) {
     if (row.prop === 'ducks') _gaDucks(g, H, motion, row.ms);
     if (row.skim) _gaSkimFly(g, H, motion, row.ms, o.skips || 3);
     if (row.bow && motion) { const bw = g.querySelector('.ga-bow'); if (bw) H.timers.push(setTimeout(() => { try { H.panims.push(gardenVisualAnimate(bw, [{ offset: 0, transform: 'translate(4px,3px)' }, { offset: 0.5, transform: 'translate(-5px,-4px)', easing: 'ease-in-out' }, { offset: 1, transform: 'translate(4px,3px)' }], { duration: 900, iterations: Infinity, easing: 'ease-in-out' })); } catch (e) { /* the bow rests */ } }, row.ms)); }   // the bow saws along its length, with the arm
-    if (row.prop === 'swimwater') { if (motion) { try { H.panims.push(gardenVisualAnimate(g, [{ offset: 0, opacity: 0 }, { offset: 0.2, opacity: 0 }, { offset: 0.42, opacity: 1 }, { offset: 1, opacity: 1 }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* shows at once */ } } }
+    if (row.prop === 'swimwater' && motion) { const wd = g.querySelector('.ga-wade'); if (wd) try { H.panims.push(gardenVisualAnimate(wd, [{ offset: 0, opacity: 0 }, { offset: 0.06, opacity: 1 }, { offset: 0.3, opacity: 1 }, { offset: 0.4, opacity: 0 }, { offset: 1, opacity: 0 }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* no wading ring */ } }
+    if (row.prop === 'swimwater') { if (motion) { try { H.panims.push(gardenVisualAnimate(g.querySelector('.ga-swim') || g, [{ offset: 0, opacity: 0 }, { offset: 0.2, opacity: 0 }, { offset: 0.42, opacity: 1 }, { offset: 1, opacity: 1 }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* shows at once */ } } }
   }
   if (row.kick && o.leaves) _gaLeafBurst(gpl, H, motion, row.ms);
   if (row.hideBehind && o.tree && o.at) _gaBarkFront(gpl, H, o.tree, o.at);
@@ -409,6 +411,15 @@ function gartActCarryFrame(body, L) {
   }
   if (L && L.armA && L.armB) { const side = L.side; _gmvSet(L.armA, side ? -50 : -20, side ? 1 : 0.8, 0, L.native); _gmvSet(L.armB, side ? -60 : 20, side ? 1 : 0.8, 0, L.native); }
 }
+/** Nothing is drawn in your hands unless you carry something (round 4): every .ga-carried in every drawing of you (the walker keeps one per
+ * pose and way round, and puts them back), removed; run on setting down and every half second while your hands are empty. */
+function _gaCarriedSweep(now) {
+  const t = performance.now(); if (!now && t - (_ga.sweepT || 0) < 500) return; _ga.sweepT = t;
+  if (_ga.carry && !now) return;
+  const roots = new Set(); try { if (_gw.node) roots.add(_gw.node); const inner = _gw.node && _gw.node.querySelector('.gd-pl-in'); if (inner) { roots.add(inner); const C = inner._nativePlayerBodies; if (C) for (const v of (C instanceof Map ? C.values() : Object.values(C))) { const n = v && (v.node || v); if (n && n.querySelectorAll) roots.add(n); } if (inner._nativePlayerCurrent && inner._nativePlayerCurrent.node) roots.add(inner._nativePlayerCurrent.node); } } catch (e) { /* what is there */ }
+  for (const r of roots) { let list = []; try { list = [...r.querySelectorAll('.ga-carried')]; } catch (e) { list = []; } for (const n of list) { try { if (n.parentNode) n.parentNode.removeChild(n); if (n.destroy) n.destroy(); } catch (e) { /* gone */ } } try { if (r._gaCarry) r._gaCarry = null; } catch (e) { /* fine */ } }
+  try { for (const b of (_gw.node ? _gw.node.querySelectorAll('.gpl') : [])) if (b.parentNode && b.parentNode._gaCarry) b.parentNode._gaCarry = null; } catch (e) { /* fine */ }
+}
 /** E while carrying: set it down at your feet, just in front. It stays there for this visit. */
 function gartActSetDown() {
   const c = _ga.carry; if (!c) return false;
@@ -417,7 +428,7 @@ function gartActSetDown() {
   _gaMoved.set(c.id, { x, y }); _gaHide.delete(c.id);
   try { const rec = _gaRec(c.id), row = gardenActWorldRows().find(r => r.id === c.id); if (rec && rec.root && row) { const r = rec.root; r.x += (x - (row.x0 != null ? row.x0 : row.x)) * W.cellW; r.y += 0; r.setAlpha(1); } } catch (e) { /* drawn at its new place on the next paint */ }
   try { if (typeof GardenNative !== 'undefined' && GardenNative.sync) GardenNative.sync(); } catch (e) { /* next paint */ }
-  try { const n = _gw.node && _gw.node.querySelector('.ga-carried'); if (n) { n.parentNode.removeChild(n); if (n.destroy) n.destroy(); } } catch (e) { /* gone */ }
+  _gaCarriedSweep(true);
   try { if (typeof _gwBody === 'function') _gwBody(); } catch (e) { /* fine */ }
   try { if (window.GardenNativeActions) GardenNativeActions.effect('place', x * W.cellW, W.sky + y * W.cellH, { width: 24 }); } catch (e) { /* fine */ }
   _ga.list = null; return true;
@@ -583,7 +594,7 @@ if (typeof gardenLifePetGoal === 'function') {
     if (cur && cur.doing && P && P.me && !cur.row.fetch) {   // (every action: the pet waits beside you on open ground)
       // beside you on open ground, never up on a thing (a pump, a bench, a wall): the walker's own map says what is solid
       const ok = (x, y) => (typeof _ptwFree !== 'function' || _ptwFree(x, y)) && (typeof _gwFree !== 'function' || _gwFree(x, y, 0.2)) && !(_ga.list || []).some(r => r.act !== 'sit' && Math.hypot(r.x - x, (r.y - y) * 1.3) < 0.7);
-      for (const [dx, dy] of [[0.75, 0.15], [-0.75, 0.15], [0.7, 0.6], [-0.7, 0.6], [0, 0.85], [1.2, 0.3], [-1.2, 0.3]]) if (ok(_gw.px + dx, _gw.py + dy)) return { x: _gw.px + dx, y: _gw.py + dy, near: 10 };
+      for (const [dx, dy] of [[1, 0.2], [-1, 0.2], [0.9, 0.7], [-0.9, 0.7], [0, 1], [1.4, 0.3], [-1.4, 0.3]]) if (ok(_gw.px + dx, _gw.py + dy)) return { x: _gw.px + dx, y: _gw.py + dy, near: 10 };
     }
     return _gaPetGoal0(P, dt);
   };

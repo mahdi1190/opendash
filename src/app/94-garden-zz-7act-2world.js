@@ -32,8 +32,8 @@ const GARDEN_ACT_WORLD = Object.freeze([
   { id: 'ga-basket', anchor: 'market-stall', at: [-1.4, 1.3], act: 'carry', name: 'the basket', stand: [0, 0.36], deg: 90, art: 'basket', carry: 'basket' },
   { id: 'ga-log', anchor: 'ld-woodhut', at: [2.4, 1.6], act: 'carry', name: 'the log', stand: [0, 0.36], deg: 90, art: 'log', carry: 'log' },
   // (29) a worn grassy bank on the Mere's south shore, room for two side by side, legs over the water (round 3: right on the water's edge, the hips on the lip; edge: the walker leaves you there)
-  { id: 'ga-bank-l', anchor: 'lake-board', at: [-4.6, -2.0], act: 'fishsit', name: 'the bank', stand: [0, 0], deg: 0, edge: true },   // (round 3: no drawn strip of its own: it lay over whoever sat there; the bank's own grass is the seat)
-  { id: 'ga-bank-r', anchor: 'lake-board', at: [-3.4, -2.0], act: 'fishsit', name: 'the bank', stand: [0, 0], deg: 0, edge: true },
+  { id: 'ga-bank-l', anchor: 'lake-board', at: [-4.6, -2.0], act: 'fishsit', name: 'the bank', stand: [0, 0], deg: -90, edge: true },   // (round 3: no drawn strip of its own: it lay over whoever sat there; the bank's own grass is the seat)
+  { id: 'ga-bank-r', anchor: 'lake-board', at: [-3.4, -2.0], act: 'fishsit', name: 'the bank', stand: [0, 0], deg: -90, edge: true },
 ]);
 const _GAW_ART = Object.freeze({
   scope: () => '<ellipse cx="0" cy="1" rx="13" ry="3.2" fill="#1a1408" opacity="0.22"/><path d="M-12 1q4 -3 9 -1q5 -2 9 0q5 -1 7 1" stroke="#6a8a3a" stroke-width="1.4" fill="none" opacity="0.8"/>'

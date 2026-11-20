@@ -6,18 +6,18 @@
 /* (the world's own bubbles are cream by day and night, in either theme: the prompt is one of them) */
 .ga-zzz { animation: ga-zzz 2.4s ease-in-out infinite; }
 @keyframes ga-zzz { from { transform: translate(0, 0); opacity: 0.2; } 50% { opacity: 1; } to { transform: translate(-6px, -12px); opacity: 0; } }
-/* Lying down (94-garden-zz-7act-1core.js _gaSky): cloud shadows drift over the ground; at night a shooting star now and then; a nap runs the light on a little. */
+/* Lying down (94-garden-zz-7act-1core.js _gaSky): clouds go over high in the sky; at night a shooting star now and then; a nap runs the light on a little. */
 .ga-sky { position: absolute; inset: 0; z-index: 12; pointer-events: none; overflow: hidden; }
-.ga-cloud { position: absolute; display: block; width: 46%; height: 34%; border-radius: 50%; background: radial-gradient(closest-side, rgba(20, 34, 30, 0.34), rgba(20, 34, 30, 0.18) 55%, transparent); animation: ga-cloud 30s linear infinite; }
-/* (round 3) the cloud itself, high above its shadow: soft white puffs you can actually see go over */
-.ga-cloud::after { content: ''; position: absolute; left: -14%; top: -58%; width: 100%; height: 72%; border-radius: 50%; background: radial-gradient(closest-side at 30% 60%, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0) 70%), radial-gradient(closest-side at 55% 42%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 72%), radial-gradient(closest-side at 78% 62%, rgba(250, 252, 255, 0.72), rgba(255, 255, 255, 0) 70%); filter: blur(1.5px); }
-.ga-cloud.c1 { top: 14%; left: -50%; animation-delay: -9s; }
-.ga-cloud.c2 { top: 50%; left: -50%; width: 38%; animation-delay: -21s; animation-duration: 36s; }
-.ga-cloud.c3 { top: 70%; left: -50%; width: 52%; height: 28%; animation-delay: -4s; animation-duration: 42s; }
+.ga-cloud { position: absolute; display: block; width: 30%; aspect-ratio: 200 / 96; height: auto; background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 96'><g fill='%23dfe8f2'><circle cx='52' cy='62' r='26'/><circle cx='88' cy='46' r='34'/><circle cx='128' cy='50' r='30'/><circle cx='158' cy='64' r='22'/><rect x='30' y='60' width='150' height='26' rx='13'/></g><g fill='%23ffffff'><circle cx='52' cy='58' r='24'/><circle cx='88' cy='42' r='32'/><circle cx='128' cy='46' r='28'/><circle cx='158' cy='60' r='20'/><rect x='32' y='56' width='146' height='22' rx='11'/></g><g fill='%23ffffff' opacity='.9'><circle cx='80' cy='30' r='12'/><circle cx='120' cy='34' r='10'/></g></svg>") center / contain no-repeat; filter: drop-shadow(0 3px 0 rgba(120, 150, 180, 0.35)); animation: ga-cloud 34s linear infinite; }
+/* (round 4) crisp cartoon clouds high across the top of the view, drawn over everything as sky (no mist on the grass, no shadow blobs) */
+.ga-cloud.c1 { top: 3%; left: -32%; animation-delay: -9s; }
+.ga-cloud.c2 { top: 14%; left: -32%; width: 22%; animation-name: ga-cloud2; animation-delay: -24s; animation-duration: 44s; }
+.ga-cloud.c3 { top: 7%; left: -32%; width: 26%; animation-delay: -3s; animation-duration: 52s; }
 .ga-sky.is-nap .ga-cloud { animation-duration: 9s; }
 .ga-sky.is-nap .ga-cloud.c2 { animation-duration: 12s; }
 .ga-sky.is-nap .ga-cloud.c3 { animation-duration: 14s; }
-@keyframes ga-cloud { from { transform: translateX(0); } to { transform: translateX(320%); } }
+@keyframes ga-cloud { from { transform: translateX(0); } to { transform: translateX(560%); } }
+@keyframes ga-cloud2 { from { transform: translateX(0); } to { transform: translateX(720%); } }
 .ga-lapse { position: absolute; inset: 0; display: block; background: linear-gradient(100deg, rgba(255, 190, 110, 0) 30%, rgba(255, 190, 110, 0.16) 50%, rgba(255, 190, 110, 0) 70%); background-size: 300% 100%; animation: ga-lapse 6s ease-in-out 1; }
 @keyframes ga-lapse { from { background-position: 100% 0; } to { background-position: 0 0; } }
 .ga-star { position: absolute; display: block; width: 170px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 250, 220, 0.5) 60%, #fffef4); box-shadow: 0 0 8px 1px rgba(255, 246, 200, 0.55); transform: rotate(24deg); transform-origin: 100% 50%; animation: ga-star 1.4s ease-out forwards; opacity: 0; }
