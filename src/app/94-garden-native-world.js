@@ -1422,6 +1422,7 @@ window.GardenNativeWorld = (function () {
       playerNode.setAttribute('transform', 'translate(' + x + ' ' + (y - heightLift) + ')'); playerNode.setAttribute('data-z', String(_gw.py + .001)); playerNode.target.setDepth(heightDepth != null ? heightDepth : y + .001);
       { const sh = playerNode._ghtSh || (playerNode._ghtSh = playerNode.querySelector('.gd-pl-sh')), on = typeof gardenHeightShadowOn !== 'function' || gardenHeightShadowOn(); if (sh && sh._ghtOn !== on) { sh._ghtOn = on; sh.setAttribute('opacity', on ? '1' : '0'); } }
       if (z !== playerNode._nativeZ) { playerNode._nativeZ = z; sorted = true; }
+      { const hk = heightDepth == null ? '' : String(Math.round(heightDepth)); if (hk !== playerNode._ghtK) { playerNode._ghtK = hk; sorted = true; } }   // (up on a floor: behind its lamp room or in front, and on to or off it)
       const bob = !playerInner.querySelector('.gpl-root') && _gw.moving && gardenMotionOn() ? -Math.abs(Math.sin(time / 1000 * (_gw.sneak ? 7 : 11))) * 1.6 : 0;
       playerBob.setAttribute('transform', 'translate(0 ' + bob + ')');
       if (typeof gartMoveFrame === 'function') gartMoveFrame(playerInner, playerBob, _gw, time);   // the turn, the stride, the hop

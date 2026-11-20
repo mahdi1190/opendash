@@ -62,7 +62,7 @@
     B.f(B.rect(-11, -10, 22, 4), '#a8a294').f(B.rect(-11, -10, 22, 1.2), '#d0cabc').f(B.rect(-13, -6, 26, 4.4), '#8e887c').f(B.rect(-13, -6, 26, 1.2), '#bcb6a8');
     // the gallery: a corbelled iron deck all the way round the lamp room, wide enough to walk round (94-garden-zz-7act-3height.js: the
     // lighthouse's floor), on brackets, its rail behind the lantern and in front of it
-    const gw = R1 + 14, gry = 9, rail = 15, ringY = (x, s) => gal + s * gry * Math.sqrt(Math.max(0, 1 - (x / gw) ** 2));
+    const gw = R1 + 14, gry = 11, rail = 15, ringY = (x, s) => gal + s * gry * Math.sqrt(Math.max(0, 1 - (x / gw) ** 2));
     for (let x = -gw + 4; x <= gw - 4; x += 5) B.f(B.poly([[x - 2, ringY(x, 1) + 3], [x + 2, ringY(x, 1) + 3], [x * .6 + .6, ringY(x, 1) + 14], [x * .6 - .6, ringY(x, 1) + 14]]), x < 0 ? '#c8c2b4' : '#8e887c');
     B.f(`M${-gw} ${gal}A${gw} ${gry} 0 0 0 ${gw} ${gal}V${gal + 4}A${gw} ${gry} 0 0 1 ${-gw} ${gal + 4}Z`, '#3e4244');
     B.f(B.ell(0, gal, gw, gry), B.lin(-gw, 0, gw, 0, [[0, '#a4aaac'], [.5, '#868c8e'], [1, '#5e6466']]));

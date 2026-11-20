@@ -112,6 +112,10 @@ const GARDEN_ACTS = Object.freeze({
     enter: { legL: [[1, { sy: 0.06 }]], legR: [[1, { sy: 0.06 }]] },
     loop: { ms: 1400, legL: [[0, { sy: 0.06 }], [1, { sy: 0.06 }]], legR: [[0, { sy: 0.06 }], [1, { sy: 0.06 }]], armL: [[0, { r: -60 }], [0.5, { r: -170 }, 'io'], [1, { r: -60 }, 'io']], armR: [[0, { r: -170 }], [0.5, { r: -60 }, 'io'], [1, { r: -170 }, 'io']], root: [[0, { y: 0 }], [0.5, { y: -1.2 }, 'io'], [1, { y: 0 }, 'io']] } },
   swimout: { verb: 'Climb out', dir: 's', ms: 500 },
+  // up in a loft door (a floor of one spot): sat on the sill, legs swinging over the drop
+  loftsit: { verb: 'Sit in the doorway', dir: 's', ms: 700, hold: true, pet: 'sit', first: 'Sat up in the hay loft door, legs swinging, the smell of summer.',
+    enter: _gaHoldPose(Object.assign({}, _GA_SITP, { root: { y: 27 }, armL: { r: 26, sy: 0.8 }, armR: { r: -26, sy: 0.8 } }), 0.6),
+    loop: Object.assign(_GA_SITLOOP(2400), { root: [[0, { y: 27 }], [1, { y: 27 }]], armL: [[0, { r: 26, sy: 0.8 }], [1, { r: 26, sy: 0.8 }]], armR: [[0, { r: -26, sy: 0.8 }], [1, { r: -26, sy: 0.8 }]] }) },
   shake: { verb: 'Shake the tree', dir: 'n', ms: 1700, first: 'Shook a fruit tree. Something fell out.', sound: 'rustle', shake: true,
     enter: { up: _GA_K(8, (i) => [0.1 + i * 0.1, { r: i % 2 ? 4 : -4, x: i % 2 ? 1 : -1 }, 'io']).concat([[1, {}]]), armL: [[0.1, { r: 16, sy: 0.5 }, 'o'], [0.9, { r: 16, sy: 0.5 }], [1, {}]], armR: [[0.1, { r: -16, sy: 0.5 }, 'o'], [0.9, { r: -16, sy: 0.5 }], [1, {}]], root: _GA_K(8, (i) => [0.1 + i * 0.1, { x: i % 2 ? 1.4 : -1.4 }, 'l']).concat([[1, {}]]) } },
   bell: { verb: 'Ring the bell', dir: 'n', ms: 2200, prop: 'rope', propBehind: true, propGround: true, first: 'Rang the bell. Half the vale looked up.', sound: 'bell', use: 'bell',
