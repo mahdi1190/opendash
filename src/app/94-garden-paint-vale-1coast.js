@@ -233,11 +233,14 @@
     for (let i = 0; i < wildCells.length; i += 12) { const set = wildCells.slice(i, i + 12), pts = set.map(([x, y]) => L.cpt(x + .5, y + .5)), bb = kit.bboxOf(pts, 60);
       add(bb, 58, (B) => { const wint = C.season === 'winter', aut = C.season === 'autumn';
         for (const [x, y] of set) { if (!wildAt(x + .5, y + .5)) continue; const rr = kit.rng(kit.hash(x, y, 58)), x0 = x * cw, y0 = W.sky + y * ch, n = kit.fbm(x / 3, y / 3, 59), inside = (px, py) => L.plot(px / cw, (py - W.sky) / ch) && L.plot((px - 9) / cw, (py - W.sky) / ch) && L.plot((px + 9) / cw, (py - W.sky) / ch) && L.plot(px / cw, (py - W.sky - 8) / ch) && L.plot(px / cw, (py - W.sky + 7) / ch);
+          // (coast fix round 2, second pass: seen from far off the growth was too fine to change the picture) the ground
+          // itself rough: straw-coloured old grass and darker green in soft patches, kept inside the fence
+          { const cx = x0 + cw / 2, cy = y0 + ch / 2; if (inside(cx, cy)) { B.f(B.blob(rr, cx + (rr() - .5) * 6, cy, 15 + rr() * 4, 8 + rr() * 2, 9, .5), wint ? '#b4ac88' : aut ? '#b0a060' : '#a4a45c', .3).f(B.blob(rr, cx + (rr() - .5) * 10, cy + (rr() - .5) * 4, 9 + rr() * 4, 5 + rr() * 2, 8, .5), wint ? '#8a8a70' : '#55683a', .22); } }
           // rough grass in tussocks over the whole cell
           for (let k = 0; k < 13; k++) { const px = x0 + 4 + rr() * (cw - 8), py = y0 + 6 + rr() * (ch - 8); if (!inside(px, py)) continue; B.f(B.blob(rr, px + 2, py + 1, 8, 2.6, 7, .5), '#4e5e30', .2);
-            for (let j = 0, m = 6 + Math.floor(rr() * 6); j < m; j++) { const h = 8 + rr() * 10, bend = (rr() - .3) * 5; B.s(`M${px + (rr() - .5) * 8} ${py}q${bend * .3} ${-h * .6} ${bend} ${-h}`, wint ? ['#a49c78', '#c4b890'][j % 2] : aut ? ['#a4a058', '#c8b870', '#8a8e4c'][j % 3] : ['#7f9a4a', '#a4ac5c', '#6f8a46', '#c0b870'][j % 4], 1 + rr() * .5, .9); } }
+            for (let j = 0, m = 6 + Math.floor(rr() * 6); j < m; j++) { const h = 10 + rr() * 13, bend = (rr() - .3) * 5; B.s(`M${px + (rr() - .5) * 8} ${py}q${bend * .3} ${-h * .6} ${bend} ${-h}`, wint ? ['#a49c78', '#c4b890'][j % 2] : aut ? ['#a4a058', '#c8b870', '#8a8e4c'][j % 3] : ['#7f9a4a', '#a4ac5c', '#6f8a46', '#c0b870'][j % 4], 1 + rr() * .5, .9); } }
           // here and there a gorse or bramble mound with its contact shade, and flowers in the turf
-          if (n > .32 && rr() < .75) { const px = x0 + cw * (.3 + rr() * .4), py = y0 + ch * (.55 + rr() * .25); if (inside(px, py)) { const s = 9 + rr() * 6, gorse = rr() < .6;
+          if (n > .22 && rr() < .85) { const px = x0 + cw * (.3 + rr() * .4), py = y0 + ch * (.55 + rr() * .25), s = 12 + rr() * 8; if (inside(px, py) && inside(px - s * .8, py) && inside(px + s * .8, py) && inside(px, py - s)) { const gorse = rr() < .6;
             B.f(B.ell(px + 3, py + 1, s * 1.2, s * .35), '#2e3420', .22);
             for (let j = 0; j < 9; j++) { const a = Math.PI * (1 + j / 8), bx = px + Math.cos(a) * s * .8, by = py - s * .45 + Math.sin(a) * s * .55; B.f(B.blob(rr, bx, by, s * .5, s * .38, 7, .5), gorse ? (j % 2 ? '#4e6a34' : '#5f7a3a') : (j % 2 ? '#4a5a34' : '#5a6a3e'), .95); }
             B.f(B.blob(rr, px - s * .3, py - s * .9, s * .4, s * .22, 6, .5), gorse ? '#7a9a4a' : '#6e8048', .7);

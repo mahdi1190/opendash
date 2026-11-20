@@ -437,7 +437,7 @@
     const road = (promenade.length > 1 ? promenade : []).reduce((m, p) => Math.abs(p.y - qy0) < Math.abs(m.y - qy0) ? p : m, { x: -1e9, y: 1e9 }), apron = road.x > qx0 + 90 && road.x < qx1 - 90 ? 20 : 0;
     const top = apron ? `L${road.x - 74} ${qy0}C${road.x - 52} ${qy0} ${road.x - 50} ${qy0 - apron} ${road.x - 30} ${qy0 - apron}L${road.x + 30} ${qy0 - apron}C${road.x + 50} ${qy0 - apron} ${road.x + 52} ${qy0} ${road.x + 74} ${qy0}` : '';
     const quayShape = `M${qx0 + 26} ${qy0}${top}L${qx1 - 26} ${qy0}Q${qx1} ${qy0} ${qx1} ${qy0 + 18}L${qx1} ${qy1}L${qx0} ${qy1}L${qx0} ${qy0 + 18}Q${qx0} ${qy0} ${qx0 + 26} ${qy0}Z`;
-    add([qx0 - 40, qy0 - 30, qx1 + 40, qy1 + face + 30], 41, (B, r) => {
+    add([qx0 - 40, qy0 - 30, qx1 + 40, qy1 + face + 30], 41, (B, r, chunkBB) => {
       B.cx.filter = 'blur(' + (3 * (Math.abs(B.cx.getTransform().a) || 1)).toFixed(1) + 'px)'; B.f(B.rect(qx0 + 4, qy1 + 2, qx1 - qx0, face + 6), '#2e3a36', .25); B.cx.filter = 'none';
       // the harbour wall's face: big dressed blocks, darker and weedy towards the tide, lit at the top
       B.f(B.rect(qx0, qy1, qx1 - qx0, face), B.lin(0, qy1, 0, qy1 + face, [[0, P.wall], [.6, P.wallLo], [1, '#4e5a4a']]));
@@ -477,26 +477,32 @@
       // (round 2: the flags were pale beige tiles at seven tenths, one flat floor; art round 3, 19 Nov 2026)
       B.cx.save(); B.cx.clip(new Path2D(quayShape));
       const GRAN = ['#b3ada2', '#a59f95', '#c0b9ab', '#9c978d', '#b9ae98', '#c4b8a0', '#aaa69c', '#bfb7a8', '#c9b9a2', '#a89c8a', '#b7a89a'];
-      // (coast fix round 2: the flags seen from above, as a paved floor: rows a stride deep foreshortened to 8 to 12 px, each
-      // flag a third to two thirds of your height across, one flat tone with a soft sheen, thin dark joints and no lit band
-      // along its top or dark band along its foot. Slabs 1.4 of your height wide, lit along the top and shaded at the foot,
-      // read as the face of a wall with the player standing on it.)
-      B.f(B.rect(qx0, qy0 - apron, qx1 - qx0, qy1 - qy0 + apron), '#6a655b');
-      for (let y = qy0 - 4 - apron; y < qy1; ) {
-        const rc = kit.rng(kit.hash(Math.round(y * 3), 11, 41)), h = 8.5 + Math.floor(rc() * 3) * 1.6;
-        for (let x = qx0 - rc() * 24; x < qx1; ) {
-          const w = 13 + rc() * 15 + (rc() < .15 ? 8 : 0), n = kit.fbm(x / 170, y / 170, 44), t = GRAN[Math.floor((rc() * .6 + n * .4) * GRAN.length) % GRAN.length];
-          const x0 = x + .55, y0 = y + .5, ww = w - 1.1, hh = h - 1;
-          B.f(B.rr(x0, y0, ww, hh, 1.6), t);
-          // a soft sheen across the upper left of the flag and a little shade in its lower right: worn, not bevelled
-          B.f(B.blob(rc, x0 + ww * .38, y0 + hh * .4, ww * .32, hh * .26, 7, .5), '#efe9dc', .1 + rc() * .08).f(B.blob(rc, x0 + ww * .72, y0 + hh * .72, ww * .3, hh * .22, 7, .5), '#55504a', .06 + rc() * .05);
-          for (let k = 0; k < 3; k++) B.f(B.rect(x0 + 1.5 + rc() * (ww - 3), y0 + 1.5 + rc() * (hh - 3), 1, .8), rc() < .5 ? '#77726a' : '#ece8de', .35);
-          if (rc() < .08) B.s(`M${x0 + ww * (.2 + rc() * .4)} ${y0 + .6}l${ww * .1} ${hh * .5}l${ww * .08} ${hh * .45}`, '#57534a', .7, .45);
-          if (rc() < .07) B.f(B.blob(rc, x0 + ww - 2.4, y0 + hh - 2, 3, 1.6, 6, .5), '#6a655b', .85);
-          x += w;
-        }
-        y += h;
+      // (coast fix round 2: courses of slabs, at any size, are a wall's bond: lit along the top and offset row by row they
+      // read as the face of a wall with the player standing on it. The quay is laid as a paved yard is, seen from above:
+      // square flags on a grid, half your height across and foreshortened by the camera's slant, with now and then a
+      // double or a big four-square flag, so the joints run straight both ways and never step like a wall's courses. Each
+      // flag is one flat tone of granite with a soft worn sheen; the joints are thin and dark, filled with grit and moss.)
+      const cbb = chunkBB || [qx0 - 40, qy0 - 60, qx1 + 40, qy1 + 40], uw = 17, uh = uw * ch / cw, gx0 = qx0 - 6, gy0 = qy0 - apron - 6;
+      const cols = Math.ceil((qx1 - gx0) / uw) + 1, rows = Math.ceil((qy1 - gy0) / uh) + 1, taken = new Uint8Array(cols * rows), flags = [];
+      for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) { if (taken[j * cols + i]) continue; const rq = kit.rng(kit.hash(i, j, 40)), u = rq(); let w = 1, h = 1;
+        if (u < .16 && i + 1 < cols && j + 1 < rows && !taken[j * cols + i + 1]) { w = 2; h = 2; } else if (u < .46 && i + 1 < cols && !taken[j * cols + i + 1]) w = 2; else if (u < .54 && j + 1 < rows) h = 2;
+        for (let dj = 0; dj < h; dj++) for (let di = 0; di < w; di++) taken[(j + dj) * cols + i + di] = 1; flags.push([i, j, w, h, rq]); }
+      B.f(B.rect(qx0, qy0 - apron, qx1 - qx0, qy1 - qy0 + apron), '#6e685e');
+      for (const [i, j, w, h, rq] of flags) {
+        const x0 = gx0 + i * uw + .6, y0 = gy0 + j * uh + .5, ww = w * uw - 1.2, hh = h * uh - 1; if (x0 > cbb[2] + 4 || x0 + ww < cbb[0] - 4 || y0 > cbb[3] + 4 || y0 + hh < cbb[1] - 4) continue;
+        const n = kit.fbm((x0 + ww / 2) / 150, (y0 + hh / 2) / 110, 44), t = GRAN[Math.floor((rq() * .55 + n * .45) * GRAN.length) % GRAN.length];
+        B.f(B.rr(x0, y0, ww, hh, 1.2), t);
+        // worn: a soft sheen where the most feet go and a faint damp in one corner, no bevel
+        B.f(B.blob(rq, x0 + ww * (.3 + rq() * .4), y0 + hh * (.3 + rq() * .4), ww * .34, hh * .3, 7, .5), '#f2ecde', .1 + rq() * .1);
+        if (rq() < .5) B.f(B.blob(rq, x0 + ww * (rq() < .5 ? .2 : .8), y0 + hh * .7, ww * .26, hh * .22, 7, .5), '#55504a', .07 + rq() * .06);
+        for (let k = 0; k < 2 * w * h; k++) B.f(B.rect(x0 + 1.5 + rq() * (ww - 3), y0 + 1.2 + rq() * (hh - 2.4), 1, .7), rq() < .5 ? '#77726a' : '#ece8de', .3);
+        if (rq() < .06) B.s(`M${x0 + ww * (.2 + rq() * .5)} ${y0 + .5}l${ww * .12} ${hh * .5}l${ww * .06} ${hh * .48}`, '#57534a', .6, .4);
+        if (rq() < .05) B.f(B.blob(rq, x0 + ww - 2, y0 + hh - 1.6, 2.6, 1.4, 6, .5), '#6e685e', .85);
       }
+      // moss and grit in the joints here and there, away from the trodden middle
+      kit.tiles([qx0, qy0 - apron, qx1, qy1], 40, 0, 52, (tx, ty, rr) => { if (kit.fbm(tx / 160, ty / 120, 53) < .5) return; for (let k = 0; k < 4; k++) { const i = Math.floor((tx + rr() * 40 - gx0) / uw), j = Math.floor((ty + rr() * 40 - gy0) / uh), x = gx0 + i * uw, y = gy0 + j * uh + rr() * uh; B.f(B.blob(rr, x, y, 1.2, 2.2 + rr() * 2, 6, .5), rr() < .6 ? '#5e6e3a' : '#7d8a4a', .6); } });
+      // broad light and shade over the whole floor, a few strides across (one surface, not a grid of stones)
+      kit.tiles([qx0, qy0 - apron, qx1, qy1], 64, 0, 48, (tx, ty, rr) => { const x = tx + rr() * 64, y = ty + rr() * 64, n = kit.fbm(x / 120, y / 90, 49); B.f(B.blob(rr, x, y, 40 + rr() * 30, 16 + rr() * 10, 9, .5), n < .48 ? '#3e3e3a' : '#f4ecda', n < .48 ? .07 + (.48 - n) * .3 : .06 + (n - .48) * .3); });
       // weather in broad patches (damp and dark in the hollows, bleached on the crowns), soft, at low strength
       kit.tiles([qx0, qy0, qx1, qy1], 110, 0, 45, (tx, ty, rr) => { for (let k = 0; k < 2; k++) { const x = tx + rr() * 110, y = ty + rr() * 110, n = kit.fbm(x / 140, y / 140, 46); B.f(B.blob(rr, x, y, 34 + rr() * 40, 12 + rr() * 12, 9, .5), n < .5 ? '#4e5a58' : '#f0e8d4', n < .5 ? .1 : .12); } });
       // (no worn way of its own from the road to the pier: a pale band the road's width carried on over the slabs and read as
