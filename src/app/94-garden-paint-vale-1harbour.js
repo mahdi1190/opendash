@@ -698,6 +698,12 @@
       const sag = seed ? 6 + r() * 8 : 4, net = `M${-hw + 1} ${-h0 + 3}Q0 ${-(h0 + h1) / 2 + 3 + sag} ${hw - 1} ${-h1 + 3}L${hw - 4} ${-16 + (seed ? r() * 6 : 0)}Q${hw * .1} ${-2 - (seed ? r() * 4 : 0)} ${-hw + 8} ${-20 + (seed ? r() * 6 : 0)}Z`;
       B.f(net, NET, .35); B.cx.save(); B.cx.clip(new Path2D(net)); for (let k = -70; k < 70; k += 5) { B.s(`M${k} ${-h0 - 2}l40 50`, '#2f3e3a', .7, .6); B.s(`M${k} ${-h0 - 2}l-40 50`, '#2f3e3a', .7, .6); } B.cx.restore();
       for (let x = -hw + 4; x <= hw - 4; x += 8) B.f(B.ell(x, -h0 + 4 + (x + hw) / (2 * hw) * (h0 - h1) + Math.abs(x) * .05, 2.2, 1.6), FL);
+      // (vale final fix 1) the net's foot: its lower edge let down and gathered in folds along the shingle between the posts, weighted
+      // with a few floats, so the net meets the ground the whole way (its block is a net you walk round, not a wall of air under it)
+      { const fold = `M${-hw + 2} ${-1}Q${-hw * .6} ${-9} ${-hw * .2} ${-4}Q${hw * .15} ${-10} ${hw * .5} ${-3}Q${hw * .8} ${-8} ${hw - 2} ${-1}Q${hw * .3} ${3} ${-hw + 2} ${-1}Z`;
+        B.f(`M${-hw + 8} ${-20}L${hw - 4} ${-16}L${hw - 3} ${-3}L${-hw + 3} ${-3}Z`, NET, .22);
+        B.f(fold, NET, .6); B.cx.save(); B.cx.clip(new Path2D(fold)); for (let k = -70; k < 70; k += 4) { B.s(`M${k} -12l14 14`, '#2a3632', .6, .55); B.s(`M${k} -12l-14 14`, '#2a3632', .6, .55); } B.cx.restore();
+        for (const x of [-hw * .55, 0, hw * .5]) B.f(B.ell(x, -2.5, 2.4, 1.6), FL).f(B.ell(x - .6, -3.1, 1, .6), '#fff', .4); }
       B.f(B.ell(-12, -6, 8, 2.4), NET, .4); return; }
     if (v === 1) {
       // a low trestle of two crossed legs and a pole, the net slung over it to the sand both sides

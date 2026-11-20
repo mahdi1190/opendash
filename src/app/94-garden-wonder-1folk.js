@@ -197,6 +197,7 @@ function _wdFolkMeeting(row) {
     const prop = GARDEN_PROPS.find(p => p.id === at[0]);
     if (!prop || prop.needs && !gardenWorkOwned(prop.needs)) continue;
     const want = _wdPt(at[0], at[1], at[2]), to = wdFreeNear(want.x, want.y, 1.25); if (!to || !gardenIslandPublicCell(Math.floor(to.x), Math.floor(to.y))) continue;
+    if (Math.hypot(to.x - _gw.px, (to.y - _gw.py) * 1.4) < 1.3) continue;   // (vale final fix 1: never on the very spot you stand, as at the quay)
     let route = null; try { route = _gwRoute({ x: _gw.px, y: _gw.py }, to); } catch (e) { /* try the next public meeting point */ }
     if (route) return to;
   }
