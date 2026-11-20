@@ -107,7 +107,9 @@ const _PLQ_ART = {
     return { back, front, w: W * 1.4, burst: [W, Ht, u, cols] };
   },
   // a clump of real flowers: leafy foot, stems, five-petal blooms in several colours and a spray of forget-me-nots, in front of the nose
-  flowers(u) {
+  flowers(u) { return _PLQ_ART.flowers0(u * 1.55); },   // (round 4: a clump about the pet's height, not a sprig)
+  hole(u) { return _PLQ_ART.hole0(u * 1.4); },
+  flowers0(u) {
     const r = _plRnd(5), cx = 15 * u; let s = `<ellipse cx="${_plF(cx)}" cy="0.6" rx="${_plF(10 * u)}" ry="${_plF(2.6 * u)}" fill="#2f4a22" opacity="0.26"/>`;
     let stems = '', leaves = '', blooms = '';
     const kinds = [['#f2a7c3', '#f6d35e'], ['#fff6f0', '#f2b83a'], ['#c9a6e8', '#f6d35e'], ['#f6c845', '#d0702a'], ['#f28a9a', '#f6d35e']];
@@ -135,7 +137,7 @@ const _PLQ_ART = {
     return { back: `<ellipse cx="0" cy="0.6" rx="${_plF(W * 1.15)}" ry="${_plF(3 * u)}" fill="#2f4a22" opacity="0.24"/>` + b, front: f, sway: true, w: W * 1.2 };
   },
   // a dug hole: thrown-back soil, the dark hole, crumbs
-  hole(u) {
+  hole0(u) {
     const cx = 13 * u, r = _plRnd(3); let crumbs = ''; for (let i = 0; i < 8; i++) crumbs += `<ellipse cx="${_plF(-6 * u + (r() - 0.5) * 18 * u)}" cy="${_plF((r() - 0.5) * 3 * u)}" rx="${_plF((0.7 + r() * 0.7) * u)}" ry="${_plF(0.6 * u)}" fill="${r() < 0.5 ? '#7a5634' : '#5a3e24'}"/>`;
     return { back: `<ellipse cx="${_plF(cx)}" cy="0.3" rx="${_plF(8.5 * u)}" ry="${_plF(3 * u)}" fill="#6e4e30"/><ellipse cx="${_plF(cx)}" cy="0.5" rx="${_plF(6.4 * u)}" ry="${_plF(2 * u)}" fill="#2a1a0e"/><path d="M${_plF(cx - 8.5 * u)} 0.3Q${_plF(cx)} ${_plF(-3.6 * u)} ${_plF(cx + 8.5 * u)} 0.3" stroke="#3c2816" stroke-width="${_plF(0.7 * u)}" fill="none"/>`
       + `<path d="M${_plF(-14 * u)} 1Q${_plF(-10 * u)} ${_plF(-6 * u)} ${_plF(-4 * u)} ${_plF(-5.4 * u)}Q${_plF(1 * u)} ${_plF(-4 * u)} ${_plF(3 * u)} 1z" fill="#8a6440"/><path d="M${_plF(-11 * u)} 0Q${_plF(-8 * u)} ${_plF(-4.4 * u)} ${_plF(-4 * u)} ${_plF(-4 * u)}Q${_plF(-1 * u)} ${_plF(-3 * u)} 0 0z" fill="#a47a4e"/>` + crumbs, w: cx + 9 * u, off: 0, lo: -15 * u };
@@ -277,14 +279,18 @@ function _plProp(P, kind, ms) {
         const sx = (r() * 2 - 1) * BW * 0.5, sy = -BH * (0.6 + r() * 0.4), dx = (r() * 2 - 1) * BW * 1.6, up = (18 + r() * 22) * bu, land = (r() * 3 - 0.5) * bu, rot = (r() < 0.5 ? -1 : 1) * (240 + r() * 420);
         const at = mk('g'); at.setAttribute('transform', `translate(${_plF(sx)} ${_plF(sy)})`);
         const lf = mk('g'); lf.innerHTML = _plLeaf(0, 0, 0, (5.2 + r() * 2.4) * bu, cols[i % cols.length], '#5a2a14'); lf.setAttribute('opacity', '0');
-        at.appendChild(lf); (front || back).appendChild(at);
+        (front || back).appendChild(at);
         const dur = 1300 + r() * 700, delay = at0 + r() * 160;
-        try { gardenVisualAnimate(lf, [
-          { offset: 0, transform: 'translate(0px,0px) rotate(0deg)', opacity: 1 },
-          { offset: 0.3, transform: `translate(${_plF(dx * 0.45)}px,${_plF(-up)}px) rotate(${Math.round(rot * 0.35)}deg)`, opacity: 1 },
-          { offset: 0.62, transform: `translate(${_plF(dx * 0.8)}px,${_plF(-up * 0.55 - sy * 0.3)}px) rotate(${Math.round(rot * 0.7)}deg)`, opacity: 1 },
-          { offset: 0.9, transform: `translate(${_plF(dx)}px,${_plF(-sy + land)}px) rotate(${Math.round(rot)}deg)`, opacity: 1 },
-          { offset: 1, transform: `translate(${_plF(dx)}px,${_plF(-sy + land)}px) rotate(${Math.round(rot)}deg)`, opacity: 0.9 }], { duration: dur, delay, easing: 'ease-out', fill: 'both' }); } catch (x) { /* still */ }
+        // (two simple moves, never one combined transform: the native renderer stretched a leaf whose path and spin were one keyframe list)
+        const mv = mk('g'); at.appendChild(mv); mv.appendChild(lf);
+        const o = { duration: dur, delay, easing: 'ease-out', fill: 'both' };
+        try { gardenVisualAnimate(mv, [
+          { offset: 0, transform: 'translate(0px,0px)' },
+          { offset: 0.3, transform: `translate(${_plF(dx * 0.45)}px,${_plF(-up)}px)` },
+          { offset: 0.62, transform: `translate(${_plF(dx * 0.8)}px,${_plF(-up * 0.55 - sy * 0.3)}px)` },
+          { offset: 0.9, transform: `translate(${_plF(dx)}px,${_plF(-sy + land)}px)` },
+          { offset: 1, transform: `translate(${_plF(dx)}px,${_plF(-sy + land)}px)` }], o);
+          gardenVisualAnimate(lf, [{ offset: 0, transform: 'rotate(0deg)', opacity: 1 }, { offset: 0.9, transform: `rotate(${Math.round(rot)}deg)`, opacity: 1 }, { offset: 1, transform: `rotate(${Math.round(rot)}deg)`, opacity: 0.9 }], o); } catch (x) { /* still */ }
       }
     }
     if (art.smoke) {

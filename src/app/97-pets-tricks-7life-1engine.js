@@ -44,7 +44,7 @@ const PET_LIFE_KINDS = Object.freeze([
   ['bed', /pet-bed|pet-basket|basket/],
   ['slide', /slide/],
   ['swing', /^(swing-seat|rope-swing|hammock)$/],
-  ['pier', /pier|jetty|^ld-boathouse$|^lake-hall$/],
+  ['pier', /^ld-pier$|jetty-end/],   // (round 4: the pier's own end, below; the lake hall's paved quay was not a pier)
   ['falls', /^ld-falls$/],
   ['leaves', /^leaf-pile$/],
   ['bath', /^(bird-bath|fountain|mini-pond)$/],
@@ -71,7 +71,10 @@ function _plThings() {
   const match = (id, x, y, name) => { for (const [kind, re] of PET_LIFE_KINDS) if (re.test(id)) put(kind, x, y, name); };
   try { for (const p of gardenLandProps()) match(String(p.kind || ''), p.x + p.w / 2, p.y + p.h, p.name); } catch (e) { /* none */ }
   try { for (const o of gardenWorldObjects(S.model)) { if (o.kind === 'plant') continue; match(String(o.id || ''), o.top.x, o.y + (o.h || 1), o.name); } } catch (e) { /* none */ }
-  out.tree = S.shade.slice(); out.shore = S.shore.slice(); out.drink = S.drink.slice(); out.warm = S.warm.slice();
+  // the end of the pier: the last of the layout's pier boards, just short of the end (round 4, the critic: pier-watch played on the quay)
+  try { const ps = (GardenIslandLayout.data.static || []).filter(p => /^pier(-\d+)?$/.test(p.id)).sort((a, b) => (b.y + b.h) - (a.y + a.h)); if (ps[0]) put('pier', ps[0].x + ps[0].w / 2, ps[0].y + ps[0].h - 0.9, 'The end of the pier'); } catch (e) { /* none */ }
+  // the water's edge where it is soft (grass, sand, a reed bank), not the paved quay: paddling and fish-watching want a real shore
+  out.tree = S.shade.slice(); out.shore = S.shore.filter(q => typeof _plStoneAt !== 'function' || !_plStoneAt(q.x, q.y)); if (!out.shore.length) out.shore = S.shore.slice(); out.drink = S.drink.slice(); out.warm = S.warm.slice();
   _pl.things = out; _pl.thingsKey = S.key;
   return out;
 }
@@ -153,9 +156,11 @@ function _plGoDo(P, t, clips, rest, after, run) {
   if (_pl.here) { _plPlay(P, clips, rest, after); return true; }   // (petLifeTry with here: the checking tool plays it where the pet stands)
   const row = P.lifeCur, pl = _ptwPlayer();
   // beside the thing, but not where you stand (round 3: walked up to the well yourself, the one spot beside it was yours, and the row gave up)
-  const clearOfYou = (q) => !pl || Math.abs(q.x - pl.x) > _plHalf(P) + 0.14 || Math.abs(q.y - pl.y) > 0.42;
+  const clearOfYou = (q) => !pl || Math.abs(q.x - pl.x) > _plHalf(P) + 0.32 || Math.abs(q.y - pl.y) > 0.6;
   const freeT = t && t.free ? (clearOfYou(t) ? t : [0.5, -0.5, 0.9, -0.9].map(k => ({ x: t.x + k + Math.sign(k) * _plHalf(P), y: t.y, free: true, stage: t.stage })).find(q => _ptwFree(q.x, q.y) && clearOfYou(q)) || t) : null;
-  const near = t && (t.free ? freeT : [[0, .8], [-.9, .5], [.9, .5], [0, 1.3], [-1.3, .8], [1.3, .8], [-1.6, .2], [1.6, .2], [0, 1.8]].map(([x, y]) => ({ x: t.x + x, y: t.y + y })).find(q => _ptwFree(q.x, q.y) && clearOfYou(q)));
+  // (a shop or stall: to one side of its front, never on the forecourt where its ground sign is painted; round 4)
+  const offs = row && row.at === 'stall' ? [[-2.0, .7], [2.0, .7], [-2.2, 1.2], [2.2, 1.2], [-1.6, 1.6], [1.6, 1.6]] : [[0, .8], [-.9, .5], [.9, .5], [0, 1.3], [-1.3, .8], [1.3, .8], [-1.6, .2], [1.6, .2], [0, 1.8]];
+  const near = t && (t.free ? freeT : offs.map(([x, y]) => ({ x: t.x + x, y: t.y + y })).find(q => _ptwFree(q.x, q.y) && clearOfYou(q)));
   const dN = near && pl ? Math.hypot(near.x - pl.x, (near.y - pl.y) * 1.4) : 99, onYou = near && !clearOfYou(near);
   if (P.me && pl && (!near || !_plSeen(near.x, near.y) || dN > ((row && (row.prop || row.propAlways)) ? 2.4 : 4.5) || onYou || t.free && !t.stage)) {
     if (!(row && (row.prop || row.propAlways || row.stageOk)) && !(near && t.free && _plSeen(near.x, near.y))) return false;
@@ -188,6 +193,8 @@ function _plCome(P, how, clips, rest, after) {
   return true;
 }
 function _plSpotNear(P, r) { for (let i = 0; i < 8; i++) { const a = Math.random() * 6.28, d = 0.8 + Math.random() * (r || 1.6), x = P.x + Math.cos(a) * d, y = P.y + Math.sin(a) * d * 0.7; if (_ptwFree(x, y)) return { x, y, free: true }; } return null; }
+/** A spot round you (a cell or so off, in view), for a row that wanders a little: the scent trail goes round you, not off out of the frame. */
+function _plSpotNearYou(P) { const pl = _ptwPlayer(); if (!pl) return _plSpotNear(P, 1.4); for (let i = 0; i < 10; i++) { const a = Math.random() * 6.28, d = 0.9 + Math.random() * 0.8, x = pl.x + Math.cos(a) * d, y = pl.y + Math.sin(a) * d * 0.6; if (Math.hypot(x - P.x, y - P.y) > 0.5 && _plStandOk(x, y)) return { x, y, free: true }; } return null; }
 function _plBesidePlayer(P, dx) { const pl = _ptwPlayer(); if (!pl) return null; for (const [a, b] of [[dx || 0.7, 0.25], [-(dx || 0.7), 0.25], [0, 0.55], [0.9, -0.1], [-0.9, -0.1]]) { const x = pl.x + a, y = pl.y + b; if (_ptwFree(x, y)) return { x, y, free: true }; } return null; }
 function _plFacePlayer(P) { const pl = _ptwPlayer(); if (pl) P.dir = pl.x >= P.x ? 1 : -1; }
 function _plDiary(row) { if (row.diary && typeof _ptNote === 'function') _ptNote('life-' + row.id); }
@@ -375,15 +382,17 @@ let _plScarfT = 0;
 function _plScarfSeason(W) { const t = performance.now(); if (t - _plScarfT < 15000) return; _plScarfT = t; try { if (W && W.m && W.m.season && W.m.season !== 'winter' && _ptS().lifeScarf) _plScarf(false); } catch (e) { /* next time */ } }
 /** 100: leaving the garden (the Home button, the garden's Leave button, a page opened from the sidebar): your companion waves first, where you can
  *  see it, and the page changes a moment later. Only for your own tap or key (never a page change the app makes by itself), and not twice in a row. */
-let _plByeT = 0, _plInputT = 0;
+let _plByeT = 0, _plInputT = 0, _plByeWhy = '';
 try { addEventListener('pointerdown', () => { _plInputT = performance.now(); }, true); addEventListener('keydown', () => { _plInputT = performance.now(); }, true); } catch (e) { /* no window */ }
 function _plGoodbye(go) {
   try {
     const now = performance.now();
-    if (typeof state === 'undefined' || !state || state.view !== 'garden' || now - _plInputT > 800 || now - _plByeT < 5000) return false;
-    if (typeof _ptw === 'undefined' || !_ptw.pets || !_pcMotionOn() || typeof _ptwVisiting === 'function' && _ptwVisiting()) return false;
-    const P = _ptw.pets.find(q => q.me); if (!P || !P.root || P.wow) return false;
-    if (typeof _gwInView === 'function' && _gw && _gw.cam && _gw.cam.w && !_gwInView(P.x, P.y, 0.3)) return false;
+    _plByeWhy = 'view'; if (typeof state === 'undefined' || !state || state.view !== 'garden') return false;
+    _plByeWhy = 'input ' + Math.round(now - _plInputT); if (now - _plInputT > 1500 || now - _plByeT < 5000) return false;
+    _plByeWhy = 'motion'; if (typeof _ptw === 'undefined' || !_ptw.pets || !_pcMotionOn() || typeof _ptwVisiting === 'function' && _ptwVisiting()) return false;
+    const P = _ptw.pets.find(q => q.me); _plByeWhy = 'pet'; if (!P || !P.root || P.wow) return false;
+    _plByeWhy = 'view-out'; if (typeof _gwInView === 'function' && _gw && _gw.cam && _gw.cam.w && !_gwInView(P.x, P.y, 0.3)) return false;
+    _plByeWhy = 'ok';
     _plByeT = now;
     P.tx = null; P.arrive = null; P.busy = 0; P.cb = null; P.perch = null;
     P.lifeCur = null;
@@ -392,7 +401,7 @@ function _plGoodbye(go) {
     if (t && pl && Math.hypot(t.x - P.x, t.y - P.y) > 0.08 && Math.hypot(t.x - P.x, t.y - P.y) < 4) { P.walkTo(t.x, t.y, true, () => { P.dir = -t.side; _plPlay(P, ['l-wave'], 1.5, null, { at: 1 }); }); setTimeout(go, 1350 + Math.min(1300, Math.hypot(t.x - P.x, t.y - P.y) * 420)); }
     else { _plFacePlayer(P); _plPlay(P, ['l-wave'], 1.5, null, { at: 1 }); setTimeout(go, 1350); }
     return true;
-  } catch (e) { return false; }
+  } catch (e) { _plByeWhy = 'error ' + (e && e.message); return false; }
 }
 if (typeof setView === 'function') {
   const _plSetView0 = setView;
