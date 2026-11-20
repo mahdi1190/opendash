@@ -138,8 +138,9 @@ window.GardenPaintGround = (function () {
     for (const ch of list) for (const l of LEVELS.concat(follow ? [] : [fixedK])) { const k = opts.key + '|' + ch.id + '|' + l; if (scene.textures.exists(k)) { ch.cached = { key: k, K: l }; } }
     let bakedPx = 0, baked = 0, evicted = 0, worst = 0, sliceWorst = 0, bakeMs = 0, dead = false, host = parent, serial = 0, wantK = follow ? 0 : fixedK, zoomSeen = 0, zoomAt = 0, held = 0;
     const times = [], cam = scene.cameras && scene.cameras.main, budget = (opts.budgetMB || 32) * 1048576 / 4;
+    let lowHidden = false;
     const place = (ch, key, K, w, h) => {
-      const p = PAD * K, im = scene.add.image(ch.bb[0], ch.bb[1], key).setOrigin(0, 0).setScale(1 / K).setDepth(opts.depth).setCrop(p, p, w - 2 * p, h - 2 * p);
+      const p = PAD * K, im = scene.add.image(ch.bb[0], ch.bb[1], key).setOrigin(0, 0).setScale(1 / K).setDepth(opts.depth).setCrop(p, p, w - 2 * p, h - 2 * p).setVisible(!lowHidden);
       if (ch.image) ch.image.destroy(); if (ch.tex && ch.tex !== key) dropTexture(scene, ch.tex);
       bakedPx += w * h - ch.px; ch.px = w * h; ch.image = im; ch.tex = key; ch.K = K; ch.dirty = false; if (host) { host.add(im); if (host.sort) host.sort('depth'); }
     };
@@ -185,6 +186,7 @@ window.GardenPaintGround = (function () {
     const heavy = (ch, k) => { const lim = HEAVY_MS / (k * k); for (const o of ch.ops) if (o.cost > lim) return true; return false; };
     const tick = () => {
       if (dead || !host) return; if (!scene.textures || !scene.textures.game) { dead = true; clearInterval(timer); registry.delete(handle); return; }   /* (its scene is gone: stop, quietly) */
+      if (lowHidden) return;   /* (a soft copy stands in for this whole layer at the whole-map zoom: nothing to paint) */
       const v = viewBox(.05), near = viewBox(.35), keep = viewBox(.7); if (!v) return; const K = level(), moving = typeof _gw !== 'undefined' && !!_gw.moving;
       { const t0 = performance.now(); for (const ch of list) { if (ch.image || !ch.cached || !meets(ch.bb, near)) continue; adopt(ch); if (performance.now() - t0 > 4) break; } }
       // one chunk a tick: on screen and bare first, then on screen and at the wrong sharpness or repainted, then the margin
@@ -228,6 +230,10 @@ window.GardenPaintGround = (function () {
       attach(p) { host = p; if (!p) return; const v = viewBox(.4); for (const ch of list) if (!ch.image && ch.cached && (!v || meets(ch.bb, v))) adopt(ch); },
       /** Take the pictures off the stage but keep them (the world is being rebuilt round them). */
       detach() { if (!host) return; for (const ch of list) if (ch.image) { ch.image.destroy(); ch.image = null; if (ch.tex) ch.cached = { key: ch.tex, K: ch.K }; ch.tex = null; bakedPx -= ch.px; ch.px = 0; ch.K = 0; ch.job = null; } host = null; },
+      /** (vale final fix 1) hide the whole layer while a soft copy of it stands in (the whole-map zoom), so the map shows one even
+       *  painting and never squares of the sharp picture among squares of the soft one */
+      lowHide(on) { on = !!on; if (on === lowHidden) return; lowHidden = on; for (const ch of list) if (ch.image) ch.image.setVisible(!on); },
+      get lowHidden() { return lowHidden; },
       pendingInView() { const v = viewBox(.05); if (dead || !v) return 0; let n = 0; for (const ch of list) if (!ch.image && meets(ch.bb, v)) n++; return n; },
       // (vale final, rule 16) every chunk of this layer that meets the box (inside its bleed) is on the stage: a soft placeholder
       // layer under this one (94-garden-paint-terrain-0kit.js opts.under) hides its own chunk there
