@@ -535,8 +535,32 @@ window.GardenPaintSeat = (function () {
   } };
 
   /* ---------- the old barn: weatherboarded oxblood walls on a stone plinth, a great slate roof (four times the player), the doors open on the hay, a loft door and hoist in the gable, a lean-to ---------- */
-  A['ld-barn'] = { box: [-92, -176, 96, 10], door: { dx: 14, dy: 0 }, seat: { kind: 'earth', w: 140, front: 22 }, lit: true, lights: [[14, -26, 90]], draw(B, o) {
+  A['ld-barn'] = { box: [-152, -176, 152, 10], door: { dx: 14, dy: 0 }, seat: { kind: 'earth', w: 290, front: 22 }, lit: true, lights: [[14, -26, 90]], draw(B, o) {
     const r = KIT().rng(283), s = o.season, wall = sz('eaves', 1) * 1.08, ridge = sz('hall', .45) * .98, red = ['#8e3428', '#6e261e', '#ac4e3e', '#4e1812'], L = leaf(s);
+    // (vale final, east) the barn's six cells are built on to the end: the walls stood on three of them and the other three
+    // stopped the feet with nothing drawn. West, an open cart shed under a lean-to roof with a farm cart in its shade; east, the
+    // lean-to runs on as a log store, split logs stacked to the eaves, a chopping block and an axe at its foot.
+    { const lw = wall * .78, lo = wall * .5, slate = ['#5d6366', '#4a5054', '#7d8588'];
+      // the cart shed: back wall in shadow, three oak posts, a sloping slate roof
+      B.f(B.rect(-142, -lw + 4, 78, lw - 4), '#3a2a20').f(B.rect(-142, -lw + 4, 78, lw - 4), B.lin(0, -lw, 0, 0, [[0, 'rgba(0,0,0,.35)'], [1, 'rgba(0,0,0,0)']]));
+      for (let x = -140; x < -66; x += 6) B.s(`M${x} ${-lw + 4}v${lw - 6}`, '#2a1c14', .6, .45);
+      // the cart inside: a box body, shafts down on the ground, one big wheel seen side on
+      B.f(B.rr(-128, -30, 46, 16, 2), WOOD[1]).f(B.rr(-128, -30, 46, 3, 1.4), WOOD[2]).s('M-82 -18L-58 -4M-82 -24L-58 -8', OAK[1], 2.2);
+      B.f(B.circ(-112, -12, 11), OAK[0]).f(B.circ(-112, -12, 8.4), '#2e2218'); for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; B.s(`M-112 -12l${Math.cos(a) * 8} ${Math.sin(a) * 8}`, OAK[1], 1.4); } B.f(B.circ(-112, -12, 2.2), IRON[1]);
+      for (const x of [-140, -103, -68]) B.f(B.rect(x - 2.4, -lo - 6, 4.8, lo + 6), OAK[1]).f(B.rect(x - 2.4, -lo - 6, 1.6, lo + 6), OAK[2], .8).f(B.ell(x, 0, 5, 1.6), '#22301a', .3);
+      B.f(B.poly([[-146, -lo - 4], [-64, -lw - 2], [-64, -lw + 4], [-146, -lo + 2]]), slate[0]);
+      for (let k = 1; k < 4; k++) B.s(`M-146 ${-lo - 4 + k * 1.6}L-64 ${-lw - 2 + k * 1.6}`, slate[1], .7, .6);
+      B.s(`M-146 ${-lo - 4}L-64 ${-lw - 2}`, slate[2], 1.4, .8);
+      for (let i = 0; i < 3; i++) B.f(B.blob(r, -136 + r() * 64, -lo - 6 - r() * (lw - lo - 6), 5 + r() * 5, 1.8, 7, .5), s === 'winter' ? '#eef2ee' : '#7d8f4e', .7);
+      // the log store: the lean-to roof on east, the stack of split logs under it, end grain pale, bark dark between
+      B.f(B.rect(72, -lo - 2, 70, lo + 2), '#2e2218');
+      for (let row = 0; row < 6; row++) { const y = -6 - row * 7.2; if (-y > lo - 2) break; for (let x = 76 + (row & 1) * 4; x < 138; x += 8) { const rr0 = 3.4 + r() * .9; B.f(B.circ(x, y, rr0 + .9), '#5a4030').f(B.circ(x, y, rr0), r() < .5 ? '#d8b88a' : '#c9a674').f(B.circ(x - .6, y - .6, rr0 * .45), '#b08a5e', .5); } }
+      for (const x of [74, 140]) B.f(B.rect(x - 2.2, -lo - 4, 4.4, lo + 4), OAK[1]).f(B.rect(x - 2.2, -lo - 4, 1.4, lo + 4), OAK[2], .8);
+      B.f(B.poly([[54, -wall * .62], [146, -lo - 8], [146, -lo - 2], [54, -wall * .62 + 6]]), slate[0]).s(`M54 ${-wall * .62}L146 ${-lo - 8}`, slate[2], 1.4, .8);
+      // the chopping block and the axe, chips on the ground
+      B.f(B.ell(120, 6, 9, 3), '#22301a', .25).f(B.rr(112, -8, 16, 12, 3), '#8a6a48').f(B.ell(120, -8, 8, 2.6), '#d8b88a').s('M118 -9L130 -22', OAK[1], 2).f(B.poly([[127, -24], [134, -20], [131, -17]]), IRON[1]);
+      for (let i = 0; i < 10; i++) B.f(B.rr(100 + r() * 40, 2 + r() * 6, 2.6, 1.2, .6), '#d8b88a', .9);
+      B.tufts(r, -146, 4, 10, 6, grass(s), 7).tufts(r, 146, 4, 10, 6, grass(s), 7); }
     // the lean-to on the east end, under its own lower roof
     B.f(B.rect(56, -wall * .62, 16, wall * .62), red[1]); for (let x = 56; x < 72; x += 5) B.s(`M${x} ${-wall * .62}v${wall * .62}`, red[3], .6, .5);
     B.f(B.poly([[54, -wall * .6], [54, -wall * .86], [76, -wall * .6]]), '#5d6366').s(`M54 ${-wall * .86}L76 ${-wall * .6}`, '#3c4244', 1.4);

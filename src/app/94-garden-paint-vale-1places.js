@@ -576,7 +576,7 @@
       });
       // dressing by job: the cider square's press, bell and lanterns; the mill yard's millstone and sacks; the court's fallen column
       const spot = (x, y) => L.free(x, y) && ['grass', 'path'].includes(L.kind(x, y));
-      const put = (cands, key, box, draw, foot, ok) => { for (const [x, y] of cands) if ((ok || spot)(x, y)) { const p = L.cpt(x, y); thing({ key, box, x: p.x, y: p.y, draw, foot }); return; } };   // foot: [left, right, depth] px the feet cannot enter (GardenPaintVale.feet)
+      const put = (cands, key, box, draw, foot, ok) => { for (const [x, y] of cands) if ((ok || spot)(x, y)) { const p = L.cpt(x, y); thing({ key, box, x: p.x, y: p.y, draw, foot }); return true; } return false; };   // foot: [left, right, depth] px the feet cannot enter (GardenPaintVale.feet)
       if (pz.id === 'cider-square') { if (!L.stat('ld-press')) put([[80.2, 36.4], [79.6, 35.4], [75.4, 37.6]], 'press', [-26, -50, 28, 6], drawPress(P), [-21, 23, 10]); if (!L.stat('ld-bell')) put([[79.6, 38.3], [80.4, 38.6]], 'bell', [-14, -64, 16, 5], drawBell(P), [-6, 7, 6]); /* (round 3 layouts: the hand-authored orchard has its own press and bell, ld-press and ld-bell) */ put([[77.1, 36.3], [76.3, 38.75]], 'baskets',   /* (High orchard fix round 2: by the lamp at the square's back edge, where the barrels are) */ [-24, -18, 26, 5], drawBaskets(P, C.season), [-18, 20, 8]); }
       if (pz.id === 'mill-yard') {
         // (round 3: the millstone stood alone in the middle of the yard. It leans on the mill's front wall now, past the door, and
@@ -589,7 +589,9 @@
         // (layfix east) the yard at work, not a bare plaza: a hay wain unhitched by the barn, a stone trough and pump against the
         // lamp in the yard's middle, barrels and a sack barrow by the mill's doors; the setts give way to weeds at the yard's edges
         put([[87.1, 65.6], [86.9, 66], [87.3, 65.2]], 'yard-wain|' + C.season, [-72, -58, 52, 8], drawWain(P, C.season), [-38, 38, 10]);
-        put([[84.7, 67.1], [84.2, 66.9]], 'yard-trough', [-30, -50, 26, 6], drawTrough(P), [-26, 20, 8]);
+        // (vale final, east) the trough and pump against the barn's front wall east of its doors: in the open yard the far
+        // willows' alder stood over them and hid both under its crown
+        put([[85.6, 64.95], [86.55, 64.95]], 'yard-trough', [-30, -50, 26, 6], drawTrough(P), [-26, 20, 8], (x, y) => { const b = gardenIslandBaseCell(Math.floor(x), Math.floor(y)); return !!(b && b.land && !b.solid && !b.freshwater && !b.staticId); }) || put([[84.7, 67.1], [84.2, 66.9]], 'yard-trough', [-30, -50, 26, 6], drawTrough(P), [-26, 20, 8]);
         put([[82.6, 67.5], [83.2, 67.3]], 'yard-sacks2', [-22, -24, 24, 5], drawSacks(P), [-18, 20, 8]);
         put([[82.4, 64.9], [82.9, 65.0]], 'yard-barrels', [-22, -30, 22, 5], drawBarrels(P), [-17, 17, 8]);
         { const sh = shape; if (sh && sh.length > 2) add(kit.bboxOf(sh, 30), seed + 3, (B, r) => { const path = new Path2D(B.poly(sh)); B.cx.save(); B.cx.clip(path);
