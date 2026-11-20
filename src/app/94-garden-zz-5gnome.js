@@ -5,7 +5,17 @@
    ============================================================ */
 const GTG_GN = Object.freeze({ days: 3, hostTicket: 3, homeTicket: 6, at3: Object.freeze({ 'mat:stone': 2 }), at6: Object.freeze({ 'mat:stone': 5 }) });
 const GTG_GN_AT = _wdKindPt(['postbox'], 1.1, 0.5, { guest: _wdKindPt(['notice-board'], -3.4, 0.5) });   // world cells, by KIND on any layout: yours by a post box; those staying with you stand in a row from a notice board
-const GTG_BOTTLE_AT = Object.freeze([[19, 23.4], [31.5, 22.6], [23, 26.6]]);   // world cells: where a bottle comes to rest
+const GTG_BOTTLE_N = 3;   // how many bottles can bob at once
+/** Where a bottle comes to rest, read from the layout's own water (any layout): open water a step out from the shore nearest the arrival
+ *  point, three spots a few cells apart. [[x, y]] world cells; [] on a layout with no water near enough. */
+const _gtgbAt = { D: null, at: [] };
+function _gtgbSpots() {
+  let D = null; try { D = gardenIslandData(); } catch (e) { return []; }
+  if (_gtgbAt.D === D) return _gtgbAt.at;
+  const at = [], st = (D.anchors && D.anchors.start) || { x: GARDEN_WORLD.cols / 2, y: GARDEN_WORLD.rows / 2 }, wet = (x, y) => { try { return typeof gardenTerrainAt === 'function' ? /^(water|deep)$/.test(gardenTerrainAt(x, y)) : false; } catch (e) { return false; } };
+  for (let r = 2; r < 48 && at.length < GTG_BOTTLE_N; r++) for (let i = 0; i < r * 8 && at.length < GTG_BOTTLE_N; i++) { const a = i / (r * 8) * Math.PI * 2, x = Math.round((st.x + Math.cos(a) * r) * 2) / 2, y = Math.round((st.y + Math.sin(a) * r) * 2) / 2; if (!wet(x, y) || !wet(x, y - 1) || !wet(x - 0.8, y) || !wet(x + 0.8, y) || wet(x, y + 2.2) || at.some(q => Math.hypot(q[0] - x, q[1] - y) < 3.5)) continue; at.push([x, y]); }   // (out on the water, the bank a couple of cells in front, so it is seen)
+  _gtgbAt.D = D; _gtgbAt.at = at; return at;
+}
 const GTG_BOTTLE = Object.freeze({ days: 3, keep: 3, read: 3, send: 1 });
 /* Append only: the index is what is sent. No names, no links, nothing but kindness. */
 const GTG_BOTTLE_LINES = Object.freeze(['Thinking of you.', 'Your garden looked lovely last time.', 'Hope today was kind to you.', 'Well done, by the way.', 'Come round soon.', 'Saw a fish that reminded me of you.', 'I owe you a cup of tea.', 'Keep going. It is worth it.', 'I hope it stops raining where you are.', 'Nothing to say. Just this bottle.', 'Happy whatever it is today.', 'Your tomatoes are better than mine and I have made my peace with it.']);
@@ -90,12 +100,12 @@ function _gtgbWaiting() {
     const h = gtgPair(f.id); if (!h) continue;
     for (const r of f.tg.bt) if (r[0] === h && now >= r[2] + GTG_BOTTLE.days && !W[`tg.br.${f.id}.${r[2]}`] && GTG_BOTTLE_LINES[r[1]]) out.push({ fid: f.id, name: f.name, l: r[1], dn: r[2] });
   }
-  return out.slice(0, GTG_BOTTLE_AT.length);
+  return out.slice(0, _gtgbSpots().length);
 }
 function _gtgbSvg() { const A = GART; return A.P('#0a2a3a', A.ell(0, 2, 13, 3), 0.25) + `<g transform="rotate(-24)">` + A.P('#6a9a7a', A.rrect(-10, -5, 15, 10, 3), 0.85) + A.P('#6a9a7a', A.rrect(4, -2.4, 7, 4.8, 1), 0.85) + A.P('#b88a4a', A.rrect(10, -2, 3, 4, 0.6)) + A.P('#f4ead0', A.rrect(-7, -2.6, 9, 5, 0.5)) + A.P('#ffffff', A.rrect(-8, -4, 9, 1.2, 0.5), 0.6) + '</g>'; }
 function _gtgbDraw(m) {
-  const rows = m.visit ? new Array(Math.min(GTG_BOTTLE_AT.length, Number(_gtgTheirs(m).bw) || 0)).fill(null) : _gtgbWaiting();
-  GTG_BOTTLE_AT.forEach(([x, y], i) => {
+  const rows = m.visit ? new Array(Math.min(_gtgbSpots().length, Number(_gtgTheirs(m).bw) || 0)).fill(null) : _gtgbWaiting();
+  _gtgbSpots().forEach(([x, y], i) => {
     const B = rows[i];
     if (i >= rows.length) { gtgSprite('bt-' + i, null); return; }
     gtgSprite('bt-' + i, { x, y, z: y, hit: 0.9, hitUp: 2, label: 'A bottle in the water', svg: _gtgbSvg(), onClick: () => {

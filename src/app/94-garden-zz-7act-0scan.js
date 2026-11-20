@@ -82,9 +82,9 @@ function _gksPlaceFault(K, x, y, w, h, list, self) {
   for (const [px, py] of pts) if (_gksWet(px, py)) return 'in the water';
   if (!K.onPath) for (const [px, py] of pts) { let c = null; try { c = gardenIslandBaseCell(px, py); } catch (e) { c = null; } if (c && c.route) return 'on a path (' + c.route + ')'; }
   const walker = typeof _gw !== 'undefined' && _gw && _gw.grid && _gw.solids;   // (before the walker has its map, only the layout's own cells are read)
-  try { if (walker && typeof _gwFootCells === 'function' && !_gwFootCells(x, cy, hw * 0.9, h / 2, true)) return 'on what stops the feet (a building, a wall or the like)'; } catch (e) { /* no walker yet */ }
+  // (the layout's own cells: a building's footprint or rock; never the walker's whole map, which also shuts land not yet opened)
+  for (const [px, py] of pts) { let c = null; try { c = gardenIslandBaseCell(px, py); } catch (e) { c = null; } if (!c || !c.land) return 'off the land'; if (c.staticId && c.staticId !== self) { let st = null; try { st = (gardenIslandData().static || []).find(q => q.id === c.staticId); } catch (e) { st = null; } if (st && (st.col || 'full') === 'full' && !st.walk) return 'on ' + c.staticId; } if (c.solid) return 'on rock or a wall'; }
   try { if (walker) { const S = _gw.solids, tag = '[thing:' + self + ']', x0 = x - hw * 0.9, x1 = x + hw * 0.9, y0 = y - h, y1 = y; for (let gy = Math.floor(y0); gy <= Math.floor(y1); gy++) for (let gx = Math.floor(x0); gx <= Math.floor(x1); gx++) for (const r of S.at.get(gx + ',' + gy) || []) { if (String(r.src).includes(tag)) continue; if (x1 > r.x0 && x0 < r.x1 && y1 > r.y0 && y0 < r.y1 && (!r.form || typeof _gwFormHitsBox !== 'function' || _gwFormHitsBox(r.form, x0, y0, x1, y1))) return 'on ' + (r.src || 'something solid'); } } } catch (e) { /* no walker yet */ }
-  if (!walker) for (const [px, py] of pts) { let c = null; try { c = gardenIslandBaseCell(px, py); } catch (e) { c = null; } if (!c || !c.land || c.solid) return 'off the land or on rock'; }
   for (const o of list) { if (o.id === self || o.src === 'decor') continue; const ow = (o.w || 1) / 2, oh = o.h || 1; if (x + hw > o.x - ow && x - hw < o.x + ow && y > o.y - oh && y - h < o.y) return 'on ' + o.id; }
   if (!K.onPath) for (const [px, py] of pts) if (typeof _plStoneAt === 'function' && _plStoneAt(px, py)) return 'on paving';
   return '';
