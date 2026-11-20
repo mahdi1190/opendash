@@ -75,14 +75,19 @@
     // 1c. The grass lanes (the folly trail on the midsummer line, the ridge path): mown turf, the mower's passes along
     // them light and dark, a soft longer edge, never the bare earth of the other walks.
     for (const rt of [...L.routes.values()].filter(q => q.zone === 4 && q.surface === 'grass')) {
-      const pts = rpts(rt.id); if (!pts) continue; const ev = even(pts, 6), bb = kit.bboxOf(ev, 70);
+      const pts = rpts(rt.id); if (!pts) continue; const ev0 = even(pts, 6), bb = kit.bboxOf(ev0, 70);
+      // where it meets a worn path, the path wins (a lane painted over the pass's end hid it)
+      const others = [...L.routes.values()].filter(q => q.zone === 4 && q.surface !== 'grass' && q.tier !== 'plaza' && q.points || q.id === 'pass-summit').map(q => rpts(q.id)).filter(Boolean);
+      const onOther = q => others.some(o => o.some(p => Math.hypot((p.x - q.x) / cw, (p.y - q.y) / ch) < p.w * .5 + .35));
+      const ev = ev0.filter(q => !onOther(q)); if (ev.length < 2) continue;
       add(bb, 93, (B, r) => {
         B.cx.save(); B.cx.clip(coastP); B.cx.lineCap = 'round'; B.cx.lineJoin = 'round';
-        const lane = (k, col, a) => { for (let i = 1; i < ev.length; i++) { const d = across(ev, i), h = halfPx(ev[i], d) * k; B.s(`M${ev[i - 1].x} ${ev[i - 1].y}L${ev[i].x} ${ev[i].y}`, col, h * 2, a); } };
+        const lane = (k, col, a) => { for (let i = 1; i < ev.length; i++) { if (Math.hypot(ev[i].x - ev[i - 1].x, ev[i].y - ev[i - 1].y) > 14) continue; const d = across(ev, i), h = halfPx(ev[i], d) * k; B.s(`M${ev[i - 1].x} ${ev[i - 1].y}L${ev[i].x} ${ev[i].y}`, col, h * 2, a); } };
         B.cx.filter = 'blur(5px)'; lane(1.18, kit.mix(P.lawn, P.lawnLo, .4), .9); B.cx.filter = 'none';
         lane(1, P.lawn, 1); lane(.92, kit.mix(P.lawn, P.lawnHi, .35), 1);
         // the mower's passes: two stripes along the lane, one lit and one in shade
-        for (const [o, col, a] of [[-.45, season === 'winter' ? '#c4cab8' : kit.mix(P.lawnHi, '#d8e0a0', .3), .55], [.45, P.lawnLo, .32]]) { const line = ev.map((q, i) => { const d = across(ev, i), h = halfPx(q, d); return { x: q.x + d.nx * h * o, y: q.y + d.ny * h * o }; }); V.strokePts(B, line, col, Math.max(6, halfPx(ev[0], across(ev, 0)) * .8), a); }
+        const runs = []; let cur = [ev[0]]; for (let i = 1; i < ev.length; i++) { if (Math.hypot(ev[i].x - ev[i - 1].x, ev[i].y - ev[i - 1].y) > 14) { runs.push(cur); cur = []; } cur.push(ev[i]); } runs.push(cur);
+        for (const run of runs.filter(q => q.length > 1)) for (const [o, col, a] of [[-.45, season === 'winter' ? '#c4cab8' : kit.mix(P.lawnHi, '#d8e0a0', .3), .55], [.45, P.lawnLo, .32]]) { const line = run.map((q, i) => { const d = across(run, i), h = halfPx(q, d); return { x: q.x + d.nx * h * o, y: q.y + d.ny * h * o }; }); V.strokePts(B, line, col, Math.max(6, halfPx(run[0], across(run, 0)) * .8), a); }
         // daisies and clover in the sward, tufts of longer grass at the edges
         for (let i = 0; i < ev.length; i += 2) { const q = ev[i], d = across(ev, i), h = halfPx(q, d);
           if (season !== 'winter' && r() < .5) B.f(B.circ(q.x + d.nx * h * (r() - .5) * 1.4, q.y + d.ny * h * (r() - .5) * 1.4, 1.2), r() < .7 ? '#f8f4e8' : '#f0d24a', .9);
@@ -100,7 +105,7 @@
         B.cx.save(); B.cx.clip(coastP);
         const tread = opts.rock ? ['#a89c86', '#b5a990', '#8c8270'] : ['#b8ad94', '#c4b99e', '#a39880'];
         // the bed the steps are set in: trodden earth between them, soft at its edges
-        B.cx.lineCap = 'butt'; B.cx.filter = 'blur(3px)'; for (let i = 1; i < ev.length; i++) { const d = across(ev, i), h = halfPx(ev[i], d) * .98; B.s(`M${ev[i - 1].x} ${ev[i - 1].y}L${ev[i].x} ${ev[i].y}`, opts.rock ? '#8a8070' : '#a08e6a', h * 2, .75); } B.cx.filter = 'none';
+        B.cx.lineCap = 'butt'; B.cx.filter = 'blur(3px)'; if (opts.rock) for (let i = 1; i < ev.length; i++) { const d = across(ev, i), h = halfPx(ev[i], d) * .98; B.s(`M${ev[i - 1].x} ${ev[i - 1].y}L${ev[i].x} ${ev[i].y}`, opts.rock ? '#8a8070' : '#a08e6a', h * 2, .75); } B.cx.filter = 'none';
         if (opts.rock) for (let i = 0; i < ev.length; i += 2) { const q = ev[i], d = across(ev, i), h = halfPx(q, d); for (const sd of [-1, 1]) B.boulder(r, q.x + d.nx * (h + 7) * sd, q.y + d.ny * (h + 7) * sd + 4, 14 + r() * 10, 12 + r() * 9, STONE, false); }
         // back to front, so each nearer step overlaps the one above it
         const order = ev.map((q, i) => i).sort((a, b) => ev[a].y - ev[b].y);
