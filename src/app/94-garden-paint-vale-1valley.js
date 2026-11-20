@@ -78,16 +78,20 @@
   }
   // the sign on a locked plot's fence: a small board on a post saying what it needs, its level or (once you have that) its price
   function sign(B, x, y, row, lv) {
+    // (layfix east) a small tag on a short stake at the gate, dark weathered wood with the price cut in pale letters: the big
+    // yellow boards stood out in the scenery like stickers, five to a view
     const lvNeed = row.lv || 0, coin = lv >= lvNeed && !!row.buy, txt = lv < lvNeed ? 'Lv ' + lvNeed : row.buy ? String(row.buy) : ''; if (!txt) return;
-    B.f(B.ell(x + 1, y + 1, 7, 2), 'rgba(40,40,24,.25)');
-    B.f(B.rect(x - 1.2, y - 15, 2.4, 15), '#5e4c36').f(B.rect(x - 1.2, y - 15, 1, 15), '#8a7454', .7);
-    const cx = B.cx; cx.save(); cx.font = '700 7.5px system-ui, sans-serif';
-    const w = Math.max(16, cx.measureText(txt).width + (coin ? 7 : 0) + 6), x0 = x - w / 2, y0 = y - 26;
-    B.f(B.rr(x0 + .8, y0 + 1, w, 12, 2), 'rgba(30,24,16,.3)').f(B.rr(x0, y0, w, 12, 2), '#c9a876').f(B.rr(x0, y0, w, 3.5, 1.5), '#dcc092', .8).s(B.rr(x0, y0, w, 12, 2), '#6e5434', .8, .9);
-    let tx = x0 + 3;
-    if (coin) { B.f(B.circ(tx + 2.5, y0 + 6, 2.8), '#e8b830').f(B.circ(tx + 2.5, y0 + 6, 1.5), '#f6d870'); tx += 7; }
-    cx.fillStyle = '#3e2c1a'; cx.textBaseline = 'middle'; cx.fillText(txt, tx, y0 + 6.4); cx.restore();
+    B.f(B.ell(x + 1, y + .8, 4.5, 1.4), 'rgba(40,40,24,.25)');
+    B.f(B.rect(x - .9, y - 11, 1.8, 11), '#5e4c36').f(B.rect(x - .9, y - 11, .7, 11), '#8a7454', .7);
+    const cx = B.cx; cx.save(); cx.font = '700 5.6px system-ui, sans-serif';
+    const w = Math.max(11, cx.measureText(txt).width + (coin ? 5 : 0) + 4), x0 = x - w / 2, y0 = y - 18;
+    B.f(B.rr(x0 + .6, y0 + .8, w, 8, 1.4), 'rgba(30,24,16,.3)').f(B.rr(x0, y0, w, 8, 1.4), '#6e5638').f(B.rr(x0, y0, w, 2, 1), '#8a6e4a', .8).s(B.rr(x0, y0, w, 8, 1.4), '#3e2e1e', .6, .9);
+    B.f(B.circ(x0 + 1.6, y0 + 4, .5), '#2e2418').f(B.circ(x0 + w - 1.6, y0 + 4, .5), '#2e2418');
+    let tx = x0 + 2.4;
+    if (coin) { B.f(B.circ(tx + 1.6, y0 + 4.1, 1.7), '#d8a830').f(B.circ(tx + 1.6, y0 + 4.1, .8), '#f0d070'); tx += 4.4; }
+    cx.fillStyle = '#f2e8d0'; cx.textAlign = 'left'; cx.textBaseline = 'middle'; cx.fillText(txt, tx, y0 + 4.3); cx.restore();
   }
+
   function fence(B, r, P, edges, W, season) {
     const cw = W.cellW, ch = W.cellH, lv = level(), wood = ['#8a7454', '#a88e66', '#5e4c36'];
     const fronts = [];
@@ -129,6 +133,18 @@
       const xs = p.edges.map(e => e[0]), ys = p.edges.map(e => e[1]), bb = [Math.min(...xs) * cw - 16, W.sky + Math.min(...ys) * ch - 30, (Math.max(...xs) + 1) * cw + 8, W.sky + (Math.max(...ys) + 1) * ch + 8];
       add(bb, 4100 + p.cells.length, (B, r) => fence(B, r, P, p.edges, W, season));
     }
+    // (layfix east) where the valley's turf meets the beach the cells met in ruled square notches (a grass rectangle cut into the
+    // sand by the barn): the edge is blended, a feathered band of sandy turf with marram tufts on the sand side
+    { const edges = [];
+      for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) { if (!inValley(x, y)) continue; const b = gardenIslandBaseCell(x, y); if (!b || !b.land || b.beach || b.freshwater) continue;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = gardenIslandBaseCell(x + dx, y + dy); if (n && n.land && n.beach && !n.freshwater) edges.push([x, y, dx, dy]); } }
+      if (edges.length) { const xs = edges.map(e => e[0]), ys = edges.map(e => e[1]), bb = [Math.min(...xs) * cw - 40, W.sky + Math.min(...ys) * ch - 40, (Math.max(...xs) + 1) * cw + 40, W.sky + (Math.max(...ys) + 1) * ch + 40];
+        add(bb, 5190, (B, r) => {
+          B.cx.filter = 'blur(7px)';
+          for (const [x, y, dx, dy] of edges) { const cx0 = (x + .5 + dx * .5) * cw, cy0 = W.sky + (y + .5 + dy * .5) * ch; B.f(B.ell(cx0, cy0, dx ? 12 : cw * .62, dy ? 8 : ch * .62), season === 'winter' ? '#cfc8ae' : '#d6c896', .55); }
+          B.cx.filter = 'none';
+          if (season !== 'winter') for (const [x, y, dx, dy] of edges) for (let k = 0; k < 3; k++) { const t = r(), px = (x + .5 + dx * (.55 + r() * .3)) * cw + (dx ? 0 : (t - .5) * cw), py = W.sky + (y + .5 + dy * (.55 + r() * .3)) * ch + (dy ? 0 : (t - .5) * ch); for (let j = 0; j < 4; j++) B.s(`M${px + (r() - .5) * 6} ${py}q${(r() - .5) * 4} -5 ${(r() - .5) * 7} -${7 + r() * 5}`, r() < .5 ? '#9aa262' : '#b8b47a', 1, .85); }
+        }); } }
     // meadow flowers in the free valley grass: drifts, each drift one colour
     const data = gardenIslandData(), statics = data.static || [], free = [];
     const near = (x, y) => statics.some(s => x >= s.x - 1 && x <= s.x + s.w && y >= s.y - 1 && y <= s.y + s.h + 1 || s.apron && x >= s.apron.x && x < s.apron.x + s.apron.w && y >= s.apron.y && y < s.apron.y + s.apron.h);

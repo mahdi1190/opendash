@@ -188,10 +188,8 @@
         // the trod along the cliff walk: turf and grit worn pale where feet go
         const cw0 = rpts('cliff-walk'); if (cw0) { const ev = even(cw0, 6); B.cx.lineCap = 'round'; for (let i = 1; i < ev.length; i++) { const d = across(ev, i), h = halfPx(ev[i], d); B.s(`M${ev[i - 1].x} ${ev[i - 1].y}L${ev[i].x} ${ev[i].y}`, '#b9ad92', h * 1.3, .55); B.s(`M${ev[i - 1].x} ${ev[i - 1].y}L${ev[i].x} ${ev[i].y}`, '#cfc4a8', h * .7, .5); } }
         B.cx.restore();
-        // the sea edge: a lit lip, the face stepping down under it in beds, darker as it goes, spray at its foot
-        for (const l of L.coast) { const near = l.filter(p => p.x > cb[0] - 60 && p.x < cb[2] + 60 && p.y > bb[1] && p.y < bb[3] && p.x > 86.6 * cw); if (near.length < 2) continue;
-          for (const [dx, dy, col, w, a] of [[22, 92, '#2a2824', 16, .45], [20, 80, '#38342e', 16, .95], [17, 66, '#4a453c', 16, 1], [14, 52, '#5e574b', 16, 1], [11, 38, '#746b5c', 16, 1], [7, 24, '#8a8070', 16, 1], [4, 11, '#a39784', 12, 1], [1, 2, STONE.rockHi, 4, .95]]) V.strokePts(B, near.map(p => ({ x: p.x + dx, y: p.y + dy })), col, w, a);
-          for (let i = 0; i < near.length; i += 2) { const p = near[i]; B.s(`M${p.x + 3} ${p.y + 6}l${(r() - .5) * 4} ${30 + r() * 50}`, '#2e2b26', 1.1, .5); if (r() < .5) B.s(`M${p.x + 6} ${p.y + 20 + r() * 50}l${8 + r() * 6} ${r() * 2}`, '#c2b8a2', 1.2, .55); if (r() < .5) B.f(B.blob(r, p.x + 24, p.y + 96, 10, 3.4, 6, .5), '#f2f6f4', .65); } }
+        // (layfix east: the sea edge's face is a standing picture now, below: laid in the ground it lay under the sea's own paint,
+        //  a translucent grey slab with the water showing through it)
         // blackthorn bent by the wind on the cliff top, its back to the sea
         for (const [x, y] of [[89.2, 30.6], [89.6, 33.8], [88.9, 36.2]]) { const c = L.cpt(x, y); if (!on(c.x, c.y)) continue; B.shadow(c.x + 6, c.y + 2, 20, 5, .3);
           for (let k = 0; k < 7; k++) B.f(B.blob(r, c.x - 6 + k * 2 - r() * 4, c.y - 8 - r() * 10, 9 + r() * 5, 6 + r() * 3, 7, .45), k < 3 ? '#3f4e2e' : k < 5 ? '#55663a' : '#6a7a46', .95);
@@ -203,6 +201,39 @@
           if (season === 'spring') for (let k = 0; k < 4; k++) B.f(B.circ(c.x - 7 + r() * 14, c.y - 18 + r() * 10, 1.3), '#fbf7ee', .95);
           else if (season === 'autumn' && r() < .6) B.f(B.circ(c.x - 5 + r() * 10, c.y - 12 + r() * 6, 1.6), '#3e4a7a', .95); }
       }, {});
+      // A rock face falling from a lip (pts, px, in order along it) to its foot: broken into facets of their own height and tone, a
+      // lit, broken lip, bedding ledges and cracks, darker toward the foot, wet and foamed where it meets the water (sea true) or
+      // with tufts and fallen stones where it meets sand. Drawn in the thing's own space (origin ox, oy).
+      const rockFace = (B, r, pts, ox, oy, o) => {
+        const D0 = o.depth, out = o.lean || 0, seg = pts.map((p, i) => { const h = D0 * (.72 + r() * .5) * (o.taper ? Math.min(1, (i + 1) / 3, (pts.length - i) / 3) : 1); return { x: p.x - ox, y: p.y - oy + (r() - .5) * (o.rough || 4), h }; });
+        for (let i = 1; i < seg.length - 1; i++) seg[i].h = (seg[i - 1].h + seg[i].h * 2 + seg[i + 1].h) / 4;   // (neighbours agree, so the foot wanders, not saws)
+        const foot = seg.map(p => ({ x: p.x + out * p.h / D0, y: p.y + p.h }));
+        B.cx.filter = 'blur(5px)'; B.f(B.poly(foot.map(p => ({ x: p.x, y: p.y - 4 })).concat(foot.slice().reverse().map(p => ({ x: p.x + 8, y: p.y + 8 })))), o.sea ? '#1e3a40' : '#2e3420', .3); B.cx.filter = 'none';
+        for (let i = 1; i < seg.length; i++) { const a = seg[i - 1], b = seg[i], fa = foot[i - 1], fb = foot[i], t = r();
+          const quad = B.poly([[a.x, a.y], [b.x, b.y], [fb.x, fb.y], [fa.x, fa.y]]);
+          B.f(quad, B.lin(0, Math.min(a.y, b.y), 0, Math.max(fa.y, fb.y), [[0, t < .4 ? '#b0a48c' : t < .75 ? '#a39784' : '#968b77'], [.45, t < .5 ? '#857b69' : '#7a705f'], [1, o.sea ? '#3e3a33' : '#5e564a']]));
+          B.f(quad, '#000', .015 + r() * .05); }
+        // the face's beds: ledges along it, lit on top and shaded under, and cracks down it
+        for (let k = 1; k < 4; k++) { const f = k / 4 + (r() - .5) * .06; V.strokePts(B, seg.map((p, i) => ({ x: p.x + (foot[i].x - p.x) * f, y: p.y + (foot[i].y - p.y) * f + Math.sin(i * 1.3 + k) * 1.4 })), '#d0c6ae', 1.2, .4); V.strokePts(B, seg.map((p, i) => ({ x: p.x + (foot[i].x - p.x) * f, y: p.y + (foot[i].y - p.y) * f + 2 + Math.sin(i * 1.3 + k) * 1.4 })), '#3e3a34', 1, .3); }
+        for (let i = 0; i < seg.length; i++) if (r() < .7) { const p = seg[i], fp = foot[i], l = .35 + r() * .55; B.s(`M${p.x + (r() - .5) * 4} ${p.y + 3}L${p.x + (fp.x - p.x) * l + (r() - .5) * 5} ${p.y + (fp.y - p.y) * l}`, '#3a352e', .9, .55); }
+        // the lip: a broken lit edge with turf and thrift hanging over it
+        V.strokePts(B, seg.map(p => ({ x: p.x, y: p.y - 1 })), '#ddd3bb', 3, .95);
+        for (let i = 0; i < seg.length; i++) { const p = seg[i]; if (r() < .55) B.f(B.blob(r, p.x + (r() - .5) * 6, p.y - 2, 5 + r() * 5, 2 + r(), 6, .5), o.season === 'winter' ? '#8a9078' : '#6f8a44', .95); if (o.season !== 'winter' && o.season !== 'autumn' && r() < .2) for (let j = 0; j < 4; j++) B.f(B.circ(p.x + (r() - .5) * 8, p.y - 3 - r() * 2, 1.2), '#e8a0b8', .95); }
+        // the foot: boulders fallen from it, and white water working round them (or tufts on the sand)
+        for (let i = 0; i < foot.length; i++) { const p = foot[i]; if (r() < .45) B.boulder(r, p.x + (r() - .5) * 8, p.y + 2, 7 + r() * 9, 5 + r() * 4, STONE, false);
+          if (o.sea) { if (r() < .8) B.f(B.blob(r, p.x + 4 + (r() - .5) * 10, p.y + 4, 9 + r() * 8, 2.6, 6, .5), '#f2f6f4', .55 + r() * .3); }
+          else if (o.season !== 'winter' && r() < .4) B.tufts(r, p.x, p.y + 4, 8, 3, ['#7c8a44', '#a8a860'], 5); }
+      };
+      // the sea cliff down the headland's east coast, north of the cove: chunks of a few cells each, standing over the sea at
+      // their own depth (their lip's line), so the face is painted over the water, not under it
+      { const lipMax = L.cpt(0, FACE_Y).y - 8;
+        for (const l of L.coast) { const run = l.filter(p => p.x > 86.6 * cw && p.y > bb[1] + 30 && p.y < lipMax); if (run.length < 2) continue;
+          // in order along the coast, split where it jumps (another stretch of the same loop)
+          const parts = []; let cur = [run[0]]; for (let i = 1; i < run.length; i++) { if (Math.hypot(run[i].x - run[i - 1].x, run[i].y - run[i - 1].y) > 40) { parts.push(cur); cur = []; } cur.push(run[i]); } parts.push(cur);
+          for (const part of parts) { if (part.length < 2) continue; const even0 = even(part.map(p => ({ x: p.x, y: p.y, w: 0 })), 14);
+            for (let s0 = 0; s0 < even0.length - 1; s0 += 9) { const ch0 = even0.slice(s0, Math.min(even0.length, s0 + 10)); if (ch0.length < 2) continue;
+              const xs = ch0.map(p => p.x), ys = ch0.map(p => p.y), ox = Math.min(...xs), oy = Math.max(...ys), salt = Math.round(ox + oy);
+              thing({ key: 'sea-cliff-' + salt + '|' + season, x: ox, y: oy, depth: oy - 40, box: [-24, Math.min(...ys) - oy - 20, Math.max(...xs) - ox + 50, 100], draw: B => rockFace(B, kit.rng(salt), ch0, ox, oy, { depth: 64, lean: 10, rough: 3, sea: true, season }) }); } } } }
       // the cove's head: a rock face about a figure high from the steps to the sea, the steps cut through it
       const fpts = []; for (let x = faceFrom; x <= 91; x += .25) fpts.push(L.cpt(x, FACE_Y + Math.sin(x * 2.3) * .08));
       // (vale layouts merge: the face stands, a picture of its own in front of the cliff top (laid flat in the ground it was not
@@ -220,16 +251,8 @@
       thing({ key: 'cove-face|' + season, x: fox, y: foy, box: [fbb[0] - fox, fbb[1] - foy, fbb[2] - fox, foy - foy + 4], draw: B => { const r = kit.rng(96);
         B.cx.save(); B.cx.translate(-fox, -foy); B.cx.clip(coastP);
         const sl = rpts('cliff-steps'), gap = sl ? (() => { const q = sl.reduce((m, p) => Math.abs(p.y - L.cpt(0, FACE_Y).y) < Math.abs(m.y - L.cpt(0, FACE_Y).y) ? p : m, sl[0]); return [q.x - halfPx(q, { nx: 1, ny: 0 }) - 2, q.x + halfPx(q, { nx: 1, ny: 0 }) + 2]; })() : [0, 0];
-        for (const seg of [fpts.filter(p => p.x < gap[0]), fpts.filter(p => p.x > gap[1])]) { if (seg.length < 2) continue; const top = seg.map(p => ({ x: p.x, y: p.y - 4 })), foot = seg.map(p => ({ x: p.x, y: p.y + 44 }));   // (fix round 2: taller, to the cliff's block: 94-garden-wonder-7shortcuts.js)
-          B.cx.filter = 'blur(5px)'; B.f(B.poly(foot.map(p => ({ x: p.x, y: p.y - 6 })).concat(foot.slice().reverse().map(p => ({ x: p.x + 6, y: p.y + 10 })))), '#2e3420', .3); B.cx.filter = 'none';
-          B.f(B.poly(top.concat(foot.slice().reverse())), B.lin(0, top[0].y, 0, foot[0].y, [[0, '#a89c86'], [.35, '#8c8270'], [1, '#5e564a']]));
-          // its beds: ledges along it, cracks down it, a lit edge on each ledge
-          for (let k = 1; k < 5; k++) V.strokePts(B, seg.map((p, i) => ({ x: p.x, y: p.y - 4 + k * 9.6 + Math.sin(i * .9 + k) * 1.6 })), '#d0c6ae', 1.4, .5);
-          for (let i = 0; i < seg.length; i += 1 + Math.floor(r() * 2)) { const p = seg[i]; B.s(`M${p.x} ${p.y}l${(r() - .5) * 3} ${16 + r() * 26}`, '#3e3a34', .9, .55); }
-          V.strokePts(B, top, STONE.rockHi, 3, .95);
-          if (season !== 'winter') for (let i = 0; i < seg.length; i += 3) { const p = seg[i]; if (r() < .5) B.f(B.blob(r, p.x, p.y - 4, 4 + r() * 3, 1.6, 6, .5), '#7c8a44', .9); }
-          // (the boulders fallen at its foot on the sand are in the ground, above)
-        }
+        // (layfix east: broken into facets of their own height, its lip broken, not a ruled grey slab)
+        for (const seg of [fpts.filter(p => p.x < gap[0]), fpts.filter(p => p.x > gap[1])]) { if (seg.length < 2) continue; rockFace(B, r, seg.map(p => ({ x: p.x, y: p.y - 4 })), 0, 0, { depth: 44, lean: 2, rough: 5, taper: true, season }); }
         B.cx.restore();
       } });
       const cs = rpts('cliff-steps'); if (cs) flight(cs, { step: 9, salt: 5, rock: true });
@@ -239,24 +262,26 @@
     // either side of the lakeside hurdle (the shortcut itself, 94-garden-wonder-7shortcuts.js); their feet stop yours
     // (fix round 2) the fence runs on from the hurdle's two posts, which stand on the slant across the gap (a fence set straight
     // up the screen is seen end on, a row of bare stakes): each stretch a woven hazel panel with its face showing
-    if (L.D.presentation && L.D.presentation.orchard && L.D.presentation.orchard.hurdle) for (const [x0, y0, x1, y1] of [[61, 36.15, 61 - 19 / cw, 38.4 - 24 / ch], [61 + 19 / cw, 38.4 + 24 / ch, 61, 40.2]]) {
+    if (L.D.presentation && L.D.presentation.orchard && L.D.presentation.orchard.hurdle) for (const [x0, y0, x1, y1] of [[61, 36.15, 61 - 35 / cw, 38.4 - 28 / ch], [61 + 35 / cw, 38.4 + 28 / ch, 61, 40.2]]) {   // (layfix east: from the hurdle's posts at the ends of the flight's top tread)
       const top = L.cpt(x0, y0), foot = L.cpt(x1, y1), len = foot.y - top.y, dx = top.x - foot.x;
-      thing({ key: 'hurdle-fence', x: foot.x, y: foot.y, box: [Math.min(dx, 0) - 14, -len - 34, Math.max(dx, 0) + 14, 8], foot: [-.3 * cw, .3 * cw, len], draw: B => {   // (vale layouts merge: its block as wide as the panel's drift across the screen, not a cell out past the post it ends in)
-        const r = kit.rng(Math.round(y0 * 10)), hgt = 24;
-        B.f(B.poly([[dx + 4, -len + 2], [10, 3], [20, 1], [dx + 14, -len]]), '#22301a', .2);
-        B.f(B.poly([[dx, -len], [0, 0], [0, -hgt], [dx, -len - hgt]]), '#7a5a34');
-        for (let k = 0; k < 7; k++) { const o = 2.5 + k * (hgt - 4) / 6; B.s(`M${dx} ${-len - o}L0 ${-o}`, k % 2 ? '#c49a62' : '#a07a4a', 3.2, 1); }
-        for (let k = 1; k < 5; k++) { const t = k / 5, x = dx * (1 - t), y = -len * (1 - t); B.s(`M${x} ${y + 1}V${y - hgt - 3}`, '#4e3620', 1.8, 1); }
-        B.s(`M${dx} ${-len - hgt - 1}L0 ${-hgt - 1}`, '#d8b47a', 2.4, 1);
-        for (const [x, y] of [[dx, -len], [0, 0]]) B.f(B.rect(x - 2.4, y - hgt - 7, 4.8, hgt + 7), '#6a5034').f(B.rect(x - 2.4, y - hgt - 7, 1.6, hgt + 7), '#9a7a54').f(B.ell(x + 2, y + .6, 5, 1.6), '#22301a', .3);
-        if (season !== 'winter') { B.tufts(r, 2, 2, 8, 4, [P.lawnLo, '#9a9a52'], 6); B.tufts(r, dx, -len + 2, 8, 4, [P.lawnLo, '#9a9a52'], 5); }
+      thing({ key: 'hurdle-fence', x: foot.x, y: foot.y, box: [Math.min(dx, 0) - 14, -len - 34, Math.max(dx, 0) + 14, 8], foot: [Math.min(dx, 0) - .25 * cw, Math.max(dx, 0) + .25 * cw, len], draw: B => {   // (layfix east: its foot the panel's whole drift, now the fence slants to the hurdle's posts)
+          // (vale layouts merge: its block as wide as the panel's drift across the screen, not a cell out past the post it ends in)
+        // (layfix east) the fence either side is a low post-and-rail in weathered grey oak, so the woven hurdle (the way through,
+        // pegged shut) stands out from it across the head of the steps; woven panels both sides read as one long side rail
+        const r = kit.rng(Math.round(y0 * 10)), hgt = 17, n = Math.max(2, Math.round(Math.hypot(dx, len) / 22));
+        B.f(B.poly([[dx + 4, -len + 2], [8, 3], [16, 1], [dx + 12, -len]]), '#22301a', .16);
+        for (const o of [hgt - 3, hgt * .45]) { B.s(`M${dx} ${-len - o}L0 ${-o}`, '#6e665a', 2.6, 1); B.s(`M${dx} ${-len - o - 1}L0 ${-o - 1}`, '#a49a88', 1, .8); }
+        for (let k = 0; k <= n; k++) { const t = k / n, x = dx * (1 - t), y = -len * (1 - t), end = k === 0 || k === n; B.f(B.rect(x - 1.8, y - hgt - (end ? 4 : 1), 3.6, hgt + (end ? 4 : 1)), '#5e564a').f(B.rect(x - 1.8, y - hgt - (end ? 4 : 1), 1.2, hgt + (end ? 4 : 1)), '#8e8574', .8).f(B.ell(x + 1.6, y + .6, 4, 1.3), '#22301a', .28); }
+        if (season !== 'winter') { B.tufts(r, 2, 2, 8, 4, [P.lawnLo, '#9a9a52'], 6); B.tufts(r, dx, -len + 2, 8, 4, [P.lawnLo, '#9a9a52'], 5); for (let k = 1; k < n; k++) if (r() < .6) B.tufts(r, dx * (1 - k / n), -len * (1 - k / n) + 2, 6, 3, [P.lawnLo, '#9cb062'], 4); }
       } });
     }
 
     // (fix round 2) Quince's yard: a clipped box hedge, knee high, along the cottage's west side and across the back, so the
     // cottage stands in its own hedged garden and not on bare grass behind the square (the plan's hedged yard). Solid at its foot.
     const rr0 = (x, y, w, h, q) => { q = Math.min(q, w / 2, h / 2); return `M${x + q} ${y}H${x + w - q}Q${x + w} ${y} ${x + w} ${y + q}V${y + h - q}Q${x + w} ${y + h} ${x + w - q} ${y + h}H${x + q}Q${x} ${y + h} ${x} ${y + h - q}V${y + q}Q${x} ${y} ${x + q} ${y}Z`; };
-    if (L.stat('ld-quince-house')) for (const [x0, y0, x1, y1] of [[81.1, 31.3, 83.9, 31.3]]   /* (the back only: a hedge running up the screen beside the gable is seen end on, a green pillar) */) {
+    // (layfix east: no hedge along the back: the cottage's picture stands over it, so it read as a green box on the roof ridge with
+    //  the figure standing on it, and the route planner ran into its foot; the cottage's own planting is its garden)
+    if (L.stat('ld-quince-house')) for (const [x0, y0, x1, y1] of []) {
       const a = L.cpt(x0, y0), b = L.cpt(x1, y1), along = x1 - x0 > .5, len = along ? b.x - a.x : b.y - a.y, hh = 22;
       thing({ key: 'yard-hedge', x: along ? a.x : b.x, y: b.y, box: along ? [-10, -hh - 12, len + 10, 10] : [-14, -len - hh - 12, 14, 10], foot: along ? [0, len, 9] : [-.2 * cw, .2 * cw, len], draw: B => {
         const r = kit.rng(Math.round(x0 * 10 + y0)), G = season === 'winter' ? ['#4e5e46', '#66765a', '#7e8e70'] : ['#3e5e30', '#5a8040', '#86a85a'];

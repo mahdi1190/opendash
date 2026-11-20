@@ -27,6 +27,9 @@
       const inF = (x, y) => gardenIslandInPolygon ? gardenIslandInPolygon(x / cw, (y - W.sky) / ch, poly.map(([a, b]) => ({ x: a, y: b }))) : true;
       // 1. the ground inside, baked with the ground
       add(bb, seed & 0xffff, (B, r, cb) => {
+        // (layfix east) the rickyard's trodden ground fades out into the field at its open edges (cut to its outline, it showed as a
+        // square notch of darker grass beside the barn's roof)
+        if (id === 'rickyard') { B.cx.filter = 'blur(9px)'; B.f(V.loopPath([P]), winter ? '#7a7454' : '#8a8048', .5); B.cx.filter = 'none'; }
         B.cx.save(); B.cx.clip(clip);
         if (id === 'the-ham') {
           B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), winter ? '#9a9a6a' : '#b8b468', .9);
@@ -47,7 +50,6 @@
           kit.tiles(cb, 40, 10, (seed + 5) & 255, (tx, ty, rr) => { if (rr() < .55) return; const x = tx + rr() * 40, y = ty + rr() * 40; B.f(B.rr(x - 7, y - 3, 13 + rr() * 5, 7, 3), stone[1], .8).f(B.rect(x - 5, y - 3, 8, 1.6), stone[2], .4); });
           kit.tiles(cb, 36, 8, (seed + 3) & 255, (tx, ty, rr) => { for (let k = 0; k < 2; k++) { const x = tx + rr() * 36, y = ty + rr() * 36; for (let j = 0; j < 5; j++) { const a = -Math.PI / 2 + (j - 2) * .42; B.s(`M${x} ${y}q${Math.cos(a) * 5} ${Math.sin(a) * 5} ${Math.cos(a) * 10} ${Math.sin(a) * 8 + 3}`, winter ? '#8a7a4a' : '#3e6a2e', 1.8, .85); } } });
         } else if (id === 'rickyard') {
-          B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), winter ? '#7a7454' : '#8a8048', .55);
           kit.tiles(cb, 44, 8, seed & 255, (tx, ty, rr) => { for (let k = 0; k < 7; k++) { const x = tx + rr() * 44, y = ty + rr() * 44; if (rr() < .55) { B.f(B.blob(rr, x, y, 8, 4, 7, .45), leaf[rr() < .5 ? 0 : 3], .8); for (let j = 0; j < 5; j++) B.s(`M${x + (rr() - .5) * 10} ${y}l${(rr() - .5) * 3} -${5 + rr() * 6}`, leaf[1], 1.4, .9); } else B.f(B.ell(x, y, 5, 2), hay[1], .55); } });
         } else {
           B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), '#5c6a3a', .85);
@@ -124,14 +126,27 @@
         if (big && f.ricks && f.ricks[k]) at = L.cpt(f.ricks[k][0], f.ricks[k][1]);
         const m = big ? 1.4 : .9; for (let t = 0; t < 80 && !at; t++) { const x = bb[0] + 50 + r1() * (bb[2] - bb[0] - 100), y = bb[1] + 40 + r1() * Math.max(10, (bb[3] - bb[1]) * (big ? .75 : .5)); if (inF(x, y) && inF(x - cw * m, y) && inF(x + cw * m, y) && inF(x, y - ch * (big ? 1.7 : .8)) && inF(x, y + ch * .6) && !placed.some(q => Math.abs(q.x - x) < cw * (big ? 2.4 : 1.6) && Math.abs(q.y - y) < ch * (big ? 3.6 : 1.4))) at = { x, y }; }
         if (!at) continue; placed.push(at);
-        thing({ key: (big ? 'hay rick' : 'haycock') + '|' + id + '|in' + k + '|' + season, x: at.x, y: at.y, box: big ? [-50, -96, 50, 10] : [-22, -34, 22, 6], K: big ? 1.15 : 1.4, foot: big ? [-42, 42, 14] : [-17, 17, 8], draw: B => {
+        thing({ key: (big ? 'hay rick' : 'haycock') + '|' + id + '|in' + k + '|' + season, x: at.x, y: at.y, box: big ? [-56, -100, 70, 10] : [-22, -34, 22, 6], K: big ? 1.15 : 1.4, foot: big ? [-42, 42, 14] : [-17, 17, 8], draw: B => {
           if (big) {   // a hay rick: a rounded stack under a thatched ridge, pegged ropes down its side
-            B.shadow(6, 2, 46, 8, .28);
-            B.f('M-42 0L-44 -42Q-40 -54 0 -56Q40 -54 44 -42L42 0Z', hay[1]).f('M-38 -4L-40 -40Q-36 -50 -6 -52L-8 -4Z', hay[2], .5);
-            for (let y = -8; y > -48; y -= 6) B.s(`M-43 ${y}Q0 ${y - 3} 43 ${y}`, hay[0], .8, .4);
-            B.f('M-50 -44L0 -92L50 -44Q0 -50 -50 -44Z', winter ? '#8a7a56' : '#a88a4a').f('M-50 -44L0 -92L-6 -46Z', '#c4a660', .45);
-            for (let x = -40; x <= 40; x += 10) B.s(`M${x} ${-44 - (40 - Math.abs(x)) * .1}L${x * .3} ${-80 + Math.abs(x) * .2}`, '#7a6234', .7, .5);
-            B.s('M-30 -46L-34 -4M30 -46L34 -4', '#5e4a2a', 1, .7);
+            // (layfix east) each rick its own: one long and ridged, one round with a conical cap, built to a different height, lit
+            // from the west with its shaded side, combed straw and the ropes weighted with stones (two flat identical pyramids read
+            // as cut-outs stood side by side)
+            const q = kit.rng(seed + k * 31), round = k % 2 === 1, sc = round ? .82 : .92, hw = (round ? 34 : 42) * sc, hh = (round ? 44 : 50) * sc;
+            B.shadow(8, 2, hw + 8, 8, .3);
+            B.f(`M${-hw} 0L${-hw - 2} ${-hh * .8}Q${-hw + 4} ${-hh} 0 ${-hh - 2}Q${hw - 4} ${-hh} ${hw + 2} ${-hh * .8}L${hw} 0Z`, hay[1]);
+            B.f(`M${-hw + 2} -2L${-hw} ${-hh * .78}Q${-hw + 6} ${-hh * .96} ${-hw * .2} ${-hh}L${-hw * .25} -2Z`, hay[2], .55);   // the lit west side
+            B.f(`M${hw * .35} -2L${hw * .4} ${-hh * .96}Q${hw - 4} ${-hh * .94} ${hw + 2} ${-hh * .8}L${hw} 0Z`, '#6e5a30', .28);   // the shaded east side
+            for (let y = -6; y > -hh * .9; y -= 5) B.s(`M${-hw - 1} ${y}Q0 ${y - 2.5} ${hw + 1} ${y}`, hay[0], .8, .35);
+            for (let j = 0; j < 22; j++) { const x = -hw + q() * hw * 2, y = -4 - q() * hh * .8; B.s(`M${x} ${y}l${(q() - .5) * 3} -${4 + q() * 4}`, q() < .5 ? hay[2] : hay[0], .7, .6); }
+            B.f(B.ell(0, -1, hw + 1, 3), '#7a6a3a', .35);   // trodden straw round its foot
+            const cap = round ? `M${-hw - 6} ${-hh * .78}Q${-hw * .3} ${-hh - 34 * sc} 0 ${-hh - 40 * sc}Q${hw * .3} ${-hh - 34 * sc} ${hw + 6} ${-hh * .78}Q0 ${-hh * .9} ${-hw - 6} ${-hh * .78}Z`
+              : `M${-hw - 8} ${-hh * .8}L${-hw * .2} ${-hh - 36 * sc}L${hw * .2} ${-hh - 36 * sc}L${hw + 8} ${-hh * .8}Q0 ${-hh * .9} ${-hw - 8} ${-hh * .8}Z`;
+            B.f(cap, winter ? '#8a7a56' : '#9a7c40').f(round ? `M${-hw - 6} ${-hh * .78}Q${-hw * .3} ${-hh - 34 * sc} 0 ${-hh - 40 * sc}L-4 ${-hh * .88}Z` : `M${-hw - 8} ${-hh * .8}L${-hw * .2} ${-hh - 36 * sc}L-6 ${-hh * .86}Z`, '#c4a660', .45);
+            for (let x = -hw; x <= hw; x += 5) B.s(`M${x * 1.1} ${-hh * .8 - (hw - Math.abs(x)) * .08}L${x * .3} ${-hh - 30 * sc + Math.abs(x) * .15}`, '#6e5630', .6, .45);
+            B.s(`M${-hw - 7} ${-hh * .79}Q0 ${-hh * .9} ${hw + 7} ${-hh * .79}`, '#5e4a26', 1.4, .6);   // the thatch's dripping eave
+            if (!round) B.s(`M${-hw * .2} ${-hh - 36 * sc}H${hw * .2}`, '#5e4a2a', 2.4, .9);
+            for (const sx of round ? [-.5, .55] : [-.7, -.1, .5]) { const x = sx * hw; B.s(`M${x * .6} ${-hh * .86}Q${x * 1.02} ${-hh * .45} ${x * 1.04} -8`, '#4e3e22', .8, .7); B.f(B.ell(x * 1.04, -6, 2.6, 2), '#8e8a7c').f(B.ell(x * 1.04 - .8, -6.8, 1.2, .8), '#c8c4b4', .8); }
+            if (!round) { B.s(`M${hw - 4} 0L${hw + 12} ${-hh * .9}M${hw + 2} 0L${hw + 18} ${-hh * .9}`, '#6a5034', 1.6); for (let t = .15; t < .9; t += .15) B.s(`M${hw - 4 + 16 * t} ${-hh * .9 * t}h6`, '#8a6a44', 1.3); }   // a ladder left against it
           } else {   // a haycock: a small rounded heap of cut hay
             B.shadow(4, 1, 20, 4, .24);
             B.f('M-18 0Q-20 -22 0 -28Q20 -22 18 0Z', hay[1]).f('M-14 -2Q-16 -20 -2 -25Q-6 -12 -4 -2Z', hay[2], .6);

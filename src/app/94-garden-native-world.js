@@ -1348,8 +1348,8 @@ window.GardenNativeWorld = (function () {
         if (behind && p.id === 'ld-falls' && record.handle.fallsCoversPlayer) behind = record.handle.fallsCoversPlayer(sx, sy);
         // (High orchard fix round 1) the treehouse chestnut fades by its crown, which spreads well past its two cells: walking the
         // beach or the mother walk beside it you went behind the crown unseen, and standing at the trunk the whole tree faded
-        if (p.id === 'ld-treehouse') { const tx = (p.x + p.w / 2) * W.cellW - 50, ty = footY - 170; behind = sy < footY - 6 && ((sx - tx) / 100) ** 2 + ((sy - 28 - ty) / 84) ** 2 < 1; }
-        if (record.behind !== behind) { record.behind = behind; record.root.setAlpha(behind ? .38 : 1); }
+        if (p.id === 'ld-treehouse') { const tx = (p.x + p.w / 2) * W.cellW - 92, ty = footY - 176; behind = sy < footY - 6 && ((sx - tx) / 92) ** 2 + ((sy - 30 - ty) / 78) ** 2 < 1; }   // (layfix east: the crown as drawn now, rounder and over its own trunk: standing at the ladder or on the beach beside it no longer ghosts the house)
+        if (record.behind !== behind) { record.behind = behind; record.root.setAlpha(behind ? (p.id === 'ld-treehouse' ? .55 : .38) : 1); }   // (layfix east: the treehouse, house and ladder and all, half faded, not a ghost)
       }
       coveringCanopies.length = 0;
       const probes = [{ x, y: y - playerOcclusionHeight * .81 }, { x, y: y - playerOcclusionHeight * .48 }, { x: x - 6, y: y - playerOcclusionHeight * .54 }, { x: x + 6, y: y - playerOcclusionHeight * .54 }];

@@ -86,7 +86,8 @@
 
   // The treehouse: a big sweet chestnut on its own bank of grass and roots at the top of the beach, a plank house in
   // its fork, a ladder that has lost its bottom rungs and a rope swing.
-  ART['ld-treehouse'] = { box: [-118, -244, 112, 4], draw(B, o) {
+  ART['ld-treehouse'] = { box: [-170, -262, 112, 4],   // (layfix east: the crown's west lobes reach 176 px out; a box at -118 cut them off in a ruled vertical edge)
+   draw(B, o) {
     B.cx.translate(0, -12);   // (round 3 layouts: the root bank's foot on the footprint's front edge; it lay 12 px below it, where the feet could stand on it)
     const r = KIT().rng(79), s = o.season, leaf = leafOf(s), tx = -16;
     // the root bank: turf over the sand, roots running out, a few stones
@@ -104,11 +105,11 @@
     if (leaf) {
       // (fix round 2) the crown spreads west over the mother walk and stops short of the cliff steps east of it: spread evenly
       // round the fork, it stood over the cliff gate, which then showed ghosted through the faded leaves
-      const lobes = []; for (let i = 0; i < 13; i++) { const a = r() * Math.PI * 2, d = Math.sqrt(r()), rx = 30 + r() * 14; lobes.push([Math.min(tx - 34 + Math.cos(a) * 80 * d, tx + 24 - rx), -158 + Math.sin(a) * 46 * d, rx, 22 + r() * 9]); }
+      const lobes = []; for (let i = 0; i < 13; i++) { const a = r() * Math.PI * 2, d = Math.sqrt(r()), rx = 30 + r() * 14; lobes.push([Math.min(tx - 22 + Math.cos(a) * 62 * d, tx + 24 - rx), -160 + Math.sin(a) * 48 * d, rx, 22 + r() * 9]); }   // (layfix east: a rounder crown over its own trunk, not spread west over the Mother tree's)
       for (const [x, y, rx, ry] of lobes) B.f(B.blob(r, x + 4, y + 5, rx, ry, 9, .35), leaf[0]);
       for (const [x, y, rx, ry] of lobes) B.f(B.blob(r, x, y, rx * .86, ry * .84, 9, .35), leaf[1]);
       for (const [x, y, rx, ry] of lobes) if (x < tx + 10 || y < -170) B.f(B.blob(r, x - rx * .25, y - ry * .3, rx * .5, ry * .44, 8, .4), leaf[2], .9);
-      for (let i = 0; i < 9; i++) B.f(B.blob(r, tx - 80 + r() * 60, -196 + r() * 30, 7, 5, 6, .5), leaf[3], .85);
+      for (let i = 0; i < 9; i++) B.f(B.blob(r, tx - 66 + r() * 60, -198 + r() * 30, 7, 5, 6, .5), leaf[3], .85);
       if (s === 'summer') for (let i = 0; i < 20; i++) B.s(`M${tx - 100 + r() * 110} ${-190 + r() * 70}l${(r() - .5) * 4} 7`, '#f0e2a0', 1.4, .9);   // chestnut catkins
       if (s === 'autumn') for (let i = 0; i < 9; i++) B.f(B.circ(tx - 50 + r() * 100, -150 + r() * 40, 2.4), '#9ab040').f(B.circ(tx - 60 + r() * 120, 4 + r() * 6, 1.8), '#7a4a24', .9);
     } else for (let i = 0; i < 16; i++) { const a = -Math.PI * (.15 + r() * .7), l = 40 + r() * 46; B.s(`M${tx} -120l${Math.cos(a) * l} ${Math.sin(a) * l * .9}`, '#6a5444', 2, .8); }
