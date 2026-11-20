@@ -577,6 +577,7 @@ function _gdpBindStage(box) {
       if (touches.size === 2) { const [a, b] = [...touches.values()]; _gdp.pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) }; _gdpDragCancel(_gdp.press); _gdp.press = null; _gdp.sweep = null; return; }
     }
     if (_gdp.pinch || ev.button !== 0 || !_gdp.svg || !_gdpStageContains(ev.target)) return;
+    if (gardenUiSwallow(ev.clientX, ev.clientY)) { _gdp.press = null; return; }   // (a card that just went from here: the press was for its button)
     const cell = _gdpCellOf(ev), it = _gdpPickItem(ev, cell);
     _gdp.press = { x0: ev.clientX, y0: ev.clientY, it, cell, moved: false, id: ev.pointerId };
     const mode = _gdpMode(), tool = _gdpTool();
@@ -622,6 +623,7 @@ function _gdpRefreshChromeSoon() { if (_gdp.root) gardenHudPaint(gardenHere()); 
 function _gdpClick(it, cell, ev) {
   // A card that just closed by itself (the level-up card) swallows the click that was on its way to its button.
   if (_gdp.swallowUntil && performance.now() < _gdp.swallowUntil) return;   // clock-ok: a short input guard
+  if (ev && ev.clientX != null && gardenUiSwallow(ev.clientX, ev.clientY)) return;
   const m = gardenHere(), mode = _gdpMode(), tool = _gdpTool();
   const at = ev && ev.clientX != null ? { x: ev.clientX, y: ev.clientY } : null;
   // something carried: it goes down here, or it says no

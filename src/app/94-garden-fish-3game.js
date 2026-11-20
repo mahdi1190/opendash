@@ -27,14 +27,14 @@ function _gwFeet() { if (_grm.on && _grm.me) return [_grm.me.x / GRW.k, _grm.me.
 /* ---------- the catch card (what you got, for a few seconds) ---------- */
 function _gwCatchCard(o) {
   const box = _gdgBox(); if (!box) return;
-  let c = box.querySelector('.gd-catchcard'); if (c) c.remove();
+  let c = box.querySelector('.gd-catchcard'); if (c) { gardenUiGone(c); c.remove(); }
   c = document.createElement('div'); c.className = 'gd-catchcard' + (o.isNew ? ' is-new' : '') + (o.rare ? ' is-rare' : '');
   c.setAttribute('role', 'status');
   const stars = o.q ? `<b class="gd-stars q${o.q}" title="${esc(gardenQuality(o.q).label)}">${gardenQuality(o.q).stars}</b>` : '';
   c.innerHTML = `<div class="gd-cc-art">${o.svg}</div><div class="gd-cc-txt"><b>${esc(o.name)}</b>${stars}<span>${esc(o.sub)}</span>${o.newV ? '<em>A new variant!</em>' : o.isNew ? '<em>New in your book!</em>' : o.record ? '<em>A new record!</em>' : ''}</div>`;
   c.onclick = () => { c.classList.add('is-out'); setTimeout(() => c.remove(), 220); if (o.open) gardenCatchOpen(o.open); };
   { const top = gardenMessageHost() || box; top.insertBefore(c, top.querySelector(':scope > .gd-msg')); }   // (over the message line, never on top of it)
-  clearTimeout(_gw.cardT); _gw.cardT = setTimeout(() => { c.classList.add('is-out'); setTimeout(() => c.remove(), 300); }, o.ms || 4200);
+  clearTimeout(_gw.cardT); _gw.cardT = setTimeout(() => { c.classList.add('is-out'); setTimeout(() => { gardenUiGone(c); c.remove(); }, 300); }, o.ms || 4200);
 }
 function _gwHeldUp(svgFrag, ms) {
   // the catch held up over your head for a moment

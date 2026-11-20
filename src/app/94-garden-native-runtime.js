@@ -242,6 +242,7 @@ window.GardenNative = (function () {
     const designing = () => typeof gardenDesignOn === 'function' && gardenDesignOn();
     s.scene.input.on('pointerdown', pointer => {
       if (!active()) return; if (designing()) { touches.clear(); pinch = null; return; } const ev = normalizeEvent(pointer); s.box.focus({ preventScroll: true });
+      if (typeof gardenUiSwallow === 'function' && gardenUiSwallow(ev.clientX, ev.clientY)) { _gdp.press = null; return; }   // (a card that just went from here: the press was for its button)
       if (inRoom()) { GardenNativeRooms.pointer(ev); return; } if (_gdpPopOpen()) return;
       touches.set(pointer.id, { x: ev.clientX, y: ev.clientY });
       if (touches.size === 2) { const [a, b] = [...touches.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); gardenHoldEnd(); _gdpDragCancel(_gdp.press); _gdp.press = null; return; }

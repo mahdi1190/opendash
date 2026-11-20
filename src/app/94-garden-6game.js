@@ -198,7 +198,7 @@ function gardenLevelUpCard(d) {
     { const top = gardenMessageHost() || _gdp.root; top.insertBefore(c, top.querySelector(':scope > .gd-msg')); }   // (over the message line, never on top of it)
     // It closes itself after 9 s, but not under the pointer, and the next moment's world click is swallowed: a click
     // aimed at Lovely as it went used to land in the garden (with a seed in hand, it planted under you).
-    const shut = () => { if (!c.parentNode) return; if (c.matches(':hover')) { setTimeout(shut, 1500); return; } c.remove(); _gdp.swallowUntil = performance.now() + 700; };   // clock-ok: a short input guard
+    const shut = () => { if (!c.parentNode) return; if (c.matches(':hover')) { setTimeout(shut, 1500); return; } gardenUiGone(c); c.remove(); _gdp.swallowUntil = performance.now() + 700; };   // clock-ok: a short input guard
     setTimeout(shut, 9000);
   } else if (c && d.kind === 'area') {
     const li = document.createElement('li'); li.textContent = d.text; c.querySelector('ul').appendChild(li);
