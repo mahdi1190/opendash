@@ -63,7 +63,7 @@
   /** The same loop with a point every few px, each moved a little across the line by where it is: grown, not ruled. */
   function wander(loop, amp) { const out = []; for (let i = 0; i < loop.length; i++) { const a = loop[i], b = loop[(i + 1) % loop.length], L = Math.hypot(b.x - a.x, b.y - a.y); if (L < .01) continue; const n = Math.max(1, Math.round(L / 9)), nx = -(b.y - a.y) / L, ny = (b.x - a.x) / L; for (let j = 0; j < n; j++) { const t = j / n, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, w = (Math.sin(x * .071 + y * .043) + Math.sin(x * .029 - y * .083 + 1.7) * .8 + Math.sin(x * .19 + y * .13 + .6) * .35) * amp * .5; out.push({ x: x + nx * w, y: y + ny * w * .7 }); } } return out; }
   const SOFT = new Set(['long-grass', 'meadow', 'reeds', 'bracken', 'heather', 'hedge-road', 'stile']);
-  const ROPED = new Set(['long-grass', 'meadow', 'hedge-road', 'stile']);   // (growth too low or too thin to read as where walking stops)
+  const ROPED = new Set(['long-grass', 'meadow', 'hedge-road', 'stile', 'reeds', 'heather']);   // (growth too low or too thin to read as where walking stops)
   const pathOf = loops => { const p = new Path2D(); for (const l of loops) { p.moveTo(l[0].x, l[0].y); for (let i = 1; i < l.length; i++) p.lineTo(l[i].x, l[i].y); p.closePath(); } return p; };
   const inPoly = (x, y, P) => { let ins = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) ins = !ins; } return ins; };
 

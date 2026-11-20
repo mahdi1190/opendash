@@ -878,6 +878,7 @@
       const row = spot && gardenLandCell(spot[0], spot[1]); if (row) sign(B, pos[0], pos[1], row, lv);
     }
   }
+  let zoneEdgeOne = [], zoneSigOn = false;
   function compose(C) {
     if (typeof gardenLandCell !== 'function' || typeof gardenIslandBaseCell !== 'function') return;
     const { add, W, P, season } = C, cw = W.cellW, ch = W.cellH;
@@ -914,6 +915,35 @@
       if (p.cells.length && regionKind(p.cells[0][0], p.cells[0][1]) === 'field') add(bb, 4000 + p.cells.length, (B, r0, cb) => fallow(B, P, p.cells, W, season, cb));
       add(bb, 4100 + p.cells.length, (B, r, cb) => fence(B, r, P, p.edges, W, season, cb, p));
     }
+    // (vale final, east) Where a region past a shut gate meets ground you can walk on over dry land, a hedgerow stands just inside
+    // it, and where a path runs on into the shut land a wattle hurdle is pegged across it, so walking stops at something you can
+    // see (the mist alone left a straight invisible wall through the trees south of the east road). Any zone, by its cells: the
+    // gate's own crossing is left to the gate. In the woods that show locked land as thicket the thicket says it already.
+    { const D = gardenIslandData(), gates = (D && D.gates) || [], none = new Set();
+      const dry = (x, y) => { const b = gardenIslandBaseCell(x, y); return !!b && b.land && !b.freshwater && !b.solid && !b.ocean; };
+      const atGate = (x, y) => gates.some(g => Math.abs(x + .5 - (g.x + .5)) <= (g.dx ? 2.2 : (g.widthCells || 4) / 2 + 1.2) && Math.abs(y + .5 - (g.y + .5)) <= (g.dy ? 2.2 : (g.widthCells || 4) / 2 + 1.2));
+      const edges = [];
+      for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
+        if (!dry(x, y) || !fenced(x, y)) continue; const z = typeof gardenZoneLockOf === 'function' ? gardenZoneLockOf(x, y, none) : ''; if (!z) continue;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (!dry(nx, ny) || gardenZoneLockOf(nx, ny, none) === z || atGate(x, y) || atGate(nx, ny)) continue;
+          const b = gardenIslandBaseCell(x, y), bn = gardenIslandBaseCell(nx, ny); edges.push({ x, y, dx, dy, z, path: !!(b.route && bn.route) }); } }
+      // the ground re-bakes when one of these zones opens
+      zoneEdgeOne = [...new Set(edges.map(e => e.z))].map(z => edges.find(q => q.z === z)); if (!zoneSigOn) { zoneSigOn = true; V.groundSigs.push(() => '|zh' + zoneEdgeOne.map(e => zoneShut(e.x, e.y) ? 1 : 0).join('')); }
+      const hh = gardenSizePx('hedge', .8);
+      for (const e of edges) { const X = e.x * cw, Y = W.sky + e.y * ch, bb = [X - 30, Y - hh - 10, X + cw + 30, Y + ch + 14];
+        add(bb, 4150, (B, r) => { if (!zoneShut(e.x, e.y)) return;
+          const keep = hedgeVar; hedgeVar = (e.x * 7 + e.y * 3) % 3;
+          const sand = !!(gardenIslandBaseCell(e.x, e.y) || {}).beach;
+          if (sand) {
+            // on the sand a chestnut paling, grey with weather, like a sand fence, bound with two twists of wire
+            const ph0 = gardenSizePx('fence', .9), horiz = !!e.dy, ax = horiz ? X : (e.dx < 0 ? X + 5 : X + cw - 5), ay = horiz ? (e.dy < 0 ? Y + Math.min(ch - 4, ph0 * .8) : Y + ch - 3) : Y, len = horiz ? cw : ch + 2, ux = horiz ? 1 : 0, uy = horiz ? 0 : 1;
+            B.s(`M${ax} ${ay + 1.5}L${ax + ux * len} ${ay + uy * len + 1.5}`, '#2e3420', 3.4, .14);
+            for (let t = 0; t <= len; t += horiz ? 3.4 : 3) { const px = ax + ux * t + (r() - .5) * .6, py = ay + uy * t, ph = ph0 * (.82 + r() * .3), lean = (r() - .5) * 1.4; B.s(`M${px} ${py}l${lean} ${-ph}`, r() < .5 ? '#a49680' : r() < .5 ? '#857864' : '#b8ac94', 1.9, .96); }
+            for (const f of [.3, .72]) B.s(`M${ax} ${ay - ph0 * f}L${ax + ux * len} ${ay + uy * len - ph0 * f}`, '#4a463e', .9, .85);
+          } else if (e.dy) { const y0 = e.dy < 0 ? Y + Math.min(ch - 4, hh * .8) : Y + ch - 3; (e.path ? hurdleRun : fieldHedge)(B, r, P, X, y0, true, cw, season, e.path ? gardenSizePx('fence', .6) : hh); }
+          else { const x0 = e.dx < 0 ? X + 6 : X + cw - 6; if (e.path) { for (const o of [-2.5, 2.5]) hurdleRun(B, r, P, x0 + o, Y, false, ch + 2, season, gardenSizePx('fence', .7)); }
+            else { fieldHedge(B, r, P, x0 + 3.5, Y, false, ch + 2, season, hh); thicketRun(B, r, P, x0 - 2.5, Y, false, ch + 2, season, hh); } }
+          hedgeVar = keep; }); } }
     // (layfix east) where the valley's turf meets the beach the cells met in ruled square notches (a grass rectangle cut into the
     // sand by the barn): the edge is blended, a feathered band of sandy turf with marram tufts on the sand side
     { const edges = [];
