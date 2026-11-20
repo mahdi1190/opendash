@@ -210,6 +210,7 @@ function gartActPlay(gpl, id, o) {
     if (row.prop === 'ducks') _gaDucks(g, H, motion, row.ms);
     if (row.skim) _gaSkimFly(g, H, motion, row.ms, o.skips || 3);
     if (row.bow && motion) { const bw = g.querySelector('.ga-bow'); if (bw) H.timers.push(setTimeout(() => { try { H.panims.push(gardenVisualAnimate(bw, [{ offset: 0, transform: 'translate(4px,3px)' }, { offset: 0.5, transform: 'translate(-5px,-4px)', easing: 'ease-in-out' }, { offset: 1, transform: 'translate(4px,3px)' }], { duration: 900, iterations: Infinity, easing: 'ease-in-out' })); } catch (e) { /* the bow rests */ } }, row.ms)); }   // the bow saws along its length, with the arm
+    if (row.propMove && motion) for (const m of row.propMove) { const el = g.querySelector(m.sel); if (el) H.timers.push(setTimeout(() => { try { H.panims.push(gardenVisualAnimate(el, m.frames, { duration: m.ms, iterations: Infinity, easing: 'ease-in-out' })); } catch (e) { /* it rests */ } }, row.ms)); }   // a held thing's own parts (a squeezebox's bellows, a drum's tipper), in time with the arms
     if (row.prop === 'swimwater' && motion) { const wd = g.querySelector('.ga-wade'); if (wd) try { H.panims.push(gardenVisualAnimate(wd, [{ offset: 0, opacity: 0 }, { offset: 0.06, opacity: 1 }, { offset: 0.3, opacity: 1 }, { offset: 0.4, opacity: 0 }, { offset: 1, opacity: 0 }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* no wading ring */ } }
     if (row.prop === 'swimwater') { if (motion) { try { H.panims.push(gardenVisualAnimate(g.querySelector('.ga-swim') || g, [{ offset: 0, opacity: 0 }, { offset: 0.2, opacity: 0 }, { offset: 0.42, opacity: 1 }, { offset: 1, opacity: 1 }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* shows at once */ } } }
   }
@@ -273,7 +274,7 @@ function _gaStart(cur) {
   if (row.carry && spot && spot.carry) _gaPick(cur);
   if (row.fetch) _gaFetch(cur);
   if (row.rubPet) { try { const P = typeof gpPetMe === 'function' ? gpPetMe() : null; if (P) { if (P.clipH) { try { P.clipH.stop(true); } catch (e) { /* gone */ } P.clipH = null; } if (typeof _plPropsDrop === 'function') _plPropsDrop(P); P.lifeCur = null; P.lifeHold = 0; P.busy = 0; P.cb = null; P.tx = null; P.perch = null; } } catch (e) { /* no pet */ } }   // (whatever row it was playing, it drops it and comes to your hand)
-  if (row.prop === 'fiddle' || row.fiddle) _gaResync();
+  if (row.music || row.prop === 'fiddle') { _gaResync(); if (typeof gardenMusicStart === 'function') gardenMusicStart(cur); }   // (an instrument: its place at the pitch is drawn empty, and you join the tune, 94-garden-zz-7act-3music.js)
   if (row.clouds) _gaSky(cur, true);
   _gaFirst(cur);
   if (!row.hold) cur.endT = setTimeout(() => { if (_ga.cur !== cur) return; gartActStop(true); if (row.then && GARDEN_ACTS[row.then]) _gaThen(row.then, cur); }, (_gaMotion() ? row.ms : 1200) + 60);
@@ -305,7 +306,7 @@ function gartActStop(done) {
   if (cur.row.clouds) _gaSky(cur, false);
   if (cur.pump) { try { cur.pump.remove(); } catch (e) { /* gone */ } cur.pump = null; _gaShow(cur.spot.src, true); }
   if (cur.row.fetch) _ga.fetch = null;
-  if (cur.row.prop === 'fiddle') setTimeout(_gaResync, 0);
+  if (cur.row.music || cur.row.prop === 'fiddle') { setTimeout(_gaResync, 0); if (typeof gardenMusicStop === 'function') gardenMusicStop(cur); }
   if (cur.row.rubPet) { try { const P = gpPetMe(); if (P && P.root && P.root._pcH && cur.rubH === P.root._pcH) petClipStop(P.root); } catch (e) { /* no pet */ } }
   if (cur.H && cur.H.stop) cur.H.stop();
   if (cur.row.after && done && window.GardenNativeActions && _gaMotion()) { const W = GARDEN_WORLD; for (let i = 0; i < 6; i++) setTimeout(() => { try { GardenNativeActions.effect('water', _gw.px * W.cellW, W.sky + _gw.py * W.cellH, { width: 16 }); } catch (e) { /* fine */ } }, i * 450); }

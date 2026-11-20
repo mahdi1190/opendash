@@ -67,7 +67,9 @@ const GARDEN_KINDS = Object.freeze({
   bell: { name: 'the bell', art: 'bell', place: true, words: ['bell'], acts: [{ act: 'bell', stand: [0, 0.6], deg: -90 }], pet: 'bell' },   // a ship's bell on a post (no drawing yet: offers nothing until one is drawn)
   chime: { name: 'the wind chimes', decor: ['wind-chimes', 'can-chimes'], words: ['chime', 'chimes'], pet: 'chime' },
   'music-box': { name: 'the music box', art: 'musicbox', place: true, decor: ['dc-gramophone'], words: ['music', 'gramophone'], pet: 'music' },
-  busker: { name: 'the fiddle', art: 'busker', place: true, onPath: true, w: 1.2, h: 0.4, acts: [{ act: 'play', stand: [0.75, 0.25], deg: 90 }], pet: 'music', solid: 'block' },   // a stool, an open fiddle case with a few coins, the fiddle on the stool
+  // a band's pitch (music, 20 Nov): four places, each one player's, each with its own instrument (the fiddle on its stool, the squeezebox on a
+  // crate, the tin whistle in the open case, the frame drum by a sack); whoever plays at once adds a part to one tune (94-garden-zz-7act-3music.js)
+  busker: { name: 'the band’s pitch', art: 'busker', place: true, onPath: true, w: 2.6, h: 0.45, acts: [{ act: 'play', name: 'the fiddle', stand: [-0.36, 0.5], deg: 90, music: 0 }, { act: 'squeeze', name: 'the squeezebox', stand: [-0.12, 0.62], deg: 90, music: 1 }, { act: 'whistle', name: 'the tin whistle', stand: [0.12, 0.62], deg: 90, music: 2 }, { act: 'drum', name: 'the drum', stand: [0.36, 0.5], deg: 90, music: 3 }], pet: 'music', solid: 'block' },
   /* to read */
   'notice-board': { name: 'the notices', arts: ['board', 'lakeboard', 'cider-board'], paint: 'board', w: 1.6, h: 0.4, words: ['board', 'notice', 'noticeboard'], acts: [{ act: 'read', stand: [0, 0.6], deg: 90 }], pet: 'board' },
   signpost: { name: 'the sign', arts: ['finger'], paint: 'post', w: 0.6, h: 0.3, decor: ['signpost', 'welcome-sign'], words: ['sign', 'signpost', 'finger'], acts: [{ act: 'read', stand: [0, 0.6], deg: 90 }], pet: 'board', top: 40 },

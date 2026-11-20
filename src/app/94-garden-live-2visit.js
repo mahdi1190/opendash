@@ -442,6 +442,7 @@ function _glvEvent(ev) {
     case 'tr': if (typeof _gltFromHost === 'function') _gltFromHost(ev); return;
     case 'goal': if (typeof _glgGuestIn === 'function') _glgGuestIn(ev); return;
     case 'fx': {
+      if (ev.c === 'tune') { if (typeof gardenMusicHeard === 'function') gardenMusicHeard(_gll.actors.get(ev.w) || null, ev); return; }   // playing music together: the host's clock, who plays where (94-garden-zz-7act-3music.js)
       if (!gardenActivityFxAllowed(ev.c)) return;
       if (ev.c === 'soap') { if (typeof gardenSoapGuestState === 'function') gardenSoapGuestState(ev); return; }
       if (ev.c === 'leaf') { if (typeof gardenLeafBoatGuestState === 'function') gardenLeafBoatGuestState(ev); return; }
