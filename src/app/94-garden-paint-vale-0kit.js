@@ -53,7 +53,9 @@ window.GardenPaintVale = (function () {
     const cw = W.cellW, ch = W.cellH, cpt = (x, y) => ({ x: x * cw, y: W.sky + y * ch }), pt = p => cpt(p[0], p[1]);
     const L = { cellAt, soil: cultivatedGround(W, cellAt) };
     const pres = data.presentation || {}, base = (x, y) => gardenIslandBaseCell(x, y);
-    const coast = ((data.coast && data.coast.land) || []).map(l => l.map(pt));
+    // (the outline drawn as a curve through its points: straight runs between them showed as facets and corners along the
+    // shore, and the foam followed them: coast fix round 2. Only the picture; walking reads the layout's own outline)
+    const coast = ((data.coast && data.coast.land) || []).map(l => smoothLoop(l.map(pt)));
     const mat = (x, y) => { const c = L.cellAt ? L.cellAt(Math.floor(x), Math.floor(y)) : null; return c ? c.material : ''; };
     const statics = data.static || [], stat = id => statics.find(s => s.id === id);
     const routes = new Map((data.routes || []).map(r => [r.id, window.GardenPaintGround && GardenPaintGround.paintRoute ? GardenPaintGround.paintRoute(r) : r]));   // (as painted: see GardenPaintGround.setRouteHook)
@@ -143,6 +145,15 @@ window.GardenPaintVale = (function () {
     if (meadow && !soft) for (const cut of clips.lanes) if (KIT().meets(cut.bb, cb)) B.cx.clip(cut.path, cut.rule || 'nonzero');
     if (L.soil.path && KIT().meets(L.soil.bb, cb)) B.cx.clip(L.soil.path, 'evenodd');
   }
+  /** A closed outline as a smooth curve through its own points (Catmull-Rom, a few steps a segment). Picture only. */
+  function smoothLoop(pts, steps) {
+    const n = pts.length; if (n < 4) return pts; steps = steps || 4; const out = [];
+    for (let i = 0; i < n; i++) { const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
+      for (let k = 0; k < steps; k++) { const t = k / steps, t2 = t * t, t3 = t2 * t;
+        out.push({ x: .5 * (2 * p1.x + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+          y: .5 * (2 * p1.y + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3) }); } }
+    return out;
+  }
   /** Points along a polyline every step px, with the unit tangent. */
   function walk(pts, step) {
     const out = []; let carry = 0;
@@ -191,11 +202,13 @@ window.GardenPaintVale = (function () {
   }
   /** Flagstones in courses over a clip (world px box): pale stones with joints, some lit, some worn, moss in a few. */
   function flags(B, r, P, bb, o) {
-    o = o || {}; const rowH = o.row || 14, w0 = o.w || 26;
+    o = o || {}; const row0 = o.row || 14, w0 = o.w || 26; let rowH = row0;   // (rowVar: courses of different depths, as laid stone is)
+    if (o.pal) P = Object.assign({}, P, o.pal);   // (a stone of its own: the quay's granite)
     B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), P.stone);
     // broad wear and weather first, so the stones sit in one light
     KIT().tiles(bb, 140, 0, (o.salt || 1) + 50, (tx, ty, rr) => { for (let k = 0; k < 3; k++) B.f(B.blob(rr, tx + rr() * 140, ty + rr() * 140, 30 + rr() * 50, 12 + rr() * 18, 9, .5), rr() < .5 ? P.stoneHi : P.stoneLo, .35); });
-    for (let y = Math.floor(bb[1] / rowH) * rowH; y < bb[3]; y += rowH) {
+    for (let y = Math.floor(bb[1] / row0) * row0; y < bb[3]; y += rowH) {
+      if (o.rowVar) rowH = Math.round(row0 * (1 - o.rowVar + 2 * o.rowVar * KIT().rng(KIT().hash(Math.round(y), 5, o.salt || 1))()));
       const rr = KIT().rng(KIT().hash(Math.round(y), 3, o.salt || 1));
       B.f(B.rect(bb[0], y + rowH - 1.1, bb[2] - bb[0], 1.1), o.grout || P.grout, .42);
       for (let x = Math.floor(bb[0] / w0) * w0 - rr() * w0; x < bb[2]; ) {
@@ -203,7 +216,7 @@ window.GardenPaintVale = (function () {
         if (o.broken && rr() < o.broken) { B.f(B.rect(x, y, w, rowH), P.lawnLo, .55); B.tufts(rr, x + w / 2, y + rowH - 2, w * .7, 3, [P.lawnLo, P.lawnHi], 5); x += w; continue; }
         // each stone its own warm tone (honey, buff, a rosy one now and then), lit along the top, shaded along the foot,
         // with a little grain: laid stone, not flat slabs
-        const warmTones = [P.stone, P.stoneLo, P.stoneHi, '#d4b688', '#d8bca4', '#c9b38c'];
+        const warmTones = o.tones || [P.stone, P.stoneLo, P.stoneHi, '#d4b688', '#d8bca4', '#c9b38c'];
         B.f(B.rect(x + .6, y + .6, w - 1.2, rowH - 1.8), warmTones[Math.floor(tone * warmTones.length) % warmTones.length], .7);
         B.f(B.rect(x + 1, y + .8, w - 2, 1.1), P.stoneHi, .55).f(B.rect(x + 1, y + rowH - 2.4, w - 2, 1.3), P.stoneLo, .55).f(B.rect(x - .5, y, 1.1, rowH), o.grout || P.grout, .5);
         for (let k = 0; k < 3; k++) B.f(B.rect(x + 2 + rr() * (w - 4), y + 2 + rr() * (rowH - 5), 1.2, 1), rr() < .5 ? P.stoneLo : P.stoneHi, .5);
@@ -235,8 +248,8 @@ window.GardenPaintVale = (function () {
     // the composition is the same for the same picture: compose once, then a repaint (a gate opening) only places it
     let comp = memo.get(sig);
     if (!comp) {
-      comp = { L, ground: [], main: [], under: [], things: [] };
-      const ctx = { L, P, season, tod: info.tod, kit, W, sig, add: (bb, seed, draw, extra) => comp.ground.push(Object.assign({ bb, seed, draw }, extra || {})), main: (bb, seed, draw) => comp.main.push({ bb, seed, draw }), under: o => comp.under.push(o), thing: o => comp.things.push(o) };
+      comp = { L, ground: [], main: [], under: [], things: [], live: [] };
+      const ctx = { L, P, season, tod: info.tod, kit, W, sig, add: (bb, seed, draw, extra) => comp.ground.push(Object.assign({ bb, seed, draw }, extra || {})), main: (bb, seed, draw) => comp.main.push({ bb, seed, draw }), under: o => comp.under.push(o), thing: o => comp.things.push(o), live: o => comp.live.push(o) };   // (live: drawn each frame near the camera, the swash)
       for (const p of parts) ok(() => p.compose(ctx));
       memo.clear(); memo.set(sig, comp);
       // the standing things that say where their foot is: walking stops the feet there (_gwBuildSolids)
@@ -252,7 +265,7 @@ window.GardenPaintVale = (function () {
     if (main.length) handles.push(kit.chunked(scene, root, main, { key: sig + '|m', box: worldBox, K: .35, chunk: 512, depth: MAIN_DEPTH, budgetMB: 10, lazy: true, slice: 10, prebake: true }));
     // Standing things and the crossings' water: a texture already baked is shown at once; a new one waits in a queue
     // that tick() bakes nearest the camera first, a few milliseconds a frame (so a repaint never freezes a frame).
-    const sprites = [], queue = [], tall = [], shrink = [];
+    const sprites = [], queue = [], tall = [], shrink = [], bob = [];
     const make = (o, isUnder) => {
       if (o.make) { const im = ok(() => o.make(scene)); if (im) { im.setDepth(o.y); (objects || root).add(im); sprites.push(im); if (im.displayHeight > 60) tall.push(im); } return; }   // (a tall one, a tree: it fades when you stand under it)
       const key = (isUnder ? underSig : sig + '|t|') + o.key, draw = isUnder ? B => o.draw(B, waterTod) : o.draw;
@@ -261,19 +274,25 @@ window.GardenPaintVale = (function () {
       im.setDepth(isUnder ? UNDER : o.depth != null ? o.depth : o.y); sprites.push(im); stats.spritePx = (stats.spritePx || 0) + (im._gptPx || 0);
       if (!isUnder && o.crown) { im._gpvCrown = o.crown; tall.push(im); }
       if (!isUnder && o.farShrink) { im._gpvBase = im.scaleX; im._gpvShrink = o.farShrink; shrink.push(im); }
+      if (!isUnder && o.bob) { im._gpvBob = { y: im.y, ph: ((o.x * 7 + o.y * 13) % 628) / 100, a: o.bob }; bob.push(im); }   // (afloat: it rides the swell)
       if (isUnder && root.sort) root.sort('depth');
     };
     stats = { sig, ground: ground.length, mainland: main.length, under: under.length, things: things.length, spritePx: 0 };
     for (const u of under) (scene.textures.exists(underSig + u.key) ? make(u, true) : queue.push([u, true]));
     for (const o of things) (o.make || scene.textures.exists(sig + '|t|' + o.key) ? make(o, false) : queue.push([o, false]));
+    // the live things (the swash on the beaches): one graphics each just over the ground, drawn by tick() near the camera only
+    const lives = []; for (const o of comp.live || []) { const h = ok(() => o.make(scene, root, DEPTH + .5)); if (h && h.obj) { sprites.push(h.obj); lives.push(h); } }
     if (root.sort) root.sort('depth'); if (objects && objects.sort) objects.sort('depth');
-    cur = { sig, groundSig, handles, groundHandle, sprites, scene, queue, make, objects, root, tall, shrink, W, covering: [] };
+    cur = { sig, groundSig, handles, groundHandle, sprites, scene, queue, make, objects, root, tall, shrink, bob, lives, W, covering: [] };
     stats.buildMs = Math.round(performance.now() - t0);
   }
   function tick(time, view) {
     if (cur) cur.covering.length = 0;
     // a landmark that would swallow its own clearing when the whole map is in view (the Great Oak) draws smaller as you zoom out:
     // full size from the walking zoom in, down to farShrink at the whole-map zoom (its foot stays put)
+    // boats and buoys afloat ride a slow swell, each on its own beat: a pixel or two up and down and a little roll
+    if (cur && cur.bob.length && time) for (const im of cur.bob) { if (!im.active || !im.visible) continue; const b = im._gpvBob, t = time / 1000 + b.ph; im.y = b.y + Math.sin(t * 1.3) * b.a; im.rotation = Math.sin(t * .9 + 1) * .012 * b.a; }
+    if (cur && cur.lives.length && time) for (const h of cur.lives) ok(() => h.update(time, view));
     if (cur && cur.shrink.length) { const z = cur.scene.cameras && cur.scene.cameras.main ? cur.scene.cameras.main.zoom : 1, t = Math.max(0, Math.min(1, (z - .25) / .45));
       for (const im of cur.shrink) if (im.active) { const k = im._gpvBase * (im._gpvShrink + (1 - im._gpvShrink) * t); if (Math.abs(im.scaleX - k) > 1e-4) im.setScale(k); } }
     if (cur && cur.tall.length && typeof _gw !== 'undefined') {
@@ -301,7 +320,7 @@ window.GardenPaintVale = (function () {
   function pendingGround() { return cur && cur.groundHandle ? cur.groundHandle.pendingInView() : 0; }
   function status() {
     const hs = cur ? cur.handles : [], px = hs.reduce((s, h) => s + (h.texturePx || 0), 0) + (stats.spritePx || 0);
-    return Object.assign({}, stats, { wanted: wanted(), on: !!cur, chunks: hs.map(h => h.chunks), live: hs.map(h => h.live), pending: hs.map(h => h.pending), worstSliceMs: Math.max(0, ...hs.map(h => h.sliceWorstMs || 0)), worstChunkMs: Math.max(0, ...hs.map(h => h.worstMs || 0)), textureMB: Math.round(px * 4 / 1048576 * 10) / 10, lastError: lastError || (KIT() && KIT().lastError) });
+    return Object.assign({}, stats, { wanted: wanted(), on: !!cur, afloat: cur ? cur.bob.map(im => +(im.y - im._gpvBob.y).toFixed(2)) : [], swash: cur ? cur.lives.map(h => h.stat ? h.stat() : null) : [], chunks: hs.map(h => h.chunks), live: hs.map(h => h.live), pending: hs.map(h => h.pending), worstSliceMs: Math.max(0, ...hs.map(h => h.sliceWorstMs || 0)), worstChunkMs: Math.max(0, ...hs.map(h => h.worstMs || 0)), textureMB: Math.round(px * 4 / 1048576 * 10) / 10, lastError: lastError || (KIT() && KIT().lastError) });
   }
   /** Draw the ground picture of a box straight into a 2D context (no scene), for previews: GardenPaintVale.paintTo(ctx, [x0, y0, x1, y1], 1). */
   function paintTo(cx, box, k, season) {
@@ -314,5 +333,5 @@ window.GardenPaintVale = (function () {
   }
   /** Landform kinds painted here (the world skips its own art for them). */
   function owns(kind) { return (kind === 'ruin-wall' || kind === 'ruin') && wanted(); }
-  return { feet: () => (wanted() ? feetNow : []), feetSig: () => (wanted() ? feetSig : ''), parts, groundSigs, PAL, wanted, paint, tick, clear, pendingGround, playerCanopies: () => cur ? cur.covering : null, status, paintTo, owns, readLayout, loopPath, strokePts, routeRibbon, clipGround, walk, lobe, capsule, hull, lawn, flags, setts, ok, get lastError() { return lastError; } };
+  return { feet: () => (wanted() ? feetNow : []), feetSig: () => (wanted() ? feetSig : ''), parts, groundSigs, PAL, wanted, paint, tick, clear, pendingGround, playerCanopies: () => cur ? cur.covering : null, status, paintTo, owns, readLayout, loopPath, smoothLoop, strokePts, routeRibbon, clipGround, walk, lobe, capsule, hull, lawn, flags, setts, ok, get lastError() { return lastError; } };
 })();

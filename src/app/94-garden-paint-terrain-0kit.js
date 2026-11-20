@@ -227,7 +227,7 @@ window.GardenPaintTerrainKit = (function () {
   // shade: true (or { a }) when it stands on the ground: the shared kit lays its shadow there (GardenPaintGround.cast).
   // Its picture follows the camera like the ground does: close up it is painted again at the level the zoom needs (sharpen).
   const sharp = new Map();   // texture key -> { scene, key, box, draw, K0, K, images: Set, seen }
-  let sharpTimer = null, sharpPx = 0, sharpWorst = 0, sharpWalkWorst = 0, lastMove = 0; const firstMs = new Map();
+  let sharpTimer = null, sharpPx = 0, sharpWorst = 0, sharpWorstKey = '', sharpWalkWorst = 0, lastMove = 0; const firstMs = new Map();
   const SHARP_BUDGET = 20 * 1048576 / 4, SHARP_ONE = 2.6e6;
   // show every image of a sprite at another picture of it, keeping whatever scaling its painter gave it
   const swap = (S, tex, K) => { const f = S.K / K; for (const im of S.images) { if (!im.active) continue; im.setTexture(tex).setScale(im.scaleX * f, im.scaleY * f); if (im._gpvBase) im._gpvBase *= f; } };
@@ -252,7 +252,7 @@ window.GardenPaintTerrainKit = (function () {
     if (ok(() => (S.draw(brush(cx)), 1)) == null) { S.K0 = 99; return; }   // (it would not paint again: leave it as it is)
     const tex = S.key + '|x' + K; if (S.scene.textures.exists(tex)) S.scene.textures.remove(tex); S.scene.textures.addCanvas(tex, c);
     swap(S, tex, K);
-    if (S.tex) { S.scene.textures.remove(S.tex); sharpPx -= S.px; } S.tex = tex; S.K = K; S.px = w * h; sharpPx += S.px; { const ms = performance.now() - t0; sharpWorst = Math.max(sharpWorst, ms); if (moving) sharpWalkWorst = Math.max(sharpWalkWorst, ms); if (!(S.ms0 >= 0)) S.ms0 = ms / (K / S.K0) ** 2; }
+    if (S.tex) { S.scene.textures.remove(S.tex); sharpPx -= S.px; } S.tex = tex; S.K = K; S.px = w * h; sharpPx += S.px; { const ms = performance.now() - t0; if (ms > sharpWorst) sharpWorstKey = S.key + ' x' + K; sharpWorst = Math.max(sharpWorst, ms); if (moving) sharpWalkWorst = Math.max(sharpWalkWorst, ms); if (!(S.ms0 >= 0)) S.ms0 = ms / (K / S.K0) ** 2; }
   }
   function sprite(scene, parent, key, box, draw, x, y, K, shade) {
     K = K || 1.5; let px = 0;
@@ -269,7 +269,7 @@ window.GardenPaintTerrainKit = (function () {
     if (shade && window.GardenPaintGround && GardenPaintGround.cast) { const id = GardenPaintGround.cast.add(scene, { key, x, y, box, a: shade.a }); if (id) im.once('destroy', () => GardenPaintGround.cast.drop(id)); }
     return im;
   }
-  const sharpStatus = () => ({ sprites: sharp.size, sharp: [...sharp.values()].filter(S => S.tex).length, MB: +(sharpPx * 4 / 1048576).toFixed(1), worstMs: Math.round(sharpWorst), worstWalkingMs: Math.round(sharpWalkWorst) });
+  const sharpStatus = () => ({ sprites: sharp.size, sharp: [...sharp.values()].filter(S => S.tex).length, MB: +(sharpPx * 4 / 1048576).toFixed(1), worstMs: Math.round(sharpWorst), worst: sharpWorstKey, worstWalkingMs: Math.round(sharpWalkWorst) });
 
   return { rng, hash, hashStr, noise, fbm, brush, rockBand, resample, normals, bboxOf, meets, tiles, chunked, sprite, sharpStatus, mix, rgba, P2, get lastError() { return lastError; }, set lastError(v) { lastError = v; } };
 })();

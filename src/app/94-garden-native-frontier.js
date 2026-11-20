@@ -49,7 +49,7 @@ void main () {
   // (uRetreat) and fades (uFade) when a gate opens, on the same tiles.
   const paintedFragment = fragment
     .replace('uniform float uTime;', 'uniform float uTime;\nuniform float uRetreat;\nuniform vec3 uTint;')   // (uFade is in the base mist already)
-    .replace(/float coreFade[\s\S]*?gl_FragColor = fragColor;/, `float coreFade = smoothstep(-6.0, 30.0, distance - uRetreat * 220.0);
+    .replace(/float coreFade[\s\S]*?gl_FragColor = fragColor;/, `float coreFade = smoothstep(-6.0, 64.0, distance + billow * 0.9 - uRetreat * 220.0);
   float core = smoothstep(2.0, 96.0, distance + billow * 1.25 - uRetreat * 260.0) * coreFade * step(0.5, land.g);
   float edge = smoothstep(-34.0, 6.0, distance - uRetreat * 220.0) * (1.0 - smoothstep(18.0, 80.0, distance));
   float fringe = edge * smoothstep(0.3, 0.72, b * 0.4 + c * 0.6) * 0.16;
@@ -104,7 +104,9 @@ void main () {
     const reduced = matchMedia('(prefers-reduced-motion: reduce)'), tiles = new Map(), parent = options.world.rootNode._inner || options.world.root;
     let regions = null, revision = -1, boundary = null, count = 0, districtGate = '', room = false, paused = false, elapsed = 0, dead = false, builds = 0, buildMs = 0, reuses = 0, visible = 0, gen = 0, tint = [.9, .92, .9], tintAt = -1;
     const painted = !!(window.GardenNativePainted && GardenNativePainted.wanted() && typeof gardenIslandActive === 'function' && gardenIslandActive()), leaving = [];
-    const TINT = { day: [.9, .92, .9], dawn: [.92, .88, .86], dusk: [.86, .8, .8], night: [.44, .5, .58] };
+    // (night darker: the pale blue mist over the shut land stood out against the dark open land in a hard seam; its edge
+    // also takes the billows now, so a straight region edge is not a ruled line: coast round 3)
+    const TINT = { day: [.9, .92, .9], dawn: [.92, .88, .86], dusk: [.8, .74, .76], night: [.27, .32, .4] };
     function retire(tile) { if (tile.shader) tile.shader.destroy(); if (tile.texture) scene.textures.remove(tile.key); }
     function clearTiles() {
       for (const tile of [...tiles.values(), ...leaving]) retire(tile);
