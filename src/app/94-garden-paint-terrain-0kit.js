@@ -204,11 +204,16 @@ window.GardenPaintTerrainKit = (function () {
       if (!best && opts.prebake && bakedPx < budget * .92 && !(typeof _gw !== 'undefined' && _gw.moving)) for (const ch of list) if (!ch.live) { const d = dist(ch, v); if (d < bd) { bd = d; best = ch; } }
       if (best && bakeOne(best, opts.slice || 12) && parent.sort) parent.sort('depth');
       if (bakedPx > budget) { let far = null, fd = -1; for (const ch of list) if (ch.live && !meets(ch.bb, keep)) { const d = dist(ch, v); if (d > fd) { fd = d; far = ch; } } if (far) evict(far); }
+      // opts.under (rule 16): this layer is a soft placeholder under a sharper one, shown only where that one has a chunk
+      // still to paint (so you see the painted ground, a little soft, never bare lawn), and hidden once it is all there
+      if (opts.under) for (const ch of list) if (ch.image) { const show = !ok(() => opts.under.readyIn(ch.bb)); if (ch.image.visible !== show) ch.image.setVisible(show); }
     };
     const timer = setInterval(() => ok(tick), 34);
     return {
       // Readiness follows the same current-view margin as the existing streamer.
       pendingInView() { const v = viewBox(.05); if (dead || !v) return 0; let count = 0; for (const ch of list) if (!ch.live && meets(ch.bb, v)) count++; return count; },
+      // every chunk of this layer that meets the box (inside its bleed) is painted and placed
+      readyIn(bb) { const inner = [bb[0] + PAD, bb[1] + PAD, bb[2] - PAD, bb[3] - PAD]; for (const ch of list) if (!ch.live && meets([ch.bb[0] + PAD, ch.bb[1] + PAD, ch.bb[2] - PAD, ch.bb[3] - PAD], inner)) return false; return true; },
       chunks: list.length, get pending() { return list.filter(c => !c.live).length; }, get worstMs() { return Math.round(worst); }, get sliceWorstMs() { return Math.round(sliceWorst); }, get bakeMs() { return Math.round(bakeMs); }, buildMs: Math.round(performance.now() - t0),
       get texturePx() { return bakedPx; }, get p95() { const t = times.slice(-200).sort((a, b) => a - b); return t.length ? t[Math.floor(t.length * .95)] : 0; }, get median() { const t = times.slice(-200).sort((a, b) => a - b); return t.length ? t[t.length >> 1] : 0; }, get baked() { return baked; }, get evicted() { return evicted; }, get live() { return list.filter(c => c.live).length; },
       destroy(keepTextures) { dead = true; clearInterval(timer); for (const ch of list) { if (ch.image) ch.image.destroy(); ch.image = null; ch.live = false; if (!keepTextures && scene.textures.exists(ch.key)) scene.textures.remove(ch.key); } },
@@ -223,7 +228,7 @@ window.GardenPaintTerrainKit = (function () {
       const [x0, y0, x1, y1] = box, w = Math.ceil((x1 - x0) * K), h = Math.ceil((y1 - y0) * K); if (w < 2 || h < 2 || w > 4096 || h > 4096) return null;
       const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d'); cx.setTransform(K, 0, 0, K, -x0 * K, -y0 * K);
       if (ok(() => (draw(brush(cx)), 1)) == null) return null;
-      scene.textures.addCanvas(key, c); px = w * h;
+      scene.textures.addImage(key, c); px = w * h;   // (rule 16: addImage, as the chunks do; a CanvasTexture reads every pixel back as it is made, up to seconds with the card busy)
     }
     const [x0, y0, x1, y1] = box;
     const im = scene.add.image(x, y, key).setOrigin(-x0 / (x1 - x0), -y0 / (y1 - y0)).setScale(1 / K).setDepth(y);

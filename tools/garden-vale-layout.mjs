@@ -419,7 +419,7 @@ const storyAnchors = {
 
 /* ------------------------------------------------------------ side piers (lv 10 ruins shore, lv 14 orchard beach) */
 const reservedSidePiers = [
-  { id: 'reserved-west-pier', side: 'west', level: 10, reserved: { x: 6, y: 88, w: 7, h: 2 }, entry: { x: 13, y: 88 }, apron: { x: 13, y: 86, w: 3, h: 4 }, upgrades: v4.reservedSidePiers[0].upgrades.replace('old woodland shore', 'old woodland shore at Wren point') },
+  { id: 'reserved-west-pier', side: 'west', level: 10, reserved: { x: 6, y: 88, w: 7, h: 2 }, entry: { x: 13, y: 88 }, apron: { x: 12, y: 87, w: 3, h: 2 },   /* (layout fix, west: the apron kept to the sand; its top row stood on two lawn cells the shore paths' paint skips, a square notch in the path at the cove link's end) */ upgrades: v4.reservedSidePiers[0].upgrades.replace('old woodland shore', 'old woodland shore at Wren point') },
   { id: 'reserved-east-pier', side: 'east', level: 14, reserved: { x: 87, y: 42, w: 7, h: 2 }, entry: { x: 86, y: 42 }, apron: { x: 83, y: 41, w: 3, h: 4 }, upgrades: v4.reservedSidePiers[1].upgrades },
 ];
 
