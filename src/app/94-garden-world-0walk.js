@@ -108,6 +108,7 @@ function _gwBuildSolids(m) {
   if (fw && fl.caveStair) {
     add(fl.caveStair[0] + .62, fw.lip.y + .15, fw.lip.x + .2, fl.caveStair[1] + .85, 'rock by Fleet Falls (cave cheek)');
     add(fw.lip.x + 1.6, fw.lip.y + .15, fl.x + fl.w + .75, fl.y + 1.7, 'rock by Fleet Falls (step)');
+    add(fl.caveStair[0] + 1.55, fl.caveStair[1] + .85, fl.x + fl.w, fl.caveStair[1] + 1.7, 'Fleet Falls (the falling water)');   // (Cloudbreak layout: you could walk east from the stair's foot into the falling sheet)
   }
   // Cloudbreak's shortcut C, the falls cave stair: shut below level 18 by a rope across its foot (drawn by
   // 94-garden-paint-vale-1cloudbreak.js, which says where: gardenCloudbreakStairShut)
