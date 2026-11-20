@@ -532,7 +532,7 @@ function gardenLandClick(id, ev) {
   const a = gardenArea(id), at = ev && ev.clientX != null ? { x: ev.clientX, y: ev.clientY } : null; if (!a) return;
   if (a.solid) { gameDeny(null, { at, say: 'Too thick to walk through.' }); return; }
   const m = gardenHere();
-  if (m.visit && (!m.visit.live || /^zn-[1-9]$/.test(id))) { gameDeny(null, { kind: 'lock', at, say: m.visit.live ? 'That land is not open in this garden yet.' : 'You can buy land here while your friend is in their garden too.' }); return; }   // (full co-op, 2.75: together, you buy their land with your coins)
+  if (m.visit && !m.visit.live) { gameDeny(null, { kind: 'lock', at, say: /^zn-[1-9]$/.test(id) ? 'That way is still shut in your friend’s garden. Open it together while they are here.' : 'You can buy land here while your friend is in their garden too.' }); return; }   // (full co-op, 2.75: together, you buy their land with your coins)
   { const gate = /^zn-[1-9]$/.test(id) && typeof gardenGateOf === 'function' ? gardenGateOf(Number(id.slice(3))) : null; if (gate && gardenGateRule(gate) && typeof gardenGatePrompt === 'function') { const D = gate.door; if (!gardenWalkToPoint({ x: D.x + 0.5, y: D.y + 0.5 }, () => gardenGatePrompt(gate, { x: D.x + 0.5, y: D.y - 0.4 }, gardenHere()), { radius: 2 })) gardenGatePrompt(gate, { x: D.x + 0.5, y: D.y - 0.4 }, m); return; } }   // a shut region: walk to its gate, which says what it needs
   if (!a.buy) { gameDeny(null, { kind: 'lock', badge: 'Lv ' + a.lv, at, say: `${a.name} opens at garden level ${a.lv}.` }); return; }
   if (m.level.level < a.lv) { gameDeny(null, { kind: 'lock', badge: 'Lv ' + a.lv, at, say: `${a.name} can be bought from garden level ${a.lv}.` }); return; }

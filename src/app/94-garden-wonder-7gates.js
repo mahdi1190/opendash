@@ -102,7 +102,12 @@ function gardenGatePrompt(gate, at, m) {
   _wgt.hint.add(gate.id); if (typeof _wgt.note === 'function') { _wgt.note(); _wgt.note = null; }   // (the prompt says it all: the note from walking up goes, and does not come back this visit)
   const zone = gardenZone(gate.n), item = GARDEN_GATE_ITEMS[rule.key], who = _wgtWho(rule.who), isOpen = gardenGateIsOpen(gate, m.areas), title = rule.name || zone.name, into = `The way into ${_wgtInto(zone)}.`;
   if (isOpen) { gardenBubbleOpen(at, { title, sub: into + ' It is open.', items: [], cls: 'is-empty is-words gd-gate' }); return true; }
-  if (m.visit) { gardenBubbleOpen(at, { title, sub: into + ' ' + rule.block + ' This way is still shut in your friend’s garden.', items: [], cls: 'is-empty is-words gd-gate' }); return true; }
+  if (m.visit) {   // full co-op (2.75): together, you open your friend's gate with the find they hold, or with one you bring
+    const theirs = typeof gardenGateHere === 'function' ? gardenGateHere(rule.key) : false, mine = gardenGateHas(rule.key), live = !!m.visit.live && typeof _glvIntent === 'function';
+    const items = live && (theirs || mine) ? [{ svg: gardenGateItemSvg(rule.key, 22), label: rule.verb, text: rule.verb, cls: 'is-go gd-gate-use', run: () => { gardenBubbleClose(); _glvIntent('gate', { p: gate.id, ...(theirs ? {} : { r: 1 }) }); } }] : [];
+    const sub = into + ' ' + (items.length ? (theirs ? `${m.visit.name ? String(m.visit.name).split(/\s+/)[0] : 'Your friend'} has ${item.name.toLowerCase()}: open it for them.` : `You have ${item.name.toLowerCase()}: open it for them.`) : rule.block + (live ? ` It opens with ${item.name.toLowerCase()}.` : ' This way is still shut in your friend’s garden.'));
+    gardenBubbleOpen(at, { title, sub, items, cls: 'is-words gd-gate' + (items.length ? '' : ' is-empty') }); return true;
+  }
   const have = gardenGateHas(rule.key), lv = m.level.level, findLv = gardenGateFindLv(gate), openLv = gardenZoneOpenLv(zone);
   // what someone said, in their own words; then, in one plain line, when they can help and when it opens anyway
   const said = _wgtHint(gate, rule, m), name = said && said.name || (who ? who.name : 'Someone');

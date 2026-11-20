@@ -54,10 +54,11 @@ const GL_ACTS = Object.freeze({
   // full co-op (2.75): a friend buys a piece of this garden's land, or builds one of its things, with their own coins; it is the garden's for good (p: the section's or the thing's id; x, y: where they stand, for setting it out)
   land: Object.freeze({ lv: 'play', land: 'land' }),
   build: Object.freeze({ lv: 'play', land: 'feat' }),
+  gate: Object.freeze({ lv: 'play', land: 'gate' }),   // open one of this garden's gates (p: the gate's id; r 1: I bring its find myself)
 });
 const GL_ACT_IDS = Object.freeze(Object.keys(GL_ACTS));
 // Friends are trusted (full co-op, the owner, 20 Nov 2026): these are only there so a runaway loop cannot fill the diary, never to hold a friend back
-const GL_CAPS = Object.freeze({ plant: 2000, place: 1000, water: 2000, weed: 2000, harvest: 2000, dig: 2000, move: 2000, take: 1000, give: 500, drop: 200, pick: 200, catch: 200, feed: 1000, turn: 2000, land: 200, build: 200, postsPerFriend: 120 });
+const GL_CAPS = Object.freeze({ plant: 2000, place: 1000, water: 2000, weed: 2000, harvest: 2000, dig: 2000, move: 2000, take: 1000, give: 500, drop: 200, pick: 200, catch: 200, feed: 1000, turn: 2000, land: 200, build: 200, gate: 50, postsPerFriend: 120 });
 /** What can wait for an owner who is out: which acts (each still needs its level in GL_ACTS), how many from one friend at once and in a day, and how many days it keeps. */
 const GL_QUEUE = Object.freeze({ acts: Object.freeze(['plant', 'place', 'water']), perFriend: 20, perDay: 30, days: 14 });
 /** Room messages a host's rooms carry in a day, what it sends and what arrives from visitors: 80,000 is 4,000 of Cloudflare's 100,000 free requests (incoming socket messages count 20 to 1). Over thin, walking sends less. guestDay: one visitor's share (the relay holds them to it too: ROOM.guestDay). */
@@ -284,7 +285,7 @@ function glIntentOk(b) {
   if (a.place || a.on) { if (!_glCell(b.x) || !Number.isInteger(b.y) || b.y < 0 || b.y >= GARDEN_WORLD.rows) return 'cell'; }
   if (a.to) { if (!_glCell(b.tx) || !Number.isInteger(b.ty) || b.ty < 0 || b.ty >= GARDEN_WORLD.rows) return 'cell'; }
   if (b.t === 'water' && !gsocWaterOk(b.p)) return 'plant';
-  if (a.land) { if (!GL_FX_ID_RE.test(String(b.p || ''))) return 'land'; if (a.land === 'land' && typeof gardenLandRow === 'function' && !(gardenLandRow(b.p) || {}).buy) return 'land'; if (a.land === 'feat' && typeof gardenLandFeature === 'function' && !gardenLandFeature(b.p)) return 'land'; if (b.x != null && (!_glCell(b.x) || !Number.isInteger(b.y) || b.y < 0 || b.y >= GARDEN_WORLD.rows)) return 'cell'; }   // (the server has no land table: it checks the shape, the page the id)
+  if (a.land) { if (!GL_FX_ID_RE.test(String(b.p || ''))) return 'land'; if (a.land === 'land' && typeof gardenLandRow === 'function' && !(gardenLandRow(b.p) || {}).buy) return 'land'; if (a.land === 'feat' && typeof gardenLandFeature === 'function' && !gardenLandFeature(b.p)) return 'land'; if (a.land === 'gate' && typeof gardenGateOf === 'function' && !gardenGateOf(b.p)) return 'land'; if (b.x != null && (!_glCell(b.x) || !Number.isInteger(b.y) || b.y < 0 || b.y >= GARDEN_WORLD.rows)) return 'cell'; }   // (the server has no land table: it checks the shape, the page the id)
   if (b.t === 'drop') { if (!gsocGiftOk(b.k, b.item)) return 'gift'; if (!Number.isInteger(b.to) || b.to < 0 || b.to >= GL_PEOPLE) return 'who'; }
   if (!GL_ID_RE.test(String(b.i || ''))) return 'id';
   return '';

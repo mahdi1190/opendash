@@ -217,7 +217,7 @@ function _glvResult(b) {
       _glvRefund(b.i, P); _gdvTouch();
       const at = _glvCellAt(P.f && P.f.x, P.f && P.f.y);
       if (b.why === 'level' && typeof gardenVisitDenied === 'function') gardenVisitDenied(P.t);
-      else gameDeny(null, { at: at || undefined, say: (P.t === 'land' || P.t === 'build') ? ({ have: 'They have that already. Your coins are back.', 'not-yet': 'That is not open in this garden yet. Your coins are back.', spot: 'Something is in the way there. Your coins are back.' }[b.why] || 'That did not go through. Your coins are back.') : 'That did not work here.', kind: 'tool' });
+      else gameDeny(null, { at: at || undefined, say: P.t === 'gate' ? (b.why === 'have' ? 'It is open already.' : 'That gate needs its find first.') : (P.t === 'land' || P.t === 'build') ? ({ have: 'They have that already. Your coins are back.', 'not-yet': 'That is not open in this garden yet. Your coins are back.', spot: 'Something is in the way there. Your coins are back.' }[b.why] || 'That did not go through. Your coins are back.') : 'That did not work here.', kind: 'tool' });
     }
     return;
   }
@@ -241,6 +241,7 @@ function _glvResult(b) {
     const g = _gdG(), led = g.led['gl.o.' + b.i];
     if (led && !led.ok) { _glvSettled(b.i, led, b.t); _gscSaveGarden(); }
     if (b.t === 'water') _gscXp('water', _glv.fid, _gllToday());
+    if (b.t === 'gate' && P && P.f && typeof gardenToast === 'function') { const gt = gardenGateOf(P.f.p), z = gt && gardenZone(gt.n); gardenToast(`You opened the way into ${z ? String(z.name).replace(/^The /, 'the ') : 'a new part'} of ${_gdvFirst()}’s garden!`, { icon: 'key' }); }
     if ((b.t === 'land' || b.t === 'build') && P && P.f && typeof gardenToast === 'function') { const r = b.t === 'land' ? gardenLandRow(P.f.p) : gardenLandFeature(P.f.p); gardenToast(`${r ? r.name : 'It'} is part of ${_gdvFirst()}’s garden now. Thank you for chipping in!`, { icon: b.t === 'land' ? 'trees' : 'hammer' }); }
     if (b.t === 'catch') _glvGotBug(b.u, b.item);
     if (P && b.t === 'take' && b.u) { const d = g.led['gl.o.' + b.u]; if (d && d.to === _glv.fid) { delete g.led['gl.o.' + b.u]; _gscSaveGarden(); } }   // back in your bag (a post says the same, if this answer is lost)

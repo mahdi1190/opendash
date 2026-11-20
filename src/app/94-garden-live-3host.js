@@ -344,7 +344,7 @@ function _glhIntent(ev) {
   _glhPrune();
   _gdSave();
   if (!ev.away) { const result = _glhResOf(ev, e); _glhSend('all', 'res', result); _gllToolFeedback(result, false); }
-  if ((ev.t === 'land' || ev.t === 'build') && typeof gardenToast === 'function') gardenToast(_glhDiaryWhat(e, 1) + (e.wait ? '. There was no room for it nearby: set it out from the land office.' : '!'), { icon: ev.t === 'land' ? 'trees' : 'hammer', ...(e.wait ? { timeout: 12000 } : {}) });   // (full co-op: a friend's gift to the garden, said out loud)
+  if ((ev.t === 'land' || ev.t === 'build' || ev.t === 'gate') && typeof gardenToast === 'function') gardenToast(_glhDiaryWhat(e, 1) + (e.wait ? '. There was no room for it nearby: set it out from the land office.' : '!'), { icon: ev.t === 'land' ? 'trees' : ev.t === 'gate' ? 'key' : 'hammer', ...(e.wait ? { timeout: 12000 } : {}) });   // (full co-op: a friend's gift to the garden, said out loud)
   const A = _gll.actors.get(ev.w);
   if (A) _gllPose(A, _GL_POSE[ev.t] || 'pick', 760);
   if (ev.x != null && _GL_EMOJI[ev.t]) _gllFloat(_gw.svg, ev.x, ev.y, _GL_EMOJI[ev.t], A ? A.n : '');
@@ -528,6 +528,7 @@ function _glhApply(ev, key) {
  *  you nothing and is yours for good, the same rows your own purchase writes (land:<id> / feat:<id> in the ledger, so the snapshot, the map, the gates and what you can walk on
  *  follow by themselves). A thing that stands is set out near where they stand. No Undo: their coins are spent. Your own coins and level are never touched. */
 function _glhLand(ev, put, m) {
+  if (ev.t === 'gate') return _glhGate(ev, put, m);
   const feat = ev.t === 'build', id = String(ev.p || '');
   if (feat) {
     const info = typeof gardenLandFeatureInfo === 'function' ? gardenLandFeatureInfo(id, m) : null;
@@ -550,6 +551,19 @@ function _glhLand(ev, put, m) {
   }
   setTimeout(() => { try { _glhSnapAll(); } catch (e) { /* the next world check */ } }, 60);   // everybody here sees the new land at once
   return put(mark, { noUndo: true, land: id, ...(feat ? { feat: 1 } : {}), ...(out ? {} : { wait: 1 }) });
+}
+/** A friend opens one of your gates (full co-op, 2.75): with the find you hold, or one they bring themselves (r 1: friends are trusted). The same row your own opening writes, and its little prize is the garden's. */
+function _glhGate(ev, put, m) {
+  const gate = typeof gardenGateOf === 'function' ? gardenGateOf(String(ev.p || '')) : null, rule = gate && gardenGateRule(gate);
+  if (!rule) return 'gone';
+  if (gardenGateIsOpen(gate, m.areas)) return 'have';
+  if (!gardenGateHas(rule.key) && ev.r !== 1) return 'not-yet';
+  const g = _gdG(), lk = 'gt.' + gate.id, mark = _gdMark([['led', lk]]), P = GARDEN_GATE_PRIZE;
+  if (!g.led[lk]) g.led[lk] = { d: m.today, k: 'gk', c: P.c, x: P.x, i: { ['gate:' + gate.id]: 1 }, n: 1, by: ev.f };
+  gardenModel();
+  if (typeof _glFx === 'function') { try { _glFx(gate.door.x + 0.5, gate.door.y + 0.5, 'sparkle', { lift: 20 }); _glSound('twinkle'); } catch (e) { /* only a flourish */ } }
+  _gdEmit('landshow', {});
+  return put(mark, { noUndo: true, land: gate.id, gate: 1 });
 }
 function _glhPrune() {
   const g = _gdG(), ks = Object.keys(g.gl);
@@ -779,6 +793,7 @@ function _glhDiaryWhat(e, n) {
     case 'pick': return `${who} picked up a parcel`;
     case 'land': { const r = typeof gardenLandRow === 'function' ? gardenLandRow(e.land || e.p) : null; return `${who} bought ${r ? r.name : 'a piece of land'} for your garden`; }
     case 'build': { const r = typeof gardenLandFeature === 'function' ? gardenLandFeature(e.land || e.p) : null; return `${who} built ${r ? _gscA(r.name.toLowerCase().replace(/^the /, '')) : 'something'} in your garden`; }
+    case 'gate': { const gt = typeof gardenGateOf === 'function' ? gardenGateOf(e.land || e.p) : null, z = gt && gardenZone(gt.n); return `${who} opened the way into ${z ? String(z.name).replace(/^The /, 'the ') : 'a new part'} of your garden`; }
     case 'trade': return e.f2 ? `${who} and ${_glhByName(e.f2)} traded` : `${who} traded with you`;
     default: return `${who} was here`;
   }
