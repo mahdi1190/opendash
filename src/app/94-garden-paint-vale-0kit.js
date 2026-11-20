@@ -26,7 +26,7 @@ window.GardenPaintVale = (function () {
   'use strict';
   const KIT = () => window.GardenPaintTerrainKit;
   const DEPTH = -9346, UNDER = -9592, MAIN_DEPTH = -9268;
-  const parts = [], groundSigs = [], softRoutes = new Set();
+  const parts = [], groundSigs = [], softRoutes = new Set(); let composeMs = {};
   let cur = null, heldGround = null, lastError = null, stats = {}, feetNow = [], feetSig = '';
   const memo = new Map();
   const ok = f => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
@@ -276,7 +276,7 @@ window.GardenPaintVale = (function () {
     if (!comp) {
       comp = { L, ground: [], main: [], under: [], things: [], live: [] };
       const ctx = { L, P, season, tod: info.tod, kit, W, sig, add: (bb, seed, draw, extra) => comp.ground.push(Object.assign({ bb, seed, draw }, extra || {})), main: (bb, seed, draw) => comp.main.push({ bb, seed, draw }), under: o => comp.under.push(o), thing: o => comp.things.push(o), live: o => comp.live.push(o) };   // (live: drawn each frame near the camera, the swash)
-      for (const p of parts) ok(() => p.compose(ctx));
+      composeMs = {}; for (const p of parts) { const c0 = performance.now(); ok(() => p.compose(ctx)); composeMs[p.id] = Math.round(performance.now() - c0); }
       memo.clear(); memo.set(compSig, comp);
       // the standing things that say where their foot is: walking stops the feet there (_gwBuildSolids)
       const cw = W.cellW, ch = W.cellH, names = { 'cold-cove-rock': 'shore boulder', block: 'chopping block', 'chapel-stone': 'chapel stone' };
@@ -332,7 +332,14 @@ window.GardenPaintVale = (function () {
     if (!cur || !cur.queue.length) return;
     const t0 = performance.now(), cx = view ? view.x + view.w / 2 : 0, cy = view ? view.y + view.h / 2 : 0;
     cur.queue.sort((a, b) => Math.hypot(a[0].x - cx, a[0].y - cy) - Math.hypot(b[0].x - cx, b[0].y - cy));
-    while (cur.queue.length && performance.now() - t0 < 6) { const [o, u] = cur.queue.shift(), s0 = performance.now(); ok(() => cur.make(o, u)); const ms = performance.now() - s0; if (ms > (stats.slowMs || 0)) { stats.slowMs = Math.round(ms); stats.slow = o.key || 'tree'; } }
+    // (vf-perf) a thing with a prep (a dear picture worked out in steps: the range) is worked on for what is left of this frame's
+    // few milliseconds and stays at the head of the queue until it is ready; it is made on a frame of its own, so its marks and
+    // its upload never share a frame with the last step of its working
+    while (cur.queue.length && performance.now() - t0 < 6) {
+      const [o, u] = cur.queue[0];
+      if (o.prep && !o.prepped) { const s0 = performance.now(); o.prepped = !!ok(() => o.prep(t0 + 6)); stats.prepWorstMs = Math.max(stats.prepWorstMs || 0, Math.round(performance.now() - s0)); break; }
+      cur.queue.shift(); const s0 = performance.now(); ok(() => cur.make(o, u)); const ms = performance.now() - s0; if (ms > (stats.slowMs || 0)) { stats.slowMs = Math.round(ms); stats.slow = o.key || 'tree'; }
+    }
     for (const c of [cur.objects, cur.root]) if (c && c.sort) c.sort('depth');
     stats.queueWorstMs = Math.max(stats.queueWorstMs || 0, Math.round(performance.now() - t0));
   }
@@ -349,7 +356,7 @@ window.GardenPaintVale = (function () {
   function pendingGround() { return cur && cur.groundHandle ? cur.groundHandle.pendingInView() : 0; }
   function status() {
     const hs = cur ? cur.handles : [], px = hs.reduce((s, h) => s + (h.texturePx || 0), 0) + (stats.spritePx || 0);
-    return Object.assign({}, stats, { wanted: wanted(), on: !!cur, afloat: cur ? cur.bob.map(im => +(im.y - im._gpvBob.y).toFixed(2)) : [], swash: cur ? cur.lives.map(h => h.stat ? h.stat() : null) : [], chunks: hs.map(h => h.chunks), live: hs.map(h => h.live), pending: hs.map(h => h.pending), worstSliceMs: Math.max(0, ...hs.map(h => h.sliceWorstMs || 0)), worstChunkMs: Math.max(0, ...hs.map(h => h.worstMs || 0)), textureMB: Math.round(px * 4 / 1048576 * 10) / 10, lastError: lastError || (KIT() && KIT().lastError) });
+    return Object.assign({}, stats, { wanted: wanted(), on: !!cur, afloat: cur ? cur.bob.map(im => +(im.y - im._gpvBob.y).toFixed(2)) : [], swash: cur ? cur.lives.map(h => h.stat ? h.stat() : null) : [], chunks: hs.map(h => h.chunks), live: hs.map(h => h.live), pending: hs.map(h => h.pending), worstSliceMs: Math.max(0, ...hs.map(h => h.sliceWorstMs || 0)), worstChunkMs: Math.max(0, ...hs.map(h => h.worstMs || 0)), textureMB: Math.round(px * 4 / 1048576 * 10) / 10, composeMs, lastError: lastError || (KIT() && KIT().lastError) });
   }
   /** Draw the ground picture of a box straight into a 2D context (no scene), for previews: GardenPaintVale.paintTo(ctx, [x0, y0, x1, y1], 1). */
   function paintTo(cx, box, k, season) {

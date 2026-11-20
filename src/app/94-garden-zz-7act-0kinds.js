@@ -224,55 +224,6 @@ function gardenKindSnap(kind, x, y, w, wet, front) {
   if (best) { const d = best.d; let k = 0; while (k < 25 && !wet(best.x + d[1] * (k * 0.02 + 0.14), best.y + d[2] * (k * 0.02 + 0.14))) k++; best.x = Math.round((best.x + d[1] * k * 0.02) * 100) / 100; best.y = Math.round((best.y + d[2] * k * 0.02) * 100) / 100; delete best.d; }   // (right up to the lip)
   return best;
 }
-/** A painted tree's kind from its species (any painter's name for it: 'apple', 'tree.green-birch', 'pine'), never from who drew it:
- *  a kind whose `species` names a word of it, else the kind with '*' (any tree). A trunk list's rock (a pass's boulder) is no tree: ''. */
-function gardenTreeKind(sp) {
-  const toks = String(sp || '').toLowerCase().replace(/^tree\./, '').split(/[^a-z]+/).filter(Boolean);
-  if (toks.some(w => /^(rock|boulder|stone|stones)$/.test(w))) return '';
-  for (const w of toks) for (const [s, k] of _GK_SPECIES) if (w === s) return k;
-  for (const [k, v] of Object.entries(GARDEN_KINDS)) if ((v.species || []).includes('*')) return k;
-  return '';
-}
-/** Turn a vector laid out for a front facing the camera (90) round to a thing whose front faces `front` degrees. */
-function _gkTurn(dx, dy, front) {
-  const a = ((front == null ? 90 : front) - 90) * Math.PI / 180; if (!a) return [dx, dy];
-  const c = Math.cos(a), s = Math.sin(a); return [dx * c - dy * s, dx * s + dy * c];
-}
-/** What a thing offers, placed: [{ act, name, x, y (the thing, or the part), stand {x, y}, deg, ...its act row }]. t: { id, kind, x, y (its
- *  foot's middle, cells), w (its width, cells), front }. Pure: the audit calls it on any layout. */
-function gardenKindSpots(t) {
-  const K = GARDEN_KINDS[t.kind]; if (!K || !K.acts) return [];
-  const w = t.w || K.w || 1, out = [];
-  K.acts.forEach((a, i) => {
-    const sx = a.cells ? a.stand[0] : a.stand[0] * w, [ox, oy] = _gkTurn(sx, a.stand[1], t.front);
-    const p = a.at ? _gkTurn(a.at[0] * w, a.at[1], t.front) : [0, 0];
-    const fr = t.front == null ? 90 : ((t.front % 360) + 360) % 360, side = fr > 225 && fr < 315 ? 'n' : fr >= 45 && fr <= 135 ? 's' : fr > 135 && fr <= 225 ? 'w' : 'e';
-    const act = a.byFront && a.byFront[side] ? a.byFront[side] : a.act;   // (a move whose pose depends on which way the thing faces: sat on a north bank, back to you; on a south bank, facing you)
-    out.push(Object.assign({}, a, { act, kind: t.kind, i, name: a.name || K.name, x: t.x + p[0], y: t.y + p[1], stand: { x: t.x + ox, y: t.y + oy }, deg: a.deg == null ? null : a.deg + ((t.front == null ? 90 : t.front) - 90) }));
-  });
-  return out;
-}
-/** Does a spot's `needs` hold now? ctx: { season, night, level, has(id) -> n }. */
-function gardenKindNeedsOk(needs, ctx) {
-  if (!needs) return true; ctx = ctx || {};
-  if (needs.season && ctx.season && ctx.season !== needs.season) return false;
-  if (needs.winter && ctx.season && ctx.season !== 'winter') return false;
-  if (needs.time === 'night' && ctx.night === false) return false;
-  if (needs.time === 'day' && ctx.night === true) return false;
-  if (needs.level && ctx.level != null && ctx.level < needs.level) return false;
-  return true;   // (owning a thing is asked when you use it: the prompt says where to get one)
-}
-/** A placed thing's foot moved to the ground its kind needs (K.ground), within 4 cells: { x, y, moved } or null when there is none.
- *  wet(x, y) -> is it water there. Pure: the game and the audit both call it. */
-function gardenKindSnap(kind, x, y, w, wet) {
-  const K = GARDEN_KINDS[kind]; if (!K || K.ground !== 'water-edge') return { x, y, moved: false };
-  const hw = (w || K.w || 1) / 2, ok = (px, py) => !wet(px, py) && !wet(px - hw, py) && !wet(px + hw, py) && wet(px, py - 0.5) && wet(px - hw, py - 0.5) && wet(px + hw, py - 0.5) && wet(px, py - 1.6);
-  if (ok(x, y)) return { x, y, moved: false };
-  let best = null, bd = 4.01;
-  for (let dy = -4; dy <= 4; dy += 0.1) for (let dx = -4; dx <= 4; dx += 0.25) { const d = Math.hypot(dx, dy); if (d < bd && ok(x + dx, y + dy)) { bd = d; best = { x: x + dx, y: y + dy, moved: true }; } }
-  if (best) { let y1 = best.y; while (y1 - 0.02 > best.y - 0.5 && !wet(best.x, y1 - 0.02 - 0.12)) y1 -= 0.02; best.y = Math.round(y1 * 100) / 100; best.x = Math.round(best.x * 100) / 100; }   // (right up to the lip)
-  return best;
-}
 /** Which way the ground you walk on rises at (x, y), read from the layout's own data, never a region's name: { x, y, hill } a unit vector
  *  uphill, or null on the flat. Pure: the game (gardenTerrainUp) and the audit both call it. cellAt(x, y) -> the layout's cell.
  *  - a cell's own `slope` (true: up to the north as the camera sees it, or [dx, dy]);
