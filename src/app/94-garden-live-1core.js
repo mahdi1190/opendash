@@ -279,7 +279,7 @@ function _gllSprite(A, onClick) {
     update(dt, sp) {
       if (sp.dressed !== sp.node) { sp.dressed = sp.node; _gllDress(A, sp.node); }
       _gllStep(A, dt);
-      sp.x = A.x; sp.y = A.y;
+      sp.x = A.x; sp.y = A.y; sp.z = A.seatZ != null && !A.moving ? Math.max(A.y, A.seatZ) : null;   // (sat on a bench: drawn on it, 94-garden-zz-7act-1core.js)
       _gllPetStep(A, dt, _gw.svg);
       if (typeof _gllFxStep === 'function') _gllFxStep(A, dt);
     },

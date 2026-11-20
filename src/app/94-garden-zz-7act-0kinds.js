@@ -43,14 +43,14 @@
    ============================================================ */
 const GARDEN_KINDS = Object.freeze({
   /* seats */
-  bench: { name: 'the bench', arts: ['seat'], paint: 'seat', w: 1.75, h: 0.4, decor: [], words: ['bench', 'seat', 'settle', 'pew'], acts: [{ act: 'sit', stand: [0, -0.16], deg: 90, seat: 0.36 }], pet: 'bench', top: 28, petSeat: 15 },   // seat: the seat's height as drawn, a share of the figure's height
+  bench: { name: 'the bench', arts: ['seat'], paint: 'seat', w: 1.75, h: 0.4, decor: [], words: ['bench', 'seat', 'settle', 'pew'], acts: [{ act: 'sit', stand: [-0.25, -0.16], deg: 90, seat: 0.36 }, { act: 'sit', stand: [0.25, -0.16], deg: 90, seat: 0.36 }], pet: 'bench', top: 28, petSeat: 15 },   // two places along it (a friend sits beside you, never on you)   // seat: the seat's height as drawn, a share of the figure's height
   seat: { name: 'the seat', effects: ['sit'], decor: ['bench', 'stone-bench', 'driftwood-seat', 'deckchair', 'bistro-set', 'picnic-blanket', 'gazebo', 'dc-tea-table'], acts: [{ act: 'sit', stand: [0, 0.06], deg: 90, seat: 0.45 }], pet: 'bench' },
   chair: { name: 'the chair', decor: ['play-chair'], words: ['chair'], acts: [{ act: 'sit', stand: [0, 0.06], deg: 90, seat: 0.45 }], pet: 'chair' },
   swing: { name: 'the swing', decor: ['swing-seat'], words: ['swing'], acts: [{ act: 'sit', stand: [0, 0.06], deg: 90, seat: 0.45 }], pet: 'swing' },
   hammock: { name: 'the hammock', decor: ['hammock'], words: ['hammock'], acts: [{ act: 'sit', stand: [0, 0.06], deg: 90, seat: 0.45 }], pet: 'swing' },
   picnic: { name: 'the picnic rug', arts: ['picnic'], words: ['picnic'], pet: 'bench', top: 22, petSeat: 22 },
   stump: { name: 'the stump', arts: ['stump'], words: ['stump'], acts: [{ act: 'sit', stand: [-0.1, 0.45], deg: 90, seat: 0.9 }], pet: 'stump', top: 24, petSeat: 24 },   // up on the top, legs down the front
-  'log-seat': { name: 'the log', art: 'logseat', place: true, w: 1.8, h: 0.4, acts: [{ act: 'sit', stand: [0, 0.12], deg: 90, seat: 0.42 }], pet: 'stump', solid: 'block' },   // a log laid by a fire to sit on
+  'log-seat': { name: 'the log', art: 'logseat', place: true, w: 1.8, h: 0.4, acts: [{ act: 'sit', stand: [-0.25, 0.12], deg: 90, seat: 0.42 }, { act: 'sit', stand: [0.25, 0.12], deg: 90, seat: 0.42 }], pet: 'stump', solid: 'block' },   // a log laid by a fire to sit on
   'log-pile': { name: 'the log pile', decor: ['log-pile', 'rw-orn-logs'], words: ['logpile', 'logstack', 'woodpile', 'logs'], pet: 'stump' },
   /* water you work, wish in or drink from */
   pump: { name: 'the pump', arts: ['pump'], decor: ['water-pump'], words: ['pump'], acts: [{ act: 'pump', stand: [-0.74, 0.12], deg: 0, edge: true }], pet: 'pump', drink: true },   // side on at the lever's end

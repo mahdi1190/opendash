@@ -20,6 +20,16 @@ function gartActSeatHeld() { const c = _ga.cur; return !!(c && c.doing && c.spot
 /** Something of the world's you are using right now (the busker's fiddle is in your hands, not on its stool). */
 function gartActInUse(id) { const c = _ga.cur; return !!(c && c.doing && c.spot && c.spot.src === id); }
 function gartActLift() { return _ga.cur && _ga.cur.doing ? _ga.cur.lift || 0 : 0; }
+/** Sat on a thing that the world draws as a picture of its own (a bench, a log, a stump): the depth (world px) the figure must be drawn
+ *  above so it sits ON the seat, not behind its back rail. Any kind with a seat or an edge you sit on; null when nothing needs it. */
+function gartActSeatDepth() {
+  const c = _ga.cur; if (!c || !c.doing || !c.row.hold || !c.spot || !c.spot.seated || c.row.hideBehind || !c.spot.src) return null;
+  return _gaSeatDepthOf(c.spot.src);
+}
+function _gaSeatDepthOf(src) {
+  const rec = _gaRec(src); const d = rec && rec.root && rec.root.depth;
+  return Number.isFinite(d) ? d : null;
+}
 function gartActRow(id) { return GARDEN_ACTS[id] || null; }
 /* ---------- what is in reach: every thing found where it stands, by its KIND (94-garden-zz-7act-0kinds.js, 0scan.js) ---------- */
 function _gaCtx() {
@@ -109,13 +119,24 @@ function _gaWaterRows(px, py) {
   const W3 = GARDEN_TERRAIN['water-edge'].acts.concat(w.deep ? GARDEN_TERRAIN.deep.acts : []), k = _ga.wt % W3.length;
   return W3.slice(k).concat(W3.slice(0, k)).map(o => ({ key: 'water:' + o.act, act: o.act, name: o.name, x: w.x, y: w.y, stand: null, deg: w.deg, lift: 0, src: 'water' }));
 }
+/** Is this place to sit (or to stand and do something held, like fishing from a bank) already someone else's? A friend in the garden
+ *  standing or sitting on its stand point has it: one person to a place, whatever the thing or its kind. */
+const GA_TAKEN_R = 0.34;   // cells: a friend's feet this near a place's stand point are on it
+function gartActTaken(r) {
+  if (!r || !r.stand || !(r.seated || r.noProp)) return false;   // (a seat, a bank, a wall to lean on, a telescope's eyepiece)
+  try {
+    if (typeof _gll === 'undefined' || !_gll.actors || !_gll.actors.size) return false;
+    for (const A of _gll.actors.values()) { if (!A || A.me || A.rm || A.away || A.moving || A.tx != null) continue; if (Math.hypot(A.x - r.stand.x, (A.y - r.stand.y) * 1.3) < GA_TAKEN_R) return true; }
+  } catch (e) { /* alone */ }
+  return false;
+}
 /** Everything in reach, the nearest first (things with a place before the water's edge). */
 function gartActNearby() {
   if (typeof _gw === 'undefined' || !_gw.on) return [];
   const now = performance.now();
   if (!_ga.list || now - _ga.listT > 2500) { _ga.list = _gaStaticRows(); _ga.listT = now; }
   const px = _gw.px, py = _gw.py, d = (r) => Math.hypot(r.x - px, (r.y - py) * 1.3);
-  const rows = _ga.list.concat(_gaTreeRows(px, py)).filter(r => d(r) <= Math.max(GA_REACH, r.reach || 0) && !gartActHidden(r.src));   // (a ball off rolling, a pile kicked apart: nothing to do there just now)
+  const rows = _ga.list.concat(_gaTreeRows(px, py)).filter(r => d(r) <= Math.max(GA_REACH, r.reach || 0) && !gartActHidden(r.src) && !gartActTaken(r));   // (a ball off rolling, a pile kicked apart: nothing to do there just now)
   // where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near; and a tree offers each
   // of its moves where you would do it (in front of the trunk: climb; at its side: hide behind it; out under the crown: a nap)
   const ds = (r) => !r.stand ? d(r) : r.src === 'tree' ? Math.hypot(r.stand.x - px, (r.stand.y - py) * 1.3) : Math.min(d(r), Math.hypot(r.stand.x - px, (r.stand.y - py) * 1.3));   // (where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near)
@@ -233,6 +254,7 @@ function gartActRun(id, spot) {
     if (!gardenWalkToPoint(spot.stand, go, { radius: 1.6 })) go();
     return true;
   }
+  if (spot && gartActTaken(spot)) { try { gardenToast('Someone is already sitting there.'); } catch (e) { /* fine */ } return false; }   // (one person to a seat)
   if (_ga.carry && !row.carry) gartActSetDown();   // (you put down what you carry to do something else)
   if (row.rubPet && typeof _ptwFree === 'function' && !_ptwFree(_gw.px + GA_RUB_AT[0], _gw.py + GA_RUB_AT[1])) { try { gardenToast('Not here: your pet needs open ground beside you to roll over.'); } catch (e) { /* fine */ } return false; }   // (never on a wall, a step or a thing: pets do not stand on props)
   if (row.lying && !(spot && spot.stand) && !gartActGroundClear(_gw.px, _gw.py)) { try { gardenToast('Not here. Find some grass, or the beach, to lie down on.'); } catch (e) { /* fine */ } return false; }
@@ -681,9 +703,14 @@ function gartActRemote(A, id) {
   A.dir = row.dir === 'n' ? 'n' : row.dir === 'e' || row.dir === 'w' ? 'e' : 's'; A.pose = ''; A.key = '';
   if (typeof _gllPaint === 'function') _gllPaint(A);
   const gpl = A.root.querySelector('.gpl'); if (!gpl) return false;
-  const H = gartActPlay(gpl, id, { motion: typeof _gllReduced === 'function' ? !_gllReduced() : true });
-  // on a seat (or over the pier's edge) their figure is lifted as yours is: the same spot, found from where they are
-  let lift = row.seat != null ? _gaSeatLift(row) : 0; if (!lift) try { const near = _gaStaticRows().concat(_gaDecorRows()).filter(r => r.act === id && r.stand && Math.hypot(r.stand.x - A.x, r.stand.y - A.y) < 0.6)[0]; lift = near ? near.lift || 0 : 0; } catch (e) { lift = 0; }
+  // the place they do it, found from where they are, by its kind: a seat (lifted to its height and drawn on it), a tree (its bark in front
+  // of them when they hide), the same spot as on their own screen
+  let near = null; try { const at = (r) => r.act === id && r.stand && Math.hypot(r.stand.x - A.x, r.stand.y - A.y) < 0.6; near = (_ga.list || _gaStaticRows()).filter(at)[0] || _gaTreeRows(A.x, A.y).filter(at).sort((a, b) => Math.hypot(a.stand.x - A.x, a.stand.y - A.y) - Math.hypot(b.stand.x - A.x, b.stand.y - A.y))[0] || null; } catch (e) { near = null; }
+  const H = gartActPlay(gpl, id, { motion: typeof _gllReduced === 'function' ? !_gllReduced() : true, tree: near && near.tree, at: near && near.tree ? { x: A.x, y: A.y } : null });
+  let lift = row.seat != null ? _gaSeatLift(row) : near ? near.lift || 0 : 0;
+  // sat on a thing the world draws as its own picture: their figure is drawn on it, not behind its back rail (the sprite's z, in cells)
+  const sd = row.hold && near && near.seated && near.src && !row.hideBehind ? _gaSeatDepthOf(near.src) : null;
+  if (sd != null) { const W = GARDEN_WORLD, z = (sd - W.sky) / W.cellH + 0.01; A.seatZ = z; const undo = H.stop; H.stop = () => { undo(); if (A.seatZ === z) A.seatZ = null; }; }
   if (lift && A.bob) { const bt = `translate(0 ${-lift})`; A.actLift = lift; A.bob.setAttribute('transform', bt); A.bobT = bt; const undo = H.stop; H.stop = () => { undo(); A.actLift = 0; if (A.bob && A.bobT === bt) { A.bob.setAttribute('transform', ''); A.bobT = ''; } }; }
   const tag = A.root.querySelector('.gll-name');
   if (tag && (row.lying || lift)) { const y0 = tag.getAttribute('y'), y1 = row.lying ? String(Math.round(-26 * GARDEN_ACTOR_SCALE)) : String(Number(y0) - lift); tag.setAttribute('y', y1); const undo = H.stop; H.stop = () => { undo(); if (tag.getAttribute('y') === y1) tag.setAttribute('y', y0); }; }
