@@ -773,6 +773,9 @@ window.GardenPaintedProps = (function () {
     // what of the drawing blocks walking, [dx, dy, width] px from the crossing (read by gateTrees, so the feet follow the
     // art): the side-on forest arch's north oak and its two hedge banks, so the way through is the gap between them only
     art.feet = [];
+    // the orchard stair's two dry-stone cheeks block walking where they are drawn: east of the leat you walked up onto
+    // the wall (hunter, round 3). One box per course, as wide as the cheek's stones.
+    if (kind === 'stair' && !side) { const sw = half * 1.55, dy = 52; for (const s of [-1, 1]) for (let row = 0; row < 7; row++) art.feet.push([s * (sw + 24), dy - 4 - row * 7.6, 44]); }
     if (kind === 'arch' && side) { const yn = -art.S - 10, ys = art.S + 4, A = archSide(art.S); art.feet.push([A.n[0], A.n[1], 14], [A.s[0], A.s[1], 16]); for (let y = yn - 70; y <= yn - 18; y += 6) art.feet.push([0, y, 58]); for (let y = ys + 10; y <= ys + 64; y += 6) art.feet.push([0, y, 58]); }
     // the box of the drawing round the crossing's centre
     const box = kind === 'arch' && side ? [-120, -240, 120, 176] : (kind === 'arch' || kind === 'ruin') && side ? [-half * .85 - 90, -art.S - 200, half * .85 + 90, art.S + 30] : side ? [kind === 'bridge' ? -150 : -100, -170 - half * .9, kind === 'bridge' ? 150 : 100, kind === 'bridge' ? frame.span + 28 : half * .9 + 22] : [-half - 90, -200, half + 90, kind === 'stair' ? 60 : 24];
@@ -877,8 +880,10 @@ window.GardenPaintedProps = (function () {
         // the mill's leat down the east cheek in a stone channel, its sluice board at the top: shut and dry until the wheel
         // turns (the gate's story: the stair waits on the mended mill), then lifted, the water running down step by step
         { const lx = sw - 9, y0 = dy + 6, y1 = top - 8;
-          B.f(B.rr(lx - 6, y1, 12, y0 - y1, 3), '#6e6656').f(B.rr(lx - 4, y1 + 1, 8, y0 - y1 - 2, 2.4), open ? '#4e7e8a' : '#5e584a');
-          if (open) { for (let i = 0; i < steps; i++) { const yy = dy - i * 9; B.f(B.ell(lx, yy - 4.4, 3.6, 1.4), '#e6f2f0', .75).s(`M${lx - 2.4} ${yy - 3}v4M${lx + 1.6} ${yy - 3.4}v3.6`, '#cfe6e8', .8, .7); } B.f(B.ell(lx, y0 + 2, 9, 3), '#5f93a0', .7).f(B.ell(lx - 2, y0 + 1, 4, 1.2), '#e6f2f0', .6); }
+          B.f(B.rr(lx - 6, y1, 12, y0 - y1, 3), '#6e6656').f(B.rr(lx - 4, y1 + 1, 8, y0 - y1 - 2, 2.4), open ? B.lin(0, y1, 0, y0, [[0, '#3e6a72'], [.5, '#4e7e86'], [1, '#5f8e94']]) : '#5e584a');
+          // (round 4: a white bar at every step read as a blue ladder, art director: the water is one running ribbon now,
+          // its light wandering down the channel, white only where it spills over two of the lips)
+          if (open) { const wave = (dx, a) => { let d = `M${lx + dx} ${y1 + 2}`; for (let y = y1 + 2; y < y0 - 1; y += 3) d += `L${lx + dx + Math.sin(y * .23 + dx) * .9} ${y}`; return d; }; B.s(wave(-.8, 0), '#a8d4d8', .8, .5); B.f(B.rr(lx - 4, y1 + 1, 2.2, y0 - y1 - 2, 1), '#203c44', .35); for (const i of [1, Math.max(2, steps - 2)]) { const yy = dy - i * 9; B.s(`M${lx - 3.2} ${yy - 4}q3.2 1.6 6.4 0`, '#eef8f8', .9, .7); } B.f(B.ell(lx, y0 + 2, 9, 3), '#5f93a0', .7).f(B.ell(lx - 2, y0 + 1, 4, 1.2), '#e6f2f0', .5); }
           else for (let i = 0; i < 5; i++) B.f(D().blob(r, lx + (r() - .5) * 4, y1 + 6 + r() * (y0 - y1 - 10), 2.6, 1.6, 6, .5), MOSS[i % 2], .8);
           for (let y = y1 + 4; y < y0; y += 7) B.s(`M${lx - 6} ${y}h2M${lx + 4} ${y + 3}h2`, '#4e483c', .7, .6);
           // the sluice: an oak frame across the channel's head, its board down (shut) or wound up on its rack (open)
