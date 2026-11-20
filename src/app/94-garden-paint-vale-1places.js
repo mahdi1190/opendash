@@ -120,12 +120,15 @@
         for (let i = 0; i < count; i++) {
           const lo = i * step, hi = (i + 1) * step, mid = (lo + hi) / 2, off = (r() - .5) * hw * .35, sz = .9 + r() * .3, n = 9, a0 = r() * 6.3, pts = [];
           if (i === gap) { for (let k = 0; k < 3; k++) { const p = q(mid + (k - 1) * (hi - lo) * .3, (r() - .5) * hw); B.s(`M${p.x - 6} ${p.y}q6 -3 12 0`, P.foam || '#eef2e2', 1.4, .7); } const p = q(mid + (hi - lo) * .2, hw * 1.5); B.stone(r, p.x, p.y + 4, 9, 5, { rock: '#8e877a', rockLo: '#5e584e', rockHi: '#b8b0a0', rockDk: '#2e2c28' }, null); continue; }
-          for (let j = 0; j < n; j++) { const a = a0 + j / n * Math.PI * 2, k = (.82 + r() * .26) * sz; pts.push([mid + Math.cos(a) * (hi - lo) * .62 * k, off + Math.sin(a) * hw * 1.02 * k]); }
+          // (layout fix, north) each a flat-topped stone with running water showing between it and the next, in a line
+          // across the stream (set close and as wide as the ford they read as one heap of boulders); a stride apart
+          for (let j = 0; j < n; j++) { const a = a0 + j / n * Math.PI * 2, k = (.88 + r() * .18) * sz; pts.push([mid + Math.cos(a) * (hi - lo) * .4 * k, off * .5 + Math.sin(a) * hw * .78 * k]); }
+          { const p0 = q(lo + (hi - lo) * .04, 0), p1 = q(hi - (hi - lo) * .04, 0); if (i > 0 && i - 1 !== gap) B.s(`M${p0.x - 5} ${p0.y - 2}q4 3 8 0`, P.foam || '#eef2e2', 1.3, .8); void p1; }
           const at = (pp, dy) => pp.map(([t, ds]) => { const p = q(t, ds); return [p.x, p.y + (dy || 0)]; });
           B.f(B.poly(at(pts.map(([t, ds]) => [t, ds * 1.12]), 2)), P.foam || '#eef2e2', .55);   // the white water round its foot
           B.f(B.poly(at(pts, 3.2)), '#3a3830', .9);   // its wet flank, standing out of the water
           B.f(B.poly(at(pts)), tones[Math.floor(r() * tones.length)]);
-          B.f(B.poly(at(pts.map(([t, ds]) => [mid + (t - mid) * .62, off + (ds - off) * .55 - hw * .12]))), '#c8c0aa', .55);   // the worn, dry top
+          B.f(B.poly(at(pts.map(([t, ds]) => [mid + (t - mid) * .8, off * .5 + (ds - off * .5) * .72 - hw * .1]))), '#c8c0aa', .7);   // the worn, flat, dry top
           if (r() < .55) B.f(B.poly(at(pts.map(([t, ds]) => [mid + (t - mid) * .36, off + (ds - off) * .3 + hw * .45]))), season === 'winter' ? '#e8ecef' : '#5f7440', .55);   // moss on the shaded side
         }
         return;

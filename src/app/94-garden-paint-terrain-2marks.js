@@ -125,6 +125,7 @@ window.GardenPaintedMarks = (function () {
     B.f(B.poly([[4, -24], [26, -24], [28, -17], [2, -17]]), '#7a5a3a').f(B.poly([[2, -16], [28, -16], [30, -9], [0, -9]]), '#6e5234').f(B.poly([[0, -8], [30, -8], [32, 0], [-2, 0]]), '#62482e');
     B.s('M4 -24h22M2 -16h26M0 -8h30', '#a07a50', 1, .8);
     // logs stacked under the west end, a bucket, turf round the wheels
+    B.shadow(-43, 1, 13, 3.2, .5).shadow(43, 1, 7, 2.2, .45).shadow(16, 1.4, 19, 3.6, .42);   // (layout fix, north) each stands on the ground: a contact shadow under the logs, the bucket and the steps
     for (let k = 0; k < 5; k++) { const x = -48 + (k % 3) * 6 + (k > 2 ? 3 : 0), y = -3 - (k > 2 ? 5.4 : 0); B.f(B.circ(x, y, 3), '#8a6440').f(B.circ(x, y, 1.8), '#c49a66'); }
     B.f(B.poly([[38, 0], [39, -8], [47, -8], [46, 0]]), '#6a6e70').s('M38.5 -8h9', '#9a9ea0', 1);
     if (!snowy) B.tufts(r, 0, 1, 104, 22, ['#8c9a5e', '#c2c78e', '#7d8f4e'], 6);
