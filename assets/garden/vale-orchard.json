@@ -847,16 +847,16 @@
  ],
  "staticMoves": {
   "ld-barrels": {
-   "x": 79,
+   "x": 78,
    "y": 35,
-   "w": 1,
+   "w": 2,
    "h": 1,
    "door": {
     "x": 79,
     "y": 36
    },
    "tallH": 0.6,
-   "note": "by the cottage west gable with a little room round them (fix round 1: they stood into the wall), facing the square"
+   "note": "by the cottage west gable with a little room round them (fix round 1: they stood into the wall), facing the square (fix round 2: two cells, the square lamp on the west one, a stride clear of the casks; its pole rose out of the barrels)"
   },
   "ld-folly": {
    "x": 83,

@@ -128,12 +128,12 @@
 
   // The clamp: a long low mound of straw over the stored apples, turf laid on the ends to hold it down; in winter
   // it is opened and the apples show.
-  ART['ld-clamp'] = { box: [-60, -44, 50, 14], draw(B, o) {
+  ART['ld-clamp'] = { box: [-46, -34, 46, 8], draw(B, o) {
     const r = KIT().rng(83), s = o.season;
     // (fix round 2) its yard: earth trodden bare round it from the pass path, loose straw blown about, a crate and a fork
     // left against it, nettles at its back (alone on the grass, it read as a mound set down at the verge)
-    B.f(B.blob(r, -6, 2, 52, 10, 10, .3), s === 'winter' ? '#a39a86' : '#a08c62', .75).f(B.blob(r, -10, 1, 38, 6, 9, .3), '#b8a478', .5);
-    for (let k = 0; k < 26; k++) { const x = -50 + r() * 96, y = -2 + r() * 10; B.s(`M${x} ${y}l${(r() - .5) * 8} ${(r() - .5) * 2}`, r() < .6 ? '#e0c070' : '#b8924a', .8, .8); }
+    B.f(B.blob(r, -2, -2, 42, 4, 10, .3), s === 'winter' ? '#a39a86' : '#a08c62', .4).f(B.blob(r, -6, -2, 32, 3, 9, .3), '#b8a478', .3);   // (faint, and no lower than the mound's own foot: what the feet meet is the mound)
+    for (let k = 0; k < 26; k++) { const x = -44 + r() * 88, y = -5 + r() * 5; B.s(`M${x} ${y}l${(r() - .5) * 8} ${(r() - .5) * 2}`, r() < .6 ? '#e0c070' : '#b8924a', .8, .8); }
     if (s !== 'winter') B.tufts(r, -20, -22, 26, 8, ['#4e6a34', '#6a8a44'], 8).tufts(r, 22, -16, 20, 7, ['#4e6a34', '#6a8a44'], 7);
     B.shadow(4, 2, 44, 7, .3);
     B.f('M-40 0Q-38 -22 -10 -26Q20 -28 38 -14Q42 -6 40 0Z', '#b08a44');
@@ -143,22 +143,22 @@
     B.s('M-24 -18Q0 -30 26 -14', '#7a5a2c', 1.2, .6);
     B.f(rr(30, -10, 16, 11, 1.5), '#9a7448').f(B.rect(30, -10, 16, 2), '#c49a62').s('M30 -5h16', '#6a4e30', .8);   // an apple crate
     if (s === 'autumn' || s === 'summer') for (let k = 0; k < 4; k++) B.f(B.circ(33 + k * 3.4, -11, 2), k % 2 ? '#c8442e' : '#d8b040');
-    B.s('M-44 2L-30 -30', '#6e5438', 2.2).s('M-31 -30l-3 -6M-31 -30l1 -7M-31 -30l4 -5', '#5a5a5e', 1.2);   // a fork against it
+    B.s('M-40 -1L-28 -26', '#6e5438', 2.2).s('M-29 -26l-3 -6M-29 -26l1 -7M-29 -26l4 -5', '#5a5a5e', 1.2);   // a fork against it
     if (s === 'winter') { B.f('M-6 -24Q4 -30 16 -22L10 -12Q2 -16 -6 -14Z', '#6a4e2a'); for (let k = 0; k < 6; k++) B.f(B.circ(-2 + k * 3, -18 + (k % 2) * 2, 2.2), k % 2 ? '#c8442e' : '#e0b23a'); B.f(B.blob(r, -6, -26, 22, 3, 7, .4), '#f4f6f2', .8); }
     else if (s === 'autumn') for (let k = 0; k < 4; k++) B.f(B.circ(30 + k * 3, 2, 2), k % 2 ? '#c8442e' : '#e0b23a', .9);
   } };
 
   // The cider barrels: three oak casks stacked by the press, iron hoops, a spigot and a drip on the setts.
-  ART['ld-barrels'] = { box: [-62, -86, 34, 8], draw(B, o) {
+  ART['ld-barrels'] = { box: [-62, -86, 50, 8], draw(B, o) {   // (fix round 2: two cells wide, the lamp on the west one)
     const r = KIT().rng(89);
-    B.shadow(3, 2, 32, 6, .32);
+    B.shadow(15, 2, 32, 6, .32);
     const cask = (x, y, k) => {
       B.f(rr(x - 13 * k, y - 26 * k, 26 * k, 26 * k, 8 * k), '#7a5434').f(rr(x - 13 * k, y - 26 * k, 10 * k, 26 * k, 6 * k), '#9a7048', .8);
       for (let i = 0; i < 4; i++) B.s(`M${x - 8 * k + i * 5.5 * k} ${y - 25 * k}V${y - 1}`, '#5a3c24', .7, .6);
       for (const h of [.18, .5, .82]) B.f(B.rect(x - 13.4 * k, y - 26 * k * h - 1.6, 26.8 * k, 2.6), '#3a3a3c').f(B.rect(x - 13.4 * k, y - 26 * k * h - 1.6, 26.8 * k, .9), '#7a7c80', .8);
     };
-    cask(-14, 0, 1); cask(14, 0, 1); cask(0, -24, .95);
-    B.f(B.rect(10, -12, 5, 3), '#4a3a2a').f(B.ell(13, 3, 4, 1.3), '#c8a050', .6);
+    cask(-2, 0, 1); cask(26, 0, 1); cask(12, -24, .95);
+    B.f(B.rect(22, -12, 5, 3), '#4a3a2a').f(B.ell(25, 3, 4, 1.3), '#c8a050', .6);
     for (let k = 0; k < 4; k++) B.f(B.blob(r, -26 + r() * 52, 2 + r() * 4, 3, 1.2, 5, .5), '#8a6a3a', .35);
     // the square's lantern post: an oak post, an iron arm, a pierced tin lantern (lit at night: LIGHTS below)
     // (fix round 2) on the square's side of the stack, a clear stride from the casks (its pole rose out of the barrels), on a
