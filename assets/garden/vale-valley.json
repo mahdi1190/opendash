@@ -26,7 +26,7 @@
  "staticMoves": {
   "ld-mill":{"x":73,"y":64,"w":6,"h":3,"door":{"x":76,"y":67}},
   "ld-barn":{"x":82,"y":61,"w":6,"h":3,"door":{"x":84,"y":64}},
-  "ld-churn":{"x":81,"y":54,"w":2,"h":1,"door":{"x":81,"y":55}},
+  "ld-churn":{"x":81,"y":54,"w":1,"h":1,"door":{"x":81,"y":55}},
   "ld-boles":{"x":85,"y":54,"w":3,"h":1,"door":{"x":86,"y":55}},
   "ld-smoke":{"x":82,"y":74,"w":3,"h":2,"door":{"x":83,"y":76}},
   "smoker":{"x":82,"y":76,"door":{"x":82,"y":77}},
@@ -51,8 +51,8 @@
  ],
  "screens": [
   {"id":"the-ham","reads":"a hedged hay paddock behind the mill (cut in July, bales for two weeks)","poly":[[74,56.4],[76.4,56.3],[78.2,57.1],[79.1,58.8],[79.2,61.4],[79.1,63.9],[74,63.9]]},
-  {"id":"wheel-pit","reads":"the stone wheel pit, ferns and alder roots, beside the wheel","poly":[[71.9,62],[73,62],[73,66.9],[72.4,66.9],[71.7,64.3]]},
-  {"id":"rickyard","reads":"the rickyard behind the barn: nettles, elder and two hay ricks inside a rail fence","poly":[[81.8,56.6],[85,56.4],[87.8,56.8],[88.5,58.6],[88.5,61],[81.8,61]]},
+  {"id":"wheel-pit","reads":"the stone wheel pit, ferns and alder roots, beside the wheel","poly":[[71.9,62],[74,62],[74,64],[73,64],[73,66.9],[72.4,66.9],[71.7,64.3]]},
+  {"id":"rickyard","reads":"the rickyard behind the barn: nettles, elder and two hay ricks inside a rail fence","poly":[[82.2,57.6],[83.4,56.7],[85,56.4],[87.8,56.8],[88.5,58.6],[88.5,61],[81.8,61],[81.8,58.4]]},
   {"id":"reed-bed","reads":"reeds too thick to push through, behind the smokehouse","poly":[[81.9,71.1],[85,71.1],[85,74],[81.9,74]]}
  ],
  "crossings": [

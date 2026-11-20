@@ -48,13 +48,14 @@
       // 2. what stands on the outline, where it meets ground you can walk on, in pieces sorted by their foot
       const pieces = [];
       for (let i = 0; i < poly.length; i++) {
-        const a = poly[i], b = poly[(i + 1) % poly.length], len = Math.hypot((b[0] - a[0]) * cw, (b[1] - a[1]) * ch), n = Math.max(1, Math.ceil(len / 84));
+        // (one piece per edge: an edge cut into short pieces stood each piece's foot against its neighbours')
+        const a = poly[i], b = poly[(i + 1) % poly.length], len = Math.hypot((b[0] - a[0]) * cw, (b[1] - a[1]) * ch), n = Math.max(1, Math.ceil(len / 400));
         for (let k = 0; k < n; k++) {
           const p = [a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n], q = [a[0] + (b[0] - a[0]) * (k + 1) / n, a[1] + (b[1] - a[1]) * (k + 1) / n];
           const mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2, nx = -(q[1] - p[1]), ny = q[0] - p[0], nl = Math.hypot(nx, ny) || 1;
           // the outward side: the one that is not inside the screen
           let ox = nx / nl, oy = ny / nl; if (gardenIslandInPolygon(mx + ox * .3, my + oy * .3, poly.map(([u, v]) => ({ x: u, y: v })))) { ox = -ox; oy = -oy; }
-          if (building(mx + ox * .5, my + oy * .5)) continue;   // against the building it lies behind: its wall is the stop
+          if ([.2, .5, .8].filter(t => building(p[0] + (q[0] - p[0]) * t + ox * .5, p[1] + (q[1] - p[1]) * t + oy * .5)).length >= 2) continue;   // against the building it lies behind: its wall is the stop
           // drawn a third of a cell inside the outline: it stands on the ground the feet cannot reach, its foot on the line where they stop
           const ix = -ox * .34, iy = -oy * .34; pieces.push([L.cpt(p[0] + ix, p[1] + iy), L.cpt(q[0] + ix, q[1] + iy)]);
         }
@@ -79,13 +80,13 @@
             for (const z of pts) B.shadow(z.x + 4, z.y + 2, 12, 4, .25);
             for (let row = 0; row < (steep ? 2 : 3); row++) for (const z of pts) B.f(B.rr(z.x - 6 + (row & 1) * 3, z.y - 9 - row * 8, 11 + r0() * 3, 8, 2.4), stone[Math.floor(r0() * 3)]).s(`M${z.x - 5} ${z.y - 2 - row * 8}h9`, stone[3], .6, .5);
             const cap = steep ? 25 : 33; for (const z of pts) { B.f(B.rr(z.x - 4, z.y - cap, 4, 9, 1.2), stone[2]).f(B.rr(z.x + 1, z.y - cap + 1, 4, 8, 1.2), stone[0]); if (r0() < .3) B.f(B.blob(r0, z.x, z.y - cap + 7, 6, 2, 6, .4), '#6a8a3a', .8); }
-            for (const z of pts) if (r0() < .35) for (let j = 0; j < 5; j++) { const a = -Math.PI / 2 + (j - 2) * .4; B.s(`M${z.x} ${z.y + 2}q${Math.cos(a) * 6} ${Math.sin(a) * 6} ${Math.cos(a) * 12} ${Math.sin(a) * 10 + 4}`, winter ? '#8a7a4a' : '#5a8a3a', 2, .9); }
+            for (const z of pts) if (r0() < .35) for (let j = 0; j < 5; j++) { const a = -Math.PI / 2 + (j - 2) * .4; B.s(`M${z.x} ${z.y - 1}q${Math.cos(a) * 6} ${Math.sin(a) * 6} ${Math.cos(a) * 12} ${Math.sin(a) * 10 + 4}`, winter ? '#8a7a4a' : '#5a8a3a', 2, .9); }
           } else if (id === 'rickyard') {   // a post-and-rail fence, weathered grey, nettles at its foot
             for (const z of pts) B.shadow(z.x + 3, z.y + 2, 9, 3, .18);
             const posts = pts.filter((z, j) => j % 3 === 0 || j === pts.length - 1);
             for (const k of [11, 21]) { const path = posts.map((z, j) => (j ? 'L' : 'M') + z.x + ' ' + (z.y - k)).join(''); B.s(path, '#5e5446', 3.4).s(path, '#9a8e78', 1.6, .9); }
             for (const z of posts) B.f(B.rr(z.x - 2.2, z.y - 27, 4.4, 28, 1.2), '#6a5e4c').f(B.rect(z.x - 2.2, z.y - 27, 1.6, 27), '#a09682', .6);
-            for (const z of pts) if (r0() < .6) for (let j = 0; j < 4; j++) B.s(`M${z.x + (r0() - .5) * 8} ${z.y + 1}l${(r0() - .5) * 3} -${7 + r0() * 8}`, leaf[1], 1.6, .9);
+            for (const z of pts) if (r0() < .6) for (let j = 0; j < 4; j++) B.s(`M${z.x + (r0() - .5) * 8} ${z.y - 1}l${(r0() - .5) * 3} -${7 + r0() * 8}`, leaf[1], 1.6, .9);
           } else {   // reeds standing thick: a waving wall a figure and a half high, plumes on top
             for (const z of pts) B.shadow(z.x + 5, z.y + 2, 14, 4, .2);
             for (let row = 0; row < 2; row++) for (const z of pts) for (let j = 0; j < 7; j++) { const x = z.x + (r0() - .5) * 12, h = 40 + r0() * 18 - row * 6, lean = (r0() - .5) * 8; B.s(`M${x} ${z.y - row * 4}q${lean * .3} ${-h * .6} ${lean} ${-h}`, reed[Math.floor(r0() * 3)], 1.3, .95); if (r0() < .4) B.f(B.ell(x + lean, z.y - row * 4 - h + 2, 1.8, 5), winter ? '#c8b48a' : '#8a6a3a', .9); }
