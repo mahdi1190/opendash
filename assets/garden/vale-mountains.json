@@ -333,13 +333,14 @@
    "name": "falls top",
    "surface": "rock",
    "poly": [
-    [40.9, 24.5],
-    [42.6, 24.4],
-    [43.2, 24.9],
-    [42.9, 25.5],
-    [41.4, 25.6],
-    [40.8, 25.1]
-   ]
+    [40.5, 23.6],
+    [41.5, 23.45],
+    [42.05, 23.85],
+    [42.3, 24.35],
+    [41, 24.45],
+    [40.4, 24.1]
+   ],
+   "note": "wet rock on the lip above the cave stair, north of the scarp (it lay over the scarp face below the lip)"
   },
   "moor-end": {
    "name": "moor's end",

@@ -53,9 +53,9 @@
     B.shadow(half * .25, 2, half * 1.35, Math.max(4, half * .3), .34);
     // a rubble skirt wider than the pile, then courses on a rounded (not stepped) profile, each slab its own size
     for (let k = 0; k < 9; k++) { const a = (k / 9 - .5) * 2.6; slab(B, r, Math.sin(a) * half * 1.1, 2 + Math.cos(a) * 2 + r() * 2, 6 + r() * 8, 2.6 + r() * 2, snowy); }
-    const rows = Math.max(4, Math.round(h / 9)), rh = h / rows;
+    const rows = Math.max(4, Math.round(h / 11)), rh = h / rows;
     for (let row = 0; row < rows; row++) {
-      const t = row / rows, y = -row * rh, hw = half * Math.pow(1 - t, .75) * (.9 + r() * .18) + 3, sw0 = Math.max(8, half * .5);
+      const t = row / rows, y = -row * rh, hw = half * Math.pow(1 - t * t, .9) * (1 - t * .35) * (.9 + r() * .18) + 3, sw0 = Math.max(8, half * .5);
       let x = -hw - r() * 3;
       while (x < hw - 2) { const sw = Math.min(hw - x, sw0 * (.5 + r() * .7)); if (sw > 3) slab(B, r, x + sw / 2, y + (r() - .5) * 2.4, sw + 2, rh * (.9 + r() * .55), snowy); x += sw; }
     }
@@ -267,7 +267,8 @@
         for (let k = 0; k < n; k++) { const t = k / (n - 1), x = top.x + (bot.x - top.x) * t, y = top.y + (bot.y - top.y) * t, w = 40 - k * .6, slip = k >= n - 3, a = slip ? (r() - .5) * .5 : 0, dx = slip ? (r() - .5) * 16 : 0;
           const pts = [[-w / 2, -3.2], [w / 2, -3.6], [w / 2 + 1, 3], [-w / 2 - 1, 3.4]].map(([px, py]) => [x + dx + px * Math.cos(a) - py * Math.sin(a), y + px * Math.sin(a) + py]);
           B.f(B.poly(pts.map(([px, py]) => [px + 1, py + 3.4])), '#3a362e', .55).f(B.poly(pts), snowy ? '#e6e8e4' : GREY[k % GREY.length]).f(B.poly([pts[0], pts[1], [pts[1][0], pts[1][1] + 1.6], [pts[0][0], pts[0][1] + 1.6]]), '#e8e2d0', .45);
-          if (!snowy && !slip) B.tufts(r, x - w / 2 - 3, y + 2, 6, 3, ['#8c9a5e', '#7d8f4e'], 5); }
+          if (!snowy && !slip) B.tufts(r, x - w / 2 - 3, y + 2, 6, 3, ['#8c9a5e', '#7d8f4e'], 5);
+          if (!slip) for (const sg of [-1, 1]) B.stone(r, x + sg * (w / 2 + 6 + r() * 3), y + 1, 7 + r() * 4, 4.5 + r() * 2, { rock: '#9a958c', rockLo: '#6e6a62', rockHi: '#c8c2b4', rockDk: '#3e3c38' }, snowy ? 'snow' : r() < .3 ? '#c9c48a' : null); }   // (rock cheeks: the flight is cut into the bank)
       });
     }
     // the bothy's door path: a worn line of bare earth and a few flags from its doorstep down to the tarn path
@@ -389,7 +390,7 @@
   } };
   // the moor's end gate: two stone gateposts in the last dry-stone wall, a weathered five-bar gate shut between them (seen
   // a little side on), the wall running off north and south, and the fingerpost: "The Long Road", pointing on west
-  MK.ART['ld-moor-gate'] = { box: [-24, -122, 60, 12], draw(B, o) {
+  MK.ART['ld-moor-gate'] = { box: [-24, -122, 64, 12], draw(B, o) {
     const kit = KIT(), r = kit.rng(79), snowy = o.season === 'winter', postTop = -H * 1.3, gateTop = -H * 1.1;
     B.shadow(2, 0, 26, 7, .3);
     // the gateposts: squared stone, lit on the west face
@@ -407,7 +408,7 @@
     B.s(`M${gx1 - 1} ${gy1 + gateTop * .55}q5 3 9 -1q-4 -5 -9 -2`, '#c8b078', 1.8, 1).f(B.rect(gx1 - 3, gy1 + gateTop * .7, 7, 2.4), '#3a3a38', .9);
     post(posts[1]);
     // the fingerpost on the moor side, east of the gate and clear of its posts, one arm pointing west: THE LONG ROAD
-    const fx = 46, fTop = -H * 1.9;
+    const fx = 50, fTop = -H * 2.2;   // (its arm above the gate's top rail, not across it)
     B.f(B.rect(fx - 2.4, fTop, 4.8, -fTop), WOOD[0]).f(B.rect(fx - 2.4, fTop, 1.4, -fTop), WOOD[2], .7).f(B.ell(fx, 0, 5, 1.6), '#5e584c', .5);
     const arm = [[fx + 3, fTop + 6], [fx - 26, fTop + 6], [fx - 31, fTop + 11.5], [fx - 26, fTop + 17], [fx + 3, fTop + 17]];
     B.f(B.poly(arm), '#ece2c8').s(B.poly(arm), '#5e4a34', 1, .8);

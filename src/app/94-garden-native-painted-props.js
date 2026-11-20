@@ -719,7 +719,7 @@ window.GardenPaintedProps = (function () {
         const rock = ['#a8a698', '#848274', '#cfccbe', '#666456'], o = side ? [[0, -half * .8], [0, half * .8]] : [[-half, 0], [half, 0]];
         for (const [x, y] of o) { B.shadow(x + 6, y + 2, 44, 10, .3); for (let i = 0; i < 6; i++) B.f(D().blob(r, x + (r() - .5) * 70, y + 6 + r() * 8, 9, 3.4, 7, .5), i % 2 ? '#8a6a8a' : '#a884a8', .85); }
         for (let i = 0; i < 14; i++) B.stone(r, (r() - .5) * (side ? 40 : half * 1.6), (side ? (r() - .5) * half * 1.4 : 4 + r() * 6), 2.6 + r() * 2, 1.8 + r(), rock, null);
-        const cxx = side ? 26 : half + 36, cyy = side ? half * .2 : -2; let y = cyy;
+        const cxx = side ? 26 : half + 22, cyy = side ? half * .2 : -16; let y = cyy;   // (Cloudbreak layout: the cairn a little up the slope, clear of the orchard field's hedge corner below the pass)
         for (const [w, h] of [[13, 6], [11, 5.4], [9, 5], [7, 4.4], [5, 3.8], [3.6, 3]]) { B.stone(r, cxx + (r() - .5) * 2, y, w, h, rock, null); y -= h * 1.5; }
         if (open) B.s(`M${cxx} ${y}v-18`, WOOD[1], 1.4).f(B.poly([[cxx, y - 18], [cxx + 12, y - 15], [cxx, y - 11]]), '#c84a3a');
       }
