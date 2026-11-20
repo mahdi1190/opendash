@@ -128,7 +128,8 @@ function _gaWaterRows(px, py) {
  *  standing or sitting on its stand point has it: one person to a place, whatever the thing or its kind. */
 const GA_TAKEN_R = 0.34;   // cells: a friend's feet this near a place's stand point are on it
 function gartActTaken(r) {
-  if (!r || !r.stand || !(r.seated || r.noProp)) return false;   // (a seat, a bank, a wall to lean on, a telescope's eyepiece)
+  const row = r && GARDEN_ACTS[r.act];
+  if (!r || !r.stand || !(r.seated || r.noProp || (row && (row.hold || (row.then && GARDEN_ACTS[row.then] && GARDEN_ACTS[row.then].hold))))) return false;   // (a seat, a bank, a wall to lean on, a telescope's eyepiece; any place a move is held: a branch, behind a trunk)
   try {
     if (typeof _gll === 'undefined' || !_gll.actors || !_gll.actors.size) return false;
     for (const A of _gll.actors.values()) { if (!A || A.me || A.rm || A.away || A.moving || A.tx != null) continue; if (Math.hypot(A.x - r.stand.x, (A.y - r.stand.y) * 1.3) < GA_TAKEN_R) return true; }
@@ -294,7 +295,7 @@ function gartActRun(id, spot) {
     if (!gardenWalkToPoint(spot.stand, go, { radius: 1.6 })) go();
     return true;
   }
-  if (spot && gartActTaken(spot)) { try { gardenToast('Someone is already sitting there.'); } catch (e) { /* fine */ } return false; }   // (one person to a seat)
+  if (spot && gartActTaken(spot)) { try { gardenToast(GARDEN_ACTS[spot.act] && GARDEN_ACTS[spot.act].seat == null && !spot.seated ? 'Someone is already there.' : 'Someone is already sitting there.'); } catch (e) { /* fine */ } return false; }   // (one person to a seat)
   if (_ga.carry && !row.carry) gartActSetDown();   // (you put down what you carry to do something else)
   if (row.rubPet && typeof _ptwFree === 'function' && !_ptwFree(_gw.px + GA_RUB_AT[0], _gw.py + GA_RUB_AT[1])) { try { gardenToast('Not here: your pet needs open ground beside you to roll over.'); } catch (e) { /* fine */ } return false; }   // (never on a wall, a step or a thing: pets do not stand on props)
   if (row.lying && !(spot && spot.stand) && !gartActGroundClear(_gw.px, _gw.py)) { try { gardenToast('Not here. Find some grass, or the beach, to lie down on.'); } catch (e) { /* fine */ } return false; }
