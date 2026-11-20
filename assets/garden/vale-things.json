@@ -9,6 +9,6 @@
     {"id":  "ga-busker", "kind":  "busker", "on":  "market-stall", "at":  [2.6, 0.45], "note":  "the busker's pitch by the market"},
     {"id":  "ga-basket", "kind":  "basket", "on":  "market-stall", "at":  [-1.15, 1.55], "note":  "a basket of apples to carry off, beside the stall"},
     {"id":  "ga-log", "kind":  "log", "on":  "ld-woodhut", "at":  [-2.7, 3.5], "note":  "a log to carry, below the hut's camp"},
-    {"id":  "ga-bank", "kind":  "fishing-bank", "on":  "lake-board", "at":  [-1.0, -1.5], "front":  -90, "note":  "the Mere's south shore, legs over the water, on the grass bank between the Lake Hall and the board (behind the hall it sat on the roof)"}
+    {"id":  "ga-bank", "kind":  "fishing-bank", "on":  "lake-board", "at":  [-0.75, -2.0], "front":  -90, "note":  "the Mere's south shore, legs over the water, on the grass bank between the Lake Hall and the board (behind the hall it sat on the roof; merge 1: at the water edge itself, where the game put it)"}
   ]
 }
