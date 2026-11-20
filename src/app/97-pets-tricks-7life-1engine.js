@@ -48,7 +48,7 @@ function _plThings() {
   try { const decks = typeof _gardenPierDecksNow === 'function' ? _gardenPierDecksNow() : [], d = decks[decks.length - 1]; if (d && gardenAffordOfPet('pier').length) put('pier', d.x + d.w / 2, d.y + d.h - 0.9, 'The end of the pier', { free: true, stage: 1 }); } catch (e) { /* none */ }
   // the water's edge where it is soft (grass, sand, a reed bank), not a paved quay: paddling and fish-watching want a real shore
   out.tree = S.shade.concat(out.tree || []);   // (a found thing of a kind the pets call a tree, a hollow oak, stays in)
-  try { if (typeof _gwPaintedTrunks === 'function') for (const b of _gwPaintedTrunks(gardenIslandData())) { const kind = gardenKindOf({ tree: b.sp || '' }), K = GARDEN_KINDS[kind]; if (K && K.pet === 'tree') out.tree.push({ x: (b.x0 + b.x1) / 2, y: b.y1, name: K.name, kind }); } } catch (e) { /* no painted trees */ }   // (every tree a painter drew counts, by its kind)
+  try { if (typeof _gwPaintedTrunks === 'function') for (const b of _gwPaintedTrunks(gardenIslandData())) { if (b.sp === 'water') continue; const kind = gardenKindOf({ tree: b.sp || '' }), K = GARDEN_KINDS[kind]; if (K && K.pet === 'tree') out.tree.push({ x: (b.x0 + b.x1) / 2, y: b.y1, name: K.name, kind }); } } catch (e) { /* no painted trees */ }   // (every tree a painter drew counts, by its kind)
   out.shore = S.shore.filter(q => typeof _plStoneAt !== 'function' || !_plStoneAt(q.x, q.y)); if (!out.shore.length) out.shore = S.shore.slice(); out.drink = S.drink.slice(); out.warm = S.warm.slice();
   _pl.things = out; _pl.thingsKey = key;
   return out;

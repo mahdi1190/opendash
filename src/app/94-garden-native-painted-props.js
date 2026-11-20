@@ -1301,7 +1301,7 @@ window.GardenPaintedProps = (function () {
     // The falling sheet stops the feet from its foot up to the cave stair's sill, so nobody walks into the water and stands
     // inside the falls (a gap was left between the rock's block and the pool's edge under it; water hunter, round 3). Shared
     // with the walking through the one trunk list (rows of boxes the sheet's width), like the scarp-top trees above.
-    if (fed && o.W) { const wC = (Wd0 + 6) / o.W.cellW, footY = (oldY - o.W.sky) / o.W.cellH, cX = x / o.W.cellW; for (let yy = footY - 1.5; yy <= footY - .1; yy += .36) fallsFeet.push([+cX.toFixed(2), +yy.toFixed(2), +wC.toFixed(2)]); }
+    if (fed && o.W) { const wC = (Wd0 + 6) / o.W.cellW, footY = (oldY - o.W.sky) / o.W.cellH, cX = x / o.W.cellW; for (let yy = footY - 1.5; yy <= footY - .1; yy += .36) fallsFeet.push([+cX.toFixed(2), +yy.toFixed(2), +wC.toFixed(2), 'water']); }   // ('water': a block of falling water in the trunk list, never a tree to climb: 'Climb up and sit on a branch' showed at the falls)
     // (a deep falls is one picture shown as two crops: down to the scarp's foot it stands where the falls always stood, so you walk
     // in front of its rock step on the shore; the prow below stands at its own foot out in the water, in front of what swims behind it)
     // (both crops stand in the object layer, so they are lit alike: the upper one at the falls' own foot, as before)
@@ -1356,6 +1356,9 @@ window.GardenPaintedProps = (function () {
     const ring = bake(scene, 'ripple', [-40, -12, 40, 12], B => B.s(B.ell(0, 0, 36, 9), '#eef8f4', 1.6, .8));
     for (let i = 0; i < 3; i++) { const im = live(image(scene, ring, x, y + 10), .05), ph = i / 3; h.move(im, (node, t, motion) => { const f = ((motion ? t : .5) * .4 + ph) % 1; node.setScale((.4 + f * 1.2) / K, (.4 + f * 1.1) / K).setAlpha((1 - f) * .5); }); }
     }
+    // (a deep falls: what you do there (the shower, a pet's spray) is done at the scarp's foot where it always was, not out in the
+    // deep water at the prow's foot: the actions read these bounds, the click and the fade the whole picture's)
+    if (deep) h.useBounds = { x: x + box[0], y: y + box[1], width: box[2] - box[0], height: oldY + 40 - (y + box[1]) };
     return finish(h, { x: x + box[0], y: y + box[1], width: box[2] - box[0], height: box[3] - box[1] }, { x: spec.x, y: spec.y });
   }
 
