@@ -575,8 +575,8 @@
       if (o.fk === 'wet') { B.f(B.rr(o.gx + 1, y - 2.6, o.gw - 2, 4, 1.5), '#8e7654').f(B.rr(o.gx + 1, y - 2.6, o.gw - 2, 1.3, .6), '#b49c76', .7); }   // a board laid over the wet at the way in
       const row = gardenLandCell(o.gc[0], o.gc[1]); if (row) sign(B, o.gx + o.gw / 2, y - o.hf * (o.fk === 'crop' ? .42 : .3), row, lv, true);
     }
-    else if (!o.gc) {   // (no front onto walkable ground, e.g. a field against the water: the tag stands on its lowest side run)
-      const side = fr.filter(q => q.side === 'e' || q.side === 'w').sort((a, b) => b.y - a.y)[Math.floor(fr.length / 12)] || fr[fr.length - 1] || (() => { const nb = o.pts.filter(q => q.on && q.side === 'n' && !covered(q.x, q.y - 4)); return nb[nb.length >> 1]; })();   // (or, with only its back open, the middle of the back run)
+    else {   // (no front onto walkable ground, or its way in hidden under a landmark, e.g. a field against the water: the tag stands on its lowest side run)
+      const nb = o.pts.filter(q => q.on && q.side === 'n' && !covered(q.x, q.y - 4)), side = nb.length > 3 ? nb[nb.length >> 1] : fr.filter(q => q.side === 'e' || q.side === 'w').sort((a, b) => b.y - a.y)[Math.floor(fr.length / 12)] || fr[fr.length - 1];   // (the middle of the back run if it has one, a side never being by the water; else the lowest side run)
       if (side) { const row = gardenLandCell(o.cells[0][0], o.cells[0][1]), sx = side.x + side.nx * 5, sy = side.y + 2; if (row) { B.f(B.ell(sx + 1, sy, 3, 1), 'rgba(30,30,20,.3)').f(B.rect(sx - 1, sy - 13, 2.2, 13.5), '#5e4c36').f(B.rect(sx - 1, sy - 13, .9, 13.5), '#8a7454', .7); sign(B, sx, sy - 6, row, lv, true); } }   // (a small tag on a stake, the size of the gate tags)
     }
   }
