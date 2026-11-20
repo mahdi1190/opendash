@@ -171,10 +171,42 @@ function gartActFrame() {
   _ga.t = now;
   const el = _gaPromptEl(); if (!el) return;
   const busy = (_ga.cur && _ga.cur.doing) || !!_gw.boat || (typeof _gwFishBusy === 'function' && _gwFishBusy()) || (typeof gardenDesignOn === 'function' && gardenDesignOn()) || (typeof GardenNative !== 'undefined' && GardenNative.inRoom && GardenNative.inRoom());
-  const near = busy ? null : _ga.carry ? { key: 'carry-down', act: 'carry', name: '', x: _gw.px, y: _gw.py, down: true } : gartActNearby()[0] || null;
-  if (!near) { _ga.near = null; el.hidden = true; return; }
+  const opts = busy ? [] : _ga.carry ? [{ key: 'carry-down', act: 'carry', name: '', x: _gw.px, y: _gw.py, down: true }] : _gaOptions(gartActNearby());
+  // one clear prompt: the best thing here (or the one you picked with Tab, while it is still in reach); the others in a small chooser below it
+  const near = opts.find(o => o.key === _ga.pickKey) || opts[0] || null;
+  _ga.opts = opts;
+  if (!near) { _ga.near = null; _ga.pickKey = null; el.hidden = true; _gaChooser(null); return; }
   if (!_ga.near || _ga.near.key !== near.key) { _ga.near = near; el.innerHTML = `<kbd>E</kbd><span>${esc(_gaWords(near))}</span>`; el.setAttribute('aria-label', _gaWords(near) + ' (E)'); }
-  el.hidden = false; _gaPlace();
+  el.hidden = false; _gaChooser(opts.length > 1 ? opts : null); _gaPlace();
+}
+/** What is in reach, as choices: one per thing and move (the nearest of a bench's two places), the best first, at most four. */
+const GA_CHOICES = 4;
+function _gaOptions(rows) {
+  const out = [], seen = new Set();
+  for (const r of rows) { const k = (r.src || '') + '|' + r.act; if (seen.has(k)) continue; seen.add(k); out.push(r); if (out.length >= GA_CHOICES) break; }
+  return out;
+}
+/** The small chooser under the prompt when several things are close: the others, each a button (a click does it); Tab makes the next one
+ *  the prompt's. Nothing when there is only one. */
+function _gaChooser(opts) {
+  const box = _gw && _gw.box; if (!box) return;
+  let el = _ga.ch;
+  if (!opts) { if (el) el.hidden = true; _ga.chSig = ''; return; }
+  if (!el || !el.isConnected || el.parentNode !== box) {
+    el = document.createElement('div'); el.className = 'ga-choose'; el.hidden = true; el.setAttribute('role', 'group'); el.setAttribute('aria-label', 'Other things to do here');
+    el.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+    el.addEventListener('click', (ev) => { ev.stopPropagation(); const b = ev.target.closest('button[data-k]'); const o = b && (_ga.opts || []).find(q => q.key === b.dataset.k); if (o) { _ga.pickKey = null; gartActRun(o.act, o); } });
+    box.appendChild(el); _ga.ch = el;
+  }
+  const others = opts.filter(o => !_ga.near || o.key !== _ga.near.key), sig = (_ga.near ? _ga.near.key : '') + '|' + others.map(o => o.key).join(',');
+  if (sig !== _ga.chSig) { _ga.chSig = sig; el.innerHTML = `<span class="ga-ch-tip"><kbd>Tab</kbd> or pick:</span>` + others.map(o => `<button type="button" data-k="${esc(o.key)}">${esc(_gaWords(o))}</button>`).join(''); }
+  el.hidden = false;
+}
+/** Tab: the next thing in reach becomes the prompt's. Returns true when there was a choice to make. */
+function gartActCycle(back) {
+  const opts = _ga.opts || []; if (opts.length < 2 || !_ga.near || (_ga.cur && _ga.cur.doing)) return false;
+  const i = Math.max(0, opts.findIndex(o => o.key === _ga.near.key)), n = opts[(i + (back ? opts.length - 1 : 1)) % opts.length];
+  _ga.pickKey = n.key; _ga.t = 0; gartActFrame(); return true;
 }
 function _gaPlace() {
   const r = _ga.near, el = _ga.el; if (!r || !el) return;
@@ -182,6 +214,7 @@ function _gaPlace() {
   // never under the garden's own messages strip at the top (a welcome, a find): below it, and above the thing's foot at most
   let y = s.y; try { const m = _gw.box.querySelector('.gd-msgs'), mb = m && m.childElementCount ? m.getBoundingClientRect() : null, bb = _gw.box.getBoundingClientRect(); const floor = mb && mb.height ? mb.bottom - bb.top + 34 : 40; if (y < floor) { const foot = _ghProject(r.x, r.y); y = Math.min(Math.max(y, floor), foot ? foot.y - 6 : y); } } catch (e) { /* as it was */ }
   el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(y)}px) translate(-50%, -100%)`;
+  if (_ga.ch && !_ga.ch.hidden) _ga.ch.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(y) + 6}px) translate(-50%, 0)`;
 }
 /** E or Space: the prompt's action, if one is showing. Returns true when it did something. */
 function gartActInteract() {
@@ -301,6 +334,7 @@ function _gaStart(cur) {
   if (!row.hold) cur.endT = setTimeout(() => { if (_ga.cur !== cur) return; gartActStop(true); if (row.then && GARDEN_ACTS[row.then]) _gaThen(row.then, cur); }, (_gaMotion() ? row.ms : 1200) + 60);
   if (row.nap) cur.endT = setTimeout(() => { if (_ga.cur === cur) { gartActStop(true); try { gardenToast('You wake up with a stretch.'); } catch (e) { /* fine */ } } }, row.nap);
   if (_ga.el) _ga.el.hidden = true;
+  _ga.pickKey = null; _gaChooser(null);
 }
 /** One action straight into the next, in the same place (up the trunk, then turn and sit on the branch). */
 function _gaThen(id, prev) {
