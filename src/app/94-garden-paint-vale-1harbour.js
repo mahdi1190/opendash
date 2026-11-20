@@ -95,6 +95,10 @@
       const prng = (p, salt) => kit.rng(kit.hash(Math.round(p.x), Math.round(p.y), salt));
       bbs.forEach((bb, idx) => add(bb, 32, (B, r, cb) => {
         for (let j = 0; j < idx; j++) if (kit.meets(bbs[j], cb)) return;
+        // (the sea's own surface, its shallows and foam, is the painted water's: 94-garden-paint-water-0core.js lays them from the
+        //  water's real outline, so a river runs out into the sea with no bar of shallows across its mouth. Only the beach is drawn here then.)
+        const seaOwned = window.GardenPaintWater && GardenPaintWater.ownsSea && GardenPaintWater.wanted && GardenPaintWater.wanted();
+        if (!seaOwned) {
         B.cx.save(); B.cx.clip(outsideAll, 'evenodd');
         // only the stretch near this chunk is stroked (whole strokes cost the full coast each chunk); the dashes keep their phase
         const seaRuns = spans(sea, cb, 230);
@@ -105,6 +109,7 @@
         for (const [a, b] of seaRuns) { B.cx.setLineDash([14, 6, 4, 9]); B.cx.lineDashOffset = len3[a]; V.strokePts(B, o3.slice(a, b), P.foam, 2.6, .85); B.cx.setLineDash([22, 14, 6, 18]); B.cx.lineDashOffset = len15[a]; V.strokePts(B, o15.slice(a, b), P.foam, 1.6, .45); }
         B.cx.setLineDash([]); B.cx.lineDashOffset = 0;
         B.cx.restore();
+        }
         B.cx.save(); B.cx.clip(coastP);
         // wet sand only where the shore is sand (the cold cove's moor and rock keep their own edge)
         for (const run of runsWhere(shore.map((p, i) => ({ x: p.x, y: p.y, i })), p => beachAt(in14[p.i]) && near(p, cb, 230))) { V.strokePts(B, run, P.sandWet, 30, .55); V.strokePts(B, run.map(p => in2[p.i]), P.sandWet, 12, .5); }

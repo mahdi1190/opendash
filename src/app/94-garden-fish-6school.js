@@ -76,6 +76,7 @@ function _gfsWant(b, m) {
 function _gfsPlaceKey() { return typeof _gll === 'undefined' ? 'own' : _gll.role === 'visit' ? 'v|' + (_glv.fid || '') : 'own'; }
 
 /* ---------- the shadows ---------- */
+const GFS_WORLD_SHOW = .5;   // how big an outdoor fish shadow is drawn against its stage length (_gfsVisualStep)
 function _gfsLen(cm) { return 10 + 5.2 * Math.sqrt(Math.max(1, Number(cm) || 1)); }   // stage units: a 5 cm minnow about 22 (half a cell), a 1 m carp 62, a 2.8 m sturgeon 97
 /** The raised, swept dorsal overlay belongs to large sharks. Other families keep their own shadow anatomy. */
 function gardenFishFin(def) { return !!def && def.cat === 'fish' && def.look.s === 'shark' && def.cm[1] >= 120; }
@@ -170,7 +171,9 @@ function _gfsVisualStep(f, state, dt, time, motion) {
   state.turn = turn; state.wobble = motion ? Math.sin(state.phase) * (f.st === GF_ST.hooked ? 4.5 : 1.25) * gardenFishWobble(f.def) : 0;
   state.angle = state.heading + state.wobble * Math.PI / 180;
   state.side = motion && f.st === GF_ST.swim ? Math.sin(state.phase * .47 + f.seed) * Math.min(1.5, _gfsLen(f.cm) * .025) + Math.sin(turn) * 2 : 0;
-  state.size = 1 - (f.x < GARDEN_ROOM_X ? Math.max(0, Math.min(.055, (f.y - 23) * .004)) : 0);
+  // (outdoors a shadow is drawn at half its stage length, to the world's scale: at full length a 30 cm fish was nearly the
+  //  player's height, so a narrow stream or a garden pool held sharks; a room's water keeps its own close-up size)
+  state.size = f.x < GARDEN_ROOM_X ? GFS_WORLD_SHOW * (1 - Math.max(0, Math.min(.055, (f.y - 23) * .004))) : 1;
   _gfsVisualInteraction(f, state, dt, motion, distance);
   f.face = Math.cos(state.heading) < 0 ? -1 : 1;
   return state;

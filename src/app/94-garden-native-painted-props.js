@@ -910,7 +910,7 @@ window.GardenPaintedProps = (function () {
     const h = handle(scene, o, spec.id, { cls: 'falls', kind: 'falls' });
     const rock = ['#a39a86', '#7e7664', '#cbc3ad', '#5e584a'];
     const rockReach = Math.ceil(Wd / 2 + 130) + (fed ? 60 : 0), box = [-rockReach, -H - 50, rockReach, 40];
-    const baseKey = bake(scene, 'falls|' + season + '|' + Wd + '|' + H + '|' + S + '|' + Math.round(lipX) + '|' + fed + '|' + sharedPool, box, B => {
+    const baseKey = bake(scene, 'falls4|' + season + '|' + Wd + '|' + H + '|' + S + '|' + Math.round(lipX) + '|' + fed + '|' + sharedPool, box, B => {
       // the plunge pool and its pale lip
       if (!sharedPool) B.f(B.ell(0, 8, 86, 22), '#4e7e8c').f(B.ell(0, 6, 74, 17), '#5f93a0').f(B.ell(-14, 4, 40, 7), '#88b8c0', .55).s(B.ell(0, 8, 86, 22), '#cfe2dc', 2, .5);
       // Keep the scarp at its original landscape anchor while the sheet reaches the Mere.
@@ -934,20 +934,47 @@ window.GardenPaintedProps = (function () {
       for (let i = fed ? 3 : 0; i < 6; i++) { const px = (i < 3 ? -1 : 1) * (Wd / 2 + 10 + (i % 3) * 16); B.s(`M${px} ${-S + 10}q${(r() - .5) * 8} ${30 * k} ${(r() - .5) * 4} ${(40 + r() * 30) * Math.max(.5, k)}`, leafOf(season)[0], 2, .8); }
       B.cx.restore();
       // A wet cleft follows the falling water instead of framing it with straight posts.
-      const sheet = `M${lipX - Wd / 2} ${-H}h${Wd}C${lipX + Wd / 2 - 4} ${-H * .7} ${Wd / 2 - 7} ${-H * .3} ${Wd / 2 + 4} -8q${-Wd / 2 - 4} 10 ${-Wd - 8} 0C${-Wd / 2 + 7} ${-H * .3} ${lipX - Wd / 2 + 4} ${-H * .7} ${lipX - Wd / 2} ${-H}z`;
-      B.s(sheet, '#3e4a4a', 5, .65);
-      // the falling sheet: a pale gradient, brightest at the lip, a green-blue core
-      B.f(sheet, B.lin(0, -H, 0, 0, [[0, '#e8f4ee'], [.12, '#b6dcd8'], [.6, '#8cc4c4'], [1, '#d8eeea']]));
-      B.f(`M${-Wd / 2 + 6} ${-H + 4}h${Wd * .3}l-2 ${H - 16}h${-Wd * .3}z`, '#eef8f2', .35);
-      B.f(B.ell(lipX, -H, Wd / 2 + 4, 4), '#f2faf6', .9);
-      // the foam where it lands
-      for (let i = 0; i < 9; i++) B.f(D().blob(r, (r() - .5) * Wd * 1.6, -2 + (r() - .5) * 6, 10 + r() * 8, 4 + r() * 3, 7, .5), '#f4faf6', .7);
+      // (the lip is a broken, bowed edge where the water humps over the rock, not one straight rule; the sheet fans out a little
+      //  as it falls and its sides waver, so it reads as falling water and not a pale panel; art director, round 3)
+      const lipPath = (() => { let d = '', n = 6; for (let i = 1; i <= n; i++) { const u0 = (i - 1) / n, u1 = i / n, xm = lipX - Wd / 2 + Wd * (u0 + u1) / 2, x1 = lipX - Wd / 2 + Wd * u1, bow = Math.sin(Math.PI * u1) * 4, ym = -H + 1.5 + Math.sin(Math.PI * (u0 + u1) / 2) * 5 + (r() - .5) * 3.2; d += `Q${xm.toFixed(1)} ${ym.toFixed(1)} ${x1.toFixed(1)} ${(-H + bow + (i < n ? (r() - .5) * 2 : 0)).toFixed(1)}`; } return d; })();
+      const sheet = `M${lipX - Wd / 2} ${-H}${lipPath}C${lipX + Wd / 2 + 1} ${-H * .72} ${Wd / 2 - 3} ${-H * .42} ${Wd / 2 + 2} ${-H * .24}S${Wd / 2 + 9} -16 ${Wd / 2 + 8} -8q${-Wd / 2 - 8} 11 ${-Wd - 16} 0C${-Wd / 2 - 6} ${-H * .14} ${-Wd / 2 + 3} ${-H * .3} ${-Wd / 2 + 1} ${-H * .46}S${lipX - Wd / 2 - 1} ${-H * .8} ${lipX - Wd / 2} ${-H}z`;
+      // the wet rock the water runs over shows dark at its edges (a soft cleft, never an outline round the sheet)
+      { const cl = B.cx; cl.save(); cl.filter = 'blur(' + (3 * K).toFixed(1) + 'px)'; B.f(sheet, '#2f3d3c', .5); cl.restore(); cl.filter = 'none'; }
+      // the falling sheet: brightest where it curls over the lip, a deep green-blue body, white again where it breaks below
+      // (round 2: deeper and opaque; pale greens read as a see-through pane of glass with the rock showing through)
+      B.f(sheet, B.lin(0, -H, 0, 0, [[0, '#f4fbf8'], [.05, '#d4eeea'], [.14, '#6aa8ae'], [.45, '#4f8f98'], [.7, '#6aa6aa'], [.86, '#b8e0dc'], [1, '#f4fbf8']]));
+      // lit from the upper left: the left of the sheet catches the sky, the right falls into shade
+      B.f(sheet, B.lin(-Wd / 2, 0, Wd / 2, 0, [[0, 'rgba(255,255,255,.34)'], [.45, 'rgba(255,255,255,0)'], [.7, 'rgba(24,58,66,0)'], [1, 'rgba(24,58,66,.3)']]));
+      // ribbons of water down its face, each following the sheet's own curve, paler and darker, broken where they thin
+      { const cl = B.cx; cl.save(); cl.clip(new Path2D(sheet));
+        for (let i = 0; i < 22; i++) { const u = (i + .5) / 22 - .5 + (r() - .5) * .05, top = lipX + u * Wd, mid = u * (Wd - 10) * .92, bot = u * (Wd + 8), pale = i % 3 !== 1, w = pale ? 1.6 + r() * 3.2 : 2.6 + r() * 3, t0 = -H + 3 + r() * H * .1, t1 = -6 - r() * H * .12;
+          B.s(`M${top} ${t0}C${top + (mid - top) * .6} ${-H * .62} ${mid} ${-H * .3} ${bot} ${t1}`, pale ? '#f4fbf8' : '#3f7e88', w, pale ? .42 + r() * .36 : .3 + r() * .16); }
+        // a soft white veil down each edge, where the falling water thins to spray (a ruled edge against the rock read as a pane)
+        for (const sgn of [-1, 1]) { const g = cl.createLinearGradient(sgn * Wd / 2, 0, sgn * (Wd / 2 - 16), 0); g.addColorStop(0, 'rgba(246,252,250,.75)'); g.addColorStop(1, 'rgba(246,252,250,0)'); cl.fillStyle = g; cl.fillRect(Math.min(sgn * Wd / 2 - 4, sgn * (Wd / 2 - 16)) + (sgn < 0 ? lipX * .3 : 0), -H, 20, H); }
+        cl.restore(); }
+      // spray peeling off both edges of the sheet as it falls, broken and fading (a sheet with clean edges reads as a pipe)
+      for (const sgn of [-1, 1]) for (let i = 0; i < 14; i++) { const t = .12 + r() * .82, y0 = -H * (1 - t), xe = sgn * (Wd / 2 - 1 + t * 3) + lipX * (1 - t); B.s(`M${xe} ${y0}q${sgn * (1 + r() * 2)} ${3 + r() * 3} ${sgn * (1 + r() * 2.5)} ${6 + r() * 7}`, '#f4fbf8', 1.2 + r() * 1.6, .16 + r() * .22); }
+      // the lip: the river darkens as it gathers to the edge, then bends over it in a bright roll, thick and thin across
+      // the drop, broken by two lip stones, with the shade just under the roll (not one clean rim, which read as a cylinder's top)
+      { const cl = B.cx, ga = cl.createLinearGradient(0, -H - 12, 0, -H + 2); ga.addColorStop(0, 'rgba(58,118,128,0)'); ga.addColorStop(1, 'rgba(58,118,128,.6)'); cl.save(); cl.fillStyle = ga; cl.beginPath(); cl.ellipse(lipX, -H - 4, Wd / 2 + 3, 8, 0, 0, Math.PI * 2); cl.fill(); cl.restore(); }
+      for (let i = 0; i < 9; i++) { const u = (i + .5) / 9 - .5, px = lipX + u * Wd, rr = Wd / 9 * (.75 + r() * .6); B.f(B.ell(px, -H + 1 + (r() - .5) * 2.6, rr, 2.4 + r() * 2.6), i % 3 === 1 ? '#d8eeea' : '#f6fcf9', .78 + r() * .2); }
+      B.s(`M${lipX - Wd / 2 + 2} ${-H + 8}q${Wd / 2} 5 ${Wd - 4} 0`, '#4d8d93', 1.4, .36);
+      // (no stones set on the lip: two pebbles sitting on the brink read as a garden water feature; wet rock frames its ends)
+      for (const sgn of [-1, 1]) B.stone(r, lipX + sgn * (Wd / 2 + 6), -H + 4, 9 + r() * 4, 6 + r() * 2, ['#6f6a5c', '#4e4a40', '#9c9580', '#3a372f'], MOSS);
+      // the foam where it lands: a soft churned skirt wider than the sheet, puffed up where the water strikes, a few crisp
+      // bubbles on it (flat white blobs read as cotton wool)
+      { const cl = B.cx; for (let i = 0; i < 18; i++) { const sx = (r() - .5) * Wd * 1.9, rx = 9 + r() * 13, ry = 4 + r() * 4, sy = -4 + (r() - .5) * 8 - Math.max(0, 1 - Math.abs(sx) / Wd) * 7, g = cl.createRadialGradient(sx, sy, 0, sx, sy, rx); g.addColorStop(0, 'rgba(250,253,251,.78)'); g.addColorStop(.55, 'rgba(238,247,245,.4)'); g.addColorStop(1, 'rgba(238,247,245,0)'); cl.save(); cl.translate(sx, sy); cl.scale(1, ry / rx); cl.translate(-sx, -sy); cl.fillStyle = g; cl.beginPath(); cl.arc(sx, sy, rx, 0, Math.PI * 2); cl.fill(); cl.restore(); } }
+      for (let i = 0; i < 14; i++) { const sx = (r() - .5) * Wd * 1.5, rr = 1 + r() * 2.2; B.f(B.ell(sx, -5 + (r() - .5) * 8, rr * 1.4, rr), '#ffffff', .55 + r() * .35); }
       // Standalone falls have a stone rim; the Mere already owns its real shoreline.
       if (!sharedPool) for (let i = 0; i < 8; i++) { const a = Math.PI * (.08 + .84 * r()), px = Math.cos(a) * 92 * (r() < .5 ? -1 : 1), py = 14 + Math.sin(a) * 14; B.stone(r, px, py, 7 + r() * 5, 4 + r() * 2, STONE, r() < .5 ? MOSS : null); }
     });
     // trees on the scarp top are the library's own, like the planting round them (their trunks join the one trunk list: gateTrees)
     fallsFeet = [];
     for (const [id, v, hh, dx, dy] of (fed ? [[season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 96, -S + 10], ['tree.pine', 1, 120, 150, -S - 4]] : [['tree.pine', 0, 150, -84, -S + 8], [season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 86, -S + 14], ['tree.pine', 1, 120, 30 + Wd / 2, -S - 6]])) { h.standing(libImage(scene, id, v, season, { h: hh }, ax + dx, ay + dy, false), ay + dy); fallsFeet.push([+((ax + dx) / o.W.cellW).toFixed(2), +((ay + dy - o.W.sky) / o.W.cellH).toFixed(2), hh > 140 ? .5 : .4]); }
+    // The falling sheet stops the feet from its foot up to the cave stair's sill, so nobody walks into the water and stands
+    // inside the falls (a gap was left between the rock's block and the pool's edge under it; water hunter, round 3). Shared
+    // with the walking through the one trunk list (rows of boxes the sheet's width), like the scarp-top trees above.
+    if (fed && o.W) { const wC = (Wd + 6) / o.W.cellW, footY = (y - o.W.sky) / o.W.cellH, cX = x / o.W.cellW; for (let yy = footY - 1.5; yy <= footY - .1; yy += .36) fallsFeet.push([+cX.toFixed(2), +yy.toFixed(2), +wC.toFixed(2)]); }
     const base = h.add(image(scene, baseKey, x, y));
     // The fixed falls' canvas includes empty padding beside the cave stair.
     // Keep its solid rock/sheet mask once per existing texture; frame probes

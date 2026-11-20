@@ -75,6 +75,27 @@ void main () {
       },
     };
   }
+  /** The marine flag (green) blurred across the line where a river's water meets the sea's, as a job in slices: two box
+   * passes each way over (marine x coverage) and coverage, then their ratio, so the sea's flag is not pulled down along
+   * the coast while a river mouth fades from fresh to marine over about a hundred world px instead of at the coast's
+   * line (which drew the coast's corner across the mouth as a sharp change of colour). */
+  function marineBlurJob(pixels, width, height, radius) {
+    const n = width * height, A = new Float32Array(n), G = new Float32Array(n), tA = new Float32Array(n), tG = new Float32Array(n);
+    let stage = -1, line = 0;
+    function horizontal(sa, sg, da, dg, y) { const o = y * width; let a = 0, g = 0; for (let x = -radius; x < width + radius; x++) { const add = x + radius, sub = x - radius - 1; if (add < width) { a += sa[o + add]; g += sg[o + add]; } if (sub >= 0) { a -= sa[o + sub]; g -= sg[o + sub]; } if (x >= 0 && x < width) { da[o + x] = a; dg[o + x] = g; } } }
+    function vertical(sa, sg, da, dg, x) { let a = 0, g = 0; for (let y = -radius; y < height + radius; y++) { const add = y + radius, sub = y - radius - 1; if (add < height) { a += sa[add * width + x]; g += sg[add * width + x]; } if (sub >= 0) { a -= sa[sub * width + x]; g -= sg[sub * width + x]; } if (y >= 0 && y < height) { da[y * width + x] = a; dg[y * width + x] = g; } } }
+    return {
+      step(until) {
+        for (;;) {
+          if (stage === -1) { for (; line < height; line++) { if ((line & 15) === 0 && performance.now() > until) return false; for (let x = 0, i = line * width; x < width; x++, i++) { const a = pixels[i * 4 + 3] / 255; A[i] = a; G[i] = a * pixels[i * 4 + 1] / 255; } } }
+          else if (stage === 0 || stage === 2) { for (; line < height; line++) { if ((line & 15) === 0 && performance.now() > until) return false; horizontal(A, G, tA, tG, line); } }
+          else if (stage === 1 || stage === 3) { for (; line < width; line++) { if ((line & 15) === 0 && performance.now() > until) return false; vertical(tA, tG, A, G, line); } }
+          else if (stage === 4) { for (; line < height; line++) { if ((line & 15) === 0 && performance.now() > until) return false; for (let x = 0, i = line * width; x < width; x++, i++) { if (!pixels[i * 4 + 3] || A[i] < 1e-4) continue; pixels[i * 4 + 1] = Math.round(Math.max(0, Math.min(1, G[i] / A[i])) * 255); } } return true; }
+          stage++; line = 0;
+        }
+      },
+    };
+  }
   // Finished masks by exact geometry: walking back out of a room puts the
   // garden's own mask back at once instead of measuring every shore again.
   const KEEP_MASKS = 3, SLICE_MS = 6;
@@ -117,7 +138,7 @@ void main () {
       // task); the old mask stays hidden until the new one is ready.
       shader.setVisible(false);
       const context = mask.context, image = context.createImageData(pixelWidth, pixelHeight), pixels = image.data, me = { dead: false };
-      job = me; let row = 0, distance = null, i = 0;
+      job = me; let row = 0, distance = null, blur = null, i = 0;
       const halfPixel = .5 / Math.max(scaleX, scaleY);
       const pump = () => {
         if (me.dead || dead) return;
@@ -126,13 +147,16 @@ void main () {
           if ((row & 7) === 0 && performance.now() > until) { setTimeout(pump, 0); return; }
           fillRow(row, pixels, liquid, frozen);
         }
+        if (!blur) blur = marineBlurJob(pixels, pixelWidth, pixelHeight, Math.max(2, Math.round(44 * Math.max(scaleX, scaleY))));
+        if (!blur.step(until)) { setTimeout(pump, 0); return; }
         if (!distance) distance = shoreDistanceJob(pixels, pixelWidth, pixelHeight, scaleX, scaleY);
         if (!distance.step(until)) { setTimeout(pump, 0); return; }
         const distances = distance.distances;
         for (; i < distances.length; i++) {
           if ((i & 32767) === 0 && performance.now() > until) { setTimeout(pump, 0); return; }
           const at = i * 4; if (!pixels[at + 3]) continue;
-          const range = pixels[at + 1] > 127 ? 210 : 112, depth = Math.max(0, Math.min(1, (Math.sqrt(distances[i]) - halfPixel) / range));
+          // (the shelf's reach follows the blurred flag, so a river's water deepens into the sea's without a step)
+          const range = 112 + 98 * pixels[at + 1] / 255, depth = Math.max(0, Math.min(1, (Math.sqrt(distances[i]) - halfPixel) / range));
           pixels[at] = Math.round(depth * 255);
         }
         job = null; masks.set(shape, image); while (masks.size > KEEP_MASKS) masks.delete(masks.keys().next().value);

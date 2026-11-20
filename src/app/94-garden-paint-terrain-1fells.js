@@ -19,7 +19,7 @@ window.GardenPaintedTerrain = (function () {
   'use strict';
   const KIT = () => window.GardenPaintTerrainKit, D2 = () => sceneDraw;
   const K = 1.5, CHUNK = 256, DEPTH = -9350;
-  const GORGE_WATER = true;                // the gorge's water is painted with its walls; false leaves a hole for the water painter
+  const GORGE_WATER = false;               // the gorge's water is painted with its walls; false leaves a hole for the water painter (94-garden-paint-water-0core.js: one water from the tarn to the Mere, its flow lines, stones and glints)
   let current = null, sprites = [], lastError = null, stats = {}, trunkFeet = [];
   // The old sheepfolds of the high pasture: [x, y, radius in cells, the ring steps (of 40) left out for the gateway: after, before].
   // One list for the painting (compose, 3b) and for walking (94-garden-world-0walk.js gardenWalkFolds): the ring stops the feet.
@@ -250,10 +250,15 @@ window.GardenPaintedTerrain = (function () {
       add(kit.bboxOf(w.pts, 30), 61 + w.id.length, (B, r) => {
         // A natural stony shore, not a bead necklace: a soft damp margin, then stones in
         // clusters of different sizes with gaps of turf and the odd boulder between them.
-        B.s(B.line(ring), snowRow > 90 ? P.snowSh : '#9c937c', 12, .35).s(B.line(ring), snowRow > 90 ? P.snow : '#c4bba2', 5, .45);
+        // (no even pale rim stroked round it: with one, the tarn read as the same lined pond as the garden pools; the water
+        //  painter lays its dark peat bank, and the stones and turf below break it)
+        if (snowRow > 90) B.s(B.line(ring), P.snowSh, 12, .35).s(B.line(ring), P.snow, 5, .45);
         const field = i => Math.sin(i * .37 + w.id.length) + Math.sin(i * .113 + 2.1) * .8;
         for (let i = 0; i < ring.length; i++) {
-          const p = ring[i], f = field(i); if (f < -.55 || r() < .3) continue;
+          const p = ring[i], f = field(i);
+          // (between the stony stretches the moor comes down to the water: peat hags and heather hanging over the edge)
+          if (f < -.15) { if (snowRow <= 90 && r() < .55) B.f(B.blob(r, p.x + (r() - .5) * 6, p.y - 1, 5 + r() * 6, 2.4 + r() * 2, 6, .5), r() < .5 ? P.heather : P.heatherLo, .9); continue; }
+          if (r() < .4) continue;
           const big = f > 1.15 && r() < .35, rx = big ? 6 + r() * 5 : 1.6 + r() * (f > .4 ? 4.2 : 2.6);
           if (big) B.boulder(r, p.x + (r() - .5) * 8, p.y + (r() - .5) * 4, rx, rx * .7, P, snowRow > 90);
           else B.stone(r, p.x + (r() - .5) * 10, p.y + (r() - .5) * 6, rx, rx * (.55 + r() * .25), P, snowRow > 90 ? 'snow' : r() < .5 ? P.lichen : null);
@@ -305,15 +310,21 @@ window.GardenPaintedTerrain = (function () {
     // banks in cell space (the cells are not square), then world px
     const nrm = line.map((p, i) => { const a = line[Math.max(0, i - 1)], b = line[Math.min(n - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return [-dy / l, dx / l]; });
     const far = [], farIn = [], near = [], nearIn = [], mid = [];
+    // The far wall's face stands on the bank above the water and comes down to the waterline (it never covers the stream: laid
+    // over the channel it hid half the water, and the fish swam over its rock). Its height changes along the gorge (a smooth
+    // field, taller towards the falls), so the gorge has crags and low places, not one even kerb.
+    const wallH = i => { const t = i / (n - 1), u = i * .14; return .2 + t * .42 + (Math.sin(u * 1.7 + 1.3) * .5 + Math.sin(u * .63 + .4) * .5) * .34; };
     line.forEach((p, i) => {
-      const [nx, ny] = nrm[i], t = i / (n - 1), s = ny < 0 ? 1 : -1;      // s points the normal to the far (northern, upper) bank
-      const depth = .3 + t * .16;
-      far.push(L.pt([p[0] + nx * s * (hw + .1), p[1] + ny * s * (hw + .1)])); farIn.push(L.pt([p[0] + nx * s * hw * (1 - depth * 2), p[1] + ny * s * hw * (1 - depth * 2)]));
+      const [nx, ny] = nrm[i], s = ny < 0 ? 1 : -1;      // s points the normal to the far (northern, upper) bank
+      const up = hw + Math.max(.12, wallH(i));
+      far.push(L.pt([p[0] + nx * s * up, p[1] + ny * s * up])); farIn.push(L.pt([p[0] + nx * s * hw * .96, p[1] + ny * s * hw * .96]));
       near.push(L.pt([p[0] - nx * s * (hw + .05), p[1] - ny * s * (hw + .05)])); nearIn.push(L.pt([p[0] - nx * s * hw * .78, p[1] - ny * s * hw * .78])); mid.push(L.pt(p));
     });
     const bb = kit.bboxOf(far.concat(near), 40);
     // the ford at the stepping stones: the river runs on through the path's gap as shallows, with flat stones across
     add(bb, 141, (B, r, cb) => {
+      // (the walls and banks begin at the tarn's shore: the far wall's first stones stood out in the tarn's water; water director, round 3)
+      { const still = L.water.filter(w => !w.river && w.pts.length > 2); if (still.length) { const cut = new Path2D(); cut.rect(bb[0] - 10, bb[1] - 10, bb[2] - bb[0] + 20, bb[3] - bb[1] + 20); for (const w of still) { w.pts.forEach((p, i) => i ? cut.lineTo(p.x, p.y) : cut.moveTo(p.x, p.y)); cut.closePath(); } B.cx.clip(cut, 'evenodd'); } }
       // the young river itself (the gorge is one picture: its water, its walls): dark in the deep middle, paler at the edges, white water
       if (GORGE_WATER) {
         // The young river begins at the tarn's shore: its channel never paints a rounded spout out into the tarn.
@@ -326,25 +337,34 @@ window.GardenPaintedTerrain = (function () {
       // the far wall: weathered rock from the lip down into the water, deeper towards the falls
       const G = { lit: '#a39886', mid: '#827868', shade: '#5c554c', deep: '#323a38', hi: '#cdc2ac', damp: '#4f6446', moss: P.moss, heather: P.heather, snow: P.snow };
       kit.rockBand(B, far, farIn, far.map((_, i) => i), (i, k) => kit.rng(9001 + i * 131 + k * 17), G, { snowy, size: .7, tiers: [[.3, 1], [.72, .8]] });
-      B.s(B.line(farIn), '#2e3a3c', 2.4, .4);   // the wet foot of the wall
-      B.s(B.line(far), snowy ? P.snow : P.rockHi, 2.2, .95);
+      B.s(B.line(farIn), '#2e3a3c', 2.4, .22);   // the wet foot of the wall
+      // (the wall's shade on the water at its foot, wider under the tall crags, so the stream lies down in a cut and not on the moor)
+      for (let i = 1; i < farIn.length; i++) { const h0 = wallH(i), p = farIn[i - 1], q = farIn[i], m = mid[i]; B.s(`M${p.x} ${p.y}L${q.x} ${q.y}`, '#1f2c2c', 3 + h0 * 14, .1 + h0 * .12); void m; }
+      // the lit lip only along the crags (one even lit rule along the whole top read as a kerb), and a crag boulder on each
+      for (let i = 2, run = []; i < far.length; i++) { const hi = wallH(i) > .5; if (hi) run.push(far[i]); if ((!hi || i === far.length - 1) && run.length > 2) { B.s(B.line(run), snowy ? P.snow : P.rockHi, 2, .8); run = []; } else if (!hi) run = []; }
+      for (let i = 3; i < far.length - 3; i++) { const h0 = wallH(i); if (h0 > .48 && h0 >= wallH(i - 1) && h0 >= wallH(i + 1)) { const p = far[i], rr = kit.rng(7301 + i); B.boulder(rr, p.x + (rr() - .5) * 6, p.y + 2, 9 + rr() * 7, 6 + rr() * 4, Object.assign({}, P, { rock: '#8c8578', rockLo: '#625c54', rockHi: '#bdb4a2' }), snowy); } }
       // moss, ferns and heather along the far lip
       for (let i = 0; i < far.length; i += 2) { const p = far[i]; if (r() < .6) B.f(B.blob(r, p.x + (r() - .5) * 6, p.y - 1, 3 + r() * 4, 1.6 + r() * 1.6, 6, .5), snowy ? P.snow : r() < .5 ? P.moss : P.fellLo, .9); if (!snowy && r() < .25) for (let k = 0; k < 4; k++) B.s(`M${p.x} ${p.y + 1}q${(k - 1.5) * 2} 2 ${(k - 1.5) * 4} 6`, '#5f7a3c', 1, .85); }
-      // the near lip: a lit rim with a dark undercut into the water and boulders at the edge
-      B.s(B.line(nearIn), P.rockDk, 4, .32).s(B.line(near), P.rockLo, 3.6, .95).s(B.line(near.map(p => ({ x: p.x, y: p.y - 1.4 }))), snowy ? P.snow : P.rockHi, 1.8, .9);
-      for (let i = 0; i < near.length; i += 3) { const p = near[i]; if (r() < .5) B.stone(r, p.x + (r() - .5) * 6, p.y, 3 + r() * 4, 2 + r() * 2, P, snowy ? 'snow' : P.lichen); }
-      // the lip stones: a line of flat-topped boulders across the river just above the drop
-      { const k = Math.floor(mid.length * .86), p = mid[k], a = far[k], b = near[k];
-        for (let j = 0; j < 6; j++) { const t = (j + .5) / 6, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t + 2, rr = kit.rng(8801 + j);
-          B.s(`M${x - 8} ${y + 3}q8 3 16 0`, P.foam, 1.4, .8); B.boulder(rr, x, y + 2, 9 + rr() * 4, 5 + rr() * 2, Object.assign({}, P, { rock: '#8c8578', rockLo: '#625c54', rockHi: '#bdb4a2' }), snowy); } void p; }
+      // the near bank: no even kerb along it. By stretches (a smooth field along the gorge) it is a run of boulders of their
+      // own sizes with a dark wet undercut, or heather and turf hanging over the water, or a little gravel beach
+      const kind = i => { const u = i * .11; const v = Math.sin(u * 1.9 + .7) * .55 + Math.sin(u * .71 + 2.2) * .45; return v > .18 ? 'rock' : v > -.35 ? 'turf' : 'gravel'; };
+      for (let i = 0; i < near.length; i++) {
+        const p = near[i], q = nearIn[i], k = kind(i);
+        if (k === 'rock') { if (i % 2) continue; B.f(B.blob(r, (p.x + q.x) / 2 + 1, (p.y + q.y) / 2 + 2, 5 + r() * 3, 2 + r(), 6, .4), P.rockDk, .35); if (r() < .75) { const big = r() < .25; B.stone(r, p.x + (r() - .5) * 6, p.y + (r() - .5) * 3, big ? 6 + r() * 5 : 2.5 + r() * 4, big ? 4 + r() * 3 : 1.8 + r() * 2.2, P, snowy ? 'snow' : r() < .5 ? P.lichen : null); } }
+        else if (k === 'turf') { if (i % 2 || snowy) continue; B.f(B.blob(r, p.x + (r() - .5) * 4, p.y - 1, 4 + r() * 6, 1.8 + r() * 1.8, 6, .5), r() < .45 ? P.heather : P.fellLo, .9); if (r() < .3) B.tufts(r, p.x, p.y + 1, 7, 4, [P.fellLo, P.bleach], 4); }
+        else { if (i % 3) continue; for (let j = 0; j < 3; j++) B.stone(r, (p.x + q.x) / 2 + (r() - .5) * 8, (p.y + q.y) / 2 + (r() - .5) * 3, 1 + r() * 1.6, .7 + r(), P, null); }
+      }
+      // (no row of lip stones across the river above the drop: six flat boulders in a line read as pebbles set on the lip; the
+      //  water painter's rock steps carry the gorge down to the falls)
       // white water: short foam strokes in the channel, more towards the falls
-      for (let i = 2; i < mid.length - 1; i++) { const t = i / mid.length, p = mid[i], q = farIn[i]; if (r() < .35 + t * .4) { const x = (p.x + q.x) / 2 + (r() - .5) * 8, y = (p.y + q.y) / 2 + 4 + (r() - .5) * 6; B.s(`M${x} ${y}q4 -1.4 8 0`, P.foam, 1.2, .75); } }
+      if (GORGE_WATER) for (let i = 2; i < mid.length - 1; i++) { const t = i / mid.length, p = mid[i], q = farIn[i]; if (r() < .35 + t * .4) { const x = (p.x + q.x) / 2 + (r() - .5) * 8, y = (p.y + q.y) / 2 + 4 + (r() - .5) * 6; B.s(`M${x} ${y}q4 -1.4 8 0`, P.foam, 1.2, .75); } }
     });
     const xs = (L.D.presentation.crossings || []).filter(c => c.over === 'gorge');
     for (const c of xs) { const p = L.cpt(c.x, c.y); add([p.x - 60, p.y - 50, p.x + 60, p.y + 50], 131, (B, r) => {
       const i = mid.reduce((bi, q, k) => Math.hypot(q.x - p.x, q.y - p.y) < Math.hypot(mid[bi].x - p.x, mid[bi].y - p.y) ? k : bi, 0), seg = mid.slice(Math.max(0, i - 5), i + 6);
-      B.s(B.line(seg), '#7fb0b8', hw * W.cellH * .7, .35); void seg;
-      for (let k = 0; k < 4; k++) { const q = mid[Math.max(0, Math.min(mid.length - 1, i))], a = (k - 1.5) * 12; B.f(B.ell(q.x - 8 + a * .9 + 2, q.y - a * .55 + 2, 7, 3.6), P.rockDk, .45).f(B.blob(r, q.x - 8 + a * .9, q.y - a * .55, 7, 3.6, 7, .25), P.rock).f(B.ell(q.x - 10 + a * .9, q.y - a * .55 - 1, 3.5, 1.4), P.rockHi, .8).s(`M${q.x - 14 + a * .9} ${q.y - a * .55 + 2}q6 2 12 0`, P.foam, 1, .7); }
+      if (GORGE_WATER) B.s(B.line(seg), '#7fb0b8', hw * W.cellH * .7, .35); void seg;
+      // (the stones themselves are the crossing painter's, on the walkable deck: a second set here stood beside them askew)
+      void r; void i;
     }); }
   }
 
