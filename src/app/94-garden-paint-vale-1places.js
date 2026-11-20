@@ -390,7 +390,7 @@
       // (the lake walk's sandy road carries on behind it).
       const office = pz.id === 'lakeside-terrace' && L.stat('land-office');
       if (office && office.x < rt.points[0][0] + 1 && office.x + office.w > rt.points[0][0]) a = L.pt([office.x + office.w + .5, rt.points[0][1]]);
-      const shape = V.capsule(kit.rng(seed), a, b, w / 2 * cw * .95 + 8, w / 2 * ch * 1.05 + 4, style === 'broken' || style === 'litter' ? .3 : .08), bb = kit.bboxOf(shape, 30);
+      const shape = V.capsule(kit.rng(seed), a, b, w / 2 * cw * .95 + 8, w / 2 * ch * 1.05 + 4, style === 'broken' || style === 'litter' ? .3 : pz.id === 'cider-square' ? .24 : .08), bb = kit.bboxOf(shape, 30);   // (the cider square a little uneven at its edge: a ruled rectangle of setts read as a wall laid flat: highlands round 2)
       add(bb, seed, (B, r) => {
         // (round 3, the valley chain: a working yard by a river meets it in one smooth quay line, its edge stones laid as a coping;
         //  the water's cell outline made a stepped, jagged edge along the mill race. Other plazas keep the outline as it was.)
@@ -402,7 +402,11 @@
         if (kitYard) for (const o of kitYard) { B.cx.save(); o.draw(B, r, bb); B.cx.restore(); B.cx.globalAlpha = 1; }
         else if (style !== 'litter') { B.cx.filter = 'blur(3px)'; B.f(path, '#2e3420', .2); B.cx.filter = 'none'; }
         B.cx.save(); B.cx.clip(path);
-        if (style === 'setts') { if (!kitYard) V.setts(B, r, P, bb, { size: 11, salt: seed, grout: '#a8987a', cols: ['#c9b994', '#c2b28c', '#d2c5a2', '#bcac86'] }); for (let k = 0; k < 18; k++) B.f(B.blob(r, bb[0] + r() * (bb[2] - bb[0]), bb[1] + r() * (bb[3] - bb[1]), 14 + r() * 20, 4 + r() * 5, 7, .5), r() < .5 ? '#e0d4b2' : '#9c8c68', .25); }
+        if (style === 'setts') { if (!kitYard) V.setts(B, r, P, bb, { size: 11, salt: seed, grout: '#a8987a', cols: ['#c9b994', '#c2b28c', '#d2c5a2', '#bcac86'] }); for (let k = 0; k < 18; k++) B.f(B.blob(r, bb[0] + r() * (bb[2] - bb[0]), bb[1] + r() * (bb[3] - bb[1]), 14 + r() * 20, 4 + r() * 5, 7, .5), r() < .5 ? '#e0d4b2' : '#9c8c68', .25);
+          if (pz.id === 'cider-square') { const bw = bb[2] - bb[0], bh = bb[3] - bb[1];
+            // trodden darker in a ring round the press and the barrels, fallen apples and pomace by the press, moss in the joints
+            for (let k = 0; k < 30; k++) B.f(B.blob(r, bb[0] + r() * bw, bb[1] + r() * bh, 2.4 + r() * 4, 1 + r(), 5, .5), r() < .6 ? '#7d8a44' : '#96a052', .5);
+            if (C.season === 'autumn' || C.season === 'summer') for (let k = 0; k < 14; k++) B.f(B.circ(b.x - 20 + (r() - .5) * 40, b.y + (r() - .5) * 22, 1.5 + r() * .6), ['#b8402a', '#d8a030', '#8aa040'][Math.floor(r() * 3)], .9); } }
         else if (style === 'yard') {   // warm, worn and busy: honey setts like the plaza's, cart ruts, flour by the door, straw, moss in the joints
           const bw = bb[2] - bb[0], bh = bb[3] - bb[1], rx = () => bb[0] + r() * bw, ry = () => bb[1] + r() * bh;
           if (!kitYard) V.setts(B, r, P, bb, { size: 11, salt: seed, grout: '#9a8460', cols: ['#d2b88c', '#c6aa7e', '#dcc69e', '#bfa178', '#cfae84', '#c9b48e'] });
@@ -479,6 +483,9 @@
         }
         B.cx.restore();
         if (!kitYard && (style === 'setts' || style === 'flags' || style === 'yard')) B.s(path, P.kerb, 3, .8);
+        // the orchard grass grows in over the square's edge in tufts and turf lips, so the setts end in the lawn, not on a line
+        if (pz.id === 'cider-square' && C.season !== 'winter') { const ring = V.walk(shape.concat([shape[0]]), 5);
+          for (let i = 0; i < ring.length; i++) { const p = ring[i], n = kit.noise(i * .3, 2, 241); if (n < .3) continue; B.f(B.blob(r, p.x + (r() - .5) * 4, p.y + (r() - .5) * 3, 4 + n * 7, 2 + n * 2, 7, .5), n > .6 ? (P.lawn || '#7d9a48') : (P.lawnLo || '#5a7a3a'), .75); if (r() < .6) B.tufts(r, p.x, p.y + 1, 9, 4, [P.lawnLo || '#5a7a3a', P.lawnHi || '#a8c070'], 6); } }
       });
       // dressing by job: the cider square's press, bell and lanterns; the mill yard's millstone and sacks; the court's fallen column
       const spot = (x, y) => L.free(x, y) && ['grass', 'path'].includes(L.kind(x, y));

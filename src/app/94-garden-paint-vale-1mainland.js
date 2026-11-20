@@ -146,7 +146,7 @@
       // Keep the western mainland beach; the northern backdrop needs no bright diagonal ribbon.
       main(band, 86 + i, (B) => { B.cx.clip(bandClip); for (const sh of [shoreS]) { V.strokePts(B, sh, P.shallow, 120, .3); V.strokePts(B, sh, P.sand, 60, 1); V.strokePts(B, sh, P.sandWet, 22, .5, 0, 18); B.cx.setLineDash([16, 8]); V.strokePts(B, sh, P.foam, 3, .7, 0, 32); B.cx.setLineDash([]); } });
       // the north-east headland meets the sea in low dark rock and a broken line of surf, misted like the land behind it
-      if (i) main(band, 88, (B) => { B.cx.clip(bandClip); V.strokePts(B, shoreNE, P.shallow, 90, .28); V.strokePts(B, shoreNE, kit.mix('#6f6a60', P.haze, .35), 18, .9); V.strokePts(B, shoreNE, kit.mix('#9a9284', P.haze, .4), 7, .7, -3); B.cx.setLineDash([10, 14]); V.strokePts(B, shoreNE, P.foam, 3, .55, 9); B.cx.setLineDash([]); });
+      if (i) main(band, 88, (B) => { B.cx.clip(bandClip); V.strokePts(B, shoreNE, P.shallow, 90, .1); V.strokePts(B, shoreNE, kit.mix('#6f6a60', P.haze, .62), 18, .42); V.strokePts(B, shoreNE, kit.mix('#9a9284', P.haze, .65), 7, .32, -3); B.cx.setLineDash([10, 14]); V.strokePts(B, shoreNE, P.foam, 3, .25, 9);   /* (misted far off: at full strength its shallows and rock read as a pale angular shape and a hard dark band over the sea in the north-east corner) */ B.cx.setLineDash([]); });
       for (let part = 0; part < 4; part++) {
         main(band, 90 + i * 10 + part, (B, r, cb) => { B.cx.clip(bandClip); B.cx.clip(bigP); B.cx.clip(outGrid, 'evenodd'); paintLand(B, r, cb, part); });
         // inside the grid's corners, only where the island's coast leaves sea
