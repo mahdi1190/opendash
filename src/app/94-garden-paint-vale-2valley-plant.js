@@ -212,7 +212,13 @@
       const kind = window.GardenPaintGround ? GardenPaintGround.routeKind(rt) : 'earth', w = rt.tier === 'plaza' ? (Number(rt.widthCells) || 3) * cw : Number(rt.paintWidth) || (window.GardenPaintGround && GardenPaintGround.ROUTE_WIDTH[kind]) || 26;
       ribbons.push({ half: w / 2, marsh: /marsh|reed|boardwalk/.test(String(rt.id || '')), pts: gardenIslandRoutePath(rt).points.map(p => ({ x: p.x * cw, y: W.sky + p.y * ch })) });
     }
-    const pathGap = (X, Y) => { let best = Infinity; for (const rb of ribbons) for (let i = 1; i < rb.pts.length; i++) { const a = rb.pts[i - 1], b = rb.pts[i], dx = b.x - a.x, dy = b.y - a.y, l = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((X - a.x) * dx + (Y - a.y) * dy) / l)), d = Math.hypot(X - a.x - dx * t, Y - a.y - dy * t) - rb.half; if (d < best) best = d; } return best; };
+    // (vf-perf) the segments in buckets of 64 px, each in every bucket within its half width and 40 px: a gap of under 40 px is exact,
+    // anything further reads as far (no caller asks past 24 px). Walking every segment of every route for each of thousands of
+    // candidates was half a second of the compose, on arriving and on every level-up.
+    const GB = 64, REACH = 40, segGrid = new Map();
+    for (const rb of ribbons) for (let i = 1; i < rb.pts.length; i++) { const a = rb.pts[i - 1], b = rb.pts[i], m = rb.half + REACH;
+      for (let gy = Math.floor((Math.min(a.y, b.y) - m) / GB); gy <= Math.floor((Math.max(a.y, b.y) + m) / GB); gy++) for (let gx = Math.floor((Math.min(a.x, b.x) - m) / GB); gx <= Math.floor((Math.max(a.x, b.x) + m) / GB); gx++) { const k = gx + ',' + gy; let l = segGrid.get(k); if (!l) segGrid.set(k, l = []); l.push([a, b, rb.half]); } }
+    const pathGap = (X, Y) => { const l = segGrid.get(Math.floor(X / GB) + ',' + Math.floor(Y / GB)); if (!l) return 1e6; let best = 1e6; for (const [a, b, half] of l) { const dx = b.x - a.x, dy = b.y - a.y, ll = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((X - a.x) * dx + (Y - a.y) * dy) / ll)), d = Math.hypot(X - a.x - dx * t, Y - a.y - dy * t) - half; if (d < best) best = d; } return best; };
     // statics with their aprons (and the four rows in front of them, where a crown would hide them), gates, crossings
     const statics = D.static || [], held = new Set(), screened = new Set();
     for (const s of statics) for (const b of [s, s.apron].filter(Boolean)) {

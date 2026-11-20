@@ -81,7 +81,7 @@ window.GardenNativePainted = (function () {
   }
   function fanSetts(cx, bb, o) {
     o = o || {}; const P = o.P || PAL.summer, m = cx.getTransform(), k = Math.max(.25, Math.hypot(m.a, m.b)), T = fanTile(P, k);
-    const pat = cx.createPattern(T.c, 'repeat'); if (!pat) return; pat.setTransform(new DOMMatrix([T.TW / T.c.width, 0, 0, T.TH / T.c.height, 0, 0]));
+    let pat = T.pat; if (!pat) { pat = cx.createPattern(T.c, 'repeat'); if (!pat) return; pat.setTransform(new DOMMatrix([T.TW / T.c.width, 0, 0, T.TH / T.c.height, 0, 0])); T.pat = pat; }   // (vf-perf: one pattern a tile, kept: making it again for every piece of paving was 4 s of a walk's long tasks)
     cx.save(); cx.globalAlpha = 1; cx.fillStyle = pat; cx.fillRect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]);
     // the tone wanders in broad patches of older and newer stone, so the tile's repeat never shows; feet polish a paler way
     const r = rng((Math.round(bb[0] * 7 + bb[1] * 13) | 0) ^ 0x5bd1), area = (bb[2] - bb[0]) * (bb[3] - bb[1]);

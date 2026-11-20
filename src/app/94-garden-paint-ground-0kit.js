@@ -532,9 +532,13 @@ window.GardenPaintGround = (function () {
       b.cx.putImageData(img, 0, 0); return { c: b.c, x: mx0 * S, y: my0 * S, w: mw * S, h: mh * S };
     };
     const through = (B, cb, kind, m) => {
-      const cx = B.cx, c = cx.canvas, s = scratch('kind', c.width, c.height); s.cx.setTransform(cx.getTransform()); paintKind(s.cx, kind, cb, season, env);
+      // (vf-perf) only the band's own rows of the chunk's canvas, a pixel or two over: laid through a whole-chunk scratch, each of
+      // a pass's three bands painted, masked and copied the whole chunk, three times the pixels for the same picture
+      const cx = B.cx, c = cx.canvas, T = cx.getTransform(), x0 = Math.max(0, Math.floor(T.a * cb[0] + T.e) - 2), x1 = Math.min(c.width, Math.ceil(T.a * cb[2] + T.e) + 2), y0 = Math.max(0, Math.floor(T.d * cb[1] + T.f) - 2), y1 = Math.min(c.height, Math.ceil(T.d * cb[3] + T.f) + 2);
+      if (x1 <= x0 || y1 <= y0) return;
+      const s = scratch('kind', Math.ceil((x1 - x0) / 64) * 64, Math.ceil((y1 - y0) / 64) * 64);   /* (sizes in steps of 64 px: the bands of a level share one canvas, never made again) */ s.cx.setTransform(T.a, T.b, T.c, T.d, T.e - x0, T.f - y0); paintKind(s.cx, kind, cb, season, env);
       s.cx.globalCompositeOperation = 'destination-in'; s.cx.imageSmoothingEnabled = true; s.cx.imageSmoothingQuality = 'high'; s.cx.drawImage(m.c, m.x, m.y, m.w, m.h); s.cx.globalCompositeOperation = 'source-over';
-      cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); cx.drawImage(s.c, 0, 0); cx.restore();
+      cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); cx.drawImage(s.c, 0, 0, x1 - x0, y1 - y0, x0, y0, x1 - x0, y1 - y0); cx.restore();
     };
     const bb = [env.box.x, env.box.y, env.box.x + env.box.w, env.box.y + env.box.h], ops = [];
     // A kind is laid over a chunk in three bands, each its own op: one op for the whole chunk took up to 56 ms at level 3,
@@ -662,7 +666,13 @@ window.GardenPaintGround = (function () {
       s.cx.putImageData(img, 0, 0); return s.c;
     };
     const lay = (cx, cov, pic) => { cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high'; cx.drawImage(pic, cov.x0 * SS, cov.y0 * SS, cov.w * SS, cov.h * SS); };
-    const fillThrough = (B, cov, pic, paint) => { const cx = B.cx, c = cx.canvas, s = scratch('kind', c.width, c.height); s.cx.setTransform(cx.getTransform()); paint(s.cx); s.cx.globalCompositeOperation = 'destination-in'; lay(s.cx, cov, pic); s.cx.globalCompositeOperation = 'source-over'; cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); cx.drawImage(s.c, 0, 0); cx.restore(); };
+    // (vf-perf) only over the coverage's own box on the chunk's canvas (outside it the mask leaves nothing): through a whole-chunk
+    // scratch every piece of road painted, masked and copied the whole chunk, the largest share of a walk's long tasks
+    const fillThrough = (B, cov, pic, paint) => { const cx = B.cx, c = cx.canvas, T = cx.getTransform(), X0 = cov.x0 * SS, Y0 = cov.y0 * SS, X1 = (cov.x0 + cov.w) * SS, Y1 = (cov.y0 + cov.h) * SS;
+      const x0 = Math.max(0, Math.floor(Math.min(T.a * X0, T.a * X1) + T.e) - 2), x1 = Math.min(c.width, Math.ceil(Math.max(T.a * X0, T.a * X1) + T.e) + 2), y0 = Math.max(0, Math.floor(Math.min(T.d * Y0, T.d * Y1) + T.f) - 2), y1 = Math.min(c.height, Math.ceil(Math.max(T.d * Y0, T.d * Y1) + T.f) + 2);
+      if (x1 <= x0 || y1 <= y0) return;
+      const s = scratch('kind', Math.ceil((x1 - x0) / 64) * 64, Math.ceil((y1 - y0) / 64) * 64); s.cx.setTransform(T.a, T.b, T.c, T.d, T.e - x0, T.f - y0); paint(s.cx); s.cx.globalCompositeOperation = 'destination-in'; lay(s.cx, cov, pic); s.cx.globalCompositeOperation = 'source-over';
+      cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); cx.drawImage(s.c, 0, 0, x1 - x0, y1 - y0, x0, y0, x1 - x0, y1 - y0); cx.restore(); };
     const grassIn = (cx, cb, cov, lo, hi, salt) => {
       cx.lineCap = 'round';
       tiles(cb, 16, 6, salt, (tx, ty, r) => { for (let i = 0; i < 9; i++) { const x = tx + r() * 16, y = ty + r() * 16, v = cov.sample(x, y); if (v < lo || v > hi) continue; const k = env.kindAt ? env.kindAt(x, y) : 'lawn'; if (!k || SHORE.has(k) || k === 'soil') continue; const P = palette(k, season), q = rng(hash(Math.round(x * 8), Math.round(y * 8), salt) | 1), n = 2 + Math.floor(q() * 3); for (let b = 0; b < n; b++) blade(cx, x + b * .8, y + 1, (q() - .5) * 3.4, 2.6 + q() * 4.2, q() < .5 ? P.lo : P.mid, 1, .75); if (q() < .1) blob(cx, q, x, y, 3 + q() * 3, 1.5 + q(), 6, .5, P.lo, .5); } });
