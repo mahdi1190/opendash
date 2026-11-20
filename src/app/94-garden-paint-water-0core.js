@@ -261,6 +261,8 @@ window.GardenPaintWater = (function () {
       const bb = [cxm - 8, cym - 8, cxm + 8, cym + 8];
       out.push({ bb, seed: 3, tag: 'water body', draw: stages.fields }, { bb, seed: 3, tag: 'water body colour', draw: stages.colour }, { bb, seed: 3, tag: 'water body draw', draw: stages.draw });
     }
+    // the reflections, over the water and under its dressing (decor: it makes no chunk of its own)
+    out.push({ bb: [box.x, box.y, box.x + box.w, box.y + box.h], seed: 9, decor: true, tag: 'water mirrors', draw: stages.mirrors });
     return out;
   }
   function bodyDraw(S, U, sea) {
@@ -443,44 +445,99 @@ window.GardenPaintWater = (function () {
       cx.globalAlpha = 1;
     }
     const entry = cb => { const k = keyOf(cb); let e = cache.get(k); if (!e) e = keep(k, fields(cb)); else keep(k, e); if (e.stage < 2) colour(e, cb); return e; };
-    // The trees on the banks in the still water: each painted tree's trunk foot (the one trunk list the walking reads, so the
-    // painters' own placements), mirrored about its foot (its crown hangs down as far below the foot as it stands above), seen
-    // only where that falls on fresh water, darker than the sky in the water and broken by the ripples. Read when a chunk
-    // bakes (the planting painters may finish after the water), and again a few seconds later while the list is still empty.
-    let trees = null, treesAt = -1e9; const W = M.W;
-    const wetAt = (x, y) => M.waters.some(w => x >= w.bounds.x && x <= w.bounds.x + w.bounds.w && y >= w.bounds.y && y <= w.bounds.y + w.bounds.h && inside(x, y, w.pts) && w.kind !== 'gorge');
-    const treeList = () => {
-      if (trees && trees.length) return trees; const now = performance.now(); if (now - treesAt < 3000) return trees || []; treesAt = now;
-      const raw = typeof _gwPaintedTrunks === 'function' ? ok(() => _gwPaintedTrunks(true)) : null, out = [], tall = typeof gardenSizePx === 'function' ? ok(() => gardenSizePx('tree', .4)) || 160 : 160;
-      for (const b of raw || []) { const x = (b.x0 + b.x1) / 2 * W.cellW, y = W.sky + b.y1 * W.cellH, h = tall * (b.src === 'wood' || b.src === 'fells' ? 1.05 : b.src === 'orchard' ? .6 : .85);
-        // where its image meets the water: the first wet point below the foot, within half its height
-        let y0 = -1; for (let yy = y + 3; yy < y + h * .55; yy += 4) if (wetAt(x, yy)) { y0 = yy; break; } if (y0 < 0) continue;
-        out.push({ x, y, h, cw: h * .6, y0, s: hash(Math.round(x) + ',' + Math.round(y)) }); }
-      return trees = out;
+    // Reflections: whatever stands on a shore (trees, cottages, the mill, rocks, boats, the lighthouse, the reeds at the
+    // falls) hangs upside down in the still water below it, mirrored about its foot, as the opening scene's water does.
+    // The pictures are the world's own: every standing image whose foot lies a little way above the water (the display
+    // list, read now and then while the painters finish) is drawn flipped into a small canvas once, darkened towards the
+    // water's own colour, faded with depth, broken by the ripples and wavered row by row, and that canvas is laid into the
+    // water's chunks under the water's dressing (lilies, stones, reeds stand over it), clipped to the water. Only the
+    // pictures are copied: nothing here moves, walks or blocks.
+    const REFL_OK = /^(gptree\||gpp\||gdpaint\||gpt-\d|gpv-\d)/, REFL_SKIP = /falls|mill-wheel|mill-lap|^gpw|^gdpaint-g|shaft|mote|dapple|glow|light/;
+    const mirrors = [], mirrorIds = new Map(); let mirrorMB = 0;
+    function mirrorScan() {
+      const MK = S.mask, scene = S.scene; if (!MK || !scene || !scene.children) return [];
+      const found = [];
+      const visit = (o, d, ox, oy) => {
+        if (!o || d > 9) return;
+        if ((o.type === 'Image' || o.type === 'Sprite') && o.texture && o.frame && o.frame.cutWidth > 4) {
+          const key = String(o.texture.key), h = o.displayHeight, w = Math.abs(o.displayWidth);
+          if (REFL_OK.test(key) && !REFL_SKIP.test(key) && o.originY > .66 && o.alpha > .5 && !o.rotation && h > 16 && h < 760 && w < 900) {
+            const x = ox + o.x, foot = oy + o.y, x0 = x - o.originX * w, hu = o.originY * h, reach = Math.max(34, Math.min(120, hu * .5));
+            // the first point below the foot where the water starts, across the middle of the picture (a corner over the water is not enough)
+            let y0 = -1, sea = false;
+            for (let k = 0; k <= reach; k += 4) { const yy = foot + k, a = MK.at(x, yy), b = MK.at(x - w * .18, yy), c = MK.at(x + w * .18, yy); if (a && (b || c)) { y0 = yy; sea = !(a & 1); break; } }
+            if (y0 >= 0) found.push({ id: key + '@' + Math.round(x) + ',' + Math.round(foot), o, key, x, x0, foot, w, h, hu, y0, sea, flip: (o.scaleX < 0) !== !!o.flipX });
+          }
+        }
+        if (o.list) for (const c of o.list) visit(c, d + 1, ox + (o.type === 'Container' ? o.x || 0 : 0), oy + (o.type === 'Container' ? o.y || 0 : 0));
+      };
+      for (const c of scene.children.list) visit(c, 0, 0, 0);
+      return found;
+    }
+    // one reflection's picture, made once: flipped, tinted, faded, broken by ripples and wavered
+    function mirrorCanvas(m) {
+      const P = S.P, fr = m.o.frame, src = fr.source && fr.source.image; if (!src) return null;
+      const s = Math.min(1.25, 300 / Math.max(m.w, m.hu)), pad = 4, cw = Math.ceil((m.w + pad * 2) * s), ch = Math.ceil(m.hu * s);
+      if (cw < 4 || ch < 4) return null;
+      const flat = document.createElement('canvas'); flat.width = cw; flat.height = ch; const f = flat.getContext('2d');
+      // the image's rows from its top down to its foot, upside down: the foot's row at the top of this canvas
+      f.setTransform(m.flip ? -s : s, 0, 0, -s, m.flip ? cw - pad * s : pad * s, 0);
+      f.drawImage(src, fr.cutX, fr.cutY, fr.cutWidth, fr.cutHeight, 0, -m.hu, m.w, m.h);
+      f.setTransform(1, 0, 0, 1, 0, 0);
+      // still water gives back a darker, cooler picture than the thing itself, taking the water's own colour
+      f.globalCompositeOperation = 'source-atop';
+      f.globalAlpha = S.tod === 'night' ? .62 : .42; f.fillStyle = P.reflDeep; f.fillRect(0, 0, cw, ch);
+      f.globalAlpha = .26; f.fillStyle = P.deep; f.fillRect(0, 0, cw, ch);
+      // fading with depth, the far end lost in the water's sky
+      f.globalAlpha = 1; f.globalCompositeOperation = 'destination-out';
+      const g = f.createLinearGradient(0, 0, 0, ch); g.addColorStop(0, 'rgba(0,0,0,.06)'); g.addColorStop(.45, 'rgba(0,0,0,.3)'); g.addColorStop(1, 'rgba(0,0,0,.92)'); f.fillStyle = g; f.fillRect(0, 0, cw, ch);
+      // the ripples: thin gaps across it, more of them and longer farther from the shore
+      const q = rng(hash(m.id));
+      for (let y = 3 * s; y < ch; y += (2.5 + q() * 4) * s) { const t = y / ch, len = cw * (.2 + q() * .5 + t * .4), x = q() * (cw - len * .5) - len * .25; f.globalAlpha = .25 + t * .45 + q() * .2; f.fillRect(x, y, len, (.6 + q() * .8) * s); }
+      f.globalCompositeOperation = 'source-over'; f.globalAlpha = 1;
+      // wavered: each band of rows shifted a little sideways, so the edges ripple like a real reflection
+      const out = document.createElement('canvas'); out.width = cw; out.height = ch; const o = out.getContext('2d'), band = Math.max(2, Math.round(2.5 * s));
+      for (let y = 0; y < ch; y += band) { const t = y / ch, dx = (Math.sin(y / s * .23 + q() * .4) * (.7 + t * 1.6) + Math.sin(y / s * .061) * .6) * s; o.drawImage(flat, 0, y, cw, band, dx, y, cw, band); }
+      flat.width = flat.height = 1;
+      return { c: out, s, pad };
+    }
+    // a little each frame (tick): look again for reflections now and then; make the pictures of new ones and repaint their chunks
+    S.mirrorKit = {
+      step(now) {
+        const L = S.layer; if (!L || !L.add) return;
+        if (!S.mirrorQueue && now - (S.mirrorAt || -1e9) > ((S.mirrorScans || 0) < 3 ? 2500 : (S.mirrorScans || 0) < 7 ? 6000 : 30000) && (S.mirrorScans || 0) < 9) {
+          S.mirrorAt = now; S.mirrorScans = (S.mirrorScans || 0) + 1;
+          const list = ok(mirrorScan) || []; S.mirrorQueue = list.filter(m => !mirrorIds.has(m.id)).slice(0, Math.max(0, 140 - mirrors.length));
+          if (!S.mirrorQueue.length) S.mirrorQueue = null;
+          return;
+        }
+        const Q = S.mirrorQueue; if (!Q) return;
+        const t0 = performance.now();
+        while (Q.length && performance.now() - t0 < 4) {
+          const m = Q.shift(); if (mirrorIds.has(m.id)) continue; const pic = ok(() => mirrorCanvas(m)); mirrorIds.set(m.id, 1); m.o = null; if (!pic) continue;
+          m.pic = pic; m.bb = [m.x0 - pic.pad, m.foot, m.x0 + m.w + pic.pad, m.foot + m.hu]; mirrors.push(m); mirrorMB += pic.c.width * pic.c.height * 4 / 1048576;
+          L.add({ bb: m.bb, decor: true, seed: 9, tag: 'water mirror ping', draw() {} });   // (a no-op: it only marks the chunks it touches to be painted again)
+        }
+        if (!Q.length) S.mirrorQueue = null;
+      },
+      count: () => mirrors.length, mb: () => +mirrorMB.toFixed(1),
     };
-    // (laid on by tick() as one op a tree once the list is there: layer.add paints it over what is baked and into every later bake)
-    S.mirrorKit = { list: treeList, paint: (cx, t) => ok(() => mirror(cx, [t])) };
-    function mirror(cx, near) {
-      const P = S.P, rf = rgbOf(P.refl), rd = rgbOf(P.reflDeep), sk = rgbOf(P.sky);
-      cx.save(); cx.clip(U);
-      for (const t of near) {
-        const q = rng(t.s), top = t.y + t.h, fade = y => Math.max(0, 1 - (y - t.y0) / (top - t.y0 + 1) * .7);
-        // the trunk, then the crown's masses (darkest near the waterline, fading towards the reflected crown top)
-        const tk = cx.createLinearGradient(0, t.y0, 0, t.y + t.h * .42); tk.addColorStop(0, 'rgba(' + rd + ',.34)'); tk.addColorStop(1, 'rgba(' + rd + ',0)');
-        cx.fillStyle = tk; cx.fillRect(t.x - 2.2, t.y0, 4.4, Math.max(0, t.y + t.h * .42 - t.y0));
-        for (let k = 0; k < 5; k++) { const cy = t.y + t.h * (.5 + q() * .36), x = t.x + (q() - .5) * t.cw * .55, rx = t.cw * (.24 + q() * .16), ry = t.h * (.12 + q() * .07); if (cy + ry < t.y0) continue;
-          const a = .34 * fade(cy), g = cx.createRadialGradient(x, cy, 0, x, cy, rx), c = k % 2 ? rd : rf; g.addColorStop(0, 'rgba(' + c + ',' + a + ')'); g.addColorStop(.6, 'rgba(' + c + ',' + a * .6 + ')'); g.addColorStop(1, 'rgba(' + c + ',0)');
-          cx.save(); cx.translate(x, cy); cx.scale(1, ry / rx); cx.translate(-x, -cy); cx.fillStyle = g; cx.beginPath(); cx.arc(x, cy, rx, 0, Math.PI * 2); cx.fill(); cx.restore(); }
-        // the ripples break it into bands: thin streaks of the sky across it
-        cx.lineCap = 'round';
-        for (let y = t.y0 + 3 + q() * 3; y < top; y += 4 + q() * 4) { const w = t.cw * (.25 + q() * .4), x = t.x + (q() - .5) * t.cw * .5; cx.strokeStyle = 'rgba(' + sk + ',' + (.1 + q() * .14) + ')'; cx.lineWidth = .8 + q() * .9; cx.beginPath(); cx.moveTo(x - w / 2, y); cx.lineTo(x + w / 2, y); cx.stroke(); }
+    function drawMirrors(cx, cb) {
+      if (!mirrors.length) return;
+      const a = S.tod === 'night' ? .5 : S.tod === 'dusk' || S.tod === 'dawn' ? .66 : .78;
+      for (const m of mirrors) {
+        if (m.bb[2] < cb[0] || m.bb[0] > cb[2] || m.bb[3] < cb[1] || m.bb[1] > cb[3]) continue;
+        cx.save(); if (m.sea && sea) cx.clip(sea, 'evenodd'); else cx.clip(U);
+        cx.globalAlpha = a * (m.sea ? .55 : 1); cx.drawImage(m.pic.c, m.x0 - m.pic.pad, m.foot, m.w + m.pic.pad * 2, m.hu);
+        cx.restore();
       }
-      cx.restore();
+      cx.globalAlpha = 1;
     }
     return {
       fields(B, r, cb) { const k = keyOf(cb); if (!cache.has(k)) keep(k, fields(cb)); },
       colour(B, r, cb) { entry(cb); },
       draw(B, r, cb) { const e = entry(cb); if (!e.empty) paintBody(B.cx, e); },
+      mirrors(B, r, cb) { drawMirrors(B.cx, cb); },
     };
   }
   // The sea: what this layer paints beyond the coast is let go, hard for the banks, softly for a river's own water,
@@ -646,6 +703,7 @@ window.GardenPaintWater = (function () {
     } else if (river) {
       for (let s = r() * 30; s < river.len; s += 16 + r() * 22) {
         const q = at(river, s), lat = (r() - .5) * 1.3 * river.hw, x = q.x - q.ty * lat * W.cellW * .9, y = q.y + q.tx * lat * W.cellH * .9, len = 2.5 + r() * 4, ang = Math.atan2(q.ty, q.tx), hi = r() < .35;   // (short: long pale dashes along a river read as rain)
+        if (!onLand(x, y)) continue;
         add({ x: x - len, y: y - len, w: len * 2, h: len * 2 }, (cx, C) => { cx.save(); cx.clip(P); cx.translate(x, y); cx.rotate(ang); cx.globalAlpha = hi ? .36 : .22; cx.fillStyle = hi ? C.skyHi : C.sky; cx.beginPath(); cx.ellipse(0, 0, len, 1.1, 0, 0, Math.PI * 2); cx.fill(); cx.restore(); });
       }
     }
@@ -657,7 +715,7 @@ window.GardenPaintWater = (function () {
       for (let s = 20 + r() * 40; s < river.len; s += 26 + r() * 40) {
         if (r() > rate) continue;
         const q = at(river, s), lat = (r() - .5) * 1.1 * river.hw, x = q.x - q.ty * lat * W.cellW * .8, y = q.y + q.tx * lat * W.cellH * .8;
-        if (!inside(x, y, pts)) continue;
+        if (!inside(x, y, pts) || !onLand(x, y)) continue;
         const rx = (kind === 'gorge' ? 6 : 4) + r() * 7, sd = D().blob(r, x, y, rx, rx * .6, 7, .35), hl = D().blob(r, x - rx * .3, y - rx * .3, rx * .5, rx * .28, 6, .3), moss = D().blob(r, x - rx * .1, y - rx * .45, rx * .6, rx * .22, 6, .5), ang = Math.atan2(q.ty, q.tx), wake = 3 + r() * 5;   // (a short wake: long trailing lines off a pale ring read as jellyfish)
         add({ x: x - 30, y: y - 30, w: 60, h: 60 }, (cx, C) => {
           // the V of white water downstream of the stone, then the stone itself
@@ -698,7 +756,7 @@ window.GardenPaintWater = (function () {
       const hwp = river.hw * (W.cellW + W.cellH) / 2, step = kind === 'brook' ? 22 : 34;
       for (let s = step + 6; s < river.len - step - 6; s += 12) {
         const a = at(river, s - step), b = at(river, s + step), c = at(river, s), turn = a.tx * b.ty - a.ty * b.tx; if (Math.abs(turn) < .16) continue;
-        const side = Math.sign(turn), nx = -c.ty * side, ny = c.tx * side, x = c.x + nx * hwp * .58, y = c.y + ny * hwp * .58; if (!inside(x, y, pts)) continue;
+        const side = Math.sign(turn), nx = -c.ty * side, ny = c.tx * side, x = c.x + nx * hwp * .58, y = c.y + ny * hwp * .58; if (!inside(x, y, pts) || !onLand(x, y)) continue;
         const len = step * (1.1 + Math.min(1, Math.abs(turn)) * .8), wid = hwp * (.38 + Math.min(.3, Math.abs(turn) * .3)), ang = Math.atan2(c.ty, c.tx), peb = [];
         for (let k = 0; k < 9; k++) peb.push([(r() - .5) * len * 1.2, (r() - .2) * wid * .8 * -1, 1 + r() * 1.8, r()]);
         add({ x: x - len * 1.4, y: y - len * 1.4, w: len * 2.8, h: len * 2.8 }, (cx, C) => {
@@ -720,10 +778,10 @@ window.GardenPaintWater = (function () {
     if ((kind === 'river' || kind === 'brook') && river) {
       const hwp = river.hw * (W.cellW + W.cellH) / 2, per = kind === 'brook' ? 96 : 150; let side = r() < .5 ? -1 : 1;
       for (let s = per * (.3 + r() * .5); s < river.len - 40; s += per * (.65 + r() * .7)) {
-        side = -side; const c = at(river, s), nx = -c.ty * side, ny = c.tx * side; if (!inside(c.x, c.y, pts)) continue;
+        side = -side; const c = at(river, s), nx = -c.ty * side, ny = c.tx * side; if (!inside(c.x, c.y, pts) || !onLand(c.x, c.y)) continue;
         // (the bank as painted: the basin's own outline, which is wider than the line's half width on the lower river)
         let bd = 0; for (let d = 4; d < 260; d += 4) if (!inside(c.x + nx * d, c.y + ny * d, pts)) { bd = d - 3; break; } if (bd < 12) continue;
-        const bx = c.x + nx * bd, by = c.y + ny * bd; if (shoreCovered(bx + nx * 6, by + ny * 6) && onLand(bx + nx * 6, by + ny * 6)) continue;
+        const bx = c.x + nx * bd, by = c.y + ny * bd; if (!onLand(bx + nx * 6, by + ny * 6) || shoreCovered(bx + nx * 6, by + ny * 6)) continue;
         const reach = bd * (.28 + r() * .24), len = (kind === 'brook' ? 22 : 34) + r() * (kind === 'brook' ? 26 : 50), ang = Math.atan2(c.ty, c.tx), reedy = kind === 'brook' || r() < .62, peb = [], clump = [];
         for (let k = 0; k < 12; k++) peb.push([(r() - .5) * len * 1.3, -r() * reach * .9, .9 + r() * 1.8, r()]);
         if (reedy) { const ids = ['plant.reed', 'plant.proof-fleet-rush', 'plant.bulrush', 'plant.reed']; for (let k = 0, cnt = 4 + Math.floor(r() * 5); k < cnt; k++) { const u = (r() - .5) * len * 1.1, v = -r() * reach * .75; clump.push([bx + Math.cos(ang) * u - Math.sin(ang) * v * side, by + Math.sin(ang) * u + Math.cos(ang) * v * side, ids[Math.floor(r() * ids.length)], r() < .5 ? 0 : 1, 22 + r() * 16]); } clump.sort((p, q) => p[1] - q[1]); }
@@ -748,7 +806,7 @@ window.GardenPaintWater = (function () {
     if (river_ && river) {
       const G = kind === 'gorge', every = G ? [30, 34] : kind === 'brook' ? [64, 80] : [120, 160], strength = G ? 1 : kind === 'brook' ? .55 : .32, hwp = river.hw * (W.cellW + W.cellH) / 2;
       for (let s = 12 + r() * every[0]; s < river.len; s += every[0] + r() * every[1]) {
-        const q = at(river, s), ang = Math.atan2(q.ty, q.tx); if (!inside(q.x, q.y, pts)) continue;
+        const q = at(river, s), ang = Math.atan2(q.ty, q.tx); if (!inside(q.x, q.y, pts) || !onLand(q.x, q.y)) continue;
         const dashes = [], nd = (G ? 4 : 2) + Math.floor(r() * (G ? 4 : 3));
         // (low arcs in a loose row across the current: tightly curled ones read as scribbles)
         for (let k = 0; k < nd; k++) { const len = (G ? 5 : 4) + r() * (G ? 8 : 6); dashes.push([(k / Math.max(1, nd - 1) - .5) * 1.4 * hwp + (r() - .5) * hwp * .25, len, len * (.1 + r() * .14), (.3 + r() * .5) * strength, (r() - .5) * 4]); }
@@ -1230,8 +1288,7 @@ window.GardenPaintWater = (function () {
     if (S.sortObjects && S.objects && S.objects.sort) { S.objects.sort('depth'); S.sortObjects = false; }
     const pad = { x: view.x - 60, y: view.y - 60, w: view.w + 120, h: view.h + 120 }; S.view = view;
     // the trees on the banks in the still water, once the planting painters have listed their trunks (looked for every 2 s)
-    if (!S.mirrored && S.mirrorKit && S.layer && S.layer.add && time - (S.mirrorAt || -1e9) > 2000) { S.mirrorAt = time; const T = S.mirrorKit.list();
-      if (T.length) { S.mirrored = T.length; for (const t of T) S.layer.add({ bb: [t.x - t.cw, t.y0 - 4, t.x + t.cw, t.y + t.h + 4], seed: 9, tag: 'water mirror', draw(B) { S.mirrorKit.paint(B.cx, t); } }); } }
+    if (S.mirrorKit) ok(() => S.mirrorKit.step(time));
     for (const e of S.em) {
       const vis = hit(e.b, pad);
       if (vis !== e.vis) { e.vis = vis; for (const g of e.list) g.im.setVisible(vis); for (const q of e.rings || []) q.im.setVisible(vis); }
@@ -1246,7 +1303,7 @@ window.GardenPaintWater = (function () {
   function status() {
     const S = state; let sprites = 0, visible = 0; if (S) for (const e of S.em) { sprites += e.list.length + (e.rings || []).length; if (e.vis) visible += e.list.length + (e.rings || []).length; }
     const pools = S ? S.em.filter(e => e.kind === 'sea surface' || e.kind === 'lamp light').map(e => e.kind + ' ' + e.list.filter(g => g.on).length + '/' + e.list.length) : null;
-    return { slowest, pools, warm: S ? [S.warmCount, S.warmMs] : null, on: !!S, tod: S && S.tod, waters: S ? S.M.waters.length : 0, buildMs: S && S.buildMs, tickWorst: +tickWorst.toFixed(1), sprites, visible, memory: memory(), weir: S && S.weir ? [Math.round(S.weir.x), Math.round(S.weir.y)] : null, mouths: S ? S.M.mouths.map(m => [Math.round(m.x), Math.round(m.y), Math.round(m.hw)]) : null, lastError };
+    return { mirrors: S && S.mirrorKit ? [S.mirrorKit.count(), S.mirrorKit.mb()] : null, slowest, pools, warm: S ? [S.warmCount, S.warmMs] : null, on: !!S, tod: S && S.tod, waters: S ? S.M.waters.length : 0, buildMs: S && S.buildMs, tickWorst: +tickWorst.toFixed(1), sprites, visible, memory: memory(), weir: S && S.weir ? [Math.round(S.weir.x), Math.round(S.weir.y)] : null, mouths: S ? S.M.mouths.map(m => [Math.round(m.x), Math.round(m.y), Math.round(m.hw)]) : null, lastError };
   }
   /** Whether this painter paints the sea surface too (the native water then draws no surf line of its own along the coast). */
   function paintsSea() { return !!(state && state.layer && state.M && state.M.coast.length); }
