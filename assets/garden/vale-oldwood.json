@@ -794,22 +794,6 @@
      ]
     },
     {
-     "id": "garden-wall-2",
-     "line": [
-      [
-       22.75,
-       67.6
-      ],
-      [
-       22.75,
-       67.75
-      ]
-     ],
-     "pier": [
-      "a"
-     ]
-    },
-    {
      "id": "garden-wall-3",
      "line": [
       [
@@ -845,7 +829,8 @@
      ]
     }
    ],
-   "thick": 0.4
+   "thick": 0.4,
+   "wallsNote2": "critic 2: the west door runs from the north length's pier down to the south length (the quarter-cell stub between them dropped), so the walk passes it friend-wide"
   }
  },
  "glades": {
@@ -1267,8 +1252,8 @@
     75.5
    ],
    [
-    15,
-    74.6
+    16.6,
+    73.5
    ],
    [
     14.8,

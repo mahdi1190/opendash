@@ -338,10 +338,91 @@
     }
   }
 
+  /** The court's well head and the plan's benches, and the two secrets (critic 2: listed in the plan, never drawn).
+   *  The well head is a ring of dressed stone half your height with a worn oak windlass over it, moss in its joints, on its
+   *  own flags; a bench is an oak plank on two stone ends, its seat a third of your height, ferns at its feet; the carved
+   *  birds are three small grey stones by Hollin's track, each with a wren cut into its face; the bell's bronze rim shows
+   *  through the pond water as a dull green-gold arc. Each stands on its own foot (the well and the benches stop the feet). */
+  function courtThings(C) {
+    const { L, thing, add, kit } = C, ow = L.pres.oldwood; if (!ow) return;
+    const H = Hpx(), season = C.season, wint = season === 'winter', S = { rock: STONE.body, rockLo: STONE.lo, rockHi: STONE.hi, rockDk: STONE.dk };
+    if (Array.isArray(ow.wellHead)) {
+      const p = L.cpt(ow.wellHead[0], ow.wellHead[1]), rw = 19, hh = Math.round(H * .5);
+      thing({ key: 'ow-well|' + season, x: Math.round(p.x), y: Math.round(p.y + 7), box: [-34, -hh - 46, 34, 10], foot: [-20, 20, 12], draw: B => {
+        const r = kit.rng(811);
+        B.shadow(3, 1, 30, 7, .34);
+        B.f(B.ell(0, -2, rw + 7, 9), '#8a8676', .9).f(B.ell(0, -3, rw + 5, 7.5), '#b4ae98', .8);   // its flags
+        // the drum: front half of a stone ring, coursed, lit from the left
+        B.f(`M${-rw} ${-7}L${-rw} ${-hh}A${rw} 6 0 0 0 ${rw} ${-hh}L${rw} ${-7}A${rw} 6 0 0 1 ${-rw} ${-7}Z`, B.lin(-rw, 0, rw, 0, [[0, STONE.hi], [.45, STONE.body], [1, STONE.lo]]));
+        for (let y = -12; y > -hh; y -= 6.5) B.s(`M${-rw} ${y}A${rw} 6 0 0 0 ${rw} ${y}`, STONE.dk, .8, .45);
+        for (let k = 0; k < 7; k++) { const a = Math.PI * (.1 + k * .13), x = -Math.cos(a) * rw, y = -hh + 4 + (k & 1) * 6.5 + Math.sin(a) * 6; B.s(`M${x} ${y}v6`, STONE.dk, .7, .4); }
+        B.f(B.ell(0, -hh, rw, 6), STONE.hi).f(B.ell(0, -hh + .5, rw - 4, 4), '#1e2420').f(B.ell(2, -hh + 1.5, rw - 9, 2), '#3e5a5e', .7);   // the coping and the dark water down in it
+        if (!wint) { B.f(B.blob(r, -10, -hh + 1, 7, 2, 6, .5), STONE.moss, .8); B.f(B.blob(r, rw - 4, -14, 3, 5, 6, .5), STONE.moss, .6); }
+        // the windlass: two oak posts, a roller with rope, a small pitched roof of shingles
+        for (const x of [-rw + 2, rw - 2]) B.f(B.rr(x - 2.2, -hh - 34, 4.4, 34, 1.2), '#6a4a30').f(B.rect(x - 2.2, -hh - 34, 1.6, 34), '#8a6a46', .7);
+        B.f(B.rr(-rw + 2, -hh - 22, rw * 2 - 4, 5, 2.4), '#7a5a3a').s(`M-3 ${-hh - 18}V${-hh - 4}`, '#c8b48a', 1.3, .9).f(B.rr(-5, -hh - 8, 8, 7, 1.5), '#5a4028');
+        B.f(`M${-rw - 6} ${-hh - 30}L0 ${-hh - 44}L${rw + 6} ${-hh - 30}Z`, wint ? '#eef2f0' : '#6a5440').s(`M${-rw - 6} ${-hh - 30}L0 ${-hh - 44}L${rw + 6} ${-hh - 30}`, '#3e2e20', 1.4, .9);
+        for (let k = 1; k < 4; k++) B.s(`M${-rw - 6 + k * 5.5} ${-hh - 30 - k * 3.4}h${(rw + 6 - k * 5.5) * 2}`, '#3e2e20', .6, .45);
+        if (!wint) B.tufts(r, 0, 1, 50, 9, ['#566e30', '#7d9a4e'], 6);
+      } });
+    }
+    (ow.benches || []).slice(0, 2).forEach(([bx, by], i) => {   // (the third, on the west shore, lay on a plot's edge: left out)
+      const p = L.cpt(bx, by), seat = Math.round(H * .32);
+      thing({ key: 'ow-bench|' + i + '|' + season, x: Math.round(p.x), y: Math.round(p.y + 6), box: [-36, -seat - 22, 36, 8], foot: [-24, 24, 7], draw: B => {
+        const r = kit.rng(830 + i);
+        B.shadow(1, 1, 30, 5, .32);
+        for (const x of [-20, 14]) { B.f(B.rr(x, -seat, 7, seat, 1.5), STONE.lo).f(B.rr(x, -seat, 3, seat, 1.2), STONE.hi, .7); }
+        B.f(B.rr(-26, -seat - 4, 52, 6, 2), '#7a5a3a').f(B.rr(-26, -seat - 4, 52, 2, 1), '#a07a50', .8).s(`M-24 ${-seat + 1}h48`, '#4a3424', .8, .6);
+        B.f(B.rr(-25, -seat - 18, 50, 5, 2), '#6e5034').f(B.rr(-25, -seat - 18, 50, 1.6, 1), '#96704a', .7);
+        for (const x of [-19, 17]) B.f(B.rect(x, -seat - 14, 3, 11), '#5a4028');
+        if (!wint) { B.tufts(r, -16, 1, 14, 5, ['#4f7436', '#7d9a4e'], 7); B.tufts(r, 18, 1, 14, 5, ['#4f7436', '#7d9a4e'], 7); }
+      } });
+    });
+    (ow.carvedBirds || []).forEach(([sx, sy], i) => {
+      const p = L.cpt(sx, sy);
+      thing({ key: 'ow-birdstone|' + i + '|' + season, x: Math.round(p.x), y: Math.round(p.y), box: [-16, -24, 16, 6], draw: B => {
+        const r = kit.rng(850 + i);
+        B.shadow(1, 1, 11, 3, .3);
+        B.f('M-9 1Q-11 -12 -6 -17Q0 -21 6 -17Q11 -12 9 1Z', STONE.body).f('M-9 1Q-11 -12 -6 -17Q-2 -19 0 -19L-2 1Z', STONE.hi, .45).f('M4 -16Q10 -12 9 1L5 1Z', STONE.lo, .55);
+        // a wren cut into its face: a round body, a cocked tail, a dot of an eye
+        B.s('M-4 -7Q-4 -12 0 -12Q4 -12 4 -8Q4 -5 0 -5Q-3 -5 -4 -7ZM3.6 -9L6.4 -13.4M-4 -8L-6 -9', STONE.dk, 1, .85).f(B.circ(-1.6, -10, .7), STONE.dk);
+        if (!wint) { B.f(B.blob(r, -5, -1, 4, 1.6, 6, .5), STONE.moss, .7); B.tufts(r, 0, 1, 18, 5, ['#566e30', '#7d9a4e'], 5); }
+      } });
+    });
+    if (Array.isArray(ow.bellRim)) {
+      const c = L.cpt(ow.bellRim[0], ow.bellRim[1]);
+      add([c.x - 30, c.y - 16, c.x + 30, c.y + 16], 870, B => { B.cx.save(); B.cx.filter = 'blur(1.4px)'; B.s(`M${c.x - 16} ${c.y + 4}A16 7 0 0 1 ${c.x + 16} ${c.y + 4}`, '#6a7a3e', 4, .5); B.s(`M${c.x - 12} ${c.y + 2}A12 5 0 0 1 ${c.x + 6} ${c.y - 2}`, '#c8b060', 1.6, .45); B.cx.restore(); });
+    }
+  }
+
+  /** Hollin's track (critic 2: it read as one more sandy trail): worn earth, not a laid path. Dark trodden soil with soft
+   *  edges and the turf growing in over them, a paler packed line where feet go, leaf litter, a root or two across it,
+   *  and no hard edge cut in the turf (a soft route, V.softRoutes). Painted with the garden walk, after the fields. */
+  function hollinsTrack(C) {
+    const { L, P, add, kit } = C, id = 'hollins-track', route = L.routes.get(id), pts = L.routePts(id); if (!route || pts.length < 2) return;
+    const W = L.W, cw = L.cw, ch = L.ch, qs = V.walk(pts, 5), n = qs.length; if (n < 3) return;
+    const half = q => gardenIslandRouteWidthAt(route, q.x / cw, (q.y - W.sky) / ch) * .46 * Math.hypot(q.ty * cw, q.tx * ch);
+    const rib = (k, grow) => { const l = [], rr = []; qs.forEach((q, j) => { const e = Math.min(1, (j + .5) / 3, (n - 1 - j + .5) / 3), h = Math.max(.6, (half(q) * k + grow) * e); l.push({ x: q.x - q.ty * h, y: q.y + q.tx * h }); rr.push({ x: q.x + q.ty * h, y: q.y - q.tx * h }); }); return B => B.poly(l.concat(rr.reverse())); };
+    const autumn = C.season === 'autumn', wint = C.season === 'winter';
+    add(kit.bboxOf(pts, 40), 977, (B, r) => {
+      B.cx.filter = 'blur(5px)'; B.f(rib(1.15, 4)(B), wint ? '#c8cabc' : '#5e5a36', .45);
+      B.cx.filter = 'blur(3px)'; B.f(rib(.9, 0)(B), wint ? '#d4d2c4' : '#6e5a3a', .9);
+      B.cx.filter = 'blur(2px)'; B.f(rib(.42, 0)(B), wint ? '#e2e0d4' : '#8e7650', .55); B.cx.filter = 'none';
+      qs.forEach((q, i) => {
+        const h = half(q);
+        for (let k = 0; k < 3; k++) { const o = (r() - .5) * 1.7 * h; B.f(B.ell(q.x - q.ty * o, q.y + q.tx * o, 1 + r() * 1.4, .7 + r() * .6), r() < .5 ? '#4a3c26' : autumn ? '#b8642a' : '#9a8458', .6); }   // grit and leaf litter
+        for (const sd of [-1, 1]) { if (r() < .35) continue; const o = (h - r() * 4) * sd, x = q.x - q.ty * o, y = q.y + q.tx * o, hh = 3 + r() * 5; B.s(`M${x} ${y + 1}q${(r() - .5) * 2} ${-hh * .5} ${(r() - .5) * 4} ${-hh}`, wint ? '#9aa696' : r() < .5 ? P.lawnLo : '#6f8a40', 1.1, .8); }   // turf growing in
+        if (i % 9 === 4 && !wint) { const a = q.ty, b = -q.tx, o = h * 1.1; B.s(`M${q.x - a * o} ${q.y - b * o}q${a * o * .6 + 3} ${b * o * .6 - 2} ${a * o * 2} ${b * o * 2}`, '#4e3a26', 2.6, .75).s(`M${q.x - a * o} ${q.y - b * o - 1}q${a * o * .6 + 3} ${b * o * .6 - 2} ${a * o * 2} ${b * o * 2}`, '#8a6a46', .9, .6); }   // a root across it
+      });
+    });
+  }
+  V.softRoutes.add('hollins-track');
+
   /** The walled garden's walk (critic 2): a raked gravel walk as wide as the route, between the green doors, edged both sides
    *  with a low line of clipped box, its ends running out under the door gaps. Painted after the fields (see below), so the
    *  garden's flowers grow beside it and never across it. */
   function gardenWalk(C) {
+    hollinsTrack(C);
     const { L, add, kit } = C, rt = L.routes.get('garden-walk'); if (!rt) return;
     const rib = V.routeRibbon(L, rt, false), edge = V.routeRibbon(L, rt, true), bb = kit.bboxOf(edge, 16), seed = kit.hashStr('ow-garden-walk'), season = C.season;
     const pts = gardenIslandRoutePath(rt).points.map(p => L.cpt(p.x, p.y)), n = rib.length >> 1, left = rib.slice(0, n), right = rib.slice(n).reverse();
@@ -361,7 +442,7 @@
     });
   }
 
-  V.parts.push({ id: 'oldwood-brick', compose: brickWalls }, { id: 'oldwood-wallends', compose: wallEnds }, { id: 'oldwood-maze', compose: maze }, { id: 'oldwood-posts', compose: fingerPosts }, { id: 'oldwood-oldman', compose: oldMan });
+  V.parts.push({ id: 'oldwood-brick', compose: brickWalls }, { id: 'oldwood-wallends', compose: wallEnds }, { id: 'oldwood-maze', compose: maze }, { id: 'oldwood-posts', compose: fingerPosts }, { id: 'oldwood-oldman', compose: oldMan }, { id: 'oldwood-court', compose: courtThings });
   // (the garden walk paints over the ground the field painters lay, whose files load after this one: moved to the end of
   //  the list once every painter has joined it)
   setTimeout(() => { const i = V.parts.findIndex(q => q.id === 'oldwood-garden-walk'); if (i >= 0) V.parts.push(V.parts.splice(i, 1)[0]); else V.parts.push({ id: 'oldwood-garden-walk', compose: gardenWalk }); }, 0);
