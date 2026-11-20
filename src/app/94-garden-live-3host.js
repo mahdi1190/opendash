@@ -344,7 +344,7 @@ function _glhIntent(ev) {
   _glhPrune();
   _gdSave();
   if (!ev.away) { const result = _glhResOf(ev, e); _glhSend('all', 'res', result); _gllToolFeedback(result, false); }
-  if ((ev.t === 'land' || ev.t === 'build') && typeof gardenToast === 'function') gardenToast(_glhDiaryWhat(e, 1) + '!', { icon: ev.t === 'land' ? 'trees' : 'hammer' });   // (full co-op: a friend's gift to the garden, said out loud)
+  if ((ev.t === 'land' || ev.t === 'build') && typeof gardenToast === 'function') gardenToast(_glhDiaryWhat(e, 1) + (e.wait ? '. There was no room for it nearby: set it out from the land office.' : '!'), { icon: ev.t === 'land' ? 'trees' : 'hammer', ...(e.wait ? { timeout: 12000 } : {}) });   // (full co-op: a friend's gift to the garden, said out loud)
   const A = _gll.actors.get(ev.w);
   if (A) _gllPose(A, _GL_POSE[ev.t] || 'pick', 760);
   if (ev.x != null && _GL_EMOJI[ev.t]) _gllFloat(_gw.svg, ev.x, ev.y, _GL_EMOJI[ev.t], A ? A.n : '');
@@ -541,9 +541,15 @@ function _glhLand(ev, put, m) {
   const def = feat ? gardenLandFeature(id) : gardenLandRow(id);
   if (!feat && def) _gdEmit('land', { id, x: def.x, y: def.y, w: def.w, h: def.h });
   gardenModel();   // (the land on screen, and what you can walk on, are the garden's from this moment)
-  if (feat && GARDEN_WORLD.v >= 3 && typeof gardenFeatureSetNearby === 'function') { try { gardenFeatureSetNearby(id, ev.x != null ? { x: ev.x, y: ev.y } : null); } catch (e) { /* it can be set out from the land office */ } }
+  let out = true;
+  if (feat && GARDEN_WORLD.v >= 3 && typeof gardenFeatureSetNearby === 'function') {
+    // whatever you own shows (the owner's rule): next to the friend who built it, else next to you, else by the garden's arrival point; only when none of them has room does it wait in the land office
+    const A = _gll.actors.get(ev.w), spots = [ev.x != null ? { x: ev.x, y: ev.y } : null, A && Number.isFinite(A.x) ? { x: Math.floor(A.x), y: Math.floor(A.y) } : null, typeof _gw !== 'undefined' && Number.isFinite(_gw.px) ? { x: Math.floor(_gw.px), y: Math.floor(_gw.py) } : null, GARDEN_WORLD.start ? { x: Math.floor(GARDEN_WORLD.start.x), y: Math.floor(GARDEN_WORLD.start.y) } : null].filter(Boolean);
+    out = false;
+    for (const at of spots) { try { if (gardenFeatureSetNearby(id, at).ok && gardenFeatureIsSetOut(id)) { out = true; break; } } catch (e) { /* the next spot */ } }
+  }
   setTimeout(() => { try { _glhSnapAll(); } catch (e) { /* the next world check */ } }, 60);   // everybody here sees the new land at once
-  return put(mark, { noUndo: true, land: id, ...(feat ? { feat: 1 } : {}) });
+  return put(mark, { noUndo: true, land: id, ...(feat ? { feat: 1 } : {}), ...(out ? {} : { wait: 1 }) });
 }
 function _glhPrune() {
   const g = _gdG(), ks = Object.keys(g.gl);

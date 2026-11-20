@@ -495,7 +495,7 @@ function _gltCol(M, mine) {
     li.appendChild(_gltIcon(item, 30));
     const nm = _gsvEl('span', 'gll-trade-nm'); nm.appendChild(_gsvEl('span', 'gll-trade-nm-t', _gltItemName(item)));
     { const held = _gltHoldOf(M.t), heldN = held && !held.ok ? (item === GL_TRADE_COIN ? Number(held.cg) || 0 : -((held.i || {})[item] || 0)) : 0, now = _gltHave(item) + heldN, mineN = (M.o.find(r => r[0] === item) || [0, 0])[1], theirN = (M.p.find(r => r[0] === item) || [0, 0])[1], after = now - mineN + theirN;   // (what is on hold is still yours until the swap; the same thing can be on both sides)
-      nm.appendChild(_gsvEl('small', 'gll-trade-after' + (!mine && now === 0 ? ' is-new' : ''), M.done ? '' : !mine && now === 0 ? 'New for you!' : `You have ${_gdpNum(now)}, then ${_gdpNum(Math.max(0, after))}`)); }
+      nm.appendChild(_gsvEl('small', 'gll-trade-after' + (!mine && now === 0 ? ' is-new' : ''), M.done ? '' : !mine && now === 0 ? 'New for you!' : item === GL_TRADE_COIN ? `${_gdpNum(now)} → ${_gdpNum(Math.max(0, after))}` : `You have ${_gdpNum(now)}, then ${_gdpNum(Math.max(0, after))}`)); }
     li.appendChild(nm);
     if (can) {
       const have = _gltHave(item), ctl = _gsvEl('span', 'gll-trade-ctl');
