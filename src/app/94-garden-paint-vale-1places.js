@@ -239,8 +239,9 @@
           V.setts(B, r, P, bb, { size: 11, salt: seed, grout: '#9a8460', cols: ['#d2b88c', '#c6aa7e', '#dcc69e', '#bfa178', '#cfae84', '#c9b48e'] });
           for (let k = 0; k < 16; k++) B.f(B.blob(r, rx(), ry(), 16 + r() * 24, 5 + r() * 7, 7, .5), r() < .55 ? '#e6d2a6' : '#a08458', .24);   // sun and wear in broad patches
           for (let k = 0; k < 26; k++) B.f(B.blob(r, rx(), ry(), 3 + r() * 5, 1.2 + r(), 5, .5), r() < .6 ? '#7d8a44' : '#96a052', .5);   // moss and weeds in the joints
-          for (const o of [-9, 9]) { const pts = [{ x: a.x - 60, y: a.y + o + 8 }, { x: (a.x + b.x) / 2, y: a.y + o + 2 }, { x: b.x + 70, y: b.y + o - 10 }]; V.strokePts(B, pts, '#7a5c3c', 5, .32); V.strokePts(B, pts, '#e8d6ae', 1.2, .3); }   // cart ruts, polished on their lips
-          for (let k = 0; k < 16; k++) B.f(B.blob(r, a.x + (r() - .3) * (b.x - a.x + 80), a.y + (r() - .5) * 60, 10 + r() * 16, 3 + r() * 4, 7, .5), '#fbf4e2', .42);   // flour, thick by the door
+          // (round 3, critic fix: the ruts' pale lips and the flour blown right across the court read as white smears on the setts)
+          for (const o of [-9, 9]) { const pts = [{ x: a.x - 60, y: a.y + o + 8 }, { x: (a.x + b.x) / 2, y: a.y + o + 2 }, { x: b.x + 70, y: b.y + o - 10 }]; V.strokePts(B, pts, '#7a5c3c', 4, .22); }   // cart ruts, worn into the stone
+          { const mill = L.stat('ld-mill'), dx = mill && mill.door ? L.cpt(mill.door.x + .5, mill.door.y + .15) : null; if (dx) for (let k = 0; k < 6; k++) B.f(B.ell(dx.x + (r() - .5) * 34, dx.y + r() * 9, 3 + r() * 4, 1.2 + r() * 1.2), '#f4ead0', .55); }   // a dusting of flour on the step, only at the door
           for (let k = 0; k < 70; k++) { const x = rx(), y = ry(); B.s(`M${x} ${y}l${(r() - .5) * 9} ${(r() - .5) * 3}`, r() < .7 ? '#e2bc5a' : '#c89a3c', 1.1, .8); }   // spilt straw
           for (let k = 0; k < 18; k++) B.f(B.ell(rx(), ry(), 1.8 + r() * 1.4, 1.1 + r() * .6), ['#b0682a', '#d38f3a', '#8a5a2c', '#7d8f4e'][Math.floor(r() * 4)], .75);   // a few blown leaves
           for (let k = 0; k < 3; k++) { const x = rx(), y = ry(); B.f(B.blob(r, x, y, 12 + r() * 10, 4 + r() * 2, 8, .4), '#7e6a4a', .35).f(B.blob(r, x - 2, y - 1, 8 + r() * 6, 2.4, 8, .4), '#b6cbd0', .5); }   // rain puddles in the low setts

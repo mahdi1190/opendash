@@ -321,12 +321,15 @@
     // where this field meets another field that is also shut, the firmer of the two edges stands on the line between them
     // (so Wren's hedge runs all the way round, and the old wall of the glasshouse garden is built up against it)
     const mineRank = RANK[f.edge] || 0, shutNeighbour = (x, y) => { if (mineRank < 3) return false; const cx = Math.floor(x / cw), cy = Math.floor((y - W.sky) / ch), o = fieldOfCell().get(cx + ',' + cy); return !!o && o !== f && mineRank > (RANK[o.edge] || 0) && lockedAt(cx, cy, lv); };
+    // (round 3) a valley field's hurdle leaves a gap where a bench, a lamp or a sight stands at its edge (it ran through the
+    // ditch bench's back and under the frog stone)
+    const near = (((data() || {}).static) || []).filter(p => p.district === 'east-mill' || /^ld-(frog|vseat|vlamp|churn|boles|hide)/.test(p.id)), byStatic = (x, y) => { const cx = x / cw, cy = (y - W.sky) / ch; return near.some(p => cx > p.x - .45 && cx < p.x + (p.w || 1) + .45 && cy > p.y - .6 && cy < p.y + (p.h || 1) + .35); };
     // the edge stands just inside the outline (so its top never reaches over ground you stand on behind it)
     const runs = [], all = []; let n = 0;
     for (const l of loops) {
       const pts = V.walk(l.concat([l[0]]), f.edge === 'long-grass' || f.edge === 'meadow' || f.edge === 'reeds' ? 3.6 : f.edge === 'bracken' ? 9 : 4.4); let run = [];
       for (const q of pts) {
-        const open = walk(q.x + q.ty * 12, q.y - q.tx * 9) || shutNeighbour(q.x + q.ty * 12, q.y - q.tx * 9), inset = Math.abs(q.tx) > Math.abs(q.ty) ? (q.tx > 0 ? 8.5 : 2.5) : 4.5;   // (the north side stands further in: the piece is drawn upward from its foot)
+        const open = (walk(q.x + q.ty * 12, q.y - q.tx * 9) || shutNeighbour(q.x + q.ty * 12, q.y - q.tx * 9)) && !(f.edgeAll && byStatic(q.x, q.y)), inset = Math.abs(q.tx) > Math.abs(q.ty) ? (q.tx > 0 ? 8.5 : 2.5) : 4.5;   // (the north side stands further in: the piece is drawn upward from its foot)
         const s = { x: q.x - q.ty * inset, y: q.y + q.tx * inset, tx: q.tx, ty: q.ty, ox: q.x, oy: q.y, i: n++, road: roadAt(q.x + q.ty * 30, q.y - q.tx * 20) };
         if (open) { run.push(s); all.push(s); } else if (run.length) { runs.push(run); run = []; }
       }
