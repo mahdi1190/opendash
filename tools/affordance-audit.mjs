@@ -6,8 +6,13 @@
 //   node tools/affordance-audit.mjs                                  this worktree's assets/garden/island-v5.json
 //   node tools/affordance-audit.mjs --island path/to/island.json     any layout file
 //   node tools/affordance-audit.mjs --ref feat/village-layout        a branch's layout, landmark table and region files (git show)
+//   (--island is a layout dropped into THIS code: a fixed thing with no land or catalog row here is listed as drawn by nothing, as the
+//    game would treat it; --ref is that branch's layout with that branch's own tables and painters)
 //   options: --json out.json (the full report)  --quiet (summary and faults only)
 //
+// A placed thing (a layout `things` row) is checked by the game's own ground rule: not in the water, on a path, a building's footprint,
+// rock, a wall's outline or another thing; the game moves it to the nearest clear ground within 3 cells (said here as a fault, with
+// where), or leaves it out. The game also keeps it off what painters draw with a foot and off painted paving, which only the game sees.
 // The kinds and the cell model are this worktree's code, read as it is (the same files the game runs); a layout needs no code
 // change to be audited. Walkability here is the layout's own cell raster (land, fresh water, rock, fixed things that block): the
 // game's collision view (Shift+C) is the last word, this is the quick look.
