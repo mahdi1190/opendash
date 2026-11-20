@@ -374,9 +374,19 @@ function gardenWalkFolds(island) {
 const GW_PROP_FEET = Object.freeze({ 'ld-mile': [[-12, 42, 10]], 'ld-tower': [[-70, 72, 0]], 'ld-hollow': [[-44, 50, 0]], 'ld-clamp': [[-38, 52, 20]], 'ld-cairn': [[-31, 31, 0]], 'ld-woodhut': [[-58, 58, 0]], 'ld-stump': [[-60, 56, 14]], 'ld-statue': [[-26, 42, 10]], 'ld-moor-gate': [[-24, 52, 12]], 'ld-beacon': [[-24, 8, 12]] });
 // soft things (a bench's seat) whose drawing is wider than the usual half their width: [w, d] in cells
 const GW_SOFT_BLOCK = Object.freeze({ 'ld-bench-a': [1.2, .3], 'ld-bench-b': [1.2, .3] });
+/** A building (any of its kind: a summer house, a cottage, a barn) painted narrower than the cells it stands on: its walls stop the feet
+ *  where they are drawn, not a cell or more out to either side of them (the owner: "collision of the summer house is weird"). From its
+ *  painting's own box (px from its middle), the whole depth of its cells; null when the picture fills its cells or says nothing. */
+function _gwBuildingFeet(p) {
+  const a = GardenPaintedMarks.ART[p.id], box = a && a.box; if (!Array.isArray(box) || box.length < 4) return null;
+  const kind = typeof gardenKindOf === 'function' ? gardenKindOf({ art: p.art, id: p.id }) : ''; if (kind !== 'building' && kind !== 'barn') return null;
+  const W = GARDEN_WORLD, l = box[0] + 4, r = box[2] - 4;
+  if (!(r > l) || (p.w || 1) * W.cellW - (r - l) < W.cellW * 0.5) return null;   // (it fills its cells: as it was)
+  return { foot: [[l, r, 0]] };
+}
 function gardenPropPaintedFeet(p) {
   if (!p || typeof GardenPaintedMarks === 'undefined' || !GardenPaintedMarks || !GardenPaintedMarks.ART || GARDEN_WORLD.v < 5) return null;
-  const art = GardenPaintedMarks.ART[p.id] && GardenPaintedMarks.ART[p.id].foot ? GardenPaintedMarks.ART[p.id] : GW_PROP_FEET[p.id] ? { foot: GW_PROP_FEET[p.id] } : null; if (!art || !art.foot || gardenPropCol(p) !== 'full') return null;
+  const art = GardenPaintedMarks.ART[p.id] && GardenPaintedMarks.ART[p.id].foot ? GardenPaintedMarks.ART[p.id] : GW_PROP_FEET[p.id] ? { foot: GW_PROP_FEET[p.id] } : _gwBuildingFeet(p); if (!art || !art.foot || gardenPropCol(p) !== 'full') return null;
   if (!(typeof GardenNativePainted !== 'undefined' && GardenNativePainted && GardenNativePainted.wanted && GardenNativePainted.wanted())) return null;
   if (p.needs && !gardenWorkOwned(p.needs)) return null;
   if (typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(p.id) || {}).some(Boolean)) return null;   // (a look of your own choosing is drawn by another painter)
