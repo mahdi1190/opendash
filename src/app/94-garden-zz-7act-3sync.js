@@ -14,7 +14,27 @@
      gartActDoingIn(A, ev)   their state arrived (94-garden-live-2visit.js, 3host.js)
    ============================================================ */
 const GA_DG = Object.freeze({ againMs: 15000, gapMs: 200 });
-const _gad = { sig: '', at: 0, n: 0, sentAt: 0 };
+const _gad = { sig: '', at: 0, n: 0, sentAt: 0, sv: null };
+/** (puzzles) A trail puzzle solved in a friend's garden: it goes in what you are doing (sv) until you leave, and their page keeps it (gpSet), so it is solved for everyone there. */
+function _gadVisitKey() { try { return _gll.role === 'visit' && typeof _glv !== 'undefined' ? String(_glv.fid || '') : ''; } catch (e) { return ''; } }
+function gartActSolved(id) {
+  const k = _gadVisitKey(); if (!k || typeof id !== 'string' || !/^ld-[a-z0-9-]{1,24}$/.test(id)) return;
+  if (!_gad.sv || _gad.sv.k !== k) _gad.sv = { k, ids: new Set() };
+  _gad.sv.ids.add(id); gartActDoingPush(true);
+}
+function gartActSolvedHere(id) { const k = _gadVisitKey(); return !!(k && _gad.sv && _gad.sv.k === k && _gad.sv.ids.has(id)); }
+/** On the host's page: what a visitor solved here is solved in this garden (the owner's discovered places), said once. */
+function _gadSolvedIn(A, sv) {
+  if (_gll.role !== 'host' || !Array.isArray(sv) || typeof gpGet !== 'function' || typeof gardenExploreIds !== 'function') return;
+  const ok = gardenExploreIds();
+  for (const id of sv.slice(0, 8)) {
+    if (typeof id !== 'string' || !ok.includes(id) || gpGet('explore.' + id)) continue;
+    gpSet('explore.' + id, _gdToday());
+    const stop = typeof GARDEN_EXPLORATION_STOPS !== 'undefined' ? GARDEN_EXPLORATION_STOPS.find(r => r.sight === id) : null, sight = typeof gardenLandSight === 'function' ? gardenLandSight(id) : null;
+    try { gardenToast((A && A.n ? A.n : 'Your friend') + ' solved ' + (stop ? stop.name.replace(/^The /, 'the ') : 'a trail puzzle') + (sight && sight.name ? ': the way to ' + sight.name.replace(/^The /, 'the ') + ' is found.' : '.')); } catch (e) { /* fine */ }
+    _gd.rev++; _gd.memoKey = '';
+  }
+}
 const _gadR2 = (v) => Math.round(v * 100) / 100;
 function _gadBody() {
   const b = {}, cur = _ga.cur;
@@ -23,12 +43,14 @@ function _gadBody() {
     { const deg = typeof gartMoveFacingDeg === 'function' ? Math.round(_gmvWrap(gartMoveFacingDeg())) : null; if (Number.isFinite(deg)) b.d = deg; }   // (the way they face for it: the same on every screen)
     b.t = Math.max(0, Math.min(6000, Math.round((performance.now() - (cur.t0 || performance.now())) / 100)));
   }
+  else if (!_gw.moving && typeof gartMoveFacingDeg === 'function') { const deg = Math.round(_gmvWrap(gartMoveFacingDeg()) / 45) * 45; if (Number.isFinite(deg)) b.d = deg === -180 ? 180 : deg; }   // (standing: the way you face, to the nearest eighth, so their figure turns as yours does)
   if (_ga.carry && _ga.carry.id) { b.i = String(_ga.carry.id).slice(0, 64); if (_ga.carry.art) b.h = String(_ga.carry.art).slice(0, 64); }
   const f = _ga.fetch;
   if (f && Number.isFinite(f.x)) { b.p = { wait: 0, out: 1, back: 2, home: 3 }[f.phase] || 0; b.fx = _gadR2(f.x); b.fy = _gadR2(f.y); }
   const m = [];
   for (const [id, at] of _gaMoved) if (!(_ga.carry && _ga.carry.id === id) && at && Number.isFinite(at.x) && !at.theirs) m.push([String(id).slice(0, 64), Math.max(0, Math.round(at.x * 10)), Math.max(0, Math.round(at.y * 10))]);
   if (m.length) b.m = m.slice(-(typeof GL_DG_MAX_MOVED === 'number' ? GL_DG_MAX_MOVED : 6));
+  { const k = _gadVisitKey(); if (k && _gad.sv && _gad.sv.k === k && _gad.sv.ids.size) b.sv = [..._gad.sv.ids].slice(0, 8); }
   return b;
 }
 function _gadLive() {
@@ -75,6 +97,7 @@ function gartActRedraw(A) {
 function gartActDoingIn(A, ev) {
   if (!A || !ev || (typeof glDoingOk === 'function' && glDoingOk(ev))) return;
   A.dg = true;
+  if (ev.sv) _gadSolvedIn(A, ev.sv);
   // the thing in their hands: off the ground here too, drawn in their arms (gartMoveActor)
   const hold = ev.i ? String(ev.i) : '';
   if (A.carryId !== hold) {
@@ -82,6 +105,7 @@ function gartActDoingIn(A, ev) {
     if (was && !(ev.m || []).some(r => r[0] === was)) { _gaHide.delete(was); _gaShow(was, true); }
     if (hold) { _gaHide.set(hold, Infinity); _gaShow(hold, false); const d = _ga.down && _ga.down.get(hold); if (d) { try { d.remove(); } catch (e) { /* gone */ } _ga.down.delete(hold); } _ga.list = null; }
     A.key = '';
+    try { const b0 = A.inner && A.inner.firstChild; if (b0 && b0.querySelector) gartActCarryActor(A, b0); } catch (e) { /* the next frame */ }   // (now: a set-down while standing leaves their arms empty)
   }
   // what they have set down elsewhere: at its new place on my screen too
   for (const r of ev.m || []) {
@@ -96,6 +120,7 @@ function gartActDoingIn(A, ev) {
   const a = ev.a ? String(ev.a) : '';
   if (!a) {
     if (A.actId || A.actWant) { A.actWant = ''; A.actId = ''; A.then = null; if (typeof _gllEmoteStop === 'function') _gllEmoteStop(A); A.sit = false; A.key = ''; }
+    A.standDeg = Number.isInteger(ev.d) ? ev.d : null; gartActStandFace(A);   // (standing: they face as they do, now or when their walk here ends)
     return;
   }
   const t0 = performance.now() - (Number(ev.t) || 0) * 100;
@@ -109,6 +134,12 @@ function gartActDoingIn(A, ev) {
   }
   A.actWant = a; A.actT0 = t0;
   go();
+}
+/** A figure that has stopped turns the way they said they face (gl:dg d), once. From gartMoveActor too, when their walk ends. */
+function gartActStandFace(A) {
+  if (!A || A.standDeg == null || A.moving || A.tx != null || A.actId || A.actWant || A.sit || A.fish || typeof _gmvDrawing !== 'function') return;
+  const deg = A.standDeg, D = _gmvDrawing(deg); A.standDeg = null;
+  if (D.dir !== A.dir || (D.dir === 'e' && D.mirror !== A.face)) { A.dir = D.dir; if (D.dir === 'e') A.face = D.mirror; if (A.gm) A.gm.h = deg; A.key = ''; if (typeof _gllPaint === 'function') _gllPaint(A); }
 }
 /** Their stick: a thing of the world on my screen, in their hand and flying (part 0), in the grass (1), in their pet's mouth (2), at their feet (3). */
 function _gadStickSprite(A) {

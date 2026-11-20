@@ -89,7 +89,8 @@ const GL_FX_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
  *  arrival or a lost message comes right with the next one. a: the move from the things-to-do table (an 'act-' id of GL_EMOTES), none = nothing;
  *  x, y: where it is done (cells); d: the way they face for it (degrees on the screen, 0 east, 90 south); t: tenths of a second since it began (a late arrival joins it part way, a held pose at its end); i, h: the thing
  *  in your hands and how it is drawn (carry); p: the stick's part of a throw (0 in the hand, 1 lying out there, 2 coming back, 3 dropped at your
- *  feet) with fx, fy where it landed; m: things you have set down elsewhere this visit [[id, x tenths, y tenths]]. Ids only: each side draws them. */
+ *  feet) with fx, fy where it landed; m: things you have set down elsewhere this visit [[id, x tenths, y tenths]]; sv: the trail puzzles a
+ *  visitor has solved here this visit (the host's page keeps them). Ids only: each side draws them. */
 const GL_DG_MAX_MOVED = 6;
 function glDoingOk(b) {
   if (!b || typeof b !== 'object') return 'shape';
@@ -100,6 +101,7 @@ function glDoingOk(b) {
   if (b.d != null && !(Number.isInteger(b.d) && b.d >= -180 && b.d <= 180)) return 'facing';
   for (const k of ['i', 'h']) if (b[k] != null && !GL_FX_ID_RE.test(String(b[k]))) return 'thing';
   if (b.p != null && !(Number.isInteger(b.p) && b.p >= 0 && b.p <= 3)) return 'stick';
+  if (b.sv != null && (!Array.isArray(b.sv) || b.sv.length > 8 || b.sv.some(k => typeof k !== 'string' || !/^ld-[a-z0-9-]{1,24}$/.test(k)))) return 'solved';
   if (b.m != null) { if (!Array.isArray(b.m) || b.m.length > GL_DG_MAX_MOVED) return 'moved'; for (const r of b.m) if (!Array.isArray(r) || r.length !== 3 || !GL_FX_ID_RE.test(String(r[0])) || !Number.isInteger(r[1]) || !Number.isInteger(r[2]) || r[1] < 0 || r[2] < 0 || r[1] > cols * 10 || r[2] > rows * 10) return 'moved'; }
   return '';
 }

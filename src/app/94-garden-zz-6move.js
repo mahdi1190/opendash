@@ -249,7 +249,8 @@ function gartMoveActor(A) {
     st.lpx = st.lpy = null;
     if (busy || !motion) st.h = A.dir === 'n' ? -90 : A.dir === 'e' ? (A.face < 0 ? 180 : 0) : 90;
     if (!A.moving) st.v = 0;
-    if (A.carryId && !busy && typeof gartActCarryActor === 'function') { const b0 = A.inner.firstChild; if (b0 && b0.querySelector) gartActCarryActor(A, b0); }
+    if (!A.moving && A.standDeg != null && typeof gartActStandFace === 'function') gartActStandFace(A);
+    if (!busy && typeof gartActCarryActor === 'function') { const b0 = A.inner.firstChild; if (b0 && b0.querySelector) gartActCarryActor(A, b0); }
     return;
   }
   if (Math.abs(cx) + Math.abs(cy * 1.6) >= 0.004) st.want = Math.atan2(cy * 1.6, cx) * 180 / Math.PI;   // (the heading in the same terms as your own: gartMoveStep)
