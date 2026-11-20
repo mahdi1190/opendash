@@ -110,6 +110,44 @@
       // Close-set low slabs expose the exact ford. The old oversized ellipses
       // hung beyond its edges and left invisible support between the stones.
       const { count, acrossRadius: hw } = deck.stones, q = (t, s) => deck.deckPoint(t, s), step = 1 / count;
+      const cid = deck.crossing && deck.crossing.id;
+      if (cid === 'lip-stones') {
+        // Cloudbreak's lip stones, a little above the falls: boulders of fell rock, each its own size and set a little off
+        // the line, sitting in the stream (the water breaks white on their upstream side and runs dark between them),
+        // their tops worn flat where feet go; together they still cover the whole footing
+        const tones = season === 'winter' ? ['#a9a89c', '#bdbcb0', '#9a9a8e'] : ['#8e877a', '#9c9484', '#857e70', '#a39a88'];
+        const gap = typeof window.gardenCloudbreakLipGap === 'function' && window.gardenCloudbreakLipGap() ? Math.floor(count / 2) : -1;   // (shortcut A: one stone rolled out of the line until level 6)
+        for (let i = 0; i < count; i++) {
+          const lo = i * step, hi = (i + 1) * step, mid = (lo + hi) / 2, off = (r() - .5) * hw * .35, sz = .9 + r() * .3, n = 9, a0 = r() * 6.3, pts = [];
+          if (i === gap) { for (let k = 0; k < 3; k++) { const p = q(mid + (k - 1) * (hi - lo) * .3, (r() - .5) * hw); B.s(`M${p.x - 6} ${p.y}q6 -3 12 0`, P.foam || '#eef2e2', 1.4, .7); } const p = q(mid + (hi - lo) * .2, hw * 1.5); B.stone(r, p.x, p.y + 4, 9, 5, { rock: '#8e877a', rockLo: '#5e584e', rockHi: '#b8b0a0', rockDk: '#2e2c28' }, null); continue; }
+          for (let j = 0; j < n; j++) { const a = a0 + j / n * Math.PI * 2, k = (.82 + r() * .26) * sz; pts.push([mid + Math.cos(a) * (hi - lo) * .62 * k, off + Math.sin(a) * hw * 1.02 * k]); }
+          const at = (pp, dy) => pp.map(([t, ds]) => { const p = q(t, ds); return [p.x, p.y + (dy || 0)]; });
+          B.f(B.poly(at(pts.map(([t, ds]) => [t, ds * 1.12]), 2)), P.foam || '#eef2e2', .55);   // the white water round its foot
+          B.f(B.poly(at(pts, 3.2)), '#3a3830', .9);   // its wet flank, standing out of the water
+          B.f(B.poly(at(pts)), tones[Math.floor(r() * tones.length)]);
+          B.f(B.poly(at(pts.map(([t, ds]) => [mid + (t - mid) * .62, off + (ds - off) * .55 - hw * .12]))), '#c8c0aa', .55);   // the worn, dry top
+          if (r() < .55) B.f(B.poly(at(pts.map(([t, ds]) => [mid + (t - mid) * .36, off + (ds - off) * .3 + hw * .45]))), season === 'winter' ? '#e8ecef' : '#5f7440', .55);   // moss on the shaded side
+        }
+        return;
+      }
+      if (cid === 'gorge-stones') {
+        // Cloudbreak's clapper bridge: two long granite slabs laid end to end on a pier stone in the stream and an abutment
+        // of piled stones on each bank, grey and lichened, a dark gap of water under each slab, worn pale along the middle
+        const tones = season === 'winter' ? ['#b8b8b0', '#c6c6be'] : ['#9a958a', '#a8a294'];
+        const at = (t, ds, dy) => { const p = q(t, ds); return [p.x, p.y + (dy || 0)]; };
+        for (const t of [0, .5, 1]) { const w0 = t === .5 ? .1 : .14; for (let k = 0; k < 4; k++) { const tt = t + (r() - .5) * w0, ds = (k / 3 - .5) * hw * 2.3; B.stone(r, ...at(Math.max(-.06, Math.min(1.06, tt)), ds, 5), 7 + r() * 3, 4 + r() * 2, { rock: '#8a8478', rockLo: '#5e594f', rockHi: '#b8b2a2', rockDk: '#2e2c28', lichen: '#c9c48a' }, season === 'winter' ? 'snow' : r() < .4 ? '#c9c48a' : null); } }
+        for (const [lo, hi] of [[-.02, .51], [.49, 1.02]]) {
+          const top = [at(lo, -hw), at(hi, -hw * .96), at(hi, hw * .98), at(lo, hw)];
+          B.f(B.poly(top.map(([x, y]) => [x + 1, y + 7])), '#22201c', .5);   // the gap under the slab
+          B.f(B.poly([top[3], top[2], [top[2][0], top[2][1] + 5], [top[3][0], top[3][1] + 5]]), '#6a655a');   // its front edge, the slab's thickness
+          B.f(B.poly(top), tones[lo < .2 ? 0 : 1]);
+          V.strokePts(B, [at(lo + .04, 0), at(hi - .04, 0)], '#cfc8b4', hw * .9, .45);   // worn pale along the middle
+          V.strokePts(B, [at(lo + .02, -hw + 1.4), at(hi - .02, -hw * .96 + 1.4)], '#e0d8c2', 1.3, .6);
+          for (let k = 0; k < 5; k++) { const [x, y] = at(lo + (hi - lo) * r(), (r() - .5) * hw * 1.6); B.f(B.blob(r, x, y, 2.4 + r() * 4, 1.2 + r() * 1.4, 6, .4), season === 'winter' ? '#e8ecef' : r() < .6 ? '#c9c48a' : '#9aa65a', .6); }
+          for (let k = 0; k < 3; k++) { const [x, y] = at(lo + (hi - lo) * (.2 + r() * .6), (r() - .5) * hw * 1.4); B.s(`M${x} ${y}l${3 + r() * 5} ${(r() - .5) * 3}`, '#5e594f', .9, .5); }
+        }
+        return;
+      }
       if (deck.over === 'brook') {
         // The woodland brook: rounded, water-worn stones (a squircle filling each slab, so the footing is still the
         // whole support), wet dark feet, a ring of ripple where the water meets them, moss on the shaded side.

@@ -187,6 +187,17 @@
       : edge === 'heather' ? ['#6e5e58', .5] : edge === 'bracken' ? [P.floor, .78] : edge === 'reeds' ? ['#7e8a52', .7] : edge === 'meadow' ? [st[1], .6] : edge === 'long-grass' || edge === 'hedge-road' ? [st[0], .5] : [P.lawnLo, .5];
     B.f(B.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]), P.lawn).f(B.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]), wash[0], wash[1]);
     const T = 60, tall = !tame && (edge === 'meadow' || edge === 'long-grass' || edge === 'hedge-road'), salt = KIT().hashStr('fill|' + f.id) & 0xffff;
+    // (Cloudbreak's shut fields, vale-mountains.json kind: the rock gardens are slabs and wind-cut stones in thin turf, the
+    // mist meadow is bog, peat pools and cotton grass; not the lush meadow every other field has)
+    if (!tame && f.kind === 'rock') { B.f(B.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]), '#a8a47c', .45);
+      KIT().tiles(box, 54, 30, salt + 9, (tx, ty, r) => { for (let k = 0; k < 4; k++) { const x = tx + r() * 54, y = ty + r() * 54; if (!inF(x, y)) continue; const w = 12 + r() * 20, h = w * (.36 + r() * .14), upright = r() < .18;
+        if (upright) { B.f(B.ell(x + 3, y + 1, w * .45, 3), '#3e3a32', .3).f(B.poly([[x - w * .22, y], [x - w * .16, y - w * .9], [x + w * .05, y - w * 1.05], [x + w * .2, y - w * .7], [x + w * .24, y]]), '#a59e8c').f(B.poly([[x - w * .16, y - w * .9], [x + w * .05, y - w * 1.05], [x, y]]), '#c8c1ae', .6); continue; }
+        B.f(B.blob(r, x + 1.5, y + 2, w, h, 7, .3), '#3e3a32', .35).f(B.blob(r, x, y, w, h, 7, .3), ['#b4ad9c', '#a59e8c', '#c2bba8', '#9a9484'][Math.floor(r() * 4)]).f(B.blob(r, x - w * .2, y - h * .3, w * .5, h * .35, 6, .4), '#e4e0d0', .35);
+        if (r() < .35) B.f(B.ell(x + (r() - .5) * w * .6, y + (r() - .5) * h * .4, 2.6, 1.4), '#c9c48a', .75); } }); }
+    if (!tame && f.kind === 'bog') { B.f(B.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]), '#6e7046', .5);
+      KIT().tiles(box, 60, 30, salt + 11, (tx, ty, r) => { for (let k = 0; k < 2; k++) { const x = tx + r() * 60, y = ty + r() * 60; if (!inF(x, y)) continue; const w = 12 + r() * 16;
+        B.f(B.blob(r, x, y + 1, w + 3, w * .36 + 2, 8, .4), '#4a4434', .7).f(B.blob(r, x, y, w, w * .32, 8, .4), season === 'winter' ? '#c8d4d8' : '#5e7a7c').f(B.ell(x - w * .3, y - w * .08, w * .3, 1.2), '#b8d0d0', .5); }
+        for (let k = 0; k < 6; k++) { const x = tx + r() * 60, y = ty + r() * 60; if (!inF(x, y)) continue; B.f(B.blob(r, x, y, 5 + r() * 5, 2, 6, .5), ['#9a8a3a', '#b0703a', '#8a9a3e'][Math.floor(r() * 3)], .7); if (season !== 'winter' && r() < .6) { B.s(`M${x} ${y}v-7`, '#7d8f4e', .8, .9); B.f(B.circ(x, y - 8, 1.7), '#f6f4ec', .95); } } }); }
     // light and shade in soft drifts, so no field is one flat colour (from the tiles round about too: a drift is wide)
     KIT().tiles(box, T, 46, salt + 1, (tx, ty, r) => { for (let k = 0; k < 2; k++) { const x = tx + r() * T, y = ty + r() * T, rx = 26 + r() * 30, ry = 9 + r() * 10, lift = r() < .5, a = .12 + r() * .08; if (inF(x, y)) B.f(B.blob(r, x, y, rx, ry, 8, .5), lift ? P.lawnHi : '#3e5a2a', a); } });
     // (fix round 1) the thyme terrace: heather and thyme cushions all through it, close set, with bare stony turf between

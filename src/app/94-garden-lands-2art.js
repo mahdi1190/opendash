@@ -712,7 +712,8 @@ function _gldIslandRegionStands() {
       : orchard ? { maximum: 18, heights: [184, 164, 144], gapX: 3.35, gapY: 3.7, rows: true }
         : /ruin/.test(theme) ? { maximum: 16, heights: [218, 186, 156], gapX: 2.55, gapY: 3.1, edge: true }
           : /valley|mill/.test(theme) ? { maximum: 10, heights: [198, 174, 150], gapX: 2.75, gapY: 3.3, edge: true }
-            : mountain ? { maximum: 12, heights: [210, 180, 152], gapX: 2.6, gapY: 3.1, edge: true } : null;
+            : null;   // (the fells: no generic grove trees; Cloudbreak's own painter plants the plan's Scots pine groups, and a
+            // crown here rose out of the bothy's roof)
     // The home village intentionally keeps its broad open green.
     if (!profile || !region.zone) continue;
     const points = region.polygons.flat(), xs = points.map(p => p[0]), ys = points.map(p => p[1]);
