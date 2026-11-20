@@ -133,6 +133,10 @@ function _gwBuildSolids(m) {
   // painters draw (2.73: the cells whose middle fell inside a thin wall blocked whole, so a wall had gaps you walked
   // through and invisible ends a cell wide; the collision view showed it on every wall). Their cells stay solid for
   // building and planting (gardenIslandBaseCell), not for walking (_gwBuildGrid).
+  // the old woodland's ruin, postern and brick walls (layout round 3, critic 2): short boxes along the very line their
+  // painters draw (94-garden-paint-vale-1places.js ruinWall, 94-garden-paint-vale-1oldwood.js brick), as thick as the stones
+  // drawn there, so the feet stop on the stones (an outline three quarters of a cell wide stopped them out on the grass)
+  for (const b of _gwOldWallBoxes(island)) add(b.x0, b.y0, b.x1, b.y1, b.src);
   for (const f of gardenWalkLandforms(island)) { const r = add(f.x0, f.y0, f.x1, f.y1, f.src); r.form = f; }
   for (const { form: f } of _gwFieldForms()) { const r = add(f.x0, f.y0, f.x1, f.y1, f.src); r.form = f; }
   return { list, at };
@@ -181,10 +185,33 @@ function _gwPaintedTrunks(island) {
 function gardenTrunkBoxWidth(px) { return Math.max(.26, Math.min(.6, px / GARDEN_WORLD.cellW + .1)); }
 /** The landforms that stop the feet, as outlines in cells: [{poly: [[x, y]...], x0, y0, x1, y1, src}] (full colliders only). */
 const _GW_LANDFORM_NAME = Object.freeze({ 'ruin-wall': 'ruin wall', ruin: 'ruin', 'rock-wall': 'rock wall', 'terrace-wall': 'terrace wall', mountain: 'mountain' });
+/** The old woodland's walls (ruin, postern, the walled garden's brick): their boxes stand in for their outline (_gwBuildSolids). */
+function _gwOldWall(f) { return !!f && f.region === 'southwest-ruins' && f.kind === 'ruin-wall' && Array.isArray(f.polygon); }
+/** Short boxes along each old-woodland wall's drawn centre line, in cells ({x0, y0, x1, y1, src}): a brick length is one box
+ *  on its line, as thick as its brick; a ruin stretch is boxes a fifth of a cell apart along the line its painter draws (the
+ *  middle of its outline), a third of a cell across, which is the stones' own foot. */
+function _gwOldWallBoxes(island) {
+  if (!island || island.version < 5) return [];
+  if (island._oldWallBoxes) return island._oldWallBoxes;
+  const out = [];
+  for (const f of island.landforms || []) {
+    if (!_gwOldWall(f)) continue;
+    const src = (f.brick ? 'brick wall ' : 'ruin wall ') + f.id;
+    if (f.brick && f.line) { const [[x0, y0], [x1, y1]] = f.line, hw = .2; out.push({ x0: Math.min(x0, x1) - (x0 === x1 ? hw : 0), y0: Math.min(y0, y1) - (y0 === y1 ? hw : 0), x1: Math.max(x0, x1) + (x0 === x1 ? hw : 0), y1: Math.max(y0, y1) + (y0 === y1 ? hw : 0), src }); continue; }
+    const P = f.polygon, n = P.length >> 1, a = P.slice(0, n), b = P.slice(n).reverse(), m = Math.min(a.length, b.length), mid = [];
+    for (let i = 0; i < m; i++) mid.push([(a[i][0] + b[i][0]) / 2, (a[i][1] + b[i][1]) / 2]);
+    for (let i = 1; i < mid.length; i++) {
+      const [px, py] = mid[i - 1], [qx, qy] = mid[i], L = Math.hypot(qx - px, qy - py), k = Math.max(1, Math.ceil(L / .2));
+      for (let j = i === 1 ? 0 : 1; j <= k; j++) { const x = px + (qx - px) * j / k, y = py + (qy - py) * j / k; out.push({ x0: x - .15, y0: y - .17, x1: x + .15, y1: y + .2, src }); }
+    }
+  }
+  try { Object.defineProperty(island, '_oldWallBoxes', { value: out, enumerable: false }); } catch (e) { /* a frozen layout: worked out again next time */ }
+  return out;
+}
 function gardenWalkLandforms(island) {
   if (!island || island.version < 5) return [];
   if (island._walkForms) return island._walkForms;
-  const out = (island.landforms || []).filter(f => f.col === 'full' && f.polygon && f.polygon.length > 2).map(f => _gwForm(f.polygon, (_GW_LANDFORM_NAME[f.kind] || 'rock') + ' ' + f.id));
+  const out = (island.landforms || []).filter(f => f.col === 'full' && f.polygon && f.polygon.length > 2 && !_gwOldWall(f)).map(f => _gwForm(f.polygon, (_GW_LANDFORM_NAME[f.kind] || 'rock') + ' ' + f.id));
   try { Object.defineProperty(island, '_walkForms', { value: out, enumerable: false }); } catch (e) { /* a frozen layout: worked out again next time */ }
   return out;
 }

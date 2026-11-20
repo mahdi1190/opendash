@@ -135,11 +135,12 @@ const landforms = [
   { id: 'woodland-old-foundation', region: 'southwest-ruins', kind: 'ruin', polygon: smoothLoop([[22, 80.2], [25, 79.6], [25.6, 82], [22.6, 82.6]], 3), col: 'full', reserved: true },
   ...wallSegments('fell-scarp', 'north-headland', 'rock-wall', SCARP, [[42.2, 25.9, 1.7], [45.2, 25.6, 2.0], [71, 21.3, 2.2]], 1.6, 5),
   // (the old woodland's ruin and postern walls (layout round 3, critic 2): a block as thick as the stones drawn on it and their
-  //  shade, three quarters of a cell, in short pieces each drawn as one stretch of wall on its own foot; a ribbon 1.6 cells wide stopped the feet a cell
+  //  shade, three quarters of a cell, in short pieces each drawn as one stretch of wall on its own foot (critic 3: the outline
+  //  a third of a cell, the stones' own foot; the feet stop at short boxes along its middle line, _gwOldWallBoxes); a ribbon 1.6 cells wide stopped the feet a cell
   //  out on the grass and the beach beside a line of low stones. The postern wall ends on the grass above the beach, and
   //  starts against the ruin wall's end rather than on top of it.)
-  ...wallSegments('ruin-wall', 'southwest-ruins', 'ruin-wall', [[32.6, 62], [27, 62.6], [20, 64.8], [14.6, 68.6], [11, 74], [12.4, 80], [12.8, 84.4]], [[19.6, 65.1, 2.2]], .75, 2),
-  ...wallSegments('postern-wall', 'southwest-ruins', 'ruin-wall', [[32.8, 62.45], [35, 70], [36.4, 78], [37.3, 82.4]], [[35.8, 74.2, 1.8]], .75, 2),
+  ...wallSegments('ruin-wall', 'southwest-ruins', 'ruin-wall', [[32.6, 62], [27, 62.6], [20, 64.8], [14.6, 68.6], [11, 74], [12.4, 80], [12.8, 84.4]], [[19.6, 65.1, 2.2]], .32, 2),
+  ...wallSegments('postern-wall', 'southwest-ruins', 'ruin-wall', [[32.8, 62.45], [35, 70], [36.4, 78], [37.3, 82.4]], [[35.8, 74.2, 1.8]], .32, 2),
   ...wallSegments('orchard-bank', 'orchard-headland', 'terrace-wall', [[60.2, 27.2], [61, 28.6], [60.8, 34], [61, 39.4]], [[61, 38.4, 1.8]], 1.6, 5),
   ...wallSegments('terrace-wall', 'orchard-headland', 'terrace-wall', [[63.2, 48.6], [68, 48.4], [78, 50.6], [90.8, 50]], [[80.2, 50.4, 2.0]], 1.6, 5),
 ];

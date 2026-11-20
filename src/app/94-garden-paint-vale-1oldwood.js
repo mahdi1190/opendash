@@ -328,7 +328,7 @@
     for (const f of last ? [last] : []) {
       if (!f.polygon) continue;
       const n = f.polygon.length >> 1, a = f.polygon[n - 1], b = f.polygon[n], e = L.pt([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + .32]), seed = kit.hashStr(f.id + '|end');
-      thing({ key: 'ow-wallend|' + f.id + '|' + C.season, x: Math.round(e.x), y: Math.round(e.y), box: [-34, -34, 34, 6], foot: [-17, 17, 9], draw: B => {
+      thing({ key: 'ow-wallend|' + f.id + '|' + C.season, x: Math.round(e.x), y: Math.round(e.y), box: [-34, -34, 34, 6], foot: [-22, 22, 9], draw: B => {
         const r = kit.rng(seed);
         B.shadow(2, 0, 26, 4, .3);
         for (let k = 0; k < 11; k++) { const t = k / 10, x = -16 + t * 32 + (r() - .5) * 4, y = -1 - Math.sin(t * Math.PI) * (6 + r() * 6); B.stone(r, x, y, 5.5 + r() * 2.5, 3.6 + r() * 1.2, { rock: STONE.body, rockLo: STONE.lo, rockHi: STONE.hi, rockDk: STONE.dk }, r() < .5 ? STONE.moss : null); }
