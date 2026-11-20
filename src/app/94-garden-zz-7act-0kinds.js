@@ -24,6 +24,8 @@
      pet       the pets' word for it (PET_LIFE rows' `at`: 'bench', 'well', 'fire' ...); drink: a pet drinks there; warm: a pet warms itself;
      noPerch   a pet never stands on top of it; top / petSeat: px up where a perched / sat pet's feet go
      solid     what the audit expects of its ground: 'free' (you walk on it) or 'block'
+     ground    where a placed thing of this kind must lie ('water-edge': on the bank's lip, water just in front): a row that a re-laid
+               layout leaves elsewhere is moved to the nearest such ground within 4 cells (gardenKindSnap), never left in the water
    }
    GARDEN_TERRAIN[type] = { acts, pets }: what ground of that type offers, read from the layout's cells (94-garden-zz-7act-0scan.js
      gardenTerrainAt): no coordinates anywhere.
@@ -78,7 +80,7 @@ const GARDEN_KINDS = Object.freeze({
   pier: { name: 'the pier end', words: ['pier', 'jetty'], acts: [{ act: 'dangle', stand: [0, -0.3], deg: 90, pierEnd: true }], pet: 'pier', noPerch: true, solid: 'free' },   // the end of the pier as far as it is built today
   boat: { name: 'the boat', arts: ['boat'], words: ['boat', 'dinghy'], acts: [{ act: 'row', stand: [0.72, 0.2], deg: 180, boat: true, needs: { owns: 'gear:rowing-boat' } }], noPerch: true },   // your own rowing boat takes you out
   falls: { name: 'the falls', arts: ['falls'], words: ['falls', 'waterfall', 'cascade'], acts: [{ act: 'shower', stand: [0, 0.4], deg: 90, reach: 3.4, wade: true }], pet: 'falls', calmsWater: 5 },   // white water near it: no skimming, no ducks
-  'fishing-bank': { name: 'the bank', place: true, w: 1.2, h: 0.3, acts: [{ act: 'fishsit', stand: [-0.5, 0], deg: -90, edge: true }, { act: 'fishsit', stand: [0.5, 0], deg: -90, edge: true }], solid: 'free' },   // a worn grassy bank, room for two, legs over the water (its own grass is the seat: nothing drawn)
+  'fishing-bank': { name: 'the bank', place: true, ground: 'water-edge', w: 1.2, h: 0.3, acts: [{ act: 'fishsit', stand: [-0.5, 0], deg: -90, edge: true }, { act: 'fishsit', stand: [0.5, 0], deg: -90, edge: true }], solid: 'free' },   // a worn grassy bank, room for two, legs over the water (its own grass is the seat: nothing drawn)
   rill: { name: 'the spring', arts: ['rill'], words: ['rill', 'spring'], drink: true, noPerch: true },
   reeds: { name: 'the reeds', arts: ['reeds'], words: ['reeds', 'reed'], noPerch: true },
   bridge: { name: 'the bridge', arts: ['bridge'], words: ['bridge'], noPerch: true, solid: 'free' },
@@ -176,4 +178,15 @@ function gardenKindNeedsOk(needs, ctx) {
   if (needs.time === 'day' && ctx.night === true) return false;
   if (needs.level && ctx.level != null && ctx.level < needs.level) return false;
   return true;   // (owning a thing is asked when you use it: the prompt says where to get one)
+}
+/** A placed thing's foot moved to the ground its kind needs (K.ground), within 4 cells: { x, y, moved } or null when there is none.
+ *  wet(x, y) -> is it water there. Pure: the game and the audit both call it. */
+function gardenKindSnap(kind, x, y, w, wet) {
+  const K = GARDEN_KINDS[kind]; if (!K || K.ground !== 'water-edge') return { x, y, moved: false };
+  const hw = (w || K.w || 1) / 2, ok = (px, py) => !wet(px, py) && !wet(px - hw, py) && !wet(px + hw, py) && wet(px, py - 0.5) && wet(px - hw, py - 0.5) && wet(px + hw, py - 0.5) && wet(px, py - 1.6);
+  if (ok(x, y)) return { x, y, moved: false };
+  let best = null, bd = 4.01;
+  for (let dy = -4; dy <= 4; dy += 0.1) for (let dx = -4; dx <= 4; dx += 0.25) { const d = Math.hypot(dx, dy); if (d < bd && ok(x + dx, y + dy)) { bd = d; best = { x: x + dx, y: y + dy, moved: true }; } }
+  if (best) { let y1 = best.y; while (y1 - 0.02 > best.y - 0.5 && !wet(best.x, y1 - 0.02 - 0.12)) y1 -= 0.02; best.y = Math.round(y1 * 100) / 100; best.x = Math.round(best.x * 100) / 100; }   // (right up to the lip)
+  return best;
 }

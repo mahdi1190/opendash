@@ -28,7 +28,7 @@ const data = JSON.parse(islandText);
 /* ---------- the registry, as the game has it ---------- */
 const ctx = { console, Math, Object, Array, Map, Set, Number, String, JSON, Infinity, NaN, isFinite, parseFloat };
 vm.createContext(ctx);
-vm.runInContext(readFileSync(join(root, 'src/app/94-garden-zz-7act-0kinds.js'), 'utf8') + '\n;this.K=GARDEN_KINDS;this.T=GARDEN_TERRAIN;this.kindOf=gardenKindOf;this.spots=gardenKindSpots;this.byPet=GARDEN_KIND_BY_PET;', ctx);
+vm.runInContext(readFileSync(join(root, 'src/app/94-garden-zz-7act-0kinds.js'), 'utf8') + '\n;this.K=GARDEN_KINDS;this.T=GARDEN_TERRAIN;this.kindOf=gardenKindOf;this.spots=gardenKindSpots;this.snap=gardenKindSnap;this.byPet=GARDEN_KIND_BY_PET;', ctx);
 
 /* ---------- the cell model, as the game has it (94-garden-0island.js) ---------- */
 const W = Object.assign({}, data.world);
@@ -73,16 +73,17 @@ for (const r of data.things || []) placed.set(r.id, r);
 const things = [];
 for (const r of data.static || []) things.push({ id: r.id, src: 'layout', art: artOf.get(r.id) || '', kind: ctx.kindOf({ id: r.id, art: artOf.get(r.id) || '', kind: r.kind }), x: r.x + r.w / 2, y: r.y + r.h, w: r.w, h: r.h, front: r.front, region: (cell(r.x + r.w / 2, r.y + r.h - 0.5) || {}).region || '' });
 const orphans = [];
+const report = { layout: data.id, ref: REF || '(worktree)', file: arg('--island', REF ? REF + ':assets/garden/island-v5.json' : 'assets/garden/island-v5.json'), things: [], unknown: [], orphans, faults: [], terrain: {}, kinds: {}, missingKinds: [] };
 for (const r of placed.values()) {
   let x = Number(r.x), y = Number(r.y);
   if (r.on) { const a = things.find(t => t.id === r.on); if (!a) { orphans.push(r.id + ' (on ' + r.on + ', not in this layout)'); continue; } x = a.x + ((r.at || [])[0] || 0); y = a.y + ((r.at || [])[1] || 0); }
   const K = ctx.K[r.kind];
+  if (K && K.ground) { const wetp = (px, py) => { try { return isl.fresh(px, py) || !isl.land(px, py); } catch (e) { return false; } }; const sn = ctx.snap(r.kind, x, y, Number(r.w) || K.w, wetp); if (!sn) { report.faults.push(`${r.id} (${r.kind}): no ${K.ground} within 4 cells of where its row puts it: it is left out`); continue; } if (sn.moved) report.faults.push(`${r.id} (${r.kind}): its row puts it off the ${K.ground}; the game moves it ${Math.round(Math.hypot(sn.x - x, sn.y - y) * 10) / 10} cells to ${sn.x},${sn.y} (move the row there)`); x = sn.x; y = sn.y; }
   things.push({ id: r.id, src: 'thing', kind: K ? r.kind : '', x, y, w: Number(r.w) || (K && K.w) || 1, h: Number(r.h) || (K && K.h) || 1, front: r.front, season: r.season || '', region: (cell(x, y - 0.1) || {}).region || '' });
 }
 
 /* ---------- each thing's offer, checked ---------- */
 const round = (v) => Math.round(v * 100) / 100;
-const report = { layout: data.id, ref: REF || '(worktree)', file: arg('--island', REF ? REF + ':assets/garden/island-v5.json' : 'assets/garden/island-v5.json'), things: [], unknown: [], orphans, faults: [], terrain: {}, kinds: {}, missingKinds: [] };
 for (const t of things) {
   const K = t.kind ? ctx.K[t.kind] : null, row = { id: t.id, src: t.src, kind: t.kind || '?', region: t.region, at: [round(t.x), round(t.y)], acts: [], pets: [] };
   if (!K) { report.unknown.push(t.id + (t.art ? ' (art ' + t.art + ')' : '')); report.things.push(row); continue; }

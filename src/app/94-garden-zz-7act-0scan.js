@@ -57,6 +57,7 @@ function gardenAffordThings() {
     const K = GARDEN_KINDS[r.kind];
     let x = Number(r.x), y = Number(r.y);
     if (r.on) { const a = list.find(t => t.id === r.on && t.static); if (!a) { _gks.orphans.add(r.id); continue; } const at = Array.isArray(r.at) ? r.at : [0, 0]; x = a.x + (Number(at[0]) || 0); y = a.y + (Number(at[1]) || 0); }   // (placed against a fixed thing: when the layout moves it, this goes with it)
+    if (K.ground) { const sn = gardenKindSnap(r.kind, x, y, Number(r.w) || K.w, _gksWet); if (!sn) { _gks.orphans.add(r.id + ' (no ' + K.ground + ' near)'); continue; } x = sn.x; y = sn.y; }   // (a bank stays on the bank whatever the layout did round it)
     push({ id: r.id, kind: r.kind, x, y, w: Number(r.w) || K.w || 1, h: Number(r.h) || K.h || 1, front: r.front, src: 'thing', name: r.name, season: r.season || '', drawn: r.drawn, art: K.art || '' });
   }
   // 4. what a painter drew with a foot (the maypole on the green): only things of a kind something is done with

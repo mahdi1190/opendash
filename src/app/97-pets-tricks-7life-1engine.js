@@ -344,7 +344,7 @@ function _plGame(P, r) {
   if (r.id === 'belly-rub' && typeof petBondGive === 'function') { try { petBondGive('pat'); } catch (e) { /* only a moment */ } }
   // one belly rub: picked from the pet's bubble, you kneel and rub as the moves wheel's belly rub does (94-garden-zz-7act-1core.js, act
   // 'rub'): the pet comes to your hand and rolls on to its back with the same clip
-  if (r.id === 'belly-rub' && typeof gartActRun === 'function' && typeof _gw !== 'undefined' && _gw.on && !_gw.boat) { P.lifeCur = null; P.lifeHold = 0; if (gartActRun('rub', null)) return true; P.lifeCur = r; }
+  if (r.id === 'belly-rub' && typeof gartActRun === 'function' && typeof _gw !== 'undefined' && _gw.on && !_gw.boat) { P.lifeCur = null; P.lifeHold = 0; setTimeout(() => { try { if (!gartActRun('rub', null)) _plPlay(P, _plClips(r), 1.5, () => { P.lifeCur = null; }, { at: 1, noProp: 1 }); } catch (e) { /* it just sits */ } }, 260); return true; }   // (a moment later: the tap on the bubble must not reach the ground as a walk, which would end it at once)
   const done = () => { P.hearts(); P.lifeCur = null; };
   if (_plCome(P, r.id === 'high-five' ? 'five' : 'side', _plClips(r), 1.5, done)) return true;
   const t = _plStage(P, true, '-');
@@ -370,7 +370,7 @@ function petLifeMenuItems(P) {
  *  pixels from its foot); the pet goes to the foot of the ladder, hops, and is up at the window with the sill in front of it, then comes down. */
 function _plTreehouse(P) {
   let row = null, prop = null;
-  try { const pl0 = _ptwPlayer() || P, th = gardenAffordNear(GARDEN_KIND_BY_PET.treehouse || [], pl0.x, pl0.y, 12); if (!th || th.kind !== 'treehouse') return false; row = (typeof GARDEN_LAND_SIGHTS !== 'undefined' ? GARDEN_LAND_SIGHTS : []).find(r => r.id === th.id) || null; prop = gardenLandProps().find(p => p.id === th.id) || { id: th.id, x: th.x - th.w / 2, y: th.y - th.h, w: th.w, h: th.h }; } catch (e) { return false; }   // (any treehouse: the nearest one to you)
+  try { const pl0 = _ptwPlayer() || P, th = gardenAffordNear('treehouse', pl0.x, pl0.y, 12); if (!th) return false; row = (typeof GARDEN_LAND_SIGHTS !== 'undefined' ? GARDEN_LAND_SIGHTS : []).find(r => r.id === th.id) || null; prop = gardenLandProps().find(p => p.id === th.id) || { id: th.id, x: th.x - th.w / 2, y: th.y - th.h, w: th.w, h: th.h }; } catch (e) { return false; }   // (any treehouse: the nearest one to you)
   if (!prop) return false;
   const win = (prop.pet && prop.pet.window) || (row && row.pet && row.pet.window) || [-24, -126];
   const foot = { x: prop.x + prop.w / 2, y: prop.y + prop.h };
