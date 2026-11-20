@@ -177,9 +177,16 @@ window.GardenPaintGround = (function () {
       }
       if (!best && opts.prebake && bakedPx < budget * .9 && !(typeof _gw !== 'undefined' && _gw.moving)) for (const ch of list) if (!ch.image) { const d = dist(ch, v); if (d < bs) { bs = d; best = ch; } }
       if (best) { let k = follow && (best.low || !meets(best.bb, near)) ? Math.min(K, minK) : K;
+        /* (a bare chunk on the screen gets a quick picture at level 1 first and is made sharp on the next ticks: baked straight at
+            level 3, a chunk took up to half a second, and after a jump the game's flat background showed through in straight-edged
+            squares at the woods' edge meanwhile; 19 Nov 2026, the woods chain) */
+        if (follow && !best.image && K > 1.5 && meets(best.bb, v)) k = best.job ? best.job.K : Math.min(K, 1);
         /* (while you walk, a bare or repainted chunk is painted no sharper than level 2 when one of its ops is costly there or has never been timed: one band of three kinds took 60 ms at level 3; it is made sharp when you stop) */
         if (moving && follow && (!best.image || best.dirty)) for (const l of [2, 1.5, 1]) if (k > l && l >= minK && (heavy(best, k) || (k > 2 && best.ops.some(o => !(o.cost > 0))))) k = l;
-        bakeStep(best, k, slice); }
+        const tStart = performance.now(), quick = follow && !best.image && k <= 1 && meets(best.bb, v);
+        bakeStep(best, k, slice);
+        // (and while the slice lasts, the next bare chunks on the screen get their quick pictures in the same tick)
+        if (quick) for (let n = 0; n < 4; n++) { const left = slice - (performance.now() - tStart); if (left < 1.5) break; let nx = null, nd = Infinity; for (const ch of list) { if (ch.image || !meets(ch.bb, v)) continue; const d = dist(ch, v); if (d < nd) { nd = d; nx = ch; } } if (!nx) break; bakeStep(nx, nx.job ? nx.job.K : Math.min(K, 1), left); } }
       // over the budget: let go the farthest, sharpest chunk that is off the screen (one well away first); short of room for the margin: one well away
       if (bakedPx > budget || wantRoom) { const over = bakedPx > budget; let far = null, fd = -1; for (const ch of list) { if (!ch.image || meets(ch.bb, v)) continue; const away = !meets(ch.bb, keep); if (!away && !over) continue; const d = dist(ch, v) * ch.K * (away ? 1 : .001); if (d > fd) { fd = d; far = ch; } } if (far) evict(far); }
     };
@@ -380,7 +387,13 @@ window.GardenPaintGround = (function () {
     // a woodland floor: leaf litter, moss cushions, twigs, pools of light that got through the leaves
     forest(cx, cb, P, env) {
       const old = P.kind === 'oldwood'; wash(cx, cb, P, old ? 71 : 61, 1.25);
-      tiles(cb, 128, 60, 63, (tx, ty, r) => { for (let i = 0; i < 2; i++) { const x = tx + r() * 128, y = ty + r() * 128, s = 26 + r() * 40; blob(cx, r, x, y, s, s * .5, 8, .5, old ? '#3c4f34' : '#4a5c36', .16 + r() * .1); if (!old || r() < .4) blob(cx, r, x + s * .9, y - s * .4, s * .7, s * .32, 8, .5, '#e6dc98', old ? .08 : .14); } });
+      // leaf shade in drifts: where a slow field is high, a cluster of small long flecks lying along the light, each its own size
+      // and turn, with sun flecks between them (19 Nov 2026, round 3 fixes, the woods chain: two big soft rounds a tile, all
+      // over, read as polka dots and smoke puffs on the floor)
+      tiles(cb, 96, 40, 63, (tx, ty, r) => { const x0 = tx + r() * 96, y0 = ty + r() * 96, d = fbm(x0 / 170, y0 / 120, old ? 64 : 62); if (d < .5) { r(); return; }
+        const n = 3 + Math.floor((d - .5) * 22 * (.6 + r() * .6)), shade = old ? '#2e4030' : '#3e5232', sun = old ? '#c8cc90' : '#ece2a0';
+        for (let k = 0; k < n; k++) { const q = Math.sqrt(r()), a = r() * 6.283, x = x0 + Math.cos(a) * q * 40, y = y0 + Math.sin(a) * q * 20, l = 3 + r() * r() * 13, th = l * (.22 + r() * .2), rot = .25 + (r() - .5) * .5, lit = r() < (old ? .18 : .3);
+          cx.save(); cx.translate(x, y); cx.rotate(rot); cx.globalAlpha = lit ? .16 + r() * .12 : .1 + r() * .1; cx.fillStyle = lit ? sun : shade; cx.beginPath(); cx.ellipse(0, 0, l, th, 0, 0, 6.283); cx.fill(); cx.restore(); } });
       const litter = P.season === 'winter' ? ['#8a7a5c', '#9c8c6c', '#6e6048'] : old ? ['#7a5c34', '#8f7440', '#5c4a30', '#6f7a3e'] : ['#a8763a', '#c09848', '#8a5c30', '#9aa04e', '#b88a40'];
       // leaf litter lies in drifts (thick in hollows and against roots, bare where feet and rain have cleared it), each leaf
       // its own size, turn and tone with a lit half: an even scatter of one flat oval read as polka dots (19 Nov 2026)
@@ -390,7 +403,9 @@ window.GardenPaintGround = (function () {
           if (s > 2.4) { cx.globalAlpha = .35; cx.fillStyle = mix(col, '#f4e2a4', .45); cx.fill(P2(D().leaf(x - .4, y - .35, a, s * .62, s * .2 * w))); } } });
       cx.lineCap = 'round';
       tiles(cb, 64, 14, 67, (tx, ty, r) => {
-        for (let i = 0; i < (old ? 3 : 2); i++) { if (r() < .35) continue; const x = tx + r() * 64, y = ty + r() * 64, s = 4 + r() * 7; blob(cx, r, x + 1, y + 1.2, s, s * .5, 7, .4, '#35492c', .5); blob(cx, r, x, y, s, s * .48, 7, .4, old ? '#5f8446' : '#7d9a4c', .9); blob(cx, r, x - s * .25, y - s * .14, s * .5, s * .2, 6, .4, '#b3c66c', .7); }
+        // moss cushions gather in drifts (on old roots and in damp hollows), low and close to the litter's own tone: one
+        // bright lit cushion every few strides, evenly, read as green coins on the floor (19 Nov 2026, the woods chain)
+        for (let i = 0; i < (old ? 4 : 3); i++) { const x = tx + r() * 64, y = ty + r() * 64, dm = fbm(x / 120, y / 80, 68), s = (3 + r() * 6) * (.7 + dm * .6); if (dm < (old ? .5 : .56) || r() < .3) continue; blob(cx, r, x + 1, y + 1.2, s, s * .46, 7, .4, '#35492c', .35); blob(cx, r, x, y, s, s * .44, 7, .4, old ? '#55783e' : '#6f8c44', .7); blob(cx, r, x - s * .25, y - s * .14, s * .45, s * .16, 6, .4, old ? '#7f9a56' : '#97ac5e', .38); }
         for (let i = 0; i < 2; i++) { if (r() < .5) continue; const x = tx + r() * 64, y = ty + r() * 64, a = r() * 3.14, l = 5 + r() * 9; cx.globalAlpha = .6; cx.strokeStyle = '#4e3c28'; cx.lineWidth = .9; cx.beginPath(); cx.moveTo(x, y); cx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l * .5); cx.stroke(); }
         if (r() < .45 && P.season !== 'winter') { const x = tx + r() * 64, y = ty + r() * 64; ell(cx, x + 1.5, y + .8, 5, 1.6, P.shadow, .35); for (let f = 0; f < 5; f++) { const a = -1.57 + (f - 2) * .5 + (r() - .5) * .3, l = 5 + r() * 4; blade(cx, x, y, Math.cos(a) * l, -Math.sin(a) * l * .8, f % 2 ? '#4f7a3a' : '#6c964a', 1.3, .85); } }
       });

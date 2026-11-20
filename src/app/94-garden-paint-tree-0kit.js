@@ -31,9 +31,16 @@ window.GardenPaintTrees = (function () {
     apple: { summer: ['#22381e', '#38582c', '#527a3c', '#76a050', '#a6c674'], autumn: ['#34301a', '#5a5424', '#86782e', '#b0983c', '#d8c066'] },
     pear: { summer: ['#203a1e', '#36582c', '#4e7838', '#709c4a', '#9ec06a'], autumn: ['#3a2e16', '#64461e', '#946428', '#c28a36', '#e4b85a'] },
     plum: { summer: ['#1e321e', '#324c2c', '#4a6a3a', '#6a8c4a', '#94ae68'], autumn: ['#3a2418', '#623c22', '#8c5a2c', '#b47c3a', '#d4a85a'] },
+    // the woods: beech (fresh green, copper in autumn), yew (deep blue-green all year), holly (glossy, nearly black-green)
+    beech: { summer: ['#1a3218', '#2c5024', '#447432', '#66983e', '#94ba5a'], autumn: ['#3e1e0e', '#743816', '#a85a24', '#d08434', '#eeb056'] },
+    yew: { summer: ['#0e1c12', '#1a2c1c', '#27402c', '#3a583e', '#5c7c54'] },
+    holly: { summer: ['#0c1e12', '#16301c', '#24462a', '#386038', '#5e8a50'] },
   };
+  // (the Great Oak an older, deeper green than any oak round it, gold on its sunlit caps, so the vale's landmark reads apart
+  //  from the wood from far off; 19 Nov 2026, the woods chain)
+  LEAF.greatoak = { summer: ['#16260f', '#2a4220', '#44632f', '#6c8c3e', '#b4c266'], autumn: ['#3a2410', '#6a4018', '#a06426', '#d0923a', '#f0c464'] };
   LEAF.spring = null;
-  const BARK = { oak: ['#3a2c20', '#5a4532', '#7e6448', '#a48862'], chestnut: ['#3a2a20', '#5c4230', '#80624a', '#a08466'], birch: ['#5a5650', '#c8c4b8', '#e8e4da', '#fbf8f0'], hawthorn: ['#2e2620', '#4c3e32', '#6e5a48', '#8e7660'], alder: ['#2e2a26', '#4a443c', '#6a6256', '#8a8274'], cherry: ['#3a2220', '#5e3a32', '#80564a', '#a07a6a'], apple: ['#3a2c20', '#5a4634', '#7a644c', '#9a8266'], pear: ['#322820', '#504032', '#705c4a', '#907a64'], plum: ['#30221e', '#4c3830', '#6a5246', '#8a705e'] };
+  const BARK = { oak: ['#3a2c20', '#5a4532', '#7e6448', '#a48862'], chestnut: ['#3a2a20', '#5c4230', '#80624a', '#a08466'], birch: ['#5a5650', '#c8c4b8', '#e8e4da', '#fbf8f0'], hawthorn: ['#2e2620', '#4c3e32', '#6e5a48', '#8e7660'], alder: ['#2e2a26', '#4a443c', '#6a6256', '#8a8274'], cherry: ['#3a2220', '#5e3a32', '#80564a', '#a07a6a'], apple: ['#3a2c20', '#5a4634', '#7a644c', '#9a8266'], pear: ['#322820', '#504032', '#705c4a', '#907a64'], plum: ['#30221e', '#4c3830', '#6a5246', '#8a705e'], beech: ['#4a4a44', '#76766c', '#9c9a8e', '#c6c4b8'], yew: ['#2a1810', '#48281a', '#663a26', '#865838'], holly: ['#3a3a34', '#5e5e56', '#80807a', '#a2a29a'], greatoak: ['#33261c', '#54412f', '#7a6046', '#a08460'] };
   // silhouette per species, in units of the tree's height: crown centre height, half width, half height, trunk height,
   // mass size, mass count, mass elongation (birch hangs), leaf dab size
   const FORM = {
@@ -46,12 +53,19 @@ window.GardenPaintTrees = (function () {
     apple: { cy: .55, rx: .42, ry: .3, tr: .34, m: .13, n: 22, el: .85, dab: .024, girth: .055 },
     pear: { cy: .6, rx: .3, ry: .38, tr: .36, m: .12, n: 22, el: 1.05, dab: .022, girth: .05 },
     plum: { cy: .56, rx: .38, ry: .3, tr: .34, m: .12, n: 22, el: .9, dab: .022, girth: .05 },
+    // (the woods: a beech is a broad layered dome on a smooth grey bole; a yew a low dark mound skirted almost to the ground
+    //  on a short fluted red trunk; a holly a narrow dark cone; the Great Oak a crown far wider than it is tall on a vast bole)
+    beech: { cy: .6, rx: .45, ry: .35, tr: .44, m: .14, n: 28, el: .82, dab: .022, girth: .06, smooth: true },
+    yew: { cy: .47, rx: .46, ry: .42, tr: .2, m: .15, n: 34, el: .78, dab: .018, girth: .09, evergreen: true },
+    holly: { cy: .5, rx: .27, ry: .42, tr: .16, m: .1, n: 30, el: 1, dab: .016, girth: .04, evergreen: true, cone: true, smooth: true },
+    greatoak: { cy: .56, rx: .74, ry: .36, tr: .36, m: .12, n: 54, el: .85, dab: .016, girth: .1 },
   };
-  const FRUIT = { apple: { summer: ['#7e9a38', '#a8c050', '#d6e08a'], autumn: ['#8e1e18', '#c8382a', '#f08a6a'] }, pear: { summer: ['#8aa040', '#b4c862', '#e2ea9a'], autumn: ['#a88a2a', '#d8b84a', '#f4e08e'] }, plum: { summer: ['#56602e', '#7a8a4a', '#aab47a'], autumn: ['#2e1438', '#5a2e5e', '#9a6aa0'] }, cherry: { summer: ['#6e1410', '#b42a22', '#ee7a6a'], autumn: ['#6e1410', '#b42a22', '#ee7a6a'] }, hawthorn: { autumn: ['#5a1010', '#9a2218', '#d0503a'] } };
+  const FRUIT = { apple: { summer: ['#7e9a38', '#a8c050', '#d6e08a'], autumn: ['#8e1e18', '#c8382a', '#f08a6a'] }, pear: { summer: ['#8aa040', '#b4c862', '#e2ea9a'], autumn: ['#a88a2a', '#d8b84a', '#f4e08e'] }, plum: { summer: ['#56602e', '#7a8a4a', '#aab47a'], autumn: ['#2e1438', '#5a2e5e', '#9a6aa0'] }, cherry: { summer: ['#6e1410', '#b42a22', '#ee7a6a'], autumn: ['#6e1410', '#b42a22', '#ee7a6a'] }, hawthorn: { autumn: ['#5a1010', '#9a2218', '#d0503a'] }, holly: { autumn: ['#5a0c0c', '#a8161a', '#e85a4a'], winter: ['#5a0c0c', '#a8161a', '#e85a4a'] } };
   const LIGHT = { x: -.6, y: -.8 };
 
   function ramp(species, season) {
     const L = LEAF[species] || LEAF.oak;
+    if (FORM[species] && FORM[species].evergreen) return L.summer;   // (yew and holly are the same dark green all year)
     if (season === 'spring') return L.summer.map((c, i) => mix(c, ['#3a5a2c', '#5a8a3a', '#7cb050', '#a6d06a', '#d4ec98'][i], .45));
     return L[season] || L.summer;
   }
@@ -65,7 +79,7 @@ window.GardenPaintTrees = (function () {
     const F = FORM[sp], B = BARK[sp] || BARK.oak, tw = Math.max(2.4, H * F.girth * 1.25), th = H * F.tr + H * F.ry * .5, top = -th, birch = sp === 'birch';
     // limbs into the crown (seen through its gaps), drawn under it
     const limbs = [];
-    const n = sp === 'birch' ? 3 : 4 + (r() < .5 ? 1 : 0);
+    const n = sp === 'birch' ? 3 : sp === 'greatoak' ? 7 : 4 + (r() < .5 ? 1 : 0);
     for (let i = 0; i < n; i++) {
       const a = -Math.PI / 2 + (i / (n - 1) - .5) * (sp === 'alder' || sp === 'birch' ? 1.1 : 2.1) + (r() - .5) * .25, len = H * F.ry * (.55 + r() * .35);
       const y0 = -H * F.tr * (.82 + r() * .2), x0 = lean * (y0 / top);
@@ -80,7 +94,9 @@ window.GardenPaintTrees = (function () {
       for (let k = 0; k < 3; k++) { const t = .45 + k * .2, bx = x0 + (x1 - x0) * t, by = y0 + (y1 - y0) * t; cx.strokeStyle = B[1]; cx.lineWidth = w * .3; cx.beginPath(); cx.moveTo(bx, by); cx.lineTo(bx + (r() - .5) * H * .14, by - H * (.03 + r() * .06)); cx.stroke(); }
     }
     // the bole with its root flare: the base spreads and the roots run out and sink into the grass
-    const flare = tw * (birch ? 1.5 : 2.1), g = cx.createLinearGradient(-flare, 0, flare, 0);
+    // (the woods' own species, yew, beech and holly, sit on a tighter flare with shorter roots: at the old spread a yew stood
+    //  on a brown tent of roots twice as wide as its bole; the village's species keep theirs)
+    const great = sp === 'greatoak', tight = sp === 'yew' || sp === 'beech' || sp === 'holly', flare = tw * (birch ? 1.5 : great ? 1.4 : tight ? 1.55 : 2.1), g = cx.createLinearGradient(-flare, 0, flare, 0);
     if (birch) { g.addColorStop(0, B[3]); g.addColorStop(.45, B[2]); g.addColorStop(1, B[0]); } else { g.addColorStop(0, B[3]); g.addColorStop(.3, B[2]); g.addColorStop(.75, B[1]); g.addColorStop(1, B[0]); }
     cx.fillStyle = g; cx.beginPath();
     cx.moveTo(-flare, 1.5);
@@ -91,8 +107,18 @@ window.GardenPaintTrees = (function () {
     cx.bezierCurveTo(tw * .6, -tw * 1.2, tw * 1.05, -tw * .2, flare * 1.1, 1.5);
     cx.quadraticCurveTo(0, 3, -flare, 1.5); cx.fill();
     // root fingers, each with a dark crease where it leaves the bole
-    for (const [dir, len] of [[-1, 1.0], [1, 1.2], [-.35, .6], [.45, .7]]) {
-      const x0 = dir * tw * .5, x1 = dir * (flare + tw * len * .9);
+    if (great) {
+      // (19 Nov 2026, the woods chain: the Great Oak's roots are gnarled buttresses, each its own length and swell, a knuckle
+      //  where it bends into the ground and a dark crease each side; its long straight root wedges read as a tent's skirt)
+      for (const [dir, len, lift] of [[-1, .62, .5], [1, .74, .55], [-.62, .42, .8], [.66, .5, .75], [-.18, .26, 1], [.3, .32, .95]]) {
+        const x0 = dir * tw * .42, x1 = dir * (flare + tw * len * .55) + (r() - .5) * tw * .1, kx = x0 + (x1 - x0) * .62, ky = -tw * .16 * lift, w0 = tw * (.2 + .1 * lift);
+        cx.fillStyle = dir < 0 ? B[2] : B[1]; cx.beginPath(); cx.moveTo(x0 - w0, -tw * .75 * lift); cx.bezierCurveTo(x0 + (kx - x0) * .4, -tw * .55 * lift, kx - dir * w0 * .4, ky - w0 * .7, kx, ky - w0 * .45);
+        cx.quadraticCurveTo(x1 - dir * w0 * .2, ky * .4, x1, 1.8); cx.quadraticCurveTo(kx, 3, x0 + w0, .5); cx.closePath(); cx.fill();
+        cx.globalAlpha = .5; cx.fillStyle = dir < 0 ? B[3] : B[2]; cx.beginPath(); cx.ellipse(kx - dir * w0 * .15, ky - w0 * .4, w0 * .5, w0 * .28, -dir * .3, Math.PI, Math.PI * 2); cx.fill();   // (the lit top of the knuckle)
+        cx.globalAlpha = .55; cx.strokeStyle = B[0]; cx.lineWidth = Math.max(.7, tw * .025); cx.beginPath(); cx.moveTo(x0 + dir * w0 * .2, -tw * .6 * lift); cx.quadraticCurveTo(kx + dir * w0 * .3, ky + w0 * .1, x1 * .97, 1.6); cx.stroke(); cx.globalAlpha = 1;
+      }
+    } else for (const [dir, len] of [[-1, 1.0], [1, 1.2], [-.35, .6], [.45, .7]]) {
+      const x0 = dir * tw * .5, x1 = dir * (flare + tw * len * (tight ? .4 : .9));
       cx.fillStyle = dir < 0 ? B[2] : B[1]; cx.beginPath(); cx.moveTo(x0 - tw * .3, -tw * .6); cx.quadraticCurveTo(x1 * .7, -tw * .25, x1, 1.6); cx.quadraticCurveTo(x1 * .6, 2.2, x0 + tw * .3, 0); cx.closePath(); cx.fill();
       cx.strokeStyle = B[0]; cx.globalAlpha = .45; cx.lineWidth = .7; cx.beginPath(); cx.moveTo(x0, -tw * .5); cx.quadraticCurveTo(x1 * .6, -tw * .1, x1 * .9, 1.4); cx.stroke(); cx.globalAlpha = 1;
     }
@@ -100,11 +126,55 @@ window.GardenPaintTrees = (function () {
     if (birch) {
       for (let k = 0; k < 9; k++) { const y = -tw - r() * (th - tw * 2), x = lean * (y / top) + (r() - .5) * tw * .7; cx.fillStyle = B[0]; cx.globalAlpha = .85; cx.beginPath(); cx.ellipse(x, y, tw * (.25 + r() * .25), .6 + r() * .6, 0, 0, Math.PI * 2); cx.fill(); }
       cx.globalAlpha = .45; cx.fillStyle = '#3a3630'; cx.beginPath(); cx.moveTo(-flare, 1.5); cx.quadraticCurveTo(-tw * .9, -tw * 1.2, -tw * .3, -tw * 1.6); cx.quadraticCurveTo(tw * .6, -tw * 1.1, flare, 1.5); cx.fill(); cx.globalAlpha = 1;
+    } else if (F.smooth) {
+      // beech and holly: smooth grey bark, a lit stripe up the sunny side, faint rings and a few dark eyes where limbs fell
+      cx.globalAlpha = .3; cx.fillStyle = B[3]; cx.beginPath(); cx.ellipse(-tw * .22 + lean * .5, -th * .45, tw * .13, th * .34, 0, 0, Math.PI * 2); cx.fill();
+      cx.strokeStyle = B[0]; cx.lineWidth = .6; for (let k = 0; k < 5; k++) { const y = -tw * 1.2 - r() * (th - tw * 2), x = lean * (y / top); cx.globalAlpha = .25 + r() * .2; cx.beginPath(); cx.moveTo(x - tw * .45, y); cx.quadraticCurveTo(x, y + 1.2, x + tw * .45, y - .4); cx.stroke(); }
+      for (let k = 0; k < 2; k++) { const y = -th * (.35 + r() * .4), x = lean * (y / top) + (r() - .5) * tw * .4; cx.globalAlpha = .55; cx.fillStyle = B[0]; cx.beginPath(); cx.ellipse(x, y, tw * .1, tw * .07, 0, 0, Math.PI * 2); cx.fill(); }
+      cx.globalAlpha = 1;
     } else {
-      cx.strokeStyle = B[0]; cx.lineWidth = .8;
-      for (let k = 0; k < 7; k++) { const x = (k / 6 - .5) * tw * .9, sway = (r() - .5) * 2; cx.globalAlpha = .35 + r() * .25; cx.beginPath(); cx.moveTo(x * 1.4, -1); cx.bezierCurveTo(x + sway, -th * .3, x + lean * .4 - sway, -th * .6, x * .8 + lean, top + 2); cx.stroke(); }
+      cx.strokeStyle = B[0]; cx.lineWidth = great ? Math.max(.8, tw * .035) : .8;
+      for (let k = 0, nf = great ? Math.max(7, Math.round(tw * .45)) : 7; k < nf; k++) {   /* (the Great Oak's vast bole gets furrows to its own width; every other tree keeps its seven, and so its shape) */ const x = (k / (nf - 1) - .5) * tw * .9, sway = (r() - .5) * (great ? tw * .1 : 2); cx.globalAlpha = .35 + r() * .25; cx.beginPath(); cx.moveTo(x * 1.4, -1); cx.bezierCurveTo(x + sway, -th * .3, x + lean * .4 - sway, -th * .6, x * .8 + lean, top + 2); cx.stroke(); }
       cx.globalAlpha = .25; cx.fillStyle = B[3]; cx.beginPath(); cx.ellipse(-tw * .3, -th * .35, tw * .16, th * .25, 0, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 1;
       if (sp === 'oak' && r() < .7) { cx.fillStyle = B[0]; cx.globalAlpha = .7; cx.beginPath(); cx.ellipse(tw * .1, -th * .5, tw * .16, tw * .28, 0, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 1; }
+    }
+    if (great) {
+      // the Great Oak's character (woodland.md: huge, low limbs, the letters carved low on the trunk): two great limbs leave
+      // the bole low and sag out sideways under the crown's rim before they rise into it; burrs on the bole; W, a small t and
+      // a third letter scratched out, cut pale into the bark at about knee height
+      // (each limb a tapered bough, thick at the bole and thin where it goes into the leaves, lit along its top and shaded
+      //  under; drawn as strokes of one width they read as garden hoses)
+      for (const dir of [-1, 1]) {
+        const x0 = dir * tw * .3 + lean * .4, y0 = -th * (dir < 0 ? .36 : .32), x1 = dir * H * (dir < 0 ? .37 : .4), y1 = -H * (dir < 0 ? .37 : .35), mx = dir * H * .19, my = y0 + H * .014;
+        const P = t => [(1 - t) * (1 - t) * x0 + 2 * (1 - t) * t * mx + t * t * x1, (1 - t) * (1 - t) * y0 + 2 * (1 - t) * t * my + t * t * y1];
+        const top = [], bot = [], N = 14;
+        for (let i = 0; i <= N; i++) { const t = i / N, [x, y] = P(t), [xa, ya] = P(Math.min(1, t + .02)), [xb, yb] = P(Math.max(0, t - .02)), dx = xa - xb, dy = ya - yb, L = Math.hypot(dx, dy) || 1, w = tw * (.3 - .22 * t) * (1 + .18 * Math.sin(t * 9 + dir)); top.push([x + dy / L * w * dir, y - dx / L * w * dir]); bot.push([x - dy / L * w * dir, y + dx / L * w * dir]); }
+        const [hi, lo] = top[3][1] < bot[3][1] ? [top, bot] : [bot, top];
+        cx.globalAlpha = 1; cx.fillStyle = B[1]; cx.beginPath(); cx.moveTo(hi[0][0], hi[0][1]); for (const p of hi) cx.lineTo(p[0], p[1]); for (let i = lo.length - 1; i >= 0; i--) cx.lineTo(lo[i][0], lo[i][1]); cx.closePath(); cx.fill();
+        cx.globalAlpha = .55; cx.fillStyle = B[0]; cx.beginPath(); cx.moveTo(lo[0][0], lo[0][1]); for (let i = 0; i < lo.length; i++) cx.lineTo(lo[i][0], lo[i][1]); for (let i = lo.length - 1; i >= 0; i--) cx.lineTo((lo[i][0] * 2 + hi[i][0]) / 3, (lo[i][1] * 2 + hi[i][1]) / 3); cx.closePath(); cx.fill();
+        cx.globalAlpha = .5; cx.strokeStyle = B[3]; cx.lineWidth = Math.max(.7, tw * .035); cx.beginPath(); for (let i = 1; i < hi.length - 2; i++) { const p = hi[i], q = lo[i]; cx[i === 1 ? 'moveTo' : 'lineTo'](p[0] + (q[0] - p[0]) * .18, p[1] + (q[1] - p[1]) * .18); } cx.stroke();
+        // bark furrows along the bough, so it reads as wood and not as a smooth tube
+        cx.strokeStyle = B[0]; cx.lineWidth = Math.max(.6, tw * .022);
+        for (const f of [.42, .62, .78]) { cx.globalAlpha = .3; cx.beginPath(); for (let i = 0; i < hi.length - 1; i++) { const p = hi[i], q = lo[i], w = f + Math.sin(i * 1.7 + f * 9) * .05; cx[i ? 'lineTo' : 'moveTo'](p[0] + (q[0] - p[0]) * w, p[1] + (q[1] - p[1]) * w); } cx.stroke(); }
+        cx.globalAlpha = 1;
+        // in winter the bough forks on from its tip into branches (bare, it otherwise ended in the air like a hammock's rope)
+        limbs.push([x1, y1, x1 + dir * H * .1, y1 - H * .2, tw * .16], [x1 * .8, y1 + H * .02, x1 * .8 + dir * H * .02, y1 - H * .18, tw * .12]);
+      }
+      for (const [bx, by, s] of [[-.26, .3, 1], [.2, .55, .8], [-.05, .72, .7]]) {
+        const x = tw * bx + lean * by, y = -th * by, rx = tw * .13 * s, ry = tw * .1 * s;
+        cx.fillStyle = B[0]; cx.globalAlpha = .75; cx.beginPath(); cx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); cx.fill();
+        cx.strokeStyle = B[3]; cx.globalAlpha = .5; cx.lineWidth = Math.max(.6, tw * .02); cx.beginPath(); cx.ellipse(x, y, rx * 1.15, ry * 1.15, 0, Math.PI * 1.05, Math.PI * 1.75); cx.stroke();
+      }
+      const L = tw * .15, lx = tw * .04, ly = -tw * .5;
+      cx.lineCap = 'round'; cx.lineJoin = 'round';
+      for (const [col, dx, dy, a] of [[B[0], .5, .6, .8], ['#c8a878', 0, 0, .9]]) {
+        cx.strokeStyle = col; cx.globalAlpha = a; cx.lineWidth = Math.max(.7, tw * .028); cx.beginPath();
+        cx.moveTo(lx - L * 1.1 + dx, ly - L + dy); cx.lineTo(lx - L * .8 + dx, ly + dy); cx.lineTo(lx - L * .55 + dx, ly - L * .55 + dy); cx.lineTo(lx - L * .3 + dx, ly + dy); cx.lineTo(lx + dx, ly - L + dy);   // W
+        cx.moveTo(lx + L * .45 + dx, ly - L * .75 + dy); cx.lineTo(lx + L * .45 + dx, ly + dy); cx.moveTo(lx + L * .25 + dx, ly - L * .5 + dy); cx.lineTo(lx + L * .65 + dx, ly - L * .5 + dy);   // t
+        for (let k = 0; k < 4; k++) { cx.moveTo(lx + L * (.9 + k * .12) + dx, ly - L * .85 + dy); cx.lineTo(lx + L * (.85 + k * .12) + dx, ly - L * .05 + dy); }   // the third, scratched out
+        cx.stroke();
+      }
+      cx.globalAlpha = 1;
     }
     // moss on the shaded north foot
     if (!birch) { cx.fillStyle = '#5e7a34'; cx.globalAlpha = .22; cx.beginPath(); cx.ellipse(tw * .5, -tw * .5, tw * .5, tw * .7, .3, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 1; }
@@ -191,7 +261,10 @@ window.GardenPaintTrees = (function () {
     };
     cx.lineCap = 'round';
     for (const [x0, y0, x1, y1, w] of base.limbs) fork(x0, y0, Math.atan2(y1 - y0, x1 - x0), Math.hypot(x1 - x0, y1 - y0) * .6, w, 1);
-    const F = FORM[sp]; cx.fillStyle = sp === 'birch' ? '#8a6a5a' : '#6e6252'; cx.globalAlpha = .16; cx.beginPath(); cx.ellipse(0, -H * F.cy, H * F.rx * .85, H * F.ry * .75, 0, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 1;
+    // (the haze fades out from the middle: a flat ellipse at a sixth read as a grey balloon behind every bare tree on snow;
+    //  19 Nov 2026, the woods chain)
+    const F = FORM[sp], hz = sp === 'birch' ? '138,106,90' : '110,98,82', hx = H * F.rx * .85, hy = H * F.ry * .75;
+    cx.save(); cx.translate(0, -H * F.cy); cx.scale(1, hy / hx); const hg = cx.createRadialGradient(0, 0, 0, 0, 0, hx); hg.addColorStop(0, 'rgba(' + hz + ',.2)'); hg.addColorStop(.55, 'rgba(' + hz + ',.12)'); hg.addColorStop(1, 'rgba(' + hz + ',0)'); cx.fillStyle = hg; cx.globalAlpha = 1; cx.beginPath(); cx.arc(0, 0, hx, 0, Math.PI * 2); cx.fill(); cx.restore();
   }
   /** Grass grown up round the foot, so the tree stands in the lawn rather than on it. */
   function footGrass(cx, r, H, flare, season) {
@@ -204,14 +277,14 @@ window.GardenPaintTrees = (function () {
     const r = rng(seed), lean = (v - 1) * H * .03 + (r() - .5) * H * .02;
     const base = trunk(cx, r, sp, H, lean, season);
     let info = null;
-    if (season === 'winter' && sp !== 'alder') bare(cx, r, sp, H, base);
+    if (season === 'winter' && sp !== 'alder' && !FORM[sp].evergreen) bare(cx, r, sp, H, base);
     else {
       // the crown on its own layer, so light and shade can be laid over the leaves only
       const F = FORM[sp], c = cx.canvas, off = document.createElement('canvas'); off.width = c.width; off.height = c.height;
       const ox = off.getContext('2d'); ox.setTransform(cx.getTransform());
       info = crown(ox, r, sp, season, H, lean, v);
       if (season === 'spring' && (sp === 'cherry' || sp === 'apple' || sp === 'pear' || sp === 'plum' || sp === 'hawthorn')) blossom(ox, r, sp, H, info);
-      if (season === 'autumn' || season === 'summer') fruit(ox, r, sp, season, H, info);
+      if (season === 'autumn' || season === 'summer' || season === 'winter') fruit(ox, r, sp, season, H, info);
       // shade wraps the lower right of the crown; warm sun on its upper left (on the leaves only)
       ox.globalCompositeOperation = 'source-atop';
       let g = ox.createRadialGradient(info.ccx - info.RX * .45, info.ccy - info.RY * .55, 0, info.ccx - info.RX * .45, info.ccy - info.RY * .55, Math.max(info.RX, info.RY) * 2.1);
@@ -250,7 +323,8 @@ window.GardenPaintTrees = (function () {
    * and a tight dark contact where the roots meet the grass. */
   function groundShadow(cx, x, y, H, o) {
     const sp = FORM[o && o.species] ? o.species : 'oak', F = FORM[sp], r = rng(Math.round(x * 13 + y * 7)), bare = o && o.season === 'winter' && sp !== 'alder';
-    const sx = x + H * .22, sy = y + H * .05, rx = H * F.rx * 1.05, ry = H * F.rx * .42;
+    // (o.len stretches the shadow along the light: a low sun at dusk throws it long; 1 is the day's)
+    const len = Math.max(1, o && o.len || 1), sx = x + H * .22 * len, sy = y + H * .05 * len, rx = H * F.rx * 1.05 * (1 + (len - 1) * .6), ry = H * F.rx * .42;
     cx.save();
     const m = cx.getTransform(), sc = Math.max(1, Math.hypot(m.a, m.b)), pad = H * .08, bw = rx * 2.4 + pad * 2, bh = ry * 2.4 + pad * 2, sh = document.createElement('canvas');
     sh.width = Math.ceil(bw * sc); sh.height = Math.ceil(bh * sc); const s = sh.getContext('2d'); s.setTransform(sc, 0, 0, sc, (bw / 2 - sx) * sc, (bh / 2 - sy) * sc);
@@ -258,7 +332,7 @@ window.GardenPaintTrees = (function () {
     s.beginPath(); for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2 + r(), px = sx + Math.cos(a) * rx * .55, py = sy + Math.sin(a) * ry * .5; s.moveTo(px + rx * .5, py); s.ellipse(px, py, rx * .5, ry * .55, 0, 0, Math.PI * 2); } s.fill();
     // flecks of sun through the leaves
     if (!bare) { s.globalCompositeOperation = 'destination-out'; s.globalAlpha = .55; for (let i = 0; i < 9; i++) { s.beginPath(); s.ellipse(sx + (r() - .5) * rx * 1.3, sy + (r() - .5) * ry * 1.1, H * .02 + r() * H * .02, H * .012 + r() * H * .008, 0, 0, Math.PI * 2); s.fill(); } }
-    cx.globalAlpha = bare ? .1 : .3; cx.drawImage(sh, sx - bw / 2, sy - bh / 2, bw, bh); cx.globalAlpha = 1;
+    cx.globalAlpha = (bare ? .1 : .3) * (o && o.a || 1); cx.drawImage(sh, sx - bw / 2, sy - bh / 2, bw, bh); cx.globalAlpha = 1;
     // the contact: dark and tight round the roots (ambient occlusion)
     cx.filter = 'blur(' + Math.max(1, H * .012).toFixed(1) + 'px)';
     cx.globalAlpha = .45; cx.fillStyle = '#1c2614'; cx.beginPath(); cx.ellipse(x + H * .01, y + 1, H * F.girth * 2.6, H * F.girth * .9, 0, 0, Math.PI * 2); cx.fill();
