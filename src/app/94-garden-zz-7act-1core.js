@@ -106,7 +106,7 @@ function _gaWaterRows(px, py) {
   // not by white water (anything whose kind calms the water round it: falls): no skimming, no ducks
   try { for (const t of gardenAffordThings()) { const K = GARDEN_KINDS[t.kind]; if (K && K.calmsWater && Math.hypot(px - t.x, (py - t.y) * 1.3) < Math.max(K.calmsWater, t.w || 1)) return []; } } catch (e) { /* none */ }
   const w = gardenTerrainWaterAhead(px, py); if (!w) return [];
-  const W3 = GARDEN_TERRAIN['water-edge'].acts.concat(w.deep ? GARDEN_TERRAIN.deep.acts : []), k = _ga.wt % W3.length;
+  const W3 = (w.deep ? GARDEN_TERRAIN.deep.acts : []).concat(GARDEN_TERRAIN['water-edge'].acts), k = _ga.wt % W3.length;   // (deep water offers a swim first: then the ducks, then a skim, in turn)
   return W3.slice(k).concat(W3.slice(0, k)).map(o => ({ key: 'water:' + o.act, act: o.act, name: o.name, x: w.x, y: w.y, stand: null, deg: w.deg, lift: 0, src: 'water' }));
 }
 /** Everything in reach, the nearest first (things with a place before the water's edge). */

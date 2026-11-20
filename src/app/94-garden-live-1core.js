@@ -280,6 +280,7 @@ function _gllSprite(A, onClick) {
       if (sp.dressed !== sp.node) { sp.dressed = sp.node; _gllDress(A, sp.node); }
       _gllStep(A, dt);
       sp.x = A.x; sp.y = A.y; sp.lift = A.hLift || 0; sp.z = A.hZ != null ? A.hZ : null;   // (up on a floor: 94-garden-zz-7act-3height.js)
+      if (typeof gardenHeightRail === 'function') gardenHeightRail(A, sp.node);   // (its floor's rail in front of its legs)
       _gllPetStep(A, dt, _gw.svg);
       if (typeof _gllFxStep === 'function') _gllFxStep(A, dt);
     },

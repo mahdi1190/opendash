@@ -374,7 +374,7 @@ function _ghtRemote(A, id) {
     A.dir = 'n'; A.pose = ''; A.key = ''; if (typeof _gllPaint === 'function') _gllPaint(A);
     A.ghtClimb = { w, up, t0: performance.now(), ms: _ghtClimbMs(w.lv.h) };
     const gpl = A.root && A.root.querySelector('.gpl'); if (gpl) A.ghtH = gartActPlay(gpl, 'climbing', { motion: typeof _gllReduced === 'function' ? !_gllReduced() : true });
-    A.actLift = up ? 0 : w.lv.h;
+    A.actLift = 0; A.hLift = up ? 0 : w.lv.h;   // (the whole figure rises, its name with it: the sprite's own lift)
     return true;
   }
   if (id === 'swim') { A.ghtSwim = { t0: performance.now(), from: { x: A.x, y: A.y }, to: null, on: false }; const W2 = _ghtSwimTo(A.x, A.y); A.ghtSwim.to = W2 || { x: A.x, y: A.y - 1 }; A.swimming = true; A.key = ''; return true; }
@@ -390,17 +390,17 @@ function _ghtRemoteStep(A) {
   const now = performance.now(), C = A.ghtClimb;
   if (C) {
     const k = Math.min(1, (now - C.t0) / C.ms);
-    A.actLift = C.w.lv.h * (C.up ? k : 1 - k);
+    A.actLift = 0; A.hLift = C.w.lv.h * (C.up ? k : 1 - k);
     if (k >= 1) {
       A.ghtClimb = null; if (A.ghtH) { try { A.ghtH.stop(); } catch (e) { /* gone */ } A.ghtH = null; }
-      A.actLift = 0;
+      A.actLift = 0; A.hLift = 0;
       if (C.up) { A.hLv = C.w.lv.key; A.x = C.w.top.x; A.y = C.w.top.y; } else { A.hLv = null; A.y = C.w.foot.y + 0.06; }
       A.dir = 's'; A.key = ''; { const sh = A.root && A.root.querySelector('.gll-shadow'); if (sh) sh.setAttribute('opacity', '1'); }
       if (C.up && C.w.lv.L.sit && typeof gartActRemote === 'function') setTimeout(() => { if (A.hLv === C.w.lv.key) gartActRemote(A, C.w.lv.L.sit); }, 60);
     }
   }
   if (A.hLv) { const lv = _ghtLevelByKey(A.hLv); if (lv) { A.hLift = lv.h; A.hZ = (gardenLevelDepth(lv, A.x, A.y) - GARDEN_WORLD.sky) / GARDEN_WORLD.cellH; } else { A.hLv = null; A.hLift = 0; A.hZ = null; } }
-  else if (A.hLift) { A.hLift = 0; A.hZ = null; }
+  else if (A.hLift && !A.ghtClimb) { A.hLift = 0; A.hZ = null; }
   const S = A.ghtSwim;
   if (S && !S.on) { const k = Math.min(1, (now - S.t0) / 1500), q = k * k * (3 - 2 * k); A.x = S.from.x + (S.to.x - S.from.x) * q; A.y = S.from.y + (S.to.y - S.from.y) * q; if (k >= 1) S.on = true; }
 }
@@ -472,26 +472,29 @@ if (typeof _gmvDrawing === 'function') {
 }
 /* The floor's front rail in front of your legs: the thing's picture has its rail, but you are drawn over the whole picture, so the piece
    of rail that passes in front of you is drawn again on you (a level's `rail`: { ring: [rx, ry] } or { line: [x0, x1, y] }, h, color, in H). */
-function _ghtRailFrame() {
-  const node = _gw && _gw.node, lv = _ght.lv, R = lv && !_ght.climb && lv.L.rail;
+function _ghtRailFrame() { _ghtRailOn(_ght, _gw && _gw.node, _ght.climb ? null : _ght.lv, _gw.px, _gw.py); }
+/** A friend's copy up on a floor: the same rail over its legs (called by its sprite each step, 94-garden-live-1core.js). */
+function gardenHeightRail(A, node) { if (!A || !node || (!A.hLv && !A.railG)) return; const lv = A.hLv && !A.ghtClimb ? _ghtLevelByKey(A.hLv) : null; _ghtRailOn(A, node, lv, A.x, A.y); }
+function _ghtRailOn(K, node, lv, px, py) {
+  const R = lv && lv.L.rail;
   const W = GARDEN_WORLD, H = _ghtH(), C = lv && lv.L.core;
-  const u = lv ? (_gw.px * W.cellW - lv.cx) / H : 0, v = lv ? (W.sky + _gw.py * W.cellH - lv.cy) / H : 0;
+  const u = lv ? (px * W.cellW - lv.cx) / H : 0, v = lv ? (W.sky + py * W.cellH - lv.cy) / H : 0;
   const show = !!(R && node && !(C && v < C[1] && Math.abs(u) < C[0]));
   const key = show ? lv.key + '|' + Math.round(u * 400) + ',' + Math.round(v * 400) : '';
-  if (key === _ght.railKey && (!show || (_ght.railG && _ght.railG.parentNode === node))) return;
-  _ght.railKey = key;
-  if (!show) { if (_ght.railG) _ght.railG.setAttribute('opacity', '0'); return; }
-  if (!_ght.railG || _ght.railG.parentNode !== node) { try { if (_ght.railG && _ght.railG.parentNode) _ght.railG.parentNode.removeChild(_ght.railG); } catch (e) { /* gone */ } const g = typeof gardenSceneElement === 'function' && gardenVisualIsNative(node) ? gardenSceneElement('g') : document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'ght-rail'); node.appendChild(g); _ght.railG = g; }
+  if (key === K.railKey && (!show || (K.railG && K.railG.parentNode === node))) return;
+  K.railKey = key;
+  if (!show) { if (K.railG) K.railG.setAttribute('opacity', '0'); return; }
+  if (!K.railG || K.railG.parentNode !== node) { try { if (K.railG && K.railG.parentNode) K.railG.parentNode.removeChild(K.railG); } catch (e) { /* gone */ } const g = typeof gardenSceneElement === 'function' && typeof gardenVisualIsNative === 'function' && gardenVisualIsNative(node) ? gardenSceneElement('g') : document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'ght-rail'); node.appendChild(g); K.railG = g; }
   const ox = -u * H, oy = -v * H, hh = (R.h || 0.36) * H, col = R.color || '#2a2e30', win = 13, N = (k) => Math.round(k * 10) / 10;
   // the rail's front line in the node's own px (its origin at your feet), from win px left of you to win px right
   const at = (x) => { if (R.ring) { const rx = R.ring[0] * H, ry = R.ring[1] * H, k = Math.max(0, 1 - ((x - ox) / rx) ** 2); return oy + ry * Math.sqrt(k); } return oy + R.line[2] * H; };
   const lo = R.ring ? Math.max(-win, ox - R.ring[0] * H + 1) : Math.max(-win, ox + R.line[0] * H), hi = R.ring ? Math.min(win, ox + R.ring[0] * H - 1) : Math.min(win, ox + R.line[1] * H);
-  if (hi <= lo || at(0) < -1) { _ght.railG.setAttribute('opacity', '0'); return; }
+  if (hi <= lo || at(0) < -1) { K.railG.setAttribute('opacity', '0'); return; }
   const gap = R.gap ? [ox + R.gap[0] * H, ox + R.gap[1] * H] : null, inGap = (x) => gap && x > gap[0] && x < gap[1];
   let d = '', p = '';
   const step = (R.post || 0.11) * H, o0 = (R.post0 || 0) * H, first = Math.ceil((lo - ox - o0) / step) * step + ox + o0;
   for (let x = first; x <= hi; x += step) if (!inGap(x)) p += `M${N(x)} ${N(at(x) - 0.5)}v${N(-hh)}`;
   for (let x = lo; x < hi; x += 2) { const x1 = Math.min(hi, x + 2); if (inGap(x) || inGap(x1)) continue; d += `M${N(x)} ${N(at(x) - hh)}L${N(x1)} ${N(at(x1) - hh)}` + (R.mid === false ? '' : `M${N(x)} ${N(at(x) - hh * 0.5)}L${N(x1)} ${N(at(x1) - hh * 0.5)}`); }
-  _ght.railG.innerHTML = (p ? `<path d="${p}" stroke="${col}" stroke-width="${R.postW || 0.9}" fill="none"/>` : '') + (d ? `<path d="${d}" stroke="${col}" stroke-width="${R.railW || 1.3}" fill="none" stroke-linecap="round"/>` : '');
-  _ght.railG.setAttribute('opacity', '1');
+  K.railG.innerHTML = (p ? `<path d="${p}" stroke="${col}" stroke-width="${R.postW || 0.9}" fill="none"/>` : '') + (d ? `<path d="${d}" stroke="${col}" stroke-width="${R.railW || 1.3}" fill="none" stroke-linecap="round"/>` : '');
+  K.railG.setAttribute('opacity', '1');
 }
