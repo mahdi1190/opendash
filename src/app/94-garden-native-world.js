@@ -1284,6 +1284,8 @@ window.GardenNativeWorld = (function () {
         if (behind && p.id === 'ld-falls' && record.handle.fallsCoversPlayer) behind = record.handle.fallsCoversPlayer(sx, sy);
         // (only when you are within the middle of it and under its top: beside a barn's gable it faded with nothing hidden)
         if (behind && p.id !== 'ld-falls') behind = sx > b.x + b.width * .12 && sx < b.x + b.width * .88 && sy - playerOcclusionHeight * .6 > b.y;
+        // (a lamp post or a finger post hides nothing: standing at the old lamp turned you into the dark outline, hunter, round 3)
+        if (behind && (p.art === 'lamp' || p.art === 'finger' || b.width < 46)) behind = false;
         if (record.behind !== behind) { record.behind = behind; record.root.setAlpha(behind ? .8 : 1); }
         if (behind) propBehind++;
       }

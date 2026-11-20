@@ -678,9 +678,22 @@ window.GardenPaintSeat = (function () {
   A['lf-stars'] = board('stars', 'slate');
   /* the corn stook (the fields' prize): sheaves leaned together, tied, a scarecrow's hat on top */
   A['lf-rg-fields'] = { box: [-30, -76, 30, 6], seat: { kind: 'earth', w: 40, front: 14, stones: 0, way: false }, draw(B, o) {
-    const r = KIT().rng(167), top = -sz('door', 1) * 1.3;
-    for (let i = 0; i < 7; i++) { const x = -18 + i * 6, lean = (x) * -.35; B.f(`M${x - 5} 0L${x + lean - 2} ${top + 6}L${x + lean + 2} ${top + 6}L${x + 5} 0Z`, i % 2 ? '#c8a050' : '#dcb868'); for (let k = 0; k < 4; k++) B.s(`M${x + lean + (k - 1.5)} ${top + 6}l${(k - 1.5) * 1.4} -6`, '#e8cc78', .8); }
-    B.s(`M-14 ${top * .45}Q0 ${top * .45 + 4} 14 ${top * .45}`, '#9a7a3a', 1.6).f(B.ell(0, top + 2, 9, 2.4), '#6a5034').f(`M-5 ${top + 2}q5 -9 10 0z`, '#7a5e40');
+    // (round 4: a smooth cone read as a traffic cone, art director: now six sheaves stood up leaning together, each a
+    // bundle of straw splayed at the butt, tied with a twist of straw a third down, its ears fanned out at the top)
+    const r = KIT().rng(167), top = -sz('door', 1) * 1.25, STRAW = ['#c89a48', '#dcb868', '#e8cc78', '#a87e3a'];
+    const sheaf = (bx, lean, k) => {
+      const tx = bx + lean, band = .62, bxx = bx + lean * band, by = top * band;
+      B.f(B.poly([[bx - 6.5, 0], [bxx - 2.6, by], [tx - 5, top + 4], [tx + 5, top + 4], [bxx + 2.6, by], [bx + 6.5, 0]]), STRAW[(k + 3) % 4]);
+      for (let j = 0; j < 7; j++) { const u = (j / 6 - .5); B.s(`M${bx + u * 12} 0L${bxx + u * 4} ${by}L${tx + u * 9} ${top + 4}`, STRAW[(j + k) % 3], 1.3, .95); }
+      B.s(`M${bx + 6.5} 0L${bxx + 2.6} ${by}L${tx + 5} ${top + 4}`, '#7a5a24', .9, .8);
+      B.s(`M${bxx - 3} ${by + 1}q3 2 6 -1`, '#8a6a2a', 2.2).s(`M${bxx - 2.6} ${by}q2.6 1.6 5.2 -.8`, '#e8cc78', .7, .8);
+      for (let j = 0; j < 7; j++) { const u = (j / 6 - .5), ex = tx + u * 10, ey = top + 3 - Math.abs(u) * 3; B.s(`M${tx + u * 7} ${top + 5}Q${ex} ${ey - 3} ${ex + u * 4} ${ey - 7}`, '#b8903e', .9).f(B.ell(ex + u * 4, ey - 7, 1.4, 2.6), '#d8b45a'); }
+    };
+    B.f(B.ell(0, 0, 30, 5), 'rgba(40,30,10,.25)');
+    // the hollow inside the stook, dark between the sheaves' butts, so each sheaf stands apart
+    B.f(B.poly([[-20, 0], [-3, top * .5], [3, top * .5], [20, 0]]), '#3a2c14', .75);
+    for (const [bx, lean, k] of [[-26, 18, 1], [26, -18, 2], [-13, 9, 0], [13, -9, 3], [0, 0, 1]]) sheaf(bx, lean, k);
+    for (let i = 0; i < 9; i++) B.s(`M${-18 + r() * 36} ${1 + r() * 2}l${(r() - .5) * 8} ${r() * 1.5}`, '#dcb868', .9, .85);   // dropped straws
     B.tufts(r, 0, 3, 40, 12, grass(o.season), 6);
   } };
   /* the heron post (the marsh's prize): an oak post in the reeds with a carved heron on it */
@@ -700,8 +713,17 @@ window.GardenPaintSeat = (function () {
     B.tufts(r, -26, 3, 8, 5, grass(o.season), 6).tufts(r, 32, 3, 8, 5, grass(o.season), 6);
   } };
   /* the rain barrel: an oak butt on a stone stand under a little spout, a tap and a dipper */
-  A['lf-barrel'] = { box: [-22, -54, 22, 6], seat: { kind: 'earth', w: 30, front: 14, way: false }, draw(B, o) {
+  A['lf-barrel'] = { box: [-34, -90, 30, 6], seat: { kind: 'earth', w: 46, front: 14, way: false }, draw(B, o) {
     const r = KIT().rng(181), h = sz('well') * 1.7;
+    // (round 4: a barrel alone on the grass with nothing to fill it, art director: it stands under a little lean-to
+    // shelter of oak posts and shingles whose gutter runs down a pipe into it, a watering can by its tap)
+    const rt = -h - 34;
+    B.post(-26, rt + 4, 0, 3.4, OAK).post(20, rt - 2, 0, 3.4, OAK);
+    B.f(B.poly([[-32, rt + 8], [26, rt - 4], [26, rt - 10], [-32, rt + 2]]), '#5a4630').f(B.poly([[-32, rt + 2], [26, rt - 10], [24, rt - 15], [-30, rt - 3]]), '#7e6448');
+    for (let i = 0; i < 9; i++) { const x = -30 + i * 6.4; B.s(`M${x} ${rt + 2 - i * 1.3}l1.4 -5`, '#4a3826', .7, .7); }
+    B.s(`M-32 ${rt + 9}L26 ${rt - 3}`, '#6e7478', 2.6).s(`M-32 ${rt + 8.2}L26 ${rt - 3.8}`, '#a8b0b4', .7, .8);
+    B.s(`M24 ${rt - 2}Q30 ${rt + 2} 26 ${rt + 10}L${9} ${-5 - h - 8}`, '#6e7478', 2.6).s(`M24.4 ${rt - 2.6}Q30 ${rt + 1.6} 25.6 ${rt + 9.6}`, '#a8b0b4', .7, .7);
+    if (o.season !== 'winter') B.f(B.ell(-20, rt + 4, 5, 2.4), '#5e7a3a', .8);
     B.f(B.rr(-14, -5, 28, 5, 1.4), STONE.rockLo).f(B.rect(-14, -5, 28, 1.6), STONE.rockHi);
     B.f(`M-11 -5Q-14 ${-5 - h / 2} -11 ${-5 - h}H11Q14 ${-5 - h / 2} 11 -5Z`, B.lin(-13, 0, 13, 0, [[0, '#b08c5e'], [.4, '#8a6a46'], [1, '#5a4430']]));
     for (const y of [-8, -5 - h * .5, -2 - h]) B.s(`M-12.6 ${y}h25.2`, IRON[0], 1.6);
@@ -748,11 +770,17 @@ window.GardenPaintSeat = (function () {
     B.tufts(r, 0, 3, 20, 8, grass(o.season), 7);
   } };
   /* the seasons arch: a willow arch over the way, wound with whatever the season has (blossom, roses, hips, holly) */
-  A['lf-arch'] = { box: [-56, -104, 56, 6], seat: { kind: 'turf', w: 80, front: 10, stones: 0, way: false }, draw(B, o) {
+  // (round 4: a thin arch on bare grass, art director: it stands on two dressed footing stones, a short path of stepping
+  // flags runs through it front to back, and lavender and a climbing rose grow at its feet)
+  A['lf-arch'] = { box: [-60, -104, 60, 8], seat: { kind: 'turf', w: 96, front: 14, back: 26, stones: 0, way: false, extra(B, r, P) {
+      for (let k = 0; k < 4; k++) { const y = 8 - k * 9, w = 13 - k * 1.2; B.f(B.blob(r, (r() - .5) * 3, y, w, 3.6 - k * .3, 8, .25), '#8a8272').f(B.blob(r, -1 + (r() - .5) * 3, y - 1, w * .8, 2.2, 7, .3), '#b4ac98', .85); }
+    } }, draw(B, o) {
     const r = KIT().rng(223), s = o.season, top = -sz('door', 1) * 1.65, L = leaf(s), bloom = { spring: ['#f4d8e0', '#fff4f4'], summer: ['#d8607a', '#f2a0b0'], autumn: ['#c8442a', '#e08a3a'], winter: ['#b82a2a', '#2e5a34'] }[s] || ['#d8607a', '#f2a0b0'];
     for (const x of [-38, 38]) { B.s(`M${x} 0V${top * .55}`, OAK[1], 4); }
     B.s(`M-38 ${top * .55}Q-38 ${top} 0 ${top}Q38 ${top} 38 ${top * .55}`, OAK[1], 4).s(`M-34 ${top * .55}Q-34 ${top + 4} 0 ${top + 4}Q34 ${top + 4} 34 ${top * .55}`, OAK[2], 1.4, .7);
     for (let i = 0; i < 34; i++) { const t = i / 33, a = Math.PI * t, x = i < 8 ? -38 + (r() - .5) * 6 : i > 25 ? 38 + (r() - .5) * 6 : -Math.cos(a) * 38, y = i < 8 ? -i * 7 : i > 25 ? -(33 - i) * 7 : top * .55 - Math.sin(a) * (-top * .45); B.f(B.blob(r, x, y, 5, 4, 6, .5), L[i % 3], .95); if (r() < .45) B.f(B.circ(x + (r() - .5) * 4, y + (r() - .5) * 3, 1.8), bloom[i % 2]); }
+    for (const x of [-38, 38]) { B.f(B.rr(x - 7, -6, 14, 8, 1.6), STONE.rockLo).f(B.rect(x - 7, -6, 14, 2), STONE.rockHi, .9); }
+    for (const x of [-50, 50]) for (let k = 0; k < 9; k++) { const px = x + (r() - .5) * 16, h = 8 + r() * 8; B.s(`M${px} 2l${(r() - .5) * 3} ${-h}`, '#6a7e58', 1, .9); if (s !== 'winter') B.f(B.ell(px + (r() - .5) * 2, 2 - h, 1.4, 2.4), s === 'autumn' ? '#8a6a9a' : '#8e74c0', .9); }
     B.tufts(r, -38, 3, 10, 6, grass(s), 7).tufts(r, 38, 3, 10, 6, grass(s), 7);
   } };
   /* the bee skeps: three straw skeps on an oak bench, bees about them */
@@ -880,9 +908,13 @@ window.GardenPaintSeat = (function () {
   /* the stone circle: a ring of grey stones, the near ones standing taller, worn turf inside */
   // (the stones were knee high and read as teeth, far too small for 2400 coins: art director, round 3. Now they stand
   // waist to shoulder high to a figure, broad slabs in a wider ring, the tallest at the back)
-  A['lf-circle'] = { box: [-92, -96, 94, 16], shade: false, flat: true, seat: { kind: 'turf', w: 140, front: 12, back: 40, stones: 0, way: false }, draw(B, o) {
+  A['lf-circle'] = { box: [-92, -112, 94, 16], shade: false, flat: true, seat: { kind: 'turf', w: 140, front: 12, back: 40, stones: 0, way: false }, draw(B, o) {
     const r = KIT().rng(281), s = o.season, n = 11;
-    const order = [...Array(n).keys()].map(i => { const a = -Math.PI / 2 + i / n * Math.PI * 2; return { x: Math.cos(a) * 76, y: -26 + Math.sin(a) * 22, a }; }).sort((p, q) => p.y - q.y);
+    // (round 4: on a flat ellipse the stones read as two rows of gravestones, art director: the ring is rounder, with a
+    // trodden path worn round inside it and a fallen altar stone in the middle, so it reads as a circle you walk round)
+    B.s(B.ell(0, -34, 62, 24), s === 'winter' ? '#d8dcd4' : '#a8996e', 9, .4).s(B.ell(0, -34, 62, 24), s === 'winter' ? '#eef0ea' : '#c4b48a', 3, .35);
+    B.f(B.blob(r, 0, -36, 18, 6, 9, .3), '#6e675a').f(B.blob(r, -2, -38, 16, 4.4, 9, .3), '#958c7c').f(B.blob(r, -6, -39.4, 8, 1.6, 7, .4), '#b8b0a0', .8);
+    const order = [...Array(n).keys()].map(i => { const a = -Math.PI / 2 + i / n * Math.PI * 2; return { x: Math.cos(a) * 78, y: -34 + Math.sin(a) * 32, a }; }).sort((p, q) => p.y - q.y);
     for (const p of order) { const h = sz('door', 0) * (.42 + (-p.y - 4) / 48 * .3) + r() * 6, w = 8 + r() * 4; B.f(B.poly([[p.x - w, p.y], [p.x - w * 1.05, p.y - h * .5], [p.x - w * .6, p.y - h], [p.x + w * .5, p.y - h * .94], [p.x + w, p.y - h * .4], [p.x + w, p.y]]), '#857c6e').f(B.poly([[p.x - w, p.y], [p.x - w * 1.05, p.y - h * .5], [p.x - w * .6, p.y - h], [p.x - w * .1, p.y - h * .5], [p.x - w * .2, p.y]]), '#b0a690'); B.f(B.blob(r, p.x - w * .3, p.y - h * .6, 2, 1.6, 6, .5), s === 'winter' ? '#f4f6f2' : '#c9c48a', .7); B.tufts(r, p.x, p.y + 1, w * 2.4, 5, grass(s), 5); }
   } };
   // (the brushwork above, for the next file of sights: 94-garden-paint-terrain-6sights.js)
