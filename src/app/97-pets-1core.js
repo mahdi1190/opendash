@@ -79,7 +79,15 @@ function _ptDays(a, b) { const x = Date.parse(a + 'T12:00:00Z'), y = Date.parse(
 function _ptHash(s) { let h = 2166136261; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 function _ptStats() { try { return typeof gameStats === 'function' ? gameStats() : null; } catch (e) { return null; } }
 function _ptFun() { try { return typeof memFunLevel === 'function' ? memFunLevel() : typeof gameFun === 'function' ? gameFun() : 'subtle'; } catch (e) { return 'subtle'; } }
+/* Asked every frame by every pet: the answer is read at most every half second (the speed trace found matchMedia here in every frame). */
+const _ptMot = { t: -1e9, v: true };
 function _ptMotionOk() {
+  const now = typeof performance !== 'undefined' ? performance.now() : 0;
+  if (now - _ptMot.t < 500) return _ptMot.v;
+  _ptMot.t = now; _ptMot.v = _ptMotionRead();
+  return _ptMot.v;
+}
+function _ptMotionRead() {
   try { if (window.Motion && Motion.prefersReduced && Motion.prefersReduced()) return false; } catch (e) { /* below */ }
   try { return !(typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return true; }
 }
@@ -323,6 +331,7 @@ function _ptJournalLine(key, e, n, look) {
     case 'season': return { icon: 'gift', line: `${n} got something new for the season.` };
     case 'met': { const s = petSpecies(rest); return { icon: 'paw-print', line: s ? `${s.label} joined your collection.` : 'A new friend joined your collection.' }; }
     case 'bond': { const [sid, lv] = rest.split('-'), s = petSpecies(sid); return { icon: 'heart', line: `${s ? s.label : 'A pet'} reached friend level ${lv}.` }; }
+    case 'life': { const L = { firstcatch: 'watched you land your first catch together.', favspot: 'found a favourite spot of its own.' }, r = typeof PET_LIFE_BY !== 'undefined' && PET_LIFE_BY[rest]; return { icon: 'paw-print', line: `${n} ${L[rest] || (r && r.diary ? r.diary + '.' : 'did something new.')}` }; }   // round 3: the hundred things (97-pets-tricks-7life-2rows.js)
     case 'pal': return { icon: 'heart', line: `${n} and a friend\u2019s pet became ${rest.split('-')[0] === '3' ? 'best pals' : 'pals'}.` };   // (2.32: playdates in a live garden, 94-garden-live-7pals.js)
     default: return { icon: 'paw-print', line: `A good day with ${n}.` };
   }

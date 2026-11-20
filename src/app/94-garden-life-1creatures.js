@@ -121,6 +121,16 @@ const GARDEN_CREATURES = Object.freeze([
     behaviours: [['wander', { pause: [3, 7], range: 6, sniff: true }], ['follow-scent', { scent: ['cat:seasonal', 'ripe', 'tree'], sniff: true }], ['chase', { tag: 'prey', r: 4, weight: 0.7 }], ['startled-by-player', { r: 3 }], ['startled-by-pet', { r: 3 }], ['rain-refuge', { clips: ['rest', 'sniff', 'sleep', 'rest'] }], 'leave-when-over'], react: { clip: 'react', mark: 'bang', flee: true, gift: 'fox-hair', chance: 0.6 },
     book: { hint: 'Rare, at first light or last. Walks through and does not stop for long.', blurb: 'Knows your garden better than you do.' } },
 
+  /* ---------- round 3 (pets): one that chases pets, one a pet hops back from ---------- */
+  { id: 'goose', name: 'Greylag goose', group: 'bird', rarity: 'uncommon', tags: ['goose'], habitat: 'ground', speed: 0.75, foot: 0.3, max: 1,
+    art: ['goose', { k: 1 }], when: { tod: ['dawn', 'day', 'dusk'] }, needs: { near: ['water'] },
+    behaviours: [['wander', { pause: [2, 6], range: 3 }], ['peck', { weight: 1 }], ['chase-pet', { r: 2.6, dur: 3.2, weight: 2 }], ['startled-by-player', { r: 0.8 }], 'leave-when-over'], react: { clip: 'react', mark: 'bang', sound: 'quack', gift: 'grey-feather', chance: 0.4 },
+    book: { hint: 'Beside the water by day. Keep your pet close.', blurb: 'Honks first and asks questions never. Pets run.' } },
+  { id: 'shore-crab', name: 'Shore crab', group: 'pond', rarity: 'common', tags: ['crab'], habitat: 'ground', speed: 0.6, foot: 0.14, count: [1, 2], max: 2, start: 'in-place',
+    art: ['crab', { k: 0.95 }], when: { seasons: ['spring', 'summer', 'autumn'], tod: ['dawn', 'day', 'dusk'] }, needs: { near: ['water'] },
+    behaviours: [['wander', { pause: [2, 5], range: 1.6 }], ['peck', { weight: 1 }], ['startled-by-pet', { r: 0.6 }], ['startled-by-player', { r: 1 }], 'leave-when-over'], react: { clip: 'react', mark: 'bang', gift: 'snail-shell', chance: 0.3 },
+    book: { hint: 'On the sand and the stones at the water\u2019s edge, spring to autumn.', blurb: 'Goes sideways, holds its claws up, means it.' } },
+
   /* ---------- the guests that surprises bring (rarity legendary, come only through an easter egg: egg: true) ---------- */
   { id: 'otter', name: 'Otter', group: 'pond', rarity: 'epic', egg: true, tags: [], habitat: 'ground', speed: 0.9, foot: 0.25, max: 1,
     art: ['quad', { coat: '#6a4a30', belly: '#d8c4a0', dark: '#46301e', len: 21, h: 9, legH: 4, tail: 'long', earKind: 'round', k: 0.96, snout: 1.15 }], when: {}, needs: { near: ['water'] },
@@ -149,7 +159,7 @@ function gardenLifeOwns(id) { return GL_CREATURE.has(id); }
 /* ---------- keepsakes: the small gifts creatures drop. One row each; you keep one of each, for good. They are worth nothing but the finding. ---------- */
 function _glTuft(c) { return GART.P(c, 'M-7 -1C-3 -5 3 -6 8 -8C6 -3 1 -0.6 -4 -0.4z') + GART.S(GART.dk(c, 0.3), 0.5, 'M-7 -1Q0 -3 8 -8'); }
 const GARDEN_KEEPSAKES = Object.freeze([
-  { id: 'robin-feather', name: 'Robin’s feather', c: '#e2662a' }, { id: 'blue-feather', name: 'Blue feather', c: '#3f78bc' }, { id: 'black-feather', name: 'Glossy black feather', c: '#2c2826' }, { id: 'green-feather', name: 'Green feather', c: '#2f6a4a' },
+  { id: 'grey-feather', name: 'A grey goose feather', c: '#a39c8e' }, { id: 'robin-feather', name: 'Robin’s feather', c: '#e2662a' }, { id: 'blue-feather', name: 'Blue feather', c: '#3f78bc' }, { id: 'black-feather', name: 'Glossy black feather', c: '#2c2826' }, { id: 'green-feather', name: 'Green feather', c: '#2f6a4a' },
   { id: 'white-wing-scale', name: 'A dusting of white', c: '#ece8d4', kind: 'dust' }, { id: 'peacock-scale', name: 'A scale with an eye', c: '#34489e', kind: 'dust' }, { id: 'moth-dust', name: 'Moth dust', c: '#bcab8e', kind: 'dust' }, { id: 'moon-dust', name: 'Moon dust', c: '#bfe8c4', kind: 'dust' },
   { id: 'drop-of-honey', name: 'A drop of honey', c: '#e8a81e', kind: 'drop' }, { id: 'lucky-spot', name: 'A lucky spot', c: '#d8232c', kind: 'drop' },
   { id: 'snail-shell', name: 'An empty shell', c: '#b77a42', kind: 'shell' }, { id: 'smooth-pebble', name: 'A smooth pebble', c: '#9aa4a0', kind: 'stone' }, { id: 'otter-stone', name: 'The otter’s favourite stone', c: '#6c7c88', kind: 'stone' },

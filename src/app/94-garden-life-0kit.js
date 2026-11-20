@@ -198,6 +198,28 @@ GL_KITS.rabbit = function (p) {
 };
 
 /* ---------- things that do not move much (eggs, gifts): kit 'thing' takes ready markup ---------- */
+/* ---------- round 3 (pets): a goose that chases pets, and a crab on the beach that a pet hops back from ---------- */
+/** A greylag goose: a big grey-and-white body, a long neck, an orange beak and feet. */
+GL_KITS.goose = function (p) {
+  const A = GART, body = p.body || '#b9b3a6', belly = p.belly || '#efece4', wing = p.wing || '#8f877a', neck = p.neck || '#a39c8e', beak = p.beak || '#ee8a2e', leg = p.leg || '#e8822c', k = p.k || 1;
+  const tail = _glPart('tail', -9, -10, A.P(A.dk(wing, 0.15), 'M-9 -12L-15.4 -14.6L-15 -10.6L-9 -8.6z') + A.P('#f4f2ec', 'M-12 -9.4L-15 -10.6L-14 -8.6z'));
+  const legs = _glPart('legs', 0, -4, A.S(leg, 1.4, 'M-1 -4.4L-1.6 -0.2M3 -4.4L3.2 -0.2') + A.P(leg, 'M-3.4 0.2L0.4 -0.6L0.8 0.4ZM1.4 0.2L5.2 -0.6L5.6 0.4Z'));
+  const torso = A.P(body, 'M-10.4 -10.4C-9.6 -15.6 -3 -17.6 3.4 -16.8C8.6 -16 11.2 -12.6 10.4 -9C9.6 -5.2 5 -3.4 -0.4 -3.6C-5.6 -3.8 -10.8 -6 -10.4 -10.4z') + A.P(belly, 'M-6 -4.6C-0.6 -2.6 7 -3.6 9.8 -8.6C10 -10 9.8 -11.2 9.4 -12C6.8 -8.4 0.4 -6 -6 -4.6z');
+  const wg = _glPart('wing', 2, -13, A.P(wing, 'M-10.6 -11C-7.4 -15.4 -0.6 -16.4 4 -14C3.4 -9.8 -1.8 -7.2 -6.8 -7.8C-8.6 -8 -11 -9.4 -10.6 -11z') + A.S(A.dk(wing, 0.3), 0.55, 'M-8.4 -11Q-3.6 -12.4 1 -12.8M-7.8 -9.4Q-4 -10.2 -0.6 -11', 0.8));
+  const headG = _glPart('head', 6, -14, A.S(neck, 3.4, 'M6.6 -14.4C7.6 -18.6 8.2 -22 8.8 -25.2') + A.P('#3a3630', 'M7.4 -21.4L10 -21.4L9.6 -19.6Z', 0.5) + A.P(neck, A.circ(9.6, -26.4, 3.2)) + _glEye(10.6, -27.2, 0.85) + A.P(beak, 'M12.2 -27.4L16.2 -26.2L12.4 -24.8z') + A.S('#7a4a1e', 0.4, 'M12.4 -26.1L15.4 -26'));
+  return { svg: `<g transform="scale(${k})">${tail}${legs}${_glPart('torso', 0, -4, torso + wg)}${headG}</g>`,
+    clips: { rest: 'blink tail-bob', preen: 'preen blink', peck: 'peck', walk: 'hopstep blink', hop: 'hopstep', run: 'hopstep flap', alert: 'look flap', fly: 'flap legs-up', react: 'look flap', sleep: 'sleep-bird', sniff: 'peck' } };
+};
+/** A shore crab: a wide shell, eyes on stalks, two claws that snap, legs that scuttle. */
+GL_KITS.crab = function (p) {
+  const A = GART, c = p.c || '#d2562e', d = p.d || A.dk(c, 0.3), k = p.k || 1;
+  const legA = _glPart('leg-a', 0, -3, A.S(d, 1, 'M-5 -3.6L-9 -2.4L-10 0M-4 -2.8L-7 -0.6L-7.6 0.4M4 -2.8L7 -0.6L7.6 0.4'));
+  const legB = _glPart('leg-b', 0, -3, A.S(d, 1, 'M5 -3.6L9 -2.4L10 0M-2.6 -2.4L-4.4 -0.2L-4.8 0.6M2.6 -2.4L4.4 -0.2L4.8 0.6'));
+  const shell = A.P(c, 'M-7.4 -4.2C-7.6 -8.4 -3.6 -10.2 0 -10.2C3.6 -10.2 7.6 -8.4 7.4 -4.2C7.2 -2.4 4 -1.8 0 -1.8C-4 -1.8 -7.2 -2.4 -7.4 -4.2z') + A.P(A.lt(c, 0.3), 'M-4.6 -8Q0 -10 4.4 -8Q0 -8.8 -4.6 -8z', 0.8) + A.S(d, 0.5, 'M-6 -4.4Q0 -3 6 -4.4', 0.7);
+  const claws = _glPart('shiver', 0, -6, A.P(c, 'M-7 -6.4C-10.4 -7 -12.4 -9.6 -11.2 -11.8C-10.2 -13.2 -8.6 -12.4 -9.2 -11C-8.4 -10.2 -7.6 -11 -7.8 -12.2C-6.6 -11 -6 -8.4 -7 -6.4z') + A.P(c, 'M7 -6.4C10.4 -7 12.4 -9.6 11.2 -11.8C10.2 -13.2 8.6 -12.4 9.2 -11C8.4 -10.2 7.6 -11 7.8 -12.2C6.6 -11 6 -8.4 7 -6.4z'));
+  const eyes = A.S(d, 0.8, 'M-1.8 -9.6L-2.2 -12M1.8 -9.6L2.2 -12') + _glEye(-2.3, -12.4, 0.95) + _glEye(2.3, -12.4, 0.95);
+  return { svg: `<g transform="scale(${k})">${_glPart('body', 0, -2, legA + legB + claws + shell + eyes)}</g>`, clips: { rest: 'blink', walk: 'legs-walk blink', run: 'legs-run shiver', react: 'shiver blink', alert: 'shiver', hide: 'blink', sleep: 'blink', peck: 'shiver' } };
+};
 GL_KITS.thing = function (p) { return { svg: p.svg || '', clips: Object.assign({ rest: p.clip || '' }, p.clips || {}) }; };
 
 /** The art for a row: {svg, clips, waterPose?}, built once per row. */

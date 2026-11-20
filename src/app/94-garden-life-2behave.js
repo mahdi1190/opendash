@@ -203,6 +203,24 @@ const GARDEN_LIFE_BEHAVIOURS = {
       return false;
     },
   },
+  /* round 3 (pets): a goose goes after a pet near it for a few seconds; the pet's own row (97-pets-tricks-7life-2rows.js, 35) runs away */
+  'chase-pet': {
+    want(c, W, p) {
+      if (c.hidden || c.perched || c.medium === 'water' || c.scared > 0 || (c.chasedAt && performance.now() - c.chasedAt < 25000)) return 0;
+      const R = p.r == null ? 2.5 : p.r;
+      for (const q of W.pets()) if (_glDist(c.S.x, c.S.y, q.x, q.y) < R) { c.mem1 = q; return p.weight == null ? 1.5 : p.weight; }
+      return 0;
+    },
+    start(c) { c.chasedAt = performance.now(); c.mem.t = 0; c.mem.goT = 0; _glClip(c, 'run'); },
+    step(c, W, dt, p) {
+      const v = c.mem1; if (!v) return true;
+      c.mem.t += dt; if (c.mem.t > (p.dur || 3)) return true;
+      if ((c.mem.goT -= dt) <= 0) { c.mem.goT = 0.5; const q = _glFreeAround(W, v.x, v.y, c.def.foot, 2); if (!q || !_glRouteTo(c, W, q.x, q.y)) return true; }
+      _glFollow(c, W, dt, (c.def.speed || 0.6) * 2.2);
+      return false;
+    },
+    stop(c) { _glClip(c, 'alert'); },
+  },
   /* ---------- noticing you and your pet ---------- */
   'startled-by-player': {
     reflex: true,

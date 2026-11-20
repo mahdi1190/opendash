@@ -247,6 +247,28 @@ const _PCFX = Object.freeze({
   dirt: () => '<path d="M-2-.5L0-2.300L2.200-1L1.400 1.700L-1.400 1.800z" fill="#7a5a3a"/>',
   rainbow: () => '<path d="M0-3.600Q.4-.4 3.600 0Q.4 .4 0 3.600Q-.4 .4 -3.600 0Q-.4-.4 0-3.600z" fill="#fff"/>',
   ha: () => '<path d="M-3.500-2.500V2.500M-3.500 0H-.8M-.8-2.500V2.500M1 2.500L2.600-2.500L4.200 2.500M1.500 1H3.700" fill="none" stroke="#e8965a" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>',
+  // round 3, the hundred things (97-pets-tricks-7life-*.js): what a pet finds, carries, wears and kicks up
+  leaf: (c) => `<path d="M-4.200 0Q-1.400-2.600 3.600-.4Q-1 2.400 -4.200 0z" fill="${c || '#d9782e'}"/><path d="M-4.200 0Q-.4-.4 3.600-.4" stroke="#7a3a16" stroke-width=".45" fill="none" opacity=".7"/><path d="M-4.200 0L-5.400 .5" stroke="#7a3a16" stroke-width=".5" stroke-linecap="round"/>`,
+  flake: () => '<path d="M0-4V4M-3.500-2L3.500 2M-3.500 2L3.500-2" stroke="#ffffff" stroke-width="1" stroke-linecap="round"/><circle r=".9" fill="#e8f4ff"/>',
+  petal: (c) => `<path d="M0-3.200Q2.600-1 0 3.200Q-2.600-1 0-3.200z" fill="${c || '#f6a7c0'}"/>`,
+  fluff: () => '<circle r="1" fill="#fffdf2"/><path d="M0 0L0-3.600M0 0L3-2M0 0L-3-2M0 0L3.200 1M0 0L-3.200 1" stroke="#fffdf2" stroke-width=".45" stroke-linecap="round" opacity=".9"/>',
+  bone: () => '<path d="M-4.600-1.200a1.500 1.500 0 1 1 1.600-1.600L3-1.300a1.500 1.500 0 1 1 1.600 1.600a1.500 1.500 0 1 1-1.600 1.600L-3 1.300a1.500 1.500 0 1 1-1.600-1.600z" fill="#f6ead0" stroke="#c8b48a" stroke-width=".45"/>',
+  coin: () => '<circle r="3.300" fill="#f4c542" stroke="#b8861e" stroke-width=".6"/><path d="M-1.200-1.600h2.400M-1.200 0h2.400M-1.200 1.600h2.400" stroke="#d9a32a" stroke-width=".55"/>',
+  worm: () => '<path d="M-4 1Q-2.600-2 -1 .6Q.6 3 2.200 .2Q3 -1.200 4-.6" stroke="#d98a8a" stroke-width="1.600" fill="none" stroke-linecap="round"/><circle cx="3.800" cy="-.7" r=".35" fill="#3a2a2a"/>',
+  twig: () => '<path d="M-5 1.200L5-1.200M1-.2L3.200-2.800M-2 .6L-3.400 2.800" stroke="#7a5432" stroke-width="2.100" stroke-linecap="round" fill="none"/><path d="M3.200-2.800q1.400-.6 1.600.6q-1.400.4 -1.600-.6z" fill="#7fb24a"/>',
+  carrot: () => '<path d="M-4.400 2.400L3-1.600Q4.400-1.800 4.200-.4L-3.800 3.400Q-5 3.600 -4.400 2.400z" fill="#f08a3c"/><path d="M3.400-1.600Q3.600-4.200 5-4.600Q5-3 4.400-2Q6.400-2.400 6.800-1.400Q5.200-1 4.200-1z" fill="#5fae4a"/>',
+  hat: () => '<path d="M-3.400 3L0-5.200L3.400 3z" fill="#e8508a"/><path d="M-2.600 1L2.600 1M-1.600-1.600L1.600-1.600" stroke="#ffd84a" stroke-width=".8"/><circle cy="-5.400" r="1.200" fill="#ffd84a"/>',
+  hoop: () => '<ellipse rx="3.200" ry="6.400" fill="none" stroke="#e0473e" stroke-width="1.400"/><ellipse rx="3.200" ry="6.400" fill="none" stroke="#fff" stroke-width=".5" stroke-dasharray="1.400 2.200"/>',
+  mud: () => '<path d="M-2.400-.4Q-1.600-2.200 .2-1.600Q2.600-2 2.400 .2Q2 2 0 1.800Q-2.400 2 -2.400-.4z" fill="#6a4a2c"/>',
+  hay: () => '<path d="M-4 .6L4-.8M-3.400-1.200L3.600 1M-4 1.800L2.400-2" stroke="#e2c060" stroke-width=".7" stroke-linecap="round"/>',
+  marsh: () => '<rect x="-2.600" y="-2.200" width="5.200" height="4.400" rx="1.600" fill="#fff6ea" stroke="#d8b88a" stroke-width=".5"/><path d="M-2.200-1.400q2.200-.8 4.400 0" stroke="#c88a4a" stroke-width=".8" fill="none"/>',
+  print: () => '<ellipse cy="1" rx="1.700" ry="1.400" fill="#5a4630" opacity=".55"/><circle cx="-1.700" cy="-1.200" r=".6" fill="#5a4630" opacity=".55"/><circle cx="0" cy="-1.900" r=".6" fill="#5a4630" opacity=".55"/><circle cx="1.700" cy="-1.200" r=".6" fill="#5a4630" opacity=".55"/>',
+  arc: () => '<path d="M-10.0 0A10.0 10.0 0 0 1 10.0 0" fill="none" stroke="#e8505a" stroke-width="1.3" stroke-linecap="round"/><path d="M-8.8 0A8.8 8.8 0 0 1 8.8 0" fill="none" stroke="#f2943c" stroke-width="1.3" stroke-linecap="round"/><path d="M-7.6 0A7.6 7.6 0 0 1 7.6 0" fill="none" stroke="#f6d35e" stroke-width="1.3" stroke-linecap="round"/><path d="M-6.4 0A6.4 6.4 0 0 1 6.4 0" fill="none" stroke="#6cbf5a" stroke-width="1.3" stroke-linecap="round"/><path d="M-5.2 0A5.2 5.2 0 0 1 5.2 0" fill="none" stroke="#4a8ad8" stroke-width="1.3" stroke-linecap="round"/><path d="M-4.0 0A4.0 4.0 0 0 1 4.0 0" fill="none" stroke="#8a64c8" stroke-width="1.3" stroke-linecap="round"/>',   // a little rainbow (5, the rainbow row)
+  sill: () => '<path d="M-17-15H17V2H-17z" fill="#9a7450"/><path d="M-17-15H17V-12H-17z" fill="#bd9468"/><path d="M-19 0H19V3.400H-19z" fill="#6a4426"/><path d="M-17-34H-13V0H-17zM13-34H17V0H13z" fill="#7a4e2c"/><path d="M-8-10H-2V-3H-8zM4-9H9V-4H4z" fill="#6f4a2a" opacity=".5"/>',   // a window sill a pet peeks over (85, the treehouse)
+  bird: () => '<path d="M-4 0Q-2-2.400 0 0Q2-2.400 4 0" stroke="#3a3440" stroke-width="1" fill="none" stroke-linecap="round"/>',
+  bug: () => '<ellipse rx="2" ry="1.500" fill="#3a3a30"/><path d="M-1.600-1.200L-3-2.600M1.600-1.200L3-2.600" stroke="#3a3a30" stroke-width=".5"/><ellipse cx="-.9" cy="-1.300" rx="1.400" ry=".8" fill="#dfeef8" opacity=".8"/><ellipse cx=".9" cy="-1.300" rx="1.400" ry=".8" fill="#dfeef8" opacity=".8"/>',
+  sweat: () => '<path d="M0-2.600Q1.800 .2 0 1.600Q-1.800 .2 0-2.600z" fill="#bfe6fa" stroke="#6fb4dc" stroke-width=".35"/>',
+  tongue: () => '<path d="M-1.400 0h2.800v1.800q0 1.600 -1.400 1.600q-1.400 0 -1.400-1.600z" fill="#ef7a8a"/>',
   say: () => '<path d="M-5.500-3.800H5.500Q7-3.800 7-2.300V1.300Q7 2.800 5.500 2.800H-.6L-3 5V2.800H-5.500Q-7 2.800 -7 1.300V-2.300Q-7-3.800 -5.500-3.800z" fill="#fff" stroke="#c8c0b0" stroke-width=".5"/><path d="M-3-.5h.01M0-.5h.01M3-.5h.01" stroke="#6a6470" stroke-width="1.700" stroke-linecap="round"/>',
 });
 const _PC_RAINBOW = ['#f2607a', '#f6a53c', '#f6d35e', '#7fd1ae', '#7cc0ea', '#b39ce6'];
@@ -283,7 +305,9 @@ function _pcSprite(parent, kind, c, A, o, i) {
   const dur = o.dur || 800;
   let frames;
   const T = (x, y, k, r) => `translate(${_pcN(x)}px,${_pcN(y)}px) rotate(${_pcN(r || 0)}deg) scale(${_pcN(k)})`;
-  if (o.path) {
+  if (o.hold) {
+    frames = [{ offset: 0, transform: T(x0, y0, s), opacity: 1 }, { offset: 1, transform: T(x0, y0, s), opacity: 1 }];
+  } else if (o.path) {
     const n = o.path.length - 1;
     frames = o.path.map((p, j) => ({ offset: j / n, transform: T(x0 + p[0], y0 + p[1], s, j * 60), opacity: j === n && !o.keep ? 0 : 1, easing: j % 2 ? 'cubic-bezier(.6,0,.9,.5)' : 'cubic-bezier(.1,.5,.4,1)' }));
   } else if (o.orbit) {
@@ -356,6 +380,17 @@ function _pcNativeStillClock(root, ms, done) {
   events.on('update', update); events.once('shutdown', shutdown);
   return { stop };
 }
+/** Effects that read (round 3): the hundred things' clips (ids 'l-') and the clips the rows borrow draw their splashes, leaves, notes, coins and
+ *  sparkles about twice the size and throw them further, so they read beside the pet at the default camera rather than as specks. */
+const _PC_FX_BIG = new Set(['spin', 'jump', 'pounce', 'startled', 'zoomies', 'beg', 'rearup', 'dig', 'roll', 'chasetail', 'hiccup', 'playdead', 'bow', 'sneeze', 'yawn', 'stretch']);
+function _pcFxK(id, c) { if (c && c.fxK) return c.fxK; return /^l-/.test(String(id)) || _PC_FX_BIG.has(String(id)) ? 1.5 : 1; }   // (round 3: the pets are drawn larger, so 1.5 of a bigger pet is the old 1.9)
+function _pcFxBig(p, K) {
+  const q = Object.assign({}, p), m = Math.sqrt(K);
+  q.s = Math.min(4.6, (p.s || 1) * K);
+  if (p.dx != null) q.dx = p.dx * m; if (p.dy != null) q.dy = p.dy * m;
+  if (p.path) q.path = p.path.map(([x, y]) => [x * m, y * m]);
+  return q;
+}
 /** Play a clip on a drawn pet. Returns {ms, stop()}; o.done is called when it ends. Nothing is left behind. */
 function petClipRun(root, id, o) {
   o = o || {};
@@ -371,8 +406,9 @@ function petClipRun(root, id, o) {
   }
   if (c.fx && c.fx.length) {
     const fxp = (root.querySelector('.pt-fx') || {}).parentNode || root;
-    for (const [t, kind, p] of c.fx) {
-      const n = p.n || 1, gap = (p.gap || 0) / rate;
+    const K = _pcFxK(id, c);
+    for (const [t, kind, p0] of c.fx) {
+      const p = K === 1 || kind === 'tongue' ? p0 : _pcFxBig(p0, K), n = p.n || 1, gap = (p.gap || 0) / rate;
       for (let i = 0; i < n; i++) {
         const run = () => { if (root.isConnected) _pcSprite(fxp, kind, p.c, _pcAnchors(root), p, i); }, at = t * ms + i * gap;
         if (native) jobs.push({ at, run }); else timers.push(setTimeout(run, at));

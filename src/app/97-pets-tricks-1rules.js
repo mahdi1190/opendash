@@ -43,6 +43,12 @@ const PET_TRICK_BOOK = Object.freeze([
   _tb('juggle', 'Juggle', 'epic', { treats: 14, coins: 180 }), _tb('balance', 'Nose balance', 'epic', { treats: 14, coins: 180 }), _tb('robotdance', 'Robot dance', 'epic', { treats: 14, coins: 180 }), _tb('cartwheel', 'Cartwheel', 'epic', { treats: 16, coins: 200 }), _tb('playdead', 'Play dead', 'epic', { treats: 16, coins: 200 }), _tb('firebreath', 'Fire breath', 'epic', { treats: 20, coins: 260 }),
   _tb('confetti', 'Confetti cannon', 'epic', { treats: 18, coins: 240 }, { wow: 'confetti' }), _tb('bubbles', 'Bubble cloud', 'epic', { treats: 16, coins: 220 }, { wow: 'bubbles' }), _tb('petalwhirl', 'Petal whirlwind', 'epic', { fact: ['bouquets', 5] }, { wow: 'petalwhirl' }), _tb('comet', 'Comet dash', 'epic', { fact: ['fished', 40] }, { wow: 'comet' }), _tb('portal', 'Portal hop', 'epic', { coins: 600 }, { wow: 'portal' }),
   // legendary: earned, a small event
+  // round 3, the hundred things (97-pets-tricks-7life-*.js): games you unlock together as you become friends; each unlocking throws a little party (petLifeCelebrate)
+  _tb('lf-head-on-lap', 'Head on your lap', 'common', { bond: 2 }, { clip: 'l-headlap', life: 1, hint: 'sit on a bench and it comes to lean on you', icon: 'armchair', blurb: 'Sit on a bench: it lays its head on your lap.' }),
+  _tb('lf-tug', 'Tug of war', 'common', { bond: 2 }, { clip: 'l-tug', life: 1, hint: 'pat it and share treats', icon: 'paw-print', blurb: 'Tap your pet: a rope toy, and it pulls with all it has.' }),
+  _tb('lf-high-five', 'High five', 'rare', { bond: 2 }, { clip: 'l-five', life: 1, hint: 'pat it and share treats', icon: 'hand', blurb: 'Tap your pet: paw up, high five.' }),
+  _tb('lf-belly-rub', 'Belly rub', 'rare', { bond: 3 }, { clip: 'l-belly', life: 1, hint: 'keep being good friends', icon: 'heart', blurb: 'Tap your pet: it rolls over, legs kicking.' }),
+  _tb('lf-hoop', 'Through the hoop', 'epic', { bond: 4 }, { clip: 'l-hoop', life: 1, hint: 'best friends only', icon: 'circle-dot', blurb: 'Tap your pet: it leaps through a hoop.' }),
   _tb('fireflies', 'Firefly heart', 'legendary', { bond: 5 }, { wow: 'fireflies' }), _tb('goldenhour', 'Golden hour', 'legendary', { bond: 7 }, { wow: 'goldenhour' }), _tb('rainbow', 'Rainbow bloom', 'legendary', { fact: ['harvests', 150] }, { wow: 'rainbow' }), _tb('ascend', 'Ascension', 'legendary', { streak: 30 }, { wow: 'ascend' }), _tb('dragon', 'Dragon spirit', 'legendary', { level: 25 }, { wow: 'dragon' }), _tb('phoenix', 'Phoenix rebirth', 'legendary', { fact: ['rareFish', 3] }, { wow: 'phoenix' }),
   // secrets: ??? until you stumble on them
   _tb('aurora', 'Northern lights', 'legendary', { secret: { season: 'winter', tod: 'night', clear: 1, bond: 3 }, hint: 'A cold, clear night together.' }, { wow: 'aurora' }),
@@ -78,7 +84,7 @@ function petBookOwned(id, p0, ctx) {
 }
 function _tbWhy(r, c) {
   const h = r.how;
-  if (h.bond) return { kind: 'bond', have: Math.min(c.bond, h.bond), of: h.bond, line: 'Friend level ' + h.bond };
+  if (h.bond) return { kind: 'bond', have: Math.min(c.bond, h.bond), of: h.bond, line: 'Friend level ' + h.bond + (r.hint ? ': ' + r.hint : '') };
   if (h.level) return { kind: 'level', have: Math.min(c.levelMax, h.level), of: h.level, line: 'Level ' + h.level };
   if (h.streak) return { kind: 'streak', have: Math.min(c.bestStreak, h.streak), of: h.streak, line: `A ${h.streak}-day streak` };
   if (h.fact) { const words = { fished: 'Catch {n} fish', harvests: 'Pick {n} times', bouquets: 'Make {n} bouquets', rareFish: 'Land {n} rare fish' }[h.fact[0]] || 'Do it {n} times'; return { kind: 'fact', have: Math.min(Number(c.F[h.fact[0]]) || 0, h.fact[1]), of: h.fact[1], line: words.replace('{n}', h.fact[1]) }; }

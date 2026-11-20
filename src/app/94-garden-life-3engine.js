@@ -477,6 +477,7 @@ function _glStep(c, dt, W) {
   if (c.alarm) { c.alarm.t -= dt; if (c.alarm.t <= 0) { const a = c.alarm; c.alarm = null; _glScareOne(c, W, a.x, a.y); } }
   if (!(c.scared > 0) && c.S && typeof gartActBusy === 'function' && gartActBusy() && typeof _gw !== 'undefined' && Math.hypot(c.S.x - _gw.px, (c.S.y - _gw.py) * 1.3) < 2.4) _glScareOne(c, W, _gw.px, _gw.py);   // (round 4, the moves) while you do something, birds and butterflies keep off you and what you are using
   if (c.hop) { _glHopStep(c, W, dt); if (c.hop) return; }   // a hop always finishes: behaviours only ever see it on the ground
+  if (c.lead && _glLeadStep(c, W, dt)) return;   // a pet's moment (97-pets-tricks-7life-2rows.js): the goose chases, the frog hops off, the crab sidles up
   if (c.reacting > 0) return;
   // reflexes first: they interrupt anything
   for (const b of c.reflexes) {
@@ -495,6 +496,16 @@ function _glStep(c, dt, W) {
   if ((c.idle -= dt) <= 0) _glThink(c, W);
   else if (c.medium === 'air' && !c.perched) { _glHover(c, dt, 0.8); }
 }
+/** Led for a moment by a pet's row (gardenLifeLead): walk or run to a spot, or hop there, then back to its own life. True while led. */
+function _glLeadStep(c, W, dt) {
+  const L = c.lead; L.t -= dt;
+  if (L.t <= 0 || c.gone || c.left) { c.lead = null; _glClip(c, 'rest'); return false; }
+  if (L.hop) { if (L.n-- > 0) { const a = Math.atan2(L.y - c.S.y, L.x - c.S.x), d = Math.min(1.1, Math.hypot(L.x - c.S.x, L.y - c.S.y)); if (d < 0.15) { c.lead = null; _glClip(c, 'rest'); return false; } const x = c.S.x + Math.cos(a) * d, y = c.S.y + Math.sin(a) * d; if (W.free(x, y, c.def.foot)) { _glHopTo(c, x, y, 0.42, 14); _glClip(c, 'hop'); return true; } } c.lead = null; _glClip(c, 'rest'); return false; }
+  if (!L.go) { L.go = _glRouteTo(c, W, L.x, L.y) || 'no'; _glClip(c, L.clip || 'run'); }
+  if (L.go === 'no' || _glFollow(c, W, dt, L.speed || 1.5)) { c.lead = null; _glClip(c, 'rest'); return false; }
+  return true;
+}
+function gardenLifeLead(c, x, y, o) { if (!c || c.gone) return false; o = o || {}; if (c.cur) { try { if (c.cur.B.stop) c.cur.B.stop(c, _gl.W, c.cur.p); } catch (e) { /* its own */ } c.cur = null; c.mem = {}; } c.path = []; c.lead = { x, y, t: o.t || 4, speed: o.speed, clip: o.clip, hop: !!o.hop, n: o.n || 3 }; c.calm = Math.max(c.calm || 0, (o.t || 4) + 2); return true; }
 /** Coming in from outside your view: straight in, no thinking, until it is somewhere you can see it. Gone if it cannot get there. True when it has arrived. */
 function _glArrivalStep(c, W, dt) {
   const v = W.view(), S = c.S;

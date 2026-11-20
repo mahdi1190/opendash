@@ -48,7 +48,10 @@ window.GardenNative = (function () {
     const transform = node.target.getWorldTransformMatrix(), local = matrix(transform);
     if (!screen) return local;
     const cam = node.scene.cameras.main, o = cam.getWorldPoint(0, 0), x = cam.getWorldPoint(1, 0), y = cam.getWorldPoint(0, 1), inv = GardenNativeArt.inverse({ a: x.x - o.x, b: x.y - o.y, c: y.x - o.x, d: y.y - o.y, e: o.x, f: o.y });
-    const box = node.scene.game.canvas.getBoundingClientRect(); return matrix({ a: 1, b: 0, c: 0, d: 1, e: box.left, f: box.top }).multiply(inv).multiply(local);
+    // (round 3, pets: the camera works in the canvas's own pixels, which are the screen's pixel ratio times page pixels; without this scale a
+    // pet's box on a high pixel-ratio screen was twice too big and off to the side, so tapping your pet did nothing there)
+    const canvas = node.scene.game.canvas, box = canvas.getBoundingClientRect(), k = canvas.width ? box.width / canvas.width : 1;
+    return matrix({ a: k, b: 0, c: 0, d: k, e: box.left, f: box.top }).multiply(inv).multiply(local);
   }
   function installComponents() {
     const p = GardenNativeArt.Node.prototype; if (p._gameApi) return; p._gameApi = true;
@@ -606,6 +609,21 @@ window.GardenNative = (function () {
           const local = GardenNativeArt.point(GardenNativeArt.inverse(transform), p.x * W.cellW, W.sky + p.y * W.cellH);
           if (node.paintedHit(local.x, local.y)) pet = { kind: 'pet', node, depth };
         }
+      }
+      // (pets, round 5: a tap between a pet's legs, on a sleeping pet's back or just off its ear found nothing, so tapping a moving pet often
+      // did nothing. A tap on the pet's body box, from where it stands and how tall it is drawn, is a tap on the pet unless something stands
+      // in front of it there)
+      if (!pet && typeof _ptw !== 'undefined' && _ptw.pets && typeof _ptwH === 'function') {
+        let best = null, bd = 9;
+        for (const P of _ptw.pets) {
+          if (!P.node || !P.node.target || !P.node.target.visible) continue;
+          const h = _ptwH(P.look.species) / W.cellH, hw = Math.max(0.32, _ptwH(P.look.species) * 0.5 / W.cellW), lift = ((P.up || 0) + (P.perch ? P.perch.up : 0)) / W.cellH;
+          const top = P.y - lift - h * (P.pose === 'sleep' ? 0.62 : 0.95), dx = Math.abs(p.x - P.x);
+          if (dx > hw || p.y < top || p.y > P.y + 0.14) continue;
+          const depth = P.node.target.depth; if (hit && hit.kind !== 'land' && depth < hit.depth) continue;
+          if (dx < bd) { bd = dx; best = { kind: 'pet', node: P.node, depth }; }
+        }
+        pet = best;
       }
     }
     if (pet) return pet;
