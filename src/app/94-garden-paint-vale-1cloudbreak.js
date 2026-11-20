@@ -195,6 +195,9 @@
       const p = L.cpt(at[0], at[1]), h = H * t.h, wpx = t.w * L.cw * .8, tw = Math.max(6, h * .055);
       thing({ key: 'fell-pine-' + i + '|' + C.season, x: p.x, y: p.y, box: [-wpx * .62 - 10, -h - wpx * .3 - 10, wpx * .62 + 14, 10], foot: [-tw - 2, tw + 2, 8], draw: B => scotsPine(B, kit.rng(1200 + i), h, wpx, t.lean ? 1 : 0, snowy) });
     });
+    // the west peak's foot: the fells painter draws its scree skirt about 0.4 of a row below the peak's outline, so the
+    // feet stop at that drawn foot along its whole width (a block of its own, not a landform reaching past the drawing)
+    { const p = L.cpt(12.85, 10.86), hw = 2.45 * L.cw; thing({ key: 'west-peak-foot', x: p.x, y: p.y - 2, box: [-2, -2, 2, 2], foot: [-hw, hw, .78 * L.ch], draw: () => {} }); }
     // the standing stones: each stone's foot, where 94-garden-paint-terrain-2marks.js draws it (the picture is the landmark's)
     (M.stones || []).forEach((s, i) => { const p = L.cpt(s[0], s[1]), hw = s[2] * L.cw; thing({ key: 'stone-foot-' + i, x: p.x, y: p.y - 2, box: [-2, -2, 2, 2], foot: [-hw, hw, 8], draw: () => {} }); });
   }
