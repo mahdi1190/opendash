@@ -128,6 +128,8 @@ function _gwBuildSolids(m) {
   // like the old woodland's lamps, so you walk round the post and behind the lantern, not through it (their cell stays open)
   // the painted vale's standing things that name their foot (the cider press, the millstone, the maypole, the shore boulders...)
   if (island && typeof GardenPaintVale !== 'undefined' && GardenPaintVale && GardenPaintVale.feet) for (const f of GardenPaintVale.feet()) add(f.x0, f.y0, f.x1, f.y1, f.src);
+  // the High orchard's cliff at the head of the cove, and its two shortcuts while shut (94-garden-wonder-7shortcuts.js)
+  if (island && typeof gardenOrchardShortcutBlocks === 'function') for (const b of gardenOrchardShortcutBlocks()) add(b.x0, b.y0, b.x1, b.y1, b.src);
   for (const p of gardenPropsNow()) if (p.art === 'lamp' && /^ld-lamp-/.test(p.id)) { const x = p.x + .5, y = p.y + .7; add(x - .17, y - .2, x + .17, y + .04, 'street lamp post'); }
   // The landforms (mountains, the scarp, the ruin and terrace walls) stop the feet along their own outline, the one their
   // painters draw (2.73: the cells whose middle fell inside a thin wall blocked whole, so a wall had gaps you walked
@@ -319,12 +321,13 @@ function _gwRouteSourceInputs(m) {
   for (const [cell, occupant] of m.occ) if (occupant && occupant.decor && (decorCols.get(occupant.decor) || 'full') === 'full') { values.push(cell); count++; }
   values[start] = count;
   values.push(_gwTrunkSig());   // the painted trees' trunks (_gwPaintedTrunks)
+  values.push(typeof gardenOrchardShortcutSig === 'function' ? gardenOrchardShortcutSig() : '');   // the orchard's shortcuts, shut or open
   return values;
 }
 function _gwGrid(m, groundOnly) {
   if (_gw.boat && !groundOnly) return _gwContinuousBoatGrid(m);
   const mm = m || gardenHere(), shore = typeof gardenLakeGeometry === 'function' ? gardenLakeGeometry(mm) : null, otherShapes = typeof gardenOtherWaterShapes === 'function' ? gardenOtherWaterShapes(mm) : null, state = _gwRouteState();
-  const key = (mm.visit ? mm.visit.key : _gd.memoKey) + '|' + mm.level.level + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0) + '|' + (shore && shore.revision || 0) + '|' + gardenPierDeckSignature() + '|' + (_gwTrunkSig() || '');
+  const key = (mm.visit ? mm.visit.key : _gd.memoKey) + '|' + mm.level.level + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0) + '|' + (shore && shore.revision || 0) + '|' + gardenPierDeckSignature() + '|' + (_gwTrunkSig() || '') + '|' + (typeof gardenOrchardShortcutSig === 'function' ? gardenOrchardShortcutSig() : '');
   if (!_gw.grid || _gw.gridKey !== key || _gw.grid.model !== mm || _gw.grid.routeState !== state || _gw.grid.otherShapes !== otherShapes) {
     const saved = _gw.routeSnapshot, inputs = _gwRouteSourceInputs(mm);
     const stats = _gw.routeGridStats || (_gw.routeGridStats = { coarseBuilds: 0, preparations: 0, reused: 0, boatPreparations: 0, preflightChecks: 0, preflightReused: 0 }); stats.preflightChecks++;

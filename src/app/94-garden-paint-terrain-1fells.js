@@ -55,7 +55,7 @@ window.GardenPaintedTerrain = (function () {
     }).sort((p, q) => p[0].lip.x - q[0].lip.x);
     const runs = [];
     for (const s of segs) { const last = runs[runs.length - 1], end = last && last[last.length - 1]; if (end && Math.hypot(end.lip.x - s[0].lip.x, end.lip.y - s[0].lip.y) < 14) last.push(...s.slice(1)); else runs.push(s.slice()); }
-    const terraces = forms.filter(f => f.kind === 'terrace-wall' && f.polygon).map(f => ({ id: f.id, pts: f.polygon.map(pt), cells: f.polygon }));
+    const terraces = forms.filter(f => f.kind === 'terrace-wall' && f.polygon).map(f => ({ id: f.id, pts: f.polygon.map(pt), cells: f.polygon, thin: !!f.thin }));
     const inRegion = (x, y) => { const c = gardenIslandBaseCell(x, y); return !!(c && ids.has(c.region)); };
     const water = (D.freshwater || []).filter(b => b.boundary && inRegion(b.boundary[0][0], b.boundary[0][1]) || b.river === 'gorge').map(b => ({ id: b.id, river: b.river || '', pts: b.boundary.map(pt) }));
     const gorge = D.presentation && D.presentation.rivers && D.presentation.rivers.gorge;
@@ -413,10 +413,15 @@ window.GardenPaintedTerrain = (function () {
   }
 
   /* ---------- the high orchard's terraces ---------- */
+  const THIN_LIFT = 26;   // px a thin terrace wall's face stands above its line (with the half cell it is deep: about 1 H)
   function terraceOps(L, P, add, t, season, snowy) {
     const kit = KIT(), W = L.W, n = t.cells.length >> 1;
     const a = t.cells.slice(0, n), b = t.cells.slice(n).reverse();
-    const north = a.reduce((s, p) => s + p[1], 0) <= b.reduce((s, p) => s + p[1], 0), upper = (north ? a : b).map(L.pt), lower = (north ? b : a).map(L.pt);
+    const north = a.reduce((s, p) => s + p[1], 0) <= b.reduce((s, p) => s + p[1], 0), lower = (north ? b : a).map(L.pt);
+    // (High orchard fix round 1) a thin terrace wall (half a cell: what stops the feet) stands a wall's height (about 1 H)
+    // above its line, so the terrace above reads as higher ground it holds up; its face eases down to nothing over the last
+    // stretch at each end, where it dies into the bank (a flat strip on the grass, stopping dead, read as nothing)
+    const lift = t.thin ? THIN_LIFT : 0, upper = (north ? a : b).map(L.pt).map((p, i, A) => lift ? { x: p.x, y: p.y - lift * Math.min(1, i / 3, (A.length - 1 - i) / 3) } : p);
     const bb = kit.bboxOf(upper.concat(lower), 30), along = Math.abs(upper[upper.length - 1].x - upper[0].x) > Math.abs(upper[upper.length - 1].y - upper[0].y);
     // Terrace ribbons can meet a river. Keep their masonry and shadow on
     // the authored dry bank instead of painting a solid wall over the water.
@@ -427,7 +432,7 @@ window.GardenPaintedTerrain = (function () {
       // Separate clips subtract the union, including overlapping basins.
       for (const mask of dry) B.cx.clip(mask, 'evenodd');
       const face = B.poly(upper.concat(lower.slice().reverse()));
-      B.cx.filter = 'blur(4px)'; B.f(B.poly(lower.map(p => ({ x: p.x + 3, y: p.y - 3 })).concat(lower.slice().reverse().map(p => ({ x: p.x + 9, y: p.y + 12 })))), '#2e3420', .22); B.cx.filter = 'none';
+      B.cx.filter = 'blur(4px)'; B.f(B.poly(lower.map(p => ({ x: p.x + 3, y: p.y - 3 })).concat(lower.slice().reverse().map(p => ({ x: p.x + (lift ? 12 : 9), y: p.y + (lift ? 20 : 12) })))), '#2e3420', lift ? .32 : .22); B.cx.filter = 'none';
       B.f(face, B.lin(0, bb[1], 0, bb[3], [[0, '#9c9480'], [1, '#6e6858']]));
       B.cx.save(); B.cx.clip(new Path2D(face));
       // courses of irregular stones, a through-stone now and then
