@@ -2,7 +2,7 @@
    THE DAY'S END (docs/dev/GARDEN_TOGETHER.md section 24): after dusk a lamp stands lit by the shore bench. Walk up to it if you want to: what you caught today, what your real work earned, what is next. Then put the lamp out. Nothing asks you to, and nothing is counted if you do not.
    A friend who visits sees your lamp out if you have put the day to bed (`tg.ev`), lit if you have not.
    ============================================================ */
-const GTG_EVE_AT = Object.freeze(_wdPt('reed-bank', 1.3, 0.6));   // world cells
+const GTG_EVE_AT = _wdKindPt(['reeds'], 1.3, 0.6);   // world cells: by the reeds at the water (any layout's; none, no lamp)
 function _gtgeWire(o) { if (_gtgW()['tg.ev.' + gtgToday()]) o.ev = 1; }
 gtgWire(_gtgeWire);
 function _gtgeLampSvg(lit) {
@@ -61,7 +61,7 @@ function gardenEveningOpen() {
 }
 function _gtgeDraw(m) {
   const dark = m.tod === 'dusk' || m.tod === 'night';
-  if (!dark || gardenFun() === 'off') { gtgSprite('eve', null); wdGlowOff('tg-eve'); return; }
+  if (!dark || gardenFun() === 'off' || !GTG_EVE_AT.ok) { gtgSprite('eve', null); wdGlowOff('tg-eve'); return; }
   const lit = m.visit ? !_gtgTheirs(m).ev : !_gtgW()['tg.ev.' + m.today], x = GTG_EVE_AT.x, y = GTG_EVE_AT.y;
   gtgSprite('eve', { x, y, z: y, hit: 0.8, hitUp: 18, label: m.visit ? 'Their lamp' : 'The end of the day', svg: _gtgeLampSvg(lit), onClick: () => (m.visit ? wdTalk({ lines: [lit ? `${_gscFirst(m.visit.fid)}’s lamp is still lit. Their day is not over yet.` : `${_gscFirst(m.visit.fid)} has put the lamp out. Their day is done.`], bye: 'Goodnight' }) : gardenEveningOpen()) });
   if (lit) wdGlow('tg-eve', '<circle cy="-27" r="20" fill="#ffc768" opacity="0.2"/><circle cy="-27" r="7" fill="#ffd98a" opacity="0.5"/>', x, y); else wdGlowOff('tg-eve');

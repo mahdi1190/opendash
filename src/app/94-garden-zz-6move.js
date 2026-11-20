@@ -127,9 +127,9 @@ function _gmvStairAt(x, y) {
   }
   return false;
 }
-/** Uphill? The fells and the high orchard climb to the north: going north there is going up. */
-function _gmvUphill(x, y, uy) {
-  try { const r = gardenIslandRegionAt(Math.floor(x), Math.floor(y)); const id = r && (r.id || r); if (id === 'north-headland' || id === 'orchard-headland') return uy < -0.3 ? 1 : uy > 0.3 ? -1 : 0; } catch (e) { /* no regions */ }
+/** Uphill? Read from the ground itself (gardenTerrainUp: the layout's landforms and cells, any region): 1 climbing, -1 going down, 0 flat. */
+function _gmvUphill(x, y, uy, ux) {
+  try { const up = typeof gardenTerrainUp === 'function' ? gardenTerrainUp(x, y) : null; if (up) { const d = (ux || 0) * up.x + uy * up.y; return d > 0.3 ? 1 : d < -0.3 ? -1 : 0; } } catch (e) { /* no ground */ }
   return 0;
 }
 /**
@@ -166,7 +166,7 @@ function gartMoveFrame(inner, bob, gw, time) {
   const L = _gmvLimbs(body); if (!L.legA || !L.legB) return;
   // the gait: run, creep, stairs or walk; the stride follows the ground actually covered
   const v = gw.moving ? Math.max(0, gw.spd || 0) : 0;
-  if (now - (_gmv.stairT || 0) > 200) { _gmv.stairT = now; _gmv.onStairs = _gmvStairAt(gw.px, gw.py); const a = (_gmv.h || 0) * Math.PI / 180; _gmv.uphill = _gmvUphill(gw.px, gw.py, Math.sin(a)); }
+  if (now - (_gmv.stairT || 0) > 200) { _gmv.stairT = now; _gmv.onStairs = _gmvStairAt(gw.px, gw.py); const a = (_gmv.h || 0) * Math.PI / 180; _gmv.uphill = _gmvUphill(gw.px, gw.py, Math.sin(a), Math.cos(a)); }
   const G = gw.sneak ? GPL_MOVE.creep : _gmv.onStairs ? GPL_MOVE.stairs : v > 205 ? GPL_MOVE.run : GPL_MOVE.walk;
   const legLen = Math.max(8, Math.abs(L.legA.oy) * S);   // the hip's height in world px
   const stride = G.stride * legLen;

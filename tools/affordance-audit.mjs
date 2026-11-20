@@ -71,25 +71,38 @@ if (REF) {
 for (const r of data.things || []) placed.set(r.id, r);
 
 const things = [];
-for (const r of data.static || []) things.push({ id: r.id, src: 'layout', art: artOf.get(r.id) || '', kind: ctx.kindOf({ id: r.id, art: artOf.get(r.id) || '', kind: r.kind }), x: r.x + r.w / 2, y: r.y + r.h, w: r.w, h: r.h, front: r.front, region: (cell(r.x + r.w / 2, r.y + r.h - 0.5) || {}).region || '' });
+for (const r of data.static || []) things.push({ id: r.id, src: 'layout', art: artOf.get(r.id) || '', drawn: artOf.has(r.id), kind: ctx.kindOf({ id: r.id, art: artOf.get(r.id) || '', kind: r.kind }), x: r.x + r.w / 2, y: r.y + r.h, w: r.w, h: r.h, front: r.front, region: (cell(r.x + r.w / 2, r.y + r.h - 0.5) || {}).region || '' });
+// the same ground rule the game uses for a placed thing (94-garden-zz-7act-0scan.js _gksPlaceFault), on the layout's own cells and walls
+const wallForms = (data.landforms || []).filter(f => f.col === 'full' && Array.isArray(f.polygon) && f.polygon.length > 2);
+const inPoly = (px, py, P) => { let ins = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a[1] > py) !== (b[1] > py) && px < (b[0] - a[0]) * (py - a[1]) / (b[1] - a[1] || 1e-9) + a[0]) ins = !ins; } return ins; };
+const placeFault = (K, x, y, w, h, self) => {
+  const hw = w / 2, pts = [[x, y - 0.06], [x - hw * 0.85, y - 0.06], [x + hw * 0.85, y - 0.06], [x, y - h * 0.9]];
+  for (const [px, py] of pts) { const c = cell(px, py); let fresh = false; try { fresh = isl.fresh(px, py) || !isl.land(px, py); } catch (e) { fresh = !!(c && c.freshwater); } if (fresh) return 'in the water'; if (!c || !c.land) return 'off the land'; if (!K.onPath && c.route) return 'on a path (' + c.route + ')'; if (c.staticId && c.staticId !== self) { const st = statById.get(c.staticId); if (st && (st.col || 'full') === 'full' && !st.walk) return 'on ' + c.staticId; } }
+  for (const f of wallForms) for (const [px, py] of pts) if (inPoly(px, py, f.polygon)) return 'on the ' + f.kind + ' ' + f.id;
+  for (const o of things) { if (o.id === self) continue; const ow = (o.w || 1) / 2, oh = o.h || 1; if (x + hw > o.x - ow && x - hw < o.x + ow && y > o.y - oh && y - h < o.y) return 'on ' + o.id; }
+  return '';
+};
+const placeNear = (K, x, y, w, h, self) => { for (let r = 0.35; r <= 3.01; r += 0.35) for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2 + r, qx = Math.round((x + Math.cos(a) * r) * 100) / 100, qy = Math.round((y + Math.sin(a) * r * 0.75) * 100) / 100; if (!placeFault(K, qx, qy, w, h, self)) return { x: qx, y: qy }; } return null; };
 const orphans = [];
-const report = { layout: data.id, ref: REF || '(worktree)', file: arg('--island', REF ? REF + ':assets/garden/island-v5.json' : 'assets/garden/island-v5.json'), things: [], unknown: [], orphans, faults: [], terrain: {}, kinds: {}, missingKinds: [] };
+const report = { layout: data.id, ref: REF || '(worktree)', file: arg('--island', REF ? REF + ':assets/garden/island-v5.json' : 'assets/garden/island-v5.json'), things: [], unknown: [], orphans, faults: [], terrain: {}, kinds: {}, missingKinds: [], notDrawn: [], painted: [], paintedUnknown: [] };
 for (const r of placed.values()) {
   let x = Number(r.x), y = Number(r.y);
   if (r.on) { const a = things.find(t => t.id === r.on); if (!a) { orphans.push(r.id + ' (on ' + r.on + ', not in this layout)'); continue; } x = a.x + ((r.at || [])[0] || 0); y = a.y + ((r.at || [])[1] || 0); }
   const K = ctx.K[r.kind];
   if (K && K.ground) { const wetp = (px, py) => { try { return isl.fresh(px, py) || !isl.land(px, py); } catch (e) { return false; } }; const sn = ctx.snap(r.kind, x, y, Number(r.w) || K.w, wetp); if (!sn) { report.faults.push(`${r.id} (${r.kind}): no ${K.ground} within 4 cells of where its row puts it: it is left out`); continue; } if (sn.moved) report.faults.push(`${r.id} (${r.kind}): its row puts it off the ${K.ground}; the game moves it ${Math.round(Math.hypot(sn.x - x, sn.y - y) * 10) / 10} cells to ${sn.x},${sn.y} (move the row there)`); x = sn.x; y = sn.y; }
+  if (K && !K.ground) { const w0 = Number(r.w) || K.w || 1, h0 = Number(r.h) || K.h || 1, why = placeFault(K, x, y, w0, h0, r.id); if (why) { const q = placeNear(K, x, y, w0, h0, r.id); if (!q) { report.faults.push(`${r.id} (${r.kind}): its row puts it ${why}, and there is no clear ground within 3 cells: the game leaves it out`); continue; } report.faults.push(`${r.id} (${r.kind}): its row puts it ${why}: the game moves it to ${q.x},${q.y} (put it there, or somewhere better, in the layout)`); x = q.x; y = q.y; } }
   things.push({ id: r.id, src: 'thing', kind: K ? r.kind : '', x, y, w: Number(r.w) || (K && K.w) || 1, h: Number(r.h) || (K && K.h) || 1, front: r.front, season: r.season || '', region: (cell(x, y - 0.1) || {}).region || '' });
 }
 
 /* ---------- each thing's offer, checked ---------- */
 const round = (v) => Math.round(v * 100) / 100;
+const s0IsPart = (K) => (K.acts || []).some(a => a.at);
 for (const t of things) {
   const K = t.kind ? ctx.K[t.kind] : null, row = { id: t.id, src: t.src, kind: t.kind || '?', region: t.region, at: [round(t.x), round(t.y)], acts: [], pets: [] };
   if (!K) { report.unknown.push(t.id + (t.art ? ' (art ' + t.art + ')' : '')); report.things.push(row); continue; }
   report.kinds[t.kind] = (report.kinds[t.kind] || 0) + 1;
   if (K.pet) row.pets.push(K.pet); if (K.drink) row.pets.push('drink'); if (K.warm) row.pets.push('warm'); if (!K.noPerch && (K.top || K.petSeat)) row.pets.push('perch');
-  if (K.place && K.art && !/^(scope|ladder|fire|ball|leaves|busker|logseat|basket|log|bank)$/.test(K.art) && t.src === 'thing') report.faults.push(`${t.id}: kind ${t.kind} has no drawing yet (art '${K.art}'): it offers nothing in the game until one is drawn`);
+  if (K.place && K.art && !/^(scope|ladder|fire|ball|leaves|busker|logseat|basket|log|bank)$/.test(K.art) && t.src === 'thing' && !K.paint) report.faults.push(`${t.id}: kind ${t.kind} has no drawing yet (art '${K.art}'): it offers nothing in the game until one is drawn`);
   if (t.src === 'thing') {   // a placed thing's own ground
     const c = cell(t.x, t.y - 0.1);
     if (!c || !c.land) report.faults.push(`${t.id} (${t.kind}): its foot ${round(t.x)},${round(t.y)} is off the land`);
@@ -97,7 +110,12 @@ for (const t of things) {
     else if (c.staticId && c.staticId !== t.id) report.faults.push(`${t.id} (${t.kind}): stands on ${c.staticId}'s footprint (nothing overlaps)`);
     else if (c.route && K.solid === 'block') report.faults.push(`${t.id} (${t.kind}): blocks a path (${c.route})`);
   }
-  for (const s of ctx.spots({ kind: t.kind, x: t.x, y: t.y, w: t.w, front: t.front })) {
+  // what the game offers is what is drawn: a fixed thing with no land or catalog row is drawn by nothing unless a painter draws it as
+  // its own thing (then it is found as that painted thing, listed under PAINTED below), so it is not counted here
+  if (t.src === 'layout' && !t.drawn && !(K.acts || []).some(a => a.pierEnd)) { row.notDrawn = true; if ((K.acts || []).length) report.notDrawn.push(t.id + ' (' + t.kind + ')'); report.things.push(row); continue; }
+  if (t.src === 'thing' && K.place && !K.art && !K.paint && !K.ground) { row.notDrawn = true; report.notDrawn.push(t.id + ' (' + t.kind + ': no drawing)'); report.things.push(row); continue; }
+  const partW = (K.acts || []).some(a => a.at) && K.dw ? K.dw : t.w;   // (a part and its stand point are on the thing as its painter draws it: the game reads the drawn width, the audit the kind's dw)
+  for (const s of ctx.spots({ kind: t.kind, x: t.x, y: t.y, w: s0IsPart(K) ? partW : t.w, front: t.front })) {
     if (s.pierEnd) { row.acts.push({ act: s.act, stand: 'the far end of the built pier', ok: true }); continue; }
     const c = cell(s.stand.x, s.stand.y), walk = !blocks(s.stand.x, s.stand.y) || (s.boat && !blocks(s.stand.x + 0.4, s.stand.y)), edge = !!(s.edge || s.seat != null || s.wade || s.boat), rch = reachable(s.stand.x, s.stand.y) || nearReach(s.stand.x, s.stand.y, s.boat ? 1.2 : 0.6);   // (the walker gets you within reach of it; a boat is boarded from beside it)
     const ok = (walk || edge) && rch;
@@ -105,6 +123,15 @@ for (const t of things) {
     if (!ok) report.faults.push(`${t.id} (${t.kind}) ${s.act}: stand ${round(s.stand.x)},${round(s.stand.y)} is ${!walk && !edge ? 'not walkable (' + (c ? (c.freshwater ? 'water' : c.solid ? 'rock' : c.staticId ? c.staticId : !c.land ? 'off the land' : '?') : 'outside') + ')' : 'not reachable from the arrival point'}`);
   }
   report.things.push(row);
+}
+// what the painters draw as things of their own (GardenPaintVale thing({ key })): the game finds them by their painted foot and gives
+// each the kind its name says. Read from the painters' code (this worktree's, or the branch's): a name with no kind is listed.
+{
+  let files = [];
+  try { files = REF ? execFileSync('git', ['-C', root, 'ls-tree', '--name-only', REF, 'src/app/'], { encoding: 'utf8' }).split(/\r?\n/).filter(f => /94-garden-paint-vale-[^/]+\.js$/.test(f)) : readdirSync(join(root, 'src/app')).filter(f => /^94-garden-paint-vale-.+\.js$/.test(f)).map(f => 'src/app/' + f); } catch (e) { files = []; }
+  const names = new Set();
+  for (const f of files) { let txt = ''; try { txt = readSrc(f); } catch (e) { continue; } for (const m of txt.matchAll(/thing\(\{\s*key:\s*'([a-z0-9-]+)/g)) names.add(m[1].replace(/-$/, '')); }
+  for (const nm of [...names].sort()) { const k = ctx.kindOf({ id: nm, head: true }); report.painted.push({ name: nm, kind: k || '?' }); if (!k) report.paintedUnknown.push(nm); }
 }
 // kinds the game knows that this layout has none of (things for the layout's authors to place)
 for (const [k, K] of Object.entries(ctx.K)) if (!report.kinds[k] && (K.acts || K.pet) && !K.trunks && k !== 'seat' && k !== 'garden-well') report.missingKinds.push(k);
@@ -134,6 +161,9 @@ if (!QUIET) {
   for (const r of report.things) out.push(`  ${r.id.padEnd(18)} ${r.kind.padEnd(14)} ${String(r.region || '').padEnd(17)} ${r.at.join(',').padEnd(12)} ${r.acts.map(a => a.act + (a.ok ? '' : a.walkable === false ? ' [NOT WALKABLE]' : ' [NOT REACHABLE]') + (a.needs ? ' (' + Object.entries(a.needs).map(e => e.join(' ')).join(', ') + ')' : '')).join(' ') || '-'}${r.pets.length ? '   pets: ' + r.pets.join(' ') : ''}`);
 }
 out.push('', `UNKNOWN KIND (offer nothing): ${report.unknown.join(', ') || 'none'}`);
+out.push(`FIXED THINGS NOTHING DRAWS (no land or catalog row, no drawing: the game offers nothing there; draw them, or place them as layout things of a kind with a painter): ${report.notDrawn.join(', ') || 'none'}`);
+out.push(`PAINTED THINGS (found in the game by their painted foot): ${report.painted.filter(p => p.kind !== '?' && p.kind !== 'building' && p.kind !== 'scenery').map(p => p.name + ' ' + p.kind).join(', ') || 'none'}`);
+out.push(`PAINTED THINGS OF NO KNOWN KIND (they offer nothing: give the name a word in GARDEN_KINDS): ${report.paintedUnknown.join(', ') || 'none'}`);
 out.push(`PLACED ROWS WHOSE ANCHOR IS NOT IN THIS LAYOUT: ${orphans.join(', ') || 'none'}`);
 out.push(`KINDS THIS LAYOUT HAS NONE OF: ${report.missingKinds.join(', ')}`);
 out.push('', 'FAULTS'); for (const f of report.faults) out.push('  ' + f); if (!report.faults.length) out.push('  none');

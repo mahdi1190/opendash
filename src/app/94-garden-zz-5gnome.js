@@ -4,7 +4,7 @@
    THE BOTTLE. Pick a friend and a line from the book (never free text: GTG_BOTTLE_LINES, the index goes on the wire) and it sets off. Three days later it is bobbing in their lake (frozen in, in winter). Snapshot `bt` [[mark, line, day sent]], the last three; `bw` how many wait unread, so a visitor sees them too.
    ============================================================ */
 const GTG_GN = Object.freeze({ days: 3, hostTicket: 3, homeTicket: 6, at3: Object.freeze({ 'mat:stone': 2 }), at6: Object.freeze({ 'mat:stone': 5 }) });
-const GTG_GN_AT = Object.freeze(Object.assign(_wdPt('post-box', 1.1, 0.5), { guest: _wdPt('notice-board', -3.4, 0.5) }));   // world cells: yours at home; those staying with you stand in a row from here
+const GTG_GN_AT = _wdKindPt(['postbox'], 1.1, 0.5, { guest: _wdKindPt(['notice-board'], -3.4, 0.5) });   // world cells, by KIND on any layout: yours by a post box; those staying with you stand in a row from a notice board
 const GTG_BOTTLE_AT = Object.freeze([[19, 23.4], [31.5, 22.6], [23, 26.6]]);   // world cells: where a bottle comes to rest
 const GTG_BOTTLE = Object.freeze({ days: 3, keep: 3, read: 3, send: 1 });
 /* Append only: the index is what is sent. No names, no links, nothing but kindness. */
@@ -31,7 +31,7 @@ function _gtgnLeave(fid, m) {
     try { const G = _gtgnSpot(0), blob = await _glsBlob(_glsFrame(Math.round(G.x), Math.round(G.y))); await memPhotoKeep(blob, { iso: _gdToday(), ts: Clock.now(), kind: 'garden', at: fid }); gardenToast('A photo of your gnome is in your Memories', { icon: 'camera', timeout: 5000, action: { label: 'See it', run: () => setView('memories:photos') } }); } catch (e) { /* only a postcard */ }
   }, 1200);
 }
-function _gtgnSpot(i) { const g = GTG_GN_AT.guest; return { x: g.x - i * 0.9, y: g.y + (i % 2) * 0.35 }; }
+function _gtgnSpot(i) { const g = GTG_GN_AT.guest.ok ? GTG_GN_AT.guest : { x: GTG_GN_AT.x - 4.5, y: GTG_GN_AT.y }; return { x: g.x - i * 0.9, y: g.y + (i % 2) * 0.35 }; }   // (no notice board: a row along from the post box)
 function _gtgnHomeTick(m) {
   const a = _gtgnAway(); if (!a || m.visit) return;
   if (_wdDaysBetween(a.d, m.today) < GTG_GN.days) return;
@@ -45,6 +45,7 @@ function _gtgnHomeTick(m) {
   wdWhisper(first ? `Your gnome is home from ${who}’s, with a new pennant on its hat.` : `Your gnome is home from ${who}’s, and will not say what happened.`, 8000);
 }
 function _gtgnDraw(m) {
+  if (!GTG_GN_AT.ok) { for (let i = 0; i < 5; i++) gtgSprite('gn-g' + i, null); gtgSprite('gn-me', null); return; }   // (no post box in this layout: no gnome stands anywhere)
   const a = _gtgnAway(), theirs = _gtgTheirs(m), n = _gtgnStamps(), seed = gardenHash('gn|' + (gtgMeId() || 'me')) >>> 0;
   if (m.visit) {
     const fid = m.visit.fid, here = !!a && a.at === fid, list = (theirs.gs || []).slice(0, 4);
@@ -56,7 +57,7 @@ function _gtgnDraw(m) {
       gtgSprite('gn-g' + i, { x: P.x, y: P.y, z: P.y, hit: 0.6, hitUp: 12, label: mine ? 'Your gnome' : 'A gnome', svg: gtgGnomeSvg(v, mine ? n : 0), onClick: () => wdTalk({ lines: [mine ? `Your gnome. It is staying for ${GTG_GN.days} days, and seems to be enjoying the view.` : 'Someone’s gnome. It has come to stay for a few days, and it is not telling you whose.'], bye: 'Leave it' }) });
     }
     if (!a && gtgFriendList().some(f => f.id === fid)) {   // it came along
-      const x = GTG_GN_AT.guest.x + 1, y = GTG_GN_AT.guest.y;
+      const x = _gtgnSpot(0).x + 1, y = _gtgnSpot(0).y;
       gtgSprite('gn-me', { x, y, z: y, hit: 0.6, hitUp: 12, label: 'Your gnome came with you', svg: gtgGnomeSvg(seed, n), onClick: () => wdTalk({ lines: ['Your gnome came along. It would like to stay here a few days, if nobody minds.'], actions: [{ label: 'Leave it here', primary: true, run: () => { wdTalkClose(true); _gtgnLeave(fid, m); } }], bye: 'Not this time' }) });
     } else gtgSprite('gn-me', null);
     return;

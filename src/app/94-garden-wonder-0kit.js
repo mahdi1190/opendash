@@ -29,6 +29,26 @@ function _wdDaysBetween(a, b) { const x = Date.parse(a + 'T12:00:00Z'), y = Date
 function _wdFriendId() { try { return typeof _gsvIdOf === 'function' ? _gsvIdOf(state.view) : null; } catch (e) { return null; } }
 /* ---------- world cells: every place these files use, worked out from GARDEN_AREAS and GARDEN_PROPS, so a moved map moves them too. List of tables: WD_AT here, WD_FINDS in 3finds. ---------- */
 function _wdPt(id, dx, dy) { const p = GARDEN_PROPS.find(x => x.id === id), b = !p ? { x: 10, y: 12 } : p.door ? { x: p.door.x + 0.5, y: p.door.y + 0.5 } : { x: p.x + p.w / 2, y: p.y + p.h / 2 }; return { x: b.x + (dx || 0), y: b.y + (dy || 0) }; }
+/** A place by the nearest thing of a KIND to the arrival point (94-garden-zz-7act-0scan.js gardenAffordThings), worked out when it is
+ *  asked for, on whatever layout is loaded: { x, y (world cells: the thing's middle plus dx, dy), ok }. No thing of that kind: ok false and
+ *  x, y NaN (the feature is not shown; never a fixed corner of the map). more: extra fields (a second place). */
+function _wdKindPt(kinds, dx, dy, more) {
+  const K = new Set(kinds), memo = { key: null, p: null };
+  const find = () => {
+    let key = ''; try { key = typeof _gks !== 'undefined' ? String(_gks.key) : ''; } catch (e) { key = ''; }
+    if (memo.p && memo.key === key && key) return memo.p;
+    let best = null;
+    try {
+      const st = (gardenIslandData().anchors || {}).start || GARDEN_WORLD.start || { x: GARDEN_WORLD.cols / 2, y: GARDEN_WORLD.rows / 2 }; let bd = 1e9;
+      for (const t of gardenAffordThings()) { if (!K.has(t.kind)) continue; const d = Math.hypot(t.x - st.x, t.y - st.y); if (d < bd) { bd = d; best = t; } }
+    } catch (e) { best = null; }
+    memo.key = key; memo.p = best ? { x: best.x + (dx || 0), y: best.y - (best.h || 1) / 2 + (dy || 0) } : null;
+    if (!best && !memo.said) { memo.said = 1; try { console.info('[garden] no ' + kinds.join(' or ') + ' in this layout: what stands by one is not shown'); } catch (e) { /* none */ } }
+    return memo.p;
+  };
+  const o = { get x() { const p = find(); return p ? p.x : NaN; }, get y() { const p = find(); return p ? p.y : NaN; }, get ok() { return !!find(); } };
+  return Object.assign(o, more || {});
+}
 const _WD_LAKE = (GARDEN_AREAS.find(a => a.id === 'lake') || {}).water || { x: 0, y: 13, w: 28, h: 17 };
 const _WD_ISLE_C = Object.freeze({ cx: _WD_LAKE.x + _WD_LAKE.w * 0.786, cy: _WD_LAKE.y + _WD_LAKE.h * 0.535, rx: 3.5, ry: 2.3 });
 const WD_AT = Object.freeze({   // world cells

@@ -40,23 +40,60 @@ const _GAW_ART = Object.freeze({
   bank: () => '<path d="M-26 -4Q-12 -9 0 -7Q14 -9 46 -4L48 2Q10 6 -28 2z" fill="#6a9a3a" opacity="0.9"/><path d="M-24 -2Q8 -6 44 -2" stroke="#8a6a3a" stroke-width="2.2" fill="none" opacity="0.7"/><path d="M-20 2q2 -5 4 0M-4 2q2 -6 3 0M14 2q1 -5 3 0M30 2q2 -6 3 0" stroke="#4a7a2a" stroke-width="1.1" fill="none"/><path d="M22 -6L26 -12M24 -6L22 -12" stroke="#6a4a2a" stroke-width="1"/>',
 });
 const _gawN = (v) => String(Math.round(v * 10) / 10);
+/** Where a fixed thing is DRAWN (cells): { x (the drawn foot's middle), y (the layout's foot line), w (the drawn width) }. The native world's
+ *  record of its picture first, else its painter's own box (a painter that draws at its own fixed size), else the kind's dw, else the
+ *  layout's footprint. The parts a kind carries (a ladder) and their stand points are placed on this, so a resized footprint never moves
+ *  a ladder off its wall. */
+function gardenAffordDrawnBase(t) {
+  const W = GARDEN_WORLD, K = (t && GARDEN_KINDS[t.kind]) || {};
+  try {
+    const w = window.GardenNative && GardenNative.world(), e = w && w.entities, rec = e instanceof Map ? e.get('prop:' + t.id) : null, b = rec && rec.bounds;
+    if (b && b.width) { const f = rec.handle && rec.handle.foot; return { x: (f && Number.isFinite(f.x) ? f.x : b.x + b.width / 2) / W.cellW, y: t.y, w: b.width / W.cellW, from: 'drawn' }; }
+  } catch (e) { /* no world yet */ }
+  try {
+    const P = window.GardenPaintedProps && GardenPaintedProps.paintTable, art = String(t.art || '').replace(/^l[df]-/, ''), box = P && (P['sight:' + art] || P[t.id] || P[art]) && (P['sight:' + art] || P[t.id] || P[art]).box;
+    if (box) return { x: t.x, y: t.y, w: (box[2] - box[0]) / W.cellW, from: 'painter' };
+  } catch (e) { /* no painter */ }
+  if (K.dw) return { x: t.x, y: t.y, w: K.dw, from: 'kind' };
+  return { x: t.x, y: t.y, w: t.w || 1, from: 'plan' };
+}
 /** What is drawn today: the placed things of a kind with a drawing, and the drawn parts of every found thing. */
 function gardenActWorldRows() {
   const out = []; if (typeof gardenAffordThings !== 'function') return out;
   for (const t of gardenAffordThings()) {
     const K = t.kind && GARDEN_KINDS[t.kind]; if (!K) continue;
+    if (t.src === 'thing' && K.paint && !K.art && t.drawn !== false) { out.push({ id: t.id, kind: t.kind, paint: K.paint, x: t.x, y: t.y, season: t.season || '', row: {} }); continue; }   // (its painter draws it: gardenActThingProp)
     if (t.src === 'thing' && K.art && t.drawn !== false) {
       const mv = typeof gartActMovedTo === 'function' ? gartActMovedTo(t.id) : null;
       out.push({ id: t.id, kind: t.kind, art: K.art, x: mv ? mv.x : t.x, y: mv ? mv.y : t.y, season: t.season || '', carry: (K.acts || []).some(a => a.carry), flat: !!K.flat, row: {} });
     }
-    if (t.static) for (const s of gardenKindSpots({ kind: t.kind, x: t.x, y: t.y, w: t.w, front: t.front })) if (s.at && s.art && s.drawn !== false) out.push({ id: 'part-' + t.id + '-' + s.i, owner: t.id, kind: t.kind, art: s.art, x: s.x, y: s.y, row: s });
+    if (t.static && (K.acts || []).some(a => a.at)) { const B = gardenAffordDrawnBase(t); for (const s of gardenKindSpots({ kind: t.kind, x: B.x, y: B.y, w: B.w, front: t.front })) if (s.at && s.art && s.drawn !== false) out.push({ id: 'part-' + t.id + '-' + s.i, owner: t.id, kind: t.kind, art: s.art, x: s.x, y: s.y, row: s }); }   // (on the thing as drawn)
   }
+  return out;
+}
+/** A thing placed through layout data whose kind has a painter (GARDEN_KINDS paint: a bench, a well, a notice board ...), as a fixed prop
+ *  row for the native world to paint: { id, art, kind, x, y, w, h, name } in cells, or null. */
+function gardenActThingProp(id) {
+  if (typeof gardenAffordThings !== 'function') return null;
+  for (const t of gardenAffordThings()) {
+    if (t.id !== id || t.src !== 'thing') continue;
+    const K = GARDEN_KINDS[t.kind]; if (!K || !K.paint) return null;
+    const w = t.w || K.w || 1, h = t.h || K.h || 1, mv = typeof gartActMovedTo === 'function' ? gartActMovedTo(t.id) : null, fx = mv ? mv.x : t.x, fy = mv ? mv.y : t.y;
+    return { id: t.id, art: K.paint, kind: K.paint, x: Math.round((fx - w / 2) * 100) / 100, y: Math.round((fy - h) * 100) / 100, w, h, name: t.name || K.name, thing: true };
+  }
+  return null;
+}
+/** The small boxes at the foot of placed things a painter draws (they stop the feet like a small prop): [{ x0, y0, x1, y1, src }] cells. */
+function gardenActThingSolids() {
+  const out = []; if (typeof gardenAffordThings !== 'function') return out;
+  for (const t of gardenAffordThings()) { const K = t.src === 'thing' && GARDEN_KINDS[t.kind]; if (!K || !K.paint) continue; const bw = Math.min(t.w || 1, 2) * 0.5, foot = t.y - 0.08; out.push({ x0: t.x - bw / 2, y0: foot - 0.28, x1: t.x + bw / 2, y1: foot, src: 'placed ' + t.kind + ' [thing:' + t.id + ']' }); }
   return out;
 }
 /** For gardenWorldProps: each drawn in world px at its foot, sorted in by its row. */
 function gardenActWorldProps(sc, o) {
   const W = GARDEN_WORLD, out = [];
   for (const r of gardenActWorldRows()) {
+    if (r.paint) { if (!(r.season && sc && sc.season !== r.season)) out.push({ z: r.y, x: Math.floor(r.x), html: `<g class="gd-it gd-prop" data-prop="${r.id}" data-z="${_gawN(r.y)}" pointer-events="none"></g>` }); continue; }   // (the native world paints it from gardenActThingProp)
     if (!_GAW_ART[r.art] || (r.season && sc && sc.season !== r.season) || (typeof gartActCarried === 'function' && gartActCarried(r.id)) || (r.carry && typeof gartActMovedTo === 'function' && gartActMovedTo(r.id))) continue;   // (one set down elsewhere is drawn there as a sprite of its own)
     const x = r.x * W.cellW, y = W.sky + r.y * W.cellH;
     out.push({ z: r.flat ? r.y - 1.2 : r.y, x: Math.floor(r.x), html: `<g class="gd-it gd-prop gd-prop-work" data-prop="${r.id}" data-z="${_gawN(r.y)}" pointer-events="none"><g transform="translate(${_gawN(x)} ${_gawN(y)})">${_GAW_ART[r.art](o, typeof gartActInUse === 'function' && gartActInUse(r.id), r.row)}</g></g>` });

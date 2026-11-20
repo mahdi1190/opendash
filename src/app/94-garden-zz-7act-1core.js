@@ -48,10 +48,11 @@ function _gaStaticRows() {
       if (gartActHidden(t.id)) continue;
       const mv = gartActMovedTo(t.id); if (mv) foot = mv;   // a thing you carried off and set down is where you left it (this visit)
     }
-    // a part this branch draws on the thing (a ladder up a lighthouse) is fixed to the footprint the painter builds on; the rest to what is drawn
-    const onFoot = gardenKindSpots({ kind: t.kind, x: foot.x, y: foot.y, w: t.w, front: t.front }), onPlan = gardenKindSpots({ kind: t.kind, x: t.x, y: t.y, w: t.w, front: t.front });
+    // a part (a ladder up a lighthouse) and its stand point are on the thing as its painter drew it (gardenAffordDrawnBase), the same place
+    // the part is drawn; the rest on the drawn foot
+    const onFoot = gardenKindSpots({ kind: t.kind, x: foot.x, y: foot.y, w: t.w, front: t.front }), DB = t.static && K.acts.some(a => a.at) ? gardenAffordDrawnBase(t) : null, onDrawn = DB ? gardenKindSpots({ kind: t.kind, x: DB.x, y: DB.y, w: DB.w, front: t.front }) : onFoot;
     onFoot.forEach((s0, i) => {
-      const s = s0.at ? onPlan[i] : s0;
+      const s = s0.at ? onDrawn[i] : s0;
       if (!gardenKindNeedsOk(s.needs, ctx)) return;
       if (s.pierEnd) {   // the end of the pier as far as it is built today (one for the whole pier, whichever of its boards is found)
         if (once.has('pier-end:' + s.act) || typeof _gardenPierDecksNow !== 'function') return; once.add('pier-end:' + s.act);
@@ -209,7 +210,7 @@ function _gaDirDeg(row, spot) { return spot && spot.deg != null ? spot.deg : row
 function gartActRun(id, spot) {
   const row = GARDEN_ACTS[id]; if (!row || typeof _gw === 'undefined' || !_gw.on || _gw.boat) return false;   // (out on the water in your boat: the oars are your only move)
   gartActStop();
-  if (spot && spot.boat) {   // the boat: your own rowing boat takes you out on the Mere (the boat game); without one, say where to get one
+  if (spot && spot.boat) {   // the boat: your own rowing boat takes you out on the water (the boat game); without one, say where to get one
     const go = () => { if (typeof gardenBoatAsk === 'function' && gardenBoatAsk()) { _gaFirst({ id, row }); return; } try { gardenToast('You need a rowing boat of your own. The tackle shop has one.'); } catch (e) { /* fine */ } };
     if (!gardenWalkToPoint(spot.stand, go, { radius: 1.6 })) go();
     return true;

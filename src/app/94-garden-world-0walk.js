@@ -128,6 +128,7 @@ function _gwBuildSolids(m) {
   // like the old woodland's lamps, so you walk round the post and behind the lantern, not through it (their cell stays open)
   // the painted vale's standing things that name their foot (the cider press, the millstone, the maypole, the shore boulders...)
   if (island && typeof GardenPaintVale !== 'undefined' && GardenPaintVale && GardenPaintVale.feet) for (const f of GardenPaintVale.feet()) add(f.x0, f.y0, f.x1, f.y1, f.src);
+  if (typeof gardenActThingSolids === 'function') for (const b of gardenActThingSolids()) add(b.x0, b.y0, b.x1, b.y1, b.src);   // a bench or a well placed as layout data
   for (const p of gardenPropsNow()) if (p.art === 'lamp' && /^ld-lamp-/.test(p.id)) { const x = p.x + .5, y = p.y + .7; add(x - .17, y - .2, x + .17, y + .04, 'street lamp post'); }
   // The landforms (mountains, the scarp, the ruin and terrace walls) stop the feet along their own outline, the one their
   // painters draw (2.73: the cells whose middle fell inside a thin wall blocked whole, so a wall had gaps you walked

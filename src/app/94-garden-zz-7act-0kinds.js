@@ -18,12 +18,21 @@
                  180 west, -90 north) for a thing whose front faces the camera; a thing laid with `front` turned round turns both.
                  at + art: a part this branch draws on the thing (a ladder up a lighthouse's side), at [u, dy] like stand; drawn: false when the
                  thing's own painter draws it. needs: { season, time ('day' | 'night'), level, owns (a gear id), winter }
+                 A part (at) and its stand point are placed on the thing AS ITS PAINTER DREW IT, never on the layout's footprint: u is a
+                 share of the drawn width (the native world's record of the picture, else the painter's own box, else dw below), from the
+                 drawn foot's middle. A layout that makes the barn's footprint wider leaves its ladder on the barn's wall.
+     dw        the drawn width in cells when nothing else says (a painter that draws the thing at its own fixed size)
+     paint     a fixed thing's painter (GardenPaintedProps: 'seat' the bench, 'wish' the well, 'board', 'post', 'tripod', 'fountain', 'lamp',
+               'sundial', 'postbox'): a row of layout data of this kind (`things`) is drawn by that painter where the row puts it, blocks the
+               feet like a small prop and is used like any other: a new bench in a layout needs no code
      art       the drawing of a placeable thing (94-garden-zz-7act-2world.js _GAW_ART): a thing of this kind is placed in the layout's data
      place     true: a thing placed through layout data (assets/garden/vale-things.json, or a layout's own `things`), not drawn by a painter
      w, h      a placeable thing's footprint in cells when its row gives none
      pet       the pets' word for it (PET_LIFE rows' `at`: 'bench', 'well', 'fire' ...); drink: a pet drinks there; warm: a pet warms itself;
      noPerch   a pet never stands on top of it; top / petSeat: px up where a perched / sat pet's feet go
      solid     what the audit expects of its ground: 'free' (you walk on it) or 'block'
+     onPath    a placed thing of this kind may stand on a path or paved yard (a busker's pitch in a square); every other placed kind is
+               moved off paths, paving, water, what stops the feet and other things (94-garden-zz-7act-0scan.js _gksPlaceFault)
      ground    where a placed thing of this kind must lie ('water-edge': on the bank's lip, water just in front): a row that a re-laid
                layout leaves elsewhere is moved to the nearest such ground within 4 cells (gardenKindSnap), never left in the water
    }
@@ -33,7 +42,7 @@
    ============================================================ */
 const GARDEN_KINDS = Object.freeze({
   /* seats */
-  bench: { name: 'the bench', arts: ['seat'], decor: [], words: ['bench', 'seat', 'settle', 'pew'], acts: [{ act: 'sit', stand: [0, -0.16], deg: 90, seat: 0.36 }], pet: 'bench', top: 28, petSeat: 15 },   // seat: the seat's height as drawn, a share of the figure's height
+  bench: { name: 'the bench', arts: ['seat'], paint: 'seat', w: 1.75, h: 0.4, decor: [], words: ['bench', 'seat', 'settle', 'pew'], acts: [{ act: 'sit', stand: [0, -0.16], deg: 90, seat: 0.36 }], pet: 'bench', top: 28, petSeat: 15 },   // seat: the seat's height as drawn, a share of the figure's height
   seat: { name: 'the seat', effects: ['sit'], decor: ['bench', 'stone-bench', 'driftwood-seat', 'deckchair', 'bistro-set', 'picnic-blanket', 'gazebo', 'dc-tea-table'], acts: [{ act: 'sit', stand: [0, 0.06], deg: 90, seat: 0.45 }], pet: 'bench' },
   chair: { name: 'the chair', decor: ['play-chair'], words: ['chair'], acts: [{ act: 'sit', stand: [0, 0.06], deg: 90, seat: 0.45 }], pet: 'chair' },
   swing: { name: 'the swing', decor: ['swing-seat'], words: ['swing'], acts: [{ act: 'sit', stand: [0, 0.06], deg: 90, seat: 0.45 }], pet: 'swing' },
@@ -41,43 +50,43 @@ const GARDEN_KINDS = Object.freeze({
   picnic: { name: 'the picnic rug', arts: ['picnic'], words: ['picnic'], pet: 'bench', top: 22, petSeat: 22 },
   stump: { name: 'the stump', arts: ['stump'], words: ['stump'], acts: [{ act: 'sit', stand: [-0.1, 0.45], deg: 90, seat: 0.9 }], pet: 'stump', top: 24, petSeat: 24 },   // up on the top, legs down the front
   'log-seat': { name: 'the log', art: 'logseat', place: true, w: 1.8, h: 0.4, acts: [{ act: 'sit', stand: [0, 0.12], deg: 90, seat: 0.42 }], pet: 'stump', solid: 'block' },   // a log laid by a fire to sit on
-  'log-pile': { name: 'the log pile', decor: ['log-pile', 'rw-orn-logs'], words: ['logpile'], pet: 'stump' },
+  'log-pile': { name: 'the log pile', decor: ['log-pile', 'rw-orn-logs'], words: ['logpile', 'logstack', 'woodpile', 'logs'], pet: 'stump' },
   /* water you work, wish in or drink from */
   pump: { name: 'the pump', arts: ['pump'], decor: ['water-pump'], words: ['pump'], acts: [{ act: 'pump', stand: [-0.74, 0.12], deg: 0, edge: true }], pet: 'pump', drink: true },   // side on at the lever's end
-  well: { name: 'the wishing well', arts: ['wish'], words: ['well', 'wish'], acts: [{ act: 'wish', stand: [0.45, 0.95], deg: -90, reach: 3.2 }], pet: 'well', drink: true },
+  well: { name: 'the wishing well', arts: ['wish'], paint: 'wish', w: 1.4, h: 0.8, words: ['well', 'wish'], acts: [{ act: 'wish', stand: [0.45, 0.95], deg: -90, reach: 3.2 }], pet: 'well', drink: true },
   'garden-well': { name: 'the well', decor: ['wishing-well'], effects: ['wish'], acts: [{ act: 'wish', stand: [0, 0.5], deg: -90 }], pet: 'well', drink: true },
   'village-well': { name: 'the well', arts: ['well'], pet: 'well', drink: true },   // a well with its own use (draw a bucket): the pets drink there
   trough: { name: 'the trough', arts: ['churn'], decor: ['water-butt', 'dc-milk-churns'], words: ['trough', 'churn'], pet: 'trough', drink: true },
-  bath: { name: 'the bird bath', arts: ['fountain'], decor: ['bird-bath', 'fountain', 'mini-pond'], words: ['fountain', 'birdbath'], pet: 'bath', drink: true },
+  bath: { name: 'the bird bath', arts: ['fountain'], paint: 'fountain', w: 1.2, h: 0.6, decor: ['bird-bath', 'fountain', 'mini-pond'], words: ['fountain', 'birdbath'], pet: 'bath', drink: true },
   /* fire */
   campfire: { name: 'the campfire', art: 'fire', place: true, w: 1, h: 0.4, acts: [{ act: 'warm', stand: [0, -0.68], deg: 90 }], pet: 'fire', warm: true, noPerch: true, solid: 'block' },   // back from the ring of stones, the flames clear of your feet
-  fire: { name: 'the fire', arts: ['clamp'], decor: ['fire-pit', 'dc-clay-oven', 'dc-cauldron'], words: ['firepit', 'brazier'], pet: 'fire', warm: true, noPerch: true },
+  fire: { name: 'the fire', arts: ['clamp'], decor: ['fire-pit', 'dc-clay-oven', 'dc-cauldron'], words: ['fire', 'firepit', 'firering', 'bonfire', 'campfire', 'brazier', 'soupcamp', 'firecamp', 'hearth'], pet: 'fire', warm: true, noPerch: true },
   /* things that ring, play or chime */
   chapel: { name: 'the chapel bell', arts: ['chapel'], words: ['chapel'], acts: [{ act: 'bell', stand: [0, 0.6], deg: -90 }], pet: 'bell' },
   bell: { name: 'the bell', art: 'bell', place: true, words: ['bell'], acts: [{ act: 'bell', stand: [0, 0.6], deg: -90 }], pet: 'bell' },   // a ship's bell on a post (no drawing yet: offers nothing until one is drawn)
   chime: { name: 'the wind chimes', decor: ['wind-chimes', 'can-chimes'], words: ['chime', 'chimes'], pet: 'chime' },
   'music-box': { name: 'the music box', art: 'musicbox', place: true, decor: ['dc-gramophone'], words: ['music', 'gramophone'], pet: 'music' },
-  busker: { name: 'the fiddle', art: 'busker', place: true, w: 1.2, h: 0.4, acts: [{ act: 'play', stand: [0.75, 0.25], deg: 90 }], pet: 'music', solid: 'block' },   // a stool, an open fiddle case with a few coins, the fiddle on the stool
+  busker: { name: 'the fiddle', art: 'busker', place: true, onPath: true, w: 1.2, h: 0.4, acts: [{ act: 'play', stand: [0.75, 0.25], deg: 90 }], pet: 'music', solid: 'block' },   // a stool, an open fiddle case with a few coins, the fiddle on the stool
   /* to read */
-  'notice-board': { name: 'the notices', arts: ['board', 'lakeboard', 'cider-board'], words: ['board', 'notice', 'noticeboard'], acts: [{ act: 'read', stand: [0, 0.6], deg: 90 }], pet: 'board' },
-  signpost: { name: 'the sign', arts: ['finger'], decor: ['signpost', 'welcome-sign'], words: ['sign', 'signpost', 'finger'], acts: [{ act: 'read', stand: [0, 0.6], deg: 90 }], pet: 'board', top: 40 },
+  'notice-board': { name: 'the notices', arts: ['board', 'lakeboard', 'cider-board'], paint: 'board', w: 1.6, h: 0.4, words: ['board', 'notice', 'noticeboard'], acts: [{ act: 'read', stand: [0, 0.6], deg: 90 }], pet: 'board' },
+  signpost: { name: 'the sign', arts: ['finger'], paint: 'post', w: 0.6, h: 0.3, decor: ['signpost', 'welcome-sign'], words: ['sign', 'signpost', 'finger'], acts: [{ act: 'read', stand: [0, 0.6], deg: 90 }], pet: 'board', top: 40 },
   milestone: { name: 'the milestone', arts: ['mile'], words: ['mile', 'milestone'], acts: [{ act: 'read', stand: [0, 0.6], deg: 90 }], pet: 'board', top: 26, petSeat: 26 },
   /* to look through or pose at */
-  telescope: { name: 'the telescope', art: 'scope', place: true, w: 0.8, h: 0.3, acts: [{ act: 'look', stand: [-0.39, 0.06], deg: 0, noProp: true }], pet: 'board', solid: 'block' },   // side on at the eyepiece
-  camera: { name: 'the camera', arts: ['tripod'], words: ['camera', 'tripod'], acts: [{ act: 'photo', stand: [-0.3, 1.25], deg: 90 }] },
+  telescope: { name: 'the telescope', art: 'scope', place: true, words: ['scope', 'telescope', 'spyglass'], w: 0.8, h: 0.3, acts: [{ act: 'look', stand: [-0.39, 0.06], deg: 0, noProp: true }], pet: 'board', solid: 'block' },   // side on at the eyepiece
+  camera: { name: 'the camera', arts: ['tripod'], paint: 'tripod', w: 0.6, h: 0.3, words: ['camera', 'tripod'], acts: [{ act: 'photo', stand: [-0.3, 1.25], deg: 90 }] },
   /* walls to lean on, things to climb */
   wall: { name: 'the wall', arts: ['wall'], decor: ['stone-wall', 'dc-old-wall'], words: ['wall'], acts: [{ act: 'lean', stand: [-0.25, 0.03], deg: 90, pri: 1.2, edge: true }], pet: 'wall', top: 24, petSeat: 24 },   // back to it, right against it; its prompt before a tree's beside it
   stones: { name: 'the stones', arts: ['stones'], words: ['stones', 'standing'], pet: 'wall' },
   lighthouse: { name: 'the lighthouse', arts: ['lighthouse'], decor: ['dc-lighthouse'], words: ['lighthouse'], pet: 'lighthouse',
-    acts: [{ act: 'ladder', name: 'the lighthouse ladder', at: [0.22, 0.13], art: 'ladder', stand: [0.22, 0.16], deg: -90, noProp: true }] },   // a ladder up its side to a plank landing with a rail
+    dw: 3.82, acts: [{ act: 'ladder', name: 'the lighthouse ladder', at: [0.0576, 0.13], art: 'ladder', stand: [0.0576, 0.16], deg: -90, noProp: true }] },   // a ladder up its side to a plank landing with a rail (u: a share of the tower as drawn)
   treehouse: { name: 'the treehouse', arts: ['treehouse'], words: ['treehouse'], pet: 'treehouse',
-    acts: [{ act: 'ladderhi', name: 'the treehouse ladder', at: [0.175, 0.2], drawn: false, stand: [0.175, 0.23], deg: -90, noProp: true, edge: true }] },   // (the treehouse's own painter draws its ladder)
+    dw: 4.79, acts: [{ act: 'ladderhi', name: 'the treehouse ladder', at: [0.073, 0.2], drawn: false, stand: [0.073, 0.23], deg: -90, noProp: true, edge: true }] },   // (the treehouse's own painter draws its ladder)
   hollow: { name: 'the hollow tree', arts: ['hollow'], words: ['hollow'], pet: 'treehouse' },
   barn: { name: 'the barn', arts: ['barn'], words: ['barn'], pet: 'hay',
-    acts: [{ act: 'ladderlo', name: 'the hay loft ladder', at: [0.3667, 0.37], art: 'ladder', top: 96, loft: true, stand: [0.3667, 0.4], deg: -90, noProp: true, edge: true }] },
+    dw: 4, acts: [{ act: 'ladderlo', name: 'the hay loft ladder', at: [0.275, 0.37], art: 'ladder', top: 96, loft: true, stand: [0.275, 0.4], deg: -90, noProp: true, edge: true }] },   // (u: a share of the barn as drawn)
   hay: { name: 'the hay', arts: ['hay'], decor: ['hay-bale'], words: ['hay', 'haybale'], pet: 'hay', top: 38, petSeat: 38 },
   /* water's things */
-  pier: { name: 'the pier end', words: ['pier', 'jetty'], acts: [{ act: 'dangle', stand: [0, -0.3], deg: 90, pierEnd: true }], pet: 'pier', noPerch: true, solid: 'free' },   // the end of the pier as far as it is built today
+  pier: { name: 'the pier end', words: ['pier', 'jetty', 'landing'], acts: [{ act: 'dangle', stand: [0, -0.3], deg: 90, pierEnd: true }], pet: 'pier', noPerch: true, solid: 'free' },   // the end of the pier as far as it is built today
   boat: { name: 'the boat', arts: ['boat'], words: ['boat', 'dinghy'], acts: [{ act: 'row', stand: [0.72, 0.2], deg: 180, boat: true, needs: { owns: 'gear:rowing-boat' } }], noPerch: true },   // your own rowing boat takes you out
   falls: { name: 'the falls', arts: ['falls'], words: ['falls', 'waterfall', 'cascade'], acts: [{ act: 'shower', stand: [0, 0.4], deg: 90, reach: 3.4, wade: true }], pet: 'falls', calmsWater: 5 },   // white water near it: no skimming, no ducks
   'fishing-bank': { name: 'the bank', place: true, ground: 'water-edge', w: 1.2, h: 0.3, acts: [{ act: 'fishsit', stand: [-0.5, 0], deg: -90, edge: true }, { act: 'fishsit', stand: [0.5, 0], deg: -90, edge: true }], solid: 'free' },   // a worn grassy bank, room for two, legs over the water (its own grass is the seat: nothing drawn)
@@ -96,6 +105,10 @@ const GARDEN_KINDS = Object.freeze({
   tree: { name: 'the tree', trunks: ['village'], acts: [{ act: 'hide', stand: [-0.02, -0.1], side: 1, edge: true, deg: 90, cells: true }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90, cells: true }], pet: 'tree' },
   'fell-tree': { name: 'the tree', trunks: ['fells'], acts: [{ act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90, cells: true }], pet: 'tree' },
   /* things pets go to (no move of yours yet) */
+  ladder: { name: 'the ladder', words: ['ladder'], noPerch: true },   // a ladder standing on its own (a ladder up a building is that building's part)
+  'standing-tree': { name: 'the tree', words: ['tree', 'birch', 'oak', 'ash', 'beech', 'rowan', 'alder', 'willow', 'pine', 'yew', 'holly', 'hawthorn', 'chestnut', 'sapling', 'elder', 'lime'], noPerch: true },   // a tree a painter drew as a thing: its moves come from its trunk (the walker's trunk list)
+  sundial: { name: 'the sundial', arts: ['sundial'], paint: 'sundial', w: 0.8, h: 0.4, words: ['sundial', 'dial'], pet: 'board', top: 30 },
+  postbox: { name: 'the post box', arts: ['postbox'], paint: 'postbox', w: 0.6, h: 0.3, words: ['postbox', 'letterbox', 'mailbox'], noPerch: true },
   maypole: { name: 'the maypole', decor: ['dc-maypole'], words: ['maypole'], pet: 'maypole' },
   mill: { name: 'the mill', arts: ['mill', 'windmill'], decor: ['play-mill', 'windmill'], words: ['mill', 'windmill'], pet: 'mill' },
   stall: { name: 'the stall', arts: ['stall', 'shop', 'tackle'], words: ['stall', 'shop'], pet: 'stall' },
@@ -106,10 +119,11 @@ const GARDEN_KINDS = Object.freeze({
   rope: { name: 'the rope', arts: ['rope'], words: ['rope'], noPerch: true },
   person: { name: 'someone', arts: ['angler'], words: ['angler'], noPerch: true },
   finds: { name: 'your finds', arts: ['finds', 'museum'], words: ['finds', 'museum'], noPerch: true },
-  lamp: { name: 'the lamp', arts: ['lamp', 'lampbox'], decor: ['lantern'], words: ['lamp'], top: 33 },
+  lamp: { name: 'the lamp', arts: ['lamp', 'lampbox'], paint: 'lamp', w: 0.5, h: 0.3, decor: ['lantern'], words: ['lamp'], top: 33 },
   /* known, nothing to do yet: listed so the audit does not call them unknown */
-  building: { name: 'the building', arts: ['hall', 'oldhouse', 'summer', 'boathouse', 'hide', 'tower', 'smoke', 'shepherd', 'ice', 'grotto', 'temple', 'folly', 'hull', 'postbox', 'lectern', 'smoker', 'bench', 'sundial', 'cross', 'statue', 'topiary', 'gate', 'cairn', 'barrels', 'boles', 'beacon', 'warren', 'ring', 'frogstone', 'drift', 'cart', 'office', 'thatched-cottage', 'arch', 'bandstand', 'barrel', 'boots', 'circle', 'dew', 'help', 'kettle', 'lookout', 'moon', 'oak', 'observatory', 'rack', 'rg-fields', 'rg-garden', 'rg-hill', 'rg-lake', 'rg-marsh', 'rg-orchards', 'scarecrow', 'shelf', 'skeps', 'stars', 'stone', 'worms', 'chest'],
-    words: ['house', 'hut', 'cottage', 'hall', 'office', 'tower', 'shed', 'folly', 'temple', 'grotto', 'icehouse', 'hide', 'beacon', 'cairn', 'cross', 'statue', 'sundial', 'journal', 'barrels', 'boles', 'warren', 'ring', 'frog', 'driftwood', 'hull', 'smoker', 'craft', 'press', 'bothy', 'toposcope', 'gate', 'box', 'arch', 'lamp', 'clamp', 'smoke', 'woodshed', 'quince', 'pippin', 'woodhut', 'oldhouse', 'labyrinth', 'boathouse', 'chapel', 'sunk'] },
+  scenery: { name: 'the rock', words: ['stone', 'rock', 'boulder', 'block', 'bollard', 'buoy', 'shingle', 'haze', 'ruin', 'crutch', 'posternpier', 'gatepier', 'plinth', 'crate', 'crates', 'pots', 'net', 'anchor', 'face', 'hatch', 'fence', 'hurdle', 'gap', 'water', 'brick', 'hedge', 'oldman', 'wallend', 'foot', 'weir', 'haze'], noPerch: true },   // the land's own stones and the harbour's clutter: nothing to do
+  building: { name: 'the building', arts: ['hall', 'oldhouse', 'summer', 'boathouse', 'hide', 'tower', 'smoke', 'shepherd', 'ice', 'grotto', 'temple', 'folly', 'hull', 'lectern', 'smoker', 'bench', 'cross', 'statue', 'topiary', 'gate', 'cairn', 'barrels', 'boles', 'beacon', 'warren', 'ring', 'frogstone', 'drift', 'cart', 'office', 'thatched-cottage', 'arch', 'bandstand', 'barrel', 'boots', 'circle', 'dew', 'help', 'kettle', 'lookout', 'moon', 'oak', 'observatory', 'rack', 'rg-fields', 'rg-garden', 'rg-hill', 'rg-lake', 'rg-marsh', 'rg-orchards', 'scarecrow', 'shelf', 'skeps', 'stars', 'stone', 'worms', 'chest'],
+    words: ['house', 'hut', 'cottage', 'hall', 'office', 'tower', 'shed', 'folly', 'temple', 'grotto', 'icehouse', 'hide', 'beacon', 'cairn', 'cross', 'statue', 'journal', 'barrels', 'boles', 'warren', 'ring', 'frog', 'driftwood', 'hull', 'smoker', 'craft', 'press', 'bothy', 'toposcope', 'gate', 'box', 'arch', 'lamp', 'clamp', 'smoke', 'woodshed', 'quince', 'pippin', 'woodhut', 'oldhouse', 'labyrinth', 'boathouse', 'chapel', 'sunk'] },
 });
 /** Ground, read from the layout's own cells: what each type offers you and your pet. */
 const GARDEN_TERRAIN = Object.freeze({
@@ -145,11 +159,12 @@ function gardenKindOf(t) {   // t.head: only the last word counts (a painter's '
   if (t.decor && _GK_DECOR.has(t.decor)) return _GK_DECOR.get(t.decor);
   if (t.effect && _GK_EFFECT.has(t.effect)) return _GK_EFFECT.get(t.effect);
   if (t.trunk && _GK_TRUNK.has(t.trunk)) return _GK_TRUNK.get(t.trunk);
-  const id = String(t.id || '').toLowerCase().replace(/^(ld|lf|dc|ga|rw)-/, '').replace(/-\d+$/, '');
-  const toks = id.split(/[^a-z]+/).filter(Boolean), flat = toks.join('');
+  const id = String(t.id || '').toLowerCase().split('|')[0].replace(/^(ld|lf|dc|ga|rw)-/, '').replace(/-\d+$/, '');
+  const toks = id.split(/[^a-z]+/).filter(w => w.length > 1), flat = toks.join('');
   // the last word names the thing ('jetty-post' is a post, 'quince-house' a house), then a word inside one ('woodbench', 'vseat')
   for (const [w, k] of _GK_WORDS) if (flat === w) return k;
-  for (const tk of (t.head ? toks.slice(-1) : toks.slice().reverse())) { for (const [w, k] of _GK_WORDS) if (tk === w) return k; for (const [w, k] of _GK_WORDS) if (w.length >= 4 && tk.length > w.length && (tk.endsWith(w) || tk.startsWith(w))) return k; }
+  // (a word's end names the thing: 'vseat' is a seat, 'beaconfire' a fire; a word's start only for a long word: 'ringbirch' is no ring)
+  for (const tk of (t.head ? toks.slice(-1) : toks.slice().reverse())) { for (const [w, k] of _GK_WORDS) if (tk === w) return k; for (const [w, k] of _GK_WORDS) if (w.length >= 4 && tk.length > w.length && tk.endsWith(w)) return k; for (const [w, k] of _GK_WORDS) if (w.length >= 6 && tk.length > w.length && tk.startsWith(w)) return k; }
   return '';
 }
 /** Turn a vector laid out for a front facing the camera (90) round to a thing whose front faces `front` degrees. */

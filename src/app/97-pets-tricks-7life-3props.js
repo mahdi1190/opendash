@@ -195,25 +195,27 @@ function _plPropReach(P, kind, side) {
  *  the region plazas' paved capsules, drawn yard outlines, the green's compass stone and the arrival setts. */
 let _plStoneD = null;
 function _plStoneGeo() {
-  if (_plStoneD) return _plStoneD;
-  const D = GardenIslandLayout.data, W = GARDEN_WORLD, cw = W.cellW, ch = W.cellH, cpt = (x, y) => ({ x: x * cw, y: W.sky + y * ch });
+  const D = GardenIslandLayout.data, k = (window.GardenPaintPaved || []).length;
+  if (_plStoneD && _plStoneD.D === D && _plStoneD.k === k) return _plStoneD;
+  const W = GARDEN_WORLD, cw = W.cellW, ch = W.cellH, cpt = (x, y) => ({ x: x * cw, y: W.sky + y * ch });
   const segs = [], caps = [], polys = [], rects = [], G = window.GardenPaintGround;
   if (G && G.layoutPaths && G.centreLine) {
     const laid = G.layoutPaths(W, D);
     for (const r of laid.routes) { const L = G.centreLine(r.points, r.width || 26, r.closed); const soft = r.kind === 'earth' || r.kind === 'gravel' ? 1 : 0; for (let i = 1; i < L.length; i += 1) segs.push([L[i - 1].x, L[i - 1].y, L[i].x, L[i].y, (L[i - 1].w + L[i].w) / 4 + 9, soft]); }
     for (const a of laid.areas || []) if (a.points && a.points.length > 2) polys.push(a.points);
   }
-  const STY = { 'cider-square': 1, 'mill-yard': 1, 'ruin-court': 1, 'lakeside-terrace': 1, 'great-oak-clearing': 1 };
+  // every plaza of the layout, whatever it is called: a yard laid along its route (a closed loop round a green is a path, already above)
   const rts = new Map((D.routes || []).map(r => [r.id, r]));
   for (const pz of (D.presentation && D.presentation.plazas) || []) {
-    const rt = rts.get(pz.route); if (!STY[pz.id] || !rt || !rt.points || rt.points.length < 2) continue;
-    const a = cpt(rt.points[0][0], rt.points[0][1]), b = cpt(rt.points[rt.points.length - 1][0], rt.points[rt.points.length - 1][1]), w = rt.widthCells || 4;
+    const rt = rts.get(pz.route); if (!rt || !rt.points || rt.points.length < 2) continue;
+    const P0 = rt.points[0], P1 = rt.points[rt.points.length - 1]; if (rt.points.length > 2 && Math.hypot(P0[0] - P1[0], P0[1] - P1[1]) < 0.5) continue;
+    const a = cpt(P0[0], P0[1]), b = cpt(P1[0], P1[1]), w = rt.widthCells || 4;
     caps.push([a.x, a.y, b.x, b.y, w / 2 * cw * 0.95 + 8 + 14, w / 2 * ch * 1.05 + 4 + 10]);
   }
-  const green = ((D.presentation && D.presentation.plazas) || []).find(p => p.id === 'the-green');
-  if (green) { const c = cpt(green.x + 0.9, green.y + 3.3); rects.push([c.x - 4 * cw - 12, c.y - 3.3 * ch - 10, c.x + 4 * cw + 12, c.y + 3.3 * ch + 10]); }
+  // what the painters paved besides (a green's paved circle): they say so in GardenPaintPaved, [{ rect: [x0, y0, x1, y1] } | { poly }] world px
+  try { for (const q of window.GardenPaintPaved || []) { if (q.rect) rects.push([q.rect[0] - 12, q.rect[1] - 10, q.rect[2] + 12, q.rect[3] + 10]); else if (q.poly && q.poly.length > 2) polys.push(q.poly); } } catch (e) { /* none */ }
   const st = D.anchors && D.anchors.start; if (st) { const c = cpt(st.x + 0.5, st.y + 0.5); rects.push([c.x - 125 - 12, c.y - 65 - 10, c.x + 125 + 12, c.y + 65 + 10]); }
-  _plStoneD = { segs, caps, polys, rects };
+  _plStoneD = { segs, caps, polys, rects, D, k };
   return _plStoneD;
 }
 /** soft: a worn earth trail or a gravel lane does not count (a muddy puddle or a drift of leaves lies on one naturally). */

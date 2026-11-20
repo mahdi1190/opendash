@@ -393,6 +393,7 @@
     const { L, P, add, kit, thing } = C, pz = (L.pres.plazas || []).find(p => p.id === 'the-green'); if (!pz) return;
     const loop = L.routePts(pz.route); if (loop.length < 6) return;
     const c = L.cpt(pz.x, pz.y), cx0 = loop.reduce((s, q) => s + q.x, 0) / loop.length, cy0 = loop.reduce((s, q) => s + q.y, 0) / loop.length;
+    { const q = L.cpt(pz.x + .9, pz.y + 3.3), R = [q.x - 4 * L.cw, q.y - 3.3 * L.ch, q.x + 4 * L.cw, q.y + 3.3 * L.ch]; const all = window.GardenPaintPaved || (window.GardenPaintPaved = []); if (!all.some(o => o.id === pz.id)) all.push({ id: pz.id, rect: R }); }   // (the paved circle below: the pets' ground rule reads it, so nothing is laid on it)
     // the sward: the loop pulled in from the path's edge
     const inner = loop.map(q => ({ x: cx0 + (q.x - cx0) * .9, y: cy0 + (q.y - cy0) * .86 })), bb = kit.bboxOf(loop, 20), seed = kit.hashStr('the-green');
     const flowers = C.season === 'winter' ? ['#f4f6f2', '#e8ecef'] : C.season === 'autumn' ? ['#e8dcc0', '#d8a040', '#a8503a', '#e0c070'] : ['#f4f0e0', '#f0d24a', '#c79ac0', '#e88a8a', '#8ab0e0'];
