@@ -185,7 +185,7 @@ window.GardenNativeSurface = (function () {
         if (a.kind !== 'actor') continue;
         if (!a.moving || distance > 50) { f.distance = 0; continue; }
         f.distance += distance;
-        if (f.distance >= 15) { f.distance %= 15; f.side *= -1; if (inPuddle(a.x, a.y)) f.wetUntil = clock + 4; step({ x: a.x, y: a.y, side: f.side, size: 1, track: 'shoe', wetFeet: clock < f.wetUntil, angle: Math.atan2(dy, dx) }); }
+        if (f.distance >= 15 * GARDEN_ACTOR_SCALE) { f.distance %= 15 * GARDEN_ACTOR_SCALE; f.side *= -1; if (inPuddle(a.x, a.y)) f.wetUntil = clock + 4; step({ x: a.x, y: a.y, side: f.side, size: GARDEN_ACTOR_SCALE, track: 'shoe', wetFeet: clock < f.wetUntil, angle: Math.atan2(dy, dx) }); }
       }
     }
     function currentView() {

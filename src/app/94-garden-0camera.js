@@ -1,3 +1,21 @@
+/* One size for everything that walks, flies or is carried. Every actor (you, friends, the vale's folk, travellers, pets,
+ * creatures and what they hold) is drawn at this share of the size its art was made at, so a person is small beside a
+ * tree or a cottage. Change it here and nowhere else: docs/dev/PAINT_KIT.md, "Scale". */
+const GARDEN_ACTOR_SCALE = 0.8;
+/** A drawing made at the old size, at the size actors are drawn now (its feet stay at 0,0). */
+function gardenActorSized(svg) { return svg ? '<g class="gd-actor-size" transform="scale(' + GARDEN_ACTOR_SCALE + ')">' + svg + '</g>' : svg; }
+/* The size standard for the world: everything is sized against H, the player's height in world px (70 units of figure art
+ * at 0.74, times GARDEN_ACTOR_SCALE: about 41). Each entry is [least, most] in H. A painter asks gardenSizePx(name, t)
+ * (t 0..1 picks between least and most) and never writes a height in px of its own. docs/dev/PAINT_KIT.md, "Scale". */
+const GARDEN_H = 70 * 0.74 * GARDEN_ACTOR_SCALE;
+const GARDEN_SIZE = Object.freeze({
+  door: [1.25, 1.25], eaves: [1.8, 1.8], ridge: [3, 3.5], hall: [3.5, 4.5], tower: [5, 8],
+  tree: [3.5, 5], crown: [2.5, 4], young: [2, 2.5], greatOak: [8, 9], falls: [8, 9], cliff: [3, 4],
+  lamp: [1.8, 2], fence: [.5, .6], hedge: [.5, .6], wall: [.8, 1.2], barrel: [.5, .5], well: [.5, .5], seat: [.3, .3], boulder: [.5, 1.5],
+  mainRoad: [1.1, 1.3], lane: [.75, .9], trail: [.5, .6],   /* (a figure is about .35 H across: three abreast on a main road, two on a lane) */
+});
+function gardenSizePx(name, t) { const s = GARDEN_SIZE[name] || [1, 1]; return GARDEN_H * (s[0] + (s[1] - s[0]) * Math.max(0, Math.min(1, t == null ? .5 : t))); }
+
 /* Optional activity subjects for the native follow camera. Camera framing is
  * local presentation; providers never change game positions or saved zoom. */
 window.GardenActivityCamera = (function () {

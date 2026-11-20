@@ -137,10 +137,10 @@ window.GardenPaintVale = (function () {
     return L.groundClips = { coast: loopPath(L.coast), lawn: loopPath(lawn), cuts, lanes };
   }
   /** Retained continuous ground limits, applied only while a chunk is baked. */
-  function clipGround(B, L, cb, meadow) {
+  function clipGround(B, L, cb, meadow, soft) {
     const clips = groundClips(L); B.cx.clip(meadow ? clips.lawn : clips.coast);
     for (const cut of clips.cuts) if (KIT().meets(cut.bb, cb)) B.cx.clip(cut.path);
-    if (meadow) for (const cut of clips.lanes) if (KIT().meets(cut.bb, cb)) B.cx.clip(cut.path, cut.rule || 'nonzero');
+    if (meadow && !soft) for (const cut of clips.lanes) if (KIT().meets(cut.bb, cb)) B.cx.clip(cut.path, cut.rule || 'nonzero');
     if (L.soil.path && KIT().meets(L.soil.bb, cb)) B.cx.clip(L.soil.path, 'evenodd');
   }
   /** Points along a polyline every step px, with the unit tangent. */
@@ -169,9 +169,10 @@ window.GardenPaintVale = (function () {
    *  test(x, y) places details; fade(x, y) feathers into the village ground. */
   function lawn(B, r, L, P, cb, test, fade, o) {
     o = o || {}; const W = L.W, cw = L.cw, ch = L.ch;
-    B.cx.save(); clipGround(B, L, cb, true);
+    B.cx.save(); clipGround(B, L, cb, true, !!o.soft);   // (soft: the caller fades the roads out itself)
+    // (noBase: the shared ground's own kind shows through, painted with its light and shade; a flat fill here hid it)
     if (o.wash) o.wash(B, cb, o.base || P.lawn);
-    else B.f(B.rect(cb[0], cb[1], cb[2] - cb[0], cb[3] - cb[1]), o.base || P.lawn);
+    else if (!o.noBase) B.f(B.rect(cb[0], cb[1], cb[2] - cb[0], cb[3] - cb[1]), o.base || P.lawn);
     // Keep overlapping meadow drifts subordinate to the seasonal grass detail.
     KIT().tiles(cb, 120, 40, o.salt || 5, (tx, ty, rr) => {
       for (let k = 0; k < 7; k++) {
@@ -247,7 +248,7 @@ window.GardenPaintVale = (function () {
     const worldBox = { x: -1800, y: -1200, w: W.cols * W.cellW + 4800, h: W.sky + W.rows * W.cellH + 2600 };
     const gBox = { x: 0, y: 0, w: W.cols * W.cellW, h: W.sky + W.rows * W.cellH };
     const handles = []; let groundHandle = null;
-    if (ground.length) handles.push(groundHandle = kit.chunked(scene, root, ground, { key: groundSig, box: gBox, K: 1.1, chunk: 256, depth: DEPTH, budgetMB: 20, lazy: true, slice: 10 }));
+    if (ground.length) handles.push(groundHandle = kit.chunked(scene, root, ground, { key: groundSig, box: gBox, K: 1.1, chunk: 256, depth: DEPTH, budgetMB: 28, lazy: true, slice: 10 }));
     if (main.length) handles.push(kit.chunked(scene, root, main, { key: sig + '|m', box: worldBox, K: .35, chunk: 512, depth: MAIN_DEPTH, budgetMB: 10, lazy: true, slice: 10, prebake: true }));
     // Standing things and the crossings' water: a texture already baked is shown at once; a new one waits in a queue
     // that tick() bakes nearest the camera first, a few milliseconds a frame (so a repaint never freezes a frame).
@@ -255,7 +256,8 @@ window.GardenPaintVale = (function () {
     const make = (o, isUnder) => {
       if (o.make) { const im = ok(() => o.make(scene)); if (im) { im.setDepth(o.y); (objects || root).add(im); sprites.push(im); if (im.displayHeight > 60) tall.push(im); } return; }   // (a tall one, a tree: it fades when you stand under it)
       const key = (isUnder ? underSig : sig + '|t|') + o.key, draw = isUnder ? B => o.draw(B, waterTod) : o.draw;
-      const im = kit.sprite(scene, isUnder ? root : objects || root, key, o.box, draw, o.x, o.y, o.K || (isUnder ? 1.25 : 1.5)); if (!im) return;
+      // (a thing that stands on the ground at its base line lays its shadow there; shade: false for one that does not)
+      const im = kit.sprite(scene, isUnder ? root : objects || root, key, o.box, draw, o.x, o.y, o.K || (isUnder ? 1.25 : 1.5), !isUnder && o.depth == null && o.shade !== false ? o.shade || true : null); if (!im) return;
       im.setDepth(isUnder ? UNDER : o.depth != null ? o.depth : o.y); sprites.push(im); stats.spritePx = (stats.spritePx || 0) + (im._gptPx || 0);
       if (!isUnder && o.crown) { im._gpvCrown = o.crown; tall.push(im); }
       if (!isUnder && o.farShrink) { im._gpvBase = im.scaleX; im._gpvShrink = o.farShrink; shrink.push(im); }
@@ -277,7 +279,7 @@ window.GardenPaintVale = (function () {
     if (cur && cur.tall.length && typeof _gw !== 'undefined') {
       // a tree you stand under fades, so you can always see yourself (as in the woods and the village)
       const W = cur.W, x = _gw.px * W.cellW, y = W.sky + _gw.py * W.cellH;
-      for (const im of cur.tall) { if (!im.active) continue; const c = im._gpvCrown, under = c ? y < im.y - 4 && ((x - im.x - c.x) / c.rx) ** 2 + ((y - 28 - im.y - c.y) / c.ry) ** 2 < 1 : gardenCrownCovers(x, y, im.x, im.y, im.displayHeight * im.originY, im.displayWidth), a = under ? GARDEN_CROWN_FADE : 1; if (under && im.visible) cur.covering.push(im); if (im.alpha !== a) im.setAlpha(Math.abs(a - im.alpha) < .03 ? a : im.alpha + (a - im.alpha) * .25); }
+      for (const im of cur.tall) { if (!im.active) continue; const c = im._gpvCrown, under = c ? y < im.y - 4 && ((x - im.x - c.x) / c.rx) ** 2 + ((y - 28 - im.y - c.y) / c.ry) ** 2 < 1 : gardenCrownCovers(x, y, im.x, im.y, im.displayHeight * im.originY, Math.min(im.displayWidth, im.displayHeight * im.originY * 1.05)), a = under ? GARDEN_CROWN_FADE : 1; if (under && im.visible) cur.covering.push(im); if (im.alpha !== a) im.setAlpha(Math.abs(a - im.alpha) < .03 ? a : im.alpha + (a - im.alpha) * .25); }
     }
     if (!cur || !cur.queue.length) return;
     const t0 = performance.now(), cx = view ? view.x + view.w / 2 : 0, cy = view ? view.y + view.h / 2 : 0;

@@ -21,7 +21,9 @@
  * Nothing here runs at load. */
 window.GardenPaintWood = (function () {
   'use strict';
-  const K = 1, CH = 256, MAX_CHUNKS = 56, TEX = 'gpwd', BLEED = 2, FLOOR_REACH = 128;
+  // The floor's sharpness follows the camera (GardenPaintGround.levelFor): a chunk is baked at the level the zoom needs and
+  // baked again, behind the old picture, when you zoom in; CAP_MB bounds what is held.
+  const CH = 256, MAX_CHUNKS = 56, CAP_MB = 44, TEX = 'gpwd', BLEED = 2, FLOOR_REACH = 128;
   const slowStep = { ms: 0, at: '' };
   let state = null, lastError = null, bakes = 0, bakeMs = 0, worstBake = 0, tickWorst = 0;
   const ok = f => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
@@ -67,7 +69,7 @@ window.GardenPaintWood = (function () {
       const pts = gardenIslandRoutePath(route).points, p = new Path2D(); if (pts.length < 2) continue;
       p.moveTo(px(pts[0].x), py(pts[0].y)); for (let i = 1; i < pts.length; i++) p.lineTo(px(pts[i].x), py(pts[i].y));
       const width = gardenIslandRoadStyle(route).main ? 40 : 26;
-      out.floorClip.routes.push({ path: p, width });
+      out.floorClip.routes.push({ path: p, width, kind: window.GardenPaintGround ? GardenPaintGround.routeKind(route) : '', yard: route.tier === 'plaza' ? Math.max(1, Number(route.widthCells) || 3) : 0 });
       routeLines.push({ pts: pts.map(q => ({ x: px(q.x), y: py(q.y) })), half: width / 2 });
     }
     // How far (world px) a trunk foot is from the edge of the nearest drawn path or plaza
@@ -215,7 +217,7 @@ window.GardenPaintWood = (function () {
     if (s) s.hq = hq;
     if (stamps.size > 160) stamps.clear(); stamps.set(key, s); return s;
   }
-  function* bakeChunk(ch) {   // a generator: it yields between cells, so a bake spreads over frames
+  function* bakeChunk(ch, K) {   // a generator: it yields between cells, so a bake spreads over frames
     const t0 = performance.now(), S = state, B = ch.box, W = S.W, c = document.createElement('canvas'), E = BLEED; c.width = Math.ceil((B.w + 2 * E) * K); c.height = Math.ceil((B.h + 2 * E) * K);
     const cx = c.getContext('2d'); cx.setTransform(K, 0, 0, K, -(B.x - E) * K, -(B.y - E) * K);
     const view = { x: B.x - FLOOR_REACH, y: B.y - FLOOR_REACH, w: B.w + FLOOR_REACH * 2, h: B.h + FLOOR_REACH * 2 }, season = S.season;
@@ -224,10 +226,13 @@ window.GardenPaintWood = (function () {
       const F = Object.assign({}, f.def.floor, (f.def.mood === 'meadow' ? MEADOW_TONE : SEASON_TONE)[season] || {}), r = rng(hash(f.region + ch.key));
       const meadow = f.def.mood === 'meadow', palette = window.GardenPaintVale && GardenPaintVale.PAL[season];
       cx.save(); cx.clip(f.path);
-      if (S.M.groundLayout) GardenPaintVale.clipGround({ cx }, S.M.groundLayout, [B.x - E, B.y - E, B.x + B.w + E, B.y + B.h + E], true);
+      if (S.M.groundLayout) GardenPaintVale.clipGround({ cx }, S.M.groundLayout, [B.x - E, B.y - E, B.x + B.w + E, B.y + B.h + E], true, !!window.GardenPaintGround);   // (with the shared kit the floor fades out over paths and yards below: no ruled ribbon)
       // One continuous floor; the river meadow shares the harbour's seasonal
       // lawn. Broad soft tone replaces opaque grass stamped once per cell.
-      yield; cx.globalAlpha = 1; cx.fillStyle = meadow && palette ? palette.lawn : F.litter; cx.fillRect(B.x - E, B.y - E, B.w + 2 * E, B.h + 2 * E);
+      yield; cx.globalAlpha = 1;
+      // the base is the shared kit's (94-garden-paint-ground-0kit.js): its forest floor here; a river meadow has no base of its own, the map's ground shows
+      if (window.GardenPaintGround) { if (!meadow) { GardenPaintGround.paintKind(cx, f.def.mood === 'old' ? 'oldwood' : 'forest', [B.x - E, B.y - E, B.x + B.w + E, B.y + B.h + E], season); cx.globalAlpha = 1; yield; } }
+      else { cx.fillStyle = meadow && palette ? palette.lawn : F.litter; cx.fillRect(B.x - E, B.y - E, B.w + 2 * E, B.h + 2 * E); }
       // Canopy shade and damp moss stay broad and soft, without hard lobes.
       for (const [x, y] of land) { yield;
         if ((x + y * 3) % 2) continue; const X = x * W.cellW + W.cellW / 2, Y = W.sky + y * W.cellH + W.cellH / 2; if (X < view.x || X > view.x + view.w || Y < view.y || Y > view.y + view.h) continue;
@@ -257,7 +262,9 @@ window.GardenPaintWood = (function () {
         const X = x * W.cellW + W.cellW / 2, Y = W.sky + y * W.cellH + W.cellH / 2; if (X < view.x || X > view.x + view.w || Y < view.y || Y > view.y + view.h) continue;
         const g = noise(x, y, 5, hash(f.region) & 1023), rr = rng(hash(f.region + 'f') ^ (x * 977 + y * 131));
         // leaf litter flecks and moss
-        for (let i = 0; i < 6; i++) { cx.globalAlpha = .45; cx.fillStyle = F.leaf[i % 3]; const lx = X + (rr() - .5) * W.cellW, ly = Y + (rr() - .5) * W.cellH; cx.beginPath(); cx.ellipse(lx, ly, 1.6 + rr() * 1.6, .9 + rr() * .7, rr() * 3, 0, Math.PI * 2); cx.fill(); }
+        // (with the shared kit the litter is its forest floor's, laid in drifts with a lit half to each leaf: six flat ovals a
+        // cell here, on top of it, read as a polka-dot field; 19 Nov 2026)
+        if (!window.GardenPaintGround) for (let i = 0; i < 6; i++) { cx.globalAlpha = .45; cx.fillStyle = F.leaf[i % 3]; const lx = X + (rr() - .5) * W.cellW, ly = Y + (rr() - .5) * W.cellH; cx.beginPath(); cx.ellipse(lx, ly, 1.6 + rr() * 1.6, .9 + rr() * .7, rr() * 3, 0, Math.PI * 2); cx.fill(); }
         if (rr() < (f.def.mood === 'old' ? .5 : .25)) { cx.globalAlpha = .5; cx.fillStyle = F.moss; cx.fill(new Path2D(sceneDraw.blob(rr, X + (rr() - .5) * 20, Y + (rr() - .5) * 10, 8 + rr() * 10, 4 + rr() * 4, 7, .5))); }
         // spring bluebells in drifts under the light wood
         if (season === 'spring' && f.def.mood === 'light' && g > .4 && rr() < .5) for (let i = 0; i < 9; i++) { cx.globalAlpha = .85; cx.fillStyle = i % 3 ? '#6f78c8' : '#8c90da'; cx.beginPath(); cx.arc(X + (rr() - .5) * W.cellW, Y + (rr() - .5) * W.cellH, 1.3, 0, Math.PI * 2); cx.fill(); }
@@ -265,9 +272,9 @@ window.GardenPaintWood = (function () {
       cx.globalAlpha = 1;
       // Where a wood meets the village lawn its floor fades out over a few steps, instead of
       // stopping on the region's straight polygon edge (a hard light/dark line on the grass).
-      if (S.M.homePath) { cx.globalCompositeOperation = 'destination-out'; cx.filter = 'blur(14px)'; cx.fillStyle = '#000'; cx.fill(S.M.homePath); cx.filter = 'none'; cx.globalCompositeOperation = 'source-over'; }
+      if (S.M.homePath) { cx.globalCompositeOperation = 'destination-out'; cx.filter = 'blur(' + Math.round(14 * K) + 'px)'; cx.fillStyle = '#000'; cx.fill(S.M.homePath); cx.filter = 'none'; cx.globalCompositeOperation = 'source-over'; }
       // the wood's outer edge fades out over about a cell (the lawn beneath shows through), so there is no ruled line
-      if (f.edge && !meadow) { yield; cx.save(); cx.globalCompositeOperation = 'destination-out'; cx.filter = 'blur(9px)'; cx.lineCap = 'round'; cx.lineJoin = 'round'; cx.strokeStyle = 'rgba(0,0,0,.85)'; cx.lineWidth = 34; cx.stroke(f.edge); cx.filter = 'none'; cx.strokeStyle = 'rgba(0,0,0,.45)'; cx.lineWidth = 60; cx.filter = 'blur(14px)'; cx.stroke(f.edge); cx.restore(); }
+      if (f.edge && !meadow) { yield; cx.save(); cx.globalCompositeOperation = 'destination-out'; cx.filter = 'blur(' + Math.round(9 * K) + 'px)'; cx.lineCap = 'round'; cx.lineJoin = 'round'; cx.strokeStyle = 'rgba(0,0,0,.85)'; cx.lineWidth = 34; cx.stroke(f.edge); cx.filter = 'none'; cx.strokeStyle = 'rgba(0,0,0,.45)'; cx.lineWidth = 60; cx.filter = 'blur(' + Math.round(14 * K) + 'px)'; cx.stroke(f.edge); cx.restore(); }
       cx.restore(); void r;
     }
     for (const f of ch.stamps) { yield;
@@ -283,10 +290,12 @@ window.GardenPaintWood = (function () {
     const clip = S.M.floorClip;
     if (clip.land && clip.beach) { cx.lineWidth = clip.beach * 2; cx.stroke(clip.land); }
     for (const water of clip.water) cx.fill(water);
-    for (const rt of clip.routes) { cx.lineWidth = rt.width + 4; cx.stroke(rt.path); }
+    if (window.GardenPaintGround) { cx.filter = 'blur(' + Math.round(5 * K) + 'px)'; for (const rt of clip.routes) { if (rt.yard) continue; cx.lineWidth = Math.max(8, (GardenPaintGround.ROUTE_WIDTH[rt.kind] || rt.width) - 2); cx.stroke(rt.path); } cx.filter = 'blur(' + Math.round(12 * K) + 'px)'; for (const rt of clip.routes) { if (!rt.yard) continue; cx.lineWidth = rt.yard * 22; cx.stroke(rt.path); } cx.filter = 'none'; }
+    else for (const rt of clip.routes) { cx.lineWidth = rt.width + 4; cx.stroke(rt.path); }
     cx.globalCompositeOperation = 'source-over';
     const key = TEX + '-' + ch.key + '-' + (++S.serial);
-    S.scene.textures.addImage(key, c); ch.tex = key; ch.bytes = c.width * c.height * 4;   // (never redrawn: no pixel read-back)
+    if (ch.image) ch.image.destroy(); if (ch.tex && S.scene.textures.exists(ch.tex)) S.scene.textures.remove(ch.tex);   // (a sharper bake replaces the old picture)
+    S.scene.textures.addImage(key, c); ch.tex = key; ch.bytes = c.width * c.height * 4; ch.K = K;   // (never redrawn: no pixel read-back)
     // the canvas runs BLEED px past the chunk and shows only the chunk (a crop): edges meet exactly, and the edge
     // texels filter against real floor, so no line shows where chunks meet (an overlap drew a dark line, a bare edge a thin one)
     ch.image = S.scene.add.image(B.x - E, B.y - E, key).setOrigin(0, 0).setScale(1 / K).setCrop(E * K, E * K, B.w * K, B.h * K).setDepth(-9594); S.root.add(ch.image); S.sortRoot = true;
@@ -366,16 +375,29 @@ window.GardenPaintWood = (function () {
     const dt = S.last == null ? 0 : Math.min(.08, Math.max(0, (time - S.last) / 1000)); S.last = time;
     const motion = typeof gardenMotionOn !== 'function' || gardenMotionOn(); if (motion) S.clock += dt; S.frame++;
     const near = { x: view.x - 384, y: view.y - 384, w: view.w + 768, h: view.h + 768 };
-    let resident = 0, budget = 1; const vx = view.x + view.w / 2, vy = view.y + view.h / 2, pick = () => { let best = null, bd = Infinity; for (const ch of S.chunks.values()) { if (ch.image || !hit(ch.box, near) || (S.job && S.job.ch === ch)) continue; const d = Math.hypot(ch.box.x + CH / 2 - vx, (ch.box.y + CH / 2 - vy) * 1.4) - (hit(ch.box, view) ? 1e6 : 0); if (d < bd) { bd = d; best = ch; } } return best; };
+    {
+      const cam = S.scene.cameras && S.scene.cameras.main;
+      const z = cam ? cam.zoom || 1 : 1, now = performance.now();
+      if (Math.abs(z - (S.zoomSeen || 0)) > z * .012) {
+        S.zoomSeen = z;
+        S.zoomAt = now;
+      }
+      if (!S.wantK || now - (S.zoomAt || 0) > 220) {
+        // Limit the woodland texture resolution to the cache budget.
+        S.wantK = window.GardenPaintGround ? GardenPaintGround.levelFor(z, 1, 3) : 1;
+      }
+    }
+    const wantK = S.wantK || 1;
+    let resident = 0, budget = 1; const vx = view.x + view.w / 2, vy = view.y + view.h / 2, pick = () => { let best = null, bd = Infinity; for (const ch of S.chunks.values()) { const seen = hit(ch.box, view); if (ch.image && (ch.K >= wantK || !seen) || !hit(ch.box, near) || (S.job && S.job.ch === ch)) continue; const d = Math.hypot(ch.box.x + CH / 2 - vx, (ch.box.y + CH / 2 - vy) * 1.4) - (seen ? 1e6 : 0) + (ch.image ? 5e5 : 0); if (d < bd) { bd = d; best = ch; } } return best; };
     for (const ch of S.chunks.values()) if (ch.image) { resident++; if (hit(ch.box, view)) ch.used = S.frame; }
     const j0 = performance.now();
     for (let n = 0; n < 6 && performance.now() - j0 < 7; n++) {
-      if (!S.job) { const todo = pick(); if (!todo) break; S.job = { ch: todo, gen: bakeChunk(todo) }; }
+      if (!S.job) { const todo = pick(); if (!todo) break; S.job = { ch: todo, gen: bakeChunk(todo, hit(todo.box, view) ? wantK : Math.min(wantK, 1.5)) }; }
       let done = false; try { while (performance.now() - j0 < 7) { const g0 = performance.now(); const st = S.job.gen.next(); const gd = performance.now() - g0; if (gd > slowStep.ms) { slowStep.ms = +gd.toFixed(1); slowStep.at = S.job.ch.key + ':' + (S.job.phase || ''); } if (st.done) { done = true; break; } } } catch (e) { lastError = String(e && e.stack || e); done = true; }
       budget = 0; if (!done) break; S.job.ch.used = S.frame; S.job = null; resident++;
     }
     const tBake = performance.now() - t0; S.tw = S.tw || { bake: 0, trees: 0, sort: 0, light: 0 }; S.tw.bake = Math.max(S.tw.bake, tBake);
-    if (resident > MAX_CHUNKS) { const far = [...S.chunks.values()].filter(c => c.image && !hit(c.box, near)).sort((a, b) => a.used - b.used); for (const c of far.slice(0, resident - MAX_CHUNKS)) dropChunk(c); }
+    { let bytes = 0; for (const c of S.chunks.values()) if (c.image) bytes += c.bytes || 0; if (resident > MAX_CHUNKS || bytes > CAP_MB * 1048576) { const far = [...S.chunks.values()].filter(c => c.image && !hit(c.box, near)).sort((a, b) => a.used - b.used); let over = bytes - CAP_MB * 1048576, n = resident - MAX_CHUNKS; for (const c of far) { if (over <= 0 && n <= 0) break; over -= c.bytes || 0; n--; dropChunk(c); } } }
     if (S.sortRoot && S.root.sort) { S.root.sort('depth'); S.sortRoot = false; }
     // trees: make a bucket's sprites once, when it comes near (one bucket a frame, and not on a bake frame)
     const pl = typeof _gw !== 'undefined' ? { x: _gw.px * S.W.cellW, y: S.W.sky + _gw.py * S.W.cellH } : null;
@@ -387,7 +409,9 @@ window.GardenPaintWood = (function () {
       if (b.made && vis !== b.vis && !(vis && !b.made)) { b.vis = vis; for (const t of b.trees) if (t.im) t.im.setVisible(vis); }
       // a crown you are under fades, so you can always see yourself (a wide crown by its own width); so does a crown over a
       // story house (Hollin's hut) once you are near it
-      if (vis && pl) for (const t of b.trees) { if (!t.im) continue; const under = gardenCrownCovers(pl.x, pl.y, t.x, t.y, t.h * t.scale, t.im.displayWidth, t.im), near = t.hides && Math.hypot((pl.x - t.hides.x) / S.W.cellW, (pl.y - t.hides.y) / S.W.cellH) < 3.5; t.fade = near || under || GardenNativePainted.fishingCrownCovers(t.im); if (under) { underN++; if (t.im.active && t.im.visible) S.covering.push(t.im); } fading.push(t); }
+      // (the picture's width includes its shadow and dapple margins: a fruit tree's fade oval by it was twice the crown, so
+      // the tree beside the orchard bell stood as a grey ghost with you a stride away; the crown is at most about its height)
+      if (vis && pl) for (const t of b.trees) { if (!t.im) continue; const under = gardenCrownCovers(pl.x, pl.y, t.x, t.y, t.h * t.scale, Math.min(t.im.displayWidth, t.h * t.scale * 1.05), t.im), near = t.hides && Math.hypot((pl.x - t.hides.x) / S.W.cellW, (pl.y - t.hides.y) / S.W.cellH) < 3.5; t.fade = near || under || GardenNativePainted.fishingCrownCovers(t.im); if (under) { underN++; if (t.im.active && t.im.visible) S.covering.push(t.im); } fading.push(t); }
     }
     // Several crowns over you fade further each, so you are as easy to see under three as under one (stacked at the one-crown
     // fade you read as a ghost deep in the wood)
@@ -406,7 +430,7 @@ window.GardenPaintWood = (function () {
     }
     tickWorst = Math.max(tickWorst, performance.now() - t0);
   }
-  function memory() { const S = state; if (!S) return null; let bytes = 0, resident = 0; for (const c of S.chunks.values()) if (c.image) { bytes += c.bytes; resident++; } return { chunks: S.chunks.size, resident, mb: +(bytes / 1048576).toFixed(1), capMb: +(MAX_CHUNKS * CH * CH * K * K * 4 / 1048576).toFixed(1) }; }
+  function memory() { const S = state; if (!S) return null; let bytes = 0, resident = 0; for (const c of S.chunks.values()) if (c.image) { bytes += c.bytes; resident++; } return { chunks: S.chunks.size, resident, mb: +(bytes / 1048576).toFixed(1), capMb: CAP_MB, level: S.wantK || 1 }; }
   function treeTextures() { const S = state; if (!S) return null; const keys = new Set(); let bytes = 0; for (const t of S.M.trees) if (t.im && t.im.texture && !keys.has(t.im.texture.key)) { keys.add(t.im.texture.key); const src = t.im.texture.getSourceImage(); bytes += (src.width || 0) * (src.height || 0) * 4; } return { textures: keys.size, mb: +(bytes / 1048576).toFixed(1) }; }
   function status() { const S = state; return { slowStep, tw: S && S.tw, treeTex: treeTextures(), warm: S ? [S.warmCount, S.warmMs] : null, on: !!S, trees: S ? S.M.trees.length : 0, made: S ? S.M.trees.filter(t => t.im).length : 0, lights: S ? S.light.length : 0, buildMs: S && S.buildMs, bakes, bakeMs: Math.round(bakeMs), worstBake: Math.round(worstBake), tickWorst: +tickWorst.toFixed(1), memory: memory(), lastError }; }
   /** True where a painted wood stands (the world then leaves out its own forest trees there). Cell units. */

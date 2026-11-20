@@ -168,7 +168,7 @@ function gardenRoomSwing(A) {
   if (!A.rm) return false;
   const Q = _grm.on && _grm.R && _grm.R.id === A.rm ? _grm.m.get(A.w) : null;
   if (Q && gardenMotionOn()) {
-    const g = _gwEl('g', { transform: `translate(0 -52) scale(${(Q.face < 0 ? -1 : 1) * EE.fig} ${EE.fig})` });
+    const g = _gwEl('g', { transform: `translate(0 ${-40 * EE.fig}) scale(${(Q.face < 0 ? -1 : 1) * EE.fig} ${EE.fig})` });
     g.innerHTML = '<path d="M6 8Q30 -16 30 -34" stroke="#fbfbf2" stroke-width="2.6" stroke-opacity="0.8" fill="none" stroke-linecap="round"/>' + (A.g && A.g.nk && typeof gardenLookNetSwing === 'function' ? gardenLookNetSwing(A.g.nk) : '');
     Q.g.appendChild(g); setTimeout(() => g.remove(), 360);
     Q.pose = 'pick'; Q.until = Date.now() + 500;   // clock-ok: how long a pose lasts
@@ -180,12 +180,12 @@ function gardenRoomSwing(A) {
 function gardenRoomFloat(text) {
   if (window.GardenNativeRooms && GardenNativeRooms.current()) { GardenNativeRooms.float(text); return; }
   const M = _grm.me, g = _grm.game; if (!M || !g || !text) return;
-  const t = _gwEl('text', { class: 'grm-float', x: (M.x / GRW.k).toFixed(1), y: (M.y / GRW.k - 84).toFixed(1), 'text-anchor': 'middle' }); t.textContent = text;
+  const t = _gwEl('text', { class: 'grm-float', x: (M.x / GRW.k).toFixed(1), y: (M.y / GRW.k - 84 * GARDEN_ACTOR_SCALE).toFixed(1), 'text-anchor': 'middle' }); t.textContent = text;
   g.appendChild(t); setTimeout(() => t.remove(), 1700);
 }
 
 /* ---------- bugs in a room: they sit, they hop, they bolt if you run at them. You creep up and swing, as outside ---------- */
-const GRB = Object.freeze({ sneak: 74, reach: GRW.cw, scale: 1 });
+const GRB = Object.freeze({ sneak: 74, reach: GRW.cw, scale: GARDEN_ACTOR_SCALE });
 function _grbMake(R, S) {
   const layer = _grm.props, out = _grmNetToday(R).filter(q => !q.gone);
   void S; void layer;

@@ -54,7 +54,22 @@
     };
 
     // 1. Grass over the plain ground between the village and the beach
-    add(box, 31, (B, r, cb) => { B.cx.clip(coastP); V.lawn(B, r, L, P, cb, (x, y) => y >= QUAY.y0 && L.kind(x + .5, y + .5) === 'grass', fade, { salt: 31, wash }); });
+    // (the roads are not cut out of it on their ribbons' hard outline: the lawn is laid over them and then faded off each
+    // one in a soft band a little narrower than the road, so the road's own trodden edge and grass show; 19 Nov 2026)
+    const Gk = window.GardenPaintGround, roadLines = Gk ? [...L.routes.values()].filter(rt => rt.points && rt.points.length > 1 && rt.tier !== 'plaza').map(rt => { const pts = L.routePts(rt.id), k = Gk.routeKind(rt); return { pts, w: (Gk.ROUTE_WIDTH[k] || 30) * .82, bb: kit.bboxOf(pts, 60) }; }).filter(o => o.pts.length > 1) : [];
+    let lawnCanvas = null, lawnBrush = null;
+    add(box, 31, (B, r, cb) => {
+      const near = roadLines.filter(o => kit.meets(o.bb, cb));
+      if (!near.length) { B.cx.clip(coastP); V.lawn(B, r, L, P, cb, (x, y) => y >= QUAY.y0 && L.kind(x + .5, y + .5) === 'grass', fade, { salt: 31, wash }); return; }
+      // the lawn on a canvas of its own, the roads faded out of it there, then laid on this layer (nothing else is erased)
+      const c = B.cx.canvas; if (!lawnCanvas) lawnCanvas = document.createElement('canvas'); if (lawnCanvas.width !== c.width || lawnCanvas.height !== c.height) { lawnCanvas.width = c.width; lawnCanvas.height = c.height; }
+      const lx = lawnCanvas.getContext('2d'), T = B.cx.getTransform(), K = Math.abs(T.a) || 1; lx.setTransform(1, 0, 0, 1, 0, 0); lx.globalCompositeOperation = 'source-over'; lx.globalAlpha = 1; lx.filter = 'none'; lx.clearRect(0, 0, c.width, c.height); lx.setTransform(T);
+      if (!lawnBrush || lawnBrush.cx !== lx) lawnBrush = kit.brush(lx);
+      lx.save(); lx.clip(coastP); V.lawn(lawnBrush, r, L, P, cb, (x, y) => y >= QUAY.y0 && L.kind(x + .5, y + .5) === 'grass', fade, { salt: 31, wash, soft: true }); lx.restore();
+      lx.save(); lx.globalCompositeOperation = 'destination-out'; lx.filter = 'blur(' + (4 * K).toFixed(2) + 'px)'; lx.lineCap = 'round'; lx.lineJoin = 'round'; lx.strokeStyle = '#000';
+      for (const o of near) { lx.lineWidth = o.w; lx.beginPath(); o.pts.forEach((p, i) => i ? lx.lineTo(p.x, p.y) : lx.moveTo(p.x, p.y)); lx.stroke(); }
+      lx.restore(); B.cx.save(); B.cx.setTransform(1, 0, 0, 1, 0, 0); B.cx.drawImage(lawnCanvas, 0, 0); B.cx.restore();
+    });
 
     // 2. The sea edge all round: shallows and a lace of foam outside the coast, wet sand,
     // a wrack line and shells inside it. One continuous run of the sea coast (the bay and
@@ -104,14 +119,11 @@
 
     // 3. One promenade from the village to the quay. Its shoulders gradually
     // widen with the native road, rather than jumping to a hundred-pixel band.
-    const promenade = L.routePts('harbour-walk'), promenadeRoute = L.routes.get('harbour-walk');
-    if (promenade.length > 1) {
-      const band = V.loopPath([V.routeRibbon(L, promenadeRoute, false)]), kerb = V.loopPath([V.routeRibbon(L, promenadeRoute, true)]), bb = kit.bboxOf(promenade, 80);
-      add(bb, 34, (B, r, cb) => {
-        V.clipGround(B, L, cb); B.f(kerb, P.kerb); B.s(kerb, 'rgba(46,52,30,.18)', 2);
-        B.cx.save(); B.cx.clip(band); V.flags(B, r, P, [bb[0], Math.max(bb[1], cb[1] - 13), bb[2], Math.min(bb[3], cb[3] + 13)], { row: 13, w: 24, salt: 34, moss: .05 }); B.cx.restore();
-      });
-    }
+    // It is the shared path kit's cobbled main road (94-garden-paint-ground-0kit.js), laid again on this layer over the
+    // harbour's lawn: it had its own flags inside a dark kerb ribbon, a hard brown outline down both sides (art director,
+    // 19 Nov 2026). The kit's road has a soft trodden edge with grass growing in, the same as every other road.
+    // The lawn above (1.) is taken off every road in a soft band, so the shared ground's road shows with its own edge.
+    const promenade = L.routePts('harbour-walk');
     for (const id of ['strand', 'lighthouse-walk', 'coast-walk']) {
       const pts = L.routePts(id); if (pts.length < 2) continue;
       add(kit.bboxOf(pts, 40), 35 + id.length, (B, r, cb) => {
@@ -137,7 +149,16 @@
       B.f(B.blob(r, (qx0 + qx1) / 2 - 20, (qy0 + qy1) / 2, 70, 26, 9, .3), P.stoneHi, .3);
       B.cx.restore();
       for (let x = qx0; x < qx1; ) { const w = 22 + r() * 14, ww = Math.min(w, qx1 - x); B.f(B.rr(x + .6, qy1 - 5, ww - 1.2, 6, 1.5), r() < .5 ? '#b4ab94' : '#a59c86').f(B.rect(x + 1, qy1 - 4.6, ww - 2, 1.6), P.stoneHi, .7); x += w; }
-      B.s(quayShape, P.kerb, 2.2, .7);
+      // the kerb only down the ends and along the sea; on the landward side the lawn runs on to the flags in a broken,
+      // trodden fringe (a ruled line across the whole screen there read as pasted on), clear of where the road comes in
+      B.s(`M${qx0} ${qy0 + 18}L${qx0} ${qy1}L${qx1} ${qy1}L${qx1} ${qy0 + 18}`, P.kerb, 2.2, .55);
+      const road = (promenade.length > 1 ? promenade : []).reduce((m, p) => Math.abs(p.y - qy0) < Math.abs(m.y - qy0) ? p : m, { x: -1e9, y: 1e9 });
+      for (let x = qx0 + 8; x < qx1 - 8; x += 5) {
+        const off = Math.abs(x - road.x) - 34; if (off < 0) continue; const near = Math.min(1, off / 40), n = kit.noise(x / 46, 3, 77), dep = (4 + n * 13) * near;
+        B.f(B.blob(r, x, qy0 + dep * .35, 5 + r() * 4, dep * .55 + 2, 7, .5), r() < .5 ? P.lawn : P.lawnLo, .9 * near);
+        if (r() < .7) B.tufts(r, x, qy0 + dep * .6 + 2, 7, 3, [P.lawnLo, P.lawnHi], 4 + r() * 3);
+        if (r() < .18) B.f(B.ell(x + 3, qy0 + dep + 4 + r() * 6, 2.2 + r() * 2, 1.4), P.lawnLo, .45 * near);   // (moss in the joints a stride out)
+      }
       // steps down the wall at each end, a rope coil and a lost glove
       for (const sx of [qx0 + 24, qx1 - 40]) for (let k = 0; k < 4; k++) B.f(B.rect(sx, qy1 + k * 4.6, 18, 5), k % 2 ? P.wallLo : P.wallHi).f(B.rect(sx, qy1 + k * 4.6 + 3.6, 18, 1.2), P.wallDk, .5);
       const rc = { x: (qx0 + qx1) / 2 + 52, y: qy1 - 14 }; for (let k = 0; k < 4; k++) B.s(B.ell(rc.x, rc.y, 7 - k * 1.4, 3.6 - k * .7), k % 2 ? P.rope : '#a88a54', 1.6, .95);

@@ -15,7 +15,7 @@ const _gll = {
   tipEl: null,
 };
 const _GL_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
-const GL_ACT_SPEED = 215, GL_ACT_RUN = 300, GL_ACT_SCALE = 0.74, GL_PET_H = 26;   // the walker's own speeds (GW_SPEED); a pet comes up to the knee
+const GL_ACT_SPEED = 215, GL_ACT_RUN = 300, GL_ACT_SCALE = 0.74 * GARDEN_ACTOR_SCALE, GL_PET_H = 26 * GARDEN_ACTOR_SCALE;   // the walker's own speeds (GW_SPEED); a pet comes up to the knee
 const _GLL_TAB = Math.floor(Math.random() * 2176782336).toString(36) + Math.floor(Math.random() * 2176782336).toString(36);   // this tab, to the server: one tab hosts
 function _gllNewId() { return Math.floor(Date.now()).toString(36).slice(-7) + Math.floor(Math.random() * 2176782336).toString(36);  /* clock-ok: only unique */ }
 function _gllApi(path, body, opts) { return _gscApi(path, body, opts); }
@@ -103,11 +103,11 @@ function _gllDress(A, root) {
   while (root.firstChild) { const old = root.firstChild; root.removeChild(old); if (typeof old.destroy === 'function') old.destroy(); }
   root.classList.add('gll-actor');
   if (A.me) root.classList.add('is-me');
-  const sh = _gllSvgEl('ellipse', 'gll-shadow'); sh.setAttribute('cx', '0'); sh.setAttribute('cy', '1'); sh.setAttribute('rx', '12'); sh.setAttribute('ry', '3.4');
+  const sh = _gllSvgEl('ellipse', 'gll-shadow'); sh.setAttribute('cx', '0'); sh.setAttribute('cy', '1'); sh.setAttribute('rx', String(12 * GARDEN_ACTOR_SCALE)); sh.setAttribute('ry', String(3.4 * GARDEN_ACTOR_SCALE));
   root.appendChild(sh);
   const bob = _gllSvgEl('g', 'gll-bob'), inner = _gllSvgEl('g', 'gll-in');
   bob.appendChild(inner); root.appendChild(bob);
-  const tag = _gllSvgEl('text', 'gll-name'); tag.setAttribute('y', '-64'); tag.setAttribute('text-anchor', 'middle'); tag.textContent = A.me ? 'You' : A.n;
+  const tag = _gllSvgEl('text', 'gll-name'); tag.setAttribute('y', String(Math.round(-64 * GARDEN_ACTOR_SCALE) - 2)); tag.setAttribute('text-anchor', 'middle'); tag.textContent = A.me ? 'You' : A.n;
   root.appendChild(tag);
   A.root = root; A.inner = inner; A.bob = bob; A.key = '';
   _gllPaint(A);
@@ -246,7 +246,7 @@ function _gllSayDraw(A) {
   const row = GL_PHRASES.find(p => p.id === s.id); if (!row) return;   // (a phrase from the table; set with textContent, on no wire)
   const lines = [];
   for (const word of String(row.t).split(/\s+/)) { const last = lines[lines.length - 1]; if (last != null && (last + ' ' + word).length <= 34) lines[lines.length - 1] = last + ' ' + word; else lines.push(word); }
-  const g = _gllSvgEl('g', 'gll-say'); g.setAttribute('transform', 'translate(0 -74)');
+  const g = _gllSvgEl('g', 'gll-say'); g.setAttribute('transform', 'translate(0 ' + (Math.round(-74 * GARDEN_ACTOR_SCALE) - 3) + ')');
   const w = Math.max(...lines.map(l => l.length)) * 5.4 + 14, h = 17 + (lines.length - 1) * 12;
   const r = _gllSvgEl('rect', 'gll-say-b'); r.setAttribute('x', String(-w / 2)); r.setAttribute('y', String(-2 - h)); r.setAttribute('width', String(w)); r.setAttribute('height', String(h)); r.setAttribute('rx', '8');
   const tail = _gllSvgEl('path', 'gll-say-b'); tail.setAttribute('d', 'M-4 -3 L0 3 L4 -3Z');

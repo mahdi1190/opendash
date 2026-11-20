@@ -31,8 +31,8 @@ const _gw = {
 };
 const GW_SPEED = Object.freeze({ walk: 215, sneak: 92, run: 300 });   // pixels of stage a second (a cell is 48 x 30 of them)
 const GW_ZOOMS = Object.freeze([230, 290, 360, 450, 560, 690, 860, 1040]);   // how many stage units tall the window shows (2.23: two more steps: the world is bigger)
-const GW_SCALE = 0.74;                                                // the figure's size: 70 units tall -> about 52 px
-const GW_PET_SCALE = 0.5;                                             // your pet, drawn at two thirds of the size the garden uses for a wandering one: it comes up to your knee
+const GW_FIGURE_ART = 0.74, GW_SCALE = GW_FIGURE_ART * GARDEN_ACTOR_SCALE;                                                // the figure's size: 70 units tall -> about 52 px
+const GW_PET_SCALE = 0.5 * GARDEN_ACTOR_SCALE;                                             // your pet, drawn at two thirds of the size the garden uses for a wandering one: it comes up to your knee
 
 /* ---------- the grid you walk on ---------- */
 /** You walk through what you plant, so a full bed never walls you off: only a tree that has grown past a seedling stands in the way (its trunk, below). */
@@ -1262,7 +1262,7 @@ function _gwCamDefaultIdx() {
   const s = _gwSize(), k = s.w + 'x' + s.h;
   if (_gw.zoomKey === k) return _gw.zoomDef;
   if (!s.w || !s.h) return 2;
-  const want = Math.max(s.h / (135 / (70 * GW_SCALE)), 7 * GARDEN_WORLD.cellW * s.h / s.w);
+  const want = Math.max(s.h / (135 / (70 * GW_FIGURE_ART)),   /* (the camera keeps its distance: the figure is smaller, the view is the same) */ 7 * GARDEN_WORLD.cellW * s.h / s.w);
   let best = 0; GW_ZOOMS.forEach((z, i) => { if (Math.abs(z - want) < Math.abs(GW_ZOOMS[best] - want)) best = i; });
   _gw.zoomKey = k; _gw.zoomDef = best;
   return best;

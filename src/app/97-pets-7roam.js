@@ -33,7 +33,7 @@ function _ptwCell(x, y) { const W = GARDEN_WORLD; return { x: x * W.cellW, y: W.
 function _ptwFree(x, y) { try { return gardenWorldFree(x, y, 0.14); } catch (e) { return true; } }
 function _ptwPlayer() { return typeof _gw !== 'undefined' && _gw && _gw.on !== false ? { x: _gw.px, y: _gw.py, moving: !!_gw.moving, busy: !!_gw.reel } : null; }
 /** A sprite's height in the garden's units: small things stay small, big things never tower over you. */
-function _ptwH(id) { const sp = petSpecies(id) || {}; return 24 + 20 * Math.min(1, Number(sp.h) || 0.3); }
+function _ptwH(id) { const sp = petSpecies(id) || {}; return (24 + 20 * Math.min(1, Number(sp.h) || 0.3)) * (typeof GARDEN_ACTOR_SCALE === 'number' ? GARDEN_ACTOR_SCALE : 1); }
 
 /* ---------- a pet in the garden ---------- */
 function _ptwNew(look, me) {

@@ -16,7 +16,12 @@ window.GardenNativeLight = (function () {
     const clouds = scene.add.container(0, 0).setDepth(-9850).setName('garden-sky-clouds'), cloudShade = scene.add.container(0, 0).setDepth(-9310), glow = scene.add.graphics().setDepth(78000);
     const atmosphere = scene.add.graphics().setDepth(79900), rain = scene.add.container(0, 0).setDepth(79500), sky = scene.add.graphics().setDepth(-10020);
     const night = scene.add.graphics().setDepth(80000), moteHalo = scene.add.container(0, 0).setDepth(79395), motes = scene.add.container(0, 0).setName('garden-motes').setDepth(79400), bursts = scene.add.container(0, 0).setDepth(85000).setName('garden-bursts'), groundWeather = scene.add.graphics().setDepth(-9200);
-    const objects = [shadows, actorShadows, clouds, cloudShade, glow, atmosphere, rain, sky, night, moteHalo, motes, bursts, groundWeather];
+    const groundPools = scene.add.container(0, 0).setDepth(80005).setName('garden-light-pools'), poolImages = new Map();
+    // The evening light across the screen: a multiply that is gold on the sun's side (upper left) and violet on the far
+    // side, and a low warm glow added from the sun's side. Both are drawn once in a 1000 px box and stretched over the
+    // view every frame, so the sunset follows the camera instead of being one flat tint over the whole map.
+    const duskGrade = scene.add.graphics().setDepth(80001).setName('garden-dusk-grade'), duskGlow = scene.add.graphics().setDepth(79960).setName('garden-dusk-glow');
+    const objects = [shadows, actorShadows, clouds, cloudShade, glow, atmosphere, rain, sky, night, moteHalo, motes, bursts, groundWeather, groundPools, duskGrade, duskGlow];
     let model = options.model || null, room = null, effects = null, dead = false, frame = 0, staticKey = '', staticAt = 0, screenKey = '', lamps = [], frozenAt = null, visibleActors = 0;
     let lastTime = null, ambientTime = 0, ambientAt = null, ambientOrigin = 0, ambientOriginAt = 0, ambientHeld = true, ambientSource = 'local', ambientFollowing = false, ambientSession = '', outdoorWetness = 0, lastMotion = true, fieldDirty = true, impactKind = '', precipitationVisible = 0;
     const drops = Array.from({ length: 110 }, () => ({ x: rng(), y: rng(), z: .3 + rng() * .7, phase: rng() * TAU }));
@@ -32,9 +37,17 @@ window.GardenNativeLight = (function () {
     let gradeFx = null; try { gradeFx = scene.cameras.main.filters.internal.addColorMatrix(); } catch (e) { gradeFx = null; }
     function paintGrade(env) {
       if (!gradeFx || !gradeFx.colorMatrix) return;
-      const m = gradeFx.colorMatrix, d = room ? .5 : clamp(env.daylight);
-      m.reset(); m.saturate(.06 + .22 * d); m.contrast(.03 + .06 * d, true);
-      if (d > .3) m.multiply([1 + .032 * d, 0, 0, 0, 0, 0, 1 + .004 * d, 0, 0, 0, 0, 0, 1 - .05 * d, 0, 0, 0, 0, 0, 1, 0], true);
+      const m = gradeFx.colorMatrix, d = room ? .5 : clamp(env.daylight), k = room ? 0 : eveningLight(env);
+      // (the turning hour keeps its colour: at sunset the grade had dropped to a third of its day saturation, which with
+      // the dimming read as a grey-olive dusk)
+      m.reset(); m.saturate(.06 + .22 * d + .14 * k); m.contrast(.03 + .06 * d + .05 * k, true);
+      if (d > .3 || k > .05) m.multiply([1 + .032 * d + .03 * k, 0, 0, 0, 0, 0, 1 + .004 * d - .004 * k, 0, 0, 0, 0, 0, 1 - .05 * d - .03 * k, 0, 0, 0, 0, 0, 1, 0], true);
+    }
+    // How much of the low warm sun there is: most a little before sunset (daylight about .42), none in broad day or full
+    // night; the morning has a paler, shorter share of it.
+    function eveningLight(env) { const t = eveningPhases(env); return Math.max(t.gold, t.twi * .6); }
+    // The two halves of the turning hour: the golden low sun (daylight about .5) and the rose twilight after it (about .2).
+    function eveningPhases(env) { const d = clamp(env.daylight), m = env.hour >= 12 ? 1 : .55; return { gold: clamp(1 - Math.abs(d - .5) / .32) * m, twi: clamp(1 - Math.abs(d - .2) / .18) * m };
     }
     let visibleCloudLobes = 0, cloudTextureBuilds = 0;
     let creatureSerial = 0, visibleCreatures = 0;
@@ -165,7 +178,9 @@ window.GardenNativeLight = (function () {
       environment.gust = room ? 0 : (.25 + .75 * (.5 + .5 * Math.sin(t * .17 + Math.sin(t * .057)))) * (wet ? .9 : season === 'autumn' ? .55 : .33);
       environment.windX = room ? 0 : Math.cos(.3 + Math.sin(t * .013) * .4) * environment.gust;
       environment.windY = room ? 0 : .14 + Math.sin(t * .019) * .1;
-      environment.sunX = Math.cos((hour - 6) / 24 * TAU); environment.sunY = .42 + Math.sin((hour - 8) / 24 * TAU) * .22; environment.elevation = elevation;
+      // One light for the whole world (94-garden-paint-ground-0kit.js LIGHT): the sun is upper left at every hour, as all the
+      // baked art is painted, so a moving shadow falls the same way as a painted one; the hour changes its length and strength only.
+      { const L = window.GardenPaintGround && GardenPaintGround.LIGHT; environment.sunX = L ? -L.sx : -.94; environment.sunY = L ? L.sy : .34; } environment.elevation = elevation;
       return environment;
     }
     function imageFor(pool, parent, key) {
@@ -247,17 +262,19 @@ window.GardenNativeLight = (function () {
       }
     }
     function paintShadows(env, v) {
-      const list = occluders(), direction = Math.hypot(env.sunX, env.sunY) || 1, length = .2 + (1 - env.elevation) * .62, strength = room ? 0 : env.daylight * .15 * (1 - env.cloudCover * .78);
+      // (a clear day throws a shadow you can see at noon too: never shorter than two fifths of the thing, never fainter than a soft grey)
+      const list = occluders(), direction = Math.hypot(env.sunX, env.sunY) || 1, length = Math.max(.4, .2 + (1 - env.elevation) * .62), strength = room ? 0 : (env.daylight + .45 * eveningLight(env) * (1 - env.daylight)) * .28 * (1 - env.cloudCover * .7);   // (the low sun throws long shadows that still read at sunset)
       for (let i = 0; i < list.length; i++) {
         const o = list[i], key = o.id == null ? 'static:' + i : String(o.id);
         if (o.kind === 'actor' || o.kind === 'pet' || !inView(o, v, 220)) continue;
-        if (strength > .004) shadeShape(shadowPool, shadows, key + ':sun', o, -env.sunX / direction, env.sunY / direction, length, strength, false);
+        if (strength > .004 && !o.shaded) { const w = Math.max(3, Number(o.w || o.width) || 20), tall = clamp(Number(o.tall || o.height) || 36, 8, 150), thin = clamp(w / (Math.min(85, tall * length) * .45), .35, 1);   /* (a post, a tripod, a lamp: a thin shadow is a faint one, or it reads as a dark smear across pale stone) */
+          shadeShape(shadowPool, shadows, key + ':sun', o, -env.sunX / direction, env.sunY / direction, length, strength * thin, false); }   // (shaded: its silhouette is already laid on the ground by the paint kit)
         if (env.daylight < .65 || room) lampCasts(shadowPool, shadows, key, o, false, env);
       }
       hideUnusedShadows(shadowPool);
     }
     function paintActors(env, v) {
-      const primary = effects && effects.actors || [], creatures = creatureActors(primary), actors = primary.concat(creatures), direction = Math.hypot(env.sunX, env.sunY) || 1, strength = room ? 0 : env.daylight * .19 * (1 - env.cloudCover * .82);
+      const primary = effects && effects.actors || [], creatures = creatureActors(primary), actors = primary.concat(creatures), direction = Math.hypot(env.sunX, env.sunY) || 1, strength = room ? 0 : (env.daylight + .45 * eveningLight(env) * (1 - env.daylight)) * .19 * (1 - env.cloudCover * .82);
       visibleCreatures = 0;
       visibleActors = 0;
       for (let i = 0; i < actors.length; i++) {
@@ -293,18 +310,41 @@ window.GardenNativeLight = (function () {
       if (room) {
         const ambient = room.ambient == null ? .8 : Number(room.ambient);
         night.setBlendMode(Phaser.BlendModes.NORMAL).fillStyle(0x253450, (1 - clamp(ambient)) * .3).fillRect(x, y, width, height);
+        paintEvening(0, false);
       } else {
         // The outdoor grade multiplies (it never paints a pale wash over the scene, which read as a flat grey haze):
         // deep blue at night, rose and amber at dusk and dawn, nothing at all by day.
-        const darkness = outdoorDarkness(env) - (1 - env.daylight) * .07, dusk = 1 - Math.abs(env.daylight * 2 - 1);
-        const t = clamp(darkness / .4), warm = clamp(dusk) * (1 - t * .55), eve = env.hour >= 12;
-        const night0 = outdoorNightPresentation() ? [.5, .58, .8] : [.56, .63, .82], warm0 = eve ? [1, .84, .72] : [1, .9, .8];
-        const mul = [0, 1, 2].map(i => (1 + (night0[i] - 1) * t) * (1 + (warm0[i] - 1) * warm * (eve ? .85 : .6)));   // (an evening reads amber-rose, not a slightly dimmer noon)
-        if (t > .01 || warm > .04) night.setBlendMode(Phaser.BlendModes.MULTIPLY).fillStyle(mul.reduce((n, c) => n * 256 + Math.round(clamp(c) * 255), 0), 1).fillRect(x, y, width, height);
-        if (dusk > .1) atmosphere.fillStyle(env.hour < 12 ? 0xffd6ab : 0xefb397, dusk * (env.hour < 12 ? .045 : .065)).fillRect(x, y, width, height);
+        // The cool night grade comes in only once the sun is down (daylight under .3); before that the evening is the
+        // warm screen gradient below. Laid together at sunset the blue night and the amber evening cancelled to a flat
+        // grey-olive (19 Nov 2026, the art director's dusk sheet).
+        const darkness = outdoorDarkness(env) - (1 - env.daylight) * .07, t = clamp(darkness / .4), eve = env.hour >= 12, k = eveningLight(env);
+        const nightK = t * Math.pow(clamp((.22 - env.daylight) / .22), .9), dim = 1 - .08 * k;
+        const night0 = outdoorNightPresentation() ? [.5, .58, .8] : [.56, .63, .82];
+        const mul = [0, 1, 2].map(i => (1 + (night0[i] - 1) * nightK) * dim);
+        if (nightK > .01 || k > .04) night.setBlendMode(Phaser.BlendModes.MULTIPLY).fillStyle(mul.reduce((n, c) => n * 256 + Math.round(clamp(c) * 255), 0), 1).fillRect(x, y, width, height);
+        paintEvening(eveningPhases(env), eve);
         if (env.wetness > .04) atmosphere.fillStyle(0x73969d, env.wetness * .022).fillRect(x, y, width, height);
         if (env.snow) atmosphere.fillStyle(0xe5eff1, env.snow * .018).fillRect(x, y, width, height);
       }
+    }
+    // The sunset across the view: gold where the sun is (upper left), rose along the top, amber low on the left and a
+    // violet shade on the far side, multiplied over the scene; then a soft warm glow added from the sun's side, so lit
+    // faces catch the low light. k is eveningLight(); nothing is drawn by day or at full night.
+    // Gold first (the sun low on the left), then rose and lilac with an indigo far side once it has set; the night's blue
+    // comes in under the rose, so the hour turns through violet and never through grey.
+    function paintEvening(ph, eve) {
+      const g = ph ? ph.gold * .72 : 0, w = ph ? ph.twi * .8 : 0, on = g + w > .02;
+      duskGrade.clear(); duskGlow.clear(); duskGrade.setVisible(on); duskGlow.setVisible(on); if (!on) return;
+      const G = eve ? [[1, .9, .74], [1, .83, .8], [.99, .85, .72], [.84, .76, .9]] : [[1, .95, .86], [.98, .92, .92], [1, .93, .86], [.88, .86, .95]];
+      const T = [[.98, .8, .86], [.9, .8, .95], [.95, .78, .86], [.74, .72, .94]];
+      const corner = i => [0, 1, 2].reduce((n, c) => n * 256 + Math.round(clamp(1 - (1 - G[i][c]) * g - (1 - T[i][c]) * w) * 255), 0);
+      duskGrade.setBlendMode(Phaser.BlendModes.MULTIPLY).fillGradientStyle(corner(0), corner(1), corner(2), corner(3), 1, 1, 1, 1).fillRect(0, 0, 1000, 1000);
+      const gw = g >= w;   // (the glow from the sun's side: gold while it is up, a faint pink after)
+      duskGlow.setBlendMode(Phaser.BlendModes.ADD).fillGradientStyle(gw ? (eve ? 0xffa24c : 0xffc890) : 0xff8ca8, gw ? 0xff8c8c : 0xc88ce0, gw ? 0xff9444 : 0xff7c98, 0x000000, gw ? .19 * g : .12 * w, gw ? .08 * g : .06 * w, gw ? .07 * g : .05 * w, 0).fillRect(0, 0, 1000, 1000);
+    }
+    function placeEvening(v) {
+      if (!duskGrade.visible) return; const pad = 40 / Math.max(.3, v.zoom), sx = (v.w + pad * 2) / 1000, sy = (v.h + pad * 2) / 1000;
+      duskGrade.setPosition(v.x - pad, v.y - pad).setScale(sx, sy); duskGlow.setPosition(v.x - pad, v.y - pad).setScale(sx, sy);
     }
     function paintClouds(time, env, v) {
       for (const image of cloudPatches) image.setVisible(false); if (room || env.snow) return;
@@ -335,6 +375,7 @@ window.GardenNativeLight = (function () {
       lightMembership.clear();
       for (const lamp of lamps) lightMembership.add(lamp.id || lamp.x + ',' + lamp.y);
       for (const [key, light] of pointLights) if (!lightMembership.has(key)) { light.destroy(); pointLights.delete(key); }
+      for (const [key, pool] of poolImages) { if (!lightMembership.has(key)) { pool.destroy(); poolImages.delete(key); } else pool.setVisible(false); }
       glow.clear(); for (const light of pointLights.values()) light.setVisible(false); if (!room && env.daylight >= .8) return;
       const amount = room ? 1 : 1 - env.daylight, t = time / 1000, warmNight = outdoorNightPresentation(), lightDepth = warmNight ? 80010 : 78000;
       for (const lamp of lamps) {
@@ -345,13 +386,17 @@ window.GardenNativeLight = (function () {
         const key = lamp.id || lamp.x + ',' + lamp.y; let light = pointLights.get(key);
         if (!light) { light = scene.add.pointlight(lamp.x, lamp.y, color, radius, .15, .09); light.setDepth(lightDepth); const parent = layer(); if (parent) { parent.add(light); parent.sort('depth'); } pointLights.set(key, light); }
         else if (light.depth !== lightDepth) { light.setDepth(lightDepth); if (light.parentContainer) light.parentContainer.sort('depth'); }
-        light.setVisible(true).setPosition(lamp.x, lamp.y); light.radius = radius;
+        light.setVisible(true).setPosition(lamp.x, lamp.y); light.radius = room ? radius : radius * .72;   /* (outdoors the glow round a lamp's head is a soft halo; the light it throws is the pool on the ground below: a full-size glow bloomed white over pale stone) */
         // Outdoor emissive light sits above the cool night grade. Keep its
         // previous transmitted energy, with a small warm accent, instead of
         // exposing the formerly graded pool at full unattenuated intensity.
         const transmission = warmNight ? (1 - outdoorDarkness(env)) * 1.12 : 1;
-        light.intensity = amount * flicker * (lamp.intensity == null ? 1 : lamp.intensity) * (.17 + env.wetness * .025) * transmission;
+        // (while the sky is still light a lamp only warms what is near it: at full strength it burnt pale stone to white)
+        const ease = room ? 1 : 1 - .45 * clamp(1 - Math.abs(env.daylight * 2 - 1));
+        light.intensity = amount * flicker * (lamp.intensity == null ? 1 : lamp.intensity) * (.17 + env.wetness * .025) * transmission * ease * (room ? 1 : .85);
         light.color.setTo(color >> 16 & 255, color >> 8 & 255, color & 255);
+        // its pool on the ground: a soft warm oval where the light falls (a lamp's foot, the ground before a lit window)
+        if (!room && lamp.ground != null) { let pool = poolImages.get(key); if (!pool) { pool = scene.add.image(0, 0, softKey).setBlendMode(Phaser.BlendModes.ADD); groundPools.add(pool); poolImages.set(key, pool); } const pr = radius * (lamp.pool || 1.2); pool.setVisible(true).setPosition(lamp.x, lamp.ground).setDisplaySize(pr * 2.1, pr * .9).setTint(color).setAlpha(Math.min(.24, amount * flicker * (lamp.intensity == null ? 1 : lamp.intensity) * .3)); }   // (soft: a pool you can still see the ground through, never a white glare)
       }
     }
     function weatherParticles(kind, count) {
@@ -471,7 +516,7 @@ window.GardenNativeLight = (function () {
       const key = [Math.floor(v.x / 180), Math.floor(v.y / 180), Math.round(v.w / 100), Math.round(v.h / 100), Math.round(env.hour * 12), Math.round(env.daylight * 20), env.rain, env.snow, effects && effects.revision, !!room].join('|');
       if (key !== staticKey || time - staticAt > 1500) { staticKey = key; staticAt = time; paintShadows(env, v); }
       paintActors(env, v);
-      paintAmbient(env, v);
+      paintAmbient(env, v); duskGrade.setDepth(80001); duskGlow.setDepth(79960); placeEvening(v);
       if (++frame === 1 || fieldDirty || frame % (motion ? 6 : 30) === 0) { paintClouds(ambientTime, env, v); paintGlows(ambientTime, env, v); fieldDirty = false; }
       cloudVisibility(env);
       paintWeather(ambientTime, dt, env, v, motion);

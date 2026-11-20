@@ -17,7 +17,9 @@ window.GardenPaintTrees = (function () {
   const K = 2.5, TEX = 'gptree', STEP = 24;
   let bytes = 0, made = 0, worstMs = 0;
   function rng(seed) { let s = (seed >>> 0) % 2147483647 || 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
-  const mix = (a, b, t) => { const p = parseInt(a.slice(1), 16), q = parseInt(b.slice(1), 16), c = (x, y) => Math.round(x + (y - x) * t); return 'rgb(' + c(p >> 16, q >> 16) + ',' + c((p >> 8) & 255, (q >> 8) & 255) + ',' + c(p & 255, q & 255) + ')'; };
+  // (a hex colour out, so a mixed colour can be mixed again: spring's leaves are mixed twice, and an rgb() string mixed
+  //  again came out as no colour at all, so every spring crown in the village was painted black)
+  const mix = (a, b, t) => { const p = parseInt(a.slice(1), 16), q = parseInt(b.slice(1), 16), c = (x, y) => Math.max(0, Math.min(255, Math.round(x + (y - x) * t))); return '#' + ((1 << 24) + (c(p >> 16, q >> 16) << 16) + (c((p >> 8) & 255, (q >> 8) & 255) << 8) + c(p & 255, q & 255)).toString(16).slice(1); };
   // leaf ramps: deep core, shade, body, lit, sunlit cap
   const LEAF = {
     oak: { summer: ['#24391f', '#3a5a2c', '#55783a', '#7a9c4a', '#a9c26a'], autumn: ['#3e2c18', '#6a4a22', '#9a6a2c', '#c4903e', '#e6be6a'] },
@@ -235,7 +237,7 @@ window.GardenPaintTrees = (function () {
     return { c, ox: halfW * k, oy: up * k, k, ms, crown: { x: 0, y: -H * F.cy, rx: H * F.rx, ry: H * F.ry } };
   }
   function image(scene, o) {
-    const sp = FORM[o.species] ? o.species : 'oak', season = o.season || 'summer', v = Math.max(0, Math.min(2, o.v | 0)), want = Math.max(30, o.h || 100), H = Math.max(STEP * 2, Math.round(want / STEP) * STEP);
+    const sp = FORM[o.species] ? o.species : 'oak', season = o.season || 'summer', v = Math.max(0, Math.min(2, o.v | 0)), want = Math.max(30, o.h || 100), step = want > 130 ? STEP * 2 : STEP, H = Math.max(STEP * 2, Math.round(want / step) * step);   /* (a mature tree is 3.5 to 5 times the player now: tall trees share a texture every 48 px of height, or their pictures alone held 35 MB) */
     const key = TEX + '|' + sp + '|' + season + '|' + v + '|' + H + (o.shadow ? '|s' : '');
     if (!scene.textures.exists(key)) {
       const m = canvas({ species: sp, season, v, h: H, shadow: !!o.shadow }); if (!m) return null;
@@ -263,5 +265,5 @@ window.GardenPaintTrees = (function () {
     cx.restore();
   }
   function stats() { return { made, MB: +(bytes / 1048576).toFixed(1), worstMs: Math.round(worstMs), K }; }
-  return { canvas, image, groundShadow, stats, species: Object.keys(FORM), K };
+  return { canvas, image, groundShadow, stats, species: Object.keys(FORM), K, form: sp => FORM[sp] || FORM.oak };
 })();

@@ -24,9 +24,10 @@
     for (const poly of walls) {
       const n = poly.length >> 1, a = poly.slice(0, n), b = poly.slice(n).reverse();
       const north = a.reduce((s, p) => s + p[1], 0) <= b.reduce((s, p) => s + p[1], 0);
-      const upper = (north ? a : b).map(L.pt), lower = (north ? b : a).map(L.pt);
-      // terraceOps draws upright coping up to six pixels above the upper rim.
-      groundCuts.push(upper.map(p => ({ x: p.x, y: p.y - 7 })).concat(lower.slice().reverse()));
+      const upper = (north ? a : b).map(L.pt), lower = (north ? b : a).map(L.pt), along = Math.abs(upper[upper.length - 1].x - upper[0].x) > Math.abs(upper[upper.length - 1].y - upper[0].y);
+      // terraceOps draws upright coping up to six pixels above the upper rim. A wall that runs north and south is a
+      // bank (bankOps) with nothing above its outline: lifting one side cut a slanted sliver that showed as a light streak.
+      groundCuts.push(along ? upper.map(p => ({ x: p.x, y: p.y - 7 })).concat(lower.slice().reverse()) : poly.map(L.pt));
     }
     const groundClips = groundCuts.map(poly => {
       const cut = new Path2D(); cut.rect(rb[0], rb[1], rb[2] - rb[0], rb[3] - rb[1]);
@@ -40,7 +41,8 @@
       B.cx.clip(regP); B.cx.clip(coastP);
       for (const cut of groundClips) B.cx.clip(cut, 'evenodd');
       V.clipGround(B, L, cb, true);
-      V.lawn(B, r, L, P, cb, (x, y) => grass(x, y), null, { salt: 91, base: kit.mix(P.lawn, '#b8c47a', season === 'winter' ? 0 : .12) });
+      // (no flat fill: the terraces' meadow is the shared ground kit's, with its light, shade and drifts; this adds the mowing)
+      V.lawn(B, r, L, P, cb, (x, y) => grass(x, y), null, { salt: 91, noBase: !!window.GardenPaintGround, base: kit.mix(P.lawn, '#b8c47a', season === 'winter' ? 0 : .12) });
       // Quiet continuous mowing bands stop at the same paths and shore as the
       // meadow. Cell-shaped scallops made the terrace read as loose patches.
       for (let y = Math.floor((cb[1] - W.sky) / (ch * 4)) * ch * 4 + W.sky; y < cb[3]; y += ch * 4) {

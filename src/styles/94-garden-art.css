@@ -110,26 +110,26 @@
 .gpl-idle .gpl-lg.gpl-b { transform: rotate(6deg); }
 @keyframes gpl-breathe { from { transform: scale(1, 1); } to { transform: scale(1.012, 1.028); } }
 @keyframes gpl-look { 0%, 62%, 100% { transform: rotate(0); } 70%, 82% { transform: rotate(3deg); } 90% { transform: rotate(-1.4deg); } }
-.gpl-walk .gpl-root { animation: gpl-bounce .25s ease-in-out infinite alternate; }
+.gpl-walk .gpl-root { animation: gpl-bounce .2s ease-in-out infinite alternate; }
 @keyframes gpl-bounce { from { transform: translateY(0); } to { transform: translateY(-1.8px); } }
-.gpl-walk .gpl-up { animation: gpl-lean .5s ease-in-out infinite alternate; }
+.gpl-walk .gpl-up { animation: gpl-lean .4s ease-in-out infinite alternate; }
 @keyframes gpl-lean { from { transform: rotate(-1.6deg); } to { transform: rotate(1.6deg); } }
 .gpl-walk.gpl-de .gpl-up { animation: none; transform: rotate(3deg); }
-.gpl-walk .gpl-hd { animation: gpl-nod .25s ease-in-out infinite alternate; }
+.gpl-walk .gpl-hd { animation: gpl-nod .2s ease-in-out infinite alternate; }
 @keyframes gpl-nod { from { transform: translateY(0); } to { transform: translateY(.9px); } }
 /* side view: legs and arms swing about the hip and shoulder, opposite each other */
-.gpl-walk .gpl-lg.gpl-a { animation: gpl-leg .5s ease-in-out infinite alternate; }
-.gpl-walk .gpl-lg.gpl-b { animation: gpl-leg .5s ease-in-out -.5s infinite alternate; }
+.gpl-walk .gpl-lg.gpl-a { animation: gpl-leg .4s ease-in-out infinite alternate; }
+.gpl-walk .gpl-lg.gpl-b { animation: gpl-leg .4s ease-in-out -.4s infinite alternate; }
 @keyframes gpl-leg { from { transform: rotate(-24deg); } to { transform: rotate(24deg); } }
-.gpl-walk .gpl-as.gpl-a { animation: gpl-arm .5s ease-in-out -.5s infinite alternate; }
-.gpl-walk .gpl-as.gpl-b { animation: gpl-arm .5s ease-in-out infinite alternate; }
+.gpl-walk .gpl-as.gpl-a { animation: gpl-arm .4s ease-in-out -.4s infinite alternate; }
+.gpl-walk .gpl-as.gpl-b { animation: gpl-arm .4s ease-in-out infinite alternate; }
 @keyframes gpl-arm { from { transform: rotate(-26deg); } to { transform: rotate(26deg); } }
 /* front and back: a leg foreshortens from the hip as it lifts, the arms swing a little */
-.gpl-walk .gpl-lf.gpl-a { animation: gpl-lift .5s ease-in-out infinite alternate; }
-.gpl-walk .gpl-lf.gpl-b { animation: gpl-lift .5s ease-in-out -.5s infinite alternate; }
+.gpl-walk .gpl-lf.gpl-a { animation: gpl-lift .4s ease-in-out infinite alternate; }
+.gpl-walk .gpl-lf.gpl-b { animation: gpl-lift .4s ease-in-out -.4s infinite alternate; }
 @keyframes gpl-lift { from { transform: scaleY(1); } to { transform: scaleY(.84); } }
-.gpl-walk .gpl-af.gpl-a { animation: gpl-sw .5s ease-in-out infinite alternate; }
-.gpl-walk .gpl-af.gpl-b { animation: gpl-sw .5s ease-in-out -.5s infinite alternate; }
+.gpl-walk .gpl-af.gpl-a { animation: gpl-sw .4s ease-in-out infinite alternate; }
+.gpl-walk .gpl-af.gpl-b { animation: gpl-sw .4s ease-in-out -.4s infinite alternate; }
 @keyframes gpl-sw { from { transform: rotate(-11deg); } to { transform: rotate(11deg); } }
 /* the jobs */
 .gpl-water .gpl-up { transform: rotate(3deg); }

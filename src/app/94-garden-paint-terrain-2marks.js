@@ -142,11 +142,11 @@ window.GardenPaintedMarks = (function () {
     const season = sc.season || 'summer', key = 'gpm|' + prop.id + '|' + season;
     const node = element(scene, 'g', { class: 'gd-it gd-prop gd-painted gd-painted-mark', 'data-prop': prop.id, 'data-z': prop.y + prop.h, 'data-x': prop.x });
     const x = (prop.x + prop.w / 2) * W.cellW, foot = W.sky + (prop.y + prop.h) * W.cellH - 2;
-    const im = kit.sprite(scene, node._inner, key, art.box, B => art.draw(B, { season }), x, foot, K); if (!im) { node.remove(); return null; }
+    const im = kit.sprite(scene, node._inner, key, art.box, B => art.draw(B, { season }), x, foot, K, art.shade !== false); if (!im) { node.remove(); return null; }
     im.setDepth(0);
     const b = { x: x + art.box[0], y: foot + art.box[1], width: art.box[2] - art.box[0], height: art.box[3] - art.box[1] };
     node.nativeBounds = b;
-    return { root: node.target, rootNode: node, bounds: b, painted: true, foot: { x, y: foot }, update() {}, destroy() { node.remove(); } };
+    return { root: node.target, rootNode: node, bounds: b, painted: true, shaded: art.shade !== false, foot: { x, y: foot }, update() {}, destroy() { node.remove(); } };
   }
   return { knows, landmark, wayIn, ART };
 })();
