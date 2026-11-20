@@ -17,8 +17,11 @@ const _GAW_ART = Object.freeze({
     for (let i = 0; i < N; i++) r += `<path d="M-5.2 ${_gawN(-f - i * g)}H5.2" stroke="#8a6a40" stroke-width="1.3"/>`;
     // a hay-loft door in the wall at the landing (the barn): a dark doorway, hay spilling over its sill, the door swung open to one side
     const loft = row && row.loft ? `<path d="M-11 ${_gawN(-top - 1)}V${_gawN(-top - 24)}Q0 ${_gawN(-top - 29)} 11 ${_gawN(-top - 24)}V${_gawN(-top - 1)}z" fill="#2a1a10" stroke="#5a2a1a" stroke-width="1.2"/><path d="M-10 ${_gawN(-top - 2)}q4 -7 9 -4q4 -5 10 2z" fill="#e8c460"/><path d="M-8 ${_gawN(-top - 4)}l3 -4M-2 ${_gawN(-top - 5)}l1 -5M4 ${_gawN(-top - 4)}l3 -4" stroke="#c89a38" stroke-width="0.8"/><path d="M11 ${_gawN(-top - 1)}l9 2V${_gawN(-top - 22)}l-9 -2z" fill="#a8382a" stroke="#5a1a14" stroke-width="0.7"/><path d="M12 ${_gawN(-top - 6)}l7 1.6M12 ${_gawN(-top - 16)}l7 1.6" stroke="#f0e0c8" stroke-width="0.9" opacity="0.8"/>` : '';
-    return loft + `<ellipse cx="0" cy="1" rx="9" ry="2.2" fill="#1a1408" opacity="0.2"/><path d="M-13 ${_gawN(-top - 3)}h26v3.4h-26z" fill="#8a6438" stroke="#4a3218" stroke-width="0.6"/><path d="M-13 ${_gawN(-top + 0.4)}h26" stroke="#5a3e22" stroke-width="1"/><path d="M-12 ${_gawN(-top + 0.4)}l4 7M12 ${_gawN(-top + 0.4)}l-4 7" stroke="#6a4a2a" stroke-width="1.4"/>`
-      + `<path d="M-12 ${_gawN(-top - 3)}V${_gawN(-top - 18)}M12 ${_gawN(-top - 3)}V${_gawN(-top - 18)}M-12 ${_gawN(-top - 17)}H12M-12 ${_gawN(-top - 10)}H12" stroke="#7a5a36" stroke-width="1.3" stroke-linecap="round"/>`
+    // (height: a ladder up to a floor, the lighthouse's gallery, has no landing of its own: the floor is the landing; up to a loft door, the sill is)
+    const landing = row && (row.bare || row.loft) ? '' : `<path d="M-13 ${_gawN(-top - 3)}h26v3.4h-26z" fill="#8a6438" stroke="#4a3218" stroke-width="0.6"/><path d="M-13 ${_gawN(-top + 0.4)}h26" stroke="#5a3e22" stroke-width="1"/><path d="M-12 ${_gawN(-top + 0.4)}l4 7M12 ${_gawN(-top + 0.4)}l-4 7" stroke="#6a4a2a" stroke-width="1.4"/>`
+      + `<path d="M-12 ${_gawN(-top - 3)}V${_gawN(-top - 18)}M12 ${_gawN(-top - 3)}V${_gawN(-top - 18)}M-12 ${_gawN(-top - 17)}H12M-12 ${_gawN(-top - 10)}H12" stroke="#7a5a36" stroke-width="1.3" stroke-linecap="round"/>`;
+    const stays = row && row.bare ? [0.3, 0.62, 0.9].map(k => `<path d="M-6 ${_gawN(-top * k)}l-3 -3M6 ${_gawN(-top * k)}l3 -3" stroke="#4a4e50" stroke-width="1.2"/>`).join('') : '';
+    return loft + `<ellipse cx="0" cy="1" rx="9" ry="2.2" fill="#1a1408" opacity="0.2"/>` + landing + stays
       + `<path d="M-5.4 0L-4.8 ${_gawN(-top)}M5.4 0L4.8 ${_gawN(-top)}" stroke="#7a5a36" stroke-width="1.6" stroke-linecap="round"/><path d="M-4.4 0L-3.9 ${_gawN(-top)}" stroke="#a8844e" stroke-width="0.5" opacity="0.8"/>${r}<path d="M-8 0q2 -3 4 -1M5 0q2 -3 3 0" stroke="#6a8a3a" stroke-width="1.2" fill="none"/>`; },
   fire: (o) => { const still = o && o.still;
     return '<ellipse cx="0" cy="1" rx="17" ry="5" fill="#1a1408" opacity="0.24"/><ellipse cx="0" cy="-1" rx="12" ry="3.6" fill="#3a2a1a" opacity="0.8"/>'
@@ -67,6 +70,7 @@ function gardenActWorldRows() {
       const mv = typeof gartActMovedTo === 'function' ? gartActMovedTo(t.id) : null;
       out.push({ id: t.id, kind: t.kind, art: K.art, x: mv ? mv.x : t.x, y: mv ? mv.y : t.y, season: t.season || '', carry: (K.acts || []).some(a => a.carry), flat: !!K.flat, row: {} });
     }
+    if (t.static && K.levels && typeof gardenLevelWayParts === 'function') for (const r of gardenLevelWayParts(t)) out.push(r);   // (a floor's ladder: 94-garden-zz-7act-3height.js)
     if (t.static && (K.acts || []).some(a => a.at)) { const B = gardenAffordDrawnBase(t); for (const s of gardenKindSpots({ kind: t.kind, x: B.x, y: B.y, w: B.w, front: t.front })) if (s.at && s.art && s.drawn !== false) out.push({ id: 'part-' + t.id + '-' + s.i, owner: t.id, kind: t.kind, art: s.art, x: s.x, y: s.y, row: s }); }   // (on the thing as drawn)
   }
   return out;

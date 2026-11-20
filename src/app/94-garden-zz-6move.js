@@ -160,7 +160,8 @@ function gartMoveFrame(inner, bob, gw, time) {
   const lift = typeof gartActLift === 'function' ? gartActLift() : 0;
   if (bob && (hopY || lift || _gmv.hopWas)) { bob.setAttribute('transform', `translate(0 ${_gmvN(hopY - lift)})`); _gmv.hopWas = !!(hopY || lift); }
   if (typeof gartActFrame === 'function') gartActFrame();
-  if (body && gw.boat && !acting) { _gmvRow(body, gw, motion); return; }   // (16) in the boat: seated at the oars, pulling as it moves
+  if (body && gw.boat && !acting) { _gmvRow(body, gw, motion); return; }
+  if (body && !acting && typeof gardenHeightBody === 'function' && gardenHeightBody(body, gw, motion)) { _gmv.lpx = _gmv.lpy = null; return; }   // swimming: strokes, or floating (94-garden-zz-7act-3height.js)   // (16) in the boat: seated at the oars, pulling as it moves
   if (body && typeof _ga !== 'undefined' && _ga.carry && !acting && !(_GPL.pose === 'stride' || (inner._gplKey || '').startsWith('stride'))) gartActCarryFrame(body, _gmvLimbs(body));
   if (acting || !body || !motion || _GPL.pose !== 'stride' && !(inner._gplKey || '').startsWith('stride')) { _gmv.lpx = _gmv.lpy = null; return; }
   const L = _gmvLimbs(body); if (!L.legA || !L.legB) return;

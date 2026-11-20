@@ -22,6 +22,12 @@
                  A part (at) and its stand point are placed on the thing AS ITS PAINTER DREW IT, never on the layout's footprint: u is a
                  share of the drawn width (the native world's record of the picture, else the painter's own box, else dw below), from the
                  drawn foot's middle. A layout that makes the barn's footprint wider leaves its ladder on the barn's wall.
+     levels    upper floors you walk on (94-garden-zz-7act-3height.js): [{ id, name, at [x, y] (the floor's middle on the ground, in H, the
+               player's height, from the drawn foot), h (how high it is, in H), shape { ring: [rx, ry, inner rx, inner ry] } or { rect: [x0, y0,
+               x1, y1] } (where the feet may go, in H round its middle), minus [{ rect } | { ell: [x, y, rx, ry] }] (the trunk, a house on it),
+               core [rx, y] (a lamp room: you are behind it, drawn under the thing, when your feet are behind y and within rx of the middle),
+               sit (a level of one spot: the pose you take there), ways [{ by: 'ladder', art (drawn by the world; none: the painter's own),
+               loft, name, foot [x, y] (where you start up, in H from the drawn foot), top [x, y] (where you step off, in H from the middle) }] }]
      dw        the drawn width in cells when nothing else says (a painter that draws the thing at its own fixed size)
      paint     a fixed thing's painter (GardenPaintedProps: 'seat' the bench, 'wish' the well, 'board', 'post', 'tripod', 'fountain', 'lamp',
                'sundial', 'postbox'): a row of layout data of this kind (`things`) is drawn by that painter where the row puts it, blocks the
@@ -78,13 +84,16 @@ const GARDEN_KINDS = Object.freeze({
   /* walls to lean on, things to climb */
   wall: { name: 'the wall', arts: ['wall'], decor: ['stone-wall', 'dc-old-wall'], words: ['wall'], acts: [{ act: 'lean', stand: [-0.25, 0.03], deg: 90, pri: 1.2, edge: true }], pet: 'wall', top: 24, petSeat: 24 },   // back to it, right against it; its prompt before a tree's beside it
   stones: { name: 'the stones', arts: ['stones'], words: ['stones', 'standing'], pet: 'wall' },
-  lighthouse: { name: 'the lighthouse', arts: ['lighthouse'], decor: ['dc-lighthouse'], words: ['lighthouse'], pet: 'lighthouse',
-    dw: 3.82, acts: [{ act: 'ladder', name: 'the lighthouse ladder', at: [0.0576, 0.13], art: 'ladder', stand: [0.0576, 0.16], deg: -90, noProp: true }] },   // a ladder up its side to a plank landing with a rail (u: a share of the tower as drawn)
+  lighthouse: { name: 'the lighthouse', arts: ['lighthouse'], decor: ['dc-lighthouse'], words: ['lighthouse'], pet: 'lighthouse', dw: 3.82,
+    // the gallery round the lamp room, all the way round, up a long iron ladder on the tower's face (its painter draws the deck and rail)
+    levels: [{ id: 'gallery', name: 'the gallery', at: [0, 0], h: 5, shape: { ring: [0.62, 0.2, 0.36, 0.12] }, core: [0.42, 0], ways: [{ by: 'ladder', art: 'ladder', name: 'the lighthouse ladder', foot: [0.34, 0.1], top: [0.34, 0.16] }] }] },
   treehouse: { name: 'the treehouse', arts: ['treehouse'], words: ['treehouse'], pet: 'treehouse',
-    dw: 4.79, acts: [{ act: 'ladderhi', name: 'the treehouse ladder', at: [0.073, 0.2], drawn: false, stand: [0.073, 0.23], deg: -90, noProp: true, edge: true }] },   // (the treehouse's own painter draws its ladder)
+    // the deck of planks round the trunk, up the painter's own rope ladder: along the rail, in front of the trunk, to the house's door
+    levels: [{ id: 'deck', name: 'the treehouse deck', at: [-0.29, 0], h: 2.59, shape: { rect: [-1.3, -0.14, 1.26, 0.12] }, minus: [{ rect: [0.1, -0.3, 1.4, -0.03] }, { ell: [0, -0.08, 0.38, 0.09] }], ways: [{ by: 'ladder', name: 'the treehouse ladder', foot: [-1.34, 0.12], top: [-1.05, 0.06] }] }] },
   hollow: { name: 'the hollow tree', arts: ['hollow'], words: ['hollow'], pet: 'tree' },   // (the pets treat it as a tree: the treehouse's peek needs a window it has not got)
   barn: { name: 'the barn', arts: ['barn'], words: ['barn'], pet: 'hay',
-    dw: 4, acts: [{ act: 'ladderlo', name: 'the hay loft ladder', at: [0.275, 0.37], art: 'ladder', top: 96, loft: true, stand: [0.275, 0.4], deg: -90, noProp: true, edge: true }] },   // (u: a share of the barn as drawn)
+    // the hay-loft door up its side: you sit in the doorway, legs over the sill (a level of one spot: sit)
+    levels: [{ id: 'loft', name: 'the hay loft', at: [1.25, 0.27], h: 1.37, sit: 'dangle', shape: { rect: [-0.05, -0.03, 0.05, 0.03] }, ways: [{ by: 'ladder', art: 'ladder', loft: true, name: 'the hay loft ladder', foot: [1.25, 0.32], top: [0, 0] }] }] },
   hay: { name: 'the hay', arts: ['hay'], decor: ['hay-bale'], words: ['hay', 'haybale'], pet: 'hay', top: 38, petSeat: 38 },
   /* water's things */
   pier: { name: 'the pier end', words: ['pier', 'jetty', 'landing'], acts: [{ act: 'dangle', stand: [0, -0.3], deg: 90, pierEnd: true }], pet: 'pier', noPerch: true, solid: 'free' },   // the end of the pier as far as it is built today

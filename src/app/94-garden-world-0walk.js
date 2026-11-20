@@ -2142,7 +2142,7 @@ function _gwSpritesFrame(dt) {
     if (culled && S.node.parentNode) continue;   // out of the view: it goes on living (update above), and nothing is drawn or moved on the page
     const tf = `translate(${(S.x * W.cellW).toFixed(1)} ${(W.sky + S.y * W.cellH - S.lift).toFixed(1)})`;
     if (S.tf !== tf) { S.tf = tf; S.quiet = 0; S.node.setAttribute('transform', tf); } else S.quiet = (S.quiet || 0) + dt;
-    const z = S.z != null ? S.z : S.y, zk = Math.floor(z * 3);
+    const z = S.z != null ? S.z : S.y, zk = S.z != null ? 'z' + S.z.toFixed(3) : Math.floor(z * 3);   // (a depth of its own, a friend up on a floor behind a lamp room: to the hundredth)
     if (S.zk !== zk || !S.node.parentNode) { S.zk = zk; S.node.setAttribute('data-z', z.toFixed(2)); _gwPlace(S.node, z); }
   }
 }

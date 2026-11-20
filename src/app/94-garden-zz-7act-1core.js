@@ -157,7 +157,7 @@ function gartActFrame() {
 }
 function _gaPlace() {
   const r = _ga.near, el = _ga.el; if (!r || !el) return;
-  const s = typeof _ghProject === 'function' ? _ghProject(r.x, r.top != null ? Math.max(r.top + 0.55, r.y - 6) : r.src === 'tree' ? r.y - 3.2 : r.y - 1.9) : null; if (!s) return;
+  const s = typeof _ghProject === 'function' ? _ghProject(r.x, r.promptY != null ? r.promptY : r.top != null ? Math.max(r.top + 0.55, r.y - 6) : r.src === 'tree' ? r.y - 3.2 : r.y - 1.9) : null; if (!s) return;   // (promptY: over a ladder's top, up on its floor)
   // never under the garden's own messages strip at the top (a welcome, a find): below it, and above the thing's foot at most
   let y = s.y; try { const m = _gw.box.querySelector('.gd-msgs'), mb = m && m.childElementCount ? m.getBoundingClientRect() : null, bb = _gw.box.getBoundingClientRect(); const floor = mb && mb.height ? mb.bottom - bb.top + 34 : 40; if (y < floor) { const foot = _ghProject(r.x, r.y); y = Math.min(Math.max(y, floor), foot ? foot.y - 6 : y); } } catch (e) { /* as it was */ }
   el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(y)}px) translate(-50%, -100%)`;
