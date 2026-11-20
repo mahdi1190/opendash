@@ -512,6 +512,8 @@ const presentation = {
     { id: 'the-quay', route: 'the-quay', x: 50.3, y: 77.6, shape: VV.plazas['the-quay'].poly.map(p => p.map(r2)), job: 'a harbour front bulging at the pier root and tapering into the strand and the lighthouse walk; pier, tackle shop, boathouse; travellers and friends land here' },
     { id: 'lakeside-terrace', route: 'lakeside-terrace', x: 48.6, y: 43.6, shape: VV.plazas['lakeside-terrace'].poly.map(p => p.map(r2)), job: 'a crescent along the Mere shore: lake hall facing the water, the bench with the falls view' },
     { id: 'great-oak-clearing', route: 'great-oak-clearing', x: r2(VW.plazas['great-oak-clearing'].oak[0] - 2.9), y: r2(VW.plazas['great-oak-clearing'].oak[1] + 1.5), oak: VW.plazas['great-oak-clearing'].oak, shape: VW.plazas['great-oak-clearing'].poly.map(p => p.map(r2)), job: 'the Great Oak (draw a huge oak crown here, seen from the Forest arch)' },
+    // (round 3: the woods' two yards, trodden earth to their own outlines, from vale-woodland.json)
+    ...Object.entries(VW.yards).map(([id, y]) => { const b = bbox(y.poly); return { id, route: id, x: r2((b.x + b.x1) / 2), y: r2((b.y + b.y1) / 2), shape: y.poly.map(p => p.map(r2)), job: y.label + ': trodden earth in the wood' }; }),
     { id: 'mill-yard', route: 'mill-yard', x: 74.2, y: 65.8, job: 'the watermill and its turning wheel on the river' },
     { id: 'ruin-court', route: 'ruin-court', x: 22.3, y: 74.8, job: 'the chapel and old foundations' },
     { id: 'cider-square', route: 'cider-square', x: 77.9, y: 37, job: 'barrels, the press' },

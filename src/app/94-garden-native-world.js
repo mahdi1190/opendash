@@ -411,7 +411,8 @@ window.GardenNativeWorld = (function () {
       const pt = p => ({ x: p.x * W.cellW, y: W.sky + p.y * W.cellH });
       // A route with authored widths (the hand-authored village, 2.74) is painted as a ribbon of its own width: half, in px
       // per point, across the path (cells are wider than deep, so the same cells read wider across a north-south road).
-      const routes = D.routes.filter(r => r.points && r.points.length > 1).map(r => { const st = gardenIslandRoadStyle(r), cpts = gardenIslandRoutePath(r).points;
+      // (round 3: not the woods' earth clearings and yards, as above)
+      const routes = D.routes.filter(r => r.points && r.points.length > 1 && r.surface !== 'earth').map(r => { const st = gardenIslandRoadStyle(r), cpts = gardenIslandRoutePath(r).points;
         const half = Array.isArray(r.widths) ? cpts.map((q, i) => { const a = cpts[Math.max(0, i - 1)], b = cpts[Math.min(cpts.length - 1, i + 1)], dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy) || 1; return gardenIslandRouteWidthAt(r, q.x, q.y) * .46 * Math.hypot(dy / l * W.cellW, dx / l * W.cellH); }) : null;
         return { id: r.id, main: st.main, width: st.main ? 40 : 26, half, points: cpts.map(pt) }; });
       // The plazas are shaped (the square at the green's foot, the Lakeside terrace): their outlines, smoothed, in px.
@@ -677,7 +678,9 @@ window.GardenNativeWorld = (function () {
             }
           }
         };
-        const routes = GardenIslandLayout.data.routes.filter(route => route.points && route.points.length > 1);
+        // (round 3: a clearing or yard of trodden earth in the woods, surface 'earth', is not laid as a paved band along its spine:
+        // the painted vale lays it to its own outline, soft-edged; a band here read as a hard pale rectangle under it)
+        const routes = GardenIslandLayout.data.routes.filter(route => route.points && route.points.length > 1 && route.surface !== 'earth');
         for (const route of routes) { const style = gardenIslandRoadStyle(route); paintRoute(route, style.edgeRadius, style.main ? woodlandFloorTone(p.lawn, 0x9b9273, .56) : routeEdge); }
         for (const route of routes) { const style = gardenIslandRoadStyle(route); paintRoute(route, style.radius, style.main ? woodlandFloorTone(p.stone, 0xd9cca9, .68) : routeColor); }
         // Quiet paving joints identify the main arrival road at walking scale.
