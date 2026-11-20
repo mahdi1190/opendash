@@ -688,14 +688,27 @@ window.GardenPaintedProps = (function () {
         // the outer slabs mossed and grassed over; the trail is trodden bare on to the bottom step and off the top one. A
         // flat striped rectangle with square ends, wider than its trail, read as pasted on; 19 Nov 2026)
         for (const [ax, ay, a] of [[0, dy + 5, .5], [side ? -24 + steps * 8 : 0, top - 3, .42]]) { const g = B.cx.createRadialGradient(ax, ay, 0, ax, ay, sw * .9); g.addColorStop(0, 'rgba(160,136,96,' + a + ')'); g.addColorStop(.6, 'rgba(160,136,96,' + a * .45 + ')'); g.addColorStop(1, 'rgba(160,136,96,0)'); B.cx.save(); B.cx.translate(ax, ay); B.cx.scale(1, .34); B.cx.translate(-ax, -ay); B.cx.fillStyle = g; B.cx.globalAlpha = 1; B.cx.beginPath(); B.cx.arc(ax, ay, sw * .9, 0, Math.PI * 2); B.cx.fill(); B.cx.restore(); }
+        // (highlands fix round 2: the treads were rows of pale slabs stacked nine px apart with a half-clear band between,
+        // which read as a see-through panel of brick courses across the lane. Each step is a riser and a tread now: the
+        // riser a dark, opaque face in shade (the sun is behind the climb), the tread's nose lit, the tread itself laid of
+        // worn slabs, and each step set back from the one below with the shadow of its nose on the riser beneath.)
         for (let i = 0; i < steps; i++) { const y = dy - i * 9, x = side ? -24 + i * 8 : 0, w = sw - i * 1.5;
-          B.f(B.rr(x - w + 2, y - 3.2, w * 2 - 4, 3.8, 1.9), STONE[3], .5);
+          B.f(B.rr(x - w + 1, y - 4.2, w * 2 - 2, 4.6, 1.2), '#6e6452').f(B.rr(x - w + 1, y - 4.2, w * 2 - 2, 1.4, .7), '#3e382c', .7);   // the riser in shade, the nose's shadow along its top
+          for (let k = 0; k < 5; k++) B.s(`M${x - w + 4 + r() * (w * 2 - 8)} ${y - 3.6}l${(r() - .5) * 1.2} 3.4`, '#4e4636', .7, .6);   // joints in the riser
           for (let sx0 = x - w + (r() - .5) * 3; sx0 < x + w - 3; ) { const sw2 = Math.min(x + w - sx0, 9 + r() * 15), mid = Math.abs(sx0 + sw2 / 2 - x) / w, tone = r();
-            B.f(B.rr(sx0 + .6, y - 9 + r() * .8, sw2 - 1.2, 7.2, 2.8), mid > .7 ? STONE[1] : tone < .5 ? STONE[0] : STONE[1]).f(B.rr(sx0 + 1.4, y - 8.4, (sw2 - 2.8) * .7, 2, 1), STONE[2], mid < .4 ? .75 : .45);
-            if (mid > .62 && r() < .7) B.f(D().blob(r, sx0 + sw2 / 2, y - 5, sw2 * .4, 2.6, 6, .5), MOSS[r() < .5 ? 0 : 1], .55);
+            B.f(B.rr(sx0 + .5, y - 9.2 + r() * .6, sw2 - 1, 5.4, 1.8), mid > .7 ? STONE[1] : tone < .5 ? STONE[0] : STONE[1]).f(B.rr(sx0 + 1, y - 9.2, sw2 - 2, 1.3, .6), '#f2ead4', mid < .5 ? .8 : .5);   // the tread, its nose lit
+            if (mid < .35) B.f(B.rr(sx0 + 1.5, y - 8, sw2 - 3, 2.6, 1), '#e6dcc0', .45);   // worn pale where the feet go
+            if (mid > .62 && r() < .7) B.f(D().blob(r, sx0 + sw2 / 2, y - 6.5, sw2 * .4, 2, 6, .5), MOSS[r() < .5 ? 0 : 1], .6);
             sx0 += sw2; }
-          for (const s of [-1, 1]) if (r() < .75) B.tufts(r, x + s * (w - 2), y - 2, 8, 4, season);
+          for (const s of [-1, 1]) if (r() < .85) B.tufts(r, x + s * (w - 1), y - 2, 9, 5, season);
         }
+        // the trodden lane runs on to the bottom step (no square edge where the stone begins), and a gate hangs open at the
+        // top on its left post, its five bars painted a little turned so they read
+        for (let k = 0; k < 6; k++) B.f(D().blob(r, (r() - .5) * sw * 1.2, dy + 2 + r() * 4, 10 + r() * 8, 2.6, 7, .5), k % 2 ? '#a08a62' : '#8a7a58', .45);
+        { const hx = -sw + 2, hy = top + 2, gw = Math.min(sw * .9, 30), gh = 26, WD = OAK || ['#7a5c3a', '#9a7a52', '#5a4028'];
+          B.f(B.poly([[hx, hy + 1], [hx - gw * .55, hy + 7], [hx - gw * .55 + 6, hy + 10], [hx + 6, hy + 4]]), '#2e3420', .2);
+          for (let k = 0; k < 5; k++) { const yy = -gh * (.15 + k * .17); B.s(`M${hx} ${hy + yy}L${hx - gw * .55} ${hy + 6 + yy}`, WD[k % 2], 2, .95); }
+          B.s(`M${hx} ${hy - gh * .15}L${hx - gw * .55} ${hy + 6 - gh * .83}`, WD[2] || WD[0], 1.8, .9).s(`M${hx - gw * .55} ${hy + 6 - gh * .15}L${hx - gw * .55} ${hy + 6 - gh * .85}`, WD[2] || WD[0], 2.4, .95); }
         for (const s of [-1, 1]) {
           for (let row = 0; row < 7; row++) for (let i = 0; i < 4; i++) { const x = s * (sw + 8 + i * 11) + (row & 1) * 4 * s, y = dy - 4 - row * 7.6; B.f(D().blob(r, x, y, 6.4, 3.8, 6, .3), (row + i) % 3 ? STONE[0] : STONE[1]).f(D().blob(r, x - 1.4, y - 1.2, 3.6, 1.6, 6, .3), STONE[2], .55); }
           B.f(D().blob(r, s * (sw + 22), dy - 58, 22, 7, 9, .5), MOSS[0], .85).f(D().blob(r, s * (sw + 18), dy - 61, 12, 3.6, 7, .5), MOSS[1], .85);

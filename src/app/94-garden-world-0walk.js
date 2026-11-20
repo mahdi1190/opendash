@@ -128,6 +128,8 @@ function _gwBuildSolids(m) {
   // like the old woodland's lamps, so you walk round the post and behind the lantern, not through it (their cell stays open)
   // the painted vale's standing things that name their foot (the cider press, the millstone, the maypole, the shore boulders...)
   if (island && typeof GardenPaintVale !== 'undefined' && GardenPaintVale && GardenPaintVale.feet) for (const f of GardenPaintVale.feet()) add(f.x0, f.y0, f.x1, f.y1, f.src);
+  // the fells' standing ground that names its foot: the sheepfold walls, and the ground a peak's picture stands over (you stop at the mountain's flank)
+  if (island && typeof GardenPaintedTerrain !== 'undefined' && GardenPaintedTerrain && GardenPaintedTerrain.feet) for (const f of GardenPaintedTerrain.feet()) add(f.x0, f.y0, f.x1, f.y1, f.src);
   for (const p of gardenPropsNow()) if (p.art === 'lamp' && /^ld-lamp-/.test(p.id)) { const x = p.x + .5, y = p.y + .7; add(x - .17, y - .2, x + .17, y + .04, 'street lamp post'); }
   // The landforms (mountains, the scarp, the ruin and terrace walls) stop the feet along their own outline, the one their
   // painters draw (2.73: the cells whose middle fell inside a thin wall blocked whole, so a wall had gaps you walked
@@ -151,7 +153,7 @@ function _gwTrunkSig() {
   const wood = typeof GardenPaintWood !== 'undefined' && GardenPaintWood && GardenPaintWood.trunks ? GardenPaintWood.trunks() : null;
   const orch = typeof GardenPaintVale !== 'undefined' && GardenPaintVale && typeof GardenPaintVale.orchardTrunks === 'function' ? GardenPaintVale.orchardTrunks() : null;
   const feetSig = list => { let h = list.length; for (const t of list) h = (Math.imul(h, 31) + Math.round(t[0] * 64) * 7 + Math.round(t[1] * 64)) | 0; return list.length + ':' + h; };
-  const vale = typeof GardenPaintVale !== 'undefined' && GardenPaintVale && GardenPaintVale.feetSig ? GardenPaintVale.feetSig() : '';
+  const vale = (typeof GardenPaintVale !== 'undefined' && GardenPaintVale && GardenPaintVale.feetSig ? GardenPaintVale.feetSig() : '') + (typeof GardenPaintedTerrain !== 'undefined' && GardenPaintedTerrain && GardenPaintedTerrain.feetSig ? '~' + GardenPaintedTerrain.feetSig() : '');
   return vale + '/' + (nat ? nat.rev : 0) + '/' + (wood ? wood.sig : '') + '/' + feetSig(Array.isArray(orch) ? orch : []) + '/' + feetSig(_gwFellTrunks()) + '/' + feetSig(_gwGateTrunks());
 }
 function _gwPaintedTrunks(island) {
