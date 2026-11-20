@@ -132,7 +132,8 @@ window.GardenPaintedTerrain = (function () {
         for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
           const wx = cb[0] - pad + (i + .5) * Q, wy = cb[1] - pad + (j + .5) * Q, n1 = kit.fbm(wx / 640, wy / 420, 5), n2 = kit.fbm(wx / 180, wy / 120, 6), n3 = kit.noise(wx / 46, wy / 30, 7), m = moor(wx);
           let c = n1 > .5 ? lerp(C.mid, C.sun, Math.min(1, (n1 - .5) * 3.2)) : lerp(C.mid, C.shade, Math.min(1, (.5 - n1) * 3.2));
-          if (n2 > .58) c = lerp(c, C.straw, Math.min(.5, (n2 - .58) * 3)); else if (n2 < .4) c = lerp(c, C.olive, Math.min(.45, (.4 - n2) * 3));
+          if (n2 > .56) c = lerp(c, C.straw, Math.min(.6, (n2 - .56) * 3.4)); else if (n2 < .42) c = lerp(c, C.olive, Math.min(.6, (.42 - n2) * 3.4));
+          { const sw = kit.noise(wx / 260, wy / 170, 8); c = lerp(c, sw > .5 ? C.sun : C.shade, Math.abs(sw - .5) * .7); }   // swells and hollows a screen across, so a close view has light and shade in it too
           if (m > .05) c = lerp(c, C.peat, m * .32 * (.6 + n3 * .6));
           const north = Math.max(0, Math.min(1, 1 - (wy - W.sky) / (9 * ch))); if (north > 0) c = lerp(c, C.cold, north * .22);
           const k = .86 + n3 * .26, o = (j * w + i) * 4; d[o] = c[0] * k; d[o + 1] = c[1] * k; d[o + 2] = c[2] * k; d[o + 3] = (.8 + n3 * .14) * 255;
@@ -543,8 +544,12 @@ window.GardenPaintedTerrain = (function () {
       // moss, ferns and heather along the far lip
       for (let i = 0; i < far.length; i += 2) { const p = far[i]; if (r() < .6) B.f(B.blob(r, p.x + (r() - .5) * 6, p.y - 1, 3 + r() * 4, 1.6 + r() * 1.6, 6, .5), snowy ? P.snow : r() < .5 ? P.moss : P.fellLo, .9); if (!snowy && r() < .25) for (let k = 0; k < 4; k++) B.s(`M${p.x} ${p.y + 1}q${(k - 1.5) * 2} 2 ${(k - 1.5) * 4} 6`, '#5f7a3c', 1, .85); }
       // the near lip: a lit rim with a dark undercut into the water and boulders at the edge
-      B.s(B.line(nearIn), P.rockDk, 4, .32).s(B.line(near), P.rockLo, 3.6, .95).s(B.line(near.map(p => ({ x: p.x, y: p.y - 1.4 }))), snowy ? P.snow : P.rockHi, 1.8, .9);
-      for (let i = 0; i < near.length; i += 3) { const p = near[i]; if (r() < .5) B.stone(r, p.x + (r() - .5) * 6, p.y, 3 + r() * 4, 2 + r() * 2, P, snowy ? 'snow' : P.lichen); }
+      // (the near lip was a pale line over a dark one, read as a road kerb: highlands fix round 2. It is broken rock now,
+      // stones of every size along the edge with turf lapping over them, a dark wet undercut only where the bank is deep)
+      B.s(B.line(nearIn), P.rockDk, 5, .28);
+      for (let i = 0; i < near.length; i += 2) { const p = near[i], rr = kit.rng(7301 + i), big = kit.noise(i * .11, 4.4, 459) > .55; if (rr() < .25) continue; const sx = p.x + (rr() - .5) * 5, sy = p.y + (rr() - .3) * 3;
+        if (big && rr() < .5) B.boulder(rr, sx, sy + 3, 9 + rr() * 8, 6 + rr() * 5, Object.assign({}, P, { rock: '#8c8578', rockLo: '#625c54', rockHi: '#bdb4a2' }), snowy); else B.stone(rr, sx, sy, 2.4 + rr() * 4.6, 1.6 + rr() * 2.2, P, snowy ? 'snow' : rr() < .4 ? P.lichen : null);
+        if (!snowy && rr() < .45) B.f(B.blob(rr, p.x + (rr() - .5) * 8, p.y - 3, 5 + rr() * 6, 2 + rr() * 1.5, 7, .5), rr() < .5 ? P.fellLo : P.moss, .85); }
       // the lip stones: a line of flat-topped boulders across the river just above the drop
       { const k = Math.floor(mid.length * .86), p = mid[k], a = far[k], b = near[k];
         for (let j = 0; j < 6; j++) { const t = (j + .5) / 6, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t + 2, rr = kit.rng(8801 + j);
