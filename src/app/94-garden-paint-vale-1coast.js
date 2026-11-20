@@ -38,7 +38,7 @@
           for (let k = 0; k < 4; k++) {
             const t = .1 + rc() * .8, side = rc() < .5 ? -1 : 1, x0 = a.x + (b.x - a.x) * t, y0 = a.y + (b.y - a.y) * t, len = 70 + rc() * 70, ang = Math.atan2(b.y - a.y, b.x - a.x) + side * (1.1 + rc() * .5);
             const pts = []; for (let s = 0; s <= 8; s++) { const u = s / 8, wob = Math.sin(u * 6 + i * 2 + k) * 10; pts.push({ x: x0 + Math.cos(ang) * (26 + len * u) - Math.sin(ang) * wob, y: y0 + Math.sin(ang) * (26 + len * u) * .8 + Math.cos(ang) * wob * .6 }); }
-            if (pts.filter(p => open(p.x, p.y)).length < 7) continue;
+            if (pts.some(p => !open(p.x, p.y))) continue;   // (all of it on the marsh: a creek with two points in the river ran out across the water as a grey ribbon)
             V.strokePts(B, pts, pal.mudLo, 11, .35); V.strokePts(B, pts, pal.mudHi, 10, .3, -1, -1); V.strokePts(B, pts, pal.mud, 8, .75); V.strokePts(B, pts, pal.pool, 3, .9, 0, .6); V.strokePts(B, pts, pal.poolHi, 1, .55, -.6, -.2);
             const end = pts[pts.length - 1]; B.f(B.blob(rc, end.x, end.y, 9 + rc() * 6, 4, 8, .4), pal.mud).f(B.blob(rc, end.x, end.y, 6, 2.4, 8, .4), pal.pool, .9).f(B.ell(end.x - 2, end.y - 1, 3, .7), pal.poolHi, .7);
           }
@@ -136,24 +136,39 @@
       flush();
     }
     const WOODG = ['#7a6a52', '#5e5242', '#a2927a', '#3e362c'], GPG = window.GardenPaintGround;
+    // where a groyne parts sand from shingle, each drifts a little way over the other (coast fix round 2: the beach changed
+    // from sand to shingle along a ruled line where two regions meet)
+    const themeOf = id => { const rg = (L.D.regions || []).find(r => r.id === id); return rg ? rg.theme || '' : ''; };
+    for (const g of groynes) {
+      const bb = kit.bboxOf(g, 90);
+      add(bb, 50, (B) => { B.cx.save(); B.cx.clip(V.loopPath(L.coast));
+        for (const p of g) { if (p.k !== 'beach') continue; const rr = kit.rng(kit.hash(Math.round(p.x), Math.round(p.y), 50));
+          for (const side of [-1, 1]) { const ox = -p.ty * side, oy = p.tx * side, c = cell(p.x + ox * 30, p.y + oy * 30), b = L.base(c.x, c.y), cold = !!(b && /ruin|mountain/.test(String(themeOf(b.region))));
+            for (let k = 0; k < 9; k++) { const d = 3 + Math.pow(rr(), 1.6) * 64, x = p.x + ox * d + p.tx * (rr() - .5) * 8, y = p.y + oy * d + p.ty * (rr() - .5) * 8, fade = 1 - d / 70;
+              if (cold) B.f(B.blob(rr, x, y, 6 + rr() * 8, 2 + rr() * 2, 7, .5), P.sand || '#e2cc98', .22 * fade);
+              else { const s = 1.4 + rr() * 2; B.f(B.ell(x + .5, y + .6, s, s * .6), '#6e6452', .25 * fade).f(B.ell(x, y, s, s * .62), ['#a89c88', '#8c8474', '#c2b8a4', '#9a9488'][Math.floor(rr() * 4)], .9 * fade); } } } }
+        B.cx.restore(); });
+    }
     const ROCKS2 = [{ rock: '#9a958c', rockLo: '#6e6a62', rockHi: '#c8c2b4', rockDk: '#3e3c38', lichen: '#c9c48a' }, { rock: '#8f8c86', rockLo: '#66645f', rockHi: '#bdb9b0', rockDk: '#3a3936', lichen: '#b8b884' }, { rock: '#a39684', rockLo: '#776b5c', rockHi: '#cdbfa8', rockDk: '#433a30', lichen: '#d0b85e' }];
     for (const g of groynes) {
       const bb = kit.bboxOf(g, 40);
       add(bb, 51, (B) => {
         const rr = kit.rng(kit.hash(Math.round(g[0].x), Math.round(g[0].y), 51)), posts = [];
-        for (let i = 0; i < g.length; i++) { const p = g[i], sea = p.k === 'sea', wet = sea || p.d < 26, h = sea ? 12 + rr() * 6 : wet ? 10 + rr() * 6 : 4 + Math.min(1, 60 / (p.d + 20)) * 6 + rr() * 2.5;
-          for (const s of [0, .5]) { const x = p.x + p.tx * s * 6 + (rr() - .5) * 1.2, y = p.y + p.ty * s * 6; posts.push({ x, y, h: h * (s ? .82 + rr() * .3 : 1), sea, wet }); } }
+        // (coast fix round 2: a post every few strides, stout and each its own height and lean, the planks between them; a post
+        // every 3 px read as a zipper or a line of stitches across the beach)
+        for (let i = 0; i < g.length; i += 3) { const p = g[i], sea = p.k === 'sea', wet = sea || p.d < 26, h = sea ? 15 + rr() * 7 : wet ? 13 + rr() * 6 : 6 + Math.min(1, 60 / (p.d + 20)) * 7 + rr() * 3;
+          posts.push({ x: p.x + (rr() - .5) * 1.6, y: p.y, h, sea, wet, w: 5.4 + rr() * 1.8 }); }
         posts.sort((a, b) => a.y - b.y);
         // the planks between the posts, sunk in the sand up the beach, standing out of it lower down
         const line = g.map(p => ({ x: p.x, y: p.y }));
         B.cx.save(); B.cx.clip(V.loopPath(L.coast)); V.strokePts(B, line, P.sandWet, 12, .3); B.cx.restore();
-        for (const [lift, col, a] of [[3, WOODG[1], .92], [6.5, WOODG[0], .88]]) { const lifted = g.map(p => ({ x: p.x, y: p.y - lift * (p.k === 'sea' || p.d < 26 ? 1 : .35) })); V.strokePts(B, lifted, col, 3.4, a); V.strokePts(B, lifted, WOODG[2], 1, .5, -.4, -1.2); }
+        for (const [lift, col, a] of [[3, WOODG[1], .92], [7.5, WOODG[0], .9], [12, WOODG[1], .85]]) { const lifted = g.filter(p => lift < 10 || p.k === 'sea' || p.d < 26).map(p => ({ x: p.x, y: p.y - lift * (p.k === 'sea' || p.d < 26 ? 1 : .35) })); if (lifted.length < 2) continue; V.strokePts(B, lifted, col, 4.2, a); V.strokePts(B, lifted, WOODG[2], 1.1, .5, -.4, -1.6); V.strokePts(B, lifted, WOODG[3], .8, .45, 0, 1.8); }
         if (GPG && GPG.castRuns) GPG.castRuns(B.cx, g.slice(1).map((p, i) => [g[i].x, g[i].y, p.x, p.y, p.k === 'sea' || p.d < 26 ? 14 : 6]), { a: .16 });
         for (const q of posts) {
           if (q.sea) B.f(B.ell(q.x + 1, q.y + 1, 4.4, 1.6), '#2e4a48', .25);
           else if (GPG && GPG.contact) GPG.contact(B.cx, q.x, q.y, 3.4, 1.4, .32); else B.shadow(q.x + 1, q.y + 1, 3.4, 1.4, .3);
-          B.post(q.x, q.y - q.h, q.y, 4.6, [WOODG[0], WOODG[1], WOODG[2]]).f(B.ell(q.x, q.y - q.h, 2.3, 1.1), WOODG[2], .9).f(B.ell(q.x - .5, q.y - q.h - .2, 1.2, .5), '#d8ccb0', .7);
-          if (q.wet) B.f(B.rect(q.x - 2.3, q.y - Math.min(q.h, 5.5), 4.6, Math.min(q.h, 5.5)), '#3e4e30', .75).f(B.circ(q.x + .6, q.y - 2.6, .55), '#dcd8ca', .8);
+          B.post(q.x, q.y - q.h, q.y, q.w, [WOODG[0], WOODG[1], WOODG[2]]).f(B.ell(q.x, q.y - q.h, q.w / 2, 1.3), WOODG[2], .9).f(B.ell(q.x - .6, q.y - q.h - .2, q.w / 4, .6), '#d8ccb0', .7);
+          if (q.wet) B.f(B.rect(q.x - q.w / 2, q.y - Math.min(q.h, 6), q.w, Math.min(q.h, 6)), '#3e4e30', .75).f(B.circ(q.x + .6, q.y - 2.6, .6), '#dcd8ca', .8);
           if (q.sea) B.s(`M${q.x - 3.4} ${q.y + .6}q3.4 2 6.8 0`, P.foam, 1.1, .6);
         }
       });
@@ -198,13 +213,38 @@
     // b. the map's own edge by the sea: boulders across the land's last row where it is beach or near the shore
     const edgeRocks = [];
     const seaBy = x => { for (let dx = -4; dx <= 4; dx++) for (let dy = 0; dy <= 2; dy++) { const c = L.base(x + dx + .5, dy + .5); if (c && c.ocean) return true; } return false; };   // (the sea itself close by: the island's outline also runs along the map's edge)
+    // (coast fix round 2: a tumble of rock, not a row: big and small stones in heaps with gaps, each its own form, size and
+    // stone (a split block, a low cobble, a tilted slab); a row of the same faceted boulder ran along the map's top edge)
     for (let x = 0; x < W.cols; x++) { const b = L.base(x + .5, .5); if (!b || !b.land || b.solid || b.freshwater || !seaBy(x)) continue;
-      const rr = kit.rng(kit.hash(x, 0, 53)), n = 2 + Math.floor(rr() * 2);
-      for (let j = 0; j < n; j++) { const s = 13 + rr() * 13 * (j ? .7 : 1), px = (x + (j + rr() * .8) / n) * cw, py = W.sky + (.15 + rr() * .5) * ch + (j ? 6 : 0); edgeRocks.push({ x: px, y: py, s, seed: kit.hash(x, j, 54), beach: !!b.beach }); } }
-    edgeRocks.forEach((k, i) => C.thing({ key: 'edge-rock-' + i, x: k.x, y: k.y, box: [-k.s * 1.3, -k.s * 1.6, k.s * 1.3, 8], foot: [-k.s * .9, k.s * .9, Math.max(8, k.y - W.sky + 2)], draw: B => {
-      const rr = kit.rng(k.seed), pal = ROCKS2[Math.floor(rr() * ROCKS2.length)]; B.boulder(rr, 0, 0, k.s * 2, k.s * (1 + rr() * .5), pal, C.season === 'winter' && rr() < .5);
-      if (!k.beach || rr() < .5) { for (let j = 0; j < 4; j++) B.tufts(rr, (rr() - .5) * k.s * 2, 1, 6, 3, ['#6f7a44', '#8a9452', '#a0a060'], 5 + rr() * 4); if (rr() < .5) B.f(B.blob(rr, k.s * .8, -1, k.s * .5, k.s * .3, 7, .5), '#5e6e3a', .8); }
+      const rr = kit.rng(kit.hash(x, 0, 53)), heap = kit.fbm(x / 3.2, 0, 55), n = heap > .55 ? 3 : heap > .4 ? 2 : 1;
+      for (let j = 0; j < n; j++) { const big = j === 0 && heap > .5, s = big ? 20 + rr() * 12 : 7 + rr() * 9, px = (x + (j + rr() * .8) / n) * cw, py = W.sky + (.15 + rr() * .5) * ch + (j ? 5 + rr() * 6 : 0); edgeRocks.push({ x: px, y: py, s, seed: kit.hash(x, j, 54), beach: !!b.beach, form: rr() }); } }
+    edgeRocks.forEach((k, i) => C.thing({ key: 'edge-rock-' + i, x: k.x, y: k.y, box: [-k.s * 1.5, -k.s * 1.8, k.s * 1.5, 8], foot: [-k.s * .9, k.s * .9, Math.max(8, k.y - W.sky + 2)], draw: B => {
+      const rr = kit.rng(k.seed), pal = ROCKS2[Math.floor(rr() * ROCKS2.length)], w = k.s * (k.form < .3 ? 1.5 : k.form < .7 ? 2.1 : 2.6), h = k.s * (k.form < .3 ? 1.5 : k.form < .7 ? 1 : .6);
+      if (k.form < .7) B.boulder(rr, 0, 0, w, h, pal, C.season === 'winter' && rr() < .5); else B.stone(rr, 0, -h * .4, w * .5, h * .55, pal, rr() < .5 ? pal.lichen : null);
+      for (let j = 0, m = 2 + Math.floor(rr() * 4); j < m; j++) { const cx = (rr() - .5) * w * 1.3, cs = 2 + rr() * 3.5; B.f(B.ell(cx + .6, 2 + rr() * 3 + .8, cs, cs * .6), '#3a362e', .3).f(B.ell(cx, 2 + rr() * 3, cs, cs * .62), [pal.rock, pal.rockLo, pal.rockHi][Math.floor(rr() * 3)]); }
+      if (!k.beach || rr() < .5) { for (let j = 0, m = 1 + Math.floor(rr() * 4); j < m; j++) B.tufts(rr, (rr() - .5) * w, 1, 6, 3, ['#6f7a44', '#8a9452', '#a0a060'], 4 + rr() * 5); if (rr() < .4) B.f(B.blob(rr, w * .35, -1, w * .22, h * .25, 7, .5), '#5e6e3a', .8); }
     } }));
+    // 3c. Plots behind the beaches that nobody has bought yet are rough coast, not bare squares: tussocks of marram and
+    // rough grass, a gorse or bramble mound, sea campion and thrift, in drifts by noise (coast fix round 2: dozens of empty
+    // fenced squares were the main picture of the coast from any far view). Inside the fence, clear of it; gone once the
+    // plot is bought (the ground bakes again then).
+    const wildAt = (x, y) => { try { return /^locked:(?!zn-)/.test(String(gardenAreaAt(Math.floor(x), Math.floor(y), (gardenModel().level || {}).level || 1))); } catch (e) { return false; } };
+    const wildCells = []; for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) { if (!L.plot(x + .5, y + .5) || coastD(x + .5, y + .5) > 16 * cw) continue; wildCells.push([x, y]); }
+    for (let i = 0; i < wildCells.length; i += 12) { const set = wildCells.slice(i, i + 12), pts = set.map(([x, y]) => L.cpt(x + .5, y + .5)), bb = kit.bboxOf(pts, 60);
+      add(bb, 58, (B) => { const wint = C.season === 'winter', aut = C.season === 'autumn';
+        for (const [x, y] of set) { if (!wildAt(x + .5, y + .5)) continue; const rr = kit.rng(kit.hash(x, y, 58)), x0 = x * cw, y0 = W.sky + y * ch, n = kit.fbm(x / 3, y / 3, 59), inside = (px, py) => L.plot(px / cw, (py - W.sky) / ch) && L.plot((px - 9) / cw, (py - W.sky) / ch) && L.plot((px + 9) / cw, (py - W.sky) / ch) && L.plot(px / cw, (py - W.sky - 8) / ch) && L.plot(px / cw, (py - W.sky + 7) / ch);
+          // rough grass in tussocks over the whole cell
+          for (let k = 0; k < 13; k++) { const px = x0 + 4 + rr() * (cw - 8), py = y0 + 6 + rr() * (ch - 8); if (!inside(px, py)) continue; B.f(B.blob(rr, px + 2, py + 1, 8, 2.6, 7, .5), '#4e5e30', .2);
+            for (let j = 0, m = 6 + Math.floor(rr() * 6); j < m; j++) { const h = 8 + rr() * 10, bend = (rr() - .3) * 5; B.s(`M${px + (rr() - .5) * 8} ${py}q${bend * .3} ${-h * .6} ${bend} ${-h}`, wint ? ['#a49c78', '#c4b890'][j % 2] : aut ? ['#a4a058', '#c8b870', '#8a8e4c'][j % 3] : ['#7f9a4a', '#a4ac5c', '#6f8a46', '#c0b870'][j % 4], 1 + rr() * .5, .9); } }
+          // here and there a gorse or bramble mound with its contact shade, and flowers in the turf
+          if (n > .32 && rr() < .75) { const px = x0 + cw * (.3 + rr() * .4), py = y0 + ch * (.55 + rr() * .25); if (inside(px, py)) { const s = 9 + rr() * 6, gorse = rr() < .6;
+            B.f(B.ell(px + 3, py + 1, s * 1.2, s * .35), '#2e3420', .22);
+            for (let j = 0; j < 9; j++) { const a = Math.PI * (1 + j / 8), bx = px + Math.cos(a) * s * .8, by = py - s * .45 + Math.sin(a) * s * .55; B.f(B.blob(rr, bx, by, s * .5, s * .38, 7, .5), gorse ? (j % 2 ? '#4e6a34' : '#5f7a3a') : (j % 2 ? '#4a5a34' : '#5a6a3e'), .95); }
+            B.f(B.blob(rr, px - s * .3, py - s * .9, s * .4, s * .22, 6, .5), gorse ? '#7a9a4a' : '#6e8048', .7);
+            if (!wint) for (let j = 0; j < 9; j++) B.f(B.circ(px + (rr() - .5) * s * 1.6, py - s * .3 - rr() * s * .8, gorse ? 1.2 : .9), gorse ? '#f0c830' : (aut ? '#3a2440' : '#f4eef0'), .95); } }
+          if (!wint) for (let k = 0, m = 1 + Math.floor(rr() * 5); k < m; k++) { const px = x0 + 6 + rr() * (cw - 12), py = y0 + 8 + rr() * (ch - 10); if (!inside(px, py)) continue; for (let j = 0; j < 4; j++) B.s(`M${px + (rr() - .5) * 5} ${py}l${(rr() - .5) * 2} ${-4 - rr() * 3}`, '#6f8a4a', .8, .9); for (let j = 0; j < 3; j++) B.f(B.circ(px + (rr() - .5) * 6, py - 5 - rr() * 3, 1.3), rr() < .5 ? '#e8a0b8' : '#f4f2ea', .95); } }
+      });
+    }
 
     // 4. The lighthouse at night: the lantern lit, its beam turning slowly over the sea, a warm pulse each time it comes
     // round (it stood dark at dusk and night: art director, round 3). Light, not paint: drawn above the night's grade,
@@ -253,13 +293,20 @@
       const GLOW = 'gpv-coast-glow', SPARK = 'gpv-coast-spark';
       if (!scene.textures.exists(GLOW)) { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,214,140,.95)'); g.addColorStop(.3, 'rgba(255,190,110,.45)'); g.addColorStop(1, 'rgba(255,170,90,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); scene.textures.addCanvas(GLOW, c); }
       if (!scene.textures.exists(SPARK)) { const c = document.createElement('canvas'); c.width = 32; c.height = 8; const x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 32, 0); g.addColorStop(0, 'rgba(230,240,255,0)'); g.addColorStop(.5, 'rgba(240,246,255,1)'); g.addColorStop(1, 'rgba(230,240,255,0)'); x.fillStyle = g; x.beginPath(); x.ellipse(16, 4, 16, 2.2, 0, 0, Math.PI * 2); x.fill(); scene.textures.addCanvas(SPARK, c); }
-      const root = scene.add.container(0, 0).setDepth(80006).setVisible(false), glows = [], sparks = [];
+      const FLAME = 'gpv-coast-flame';
+      if (!scene.textures.exists(FLAME)) { const c = document.createElement('canvas'); c.width = 24; c.height = 40; const x = c.getContext('2d'), g = x.createRadialGradient(12, 30, 1, 12, 26, 18); g.addColorStop(0, 'rgba(255,250,220,1)'); g.addColorStop(.35, 'rgba(255,200,90,.95)'); g.addColorStop(.7, 'rgba(240,110,40,.6)'); g.addColorStop(1, 'rgba(200,60,20,0)'); x.fillStyle = g; x.beginPath(); x.moveTo(12, 2); x.quadraticCurveTo(22, 20, 19, 31); x.quadraticCurveTo(12, 40, 5, 31); x.quadraticCurveTo(2, 20, 12, 2); x.fill(); scene.textures.addCanvas(FLAME, c); }
+      const root = scene.add.container(0, 0).setDepth(80006).setVisible(false), glows = [], sparks = [], fires = [];
       for (let i = 0; i < 70; i++) { const im = scene.add.image(0, 0, SPARK).setBlendMode(Phaser.BlendModes.ADD).setVisible(false); root.add(im); sparks.push(im); }
       let night = 0, checked = -1e9, placed = false;
       const place = () => { const nw = typeof _gw !== 'undefined' && _gw.nativeWorld; if (!nw || !nw.entities) return false;
         for (const p of lit) { const rec = nw.entities.get('prop:' + p.id); if (!rec || !rec.bounds) continue; const b = rec.bounds, cx = b.x + b.width / 2, foot = b.y + b.height;
           // a window or a lit door low in the front wall, and a soft spill on the ground in front
           for (const [dx, dy, s, a] of [[-.18, -.3, .9, .9], [.22, -.28, .7, .75], [0, .02, 1.6, .35]]) { const im = scene.add.image(cx + dx * b.width, foot + dy * b.height, GLOW).setBlendMode(Phaser.BlendModes.ADD).setScale(s, s * (dy > 0 ? .45 : 1)); im._a = a; root.add(im); glows.push(im); } }
+        // the beach fires (where the harbour painter laid them: GardenPaintVale.coastLights): a pool of firelight on the sand
+        // and a flame that flickers on its own beat (coast fix round 2: the coves had no light at all after dark)
+        for (const f of (V.coastLights || []).filter(o => o.fire)) { const pool = scene.add.image(f.x, f.y - 2, GLOW).setBlendMode(Phaser.BlendModes.ADD).setScale(3.4, 1.5); const halo = scene.add.image(f.x, f.y - 10, GLOW).setBlendMode(Phaser.BlendModes.ADD).setScale(1.2, 1.4);
+          const fl = [0, 1, 2].map(k => scene.add.image(f.x + (k - 1) * 4, f.y - 3, FLAME).setOrigin(.5, .9).setBlendMode(Phaser.BlendModes.ADD).setScale(.5 + (k === 1 ? .2 : 0)));
+          for (const im of [pool, halo, ...fl]) root.add(im); fires.push({ pool, halo, fl, ph: (f.x * 7 + f.y * 3) % 6.28 }); }
         return true; };
       return { obj: root, stat: () => ({ night: +night.toFixed(2), glows: glows.length }), update(time, view) {
         if (time - checked > 1000) { checked = time; try { const lt = window.GardenNative && GardenNative.lighting && GardenNative.lighting(), d = lt && lt.environment ? lt.environment().daylight : 1; night = Math.max(0, Math.min(1, (.4 - (d == null ? 1 : d)) / .28)); } catch (e) { night = 0; } }
@@ -268,6 +315,9 @@
         if (!placed) placed = place(); root.setVisible(true);
         const flick = .92 + Math.sin(time / 310) * .04 + Math.sin(time / 97) * .03;
         for (const g of glows) g.setAlpha(g._a * night * flick);
+        for (const f of fires) { const t = time / 1000 + f.ph, k = .85 + Math.sin(t * 7.3) * .08 + Math.sin(t * 13.1) * .05 + Math.sin(t * 2.3) * .04;
+          f.pool.setAlpha(.55 * night * k); f.halo.setAlpha(.5 * night * k);
+          f.fl.forEach((im, j) => { const s = (.42 + (j === 1 ? .2 : 0)) * (.85 + Math.sin(t * (9 + j * 3.1) + j) * .15); im.setScale(s * (1 + Math.sin(t * 5 + j) * .08), s).setAlpha(Math.max(night, .25) * (.75 + Math.sin(t * 11 + j * 2) * .2)); }); }
         // the moon's path: below the moon (towards the top right of the view), a column of glints on open sea only
         const t = time / 1000, mx = view.x + view.w * .68; let k = 0;
         for (let i = 0; i < sparks.length; i++) { const u = (i * .618 + Math.floor(t / 2.2 + i * .37) * .31) % 1, row = i / sparks.length, y = view.y + view.h * (.08 + row * .9), spread = 18 + row * view.w * .09, x = mx + (u - .5) * 2 * spread + Math.sin(t * .7 + i) * 4;
@@ -395,18 +445,22 @@ function gardenIslandHarbourThings(data) {
   const nearSolid = (x, y) => { for (let dy = -1.5; dy <= 1.5; dy += .75) for (let dx = -1.5; dx <= 1.5; dx += .75) { const b = gardenIslandBaseCell(Math.floor(x + dx), Math.floor(y + dy)); if (b && b.solid) return true; } return false; };
   const spot = (x, y, want) => !taken.has(Math.floor(x) + ',' + Math.floor(y)) && want.includes(kind(x, y)) && !nearSolid(x, y);
   // [key, candidates, wanted ground, half width and depth of the foot in px]
+  // (coast fix round 2: each stands on its own ground, a stride clear of the others and of the harbour lamps; the anchor,
+  // the pots and the bench were heaped on one another at the quay's west end, with bollards in front of them)
   const rows = [
     ['crates', [[44.3, 76.6], [43.6, 75.4], [57.3, 75.4]], ['path', 'grass', 'beach'], -28, 34, 12],
-    ['pots', [[47.5, 76.7], [45.3, 78.7], [57.6, 75.2], [43.2, 77.6]], ['path', 'grass', 'beach'], -24, 26, 9],
+    ['pots', [[57.6, 75.2]],   /* (not by the pier head: a harbour lamp stood in front of them) */ ['path', 'grass', 'beach'], -24, 26, 9],
     ['net', [[38.6, 80.6], [39.4, 80.2], [37.6, 81.6]], ['beach', 'grass'], -36, 36, 5],
     ['boat-sand', [[38.4, 83.6], [37.4, 84.4], [42.6, 81.2]], ['beach'], -40, 44, 10],
     ['crate1', [[53.2, 76.1], [46.6, 77.9]], ['path', 'beach'], -10, 10, 8],
-    ['bench', [[53.4, 78.55], [46.2, 78.6]], ['path', 'beach'], -24, 24, 6],
-    ['anchor', [[44.7, 78.7], [56.4, 76.4]], ['path', 'beach', 'grass'], -10, 10, 5],
+    ['bench', [[53.4, 78.55], [46.4, 78.45]], ['path', 'beach'], -24, 24, 6],
+    ['anchor', [[44.8, 78.45], [56.4, 76.4]], ['path', 'beach', 'grass'], -10, 10, 5],
     ['fishbox', [[48.3, 78.6], [52.9, 77.2]], ['path', 'beach'], -12, 12, 6],
   ];
-  const W = GARDEN_WORLD, out = [];
-  for (const [key, cands, want, l, r, d] of rows) { const at = cands.find(([x, y]) => spot(x, y, want)); if (at) out.push({ key, x: at[0], y: at[1], foot: [at[0] + l / W.cellW, at[1] - d / W.cellH, at[0] + r / W.cellW, at[1]] }); }
+  const W = GARDEN_WORLD, out = [], gap = .55;
+  const lamps = typeof gardenIslandHarbourLamps === 'function' ? gardenIslandHarbourLamps(D).map(q => [q.x - .3, q.y - .5, q.x + .3, q.y]) : [];
+  const clear = f => out.every(o => f[2] + gap < o.foot[0] || f[0] - gap > o.foot[2] || f[3] + gap < o.foot[1] || f[1] - gap > o.foot[3]) && lamps.every(o => f[2] + gap < o[0] || f[0] - gap > o[2] || f[3] + gap < o[1] || f[1] - gap > o[3]);
+  for (const [key, cands, want, l, r, d] of rows) { for (const [x, y] of cands) { const foot = [x + l / W.cellW, y - d / W.cellH, x + r / W.cellW, y]; if (spot(x, y, want) && clear(foot)) { out.push({ key, x, y, foot }); break; } } }
   gardenIslandHarbourThings._m = { d: D, out };
   return out;
 }

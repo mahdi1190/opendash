@@ -120,10 +120,19 @@
         const outline = (lo, hi, k, ds, dt, rad, off) => { const pts = []; for (let j = 0; j < 30; j++) { const a = j / 30 * Math.PI * 2, f = j / 30 * rad.length, i0 = Math.floor(f) % rad.length, i1 = (i0 + 1) % rad.length, w = (1 - Math.cos((f - Math.floor(f)) * Math.PI)) / 2, rr = rad[i0] * (1 - w) + rad[i1] * w; pts.push(q((lo + hi) / 2 + dt + Math.cos(a) * (hi - lo) / 2 * k * rr, ds + off + Math.sin(a) * hw * k * rr * .92)); } return B.poly(pts); };
         for (let i = 0; i < count; i++) {
           const lo = i * step + (i ? .2 / deck.length : 0), hi = (i + 1) * step - (i < count - 1 ? .2 / deck.length : 0), size = 1.02 + r() * .2, off = (r() - .5) * hw * .3, rad = Array.from({ length: 7 }, () => .86 + r() * .26), tone = tones[Math.floor(r() * tones.length)];
-          B.f(outline(lo, hi, size * 1.04, 1.8, 0, rad, off), '#3e3a32', .55);
-          B.f(outline(lo, hi, size, 0, 0, rad, off), tone);
-          B.f(outline(lo, hi, size * (.45 + r() * .2), -hw * (.18 + r() * .12), -(hi - lo) * (.05 + r() * .1), rad, off), '#c4bcaa', .3 + r() * .2);
-          if (r() < .7) B.f(outline(lo, hi, size * (.3 + r() * .25), hw * .55, (hi - lo) * (r() - .5) * .3, rad, off), r() < .6 ? '#4f6a3a' : '#5e6a34', .45 + r() * .2);
+          // (coast fix round 2: each slab laid as two or three stones of their own sizes, flat-topped and set close, not one
+          // egg-shaped boulder the player's height repeated across the river)
+          const at = (tc, sc, ra, rs, rd, dy) => { const pts = []; for (let j = 0; j < 30; j++) { const a = j / 30 * Math.PI * 2, f = j / 30 * rd.length, i0 = Math.floor(f) % rd.length, i1 = (i0 + 1) % rd.length, w = (1 - Math.cos((f - Math.floor(f)) * Math.PI)) / 2, rr = rd[i0] * (1 - w) + rd[i1] * w, p = q(tc + Math.cos(a) * ra * rr, sc + Math.sin(a) * rs * rr * .92); pts.push({ x: p.x, y: p.y + (dy || 0) }); } return B.poly(pts); };
+          // (seen from above at the camera's slant a flat stone is wider than it is deep: each is drawn foreshortened, a low
+          // side face under a flat top; now and then a small one set beside it in the water)
+          const mid2 = (lo + hi) / 2, half = (hi - lo) / 2, parts = [[mid2 + (r() - .5) * half * .16, off + (r() - .5) * hw * .2, half * (.9 + r() * .2), hw * (.5 + r() * .16)]];
+          if (r() < .4) parts.push([mid2 + (r() < .5 ? -1 : 1) * half * (.55 + r() * .2), off + (r() < .5 ? -1 : 1) * hw * (.62 + r() * .15), half * (.3 + r() * .12), hw * (.2 + r() * .08)]);
+          for (const [tc, sc, ra, rs] of parts) { const rd = Array.from({ length: 7 }, () => .84 + r() * .3), tn = tones[Math.floor(r() * tones.length)], lift = 2.5 + rs * .12;
+            B.f(at(tc, sc, ra * 1.06, rs * 1.08, rd, lift + 1.5), '#2e3a36', .4);
+            B.f(at(tc, sc, ra, rs, rd, lift * .5), '#5a564c').f(at(tc, sc, ra * .98, rs * .96, rd, -lift * .5), tn);
+            // the flat worn top, lit from the upper left, damp and darker towards its foot
+            B.f(at(tc - ra * .14, sc - rs * .2, ra * .6, rs * .5, rd, -lift * .5 - .5), '#c4bcaa', .26 + r() * .14);
+            if (r() < .55) B.f(at(tc + ra * (r() - .5) * .4, sc + rs * .7, ra * .55, rs * .25, rd, lift * .5), r() < .6 ? '#4f6a3a' : '#5e6a34', .5 + r() * .2); }
           if (r() < .4) { const p = q(lo + (hi - lo) * (.3 + r() * .4), off - hw * (.2 + r() * .3)); B.f(B.blob(r, p.x, p.y, 2.6 + r() * 2, 1.2 + r(), 6, .5), r() < .5 ? '#c8c48a' : '#e4e0d4', .55); }
           // foam on the side the river comes from, broken
           const fa = q(lo + (hi - lo) * (.15 + r() * .2), -hw * size * .98 + off), fb = q(lo + (hi - lo) * (.6 + r() * .25), -hw * size * .98 + off); B.s(`M${fa.x} ${fa.y}Q${(fa.x + fb.x) / 2} ${(fa.y + fb.y) / 2 - 2} ${fb.x} ${fb.y}`, P.foam || '#eef2e2', 1.3, .55);

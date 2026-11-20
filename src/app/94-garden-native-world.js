@@ -388,7 +388,10 @@ window.GardenNativeWorld = (function () {
       const inBox = () => true;
       // The sea edge is the island's own coast (the shared smooth outline);
       // current Vale inland banks use the same continuous water contours.
-      const coast = island.land.map(l => l.map(q => ({ x: q[0] * W.cellW, y: W.sky + q[1] * W.cellH })));
+      // (drawn as a curve through the outline's points, as the vale painters draw it: straight runs between them showed as
+      // facets and corners along the shore: coast fix round 2. Paint only; walking reads the layout's outline)
+      const smoothed = l => window.GardenPaintVale && GardenPaintVale.smoothLoop ? GardenPaintVale.smoothLoop(l) : l;
+      const coast = island.land.map(l => smoothed(l.map(q => ({ x: q[0] * W.cellW, y: W.sky + q[1] * W.cellH }))));
       const lawn = coast.map(l => insetTerrainContour(l, island.beachWidthPx));
       // Keep the existing legacy and frozen-water painting path.
       const authoredBanks = W.v >= 5 && typeof gardenOtherWaterLoops === 'function' && !cells.some((c, i) => c.material === 'ice' && inBox(i % W.cols, Math.floor(i / W.cols)));
@@ -485,7 +488,7 @@ window.GardenNativeWorld = (function () {
       waterRegions.length = 0; lockedRegions.length = 0; gateRows.length = 0; forestRows.length = 0; surfaceRevision++; frontierMetadata.revision = surfaceRevision;
       terrain.nativeBounds = { x: 0, y: 0, width, height }; pierBoards.nativeBounds = null;
       const island = typeof gardenIslandActive === 'function' && gardenIslandActive() ? gardenIslandGeometry() : null;
-      const coast = island ? island.land.map(loop => loop.map(point => ({ x: point[0] * W.cellW, y: W.sky + point[1] * W.cellH }))) : [];
+      const coast = island ? island.land.map(loop => { const l = loop.map(point => ({ x: point[0] * W.cellW, y: W.sky + point[1] * W.cellH })); return window.GardenPaintVale && GardenPaintVale.smoothLoop ? GardenPaintVale.smoothLoop(l) : l; }) : [];   // (paint only: a curve through the outline, coast fix round 2)
       const p = terrainPalette(sc.season), g = terrainPainter(0), cells = new Array(W.cols * W.rows), kinds = new Set(), level = m.level.level;
       oceanBackdrop.clear().setVisible(!!island);
       if (island) {
@@ -805,7 +808,8 @@ window.GardenNativeWorld = (function () {
           let sd = 0; for (const ch of String(pier.id)) sd = (Math.imul(sd, 31) + ch.charCodeAt(0)) | 0; const rnd = () => ((sd = (Math.imul(sd, 1103515245) + 12345) | 0) >>> 8) / 16777216;
           const tones = sc.season === 'winter' ? [0xa8a08c, 0xb4ac98, 0x9c9480, 0xbcb4a0, 0x948c7a] : [0xb09c76, 0xbfab84, 0xa48f6a, 0xc8b690, 0x9a8a6c, 0xb8a888];
           const last = decks.reduce((m, p) => p.side === 'south' && p.y + p.h > m ? p.y + p.h : m, 0) === pier.y + pier.h;
-          pg.fillStyle(0x234a48, .26).fillRoundedRect(x + 7, y + 9, w + 3, h + 2, 5).fillStyle(0x234a48, .14).fillRoundedRect(x + 4, y + 5, w + 6, h + 4, 7);
+          // (coast fix round 2: no translucent slab of shadow beside the deck: offset to the right of it, it showed as a straight
+          // strip of another water tone down the pier's side by day and a pale rectangle at night. The piles' own shadows stay.)
           pg.fillStyle(0x5a4c38).fillRoundedRect(x - 4, y, w + 8, h + 2, 3).fillStyle(0x6e5e44).fillRoundedRect(x - 4, y, w + 8, h, 3);
           for (let yy = y + 2, row = 0; yy < y + h - 2; yy += 8, row++) {
             const bh = Math.min(7, y + h - 2 - yy); if (bh < 2) break;

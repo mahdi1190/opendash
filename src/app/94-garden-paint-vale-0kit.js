@@ -53,7 +53,9 @@ window.GardenPaintVale = (function () {
     const cw = W.cellW, ch = W.cellH, cpt = (x, y) => ({ x: x * cw, y: W.sky + y * ch }), pt = p => cpt(p[0], p[1]);
     const L = { cellAt, soil: cultivatedGround(W, cellAt) };
     const pres = data.presentation || {}, base = (x, y) => gardenIslandBaseCell(x, y);
-    const coast = ((data.coast && data.coast.land) || []).map(l => l.map(pt));
+    // (the outline drawn as a curve through its points: straight runs between them showed as facets and corners along the
+    // shore, and the foam followed them: coast fix round 2. Only the picture; walking reads the layout's own outline)
+    const coast = ((data.coast && data.coast.land) || []).map(l => smoothLoop(l.map(pt)));
     const mat = (x, y) => { const c = L.cellAt ? L.cellAt(Math.floor(x), Math.floor(y)) : null; return c ? c.material : ''; };
     const statics = data.static || [], stat = id => statics.find(s => s.id === id);
     const routes = new Map((data.routes || []).map(r => [r.id, r]));
@@ -142,6 +144,15 @@ window.GardenPaintVale = (function () {
     for (const cut of clips.cuts) if (KIT().meets(cut.bb, cb)) B.cx.clip(cut.path);
     if (meadow && !soft) for (const cut of clips.lanes) if (KIT().meets(cut.bb, cb)) B.cx.clip(cut.path, cut.rule || 'nonzero');
     if (L.soil.path && KIT().meets(L.soil.bb, cb)) B.cx.clip(L.soil.path, 'evenodd');
+  }
+  /** A closed outline as a smooth curve through its own points (Catmull-Rom, a few steps a segment). Picture only. */
+  function smoothLoop(pts, steps) {
+    const n = pts.length; if (n < 4) return pts; steps = steps || 4; const out = [];
+    for (let i = 0; i < n; i++) { const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
+      for (let k = 0; k < steps; k++) { const t = k / steps, t2 = t * t, t3 = t2 * t;
+        out.push({ x: .5 * (2 * p1.x + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+          y: .5 * (2 * p1.y + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3) }); } }
+    return out;
   }
   /** Points along a polyline every step px, with the unit tangent. */
   function walk(pts, step) {
@@ -322,5 +333,5 @@ window.GardenPaintVale = (function () {
   }
   /** Landform kinds painted here (the world skips its own art for them). */
   function owns(kind) { return (kind === 'ruin-wall' || kind === 'ruin') && wanted(); }
-  return { feet: () => (wanted() ? feetNow : []), feetSig: () => (wanted() ? feetSig : ''), parts, groundSigs, PAL, wanted, paint, tick, clear, pendingGround, playerCanopies: () => cur ? cur.covering : null, status, paintTo, owns, readLayout, loopPath, strokePts, routeRibbon, clipGround, walk, lobe, capsule, hull, lawn, flags, setts, ok, get lastError() { return lastError; } };
+  return { feet: () => (wanted() ? feetNow : []), feetSig: () => (wanted() ? feetSig : ''), parts, groundSigs, PAL, wanted, paint, tick, clear, pendingGround, playerCanopies: () => cur ? cur.covering : null, status, paintTo, owns, readLayout, loopPath, smoothLoop, strokePts, routeRibbon, clipGround, walk, lobe, capsule, hull, lawn, flags, setts, ok, get lastError() { return lastError; } };
 })();
