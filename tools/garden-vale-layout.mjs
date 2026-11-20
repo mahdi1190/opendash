@@ -145,7 +145,7 @@ const landforms = [
   ...wallSegments('terrace-wall', 'orchard-headland', 'terrace-wall', [[63.2, 48.6], [68, 48.4], [78, 50.6], [90.8, 50]], [[80.2, 50.4, 2.0]], 1.6, 5),
   // the valley's screens (vale-valley.json): ground a tall roof hides, closed with what belongs there (the Ham's hedge, the wheel
   // pit, the rickyard's rails, the reed bed), so nobody walks out of sight behind the mill, the barn or the smokehouse
-  ...VL.screens.map(s => ({ id: 'screen-' + s.id, region: VL.region, kind: 'screen', screen: s.id, name: s.reads, polygon: s.poly.map(p => p.map(r2)), col: 'full', reserved: true })),
+  ...VL.screens.map(s => Object.assign({ id: 'screen-' + s.id, region: VL.region, kind: 'screen', screen: s.id, name: s.reads, polygon: s.poly.map(p => p.map(r2)), col: 'full', reserved: true }, s.ricks ? { ricks: s.ricks } : {})),
 ];
 
 /* ------------------------------------------------------------ routes: main road, lanes, trails, plazas */
@@ -309,8 +309,8 @@ for (const ns of VV.newStatics) S.push(Object.assign(sightRow(ns.id), ns));
 // (rule 14: the mill's ridge about 5.5 figures, the barn's 4), the milk stand at the fork, the bee boles against the carr, the
 // hide on its legs at the salt edge; and the valley's seats (a bench for two, each facing one view) and its lamps
 for (const [id, mv] of Object.entries(VL.staticMoves)) { const p = S.find(q => q.id === id); if (!p) { warn.push('valley move: no static ' + id); continue; } Object.assign(p, mv); }
-VL.seats.forEach((q, i) => { const [x, y] = q.cell || q.at.map(Math.floor); S.push(Object.assign(sightRow('ld-vseat-' + (i + 1)), { x, y, w: q.w || 2, h: 1, col: 'soft', district: VL.region, door: { x, y: y + 1 }, faces: q.faces })); });
-VL.lamps.forEach((q, i) => S.push(Object.assign(sightRow('ld-vlamp-' + (i + 1)), { x: Math.floor(q[0]), y: Math.floor(q[1]), col: 'none', district: VL.region, door: { x: Math.floor(q[0]), y: Math.floor(q[1]) + 1 } })));
+VL.seats.forEach((q, i) => { if (q.dropped) return; const [x, y] = q.cell || q.at.map(Math.floor); S.push(Object.assign(sightRow('ld-vseat-' + (i + 1)), { x, y, w: q.w || 2, h: 1, col: 'soft', block: [1.15, .3], district: VL.region, door: { x, y: y + 1 }, faces: q.faces })); });
+VL.lamps.forEach((q, i) => S.push(Object.assign(sightRow('ld-vlamp-' + (i + 1)), { x: Math.floor(q[0]), y: Math.floor(q[1]), col: 'soft', block: [.26, .2], hit: [.06, 2.3], district: VL.region, door: { x: Math.floor(q[0]), y: Math.floor(q[1]) + 1 } })));
 // how deep a building stands on the ground (fix round 1): a house blocks its whole footprint, front wall to back wall, not
 // only the row along its front, so the feet stop where its walls stand and never step into the picture. The front row
 // (and so the foot it is drawn from, its door and its depth order) stays where it was; the rows behind it are added.
@@ -526,7 +526,9 @@ const presentation = {
     { id: 'cider-square', route: 'cider-square', x: 77.9, y: 37, job: 'barrels, the press' },
     { id: 'summit-cairn', route: 'summit-cairn', x: 50.6, y: 9.8, job: 'the cairn and the beacon' },
   ],
-  screens: VL.screens.map(s => ({ id: s.id, landform: 'screen-' + s.id, reads: s.reads })),   // (round 3: what closes the ground behind the valley's roofs)
+  screens: VL.screens.map(s => ({ id: s.id, landform: 'screen-' + s.id, reads: s.reads })),
+  // (round 3: the water meadows' three carriers from their hatches, and the race path's fishing stage: painted ground, no collision)
+  carriers: (VL.carriers || []).map(c => ({ id: c.id, pts: c.pts.map(p => p.map(r2)) })), stage: VL.stage || null,   // (round 3: what closes the ground behind the valley's roofs)
   fields,   // the village's and the valley's sections grouped into fields: how locked land reads (edge) and the one way in (gate)
   gateKinds: Object.fromEntries(gates.map(g => [g.id, g.kind])),
   shortcuts: [

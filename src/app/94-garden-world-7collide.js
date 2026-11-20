@@ -56,7 +56,7 @@ function gardenCollideData(mArg) {
     const md = row.metadata || {}, p = md.prop; if (md.kind !== 'prop' || !p || p.site) continue;
     const b = row.bounds, art = b ? { x0: b.x / W.cellW, y0: (b.y - W.sky) / W.cellH, x1: (b.x + b.width) / W.cellW, y1: (b.y + b.height - W.sky) / W.cellH } : null;
     let own;
-    if (gardenPropCol(p) === 'soft') { const cx = p.x + (p.w || 1) / 2, foot = p.y + (p.h || 1) - .08; own = { x0: cx - .3, y0: foot - .55, x1: cx + .3, y1: foot + .05 }; }
+    if (gardenPropCol(p) === 'soft') { const cx = p.x + (p.w || 1) / 2, foot = p.y + (p.h || 1) - .08, hw = p.hit ? p.hit[0] : .3, hh = p.hit ? p.hit[1] : .55; own = { x0: cx - hw, y0: foot - hh, x1: cx + hw, y1: foot + .05 }; }
     else own = { x0: p.x, y0: p.y, x1: p.x + (p.w || 1), y1: p.y + (p.h || 1) };
     clicks.push({ id: p.id, name: p.name || p.id, own, art, door: p.door ? { x0: p.door.x + .08, y0: p.door.y + .16, x1: p.door.x + .92, y1: p.door.y + .84 } : null, act: !!p.act });
   }

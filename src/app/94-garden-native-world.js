@@ -336,7 +336,7 @@ window.GardenNativeWorld = (function () {
     // read this allowance. Regional locks and physical surfaces still win.
     function routePaintAllowance(cells, sc, cultivated) {
       // A post or a cross standing on a road cell keeps the road under it: cutting its cell out left a square of bare ground in the paving.
-      const statics = new Map(gardenIslandData().static.map(p => [p.id, p])), smallSight = base => { const p = base.route && statics.get(base.staticId); return !!p && p.w === 1 && p.h === 1 && p.col !== 'full'; };
+      const statics = new Map(gardenIslandData().static.map(p => [p.id, p])), smallSight = base => { const p = statics.get(base.staticId); return !!p && (base.route && p.w === 1 && p.h === 1 && p.col !== 'full' || p.col === 'soft' || p.col === 'none'); };   // (round 3: a bench or a lamp beside a path never cuts a square out of its verge)
       const open = new Set(sc.areas || []), allowed = new Uint8Array(cells.length);
       const SOIL_MATERIALS = new Set(['bed', 'patch', 'veg', 'rich', 'herb', 'berry']), fieldIds = new Set(((gardenIslandData().presentation || {}).fields || []).flatMap(f => f.sections));
       for (let i = 0; i < cells.length; i++) {

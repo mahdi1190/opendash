@@ -81,7 +81,7 @@ function _gwBuildSolids(m) {
   for (const p of gardenPropsNow()) {
     if (p.needs && !gardenWorkOwned(p.needs)) continue;
     if (gardenPropCol(p) !== 'soft') continue;
-    const cx = p.x + p.w / 2, foot = p.y + p.h - 0.08, bw = Math.min(p.w, 2) * 0.5, d = 0.28;
+    const cx = p.x + p.w / 2, foot = p.y + p.h - 0.08, bw = p.block ? p.block[0] : Math.min(p.w, 2) * 0.5, d = p.block ? p.block[1] : 0.28;   // (block: [w, d] in cells, a prop's own foot when it is not the usual half its width: a bench's stone bank, a lamp's post)
     add(cx - bw / 2, foot - d, cx + bw / 2, foot, 'small prop: ' + (p.name || p.id));   // a lectern, a camera, a post box: a small box at the base, so there is room beside it
   }
   // The authored landmark oak is painted scenery rather than a planted row.
@@ -1529,7 +1529,7 @@ function _gwPropOwnsPoint(prop, pt) {
   if (prop.site) return false;
   // A small prop (a lectern, the sundial, a post box: 'soft') owns only the ground right under it; its painted pixels pick it
   // too (hitPoint). Owning its whole cell and the door cell in front made a strip of the green open the story (17 Nov 2026).
-  if (gardenPropCol(prop) === 'soft') { const cx = prop.x + (prop.w || 1) / 2, foot = prop.y + (prop.h || 1) - .08; return Math.abs(pt.x - cx) <= .3 && pt.y >= foot - .55 && pt.y <= foot + .05; }
+  if (gardenPropCol(prop) === 'soft') { const cx = prop.x + (prop.w || 1) / 2, foot = prop.y + (prop.h || 1) - .08, hw = prop.hit ? prop.hit[0] : .3, hh = prop.hit ? prop.hit[1] : .55; return Math.abs(pt.x - cx) <= hw && pt.y >= foot - hh && pt.y <= foot + .05; }   // (hit: [half width, height] in cells, for a tall thin prop such as a lamp post)
   if (pt.x >= prop.x && pt.x < prop.x + (prop.w || 1) && pt.y >= prop.y && pt.y < prop.y + (prop.h || 1)) return true;
   const door = prop.door;
   return !!door && Math.abs(pt.x - door.x - .5) <= .42 && Math.abs(pt.y - door.y - .5) <= .34;
