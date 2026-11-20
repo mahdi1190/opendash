@@ -869,7 +869,7 @@ window.GardenPaintedProps = (function () {
     });
     // trees on the scarp top are the library's own, like the planting round them (their trunks join the one trunk list: gateTrees)
     fallsFeet = [];
-    for (const [id, v, hh, dx, dy] of (fed ? [['tree.pine', 1, 120, 150, -S - 4]]   /* (Cloudbreak layout: no birch on the lip beside the Edge walk; its trunk stood on the scarp's face) */ : [['tree.pine', 0, 150, -84, -S + 8], [season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 86, -S + 14], ['tree.pine', 1, 120, 30 + Wd / 2, -S - 6]])) { h.add(libImage(scene, id, v, season, { h: hh }, ax + dx, ay + dy, false)); fallsFeet.push([+((ax + dx) / o.W.cellW).toFixed(2), +((ay + dy - o.W.sky) / o.W.cellH).toFixed(2), hh > 140 ? .5 : .4]); }
+    for (const [id, v, hh, dx, dy] of (fed ? []   /* (Cloudbreak layout: no birch or pine on the lip beside the Edge walk: the birch's trunk stood on the scarp's face, the pine's crown over the walk; the plan's pines stand back from it) */ : [['tree.pine', 0, 150, -84, -S + 8], [season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 86, -S + 14], ['tree.pine', 1, 120, 30 + Wd / 2, -S - 6]])) { h.add(libImage(scene, id, v, season, { h: hh }, ax + dx, ay + dy, false)); fallsFeet.push([+((ax + dx) / o.W.cellW).toFixed(2), +((ay + dy - o.W.sky) / o.W.cellH).toFixed(2), hh > 140 ? .5 : .4]); }
     const base = h.add(image(scene, baseKey, x, y));
     // The fixed falls' canvas includes empty padding beside the cave stair.
     // Keep its solid rock/sheet mask once per existing texture; frame probes

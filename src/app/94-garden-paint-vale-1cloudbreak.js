@@ -96,6 +96,8 @@
   const GREY = ['#b4ad9c', '#a59e8c', '#c2bba8', '#9a9484', '#bab3a0', '#aaa494'], WET = ['#8e8a80', '#7e7b72', '#a09b8e', '#6f6c64'], PEAT = ['#9c927f', '#8a806e', '#a8a08c', '#7c7364'];
   // flat stones laid on a jittered grid, each an irregular six-sided slab with its own grey, a shadow at its foot, lit along
   // its top edge, lichen now and then; o.s the slab's size (px), o.cover the share of the ground laid (the rest stays turf)
+  // the part of a ground item's box a chunk shows (pad: px either side, so a slab across the chunk's edge is drawn whole)
+  const within = (bb, cb, pad) => { if (!cb) return bb; const b = [Math.max(bb[0], cb[0] - pad), Math.max(bb[1], cb[1] - pad), Math.min(bb[2], cb[2] + pad), Math.min(bb[3], cb[3] + pad)]; return b[2] > b[0] && b[3] > b[1] ? b : null; };
   function slabs(B, bb, o) {
     const K = KIT(), s = o.s, sy = s * .6;
     for (let y = bb[1] - sy, row = 0; y < bb[3] + sy; y += sy, row++) for (let x = bb[0] - s + (row % 2) * s * .5; x < bb[2] + s; x += s) {
@@ -126,17 +128,17 @@
     const way = L.routes.get('pass-summit');
     if (way && way.points && way.points.length > 1) {
       const rib = V.routeRibbon(L, way, false), bb = kit.bboxOf(rib, 8), seed = kit.hashStr('cloudbreak-way');
-      C.add(bb, seed, (B, r) => { const path = new Path2D(B.poly(rib)); B.cx.save(); B.cx.clip(path); B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), snowy ? '#c8ccc4' : '#6e6b5a');
-        slabs(B, bb, { s: 24, cover: .99, salt: seed, tones: GREY, snowy }); B.cx.restore(); B.s(path, '#4e4a40', 1.6, .45); });
+      C.add(bb, seed, (B, r, cb) => { const path = new Path2D(B.poly(rib)), box = within(bb, cb, 30); if (!box) return; B.cx.save(); B.cx.clip(path); B.f(B.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]), snowy ? '#c8ccc4' : '#6e6b5a');
+        slabs(B, box, { s: 24, cover: .99, salt: seed, tones: GREY, snowy }); B.cx.restore(); B.s(path, '#4e4a40', 1.6, .45); });
     }
     const TOP = { 'summit-cairn': { s: 40, cover: .86, base: '#8a9458' }, 'long-view': { s: 46, cover: .95, base: '#6e6b5a' }, 'falls-top': { s: 36, cover: .9, wet: true, base: '#5e5c50' }, 'wick-yard': { s: 22, cover: .99, base: '#6e6b5a' }, 'cloudbreak-col': { s: 24, cover: .99, base: '#6e6b5a' }, 'moor-end': { s: 30, cover: .7, base: '#7a6a4e', peat: true }, 'cove-shingle': null };
     for (const pz of L.pres.plazas || []) {
       const o = TOP[pz.id]; if (!o || !Array.isArray(pz.shape)) continue;
       const loop = V.shapeLoop(L, pz.shape), bb = kit.bboxOf(loop, 10), seed = kit.hashStr('top|' + pz.id);
-      C.add(bb, seed, (B, r) => { const path = new Path2D(B.poly(loop)); B.cx.save(); B.cx.clip(path);
-        B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), snowy ? '#e8ece6' : o.base);
+      C.add(bb, seed, (B, r, cb) => { const path = new Path2D(B.poly(loop)), box = within(bb, cb, 30); if (!box) return; B.cx.save(); B.cx.clip(path);
+        B.f(B.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]), snowy ? '#e8ece6' : o.base);
         if (!snowy) for (let k = 0; k < (bb[2] - bb[0]) * (bb[3] - bb[1]) / 1400; k++) B.tufts(r, bb[0] + r() * (bb[2] - bb[0]), bb[1] + r() * (bb[3] - bb[1]), 14, 5, o.peat ? ['#8a6a8a', '#7d8f4e'] : ['#8c9a5e', '#c2c78e', '#7d8f4e'], 5);
-        slabs(B, bb, { s: o.s, cover: o.cover, salt: seed, tones: o.wet ? WET : o.peat ? PEAT : GREY, snowy });
+        slabs(B, box, { s: o.s, cover: o.cover, salt: seed, tones: o.wet ? WET : o.peat ? PEAT : GREY, snowy });
         B.cx.restore(); B.s(path, '#4e4a40', 1.6, .4); });
     }
     // Cold cove's shingle: the cove's floor of grey pebbles, wet and darker toward the sea, where the cove walk and Wick's steps end
@@ -151,7 +153,7 @@
     // the last wall: where the moor runs out west you come to a dry-stone wall running the length of the fell edge, and
     // the moor road ends at its gate (ld-moor-gate); you stop at the stones, not in open heather at the map's edge
     const H9 = H * .9, mg = L.stat('ld-moor-gate');
-    if (mg) for (let row = 0; row <= 18; row++) {
+    if (mg) for (let row = 1; row <= 18; row++) {   // (row 0 is the march wall's)
       if (row >= mg.y && row < mg.y + mg.h) continue;
       const b = L.base(1, row); if (!b || !b.land || b.freshwater) continue;
       const p = L.cpt(mg.x + .25, row + 1);
@@ -164,7 +166,7 @@
     if (!window.__fellsMarchWall) for (let x = 0; x < W_COLS(C); x += 2) {
       const b = L.base(x + 1, 0); if (!b || !b.land || b.freshwater || (b.zone !== undefined && b.zone !== 5)) continue;
       const p = L.cpt(x + 1, .55);
-      thing({ key: 'march-wall-' + x + '|' + C.season, x: p.x, y: p.y, box: [-52, -H9 - 6, 52, 8], foot: [-49, 49, 14], draw: B => wallRun(B, kit.rng(990 + x), 98, 0, H9, snowy) });
+      thing({ key: 'march-wall-' + x + '|' + C.season, x: p.x, y: p.y, box: [-52, -H9 - 6, 52, 8], foot: [-46, 46, 14], draw: B => wallRun(B, kit.rng(990 + x), 98, 0, H9, snowy) });
     }
     // the plan's Scots pines, in their groups (each moved to open turf if the layout put it on a path or a plot)
     (M.trees || []).forEach((t, i) => {
@@ -243,18 +245,21 @@
   } };
   // the moor's end gate: two stone gateposts in the last dry-stone wall, a weathered five-bar gate shut between them (seen
   // a little side on), the wall running off north and south, and the fingerpost: "The Long Road", pointing on west
-  MK.ART['ld-moor-gate'] = { box: [-30, -96, 30, 8], draw(B, o) {
+  MK.ART['ld-moor-gate'] = { box: [-30, -110, 34, 10], draw(B, o) {
     const kit = KIT(), r = kit.rng(79), snowy = o.season === 'winter', postTop = -H * 1.3, gateTop = -H * 1.1;
     B.shadow(2, 0, 26, 7, .3);
-    // the last wall: rough coursed stones running up the slope (north) behind the gate and down to its foot in front
-    const wall = (x0, y0, x1, y1) => { const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 6); for (let i = 0; i <= n; i++) { const t = i / n, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; for (let k = 0; k < 4; k++) B.stone(r, x + (r() - .5) * 2, y - 3 - k * 6.2, 3.8 + r() * 1.4, 2.8 + r() * .8, STONE, snowy && k === 3 ? 'snow' : k === 3 && r() < .4 ? STONE.lichen : null); } };
     // the gateposts: squared stone, lit on the west face
-    for (const [x, y] of [[-9, -50], [-3, -4]]) { B.f(B.rect(x - 4, y + postTop, 8, -postTop), '#a49a86').f(B.rect(x - 4, y + postTop, 2.6, -postTop), '#d0c6b0', .8).f(B.rect(x + 2, y + postTop, 2, -postTop), '#6a6254', .8).f(B.ell(x, y + postTop, 4.6, 1.8), '#8a806e'); }
+    // (seen a little from the east, so its bars read as a gate across the gap, not as one line)
+    const posts = [[-16, -50], [8, -4]];
+    B.f(B.poly([[posts[0][0], posts[0][1]], [posts[1][0], posts[1][1]], [posts[1][0] + 8, posts[1][1] + 3], [posts[0][0] + 8, posts[0][1] + 3]]), '#2e3420', .25);   // the gate's shadow on the road's end
+    const post = ([x, y]) => B.f(B.rect(x - 6, y + postTop, 12, -postTop), '#a49a86').f(B.rect(x - 6, y + postTop, 3.6, -postTop), '#d6ccb6', .85).f(B.rect(x + 3, y + postTop, 3, -postTop), '#5e584c', .85).f(B.ell(x, y + postTop, 7, 2.6), '#8a806e').f(B.ell(x - 1, y + postTop - .8, 5, 1.6), snowy ? STONE.snow : '#b4aa94');
+    post(posts[0]);
     // the gate: five bars and a brace hung between the posts, seen side on (it runs down the slope toward you)
-    const gx0 = -7, gy0 = -48, gx1 = -5, gy1 = -6;   // (the gate fills the gap in the last wall, post to post)
+    const gx0 = -11, gy0 = -48, gx1 = 4, gy1 = -6;   // (the gate fills the gap in the last wall, post to post)
     for (let k = 0; k < 5; k++) { const h = 4 + k * (-gateTop - 6) / 4; B.s(`M${gx0} ${gy0 - h}L${gx1} ${gy1 - h}`, '#3a2e22', 4.4, .7).s(`M${gx0} ${gy0 - h}L${gx1} ${gy1 - h}`, k === 4 ? '#e0cca0' : '#c4a878', 3, 1); }
-    B.s(`M${gx0} ${gy0 - 4}L${gx1} ${gy1 + gateTop + 2}`, WOOD[1], 1.8, .9);
-    wall(-4, -4, -2, 0);
+    B.s(`M${gx0} ${gy0 - 4}L${gx1} ${gy1 + gateTop + 2}`, '#8a7050', 2.6, .95);
+    for (const t of [.06, .94]) { const x = gx0 + (gx1 - gx0) * t, y = gy0 + (gy1 - gy0) * t; B.s(`M${x} ${y - 4}v${gateTop + 2}`, '#a88c62', 3, 1); }   // the gate's two stiles
+    post(posts[1]);
     // the fingerpost by the gate's foot, one arm pointing west, on into the hills: THE LONG ROAD
     const fx = 14, fTop = -H * 1.9;
     B.f(B.rect(fx - 2.4, fTop, 4.8, -fTop), WOOD[0]).f(B.rect(fx - 2.4, fTop, 1.4, -fTop), WOOD[2], .7).f(B.ell(fx, 0, 5, 1.6), '#5e584c', .5);
