@@ -1968,14 +1968,6 @@
    "field": "thyme",
    "cells": [
     [
-     73,
-     22
-    ],
-    [
-     74,
-     22
-    ],
-    [
      75,
      22
     ],
@@ -2073,18 +2065,11 @@
     ],
     [
      74,
-     21
-    ],
-    [
-     74,
      23
-    ],
-    [
-     73,
-     21
     ]
    ],
-   "facesPath": true
+   "facesPath": true,
+   "note": "kept a cell clear of the crag at the pass gap's east lip (it stood on the plot)"
   }
  },
  "trees": {

@@ -90,7 +90,8 @@
 
   // The treehouse: a big sweet chestnut on its own bank of grass and roots at the top of the beach, a plank house in
   // its fork, a ladder that has lost its bottom rungs and a rope swing.
-  ART['ld-treehouse'] = { box: [-118, -232, 112, 14], draw(B, o) {
+  ART['ld-treehouse'] = { box: [-118, -244, 112, 4], draw(B, o) {
+    B.cx.translate(0, -12);   // (round 3 layouts: the root bank's foot on the footprint's front edge; it lay 12 px below it, where the feet could stand on it)
     const r = KIT().rng(79), s = o.season, leaf = leafOf(s), tx = -16;
     // the root bank: turf over the sand, roots running out, a few stones
     B.shadow(tx + 10, 4, 92, 12, .3);
