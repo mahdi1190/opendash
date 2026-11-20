@@ -613,8 +613,8 @@ function gardenPumpArt(lever, flow) {
     + A.P('#3f6f5a', A.rrect(-6, -36, 12, 36, 2)) + A.P('#4f8a70', A.rect(-4.6, -34, 2.6, 32), 0.7) + A.P('#2f5a48', A.rrect(-8, -40, 16, 5, 2))
     + A.P('#2f5a48', 'M5 -28H14Q17.4 -28 17.4 -24.6V-20.4H14V-24.4H5z') + A.P('#1e3a2e', A.ell(15.7, -20.4, 1.9, 0.7))
     + (f >= 0 ? `<g class="ga-flow" opacity="${Math.round(f * 100) / 100}">` + A.P('#9ad4ee', 'M14.5 -20.4Q15.5 -14 14.9 -7.6H16.6Q16.2 -14 16.9 -20.4z', 0.9) + A.P('#ffffff', A.ell(15.6, -7.6, 3.4, 0.9), 0.7) + '</g>' : '')
-    + A.P('#2f5a48', 'M-6 -30.4L-9.4 -28.6V-25.4L-6 -23.6z')   // (the lever's bracket on the body's side, at shoulder height for you)
-    + `<g class="ga-lever" transform="rotate(${a} -8 -27)">` + A.S('#2f5a48', 3, 'M-8 -27L-22.6 -25') + A.P('#24463a', A.ell(-23.2, -24.9, 2.3, 2)) + '</g>' + A.P('#24463a', A.ell(-8, -27, 1.9, 1.9));
+    + A.P('#2f5a48', 'M-6 -25.4L-9.4 -23.6V-20.4L-6 -18.6z')   // (the lever's bracket on the body's side, at shoulder height for you)
+    + `<g class="ga-lever" transform="rotate(${a} -8 -22)">` + A.S('#2f5a48', 3, 'M-8 -22L-22.6 -20') + A.P('#24463a', A.ell(-23.2, -19.9, 2.3, 2)) + '</g>' + A.P('#24463a', A.ell(-8, -22, 1.9, 1.9));
 }
 function _gldDraw(kind, p, sc, o) {
   const fn = _GLD_PROP_ART[kind]; if (!fn) return '';

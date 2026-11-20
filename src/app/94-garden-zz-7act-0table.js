@@ -201,8 +201,8 @@ const GARDEN_ACT_BY_PROP = Object.freeze({
   'ld-bench-a': [{ act: 'sit', name: 'the bench', stand: [0, -0.16], deg: 90, seat: 0.36 }],
   'ld-bench-b': [{ act: 'sit', name: 'the bench', stand: [0, -0.16], deg: 90, seat: 0.36 }],   // seat: the seat's height as drawn today, a share of the figure's height (the size standard asks 0.3 H: a painter who lowers it changes this one number)
   'ld-stump': [{ act: 'sit', name: 'the stump', stand: [-0.1, 0.45], deg: 90, seat: 0.9 }],   // up on the top (round 4: all of you on it, over its little door, legs down the front)
-  'ld-pump': [{ act: 'pump', name: 'the pump', stand: [-0.7, 0.12], deg: 0 }],   // (round 6: side on at the lever's end, on the pump's left)
-  'ld-wish': [{ act: 'wish', name: 'the wishing well', stand: [0, 0.95], deg: -90 }],   // (far enough back not to stand on its stones)
+  'ld-pump': [{ act: 'pump', name: 'the pump', stand: [-0.74, 0.12], deg: 0, edge: true }],   // (round 6: side on at the lever's end, on the pump's left)
+  'ld-wish': [{ act: 'wish', name: 'the wishing well', stand: [0.45, 0.95], deg: -90, reach: 3.2 }],   // (round 6: off the sticks on the ground, its prompt from further out on the way in)   // (far enough back not to stand on its stones)
   'ld-chapel': [{ act: 'bell', name: 'the chapel bell', stand: [0, 0.6], deg: -90 }],
   'ld-lighthouse': [{ act: 'ladder', name: 'the lighthouse ladder', stand: [0.12, 0.1], deg: -90 }],
   pier: [{ act: 'dangle', name: 'the pier end', painted: true, pierEnd: true, stand: [0, -0.3], deg: 90, lift: 0 }],   // (the pier is painted with the coast, not a prop of its own)
@@ -211,9 +211,9 @@ const GARDEN_ACT_BY_PROP = Object.freeze({
   'lake-board': [{ act: 'read', name: 'the board', stand: [0, 0.6], deg: 90 }],
   'ld-sign-c': [{ act: 'read', name: 'the sign', stand: [0, 0.6], deg: 90 }],
   'ld-mile': [{ act: 'read', name: 'the milestone', stand: [0, 0.6], deg: 90 }],
-  'ld-orchard-wall': [{ act: 'lean', name: 'the wall', stand: [-0.5, -0.32], deg: 90, pri: 1.2, edge: true }],   // (round 6: right against it, back to it; pri: its prompt before the fruit tree's beside it)
+  'ld-orchard-wall': [{ act: 'lean', name: 'the wall', stand: [-0.5, 0.03], deg: 90, pri: 1.2, edge: true }],   // (round 6: right against it, back to it; pri: its prompt before the fruit tree's beside it)
   'ld-falls': [{ act: 'shower', name: 'the falls', stand: [0, 0.4], deg: 90, reach: 3.4 }],   // (its prompt reaches all the way under it)
-  'camera-tripod': [{ act: 'photo', name: 'the camera', stand: [-1.3, 1.5], deg: 90 }],
+  'camera-tripod': [{ act: 'photo', name: 'the camera', stand: [-0.3, 1.25], deg: 90 }],   // (round 6: clear of the anchor and the lobster pot, in reach of the prompt)
 });
 /** Placed decorations, by their effect kind (gardenDecor(id).effect.kind). */
 const GARDEN_ACT_BY_DECOR = Object.freeze({ sit: [{ act: 'sit', name: 'the seat', stand: [0, 0.06], deg: 90, seat: 0.45 }], wish: [{ act: 'wish', name: 'the well', stand: [0, 0.5], deg: -90 }] });

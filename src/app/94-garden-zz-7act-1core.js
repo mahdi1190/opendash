@@ -104,7 +104,7 @@ function _gaPromptEl() {
   el.addEventListener('pointerdown', (ev) => ev.stopPropagation());
   box.appendChild(el); _ga.el = el; return el;
 }
-function _gaWords(r) { const row = GARDEN_ACTS[r.act]; if (!row) return ''; if (r.down) return 'Set it down'; const v = row.verb; return /the |it$|a |under/.test(v) || !r.name ? v : r.act === 'sit' ? 'Sit on ' + r.name : v; }
+function _gaWords(r) { const row = GARDEN_ACTS[r.act]; if (!row) return ''; if (r.down) return 'Set it down'; if (r.boat && typeof gardenHas === 'function' && gardenHas('gear:rowing-boat') < 1) return 'Needs a rowing boat (the tackle shop)'; const v = row.verb; return /the |it$|a |under/.test(v) || !r.name ? v : r.act === 'sit' ? 'Sit on ' + r.name : v; }
 /** Once a frame from the walker (cheap: looks round five times a second). */
 function gartActFrame() {
   if (typeof _gw === 'undefined' || !_gw.on) return;
@@ -117,6 +117,7 @@ function gartActFrame() {
     if (cur.row.fetch) _gaFetchDraw();
   }
   if (!_ga.carry) _gaCarriedSweep(false);
+  try { const B = typeof _gh !== 'undefined' && _gh.bubble; if (B) { if (!B._gaP) B._gaP = { x: _gw.px, y: _gw.py }; else if (Math.hypot(_gw.px - B._gaP.x, _gw.py - B._gaP.y) > 2.5) gardenBubbleClose(); } } catch (e) { /* no bubble */ }   // (round 6: a place's bubble closes when you walk off, not at the far side of the vale)
   if (now - _ga.t < 200) { if (_ga.near && _ga.el && !_ga.el.hidden) _gaPlace(); return; }
   _ga.t = now;
   const el = _gaPromptEl(); if (!el) return;
@@ -411,7 +412,7 @@ function _gaPumpWorks(cur) {
       const t = !_gaMotion() ? 0.5 : cur.H && cur.H.t0 ? (performance.now() - cur.H.t0) / ms : 0;
       const lv = _gaMotion() ? lerp(GA_PUMP_LEVER, Math.max(0, Math.min(1, t))) : 0, fl = !_gaMotion() ? 1 : t < 0.2 ? 0 : t < 0.26 ? (t - 0.2) / 0.06 : t < 0.72 ? 1 : t < 0.82 ? (0.82 - t) / 0.1 : 0;
       const key = Math.round(lv) + '|' + Math.round(fl * 5);   // (only the lever's turn and the water's strength change: two attributes, never a redraw)
-      if (key !== last && Sp.node) { last = key; try { const L = Sp.node.querySelector('.ga-lever'), F = Sp.node.querySelector('.ga-flow'); if (L) L.setAttribute('transform', `rotate(${Math.round(lv)} -8 -27)`); if (F) F.setAttribute('opacity', String(Math.round(fl * 5) / 5)); } catch (e) { /* as drawn */ } }
+      if (key !== last && Sp.node) { last = key; try { const L = Sp.node.querySelector('.ga-lever'), F = Sp.node.querySelector('.ga-flow'); if (L) L.setAttribute('transform', `rotate(${Math.round(lv)} -8 -22)`); if (F) F.setAttribute('opacity', String(Math.round(fl * 5) / 5)); } catch (e) { /* as drawn */ } }
     } });
 }
 /* ---------- round 2: the things the world now has ---------- */
@@ -528,7 +529,7 @@ function _gaFetchDraw() {
         } });
     } catch (e) { f.spr = null; }
   }
-  try { f.mouth.setAttribute('opacity', loose && f.spr ? '0' : '1'); } catch (e) { /* fine */ }
+  try { f.mouth.setAttribute('opacity', (loose && f.spr) || f.phase === 'home' ? '0' : '1'); } catch (e) { /* fine */ }
   if (f.phase === 'back' || f.phase === 'home') {
     let P = null; try { P = gpPetMe(); } catch (e) { P = null; } if (!P) return;
     const face = (P.visualFace != null ? P.visualFace : P.dir) < 0 ? -1 : 1, sat = f.phase === 'home', q = U(P.x, P.y);
@@ -541,6 +542,13 @@ function _gaFetchDraw() {
   }
   try { f.mouth.setAttribute('transform', `translate(${Math.round(x * 10) / 10} ${Math.round(y * 10) / 10}) rotate(${Math.round(r)})`); } catch (e) { /* gone */ }
 }
+/** The stick the pet brought back, lying in the grass at your feet (a thing of the world, with a shadow) until you throw it again or for 20 s. */
+function _gaStickDropped(x, y) {
+  if (typeof gardenWorldAdd !== 'function') return;
+  try { if (_ga.stickDown) _ga.stickDown.remove(); } catch (e) { /* gone */ }
+  const A = typeof GARDEN_ACTOR_SCALE === 'number' ? GARDEN_ACTOR_SCALE : 1, t0 = performance.now();
+  try { _ga.stickDown = gardenWorldAdd({ id: 'ga-stick-down', x, y, z: y, lift: 0, ground: false, svg: `<g transform="scale(${A})"><ellipse cx="0" cy="1.4" rx="12" ry="1.8" fill="#1a1408" opacity="0.22"/><g transform="translate(0 -0.6) rotate(-6)">${_GA_MOUTH_STICK}</g></g>`, update(dt, Sp) { if (_ga.stickDown !== Sp || performance.now() - t0 > 20000 || (_ga.fetch && _ga.fetch.phase !== 'home')) { if (_ga.stickDown === Sp) _ga.stickDown = null; Sp.remove(); } } }); } catch (e) { /* no stick */ }
+}
 function _gaFetchGoal(P) {
   const f = _ga.fetch; if (!f || !P || !P.me) return null;
   if (f.phase === 'wait') { if (f.playT && performance.now() > f.playT + (_gaMotion() ? f.cur.row.ms * GA_STICK_LAND : 0)) { f.phase = 'out'; try { if (window.GardenNativeActions) GardenNativeActions.effect('lift', f.x * GARDEN_WORLD.cellW, GARDEN_WORLD.sky + f.y * GARDEN_WORLD.cellH, { width: 18 }); } catch (e) { /* fine */ } } return { x: P.x, y: P.y, near: 10 }; }
@@ -551,14 +559,15 @@ function _gaFetchGoal(P) {
     }
     return { x: f.x, y: f.y, near: 0.08, run: true };
   }
-  if (f.phase === 'back' && Math.hypot(P.x - (_gw.px + 0.7), (P.y - (_gw.py + 0.25)) * 1.3) < 0.35) {   // at your feet: it drops the stick and sits, pleased with itself
+  if (f.phase === 'back' && Math.hypot(P.x - (_gw.px + 0.5), (P.y - (_gw.py + 0.22)) * 1.3) < 0.2) {   // at your feet: it drops the stick and sits, pleased with itself
     f.phase = 'home'; const cur = f.cur;
+    _gaStickDropped(_gw.px + 0.3, _gw.py + 0.12);   // (round 6: dropped on the grass at your feet, and it stays there a while)
     try { if (P.root && typeof petClipRun === 'function' && typeof petClipDef === 'function' && petClipDef('petted')) petClipRun(P.root, 'petted'); } catch (e) { /* it just sits */ }
     try { gardenToast('Good fetch!'); } catch (e) { /* fine */ }
     setTimeout(() => { if (_ga.fetch === f) _ga.fetch = null; if (_ga.cur === cur) gartActStop(true); }, 1400);
   }
   if (f.phase === 'home') return null;
-  return { x: _gw.px + 0.7, y: _gw.py + 0.25, near: 0.2, run: true };
+  return { x: _gw.px + 0.5, y: _gw.py + 0.22, near: 0.08, run: true };   // (round 6: right up to your feet, a step off them)
 }
 /** Is the figure drawn mirrored (its x axis runs right to left on screen)? -1 then, else 1. */
 function _gaFigureFlip(gpl) {
