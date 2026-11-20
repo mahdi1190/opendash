@@ -373,7 +373,7 @@ window.GardenPaintedTerrain = (function () {
     { const wEnds = L.routes.filter(rt => rt.tier !== 'plaza').map(rt => rt.points.reduce((m, p) => p.x < m.x ? p : m, rt.points[0])).filter(p => p.x < 6 * cw).sort((a, b) => a.x - b.x), e = wEnds[0];
       const rows = []; for (let y = .2; y < W.rows; y += .25) if (fellAt(.5 * cw, W.sky + y * ch)) rows.push(y);
       if (e && rows.length > 4) {
-        const yTop = W.sky + rows[0] * ch, yBot = W.sky + (rows[rows.length - 1] + .25) * ch, gy = e.y + 4, hh = gardenSizePx('wall', .2), wx = 36;   // (in from the edge, where the map's own haze would hide it)
+        const yTop = W.sky + rows[0] * ch, yBot = W.sky + (rows[rows.length - 1] + .25) * ch, gy = e.y + 4, hh = gardenSizePx('wall', .2), wx = 76;   // (in from the edge: at 36 px the map's own haze hid it, and the audit found its feet an invisible wall; round 3 integration)
         L.moorEnd = { gate: { x: wx, y: gy }, end: e, post: { x: Math.max(wx + 26, e.x - 34), y: e.y - 20 }, feet: [] };
         for (let y = yTop; y < yBot; y += 12) L.moorEnd.feet.push({ x0: -.3, y0: (y - W.sky) / ch, x1: (wx + 6) / cw, y1: (Math.min(yBot, y + 12) - W.sky) / ch, src: "the moor's end wall" });
         add([-20, yTop - hh - 20, e.x + 30, yBot + 20], 35, (B, r0, cb) => {
