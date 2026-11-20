@@ -206,6 +206,9 @@ window.GardenPaintGround = (function () {
       /** Take the pictures off the stage but keep them (the world is being rebuilt round them). */
       detach() { if (!host) return; for (const ch of list) if (ch.image) { ch.image.destroy(); ch.image = null; if (ch.tex) ch.cached = { key: ch.tex, K: ch.K }; ch.tex = null; bakedPx -= ch.px; ch.px = 0; ch.K = 0; ch.job = null; } host = null; },
       pendingInView() { const v = viewBox(.05); if (dead || !v) return 0; let n = 0; for (const ch of list) if (!ch.image && meets(ch.bb, v)) n++; return n; },
+      // (vale final, rule 16) every chunk of this layer that meets the box (inside its bleed) is on the stage: a soft placeholder
+      // layer under this one (94-garden-paint-terrain-0kit.js opts.under) hides its own chunk there
+      readyIn(bb) { const inner = [bb[0] + PAD, bb[1] + PAD, bb[2] - PAD, bb[3] - PAD]; for (const ch of list) if (!ch.image && meets([ch.bb[0] + PAD, ch.bb[1] + PAD, ch.bb[2] - PAD, ch.bb[3] - PAD], inner)) return false; return true; },
       softInView() { const v = viewBox(.05), K = level(); if (dead || !v) return 0; let n = 0; for (const ch of list) if (meets(ch.bb, v) && (!ch.image || ch.K < K || ch.dirty)) n++; return n; },
       chunks: list.length, get pending() { return list.filter(c => !c.image).length; }, get worstMs() { return Math.round(worst); }, get sliceWorstMs() { return Math.round(sliceWorst); }, get bakeMs() { return Math.round(bakeMs); }, buildMs: 0,
       get texturePx() { return bakedPx; }, get MB() { return +(bakedPx * 4 / 1048576).toFixed(1); }, get level() { return wantK; },
