@@ -526,21 +526,25 @@
    "kind": "fold",
    "edge": "drystone",
    "plan": "the last dry-stone wall, on its west side only",
-   "gateHint": [3.6, 15.4],
+   "gateHint": [3.5, 12.6],
    "cells": [
-    [0, 15],
-    [1, 15],
-    [0, 16],
-    [1, 16],
-    [2, 16],
-    [3, 16],
-    [0, 17],
-    [1, 17],
-    [2, 17],
-    [3, 17],
-    [4, 17],
-    [2, 18]
-   ]
+    [0, 10],
+    [1, 10],
+    [2, 10],
+    [3, 10],
+    [4, 10],
+    [0, 11],
+    [1, 11],
+    [2, 11],
+    [3, 11],
+    [4, 11],
+    [0, 12],
+    [1, 12],
+    [2, 12],
+    [3, 12],
+    [4, 12]
+   ],
+   "moved": "north of the moor road: south of it the woodland crowns below the Edge hid it from the camera"
   }
  },
  "staticMoves": {
@@ -673,16 +677,6 @@
     [75.4, 7.5]
    ],
    "halfWidth": 0.4
-  },
-  {
-   "id": "falls-rail",
-   "kind": "rock-wall",
-   "line": [
-    [45.7, 25.45],
-    [46.7, 25.4],
-    [47.9, 25.3]
-   ],
-   "halfWidth": 0.45
   }
  ],
  "crossings": [

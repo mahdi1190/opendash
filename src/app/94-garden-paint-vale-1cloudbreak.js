@@ -45,7 +45,7 @@
     B.f(B.rect(-w + 2, -3, w * 2 - 4, 3), '#6a6254').f(B.rect(-w + 2, -3, w * 2 - 4, 1), '#8a8272', .8);   // the footing stones, the length of the seat
     for (const x of [-w + 6, w - 6]) { B.f(B.rect(x - 4, seat, 8, -seat - 2), '#8a8272').f(B.rect(x - 4, seat, 2.4, -seat - 2), '#b4ac98', .8).f(B.rect(x + 2, seat, 2, -seat - 2), '#5e584c', .7); }
     B.f(B.rr(-w, seat - 4, w * 2, 5, 1.6), WOOD[0]).f(B.rect(-w + 1, seat - 4, w * 2 - 2, 1.4), snowy ? STONE.snow : WOOD[2], .9).f(B.rect(-w, seat, w * 2, 1.4), WOOD[1], .8);
-    if (!snowy) B.tufts(r, 0, 1, 70, 10, ['#8c9a5e', '#c2c78e'], 5);
+    if (!snowy) B.tufts(r, 0, -1, 70, 10, ['#8c9a5e', '#c2c78e'], 5);
   }
   function picnicRock(B, r, snowy) {
     B.boulder(r, 0, 0, 46, 15, STONE, snowy);
