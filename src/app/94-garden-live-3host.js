@@ -337,6 +337,7 @@ function _glhIntent(ev) {
   _glhPrune();
   _gdSave();
   if (!ev.away) { const result = _glhResOf(ev, e); _glhSend('all', 'res', result); _gllToolFeedback(result, false); }
+  if ((ev.t === 'land' || ev.t === 'build') && typeof gardenToast === 'function') gardenToast(_glhDiaryWhat(e, 1) + '!', { icon: ev.t === 'land' ? 'trees' : 'hammer' });   // (full co-op: a friend's gift to the garden, said out loud)
   const A = _gll.actors.get(ev.w);
   if (A) _gllPose(A, _GL_POSE[ev.t] || 'pick', 760);
   if (ev.x != null && _GL_EMOJI[ev.t]) _gllFloat(_gw.svg, ev.x, ev.y, _GL_EMOJI[ev.t], A ? A.n : '');
@@ -398,8 +399,8 @@ function _glhApply(ev, key) {
   if (act.on && !rec) return 'gone';
   // Whose it is: a plant is its planter's, a decoration its owner's (`own`: given to the host, it is the host's); no name there, the host's.
   const owner = !rec ? '' : hit.p ? rec.by || '' : rec.own || '', mine = !!rec && owner === f;
-  // what is the host's stays the host's unless the host said otherwise, and what is another visitor's is theirs, whatever May touch says
-  if (act.mine && !mine && (owner || !_glhPermOf(ev).touch)) return 'not-yours';
+  // full co-op (2.75): a friend with Play together may do to anything here what you may, yours or another friend's; what is someone else's still goes home to them (a take posts it back)
+  if (act.mine && !mine && !_glhPermOf(ev).touch) return 'not-yours';
   const mp = hit.p ? 'plants' : hit.d ? 'decor' : '';
   const entry = { f, t, i: ev.i, d: today, at: _gdNow(), p: ev.p, x: ev.x, y: ev.y, ...(mp ? { mp } : {}) };   // (m.now is the model's, up to a minute behind: this one sorts against the visit's start)
   const put = (mark, extra) => { g.gl[key] = Object.assign(entry, { mark }, extra || {}); return ''; };
@@ -476,11 +477,12 @@ function _glhApply(ev, key) {
     }
     case 'take': {
       const d = hit.d, mark = _gdMark([['decor', d.uid]]);
-      const gi = mine ? rec.gi : '';
-      if (mine) _gdDecorBack(rec);                            // its own post too: if the answer is lost, it still comes back, once
+      const gi = rec.own ? rec.gi : '';
+      if (rec.own) _gdDecorBack(rec);                         // back in its owner's bag, whoever put it away: its own post too, so if the answer is lost it still comes back, once
       delete g.decor[d.uid];
-      return put(mark, { u: d.uid, noUndo: !!mine, ...(gi ? { gi } : {}) });
+      return put(mark, { u: d.uid, noUndo: !!rec.own, ...(gi ? { gi } : {}) });
     }
+    case 'land': case 'build': return _glhLand(ev, put, m);
     case 'give': {
       if (!mine) return 'not-yours';
       const d = hit.d, lk = 'gl.d.' + ev.i, gi = rec.gi, mark = _gdMark([['decor', d.uid], ['led', lk]]);
@@ -514,6 +516,27 @@ function _glhApply(ev, key) {
     }
     default: return 'kind';
   }
+}
+/** A friend buys a piece of this garden's land, or builds one of its things (full co-op, 2.75). They paid with their own coins before asking (their page's ledger); here it costs
+ *  you nothing and is yours for good, the same rows your own purchase writes (land:<id> / feat:<id> in the ledger, so the snapshot, the map, the gates and what you can walk on
+ *  follow by themselves). A thing that stands is set out near where they stand. No Undo: their coins are spent. Your own coins and level are never touched. */
+function _glhLand(ev, put, m) {
+  const feat = ev.t === 'build', id = String(ev.p || '');
+  if (feat) {
+    const info = typeof gardenLandFeatureInfo === 'function' ? gardenLandFeatureInfo(id, m) : null;
+    if (!info) return 'gone'; if (info.built) return 'have'; if (info.why) return 'not-yet'; if (info.spot) return 'spot';
+  } else {
+    const info = typeof gardenLandInfo === 'function' ? gardenLandInfo(id, m) : null;
+    if (!info) return 'gone'; if (info.owned) return 'have'; if (!info.lvOk || !info.reach || !info.keyOk) return 'not-yet';
+  }
+  const g = _gdG(), lk = 'gl.l.' + ev.i, mark = _gdMark([['led', lk]]);
+  g.led[lk] = { d: m.today, k: 'b', c: 0, x: 0, i: { [(feat ? 'feat:' : 'land:') + id]: 1 }, n: 1, by: ev.f };   // (k b: it counts as bought here; c 0: they paid)
+  const def = feat ? gardenLandFeature(id) : gardenLandRow(id);
+  if (!feat && def) _gdEmit('land', { id, x: def.x, y: def.y, w: def.w, h: def.h });
+  gardenModel();   // (the land on screen, and what you can walk on, are the garden's from this moment)
+  if (feat && GARDEN_WORLD.v >= 3 && typeof gardenFeatureSetNearby === 'function') { try { gardenFeatureSetNearby(id, ev.x != null ? { x: ev.x, y: ev.y } : null); } catch (e) { /* it can be set out from the land office */ } }
+  setTimeout(() => { try { _glhSnapAll(); } catch (e) { /* the next world check */ } }, 60);   // everybody here sees the new land at once
+  return put(mark, { noUndo: true, land: id, ...(feat ? { feat: 1 } : {}) });
 }
 function _glhPrune() {
   const g = _gdG(), ks = Object.keys(g.gl);
@@ -741,6 +764,8 @@ function _glhDiaryWhat(e, n) {
     case 'give': return `${who} gave you the ${what}`;
     case 'drop': return `${who} left a parcel`;
     case 'pick': return `${who} picked up a parcel`;
+    case 'land': { const r = typeof gardenLandRow === 'function' ? gardenLandRow(e.land || e.p) : null; return `${who} bought ${r ? r.name : 'a piece of land'} for your garden`; }
+    case 'build': { const r = typeof gardenLandFeature === 'function' ? gardenLandFeature(e.land || e.p) : null; return `${who} built ${r ? _gscA(r.name.toLowerCase().replace(/^the /, '')) : 'something'} in your garden`; }
     case 'trade': return e.f2 ? `${who} and ${_glhByName(e.f2)} traded` : `${who} traded with you`;
     default: return `${who} was here`;
   }

@@ -155,11 +155,11 @@ function _glvDebit(i, t, f, debit, extra) {
   _gscSaveGarden();
 }
 /** An intent, with an id. `debit`: what leaves your bag now. Sent no faster than the rate allows: a drag across a row is a row of messages. */
-function _glvIntent(t, f, debit) {
+function _glvIntent(t, f, debit, extra) {
   if (!_glvLive()) return;
   const i = _gllNewId();
-  if (debit) _glvDebit(i, t, f, debit);
-  _glv.pending.set(i, { t, debit: !!debit, f });
+  if (debit || extra) _glvDebit(i, t, f, debit, extra);   // (extra: {c: -coins}, what buying a friend's land or building there costs you: full co-op, 2.75)
+  _glv.pending.set(i, { t, debit: !!(debit || extra), f });
   if (typeof gartPlayerAct === 'function') gartPlayerAct(_GL_POSE[t] || 'pick', 760);
   _glvSendDo({ i, t, ...f });
   if (typeof _gdvTouch === 'function') _gdvTouch();
@@ -217,7 +217,7 @@ function _glvResult(b) {
       _glvRefund(b.i, P); _gdvTouch();
       const at = _glvCellAt(P.f && P.f.x, P.f && P.f.y);
       if (b.why === 'level' && typeof gardenVisitDenied === 'function') gardenVisitDenied(P.t);
-      else gameDeny(null, { at: at || undefined, say: 'That did not work here.', kind: 'tool' });
+      else gameDeny(null, { at: at || undefined, say: (P.t === 'land' || P.t === 'build') ? ({ have: 'They have that already. Your coins are back.', 'not-yet': 'That is not open in this garden yet. Your coins are back.', spot: 'Something is in the way there. Your coins are back.' }[b.why] || 'That did not go through. Your coins are back.') : 'That did not work here.', kind: 'tool' });
     }
     return;
   }
@@ -230,6 +230,7 @@ function _glvResult(b) {
   _gllToolFeedback(pendingFeedback ? Object.assign({}, pendingFeedback.f, b) : b, me);
   if (A) _gllPose(A, _GL_POSE[b.t] || 'pick', 760);
   if (b.t === 'drop') { _glvParcelAdd(b); }
+  if (!me && (b.t === 'land' || b.t === 'build') && b.p && typeof gardenToast === 'function') { const r = b.t === 'land' ? gardenLandRow(b.p) : gardenLandFeature(b.p); gardenToast(`${A ? A.n : 'A friend'} ${b.t === 'land' ? 'bought' : 'built'} ${r ? r.name : 'something'} for ${_gdvFirst()}’s garden`, { icon: b.t === 'land' ? 'trees' : 'hammer' }); }
   // a gift is what this page saw left for you, not what any message says it is
   if (b.t === 'pick' || b.t === 'dropend') { const P = _glv.parcels.get(b.u); if (P) { if (P.sprite) P.sprite.remove(); _glv.parcels.delete(b.u); if (b.t === 'pick' && b.to === _glv.w && P.to === _glv.w) _glvGot(b.u, P.k, P.item); } }
   if (b.x != null && _GL_EMOJI[b.t]) _gllFloat(_glvSvg(), b.x, b.y, _GL_EMOJI[b.t], me ? 'You' : A ? A.n : '');
@@ -240,6 +241,7 @@ function _glvResult(b) {
     const g = _gdG(), led = g.led['gl.o.' + b.i];
     if (led && !led.ok) { _glvSettled(b.i, led, b.t); _gscSaveGarden(); }
     if (b.t === 'water') _gscXp('water', _glv.fid, _gllToday());
+    if ((b.t === 'land' || b.t === 'build') && P && P.f && typeof gardenToast === 'function') { const r = b.t === 'land' ? gardenLandRow(P.f.p) : gardenLandFeature(P.f.p); gardenToast(`${r ? r.name : 'It'} is part of ${_gdvFirst()}’s garden now. Thank you for chipping in!`, { icon: b.t === 'land' ? 'trees' : 'hammer' }); }
     if (b.t === 'catch') _glvGotBug(b.u, b.item);
     if (P && b.t === 'take' && b.u) { const d = g.led['gl.o.' + b.u]; if (d && d.to === _glv.fid) { delete g.led['gl.o.' + b.u]; _gscSaveGarden(); } }   // back in your bag (a post says the same, if this answer is lost)
     if (P && b.t === 'give' && b.u && b.p && gardenDecor(b.p)) {

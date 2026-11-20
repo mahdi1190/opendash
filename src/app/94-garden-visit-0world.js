@@ -43,7 +43,7 @@ function _gdvHow(t) {
 function gardenVisitMay(t, item) {
   if (!_gdvHow(t)) return false;
   const a = GL_ACTS[t];
-  if (a && a.mine && item) return !!item.mine || (!item.by && _glv.touch === true);
+  if (a && a.mine && item) return !!item.mine || _glv.touch === true;   // (full co-op, 2.75: Play together reaches everything here, yours, theirs or another friend's)
   return true;
 }
 function gardenVisitWants(p) { return p.ripe ? gardenVisitMay('harvest', p) : gardenVisitMay('water', p) && _gdvHow('water') !== 'small'; }
@@ -169,7 +169,7 @@ function gardenVisitModel() {
 }
 
 /* ---------- saying no, and asking for more ---------- */
-const _GDV_VERB = Object.freeze({ plant: 'plant', place: 'place things', water: 'water', weed: 'tidy', feed: 'feed the plants', harvest: 'pick', dig: 'dig', move: 'move things', take: 'take things', give: 'give things', turn: 'turn things' });
+const _GDV_VERB = Object.freeze({ land: 'buy land', build: 'build', plant: 'plant', place: 'place things', water: 'water', weed: 'tidy', feed: 'feed the plants', harvest: 'pick', dig: 'dig', move: 'move things', take: 'take things', give: 'give things', turn: 'turn things' });
 /** The same red flash and X as at home, with a padlock, and one tap asks them for more. */
 function _gdvDeny(t, target) {
   gameDeny(target || null, { kind: 'lock', say: `${_gdvFirst()} has not let you ${_GDV_VERB[t] || 'do that'} here yet.` });
@@ -263,13 +263,29 @@ function gardenVisitAct(t, a) {
     case 'harvestAll': {
       if (!_gdvHow('harvest')) return _gdvDeny('harvest');
       const list = m.plants.filter(q => q.ripe && q.def.yield && !q.pend && gardenVisitMay('harvest', q));
-      if (!list.length) return _gdNo('Nothing here is yours to pick yet');
+      if (!list.length) return _gdNo('Nothing is ripe to pick yet');
       for (const q of list.slice(0, 30)) _gdvDo('harvest', { p: q.def.id, x: q.x, y: q.y }, '', _ghNodeOf(q.uid));
       return { ok: true, msg: '' };
     }
-    case 'collect': case 'land': return _gdvDeny('take', node);
+    case 'land': return _gdvLand(m, String(a.id || ''));
+    case 'collect': return _gdvDeny('take', node);
     default: return _gdNo('Not here');
   }
+}
+/** Full co-op (2.75): buy a piece of your friend's land, or build one of its things, with YOUR coins. It is theirs for good (their page writes it; a refusal puts your coins back). */
+function _gdvLand(m, id) {
+  const feat = typeof gardenLandFeature === 'function' ? gardenLandFeature(id) : null, first = _gdvFirst();
+  if (!_glvLive()) return _gdNo(`You can buy and build here while ${first} is in their garden too`);
+  if (!_gdvHow(feat ? 'build' : 'land')) return _gdvDeny(feat ? 'build' : 'land');
+  let cost;
+  if (feat) { const I = gardenLandFeatureInfo(id, m); if (!I) return _gdNo('That is not something you can build'); if (I.built) return _gdNo(`${first} has that already`); if (I.why) return _gdNo(I.why); cost = I.cost; }
+  else { const I = gardenLandInfo(id, m); if (!I) return _gdNo('That land is not for sale'); if (I.owned) return _gdNo(`That land is ${first}’s already`); if (!I.lvOk) return _gdNo(`${I.def.name} opens at garden level ${I.def.lv} in this garden`); if (!I.reach || !I.keyOk) return _gdNo(`The way to ${I.def.name} is not open in this garden yet`); cost = I.cost; }
+  const have = gardenWallet().coins;
+  if (have < cost) return _gdNo(`That costs ${_gdpNum(cost)} coins: you have ${_gdpNum(have)}`);
+  if ([..._glv.pending.values()].some(P => (P.t === 'land' || P.t === 'build') && P.f && P.f.p === id)) return { ok: true, msg: '' };   // (already on its way)
+  const x = typeof _gw !== 'undefined' && Number.isFinite(_gw.px) ? Math.max(0, Math.min(GARDEN_WORLD.cols - 1, Math.floor(_gw.px))) : null, y = x == null ? null : Math.max(0, Math.min(GARDEN_WORLD.rows - 1, Math.floor(_gw.py)));
+  _glvIntent(feat ? 'build' : 'land', { p: id, ...(x != null ? { x, y } : {}) }, '', { c: -cost });
+  return { ok: true, msg: '' };
 }
 /** The saved copy's one watering a day (garden:act): the rule it has always had. */
 function _gdvSmallWater(f, target) {

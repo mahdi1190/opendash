@@ -153,13 +153,14 @@ function gardenFeaturePlaceWhy(f, x, y, m) {
   if (typeof _gwRoute === 'function' && typeof _gw !== 'undefined' && _gw.box && !Array.isArray(_gwRoute({ x: _gw.px, y: _gw.py }, door))) return 'Keep a reachable entrance clear';
   return '';
 }
-function gardenFeatureSetNearby(id) {
+/** Set a built thing out near you, or near `near` ({x, y}: where a friend who built it here is standing, 94-garden-live-3host.js). A visitor's own page asks the host instead. */
+function gardenFeatureSetNearby(id, near) {
   const m = gardenHere(); if (m.visit) return _gdNo('Only the garden owner can set this out');
   if (m.worldPending) return _gdNo('The garden update needs to finish first');
   const f = GARDEN_LAND_FEATURES.find(r => r.id === id);
   if (!f || !gardenLandOwnsFeature(id)) return _gdNo('Build this first');
   if (gardenFeatureIsSetOut(id)) return { ok: true, msg: '' };
-  const from = typeof _gw !== 'undefined' && Number.isFinite(_gw.px) ? { x: _gw.px, y: _gw.py } : GARDEN_WORLD.start;
+  const from = near && Number.isFinite(near.x) && Number.isFinite(near.y) ? { x: near.x + .5, y: near.y + .5 } : typeof _gw !== 'undefined' && Number.isFinite(_gw.px) ? { x: _gw.px, y: _gw.py } : GARDEN_WORLD.start;
   const w = f.w || 1, h = f.h || 1, candidates = [];
   for (let y = Math.max(0, Math.floor(from.y) - 6 - h); y <= Math.min(GARDEN_WORLD.rows - h, Math.ceil(from.y) + 6); y++) for (let x = Math.max(0, Math.floor(from.x) - 6 - w); x <= Math.min(GARDEN_WORLD.cols - w, Math.ceil(from.x) + 6); x++) {
     if (from.x >= x - .3 && from.x <= x + w + .3 && from.y >= y - .3 && from.y <= y + h + .3) continue;
@@ -226,7 +227,7 @@ function gardenSightSetNearby(id) {
   // The old sight may have had a doorway many cells away. A restored place
   // receives a clear entrance beside its new footprint, never an old coordinate.
   const def = Object.assign({}, source, { door: { x: source.x + Math.floor((source.w || 1) / 2), y: source.y + (source.h || 1) } });
-  const from = typeof _gw !== 'undefined' && Number.isFinite(_gw.px) ? { x: _gw.px, y: _gw.py } : GARDEN_WORLD.start;
+  const from = near && Number.isFinite(near.x) && Number.isFinite(near.y) ? { x: near.x + .5, y: near.y + .5 } : typeof _gw !== 'undefined' && Number.isFinite(_gw.px) ? { x: _gw.px, y: _gw.py } : GARDEN_WORLD.start;
   const w = def.w || 1, h = def.h || 1, candidates = [];
   for (let y = Math.max(0, Math.floor(from.y) - 6 - h); y <= Math.min(GARDEN_WORLD.rows - h, Math.ceil(from.y) + 6); y++) for (let x = Math.max(0, Math.floor(from.x) - 6 - w); x <= Math.min(GARDEN_WORLD.cols - w, Math.ceil(from.x) + 6); x++) {
     if (from.x >= x - .3 && from.x <= x + w + .3 && from.y >= y - .3 && from.y <= y + h + .3) continue;

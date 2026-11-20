@@ -48,7 +48,7 @@ function _gldFootprint(f) {
 /** {def, built, why ('' = you can buy it now), cost, spot (what is in the way)}. */
 function gardenLandFeatureInfo(id, mArg) {
   const def = gardenLandFeature(id); if (!def) return null;
-  const m = mArg || gardenModel(), built = gardenLandOwnsFeature(id);
+  const m = mArg || gardenModel(), built = m.visit ? m.areas.includes(id) : gardenLandOwnsFeature(id);   // (on a friend's land: what their garden has; full co-op, 2.75)
   let why = '';
   if (!built) {
     const sec = def.sec ? gardenLandRow(def.sec) : null;
