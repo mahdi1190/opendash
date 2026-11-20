@@ -265,6 +265,24 @@
   }
   // the one gate: across a cell's edge (g.horiz: seen from the front) or along it (seen from the side)
   function gate(B, g, kind) {
+    // (round 3) a woodland field's way in: two sawn log posts and an old mossy log lying across the gap between them
+    if (kind === 'log') {
+      const moss = ['#6f8a42', '#86a052'], bark = ['#7a6248', '#5e4a34', '#9a8262'], grain = '#d2bc90';
+      const ends = g.horiz ? [[g.x - g.len / 2 + 3, g.y], [g.x + g.len / 2 - 3, g.y]] : [[g.x, g.y - g.len / 2 + 2], [g.x, g.y + g.len / 2 - 1]];
+      B.f(B.ell(g.x + 2, g.y + 1.6, (g.horiz ? g.len : 8) * .5, 2.6), '#22301a', .24);
+      const post = ([x, y]) => { B.f(B.rr(x - 3.4, y - 10, 6.8, 10.5, 2), bark[0]).f(B.rect(x - 3.4, y - 9, 2, 9), bark[2], .6).f(B.ell(x, y - 10, 3.4, 1.5), grain).f(B.ell(x + 1, y - 6, 1.8, 2.4), moss[0], .8); };
+      post(ends[0]);
+      if (g.horiz) { const x0 = ends[0][0] + 1, x1 = ends[1][0] - 1, y = g.y - 3.2;
+        B.f(B.rr(x0, y - 3.4, x1 - x0, 6.8, 3.4), bark[1]).f(B.rr(x0, y - 3.4, x1 - x0, 3, 1.6), bark[0]).f(B.ell(x1, y, 1.6, 3.2), grain);
+        for (let x = x0 + 2; x < x1 - 2; x += 3.5) B.f(B.ell(x + 1, y - 3.2, 2.2, 1.2), x % 2 < 1 ? moss[0] : moss[1], .9);
+      } else { const y0 = ends[0][1], y1 = ends[1][1], x = g.x;
+        B.f(B.rr(x - 3.2, y0 - 6, 6.4, y1 - y0, 3.2), bark[1]).f(B.rr(x - 3.2, y0 - 6, 2.6, y1 - y0, 1.4), bark[0]);
+        for (let y = y0; y < y1 - 6; y += 3.2) B.f(B.ell(x + .6, y - 4, 1.8, 1.6), moss[(y | 0) % 2], .9);
+      }
+      for (const [x, y] of ends) for (let k = 0; k < 3; k++) { const a = -2.3 + k * .5; B.s(`M${x} ${y}q${Math.cos(a) * 3} ${Math.sin(a) * 4} ${Math.cos(a) * 6} ${Math.sin(a) * 8}`, '#5e8a44', 1.1, .85); }
+      post(ends[1]);
+      return;
+    }
     const wood = kind === 'wicket' ? ['#e4dcc8', '#f4eee0', '#b8ae96'] : ['#8a7454', '#a88e66', '#5e4c36'], post = kind === 'wicket' ? ['#cfc6b0', '#b0a68e', '#f0eada'] : ['#6e5a40', '#4e3e2c', '#927a58'];
     if (g.horiz) {
       const x0 = g.x - g.len / 2 + 3, x1 = g.x + g.len / 2 - 3, y = g.y, h = kind === 'wicket' ? 13 : 12;
@@ -382,7 +400,7 @@
       B.cx.save(); B.cx.clip(S.path, 'nonzero'); fill(B, C, f, bb, cb, S.has, S.loops);
       // a soft shade just inside the edge, so the field sits in the ground
       B.cx.filter = 'blur(2.5px)'; B.s(S.path, '#2a3a1c', 6, .1); B.cx.filter = 'none'; B.cx.restore();
-      const g = S.gate, edge = STYLE[f.edge] || STYLE.hedge, kind = f.edge === 'hedge' ? 'wicket' : 'field';
+      const g = S.gate, edge = STYLE[f.edge] || STYLE.hedge, kind = f.edge === 'hedge' ? 'wicket' : /^w-/.test(f.id) ? 'log' : 'field';   // (round 3: the Whispering woodland's fields, w-*, a mossy log across the way in)
       // (round 3) the built edge (or the kind's own thick growth) only along the front; the rest is the rough margin, with
       // the kind's own reeds, bracken or long grass standing in it here and there where it grows thickest
       const thickAt = q => .5 + .5 * (Math.sin(q.ox * .037 + q.oy * .051) * .6 + Math.sin(q.ox * .013 - q.oy * .029 + 2.1) * .4);
@@ -396,8 +414,9 @@
         gate(B, g, kind);
       }
       for (const p of near) paint(p.filter(q => q.y > gy));
-      // (the sign last: reeds, long grass or a hedge end right beside the gate never stand across its board)
-      if (g && S.next && g.x > cb[0] - 60 && g.x < cb[2] + 60 && g.y > cb[1] - 20 && g.y < cb[3] + 50) { const sx = g.horiz ? g.x + g.len / 2 + 5 : g.x + (g.east ? 8 : -8), sy = g.horiz ? g.y + 1 : g.y + g.len / 2 + 3; sign(B, sx, sy, S.next, lv); }
+      // (the sign last: reeds, long grass or a hedge end right beside the gate never stand across its board; round 3, critic
+      // round 2: a woodland field shows its board only once it can be bought, not 'Lv 3/6/10/18' on every screen of the wood)
+      if (g && S.next && !(/^w-/.test(f.id) && lv < (S.next.lv || 0)) && g.x > cb[0] - 60 && g.x < cb[2] + 60 && g.y > cb[1] - 20 && g.y < cb[3] + 50) { const sx = g.horiz ? g.x + g.len / 2 + 5 : g.x + (g.east ? 8 : -8), sy = g.horiz ? g.y + 1 : g.y + g.len / 2 + 3; sign(B, sx, sy, S.next, lv); }
       if (f.edge === 'meadow') { B.cx.save(); const out = new Path2D(); out.rect(bb[0] - 60, bb[1] - 60, bb[2] - bb[0] + 120, bb[3] - bb[1] + 120); out.addPath(S.path); B.cx.clip(out, 'evenodd'); B.cx.filter = 'blur(4px)'; B.s(S.path, C.P.lawnHi, 10, .22); B.cx.filter = 'none'; B.cx.restore(); }   // the mown edge round the uncut meadow
     }
     // Land of this field that is yours. (Village fix round 2: it went to a plain striped lawn, the orchard lost its trees and
