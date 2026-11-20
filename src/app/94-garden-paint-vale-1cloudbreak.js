@@ -291,9 +291,7 @@
   }
   const lvNow = () => { try { return gardenModel().level.level; } catch (e) { return 1; } };
   const STAIR_LV = 18, LIP_LV = 6;   // shortcut C (the falls cave stair) and shortcut A (the lip stones: one has rolled out of the line)
-  const shortcutSig = () => (lvNow() >= STAIR_LV ? 'cs1' : 'cs0') + (lvNow() >= LIP_LV ? 'la1' : 'la0');
-  if (V && V.groundSigs) V.groundSigs.push(shortcutSig);
-  if (V && V.composeSigs) V.composeSigs.push(shortcutSig);   // (the ropes and the gap's water are composed by level: compose again when it crosses)
+  if (V && V.groundSigs) V.groundSigs.push(() => (lvNow() >= STAIR_LV ? 'cs1' : 'cs0') + (lvNow() >= LIP_LV ? 'la1' : 'la0'));
   window.gardenCloudbreakLipGap = () => lvNow() < LIP_LV;
   function ropeLine(B, r, a, b, snowy) {
     const np = Math.max(2, Math.round(Math.abs(b.x - a.x) / 44)) + 1, posts = []; for (let i = 0; i < np; i++) posts.push({ x: a.x + (b.x - a.x) * i / (np - 1), y: a.y + (b.y - a.y) * i / (np - 1) + (i % 2 ? 2 : 0) });
