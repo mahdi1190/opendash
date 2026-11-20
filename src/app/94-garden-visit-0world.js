@@ -162,7 +162,7 @@ function gardenVisitModel() {
   const first = _gdvFirst();
   const m = { now, today, season, south: _gdSouth(), tod, events: gardenEventsOn(today), rain, level: { level: s.lv }, areas, plants, decor, occ, blooms, ripe, thirsty, trees, cats, heart: s.heart, wallet: gardenWallet(), totalDone: 0, works: (s.wk || []).slice(), wv: s.wv, lh: s.lh, water: { cap: wleft, bonus: 0, used: 0, left: wleft, raining: false },
     visit: { fid: _gdv.fid, f: _gdv.f, name: gardenSocialName(_gdv.fid), live: _glvLive(), lv: _glvLive() ? _glv.lv : (_gdvTheirs() || {}).lv || 'none', key, snap: s, sh: s.sh || null, shSig: typeof gardenShowSig === 'function' ? gardenShowSig(s.sh) : '', drawFriend: _glvLive() ? null : _gdv.f,
-      no: { plant: _gdvHow('plant') ? '' : `${first} has not let you plant here yet`, decor: _gdvHow('place') ? '' : `${first} has not let you place things here yet` } } };
+      no: { plant: _gdvHow('plant') ? '' : _gdvWhyNot('plant'), decor: _gdvHow('place') ? '' : _gdvWhyNot('place') } } };
   m.visitors = _gdVisitorsNow(m);
   _gdv.memo = m; _gdv.memoKey = key;
   return m;
@@ -171,8 +171,15 @@ function gardenVisitModel() {
 /* ---------- saying no, and asking for more ---------- */
 const _GDV_VERB = Object.freeze({ land: 'buy land', build: 'build', plant: 'plant', place: 'place things', water: 'water', weed: 'tidy', feed: 'feed the plants', harvest: 'pick', dig: 'dig', move: 'move things', take: 'take things', give: 'give things', turn: 'turn things' });
 /** The same red flash and X as at home, with a padlock, and one tap asks them for more. */
+/** Why you cannot do this here just now, in plain words. Full co-op (2.75): a friend who plays together is only ever held back by their friend being away (some things need you both there) or by having been sent home. */
+function _gdvWhyNot(t) {
+  const first = _gdvFirst(), lv = _glvLive() ? _glv.lv : (_gdvTheirs() || {}).lv || 'none';
+  if (lv === 'play') return `That needs ${first} in their garden too. Plant, place and water now, and it waits for them.`;
+  return `${first} has not let you ${_GDV_VERB[t] || 'do that'} here yet`;
+}
 function _gdvDeny(t, target) {
-  gameDeny(target || null, { kind: 'lock', say: `${_gdvFirst()} has not let you ${_GDV_VERB[t] || 'do that'} here yet.` });
+  gameDeny(target || null, { kind: 'lock', say: _gdvWhyNot(t) + (/[.!]$/.test(_gdvWhyNot(t)) ? '' : '.') });
+  if (((_glvLive() ? _glv.lv : (_gdvTheirs() || {}).lv) || 'none') === 'play') return { ok: false, msg: '', shown: true };   // (nothing more to ask for)
   const was = _gdv.asked.get(_gdv.fid) || 0, now = Date.now();   // clock-ok: spacing a request
   if (now - was > 3600000 && typeof _gw !== 'undefined') {
     const first = _gdvFirst(), fid = _gdv.fid;
