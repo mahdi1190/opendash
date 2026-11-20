@@ -435,10 +435,12 @@ function _gaBellyClip() {
 }
 function _gaRubTick(cur) {
   let P = null; try { P = typeof gpPetMe === 'function' ? gpPetMe() : null; } catch (e) { P = null; }
-  if (!P || !P.root || (P.root._pcH && P.root._pcH === cur.rubH)) return;
-  if (P.root._pcH || Math.hypot(P.x - (_gw.px + 0.42), (P.y - (_gw.py + 0.04)) * 1.4) > 0.3) return;   // (still on its way, or busy with its own thing)
-  const id = _gaBellyClip() || 'rollover'; P.dir = -1; P.tx = null;
-  try { cur.rubH = P.clipH = petClipRun(P.root, id); } catch (e) { /* it just sits */ }
+  if (!P || !P.root || (P.root._pcH && P.root._pcH === cur.rubH) || (cur.rubT && performance.now() - cur.rubT < 3700)) return;
+  if (Math.hypot(P.x - (_gw.px + 0.34), (P.y - (_gw.py + 0.04)) * 1.4) > 0.3) return;   // (still on its way)
+  if (P.root._pcH && typeof petClipStop === 'function') petClipStop(P.root);   // (whatever it was doing: it rolls over for you)
+  const id = _gaBellyClip() || 'rollover'; P.dir = -1; P.tx = null; cur.rubT = performance.now();
+  P.lifeGoal = false;
+  try { if (typeof P.clip === 'function') P.clip(id); else petClipRun(P.root, id); cur.rubH = P.root && P.root._pcH; } catch (e) { /* it just sits */ }   // (the pets' own runner: it draws the pose the clip needs, holds the pet still for it, and friends see it)
 }
 /* (2, 3) lying: cloud shadows go over; at night now and then a shooting star; a nap lets the light run on a little faster for a moment */
 function _gaSky(cur, on) {
@@ -470,6 +472,8 @@ function gartActGroundClear(x, y) {
     // never under a tree's crown (a tree just south of you is drawn over you): open sky, so you are seen and can see the clouds
     let T = _ga.trunks; if (!T || !T.length) { try { T = _ga.trunks = typeof _gwPaintedTrunks === 'function' ? _gwPaintedTrunks(gardenIslandData()) : []; } catch (e) { T = []; } }
     for (const b of T || []) { const fx = (b.x0 + b.x1) / 2, dy = b.y1 - y; if (dy > -0.3 && dy < 5.5 && Math.abs(fx - x) < 2.8) return false; }
+    // nor across a shrub or any planted thing that stands up (they are drawn over whoever lies by them): world px -> cells
+    try { const W = GARDEN_WORLD, tall = window.GardenNativePainted && GardenNativePainted.tall ? GardenNativePainted.tall() : []; for (const t of tall) { const tx = t.x / W.cellW, ty = (t.y - W.sky) / W.cellH, hw = (t.w || 30) / 2 / W.cellW; if (Math.abs(tx - x) < hw + 1.3 && ty - y > -0.5 && ty - y < Math.max(0.6, t.h / W.cellH)) return false; } } catch (e) { /* no planting list: the trunks are enough */ }
   } catch (e) { return true; }
   return true;
 }
@@ -518,7 +522,7 @@ if (typeof gardenLifePetGoal === 'function') {
   gardenLifePetGoal = function (P, dt) {   // eslint-disable-line no-func-assign
     const fg = _gaFetchGoal(P); if (fg) return fg;
     const cur = _ga.cur;
-    if (cur && cur.doing && cur.row.rubPet && P && P.me) return { x: _gw.px + 0.42, y: _gw.py + 0.04, near: 0.12 };   // (right in front of your hand: _gaRubTick rolls it over)
+    if (cur && cur.doing && cur.row.rubPet && P && P.me) { if (P.root && P.root._pcH) return null; return { x: _gw.px + 0.34, y: _gw.py + 0.04, near: 0.12 }; }   // (on its back: no goal, so the pets' own clip runs its course; _gaRubTick clears lifeGoal first so nothing sits it up)   // (right in front of your hand: _gaRubTick rolls it over)
     if (cur && cur.doing && P && P.me && !cur.row.fetch) {   // (every action: the pet waits beside you on open ground)
       // beside you on open ground, never up on a thing (a pump, a bench, a wall): the walker's own map says what is solid
       const ok = (x, y) => (typeof _ptwFree !== 'function' || _ptwFree(x, y)) && (typeof _gwFree !== 'function' || _gwFree(x, y, 0.2)) && !(_ga.list || []).some(r => r.act !== 'sit' && Math.hypot(r.x - x, (r.y - y) * 1.3) < 0.7);
