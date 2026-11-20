@@ -124,6 +124,29 @@ const _PLQ_ART = {
     let fmn = ''; for (let i = 0; i < 7; i++) fmn += `<circle cx="${_plF(cx + 6 * u + r() * 4 * u)}" cy="${_plF(-(5 + r() * 4) * u)}" r="${_plF(0.9 * u)}" fill="#7fb2e6"/>`;
     return { back: s + stems + leaves + blooms + fmn, w: cx + 11 * u, off: cx };
   },
+  // 76: its own basket, woven willow with a checked cushion: the back rim and the cushion behind the pet, the front rim over its curled body
+  // (round 5, the critic: it curled up on bare grass, which read as any nap)
+  basket(u) {
+    const W = 21 * u, D = 7.5 * u, R = 7 * u, wick = (y0, y1, n, col) => { let s = ''; for (let i = 0; i <= n; i++) { const x = -W + 2 * W * i / n; s += `<path d="M${_plF(x)} ${_plF(y0)}q${_plF(1.2 * u)} ${_plF((y1 - y0) / 2)} 0 ${_plF(y1 - y0)}" stroke="${col}" stroke-width="${_plF(0.7 * u)}" fill="none" opacity="0.55"/>`; } return s; };
+    const back = `<ellipse cx="0" cy="${_plF(1.2 * u)}" rx="${_plF(W * 1.12)}" ry="${_plF(D * 1.05)}" fill="#2e2216" opacity="0.28"/>`
+      + `<path d="M${_plF(-W)} 0Q${_plF(-W)} ${_plF(-D - R)} 0 ${_plF(-D - R)}Q${_plF(W)} ${_plF(-D - R)} ${_plF(W)} 0z" fill="#a8743e"/>`
+      + `<ellipse cx="0" cy="${_plF(-R * 0.45)}" rx="${_plF(W * 0.86)}" ry="${_plF(D * 0.78)}" fill="#6e4824"/>`
+      + `<ellipse cx="0" cy="${_plF(-R * 0.35)}" rx="${_plF(W * 0.78)}" ry="${_plF(D * 0.62)}" fill="#c84e4a"/><g stroke="#f4e6d6" stroke-width="${_plF(1.1 * u)}" opacity="0.8"><path d="M${_plF(-W * 0.5)} ${_plF(-R * 0.35 - D * 0.55)}l${_plF(W * 0.2)} ${_plF(D * 1.1)}M${_plF(-W * 0.1)} ${_plF(-R * 0.35 - D * 0.6)}l${_plF(W * 0.2)} ${_plF(D * 1.15)}M${_plF(W * 0.3)} ${_plF(-R * 0.35 - D * 0.55)}l${_plF(W * 0.2)} ${_plF(D * 1.05)}</g>`
+      + wick(-D - R + 1, -R * 0.6, 14, '#6e4824');
+    const front = `<path d="M${_plF(-W)} ${_plF(-R * 0.4)}Q0 ${_plF(D * 0.95 - R * 0.4)} ${_plF(W)} ${_plF(-R * 0.4)}L${_plF(W * 0.96)} ${_plF(R * 0.25)}Q0 ${_plF(D * 1.25)} ${_plF(-W * 0.96)} ${_plF(R * 0.25)}z" fill="#b8834a"/>`
+      + `<path d="M${_plF(-W)} ${_plF(-R * 0.4)}Q0 ${_plF(D * 0.95 - R * 0.4)} ${_plF(W)} ${_plF(-R * 0.4)}" stroke="#d9a868" stroke-width="${_plF(2.4 * u)}" fill="none" stroke-linecap="round"/>`
+      + `<path d="M${_plF(-W * 0.9)} ${_plF(0.4 * u)}Q0 ${_plF(D * 1.05)} ${_plF(W * 0.9)} ${_plF(0.4 * u)}" stroke="#7a5028" stroke-width="${_plF(0.9 * u)}" fill="none" opacity="0.7"/>` + wick(-R * 0.25, R * 0.4 + D * 0.4, 16, '#7a5028');
+    return { back, front, w: W * 1.15 };
+  },
+  // 81: a wooden pail with iron hoops, knocked over away from the pet, its water running out into a puddle (about half your height stood up)
+  bucket(u) {
+    const cx = 20 * u, h = 13 * u, wt = 6.2 * u, wb = 4.8 * u, pool = _PLQ_ART.puddle(u * 0.72);
+    const pail = `<path d="M${_plF(-wt)} ${_plF(-h)}L${_plF(-wb)} 0H${_plF(wb)}L${_plF(wt)} ${_plF(-h)}z" fill="#9a6a3c"/><path d="M${_plF(-wt * 0.3)} ${_plF(-h)}L${_plF(-wb * 0.3)} 0M${_plF(wt * 0.35)} ${_plF(-h)}L${_plF(wb * 0.35)} 0" stroke="#6e4824" stroke-width="${_plF(0.7 * u)}"/>`
+      + `<path d="M${_plF(-wt * 0.96)} ${_plF(-h * 0.78)}H${_plF(wt * 0.96)}M${_plF(-wb * 1.08)} ${_plF(-h * 0.2)}H${_plF(wb * 1.08)}" stroke="#4e4e52" stroke-width="${_plF(1.5 * u)}"/><ellipse cx="0" cy="${_plF(-h)}" rx="${_plF(wt)}" ry="${_plF(1.8 * u)}" fill="#4a3018"/><ellipse cx="0" cy="${_plF(-h + 0.4 * u)}" rx="${_plF(wt * 0.8)}" ry="${_plF(1.2 * u)}" fill="#6fa0c0"/>`
+      + `<path d="M${_plF(-wt)} ${_plF(-h)}Q0 ${_plF(-h - 9 * u)} ${_plF(wt)} ${_plF(-h)}" stroke="#4e4e52" stroke-width="${_plF(0.9 * u)}" fill="none"/>`;
+    return { back: `<g class="plq-spill" opacity="0"><g transform="translate(${_plF(cx + 11 * u)} ${_plF(1 * u)})">${pool.back}</g></g><ellipse cx="${_plF(cx)}" cy="0.6" rx="${_plF(wb * 1.4)}" ry="${_plF(1.8 * u)}" fill="#2e2216" opacity="0.3"/>`
+      + `<g transform="translate(${_plF(cx + wb)} 0)"><g class="plq-tip"><g transform="translate(${_plF(-wb)} 0)">${pail}</g></g></g>`, w: cx + 11 * u + pool.w, off: cx, lo: cx - 8 * u };
+  },
   // swaying grass to bat at, with seed heads
   grass(u) {
     const r = _plRnd(11), cx = 12 * u; let b = '', f = '';
@@ -236,6 +259,12 @@ function _plGroundOk(kind, x, y, side, P) {
     return true;
   } catch (e) { return true; }
 }
+/** The things drawn at a pet's feet go when it walks off or starts something else (round 5, the critic: the reflection row's puddle went along
+ *  under the next row, so the pet stood in a stray puddle). */
+function _plPropsDrop(P) {
+  if (!_PLQ.live.length || !P || !P.node) return;
+  for (const q of _PLQ.live.slice()) if (q.g && q.g.parentNode === P.node) { try { q.g.remove(); } catch (x) { /* gone */ } _PLQ.live = _PLQ.live.filter(z => z !== q); }
+}
 /** Draw a row's thing beside the pet for ms, on its outer node, on the side away from you; faded in and out, then gone. */
 function _plProp(P, kind, ms) {
   if (kind === '_one') return _plPropIn(P, kind, ms);
@@ -272,6 +301,9 @@ function _plProp(P, kind, ms) {
       try { gardenVisualAnimate(e, [{ transform: 'scale(0.2)', opacity: 0.95 }, { transform: 'scale(1)', opacity: 0 }], { duration: 1100 + i * 260, delay: i * 420, iterations: reps, easing: 'ease-out' }); } catch (x) { /* still */ }
     }
     if (art.sway) for (const [i, k] of [...(front || back).children].slice(0, 10).entries()) { try { if (!native) { k.style.transformBox = 'fill-box'; k.style.transformOrigin = '50% 100%'; } gardenVisualAnimate(k, [{ transform: 'rotate(0deg)' }, { transform: `rotate(${i % 2 ? 3 : -3}deg)` }, { transform: 'rotate(0deg)' }], { duration: 1300 + i * 170, iterations: Math.ceil(total / 1300), easing: 'ease-in-out' }); } catch (x) { /* still */ } }
+    // 81: the pail tips over away from the pet at its nudge (0.12 of l-oops) and the water spreads out of it
+    const tip = back.querySelector && back.querySelector('.plq-tip'), spill = back.querySelector && back.querySelector('.plq-spill');
+    if (tip) { const at = Math.round(_plMs('l-oops') * 0.14); try { gardenVisualAnimate(tip, [{ offset: 0, transform: 'rotate(0deg)' }, { offset: 0.6, transform: 'rotate(98deg)' }, { offset: 0.8, transform: 'rotate(84deg)' }, { offset: 1, transform: 'rotate(90deg)' }], { duration: 520, delay: at, easing: 'ease-in', fill: 'both' }); if (spill) gardenVisualAnimate(spill, [{ opacity: 0 }, { opacity: 1 }], { duration: 700, delay: at + 300, fill: 'both' }); } catch (x) { /* still */ } }
     const fl = back.querySelector && back.querySelector('.plq-flame');
     if (fl) { try { gardenVisualAnimate(fl, [{ transform: 'scale(1,1)' }, { transform: 'scale(1.1,0.88)' }, { transform: 'scale(0.92,1.12)' }, { transform: 'scale(1,1)' }], { duration: 420, iterations: Math.ceil(total / 420), easing: 'ease-in-out' }); } catch (x) { /* still */ } }
     // 21: the burst, as separate leaves that fly up out of the pile and tumble down round it (round 3, the critic: the clip's own burst read as
@@ -306,6 +338,27 @@ function _plProp(P, kind, ms) {
         try { gardenVisualAnimate(c, [{ transform: 'translate(0px,0px) scale(0.6)', opacity: 0.55 }, { transform: `translate(${_plF((2 + i) * su)}px,${_plF(-14 * su)}px) scale(1.6)`, opacity: 0 }], { duration: 1800, delay: i * 600, iterations: Math.ceil(total / 1800), easing: 'ease-out' }); } catch (x) { /* still */ }
       }
     }
+  } catch (e) { /* a thing it can do without */ }
+}
+/** 58, tug of war (round 5, the critic: no rope showed). A thick braided rope toy from the pet's mouth to your hand, sagging between, with knotted
+ *  ends; drawn on the pet's outer node towards you, measured from where you both stand, and it jerks with each pull of the clip. */
+function _plRope(P, ms) {
+  const pl = _ptwPlayer(); if (!pl || !P || !P.node || !P.lift) return;
+  try {
+    const W = GARDEN_WORLD, native = typeof gardenVisualIsNative === 'function' && gardenVisualIsNative(P.node), mk = (tag) => native ? gardenSceneElement(tag) : document.createElementNS('http://www.w3.org/2000/svg', tag);
+    const side = P.x >= pl.x ? -1 : 1, d = Math.abs(P.x - pl.x) * W.cellW, dy = (pl.y - P.y) * W.cellH, ph = typeof _ptwH === 'function' ? _ptwH(P.look.species) : 30;
+    const nx = ph * 0.36, ny = -ph * 0.3, hx = Math.max(nx + 6, d - 3), hy = dy - 12.5, mx = (nx + hx) / 2, my = Math.max(ny, hy) + 5;
+    const path = `M${_plF(nx)} ${_plF(ny)}Q${_plF(mx)} ${_plF(my)} ${_plF(hx)} ${_plF(hy)}`;
+    const g = mk('g'); g.setAttribute('class', 'pt-lprop plq-rope'); if (side < 0) g.setAttribute('transform', 'scale(-1 1)');
+    g.innerHTML = `<path d="${path}" stroke="#6e4a2a" stroke-width="4.6" fill="none" stroke-linecap="round"/><path d="${path}" stroke="#d9573e" stroke-width="3.2" fill="none" stroke-linecap="round"/>`
+      + `<path d="${path}" stroke="#f4ead8" stroke-width="3.2" fill="none" stroke-dasharray="2.2 2.6" stroke-linecap="butt"/>`
+      + `<circle cx="${_plF(nx)}" cy="${_plF(ny)}" r="3.4" fill="#d9573e" stroke="#6e4a2a" stroke-width="0.9"/><circle cx="${_plF(hx)}" cy="${_plF(hy)}" r="3" fill="#f4ead8" stroke="#6e4a2a" stroke-width="0.9"/>`
+      + `<path d="M${_plF(hx + 1.5)} ${_plF(hy + 2)}l2.4 4M${_plF(hx - 1)} ${_plF(hy + 2.4)}l-0.6 4.4" stroke="#d9573e" stroke-width="1.6" stroke-linecap="round"/>`;
+    P.node.appendChild(g);
+    const total = Math.max(1400, ms + 200), a = gardenVisualAnimate(g, [{ offset: 0, opacity: 0 }, { offset: 0.05, opacity: 1 }, { offset: 0.92, opacity: 1 }, { offset: 1, opacity: 0 }], { duration: total, easing: 'linear', fill: 'both' });
+    const rec = { x0: P.x, x1: P.x, y: P.y, g }; _PLQ.live.push(rec);
+    const gone = () => { g.remove(); _PLQ.live = _PLQ.live.filter(q => q !== rec); }; a.onfinish = gone; a.oncancel = gone;
+    if (typeof _pcMotionOn !== 'function' || _pcMotionOn()) { const inner = mk('g'); while (g.firstChild) inner.appendChild(g.firstChild); g.appendChild(inner); try { gardenVisualAnimate(inner, [{ transform: 'translate(0px,0px)' }, { transform: 'translate(-3px,0.6px)' }, { transform: 'translate(0px,0px)' }], { duration: 450, iterations: Math.ceil(total / 450), easing: 'ease-in-out' }); } catch (x) { /* still */ } }
   } catch (e) { /* a thing it can do without */ }
 }
 /** 85: the treehouse window, drawn in. The painted window (94-garden-paint-terrain-3orchard.js: 12 by 11 world px, its foot 121 px up) gets a

@@ -610,6 +610,21 @@ window.GardenNative = (function () {
           if (node.paintedHit(local.x, local.y)) pet = { kind: 'pet', node, depth };
         }
       }
+      // (pets, round 5: a tap between a pet's legs, on a sleeping pet's back or just off its ear found nothing, so tapping a moving pet often
+      // did nothing. A tap on the pet's body box, from where it stands and how tall it is drawn, is a tap on the pet unless something stands
+      // in front of it there)
+      if (!pet && typeof _ptw !== 'undefined' && _ptw.pets && typeof _ptwH === 'function') {
+        let best = null, bd = 9;
+        for (const P of _ptw.pets) {
+          if (!P.node || !P.node.target || !P.node.target.visible) continue;
+          const h = _ptwH(P.look.species) / W.cellH, hw = Math.max(0.32, _ptwH(P.look.species) * 0.5 / W.cellW), lift = ((P.up || 0) + (P.perch ? P.perch.up : 0)) / W.cellH;
+          const top = P.y - lift - h * (P.pose === 'sleep' ? 0.62 : 0.95), dx = Math.abs(p.x - P.x);
+          if (dx > hw || p.y < top || p.y > P.y + 0.14) continue;
+          const depth = P.node.target.depth; if (hit && hit.kind !== 'land' && depth < hit.depth) continue;
+          if (dx < bd) { bd = dx; best = { kind: 'pet', node: P.node, depth }; }
+        }
+        pet = best;
+      }
     }
     if (pet) return pet;
     return hit ? { ...hit, uid: hit.uid || hit.model && hit.model.uid, prop: hit.kind === 'prop' ? hit.id : null, land: hit.kind === 'land' ? hit.land || hit.id : null, ground: !!(hit.model && hit.model.def && hit.model.def.layer === 'ground'), node: hit.record && hit.record.node || hit.node || null } : null;

@@ -85,7 +85,7 @@ function _ptwNew(look, me) {
     if (typeof petGardenPlayClip === 'function') petGardenPlayClip(P, name, o);
   };
   P.setAct = (n) => { if (P.root && P.act) P.root.classList.remove('pt-act-' + P.act); P.act = n || ''; if (P.root && n) P.root.classList.add('pt-act-' + n); };
-  P.walkTo = (x, y, run, then) => { P.ecology = ''; P.ecologyLift = 0; P.tx = x; P.ty = y; P.run = !!run; P.speed = run ? 2 : 1; P.stuck = 0; P.draw('walk'); if (P.root) P.root.classList.toggle('pt-run', P.run); P.arrive = then || null; };
+  P.walkTo = (x, y, run, then) => { if (typeof _plPropsDrop === 'function') _plPropsDrop(P); P.ecology = ''; P.ecologyLift = 0; P.tx = x; P.ty = y; P.run = !!run; P.speed = run ? 2 : 1; P.stuck = 0; P.draw('walk'); if (P.root) P.root.classList.toggle('pt-run', P.run); P.arrive = then || null; };
   P.sit = (mood) => { P.tx = null; P.run = false; P.draw('sit', mood); };
   P.sleep = (s) => { if (P.me && typeof gardenLivePet === 'function') gardenLivePet('nap', 'on'); P.tx = null; P.draw('sleep', { eyes: 'closed', mouth: 'calm', extra: 'zzz' }); P.busy = s; P.cb = null; };
   P.hearts = () => _ptwHearts(P);
@@ -376,22 +376,26 @@ function _ptwComeAlong(P) {
   if (!P.guideNoWarp && (d > 9 || P.lost)) {
     P.lost = false;
     const nearest = !_ptwFlier(P) && !_ptwHas(P, 'swim') && typeof gardenWorldNearestFree === 'function' ? gardenWorldNearestFree : typeof _gwNearestFreePt === 'function' ? _gwNearestFreePt : null;
-    const f = nearest ? nearest(pl.x - .8, pl.y + .3, 2) : null;
+    let f = nearest ? nearest(pl.x - .8, pl.y + .3, 2) : null;
+    if (f && typeof _plBehindYou === 'function' && _plBehindYou(f.x, f.y, P)) f = nearest(pl.x + .8, pl.y + .3, 2) || f;
     if (f) { P.x = f.x; P.y = f.y; P.tx = null; P.z = -1; }
   }
   // round 3: never stood on you. You stopped where it sits (or it sat down on your spot): it steps aside to stand beside you. Rows that are
   // meant to touch you (asleep on your feet, head on your lap, curled up beside you) keep their place.
   if (!pl.moving && P.tx == null && !(P.root && P.root._pcH) && P.pose !== 'sleep' && typeof _plTouch === 'function' && !(P.lifeCur && /^(on-your-feet|head-on-lap|bench-lap|lie-beside)$/.test(P.lifeCur.id))) {
     const half = typeof _plHalf === 'function' ? _plHalf(P) : 0.3;
-    if (Math.abs(pl.x - P.x) < half + 0.1 && Math.abs(pl.y - P.y) < 0.42 && (P.moveAsideT || 0) < performance.now()) {
+    // (round 5, the critic: a cell straight behind you reads as sitting on your head at the default camera: it steps out from there too)
+    const behind = typeof _plBehindYou === 'function' && _plBehindYou(P.x, P.y, P) && !(P.lifeCur && P.lifeCur.stay);
+    if ((Math.abs(pl.x - P.x) < half + 0.1 && Math.abs(pl.y - P.y) < 0.42 || behind) && (P.moveAsideT || 0) < performance.now()) {
       P.moveAsideT = performance.now() + 1500;
       const t = _plTouch(P, 'side'); if (t) { if (P.busy > 0) { P.busy = 0; P.cb = null; if (P.act) P.setAct(''); } P.walkTo(t.x, t.y, false, () => { P.dir = -t.side; P.sit(); P.busy = 1.5; }); return true; }
     }
   }
   if (d <= (pl.moving ? 2 : 5)) return false;
   if (P.busy > 0) { P.busy = 0; P.cb = null; if (P.act) P.setAct(''); }
-  const a = Math.atan2(P.y - pl.y, P.x - pl.x);
-  P.walkTo(pl.x + Math.cos(a) * 1.1, pl.y + Math.sin(a) * 0.7, d > 4);
+  // it catches up to your side, a little in front, never to the spot straight behind you (round 5: from the north it ended on your head)
+  const a = Math.atan2(P.y - pl.y, P.x - pl.x), sx = P.x >= pl.x ? 1 : -1, cx = Math.cos(a) * 1.1, cy = Math.max(-0.15, Math.min(0.5, Math.sin(a) * 0.7));
+  P.walkTo(pl.x + sx * Math.max(0.85, Math.abs(cx)), pl.y + cy, d > 4);
   return true;
 }
 function _ptwFishingPath(P, target) {
@@ -497,6 +501,12 @@ function _ptwThink(P, W, dt) {
   if (P.seatRecovery && (P.arrive !== P.seatRecovery.advance || P.tx == null)) P.seatRecovery = null;
   if (!guided && _ptwSeatRecover(P)) return;
   const recovering = P.seatRecovery && P.arrive === P.seatRecovery.advance && P.tx != null;
+  // (round 5) its games are open over it: it waits there, sitting, until you pick one, close them or walk off
+  if (P.menuHold) {
+    const B = typeof _gh !== 'undefined' && _gh.bubble, pl0 = _ptwPlayer();
+    if (B && B.el && B.el._petMenu === P && B.el.isConnected && P.menuHold > performance.now() && !(pl0 && pl0.moving)) { if (P.tx == null && P.busy < 0.5) P.busy = 0.5; return; }
+    P.menuHold = 0; if (P.busy > 2 && !P.lifeCur) P.busy = 0.4;
+  }
   if (!guided && !recovering && !(P.lifeHold > performance.now()) && _ptwLifeGoal(P, dt)) return;   // (round 3: one of the hundred things is playing; a passing butterfly waits)
   if (!guided && !recovering && _ptwComeAlong(P)) return;
   if (P.busy > 0) { P.busy -= dt; if (P.busy <= 0 && P.cb) { const c = P.cb; P.cb = null; c(); } if (P.busy > 0) return; }
@@ -713,7 +723,7 @@ function _ptwClick(ev) {
   if (typeof petGardenPlaySuspend === 'function') petGardenPlaySuspend(P);
   if (P.me) { const r = petPat(); if (r.ok && typeof _ptCheer === 'function') { /* the pet's joy is the feedback */ } if (typeof petBookTick === 'function') { const tt = petBookTick('pat'); for (const id of tt.secret) petSecretReveal(id); } }
   P.tx = null; P.arrive = null; P.sit({ eyes: 'happy', mouth: 'open' }); P.hearts();
-  P.clip('jump', 800, () => { P.sit(); P.busy = 1.5; }, { quiet: true });
+  P.clip('jump', 800, () => { P.sit(); P.busy = P.menuHold > performance.now() ? (P.menuHold - performance.now()) / 1000 : 1.5; }, { quiet: true });
   if (P.me && typeof petLifeEvent === 'function') petLifeEvent('pat');
   if (P.me && typeof _plPatN !== 'undefined' && _plPatN > 0 && _plPatN % 3 === 0) return;   // the third pat: it spins for you, no menu over it
   if (typeof petGardenActionMenu === 'function') petGardenActionMenu(P, P.cb); else if (typeof petGardenPuddleMenu === 'function') petGardenPuddleMenu(P, P.cb);

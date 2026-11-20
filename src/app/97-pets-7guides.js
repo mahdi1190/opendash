@@ -270,7 +270,11 @@ function petGardenActionMenu(P, pat) {
   if (guide) items.push(guide); if (puddle) items.push(puddle);
   if (typeof petLifeMenuItems === 'function') items.push(...petLifeMenuItems(P));   // round 3: tug of war, belly rub, high five, play dead, beg, the hoop
   if (!items.length) return;
-  gardenBubbleOpen({ x: P.x, y: P.y - .7 }, { title: _ptwGuideName(P), sub: guide ? PET_GUIDES[P.look.species].hint : puddle ? PET_PUDDLE_PLAY[P.look.species].hint : 'Play together', items });
+  // (round 5, the critic: the bubble sat over the pet and the pet walked off under it. It opens above the pet's head, and the pet waits
+  // where it is while its games are open: a second tap on it is a pat, and a game starts from where it sits)
+  const up = (typeof _ptwH === 'function' ? _ptwH(P.look.species) : 30) / GARDEN_WORLD.cellH + 0.2;
+  const el = gardenBubbleOpen({ x: P.x, y: P.y - up }, { title: _ptwGuideName(P), sub: guide ? PET_GUIDES[P.look.species].hint : puddle ? PET_PUDDLE_PLAY[P.look.species].hint : 'Play together', items });
+  if (el && P.me) { el._petMenu = P; P.menuHold = performance.now() + 12000; P.tx = null; P.arrive = null; P.lifeNext = performance.now() + 12000; }
 }
 function petGardenGuideState() {
   return _ptw.pets.map(P => ({ species: P.look.species, companion: !!P.me, slot: _ptwPlaySlot(P), invited: !!P.guideInvite, current: P.guide ? { id: P.guide.id, phase: P.guide.phase, age: +P.guide.age.toFixed(2), target: P.guide.target.id, name: P.guide.target.name, stand: P.guide.stand, perch: P.guide.target.perch || null, next: P.guide.next, path: P.guide.path } : null, returning: !!P.guideReturn, last: P.guideLast || null }));

@@ -427,7 +427,8 @@
     // (the tallest thing on the green throws a shadow you can see, pole and ribbons, and each ribbon's peg sits in the turf
     // with its own contact; the ribbons are drawn a little wider with a soft dark underside, so on a 2x screen a thin
     // diagonal does not break into steps)
-    if (spot) thing({ key: 'maypole|' + C.season, x: spot.x, y: spot.y, box: [-46, -150, 46, 14], foot: [-6, 6, 6], shade: { a: 1 }, draw: B => {
+    // (round 5, pets: the foot is the ribbons' ring of pegs, not only the pole: you and your pet walked inside the ribbons and stood half hidden there)
+    if (spot) thing({ key: 'maypole|' + C.season, x: spot.x, y: spot.y, box: [-46, -150, 46, 14], foot: [-30, 30, 10], shade: { a: 1 }, draw: B => {
       const rr = kit.rng(seed + 3), cols = ['#c84a3a', '#e8c84a', '#3a7ac0', '#f2f0e8', '#5e9a54', '#c86aa0'];
       B.shadow(1.5, 2, 12, 4, .45);
       for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2, ex = Math.cos(a) * 34, ey = Math.sin(a) * 9 + 2; B.shadow(ex + 1, ey + .8, 3.4, 1.4, .5); B.s(`M0 -128Q${ex * .6} ${-60 + ey} ${ex} ${ey}`, '#3a3428', 3, .16).s(`M0 -128Q${ex * .6} ${-60 + ey} ${ex} ${ey}`, cols[k], 2.1, .95).f(B.circ(ex, ey, 1.8), '#6a5034').f(B.circ(ex - .5, ey - .6, .7), '#a8845a'); }
