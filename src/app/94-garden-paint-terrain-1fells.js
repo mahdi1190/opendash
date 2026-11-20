@@ -351,8 +351,8 @@ window.GardenPaintedTerrain = (function () {
           B.f(B.blob(rr, p.x + (rr() - .5) * 4, p.y + .5 + rr() * 1.6, 3 + rr() * 4, 1.6 + rr() * 2.2, 6, .5), col, .95); }
         B.s(B.line(idx.map(i => ({ x: L2[i].x, y: L2[i].y - 1.6 }))), snowy ? '#ffffff' : P.fellHi, 2.2, .75);
         if (!snowy) for (const i of idx) { if (i % 2) continue; const rr = R(i, 4); if (rr() < .5) B.tufts(rr, L2[i].x, L2[i].y + 1.5, 6, 3, [P.fellLo, P.bleach], 5); }
-        const cap = (i, dir) => { const a = L2[i], b = F2[i], w = 12 * dir, pts = [a, { x: a.x + w * .6, y: a.y + 3 }, { x: a.x + w, y: (a.y + b.y) / 2 }, { x: b.x + w * .9, y: b.y }, b];
-          B.f(B.poly(pts), dir < 0 ? P.rockHi : P.rockDk, dir < 0 ? .85 : .75).f(B.poly([a, { x: a.x + w * .6, y: a.y + 3 }, { x: a.x + w * .4, y: a.y + 6 }, { x: a.x, y: a.y + 4 }]), snowy ? P.snow : P.fell, .95);
+        const cap = (i, dir) => { const a = L2[i], b = F2[i], w = 7 * dir, pts = [a, { x: a.x + w * .6, y: a.y + 3 }, { x: a.x + w, y: (a.y + b.y) / 2 }, { x: b.x + w * .9, y: b.y }, b];
+          B.f(B.poly(pts), dir < 0 ? P.rock : P.rockDk, .6)   /* (Cloudbreak layout: a dim end, not a pale loose wedge in the turf) */.f(B.poly([a, { x: a.x + w * .6, y: a.y + 3 }, { x: a.x + w * .4, y: a.y + 6 }, { x: a.x, y: a.y + 4 }]), snowy ? P.snow : P.fell, .95);
           for (let k = 0; k < 3; k++) B.s(`M${a.x + w * (.3 + k * .2)} ${a.y + 6 + k * 4}l${w * .1} 10`, P.rockDk, .8, .4); };
         if (openStart && s0 === 0) cap(0, -1); if (openEnd && s1 === N - 1) cap(N - 1, 1);
       });

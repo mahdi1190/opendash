@@ -6,7 +6,7 @@
    "tier": "main",
    "surface": "laid stone",
    "control": [
-    [71, 21.3],
+    [71, 21.5],
     [70.8, 19.6],
     [70.2, 18],
     [67.6, 16.6],
@@ -19,8 +19,8 @@
     [51.8, 10.4]
    ],
    "widths": [
-    2.2,
-    2.6,
+    1.5,
+    2.3,
     3.4,
     2.6,
     3.4,
@@ -171,13 +171,15 @@
    "surface": "stones",
    "control": [
     [45.4, 23.2],
-    [44.2, 23.1],
-    [42.9, 23.2],
-    [41.9, 23.7],
-    [41.4, 24.4]
+    [44.3, 22.1],
+    [43.1, 21.45],
+    [41.95, 22.3],
+    [40.95, 23.2],
+    [40.6, 23.6]
    ],
    "widths": [
     2.2,
+    2,
     2,
     2,
     2,
@@ -726,7 +728,7 @@
    "id": "lip-stones",
    "kind": "stepping-stones",
    "over": "gorge",
-   "at": [42.8, 23.2],
+   "at": [41.95, 22.3],
    "r": 2.3,
    "along": "lip-stones",
    "isNew": true
@@ -745,7 +747,7 @@
    "id": "A",
    "name": "the lip stones",
    "route": "lip-stones",
-   "at": [42.8, 23.2],
+   "at": [41.95, 22.3],
    "opensFrom": "west bank",
    "how": "one stone has rolled; lever it back from the falls top side after your first walk down the gorge"
   },

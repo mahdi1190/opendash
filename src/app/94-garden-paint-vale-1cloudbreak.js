@@ -51,11 +51,13 @@
   // its foot and turf round it (a heap of round balls looked cheap)
   function cairnPile(B, r, h, half, snowy) {
     B.shadow(half * .25, 2, half * 1.35, Math.max(4, half * .3), .34);
-    const rows = Math.max(4, Math.round(h / 7.5)), rh = h / rows;
+    // a rubble skirt wider than the pile, then courses on a rounded (not stepped) profile, each slab its own size
+    for (let k = 0; k < 9; k++) { const a = (k / 9 - .5) * 2.6; slab(B, r, Math.sin(a) * half * 1.1, 2 + Math.cos(a) * 2 + r() * 2, 6 + r() * 8, 2.6 + r() * 2, snowy); }
+    const rows = Math.max(4, Math.round(h / 9)), rh = h / rows;
     for (let row = 0; row < rows; row++) {
-      const y = -row * rh, hw = half * (1 - row / (rows + 1.2)) * (.92 + r() * .12), sw0 = Math.max(7, hw * .55);
-      let x = -hw + (row % 2) * sw0 * .35;
-      while (x < hw - 2) { const sw = Math.min(hw - x, sw0 * (.7 + r() * .6)); if (sw > 3) slab(B, r, x + sw / 2, y + (r() - .5) * 1.2, sw + 1.5, rh * (1.05 + r() * .25), snowy); x += sw; }
+      const t = row / rows, y = -row * rh, hw = half * Math.pow(1 - t, .75) * (.9 + r() * .18) + 3, sw0 = Math.max(8, half * .5);
+      let x = -hw - r() * 3;
+      while (x < hw - 2) { const sw = Math.min(hw - x, sw0 * (.5 + r() * .7)); if (sw > 3) slab(B, r, x + sw / 2, y + (r() - .5) * 2.4, sw + 2, rh * (.9 + r() * .55), snowy); x += sw; }
     }
     slab(B, r, (r() - .5) * 2, -h + rh * .4, Math.max(8, half * .5), rh * 1.3, snowy);   // the capstone
     B.f(B.poly([[half * .15, 0], [half, 0], [half * .3, -h * .95], [half * .12, -h * .6]]), STONE.rockDk, .16);   // the east side in shade
@@ -100,9 +102,13 @@
   function wallRunNS(B, r, w, len, h, snowy) {
     const top = -h, tones = ['#a49a86', '#8a806e', '#b4aa94', '#9c927f', '#aca48e'];
     B.f(B.poly([[w / 2 - 2, -len], [w / 2 + 9, -len + 4], [w / 2 + 9, 4], [w / 2 - 2, 2]]), '#2e3420', .22);   // its shadow on the turf, east
-    B.f(B.rect(-w / 2, -len + top, w, len + 2), '#5e584c');   // the body behind the cope
-    B.f(B.rect(w / 2 - 4, -len + top, 4, len - top), '#4a443a', .8);   // the east side in shade
-    for (let y = -len + top + 2; y < top - 1; ) { const sh = 4 + r() * 4; for (let x = -w / 2 + 1; x < w / 2 - 3; ) { const sw = 4 + r() * 5, x1 = Math.min(w / 2 - 3, x + sw); if (x1 - x > 1.5) B.f(B.rr(x, y, x1 - x - .6, sh - .6, 1.6), snowy ? '#e6eae8' : tones[Math.floor(r() * tones.length)]).f(B.rect(x + .5, y + .3, Math.max(0, x1 - x - 2), 1), '#e2d8c0', .35); x += sw; } y += sh; }
+    // the body behind the cope, its sides wandering a little as dry stone does (a ruled strip read as a brick pillar)
+    const lft = [], rgt = []; for (let y = -len + top; y <= 2; y += 6) { lft.push([-w / 2 - 1 + (r() - .5) * 3, y]); rgt.push([w / 2 + 1 + (r() - .5) * 3, y]); }
+    B.f(B.poly(lft.concat(rgt.reverse())), '#4e483e');
+    B.f(B.poly([[w / 2 - 3, -len + top], [w / 2 + 2, -len + top], [w / 2 + 2, top], [w / 2 - 3, top]]), '#3e3a32', .6);   // the east side in shade
+    // the cope from above: rounded stones of every size jostled along it, moss in the gaps, lit on their west
+    for (let y = -len + top + 3; y < top - 2; ) { const sh = 4 + r() * 5; let x = -w / 2 + .5 + (r() - .5) * 2; while (x < w / 2 - 2) { const sw = 4 + r() * 7, cxs = x + sw / 2, cys = y + sh / 2 + (r() - .5) * 1.6;
+        B.f(B.blob(r, cxs + .6, cys + 1, sw / 2, sh / 2, 7, .3), '#2e2a24', .45).f(B.blob(r, cxs, cys, sw / 2, sh / 2, 7, .3), snowy ? '#e6eae8' : tones[Math.floor(r() * tones.length)]).f(B.blob(r, cxs - sw * .15, cys - sh * .18, sw * .26, sh * .2, 6, .4), '#e2d8c0', .45); x += sw - .5; } y += sh - .4; }
     if (!snowy) for (let y = -len + top + 4; y < top; y += 9 + r() * 12) B.f(B.blob(r, (r() - .5) * w * .6, y, 3 + r() * 3, 1.6 + r(), 6, .5), r() < .5 ? '#7d8f4e' : '#a9b86a', .85);
     // the south end: the face in courses, its height
     for (let y = -1, row = 0; y > top + 1; row++) { const rh = 3.4 + r() * 2.2; for (let x = -w / 2 + .5 - (row % 2) * 3; x < w / 2 - .5; ) { const sw = 5 + r() * 6, x0 = Math.max(-w / 2 + .5, x), x1 = Math.min(w / 2 - .5, x + sw); if (x1 - x0 > 1.6) B.f(B.rr(x0, y - rh + .4, x1 - x0 - .8, rh - .7, 1.2), snowy ? '#e6eae8' : tones[Math.floor(r() * tones.length)]); x += sw; } y -= rh; }
@@ -251,6 +257,18 @@
       if (x0 !== null) { const wpx = (x1 - x0) * L.cw, p = L.cpt((x0 + x1) / 2, .55);
         thing({ key: 'march-wall|' + C.season, x: p.x, y: p.y, K: 1, box: [-wpx / 2 - 4, -H9 - 6, wpx / 2 + 6, 8], foot: [-wpx / 2, wpx / 2, 14], draw: B => wallRun(B, kit.rng(990), wpx, 0, H9, snowy) }); }
     }
+    // Wick's steps (the plan's shortcut B): a flight of rough rock steps where the cove path drops to the shingle, the
+    // bottom three slabs slipped and lying askew on the shingle
+    const cc = L.routes.get('cove-cliff');
+    if (cc && cc.points && cc.points.length > 1) {
+      const top = L.cpt(76.9, 12.9), bot = L.cpt(77, 11.2), n = 6, bb = [Math.min(top.x, bot.x) - 50, bot.y - 16, Math.max(top.x, bot.x) + 50, top.y + 16];
+      C.add(bb, kit.hashStr('wicks-steps'), (B, r) => {
+        for (let k = 0; k < n; k++) { const t = k / (n - 1), x = top.x + (bot.x - top.x) * t, y = top.y + (bot.y - top.y) * t, w = 40 - k * .6, slip = k >= n - 3, a = slip ? (r() - .5) * .5 : 0, dx = slip ? (r() - .5) * 16 : 0;
+          const pts = [[-w / 2, -3.2], [w / 2, -3.6], [w / 2 + 1, 3], [-w / 2 - 1, 3.4]].map(([px, py]) => [x + dx + px * Math.cos(a) - py * Math.sin(a), y + px * Math.sin(a) + py]);
+          B.f(B.poly(pts.map(([px, py]) => [px + 1, py + 3.4])), '#3a362e', .55).f(B.poly(pts), snowy ? '#e6e8e4' : GREY[k % GREY.length]).f(B.poly([pts[0], pts[1], [pts[1][0], pts[1][1] + 1.6], [pts[0][0], pts[0][1] + 1.6]]), '#e8e2d0', .45);
+          if (!snowy && !slip) B.tufts(r, x - w / 2 - 3, y + 2, 6, 3, ['#8c9a5e', '#7d8f4e'], 5); }
+      });
+    }
     // the bothy's door path: a worn line of bare earth and a few flags from its doorstep down to the tarn path
     const bo = L.stat('ld-bothy'), tp = L.routes.get('summit-tarn');
     if (bo && bo.door && tp && tp.points && tp.points.length > 1) {
@@ -275,14 +293,15 @@
     (M.stones || []).forEach((s, i) => { const p = L.cpt(s[0], s[1]), hw = s[2] * L.cw; thing({ key: 'stone-foot-' + i, x: p.x, y: p.y - 2, box: [-2, -2, 2, 2], foot: [-hw, hw, 8], draw: () => {} }); });
   }
   const lvNow = () => { try { return gardenModel().level.level; } catch (e) { return 1; } };
-  const STAIR_LV = 18;
-  if (V && V.groundSigs) V.groundSigs.push(() => (lvNow() >= STAIR_LV ? 'cs1' : 'cs0'));
+  const STAIR_LV = 18, LIP_LV = 6;   // shortcut C (the falls cave stair) and shortcut A (the lip stones: one has rolled out of the line)
+  if (V && V.groundSigs) V.groundSigs.push(() => (lvNow() >= STAIR_LV ? 'cs1' : 'cs0') + (lvNow() >= LIP_LV ? 'la1' : 'la0'));
+  window.gardenCloudbreakLipGap = () => lvNow() < LIP_LV;
   function ropeLine(B, r, a, b, snowy) {
-    const posts = [a, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, b];
+    const np = Math.max(2, Math.round(Math.abs(b.x - a.x) / 44)) + 1, posts = []; for (let i = 0; i < np; i++) posts.push({ x: a.x + (b.x - a.x) * i / (np - 1), y: a.y + (b.y - a.y) * i / (np - 1) + (i % 2 ? 2 : 0) });
     B.shadow((a.x + b.x) / 2 + 3, (a.y + b.y) / 2 + 2, Math.abs(b.x - a.x) / 2 + 8, 4, .25);
-    for (let i = 0; i < 2; i++) { const p = posts[i], q = posts[i + 1]; B.s(`M${p.x} ${p.y - 22}Q${(p.x + q.x) / 2} ${(p.y + q.y) / 2 - 14} ${q.x} ${q.y - 22}`, '#6a5434', 2.6, .9).s(`M${p.x} ${p.y - 22.6}Q${(p.x + q.x) / 2} ${(p.y + q.y) / 2 - 14.6} ${q.x} ${q.y - 22.6}`, '#d8c08a', 1.2, .9); }
+    for (let i = 0; i < np - 1; i++) { const p = posts[i], q = posts[i + 1]; B.s(`M${p.x} ${p.y - 22}Q${(p.x + q.x) / 2} ${(p.y + q.y) / 2 - 14} ${q.x} ${q.y - 22}`, '#6a5434', 2.6, .9).s(`M${p.x} ${p.y - 22.6}Q${(p.x + q.x) / 2} ${(p.y + q.y) / 2 - 14.6} ${q.x} ${q.y - 22.6}`, '#d8c08a', 1.2, .9); }
     for (const p of posts) B.f(B.ell(p.x + 1, p.y, 4.4, 1.6), '#2e3420', .35).f(B.rect(p.x - 2.4, p.y - 25, 4.8, 25), '#7a6248').f(B.rect(p.x - 2.4, p.y - 25, 1.6, 25), '#a88c62', .8).f(B.ell(p.x, p.y - 25, 2.6, 1), snowy ? STONE.snow : '#5e4a34');
-    const m = posts[1], tx = 'Lv ' + STAIR_LV; B.f(B.rr(m.x - 12, m.y - 40, 24, 11, 2), '#c9a876').s(B.rr(m.x - 12, m.y - 40, 24, 11, 2), '#6e5434', .8, .9); B.text(tx, m.x, m.y - 34.2, 7, '#3e2c1a');
+    const m = posts[Math.floor(np / 2)], tx = 'Lv ' + STAIR_LV; B.f(B.rr(m.x - 12, m.y - 40, 24, 11, 2), '#c9a876').s(B.rr(m.x - 12, m.y - 40, 24, 11, 2), '#6e5434', .8, .9); B.text(tx, m.x, m.y - 34.2, 7, '#3e2c1a');
   }
   function stairRopes(C) {
     const { L, kit } = C, fl = L.pres && L.pres.falls; if (!fl || !fl.caveStair || lvNow() >= STAIR_LV) return;
@@ -291,8 +310,10 @@
       C.add([a.x - 14, a.y - 44, b.x + 14, b.y + 8], kit.hashStr('stair-rope|' + y), B => ropeLine(B, kit.rng(55), a, b, snowy)); }
   }
   // the ropes, cells: [x0, x1, y] (the same lines block the walk, gardenCloudbreakStairShut)
-  const STAIR_ROPES = (sx, sy) => [[sx - .75, sx + .75, sy + 1.25]];
+  const STAIR_ROPES = (sx, sy) => [[sx - 1.65, sx + 1.75, sy + 1.25]];   // (from the rock tor west of the stair to the falls' spray: the stair's foot is a wide apron of turf)
   window.gardenCloudbreakStairShut = function () { try { const d = gardenIslandActive() && gardenIslandData(), fl = d && d.presentation && d.presentation.falls; if (!fl || !fl.caveStair || !(d.presentation.mountains) || lvNow() >= STAIR_LV) return []; return STAIR_ROPES(fl.caveStair[0], fl.caveStair[1]); } catch (e) { return []; } };
+  // shortcut A: below level 6 the middle lip stone has rolled away, and the gap in the line stops you (the painter leaves it out)
+  window.gardenCloudbreakLipShut = function () { try { const d = gardenIslandActive() && gardenIslandData(), c = d && d.presentation && (d.presentation.crossings || []).find(q => q.id === 'lip-stones'); if (!c || lvNow() >= LIP_LV) return []; return [[c.x - .42, c.y - .36, c.x + .42, c.y + .36]]; } catch (e) { return []; } };
   if (V && V.parts) V.parts.push({ id: 'cloudbreak', compose(C) { compose(C); stairRopes(C); } });
 
   // with painting off, the classic drawings stand in (the woodcutter's hut, the market cross, a gate): never an empty block
@@ -378,7 +399,7 @@
     post(posts[0]);
     // the gate: five bars and a brace hung between the posts, seen side on (it runs down the slope toward you)
     const gx0 = posts[0][0] + 5, gy0 = posts[0][1] + 2, gx1 = posts[1][0] - 4, gy1 = posts[1][1] - 2;   // (the gate fills the gap in the last wall, post to post: shut)
-    for (let k = 0; k < 5; k++) { const h = 4 + k * (-gateTop - 6) / 4; B.s(`M${gx0} ${gy0 - h}L${gx1} ${gy1 - h}`, '#3a2e22', 4.4, .7).s(`M${gx0} ${gy0 - h}L${gx1} ${gy1 - h}`, k === 4 ? '#e0cca0' : '#c4a878', 3, 1); }
+    for (let k = 0; k < 5; k++) { const h = 4 + k * (-gateTop - 6) / 4; B.s(`M${gx0} ${gy0 - h}L${gx1} ${gy1 - h}`, '#3a2e22', 5.6, .7).s(`M${gx0} ${gy0 - h}L${gx1} ${gy1 - h}`, k === 4 ? '#ecdcb0' : '#d4b888', 4, 1); }
     B.s(`M${gx0} ${gy0 - 4}L${gx1} ${gy1 + gateTop + 2}`, '#8a7050', 2.6, .95);
     for (const t of [.06, .94]) { const x = gx0 + (gx1 - gx0) * t, y = gy0 + (gy1 - gy0) * t; B.s(`M${x} ${y - 4}v${gateTop + 2}`, '#a88c62', 3, 1); }   // the gate's two stiles
     // shut and tied: a loop of rope from the gate's end stile round the front post, and a latch bar

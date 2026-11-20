@@ -115,8 +115,10 @@
         // the line, sitting in the stream (the water breaks white on their upstream side and runs dark between them),
         // their tops worn flat where feet go; together they still cover the whole footing
         const tones = season === 'winter' ? ['#a9a89c', '#bdbcb0', '#9a9a8e'] : ['#8e877a', '#9c9484', '#857e70', '#a39a88'];
+        const gap = typeof window.gardenCloudbreakLipGap === 'function' && window.gardenCloudbreakLipGap() ? Math.floor(count / 2) : -1;   // (shortcut A: one stone rolled out of the line until level 6)
         for (let i = 0; i < count; i++) {
           const lo = i * step, hi = (i + 1) * step, mid = (lo + hi) / 2, off = (r() - .5) * hw * .35, sz = .9 + r() * .3, n = 9, a0 = r() * 6.3, pts = [];
+          if (i === gap) { for (let k = 0; k < 3; k++) { const p = q(mid + (k - 1) * (hi - lo) * .3, (r() - .5) * hw); B.s(`M${p.x - 6} ${p.y}q6 -3 12 0`, P.foam || '#eef2e2', 1.4, .7); } const p = q(mid + (hi - lo) * .2, hw * 1.5); B.stone(r, p.x, p.y + 4, 9, 5, { rock: '#8e877a', rockLo: '#5e584e', rockHi: '#b8b0a0', rockDk: '#2e2c28' }, null); continue; }
           for (let j = 0; j < n; j++) { const a = a0 + j / n * Math.PI * 2, k = (.82 + r() * .26) * sz; pts.push([mid + Math.cos(a) * (hi - lo) * .62 * k, off + Math.sin(a) * hw * 1.02 * k]); }
           const at = (pp, dy) => pp.map(([t, ds]) => { const p = q(t, ds); return [p.x, p.y + (dy || 0)]; });
           B.f(B.poly(at(pts.map(([t, ds]) => [t, ds * 1.12]), 2)), P.foam || '#eef2e2', .55);   // the white water round its foot
