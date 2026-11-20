@@ -52,7 +52,7 @@
   Object.assign(P, {
     /* ---------- the watermill ---------- */
     // (round 3 layout: on its 5 x 3 footprint the mill stands at the size standard, its ridge about five and a half times the player)
-    'sight:mill': { box: [-124, -150, 92, 18], scale: prop => (prop.w >= 5 ? 1.6 : 1),
+    'sight:mill': { box: [-124, -150, 92, 18], scale: prop => (prop.w >= 5 ? 1.6 : 1), lift: prop => (prop.w >= 5 ? 16 : 0),
       sig: () => turning() ? '|turn' : '|still',
       draw(B, o) {
         const r = rng(hash('valley-mill')), lit = o.night && o.more === '|turn';

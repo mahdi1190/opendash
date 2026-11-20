@@ -11,6 +11,9 @@
 (function () {
   'use strict';
   const V = window.GardenPaintVale; if (!V) return;
+  // the part of a piece whose foot is within a few px of its lowest point: that is where it stands on the ground
+  const footOf = (A, Bq) => { const lo = A.y >= Bq.y ? A : Bq, hi = lo === A ? Bq : A, dy = Math.abs(A.y - Bq.y), dx = hi.x - lo.x, k = dy > 5 ? 5 / dy : 1, x2 = lo.x + dx * k; return [Math.min(lo.x, x2) - 2, Math.max(lo.x, x2) + 2, 9]; };
+  const NAME = { 'the-ham': 'the Ham hedge', 'wheel-pit': 'wheel pit wall', rickyard: 'rickyard fence', 'reed-bed': 'reed bed' };
   function compose(C) {
     const { L, kit, add, thing } = C, W = L.W, cw = L.cw, ch = L.ch, season = C.season;
     const forms = (L.D.landforms || []).filter(f => f.kind === 'screen' && f.polygon && f.polygon.length > 2); if (!forms.length) return;
@@ -52,14 +55,18 @@
           // the outward side: the one that is not inside the screen
           let ox = nx / nl, oy = ny / nl; if (gardenIslandInPolygon(mx + ox * .3, my + oy * .3, poly.map(([u, v]) => ({ x: u, y: v })))) { ox = -ox; oy = -oy; }
           if (building(mx + ox * .5, my + oy * .5)) continue;   // against the building it lies behind: its wall is the stop
-          pieces.push([L.pt(p), L.pt(q)]);
+          // drawn a third of a cell inside the outline: it stands on the ground the feet cannot reach, its foot on the line where they stop
+          const ix = -ox * .34, iy = -oy * .34; pieces.push([L.cpt(p[0] + ix, p[1] + iy), L.cpt(q[0] + ix, q[1] + iy)]);
         }
       }
       pieces.forEach(([p, q], i) => {
         const x0 = Math.min(p.x, q.x), x1 = Math.max(p.x, q.x), foot = Math.max(p.y, q.y), top = Math.min(p.y, q.y), ox = x0, oy = foot, rel = z => ({ x: z.x - ox, y: z.y - oy }), A = rel(p), Bq = rel(q), r0 = kit.rng(seed + i * 31);
         const tallPx = id === 'the-ham' ? 30 : id === 'wheel-pit' ? 34 : id === 'rickyard' ? 30 : 58;
         const box = [-14, top - foot - tallPx - 10, x1 - x0 + 14, 10];
-        thing({ key: 'vscreen|' + id + '|' + i + '|' + season, x: ox, y: oy, depth: oy - 2, box, K: 1.4, draw: B => {
+        // (foot: the feet stop on what is drawn here, as they do on the screen's outline; walking (_gwBuildSolids) reads it)
+        thing({ key: NAME[id] + '|' + id + '|' + i + '|' + season, x: ox, y: oy, depth: oy - 2, box, K: 1.4, foot: footOf(A, Bq), draw: B => {
+          // the foot: a solid band where it meets the ground (hedge bottom, footing course, grass along the rails, wet reed bases)
+          B.f(B.poly([[A.x, A.y - 5], [Bq.x, Bq.y - 5], [Bq.x, Bq.y + 1], [A.x, A.y + 1]]), id === 'the-ham' ? leaf[3] : id === 'wheel-pit' ? stone[1] : id === 'rickyard' ? leaf[3] : '#4e5a32');
           const along = n => { const out = []; for (let s = 0; s <= n; s++) { const t = s / n; out.push({ x: A.x + (Bq.x - A.x) * t, y: A.y + (Bq.y - A.y) * t }); } return out; };
           const steps = Math.max(2, Math.round(Math.hypot(Bq.x - A.x, Bq.y - A.y) / 9)), pts = along(steps), steep = Math.abs(Bq.y - A.y) > Math.abs(Bq.x - A.x), lo = steep ? .62 : 1;   // (a hedge or a wall running up the view is seen end on: lower and fuller, a band, not a column)
           if (id === 'the-ham') {   // a hawthorn hedge, clipped, half the player's height, with haws in autumn and may blossom in spring
@@ -87,21 +94,20 @@
       });
       // the reed bed is reeds right through: rows of standing reeds over the whole bed, each row its own sprite sorted by its foot
       if (id === 'reed-bed') for (let y = bb[1] + 40 + 14, k = 0; y < bb[3] - 40; y += 16, k++) {
-        const xs = []; for (let x = bb[0] + 40; x < bb[2] - 40; x += 7) if (inF(x, y)) xs.push(x); if (xs.length < 2) continue;
+        const xs = []; for (let x = bb[0] + 40; x < bb[2] - 40; x += 7) if (inF(x, y) && inF(x - cw * .5, y) && inF(x + cw * .5, y) && inF(x, y - ch * .6) && inF(x, y + ch * .3)) xs.push(x); if (xs.length < 2) continue;
         const ox = xs[0], r2 = kit.rng(seed + 501 + k * 17);
-        thing({ key: 'vscreen|reeds|row' + k + '|' + season, x: ox, y, depth: y - 1, box: [-12, -70, xs[xs.length - 1] - ox + 12, 6], K: 1.4, draw: B => {
-          B.f(B.rect(-4, -3, xs[xs.length - 1] - ox + 8, 6), '#4e5a32', .5);
+        thing({ key: 'reed bed|reeds|row' + k + '|' + season, x: ox, y, depth: y - 1, box: [-12, -70, xs[xs.length - 1] - ox + 12, 6], K: 1.4, foot: [-4, xs[xs.length - 1] - ox + 4, 9], draw: B => {
+          B.f(B.rect(-4, -4, xs[xs.length - 1] - ox + 8, 5), '#4e5a32');
           for (const x0 of xs) for (let j = 0; j < 3; j++) { const x = x0 - ox + (r2() - .5) * 7, h = 42 + r2() * 20, lean = (r2() - .5) * 9; B.s(`M${x} 0q${lean * .3} ${-h * .6} ${lean} ${-h}`, reed[Math.floor(r2() * 3)], 1.3, .95); if (r2() < .3) B.f(B.ell(x + lean, -h + 2, 1.8, 5), winter ? '#c8b48a' : '#8a6a3a', .9); }
         } });
       }
       // 3. what stands inside and shows over the roof: the Ham's haycocks, the rickyard's two ricks
-      const inner = id === 'the-ham' ? 3 : id === 'rickyard' ? 2 : 0;
+      const inner = id === 'the-ham' ? 3 : id === 'rickyard' ? 2 : 0, placed = [];
       for (let k = 0; k < inner; k++) {
-        const r1 = kit.rng(seed + 977 + k * 13); let at = null;
-        for (let t = 0; t < 40 && !at; t++) { const x = bb[0] + 50 + r1() * (bb[2] - bb[0] - 100), y = bb[1] + 40 + r1() * Math.max(10, (bb[3] - bb[1]) * .45); if (inF(x, y) && inF(x - 34, y) && inF(x + 34, y)) at = { x, y }; }
-        if (!at) continue;
-        const big = id === 'rickyard';
-        thing({ key: 'vscreen|' + id + '|in' + k + '|' + season, x: at.x, y: at.y, box: big ? [-50, -96, 50, 10] : [-22, -34, 22, 6], K: 1.4, draw: B => {
+        const r1 = kit.rng(seed + 977 + k * 13), big = id === 'rickyard'; let at = null;
+        const m = big ? 1.4 : .9; for (let t = 0; t < 80 && !at; t++) { const x = bb[0] + 50 + r1() * (bb[2] - bb[0] - 100), y = bb[1] + 40 + r1() * Math.max(10, (bb[3] - bb[1]) * .5); if (inF(x, y) && inF(x - cw * m, y) && inF(x + cw * m, y) && inF(x, y - ch * .8) && inF(x, y + ch * .6) && !placed.some(q => Math.abs(q.x - x) < cw * (big ? 2.4 : 1.6) && Math.abs(q.y - y) < ch * 1.2)) at = { x, y }; }
+        if (!at) continue; placed.push(at);
+        thing({ key: (big ? 'hay rick' : 'haycock') + '|' + id + '|in' + k + '|' + season, x: at.x, y: at.y, box: big ? [-50, -96, 50, 10] : [-22, -34, 22, 6], K: 1.4, foot: big ? [-42, 42, 14] : [-17, 17, 8], draw: B => {
           if (big) {   // a hay rick: a rounded stack under a thatched ridge, pegged ropes down its side
             B.shadow(6, 2, 46, 8, .28);
             B.f('M-42 0L-44 -42Q-40 -54 0 -56Q40 -54 44 -42L42 0Z', hay[1]).f('M-38 -4L-40 -40Q-36 -50 -6 -52L-8 -4Z', hay[2], .5);
