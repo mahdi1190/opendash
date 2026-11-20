@@ -100,7 +100,8 @@ function gardenLiveHostGone() {
   if (typeof gardenLivePhoto === 'function') gardenLivePhoto(null);
   if (typeof _gllPhotoReset === 'function') _gllPhotoReset();
   if (typeof gardenContestHostGone === 'function') gardenContestHostGone();   // (a round ends with a clean stop, while the host can still speak)
-  if (typeof _gltHostStop === 'function') _gltHostStop();   // (an open trade is called off while the server can still carry the word)
+  if (typeof _gltHostStop === 'function') _gltHostStop();
+  if (typeof _gloHostStop === 'function') _gloHostStop();   // (a question about a plot is answered: the owner is going)   // (an open trade is called off while the server can still carry the word)
   _glh.on = false; clearInterval(_glh.beatT);
   if (_gll.role === 'host') _gll.role = '';
   _gllApi('/api/garden-live/here', { role: 'host', on: false, tab: _GLL_TAB }).catch(() => {});
@@ -228,7 +229,8 @@ function _glhEvent(ev) {
       return;
     }
     case 'tr': if (typeof _gltHostOn === 'function') _gltHostOn(ev); return;
-    case 'leave': if (typeof _gltHostLeft === 'function') _gltHostLeft(ev.w); _glhRemove(ev.w); if (typeof gardenContestLeave === 'function') gardenContestLeave(ev.w); _glhReturnDrops(ev.w); gardenLiveLoad(true).then(_glhHud).catch(() => {}); return;
+    case 'lot': if (typeof _gloHostOn === 'function') _gloHostOn(ev); return;   // a plot (94-garden-live-7lots.js)
+    case 'leave': if (typeof _gltHostLeft === 'function') _gltHostLeft(ev.w); if (typeof _gloHostLeft === 'function') _gloHostLeft(ev.w); _glhRemove(ev.w); if (typeof gardenContestLeave === 'function') gardenContestLeave(ev.w); _glhReturnDrops(ev.w); gardenLiveLoad(true).then(_glhHud).catch(() => {}); return;
     case 'go': { const A = _gll.actors.get(ev.w); if (A) { _gllGoPace(A, ev); _glhWalk(A, ev); if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } return; }
     case 'em': {
       const A = _gll.actors.get(ev.w); if (!A) return;
@@ -252,6 +254,7 @@ function _glhByTable() {
   const add = (kind, x, y, fid) => { if (!fid) return; let i = idx.get(fid); if (i == null) { if (names.length >= 16) return; i = names.length; names.push(_glhByName(fid)); idx.set(fid, i); } rows.push([kind, x, y, i]); };
   for (const p of m.plants) { const r = g.plants[p.uid]; if (r && r.by) add('p', p.x, p.y, r.by); }
   for (const d of m.decor) { const r = g.decor[d.uid]; if (r && r.by) add(d.def.layer === 'ground' ? 'g' : 'd', d.x, d.y, r.by); }
+  if (typeof _gloHome === 'function') for (const L of _gloHome()) add('l', L.x, L.y, L.f);   // whose plot is whose: names only for the people in the garden (94-garden-live-7lots.js)
   return { v: 2, n: names, r: rows };
 }
 function _glhSendSnap(fid) {
@@ -406,14 +409,14 @@ function _glhApply(ev, key) {
   switch (t) {
     case 'plant': {
       const def = gardenPlant(ev.p);
-      const whyNot = _gdPlaceOk(m, def, ev.x, ev.y, 'plant'); if (whyNot) return whyNot;
+      const whyNot = _gdPlaceOk(m, def, ev.x, ev.y, 'plant', undefined, f); if (whyNot) return whyNot;
       const uid = _gdUid('p'), mark = _gdMark([['plants', uid]]), variants = (def.look.v || []).length || 1;
       g.plants[uid] = { p: def.id, x: ev.x, y: ev.y, t: now, w: now, v: gardenHash(uid) % variants, by: f, gi: ev.i };
       return put(mark, { u: uid, mp: 'plants' });
     }
     case 'place': {
       const def = gardenDecor(ev.p);
-      const whyNot = _gdPlaceOk(m, def, ev.x, ev.y, 'decor'); if (whyNot) return whyNot;
+      const whyNot = _gdPlaceOk(m, def, ev.x, ev.y, 'decor', undefined, f); if (whyNot) return whyNot;
       const uid = _gdUid('d'), mark = _gdMark([['decor', uid]]);
       g.decor[uid] = { d: def.id, x: ev.x, y: ev.y, r: def.rot ? ((Number(ev.r) || 0) & 3) : 0, v: 0, at: now, by: f, own: f, gi: ev.i };
       return put(mark, { u: uid, mp: 'decor' });
@@ -469,7 +472,7 @@ function _glhApply(ev, key) {
     }
     case 'move': {
       const it = hit.p || hit.d, kind = hit.p ? 'plant' : 'decor';
-      const whyNot = _gdPlaceOk(m, it.def, ev.tx, ev.ty, kind, it.uid); if (whyNot) return whyNot;
+      const whyNot = _gdPlaceOk(m, it.def, ev.tx, ev.ty, kind, it.uid, f); if (whyNot) return whyNot;
       const mark = _gdMark([[hit.p ? 'plants' : 'decor', it.uid]]);
       rec.x = ev.tx; rec.y = ev.ty;
       return put(mark, { u: it.uid, tx: ev.tx, ty: ev.ty });
@@ -521,7 +524,7 @@ function _glhPrune() {
   for (const k of ks.sort((a, b) => (g.gl[a].at || 0) - (g.gl[b].at || 0)).slice(0, ks.length - 300)) delete g.gl[k];
 }
 /* ---------- what 94-garden-1core.js asks: a harvest's share, and the queue ---------- */
-function gardenLiveShareOf(f) { return _glhPerm(f).share || 'keeper'; }
+function gardenLiveShareOf(f, rec) { if (rec && typeof gardenLotOwnsCell === 'function' && gardenLotOwnsCell(f, rec.x, rec.y)) return 'keeper'; return _glhPerm(f).share || 'keeper'; }   // (on their own plot, what grows is always theirs)
 function gardenLivePostsSoon() { clearTimeout(_glh.flushT); _glh.flushT = setTimeout(_glhFlushPosts, 100); }
 /** What is queued goes out. A post waiting out your Undo stays; when it goes, that Undo step goes with it. */
 function _glhFlushPosts() {
@@ -742,6 +745,9 @@ function _glhDiaryWhat(e, n) {
     case 'drop': return `${who} left a parcel`;
     case 'pick': return `${who} picked up a parcel`;
     case 'trade': return e.f2 ? `${who} and ${_glhByName(e.f2)} traded` : `${who} traded with you`;
+    case 'lot': return `${who} bought a plot here`;
+    case 'lotdrop': return `${who} gave their plot up`;
+    case 'lotback': return `You gave ${who}'s plot back`;
     default: return `${who} was here`;
   }
 }
@@ -804,6 +810,7 @@ function _glhPanel(el, v) {
     const seg = _gsvEl('div', 'gll-switch');
     for (const lv of GL_LEVELS) seg.appendChild(sw(GL_LEVEL_NAMES[lv], p.lv === lv, () => setP(f.id, { lv })));
     r.appendChild(seg);
+    { const lr = typeof gardenLotGateRow === 'function' ? gardenLotGateRow(f.id) : null; if (lr) r.appendChild(lr); }   // their plots here, each with Give back (94-garden-live-7lots.js)
     if (p.lv === 'help' || p.lv === 'play') {
       const opt = _gsvEl('div', 'gll-friend-o');
       const c = document.createElement('label'); c.className = 'gll-check'; const i = document.createElement('input'); i.type = 'checkbox'; i.checked = !!p.touch; i.onchange = () => setP(f.id, { touch: i.checked }); c.append(i, _gsvEl('span', null, 'May touch my things'));

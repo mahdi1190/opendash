@@ -1,0 +1,21 @@
+/* Plots in a friend's garden (94-garden-live-7lots.js, docs/dev/GARDEN_TOGETHER.md section 29): the chooser, the owner's question, and the outline on the stage. */
+.glo-outline { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 6; overflow: visible; }
+.glo-outline .glo-wait { animation: glo-pulse 1.4s ease-in-out infinite; }
+@keyframes glo-pulse { 0%, 100% { fill-opacity: .08; } 50% { fill-opacity: .2; } }
+.glo-panel { position: absolute; left: 50%; bottom: 86px; transform: translateX(-50%); z-index: 9; width: min(420px, calc(100% - 24px)); padding: 12px 14px 12px; border-radius: 14px; background: var(--surface, #fffdf7); color: var(--text, #2d2a20); box-shadow: 0 8px 28px rgba(20, 30, 14, .3); animation: gll-trade-in .16s ease-out both; }
+.glo-card { bottom: auto; top: 120px; border: 2px solid #3fae4f; }
+.glo-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.glo-h { margin: 0; font-size: 15px; font-weight: 700; }
+.glo-say { margin: 6px 0 8px; font-size: 13px; line-height: 1.4; color: var(--muted, #6b6a5a); }
+.glo-sizes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.glo-size { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 4px; line-height: 1.2; }
+.glo-size span { font-size: 11px; opacity: .85; white-space: nowrap; }
+.glo-st { margin: 8px 0 0; padding: 7px 10px; border-radius: 10px; font-size: 13px; line-height: 1.35; }
+.glo-st.is-ok { background: #e6f4e2; color: #1f6f36; }
+.glo-st.is-no { background: #fbe9e2; color: #9a3f22; }
+.glo-st.is-wait { background: #fff6df; color: #5a4a20; }
+.glo-foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-top: 10px; }
+.glo-gate { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0; font-size: 12.5px; color: var(--muted, #6b6a5a); }
+@media (max-width: 640px) { .glo-panel { left: 6px; right: 6px; width: auto; transform: none; bottom: 74px; } .glo-card { top: 70px; bottom: auto; } }
+@media (prefers-reduced-motion: reduce) { .glo-panel, .glo-outline .glo-wait { animation: none; } }
+html[data-motion="reduced"] .glo-panel, html[data-motion="reduced"] .glo-outline .glo-wait { animation: none; }

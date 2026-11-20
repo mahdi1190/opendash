@@ -979,7 +979,7 @@ function _gdPostsSoon() { if (typeof gardenLivePostsSoon === 'function') gardenL
  */
 function _gdCropShare(rec, uid, items, hold) {
   if (!rec || !rec.by || !rec.gi) return [];
-  const share = typeof gardenLiveShareOf === 'function' ? gardenLiveShareOf(rec.by) : 'keeper';
+  const share = typeof gardenLiveShareOf === 'function' ? gardenLiveShareOf(rec.by, rec) : 'keeper';
   if (share === 'owner') return [];
   const post = [];
   for (const k of Object.keys(items)) {
@@ -1024,12 +1024,13 @@ function _gdCellFree(m, x, y, w, h, ignore) {
   }
   return '';
 }
-function _gdPlaceOk(m, def, x, y, kind, ignore) {
+function _gdPlaceOk(m, def, x, y, kind, ignore, who) {
   if (m.worldPending) return 'The garden update needs to finish before you can place anything';
   if (m.visit && m.visit.no[kind === 'decor' ? 'decor' : 'plant']) return m.visit.no[kind === 'decor' ? 'decor' : 'plant'];   // your level there does not reach this: the ghost goes red
   const why = gardenCellOk(def, x, y, m.level.level, kind);
   if (why) return why;
   const w = kind === 'decor' ? def.w || 1 : def.fp || 1, h = kind === 'decor' ? def.h || 1 : def.fp || 1;
+  if (typeof gardenLotClash === 'function') { const lw = gardenLotClash(m, x, y, w, h, who); if (lw) return lw; }   // a friend's plot is theirs alone (94-garden-live-7lots.js); who: a visitor's friend id on the host's page, else you
   if (kind === 'decor' && def.layer === 'ground') {
     for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) { const c = m.occ.get((x + dx) + ',' + (y + dy)); if (c && ((c.ground && c.ground !== ignore) || c.plant)) return c.plant ? 'Something is growing there' : 'There is a path there already'; }
     return '';
