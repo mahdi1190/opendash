@@ -71,7 +71,7 @@ function _gaTreeRows(px, py) {
   const out = [];
   for (const b of _ga.trunks) {
     const fx = (b.x0 + b.x1) / 2, fy = b.y1; if (Math.abs(fx - px) > GA_REACH + 1 || Math.abs(fy - py) > GA_REACH + 1) continue;
-    for (const o of GARDEN_ACT_BY_TREE[b.src] || []) { if (o.big && b.x1 - b.x0 < o.big) continue; out.push({ key: 'tree:' + fx.toFixed(1) + ',' + fy.toFixed(1) + ':' + o.act, act: o.act, name: o.name, x: fx, y: fy, stand: { x: fx + o.stand[0], y: fy + o.stand[1] }, deg: o.deg, lift: 0, src: 'tree', tree: b }); }
+    for (const o of GARDEN_ACT_BY_TREE[b.src] || []) { if (o.big && b.x1 - b.x0 < o.big) continue; if (o.act === 'hide' && _ga.trunks.some(t => t !== b && t.y1 > fy - 0.2 && t.y1 < fy + 2.6 && Math.abs((t.x0 + t.x1) / 2 - fx - 0.15) < 1.4)) continue;   // (round 4: not where another tree just in front would bury you in its leaves: you must be seen peeking) out.push({ key: 'tree:' + fx.toFixed(1) + ',' + fy.toFixed(1) + ':' + o.act, act: o.act, name: o.name, x: fx, y: fy, stand: { x: fx + (o.side ? o.side * (b.x1 - b.x0) / 2 : 0) + o.stand[0], y: fy + o.stand[1] }, deg: o.deg, lift: 0, src: 'tree', tree: b, seated: !!o.edge }); }
   }
   return out;
 }
@@ -111,7 +111,7 @@ function gartActFrame() {
   const now = performance.now();
   if (_ga.cur && _ga.cur.doing) {
     const cur = _ga.cur;
-    if (!cur.H) { const inner = _gw.node && _gw.node.querySelector('.gd-pl-in'), k = (inner && inner._gplKey) || ''; if (k.startsWith('idle' + cur.wantDir) || now - cur.t0 > 600) { const gpl = _gaMyFigure(); if (gpl) cur.H = gartActPlay(gpl, cur.id, { noProp: !!(cur.spot && cur.spot.noProp), skips: cur.skips, leaves: !!(cur.spot && cur.spot.kick === 'leaves') }); } }
+    if (!cur.H) { const inner = _gw.node && _gw.node.querySelector('.gd-pl-in'), k = (inner && inner._gplKey) || ''; if (k.startsWith('idle' + cur.wantDir) || now - cur.t0 > 600) { const gpl = _gaMyFigure(); if (gpl) cur.H = gartActPlay(gpl, cur.id, { noProp: !!(cur.spot && cur.spot.noProp), skips: cur.skips, leaves: !!(cur.spot && cur.spot.kick === 'leaves'), tree: cur.spot && cur.spot.tree, at: cur.spot && cur.spot.stand }); } }
     _gaTick(now);
     if (cur.row.rubPet) _gaRubTick(cur);
     if (cur.row.fetch) _gaFetchDraw();
@@ -182,6 +182,7 @@ function gartActPlay(gpl, id, o) {
     if (row.prop === 'swimwater') { if (motion) { try { H.panims.push(gardenVisualAnimate(g, [{ offset: 0, opacity: 0 }, { offset: 0.2, opacity: 0 }, { offset: 0.42, opacity: 1 }, { offset: 1, opacity: 1 }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* shows at once */ } } }
   }
   if (row.kick && o.leaves) _gaLeafBurst(gpl, H, motion, row.ms);
+  if (row.hideBehind && o.tree && o.at) _gaBarkFront(gpl, H, o.tree, o.at);
   H.stop = () => { for (const t of H.timers) clearTimeout(t); for (const a of H.anims.concat(H.panims)) { try { a.cancel(); } catch (e) { /* gone */ } } for (const g of H.props) { try { if (g.parentNode) g.parentNode.removeChild(g); if (g.destroy) g.destroy(); } catch (e) { /* gone */ } } H.anims.length = 0; H.props.length = 0; };
   return H;
 }
@@ -305,6 +306,20 @@ function _gaDucks(g, H, motion, ms) {
       const h = el.querySelector('.ga-duck-h'); if (h) H.panims.push(gardenVisualAnimate(h, [{ offset: 0, transform: 'rotate(0deg)' }, { offset: 0.5 + i * 0.05, transform: 'rotate(0deg)' }, { offset: 0.6 + i * 0.05, transform: 'rotate(75deg)' }, { offset: 0.72 + i * 0.05, transform: 'rotate(0deg)' }, { offset: 0.84, transform: 'rotate(75deg)' }, { offset: 1, transform: 'rotate(0deg)' }], { duration: ms, fill: 'forwards' }));
     } catch (e) { /* they just sit there */ }
   });
+}
+/** Hiding (round 4): the trunk's own near side, solid bark drawn in front of your body from the ground to above your head, so most of
+ * you is really behind it (the tree's picture fades as it always does when you are under its crown; this does not). Figure units. */
+function _gaBarkFront(gpl, H, b, at) {
+  const S = typeof GW_SCALE === 'number' ? GW_SCALE : 0.592, W = GARDEN_WORLD, u = W.cellW / S, cx = ((b.x0 + b.x1) / 2 - at.x) * u, hw = Math.max(9, (b.x1 - b.x0) / 2 * u * 0.92), N = (v) => Math.round(v * 10) / 10;
+  let g; try { g = typeof gardenSceneElement === 'function' && gardenVisualIsNative(gpl) ? gardenSceneElement('g') : document.createElementNS('http://www.w3.org/2000/svg', 'g'); } catch (e) { return; }
+  const L = cx - hw, R = cx + hw;
+  g.setAttribute('class', 'ga-prop ga-bark');
+  g.innerHTML = `<path d="M${N(L - 3)} 6Q${N(L)} 0 ${N(L + 1)} -8L${N(L + 2)} -96L${N(R - 1)} -96L${N(R)} -8Q${N(R + 1)} 0 ${N(R + 5)} 6z" fill="#6e4e32"/>`
+    + `<path d="M${N(L + 2)} -96L${N(L + 1)} -8Q${N(L)} 0 ${N(L - 3)} 6L${N(L + hw * 0.7)} 6L${N(L + hw * 0.6)} -96z" fill="#5a3e26"/>`
+    + `<path d="M${N(R - 4)} -96L${N(R - 3)} -8Q${N(R - 2)} 2 ${N(R + 2)} 6" stroke="#9a7650" stroke-width="2.2" fill="none" opacity="0.8"/>`
+    + `<path d="M${N(cx - hw * 0.3)} -88q-1.5 18 0.5 34M${N(cx + hw * 0.25)} -70q1.2 16 -0.5 30M${N(cx - hw * 0.1)} -36q-1 12 0.8 22" stroke="#3e2a18" stroke-width="1" fill="none" opacity="0.6"/>`
+    + `<path d="M${N(cx - hw * 0.6)} -60q3 -2 5 1" stroke="#3e2a18" stroke-width="1.1" fill="none" opacity="0.5"/><ellipse cx="${N(cx)}" cy="4" rx="${N(hw + 6)}" ry="3" fill="#1a1408" opacity="0.18"/>`;
+  gpl.appendChild(g); H.props.push(g);
 }
 /** The leaf pile bursts (round 3: big enough to see): two dozen leaves fly up and out from where it lay, in front of your feet, turn over and
  * flutter down round you; they are drawn with the figure, so they are always in front of the grass. Reduced motion: none. */

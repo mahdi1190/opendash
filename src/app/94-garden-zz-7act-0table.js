@@ -125,9 +125,14 @@ const GARDEN_ACTS = Object.freeze({
     enter: { root: [[0.2, { y: 3, sy: 0.94 }, 'io'], [0.36, { x: 3 }, 'o'], [1, {}]], up: [[0.2, { r: -10 }, 'io'], [0.36, { r: 12 }, 'o'], [0.6, { r: 4 }], [1, {}]], armR: [[0.2, { r: 60 }, 'io'], [0.36, { r: -100 }, 'b'], [0.6, { r: -60 }], [1, {}]], head: [[0.4, { r: 4 }], [0.9, { r: -4 }, 'io'], [1, {}]] } },
   shower: { verb: 'Stand under the falls', dir: 's', ms: 3600, first: 'Stood under Fleet Falls and came out dripping.', sound: 'splash', fx: { every: 220, kind: 'water', dy: -1.9, width: 34 }, after: 'drips',
     enter: { up: [[0.1, { sy: 0.94, y: 2 }, 'o'], [0.85, { sy: 0.94, y: 2 }], [1, {}]], armL: [[0.15, { r: 150 }, 'o'], [0.8, { r: 150 }], [0.9, { r: 30 }, 'io'], [1, {}]], armR: [[0.15, { r: -150 }, 'o'], [0.8, { r: -150 }], [0.9, { r: -30 }, 'io'], [1, {}]], head: _GA_K(8, (i) => [0.15 + i * 0.09, { r: i % 2 ? 5 : -5 }, 'io']).concat([[1, {}]]) } },
-  hide: { verb: 'Hide behind the tree', dir: 'n', ms: 600, hold: true, first: 'Hid behind a tree. Nobody found me.', hideBehind: true,
-    enter: { root: [[0.6, { y: 6, sy: 0.84 }, 'o'], [1, { y: 6, sy: 0.84 }]], armL: [[0.6, { r: 40 }], [1, { r: 40 }]], armR: [[0.6, { r: -40 }], [1, { r: -40 }]] },
-    loop: { ms: 4000, root: [[0, { y: 6, sy: 0.84 }], [0.35, { y: 6, sy: 0.84 }], [0.45, { y: 6, sy: 0.84, x: 9 }, 'io'], [0.6, { y: 6, sy: 0.84, x: 9 }], [0.7, { y: 6, sy: 0.84 }, 'io'], [1, { y: 6, sy: 0.84 }]], head: [[0.45, {}], [0.5, { r: 10 }, 'io'], [0.6, { r: 10 }], [0.66, {}, 'io']], armL: [[0, { r: 40 }], [1, { r: 40 }]], armR: [[0, { r: -40 }], [1, { r: -40 }]] } },
+  // (round 4) behind the trunk, just to its right: most of you hidden by it (the tree does not fade while you hide), you lean out round its
+  // edge, a hand on the bark at head height, and peek at the camera; now and then you lean further out to look, then duck back
+  hide: { verb: 'Hide behind the tree', dir: 's', ms: 700, hold: true, first: 'Hid behind a tree. Nobody found me.', hideBehind: true,
+    enter: { root: [[0.6, { x: -4, y: 2, sy: 0.96 }, 'o'], [1, { x: -4, y: 2, sy: 0.96 }]], up: [[0.6, { r: 13 }, 'o'], [1, { r: 13 }]], head: [[0.6, { r: 10, x: 1 }, 'o'], [1, { r: 10, x: 1 }]], armR: [[0.6, { r: -150, sy: 0.5 }, 'o'], [1, { r: -150, sy: 0.5 }]], armL: [[0.6, { r: 30, sy: 0.6 }], [1, { r: 30, sy: 0.6 }]], legR: [[0.6, { r: -6 }], [1, { r: -6 }]] },
+    loop: { ms: 4200, root: [[0, { x: -4, y: 2, sy: 0.96 }], [1, { x: -4, y: 2, sy: 0.96 }]], armL: [[0, { r: 30, sy: 0.6 }], [1, { r: 30, sy: 0.6 }]], legR: [[0, { r: -6 }], [1, { r: -6 }]],
+      up: [[0, { r: 13 }], [0.35, { r: 13 }], [0.45, { r: 20, x: 1.5 }, 'io'], [0.62, { r: 20, x: 1.5 }], [0.72, { r: 6 }, 'io'], [0.86, { r: 6 }], [1, { r: 13 }, 'io']],
+      head: [[0, { r: 10, x: 1 }], [0.35, { r: 10, x: 1 }], [0.45, { r: 16, x: 2 }, 'io'], [0.52, { r: 4, x: 2 }, 'io'], [0.62, { r: 16, x: 2 }, 'io'], [0.72, { r: 2 }, 'io'], [0.86, { r: 2 }], [1, { r: 10, x: 1 }, 'io']],
+      armR: [[0, { r: -150, sy: 0.5 }], [0.45, { r: -142, sy: 0.54 }, 'io'], [0.72, { r: -150, sy: 0.5 }, 'io'], [1, { r: -150, sy: 0.5 }]] } },
   climbtree: { verb: 'Climb up and sit on a branch', dir: 'n', ms: 2600, first: 'Climbed a tree and sat on a branch, legs dangling.', then: 'perch',
     // hand over hand up the trunk (the hips end at the branch, 1.25 of the figure's height up), then turn and sit (perch)
     enter: { root: _GA_K(7, (i) => [0.08 + i * 0.13, { y: -(i + 1) * 8.4 }, 'io']).concat([[1, { y: -59.5 }]]), armL: _GA_K(7, (i) => [0.08 + i * 0.13, { r: i % 2 ? 150 : 172 }, 'io']).concat([[1, { r: 160 }]]), armR: _GA_K(7, (i) => [0.08 + i * 0.13, { r: i % 2 ? -172 : -150 }, 'io']).concat([[1, { r: -160 }]]),
@@ -201,8 +206,8 @@ const GARDEN_ACT_BY_DECOR = Object.freeze({ sit: [{ act: 'sit', name: 'the seat'
 /** Trees, by which painter drew them (_gwPaintedTrunks). */
 const GARDEN_ACT_BY_TREE = Object.freeze({
   orchard: [{ act: 'shake', name: 'the fruit tree', stand: [0, 0.32], deg: -90 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90 }],
-  wood: [{ act: 'climbtree', name: 'the tree', stand: [0, 0.3], deg: -90, big: 0.3 }, { act: 'hide', name: 'the tree', stand: [0, -0.5], deg: -90 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90 }],
-  village: [{ act: 'hide', name: 'the tree', stand: [0, -0.5], deg: -90 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90 }],
+  wood: [{ act: 'climbtree', name: 'the tree', stand: [0, 0.3], deg: -90, big: 0.3 }, { act: 'hide', name: 'the tree', stand: [-0.02, -0.1], side: 1, edge: true, deg: 90 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90 }],
+  village: [{ act: 'hide', name: 'the tree', stand: [-0.02, -0.1], side: 1, edge: true, deg: 90 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90 }],
   fells: [{ act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90 }],
 });
 /** The water's edge: wherever water is within reach in front of you (feed and skim face it; skim only on still water). */
