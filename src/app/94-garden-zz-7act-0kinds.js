@@ -307,3 +307,13 @@ function gardenKindBoxesMeet(x, y, w, h, ox, oy, ow, oh) {
   const m = GARDEN_DRAWN_MARGIN;
   return x + w / 2 + m > ox - ow / 2 && x - w / 2 - m < ox + ow / 2 && y + m > oy - oh && y - h - m < oy + m;
 }
+/** Is (x, y) on a garden plot of the layout (D.sectionCells: the land a player opens and plants, with its drawn edge of dry stone, hedge or
+ *  kerb), or within m cells of one's edge? A placed thing is never laid on someone's plot or on its wall. Pure: the game and the audit ask. */
+const _gkSec = { D: null, set: null };
+function gardenPlotNear(D, x, y, m) {
+  if (!D || !D.sectionCells) return false;
+  if (_gkSec.D !== D) { const set = new Set(); for (const cells of Object.values(D.sectionCells)) for (const c of cells || []) if (Array.isArray(c)) set.add(c[0] + ',' + c[1]); _gkSec.D = D; _gkSec.set = set; }
+  const S = _gkSec.set, r = m || 0;
+  for (const [dx, dy] of [[0, 0], [-r, 0], [r, 0], [0, -r], [0, r], [-r, -r], [r, -r], [-r, r], [r, r]]) if (S.has(Math.floor(x + dx) + ',' + Math.floor(y + dy))) return true;
+  return false;
+}

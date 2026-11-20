@@ -33,7 +33,7 @@ const data = JSON.parse(islandText);
 /* ---------- the registry, as the game has it ---------- */
 const ctx = { console, Math, Object, Array, Map, Set, Number, String, JSON, Infinity, NaN, isFinite, parseFloat };
 vm.createContext(ctx);
-vm.runInContext(readFileSync(join(root, 'src/app/94-garden-zz-7act-0kinds.js'), 'utf8') + '\n;this.K=GARDEN_KINDS;this.T=GARDEN_TERRAIN;this.kindOf=gardenKindOf;this.spots=gardenKindSpots;this.snap=gardenKindSnap;this.byPet=GARDEN_KIND_BY_PET;this.rise=gardenRiseAt;this.meet=gardenKindBoxesMeet;this.drawable=gardenKindDrawable;', ctx);
+vm.runInContext(readFileSync(join(root, 'src/app/94-garden-zz-7act-0kinds.js'), 'utf8') + '\n;this.K=GARDEN_KINDS;this.T=GARDEN_TERRAIN;this.kindOf=gardenKindOf;this.spots=gardenKindSpots;this.snap=gardenKindSnap;this.byPet=GARDEN_KIND_BY_PET;this.rise=gardenRiseAt;this.meet=gardenKindBoxesMeet;this.drawable=gardenKindDrawable;this.plot=gardenPlotNear;', ctx);
 // the drawings of placeable things, as the game has them (94-garden-zz-7act-2world.js _GAW_ART): a kind whose drawing is not there is left out
 let ARTS = null;
 try { const a = { Object, Math, String, Number, Array, JSON }; vm.createContext(a); vm.runInContext(readFileSync(join(root, 'src/app/94-garden-zz-7act-2world.js'), 'utf8').split('\nconst _gawN')[0] + '\n;this.A=_GAW_ART;', a); ARTS = a.A; } catch (e) { ARTS = null; }
@@ -95,6 +95,7 @@ const inPoly = (px, py, P) => { let ins = false; for (let i = 0, j = P.length - 
 const placeFault = (K, x, y, w, h, self) => {
   const hw = w / 2, pts = [[x, y - 0.06], [x - hw * 0.85, y - 0.06], [x + hw * 0.85, y - 0.06], [x, y - h * 0.9]];
   for (const [px, py] of pts) { const c = cell(px, py); let fresh = false; try { fresh = isl.fresh(px, py) || !isl.land(px, py); } catch (e) { fresh = !!(c && c.freshwater); } if (fresh) return 'in the water'; if (!c || !c.land) return 'off the land'; if (c.solid) return 'on rock or a wall'; if (!K.onPath && c.route) return 'on a path (' + c.route + ')'; if (c.staticId && c.staticId !== self) { const st = statById.get(c.staticId); if (st && (st.col || 'full') === 'full' && !st.walk) return 'on ' + c.staticId; } }
+  for (const [px, py] of pts) if (ctx.plot(data, px, py, 0.45)) return 'on a garden plot or its wall';   // (the game's own gardenPlotNear)
   for (const f of wallForms) for (const [px, py] of pts) if (inPoly(px, py, f.polygon)) return 'on the ' + f.kind + ' ' + f.id;
   for (const o of things) { if (o.id === self) continue; if (ctx.meet(x, y, w, h, o.x, o.y, o.w || 1, o.h || 1)) return 'on ' + o.id; }   // (as drawn: the game's own gardenKindBoxesMeet)
   if (!K.onPath) for (const [px, py] of pts.concat([[x - hw - 0.45, y - 0.1], [x + hw + 0.45, y - 0.1], [x, y + 0.4], [x, y - h - 0.45]])) if (stoneAt(px, py)) return 'on paving';   // (the game's own margin: a walled yard's rim)

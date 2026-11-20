@@ -96,6 +96,7 @@ function _gksPlaceFault(K, x, y, w, h, list, self) {
   const hw = w / 2, cy = y - h / 2, pts = [[x, y - 0.06], [x - hw * 0.85, y - 0.06], [x + hw * 0.85, y - 0.06], [x, y - h * 0.9]];
   for (const [px, py] of pts) if (_gksWet(px, py)) return 'in the water';
   if (!K.onPath) for (const [px, py] of pts) { let c = null; try { c = gardenIslandBaseCell(px, py); } catch (e) { c = null; } if (c && c.route) return 'on a path (' + c.route + ')'; }
+  try { const D = gardenIslandData(); for (const [px, py] of pts) if (gardenPlotNear(D, px, py, 0.45)) return 'on a garden plot or its wall'; } catch (e) { /* no plots */ }
   const walker = typeof _gw !== 'undefined' && _gw && _gw.grid && _gw.solids;   // (before the walker has its map, only the layout's own cells are read)
   // (the layout's own cells: a building's footprint or rock; never the walker's whole map, which also shuts land not yet opened)
   for (const [px, py] of pts) { let c = null; try { c = gardenIslandBaseCell(px, py); } catch (e) { c = null; } if (!c || !c.land) return 'off the land'; if (c.staticId && c.staticId !== self) { let st = null; try { st = (gardenIslandData().static || []).find(q => q.id === c.staticId); } catch (e) { st = null; } if (st && (st.col || 'full') === 'full' && !st.walk) return 'on ' + c.staticId; } if (c.solid) return 'on rock or a wall'; }
