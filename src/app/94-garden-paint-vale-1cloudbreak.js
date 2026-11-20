@@ -322,7 +322,21 @@
   window.gardenCloudbreakStairShut = function () { try { const d = gardenIslandActive() && gardenIslandData(), fl = d && d.presentation && d.presentation.falls; if (!fl || !fl.caveStair || !(d.presentation.mountains) || lvNow() >= STAIR_LV) return []; return STAIR_ROPES(fl.caveStair[0], fl.caveStair[1]); } catch (e) { return []; } };
   // shortcut A: below level 6 the middle lip stone has rolled away, and the gap in the line stops you (the painter leaves it out)
   window.gardenCloudbreakLipShut = function () { try { const d = gardenIslandActive() && gardenIslandData(), c = d && d.presentation && (d.presentation.crossings || []).find(q => q.id === 'lip-stones'); if (!c || lvNow() >= LIP_LV) return []; return [[c.x - .42, c.y - .36, c.x + .42, c.y + .36]]; } catch (e) { return []; } };
-  if (V && V.parts) V.parts.push({ id: 'cloudbreak', compose(C) { compose(C); stairRopes(C); } });
+  // (vale layouts merge) shortcut A shut: where the stone has rolled out of the line the stream pours through the gap, white
+  // water standing over it as far as the feet are stopped (gardenCloudbreakLipShut), so you see why you cannot step there
+  // (the gap was only foam laid flat on the ground: the stop read as an invisible wall)
+  function lipWater(C) {
+    const { L, kit, thing } = C; if (lvNow() >= LIP_LV) return;
+    const c = (L.pres && L.pres.crossings || []).find(q => q.id === 'lip-stones'); if (!c) return;
+    const p = L.cpt(c.x, c.y + .36), hw = .46 * L.cw, ht = .78 * L.ch, snowy = C.season === 'winter';
+    thing({ key: 'lip-gap-water|' + C.season, x: p.x, y: p.y, box: [-hw - 6, -ht - 10, hw + 6, 4], draw: B => { const r = kit.rng(611);
+      B.f(B.rr(-hw, -ht, hw * 2, ht + 1, 6), snowy ? '#5c7c84' : '#3f6670', .95);
+      for (let k = 0; k < 5; k++) { const y = -ht + 3 + k * (ht - 4) / 4; B.s(`M${-hw + 2} ${y + 1.5}q${hw * .5} ${-3 - r() * 2} ${hw} 0t${hw} 0`, '#d8e6e4', 1.6 + r(), .85).s(`M${-hw + 6 + r() * 6} ${y - .8}l${6 + r() * 6} -1`, '#ffffff', 1, .9); }
+      for (let k = 0; k < 7; k++) B.f(B.ell(-hw + r() * hw * 2, -ht + r() * ht, 2.4 + r() * 2, 1.4 + r()), '#f2f6f2', .9);   // spray standing off the water
+      B.f(B.rect(-hw, -ht, hw * 2, 2), '#eef2e2', .8).f(B.rect(-hw, -1, hw * 2, 2), '#eef2e2', .7);
+    } });
+  }
+  if (V && V.parts) V.parts.push({ id: 'cloudbreak', compose(C) { compose(C); stairRopes(C); lipWater(C); } });
 
   // with painting off, the classic drawings stand in (the woodcutter's hut, the market cross, a gate): never an empty block
   if (typeof _GLD_PROP_ART !== 'undefined') { const A = _GLD_PROP_ART; if (A.smoke && !A.bothy) A.bothy = A.smoke; if (A.cross && !A.toposcope) A.toposcope = A.cross; if (A.gate && !A.moorgate) A.moorgate = A.gate; }

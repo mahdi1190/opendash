@@ -205,8 +205,20 @@
       }, {});
       // the cove's head: a rock face about a figure high from the steps to the sea, the steps cut through it
       const fpts = []; for (let x = faceFrom; x <= 91; x += .25) fpts.push(L.cpt(x, FACE_Y + Math.sin(x * 2.3) * .08));
-      add(kit.bboxOf(fpts, 70), 96, (B, r) => {
+      // (vale layouts merge: the face stands, a picture of its own in front of the cliff top (laid flat in the ground it was not
+      //  drawn where the feet stop, by the collision audit); the boulders fallen on the sand and the tufts at its foot stay
+      //  in the ground, where the feet walk among them)
+      const fbb = kit.bboxOf(fpts, 70), fox = (fbb[0] + fbb[2]) / 2, foy = L.cpt(0, FACE_Y).y + 44;
+      add(fbb, 97, (B, r) => {
         B.cx.save(); B.cx.clip(coastP);
+        const sl = rpts('cliff-steps'), gap = sl ? (() => { const q = sl.reduce((m, p) => Math.abs(p.y - L.cpt(0, FACE_Y).y) < Math.abs(m.y - L.cpt(0, FACE_Y).y) ? p : m, sl[0]); return [q.x - halfPx(q, { nx: 1, ny: 0 }) - 2, q.x + halfPx(q, { nx: 1, ny: 0 }) + 2]; })() : [0, 0];
+        for (const seg of [fpts.filter(p => p.x < gap[0]), fpts.filter(p => p.x > gap[1])]) { if (seg.length < 2) continue;
+          if (season !== 'winter') for (let i = 0; i < seg.length; i += 3) { const p = seg[i]; if (r() < .4) B.tufts(r, p.x, p.y + 46, 8, 3, ['#7c8a44', '#a8a860'], 5); }
+          for (let i = 2; i < seg.length; i += 5) if (r() < .55) B.boulder(r, seg[i].x + (r() - .5) * 8, seg[i].y + 50, 12 + r() * 10, 8 + r() * 6, STONE, false); }
+        B.cx.restore();
+      }, {});
+      thing({ key: 'cove-face|' + season, x: fox, y: foy, box: [fbb[0] - fox, fbb[1] - foy, fbb[2] - fox, foy - foy + 4], draw: B => { const r = kit.rng(96);
+        B.cx.save(); B.cx.translate(-fox, -foy); B.cx.clip(coastP);
         const sl = rpts('cliff-steps'), gap = sl ? (() => { const q = sl.reduce((m, p) => Math.abs(p.y - L.cpt(0, FACE_Y).y) < Math.abs(m.y - L.cpt(0, FACE_Y).y) ? p : m, sl[0]); return [q.x - halfPx(q, { nx: 1, ny: 0 }) - 2, q.x + halfPx(q, { nx: 1, ny: 0 }) + 2]; })() : [0, 0];
         for (const seg of [fpts.filter(p => p.x < gap[0]), fpts.filter(p => p.x > gap[1])]) { if (seg.length < 2) continue; const top = seg.map(p => ({ x: p.x, y: p.y - 4 })), foot = seg.map(p => ({ x: p.x, y: p.y + 44 }));   // (fix round 2: taller, to the cliff's block: 94-garden-wonder-7shortcuts.js)
           B.cx.filter = 'blur(5px)'; B.f(B.poly(foot.map(p => ({ x: p.x, y: p.y - 6 })).concat(foot.slice().reverse().map(p => ({ x: p.x + 6, y: p.y + 10 })))), '#2e3420', .3); B.cx.filter = 'none';
@@ -215,12 +227,11 @@
           for (let k = 1; k < 5; k++) V.strokePts(B, seg.map((p, i) => ({ x: p.x, y: p.y - 4 + k * 9.6 + Math.sin(i * .9 + k) * 1.6 })), '#d0c6ae', 1.4, .5);
           for (let i = 0; i < seg.length; i += 1 + Math.floor(r() * 2)) { const p = seg[i]; B.s(`M${p.x} ${p.y}l${(r() - .5) * 3} ${16 + r() * 26}`, '#3e3a34', .9, .55); }
           V.strokePts(B, top, STONE.rockHi, 3, .95);
-          if (season !== 'winter') for (let i = 0; i < seg.length; i += 3) { const p = seg[i]; if (r() < .5) B.f(B.blob(r, p.x, p.y - 4, 4 + r() * 3, 1.6, 6, .5), '#7c8a44', .9); if (r() < .4) B.tufts(r, p.x, p.y + 46, 8, 3, ['#7c8a44', '#a8a860'], 5); }
-          // boulders fallen at its foot on the sand
-          for (let i = 2; i < seg.length; i += 5) if (r() < .55) B.boulder(r, seg[i].x + (r() - .5) * 8, seg[i].y + 50, 12 + r() * 10, 8 + r() * 6, STONE, false);
+          if (season !== 'winter') for (let i = 0; i < seg.length; i += 3) { const p = seg[i]; if (r() < .5) B.f(B.blob(r, p.x, p.y - 4, 4 + r() * 3, 1.6, 6, .5), '#7c8a44', .9); }
+          // (the boulders fallen at its foot on the sand are in the ground, above)
         }
         B.cx.restore();
-      }, {});
+      } });
       const cs = rpts('cliff-steps'); if (cs) flight(cs, { step: 9, salt: 5, rock: true });
     }
 
