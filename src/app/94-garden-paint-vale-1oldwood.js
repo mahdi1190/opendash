@@ -82,21 +82,45 @@
     });
   }
 
-  /** The Old Man: a sea stack out off the shore, in line with the beech ride, gulls on its top. */
+  /** The Old Man: a sea stack out off the shore, in line with the beech ride, gulls on its top.
+   * (layout fix, west) Drawn as a broad, broken pillar of rock with a smaller stack beside it, not a tall smooth taper: ruled
+   * across with level strata it read from the shore and the whole-map view as a bare plank jetty running out to sea with
+   * nothing at its end. Now: blocky facets lit from the upper left, ledges that step in, a sea arch through its foot,
+   * white streaks under the gulls' ledges, a dark weed band at the tide line and surf breaking round both rocks. It
+   * stands about three of you tall, so its top stays out in the water and never meets the beach. */
   function oldMan(C) {
     const { L, thing, kit } = C, ow = L.pres.oldwood; if (!ow || !Array.isArray(ow.oldMan)) return;
-    const p = L.cpt(ow.oldMan[0], ow.oldMan[1] + .9);
-    thing({ key: 'ow-oldman|' + C.season, x: Math.round(p.x), y: Math.round(p.y), box: [-50, -160, 50, 18], draw: B => {
-      B.cx.save(); B.cx.scale(.7, .7);
-      const r = kit.rng(611), R = ['#7e7668', '#5e584e', '#a49a88', '#3e3a34'];
-      B.f(B.ell(0, 6, 66, 12), '#e8f4f2', .45).f(B.ell(0, 4, 54, 8), '#3a5a66', .35);   // surf and the dark water round its foot
-      B.f('M-46 6Q-50 -40 -36 -90Q-30 -150 -18 -196Q-6 -214 8 -206Q22 -170 30 -120Q44 -60 48 6Z', R[0]);
-      B.f('M-46 6Q-50 -40 -36 -90Q-30 -150 -18 -196Q-12 -204 -6 -200Q-16 -150 -20 -90Q-26 -40 -22 6Z', R[2], .55);
-      B.f('M20 -150Q32 -100 36 -50Q44 -20 48 6L26 6Q30 -50 20 -150Z', R[1], .6);
-      for (let k = 0; k < 9; k++) { const y = -20 - k * 21 + r() * 6, w = 40 - k * 3.4; B.s(`M${-w} ${y}q${w} ${-3 + r() * 4} ${w * 2} ${r() * 4 - 2}`, R[3], 1.4, .45); }
-      B.f(B.blob(r, -4, -202, 16, 6, 7, .4), '#6f8446', .9).f(B.blob(r, 8, -196, 10, 4, 6, .4), '#93a85a', .8);   // turf on its top
-      for (const [x, y] of [[-6, -212], [6, -208]]) B.f(B.ell(x, y, 4, 2.4), '#f4f4ee').f(B.circ(x + 3, y - 2, 1.6), '#f4f4ee').f(B.rect(x + 4.4, y - 2.4, 2, .8), '#e0a030');
-      B.f(B.ell(0, 8, 52, 4), '#f4fbfa', .5);
+    const p = L.cpt(ow.oldMan[0], ow.oldMan[1] + .9), winter = C.season === 'winter';
+    thing({ key: 'ow-oldman-2|' + C.season, x: Math.round(p.x), y: Math.round(p.y), box: [-92, -132, 92, 24], draw: B => {
+      B.cx.save(); B.cx.scale(.8, .8);   // (about three of you tall: its top stays out over the water seen from the shore)
+      const r = kit.rng(611), R = { body: '#867c6c', lo: '#5e564a', hi: '#b2a68e', dk: '#3a352e', weed: '#3e4a2a', guano: '#eeeae0' };
+      // the water round the foot: a dark ring, then broken surf
+      B.cx.filter = 'blur(3px)'; B.f(B.ell(-6, 8, 84, 13), '#2e4e5a', .45); B.cx.filter = 'none';
+      // the dog: a low stack to the east
+      const dog = [[30, 6], [32, -14], [38, -30], [46, -38], [58, -36], [66, -24], [70, -8], [72, 6]];
+      B.f(B.poly(dog), R.lo).f(B.poly([[30, 6], [32, -14], [38, -30], [46, -38], [50, -30], [46, -12], [44, 6]]), R.body).f(B.poly([[38, -30], [46, -38], [52, -37], [48, -32]]), R.hi, .8);
+      B.f(B.blob(r, 50, -38, 9, 3, 6, .4), winter ? '#eef2f2' : '#7c9050', .9);
+      // the Old Man: broad at the foot, stepping in at two ledges, a crown of turf; each block its own facets
+      const body = [[-58, 6], [-60, -20], [-52, -30], [-54, -52], [-44, -60], [-42, -86], [-30, -96], [-28, -112], [-12, -122], [6, -118], [16, -106], [18, -90], [30, -80], [30, -58], [40, -48], [42, -22], [48, -8], [46, 6]];
+      B.f(B.poly(body), R.lo);
+      const lit = [[-58, 6], [-60, -20], [-52, -30], [-54, -52], [-44, -60], [-42, -86], [-30, -96], [-28, -112], [-12, -122], [-6, -120], [-14, -100], [-18, -88], [-20, -62], [-28, -54], [-30, -26], [-24, -8], [-26, 6]];
+      B.f(B.poly(lit), R.body).f(B.poly([[-54, -52], [-44, -60], [-42, -86], [-34, -92], [-36, -64], [-46, -54]]), R.hi, .75).f(B.poly([[-28, -112], [-12, -122], [-6, -120], [-18, -108]]), R.hi, .8);
+      // the ledges: lit tops where the rock steps in, shadow under each
+      for (const [x0, x1, y] of [[-52, -30, -52], [-42, 18, -88], [18, 30, -80], [30, 40, -48], [-60, -40, -20]]) { B.f(B.poly([[x0, y], [x1, y - 1], [x1 - 2, y + 3], [x0 + 2, y + 4]]), R.hi, .7).f(B.rect(x0 + 2, y + 4, x1 - x0 - 4, 3), R.dk, .35); }
+      // joints: short broken cracks, never ruled lines across it
+      for (let k = 0; k < 26; k++) { const x = -50 + r() * 86, y = -112 + r() * 112, vert = r() < .6; B.s(vert ? `M${x} ${y}l${(r() - .5) * 3} ${6 + r() * 10}` : `M${x} ${y}l${4 + r() * 7} ${(r() - .5) * 2}`, R.dk, 1 + r() * .6, .45); }
+      // the sea arch through its foot, light showing through
+      B.f('M-10 6Q-10 -16 2 -20Q14 -16 14 6Z', R.dk).f('M-6 6Q-6 -12 2 -15Q10 -12 10 6Z', '#6fa4ae', .85).f('M-4 6Q2 -2 8 6Z', '#e8f4f2', .7);
+      // the gulls' streaks below the ledges, and the gulls
+      for (const [x, y] of [[-36, -86], [-20, -86], [24, -78], [-46, -50]]) B.s(`M${x} ${y + 4}q${(r() - .5) * 3} 8 ${(r() - .5) * 2} ${10 + r() * 8}`, R.guano, 2 + r(), .7);
+      B.f(B.blob(r, -10, -121, 20, 5, 8, .4), winter ? '#eef2f2' : '#6f8446', .95).f(B.blob(r, -16, -124, 10, 3, 6, .4), winter ? '#ffffff' : '#93a85a', .85);
+      for (const [x, y] of [[-14, -126], [0, -124], [-30, -95]]) B.f(B.ell(x, y, 4, 2.4), '#f4f4ee').f(B.circ(x + 3, y - 2, 1.6), '#f4f4ee').f(B.rect(x + 4.4, y - 2.4, 2, .8), '#e0a030').f(B.rect(x - 4, y - .6, 3, 1.2), '#8a9098');
+      // the tide line: dark wet rock and weed round both feet
+      B.f(B.poly([[-58, 6], [-59, -6], [46, -6], [48, 6]]), R.weed, .6).f(B.poly([[30, 6], [31, -5], [72, -5], [72, 6]]), R.weed, .6);
+      for (let k = 0; k < 14; k++) { const x = -56 + r() * 128; B.s(`M${x} -6q${(r() - .5) * 2} 4 ${(r() - .5) * 3} 8`, '#2e3a20', 1.4, .7); }
+      // surf: lobes of foam round the feet, a bright line where the swell breaks on them
+      for (let k = 0; k < 11; k++) { const x = -70 + k * 14 + r() * 6; B.f(B.blob(r, x, 7 + r() * 4, 9 + r() * 6, 2.6 + r() * 1.6, 6, .5), '#f2f8f6', .75 + r() * .2); }
+      B.s('M-62 4Q-6 -2 50 4M28 4Q50 0 74 4', '#ffffff', 1.4, .8);
       B.cx.restore();
     } });
   }

@@ -126,6 +126,56 @@
   } };
   for (const id of ['ld-woodbench-1', 'ld-woodbench-2', 'ld-woodbench-3', 'ld-woodbench-4', 'ld-bench-a']) P['sight:prop-' + id] = bench;
   P['sight:prop-ld-wrenseat'] = wrenSeat;
+  // (layout fix, west) the great stump where Tam digs: it stood in the wren way's fork as a plain brown trapezoid on the path.
+  // Now off the paths on the glade's edge (vale-woodland.json, two cells wide), drawn into its ground: buttress roots that
+  // flare out and dive into the earth, the sawn top with its rings and a crack, moss and a bracket fungus on the shaded
+  // side, the very small parlour's round door between two roots, a length of its old trunk lying in the ferns behind,
+  // leaf litter and a soft shadow round its foot; a little smoke from the parlour's chimney.
+  P['sight:prop-ld-stump'] = { box: [-74, -54, 74, 14], draw(B, o) {
+    const r = rng(hash('great-stump')), s = o.season, winter = s === 'winter', moss = winter ? '#dfe4e2' : s === 'autumn' ? '#8a8a46' : MOSS[0];
+    const W2 = 30, Ht = 34;   // the trunk: about the player's shoulder, two cells across with its roots
+    wear(B, r, 64, 9, s); B.shadow(6, 2, 62, 8, .36);
+    // the old trunk lying behind it in the ferns, sawn end towards us
+    B.f(B.rr(-70, -26, 62, 15, 7), BARK[1]).f(B.rr(-70, -26, 62, 6, 4), BARK[2], .7).f(B.ell(-8, -18.5, 5, 7.5), GRAIN[1]).f(B.ell(-8.5, -18.8, 3.2, 5), GRAIN[0]);
+    if (!winter) for (let k = 0; k < 5; k++) B.f(D().blob(r, -64 + r() * 50, -25 + r() * 3, 4 + r() * 3, 1.6, 6, .5), moss, .8); else B.f(B.rr(-68, -28, 58, 3, 1.5), '#f2f4f2', .9);
+    fern(B, -66, -2.5, s);
+    // the buttress roots, flaring out low and diving into the ground, lit on top
+    const roots = [[-W2 + 2, -10, -54, 1], [-W2 + 6, -4, -42, 5], [-8, -2, -16, 7], [12, -2, 20, 7], [W2 - 6, -4, 44, 5], [W2 - 2, -10, 56, 0]];   // (kept within its two cells: the wren way runs close below)
+    for (const [x0, y0, x1, y1] of roots) {
+      const mx = (x0 + x1) / 2, my = Math.min(y0, y1) - 3, w = 6.5;
+      B.f(`M${x0 - w} ${y0}Q${mx} ${my - 4} ${x1} ${y1}Q${mx} ${my + w + 2} ${x0 + w} ${y0 + w}Z`, BARK[1]);
+      B.s(`M${x0 - w * .5} ${y0 - 1}Q${mx} ${my - 3.5} ${x1 - 2} ${y1 - 1.5}`, BARK[2], 1.8, .8);
+      B.f(B.ell(x1, y1 + 1, 4.5, 1.6), '#4a3a28', .55);   // where it goes into the earth
+    }
+    // the trunk: wider at the foot, fluted bark, lit from the upper left
+    const trunk = `M${-W2} -6Q${-W2 - 3} ${-Ht * .5} ${-W2 + 4} ${-Ht}H${W2 - 4}Q${W2 + 3} ${-Ht * .5} ${W2} -6Q0 2 ${-W2} -6Z`;
+    B.f(trunk, BARK[0]);
+    B.f(`M${-W2} -6Q${-W2 - 3} ${-Ht * .5} ${-W2 + 4} ${-Ht}H${-8}Q${-12} ${-Ht * .5} ${-10} -2Q${-20} -2 ${-W2} -6Z`, BARK[2], .55);
+    B.f(`M${W2 - 12} ${-Ht}H${W2 - 4}Q${W2 + 3} ${-Ht * .5} ${W2} -6Q${W2 - 6} -2 ${W2 - 12} -2Z`, BARK[1], .75);
+    for (let k = 0; k < 14; k++) { const x = -W2 + 4 + k * (2 * W2 - 8) / 13 + (r() - .5) * 2; B.s(`M${x} ${-Ht + 3}q${(r() - .5) * 3} ${Ht * .4} ${(r() - .5) * 2} ${Ht - 7}`, BARK[3], 1 + r() * .8, .4); }
+    // the sawn top: end grain, the rings, a crack, a little moss on its rim
+    B.f(B.ell(0, -Ht, W2 - 3, 8), GRAIN[1]).f(B.ell(-1, -Ht - .5, W2 - 6, 6.4), GRAIN[0]);
+    for (let k = 1; k < 7; k++) B.s(B.ell(1 + k * .3, -Ht - .2, (W2 - 6) * k / 7, 6.4 * k / 7), GRAIN[2], .7, .55);
+    B.s(`M2 ${-Ht}l${W2 * .55} -2.5l3 1.8`, BARK[3], 1, .6).s(B.ell(0, -Ht, W2 - 3, 8), BARK[1], 1.6, .9);
+    if (winter) B.f(B.ell(-1, -Ht - 1, W2 - 5, 6.5), '#f4f6f6', .95);
+    else { for (let k = 0; k < 6; k++) B.f(D().blob(r, W2 - 8 + (r() - .5) * 8, -Ht + 1 + r() * 4, 4 + r() * 3, 1.8, 6, .5), moss, .85); }
+    // moss down the shaded side and a bracket fungus
+    if (!winter) for (let k = 0; k < 8; k++) B.f(D().blob(r, W2 - 6 + r() * 4, -Ht + 6 + r() * (Ht - 10), 3 + r() * 2.5, 2 + r() * 2, 6, .5), moss, .8);
+    for (const [x, y, w] of [[W2 - 2, -Ht * .55, 9], [W2 - 3, -Ht * .42, 6.5]]) B.f(`M${x - 2} ${y}q${w * .6} ${-4} ${w} 0q${-w * .5} 2.4 ${-w} 1.6z`, s === 'autumn' ? '#c88a40' : '#d8b878').s(`M${x - 1} ${y + .6}q${w * .5} -2.6 ${w * .9} -.3`, '#8a6a3a', .6, .7);
+    // the very small parlour: a round green door between the two front roots, a step, a brass knob and a lit window
+    B.f(B.ell(-1, -.5, 8, 2.2), '#4a3a28', .55).f('M-7 -1V-9Q-7 -16 -1 -16Q5 -16 5 -9V-1Z', BARK[3]).f('M-5.6 -1V-9Q-5.6 -14.6 -1 -14.6Q3.6 -14.6 3.6 -9V-1Z', '#4f7a4a');
+    B.s('M-1 -14.4V-1', '#2e4a2e', .7, .8).f(B.circ(2, -7, .9), '#e0b040').f(B.rr(-5, -.6, 8, 1.6, .6), '#9a9484');
+    B.f(B.circ(11, -14, 2.4), BARK[3]).f(B.circ(11, -14, 1.7), o.night ? '#ffd27a' : '#e8d7a0', .95).s('M9.3 -14H12.7M11 -15.7V-12.3', BARK[3], .5);
+    // leaf litter and tufts round the foot
+    const Lc = litterOf(s); for (let k = 0; k < 22; k++) B.f(B.ell(-62 + r() * 124, -2 + r() * 8, 2.2, 1.1), Lc[k % Lc.length], .7);
+    for (let k = 0; k < 9; k++) { const x = -60 + r() * 120; if (Math.abs(x) < W2) continue; B.s(`M${x} 2q${(r() - .5) * 3} -4 ${(r() - .5) * 4} ${-5 - r() * 4}`, winter ? '#b8b4a0' : s === 'autumn' ? '#9a9a4a' : '#6f8a42', 1.2, .9); }
+    fern(B, 62, -2.2, s);
+  }, extra(scene, h, fx, foot) {
+    // a thread of smoke from the parlour's chimney (a crack in the top), rising and fading
+    const key = K.bake(scene, 'stump-smoke', [-5, -5, 5, 5], B => { B.f(B.circ(0, 0, 4), '#e8e6e0', .55).f(B.circ(-1, -1, 2.4), '#f6f4f0', .5); });
+    for (let i = 0; i < 3; i++) { const im = h.add(K.image(scene, key, fx + 18, foot - 38)); if (!im) return; im._gsBase = im.scaleX;
+      h.move(im, (node, t, motion) => { const c = (((motion ? t : 1.2) + i * 1.3) % 3.9) / 3.9; node.setPosition(fx + 18 + Math.sin(c * 5 + i) * 3 + c * 6, foot - 38 - c * 26); node.setScale((.5 + c * .9) * im._gsBase); node.setAlpha(.7 * (1 - c) * Math.min(1, c * 6)); }); }
+  } };
   P['sight:drift'] = { box: [-62, -86, 62, 12], draw(B, o) {
     const r = rng(hash('drift-arch')), s = o.season, bleach = ['#d8d0bc', '#bfb59c', '#a69a80', '#ece6d6'];
     B.f(B.ell(0, 2, 58, 8), '#b8a274', .3); B.shadow(4, 1, 54, 7, .32);
