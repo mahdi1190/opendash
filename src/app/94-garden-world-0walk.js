@@ -472,6 +472,21 @@ function gardenReachable(x, y) {
   const W = GARDEN_WORLD; if (x < 0 || y < 0 || x >= W.cols || y >= W.rows) return false;
   return !!_gwReach()[y * W.cols + x];
 }
+/** Can (x, y) be walked to from the layout's arrival point (anchors.start), over the land open now? Unlike gardenReachable this never
+ *  depends on where the player happens to be (in a boat, on a pier): what a layout offers is the same whoever stands where. */
+function gardenReachableFromArrival(x, y) {
+  const W = GARDEN_WORLD, C = W.cols, R = W.rows; if (x < 0 || y < 0 || x >= C || y >= R) return false;
+  const grid = _gwGrid(gardenHere());
+  if (!_gw.reachA || _gw.reachAGrid !== grid) {
+    let D = null; try { D = gardenIslandData(); } catch (e) { D = null; }
+    const st = (D && D.anchors && D.anchors.start) || W.start || { x: C / 2, y: R / 2 };
+    let s0 = -1; for (let r = 0; r <= 6 && s0 < 0; r++) for (let dy = -r; dy <= r && s0 < 0; dy++) for (let dx = -r; dx <= r; dx++) { const cx = Math.floor(st.x) + dx, cy = Math.floor(st.y) + dy; if (cx >= 0 && cy >= 0 && cx < C && cy < R && !grid[cy * C + cx]) { s0 = cy * C + cx; break; } }
+    const seen = new Uint8Array(C * R);
+    if (s0 >= 0) { const stack = [s0]; seen[s0] = 1; while (stack.length) { const i = stack.pop(), qx = i % C, qy = (i - qx) / C; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = qx + dx, ny = qy + dy; if (nx < 0 || ny < 0 || nx >= C || ny >= R) continue; const j = ny * C + nx; if (seen[j] || grid[j]) continue; if (!_gwRouteEdgeClear({ x: qx, y: qy }, { x: nx, y: ny }, grid)) continue; seen[j] = 1; stack.push(j); } } }
+    _gw.reachA = seen; _gw.reachAGrid = grid;
+  }
+  return !!_gw.reachA[y * C + x];
+}
 function _gwNearestFree(x, y, maxR) {
   // the nearest walkable cell to (x, y), by rings (the click was on a plant, a bench, the water...)
   const W = GARDEN_WORLD, grid = _gwGridNow(); let best = null, bd = 1e9;

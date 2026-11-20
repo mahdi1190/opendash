@@ -26,8 +26,15 @@ function _gksKey() {
   let id = ''; try { id = gardenIslandData().id; } catch (e) { id = ''; }
   let wr = 0; try { const w = window.GardenNative && GardenNative.world(); wr = w && w.waterAt && w.waterAt(0, 0) !== null ? 1 : 0; } catch (e) { wr = 0; }   // (the water is painted: a bank is laid on it again)
   let sol = 0; try { sol = typeof _gw !== 'undefined' && _gw.solids ? _gw.solids.list.length : 0; } catch (e) { sol = 0; }   // (what blocks walking is known: a placed thing is checked against it again)
-  return [id, sol, wr, m.visit ? m.visit.key : 'me', (m.decor || []).length, (m.decor || []).reduce((h, d) => (h * 31 + Math.round(d.x * 7 + d.y * 131)) | 0, 0), (m.areas || []).length, lp, feet, typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0, gardenThingsPlaced().length].join('|');
+  let lv = 0; try { lv = _gksLevel(); } catch (e) { lv = 0; }   // (a thing kept for a later level comes back when you reach it)
+  let ar = ''; try { ar = typeof _GD_LAND !== 'undefined' && _GD_LAND ? _GD_LAND.size : ''; } catch (e) { ar = ''; }
+  return [id, sol, wr, lv, ar, _gksGridRev(), m.visit ? m.visit.key : 'me', (m.decor || []).length, (m.decor || []).reduce((h, d) => (h * 31 + Math.round(d.x * 7 + d.y * 131)) | 0, 0), (m.areas || []).length, lp, feet, typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0, gardenThingsPlaced().length].join('|');
 }
+/** The garden's level as a number (the model keeps { level, ... }). */
+function _gksLevel() { try { const L = gardenModel().level; return Number(L && typeof L === 'object' ? L.level : L) || 0; } catch (e) { return 0; } }
+/** A number that changes whenever the walker's map of what stops the feet is rebuilt (land opened, a thing built). */
+const _gksGrid = { obj: null, n: 0 };
+function _gksGridRev() { const g = typeof _gw !== 'undefined' && _gw ? _gw.grid : null; if (g && g !== _gksGrid.obj) { _gksGrid.obj = g; _gksGrid.n++; } return _gksGrid.n; }
 /** Every thing standing now, with its kind. Rebuilt when the key changes (looked at at most twice a second). */
 function gardenAffordThings() {
   const now = typeof performance !== 'undefined' ? performance.now() : 0;
@@ -51,7 +58,7 @@ function gardenAffordThings() {
     push({ id: r0.id, kind: gardenKindOf({ id: r0.id, art, kind: r0.kind }), art: String(art), x: r.x + (r.w || 1) / 2, y: r.y + (r.h || 1), w: r.w || 1, h: r.h || 1, front: r0.front, src: 'layout', static: true, name: r.name, needs: r.needs || null, tall: r.tall });
   }
   // 3. placed through layout data (a ball, a log seat, a campfire, a telescope ...)
-  let level = 99; try { level = gardenModel().level || 99; } catch (e) { level = 99; }
+  const level = _gksLevel() || 99;
   for (const r of gardenThingsPlaced()) {
     if (!r.kind || !GARDEN_KINDS[r.kind]) { push({ id: r.id, kind: '', x: Number(r.x), y: Number(r.y), w: Number(r.w) || 1, h: Number(r.h) || 1, src: 'thing' }); continue; }
     if (r.level && level < r.level) continue;
@@ -59,12 +66,13 @@ function gardenAffordThings() {
     const K = GARDEN_KINDS[r.kind];
     let x = Number(r.x), y = Number(r.y);
     if (r.on) { const a = list.find(t => t.id === r.on && t.static); if (!a) { _gks.orphans.add(r.id); continue; } const at = Array.isArray(r.at) ? r.at : [0, 0]; x = a.x + (Number(at[0]) || 0); y = a.y + (Number(at[1]) || 0); }   // (placed against a fixed thing: when the layout moves it, this goes with it)
-    if (K.ground) { const sn = gardenKindSnap(r.kind, x, y, Number(r.w) || K.w, _gksWetDrawn); if (!sn) { _gks.orphans.add(r.id + ' (no ' + K.ground + ' near)'); continue; } x = sn.x; y = sn.y; }   // (a bank stays on the bank whatever the layout did round it)
+    let front = r.front;
+    if (K.ground) { const sn = gardenKindSnap(r.kind, x, y, Number(r.w) || K.w, _gksWetDrawn, r.front); if (!sn) { _gks.orphans.add(r.id + ' (no ' + K.ground + ' near)'); continue; } x = sn.x; y = sn.y; if (sn.front != null) front = sn.front; }   // (a bank stays on the bank whatever the layout did round it)
     else {   // nothing overlaps (rule 12): a row a re-laid layout leaves on a path, a wall, a building, the water or another thing is moved
       const w0 = Number(r.w) || K.w || 1, h0 = Number(r.h) || K.h || 1, why = _gksPlaceFault(K, x, y, w0, h0, list, r.id);
       if (why) { const q = _gksPlaceNear(K, x, y, w0, h0, list, r.id); if (!q) { _gks.orphans.add(r.id + ' (' + why + ', no clear ground within 3 cells: left out)'); continue; } _gks.moved.set(r.id, { from: [x, y], to: [q.x, q.y], why }); x = q.x; y = q.y; }
     }
-    push({ id: r.id, kind: r.kind, x, y, w: Number(r.w) || K.w || 1, h: Number(r.h) || K.h || 1, front: r.front, src: 'thing', name: r.name, season: r.season || '', drawn: r.drawn, art: K.art || '' });
+    push({ id: r.id, kind: r.kind, x, y, w: Number(r.w) || K.w || 1, h: Number(r.h) || K.h || 1, front, src: 'thing', name: r.name, season: r.season || '', drawn: r.drawn, art: K.art || '' });
   }
   // 4. what a painter drew with a foot (the maypole on the green): only things of a kind something is done with
   try { if (typeof GardenPaintVale !== 'undefined' && GardenPaintVale && GardenPaintVale.feet) for (const f of GardenPaintVale.feet()) { const nm = String(f.src || '').replace(/^painted /, '').split('|')[0], k = gardenKindOf({ id: nm, head: true }); if (k === 'building' || k === 'scenery') continue;   /* (a painted thing of no known kind is found too, kind '': it offers nothing and is listed in _gks.unknown) */ push({ id: 'painted:' + nm + ':' + Math.round(f.x0 * 10) + ',' + Math.round(f.y1 * 10), kind: k, x: (f.x0 + f.x1) / 2, y: f.y1, w: Math.max(0.4, f.x1 - f.x0), h: Math.max(0.2, f.y1 - f.y0), src: 'painted', name: nm }); } } catch (e) { /* no painter */ }
@@ -92,7 +100,7 @@ function _gksPlaceFault(K, x, y, w, h, list, self) {
   for (const o of list) { if (o.id === self || o.src === 'decor') continue; const ow = (o.w || 1) / 2, oh = o.h || 1; if (x + hw > o.x - ow && x - hw < o.x + ow && y > o.y - oh && y - h < o.y) return 'on ' + o.id; }
   if (!K.onPath) for (const [px, py] of pts) if (typeof _plStoneAt === 'function' && _plStoneAt(px, py)) return 'on paving';
   // where you stand to use it is open ground on the same side of any wall (a fire with its warming spot over a wall is no use)
-  if (walker && K.acts) { const kid = Object.keys(GARDEN_KINDS).find(k => GARDEN_KINDS[k] === K); for (const sp of gardenKindSpots({ kind: kid, x, y, w })) { if (sp.pierEnd || sp.wade || sp.boat) continue; for (let i = 1; i <= 4; i++) { const qx = x + (sp.stand.x - x) * i / 4, qy = y - 0.05 + (sp.stand.y - y + 0.05) * i / 4; if (_gksSolidAt(qx, qy, self)) return 'its standing spot is behind something solid'; } try { if (typeof gardenReachable === 'function' && !gardenReachable(Math.floor(sp.stand.x), Math.floor(sp.stand.y))) return 'its standing spot cannot be walked to (shut in)'; } catch (e) { /* no map */ } } }
+  if (walker && K.acts) { const kid = Object.keys(GARDEN_KINDS).find(k => GARDEN_KINDS[k] === K); for (const sp of gardenKindSpots({ kind: kid, x, y, w })) { if (sp.pierEnd || sp.wade || sp.boat) continue; for (let i = 1; i <= 4; i++) { const qx = x + (sp.stand.x - x) * i / 4, qy = y - 0.05 + (sp.stand.y - y + 0.05) * i / 4; if (_gksSolidAt(qx, qy, self)) return 'its standing spot is behind something solid'; } try { if (typeof gardenReachableFromArrival === 'function' && !gardenReachableFromArrival(Math.floor(sp.stand.x), Math.floor(sp.stand.y))) return 'its standing spot cannot be walked to from the arrival point (shut in)'; } catch (e) { /* no map */ }   // (from the arrival point, never from where the player stands: in a boat everything would be shut in) } }
   return '';
 }
 /** Is (x, y) inside something that stops the feet (the walker's boxes and wall outlines), other than the thing itself? */
@@ -133,39 +141,22 @@ function gardenTerrainAt(x, y) {
   if (!c) return '';
   if (_gksWet(x, y)) return _gksWet(x, y - 1.2) && _gksWet(x, y - 2.4) && _gksWet(x + 1.2, y - 1.2) && _gksWet(x - 1.2, y - 1.2) ? 'deep' : 'water';
   if (!c.land) return '';
-  if (c.slope || (c.landformId && /slope|hill/i.test(c.landformId)) || (gardenTerrainUp(x, y) || {}).hill) return 'slope';   // (a hillside: by a wall or a scarp the ground is a step, still flat grass)
+  if (gardenTerrainUp(x, y)) return 'slope';   // (only ground you walk on that rises: by a wall, a scarp or a mountain the ground is flat grass)
   if (c.beach) return 'sand';
   if (c.route || (typeof _plStoneAt === 'function' && _plStoneAt(x, y))) return 'path';
   if (c.solid || c.staticId || c.reservation) return 'ground';
   if (_gksSeason() === 'winter') return 'snow';
   return 'open-grass';
 }
-/** Which way the ground rises at (x, y), read from the layout's own landforms and cells (never a region's name): { x, y } a unit vector
- *  uphill, or null on the flat. A cell's own `slope` (true: up to the north, or [dx, dy]) first; then a rising landform near: a mountain
- *  or a hill rises towards itself, a scarp, cliff or terrace wall steps the land up behind it (to the north, as the camera sees it). */
-const GARDEN_RISE = Object.freeze({ mountain: { r: 12, toward: true }, hill: { r: 8, toward: true }, fell: { r: 10, toward: true }, peak: { r: 12, toward: true }, 'rock-wall': { r: 6 }, 'terrace-wall': { r: 4 }, scarp: { r: 6 }, cliff: { r: 6 } });
+/** Which way the ground rises at (x, y): { x, y, hill } a unit vector uphill, or null on the flat (gardenRiseAt, 94-garden-zz-7act-0kinds.js:
+ *  the same pure rule the audit counts slope cells with). Cached per cell for this layout. */
 const _gkUp = { id: null, m: new Map() };
 function gardenTerrainUp(x, y) {
   let D = null; try { D = gardenIslandData(); } catch (e) { return null; }
   if (_gkUp.id !== D) { _gkUp.id = D; _gkUp.m = new Map(); }
   const cx = Math.floor(x), cy = Math.floor(y), key = cy * 4096 + cx;
   if (_gkUp.m.has(key)) return _gkUp.m.get(key);
-  let up = null;
-  try { const c = gardenIslandBaseCell(cx, cy); if (c && c.slope) up = Array.isArray(c.slope) ? { x: c.slope[0], y: c.slope[1] } : { x: 0, y: -1 }; } catch (e) { /* no cell */ }
-  if (!up) {
-    const px = cx + 0.5, py = cy + 0.5; let best = 1e9;
-    for (const L of D.landforms || []) {
-      const R = GARDEN_RISE[L.kind], P = L.polygon; if (!R || !Array.isArray(P) || P.length < 3) continue;
-      let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const q of P) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }
-      if (px < x0 - R.r || px > x1 + R.r || py < y0 - R.r || py > y1 + R.r) continue;
-      let inside = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a[1] > py) !== (b[1] > py) && px < (b[0] - a[0]) * (py - a[1]) / (b[1] - a[1] || 1e-9) + a[0]) inside = !inside; }
-      let d = 1e9, nx = px, ny = py; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[j], b = P[i], vx = b[0] - a[0], vy = b[1] - a[1], l = vx * vx + vy * vy || 1, t = Math.max(0, Math.min(1, ((px - a[0]) * vx + (py - a[1]) * vy) / l)), qx = a[0] + vx * t, qy = a[1] + vy * t, dd = Math.hypot(qx - px, qy - py); if (dd < d) { d = dd; nx = qx; ny = qy; } }
-      if (inside) d = 0; if (d > R.r || d >= best) continue; best = d;
-      if (!R.toward) up = { x: 0, y: -1 };
-      else if (inside || d < 0.2) { let mx = 0, my = 0; for (const q of P) { mx += q[0]; my += q[1]; } mx /= P.length; my /= P.length; const l = Math.hypot(mx - px, my - py); up = l > 0.5 ? { x: (mx - px) / l, y: (my - py) / l, hill: true } : null; }
-      else up = { x: (nx - px) / d, y: (ny - py) / d, hill: true };
-    }
-  }
+  let up = null; try { up = gardenRiseAt(D, (qx, qy) => gardenIslandBaseCell(qx, qy), cx + 0.5, cy + 0.5); } catch (e) { up = null; }
   _gkUp.m.set(key, up);
   return up;
 }

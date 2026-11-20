@@ -90,7 +90,7 @@ const GARDEN_KINDS = Object.freeze({
   pier: { name: 'the pier end', words: ['pier', 'jetty', 'landing'], acts: [{ act: 'dangle', stand: [0, -0.3], deg: 90, pierEnd: true }], pet: 'pier', noPerch: true, solid: 'free' },   // the end of the pier as far as it is built today
   boat: { name: 'the boat', arts: ['boat'], words: ['boat', 'dinghy'], acts: [{ act: 'row', stand: [0.72, 0.2], deg: 180, boat: true, needs: { owns: 'gear:rowing-boat' } }], noPerch: true },   // your own rowing boat takes you out
   falls: { name: 'the falls', arts: ['falls'], words: ['falls', 'waterfall', 'cascade'], acts: [{ act: 'shower', stand: [0, 0.4], deg: 90, reach: 3.4, wade: true }], pet: 'falls', calmsWater: 5 },   // white water near it: no skimming, no ducks
-  'fishing-bank': { name: 'the bank', place: true, ground: 'water-edge', w: 1.2, h: 0.3, acts: [{ act: 'fishsit', stand: [-0.5, 0], deg: -90, edge: true }, { act: 'fishsit', stand: [0.5, 0], deg: -90, edge: true }], solid: 'free' },   // a worn grassy bank, room for two, legs over the water (its own grass is the seat: nothing drawn)
+  'fishing-bank': { name: 'the bank', place: true, ground: 'water-edge', w: 1.2, h: 0.3, acts: [{ act: 'fishsit', byFront: { s: 'fishsitfront', e: 'fishsitfront', w: 'fishsitfront' }, stand: [-0.5, 0], deg: 90, edge: true }, { act: 'fishsit', byFront: { s: 'fishsitfront', e: 'fishsitfront', w: 'fishsitfront' }, stand: [0.5, 0], deg: 90, edge: true }], solid: 'free' },   // a worn grassy bank, room for two, legs over the water (its own grass is the seat: nothing drawn). Its front is the water's side, whichever way the shore runs (gardenKindSnap): back to you on a north shore, facing you or side on elsewhere
   rill: { name: 'the spring', arts: ['rill'], words: ['rill', 'spring'], drink: true, noPerch: true },
   reeds: { name: 'the reeds', arts: ['reeds'], words: ['reeds', 'reed'], noPerch: true },
   bridge: { name: 'the bridge', arts: ['bridge'], words: ['bridge'], noPerch: true, solid: 'free' },
@@ -133,7 +133,7 @@ const GARDEN_TERRAIN = Object.freeze({
   'open-grass': { acts: [{ act: 'lie' }, { act: 'nap' }, { act: 'angel', needs: { season: 'winter' } }], pets: ['roll', 'nap', 'dig', 'chase'] },   // short grass with open sky above
   sand: { acts: [{ act: 'lie' }, { act: 'nap' }], pets: ['dig', 'roll'] },
   snow: { acts: [{ act: 'angel' }], pets: ['roll', 'snow'] },
-  slope: { acts: [], pets: ['roll'] },   // (no layout has slope cells yet: a `slope` on a cell, or a 'slope'/'hill' landform, makes one)
+  slope: { acts: [], pets: ['roll'] },   // ground you walk on that rises (gardenRiseAt): a cell's `slope`, or a walkable 'hill'/'slope' landform
   puddle: { acts: [], pets: ['puddle'], after: 'rain' },   // open soil or grass after rain
   path: { acts: [], pets: [] },
 });
@@ -190,7 +190,64 @@ function gardenKindSpots(t) {
   K.acts.forEach((a, i) => {
     const sx = a.cells ? a.stand[0] : a.stand[0] * w, [ox, oy] = _gkTurn(sx, a.stand[1], t.front);
     const p = a.at ? _gkTurn(a.at[0] * w, a.at[1], t.front) : [0, 0];
-    out.push(Object.assign({}, a, { kind: t.kind, i, name: a.name || K.name, x: t.x + p[0], y: t.y + p[1], stand: { x: t.x + ox, y: t.y + oy }, deg: a.deg == null ? null : a.deg + ((t.front == null ? 90 : t.front) - 90) }));
+    const fr = t.front == null ? 90 : ((t.front % 360) + 360) % 360, side = fr > 225 && fr < 315 ? 'n' : fr >= 45 && fr <= 135 ? 's' : fr > 135 && fr <= 225 ? 'w' : 'e';
+    const act = a.byFront && a.byFront[side] ? a.byFront[side] : a.act;   // (a move whose pose depends on which way the thing faces: sat on a north bank, back to you; on a south bank, facing you)
+    out.push(Object.assign({}, a, { act, kind: t.kind, i, name: a.name || K.name, x: t.x + p[0], y: t.y + p[1], stand: { x: t.x + ox, y: t.y + oy }, deg: a.deg == null ? null : a.deg + ((t.front == null ? 90 : t.front) - 90) }));
+  });
+  return out;
+}
+/** Does a spot's `needs` hold now? ctx: { season, night, level, has(id) -> n }. */
+function gardenKindNeedsOk(needs, ctx) {
+  if (!needs) return true; ctx = ctx || {};
+  if (needs.season && ctx.season && ctx.season !== needs.season) return false;
+  if (needs.winter && ctx.season && ctx.season !== 'winter') return false;
+  if (needs.time === 'night' && ctx.night === false) return false;
+  if (needs.time === 'day' && ctx.night === true) return false;
+  if (needs.level && ctx.level != null && ctx.level < needs.level) return false;
+  return true;   // (owning a thing is asked when you use it: the prompt says where to get one)
+}
+/** A placed thing's foot moved to the ground its kind needs (K.ground), within 4 cells: { x, y, moved, front } or null when there is none.
+ *  'water-edge': the foot on the bank's lip with the water just in front, on ANY side: front is the way it faces (the water): -90 north,
+ *  90 south (towards you), 0 east, 180 west. A row's own `front` is kept when that side has water. wet(x, y) -> is it water there.
+ *  Pure: the game and the audit both call it. */
+function gardenKindSnap(kind, x, y, w, wet, front) {
+  const K = GARDEN_KINDS[kind]; if (!K || K.ground !== 'water-edge') return { x, y, moved: false };
+  const hw = (w || K.w || 1) / 2, D = [[-90, 0, -1], [90, 0, 1], [0, 1, 0], [180, -1, 0]];
+  const want = front == null ? null : ((Math.round(front) % 360) + 540) % 360 - 180;
+  const order = want == null ? D : D.slice().sort((a, b) => (a[0] === want ? -1 : 0) - (b[0] === want ? -1 : 0));
+  // along the shore (px, py) the thing's width, the water out in front (dx, dy): dry under it, wet half a cell out and further out
+  const ok = (px, py, d) => { const ax = -d[2], ay = d[1], q = (s, o) => [px + ax * hw * s + d[1] * o, py + ay * hw * s + d[2] * o]; return !wet(...q(0, 0)) && !wet(...q(-1, 0)) && !wet(...q(1, 0)) && wet(...q(0, 0.5)) && wet(...q(-1, 0.5)) && wet(...q(1, 0.5)) && wet(...q(0, 1.6)); };
+  for (const d of order) if (ok(x, y, d)) return { x, y, moved: false, front: d[0] };
+  let best = null, bd = 4.01;
+  for (let dy = -4; dy <= 4; dy += 0.1) for (let dx = -4; dx <= 4; dx += 0.25) { const dd = Math.hypot(dx, dy); if (dd >= bd) continue; for (const d of order) if (ok(x + dx, y + dy, d)) { bd = dd; best = { x: x + dx, y: y + dy, moved: true, front: d[0], d }; break; } }
+  if (best) { const d = best.d; let k = 0; while (k < 25 && !wet(best.x + d[1] * (k * 0.02 + 0.14), best.y + d[2] * (k * 0.02 + 0.14))) k++; best.x = Math.round((best.x + d[1] * k * 0.02) * 100) / 100; best.y = Math.round((best.y + d[2] * k * 0.02) * 100) / 100; delete best.d; }   // (right up to the lip)
+  return best;
+}
+/** A painted tree's kind from its species (any painter's name for it: 'apple', 'tree.green-birch', 'pine'), never from who drew it:
+ *  a kind whose `species` names a word of it, else the kind with '*' (any tree). A trunk list's rock (a pass's boulder) is no tree: ''. */
+function gardenTreeKind(sp) {
+  const toks = String(sp || '').toLowerCase().replace(/^tree\./, '').split(/[^a-z]+/).filter(Boolean);
+  if (toks.some(w => /^(rock|boulder|stone|stones)$/.test(w))) return '';
+  for (const w of toks) for (const [s, k] of _GK_SPECIES) if (w === s) return k;
+  for (const [k, v] of Object.entries(GARDEN_KINDS)) if ((v.species || []).includes('*')) return k;
+  return '';
+}
+/** Turn a vector laid out for a front facing the camera (90) round to a thing whose front faces `front` degrees. */
+function _gkTurn(dx, dy, front) {
+  const a = ((front == null ? 90 : front) - 90) * Math.PI / 180; if (!a) return [dx, dy];
+  const c = Math.cos(a), s = Math.sin(a); return [dx * c - dy * s, dx * s + dy * c];
+}
+/** What a thing offers, placed: [{ act, name, x, y (the thing, or the part), stand {x, y}, deg, ...its act row }]. t: { id, kind, x, y (its
+ *  foot's middle, cells), w (its width, cells), front }. Pure: the audit calls it on any layout. */
+function gardenKindSpots(t) {
+  const K = GARDEN_KINDS[t.kind]; if (!K || !K.acts) return [];
+  const w = t.w || K.w || 1, out = [];
+  K.acts.forEach((a, i) => {
+    const sx = a.cells ? a.stand[0] : a.stand[0] * w, [ox, oy] = _gkTurn(sx, a.stand[1], t.front);
+    const p = a.at ? _gkTurn(a.at[0] * w, a.at[1], t.front) : [0, 0];
+    const fr = t.front == null ? 90 : ((t.front % 360) + 360) % 360, side = fr > 225 && fr < 315 ? 'n' : fr >= 45 && fr <= 135 ? 's' : fr > 135 && fr <= 225 ? 'w' : 'e';
+    const act = a.byFront && a.byFront[side] ? a.byFront[side] : a.act;   // (a move whose pose depends on which way the thing faces: sat on a north bank, back to you; on a south bank, facing you)
+    out.push(Object.assign({}, a, { act, kind: t.kind, i, name: a.name || K.name, x: t.x + p[0], y: t.y + p[1], stand: { x: t.x + ox, y: t.y + oy }, deg: a.deg == null ? null : a.deg + ((t.front == null ? 90 : t.front) - 90) }));
   });
   return out;
 }
@@ -214,4 +271,23 @@ function gardenKindSnap(kind, x, y, w, wet) {
   for (let dy = -4; dy <= 4; dy += 0.1) for (let dx = -4; dx <= 4; dx += 0.25) { const d = Math.hypot(dx, dy); if (d < bd && ok(x + dx, y + dy)) { bd = d; best = { x: x + dx, y: y + dy, moved: true }; } }
   if (best) { let y1 = best.y; while (y1 - 0.02 > best.y - 0.5 && !wet(best.x, y1 - 0.02 - 0.12)) y1 -= 0.02; best.y = Math.round(y1 * 100) / 100; best.x = Math.round(best.x * 100) / 100; }   // (right up to the lip)
   return best;
+}
+/** Which way the ground you walk on rises at (x, y), read from the layout's own data, never a region's name: { x, y, hill } a unit vector
+ *  uphill, or null on the flat. Pure: the game (gardenTerrainUp) and the audit both call it. cellAt(x, y) -> the layout's cell.
+ *  - a cell's own `slope` (true: up to the north as the camera sees it, or [dx, dy]);
+ *  - inside a landform you can walk on (not col 'full') whose kind or id says hill or slope: its own `slope` ([dx, dy]) if it has one,
+ *    else up towards its middle.
+ *  A mountain, a cliff, a scarp or a wall that stops the feet is no slope: the ground beside it is painted flat, on either side. */
+function gardenRiseAt(D, cellAt, x, y) {
+  let c = null; try { c = cellAt(x, y); } catch (e) { c = null; }
+  if (c && c.slope) { const v = Array.isArray(c.slope) ? c.slope : [0, -1], l = Math.hypot(v[0], v[1]) || 1; return { x: v[0] / l, y: v[1] / l, hill: true }; }
+  for (const L of (D && D.landforms) || []) {
+    const P = L.polygon; if (L.col === 'full' || !Array.isArray(P) || P.length < 3 || !/hill|slope|rise|brae|bank/i.test(String(L.kind || '') + ' ' + String(L.id || ''))) continue;
+    let inside = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1] || 1e-9) + a[0]) inside = !inside; }
+    if (!inside) continue;
+    if (Array.isArray(L.slope)) { const l = Math.hypot(L.slope[0], L.slope[1]) || 1; return { x: L.slope[0] / l, y: L.slope[1] / l, hill: true }; }
+    let mx = 0, my = 0; for (const q of P) { mx += q[0]; my += q[1]; } mx /= P.length; my /= P.length;
+    const l = Math.hypot(mx - x, my - y); return l > 0.5 ? { x: (mx - x) / l, y: (my - y) / l, hill: true } : null;
+  }
+  return null;
 }
