@@ -43,7 +43,7 @@ window.GardenPaintWater = (function () {
     dusk: { water: '#5d9cab', deep: '#38778b', shallow: '#94c4bd', sky: '#f7c39a', skyHi: '#ffe0bc', refl: '#3f5a40', reflDeep: '#304833', glint: '#ffe2b8', foam: '#f4ece2', bed: '#ab9f80' },
     // (night water is dark before the night's blue grade is multiplied over it: a teal under that grade came out a saturated
     //  royal blue, lighter than the land round it, so the night's light and dark ran the wrong way; art director, round 3)
-    night: { water: '#304a47', deep: '#20332f', shallow: '#42594f', sky: '#76848c', skyHi: '#a6b2ba', refl: '#16241c', reflDeep: '#0f1a14', glint: '#e4ecff', foam: '#aebcc2', bed: '#4f4c40' },   // (round 2: grey-green, a little darker than the moonlit land; a blue-green teal under the night grade read as royal blue paint)
+    night: { water: '#3a4a3c', deep: '#28362c', shallow: '#4a5846', sky: '#7c8682', skyHi: '#a8b0aa', refl: '#16241c', reflDeep: '#0f1a14', glint: '#e4ecff', foam: '#aebcc2', bed: '#4f4c40' },   // (round 2: grey-green, a little darker than the moonlit land; a blue-green teal under the night grade read as royal blue paint)
   };
   const SEASON = {
     summer: { reed: ['#6d8a3e', '#8fa952', '#b4c472'], lily: ['#4f7c3e', '#6f9a4e', '#93b864'], flower: ['#fbfbf4', '#f6c9d6'], bank: '#8a7856', grass: '#6f8e45', moss: '#7d8f4e' },
@@ -194,12 +194,12 @@ window.GardenPaintWater = (function () {
     let edge = '#cfe4d4', shoal = '#84c2b2', mid = '#4b98a2', base0 = base;
     if (S.season === 'winter') { edge = mix(edge, '#e2e8e6', .4); shoal = mix(shoal, '#a8c8c8', .45); mid = mix(mid, base, .4); }
     // at night the sea is as dark as the world's own sea is made under it (NIGHT_SEA), so the night grade turns it navy
-    if (night) { edge = '#56685e'; shoal = '#38534c'; mid = '#2e4846'; base0 = NIGHT_SEA; }
+    if (night) { edge = '#5a6656'; shoal = '#3e5044'; mid = '#34443a'; base0 = NIGHT_SEA; }
     return { edge: rgbOf(edge), shoal: rgbOf(shoal), mid: rgbOf(mid), base: rgbOf(base0), sand: rgbOf(night ? '#6e6a58' : '#d6c89a'), wet: '#a8956a', foam: night ? '#b9c6ca' : '#fbfdf6' };
   }
   // the world's own sea under the painted one, at night: a dark veil over its fill (paint() lays it), and the painted sea
   // fades out into the same colour offshore
-  const NIGHT_SEA = '#2b4545', NIGHT_VEIL = { col: 0x1b2f30, a: .7 };
+  const NIGHT_SEA = '#33423a', NIGHT_VEIL = { col: 0x222e28, a: .72 };
   // What the water reflects by the hour (the light module's evening grade is laid over all of it): c0 and c1 the two tones of
   // the clouds' reflections, broad patches lo..hi of a long, low noise; glow a wash of the sky's own colour over open water.
   const SKYR = {
@@ -208,7 +208,7 @@ window.GardenPaintWater = (function () {
     // (soft peach and a dusty rose, not a saturated magenta: one bright pink blob repeated across the sea read as stains)
     dusk: { a: .36, lo: .57, hi: .69, c0: '#f6d4b8', c1: '#dcb4bc', glow: .14, g: '#8f9fc6' },   // (light peach and rose-lilac: a deep gold half-blended into teal read as mud)
     // (a faint moonlit sky: bright cloud reflections made the night's water the brightest thing on the screen)
-    night: { a: .22, lo: .57, hi: .7, c0: '#8a98a6', c1: '#6e7e90', glow: .08, g: '#1c2a30' },
+    night: { a: .2, lo: .57, hi: .7, c0: '#8c968e', c1: '#6e7a74', glow: .06, g: '#222c26' },
   };
   function skyOf(S) { const R = SKYR[S.tod] || SKYR.day; let c0 = R.c0, c1 = R.c1; if (S.season === 'winter') { c0 = mix(c0, '#e4e8ea', .4); c1 = mix(c1, '#d4dce2', .4); } return { a: R.a, lo: R.lo, hi: R.hi, c0: rgbOf(c0), c1: rgbOf(c1), glow: R.glow, g: rgbOf(R.g) }; }
   function fieldCanvas(c, w, h) { if (!c) { c = document.createElement('canvas'); } if (c.width < w) c.width = w; if (c.height < h) c.height = h; return c; }
