@@ -489,7 +489,7 @@ function _glhApply(ev, key) {
       delete g.decor[d.uid];
       return put(mark, { u: d.uid, noUndo: !!rec.own, ...(gi ? { gi } : {}) });
     }
-    case 'land': case 'build': return _glhLand(ev, put, m);
+    case 'land': case 'build': case 'gate': return _glhLand(ev, put, m);
     case 'give': {
       if (!mine) return 'not-yours';
       const d = hit.d, lk = 'gl.d.' + ev.i, gi = rec.gi, mark = _gdMark([['decor', d.uid], ['led', lk]]);
