@@ -12,7 +12,8 @@
      words     words in an id that make an unknown thing this kind (a layout's new 'ld-vseat-3' is a bench)
      trunks    the tree painters (_gwPaintedTrunks src) whose trees are this kind
      acts      [{ act (GARDEN_ACTS id), name?, stand [u, dy], deg, seat, edge, reach, pri, noProp, needs, at, art, drawn, top, loft, side, big }]
-                 stand: where you stand. u is a share of the thing's own width from its middle (so a bench twice as long puts you at the same
+                 wade: the stand point is in shallow water on purpose (under falls).
+     stand: where you stand. u is a share of the thing's own width from its middle (so a bench twice as long puts you at the same
                  place along it), dy cells in front of its foot line (negative: on or behind it). deg the way you face (0 east, 90 south,
                  180 west, -90 north) for a thing whose front faces the camera; a thing laid with `front` turned round turns both.
                  at + art: a part this branch draws on the thing (a ladder up a lighthouse's side), at [u, dy] like stand; drawn: false when the
@@ -76,7 +77,7 @@ const GARDEN_KINDS = Object.freeze({
   /* water's things */
   pier: { name: 'the pier end', words: ['pier', 'jetty'], acts: [{ act: 'dangle', stand: [0, -0.3], deg: 90, pierEnd: true }], pet: 'pier', noPerch: true, solid: 'free' },   // the end of the pier as far as it is built today
   boat: { name: 'the boat', arts: ['boat'], words: ['boat', 'dinghy'], acts: [{ act: 'row', stand: [0.72, 0.2], deg: 180, boat: true, needs: { owns: 'gear:rowing-boat' } }], noPerch: true },   // your own rowing boat takes you out
-  falls: { name: 'the falls', arts: ['falls'], words: ['falls', 'waterfall', 'cascade'], acts: [{ act: 'shower', stand: [0, 0.4], deg: 90, reach: 3.4 }], pet: 'falls', calmsWater: 5 },   // white water near it: no skimming, no ducks
+  falls: { name: 'the falls', arts: ['falls'], words: ['falls', 'waterfall', 'cascade'], acts: [{ act: 'shower', stand: [0, 0.4], deg: 90, reach: 3.4, wade: true }], pet: 'falls', calmsWater: 5 },   // white water near it: no skimming, no ducks
   'fishing-bank': { name: 'the bank', place: true, w: 1.2, h: 0.3, acts: [{ act: 'fishsit', stand: [-0.5, 0], deg: -90, edge: true }, { act: 'fishsit', stand: [0.5, 0], deg: -90, edge: true }], solid: 'free' },   // a worn grassy bank, room for two, legs over the water (its own grass is the seat: nothing drawn)
   rill: { name: 'the spring', arts: ['rill'], words: ['rill', 'spring'], drink: true, noPerch: true },
   reeds: { name: 'the reeds', arts: ['reeds'], words: ['reeds', 'reed'], noPerch: true },
@@ -134,7 +135,7 @@ for (const [k, v] of Object.entries(GARDEN_KINDS)) {
 for (const w of GARDEN_KINDS.building.words) _GK_WORDS.push([w, 'building']);   // (last: a 'bench-house' is a bench before it is a house)
 /** The kind of a thing: { kind (a layout or player's own word), art (its painter's drawing), decor (a decoration id), effect, id }.
  *  '' when nothing says (the audit lists it; it offers nothing and never breaks anything). */
-function gardenKindOf(t) {
+function gardenKindOf(t) {   // t.head: only the last word counts (a painter's 'chapel stone' is a stone, not a chapel)
   if (!t) return '';
   if (t.kind && GARDEN_KINDS[t.kind]) return t.kind;
   const art = String(t.art || '').replace(/^l[df]-/, '');
@@ -146,7 +147,7 @@ function gardenKindOf(t) {
   const toks = id.split(/[^a-z]+/).filter(Boolean), flat = toks.join('');
   // the last word names the thing ('jetty-post' is a post, 'quince-house' a house), then a word inside one ('woodbench', 'vseat')
   for (const [w, k] of _GK_WORDS) if (flat === w) return k;
-  for (const tk of toks.slice().reverse()) { for (const [w, k] of _GK_WORDS) if (tk === w) return k; for (const [w, k] of _GK_WORDS) if (w.length >= 4 && tk.length > w.length && (tk.endsWith(w) || tk.startsWith(w))) return k; }
+  for (const tk of (t.head ? toks.slice(-1) : toks.slice().reverse())) { for (const [w, k] of _GK_WORDS) if (tk === w) return k; for (const [w, k] of _GK_WORDS) if (w.length >= 4 && tk.length > w.length && (tk.endsWith(w) || tk.startsWith(w))) return k; }
   return '';
 }
 /** Turn a vector laid out for a front facing the camera (90) round to a thing whose front faces `front` degrees. */
