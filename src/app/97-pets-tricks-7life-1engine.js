@@ -475,3 +475,21 @@ function _plButterflies(P) {
   leg(3);
   return true;
 }
+/** 42, chase (round 6: both pets only walked off and hopped). A real chase round you: one runs, the other runs after it a step behind; at each
+ *  stop they swap, four times, then both bounce. Within two cells of you, in view. */
+function _plChase(P, Q) {
+  const pl = _ptwPlayer(); if (!pl) return false;
+  const now = performance.now();
+  for (const R of [P, Q]) { R.tx = null; R.arrive = null; R.busy = 0; R.cb = null; R.perch = null; if (R !== P) { R.lifeCur = null; R.lifeNext = now + 14000; R.lifeHold = now + 14000; } }
+  const spot = (R) => { for (let i = 0; i < 12; i++) { const a = Math.random() * 6.28, d = 1.0 + Math.random() * 0.9, x = pl.x + Math.cos(a) * d, y = pl.y + 0.2 + Math.sin(a) * d * 0.55; if (Math.hypot(x - R.x, y - R.y) > 0.9 && _plStandOk(x, y)) return { x, y }; } return null; };
+  const leg = (n) => {
+    const run = n % 2 ? Q : P, after = n % 2 ? P : Q, t = n < 4 && spot(run);
+    if (!t) { for (const R of [P, Q]) { R.dir = (R === P ? Q : P).x >= R.x ? 1 : -1; _plPlay(R, ['jump'], 1.2, R === P ? () => { P.hearts(); P.lifeCur = null; } : null, { at: 1, noProp: 1 }); } return; }
+    let done = 0; const both = () => { if (++done === 2) leg(n + 1); };
+    run.walkTo(t.x, t.y, true, both);
+    const dx = t.x - after.x, dy = t.y - after.y, d = Math.hypot(dx, dy) || 1, bx = t.x - dx / d * 0.75, by = t.y - dy / d * 0.4;
+    after.walkTo(_ptwFree(bx, by) ? bx : after.x, _ptwFree(bx, by) ? by : after.y, true, both);
+  };
+  leg(0);
+  return true;
+}
