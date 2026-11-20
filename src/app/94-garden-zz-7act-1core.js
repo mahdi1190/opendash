@@ -185,7 +185,9 @@ function gartActFrame() {
 const GA_CHOICES = 4;
 function _gaOptions(rows) {
   const out = [], seen = new Set();
-  for (const r of rows) { const k = (r.src || '') + '|' + r.act; if (seen.has(k)) continue; seen.add(k); out.push(r); if (out.length >= GA_CHOICES) break; }
+  // (one choice per thing you would read: two stretches of the same wall both said "Lean on the wall and look out", in the prompt and
+  // again under it; the nearest of the same words is the one)
+  for (const r of rows) { const k = (r.src || '') + '|' + r.act, w = _gaWords(r); if (seen.has(k) || seen.has('w:' + w)) continue; seen.add(k); seen.add('w:' + w); out.push(r); if (out.length >= GA_CHOICES) break; }
   return out;
 }
 /** The small chooser under the prompt when several things are close: the others, each a button (a click does it); Tab makes the next one

@@ -226,6 +226,16 @@ function _gwBuildSolids(m) {
   // drawn there (the north edge is the sky over the fells; the east and south are sea).
   if (island && island.version >= 5) add(-1, -1, .34, GARDEN_WORLD.rows + 1, 'the edge of the map');
   for (const { form: f } of _gwFieldForms()) { const r = add(f.x0, f.y0, f.x1, f.y1, f.src); r.form = f; }
+  // A small thing set against a wall (sacks at a mill's door, a barrel by a house, a crate by a shed): the strip between its block
+  // and the wall behind it, narrower than a person, is shut, so the feet go round in front of it and never squeeze along the wall
+  // behind it with their legs hidden (the owner, 20 Nov: "animation buggy leading to the mill"). By geometry: any thing, any wall.
+  { const walls = list.filter(r => !r.form && r.x1 - r.x0 >= 1.2);
+    for (const p of gardenPropsNow()) if (gardenPropCol(p) === 'full' && !gardenPropPaintedFeet(p)) walls.push({ x0: p.x, y0: p.y, x1: p.x + (p.w || 1), y1: p.y + (p.h || 1) });
+    for (const r of list.slice()) {
+      if (r.form || r.x1 - r.x0 > 1.6 || r.y1 - r.y0 > 0.9) continue;
+      let top = null; for (const b of walls) if (b !== r && r.x0 < b.x1 - .05 && r.x1 > b.x0 + .05) { const gap = r.y0 - b.y1; if (gap > .01 && gap < .6 && (top == null || b.y1 > top)) top = b.y1; }
+      if (top != null) add(r.x0, top - .02, r.x1, r.y0 + .01, r.src);
+    } }
   return { list, at };
 }
 /** The one trunk-collision list for painted trees, in cells ({x0, y0, x1, y1, src}). Five painters plant trees, each
