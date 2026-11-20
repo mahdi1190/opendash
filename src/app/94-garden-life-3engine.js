@@ -105,6 +105,7 @@ function _glOwnWorld(m) {
   return W;
 }
 function _glOwnRefresh(W, m) {
+  if (!m) { try { m = gardenModel(); } catch (e) { m = null; } if (!m) return; }   // (2.74.1: no model yet, a slow first load: wait for the next paint)
   W.m = m; W.tod = _gl.dev.tod || m.tod; W.season = _gl.dev.season || m.season; W.level = m.level.level; W.day = m.today; W.now = m.now;
   const raining = _gl.dev.rain != null ? _gl.dev.rain : !!m.rain.now;
   W.rain = raining; W.snow = _gl.dev.snow != null ? _gl.dev.snow : !!m.rain.snow; W.wet = raining || !!(m.rain.last && m.now - m.rain.last < 3 * 3600000);
@@ -748,6 +749,7 @@ function _glDirect(W) {
 /* ---------- start and stop: your own garden ---------- */
 function gardenLifeSync(m) {
   if (typeof _gw === 'undefined' || !_gw.on || !_gw.svg) return;
+  if (!m) { try { m = gardenHere(); } catch (e) { m = null; } if (!m) return; }
   if (m && m.visit) { gardenLifeVisit(_gw.svg, m.visit.snap); return; }   // a friend's garden: creatures from their objects, nothing sent, nothing earned
   if (gardenFun() === 'off' && !_gl.on) return;
   if (!_gl.on || !_gl.W || !_gl.W.own) {
