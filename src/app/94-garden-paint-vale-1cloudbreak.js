@@ -224,7 +224,8 @@
       const rank = RANK.indexOf(a.id), over = [...RANK.slice(0, rank < 0 ? RANK.length : rank).map(id => ribOf.get(id)).filter(Boolean), ...tops]
         .filter(lp => { const b2 = kit.bboxOf(lp, 0); return b2[0] < bb[2] && b2[2] > bb[0] && b2[1] < bb[3] && b2[3] > bb[1]; });
       C.add(bb, seed, (B, r, cb) => { const box = within(bb, cb, 20); if (!box) return; const path = new Path2D(B.poly(rib)); B.cx.save(); B.cx.clip(path);
-        if (over.length) { const cut = new Path2D(B.rect(box[0] - 40, box[1] - 40, box[2] - box[0] + 80, box[3] - box[1] + 80)); for (const lp of over) cut.addPath(new Path2D(B.poly(lp))); B.cx.clip(cut, 'evenodd'); }
+        // (each cut its own clip: added into one even-odd path, two cuts that overlapped (the Way and the col) cancelled, and a wedge of trail showed on the col's flags)
+        for (const lp of over) { const cut = new Path2D(B.rect(box[0] - 40, box[1] - 40, box[2] - box[0] + 80, box[3] - box[1] + 80)); cut.addPath(new Path2D(B.poly(lp))); B.cx.clip(cut, 'evenodd'); }
         const K = KIT();
         if (o && !snowy) {
           B.f(B.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]), o.base, o.a);
@@ -333,11 +334,25 @@
     const { L, kit, thing } = C; if (lvNow() >= LIP_LV) return;
     const c = (L.pres && L.pres.crossings || []).find(q => q.id === 'lip-stones'); if (!c) return;
     const p = L.cpt(c.x, c.y + .36), hw = .46 * L.cw, ht = .78 * L.ch, snowy = C.season === 'winter';
-    thing({ key: 'lip-gap-water|' + C.season, x: p.x, y: p.y, box: [-hw - 6, -ht - 10, hw + 6, 4], draw: B => { const r = kit.rng(611);
-      B.f(B.rr(-hw, -ht, hw * 2, ht + 1, 6), snowy ? '#5c7c84' : '#3f6670', .95);
-      for (let k = 0; k < 5; k++) { const y = -ht + 3 + k * (ht - 4) / 4; B.s(`M${-hw + 2} ${y + 1.5}q${hw * .5} ${-3 - r() * 2} ${hw} 0t${hw} 0`, '#d8e6e4', 1.6 + r(), .85).s(`M${-hw + 6 + r() * 6} ${y - .8}l${6 + r() * 6} -1`, '#ffffff', 1, .9); }
-      for (let k = 0; k < 7; k++) B.f(B.ell(-hw + r() * hw * 2, -ht + r() * ht, 2.4 + r() * 2, 1.4 + r()), '#f2f6f2', .9);   // spray standing off the water
-      B.f(B.rect(-hw, -ht, hw * 2, 2), '#eef2e2', .8).f(B.rect(-hw, -1, hw * 2, 2), '#eef2e2', .7);
+    // (vale final, fix 1 north: the gap was a white rectangle of wave stripes pasted over the stones.) The stream pours
+    // through the gap in the line: a tongue of dark, fast water the width of the missing stone, its edges rounded where it
+    // breaks round the stones either side, a white lip of foam where it drops in on the upstream side and a fan of white
+    // water and spray below; drawn along the stream's own direction, so it is part of the brook, not laid on it.
+    const riv = L.pres.rivers && L.pres.rivers[c.over]; let tx = .7, ty = .7;
+    if (riv && riv.line && riv.line.length > 1) { let bi = 1, bd = 1e9; for (let i = 1; i < riv.line.length; i++) { const m = [(riv.line[i][0] + riv.line[i - 1][0]) / 2, (riv.line[i][1] + riv.line[i - 1][1]) / 2], d = Math.hypot(m[0] - c.x, m[1] - c.y); if (d < bd) { bd = d; bi = i; } }
+      const a = riv.line[bi - 1], b = riv.line[bi], dx = (b[0] - a[0]) * L.cw, dy = (b[1] - a[1]) * L.ch, n = Math.hypot(dx, dy) || 1; tx = dx / n; ty = dy / n; }
+    thing({ key: 'lip-gap-water|' + C.season, x: p.x, y: p.y, box: [-hw * 2 - 10, -ht * 2 - 14, hw * 2 + 10, 10], draw: B => { const r = kit.rng(611), cy = -ht * .55;
+      const pt = (u, v) => [u * tx - v * ty, cy + u * ty + v * tx];   // u along the stream (down it), v across
+      const lobe = (u0, u1, v0, k) => { const pts = []; for (let i = 0; i <= 16; i++) { const a = i / 16 * Math.PI * 2, u = (u0 + u1) / 2 + Math.cos(a) * (u1 - u0) / 2, v = Math.sin(a) * v0 * (1 + (k ? (r() - .5) * k : 0)); pts.push(pt(u, v)); } return B.poly(pts); };
+      const L0 = ht * 1.25, V0 = hw * .95;
+      B.f(lobe(-L0 * .8, L0 * .8, V0 * .8, .12), snowy ? '#56727a' : '#3a6c74', .35);                                  // the tongue of faster, darker water (the stream itself runs under, in the channel)
+      B.f(lobe(-L0 * .5, L0 * .6, V0 * .4, .1), snowy ? '#6c8a90' : '#5a9298', .3);
+      for (let k = 0; k < 7; k++) { const v = (r() - .5) * V0 * 1.2, u = -L0 * .6 + r() * L0 * 1.2, a = pt(u, v), b = pt(u + 7 + r() * 8, v + (r() - .5) * 2);
+        B.s(`M${a[0]} ${a[1]}L${b[0]} ${b[1]}`, '#cfe2e2', 1 + r() * .8, .55 + r() * .3); }                                   // streaks running down it
+      { const pts = []; for (let i = 0; i <= 10; i++) { const v = (i / 10 - .5) * V0 * 2.1; pts.push(pt(-L0 * .78 + Math.cos(i / 10 * Math.PI - Math.PI / 2) * -3 + (r() - .5) * 2, v)); }
+        B.s(B.line(pts.map(([x, y]) => ({ x, y }))), '#f4f8f4', 1.6, .55); for (const [x, y] of pts) if (r() < .6) B.f(B.blob(r, x, y, 2 + r() * 2.5, 1.2 + r(), 6, .5), '#f4f8f4', .8); }                                                    // the white lip where it drops in
+      for (let k = 0; k < 9; k++) { const a = pt(L0 * (.35 + r() * .55), (r() - .5) * V0 * 1.7); B.f(B.blob(r, a[0], a[1], 2.5 + r() * 3.5, 1.4 + r() * 1.6, 6, .5), '#eef4f0', .75 + r() * .2); }   // white water below
+      for (let k = 0; k < 6; k++) { const a = pt(-L0 * .2 + r() * L0, (r() - .5) * V0 * 1.6); B.f(B.circ(a[0], a[1] - 3 - r() * 6, .8 + r() * 1.1), '#ffffff', .7); }   // spray standing off it
     } });
   }
   // (layout fix, north) a pass gate, once open, keeps its story: the rope you tied runs as a handline up the steep bit beside

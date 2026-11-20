@@ -544,7 +544,7 @@
   /* ---------- the shepherd's hut: on iron wheels on the high pasture, sage-painted planks under a curved tin roof, a stable
      door at the top of its steps (the way in), a stove pipe breathing a thread of smoke, hurdles leant on the end,
      a lantern by the door at night ---------- */
-  A['ld-hut'] = { box: [-70, -138, 72, 6], door: { dx: 15, dy: 0 }, lit: true, lights: [[-12, -62, 70], [30, -66, 50]],
+  A['ld-hut'] = { box: [-86, -138, 72, 6], door: { dx: 15, dy: 0 }, lit: true, lights: [[-12, -62, 70], [30, -66, 50]],
     seat: { kind: 'turf', w: 96, front: 16, extra(B, r) { for (let i = 0; i < 8; i++) B.f(B.ell(-50 + r() * 26, 3 + r() * 5, 1.8, 1), '#c8a474', .85); } },
     parts: smokeParts([-22, -134], 3, 36, 10, .2),
     draw(B, o) {
@@ -584,6 +584,16 @@
     { const x0 = -W2 - 13; B.f(B.poly([[x0 - 2, 0], [x0 + 16, 0], [x0 + 21, -30], [x0 + 3, -32]]), '#2e2a20', .12); for (const t of [.22, .55, .85]) B.s(`M${x0 + 1 + t * 3} ${-t * 32}l17 ${1 - t * 2}`, '#a8845a', 1.5); for (let i = 0; i < 4; i++) B.s(`M${x0 + i * 5} 0l${5 - i * .4} -31`, '#8a6a46', 1.7); }
     for (let k = 0; k < 6; k++) { const x = -16 + (k % 3) * 6 + (k > 2 ? 3 : 0), y = -3 - (k > 2 ? 5.4 : 0); B.f(B.circ(x, y, 3), '#8a6440').f(B.circ(x, y, 1.8), '#c49a66'); }
     // (no bucket out past its east wheel: what stands must stand on its own block, round 3 audit)
+    // (vale final, north: the hut's block runs to its footprint's west end, past the hurdle, and nothing was drawn there: an
+    // invisible wall by the bench.) A water butt on two bricks at the west end, catching the roof's run-off through a
+    // downpipe, and the winter's kindling stacked against it, so what stops you is there to see.
+    { const bx = -W2 - 21, bw = 11, bh = H * .62; B.shadow(bx + 3, 1, 16, 4, .32);
+      B.f(B.rect(bx - 8, -3, 6, 3), '#8a4a36').f(B.rect(bx + 2, -3, 6, 3), '#7a4030');
+      B.f(B.rr(bx - bw, -3 - bh, bw * 2, bh, 3), B.lin(bx - bw, 0, bx + bw, 0, [[0, '#8a6a46'], [.35, '#a8845a'], [1, '#5e4630']]));
+      for (const t of [.18, .5, .82]) B.f(B.rect(bx - bw - .5, -3 - bh * t - 1.2, bw * 2 + 1, 2.4), IR[0], .85);
+      B.f(B.ell(bx, -3 - bh, bw, 2.6), '#3e3428').f(B.ell(bx, -3 - bh + .6, bw - 1.6, 1.6), snowy ? '#e8eef2' : '#4a6a72', .9);
+      B.s(`M${-W2 - 3} ${eaves + 4}q-6 0 -8 6L${bx + 4} ${-3 - bh - 2}`, '#5e6264', 2.2, .95);
+      for (let k = 0; k < 7; k++) { const x = bx - 8 + (k % 4) * 5.4 + (k > 3 ? 2.7 : 0), y = -3 - (k > 3 ? 5.2 : 0); if (x > bx + 12) continue; B.f(B.circ(x - 6, y, 2.7), '#7a5a3a').f(B.circ(x - 6, y, 1.6), '#c49a66'); } }
     if (!snowy) B.tufts(r, -60, 1, 16, 8, grass(s), 6).tufts(r, 62, 1, 12, 7, grass(s), 6);
   } };
 

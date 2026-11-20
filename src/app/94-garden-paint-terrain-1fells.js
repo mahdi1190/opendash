@@ -426,6 +426,13 @@ window.GardenPaintedTerrain = (function () {
     add(fellBB, 51, (B) => {
       B.cx.globalCompositeOperation = 'destination-out';
       for (const w of L.water) B.f(B.poly(w.pts), '#000');
+      // (vale final, north) where stones or a clapper cross the gorge, the layout's water bodies stop either side of them:
+      // the channel between is cut through too, so the water under the crossing (GardenPaintVale's crossings) shows and the
+      // brook runs on under the stones instead of ending on a square cut of dry channel floor
+      if (L.gorge && L.gorge.line) { const xs = ((L.D.presentation && L.D.presentation.crossings) || []).filter(c => c.over === 'gorge'), hw = (L.gorge.halfWidth || .85) * .92;
+        const line = kit.resample(L.gorge.line.map(p => ({ x: p[0], y: p[1] })), .1);
+        for (const c of xs) { let run = []; const flush = () => { if (run.length > 1) { const lt = [], rt = []; for (let i = 0; i < run.length; i++) { const a = run[Math.max(0, i - 1)], b = run[Math.min(run.length - 1, i + 1)], dx = b.x - a.x, dy = b.y - a.y, n = Math.hypot(dx, dy) || 1, nx = -dy / n, ny = dx / n; lt.push(L.cpt(run[i].x + nx * hw, run[i].y + ny * hw)); rt.push(L.cpt(run[i].x - nx * hw, run[i].y - ny * hw)); } B.f(B.poly(lt.concat(rt.reverse())), '#000'); } run = []; };
+          for (const q of line) { if (Math.hypot(q.x - c.x, q.y - c.y) > 2.6) { flush(); continue; } run.push(q); } flush(); } }
       B.cx.globalCompositeOperation = 'source-over';
     });
     for (const w of L.water) if (!w.river) {

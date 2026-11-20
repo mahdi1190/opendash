@@ -320,7 +320,10 @@ function gardenFishOpenAt(x, y) {
   if (typeof gardenWaterContainsPoint !== 'function') return true;
   if (!gardenWaterContainsPoint(x, y)) return false;
   if (GARDEN_WORLD.v < 5 || x >= GARDEN_ROOM_X) return true;
-  const W = GARDEN_WORLD, rx = GW_FLOAT_CLEAR / W.cellW, ry = GW_FLOAT_CLEAR / W.cellH;
+  // (water in mountain country is ringed with a stony rim painted over the layout's edge: the float stays further clear of
+  // it there, or it sat on the drawn rocks of the tarn and the gorge; read from the region's theme, not a named place)
+  let k0 = 1; try { const b = typeof gardenIslandBaseCell === 'function' ? gardenIslandBaseCell(x, y) : null, rg = b && b.region && ((gardenIslandData() || {}).regions || []).find(r => r.id === b.region); if (rg && rg.theme === 'mountain') k0 = 1.9; } catch (e) { k0 = 1; }
+  const W = GARDEN_WORLD, rx = GW_FLOAT_CLEAR * k0 / W.cellW, ry = GW_FLOAT_CLEAR * k0 / W.cellH;
   for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; if (!gardenWaterContainsPoint(x + Math.cos(a) * rx, y + Math.sin(a) * ry)) return false; }
   return true;
 }
