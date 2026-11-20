@@ -253,8 +253,18 @@ function gardenMusicHeard(A, ev) {
       _gmu.them.set(w, { id, i, voice: P.voice, stand: row && row.stand ? { x: row.stand.x, y: row.stand.y } : null, at: performance.now(), since: was && was.id === id && was.i === i ? was.since : performance.now() });
       if (_gmVisitor() && !_gmu.synced) _gmPing();
       _gmWake(); _gmHeldSync();
+      setTimeout(() => _gmHeal(w), 1500);
     }
   } catch (e) { console.error('[garden music]', e); }
+}
+/** Their figure here shows them playing that instrument (after their move's own message, or a check that only knew they were "sitting"
+ *  put a plain sit on it): from where they stand, it is put right; standing elsewhere, it walks there first. */
+function _gmHeal(w) {
+  try {
+    const r = _gmu.them.get(w), A = r && typeof _gll !== 'undefined' && _gll.actors ? _gll.actors.get(w) : null; if (!A || A.moving || A.then) return;
+    const t = _gmThing(r.id), P = t && gmPlaces(t.kind).find(p => p.i === r.i); if (!P || A.actHold === P.act) return;
+    if (r.stand && typeof _gllEmoteAt === 'function') _gllEmoteAt(A, { e: GA_WIRE + P.act, x: r.stand.x, y: r.stand.y }); else if (typeof gartActRemote === 'function') gartActRemote(A, P.act);
+  } catch (e) { /* the next one */ }
 }
 /** A place someone else is playing at now: not offered to you (one player a place). */
 function gardenMusicTaken(id, act) {
@@ -272,6 +282,7 @@ function _gmTick() {
     if (!_gmu.me && !_gmu.them.size) { clearInterval(_gmu.iv); _gmu.iv = 0; _gmu.next = -1; _gmQuiet(); _gmHeldSync(); return; }
     if (_gmVisitor() && _gmLive() && (_gmu.me || _gmu.them.size) && performance.now() - _gmu.pingAt > (_gmu.synced ? GMU.pingMs : 1500)) _gmPing();
     if (performance.now() % 1000 < GMU.tickMs) _gmHeldSync();
+    if (performance.now() % 2000 < GMU.tickMs) for (const w of _gmu.them.keys()) _gmHeal(w);   // (their figure shows them playing, every two seconds at most)
     if (!band) { _gmu.next = -1; _gmQuiet(); return; }
     const B = _gmBus(); if (!B) { _gmu.next = -1; return; }   // (Sounds off, or nobody has clicked yet: silent, still in time)
     const c = _gmu.ac, now = performance.now(), song = gmNow(), cur = Math.floor(song / GM_STEP), until = Math.floor((song + GMU.ahead * 1000) / GM_STEP);
