@@ -347,7 +347,7 @@
       if (pz.id === 'mill-yard') { put([[76.6, 64.6], [77.2, 65.2], [76.9, 66.8]], 'millstone', [-22, -40, 24, 6], drawMillstone(P), [-18, 20, 10]); put([[77.3, 66.9], [73.6, 67.4], [76.8, 67.6]], 'sacks', [-22, -24, 24, 5], drawSacks(P), [-18, 20, 8]);
         // (layfix east) the yard at work, not a bare plaza: a hay wain unhitched by the barn, a stone trough and pump against the
         // lamp in the yard's middle, barrels and a sack barrow by the mill's doors; the setts give way to weeds at the yard's edges
-        put([[87.1, 65.6], [86.9, 66], [87.3, 65.2]], 'yard-wain|' + C.season, [-48, -46, 50, 8], drawWain(P, C.season), [-40, 40, 10]);
+        put([[87.1, 65.6], [86.9, 66], [87.3, 65.2]], 'yard-wain|' + C.season, [-72, -58, 52, 8], drawWain(P, C.season), [-38, 38, 10]);
         put([[79.3, 66], [79.5, 66.3], [77.6, 69.3]], 'yard-trough', [-30, -50, 26, 6], drawTrough(P), [-26, 20, 8]);
         put([[82.6, 67.5], [83.2, 67.3]], 'yard-sacks2', [-22, -24, 24, 5], drawSacks(P), [-18, 20, 8]);
         put([[82.4, 64.9], [82.9, 65.0]], 'yard-barrels', [-22, -30, 22, 5], drawBarrels(P), [-17, 17, 8]);
@@ -371,6 +371,7 @@
   const drawMillstone = P => B => { B.shadow(6, 2, 20, 5, .3); B.f(B.ell(0, -18, 12, 18), '#8e8a7c').f(B.ell(-2, -19, 11, 17), '#b4ae9c').f(B.ell(-2, -19, 3.4, 5), '#5e5a4e'); for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; B.s(`M${-2 + Math.cos(a) * 4} ${-19 + Math.sin(a) * 6}L${-2 + Math.cos(a + .3) * 10} ${-19 + Math.sin(a + .3) * 15}`, '#7a7668', 1, .7); } };
   // (layfix east) the mill yard's working things
   const drawWain = (P, season) => B => { B.shadow(6, 3, 46, 7, .32);
+    B.f(B.ell(0, 2, 38, 3.4), season === 'winter' ? '#a89870' : '#c8a850').f(B.ell(-4, 1.4, 30, 2), season === 'winter' ? '#c0b08a' : '#e0c470', .9);   // (a bed of straw under it, its whole length)
     for (let k = 0; k < 26; k++) { const x = -40 + k * 3.1; B.s(`M${x} ${2 + (k % 3)}l${(k % 2 ? 4 : -3)} ${-1 - (k % 2)}`, season === 'winter' ? '#b0a07a' : '#d8bc6a', 1.2, .95); }   // (straw dropped under it, along its whole length)
     const wd = ['#8a6a44', '#6a5034', '#a8865a', '#4a3828'];
     B.s('M-46 -8L-70 -2', wd[1], 3);   // the shafts down on the setts
