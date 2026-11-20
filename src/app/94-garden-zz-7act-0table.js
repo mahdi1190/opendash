@@ -24,7 +24,8 @@ const GA_PROPS = Object.freeze({
   coin: '<g class="ga-coin" transform="translate(9 -52)"><circle r="2.6" fill="#f0cc50" stroke="#a8862a" stroke-width="0.7"/></g>',
   stone: '<g class="ga-stone" transform="translate(11 -40)"><ellipse rx="2.8" ry="1.7" fill="#9a968c" stroke="#5a564c" stroke-width="0.6"/></g>',
   crumbs: '<g transform="translate(9 -40)"><path d="M-3 0q3 -3 6 0q-3 3 -6 0z" fill="#d8b878" stroke="#9a7a48" stroke-width="0.5"/></g>',
-  stick: '<g transform="translate(10 -33) rotate(148)"><path d="M0 0L0 -27" stroke="#7a5432" stroke-width="1.6" stroke-linecap="round"/><ellipse cx="0" cy="-28.5" rx="2.6" ry="2.2" fill="#f6efe0" stroke="#c8a878" stroke-width="0.5"/><ellipse cx="0.8" cy="-27.6" rx="1.2" ry="0.9" fill="#d8a060" opacity="0.7"/></g>',
+  // (round 6) the toasting stick held out and down over the fire in front of you, a big marshmallow on its end just over the flames' tips (toasted on one side)
+  stick: '<g transform="translate(10 -33) rotate(208)"><path d="M0 0L0 -44" stroke="#7a5432" stroke-width="1.8" stroke-linecap="round"/><path d="M0.5 -4L0.5 -40" stroke="#a87c4f" stroke-width="0.6" opacity="0.8"/><rect x="-3.6" y="-52" width="7.2" height="7.4" rx="2.4" fill="#fbf6ea" stroke="#b89a70" stroke-width="0.6"/><path d="M-3.6 -47q3.6 2.4 7.2 0v1.4q-3.6 2 -7.2 0z" fill="#c88a48" opacity="0.85"/><ellipse cx="-1.2" cy="-50.4" rx="1.3" ry="0.8" fill="#ffffff" opacity="0.9"/></g>',
   oars: '<g><path d="M-26 -30L26 -22" stroke="#8a6438" stroke-width="2" stroke-linecap="round"/><path d="M-30 -31l-6 -1l1 4z M30 -21l6 1l-1 -4z" fill="#a07a48"/></g>',
   // a ladder to a real landing: 14 rungs from 6 up, 9.4 apart (GA_LADDER), a plank landing with a rail at 134 the feet step on to
   ladder: '<g transform="translate(0 2)"><path d="M-21 -134h42v5h-42z" fill="#8a6438" stroke="#4a3218" stroke-width="0.8"/><path d="M-21 -129h42" stroke="#5a3e22" stroke-width="1.4"/><path d="M-19 -129l6 10M19 -129l-6 10" stroke="#6a4a2a" stroke-width="2"/><path d="M-20 -134V-160M20 -134V-160M-20 -158H20M-20 -147H20" stroke="#7a5a36" stroke-width="2" stroke-linecap="round"/><path d="M-9 0L-8 -134M9 0L8 -134" stroke="#7a5a36" stroke-width="2.4" stroke-linecap="round"/>' + _GA_K(14, (i) => `<path d="M${-8.8 + i * 0.06} ${-6 - i * 9.4}H${8.8 - i * 0.06}" stroke="#8a6a40" stroke-width="1.9"/>`).join('') + '<ellipse cx="0" cy="0" rx="13" ry="2.4" fill="#000" opacity="0.14"/></g>',
@@ -97,28 +98,37 @@ const GARDEN_ACTS = Object.freeze({
   ladderhi: { verb: 'Climb up to the treehouse', dir: 'n', ms: 11500, first: 'Climbed up into the treehouse.', sound: 'step', enter: _gaLadder(192) },
   ladderlo: { verb: 'Climb up to the hay loft', dir: 'n', ms: 7000, first: 'Climbed the ladder to the hay loft. It smells of summer.', sound: 'step', enter: _gaLadder(96) },
   shake: { verb: 'Shake the tree', dir: 'n', ms: 1700, first: 'Shook a fruit tree. Something fell out.', sound: 'rustle', shake: true,
-    enter: { up: _GA_K(8, (i) => [0.1 + i * 0.1, { r: i % 2 ? 4 : -4, x: i % 2 ? 1 : -1 }, 'io']).concat([[1, {}]]), armL: [[0.1, { r: 168, sy: 0.52 }, 'o'], [0.9, { r: 168, sy: 0.52 }], [1, {}]], armR: [[0.1, { r: -168, sy: 0.52 }, 'o'], [0.9, { r: -168, sy: 0.52 }], [1, {}]], root: _GA_K(8, (i) => [0.1 + i * 0.1, { x: i % 2 ? 1.4 : -1.4 }, 'l']).concat([[1, {}]]) } },
+    enter: { up: _GA_K(8, (i) => [0.1 + i * 0.1, { r: i % 2 ? 4 : -4, x: i % 2 ? 1 : -1 }, 'io']).concat([[1, {}]]), armL: [[0.1, { r: 16, sy: 0.5 }, 'o'], [0.9, { r: 16, sy: 0.5 }], [1, {}]], armR: [[0.1, { r: -16, sy: 0.5 }, 'o'], [0.9, { r: -16, sy: 0.5 }], [1, {}]], root: _GA_K(8, (i) => [0.1 + i * 0.1, { x: i % 2 ? 1.4 : -1.4 }, 'l']).concat([[1, {}]]) } },
   bell: { verb: 'Ring the bell', dir: 'n', ms: 2200, prop: 'rope', propBehind: true, propGround: true, first: 'Rang the bell. Half the vale looked up.', sound: 'bell', use: 'bell',
     enter: { armL: [[0.1, { r: 168 }, 'o'], [0.3, { r: 130 }, 'i'], [0.45, { r: 168 }, 'o'], [0.65, { r: 130 }, 'i'], [0.8, { r: 168 }, 'o'], [1, {}]], armR: [[0.1, { r: -168 }, 'o'], [0.3, { r: -130 }, 'i'], [0.45, { r: -168 }, 'o'], [0.65, { r: -130 }, 'i'], [0.8, { r: -168 }, 'o'], [1, {}]], root: [[0.3, { y: 3, sy: 0.94 }, 'i'], [0.45, { y: -2 }, 'o'], [0.65, { y: 3, sy: 0.94 }, 'i'], [0.8, { y: -2 }, 'o'], [1, {}]] } },
-  pump: { verb: 'Work the pump and drink', dir: 'n', ms: 3000, first: 'Pumped cold water and drank it from my hands.', sound: 'splash', fx: { at: [0.3, 0.45, 0.6], kind: 'water', spot: [0.38, 0.03], width: 14 },   // (round 5: the drips fall from the spout into the bucket, not on you)
-    // (round 5) the handle's end is up by your left shoulder: the left hand works it, then cups the water to your mouth
-    enter: { armL: [[0.08, { r: 150 }, 'o'], [0.2, { r: 112 }, 'io'], [0.32, { r: 150 }, 'io'], [0.44, { r: 112 }, 'io'], [0.56, { r: 150 }, 'io'], [0.66, { r: 70 }, 'io'], [0.9, { r: 70 }], [1, {}]], up: [[0.2, { r: 6, y: 1 }, 'io'], [0.32, {}, 'io'], [0.44, { r: 6, y: 1 }, 'io'], [0.56, {}, 'io'], [0.7, { r: 14, y: 3 }, 'io'], [0.9, { r: 14, y: 3 }], [1, {}]], head: [[0.7, { y: 3 }, 'io'], [0.9, { y: 3 }], [1, {}]] } },
+  // (round 6) side on, at the lever out on the pump's left: the near hand on the lever's end works it up and down three times (the lever really
+  // moves: 94-garden-zz-7act-1core.js _gaPumpWorks draws the pump with it), water runs from the spout into the bucket, then a drink from the cupped hand
+  pump: { verb: 'Work the pump and drink', dir: 'e', ms: 3400, first: 'Pumped cold water and drank it from my hands.', sound: 'splash', pumpWorks: true, fx: { at: [0.3, 0.45, 0.6], kind: 'water', spot: [0.32, -0.32], width: 12 },
+    enter: { armR: [[0.08, { r: -104, sy: 0.98 }, 'io'], [0.2, { r: -62, sy: 1 }, 'io'], [0.32, { r: -104, sy: 0.98 }, 'io'], [0.44, { r: -62, sy: 1 }, 'io'], [0.56, { r: -104, sy: 0.98 }, 'io'], [0.66, { r: -70 }, 'io'], [0.74, { r: -168, sy: 0.5 }, 'io'], [0.92, { r: -168, sy: 0.5 }], [1, {}]],
+      armL: [[0.08, { r: -30, sy: 0.9 }, 'io'], [0.66, { r: -30, sy: 0.9 }], [0.74, { r: -150, sy: 0.5 }, 'io'], [0.92, { r: -150, sy: 0.5 }], [1, {}]],
+      up: [[0.08, { r: 4 }, 'io'], [0.2, { r: 10, y: 1 }, 'io'], [0.32, { r: 4 }, 'io'], [0.44, { r: 10, y: 1 }, 'io'], [0.56, { r: 4 }, 'io'], [0.66, { r: 8 }, 'io'], [0.74, { r: -2 }, 'io'], [0.92, { r: -2 }], [1, {}]],
+      head: [[0.66, {}], [0.74, { r: -12 }, 'io'], [0.92, { r: -12 }], [1, {}]] } },
   wish: { verb: 'Throw a coin and make a wish', dir: 'n', ms: 2600, prop: 'coin', first: 'Threw a coin in the wishing well. It glowed.', sound: 'coin', use: 'wish', fx: { at: [0.55, 0.62, 0.7], kind: 'gold', dy: -1.25, width: 26 },
     enter: { armR: [[0.15, { r: -150 }, 'o'], [0.35, { r: -150 }], [0.45, { r: -40 }, 'b'], [0.7, { r: -20 }], [1, {}]], up: [[0.35, { r: -4 }], [0.45, { r: 6 }, 'o'], [0.7, {}], [1, {}]], head: [[0.45, { y: 2 }], [0.8, { y: 2 }], [1, {}]], armL: [[0.75, {}], [0.85, { r: 30 }, 'io'], [1, {}]] } },
   warm: { verb: 'Warm your hands', dir: 's', ms: 700, hold: true, pet: 'sit', first: 'Warmed my hands at the fire and toasted a marshmallow.', prop: 'stick', glow: true,
     // facing you over the fire (the fire is between you and the camera): hands out to it, a marshmallow on a stick now and then
     enter: { armL: [[0.6, { r: 34, sy: 0.8 }, 'o'], [1, { r: 34, sy: 0.8 }]], armR: [[0.6, { r: -30, sy: 0.82 }, 'o'], [1, { r: -30, sy: 0.82 }]], up: [[0.6, { y: 1.5, sy: 0.97, r: 2 }], [1, { y: 1.5, sy: 0.97, r: 2 }]] },
     loop: { ms: 1800, armL: [[0, { r: 34, sy: 0.8 }], [0.5, { r: 40, sy: 0.8 }, 'io'], [1, { r: 34, sy: 0.8 }, 'io']], armR: [[0, { r: -30, sy: 0.82 }], [1, { r: -30, sy: 0.82 }]], up: [[0, { y: 1.5, sy: 0.97, r: 2 }], [1, { y: 1.5, sy: 0.97, r: 2 }]], head: [[0, {}], [0.5, { r: 4 }, 'io'], [1, {}, 'io']] } },
-  lean: { verb: 'Lean on the wall and look out', dir: 'n', ms: 700, hold: true, pet: 'sit', first: 'Leaned on the wall and looked out over the vale.',
-    enter: { up: [[0.6, { r: 0, y: 4, sy: 0.92 }, 'o'], [1, { y: 4, sy: 0.92 }]], armL: [[0.6, { r: 38, sy: 0.7 }, 'o'], [1, { r: 38, sy: 0.7 }]], armR: [[0.6, { r: -38, sy: 0.7 }, 'o'], [1, { r: -38, sy: 0.7 }]], legL: [[0.6, { r: -6 }], [1, { r: -6 }]] },
-    loop: { ms: 6000, up: [[0, { y: 4, sy: 0.92 }], [1, { y: 4, sy: 0.92 }]], armL: [[0, { r: 38, sy: 0.7 }], [1, { r: 38, sy: 0.7 }]], armR: [[0, { r: -38, sy: 0.7 }], [1, { r: -38, sy: 0.7 }]], head: [[0, {}], [0.3, { r: 8 }, 'io'], [0.55, { r: 8 }], [0.7, { r: -6 }, 'io'], [0.9, {}, 'io'], [1, {}]], legL: [[0, { r: -6 }], [1, { r: -6 }]] } },
+  // (round 6) the orchard wall is taller than you: you lean back against it, facing out over the vale, arms folded, one ankle crossed over the
+  // other, the weight shifting from hip to hip now and then while you look round (no arms out to the sides)
+  lean: { verb: 'Lean on the wall and look out', dir: 's', ms: 700, hold: true, pet: 'sit', first: 'Leaned on the wall and looked out over the vale.',
+    enter: _gaHoldPose({ root: { x: 1 }, up: { r: -3, x: -0.6 }, legR: { r: -12 }, kneeR: { r: 6 }, legL: { r: 3 }, armL: { r: -42, sy: 0.6 }, armR: { r: 46, sy: 0.58 }, head: { r: 3 } }, 0.6),
+    loop: Object.assign({ ms: 6000 }, _gaHoldPose({ legR: { r: -12 }, kneeR: { r: 6 }, legL: { r: 3 }, armL: { r: -42, sy: 0.6 }, armR: { r: 46, sy: 0.58 } }, 0, 'l'), {
+      root: [[0, { x: 1 }], [0.45, { x: 1 }], [0.55, { x: 2.2 }, 'io'], [0.9, { x: 2.2 }], [1, { x: 1 }, 'io']], up: [[0, { r: -3, x: -0.6 }], [0.45, { r: -3, x: -0.6 }], [0.55, { r: -5, x: -1.2 }, 'io'], [0.9, { r: -5, x: -1.2 }], [1, { r: -3, x: -0.6 }, 'io']],
+      head: [[0, { r: 3 }], [0.25, { r: 10 }, 'io'], [0.45, { r: 10 }], [0.6, { r: -6 }, 'io'], [0.85, { r: -6 }], [1, { r: 3 }, 'io']] }) },
   read: { verb: 'Read it', dir: 's', ms: 600, hold: true, prop: 'letter', first: 'Read the notices. Someone has lost a hen.',
     enter: { armL: [[0.6, { r: -24, sy: 0.82 }, 'o'], [1, { r: -24, sy: 0.82 }]], armR: [[0.6, { r: 24, sy: 0.82 }, 'o'], [1, { r: 24, sy: 0.82 }]], head: [[0.6, { y: 1.5 }], [1, { y: 1.5 }]] },
     loop: { ms: 3000, head: [[0, { y: 1.5, r: -4 }], [0.5, { y: 1.5, r: 4 }, 'io'], [1, { y: 1.5, r: -4 }, 'io']], armL: [[0, { r: -24, sy: 0.82 }], [1, { r: -24, sy: 0.82 }]], armR: [[0, { r: 24, sy: 0.82 }], [1, { r: 24, sy: 0.82 }]] } },
-  look: { verb: 'Look through the telescope', dir: 'n', ms: 700, hold: true, first: 'Looked through the telescope at the far hills.',
-    // the eye to the eyepiece (the world draws the brass telescope on its stand just in front: 94-garden-zz-7act-2world.js), a hand on the tube, one on the stand
-    enter: { up: [[0.6, { y: 2.5, r: 3 }, 'o'], [1, { y: 2.5, r: 3 }]], head: [[0.6, { y: 1.5 }, 'o'], [1, { y: 1.5 }]], armR: [[0.6, { r: -128, sy: 0.82 }, 'o'], [1, { r: -128, sy: 0.82 }]], armL: [[0.6, { r: 60, sy: 0.9 }, 'o'], [1, { r: 60, sy: 0.9 }]] },
-    loop: { ms: 6000, up: [[0, { y: 2.5, r: 3 }], [0.5, { y: 2.5, r: 5 }, 'io'], [1, { y: 2.5, r: 3 }, 'io']], head: [[0, { y: 1.5 }], [1, { y: 1.5 }]], armR: [[0, { r: -128, sy: 0.82 }], [0.5, { r: -122, sy: 0.82 }, 'io'], [1, { r: -128, sy: 0.82 }, 'io']], armL: [[0, { r: 60, sy: 0.9 }], [1, { r: 60, sy: 0.9 }]] } },
+  // (round 6) side on at the eyepiece (the brass telescope on its stand just in front: 94-garden-zz-7act-2world.js), bent to it with the eye on
+  // the eyepiece, the near hand out along the barrel steadying it, the far hand up at the eyepiece; now and then a slow sweep along the hills
+  look: { verb: 'Look through the telescope', dir: 'e', ms: 700, hold: true, first: 'Looked through the telescope at the far hills.',
+    enter: _gaHoldPose({ up: { r: 12, x: 1.5, y: 1.5 }, head: { r: 6, y: 1 }, armR: { r: -116, sy: 0.84 }, armL: { r: -128, sy: 0.5 } }, 0.6),
+    loop: Object.assign({ ms: 6000 }, _gaHoldPose({ armL: { r: -128, sy: 0.5 } }, 0, 'l'), { up: [[0, { r: 12, x: 1.5, y: 1.5 }], [0.5, { r: 14, x: 1.8, y: 1.8 }, 'io'], [1, { r: 12, x: 1.5, y: 1.5 }, 'io']], head: [[0, { r: 6, y: 1 }], [0.5, { r: 8, y: 1 }, 'io'], [1, { r: 6, y: 1 }, 'io']], armR: [[0, { r: -116, sy: 0.84 }], [0.5, { r: -119, sy: 0.85 }, 'io'], [1, { r: -116, sy: 0.84 }, 'io']] }) },
   feed: { verb: 'Feed the ducks', dir: 'n', ms: 5200, prop: 'ducks', propBehind: true, propGround: true, first: 'Fed the ducks. They came from all over.', sound: 'pat', fx: { at: [0.13, 0.31, 0.49], kind: 'feed', dy: -1.6, width: 30 }, gather: true,
     // a pinch from the bag, thrown underarm in an arc, three times; the ducks swim in and dabble (the prop's own motion)
     enter: { armR: [[0.04, { r: -40 }, 'o'], [0.1, { r: 20 }, 'io'], [0.13, { r: -150 }, 'b'], [0.2, { r: -40 }, 'io'], [0.27, { r: 20 }, 'io'], [0.31, { r: -150 }, 'b'], [0.38, { r: -40 }, 'io'], [0.45, { r: 20 }, 'io'], [0.49, { r: -150 }, 'b'], [0.6, { r: -20 }, 'io'], [1, {}]],
@@ -168,8 +178,9 @@ const GARDEN_ACTS = Object.freeze({
     enter: { armR: [[0.15, { r: 50 }, 'io'], [0.32, { r: -170 }, 'b'], [0.5, { r: -120 }, 'o'], [0.9, {}, 'io']], up: [[0.15, { r: 6 }], [0.32, { r: -6 }, 'o'], [0.9, {}, 'io']], legL: [[0.32, { r: 6 }], [0.9, {}]] } },
   // (20) belly rubs (round 3): side on, down on one knee on the grass beside your pet, which lies on its back (the pet's own clip, l-belly); one hand rubs its tummy
   rub: { verb: 'Give your pet a belly rub', dir: 'e', ms: 700, hold: true, rubPet: true, first: 'Gave my pet a belly rub. Its leg went.',
-    enter: _gaHoldPose({ root: { y: 12.4 }, up: { r: 16, x: 1 }, head: { r: 8 }, legR: { r: -82 }, kneeR: { r: 84 }, legL: { r: 8 }, kneeL: { r: 84, sy: 0.95 }, armR: { r: -50, sy: 1.04 }, armL: { r: -18, sy: 0.9 } }, 0.7),
-    loop: Object.assign({ ms: 800 }, _gaHoldPose({ root: { y: 12.4 }, legR: { r: -82 }, kneeR: { r: 84 }, legL: { r: 8 }, kneeL: { r: 84, sy: 0.95 }, armL: { r: -18, sy: 0.9 } }, 0, 'l'), { up: [[0, { r: 16, x: 1 }], [0.5, { r: 19, x: 1.6 }, 'io'], [1, { r: 16, x: 1 }, 'io']], head: [[0, { r: 8 }], [0.5, { r: 12 }, 'io'], [1, { r: 8 }, 'io']], armR: [[0, { r: -44, sy: 1.04 }], [0.5, { r: -58, sy: 1.0 }, 'io'], [1, { r: -44, sy: 1.04 }, 'io']] }) },
+    // (round 6) leaning in over the pet, the near arm out and down so the palm is on its tummy (not on your own knee), rubbing to and fro
+    enter: _gaHoldPose({ root: { y: 12.4 }, up: { r: 26, x: 2 }, head: { r: 4 }, legR: { r: -82 }, kneeR: { r: 84 }, legL: { r: 8 }, kneeL: { r: 84, sy: 0.95 }, armR: { r: -66, sy: 1.12 }, armL: { r: -18, sy: 0.9 } }, 0.7),
+    loop: Object.assign({ ms: 800 }, _gaHoldPose({ root: { y: 12.4 }, legR: { r: -82 }, kneeR: { r: 84 }, legL: { r: 8 }, kneeL: { r: 84, sy: 0.95 }, armL: { r: -18, sy: 0.9 } }, 0, 'l'), { up: [[0, { r: 26, x: 2 }], [0.5, { r: 28, x: 2.6 }, 'io'], [1, { r: 26, x: 2 }, 'io']], head: [[0, { r: 4 }], [0.5, { r: 8 }, 'io'], [1, { r: 4 }, 'io']], armR: [[0, { r: -60, sy: 1.12 }], [0.5, { r: -72, sy: 1.1 }, 'io'], [1, { r: -60, sy: 1.12 }, 'io']] }) },
   // (24) the busker's fiddle: under the chin, the bow arm saws; notes rise; a friend near you can dance (the moves wheel)
   play: { verb: 'Play the fiddle', dir: 's', ms: 600, hold: true, prop: 'fiddle', first: 'Played the busker’s fiddle. Somebody clapped.', sound: 'chime', fx: { every: 900, kind: 'gold', dy: -2, width: 18 }, bow: true,
     // (round 4) the left hand out holding the neck, the right hand across the body drawing the bow over the strings, the head tilted down on to the chinrest
@@ -190,7 +201,7 @@ const GARDEN_ACT_BY_PROP = Object.freeze({
   'ld-bench-a': [{ act: 'sit', name: 'the bench', stand: [0, -0.16], deg: 90, seat: 0.36 }],
   'ld-bench-b': [{ act: 'sit', name: 'the bench', stand: [0, -0.16], deg: 90, seat: 0.36 }],   // seat: the seat's height as drawn today, a share of the figure's height (the size standard asks 0.3 H: a painter who lowers it changes this one number)
   'ld-stump': [{ act: 'sit', name: 'the stump', stand: [-0.1, 0.45], deg: 90, seat: 0.9 }],   // up on the top (round 4: all of you on it, over its little door, legs down the front)
-  'ld-pump': [{ act: 'pump', name: 'the pump', stand: [0.42, 0.42], deg: -90 }],   // (round 4: beside the handle, out from under the spout)
+  'ld-pump': [{ act: 'pump', name: 'the pump', stand: [-0.7, 0.12], deg: 0 }],   // (round 6: side on at the lever's end, on the pump's left)
   'ld-wish': [{ act: 'wish', name: 'the wishing well', stand: [0, 0.95], deg: -90 }],   // (far enough back not to stand on its stones)
   'ld-chapel': [{ act: 'bell', name: 'the chapel bell', stand: [0, 0.6], deg: -90 }],
   'ld-lighthouse': [{ act: 'ladder', name: 'the lighthouse ladder', stand: [0.12, 0.1], deg: -90 }],
@@ -200,7 +211,7 @@ const GARDEN_ACT_BY_PROP = Object.freeze({
   'lake-board': [{ act: 'read', name: 'the board', stand: [0, 0.6], deg: 90 }],
   'ld-sign-c': [{ act: 'read', name: 'the sign', stand: [0, 0.6], deg: 90 }],
   'ld-mile': [{ act: 'read', name: 'the milestone', stand: [0, 0.6], deg: 90 }],
-  'ld-orchard-wall': [{ act: 'lean', name: 'the wall', stand: [0, 0.35], deg: -90 }],
+  'ld-orchard-wall': [{ act: 'lean', name: 'the wall', stand: [-0.5, -0.32], deg: 90, pri: 1.2, edge: true }],   // (round 6: right against it, back to it; pri: its prompt before the fruit tree's beside it)
   'ld-falls': [{ act: 'shower', name: 'the falls', stand: [0, 0.4], deg: 90, reach: 3.4 }],   // (its prompt reaches all the way under it)
   'camera-tripod': [{ act: 'photo', name: 'the camera', stand: [-1.3, 1.5], deg: 90 }],
 });

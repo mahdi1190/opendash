@@ -307,6 +307,9 @@ function _pcMotionOn() { try { if (typeof _ptMotionOk === 'function' && !_ptMoti
 function _pcOrg(root, c) {
   if (c.org == null) return 0;
   if (c.org === 'box') return 0;   // (turns about the middle of the body's own box: set on the element by petClipRun)
+  if (c.org === 'back') {   // (rolled on to its back: flipped top to bottom about the line that lays the top of the back on the grass)
+    try { const b = root.querySelector('.pt-body').getBBox(); return Math.max(4, Math.round((90 - b.y - 3) / 2)); } catch (e) { return 16; }
+  }
   if (c.org !== 'mid') return Number(c.org) || 0;
   try { const b = root.querySelector('.pt-bodyg').getBBox(); return Math.min(44, Math.round(Math.abs(b.y) * 0.5 / 3) * 3); } catch (e) { return 28; }
 }

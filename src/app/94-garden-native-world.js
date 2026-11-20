@@ -1263,7 +1263,7 @@ window.GardenNativeWorld = (function () {
       }
       // (moves, round 5) while you do something the figure is the picture: whatever has faded because you are behind it (a crown, a rock, a painted canopy)
       // is drawn under you, so a see-through crown or trunk never lies over the figure and washes it out. Hiding is the one move that wants the tree in front.
-      const doing = typeof gartActBusy === 'function' && gartActBusy() && !(_ga.cur && _ga.cur.row && _ga.cur.row.hideBehind);
+      const doing = !(typeof _ga !== 'undefined' && _ga.cur && _ga.cur.doing && _ga.cur.row && _ga.cur.row.hideBehind);   // (round 6: always, not only during a move: a faded crown never lies over you, and you never turn see-through green)
       if (doing) {
         let top = y + .001;
         for (const record of fadingProps) if (record.behind && record.root && Number.isFinite(record.root.depth)) top = Math.max(top, record.root.depth + .002);

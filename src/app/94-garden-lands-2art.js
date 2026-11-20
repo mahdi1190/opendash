@@ -535,7 +535,7 @@ const _GLD_PROP_ART = {
   treehouse(sc) { const A = GART, Wd = GART_PAL.wood, lf = sc.season === 'winter' ? '#9aa890' : sc.season === 'autumn' ? '#c8802e' : '#4f8a44'; return A.P('#5a3f28', 'M-10 0L-7 -66H7L10 0z') + A.P(lf, A.blob(A.rng(4), 0, -92, 44, 26, 11, 0.2)) + A.P(Wd[1], A.rrect(-30, -60, 60, 4, 1)) + A.P(Wd[3], A.rrect(-22, -82, 44, 22, 1.500)) + A.P('#3a2a1a', A.rect(-5, -76, 10, 16)) + A.P('#8a4a30', 'M-28 -80L0 -96L28 -80z') + A.S(Wd[0], 1.300, 'M22 -56V-14M28 -56V-14M22 -46H28M22 -36H28M22 -26H28') + A.S('#c8bc90', 0.7, 'M-26 -56V-12'); },
   clamp() { const A = GART; return A.P('#5a5a3a', 'M-34 0Q-24 -24 0 -26Q24 -24 34 0z') + A.P('#3a3a2a', 'M-12 -24Q0 -28 12 -24Q6 -20 -6 -20z') + A.P('#7a7a4a', 'M-28 -2Q-20 -18 -8 -22Q-14 -10 -16 -2z', 0.7); },
   barrels() { const A = GART, Wd = GART_PAL.wood; const b = (x, y) => A.P(Wd[1], A.rrect(x - 9, y - 18, 18, 18, 5)) + A.S('#3a3f44', 1.300, `M${x - 9} ${y - 13}h18M${x - 9} ${y - 5}h18`) + A.P(Wd[3], A.rect(x - 6, y - 16, 3, 14), 0.5); return b(-12, 0) + b(9, 0) + b(-2, -17); },
-  pump() { const A = GART; return A.P('#3f6f5a', A.rrect(-6, -36, 12, 36, 2)) + A.P('#2f5a48', A.rrect(-8, -40, 16, 5, 2)) + A.S('#2f5a48', 3, 'M6 -30L16 -24M-6 -36L-22 -46') + A.P('#7a8288', 'M12 -8L26 -8L24 0H14z') + A.P('#5fb0cc', A.ell(19, -7, 5, 1.300)); },
+  pump() { return gardenPumpArt(0, null); },
   boles(sc) { const A = GART, St = GART_PAL.stone; return A.P(St[1], A.rrect(-22, -32, 44, 32, 2)) + A.P('#3a3a30', A.rrect(-17, -24, 14, 18, 6)) + A.P('#3a3a30', A.rrect(3, -24, 14, 18, 6)) + A.P('#c89a4a', 'M-15 -6Q-15 -20 -10 -20Q-5 -20 -5 -6z') + A.P('#c89a4a', 'M5 -6Q5 -20 10 -20Q15 -20 15 -6z'); },
   wish() { const A = GART, St = GART_PAL.stone, Wd = GART_PAL.wood; return A.P(St[2], A.rrect(-16, -14, 32, 14, 7)) + A.P('#12222e', A.ell(0, -14, 13, 4)) + A.S(Wd[0], 2.600, 'M-14 -12V-38M14 -12V-38M-14 -32H14') + A.P('#a8483a', 'M-22 -36L0 -50L22 -36z') + A.S('#6a4a2e', 1, 'M0 -32V-20') + A.P('#f2c432', A.circ(-20, -3, 1.500) + A.circ(19, -2, 1.200)); },
   mill() { const A = GART, Wd = GART_PAL.wood, St = GART_PAL.stone; let sp = ''; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; sp += `M42 -18L${42 + Math.cos(a) * 16} ${-18 + Math.sin(a) * 16}`; } return A.P(St[1], A.rect(-48, -40, 76, 40)) + A.P(St[3], A.rect(-46, -38, 12, 36), 0.5) + A.P('#8a4a30', 'M-54 -38L-10 -62L34 -38z') + A.P(Wd[1], A.rrect(-14, -24, 14, 24, 2)) + A.P('#3a4a5a', A.rect(-38, -30, 10, 10)) + A.S(Wd[0], 3, A.circ(42, -18, 16)) + A.S(Wd[0], 1.800, sp); },
@@ -603,6 +603,18 @@ function _gldHedgeRow(p, sc) {
   for (let x = x0 + 4; x < x1; x += 11) { b += A.circ(x + A.rr(r, -1.5, 1.5), by - 11 + A.rr(r, -2, 2), A.rr(r, 9, 12)); t += A.circ(x - 2 + A.rr(r, -1, 1), by - 17 + A.rr(r, -2, 1), A.rr(r, 4, 7)); }
   for (let i = 0; i < (x1 - x0) / 5; i++) l += A.leaf(x0 + r() * (x1 - x0), by - 4 - r() * 20, r() * 6.2, 2.6, 0.8);
   return `<path fill="#1a2a14" fill-opacity="0.2" d="${A.ell((x0 + x1) / 2, by + 1, (x1 - x0) / 2 + 3, 3)}"/>` + A.P(c[0], A.rrect(x0, by - 13, x1 - x0, 14, 5)) + A.P(c[0], b) + A.P(c[1], t) + A.P(c[2], l, 0.7);
+}
+/** The village pump (round 6, the player's moves): the lever out on the left at shoulder height (lever: its turn in degrees about the pivot,
+ * + lifts the end), a spout on the right with the bucket right under its mouth, and (flow 0 to 1) the water running from the spout into it.
+ * World px, feet at 0,0. The pump action draws the same picture with the lever moving (94-garden-zz-7act-1core.js _gaPumpWorks). */
+function gardenPumpArt(lever, flow) {
+  const A = GART, a = Math.round((lever || 0) * 10) / 10, f = flow == null ? -1 : Math.max(0, Math.min(1, flow));
+  return A.P('#7a8288', 'M9 -8L22 -8L20.4 0H10.6z') + A.S('#4a5258', 1, 'M9.6 -5.4H21.4') + A.P('#5fb0cc', A.ell(15.5, -7.4, 5.4, 1.4))
+    + A.P('#3f6f5a', A.rrect(-6, -36, 12, 36, 2)) + A.P('#4f8a70', A.rect(-4.6, -34, 2.6, 32), 0.7) + A.P('#2f5a48', A.rrect(-8, -40, 16, 5, 2))
+    + A.P('#2f5a48', 'M5 -28H14Q17.4 -28 17.4 -24.6V-20.4H14V-24.4H5z') + A.P('#1e3a2e', A.ell(15.7, -20.4, 1.9, 0.7))
+    + (f >= 0 ? `<g class="ga-flow" opacity="${Math.round(f * 100) / 100}">` + A.P('#9ad4ee', 'M14.5 -20.4Q15.5 -14 14.9 -7.6H16.6Q16.2 -14 16.9 -20.4z', 0.9) + A.P('#ffffff', A.ell(15.6, -7.6, 3.4, 0.9), 0.7) + '</g>' : '')
+    + A.P('#2f5a48', 'M-6 -30.4L-9.4 -28.6V-25.4L-6 -23.6z')   // (the lever's bracket on the body's side, at shoulder height for you)
+    + `<g class="ga-lever" transform="rotate(${a} -8 -27)">` + A.S('#2f5a48', 3, 'M-8 -27L-22.6 -25') + A.P('#24463a', A.ell(-23.2, -24.9, 2.3, 2)) + '</g>' + A.P('#24463a', A.ell(-8, -27, 1.9, 1.9));
 }
 function _gldDraw(kind, p, sc, o) {
   const fn = _GLD_PROP_ART[kind]; if (!fn) return '';

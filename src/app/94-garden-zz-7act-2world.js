@@ -11,16 +11,16 @@
    ============================================================ */
 const GARDEN_ACT_WORLD = Object.freeze([
   // a brass telescope on a tripod on the folly's lookout, aimed at the far hills: you put your eye to it
-  { id: 'ga-scope', anchor: 'ld-folly', at: [0.95, 0.55], act: 'look', name: 'the telescope', stand: [-0.18, 0.14], deg: -90, art: 'scope', noProp: true },
+  { id: 'ga-scope', anchor: 'ld-folly', at: [0.95, 0.55], act: 'look', name: 'the telescope', stand: [-0.31, 0.06], deg: 0, art: 'scope', noProp: true },   // (round 6: side on at the eyepiece)
   // a ladder up the lighthouse's side to a plank landing with a rail: you climb the rungs and stand on the landing
   { id: 'ga-lh-ladder', anchor: 'ld-lighthouse', at: [0.22, 0.13], act: 'ladder', name: 'the lighthouse ladder', stand: [0, 0.03], deg: -90, art: 'ladder', noProp: true },
   // (round 3) the treehouse's and the hay loft's ladders, drawn standing there all the time like the lighthouse's (not only while you climb)
   { id: 'ga-th-ladder', anchor: 'ld-treehouse', at: [0.35, 0.2], act: 'ladderhi', name: 'the treehouse ladder', stand: [0, 0.03], deg: -90, noProp: true, edge: true },   // (the treehouse's painter draws this ladder: no art here)
   { id: 'ga-barn-ladder', anchor: 'ld-barn', at: [1.1, 0.37], act: 'ladderlo', name: 'the hay loft ladder', stand: [0, 0.03], deg: -90, art: 'ladder', top: 96, loft: true, noProp: true, edge: true },
   // a campfire in a ring of stones beside the beacon, a log to one side: warm your hands, toast a marshmallow
-  { id: 'ga-fire-beacon', anchor: 'ld-beacon', at: [1.9, 1.5], act: 'warm', name: 'the campfire', stand: [0, -0.34], deg: 90, art: 'fire' },
+  { id: 'ga-fire-beacon', anchor: 'ld-beacon', at: [1.9, 1.5], act: 'warm', name: 'the campfire', stand: [0, -0.68], deg: 90, art: 'fire' },   // (round 6: back from the ring of stones, the flames clear of your feet)
   // and one by the woodsman's hut in the west woods
-  { id: 'ga-fire-hut', cell: [15.5, 78.5], at: [0, 0], act: 'warm', name: 'the campfire', stand: [0, -0.34], deg: 90, art: 'fire' },
+  { id: 'ga-fire-hut', cell: [15.5, 78.5], at: [0, 0], act: 'warm', name: 'the campfire', stand: [0, -0.68], deg: 90, art: 'fire' },
   // (1) a log laid by the fire to sit on (round 3: the bee boles and the driftwood arch are not seats; this is), its top at 0.3 of your height
   { id: 'ga-logseat', cell: [15.5, 78.5], at: [-1.45, -0.15], act: 'sit', name: 'the log', stand: [0, 0.12], deg: 90, art: 'logseat', seat: 0.42 },
   // (18) a leather ball on the grass by the green, and in autumn a pile of leaves beside it: kick them
@@ -86,7 +86,7 @@ function gardenActWorldRows() {
 function gardenActWorldProps(sc, o) {
   const W = GARDEN_WORLD, out = [];
   for (const r of gardenActWorldRows()) {
-    if (r.drawn === false || !_GAW_ART[r.art] || (r.season && sc && sc.season !== r.season) || (typeof gartActCarried === 'function' && gartActCarried(r.id))) continue;
+    if (r.drawn === false || !_GAW_ART[r.art] || (r.season && sc && sc.season !== r.season) || (typeof gartActCarried === 'function' && gartActCarried(r.id)) || (r.carry && typeof gartActMovedTo === 'function' && gartActMovedTo(r.id))) continue;   // (one set down elsewhere is drawn there as a sprite of its own)
     const x = r.x * W.cellW, y = W.sky + r.y * W.cellH;
     out.push({ z: r.flat ? r.y - 1.2 : r.y, x: Math.floor(r.x), html: `<g class="gd-it gd-prop gd-prop-work" data-prop="${r.id}" data-z="${_gawN(r.y)}" pointer-events="none"><g transform="translate(${_gawN(x)} ${_gawN(y)})">${_GAW_ART[r.art](o, typeof gartActInUse === 'function' && gartActInUse(r.id), r)}</g></g>` });
   }
