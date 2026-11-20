@@ -389,7 +389,7 @@ function gardenIslandSightGround() {
   if (data.version >= 5) for (const p of data.static || []) {
     const b = GARDEN_SIGHT_REACH[p.id]; if (!b || p.col === 'none') continue;
     const w = p.w || 1, h = p.h || 1, mid = (p.x + w / 2) * W.cellW;
-    const c0 = Math.min(p.x, Math.floor((mid + b[0] + 10) / W.cellW)), c1 = Math.max(p.x + w - 1, Math.floor((mid + b[2] - 10) / W.cellW)), back = Math.max(1, Math.min(3, Math.ceil(-b[1] / W.cellH - .6)));
+    const c0 = Math.min(p.x, Math.floor((mid + b[0] + 4) / W.cellW)), c1 = Math.max(p.x + w - 1, Math.floor((mid + b[2] - 4) / W.cellW)), back = Math.max(1, Math.min(3, Math.ceil(-b[1] / W.cellH - .6)));
     for (let y = p.y - back; y <= p.y + h; y++) for (let x = c0; x <= c1; x++) out.add(x + ',' + y);
   }
   // and a gate's crossing, two cells on along the way either side: the Cloudbreak stair climbed into a locked plot's wall
