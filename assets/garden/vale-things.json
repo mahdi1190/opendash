@@ -1,15 +1,15 @@
 {
   "about": "Things placed through layout data, each of a kind (src/app/94-garden-zz-7act-0kinds.js GARDEN_KINDS) that brings its own moves and pet behaviours. Not part of the saved-world identity. A row: id, kind, x and y (the foot's middle, in cells) or on (a fixed thing's id) with at [dx, dy] cells from that thing's foot middle; optional w, h, front (degrees the front faces, 90 = towards you), season, level, drawn (false: a painter draws it). A region file (assets/garden/vale-<region>.json) may carry its own `things` array the same way. Check them with: node tools/affordance-audit.mjs",
   "things": [
-    { "id": "ga-scope", "kind": "telescope", "on": "ld-folly", "at": [1.34, 0.9], "note": "on the folly's lookout, aimed at the far hills" },
-    { "id": "ga-fire-beacon", "kind": "campfire", "on": "ld-beacon", "at": [2.58, 1.69], "note": "a ring of stones beside the beacon" },
-    { "id": "ga-fire-hut", "kind": "campfire", "on": "ld-woodhut", "at": [3.15, 1.2], "note": "by the woodsman's hut" },
-    { "id": "ga-logseat", "kind": "log-seat", "on": "ld-woodhut", "at": [0.05, 1.35], "note": "laid by the hut's fire" },
-    { "id": "ga-ball", "kind": "ball", "on": "sundial", "at": [-5.14, 0.76], "note": "on the grass by the green" },
-    { "id": "ga-leaves", "kind": "leaf-pile", "on": "sundial", "at": [-5.7, 0.2], "season": "autumn", "note": "inside the green, autumn only" },
-    { "id": "ga-busker", "kind": "busker", "on": "market-stall", "at": [2.6, 1.2], "note": "the busker's pitch by the market" },
-    { "id": "ga-basket", "kind": "basket", "on": "market-stall", "at": [-1.4, 1.3], "note": "a basket of apples to carry off" },
-    { "id": "ga-log", "kind": "log", "on": "ld-woodhut", "at": [3.0, 2.0], "note": "a log to carry, by the hut" },
-    { "id": "ga-bank", "kind": "fishing-bank", "on": "lake-board", "at": [-4.0, -2.0], "front": -90, "note": "the Mere's south shore, legs over the water" }
+    {"id":  "ga-scope", "kind":  "telescope", "on":  "ld-folly", "at":  [2.59, 0.15], "note":  "on the folly's ridge by its east side, looking out over the sea cliff"},
+    {"id":  "ga-fire-beacon", "kind":  "campfire", "on":  "ld-beacon", "at":  [3.6, -1.6], "note":  "a ring of stones on the summit beside the beacon, clear of the summit's plot"},
+    {"id":  "ga-fire-hut", "kind":  "campfire", "on":  "ld-woodhut", "at":  [-4.5, 2.3], "note":  "on the open ground west of the woodsman's hut"},
+    {"id":  "ga-logseat", "kind":  "log-seat", "on":  "ld-woodhut", "at":  [-4.5, 1.1], "note":  "laid just behind the hut's fire, so whoever sits faces it"},
+    {"id":  "ga-ball", "kind":  "ball", "on":  "sundial", "at":  [-5.64, -3.49], "note":  "on the grass west of the green (the green itself is plots)"},
+    {"id":  "ga-leaves", "kind":  "leaf-pile", "on":  "sundial", "at":  [-9.7, -0.05], "season":  "autumn", "note":  "on the grass west of the green, autumn only"},
+    {"id":  "ga-busker", "kind":  "busker", "on":  "market-stall", "at":  [2.6, 0.45], "note":  "the busker's pitch by the market"},
+    {"id":  "ga-basket", "kind":  "basket", "on":  "market-stall", "at":  [-1.15, 1.55], "note":  "a basket of apples to carry off, beside the stall"},
+    {"id":  "ga-log", "kind":  "log", "on":  "ld-woodhut", "at":  [-2.7, 3.5], "note":  "a log to carry, below the hut's camp"},
+    {"id":  "ga-bank", "kind":  "fishing-bank", "on":  "lake-board", "at":  [-3.75, -1.6], "front":  -90, "note":  "the Mere's south shore, legs over the water"}
   ]
 }
