@@ -706,6 +706,32 @@ window.GardenPaintGround = (function () {
         // no square ends: the ground is trodden bare where a walk or a stair begins, and its last boards are shorter, as if laid to fit
         if (!rt.closed) for (const e of [L[0], L[L.length - 1]]) { if (e.x < cb[0] - 40 || e.x > cb[2] + 40 || e.y < cb[1] - 40 || e.y > cb[3] + 40) continue; const R = Math.max(10, e.w * .9), g = cx.createRadialGradient(e.x, e.y, 0, e.x, e.y, R); g.addColorStop(0, 'rgba(150,126,88,.6)'); g.addColorStop(.55, 'rgba(150,126,88,.32)'); g.addColorStop(1, 'rgba(150,126,88,0)'); cx.save(); cx.translate(e.x, e.y); cx.scale(1, .72); cx.translate(-e.x, -e.y); cx.globalAlpha = 1; cx.fillStyle = g; cx.beginPath(); cx.arc(e.x, e.y, R, 0, Math.PI * 2); cx.fill(); cx.restore(); }
         if (!steps) for (let i = 1; i < L.length; i++) { const p = L[i - 1], q = L[i]; if (Math.max(p.x, q.x) < cb[0] - 30 || Math.min(p.x, q.x) > cb[2] + 30 || Math.max(p.y, q.y) < cb[1] - 30 || Math.min(p.y, q.y) > cb[3] + 30) continue; cx.globalAlpha = .2; cx.strokeStyle = '#26341c'; cx.lineWidth = p.w + 3; cx.lineCap = i === 1 || i === L.length - 1 ? 'round' : 'butt'; cx.beginPath(); cx.moveTo(p.x + 2, p.y + 3); cx.lineTo(q.x + 2, q.y + 3); cx.stroke(); }
+        // (vale final, east) a stair is cut stone, not laths: a dark bed between grassy cheeks, then treads that touch, each two or
+        // three flags with a lit nosing and a shaded riser on its downhill (start) side, worn pale in the middle, laid square to
+        // the stair's smoothed line so a bend turns over several treads instead of kinking. Every stair here climbs from its start.
+        if (steps) { const at = d => { let i = 1; while (i < L.length - 1 && L[i].d < d) i++; const p = L[i - 1], q = L[i], t = Math.max(0, Math.min(1, (d - p.d) / Math.max(.001, q.d - p.d))); return { x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t, w: p.w + (q.w - p.w) * t }; };
+          const G = 12.5, nT = Math.max(2, Math.round(D / G)), g = D / nT;
+          for (let k = nT - 1; k >= 0; k--) { const dm = (k + .5) * g, c = at(dm), a0 = at(Math.max(0, dm - 22)), a1 = at(Math.min(D, dm + 22)); if (c.x < cb[0] - 40 || c.x > cb[2] + 40 || c.y < cb[1] - 40 || c.y > cb[3] + 40) continue;
+            const r = rng(hash(k, rt.salt, 173) | 1), ang = Math.atan2(a1.y - a0.y, a1.x - a0.x), end = Math.min(dm, D - dm), hw = c.w / 2 * (end < g ? .9 : 1), rh = 3.6;
+            cx.save(); cx.translate(c.x, c.y); cx.rotate(ang);
+            // the bed and the cheeks: earth and stone the treads are set into, wider than the treads, its edge broken by turf
+            cx.globalAlpha = .55; cx.fillStyle = '#3e3a2c'; cx.beginPath(); cx.roundRect(-g / 2 - .6, -hw - 4.5, g + 1.2, hw * 2 + 9, 3); cx.fill();
+            cx.globalAlpha = 1; for (const sd of [-1, 1]) { cx.fillStyle = r() < .5 ? '#8c8270' : '#9a8f7a'; cx.beginPath(); cx.roundRect(-g / 2, sd > 0 ? hw - .5 : -hw - 4, g - .4, 4.5, 1.6); cx.fill(); cx.fillStyle = '#c9bfa6'; cx.globalAlpha = .7; cx.fillRect(-g / 2 + rh, sd > 0 ? hw - .3 : -hw - 3.8, g - rh - 1, 1.1); cx.globalAlpha = 1; }
+            // the tread: flags across it, each its own tone, a riser in shade below the lit nosing
+            const cuts = [-hw]; let y = -hw; while (true) { y += hw * (.55 + r() * .5); if (y > hw - hw * .35) break; cuts.push(y); } cuts.push(hw);
+            for (let j = 1; j < cuts.length; j++) { const y0 = cuts[j - 1] + .5, y1 = cuts[j] - .5, tone = r(), top = tone < .35 ? '#c2b89e' : tone < .7 ? '#cfc6ac' : '#b4aa92', sh = (r() - .5) * 1.4;
+              cx.fillStyle = '#6e6656'; cx.beginPath(); cx.roundRect(-g / 2 + .2 + sh, y0, rh + .8, y1 - y0, 1.2); cx.fill();   // the riser
+              cx.fillStyle = top; cx.beginPath(); cx.roundRect(-g / 2 + rh + sh * .5, y0, g - rh - .4, y1 - y0, 1.6); cx.fill();   // the top
+              cx.globalAlpha = .9; cx.fillStyle = '#ece4cc'; cx.fillRect(-g / 2 + rh + sh * .5, y0 + .8, 1.3, y1 - y0 - 1.6);   // the nosing, lit
+              cx.globalAlpha = .35; cx.fillStyle = '#7e7662'; cx.fillRect(-g / 2 + rh + 2 + r() * (g - rh - 5), y0 + 1 + r() * (y1 - y0 - 3), .8, 2 + r() * 3);   // a crack
+              cx.globalAlpha = 1; }
+            cx.globalAlpha = .3; cx.fillStyle = '#efe8d2'; cx.beginPath(); cx.ellipse(1.5, (r() - .5) * hw * .3, g * .28, hw * .38, 0, 0, Math.PI * 2); cx.fill();   // worn pale where feet go
+            cx.globalAlpha = .55; cx.fillStyle = '#2e2a20'; cx.fillRect(g / 2 - 1, -hw, 1, hw * 2);   // the joint to the next tread up
+            // moss in the joints and turf lapping the ends
+            if (r() < .6) blob(cx, r, -g / 2 + rh + 1, (r() < .5 ? -1 : 1) * hw * (.5 + r() * .4), 2.6, 1.3, 5, .5, '#6f8a44', .8);
+            for (const sd of [-1, 1]) if (r() < .8) blob(cx, r, (r() - .5) * g, sd * (hw + 3 + r() * 2), 4 + r() * 3, 2 + r(), 6, .55, r() < .5 ? '#6f8a44' : '#7c9a4c', .95);
+            cx.restore(); cx.globalAlpha = 1; }
+          continue; }
         for (let i = 1; i < L.length; i++) { const p = L[i - 1], q = L[i]; while (next <= q.d) { const t = (next - p.d) / Math.max(.001, q.d - p.d), x = p.x + (q.x - p.x) * t, y = p.y + (q.y - p.y) * t, end = rt.closed ? 99 : Math.min(next, D - next), hw = (p.w + (q.w - p.w) * t) / 2 * (end < gap * .7 ? .68 : end < gap * 1.8 ? .86 : 1), k = n++; next += gap; if (x < cb[0] - 30 || x > cb[2] + 30 || y < cb[1] - 30 || y > cb[3] + 30) continue;
           const r = rng(hash(k, rt.salt, 171) | 1), ang = Math.atan2(q.y - p.y, q.x - p.x), tone = r();
           cx.save(); cx.translate(x, y); cx.rotate(ang + (r() - .5) * .05);
