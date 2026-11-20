@@ -101,7 +101,7 @@ function gartActNearby() {
   if (!_ga.list || now - _ga.listT > 2500) { _ga.list = _gaStaticRows(); _ga.listT = now; }
   const px = _gw.px, py = _gw.py, d = (r) => Math.hypot(r.x - px, (r.y - py) * 1.3);
   const rows = _ga.list.concat(_gaTreeRows(px, py)).filter(r => d(r) <= Math.max(GA_REACH, r.reach || 0) && !gartActHidden(r.src));   // (a ball off rolling, a pile kicked apart: nothing to do there just now)
-  const ds = (r) => r.stand ? Math.min(d(r), Math.hypot(r.stand.x - px, (r.stand.y - py) * 1.3)) : d(r);   // (where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near)
+  const ds = (r) => r.stand && r.src !== 'tree' ? Math.min(d(r), Math.hypot(r.stand.x - px, (r.stand.y - py) * 1.3)) : d(r);   // (where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near)
   rows.sort((a, b) => ds(a) - (a.pri || 0) - ds(b) + (b.pri || 0));   // (pri: a wall before the tree that grows against it)
   if (!rows.length) return _gaWaterRows(px, py);
   return rows;

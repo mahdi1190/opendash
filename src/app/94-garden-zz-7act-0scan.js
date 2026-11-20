@@ -87,7 +87,14 @@ function _gksPlaceFault(K, x, y, w, h, list, self) {
   try { if (walker) { const S = _gw.solids, tag = '[thing:' + self + ']', x0 = x - hw * 0.9, x1 = x + hw * 0.9, y0 = y - h, y1 = y; for (let gy = Math.floor(y0); gy <= Math.floor(y1); gy++) for (let gx = Math.floor(x0); gx <= Math.floor(x1); gx++) for (const r of S.at.get(gx + ',' + gy) || []) { if (String(r.src).includes(tag)) continue; if (x1 > r.x0 && x0 < r.x1 && y1 > r.y0 && y0 < r.y1 && (!r.form || typeof _gwFormHitsBox !== 'function' || _gwFormHitsBox(r.form, x0, y0, x1, y1))) return 'on ' + (r.src || 'something solid'); } } } catch (e) { /* no walker yet */ }
   for (const o of list) { if (o.id === self || o.src === 'decor') continue; const ow = (o.w || 1) / 2, oh = o.h || 1; if (x + hw > o.x - ow && x - hw < o.x + ow && y > o.y - oh && y - h < o.y) return 'on ' + o.id; }
   if (!K.onPath) for (const [px, py] of pts) if (typeof _plStoneAt === 'function' && _plStoneAt(px, py)) return 'on paving';
+  // where you stand to use it is open ground on the same side of any wall (a fire with its warming spot over a wall is no use)
+  if (walker && K.acts) { const kid = Object.keys(GARDEN_KINDS).find(k => GARDEN_KINDS[k] === K); for (const sp of gardenKindSpots({ kind: kid, x, y, w })) { if (sp.pierEnd || sp.wade || sp.boat) continue; for (let i = 1; i <= 4; i++) { const qx = x + (sp.stand.x - x) * i / 4, qy = y - 0.05 + (sp.stand.y - y + 0.05) * i / 4; if (_gksSolidAt(qx, qy, self)) return 'its standing spot is behind something solid'; } } }
   return '';
+}
+/** Is (x, y) inside something that stops the feet (the walker's boxes and wall outlines), other than the thing itself? */
+function _gksSolidAt(x, y, self) {
+  try { const S = _gw.solids, tag = '[thing:' + self + ']'; for (const r of S.at.get(Math.floor(x) + ',' + Math.floor(y)) || []) { if (String(r.src).includes(tag)) continue; if (x > r.x0 && x < r.x1 && y > r.y0 && y < r.y1 && (!r.form || typeof _gwFormHitsBox !== 'function' || _gwFormHitsBox(r.form, x - 0.05, y - 0.05, x + 0.05, y + 0.05))) return true; } } catch (e) { return false; }
+  return false;
 }
 /** The nearest spot within 3 cells where the thing may lie (_gksPlaceFault), or null. */
 function _gksPlaceNear(K, x, y, w, h, list, self) {
