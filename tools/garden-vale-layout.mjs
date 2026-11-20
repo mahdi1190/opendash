@@ -221,7 +221,10 @@ for (const w of VO.newLandforms) {
   const L = smooth(w.line, 10), hw = (w.thickness || .5) / 2, near = routes.filter(r => r.zone === 4 && r.tier !== 'plaza');
   const open = p => near.some(r => { const P = r.points, Wd = r.widths; for (let i = 1; i < P.length; i++) { const a = P[i - 1], b = P[i], dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1))), wd = Wd ? Wd[i - 1] + (Wd[i] - Wd[i - 1]) * t : r.widthCells; if (Math.hypot(p[0] - a[0] - dx * t, p[1] - a[1] - dy * t) <= wd / 2 + .3) return true; } return false; });
   const runs = []; let run = [];
-  for (const p of L) { if (open(p)) { if (run.length) runs.push(run); run = []; } else run.push(p); }
+  // (fix round 1: where a place is built into the wall, the bee boles and the rope wall, the place is the wall: the thin
+  // wall stops either side of it, so no strip of stone shows behind it)
+  const inWall = [...Object.values(VO.staticMoves), ...VO.newStatics].filter(q => q.inWall), built = p => inWall.some(q => p[0] > q.x - .1 && p[0] < q.x + q.w + .1 && p[1] > q.y - .6 && p[1] < q.y + q.h + .6);
+  for (const p of L) { if (open(p) || built(p)) { if (run.length) runs.push(run); run = []; } else run.push(p); }
   if (run.length) runs.push(run);
   const len = q => q.reduce((n, p, i) => i ? n + Math.hypot(p[0] - q[i - 1][0], p[1] - q[i - 1][1]) : 0, 0);
   runs.filter(q => q.length >= 2 && len(q) >= 1).forEach((q, k) => landforms.push({ id: k ? `${w.id}-${'bcdef'[k - 1]}` : w.id, region: w.region, kind: w.kind, name: 'A terrace wall', polygon: ribbon(q, hw).map(p => [r2(p[0]), r2(p[1])]), col: 'full', reserved: true, thin: true }));
