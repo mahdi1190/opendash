@@ -59,6 +59,15 @@ function gardenDecorCol(def) {
   if (GARDEN_COL_FULL.has(def.id) || (def.effect && def.effect.kind === 'sit')) return 'full';
   return 'soft';
 }
+/** The weir walk's crossing while it is still shut (cells {x0, y0, x1, y1}), else null. It opens when the mill wheel is mended
+ *  and the sluice comes up, the moment the Orchard stair's gate opens (round 3 valley layout: the plan's one piece of new code). */
+function gardenWeirShutBox(m) {
+  const D = typeof gardenIslandActive === 'function' && gardenIslandActive() && typeof gardenIslandData === 'function' ? gardenIslandData() : null;
+  const c = D && D.presentation && (D.presentation.crossings || []).find(q => q.id === 'mill-weir'); if (!c || !c.shut) return null;
+  const mm = m || (typeof gardenHere === 'function' ? gardenHere() : null), gate = typeof gardenGateOf === 'function' ? gardenGateOf(c.opensWith || 'island-orchard') : null;
+  if (gate && mm && typeof gardenGateIsOpen === 'function' && gardenGateIsOpen(gate, mm.areas)) return null;
+  return { x0: c.shut[0], y0: c.shut[1], x1: c.shut[2], y1: c.shut[3] };
+}
 /** The boxes the feet are tested against besides the cell grid: [{x0, y0, x1, y1}] in cells, and which cells each touches. */
 function _gwBuildSolids(m) {
   const list = [], at = new Map();
@@ -87,6 +96,9 @@ function _gwBuildSolids(m) {
   // The authored landmark oak is painted scenery rather than a planted row.
   // Give only its bole a small foot box; its roots and crown remain walkable.
   const island = typeof gardenIslandActive === 'function' && gardenIslandActive() ? gardenIslandData() : null;
+  // (round 3) the weir walk's planks below the mill wheel stay roped off until the wheel is mended and the sluice is up
+  // (the Orchard stair's gate is open): the rope and the sign at each end are painted (94-garden-paint-vale-2valley-screens.js)
+  { const wb = gardenWeirShutBox(m); if (wb) add(wb.x0, wb.y0, wb.x1, wb.y1, 'the weir walk, roped off until the sluice is up'); }
   const oak = island && island.version >= 5 && island.presentation && (island.presentation.plazas || []).find(p => p.id === 'great-oak-clearing');
   if (oak) {
     const W = GARDEN_WORLD, scale = 1.75, x = oak.x + 2.9, y = oak.y - 1.5;
@@ -153,7 +165,7 @@ function _gwTrunkSig() {
   const orch = typeof GardenPaintVale !== 'undefined' && GardenPaintVale && typeof GardenPaintVale.orchardTrunks === 'function' ? GardenPaintVale.orchardTrunks() : null;
   const feetSig = list => { let h = list.length; for (const t of list) h = (Math.imul(h, 31) + Math.round(t[0] * 64) * 7 + Math.round(t[1] * 64)) | 0; return list.length + ':' + h; };
   const vale = typeof GardenPaintVale !== 'undefined' && GardenPaintVale && GardenPaintVale.feetSig ? GardenPaintVale.feetSig() : '';
-  return vale + '/' + (nat ? nat.rev : 0) + '/' + (wood ? wood.sig : '') + '/' + feetSig(Array.isArray(orch) ? orch : []) + '/' + feetSig(_gwFellTrunks()) + '/' + feetSig(_gwGateTrunks());
+  return vale + '/' + (nat ? nat.rev : 0) + '/' + (wood ? wood.sig : '') + '/' + feetSig(Array.isArray(orch) ? orch : []) + '/' + feetSig((typeof GardenPaintVale !== 'undefined' && GardenPaintVale && typeof GardenPaintVale.valleyTrunks === 'function' && GardenPaintVale.valleyTrunks()) || []) + '/' + feetSig(_gwFellTrunks()) + '/' + feetSig(_gwGateTrunks());
 }
 function _gwPaintedTrunks(island) {
   if (!island) return [];
@@ -164,6 +176,7 @@ function _gwPaintedTrunks(island) {
   // the woods and the orchard are listed first: their boxes were measured against their own drawn trunks
   if (wood && wood.list) for (const b of wood.list) feet.push({ x: (b.x0 + b.x1) / 2, y: b.y1, w: Math.max(.3, b.x1 - b.x0), src: 'wood' });
   if (Array.isArray(orch)) for (const [x, y, w] of orch) feet.push({ x, y: y + .04, w, src: 'orchard' });
+  { const vt = typeof GardenPaintVale !== 'undefined' && GardenPaintVale && typeof GardenPaintVale.valleyTrunks === 'function' ? GardenPaintVale.valleyTrunks() : null; if (Array.isArray(vt)) for (const [x, y, w] of vt) feet.push({ x, y: y + .04, w, src: 'valley' }); }   // (round 3: the valley's trees)
   if (nat && nat.list) for (const t of nat.list) feet.push({ x: t.x, y: t.y - .02, w: t.w, src: 'village' });
   for (const [x, y, w] of _gwFellTrunks()) feet.push({ x, y, w, src: 'fells' });
   for (const [x, y, w] of _gwGateTrunks()) feet.push({ x, y, w, src: 'gate' });
@@ -319,6 +332,7 @@ function _gwRouteSourceInputs(m) {
   for (const [cell, occupant] of m.occ) if (occupant && occupant.decor && (decorCols.get(occupant.decor) || 'full') === 'full') { values.push(cell); count++; }
   values[start] = count;
   values.push(_gwTrunkSig());   // the painted trees' trunks (_gwPaintedTrunks)
+  values.push(gardenWeirShutBox(m) ? 'weir-shut' : 'weir-open');
   return values;
 }
 function _gwGrid(m, groundOnly) {

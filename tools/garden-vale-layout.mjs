@@ -354,7 +354,7 @@ for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
 const C = (x, y) => x >= 0 && y >= 0 && x < W.cols && y < W.rows ? cells[y * W.cols + x] : null;
 for (const c of cells) if (c.land && !c.reg) warn.push(`land cell ${c.x},${c.y} has no region`);
 // (round 3) in the valley nothing stands on a path or on another thing (rule 12)
-for (const p of S) { if (p.district !== VL.region) continue; for (let y = p.y; y < p.y + p.h; y++) for (let x = p.x; x < p.x + p.w; x++) { const c = C(x, y); if (c && c.route && !/^ld-vseat-2$/.test(p.id)) warn.push(`valley static ${p.id} cell ${x},${y} is on route ${c.route}`); const o = S.find(q => q !== p && x >= q.x && x < q.x + q.w && y >= q.y && y < q.y + q.h); if (o) warn.push(`valley static ${p.id} overlaps ${o.id} at ${x},${y}`); } }
+for (const p of S) { if (p.district !== VL.region) continue; for (let y = p.y; y < p.y + p.h; y++) for (let x = p.x; x < p.x + p.w; x++) { const c = C(x, y); if (c && c.route && !/^ld-(vseat|vlamp)-2$/.test(p.id)) warn.push(`valley static ${p.id} cell ${x},${y} is on route ${c.route}`); const o = S.find(q => q !== p && x >= q.x && x < q.x + q.w && y >= q.y && y < q.y + q.h); if (o) warn.push(`valley static ${p.id} overlaps ${o.id} at ${x},${y}`); } }
 // (round 3) no path is laid over a valley screen: the ground a roof hides is closed, and a road painted into it would end at an invisible stop
 { const hit = new Map(); for (const f of landforms.filter(q => q.kind === 'screen')) { const b = bbox(f.polygon); for (let y = b.y; y <= b.y1; y += .2) for (let x = b.x; x <= b.x1; x += .2) { if (!inLoop(x, y, f.polygon)) continue; for (const r of routes) if (onRoute(x, y, r)) { const k = r.id + ' onto ' + f.id; hit.set(k, (hit.get(k) || 0) + 1); } } }
   for (const [k, n] of hit) warn.push(`route ${k} (${(n * .04).toFixed(2)} square cells)`); }
@@ -402,6 +402,12 @@ for (const [id, a] of Object.entries(VL.sections)) {
   if (keep.length < Math.max(4, v4Cells[id].length)) warn.push(`valley section ${id} has ${keep.length} cells, fewer than its old ${v4Cells[id].length}`);
   sectionCells[id] = keep;
 }
+// (round 3) the valley's trees (vale-valley.json trees: [x, y, species, height px]) stand on free ground: not on water, a path,
+// a building, a screen, the beach, or a field (the alder carr's own trees excepted), and their trunks clear of each other
+for (const t of VL.trees || []) { const [x, y] = t, c = C(Math.floor(x), Math.floor(y)), sec = Object.entries(sectionCells).find(([, cs]) => cs.some(q => q[0] === Math.floor(x) && q[1] === Math.floor(y)));
+  const why = !c || !c.land ? 'sea' : c.fw ? 'water' : c.beach ? 'beach' : c.route ? 'route ' + c.route : c.st ? 'static ' + c.st : c.lf ? 'landform ' + c.lf : sec && !(t[4] === 'in-field') ? 'section ' + sec[0] : '';
+  if (why) warn.push(`valley tree at ${x},${y} is not on free ground (${why})`); }
+if (process.env.VALLEY_MAP) { const secAt = new Map(); for (const [id, cs] of Object.entries(sectionCells)) for (const q of cs) secAt.set(K(q[0], q[1]), id); for (let y = 48; y < 88; y++) { let l = String(y).padStart(3) + ' '; for (let x = 56; x < 92; x++) { const c = C(x, y); l += !c || !c.land ? '~' : c.fw ? 'w' : c.beach ? ':' : c.route ? '=' : c.st ? '#' : c.lf ? 'X' : secAt.has(K(x, y)) ? 's' : c.zone !== 2 ? ',' : '.'; } console.log(l); } console.log('    ' + Array.from({ length: 36 }, (_, i) => (56 + i) % 10).join('')); }
 const fieldOf = Object.fromEntries(Object.entries(VV.sections).map(([id, a]) => [id, a.field]));
 const shapeOf = n => n >= 19 ? [5, 4] : n >= 14 ? [7, 2] : n >= 12 ? [4, 3] : n >= 9 ? [3, 3] : n >= 6 ? [3, 2] : [2, 2];
 const free = (x, y, zone) => { const c = C(x, y); return !!c && c.land && !c.fw && !c.beach && !c.reserved && c.zone === zone && !taken.has(K(x, y)) && x >= 1 && y >= 1 && x < W.cols - 1 && y < W.rows - 1; };
@@ -494,7 +500,7 @@ const fieldRow = (FS, SS, zone) => ([id, f]) => {
   const hint = f.gateHint || null, score = q => (q.onRoute ? 0 : 2) + (hint ? Math.hypot(q.x - hint[0], q.y - hint[1]) : 0);
   const gate = hint && cand.length ? cand.sort((a, b) => score(a) - score(b))[0] : null;
   if (hint && !gate) warn.push('field ' + id + ' has no gate');
-  return { id, name: f.name, edge: f.edgeKind || EDGE[id] || 'hedge', sections: secs, gate: gate ? { x: gate.x, y: gate.y, out: gate.out, section: gate.section } : null };
+  return { id, name: f.name, edge: f.edgeKind || EDGE[id] || 'hedge', sections: secs, ...(f.edgeAll ? { edgeAll: true } : {}), gate: gate ? { x: gate.x, y: gate.y, out: gate.out, section: gate.section } : null };
 };
 const fields = Object.entries(VV.fields).map(fieldRow(VV.fields, VV.sections, 0)).concat(Object.entries(VL.fields).map(fieldRow(VL.fields, VL.sections, 2)));
 for (const [id, a] of Object.entries(storyAnchors)) { const x = Math.floor(a.x), y = Math.floor(a.y); if (Object.entries(sectionCells).some(([, cs]) => cs.some(c => c[0] === x && c[1] === y))) warn.push(`story anchor ${id} stands in a field (${x},${y})`); }
@@ -511,7 +517,7 @@ const presentation = {
     { id: 'outlet-footbridge', kind: 'footbridge', over: 'river', x: 59.9, y: 41.1, along: 'lakeside-steps' },
     { id: 'millwater-bridge', kind: 'hump-bridge', over: 'river', x: 65, y: 55.1, along: 'east-road', gateId: 'island-mill' },
     { id: 'estuary-stones', kind: 'stepping-stones', over: 'river', x: 78.6, y: 80.4, along: 'coast-walk' },
-    ...VL.crossings.map(c => ({ id: c.id, kind: c.kind, over: c.over, x: c.x, y: c.y, along: c.along })),   // (round 3: the weir walk's planks below the mill wheel)
+    ...VL.crossings.map(c => Object.assign({ id: c.id, kind: c.kind, over: c.over, x: c.x, y: c.y, along: c.along }, c.shut ? { shut: c.shut, opensWith: c.opensWith } : {})),   // (round 3: the weir walk's planks below the mill wheel)
     { id: 'gorge-stones', kind: 'stepping-stones', over: 'gorge', x: 35.8, y: 16.9, along: 'gorge-trail' },
     { id: 'brook-stones-west', kind: 'stepping-stones', over: 'brook', x: 10.3, y: 33.7, along: 'woodland-loop' },
     { id: 'brook-stones-east', kind: 'stepping-stones', over: 'brook', x: 25.6, y: 36.8, along: 'woodland-loop' },
@@ -528,7 +534,7 @@ const presentation = {
   ],
   screens: VL.screens.map(s => ({ id: s.id, landform: 'screen-' + s.id, reads: s.reads })),
   // (round 3: the water meadows' three carriers from their hatches, and the race path's fishing stage: painted ground, no collision)
-  carriers: (VL.carriers || []).map(c => ({ id: c.id, pts: c.pts.map(p => p.map(r2)) })), stage: VL.stage || null,   // (round 3: what closes the ground behind the valley's roofs)
+  carriers: (VL.carriers || []).map(c => ({ id: c.id, pts: c.pts.map(p => p.map(r2)) })), stage: VL.stage || null, weir: VL.weir || null, valleyTrees: VL.trees || [],   // (round 3: what closes the ground behind the valley's roofs)
   fields,   // the village's and the valley's sections grouped into fields: how locked land reads (edge) and the one way in (gate)
   gateKinds: Object.fromEntries(gates.map(g => [g.id, g.kind])),
   shortcuts: [

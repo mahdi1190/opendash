@@ -535,39 +535,39 @@
    ],
    "poly": [
     [
-     75.1,
-     66.95
+     74.9,
+     67
     ],
     [
-     77,
-     67.1
+     79,
+     67
     ],
     [
-     79.2,
-     66.6
+     79.05,
+     65.3
     ],
     [
-     80,
-     65.2
+     79.7,
+     64.55
     ],
     [
-     81.6,
-     64.4
+     81.95,
+     64
     ],
     [
-     84,
-     64.2
+     88,
+     64
+    ],
+    [
+     88.5,
+     64.7
+    ],
+    [
+     88.2,
+     66
     ],
     [
      87,
-     64.3
-    ],
-    [
-     87.9,
-     65.6
-    ],
-    [
-     87.2,
      67
     ],
     [
@@ -576,7 +576,7 @@
     ],
     [
      82.8,
-     68
+     68.1
     ],
     [
      81.2,
@@ -595,12 +595,12 @@
      70.2
     ],
     [
-     75.1,
-     68.4
+     75.9,
+     69.4
     ],
     [
-     75.9,
-     69.2
+     75.1,
+     68.4
     ]
    ]
   }
@@ -802,11 +802,11 @@
   ],
   [
    79,
-   62
+   66
   ],
   [
-   67,
-   69
+   69,
+   66
   ],
   [
    84,
@@ -985,7 +985,14 @@
    "x": 72.3,
    "y": 67.4,
    "along": "weir-walk",
-   "opens": "mill bundle 3 (the sluice)"
+   "opens": "when the mill wheel is mended and the sluice comes up (the Orchard stair gate)",
+   "shut": [
+    70.45,
+    66.75,
+    74.15,
+    68.45
+   ],
+   "opensWith": "island-orchard"
   }
  ],
  "storyAnchors": {
@@ -999,11 +1006,12 @@
   "v-top": {
    "name": "The Furrows (wall strips)",
    "edge": "mown headland on the road side; locked = fallow green strip with poppies; one field gate",
-   "edgeKind": "meadow",
+   "edgeKind": "hurdle",
    "gateHint": [
     73.5,
     54
-   ]
+   ],
+   "edgeAll": true
   },
   "v-bridge": {
    "name": "Bridge bank",
@@ -1012,25 +1020,28 @@
    "gateHint": [
     66.5,
     53
-   ]
+   ],
+   "edgeAll": true
   },
   "v-stair": {
    "name": "Stair foot",
    "edge": "the terrace wall behind, a stone kerb on the lane; locked = self-sown fennel and dock",
-   "edgeKind": "long-grass",
+   "edgeKind": "hurdle",
    "gateHint": [
     81,
     52.5
-   ]
+   ],
+   "edgeAll": true
   },
   "v-river": {
    "name": "The Furrows (river strips)",
    "edge": "strips beside the race; poppy edge; locked = fallow",
-   "edgeKind": "meadow",
+   "edgeKind": "hurdle",
    "gateHint": [
     71,
     58.5
-   ]
+   ],
+   "edgeAll": true
   },
   "v-race": {
    "name": "Race bank",
@@ -1039,7 +1050,8 @@
    "gateHint": [
     70,
     57.5
-   ]
+   ],
+   "edgeAll": true
   },
   "v-carr": {
    "name": "Alder carr",
@@ -1048,16 +1060,18 @@
    "gateHint": [
     84.5,
     54
-   ]
+   ],
+   "edgeAll": true
   },
   "v-willows": {
    "name": "Far willows",
    "edge": "pollards in long grass; locked = uncut willow rods",
-   "edgeKind": "long-grass",
+   "edgeKind": "hurdle",
    "gateHint": [
     86,
     69.5
-   ]
+   ],
+   "edgeAll": true
   },
   "v-estuary": {
    "name": "Estuary bank",
@@ -1066,7 +1080,8 @@
    "gateHint": [
     79,
     73.5
-   ]
+   ],
+   "edgeAll": true
   },
   "v-wreed": {
    "name": "Meadow bank",
@@ -1075,7 +1090,8 @@
    "gateHint": [
     73,
     76.5
-   ]
+   ],
+   "edgeAll": true
   },
   "v-verge": {
    "name": "Reed-bed edge",
@@ -1084,25 +1100,28 @@
    "gateHint": [
     81,
     71.5
-   ]
+   ],
+   "edgeAll": true
   },
   "v-floatedN": {
    "name": "Water meadows, upper panes",
    "edge": "ditches, not fences; locked = long grass",
-   "edgeKind": "long-grass",
+   "edgeKind": "hurdle",
    "gateHint": [
     66,
     72.5
-   ]
+   ],
+   "edgeAll": true
   },
   "v-floatedS": {
    "name": "Water meadows, show panes",
    "edge": "ditches, not fences; locked = long grass",
-   "edgeKind": "long-grass",
+   "edgeKind": "hurdle",
    "gateHint": [
     66,
     80.5
-   ]
+   ],
+   "edgeAll": true
   },
   "v-holt": {
    "name": "Pip's bank",
@@ -1111,7 +1130,8 @@
    "gateHint": [
     66.5,
     67
-   ]
+   ],
+   "edgeAll": true
   }
  },
  "sections": {
@@ -2261,24 +2281,24 @@
      77.4
     ],
     [
-     71,
-     78.2
-    ],
-    [
-     69.8,
-     78.75
-    ],
-    [
-     68.6,
+     71.4,
      78.6
     ],
     [
-     67.5,
-     78
+     70.3,
+     79.5
+    ],
+    [
+     69,
+     79.65
+    ],
+    [
+     67.9,
+     79.3
     ],
     [
      66.6,
-     77.8
+     78.8
     ]
    ]
   }
@@ -2290,5 +2310,74 @@
    62.35
   ],
   "reads": "a fishing stage of old planks at the end of the race path"
- }
+ },
+ "weir": [
+  71.55,
+  65.9
+ ],
+ "trees": [
+  [
+   84.4,
+   52.6,
+   "alder",
+   185,
+   "in-field"
+  ],
+  [
+   86.5,
+   52.3,
+   "alder",
+   205,
+   "in-field"
+  ],
+  [
+   88.2,
+   52.7,
+   "alder",
+   175,
+   "in-field"
+  ],
+  [
+   67.4,
+   71.8,
+   "alder",
+   190,
+   "in-field"
+  ],
+  [
+   67.6,
+   74.7,
+   "oak",
+   200,
+   "in-field"
+  ],
+  [
+   67.3,
+   79.6,
+   "alder",
+   185,
+   "in-field"
+  ],
+  [
+   67.5,
+   82.5,
+   "birch",
+   160,
+   "in-field"
+  ],
+  [
+   69.4,
+   61.4,
+   "alder",
+   170,
+   "in-field"
+  ],
+  [
+   85.2,
+   70.7,
+   "alder",
+   175,
+   "in-field"
+  ]
+ ]
 }

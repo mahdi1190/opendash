@@ -153,6 +153,7 @@
   // the field track and the meadow trail run along the top of the beach: worn ways over the turf and footprints on the sand,
   // drawn by the harbour's shore-trail painter (laid as lanes, the lawn was cut along them and a pale strip with square
   // ends showed wherever their ribbon crossed a beach cell)
-  V.wornWays = (V.wornWays || []).concat(['field-track', 'valley-meadow']); V.softRoutes.add('field-track'); V.softRoutes.add('valley-meadow');
+  // (round 3, critic fix: as worn ways they read as a diffuse pale stain with no edge, and the boardwalk ended at nothing:
+  // they are trails again, ribbons 1.4 to 2 cells wide like the valley's other trails)
   V.parts.push({ id: 'valley', compose });
 })();

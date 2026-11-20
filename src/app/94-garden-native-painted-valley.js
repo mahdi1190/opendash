@@ -189,7 +189,7 @@
       if (o.season !== 'winter') B.flowers(r, -38, 1, 8, 3, ['#e8c84a', '#f2f0e8']);
     } },
     /* ---------- the valley's lamps: a lantern hung from an oak post set in a stone (round 3 layout) ---------- */
-    'sight:vlamp': { box: [-24, -132, 30, 8], draw(B, o) {
+    'sight:vlamp': { box: [-24, -132, 30, 8], scale: () => .72, draw(B, o) {   // (round 3 fix: drawn at .72, the post about twice the player's height after the figures shrink, rule 14; it stood 2.8 H)
       const r = rng(hash('vlamp|' + (o.prop && o.prop.id))), leaf = leafOf(o.season);
       B.shadow(2, 1, 12, 3.5, .3);
       B.f(B.rr(-9, -7, 18, 8, 2.4), STONE[1]).f(B.rect(-8, -7, 16, 2), STONE[2], .7);   // the set stone
@@ -202,7 +202,7 @@
       for (let j = 0; j < 7; j++) B.s(`M${(r() - .5) * 18} 1q${(r() - .5) * 3} -5 ${(r() - .5) * 4} -${5 + r() * 7}`, leaf[1], 1.1, .9);
       if (o.night) B.f(B.circ(15, -94, 14), '#ffd27a', .18);
     },
-      extra(scene, h, fx, foot) { if (h.lights) h.lights.push({ x: fx + 15, y: foot - 94, radius: 120, pool: true }); } },
+      extra(scene, h, fx, foot, o) { const k = (o && o.scale) || 1; if (h.lights) h.lights.push({ x: fx + 15 * k, y: foot - 94 * k, radius: 110, pool: true }); } },
     /* ---------- the bee boles: niches in an old wall against the carr, straw skeps in them (round 3 layout) ---------- */
     'sight:boles': { box: [-82, -84, 82, 10], draw(B, o) {
       const r = rng(hash('valley-boles')), leaf = leafOf(o.season);

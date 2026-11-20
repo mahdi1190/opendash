@@ -35,6 +35,14 @@
         } else if (id === 'wheel-pit') {
           // (round 3 fix) a damp green bank, fern and alder roots, a few wet stones near the wheel: a grey stone fill read as a tower behind the wheel
           B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), winter ? '#6a7452' : '#5c7a40', .95);
+          // (round 3, critic fix) the race: water led off the river above, along the pit in a stone channel under the wheel and back
+          // into the river below it, so the wheel stands in running water, not in a grass pit
+          { const xs = poly.map(p => p[0]), ys = poly.map(p => p[1]), y0 = Math.min(...ys), y1 = Math.max(...ys), xm = (Math.min(...xs) + Math.max(...xs)) / 2 + .15;
+            const line = [[xm - .55, y0 - .3], [xm - .1, y0 + .8], [xm + .15, (y0 + y1) / 2], [xm, y1 - .7], [xm - .45, y1 + .3]].map(L.pt);
+            V.strokePts(B, line, '#6e6a5c', 30, .95); V.strokePts(B, line, '#8e8a78', 26, .9);
+            for (const q of V.walk(line, 9)) for (const sd of [-1, 1]) B.f(B.rr(q.x - q.ty * 12.5 * sd - 4, q.y + q.tx * 12.5 * sd - 2.4, 8, 4.8, 1.6), sd < 0 ? stone[2] : stone[0], .95);
+            V.strokePts(B, line, winter ? '#5a7a80' : '#4a7276', 19, 1); V.strokePts(B, line, '#6e9ea4', 12, .9);
+            for (const q of V.walk(line, 7)) B.s(`M${q.x - q.ty * (r() - .5) * 10} ${q.y + q.tx * (r() - .5) * 10}l${q.tx * 5} ${q.ty * 5}`, '#d4e6e4', 1, .6); }
           kit.tiles(cb, 30, 4, seed & 255, (tx, ty, rr) => { for (let k = 0; k < 4; k++) { const x = tx + rr() * 30, y = ty + rr() * 30; B.f(B.blob(rr, x, y, 9, 4, 7, .4), rr() < .5 ? '#4e6e36' : '#6a8a48', .7); } });
           kit.tiles(cb, 40, 10, (seed + 5) & 255, (tx, ty, rr) => { if (rr() < .55) return; const x = tx + rr() * 40, y = ty + rr() * 40; B.f(B.rr(x - 7, y - 3, 13 + rr() * 5, 7, 3), stone[1], .8).f(B.rect(x - 5, y - 3, 8, 1.6), stone[2], .4); });
           kit.tiles(cb, 36, 8, (seed + 3) & 255, (tx, ty, rr) => { for (let k = 0; k < 2; k++) { const x = tx + rr() * 36, y = ty + rr() * 36; for (let j = 0; j < 5; j++) { const a = -Math.PI / 2 + (j - 2) * .42; B.s(`M${x} ${y}q${Math.cos(a) * 5} ${Math.sin(a) * 5} ${Math.cos(a) * 10} ${Math.sin(a) * 8 + 3}`, winter ? '#8a7a4a' : '#3e6a2e', 1.8, .85); } } });
@@ -79,6 +87,10 @@
             for (const z of pts) { const h = (22 + r0() * 8) * lo; B.f(B.blob(r0, z.x - 1, z.y - h * .55, 7.5, h * .42, 8, .35), leaf[0]).f(B.blob(r0, z.x - 3, z.y - h * .72, 5, h * .22, 7, .35), leaf[2], .9);
               if (autumn && r0() < .6) for (let j = 0; j < 3; j++) B.f(B.circ(z.x + (r0() - .5) * 12, z.y - h * (.3 + r0() * .5), 1.3), '#a83228');
               if (season === 'spring' && r0() < .6) for (let j = 0; j < 4; j++) B.f(B.circ(z.x + (r0() - .5) * 12, z.y - h * (.4 + r0() * .5), 1.4), '#f4ece0', .95); }
+          } else if (id === 'wheel-pit' && steep) {   // (round 3, critic fix) seen end on: a kerb of edge stones lying along the race's lip, knee high, no column
+            for (const z of pts) B.shadow(z.x + 3, z.y + 2, 9, 3, .22);
+            for (const z of pts) B.f(B.rr(z.x - 6, z.y - 7, 12, 7.5, 2.4), stone[Math.floor(r0() * 3)]).f(B.rr(z.x - 5, z.y - 7, 9, 2, 1), stone[2], .7);
+            for (const z of pts) if (r0() < .3) for (let j = 0; j < 4; j++) { const a = -Math.PI / 2 + (j - 1.5) * .45; B.s(`M${z.x} ${z.y - 1}q${Math.cos(a) * 5} ${Math.sin(a) * 5} ${Math.cos(a) * 10} ${Math.sin(a) * 8 + 3}`, winter ? '#8a7a4a' : '#5a8a3a', 1.8, .9); }
           } else if (id === 'wheel-pit') {   // a low dry-stone wall with a coping of edge stones, moss and a fern at its foot
             for (const z of pts) B.shadow(z.x + 4, z.y + 2, 12, 4, .25);
             for (let row = 0; row < (steep ? 1 : 2); row++) for (const z of pts) B.f(B.rr(z.x - 6 + (row & 1) * 3, z.y - 9 - row * 8, 11 + r0() * 3, 8, 2.4), stone[Math.floor(r0() * 3)]).s(`M${z.x - 5} ${z.y - 2 - row * 8}h9`, stone[3], .6, .5);
@@ -157,5 +169,39 @@
       });
     }
   }
-  V.parts.push({ id: 'valley-screens', compose: C => { compose(C); meadows(C); } });
+  /* The valley's trees (vale-valley.json trees, presentation.valleyTrees): the alder carr along the terrace wall behind the bee
+   * boles, alders down the water meadows, one over the fishing stage, the far willows' alder by the yard. Painted with the
+   * tree kit (lit leaf masses on a rooted trunk), their dappled shadow baked into the ground; a crown you stand under fades.
+   * Their trunks stop the feet (V.valleyTrunks, read by 94-garden-world-0walk.js). */
+  let trunks = null;
+  function trees(C) {
+    const { L, add, thing, season } = C, list = ((L.D.presentation || {}).valleyTrees || []).filter(t => Array.isArray(t) && t.length >= 4);
+    trunks = list.map(t => [+t[0], +t[1], t[3] > 180 ? .5 : .42]);
+    if (!window.GardenPaintTrees) return;
+    list.forEach((t, i) => {
+      const p = L.cpt(t[0], t[1]), sp = t[2], h = t[3], v = i % 3;
+      add([p.x - h * .8, p.y - h * .3, p.x + h * .9, p.y + h * .4], 7300 + i, B => { try { GardenPaintTrees.groundShadow(B.cx, p.x, p.y, h, { species: sp, season }); } catch (e) { /* no shadow */ } });
+      thing({ y: p.y, make: scene => GardenPaintTrees.image(scene, { species: sp, season, v, h, x: p.x, y: p.y, flip: (i & 1) === 1 }) });
+    });
+  }
+  V.valleyTrunks = () => (V.wanted() && trunks) || null;
+  /* The weir walk while it is shut (crossings 'mill-weir' shut, until the sluice is up): a rope across each end of the planks
+   * on two stakes, a plank or two lifted out in the middle and a small board, so you can see why you stop there. */
+  const weirShut = () => typeof gardenWeirShutBox === 'function' && !!gardenWeirShutBox();
+  V.groundSigs.push(() => '|weir' + (weirShut() ? 1 : 0));
+  function weir(C) {
+    const { L, thing, season } = C; if (!weirShut()) return;
+    const c = ((L.D.presentation || {}).crossings || []).find(q => q.id === 'mill-weir'); if (!c || !c.shut) return;
+    const [x0, y0, x1, y1] = c.shut, ym = (y0 + y1) / 2;
+    for (const [x, east] of [[x0 + .05, false], [x1 - .05, true]]) {
+      const top = L.cpt(x, y0 + .25), bot = L.cpt(x, y1 - .15), dy = bot.y - top.y;
+      thing({ key: 'weir rope|' + (east ? 'e' : 'w') + '|' + season, x: top.x, y: bot.y, box: [-22, -dy - 34, 22, 6], K: 1.4, foot: [-4, 4, 6], draw: B => {
+        for (const yy of [-dy, 0]) { B.shadow(1, yy + 1, 5, 2, .3); B.f(B.rr(-2, yy - 22, 4, 23, 1), '#5e4c36').f(B.rect(-2, yy - 22, 1.4, 22), '#8a7454', .7).f(B.circ(0, yy - 22, 2.2), '#4a3a28'); }
+        B.s(`M0 ${-dy - 18}Q${east ? -3 : 3} ${-dy / 2 - 10} 0 -18`, '#3a2e22', 2.6).s(`M0 ${-dy - 18}Q${east ? -3 : 3} ${-dy / 2 - 10} 0 -18`, '#c8b088', 1.4);
+        B.f(B.poly([[-1, -dy / 2 - 12], [5, -dy / 2 - 9], [-1, -dy / 2 - 5]]), '#c8442e');   // a red rag on the rope
+        if (east) { B.f(B.rect(9, -30, 2.4, 30), '#5e4c36'); B.f(B.rr(2, -38, 18, 11, 2), '#c9a876').s(B.rr(2, -38, 18, 11, 2), '#6e5434', .8); B.s('M5 -34.5h12M5 -31.5h9', '#3e2c1a', 1.1, .8); }   // a board: the planks are up
+      } });
+    }
+  }
+  V.parts.push({ id: 'valley-screens', compose: C => { compose(C); meadows(C); trees(C); weir(C); } });
 })();
