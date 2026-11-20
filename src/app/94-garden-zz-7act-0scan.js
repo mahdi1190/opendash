@@ -73,7 +73,7 @@ function gardenAffordThings() {
   _gks.list = list; _gks.unknown = list.filter(t => !t.kind).map(t => t.src + ':' + t.id);
   // a placed thing moved aside once the walker knew what stops the feet: the world draws it again where it now lies
   const placedSig = list.filter(t => t.src === 'thing').map(t => t.id + '@' + t.x + ',' + t.y).join('|');
-  if (_gks.placedSig != null && _gks.placedSig !== placedSig) { _gks.rev = (_gks.rev || 0) + 1; if (typeof gardenRepaintSoon === 'function') try { gardenRepaintSoon(); } catch (e) { /* drawn next time */ } }
+  if (_gks.placedSig != null && _gks.placedSig !== placedSig) { _gks.rev = (_gks.rev || 0) + 1; setTimeout(() => { try { if (typeof GardenNative !== 'undefined' && GardenNative.sync) GardenNative.sync(); } catch (e) { /* drawn next time */ } }, 0); }
   _gks.placedSig = placedSig;
   if (_gks.unknown.length && _gks.said !== _gks.unknown.join()) { _gks.said = _gks.unknown.join(); try { console.info('[garden] things of no known kind (they offer nothing; give them a kind in the layout or a word in GARDEN_KINDS): ' + _gks.unknown.join(', ')); } catch (e) { /* no console */ } }
   return list;
