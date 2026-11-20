@@ -410,6 +410,7 @@ function _glvEvent(ev) {
     }
     case 'go': {
       const A = _gll.actors.get(ev.w); if (!A) return;   // (you are not one of them: your own feet are the world's)
+      if (_gllHeldNudge(A, ev)) return;
       _gllGoPace(A, ev); _gllWalkVia(A, ev.r, ev.x, ev.y); if (_glv.follow === ev.w) _glvFollowGo(ev.x - 0.8, ev.y + 0.3);
       return;
     }

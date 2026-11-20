@@ -229,7 +229,7 @@ function _glhEvent(ev) {
     }
     case 'tr': if (typeof _gltHostOn === 'function') _gltHostOn(ev); return;
     case 'leave': if (typeof _gltHostLeft === 'function') _gltHostLeft(ev.w); _glhRemove(ev.w); if (typeof gardenContestLeave === 'function') gardenContestLeave(ev.w); _glhReturnDrops(ev.w); gardenLiveLoad(true).then(_glhHud).catch(() => {}); return;
-    case 'go': { const A = _gll.actors.get(ev.w); if (A) { _gllGoPace(A, ev); _glhWalk(A, ev); if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } return; }
+    case 'go': { const A = _gll.actors.get(ev.w); if (A && _gllHeldNudge(A, ev)) return; if (A) { _gllGoPace(A, ev); _glhWalk(A, ev); if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } return; }
     case 'em': {
       const A = _gll.actors.get(ev.w); if (!A) return;
       if (ev.c === 'em') _gllEmoteAt(A, ev);

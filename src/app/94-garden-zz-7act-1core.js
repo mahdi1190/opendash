@@ -717,8 +717,12 @@ function _gaTell(id, x, y) {
   if (x != null && Number.isFinite(x) && Number.isFinite(y)) { body.x = Math.round(x * 100) / 100; body.y = Math.round(y * 100) / 100; }
   try {
     if (typeof _gll === 'undefined') return;
-    if (_gll.role === 'visit') { if (typeof _glvLive === 'function' && _glvLive()) _glvSend('em', body); }
-    else if (typeof _glh !== 'undefined' && _glh.on && typeof _glhAnyone === 'function' && _glhAnyone()) _glhSend('all', 'em', body);
+    // (where you are now is said by the move itself: the walk's own "I am here" must not follow it a moment later, or their copy of you
+    // takes one step off the seat and the move is wiped. A visitor sat on a bench was seen by the host standing in front of it: the em
+    // said 42.97, the next "go" said 43.0 (a tenth of a cell, rounded) and the step stopped the sit. Any move, either way round.)
+    const t = Date.now();   // clock-ok: spacing messages
+    if (_gll.role === 'visit') { if (typeof _glvLive === 'function' && _glvLive()) { clearTimeout(_glv.goT); _glv.goX = _gw.px; _glv.goY = _gw.py; _glv.lastGo = _glv.goAt = t; _glvSend('em', body); } }
+    else if (typeof _glh !== 'undefined' && _glh.on && typeof _glhAnyone === 'function' && _glhAnyone()) { _glh.goX = _gw.px; _glh.goY = _gw.py; _glh.lastGo = t; _glhSend('all', 'em', body); }
   } catch (e) { /* alone */ }
 }
 function gartActRemote(A, id) {
