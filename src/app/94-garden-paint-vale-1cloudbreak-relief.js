@@ -154,8 +154,8 @@
     let y = 0, bw = w * .92, cx0 = 0; const tiers = 4 + Math.floor(r() * 2), th = h / tiers;
     const tops = [];
     for (let t = 0; t < tiers; t++) {
-      const hh = th * (.9 + r() * .3), n = bw > w * .55 ? 1 + Math.floor(r() * 2) : 1; cx0 += (r() - .5) * w * .12;
-      for (let k = 0; k < n; k++) { const sw = bw / n - (n > 1 ? 3 : 0), sx = cx0 - bw / 2 + k * (bw / n) + (r() - .5) * 3, rad = Math.min(hh * .45, 9);
+      const hh = th * (.9 + r() * .3), n = t > 0 && bw > w * .55 ? 1 + Math.floor(r() * 2) : 1;   // (the bottom course one long slab, square at its foot: it sits on the ground its whole width) cx0 += (r() - .5) * w * .12;
+      for (let k = 0; k < n; k++) { const sw = bw / n - (n > 1 ? 3 : 0), sx = cx0 - bw / 2 + k * (bw / n) + (r() - .5) * 3, rad = t ? Math.min(hh * .45, 9) : 3;
         B.f(B.rr(sx + 2, y - hh + 2.5, sw, hh, rad), GRIT.deep, .8);                                 // the undercut and its shadow
         B.f(B.rr(sx, y - hh, sw, hh, rad), GRIT.mid);
         B.f(B.rr(sx + sw * .55, y - hh, sw * .45, hh, rad), GRIT.shade, .8);                         // the east end in shade
@@ -222,7 +222,7 @@
     // the tors
     torSpots(L, kit, M, R).forEach((s, i) => {
       const r = kit.rng(kit.hash(Math.round(s.x * 10), Math.round(s.y * 10), 419)), w = L.cw * (2.1 + r() * .5), h = H * (3 + r() * .5), p = L.cpt(s.x, s.y + .35), moorish = s.x < 28;
-      thing({ key: 'fell-tor-' + i + '|' + season, x: p.x, y: p.y, K: 1.25, box: [-w * .7, -h * 1.12 - 12, w * .7, 6], foot: [-w * .47, w * .47, .62 * L.ch], draw: B => torArt(B, kit, w, h, 4300 + i, season, moorish) });
+      thing({ key: 'fell-tor-' + i + '|' + season, x: p.x, y: p.y, K: 1.25, box: [-w * .7, -h * 1.12 - 12, w * .7, 6], foot: [-w * .44, w * .44, .62 * L.ch], draw: B => torArt(B, kit, w, h, 4300 + i, season, moorish) });
       C.add([p.x - w * 1.3, p.y - 30, p.x + w * 1.3, p.y + 30], 4400 + i, B => { B.cx.save(); B.cx.translate(p.x, p.y); torGround(B, kit, w, 4300 + i, season, moorish); B.cx.restore(); });
     });
   }
