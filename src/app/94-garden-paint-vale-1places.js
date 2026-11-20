@@ -315,10 +315,11 @@
       const c = L.cpt(ice.x + ice.w / 2, ice.y + ice.h);
       add([c.x - 120, c.y - 50, c.x + 120, c.y + 100], 73, (B, r) => {
         // a sunken way down to the door: two stone wing walls, worn steps, ferns and a drip of damp
-        const shape = `M${c.x - 26} ${c.y}L${c.x + 26} ${c.y}L${c.x + 40} ${c.y + 66}L${c.x - 40} ${c.y + 66}Z`;
+        // (layout round 3: four steps, so the way down ends at the round in front of the door and never runs on over the shore plots below it)
+        const shape = `M${c.x - 26} ${c.y}L${c.x + 26} ${c.y}L${c.x + 36} ${c.y + 42}L${c.x - 36} ${c.y + 42}Z`;
         B.f(shape, '#5e5a4c', .55);
-        for (let k = 0; k < 6; k++) { const y = c.y + 6 + k * 10, w = 26 + k * 2.4; B.f(B.rect(c.x - w, y, w * 2, 6), k % 2 ? '#a7a491' : '#bdb9a6').f(B.rect(c.x - w, y + 5, w * 2, 1.4), '#4e4a3e', .5); }
-        for (const s of [-1, 1]) for (let k = 0; k < 8; k++) { const t = k / 7, x = c.x + s * (28 + t * 16), y = c.y + t * 64; B.stone(r, x, y, 6, 4, { rock: RUIN.body, rockLo: RUIN.lo, rockHi: RUIN.hi, rockDk: RUIN.dk }, r() < .5 ? RUIN.moss : null); if (r() < .4) fern(B, r, x + s * 10, y + 4, C.season); }
+        for (let k = 0; k < 4; k++) { const y = c.y + 6 + k * 9, w = 26 + k * 2.4; B.f(B.rect(c.x - w, y, w * 2, 6), k % 2 ? '#a7a491' : '#bdb9a6').f(B.rect(c.x - w, y + 5, w * 2, 1.4), '#4e4a3e', .5); }
+        for (const s of [-1, 1]) for (let k = 0; k < 6; k++) { const t = k / 5, x = c.x + s * (28 + t * 12), y = c.y + t * 40; B.stone(r, x, y, 6, 4, { rock: RUIN.body, rockLo: RUIN.lo, rockHi: RUIN.hi, rockDk: RUIN.dk }, r() < .5 ? RUIN.moss : null); if (r() < .4) fern(B, r, x + s * 10, y + 4, C.season); }
         B.f(B.blob(r, c.x, c.y + 4, 22, 5, 7, .4), '#3e4a3a', .5);
       });
     }
