@@ -51,6 +51,10 @@ function _gldVisitBubble(f, at, m) {
   if (f.does === 'observatory') sub = `${seen.z.length} of ${GARDEN_LAND_SKY.length} in their star book.`;
   if (f.does === 'post') { sub = 'Where to?'; for (const q of GARDEN_LAND_FEATURES) if (q.does === 'post' && q.id !== f.id && _GD_LAND.has(q.id)) items.push({ ic: 'milestone', label: q.name.replace(/^Way post /, ''), cls: 'is-go', run: () => gardenLandHop(q.id) }); }
   if (f.does === 'lookout') items.push({ ic: 'eye', label: 'Look out over the land', cls: 'is-go', run: () => gardenCamSet('fit') });
+  if (f.per && f.give && (f.give.coins || f.give.i || f.give.season || f.give.x) && !['lookout', 'observatory'].includes(f.does) && typeof gardenLandCollectVisitInfo === 'function') {   // (full co-op: it gives to you too, once a period)
+    const i = gardenLandCollectVisitInfo(f, m);
+    items.push({ ic: f.icon, label: i.ready ? i.label : i.soon, cls: i.ready ? 'is-go' : 'is-off', run: (b) => _gldSay(gardenLandCollectVisit(f.id, gardenHere()), b, f.icon) });
+  }
   if (typeof gardenRoomItems === 'function') gardenRoomItems(f.id, items);
   gardenBubbleOpen(at, { title: f.name, sub, items });
 }

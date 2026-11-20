@@ -275,7 +275,7 @@ function gardenVisitAct(t, a) {
       return { ok: true, msg: '' };
     }
     case 'land': return _gdvLand(m, String(a.id || ''));
-    case 'collect': return _gdvDeny('take', node);
+    case 'collect': return typeof gardenLandCollectVisit === 'function' ? gardenLandCollectVisit(String(a.uid || ''), m) : _gdvDeny('take', node);   // (full co-op: a built thing gives to you too, into your own bag)
     default: return _gdNo('Not here');
   }
 }
