@@ -63,15 +63,21 @@ function _gaStaticRows() {
       // where you stand is open ground (a camera's posing spot that a re-laid quay put inside a bench is moved to the nearest clear ground
       // beside it, facing the same way; none within reach: that move is not offered there). Seats, edges and wading are on the thing on purpose.
       let stand = s.stand;
-      if (stand && s.seat == null && !s.edge && !s.wade && !s.boat && typeof _gksSolidAt === 'function' && _gksSolidAt(stand.x, stand.y, t.id)) { stand = _gaClearStand(stand, t.id); if (!stand) return; }
+      if (stand && s.seat == null && !s.edge && !s.wade && !s.boat && typeof _gksSolidAt === 'function' && _gksSolidAt(stand.x, stand.y, t.id)) { stand = _gaClearStand(stand, t.id, foot); if (!stand) return; }
       out.push({ key: t.id + ':' + s.act + (s.i ? ':' + s.i : ''), act: s.act, name: (t.src === 'decor' && t.name) || s.name, x: s.x, y: s.y, top: s.at ? null : top, stand, deg: s.deg, lift: _gaSeatLift(s), seated: s.seat != null || !!s.edge, src: t.id, kind: t.kind, boat: !!s.boat, reach: s.reach || 0, noProp: !!s.noProp, pri: s.pri || 0, kick: s.kick || '', carry: s.carry || '', art: K.art || '' });
     });
   }
   return out;
 }
-/** The nearest open ground to a stand point that lies inside something solid, within 0.9 of a cell (rings outward), or null. */
-function _gaClearStand(st, self) {
-  for (let r = 0.15; r <= 0.91; r += 0.15) for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2, qx = st.x + Math.cos(a) * r, qy = st.y + Math.sin(a) * r * 0.7; if (!_gksSolidAt(qx, qy, self) && !_gksSolidAt(qx - 0.12, qy, self) && !_gksSolidAt(qx + 0.12, qy, self)) return { x: Math.round(qx * 100) / 100, y: Math.round(qy * 100) / 100, moved: true }; }
+/** The nearest open ground to a stand point that lies inside something solid, within 0.9 of a cell, or null: ring by ring outward, and on
+ *  a ring the spot furthest from the thing itself (out past what is in the way, never squeezed in between), where the walker can stand. */
+function _gaClearStand(st, self, foot) {
+  const fx = foot ? foot.x : st.x, fy = foot ? foot.y : st.y;
+  for (let r = 0.15; r <= 0.91; r += 0.15) {
+    let best = null, bd = -1;
+    for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2, qx = st.x + Math.cos(a) * r, qy = st.y + Math.sin(a) * r * 0.7; if (_gksSolidAt(qx, qy, self) || _gksSolidAt(qx - 0.12, qy, self) || _gksSolidAt(qx + 0.12, qy, self)) continue; if (typeof _gwFree === 'function' && !_gwFree(qx, qy)) continue; const d = Math.hypot(qx - fx, (qy - fy) * 1.3); if (d > bd) { bd = d; best = { x: Math.round(qx * 100) / 100, y: Math.round(qy * 100) / 100, moved: true }; } }
+    if (best) return best;
+  }
   return null;
 }
 /** A seat's height (a share of the figure's height above where the feet go) -> how far the seated figure is lifted, in px. */
@@ -110,7 +116,9 @@ function gartActNearby() {
   if (!_ga.list || now - _ga.listT > 2500) { _ga.list = _gaStaticRows(); _ga.listT = now; }
   const px = _gw.px, py = _gw.py, d = (r) => Math.hypot(r.x - px, (r.y - py) * 1.3);
   const rows = _ga.list.concat(_gaTreeRows(px, py)).filter(r => d(r) <= Math.max(GA_REACH, r.reach || 0) && !gartActHidden(r.src));   // (a ball off rolling, a pile kicked apart: nothing to do there just now)
-  const ds = (r) => r.stand && r.src !== 'tree' ? Math.min(d(r), Math.hypot(r.stand.x - px, (r.stand.y - py) * 1.3)) : d(r);   // (where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near)
+  // where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near; and a tree offers each
+  // of its moves where you would do it (in front of the trunk: climb; at its side: hide behind it; out under the crown: a nap)
+  const ds = (r) => !r.stand ? d(r) : r.src === 'tree' ? Math.hypot(r.stand.x - px, (r.stand.y - py) * 1.3) : Math.min(d(r), Math.hypot(r.stand.x - px, (r.stand.y - py) * 1.3));   // (where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near)
   rows.sort((a, b) => ds(a) - (a.pri || 0) - ds(b) + (b.pri || 0));   // (pri: a wall before the tree that grows against it)
   if (!rows.length) return _gaWaterRows(px, py);
   return rows;
