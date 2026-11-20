@@ -60,7 +60,10 @@ function _gaStaticRows() {
     }
     // a part (a ladder up a lighthouse) and its stand point are on the thing as its painter drew it (gardenAffordDrawnBase), the same place
     // the part is drawn; the rest on the drawn foot
-    const onFoot = gardenKindSpots({ kind: t.kind, x: foot.x, y: foot.y, w: t.w, front: t.front }), DB = t.static && K.acts.some(a => a.at) ? gardenAffordDrawnBase(t) : null, onDrawn = DB ? gardenKindSpots({ kind: t.kind, x: DB.x, y: DB.y, w: DB.w, front: t.front }) : onFoot;
+    // (places to sit are spread over the seat as drawn: a log seat drawn a cell wide on a plan of nearly two put its two sitters out past
+    // both its ends, sat on the grass beside it; any kind of seat whose picture is narrower than its plan)
+    let sw = t.w; if (K.acts.some(a => a.seat != null && !a.at) && typeof gardenAffordDrawnBase === 'function') { try { const B = gardenAffordDrawnBase(t); if (B && B.from === 'drawn' && B.w > 0.3 && B.w < (t.w || K.w || 1) * 0.8) sw = B.w; } catch (e) { /* as planned */ } }
+    const onFoot = gardenKindSpots({ kind: t.kind, x: foot.x, y: foot.y, w: sw, front: t.front }), DB = t.static && K.acts.some(a => a.at) ? gardenAffordDrawnBase(t) : null, onDrawn = DB ? gardenKindSpots({ kind: t.kind, x: DB.x, y: DB.y, w: DB.w, front: t.front }) : onFoot;
     // (a seat on a part of the drawing, the log against a stump: across as drawn, and down at the drawn foot, where the picture meets the ground)
     const onSeat = DB && K.acts.some(a => a.at && a.seat != null) ? gardenKindSpots({ kind: t.kind, x: DB.x, y: foot.y, w: DB.w, front: t.front }) : null;
     onFoot.forEach((s0, i) => {

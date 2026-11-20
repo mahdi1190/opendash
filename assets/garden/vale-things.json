@@ -3,8 +3,8 @@
   "things": [
     {"id":  "ga-scope", "kind":  "telescope", "on":  "ld-folly", "at":  [2.59, 0.15], "note":  "on the folly's ridge by its east side, looking out over the sea cliff"},
     {"id":  "ga-fire-beacon", "kind":  "campfire", "on":  "ld-beacon", "at":  [3.6, -1.6], "note":  "a ring of stones on the summit beside the beacon, clear of the summit's plot"},
-    {"id":  "ga-fire-hut", "kind":  "campfire", "on":  "ld-woodhut", "at":  [-4.5, 2.3], "note":  "on the open ground west of the woodsman's hut"},
-    {"id":  "ga-logseat", "kind":  "log-seat", "on":  "ld-woodhut", "at":  [-4.5, 1.1], "note":  "laid just behind the hut's fire, so whoever sits faces it"},
+    {"id":  "ga-fire-hut", "kind":  "campfire", "on":  "ld-woodhut", "at":  [-5.9, 2.3], "note":  "on the open ground west of the woodsman's hut, clear of the old woodland lamp south of it (its lantern stood in the flames)"},
+    {"id":  "ga-logseat", "kind":  "log-seat", "on":  "ld-woodhut", "at":  [-5.9, 1.1], "note":  "laid just behind the hut's fire, so whoever sits faces it"},
     {"id":  "ga-ball", "kind":  "ball", "on":  "sundial", "at":  [-5.64, -3.49], "note":  "on the grass west of the green (the green itself is plots)"},
     {"id":  "ga-leaves", "kind":  "leaf-pile", "on":  "sundial", "at":  [-9.7, -0.05], "season":  "autumn", "note":  "on the grass west of the green, autumn only"},
     {"id":  "ga-busker", "kind":  "busker", "on":  "market-stall", "at":  [2.6, 0.45], "note":  "the busker's pitch by the market"},
