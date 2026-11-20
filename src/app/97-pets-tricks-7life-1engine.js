@@ -142,7 +142,8 @@ function _plStage(P, near, kind) {
   const s = P.x >= pl.x ? 1 : -1, sz = typeof _ptwH === 'function' ? Math.max(0, (_ptwH(P.look.species) - 32) / 48) : 0;
   // bigger pets stand a little further off so the two figures never overlap (round 3: pets drawn larger)
   let ring = near ? [[0.62, 0.12], [0.58, 0.3], [0.72, -0.08]] : [[0.78, 0.1], [0.7, 0.32], [0.95, -0.06], [1.05, 0.34], [1.25, 0.12]];
-  if (kind) ring = [[0.85, 0.12], [1.0, 0.3], [1.0, -0.1], [1.25, 0.15], [1.2, 0.45], [1.5, 0.1], [1.4, -0.25], [1.7, 0.35], [2.0, 0.1], [2.4, 0.25], [2.8, -0.15]];
+  // (with a thing to draw: still within a cell and a half of you, so the row is in the frame round you; in front of you as well as beside)
+  if (kind) ring = [[0.85, 0.12], [1.0, 0.3], [1.0, -0.1], [1.25, 0.15], [1.2, 0.45], [0.7, 0.7], [1.0, 0.75], [1.5, 0.1], [1.4, -0.25], [1.5, 0.5], [0.4, 0.95], [1.3, 0.95]];
   for (const [a0, b] of ring) for (const k of [s, -s]) { const a = a0 + sz, x = pl.x + a * k, y = pl.y + b; if (_plStandOk(x, y) && (!kind || typeof _plGroundOk !== 'function' || _plGroundOk(kind, x, y, k, P))) return { x, y, free: true, stage: 1 }; }
   return kind && arguments.length < 3 ? _plStage(P, near, '-') : null;   // no ground for the thing near you: stand beside you anyway (the row then plays without it)
 }
@@ -260,10 +261,24 @@ function petLifeEvent(kind) {
   // 47: every third pat in a row (each within a few seconds of the last) and it spins for joy; the pats in between are its little hop
   if (kind === 'pat') { const now = Date.now(); _plPatN = now - (_pl.lastPat || 0) < 6000 ? _plPatN + 1 : 1; _pl.lastPat = now; if (_plPatN % 3) return; }   // clock-ok: a gap
   const id = _PL_EVENTS[kind]; if (!id || typeof PET_LIFE_BY === 'undefined' || !PET_LIFE_BY[id]) return;
+  // your own emote, a pat-spin, half a minute stood still: it answers you now, whatever it was busy with (round 3, the critic: a random row already
+  // under way swallowed the wave, and the answer came during the next emote)
+  if (/^(emote-|pat$|still$)/.test(kind) && _plNow(id)) return;
   if (_pl.q.includes(id) || _pl.q.length > 3) return;
   _pl.q.push(id);
   const P = typeof _ptw !== 'undefined' && _ptw.pets.find(q => q.me);
   if (kind !== 'pat' && P && !P.wow && !P.guide && !P.fishingWatch && !(typeof petGardenPlayBusy === 'function' && petGardenPlayBusy(P)) && P.busy > 0 && P.tx == null) { P.busy = 0; P.cb = null; P.lifeNext = 0; }
+}
+/** Drop what your companion is doing and start this row at once (an answer to you). False when it cannot (out, a guide walk, fishing beside you). */
+function _plNow(id) {
+  try {
+    const P = typeof _ptw !== 'undefined' && _ptw.pets && _ptw.pets.find(q => q.me), W = _ptw && (_ptw.W || (typeof _ptwWorld === 'function' && _ptwWorld()));
+    const row = PET_LIFE_BY[id]; if (!P || !W || !row || !_plOwned(row) || P.wow || P.guide || P.fishingWatch || P.perch || (typeof petGardenPlayBusy === 'function' && petGardenPlayBusy(P))) return false;
+    P.tx = null; P.arrive = null; P.busy = 0; P.cb = null; P.lifeCur = null; if (P.clipH) { try { P.clipH.stop(true); } catch (e) { /* gone */ } P.clipH = null; }
+    for (const q of _PLQ.live.slice()) if (q.g && q.g.parentNode === P.node) { try { q.g.remove(); } catch (e) { /* gone */ } }
+    _pl.q = _pl.q.filter(q => q !== id);
+    return _plStart(P, row, _plCtx(P, W), false);
+  } catch (e) { return false; }
 }
 /** Play one now (the checks, and the assistant): your companion, wherever it can. -> what happened. */
 function petLifeTry(id, o) {
@@ -311,12 +326,15 @@ function petLifeMenuItems(P) {
   if (!P || !P.me || typeof PET_LIFE === 'undefined') return [];
   const icons = { tug: 'paw-print', 'belly-rub': 'heart', 'high-five': 'hand', 'play-dead': 'skull', 'beg-trick': 'sparkles', hoop: 'circle-dot' };
   const words = { tug: 'Tug of war', 'belly-rub': 'Belly rub', 'high-five': 'High five', 'play-dead': 'Play dead', 'beg-trick': 'Pretty please', hoop: 'Through the hoop' };
+  // the games not learned yet show too, with a lock and how to earn them (round 3, the critic: a fresh pet's tap opened nothing, so nobody could find
+  // the high five); tapping one says how
+  const locked = PET_LIFE.filter(r => r.how === 'menu' && !_plOwned(r) && _plClips(r).every(c => _plSuits(P, c))).map(r => ({ ic: 'lock', label: words[r.id] + ': ' + (r.hint || 'not learned yet'), text: words[r.id], cls: 'is-locked', run: () => { if (typeof gardenMessage === 'function') gardenMessage(`${words[r.id]}: ${r.hint ? r.hint + ' first' : 'not learned yet'}. Pat and play together to grow your friendship.`, { icon: 'lock' }); } }));
   return PET_LIFE.filter(r => r.how === 'menu' && _plOwned(r) && _plClips(r).every(c => _plSuits(P, c))).map(r => ({ ic: icons[r.id] || 'paw-print', label: words[r.id], text: words[r.id], run: () => {
     if (typeof gardenBubbleClose === 'function') gardenBubbleClose();
     P.tx = null; P.arrive = null; P.busy = 0; P.cb = null; P.lifeCur = null; _plFacePlayer(P); _plDiary(r);
     if (r.id === 'belly-rub' && typeof petBondGive === 'function') { try { petBondGive('pat'); } catch (e) { /* only a moment */ } }
     if (!_plCome(P, r.id === 'high-five' ? 'five' : 'side', _plClips(r), 1.5, () => P.hearts())) _plPlay(P, _plClips(r), 1.5, () => P.hearts());
-  } }));
+  } })).concat(locked);
 }
 
 /* ---------- round 2 of the hundred things: the loose ones ---------- */

@@ -104,7 +104,7 @@ const _PLQ_ART = {
       if (y > top * 0.45) front += leaf; else back += leaf;
     }
     for (let i = 0; i < 9; i++) { const a = r() * Math.PI * 2, d = W * (1.05 + r() * 0.35); front += _plLeaf(Math.cos(a) * d, Math.sin(a) * 4 * u + 1.5 * u, r() * 360, 3.6 * u, cols[i % cols.length], '#5a2a14'); }
-    return { back, front, w: W * 1.4 };
+    return { back, front, w: W * 1.4, burst: [W, Ht, u, cols] };
   },
   // a clump of real flowers: leafy foot, stems, five-petal blooms in several colours and a spray of forget-me-nots, in front of the nose
   flowers(u) {
@@ -164,22 +164,49 @@ function _plPropReach(P, kind, side) {
   const lo = (art.lo != null ? art.lo : art.off != null ? Math.min(-8, art.off - (art.w - art.off)) : -art.w) / W, hi = art.w / W;
   return side > 0 ? [lo, hi] : [-hi, -lo];
 }
-/** True where the vale is painted with laid stone or a worn way: inside a plaza's paved oval, or within a road's, lane's or trail's painted width
- *  (from the layout's own route centre lines and widths, the ones the ground painter uses), with a little margin. */
+/** True where the vale is painted with laid stone or a worn way, measured on the painter's own geometry in world px (round 3, the critic: the
+ *  layout's route widths in cells are two to three times what is painted, so open grass beside a trail read as stone and no thing was ever drawn).
+ *  Every route at its painted width (GardenPaintGround.layoutPaths + centreLine, the same lines the ground painter strokes) plus its soft edge,
+ *  the region plazas' paved capsules, drawn yard outlines, the green's compass stone and the arrival setts. */
 let _plStoneD = null;
-function _plStoneAt(x, y) {
+function _plStoneGeo() {
+  if (_plStoneD) return _plStoneD;
+  const D = GardenIslandLayout.data, W = GARDEN_WORLD, cw = W.cellW, ch = W.cellH, cpt = (x, y) => ({ x: x * cw, y: W.sky + y * ch });
+  const segs = [], caps = [], polys = [], rects = [], G = window.GardenPaintGround;
+  if (G && G.layoutPaths && G.centreLine) {
+    const laid = G.layoutPaths(W, D);
+    for (const r of laid.routes) { const L = G.centreLine(r.points, r.width || 26, r.closed); const soft = r.kind === 'earth' || r.kind === 'gravel' ? 1 : 0; for (let i = 1; i < L.length; i += 1) segs.push([L[i - 1].x, L[i - 1].y, L[i].x, L[i].y, (L[i - 1].w + L[i].w) / 4 + 9, soft]); }
+    for (const a of laid.areas || []) if (a.points && a.points.length > 2) polys.push(a.points);
+  }
+  const STY = { 'cider-square': 1, 'mill-yard': 1, 'ruin-court': 1, 'lakeside-terrace': 1, 'great-oak-clearing': 1 };
+  const rts = new Map((D.routes || []).map(r => [r.id, r]));
+  for (const pz of (D.presentation && D.presentation.plazas) || []) {
+    const rt = rts.get(pz.route); if (!STY[pz.id] || !rt || !rt.points || rt.points.length < 2) continue;
+    const a = cpt(rt.points[0][0], rt.points[0][1]), b = cpt(rt.points[rt.points.length - 1][0], rt.points[rt.points.length - 1][1]), w = rt.widthCells || 4;
+    caps.push([a.x, a.y, b.x, b.y, w / 2 * cw * 0.95 + 8 + 14, w / 2 * ch * 1.05 + 4 + 10]);
+  }
+  const green = ((D.presentation && D.presentation.plazas) || []).find(p => p.id === 'the-green');
+  if (green) { const c = cpt(green.x + 0.9, green.y + 3.3); rects.push([c.x - 4 * cw - 12, c.y - 3.3 * ch - 10, c.x + 4 * cw + 12, c.y + 3.3 * ch + 10]); }
+  const st = D.anchors && D.anchors.start; if (st) { const c = cpt(st.x + 0.5, st.y + 0.5); rects.push([c.x - 125 - 12, c.y - 65 - 10, c.x + 125 + 12, c.y + 65 + 10]); }
+  _plStoneD = { segs, caps, polys, rects };
+  return _plStoneD;
+}
+/** soft: a worn earth trail or a gravel lane does not count (a muddy puddle or a drift of leaves lies on one naturally). */
+function _plStoneAt(x, y, soft) {
   try {
-    if (!_plStoneD) {
-      const D = GardenIslandLayout.data, wid = { main: 2.6, lane: 2, trail: 1.4, plaza: 4 }, ovals = [], lines = [];
-      for (const pz of (D.presentation && D.presentation.plazas) || []) if (pz.rx) ovals.push([pz.x, pz.y, pz.rx + 0.3, pz.ry + 0.25]);
-      for (const r of D.routes || []) if (r.points && r.points.length > 1) lines.push([r.points, (Number(r.widthCells) || wid[r.tier] || 1.6) / 2 + 0.12]);
-      _plStoneD = { ovals, lines };
+    const S = _plStoneGeo(), W = GARDEN_WORLD, px = x * W.cellW, py = W.sky + y * W.cellH;
+    for (const [x0, y0, x1, y1] of S.rects) if (px > x0 && px < x1 && py > y0 && py < y1) return true;
+    for (const [ax, ay, bx, by, half, sf] of S.segs) {
+      if (soft && sf) continue;
+      if (px < Math.min(ax, bx) - half || px > Math.max(ax, bx) + half || py < Math.min(ay, by) - half || py > Math.max(ay, by) + half) continue;
+      const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l));
+      if (Math.hypot(ax + t * dx - px, ay + t * dy - py) < half) return true;
     }
-    for (const [cx, cy, rx, ry] of _plStoneD.ovals) if (((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 < 1) return true;
-    for (const [P, half] of _plStoneD.lines) for (let i = 1; i < P.length; i++) {
-      const a = P[i - 1], b = P[i], dx = b[0] - a[0], dy = b[1] - a[1], l = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / l));
-      if (Math.hypot(a[0] + t * dx - x, (a[1] + t * dy - y) * 0.625) < half) return true;
+    for (const [ax, ay, bx, by, rx, ry] of S.caps) {
+      const dx = (bx - ax) / rx, dy = (by - ay) / ry, qx = (px - ax) / rx, qy = (py - ay) / ry, l = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, (qx * dx + qy * dy) / l));
+      if (Math.hypot(t * dx - qx, t * dy - qy) < 1) return true;
     }
+    for (const P of S.polys) { let inside = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a.y > py) !== (b.y > py) && px < (b.x - a.x) * (py - a.y) / (b.y - a.y || 1e-9) + a.x) inside = !inside; } if (inside) return true; }
   } catch (e) { return false; }
   return false;
 }
@@ -190,15 +217,14 @@ function _plGroundOk(kind, x, y, side, P) {
     const [x0, x1] = _plPropReach(P, kind, side), pl = _ptwPlayer();
     for (let k = 0; k <= 4; k++) {
       const gx = x + x0 + (x1 - x0) * k / 4;
-      if (typeof _gdzsPlazaAt === 'function' && _gdzsPlazaAt(gx, y) < 1.2) return false;   // a plaza's laid stones
-      if (_plStoneAt(gx, y)) return false;
-      // a road or lane is painted wider than its cells: its neighbours count too
-      for (const [ox, oy] of [[0, 0], [-0.45, 0], [0.45, 0], [0, -0.55], [0, 0.55]]) {
+      // laid stone or a worn way, measured on what is painted (the edge of the thing too: a little above and below its foot line)
+      const soft = kind === 'puddle' || kind === 'leaves';
+      if (_plStoneAt(gx, y, soft) || _plStoneAt(gx, y - 0.22, soft) || _plStoneAt(gx, y + 0.18, soft)) return false;
+      // water, the shore or something solid in the cell (a beach takes a puddle or a hole, nothing else)
+      for (const [ox, oy] of [[0, 0], [0, -0.3], [0, 0.3]]) {
         const cx = Math.floor(gx + ox), cy = Math.floor(y + oy);
         const c = typeof gardenIslandBaseCell === 'function' ? gardenIslandBaseCell(cx, cy) : null;
         if (!c || c.ocean || c.freshwater || c.solid || c.beach && kind !== 'puddle' && kind !== 'hole') return false;
-        if (typeof gardenLandPathAt === 'function' && gardenLandPathAt(cx, cy)) return false;
-        const lc = typeof gardenLandCell === 'function' ? gardenLandCell(cx, cy) : null; if (lc && (lc.lane || lc.trail)) return false;
       }
       if (typeof gardenWorldFree === 'function' && !gardenWorldFree(gx, y, 0.1)) return false;
       if (pl && Math.abs(gx - pl.x) < 0.32 && Math.abs(y - pl.y) < 0.4) return false;
@@ -243,6 +269,24 @@ function _plProp(P, kind, ms) {
     if (art.sway) for (const [i, k] of [...(front || back).children].slice(0, 10).entries()) { try { if (!native) { k.style.transformBox = 'fill-box'; k.style.transformOrigin = '50% 100%'; } gardenVisualAnimate(k, [{ transform: 'rotate(0deg)' }, { transform: `rotate(${i % 2 ? 3 : -3}deg)` }, { transform: 'rotate(0deg)' }], { duration: 1300 + i * 170, iterations: Math.ceil(total / 1300), easing: 'ease-in-out' }); } catch (x) { /* still */ } }
     const fl = back.querySelector && back.querySelector('.plq-flame');
     if (fl) { try { gardenVisualAnimate(fl, [{ transform: 'scale(1,1)' }, { transform: 'scale(1.1,0.88)' }, { transform: 'scale(0.92,1.12)' }, { transform: 'scale(1,1)' }], { duration: 420, iterations: Math.ceil(total / 420), easing: 'ease-in-out' }); } catch (x) { /* still */ } }
+    // 21: the burst, as separate leaves that fly up out of the pile and tumble down round it (round 3, the critic: the clip's own burst read as
+    // thin orange slivers); timed to the clip's leap out (0.62 of l-leafpile), each its own size, colour, spin and arc
+    if (art.burst && kind === 'leaves') {
+      const [BW, BH, bu, cols] = art.burst, r = _plRnd(Math.floor(performance.now()) & 1023), at0 = Math.max(0, (P.clipLeap || 1600));
+      for (let i = 0; i < 16; i++) {
+        const sx = (r() * 2 - 1) * BW * 0.5, sy = -BH * (0.6 + r() * 0.4), dx = (r() * 2 - 1) * BW * 1.6, up = (18 + r() * 22) * bu, land = (r() * 3 - 0.5) * bu, rot = (r() < 0.5 ? -1 : 1) * (240 + r() * 420);
+        const at = mk('g'); at.setAttribute('transform', `translate(${_plF(sx)} ${_plF(sy)})`);
+        const lf = mk('g'); lf.innerHTML = _plLeaf(0, 0, 0, (5.2 + r() * 2.4) * bu, cols[i % cols.length], '#5a2a14'); lf.setAttribute('opacity', '0');
+        at.appendChild(lf); (front || back).appendChild(at);
+        const dur = 1300 + r() * 700, delay = at0 + r() * 160;
+        try { gardenVisualAnimate(lf, [
+          { offset: 0, transform: 'translate(0px,0px) rotate(0deg)', opacity: 1 },
+          { offset: 0.3, transform: `translate(${_plF(dx * 0.45)}px,${_plF(-up)}px) rotate(${Math.round(rot * 0.35)}deg)`, opacity: 1 },
+          { offset: 0.62, transform: `translate(${_plF(dx * 0.8)}px,${_plF(-up * 0.55 - sy * 0.3)}px) rotate(${Math.round(rot * 0.7)}deg)`, opacity: 1 },
+          { offset: 0.9, transform: `translate(${_plF(dx)}px,${_plF(-sy + land)}px) rotate(${Math.round(rot)}deg)`, opacity: 1 },
+          { offset: 1, transform: `translate(${_plF(dx)}px,${_plF(-sy + land)}px) rotate(${Math.round(rot)}deg)`, opacity: 0.9 }], { duration: dur, delay, easing: 'ease-out', fill: 'both' }); } catch (x) { /* still */ }
+      }
+    }
     if (art.smoke) {
       const [sx, sy, su] = art.smoke;
       for (let i = 0; i < 3; i++) {

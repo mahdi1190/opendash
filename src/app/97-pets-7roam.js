@@ -715,6 +715,7 @@ function _ptwClick(ev) {
   P.tx = null; P.arrive = null; P.sit({ eyes: 'happy', mouth: 'open' }); P.hearts();
   P.clip('jump', 800, () => { P.sit(); P.busy = 1.5; }, { quiet: true });
   if (P.me && typeof petLifeEvent === 'function') petLifeEvent('pat');
+  if (P.me && typeof _plPatN !== 'undefined' && _plPatN > 0 && _plPatN % 3 === 0) return;   // the third pat: it spins for you, no menu over it
   if (typeof petGardenActionMenu === 'function') petGardenActionMenu(P, P.cb); else if (typeof petGardenPuddleMenu === 'function') petGardenPuddleMenu(P, P.cb);
 }
 function _ptwCheck() {
