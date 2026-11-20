@@ -98,15 +98,16 @@
       const ev = even(pts, opts.step || 10), bb = kit.bboxOf(ev, 60);
       add(bb, 94 + (opts.salt || 0), (B, r) => {
         B.cx.save(); B.cx.clip(coastP);
-        const tread = opts.rock ? ['#a89c86', '#bdb29a', '#8c8270'] : ['#c9c0a8', '#d6cdb6', '#a39a84'];
-        // the bed the steps are cut in: a band of darker ground the width of the way
-        for (let i = 1; i < ev.length; i++) { const d = across(ev, i), h = halfPx(ev[i], d) * 1.08; B.s(`M${ev[i - 1].x} ${ev[i - 1].y}L${ev[i].x} ${ev[i].y}`, opts.rock ? '#6e6658' : '#7a6e58', h * 2, .9); }
+        const tread = opts.rock ? ['#a89c86', '#b5a990', '#8c8270'] : ['#b8ad94', '#c4b99e', '#a39880'];
+        // the bed the steps are set in: trodden earth between them, soft at its edges
+        B.cx.lineCap = 'butt'; B.cx.filter = 'blur(3px)'; for (let i = 1; i < ev.length; i++) { const d = across(ev, i), h = halfPx(ev[i], d) * .98; B.s(`M${ev[i - 1].x} ${ev[i - 1].y}L${ev[i].x} ${ev[i].y}`, opts.rock ? '#8a8070' : '#a08e6a', h * 2, .75); } B.cx.filter = 'none';
+        if (opts.rock) for (let i = 0; i < ev.length; i += 2) { const q = ev[i], d = across(ev, i), h = halfPx(q, d); for (const sd of [-1, 1]) B.boulder(r, q.x + d.nx * (h + 7) * sd, q.y + d.ny * (h + 7) * sd + 4, 14 + r() * 10, 12 + r() * 9, STONE, false); }
         // back to front, so each nearer step overlaps the one above it
         const order = ev.map((q, i) => i).sort((a, b) => ev[a].y - ev[b].y);
-        for (const i of order) { const q = ev[i], d = across(ev, i), h = halfPx(q, d) * .96, dep = (opts.step || 10) * .62, up = d.ty < 0 ? 1 : -1;
+        for (const i of order) { const q = ev[i], d = across(ev, i), h = halfPx(q, d) * .84, dep = (opts.step || 10) * .5, up = d.ty < 0 ? 1 : -1;
           const ax = q.x - d.nx * h, ay = q.y - d.ny * h, bx = q.x + d.nx * h, by = q.y + d.ny * h, ux = d.tx * dep * up, uy = d.ty * dep * up;
           const tone = tread[Math.floor(r() * 2)];
-          B.f(B.poly([[ax, ay + 3.4], [bx, by + 3.4], [bx, by], [ax, ay]]), opts.rock ? '#5e564a' : '#7a7260', .95);   // the riser in shade
+          B.f(B.poly([[ax, ay + 3], [bx, by + 3], [bx, by], [ax, ay]]), opts.rock ? '#6e665a' : '#8a8068', .85);   // the riser in shade
           B.f(B.poly([[ax, ay], [bx, by], [bx + ux, by + uy], [ax + ux, ay + uy]]), tone);   // the tread
           B.f(B.poly([[ax, ay], [bx, by], [bx + ux * .25, by + uy * .25], [ax + ux * .25, ay + uy * .25]]), tread[1], .7);   // its lit nosing
           B.f(B.ell(q.x + ux * .5, q.y + uy * .5, h * .34, dep * .22), '#e8e0cc', .35);   // worn pale in the middle
@@ -116,7 +117,8 @@
         B.cx.restore();
       }, {});
     };
-    { const ls = rpts('lakeside-steps'); if (ls) flight(ls, { step: 11, salt: 1 }); }
+    // (the lakeside steps are a path with one short flight, where they climb through the gap in the orchard bank)
+    { const ls = rpts('lakeside-steps'), g = L.cpt(61, 38.4); if (ls) { const seg = ls.filter(q => Math.hypot((q.x - g.x) / cw, (q.y - g.y) / ch) < 1.5); if (seg.length > 2) flight(seg, { step: 13, salt: 1 }); } }
     // where a path climbs through a thin terrace wall: the wall's two ends squared off and a short flight up through the gap
     { const thin = wallRows.filter(f => f.thin).map(f => { const n = f.polygon.length >> 1, a = f.polygon.slice(0, n); return { id: f.id, a: a[0], b: a[a.length - 1] }; });
       for (const w of thin) for (const o of thin) { if (o === w || o.a[0] <= w.b[0] || o.a[0] - w.b[0] > 4.5 || Math.abs(o.a[1] - w.b[1]) > 1.2) continue;
@@ -130,10 +132,12 @@
     const FACE_Y = 40.55, faceFrom = 85.5;
     { const cl = V.loopPath([CLIFF]), bb = kit.bboxOf(CLIFF, 80), on = (x, y) => { const k = L.kind(x / cw, (y - W.sky) / ch); return k === 'beach' || k === 'grass' || k === 'path'; };
       add(bb, 95, (B, r, cb) => {
-        B.cx.save(); B.cx.clip(coastP); B.cx.clip(cl);
-        // the rock floor: broad slabs, cracked, lichened, with thrift and turf in the joints
-        B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), '#9a917c', .96);
-        kit.tiles(cb, 40, 30, 96, (tx, ty, rr) => { for (let k = 0; k < 3; k++) { const x = tx + rr() * 40, y = ty + rr() * 40; if (!on(x, y)) continue; const t = rr(); B.f(B.blob(rr, x, y, 10 + rr() * 12, 5 + rr() * 5, 7, .35), t < .33 ? STONE.rock : t < .66 ? '#a59b85' : STONE.rockLo, .9).f(B.blob(rr, x - 3, y - 2, 6 + rr() * 5, 2.4 + rr() * 2, 6, .4), STONE.rockHi, .55);
+        B.cx.save(); B.cx.clip(coastP);
+        // the rock floor, its edge on the grass soft and broken (a ruled line read as a cut-out): broad slabs, cracked,
+        // lichened, with thrift and turf in the joints, thinning out over the edge
+        B.cx.filter = 'blur(7px)'; B.f(cl, '#9a917c', .96); B.cx.filter = 'none';
+        const inCl = (x, y) => { let o = false; for (let i = 0, j = CLIFF.length - 1; i < CLIFF.length; j = i++) { const a = CLIFF[i], b = CLIFF[j]; if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) o = !o; } return o; };
+        kit.tiles(cb, 40, 30, 96, (tx, ty, rr) => { for (let k = 0; k < 3; k++) { const x = tx + rr() * 40, y = ty + rr() * 40; if (!on(x, y) || !inCl(x + (rr() - .5) * 30, y + (rr() - .5) * 20)) continue; const t = rr(); B.f(B.blob(rr, x, y, 10 + rr() * 12, 5 + rr() * 5, 7, .35), t < .33 ? STONE.rock : t < .66 ? '#a59b85' : STONE.rockLo, .9).f(B.blob(rr, x - 3, y - 2, 6 + rr() * 5, 2.4 + rr() * 2, 6, .4), STONE.rockHi, .55);
           if (rr() < .35) B.s(`M${x - 8} ${y + 1}l${6 + rr() * 6} ${(rr() - .5) * 3}`, STONE.rockDk, .7, .45);
           if (rr() < .4) B.f(B.blob(rr, x + 6, y - 1, 3 + rr() * 2, 1.4, 6, .5), season === 'winter' ? '#dfe2da' : STONE.lichen, .6);
           if (season !== 'winter' && rr() < .32) { const cx0 = x + (rr() - .5) * 14, cy0 = y + 4; B.f(B.blob(rr, cx0, cy0, 5, 2.6, 7, .4), '#6a7e44', .95); if (season !== 'autumn') for (let j = 0; j < 5; j++) B.f(B.circ(cx0 + (rr() - .5) * 7, cy0 - 1.4 - rr() * 2, 1.3), '#e8a0b8', .95); }
@@ -195,7 +199,7 @@
     const offSquare = (x, y) => { if (sqShape) return ![[0, 0], [.9, 0], [-.9, 0], [0, .7], [0, -.7]].some(([dx, dy]) => inPoly(x + dx, y + dy, sqShape)); if (!sqA) return true; const cx = Math.max(sqA[0], Math.min(sqB[0], x)), cy = sqA[1] + (sqB[1] - sqA[1]) * ((cx - sqA[0]) / ((sqB[0] - sqA[0]) || 1)); return ((x - cx) / 2.7) ** 2 + ((y - cy) / 2.5) ** 2 > 1; };
     const gate = (L.D.gates || []).find(g => g.id === 'island-orchard'), offGate = (x, y) => !gate || Math.abs(x - gate.x - .5) > 3.4 || y < gate.y - 3.2 || y > gate.y + 2;
     const dipC = (L.D.freshwater || []).filter(w => w.id === 'orchard-dip' && w.boundary).map(w => [w.boundary.reduce((a, p) => a + p[0], 0) / w.boundary.length, w.boundary.reduce((a, p) => a + p[1], 0) / w.boundary.length]);
-    const dryLip = (x, y) => [[0, 0], [1.1, 0], [-1.1, 0], [0, 1], [0, -1.2], [.8, .8], [-.8, .8]].every(([dx, dy]) => L.kind(x + dx, y + dy) !== 'water') && dipC.every(([px, py]) => Math.hypot(x - px, (y - py) * 1.3) > 2.8);   // (fix round 1: no crown over the dip)
+    const dryLip = (x, y) => [[0, 0], [1.1, 0], [-1.1, 0], [0, 1], [0, -1.2], [.8, .8], [-.8, .8]].every(([dx, dy]) => L.kind(x + dx, y + dy) !== 'water') && dipC.every(([px, py]) => Math.hypot(x - px, (y - py) * 1.3) > 2.8 && !(Math.abs(x - px) < 2.6 && y > py && y < py + 4.6));   // (fix round 1: no crown over the dip)
     const ringS = L.stat('ld-ring'), ringC = ringS ? { x: ringS.x + ringS.w / 2, y: ringS.y + .5 } : null;
     // (round 3 layouts) the ring's eight trunks and the Mother tree where the hand-authored orchard puts them (presentation.orchard)
     const OR = (L.D.presentation && L.D.presentation.orchard) || {}, MOM = OR.mother ? [OR.mother.x, OR.mother.y] : [84.6, 45.2], RINGT = OR.ring && OR.ring.trunks;

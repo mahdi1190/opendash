@@ -428,6 +428,7 @@ window.GardenPaintedTerrain = (function () {
     const dry = (L.D.freshwater || []).filter(basin => basin.boundary).map(basin => basin.boundary.map(L.pt)).filter(points => kit.meets(kit.bboxOf(points), bb)).map(points => {
       const mask = loopPath([points]); mask.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]); return mask;
     });
+    if (!along && !t.thin) { bankOps(L, P, add, t, a.map(L.pt), b.map(L.pt), bb, dry, season, snowy); return; }
     add(bb, 500 + t.id.length * 7, (B, r) => {
       // Separate clips subtract the union, including overlapping basins.
       for (const mask of dry) B.cx.clip(mask, 'evenodd');
@@ -452,6 +453,29 @@ window.GardenPaintedTerrain = (function () {
       for (let i = 0; i < top.length; i += 2) { const p = top[i]; if (r() < .4) B.f(B.blob(r, p.x, p.y - 3, 3 + r() * 3, 1.2 + r(), 6, .5), snowy ? P.snow : r() < .5 ? P.moss : '#8fa860', .9); }
       if (snowy) B.s(B.line(top.map(p => ({ x: p.x, y: p.y - 4.5 }))), P.snow, 2.6, .9);
       B.s(B.line(kit.resample(lower, 6)), '#4a463a', 1.8, .45);
+    });
+  }
+
+  // (High orchard fix round 1) a wall that runs up the screen (the orchard bank above the Mere) is seen from above, so a
+  // face of masonry painted across it read as a grey cut-stone causeway laid along the shore. It is a grass bank falling
+  // to the low side, warm where it faces the sun, combed downhill, with a dry-stone foot along its bottom that thins out
+  // at each end. (The same idea as the highlands art's bankOps, kept small here.)
+  function bankOps(L, P, add, t, sideA, sideB, bb, dry, season, snowy) {
+    const kit = KIT(), avg = side => side.reduce((s, p) => ({ x: s.x + p.x / side.length, y: s.y + p.y / side.length }), { x: 0, y: 0 });
+    const da = avg(sideA), db = avg(sideB), aLow = da.x < db.x, low = aLow ? sideA : sideB, high = aLow ? sideB : sideA;   // (the orchard's banks fall west, to the Mere)
+    const face = high.concat(low.slice().reverse()), turf = snowy ? '#e4eaee' : season === 'autumn' ? '#9a9a5a' : season === 'winter' ? '#a6b29a' : '#8fa85a';
+    add(bb, 500 + t.id.length * 7, (B, r) => {
+      for (const mask of dry) B.cx.clip(mask, 'evenodd');
+      B.cx.save(); B.cx.clip(new Path2D(B.poly(face)));
+      B.f(B.rect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]), turf);
+      const hm = avg(high), lm = avg(low); B.f(B.poly(face), B.lin(hm.x, hm.y, lm.x, lm.y, [[0, 'rgba(255,240,190,0)'], [.7, 'rgba(255,236,178,.18)'], [1, 'rgba(60,70,40,.18)']]));
+      const H = kit.resample(high, 6), Lw = kit.resample(low, 6), m = Math.min(H.length, Lw.length);
+      for (let i = 0; i < m; i++) for (let k = 0; k < 2; k++) { const s0 = .2 + r() * .6, x = H[i].x + (Lw[i].x - H[i].x) * s0 + (r() - .5) * 5, y = H[i].y + (Lw[i].y - H[i].y) * s0 + (r() - .5) * 5; B.s(`M${x} ${y}l${(Lw[i].x - H[i].x) * .12} ${2 + r() * 2}`, r() < .5 ? '#6f8a44' : '#a6bc6c', 1, .7); }
+      B.cx.restore();
+      const foot = kit.resample(low, 4.2), n = foot.length, P2 = { rock: '#b4ab95', rockLo: '#8e8672', rockHi: '#d8d0ba', rockDk: '#4a463a' };
+      for (let i = 0; i < n; i++) { const e = Math.min(i, n - 1 - i) / Math.max(1, n * .2); if (e < 1 && r() > e * e) continue; const p = foot[i];
+        for (let row = 0; row < 2; row++) { if (row && r() < .35) continue; B.stone(r, p.x + (r() - .5) * 2, p.y + (row ? -3.4 : 0), 2.6 + r() * 2.2, 1.7 + r(), P2, null); } }
+      if (!snowy) for (let i = 0; i < n; i += 2) if (r() < .5) B.tufts(r, foot[i].x + (r() - .5) * 4, foot[i].y + 3, 6, 3, ['#6f8a44', '#9cb062'], 5);
     });
   }
 
