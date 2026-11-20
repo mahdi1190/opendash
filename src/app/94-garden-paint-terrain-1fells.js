@@ -579,7 +579,7 @@ window.GardenPaintedTerrain = (function () {
     for (const run of L.runs) for (const end of [run[0], run[run.length - 1]]) for (const gp of gapAt) {
       const c = L.cpt(gp[0], gp[1]); if (Math.hypot(end.lip.x - c.x, (end.lip.y - c.y) * 1.4) > 150) continue;
       const sd = kit.hash(Math.round(end.lip.x), Math.round(end.lip.y), 3), w = 40 + sd % 18, h = 58 + sd % 26;
-      out.push({ key: sig + '|crag|' + sd, box: [-w, -h * 1.5 - 10, w, 16], x: end.lip.x + (end.lip.x < c.x ? -w * .3 : w * .3), y: end.foot.y - 2, draw: B => cragArt(B, w, h, P, sd, snowy, false) });
+      out.push({ key: sig + '|crag|' + sd, side: end.lip.x < c.x ? -1 : 1, box: [-w, -h * 1.5 - 10, w, 16], x: end.lip.x + (end.lip.x < c.x ? -w * .3 : w * .3), y: end.foot.y - 2, draw: B => cragArt(B, w, h, P, sd, snowy, false) });
     }
     // rowans on the gorge's far lip, where the river runs down to the falls
     // (the second stands back from the lip of Fleet Falls: at .84 it grew out of the falling water)
@@ -605,7 +605,9 @@ window.GardenPaintedTerrain = (function () {
     const occ = occluders(L, ops, season, sig);
     for (const o of occ) { const im = kit.sprite(scene, standIn, o.key, o.box, o.draw, o.x, o.y, o.K); if (im) { sprites.push(im); keys.push(o.key); spritePx += im._gptPx || 0; } }
     // the pines and rowans' trunk feet, in cells ([x, y, width]), for the one trunk-collision list (94-garden-world-0walk.js _gwPaintedTrunks)
-    trunkFeet = occ.filter(o => /\|(pine|rowan)\|/.test(o.key)).map(o => [+(o.x / W.cellW).toFixed(2), +((o.y - W.sky) / W.cellH).toFixed(2), .34]);
+    // (round 3 layouts: a crag by the pass stands on open ground now, so its foot is solid too, at the
+    // stones it lays in front of its foot)
+    trunkFeet = occ.filter(o => /\|(pine|rowan|crag)\|/.test(o.key)).map(o => { const crag = /\|crag\|/.test(o.key); return [+((o.x + (crag && o.side > 0 ? o.box[2] * .2 + 20 : 0)) / W.cellW).toFixed(2), +((o.y + (crag ? o.box[3] : 0) - W.sky) / W.cellH).toFixed(2), crag ? .6 : .34]; });
     if (parent.sort) parent.sort('depth'); if (standIn !== parent && standIn.sort) standIn.sort('depth');
     current = { sig, handle, spriteKeys: keys, roomEntrances: L.falls && L.falls.caveStair ? { falls: caveMouthAt(L, L.falls.caveStair) } : {} };
     stats = { sig, chunks: handle.chunks, buildMs: Math.round(performance.now() - t0), sprites: sprites.length, spritePx };
