@@ -59,3 +59,6 @@ html[data-motion="reduced"] .gll-trade { animation: none; }
 @media (max-width: 640px) { .gll-trade-cols { grid-template-columns: 1fr; } .gll-trade-mid { transform: rotate(90deg); justify-self: center; } }
 @media (prefers-reduced-motion: reduce) { .gll-trade-cols.is-swapped * { animation: none !important; } }
 html[data-motion="reduced"] .gll-trade-cols.is-swapped * { animation: none !important; }
+/* full co-op (2.75): the add buttons side by side, and what a side is worth at the shop and the market */
+.gll-trade-adds { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.gll-trade-worth { align-self: center; font-size: 11px; color: var(--muted, #6b6a5a); }

@@ -20,7 +20,14 @@ function _glhSend(to, k, body) { return _gllPipe('/api/garden-live/host', { to, 
 function _glhIsLegacyWorld() { return typeof gardenWorldIsLegacy === 'function' && gardenWorldIsLegacy(); }
 function _glhAmbientClock() { const native = window.GardenNative, light = native && native.active() && native.lighting(), clock = light && light.ambientClock ? light.ambientClock() : null; return clock || (typeof gardenTravellerAmbientClock === 'function' ? gardenTravellerAmbientClock() : null); }
 function _glhHereBody(on) { const l = gardenLiveLook(); if (typeof _gw !== 'undefined') { l.x = Math.round(_gw.px * 10) / 10; l.y = Math.round(_gw.py * 10) / 10; } return { role: 'host', on, ...glWorldFields(), v: GL_V, look: l, name: _gllMyName(), tab: _GLL_TAB, hidden: typeof document !== 'undefined' && !!document.hidden }; }
-function _glhPerm(fid) { const v = _gll.view; const p = v && v.perms && v.perms[fid]; return p || { lv: 'none', touch: false, share: 'keeper' }; }
+/** What this friend may do here, as the server reads it (lib/friends/live.mjs permOf): full co-op for a friend you made yourself, unless you sent them home; a group-made friend keeps the group rule. */
+function _glhPerm(fid) {
+  const v = _gll.view, p = v && v.perms && v.perms[fid];
+  if (p) return p.lv === 'none' ? p : Object.assign({}, p, { lv: 'play', touch: true });
+  const f = typeof _gscFriend === 'function' ? _gscFriend(fid) : null;
+  if (f && f.how === 'group') return { lv: v && v.groupLook ? 'look' : 'none', touch: false, share: 'keeper' };
+  return { lv: 'play', touch: true, share: 'keeper' };
+}
 
 /* ---------- you are here ---------- */
 function gardenLiveHostPainted(m) {
@@ -817,6 +824,7 @@ function _glhPanel(el, v) {
   if (note) { const msg = { 'old-mine': 'Friends on another network can only play here after a quick update: Settings > Your connection to friends > Update.', 'old-theirs': 'Friends on another network can only play here once the relay you share is updated.', norelay: 'Friends on another network need a relay to play here: Settings > Your connection to friends. On the same network they can play now.', unreachable: 'Your connection to friends cannot be reached just now.', refused: 'Your connection to friends does not let you host rooms now: its owner may have taken your access back.', rest: 'The relay is resting for a little while. Friends on your network can still play.' }[note]; if (msg) el.appendChild(_gsvEl('p', 'muted gsv-small gll-panel-note', msg)); }
   if (v.budget && v.budget.mode === 'over') el.appendChild(_gsvEl('p', 'muted gsv-small gll-panel-note', 'That is all the live play through your connection to friends for today. It keeps your sync safe. Friends on your network can still play.'));
   el.appendChild(_gsvEl('h4', 'gll-h', 'Who may come in'));
+  el.appendChild(_gsvEl('p', 'muted gsv-small gll-panel-note', 'Friends play here just as you do: plant, pick, build, buy land and trade, and it all goes into this garden. They only ever see the garden, never your tasks, calendar, mail or money.'));
   const list = _gsvEl('div', 'gll-friends');
   const setP = (id, o) => _gllApi('/api/garden-live/perm', { id, ...o }).then(() => gardenLiveLoad(true)).then(_glhHud).catch((e) => gardenToast(e.message, { kind: 'err' }));
   for (const f of _gscFriendList().slice(0, 60)) {
@@ -827,12 +835,11 @@ function _glhPanel(el, v) {
     if (here) { top.appendChild(_gsvEl('span', 'gll-here', 'here now')); top.appendChild(_gsvBtn('Send home', { kind: 'btn-ghost', icon: 'log-out', run: () => _gllApi('/api/garden-live/home', { id: f.id }).then(() => gardenLiveLoad(true)).then(_glhHud).catch(() => {}) })); }
     r.appendChild(top);
     const seg = _gsvEl('div', 'gll-switch');
-    for (const lv of GL_LEVELS) seg.appendChild(sw(GL_LEVEL_NAMES[lv], p.lv === lv, () => setP(f.id, { lv })));
+    const levels = p.lv === 'look' || p.lv === 'help' ? [p.lv, 'play', 'none'] : ['play', 'none'];   // (full co-op: playing together or sent home; a group-made friend may still be on Look)
+    for (const lv of levels) seg.appendChild(sw(GL_LEVEL_NAMES[lv], p.lv === lv, () => setP(f.id, { lv, touch: lv === 'play' })));
     r.appendChild(seg);
     if (p.lv === 'help' || p.lv === 'play') {
       const opt = _gsvEl('div', 'gll-friend-o');
-      const c = document.createElement('label'); c.className = 'gll-check'; const i = document.createElement('input'); i.type = 'checkbox'; i.checked = !!p.touch; i.onchange = () => setP(f.id, { touch: i.checked }); c.append(i, _gsvEl('span', null, 'May touch my things'));
-      opt.appendChild(c);
       const s = document.createElement('select'); s.className = 'input gll-select'; s.setAttribute('aria-label', 'Sharing the harvest'); for (const k of GL_SHARES) { const o = document.createElement('option'); o.value = k; o.textContent = GL_SHARE_NAMES[k]; if (p.share === k) o.selected = true; s.appendChild(o); } s.onchange = () => setP(f.id, { share: s.value });
       opt.appendChild(s);
       r.appendChild(opt);
@@ -842,7 +849,7 @@ function _glhPanel(el, v) {
   if (!list.children.length) list.appendChild(_gsvEl('p', 'muted gsv-small', 'Add a friend first.'));
   el.appendChild(list);
   { const c = document.createElement('label'); c.className = 'gll-check'; const i = document.createElement('input'); i.type = 'checkbox'; i.checked = !!v.groupLook; i.onchange = () => prefs({ groupLook: i.checked }); c.append(i, _gsvEl('span', null, 'People in my groups may look')); el.appendChild(c); }
-  { const c = document.createElement('label'); c.className = 'gll-check'; const i = document.createElement('input'); i.type = 'checkbox'; i.checked = v.queueOn !== false; i.onchange = () => prefs({ queue: i.checked }); c.append(i, _gsvEl('span', null, 'Friends with Help or Play can leave things for when I am back')); el.appendChild(c); }
+  { const c = document.createElement('label'); c.className = 'gll-check'; const i = document.createElement('input'); i.type = 'checkbox'; i.checked = v.queueOn !== false; i.onchange = () => prefs({ queue: i.checked }); c.append(i, _gsvEl('span', null, 'Friends can leave things for when I am back')); el.appendChild(c); }
   if (typeof gardenLiveGoalsOn === 'function') { const c = document.createElement('label'); c.className = 'gll-check'; const i = document.createElement('input'); i.type = 'checkbox'; i.checked = gardenLiveGoalsOn(); i.onchange = () => gardenLiveGoalsSet(i.checked); c.append(i, _gsvEl('span', null, 'Suggest shared goals while friends are here')); el.appendChild(c); }
   el.appendChild(_gsvEl('h4', 'gll-h', 'What happened here'));
   const diary = _gsvEl('ul', 'gll-diary');

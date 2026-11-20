@@ -295,7 +295,8 @@ function glIntentOk(b) {
    lv: the level both need. rows, qty: what one side may offer (seed, decor, fish, bug, as gsocGiftOk allows; never coins). perDay: trades one person may finish in a day.
    askMs: how long a request waits for the other app to say it can trade (an older one never does). idleMs: an open trade nobody touches is called off. */
 // sealMs (2.75, the trading overhaul): once BOTH have agreed, the swap waits this long before it is final, and either of you can still say "Wait, undo". The referee keeps the time; nothing new goes on the wire
-const GL_TRADE = Object.freeze({ lv: 'play', rows: 4, qty: 20, perDay: 500, askMs: 8000, idleMs: 5 * 60000, sealMs: 5000 });
+// coins (full co-op, 2.75): friends may put coins in a trade too ('coin:c', at most this many in one trade), so one can buy a fish or a seed from the other
+const GL_TRADE = Object.freeze({ lv: 'play', rows: 4, qty: 20, perDay: 500, askMs: 8000, idleMs: 5 * 60000, sealMs: 5000, coins: 5000 });
 /** From a guest to the host: ask (to a slot), hi (I can trade), offer (my whole offer), ok (I confirm version v), no (I take my confirmation back), end, chk (what became of this trade?).
  *  From the host: st (the state, for you), go (it happened), x (it did not, why). Counters: n on a guest's offer, ok and no, answered by an in st (the host has seen up to n). */
 const GL_TRADE_GUEST = Object.freeze(['ask', 'hi', 'offer', 'ok', 'no', 'end', 'chk']);
@@ -303,13 +304,14 @@ const GL_TRADE_HOST = Object.freeze(['st', 'go', 'x']);
 const GL_TRADE_STEPS = Object.freeze([...GL_TRADE_GUEST, ...GL_TRADE_HOST]);
 const GL_TRADE_WHY = Object.freeze(['busy', 'gone', 'level', 'cap', 'left', 'cancel', 'idle', 'old', 'item', 'host', 'lost']);
 const GL_TRADE_ITEM_RE = /^(seed|decor|fish|bug):([a-z0-9-]{1,64})$/;
-function glTradeItemOk(item) { const m = GL_TRADE_ITEM_RE.exec(String(item || '')); return !!m && gsocGiftOk(m[1], m[2]); }
+const GL_TRADE_COIN = 'coin:c';   // coins, as a row of a trade (an older app does not know it, and says so: why 'item')
+function glTradeItemOk(item) { if (item === GL_TRADE_COIN) return true; const m = GL_TRADE_ITEM_RE.exec(String(item || '')); return !!m && gsocGiftOk(m[1], m[2]); }
 /** '' when rows ([[item, n], ...]) are a fitting offer: few, distinct, known and given-able, a few of each. */
 function glTradeRowsOk(rows) {
   if (!Array.isArray(rows) || rows.length > GL_TRADE.rows) return 'rows';
   const seen = new Set();
   for (const r of rows) {
-    if (!Array.isArray(r) || typeof r[0] !== 'string' || seen.has(r[0]) || !Number.isInteger(r[1]) || r[1] < 1 || r[1] > GL_TRADE.qty) return 'rows';
+    if (!Array.isArray(r) || typeof r[0] !== 'string' || seen.has(r[0]) || !Number.isInteger(r[1]) || r[1] < 1 || r[1] > (r[0] === GL_TRADE_COIN ? GL_TRADE.coins : GL_TRADE.qty)) return 'rows';
     seen.add(r[0]);
     if (!glTradeItemOk(r[0])) return 'item';
   }
