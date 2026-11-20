@@ -11,7 +11,7 @@
    only: in a friend's garden both stand open. The state is one ledger line each ('sc.' + id), saved with the garden.
    ============================================================ */
 const GARDEN_ORCHARD_SHORTCUTS = Object.freeze([
-  Object.freeze({ id: 'hurdle', pres: 'hurdle', name: 'The lakeside hurdle', box: [60.62, 37.45, 61.38, 39.35], at: [61, 38.4], from: (x, y) => x > 61.3 && x < 63.4 && Math.abs(y - 38.1) < 1.5,
+  Object.freeze({ id: 'hurdle', pres: 'hurdle', name: 'The lakeside hurdle', box: [60.62, 37.4, 61.38, 39.4], at: [61, 38.4], from: (x, y) => x > 61.3 && x < 63.4 && Math.abs(y - 38.1) < 1.5,
     open: 'You lift the hurdle aside. The steps down to the lake are a short way now.', shut: 'A hurdle across the steps, pegged from the orchard side.' }),
   Object.freeze({ id: 'cliff', pres: 'cliffGate', name: 'The cliff gate', box: [85.2, 40.42, 87.12, 40.72], at: [86.15, 40.55], from: (x, y) => y < 40.4 && y > 38.2 && Math.abs(x - 86.2) < 1.3,
     open: 'You untie the cliff gate and swing it back. The steps go down to the cove now.', shut: 'A little gate, its rope knotted on the cliff side. Someone untied it from the top, once.' }),
@@ -19,6 +19,9 @@ const GARDEN_ORCHARD_SHORTCUTS = Object.freeze([
 /** The cliff at the head of the cove (east of the steps to the sea, and the nick west of them) and the blackthorn along the
  *  cliff top's edge above the beach walk: always solid, drawn by the orchard painter (94-garden-paint-vale-1orchard.js 1e). */
 const GARDEN_ORCHARD_CLIFF = Object.freeze([
+  // the hurdle fence the lakeside hurdle stands in, from the end of the orchard bank down to the outlet (the bank ends short of the gap)
+  Object.freeze({ box: [60.62, 36.15, 61.38, 37.4], src: 'the lakeside hurdle fence' }),
+  Object.freeze({ box: [60.62, 39.4, 61.38, 40.2], src: 'the lakeside hurdle fence' }),
   Object.freeze({ box: [87.12, 40.3, 91.5, 40.8], src: 'the cliff at the head of the cove' }),
   Object.freeze({ box: [84.95, 40.3, 85.2, 40.8], src: 'the cliff at the head of the cove' }),
   Object.freeze({ box: [85.05, 36.5, 85.45, 40.35], src: 'blackthorn on the cliff top' }),
@@ -41,8 +44,11 @@ function _gscArt(id, open) {
   if (id === 'hurdle') {
     // seen end on (the gap runs up the screen): a panel of woven hazel, its stakes and the withies across them
     const panel = (x0, y0, x1, y1, h) => { let s = `<path d="M${x0} ${y0}L${x1} ${y1}L${x1} ${y1 - h}L${x0} ${y0 - h}Z" fill="#8a6a40"/>`; for (let k = 1; k < 6; k++) { const t = k / 6, y = y0 + (y1 - y0) * t, x = x0 + (x1 - x0) * t; s += `<path d="M${x} ${y}V${y - h - 2}" stroke="#5a4028" stroke-width="1.6"/>`; } for (let k = 0; k < 6; k++) { const o = 3 + k * (h - 4) / 5; s += `<path d="M${x0} ${y0 - o}L${x1} ${y1 - o}" stroke="${k % 2 ? '#b08a56' : '#9a7448'}" stroke-width="2.6" stroke-linecap="round"/>`; } return s; };
-    return open ? `<ellipse cx="20" cy="6" rx="16" ry="3" fill="#22301a" opacity=".24"/>${panel(8, -2, 32, 12, 20)}${post(-5, -26, 26)}${post(5, 28, 26)}`
-      : `<path d="M-5 -26L5 28" stroke="#22301a" stroke-width="9" opacity=".18" transform="translate(5 3)"/>${post(-5, -26, 26)}${panel(-5, -26, 5, 28, 22)}${post(5, 28, 26)}`;
+    // a fence of three hurdles down the gap from the bank's end to the outlet; the middle one is the shortcut: shut across
+    // the steps, or lifted aside and leant on its neighbour
+    const fence = `${post(-6, -66, 26)}${panel(-6, -66, -2, -30, 22)}${post(-2, -30, 26)}${post(3, 31, 26)}${panel(3, 31, 6, 54, 22)}${post(6, 54, 26)}`;
+    return open ? `<ellipse cx="18" cy="8" rx="16" ry="3" fill="#22301a" opacity=".24"/>${fence}${panel(8, 2, 30, 12, 20)}`
+      : `<path d="M-6 -66L6 54" stroke="#22301a" stroke-width="9" opacity=".16" transform="translate(6 3)"/>${fence}${panel(-2, -30, 3, 31, 22)}`;
   }
   // the cliff gate: seen face on across the steps; shut, a rope knotted round its latch post; open, swung back against the rock
   const bars = (x0, x1, top, bot) => [0, 1, 2, 3].map(k => `<path d="M${x0} ${bot - 3 - k * (bot - top - 6) / 3}H${x1}" stroke="${k % 2 ? '#c2b08a' : '#a8946c'}" stroke-width="2.6" stroke-linecap="round"/>`).join('') + `<path d="M${x0 + 2} ${bot - 3}L${x1 - 2} ${top + 3}" stroke="#a8946c" stroke-width="2.4"/>`;
