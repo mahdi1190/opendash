@@ -106,7 +106,7 @@
       const inner = id === 'the-ham' ? 3 : id === 'rickyard' ? 2 : 0, placed = [];
       for (let k = 0; k < inner; k++) {
         const r1 = kit.rng(seed + 977 + k * 13), big = id === 'rickyard'; let at = null;
-        const m = big ? 1.4 : .9; for (let t = 0; t < 80 && !at; t++) { const x = bb[0] + 50 + r1() * (bb[2] - bb[0] - 100), y = bb[1] + 40 + r1() * Math.max(10, (bb[3] - bb[1]) * .5); if (inF(x, y) && inF(x - cw * m, y) && inF(x + cw * m, y) && inF(x, y - ch * .8) && inF(x, y + ch * .6) && !placed.some(q => Math.abs(q.x - x) < cw * (big ? 2.4 : 1.6) && Math.abs(q.y - y) < ch * 1.2)) at = { x, y }; }
+        const m = big ? 1.4 : .9; for (let t = 0; t < 80 && !at; t++) { const x = bb[0] + 50 + r1() * (bb[2] - bb[0] - 100), y = bb[1] + 40 + r1() * Math.max(10, (bb[3] - bb[1]) * (big ? .75 : .5)); if (inF(x, y) && inF(x - cw * m, y) && inF(x + cw * m, y) && inF(x, y - ch * (big ? 1.7 : .8)) && inF(x, y + ch * .6) && !placed.some(q => Math.abs(q.x - x) < cw * (big ? 2.4 : 1.6) && Math.abs(q.y - y) < ch * (big ? 3.6 : 1.4))) at = { x, y }; }
         if (!at) continue; placed.push(at);
         thing({ key: (big ? 'hay rick' : 'haycock') + '|' + id + '|in' + k + '|' + season, x: at.x, y: at.y, box: big ? [-50, -96, 50, 10] : [-22, -34, 22, 6], K: 1.4, foot: big ? [-42, 42, 14] : [-17, 17, 8], draw: B => {
           if (big) {   // a hay rick: a rounded stack under a thatched ridge, pegged ropes down its side
