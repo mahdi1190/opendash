@@ -88,7 +88,8 @@ _plFrom('l-bow', 'bow', { body: [[0.1, { y: -3, sy: 1.08 }, 'io'], [0.34, { r: 2
 
 // a shake with no water in it: snow comes off after a roll in it, leaves after the leaf pile, a bit of fluff first thing in the morning
 _plFrom('l-shakesnow', 'l-shake', { fx: [[0.1, 'flake', { at: 'top', y: 16, n: 12, gap: 40, dx: 44, dy: -16, g: 1, dur: 700, ring: 1, spin: 200 }], [0.12, 'puff', { at: 'top', y: 18, n: 6, gap: 60, dx: 36, dy: -12, dur: 600, ring: 1, s: 0.8 }]] });
-_plFrom('l-shakeleaf', 'l-shake', { fx: [[0.1, 'leaf', { at: 'top', y: 16, n: 10, gap: 50, dx: 44, dy: -14, g: 1, dur: 800, ring: 1, spin: 300 }], [0.16, 'leaf', { at: 'top', y: 20, n: 5, gap: 70, dx: 40, dy: -10, g: 1, dur: 800, ring: 1, c: '#c8a03a', spin: -260 }]] });
+// (round 4: small leaves, about the pile's own size; at the library's 2.6 times they came off as big stalked leaves)
+_plFrom('l-shakeleaf', 'l-shake', { fx: [[0.1, 'leaf', { at: 'top', y: 16, n: 12, gap: 40, dx: 40, dy: -14, g: 1, dur: 800, ring: 1, spin: 300, s: 0.36, c: '#d9782e' }], [0.16, 'leaf', { at: 'top', y: 20, n: 6, gap: 60, dx: 36, dy: -10, g: 1, dur: 800, ring: 1, c: '#c8a03a', spin: -260, s: 0.32 }]] });
 _plFrom('l-shakedry', 'l-shake', { fx: [[0.12, 'fluff', { at: 'top', y: 16, n: 6, gap: 70, dx: 36, dy: -16, dur: 800, ring: 1, s: 0.9 }], [0.86, 'spark', { at: 'top', n: 3, gap: 60, dx: 14, dy: -12, ring: 1, dur: 500 }]] });
 
 /* What comes off a pet in these is drawn bigger than the library's own (a pet in the vale is small now: a splash, a leaf, a sneeze must read

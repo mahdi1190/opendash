@@ -135,7 +135,7 @@ function _plMs(c) { const lib = typeof petClipDef === 'function' ? petClipDef(c)
 /** Where you can see it: inside the camera with a margin (a cell and a bit from each edge). */
 function _plSeen(x, y) { try { if (typeof _gwInView !== 'function' || !_gw || !_gw.cam || !_gw.cam.w) return true; return _gwInView(x, y, -1.1); } catch (e) { return true; } }
 /** A spot a pet may stand on for a while: walkable with room round it (not in a hedge or a bush), and in view. */
-function _plStandOk(x, y) { try { if (typeof gardenWorldFree === 'function' ? !gardenWorldFree(x, y, 0.3) : !_ptwFree(x, y)) return false; } catch (e) { return false; } return _plSeen(x, y); }
+function _plStandOk(x, y) { try { if (typeof gardenWorldFree === 'function' ? !gardenWorldFree(x, y, 0.3) || !gardenWorldFree(x, y + 0.5, 0.2) || !gardenWorldFree(x, y + 0.95, 0.25) : !_ptwFree(x, y)) return false; } catch (e) { return false; } return _plSeen(x, y); }   // (and nothing standing just in front of it: round 4 found it half behind the sundial)
 /** Too far from you to read (over two cells, or out of view), or so close it would stand on you. */
 function _plFar(P, tight) { const pl = _ptwPlayer(); if (!pl) return false; const d = Math.hypot(pl.x - P.x, (pl.y - P.y) * 1.4); return d > (tight ? 1.15 : 2.1) || Math.abs(pl.x - P.x) < 0.5 && Math.abs(pl.y - P.y) < 0.6 || !_plSeen(P.x, P.y); }
 /** Your companion's stage: just beside you (two thirds of a cell to a cell off, a little in front), on the side it is already on. */

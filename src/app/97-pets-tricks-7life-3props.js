@@ -228,7 +228,8 @@ function _plGroundOk(kind, x, y, side, P) {
         const c = typeof gardenIslandBaseCell === 'function' ? gardenIslandBaseCell(cx, cy) : null;
         if (!c || c.ocean || c.freshwater || c.solid || c.beach && kind !== 'puddle' && kind !== 'hole') return false;
       }
-      if (typeof gardenWorldFree === 'function' && !gardenWorldFree(gx, y, 0.1)) return false;
+      // clear where it lies, and of anything standing just in front of it whose top would cover it (the campfire was laid against the sundial)
+      if (typeof gardenWorldFree === 'function' && (!gardenWorldFree(gx, y, 0.1) || !gardenWorldFree(gx, y + 0.45, 0.2) || !gardenWorldFree(gx, y + 0.9, 0.25) || !gardenWorldFree(gx, y + 1.35, 0.25))) return false;
       if (pl && Math.abs(gx - pl.x) < 0.32 && Math.abs(y - pl.y) < 0.4) return false;
     }
     for (const q of _PLQ.live) if (q.g.isConnected && Math.abs(q.y - y) < 0.5 && x + x1 > q.x0 && x + x0 < q.x1) return false;
@@ -256,6 +257,8 @@ function _plProp(P, kind, ms) {
       return g;
     };
     const mk = (tag) => native ? gardenSceneElement(tag) : document.createElementNS('http://www.w3.org/2000/svg', tag);
+    // one thing at a time for a pet: a row that stages again draws its thing afresh, so the last one goes (round 4: two campfires)
+    for (const q of _PLQ.live.slice()) if (q.g && q.g.parentNode === P.node) { try { q.g.remove(); } catch (x) { /* gone */ } _PLQ.live = _PLQ.live.filter(z => z !== q); }
     const back = make(art.back, false); rec.g = back; _PLQ.live.push(rec);
     const front = art.front ? make(art.front, true) : null;
     P.propUntil = performance.now() + total;
@@ -282,7 +285,8 @@ function _plProp(P, kind, ms) {
         (front || back).appendChild(at);
         const dur = 1300 + r() * 700, delay = at0 + r() * 160;
         // (two simple moves, never one combined transform: the native renderer stretched a leaf whose path and spin were one keyframe list)
-        const mv = mk('g'); at.appendChild(mv); mv.appendChild(lf);
+        // (it flutters as it falls: a flip across, never a spin. The native renderer stretched leaves whose spin was animated)
+        const mv = mk('g'); at.appendChild(mv); const tilt = mk('g'); tilt.setAttribute('transform', `rotate(${Math.round(r() * 360)})`); mv.appendChild(tilt); tilt.appendChild(lf);
         const o = { duration: dur, delay, easing: 'ease-out', fill: 'both' };
         try { gardenVisualAnimate(mv, [
           { offset: 0, transform: 'translate(0px,0px)' },
@@ -290,7 +294,7 @@ function _plProp(P, kind, ms) {
           { offset: 0.62, transform: `translate(${_plF(dx * 0.8)}px,${_plF(-up * 0.55 - sy * 0.3)}px)` },
           { offset: 0.9, transform: `translate(${_plF(dx)}px,${_plF(-sy + land)}px)` },
           { offset: 1, transform: `translate(${_plF(dx)}px,${_plF(-sy + land)}px)` }], o);
-          gardenVisualAnimate(lf, [{ offset: 0, transform: 'rotate(0deg)', opacity: 1 }, { offset: 0.9, transform: `rotate(${Math.round(rot)}deg)`, opacity: 1 }, { offset: 1, transform: `rotate(${Math.round(rot)}deg)`, opacity: 0.9 }], o); } catch (x) { /* still */ }
+          gardenVisualAnimate(lf, [{ transform: 'scale(1,1)', opacity: 1 }, { transform: 'scale(-1,1)', opacity: 1 }, { transform: 'scale(1,1)', opacity: 1 }], { duration: 380 + Math.round(r() * 200), delay, iterations: 3, easing: 'ease-in-out', fill: 'both' }); } catch (x) { /* still */ }
       }
     }
     if (art.smoke) {
