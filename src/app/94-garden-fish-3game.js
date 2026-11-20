@@ -282,7 +282,18 @@ function _gwFishLost(msg) {
 function _gwFishStoneCovered(x, y) {
   if (GARDEN_WORLD.v < 5 || x >= GARDEN_ROOM_X || typeof gardenIslandCrossingGeometry !== 'function') return false;
   const W = GARDEN_WORLD, px = x * W.cellW, py = W.sky + y * W.cellH;
+  // the gorge's far wall and near lip are painted over the edge of its water: a float there sat on the stone bank (the verifier, 18 Nov 2026)
+  if (window.GardenPaintedTerrain && GardenPaintedTerrain.gorgeCovers && GardenPaintedTerrain.gorgeCovers(x, y)) return true;
   for (const c of gardenIslandCrossingGeometry()) {
+    if (c.kind === 'footbridge' || c.kind === 'hump-bridge') {
+      // A bridge's boards, rails and stonework are drawn over the water they span, and stand up from it: a float at a
+      // cell centre under the deck, behind a rail or on the bridge's downstream wall sat on the bridge itself
+      // (18 Nov 2026). Covered: any point whose spot on the deck, up to a rail's height above it or a wall's drop
+      // below it, lies in the deck's band.
+      const ux = (c.b.x - c.a.x) / c.length, uy = (c.b.y - c.a.y) / c.length, lift = c.kind === 'hump-bridge' ? 17 : 19, drop = c.kind === 'hump-bridge' ? 27 : 5, reach = (c.halfWidth || 17) + 3;
+      for (let l = -drop; l <= lift; l += 3) { const dx = px - c.a.x, dy = py + l - c.a.y, along = dx * ux + dy * uy, across = -dx * uy + dy * ux; if (along >= -8 && along <= c.length + 8 && Math.abs(across) <= reach) return true; }
+      continue;
+    }
     if (c.kind !== 'stepping-stones' || !c.stones) continue;
     const { count, alongRadius, acrossRadius } = c.stones, ux = (c.b.x - c.a.x) / c.length, uy = (c.b.y - c.a.y) / c.length;
     const dx = px - c.a.x, dy = py - c.a.y, along = dx * ux + dy * uy, across = -dx * uy + dy * ux;
@@ -297,6 +308,21 @@ function _gwFishStoneCovered(x, y) {
   return false;
 }
 
+/**
+ * Is a float at (x, y) in open water: in the water and at least GW_FLOAT_CLEAR world px from its edge all round? The
+ * banks, reed beds and rims are painted a few px inside the water's edge, and a cell middle closer than that put the
+ * float on the drawn bank or in the reeds (20 such cells across the map: the collision audit and the verifier, 19 Nov
+ * 2026). A narrow brook still has open water down its middle.
+ */
+const GW_FLOAT_CLEAR = 10;
+function gardenFishOpenAt(x, y) {
+  if (typeof gardenWaterContainsPoint !== 'function') return true;
+  if (!gardenWaterContainsPoint(x, y)) return false;
+  if (GARDEN_WORLD.v < 5 || x >= GARDEN_ROOM_X) return true;
+  const W = GARDEN_WORLD, rx = GW_FLOAT_CLEAR / W.cellW, ry = GW_FLOAT_CLEAR / W.cellH;
+  for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; if (!gardenWaterContainsPoint(x + Math.cos(a) * rx, y + Math.sin(a) * ry)) return false; }
+  return true;
+}
 /** Keep river clicks and their cell-centred floats in the same open water. */
 function _gwFishTarget(pt, m) {
   const cell = { x: Math.floor(pt.x), y: Math.floor(pt.y) }, centre = { x: cell.x + .5, y: cell.y + .5 };
@@ -309,7 +335,7 @@ function _gwFishTarget(pt, m) {
   const candidates = [];
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
     const q = { x: centre.x + dx, y: centre.y + dy }, d = Math.hypot(q.x - pt.x, q.y - pt.y);
-    if (d > 1.5 || !gardenWaterContainsPoint(q.x, q.y) || _gwFishStoneCovered(q.x, q.y) || gardenZoneOf(q.x, q.y) !== region || gardenWaterNo(q.x, q.y, m)) continue;
+    if (d > 1.5 || !gardenFishOpenAt(q.x, q.y) || _gwFishStoneCovered(q.x, q.y) || gardenZoneOf(q.x, q.y) !== region || gardenWaterNo(q.x, q.y, m)) continue;
     const other = _gfsIslandComponentAt(q.x, q.y);
     if (!other || other.id !== body.id || !_gfsIslandShapeSegment(body.shape, pt, q)) continue;
     // The contour check keeps the segment in this basin; point checks also exclude live supports/ice.
@@ -354,7 +380,7 @@ function gardenFishClickPt(pt, m) {
 function gardenFishClick(cell, m) { return gardenFishClickPt({ x: cell.x + 0.5, y: cell.y + 0.5 }, m); }
 function _gwFishCast(pt0) {
   const pt = { x: Math.floor(pt0.x) + 0.5, y: Math.floor(pt0.y) + 0.5 };   // the middle of the cell: that is what everyone else is told
-  if ((typeof gardenWaterContainsPoint === 'function' && !gardenWaterContainsPoint(pt.x, pt.y)) || _gwFishStoneCovered(pt.x, pt.y)) { _gdpSay({ ok: false, msg: 'Too close to the bank. Try a little farther into the water.' }); return; }
+  if (!gardenFishOpenAt(pt.x, pt.y) || _gwFishStoneCovered(pt.x, pt.y)) { _gdpSay({ ok: false, msg: 'Too close to the bank. Try a little farther into the water.' }); return; }
   _gwFacePt(pt);
   const plan = gardenFishPlan(Math.floor(pt.x), Math.floor(pt.y));
   if (!plan.ok) { _gdpSay(plan); return; }

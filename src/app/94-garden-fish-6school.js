@@ -108,7 +108,10 @@ function _gfsLayer() {
   if (_gfs.layer && _gfs.layer.isConnected && _gfs.layer.ownerSVGElement === _gw.svg) { if (!native) _gfsPierClip(_gw.svg, _gfs.layer); return _gfs.layer; }
   const objs = _gw.svg.querySelector('.gd-objects'); if (!objs || !objs.parentNode) return null;
   const g = _gwEl('g', Object.assign({ class: 'gd-school', 'pointer-events': 'none', 'aria-hidden': 'true' }, native ? {} : { 'clip-path': 'url(#gd-school-clip)' }));
-  if (native && g.target) g.target.setDepth(-9300);
+  // Over the painted water (-9590 .. -9583) and under the painted ground (-9350, -9346), which holds the footbridges'
+  // decks and rails, the stepping stones, the banks and the quay: at -9300 the fish swam over a bridge's boards and
+  // over the shadows things cast on the water (18 Nov 2026).
+  if (native && g.target) g.target.setDepth(-9360);
   // The same displayed decks cut fish shadows; the sea remains continuous.
   if (!native) _gfsPierClip(_gw.svg, objs);
   objs.parentNode.insertBefore(g, objs);

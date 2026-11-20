@@ -37,7 +37,7 @@
   V.crossingWaterSpan = crossingWaterSpan;
 
   function crossings(C) {
-    const { L, P, add, under } = C, cw = L.cw, ch = L.ch, W = L.W;
+    const { L, P, add, under, thing } = C, cw = L.cw, ch = L.ch, W = L.W;
     const physical = typeof gardenIslandCrossingGeometry === 'function' ? gardenIslandCrossingGeometry() : [];
     for (const c of L.pres.crossings || []) {
       const riv = L.pres.rivers && L.pres.rivers[c.over]; if (!riv || !riv.line) continue;
@@ -73,7 +73,7 @@
       const nx = -mid.ty, ny = mid.tx, span = c.kind === 'footbridge' ? hw + .7 : hw + .15;
       const A = deck ? deck.a : { x: (mid.x + nx * span) * cw, y: W.sky + (mid.y + ny * span) * ch }, Bp = deck ? deck.b : { x: (mid.x - nx * span) * cw, y: W.sky + (mid.y - ny * span) * ch };
       const box = [Math.min(A.x, Bp.x) - 40, Math.min(A.y, Bp.y) - 40, Math.max(A.x, Bp.x) + 40, Math.max(A.y, Bp.y) + 40];
-      if (c.kind === 'footbridge') add(box, 61, (B, r) => footbridge(B, r, P, A, Bp, deck));
+      if (c.kind === 'footbridge') { add(box, 61, (B, r) => footbridge(B, r, P, A, Bp, deck)); nearRail(thing, c, P, A, Bp, deck); }
       else add(box, 62, (B, r) => stones(B, r, P, A, Bp, C.season, deck));
     }
   }
@@ -102,6 +102,31 @@
       const lift = t => 13 + Math.sin(Math.PI * (t - cap / 2) / (L - cap)) * 4;
       const rail = []; for (let t = cap / 2; t < L - cap / 2; t += 4) rail.push(q(t, s, lift(t))); rail.push(q(L - cap / 2, s, 13)); V.strokePts(B, rail, col, 2.6, .95); V.strokePts(B, rail, P.woodHi, 1, .5, 0, -.8);
       for (let i = 0; i <= 3; i++) { const t = cap / 2 + (L - cap) * i / 3, a = q(t, s), b = q(t, s, lift(t) + 1); B.s(`M${a.x} ${a.y}L${b.x} ${b.y}`, P.woodDk, 3, .95); }
+    }
+  }
+  /** The footbridge's rail on the side nearer the viewer, again, as short standing pieces in the object layer: the
+   *  same strokes as the rail baked into the ground above, so nothing changes until someone stands on the deck behind
+   *  it. Then it crosses in front of their legs; before, the whole bridge was under their feet and they looked as if
+   *  they stood outside the rail, over the water (drawing order, 18 Nov 2026). Each piece is a column of the rail
+   *  and sorts by the rail's own foot there, a little forward so nobody on the deck is ever cut in two by it. */
+  function nearRail(thing, c, P, A, Bp, deck) {
+    const L = Math.hypot(Bp.x - A.x, Bp.y - A.y), ux = (Bp.x - A.x) / L, uy = (Bp.y - A.y) / L, hw = deck ? deck.halfWidth : 17;
+    if (!thing || Math.abs(ux) < .6) return;   // (a bridge that runs up the screen, or steeply, has its rails left and right of you: they stay in the ground picture)
+    const s = ux > 0 ? hw : -hw, col = s > 0 ? P.wood : P.woodLo, cap = Math.min(10, L * .12);
+    const q = (t, lift = 0) => { const p = deck ? deck.deckPoint(t / L, s) : { x: A.x + ux * t - uy * s, y: A.y + uy * t + ux * s }; return { x: p.x, y: p.y - lift }; };
+    const lift = t => 13 + Math.sin(Math.PI * (t - cap / 2) / (L - cap)) * 4;
+    const rail = []; for (let t = cap / 2; t < L - cap / 2; t += 4) rail.push(q(t, lift(t))); rail.push(q(L - cap / 2, 13));
+    const posts = [0, 1, 2, 3].map(i => cap / 2 + (L - cap) * i / 3);
+    const e0 = q(cap / 2), e1 = q(L - cap / 2), xa = Math.min(e0.x, e1.x) - 3, xb = Math.max(e0.x, e1.x) + 3, STRIP = 10, n = Math.max(1, Math.ceil((xb - xa) / STRIP));
+    const footAt = X => { const k = Math.max(0, Math.min(1, (X - e0.x) / ((e1.x - e0.x) || 1))); return e0.y + (e1.y - e0.y) * k; };
+    for (let i = 0; i < n; i++) {
+      const X0 = xa + i * STRIP, X1 = Math.min(xb, X0 + STRIP), fx = (X0 + X1) / 2, fy = footAt(fx), end = i === 0 || i === n - 1;
+      thing({ key: 'rail|' + c.id + '|' + i, x: fx, y: fy, depth: fy + (end ? 1 : 6), box: [X0 - fx - 1, -34, X1 - fx + 1, 12], draw: B => {
+        B.cx.save(); B.cx.beginPath(); B.cx.rect(X0 - fx, -40, X1 - X0, 60); B.cx.clip(); B.cx.translate(-fx, -fy);
+        V.strokePts(B, rail, col, 2.6, .95); V.strokePts(B, rail, P.woodHi, 1, .5, 0, -.8);
+        for (const t of posts) { const a = q(t), b = q(t, lift(t) + 1); B.s(`M${a.x} ${a.y}L${b.x} ${b.y}`, P.woodDk, 3, .95); }
+        B.cx.restore();
+      } });
     }
   }
   function stones(B, r, P, A, Bp, season, deck) {
@@ -158,9 +183,11 @@
         // a ruined profile: high runs and tumbled gaps, never the same twice
         let h = 28 + rr() * 14; for (let i = 0; i < mid.length; i++) { h += (rr() - .5) * 12; if (rr() < .1) h = 7 + rr() * 6; if (rr() < .12) h = 32 + rr() * 16; h = Math.max(6, Math.min(48, h)); H.push(h); }
         for (let k = 0; k < 2; k++) for (let i = 1; i < H.length - 1; i++) H[i] = (H[i - 1] + H[i] * 2 + H[i + 1]) / 4;
-        // in pieces of six stretches: each bakes quickly and sorts by its own foot
-        for (let g = 0; g < mid.length - 1; g += 6) {
-          const sub = mid.slice(g, g + 7), hs = H.slice(g, g + 7); let ft = sub[0]; for (const p of sub) if (p.y > ft.y) ft = p;
+        // in pieces of two stretches: each bakes quickly and sorts by its own foot (pieces of six sorted a slanting wall up
+        // to two rows away from where it stood: now that the feet stop at the drawn wall and not a cell short of it
+        // (94-garden-world-0walk.js gardenRuinWallFoot), someone standing in front of its upper end was drawn behind it)
+        for (let g = 0; g < mid.length - 1; g += 2) {
+          const sub = mid.slice(g, g + 3), hs = H.slice(g, g + 3); let ft = sub[0]; for (const p of sub) if (p.y > ft.y) ft = p;
           const C2 = sub.map(p => ({ x: p.x - ft.x, y: p.y - ft.y })), bb = kit.bboxOf(C2);
           thing({ key: 'ruin3|' + f.id + '|' + g, x: ft.x, y: ft.y, box: [bb[0] - 30, bb[1] - 64, bb[2] + 30, bb[3] + 20], K: 1.1, draw: B => ruinWall(B, kit.rng(seed + 1 + g), C2, hs, C.P, C.season) });
         }
@@ -256,7 +283,7 @@
       const spot = (x, y) => L.free(x, y) && ['grass', 'path'].includes(L.kind(x, y));
       const put = (cands, key, box, draw, foot) => { for (const [x, y] of cands) if (spot(x, y)) { const p = L.cpt(x, y); thing({ key, box, x: p.x, y: p.y, draw, foot }); return; } };   // foot: [left, right, depth] px the feet cannot enter (GardenPaintVale.feet)
       if (pz.id === 'cider-square') { put([[80.2, 36.4], [79.6, 35.4], [75.4, 37.6]], 'press', [-26, -50, 28, 6], drawPress(P), [-21, 23, 10]); put([[79.6, 38.3], [80.4, 38.6]], 'bell', [-14, -64, 16, 5], drawBell(P), [-6, 7, 6]); put([[76.9, 38.6], [78.2, 38.9]], 'baskets', [-24, -18, 26, 5], drawBaskets(P, C.season), [-18, 20, 8]); }
-      if (pz.id === 'mill-yard') { put([[76.6, 64.6], [77.2, 65.2], [76.9, 66.8]], 'millstone', [-22, -40, 24, 6], drawMillstone(P), [-18, 20, 10]); put([[77.3, 66.9], [73.6, 67.4], [76.8, 67.6]], 'sacks', [-22, -24, 24, 5], drawSacks(P), [-18, 20, 8]); }
+      if (pz.id === 'mill-yard') { put([[76.6, 64.6], [77.2, 65.2], [76.9, 66.8]], 'millstone', [-22, -40, 24, 6], drawMillstone(P), [-12, 11, 8]); put([[77.3, 66.9], [73.6, 67.4], [76.8, 67.6]], 'sacks', [-22, -24, 24, 5], drawSacks(P), [-18, 20, 8]); }
       if (pz.id === 'ruin-court') { const c = L.cpt(pz.x + 1.4, pz.y + .9); add([c.x - 60, c.y - 30, c.x + 60, c.y + 30], 75, (B, r) => { B.shadow(c.x + 4, c.y + 6, 46, 8, .3); B.f(B.rr(c.x - 44, c.y - 7, 80, 14, 7), RUIN.body).f(B.rr(c.x - 44, c.y - 7, 80, 5, 2.5), RUIN.hi, .8).f(B.ell(c.x + 38, c.y, 6, 7), RUIN.lo).f(B.ell(c.x + 38, c.y, 3.4, 4), RUIN.dk, .3); for (let k = -36; k < 34; k += 9) B.s(`M${c.x + k} ${c.y - 6}v12`, RUIN.lo, .8, .5); B.f(B.blob(r, c.x - 10, c.y - 6, 22, 3, 7, .5), RUIN.moss, .8); fern(B, r, c.x - 50, c.y + 6, C.season); fern(B, r, c.x + 20, c.y + 9, C.season); }); }
       if (style === 'litter') { const o = oakAt(L, pz), S = OAK_SCALE; thing({ key: 'great-oak-5|' + C.season, x: o.x, y: o.y, box: [-250 * S, -360 * S, 250 * S, 40 * S].map(Math.round), crown: { x: 0, y: -230 * S, rx: 250 * S, ry: 145 * S }, farShrink: .6, K: .9, draw: B => { B.cx.save(); B.cx.scale(S, S); greatOak(B, kit.rng(seed + 9), P, C.season); B.cx.restore(); } }); }
     }
@@ -264,6 +291,8 @@
   const drawPress = P => B => { B.shadow(4, 2, 24, 5, .3); B.f(B.rr(-18, -16, 36, 16, 3), P.wood).f(B.rect(-18, -16, 36, 3), P.woodHi, .7); for (const x of [-14, 12]) B.post(x, -46, -14, 5, [P.wood, P.woodLo, P.woodHi]); B.f(B.rect(-18, -50, 36, 6), P.woodLo).s('M0 -44V-20', P.iron, 3).s('M-10 -30H10', P.iron, 2.2).f(B.ell(0, -18, 12, 3), '#c8a04a', .8); };
   const drawBell = P => B => { B.shadow(2, 1, 8, 2.4, .3); B.post(0, -58, 0, 4, [P.wood, P.woodLo, P.woodHi]); B.s('M0 -56H10', P.woodLo, 2.6); B.f('M4 -54Q4 -46 2 -42H18Q16 -46 16 -54Q10 -58 4 -54Z', '#b08a3a').f('M5 -53Q5 -47 3 -43H8Q7 -48 8 -54Z', '#e0c070', .7).f(B.circ(10, -41, 1.6), '#5a4a2a'); };
   const drawBaskets = (P, season) => B => { B.shadow(2, 1, 22, 4, .3); for (const x of [-12, 10]) { B.f(`M${x - 10} -12L${x + 10} -12L${x + 8} 0L${x - 8} 0Z`, '#a8844e').s(`M${x - 9} -8H${x + 9}M${x - 8.5} -4H${x + 8.5}`, '#7a5e34', .8, .8); for (let k = 0; k < 5; k++) B.f(B.circ(x - 7 + k * 3.5, -13 - (k % 2) * 1.6, 2.6), season === 'autumn' ? (k % 2 ? '#c8402e' : '#e0b23a') : '#9cbc4a'); } };
+  // (a stone wheel 24 px across standing on its edge: its foot in the mill yard is that wide, [-12, 11, 8]; at [-18, 20] it
+  // stopped the feet 0.3 of a cell past the wheel on open cobbles, the collision audit, 19 Nov 2026)
   const drawMillstone = P => B => { B.shadow(6, 2, 20, 5, .3); B.f(B.ell(0, -18, 12, 18), '#8e8a7c').f(B.ell(-2, -19, 11, 17), '#b4ae9c').f(B.ell(-2, -19, 3.4, 5), '#5e5a4e'); for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; B.s(`M${-2 + Math.cos(a) * 4} ${-19 + Math.sin(a) * 6}L${-2 + Math.cos(a + .3) * 10} ${-19 + Math.sin(a + .3) * 15}`, '#7a7668', 1, .7); } };
   const drawSacks = P => B => { B.shadow(2, 1, 22, 5, .3); for (const [x, y, s] of [[-10, 0, 1], [9, 0, .95], [0, -11, .9]]) { B.f(`M${x - 9 * s} ${y}Q${x - 11 * s} ${y - 12 * s} ${x - 5 * s} ${y - 16 * s}L${x + 5 * s} ${y - 16 * s}Q${x + 11 * s} ${y - 12 * s} ${x + 9 * s} ${y}Z`, '#e4dcc4').f(`M${x - 8 * s} ${y}Q${x - 10 * s} ${y - 11 * s} ${x - 5 * s} ${y - 15 * s}L${x - 2 * s} ${y - 15 * s}Q${x - 6 * s} ${y - 10 * s} ${x - 4 * s} ${y}Z`, '#fff', .5).s(`M${x - 4 * s} ${y - 16 * s}l${8 * s} 0`, '#a08a5a', 1.4); } };
   const OAK_SCALE = 1.75;   // the vale's landmark tree: its crown stands over the woods, seen from the arch and from the green zoomed out
@@ -304,7 +333,7 @@
       });
       const logs = gardenIslandLogStack(L.D), logAt = logs ? L.cpt(logs.x, logs.y) : { x: c.x + 2.2 * cw, y: c.y + .4 * ch };
       thing({ key: 'logstack', x: logAt.x, y: logAt.y, box: [-40, -54, 44, 8], draw: B => logStack(B, C.kit.rng(72), P) });
-      thing({ key: 'block', x: c.x - 1.9 * cw, y: c.y + 1.3 * ch, box: [-20, -34, 26, 8], foot: [-14, 18, 8], draw: B => chopBlock(B, P) });
+      thing({ key: 'block', x: c.x - 1.9 * cw, y: c.y + 1.3 * ch, box: [-20, -34, 26, 8], foot: [-11, 11, 8], draw: B => chopBlock(B, P) });   // (foot: the stump, 20 px wide; the chips on the ground are walked over and the axe's handle is in the air: the block ran 0.44 of a cell past the stump, the collision audit, 19 Nov 2026)
     }
     const ice = L.stat('ld-icehouse');
     if (ice) {

@@ -104,6 +104,9 @@ window.GardenPaintedProps = (function () {
       over(im) { if (!im) return null; const layer = o.layer; if (layer && layer.add) { layer.add(im); im.setDepth(80005); over.push(im); } else node._inner.add(im); return im; },
       // Walkable bridge masonry shares the pier-deck layer below all actors.
       ground(im) { if (!im) return null; const layer = o.layer; if (!layer || !layer.add) return add(im); layer.add(im); im.setDepth(-9250); ground.push(im); parts.push(im); return im; },
+      // A part of a ground-level picture that stands up (a bridge's near parapet): in the object layer at its own
+      // foot line, so whoever walks behind it is drawn behind it. Follows the handle's visibility, goes with it.
+      standing(im, depth, hit) { if (!im) return null; const layer = o.standing; if (!layer || !layer.add) return add(im); layer.add(im); im.setDepth(depth); im._gppStanding = true; ground.push(im); if (hit) parts.push(im); return im; },   // (no object layer, a preview: with the rest of the picture)
       add, move(im, fn) { if (im) { moving.push({ im, fn }); h.dynamic = true; if (!h.kind) h.kind = 'painted'; } return im; },
       // Bounds include transparent canvas padding and soft ground shadows.
       // Only the opaque painted parts own a visual hit; canonical feet and
@@ -740,6 +743,28 @@ window.GardenPaintedProps = (function () {
     };
     return Object.assign(art, { box, base, blocker, side, half });
   }
+  /** The Millwater bridge's downstream parapet and face again, as narrow upright strips of the same baked picture
+   *  in the object layer (the picture itself stays on the ground, under everyone, because its deck is walked on).
+   *  Each strip sorts by the parapet's own foot at that column, so someone who walks up to the near parapet has
+   *  their shoes behind its coping. Before, the whole bridge was always under their feet and they stood on top of
+   *  the wall (drawing order, 18 Nov 2026). The strips are the base's own pixels: nothing changes until then. */
+  function bridgeFront(scene, h, o, baseKey, box, baseX, baseY, crossing) {
+    const deck = typeof gardenIslandCrossingGeometry === 'function' ? gardenIslandCrossingGeometry().find(c => c.crossing.id === crossing.id) : null;
+    if (!deck || !deck.length || !baseKey) return;
+    const [x0, y0, , y1] = box, hw = deck.halfWidth, ux = (deck.b.x - deck.a.x) / deck.length, uy = (deck.b.y - deck.a.y) / deck.length;
+    if (ux < .3) return;   // (the painter draws the face on this side: only when that side is the near one)
+    const xa = deck.a.x - uy * hw, xb = deck.b.x - uy * hw, STRIP = 8, texH = Math.ceil((y1 - y0) * K);
+    for (let X = xa - 8; X < xb + 8; X += STRIP) {
+      const X1 = Math.min(xb + 8, X + STRIP), t = Math.max(0, Math.min(1, ((X + X1) / 2 - xa) / (xb - xa))), foot = deck.a.y + (deck.b.y - deck.a.y) * t + ux * hw;
+      // from the coping's top edge down (millBridge: the coping stands 9 px and the hump over the parapet's foot, set
+      // 2.5 px in; the end piers a little higher): never the setts of the road above it, which would cover the legs
+      const end = (X + X1) / 2 < xa + 7 || (X + X1) / 2 > xb - 7, TOP = end ? 18 : 12.5 + 4.5 * Math.sin(Math.PI * t);
+      const u = Math.round((X - baseX - x0) * K), v = Math.max(0, Math.round((foot - TOP - baseY - y0) * K)), w = Math.round((X1 - X) * K);
+      if (u < 0 || w < 1 || v >= texH) continue;
+      const im = image(scene, baseKey, baseX, baseY); if (!im) continue;
+      if (!o.standing) { im.destroy(); return; } im.setCrop(u, v, w, texH - v); h.standing(im, foot + 2);
+    }
+  }
   function gateSignature(g, open, sc) { let have = ''; try { const rule = !open && typeof gardenGateRule === 'function' ? gardenGateRule(g) : null; if (rule && typeof gardenGateHas === 'function' && gardenGateHas(rule.key)) have = '|have'; } catch (e) { /* the sign as before */ } return 'painted-gate-4|' + g.id + '|' + gateKind(g) + '|' + (open ? 'open' : 'shut') + '|' + sc.season + '|' + (g.crossSpan || []).join(';') + have; }
   /** A gate as a handle. open: the region beyond is yours. */
   function gate(scene, g, sc, o, open) {
@@ -755,10 +780,62 @@ window.GardenPaintedProps = (function () {
     // The stone deck belongs to its authored crossing; the sign and inspection
     // remain at crossSpan. The blocker draws its own offset to the locked neck.
     const baseX = crossing ? crossing.x * o.W.cellW : frame.x, baseY = crossing ? o.W.sky + crossing.y * o.W.cellH : frame.y;
-    const lib = layer => { for (const [id, v, size, dx, dy, where] of art.lib) if (where === layer) h.add(libImage(scene, id, v, season, size, frame.x + dx, frame.y + dy, false)); };
+    // (a tree or boulder that stands behind the gate's own line sorts by its own foot, not the gate's: someone
+    // walking between the two was drawn behind the tree they stood in front of: drawing order, 18 Nov 2026)
+    const lib = layer => { for (const [id, v, size, dx, dy, where] of art.lib) if (where === layer) { const im = libImage(scene, id, v, season, size, frame.x + dx, frame.y + dy, false); if (im && dy < -4 && kind !== 'bridge') h.standing(im, frame.y + dy); else h.add(im); } };
     lib('back');
     const base = image(scene, baseKey, baseX, baseY);
-    if (!(kind === 'bridge' ? h.ground(base) : h.add(base))) { h.destroy(); return null; }
+    // An open arch seen side-on has one trunk beyond the path and one this side of it, a good step apart, and it
+    // sorted as one thing by the path's middle: on the near half of the path you were drawn in front of the trunk you
+    // stood behind (drawing order, 18 Nov 2026). Its picture goes in as two halves, each by its own trunk's foot
+    // (the side-on drawing puts them at -/+ 0.8 S either side of the crossing line: elevation()).
+    // Shut, the whole gate is drawn over everyone (it stands in the mist of the land behind it), and walking up the lane
+    // to the hurdle you vanished behind the near trunk and its leaves: the first gate every new player walks to (the
+    // verifier, 18 Nov 2026). The near half stands on your side of the hurdle, clear of the mist, so it sorts by its own
+    // trunk and thins over you exactly as it does when the gate is open; the far half stays with the shut gate.
+    let split = null;
+    const halves = art.side && (kind === 'arch' || kind === 'ruin') && o.standing && base ? (() => {
+      const [bx0, by0, bx1, by1] = art.box, texW = Math.ceil((bx1 - bx0) * K), texH = Math.ceil((by1 - by0) * K), mid = Math.round(-bx0 * K), near = image(scene, baseKey, baseX, baseY);
+      if (!near || mid < 2 || mid > texW - 2) { if (near) near.destroy(); return false; }
+      base.setCrop(0, 0, mid, texH); near.setCrop(mid, 0, texW - mid, texH);
+      const nearDepth = frame.y + art.S * .8 + 2;
+      split = { mid, texW, texH, nearDepth, fadeWith: [] };
+      if (open) h.standing(base, frame.y - art.S * .8 + 2, true); else h.add(base);
+      h.standing(near, nearDepth, true);
+      // Walking through, you pass behind the near trunk and its leaves: they thin while they cover you, like any
+      // crown you stand under, so you never vanish behind your own gate.
+      // (the near half's paint, read once into memory at a quarter size the first time you come up to the arch. Asking
+      // the texture for a pixel reads it back from its canvas every time: five reads a frame while you stood in the arch,
+      // 3 ms a frame and now and then 30, which showed as a long task when walking through. Measured 18 Nov 2026.)
+      let mask = null;
+      const alphaAt = (u, v) => {
+        if (!mask) {
+          mask = { a: null, w: 0, h: 0 };
+          try {
+            const src = scene.textures.get(baseKey).getSourceImage(), w = Math.max(1, Math.ceil(texW / 4)), hh = Math.max(1, Math.ceil(texH / 4)), c = document.createElement('canvas'); c.width = w; c.height = hh;
+            const cx = c.getContext('2d', { willReadFrequently: true }); cx.drawImage(src, 0, 0, w, hh);
+            const d = cx.getImageData(0, 0, w, hh).data, al = new Uint8Array(w * hh); for (let i = 0; i < al.length; i++) al[i] = d[i * 4 + 3];
+            mask = { a: al, w, h: hh };
+          } catch (e) { /* no picture to read: the arch stays whole */ }
+        }
+        if (!mask.a) return 0;
+        return mask.a[Math.min(mask.h - 1, Math.floor(v / texH * mask.h)) * mask.w + Math.min(mask.w - 1, Math.floor(u / texW * mask.w))];
+      };
+      h.move(near, im => {
+        if (typeof _gw === 'undefined' || !im.active) return;
+        const X = _gw.px * o.W.cellW, Y = o.W.sky + _gw.py * o.W.cellH; let hide = false;
+        if (Y < nearDepth && Y > baseY + by0 && X > baseX - 12 && X < baseX + bx1 + 12) for (const [dx, dy] of [[0, -10], [0, -30], [-7, -22], [7, -22], [0, -46]]) {
+          const u = Math.round((X + dx - baseX - bx0) * K), v = Math.round((Y + dy - baseY - by0) * K);
+          if (u >= mid && u < texW && v >= 0 && v < texH && alphaAt(u, v) >= 96) { hide = true; break; }
+        }
+        const want = hide ? (typeof GARDEN_CROWN_FADE === 'number' ? GARDEN_CROWN_FADE : .45) : 1, now = im._gppFade == null ? 1 : im._gppFade;
+        im._gppFade = Math.abs(want - now) < .03 ? want : now + (want - now) * .25; im.setAlpha(im._gppFade); if (base.active) base.setAlpha(im._gppFade);   // (the whole arch thins together: one half alone left a hard line down its leaves)
+        for (const f of split.fadeWith) if (f.active) f.setAlpha(im._gppFade);
+      });
+      return true;
+    })() : false;
+    if (!halves && !(kind === 'bridge' ? h.ground(base) : h.add(base))) { h.destroy(); return null; }
+    if (kind === 'bridge' && crossing) ok(() => bridgeFront(scene, h, o, baseKey, art.box, baseX, baseY, crossing));
     lib('front');
     const was = gateSeen.get(g.id); gateSeen.set(g.id, !!open);
     const blockKey = bake(scene, stem + '|block', art.box, B => art.blocker(B));
@@ -767,10 +844,22 @@ window.GardenPaintedProps = (function () {
     const signBox = [-40, -30, 40, 26], signKey = bake(scene, 'gatesign|' + (lv || 0) + '|' + need + (have ? '|have' : ''), signBox, B => needSign(B, 0, 0, lv, need, have));
     const sx = frame.x + (art.side ? 0 : 0), sy = frame.y - (kind === 'arch' ? 84 : kind === 'stair' ? 74 : kind === 'ruin' ? 72 : 70) + (art.side && kind !== 'stair' && kind !== 'arch' && kind !== 'ruin' ? -art.half * .2 : 0);
     if (!open) {
-      h.add(image(scene, blockKey, frame.x, frame.y));
+      // (shut and seen side on, the hurdle and its brambles run from the far trunk to the near one. Drawn whole over
+      // everyone, they hid you a step to the near side of the hurdle (the audit's shut-gate drawing order, 19 Nov 2026):
+      // their near half sorts and thins with the near trunk, the far half stays with the shut gate)
+      const blk = image(scene, blockKey, frame.x, frame.y), nb = split && blk && baseX === frame.x && baseY === frame.y ? image(scene, blockKey, frame.x, frame.y) : null;
+      if (nb) { blk.setCrop(0, 0, split.mid, split.texH); nb.setCrop(split.mid, 0, split.texW - split.mid, split.texH); h.add(blk); h.standing(nb, split.nearDepth, true); split.fadeWith.push(nb); }
+      else h.add(blk);
       const sign = h.add(image(scene, signKey, sx, sy)); sign.setScale(1.7 / K);
-      // the sign sways on its hooks, barely
-      h.move(sign, (node, t, motion) => { if (motion) node.setRotation(Math.sin(t * 1.3) * .03); });
+      // the sign sways on its hooks, barely; it hangs over everyone, so it thins while you stand behind it (a step past
+      // the shut Forest arch you vanished behind its sign: the verifier, 18 Nov 2026)
+      h.move(sign, (node, t, motion) => {
+        if (motion) node.setRotation(Math.sin(t * 1.3) * .03);
+        if (typeof _gw === 'undefined' || !node.active) return;
+        const X = _gw.px * o.W.cellW, Y = o.W.sky + _gw.py * o.W.cellH, w = node.displayWidth / 2, hh = node.displayHeight / 2;
+        const want = Math.abs(X - sx) < w - 4 && Math.abs(Y - 26 - sy) < hh ? .5 : 1, now = node.alpha;   // (only while it covers the middle of your body: standing at the hurdle you read it whole)
+        if (Math.abs(want - now) > .01) node.setAlpha(Math.abs(want - now) < .03 ? want : now + (want - now) * .25);
+      });
     } else if (was === false) {
       // it has just opened: the barrier goes and the sign drops away
       const block = h.add(image(scene, blockKey, frame.x, frame.y)), sign = h.add(image(scene, signKey, sx, sy)); sign.setScale(1.7 / K);
@@ -837,7 +926,7 @@ window.GardenPaintedProps = (function () {
     });
     // trees on the scarp top are the library's own, like the planting round them (their trunks join the one trunk list: gateTrees)
     fallsFeet = [];
-    for (const [id, v, hh, dx, dy] of (fed ? [[season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 96, -S + 10], ['tree.pine', 1, 120, 150, -S - 4]] : [['tree.pine', 0, 150, -84, -S + 8], [season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 86, -S + 14], ['tree.pine', 1, 120, 30 + Wd / 2, -S - 6]])) { h.add(libImage(scene, id, v, season, { h: hh }, ax + dx, ay + dy, false)); fallsFeet.push([+((ax + dx) / o.W.cellW).toFixed(2), +((ay + dy - o.W.sky) / o.W.cellH).toFixed(2), hh > 140 ? .5 : .4]); }
+    for (const [id, v, hh, dx, dy] of (fed ? [[season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 96, -S + 10], ['tree.pine', 1, 120, 150, -S - 4]] : [['tree.pine', 0, 150, -84, -S + 8], [season === 'winter' ? 'tree.birch' : 'tree.green-birch', 1, 110, 86, -S + 14], ['tree.pine', 1, 120, 30 + Wd / 2, -S - 6]])) { h.standing(libImage(scene, id, v, season, { h: hh }, ax + dx, ay + dy, false), ay + dy); fallsFeet.push([+((ax + dx) / o.W.cellW).toFixed(2), +((ay + dy - o.W.sky) / o.W.cellH).toFixed(2), hh > 140 ? .5 : .4]); }
     const base = h.add(image(scene, baseKey, x, y));
     // The fixed falls' canvas includes empty padding beside the cave stair.
     // Keep its solid rock/sheet mask once per existing texture; frame probes
@@ -920,6 +1009,32 @@ window.GardenPaintedProps = (function () {
   /** The trees the crossings' art stands beside (the stair's cherries, the pass's pine, the ruin's yew), as trunk feet
    *  in cells ([x, y, width]) for the one trunk-collision list (94-garden-world-0walk.js _gwPaintedTrunks). The same
    *  numbers gateArt uses; a tree stands whether the gate is open or not. */
+  /** The crossings' standing stonework as boxes the feet cannot enter, in cells ({x0, y0, x1, y1, src}), from the same
+   *  numbers the drawings use (gateArt, ruinedArch): the Ruined arch's piers and the wall stubs beside them, the Orchard
+   *  stair's stone cheeks and oak posts, the cairn by the pass. They stand whether the gate is open or shut. */
+  let gateFeetMemo = null;
+  function gateFeet() {
+    const D = typeof gardenIslandData === 'function' ? gardenIslandData() : null; if (!D || !D.gates || typeof _gldIslandGateFrame !== 'function') return [];
+    if (gateFeetMemo && gateFeetMemo.d === D) return gateFeetMemo.out;
+    const W = GARDEN_WORLD, out = [], box = (g, x0, y0, x1, y1, what) => out.push({ x0: x0 / W.cellW, y0: (y0 - W.sky) / W.cellH, x1: x1 / W.cellW, y1: (y1 - W.sky) / W.cellH, src: (g.name || g.id) + ' (' + what + ')' });
+    for (const g of D.gates) {
+      const frame = g.crossSpan ? ok(() => _gldIslandGateFrame(g)) : null; if (!frame) continue;
+      const kind = gateKind(g), side = Math.abs(frame.uy) > Math.abs(frame.ux), half = Math.max(46, Math.min(80, frame.span * .62)); if (side) continue;   // (seen side on, the arch's trunks are in the trunk list and the bridge is its crossing's)
+      // (the ruin's reach +20: the wall stub's last stones stand a few pixels past its end)
+      if (kind === 'ruin') { const pw = Math.max(12, half * .3), reach = half + pw + half * .7 + 20; for (const s of [-1, 1]) box(g, frame.x + (s < 0 ? -reach : half), frame.y - 8, frame.x + (s < 0 ? -half : reach), frame.y + 1, s < 0 ? 'west pier and wall' : 'east pier and wall'); }
+      else if (kind === 'stair') { const sw = half * 1.55, dy = 52, top = dy - 6 * 9; for (const s of [-1, 1]) box(g, frame.x + (s < 0 ? -(sw + 47) : sw - 5), frame.y + top - 6, frame.x + (s < 0 ? -(sw - 5) : sw + 47), frame.y + dy, s < 0 ? 'west cheek and post' : 'east cheek and post'); }
+      else if (kind === 'pass') {
+        // the cairn (stacked from frame.y - 2 up; its bottom stone's foot lies 2 to 4 px below that)
+        box(g, frame.x + half + 36 - 10, frame.y - 7, frame.x + half + 36 + 9, frame.y + 5, 'cairn');
+        // the two big boulders either side of the col (art.lib: rock.boulder 100 px at -half, 2 and 110 px at +half, 4; each
+        // is drawn about two fifths of its library width across, its foot a pixel or two below its point). They had no
+        // block and were walked over (the collision audit, 19 Nov 2026). The col between them stays open.
+        for (const [s, w, dy] of [[-1, 100, 2], [1, 110, 4]]) { const c = frame.x + s * half + (s < 0 ? -2 : .5), r = w * .2 + 1; box(g, c - r, frame.y + dy - 10, c + r, frame.y + dy + 2, s < 0 ? 'west boulder' : 'east boulder'); }
+      }
+    }
+    gateFeetMemo = { d: D, out };
+    return out;
+  }
   let gateTreesMemo = null, fallsFeet = [];
   function gateTrees() {
     const D = typeof gardenIslandData === 'function' ? gardenIslandData() : null; if (!D || !D.gates || typeof _gldIslandGateFrame !== 'function') return [];
@@ -929,10 +1044,10 @@ window.GardenPaintedProps = (function () {
       const frame = g.crossSpan ? ok(() => _gldIslandGateFrame(g)) : null; if (!frame) continue;
       const art = ok(() => gateArt(gateKind(g), g, frame, 'summer', true, null)); if (!art) continue;
       for (const [id, , size, dx, dy] of art.lib) if (/^tree\./.test(id)) out.push([+((frame.x + dx) / W.cellW).toFixed(2), +((frame.y + dy - W.sky) / W.cellH).toFixed(2), size.h > 140 ? .5 : .4]);
-        else if (/^rock\./.test(id) && size.w) out.push([+((frame.x + dx) / W.cellW).toFixed(2), +((frame.y + dy + size.w * .26 - W.sky) / W.cellH).toFixed(2), +(size.w * .5 / W.cellW).toFixed(2)]);   // (the pass's boulders, drawn from their middle: a block along their foot, half the stone wide)
+        else if (/^rock\./.test(id) && size.w) out.push([+((frame.x + dx) / W.cellW).toFixed(2), +((frame.y + dy + 1 - W.sky) / W.cellH).toFixed(2), +(size.w * .5 / W.cellW).toFixed(2)]);   // (the pass's boulders stand on (dx, dy) like the trees do: a block along that foot, half the stone wide. It used to sit a quarter of the stone's width lower, most of a row below the drawn boulder: the collision audit, 18 Nov 2026)
     }
     gateTreesMemo = { d: D, out };
     return out.concat(fallsFeet);
   }
-  return { gateTrees, gatePreview, kit, decorTable: DECOR, paintTable: PAINT, memory, glowPool, prop, signature, decor, decorSignature, decorKnown, gate, gateSignature, gateKind, falls, poolKey, image, status, get lastError() { return lastError; } };
+  return { gateTrees, gateFeet, gatePreview, kit, decorTable: DECOR, paintTable: PAINT, memory, glowPool, prop, signature, decor, decorSignature, decorKnown, gate, gateSignature, gateKind, falls, poolKey, image, status, get lastError() { return lastError; } };
 })();

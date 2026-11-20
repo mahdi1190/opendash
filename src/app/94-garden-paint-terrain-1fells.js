@@ -21,6 +21,9 @@ window.GardenPaintedTerrain = (function () {
   const K = 1.5, CHUNK = 256, DEPTH = -9350;
   const GORGE_WATER = true;                // the gorge's water is painted with its walls; false leaves a hole for the water painter
   let current = null, sprites = [], lastError = null, stats = {}, trunkFeet = [];
+  // The old sheepfolds of the high pasture: [x, y, radius in cells, the ring steps (of 40) left out for the gateway: after, before].
+  // One list for the painting (compose, 3b) and for walking (94-garden-world-0walk.js gardenWalkFolds): the ring stops the feet.
+  const FOLDS = Object.freeze([[57.4, 18.6, 1.6, 33, 37], [54.6, 15.8, 1.2, 33, 37]]);
   const ok = f => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
 
   const BASE = { rock: '#a49a8c', rockLo: '#7d7468', rockHi: '#c9c1b0', rockDk: '#4e473f', lichen: '#c9c48a', moss: '#7d8f4e', peat: '#5a4636', path: '#c4b089', pathLo: '#9c8a66', pathHi: '#dccfac', snow: '#fbfbf7', snowSh: '#c8d6e6', snowDk: '#a9bccf', pine: '#3c5a3a', pineHi: '#58784a', bark: '#b06a3a', water: '#6d9fb0', shallow: '#93bfbd', foam: '#eef2e2', cave: '#1d2224' };
@@ -137,17 +140,25 @@ window.GardenPaintedTerrain = (function () {
         }
       });
     });
-    // 3b. Outcrops (flat gritstone slabs breaking the turf, ground-level: you walk over them) and the old sheepfolds of the high pasture.
+    // 3b. Outcrops (gritstone slabs breaking the turf) and the old sheepfolds of the high pasture. The slabs were meant
+    //     as ground you walk over, but each is painted with a dark underside and a lit top and reads as a boulder up to
+    //     your thigh (the verifier, 18 Nov 2026: "drawn rocks with no red"): they stop the feet now (standing()).
     const routeNear = (x, y, d) => L.routes.some(rt => rt.points.some((p, i) => i % 3 === 0 && Math.abs(p.x - x) < d && Math.abs(p.y - y) < d * .7));
     const crops = [[67.2, 18.2, 6, 1.2], [75.6, 16.8, 6, 1.3], [68.8, 19.6, 4, .9], [73.6, 19.2, 4, .8]].map(([x, y, n, sc]) => ({ x: x * cw, y: W.sky + y * ch, n, s: sc })); { const rr = kit.rng(5150); for (let k = 0; k < 60 && crops.length < 26; k++) { const x = (4 + rr() * 74) * cw, y = W.sky + (3 + rr() * 16) * ch; if (fellAt(x, y) && !routeNear(x, y, 60) && !L.peaks.some(pk => { const b = kit.bboxOf(pk.pts, 40); return x > b[0] && x < b[2] && y > b[1] && y < b[3]; })) crops.push({ x, y, n: 3 + Math.floor(rr() * 5), s: .7 + rr() * .8 }); } }
+    // (no slab on a path's drawn width: the pass's outcrops lay across its path, so as blocks they shut it, and walked over
+    // they were rocks you stood in (the collision audit, 19 Nov 2026). The paths as drawn: the same band walking reads.)
+    const ways = ok(() => (gardenIslandData().routes || []).filter(rt => rt.points && rt.points.length > 1).map(rt => ({ pts: gardenIslandRoutePath(rt).points, rad: gardenIslandRoadStyle(rt).radius * cw }))) || [];
+    const onWay = (X, Y, rx, ry) => ways.some(R => { const x = X / cw, y = (Y - W.sky) / ch; for (let i = 1; i < R.pts.length; i++) { const p = R.pts[i - 1], q = R.pts[i], ax = (q.x - p.x) * cw, ay = (q.y - p.y) * ch, bx = (x - p.x) * cw, by = (y - p.y) * ch, LL = ax * ax + ay * ay || 1, t = Math.max(0, Math.min(1, (ax * bx + ay * by) / LL)), dx = bx - ax * t, dy = by - ay * t, d = Math.hypot(dx, dy) || 1; if (d < R.rad + 4 + Math.hypot(rx * dx / d, ry * dy / d)) return true; } return false; });
     for (const c of crops) add([c.x - 70, c.y - 40, c.x + 70, c.y + 40], 170 + Math.round(c.x), (B, r) => {
       clipFell(B); const sn = snowAt(c.x, c.y) > .6;
       for (let k = 0; k < c.n; k++) { const x = c.x + (r() - .5) * 80 * c.s, y = c.y + (r() - .5) * 30 * c.s, rx = (8 + r() * 14) * c.s, ry = rx * (.34 + r() * .14);
+        if (onWay(x, y + 1.2, rx + 1, ry + 1.2)) continue;
+        if (B.stand) B.stand(x + 1, y + 1.2, rx + 1, ry + 1.2);   // (for walking: standing() below; nothing is drawn by it)
         B.f(B.blob(r, x + 2, y + 2.4, rx, ry, 8, .3), P.rockDk, .45).f(B.blob(r, x, y, rx, ry, 8, .3), P.rockLo).f(B.blob(r, x - rx * .12, y - ry * .3, rx * .86, ry * .66, 8, .3), P.rock).f(B.blob(r, x - rx * .3, y - ry * .45, rx * .4, ry * .25, 6, .4), sn ? P.snow : P.rockHi, .8);
         B.s(`M${x - rx * .2} ${y - ry * .6}l${rx * .15} ${ry * 1.1}`, P.rockDk, .9, .5);
         if (!sn) { if (r() < .5) B.f(B.blob(r, x + rx * .3, y - ry * .2, rx * .25, ry * .2, 6, .5), P.lichen, .6); B.tufts(r, x, y + ry * .8, rx * 1.6, 5, [P.fellLo, P.bleach], 5); if (moor(x) > .3) B.heather(r, x + rx * .9, y + ry * .5, 4 + r() * 3, P, P.bloom); } }
     });
-    for (const [fx, fy, frx] of [[57.4, 18.6, 1.6], [54.6, 15.8, 1.2]]) { const c = L.cpt(fx, fy), RX = frx * cw, RY = frx * ch * .95;
+    for (const [fx, fy, frx] of FOLDS) { const c = L.cpt(fx, fy), RX = frx * cw, RY = frx * ch * .95;
       add([c.x - RX - 20, c.y - RY - 20, c.x + RX + 20, c.y + RY + 24], 190 + fx, (B, r) => {
         clipFell(B); const sn = snowAt(c.x, c.y) > .6, ring = []; for (let k = 0; k <= 40; k++) { const a = k / 40 * Math.PI * 2; if (k > 33 && k < 37) { ring.push(null); continue; } ring.push({ x: c.x + Math.cos(a) * RX, y: c.y + Math.sin(a) * RY }); }
         // the fold's turf is greener (sheltered), then the wall: a shaded outer face to the south, the stones, the cope
@@ -594,6 +605,7 @@ window.GardenPaintedTerrain = (function () {
     const season = sc.season || 'summer', sig = 'gpt-3|' + season + '|' + (GardenIslandLayout.fingerprint || '');
     const old = current; if (old) { old.roomEntrances = null; old.handle.destroy(old.sig === sig); for (const s of sprites) s.destroy(); sprites = []; if (old.sig !== sig) for (const k of old.spriteKeys) if (scene.textures.exists(k)) scene.textures.remove(k); }
     const ops = ok(() => compose(L, season)); if (!ops) return null;
+    standOps = ops.filter(o => /\.boulder\(|\.stand\(/.test(String(o.draw))); standMemo = null; standSigNow = sig;
     const rb = kit.bboxOf(L.regionLoops.flat().concat(L.terraces.flatMap(t => t.pts)));
     const box = { x: 0, y: W.sky - 150, w: W.cols * W.cellW, h: Math.min(W.sky + W.rows * W.cellH, rb[3] + 80) - (W.sky - 150) };
     const handle = kit.chunked(scene, parent, ops, { key: sig, box, K, chunk: CHUNK, depth: DEPTH, budgetMB: 40 });
@@ -610,6 +622,39 @@ window.GardenPaintedTerrain = (function () {
     current = { sig, handle, spriteKeys: keys, roomEntrances: L.falls && L.falls.caveStair ? { falls: caveMouthAt(L, L.falls.caveStair) } : {} };
     stats = { sig, chunks: handle.chunks, buildMs: Math.round(performance.now() - t0), sprites: sprites.length, spritePx };
     return { destroy() { handle.destroy(true); for (const s of sprites) s.destroy(); sprites = []; current = current && current.handle === handle ? Object.assign(current, { handle: { destroy() {} }, roomEntrances: null }) : current; } };
+  }
+  /**
+   * The rocks the ground painting stands up out of the turf, in cells, for walking: the brush's boulders (a top, a lit
+   * face, a shaded face and a contact shadow; knee high and more) as boxes [x0, y0, x1, y1], and the outcrops' slabs as
+   * ovals { x, y, rx, ry }. They were paint only: you walked straight over each one and were drawn on top of it (the
+   * verifier, 18 Nov 2026). Each is the whole drawn rock, so nobody stands half behind one. Found by painting the ground
+   * ops that draw them once more into a scrap canvas, with a brush that writes each rock down (the same seeds, so the
+   * same rocks); worked out once per painting, when walking first asks. Only rocks on the fells' own ground count (the
+   * drawing is clipped to it); pebbles (the brush's stone) stay walked over.
+   */
+  let standOps = null, standMemo = null, standSigNow = '';
+  // px: smaller than this is a stone you step over (the brush's smallest boulders, 7 to 12 px, are smaller than your feet:
+  // as blocks they were little walls with next to nothing drawn on them, the collision audit, 19 Nov 2026)
+  const STAND_MIN = Object.freeze({ w: 13, h: 7 });
+  function standing() {
+    const kit = KIT(); if (!kit || !wanted() || !standOps) return [];
+    if (standMemo && standMemo.sig === standSigNow) return standMemo.list;
+    const W = GARDEN_WORLD, list = [], c = document.createElement('canvas'); c.width = c.height = 2; const cx = c.getContext('2d'), B = kit.brush(cx), draw = B.boulder;
+    // (a slab or boulder painted on a path is flat in the path's ground and walked over: four of the outcrops stand on the
+    // pass's own path, and as blocks they shut it, so click-to-walk up to the grotto stood still: the collision audit, 19 Nov 2026)
+    const ways = (gardenIslandData().routes || []).filter(r => r.points && r.points.length > 1).map(r => ({ pts: gardenIslandRoutePath(r).points, rad: gardenIslandRoadStyle(r).radius * W.cellW }));
+    const onWay = (X, Y, half) => ways.some(R => { const x = X / W.cellW, y = (Y - W.sky) / W.cellH; for (let i = 1; i < R.pts.length; i++) { const p = R.pts[i - 1], q = R.pts[i], ax = (q.x - p.x) * W.cellW, ay = (q.y - p.y) * W.cellH, bx = (x - p.x) * W.cellW, by = (y - p.y) * W.cellH, L = ax * ax + ay * ay || 1, t = Math.max(0, Math.min(1, (ax * bx + ay * by) / L)); if (Math.hypot(bx - ax * t, by - ay * t) < R.rad + half + 4) return true; } return false; });
+    const mine = (X, Y) => { const gx = X / W.cellW, gy = (Y - W.sky) / W.cellH; if (gx < 0 || gy < 0 || gx >= W.cols || gy >= W.rows || typeof gardenIslandRegionAt !== 'function') return false; const reg = gardenIslandRegionAt(gx, gy); return !!(reg && ownsRegion(reg.id)) && (typeof gardenIslandLandContains !== 'function' || gardenIslandLandContains(gx, gy)); };
+    B.boulder = function (r, x, y, w, h) {
+      if (w >= STAND_MIN.w && h >= STAND_MIN.h) { const m = cx.getTransform(), X = m.a * x + m.c * y + m.e, Y = m.b * x + m.d * y + m.f; if (mine(X, Y - h / 2) && !onWay(X, Y - h / 2, w * .5)) list.push([+((X - w * .52) / W.cellW).toFixed(3), +((Y - h - W.sky) / W.cellH).toFixed(3), +((X + w * .5) / W.cellW).toFixed(3), +((Y - W.sky) / W.cellH).toFixed(3)]); }
+      return draw.apply(B, arguments);
+    };
+    // (a slab is never painted on a path now (compose 3b), so every slab that is drawn stops the feet: one a little way
+    // off the pass path was still left out here and walked over, the collision audit, 19 Nov 2026)
+    B.stand = function (x, y, rx, ry) { const m = cx.getTransform(), X = m.a * x + m.c * y + m.e, Y = m.b * x + m.d * y + m.f; if (mine(X, Y)) list.push({ x: +(X / W.cellW).toFixed(3), y: +((Y - W.sky) / W.cellH).toFixed(3), rx: +(rx / W.cellW).toFixed(3), ry: +(ry / W.cellH).toFixed(3) }); };
+    for (const o of standOps) ok(() => { cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); try { o.draw(B, kit.rng(o.seed || 1), o.bb); } finally { cx.restore(); cx.filter = 'none'; cx.globalAlpha = 1; } });
+    standMemo = { sig: standSigNow, list };
+    return list;
   }
   /**
    * The showcase: paint a box of the high ground straight into a 2D context (no scene needed), the ground then the
@@ -648,6 +693,32 @@ window.GardenPaintedTerrain = (function () {
     const h = current && current.handle, px = (h && h.texturePx || 0) + (stats.spritePx || 0);
     return Object.assign({}, stats, { wanted: wanted(), pending: h ? h.pending : null, live: h ? h.live : null, baked: h ? h.baked : null, evicted: h ? h.evicted : null, worstChunkMs: h ? h.worstMs : null, worstSliceMs: h ? h.sliceWorstMs : null, p95ChunkMs: h ? h.p95 : null, medianChunkMs: h ? h.median : null, bakeMs: h ? h.bakeMs : null, textureMB: Math.round(px * 4 / 1048576 * 10) / 10, lastError: lastError || (KIT() && KIT().lastError) });
   }
+  /**
+   * Is a point (cells) inside the gorge's channel but drawn as its rock, not its open water? The layout's water runs the
+   * channel's whole width (hw + .1 on the far side, hw + .05 on the near); the painting stands the far wall from that edge
+   * down to farIn (hw * (1 - 2 depth) from the middle, deeper towards the falls) and the near lip's undercut in to
+   * nearIn (hw * .78): gorgeOps above, the same numbers. A float cast at a cell centre in that band landed on the drawn
+   * stone bank (the verifier, 18 Nov 2026). Margin: a float's own half width.
+   */
+  let gorgeMemo = null;
+  function gorgeCovers(x, y) {
+    if (!GORGE_WATER || !wanted()) return false;
+    const D = gardenIslandData(), g = D && D.presentation && D.presentation.rivers && D.presentation.rivers.gorge; if (!g || !g.line || g.line.length < 2) return false;
+    if (!gorgeMemo || gorgeMemo.g !== g) { const kit = KIT(); gorgeMemo = { g, line: kit.resample(g.line.map(p => ({ x: p[0], y: p[1] })), .14).map(p => [p.x, p.y]) }; }
+    const line = gorgeMemo.line, n = line.length, hw = g.halfWidth || .85;
+    let best = null;
+    for (let i = 0; i < n - 1; i++) {
+      const a = line[i], b = line[i + 1], dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L)), qx = a[0] + dx * t, qy = a[1] + dy * t, d = Math.hypot(x - qx, y - qy);
+      if (!best || d < best.d) best = { d, i: i + t, qx, qy, dx, dy };
+    }
+    if (!best || best.d > hw + .2) return false;
+    // (the channel is not painted out into the tarn it leaves: open water there is the tarn's)
+    const inLoop = pts => { let on = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) on = !on; } return on; };
+    if ((D.freshwater || []).some(w => !w.river && w.boundary && w.boundary.length > 2 && inLoop(w.boundary))) return false;
+    const l = Math.hypot(best.dx, best.dy) || 1, nx = -best.dy / l, ny = best.dx / l, s = ny < 0 ? 1 : -1, off = (x - best.qx) * nx * s + (y - best.qy) * ny * s;   // (+: toward the far wall)
+    const depth = .3 + best.i / (n - 1) * .16, margin = .1;
+    return off > hw * (1 - depth * 2) - margin || off < -hw * .78 + margin;
+  }
   function roomEntrance(id) { return current && current.roomEntrances && current.roomEntrances[id] || null; }
-  return { wanted, build, paintTo, profile, owns, ownsRegion, status, compose, readLayout, roomEntrance, PAL, trunks: () => (wanted() && trunkFeet) || null };
+  return { wanted, build, paintTo, profile, owns, ownsRegion, status, compose, readLayout, roomEntrance, PAL, trunks: () => (wanted() && trunkFeet) || null, folds: () => (wanted() ? FOLDS : []), standing, gorgeCovers, standSig: () => (wanted() && standOps ? standSigNow : '') };
 })();

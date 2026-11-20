@@ -10,6 +10,7 @@
 .gd-collide-key i.is-block { background: rgba(216, 67, 47, .45); border-color: #b13522; }
 .gd-collide-key i.is-water { background: rgba(47, 111, 216, .2); border-color: #2f6fd8; }
 .gd-collide-key i.is-click { background: transparent; border-color: #2a6fe0; }
+.gd-collide-key i.is-feet { width: 14px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, .6); border-color: #2b2118; }
 .gd-collide-key i.is-door { width: 10px; height: 10px; border-radius: 50%; background: #2fae4a; border-color: #fff; box-shadow: 0 0 0 1px #2fae4a; }
 .gd-collide-key button {
   margin-top: 3px; align-self: flex-start; padding: 4px 10px; font: inherit; font-size: 12px; color: var(--gu-wood-ink, #fff6e4);
