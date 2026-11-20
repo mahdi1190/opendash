@@ -248,7 +248,7 @@ window.GardenPaintTerrainKit = (function () {
     }
     if (!best) return; const S = best, K = S.want, t0 = performance.now();
     if (K <= S.K0) { plain(S); return; }
-    const [x0, y0, x1, y1] = S.box, w = Math.ceil((x1 - x0) * K), h = Math.ceil((y1 - y0) * K), c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d'); cx.setTransform(K, 0, 0, K, -x0 * K, -y0 * K);
+    const [x0, y0, x1, y1] = S.box, w = Math.ceil((x1 - x0) * K), h = Math.ceil((y1 - y0) * K), c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d', { willReadFrequently: true });   // (in memory: a canvas texture reads every pixel back as it is made, and from the graphics card that read was most of a 1.8 s stall while walking; round 3 integration, CPU profile) cx.setTransform(K, 0, 0, K, -x0 * K, -y0 * K);
     if (ok(() => (S.draw(brush(cx)), 1)) == null) { S.K0 = 99; return; }   // (it would not paint again: leave it as it is)
     const tex = S.key + '|x' + K; if (S.scene.textures.exists(tex)) S.scene.textures.remove(tex); S.scene.textures.addCanvas(tex, c);
     swap(S, tex, K);
@@ -258,7 +258,7 @@ window.GardenPaintTerrainKit = (function () {
     K = K || 1.5; let px = 0;
     if (!scene.textures.exists(key)) {
       const [x0, y0, x1, y1] = box, w = Math.ceil((x1 - x0) * K), h = Math.ceil((y1 - y0) * K); if (w < 2 || h < 2 || w > 4096 || h > 4096) return null;
-      const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d'); cx.setTransform(K, 0, 0, K, -x0 * K, -y0 * K);
+      const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d', { willReadFrequently: true }); cx.setTransform(K, 0, 0, K, -x0 * K, -y0 * K);   // (in memory: see sharpen)
       const d0 = performance.now(); if (ok(() => (draw(brush(cx)), 1)) == null) return null;
       scene.textures.addCanvas(key, c); px = w * h; firstMs.set(key, performance.now() - d0); if (firstMs.size > 600) firstMs.delete(firstMs.keys().next().value);
     }
