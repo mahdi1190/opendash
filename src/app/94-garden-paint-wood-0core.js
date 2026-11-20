@@ -86,7 +86,9 @@ window.GardenPaintWood = (function () {
       const species = def.trees.filter(([id]) => typeof sceneObj === 'function' && sceneObj(id));
       if (!species.length) continue;
       const total = species.reduce((a, s) => a + s[1], 0);
-      const clear = (x, y) => plazas.some(p => Math.hypot((x - p.x) / ((p.rx || 3.2) + 1), (y - p.y) / ((p.ry || 2.4) + 1)) < 1);
+      // (the old woodland's planting rules: no crown over its court, yards, garden, maze, chapel step or the view across the pond)
+      const treeless = (pres.oldwood && pres.oldwood.treeless || []).map(t => t.box);
+      const clear = (x, y) => plazas.some(p => Math.hypot((x - p.x) / ((p.rx || 3.2) + 1), (y - p.y) / ((p.ry || 2.4) + 1)) < 1) || treeless.some(b => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]);
       // the gates stay in view: no tree stands on a gate, nor where its crown would hide the arch, bridge or stair (the canopy rises up the screen)
       const fl = pres.falls, byGate = (x, y) => (data.gates || []).some(g => Math.abs(x - g.x) <= 3 && y - g.y >= -2 && y - g.y <= 5) || !!(fl && x >= fl.x - 3 && x <= fl.x + (fl.w || 3) + 2 && y >= fl.y - 1 && y <= fl.y + (fl.h || 3) + 4);   // (nor over Fleet Falls)
       const finds = typeof GARDEN_GATE_FINDS !== 'undefined' && typeof gardenGateFindPoint === 'function' ? GARDEN_GATE_FINDS.map(f => gardenGateFindPoint(f)).filter(Boolean) : [], byFind = (x, y) => finds.some(q => Math.abs(x + .5 - q.x) <= 2.5 && y + .5 - q.y >= -1 && y + .5 - q.y <= 3.5);   // (a find is never under a crown)
@@ -101,7 +103,12 @@ window.GardenPaintWood = (function () {
         // Land not yet bought in a wood is a wall to your feet: show it as one (brambles and holly in a knot), not open grass.
         // The map-wide rule (one look per kind of country): thicket in the woods (light and old), a post-and-rail fence
         // everywhere else, the valley meadow included (94-garden-paint-vale-1valley.js, which skips THICKET_WOODS).
-        if (def.mood !== 'meadow' && c.locked && c.row && /^l[sc]-/.test(c.row.id || '') && !c.plantingReserved && !isPath(c)) { thicket(out, x, y, px, py, region.id); continue; }
+        if (def.mood !== 'meadow' && c.locked && c.row && /^l[sc]-/.test(c.row.id || '') && !c.plantingReserved && !isPath(c)) {
+          // (layout round 3 fixes: in the old wood a shut plot is a tangle of bracken and fern, waist high, with a holly or
+          //  a bramble knot only here and there: a shrub on every cell stood in rows like a nursery)
+          if (def.mood === 'old' && h3(x, y, 61) > .38) { for (let k = 0; k < 2; k++) out.floors.push({ kind: 'stamp', id: h3(x, y, 62 + k) < .65 ? 'plant.bracken' : 'plant.fern', v: Math.floor(h3(x, y, 64 + k) * 3), h: 30 + h3(x, y, 66 + k) * 14, x: px(x + .25 + k * .5) + (h3(x, y, 68 + k) - .5) * 16, y: py(y + .55 + k * .4) + (h3(x, y, 70 + k) - .5) * 8 }); continue; }
+          thicket(out, x, y, px, py, region.id); continue;
+        }
         if (c.plantingReserved || isPath(c) || statics.has(x + ',' + y) || (c.row && c.row.plot && !c.locked) || clear(x + .5, y + .5) || byGate(x, y) || byFind(x, y)) continue;
         const grove = noise(x, y, 5, hash(region.id) & 1023), dense = noise(x, y, 2.2, 77), pathNear = near(x, y, 1, isPath), waterNear = near(x, y, 1, wet);
         // groves where the field is high, glades where it is low; a fringe of shrubs at path edges

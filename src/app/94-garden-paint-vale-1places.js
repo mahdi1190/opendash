@@ -166,6 +166,7 @@
     const { L, add, thing, kit } = C, W = L.W;
     for (const f of L.D.landforms || []) {
       if (!f.polygon || f.polygon.length < 4) continue;
+      if (f.brick) continue;   // (the walled garden's brick wall: 94-garden-paint-vale-1oldwood.js)
       if (f.kind === 'ruin-wall') {
         const n = f.polygon.length >> 1, a = f.polygon.slice(0, n).map(L.pt), b = f.polygon.slice(n).reverse().map(L.pt), m = Math.min(a.length, b.length);
         const mid = []; for (let i = 0; i < m; i += 2) mid.push({ x: (a[i].x + b[i].x) / 2, y: (a[i].y + b[i].y) / 2 });
@@ -196,7 +197,9 @@
     for (const i of segs) {
       const p = C2[i], q = C2[i + 1], L = Math.hypot(q.x - p.x, q.y - p.y) || 1, nx = -(q.y - p.y) / L * T, ny = (q.x - p.x) / L * T * .6, h0 = H[i], h1 = H[i + 1];
       const foot = [{ x: p.x + nx, y: p.y + ny }, { x: q.x + nx, y: q.y + ny }, { x: q.x - nx, y: q.y - ny }, { x: p.x - nx, y: p.y - ny }], hs = [h0, h1, h1, h0];
-      const up = (v, k) => ({ x: v.x - hs[k] * .32, y: v.y - hs[k] });   // a touch of oblique, so walls running north-south show their east face
+      // a touch of oblique, so walls running north-south show their east face; more the more north-south the stretch runs
+      // (critic 3: the postern wall, running north-south, leant a third of its height and read as a flat line of low stones)
+      const lean = .32 + .3 * Math.abs(q.y - p.y) / L, up = (v, k) => ({ x: v.x - hs[k] * lean, y: v.y - hs[k] });
       for (let e = 0; e < 4; e++) {
         if ((e === 1 && i < C2.length - 2) || (e === 3 && i > 0)) continue;   // the ends between two stretches are inside the wall
         const v0 = foot[e], v1 = foot[(e + 1) % 4], ex = v1.x - v0.x, ey = v1.y - v0.y, onx = ey, ony = -ex;   // outward normal for a clockwise loop
@@ -215,9 +218,9 @@
       B.f(B.poly(top), RUIN.body).f(B.poly(top), season === 'winter' ? '#f4f6f2' : RUIN.moss, season === 'winter' ? .9 : .55);
       if (season !== 'winter' && r() < .35) B.tufts(r, (top[0].x + top[2].x) / 2, (top[0].y + top[2].y) / 2 + 2, 10, 4, [RUIN.mossHi, '#8a9a58'], 6);
     }
-    // tumbled stones and ferns at the foot
-    // (round 3: against the wall's foot, where the feet stop, not a step out in front of it, where the feet stood on them)
-    for (let i = 0; i < C2.length; i++) { const p = C2[i]; if (r() < .6) B.stone(r, p.x + (r() - .5) * 16, p.y + 3 + r() * 4, 4 + r() * 4, 2.6 + r() * 1.6, ST, RUIN.moss); if (r() < .45) fern(B, r, p.x + (r() - .5) * 18, p.y + 6, season); }
+    // tumbled stones and ferns against the foot (layout round 3, critic 3: they lay up to half a cell out on the grass in front
+    // of the wall, where the feet walked over them; now they lean on the foot, where the wall stops the feet)
+    for (let i = 0; i < C2.length; i++) { const p = C2[i]; if (r() < .6) B.stone(r, p.x + (r() - .5) * 16, p.y + 1 + r() * 3, 4 + r() * 4, 2.6 + r() * 1.6, ST, RUIN.moss); if (r() < .45) fern(B, r, p.x + (r() - .5) * 18, p.y + 5, season); }
   }
   function fern(B, r, x, y, season) {
     const col = season === 'autumn' ? '#a8703a' : season === 'winter' ? '#8a6a4a' : '#4f7a3a', hi = season === 'autumn' ? '#c8904a' : '#7aa255';
@@ -230,7 +233,7 @@
   }
 
   /* ---------- plazas and the Great Oak ---------- */
-  const STYLE = { 'cider-square': 'setts', 'mill-yard': 'yard', 'ruin-court': 'broken', 'lakeside-terrace': 'flags', 'great-oak-clearing': 'litter', 'woodpile-yard': 'earth', 'arch-forecourt': 'earth' };
+  const STYLE = { 'cider-square': 'setts', 'mill-yard': 'yard', 'ruin-court': 'broken', 'postern-yard': 'broken', 'lakeside-terrace': 'flags', 'great-oak-clearing': 'litter', 'woodpile-yard': 'earth', 'arch-forecourt': 'earth' };
   function plazas(C) {
     const { L, P, add, kit, thing } = C, cw = L.cw, ch = L.ch;
     for (const pz of L.pres.plazas || []) {
@@ -351,10 +354,11 @@
       const c = L.cpt(ice.x + ice.w / 2, ice.y + ice.h);
       add([c.x - 120, c.y - 50, c.x + 120, c.y + 100], 73, (B, r) => {
         // a sunken way down to the door: two stone wing walls, worn steps, ferns and a drip of damp
-        const shape = `M${c.x - 26} ${c.y}L${c.x + 26} ${c.y}L${c.x + 40} ${c.y + 66}L${c.x - 40} ${c.y + 66}Z`;
+        // (layout round 3: four steps, so the way down ends at the round in front of the door and never runs on over the shore plots below it)
+        const shape = `M${c.x - 26} ${c.y}L${c.x + 26} ${c.y}L${c.x + 36} ${c.y + 42}L${c.x - 36} ${c.y + 42}Z`;
         B.f(shape, '#5e5a4c', .55);
-        for (let k = 0; k < 6; k++) { const y = c.y + 6 + k * 10, w = 26 + k * 2.4; B.f(B.rect(c.x - w, y, w * 2, 6), k % 2 ? '#a7a491' : '#bdb9a6').f(B.rect(c.x - w, y + 5, w * 2, 1.4), '#4e4a3e', .5); }
-        for (const s of [-1, 1]) for (let k = 0; k < 8; k++) { const t = k / 7, x = c.x + s * (28 + t * 16), y = c.y + t * 64; B.stone(r, x, y, 6, 4, { rock: RUIN.body, rockLo: RUIN.lo, rockHi: RUIN.hi, rockDk: RUIN.dk }, r() < .5 ? RUIN.moss : null); if (r() < .4) fern(B, r, x + s * 10, y + 4, C.season); }
+        for (let k = 0; k < 4; k++) { const y = c.y + 6 + k * 9, w = 26 + k * 2.4; B.f(B.rect(c.x - w, y, w * 2, 6), k % 2 ? '#a7a491' : '#bdb9a6').f(B.rect(c.x - w, y + 5, w * 2, 1.4), '#4e4a3e', .5); }
+        for (const s of [-1, 1]) for (let k = 0; k < 6; k++) { const t = k / 5, x = c.x + s * (28 + t * 12), y = c.y + t * 40; B.stone(r, x, y, 6, 4, { rock: RUIN.body, rockLo: RUIN.lo, rockHi: RUIN.hi, rockDk: RUIN.dk }, r() < .5 ? RUIN.moss : null); if (r() < .4) fern(B, r, x + s * 10, y + 4, C.season); }
         B.f(B.blob(r, c.x, c.y + 4, 22, 5, 7, .4), '#3e4a3a', .5);
       });
     }
@@ -402,6 +406,7 @@
   function logStack(B, r, P) {
     B.shadow(4, 1, 40, 6, .3);
     for (const x of [-34, 34]) B.f(B.rect(x - 2, -40, 4, 40), P.woodDk);
+    B.f(B.rr(-38, -3.4, 76, 4.4, 1.6), '#6a5034').f(B.rect(-38, -3.4, 76, 1.2), '#9a7a54', .7);   // (the sill log the stack stands on: its foot is as wide as its block)
     for (let row = 0; row < 5; row++) for (let k = 0; k < 7; k++) { const x = -29 + k * 9.6 + (row % 2) * 4.8, y = -5 - row * 8.4; if (x > 30) continue; B.f(B.circ(x, y, 4.6), '#8a6a46').f(B.circ(x - .4, y - .4, 3.6), '#d8b884').f(B.circ(x - .4, y - .4, 1.6), '#b8925e', .8); }
     B.f('M-40 -42L0 -52L42 -42L40 -38L0 -47L-38 -38Z', '#5e5040');
   }

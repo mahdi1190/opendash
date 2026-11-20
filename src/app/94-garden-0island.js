@@ -88,7 +88,9 @@ function gardenIslandOldWoodLamps(data) {
     return !(row && /^l[sct]-/.test(row.id || ''));
   };
   const out = [];
-  for (const [ax, ay, region] of _GD_OLDWOOD_LAMPS.map(p => p.concat('southwest-ruins')).concat(wood.map(p => [p[0], p[1], 'west-woods']))) {
+  // (layout round 3: the old woodland's own file names its lamps, one at every fork and door: presentation.oldwood.lamps)
+  const authored = data.presentation && data.presentation.oldwood && data.presentation.oldwood.lamps, spots = Array.isArray(authored) && authored.length ? authored.map(q => [q.x, q.y]) : _GD_OLDWOOD_LAMPS;
+  for (const [ax, ay, region] of spots.map(p => [p[0], p[1], 'southwest-ruins']).concat(wood.map(p => [p[0], p[1], 'west-woods']))) {
     let best = null;
     for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const x = Math.floor(ax) + dx, y = Math.floor(ay) + dy; if (!ok(x, y, region)) continue; const d = Math.hypot(x + .5 - ax, y + .5 - ay); if (!best || d < best.d) best = { x: x + .5, y: y + .7, d }; }
     if (best) out.push({ x: best.x, y: best.y, foot: { x0: best.x - .2, y0: best.y - .22, x1: best.x + .2, y1: best.y + .04 } });
