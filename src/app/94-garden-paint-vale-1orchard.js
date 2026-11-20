@@ -230,7 +230,7 @@
     // up the screen is seen end on, a row of bare stakes): each stretch a woven hazel panel with its face showing
     if (L.D.presentation && L.D.presentation.orchard && L.D.presentation.orchard.hurdle) for (const [x0, y0, x1, y1] of [[61, 36.15, 61 - 19 / cw, 38.4 - 24 / ch], [61 + 19 / cw, 38.4 + 24 / ch, 61, 40.2]]) {
       const top = L.cpt(x0, y0), foot = L.cpt(x1, y1), len = foot.y - top.y, dx = top.x - foot.x;
-      thing({ key: 'hurdle-fence', x: foot.x, y: foot.y, box: [Math.min(dx, 0) - 14, -len - 34, Math.max(dx, 0) + 14, 8], foot: [-.38 * cw, .38 * cw, len], draw: B => {
+      thing({ key: 'hurdle-fence', x: foot.x, y: foot.y, box: [Math.min(dx, 0) - 14, -len - 34, Math.max(dx, 0) + 14, 8], foot: [-.3 * cw, .3 * cw, len], draw: B => {   // (vale layouts merge: its block as wide as the panel's drift across the screen, not a cell out past the post it ends in)
         const r = kit.rng(Math.round(y0 * 10)), hgt = 24;
         B.f(B.poly([[dx + 4, -len + 2], [10, 3], [20, 1], [dx + 14, -len]]), '#22301a', .2);
         B.f(B.poly([[dx, -len], [0, 0], [0, -hgt], [dx, -len - hgt]]), '#7a5a34');

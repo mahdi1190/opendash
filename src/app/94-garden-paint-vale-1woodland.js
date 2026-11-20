@@ -169,6 +169,17 @@
     const near = (x, y, avoid) => { let best = null; for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const cx = Math.floor(x) + dx, cy = Math.floor(y) + dy; if (!ok(cx + .5, cy + .5) || (avoid && avoid(cx + .5, cy + .5))) continue; const d = Math.hypot(cx + .5 - x, cy + .5 - y); if (!best || d < best.d) best = { x: cx + .5, y: cy + .8, d }; } return best; };
     const used = [], clear = (x, y) => used.some(u => Math.hypot(u[0] - x, u[1] - y) < 1.2);
     const lamps = typeof gardenIslandOldWoodLamps === 'function' ? gardenIslandOldWoodLamps(L.D) : [];
+    // (vale layouts merge) the ground in front of two of the woods' buildings, flat under everything: Thistle's worn doorstep of old
+    // flags down to the loop, and the summer house's gravel. Each stood in the building's own picture, so its foot read as the
+    // building's base out on the path.
+    { const oh = L.stat('ld-oldhouse'), sh = L.stat('ld-house');
+      if (oh) { const p = L.cpt(oh.x + oh.w / 2, oh.y + oh.h), fx = p.x + 22, fy = p.y - 3;
+        add([fx - 24, fy, fx + 24, fy + 36], kit.hashStr('oldhouse-flags'), (B, r) => { for (let i = 0; i < 3; i++) { const x = fx + (r() - .5) * 8, y = fy + 10 + i * 9, w = 13 + r() * 5;
+          B.f(B.ell(x + 1, y + 1.6, w, 4.4), '#3a3a2a', .25).f(B.blob(r, x, y, w, 4, 7, .25), r() < .5 ? '#b4ab94' : '#a59c84').f(B.blob(r, x - 2, y - 1, w * .6, 1.8, 6, .3), '#cfc6ae', .7);
+          if (season !== 'winter') B.f(B.blob(r, x + w * .7, y + 1, 4, 1.6, 6, .5), '#6f8a42', .8); } }); }
+      if (sh) { const p = L.cpt(sh.x + sh.w / 2, sh.y + sh.h), fx = p.x, fy = p.y - 3;
+        add([fx - 96, fy - 8, fx + 96, fy + 22], kit.hashStr('summerhouse-gravel'), (B, r) => { B.f(B.blob(r, fx, fy + 6, 92, 11, 10, .2), season === 'winter' ? '#d8d6cc' : '#cbbf9e', .75);
+          for (let k = 0; k < 40; k++) B.f(B.circ(fx - 84 + r() * 168, fy + 1 + r() * 12, .9 + r() * .9), r() < .5 ? '#a89a78' : '#e2d8bc', .9); }); } }
     for (const l of lamps) used.push([l.x, l.y]);
     const season = C.season, leaf = season === 'autumn' ? ['#b0682a', '#d8963a', '#e9bd5a'] : season === 'winter' ? null : season === 'spring' ? ['#6f9a44', '#8fba5e', '#c2dc8a'] : ['#5e8a44', '#82aa58', '#a9c674'];
     const tuft = (B, r, x, w) => { for (let k = 0; k < 6; k++) { const tx = x - w + r() * w * 2; B.s(`M${tx} 1q${(r() - .5) * 3} -4 ${(r() - .5) * 5} ${-5 - r() * 4}`, season === 'winter' ? '#b8b4a0' : season === 'autumn' ? '#9a9a4a' : '#6f8a42', 1.1, .9); } };
@@ -289,15 +300,16 @@
     const s = o.season, r = rng(hash('oldhouse-big'));
     B.f(B.ell(4, 2, 112, 13), '#22301a', .3);
     replay(B, classic('oldhouse', s), 2.2);
-    flags(B, r, 22, 10, 3, s);
+    // (vale layouts merge: the worn doorstep of flags is ground, painted under everything by the woodland's marks below; as
+    //  part of this standing picture its foot read as the house's base, a cell out on the loop, where the feet walk)
     tufts(B, r, -110, -60, 3, s, 10); tufts(B, r, 64, 110, 3, s, 10);
   } };
   P['sight:prop-ld-house'] = { box: [-96, -144, 96, 22], draw(B, o) {
     const s = o.season, r = rng(hash('summerhouse-big'));
     B.f(B.ell(2, 3, 96, 12), '#22301a', .3);
     // a gravel apron round its foot, the boards lifted on a low brick plinth
-    B.f(D().blob(r, 0, 6, 92, 11, 10, .2), s === 'winter' ? '#d8d6cc' : '#cbbf9e', .75);
-    for (let k = 0; k < 40; k++) B.f(B.circ(-84 + r() * 168, 1 + r() * 12, .9 + r() * .9), r() < .5 ? '#a89a78' : '#e2d8bc', .9);
+    // (vale layouts merge: the gravel in front is ground, painted by the woodland's marks below; only a lip of it at the plinth here)
+    B.f(D().blob(r, 0, 1, 90, 4, 10, .2), s === 'winter' ? '#d8d6cc' : '#cbbf9e', .75);
     B.cx.save(); B.cx.translate(0, -6); replay(B, classic('summer', s), 2.3); B.cx.restore();
     // (its classic picture is a plain cream box with a dark door: weatherboards, a pair of glazed doors standing open, a window
     // either side with a box of flowers, and a finial on its roof, so it reads as a garden building at this size)
@@ -316,8 +328,8 @@
     const s = o.season, r = rng(hash('woodshed-big')), oak = ['#7a6248', '#5e4a34', '#9a8262', '#3e3022'], end = ['#c8a87c', '#b89468', '#d6bc8e', '#a8865c'];
     B.f(B.ell(2, 3, 84, 11), '#22301a', .32);
     // chips, bark and sawdust trodden into the ground in front of it
-    B.f(D().blob(r, 0, 6, 82, 10, 9, .3), '#8a7454', .35);
-    for (let k = 0; k < 50; k++) B.s(`M${-78 + r() * 156} ${2 + r() * 12}l${(r() - .5) * 6} ${(r() - .5) * 2}`, r() < .5 ? '#e0c898' : '#6a5034', 1.6, .7);
+    B.f(D().blob(r, 0, 3, 76, 5, 9, .3), '#8a7454', .35);
+    for (let k = 0; k < 50; k++) B.s(`M${-70 + r() * 140} ${1 + r() * 5}l${(r() - .5) * 6} ${(r() - .5) * 2}`, r() < .5 ? '#e0c898' : '#6a5034', 1.6, .7);
     // the back wall of tarred boards, in shade under the roof
     B.f(B.rect(-64, -100, 128, 96), '#3a2e24'); for (let x = -60; x < 64; x += 8) B.s(`M${x} -100v96`, '#2a2018', 1, .7);
     // three bays stacked with split logs, end on, to the roof
@@ -336,8 +348,9 @@
     if (s === 'winter') B.f(B.poly([[-74, -128], [74, -128], [72, -132], [-72, -132]]), '#f2f4f4').f(B.rr(-78, -110, 156, 3, 1.5), '#f2f4f4', .9);
     else for (let k = 0; k < 9; k++) B.f(D().blob(r, -66 + r() * 132, -114 - r() * 12, 5 + r() * 5, 2, 6, .5), s === 'autumn' ? '#8a8a46' : '#6f8a42', .85);
     B.s('M-80 -106L80 -106', '#2e261e', 2, .9);
-    // the block and axe at the near corner, knee high, a split log or two beside it
-    { const x = 80, y = 8; B.f(B.ell(x + 1, y + 1.5, 12, 3.4), '#22301a', .3).f(B.rr(x - 10, y - 18, 20, 18, 3), oak[0]).f(B.rect(x - 10, y - 16, 6, 16), oak[2], .5).f(B.ell(x, y - 18, 10, 3.6), end[0]).s(`M${x - 5} ${y - 18}a5 2 0 1 0 10 0`, '#a8844e', .6, .7);
+    // the block and axe at the near corner, knee high (vale layouts merge: in front of the end bay, inside the shed's own block;
+    // a cell out past its corner it stood on open ground the feet walked through), a split log or two beside it
+    { const x = 56, y = 4; B.f(B.ell(x + 1, y + 1.5, 12, 3.4), '#22301a', .3).f(B.rr(x - 10, y - 18, 20, 18, 3), oak[0]).f(B.rect(x - 10, y - 16, 6, 16), oak[2], .5).f(B.ell(x, y - 18, 10, 3.6), end[0]).s(`M${x - 5} ${y - 18}a5 2 0 1 0 10 0`, '#a8844e', .6, .7);
       B.s(`M${x + 1} ${y - 19}l-9 -16`, '#8a6a44', 2.6).f(B.poly([[x - 2, y - 19], [x + 7, y - 21], [x + 6, y - 15], [x, y - 15]]), '#8a9094').s(`M${x - 1} ${y - 18}l7 -2`, '#c8ced2', .8);
       B.f(B.rr(x - 32, y - 6, 18, 6, 2.5), oak[0]).f(B.ell(x - 14, y - 3, 2.4, 3), end[1]); }
     // fern at its back corner

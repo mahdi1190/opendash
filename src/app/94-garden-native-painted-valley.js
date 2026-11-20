@@ -52,15 +52,15 @@
   Object.assign(P, {
     /* ---------- the watermill ---------- */
     // (round 3 layout: on its 5 x 3 footprint the mill stands at the size standard, its ridge about five and a half times the player)
-    'sight:mill': { box: [-124, -150, 92, 18], scale: prop => (prop.w >= 5 ? 1.6 : 1), lift: prop => (prop.w >= 5 ? -14 : 0),   // (round 3, critic fix: its wall's foot on the front of its footprint, where the feet stop and the yard's setts begin; raised, a band of grass lay between the doors and the setts)
+    'sight:mill': { box: [-124, -150, 92, 18], scale: prop => (prop.w >= 5 ? 1.6 : 1), lift: () => 0,   // (round 3, critic fix: its wall's foot on the front of its footprint, where the feet stop and the yard's setts begin; raised 16 px, a band of grass lay between the doors and the setts. Vale layouts merge: lowered 14 px further it stood half a cell out on the yard, its wheel pit a cell out over the weir walk's planks, where the feet walked through it)
      
       sig: () => turning() ? '|turn' : '|still',
       draw(B, o) {
         const r = rng(hash('valley-mill')), lit = o.night && o.more === '|turn';
         B.shadow(6, 4, 92, 12, .26);
         // the wheel pit against the gable: dark water between stone walls, open to the river on the west
-        B.f(B.poly([[-118, -10], [-56, -12], [-56, 10], [-112, 10]]), '#3f5f64').f(B.poly([[-118, -10], [-56, -12], [-56, -8], [-117, -6]]), '#2c4448', .8);
-        for (let x = -114; x < -58; x += 7) B.f(B.rr(x, -15, 6.4, 3.8, 1), r() < .5 ? STONE[0] : STONE[1]).f(B.rr(x + 1, 8, 6.4, 3.4, 1), r() < .5 ? STONE[1] : STONE[3]);
+        B.f(B.poly([[-118, -10], [-56, -12], [-56, 4], [-112, 4]]), '#3f5f64').f(B.poly([[-118, -10], [-56, -12], [-56, -8], [-117, -6]]), '#2c4448', .8);
+        for (let x = -114; x < -58; x += 7) B.f(B.rr(x, -15, 6.4, 3.8, 1), r() < .5 ? STONE[0] : STONE[1]).f(B.rr(x + 1, 1.6, 6.4, 3.2, 1), r() < .5 ? STONE[1] : STONE[3]);   // (its near kerb on the mill's own front line, not out over the planks)
         // the body: two storeys of brick, stone quoins, a slate roof with a lucam
         bricks(B, r, -56, -78, 128, 78, BRICK);
         for (let y = -78; y < 0; y += 9) for (const x of [-56, 66]) B.f(B.rect(x, y, 6, 4.4), (y / 9) & 1 ? STONE[0] : STONE[2]).f(B.rect(x, y + 4.4, 6, .6), STONE[3], .6);
@@ -86,10 +86,10 @@
       // the wheel is its own image so it can turn once the cog is in
       extra(scene, h, fx, foot, o) {
         const turn = o.more === '|turn', key = K.bake(scene, 'sight-mill-wheel|' + (turn ? 't' : 's'), [-44, -44, 44, 44], B => wheel(B, 32, !turn)), s = o.scale || 1;
-        const up = o.prop && o.prop.w >= 5 ? 14 : 0, cx = fx - 79 * s, cy = foot - up - 30 * s, im = h.add(K.image(scene, key, cx, cy)); if (im && s !== 1) im.setScale(im.scaleX * s);
+        const up = 0, cx = fx - 79 * s, cy = foot - up - 30 * s, im = h.add(K.image(scene, key, cx, cy)); if (im && s !== 1) im.setScale(im.scaleX * s);
         // the water in the pit laps over the wheel's foot
         const lap = K.bake(scene, 'sight-mill-lap', [-34, -6, 34, 10], B => { B.f(B.rr(-30, -2, 60, 9, 3), '#46686c', .92).f(B.rect(-30, -2, 60, 2), '#a8cace', .75); for (let x = -28; x < 28; x += 7) B.f(B.rr(x, 6, 6.4, 3.4, 1), x % 2 ? STONE[1] : STONE[3]); });
-        const water = h.add(K.image(scene, lap, cx, foot - up - 1));   // (the wheel and its lap keep their height in the race when the mill's front comes down to its footprint) if (water && s !== 1) water.setScale(water.scaleX * s);
+        const water = h.add(K.image(scene, lap, cx, foot - up - 1)); if (water && s !== 1) water.setScale(water.scaleX * s);   // (the lap at the mill's scale, as the wheel)
         if (turn && im) h.move(im, (node, t, motion) => { if (motion) node.setRotation(-t * .55); });
         if (turn && water) h.move(water, (node, t, motion) => { if (motion) node.setAlpha(.85 + Math.sin(t * 4) * .1); });
       },
