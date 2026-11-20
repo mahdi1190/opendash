@@ -126,7 +126,7 @@ function _gltOnSt(ev) {
   // a hold goes only when the referee has seen my last word and my confirmation is not in force, or the terms have moved on
   const h = _gltHoldOf(M.t);
   if (h && !h.ok && !(ev.c && h.v === ev.v) && (ev.v > h.v || ev.an >= h.sq)) {
-    if (_gltRelease(M.t)) M.note = ev.v > h.v ? `${M.name} changed the offer, so your confirmation is off. Have a look and confirm again.` : 'Your confirmation is off. What you offered is back in your bag.';
+    if (_gltRelease(M.t)) M.note = ev.v > h.v ? `${M.name} changed what they give, so your yes is off. Have a look, and agree again if you are happy.` : 'You took your yes back. What you offered is back in your bag.';
   }
   _gltPaint();
   if (hello && _gll.role !== 'host') _gltSend({ t: M.t, e: 'hi' });   // (last: the referee's answer to it can arrive inside this call, and must find this state already in place)
@@ -470,8 +470,8 @@ function _gltCol(M, mine) {
     const li = _gsvEl('li', 'gll-trade-row' + (can ? ' is-edit' : ''));
     li.appendChild(_gltIcon(item, 30));
     const nm = _gsvEl('span', 'gll-trade-nm'); nm.appendChild(_gsvEl('span', 'gll-trade-nm-t', _gltItemName(item)));
-    { const have = _gltHave(item), held = _gltHoldOf(M.t), heldN = mine && held && !held.ok ? -((held.i || {})[item] || 0) : 0, now = have + heldN, after = mine ? now - n : have + n;   // (what is on hold is still yours until the swap)
-      nm.appendChild(_gsvEl('small', 'gll-trade-after' + (!mine && have === 0 ? ' is-new' : ''), M.done ? '' : !mine && have === 0 ? 'New for you!' : `You have ${now}, then ${Math.max(0, after)}`)); }
+    { const held = _gltHoldOf(M.t), heldN = held && !held.ok ? -((held.i || {})[item] || 0) : 0, now = _gltHave(item) + heldN, mineN = (M.o.find(r => r[0] === item) || [0, 0])[1], theirN = (M.p.find(r => r[0] === item) || [0, 0])[1], after = now - mineN + theirN;   // (what is on hold is still yours until the swap; the same thing can be on both sides)
+      nm.appendChild(_gsvEl('small', 'gll-trade-after' + (!mine && now === 0 ? ' is-new' : ''), M.done ? '' : !mine && now === 0 ? 'New for you!' : `You have ${now}, then ${Math.max(0, after)}`)); }
     li.appendChild(nm);
     if (can) {
       const have = _gltHave(item), ctl = _gsvEl('span', 'gll-trade-ctl');

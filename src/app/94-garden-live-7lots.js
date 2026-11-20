@@ -94,7 +94,7 @@ function _gloSpotWhy(m, x, y, w, h, lots) {
     if (why) return why === 'Not in the water (a boardwalk can go there)' ? 'Part of it is in the water' : why;
     if (gardenIsWater(cx, cy)) return 'Part of it is in the water';
     const a = gardenAreaAt(cx, cy, m.level.level), ar = gardenArea(a);
-    if (!ar || ar.green || !ar.cats || !ar.cats.length) return 'Nothing grows there: a plot needs a bed, a patch or a meadow';
+    if (!ar) return 'Nothing can go there';   // (a bed or a patch: plant on it; the lawn: place things on it)
     if (area && a !== area) return 'A plot needs to be all on one piece of land';
     area = a;
     const c = m.occ.get(cx + ',' + cy);
@@ -266,7 +266,7 @@ function _gloPaint() {
   top.appendChild(_gsvBtn('', { icon: 'x', kind: 'btn-ghost', aria: P ? 'Close' : 'Call it off', run: () => (P ? _gloPickClose() : _gloCancel()) }));
   p.appendChild(top);
   if (P) {
-    p.appendChild(_gsvEl('p', 'glo-say', 'Walk to where you want it: the outline follows you. Only you will plant on it, and what grows there is yours.'));
+    p.appendChild(_gsvEl('p', 'glo-say', 'Walk to where you want it: the outline follows you. Only you plant or place things on it: on a bed, grow anything; on the lawn, put out your seats and decorations.'));
     const sizes = _gsvEl('div', 'glo-sizes'); sizes.setAttribute('role', 'radiogroup'); sizes.setAttribute('aria-label', 'Size');
     for (const [w, h] of GL_LOT.sizes) {
       const b = _gsvBtn('', { kind: P.w === w && P.h === h ? 'btn-primary' : 'btn-secondary', cls: 'glo-size', pressed: P.w === w && P.h === h, run: () => _gloSize(w, h) });
