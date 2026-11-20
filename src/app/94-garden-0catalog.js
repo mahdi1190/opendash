@@ -1062,6 +1062,17 @@ function gardenSnapshotClean(raw) {
   if (out.wv >= 3 && typeof gardenSightPlacementsClean === 'function') { const rp = gardenSightPlacementsClean(raw.rp); if (rp.length) out.rp = rp; }
   if (raw.sh && typeof gardenShowClean === 'function') { const sh = gardenShowClean(raw.sh); if (sh) out.sh = sh; }
   if (raw.sp && typeof gardenSpecClean === 'function') { const sp = gardenSpecClean(raw.sp); if (sp) out.sp = sp; }   // their best specimens (94-garden-fish-0variants.js)
+  if (Array.isArray(raw.lt)) {   // 2.75: plots friends have bought here, [[x, y, w, h]]: whole cells inside the world, of a size the table has, never overlapping (94-garden-live-7lots.js)
+    const lt = [];
+    for (const r of raw.lt.slice(0, 8)) {
+      if (!Array.isArray(r)) continue;
+      const x = int(r[0], 0, W.cols - 1), y = int(r[1], 0, W.rows - 1), w = int(r[2], 1, 9), h = int(r[3], 1, 9);
+      if (x === null || y === null || w === null || h === null || x + w > W.cols || y + h > W.rows || (typeof glLotSizeOk === 'function' && !glLotSizeOk(w, h))) continue;
+      if (lt.some(o => x < o[0] + o[2] && o[0] < x + w && y < o[1] + o[3] && o[1] < y + h)) continue;
+      lt.push([x, y, w, h]);
+    }
+    if (lt.length) out.lt = lt;
+  }
   if (raw.jn && typeof gardenJournalSnapClean === 'function') { const jn = gardenJournalSnapClean(raw.jn); if (jn) out.jn = jn; }   // what they have caught for the Field Journal: vale ids, best sizes (94-garden-fish-0catalog.js)
   if (raw.ca && typeof gardenCatchWireClean === 'function') { const ca = gardenCatchWireClean(raw.ca); if (ca) out.ca = ca; }   // the lake: what it shows to friends
   { const tg = gardenTogetherClean(raw.tg); if (tg) out.tg = tg; }   // 94-garden-zz-*.js: ids and numbers only

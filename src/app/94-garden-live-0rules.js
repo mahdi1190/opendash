@@ -12,7 +12,8 @@
      GL_PP / glPpOk       pets in place (gl:pp); GL_PLAY / glPlayLevel playdates; GL_SNAP the group photo
      GL_QUEUE             what can wait for a host who is out
      GL_CT                contests: a timed round of fishing or bug-netting that the host referees; glCtFishPoints / glCtBugPoints score a catch
-     GL_TRADE             trading: the level, how much, how often; glTradeOk(b, fromHost) -> '' | why
+     GL_TRADE             trading: the level, how much, how often, the seal; glTradeOk(b, fromHost) -> '' | why
+     GL_LOT               plots in a friend's garden: sizes, price, caps; glLotOk(b, fromHost) -> '' | why, glLotPrice(w, h)
      GL_GOALS / GL_GOAL   shared goals (a joint quest in a live garden): the table, the pacing and the reward; glGoalOk(b) -> '' | why checks gl:goal, glGoalCap(of), glGoalSize(def, people)
      glAtLeast(lv, min)   glMayDo(lv, t) -> '' | why     glIntentOk(b) -> '' | why     glPostOk(p) -> '' | why
    ============================================================ */
@@ -289,7 +290,8 @@ function glIntentOk(b) {
    only one that does); each side holds what it offers when it confirms, and takes the other's offer when the host says go. gl:tr is a kind of its own (an older app drops it, GL_V stays 2).
    lv: the level both need. rows, qty: what one side may offer (seed, decor, fish, bug, as gsocGiftOk allows; never coins). perDay: trades one person may finish in a day.
    askMs: how long a request waits for the other app to say it can trade (an older one never does). idleMs: an open trade nobody touches is called off. */
-const GL_TRADE = Object.freeze({ lv: 'play', rows: 4, qty: 20, perDay: 10, askMs: 8000, idleMs: 5 * 60000 });
+// sealMs (2.75, the trading overhaul): once BOTH have agreed, the swap waits this long before it is final, and either of you can still say "Wait, undo". The referee keeps the time; nothing new goes on the wire
+const GL_TRADE = Object.freeze({ lv: 'play', rows: 4, qty: 20, perDay: 10, askMs: 8000, idleMs: 5 * 60000, sealMs: 5000 });
 /** From a guest to the host: ask (to a slot), hi (I can trade), offer (my whole offer), ok (I confirm version v), no (I take my confirmation back), end, chk (what became of this trade?).
  *  From the host: st (the state, for you), go (it happened), x (it did not, why). Counters: n on a guest's offer, ok and no, answered by an in st (the host has seen up to n). */
 const GL_TRADE_GUEST = Object.freeze(['ask', 'hi', 'offer', 'ok', 'no', 'end', 'chk']);
@@ -334,8 +336,9 @@ function glPostItemOk(item) {
   return gsocGiftOk(m[1], m[2]);
 }
 function glPostOk(p) {
-  if (!p || typeof p !== 'object' || !['crop', 'back', 'did', 'trade'].includes(p.why)) return 'why';
+  if (!p || typeof p !== 'object' || !['crop', 'back', 'did', 'trade', 'lot'].includes(p.why)) return 'why';
   if (p.why === 'back' || p.why === 'did') return '';
+  if (p.why === 'lot') return GL_ID_RE.test(String(p.i || '')) && (p.d === 'go' || p.d === 'x' || p.d === 'back') ? '' : 'lot';   // (the owner's word about a plot you asked for: yes, no, or they took it back and your coins come home)
   if (p.why === 'trade') return GL_ID_RE.test(String(p.i || '')) && (p.d === 'go' || p.d === 'x') ? '' : 'trade';   // (the host's decision about a trade you held things for: go, or x)
   if (!Array.isArray(p.items) || !p.items.length || p.items.length > 4) return 'items';
   for (const row of p.items) { if (!Array.isArray(row) || !glPostItemOk(row[0]) || !Number.isInteger(row[1]) || row[1] < 1 || row[1] > 99) return 'items'; }
@@ -356,4 +359,35 @@ function glGoalOk(b) {
     seen.add(r[0]); sum += r[1];
   }
   return sum <= b.n ? '' : 'count';
+}
+
+/* ---------- plots in a friend's garden (2.75, docs/dev/GARDEN_TOGETHER.md section 29) ----------
+   A visitor with Play buys a little plot of their friend's garden with their OWN coins, face to face: the garden's owner is there and says yes or no. The owner's page decides,
+   once, and writes the plot into the owner's own garden; the buyer's page only ever changes the buyer's own coins. On the plot only its buyer plants or places, and what grows
+   there is always the buyer's to pick. The owner can give it back at any time, and the buyer's coins come home. Nothing here moves a coin from one person to another.
+   gl:lot is a kind of its own (an older app drops it, GL_V stays).
+     lv       the level a buyer needs, now and when the owner says yes
+     sizes    the plots there are, [w, h] in cells: price is perCell coins a cell (glLotPrice)
+     max      plots one garden can have; perFriend: plots one friend can have in one garden
+     askMs    how long the owner has to answer; then it is called off and the coins come back
+     thanks   what the land office gives the OWNER when they say yes (made by the rules, like the shared goals' thank-you, never the buyer's coins): c coins, at most day times a day
+   Steps. From the buyer: ask {i, x, y, lw, lh, c}, end (I changed my mind), chk (what became of i?), drop (I give my plot i up). From the owner: st (I am looking at it), go {x, y, lw, lh, c} (yes: it is yours), x {why}.
+   (lw and lh are the plot's width and height: w is a person's slot in every live message.) */
+const GL_LOT = Object.freeze({ lv: 'play', sizes: Object.freeze([Object.freeze([2, 2]), Object.freeze([3, 3]), Object.freeze([4, 4])]), perCell: 15, max: 8, perFriend: 2, askMs: 90000, thanks: Object.freeze({ c: 10, day: 3 }) });
+const GL_LOT_GUEST = Object.freeze(['ask', 'end', 'chk', 'drop']);
+const GL_LOT_HOST = Object.freeze(['st', 'go', 'x']);
+const GL_LOT_STEPS = Object.freeze([...GL_LOT_GUEST, ...GL_LOT_HOST]);
+const GL_LOT_WHY = Object.freeze(['no', 'busy', 'gone', 'level', 'full', 'spot', 'left', 'cancel', 'old', 'host', 'mine']);
+const glLotSizeOk = (w, h) => GL_LOT.sizes.some(s => s[0] === w && s[1] === h);
+const glLotPrice = (w, h) => (glLotSizeOk(w, h) ? w * h * GL_LOT.perCell : 0);
+/** '' when a gl:lot body fits the tables, else why. host: it comes from the garden's owner. A plot is whole cells, inside the world, of a size the table has, at the table's price. */
+function glLotOk(b, host) {
+  if (!b || typeof b !== 'object' || !GL_ID_RE.test(String(b.i || ''))) return 'id';
+  if (!(host ? GL_LOT_HOST : GL_LOT_GUEST).includes(b.e)) return 'step';
+  const rect = () => Number.isInteger(b.x) && Number.isInteger(b.y) && Number.isInteger(b.lw) && Number.isInteger(b.lh) && b.x >= 0 && b.y >= 0 && glLotSizeOk(b.lw, b.lh) && b.x + b.lw <= GARDEN_WORLD.cols && b.y + b.lh <= GARDEN_WORLD.rows && b.c === glLotPrice(b.lw, b.lh);
+  switch (b.e) {
+    case 'ask': case 'go': return rect() ? '' : 'spot';
+    case 'x': return GL_LOT_WHY.includes(b.why) ? '' : 'why';
+    default: return '';
+  }
 }
