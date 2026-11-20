@@ -10,6 +10,23 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.74.0] - 2026-11-20
+
+### Changed
+
+- Fleetwater Vale is rebuilt. Every garden starts fresh on the new vale once; your pet, profile and tasks are kept, and a copy of the old garden is saved.
+- The village is laid out again by hand: a green, a square, a high street, a quay with a long pier, bigger shops and a tall lighthouse.
+- The woodland, old woodland, Millwater valley, high orchard and Cloudbreak mountains are each laid out to a new plan, with loops instead of dead ends.
+- The whole vale is repainted: richer trees, water, paving, cliffs and sights, and buildings and trees are bigger so the gardener feels small.
+- Gates show what opens them: brambles to cut, a missing plank, a lantern, the mill wheel and a rope, each with its own animation. Locked land shows a fence, hedge or rope instead of an invisible wall.
+- Collisions line up with what is drawn. Press Shift+C in the garden to see what blocks walking.
+
+### Added
+
+- Your gardener can sit, lie down, nap, climb ladders and trees, swim, row, skim stones, ring bells, pump water, warm their hands at a fire, fish side by side with a friend and much more. Walk up to something and press E. Friends see what you do.
+- The gardener turns smoothly, runs with Shift and hops with Space.
+- Pets are back in their old style, a little bigger, with about a hundred new things to do: puddles, leaf piles, chasing butterflies, naps with you, tricks you unlock as you become friends.
+
 ## [2.73.16] - 2026-11-18
 
 ### Changed
