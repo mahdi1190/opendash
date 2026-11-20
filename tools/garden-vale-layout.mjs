@@ -708,20 +708,6 @@ const presentation = {
   millRace: millStretch.id,
 };
 
-/* ------------------------------------------------------------ nothing overlaps: no plot cell under a path's drawn width */
-// (vale final) A plot cell that a path's painted ribbon covers by a good share was a plot under the path (the collision audit's
-// overlap check: the orchard rows' trail along the bee bank and the cider nook, the lake walk over the deer corner). Such a cell
-// is the path's, not the plot's. The ribbon is the route's own width at each point, as painted (half of it, a little in).
-{
-  const ribbons = routes.filter(r => Array.isArray(r.points) && r.points.length > 1 && r.tier !== 'plaza').map(r => ({ id: r.id, P: r.points, w: Array.isArray(r.widths) && r.widths.length === r.points.length ? r.widths : r.points.map(() => r.widthCells || 1.4) }));
-  const under = (px, py) => { for (const rb of ribbons) for (let i = 1; i < rb.P.length; i++) { const [ax, ay] = rb.P[i - 1], [bx, by] = rb.P[i], dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / L)), half = (rb.w[i - 1] * (1 - t) + rb.w[i] * t) * .44; if (Math.hypot(ax + dx * t - px, ay + dy * t - py) < half) return rb.id; } return ''; };
-  for (const [id, cells] of Object.entries(sectionCells)) {
-    if (id === 'lc-front-bed' || id === 'lc-cottage-bed' || cells.length < 3) continue;
-    const keep = cells.filter(([x, y]) => { let n = 0; for (const fy of [.2, .5, .8]) for (const fx of [.2, .5, .8]) if (under(x + fx, y + fy)) n++; return n < 3; });
-    if (keep.length < cells.length && keep.length >= 2) { warn.push(`plot ${id}: ${cells.length - keep.length} cell(s) under a path's width given to the path`); sectionCells[id] = keep; }
-  }
-}
-
 /* ------------------------------------------------------------ write */
 const out = {
   id: 'island-v5-fleetwater-vale', version: 5,

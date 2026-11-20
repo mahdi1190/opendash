@@ -119,7 +119,7 @@ function _gwBuildSolids(m) {
   for (const p of gardenPropsNow()) {
     if (p.needs && !gardenWorkOwned(p.needs)) continue;
     if (gardenPropCol(p) !== 'soft') continue;
-    const cx = p.x + p.w / 2, foot = p.y + p.h - 0.08, bw = p.block ? p.block[0] : Math.min(p.w, 2) * 0.5, d = p.block ? p.block[1] : 0.28;   // (block: [w, d] in cells, a prop's own foot when it is not the usual half its width: a bench's stone bank, a lamp's post)
+    const cx = p.x + p.w / 2, foot = p.y + p.h - 0.08, blk = p.block || GW_SOFT_BLOCK[p.id], bw = blk ? blk[0] : Math.min(p.w, 2) * 0.5, d = blk ? blk[1] : 0.28;   // (block: [w, d] in cells, a prop's own foot when it is not the usual half its width: a bench's stone bank, a lamp's post)
     add(cx - bw / 2, foot - d, cx + bw / 2, foot, 'small prop: ' + (p.name || p.id));   // a lectern, a camera, a post box: a small box at the base, so there is room beside it
   }
   // The authored landmark oak is painted scenery rather than a planted row.
@@ -369,7 +369,11 @@ function gardenWalkFolds(island) {
 // clamp's turf mound is nearly two cells wide on one (its ART box runs 46 px each side).
 // The summit cairn's bottom ring of stones is drawn a cell and a quarter wide on its one cell, and the woodcutter's hut
 // a fifth of a cell past each end of its two (the collision audit).
-const GW_PROP_FEET = Object.freeze({ 'ld-mile': [[-8, 8, 10]], 'ld-tower': [[-53, 53, 0]], 'ld-hollow': [[-30, 30, 0]], 'ld-clamp': [[-38, 38, 20]], 'ld-cairn': [[-31, 31, 0]], 'ld-woodhut': [[-58, 58, 0]] });
+// (vale final: re-measured on the new layout's drawings with the collision audit: the milestone, the hollow oak, the clamp and the
+// watchtower are drawn wider than their old feet; the great stump, the old gardener, the moor gate and the beacon by their drawn bases)
+const GW_PROP_FEET = Object.freeze({ 'ld-mile': [[-12, 42, 10]], 'ld-tower': [[-70, 72, 0]], 'ld-hollow': [[-44, 50, 0]], 'ld-clamp': [[-38, 52, 20]], 'ld-cairn': [[-31, 31, 0]], 'ld-woodhut': [[-58, 58, 0]], 'ld-stump': [[-60, 56, 14]], 'ld-statue': [[-26, 42, 10]], 'ld-moor-gate': [[-24, 52, 12]], 'ld-beacon': [[-24, 8, 12]] });
+// soft things (a bench's seat) whose drawing is wider than the usual half their width: [w, d] in cells
+const GW_SOFT_BLOCK = Object.freeze({ 'ld-bench-a': [1.2, .3], 'ld-bench-b': [1.2, .3] });
 function gardenPropPaintedFeet(p) {
   if (!p || typeof GardenPaintedMarks === 'undefined' || !GardenPaintedMarks || !GardenPaintedMarks.ART || GARDEN_WORLD.v < 5) return null;
   const art = GardenPaintedMarks.ART[p.id] && GardenPaintedMarks.ART[p.id].foot ? GardenPaintedMarks.ART[p.id] : GW_PROP_FEET[p.id] ? { foot: GW_PROP_FEET[p.id] } : null; if (!art || !art.foot || gardenPropCol(p) !== 'full') return null;
@@ -1007,7 +1011,7 @@ function gardenPath(from, to, raw) {
   const tx = to.x, ty = to.y;
   if (sx === tx && sy === ty) return [];
   const idx = (x, y) => y * C + x, came = new Int32Array(C * R).fill(-1), gs = new Float32Array(C * R).fill(1e9), closed = new Uint8Array(C * R);
-  const hcost = (x, y) => Math.hypot((x - tx) * W.cellW, (y - ty) * W.cellH) / 40;
+  const hcost = (x, y) => Math.hypot((x - tx) * W.cellW, (y - ty) * W.cellH) / 40 * 1.6;   // (vale final: weighted, so a long way round the north range is found in a few thousand cells, not the whole map; the legs are straightened after)
   gs[idx(sx, sy)] = 0;
   const f = new Float32Array(C * R).fill(1e9), open = _gwPathFrontier(f, C * R); f[idx(sx, sy)] = hcost(sx, sy); open.lower(idx(sx, sy));
   const free = (x, y) => x >= 0 && y >= 0 && x < C && y < R && !grid[idx(x, y)];

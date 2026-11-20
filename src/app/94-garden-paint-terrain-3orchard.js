@@ -55,8 +55,8 @@
   // and the camera obscura's high window under the cap.
   // (round 3 layouts) drawn at the size standard on its 3 x 2 footprint on the ridge: about 2.5 H across and 7 H to the vane
   // (the same drawing, scaled: 1.9 across, 1.6 up), so it stands over the orchard and what you click is the tower
-  // (foot: the tower's drum and the growth at its foot, scaled with it)
-  ART['ld-folly'] = { box: [-88, -282, 92, 20], foot: [[-59, 63, 0]], draw(B, o) {
+  // (foot: the tower's drum where it meets the ground, as the collision audit measures it)
+  ART['ld-folly'] = { box: [-88, -282, 92, 20], foot: [[-32, 32, 0]], draw(B, o) {
     B.cx.scale(1.9, 1.6);
     const r = KIT().rng(73), s = o.season, R = 26, top = -128;
     B.shadow(8, 2, 44, 9, .34);
