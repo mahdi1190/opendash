@@ -215,9 +215,10 @@ function _gmvRow(body, gw, motion) {
   const Wd = GARDEN_WORLD, ddx = _gmv.rpx == null ? 0 : (gw.px - _gmv.rpx) * Wd.cellW, ddy = _gmv.rpy == null ? 0 : (gw.py - _gmv.rpy) * Wd.cellH; _gmv.rpx = gw.px; _gmv.rpy = gw.py;
   if (motion) _gmv.rphase = ((_gmv.rphase || 0) + Math.min(30, Math.hypot(ddx, ddy)) / 46 + (gw.moving ? 0 : 0.004)) % 1;
   const q = Math.sin((_gmv.rphase || 0) * Math.PI * 2), side = L.side, nat = L.native;
-  _gmvSet(L.root, 0, null, 12, nat);
-  _gmvSet(L.legA, side ? -70 : 0, side ? 1 : 0.4, 0, nat); _gmvSet(L.legB, side ? -64 : 0, side ? 1 : 0.4, 0, nat);
-  _gmvSet(L.kneeA, side ? 80 : 0, side ? null : 2.5, 0, nat); _gmvSet(L.kneeB, side ? 74 : 0, side ? null : 2.5, 0, nat);
+  // (round 4) the hips down on the thwart, inside the hull, whichever way you row (moving or still): the thighs level, the shins down into the boat
+  _gmvSet(L.root, 0, null, side ? 19 : 15, nat);
+  _gmvSet(L.legA, side ? -86 : 0, side ? 1 : 0.4, 0, nat); _gmvSet(L.legB, side ? -80 : 0, side ? 1 : 0.4, 0, nat);
+  _gmvSet(L.kneeA, side ? 92 : 0, side ? null : 2.5, 0, nat); _gmvSet(L.kneeB, side ? 86 : 0, side ? null : 2.5, 0, nat);
   _gmvSet(L.up, side ? -8 * q : 0, side ? null : 1 - 0.03 * q, 0, nat);
   _gmvSet(L.armA, side ? -60 - 30 * q : 30 + 20 * q, side ? null : 0.85, 0, nat); _gmvSet(L.armB, side ? -60 - 30 * q : -30 - 20 * q, side ? null : 0.85, 0, nat);
   if (body._gmvOars) { const tf = side ? `translate(${_gmvN(6 * q)} 0)` : `translate(0 ${_gmvN(2 * q)}) scale(${_gmvN(1 - 0.12 * q)} 1)`; if (body._gmvOars.getAttribute('transform') !== tf) body._gmvOars.setAttribute('transform', tf); }
