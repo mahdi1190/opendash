@@ -184,9 +184,11 @@
             B.f(`M${q.x - 3} ${q.y}L${q.x - 2.3 + lean} ${q.y - h}L${q.x + 2.3 + lean} ${q.y - h - .8}L${q.x + 3} ${q.y}Z`, col[0]).f(`M${q.x - 1.8} ${q.y}L${q.x - 1.4 + lean} ${q.y - h}L${q.x - .4 + lean} ${q.y - h}L${q.x - .6} ${q.y}Z`, col[2], .6).f(`M${q.x + .8} ${q.y}L${q.x + .9 + lean} ${q.y - h}L${q.x + 1.4 + lean} ${q.y - h - .6}L${q.x + 1.8} ${q.y}Z`, col[1], .7);
             B.tufts(rr, q.x, q.y + .5, 6, 3, q.k === 'beach' ? ['#8fa058', '#b4b868'] : ['#5e7e3e', '#8aa858'], 5); }
           // the level the land past it opens at, on a board at the end you come to first (as on every locked plot's fence)
-          const end = s.reduce((m, p) => p.d > m.d ? p : m, s[0]), sides = [[end.cx + end.ty * .9, end.cy - end.tx * .9 * cw / ch], [end.cx - end.ty * .9, end.cy + end.tx * .9 * cw / ch]], shut = sides.find(([x, y]) => lockedAt(x, y));
+          // (at the top of the sand, where you walk along the beach into it: at the rope's far end it lay under a plot's fence)
+          const sandy = s.filter(p => p.k === 'beach' || p.k === 'path'), end = (sandy.length > 2 ? sandy : s).reduce((m, p) => p.d > m.d ? p : m, (sandy.length > 2 ? sandy : s)[0]), sides = [[end.cx + end.ty * .9, end.cy - end.tx * .9 * cw / ch], [end.cx - end.ty * .9, end.cy + end.tx * .9 * cw / ch]], shut = sides.find(([x, y]) => lockedAt(x, y));
           const rgn = shut && typeof gardenIslandRegionAt === 'function' ? gardenIslandRegionAt(shut[0], shut[1]) : null, lvNeed = rgn && rgn.level;
-          if (lvNeed) { const sx = end.x - 9, sy = end.y + 2, txt = 'Lv ' + lvNeed; B.f(B.rect(sx - 1.4, sy - 22, 2.8, 22), '#5e4c36').f(B.rect(sx - 1.4, sy - 22, 1.1, 22), '#8a7454', .7);
+          // (on the shut side of the rope, so it never stands on a path along the shore)
+          if (lvNeed) { const sgn = shut === sides[0] ? 1 : -1, sx = end.x + sgn * end.ty * 12, sy = end.y - sgn * end.tx * 12 + 2, txt = 'Lv ' + lvNeed; B.f(B.rect(sx - 1.4, sy - 22, 2.8, 22), '#5e4c36').f(B.rect(sx - 1.4, sy - 22, 1.1, 22), '#8a7454', .7);
             const cx = B.cx; cx.save(); cx.font = '700 9px system-ui, sans-serif'; const w = cx.measureText(txt).width + 8, x0 = sx - w / 2, y0 = sy - 36;
             B.f(B.rr(x0 + 1, y0 + 1.2, w, 14, 2.4), 'rgba(30,24,16,.3)').f(B.rr(x0, y0, w, 14, 2.4), '#c9a876').f(B.rr(x0, y0, w, 4, 1.6), '#dcc092', .8).s(B.rr(x0, y0, w, 14, 2.4), '#6e5434', .9, .9);
             cx.fillStyle = '#3e2c1a'; cx.textBaseline = 'middle'; cx.fillText(txt, x0 + 4, y0 + 7.4); cx.restore(); }
