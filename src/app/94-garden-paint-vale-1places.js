@@ -212,9 +212,7 @@
   }
 
   /* ---------- plazas and the Great Oak ---------- */
-  const STYLE = { 'cider-square': 'setts', 'mill-yard': 'yard', 'ruin-court': 'broken', 'lakeside-terrace': 'flags', 'great-oak-clearing': 'litter',
-    // Cloudbreak's open tops (vale-mountains.json): the summit, the Long View and the falls top are rock and turf, Wick's yard is flags
-    'summit-cairn': 'broken', 'long-view': 'broken', 'falls-top': 'broken', 'wick-yard': 'flags' };
+  const STYLE = { 'cider-square': 'setts', 'mill-yard': 'yard', 'ruin-court': 'broken', 'lakeside-terrace': 'flags', 'great-oak-clearing': 'litter' };
   function plazas(C) {
     const { L, P, add, kit, thing } = C, cw = L.cw, ch = L.ch;
     for (const pz of L.pres.plazas || []) {

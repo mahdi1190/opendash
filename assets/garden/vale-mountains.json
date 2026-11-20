@@ -338,14 +338,14 @@
    "name": "moor's end",
    "surface": "peat",
    "poly": [
-    [2.2, 13],
+    [1.9, 13.1],
     [4.4, 12.7],
     [6.4, 13.4],
     [6.3, 15],
     [5.2, 16.6],
     [4.2, 16.7],
     [3.6, 15.3],
-    [2.2, 15]
+    [1.9, 14.9]
    ]
   },
   "cove-shingle": {
@@ -712,6 +712,19 @@
     [75.4, 7.5]
    ],
    "halfWidth": 0.4
+  },
+  {
+   "id": "west-peak-scree",
+   "kind": "scree",
+   "note": "the west peak's scree apron, drawn by the fells painter below the peak's outline: the feet stop at its stones (no painter draws this kind)",
+   "line": [
+    [9.8, 10.15],
+    [11, 10.55],
+    [12.96, 10.6],
+    [15.2, 10.3],
+    [16.8, 9.7]
+   ],
+   "halfWidth": 0.32
   }
  ],
  "crossings": [
