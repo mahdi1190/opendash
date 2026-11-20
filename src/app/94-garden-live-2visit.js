@@ -439,6 +439,7 @@ function _glvEvent(ev) {
     case 'sum': if (typeof _glySumIn === 'function') _glySumIn(ev); return;
     case 'snap-missed': if (typeof _glyAsk === 'function') _glyAsk(false); return;
     case 'pp': _gllPlacesIn(ev); return;
+    case 'dg': { const A = _gll.actors.get(ev.w); if (A && typeof gartActDoingIn === 'function') gartActDoingIn(A, ev); return; }   // what they are doing, whole (94-garden-zz-7act-3sync.js)
     case 'tr': if (typeof _gltFromHost === 'function') _gltFromHost(ev); return;
     case 'goal': if (typeof _glgGuestIn === 'function') _glgGuestIn(ev); return;
     case 'fx': {

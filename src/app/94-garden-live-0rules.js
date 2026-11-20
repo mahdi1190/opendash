@@ -85,6 +85,24 @@ const GL_FX_TO_HOST = Object.freeze(new Set(['bug|claim', 'pick|claim', 'cr|poke
 const glFxHostOnly = (b) => !!b && (GL_FX_HOST_ONLY.has(b.c + '|' + b.e) || GL_FX_HOST_ONLY.has(b.c + '|*') || b.c === 'petplay' && b.u != null);
 const glFxToHost = (b) => !!b && GL_FX_TO_HOST.has(b.c + '|' + b.e);
 const GL_FX_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+/** WHAT I AM DOING (gl:dg, 2.74.1): one person's whole state, sent when it changes (never a stream), so every screen shows the same, and a late
+ *  arrival or a lost message comes right with the next one. a: the move from the things-to-do table (an 'act-' id of GL_EMOTES), none = nothing;
+ *  x, y: where it is done (cells); d: the way they face for it (degrees on the screen, 0 east, 90 south); t: tenths of a second since it began (a late arrival joins it part way, a held pose at its end); i, h: the thing
+ *  in your hands and how it is drawn (carry); p: the stick's part of a throw (0 in the hand, 1 lying out there, 2 coming back, 3 dropped at your
+ *  feet) with fx, fy where it landed; m: things you have set down elsewhere this visit [[id, x tenths, y tenths]]. Ids only: each side draws them. */
+const GL_DG_MAX_MOVED = 6;
+function glDoingOk(b) {
+  if (!b || typeof b !== 'object') return 'shape';
+  const cols = GARDEN_WORLD.cols, rows = GARDEN_WORLD.rows, num = (v, hi) => v == null || typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= hi;
+  if (b.a != null && (!GL_FX_ID_RE.test(String(b.a)) || !GL_EMOTES.includes('act-' + b.a))) return 'act';
+  if (!num(b.x, cols) || !num(b.y, rows) || !num(b.fx, cols) || !num(b.fy, rows)) return 'cell';
+  if (b.t != null && !(Number.isInteger(b.t) && b.t >= 0 && b.t <= 6000)) return 'time';
+  if (b.d != null && !(Number.isInteger(b.d) && b.d >= -180 && b.d <= 180)) return 'facing';
+  for (const k of ['i', 'h']) if (b[k] != null && !GL_FX_ID_RE.test(String(b[k]))) return 'thing';
+  if (b.p != null && !(Number.isInteger(b.p) && b.p >= 0 && b.p <= 3)) return 'stick';
+  if (b.m != null) { if (!Array.isArray(b.m) || b.m.length > GL_DG_MAX_MOVED) return 'moved'; for (const r of b.m) if (!Array.isArray(r) || r.length !== 3 || !GL_FX_ID_RE.test(String(r[0])) || !Number.isInteger(r[1]) || !Number.isInteger(r[2]) || r[1] < 0 || r[2] < 0 || r[1] > cols * 10 || r[2] > rows * 10) return 'moved'; }
+  return '';
+}
 /** CONTESTS (docs/dev/GARDEN_TOGETHER.md section 15). The host's page is the referee: it starts a timed round (`ct|start`), keeps the scores, sends the board (`ct|board`) and names the winner (`ct|end`);
  *  all of those are host-only. A guest says nothing new: its casts and nets are the `fish`, `bug` and `got` events it always sends, and the host counts only a catch it can match to the steps of a line.
  *  Points come from size and quality (a fish) or rarity (a bug), never from money. Everything here is data: change it here.

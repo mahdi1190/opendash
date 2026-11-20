@@ -548,6 +548,7 @@ window.GardenNative = (function () {
     if (cover.parentNode) s.openingObserver.observe(cover.parentNode, { childList: true });
   }
   function mount(parent, box, model) {
+    if (!model) { try { model = gardenHere(); } catch (error) { model = null; } }   // (2.74.1) never open on an empty model: every painter reads its tod
     if (live && live.parent === parent && !live.dead) { sync(model); return; }
     destroy(); if (window.GardenPhaser) GardenPhaser.destroy(); gardenWorldStop(true); lastError = null;
     const s = live = { id: ++serial, parent, box, model, dead: false, ready: false, frames: 0, started: performance.now() };
@@ -571,6 +572,8 @@ window.GardenNative = (function () {
         if (s.dead) return;
         try {
           s.scene = this; s.game = this.game;
+          if (!s.model || !s.model.tod) { try { s.model = gardenHere() || s.model; } catch (error) { /* keep what we have */ } }   // (2.74.1) a visit whose snapshot came late, a fresh garden still making itself: the garden on screen now
+          if (!s.model) throw new Error('The garden is still getting ready. Press Try again.');
           const position = _gwSavedPos(); if (position) { _gw.px = position.x; _gw.py = position.y; }
           _gw.root = _gdp.root; _gw.box = box; _gw.sizeOk = false;
           s.world = GardenNativeWorld.create(this, { model: s.model, box, root: _gdp.root, width: Math.max(1, box.clientWidth), height: Math.max(1, box.clientHeight) }); _gdp.svg = s.world.rootNode; _gw.svg = s.world.rootNode;

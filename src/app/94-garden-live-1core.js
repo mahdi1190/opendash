@@ -151,7 +151,9 @@ function _gllStationaryAt(A, x, y, source) {
   if (typeof _gwInView === 'function' && !_gwInView(A.x, A.y, 1.5) && !_gwInView(x, y, 1.5)) { A.x = x; A.y = y; A.tx = null; A.ty = null; A.way = null; A.pace = 0; A.moving = false; A.key = ''; }
 }
 /** Walk there. Destinations only: the walking is worked out on each side, or the host says which way round the beds (_gllWalkVia). */
-function _gllWalkTo(A, x, y, then) { A.stationaryPosition = null; if (A.actId) { A.actId = ''; A.actWant = ''; _gllEmoteStop(A); } if (typeof _gllPhotoClear === 'function') _gllPhotoClear(A); A.tx = x; A.ty = y; A.gx = x; A.gy = y; A.way = null; A.then = then || null; if (A.sit) { A.sit = false; _gllEmoteStop(A); } }
+function _gllWalkTo(A, x, y, then) {
+  if ((A.actId || A.actWant) && Number.isFinite(A.actX) && Math.hypot(x - A.actX, y - A.actY) < 0.35 && !then) return;   // (2.74.1) the last step of their walk to the spot they are using: they are there, doing it
+  A.stationaryPosition = null; if (A.actId || A.actWant) { A.actId = ''; A.actWant = ''; _gllEmoteStop(A); } if (typeof _gllPhotoClear === 'function') _gllPhotoClear(A); A.tx = x; A.ty = y; A.gx = x; A.gy = y; A.way = null; A.then = then || null; if (A.sit) { A.sit = false; _gllEmoteStop(A); } }
 /** The same with the turns on the way: [[x, y], ...], then there. What they were going to do on arrival still happens. */
 function _gllWalkVia(A, turns, x, y) { const then = A.then; _gllWalkTo(A, x, y, then); const way = (turns || []).map(p => [p[0], p[1]]).concat([[x, y]]); const n = way.shift(); A.tx = n[0]; A.ty = n[1]; A.way = way; }
 /** Keys and holding send a walk as it goes, a place at a time: the figure takes each at the pace they come in, so it neither arrives early and stands nor falls behind. A destination (a click) walks at the walker's own speed. */
