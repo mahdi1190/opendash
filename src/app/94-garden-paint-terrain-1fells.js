@@ -312,6 +312,8 @@ window.GardenPaintedTerrain = (function () {
     const bb = kit.bboxOf(far.concat(near), 40);
     // the ford at the stepping stones: the river runs on through the path's gap as shallows, with flat stones across
     add(bb, 141, (B, r, cb) => {
+      // (the walls and banks begin at the tarn's shore: the far wall's first stones stood out in the tarn's water; water director, round 3)
+      { const still = L.water.filter(w => !w.river && w.pts.length > 2); if (still.length) { const cut = new Path2D(); cut.rect(bb[0] - 10, bb[1] - 10, bb[2] - bb[0] + 20, bb[3] - bb[1] + 20); for (const w of still) { w.pts.forEach((p, i) => i ? cut.lineTo(p.x, p.y) : cut.moveTo(p.x, p.y)); cut.closePath(); } B.cx.clip(cut, 'evenodd'); } }
       // the young river itself (the gorge is one picture: its water, its walls): dark in the deep middle, paler at the edges, white water
       if (GORGE_WATER) {
         // The young river begins at the tarn's shore: its channel never paints a rounded spout out into the tarn.
@@ -325,6 +327,8 @@ window.GardenPaintedTerrain = (function () {
       const G = { lit: '#a39886', mid: '#827868', shade: '#5c554c', deep: '#323a38', hi: '#cdc2ac', damp: '#4f6446', moss: P.moss, heather: P.heather, snow: P.snow };
       kit.rockBand(B, far, farIn, far.map((_, i) => i), (i, k) => kit.rng(9001 + i * 131 + k * 17), G, { snowy, size: .7, tiers: [[.3, 1], [.72, .8]] });
       B.s(B.line(farIn), '#2e3a3c', 2.4, .22);   // the wet foot of the wall
+      // (the wall's shade on the water at its foot, wider under the tall crags, so the stream lies down in a cut and not on the moor)
+      for (let i = 1; i < farIn.length; i++) { const h0 = wallH(i), p = farIn[i - 1], q = farIn[i], m = mid[i]; B.s(`M${p.x} ${p.y}L${q.x} ${q.y}`, '#1f2c2c', 3 + h0 * 14, .1 + h0 * .12); void m; }
       // the lit lip only along the crags (one even lit rule along the whole top read as a kerb), and a crag boulder on each
       for (let i = 2, run = []; i < far.length; i++) { const hi = wallH(i) > .5; if (hi) run.push(far[i]); if ((!hi || i === far.length - 1) && run.length > 2) { B.s(B.line(run), snowy ? P.snow : P.rockHi, 2, .8); run = []; } else if (!hi) run = []; }
       for (let i = 3; i < far.length - 3; i++) { const h0 = wallH(i); if (h0 > .48 && h0 >= wallH(i - 1) && h0 >= wallH(i + 1)) { const p = far[i], rr = kit.rng(7301 + i); B.boulder(rr, p.x + (rr() - .5) * 6, p.y + 2, 9 + rr() * 7, 6 + rr() * 4, Object.assign({}, P, { rock: '#8c8578', rockLo: '#625c54', rockHi: '#bdb4a2' }), snowy); } }

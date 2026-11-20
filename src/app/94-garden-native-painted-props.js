@@ -852,16 +852,19 @@ window.GardenPaintedProps = (function () {
       // the wet rock the water runs over shows dark at its edges (a soft cleft, never an outline round the sheet)
       { const cl = B.cx; cl.save(); cl.filter = 'blur(' + (3 * K).toFixed(1) + 'px)'; B.f(sheet, '#2f3d3c', .5); cl.restore(); cl.filter = 'none'; }
       // the falling sheet: brightest where it curls over the lip, a deep green-blue body, white again where it breaks below
-      B.f(sheet, B.lin(0, -H, 0, 0, [[0, '#f2faf6'], [.07, '#cfeae4'], [.2, '#93c9c6'], [.55, '#79b6b8'], [.8, '#a9d6d2'], [1, '#eef8f4']]));
+      // (round 2: deeper and opaque; pale greens read as a see-through pane of glass with the rock showing through)
+      B.f(sheet, B.lin(0, -H, 0, 0, [[0, '#f4fbf8'], [.05, '#d4eeea'], [.14, '#6aa8ae'], [.45, '#4f8f98'], [.7, '#6aa6aa'], [.86, '#b8e0dc'], [1, '#f4fbf8']]));
       // lit from the upper left: the left of the sheet catches the sky, the right falls into shade
       B.f(sheet, B.lin(-Wd / 2, 0, Wd / 2, 0, [[0, 'rgba(255,255,255,.34)'], [.45, 'rgba(255,255,255,0)'], [.7, 'rgba(24,58,66,0)'], [1, 'rgba(24,58,66,.3)']]));
       // ribbons of water down its face, each following the sheet's own curve, paler and darker, broken where they thin
       { const cl = B.cx; cl.save(); cl.clip(new Path2D(sheet));
-        for (let i = 0; i < 15; i++) { const u = (i + .5) / 15 - .5 + (r() - .5) * .04, top = lipX + u * Wd, mid = u * (Wd - 10) * .92, bot = u * (Wd + 8), pale = i % 3 !== 1, w = pale ? 1.4 + r() * 2.2 : 2.6 + r() * 2.6, t0 = -H + 4 + r() * H * .12, t1 = -6 - r() * H * .15;
-          B.s(`M${top} ${t0}C${top + (mid - top) * .6} ${-H * .62} ${mid} ${-H * .3} ${bot} ${t1}`, pale ? '#f4fbf8' : '#5d9ea4', w, pale ? .32 + r() * .3 : .22 + r() * .14); }
+        for (let i = 0; i < 22; i++) { const u = (i + .5) / 22 - .5 + (r() - .5) * .05, top = lipX + u * Wd, mid = u * (Wd - 10) * .92, bot = u * (Wd + 8), pale = i % 3 !== 1, w = pale ? 1.6 + r() * 3.2 : 2.6 + r() * 3, t0 = -H + 3 + r() * H * .1, t1 = -6 - r() * H * .12;
+          B.s(`M${top} ${t0}C${top + (mid - top) * .6} ${-H * .62} ${mid} ${-H * .3} ${bot} ${t1}`, pale ? '#f4fbf8' : '#3f7e88', w, pale ? .42 + r() * .36 : .3 + r() * .16); }
+        // a soft white veil down each edge, where the falling water thins to spray (a ruled edge against the rock read as a pane)
+        for (const sgn of [-1, 1]) { const g = cl.createLinearGradient(sgn * Wd / 2, 0, sgn * (Wd / 2 - 16), 0); g.addColorStop(0, 'rgba(246,252,250,.75)'); g.addColorStop(1, 'rgba(246,252,250,0)'); cl.fillStyle = g; cl.fillRect(Math.min(sgn * Wd / 2 - 4, sgn * (Wd / 2 - 16)) + (sgn < 0 ? lipX * .3 : 0), -H, 20, H); }
         cl.restore(); }
       // spray peeling off both edges of the sheet as it falls, broken and fading (a sheet with clean edges reads as a pipe)
-      for (const sgn of [-1, 1]) for (let i = 0; i < 6; i++) { const t = .3 + r() * .62, y0 = -H * (1 - t), xe = sgn * (Wd / 2 - 1 + t * 3) + lipX * (1 - t); B.s(`M${xe} ${y0}q${sgn * (1 + r() * 2)} ${3 + r() * 3} ${sgn * (1 + r() * 2.5)} ${6 + r() * 7}`, '#f4fbf8', 1.2 + r() * 1.6, .16 + r() * .22); }
+      for (const sgn of [-1, 1]) for (let i = 0; i < 14; i++) { const t = .12 + r() * .82, y0 = -H * (1 - t), xe = sgn * (Wd / 2 - 1 + t * 3) + lipX * (1 - t); B.s(`M${xe} ${y0}q${sgn * (1 + r() * 2)} ${3 + r() * 3} ${sgn * (1 + r() * 2.5)} ${6 + r() * 7}`, '#f4fbf8', 1.2 + r() * 1.6, .16 + r() * .22); }
       // the lip: the river darkens as it gathers to the edge, then bends over it in a bright roll, thick and thin across
       // the drop, broken by two lip stones, with the shade just under the roll (not one clean rim, which read as a cylinder's top)
       { const cl = B.cx, ga = cl.createLinearGradient(0, -H - 12, 0, -H + 2); ga.addColorStop(0, 'rgba(58,118,128,0)'); ga.addColorStop(1, 'rgba(58,118,128,.6)'); cl.save(); cl.fillStyle = ga; cl.beginPath(); cl.ellipse(lipX, -H - 4, Wd / 2 + 3, 8, 0, 0, Math.PI * 2); cl.fill(); cl.restore(); }

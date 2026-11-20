@@ -43,7 +43,7 @@ window.GardenPaintWater = (function () {
     dusk: { water: '#5d9cab', deep: '#38778b', shallow: '#94c4bd', sky: '#f7c39a', skyHi: '#ffe0bc', refl: '#3f5a40', reflDeep: '#304833', glint: '#ffe2b8', foam: '#f4ece2', bed: '#ab9f80' },
     // (night water is dark before the night's blue grade is multiplied over it: a teal under that grade came out a saturated
     //  royal blue, lighter than the land round it, so the night's light and dark ran the wrong way; art director, round 3)
-    night: { water: '#2d5462', deep: '#1c3a4a', shallow: '#3f6870', sky: '#7c90aa', skyHi: '#b4c4da', refl: '#16241c', reflDeep: '#0f1a14', glint: '#e4ecff', foam: '#aebcc2', bed: '#4f4c40' },
+    night: { water: '#304a47', deep: '#20332f', shallow: '#42594f', sky: '#76848c', skyHi: '#a6b2ba', refl: '#16241c', reflDeep: '#0f1a14', glint: '#e4ecff', foam: '#aebcc2', bed: '#4f4c40' },   // (round 2: grey-green, a little darker than the moonlit land; a blue-green teal under the night grade read as royal blue paint)
   };
   const SEASON = {
     summer: { reed: ['#6d8a3e', '#8fa952', '#b4c472'], lily: ['#4f7c3e', '#6f9a4e', '#93b864'], flower: ['#fbfbf4', '#f6c9d6'], bank: '#8a7856', grass: '#6f8e45', moss: '#7d8f4e' },
@@ -184,7 +184,7 @@ window.GardenPaintWater = (function () {
   let fieldMask = null, fieldOut = null, fieldTone = null, fieldSea = null;
   // each water's own character, blended across joins: [shade under trees or peat, extra depth, running]. A woodland brook runs dark
   // under its canopy, a fell tarn is dark and peaty, the open Mere and the river take the sky; running water carries lines along its current.
-  const TONE = { mere: [0, 0, 0], river: [.06, .08, .8], brook: [.72, .26, 1], spring: [.6, .14, .3], gorge: [.3, .16, 1], tarn: [.6, .52, 0], pool: [.12, .06, 0] }, SHADE = [44, 84, 74], STONE_WET = [104, 104, 86], PEAT = [44, 40, 28], TB = 8;
+  const TONE = { mere: [0, 0, 0], river: [.06, .08, .8], brook: [.72, .2, 1], spring: [.6, .14, .3], gorge: [.46, .36, 1], tarn: [.6, .52, 0], pool: [.12, .06, 0] }, SHADE = [44, 84, 74], STONE_WET = [104, 104, 86], PEAT = [44, 40, 28], TB = 17;   // (a wide blend: the peaty tarn turned bright cyan at one hard line where the gorge left it)
   // The open sea far out is the world's own sea fill under this layer (by season); the painted sea fades into it offshore.
   const SEA_BASE = { summer: '#599f9d', spring: '#599f9d', autumn: '#5b9b9a', winter: '#76a8ad' };
   function seaPalette(S) {
@@ -194,12 +194,12 @@ window.GardenPaintWater = (function () {
     let edge = '#cfe4d4', shoal = '#84c2b2', mid = '#4b98a2', base0 = base;
     if (S.season === 'winter') { edge = mix(edge, '#e2e8e6', .4); shoal = mix(shoal, '#a8c8c8', .45); mid = mix(mid, base, .4); }
     // at night the sea is as dark as the world's own sea is made under it (NIGHT_SEA), so the night grade turns it navy
-    if (night) { edge = '#5f7a78'; shoal = '#3a6466'; mid = '#2c5462'; base0 = NIGHT_SEA; }
+    if (night) { edge = '#56685e'; shoal = '#38534c'; mid = '#2e4846'; base0 = NIGHT_SEA; }
     return { edge: rgbOf(edge), shoal: rgbOf(shoal), mid: rgbOf(mid), base: rgbOf(base0), sand: rgbOf(night ? '#6e6a58' : '#d6c89a'), wet: '#a8956a', foam: night ? '#b9c6ca' : '#fbfdf6' };
   }
   // the world's own sea under the painted one, at night: a dark veil over its fill (paint() lays it), and the painted sea
   // fades out into the same colour offshore
-  const NIGHT_SEA = '#2a4f5c', NIGHT_VEIL = { col: 0x16303e, a: .68 };
+  const NIGHT_SEA = '#2b4545', NIGHT_VEIL = { col: 0x1b2f30, a: .7 };
   // What the water reflects by the hour (the light module's evening grade is laid over all of it): c0 and c1 the two tones of
   // the clouds' reflections, broad patches lo..hi of a long, low noise; glow a wash of the sky's own colour over open water.
   const SKYR = {
@@ -208,7 +208,7 @@ window.GardenPaintWater = (function () {
     // (soft peach and a dusty rose, not a saturated magenta: one bright pink blob repeated across the sea read as stains)
     dusk: { a: .36, lo: .57, hi: .69, c0: '#f6d4b8', c1: '#dcb4bc', glow: .14, g: '#8f9fc6' },   // (light peach and rose-lilac: a deep gold half-blended into teal read as mud)
     // (a faint moonlit sky: bright cloud reflections made the night's water the brightest thing on the screen)
-    night: { a: .26, lo: .57, hi: .7, c0: '#8a9cb8', c1: '#6c82a6', glow: .1, g: '#162a40' },
+    night: { a: .22, lo: .57, hi: .7, c0: '#8a98a6', c1: '#6e7e90', glow: .08, g: '#1c2a30' },
   };
   function skyOf(S) { const R = SKYR[S.tod] || SKYR.day; let c0 = R.c0, c1 = R.c1; if (S.season === 'winter') { c0 = mix(c0, '#e4e8ea', .4); c1 = mix(c1, '#d4dce2', .4); } return { a: R.a, lo: R.lo, hi: R.hi, c0: rgbOf(c0), c1: rgbOf(c1), glow: R.glow, g: rgbOf(R.g) }; }
   function fieldCanvas(c, w, h) { if (!c) { c = document.createElement('canvas'); } if (c.width < w) c.width = w; if (c.height < h) c.height = h; return c; }
@@ -267,7 +267,7 @@ window.GardenPaintWater = (function () {
   }
   function bodyDraw(S, U, sea) {
     const M = S.M, G = window.GardenPaintGround;
-    const noise = G ? G.noise : () => .5, fbm = G ? G.fbm : () => .5, SP = sea ? seaPalette(S) : null, SKY = G ? skyOf(S) : null;
+    const noise = G ? G.noise : () => .5, fbm = G ? G.fbm : () => .5, SP = sea ? seaPalette(S) : null, SKY = G ? skyOf(S) : null, FO = SP ? rgbOf(SP.foam) : null;
     const toneOf = (pts, kind, b) => { const p = new Path2D(); pts.forEach((q, i) => i ? p.lineTo(q.x, q.y) : p.moveTo(q.x, q.y)); p.closePath(); const t = TONE[kind] || TONE.pool; return { p, b, fill: 'rgb(' + Math.round(t[0] * 255) + ',' + Math.round(t[1] * 255) + ',' + Math.round(t[2] * 255) + ')' }; };
     // a crossing strip (the water under a bridge or between stepping stones) takes the tone of the water it lies over
     const overOf = c => { const cen = c.pts.reduce((a, q) => ({ x: a.x + q.x / c.pts.length, y: a.y + q.y / c.pts.length }), { x: 0, y: 0 }); let best = null, bd = Infinity; for (const w of M.waters) { if (!hit(w.bounds, { x: c.bounds.x - 40, y: c.bounds.y - 40, w: c.bounds.w + 80, h: c.bounds.h + 80 })) continue; const d = inside(cen.x, cen.y, w.pts) ? 0 : edgeDist(cen.x, cen.y, w.pts); if (d < bd) { bd = d; best = w; } } return best; };
@@ -344,7 +344,10 @@ window.GardenPaintWater = (function () {
           // broad reaches of darker and paler water, and a finer ripple of tone, so no stretch is one flat colour
           const big = fbm(wx / 260, wy / 170, 41) - .5, fine = noise(wx / 46, wy / 30, 57) - .5, run = tR[tj];
           // running water gets to its own colour within a stride of the bank (a brook is not a strip of sandy glass)
-          const e = sstep(0, 7 - 4 * run, d), mm = sstep(3 - 2 * run, 24 - 12 * run, d), k = Math.min(1, Math.max(0, sstep(26, 100, d) * .9 + big * .35));
+          // (the shallows widen and narrow along the shore by a slow noise: a sandy bay here, deep water close in there; one even pale
+          //  band all round read as a tub's rim, and along the Mere's straight south shore as a ruled kerb)
+          const sv = .45 + 1.1 * noise(wx / 120, wy / 76, 61), dv = d * (1 - (1 - run) * (1 - 1 / sv) * .85);
+          const e = sstep(0, 7 - 4 * run, dv), mm = sstep(3 - 2 * run, 24 - 12 * run, dv), k = Math.min(1, Math.max(0, sstep(26, 100, d * (.75 + .5 * (sv - .45) / 1.1)) * .9 + big * .35));
           // (a running bank is wet stone and earth, not a pale sandy rim)
           const bw = run * .65, b0 = bed[0] + (STONE_WET[0] - bed[0]) * bw, b1 = bed[1] + (STONE_WET[1] - bed[1]) * bw, b2 = bed[2] + (STONE_WET[2] - bed[2]) * bw;
           let rr = b0 + (sh[0] - b0) * (.5 + .5 * e), gg = b1 + (sh[1] - b1) * (.5 + .5 * e), bb = b2 + (sh[2] - b2) * (.5 + .5 * e);
@@ -353,7 +356,7 @@ window.GardenPaintWater = (function () {
           rr += (dp[0] - rr) * kk; gg += (dp[1] - gg) * kk; bb += (dp[2] - bb) * kk;
           rr += (SHADE[0] - rr) * shd; gg += (SHADE[1] - gg) * shd; bb += (SHADE[2] - bb) * shd;
           // a fell tarn's water is stained brown-black by the peat it drains (only the tarn carries this much depth)
-          const peat = sstep(.4, .5, tD[tj]) * (1 - run) * (.55 + .2 * mm);
+          const peat = sstep(.18, .5, tD[tj]) * (1 - run * .5) * (.55 + .2 * mm);   // (the gorge drains the tarn and runs peaty too, a shade lighter: it no longer turns bright cyan at the outlet)
           if (peat > .01) { rr += (PEAT[0] - rr) * peat; gg += (PEAT[1] - gg) * peat; bb += (PEAT[2] - bb) * peat; }
           let lift = 1 + big * .08 + fine * .045;
           // the current: thin pale lines running with the banks, wavering and broken, and darker water between them
@@ -368,6 +371,10 @@ window.GardenPaintWater = (function () {
               sr += (C.mid[0] - sr) * t1; sg += (C.mid[1] - sg) * t1; sb += (C.mid[2] - sb) * t1;
               sr += (C.base[0] - sr) * t2; sg += (C.base[1] - sg) * t2; sb += (C.base[2] - sb) * t2;
               const sand = (1 - sstep(0, 6, dn)) * .3; sr += (C.sand[0] - sr) * sand; sg += (C.sand[1] - sg) * sand; sb += (C.sand[2] - sb) * sand;
+              // the swell: two soft lighter bands a little way off the sand, the nearer brighter, each with its darker trough to seaward,
+              // broken by a long noise into lengths of their own (thin stroked lines here read as dashed road markings)
+              { const dw = DW[tj], b1 = sstep(.36, .62, noise(wx / 140, wy / 80, 121)), b2 = sstep(.4, .66, noise(wx / 170, wy / 96, 147)), crest = Math.exp(-(((dw - 22) / 7) ** 2)) * b1 * .17 + Math.exp(-(((dw - 50) / 9) ** 2)) * b2 * .1, trough = Math.exp(-(((dw - 31) / 6) ** 2)) * b1 * .05 + Math.exp(-(((dw - 61) / 7) ** 2)) * b2 * .03, k2 = (1 - t2 * .6);
+                sr += (FO[0] - sr) * crest * k2 - sr * trough; sg += (FO[1] - sg) * crest * k2 - sg * trough; sb += (FO[2] - sb) * crest * k2 - sb * trough; }
               const sl = 1 + big * .06 + fine * .03 * (1 - t2);
               rr = rr * lift * (1 - mS) + sr * sl * mS; gg = gg * lift * (1 - mS) + sg * sl * mS; bb = bb * lift * (1 - mS) + sb * sl * mS; lift = 1;
               al2 *= 1 - mS * sstep(SEA_FADE[0], SEA_FADE[1], dS);
@@ -413,8 +420,7 @@ window.GardenPaintWater = (function () {
         // (and off a shore that turns sharply, round a spit's point: there the line bends into a chevron; the bend of the distance field tells)
         const bend = (gx, gy) => (ds(gx + 2, gy) + ds(gx - 2, gy) + ds(gx, gy + 2) + ds(gx, gy - 2) - 4 * ds(gx, gy)) / (4 * FQ * FQ);
         const dw = (gx, gy) => DW[loc(gx, gy)], swell = (lv, f, cut) => contour(dw, lv, (gx, gy, X, Y) => MS[loc(gx, gy)] > .96 && slope(gx, gy) > .86 && slope(gx + 1, gy + 1) > .86 && Math.abs(bend(gx, gy)) < .022 && noise(X / f, Y / (f * .62), 101 + lv) > cut ? 0 : -1)[0];
-        const s1 = swell(20, 120, .5), s2 = swell(46, 150, .56), s3 = null;
-        e.s1 = s1; e.s2 = s2; void s3;
+        void swell; e.s1 = e.s2 = null;   // (the swell is laid into the colour above, as soft bands)
       }
       // the wet dark line at a fresh water's edge, then the lap: a thin bright line just inside the water, a softer glow beside
       // it (fainter on running water); on the sea a line of foam where the waves run up the sand, thick and thin along the shore
@@ -799,14 +805,42 @@ window.GardenPaintWater = (function () {
         if (reedy) out[out.length - 1].needs = clump.map(q => [q[2], q[3], q[4]]);
       }
     }
+    tag = 'crag';
+    // 4e. The gorge's own rocks: every so often, from alternate banks, a cluster of wet boulders juts into the stream, with a dark
+    //     pool of shade under it and white water wrapped round its upstream side, so the channel narrows and widens and the two
+    //     banks never run parallel (one even width between straight banks read as a concrete channel). Inside the water's outline.
+    if (kind === 'gorge' && river) {
+      let side = r() < .5 ? -1 : 1;
+      for (let s = 30 + r() * 40; s < river.len - 24; s += 38 + r() * 56) {
+        side = -side; const c = at(river, s), nx = -c.ty * side, ny = c.tx * side; if (!inside(c.x, c.y, pts) || !onLand(c.x, c.y)) continue;
+        let bd = 0; for (let d = 3; d < 120; d += 3) if (!inside(c.x + nx * d, c.y + ny * d, pts)) { bd = d - 2; break; } if (bd < 8) continue;
+        const reach = bd * (.4 + r() * .35), stones = [], cnt = 3 + Math.floor(r() * 4), bx = c.x + nx * bd, by = c.y + ny * bd, ang = Math.atan2(c.ty, c.tx);
+        for (let k = 0; k < cnt; k++) { const v = r(); stones.push([(r() - .5) * 30, -v * reach, 4 + r() * 6 + (1 - v) * 4, r()]); }
+        stones.sort((p, q) => q[1] - p[1]);
+        add({ x: bx - 60, y: by - 60, w: 120, h: 120 }, (cx, C) => {
+          cx.save(); cx.clip(P); cx.translate(bx, by); cx.rotate(ang); cx.scale(1, side);
+          const g = cx.createRadialGradient(4, -reach * .5, 0, 4, -reach * .5, 30); g.addColorStop(0, 'rgba(22,34,32,.32)'); g.addColorStop(1, 'rgba(22,34,32,0)'); cx.fillStyle = g; cx.beginPath(); cx.ellipse(6, -reach * .45, 34, reach * .9 + 6, 0, 0, Math.PI * 2); cx.fill();
+          for (const [u, v, rr, t] of stones) {
+            cx.globalAlpha = .42; cx.fillStyle = '#18221f'; cx.beginPath(); cx.ellipse(u + 2.5, v + 1.5, rr * 1.1, rr * .72, 0, 0, Math.PI * 2); cx.fill();
+            cx.globalAlpha = .75; cx.strokeStyle = C.foam; cx.lineWidth = 1.4; cx.lineCap = 'round'; cx.beginPath(); cx.ellipse(u - rr * .25, v, rr * 1.25, rr * .85, 0, Math.PI * .62, Math.PI * 1.38); cx.stroke();
+            cx.globalAlpha = .3; cx.lineWidth = 3.2; cx.stroke();
+            cx.globalAlpha = 1; cx.fillStyle = t < .5 ? '#4e4a40' : '#5a5548'; cx.beginPath(); cx.ellipse(u, v, rr, rr * .66, (t - .5) * .5, 0, Math.PI * 2); cx.fill();
+            cx.globalAlpha = .75; cx.fillStyle = '#8f8772'; cx.beginPath(); cx.ellipse(u - rr * .25, v - rr * .2, rr * .5, rr * .28, 0, 0, Math.PI * 2); cx.fill();
+            if (t > .5) { cx.globalAlpha = .7; cx.fillStyle = C.moss; cx.beginPath(); cx.ellipse(u + rr * .1, v - rr * .32, rr * .45, rr * .18, 0, 0, Math.PI * 2); cx.fill(); }
+          }
+          cx.restore(); cx.globalAlpha = 1; });
+      }
+    }
     tag = 'rapid';
     // 5b. White water: standing waves across the current every few strides, each a few broken crests bowed downstream, and
     //     foam where the current runs against the bank's stones. The gorge runs white (it falls from the tarn to the falls);
     //     the brook and the river carry fainter, fewer ones. All from the river's line and the basin's own outline.
     if (river_ && river) {
       const G = kind === 'gorge', every = G ? [30, 34] : kind === 'brook' ? [64, 80] : [120, 160], strength = G ? 1 : kind === 'brook' ? .55 : .32, hwp = river.hw * (W.cellW + W.cellH) / 2;
-      for (let s = 12 + r() * every[0]; s < river.len; s += every[0] + r() * every[1]) {
+      const rh = j => ((Math.imul((j + (hash(f.id) & 511)) * 374761393, 668265263) >>> 0) % 1000) / 1000, run2 = u => { const k = Math.floor(u), t = u - k, sm = t * t * (3 - 2 * t); return rh(k) * (1 - sm) + rh(k + 1) * sm; };
+      for (let s = 12 + r() * every[0]; s < river.len; s += (every[0] + r() * every[1]) * (G ? .55 + r() * 1.3 : 1)) {
         const q = at(river, s), ang = Math.atan2(q.ty, q.tx); if (!inside(q.x, q.y, pts) || !onLand(q.x, q.y)) continue;
+        if (G && run2(s / 110) < .46) continue;   // (stretches of smooth dark water between the runs of white)
         const dashes = [], nd = (G ? 4 : 2) + Math.floor(r() * (G ? 4 : 3));
         // (low arcs in a loose row across the current: tightly curled ones read as scribbles)
         for (let k = 0; k < nd; k++) { const len = (G ? 5 : 4) + r() * (G ? 8 : 6); dashes.push([(k / Math.max(1, nd - 1) - .5) * 1.4 * hwp + (r() - .5) * hwp * .25, len, len * (.1 + r() * .14), (.3 + r() * .5) * strength, (r() - .5) * 4]); }
@@ -848,6 +882,42 @@ window.GardenPaintWater = (function () {
         });
       }
     }
+    tag = 'bite';
+    // 6b. The still water's edge is not one clean curve: by stretches (a smooth field along the shore) a tussock of sedge on its
+    //     own mud, a gravel spit, or on the fell tarn a peat hag with heather on top reaches a little way into the water, with its
+    //     own lap of light and a dark wet foot. Inside the water's outline (nothing to walk on is invented), from the outline.
+    //     (a pond with one even rim all round read as a tub or a rubber stamp; the Mere's straight south shore as a kerb)
+    if (kind === 'mere' || kind === 'pool' || kind === 'tarn') {
+      const seedK = hash(f.id + 'bite') & 1023, fieldK = u => { const k = Math.floor(u), t = u - k, sm = t * t * (3 - 2 * t), h = j => ((Math.imul((j + seedK) * 2654435761, 1597334677) >>> 0) % 1000) / 1000; return h(k) * (1 - sm) + h(k + 1) * sm; };
+      const per = kind === 'mere' ? 30 : 14, scale = kind === 'mere' ? 140 : 46;
+      for (let i = 0, acc = 0, arc = 0; i < n; i++) { const st = Math.hypot(pts[(i + 1) % n].x - pts[i].x, pts[(i + 1) % n].y - pts[i].y); acc += st; arc += st; if (acc < per) continue; acc = 0;
+        const v = fieldK(arc / scale); if (v < (kind === 'tarn' ? .4 : kind === 'pool' ? .38 : .5) || mouths.has(i) || shoreCovered(pts[i].x, pts[i].y)) continue;
+        const a = pts[i], nn = norm(i), reach = (kind === 'mere' ? 7 : 8) + r() * (kind === 'mere' ? 12 : 14) * v, len = (kind === 'mere' ? 22 : 18) + r() * (kind === 'mere' ? 30 : 24), ang = Math.atan2(nn.x, -nn.y);
+        const cx0 = a.x - nn.x * reach * .45, cy0 = a.y - nn.y * reach * .45; if (!inside(cx0, cy0, pts)) continue;
+        const sort = kind === 'tarn' ? (r() < .7 ? 'hag' : 'gravel') : r() < .62 ? 'sedge' : r() < .6 ? 'mud' : 'gravel', d = D().blob(r, 0, 0, len / 2, reach * .62, 9, .5), peb = [], tuft = [];
+        for (let k = 0; k < (sort === 'gravel' ? 9 : 4); k++) peb.push([(r() - .5) * len * .8, (r() - .5) * reach * .7, .9 + r() * (sort === 'gravel' ? 2.2 : 1.4), r()]);
+        if (sort === 'sedge' || sort === 'hag') for (let k = 0; k < 5 + Math.floor(r() * 5); k++) tuft.push([(r() - .5) * len * .75, (r() - .7) * reach * .5, 5 + r() * 7, (r() - .5) * .8, r()]);
+        add({ x: a.x - len - 20, y: a.y - len - 30, w: len * 2 + 40, h: len * 2 + 50 }, (cx, C) => {
+          cx.save(); cx.clip(P); cx.translate(cx0, cy0); cx.rotate(ang);
+          const base = sort === 'hag' ? '#4a3b2a' : sort === 'mud' ? mix(C.bank, '#5a4a32', .3) : sort === 'gravel' ? mix(C.bed, '#9a907a', .4) : mix(C.bank, C.grass, .35);
+          // its dark wet foot in the water, then the tussock or spit itself
+          cx.globalAlpha = .3; cx.fillStyle = '#1e2c2a'; cx.save(); cx.translate(1.5, 2.5); cx.fill(P2(d)); cx.restore();
+          cx.globalAlpha = sort === 'gravel' ? .8 : .95; cx.fillStyle = base; cx.fill(P2(d));
+          cx.globalAlpha = .35; cx.fillStyle = sort === 'hag' ? '#6e5a44' : mix(base, '#f0e6c8', .3); cx.save(); cx.translate(-1.5, -1.5); cx.scale(.7, .6); cx.fill(P2(d)); cx.restore();
+          for (const [px, py, pr, t] of peb) { cx.globalAlpha = .8; cx.fillStyle = t < .5 ? '#7a7262' : '#a29a84'; cx.beginPath(); cx.ellipse(px, py, pr, pr * .62, 0, 0, Math.PI * 2); cx.fill(); }
+          cx.rotate(-ang);
+          // tufts stand upright whatever the shore's angle: sedge blades, or heather and moss on a hag
+          for (const [px0, py0, h, lean, t] of tuft) { const px = px0 * Math.cos(ang) - py0 * Math.sin(ang), py = px0 * Math.sin(ang) + py0 * Math.cos(ang);
+            if (sort === 'hag') { cx.globalAlpha = .9; cx.fillStyle = t < .5 ? '#7a5a6e' : '#5e6e3a'; cx.beginPath(); cx.ellipse(px, py - 1, 3 + h * .3, 1.8 + h * .12, 0, 0, Math.PI * 2); cx.fill(); continue; }
+            if (!C.reed || !C.reed.length) continue;
+            cx.globalAlpha = .95; cx.strokeStyle = t < .4 ? C.reed[0] : t < .8 ? C.reed[1] : C.reed[2]; cx.lineWidth = 1.1; cx.lineCap = 'round';
+            for (let b = -1; b <= 1; b++) { cx.beginPath(); cx.moveTo(px + b, py); cx.quadraticCurveTo(px + b * 1.5 + lean * h * .3, py - h * .6, px + b * 2.4 + lean * h, py - h); cx.stroke(); } }
+          cx.rotate(ang);
+          // the lap of light along its water side
+          cx.globalAlpha = .4; cx.strokeStyle = C.foam; cx.lineWidth = 1.1; cx.beginPath(); cx.ellipse(0, reach * .12, len * .5, reach * .5, 0, Math.PI * .1, Math.PI * .9); cx.stroke();
+          cx.restore(); cx.globalAlpha = 1; });
+      }
+    }
     tag = 'lap';
     // 7. The lap line: a thin bright line just inside the water, a wet dark line just outside.
     add(all, (cx, C) => { cx.lineJoin = 'round'; cx.save(); cx.clip(P); cx.strokeStyle = C.foam; cx.globalAlpha = .55; cx.lineWidth = 3; cx.stroke(bankP); cx.globalAlpha = .25; cx.lineWidth = 8; cx.stroke(bankP); cx.restore(); cx.globalAlpha = 1; });
@@ -860,12 +930,12 @@ window.GardenPaintWater = (function () {
       // it) carry dense reeds standing in the shallows, with rushes and
       // loosestrife mixed in; between the beds a single clump now and then.
       const seed = hash(f.id) & 1023, field = i => { const u = i / 9, k = Math.floor(u), t = u - k, s = t * t * (3 - 2 * t), h = j => ((Math.imul((j + seed) * 374761393, 668265263) >>> 0) % 1000) / 1000; return h(k) * (1 - s) + h(k + 1) * s; };
-      const bedAt = kind === 'mere' ? .64 : kind === 'river' ? .6 : kind === 'brook' ? .62 : .6;
+      const bedAt = kind === 'mere' ? .64 : kind === 'river' ? .6 : kind === 'brook' ? .62 : .52;
       for (let i = 0, acc = 0, arc = 0; i < n; i++) { const step = Math.hypot(pts[(i + 1) % n].x - pts[i].x, pts[(i + 1) % n].y - pts[i].y); acc += step; arc += step; if (acc < 26) continue; acc = 0;
         const a = pts[i], nn = norm(i);
         if (kind === 'mere' && a.y < all.y + 40 + all.h * .18) continue;
         const westBank = kind === 'mere' && a.x < all.x + all.w * .32 && a.y > all.y + all.h * .35, estuary = kind === 'river' && a.y > W.sky + 74 * W.cellH;
-        const bed = field(arc / 60) > bedAt - (westBank || estuary ? .3 : 0) && !(kind === 'mere' && nn.y < -.5 && a.x > all.x + all.w * .3 && a.x < all.x + all.w * .55);
+        const bed = field(arc / (kind === 'pool' ? 34 : 60)) > bedAt - (westBank || estuary ? .3 : 0) && !(kind === 'mere' && nn.y < -.5 && a.x > all.x + all.w * .3 && a.x < all.x + all.w * .55);
         if (!bed && r() > .025) continue;
         const clump = [], cnt = bed ? 6 + Math.floor(r() * 6) : 3, mixIds = estuary ? ['plant.reed', 'plant.reed', 'plant.proof-fleet-reed', 'plant.bulrush'] : westBank ? ['plant.reed', 'plant.bulrush', 'plant.proof-fleet-rush', 'plant.canal-view-loosestrife'] : ['plant.reed', 'plant.proof-fleet-rush', 'plant.reed', 'plant.bulrush'];
         for (let k = 0; k < cnt; k++) { const o = (r() - .62) * 22, along = (r() - .5) * 24, id = mixIds[Math.floor(r() * mixIds.length)]; clump.push([a.x + nn.x * o - nn.y * along, a.y + nn.y * o + nn.x * along, id, r() < .5 ? 0 : 1, 24 + r() * (bed ? 22 : 12)]); }
@@ -925,7 +995,7 @@ window.GardenPaintWater = (function () {
     return {
       glint: make('glint', 40, 8, (cx, w, h) => { const g = cx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.35, 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)'); cx.save(); cx.translate(w / 2, h / 2); cx.scale(1, h / w); cx.translate(-w / 2, -h / 2); cx.fillStyle = g; cx.fillRect(0, -w, w, w * 3); cx.restore(); }),
       spark: make('spark', 12, 12, (cx, w) => { const g = cx.createRadialGradient(6, 6, 0, 6, 6, 6); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.3, 'rgba(255,255,255,.6)'); g.addColorStop(1, 'rgba(255,255,255,0)'); cx.fillStyle = g; cx.fillRect(0, 0, w, w); cx.fillStyle = 'rgba(255,255,255,.8)'; cx.fillRect(5.5, 1, 1, 10); cx.fillRect(1, 5.5, 10, 1); }),
-      ring: make('ring', 80, 24, (cx) => { cx.strokeStyle = 'rgba(240,248,246,.9)'; cx.lineWidth = 2; cx.beginPath(); cx.ellipse(40, 12, 36, 9, 0, 0, Math.PI * 2); cx.stroke(); cx.strokeStyle = 'rgba(40,60,70,.35)'; cx.lineWidth = 1.2; cx.beginPath(); cx.ellipse(40, 13.5, 35, 8.5, 0, .2, Math.PI - .2); cx.stroke(); }),
+      ring: make('ring2', 80, 24, (cx) => { cx.lineCap = 'round'; cx.strokeStyle = 'rgba(240,248,246,.75)'; cx.lineWidth = 1.6; for (const [a0, a1] of [[.15, 1.2], [1.6, 2.5], [2.9, 4.1], [4.5, 5.9]]) { cx.beginPath(); cx.ellipse(40, 12, 36, 9, 0, a0, a1); cx.stroke(); } cx.strokeStyle = 'rgba(240,248,246,.4)'; cx.lineWidth = 1.1; for (const [a0, a1] of [[.6, 1.9], [3.4, 4.6]]) { cx.beginPath(); cx.ellipse(40, 12, 24, 6, 0, a0, a1); cx.stroke(); } cx.strokeStyle = 'rgba(40,60,70,.25)'; cx.lineWidth = 1.1; cx.beginPath(); cx.ellipse(40, 13.5, 35, 8.5, 0, .4, 1.3); cx.stroke(); }),
       // (centred in the squashed space, so the puff fades to nothing at every edge: centred at (80, 40) it was cut flat
       //  along its top and every mist puff over the plunge pool showed as a pale rectangle)
       mist: make('mist2', 160, 80, (cx, w, h) => { const g = cx.createRadialGradient(80, 80, 0, 80, 80, 78); g.addColorStop(0, 'rgba(250,252,252,.85)'); g.addColorStop(.45, 'rgba(244,248,248,.4)'); g.addColorStop(1, 'rgba(244,248,248,0)'); cx.save(); cx.scale(1, .5); cx.fillStyle = g; cx.fillRect(0, 0, 160, 160); cx.restore(); }),
@@ -987,7 +1057,7 @@ window.GardenPaintWater = (function () {
           // Start each ripple at a fresh wet point once per cycle. Repeatedly
           // adding an offset near phase zero made its centre wander onto land.
           if (cycle !== q.cycle) { const p = pick(); if (p) { q.x = p.x; q.y = p.y; } q.cycle = cycle; }
-          q.im.setPosition(q.x, q.y).setScale(.15 + f * .9, .15 + f * .8).setAlpha(f < .7 ? (1 - f / .7) * .3 : 0);
+          q.im.setPosition(q.x, q.y).setScale(.15 + f * .9, .15 + f * .8).setAlpha(f < .7 ? (1 - f / .7) * .22 : 0);
         }
       } });
     }
@@ -1051,7 +1121,7 @@ window.GardenPaintWater = (function () {
       const pool = [], NP = 110, cells = new Map(), clear = (x, y, m) => MK.at(x, y) === 2 && MK.at(x - m, y) === 2 && MK.at(x + m, y) === 2 && MK.at(x, y - m * .7) === 2 && MK.at(x, y + m * .7) === 2;
       for (let i = 0; i < NP; i++) pool.push({ im: add(scene.add.image(0, 0, T.crest)).setAlpha(0).setVisible(false), on: false });
       const hc = (a, b, c) => { let h = Math.imul(a * 73856093 ^ b * 19349663 ^ c * 83492791, 2654435761) >>> 0; h ^= h >>> 15; return (h % 100000) / 100000; };
-      const crestTint = night ? 0xb4c6e8 : dusk ? 0xffe2c0 : 0xffffff, crestA = night ? .3 : dusk ? .6 : .78, sparkTint = night ? 0xdce6ff : dusk ? 0xffd08a : 0xffffff, sparkA = night ? .5 : dusk ? .85 : .6;
+      const crestTint = night ? 0xb4c6e8 : dusk ? 0xffe2c0 : 0xffffff, crestA = night ? .2 : dusk ? .36 : .42, sparkTint = night ? 0xdce6ff : dusk ? 0xffd08a : 0xffffff, sparkA = night ? .5 : dusk ? .85 : .6;
       out.push({ b: { x: -1e6, y: -1e6, w: 2e6, h: 2e6 }, list: pool, kind: 'sea surface', update(dt, t) {
         const v = S.view; if (!v) return; const G = v.w > 1700 ? 256 : v.w > 900 ? 128 : 64, gx0 = Math.floor(v.x / G), gy0 = Math.floor(v.y / G), gx1 = Math.ceil((v.x + v.w) / G), gy1 = Math.ceil((v.y + v.h) / G);
         let n = 0;
@@ -1099,6 +1169,24 @@ window.GardenPaintWater = (function () {
           g.im.setTint(r.col).setPosition(r.x + wob * (1 + r.k * .5), r.y).setScale(wid * 1.25, .85).setAlpha(Math.min(1, r.pw * lit * 1.9 * (.7 + .3 * Math.sin(t * 2.6 + r.k + r.ph))));   // (strong: the night's grade is laid over it)
         }
         for (let i = n; i < NL; i++) { const g = pool[i]; if (g.on || g.im.visible) { g.im.setVisible(false); g.on = false; } }
+      } });
+    }
+    // The moon's path at night: a broken column of pale light lying on the open water, below where the moon stands in the
+    // south sky (a little right of the middle of the view, so it moves with you as a reflection does), shimmering; only where
+    // the column falls on water (fresh or sea), brightest on the open sea and the Mere, none on running water under trees.
+    if (night && MK) {
+      const pool = [], NM = 60, hh = (a, b) => { let h = Math.imul(a * 374761393 ^ b * 668265263, 2246822519) >>> 0; h ^= h >>> 13; return (h % 10000) / 10000; };
+      for (let i = 0; i < NM; i++) pool.push({ im: add(scene.add.image(0, 0, T.streak)).setAlpha(0).setVisible(false).setBlendMode(Phaser.BlendModes.ADD), on: false });
+      out.push({ b: { x: -1e6, y: -1e6, w: 2e6, h: 2e6 }, list: pool, kind: 'moon path', update(dt, t) {
+        const v = S.view; let n = 0;
+        if (v) { const cx0 = v.x + v.w * .6, step = 7;
+          for (let y = Math.floor(v.y / step) * step; y < v.y + v.h && n < NM; y += step) {
+            const row = Math.round(y / step), wob = Math.sin(t * .9 + row * .7) * 3 + (hh(row, 3) - .5) * 14, x = cx0 + wob, m = MK.at(x, y); if (!m || !MK.at(x - 10, y) || !MK.at(x + 10, y)) continue;
+            const fl = (Math.sin(t * (1.3 + hh(row, 5)) + row * 2.1) + 1) / 2; if (fl < .25) continue;
+            const g = pool[n++]; if (!g.on) { g.im.setVisible(true); g.on = true; }
+            g.im.setTint(0xd8e2f0).setPosition(x, y).setScale(.5 + hh(row, 7) * 1.1 + fl * .3, .7).setAlpha((m & 2 ? .5 : .38) * fl);
+          } }
+        for (let i = n; i < NM; i++) { const g = pool[i]; if (g.on || g.im.visible) { g.im.setVisible(false); g.on = false; } }
       } });
     }
     S.sortParent = true;
@@ -1200,11 +1288,18 @@ window.GardenPaintWater = (function () {
         // foam spreading out from the landing: broken arcs of bubbles drifting away, thinning with distance
         c.globalAlpha = 1; c.strokeStyle = C.foam; c.fillStyle = C.foam; c.lineCap = 'round';
         // (loose rafts of bubbles drifting out and thinning, each its own shape: whole or broken rings round the landing read as a target)
-        rafts.forEach(([x, y, rr, t], ri) => { const d = Math.hypot((x - pool.x) / 1.3, (y - pool.y) / .45) / 120, a0 = Math.atan2((y - pool.y) / .45, (x - pool.x) / 1.3), R = Math.max(18, d * 120), q = rng(hash('raft') + ri * 7919);
+        if (false) rafts.forEach(([x, y, rr, t], ri) => { const d = Math.hypot((x - pool.x) / 1.3, (y - pool.y) / .45) / 120, a0 = Math.atan2((y - pool.y) / .45, (x - pool.x) / 1.3), R = Math.max(18, d * 120), q = rng(hash('raft') + ri * 7919);
           const px = pool.x + Math.cos(a0) * R * 1.3, py = pool.y + 6 + Math.sin(a0) * R * .45, ang = Math.atan2(Math.cos(a0) * .45, -Math.sin(a0) * 1.3), al = Math.max(.07, .6 - d * .5), n = 3 + Math.floor(q() * 6);
           c.save(); c.translate(px, py); c.rotate(ang);
           for (let k = 0; k < n; k++) { const bx = (q() - .5) * rr * 3.2, by = (q() - .5) * rr * .7, br = .9 + q() * (2.6 - d * 1.2); c.globalAlpha = al * (.45 + q() * .55); c.beginPath(); c.ellipse(bx, by, br * 1.5, br * .8, 0, 0, Math.PI * 2); c.fill(); }
           c.restore(); });
+        // (round 2: no rafts of round bubbles, which read as white coins scattered in a fan) the churned water spreading off the landing:
+        // long broken streaks of foam curving away with the current, thinning out, and a pale boil of aerated water under the sheet
+        { const q = rng(hash('churn')); c.lineCap = 'round';
+          for (let k = 0; k < 34; k++) { const side = q() < .5 ? -1 : 1, d = .15 + q() * .85, a0 = (q() * .9 + .05) * Math.PI, R = 22 + d * 120, px = pool.x + Math.cos(a0) * R * 1.3 * side * (q() < .3 ? -1 : 1), py = pool.y + 6 + Math.sin(a0) * R * .42, len = 8 + q() * 26 * (1 - d * .4);
+            c.globalAlpha = (.5 - d * .38) * (.5 + q() * .5); c.strokeStyle = C.foam; c.lineWidth = .8 + q() * 1.6 * (1 - d * .6);
+            c.beginPath(); c.moveTo(px - len / 2, py); c.quadraticCurveTo(px, py - 1.5 + q() * 3, px + len / 2, py + (q() - .5) * 3); c.stroke(); } }
+        { const g3 = c.createRadialGradient(pool.x, pool.y - 2, 0, pool.x, pool.y - 2, width * 1.5); g3.addColorStop(0, 'rgba(' + rgbOf(C.foam) + ',.55)'); g3.addColorStop(.5, 'rgba(' + rgbOf(C.foam) + ',.2)'); g3.addColorStop(1, 'rgba(' + rgbOf(C.foam) + ',0)'); c.globalAlpha = 1; c.fillStyle = g3; c.save(); c.translate(pool.x, pool.y - 2); c.scale(1, .42); c.beginPath(); c.arc(0, 0, width * 1.5, 0, Math.PI * 2); c.fill(); c.restore(); }
         // (no whole rings drawn round it: three perfect ellipses read as a target; the broken arcs above are the spreading water)
         // (the churn where the sheet lands: several overlapping soft boils, not one white blob)
         const fc = rgbOf(C.foam); for (let k = 0; k < 5; k++) { const ox = (k - 2) * width * .32 + Math.sin(k * 2.3) * 6, oy = -6 + Math.cos(k * 1.7) * 4, rr = width * (.32 + (k % 2) * .14);
@@ -1307,5 +1402,7 @@ window.GardenPaintWater = (function () {
   }
   /** Whether this painter paints the sea surface too (the native water then draws no surf line of its own along the coast). */
   function paintsSea() { return !!(state && state.layer && state.M && state.M.coast.length); }
-  return { wanted, paint, tick, clear, status, memory, palette, startView, paintsSea, ownsSea: true, get lastError() { return lastError; } };
+  /** Whether this painter lays the scenery's reflections into the water (the native world then reflects only what moves). */
+  function mirrorsScenery() { return !!(state && state.layer && state.mirrorKit); }
+  return { wanted, paint, tick, clear, status, memory, palette, startView, paintsSea, mirrorsScenery, ownsSea: true, get lastError() { return lastError; } };
 })();
