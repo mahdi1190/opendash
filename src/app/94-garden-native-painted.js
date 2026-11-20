@@ -339,7 +339,7 @@ window.GardenNativePainted = (function () {
       }
       if (!im) im = objectImage(scene, id, v, season, size, x, y, false);
       if (!im) return; im.setDepth(y); parent.add(im); made.push(im);
-      if (size.h >= 50) { tall.push({ im, x, y, h: size.h }); trunks.push(Object.freeze({ x: x / W.cellW, y: (y - W.sky) / W.cellH, w: (size.was || size.h) > 100 ? .5 : .4 })); }
+      if (size.h >= 50) { tall.push({ im, x, y, h: size.h }); trunks.push(Object.freeze({ x: x / W.cellW, y: (y - W.sky) / W.cellH, w: (size.was || size.h) > 100 ? .5 : .4, sp: String(species || id || '') })); }
     };
     const tall = plantingTall = [], trunks = [];
     // Nothing overlaps: a tree stands 3.5 to 5 times the player (gardenSizePx), but never so tall that its crown covers a building,

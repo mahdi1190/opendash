@@ -139,7 +139,7 @@ for (const t of things) {
   for (const nm of [...names].sort()) { const k = ctx.kindOf({ id: nm, head: true }); report.painted.push({ name: nm, kind: k || '?' }); if (!k) report.paintedUnknown.push(nm); }
 }
 // kinds the game knows that this layout has none of (things for the layout's authors to place)
-for (const [k, K] of Object.entries(ctx.K)) if (!report.kinds[k] && (K.acts || K.pet) && !K.trunks && k !== 'seat' && k !== 'garden-well') report.missingKinds.push(k);
+for (const [k, K] of Object.entries(ctx.K)) if (!report.kinds[k] && (K.acts || K.pet) && !K.species && k !== 'seat' && k !== 'garden-well') report.missingKinds.push(k);
 
 /* ---------- the ground ---------- */
 const terr = { 'water-edge': 0, deep: 0, 'open-grass': 0, sand: 0, slope: 0, path: 0, rock: 0 };

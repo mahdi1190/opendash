@@ -80,7 +80,7 @@ function _gaTreeRows(px, py) {
   const out = [];
   for (const b of _ga.trunks) {
     const fx = (b.x0 + b.x1) / 2, fy = b.y1; if (Math.abs(fx - px) > GA_REACH + 1 || Math.abs(fy - py) > GA_REACH + 1) continue;
-    const kind = gardenKindOf({ trunk: b.src }), K = GARDEN_KINDS[kind]; if (!K || !K.acts) continue;   // a tree's kind is the painter that drew it (fruit trees shake, wood trees climb)
+    const kind = gardenKindOf({ tree: b.sp || '' }), K = GARDEN_KINDS[kind]; if (!K || !K.acts) continue;   // a tree's kind is what it is (its species), and each move asks its own trunk's size: never who drew it or where
     for (const o of K.acts) { if (o.big && b.x1 - b.x0 < o.big) continue; if (o.act === 'hide' && _ga.trunks.some(t => t !== b && t.y1 > fy + 0.3 && t.y1 < fy + 2.6 && Math.abs((t.x0 + t.x1) / 2 - fx - 0.15) < 1.4)) continue;   /* (round 4: not where another tree just in front would bury you in its leaves: you must be seen peeking) */ out.push({ key: 'tree:' + fx.toFixed(1) + ',' + fy.toFixed(1) + ':' + o.act, act: o.act, name: o.name || K.name, x: fx, y: fy, stand: { x: fx + (o.side ? o.side * (b.x1 - b.x0) / 2 : 0) + o.stand[0], y: fy + o.stand[1] }, deg: o.deg, lift: 0, src: 'tree', seated: !!o.edge, tree: b, kind }); }
   }
   return out;

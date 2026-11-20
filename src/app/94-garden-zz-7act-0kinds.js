@@ -10,7 +10,8 @@
      arts      the painter's kind of drawing that makes a thing this kind (a landmark row's `art`, a fixed prop's `kind`)
      decor     placed decoration ids of this kind; effects: decoration effect kinds of this kind (any decoration you sit on is a seat)
      words     words in an id that make an unknown thing this kind (a layout's new 'vseat-3' row is a bench)
-     trunks    the tree painters (_gwPaintedTrunks src) whose trees are this kind
+     species   the tree species (a painted tree's own `sp`, whoever drew it) that are this kind; '*' any other tree. A tree's moves also
+               need its trunk stout enough (an act's big: the trunk's width in cells)
      acts      [{ act (GARDEN_ACTS id), name?, stand [u, dy], deg, seat, edge, reach, pri, noProp, needs, at, art, drawn, top, loft, side, big }]
                  wade: the stand point is in shallow water on purpose (under falls).
      stand: where you stand. u is a share of the thing's own width from its middle (so a bench twice as long puts you at the same
@@ -99,11 +100,11 @@ const GARDEN_KINDS = Object.freeze({
   'leaf-pile': { name: 'the leaf pile', art: 'leaves', place: true, decor: ['leaf-pile'], w: 1, h: 0.3, acts: [{ act: 'kick', stand: [0, -0.32], deg: 90, kick: 'leaves', needs: { season: 'autumn' } }], pet: 'leaves', solid: 'free' },
   basket: { name: 'the basket', art: 'basket', place: true, decor: ['apple-crate'], w: 0.5, h: 0.2, acts: [{ act: 'carry', stand: [0, 0.36], deg: 90, carry: 'basket' }], pet: 'bed' },
   log: { name: 'the log', art: 'log', place: true, w: 0.8, h: 0.2, acts: [{ act: 'carry', stand: [0, 0.36], deg: 90, carry: 'log' }] },
-  /* trees, by the painter that drew them (the walker's trunk list) */
-  'fruit-tree': { name: 'the fruit tree', trunks: ['orchard'], acts: [{ act: 'shake', stand: [0, 0.32], deg: -90 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90, cells: true }], pet: 'tree' },
-  'climbable-tree': { name: 'the tree', trunks: ['wood'], acts: [{ act: 'climbtree', stand: [0, 0.3], deg: -90, big: 0.3 }, { act: 'hide', stand: [-0.02, -0.1], side: 1, edge: true, deg: 90, cells: true }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90, cells: true }], pet: 'tree' },
-  tree: { name: 'the tree', trunks: ['village'], acts: [{ act: 'hide', stand: [-0.02, -0.1], side: 1, edge: true, deg: 90, cells: true }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90, cells: true }], pet: 'tree' },
-  'fell-tree': { name: 'the tree', trunks: ['fells'], acts: [{ act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90, cells: true }], pet: 'tree' },
+  /* trees, by what the tree IS (its species, from whichever painter drew it: the walker's trunk list carries it) and its own size:
+     a fruit tree is shaken wherever it grows; any tree with a trunk stout enough (big: the trunk's width in cells) is climbed and hidden
+     behind, in a wood, a village or on a fell alike; every tree is napped under. A layout or painter that plants a new species needs no code. */
+  'fruit-tree': { name: 'the fruit tree', species: ['apple', 'pear', 'perry', 'plum', 'damson', 'gage', 'cherry', 'quince', 'medlar', 'crab', 'fig', 'mulberry', 'cider', 'pippin', 'fruit'], acts: [{ act: 'shake', stand: [0, 0.32], deg: -90 }, { act: 'hide', stand: [-0.02, -0.1], side: 1, edge: true, deg: 90, cells: true, big: 0.3 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90, cells: true }], pet: 'tree' },
+  tree: { name: 'the tree', species: ['*'], acts: [{ act: 'climbtree', stand: [0, 0.3], deg: -90, big: 0.3 }, { act: 'hide', stand: [-0.02, -0.1], side: 1, edge: true, deg: 90, cells: true, big: 0.28 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90, cells: true }], pet: 'tree' },
   /* things pets go to (no move of yours yet) */
   ladder: { name: 'the ladder', words: ['ladder'], noPerch: true },   // a ladder standing on its own (a ladder up a building is that building's part)
   'standing-tree': { name: 'the tree', words: ['tree', 'birch', 'oak', 'ash', 'beech', 'rowan', 'alder', 'willow', 'pine', 'yew', 'holly', 'hawthorn', 'chestnut', 'sapling', 'elder', 'lime'], noPerch: true },   // a tree a painter drew as a thing: its moves come from its trunk (the walker's trunk list)
@@ -140,12 +141,12 @@ const GARDEN_TERRAIN = Object.freeze({
 const GARDEN_ACT_GROUND = Object.freeze(['lie', 'nap', 'laugh', 'throwstick', 'rub']);
 /** Every kind's pets word -> the kinds that count as it (built once). */
 const GARDEN_KIND_BY_PET = Object.freeze(Object.entries(GARDEN_KINDS).reduce((o, [k, v]) => { if (v.pet) (o[v.pet] || (o[v.pet] = [])).push(k); return o; }, {}));
-const _GK_ART = new Map(), _GK_DECOR = new Map(), _GK_EFFECT = new Map(), _GK_TRUNK = new Map(), _GK_WORDS = [];
+const _GK_ART = new Map(), _GK_DECOR = new Map(), _GK_EFFECT = new Map(), _GK_SPECIES = [], _GK_WORDS = [];
 for (const [k, v] of Object.entries(GARDEN_KINDS)) {
   for (const a of v.arts || []) if (!_GK_ART.has(a)) _GK_ART.set(a, k);
   for (const d of v.decor || []) if (!_GK_DECOR.has(d)) _GK_DECOR.set(d, k);
   for (const e of v.effects || []) if (!_GK_EFFECT.has(e)) _GK_EFFECT.set(e, k);
-  for (const t of v.trunks || []) _GK_TRUNK.set(t, k);
+  for (const t of v.species || []) if (t !== '*') _GK_SPECIES.push([t, k]);
   if (k !== 'building') for (const w of v.words || []) _GK_WORDS.push([w, k]);
 }
 for (const w of GARDEN_KINDS.building.words) _GK_WORDS.push([w, 'building']);   // (last: a 'bench-house' is a bench before it is a house)
@@ -158,13 +159,22 @@ function gardenKindOf(t) {   // t.head: only the last word counts (a painter's '
   if (art && _GK_ART.has(art)) return _GK_ART.get(art);
   if (t.decor && _GK_DECOR.has(t.decor)) return _GK_DECOR.get(t.decor);
   if (t.effect && _GK_EFFECT.has(t.effect)) return _GK_EFFECT.get(t.effect);
-  if (t.trunk && _GK_TRUNK.has(t.trunk)) return _GK_TRUNK.get(t.trunk);
+  if (t.tree != null) return gardenTreeKind(t.tree);
   const id = String(t.id || '').toLowerCase().split('|')[0].replace(/^(ld|lf|dc|ga|rw)-/, '').replace(/-\d+$/, '');
   const toks = id.split(/[^a-z]+/).filter(w => w.length > 1), flat = toks.join('');
   // the last word names the thing ('jetty-post' is a post, 'quince-house' a house), then a word inside one ('woodbench', 'vseat')
   for (const [w, k] of _GK_WORDS) if (flat === w) return k;
   // (a word's end names the thing: 'vseat' is a seat, 'beaconfire' a fire; a word's start only for a long word: 'ringbirch' is no ring)
   for (const tk of (t.head ? toks.slice(-1) : toks.slice().reverse())) { for (const [w, k] of _GK_WORDS) if (tk === w) return k; for (const [w, k] of _GK_WORDS) if (w.length >= 4 && tk.length > w.length && tk.endsWith(w)) return k; for (const [w, k] of _GK_WORDS) if (w.length >= 6 && tk.length > w.length && tk.startsWith(w)) return k; }
+  return '';
+}
+/** A painted tree's kind from its species (any painter's name for it: 'apple', 'tree.green-birch', 'pine'), never from who drew it:
+ *  a kind whose `species` names a word of it, else the kind with '*' (any tree). A trunk list's rock (a pass's boulder) is no tree: ''. */
+function gardenTreeKind(sp) {
+  const toks = String(sp || '').toLowerCase().replace(/^tree\./, '').split(/[^a-z]+/).filter(Boolean);
+  if (toks.some(w => /^(rock|boulder|stone|stones)$/.test(w))) return '';
+  for (const w of toks) for (const [s, k] of _GK_SPECIES) if (w === s) return k;
+  for (const [k, v] of Object.entries(GARDEN_KINDS)) if ((v.species || []).includes('*')) return k;
   return '';
 }
 /** Turn a vector laid out for a front facing the camera (90) round to a thing whose front faces `front` degrees. */

@@ -162,18 +162,18 @@ function _gwPaintedTrunks(island) {
   const wood = typeof GardenPaintWood !== 'undefined' && GardenPaintWood && GardenPaintWood.trunks ? GardenPaintWood.trunks() : null;
   const orch = typeof GardenPaintVale !== 'undefined' && GardenPaintVale && typeof GardenPaintVale.orchardTrunks === 'function' ? GardenPaintVale.orchardTrunks() : null;
   // the woods and the orchard are listed first: their boxes were measured against their own drawn trunks
-  if (wood && wood.list) for (const b of wood.list) feet.push({ x: (b.x0 + b.x1) / 2, y: b.y1, w: Math.max(.3, b.x1 - b.x0), src: 'wood' });
-  if (Array.isArray(orch)) for (const [x, y, w] of orch) feet.push({ x, y: y + .04, w, src: 'orchard' });
-  if (nat && nat.list) for (const t of nat.list) feet.push({ x: t.x, y: t.y - .02, w: t.w, src: 'village' });
-  for (const [x, y, w] of _gwFellTrunks()) feet.push({ x, y, w, src: 'fells' });
-  for (const [x, y, w] of _gwGateTrunks()) feet.push({ x, y, w, src: 'gate' });
+  if (wood && wood.list) for (const b of wood.list) feet.push({ x: (b.x0 + b.x1) / 2, y: b.y1, w: Math.max(.3, b.x1 - b.x0), src: 'wood', sp: b.sp || '' });
+  if (Array.isArray(orch)) for (const [x, y, w, sp] of orch) feet.push({ x, y: y + .04, w, src: 'orchard', sp: sp || '' });
+  if (nat && nat.list) for (const t of nat.list) feet.push({ x: t.x, y: t.y - .02, w: t.w, src: 'village', sp: t.sp || '' });
+  for (const [x, y, w, sp] of _gwFellTrunks()) feet.push({ x, y, w, src: 'fells', sp: sp || '' });
+  for (const [x, y, w, sp] of _gwGateTrunks()) feet.push({ x, y, w, src: 'gate', sp: sp || '' });
   const out = [], seen = new Map();
   for (const f of feet) {
     const k = Math.floor(f.x) + ',' + Math.floor(f.y); let dup = false;
     for (let dy = -1; dy <= 1 && !dup; dy++) for (let dx = -1; dx <= 1 && !dup; dx++) for (const o of seen.get((Math.floor(f.x) + dx) + ',' + (Math.floor(f.y) + dy)) || []) if (Math.abs(o.x - f.x) < .5 && Math.abs(o.y - f.y) < .35) { dup = true; break; }
     if (dup) continue;
     (seen.get(k) || seen.set(k, []).get(k)).push(f);
-    out.push({ x0: f.x - f.w / 2, y0: f.y - .28, x1: f.x + f.w / 2, y1: f.y, src: f.src });
+    out.push({ x0: f.x - f.w / 2, y0: f.y - .28, x1: f.x + f.w / 2, y1: f.y, src: f.src, sp: f.sp });   // (sp: the tree's species, what it offers comes from that and its size: 94-garden-zz-7act-0kinds.js gardenTreeKind)
   }
   return out;
 }
