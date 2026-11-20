@@ -328,7 +328,8 @@
         const t = time / 1000, mx = view.x + view.w * .68; let k = 0;
         for (let i = 0; i < sparks.length; i++) { const u = (i * .618 + Math.floor(t / 2.2 + i * .37) * .31) % 1, row = i / sparks.length, y = view.y + view.h * (.08 + row * .9), spread = 18 + row * view.w * .09, x = mx + (u - .5) * 2 * spread + Math.sin(t * .7 + i) * 4;
           const c = { x: x / L.cw, y: (y - W.sky) / L.ch }, b = L.base(c.x, c.y), im = sparks[i];
-          if (!b || !b.ocean || typeof gardenIslandCoastDistance === 'function' && gardenIslandCoastDistance(c.x, c.y) < 30) { im.setVisible(false); continue; }
+          const built = (dx) => { const q = L.base(c.x + dx, c.y); return !!(q && (q.staticId || q.route)); };   // (coast fix round 2: never on the pier's deck or a mooring: the column fell on the deck by the pier lantern and read as its light in a strip)
+          if (!b || !b.ocean || built(0) || built(-.7) || built(.7) || typeof gardenIslandCoastDistance === 'function' && gardenIslandCoastDistance(c.x, c.y) < 30) { im.setVisible(false); continue; }
           const tw = Math.max(0, Math.sin(t * 2.1 + i * 1.7)); im.setVisible(true).setPosition(x, y).setScale(.6 + (1 - Math.abs(u - .5) * 2) * .9, 1).setAlpha(night * (.12 + tw * .38) * (1 - Math.abs(u - .5) * 1.4)); k++; }
         void k; void kit;
       } };
