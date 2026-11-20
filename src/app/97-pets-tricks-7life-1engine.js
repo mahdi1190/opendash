@@ -72,7 +72,7 @@ function _plThings() {
   try { for (const p of gardenLandProps()) match(String(p.kind || ''), p.x + p.w / 2, p.y + p.h, p.name); } catch (e) { /* none */ }
   try { for (const o of gardenWorldObjects(S.model)) { if (o.kind === 'plant') continue; match(String(o.id || ''), o.top.x, o.y + (o.h || 1), o.name); } } catch (e) { /* none */ }
   // the end of the pier: the last of the layout's pier boards, just short of the end (round 4, the critic: pier-watch played on the quay)
-  try { const ps = (GardenIslandLayout.data.static || []).filter(p => /^pier(-\d+)?$/.test(p.id)).sort((a, b) => (b.y + b.h) - (a.y + a.h)); if (ps[0]) put('pier', ps[0].x + ps[0].w / 2, ps[0].y + ps[0].h - 0.9, 'The end of the pier'); } catch (e) { /* none */ }
+  try { const ps = (GardenIslandLayout.data.static || []).filter(p => /^pier(-\d+)?$/.test(p.id)).sort((a, b) => (b.y + b.h) - (a.y + a.h)); if (ps[0]) (out.pier || (out.pier = [])).push({ x: ps[0].x + ps[0].w / 2, y: ps[0].y + ps[0].h - 0.9, name: 'The end of the pier', free: true, stage: 1 }); } catch (e) { /* none */ }
   // the water's edge where it is soft (grass, sand, a reed bank), not the paved quay: paddling and fish-watching want a real shore
   out.tree = S.shade.slice(); out.shore = S.shore.filter(q => typeof _plStoneAt !== 'function' || !_plStoneAt(q.x, q.y)); if (!out.shore.length) out.shore = S.shore.slice(); out.drink = S.drink.slice(); out.warm = S.warm.slice();
   _pl.things = out; _pl.thingsKey = S.key;
@@ -405,5 +405,13 @@ function _plGoodbye(go) {
 }
 if (typeof setView === 'function') {
   const _plSetView0 = setView;
-  setView = function (v) { const self = this, args = arguments; if (v !== 'garden' && _plGoodbye(() => _plSetView0.apply(self, args))) return; return _plSetView0.apply(this, arguments); };
+  // (round 4: one tap on Home can reach setView twice; the second call came inside the 5 s guard and left at once, so the wave was never seen.
+  // While a wave is under way, a second call to leave waits for it.)
+  let _plByeGoing = 0;
+  setView = function (v) {
+    const self = this, args = arguments;
+    if (v !== 'garden' && _plByeGoing && performance.now() - _plByeGoing < 3500) return;
+    if (v !== 'garden' && _plGoodbye(() => { _plByeGoing = 0; _plSetView0.apply(self, args); })) { _plByeGoing = performance.now(); return; }
+    return _plSetView0.apply(this, arguments);
+  };
 }
