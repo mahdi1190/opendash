@@ -47,7 +47,9 @@ function _plThings() {
   // the end of a pier: as far as it is built, just short of the end (round 4, the critic: pier-watch played on the quay)
   try { const decks = typeof _gardenPierDecksNow === 'function' ? _gardenPierDecksNow() : [], d = decks[decks.length - 1]; if (d && gardenAffordOfPet('pier').length) put('pier', d.x + d.w / 2, d.y + d.h - 0.9, 'The end of the pier', { free: true, stage: 1 }); } catch (e) { /* none */ }
   // the water's edge where it is soft (grass, sand, a reed bank), not a paved quay: paddling and fish-watching want a real shore
-  out.tree = S.shade.slice(); out.shore = S.shore.filter(q => typeof _plStoneAt !== 'function' || !_plStoneAt(q.x, q.y)); if (!out.shore.length) out.shore = S.shore.slice(); out.drink = S.drink.slice(); out.warm = S.warm.slice();
+  out.tree = S.shade.slice();
+  try { if (typeof _gwPaintedTrunks === 'function') for (const b of _gwPaintedTrunks(gardenIslandData())) { const K = GARDEN_KINDS[gardenKindOf({ trunk: b.src })]; if (K && K.pet === 'tree') out.tree.push({ x: (b.x0 + b.x1) / 2, y: b.y1, name: K.name, kind: gardenKindOf({ trunk: b.src }) }); } } catch (e) { /* no painted trees */ }   // (every tree a painter drew counts, by its kind)
+  out.shore = S.shore.filter(q => typeof _plStoneAt !== 'function' || !_plStoneAt(q.x, q.y)); if (!out.shore.length) out.shore = S.shore.slice(); out.drink = S.drink.slice(); out.warm = S.warm.slice();
   _pl.things = out; _pl.thingsKey = key;
   return out;
 }
@@ -296,7 +298,7 @@ function petLifeTry(id, o) {
   const P = typeof _ptw !== 'undefined' && _ptw.pets.find(q => (o && o.pack ? !q.me : q.me));
   if (!P) return { ok: false, why: 'no pet out' };
   const W = _ptw.W || _ptwWorld(); if (!W) return { ok: false, why: 'no garden' };
-  P.tx = null; P.arrive = null; P.busy = 0; P.cb = null; if (P.clipH) { try { P.clipH.stop(true); } catch (e) { /* gone */ } P.clipH = null; }
+  P.tx = null; P.arrive = null; P.busy = 0; P.cb = null; P.perch = null; P.tf = null; if (P.clipH) { try { P.clipH.stop(true); } catch (e) { /* gone */ } P.clipH = null; }
   for (const c of _plClips(row)) if (!_plSuits(P, c)) return { ok: false, why: 'does not suit a ' + P.look.species, clip: c };
   const C = _plCtx(P, W);
   _pl.here = !!(o && o.here); let ok = false;

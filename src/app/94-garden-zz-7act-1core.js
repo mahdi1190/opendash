@@ -44,7 +44,7 @@ function _gaStaticRows() {
       if (b && b.width) foot = { x: (b.x + b.width / 2) / W.cellW, y: b.height ? (b.y + b.height - W.sky) / W.cellH : t.y };
       if (b && b.height) top = (b.y - W.sky) / W.cellH;   // the drawn top: the prompt sits just above it
     } else if (t.src === 'thing') {
-      if (K.place && t.drawn !== false && !(typeof _GAW_ART !== 'undefined' && _GAW_ART[K.art])) continue;   // a kind nobody has drawn yet: nothing invisible can be used
+      if (K.place && K.art && t.drawn !== false && !(typeof _GAW_ART !== 'undefined' && _GAW_ART[K.art])) continue;   // a kind nobody has drawn yet: nothing invisible can be used
       if (gartActHidden(t.id)) continue;
       const mv = gartActMovedTo(t.id); if (mv) foot = mv;   // a thing you carried off and set down is where you left it (this visit)
     }

@@ -9,7 +9,7 @@
      name      words for the prompt ('the bench')
      arts      the painter's kind of drawing that makes a thing this kind (a landmark row's `art`, a fixed prop's `kind`)
      decor     placed decoration ids of this kind; effects: decoration effect kinds of this kind (any decoration you sit on is a seat)
-     words     words in an id that make an unknown thing this kind (a layout's new 'ld-vseat-3' is a bench)
+     words     words in an id that make an unknown thing this kind (a layout's new 'vseat-3' row is a bench)
      trunks    the tree painters (_gwPaintedTrunks src) whose trees are this kind
      acts      [{ act (GARDEN_ACTS id), name?, stand [u, dy], deg, seat, edge, reach, pri, noProp, needs, at, art, drawn, top, loft, side, big }]
                  wade: the stand point is in shallow water on purpose (under falls).
