@@ -168,7 +168,10 @@ window.GardenPaintedTerrain = (function () {
         B.s(`M${x - rx * .2} ${y - ry * .6}l${rx * .15} ${ry * 1.1}`, P.rockDk, .9, .5);
         if (!sn) { if (r() < .5) B.f(B.blob(r, x + rx * .3, y - ry * .2, rx * .25, ry * .2, 6, .5), P.lichen, .6); B.tufts(r, x, y + ry * .8, rx * 1.6, 5, [P.fellLo, P.bleach], 5); if (moor(x) > .3) B.heather(r, x + rx * .9, y + ry * .5, 4 + r() * 3, P, P.bloom); } }
     });
-    for (const [fx, fy, frx] of [[57.4, 18.6, 1.6], [54.6, 15.8, 1.2]]) { const c = L.cpt(fx, fy), RX = frx * cw, RY = frx * ch * .95;
+    // a fold never stands on a sight's own ground (the shepherd's hut's wheels stood on its wall: art director, round 3): it moves west until clear
+    const sightGround = typeof gardenIslandSightGround === 'function' ? gardenIslandSightGround() : new Set(), foldClear = (fx, fy, frx) => { for (let y = Math.floor(fy - frx); y <= Math.floor(fy + frx); y++) for (let x = Math.floor(fx - frx); x <= Math.floor(fx + frx); x++) if (sightGround.has(x + ',' + y)) return false; return true; };
+    const folds = [[57.4, 18.6, 1.6], [54.6, 15.8, 1.2]].map(([fx, fy, frx]) => { for (let k = 0; k < 8 && !foldClear(fx, fy, frx); k++) fx -= .5; return [fx, fy, frx]; });
+    for (const [fx, fy, frx] of folds) { const c = L.cpt(fx, fy), RX = frx * cw, RY = frx * ch * .95;
       add([c.x - RX - 20, c.y - RY - 20, c.x + RX + 20, c.y + RY + 24], 190 + fx, (B, r) => {
         clipFell(B); const sn = snowAt(c.x, c.y) > .6, ring = []; for (let k = 0; k <= 40; k++) { const a = k / 40 * Math.PI * 2; if (k > 33 && k < 37) { ring.push(null); continue; } ring.push({ x: c.x + Math.cos(a) * RX, y: c.y + Math.sin(a) * RY }); }
         // the fold's turf is greener (sheltered), then the wall: a shaded outer face to the south, the stones, the cope

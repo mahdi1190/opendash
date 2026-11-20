@@ -580,7 +580,8 @@
     B.s(`M${dx + 18} ${dt + 2}h3v3`, IR[0], .9).f(B.rr(dx + 18.4, dt + 5, 5.2, 7, 1), IR[0]).f(B.rr(dx + 19.2, dt + 5.8, 3.6, 5.2, .6), o.night ? '#ffe08a' : '#8aa4a6');
     // the near wheels over the body's foot, hurdles leant on the west end, logs under it, a bucket
     wheel(-26, 13, false); wheel(28, 13, false);
-    for (let k = 0; k < 2; k++) { const x0 = -W2 - 20 + k * 6; for (const y of [-6, -16, -26]) B.s(`M${x0} ${y}l18 -3`, '#a8845a', 1.6); for (let i = 0; i < 4; i++) B.s(`M${x0 + i * 6} 0l2 -32`, '#8a6a46', 1.8); }
+    // (one hurdle leant at the west end, plainly leaning: two upright ones read as a fence run into the wheels, hunter, round 3)
+    { const x0 = -W2 - 13; B.f(B.poly([[x0 - 2, 0], [x0 + 16, 0], [x0 + 21, -30], [x0 + 3, -32]]), '#2e2a20', .12); for (const t of [.22, .55, .85]) B.s(`M${x0 + 1 + t * 3} ${-t * 32}l17 ${1 - t * 2}`, '#a8845a', 1.5); for (let i = 0; i < 4; i++) B.s(`M${x0 + i * 5} 0l${5 - i * .4} -31`, '#8a6a46', 1.7); }
     for (let k = 0; k < 6; k++) { const x = -16 + (k % 3) * 6 + (k > 2 ? 3 : 0), y = -3 - (k > 2 ? 5.4 : 0); B.f(B.circ(x, y, 3), '#8a6440').f(B.circ(x, y, 1.8), '#c49a66'); }
     // (no bucket out past its east wheel: what stands must stand on its own block, round 3 audit)
     if (!snowy) B.tufts(r, -60, 1, 16, 8, grass(s), 6).tufts(r, 62, 1, 12, 7, grass(s), 6);
@@ -801,6 +802,7 @@
      deck that walking uses, gardenPierDecks), under every actor; the deck keeps its size and what you can walk on ---------- */
   M.pierDeck = function (scene, parent, pier, x, y, w, h, season, last) {
     const kit = KIT(); if (!kit || !kit.sprite) return null;
+    if (pier.side === 'west' || pier.side === 'east') return sideDeck(kit, scene, parent, pier, x, y, w, h, season);
     const key = 'gpm|pier|' + pier.id + '|' + season + '|' + Math.round(w) + 'x' + Math.round(h) + (last ? '|end' : '');
     const box = [-14, -6, w + 14, h + (last ? 24 : 6)];
     return kit.sprite(scene, parent, key, box, B => {
@@ -838,6 +840,53 @@
       if (last) for (const xx of [7, w - 7]) { const yy = h - 6; B.f(B.ell(xx, yy + 6, 4.6, 2.2), '#2a2e30').f(B.rr(xx - 3.4, yy - 2, 6.8, 8, 2), '#3a3e40').f(B.ell(xx, yy - 2, 4, 1.8), '#5a5e60').f(B.ell(xx - 1, yy - 2.4, 1.6, .7), '#8a9094', .8); }
     }, x, y, 2, false);
   };
+
+  /* ---------- a side pier (west or east), bought for the lake: the same oak as the main pier, its planks laid across the
+     deck's run, a fascia along its sunny front, piles every few planks down into the water each with its ring, the
+     deck's shadow and a broken reflection on the water, a bollard and a ladder at the water end, the land end bedded in
+     the shore with stones (art director, round 3: they were flat tan boards lying on the sea, no piles, rails or shadow).
+     Drawn from the deck's own box; walking keeps the deck's size ---------- */
+  function sideDeck(kit, scene, parent, pier, x, y, w, h, season) {
+    const west = pier.side === 'west', key = 'gpm|pier|' + pier.id + '|' + season + '|' + Math.round(w) + 'x' + Math.round(h), FACE = 7, PILE = 14;
+    const box = [-16, -10, w + 16, h + FACE + PILE + 12];
+    return kit.sprite(scene, parent, key, box, B => {
+      const r = kit.rng(kit.hashStr ? kit.hashStr(pier.id) : 977), snowy = season === 'winter', TONES = ['#b8a079', '#a88e66', '#c4ad84', '#9c8460', '#b0a080', '#a8987a'];
+      const wet = west ? 0 : w, dry = west ? w : 0, toWater = west ? -1 : 1;
+      // the reflection and the shadow on the water, south of the deck (the world's light from the north-west)
+      B.f(B.rr(6, h + FACE - 2, w - 4, PILE + 6, 4), 'rgba(16,40,56,.26)');
+      for (let i = 0; i < 7; i++) { const yy = h + FACE + 3 + i * 3.2, x0 = 4 + r() * 8; B.s(`M${x0} ${yy}h${w - 14 - r() * 18}`, '#8a6e4a', 1.6, .22 - i * .025); }
+      // the piles down into the water along the front, each with its ring of ripples; a cross brace between pairs
+      const piles = []; for (let xx = 10; xx < w - 4; xx += 32) piles.push(xx); piles.push(wet + toWater * -4);
+      for (let i = 0; i + 1 < piles.length; i += 2) B.s(`M${piles[i]} ${h + FACE + 1}L${piles[i + 1]} ${h + FACE + PILE - 3}`, '#4a3826', 1.6, .8);
+      for (const xx of piles) { B.f(B.rect(xx - 3.2, h - 2, 6.4, FACE + PILE + 2), '#4e3c28').f(B.rect(xx - 3.2, h - 2, 1.8, FACE + PILE + 2), '#7a6244', .8).f(B.rect(xx - 3.2, h + FACE + PILE - 5, 6.4, 5), '#2e4a3e', .55); B.s(B.ell(xx, h + FACE + PILE, 8.6, 2.6), '#e8f4f4', .8, .55).s(B.ell(xx, h + FACE + PILE + 1, 12, 3.4), '#e8f4f4', .6, .25); }
+      // the front fascia: the deck's sunlit edge seen from the south, plank ends and a dark joint under the boards
+      B.f(B.rect(-2, h - 1, w + 4, FACE), '#6e5638').f(B.rect(-2, h - 1, w + 4, 1.6), '#a8906a', .8).f(B.rect(-2, h + FACE - 2, w + 4, 1.4), '#2e2418', .6);
+      for (let xx = 4; xx < w; xx += 9.6) B.s(`M${xx} ${h}v${FACE - 2}`, '#4e3c26', .7, .6);
+      // the planks across the run, each its own tone, nails over the two joists, a worn pale way down the middle
+      for (let xx = 0; xx < w - .5; xx += 9.6) {
+        const bw = Math.min(8.8, w - xx), tone = TONES[Math.floor(r() * TONES.length)];
+        B.f(B.rect(xx, 0, bw, h - 1), tone).f(B.rect(xx, 0, 1, h - 1), '#e8d8b0', .3).f(B.rect(xx + bw - 1.1, 0, 1.1, h - 1), '#5a4630', .45);
+        for (let k = 0; k < 2; k++) { const gy = 2 + r() * (h - 6); B.s(`M${xx + 1.5 + r() * 2} ${gy}v${4 + r() * 8}`, '#7a6446', .5, .45); }
+        for (const ny of [5, h - 6]) B.f(B.circ(xx + bw / 2, ny, .6), '#3a3430');
+        B.f(B.rect(xx + bw, 0, .8, h - 1), '#1e2a26', .6);
+      }
+      B.f(B.rect(0, h * .3, w, h * .38), '#f4ead0', .1).f(B.rect(0, 0, w, 2), '#ffffff', .1);
+      // a rope rail on short posts along the back, so it reads as a landing stage and not a board
+      const posts = []; for (let xx = 6; xx < w; xx += 30) posts.push(xx);
+      for (const xx of posts) B.f(B.rect(xx - 1.8, -9, 3.6, 10), '#5a4630').f(B.rect(xx - 1.8, -9, 1.2, 10), '#8a7050', .8).f(B.ell(xx, -9, 2.2, 1), '#a8906a');
+      for (let i = 0; i + 1 < posts.length; i++) B.s(`M${posts[i]} -7Q${(posts[i] + posts[i + 1]) / 2} -3 ${posts[i + 1]} -7`, '#c8b080', 1.1, .9);
+      // the water end: its end face, a bollard with a turn of rope, a ladder down
+      const ex = wet - toWater * 6;
+      B.f(B.rect(wet - (west ? 3 : 0), -1, 3, h + FACE), '#4e3c26');
+      B.f(B.ell(ex, h - 6 + 5, 4.4, 2), '#2a2e30').f(B.rr(ex - 3.2, h - 13, 6.4, 8, 2), '#3a3e40').f(B.ell(ex, h - 13, 3.8, 1.7), '#5a5e60').s(B.ell(ex, h - 9, 4, 1.4), '#c8b080', 1);
+      const lx = wet - toWater * 16; B.s(`M${lx} ${h - 2}V${h + FACE + PILE}M${lx + 7} ${h - 2}V${h + FACE + PILE}`, '#8a949a', 1.1); for (let k = 0; k < 4; k++) B.s(`M${lx} ${h + 2 + k * 5}h7`, '#8a949a', .9);
+      // the land end bedded in the shore: stones and a tuft of grass round the first boards
+      for (let i = 0; i < 5; i++) { const sx = dry + toWater * (2 + r() * 10), sy = h - 4 + r() * 10, rx = 3 + r() * 4; B.f(B.blob(r, sx, sy, rx, rx * .6, 7, .3), '#8a8478').f(B.blob(r, sx - 1, sy - 1, rx * .7, rx * .4, 6, .3), '#b4ae9e', .8); }
+      B.tufts && B.tufts(r, dry + toWater * 4, h + 2, 18, 5, ['#6a8a44', '#8aa858'], 7);
+      if (r() < .8) { const cx = w * (west ? .7 : .3), cy = h * .5; for (let k = 0; k < 3; k++) B.s(B.ell(cx, cy, 5.4 - k * 1.5, 2.6 - k * .7), k % 2 ? '#c8b080' : '#a8905a', 1); }
+      if (snowy) for (let i = 0; i < 5; i++) B.f(B.blob(r, r() * w, r() * h, 9 + r() * 9, 3, 7, .5), '#f4f6f2', .7);
+    }, x, y, 2, false);
+  }
 
   /* ---------- the hedge maze: every run of hedge a clipped yew wall with its lit top and its shaded face, standing exactly
      on the cells that block walking (GARDEN_LAND_MAZE, one row per run); the first run's seat lays the maze's gravel

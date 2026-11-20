@@ -789,6 +789,7 @@ window.GardenNativeWorld = (function () {
         // (a deck that runs out into the water is painted plank by plank, 94-garden-paint-zsights3.js; round 3)
         const lastDeck = pier.side === 'south' && !decks.some(d => d !== pier && d.side === 'south' && Math.abs(d.y - (pier.y + pier.h)) < .01);
         if (pier.side === 'south' && window.GardenPaintedMarks && GardenPaintedMarks.pierDeck && GardenPaintedMarks.pierDeck(scene, node._inner, pier, x, y, w, h, sc.season || 'summer', lastDeck)) { /* painted */ }
+        else if ((pier.side === 'west' || pier.side === 'east') && window.GardenPaintedMarks && GardenPaintedMarks.pierDeck && GardenPaintedMarks.pierDeck(scene, node._inner, pier, x, y, w, h, sc.season || 'summer', false)) { /* painted (a side pier: its piles, shadow and rail) */ }
         else if (pier.side === 'south') {
           pg.fillStyle(0x315d54, .22).fillRoundedRect(x + 9, y + 11, w + 1, h, 5).fillStyle(0x796c51).fillRoundedRect(x - 4, y, w + 8, h, 4);
           for (let yy = y + 3; yy < y + h - 3; yy += 14) { const bh = Math.min(12.5, y + h - 3 - yy); pg.fillStyle(Math.floor(yy / 14) % 3 ? 0xb19a71 : 0xbda77c).fillRect(x + 1, yy, w - 2, bh); if (bh > 2.4) pg.lineStyle(.8, 0xe6d5a8, .42).lineBetween(x + 7, yy + 2, x + w - 7, yy + 2); if (bh > 8.8) pg.fillStyle(0x68694e, .55).fillCircle(x + 7, yy + 8, .8).fillCircle(x + w - 7, yy + 8, .8); }
