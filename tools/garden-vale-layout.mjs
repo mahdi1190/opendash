@@ -47,7 +47,7 @@ const RIVER = [[58.2, 38.4], [61, 43.6], [63.6, 48.6], [65, 55], [66.6, 60], [70
 const BROOK = [[6.6, 30.2], [10, 33.6], [16, 35.4], [23, 37.2], [30, 36], [35.4, 36.4], [39.6, 35.2]];
 // [polyline, half width, gaps [[x, y, half length]]]
 const ribbons = {
-  gorge: [GORGE, .85, [[35.8, 16.9, .8], [43.3, 23.8, .9]]],   // (2.74 Cloudbreak: the lip stones cross above the falls; a third piece of gorge, gorge-3, below them)
+  gorge: [GORGE, .85, [[35.8, 16.9, .8], [42.8, 23.2, .9]]],   // (2.74 Cloudbreak: the lip stones cross above the falls; a third piece of gorge, gorge-3, below them)
   river: [RIVER, 1.45, [[59.9, 41.1, .75], [65, 55.1, 1.25], [78.6, 80.4, .8]]],
   brook: [BROOK, .62, [[10.3, 33.7, .7], [25.6, 36.8, .7], [37.4, 36, .8]]],
 };
@@ -502,7 +502,7 @@ const presentation = {
     { id: 'millwater-bridge', kind: 'hump-bridge', over: 'river', x: 65, y: 55.1, along: 'east-road', gateId: 'island-mill' },
     { id: 'estuary-stones', kind: 'stepping-stones', over: 'river', x: 78.6, y: 80.4, along: 'coast-walk' },
     { id: 'gorge-stones', kind: 'stepping-stones', style: 'clapper', over: 'gorge', x: 35.8, y: 16.9, along: 'gorge-trail' },   // (Cloudbreak plan: drawn as a clapper bridge, two flat slabs two figures wide)
-    { id: 'lip-stones', kind: 'stepping-stones', over: 'gorge', x: 43.3, y: 23.8, along: 'lip-stones' },   // (new: across the gorge above the falls, the Edge walk's way to the falls top)
+    { id: 'lip-stones', kind: 'stepping-stones', over: 'gorge', x: 42.8, y: 23.2, along: 'lip-stones' },   // (new: across the gorge above the falls, the Edge walk's way to the falls top)
     { id: 'brook-stones-west', kind: 'stepping-stones', over: 'brook', x: 10.3, y: 33.7, along: 'woodland-loop' },
     { id: 'brook-stones-east', kind: 'stepping-stones', over: 'brook', x: 25.6, y: 36.8, along: 'woodland-loop' },
   ],

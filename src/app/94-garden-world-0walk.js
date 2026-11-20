@@ -109,6 +109,9 @@ function _gwBuildSolids(m) {
     add(fl.caveStair[0] + .62, fw.lip.y + .15, fw.lip.x + .2, fl.caveStair[1] + .85, 'rock by Fleet Falls (cave cheek)');
     add(fw.lip.x + 1.6, fw.lip.y + .15, fl.x + fl.w + .75, fl.y + 1.7, 'rock by Fleet Falls (step)');
   }
+  // Cloudbreak's shortcut C, the falls cave stair: shut below level 18 by a rope across its foot (drawn by
+  // 94-garden-paint-vale-1cloudbreak.js, which says where: gardenCloudbreakStairShut)
+  if (typeof window.gardenCloudbreakStairShut === 'function') for (const [x0, x1, y] of window.gardenCloudbreakStairShut()) add(x0, y - .14, x1, y + .1, 'rope across the falls cave stair (opens at level 18)');
   // the harbour's painted crates, pots, net, beached boat, bench and anchor stand in the way like the log stack
   if (island && island.version >= 5 && typeof gardenIslandHarbourThings === 'function') for (const t of gardenIslandHarbourThings(island)) add(t.foot[0], t.foot[1], t.foot[2], t.foot[3], 'harbour ' + t.key);
   // The painted Forest arch's two trunks stand where they are drawn (94-garden-native-painted-props.js gateArt 'arch':

@@ -85,7 +85,7 @@
         B.cx.restore();
       } });
       // boulders at the tide line, half in the water, with weed and a line of foam at their feet
-      rocks.forEach((k, i) => C.thing({ key: 'cold-cove-rock-' + i, x: k.x, y: k.y + 2, box: [-k.s * 1.2, -k.s * 1.3, k.s * 1.2, 8], foot: [-k.s * 1.4, k.s * 1.4, k.s * .55], draw: B => {
+      rocks.forEach((k, i) => C.thing({ key: 'cold-cove-rock-' + i, x: k.x, y: k.y + 2, box: [-k.s * 1.2, -k.s * 1.3, k.s * 1.2, 8], foot: [-k.s * .75, k.s * .75, k.s * .45], draw: B => {
         const rr = kit.rng(k.seed); B.boulder(rr, 0, -2, k.s * 1.6, k.s, R, C.season === 'winter' && rr() < .4); B.f(B.blob(rr, 0, -2, k.s * .9, k.s * .18, 7, .5), '#4f5a36', .7); B.s(`M${-k.s} 1q${k.s} 3 ${k.s * 2} 0`, P.foam, 1.2, .55);
       } }));
     }

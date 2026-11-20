@@ -358,7 +358,8 @@ window.GardenPaintedTerrain = (function () {
       });
     }
     // pines along the Edge: a few wind-bent Scots pines leaning east, on the rock (occluders)
-    const pines = []; for (let i = 10; i < N - 10; i += 50 + Math.floor(R(i, 5)() * 90)) { const rr = R(i, 6); if (rr() < .55 || moor(L2[i].x) > .7) continue; pines.push({ x: L2[i].x + (F2[i].x - L2[i].x) * .3, y: L2[i].y + (F2[i].y - L2[i].y) * .55, h: 52 + rr() * 26, seed: seed * 7 + i }); }
+    // (Cloudbreak layout: none: they rooted on the scarp's face and the cove cliff's top; the plan's pine groups stand on the turf)
+    const pines = []; if (false) for (let i = 10; i < N - 10; i += 50 + Math.floor(R(i, 5)() * 90)) { const rr = R(i, 6); if (rr() < .55 || moor(L2[i].x) > .7) continue; pines.push({ x: L2[i].x + (F2[i].x - L2[i].x) * .3, y: L2[i].y + (F2[i].y - L2[i].y) * .55, h: 52 + rr() * 26, seed: seed * 7 + i }); }
     add(kit.bboxOf(L2, 10), seed + 3, () => {}, { decor: true, pines });
   }
 
