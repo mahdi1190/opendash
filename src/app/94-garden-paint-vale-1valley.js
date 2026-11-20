@@ -150,5 +150,9 @@
       });
     }
   }
+  // the field track and the meadow trail run along the top of the beach: worn ways over the turf and footprints on the sand,
+  // drawn by the harbour's shore-trail painter (laid as lanes, the lawn was cut along them and a pale strip with square
+  // ends showed wherever their ribbon crossed a beach cell)
+  V.wornWays = (V.wornWays || []).concat(['field-track', 'valley-meadow']); V.softRoutes.add('field-track'); V.softRoutes.add('valley-meadow');
   V.parts.push({ id: 'valley', compose });
 })();

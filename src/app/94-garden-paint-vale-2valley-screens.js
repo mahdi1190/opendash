@@ -65,9 +65,12 @@
       pieces.forEach(([p, q], i) => {
         const x0 = Math.min(p.x, q.x), x1 = Math.max(p.x, q.x), foot = Math.max(p.y, q.y), top = Math.min(p.y, q.y), ox = x0, oy = foot, rel = z => ({ x: z.x - ox, y: z.y - oy }), A = rel(p), Bq = rel(q), r0 = kit.rng(seed + i * 31);
         const tallPx = id === 'the-ham' ? 30 : id === 'wheel-pit' ? 26 : id === 'rickyard' ? 30 : 58;
-        const box = [-14, top - foot - tallPx - 10, x1 - x0 + 14, 10];
+        // (a reed-bed side running up the view ends at its low corner in a clump of reeds as wide as a row: seen end on, a side
+        //  stood on a point, so what stopped the feet there was wider than anything drawn)
+        const lo = A.y >= Bq.y ? A : Bq, clumpR = id === 'reed-bed' && x1 - x0 < cw * 1.3 ? cw * .65 : 0;
+        const box = [Math.min(-14, lo.x - clumpR - 8), top - foot - tallPx - 10, Math.max(x1 - x0 + 14, lo.x + clumpR + 8), 10];
         // (foot: the feet stop on what is drawn here, as they do on the screen's outline; walking (_gwBuildSolids) reads it)
-        thing({ key: NAME[id] + '|' + id + '|' + i + '|' + season, x: ox, y: oy, depth: oy - 2, box, K: 1.4, foot: footOf(A, Bq), draw: B => {
+        thing({ key: NAME[id] + '|' + id + '|' + i + '|' + season, x: ox, y: oy, depth: oy - 2, box, K: 1.4, foot: clumpR ? [lo.x - clumpR, lo.x + clumpR, 9] : footOf(A, Bq), draw: B => {
           // the foot: a solid band where it meets the ground (hedge bottom, footing course, grass along the rails, wet reed bases)
           B.f(B.poly([[A.x, A.y - 5], [Bq.x, Bq.y - 5], [Bq.x, Bq.y + 1], [A.x, A.y + 1]]), id === 'the-ham' ? leaf[3] : id === 'wheel-pit' ? stone[1] : id === 'rickyard' ? leaf[3] : '#4e5a32');
           const along = n => { const out = []; for (let s = 0; s <= n; s++) { const t = s / n; out.push({ x: A.x + (Bq.x - A.x) * t, y: A.y + (Bq.y - A.y) * t }); } return out; };
@@ -91,6 +94,10 @@
             for (const z of pts) if (r0() < .6) for (let j = 0; j < 4; j++) B.s(`M${z.x + (r0() - .5) * 8} ${z.y - 1}l${(r0() - .5) * 3} -${7 + r0() * 8}`, leaf[1], 1.6, .9);
           } else {   // reeds standing thick: a waving wall a figure and a half high, plumes on top
             for (const z of pts) B.shadow(z.x + 5, z.y + 2, 14, 4, .2);
+            if (clumpR) {   // the clump at the low corner: wet bases in a band, stalks fanning out of it
+              B.shadow(lo.x + 4, lo.y + 2, clumpR + 6, 4, .22); B.f(B.rr(lo.x - clumpR, lo.y - 6, clumpR * 2, 7.5, 3), '#4e5a32');
+              for (let x = lo.x - clumpR + 2; x < lo.x + clumpR - 1; x += 3.2) { const e = 1 - Math.abs(x - lo.x) / clumpR, h = (30 + r0() * 16) * (.55 + e * .45), lean = (x - lo.x) / clumpR * 7 + (r0() - .5) * 5; B.s(`M${x} ${lo.y - 3}q${lean * .3} ${-h * .6} ${lean} ${-h}`, reed[Math.floor(r0() * 3)], 1.3, .95); if (r0() < .3) B.f(B.ell(x + lean, lo.y - 3 - h + 2, 1.8, 5), winter ? '#c8b48a' : '#8a6a3a', .9); }
+            }
             for (let row = 0; row < 2; row++) for (const z of pts) for (let j = 0; j < 7; j++) { const x = z.x + (r0() - .5) * 12, h = 40 + r0() * 18 - row * 6, lean = (r0() - .5) * 8; B.s(`M${x} ${z.y - row * 4}q${lean * .3} ${-h * .6} ${lean} ${-h}`, reed[Math.floor(r0() * 3)], 1.3, .95); if (r0() < .4) B.f(B.ell(x + lean, z.y - row * 4 - h + 2, 1.8, 5), winter ? '#c8b48a' : '#8a6a3a', .9); }
           }
         } });
