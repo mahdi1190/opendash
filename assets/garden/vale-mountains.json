@@ -718,13 +718,13 @@
    "kind": "scree",
    "note": "the west peak's scree apron, drawn by the fells painter below the peak's outline: the feet stop at its stones (no painter draws this kind)",
    "line": [
-    [9.8, 10.35],
-    [11, 10.8],
-    [12.96, 10.9],
-    [15.2, 10.55],
-    [16.8, 9.9]
+    [10.3, 10.45],
+    [11.4, 10.55],
+    [12.85, 10.58],
+    [14.3, 10.52],
+    [15.4, 10.3]
    ],
-   "halfWidth": 0.26
+   "halfWidth": 0.32
   }
  ],
  "crossings": [

@@ -695,6 +695,11 @@ function _gldIslandRegionStands() {
         || x * W.cellW < trunk.x1 && (x + 1) * W.cellW > trunk.x0 && y * W.cellH < trunk.y1 && (y + 1) * W.cellH > trunk.y0;
       if (touches && (x < 0 || y < 0 || x >= W.cols || y >= W.rows || cells[y * W.cols + x] !== region.id)) return false;
     }
+    // On the fells a building stands far taller than its cells: no crown behind one (a crown rose out of the bothy's roof)
+    if (/mount|headland|peak/.test(String(region.theme || region.id)) && !/orchard/.test(String(region.theme || region.id))) {
+      const c0 = (crown.x - crown.rx) / W.cellW, c1 = (crown.x + crown.rx) / W.cellW, r0 = (crown.y - crown.ry) / W.cellH, r1 = (shadow.y + shadow.ry) / W.cellH;
+      if ((data.static || []).some(p => c1 > p.x - .4 && c0 < p.x + p.w + .4 && r1 > p.y + p.h - Math.max(4, (p.tall || 2) * 2.2) && r0 < p.y + p.h + .4)) return false;
+    }
     // Cell-centre classification remains a lookup aid. Rounded continuous coast
     // and freshwater boundaries stay authoritative at the actual crown edge.
     for (let i = 0; i < 20; i++) {

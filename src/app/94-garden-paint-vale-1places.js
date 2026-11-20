@@ -109,7 +109,7 @@
       // Close-set low slabs expose the exact ford. The old oversized ellipses
       // hung beyond its edges and left invisible support between the stones.
       const { count, acrossRadius: hw } = deck.stones, q = (t, s) => deck.deckPoint(t, s), step = 1 / count;
-      if (deck.over === 'brook') {
+      if (deck.over === 'brook' || (deck.crossing && deck.crossing.id === 'lip-stones')) {   // (the lip stones above Little Falls: stepping stones, water between them, not a laid slab path)
         // The woodland brook: rounded, water-worn stones (a squircle filling each slab, so the footing is still the
         // whole support), wet dark feet, a ring of ripple where the water meets them, moss on the shaded side.
         const tones = season === 'winter' ? ['#a9a89c', '#bdbcb0', '#9a9a8e'] : ['#a19a84', '#b3ab93', '#958f7b', '#aaa088'];

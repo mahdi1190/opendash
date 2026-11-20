@@ -99,9 +99,11 @@
   // the part of a ground item's box a chunk shows (pad: px either side, so a slab across the chunk's edge is drawn whole)
   const within = (bb, cb, pad) => { if (!cb) return bb; const b = [Math.max(bb[0], cb[0] - pad), Math.max(bb[1], cb[1] - pad), Math.min(bb[2], cb[2] + pad), Math.min(bb[3], cb[3] + pad)]; return b[2] > b[0] && b[3] > b[1] ? b : null; };
   function slabs(B, bb, o) {
-    const K = KIT(), s = o.s, sy = s * .6;
-    for (let y = bb[1] - sy, row = 0; y < bb[3] + sy; y += sy, row++) for (let x = bb[0] - s + (row % 2) * s * .5; x < bb[2] + s; x += s) {
-      const rr = K.rng(K.hash(Math.round(x), Math.round(y), o.salt)); if (rr() > o.cover) continue;
+    // the grid is fixed to the world (o.org, the whole item's box), so two chunks lay the same slabs along their seam
+    const K = KIT(), s = o.s, sy = s * .6, org = o.org || bb, r0 = Math.floor((bb[1] - sy - org[1]) / sy), r1 = Math.ceil((bb[3] + sy - org[1]) / sy);
+    for (let row = r0; row <= r1; row++) for (let c = Math.floor((bb[0] - s * 1.5 - org[0]) / s), c1 = Math.ceil((bb[2] + s - org[0]) / s); c <= c1; c++) {
+      const y = org[1] + row * sy, x = org[0] + c * s + (((row % 2) + 2) % 2) * s * .5;
+      const rr = K.rng(K.hash(c, row, o.salt)); if (rr() > o.cover) continue;
       const w = s * (.96 + rr() * .3), h = sy * (.94 + rr() * .3), cx = x + (rr() - .5) * s * .3, cy = y + (rr() - .5) * sy * .3, pts = [], n = 5 + Math.floor(rr() * 3), a0 = rr() * 6.3;
       for (let k = 0; k < n; k++) { const a = a0 + (k + (rr() - .5) * .6) / n * Math.PI * 2, f = .66 + rr() * .4; pts.push([cx + Math.cos(a) * w / 2 * f, cy + Math.sin(a) * h / 2 * f]); }
       B.f(B.poly(pts.map(([px, py]) => [px + .8, py + 1.6])), '#3e3a32', .4);
@@ -129,7 +131,7 @@
     if (way && way.points && way.points.length > 1) {
       const rib = V.routeRibbon(L, way, false), bb = kit.bboxOf(rib, 8), seed = kit.hashStr('cloudbreak-way');
       C.add(bb, seed, (B, r, cb) => { const path = new Path2D(B.poly(rib)), box = within(bb, cb, 30); if (!box) return; B.cx.save(); B.cx.clip(path); B.f(B.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]), snowy ? '#c8ccc4' : '#6e6b5a');
-        slabs(B, box, { s: 24, cover: .99, salt: seed, tones: GREY, snowy }); B.cx.restore(); B.s(path, '#4e4a40', 1.6, .45); });
+        slabs(B, box, { s: 24, cover: .99, salt: seed, tones: GREY, snowy, org: bb }); B.cx.restore(); B.s(path, '#4e4a40', 1.6, .45); });
     }
     // the other ways each in their own ground, so the fells are not one web of the same beige ribbon: the turf trails
     // (the Edge walk, Skylark path, the cove cliff path) a trodden line in the grass, the moor road dark peat with heather
@@ -156,7 +158,7 @@
       C.add(bb, seed, (B, r, cb) => { const path = new Path2D(B.poly(loop)), box = within(bb, cb, 30); if (!box) return; B.cx.save(); B.cx.clip(path);
         B.f(B.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]), snowy ? '#e8ece6' : o.base);
         if (!snowy) for (let k = 0; k < (bb[2] - bb[0]) * (bb[3] - bb[1]) / 1400; k++) B.tufts(r, bb[0] + r() * (bb[2] - bb[0]), bb[1] + r() * (bb[3] - bb[1]), 14, 5, o.peat ? ['#8a6a8a', '#7d8f4e'] : ['#8c9a5e', '#c2c78e', '#7d8f4e'], 5);
-        slabs(B, box, { s: o.s, cover: o.cover, salt: seed, tones: o.wet ? WET : o.peat ? PEAT : GREY, snowy });
+        slabs(B, box, { s: o.s, cover: o.cover, salt: seed, tones: o.wet ? WET : o.peat ? PEAT : GREY, snowy, org: bb });
         B.cx.restore(); B.s(path, '#4e4a40', 1.6, .4); });
     }
     // Cold cove's shingle: the cove's floor of grey pebbles, wet and darker toward the sea, where the cove walk and Wick's steps end
@@ -169,22 +171,22 @@
         B.cx.restore(); B.s(path, '#6e6a5c', 1.6, .45); });
     }
     // the last wall: where the moor runs out west you come to a dry-stone wall running the length of the fell edge, and
-    // the moor road ends at its gate (ld-moor-gate); you stop at the stones, not in open heather at the map's edge
+    // the moor road ends at its gate (ld-moor-gate); you stop at the stones, not in open heather at the map's edge. Each
+    // run is one picture with one foot its whole length (north of the gate, and south of it to the Edge), so what stops
+    // you is exactly the wall drawn. (Seen from the south a north-south wall shows its top running up the slope and its
+    // end where it stops: at the gate and at the Edge.)
     const H9 = H * .9, mg = L.stat('ld-moor-gate');
-    if (mg) for (let row = 1; row <= 18; row++) {   // (row 0 is the march wall's)
-      if (row >= mg.y && row < mg.y + mg.h) continue;
-      const b = L.base(1, row); if (!b || !b.land || b.freshwater) continue;
-      const p = L.cpt(mg.x + .25, row + 1);
-      const nb = L.base(1, row + 1), end = row === 18 || (row + 1 >= mg.y && row + 1 < mg.y + mg.h) || !nb || !nb.land, afterGate = row === mg.y + mg.h;
-      if (afterGate) { thing({ key: 'moor-wall-' + row + 'g|' + C.season, x: p.x, y: p.y, box: [-14, -32 - 4, 24, 8], foot: [-10, 10, 30], draw: B => wallRun(B, kit.rng(970 + row), 20, Math.max(0, 30 - H9), H9, snowy) }); continue; }   // (south of the gate: its stones begin at the gatepost, so the gate stays in sight)
-      thing({ key: 'moor-wall-' + row + (end ? 'e' : '') + '|' + C.season, x: p.x, y: p.y, box: [-14, -32 - H9 - 4, 24, 8], foot: [-10, 10, 30], draw: B => { if (end) wallRun(B, kit.rng(970 + row), 20, 30, H9, snowy); else { B.cx.save(); B.cx.translate(0, -H9); wallRun(B, kit.rng(970 + row), 20, 30, 0, snowy); B.cx.restore(); B.f(B.rect(10, -30, 9, 30), '#2e3420', .18); } } });
+    if (mg) for (const [r0, r1, endFace] of [[1, mg.y, true], [mg.y + mg.h, 19, true]]) {
+      const len = (r1 - r0) * L.ch, p = L.cpt(mg.x + .25, r1);
+      thing({ key: 'moor-wall-' + r0 + '|' + C.season, x: p.x, y: p.y, K: 1.25, box: [-14, -len - H9 - 6, 24, 8], foot: [-10, 10, len], draw: B => wallRun(B, kit.rng(970 + r0), 20, Math.max(0, len - H9), H9, snowy) });
     }
-    // the march wall along the fells' north edge (row 0): you stop at an old boundary wall, not in the sky's haze.
+    // the march wall along the fells' north edge (row 0): you stop at an old boundary wall, not in the sky's haze. One
+    // picture and one foot along the whole run of fell land at the top of the map.
     // (feat/art3-highlands paints its own march wall in the fells painter; when that lands, this run is dropped: set window.__fellsMarchWall)
-    if (!window.__fellsMarchWall) for (let x = 0; x < W_COLS(C); x += 2) {
-      const b = L.base(x + 1, 0); if (!b || !b.land || b.freshwater || (b.zone !== undefined && b.zone !== 5)) continue;
-      const p = L.cpt(x + 1, .55);
-      thing({ key: 'march-wall-' + x + '|' + C.season, x: p.x, y: p.y, box: [-52, -H9 - 6, 52, 8], foot: [-46, 46, 14], draw: B => wallRun(B, kit.rng(990 + x), 98, 0, H9, snowy) });
+    if (!window.__fellsMarchWall) {
+      let x0 = null, x1 = null; for (let x = 0; x < W_COLS(C); x++) { const b = L.base(x + .5, 0); const ok2 = b && b.land && !b.freshwater && (b.zone === undefined || b.zone === 5); if (ok2) { if (x0 === null) x0 = x; x1 = x + 1; } else if (x0 !== null) break; }
+      if (x0 !== null) { const wpx = (x1 - x0) * L.cw, p = L.cpt((x0 + x1) / 2, .55);
+        thing({ key: 'march-wall|' + C.season, x: p.x, y: p.y, K: 1, box: [-wpx / 2 - 4, -H9 - 6, wpx / 2 + 6, 8], foot: [-wpx / 2, wpx / 2, 14], draw: B => wallRun(B, kit.rng(990), wpx, 0, H9, snowy) }); }
     }
     // the plan's Scots pines, in their groups (each moved to open turf if the layout put it on a path or a plot)
     (M.trees || []).forEach((t, i) => {
