@@ -344,7 +344,7 @@
         const look = o.kind === 'boat' ? [[-50, -30, 52, 12], turned(boat2), [-36 * z, 38 * z, 10]] : o.kind === 'net' ? [[-50, -66, 52, 10], turned(drawNet(P, v, o.seed >>> 0)), v === 0 ? [-34 * z, 34 * z, 6] : [-26 * z, 26 * z, 7]] : o.kind === 'pots' ? [[-36, -40, 38, 8], turned(drawPots(P, o.seed >>> 0)), [-24 * z, 26 * z, 8]] : o.kind === 'castle' ? [[-36, -30, 34, 8], turned(castle(o.seed >>> 0)), null] : o.kind === 'fire' ? [[-20, -12, 40, 10], turned(fire(o.seed >>> 0)), null] : [[-38, -32, 38, 10], turned(windbreak(o.seed >>> 0)), [-32 * z, 32 * z, 7]];
         thing(Object.assign({ key: 'beach-' + o.kind + '-' + i, box: look[0], x: o.x, y: o.y, draw: look[1] }, look[2] ? { foot: look[2] } : {}));
         // a storm lantern hung on a driftwood stake beside a net or a beached boat (lit after dark by the coast's night part)
-        if (o.lx) thing({ key: 'beach-lantern-' + i, x: o.x + o.lx, y: o.y + 2, box: [-12, -42, 12, 6], draw: B => { const r3 = kit.rng(o.seed ^ 91);
+        if (o.lx) thing({ key: 'beach-lantern-' + i, x: o.x + o.lx, y: o.y + 2, box: [-12, -42, 12, 6], foot: [-4, 4, 5], draw: B => { const r3 = kit.rng(o.seed ^ 91);
           B.shadow(2, 1, 6, 2, .3); B.f(B.ell(0, 1, 5, 1.6), '#7a6a50', .35);
           B.s(`M0 1L${(r3() - .5) * 2} -34`, '#5e4c38', 2.6).s(`M-.6 0L${(r3() - .5) * 2 - .6} -33`, '#8a7454', .9, .7).s('M0 -31l7 1.4', '#5e4c38', 1.8);
           B.s('M7 -29.6v3', '#3a3430', .7).f(B.rr(4, -27, 6, 8, 1.2), '#3a3430').f(B.rr(4.9, -25.8, 4.2, 5.6, .8), '#f0c870', .9).f(B.rect(4, -27.6, 6, 1.2), '#2a2622').f(B.ell(7, -19, 3.2, .9), '#2a2622');
