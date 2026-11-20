@@ -141,6 +141,22 @@ function gartActStandFace(A) {
   const deg = A.standDeg, D = _gmvDrawing(deg); A.standDeg = null;
   if (D.dir !== A.dir || (D.dir === 'e' && D.mirror !== A.face)) { A.dir = D.dir; if (D.dir === 'e') A.face = D.mirror; if (A.gm) A.gm.h = deg; A.key = ''; if (typeof _gllPaint === 'function') _gllPaint(A); }
 }
+/** (belly rubs, any act with rubPet) Their pet's copy lies where theirs does, at their hand (GA_RUB_AT from their feet, the same as on
+ *  their screen), on its back, kicking its legs (the same clip), again while the rub lasts. One-off pet clips are spaced six seconds
+ *  apart on the wire, so the rub is drawn from what they are doing, not from those. */
+function gartActRubCopy(A, id) {
+  clearTimeout(A.rubT);
+  const go = () => {
+    if (A.actId !== id || _gll.actors.get(A.w) !== A) return;
+    const P = A.pp; if (!P || !P.root) { A.rubT = setTimeout(go, 500); return; }
+    P.tx = null; P.ty = null; P.busy = 0; P.cb = null; P.x = A.x + GA_RUB_AT[0]; P.y = A.y + GA_RUB_AT[1]; P.z = -1; P.dir = -1;   // (as _gaRubTick lays it: at the reaching hand, head towards them)
+    if (A.pf) A.pf.seen = true;   // (their last place for it is where it walked to: this is where it lies)
+    const clip = typeof _gaBellyClip === 'function' && _gaBellyClip() || 'rollover', def = typeof petClipDef === 'function' ? petClipDef(clip) : null;
+    try { if (!(P.root._pcH && P.rubbing)) { P.sit(); P.rubbing = true; P.clip(clip, def && def.ms || 2400, () => { P.rubbing = false; }); } } catch (e) { /* it sits */ }
+    A.rubT = setTimeout(go, 6100);
+  };
+  go();
+}
 /** Their stick: a thing of the world on my screen, in their hand and flying (part 0), in the grass (1), in their pet's mouth (2), at their feet (3). */
 function _gadStickSprite(A) {
   if (A.stickSpr || typeof gardenWorldAdd !== 'function') return;

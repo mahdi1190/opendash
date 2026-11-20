@@ -690,6 +690,7 @@ function gartActRemote(A, id, off) {
   const gpl = A.root.querySelector('.gpl'); if (!gpl) return false;
   const H = gartActPlay(gpl, id, { motion: typeof _gllReduced === 'function' ? !_gllReduced() : true });
   if (row.kick && off < 400 && A.kickT0 !== Math.round(A.actT0)) { A.kickT0 = Math.round(A.actT0); try { const sp = _gaStaticRows().concat(_gaDecorRows()).filter(q => q.act === id && q.stand && Math.hypot(q.stand.x - A.x, q.stand.y - A.y) < 1.2).sort((p, q) => Math.hypot(p.stand.x - A.x, p.stand.y - A.y) - Math.hypot(q.stand.x - A.x, q.stand.y - A.y))[0]; if (sp) _gaKickAt(sp, A.actDeg != null ? A.actDeg : 90); } catch (e) { /* the ball stays */ } }   // (2.74.1) the ball flies on their screen too
+  if (row.rubPet && typeof gartActRubCopy === 'function') gartActRubCopy(A, id);   // (2.74.1) their pet on its back at their hand, on my screen too
   if (off > 0) for (const an of H.anims.concat(H.panims)) { try { an.currentTime = Math.min(off, Math.max(0, row.ms - 1)); } catch (e) { /* from the start */ } }
   // on a seat (or over the pier's edge) their figure is lifted as yours is: the same spot, found from where they are
   let lift = row.seat != null ? _gaSeatLift(row) : 0; if (!lift) try { const near = _gaStaticRows().concat(_gaDecorRows()).filter(r => r.act === id && r.stand && Math.hypot(r.stand.x - A.x, r.stand.y - A.y) < 0.6)[0]; lift = near ? near.lift || 0 : 0; } catch (e) { lift = 0; }
