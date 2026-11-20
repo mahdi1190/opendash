@@ -140,9 +140,15 @@ function _plSeen(x, y) { try { if (typeof _gwInView !== 'function' || !_gw || !_
  *  as wide as you and the pet together, up to two cells back. */
 function _plBehindYou(x, y, P) { const pl = _ptwPlayer(); if (!pl) return false; const half = P ? _plHalf(P) : 0.3; return Math.abs(x - pl.x) < half + 0.38 && y < pl.y - 0.12 && y > pl.y - 2.1; }
 /** Behind or among the maypole's ribbons (round 5, the critic: a cheer, a nap on your feet and a dug hole half hidden in the ribbon cone). */
-function _plInRibbons(x, y) {
-  try { if (typeof GardenPaintVale === 'undefined' || !GardenPaintVale || !GardenPaintVale.feet) return false;
-    for (const f of GardenPaintVale.feet()) { if (!/maypole/i.test(f.src || '')) continue; const cx = (f.x0 + f.x1) / 2; if (Math.abs(x - cx) < 1.25 && y > f.y0 - 2.4 && y < f.y1 + 0.35) return true; } } catch (e) { return false; }
+const _plRib = { sig: null, boxes: [] };
+function _plRibBoxes() {
+  try { if (typeof GardenPaintVale === 'undefined' || !GardenPaintVale || !GardenPaintVale.feet) return _plRib.boxes;
+    const sig = GardenPaintVale.feetSig ? GardenPaintVale.feetSig() : ''; if (sig === _plRib.sig) return _plRib.boxes;
+    _plRib.sig = sig; _plRib.boxes = GardenPaintVale.feet().filter(f => /maypole/i.test(f.src || '')).map(f => ({ cx: (f.x0 + f.x1) / 2, y0: f.y0, y1: f.y1 })); } catch (e) { /* none */ }
+  return _plRib.boxes;
+}
+function _plInRibbons(x, y, tight) {
+  for (const f of _plRibBoxes()) { if (Math.abs(x - f.cx) < (tight ? 1.0 : 1.25) && y > f.y0 - (tight ? 1.7 : 2.4) && y < f.y1 + 0.35) return true; }
   return false;
 }
 function _plStandOk(x, y) { if (_plBehindYou(x, y) || _plInRibbons(x, y)) return false; try { if (typeof gardenWorldFree === 'function' ? !gardenWorldFree(x, y, 0.3) || !gardenWorldFree(x, y + 0.5, 0.2) || !gardenWorldFree(x, y + 0.95, 0.25) : !_ptwFree(x, y)) return false; } catch (e) { return false; } return _plSeen(x, y); }   // (and nothing standing just in front of it: round 4 found it half behind the sundial)
@@ -156,21 +162,28 @@ function _plStage(P, near, kind) {
   // bigger pets stand a little further off so the two figures never overlap (round 3: pets drawn larger)
   let ring = near ? [[0.62, 0.12], [0.58, 0.3], [0.72, -0.08]] : [[0.78, 0.1], [0.7, 0.32], [0.95, -0.06], [1.05, 0.34], [1.25, 0.12]];
   // (with a thing to draw: still within a cell and a half of you, so the row is in the frame round you; in front of you as well as beside)
-  if (kind) ring = [[0.85, 0.12], [1.0, 0.3], [1.0, -0.1], [1.25, 0.15], [1.2, 0.45], [0.7, 0.7], [1.0, 0.75], [1.5, 0.1], [1.4, -0.25], [1.5, 0.5], [0.4, 0.95], [1.3, 0.95]];
+  if (kind) ring = [[0.85, 0.12], [1.0, 0.3], [1.0, -0.1], [1.25, 0.15], [1.2, 0.45], [0.7, 0.7], [1.0, 0.75], [1.5, 0.1], [1.4, -0.25], [1.5, 0.5], [0.4, 0.95], [1.3, 0.95], [1.9, 0.2], [1.8, 0.7], [2.2, 0.35], [0.9, 1.3], [2.0, -0.3], [2.4, 0.1]];   // (round 6: on a wide lane the grass is a little further off)
   for (const [a0, b] of ring) for (const k of [s, -s]) { const a = a0 + sz, x = pl.x + a * k, y = pl.y + b; if (_plStandOk(x, y) && (!kind || typeof _plGroundOk !== 'function' || _plGroundOk(kind, x, y, k, P))) return { x, y, free: true, stage: 1 }; }
   return kind && arguments.length < 3 ? _plStage(P, near, '-') : null;   // no ground for the thing near you: stand beside you anyway (the row then plays without it)
 }
 /** Walk beside a thing, face it, do it. False when there is no way there. Your companion only goes to a thing you can see (a row played off screen
  *  is a row nobody sees); when the thing is out of view, a row that brings its own (a puddle, flowers, a leaf pile) plays beside you instead. */
 function _plGoDo(P, t, clips, rest, after, run) {
-  if (_pl.here) { _plPlay(P, clips, rest, after); return true; }   // (petLifeTry with here: the checking tool plays it where the pet stands)
+  const row0 = P.lifeCur;
+  // (round 6, the critic: rows played far from their place were a plain sit with a star: a row that needs its place (a swing, the pier, the
+  // maze) and draws nothing of its own plays only there)
+  if (_pl.here) { if (row0 && row0.at && !row0.prop && !row0.propAlways && !row0.stageOk && !(t && !t.free && Math.hypot(t.x - P.x, t.y - P.y) < 4)) return false; _plPlay(P, clips, rest, after); return true; }   // (petLifeTry with here: the checking tool plays it where the pet stands)
   const row = P.lifeCur, pl = _ptwPlayer();
   // beside the thing, but not where you stand (round 3: walked up to the well yourself, the one spot beside it was yours, and the row gave up)
   const clearOfYou = (q) => !pl || (Math.abs(q.x - pl.x) > _plHalf(P) + 0.32 || Math.abs(q.y - pl.y) > 0.6) && !_plBehindYou(q.x, q.y, P);
   const freeT = t && t.free ? (clearOfYou(t) ? t : [0.5, -0.5, 0.9, -0.9].map(k => ({ x: t.x + k + Math.sign(k) * _plHalf(P), y: t.y, free: true, stage: t.stage })).find(q => _ptwFree(q.x, q.y) && clearOfYou(q)) || t) : null;
   // (a shop or stall: to one side of its front, never on the forecourt where its ground sign is painted; round 4)
-  const offs = row && row.at === 'stall' ? [[-2.0, .7], [2.0, .7], [-2.2, 1.2], [2.2, 1.2], [-1.6, 1.6], [1.6, 1.6]] : [[0, .8], [-.9, .5], [.9, .5], [0, 1.3], [-1.3, .8], [1.3, .8], [-1.6, .2], [1.6, .2], [0, 1.8]];
-  const near = t && (t.free ? freeT : offs.map(([x, y]) => ({ x: t.x + x, y: t.y + y })).find(q => _ptwFree(q.x, q.y) && clearOfYou(q)));
+  const offs = row && row.at === 'stall' ? [[-1.5, 1.0], [1.5, 1.0], [-2.0, .7], [2.0, .7], [-2.2, 1.2], [2.2, 1.2], [-1.6, 1.6], [1.6, 1.6]] : [[0, .8], [-.9, .5], [.9, .5], [0, 1.3], [-1.3, .8], [1.3, .8], [-1.6, .2], [1.6, .2], [0, 1.8]];
+  // (round 6, the critic: at the stall it stood 2.6 cells off, out of the picture: of the free spots by the thing, the one nearest you, so it
+  // plays beside the thing and beside you; the thing's own front first when that is as near)
+  const cand = t && !t.free ? offs.map(([x, y], i) => ({ x: t.x + x, y: t.y + y, i })).filter(q => _ptwFree(q.x, q.y) && clearOfYou(q) && !_plInRibbons(q.x, q.y, true)) : [];
+  if (pl && cand.length) cand.sort((a, b) => (Math.hypot(a.x - pl.x, (a.y - pl.y) * 1.4) + a.i * 0.15) - (Math.hypot(b.x - pl.x, (b.y - pl.y) * 1.4) + b.i * 0.15));
+  const near = t && (t.free ? freeT : cand[0]);
   const dN = near && pl ? Math.hypot(near.x - pl.x, (near.y - pl.y) * 1.4) : 99, onYou = near && !clearOfYou(near);
   if (P.me && pl && (!near || !_plSeen(near.x, near.y) || dN > ((row && (row.prop || row.propAlways)) ? 2.4 : 4.5) || onYou || t.free && !t.stage)) {
     if (!(row && (row.prop || row.propAlways || row.stageOk)) && !(near && t.free && _plSeen(near.x, near.y))) return false;
@@ -224,7 +237,7 @@ function _plStart(P, row, C, forced) {
   let ok = false;
   try {
     if (row.run) ok = row.run(P, C, row, forced) !== false;
-    else if (row.at) { const t = _plNear(P, row.at, forced ? 40 : 0) || (forced || row.prop || row.stageOk) && _plSpotNear(P); ok = !!t && _plGoDo(P, t, _plClips(row), row.rest); }
+    else if (row.at) { const t = _plNear(P, row.at, forced ? 40 : 0) || (row.prop || row.propAlways || row.stageOk) && _plSpotNear(P); ok = !!t && _plGoDo(P, t, _plClips(row), row.rest); }
     else { _plPlay(P, _plClips(row), row.rest); ok = true; }
   } catch (e) { ok = false; try { console.error('[pet life]', row.id, e); } catch (x) { /* quiet */ } }
   if (!ok) P.lifeCur = null;
@@ -442,4 +455,19 @@ if (typeof setView === 'function') {
     if (v !== 'garden' && _plGoodbye(() => { _plByeGoing = 0; _plSetView0.apply(self, args); })) { _plByeGoing = performance.now(); return; }
     return _plSetView0.apply(this, arguments);
   };
+}
+/** 31 with you (round 6, the critic: it chased a butterfly three cells off, out of the picture): the butterfly flits round you, a cell or so to
+ *  the pet's side, and each dash and pounce stays within two cells of you. */
+function _plButterflies(P) {
+  const pl = _ptwPlayer(), F = typeof _ptwFly === 'function' ? _ptwFly(P) : null; if (!F || !pl) return false;
+  const s = P.x >= pl.x ? 1 : -1; F.home = { x: pl.x + s * 1.3, y: pl.y + 0.3 }; F.x = F.home.x + s * 0.4; F.y = F.home.y - 0.2; F.life = 7;
+  const clamp = (x, y) => ({ x: Math.max(pl.x - 2, Math.min(pl.x + 2, x)), y: Math.max(pl.y - 0.5, Math.min(pl.y + 1.1, y)) });
+  const leg = (n) => {
+    if (n <= 0 || !F.alive) { F.home = null; P.sit({ eyes: 'happy', mouth: 'open' }); P.clip('jump', 800, () => { P.sit(); P.busy = 1.5; P.lifeCur = null; }); return; }
+    let q = clamp(F.x + (Math.random() - 0.5) * 0.6, F.y + 0.4);
+    if (!_ptwFree(q.x, q.y) || Math.abs(q.x - pl.x) < 0.5 && Math.abs(q.y - pl.y) < 0.5 || _plBehindYou(q.x, q.y, P)) q = { x: P.x, y: P.y };
+    P.walkTo(q.x, q.y, true, () => { P.dir = F.x >= P.x ? 1 : -1; P.sit({ eyes: 'open', mouth: 'open' }); P.clip('pounce', 700, () => leg(n - 1)); });
+  };
+  leg(3);
+  return true;
 }

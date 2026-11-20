@@ -30,7 +30,7 @@ function petGardenWorldOwns() { return _ptw.on && _ptwMotion() && _ptw.pets.leng
 function _ptwGone(P) { return !!P.me && typeof gpPetAway === 'function' && gpPetAway(); }   // on a little journey (94-garden-play-1pet.js): it is not here to do anything
 function petGardenPositions() { return _ptw.pets.filter(P => !_ptwGone(P)).map(P => ({ x: P.x, y: P.y, species: P.look.species, me: !!P.me, moving: P.tx != null })); }
 function _ptwCell(x, y) { const W = GARDEN_WORLD; return { x: x * W.cellW, y: W.sky + y * W.cellH }; }
-function _ptwFree(x, y) { try { return gardenWorldFree(x, y, 0.14); } catch (e) { return true; } }
+function _ptwFree(x, y) { try { return gardenWorldFree(x, y, 0.14) && !(typeof _plInRibbons === 'function' && _plInRibbons(x, y, true)); } catch (e) { return true; } }   // (round 6: never in among the maypole's ribbons)
 function _ptwPlayer() { return typeof _gw !== 'undefined' && _gw && _gw.on !== false ? { x: _gw.px, y: _gw.py, moving: !!_gw.moving, busy: !!_gw.reel } : null; }
 /** A sprite's height in the garden's units: small things stay small, big things never tower over you. */
 /* How tall a pet is drawn in the garden (its picture box, world px). Round 3, sizes: against H, the player's height (about 29.6 world px at the
@@ -591,6 +591,7 @@ function _ptwFlies(dt, t) {
   for (const F of _ptw.flies) {
     F.life -= dt; F.a += dt * 1.1;
     F.x += Math.cos(F.a * 1.7) * dt * 1.5; F.y += Math.sin(F.a * 1.1) * dt * 0.9;
+    if (F.home) { const dx = F.home.x - F.x, dy = F.home.y - F.y; if (Math.hypot(dx, dy) > 1.1) { F.x += dx * Math.min(1, dt * 1.6); F.y += dy * Math.min(1, dt * 1.6); } }   // (round 6: the butterfly row's butterfly stays round you)
     F.x = Math.max(1, Math.min(GARDEN_WORLD.cols - 2, F.x)); F.y = Math.max(1, Math.min(GARDEN_WORLD.rows - 2, F.y));
     const pos = _ptwCell(F.x, F.y);
     F.node.setAttribute('transform', `translate(${pos.x.toFixed(1)} ${(pos.y - 18 - Math.sin(t * 3 + F.a) * 4).toFixed(1)})`);
