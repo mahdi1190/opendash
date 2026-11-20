@@ -177,7 +177,7 @@
       // edge wandering in lobes over the island's own edge, so the woods run on into the dark of a bigger forest)
       const deep = a => kit.rgba('#22301c', a);
       C.thing({ key: 'mainland-haze-w2', x: 0, y: rows, depth: 89990, K: .25, box: [-340, -rows - 800, 140, 0], draw: B => { const r = kit.rng(5303);
-        B.f(B.rect(-340, -rows - 800, 340, rows + 800), B.lin(-340, 0, 0, 0, [[0, deep(.62)], [.5, deep(.36)], [.85, deep(.12)], [1, deep(0)]]));
+        B.f(B.rect(-340, -rows - 800, 340, rows + 800), B.lin(-340, 0, 0, 0, [[0, deep(.72)], [.55, deep(.56)], [.82, deep(.34)], [.95, deep(.12)], [1, deep(0)]]));
         for (let y = -rows - 800; y < 40; y += 60 + r() * 50) { const rx = 50 + r() * 60, ry = 70 + r() * 70, x = -60 + (r() - .4) * 60;
           B.cx.save(); B.cx.translate(x, y); B.cx.scale(1, ry / rx); B.cx.fillStyle = B.rad(0, 0, rx, [[0, deep(.22)], [.6, deep(.1)], [1, deep(0)]]); B.cx.beginPath(); B.cx.arc(0, 0, rx, 0, Math.PI * 2); B.cx.fill(); B.cx.restore(); } } });
       // the north bank stays above the island's top row (over the far fells and the summits of the range), gone by the range's foot
