@@ -3,7 +3,7 @@
   "things": [
     { "id": "ga-scope", "kind": "telescope", "on": "ld-folly", "at": [0.95, 0.55], "note": "on the folly's lookout, aimed at the far hills" },
     { "id": "ga-fire-beacon", "kind": "campfire", "on": "ld-beacon", "at": [2.25, 1.6], "note": "a ring of stones beside the beacon" },
-    { "id": "ga-fire-hut", "kind": "campfire", "on": "ld-woodhut", "at": [2.6, 0.85], "note": "by the woodsman's hut" },
+    { "id": "ga-fire-hut", "kind": "campfire", "on": "ld-woodhut", "at": [3.15, 1.2], "note": "by the woodsman's hut" },
     { "id": "ga-logseat", "kind": "log-seat", "on": "ld-woodhut", "at": [0.05, 1.35], "note": "laid by the hut's fire" },
     { "id": "ga-ball", "kind": "ball", "on": "sundial", "at": [-4.55, 2.0], "note": "on the grass by the green" },
     { "id": "ga-leaves", "kind": "leaf-pile", "on": "sundial", "at": [-5.7, 0.2], "season": "autumn", "note": "inside the green, autumn only" },
