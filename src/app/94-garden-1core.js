@@ -973,8 +973,7 @@ function gardenUndo() {
 function _gdDone(msg, label, mark, o) {
   o = o || {};
   _gdPushUndo(label, mark);
-  _gdSave();
-  gardenTickSoon();
+  if (o.noPaint) _gdSaveQuiet(); else { _gdSave(); gardenTickSoon(); }   // (noPaint: what changed draws itself, a carried thing set down)
   // 2.23: on the garden itself the world answers (a sparkle, a number) and the Undo pill stays by the hotbar; a toast is for the palette and Home
   if (msg && !o.quiet && typeof toast === 'function' && !_gdOnPage()) {
     const u = _gd.undo[_gd.undo.length - 1];

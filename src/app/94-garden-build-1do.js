@@ -62,8 +62,8 @@ function gardenDo(op, o) {
   const g = _gdG(), extra = typeof o.pre === 'function' ? o.pre() || [] : [];
   const mark = [..._gdMark(gardenOpTouches(op, g)), ...extra];
   const res = gardenOpApply(g, op, who, W);
-  if (o.noUndo) { _gdSave(); gardenTickSoon(); return { ok: true, msg: o.msg || '', res }; }
-  const out = _gdDone(o.msg || '', o.label || 'that', mark, { icon: o.icon, quiet: o.quiet });
+  if (o.noUndo) { if (o.noPaint) _gdSaveQuiet(); else { _gdSave(); gardenTickSoon(); } return { ok: true, msg: o.msg || '', res }; }
+  const out = _gdDone(o.msg || '', o.label || 'that', mark, { icon: o.icon, quiet: o.quiet, noPaint: o.noPaint });
   const u = _gd.undo[_gd.undo.length - 1];
   if (u) { u.inv = o.inverse || res.inverse; u.also = extra.map(r => r[0] + '\0' + r[1]); }
   return Object.assign(out, { res });
@@ -136,7 +136,7 @@ function gardenCarryGrab(key) {
     _gbd.ask = { key, at: performance.now() };   // (an answer that never comes: it leaves your arms again, gardenDropTick)
     return '';
   }
-  const r = gardenDo({ o: 'grab', i: item }, { noUndo: true });
+  const r = gardenDo({ o: 'grab', i: item }, { noUndo: true, noPaint: true });   // (drawn as a sprite of its own: no repaint of the garden, 30-40 ms)
   if (!r.ok) return r.msg;
   _gbd.held.set(key, '@host');
   gardenDropChanged();
@@ -157,7 +157,7 @@ function gardenCarrySet(key, x, y) {
   const back = was ? { o: 'drop', i: item, fx: Math.round(was.x * 10), fy: Math.round(was.y * 10), rec: null } : { o: 'grab', i: item, rec: null };
   if (was) back.rec = { i: item, x: back.fx, y: back.fy, at: _gdNow() };
   const t = gardenCarryThing(key), name = t && GARDEN_KINDS[t.kind] ? String(GARDEN_KINDS[t.kind].name || 'it').replace(/^the /, '') : 'it';
-  const r = gardenDo({ o: 'drop', i: item, fx, fy }, { label: 'setting down the ' + name, quiet: true, inverse: back, anyGround: true });
+  const r = gardenDo({ o: 'drop', i: item, fx, fy }, { label: 'setting down the ' + name, quiet: true, inverse: back, anyGround: true, noPaint: true });
   gardenDropChanged();
   return r.ok ? '' : r.msg;
 }
@@ -239,20 +239,28 @@ function gardenDropShow(force) {
     if (!held) _gbd.lay.set(t.id, at || { x: t.x, y: t.y });
     else if (by === '@me' || (by === '@host' && !_gbdVisit())) _gbd.lay.delete(t.id);   // (in your own arms: nothing lost)
     else if (by !== '@me' && !(by === '@host' && !_gbdVisit()) && _gbd.lay.has(t.id)) { const w = _gbd.lay.get(t.id); _gbd.lay.delete(t.id); _gbd.lost = { id: t.id, x: w.x, y: w.y, by, at: nowL }; }
-    want.push(t.id + ':' + (held ? 'h' : at ? Math.round(at.x * 10) + ',' + Math.round(at.y * 10) : 'home'));
+    want.push(t.id + ':' + (held ? 'h' : at ? Math.round(at.x * 10) + ',' + Math.round(at.y * 10) : _gaRec(t.id) ? 'home' : 'homes'));   // (homes: back at its own place, and the world has no picture of it there yet)
   }
   const sig = want.join('|');
   if (!force && sig === _gbd.showSig) return;
   const was = _gbd.showSig; _gbd.showSig = sig;
-  let home = false;
+  const before = new Map(); for (const row of was ? was.split('|') : []) before.set(row.slice(0, row.lastIndexOf(':')), row.slice(row.lastIndexOf(':') + 1));
   for (const row of want) {
     const id = row.slice(0, row.lastIndexOf(':')), st = row.slice(row.lastIndexOf(':') + 1);
     if (st === 'h') { _gaHide.set(id, Infinity); _gaShow(id, false); const d = _ga.down && _ga.down.get(id); if (d) { try { d.remove(); } catch (e) { /* gone */ } _ga.down.delete(id); } continue; }
     if (_gaHide.get(id) === Infinity) _gaHide.delete(id);
-    if (st === 'home') {
+    if (st === 'home') {   // the world's own picture of it, at its own place
       const d = _ga.down && _ga.down.get(id);
       if (d) { try { d.remove(); } catch (e) { /* gone */ } _ga.down.delete(id); }
-      if (!_gaRec(id)) home = true; else _gaShow(id, true);
+      _gaShow(id, true);
+      continue;
+    }
+    if (st === 'homes') {
+      // back home, and the world was built while it lay elsewhere: drawn there as a sprite of its own (a whole repaint of the world was
+      // 20-40 ms on every friend's screen, every time: speed, critic 21 Nov) until the world next draws it itself. Never for a thing that
+      // was always at home (out of view, the world simply has not drawn it yet)
+      const b = before.get(id), d = _ga.down && _ga.down.get(id), t = _gbdThings().get(id);
+      if (t && (d || (b && b !== 'home' && b !== 'homes'))) { if (!d || Math.abs(d.x - t.x) > 0.05 || Math.abs(d.y - t.y) > 0.05) _gaSetDownDraw(id, t.x, t.y); }
       continue;
     }
     const at = gardenDropAt(id); _gaShow(id, false);
@@ -260,7 +268,6 @@ function gardenDropShow(force) {
     if (!d || Math.abs(d.x - at.x) > 0.05 || Math.abs(d.y - at.y) > 0.05) _gaSetDownDraw(id, at.x, at.y);
   }
   _ga.list = null;
-  if (home && was) _gaResync();   // (it was drawn elsewhere when the world was last built: the world draws it at home again)
 }
 /** Something lies somewhere else now: draw it, tell the friends here, and remember it for the fingerprint. */
 function gardenDropChanged() {
