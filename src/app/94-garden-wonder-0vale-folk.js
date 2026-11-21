@@ -248,7 +248,11 @@ function _vfrFrame(dt) {
     // a teller on their way to you: their visit stands in for the plan until you talk, or it runs out
     const goal = V.visit && now < V.visit.until ? V.visit : null; if (V.visit && !goal) { V.visit = null; V.mark = false; }
     const dest = goal ? goal.at : to;
-    if (V.hold) { if (now > V.hold.until || (V.hold.by == null && typeof _wd !== 'undefined' && !_wd.talk && now - V.hold.t0 > 1500) || (V.hold.A && !_gll.actors.has(V.hold.by))) { V.hold = null; V.drawn = ''; } else { const tx = V.hold.A ? V.hold.A.x : _gw.px; V.face = tx > V.x ? 1 : -1; if (V.S) _vfrDraw(V, false); continue; } }
+    if (V.hold) { if (now > V.hold.until || (V.hold.by == null && typeof _wd !== 'undefined' && !_wd.talk && now - V.hold.t0 > 1500) || (V.hold.A && !_gll.actors.has(V.hold.by))) { V.hold = null; V.drawn = ''; } else { const tx = V.hold.A ? V.hold.A.x : _gw.px, ty = V.hold.A ? V.hold.A.y : _gw.py;
+      // (stopped too close, on your feet: a step back first, to talking distance, then turn to you)
+      if (V.S && !V.hold.step && Math.hypot(V.x - tx, (V.y - ty) * 1.3) < 1.1) { const dx = V.x - tx || 0.01, dy = V.y - ty, n = Math.hypot(dx, dy) || 1; for (const k of [1, -1]) { const q = { x: tx + dx / n * 1.25 * k, y: ty + dy / n * 0.9 * k }; if (typeof _gwFree !== 'function' || _gwFree(q.x, q.y)) { V.hold.step = q; break; } } }
+      if (V.hold.step) { V.path = [V.hold.step]; if (_vfrStep(V, dt, 0.8)) V.hold.step = null; _vfrDraw(V, !!(V.path && V.path.length)); continue; }
+      V.face = tx > V.x ? 1 : -1; if (V.S) _vfrDraw(V, false); continue; } }
     if (!near && !V.S) {
       // off screen: where the plan says, in a straight line along the leg (nothing walked frame by frame)
       if (!goal) { V.x = w.x; V.y = w.y; V.inside = w.inside || !!e.offmap; V.arrived = !w.walking; }

@@ -161,7 +161,7 @@ function valeFolkFind(q, ctx, o) {
     if (ctx.open && !ctx.open(t)) continue;
     let spots = ctx.spots ? ctx.spots(t) : [];
     if (q.acts) spots = spots.filter(s => q.acts.includes(s.act));
-    if (!spots.length) spots = [{ act: 'stand', stand: { x: t.x, y: t.y + 0.75 }, deg: -90 }];
+    if (!spots.length) spots = [{ act: 'stand', stand: { x: t.x + (t.w || 1) / 2 + 0.45, y: t.y + 0.2 }, deg: 180 }];   // (a thing with no place of its own: beside it, looking at it, never in front of it hiding its foot)
     for (const s of spots) {
       if (!s.stand) continue;
       const p = s.stand;
