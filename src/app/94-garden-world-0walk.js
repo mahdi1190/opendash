@@ -528,12 +528,13 @@ function _gwRouteSourceInputs(m) {
   values.push(_gwTrunkSig());   // the painted trees' trunks (_gwPaintedTrunks)
   values.push(gardenWeirShutBox(m) ? 'weir-shut' : 'weir-open');
   values.push(typeof gardenOrchardShortcutSig === 'function' ? gardenOrchardShortcutSig() : '');   // the orchard's shortcuts, shut or open
+  values.push(typeof gardenAffordRev === 'function' ? gardenAffordRev() : 0);   // placed things where they lie now (gardenActThingSolids)
   return values;
 }
 function _gwGrid(m, groundOnly) {
   if (_gw.boat && !groundOnly) return _gwContinuousBoatGrid(m);
   const mm = m || gardenHere(), shore = typeof gardenLakeGeometry === 'function' ? gardenLakeGeometry(mm) : null, otherShapes = typeof gardenOtherWaterShapes === 'function' ? gardenOtherWaterShapes(mm) : null, state = _gwRouteState();
-  const key = (mm.visit ? mm.visit.key : _gd.memoKey) + '|' + mm.level.level + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0) + '|' + (shore && shore.revision || 0) + '|' + gardenPierDeckSignature() + '|' + (_gwTrunkSig() || '') + '|' + (typeof gardenOrchardShortcutSig === 'function' ? gardenOrchardShortcutSig() : '');
+  const key = (mm.visit ? mm.visit.key : _gd.memoKey) + '|' + mm.level.level + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0) + '|' + (shore && shore.revision || 0) + '|' + gardenPierDeckSignature() + '|' + (_gwTrunkSig() || '') + '|' + (typeof gardenOrchardShortcutSig === 'function' ? gardenOrchardShortcutSig() : '') + '|' + (typeof gardenAffordRev === 'function' ? gardenAffordRev() : 0);   // (and a placed thing moved aside: its foot's box goes with it)
   if (!_gw.grid || _gw.gridKey !== key || _gw.grid.model !== mm || _gw.grid.routeState !== state || _gw.grid.otherShapes !== otherShapes) {
     const saved = _gw.routeSnapshot, inputs = _gwRouteSourceInputs(mm);
     const stats = _gw.routeGridStats || (_gw.routeGridStats = { coarseBuilds: 0, preparations: 0, reused: 0, boatPreparations: 0, preflightChecks: 0, preflightReused: 0 }); stats.preflightChecks++;
