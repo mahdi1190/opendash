@@ -208,6 +208,9 @@
   /* ---------- pump square: a small yard of flags against a dry-stone wall, the cast-iron pump at the wall with its trough,
      a bucket and the dipper on its nail, the flags dark and shining where the water runs off; the spout drips ---------- */
   A['ld-pump'] = { box: [-66, -94, 68, 8],
+    // working it (any pump kind's move, 94-garden-zz-7act-1core.js _gaPainterUse): you stand at the trough's end by the column, side on to
+    // it, under the spout; the water runs from the spout's mouth into the trough
+    use: { pump: { stand: [1, 12], spout: [-3, -36, -19] } },
     seat: { kind: 'flags', w: 116, front: 26, back: 16, stones: 0, box: [-82, -26, 84, 40], extra(B, r) {
       // the wet: dark round the trough's foot and the bucket, a runnel off to the yard's edge, shine on it
       B.f(B.blob(r, -16, 6, 30, 7, 10, .35), '#3e3a2c', .32).f(B.blob(r, 42, 6, 10, 4, 8, .4), '#3e3a2c', .28);

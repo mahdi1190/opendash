@@ -37,6 +37,11 @@ function _gaCtx() {
   let night = null; try { night = typeof gardenIsNight === 'function' ? !!gardenIsNight() : null; } catch (e) { night = null; }
   return { season: (m && m.season) || '', level: m && m.level, night };
 }
+/** What a fixed thing's painter says about a move on its picture: GardenPaintedMarks.ART[id].use[act] = { stand: [x, y], spout: [x, y, landY] }
+ *  in px from the picture's foot middle (the layout's x, y). Any painter, any kind; null when it says nothing. */
+function _gaPainterUse(t, act) {
+  try { const A = t && t.static && typeof GardenPaintedMarks !== 'undefined' && GardenPaintedMarks && GardenPaintedMarks.ART ? GardenPaintedMarks.ART[t.id] : null, u = A && A.use && A.use[act]; return u && (Array.isArray(u.stand) || Array.isArray(u.spout)) ? u : null; } catch (e) { return null; }
+}
 function _gaStaticRows() {
   const out = [];
   if (typeof gardenAffordThings !== 'function') return out;
@@ -77,9 +82,15 @@ function _gaStaticRows() {
       }
       // where you stand is open ground (a camera's posing spot that a re-laid quay put inside a bench is moved to the nearest clear ground
       // beside it, facing the same way; none within reach: that move is not offered there). Seats, edges and wading are on the thing on purpose.
-      let stand = s.stand;
-      if (stand && s.seat == null && !s.edge && !s.wade && !s.boat && typeof _gksSolidAt === 'function' && _gksSolidAt(stand.x, stand.y, t.id)) { stand = _gaClearStand(stand, t.id, foot); if (!stand) return; }
-      out.push({ key: t.id + ':' + s.act + (s.i ? ':' + s.i : ''), act: s.act, name: (t.src === 'decor' && t.name) || s.name, x: s.x, y: s.y, top: s.at ? null : top, stand, deg: s.deg, lift: _gaSeatLift(s), seated: s.seat != null || !!s.edge, src: t.id, kind: t.kind, boat: !!s.boat, reach: s.reach || 0, noProp: !!s.noProp, pri: s.pri || 0, kick: s.kick || '', carry: s.carry || '', art: K.art || '' });
+      let stand = s.stand, spout = null;
+      // a painter that says where a move is done on its own picture (ART[id].use[act]: px from its foot's middle) is believed over the
+      // kind's rule of thumb: the pump square's iron pump stands at the right of its trough, so "a step left of the pump" put you at the
+      // trough's far end, working nothing, with the water running from beside the column (the owner: "it looks weird")
+      const U = _gaPainterUse(t, s.act);
+      if (U && U.stand) stand = { x: t.x + U.stand[0] / W.cellW, y: t.y + U.stand[1] / W.cellH };
+      if (U && U.spout) spout = { x: t.x + U.spout[0] / W.cellW, y: t.y + U.spout[1] / W.cellH, to: t.y + (U.spout[2] != null ? U.spout[2] : U.spout[1] + 16) / W.cellH };
+      if (stand && !U && s.seat == null && !s.edge && !s.wade && !s.boat && typeof _gksSolidAt === 'function' && _gksSolidAt(stand.x, stand.y, t.id)) { stand = _gaClearStand(stand, t.id, foot); if (!stand) return; }
+      out.push({ key: t.id + ':' + s.act + (s.i ? ':' + s.i : ''), act: s.act, name: (t.src === 'decor' && t.name) || s.name, x: s.x, y: s.y, top: s.at ? null : top, stand, deg: s.deg, lift: _gaSeatLift(s), seated: s.seat != null || !!s.edge, src: t.id, kind: t.kind, boat: !!s.boat, reach: s.reach || 0, noProp: !!s.noProp, pri: s.pri || 0, kick: s.kick || '', carry: s.carry || '', art: K.art || '', spout });
     });
   }
   return out;
@@ -358,6 +369,12 @@ function _gaTick(now) {
   const cur = _ga.cur, fx = cur.row.fx; if (!fx || !window.GardenNativeActions || !_gaMotion()) return;
   const t = now - cur.t0, W = GARDEN_WORLD, deg = _gaDirDeg(cur.row, cur.spot) * Math.PI / 180;
   const sp = fx.spot && cur.spot && Number.isFinite(cur.spot.x) ? cur.spot : null;   // (fixed to the thing used: the pump's spout)
+  if (sp && sp.spout) {   // (the spout its painter drew: the water falls from it into what is under it)
+    const o = sp.spout, at2 = (k) => GardenNativeActions.effect(fx.kind, o.x * W.cellW, W.sky + o.to * W.cellH + k, { width: fx.width || 24, from: W.sky + o.y * W.cellH });
+    if (fx.every) { if (t - cur.fxT > fx.every) { cur.fxT = t; at2(cur.fxI++ % 3); } }
+    else if (fx.at && cur.fxI < fx.at.length && t > fx.at[cur.fxI] * cur.row.ms) { at2(cur.fxI); cur.fxI++; }
+    return;
+  }
   const sy = sp && fx.mouth != null && Number.isFinite(sp.top) && sp.top < sp.y ? sp.top + (sp.y - sp.top) * fx.mouth : sp ? sp.y + fx.spot[1] : 0;   // (into the thing as drawn: a well's mouth)
   const at = (k) => sp ? GardenNativeActions.effect(fx.kind, (sp.x + fx.spot[0]) * W.cellW, W.sky + sy * W.cellH + k, { width: fx.width || 24 }) : GardenNativeActions.effect(fx.kind, (_gw.px + Math.cos(deg) * 0.7) * W.cellW, W.sky + (_gw.py + Math.sin(deg) * 0.5 + (fx.dy || 0)) * W.cellH + k, { width: fx.width || 24 });
   if (fx.every) { if (t - cur.fxT > fx.every) { cur.fxT = t; at(cur.fxI++ % 3); } }
@@ -761,7 +778,7 @@ if (typeof gardenLifePetGoal === 'function') {
     if (cur && cur.doing && P && P.me && !cur.row.fetch) {   // (every action: the pet waits beside you on open ground)
       // beside you on open ground, never up on a thing (a pump, a bench, a wall): the walker's own map says what is solid
       const ok = (x, y) => (typeof _ptwFree !== 'function' || _ptwFree(x, y)) && (typeof _gwFree !== 'function' || _gwFree(x, y, 0.2)) && !(_ga.list || []).some(r => r.act !== 'sit' && Math.hypot(r.x - x, (r.y - y) * 1.3) < 0.7);
-      for (const [dx, dy] of [[1, 0.2], [-1, 0.2], [0.9, 0.7], [-0.9, 0.7], [0, 1], [1.4, 0.3], [-1.4, 0.3]]) if (ok(_gw.px + dx, _gw.py + dy)) return { x: _gw.px + dx, y: _gw.py + dy, near: 10 };
+      for (const [dx, dy] of [[1.25, -0.05], [-1.25, -0.05], [1.35, 0.45], [-1.35, 0.45], [1.7, 0.1], [-1.7, 0.1], [0, 1.2]])   /* (a pet's width clear of you, a hair behind your row: it sat right in front of you on a bench, at the pump, and hid you) */ if (ok(_gw.px + dx, _gw.py + dy)) return { x: _gw.px + dx, y: _gw.py + dy, near: 10 };
     }
     return _gaPetGoal0(P, dt);
   };
