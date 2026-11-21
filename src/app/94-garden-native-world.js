@@ -1968,7 +1968,8 @@ window.GardenNativeWorld = (function () {
           const row = { id, source: body.target, node: body, x, y, groundX: x, groundY: y, waterline: y, w: kind === 'pet' ? Math.min(42, Math.max(12, b.width * .8)) : 22 * GARDEN_ACTOR_SCALE, h: (kind === 'pet' ? 7 : 8) * GARDEN_ACTOR_SCALE, tall: Math.min(100, Math.max(12, b.height)), bounds: b, kind, moving: !!moving, dynamic: true, bakedContact: true, captureKey, lift: lift == null ? y - sourceFootY : lift, sourceFootY };
           effectActorRows.push(row); return row;
         };
-        add('player', playerNode, playerInner, _gw.px * W.cellW, W.sky + _gw.py * W.cellH, 'actor', _gw.moving, playerInner._gplKey);
+        // (a swimmer, or someone up a ladder or on a floor, casts no standing reflection: the water ring is their water; 94-garden-zz-7act-3height.js)
+        if (!(typeof gardenHeightReflects === 'function' && !gardenHeightReflects())) add('player', playerNode, playerInner, _gw.px * W.cellW, W.sky + _gw.py * W.cellH, 'actor', _gw.moving, playerInner._gplKey);
         const rig = (id, F, fx, footX, footY) => {
           if (!F || F.state === 'idle' || F.bx >= GARDEN_ROOM_X || !fx || !fx.rod || !fx.line || !fx.bob) return;
           const waterY = W.sky + F.by * W.cellH, u = F.state === 'cast' ? Math.max(0, Math.min(1, (F.t - .22) / .5)) : F.state === 'land' ? (1 - Math.min(1, F.t / .5)) ** 2 : 1;
@@ -1996,7 +1997,7 @@ window.GardenNativeWorld = (function () {
         if (_gw.pet) pet(_gw.pet, 'pet:follow');
         if (typeof _gll !== 'undefined' && _gll.actors) for (const A of _gll.actors.values()) {
           if (A.rm || A.away) continue;
-          add('peer:' + A.w, A.root, A.inner, A.x * W.cellW, W.sky + A.y * W.cellH, 'actor', A.moving, A.key);
+          if (!(A.swimming || A.ghtSwim || A.ghtClimb || A.hLv)) add('peer:' + A.w, A.root, A.inner, A.x * W.cellW, W.sky + A.y * W.cellH, 'actor', A.moving, A.key);
           rig('peer-rig:' + A.w, A.fish, A.fxe, A.x * W.cellW, W.sky + A.y * W.cellH);
           if (A.heldG || A.photoG) held('peer-held:' + A.w, A.heldG || A.photoG, A.x * W.cellW, W.sky + A.y * W.cellH);
           if (A.pp) pet(A.pp, 'peer-pet:' + A.w);

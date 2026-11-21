@@ -33,6 +33,8 @@
                thing so its own wall hides your legs. What stands in front of the floor is drawn again over your legs as you pass it:
                rail { ring: [rx, ry] } or { line: [x0, x1, y] }, h, post, post0, gap, color (posts and rails, in H round the middle), or
                front { poly: [[x, y], ...] (the painter's own outline, in H from the drawn foot), fill, line, lineTo } (battlements, a parapet).
+               The shape is where the FEET go, kept in from the drawn edge by half a body, so the whole figure stays over the floor as drawn.
+               boards: a landing the world draws (a loft's): the back of its boards, in H, when it lies behind the feet's shape.
                tools/affordance-audit.mjs checks every way's foot is walkable and reachable on any layout.
      dw        the drawn width in cells when nothing else says (a painter that draws the thing at its own fixed size)
      paint     a fixed thing's painter (GardenPaintedProps: 'seat' the bench, 'wish' the well, 'board', 'post', 'tripod', 'fountain', 'lamp',
@@ -92,7 +94,7 @@ const GARDEN_KINDS = Object.freeze({
   stones: { name: 'the stones', arts: ['stones'], words: ['stones', 'standing'], pet: 'wall' },
   lighthouse: { name: 'the lighthouse', arts: ['lighthouse'], decor: ['dc-lighthouse'], words: ['lighthouse'], pet: 'lighthouse', dw: 3.82,
     // the gallery round the lamp room, all the way round, up a long iron ladder on the tower's face (its painter draws the deck and rail)
-    levels: [{ id: 'gallery', name: 'the gallery', at: [0, 0], h: 5, shape: { ring: [0.62, 0.24, 0.36, 0.12] }, core: [0.42, 0], rail: { ring: [0.664, 0.265], h: 0.36, post: 0.106, post0: -0.652 }, ways: [{ by: 'ladder', art: 'ladder', name: 'the lighthouse ladder', foot: [0.34, 0.1], top: [0.34, 0.16] }] }] },
+    levels: [{ id: 'gallery', name: 'the gallery', at: [0, 0], h: 5, shape: { ring: [0.49, 0.235, 0.4, 0.12] }, core: [0.42, 0], rail: { ring: [0.664, 0.265], h: 0.36, post: 0.106, post0: -0.652 }, ways: [{ by: 'ladder', art: 'ladder', name: 'the lighthouse ladder', foot: [0.34, 0.1], top: [0.34, 0.16] }] }] },
   treehouse: { name: 'the treehouse', arts: ['treehouse'], words: ['treehouse'], pet: 'treehouse',
     // the deck of planks round the trunk, up the painter's own rope ladder: along the rail, in front of the trunk, to the house's door
     levels: [{ id: 'deck', name: 'the treehouse deck', at: [-0.29, 0], h: 2.59, shape: { rect: [-1.3, -0.14, 1.26, 0.12] }, minus: [{ rect: [0.1, -0.3, 1.4, -0.03] }, { ell: [0, -0.08, 0.38, 0.09] }], rail: { line: [-1.45, 1.4, 0.167], h: 0.434, post: 0.2896, post0: -1.4, gap: [-1.27, -0.8], color: '#9a7a54', postW: 2.6, railW: 2.6, mid: false }, ways: [{ by: 'ladder', name: 'the treehouse ladder', foot: [-1.34, 0.12], top: [-1.05, 0.06] }] }] },
@@ -107,7 +109,7 @@ const GARDEN_KINDS = Object.freeze({
   barn: { name: 'the barn', arts: ['barn'], words: ['barn'], pet: 'hay',
     // the hay loft: a landing of boards out from the loft door up its side, a rail along its front, the ladder up through the rail's gap
     // (the world draws ladder, door and landing from these numbers: rail.own)
-    levels: [{ id: 'loft', name: 'the hay loft', at: [1.25, 0.27], h: 1.37, shape: { rect: [-0.25, 0.07, 0.54, 0.55] },
+    levels: [{ id: 'loft', name: 'the hay loft', at: [1.25, 0.27], h: 1.37, shape: { rect: [-0.07, 0.22, 0.36, 0.52] }, boards: 0.07,
       rail: { line: [-0.33, 0.63, 0.6], h: 0.32, post: 0.24, post0: -0.33, gap: [-0.21, 0.21], color: '#7a5a36', postW: 1.6, railW: 1.9, mid: false, own: true },
       ways: [{ by: 'ladder', art: 'ladder', loft: true, name: 'the hay loft ladder', foot: [1.25, 0.32], top: [0, 0.45] }] }] },
   hay: { name: 'the hay', arts: ['hay'], decor: ['hay-bale'], words: ['hay', 'haybale'], pet: 'hay', top: 38, petSeat: 38 },

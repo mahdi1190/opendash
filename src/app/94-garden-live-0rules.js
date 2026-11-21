@@ -69,7 +69,9 @@ const GL_EMOTES = Object.freeze(['wave', 'cheer', 'clap', 'bow', 'shrug', 'sit',
   // round 3, height and swimming: up and down a floor's ladder (they then see you up there), out of the water on to the bank
   'act-climbup', 'act-climbdown', 'act-swimout', 'act-loftsit',
   // where someone already is, told to whoever arrives later (up on a floor, out in the water): put there at once, no climb
-  'act-onlevel', 'act-inwater']);
+  'act-onlevel', 'act-inwater',
+  // and back on the ground (down from a floor or out of the water any way at all, a reset, a floor no longer drawn): their copy comes down
+  'act-onground']);
 const GL_PHRASES = Object.freeze([
   Object.freeze({ id: 'hi', t: 'Hello!' }), Object.freeze({ id: 'lovely', t: 'Your garden is lovely' }), Object.freeze({ id: 'look', t: 'Look at this!' }),
   Object.freeze({ id: 'help', t: 'Can I help?' }), Object.freeze({ id: 'thanks', t: 'Thank you!' }), Object.freeze({ id: 'follow', t: 'Follow me!' }),

@@ -248,12 +248,22 @@ function _ghtAfloat(x, y) {
   for (const b of _ght.afloat) if (x > b[0] - 0.15 && x < b[2] + 0.15 && y > b[1] - 0.1 && y < b[3] + 0.15) return true;
   return false;
 }
+/** Where a swim from (x, y) wades in to: the water's edge must be right by your feet (within a short step), then deep water that holds
+ *  you just beyond it, reached without crossing a deck. null: no swim here. The prompt is offered only where this finds water, and E
+ *  does exactly this, so "Go for a swim" never shows on dry ground or where E would do something else. */
+function _ghtSwimTarget(x, y) {
+  for (const [dx, dy] of [[0, -1], [0.7, -0.7], [-0.7, -0.7], [1, 0], [-1, 0], [0, 1], [0.7, 0.7], [-0.7, 0.7]]) {
+    let d0 = -1; for (let d = 0.15; d <= 0.9; d += 0.075) if (_ghtWet(x + dx * d, y + dy * d)) { d0 = d; break; }
+    if (d0 < 0) continue;
+    for (let d = Math.max(0.6, d0 + 0.3); d <= d0 + 1.7; d += 0.2) { const qx = x + dx * d, qy = y + dy * d; if (_ghtSwimFree(qx, qy) && _ghtSwimFree(qx + dx * 0.6, qy + dy * 0.6) && _ghtWadeClear({ x, y }, { x: qx + dx * 0.25, y: qy + dy * 0.25 })) return { x: qx + dx * 0.25, y: qy + dy * 0.25, dx, dy }; }
+  }
+  return null;
+}
 /** Wade in from the bank to where the water holds you, then swim under your own control. */
 function gardenSwimStart() {
   if (typeof _gw === 'undefined' || !_gw.on || _ght.swim || _ght.lv || _ght.climb) return false;
   if (typeof gartActStop === 'function') gartActStop();
-  let to = null;
-  for (const [dx, dy] of [[0, -1], [0.7, -0.7], [-0.7, -0.7], [1, 0], [-1, 0], [0, 1]]) { for (let d = 0.6; d <= 2.6 && !to; d += 0.2) { const x = _gw.px + dx * d, y = _gw.py + dy * d; if (_ghtSwimFree(x, y) && _ghtSwimFree(x + dx * 0.6, y + dy * 0.6) && _ghtWadeClear({ x: _gw.px, y: _gw.py }, { x: x + dx * 0.25, y: y + dy * 0.25 })) to = { x: x + dx * 0.25, y: y + dy * 0.25 }; } if (to) break; }
+  const to = _ghtSwimTarget(_gw.px, _gw.py);
   if (!to) { try { gardenToast('The water is too shallow here for a swim.'); } catch (e) { /* fine */ } return false; }
   _gw.path = []; _gw.then = null; _gw.spd = 0; _gw.moving = false;
   _ght.swim = { on: false, t0: performance.now(), from: { x: _gw.px, y: _gw.py }, to, ms: _gaMotion() ? 1500 : 300, ph: 0, fxT: 0 };
@@ -339,6 +349,8 @@ function _ghtLimbsReset() {
   }
   if (_ght.wet) _ght.wet.clear();
 }
+/** A standing reflection in the water below: not for a swimmer (the ring round the chest is their water), nor anyone up a ladder or on a floor. */
+function gardenHeightReflects() { return !_ght.swim && !_ght.climb && !_ght.lv; }
 /** The shadow at the feet: not under a swimmer or someone on a ladder (the floor's own shadow comes with you). */
 function gardenHeightShadowOn() { return !_ght.swim && !_ght.climb; }
 /* ---------- the walker: what holds the feet on a floor or in the water ---------- */
@@ -414,11 +426,13 @@ if (typeof gardenPlayWalk === 'function') {
 if (typeof _gaWaterRows === 'function') {
   const _ghtWater0 = _gaWaterRows;
   _gaWaterRows = function (px, py) {   // eslint-disable-line no-func-assign
-    const rows = _ghtWater0(px, py); if (rows.length || _ghtWet(px, py)) return rows;
+    let rows = _ghtWater0(px, py);
+    if (rows.some(r => r.act === 'swim')) { const T = _ghtWet(px, py) ? null : _ghtSwimTarget(px, py); rows = T ? rows.map(r => r.act === 'swim' ? Object.assign({}, r, { x: px + T.dx * 0.6, y: py + T.dy * 0.6 }) : r) : rows.filter(r => r.act !== 'swim'); }   // (a swim only where E would really swim)
+    if (rows.length || _ghtWet(px, py)) return rows;
     try { for (const t of gardenAffordThings()) { const K = GARDEN_KINDS[t.kind]; if (K && K.calmsWater && Math.hypot(px - t.x, (py - t.y) * 1.3) < Math.max(K.calmsWater, t.w || 1)) return rows; } } catch (e) { /* none */ }
     for (const [dx, dy, deg] of [[0, 1, 90], [1, 0, 0], [-1, 0, 180]]) {
       const wx = px + dx * 1.1, wy = py + dy * 1.0;
-      if (_ghtWet(wx, wy) && _ghtSwimFree(wx + dx * 0.8, wy + dy * 0.8) && _ghtSwimFree(wx + dx * 1.8, wy + dy * 1.8) && _ghtSwimFree(wx + dx * 2.8, wy + dy * 2.8))
+      if (_ghtWet(wx, wy) && _ghtSwimFree(wx + dx * 0.8, wy + dy * 0.8) && _ghtSwimFree(wx + dx * 1.8, wy + dy * 1.8) && _ghtSwimFree(wx + dx * 2.8, wy + dy * 2.8) && _ghtSwimTarget(px, py))
         return [{ key: 'water:swim', act: 'swim', name: 'the water', x: wx, y: wy, stand: null, deg, lift: 0, src: 'water' }];
     }
     return rows;
@@ -440,7 +454,7 @@ if (typeof gartActNearby === 'function') {
  *  tree it is built in; deep water's swim comes before a nap or a tree's moves on the bank. Read from the rows, by kind, on any layout. */
 function _ghtRank(rows) {
   const px = _gw.px, py = _gw.py;
-  rows = rows.filter(r => r.act !== 'climbup' || !r.way || (py >= r.way.foot.y - 0.55 && Math.hypot(r.way.foot.x - px, (r.way.foot.y - py) * 1.3) <= 1.8));
+  rows = rows.filter(r => r.act !== 'climbup' || !r.way || (py >= r.way.foot.y - 0.55 && Math.abs(r.way.foot.x - px) <= 0.85 && Math.hypot(r.way.foot.x - px, (r.way.foot.y - py) * 1.3) <= 1.3));   // (at the ladder's foot, not from beside the thing next to it)
   const up = rows.find(r => r.act === 'climbup');
   if (up && rows[0] !== up && rows[0].src === 'tree' && Math.hypot((rows[0].x - up.way.foot.x), (rows[0].y - up.way.foot.y)) < 3.2) { rows.splice(rows.indexOf(up), 1); rows.unshift(up); }
   if (!rows.length || rows[0].src === 'water' || up) return rows;
@@ -527,9 +541,14 @@ function _ghtRetell() {
   if (typeof _gll === 'undefined' || !_gll.actors) return;
   const now = performance.now(), sig = [..._gll.actors.keys()].join(',');
   if (sig !== _ght.seen) { const added = sig.split(',').some(k => k && !_ght.seen.split(',').includes(k)); _ght.seen = sig; if (added) _ght.tellAt = [now + 1500, now + 5000]; }
+  const up = _ght.lv && !_ght.climb, wet = _ght.swim && _ght.swim.on && !_ght.swim.out, st = up ? 'up' : wet ? 'wet' : _ght.climb || _ght.swim ? 'going' : 'ground';
+  // back on the ground, however it came about (down a ladder, out of the water, a reset, a floor no longer drawn): said at once and twice
+  // more, so a copy of you that missed the way down never stays up on a floor or out in the water
+  if (st !== _ght.st) { if (st === 'ground' && _ght.st && _ght.st !== 'ground') _ght.groundAt = [now, now + 1500, now + 5000]; _ght.st = st; }
+  if (st === 'ground' && _ght.groundAt && _ght.groundAt.length && now >= _ght.groundAt[0]) { _ght.groundAt.shift(); if (_gll.actors.size) _gaTell('onground', _gw.px, _gw.py); }
   if (!_gll.actors.size) return;
-  const up = _ght.lv && !_ght.climb, wet = _ght.swim && _ght.swim.on && !_ght.swim.out;
   if (!up && !wet) { _ght.tellAt = null; return; }
+  _ght.groundAt = null;
   const due = (_ght.tellAt && _ght.tellAt.length && now >= _ght.tellAt[0]) || now - (_ght.toldT || 0) > 6000;
   if (!due) return;
   if (_ght.tellAt && _ght.tellAt.length && now >= _ght.tellAt[0]) _ght.tellAt.shift();
@@ -557,8 +576,10 @@ function _ghtRemoteState(A, ev) {
     if (w.lv.L.sit && typeof gartActRemote === 'function') setTimeout(() => { if (A.hLv === w.lv.key) gartActRemote(A, w.lv.L.sit); }, 60);
     return;
   }
+  if (id === 'onground') { _ghtRemoteGround(A, ev.x, ev.y); return; }
   if (id === 'inwater') {
-    if (A.swimming && A.ghtSwim) return;
+    if (A.swimming && A.ghtSwim && !A.hLv && !A.hLift) return;
+    if (A.ghtClimb) { _ghtRemoteClimbStop(A); }
     if (!_ghtWet(ev.x, ev.y)) return;
     if (A.hLv) { A.hLv = null; A.hLift = 0; A.hZ = null; }
     A.x = ev.x; A.y = ev.y; A.tx = null; A.ty = null; A.then = null;
@@ -569,10 +590,27 @@ function _ghtRemoteState(A, ev) {
 if (typeof _gllEmoteAt === 'function') {
   const _ghtEmAt0 = _gllEmoteAt;
   _gllEmoteAt = function (A, ev) {   // eslint-disable-line no-func-assign
-    if (A && ev && (ev.e === GA_WIRE + 'onlevel' || ev.e === GA_WIRE + 'inwater')) { if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) _ghtRemoteState(A, ev); return; }
+    if (A && ev && (ev.e === GA_WIRE + 'onlevel' || ev.e === GA_WIRE + 'inwater' || ev.e === GA_WIRE + 'onground')) { if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) _ghtRemoteState(A, ev); return; }
     if (A && ev && ev.e === GA_WIRE + 'climbup' && A.ghtPend) A.ghtPend = null;
     return _ghtEmAt0(A, ev);
   };
+}
+/** Their copy's climb stopped where it is (a swim or a 'back on the ground' came first). */
+function _ghtRemoteClimbStop(A) {
+  const C = A.ghtClimb; A.ghtClimb = null;
+  if (A.ghtH) { try { A.ghtH.stop(); } catch (e) { /* gone */ } A.ghtH = null; }
+  if (C && C.w.inside) { _ghtAlpha(A.root, 1); _ghtDoor(C.w, false, A.w); }
+}
+/** Their copy of someone told they are on the ground: down off any floor, out of any water, at once, where they are. */
+function _ghtRemoteGround(A, x, y) {
+  if (A.ghtClimb && !A.ghtClimb.up && performance.now() - A.ghtClimb.t0 < A.ghtClimb.ms + 200) return;   // (on its way down already: it lands)
+  const was = !!(A.hLv || A.hLift || A.ghtClimb || A.swimming || A.ghtSwim);
+  if (A.ghtClimb) _ghtRemoteClimbStop(A);
+  A.hLv = null; A.hLift = 0; A.hZ = null; A.actLift = 0;
+  if (A.swimming || A.ghtSwim) _ghtRemote(A, 'swimout');
+  { const sh = A.root && A.root.querySelector('.gll-shadow'); if (sh) sh.setAttribute('opacity', '1'); }
+  if (was && Number.isFinite(x) && Number.isFinite(y)) { A.x = x; A.y = y; A.tx = null; A.ty = null; A.way = null; A.then = null; }
+  if (was) { A.dir = 's'; A.key = ''; if (typeof _gllPaint === 'function') _gllPaint(A); }
 }
 /** Their copy of someone: climb a way, swim, climb out. Returns true when it was one of these. */
 function _ghtRemote(A, id) {
@@ -590,7 +628,7 @@ function _ghtRemote(A, id) {
     A.actLift = 0; A.hLift = up ? 0 : w.lv.h;   // (the whole figure rises, its name with it: the sprite's own lift)
     return true;
   }
-  if (id === 'swim') { A.ghtSwim = { t0: performance.now(), from: { x: A.x, y: A.y }, to: null, on: false }; const W2 = _ghtSwimFree(A.x, A.y) ? { x: A.x, y: A.y } : _ghtSwimTo(A.x, A.y); A.ghtSwim.to = W2 || { x: A.x, y: A.y - 1 }; /* (already out in the water: they swim on from there) */ A.swimming = true; A.key = ''; return true; }
+  if (id === 'swim') { if (A.ghtClimb) _ghtRemoteClimbStop(A); A.hLv = null; A.hLift = 0; A.hZ = null; A.ghtSwim = { t0: performance.now(), from: { x: A.x, y: A.y }, to: null, on: false }; const W2 = _ghtSwimFree(A.x, A.y) ? { x: A.x, y: A.y } : _ghtSwimTo(A.x, A.y); A.ghtSwim.to = W2 || { x: A.x, y: A.y - 1 }; /* (already out in the water: they swim on from there) */ A.swimming = true; A.key = ''; return true; }
   if (id === 'swimout') { { const sh = A.root && A.root.querySelector('.gll-shadow'); if (sh) sh.setAttribute('opacity', '1'); } A.swimming = false; A.ghtSwim = null; if (A.ghtSH) { try { A.ghtSH.stop(); } catch (e) { /* gone */ } A.ghtSH = null; } A.key = ''; return true; }
   void W; return false;
 }
@@ -618,14 +656,16 @@ function _ghtRemoteStep(A) {
   if (C) {
     const k = Math.min(1, (now - C.t0) / C.ms);
     A.actLift = 0; A.hLift = _ghtLadderTop(C.w) * (C.up ? k : 1 - k);
+    A.hZ = C.w.foot.y + 0.02;   // (in front of the ladder it climbs, as yours is: the ladder is drawn at its foot)
     if (k >= 1) {
       A.ghtClimb = null; if (A.ghtH) { try { A.ghtH.stop(); } catch (e) { /* gone */ } A.ghtH = null; }
       A.actLift = 0; A.hLift = 0;
-      if (C.up) { A.hLv = C.w.lv.key; A.x = C.w.top.x; A.y = C.w.top.y; } else { A.hLv = null; A.y = C.w.foot.y + 0.06; }
+      if (C.up) { A.hLv = C.w.lv.key; A.x = C.w.top.x; A.y = C.w.top.y; } else { A.hLv = null; A.hZ = null; A.y = C.w.foot.y + 0.06; }
       A.dir = 's'; A.key = ''; { const sh = A.root && A.root.querySelector('.gll-shadow'); if (sh) sh.setAttribute('opacity', '1'); }
       if (C.up && C.w.lv.L.sit && typeof gartActRemote === 'function') setTimeout(() => { if (A.hLv === C.w.lv.key) gartActRemote(A, C.w.lv.L.sit); }, 60);
     }
   }
+  if (A.hLv && !A.ghtClimb) { const lv = _ghtLevelByKey(A.hLv), W = GARDEN_WORLD, H = _ghtH(); if (lv && Math.hypot((A.x * W.cellW - lv.cx) / H, (W.sky + A.y * W.cellH - lv.cy) / H) > 3.5) _ghtRemoteGround(A, null, null); }   // (somewhere far from that floor: on the ground, whatever was missed)
   if (A.hLv) { const lv = _ghtLevelByKey(A.hLv); if (lv) { A.hLift = lv.h; A.hZ = (gardenLevelDepth(lv, A.x, A.y) - GARDEN_WORLD.sky) / GARDEN_WORLD.cellH; } else { A.hLv = null; A.hLift = 0; A.hZ = null; } }
   else if (A.hLift && !A.ghtClimb) { A.hLift = 0; A.hZ = null; }
   const S = A.ghtSwim;
@@ -652,6 +692,10 @@ if (typeof _gllPaint === 'function') {
     { const sh = A.root && A.root.querySelector('.gll-shadow'); if (sh) sh.setAttribute('opacity', '0'); }
     if (A.ghtClimb) A.dir = 'n';
     _ghtPaint0(A); A.moving = m;
+    if (A.ghtClimb && !A.ghtClimb.w.inside && (A.key !== k0 || !A.ghtH)) {   // a new drawing (they stopped walking to the ladder, a look changed): hand over hand goes back on it
+      if (A.ghtH) { try { A.ghtH.stop(); } catch (e) { /* gone */ } }
+      const gpl = A.root && A.root.querySelector('.gpl'); A.ghtH = gpl ? gartActPlay(gpl, 'climbing', { motion: typeof _gllReduced === 'function' ? !_gllReduced() : true }) : null;
+    }
     if (A.swimming && (A.key !== k0 || !A.ghtSH)) {   // a new drawing: the stroke and the water go back on it
       if (A.ghtSH) { try { A.ghtSH.stop(); } catch (e) { /* gone */ } }
       const gpl = A.root && A.root.querySelector('.gpl'); A.ghtSH = gpl ? gartActPlay(gpl, A.dir === 'e' ? 'swimmingside' : 'swimming', { motion: typeof _gllReduced === 'function' ? !_gllReduced() : true }) : null;
@@ -689,7 +733,7 @@ function _ghtDeckArt(lv, w) {
   const H = _ghtH(), ax = (L.at[0] - Wd.foot[0]) * H, ay = (L.at[1] - Wd.foot[1]) * H - lv.h;
   const X = (u) => ax + u * H, Y = (v) => ay + v * H, posts = [];
   for (let u = R.post0 || 0; u <= R.line[1] + 1e-6; u += R.post || 0.11) if (u >= R.line[0] - 1e-6 && !(R.gap && u > R.gap[0] && u < R.gap[1])) posts.push(X(u));
-  return { x0: X(R.line[0]), x1: X(R.line[1]), yb: Y(Sh[1] - 0.05), yf: Y(R.line[2]), rh: (R.h || 0.36) * H, g0: X(R.gap ? R.gap[0] : 0), g1: X(R.gap ? R.gap[1] : 0), posts, col: R.color || '#2a2e30', w: R.railW || 1.3, pw: R.postW || 0.9 };
+  return { x0: X(R.line[0]), x1: X(R.line[1]), yb: Y((Number.isFinite(L.boards) ? L.boards : Sh[1]) - 0.05), yf: Y(R.line[2]), rh: (R.h || 0.36) * H, g0: X(R.gap ? R.gap[0] : 0), g1: X(R.gap ? R.gap[1] : 0), posts, col: R.color || '#2a2e30', w: R.railW || 1.3, pw: R.postW || 0.9 };
 }
 /** The parts a floor's ways draw on the thing (a ladder the painter does not draw itself): rows for the world (94-garden-zz-7act-2world.js). */
 function gardenLevelWayParts(t) {
@@ -761,8 +805,9 @@ function _ghtRailOn(K, node, lv, px, py, lift) {
   const gap = R.gap ? [ox + R.gap[0] * H, ox + R.gap[1] * H] : null, inGap = (x) => gap && x > gap[0] && x < gap[1];
   let d = '', p = '';
   const step = (R.post || 0.11) * H, o0 = (R.post0 || 0) * H, first = Math.ceil((lo - ox - o0) / step) * step + ox + o0;
-  for (let x = first; x <= hi; x += step) if (!inGap(x)) p += `M${N(x)} ${N(at(x) - 0.5)}v${N(-hh)}`;
-  for (let x = lo; x < hi; x += 2) { const x1 = Math.min(hi, x + 2); if (inGap(x) || inGap(x1)) continue; d += `M${N(x)} ${N(at(x) - hh)}L${N(x1)} ${N(at(x1) - hh)}` + (R.mid === false ? '' : `M${N(x)} ${N(at(x) - hh * 0.5)}L${N(x1)} ${N(at(x1) - hh * 0.5)}`); }
+  const ahead = (x) => !R.ring || at(x) >= -0.5;   // (a ring's rail only where it passes in front of the feet: where it curves away behind them it is the picture's own)
+  for (let x = first; x <= hi; x += step) if (!inGap(x) && ahead(x)) p += `M${N(x)} ${N(at(x) - 0.5)}v${N(-hh)}`;
+  for (let x = lo; x < hi; x += 2) { const x1 = Math.min(hi, x + 2); if (inGap(x) || inGap(x1) || !ahead(x) || !ahead(x1)) continue; d += `M${N(x)} ${N(at(x) - hh)}L${N(x1)} ${N(at(x1) - hh)}` + (R.mid === false ? '' : `M${N(x)} ${N(at(x) - hh * 0.5)}L${N(x1)} ${N(at(x1) - hh * 0.5)}`); }
   K.railG.innerHTML = (p ? `<path d="${p}" stroke="${col}" stroke-width="${R.postW || 0.9}" fill="none"/>` : '') + (d ? `<path d="${d}" stroke="${col}" stroke-width="${R.railW || 1.3}" fill="none" stroke-linecap="round"/>` : '');
   K.railG.setAttribute('opacity', '1');
 }
