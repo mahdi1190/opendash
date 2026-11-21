@@ -11,7 +11,8 @@ window.GardenNativeArt = (function () {
   const rules = [], indexedRules = new Map(), keyframes = new Map(), matchedRules = new Map(), selectorAttrs = new Set(), selectorClasses = new Set(), selectorIds = new Set(), compiledSelectors = new Map(), compiledAtoms = new Map(), candidateRules = new Map(), styleClassKeys = new Map();
   const inheritedStyles = new Set(['fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-dasharray', 'stroke-dashoffset', 'font-size', 'font-family', 'font-weight', 'font-style', 'text-anchor', 'dominant-baseline', 'color', 'visibility']);
   const GARDEN_BODY_KEEP = 24;   // (n-move) drawings of one figure kept ready: 9 ways walking + 9 standing + poses
-  let sourceBytes = 0, ruleOrder = 0, styleVersion = 0, positionalSelectors = false;
+  let sourceBytes = 0, ruleOrder = 0, styleVersion = 0, positionalSelectors = false, positionalAny = false;
+  const positionalNeeds = [];
   const environmentState = { windX: 0, windY: 0, gust: 0, rain: 0, snow: 0, daylight: 1 };
   let ambientPause = { hush: false, frozen: false };
   function mul(a, b) { return { a: a.a * b.a + a.c * b.b, b: a.b * b.a + a.d * b.b, c: a.a * b.c + a.c * b.d, d: a.b * b.c + a.d * b.d, e: a.a * b.e + a.c * b.f + a.e, f: a.b * b.e + a.d * b.f + a.f }; }
@@ -86,11 +87,21 @@ window.GardenNativeArt = (function () {
   }
   function matches(node, selector, scope) { return matchesCompiled(node, compileSelector(selector), scope); }
   function selectorInputs(compiled) {
-    for (const steps of compiled) for (const { atom: part } of steps) {
+    for (const steps of compiled) for (let k = 0; k < steps.length; k++) {
+      const part = steps[k].atom;
       for (const name of part.classes) selectorClasses.add(name);
       for (const id of part.ids) selectorIds.add(id);
       for (const attr of part.attrs) selectorAttrs.add(attr.name);
-      if (part.first || part.last) positionalSelectors = true;
+      if (part.first || part.last) {
+        positionalSelectors = true;
+        // (n-move) which nodes such a rule could ever match: its own classes or tag, or (a bare ':first-child' right under '.x >') the
+        // parent's. Only those nodes' places among their siblings go into the style key: every node's did, so a walking figure, moved
+        // among the drawings as it went up and down the rows, was restyled whole (5-10 ms) at each of its turns
+        const own = part.classes.length || (part.tag && part.tag !== '*'), up = steps[k + 1];
+        if (own) positionalNeeds.push({ classes: part.classes, tag: part.tag && part.tag !== '*' ? part.tag : '' });
+        else if (up && up.direct && (up.atom.classes.length || (up.atom.tag && up.atom.tag !== '*'))) positionalNeeds.push({ parent: true, classes: up.atom.classes, tag: up.atom.tag && up.atom.tag !== '*' ? up.atom.tag : '' });
+        else positionalAny = true;
+      }
       for (const fn of part.functions) selectorInputs(fn.selector);
     }
   }
@@ -103,9 +114,19 @@ window.GardenNativeArt = (function () {
     }
     return node._styleClasses;
   }
+  function positionalMay(node) {
+    if (positionalAny) return true;
+    for (const need of positionalNeeds) {
+      const n = need.parent ? node.parentNode : node; if (!n || !n.classList) continue;
+      if (need.tag && n.localName !== need.tag) continue;
+      let ok = true; for (const c of need.classes) if (!n.classList.contains(c)) { ok = false; break; }
+      if (ok) return true;
+    }
+    return false;
+  }
   function selectorOwnKey(node) {
     const attributes = Object.keys(node.attrs).filter(name => selectorAttrs.has(name)).sort().map(name => [name, node.attrs[name]]);
-    const siblings = positionalSelectors && node.parentNode ? ':' + (node.parentNode.children[0] === node ? 1 : 0) + (node.parentNode.children[node.parentNode.children.length - 1] === node ? 1 : 0) : '';
+    const siblings = positionalSelectors && node.parentNode && positionalMay(node) ? ':' + (node.parentNode.children[0] === node ? 1 : 0) + (node.parentNode.children[node.parentNode.children.length - 1] === node ? 1 : 0) : '';
     // Generated art IDs and gameplay-only classes do not change a CSS match.
     // Share the match result while retaining every input used by a selector,
     // including nested :is/:not branches and sibling position.
@@ -113,7 +134,7 @@ window.GardenNativeArt = (function () {
   }
   function selectorPositions(node) {
     let key = '|position:';
-    for (let n = node; n; n = n.parentNode) { const siblings = n.parentNode && n.parentNode.children; key += siblings && siblings[0] === n ? '1' : '0'; key += siblings && siblings[siblings.length - 1] === n ? '1' : '0'; }
+    for (let n = node; n; n = n.parentNode) { if (!positionalMay(n)) { key += '-'; continue; } const siblings = n.parentNode && n.parentNode.children; key += siblings && siblings[0] === n ? '1' : '0'; key += siblings && siblings[siblings.length - 1] === n ? '1' : '0'; }
     return key;
   }
   function rulesFor(node) {
@@ -131,7 +152,7 @@ window.GardenNativeArt = (function () {
   function configure(cssText, renderer) {
     if (renderer) installNativeTriangleBatch(renderer);
     if (cssText === null && renderer) return { rules: rules.length, keyframes: keyframes.size };
-    rules.length = 0; indexedRules.clear(); keyframes.clear(); matchedRules.clear(); selectorAttrs.clear(); selectorClasses.clear(); selectorIds.clear(); compiledSelectors.clear(); compiledAtoms.clear(); candidateRules.clear(); styleClassKeys.clear(); ruleOrder = 0; styleVersion++; positionalSelectors = false;
+    rules.length = 0; indexedRules.clear(); keyframes.clear(); matchedRules.clear(); selectorAttrs.clear(); selectorClasses.clear(); selectorIds.clear(); compiledSelectors.clear(); compiledAtoms.clear(); candidateRules.clear(); styleClassKeys.clear(); ruleOrder = 0; styleVersion++; positionalSelectors = false; positionalAny = false; positionalNeeds.length = 0;
     const css = String(cssText || '').replace(/\/\*[\s\S]*?\*\//g, '');
     function visit(text) { cssBlocks(text, (head, body) => {
       if (/^@(?:-webkit-)?keyframes\s+/.test(head)) { const name = head.split(/\s+/).pop(), frames = []; cssBlocks(body, (key, value) => { for (const offset of key.split(',')) frames.push({ offset: offset.trim() === 'from' ? 0 : offset.trim() === 'to' ? 1 : num(offset) / 100, style: declarations(value) }); }); frames.sort((a, b) => a.offset - b.offset); keyframes.set(name, frames); return; }

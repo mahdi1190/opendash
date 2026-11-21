@@ -438,7 +438,7 @@ function gartMoveWhole() { const t = gartMoveTell(); return { h: t.h, gt: t.g };
    figure. The first turn to one not made yet built it there and then, 20-42 ms in one frame on a friend's screen as your figure went round a
    corner (long tasks of 55-92 ms with the frame's own work). They are now made one at a time while nobody is walking, hidden beside the one
    shown (GardenNativeArt.warmBody), so a turn only swaps in a ready drawing. */
-const _gmvWarm = { q: [], busy: false, waitFrom: 0 };
+const _gmvWarm = { q: [], busy: false, n: 0, ms: 0 };   // (n, ms: how many made, the longest one took: for checks)
 const GMV_WARM_POSES = ['stride', 'idle'];
 /** Queue the drawings for one figure. inner: its native inner group; sig: what it looks like (a new look queues them again);
  *  svgOf(pose, dir, yaw): the drawing's source, exactly as the figure's own painter asks for it. */
@@ -456,12 +456,13 @@ function _gmvWarmWalking() {
   return false;
 }
 function _gmvWarmGo(dl) {
-  // while anyone walks the frame has no room for a drawing: wait for a standstill (or 3 s, then one at a time in the gaps between frames)
-  const now = performance.now(); if (!_gmvWarm.waitFrom) _gmvWarm.waitFrom = now;
-  if ((_gmvWarmWalking() && now - _gmvWarm.waitFrom < 3000) || (dl && !dl.didTimeout && dl.timeRemaining() < 6)) { _gmvWarmLater(); return; }
-  _gmvWarm.waitFrom = 0;
+  // while anyone walks the frame has no room for a drawing: wait for a standstill (one not made by then is made when it is needed, as before)
+  if (_gmvWarmWalking() || (dl && !dl.didTimeout && dl.timeRemaining() < 6)) { _gmvWarmLater(); return; }
+  const t0 = performance.now();
   let j; while ((j = _gmvWarm.q.shift()) && (j.inner._dead || j.inner._gmvWarmSig !== j.sig)) { /* gone or out of date */ }
-  if (j) { try { const s = j.svgOf(j.pose, gplYawDir(j.yaw), j.yaw); if (s) GardenNativeArt.warmBody(j.inner, s); } catch (e) { /* made when it is needed instead */ } }
+  // a figure out of view (gart-off) is drawn hidden, and drawn again when it is back: its drawings wait for it to come into view
+  if (j && typeof j.inner.closest === 'function' && j.inner.closest('.gart-off')) { _gmvWarm.q.push(j); if (_gmvWarm.q.every(q => q.inner.closest('.gart-off'))) { setTimeout(_gmvWarmLater, 700); return; } _gmvWarmLater(); return; }
+  if (j) { try { const s = j.svgOf(j.pose, gplYawDir(j.yaw), j.yaw); if (s) GardenNativeArt.warmBody(j.inner, s); } catch (e) { /* made when it is needed instead */ } _gmvWarm.n = (_gmvWarm.n || 0) + 1; _gmvWarm.ms = Math.max(_gmvWarm.ms || 0, performance.now() - t0); }
   if (_gmvWarm.q.length) _gmvWarmLater(); else _gmvWarm.busy = false;
 }
 function _gmvWarmLater() { if (typeof requestIdleCallback === 'function') requestIdleCallback(_gmvWarmGo, { timeout: 500 }); else setTimeout(_gmvWarmGo, 60); }

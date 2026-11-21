@@ -118,6 +118,9 @@ function _gllDress(A, root) {
 }
 function _gllPaint(A) {
   if (!A.inner || A.inner._native && (A.inner._dead || !A.inner.target || !A.inner.target.active)) return;
+  // (n-move) out of view (gart-off: the garden hides what is far off screen), a new drawing waits until they come back into view: swapped in
+  // while hidden it was restyled whole to hidden, 6-20 ms at each of their turns, and again when they came back
+  if (A.inner._native && A.inner.firstChild && !(A.swimming || A.ghtClimb || A.actId || A.actHold || A.fish || A.sit || A.hold || A.photo || A.pose) && A.root && A.root.classList && A.root.classList.contains('gart-off')) { A.key = ''; return; }
   const motion = !_gllReduced(), now = Date.now();   // clock-ok: how long a pose lasts
   if (A.pose && now > A.poseUntil) A.pose = '';
   let pose = A.moving && motion ? (typeof gartMoveActor === 'function' ? 'stride' : 'walk') : A.pose || 'idle', dir = A.dir;
