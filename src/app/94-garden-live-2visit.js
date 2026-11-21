@@ -133,7 +133,7 @@ function _glvWalked(pt) {
 function _glvGoSend(x, y) {
   const gap = _glv.mode === 'thin' ? GL_WALK_GAP.thin : GL_WALK_GAP.normal, t = Date.now();   // clock-ok: spacing messages
   clearTimeout(_glv.goT);
-  const go = () => { _glv.goAt = Date.now(); _glvSend('go', { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, ...(typeof gartMoveTell === 'function' ? gartMoveTell() : {}) }); };  // clock-ok: spacing messages
+  const go = () => { _glv.goAt = Date.now(); const tell = typeof gartMoveTell === 'function' ? gartMoveTell() : {}; _glv.goH = tell.h; _glvSend('go', { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, ...tell }); };  // clock-ok: spacing messages
   if (t - _glv.goAt >= gap) go(); else _glv.goT = setTimeout(go, gap - (t - _glv.goAt));
 }
 /** Keys and holding have no destination: where you are is sent as you go, at most every 0.8 s, and once more when you stop. Nothing while you stand still. */
@@ -145,6 +145,8 @@ function _glvWatchStart() {
       if (!_glvLive() || (_gw.path && _gw.path.length)) return;
       const t = Date.now(), far = Math.hypot(_gw.px - _glv.goX, _gw.py - _glv.goY);   // clock-ok: spacing messages
       if (_gw.moving ? (t - _glv.lastGo >= 800 && far >= 0.4) : (t - _glv.lastGo >= 200 && far >= 0.15)) _glvWalked({ x: _gw.px, y: _gw.py });
+      // (n-move) stood still, turned (pressing against a wall, a turn finishing after you stopped): they see the way you now face
+      else if (!_gw.moving && t - _glv.lastGo >= 300 && !(typeof gartActBusy === 'function' && gartActBusy()) && !(_gw.fishing && _gw.fishing.state !== 'idle') && typeof gartMoveTell === 'function' && _glv.goH != null && gartMoveTell().h !== _glv.goH) _glvWalked({ x: _gw.px, y: _gw.py });
     },
   });
 }

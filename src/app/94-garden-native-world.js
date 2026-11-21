@@ -1373,7 +1373,7 @@ window.GardenNativeWorld = (function () {
       if (path == null) { _gw.path = []; _gw.then = null; _gw.goal = null; return false; }
       _gw.path = path; _gw.goal = target; _gw.then = then || null; _gw.sneak = !!opts.sneak; _gw.replan = false; _gw.repaths = 0; _gw.blockT = 0;
       // (move360 round 3) a click walks or runs, chosen once for the whole way (more than seven cells or so: a run), never a beat of run that turns into a walk
-      { let L = 0, a = { x: _gw.px, y: _gw.py }; for (const q of path) { L += Math.hypot((q.x - a.x) * W.cellW, (q.y - a.y) * W.cellH); a = q; } _gw.clickRun = L > 330; }
+      { let L = 0, a = { x: _gw.px, y: _gw.py }; for (const q of path) { L += Math.hypot((q.x - a.x) * W.cellW, (q.y - a.y) * W.cellH); a = q; } _gw.clickRun = L > 330 || _gw.keys.has('shift'); }   // (n-move) Shift and a click: a run, however near
       if (!opts.net) _gw.netting = null;
       if (typeof gardenLiveWalked === 'function') gardenLiveWalked(target);
       if (!path.length && typeof then === 'function') { _gw.then = null; then(true); }

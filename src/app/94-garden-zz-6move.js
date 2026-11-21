@@ -351,6 +351,9 @@ function gartMoveActor(A) {
     return;
   }
   if (Math.abs(cx) + Math.abs(cy * 1.6) >= 0.004) st.want = Math.atan2(cy * 1.6, cx) * 180 / Math.PI;   // (the heading in the same terms as your own: gartMoveStep)
+  // (n-move) walking by the keys, they said which way they face: their figure catching up between two messages goes a little aslant, and
+  // was drawn a sixteenth or two off the way they really face (a run diagonal showed side on)
+  if (A.keyWalk && A.hd != null && st.want != null && Math.abs(_gmvWrap(st.want - A.hd)) < 60) st.want = A.hd;
   if (st.want != null) {
     let d = _gmvWrap(st.want - st.h);
     if (!motion) st.h = st.want;
