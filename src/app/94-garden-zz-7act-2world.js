@@ -14,7 +14,8 @@ const _GAW_ART = Object.freeze({
     + '<g transform="translate(0 -26) rotate(-16)"><rect x="-9" y="-2.4" width="22" height="4.8" rx="1.4" fill="#c89838" stroke="#6a4a14" stroke-width="0.7"/><rect x="-9" y="-2.4" width="22" height="1.6" rx="0.8" fill="#f0d47a" opacity="0.7"/><rect x="12" y="-3.3" width="5" height="6.6" rx="1" fill="#b08428" stroke="#6a4a14" stroke-width="0.7"/><circle cx="17" cy="0" r="2.1" fill="#9ad0e8" opacity="0.8"/><rect x="-12" y="-1.6" width="3.4" height="3.2" rx="0.8" fill="#4a3418"/><path d="M2 -2.4v4.8M7 -2.4v4.8" stroke="#8a6420" stroke-width="0.7"/></g>',
   // world px: rungs every 5.56 px (9.4 of the figure's units at its scale), the landing 79 px up, bracketed to the wall
   ladder: (o, inUse, row) => { const S = typeof GW_SCALE === 'number' ? GW_SCALE : 0.592, top = ((row && row.top) || GA_LADDER.top) * S, N = Math.max(4, Math.round((((row && row.top) || GA_LADDER.top) - GA_LADDER.first) / GA_LADDER.gap) + 1), g = GA_LADDER.gap * S, f = GA_LADDER.first * S; let r = '';
-    for (let i = 0; i < N; i++) r += `<path d="M-5.2 ${_gawN(-f - i * g)}H5.2" stroke="#8a6a40" stroke-width="1.3"/>`;
+    const LT = row && row.deck ? Math.max(20, -row.deck.yf + row.deck.rh * 0.8) : top;   // (up to a landing: the ladder stops a hand's reach over its front edge)
+    for (let i = 0; i < N; i++) if (f + i * g < LT - 1) r += `<path d="M-5.2 ${_gawN(-f - i * g)}H5.2" stroke="#8a6a40" stroke-width="1.3"/>`;
     // a hay-loft door in the wall at the landing (the barn): a dark doorway, hay spilling over its sill, the door swung open to one side
     const loft = row && row.loft ? `<path d="M-14 ${_gawN(-top - 1)}V${_gawN(-top - 32)}Q0 ${_gawN(-top - 38)} 14 ${_gawN(-top - 32)}V${_gawN(-top - 1)}z" fill="#2a1a10" stroke="#5a2a1a" stroke-width="1.2"/><path d="M-15 ${_gawN(-top - 1)}h30v2.4h-30z" fill="#6a4428"/><path d="M-10 ${_gawN(-top - 2)}q4 -7 9 -4q4 -5 10 2z" fill="#e8c460"/><path d="M-8 ${_gawN(-top - 4)}l3 -4M-2 ${_gawN(-top - 5)}l1 -5M4 ${_gawN(-top - 4)}l3 -4" stroke="#c89a38" stroke-width="0.8"/><path d="M14 ${_gawN(-top - 1)}l10 2V${_gawN(-top - 30)}l-10 -2z" fill="#a8382a" stroke="#5a1a14" stroke-width="0.7"/><path d="M15 ${_gawN(-top - 8)}l8 1.6M15 ${_gawN(-top - 22)}l8 1.6" stroke="#f0e0c8" stroke-width="0.9" opacity="0.8"/>` : '';
     // (height: a ladder up to a floor, the lighthouse's gallery, has no landing of its own: the floor is the landing; up to a loft door, the sill is)
@@ -24,7 +25,7 @@ const _GAW_ART = Object.freeze({
     // the hay loft's floor, 94-garden-zz-7act-3height.js, whose numbers it is drawn from so the rail drawn again over your legs matches)
     let deck = '';
     if (row && row.loft && row.deck) { const D = row.deck, x0 = _gawN(D.x0), x1 = _gawN(D.x1), yb = _gawN(D.yb), yf = _gawN(D.yf), rh = D.rh, g0 = D.g0, g1 = D.g1; let pl = '', ps = '';
-      for (let x = D.x0 + 4; x < D.x1 - 1; x += 4.6) pl += `M${_gawN(x)} ${yb}L${_gawN(x)} ${yf}`;
+      for (let y = D.yb + 3.4; y < D.yf - 1; y += 3.4) pl += `M${x0} ${_gawN(y)}H${x1}`;   // (boards along the wall, seen from above)
       for (const x of D.posts) ps += `M${_gawN(x)} ${_gawN(D.yf - 0.5)}v${_gawN(-rh)}`;
       deck = `<path d="M${x0 + 4} ${_gawN(D.yf + 3)}L${x0 + 4} ${_gawN(D.yf + 15)}L${x0 + 12} ${_gawN(D.yf + 3)}M${x1 - 4} ${_gawN(D.yf + 3)}L${x1 - 4} ${_gawN(D.yf + 15)}L${x1 - 12} ${_gawN(D.yf + 3)}" stroke="#5a3e22" stroke-width="2.2" fill="none"/>`
         + `<ellipse cx="${_gawN((D.x0 + D.x1) / 2)}" cy="${_gawN(D.yf + 6)}" rx="${_gawN((D.x1 - D.x0) / 2)}" ry="4" fill="#1a1408" opacity="0.18"/>`
@@ -35,7 +36,7 @@ const _GAW_ART = Object.freeze({
         + `<path d="${ps}" stroke="${D.col}" stroke-width="${D.pw}" fill="none"/><path d="M${x0} ${_gawN(D.yf - rh)}H${_gawN(g0)}M${_gawN(g1)} ${_gawN(D.yf - rh)}H${x1}" stroke="${D.col}" stroke-width="${D.w}" stroke-linecap="round"/>`; }
     const stays = row && row.bare ? [0.3, 0.62, 0.9].map(k => `<path d="M-6 ${_gawN(-top * k)}l-3 -3M6 ${_gawN(-top * k)}l3 -3" stroke="#4a4e50" stroke-width="1.2"/>`).join('') : '';
     return loft + deck + `<ellipse cx="0" cy="1" rx="9" ry="2.2" fill="#1a1408" opacity="0.2"/>` + landing + stays
-      + `<path d="M-5.4 0L-4.8 ${_gawN(-top)}M5.4 0L4.8 ${_gawN(-top)}" stroke="#7a5a36" stroke-width="1.6" stroke-linecap="round"/><path d="M-4.4 0L-3.9 ${_gawN(-top)}" stroke="#a8844e" stroke-width="0.5" opacity="0.8"/>${r}<path d="M-8 0q2 -3 4 -1M5 0q2 -3 3 0" stroke="#6a8a3a" stroke-width="1.2" fill="none"/>`; },
+      + `<path d="M-5.4 0L-4.8 ${_gawN(-LT)}M5.4 0L4.8 ${_gawN(-LT)}" stroke="#7a5a36" stroke-width="1.6" stroke-linecap="round"/><path d="M-4.4 0L-3.9 ${_gawN(-LT)}" stroke="#a8844e" stroke-width="0.5" opacity="0.8"/>${r}<path d="M-8 0q2 -3 4 -1M5 0q2 -3 3 0" stroke="#6a8a3a" stroke-width="1.2" fill="none"/>`; },
   fire: (o) => { const still = o && o.still;
     return '<ellipse cx="0" cy="1" rx="17" ry="5" fill="#1a1408" opacity="0.24"/><ellipse cx="0" cy="-1" rx="12" ry="3.6" fill="#3a2a1a" opacity="0.8"/>'
       + [[-12, 0], [-8, -3.4], [0, -4.4], [8, -3.4], [12, 0], [7, 3], [-1, 3.6], [-8, 3]].map(([x, y], i) => `<ellipse cx="${x}" cy="${y}" rx="3.4" ry="2.4" fill="${i % 2 ? '#8a8478' : '#a8a294'}" stroke="#4a463c" stroke-width="0.5"/>`).join('')

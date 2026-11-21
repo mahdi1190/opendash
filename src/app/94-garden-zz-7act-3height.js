@@ -110,6 +110,9 @@ function _ghtRows() {
   return out;
 }
 /* ---------- climbing ---------- */
+/** How high up the ladder the feet are when you step off: where the top's floor is on screen above the ladder's foot (a landing out in
+ *  front of a wall is reached a little lower than its height, its front edge nearer). */
+function _ghtLadderTop(w) { const h = w.lv.h, d = (w.top.y - w.foot.y) * GARDEN_WORLD.cellH; return d > 0 ? Math.max(h * 0.5, h - d) : h; }
 function _ghtClimbMs(h) { return Math.max(GHT_CLIMB.min, Math.round(h / GHT_CLIMB.rung) * GHT_CLIMB.perRung); }
 /** Climb a way: up from its foot (walking there first), or down from its top. */
 function gardenClimb(w, up) {
@@ -134,10 +137,11 @@ function gardenClimb(w, up) {
       if (_ga.el) _ga.el.hidden = true;
       return;
     }
-    _ght.climb = { w, up, t0: performance.now(), ms: _gaMotion() ? ms : 400, step: _gaMotion() ? GHT_CLIMB.step : 1, h, lv };
+    const hEnd = _ghtLadderTop(w);
+    _ght.climb = { w, up, t0: performance.now(), ms: _gaMotion() ? ms : 400, step: _gaMotion() ? GHT_CLIMB.step : 1, h, hEnd, lv };
     // the hand-over-hand pose on the figure, as any move is played (the move's own bookkeeping: prompts hidden, the pet waits)
     const row = GARDEN_ACTS.climbing;
-    const cur = _ga.cur = { id: 'climbing', row, spot: { stand: { x: _gw.px, y: _gw.py }, noProp: true, src: lv.id }, doing: false, lift: up ? 0 : h, t0: 0, fxT: 0, fxI: 0 };
+    const cur = _ga.cur = { id: 'climbing', row, spot: { stand: { x: _gw.px, y: _gw.py }, noProp: true, src: lv.id }, doing: false, lift: up ? 0 : hEnd, t0: 0, fxT: 0, fxI: 0 };
     _gaFace(-90);
     try { if (typeof _gwBody === 'function') _gwBody(); } catch (e) { /* fine */ }
     cur.doing = true; cur.t0 = performance.now(); cur.x = _gw.px; cur.y = _gw.py; cur.wantDir = 'n';
@@ -162,15 +166,15 @@ function _ghtClimbTick(now) {
   if (C.inside) { _ghtStairTick(C, now); return; }
   const cur = _ga.cur, t = now - C.t0, k = Math.min(1, t / C.ms), e = k;   // (one rung after another, at an even pace)
   if (C.up) {
-    if (cur && cur.id === 'climbing') cur.lift = C.h * e;
+    if (cur && cur.id === 'climbing') cur.lift = C.hEnd * e;
     if (k >= 1) {
-      const s = Math.min(1, (t - C.ms) / C.step), q = s * s * (3 - 2 * s);   // the step off the top rung on to the floor
-      if (cur && cur.id === 'climbing') cur.lift = C.h;
+      const s = Math.min(1, (t - C.ms) / C.step), q = s * s * (3 - 2 * s);   // the step off the top rung on to the floor (level on screen)
+      if (cur && cur.id === 'climbing') cur.lift = C.hEnd + (C.h - C.hEnd) * q;
       _gw.px = C.w.foot.x + (C.w.top.x - C.w.foot.x) * q; _gw.py = C.w.foot.y + (C.w.top.y - C.w.foot.y) * q;
       if (s >= 1) _ghtClimbEnd(); else if (cur) { cur.x = _gw.px; cur.y = _gw.py; }
     }
   } else {
-    if (cur && cur.id === 'climbing') cur.lift = C.h * (1 - e);
+    if (cur && cur.id === 'climbing') cur.lift = C.hEnd * (1 - e);
     if (k >= 1) _ghtClimbEnd();
   }
 }
@@ -613,7 +617,7 @@ function _ghtRemoteStep(A) {
   }
   if (C) {
     const k = Math.min(1, (now - C.t0) / C.ms);
-    A.actLift = 0; A.hLift = C.w.lv.h * (C.up ? k : 1 - k);
+    A.actLift = 0; A.hLift = _ghtLadderTop(C.w) * (C.up ? k : 1 - k);
     if (k >= 1) {
       A.ghtClimb = null; if (A.ghtH) { try { A.ghtH.stop(); } catch (e) { /* gone */ } A.ghtH = null; }
       A.actLift = 0; A.hLift = 0;

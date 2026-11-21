@@ -107,9 +107,9 @@ const GARDEN_KINDS = Object.freeze({
   barn: { name: 'the barn', arts: ['barn'], words: ['barn'], pet: 'hay',
     // the hay loft: a landing of boards out from the loft door up its side, a rail along its front, the ladder up through the rail's gap
     // (the world draws ladder, door and landing from these numbers: rail.own)
-    levels: [{ id: 'loft', name: 'the hay loft', at: [1.25, 0.27], h: 1.37, shape: { rect: [-0.25, 0.07, 0.54, 0.42] },
-      rail: { line: [-0.33, 0.63, 0.47], h: 0.46, post: 0.24, post0: -0.33, gap: [-0.21, 0.21], color: '#7a5a36', postW: 1.6, railW: 1.9, mid: false, own: true },
-      ways: [{ by: 'ladder', art: 'ladder', loft: true, name: 'the hay loft ladder', foot: [1.25, 0.32], top: [0, 0.3] }] }] },
+    levels: [{ id: 'loft', name: 'the hay loft', at: [1.25, 0.27], h: 1.37, shape: { rect: [-0.25, 0.07, 0.54, 0.55] },
+      rail: { line: [-0.33, 0.63, 0.6], h: 0.32, post: 0.24, post0: -0.33, gap: [-0.21, 0.21], color: '#7a5a36', postW: 1.6, railW: 1.9, mid: false, own: true },
+      ways: [{ by: 'ladder', art: 'ladder', loft: true, name: 'the hay loft ladder', foot: [1.25, 0.32], top: [0, 0.45] }] }] },
   hay: { name: 'the hay', arts: ['hay'], decor: ['hay-bale'], words: ['hay', 'haybale'], pet: 'hay', top: 38, petSeat: 38 },
   /* water's things */
   pier: { name: 'the pier end', words: ['pier', 'jetty', 'landing'], acts: [{ act: 'dangle', stand: [0, -0.3], deg: 90, pierEnd: true }], pet: 'pier', noPerch: true, solid: 'free' },   // the end of the pier as far as it is built today
