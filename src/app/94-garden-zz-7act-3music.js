@@ -252,7 +252,7 @@ function gardenMusicStart(cur) {
 function _gmSoundNote(words) {
   try {
     if (_gmu.told || typeof _gsPrefs !== 'function' || _gsPrefs().on) return; _gmu.told = true;
-    gardenToast(words, { icon: 'music', timeout: 9000, action: { label: 'Turn sound on', run: () => { try { _gsSet({ sounds: true }); if (typeof _gsArm === 'function') _gsArm(); _gmu.next = -1; _gmWake(); } catch (e) { /* Menu, View & help, Sound */ } } } });
+    gardenToast(words, { icon: 'music', timeout: 15000, action: { label: 'Turn sound on', run: () => { try { _gsSet({ sounds: true }); if (typeof _gsArm === 'function') _gsArm(); _gmu.next = -1; _gmWake(); } catch (e) { /* Menu, View & help, Sound */ } } } });
   } catch (e) { /* fine */ }
 }
 function gardenMusicStop(cur) {
