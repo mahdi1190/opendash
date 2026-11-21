@@ -1356,7 +1356,9 @@ window.GardenNativeWorld = (function () {
       { const d = typeof gardenIslandActive === 'function' && gardenIslandActive() && decks.find(p => p.side === 'south'); if (d) { const lx = (d.x + d.w) * W.cellW - 13, ly = W.sky + (d.y + d.h) * W.cellH; pointLights.push({ id: 'pier-lantern:halo', x: lx, y: ly - 50, radius: 96, color: nightMaterials ? 0xffc17a : 0xffd88e, intensity: .7 }, { id: 'pier-lantern', x: lx, y: ly - 44, ground: ly + 10, radius: 100, height: 40, color: nightMaterials ? 0xffc17a : 0xffd88e, intensity: .8 }); } }
       // and Hollin's window: someone lives in the hut
       { const hut = typeof gardenIslandLogStack === 'function' && GardenIslandLayout.data && (GardenIslandLayout.data.static || []).find(p => p.id === 'ld-woodhut'); if (hut && window.GardenPaintVale && GardenPaintVale.wanted()) pointLights.push({ id: 'oldwood-hut:window', x: (hut.x + hut.w / 2) * W.cellW, y: W.sky + (hut.y + hut.h) * W.cellH - 22, radius: 78, height: 20, color: 0xffc47c, intensity: .5 }); }
-      _gw.grid = null; _gw.gq = null; _gw.solids = null; _gw.gridKey = ''; _gw.cam.dirty = true;
+      // (vf-perf) the land drawn a moment after a level-up: the model is the one the sync before built the walking grid for, so
+      // that grid stands unless its own key says otherwise (the painted trunks); built again here it doubled the level-up's work
+      if (!terrainFlush) { _gw.grid = null; _gw.gq = null; _gw.solids = null; _gw.gridKey = ''; } _gw.cam.dirty = true;
       if (typeof _gwGrid === 'function') _gwGrid(m);
       sortObjects();
     }

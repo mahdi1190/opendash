@@ -470,7 +470,7 @@
           const key = 'gpv-cloud-' + (i % 2);
           if (!scene.textures.exists(key)) { const c = document.createElement('canvas'); c.width = 256; c.height = 128; const x = c.getContext('2d'), rr = kit.rng(91 + i % 2);
             for (let k = 0; k < 7; k++) { const cx = 50 + rr() * 156, cy = 40 + rr() * 48, R = 28 + rr() * 34, g = x.createRadialGradient(cx, cy, 0, cx, cy, R); g.addColorStop(0, 'rgba(26,38,44,.55)'); g.addColorStop(.6, 'rgba(26,38,44,.3)'); g.addColorStop(1, 'rgba(26,38,44,0)'); x.fillStyle = g; x.beginPath(); x.ellipse(cx, cy, R * 1.3, R * .8, 0, 0, Math.PI * 2); x.fill(); }
-            scene.textures.addCanvas(key, c); }
+            scene.textures.addImage(key, c); }
           // (made small, then grown on its first frame: a tall image would be taken for a tree and faded as you walk under it)
           const im = scene.add.image(0, 0, key).setScale(.2).setAlpha(a); let grown = false;
           onUpdate(scene, im, time => { if (!grown) { im.setScale(sc, sc * .62); grown = true; } const t = time / 1000; im.x = x0 + ((t * vx + off) % span); im.y = yb + Math.sin(t * .01 + i) * 60 + ((t * vy) % 240) - 120; });
@@ -483,7 +483,7 @@
         const r = kit.rng(5100 + j * 13 + b), w = 1.6 + r() * 1.4, rx = 16 + r() * 14, ry = 7 + r() * 7, ph = r() * 6.28, sp = 1.1 + r() * 1.2;
         thing({ y: h.y + 3, make: scene => {
           const key = 'gpv-bee';
-          if (!scene.textures.exists(key)) { const c = document.createElement('canvas'); c.width = 12; c.height = 8; const x = c.getContext('2d'); x.fillStyle = 'rgba(244,240,224,.85)'; x.beginPath(); x.ellipse(5, 2.6, 2.6, 1.6, -.4, 0, Math.PI * 2); x.fill(); x.fillStyle = '#3a2c18'; x.beginPath(); x.ellipse(6, 5, 3, 2, 0, 0, Math.PI * 2); x.fill(); x.fillStyle = '#d8a83a'; x.fillRect(5.4, 3.4, 1.2, 3.2); scene.textures.addCanvas(key, c); }
+          if (!scene.textures.exists(key)) { const c = document.createElement('canvas'); c.width = 12; c.height = 8; const x = c.getContext('2d'); x.fillStyle = 'rgba(244,240,224,.85)'; x.beginPath(); x.ellipse(5, 2.6, 2.6, 1.6, -.4, 0, Math.PI * 2); x.fill(); x.fillStyle = '#3a2c18'; x.beginPath(); x.ellipse(6, 5, 3, 2, 0, 0, Math.PI * 2); x.fill(); x.fillStyle = '#d8a83a'; x.fillRect(5.4, 3.4, 1.2, 3.2); scene.textures.addImage(key, c); }
           const im = scene.add.image(h.x, h.y - 24, key).setScale(.42);
           onUpdate(scene, im, time => { const t = time / 1000 * sp + ph; im.x = h.x + Math.cos(t) * rx + Math.sin(t * 2.3) * 3; im.y = h.y - 22 - w * 4 + Math.sin(t * 1.4) * ry; });
           return im; } });

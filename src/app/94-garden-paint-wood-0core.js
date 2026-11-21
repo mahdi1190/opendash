@@ -736,7 +736,7 @@ window.GardenPaintWood = (function () {
     return im;
   }
   function liveTextures(scene) {
-    const make = (key, w, h, draw) => { const k = TEX + '-' + key; if (scene.textures.exists(k)) return k; const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); scene.textures.addCanvas(k, c); return k; };
+    const make = (key, w, h, draw) => { const k = TEX + '-' + key; if (scene.textures.exists(k)) return k; const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); scene.textures.addImage(k, c); return k; };
     return {
       dapple: make('dapple', 96, 48, (cx) => { const r = rng(5); for (let i = 0; i < 7; i++) { const x = 18 + r() * 60, y = 10 + r() * 28, rr = 6 + r() * 12; const g = cx.createRadialGradient(x, y, 0, x, y, rr); g.addColorStop(0, 'rgba(255,246,200,.9)'); g.addColorStop(1, 'rgba(255,246,200,0)'); cx.fillStyle = g; cx.save(); cx.translate(x, y); cx.scale(1, .55); cx.beginPath(); cx.arc(0, 0, rr, 0, Math.PI * 2); cx.restore(); cx.fill(); } }),
       shaft: make('shaft', 64, 256, (cx) => { const g = cx.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, 'rgba(255,248,214,0)'); g.addColorStop(.25, 'rgba(255,238,176,.8)'); g.addColorStop(.8, 'rgba(255,230,160,.5)'); g.addColorStop(1, 'rgba(255,244,200,0)'); cx.fillStyle = g; cx.filter = 'blur(5px)'; cx.beginPath(); cx.moveTo(25, 0); cx.lineTo(39, 0); cx.lineTo(54, 256); cx.lineTo(10, 256); cx.closePath(); cx.fill(); cx.filter = 'none'; cx.globalCompositeOperation = 'destination-in'; const s = cx.createLinearGradient(0, 0, 64, 0); s.addColorStop(0, 'rgba(0,0,0,0)'); s.addColorStop(.5, 'rgba(0,0,0,1)'); s.addColorStop(1, 'rgba(0,0,0,0)'); cx.fillStyle = s; cx.fillRect(0, 0, 64, 256); }),
