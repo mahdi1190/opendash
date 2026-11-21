@@ -158,6 +158,9 @@ window.GardenPaintGround = (function () {
       }
       const took = performance.now() - s; J.ms += took; sliceWorst = Math.max(sliceWorst, took);
       if (J.next < ch.ops.length) return false;
+      // (vf-perf) the picture goes up to the graphics card on a tick of its own when this one has already painted: the upload of a
+      // chunk (1 to 4 MB) in the same task as its last op made one long task of the two
+      if (ms && !J.ready && took > 2) { J.ready = true; return false; }
       const key = opts.key + '|' + ch.id + '|' + K;
       if (ch.image && ch.tex === key) { ch.image.destroy(); ch.image = null; } dropTexture(scene, key);   /* (the picture showing this key goes first, so its canvas is free to be used again) */
       const u0 = performance.now();
@@ -723,21 +726,24 @@ window.GardenPaintGround = (function () {
           } } }
       cx.globalAlpha = 1;
     } });
-    const soft = kind => ({ bb: bbAll, seed: 700 + PATH[kind].rank, name: kind, draw(B, r0, cb) {
+    // (vf-perf) three ops a kind, so the kit can slice between them: the trodden margin, the body, the paler middle (one op of all
+    // three, each with its own coverage pass, took up to 230 ms a chunk while walking: 'earth @7,5 x2'). The same picture, in order.
+    const soft = kind => [0, 1, 2].filter(part => part < 2 || !(kind === 'cobble' || kind === 'setts')).map(part => ({ bb: bbAll, seed: 700 + PATH[kind].rank, name: kind + (part ? ' ' + part : ''), draw(B, r0, cb) {
       const cov = coverage(cb, kind); if (!cov) return; const cx = B.cx, S0 = PATH[kind], winter = season === 'winter'; clips(cx);
       // the trodden margin: the ground thins and browns before the path begins (soft, and wider than the path)
-      cx.globalAlpha = S0.margin; { const s = scratch('tint', cov.w, cov.h), pic = alphaOf('alM', cov, (v, nz) => smooth(.04, .5, v + nz), .16, 30); s.cx.fillStyle = winter ? '#8f8a6a' : '#7d7244'; s.cx.fillRect(0, 0, cov.w, cov.h); s.cx.globalCompositeOperation = 'destination-in'; s.cx.drawImage(pic, 0, 0); lay(cx, cov, s.c); } cx.globalAlpha = 1;
-      const body = alphaOf('alB', cov, (v, nz) => smooth(.5 - .09, .5 + .09, v + nz), S0.edge, kind === 'earth' ? 34 : kind === 'gravel' ? 28 : 15);   // (the edge wanders a few px either way, so a straight route never has a ruled edge)
-      if (kind === 'cobble' || kind === 'setts') {
+      if (part === 0) { cx.globalAlpha = S0.margin; { const s = scratch('tint', cov.w, cov.h), pic = alphaOf('alM', cov, (v, nz) => smooth(.04, .5, v + nz), .16, 30); s.cx.fillStyle = winter ? '#8f8a6a' : '#7d7244'; s.cx.fillRect(0, 0, cov.w, cov.h); s.cx.globalCompositeOperation = 'destination-in'; s.cx.drawImage(pic, 0, 0); lay(cx, cov, s.c); } cx.globalAlpha = 1; return; }
+      const body = part !== 1 ? null : alphaOf('alB', cov, (v, nz) => smooth(.5 - .09, .5 + .09, v + nz), S0.edge, kind === 'earth' ? 34 : kind === 'gravel' ? 28 : 15);   // (the edge wanders a few px either way, so a straight route never has a ruled edge)
+      if (part === 1 && (kind === 'cobble' || kind === 'setts')) {
         fillThrough(B, cov, body, sx => wash(sx, cb, { base: S0.bed, lo: '#8c7c5c', hi: '#b8a680', warm: '#ae9a70', cool: '#9a927c' }, 131, .7));
         // (the stones are laid by their own ops below, a third of the courses each, so no slice is long)
-      } else {
+      } else if (part === 1) {
         const P = kind === 'gravel' ? { base: S0.bed, lo: '#b29a6b', hi: '#e5d5ab', warm: '#d9bf8a', cool: '#c9bd9c' } : { base: S0.bed, lo: '#9c855a', hi: '#d9c698', warm: '#c4a26c', cool: '#b0a682' };
         fillThrough(B, cov, body, sx => { wash(sx, cb, P, kind === 'gravel' ? 151 : 161, 1); const g = grains(sx, [P.lo, P.hi, '#a89068'], .5); tiles(cb, 32, 3, 153, (tx, ty, r) => { for (let i = 0; i < (kind === 'gravel' ? 46 : 20); i++) { const x = tx + r() * 32, y = ty + r() * 32, ci = r() < .5 ? 0 : r() < .6 ? 1 : 2, w = .9 + r() * 1.3; r(); g.add(x, y, w, ci); } }); g.flush(); sx.globalAlpha = 1; });
+      } else if (part === 2) {
         // beaten paler down the middle, where feet and wheels go
         cx.globalAlpha = kind === 'gravel' ? .5 : .42; { const s = scratch('tint', cov.w, cov.h), pic = alphaOf('alM', cov, (v, nz) => smooth(.86, 1, v + nz), .1, 26); s.cx.fillStyle = kind === 'gravel' ? '#ecdfb8' : '#d2bd8e'; s.cx.fillRect(0, 0, cov.w, cov.h); s.cx.globalCompositeOperation = 'destination-in'; s.cx.drawImage(pic, 0, 0); lay(cx, cov, s.c); } cx.globalAlpha = 1;
       }
-    } });
+    } }));
     // boardwalks and steps keep their own shape: planks or treads laid across the line, one every few px along it
     const planks = { bb: bbAll, seed: 790, draw(B, r0, cb) {
       const cx = B.cx; if (env.allow) cx.clip(env.allow, 'evenodd');
@@ -780,7 +786,7 @@ window.GardenPaintGround = (function () {
       }
       cx.globalAlpha = 1;
     } };
-    return ['earth', 'gravel', 'cobble', 'setts'].filter(k => kindsUsed.has(k)).flatMap(k => k === 'cobble' || k === 'setts' ? [soft(k), stones(k, 0), stones(k, 1), stones(k, 2), fringe(k)] : [soft(k), fringe(k)]).concat(kindsUsed.has('boardwalk') || kindsUsed.has('steps') ? [planks] : []);
+    return ['earth', 'gravel', 'cobble', 'setts'].filter(k => kindsUsed.has(k)).flatMap(k => k === 'cobble' || k === 'setts' ? [...soft(k), stones(k, 0), stones(k, 1), stones(k, 2), fringe(k)] : [...soft(k), fringe(k)]).concat(kindsUsed.has('boardwalk') || kindsUsed.has('steps') ? [planks] : []);
   }
 
   function status() { const layers = [...registry].map(h => ({ key: String(h.key).slice(0, 24), level: h.level, chunks: h.chunks, live: h.live, MB: h.MB, baked: h.baked, evicted: h.evicted, medianMs: h.median, p95Ms: h.p95, worstChunkMs: h.worstMs, worstSliceMs: h.sliceWorstMs })); return { layers, MB: +layers.reduce((a, l) => a + l.MB, 0).toFixed(1), slow: Object.assign({}, slow), canvases: { made, reused, spare: spareN }, lastError }; }
