@@ -51,7 +51,7 @@ function _gcfArms(K, L, back, hold) {
       const t = K.T(c), d = `M${K.f(x)} ${K.f(y)}C${K.f(x + side * 4.6)} ${K.f(y + 6)} ${K.f(x + side * 4)} ${K.f(y + 18)} ${K.f(x + side * 1.4)} ${K.f(y + 24)}C${K.f(x - side * 1.4)} ${K.f(y + 18)} ${K.f(x - side * 2.4)} ${K.f(y + 8)} ${K.f(x)} ${K.f(y)}z`;
       return P(t[1], d) + P(t[0], d, 0.0) + K.S(t[3], 0.6, `M${K.f(x - side * 0.6)} ${K.f(y + 6)}l${side * 2.4} 1.4M${K.f(x - side * 0.4)} ${K.f(y + 11)}l${side * 2.6} 1.4M${K.f(x)} ${K.f(y + 16)}l${side * 2.2} 1.2`, 0.7) + K.S(t[2], 0.5, `M${K.f(x + side * 0.6)} ${K.f(y + 2)}q${side * 2.6} 8 ${side * 1.2} 18`, 0.5);
     }
-    const a = K.limb(x, y, Math.PI - side * 0.12, L.armL, L.lw * 0.95 + 0.4, L.lw * 0.8, c), ht = K.T(L.hand);
+    const a = K.limb(x, y, Math.PI - side * 0.16, L.armL, L.lw * 0.82 + 0.4, L.lw * 0.66, A.mix(c, '#3a3020', 0.12)), ht = K.T(L.hand);
     return a.d + P(ht[1], A.ell(a.tip[0], a.tip[1] + 0.8, 2.6, 2.4)) + P(ht[0], A.ell(a.tip[0] - 0.3, a.tip[1] + 0.4, 2.1, 1.9)) + (hold && side === 1 ? hold(a.tip[0], a.tip[1] + 1) : '');
   };
   return [G('gca-ar gca-b gpl-af gpl-b', -L.sh[0], L.sh[1], mk(-1)), G('gca-ar gca-a gpl-af gpl-a is-r', L.sh[0], L.sh[1], mk(1))];
@@ -116,6 +116,7 @@ function _gcfParts(id, K, L, back) {
     }
     o.head += P(K.T('#b08a68')[1], A.ell(-6, -41.6, 1.8, 1.6)) + P(K.T('#b08a68')[1], A.ell(6, -41.6, 1.8, 1.6));
     o.hold = (x, y) => S('#a07a4a', 1.1, `M${f(x)} ${f(y - 8)}L${f(x)} ${f(y + 4)}`, 1) + P('#b08a58', A.ell(x, y - 9, 1.6, 2.4));
+    if (back) o.over += P('#efe4d0', 'M-1 -14C-5 -17 -7 -14 -5 -12C-3 -11 -1 -13 0 -14C1 -13 3 -11 5 -12C7 -14 5 -17 1 -14z') + S('#efe4d0', 1, 'M-1 -13L-3 -7M1 -13L3 -7', 0.9);   // her apron's bow
   } else if (id === 'wick') {
     const bt = K.T('#e4d4b8'), ft = K.T('#8a6a44');
     if (fr) {
@@ -136,6 +137,7 @@ function _gcfParts(id, K, L, back) {
       o.over += P(K.T('#f2ead8')[1], 'M-6 -24C-6.6 -16 -6 -10 -5.4 -7C-2 -6 2 -6 5.4 -7C6 -10 6.6 -16 6 -24C3 -25 -3 -25 -6 -24z') + P('#f2ead8', 'M-5.4 -23.4C-6 -16 -5.4 -10.4 -4.8 -7.8C-2 -7 2 -7 4.8 -7.8C5.4 -10.4 6 -16 5.4 -23.4C2.6 -24.2 -2.6 -24.2 -5.4 -23.4z');
     }
     o.over += `<g class="gca-bee" style="transform-origin:0px 0px">${P('#2a2010', A.ell(-12, -48, 1.4, 1)) + P('#f0c030', A.ell(-12, -48, 0.7, 0.9)) + P('#ffffff', A.ell(-12.4, -49.4, 0.9, 0.6), 0.6)}</g>`;
+    if (back) o.over += P('#f2ead8', 'M-1 -21C-5 -24 -7 -21 -5 -19C-3 -18 -1 -20 0 -21C1 -20 3 -18 5 -19C7 -21 5 -24 1 -21z') + S('#f2ead8', 1, 'M-1 -20L-3 -13M1 -20L3 -13', 0.9) + K.S(K.T('#d8b84a')[3], 0.5, 'M0 -33V-8', 0.4);   // her apron's bow, the dress's back seam
     o.hold = (x, y) => P('#c88a30', A.rrect(x - 2.6, y - 1, 5.2, 5.6, 1.4)) + P('#f0d080', A.rrect(x - 2, y - 0.4, 2, 4.4, 0.8), 0.6) + P('#e8dcc0', A.rrect(x - 3, y - 2.2, 6, 1.6, 0.6));
   } else if (id === 'hollin') {
     const ft = K.T('#8a5a36'), jt = K.T('#4f6a3a'), an = K.T('#d8c4a0');
@@ -182,7 +184,7 @@ function gardenCastViewSvg(id, view, o) {
     else {
       const [aL, aR] = _gcfArms(K, L, back, back ? null : P.hold), body = _gcfBody(K, L, L.cloth, back);
       const head = K.G('gca-hd', 0, L.head[0] + L.head[2], _gcfHead(K, L, L.fur) + P.head);
-      up = P.under + aL + aR + body + P.over + head;
+      up = P.under + body + P.over + aL + aR + head;   // (the arms over the body's sides, so they read as arms, not as a wider body)
       if (back) up = P.under + body + aL + aR + head + P.over;
     }
     s = `<g class="wd-flip">${shadow}<g class="gca gca-${st} gca-fv gca-${id} gpl-root" style="transform-origin:0px 0px">${_gcfLegs(K, L, back)}<g class="gca-up gpl-up" style="transform-origin:0px ${L.hy}px">${up}</g></g></g>`;

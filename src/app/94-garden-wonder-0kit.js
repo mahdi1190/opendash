@@ -206,6 +206,11 @@ function wdTalk(o) {
     btn(o.bye || 'Goodbye', () => wdTalkClose()).focus({ preventScroll: true });
   };
   T.say = (text, actions) => { lines.length = 0; lines.push(text); T.i = 0; o.actions = actions || []; show(); };
+  // (round 2) E, the key that opened the talk, moves it on (Enter and Space press the button that has the focus): the next line, and on
+  // the last line with nothing to choose, goodbye. With a choice to make, E waits for it.
+  T.next = () => { if (_wd.talk !== T) return false; if (T.i < lines.length - 1) { T.i++; show(); return true; } if (!(o.actions || []).length) { wdTalkClose(); return true; } return false; };
+  if (!_wd.talkKeys) { _wd.talkKeys = true; document.addEventListener('keydown', (ev) => { const t = _wd.talk; if (!t || ev.repeat || ev.ctrlKey || ev.metaKey || ev.altKey || (ev.key !== 'e' && ev.key !== 'E')) return; const tg = ev.target; if (tg && (tg.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName))) return; if (performance.now() - t.at < 250) return; ev.preventDefault(); ev.stopPropagation(); t.next(); }, true); }
+  T.at = performance.now();
   el.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); wdTalkClose(); } ev.stopPropagation(); });
   box.appendChild(el); show();
   // the portrait frames the whole figure: tall folk (Hollin's antlers, Quince's ears, the angler's hat) were cut off by the fixed frame (17 Nov 2026)

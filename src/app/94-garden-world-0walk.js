@@ -1524,7 +1524,8 @@ function _gwCamTarget() {
   if (fit) { x = (wpx - vw) / 2; y = vh > hpx ? hpx - vh : (hpx - vh) / 2; }
   else {
     const fx = _gw.px * W.cellW, fy = W.sky + _gw.py * W.cellH - 20;
-    x = Math.max(0, Math.min(wpx - vw, fx - vw / 2)); y = Math.max(0, Math.min(hpx - vh, fy - vh * 0.56));
+    const talk = typeof _wd !== 'undefined' && !!_wd.talk;   // (round 2, folk) a talk card along the bottom: the view rises so the two of you stand above it
+    x = Math.max(0, Math.min(wpx - vw, fx - vw / 2)); y = Math.max(0, Math.min(hpx - vh, fy - vh * (talk ? 0.4 : 0.56)));
   }
   return { x, y, w: vw, h: vh };
 }
