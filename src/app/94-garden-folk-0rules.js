@@ -75,6 +75,10 @@ const VALE_FOLK = Object.freeze([
   Object.freeze({ id: 'perpetua', name: 'Perpetua', species: 'snail', body: 'shell', cast: 'perpetua', temper: 'proud', home: Object.freeze({ want: ['postbox'], postbox: true }), prefer: Object.freeze(['post-box']), region: '', place: 'the post box', routine: 'perpetua', speed: 0.42, arrives: 'start' }),
 ]);
 const VALE_FOLK_ROW = new Map(VALE_FOLK.map(r => [r.id, r]));
+/** A layout thing that is a painted figure of one of the folk (its kind is a villager's cast, as the quay's seated angler is of kind
+ *  'angler'): once the folk live their days, the villager is drawn where they really are and that thing is neither drawn nor solid.
+ *  By kind, so any layout's stand-in for any villager works the same. */
+function valeFolkStandIn(t) { const k = t && t.kind; return !!k && VALE_FOLK.some(r => r.cast === k); }
 /** Reed stays a traveller: the road's own runtime walks him in by the arrival road (94-garden-travellers-1runtime.js). One system, so
  *  he is a row of that table, not this one. */
 const VALE_FOLK_TRAVELLERS = Object.freeze(['travelling-angler']);

@@ -646,6 +646,14 @@
     for (const t of gardenIslandHarbourThings(L.D)) { const look = looks[t.key]; if (!look) continue; const p = atCell(t.x, t.y); thing({ key: t.key, box: look[0], x: p.x, y: p.y, draw: look[1] }); }
     // each stands in its own worn ground: damp sand scuffed round a boat or a net's posts, trodden turf round the crates,
     // pebbles and tufts at the foot (drawn in, not set down on top)
+    // (on the paving, by the ground's kind, whatever stands there: a damp, darker flag under it, grit and a worn rim in its joints, and a
+    // deep contact shade under its foot, so a bench or a crate stands on the quay, not on the face of a wall)
+    for (const t of gardenIslandHarbourThings(L.D)) { const p = atCell(t.x, t.y), k = L.kind(t.x, t.y); if (k !== 'path') continue; const hw = (t.foot[2] - t.foot[0]) * cw / 2 + 6;
+      add([p.x - hw - 16, p.y - 22, p.x + hw + 20, p.y + 16], 38, (B) => { const rr = kit.rng(kit.hash(Math.round(p.x), Math.round(p.y), 109));
+        B.f(B.rr(p.x - hw - 4, p.y - 9, hw * 2 + 8, 13, 3), '#5a564e', .2).f(B.blob(rr, p.x + 2, p.y + 1, hw + 2, 4.2, 9, .3), '#2e2a26', .3).f(B.blob(rr, p.x + 1, p.y + .5, hw * .7, 2.4, 9, .3), '#1e1a16', .28);
+        B.s(`M${p.x - hw - 4} ${p.y + 4.5}H${p.x + hw + 4}`, '#e8e2d4', 1.1, .35).s(`M${p.x - hw - 4} ${p.y - 9}H${p.x + hw + 4}`, '#3a3630', .9, .3);
+        for (let i = 0; i < 10; i++) { const ax = p.x + (rr() - .5) * (hw * 2 + 14), ay = p.y + (rr() - .3) * 8; B.f(B.ell(ax, ay, .8 + rr() * 1.1, .5 + rr() * .5), ['#8c8474', '#6e685e', '#c2b8a4'][Math.floor(rr() * 3)], .8); }
+        B.tufts(rr, p.x - hw - 3, p.y + 3, 4, 2, ['#7a8a4e', '#9aa85e'], 3); B.tufts(rr, p.x + hw + 3, p.y + 2, 4, 2, ['#7a8a4e', '#9aa85e'], 3); }); }
     for (const t of gardenIslandHarbourThings(L.D)) { const p = atCell(t.x, t.y), k = L.kind(t.x, t.y); if (k !== 'beach' && k !== 'grass') continue; const hw = (t.foot[2] - t.foot[0]) * cw / 2 + 8;
       add([p.x - hw - 24, p.y - 30, p.x + hw + 34, p.y + 24], 38, (B) => { const rr = kit.rng(kit.hash(Math.round(p.x), Math.round(p.y), 108)), sand = k === 'beach';
         B.f(B.blob(rr, p.x + 5, p.y, hw + 6, 7, 9, .4), sand ? P.sandWet : P.lawnLo, sand ? .32 : .4).f(B.blob(rr, p.x - 2, p.y - 2, hw * .8, 4.5, 9, .4), sand ? P.sandDk : '#8a7a58', sand ? .14 : .2);
@@ -748,7 +756,7 @@
     for (let k = 0; k < 3; k++) B.s(B.ell(-26, -8.5, 4.4 - k * 1.1, 2.6 - k * .6), k % 2 ? P.rope : '#a88a54', 1.1, .9);
     if (afloat) B.f('M-40 -2Q-40 4 -26 6L26 6Q42 4 44 -2Z', '#3f7a8c', .45);
   };
-  const drawBench = P => B => { B.shadow(2, 1, 26, 4, .28); for (const x of [-20, 18]) B.f(B.rect(x - 1.6, -12, 3.2, 12), P.iron); B.f(B.rect(-24, -14, 48, 4), P.wood).f(B.rect(-24, -14, 48, 1.4), P.woodHi, .8).f(B.rect(-24, -26, 48, 3.4), P.wood).f(B.rect(-24, -21, 48, 3.4), P.woodLo).s('M-21 -26v12M19 -26v12', P.iron, 2.2); };
+  const drawBench = P => B => { B.shadow(2, 1, 27, 4.4, .4); B.f(B.ell(-20, .4, 4.2, 1.6), '#1a1612', .45).f(B.ell(18, .4, 4.2, 1.6), '#1a1612', .45); for (const x of [-20, 18]) B.f(B.rect(x - 1.6, -12, 3.2, 12), P.iron).f(B.rr(x - 3.2, -1.6, 6.4, 2.2, .8), P.iron); B.f(B.rect(-24, -14, 48, 4), P.wood).f(B.rect(-24, -14, 48, 1.4), P.woodHi, .8).f(B.rect(-24, -26, 48, 3.4), P.wood).f(B.rect(-24, -21, 48, 3.4), P.woodLo).s('M-21 -26v12M19 -26v12', P.iron, 2.2); };
   const drawAnchor = P => B => { B.shadow(2, 1, 18, 4, .28); B.s('M0 -36V-2', '#3e4448', 4).s('M-16 -10Q0 6 16 -10', '#3e4448', 4).s('M-9 -30H9', '#3e4448', 3.4).s(B.ell(0, -38, 3.4, 3.4), '#3e4448', 2).s('M-2 -34V-4', '#7a8286', 1.2, .7); B.f('M-19 -14L-14 -8L-12 -14Z', '#3e4448').f('M19 -14L14 -8L12 -14Z', '#3e4448'); B.s('M0 -38q14 4 10 18q-4 14 8 22', P.rope, 1.6, .9); };
   const drawFishBox = P => B => { B.shadow(1, 1, 14, 3, .3); crate(B, -12, 0, 22, 9, P, 1); for (let k = 0; k < 4; k++) B.f(B.ell(-8 + k * 5, -10, 2.6, 1.2), '#c8d4dc').f(B.ell(-8 + k * 5, -10.4, 1.6, .5), '#fff', .7); };
   // a harbour lamp about two of your heights: a granite plinth, a cast-iron column with collars and a scrolled bracket, and

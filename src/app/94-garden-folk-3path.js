@@ -72,7 +72,7 @@ function gardenFolkTier(x, y) { const W = GARDEN_WORLD, cx = Math.floor(x), cy =
 /** The nearest cell anyone can walk to from a point (the start or end of a leg may be on a seat's edge or a door step). */
 function _vfpNearOpen(x, y) {
   const W = GARDEN_WORLD, cx = Math.floor(x), cy = Math.floor(y);
-  for (let r = 0; r <= 3; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+  for (let r = 0; r <= 6; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
     if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
     const nx = cx + dx, ny = cy + dy; if (nx < 0 || ny < 0 || nx >= W.cols || ny >= W.rows) continue;
     if (_vfp.cost[ny * W.cols + nx] !== Infinity) return ny * W.cols + nx;
@@ -90,6 +90,27 @@ function gardenFolkPathAsk(a, b, cb) {
   for (const j of _vfp.jobs) if (j.key === key) { j.cbs.push(cb); return; }
   _vfp.jobs.push({ key, a: { x: a.x, y: a.y }, b: { x: b.x, y: b.y }, cbs: [cb], pri: 0 });
   void W;
+}
+/** A path already found for a to b (cells), or undefined when it has not been found yet (asked for, if not yet asked). null: there is
+ *  no way. Off screen the folk are worked out along this, never in a straight line over water or through a wall. */
+function gardenFolkPathKept(a, b) {
+  if (!_vfp.cost || !a || !b) return undefined;
+  const key = Math.floor(a.x) + ',' + Math.floor(a.y) + '>' + Math.floor(b.x) + ',' + Math.floor(b.y), k = _vfp.key + '|' + key;
+  if (_vfp.cache.has(k)) { const hit = _vfp.cache.get(k); return hit ? _vfpEnds(hit, a, b) : null; }
+  if (!_vfp.jobs.some(j => j.key === key) && !(_vfp.cur && _vfp.cur.key === key)) { gardenFolkPathAsk(a, b, () => { }); const j = _vfp.jobs[_vfp.jobs.length - 1]; if (j) j.pri = 0.5; }
+  return undefined;
+}
+/** The point a fraction k of the way along a path that starts at a (by length walked), and the points still ahead of it. */
+function gardenFolkAlong(a, pts, k) {
+  const G = GARDEN_WORLD, all = [{ x: a.x, y: a.y }].concat(pts || []); let len = 0;
+  for (let i = 1; i < all.length; i++) len += Math.hypot((all[i].x - all[i - 1].x) * G.cellW, (all[i].y - all[i - 1].y) * G.cellH);
+  let want = Math.max(0, Math.min(1, k)) * len;
+  for (let i = 1; i < all.length; i++) {
+    const p = all[i - 1], q = all[i], d = Math.hypot((q.x - p.x) * G.cellW, (q.y - p.y) * G.cellH);
+    if (want <= d || i === all.length - 1) { const t = d > 0 ? Math.min(1, want / d) : 1; return { x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t, ahead: all.slice(i), hx: q.x - p.x, hy: q.y - p.y }; }
+    want -= d;
+  }
+  return { x: a.x, y: a.y, ahead: [], hx: 0, hy: 0 };
 }
 /** A kept path's points with this leg's own ends (the cells are shared; the exact stand points are not). */
 function _vfpEnds(pts, a, b) { const out = pts.slice(); if (out.length) { out[out.length - 1] = { x: b.x, y: b.y }; } else out.push({ x: b.x, y: b.y }); return out; }

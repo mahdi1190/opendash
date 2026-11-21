@@ -202,21 +202,36 @@ function wdTalk(o) {
     el.querySelector('.wd-talk-t').textContent = lines[T.i] || '';
     go.textContent = '';
     if (T.i < lines.length - 1) { btn('Go on', () => { T.i++; show(); }, true).focus({ preventScroll: true }); return; }
-    for (const a of o.actions || []) btn(a.label, () => a.run(T), a.primary);
-    btn(o.bye || 'Goodbye', () => wdTalkClose()).focus({ preventScroll: true });
+    let first = null; for (const a of o.actions || []) { const b = btn(a.label, () => a.run(T), a.primary); if (!first || a.primary && !first.primary) first = Object.assign(b, { primary: !!a.primary }); }
+    const bye = btn(o.bye || 'Goodbye', () => wdTalkClose());
+    (first || bye).focus({ preventScroll: true });   // (a choice to make: the first one has the focus, so E or Enter takes it; Tab moves along)
   };
   T.say = (text, actions) => { lines.length = 0; lines.push(text); T.i = 0; o.actions = actions || []; show(); };
   // (round 2) E, the key that opened the talk, moves it on (Enter and Space press the button that has the focus): the next line, and on
   // the last line with nothing to choose, goodbye. With a choice to make, E waits for it.
   T.next = () => { if (_wd.talk !== T) return false; if (T.i < lines.length - 1) { T.i++; show(); return true; } if (!(o.actions || []).length) { wdTalkClose(); return true; } return false; };
-  if (!_wd.talkKeys) { _wd.talkKeys = true; document.addEventListener('keydown', (ev) => { const t = _wd.talk; if (!t || ev.repeat || ev.ctrlKey || ev.metaKey || ev.altKey || (ev.key !== 'e' && ev.key !== 'E')) return; const tg = ev.target; if (tg && (tg.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName))) return; if (performance.now() - t.at < 250) return; ev.preventDefault(); ev.stopPropagation(); t.next(); }, true); }
+  if (!_wd.talkKeys) { _wd.talkKeys = true; document.addEventListener('keydown', (ev) => { if (wdTalkKey(ev)) { ev.preventDefault(); ev.stopPropagation(); } }, true); }
   T.at = performance.now();
-  el.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); wdTalkClose(); } else if ((ev.key === 'e' || ev.key === 'E') && !ev.repeat && T.next) { ev.preventDefault(); T.next(); } ev.stopPropagation(); });
+  el.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); wdTalkClose(); } else if (wdTalkKey(ev)) ev.preventDefault(); ev.stopPropagation(); });
   box.appendChild(el); show();
   // the portrait frames the whole figure: tall folk (Hollin's antlers, Quince's ears, the angler's hat) were cut off by the fixed frame (17 Nov 2026)
   const pv = el.querySelector('.wd-talk-art svg');
   if (pv) { try { const b = pv.getBBox(); if (b.height > 0 && (b.y < -54 || b.y + b.height > 6)) { const y0 = Math.min(-54, b.y - 2), y1 = Math.max(6, b.y + b.height + 2), h = y1 - y0, w = Math.max(h * 0.8, 2 * Math.max(-b.x, b.x + b.width) + 4); pv.setAttribute('viewBox', `${-w / 2} ${y0} ${w} ${h}`); } } catch (e) { /* not drawn yet: the fixed frame stays */ } }
   return T;
+}
+/** E or Enter while someone is talking to you (the garden's own keys ask this first, so E never opens the talk again from its first
+ *  line): the next line; on the last line with nothing to choose, goodbye; at a choice, the button that has the focus (the first choice,
+ *  until Tab moves it). True when the key was used. */
+function wdTalkKey(ev) {
+  const T = _wd.talk; if (!T || !T.el || !T.el.isConnected || ev.ctrlKey || ev.metaKey || ev.altKey) return false;
+  const k = ev.key; if (k !== 'e' && k !== 'E' && k !== 'Enter') return false;
+  const tg = ev.target; if (tg && (tg.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName))) return false;
+  if (ev.repeat || performance.now() - (T.at || 0) < 250) return true;   // (held down, or the very press that opened it: used, nothing more)
+  const f = document.activeElement, focused = f && f.tagName === 'BUTTON' && T.el.contains(f) ? f : null;
+  if (focused && (k === 'Enter' || !/Go on/.test(focused.textContent))) { if (k === 'Enter' || !T.next || !T.next()) focused.click(); return true; }
+  if (T.next && T.next()) return true;
+  const b = [...T.el.querySelectorAll('.wd-talk-go button, .wd-give button')].find(x => !x.disabled); if (b) b.click();
+  return true;
 }
 function wdTalkClose(quiet) { const T = _wd.talk; if (!T) return; _wd.talk = null; const had = T.el.contains(document.activeElement); gardenUiGone(T.el); T.el.remove(); if (had) { try { const b = typeof _gw !== 'undefined' && _gw.box && _gw.box.isConnected ? _gw.box : _wdBox(); if (b && b.focus) b.focus({ preventScroll: true }); } catch (e) { /* no stage */ } }   // (the keys go back to the garden: M, E and walking work at once)
   if (T.o.onClose && !quiet) { try { T.o.onClose(); } catch (e) { console.error('[garden wonder]', e); } } else if (T.o.onClose && quiet === true && T.o.closeQuiet) T.o.onClose(); }

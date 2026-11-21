@@ -292,6 +292,8 @@ window.GardenNative = (function () {
       }
       if (typeof gardenDesignOn === 'function' && gardenDesignOn()) return;
       if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      // (someone is talking to you: E and Enter move their card on, before E can mean "Talk to" again)
+      if (typeof wdTalkKey === 'function' && wdTalkKey(ev)) { ev.preventDefault(); return; }
       const target = ev.target;
       if (target && target.closest) {
         if (target.closest('input,textarea,select,[contenteditable="true"]') && ev.key !== 'Escape') return;
