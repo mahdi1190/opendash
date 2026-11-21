@@ -441,7 +441,7 @@ function _glhApply(ev, key) {
   const rec = hit.p ? g.plants[hit.p.uid] : hit.d ? g.decor[hit.d.uid] : null;
   if (act.on && !rec) return 'gone';
   // Whose it is: a plant is its planter's, a decoration its owner's (`own`: given to the host, it is the host's); no name there, the host's.
-  const owner = !rec ? '' : hit.p ? rec.by || '' : rec.own || '', mine = !!rec && owner === f;
+  const owner = !rec ? '' : hit.p ? rec.by || '' : rec.own || rec.from || '', mine = !!rec && owner === f;   // (from: a friend's gift here, theirs to take back)
   // full co-op (2.75): a friend with Play together may do to anything here what you may, yours or another friend's; what is someone else's still goes home to them (a take posts it back)
   if (act.mine && !mine && !_glhPermOf(ev).touch) return 'not-yours';
   const mp = hit.p ? 'plants' : hit.d ? 'decor' : '';
@@ -489,7 +489,11 @@ function _glhApply(ev, key) {
       // a harvest of their own plant has been posted: it is theirs, there is no taking it back
       return put(r.mark, { u: p.uid, n: r.n, noUndo: !!mine, ...(r.gold ? { gold: true } : {}) });
     }
-    case 'dig': return opDo({ o: 'dig', u: hit.p.uid, at: now }, { u: hit.p.uid, noUndo: !!mine });
+    case 'dig': {
+      // (their own seed, dug up again soon after they planted it: taking back a mistake, so the seed goes back into their bag on the answer)
+      const back = mine && rec.gi && now - (Number(rec.t) || 0) < 30 * 60000 ? rec.gi : '';
+      return opDo({ o: 'dig', u: hit.p.uid, at: now }, { u: hit.p.uid, noUndo: !!mine, ...(back ? { gi: back } : {}) });
+    }
     case 'feed': {
       const p = hit.p; if (p.def.special === 'heart') return 'heart';
       if (rec.f && _gdDayOf(rec.f) === today) return 'fed';
@@ -509,11 +513,15 @@ function _glhApply(ev, key) {
     }
     case 'take': {
       const d = hit.d, op = { o: 'lift', u: d.uid, at: now }, why = gardenOpCheck(W, op, f); if (why) return why;
-      const mark = _gdMark(gardenOpTouches(op, g, f));
-      const gi = rec.own ? rec.gi : '';
-      if (rec.own) _gdDecorBack(rec);                         // back in its owner's bag, whoever put it away: its own post too, so if the answer is lost it still comes back, once
+      // the friend who put it down takes it back (build-PLAN 1.3: anything put down can be picked up again): it goes back into their own
+      // bag, not this garden's, so this garden's ledger forgets the gift it had gained (their page puts it back in their bag on the answer)
+      const back = !rec.own && rec.from === f && rec.gi && _gbOwnLed(g, 'gl.f.' + rec.gi) ? 'gl.f.' + rec.gi : '';
+      const mark = _gdMark([...gardenOpTouches(op, g, f), ...(back ? [['led', back]] : [])]);
+      const gi = rec.own || back ? rec.gi : '';
+      if (rec.own) _gdDecorBack(rec);
+      if (back) delete g.led[back];                         // back in its owner's bag, whoever put it away: its own post too, so if the answer is lost it still comes back, once
       gardenOpApply(g, op, f, W);
-      return put(mark, { u: d.uid, noUndo: !!rec.own, ...(gi ? { gi } : {}) });
+      return put(mark, { u: d.uid, noUndo: !!rec.own || !!back, ...(gi ? { gi } : {}) });
     }
     case 'land': case 'build': case 'gate': case 'solve': return _glhLand(ev, put, m);
     case 'grab': case 'set': return typeof gardenDropIntent === 'function' ? gardenDropIntent(ev, put) : 'kind';   // (build phase 1: 94-garden-build-1do.js)
@@ -551,6 +559,7 @@ function _glhApply(ev, key) {
     default: return 'kind';
   }
 }
+function _gbOwnLed(g, k) { return !!g.led && Object.prototype.hasOwnProperty.call(g.led, k); }
 /** A friend buys a piece of this garden's land, or builds one of its things (full co-op, 2.75). They paid with their own coins before asking (their page's ledger); here it costs
  *  you nothing and is yours for good, the same rows your own purchase writes (land:<id> / feat:<id> in the ledger, so the snapshot, the map, the gates and what you can walk on
  *  follow by themselves). A thing that stands is set out near where they stand. No Undo: their coins are spent. Your own coins and level are never touched. */

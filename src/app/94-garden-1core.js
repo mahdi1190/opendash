@@ -906,7 +906,7 @@ function _gdPushUndo(label, mark) {
   _gd.undo.push({ label, mark, after: _gdMark([...paths.values()]), at: _gdNow() });
   if (_gd.undo.length > 40) _gd.undo.shift();
 }
-function gardenCanUndo() { return _gd.undo.length > (typeof gardenVisitUndoFloor === 'function' ? gardenVisitUndoFloor() : 0); }
+function gardenCanUndo() { return _gd.undo.length > (typeof gardenVisitUndoFloor === 'function' ? gardenVisitUndoFloor() : 0) || (typeof gardenVisitCanUndo === 'function' && gardenVisitCanUndo()); }
 /** Undo steps that would bring back this record or this queued post are over: it has moved on, and bringing it back would make two. */
 function _gdUndoDrop(map, id) {
   const before = _gd.undo.length;
@@ -957,8 +957,10 @@ function _gdUndoWhy(u, g) {
   return '';
 }
 function gardenUndo() {
-  const u = gardenCanUndo() && _gd.undo[_gd.undo.length - 1];
-  if (!u) { if (typeof toast === 'function') gardenToast('Nothing to undo in the garden.', { icon: 'undo-2' }); return false; }
+  // (build phase 1) on a friend's garden: what you put down there goes back into your bag (94-garden-visit-0world.js)
+  if (typeof gardenVisitCanUndo === 'function' && gardenVisitCanUndo()) return gardenVisitUndo();
+  const u = _gd.undo.length > (typeof gardenVisitUndoFloor === 'function' ? gardenVisitUndoFloor() : 0) && _gd.undo[_gd.undo.length - 1];
+  if (!u) { if (typeof toast === 'function') gardenToast(typeof gardenVisitOn === 'function' && gardenVisitOn() ? 'Nothing of yours to take back here yet.' : 'Nothing to undo in the garden.', { icon: 'undo-2' }); return false; }
   const g = _gdG();
   const why = _gdUndoWhy(u, g); if (why) { if (typeof toast === 'function') gardenToast(why, { icon: 'undo-2' }); return false; }
   _gd.undo.pop();

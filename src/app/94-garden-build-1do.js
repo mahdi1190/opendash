@@ -86,13 +86,33 @@ function gardenDropList() {
     // until then an old saved copy said the basket was at home while the host had it elsewhere: critic, 21 Nov); then the snapshot's own
     if (_gbdLive() && _gbd.heard && Array.isArray(_gbd.drl)) return _gbd.drl;
     const s = _gbdLive() && _glv.snap ? _glv.snap : typeof _gdv !== 'undefined' ? _gdv.clean : null;
+    // (knocking again after a reload: the host's last word this computer heard, when it is newer than the copy they last shared; the copy
+    // drew the basket where the host had set it down before, not where a friend left it since: critic, 21 Nov)
+    const R = _glvLive() ? null : _gbdHeardBefore();
+    if (R && !(s && Number(s.at) > R.at)) return R.l;
     return s && Array.isArray(s.dr) ? s.dr : [];
   }
   return gardenDropRows(_gdG());
 }
+/** The host's last word on where things lie, kept on this computer for the garden you visit (a page reloaded during a visit draws them
+ *  where they really are while it knocks again). Only a convenience: the host's next word always wins. */
+const GB_HEARD_KEY = 'odGardenDropsHeard';
+function _gbdHeardKeep(l) {
+  try { const fid = typeof _gdv !== 'undefined' ? _gdv.fid : ''; if (!fid) return; const sig = fid + JSON.stringify(l); if (sig === _gbd.keptSig) return; _gbd.keptSig = sig; _gbd.heardBefore = null; localStorage.setItem(GB_HEARD_KEY, JSON.stringify({ fid, at: _gscNow(), l })); } catch (e) { /* no storage: the host says again */ }
+}
+function _gbdHeardBefore() {
+  try {
+    const fid = typeof _gdv !== 'undefined' ? _gdv.fid : ''; if (!fid) return null;
+    if (_gbd.heardBefore && _gbd.heardBefore.fid === fid) return _gbd.heardBefore.v;
+    const o = JSON.parse(localStorage.getItem(GB_HEARD_KEY) || 'null');
+    const v = o && o.fid === fid && Number.isFinite(o.at) && _gscNow() - o.at < 3 * 86400000 ? { at: o.at, l: gardenDropClean(o.l) } : null;
+    _gbd.heardBefore = { fid, v }; return v;
+  } catch (e) { return null; }
+}
 /** Does this garden say where its things lie (a garden on this version)? An older host's garden: what friends set down is only for the visit. */
 function gardenDropKnown() {
   if (!_gbdVisit()) return true;
+  if (!_glvLive() && _gbdHeardBefore()) return true;
   if (_gbdLive() && !_glv.snap && !_gbd.heard) return false;   // (live, and nothing heard yet: an old saved copy is not the host's word; drawn when it comes)
   const s = _gbdLive() && _glv.snap ? _glv.snap : typeof _gdv !== 'undefined' ? _gdv.clean : null;
   return !!(s && (Array.isArray(s.dr) || s.drOk)) || !!_gbd.heard;
@@ -123,6 +143,24 @@ function gardenCarryWhy(key) {
   let who = '';
   try { const A = /^w\d+$/.test(by) ? _gll.actors.get(Number(by.slice(1))) : [..._gll.actors.values()].find(a => a.f === by); if (A && A.n) who = String(A.n).split(/\s+/)[0]; else if (by === '@host' && _gbdVisit() && typeof _gdvFirst === 'function') who = _gdvFirst() || ''; } catch (e) { /* someone */ }
   return who ? `${who} is carrying that.` : 'Someone is carrying that already.';
+}
+/** E pressed beside a friend who is carrying something (it is in their arms, so no prompt offers it), with nothing nearer to do than
+ *  them: who has it, in plain words, or ''. near: the prompt's row, if one is showing (a seat or a stall nearer than the friend wins). */
+function gardenCarryHeldNear(near) {
+  if (_ga.carry || typeof _gll === 'undefined' || !_gll.actors || !_gll.actors.size || typeof _gw === 'undefined') return '';
+  const px = _gw.px, py = _gw.py, nd = near ? Math.hypot(near.x - px, (near.y - py) * 1.3) : Infinity;
+  let best = null, bd = Math.min(1.5, nd - 0.15);
+  for (const A of _gll.actors.values()) {
+    if (!A || A.me || A.rm || !Number.isFinite(A.x) || !Number.isFinite(A.y)) continue;
+    let key = A.carryId || '';
+    if (!key) for (const [k, by] of _gbd.held) if (by === 'w' + A.w || (A.f && by === A.f)) { key = k; break; }
+    if (!key) continue;
+    const d = Math.hypot(A.x - px, (A.y - py) * 1.3); if (d < bd) { bd = d; best = { A, key }; }
+  }
+  if (!best) return '';
+  const who = best.A.n ? String(best.A.n).split(/\s+/)[0] : 'Your friend', t = gardenCarryThing(best.key), K = t && GARDEN_KINDS[t.kind];
+  const name = K && K.name ? String(K.name).replace(/^the /i, '').toLowerCase() : 'that';
+  return `${who} is carrying the ${name}. When they set it down, you can pick it up.`;
 }
 /** You pick it up. At home: saved at once (it no longer lies anywhere). On a visit: asked of the host, carried at once; if the host says
  *  someone else got it first, it leaves your arms again (gardenCarryRefused). Returns '' or why not. */
@@ -371,7 +409,7 @@ function gardenDropIn(ev) {
   if (!ev || !_gbdLive()) return;
   const l = gardenDropClean(ev.l);
   // kept whether or not the whole garden has come yet (a reloaded page: its snapshot is asked for, 94-garden-live-8sync.js)
-  _gbd.drl = l;
+  _gbd.drl = l; _gbdHeardKeep(l);
   if (_glv.snap) _glv.snap.dr = l;   // (in place: a new snapshot object would send the world's scan and the visit's model round again, 40 ms, for a list they do not read)
   _gbd.heard = performance.now();
   _gbd.held.clear();
@@ -382,7 +420,7 @@ function gardenDropIn(ev) {
 /** The whole garden has come from the host (gl:snap): its list of what lies about is the latest word. */
 function gardenDropSnapIn(snap) {
   if (!snap || !Array.isArray(snap.dr)) return;
-  _gbd.drl = snap.dr; _gbd.heard = performance.now(); _gbd.memo = null;
+  _gbd.drl = snap.dr; _gbd.heard = performance.now(); _gbd.memo = null; _gbdHeardKeep(snap.dr);
   setTimeout(() => { try { gardenDropShow(true); } catch (e) { /* next tick */ } }, 0);
 }
 /** The fingerprint of what lies about (gl:sum h3): the same from what the host has and what a guest was told. */

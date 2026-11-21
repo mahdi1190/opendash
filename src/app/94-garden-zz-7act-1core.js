@@ -282,7 +282,10 @@ function gartActFrame() {
   const near = opts.find(o => o.key === _ga.pickKey) || opts[0] || null;
   _ga.opts = opts;
   if (!near) { _ga.near = null; _ga.pickKey = null; el.hidden = true; _gaChooser(null); return; }
-  if (!_ga.near || _ga.near.key !== near.key) { _ga.near = near; el.innerHTML = `<kbd>E</kbd><span>${esc(_gaWords(near))}</span>`; el.setAttribute('aria-label', _gaWords(near) + ' (E)'); }
+  // (the same thing can be somewhere else now: a basket a friend set down while this page was loading keeps its key, so the newest row is
+  // always the prompt's, or it stayed over the old spot: critic, 21 Nov)
+  const same = !!_ga.near && _ga.near.key === near.key; _ga.near = near;
+  if (!same) { el.innerHTML = `<kbd>E</kbd><span>${esc(_gaWords(near))}</span>`; el.setAttribute('aria-label', _gaWords(near) + ' (E)'); }
   el.hidden = false; _gaChooser(opts.length > 1 ? opts : null); _gaPlace();
 }
 /** What is in reach, as choices: one per thing and move (the nearest of a bench's two places), the best first, at most four. */
@@ -335,6 +338,9 @@ function gartActInteract() {
   if (_ga.carry && !(_ga.cur && _ga.cur.doing)) { gartActSetDown(); return true; }
   if (_ga.cur && _ga.cur.doing) { gartActStop(); return true; }
   if (!(_ga.near && _ga.near.carry) && typeof gardenCarryLost === 'function' && gardenCarryLost()) return true;   // (build phase 1: a friend got it first)
+  // (a thing a friend is carrying right beside you, with nothing nearer to do: who has it, in a line, and E does nothing else; the stall
+  // or seat a step further on does not open in its place: critic, 21 Nov)
+  if (!(_ga.near && _ga.near.carry) && typeof gardenCarryHeldNear === 'function') { const why = gardenCarryHeldNear(_ga.near && _ga.el && !_ga.el.hidden ? _ga.near : null); if (why) { try { gardenToast(why, { icon: 'hand' }); } catch (e) { /* fine */ } return true; } }
   if (!_ga.near || !_ga.el || _ga.el.hidden) return false;
   const near = _ga.near, done = gartActRun(near.act, near);
   return done || !!near.carry;   // (a pick-up refused, someone has it: said in a line, and E does nothing else, never the stall beside it)

@@ -267,7 +267,14 @@ function _glvResult(b) {
       gardenToast(`${name} is part of ${_gdvFirst()}’s garden now.${where} Thank you for chipping in!`, { icon: b.t === 'land' ? 'trees' : 'hammer', timeout: where ? 10000 : 6000 });
     }
     if (b.t === 'catch') _glvGotBug(b.u, b.item);
-    if (P && b.t === 'take' && b.u) { const d = g.led['gl.o.' + b.u]; if (d && d.to === _glv.fid) { delete g.led['gl.o.' + b.u]; _gscSaveGarden(); } }   // back in your bag (a post says the same, if this answer is lost)
+    if (P && (b.t === 'take' || b.t === 'dig') && b.u) {   // back in your bag (a post says the same, if this answer is lost); a gift or a seed you take back too
+      const d = g.led['gl.o.' + b.u];
+      if (d && d.to === _glv.fid) {
+        delete g.led['gl.o.' + b.u]; if (g.gv) delete g.gv[b.u]; _gscSaveGarden();
+        const def = P.f && (b.t === 'dig' ? gardenPlant(P.f.p) : gardenDecor(P.f.p));
+        if (def && typeof gardenToast === 'function') gardenToast(b.t === 'dig' ? `The ${def.name.toLowerCase()} seed is back in your bag.` : `The ${def.name.toLowerCase()} ${/s$/i.test(def.name) ? 'are' : 'is'} back in your bag.`, { icon: 'package' });
+      }
+    }
     if (P && b.t === 'give' && b.u && b.p && gardenDecor(b.p)) {
       // given for good: it stays spent. (If a week's refund already handed it back, this is where it leaves your bag again.)
       const d = g.led['gl.o.' + b.u];
