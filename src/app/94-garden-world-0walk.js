@@ -762,7 +762,27 @@ function _gwLos(a, b, m) {
  * Move the feet by (dx, dy) cells without ever stopping dead on something: the whole step if it is open, else each axis on its own
  * (slide along the wall), else step sideways a few pixels round the corner that caught the feet. Returns whether they moved.
  */
+/* A diagonal press along a bent edge (the east coast's banks, 21 Nov 2026) could have the bank's slide and the wall's slide take
+ * turns, a frame up the edge and a frame down it: the feet shook in place while they crept on. Under the same press, a step whose
+ * along-the-edge part turns back against the frame before, straight after a full step, keeps only its part that goes on (when
+ * that spot is open): the creep stays and the shake goes. Never two short steps in a row, so it never stops the feet. */
 function _gwMoveBy(dx, dy) {
+  const W = GARDEN_WORLD, x0 = _gw.px, y0 = _gw.py, sx = Math.sign(dx), sy = Math.sign(dy), D = _gw.slideDamp;
+  const moved = _gwMoveByEdge(dx, dy);
+  if (!(sx && sy)) { _gw.slideDamp = null; return moved; }
+  const stepPx = Math.hypot(dx * W.cellW, dy * W.cellH), same = D && D.sx === sx && D.sy === sy && D.x === x0 && D.y === y0;
+  let mx = (_gw.px - x0) * W.cellW, my = (_gw.py - y0) * W.cellH;
+  if (moved && same && D.fast) {
+    const turnX = Math.abs(mx) > .2 && D.lx && Math.sign(mx) !== D.lx, turnY = Math.abs(my) > .2 && D.ly && Math.sign(my) !== D.ly;
+    if (turnX !== turnY) {
+      const nx = turnX ? x0 : _gw.px, ny = turnY ? y0 : _gw.py;
+      if ((nx !== x0 || ny !== y0) && _gwFree(nx, ny)) { _gw.px = nx; _gw.py = ny; if (turnX) mx = 0; else my = 0; }
+    }
+  }
+  _gw.slideDamp = { sx, sy, x: _gw.px, y: _gw.py, lx: Math.abs(mx) > .2 ? Math.sign(mx) : same ? D.lx : 0, ly: Math.abs(my) > .2 ? Math.sign(my) : same ? D.ly : 0, fast: Math.hypot(mx, my) >= stepPx * .15 };
+  return moved;
+}
+function _gwMoveByEdge(dx, dy) {
   const W = GARDEN_WORLD, x0 = _gw.px, y0 = _gw.py;
   const shore = _gwShoreSlide(x0, y0, dx, dy, GW_FOOT.x, GW_FOOT.y, _gwFree, _gwGridNow(), _gw.shoreMove || (_gw.shoreMove = {}));
   // how far a candidate gets the way you are pressing, as a share of the step

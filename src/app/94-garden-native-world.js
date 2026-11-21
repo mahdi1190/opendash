@@ -157,7 +157,7 @@ window.GardenNativeWorld = (function () {
     const effectIds = new WeakMap(), creatureMotion = new WeakMap();
     const chunkWidth = W.cellW * 4, chunkHeight = W.cellH * 6;
     const route = scene.add.graphics(); route.setDepth(89000); root.add(route);
-    let model = null, modelKey = '', terrainKey = '', terrainVisit = '', terrainLater = false, terrainStillAt = 0, terrainLawnMemo = null, shorelineRevision = 0, sorted = false, dead = false, routeKey = '', fishZoom = 1, wasFishing = false, fishViewMode = '', playerViewKey = '', playerProfile = null, playerWardrobe = null, visibleStatic = 0, visibleTerrain = 0, cacheQuality = 0, terrainBaseQuality = 1, terrainBaseReady = 0;
+    let model = null, modelKey = '', terrainKey = '', terrainVisit = '', terrainLater = false, terrainFlush = false, terrainRest = '', terrainStillAt = 0, terrainLawnMemo = null, shorelineRevision = 0, sorted = false, dead = false, routeKey = '', fishZoom = 1, wasFishing = false, fishViewMode = '', playerViewKey = '', playerProfile = null, playerWardrobe = null, visibleStatic = 0, visibleTerrain = 0, cacheQuality = 0, terrainBaseQuality = 1, terrainBaseReady = 0;
     let camera = { x: 0, y: 0, w: 800, h: 600, scale: 1, left: 0, top: 0 }, zoomInputAt = 0, activityCamera = null, cameraUiMode = '', cameraUiZoomIn = null, cameraUiZoomOut = null, size = { w: options.width || scene.scale.width || 1000, h: options.height || scene.scale.height || 700 };
     const playerNode = element(scene, 'g', { class: 'gd-player', 'data-live': '1' });
     // The Painted village stands the figure in the scenes' soft contact shadow; the pale halo read as a sticker's edge (94-garden-art-g-paint.js).
@@ -1201,8 +1201,11 @@ window.GardenNativeWorld = (function () {
       // from what you find on a walk) waits to be drawn until you stop: drawing the whole ground again is far longer than a
       // frame, and walking must never stall. The walk itself already follows the new land; only the paint waits.
       const visitKey = m.visit ? m.visit.key : '', walkingNow = !!terrainKey && visitKey === terrainVisit && typeof _gw !== 'undefined' && !!(_gw.moving || (_gw.path && _gw.path.length) || (_gw.keys && _gw.keys.size));
-      if (terrainKey !== tk && walkingNow) terrainLater = true;
-      else if (terrainKey !== tk) { terrainKey = tk; terrainVisit = visitKey; terrainLater = false; drawTerrain(m, sc, lake, cultivated, decks); }
+      // (vf-perf) standing too, a change of land is drawn a moment later, in a task of its own: drawn in the same task as the new
+      // walking grid and the rest of this sync, a level-up held the picture for over half a second (a CPU profile, 21 Nov 2026)
+      const tkRest = [sc.season, sc.tod, designRev, surfaceKey, lake && lake.revision, deckKey].join('|');   /* (all but the level's land: a change there, a design or a new hour, is drawn at once) */
+      if (terrainKey !== tk && (walkingNow || (terrainKey && visitKey === terrainVisit && !terrainFlush && tkRest === terrainRest))) terrainLater = true;
+      else if (terrainKey !== tk) { terrainKey = tk; terrainRest = tkRest; terrainVisit = visitKey; terrainLater = false; drawTerrain(m, sc, lake, cultivated, decks); }
       shorelineRevision = lake && lake.revision || 0;
       const keep = new Set(), modelPlants = new Map(m.plants.map(p => [p.uid, p])), modelDecor = new Map(m.decor.map(p => [p.uid, p]));
       const add = (id, html, metadata, depth, parent) => { if (!html) return; keep.add(id); return nodeDrawing(id, html, metadata, depth, parent); };
@@ -1842,7 +1845,7 @@ window.GardenNativeWorld = (function () {
       // dashboard repaint. Ordinary swimming keeps this resident revision.
       if (model && typeof gardenLakeGeometry === 'function' && gardenLakeGeometry(model).revision !== shorelineRevision) sync(model);
       // (village fix round 3) the ground held back while walking is drawn once you have stood still for a moment
-      if (terrainLater && model && !(_gw.moving || (_gw.path && _gw.path.length) || (_gw.keys && _gw.keys.size))) { if (!terrainStillAt) terrainStillAt = time; else if (time - terrainStillAt > 350) { terrainStillAt = 0; modelKey = ''; sync(model); } } else terrainStillAt = 0;
+      if (terrainLater && model && !(_gw.moving || (_gw.path && _gw.path.length) || (_gw.keys && _gw.keys.size))) { if (!terrainStillAt) terrainStillAt = time; else if (time - terrainStillAt > 350) { terrainStillAt = 0; modelKey = ''; terrainFlush = true; try { sync(model); } finally { terrainFlush = false; } } } else terrainStillAt = 0;
       _gw.frameActive = true; _gw.frameGrid = null; _gw.framePrefs = _gdpPrefs();
       try {
         if (editorPaint) { const paint = editorPaint; editorPaint = null; paint(); }

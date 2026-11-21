@@ -176,8 +176,11 @@ window.GardenPaintTerrainKit = (function () {
         if (!ch.job) { const w = Math.ceil((ch.bb[2] - ch.bb[0]) * K), h = Math.ceil((ch.bb[3] - ch.bb[1]) * K), c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d'); cx.setTransform(K, 0, 0, K, -ch.bb[0] * K, -ch.bb[1] * K); ch.job = { c, cx, B: brush(cx), next: 0, ms: 0 }; }
         const J = ch.job, cx = J.cx;
         while (J.next < ch.ops.length) {
-          const o = ch.ops[J.next++];
+          // (vf-perf) an op timed before that would not fit in what is left of this slice waits for the next one (one alone may)
+          if (slice && performance.now() > s + .5 && ch.ops[J.next].costT > slice - (performance.now() - s)) break;   /* (costT: its ms here, kept apart from the ground baker's cost) */
+          const o = ch.ops[J.next++], o0 = performance.now();
           ok(() => { cx.save(); if (o.clip) { cx.clip(o.clip, 'evenodd'); } o.draw(J.B, rng(o.seed || 1), ch.bb); cx.restore(); cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over'; cx.filter = 'none'; });
+          { const od = performance.now() - o0; if (!(o.costT >= od)) o.costT = od; }
           if (slice && performance.now() - s > slice) break;
         }
         J.ms += performance.now() - s; sliceWorst = Math.max(sliceWorst, performance.now() - s);
