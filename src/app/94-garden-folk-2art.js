@@ -31,19 +31,37 @@ function _vfaSmoke(x, y) {
   // three puffs that rise and fade in turn (gda-ripple's softness, a rise of their own)
   return `<g class="vfa-smoke" transform="translate(${_vfaN(x)} ${_vfaN(y)})"><circle class="vfa-puff vfa-p1" cx="0" cy="-4" r="3.2" fill="#e8e4dc" opacity=".55"/><circle class="vfa-puff vfa-p2" cx="2" cy="-11" r="4.2" fill="#e4e0d8" opacity=".4"/><circle class="vfa-puff vfa-p3" cx="-1" cy="-19" r="5.2" fill="#dedad2" opacity=".26"/></g>`;
 }
+/** A tapered root along a cubic P (4 points) from width w0 to w1: the two edges, closed (bark, half buried: painted over by turf). */
+function _vfaTaper(P, w0, w1) {
+  const pt = (u) => { const v = 1 - u; return [0, 1].map(k => v * v * v * P[0][k] + 3 * v * v * u * P[1][k] + 3 * v * u * u * P[2][k] + u * u * u * P[3][k]); };
+  const A = [], B = [];
+  for (let i = 0; i <= 12; i++) { const u = i / 12, p = pt(u), q = pt(Math.min(1, u + 0.02)), o = pt(Math.max(0, u - 0.02)), dx = q[0] - o[0], dy = q[1] - o[1], n = Math.hypot(dx, dy) || 1, w = (w0 + (w1 - w0) * u) / 2; A.push([p[0] - dy / n * w, p[1] + dx / n * w]); B.push([p[0] + dy / n * w, p[1] - dx / n * w]); }
+  return 'M' + A.concat(B.reverse()).map(p => _vfaN(p[0]) + ' ' + _vfaN(p[1])).join('L') + 'Z';
+}
+/** A root painted in bark tones with a lit edge and moss on its back. */
+function _vfaRoot(r, P, w0, w1) {
+  const m = P.map(p => [p[0] - 0.8, p[1] - 1]);
+  return `<path d="${_vfaTaper(P, w0, w1)}" fill="#4a3624"/><path d="${_vfaTaper(m, w0 * 0.66, w1 * 0.6)}" fill="#785c40"/><path d="${_vfaTaper(m.map(p => [p[0] - 1, p[1] - 0.8]), w0 * 0.26, w1 * 0.3)}" fill="#957652" opacity=".7"/>`
+    + `<path d="M${_vfaN(P[0][0])} ${_vfaN(P[0][1] - 1)}C${_vfaN(P[1][0])} ${_vfaN(P[1][1] - 1.6)} ${_vfaN(P[2][0])} ${_vfaN(P[2][1] - 1.6)} ${_vfaN(P[3][0])} ${_vfaN(P[3][1] - 1)}" pathLength="100" stroke="#7e8e3c" stroke-width="1.6" stroke-dasharray="5 13" stroke-dashoffset="-${Math.round(r() * 12)}" fill="none" opacity=".7"/>`;
+}
 const VALE_FOLK_ART = Object.freeze({
   burrow: () => {
     const r = _vfaR('burrow');
     let s = '<ellipse cx="2" cy="1.5" rx="58" ry="7.5" fill="#1a2010" opacity=".2"/>';
     // the bank: shade silhouette, then the lit turf laid over it toward the sun (upper left), then the light glaze
-    s += '<path d="M-56 2C-52 -10 -42 -30 -20 -40C-4 -47 16 -46 32 -36C46 -27 54 -12 58 2Z" fill="#55602e"/>';
-    s += '<path d="M-53 1C-49 -10 -40 -28 -20 -38C-5 -44.5 14 -44 29 -35C42 -27 50 -13 53 1Z" fill="#77843e"/>';
+    // (round 2) the shaded side falls away from the sun (lower right), not a dark ring round the whole bank
+    s += '<path d="M-53 2C-49 -9 -40 -27 -18 -37C-3 -43.5 16 -43 31 -34C44 -26 52 -12 56 2Z" fill="#5a6430"/>';
+    s += '<path d="M-54 1C-50 -10 -41 -28 -21 -38.6C-6 -45 13 -44.6 28 -36C40 -28 47 -14 49 1Z" fill="#77843e"/>';
     s += '<path d="M-46 -12C-38 -26 -26 -35 -12 -39C-24 -31 -33 -22 -38 -10Z" fill="#a8ae5a" opacity=".55"/>';
     s += _vfaTufts(r, -40, 40, -38, 9, ['#5e6a2c', '#7a8a3a', '#8e9440']).replace(/<path /g, '<path opacity=".9" ') + _vfaStrokes(r, -2, -26, 40, 14, 70, 3.2, -0.3, '#98a050', 0.9, 0.55) + _vfaStrokes(r, 10, -18, 38, 12, 40, 2.6, 0.4, '#465a2a', 0.8, 0.45);
     // soil worn bare round the door, the roots that frame it
     s += '<path d="M-22 2C-24 -10 -20 -27 -2 -31C16 -33 24 -18 24 2Z" fill="#7a5a3a"/><path d="M-19 2C-21 -9 -17 -24 -2 -28C13 -29.6 20 -17 20.4 2Z" fill="#94704a"/>';
     s += _vfaStrokes(r, 0, -12, 18, 14, 26, 2, 1.2, '#6a4a2e', 0.7, 0.55);
-    s += '<path d="M-21 -10Q-26 -18 -31 -17M-16 -25Q-20 -34 -27 -35M18 -22Q24 -29 31 -27M21 -9Q27 -12 33 -9" stroke="#5a3a20" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M-21 -10Q-26 -18 -31 -17M18 -22Q24 -29 31 -27" stroke="#8a6440" stroke-width=".7" fill="none"/>';
+    // roots out of the bank either side of the door, thick where they leave the earth, sinking into the turf (tapered, half buried)
+    s += _vfaRoot(r, [[-18, -22], [-24, -28], [-32, -30], [-40, -24]], 5.4, 1.4) + _vfaRoot(r, [[-20, -6], [-26, -12], [-32, -12], [-37, -7]], 4.6, 1.2) + _vfaRoot(r, [[17, -24], [24, -31], [32, -30], [38, -24]], 5, 1.3) + _vfaRoot(r, [[20, -8], [26, -12], [31, -10], [35, -6]], 4.2, 1.1);
+    s += `<ellipse cx="-34" cy="-27.6" rx="3" ry="1.6" fill="#77843e"/><ellipse cx="33" cy="-27.6" rx="3" ry="1.6" fill="#77843e"/>`;
+    // grass blades standing proud along the bank's skyline (its edge is grass, not a drawn line)
+    { let bl = ''; for (let i = 0; i < 44; i++) { const a = Math.PI * (0.05 + 0.9 * r()), x = -Math.cos(a) * 50, y = -Math.sin(a) * 41 + 1, h = 3 + r() * 5, l = (r() - 0.5) * 3; bl += `M${_vfaN(x)} ${_vfaN(y)}q${_vfaN(l * 0.4)} ${_vfaN(-h * 0.6)} ${_vfaN(l)} ${_vfaN(-h)}`; } s += `<path d="${bl}" stroke="#6e7a30" stroke-width="1" fill="none" stroke-linecap="round"/><path d="${bl}" stroke="#a8ae5a" stroke-width=".45" fill="none" opacity=".7" transform="translate(-.4 -.4)"/>`; }
     // the round door: a dark frame, planks, the knob, a little round window
     s += '<path d="M-13 1V-12A13 13 0 0 1 13 -12V1Z" fill="#2e1e12"/><path d="M-11 1V-12A11 11 0 0 1 11 -12V1Z" fill="#8a5630"/>';
     s += '<path d="M-5.5 1V-21.6M0 1V-23M5.5 1V-21.6" stroke="#5e3a1e" stroke-width=".9"/><path d="M-11 -6H11M-11 -15H11" stroke="#6a4426" stroke-width=".7" opacity=".7"/>';

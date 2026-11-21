@@ -240,7 +240,7 @@ function _gcaHollin(K) {
 function _gcaAngler(K) {
   const { A, P, S, form, strokes, eye, G } = K, coat = '#5f6a4a', skin = '#e2b894', boots = '#3e4a3a', ct = K.T(coat), sk = K.T(skin);
   const legs = _gcaLegs(K, { x: 0, gap: 3.4, hy: -20, w: 4.4, c: '#4a4a3e', fc: boots, foot: 3.6, toe: 4.2 });
-  const rod = K.fish ? '' : S('#7a5a34', 1.2, 'M-10 -20L-28 -64', 1) + S('#c8a86a', 0.4, 'M-9.6 -21L-27.6 -63.4', 0.7) + S('#e8e4dc', 0.25, 'M-28 -64Q-34 -40 -30 -18', 0.6) + P('#4a3a2a', A.circ(-11, -24, 1.6));
+  const rod = K.fish ? '' : S('#7a5a34', 1.2, 'M-10 -20L-28 -64', 1) + S('#c8a86a', 0.4, 'M-9.6 -21L-27.6 -63.4', 0.7) + S('#e8e4dc', 0.3, 'M-28 -64Q-26.4 -61 -24.6 -59.4', 0.6) + P('#4a3a2a', A.circ(-11, -24, 1.6));
   let body = form(coat, 'M-10 -16C-12 -30 -9 -43 1 -45C10 -45 12 -32 11 -16C6 -13 -5 -13 -10 -16z', 'M-9.4 -17C-11.2 -30 -8.4 -41.6 0.6 -43.4C9 -43.4 10.6 -31.4 10.2 -17.2C5.4 -14.6 -4.6 -14.6 -9.4 -17z', 'M-8.4 -20C-9.6 -29 -7.6 -37 -3 -40.6C-5.6 -34 -6.4 -27 -6.2 -19.6z', 0.5);
   body += S(ct[1], 0.6, 'M1.4 -43L2.4 -16M-8 -26q4 1.4 8 0', 0.7) + P(ct[1], A.rrect(-8, -28, 6.4, 5, 1.2)) + P(ct[3], A.circ(3.6, -36, 0.7) + A.circ(3.8, -30, 0.7) + A.circ(4, -24, 0.7), 0.8) + strokes(0, -30, 9, 12, 20, 1.8, 0.1, ct[2], 0.45, 0.2);
   // the head bowed a little: a weathered face, a long white beard, heavy brows, the battered hat
