@@ -1,5 +1,5 @@
 /* ============================================================
-   BUILD YOUR VALE, phase 1 on the page (C:/tmp/r3/design/build-PLAN.md 2.1 and 7): gardenDo, and things you put down stay.
+   BUILD YOUR VALE, phase 1 on the page (the build plan, build-PLAN.md 2.1 and 7): gardenDo, and things you put down stay.
 
      gardenDo(op, o)        the one entry point for a change to YOUR garden: checks (gardenOpCheck), applies once (gardenOpApply),
                             saves once, offers Undo, and Undo is the op's inverse. o: { msg, label, icon, quiet, pre () -> extra

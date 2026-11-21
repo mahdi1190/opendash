@@ -1,5 +1,5 @@
 /* ============================================================
-   BUILD YOUR VALE, phase 1 (C:/tmp/r3/design/build-PLAN.md sections 2.1 and 7): ONE WAY TO CHANGE THE GARDEN.
+   BUILD YOUR VALE, phase 1 (the build plan, build-PLAN.md sections 2.1 and 7): ONE WAY TO CHANGE THE GARDEN.
    PURE: no DOM, no state of its own, no clock. Every change to a garden is one op, and every place that changes a garden
    runs this same file, so they can never disagree about what is allowed:
      the player's page and the host's page (94-garden-build-1do.js gardenDo, 94-garden-live-3host.js),

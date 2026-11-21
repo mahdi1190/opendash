@@ -1,5 +1,5 @@
 /* ============================================================
-   THE VALE'S FOLK, the rules (C:/tmp/r3/design/npcs-PLAN.md, Phase 1 "the vale is lived in"). Pure: no page, no DOM, no clock of its own.
+   THE VALE'S FOLK, the rules (the folk plan, npcs-PLAN.md, Phase 1 "the vale is lived in"). Pure: no page, no DOM, no clock of its own.
    The same code is loaded by tools/folk-audit.mjs in node, so what the audit says is what the game does.
 
    ONE REGISTRY. VALE_FOLK holds one row per villager: who they are, how they look (their painted cast id), the KIND of home they want
