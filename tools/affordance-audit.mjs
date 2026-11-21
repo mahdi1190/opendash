@@ -143,6 +143,14 @@ for (const t of things) {
     row.acts.push({ act: s.act, stand: [round(s.stand.x), round(s.stand.y)], deg: s.deg, walkable: walk, reachable: rch, ok, needs: s.needs || undefined });
     if (!ok) report.faults.push(`${t.id} (${t.kind}) ${s.act}: stand ${round(s.stand.x)},${round(s.stand.y)} is ${!walk && !edge ? 'not walkable (' + (c ? (c.freshwater ? 'water' : c.solid ? 'rock' : c.staticId ? c.staticId : !c.land ? 'off the land' : '?') : 'outside') + ')' : 'not reachable from the arrival point'}`);
   }
+  // its upper floors (94-garden-zz-7act-3height.js): each way up starts at a foot you can walk to (placed on the layout's foot here; the
+  // game places it on the thing as drawn, within a few px of this)
+  for (const L of K.levels || []) for (const w of L.ways || []) {
+    const HH = 41.44, fx = t.x + w.foot[0] * HH / (W.cellW || 48), fy = t.y + w.foot[1] * HH / (W.cellH || 30);
+    const walk = !blocks(fx, fy), rch = reachable(fx, fy) || nearReach(fx, fy, 0.6), ok = walk && rch;
+    row.acts.push({ act: 'up to ' + (L.name || L.id) + ' (' + (w.by || 'ladder') + (w.inside ? ', inside' : '') + ')', stand: [round(fx), round(fy)], walkable: walk, reachable: rch, ok });
+    if (!ok) report.faults.push(`${t.id} (${t.kind}) the way up to ${L.name || L.id}: its foot ${round(fx)},${round(fy)} is ${!walk ? 'not walkable' : 'not reachable from the arrival point'}`);
+  }
   report.things.push(row);
 }
 // what the painters draw as things of their own (GardenPaintVale thing({ key })): the game finds them by their painted foot and gives
