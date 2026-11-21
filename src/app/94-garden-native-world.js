@@ -158,7 +158,7 @@ window.GardenNativeWorld = (function () {
     const chunkWidth = W.cellW * 4, chunkHeight = W.cellH * 6;
     const route = scene.add.graphics(); route.setDepth(89000); root.add(route);
     let model = null, modelKey = '', terrainKey = '', terrainVisit = '', terrainLater = false, terrainFlush = false, terrainRest = '', terrainStillAt = 0, terrainLawnMemo = null, shorelineRevision = 0, sorted = false, dead = false, routeKey = '', fishZoom = 1, wasFishing = false, fishViewMode = '', playerViewKey = '', playerProfile = null, playerWardrobe = null, visibleStatic = 0, visibleTerrain = 0, cacheQuality = 0, terrainBaseQuality = 1, terrainBaseReady = 0;
-    let camera = { x: 0, y: 0, w: 800, h: 600, scale: 1, left: 0, top: 0 }, zoomInputAt = 0, activityCamera = null, cameraUiMode = '', cameraUiZoomIn = null, cameraUiZoomOut = null, size = { w: options.width || scene.scale.width || 1000, h: options.height || scene.scale.height || 700 };
+    let camera = { x: 0, y: 0, w: 800, h: 600, scale: 1, left: 0, top: 0 }, camLead = { x: 0, y: 0, px: null, py: null }, zoomInputAt = 0, activityCamera = null, cameraUiMode = '', cameraUiZoomIn = null, cameraUiZoomOut = null, size = { w: options.width || scene.scale.width || 1000, h: options.height || scene.scale.height || 700 };
     const playerNode = element(scene, 'g', { class: 'gd-player', 'data-live': '1' });
     // The Painted village stands the figure in the scenes' soft contact shadow; the pale halo read as a sticker's edge (94-garden-art-g-paint.js).
     const paintedFigure = typeof gardenFigurePaintStyle === 'function' && gardenFigurePaintStyle() && typeof gardenFigureShadowSvg === 'function';
@@ -1372,6 +1372,8 @@ window.GardenNativeWorld = (function () {
       const path = _gwRoute({ x: _gw.px, y: _gw.py }, target);
       if (path == null) { _gw.path = []; _gw.then = null; _gw.goal = null; return false; }
       _gw.path = path; _gw.goal = target; _gw.then = then || null; _gw.sneak = !!opts.sneak; _gw.replan = false; _gw.repaths = 0; _gw.blockT = 0;
+      // (move360 round 3) a click walks or runs, chosen once for the whole way (more than seven cells or so: a run), never a beat of run that turns into a walk
+      { let L = 0, a = { x: _gw.px, y: _gw.py }; for (const q of path) { L += Math.hypot((q.x - a.x) * W.cellW, (q.y - a.y) * W.cellH); a = q; } _gw.clickRun = L > 330; }
       if (!opts.net) _gw.netting = null;
       if (typeof gardenLiveWalked === 'function') gardenLiveWalked(target);
       if (!path.length && typeof then === 'function') { _gw.then = null; then(true); }
@@ -1389,24 +1391,39 @@ window.GardenNativeWorld = (function () {
         const length = Math.hypot(dx * W.cellW, dy * W.cellH); ux = dx * W.cellW / length; uy = dy * W.cellH / length;
         if (typeof gartMoveSteer === 'function') [ux, uy] = gartMoveSteer(ux, uy, dt);   // a turning circle, not a snap (94-garden-zz-6move.js)
         _gw.sneak = keys.has('creep'); want = _gw.sneak ? GW_SPEED.sneak : (keys.has('shift') ? GW_SPEED.run : GW_SPEED.walk) * _gwWalkBonus(); direct = true;   // hold Shift to run, Z to creep
+        _gw.glide = { ux, uy };   // (move360) let go and you carry on a hair's step as you slow, the way you were going
       } else if (!pushed && !casting && _gw.hold && _gw.hold.steer) {
+        _gw.glide = null;
         const pt = point(_gw.hold.cx, _gw.hold.cy); if (pt) { dx = (pt.x - _gw.px) * W.cellW; dy = (pt.y - _gw.py) * W.cellH; distance = Math.hypot(dx, dy); if (distance > 10) { ux = dx / distance; uy = dy / distance; direct = true; want = Math.min(distance > 150 ? GW_SPEED.run : GW_SPEED.walk, Math.sqrt(2 * GW_ACC * distance) + 34); } }
       } else if (!pushed && !casting && _gw.path.length) {
         while (_gw.path.length > 1 && _gwLos({ x: _gw.px, y: _gw.py }, _gw.path[1], GW_CLEAR)) _gw.path.shift();
         target = _gw.path[0]; dx = (target.x - _gw.px) * W.cellW; dy = (target.y - _gw.py) * W.cellH; distance = Math.hypot(dx, dy); ux = dx / (distance || 1); uy = dy / (distance || 1);
+        _gw.glide = null;
+        // (move360) a click's walk rounds its corners: near a turn it already bends towards the next leg, so the way reads as a walk, not a robot's turn
+        if (_gw.path.length > 1 && distance < 20 && gardenMotionOn()) {
+          const nx = (_gw.path[1].x - target.x) * W.cellW, ny = (_gw.path[1].y - target.y) * W.cellH, nl = Math.hypot(nx, ny) || 1, k = 1 - distance / 20;
+          const bx = ux * (1 - k * .6) + nx / nl * k * .6, by = uy * (1 - k * .6) + ny / nl * k * .6, bl = Math.hypot(bx, by) || 1;
+          if (_gwFree(_gw.px + bx / bl * 6 / W.cellW, _gw.py + by / bl * 6 / W.cellH)) { ux = bx / bl; uy = by / bl; }
+        }
         let remaining = distance; for (let i = 1; i < _gw.path.length; i++) remaining += Math.hypot((_gw.path[i].x - _gw.path[i - 1].x) * W.cellW, (_gw.path[i].y - _gw.path[i - 1].y) * W.cellH);
-        want = Math.min(_gw.sneak ? GW_SPEED.sneak : (remaining > 170 ? GW_SPEED.run : GW_SPEED.walk) * _gwWalkBonus(), Math.sqrt(2 * GW_ACC * remaining) + 34);
+        want = Math.min(_gw.sneak ? GW_SPEED.sneak : (_gw.clickRun && remaining > 90 ? GW_SPEED.run : GW_SPEED.walk) * _gwWalkBonus(), Math.sqrt(2 * GW_ACC * remaining) + 34);
       }
+      if (want) _gw.gait = _gw.sneak ? 'c' : want >= GW_SPEED.run * _gwWalkBonus() * 0.97 && (_gw.spd || 0) > GW_SPEED.walk * _gwWalkBonus() * 0.9 ? 'r' : 'w';   // (round 3: the legs break into a run once the pace is past a walk, not from the first step)   // (round 2) the gait chosen, for the legs and for friends: slow ground no longer turns a run into a walk
       if (want && typeof gardenPlayWalk === 'function') want *= gardenPlayWalk();
-      _gw.spd = want ? (_gw.spd || 0) + clamp(want - (_gw.spd || 0), -GW_ACC * dt * 1.4, GW_ACC * dt) : 0;
+      // (move360) keys let go: a short glide to a stop (a walk stops in about 0.08 s and 6 px, a run in 0.13 s), never a dead halt mid-stride
+      const gliding = !want && !pushed && !casting && !_gw.path.length && !!_gw.glide && (_gw.spd || 0) > 3 && gardenMotionOn();
+      if (gliding) { ux = _gw.glide.ux; uy = _gw.glide.uy; direct = true; } else if (!want) _gw.glide = null;
+      _gw.spd = want ? (_gw.spd || 0) + clamp(want - (_gw.spd || 0), -GW_ACC * dt * 1.4, GW_ACC * dt) : gliding ? Math.max(0, _gw.spd - GW_ACC * 1.8 * dt) : 0;
       _gw.moving = false;
-      if (want && _gw.spd > 3) {
+      if ((want || gliding) && _gw.spd > 3) {
         const step = _gw.spd * dt;
         if (target && distance <= step) {
           _gw.px = target.x; _gw.py = target.y; _gw.path.shift(); _gw.moving = !!_gw.path.length;
           if (!_gw.path.length) { _gw.spd = 0; const fn = _gw.then; _gw.then = null; if (typeof fn === 'function') fn(true); }
-        } else { if (direct && typeof _gwCrossingSteer === 'function') { const steer = _gwCrossingSteer(ux, uy, step) || (typeof _gwDoorSteer === 'function' ? _gwDoorSteer(ux, uy) : null); if (steer) { ux = steer[0]; uy = steer[1]; } }   // (onto and along a crossing: 94-garden-world-0walk.js)
-          _gw.moving = _gwMoveBy(ux * step / W.cellW, uy * step / W.cellH); if (!_gw.moving) { _gw.blockT = (_gw.blockT || 0) + dt; if (!direct && _gw.blockT > .25) { _gw.blockT = 0; if (!_gwRepath()) { _gw.path = []; _gw.then = null; } } } else _gw.blockT = 0; }
+        } else { const ux0 = ux, uy0 = uy, x0 = _gw.px, y0 = _gw.py; let steered = false; if (direct && typeof _gwCrossingSteer === 'function') { const steer = _gwCrossingSteer(ux, uy, step) || (typeof _gwDoorSteer === 'function' ? _gwDoorSteer(ux, uy) : null); if (steer) { ux = steer[0]; uy = steer[1]; steered = true; } }   // (onto and along a crossing: 94-garden-world-0walk.js)
+          _gw.moving = _gwMoveBy(ux * step / W.cellW, uy * step / W.cellH);
+          // (round 2) what is left of a step steered onto a crossing's middle never goes back against the press (at the shut plank gate a south-east press crept you north)
+          if (_gw.moving && steered && ((_gw.px - x0) * W.cellW * ux0 + (_gw.py - y0) * W.cellH * uy0) < step * .15) { _gw.px = x0; _gw.py = y0; _gw.moving = false; } if (!_gw.moving) { _gw.blockT = (_gw.blockT || 0) + dt; if (!direct && _gw.blockT > .25) { _gw.blockT = 0; if (!_gwRepath()) { _gw.path = []; _gw.then = null; } } } else _gw.blockT = 0; }
         if (Math.abs(ux) > .3) _gw.face = ux > 0 ? 1 : -1;
       }
       if (pushed) _gw.moving = true;
@@ -1469,7 +1486,7 @@ window.GardenNativeWorld = (function () {
     function drawPlayer(time) {
       if (typeof gartPlayerStep === 'function') gartPlayerStep(_gw);
       const pose = typeof _GPL !== 'undefined' && _GPL.pose && Date.now() < _GPL.until ? _GPL.pose : '';
-      const appearance = [_gw.moving ? 1 : 0, _gw.face, typeof _GPL === 'undefined' ? 's' : _GPL.dir, pose, _gw.fishing && _gw.fishing.state !== 'idle' ? 1 : 0, _gd.rev, gardenMotionOn() ? 1 : 0].join('|');
+      const appearance = [_gw.moving ? 1 : 0, _gw.face, typeof _GPL === 'undefined' ? 's' : _GPL.dir + (_GPL.yaw == null ? '' : _GPL.yaw), typeof gartMoveMirror === 'function' ? gartMoveMirror() : 1, pose, _gw.fishing && _gw.fishing.state !== 'idle' ? 1 : 0, _gd.rev, gardenMotionOn() ? 1 : 0].join('|');
       if (appearance !== playerViewKey || playerProfile !== state.profile || playerWardrobe !== state.wardrobe || !playerInner.firstChild) {
         playerViewKey = appearance; playerProfile = state.profile; playerWardrobe = state.wardrobe;
         if (typeof gartPlayerPaint === 'function') gartPlayerPaint(playerInner, _gw);
@@ -1623,6 +1640,7 @@ window.GardenNativeWorld = (function () {
       const fit = fishing ? fishViewMode === 'fit' : activity ? activityCamera.mode === 'fit' : prefs.cam === 'fit';
       let vh = fit ? Math.max(height, width / ar) : GW_ZOOMS[clamp(Number.isInteger(Number(prefs.zoom)) && prefs.zoom != null ? Number(prefs.zoom) : typeof _gwCamDefaultIdx === 'function' ? _gwCamDefaultIdx() : 2, 0, GW_ZOOMS.length - 1)], vw = vh * ar;
       let x = _gw.px * W.cellW - vw / 2, y = W.sky + _gw.py * W.cellH - vh / 2 - 24 - (typeof gardenHeightView === 'function' ? gardenHeightView() : 0);   // (up on a floor or a ladder: the view goes up with you)
+      if (!fishing && !fit && !activity) { const z = Math.min(1, vh / 420); x += camLead.x * z; y += camLead.y * z; }
       if (fishing && !fit) {
         const f = _gw.fishing, fx = _gw.px * W.cellW, fy = W.sky + _gw.py * W.cellH - 25, bx = f.bx * W.cellW, by = W.sky + f.by * W.cellH;
         vh = Math.max(190, Math.abs(by - fy) + 130, (Math.abs(bx - fx) + 170) / ar) * fishZoom; vw = vh * ar; x = (fx + bx) / 2 - vw / 2; y = (fy + by) / 2 - vh / 2;
@@ -1642,7 +1660,19 @@ window.GardenNativeWorld = (function () {
     // Only the frame/HUD comparison reuses this private result. Public callers
     // still receive an independent cameraControls snapshot on every request.
     const cameraUiControls = {};
+    // (move360) the camera leads: it drifts ahead of you the way you walk (more when you run), so you see where you are going; it eases back when you stop
+    // (camLead is declared with the camera, near the top)
+    function leadCamera(dt, snap) {
+      const wx = _gw.px * W.cellW, wy = W.sky + _gw.py * W.cellH;
+      if (snap || camLead.px == null || !gardenMotionOn() || !(dt > 0)) { camLead.px = wx; camLead.py = wy; if (snap || !gardenMotionOn()) camLead.x = camLead.y = 0; return; }
+      const vx = (wx - camLead.px) / dt, vy = (wy - camLead.py) / dt; camLead.px = wx; camLead.py = wy;
+      const fast = Math.hypot(vx, vy) > 600;   // a jump (a door, a ride): no lead from it
+      const moving = !fast && _gw.moving && !(typeof gartActBusy === 'function' && gartActBusy());
+      const tx = moving ? clamp(vx * .42, -78, 78) : 0, ty = moving ? clamp(vy * .42, -52, 52) : 0, k = 1 - Math.exp(-dt * (moving ? 2.6 : 1.4));
+      camLead.x += (tx - camLead.x) * k; camLead.y += (ty - camLead.y) * k;
+    }
     function updateCamera(dt, snap) {
+      leadCamera(dt, snap);
       const prefs = _gdpPrefs(), target = cameraTarget(prefs), smooth = !snap && _gw.cam.init && gardenMotionOn(), mix = smooth ? 1 - Math.exp(-dt * 13) : 1;
       camera.x += (target.x - camera.x) * mix; camera.y += (target.y - camera.y) * mix;
       camera.w += (target.w - camera.w) * mix; camera.h += (target.h - camera.h) * mix;
@@ -1963,7 +1993,8 @@ window.GardenNativeWorld = (function () {
       const avatar = _gplAvatar(), gear = typeof _gplMyGear === 'function' ? _gplMyGear() : null, motion = _gartMotionOk(), key = JSON.stringify([avatar, gear, motion]);
       if (!playerPosePreparation || playerPosePreparation.key !== key) {
         const poses = [];
-        for (const pose of ['idle', 'stride']) for (const dir of ['s', 'n', 'e']) poses.push({ pose, dir });
+        // (move360) the sixteen ways round are nine drawings (the west mirrors the east): all of them, walking and standing, made while loading
+        for (const pose of ['stride', 'idle']) for (let yaw = 0; yaw <= 180; yaw += 22.5) poses.push({ pose, dir: typeof gplYawDir === 'function' ? gplYawDir(yaw) : yaw < 30 ? 's' : yaw > 150 ? 'n' : 'e', yaw });
         poses.push({ pose: 'fish', dir: 'e', stageRod: true });
         playerPosePreparation = { key, poses, next: 0, frame: -1 };
       }
