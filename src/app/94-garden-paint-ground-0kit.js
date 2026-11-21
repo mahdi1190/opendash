@@ -111,7 +111,7 @@ window.GardenPaintGround = (function () {
   function sweepGhosts() {
     const now = performance.now();
     for (let i = ghosts.length - 1; i >= 0; i--) {
-      const g = ghosts[i]; let gone = !g.im.active || now - g.t > 5000 || (g.tex && !g.scene.textures.exists(g.tex));
+      const g = ghosts[i]; let gone = !g.im.active || now - g.t > 20000 || (g.tex && !g.scene.textures.exists(g.tex));   // (vf-perf: the new layer bakes in the shared budget's slices, which can take longer than five seconds for a whole screen: the old picture stays until then)
       if (!gone) { let heir = null; for (const h of registry) if (h.scene === g.scene && Math.abs(h.depth - g.depth) < 1) { heir = h; if (h.readyIn(g.bb)) { gone = true; break; } } if (!heir && now - g.t > 1000) gone = true; }
       if (!gone) continue;
       ghosts.splice(i, 1); ok(() => g.im.destroy());

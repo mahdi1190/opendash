@@ -32,9 +32,10 @@ function gardenBakeRoom(cap, low) {
   // bare ground on the screen has left, so after a repaint the screen fills in first, whatever layer it belongs to
   if (low && S.tokens < burst * .6) return 0;
   let room = Math.min(cap || burst, S.tokens);
-  // while you walk, also no more than 6 ms between two drawn frames (a measured tour: more than that, and frames went missing),
+  // and no more than 6 ms between two drawn frames while you walk, 12 standing (a measured tour: more, and frames went missing),
   // unless no frame has come for a quarter second (a hidden page): then a slice now and then, so the work still ends
-  if (walking) { if (S.usedFrame !== S.frame) { S.usedFrame = S.frame; S.used = 0; } room = now - S.at > 250 ? Math.min(room, 6) : Math.min(room, 6 - S.used); }
+  // (standing too, 12 ms: a tour after a level-up showed a second of bake slices with no frame drawn between them)
+  { const per = walking ? 6 : 12; if (S.usedFrame !== S.frame) { S.usedFrame = S.frame; S.used = 0; } if (now - S.at > 250) { if (now - S.lastFree < 120) return 0; S.lastFree = now; room = Math.min(room, per); } else room = Math.min(room, per - S.used); }
   return Math.max(0, room);
 }
 function gardenBakeSpent(ms) { const S = _gbbState(); ms = Math.max(0, ms || 0); S.tokens = (S.tokens || 0) - ms; if (S.tokens < -40) S.tokens = -40; if (S.usedFrame !== S.frame) { S.usedFrame = S.frame; S.used = 0; } S.used += ms; }
