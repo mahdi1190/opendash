@@ -99,6 +99,28 @@ const GARDEN_ACTS = Object.freeze({
   // (round 3) the same climb up the treehouse's own painted ladder to its platform (192), and up the barn's side to the hay-loft door (96)
   ladderhi: { verb: 'Climb up to the treehouse', dir: 'n', ms: 11500, first: 'Climbed up into the treehouse.', sound: 'step', enter: _gaLadder(192) },
   ladderlo: { verb: 'Climb up to the hay loft', dir: 'n', ms: 7000, first: 'Climbed the ladder to the hay loft. It smells of summer.', sound: 'step', enter: _gaLadder(96) },
+  // (height) up and down a floor's ladder (94-garden-zz-7act-3height.js): the prompt's words; the figure climbs hand over hand
+  climbup: { verb: 'Climb up', dir: 'n', ms: 600, first: 'Climbed up high and looked out over the vale.', sound: 'step' },
+  climbdown: { verb: 'Climb down', dir: 'n', ms: 600, sound: 'step' },
+  stairup: { verb: 'Go up', dir: 'n', ms: 600, first: 'Went up the old stair and out on to the top.', sound: 'step' },
+  // hand over hand up the rungs, back to you: one hand up a rung and the opposite foot up after it, then the other side
+  climbing: { verb: '', dir: 'n', ms: 260, hold: true,
+    enter: { armL: [[1, { r: 166 }]], armR: [[1, { r: -150, sy: 0.86 }]], legL: [[1, { sy: 0.62 }]], kneeL: [[1, { sy: 1.15 }]] },
+    loop: { ms: 840, armL: [[0, { r: 166 }], [0.5, { r: 150, sy: 0.86 }, 'io'], [1, { r: 166 }, 'io']], armR: [[0, { r: -150, sy: 0.86 }], [0.5, { r: -166 }, 'io'], [1, { r: -150, sy: 0.86 }, 'io']],
+      legL: [[0, { sy: 0.62 }], [0.5, { sy: 1 }, 'io'], [1, { sy: 0.62 }, 'io']], kneeL: [[0, { sy: 1.15 }], [0.5, {}, 'io'], [1, { sy: 1.15 }, 'io']], legR: [[0, {}], [0.5, { sy: 0.62 }, 'io'], [1, {}, 'io']], kneeR: [[0, {}], [0.5, { sy: 1.15 }, 'io'], [1, {}, 'io']],
+      root: [[0, { y: 0 }], [0.25, { y: -1.4 }, 'io'], [0.5, { y: 0 }, 'io'], [0.75, { y: -1.4 }, 'io'], [1, { y: 0 }, 'io']] } },
+  // a friend's copy swimming (yours is posed stroke by stroke as you swim: gardenHeightBody): legs under, arms over in turn, the water at the chest
+  swimming: { verb: '', dir: 's', ms: 400, hold: true, prop: 'swimwater', propBehind: false,
+    enter: { legL: [[1, { sy: 0.06 }]], legR: [[1, { sy: 0.06 }]] },
+    loop: { ms: 1400, legL: [[0, { sy: 0.06 }], [1, { sy: 0.06 }]], legR: [[0, { sy: 0.06 }], [1, { sy: 0.06 }]], armL: [[0, { r: 40 }], [0.5, { r: 170 }, 'io'], [1, { r: 40 }, 'io']], armR: [[0, { r: -170 }], [0.5, { r: -40 }, 'io'], [1, { r: -170 }, 'io']], root: [[0, { y: 0 }], [0.5, { y: -1.2 }, 'io'], [1, { y: 0 }, 'io']] } },
+  swimmingside: { verb: '', dir: 'e', ms: 400, hold: true, prop: 'swimwater', propBehind: false,
+    enter: { legL: [[1, { sy: 0.06 }]], legR: [[1, { sy: 0.06 }]] },
+    loop: { ms: 1400, legL: [[0, { sy: 0.06 }], [1, { sy: 0.06 }]], legR: [[0, { sy: 0.06 }], [1, { sy: 0.06 }]], armL: [[0, { r: -60 }], [0.5, { r: -170 }, 'io'], [1, { r: -60 }, 'io']], armR: [[0, { r: -170 }], [0.5, { r: -60 }, 'io'], [1, { r: -170 }, 'io']], root: [[0, { y: 0 }], [0.5, { y: -1.2 }, 'io'], [1, { y: 0 }, 'io']] } },
+  swimout: { verb: 'Climb out', dir: 's', ms: 500 },
+  // up in a loft door (a floor of one spot): sat on the sill, legs swinging over the drop
+  loftsit: { verb: 'Sit in the doorway', dir: 's', ms: 700, hold: true, pet: 'sit', first: 'Sat up in the hay loft door, legs swinging, the smell of summer.',
+    enter: _gaHoldPose(Object.assign({}, _GA_SITP, { root: { y: 27 }, armL: { r: 26, sy: 0.8 }, armR: { r: -26, sy: 0.8 } }), 0.6),
+    loop: Object.assign(_GA_SITLOOP(2400), { root: [[0, { y: 27 }], [1, { y: 27 }]], armL: [[0, { r: 26, sy: 0.8 }], [1, { r: 26, sy: 0.8 }]], armR: [[0, { r: -26, sy: 0.8 }], [1, { r: -26, sy: 0.8 }]] }) },
   shake: { verb: 'Shake the tree', dir: 'n', ms: 1700, first: 'Shook a fruit tree. Something fell out.', sound: 'rustle', shake: true,
     enter: { up: _GA_K(8, (i) => [0.1 + i * 0.1, { r: i % 2 ? 4 : -4, x: i % 2 ? 1 : -1 }, 'io']).concat([[1, {}]]), armL: [[0.1, { r: 16, sy: 0.5 }, 'o'], [0.9, { r: 16, sy: 0.5 }], [1, {}]], armR: [[0.1, { r: -16, sy: 0.5 }, 'o'], [0.9, { r: -16, sy: 0.5 }], [1, {}]], root: _GA_K(8, (i) => [0.1 + i * 0.1, { x: i % 2 ? 1.4 : -1.4 }, 'l']).concat([[1, {}]]) } },
   bell: { verb: 'Ring the bell', dir: 'n', ms: 2200, prop: 'rope', propBehind: true, propGround: true, first: 'Rang the bell. Half the vale looked up.', sound: 'bell', use: 'bell',

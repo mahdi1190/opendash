@@ -177,7 +177,7 @@ function _gaWaterRows(px, py) {
   // not by white water (anything whose kind calms the water round it: falls): no skimming, no ducks
   try { for (const t of gardenAffordThings()) { const K = GARDEN_KINDS[t.kind]; if (K && K.calmsWater && Math.hypot(px - t.x, (py - t.y) * 1.3) < Math.max(K.calmsWater, t.w || 1)) return []; } } catch (e) { /* none */ }
   const w = gardenTerrainWaterAhead(px, py); if (!w) return [];
-  const W3 = GARDEN_TERRAIN['water-edge'].acts.concat(w.deep ? GARDEN_TERRAIN.deep.acts : []), k = _ga.wt % W3.length;
+  const W3 = (w.deep ? GARDEN_TERRAIN.deep.acts : []).concat(GARDEN_TERRAIN['water-edge'].acts), k = _ga.wt % W3.length;   // (deep water offers a swim first: then the ducks, then a skim, in turn)
   return W3.slice(k).concat(W3.slice(0, k)).map(o => ({ key: 'water:' + o.act, act: o.act, name: o.name, x: w.x, y: w.y, stand: null, deg: w.deg, lift: 0, src: 'water' }));
 }
 /** Is this place to sit (or to stand and do something held, like fishing from a bank) already someone else's? A friend in the garden
@@ -315,7 +315,7 @@ function gartActCycle(back) {
 }
 function _gaPlace() {
   const r = _ga.near, el = _ga.el; if (!r || !el) return;
-  const s = typeof _ghProject === 'function' ? _ghProject(r.x, r.top != null ? Math.max(r.top + 0.55, r.y - 6) : r.src === 'tree' ? r.y - 3.2 : r.y - 1.9) : null; if (!s) return;
+  const s = typeof _ghProject === 'function' ? _ghProject(r.x, r.promptY != null ? r.promptY : r.top != null ? Math.max(r.top + 0.55, r.y - 6) : r.src === 'tree' ? r.y - 3.2 : r.y - 1.9) : null; if (!s) return;   // (promptY: over a ladder's top, up on its floor)
   // never under the garden's own messages strip at the top (a welcome, a find): below it, and above the thing's foot at most
   let y = s.y; try { const m = _gw.box.querySelector('.gd-msgs'), mb = m && m.childElementCount ? m.getBoundingClientRect() : null, bb = _gw.box.getBoundingClientRect(); const floor = mb && mb.height ? mb.bottom - bb.top + 34 : 40; if (y < floor) { const foot = _ghProject(r.x, r.y); y = Math.min(Math.max(y, floor), foot ? foot.y - 6 : y); } } catch (e) { /* as it was */ }
   el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(y)}px) translate(-50%, -100%)`;

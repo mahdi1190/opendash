@@ -22,6 +22,20 @@
                  A part (at) and its stand point are placed on the thing AS ITS PAINTER DREW IT, never on the layout's footprint: u is a
                  share of the drawn width (the native world's record of the picture, else the painter's own box, else dw below), from the
                  drawn foot's middle. A layout that makes the barn's footprint wider leaves its ladder on the barn's wall.
+     levels    upper floors you walk on (94-garden-zz-7act-3height.js): [{ id, name, at [x, y] (the floor's middle on the ground, in H, the
+               player's height, from the drawn foot), h (how high it is, in H), shape { ring: [rx, ry, inner rx, inner ry] } or { rect: [x0, y0,
+               x1, y1] } (where the feet may go, in H round its middle), minus [{ rect } | { ell: [x, y, rx, ry] }] (the trunk, a house on it),
+               core [rx, y] (a lamp room: you are behind it, drawn under the thing, when your feet are behind y and within rx of the middle),
+               sit (a level of one spot: the pose you take there), ways [{ by: 'ladder', art (drawn by the world; none: the painter's own),
+               loft, name, foot [x, y] (where you start up, in H from the drawn foot), top [x, y] (where you step off, in H from the middle) }] }]
+               A way may instead be { by: 'stair', inside: true, door: { w, h, up } }: a stair inside the thing; you go in at its door (drawn
+               standing open, w by h in H, its sill up from the foot), out of sight, and rise out of the stair head at the top, drawn behind the
+               thing so its own wall hides your legs. What stands in front of the floor is drawn again over your legs as you pass it:
+               rail { ring: [rx, ry] } or { line: [x0, x1, y] }, h, post, post0, gap, color (posts and rails, in H round the middle), or
+               front { poly: [[x, y], ...] (the painter's own outline, in H from the drawn foot), fill, line, lineTo } (battlements, a parapet).
+               The shape is where the FEET go, kept in from the drawn edge by half a body, so the whole figure stays over the floor as drawn.
+               boards: a landing the world draws (a loft's): the back of its boards, in H, when it lies behind the feet's shape.
+               tools/affordance-audit.mjs checks every way's foot is walkable and reachable on any layout.
      dw        the drawn width in cells when nothing else says (a painter that draws the thing at its own fixed size)
      paint     a fixed thing's painter (GardenPaintedProps: 'seat' the bench, 'wish' the well, 'board', 'post', 'tripod', 'fountain', 'lamp',
                'sundial', 'postbox'): a row of layout data of this kind (`things`) is drawn by that painter where the row puts it, blocks the
@@ -78,13 +92,26 @@ const GARDEN_KINDS = Object.freeze({
   /* walls to lean on, things to climb */
   wall: { name: 'the wall', arts: ['wall'], decor: ['stone-wall', 'dc-old-wall'], words: ['wall'], acts: [{ act: 'lean', stand: [-0.25, 0.03], deg: 90, pri: 1.2, edge: true }], pet: 'wall', top: 24, petSeat: 24 },   // back to it, right against it; its prompt before a tree's beside it
   stones: { name: 'the stones', arts: ['stones'], words: ['stones', 'standing'], pet: 'wall' },
-  lighthouse: { name: 'the lighthouse', arts: ['lighthouse'], decor: ['dc-lighthouse'], words: ['lighthouse'], pet: 'lighthouse',
-    dw: 3.82, acts: [{ act: 'ladder', name: 'the lighthouse ladder', at: [0.0576, 0.13], art: 'ladder', stand: [0.0576, 0.16], deg: -90, noProp: true }] },   // a ladder up its side to a plank landing with a rail (u: a share of the tower as drawn)
+  lighthouse: { name: 'the lighthouse', arts: ['lighthouse'], decor: ['dc-lighthouse'], words: ['lighthouse'], pet: 'lighthouse', dw: 3.82,
+    // the gallery round the lamp room, all the way round, up a long iron ladder on the tower's face (its painter draws the deck and rail)
+    levels: [{ id: 'gallery', name: 'the gallery', at: [0, 0], h: 5, shape: { ring: [0.45, 0.235, 0.37, 0.12] }, core: [0.42, 0], rail: { ring: [0.664, 0.265], h: 0.36, post: 0.106, post0: -0.652, mid: false }, ways: [{ by: 'ladder', art: 'ladder', name: 'the lighthouse ladder', foot: [0.34, 0.1], top: [0.34, 0.16] }] }] },
   treehouse: { name: 'the treehouse', arts: ['treehouse'], words: ['treehouse'], pet: 'treehouse',
-    dw: 4.79, acts: [{ act: 'ladderhi', name: 'the treehouse ladder', at: [0.073, 0.2], drawn: false, stand: [0.073, 0.23], deg: -90, noProp: true, edge: true }] },   // (the treehouse's own painter draws its ladder)
+    // the deck of planks round the trunk, up the painter's own rope ladder: along the rail, in front of the trunk, to the house's door
+    levels: [{ id: 'deck', name: 'the treehouse deck', at: [-0.29, 0], h: 2.59, shape: { rect: [-1.3, -0.14, 1.26, 0.12] }, minus: [{ rect: [0.1, -0.3, 1.4, -0.03] }, { ell: [0, -0.08, 0.38, 0.09] }], rail: { line: [-1.45, 1.4, 0.167], h: 0.434, post: 0.2896, post0: -1.4, gap: [-1.27, -0.8], color: '#9a7a54', postW: 2.6, railW: 2.6, mid: false }, ways: [{ by: 'ladder', name: 'the treehouse ladder', foot: [-1.34, 0.12], top: [-1.05, 0.06] }] }] },
+  // the old watchtower: up the stair inside it (in at the door, out at the top) to the walk behind its battlements, the west half (the
+  // east half is tumbled, a rowan in the gap). front: the battlements, drawn again over your legs as you pass behind them (its painter's
+  // own crest, in H from the drawn foot)
+  tower: { name: 'the old tower', arts: ['tower'], words: ['watchtower'], pet: 'wall',
+    levels: [{ id: 'top', name: 'the tower top', at: [-0.75, -0.1], h: 6.49, shape: { rect: [-0.56, -0.47, 0.4, -0.1] }, minus: [{ rect: [0.1, -0.22, 0.5, 0.1] }],   // (the feet's: half a body in from the west wall's face and the back wall, short of where the crest tumbles at 0.6; kept back from the low broken crest to the east)
+      front: { poly: [[-1.545, -6.467], [-1.545, -7.0], [-1.159, -7.0], [-1.159, -6.71], [-0.869, -6.71], [-0.869, -7.046], [-0.483, -7.046], [-0.434, -6.66], [-0.145, -6.515], [0.05, -6.42], [0.05, -6.37], [-1.545, -6.37]], fill: '#a39d8b', line: '#cbc5b1', lineTo: 9 },
+      ways: [{ by: 'stair', inside: true, name: 'the tower stair', foot: [0, 0.4], top: [0.25, -0.3], door: { w: 0.63, h: 1.25, up: 0.385 } }] }] },
   hollow: { name: 'the hollow tree', arts: ['hollow'], words: ['hollow'], pet: 'tree' },   // (the pets treat it as a tree: the treehouse's peek needs a window it has not got)
   barn: { name: 'the barn', arts: ['barn'], words: ['barn'], pet: 'hay',
-    dw: 4, acts: [{ act: 'ladderlo', name: 'the hay loft ladder', at: [0.275, 0.37], art: 'ladder', top: 96, loft: true, stand: [0.275, 0.4], deg: -90, noProp: true, edge: true }] },   // (u: a share of the barn as drawn)
+    // the hay loft: a landing of boards out from the loft door up its side, a rail along its front, the ladder up through the rail's gap
+    // (the world draws ladder, door and landing from these numbers: rail.own)
+    levels: [{ id: 'loft', name: 'the hay loft', at: [1.25, 0.27], h: 1.37, shape: { rect: [-0.07, 0.22, 0.36, 0.52] }, boards: 0.07,
+      rail: { line: [-0.33, 0.63, 0.6], h: 0.32, post: 0.24, post0: -0.33, gap: [-0.21, 0.21], color: '#7a5a36', postW: 1.6, railW: 1.9, mid: false, own: true },
+      ways: [{ by: 'ladder', art: 'ladder', loft: true, name: 'the hay loft ladder', foot: [1.25, 0.32], top: [0, 0.45] }] }] },
   hay: { name: 'the hay', arts: ['hay'], decor: ['hay-bale'], words: ['hay', 'haybale'], pet: 'hay', top: 38, petSeat: 38 },
   /* water's things */
   pier: { name: 'the pier end', words: ['pier', 'jetty', 'landing'], acts: [{ act: 'dangle', stand: [0, -0.3], deg: 90, pierEnd: true }], pet: 'pier', noPerch: true, solid: 'free' },   // the end of the pier as far as it is built today
@@ -123,7 +150,7 @@ const GARDEN_KINDS = Object.freeze({
   lamp: { name: 'the lamp', arts: ['lamp', 'lampbox'], paint: 'lamp', w: 0.5, h: 0.3, decor: ['lantern'], words: ['lamp'], top: 33 },
   /* known, nothing to do yet: listed so the audit does not call them unknown */
   scenery: { name: 'the rock', words: ['stone', 'rock', 'boulder', 'block', 'bollard', 'buoy', 'shingle', 'haze', 'ruin', 'crutch', 'posternpier', 'gatepier', 'plinth', 'crate', 'crates', 'pots', 'net', 'anchor', 'face', 'hatch', 'fence', 'baskets', 'sacks', 'barrel', 'barrels', 'hurdle', 'gap', 'water', 'brick', 'hedge', 'oldman', 'wallend', 'foot', 'weir', 'haze'], noPerch: true },   // the land's own stones and the harbour's clutter: nothing to do
-  building: { name: 'the building', arts: ['hall', 'oldhouse', 'summer', 'boathouse', 'hide', 'tower', 'smoke', 'shepherd', 'ice', 'grotto', 'temple', 'folly', 'hull', 'lectern', 'smoker', 'bench', 'cross', 'statue', 'topiary', 'gate', 'cairn', 'barrels', 'boles', 'beacon', 'warren', 'ring', 'frogstone', 'drift', 'cart', 'office', 'thatched-cottage', 'arch', 'bandstand', 'barrel', 'boots', 'circle', 'dew', 'help', 'kettle', 'lookout', 'moon', 'oak', 'observatory', 'rack', 'rg-fields', 'rg-garden', 'rg-hill', 'rg-lake', 'rg-marsh', 'rg-orchards', 'scarecrow', 'shelf', 'skeps', 'stars', 'stone', 'worms', 'chest'],
+  building: { name: 'the building', arts: ['hall', 'oldhouse', 'summer', 'boathouse', 'hide', 'smoke', 'shepherd', 'ice', 'grotto', 'temple', 'folly', 'hull', 'lectern', 'smoker', 'bench', 'cross', 'statue', 'topiary', 'gate', 'cairn', 'barrels', 'boles', 'beacon', 'warren', 'ring', 'frogstone', 'drift', 'cart', 'office', 'thatched-cottage', 'arch', 'bandstand', 'barrel', 'boots', 'circle', 'dew', 'help', 'kettle', 'lookout', 'moon', 'oak', 'observatory', 'rack', 'rg-fields', 'rg-garden', 'rg-hill', 'rg-lake', 'rg-marsh', 'rg-orchards', 'scarecrow', 'shelf', 'skeps', 'stars', 'stone', 'worms', 'chest'],
     words: ['house', 'hut', 'cottage', 'hall', 'office', 'tower', 'shed', 'folly', 'temple', 'grotto', 'icehouse', 'hide', 'beacon', 'cairn', 'cross', 'statue', 'journal', 'barrels', 'boles', 'warren', 'ring', 'frog', 'driftwood', 'hull', 'smoker', 'craft', 'press', 'bothy', 'toposcope', 'gate', 'box', 'arch', 'lamp', 'clamp', 'smoke', 'woodshed', 'quince', 'pippin', 'woodhut', 'oldhouse', 'labyrinth', 'boathouse', 'chapel', 'sunk'] },
 });
 /** Ground, read from the layout's own cells: what each type offers you and your pet. */

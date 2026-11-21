@@ -1470,8 +1470,13 @@ window.GardenNativeWorld = (function () {
         playerOcclusionHeight = clamp(-Math.min(...corners.map(point => point.y)), 44 * GARDEN_ACTOR_SCALE, 88);
       }
       const x = _gw.px * W.cellW, y = W.sky + _gw.py * W.cellH, z = Math.floor(_gw.py * 3);
-      playerNode.setAttribute('transform', 'translate(' + x + ' ' + y + ')'); playerNode.setAttribute('data-z', String(_gw.py + .001)); playerNode.target.setDepth(y + .001);
+      // up on a floor (a lighthouse's gallery, a treehouse's deck: 94-garden-zz-7act-3height.js) the figure and its shadow are drawn that
+      // high, and as deep as the floor says (in front of the thing, or under it behind its lamp room); swimming or on a ladder, no shadow
+      const heightLift = typeof gardenHeightLift === 'function' ? gardenHeightLift() : 0, heightDepth = typeof gardenHeightDepth === 'function' ? gardenHeightDepth() : null;
+      playerNode.setAttribute('transform', 'translate(' + x + ' ' + (y - heightLift) + ')'); playerNode.setAttribute('data-z', String(_gw.py + .001)); playerNode.target.setDepth(heightDepth != null ? heightDepth : y + .001);
+      { const sh = playerNode._ghtSh || (playerNode._ghtSh = playerNode.querySelector('.gd-pl-sh')), on = typeof gardenHeightShadowOn !== 'function' || gardenHeightShadowOn(); if (sh && sh._ghtOn !== on) { sh._ghtOn = on; sh.setAttribute('opacity', on ? '1' : '0'); } }
       if (z !== playerNode._nativeZ) { playerNode._nativeZ = z; sorted = true; }
+      { const hk = heightDepth == null ? '' : String(Math.round(heightDepth)); if (hk !== playerNode._ghtK) { playerNode._ghtK = hk; sorted = true; } }   // (up on a floor: behind its lamp room or in front, and on to or off it)
       const bob = !playerInner.querySelector('.gpl-root') && _gw.moving && gardenMotionOn() ? -Math.abs(Math.sin(time / 1000 * (_gw.sneak ? 7 : 11))) * 1.6 : 0;
       playerBob.setAttribute('transform', 'translate(0 ' + bob + ')');
       if (typeof gartMoveFrame === 'function') gartMoveFrame(playerInner, playerBob, _gw, time);   // the turn, the stride, the hop
@@ -1522,12 +1527,19 @@ window.GardenNativeWorld = (function () {
       }
       // (moves, round 5) while you do something the figure is the picture: whatever has faded because you are behind it (a crown, a rock, a painted canopy)
       // is drawn under you, so a see-through crown or trunk never lies over the figure and washes it out. Hiding is the one move that wants the tree in front.
-      const doing = !(typeof _ga !== 'undefined' && _ga.cur && _ga.cur.doing && _ga.cur.row && _ga.cur.row.hideBehind);   // (round 6: always, not only during a move: a faded crown never lies over you, and you never turn see-through green)
+      const doing = heightDepth == null && !(typeof _ga !== 'undefined' && _ga.cur && _ga.cur.doing && _ga.cur.row && _ga.cur.row.hideBehind);   // (up on a floor its own depth holds: behind the lamp room you are behind it)   // (round 6: always, not only during a move: a faded crown never lies over you, and you never turn see-through green)
       if (doing) {
         let top = y + .001;
         for (const record of fadingProps) if (record.behind && record.root && Number.isFinite(record.root.depth)) top = Math.max(top, record.root.depth + .002);
         for (const crown of canopyOccluders) if (crown.faded && crown.ownCover && Number.isFinite(crown.record.depth)) top = Math.max(top, crown.record.depth + .002);
         for (const im of externalCanopies) if (Number.isFinite(im.depth)) top = Math.max(top, im.depth + .002);
+        // (height round 2) but never over a thing that stands between you and that crown and has not faded (a treehouse with its ladder
+        // and deck, a wall): lifted over it you seemed to stand on its ladder, half way up, in front of its deck. The crown stays faded over you.
+        if (top !== y + .001) for (const record of fadingProps) {
+          const d = record.root && record.root.depth, b = record.bounds;
+          if (record.behind || record.editorLifted || !Number.isFinite(d) || d <= y + .001 || d >= top || !b || !record.root.visible) continue;
+          if (x + 8 >= b.x && x - 8 <= b.x + b.width && y >= b.y && y - (playerOcclusionHeight || 50) <= b.y + b.height) { top = y + .001; break; }
+        }
         if (top !== y + .001) playerNode.target.setDepth(top);
       }
       // sat on a seat the world draws as its own picture (a bench, a log, a stump): drawn on it, never behind its back rail
@@ -1603,7 +1615,7 @@ window.GardenNativeWorld = (function () {
       const activity = fishing ? null : activitySubject(); if (fishing) activityCamera = null;
       const fit = fishing ? fishViewMode === 'fit' : activity ? activityCamera.mode === 'fit' : prefs.cam === 'fit';
       let vh = fit ? Math.max(height, width / ar) : GW_ZOOMS[clamp(Number.isInteger(Number(prefs.zoom)) && prefs.zoom != null ? Number(prefs.zoom) : typeof _gwCamDefaultIdx === 'function' ? _gwCamDefaultIdx() : 2, 0, GW_ZOOMS.length - 1)], vw = vh * ar;
-      let x = _gw.px * W.cellW - vw / 2, y = W.sky + _gw.py * W.cellH - vh / 2 - 24;
+      let x = _gw.px * W.cellW - vw / 2, y = W.sky + _gw.py * W.cellH - vh / 2 - 24 - (typeof gardenHeightView === 'function' ? gardenHeightView() : 0);   // (up on a floor or a ladder: the view goes up with you)
       if (fishing && !fit) {
         const f = _gw.fishing, fx = _gw.px * W.cellW, fy = W.sky + _gw.py * W.cellH - 25, bx = f.bx * W.cellW, by = W.sky + f.by * W.cellH;
         vh = Math.max(190, Math.abs(by - fy) + 130, (Math.abs(bx - fx) + 170) / ar) * fishZoom; vw = vh * ar; x = (fx + bx) / 2 - vw / 2; y = (fy + by) / 2 - vh / 2;
@@ -2020,7 +2032,8 @@ window.GardenNativeWorld = (function () {
           const row = { id, source: body.target, node: body, x, y, groundX: x, groundY: y, waterline: y, w: kind === 'pet' ? Math.min(42, Math.max(12, b.width * .8)) : 22 * GARDEN_ACTOR_SCALE, h: (kind === 'pet' ? 7 : 8) * GARDEN_ACTOR_SCALE, tall: Math.min(100, Math.max(12, b.height)), bounds: b, kind, moving: !!moving, dynamic: true, bakedContact: true, captureKey, lift: lift == null ? y - sourceFootY : lift, sourceFootY };
           effectActorRows.push(row); return row;
         };
-        add('player', playerNode, playerInner, _gw.px * W.cellW, W.sky + _gw.py * W.cellH, 'actor', _gw.moving, playerInner._gplKey);
+        // (a swimmer, or someone up a ladder or on a floor, casts no standing reflection: the water ring is their water; 94-garden-zz-7act-3height.js)
+        if (!(typeof gardenHeightReflects === 'function' && !gardenHeightReflects())) add('player', playerNode, playerInner, _gw.px * W.cellW, W.sky + _gw.py * W.cellH, 'actor', _gw.moving, playerInner._gplKey);
         const rig = (id, F, fx, footX, footY) => {
           if (!F || F.state === 'idle' || F.bx >= GARDEN_ROOM_X || !fx || !fx.rod || !fx.line || !fx.bob) return;
           const waterY = W.sky + F.by * W.cellH, u = F.state === 'cast' ? Math.max(0, Math.min(1, (F.t - .22) / .5)) : F.state === 'land' ? (1 - Math.min(1, F.t / .5)) ** 2 : 1;
@@ -2048,7 +2061,7 @@ window.GardenNativeWorld = (function () {
         if (_gw.pet) pet(_gw.pet, 'pet:follow');
         if (typeof _gll !== 'undefined' && _gll.actors) for (const A of _gll.actors.values()) {
           if (A.rm || A.away) continue;
-          add('peer:' + A.w, A.root, A.inner, A.x * W.cellW, W.sky + A.y * W.cellH, 'actor', A.moving, A.key);
+          if (!(A.swimming || A.ghtSwim || A.ghtClimb || A.hLv)) add('peer:' + A.w, A.root, A.inner, A.x * W.cellW, W.sky + A.y * W.cellH, 'actor', A.moving, A.key);
           rig('peer-rig:' + A.w, A.fish, A.fxe, A.x * W.cellW, W.sky + A.y * W.cellH);
           if (A.heldG || A.photoG) held('peer-held:' + A.w, A.heldG || A.photoG, A.x * W.cellW, W.sky + A.y * W.cellH);
           if (A.pp) pet(A.pp, 'peer-pet:' + A.w);

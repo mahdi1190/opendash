@@ -302,7 +302,11 @@ function _gllSprite(A, onClick) {
     update(dt, sp) {
       if (sp.dressed !== sp.node) { sp.dressed = sp.node; _gllDress(A, sp.node); }
       _gllStep(A, dt);
-      sp.x = A.x; sp.y = A.y; sp.z = A.seatZ != null && !A.moving ? Math.max(A.y, A.seatZ) : A.actHold && !A.moving ? A.y : null;   // (sat on a bench: drawn on it, 94-garden-zz-7act-1core.js; any held move at its exact row, not the row of a third of a cell it was last sorted in: a friend hiding behind a trunk was sorted in front of it, as the last step of their walk had left it)
+      sp.x = A.x; sp.y = A.y; sp.lift = A.hLift || 0;
+      // up on a floor (94-garden-zz-7act-3height.js) at its floor's depth; else sat on a bench: drawn on it (94-garden-zz-7act-1core.js); any held move at its exact row,
+      // not the row of a third of a cell it was last sorted in: a friend hiding behind a trunk was sorted in front of it, as the last step of their walk had left it
+      sp.z = A.hZ != null ? A.hZ : A.seatZ != null && !A.moving ? Math.max(A.y, A.seatZ) : A.actHold && !A.moving ? A.y : null;
+      if (typeof gardenHeightRail === 'function') gardenHeightRail(A, sp.node);   // (its floor's rail in front of its legs)
       _gllPetStep(A, dt, _gw.svg);
       if (typeof _gllFxStep === 'function') _gllFxStep(A, dt);
       if (typeof gartActFriendTick === 'function') gartActFriendTick(A);   // (2.74.2) the coin's glow, the splash: where theirs is
