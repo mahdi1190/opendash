@@ -788,7 +788,10 @@ function _gwMoveBy(dx, dy) {
   const len2 = (dx * W.cellW) ** 2 + (dy * W.cellH) ** 2, gain = (px, py) => len2 ? ((px - x0) * W.cellW * dx * W.cellW + (py - y0) * W.cellH * dy * W.cellH) / len2 : 0;
   // the bank's own slide, unless it all but stops a diagonal press dead (a corner of the gorge bank or the Mere shore): then the
   // wall slide below gets its turn, and whichever goes further the way you are pressing wins (17 Nov 2026)
-  if (shore.shore && (gain(shore.x, shore.y) >= .3 || !(dx && dy))) { _gw.px = shore.x; _gw.py = shore.y; _gw.slideHold = null; return shore.moved; }
+  // (a straight press square into a bank that runs across it, as at the brook under the Millwater bridge on the way to the mill, is a
+  // press into a wall: it stops you facing the way you pressed. It crept you along the bank sideways at a snail's pace, turned to face
+  // the camera with your feet sliding: the owner's "animation buggy leading to the mill". A slanting bank still slides you along it.)
+  if (shore.shore && gain(shore.x, shore.y) >= (dx && dy ? .3 : .25)) { _gw.px = shore.x; _gw.py = shore.y; _gw.slideHold = null; return shore.moved; }
   let x = x0, y = y0, held = '';
   const hold = _gw.slideHold;   // the give of the frame before, if any (_gwGiveSlide)
   if (_gwFree(x0 + dx, y0 + dy)) { x += dx; y += dy; }

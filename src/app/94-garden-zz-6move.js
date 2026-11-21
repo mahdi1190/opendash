@@ -54,6 +54,11 @@ function gartMoveStep(gw) {
     _gmv.want = Math.atan2(dy, dx) * 180 / Math.PI;
     if (typeof gartEmoteMoved === 'function') gartEmoteMoved();
     if (typeof gartActMoved === 'function') gartActMoved();
+  } else if (gw.keys && gw.keys.size && !(gw.path && gw.path.length) && !(gw.fishing && gw.fishing.state && gw.fishing.state !== 'idle') && !gw.boat && !(typeof _ga !== 'undefined' && _ga.cur && _ga.cur.doing)) {
+    // pressing a way you cannot go (a wall, a bank, a fence): you face the way you press, not the way a last little nudge took you
+    // (stopped at the brook on the way to the mill, holding right, you turned round to face the camera)
+    const kx = (gw.keys.has('right') ? 1 : 0) - (gw.keys.has('left') ? 1 : 0), ky = (gw.keys.has('down') ? 1 : 0) - (gw.keys.has('up') ? 1 : 0);
+    if (kx || ky) _gmv.want = Math.atan2(ky * 1.6, kx) * 180 / Math.PI;
   }
   if (_gmv.faceTo != null) { _gmv.want = _gmv.faceTo; _gmv.faceTo = null; }
   let d = _gmvWrap(_gmv.want - _gmv.h);
