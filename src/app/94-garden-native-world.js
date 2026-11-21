@@ -1414,7 +1414,7 @@ window.GardenNativeWorld = (function () {
         // (n-move) the last steps slow as evenly as letting go of the keys does: the pace is the one that stops at the spot at a steady braking
         // (v*v = 2 a d), slower than the hardest braking allowed so it is always met. The old "+ 34" left a run at 179 px/s one frame before the
         // spot, and it stopped dead from there
-        want = Math.min(_gw.sneak ? GW_SPEED.sneak : (running ? GW_SPEED.run : GW_SPEED.walk) * _gwWalkBonus(), Math.max(GW_ARRIVE, Math.sqrt(2 * GW_ACC * 0.9 * remaining)));
+        want = Math.min(_gw.sneak ? GW_SPEED.sneak : (running ? GW_SPEED.run : GW_SPEED.walk) * _gwWalkBonus(), Math.max(GW_ARRIVE, Math.sqrt(2 * GW_ACC * 0.7 * Math.max(0, remaining - (_gw.spd || 0) * dt * 0.5))));
       }
       // (round 2) the gait chosen, for the legs and for friends: slow ground no longer turns a run into a walk. (n-move) A run is a run from its
       // first step: the legs broke into it only once the pace passed a walk, a tenth of a second of walking legs every time Shift went down
