@@ -447,7 +447,7 @@ function gardenBubbleOpen(at, o) {
   const box = _ghBox(); if (!box) return null;
   const el = document.createElement('div'); el.className = 'gd-bubble' + (o.cls ? ' ' + o.cls : ''); el.setAttribute('role', 'menu'); el.setAttribute('aria-label', o.title || 'What you can do here');
   if (o.title) { const h = _gdpEl('div', 'gd-bub-h'); h.appendChild(_gdpEl('b', null, o.title)); if (o.sub) h.appendChild(_gdpEl('small', null, o.sub)); el.appendChild(h); }
-  if (o.need) { const n = _gdpEl('div', 'gd-bub-need' + (o.need.have ? ' is-have' : '')), pic = _gdpEl('span', 'gd-bub-need-pic'); pic.innerHTML = o.need.svg || ''; n.append(pic, _gdpEl('span', 'gd-bub-need-t', (o.need.have ? 'You have: ' : 'Needs: ') + o.need.name)); el.appendChild(n); }   // what a gate needs, with its picture (94-garden-wonder-7gates.js)
+  if (o.need) { const n = _gdpEl('div', 'gd-bub-need' + (o.need.have ? ' is-have' : '')), pic = _gdpEl('span', 'gd-bub-need-pic'); pic.innerHTML = o.need.svg || ''; n.append(pic, _gdpEl('span', 'gd-bub-need-t', (o.need.have ? (o.need.who ? o.need.who + ' has: ' : 'You have: ') : 'Needs: ') + o.need.name)); el.appendChild(n); }   // what a gate needs, with its picture (94-garden-wonder-7gates.js)
   if (o.hint) el.appendChild(_gdpEl('p', 'gd-bub-hint', o.hint));
   if (o.foot) el.appendChild(_gdpEl('p', 'gd-bub-foot', o.foot));
   const row = _gdpEl('div', 'gd-bub-row'); el.appendChild(row);

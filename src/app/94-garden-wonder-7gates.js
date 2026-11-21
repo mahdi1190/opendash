@@ -74,6 +74,7 @@ function gardenGateTake(key) {
   const g = _gdG(), lk = 'gk.' + key; if (!GARDEN_GATE_ITEMS[key] || g.led[lk]) return false;
   g.led[lk] = { d: _gdToday(), k: 'gk', i: { ['gk:' + key]: 1 }, n: 1 };
   _gdSave();
+  if (typeof gartActDoingPush === 'function') gartActDoingPush(true);   // (2.74.1) the small message first: the snapshot below queues behind it, not it behind the snapshot
   _gdEmit('landshow', {});   // (2.74.1) friends in a live garden see the find now: the gate's sign says 'Ready to open' on their screens at once, not at the next snapshot (20 s)
   return true;
 }
@@ -100,6 +101,7 @@ function gardenGateOpen(gateId) {
   _gdSave();
   _glFx(gate.door.x + 0.5, gate.door.y + 0.5, 'sparkle', { lift: 20 }); _glSound('twinkle');
   if (typeof gardenToast === 'function') gardenToast(`${rule.done} +${P.c} coins, +${P.x} XP.`, { icon: 'map-pin' });
+  if (typeof gartActDoingPush === 'function') gartActDoingPush(true);   // (2.74.1) the gate's state in one small message, ahead of the snapshot's pieces
   _gdEmit('landshow', {});   // (friends in a live garden see it open)
   return { ok: true, msg: rule.done };
 }
@@ -112,7 +114,7 @@ function gardenGatePrompt(gate, at, m) {
   if (m.visit) {   // (2.74.1: the owner's find, the same words on every screen; and a friend opens it as the owner would: friends can do everything the owner can)
     const theirs = gardenGateHere(rule.key), host = m.visit.name || 'Your friend', live = typeof gardenLiveGateOpen === 'function' && typeof _glvLive === 'function' && _glvLive();
     const items = theirs && live ? [{ svg: gardenGateItemSvg(rule.key, 22), label: rule.verb, text: rule.verb, cls: 'is-go gd-gate-use', run: () => gardenLiveGateOpen(gate.id) }] : [];
-    gardenBubbleOpen(at, { title, sub: into + ' ' + (theirs ? `${host} has ${item.name.toLowerCase()}: ${live ? 'you can open it.' : 'it is ready to open.'}` : rule.block + ' This way is still shut in your friend’s garden.'), need: { svg: gardenGateItemSvg(rule.key, 44), name: item.name, have: theirs }, items, cls: 'is-words gd-gate' + (items.length ? '' : ' is-empty') });
+    gardenBubbleOpen(at, { title, sub: into + ' ' + (theirs ? `${host} has ${item.name.toLowerCase()}: ${live ? 'you can open it.' : 'it is ready to open.'}` : rule.block + ' This way is still shut in your friend’s garden.'), need: { svg: gardenGateItemSvg(rule.key, 44), name: item.name, have: theirs, who: host }, items, cls: 'is-words gd-gate' + (items.length ? '' : ' is-empty') });
     return true;
   }   // (2.74.1: the owner's find, the same words on every screen)
   const have = gardenGateHas(rule.key), lv = m.level.level, findLv = gardenGateFindLv(gate), openLv = gardenZoneOpenLv(zone);
