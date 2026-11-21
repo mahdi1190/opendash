@@ -324,13 +324,15 @@ function _gaPlace() {
   // the last frame moved the prompt forced the page to lay itself out again, 7-20 ms of every walking frame with a prompt showing
   const now = performance.now(), G = _ga.geo && now - _ga.geo.t < 600 && _ga.geo.key === r.key + '|' + (_ga.opts ? _ga.opts.length : 0) && _ga.geo.ch === !!(_ga.ch && !_ga.ch.hidden) ? _ga.geo : null;
   const geo = G || (_ga.geo = { t: now, key: r.key + '|' + (_ga.opts ? _ga.opts.length : 0), ch: !!(_ga.ch && !_ga.ch.hidden), floor: null, ph: 0, chh: 0 });
-  let y = s.y; try { if (geo.floor == null) { const m = _gw.box.querySelector('.gd-msgs'), mb = m && m.childElementCount ? m.getBoundingClientRect() : null, bb = _gw.box.getBoundingClientRect(); geo.floor = mb && mb.height ? mb.bottom - bb.top + 34 : 40; } const floor = geo.floor; if (y < floor) { const foot = _ghProject(r.x, r.y); y = Math.min(Math.max(y, floor), foot ? foot.y - 6 : y); } } catch (e) { /* as it was */ }
+  let y = s.y; try { if (geo.floor == null) { const m = _gw.box.querySelector('.gd-msgs'), mb = m && m.childElementCount ? m.getBoundingClientRect() : null, bb = mb ? _gw.box.getBoundingClientRect() : null; geo.floor = mb && mb.height ? mb.bottom - bb.top + 34 : 40; }   // (no messages showing: nothing to read) const floor = geo.floor; if (y < floor) { const foot = _ghProject(r.x, r.y); y = Math.min(Math.max(y, floor), foot ? foot.y - 6 : y); } } catch (e) { /* as it was */ }
   el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(y)}px) translate(-50%, -100%)`;
   // the chooser stacked on top of the prompt, up in the air with it: under the prompt it lay over the thing and a friend sat on it, under
   // your feet over your own legs and the seat (round 2 of the seats). Kept inside the garden's box; if there is no room above, under it.
   if (_ga.ch && !_ga.ch.hidden) {
-    if (!geo.ph) { geo.ph = el.offsetHeight || 30; geo.chh = _ga.ch.offsetHeight || 26; }
-    const ph = geo.ph, ch = geo.chh, top = Math.round(y) - ph - 5 - ch;
+    // (the two heights come from a ResizeObserver, which is told them after the page lays itself out: no layout forced here)
+    if (!_ga.ro && typeof ResizeObserver === 'function') { _ga.hts = new WeakMap(); _ga.ro = new ResizeObserver(es => { for (const e of es) _ga.hts.set(e.target, e.target.offsetHeight || e.contentRect.height); }); }
+    if (_ga.ro && !el._gaRo) { el._gaRo = 1; _ga.ro.observe(el); } if (_ga.ro && !_ga.ch._gaRo) { _ga.ch._gaRo = 1; _ga.ro.observe(_ga.ch); }
+    const ph = (_ga.hts && _ga.hts.get(el)) || (_ga.ro ? 30 : el.offsetHeight || 30), ch = (_ga.hts && _ga.hts.get(_ga.ch)) || (_ga.ro ? 26 : _ga.ch.offsetHeight || 26), top = Math.round(y) - ph - 5 - ch;
     const yy = top >= 4 ? top : Math.round(y) + 6;
     _ga.ch.style.transform = `translate(${Math.round(s.x)}px, ${yy}px) translate(-50%, 0)`;
   }
