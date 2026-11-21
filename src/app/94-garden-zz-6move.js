@@ -93,6 +93,8 @@ function gartMoveStep(gw) {
       const kx = (gw.keys.has('right') ? 1 : 0) - (gw.keys.has('left') ? 1 : 0), ky = (gw.keys.has('down') ? 1 : 0) - (gw.keys.has('up') ? 1 : 0);
       if (kx || ky) { const kw = Math.atan2(ky * 1.6, kx) * 180 / Math.PI; if (Math.abs(_gmvWrap(_gmv.want - kw)) > 55) _gmv.want = kw; }
     }
+    // (n-move) the same steering at a held pointer: a slide round a post or a bed's corner does not turn you to face the camera for a step
+    if (gw.hold && gw.hold.steer && gw.holdU && !gw.boat && !(gw.keys && ['left', 'right', 'up', 'down'].some(k => gw.keys.has(k)))) { const kw = _gmvKeyHeading(gw.holdU[0], gw.holdU[1]); if (Math.abs(_gmvWrap(_gmv.want - kw)) > 55) _gmv.want = kw; }
     if (typeof gartEmoteMoved === 'function') gartEmoteMoved();
     if (typeof gartActMoved === 'function') gartActMoved();
   } else if (!gw.moving && gw.keys && gw.keys.size && !(gw.path && gw.path.length) && !(gw.fishing && gw.fishing.state && gw.fishing.state !== 'idle') && !gw.boat && !(typeof _ga !== 'undefined' && _ga.cur && _ga.cur.doing)) {
@@ -371,18 +373,22 @@ function gartMoveActor(A) {
   if (typeof gartActCarryActor === 'function') gartActCarryActor(A, body, L);   // (carrying: both hands on it, as yours)
 }
 
+/** (n-move) A heading on the wire: the sixteenth of a turn on the ground (cells, as the drawings are made), not of the walker's heading,
+ *  whose rows are stretched by 1.6: a diagonal sent in those terms came back a sixteenth off on a friend's screen (45 drawn as 22.5). */
+function _gmvH16(h) { const r = h * Math.PI / 180, g = Math.atan2(Math.sin(r) / 1.6, Math.cos(r)) * 180 / Math.PI; return Math.round(((g % 360) + 360) % 360 / 22.5) % 16; }
+function _gmvFromH16(n) { const g = n * 22.5 * Math.PI / 180; return _gmvWrap(Math.atan2(Math.sin(g) * 1.6, Math.cos(g)) * 180 / Math.PI); }
 /** (move360) What your walk messages say besides where: the way you face (in sixteenths of a turn, screen degrees as gartMoveFacingDeg) and the gait (w walk, r run, c creep). */
 function gartMoveTell() {
   // (round 2) the way you will face when the turn is done (want), and the gait you chose: the last one while moving, kept for the 'stopped' message,
   // which used to say walk and drew the rest of a friend's run as a walk on their screen
-  const h = Math.round(((_gmvWrap(_gmv.want != null ? _gmv.want : _gmv.h || 0) % 360) + 360) % 360 / 22.5) % 16;
+  const h = _gmvH16(_gmv.want != null ? _gmv.want : _gmv.h || 0);
   if (typeof _gw !== 'undefined' && _gw.moving) _gmv.tellGait = _gw.sneak ? 'c' : _gw.gait || 'w';
   // (round 3) a click's walk, told as it starts: the gait it will have (chosen once for the way: _gw.clickRun) and the way to its first turn,
   // not the gait and facing of whatever you did before (a click walk told friends 'run', then 'walk')
   const way = typeof _gw !== 'undefined' && _gw.path && _gw.path.length ? _gw.path[0] : null;
   if (way) {
     const ddx = way.x - _gw.px, ddy = (way.y - _gw.py) * 1.6;
-    const hw = Math.abs(ddx) + Math.abs(ddy) > 0.05 ? Math.round(((Math.atan2(ddy, ddx) * 180 / Math.PI % 360) + 360) % 360 / 22.5) % 16 : h;
+    const hw = Math.abs(ddx) + Math.abs(ddy) > 0.05 ? _gmvH16(Math.atan2(ddy, ddx) * 180 / Math.PI) : h;
     return { h: hw, g: _gw.sneak ? 'c' : _gw.clickRun ? 'r' : 'w' };
   }
   const g = _gmv.tellGait || 'w';
@@ -395,7 +401,7 @@ function gartMoveTold(A, ev, whole) {
   if (!A || !ev) return;
   const g = typeof ev.g === 'string' ? ev.g : ev.gt;
   if (Number.isInteger(ev.h) && ev.h >= 0 && ev.h < 16) {
-    A.hd = _gmvWrap(ev.h * 22.5);
+    A.hd = _gmvFromH16(ev.h);
     if (whole && !A.moving && !(A.actId || A.sit || A.fish)) {
       const D = _gmvDrawing(A.hd, null, GMV_STEP);
       A.dir = D.dir; A.yaw = D.yaw; if (D.yaw % 180) A.face = D.mirror;
