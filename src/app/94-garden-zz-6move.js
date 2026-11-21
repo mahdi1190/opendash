@@ -451,9 +451,12 @@ function gartMoveWarm(inner, sig, svgOf) {
   if (!_gmvWarm.busy) { _gmvWarm.busy = true; _gmvWarmLater(); }
 }
 function _gmvWarmWalking() {
-  if (typeof _gw !== 'undefined' && (_gw.moving || (_gw.keys && _gw.keys.size))) return true;
-  try { if (typeof _gll !== 'undefined' && _gll.actors) for (const A of _gll.actors.values()) if (!A.me && A.moving) return true; } catch (e) { /* no friends here */ }
-  return false;
+  // (a pause between two walks is not a standstill: only after 1.5 s with nobody moving)
+  let walking = false;
+  if (typeof _gw !== 'undefined' && (_gw.moving || (_gw.keys && _gw.keys.size) || (_gw.path && _gw.path.length))) walking = true;
+  try { if (!walking && typeof _gll !== 'undefined' && _gll.actors) for (const A of _gll.actors.values()) if (!A.me && (A.moving || A.tx != null)) { walking = true; break; } } catch (e) { /* no friends here */ }
+  const now = performance.now(); if (walking) _gmvWarm.walkAt = now;
+  return walking || now - (_gmvWarm.walkAt || 0) < 1500;
 }
 function _gmvWarmGo(dl) {
   // while anyone walks the frame has no room for a drawing: wait for a standstill (one not made by then is made when it is needed, as before)
