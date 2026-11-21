@@ -372,7 +372,13 @@ function gartMoveActor(A) {
     }
   }
   // (n-move) a friend's figure turns through the same sixteen drawings as yours: friends see the way you really face, not the nearest eighth
-  const D = _gmvDrawing(st.h, Number.isFinite(A.yaw) && gplYawDir(A.yaw) === A.dir ? A.yaw : null, GMV_STEP);
+  let D = _gmvDrawing(st.h, Number.isFinite(A.yaw) && gplYawDir(A.yaw) === A.dir ? A.yaw : null, GMV_STEP);
+  // (nf-walk) and on a click's walk, the drawing they said they show (_gmvTold) while their figure goes within a sixteenth of it: a walk
+  // near the half-way mark between two drawings kept one on their screen and, a degree or two aslant as it caught up, the next on yours
+  if (!keyed && A.hd != null) {
+    const T = _gmvDrawing(A.hd, null, GMV_STEP), su = (d) => (d.yaw % 180 ? d.mirror * d.yaw : d.yaw);
+    if (su(T) !== su(D) && Math.abs(_gmvWrap(_gmvU(st.h) - su(T))) < GMV_STEP) D = { ...T, sx: D.sx };
+  }
   if (D.dir !== A.dir || D.yaw !== A.yaw || ((D.yaw % 180) && D.mirror !== A.face)) { A.dir = D.dir; A.yaw = D.yaw; if (D.yaw % 180) A.face = D.mirror; A.key = ''; if (typeof _gllPaint === 'function') _gllPaint(A); }
   const S = typeof GL_ACT_SCALE === 'number' ? GL_ACT_SCALE : 0.74 * GARDEN_ACTOR_SCALE;
   const sneak = A.sneakUntil > Date.now(), mirror = (A.yaw % 180) && A.face < 0 ? -1 : 1, sx = motion ? D.sx : 1;   // clock-ok: a creep
@@ -389,6 +395,8 @@ function gartMoveActor(A) {
  *  whose rows are stretched by 1.6: a diagonal sent in those terms came back a sixteenth off on a friend's screen (45 drawn as 22.5). */
 function _gmvH16(h) { const r = h * Math.PI / 180, g = Math.atan2(Math.sin(r) / 1.6, Math.cos(r)) * 180 / Math.PI; return Math.round(((g % 360) + 360) % 360 / 22.5) % 16; }
 function _gmvFromH16(n) { const g = n * 22.5 * Math.PI / 180; return _gmvWrap(Math.atan2(Math.sin(g) * 1.6, Math.cos(g)) * 180 / Math.PI); }
+/** (nf-walk) A heading (screen terms, as _gmv.h) as the signed way round on the ground _gmvDrawing reads it: 0 facing you, 180 away, the west half negative. */
+function _gmvU(h) { const hr = h * Math.PI / 180; return _gmvWrap(90 - Math.atan2(Math.sin(hr) / 1.6, Math.cos(hr)) * 180 / Math.PI); }
 /** (nf-walk) A heading told to friends as the sixteenth of the drawing you will show once turned to it (h: your heading, screen terms as
  *  _gmv.h). Your figure keeps the drawing it has until a heading is well past the half-way mark to the next one (_gmvDrawing), and turns
  *  through the drawings in between, so from the drawing shown now (_GPL.yaw and its mirror) it ends on the first one along the turn whose
@@ -396,7 +404,7 @@ function _gmvFromH16(n) { const g = n * 22.5 * Math.PI / 180; return _gmvWrap(Ma
 function _gmvTold(h) {
   const n = _gmvH16(h);
   if (typeof _GPL === 'undefined' || !Number.isFinite(_GPL.yaw) || _GPL.yaw % GMV_STEP || gplYawDir(_GPL.yaw) !== _GPL.dir) return n;
-  const hr = h * Math.PI / 180, hg = Math.atan2(Math.sin(hr) / 1.6, Math.cos(hr)) * 180 / Math.PI, u = _gmvWrap(90 - hg);   // (signed: the west half negative)
+  const u = _gmvU(h);   // (signed: the west half negative)
   const u0 = _GPL.yaw % 180 ? (_gmv.mirror || 1) * _GPL.yaw : _GPL.yaw, d = _gmvWrap(u - u0), band = GMV_STEP * 0.5 + 4;
   // (a turn of more than three quarters goes the way the walker's own turn picks, through facing you: there the nearest drawing is told)
   if (Math.abs(d) > 135) return n;
