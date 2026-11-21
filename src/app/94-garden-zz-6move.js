@@ -389,25 +389,36 @@ function gartMoveActor(A) {
  *  whose rows are stretched by 1.6: a diagonal sent in those terms came back a sixteenth off on a friend's screen (45 drawn as 22.5). */
 function _gmvH16(h) { const r = h * Math.PI / 180, g = Math.atan2(Math.sin(r) / 1.6, Math.cos(r)) * 180 / Math.PI; return Math.round(((g % 360) + 360) % 360 / 22.5) % 16; }
 function _gmvFromH16(n) { const g = n * 22.5 * Math.PI / 180; return _gmvWrap(Math.atan2(Math.sin(g) * 1.6, Math.cos(g)) * 180 / Math.PI); }
+/** (nf-walk) A heading told to friends as the sixteenth of the drawing you will show once turned to it (h: your heading, screen terms as
+ *  _gmv.h). Your figure keeps the drawing it has until a heading is well past the half-way mark to the next one (_gmvDrawing), and turns
+ *  through the drawings in between, so from the drawing shown now (_GPL.yaw and its mirror) it ends on the first one along the turn whose
+ *  band holds the heading, not always the nearest: told the nearest, a friend's figure turned a sixteenth further than yours. */
+function _gmvTold(h) {
+  const n = _gmvH16(h);
+  if (typeof _GPL === 'undefined' || !Number.isFinite(_GPL.yaw) || _GPL.yaw % GMV_STEP || gplYawDir(_GPL.yaw) !== _GPL.dir) return n;
+  const hr = h * Math.PI / 180, hg = Math.atan2(Math.sin(hr) / 1.6, Math.cos(hr)) * 180 / Math.PI, u = _gmvWrap(90 - hg);   // (signed: the west half negative)
+  const u0 = _GPL.yaw % 180 ? (_gmv.mirror || 1) * _GPL.yaw : _GPL.yaw, d = _gmvWrap(u - u0), band = GMV_STEP * 0.5 + 4;
+  // (a turn of more than three quarters goes the way the walker's own turn picks, through facing you: there the nearest drawing is told)
+  if (Math.abs(d) > 135) return n;
+  const k = Math.abs(d) < band ? 0 : Math.floor((Math.abs(d) - band) / GMV_STEP) + 1, f = _gmvWrap(u0 + Math.sign(d) * k * GMV_STEP);
+  return Math.round((((90 - f) % 360) + 360) % 360 / 22.5) % 16;
+}
 /** (move360) What your walk messages say besides where: the way you face (in sixteenths of a turn, screen degrees as gartMoveFacingDeg) and the gait (w walk, r run, c creep). */
 function gartMoveTell() {
   // (round 2) the way you will face when the turn is done (want), and the gait you chose: the last one while moving, kept for the 'stopped' message,
   // which used to say walk and drew the rest of a friend's run as a walk on their screen
   const hw = _gmv.want != null ? _gmv.want : _gmv.h || 0;
-  let h = _gmvH16(hw);
-  // (n-move) when the drawing you show is the one the heading keeps (a heading near the half-way mark between two drawings keeps the
-  // drawing it had), say that drawing: a run stopped at 99 degrees showed 112.5 on your screen and 90 on a friend's
-  if (typeof _GPL !== 'undefined' && Number.isFinite(_GPL.yaw) && !(_GPL.yaw % GMV_STEP)) {
-    const D = _gmvDrawing(hw, _GPL.yaw, GMV_STEP), m = _GPL.yaw % 180 ? (_gmv.mirror || 1) : 1;
-    if (D.yaw === _GPL.yaw && D.mirror === m) h = Math.round((((90 - m * _GPL.yaw) % 360) + 360) % 360 / 22.5) % 16;
-  }
+  // (nf-walk) the drawing you will show once turned that way, which keeps the one you show now near the half-way mark between two
+  // (_gmvTold): a run stopped at 99 degrees showed 112.5 on your screen and 90 on a friend's, and a click's walk at 112.5 was drawn
+  // facing you on your screen and a sixteenth round on a friend's for the whole walk
+  const h = _gmvTold(hw);
   if (typeof _gw !== 'undefined' && _gw.moving) _gmv.tellGait = _gw.sneak ? 'c' : _gw.gait || 'w';
   // (round 3) a click's walk, told as it starts: the gait it will have (chosen once for the way: _gw.clickRun) and the way to its first turn,
   // not the gait and facing of whatever you did before (a click walk told friends 'run', then 'walk')
   const way = typeof _gw !== 'undefined' && _gw.path && _gw.path.length ? _gw.path[0] : null;
   if (way) {
     const ddx = way.x - _gw.px, ddy = (way.y - _gw.py) * 1.6;
-    const hw = Math.abs(ddx) + Math.abs(ddy) > 0.05 ? _gmvH16(Math.atan2(ddy, ddx) * 180 / Math.PI) : h;
+    const hw = Math.abs(ddx) + Math.abs(ddy) > 0.05 ? _gmvTold(Math.atan2(ddy, ddx) * 180 / Math.PI) : h;
     return { h: hw, g: _gw.sneak ? 'c' : _gw.clickRun ? 'r' : 'w' };
   }
   const g = _gmv.tellGait || 'w';
