@@ -26,11 +26,15 @@ document.body.classList.toggle('no-ai', true);
 // file is reconciled immediately afterwards. If the file on disk is newer
 // (edited by a script, a migration or another tab), adopt it.
 function _adoptState(fromFile, msg) {
+  // (nf-walk) a tab that has gone somewhere since it opened stays there: the garden (not kept in the address) went back to Home when the
+  // file was read a few seconds after you opened it, and a friend knocking found nobody at home
+  const cur = state.view, moved = _viewNavigation !== _BOOT_NAVIGATION;
   for (const k of Object.keys(state)) delete state[k];
   Object.assign(state, fromFile);
   ensureStateDefaults(state);   // the file omits calCache etc. - restore them
   // Keep this tab's view: the URL it was opened with, else its current hash.
-  { const hv = _viewFromHash(_BOOT_HASH) || _viewFromHash(); if (hv) { state.view = hv; if (hv.startsWith('person:')) state.selectedTaskId = null; } }
+  if (moved && cur) state.view = cur;
+  else { const hv = _viewFromHash(_BOOT_HASH) || _viewFromHash(); if (hv) { state.view = hv; if (hv.startsWith('person:')) state.selectedTaskId = null; } }
   state._localDirty = false;
   // AI chats: archive older messages, time order (70-ai-chats.js); a change is saved back.
   const chatsChanged = typeof chatAfterAdopt === 'function' && chatAfterAdopt();
