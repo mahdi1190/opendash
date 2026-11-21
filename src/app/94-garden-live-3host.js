@@ -377,7 +377,7 @@ function _glhIntent(ev) {
   _glhPrune();
   _gdSave();
   if (!ev.away) { const result = _glhResOf(ev, e); _glhSend('all', 'res', result); _gllToolFeedback(result, false); }
-  if ((ev.t === 'land' || ev.t === 'build' || ev.t === 'gate' || ev.t === 'solve') && typeof gardenToast === 'function') gardenToast(_glhDiaryWhat(e, 1) + (e.wait ? (ev.t === 'solve' ? '. It is in Land, under discovered places, for you to set out.' : '. There was no room for it nearby: set it out from the land office.') : '!'), { icon: ev.t === 'land' ? 'trees' : ev.t === 'gate' ? 'key' : 'hammer', ...(e.wait ? { timeout: 12000 } : {}) });   // (full co-op: a friend's gift to the garden, said out loud)
+  if ((ev.t === 'land' || ev.t === 'build' || ev.t === 'gate' || ev.t === 'solve') && typeof gardenToast === 'function') gardenToast(_glhDiaryWhat(e, 1) + (e.wait ? (ev.t === 'solve' ? '. It is in Land, under discovered places, for you to set out.' : '. There was no room for it nearby: set it out from the land office.') : '!'), { icon: ev.t === 'land' ? 'trees' : ev.t === 'gate' ? 'key' : 'hammer', timeout: e.wait ? 12000 : 9000 });   // (full co-op: a friend's gift to the garden, said out loud)
   const A = _gll.actors.get(ev.w);
   if (A) _gllPose(A, _GL_POSE[ev.t] || 'pick', 760);
   if (ev.x != null && _GL_EMOJI[ev.t]) _gllFloat(_gw.svg, ev.x, ev.y, _GL_EMOJI[ev.t], A ? A.n : '');

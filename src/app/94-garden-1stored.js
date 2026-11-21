@@ -128,8 +128,8 @@ function _gardenFeatureClearWhy(f, x, y, m) {
       if (!o || o.id === f.id || !Number.isFinite(o.x) || !Number.isFinite(o.y)) continue;
       const hw = (o.w || 1) / 2 + w / 2 + reach + .4;
       if (Math.abs(o.x - cx) < hw && o.y > y - 1.2 - (up - 1) && o.y - (o.h || 1) < fy + 1.2) return `Too close to ${String(o.name || 'something').replace(/^The /, 'the ')}`;
-      const K = typeof GARDEN_KINDS !== 'undefined' ? GARDEN_KINDS : {}, pet = kind && K[kind] && !/^(tree|board|wall|bench)$/.test(K[kind].pet || '') && K[kind].pet;   // (a well is a well, a village well or a wishing one)
-      if (kind && (o.kind === kind || pet && K[o.kind] && K[o.kind].pet === pet) && Math.hypot(o.x - cx, (o.y - fy) * 1.3) < 7) return `There is ${String(o.name || 'one').replace(/^the /i, 'a ')} close by already`;
+      const K = typeof GARDEN_KINDS !== 'undefined' ? GARDEN_KINDS : {}, pet = kind && K[kind] && !/^(tree|board|wall|bench)$/.test(K[kind].pet || '') && K[kind].pet;   // (a well is a well, a village well or a wishing one; only kinds with a use of their own count: a lucky stone read as a 'building' and no cottage could have one near it)
+      if (pet && (o.kind === kind || K[o.kind] && K[o.kind].pet === pet) && Math.hypot(o.x - cx, (o.y - fy) * 1.3) < 7) return `There is ${String(o.name || 'one').replace(/^the /i, 'a ')} close by already`;
     }
   }
   // never on a painted flower border or other planting a painter has laid in the ground (a friend's village well went up on the high street's border: critic, 21 Nov)
