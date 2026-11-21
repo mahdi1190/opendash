@@ -288,7 +288,7 @@ function _vfrShow(V) {
 function _vfrHide(V) { if (V.S) { try { V.S.remove(); } catch (e) { /* gone */ } V.S = null; } V.drawn = ''; }
 function _vfrDraw(V, walking) {
   const S = V.S; if (!S) return;
-  const e = V.entry, at = !walking && e && V.arrived;
+  const e = V.entry, at = !walking && e && V.arrived && !V.visit;   // (come over to you: they stand, whatever their plan's place would have them do)
   let pose = 'idle';
   if (V.hold || V.greet) pose = at && e.clip === 'sit' ? 'sittalk' : 'talk';   // (sat down, they talk from the seat)
   else if (at && e.clip === 'sit') pose = V.id === 'bramble' && V.rubbing ? 'rub' : 'sit';
@@ -675,6 +675,7 @@ const _vfl = { at: 0, sig: '', sentAt: 0 };
 function _vfrPoseWord(V) {
   const e = V.entry; if (V.hold) return V.arrived && e && e.clip === 'sit' ? 'sittalk' : 'talk';
   if (!V.arrived || !e) return 'walk';
+  if (V.visit) return 'idle';
   return e.clip === 'sit' ? (V.rubbing ? 'rub' : 'sit') : e.clip === 'fish' ? 'fish' : e.clip === 'read' ? 'read' : 'idle';
 }
 function _vfrHostSend(now) {
