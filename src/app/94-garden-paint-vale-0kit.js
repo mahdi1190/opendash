@@ -26,7 +26,9 @@ window.GardenPaintVale = (function () {
   'use strict';
   const KIT = () => window.GardenPaintTerrainKit;
   const DEPTH = -9346, UNDER = -9592, MAIN_DEPTH = -9268;
-  const parts = [], groundSigs = [], softRoutes = new Set(); let composeMs = {}, partNow = '';
+  const parts = [], groundSigs = [], softRoutes = new Set();
+  // the parts whose composition reads only the layout and the season (no level, no open land, no gate): checked by what each reads
+  const STILL_PARTS = new Set(['valley-floor', 'valley-planting', 'orchard', 'mainland', 'cloudbreak-relief', 'woodland-marks']), stillMemo = new Map(); let composeMs = {}, partNow = '';
   let cur = null, heldGround = null, lastError = null, stats = {}, feetNow = [], feetSig = '';
   const memo = new Map();
   const ok = f => { try { return f(); } catch (e) { lastError = String(e && e.stack || e); return null; } };
@@ -276,7 +278,16 @@ window.GardenPaintVale = (function () {
     if (!comp) {
       comp = { L, ground: [], main: [], under: [], things: [], live: [] };
       const ctx = { L, P, season, tod: info.tod, kit, W, sig, add: (bb, seed, draw, extra) => comp.ground.push(Object.assign({ bb, seed, draw, name: partNow }, extra || {})), main: (bb, seed, draw) => comp.main.push({ bb, seed, draw }), under: o => comp.under.push(o), thing: o => comp.things.push(o), live: o => comp.live.push(o) };   // (live: drawn each frame near the camera, the swash)
-      composeMs = {}; for (const p of parts) { const c0 = performance.now(); partNow = p.id; ok(() => p.compose(ctx)); composeMs[p.id] = Math.round(performance.now() - c0); }
+      // (vf-perf) a part whose picture depends on the layout and the season only (STILL_PARTS) keeps what it composed last time:
+      // a level-up or an opened field composes the vale again (the state parts change), and these took 150 to 200 ms of it
+      composeMs = {}; const arrays = ['ground', 'main', 'under', 'things', 'live'];
+      for (const p of parts) {
+        const c0 = performance.now(); partNow = p.id; const kept = STILL_PARTS.has(p.id) && stillMemo.get(p.id);
+        if (kept && kept.sig === sig) { kept.L.cellAt = L.cellAt; kept.L.soil = L.soil; for (const a of arrays) for (const o of kept[a]) comp[a].push(o); composeMs[p.id] = 0; continue; }
+        const at = arrays.map(a => comp[a].length); ok(() => p.compose(ctx));
+        if (STILL_PARTS.has(p.id)) { const rec = { sig, L }; arrays.forEach((a, i) => { rec[a] = comp[a].slice(at[i]); }); stillMemo.set(p.id, rec); }
+        composeMs[p.id] = Math.round(performance.now() - c0);
+      }
       memo.clear(); memo.set(compSig, comp);
       // the standing things that say where their foot is: walking stops the feet there (_gwBuildSolids)
       const cw = W.cellW, ch = W.cellH, names = { 'cold-cove-rock': 'shore boulder', block: 'chopping block', 'chapel-stone': 'chapel stone' };

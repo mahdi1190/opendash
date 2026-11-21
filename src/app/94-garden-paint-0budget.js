@@ -25,9 +25,13 @@ function gardenBakeWalking() {
  *  however slow each frame is (a slow graphics card drew few frames, and a fixed amount a frame left the ground unpainted). */
 function gardenBakeRoom(cap) {
   const S = _gbbState(), now = performance.now(), walking = gardenBakeWalking();
-  const rate = walking ? .4 : .7, burst = walking ? 8 : 12;
+  const rate = walking ? .35 : .7, burst = walking ? 8 : 12;
   if (!(S.tAt > 0)) { S.tAt = now; S.tokens = burst; }
   S.tokens = Math.min(burst, S.tokens + (now - S.tAt) * rate); S.tAt = now;
-  return Math.max(0, Math.min(cap || burst, S.tokens));
+  let room = Math.min(cap || burst, S.tokens);
+  // while you walk, also no more than 6 ms between two drawn frames (a measured tour: more than that, and frames went missing),
+  // unless no frame has come for a quarter second (a hidden page): then a slice now and then, so the work still ends
+  if (walking) { if (S.usedFrame !== S.frame) { S.usedFrame = S.frame; S.used = 0; } room = now - S.at > 250 ? Math.min(room, 6) : Math.min(room, 6 - S.used); }
+  return Math.max(0, room);
 }
-function gardenBakeSpent(ms) { const S = _gbbState(); S.tokens = (S.tokens || 0) - Math.max(0, ms || 0); if (S.tokens < -40) S.tokens = -40; }
+function gardenBakeSpent(ms) { const S = _gbbState(); ms = Math.max(0, ms || 0); S.tokens = (S.tokens || 0) - ms; if (S.tokens < -40) S.tokens = -40; if (S.usedFrame !== S.frame) { S.usedFrame = S.frame; S.used = 0; } S.used += ms; }
