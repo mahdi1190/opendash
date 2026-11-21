@@ -280,6 +280,20 @@ function _vfrRoundYou(V) {
   const dx = p.x - V.x, dy = p.y - V.y, n = Math.hypot(dx, dy) || 1;
   for (const s of [1, -1]) { const q = { x: _gw.px - dy / n * 0.9 * s, y: _gw.py + dx / n * 0.6 * s }; if (_vfrBodyOk(q.x, q.y, '') ) { V.path.unshift(q); return; } }
 }
+/** Is another figure standing at x, y (the gnome, a traveller, a pet: any world sprite that is not one of the folk)? */
+function _vfrSpriteAt(x, y, own) {
+  if (typeof _gwSprites === 'undefined') return false;
+  for (const S of _gwSprites) { if (S === own || S.simulationOnly || !Number.isFinite(S.x) || !Number.isFinite(S.y) || /^vf/.test(String(S.id || ''))) continue; if (Math.abs(S.x - x) < 0.7 && Math.abs(S.y - y) < 0.4) return true; }
+  return false;
+}
+/** Their stand point, or the nearest clear one beside it when another figure is already on it (looked at every few seconds). */
+function _vfrClearDest(V, e, to, now) {
+  if (e._dest && now - e._destT < 4000) return e._dest;
+  e._destT = now; e._dest = to;
+  if (!_vfrSpriteAt(to.x, to.y, V.S)) return to;
+  for (const [ox, oy] of [[0.75, 0], [-0.75, 0], [0.6, 0.35], [-0.6, 0.35], [0, 0.55], [1.1, 0], [-1.1, 0]]) { const x = to.x + ox, y = to.y + oy; if (!_vfrSpriteAt(x, y, V.S) && _vfrBodyOk(x, y, to.src)) { e._dest = Object.assign({}, to, { x, y }); break; } }
+  return e._dest;
+}
 /* ---------- tells: what people do ---------- */
 const VALE_TELLS = Object.freeze({
   'back-to-water': 'The old angler fishes with his back to the moving water. Every time.',
@@ -372,7 +386,8 @@ function _vfrFrame(dt) {
     const e = V.entry, to = e.spot, near = _vfrNearView(V.x, V.y, v, VFR_NEAR) || _vfrNearView(to.x, to.y, v, VFR_NEAR) && !e.inside;
     // a teller on their way to you: their visit stands in for the plan until you talk, or it runs out
     const goal = V.visit && now < V.visit.until ? V.visit : null; if (V.visit && !goal) { V.visit = null; V.mark = false; }
-    const dest = goal ? goal.at : to;
+    let dest = goal ? goal.at : to;
+    if (!goal && to && !e.inside && !e.offmap && !(to.seat || to.edge || to.edgeSide)) dest = _vfrClearDest(V, e, to, now);   // (someone else already stood there: the gnome by the bed, a traveller)
     if (V.hold && !V.S && !V.inside && near) _vfrShow(V);   // (held while off the page: drawn as soon as you look)
     if (V.hold) { if (now > V.hold.until || (V.hold.by == null && typeof _wd !== 'undefined' && !_wd.talk && now - V.hold.t0 > 1500) || (V.hold.A && !_gll.actors.has(V.hold.by))) { V.hold = null; V.drawn = ''; } else { const tx = V.hold.A ? V.hold.A.x : _gw.px, ty = V.hold.A ? V.hold.A.y : _gw.py;
       // (stopped too close, on your feet: a step back first, to talking distance, then turn to you)
