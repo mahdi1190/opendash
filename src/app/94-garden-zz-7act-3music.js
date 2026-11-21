@@ -32,7 +32,7 @@
    gardenMusicState()                              for checking: { me, them, off, synced, roles, n, step, notes }
    gardenMusicRender(voices, secs)                 the tune drawn into an OfflineAudioContext: for checking levels with no speakers
    ============================================================ */
-const GMU = Object.freeze({ bpm: 96, steps: 8, bars: 16, ear: 7, far: 20, ahead: 0.35, tickMs: 100, beatMs: 5000, staleMs: 26000, pingMs: 8000, pingQuickMs: 350, quickRtt: 220, awayMs: 400, newcomerMs: [900, 3000], walkOff: 1.2 });
+const GMU = Object.freeze({ bpm: 96, steps: 8, bars: 16, ear: 7, far: 20, ahead: 0.35, tickMs: 100, beatMs: 5000, staleMs: 26000, pingMs: 8000, pingQuickMs: 350, quickRtt: 220, awayMs: 400, healMs: 500, newcomerMs: [900, 3000], walkOff: 1.2 });
 const GM_STEP = 60000 / GMU.bpm / 2, GM_LOOP = GM_STEP * GMU.steps * GMU.bars, GM_NSTEP = GMU.steps * GMU.bars, GM_SYNC = GM_LOOP * 2;   // (the clock is told modulo two times round, so every screen is on the same time round too: the descant is on the second)
 // the chord of each bar, and what is in it (MIDI notes): roots low for the bass, the triad round middle D
 const GM_BARS = Object.freeze(['D', 'G', 'D', 'A', 'D', 'G', 'A', 'D', 'Bm', 'G', 'D', 'A', 'Bm', 'G', 'A', 'D']);
@@ -214,15 +214,18 @@ function _gmPing() {
   _gmu.pingAt = performance.now();
   try { gardenLiveFx('tune', 'ping', { v }); } catch (e) { /* alone */ }
 }
+/** How long until the visitor asks the host's clock again: rarely once a quick answer came; at once a few times on a new visit; then
+ *  every second while the line is slow (a new visit's first answers can take a second or more). */
+function _gmPingGap() { const n = _gmu.heardN || 0; return _gmu.synced ? GMU.pingMs : n < 4 ? GMU.pingQuickMs : n < 12 ? 1000 : 2500; }
 function _gmPong(ev) {
   const t0 = _gmu.pings.get(String(ev.v)); if (t0 == null) return; _gmu.pings.delete(String(ev.v));
   const t1 = performance.now(), rtt = t1 - t0, host = (Number(ev.tt) || 0) * 1000 + (Number(ev.n) || 0);
   if (!(rtt >= 0 && rtt < 8000)) return;
   const off = ((host + rtt / 2 - t1) % GM_SYNC + GM_SYNC) % GM_SYNC;
-  _gmu.samples.push({ rtt, off, at: t1 }); _gmu.samples = _gmu.samples.filter(s => t1 - s.at < 40000).slice(-8);
+  _gmu.samples.push({ rtt, off, at: t1 }); _gmu.heardN = (_gmu.heardN || 0) + 1; _gmu.samples = _gmu.samples.filter(s => t1 - s.at < 40000).sort((a, b) => a.rtt - b.rtt).slice(0, 8);   // (the eight quickest of the last 40 s: a quick one is never pushed out by slow ones after it)
   const best = _gmu.samples.reduce((a, s) => (!a || s.rtt < a.rtt ? s : a), null);
   const was = _gmu.off; _gmu.off = best.off;
-  _gmu.synced = best.rtt <= GMU.quickRtt || _gmu.samples.length >= 4;   // (one slow answer is not trusted: half its round trip is a guess. Until then the visitor asks again every GMU.pingQuickMs)
+  _gmu.synced = best.rtt <= GMU.quickRtt;   // (a slow answer is not trusted: half its round trip is a guess. Until a quick one comes (or the best of eight, on a line that is always slow), the visitor asks again soon: _gmPingGap)
   const jump = Math.abs(((_gmu.off - was) % GM_SYNC + GM_SYNC * 1.5) % GM_SYNC - GM_SYNC / 2);
   if (jump > 25) _gmu.next = -1;   // (a new clock: start scheduling again from now, so nothing plays twice)
 }
@@ -331,7 +334,7 @@ function _gmTick() {
   try {
     // a new garden or a new visit: friends heard in the last one are not here, and a visitor's clock is the new host's to learn
     const sess = typeof _gll === 'undefined' ? '' : _gll.role + ':' + (_gll.role === 'visit' && typeof _glv !== 'undefined' ? _glv.fid : '');
-    if (_gmu.sess != null && sess !== _gmu.sess) { _gmu.seen = null; _gmu.seenOnce = false; _gmu.them.clear(); _gmu.synced = false; _gmu.samples = []; _gmu.off = 0; _gmu.next = -1; _gmHeldSync(); }
+    if (_gmu.sess != null && sess !== _gmu.sess) { _gmu.seen = null; _gmu.seenOnce = false; _gmu.them.clear(); _gmu.synced = false; _gmu.samples = []; _gmu.heardN = 0; _gmu.off = 0; _gmu.next = -1; _gmHeldSync(); }
     _gmu.sess = sess;
     // a garden you are no longer looking at (Home, Friends, another page): your instrument is put down and nothing more is heard. The
     // sound's own loop sleeps then; this timer must not wake the sound card again (gardenSoundBus resumes it)
@@ -355,9 +358,9 @@ function _gmTick() {
     }
     const band = _gmHeard();
     if (!_gmu.me && !_gmu.them.size) { clearInterval(_gmu.iv); _gmu.iv = 0; _gmu.next = -1; _gmQuiet(); _gmHeldSync(); return; }
-    if (_gmVisitor() && _gmLive() && (_gmu.me || _gmu.them.size) && performance.now() - _gmu.pingAt > (_gmu.synced ? GMU.pingMs : GMU.pingQuickMs)) _gmPing();
+    if (_gmVisitor() && _gmLive() && (_gmu.me || _gmu.them.size) && performance.now() - _gmu.pingAt > _gmPingGap()) _gmPing();
     if (performance.now() % 1000 < GMU.tickMs) _gmHeldSync();
-    if (performance.now() % 2000 < GMU.tickMs) for (const w of _gmu.them.keys()) _gmHeal(w);   // (their figure shows them playing, every two seconds at most)
+    if (performance.now() - (_gmu.healAt || 0) > GMU.healMs) { _gmu.healAt = performance.now(); for (const w of _gmu.them.keys()) _gmHeal(w); }   // (their figure shows them playing, where they stand: looked at twice a second)
     if (!band) { _gmu.next = -1; _gmQuiet(); return; }
     {   // notes rise from the players on the beat (every bar; every half bar with two or more), seen with the sound on or off
       const sg = gmNow(), c0 = Math.floor(sg / GM_STEP), c1 = Math.floor((sg + GMU.ahead * 1000) / GM_STEP), np = band.players.length;
