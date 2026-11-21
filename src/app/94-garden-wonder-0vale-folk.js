@@ -63,7 +63,8 @@ function _vfrCtx(m) {
     },
     public(x, y) { return _vfrOpenAt(x, y, m); },
     open(t) { return _vfrOpenAt(t.x, t.y - 0.2, m); },
-    walkable(x, y, s) { return s && (s.seat || s.edge || s.pierEnd) ? true : free(x, y) || (typeof _gwNearestFreePt === 'function' && !!_gwNearestFreePt(x, y, 0.35)); },
+    walkable(x, y, s) { return s && (s.seat || s.pierEnd) ? true :   // (an edge to lean on is stood at only where the feet can be: a wheel pit's wall stands in water)
+      free(x, y) || (typeof _gwNearestFreePt === 'function' && !!_gwNearestFreePt(x, y, 0.35)); },
     season: m.season, rain: !!(m.rain && m.rain.now), snow: !!(m.rain && m.rain.snow),
   };
 }
