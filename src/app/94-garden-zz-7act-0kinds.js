@@ -28,6 +28,12 @@
                core [rx, y] (a lamp room: you are behind it, drawn under the thing, when your feet are behind y and within rx of the middle),
                sit (a level of one spot: the pose you take there), ways [{ by: 'ladder', art (drawn by the world; none: the painter's own),
                loft, name, foot [x, y] (where you start up, in H from the drawn foot), top [x, y] (where you step off, in H from the middle) }] }]
+               A way may instead be { by: 'stair', inside: true, door: { w, h, up } }: a stair inside the thing; you go in at its door (drawn
+               standing open, w by h in H, its sill up from the foot), out of sight, and rise out of the stair head at the top, drawn behind the
+               thing so its own wall hides your legs. What stands in front of the floor is drawn again over your legs as you pass it:
+               rail { ring: [rx, ry] } or { line: [x0, x1, y] }, h, post, post0, gap, color (posts and rails, in H round the middle), or
+               front { poly: [[x, y], ...] (the painter's own outline, in H from the drawn foot), fill, line, lineTo } (battlements, a parapet).
+               tools/affordance-audit.mjs checks every way's foot is walkable and reachable on any layout.
      dw        the drawn width in cells when nothing else says (a painter that draws the thing at its own fixed size)
      paint     a fixed thing's painter (GardenPaintedProps: 'seat' the bench, 'wish' the well, 'board', 'post', 'tripod', 'fountain', 'lamp',
                'sundial', 'postbox'): a row of layout data of this kind (`things`) is drawn by that painter where the row puts it, blocks the
