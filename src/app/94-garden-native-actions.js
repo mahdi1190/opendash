@@ -55,6 +55,8 @@ window.GardenNativeActions = (function () {
     if (previous != null && s.time - previous < (kind === 'water' || kind === 'soil' ? 1500 : 220)) return true;
     s.dedupe.set(key, s.time); if (s.dedupe.size > 96) s.dedupe.delete(s.dedupe.keys().next().value);
     s.counts[kind] = (s.counts[kind] || 0) + 1; s.last = { kind, x, y, width, height, motion };
+    // music (94-garden-zz-7act-3music.js): a note or two rising from a player in time with the tune, swaying, fading in and out; no ring on the ground
+    if (kind === 'notes') { if (!motion) return true; const n = options.count || 1; for (let i = 0; i < n; i++) s.particles.push({ kind, color: options.color || 0x4a2c18, x, x0: x + (i - (n - 1) / 2) * 7, y: y - i * 5, groundY: Infinity, vx: 0, vy: -20 - i * 3, size: 1, life: 1.7, age: 0, ph: (x * 0.37 + y * 0.11 + i * 1.9) % 6.28, two: (Math.round(x) + Math.round((s.time || 0) / 97) + i) % 3 === 0 }); if (s.particles.length > 96) s.particles.splice(0, s.particles.length - 96); return true; }
     if (kind === 'water' || kind === 'soil') soil(s, x, y, width, height);
     if (kind === 'soil') return true;
     const palette = { water: 0x86cde0, plant: 0x9b7650, grow: 0xa7ce78, trim: 0x91b46b, feed: 0xc5a678, harvest: 0xd2bc76, gold: 0xf0d46f, lift: 0xd9c9a4, place: 0xbfa478, turn: 0xe8d9ae, style: 0xe8cea0 };
@@ -103,6 +105,18 @@ window.GardenNativeActions = (function () {
     }
     for (let i = s.particles.length - 1; i >= 0; i--) {
       const p = s.particles[i]; p.age += dt; if (p.age >= p.life) { s.particles.splice(i, 1); continue; }
+      if (p.kind === 'notes') {   // an eighth note (or two beamed), drawn in ink with a pale edge so it reads on grass and on setts
+        p.y += p.vy * dt; p.x = p.x0 + Math.sin(p.age * 3.2 + p.ph) * 4; const a = Math.sin(Math.PI * Math.min(1, p.age / p.life)) * 0.9, hx = p.x, hy = p.y;
+        s.airPainted = true;
+        for (const [w, col, al] of [[2.6, 0xfff6e0, a * 0.55], [1.2, p.color, a]]) {
+          s.air.lineStyle(w, col, al);
+          if (p.two) s.air.lineBetween(hx + 2.4, hy, hx + 2.4, hy - 9).lineBetween(hx + 9.4, hy - 1.5, hx + 9.4, hy - 10.5).lineBetween(hx + 2.4, hy - 9, hx + 9.4, hy - 10.5);
+          else s.air.lineBetween(hx + 2.4, hy, hx + 2.4, hy - 9.5).lineBetween(hx + 2.4, hy - 9.5, hx + 5.6, hy - 6.2);
+        }
+        s.air.fillStyle(0xfff6e0, a * 0.55).fillEllipse(hx, hy, 6.4, 4.8).fillStyle(p.color, a).fillEllipse(hx, hy, 5, 3.6);
+        if (p.two) s.air.fillStyle(0xfff6e0, a * 0.55).fillEllipse(hx + 7, hy - 1.5, 6.4, 4.8).fillStyle(p.color, a).fillEllipse(hx + 7, hy - 1.5, 5, 3.6);
+        continue;
+      }
       p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 90 * dt;
       if (p.y >= p.groundY) { p.y = p.groundY; if (!p.landed) { p.landed = true; p.vx *= .35; p.vy = 0; p.life = Math.min(p.life, p.age + .15); } }
       const alpha = Math.max(0, 1 - p.age / p.life);

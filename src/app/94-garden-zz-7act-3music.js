@@ -297,6 +297,12 @@ function _gmTick() {
     if (performance.now() % 1000 < GMU.tickMs) _gmHeldSync();
     if (performance.now() % 2000 < GMU.tickMs) for (const w of _gmu.them.keys()) _gmHeal(w);   // (their figure shows them playing, every two seconds at most)
     if (!band) { _gmu.next = -1; _gmQuiet(); return; }
+    {   // notes rise from the players on the beat (every bar; every half bar with two or more), seen with the sound on or off
+      const sg = gmNow(), c0 = Math.floor(sg / GM_STEP), c1 = Math.floor((sg + GMU.ahead * 1000) / GM_STEP), np = band.players.length;
+      if (!(_gmu.nnext >= c0 && _gmu.nnext <= c1 + 4)) _gmu.nnext = c0 + 1;
+      for (let s = _gmu.nnext; s <= c1; s++) if (s % 4 === 0 && (s % 8 === 0 || np >= 2)) setTimeout(() => _gmNotes(band.players, np), Math.max(0, s * GM_STEP - sg));
+      _gmu.nnext = c1 + 1;
+    }
     const B = _gmBus(); if (!B) { _gmu.next = -1; return; }   // (Sounds off, or nobody has clicked yet: silent, still in time)
     const c = _gmu.ac, now = performance.now(), song = gmNow(), cur = Math.floor(song / GM_STEP), until = Math.floor((song + GMU.ahead * 1000) / GM_STEP);
     if (_gmu.next < cur || _gmu.next > until + 4) _gmu.next = cur + 1;
@@ -312,6 +318,17 @@ function _gmTick() {
     }
     _gmu.next = until + 1;
   } catch (e) { console.error('[garden music]', e); clearInterval(_gmu.iv); _gmu.iv = 0; }
+}
+/** A note or two rising over each player in the band, wherever they are drawn on this screen (yours, your friends'), on the beat. */
+function _gmNotes(players, n) {
+  try {
+    if (!window.GardenNativeActions || typeof _gw === 'undefined' || !_gw.on) return; const W = GARDEN_WORLD, up = 44 * (typeof GARDEN_ACTOR_SCALE !== 'undefined' ? GARDEN_ACTOR_SCALE : 1);
+    for (const p of players) {
+      const A = p.who === 'me' ? null : typeof _gll !== 'undefined' && _gll.actors ? _gll.actors.get(p.who) : null, x = p.who === 'me' ? _gw.px : A && A.x, y = p.who === 'me' ? _gw.py : A && A.y;
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+      GardenNativeActions.effect('notes', x * W.cellW + (p.voice === 'drum' ? -9 : 9), W.sky + y * W.cellH - up, { count: n >= 3 ? 2 : 1, color: p.voice === 'drum' ? 0x5a3a1e : p.voice === 'whistle' ? 0x2f5a3a : p.voice === 'squeeze' ? 0x7a2a2a : 0x4a2c18 });
+    }
+  } catch (e) { /* no notes */ }
 }
 function _gmQuiet() { try { if (_gmu.bus && _gmu.ac) _gmu.bus.g.gain.setTargetAtTime(0, _gmu.ac.currentTime, 0.2); } catch (e) { /* fine */ } }
 // while the band plays, the garden's own soft notes wait (they are in another key)
