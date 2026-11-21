@@ -218,8 +218,15 @@ function gardenMusicStart(cur) {
     if (_gmVisitor()) { _gmPing(); setTimeout(_gmPing, 450); setTimeout(_gmPing, 1000); }
     _gmWake(); _gmHeldSync();
     // the app's Sounds switch is off by default: say once how to hear the band (plain words, what to press)
-    try { if (!_gmu.told && typeof _gsPrefs === 'function' && !_gsPrefs().on) { _gmu.told = true; gardenToast('You are playing, but Sounds are off. To hear the band: Menu, View & help, Sound.'); } } catch (e) { /* fine */ }
+    _gmSoundNote('You are playing, but the garden’s sound is off.');
   } catch (e) { console.error('[garden music]', e); }
+}
+/** The app's Sound switch is off by default: say so once, with the switch on the note (plain words, one click). */
+function _gmSoundNote(words) {
+  try {
+    if (_gmu.told || typeof _gsPrefs !== 'function' || _gsPrefs().on) return; _gmu.told = true;
+    gardenToast(words, { icon: 'music', timeout: 9000, action: { label: 'Turn sound on', run: () => { try { _gsSet({ sounds: true }); if (typeof _gsArm === 'function') _gsArm(); _gmu.next = -1; _gmWake(); } catch (e) { /* Menu, View & help, Sound */ } } } });
+  } catch (e) { /* fine */ }
 }
 function gardenMusicStop(cur) {
   if (!_gmu.me) return;
@@ -252,6 +259,7 @@ function gardenMusicHeard(A, ev) {
       const row = _gmSpotRow(id, i), was = _gmu.them.get(w);
       _gmu.them.set(w, { id, i, voice: P.voice, stand: row && row.stand ? { x: row.stand.x, y: row.stand.y } : null, at: performance.now(), since: was && was.id === id && was.i === i ? was.since : performance.now() });
       if (_gmVisitor() && !_gmu.synced) _gmPing();
+      if (!was) { const h = _gmHeard(); if (h && h.id === id) _gmSoundNote((A && A.n ? A.n : 'A friend') + ' is playing music here, but the garden’s sound is off.'); }
       _gmWake(); _gmHeldSync();
       setTimeout(() => _gmHeal(w), 1500);
     }
