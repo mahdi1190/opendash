@@ -142,7 +142,10 @@ function gartActDoingIn(A, ev) {
   const a = ev.a ? String(ev.a) : '';
   if (!a) {
     A.dgNext = null; A.dgT0 = null;
-    if (A.actId || A.actWant) { A.actWant = ''; A.actId = ''; A.then = null; if (typeof _gllEmoteStop === 'function') _gllEmoteStop(A); A.sit = false; A.key = ''; }
+    if (A.actId || A.actWant) {
+      A.actWant = ''; A.actId = ''; A.then = null; if (typeof _gllEmoteStop === 'function') _gllEmoteStop(A); A.sit = false; A.key = '';
+      const g = A.goLater; A.goLater = null; if (g && Math.hypot(g.x - A.x, g.y - A.y) > 0.05 && typeof _gllWalkTo === 'function') _gllWalkTo(A, g.x, g.y);   // (a step they took as they got up, held while they were still sitting here: now)
+    }
     A.standDeg = Number.isInteger(ev.d) ? ev.d : null; gartActStandFace(A);   // (standing: they face as they do, now or when their walk here ends)
     return;
   }
