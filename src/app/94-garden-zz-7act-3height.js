@@ -249,11 +249,12 @@ function _ghtAfloat(x, y) {
   return false;
 }
 /** Where a swim from (x, y) wades in to: the water's edge must be right by your feet (within a short step), then deep water that holds
- *  you just beyond it, reached without crossing a deck. null: no swim here. The prompt is offered only where this finds water, and E
+ *  you just beyond it, reached without crossing a deck. (Within a third of a cell: the painted water's edge takes in the wet sand and foam,
+ *  so the visible water is about a third of a cell further; any further back and the prompt showed on dry paving and sand.) null: no swim here. The prompt is offered only where this finds water, and E
  *  does exactly this, so "Go for a swim" never shows on dry ground or where E would do something else. */
 function _ghtSwimTarget(x, y) {
   for (const [dx, dy] of [[0, -1], [0.7, -0.7], [-0.7, -0.7], [1, 0], [-1, 0], [0, 1], [0.7, 0.7], [-0.7, 0.7]]) {
-    let d0 = -1; for (let d = 0.15; d <= 0.9; d += 0.075) if (_ghtWet(x + dx * d, y + dy * d)) { d0 = d; break; }
+    let d0 = -1; for (let d = 0.05; d <= 0.351; d += 0.05) if (_ghtWet(x + dx * d, y + dy * d)) { d0 = d; break; }
     if (d0 < 0) continue;
     for (let d = Math.max(0.6, d0 + 0.3); d <= d0 + 1.7; d += 0.2) { const qx = x + dx * d, qy = y + dy * d; if (_ghtSwimFree(qx, qy) && _ghtSwimFree(qx + dx * 0.6, qy + dy * 0.6) && _ghtWadeClear({ x, y }, { x: qx + dx * 0.25, y: qy + dy * 0.25 })) return { x: qx + dx * 0.25, y: qy + dy * 0.25, dx, dy }; }
   }
@@ -623,6 +624,7 @@ function _ghtRemote(A, id) {
     A.tx = null; A.ty = null; A.way = null;
     A.dir = 'n'; A.pose = ''; A.key = ''; if (typeof _gllPaint === 'function') _gllPaint(A);
     A.ghtClimb = { w, up, t0: performance.now(), ms: w.inside ? _ghtStairMs(w.lv.h) : _ghtClimbMs(w.lv.h) };
+    { const sh = A.root && A.root.querySelector('.gll-shadow'); if (sh) sh.setAttribute('opacity', '0'); }   // (no shadow on a ladder: going down it stayed under the feet from the floor)
     const gpl = !w.inside && A.root && A.root.querySelector('.gpl'); if (gpl) A.ghtH = gartActPlay(gpl, 'climbing', { motion: typeof _gllReduced === 'function' ? !_gllReduced() : true });
     if (w.inside) { A.dir = up ? 'n' : 's'; if (!up) { A.x = w.top.x; A.y = w.top.y; } }
     A.actLift = 0; A.hLift = up ? 0 : w.lv.h;   // (the whole figure rises, its name with it: the sprite's own lift)
