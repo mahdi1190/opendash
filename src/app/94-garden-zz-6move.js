@@ -393,7 +393,14 @@ function _gmvFromH16(n) { const g = n * 22.5 * Math.PI / 180; return _gmvWrap(Ma
 function gartMoveTell() {
   // (round 2) the way you will face when the turn is done (want), and the gait you chose: the last one while moving, kept for the 'stopped' message,
   // which used to say walk and drew the rest of a friend's run as a walk on their screen
-  const h = _gmvH16(_gmv.want != null ? _gmv.want : _gmv.h || 0);
+  const hw = _gmv.want != null ? _gmv.want : _gmv.h || 0;
+  let h = _gmvH16(hw);
+  // (n-move) when the drawing you show is the one the heading keeps (a heading near the half-way mark between two drawings keeps the
+  // drawing it had), say that drawing: a run stopped at 99 degrees showed 112.5 on your screen and 90 on a friend's
+  if (typeof _GPL !== 'undefined' && Number.isFinite(_GPL.yaw) && !(_GPL.yaw % GMV_STEP)) {
+    const D = _gmvDrawing(hw, _GPL.yaw, GMV_STEP), m = _GPL.yaw % 180 ? (_gmv.mirror || 1) : 1;
+    if (D.yaw === _GPL.yaw && D.mirror === m) h = Math.round((((90 - m * _GPL.yaw) % 360) + 360) % 360 / 22.5) % 16;
+  }
   if (typeof _gw !== 'undefined' && _gw.moving) _gmv.tellGait = _gw.sneak ? 'c' : _gw.gait || 'w';
   // (round 3) a click's walk, told as it starts: the gait it will have (chosen once for the way: _gw.clickRun) and the way to its first turn,
   // not the gait and facing of whatever you did before (a click walk told friends 'run', then 'walk')
