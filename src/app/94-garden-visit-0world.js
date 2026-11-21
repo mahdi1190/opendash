@@ -378,6 +378,6 @@ function gardenVisitTagPaint(box, m) {
     const pv = _gdv.f && typeof _pfWho === 'function' ? _pfWho(_gdv.f) : null, mu = pv && pv.profile && pv.profile.ext ? pv.profile.ext.music : null;
     if (live && mu && mu.l === true && /^[0-9a-f]{16}$/.test(String(_gdv.fid)) && typeof musicNowEl === 'function' && typeof spotifyLinked === 'function' && spotifyLinked()) el.appendChild(musicNowEl(_gdv.fid, { along: true }));
   } catch (e) { /* the tag does fine without it */ }
-  if (_glv.state === 'look' && _glv.why && _glv.why !== 'home') el.appendChild(_gsvBtn('Knock', { kind: 'btn-ghost', cls: 'gd-vt-knock', tip: 'Knock again', run: _glvKnockAgain }));
+  if (_glv.state === 'look' && _glv.why) el.appendChild(_gsvBtn('Knock', { kind: 'btn-ghost', cls: 'gd-vt-knock', tip: 'Knock again', run: _glvKnockAgain }));
   el.appendChild(_gsvBtn('', { icon: 'house', kind: 'btn-ghost', cls: 'gd-vt-home', aria: 'Back to your garden', tip: 'Back to your garden', run: () => setView('garden') }));
 }

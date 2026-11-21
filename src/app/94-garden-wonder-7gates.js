@@ -16,6 +16,11 @@ const WG_ITEM_ART = Object.freeze({
 /** A find's picture, for the gate prompt and the bag. */
 function gardenGateItemSvg(key, px) { const it = GARDEN_GATE_ITEMS[key], d = it && WG_ITEM_ART[it.art]; return `<svg class="gd-gate-pic" viewBox="-24 -30 48 36" width="${px || 48}" height="${Math.round((px || 48) * 0.75)}" aria-hidden="true">${d ? d() : ''}</svg>`; }
 function gardenGateHas(key) { return typeof gardenHas === 'function' && gardenHas('gk:' + key) > 0; }
+/** (2.74.1) What the garden on screen holds for its gates: yours at home, the owner's on a visit (their snapshot's gk), so a gate's sign says the same on every screen. */
+function gardenGateHere(key) {
+  try { const v = typeof gardenVisitModel === 'function' ? gardenVisitModel() : null, s = v && v.visit && v.visit.snap; if (s) return Array.isArray(s.gk) && s.gk.includes(key); } catch (e) { /* home */ }
+  return gardenGateHas(key);
+}
 function _wgtFishKinds() { try { return Object.keys(_gdG().fl || {}).filter(id => gardenFishDef(id)).length; } catch (e) { return 0; } }
 /** A zone's name inside a sentence: 'the way into the old woodland'. */
 function _wgtInto(zone) { return String(zone && zone.name || '').replace(/^The /, 'the '); }
@@ -28,9 +33,10 @@ function _wgtHint(gate, rule, m) {
 /** What a closed zone needs, in words, for the land office and its map: {tag, line}, or null when it opens by level only. */
 function gardenGateNeedWords(n) {
   const gate = gardenGateOf(Number(n)), rule = gate && gardenGateRule(gate), item = rule && GARDEN_GATE_ITEMS[rule.key]; if (!item) return null;
-  const z = GARDEN_ZONES[gate.n], have = gardenGateHas(rule.key);
+  const z = GARDEN_ZONES[gate.n], have = typeof gardenGateHere === 'function' ? gardenGateHere(rule.key) : gardenGateHas(rule.key);
   const gn = rule.name || 'the gate', it = item.them ? 'them' : 'it';
-  return { tag: have ? 'Ready to open' : 'Needs ' + (item.tag || item.name.replace(/^(A|An|The) /, '').toLowerCase()), line: have ? (item.ready ? `${item.ready} Go and open the ${gn}.` : `You have ${item.name.toLowerCase()}: take ${it} to the ${gn}.`) : `The ${gn} opens with ${item.name.toLowerCase()}, or by itself at garden level ${gardenZoneOpenLv(z)}.` };
+  let host = ''; try { const v = typeof gardenVisitModel === 'function' ? gardenVisitModel() : null; host = v && v.visit ? v.visit.name || 'Your friend' : ''; } catch (e) { host = ''; }   // (on a visit it is the owner's find)
+  return { tag: have ? 'Ready to open' : 'Needs ' + (item.tag || item.name.replace(/^(A|An|The) /, '').toLowerCase()), line: have ? (host ? `${host} has ${item.name.toLowerCase()}: the ${gn} is ready to open.` : item.ready ? `${item.ready} Go and open the ${gn}.` : `You have ${item.name.toLowerCase()}: take ${it} to the ${gn}.`) : `The ${gn} opens with ${item.name.toLowerCase()}, or by itself at garden level ${gardenZoneOpenLv(z)}.` };
 }
 /* ---------- the finds ---------- */
 function _wgtGate(f) { return gardenGateOf(f.gate); }

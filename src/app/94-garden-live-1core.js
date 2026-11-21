@@ -399,7 +399,7 @@ function gardenLiveOnEvent(d) {
       if (typeof _gdvTouch === 'function') _gdvTouch();
       // The host just let me in (a tap at their gate) while I stand outside in the copy: knock again now, instead of waiting for me to find the Knock button
       const t = _gll.view && _gll.view.theirs && _gll.view.theirs[ev.f];
-      if (_gll.role === 'visit' && ev.f === _glv.fid && _glv.state === 'look' && _glv.why !== 'home' && t && t.lv && t.lv !== 'none' && typeof _glvKnockAgain === 'function') _glvKnockAgain();
+      if (_gll.role === 'visit' && ev.f === _glv.fid && _glv.state === 'look' && t && t.lv && t.lv !== 'none' && typeof _glvKnockAgain === 'function') _glvKnockAgain();
     }).catch(() => {});
     return;
   }

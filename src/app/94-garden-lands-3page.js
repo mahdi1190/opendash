@@ -178,7 +178,7 @@ function _gldFriendTab(el, m) {
     const done = (b, cost) => (r) => { if (!r.ok) gameDenyOf(r, b); else gameCheer(b, { text: '-' + cost, tone: 'coin', sound: true }); };
     const canBuild = GARDEN_LAND_FEATURES.map(f => [f, gardenLandFeatureInfo(f.id, m)]).filter(([f, I]) => I && !I.built && !I.why && !f.prize).sort((a, b) => a[0].cost - b[0].cost);
     const canLand = GARDEN_LAND_SECTIONS.filter(s => { const i = s.buy && !s.relayoutEmpty ? gardenLandInfo(s.id, m) : null; return i && !i.owned && i.lvOk && i.reach && i.keyOk; }).sort((a, b) => a.buy - b.buy);
-    if (canBuild.length) { const d = sec(`Build for ${first}`); for (const [f] of canBuild.slice(0, 8)) _gldRow(d, { icon: f.icon, name: f.name, sub: f.blurb + ' It goes up next to where you stand.', btn: `${_gdpNum(f.cost)} coins`, off: m.wallet.coins < f.cost, run: (b) => done(b, f.cost)(gardenBuildFeature(f.id)) }); }
+    if (canBuild.length) { const d = sec(`Build for ${first}`); for (const [f] of canBuild.slice(0, 8)) _gldRow(d, { icon: f.icon, name: f.name, sub: f.blurb + ' It goes up in the nearest clear spot to you.', btn: `${_gdpNum(f.cost)} coins`, off: m.wallet.coins < f.cost, run: (b) => done(b, f.cost)(gardenBuildFeature(f.id)) }); }
     if (canLand.length) { const d = sec(`Buy land for ${first}`); for (const s of canLand.slice(0, 10)) { const K = GARDEN_LAND_KINDS[s.kind]; _gldRow(d, { icon: s.icon, name: s.name, sub: `${K.name}, ${s.cells.length} squares: ${gardenLandGrowsLine(s)}.`, btn: `${_gdpNum(s.buy)} coins`, off: m.wallet.coins < s.buy, run: (b) => done(b, s.buy)(gardenBuyLand(s.id)) }); } }
     if (!canBuild.length && !canLand.length) box.appendChild(_gdpEl('p', 'gld-more', `Nothing to buy here just now: ${first}’s garden opens more as it levels up.`));
   }

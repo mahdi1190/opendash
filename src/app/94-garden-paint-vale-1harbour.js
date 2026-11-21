@@ -764,14 +764,14 @@
   // lighthouse, the strand's far end), a rope line on driftwood posts stands along the edge where the feet stop, wrack
   // caught round the posts' feet, so walking never stops at nothing. It follows the shut land's own cells (the stop line)
   // and goes when that country opens.
-  const shutKey = () => { try { return (gardenModel().areas || []).filter(a => /^zn-/.test(a)).sort().join(','); } catch (e) { return ''; } };
+  const shutKey = () => { try { return ((typeof gardenHere === 'function' ? gardenHere() : gardenModel()).areas || []).filter(a => /^zn-/.test(a)).sort().join(','); } catch (e) { return ''; } };
   V.groundSigs.push(() => '|rope:' + shutKey());
   // (round 3) and where Wren cove's beach runs on into the old woodland's shore, west of the village
   const ROPE_BOXES = [QUAY, { x0: 0, x1: 20, y0: 76, y1: 92 }];
   let ropeKey = null, ropeRuns = [];
   function ropeLine(W) {
     const k = shutKey(); if (k === ropeKey) return ropeRuns; ropeKey = k; ropeRuns = [];
-    let lv = 1; try { lv = gardenModel().level.level; } catch (e) { /* level 1 */ }
+    let lv = 1; try { lv = (typeof gardenHere === 'function' ? gardenHere() : gardenModel()).level.level; } catch (e) { /* level 1 */ }
     const base = (x, y) => { try { return gardenIslandBaseCell(x, y); } catch (e) { return null; } };
     const shut = (x, y) => { const b = base(x, y); if (!b || !b.land || b.ocean) return false; try { return /^locked:zn-/.test(String(gardenAreaAt(x, y, lv))); } catch (e) { return false; } };
     const sand = (x, y) => { const b = base(x, y); return !!b && b.land && !b.ocean && !!b.beach && !shut(x, y); };

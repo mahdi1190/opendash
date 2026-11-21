@@ -68,7 +68,7 @@ function _glvClear() {
   clearInterval(_glv.beatT); clearTimeout(_glv.goT); clearTimeout(_glv.doT);
   _glvPeopleOut();
   _gll.by.clear();
-  Object.assign(_glv, { fid: '', state: '', why: '', lv: 'none', w: null, road: null, snap: null, follow: null, ver: 0, boot: '', gen: null, here: false, resumeAt: 0, lookSig: '', selfName: '', doT: 0 });
+  Object.assign(_glv, { fid: '', state: '', why: '', lv: 'none', w: null, road: null, snap: null, follow: null, ver: 0, boot: '', gen: null, here: false, resumeAt: 0, lookSig: '', selfName: '', doT: 0, homeBack: false });
   _glv.pending.clear(); _glv.doQ.length = 0;
   _gllTip(null, '');
 }
@@ -90,7 +90,16 @@ function _glvTake(d) {
   if (was !== 'live' && _glv.state === 'live') { _glv.lookSig = _glvLookSig(_glvLook()); _glvResend(); _glvWatchStart(); if (!_glv.snap) _glvSend('me', _glvLook()); if (typeof _gltResume === 'function') _gltResume(); }   // (this page may be new to a visit the server already has: tell me who is here, and the garden as it is)
   else if (was === 'live' && _glv.state === 'live' && wasWhy === 'resume' && !_glv.why) { _glvResend(); if (typeof _gltResume === 'function') _gltResume(); }   // (back: what I asked for and never heard about, with the same ids)
   if (wasGen != null && wasGen !== _glv.gen && _glv.state === 'live') _glvRosterAgain();
+  _glvSayWhy(was, wasWhy);
   _glvHud();
+}
+/** Being sent home, or let back in, said out loud on the visitor's screen (a grey dot and a vanished friend told a novice nothing: critic, 21 Nov). */
+function _glvSayWhy(was, wasWhy) {
+  if (typeof gardenToast !== 'function') return;
+  let first = 'Your friend'; try { first = typeof _gdvFirst === 'function' && _gdvFirst() || first; } catch (e) { /* the plain word */ }
+  if (_glv.why === 'home') _glv.homeBack = true;
+  if (was === 'live' && _glv.state !== 'live' && _glv.why === 'home') gardenToast(`${first} sent you home for now. You can still look round their garden. Tap Knock to ask to come back in.`, { icon: 'log-out', timeout: 12000 });
+  else if (was !== 'live' && _glv.state === 'live' && _glv.homeBack) { _glv.homeBack = false; gardenToast(`${first} let you back in. You are playing together again.`, { icon: 'door-open', timeout: 6000 }); }
 }
 /** A new session (their app restarted): whoever it does not name again within a few seconds has gone. Everyone else never left the screen. */
 function _glvRosterAgain() {

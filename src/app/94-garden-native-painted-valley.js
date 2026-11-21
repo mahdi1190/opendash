@@ -15,7 +15,7 @@
   const K = GP.kit, { rng, hash, leafOf } = K, { WOOD, OAK, STONE, SLATE, IRON, MOSS } = K.PALETTE;
   const D = () => sceneDraw;
   const BRICK = ['#a65a3e', '#8e4a33', '#c07656', '#6e3a28'];
-  const turning = () => { try { return typeof gardenGateHas === 'function' && gardenGateHas('mill'); } catch (e) { return false; } };
+  const turning = () => { try { return typeof gardenGateHere === 'function' ? gardenGateHere('mill') : typeof gardenGateHas === 'function' && gardenGateHas('mill'); } catch (e) { return false; } };
   // brick courses across a rectangle, lit from the upper left
   function bricks(B, r, x, y, w, h, pal) {
     B.f(B.rect(x, y, w, h), pal[0]);

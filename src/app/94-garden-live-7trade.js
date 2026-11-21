@@ -507,6 +507,13 @@ function _gltCol(M, mine) {
       ctl.appendChild(st);
       ctl.appendChild(_gltBtn('x' + item, '', { icon: 'x', kind: 'btn-ghost', aria: `Take ${_gltItemName(item)} out`, run: () => _gltEdit(r => r.filter(x => x[0] !== item)) }));
       li.appendChild(ctl);
+      if (coin) {   // (500 coins was fifty taps of +: big steps in one tap, and one that makes it a fair swap: critic, 21 Nov)
+        const quick = _gsvEl('span', 'gll-trade-quick'), set = (v) => _gltEdit(r => r.map(x => (x[0] === item ? [item, Math.max(10, Math.min(top, v))] : x)));
+        for (const add of [50, 100, 500]) if (n + add <= top) quick.appendChild(_gltBtn('q' + add, '+' + _gdpNum(add), { kind: 'btn-ghost', cls: 'gll-trade-qb', aria: `${_gdpNum(add)} coins more`, run: () => set(n + add) }));
+        const theirW = M.p.length ? _gltWorthOf(M.p) : 0, myOther = _gltWorthOf(M.o.filter(x => x[0] !== item)) || 0, fair = Math.round(Math.max(0, theirW - myOther) / 10) * 10;
+        if (fair >= 10 && fair !== n && fair <= top) quick.appendChild(_gltBtn('qfair', 'Fair price', { kind: 'btn-ghost', cls: 'gll-trade-qb is-fair', tip: `${_gdpNum(fair)} coins: about what you get is worth`, run: () => set(fair) }));
+        if (quick.childNodes.length) li.appendChild(quick);
+      }
     } else li.appendChild(_gsvEl('span', 'gll-trade-q', item === GL_TRADE_COIN ? _gdpNum(n) : '×' + n));
     ul.appendChild(li);
   }

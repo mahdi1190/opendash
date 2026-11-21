@@ -1058,7 +1058,7 @@ window.GardenPaintedProps = (function () {
       if (!o.standing) { im.destroy(); return; } im.setCrop(u, v, w, texH - v); h.standing(im, foot + 2);
     }
   }
-  function gateSignature(g, open, sc) { let have = ''; try { const rule = !open && typeof gardenGateRule === 'function' ? gardenGateRule(g) : null; if (rule && typeof gardenGateHas === 'function' && gardenGateHas(rule.key)) have = '|have'; } catch (e) { /* the sign as before */ } return 'painted-gate-5|' + g.id + '|' + gateKind(g) + '|' + (open ? 'open' : 'shut') + '|' + sc.season + '|' + (g.crossSpan || []).join(';') + have; }
+  function gateSignature(g, open, sc) { let have = ''; try { const rule = !open && typeof gardenGateRule === 'function' ? gardenGateRule(g) : null; if (rule && (typeof gardenGateHere === 'function' ? gardenGateHere(rule.key) : typeof gardenGateHas === 'function' && gardenGateHas(rule.key))) have = '|have'; } catch (e) { /* the sign as before */ } return 'painted-gate-5|' + g.id + '|' + gateKind(g) + '|' + (open ? 'open' : 'shut') + '|' + sc.season + '|' + (g.crossSpan || []).join(';') + have; }
   /** A gate as a handle. open: the region beyond is yours. */
   function gate(scene, g, sc, o, open) {
     open = !!open;
@@ -1136,7 +1136,7 @@ window.GardenPaintedProps = (function () {
     const was = gateSeen.get(g.id); gateSeen.set(g.id, !!open);
     const blockKey = bake(scene, stem + '|block', art.box, B => art.blocker(B));
     const rule = typeof gardenGateRule === 'function' ? gardenGateRule(g) : null, item = rule && typeof GARDEN_GATE_ITEMS !== 'undefined' && GARDEN_GATE_ITEMS[rule.key], need = item ? item.tag || item.name.replace(/^(A|An|The) /, '').toLowerCase() : '';   // (the item's own few words: 'Needs a plank', not 'Needs stout plank')   // (feat/find-gates: the gate opens with a find)
-    const have = !!(need && typeof gardenGateHas === 'function' && gardenGateHas(rule.key));
+    const have = !!(need && (typeof gardenGateHere === 'function' ? gardenGateHere(rule.key) : typeof gardenGateHas === 'function' && gardenGateHas(rule.key)));   // (2.74.1: on a visit, what the owner holds: every screen's sign the same)
     // (the sign is fixed to what bars the way, gateMount: chains, cords, a stake, a post or nails; 19 Nov 2026, round 3:
     // it used to hang in the air over the path with its words in white on the ground below it)
     const mount = gateMount(kind, art, frame, crossing), hangs = mount.how === 'chains' || mount.how === 'cords';

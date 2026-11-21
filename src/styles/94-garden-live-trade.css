@@ -22,6 +22,9 @@
 .gll-trade-step .btn, .gll-trade-row > .btn { padding: 2px 4px; min-width: 0; }
 .gll-trade-row.is-edit { flex-wrap: wrap; }
 .gll-trade-ctl { flex: 0 0 100%; display: flex; align-items: center; justify-content: space-between; gap: 4px; padding-left: 36px; }
+.gll-trade-quick { flex: 0 0 100%; display: flex; flex-wrap: wrap; gap: 4px; padding-left: 36px; }
+.gll-trade-quick .btn.gll-trade-qb { padding: 2px 9px; min-width: 0; border-radius: 999px; font-variant-numeric: tabular-nums; }
+.gll-trade-quick .btn.gll-trade-qb.is-fair { background: #eef6dc; color: #3d5a1e; }
 .gll-trade-q { min-width: 26px; text-align: center; font-variant-numeric: tabular-nums; font-weight: 600; }
 .gll-trade-empty { padding: 10px 6px; text-align: center; font-size: 12.5px; color: var(--muted, #6b6a5a); }
 .gll-trade-foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-top: 12px; }

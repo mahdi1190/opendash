@@ -118,6 +118,20 @@ function _gardenFeatureClearWhy(f, x, y, m) {
     for (const s of statics) { if (s.id === f.id || s.col === 'none' && !(s.tall >= 1.5)) continue; const o = _gardenPictureBox(s.id, s.x, s.y, s.w || 1, s.h || 1, s.tall); if (cross(o)) return (s.y + (s.h || 1) > y + h ? 'Too close behind ' : 'Too close to ') + name(s); }
     for (const g of (typeof GARDEN_LAND_FEATURES !== 'undefined' ? GARDEN_LAND_FEATURES : [])) { if (g.id === f.id || !gardenFeatureIsSetOut(g.id)) continue; const r = gardenFeatureRow(g); if (!r || r.x == null) continue; const o = _gardenPictureBox(g.id, r.x, r.y, r.w || 1, r.h || 1, r.tall); if (cross(o)) return 'Too close to ' + String(g.name || 'something').replace(/^The /, 'the ').toLowerCase(); }
   }
+  // nothing found standing (the painters' drawn things too: the vale's own well) under or right against it, and never a second of
+  // the same kind close by (a friend's village well went up beside the vale's own, two identical wells side by side: critic, 21 Nov)
+  if (typeof gardenAffordThings === 'function') {
+    let kind = ''; try { kind = typeof gardenKindOf === 'function' ? gardenKindOf({ id: f.id, art: f.art || '' }) : ''; } catch (e) { kind = ''; }
+    let things = []; try { things = gardenAffordThings() || []; } catch (e) { things = []; }
+    const cx = x + w / 2, fy = y + h;
+    for (const o of things) {
+      if (!o || o.id === f.id || !Number.isFinite(o.x) || !Number.isFinite(o.y)) continue;
+      const hw = (o.w || 1) / 2 + w / 2 + reach + .4;
+      if (Math.abs(o.x - cx) < hw && o.y > y - 1.2 - (up - 1) && o.y - (o.h || 1) < fy + 1.2) return `Too close to ${String(o.name || 'something').replace(/^The /, 'the ')}`;
+      const K = typeof GARDEN_KINDS !== 'undefined' ? GARDEN_KINDS : {}, pet = kind && K[kind] && !/^(tree|board|wall|bench)$/.test(K[kind].pet || '') && K[kind].pet;   // (a well is a well, a village well or a wishing one)
+      if (kind && (o.kind === kind || pet && K[o.kind] && K[o.kind].pet === pet) && Math.hypot(o.x - cx, (o.y - fy) * 1.3) < 7) return `There is ${String(o.name || 'one').replace(/^the /i, 'a ')} close by already`;
+    }
+  }
   // never on the beds you grow in (the lookout's legs and the fountain's basin stood on the starter bed: hunter, round 3),
   // nor at the end of a bridge or stepping stones (a rain barrel stood on the little bridge's landing)
   for (let cy = y - 1; cy <= y + h; cy++) for (let cx = x - reach; cx < x + w + reach; cx++) { const row = typeof gardenLandCell === 'function' ? gardenLandCell(cx, cy) : null; if (row && row.plot && row.cats && row.cats.length) return 'Keep the growing beds for planting'; }

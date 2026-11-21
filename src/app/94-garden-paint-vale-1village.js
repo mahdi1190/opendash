@@ -23,7 +23,7 @@
   const fieldOfCell = () => { if (!cellField) { cellField = new Map(); for (const f of fields()) for (const s of f.sections) for (const c of cellsOf(s)) cellField.set(c[0] + ',' + c[1], f); } return cellField; };
   /** A section of a village field: it wears its field's edge, so the valley's fences leave it alone. */
   V.villageSection = id => { if (!secSet) secSet = new Set(fields().flatMap(f => f.sections)); return secSet.has(id); };
-  const level = () => { try { return gardenModel().level.level; } catch (e) { return 1; } };
+  const level = () => { try { return (typeof gardenHere === 'function' ? gardenHere() : gardenModel()).level.level; } catch (e) { return 1; } };
   const lockedAt = (x, y, lv) => { try { return String(gardenAreaAt(x, y, lv)).startsWith('locked:'); } catch (e) { return false; } };
   const cellsOf = id => { try { return data().sectionCells[id] || []; } catch (e) { return []; } };
   const rowOf = id => (typeof gardenLandRow === 'function' ? gardenLandRow(id) : null);
