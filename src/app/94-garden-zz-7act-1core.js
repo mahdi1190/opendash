@@ -277,7 +277,7 @@ function gartActFrame() {
   if (now - _ga.t < 200) { if (_ga.near && _ga.el && !_ga.el.hidden) _gaPlace(); return; }
   _ga.t = now;
   const el = _gaPromptEl(); if (!el) return;
-  const busy = (_ga.cur && _ga.cur.doing) || !!_gw.boat || (typeof _gwFishBusy === 'function' && _gwFishBusy()) || (typeof gardenDesignOn === 'function' && gardenDesignOn()) || (typeof GardenNative !== 'undefined' && GardenNative.inRoom && GardenNative.inRoom());
+  const busy = (_ga.cur && _ga.cur.doing) || (typeof _wd !== 'undefined' && !!_wd.talk) || !!_gw.boat || (typeof _gwFishBusy === 'function' && _gwFishBusy()) || (typeof gardenDesignOn === 'function' && gardenDesignOn()) || (typeof GardenNative !== 'undefined' && GardenNative.inRoom && GardenNative.inRoom());
   const opts = busy ? [] : _ga.carry ? [{ key: 'carry-down', act: 'carry', name: '', x: _gw.px, y: _gw.py, down: true }] : _gaOptions(gartActNearby());
   // one clear prompt: the best thing here (or the one you picked with Tab, while it is still in reach); the others in a small chooser below it
   const near = opts.find(o => o.key === _ga.pickKey) || opts[0] || null;

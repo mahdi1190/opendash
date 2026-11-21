@@ -3,8 +3,8 @@
      burrow  a door in a grassy bank: the bank rises out of the lawn (its turf over the top, soil showing round the door), a round
              plank door with a brass knob in a frame of roots, a worn flat step, a rag mat, a pipe chimney through the turf with its
              smoke, pebbles and tufts and two flowers where feet have not worn the grass away
-     holt    an otter's holt in the roots of a bank at the water: a hump of earth held in a cage of old roots, the dark way in at its
-             foot, a driftwood door half open, a mooring post with a coil of rope, reeds and a few stones in the wet at its toe
+     holt    an otter's holt: a turfed bank in the roots of the tree it is under, the dark way in dug at its foot, a driftwood door
+             stood open, a sill of flat stones, a mooring post with its rope and a fish on a nail, reeds, ferns and tufts all round
    VALE_FOLK_ART[art](o) -> SVG in world px, the foot's middle at 0,0 (looked up beside _GAW_ART, 94-garden-zz-7act-2world.js). Seeded:
    the same strokes every time. The smoke and the reeds have their own small motion (CSS, transforms only); reduced motion stops them.
    Sizes against H, the player's height after the 0.8 change (about 33 world px): the burrow's door 0.9 H (a mole's door: Tam is 0.6 H),
@@ -63,28 +63,28 @@ const VALE_FOLK_ART = Object.freeze({
   },
   holt: () => {
     const r = _vfaR('holt');
-    let s = '<ellipse cx="0" cy="1.5" rx="52" ry="7" fill="#102018" opacity=".22"/>';
-    // the wet at its toe: dark mud and a few stones, reeds that lean
-    s += '<path d="M-48 2Q-30 6 0 6.4Q30 6 50 2Q32 9 0 9.6Q-32 9 -48 2Z" fill="#4a3e2e" opacity=".75"/>';
-    s += '<ellipse cx="-30" cy="5" rx="3.6" ry="2" fill="#7e786a"/><ellipse cx="-24" cy="6.4" rx="2.4" ry="1.4" fill="#948e80"/><ellipse cx="33" cy="5.6" rx="3" ry="1.8" fill="#86806f"/>';
-    // the hump of earth, shade then lit
-    s += '<path d="M-44 2C-40 -14 -26 -34 -2 -38C20 -40 38 -24 44 2Z" fill="#5a4630"/><path d="M-41 1C-37 -13 -24 -31 -2 -35C18 -37 34 -22 40 1Z" fill="#7a6040"/>';
-    s += '<path d="M-34 -14C-28 -24 -18 -31 -6 -34C-17 -27 -24 -20 -28 -11Z" fill="#a8885a" opacity=".5"/>';
-    s += _vfaStrokes(r, 0, -18, 34, 13, 40, 2.4, 0.8, '#4a3820', 0.8, 0.5);
-    // grass on top, overhanging
-    s += '<path d="M-30 -24C-22 -36 4 -42 26 -30C18 -34 -6 -36 -22 -26Z" fill="#5e7a36"/>' + _vfaStrokes(r, -2, -33, 26, 5, 34, 3.6, 0, '#7e9a48', 1, 0.7);
-    // the cage of old roots over it, dark under, lit on top
+    let s = '<ellipse cx="0" cy="1.5" rx="50" ry="6.5" fill="#1a2010" opacity=".2"/>';
+    // the bank: a turfed hump whose foot runs out into the lawn (no hard edge at the bottom: grass grows over it), the earth face under
+    // the turf where the way in is dug, all held in the old roots of the tree it is under
+    s += '<path d="M-48 2C-44 -12 -30 -30 -6 -34C18 -36 38 -22 47 2Z" fill="#4e6430"/><path d="M-45 1C-41 -11 -28 -27.5 -6 -31.6C16 -33.4 34 -21 43 1Z" fill="#6e8a42"/>';
+    s += '<path d="M-38 -12C-31 -23 -20 -29 -8 -31.4C-18 -25 -26 -18 -30 -9Z" fill="#9ab45e" opacity=".5"/>';
+    s += _vfaStrokes(r, 0, -18, 36, 12, 60, 3, -0.2, '#8eaa52', 0.9, 0.55) + _vfaStrokes(r, 8, -12, 32, 10, 34, 2.4, 0.4, '#465a2a', 0.8, 0.45);
+    s += '<path d="M-20 2C-21 -9 -15 -21 -1 -23C13 -24 20 -12 20 2Z" fill="#6e5236"/><path d="M-17 2C-18 -8 -13 -18.6 -1 -20.2C11 -21 17 -11 17.4 2Z" fill="#88684a"/>';
+    s += _vfaStrokes(r, 0, -9, 15, 9, 20, 1.8, 1.1, '#5a4028', 0.7, 0.5);
     let roots = '';
-    for (let i = 0; i < 7; i++) { const x0 = -36 + i * 12 + r() * 4, y0 = -6 - r() * 10, x1 = x0 + (r() - 0.5) * 16, y1 = -30 - r() * 6; roots += `M${_vfaN(x0)} ${_vfaN(y0)}Q${_vfaN((x0 + x1) / 2 + (r() - 0.5) * 10)} ${_vfaN((y0 + y1) / 2)} ${_vfaN(x1)} ${_vfaN(y1)}`; }
-    s += `<path d="${roots}" stroke="#3e2a18" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="${roots}" stroke="#8a6a46" stroke-width=".8" fill="none" opacity=".8" transform="translate(-.6 -.6)"/>`;
-    // the dark way in, a driftwood door half open, a lantern hook
-    s += '<path d="M-14 2C-15 -8 -10 -17 -1 -18C8 -18 13 -9 12 2Z" fill="#1e140c"/><path d="M-12 2C-12.6 -7 -8.4 -14.6 -1 -15.4" stroke="#4a3420" stroke-width="1.2" fill="none"/>';
-    s += '<path d="M3 2L4 -15.6L13.4 -11L12.8 2Z" fill="#9a8a72"/><path d="M5 -12L12.6 -9M5 -6L12.8 -4.4M5 0L12.8 .4" stroke="#6a5a46" stroke-width=".7"/><circle cx="10.6" cy="-5" r=".9" fill="#c0a050"/>';
-    s += '<ellipse cx="-1" cy="-6" rx="3" ry="2.2" fill="#f0c860" opacity=".0" class="vfa-win"/>';
-    // the mooring post and its rope, the reeds
-    s += '<path d="M30 3V-20" stroke="#4a3420" stroke-width="3.6" stroke-linecap="round"/><path d="M29.2 3V-20" stroke="#8a6a46" stroke-width="1"/><path d="M27 -12q3 2 6 0M27 -9q3 2 6 0" stroke="#c8b07a" stroke-width="1.2" fill="none"/>';
-    s += '<g class="vfa-reeds"><path d="M-42 3Q-44 -12 -47 -20M-39 3Q-39 -14 -37 -24M-36 3Q-34 -10 -31 -17" stroke="#6a7a36" stroke-width="1.1" fill="none" stroke-linecap="round"/><ellipse cx="-37.2" cy="-25.6" rx="1.2" ry="3" fill="#6a4a2a"/></g>';
-    s += _vfaTufts(r, 14, 26, 2, 3, ['#5e7a36', '#4a6a2c']) + _vfaTufts(r, 36, 48, 2, 3, ['#5e7a36', '#4a6a2c']);
+    for (let i = 0; i < 6; i++) { const x0 = -30 + i * 12 + r() * 4, y0 = -4 - r() * 8, x1 = x0 + (r() - 0.5) * 14, y1 = -24 - r() * 8; roots += `M${_vfaN(x0)} ${_vfaN(y0)}Q${_vfaN((x0 + x1) / 2 + (r() - 0.5) * 10)} ${_vfaN((y0 + y1) / 2)} ${_vfaN(x1)} ${_vfaN(y1)}`; }
+    s += `<path d="${roots}" stroke="#3e2a18" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/><path d="${roots}" stroke="#9a7a52" stroke-width=".7" fill="none" opacity=".7" transform="translate(-.6 -.6)"/>`;
+    // the dark way in, a driftwood door stood open against the bank, a worn sill of flat stones
+    s += '<path d="M-12 2C-13 -7 -9 -14.6 -1 -15.4C7 -15.6 11 -8 10.4 2Z" fill="#1e140c"/><path d="M-10 2C-10.6 -6 -7 -12.4 -1 -13.2" stroke="#4a3420" stroke-width="1.1" fill="none"/>';
+    s += '<path d="M6 2L7.4 -13L15.6 -9L15 2Z" fill="#a8987e"/><path d="M8 -10L15 -7.4M8 -5L15.2 -3.4M8 0L15.2 .6" stroke="#6a5a46" stroke-width=".7"/><circle cx="13.2" cy="-4.6" r=".9" fill="#c0a050"/>';
+    s += '<path d="M-14 2.6Q-6 .6 0 .8Q8 .6 14 2.6Q8 5 0 5Q-8 5 -14 2.6Z" fill="#8e877a"/><path d="M-11 2.2Q-4 1 2 1.2" stroke="#bcb4a4" stroke-width="1" fill="none"/>';
+    // a mooring post with its rope (an otter's front door is the water's), a fish on a nail, ferns and tufts all round the foot
+    s += '<path d="M30 3V-18" stroke="#4a3420" stroke-width="3.4" stroke-linecap="round"/><path d="M29.2 3V-18" stroke="#8a6a46" stroke-width="1"/><path d="M27 -11q3 2 6 0M27 -8q3 2 6 0" stroke="#c8b07a" stroke-width="1.2" fill="none"/>';
+    s += '<path d="M22 -14q3 -2 6 0q-3 2 -6 0zM28 -14l2 -1.6v3.2z" fill="#8ca0a8"/><circle cx="23.4" cy="-14.2" r=".5" fill="#1a1a1a"/>';
+    s += '<g class="vfa-reeds"><path d="M-40 3Q-44 -8 -48 -14M-37 3Q-38 -10 -36 -18M-34 3Q-31 -7 -28 -12" stroke="#5e7a36" stroke-width="1.1" fill="none" stroke-linecap="round"/><path d="M-47 -13q-3 -1 -4 -4M-36.4 -17q-2 -3 -1 -6" stroke="#7e9a48" stroke-width="1" fill="none"/></g>';
+    s += _vfaTufts(r, -50, -16, 2, 8, ['#4e6a2c', '#6a8a3a', '#3e5a24']) + _vfaTufts(r, 16, 50, 2, 8, ['#4e6a2c', '#6a8a3a', '#3e5a24']);
+    s += '<path d="M-26 0V-6M-22 1V-4" stroke="#4e6a2c" stroke-width=".8"/><circle cx="-26" cy="-6.6" r="1.5" fill="#f4f0e0"/><circle cx="-26" cy="-6.6" r=".6" fill="#e8b830"/><circle cx="-22" cy="-4.6" r="1.3" fill="#d8a0c8"/>';
+    s += _vfaSmoke(-6, -36);
     return s;
   },
 });
