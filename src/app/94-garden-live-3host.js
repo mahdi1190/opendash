@@ -660,7 +660,7 @@ function _glhUndoWhy(e) {
   for (const [k, id, old] of e.mark || []) {
     if ((k !== 'plants' && k !== 'decor') || !old) continue;
     const def = k === 'plants' ? gardenPlant(old.p) : gardenDecor(old.d);
-    if (def && _gdPlaceOk(m, def, old.x, old.y, k === 'plants' ? 'plant' : 'decor', id)) return 'Something else is there now.';
+    if (def && _gdPlaceOk(m, def, old.x, old.y, k === 'plants' ? 'plant' : 'decor', id, { back: true })) return 'Something else is there now.';
   }
   return '';
 }
@@ -705,7 +705,7 @@ function gardenLivePutBack() {
     if (was) {
       if (JSON.stringify(was) === JSON.stringify(cur || null)) continue;
       const def = mp === 'plants' ? gardenPlant(was.p) : gardenDecor(was.d);
-      if (def && !_gdPlaceOk(gardenModel(), def, was.x, was.y, mp === 'plants' ? 'plant' : 'decor', uid)) { g[mp][uid] = JSON.parse(JSON.stringify(was)); _gd.rev++; _gd.memoKey = ''; n++; }
+      if (def && !_gdPlaceOk(gardenModel(), def, was.x, was.y, mp === 'plants' ? 'plant' : 'decor', uid, { back: true })) { g[mp][uid] = JSON.parse(JSON.stringify(was)); _gd.rev++; _gd.memoKey = ''; n++; }
     } else if (cur && cur.gi && (mp === 'plants' ? cur.by && !cur.hc : cur.own)) {
       // theirs, new since the copy, and its line is gone: it goes back to them
       const to = mp === 'plants' ? cur.by : cur.own;

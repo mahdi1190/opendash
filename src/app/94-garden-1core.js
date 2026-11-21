@@ -955,7 +955,7 @@ function _gdUndoWhy(u, g) {
   for (const [k, id, old] of spatial) {
     if (!old) continue;
     const def = k === 'plants' ? gardenPlant(old.p) : gardenDecor(old.d); if (!def) continue;
-    const kind = k === 'plants' ? 'plant' : 'decor', why = _gdPlaceOk(view, def, old.x, old.y, kind);
+    const kind = k === 'plants' ? 'plant' : 'decor', why = _gdPlaceOk(view, def, old.x, old.y, kind, undefined, { back: true });
     if (why) return 'Cannot undo here: ' + why + '.';
     const w = kind === 'plant' ? def.fp || 1 : def.w || 1, h = kind === 'plant' ? def.fp || 1 : def.h || 1, layer = kind === 'plant' ? 'plant' : def.layer === 'ground' ? 'ground' : 'decor';
     for (let y = old.y; y < old.y + h; y++) for (let x = old.x; x < old.x + w; x++) { const key = x + ',' + y; let c = occ.get(key); if (!c) occ.set(key, c = {}); c[layer] = id; }
@@ -1044,7 +1044,7 @@ function _gdCellFree(m, x, y, w, h, ignore) {
   }
   return '';
 }
-function _gdPlaceOk(m, def, x, y, kind, ignore) {
+function _gdPlaceOk(m, def, x, y, kind, ignore, o) {   // o.back: putting something back where it was (an Undo): only what is there now counts
   if (m.worldPending) return 'The garden update needs to finish before you can place anything';
   if (m.visit && m.visit.no[kind === 'decor' ? 'decor' : 'plant']) return m.visit.no[kind === 'decor' ? 'decor' : 'plant'];   // your level there does not reach this: the ghost goes red
   const why = gardenCellOk(def, x, y, m.level.level, kind);
@@ -1055,7 +1055,43 @@ function _gdPlaceOk(m, def, x, y, kind, ignore) {
     return '';
   }
   if (kind !== 'decor') for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) { const c = m.occ.get((x + dx) + ',' + (y + dy)); if (c && c.ground && c.ground !== ignore) return 'That is a path: plants go in the beds'; }
-  return _gdCellFree(m, x, y, w, h, ignore);
+  return _gdCellFree(m, x, y, w, h, ignore) || (kind === 'decor' && !(o && o.back) && typeof gardenDecor === 'function' && gardenDecor(def.id) ? _gdClearOfThings(m, x, y, w, h) : '');
+}
+/** Rule 12, nothing overlaps (fix loop 1, 21 Nov 2026: a lantern put down on the signpost's foot had its head drawn over the post). A thing
+ *  you put down keeps clear, by footprint, of what already stands in the vale:
+ *   - every standing object of the layout (any kind: a signpost, a stall, a cottage, a lamp): one square round its footprint, and the
+ *     squares its picture rises over behind it (its height, from the layout's own `tall`), so nothing stands on its foot, on its door step
+ *     or hidden behind it;
+ *   - anything the walker is stopped by that is not one of your own decorations (a painted bench or tree trunk, a log seat, a wall);
+ *   - anything lying about that can be picked up (a basket, a log), where it lies now or at its own place.
+ *  Read from the layout and the walking data only, so any layout works with no change here (rule 17). '' or a plain reason. */
+const GD_PUT_GAP = 1;
+function _gdClearOfThings(m, x, y, w, h) {
+  const x1 = x + w, y1 = y + h, G = GD_PUT_GAP, the = (n) => { const w2 = _gdPutName({ name: n || 'something' }); return w2.charAt(0).toUpperCase() + w2.slice(1); };
+  for (const p of typeof gardenPropsNow === 'function' ? gardenPropsNow() : []) {
+    if (!p || p.walk || p.art === 'turf' || p.kind === 'ld-turf' || (p.needs && !gardenWorkOwned(p.needs))) continue;
+    const pw = p.w || 1, ph = p.h || 1, rise = Math.max(ph, Math.ceil(Number(p.tall) || ph));   // (its picture over the squares behind it)
+    if (x < p.x + pw + G && x1 > p.x - G && y < p.y + ph + G && y1 > p.y + ph - rise - G) return `Too close to ${_gdPutName(p)}: leave a step round it`;
+  }
+  const S = typeof _gw !== 'undefined' && _gw.solids;
+  if (S && S.list) for (const r of S.list) {
+    if (/^decoration:/.test(r.src || '')) continue;   // (your own decorations: their squares, above)
+    if (r.x0 < x1 && r.x1 > x && r.y0 < y1 && r.y1 > y) { const n = String(r.src || '').replace(/^(small prop|tree trunk|placed [\w-]+|decoration): ?/, '').replace(/ ?\[.*\]$/, '').replace(/ ?[(,].*$/, '').trim(); const w = n ? _gdPutName({ name: n }) : 'something'; return w.charAt(0).toUpperCase() + w.slice(1) + ' is in the way'; }
+  }
+  try {
+    const near = (tx, ty) => tx > x - 0.3 && tx < x1 + 0.3 && ty > y - 0.2 && ty < y1 + 0.5;
+    if (typeof _gbdThings === 'function') for (const t of _gbdThings().values()) {
+      const at = typeof gardenDropAt === 'function' ? gardenDropAt(t.id) : null, held = typeof _gbdHolder === 'function' && !!_gbdHolder(t.id);   // (in somebody's arms: not lying there)
+      const tx = at ? at.x : t.x, ty = at ? at.y : t.y; if (!held && near(tx, ty)) { const K = GARDEN_KINDS[t.kind]; return `${the(K && K.name)} is lying there: pick it up first`; }
+    }
+  } catch (e) { /* no things to carry in this layout */ }
+  return '';
+}
+/** 'the signpost', 'the market stall', 'Fleet Falls' (a name of its own keeps its capitals). */
+function _gdPutName(p) {
+  const n = String((p && p.name) || 'that');
+  if (/^(The|An|A) /.test(n)) return 'the ' + n.replace(/^(The|An|A) /, '');
+  return /^[A-Z][^A-Z]*$/.test(n) ? 'the ' + n.charAt(0).toLowerCase() + n.slice(1) : n;
 }
 /** Plant a seed from your bag. o {quiet, variant}. */
 function gardenPlantAt(plantId, x, y, o) {

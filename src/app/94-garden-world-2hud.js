@@ -353,6 +353,9 @@ function _ghViewPanel(box) {
   if (!el._gdBound) { el._gdBound = true; el.addEventListener('click', ev => { if (ev.target.closest('[data-view-close]')) { _ghClosePanels(box); _ghFocusStage(box); return; } if (ev.target.closest('[data-view-help]')) { _ghClosePanels(box); gardenGuideOpen(); return; } const b = ev.target.closest('[data-viewcam]'); if (!b) return; const k = b.dataset.viewcam; if (k === 'in') gardenCamSet(null, -1); else if (k === 'out') gardenCamSet(null, 1); else gardenCamSet(k === 'fit' && gardenCamMode() !== 'fit' ? 'fit' : 'follow'); _gh.camKey = ''; _ghCameraButtons(box); }); }
   _ghCameraButtons(box);
 }
+/** Is a panel open over the world (your bag, the menu, the map, the view and status panels)? Then the world's prompt hides, and E, Space and
+ *  Enter do nothing to the world behind it (fix loop 1, 21 Nov 2026: 'E Sit on the bench' floated over the bag's cards, and E sat you down). */
+function gardenWorldCovered() { return !!(_gh.bag || _gh.menuOpen || _gh.miniOpen || _gh.viewOpen || _gh.statusOpen); }
 function gardenHudOwnsKey(ev) {
   if (ev.ctrlKey || ev.metaKey || ev.altKey || ev.target && ev.target.closest && ev.target.closest('input,textarea,select,[contenteditable="true"]') || _gdpPopOpen()) return false;
   if (typeof _pe !== 'undefined' && _pe.wheel && _pe.wheel.isConnected && (ev.key === 'Escape' || ev.key.toLowerCase() === 'q')) return true;

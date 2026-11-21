@@ -44,7 +44,7 @@ function gardenOpWorld(m) {
   m = m || gardenModel();
   return {
     g: _gdG(), cols: GARDEN_WORLD.cols, rows: GARDEN_WORLD.rows, now: m.now, today: m.today,
-    placeOk: (kind, def, x, y, ignore) => _gdPlaceOk(m, def, x, y, kind, ignore),
+    placeOk: (kind, def, x, y, ignore, o) => _gdPlaceOk(m, def, x, y, kind, ignore, o),
     has: (item) => gardenHas(item), plant: gardenPlant, decor: gardenDecor, thing: gardenCarryThing,
     free: (x, y) => typeof _gwFree !== 'function' || _gwFree(x, y, 0.15),
     heldBy: (item) => _gbd.held.get(gardenDropKey(item)) || '',
