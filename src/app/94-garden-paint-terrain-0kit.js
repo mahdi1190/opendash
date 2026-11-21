@@ -210,7 +210,7 @@ window.GardenPaintTerrainKit = (function () {
       // while it fits the budget (the far mainland and the north backdrop: so the whole-map view does not fill in box by box)
       if (!best && opts.prebake && bakedPx < budget * .92 && !(typeof _gw !== 'undefined' && _gw.moving)) for (const ch of list) if (!ch.live) { const d = dist(ch, v); if (d < bd) { bd = d; best = ch; } }
       // (vf-perf) the slice comes out of the one budget every background painter shares a frame (94-garden-paint-0budget.js)
-      if (best) { const room = typeof gardenBakeRoom === 'function' ? gardenBakeRoom(opts.slice || 12) : opts.slice || 12, b0 = performance.now();
+      if (best) { const room = typeof gardenBakeRoom === 'function' ? gardenBakeRoom(opts.slice || 12, !meets(best.bb, v)) : opts.slice || 12, b0 = performance.now();
         if (room >= 1.5 && bakeOne(best, room) && parent.sort) parent.sort('depth');
         if (typeof gardenBakeSpent === 'function') gardenBakeSpent(performance.now() - b0); }
       if (bakedPx > budget) { let far = null, fd = -1; for (const ch of list) if (ch.live && !meets(ch.bb, keep)) { const d = dist(ch, v); if (d > fd) { fd = d; far = ch; } } if (far) evict(far); }
@@ -258,7 +258,7 @@ window.GardenPaintTerrainKit = (function () {
       // (while you walk, and for a moment after you stop, only a sprite known to paint in a few milliseconds is painted again: its first painting was timed)
       if (d < bd && S.K !== want && (want > S.K || S.tex) && !(!settled && want > S.K0 && !(S.ms0 * (want / S.K0) ** 2 < 9))) { bd = d; best = S; S.want = want; }
     }
-    if (!best) return; if (typeof gardenBakeRoom === 'function' && gardenBakeRoom(9) < (moving ? 5 : 9)) return; const S = best, K = S.want, t0 = performance.now();
+    if (!best) return; if (typeof gardenBakeRoom === 'function' && gardenBakeRoom(9, true) < (moving ? 5 : 9)) return; const S = best, K = S.want, t0 = performance.now();
     if (K <= S.K0) { plain(S); return; }
     const [x0, y0, x1, y1] = S.box, w = Math.ceil((x1 - x0) * K), h = Math.ceil((y1 - y0) * K), c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d', { willReadFrequently: true }); cx.setTransform(K, 0, 0, K, -x0 * K, -y0 * K);   // (in memory: a canvas texture reads every pixel back as it is made, and from the graphics card that read was most of a 1.8 s stall while walking; round 3 integration, CPU profile)
     if (ok(() => (S.draw(brush(cx)), 1)) == null) { S.K0 = 99; return; }   // (it would not paint again: leave it as it is)

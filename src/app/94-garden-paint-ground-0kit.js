@@ -205,7 +205,7 @@ window.GardenPaintGround = (function () {
       }
       if (!best && opts.prebake && bakedPx < budget * .9 && !(typeof _gw !== 'undefined' && _gw.moving)) for (const ch of list) if (!ch.image) { const d = dist(ch, v); if (d < bs) { bs = d; best = ch; } }
       // (vf-perf) the slice comes out of the one budget every background painter shares a frame (94-garden-paint-0budget.js)
-      const room = typeof gardenBakeRoom === 'function' ? gardenBakeRoom(slice) : slice, b0 = performance.now();
+      const room = typeof gardenBakeRoom === 'function' ? gardenBakeRoom(slice, !!best && !(!best.image && meets(best.bb, v))) : slice, b0 = performance.now();
       if (room < 1.5) best = null;
       if (best) { let k = follow && (best.low || !meets(best.bb, near)) ? Math.min(K, minK) : K;
         /* (a bare chunk on the screen gets a quick picture at level 1 first and is made sharp on the next ticks: baked straight at

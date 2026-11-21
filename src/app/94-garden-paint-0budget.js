@@ -23,11 +23,14 @@ function gardenBakeWalking() {
  *  A share of the clock, not a fixed few milliseconds a frame: painters may use about 40% of the time while you walk and 70%
  *  standing, in slices of at most 8 ms walking (12 standing), so every slice is a short task and the frames always get the rest,
  *  however slow each frame is (a slow graphics card drew few frames, and a fixed amount a frame left the ground unpainted). */
-function gardenBakeRoom(cap) {
+function gardenBakeRoom(cap, low) {
   const S = _gbbState(), now = performance.now(), walking = gardenBakeWalking();
   const rate = walking ? .35 : .7, burst = walking ? 8 : 12;
   if (!(S.tAt > 0)) { S.tAt = now; S.tokens = burst; }
   S.tokens = Math.min(burst, S.tokens + (now - S.tAt) * rate); S.tAt = now;
+  // low: work that can wait (the margin round the screen, a soft copy, a sharper sprite, a prebake): it only takes time that the
+  // bare ground on the screen has left, so after a repaint the screen fills in first, whatever layer it belongs to
+  if (low && S.tokens < burst * .6) return 0;
   let room = Math.min(cap || burst, S.tokens);
   // while you walk, also no more than 6 ms between two drawn frames (a measured tour: more than that, and frames went missing),
   // unless no frame has come for a quarter second (a hidden page): then a slice now and then, so the work still ends

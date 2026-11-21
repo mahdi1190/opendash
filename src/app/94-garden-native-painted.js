@@ -317,10 +317,14 @@ window.GardenNativePainted = (function () {
           const b = pz.bounds, rose = pz.rose, ccx = rose ? rose.x : pz.centre.x, ccy = rose ? rose.y : pz.centre.y;
           // The paved shape: the plaza's outline and, with it, the flagged walks that are part of it (2.74), as one path
           // (every piece wound the same way and filled once, so the pieces never show where they overlap).
-          const U = new Path2D(), ribs = pz.ribbons || [];
-          { let q = pz.points, area = 0; for (let i = 0; i < q.length; i++) { const u = q[i], v = q[(i + 1) % q.length]; area += u.x * v.y - v.x * u.y; } if (area < 0) q = q.slice().reverse(); U.moveTo(q[0].x, q[0].y); for (let i = 1; i < q.length; i++) U.lineTo(q[i].x, q[i].y); U.closePath(); }
-          for (const rt of ribs) U.addPath(ribbon(rt, 0));
-          for (let q of pz.extra || []) { let area = 0; for (let i = 0; i < q.length; i++) { const u = q[i], v = q[(i + 1) % q.length]; area += u.x * v.y - v.x * u.y; } if (area < 0) q = q.slice().reverse(); U.moveTo(q[0].x, q[0].y); for (let i = 1; i < q.length; i++) U.lineTo(q[i].x, q[i].y); U.closePath(); }   // (the terrace's crescent, fix round 1)
+          // (vf-perf) the paved shape and its mask are the same for every chunk of the plaza: made once per plaza and kept (each chunk
+          // made them again: a path of every ribbon and a mask read back, 30 ms a chunk of the village while you walked in)
+          const ribs = pz.ribbons || [], PM = window.__gpPlazaMemo || (window.__gpPlazaMemo = new WeakMap()), pm = PM.get(pz) || {}; let U = pm.U;
+          if (!U) { U = new Path2D();
+            { let q = pz.points, area = 0; for (let i = 0; i < q.length; i++) { const u = q[i], v = q[(i + 1) % q.length]; area += u.x * v.y - v.x * u.y; } if (area < 0) q = q.slice().reverse(); U.moveTo(q[0].x, q[0].y); for (let i = 1; i < q.length; i++) U.lineTo(q[i].x, q[i].y); U.closePath(); }
+            for (const rt of ribs) U.addPath(ribbon(rt, 0));
+            for (let q of pz.extra || []) { let area = 0; for (let i = 0; i < q.length; i++) { const u = q[i], v = q[(i + 1) % q.length]; area += u.x * v.y - v.x * u.y; } if (area < 0) q = q.slice().reverse(); U.moveTo(q[0].x, q[0].y); for (let i = 1; i < q.length; i++) U.lineTo(q[i].x, q[i].y); U.closePath(); }   // (the terrace's crescent, fix round 1)
+            pm.U = U; PM.set(pz, pm); }
           // (the lawn inside the walk is the lawn's: the end of the terrace road never lies on it)
           cx.save(); if (pz.lawn) { cx.beginPath(); cx.rect(B.x, B.y, B.w, B.h); loop(pz.lawn); cx.clip('evenodd'); }
           cx.save(); cx.fillStyle = '#3e4a2a'; cx.globalAlpha = .28; cx.filter = 'blur(' + Math.round(4 * K) + 'px)'; cx.translate(3, 5); cx.fill(U, 'nonzero'); cx.restore();
@@ -334,9 +338,9 @@ window.GardenNativePainted = (function () {
           }
           // the paved shape as a small mask, drawn once and read for every stone and every blade at the rim (asking the canvas
           // whether each point lies in the path took about two seconds whenever the village ground was painted again, at a level-up)
-          const MK = .5, mkw = Math.ceil((b.w + 48) * MK), mkh = Math.ceil((b.h + 48) * MK), mk = document.createElement('canvas'); mk.width = mkw; mk.height = mkh;
-          const mkx = mk.getContext('2d', { willReadFrequently: true }); mkx.setTransform(MK, 0, 0, MK, -(b.x - 24) * MK, -(b.y - 24) * MK); mkx.fill(U, 'nonzero');
-          const mkd = mkx.getImageData(0, 0, mkw, mkh).data, inU = (x, y) => { const i = Math.floor((x - b.x + 24) * MK), k = Math.floor((y - b.y + 24) * MK); return i >= 0 && k >= 0 && i < mkw && k < mkh && mkd[(k * mkw + i) * 4 + 3] > 127; };
+          const MK = .5, mkw = Math.ceil((b.w + 48) * MK), mkh = Math.ceil((b.h + 48) * MK);
+          if (!pm.mask) { const mk = document.createElement('canvas'); mk.width = mkw; mk.height = mkh; const mkx = mk.getContext('2d', { willReadFrequently: true }); mkx.setTransform(MK, 0, 0, MK, -(b.x - 24) * MK, -(b.y - 24) * MK); mkx.fill(U, 'nonzero'); pm.mask = mkx.getImageData(0, 0, mkw, mkh).data; }
+          const mkd = pm.mask, inU = (x, y) => { const i = Math.floor((x - b.x + 24) * MK), k = Math.floor((y - b.y + 24) * MK); return i >= 0 && k >= 0 && i < mkw && k < mkh && mkd[(k * mkw + i) * 4 + 3] > 127; };
           cx.save(); cx.fillStyle = '#ae9c78'; cx.fill(U, 'nonzero'); cx.clip(U, 'nonzero');
           const inRose = (x, y) => !!rose && Math.hypot((x - ccx) / 46, (y - ccy) / 25.3) < 1;
           // (fix round 2: the setts laid in fans, see fanSetts; in rows they ran straight across the curved streets and read as a
