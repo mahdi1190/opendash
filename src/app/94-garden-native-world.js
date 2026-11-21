@@ -1398,7 +1398,7 @@ window.GardenNativeWorld = (function () {
         if (target && distance <= step) {
           _gw.px = target.x; _gw.py = target.y; _gw.path.shift(); _gw.moving = !!_gw.path.length;
           if (!_gw.path.length) { _gw.spd = 0; const fn = _gw.then; _gw.then = null; if (typeof fn === 'function') fn(true); }
-        } else { if (direct && typeof _gwCrossingSteer === 'function') { const steer = _gwCrossingSteer(ux, uy, step); if (steer) { ux = steer[0]; uy = steer[1]; } }   // (onto and along a crossing: 94-garden-world-0walk.js)
+        } else { if (direct && typeof _gwCrossingSteer === 'function') { const steer = _gwCrossingSteer(ux, uy, step) || (typeof _gwDoorSteer === 'function' ? _gwDoorSteer(ux, uy) : null); if (steer) { ux = steer[0]; uy = steer[1]; } }   // (onto and along a crossing: 94-garden-world-0walk.js)
           _gw.moving = _gwMoveBy(ux * step / W.cellW, uy * step / W.cellH); if (!_gw.moving) { _gw.blockT = (_gw.blockT || 0) + dt; if (!direct && _gw.blockT > .25) { _gw.blockT = 0; if (!_gwRepath()) { _gw.path = []; _gw.then = null; } } } else _gw.blockT = 0; }
         if (Math.abs(ux) > .3) _gw.face = ux > 0 ? 1 : -1;
       }

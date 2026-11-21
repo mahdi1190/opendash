@@ -847,6 +847,22 @@ function _gwMoveBy(dx, dy) {
  * press, in screen px, unit length; step: its length this frame, in px. Returns the direction to walk, or null to walk
  * as pressed.
  */
+/** Walking up to a building's door with the keys (any building with a door on its front: the mill, a cottage, the barn): pressing
+ *  up towards it from just in front, you are drawn to the middle of its doorway, not stopped on its jamb and slid sideways along the wall
+ *  until you fit (walking up to the mill door you were caught short of it, slid east and stood at the left jamb; seats round 2). Read
+ *  from the layout's doors, any layout. Returns the direction to walk, or null to walk as pressed. */
+function _gwDoorSteer(ux, uy) {
+  if (!(uy < -.6) || typeof gardenIslandData !== 'function') return null;
+  const I = gardenIslandData(); if (!I || !Array.isArray(I.static)) return null;
+  if (_gw.doorsOf !== I) { _gw.doorsOf = I; _gw.doors = I.static.filter(o => o && o.door && o.walk === false && o.w > 1 && Number.isFinite(o.door.x) && o.door.y >= o.y + o.h - 1 && o.door.y <= o.y + o.h && o.door.x >= o.x && o.door.x < o.x + o.w).map(o => ({ x: o.door.x + .5, y: o.door.y })); }
+  const W = GARDEN_WORLD;
+  for (const d of _gw.doors) {
+    const ex = d.x - _gw.px, below = _gw.py - d.y;
+    if (below < .2 || below > 2.4 || Math.abs(ex) > 1 || Math.abs(ex) < .04) continue;
+    const vx = ex * W.cellW, vy = -Math.max(.35, below) * W.cellH, n = Math.hypot(vx, vy); return [vx / n, vy / n];
+  }
+  return null;
+}
 function _gwCrossingSteer(ux, uy, step) {
   if (GARDEN_WORLD.v < 5 || typeof gardenIslandCrossingGeometry !== 'function' || !(ux || uy)) return null;
   const W = GARDEN_WORLD, X = _gw.px * W.cellW, Y = W.sky + _gw.py * W.cellH;

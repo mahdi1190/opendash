@@ -147,7 +147,7 @@ function _gaTreeStand(key, b, o, fx, fy) {
   let out = null;
   try {
     const side = o.side ? o.side * (b.x1 - b.x0) / 2 : 0, at = (d) => ({ x: fx + side + d[0], y: fy + d[1] });
-    if (o.act === 'nap') { for (const d of [o.stand].concat(o.alt || [])) { const p = at(d); if (_gaNapGround(p.x, p.y)) { out = p; break; } } }
+    if (o.act === 'nap') { for (const d of [o.stand].concat(o.alt || [])) { const p = at(d); if (_gaNapGround(p.x, p.y, b)) { out = p; break; } } }
     else {
       const p = at(o.stand);
       if (typeof _gwFree !== 'function' || _gwFree(p.x, p.y)) out = p;
@@ -158,13 +158,15 @@ function _gaTreeStand(key, b, o, fx, fy) {
 }
 /** Somewhere a figure can lie with its feet at (x, y): the whole body (head to the west, a figure's height long) on open, dry, level
  *  ground: land, no water nor shore within half a cell, no path, jetty, bridge or what blocks the feet under it. Any kind, any place. */
-function _gaNapGround(x, y) {
+function _gaNapGround(x, y, own) {
   if (typeof gardenIslandBaseCell !== 'function') return true;
   const L = _gaLieLen();
   for (let dx = 0.3; dx >= -L - 0.5; dx -= 0.3) for (const dy of [-0.35, 0, 0.35]) {
     const c = gardenIslandBaseCell(x + dx, y + dy); if (!c || !c.land || c.ocean || c.freshwater || c.beach || c.solid || c.route || c.gateId || c.staticId) return false;
   }
   if (typeof _gwFree === 'function') for (let dx = 0; dx >= -L; dx -= 0.4) if (!_gwFree(x + dx, y)) return false;
+  // nor just behind another tree: its crown is drawn over the sleeper on a friend's screen (only your own screen fades it)
+  for (const t of _ga.trunks || []) { if (t === own) continue; const tx = (t.x0 + t.x1) / 2, dy = t.y1 - y; if (dy > 0.15 && dy < 3.2 && tx > x - L - 1.3 && tx < x + 1.3) return false; }
   return true;
 }
 /** How long a lying figure is on the ground, in cells (its height as drawn). */
@@ -851,6 +853,9 @@ function gartActRemote(A, id) {
   // sat on a thing the world draws as its own picture: their figure is drawn on it, not behind its back rail (the sprite's z, in cells)
   const sd = row.hold && near && near.seated && near.src && !row.hideBehind ? _gaSeatDepthOf(near.src) : null;
   if (sd != null) { const W = GARDEN_WORLD, z = (sd - W.sky) / W.cellH + 0.01; A.seatZ = z; const undo = H.stop; H.stop = () => { undo(); if (A.seatZ === z) A.seatZ = null; }; }
+  // up in a tree (any move that is aloft: the climb, the branch): drawn in front of the crowns round them, as you see yourself (your own
+  // screen fades a crown you are behind); a friend sat on a branch was lost behind the crown of the next tree a cell in front
+  if (row.aloft && sd == null) { const z = A.y + 1.6; A.seatZ = z; const undo = H.stop; H.stop = () => { undo(); if (A.seatZ === z) A.seatZ = null; }; }
   if (lift && A.bob) { const bt = `translate(0 ${-lift})`; A.actLift = lift; A.bob.setAttribute('transform', bt); A.bobT = bt; const undo = H.stop; H.stop = () => { undo(); A.actLift = 0; if (A.bob && A.bobT === bt) { A.bob.setAttribute('transform', ''); A.bobT = ''; } }; }
   const tag = A.root.querySelector('.gll-name');
   if (tag && (row.lying || lift)) { const y0 = tag.getAttribute('y'), y1 = row.lying ? String(Math.round(-26 * GARDEN_ACTOR_SCALE)) : String(Number(y0) - lift); tag.setAttribute('y', y1); const undo = H.stop; H.stop = () => { undo(); if (tag.getAttribute('y') === y1) tag.setAttribute('y', y0); }; }
