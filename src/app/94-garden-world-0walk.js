@@ -865,7 +865,10 @@ function _gwMoveBy(dx, dy) {
     const got = Math.hypot(mx, my);
     // (next merge) except a give round the corner of a box or a slanted wall: the whole step on one key, a little give on the other, and
     // the way on open for two more such steps. Those are slides, not shakes (the collision audit's slide-stall went from 2 to 866 without this)
-    if (((backs && along < st * .1) || (backs && along < 0 && got < st)) && !_gwRoundsOn(x0, y0, _gw.px, _gw.py, dx, dy) || got < Math.min(.35, st * .12)) { _gw.px = x0; _gw.py = y0; moved = false; }
+    // (nf-walk) and never a step that still gets on the way you press, however little: that is the feet sliding along a steep edge,
+    // giving a fraction of a pixel on one key (as 2.74.1 did). Refusing it stopped a diagonal press dead along fences and banks where
+    // 2.74.1 slid (the collision audit's slide-stall: 124 against 2). A step back overall, and the corner loop below, still stop you.
+    if (((backs && along < st * .1) || (backs && along < 0 && got < st)) && !(along > 0) && !_gwRoundsOn(x0, y0, _gw.px, _gw.py, dx, dy) || got < Math.min(.35, st * .12)) { _gw.px = x0; _gw.py = y0; moved = false; }
   }
   // (n-move) and a corner the slides take turns at (a few pixels one way, then back), each step honest on its own: when the feet come back
   // within a pixel and a half of where they were two to ten steps ago, having got nowhere, it is a corner, and you stop there
@@ -978,7 +981,9 @@ function _gwRoundsOn(x0, y0, x1, y1, dx, dy) {
   if (!dx || !dy) return false;
   const W = GARDEN_WORLD, mx = (x1 - x0) * W.cellW, my = (y1 - y0) * W.cellH, vx = dx * W.cellW, vy = dy * W.cellH;
   const onX = mx * Math.sign(vx) >= Math.abs(vx) * .9 && my * Math.sign(vy) >= -3.6, onY = my * Math.sign(vy) >= Math.abs(vy) * .9 && mx * Math.sign(vx) >= -.76;   // (up to 3.5 px of give up or down, under a pixel across)
-  if ((!onX && !onY) || mx * vx + my * vy < -.05 * (vx * vx + vy * vy)) return false;   // (never a step that goes back overall)
+  // (nf-walk) or any step that gets on the way you press at all, round a bend of the edge as much as a corner
+  const fwd = mx * vx + my * vy;
+  if ((!onX && !onY && !(fwd > 0)) || fwd < -.05 * (vx * vx + vy * vy)) return false;   // (never a step that goes back overall)
   const sx = x1 - x0, sy = y1 - y0;
   return _gwFree(x1 + sx, y1 + sy) && _gwFree(x1 + 2 * sx, y1 + 2 * sy);
 }
