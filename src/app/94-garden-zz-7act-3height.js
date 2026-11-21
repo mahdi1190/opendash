@@ -105,7 +105,7 @@ function _ghtRows() {
   const out = [];
   for (const lv of gardenLevels()) for (const w of lv.ways) {
     if (_ght.lv) { if (_ght.lv.key !== lv.key) continue; out.push({ key: 'lv:' + lv.key + ':down' + w.i, act: 'climbdown', name: w.name, x: w.top.x, y: w.top.y, promptY: w.top.y - (lv.h / GARDEN_WORLD.cellH) - 1.6, stand: { x: w.top.x, y: w.top.y }, deg: 90, lift: 0, src: lv.id, kind: lv.kind, way: w, noProp: true, onLevel: true }); }
-    else out.push({ key: 'lv:' + lv.key + ':up' + w.i, act: 'climbup', name: w.name, x: w.foot.x, y: w.foot.y, top: (w.foot.y - Math.min(lv.h, 140) / GARDEN_WORLD.cellH), stand: { x: w.foot.x, y: w.foot.y }, deg: -90, lift: 0, src: lv.id, kind: lv.kind, way: w, noProp: true, seated: true });
+    else out.push({ key: 'lv:' + lv.key + ':up' + w.i, act: 'climbup', name: w.name, x: w.foot.x, y: w.foot.y, top: (w.foot.y - Math.min(lv.h, 140) / GARDEN_WORLD.cellH), stand: { x: w.foot.x, y: w.foot.y }, deg: -90, lift: 0, src: lv.id, kind: lv.kind, way: w, noProp: true, seated: true, pri: 0.5 });   // (pri: the way up before a nap under the tree it is built in)
   }
   return out;
 }
@@ -485,7 +485,8 @@ function _ghtRemote(A, id) {
   if (id === 'climbup' || id === 'climbdown') {
     const up = id === 'climbup', w = _ghtWayNear(A.x, A.y, up, 1.6); if (!w) return true;
     if (A.ghtH) { try { A.ghtH.stop(); } catch (e) { /* gone */ } A.ghtH = null; }
-    if (up) { A.x = w.foot.x; A.y = w.foot.y; } else { A.x = w.foot.x; A.y = w.foot.y; A.hLv = null; A.hLift = 0; A.hZ = null; }
+    if (up) { A.x = w.foot.x; A.y = w.foot.y; A.hLv = null; A.hZ = null; } else {   // (up from the ground, whatever this copy thought before)
+      A.x = w.foot.x; A.y = w.foot.y; A.hLv = null; A.hLift = 0; A.hZ = null; }
     A.tx = null; A.ty = null; A.way = null;
     A.dir = 'n'; A.pose = ''; A.key = ''; if (typeof _gllPaint === 'function') _gllPaint(A);
     A.ghtClimb = { w, up, t0: performance.now(), ms: w.inside ? _ghtStairMs(w.lv.h) : _ghtClimbMs(w.lv.h) };
