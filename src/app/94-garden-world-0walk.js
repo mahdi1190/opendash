@@ -853,12 +853,13 @@ function _gwMoveBy(dx, dy) {
   let moved = _gwMoveByEdge(dx, dy);
   // (n-move) wedged in a corner (between a bank and a trunk, say), the slides could nudge the feet a pixel back and forth for a few frames,
   // the figure stepping on the spot and shimmering before it gave up. A step that gets almost nowhere is no step, and nor is a small one
-  // that backs off against the way you go: you stop, facing the way you press.
+  // that backs off against the way you go, nor one no longer than a step that takes you
+  // back from where you press (a slanted edge crept you up and left, half a pixel at a time, while you pressed up and right): you stop, facing the way you press.
   if (moved) {
     const mx = (_gw.px - x0) * W.cellW, my = (_gw.py - y0) * W.cellH, vx = dx * W.cellW, vy = dy * W.cellH, st = Math.hypot(vx, vy) || 1;
     const along = (mx * vx + my * vy) / st, backs = (vx && mx * Math.sign(vx) < -.1) || (vy && my * Math.sign(vy) < -.1);
     const got = Math.hypot(mx, my);
-    if ((backs && along < st * .3 && got < st * .5) || got < Math.min(.35, st * .12)) { _gw.px = x0; _gw.py = y0; moved = false; }
+    if ((backs && along < st * .3 && got < st * .5) || (backs && along < 0 && got < st) || got < Math.min(.35, st * .12)) { _gw.px = x0; _gw.py = y0; moved = false; }
   }
   // (n-move) and a corner the slides take turns at (a few pixels one way, then back), each step honest on its own: when the feet come back
   // within a pixel and a half of where they were two to ten steps ago, having got nowhere, it is a corner, and you stop there
@@ -867,7 +868,8 @@ function _gwMoveBy(dx, dy) {
   if (moved) {
     const p = H.p, d = (a, q) => Math.hypot((a.x - q.x) * W.cellW, (a.y - q.y) * W.cellH), me = { x: _gw.px, y: _gw.py };
     let loop = false;   // back within 1.5 px of a spot the feet had gone more than 2 px from since (a slow start's small steps are no loop)
-    for (let i = p.length - 2; i >= 0 && i >= p.length - 10 && !loop; i--) if (d(me, p[i]) < 1.5) { for (let j = i + 1; j < p.length; j++) if (d(p[j], p[i]) > 2) { loop = true; break; } }
+    const was = p.concat([{ x: x0, y: y0 }]);   // (the spot this step set out from is part of the way round)
+    for (let i = was.length - 3; i >= 0 && i >= was.length - 11 && !loop; i--) if (d(me, was[i]) < 1.5) { for (let j = i + 1; j < was.length; j++) if (d(was[j], was[i]) > 2) { loop = true; break; } }
     if (loop && p.length && Math.hypot((_gw.px - p[0].x) * W.cellW, (_gw.py - p[0].y) * W.cellH) < 4) { _gw.px = x0; _gw.py = y0; moved = false; _gw.wedge = { sx, sy, x: x0, y: y0 }; H.p = []; }
     else { p.push({ x: x0, y: y0 }); if (p.length > 12) p.shift(); }
   }
