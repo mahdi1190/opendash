@@ -248,6 +248,15 @@
       B.cx.save(); B.cx.clip(new Path2D(B.poly([[w, -14], [w + side, -22], [w + side, top - 8], [w, top]]))); for (let y = -22; y > top; y -= 9) B.s(`M${w} ${y + 6}L${w + side} ${y - 2}`, ST.dk, .7, .3); B.cx.restore();
       // quoins at the corners
       for (let y = -14, k = 0; y > top + 6; y -= 13, k++) { B.f(B.rect(-w, y - 12, k & 1 ? 16 : 10, 12), ST.hi, .55); B.f(B.rect(w - (k & 1 ? 16 : 10), y - 12, k & 1 ? 16 : 10, 12), ST.lo, .5); }
+      // the walk round the top (the tower's floor, 94-garden-zz-7act-3height.js): worn flags behind the west battlements, seen over
+      // them, a low back wall with its own crenels, broken off to the east where the rowan grew through; drawn before the front crest
+      { const fb = top - 30, ex = 16;
+        B.f(B.poly([[-w - 2, fb - 14], [-w + 10, fb - 14], [-w + 10, fb - 8], [-w + 22, fb - 8], [-w + 22, fb - 15], [-w + 36, fb - 15], [-w + 36, fb - 8], [-6, fb - 8], [-2, fb - 13], [ex - 2, fb - 6], [ex + 4, fb], [-w - 2, fb]]), ST.lo)
+          .s(B.line([[-w - 2, fb - 14], [-w + 10, fb - 14], [-w + 10, fb - 8], [-w + 22, fb - 8], [-w + 22, fb - 15], [-w + 36, fb - 15], [-w + 36, fb - 8], [-6, fb - 8], [-2, fb - 13], [ex - 2, fb - 6]]), ST.hi, 1.2, .7);
+        B.f(B.poly([[-w - 2, fb], [ex + 4, fb], [ex + 10, top - 12], [ex + 6, top], [-w - 2, top]]), B.lin(0, fb, 0, top, [[0, '#7a7466'], [1, '#9a9484']]));
+        for (let y = fb + 7, k = 0; y < top - 2; y += 7, k++) { B.s(`M${-w - 2} ${y}H${ex + 6}`, ST.dk, .7, .35); for (let x = -w + (k & 1 ? 4 : 11); x < ex; x += 15) B.s(`M${x} ${y}v-7`, ST.dk, .6, .3); }
+        for (let k = 0; k < 7; k++) B.f(B.blob(r, -w + 6 + r() * (w + ex - 8), fb + 3 + r() * 24, 4, 1.4, 6, .5), s === 'winter' ? '#e8ece6' : ST.moss, .45);
+        for (let k = 0; k < 4; k++) B.stone(r, ex - 2 + r() * 10, fb + 6 + r() * 20, 3 + r() * 2, 2.4, { rock: ST.body, rockLo: ST.lo, rockHi: ST.hi, rockDk: ST.dk }, null); }
       // the broken top: a ragged parapet, crenels on the west, tumbled to the east; a rowan in the gap
       const crest = [[-w - 2, top], [-w - 2, top - 22], [-w + 14, top - 22], [-w + 14, top - 10], [-w + 26, top - 10], [-w + 26, top - 24], [-w + 42, top - 24], [-w + 44, top - 8], [-6, top - 2], [8, top + 10], [20, top + 4], [34, top + 14], [48, top + 6], [w + 2, top + 12], [w + side, top + 4], [w + side, top - 8], [w, top]];
       B.f(B.poly(crest), ST.body).s(B.line(crest.slice(1, 15)), ST.hi, 1.6, .8);

@@ -678,10 +678,19 @@ if (typeof _gaWords === 'function') {
     return _ghtWords0(r);
   };
 }
+/** A loft's landing as the world draws it with its ladder (px from the ladder's foot): boards from the wall to the rail, the rail's
+ *  posts and top bar from the level's own rail numbers, so the piece drawn again over your legs (_ghtRailOn) lies on it exactly. */
+function _ghtDeckArt(lv, w) {
+  const L = lv.L, R = L.rail, Sh = L.shape && L.shape.rect, Wd = (L.ways || [])[w.i]; if (!R || !R.line || !Sh || !Wd) return null;
+  const H = _ghtH(), ax = (L.at[0] - Wd.foot[0]) * H, ay = (L.at[1] - Wd.foot[1]) * H - lv.h;
+  const X = (u) => ax + u * H, Y = (v) => ay + v * H, posts = [];
+  for (let u = R.post0 || 0; u <= R.line[1] + 1e-6; u += R.post || 0.11) if (u >= R.line[0] - 1e-6 && !(R.gap && u > R.gap[0] && u < R.gap[1])) posts.push(X(u));
+  return { x0: X(R.line[0]), x1: X(R.line[1]), yb: Y(Sh[1] - 0.05), yf: Y(R.line[2]), rh: (R.h || 0.36) * H, g0: X(R.gap ? R.gap[0] : 0), g1: X(R.gap ? R.gap[1] : 0), posts, col: R.color || '#2a2e30', w: R.railW || 1.3, pw: R.postW || 0.9 };
+}
 /** The parts a floor's ways draw on the thing (a ladder the painter does not draw itself): rows for the world (94-garden-zz-7act-2world.js). */
 function gardenLevelWayParts(t) {
   const out = [], H = _ghtH(), S = typeof GW_SCALE === 'number' ? GW_SCALE : 0.592;
-  for (const lv of gardenLevels()) { if (lv.id !== t.id) continue; for (const w of lv.ways) if (w.art) out.push({ id: 'part-' + t.id + '-lv' + lv.li + 'w' + w.i, owner: t.id, kind: t.kind, art: w.art, x: w.foot.x, y: w.foot.y, row: { top: lv.h / S, loft: w.loft, bare: !w.loft } }); }
+  for (const lv of gardenLevels()) { if (lv.id !== t.id) continue; for (const w of lv.ways) if (w.art) out.push({ id: 'part-' + t.id + '-lv' + lv.li + 'w' + w.i, owner: t.id, kind: t.kind, art: w.art, x: w.foot.x, y: w.foot.y, row: { top: lv.h / S, loft: w.loft, bare: !w.loft, deck: w.loft ? _ghtDeckArt(lv, w) : null } }); }
   void H; return out;
 }
 /* In the water the swimmer is drawn facing you or away (its legs under the water): side on, the drawing's legs hang below the surface. */
@@ -715,12 +724,15 @@ function _ghtFrontSvg(F, lv, px, py, win, lift) {
   let pts = F.poly.map(p => [X(p), Y(p)]);
   const clip = (P, x, keepLeft) => { const out = []; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length], ia = keepLeft ? a[0] <= x : a[0] >= x, ib = keepLeft ? b[0] <= x : b[0] >= x; if (ia) out.push(a); if (ia !== ib) { const t = (x - a[0]) / (b[0] - a[0]); out.push([x, a[1] + (b[1] - a[1]) * t]); } } return out; };
   pts = clip(clip(pts, -win, false), win, true);
+  // only over the figure itself (from its feet up to its waist): the rest of the crest is the thing's own picture, as drawn
+  const clipY = (P, y, keepAbove) => { const out = []; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length], ia = keepAbove ? a[1] <= y : a[1] >= y, ib = keepAbove ? b[1] <= y : b[1] >= y; if (ia) out.push(a); if (ia !== ib) { const t = (y - a[1]) / (b[1] - a[1]); out.push([a[0] + (b[0] - a[0]) * t, y]); } } return out; };
+  if (pts.length >= 3) pts = clipY(clipY(pts, 0.5, true), -0.72 * H, false);
   if (pts.length < 3) return '';
   let out = `<path d="M${pts.map(p => N(p[0]) + ' ' + N(p[1])).join('L')}Z" fill="${F.fill || '#a39d8b'}"/>`;
 
   if (F.line) {   // its lit top edge, the poly's first lineTo points
     const L = F.poly.slice(0, (F.lineTo || F.poly.length) + 1).map(p => [X(p), Y(p)]); let d = '';
-    for (let i = 0; i + 1 < L.length; i++) { let [a, b] = [L[i], L[i + 1]]; if (a[0] > b[0]) [a, b] = [b, a]; if (b[0] < -win || a[0] > win) continue; const cl = (q, x) => { const t = (x - q[0][0]) / ((q[1][0] - q[0][0]) || 1); return [x, q[0][1] + (q[1][1] - q[0][1]) * t]; }; const A2 = a[0] < -win ? cl([a, b], -win) : a, B2 = b[0] > win ? cl([a, b], win) : b; d += `M${N(A2[0])} ${N(A2[1])}L${N(B2[0])} ${N(B2[1])}`; }
+    for (let i = 0; i + 1 < L.length; i++) { let [a, b] = [L[i], L[i + 1]]; if (a[0] > b[0]) [a, b] = [b, a]; if (b[0] < -win || a[0] > win) continue; const cl = (q, x) => { const t = (x - q[0][0]) / ((q[1][0] - q[0][0]) || 1); return [x, q[0][1] + (q[1][1] - q[0][1]) * t]; }; const A2 = a[0] < -win ? cl([a, b], -win) : a, B2 = b[0] > win ? cl([a, b], win) : b; if (Math.max(A2[1], B2[1]) < -0.72 * H || Math.min(A2[1], B2[1]) > 0.5) continue; d += `M${N(A2[0])} ${N(A2[1])}L${N(B2[0])} ${N(B2[1])}`; }
     if (d) out += `<path d="${d}" stroke="${F.line}" stroke-width="1.6" fill="none" opacity="0.8"/>`;
   }
   return out;
@@ -737,7 +749,7 @@ function _ghtRailOn(K, node, lv, px, py, lift) {
   if (!show) { if (K.railG) K.railG.setAttribute('opacity', '0'); return; }
   if (!K.railG || K.railG.parentNode !== node) { try { if (K.railG && K.railG.parentNode) K.railG.parentNode.removeChild(K.railG); } catch (e) { /* gone */ } const g = typeof gardenSceneElement === 'function' && typeof gardenVisualIsNative === 'function' && gardenVisualIsNative(node) ? gardenSceneElement('g') : document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'ght-rail'); node.appendChild(g); K.railG = g; }
   if (!R) { const svg = _ghtFrontSvg(F, lv, px, py, 13, lift); K.railG.innerHTML = svg; K.railG.setAttribute('opacity', svg ? '1' : '0'); return; }
-  const ox = -u * H, oy = -v * H + (lift - lv.h), hh = (R.h || 0.36) * H, col = R.color || '#2a2e30', win = 13, N = (k) => Math.round(k * 10) / 10;
+  const ox = -u * H, oy = -v * H + (lift - lv.h) + (R.own ? 0 : (lv.py0 - lv.fy) || 0), hh = (R.h || 0.36) * H, col = R.color || '#2a2e30', win = 13, N = (k) => Math.round(k * 10) / 10;
   // the rail's front line in the node's own px (its origin at your feet), from win px left of you to win px right
   const at = (x) => { if (R.ring) { const rx = R.ring[0] * H, ry = R.ring[1] * H, k = Math.max(0, 1 - ((x - ox) / rx) ** 2); return oy + ry * Math.sqrt(k); } return oy + R.line[2] * H; };
   const lo = R.ring ? Math.max(-win, ox - R.ring[0] * H + 1) : Math.max(-win, ox + R.line[0] * H), hi = R.ring ? Math.min(win, ox + R.ring[0] * H - 1) : Math.min(win, ox + R.line[1] * H);

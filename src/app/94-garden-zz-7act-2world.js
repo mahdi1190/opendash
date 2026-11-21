@@ -20,8 +20,21 @@ const _GAW_ART = Object.freeze({
     // (height: a ladder up to a floor, the lighthouse's gallery, has no landing of its own: the floor is the landing; up to a loft door, the sill is)
     const landing = row && (row.bare || row.loft) ? '' : `<path d="M-13 ${_gawN(-top - 3)}h26v3.4h-26z" fill="#8a6438" stroke="#4a3218" stroke-width="0.6"/><path d="M-13 ${_gawN(-top + 0.4)}h26" stroke="#5a3e22" stroke-width="1"/><path d="M-12 ${_gawN(-top + 0.4)}l4 7M12 ${_gawN(-top + 0.4)}l-4 7" stroke="#6a4a2a" stroke-width="1.4"/>`
       + `<path d="M-12 ${_gawN(-top - 3)}V${_gawN(-top - 18)}M12 ${_gawN(-top - 3)}V${_gawN(-top - 18)}M-12 ${_gawN(-top - 17)}H12M-12 ${_gawN(-top - 10)}H12" stroke="#7a5a36" stroke-width="1.3" stroke-linecap="round"/>`;
+    // (height: up to a loft door, a landing of boards on two brackets out from the wall, a rail along its front with the ladder's gap:
+    // the hay loft's floor, 94-garden-zz-7act-3height.js, whose numbers it is drawn from so the rail drawn again over your legs matches)
+    let deck = '';
+    if (row && row.loft && row.deck) { const D = row.deck, x0 = _gawN(D.x0), x1 = _gawN(D.x1), yb = _gawN(D.yb), yf = _gawN(D.yf), rh = D.rh, g0 = D.g0, g1 = D.g1; let pl = '', ps = '';
+      for (let x = D.x0 + 4; x < D.x1 - 1; x += 4.6) pl += `M${_gawN(x)} ${yb}L${_gawN(x)} ${yf}`;
+      for (const x of D.posts) ps += `M${_gawN(x)} ${_gawN(D.yf - 0.5)}v${_gawN(-rh)}`;
+      deck = `<path d="M${x0 + 4} ${_gawN(D.yf + 3)}L${x0 + 4} ${_gawN(D.yf + 15)}L${x0 + 12} ${_gawN(D.yf + 3)}M${x1 - 4} ${_gawN(D.yf + 3)}L${x1 - 4} ${_gawN(D.yf + 15)}L${x1 - 12} ${_gawN(D.yf + 3)}" stroke="#5a3e22" stroke-width="2.2" fill="none"/>`
+        + `<ellipse cx="${_gawN((D.x0 + D.x1) / 2)}" cy="${_gawN(D.yf + 6)}" rx="${_gawN((D.x1 - D.x0) / 2)}" ry="4" fill="#1a1408" opacity="0.18"/>`
+        + `<path d="M${x0} ${yb}H${x1}V${yf}H${x0}Z" fill="#a27c4e" stroke="#4a3218" stroke-width="0.6"/><path d="${pl}" stroke="#6e5030" stroke-width="0.7" opacity="0.7"/><path d="M${x0} ${_gawN(D.yb + 1)}H${x1}" stroke="#5a3e22" stroke-width="1.4" opacity="0.5"/>`
+        + `<path d="M${x0} ${yf}H${x1}v3.2H${x0}Z" fill="#6a4a2a"/><path d="M${x0} ${yf}H${x1}" stroke="#c8a070" stroke-width="0.7" opacity="0.8"/>`
+        + `<path d="M${x0 + 0.6} ${yb}V${_gawN(D.yf - rh)}M${x1 - 0.6} ${yb}V${_gawN(D.yf - rh)}" stroke="${D.col}" stroke-width="1.2" opacity="0.8"/>`
+        + `<path d="M${x0 + 0.6} ${_gawN(D.yb - rh)}L${x0 + 0.6} ${_gawN(D.yf - rh)}M${x1 - 0.6} ${_gawN(D.yb - rh)}L${x1 - 0.6} ${_gawN(D.yf - rh)}" stroke="${D.col}" stroke-width="${D.w}" stroke-linecap="round"/>`
+        + `<path d="${ps}" stroke="${D.col}" stroke-width="${D.pw}" fill="none"/><path d="M${x0} ${_gawN(D.yf - rh)}H${_gawN(g0)}M${_gawN(g1)} ${_gawN(D.yf - rh)}H${x1}" stroke="${D.col}" stroke-width="${D.w}" stroke-linecap="round"/>`; }
     const stays = row && row.bare ? [0.3, 0.62, 0.9].map(k => `<path d="M-6 ${_gawN(-top * k)}l-3 -3M6 ${_gawN(-top * k)}l3 -3" stroke="#4a4e50" stroke-width="1.2"/>`).join('') : '';
-    return loft + `<ellipse cx="0" cy="1" rx="9" ry="2.2" fill="#1a1408" opacity="0.2"/>` + landing + stays
+    return loft + deck + `<ellipse cx="0" cy="1" rx="9" ry="2.2" fill="#1a1408" opacity="0.2"/>` + landing + stays
       + `<path d="M-5.4 0L-4.8 ${_gawN(-top)}M5.4 0L4.8 ${_gawN(-top)}" stroke="#7a5a36" stroke-width="1.6" stroke-linecap="round"/><path d="M-4.4 0L-3.9 ${_gawN(-top)}" stroke="#a8844e" stroke-width="0.5" opacity="0.8"/>${r}<path d="M-8 0q2 -3 4 -1M5 0q2 -3 3 0" stroke="#6a8a3a" stroke-width="1.2" fill="none"/>`; },
   fire: (o) => { const still = o && o.still;
     return '<ellipse cx="0" cy="1" rx="17" ry="5" fill="#1a1408" opacity="0.24"/><ellipse cx="0" cy="-1" rx="12" ry="3.6" fill="#3a2a1a" opacity="0.8"/>'
