@@ -21,7 +21,7 @@ const GL_WORLD_PREDECESSOR='94f5b2dbe4dce765cafb2b40',GL_WORLD_MECHANICS1='c3454
 function glWorldFields(source){
  if(source===undefined){
   if(typeof _gdv!=='undefined'&&_gdv.on&&_gdv.clean)source=_gdv.clean;
-  else if(typeof state!=='undefined'&&state?.garden)source=state.garden;
+  else if(typeof state!=='undefined'&&state?.garden&&state.garden.seen?.world!=null)source=state.garden;   // (a garden never yet opened on this computer has no world of its own: it starts on this page's own world, so a visit made first thing is on it too, not refused as 'world')
   else source={wv:GARDEN_WORLD.v,lh:GARDEN_WORLD.lh};
  }
  source=source?.visit?.snap||source;

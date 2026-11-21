@@ -52,6 +52,12 @@ function gartMoveStep(gw) {
   if (Math.abs(dx) + Math.abs(dy) >= 0.02) {
     _GPL.lastX = x; _GPL.lastY = y;
     _gmv.want = Math.atan2(dy, dx) * 180 / Math.PI;
+    // stepping round a corner (a door jamb, a post, a trunk) while you hold one way: you sidestep it still facing the way you press, as a
+    // person does, not turned side on for the few frames of the step (walking up to the mill door you turned east and slid; round 2)
+    if (gw.keys && gw.keys.size && !(gw.path && gw.path.length) && !gw.boat) {
+      const kx = (gw.keys.has('right') ? 1 : 0) - (gw.keys.has('left') ? 1 : 0), ky = (gw.keys.has('down') ? 1 : 0) - (gw.keys.has('up') ? 1 : 0);
+      if (kx || ky) { const kw = Math.atan2(ky * 1.6, kx) * 180 / Math.PI; if (Math.abs(_gmvWrap(_gmv.want - kw)) > 55) _gmv.want = kw; }
+    }
     if (typeof gartEmoteMoved === 'function') gartEmoteMoved();
     if (typeof gartActMoved === 'function') gartActMoved();
   } else if (!gw.moving && gw.keys && gw.keys.size && !(gw.path && gw.path.length) && !(gw.fishing && gw.fishing.state && gw.fishing.state !== 'idle') && !gw.boat && !(typeof _ga !== 'undefined' && _ga.cur && _ga.cur.doing)) {

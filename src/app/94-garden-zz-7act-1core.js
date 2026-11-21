@@ -126,10 +126,49 @@ function _gaTreeRows(px, py) {
   for (const b of _ga.trunks) {
     const fx = (b.x0 + b.x1) / 2, fy = b.y1; if (Math.abs(fx - px) > GA_REACH + 1 || Math.abs(fy - py) > GA_REACH + 1) continue;
     const kind = gardenKindOf({ tree: b.sp || '' }), K = GARDEN_KINDS[kind]; if (!K || !K.acts) continue;   // a tree's kind is what it is (its species), and each move asks its own trunk's size: never who drew it or where
-    for (const o of K.acts) { if (o.big && b.x1 - b.x0 < o.big) continue; if (o.act === 'hide' && _ga.trunks.some(t => t !== b && t.y1 > fy + 0.3 && t.y1 < fy + 2.6 && Math.abs((t.x0 + t.x1) / 2 - fx - 0.15) < 1.4)) continue;   /* (round 4: not where another tree just in front would bury you in its leaves: you must be seen peeking) */ out.push({ key: 'tree:' + fx.toFixed(1) + ',' + fy.toFixed(1) + ':' + o.act, act: o.act, name: o.name || K.name, x: fx, y: fy, stand: { x: fx + (o.side ? o.side * (b.x1 - b.x0) / 2 : 0) + o.stand[0], y: fy + o.stand[1] }, deg: o.deg, lift: 0, src: 'tree', seated: !!o.edge, tree: b, kind }); }
+    for (const o of K.acts) {
+      if (o.big && b.x1 - b.x0 < o.big) continue; if (o.act === 'hide' && _ga.trunks.some(t => t !== b && t.y1 > fy + 0.3 && t.y1 < fy + 2.6 && Math.abs((t.x0 + t.x1) / 2 - fx - 0.15) < 1.4)) continue;   /* (round 4: not where another tree just in front would bury you in its leaves: you must be seen peeking) */
+      const key = 'tree:' + fx.toFixed(1) + ',' + fy.toFixed(1) + ':' + o.act, stand = _gaTreeStand(key, b, o, fx, fy); if (!stand) continue;
+      out.push({ key, act: o.act, name: o.name || K.name, x: fx, y: fy, stand, deg: o.deg, lift: 0, src: 'tree', seated: !!o.edge, tree: b, kind });
+    }
   }
   return out;
 }
+/** Where a tree's move is done, from its own trunk's foot (any tree, any painter), or null where it cannot be done:
+ *  a move at the trunk (climb, hide) is done right at the trunk, as drawn: you walk up to it and step on to it, so it is offered only
+ *  where open ground comes within a step of that place (never a trunk inside a field you have not opened, nor one you reach only
+ *  from a cell away: you climbed empty air beside the tree, sat on a "branch" at its foot). A nap is done on open grass beside it
+ *  (its own side first, then the other, then further out), never over water, a jetty, a path or what blocks the feet: a sleeper
+ *  lay with head and arm over the river and the body across a jetty. Kept per tree until what blocks the feet changes. */
+function _gaTreeStand(key, b, o, fx, fy) {
+  const g = typeof _gwGridNow === 'function' ? _gwGridNow() : null, S = typeof _gw !== 'undefined' ? _gw.solids : null;
+  if (_ga.standG !== g || _ga.standS !== S) { _ga.standG = g; _ga.standS = S; _ga.stands = new Map(); }
+  const M = _ga.stands || (_ga.stands = new Map()); if (M.has(key)) return M.get(key);
+  let out = null;
+  try {
+    const side = o.side ? o.side * (b.x1 - b.x0) / 2 : 0, at = (d) => ({ x: fx + side + d[0], y: fy + d[1] });
+    if (o.act === 'nap') { for (const d of [o.stand].concat(o.alt || [])) { const p = at(d); if (_gaNapGround(p.x, p.y)) { out = p; break; } } }
+    else {
+      const p = at(o.stand);
+      if (typeof _gwFree !== 'function' || _gwFree(p.x, p.y)) out = p;
+      else if (typeof _gwNearestFreePt === 'function') { const f = _gwNearestFreePt(p.x, p.y, 0.5); if (f && Math.hypot(f.x - p.x, f.y - p.y) <= 0.5) out = o.edge ? p : f; }   // (at the trunk: you step from there on to it)
+    }
+  } catch (e) { out = null; }
+  M.set(key, out); return out;
+}
+/** Somewhere a figure can lie with its feet at (x, y): the whole body (head to the west, a figure's height long) on open, dry, level
+ *  ground: land, no water nor shore within half a cell, no path, jetty, bridge or what blocks the feet under it. Any kind, any place. */
+function _gaNapGround(x, y) {
+  if (typeof gardenIslandBaseCell !== 'function') return true;
+  const L = _gaLieLen();
+  for (let dx = 0.3; dx >= -L - 0.5; dx -= 0.3) for (const dy of [-0.35, 0, 0.35]) {
+    const c = gardenIslandBaseCell(x + dx, y + dy); if (!c || !c.land || c.ocean || c.freshwater || c.beach || c.solid || c.route || c.gateId || c.staticId) return false;
+  }
+  if (typeof _gwFree === 'function') for (let dx = 0; dx >= -L; dx -= 0.4) if (!_gwFree(x + dx, y)) return false;
+  return true;
+}
+/** How long a lying figure is on the ground, in cells (its height as drawn). */
+function _gaLieLen() { const W = GARDEN_WORLD, S = typeof GW_SCALE === 'number' ? GW_SCALE : 0.592; return Math.max(0.8, 74 * S / ((W && W.cellW) || 48)); }
 /** The water's edge, read from the ground (GARDEN_TERRAIN): water within reach in front of you, out over the bank (you face it). */
 function _gaWaterRows(px, py) {
   if (typeof gardenTerrainWaterAhead !== 'function') return [];
@@ -194,6 +233,9 @@ function gartActNearby() {
   // "Warm your hands" for the fire behind you; in front of a bench, a nap under the tree beside it). Up to a cell for a thing right behind.
   const h = typeof _gmv !== 'undefined' && Number.isFinite(_gmv.h) ? _gmv.h * Math.PI / 180 : null;
   const back = (r) => { if (h == null) return 0; const p = r.stand && r.src === 'tree' ? r.stand : r, vx = p.x - px, vy = p.y - py, n = Math.hypot(vx, vy); if (n < 0.35) return 0; return (1 - (Math.cos(h) * vx + Math.sin(h) * vy) / n) * 0.5; };
+  // and what is plainly behind you is not offered at all once you have turned your back on it (north of a log, facing north, it said
+  // 'Sit on the log' for the log behind you): turn round and it is offered again. Right on top of it, or carrying, it still counts.
+  for (let i = rows.length - 1; i >= 0; i--) { const r = rows[i]; if (!r.down && back(r) > 0.82 && ds(r) > 0.55) rows.splice(i, 1); }
   const score = new Map(); for (const r of rows) score.set(r, ds(r) - (r.pri || 0) + back(r));
   rows.sort((a, b) => score.get(a) - score.get(b));   // (pri: a wall before the tree that grows against it)
   if (!rows.length) return _gaWaterRows(px, py);
@@ -271,8 +313,13 @@ function _gaPlace() {
   // never under the garden's own messages strip at the top (a welcome, a find): below it, and above the thing's foot at most
   let y = s.y; try { const m = _gw.box.querySelector('.gd-msgs'), mb = m && m.childElementCount ? m.getBoundingClientRect() : null, bb = _gw.box.getBoundingClientRect(); const floor = mb && mb.height ? mb.bottom - bb.top + 34 : 40; if (y < floor) { const foot = _ghProject(r.x, r.y); y = Math.min(Math.max(y, floor), foot ? foot.y - 6 : y); } } catch (e) { /* as it was */ }
   el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(y)}px) translate(-50%, -100%)`;
-  // the chooser under your own feet, not under the prompt: there it lay over the thing itself and over a friend sat on it
-  if (_ga.ch && !_ga.ch.hidden) { const me = _ghProject(_gw.px, _gw.py + 0.45), bb = _gw.box.getBoundingClientRect(), cy = me ? Math.min(me.y, bb.height - 120) : Math.round(y) + 6; _ga.ch.style.transform = `translate(${Math.round(me ? me.x : s.x)}px, ${Math.round(Math.max(cy, y + 6))}px) translate(-50%, 0)`; }
+  // the chooser stacked on top of the prompt, up in the air with it: under the prompt it lay over the thing and a friend sat on it, under
+  // your feet over your own legs and the seat (round 2 of the seats). Kept inside the garden's box; if there is no room above, under it.
+  if (_ga.ch && !_ga.ch.hidden) {
+    const ph = el.offsetHeight || 30, ch = _ga.ch.offsetHeight || 26, top = Math.round(y) - ph - 5 - ch;
+    const yy = top >= 4 ? top : Math.round(y) + 6;
+    _ga.ch.style.transform = `translate(${Math.round(s.x)}px, ${yy}px) translate(-50%, 0)`;
+  }
 }
 /** E or Space: the prompt's action, if one is showing. Returns true when it did something. */
 function gartActInteract() {
@@ -325,6 +372,7 @@ function gartActPlay(gpl, id, o) {
     if (row.prop === 'swimwater' && motion) { const wd = g.querySelector('.ga-wade'); if (wd) try { H.panims.push(gardenVisualAnimate(wd, [{ offset: 0, opacity: 0 }, { offset: 0.06, opacity: 1 }, { offset: 0.3, opacity: 1 }, { offset: 0.4, opacity: 0 }, { offset: 1, opacity: 0 }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* no wading ring */ } }
     if (row.prop === 'swimwater') { if (motion) { try { H.panims.push(gardenVisualAnimate(g.querySelector('.ga-swim') || g, [{ offset: 0, opacity: 0 }, { offset: 0.2, opacity: 0 }, { offset: 0.42, opacity: 1 }, { offset: 1, opacity: 1 }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* shows at once */ } } }
   }
+  if (row.under && GA_PROPS[row.under]) { try { const root = gpl.querySelector('.gpl-root') || gpl, g = typeof gardenSceneElement === 'function' && gardenVisualIsNative(gpl) ? gardenSceneElement('g') : document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'ga-prop ga-p-' + row.under); g.innerHTML = GA_PROPS[row.under]; root.insertBefore(g, root.firstChild); H.props.push(g); if (motion) H.panims.push(gardenVisualAnimate(g, [{ offset: 0, opacity: 0 }, { offset: 0.7, opacity: 0 }, { offset: 1, opacity: 1 }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* no shadow */ } }   // (something drawn under the body, in its own frame: a lying figure's shadow on the grass)
   if (row.kick && o.leaves) _gaLeafBurst(gpl, H, motion, row.ms);
   if (row.hideBehind && o.tree && o.at) _gaBarkFront(gpl, H, o.tree, o.at);
   H.stop = () => { for (const t of H.timers) clearTimeout(t); for (const a of H.anims.concat(H.panims)) { try { a.cancel(); } catch (e) { /* gone */ } } for (const g of H.props) { try { if (g.parentNode) g.parentNode.removeChild(g); if (g.destroy) g.destroy(); } catch (e) { /* gone */ } } H.anims.length = 0; H.props.length = 0; };
