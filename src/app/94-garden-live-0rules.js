@@ -102,6 +102,8 @@ function glDoingOk(b) {
   if (b.d != null && !(Number.isInteger(b.d) && b.d >= -180 && b.d <= 180)) return 'facing';
   for (const k of ['i', 'h']) if (b[k] != null && !GL_FX_ID_RE.test(String(b[k]))) return 'thing';
   if (b.p != null && !(Number.isInteger(b.p) && b.p >= 0 && b.p <= 3)) return 'stick';
+  if (b.gk != null && (!Array.isArray(b.gk) || b.gk.length > 12 || b.gk.some(k => typeof k !== 'string' || !/^[a-z][a-z0-9-]{0,23}$/.test(k)))) return 'finds';
+  if (b.gz != null && (!Array.isArray(b.gz) || b.gz.length > 32 || b.gz.some(n => !Number.isInteger(n) || n < 0 || n > 64))) return 'gates';
   if (b.sv != null && (!Array.isArray(b.sv) || b.sv.length > 8 || b.sv.some(k => typeof k !== 'string' || !/^ld-[a-z0-9-]{1,24}$/.test(k)))) return 'solved';
   if (b.m != null) { if (!Array.isArray(b.m) || b.m.length > GL_DG_MAX_MOVED) return 'moved'; for (const r of b.m) if (!Array.isArray(r) || r.length !== 3 || !GL_FX_ID_RE.test(String(r[0])) || !Number.isInteger(r[1]) || !Number.isInteger(r[2]) || r[1] < 0 || r[2] < 0 || r[1] > cols * 10 || r[2] > rows * 10) return 'moved'; }
   return '';

@@ -51,7 +51,28 @@ function _gadBody() {
   for (const [id, at] of _gaMoved) if (!(_ga.carry && _ga.carry.id === id) && at && Number.isFinite(at.x) && !at.theirs) m.push([String(id).slice(0, 64), Math.max(0, Math.round(at.x * 10)), Math.max(0, Math.round(at.y * 10))]);
   if (m.length) b.m = m.slice(-(typeof GL_DG_MAX_MOVED === 'number' ? GL_DG_MAX_MOVED : 6));
   { const k = _gadVisitKey(); if (k && _gad.sv && _gad.sv.k === k && _gad.sv.ids.size) b.sv = [..._gad.sv.ids].slice(0, 8); }
+  if (_gll.role === 'host') _gadGatesOut(b);
   return b;
+}
+/** (2.74.1, gates) The host's gates, whole, in what the host is doing: the finds held (gk) and the gates open (gz, their zones). A
+ *  snapshot is cut into a dozen pieces that take seconds to cross; this is one small message, so a friend's sign says 'Ready to open'
+ *  and a gate they open swings open on their screen at once. By kind: every gate with a find (the layout's gates), no names. */
+function _gadGatesOut(b) {
+  try {
+    if (typeof GARDEN_GATE_ITEMS === 'undefined' || typeof GARDEN_ZONE_GATES === 'undefined') return;
+    const gk = Object.keys(GARDEN_GATE_ITEMS).filter(k => gardenGateHas(k)).slice(0, 12); if (gk.length) b.gk = gk;
+    const areas = gardenModel().areas, gz = GARDEN_ZONE_GATES.filter(g => gardenGateRule(g) && gardenGateIsOpen(g, areas)).map(g => g.n).filter(n => Number.isInteger(n) && n >= 0 && n <= 64).slice(0, 32); if (gz.length) b.gz = gz;
+  } catch (e) { /* the snapshot says it */ }
+}
+/** On a visit: the host's gates on my screen now (their snapshot, patched; the next whole snapshot says the same). */
+function _gadGatesIn(ev) {
+  if (_gll.role !== 'visit' || ev.w !== 0 || typeof _glv === 'undefined' || !_glv.snap || (!ev.gk && !ev.gz)) return;
+  const s = _glv.snap, gk = Array.isArray(ev.gk) ? ev.gk.filter(k => typeof k === 'string' && /^[a-z][a-z0-9-]{0,23}$/.test(k)).slice(0, 12) : null;
+  const areas = Array.isArray(s.areas) ? s.areas.slice() : [], add = (ev.gz || []).filter(n => Number.isInteger(n) && n >= 0 && n <= 64).map(n => 'zn-' + n).filter(z => !areas.includes(z));
+  const gkNew = gk && gk.some(k => !(s.gk || []).includes(k));
+  if (!add.length && !gkNew) return;
+  _glv.snap = Object.assign({}, s, gkNew ? { gk: [...new Set([...(s.gk || []), ...gk])].slice(0, 12) } : {}, add.length ? { areas: areas.concat(add) } : {});
+  if (typeof _gdvTouch === 'function') _gdvTouch();
 }
 function _gadLive() {
   try {
@@ -98,6 +119,7 @@ function gartActDoingIn(A, ev) {
   if (!A || !ev || (typeof glDoingOk === 'function' && glDoingOk(ev))) return;
   A.dg = true;
   if (ev.sv) _gadSolvedIn(A, ev.sv);
+  if (ev.gk || ev.gz) _gadGatesIn(ev);
   // the thing in their hands: off the ground here too, drawn in their arms (gartMoveActor)
   const hold = ev.i ? String(ev.i) : '';
   if (A.carryId !== hold) {
