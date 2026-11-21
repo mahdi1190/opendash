@@ -168,11 +168,15 @@ function gardenCarryRoom(key, x, y) {
   const t = gardenCarryThing(key), K = t && GARDEN_KINDS[t.kind], half = Math.max(0.15, ((K && K.w) || 0.5) / 2);
   // and in sight: never where a building's picture stands over it (the walkable strip behind a cottage is under its roof), nor under
   // your own figure; asked of the painted world, by its pictures, so any layout's buildings count (rule 17)
-  const NW = typeof _gw !== 'undefined' && _gw.nativeWorld, seen = (px, py) => !(NW && typeof NW.covered === 'function' && NW.covered(px, py, 26)) && !(Math.abs(px - _gw.px) < 0.3 && py < _gw.py - 0.05 && py > _gw.py - 1.3);
-  const ok = (px, py) => _gwFree(px, py, 0.12) && _gwFree(px - half, py, 0.08) && _gwFree(px + half, py, 0.08) && _gwFree(px, py - 0.25, 0.08) && seen(px, py);
+  // (half a cell south of it under a roof too: just over a roof's top line it seemed to sit on the roof)
+  const NW = typeof _gw !== 'undefined' && _gw.nativeWorld, cov = (px, py) => !!(NW && typeof NW.covered === 'function' && NW.covered(px, py, 26));
+  let hid = false;
+  const seen = (px, py) => { const v = !cov(px, py) && !cov(px, py + 0.45) && !(Math.abs(px - _gw.px) < 0.3 && py < _gw.py - 0.05 && py > _gw.py - 1.3); if (!v) hid = true; return v; };
+  // (and open ground just in front of it: a hedge, a sign or a wall a step south is drawn over its foot, rule 12)
+  const ok = (px, py) => _gwFree(px, py, 0.12) && _gwFree(px - half, py, 0.08) && _gwFree(px + half, py, 0.08) && _gwFree(px, py - 0.25, 0.08) && _gwFree(px, py + 0.45, 0.08) && seen(px, py);
   if (ok(x, y)) return { x, y };
   for (let r = 0.2; r <= 1.41; r += 0.2) for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2, px = x + Math.cos(a) * r, py = y + Math.sin(a) * r * 0.75; if (ok(px, py)) return { x: Math.round(px * 10) / 10, y: Math.round(py * 10) / 10 }; }
-  return null;
+  return hid ? { hidden: true } : null;
 }
 /** E pressed just where a thing lay a moment ago, that a friend has just picked up: one plain line, and nothing else happens (the next
  *  thing near you, a stall, a seat, does not open in its place: critic, 21 Nov). -> true when it said so. */

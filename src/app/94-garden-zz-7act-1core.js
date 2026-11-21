@@ -714,7 +714,7 @@ function gartActSetDown() {
   let x = clear ? x0 : _gw.px, y = clear ? y0 : _gw.py + 0.08;   // (never into a post or a wall: at your feet then)
   // (build phase 1) its whole foot on open ground, nudged up to a cell to the nearest spot that is (rule 12: never half into a wall or a hedge);
   // nowhere near: you keep it, and are told so
-  if (typeof gardenCarryRoom === 'function') { const r = gardenCarryRoom(c.id, x, y); if (!r) { try { gardenToast('There is no room to put it down here. Try a more open spot.', { icon: 'hand' }); } catch (e) { /* fine */ } return true; } x = r.x; y = r.y; }
+  if (typeof gardenCarryRoom === 'function') { const r = gardenCarryRoom(c.id, x, y); if (!r || r.hidden) { try { gardenToast(r ? 'Not here: the building would hide it. Put it down out in the open.' : 'There is no room to put it down here. Try a more open spot.', { icon: 'hand' }); } catch (e) { /* fine */ } return true; } x = r.x; y = r.y; }
   _ga.carry = null;
   _gaHide.delete(c.id);
   // (round 6) where you set it down it is a thing of the world of its own, at its new place with its contact shadow (the still picture stays

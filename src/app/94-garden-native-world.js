@@ -2122,9 +2122,18 @@ window.GardenNativeWorld = (function () {
     api.frontierState = () => frontierMetadata;
     api.syncNeedRings = syncNeedRings;
     api.playerOcclusionState = playerOcclusionState;
-    /** Would a small thing h px tall standing at (x, y) cells be hidden by a painted building's picture (its roof over the strip behind it)?
-     *  The same test the fades use, by the pictures themselves, so any layout's buildings answer (a set-down is never put out of sight). */
-    api.covered = (x, y, h) => { const sx = x * W.cellW, sy = W.sky + y * W.cellH; for (const record of fadingProps) { if (record.editorLifted || !record.metadata || !record.metadata.prop) continue; try { if (propCovers(record, sx, sy, h || 26, {})) return true; } catch (e) { /* not drawn yet */ } } return false; };
+    /** Would a small thing h px tall standing at (x, y) cells be hidden, even in part, by a painted building's picture standing in front of it
+     *  (its roof over the strip behind it)? By the pictures' own pixels, so any layout's buildings answer (a set-down is never put out of sight). */
+    api.covered = (x, y, h) => {
+      const sx = x * W.cellW, sy = W.sky + y * W.cellH, th = h || 26, pts = [[0, -3], [0, -th * .5], [-8, -th * .4], [8, -th * .4], [0, -th]];
+      for (const record of fadingProps) {
+        const p = record.metadata && record.metadata.prop, b = record.bounds; if (record.editorLifted || !p || !b) continue;
+        if (sy >= W.sky + (p.y + p.h) * W.cellH - 2) continue;   // (in front of its foot: drawn over it, so seen)
+        if (sx + 8 < b.x || sx - 8 > b.x + b.width || sy < b.y || sy - th > b.y + b.height) continue;
+        try { if (record.handle && record.handle.hitPoint ? pts.some(([dx, dy]) => record.handle.hitPoint(sx + dx, sy + dy)) : propCovers(record, sx, sy, th, {})) return true; } catch (e) { /* not drawn yet */ }
+      }
+      return false;
+    };
     api.designLayer = designLayer;
     api.designPreview = designPreview;
     api.scheduleDesignPreview = paint => { editorPaint = paint; };
