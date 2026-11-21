@@ -81,6 +81,7 @@ function gardenCollideAt(x, y, mArg) {
     if (D.cellWhy.has(i)) out.push(D.cellWhy.get(i));
     else if (D.grid[i] && !(D.grid.fieldSteer && D.grid.fieldSteer.has(i)) || !(D.grid.shore ? gardenShoreFootProbe(D.grid.shore, x, y, .02, .02, false, D.grid.waterCover, {}).free : true)) out.push(D.grid.otherWater[i] || gardenIsWater(cx, cy) ? 'water' : 'water edge (no room for feet)');
   }
+  if (typeof gardenFolkFeet === 'function') for (const f of gardenFolkFeet()) if (((f.x - x) / 0.5) ** 2 + ((f.y - y) / 0.3) ** 2 < 1) out.push(f.name + ' (one of the folk: you walk round them, and they wait for you)');
   return out;
 }
 /* ---------- drawing ---------- */
@@ -143,6 +144,12 @@ function _gcvFrame() {
     _gcv.feet.lineStyle(lw * 2.2, 0x2b2118, .9); _gcv.feet.strokeEllipse(fx, fy, GW_FOOT.x * 2 * W.cellW, GW_FOOT.y * 2 * W.cellH);
     _gcv.feet.lineStyle(lw, 0xffffff, 1); _gcv.feet.strokeEllipse(fx, fy, GW_FOOT.x * 2 * W.cellW, GW_FOOT.y * 2 * W.cellH);
   }
+  // the vale's folk, in yellow: solid to your feet (the oval gardenFolkBlocks uses), and they wait for you or go round you (94-garden-wonder-0vale-folk.js)
+  if (!inRoom && typeof gardenFolkFeet === 'function' && typeof GW_FOOT !== 'undefined') {
+    const W = GARDEN_WORLD, lw = Math.max(1, 1.5 / (cam.scale || 1));
+    _gcv.feet.lineStyle(lw * 1.6, 0xd8a800, 1);
+    for (const f of gardenFolkFeet()) { _gcv.feet.fillStyle(0xffd21a, .55); _gcv.feet.fillEllipse(f.x * W.cellW, W.sky + f.y * W.cellH, 1.0 * W.cellW, 0.6 * W.cellH); _gcv.feet.strokeEllipse(f.x * W.cellW, W.sky + f.y * W.cellH, 1.0 * W.cellW, 0.6 * W.cellH); }
+  }
   _gcv.raf = requestAnimationFrame(_gcvFrame);
 }
 function _gcvTipShow(clientX, clientY, sticky) {
@@ -163,7 +170,7 @@ function _gcvLegend(on) {
   if (!on) { if (el) el.remove(); _gcv.legend = null; if (_gcv.tip) { _gcv.tip.remove(); _gcv.tip = null; } return; }
   if (!el || !el.isConnected) {
     el = _gcv.legend = document.createElement('div'); el.className = 'gd-collide-key';
-    el.innerHTML = '<b>What blocks walking</b><span><i class="is-block"></i>blocks your feet</span><span><i class="is-water"></i>water</span><span><i class="is-click"></i>click area</span><span><i class="is-door"></i>door or arrival</span><span><i class="is-feet"></i>your feet</span><button type="button" data-collide-off>Hide <kbd>Shift</kbd>+<kbd>C</kbd></button>';
+    el.innerHTML = '<b>What blocks walking</b><span><i class="is-block"></i>blocks your feet</span><span><i class="is-water"></i>water</span><span><i class="is-click"></i>click area</span><span><i class="is-door"></i>door or arrival</span><span><i class="is-feet"></i>your feet</span><span><i class="is-folk"></i>the folk (walk round them)</span><button type="button" data-collide-off>Hide <kbd>Shift</kbd>+<kbd>C</kbd></button>';
     el.addEventListener('click', ev => { if (ev.target.closest('[data-collide-off]')) gardenCollideToggle(false); });
     box.appendChild(el);
   }

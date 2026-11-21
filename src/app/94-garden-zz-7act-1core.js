@@ -227,7 +227,8 @@ function gartActNearby() {
   const now = performance.now();
   if (!_ga.list || now - _ga.listT > 2500) { _ga.list = _gaStaticRows(); _ga.listT = now; }
   const px = _gw.px, py = _gw.py, d = (r) => Math.hypot(r.x - px, (r.y - py) * 1.3);
-  const rows = _ga.list.concat(_gaTreeRows(px, py)).filter(r => d(r) <= Math.max(GA_REACH, r.reach || 0) && !gartActHidden(r.src) && !gartActTaken(r));   // (a ball off rolling, a pile kicked apart: nothing to do there just now)
+  const rows = _ga.list.concat(_gaTreeRows(px, py)).filter(r => d(r) <= Math.max(GA_REACH, r.reach || 0) && !gartActHidden(r.src) && !gartActTaken(r));
+  if (typeof gardenFolkActRows === 'function') rows.push(...gardenFolkActRows(px, py));   // the vale's folk, wherever they are: talk to them, or knock (94-garden-wonder-0vale-folk.js)   // (a ball off rolling, a pile kicked apart: nothing to do there just now)
   // where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near; and a tree offers each
   // of its moves where you would do it (in front of the trunk: climb; at its side: hide behind it; out under the crown: a nap)
   // (a thing with several places, each its own (a band's pitch: one instrument each, a long bench's seats): only where you would stand counts,
@@ -259,7 +260,7 @@ function _gaPromptEl() {
   el.addEventListener('pointerdown', (ev) => ev.stopPropagation());
   box.appendChild(el); _ga.el = el; return el;
 }
-function _gaWords(r) { const row = GARDEN_ACTS[r.act]; if (!row) return ''; if (r.down) return 'Set it down'; if (r.boat && typeof gardenHas === 'function' && gardenHas('gear:rowing-boat') < 1) return 'Needs a rowing boat (the tackle shop)'; const v = row.verb; return /the |it$|a |under/.test(v) || !r.name ? v : r.act === 'sit' ? 'Sit on ' + r.name : v; }
+function _gaWords(r) { if (r.folk) return r.words || ''; const row = GARDEN_ACTS[r.act]; if (!row) return ''; if (r.down) return 'Set it down'; if (r.boat && typeof gardenHas === 'function' && gardenHas('gear:rowing-boat') < 1) return 'Needs a rowing boat (the tackle shop)'; const v = row.verb; return /the |it$|a |under/.test(v) || !r.name ? v : r.act === 'sit' ? 'Sit on ' + r.name : v; }
 /** Once a frame from the walker (cheap: looks round five times a second). */
 function gartActFrame() {
   if (typeof _gw === 'undefined' || !_gw.on) return;
@@ -276,13 +277,16 @@ function gartActFrame() {
   if (now - _ga.t < 200) { if (_ga.near && _ga.el && !_ga.el.hidden) _gaPlace(); return; }
   _ga.t = now;
   const el = _gaPromptEl(); if (!el) return;
-  const busy = (_ga.cur && _ga.cur.doing) || !!_gw.boat || (typeof _gwFishBusy === 'function' && _gwFishBusy()) || (typeof gardenDesignOn === 'function' && gardenDesignOn()) || (typeof GardenNative !== 'undefined' && GardenNative.inRoom && GardenNative.inRoom());
+  const busy = (_ga.cur && _ga.cur.doing) || (typeof _wd !== 'undefined' && !!_wd.talk) || !!_gw.boat || (typeof _gwFishBusy === 'function' && _gwFishBusy()) || (typeof gardenDesignOn === 'function' && gardenDesignOn()) || (typeof GardenNative !== 'undefined' && GardenNative.inRoom && GardenNative.inRoom()) || (typeof gardenWorldCovered === 'function' && gardenWorldCovered());   // (a panel over the world: no prompt on top of it)
   const opts = busy ? [] : _ga.carry ? [{ key: 'carry-down', act: 'carry', name: '', x: _gw.px, y: _gw.py, down: true }] : _gaOptions(gartActNearby());
   // one clear prompt: the best thing here (or the one you picked with Tab, while it is still in reach); the others in a small chooser below it
   const near = opts.find(o => o.key === _ga.pickKey) || opts[0] || null;
   _ga.opts = opts;
   if (!near) { _ga.near = null; _ga.pickKey = null; el.hidden = true; _gaChooser(null); return; }
-  if (!_ga.near || _ga.near.key !== near.key) { _ga.near = near; el.innerHTML = `<kbd>E</kbd><span>${esc(_gaWords(near))}</span>`; el.setAttribute('aria-label', _gaWords(near) + ' (E)'); }
+  // (the same thing can be somewhere else now: a basket a friend set down while this page was loading keeps its key, so the newest row is
+  // always the prompt's, or it stayed over the old spot: critic, 21 Nov)
+  const same = !!_ga.near && _ga.near.key === near.key; _ga.near = near;
+  if (!same) { el.innerHTML = `<kbd>E</kbd><span>${esc(_gaWords(near))}</span>`; el.setAttribute('aria-label', _gaWords(near) + ' (E)'); }
   el.hidden = false; _gaChooser(opts.length > 1 ? opts : null); _gaPlace();
 }
 /** What is in reach, as choices: one per thing and move (the nearest of a bench's two places), the best first, at most four. */
@@ -316,16 +320,40 @@ function gartActCycle(back) {
   const i = Math.max(0, opts.findIndex(o => o.key === _ga.near.key)), n = opts[(i + (back ? opts.length - 1 : 1)) % opts.length];
   _ga.pickKey = n.key; _ga.t = 0; gartActFrame(); return true;
 }
+/** How far over its foot a small thing's picture reaches, in cells, and a little gap: the 'Pick it up' prompt sits just over the thing as drawn
+ *  (fix loop 1, 21 Nov 2026: a cell over its foot put it at the chest of whoever stood behind the basket, and it read as theirs). Measured
+ *  once per kind of drawing from the picture itself (_GAW_ART, world px, drawn unscaled at the foot), so any carried kind is right. */
+const _gaTops = new Map();
+function _gaArtTop(art) {
+  const W = GARDEN_WORLD, fb = 1.05;
+  if (!art || typeof _GAW_ART === 'undefined' || !_GAW_ART[art]) return fb;
+  if (_gaTops.has(art)) return _gaTops.get(art);
+  let v = fb;
+  try {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('style', 'position:absolute;left:-9999px;top:0;width:10px;height:10px;visibility:hidden');
+    svg.innerHTML = '<g>' + _GAW_ART[art]({}, false, { art }) + '</g>'; document.body.appendChild(svg);
+    const bb = svg.firstChild.getBBox(); svg.remove();
+    if (bb && bb.height > 0) v = Math.max(0.3, (-bb.y + 7) / W.cellH);   // (its top, and 7 world px of air)
+  } catch (e) { v = fb; }
+  _gaTops.set(art, v); return v;
+}
 function _gaPlace() {
   const r = _ga.near, el = _ga.el; if (!r || !el) return;
-  const s = typeof _ghProject === 'function' ? _ghProject(r.x, r.promptY != null ? r.promptY : r.top != null ? Math.max(r.top + 0.55, r.y - 6) : r.src === 'tree' ? r.y - 3.2 : r.y - 1.9) : null; if (!s) return;   // (promptY: over a ladder's top, up on its floor)
+  const s = typeof _ghProject === 'function' ? _ghProject(r.x, r.promptY != null ? r.promptY : r.top != null ? Math.max(r.top + 0.55, r.y - 6) : r.src === 'tree' ? r.y - 3.2 : r.carry ? r.y - _gaArtTop(r.art) : r.y - 1.9) : null; if (!s) return;   // (promptY: over a ladder's top, up on its floor)
   // never under the garden's own messages strip at the top (a welcome, a find): below it, and above the thing's foot at most
-  let y = s.y; try { const m = _gw.box.querySelector('.gd-msgs'), mb = m && m.childElementCount ? m.getBoundingClientRect() : null, bb = _gw.box.getBoundingClientRect(); const floor = mb && mb.height ? mb.bottom - bb.top + 34 : 40; if (y < floor) { const foot = _ghProject(r.x, r.y); y = Math.min(Math.max(y, floor), foot ? foot.y - 6 : y); } } catch (e) { /* as it was */ }
+  // (n-move) the page's sizes are read at most every 600 ms (and when the prompt's words change), not every frame: reading them right after
+  // the last frame moved the prompt forced the page to lay itself out again, 7-20 ms of every walking frame with a prompt showing
+  const now = performance.now(), G = _ga.geo && now - _ga.geo.t < 600 && _ga.geo.key === r.key + '|' + (_ga.opts ? _ga.opts.length : 0) && _ga.geo.ch === !!(_ga.ch && !_ga.ch.hidden) ? _ga.geo : null;
+  const geo = G || (_ga.geo = { t: now, key: r.key + '|' + (_ga.opts ? _ga.opts.length : 0), ch: !!(_ga.ch && !_ga.ch.hidden), floor: null, ph: 0, chh: 0 });
+  let y = s.y; try { if (geo.floor == null) { const m = _gw.box.querySelector('.gd-msgs'), mb = m && m.childElementCount ? m.getBoundingClientRect() : null, bb = mb ? _gw.box.getBoundingClientRect() : null; geo.floor = mb && mb.height ? mb.bottom - bb.top + 34 : 40; }  /* (no messages showing: nothing to read) */ const floor = geo.floor; if (y < floor) { const foot = _ghProject(r.x, r.y); y = Math.min(Math.max(y, floor), foot ? foot.y - 6 : y); } } catch (e) { /* as it was */ }
   el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(y)}px) translate(-50%, -100%)`;
   // the chooser stacked on top of the prompt, up in the air with it: under the prompt it lay over the thing and a friend sat on it, under
   // your feet over your own legs and the seat (round 2 of the seats). Kept inside the garden's box; if there is no room above, under it.
   if (_ga.ch && !_ga.ch.hidden) {
-    const ph = el.offsetHeight || 30, ch = _ga.ch.offsetHeight || 26, top = Math.round(y) - ph - 5 - ch;
+    // (the two heights come from a ResizeObserver, which is told them after the page lays itself out: no layout forced here)
+    if (!_ga.ro && typeof ResizeObserver === 'function') { _ga.hts = new WeakMap(); _ga.ro = new ResizeObserver(es => { for (const e of es) _ga.hts.set(e.target, e.target.offsetHeight || e.contentRect.height); }); }
+    if (_ga.ro && !el._gaRo) { el._gaRo = 1; _ga.ro.observe(el); } if (_ga.ro && !_ga.ch._gaRo) { _ga.ch._gaRo = 1; _ga.ro.observe(_ga.ch); }
+    const ph = (_ga.hts && _ga.hts.get(el)) || (_ga.ro ? 30 : el.offsetHeight || 30), ch = (_ga.hts && _ga.hts.get(_ga.ch)) || (_ga.ro ? 26 : _ga.ch.offsetHeight || 26), top = Math.round(y) - ph - 5 - ch;
     const yy = top >= 4 ? top : Math.round(y) + 6;
     _ga.ch.style.transform = `translate(${Math.round(s.x)}px, ${yy}px) translate(-50%, 0)`;
   }
@@ -334,8 +362,13 @@ function _gaPlace() {
 function gartActInteract() {
   if (_ga.carry && !(_ga.cur && _ga.cur.doing)) { gartActSetDown(); return true; }
   if (_ga.cur && _ga.cur.doing) { gartActStop(); return true; }
+  if (!(_ga.near && _ga.near.carry) && typeof gardenCarryLost === 'function' && gardenCarryLost()) return true;   // (build phase 1: a friend got it first)
+  // (a thing a friend is carrying right beside you, with nothing nearer to do: who has it, in a line, and E does nothing else; the stall
+  // or seat a step further on does not open in its place: critic, 21 Nov)
+  if (!(_ga.near && _ga.near.carry) && typeof gardenCarryHeldNear === 'function') { const why = gardenCarryHeldNear(_ga.near && _ga.el && !_ga.el.hidden ? _ga.near : null); if (why) { try { gardenToast(why, { icon: 'hand' }); } catch (e) { /* fine */ } return true; } }
   if (!_ga.near || !_ga.el || _ga.el.hidden) return false;
-  return gartActRun(_ga.near.act, _ga.near);
+  const near = _ga.near, done = gartActRun(near.act, near);
+  return done || !!near.carry;   // (a pick-up refused, someone has it: said in a line, and E does nothing else, never the stall beside it)
 }
 /* ---------- doing it ---------- */
 const _GA_SEL = Object.freeze({ s: { root: '.gpl-root', up: '.gpl-up', head: '.gpl-hd', armL: '.gpl-af.gpl-b', armR: '.gpl-af.is-r', legL: '.gpl-lf.gpl-a', legR: '.gpl-lf.gpl-b', kneeL: '.gpl-kn.is-a', kneeR: '.gpl-kn.is-b' }, e: { root: '.gpl-root', up: '.gpl-up', head: '.gpl-hd', armL: '.gpl-as.gpl-a', armR: '.gpl-as.gpl-b', legL: '.gpl-lg.gpl-a', legR: '.gpl-lg.gpl-b', kneeL: '.gpl-kn.is-a', kneeR: '.gpl-kn.is-b' } });
@@ -397,6 +430,7 @@ function _gaFace(deg) {
 }
 function _gaDirDeg(row, spot) { return spot && spot.deg != null ? spot.deg : row.dir === 'n' ? -90 : row.dir === 'e' ? 0 : row.dir === 'w' ? 180 : 90; }
 function gartActRun(id, spot) {
+  if (spot && spot.folk) return typeof gardenFolkTalkTo === 'function' && gardenFolkTalkTo(spot.folk);   // one of the vale's folk (94-garden-wonder-0vale-folk.js)
   const row = GARDEN_ACTS[id]; if (!row || typeof _gw === 'undefined' || !_gw.on || _gw.boat) return false;   // (out on the water in your boat: the oars are your only move)
   gartActStop();
   if (spot && spot.boat) {   // the boat: your own rowing boat takes you out on the water (the boat game); without one, say where to get one
@@ -405,6 +439,7 @@ function gartActRun(id, spot) {
     return true;
   }
   if (spot && gartActTaken(spot)) { try { gardenToast(GARDEN_ACTS[spot.act] && GARDEN_ACTS[spot.act].seat == null && !spot.seated ? 'Someone is already there.' : 'Someone is already sitting there.'); } catch (e) { /* fine */ } return false; }   // (one person to a seat)
+  if (row.carry && spot && spot.carry && typeof gardenCarryWhy === 'function') { const why = gardenCarryWhy(spot.src); if (why) { if (!(typeof gardenCarryLost === 'function' && gardenCarryLost())) try { gardenToast(why, { icon: 'hand' }); } catch (e) { /* fine */ } return false; } }   // (build phase 1: one person carries a thing at a time)
   spot = _gaStandClear(spot);   // (a move done standing, never on top of a friend: warming your hands at a fire stood you on a friend sat on the log)
   if (_ga.carry && !row.carry) gartActSetDown();   // (you put down what you carry to do something else)
   if (row.rubPet && typeof _ptwFree === 'function' && !_ptwFree(_gw.px + GA_RUB_AT[0], _gw.py + GA_RUB_AT[1])) { try { if (!_ga.quiet) gardenToast('Not here: your pet needs open ground beside you to roll over.'); } catch (e) { /* fine */ } return false; }   // (never on a wall, a step or a thing: pets do not stand on props)
@@ -616,7 +651,12 @@ function gartActHidden(id) { const t = _gaHide.get(id); return t != null && (t =
 /** Being carried: not drawn on the ground at all. */
 function gartActCarried(id) { return _gaHide.get(id) === Infinity; }
 /** Where a carried thing was set down (this visit), or null. */
-function gartActMovedTo(id) { return _gaMoved.get(id) || null; }
+function gartActMovedTo(id) {
+  // (build phase 1) where it lies is saved, for everyone (94-garden-build-1do.js): a garden on this version says so; an older host's garden
+  // keeps what friends set down for the visit only, as before
+  if (typeof gardenDropKnown === 'function' && gardenDropKnown()) return gardenDropAt(id);
+  return _gaMoved.get(id) || null;
+}
 /** Draw the world again now: something an act changes in a drawing (an instrument in someone's hands, a thing in use) is not in the garden's
  *  model, so the drawing revision below is part of both repaint keys (94-garden-native-runtime.js, 94-garden-native-world.js); without it the
  *  repaint was skipped until the next minute. The model is passed, never nothing (a sync with no model reached the life layer as undefined). */
@@ -653,7 +693,10 @@ function _gaKickAt(sp, deg) {
 }
 /** Pick it up: it leaves the ground and is in your hands until you set it down (E). */
 function _gaPick(cur) {
-  const sp = cur.spot; _ga.carry = { id: sp.src, art: sp.art };
+  const sp = cur.spot;
+  // (build phase 1) picking it up is a saved op: at home it no longer lies anywhere; on a visit the host decides who got it first
+  if (typeof gardenCarryGrab === 'function') { const why = gardenCarryGrab(sp.src); if (why) { try { gardenToast(why, { icon: 'hand' }); } catch (e) { /* fine */ } return; } }
+  _ga.carry = { id: sp.src, art: sp.art };
   setTimeout(() => { const d = _ga.down && _ga.down.get(sp.src); if (d) { try { d.remove(); } catch (e) { /* gone */ } _ga.down.delete(sp.src); } }, 380);
   setTimeout(() => { _gaHide.set(sp.src, Infinity); _gaShow(sp.src, false); _ga.list = null; }, 380);
 }
@@ -685,17 +728,32 @@ function _gaSetDownDraw(id, x, y) {
   const t = gardenAffordThings().find(q => q.id === id), K = t && GARDEN_KINDS[t.kind], row = K ? { art: K.art } : null; if (!row || !_GAW_ART[row.art]) return;
   _ga.down = _ga.down || new Map();
   const old = _ga.down.get(id); if (old) { try { old.remove(); } catch (e) { /* gone */ } }
-  try { _ga.down.set(id, gardenWorldAdd({ id: 'ga-down-' + id, x, y, z: y, lift: 0, ground: false, svg: _GAW_ART[row.art]({}, false, row), update(dt, Sp) { if (!_ga.down || _ga.down.get(id) !== Sp) Sp.remove(); } })); } catch (e) { /* drawn on the next paint */ }
+  try { _ga.down.set(id, gardenWorldAdd({ id: 'ga-down-' + id, x, y, z: y, lift: 0, ground: false, svg: _GAW_ART[row.art]({}, false, row), update(dt, Sp) {
+    if (!_ga.down || _ga.down.get(id) !== Sp) { Sp.remove(); return; }
+    // (build phase 1, build-PLAN 3.2) set down on a visit and not yet agreed by the host: a pending copy, see-through with a soft shimmer
+    const pend = typeof _gbd !== 'undefined' && _gbd.pend.has(id), op = pend ? (0.6 + 0.1 * Math.sin(performance.now() / 160)).toFixed(2) : '1';
+    if (Sp.node && Sp._op !== op) { Sp._op = op; try { Sp.node.setAttribute('opacity', op); } catch (e) { /* the next frame */ } }
+  } })); } catch (e) { /* drawn on the next paint */ }
 }
-/** E while carrying: set it down at your feet, just in front. It stays there for this visit. */
+/** E while carrying: set it down at your feet, just in front. It stays there, for everyone, until someone picks it up again. */
 function gartActSetDown() {
   const c = _ga.carry; if (!c) return false;
+  const W = GARDEN_WORLD, deg = (typeof gartMoveFacingDeg === 'function' ? gartMoveFacingDeg() : 90) * Math.PI / 180;
+  // facing away from the camera, in front of you is behind your own figure (it seemed to vanish: critic, 21 Nov): then it goes down beside
+  // you, on the side you lean to, at your feet
+  const away = Math.sin(deg) < -0.35, side = Math.cos(deg) < -0.1 ? -1 : 1;
+  const x0 = away ? _gw.px + side * 0.62 : _gw.px + Math.cos(deg) * 0.5, y0 = away ? _gw.py + 0.08 : _gw.py + Math.sin(deg) * 0.55 + 0.05, clear = typeof _gwFree !== 'function' || _gwFree(x0, y0, 0.15);
+  let x = clear ? x0 : _gw.px, y = clear ? y0 : _gw.py + 0.08;   // (never into a post or a wall: at your feet then)
+  // (build phase 1) its whole foot on open ground, nudged up to a cell to the nearest spot that is (rule 12: never half into a wall or a hedge);
+  // nowhere near: you keep it, and are told so
+  if (typeof gardenCarryRoom === 'function') { const r = gardenCarryRoom(c.id, x, y); if (!r || r.hidden) { try { gardenToast(r ? 'Not here: the building would hide it. Put it down out in the open.' : 'There is no room to put it down here. Try a more open spot.', { icon: 'hand' }); } catch (e) { /* fine */ } return true; } x = r.x; y = r.y; }
   _ga.carry = null;
-  const W = GARDEN_WORLD, deg = (typeof gartMoveFacingDeg === 'function' ? gartMoveFacingDeg() : 90) * Math.PI / 180, x0 = _gw.px + Math.cos(deg) * 0.5, y0 = _gw.py + Math.sin(deg) * 0.35 + 0.05, clear = typeof _gwFree !== 'function' || _gwFree(x0, y0, 0.15), x = clear ? x0 : _gw.px, y = clear ? y0 : _gw.py + 0.08;   // (never into a post or a wall: at your feet then)
-  _gaMoved.set(c.id, { x, y }); _gaHide.delete(c.id);
+  _gaHide.delete(c.id);
   // (round 6) where you set it down it is a thing of the world of its own, at its new place with its contact shadow (the still picture stays
   // hidden: moving the world's own record left it drawn nowhere), until you pick it up again
-  _gaShow(c.id, false); _gaSetDownDraw(c.id, x, y);
+  // (build phase 1) and it stays there, saved, for everyone: a drop op (94-garden-build-1do.js), with Undo; an older host's garden, this visit only
+  if (typeof gardenDropKnown === 'function' && gardenDropKnown()) gardenCarrySet(c.id, x, y);
+  else { _gaMoved.set(c.id, { x, y }); _gaShow(c.id, false); _gaSetDownDraw(c.id, x, y); }
   _gaCarriedSweep(true);
   try { if (typeof _gwBody === 'function') _gwBody(); } catch (e) { /* fine */ }
   try { if (window.GardenNativeActions) GardenNativeActions.effect('place', x * W.cellW, W.sky + y * W.cellH, { width: 24 }); } catch (e) { /* fine */ }

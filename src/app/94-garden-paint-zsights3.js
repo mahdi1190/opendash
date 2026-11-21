@@ -861,6 +861,10 @@
       if (last) for (const xx of [7, w - 7]) { const yy = h - 6; B.f(B.ell(xx, yy + 6, 4.6, 2.2), '#2a2e30').f(B.rr(xx - 3.4, yy - 2, 6.8, 8, 2), '#3a3e40').f(B.ell(xx, yy - 2, 4, 1.8), '#5a5e60').f(B.ell(xx - 1, yy - 2.4, 1.6, .7), '#8a9094', .8); }
     }, x, y, 2, false);
   };
+  // (the vale's folk, 94-garden-wonder-0vale-folk.js) once he walks his own day, his seat on the quay is not drawn: he is one of the folk now,
+  // drawn where he really is (his layout row stays, so the saved world is untouched)
+  // (by kind: any thing that is a painted figure of a villager, valeFolkStandIn, 94-garden-folk-0rules.js)
+  if (typeof VALE_FOLK_LIVE !== 'undefined' && VALE_FOLK_LIVE && typeof valeFolkStandIn === 'function' && typeof GARDEN_PROPS !== 'undefined') for (const p of GARDEN_PROPS) if (p && A[p.id] && valeFolkStandIn(p)) A[p.id] = { box: [-1, -1, 1, 1], seat: false, parts: [], draw() { } };
 
   /* ---------- a side pier (west or east), bought for the lake: the same oak as the main pier, its planks laid across the
      deck's run, a fascia along its sunny front, piles every few planks down into the water each with its ring, the

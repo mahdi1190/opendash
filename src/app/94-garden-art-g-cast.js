@@ -240,7 +240,7 @@ function _gcaHollin(K) {
 function _gcaAngler(K) {
   const { A, P, S, form, strokes, eye, G } = K, coat = '#5f6a4a', skin = '#e2b894', boots = '#3e4a3a', ct = K.T(coat), sk = K.T(skin);
   const legs = _gcaLegs(K, { x: 0, gap: 3.4, hy: -20, w: 4.4, c: '#4a4a3e', fc: boots, foot: 3.6, toe: 4.2 });
-  const rod = S('#7a5a34', 1.2, 'M-10 -20L-28 -64', 1) + S('#c8a86a', 0.4, 'M-9.6 -21L-27.6 -63.4', 0.7) + S('#e8e4dc', 0.25, 'M-28 -64Q-34 -40 -30 -18', 0.6) + P('#4a3a2a', A.circ(-11, -24, 1.6));
+  const rod = K.fish ? '' : S('#7a5a34', 1.2, 'M-10 -20L-28 -64', 1) + S('#c8a86a', 0.4, 'M-9.6 -21L-27.6 -63.4', 0.7) + S('#e8e4dc', 0.3, 'M-28 -64Q-26.4 -61 -24.6 -59.4', 0.6) + P('#4a3a2a', A.circ(-11, -24, 1.6));
   let body = form(coat, 'M-10 -16C-12 -30 -9 -43 1 -45C10 -45 12 -32 11 -16C6 -13 -5 -13 -10 -16z', 'M-9.4 -17C-11.2 -30 -8.4 -41.6 0.6 -43.4C9 -43.4 10.6 -31.4 10.2 -17.2C5.4 -14.6 -4.6 -14.6 -9.4 -17z', 'M-8.4 -20C-9.6 -29 -7.6 -37 -3 -40.6C-5.6 -34 -6.4 -27 -6.2 -19.6z', 0.5);
   body += S(ct[1], 0.6, 'M1.4 -43L2.4 -16M-8 -26q4 1.4 8 0', 0.7) + P(ct[1], A.rrect(-8, -28, 6.4, 5, 1.2)) + P(ct[3], A.circ(3.6, -36, 0.7) + A.circ(3.8, -30, 0.7) + A.circ(4, -24, 0.7), 0.8) + strokes(0, -30, 9, 12, 20, 1.8, 0.1, ct[2], 0.45, 0.2);
   // the head bowed a little: a weathered face, a long white beard, heavy brows, the battered hat
@@ -272,11 +272,25 @@ const _GCA_DRAW = Object.freeze({ tam: _gcaTam, bramble: _gcaBramble, pip: _gcaP
 function gardenCastSvg(id, o) {
   o = o || {};
   const draw = _GCA_DRAW[id]; if (!draw) return '';
-  const walk = !!(o.walk || _GCA.walkNow), key = id + (walk ? 'w' : 'i');
+  // (folk, npcs-PLAN 3.6) from the front or behind: the same person in 94-garden-art-g-cast2.js; 'strd' is walking with the legs driven by
+  // the stride rig (_gmvStride: planted feet), so no clock-driven walk; the limbs then carry the gardener's rig names too
+  if ((o.view === 's' || o.view === 'n') && typeof gardenCastViewSvg === 'function') { const v = gardenCastViewSvg(id, o.view, { state: o.stride ? 'strd' : 'idle' }); if (v) return v; }
+  if (o.stride) {
+    const k2 = id + 'strd'; let s2 = _GCA.cache.get(k2);
+    if (s2 == null) {
+      _GCA.cache.delete(id + 'i');
+      s2 = gardenCastSvg(id, {}).replace('class="gca gca-idle gca-' + id + '"', 'class="gca gca-strd gca-' + id + ' gpl-root" style="transform-origin:0px 0px"').replace('class="gca-up"', 'class="gca-up gpl-up"')
+        .replace('class="gca-lg gca-b"', 'class="gca-lg gca-b gpl-lg gpl-b"').replace('class="gca-lg gca-a"', 'class="gca-lg gca-a gpl-lg gpl-a"').replace('class="gca-ar gca-b"', 'class="gca-ar gca-b gpl-as gpl-a"');
+      _GCA.cache.set(k2, s2);
+    }
+    return s2;
+  }
+  const walk = !!(o.walk || _GCA.walkNow), key = id + (walk ? 'w' : 'i') + (o.fish ? 'f' : '');
   let s = _GCA.cache.get(key);
   if (s != null) return s;
   try {
-    const K = _gcaKit(id), F = draw(K), A = K.A, w = id === 'perpetua' ? 22 : id === 'hollin' ? 12 : 13;
+    const K = _gcaKit(id); K.fish = !!o.fish;   // (fishing: the rod is in his hands, out over the water, not over his shoulder)
+    const F = draw(K), A = K.A, w = id === 'perpetua' ? 22 : id === 'hollin' ? 12 : 13;
     const shadow = typeof gardenFigureShadowSvg === 'function' ? gardenFigureShadowSvg(w, w * 0.26) : A.P('#2a3322', A.ell(0, 0.6, w, w * 0.26), 0.22);
     const up = `<g class="gca-up" style="transform-origin:0px 0px">${F.back}${F.body}${K.G('gca-hd', F.hd[0], F.hd[1], F.head)}${F.near}</g>`;
     const lean = F.lean ? `<g transform="skewX(${-F.lean})">${up}</g>` : up;

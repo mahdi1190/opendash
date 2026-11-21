@@ -36,7 +36,9 @@ vm.createContext(ctx);
 vm.runInContext(readFileSync(join(root, 'src/app/94-garden-zz-7act-0kinds.js'), 'utf8') + '\n;this.K=GARDEN_KINDS;this.T=GARDEN_TERRAIN;this.kindOf=gardenKindOf;this.spots=gardenKindSpots;this.snap=gardenKindSnap;this.byPet=GARDEN_KIND_BY_PET;this.rise=gardenRiseAt;this.meet=gardenKindBoxesMeet;this.drawable=gardenKindDrawable;this.plot=gardenPlotNear;', ctx);
 // the drawings of placeable things, as the game has them (94-garden-zz-7act-2world.js _GAW_ART): a kind whose drawing is not there is left out
 let ARTS = null;
-try { const a = { Object, Math, String, Number, Array, JSON }; vm.createContext(a); vm.runInContext(readFileSync(join(root, 'src/app/94-garden-zz-7act-2world.js'), 'utf8').split('\nconst _gawN')[0] + '\n;this.A=_GAW_ART;', a); ARTS = a.A; } catch (e) { ARTS = null; }
+try { const a = { Object, Math, String, Number, Array, JSON }; vm.createContext(a); vm.runInContext(readFileSync(join(root, 'src/app/94-garden-zz-7act-2world.js'), 'utf8').split('\nconst _gawN')[0] + '\n;this.A=_GAW_ART;', a); ARTS = Object.assign({}, a.A); } catch (e) { ARTS = null; }
+// the folk's small homes have their drawings in a file of their own (94-garden-folk-2art.js), looked up the same way by the game
+try { if (ARTS && existsSync(join(root, 'src/app/94-garden-folk-2art.js'))) { const f = { Object, Math, String, Number, Array, JSON }; vm.createContext(f); vm.runInContext(readFileSync(join(root, 'src/app/94-garden-folk-2art.js'), 'utf8') + '\n;this.A=VALE_FOLK_ART;', f); Object.assign(ARTS, f.A); } } catch (e) { /* no folk homes */ }
 
 /* ---------- the cell model, as the game has it (94-garden-0island.js) ---------- */
 const W = Object.assign({}, data.world);

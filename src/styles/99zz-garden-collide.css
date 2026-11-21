@@ -25,3 +25,4 @@
 }
 .gd-stagebox > .gd-collide-tip[hidden] { display: none; }
 @media (max-width: 640px) { .gd-stagebox > .gd-collide-key { bottom: 128px; left: 10px; } }
+.gd-collide-key i.is-folk { width: 14px; height: 8px; border-radius: 50%; background: rgba(255, 210, 26, .7); border-color: #d8a800; }

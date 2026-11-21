@@ -282,7 +282,7 @@ function _gjPlants(left, right, m) {
 /* ---------- People ---------- */
 function _gjPeople(left, right, m) {
   const h = left.appendChild(_gjEl('div', 'gj-ptitle')); h.innerHTML = `<h3>People</h3><i class="gj-hand">in the order you met them</i>`;
-  const folk = typeof WD_FOLK !== 'undefined' ? WD_FOLK : [];
+  const folk = typeof VALE_FOLK !== 'undefined' ? VALE_FOLK.map(r => Object.assign({ art: () => (typeof gardenCastSvg === 'function' ? `<svg viewBox="-30 -70 60 74" width="40" height="48">${gardenCastSvg(r.cast)}</svg>` : '') }, r)) : typeof WD_FOLK !== 'undefined' ? WD_FOLK : [];   // everyone in the vale's registry (94-garden-folk-0rules.js), the angler, Hollin and Perpetua too
   const list = left.appendChild(_gjEl('div', 'gj-people'));
   let any = false;
   for (const f of folk) {
@@ -294,6 +294,8 @@ function _gjPeople(left, right, m) {
     row.innerHTML = `<span class="gj-portrait">${art}</span><span><b>${esc(f.name)}</b><span class="gj-leaves">${_gjPips(heart, 5)}</span><small>${esc(f.title || f.role || '')}</small></span>`;
   }
   if (!any) list.appendChild(_gjEl('p', 'gj-hand gj-empty', 'Nobody yet. Say hello to whoever you meet on the green.'));
+  // what people do, noticed and written down without an explanation (the vale's folk's tells, 94-garden-wonder-0vale-folk.js VALE_TELLS)
+  if (typeof VALE_TELLS !== 'undefined') { const W = typeof _wdG === 'function' ? _wdG() : {}, seen = Object.keys(VALE_TELLS).filter(k => W['vt.' + k]); if (seen.length) { const t = left.appendChild(_gjEl('div', 'gj-tells')); t.appendChild(_gjEl('h4', null, 'Things I noticed')); for (const k of seen) t.appendChild(_gjEl('p', 'gj-hand', VALE_TELLS[k])); } }
   const h2 = right.appendChild(_gjEl('div', 'gj-etitle')); h2.innerHTML = '<h3>Your pet</h3><small>its tricks, and where it has been</small>';
   const pet = right.appendChild(_gjEl('div', 'gj-petbox'));
   if (typeof petBookPage === 'function' && typeof petGet === 'function' && petGet()) { try { petBookPage(pet, { panel: true }); } catch (e) { pet.appendChild(_gjEl('p', 'muted', 'Your pet is busy.')); } }

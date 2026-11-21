@@ -1026,6 +1026,7 @@ function gardenSnapshotClean(raw) {
   if (typeof raw.lh === 'string' && /^[0-9a-f]{24}$/.test(raw.lh)) out.lh = raw.lh;
   { const pa = Number(raw.pa); if (Number.isInteger(pa) && pa > 0 && pa < 1e14) out.pa = pa; }   // their pet is away until then: 94-garden-play-1pet.js
   { const wx = int(raw.wx, 1, 2); if (wx) out.wx = wx; }   // 2.28: their rain (1) or snow (2) now
+  if (Array.isArray(raw.fk)) { const fk = raw.fk.filter(r => Array.isArray(r) && r.length === 3 && typeof r[0] === 'string' && /^[a-z][a-z0-9-]{0,23}$/.test(r[0]) && typeof r[1] === 'string' && /^[a-z][a-z0-9:,-]{0,40}$/.test(r[1]) && Number.isInteger(r[2]) && r[2] >= 0 && r[2] <= 99999).slice(0, 32).map(r => [r[0], r[1], r[2]]); if (fk.length) out.fk = fk; }   // the vale's folk: who lives in which home, and the day they moved in (ids and a day number only; 94-garden-wonder-0vale-folk.js)
   if (Array.isArray(raw.gk)) { const gk = [...new Set(raw.gk.filter(k => typeof k === 'string' && /^[a-z][a-z0-9-]{0,23}$/.test(k)))].slice(0, 12); if (gk.length) out.gk = gk; }   // 2.74.1: the gates' finds the owner holds: short ids only (the page reads them against GARDEN_GATE_ITEMS, gardenGateHere); an older app drops it
   if (Array.isArray(raw.ex)) { const ex = [...new Set(raw.ex.filter(k => typeof k === 'string' && /^ld-[a-z0-9-]{1,24}$/.test(k)))].slice(0, 16); if (ex.length) out.ex = ex; }   // 2.74.1: the trail puzzles solved in this garden (gardenExploreKnown on a visit); an older app drops it
   { const ac = raw.ac; if (Array.isArray(ac) && ac.length === 2 && Number.isSafeInteger(ac[0]) && ac[0] >= 0 && ac[0] <= 8.64e15 && (ac[1] === 0 || ac[1] === 1)) out.ac = [ac[0], ac[1]]; }   // optional live ambient phase and canonical running state
@@ -1036,7 +1037,12 @@ function gardenSnapshotClean(raw) {
   if (out.wd && Number.isInteger(raw.wd.aw) && raw.wd.aw >= 0 && raw.wd.aw <= 6) out.wd.aw = raw.wd.aw;   // one owner-selected optional world activity; zero keeps the garden clear
   if (Array.isArray(raw.wk)) out.wk = raw.wk.slice(0, 13).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x));   // 2.38: what they have built for the lake (ids; one this version does not know is ignored)
   if (Array.isArray(raw.bk)) { const bk = raw.bk.slice(0, 12).filter(r => Array.isArray(r) && r.length === 8 && typeof r[0] === 'string' && /^[a-z0-9-]{1,32}$/.test(r[0]) && r.slice(1).every(n => Number.isInteger(n) && n >= 0 && n <= 31)); if (bk.length) out.bk = bk; }   // how they have painted their buildings, by building id; a number this version does not know draws as built
+  if (Array.isArray(raw.pf) && raw.pf.length === 2 && int(raw.pf[0], 0, 15) !== null && ['w', 'r', 'c'].includes(raw.pf[1])) out.pf = [raw.pf[0], raw.pf[1]];   // (move360) which way the gardener faces, in sixteenths, and how they last walked
   if (Array.isArray(raw.tk)) out.tk = raw.tk.slice(0, 24).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x));   // 2.23: ids of tricks; the page ignores any it does not know
+  if (Array.isArray(raw.dr)) {   // (build phase 1) where carried things were set down, one row per thing (94-garden-build-0rules.js gardenDropClean says the same)
+    const seen = new Set(); out.dr = [];
+    for (const r of raw.dr.slice(0, 40)) { if (!Array.isArray(r) || r.length !== 4 || typeof r[0] !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(r[0]) || seen.has(r[0]) || r[1] !== 'thing:' + r[0]) continue; const x = int(r[2], 0, W.cols * 10), y = int(r[3], 0, W.rows * 10); if (x === null || y === null) continue; seen.add(r[0]); out.dr.push([r[0], r[1], x, y]); }
+  }
   if (Array.isArray(raw.plants)) for (const p of raw.plants.slice(0, GARDEN_SNAPSHOT_MAX.plants)) {
     if (!Array.isArray(p) || !_GD_PLANT.has(p[0])) continue;
     const x = int(p[1], 0, W.cols - 1), y = int(p[2], 0, W.rows - 1);

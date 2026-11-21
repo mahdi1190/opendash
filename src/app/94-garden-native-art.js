@@ -10,7 +10,9 @@ window.GardenNativeArt = (function () {
   const parsed = new Map(), paths = new Map(), sceneStates = new WeakMap(), liveStates = new Set(), pausedAmbient = new Set(), triangleBatchStates = new WeakMap();
   const rules = [], indexedRules = new Map(), keyframes = new Map(), matchedRules = new Map(), selectorAttrs = new Set(), selectorClasses = new Set(), selectorIds = new Set(), compiledSelectors = new Map(), compiledAtoms = new Map(), candidateRules = new Map(), styleClassKeys = new Map();
   const inheritedStyles = new Set(['fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-dasharray', 'stroke-dashoffset', 'font-size', 'font-family', 'font-weight', 'font-style', 'text-anchor', 'dominant-baseline', 'color', 'visibility']);
-  let sourceBytes = 0, ruleOrder = 0, styleVersion = 0, positionalSelectors = false;
+  const GARDEN_BODY_KEEP = 24;   // (n-move) drawings of one figure kept ready: 9 ways walking + 9 standing + poses
+  let sourceBytes = 0, ruleOrder = 0, styleVersion = 0, positionalSelectors = false, positionalAny = false;
+  const positionalNeeds = [];
   const environmentState = { windX: 0, windY: 0, gust: 0, rain: 0, snow: 0, daylight: 1 };
   let ambientPause = { hush: false, frozen: false };
   function mul(a, b) { return { a: a.a * b.a + a.c * b.b, b: a.b * b.a + a.d * b.b, c: a.a * b.c + a.c * b.d, d: a.b * b.c + a.d * b.d, e: a.a * b.e + a.c * b.f + a.e, f: a.b * b.e + a.d * b.f + a.f }; }
@@ -85,11 +87,21 @@ window.GardenNativeArt = (function () {
   }
   function matches(node, selector, scope) { return matchesCompiled(node, compileSelector(selector), scope); }
   function selectorInputs(compiled) {
-    for (const steps of compiled) for (const { atom: part } of steps) {
+    for (const steps of compiled) for (let k = 0; k < steps.length; k++) {
+      const part = steps[k].atom;
       for (const name of part.classes) selectorClasses.add(name);
       for (const id of part.ids) selectorIds.add(id);
       for (const attr of part.attrs) selectorAttrs.add(attr.name);
-      if (part.first || part.last) positionalSelectors = true;
+      if (part.first || part.last) {
+        positionalSelectors = true;
+        // (n-move) which nodes such a rule could ever match: its own classes or tag, or (a bare ':first-child' right under '.x >') the
+        // parent's. Only those nodes' places among their siblings go into the style key: every node's did, so a walking figure, moved
+        // among the drawings as it went up and down the rows, was restyled whole (5-10 ms) at each of its turns
+        const own = part.classes.length || (part.tag && part.tag !== '*'), up = steps[k + 1];
+        if (own) positionalNeeds.push({ classes: part.classes, tag: part.tag && part.tag !== '*' ? part.tag : '' });
+        else if (up && up.direct && (up.atom.classes.length || (up.atom.tag && up.atom.tag !== '*'))) positionalNeeds.push({ parent: true, classes: up.atom.classes, tag: up.atom.tag && up.atom.tag !== '*' ? up.atom.tag : '' });
+        else positionalAny = true;
+      }
       for (const fn of part.functions) selectorInputs(fn.selector);
     }
   }
@@ -102,9 +114,19 @@ window.GardenNativeArt = (function () {
     }
     return node._styleClasses;
   }
+  function positionalMay(node) {
+    if (positionalAny) return true;
+    for (const need of positionalNeeds) {
+      const n = need.parent ? node.parentNode : node; if (!n || !n.classList) continue;
+      if (need.tag && n.localName !== need.tag) continue;
+      let ok = true; for (const c of need.classes) if (!n.classList.contains(c)) { ok = false; break; }
+      if (ok) return true;
+    }
+    return false;
+  }
   function selectorOwnKey(node) {
     const attributes = Object.keys(node.attrs).filter(name => selectorAttrs.has(name)).sort().map(name => [name, node.attrs[name]]);
-    const siblings = positionalSelectors && node.parentNode ? ':' + (node.parentNode.children[0] === node ? 1 : 0) + (node.parentNode.children[node.parentNode.children.length - 1] === node ? 1 : 0) : '';
+    const siblings = positionalSelectors && node.parentNode && positionalMay(node) ? ':' + (node.parentNode.children[0] === node ? 1 : 0) + (node.parentNode.children[node.parentNode.children.length - 1] === node ? 1 : 0) : '';
     // Generated art IDs and gameplay-only classes do not change a CSS match.
     // Share the match result while retaining every input used by a selector,
     // including nested :is/:not branches and sibling position.
@@ -112,7 +134,7 @@ window.GardenNativeArt = (function () {
   }
   function selectorPositions(node) {
     let key = '|position:';
-    for (let n = node; n; n = n.parentNode) { const siblings = n.parentNode && n.parentNode.children; key += siblings && siblings[0] === n ? '1' : '0'; key += siblings && siblings[siblings.length - 1] === n ? '1' : '0'; }
+    for (let n = node; n; n = n.parentNode) { if (!positionalMay(n)) { key += '-'; continue; } const siblings = n.parentNode && n.parentNode.children; key += siblings && siblings[0] === n ? '1' : '0'; key += siblings && siblings[siblings.length - 1] === n ? '1' : '0'; }
     return key;
   }
   function rulesFor(node) {
@@ -130,7 +152,7 @@ window.GardenNativeArt = (function () {
   function configure(cssText, renderer) {
     if (renderer) installNativeTriangleBatch(renderer);
     if (cssText === null && renderer) return { rules: rules.length, keyframes: keyframes.size };
-    rules.length = 0; indexedRules.clear(); keyframes.clear(); matchedRules.clear(); selectorAttrs.clear(); selectorClasses.clear(); selectorIds.clear(); compiledSelectors.clear(); compiledAtoms.clear(); candidateRules.clear(); styleClassKeys.clear(); ruleOrder = 0; styleVersion++; positionalSelectors = false;
+    rules.length = 0; indexedRules.clear(); keyframes.clear(); matchedRules.clear(); selectorAttrs.clear(); selectorClasses.clear(); selectorIds.clear(); compiledSelectors.clear(); compiledAtoms.clear(); candidateRules.clear(); styleClassKeys.clear(); ruleOrder = 0; styleVersion++; positionalSelectors = false; positionalAny = false; positionalNeeds.length = 0;
     const css = String(cssText || '').replace(/\/\*[\s\S]*?\*\//g, '');
     function visit(text) { cssBlocks(text, (head, body) => {
       if (/^@(?:-webkit-)?keyframes\s+/.test(head)) { const name = head.split(/\s+/).pop(), frames = []; cssBlocks(body, (key, value) => { for (const offset of key.split(',')) frames.push({ offset: offset.trim() === 'from' ? 0 : offset.trim() === 'to' ? 1 : num(offset) / 100, style: declarations(value) }); }); frames.sort((a, b) => a.offset - b.offset); keyframes.set(name, frames); return; }
@@ -350,6 +372,30 @@ window.GardenNativeArt = (function () {
     for (const entry of bodies.values()) entry.node.destroy();
     bodies.clear();
   }
+  /** (n-move) Build a figure's drawing ahead of need, hidden, beside the one shown (which is left as it is): the first turn to a new one of
+   *  the sixteen ways then swaps in a ready drawing instead of building one mid-walk. Returns true when one was built. */
+  function warmPlayerBody(owner, source) {
+    if (!owner || owner._dead || !source) return false;
+    const local = owner.classList.contains('gd-pl-in') && owner.closest('.gd-player'), peer = owner.classList.contains('gll-in') && owner.closest('.gll-actor');
+    if (!local && !peer) return false;
+    source = String(source);
+    const bodies = owner._nativePlayerBodies || (owner._nativePlayerBodies = new Map());
+    const have = bodies.get(source); if (have && !have.node._dead && have.node.target.active) return false;
+    if (have) { bodies.delete(source); have.node.destroy(); }
+    if (bodies.size >= GARDEN_BODY_KEEP) return false;   // (never pushes out one already made)
+    const context = owner.context, building = context.building, ast = parse(source); collectDefs(ast, context.defs);
+    const body = new NativeNode(owner.scene, 'g', { 'data-native-player-body': '1' }, context);
+    context.building = true;
+    try { for (const child of ast.children) body.appendChild(build(owner.scene, child, context, 0)); body._text = ast.text; owner.appendChild(body); }
+    finally { context.building = building; }
+    body.restyle(true); stateFor(owner.scene).actorCaches.add(body);
+    owner.removeChild(body); body.target.setVisible(false);
+    const entry = { source, ast, node: body }, cur = owner._nativePlayerCurrent;
+    // the oldest end of the list, behind the one shown, so the shown one stays the newest
+    const rest = [...bodies.entries()]; bodies.clear(); bodies.set(source, entry); for (const [k, v] of rest) bodies.set(k, v);
+    if (cur && bodies.get(cur.source) === cur) { bodies.delete(cur.source); bodies.set(cur.source, cur); }
+    return true;
+  }
   function swapPlayerBody(owner, source) {
     const local = owner.classList.contains('gd-pl-in') && owner.closest('.gd-player'), peer = owner.classList.contains('gll-in') && owner.closest('.gll-actor');
     if (!local && !peer) return false;
@@ -394,7 +440,7 @@ window.GardenNativeArt = (function () {
       owner.restyle(false);
       if (fresh) stateFor(owner.scene).actorCaches.add(entry.node);
     }
-    while (bodies.size > (peer ? 8 : 10)) {
+    while (bodies.size > GARDEN_BODY_KEEP) {   // (n-move) yours and a friend's alike: nine ways round walking and nine standing, and a few poses (a friend's kept twelve, so their figure was built again, 20-42 ms, at every few turns)
       const key = bodies.keys().next().value, expired = bodies.get(key);
       if (expired === entry) break;
       bodies.delete(key); expired.node.destroy();
@@ -1352,5 +1398,5 @@ window.GardenNativeArt = (function () {
   function environment(next) { if (next) Object.assign(environmentState, next); return { ...environmentState }; }
   // (dev view) the tracked nodes that draw as vectors now (no capture, or the capture is not shown): what a slow frame paints
   function vectors(scene) { const s = stateFor(scene), out = []; for (const node of s.cacheTrackedNodes) { if (!nativeVisible(node)) continue; const view = localView(node), b = node.getBBox(); if (view && !intersectBox(b, view)) continue; const c = node._cache; if (c && !c.showingVectors) continue; let g = 0; const count = n => { if (n._graphics) g++; for (const ch of n.children) count(ch); }; count(node); out.push({ cls: String(node.attrs && (node.attrs.class || node.attrs.id) || node.localName || '') + ' < ' + String(node.parentNode && node.parentNode.attrs && (node.parentNode.attrs.class || node.parentNode.attrs.id) || ''), w: Math.round(b.width), h: Math.round(b.height), cached: !!c, cropped: !!(c && c.cropped), graphics: g }); } return out.sort((a, b) => b.graphics - a.graphics).slice(0, 20); }
-  return Object.freeze({ vectors, create, draw: create, element, Node: NativeNode, configure, updateAll, cache: cacheNative, cacheQuality, cacheValid, pendingCaches, environment, pauseAmbient, parsePath, parse, matrix, multiply: mul, inverse: inv, point, stats });
+  return Object.freeze({ vectors, create, draw: create, element, Node: NativeNode, configure, updateAll, cache: cacheNative, cacheQuality, cacheValid, pendingCaches, warmBody: warmPlayerBody, environment, pauseAmbient, parsePath, parse, matrix, multiply: mul, inverse: inv, point, stats });
 })();

@@ -54,7 +54,7 @@ function gardenIslandStaticRow(row) {
   const next = Object.assign({}, row, { x: p.x, y: p.y, w: p.w, h: p.h, col: p.col, walk: p.walk ? 1 : 0 });
   if (p.door) next.door = Object.freeze({ x: p.door.x, y: p.door.y });
   // The old angler sits on the quay as one of the vale's folk: you walk round him, not onto his lap (hunter, round 3).
-  if (data.version === 5 && p.id === 'old-angler' && p.col === 'none') next.col = 'soft';
+  if (data.version === 5 && p.col === 'none' && typeof valeFolkStandIn === 'function' && valeFolkStandIn({ kind: row.kind || p.kind }) && !(typeof VALE_FOLK_LIVE !== 'undefined' && VALE_FOLK_LIVE)) next.col = 'soft';   // (the folk live their days, 94-garden-wonder-0vale-folk.js: he walks, and his old seat on the quay is not drawn, so it blocks nothing)
   else if (data.version >= 5 && p.door === null) next.door = null;   // an explicit removal must not retain a pre-island doorway
   // The v5 well moved to the village but retained a doorway ten cells east.
   // Repair only that authored row; later Designer placements keep their own doors.

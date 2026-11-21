@@ -17,7 +17,7 @@
    little clock, and goes by the friend mailbox (POST /api/garden-live/queue -> gl:q). When they next open their garden, their page runs it through _glhIntent, the same code and the
    same id as a live intent. It answers by the same posts as ever: `did` (it happened) or `back` (it could not: your record goes, so it is back in your bag, once).
    ============================================================ */
-const _gdv = { on: false, fid: '', f: null, rev: 0, memo: null, memoKey: '', raw: null, clean: null, undo0: 0, watered: new Set(), asked: new Map(), tagKey: '' };
+const _gdv = { on: false, fid: '', f: null, rev: 0, memo: null, memoKey: '', raw: null, clean: null, undo0: 0, mine: [], watered: new Set(), asked: new Map(), tagKey: '' };
 function gardenVisitOn() { return _gdv.on; }
 function gardenVisitUndoFloor() { return _gdv.on ? _gdv.undo0 : 0; }
 /** What the garden shows changed: draw it again, soon. */
@@ -214,14 +214,15 @@ function gardenVisitAct(t, a) {
       if (!_gdvHow('plant')) return _gdvDeny('plant');
       if (gardenHas('seed:' + a.id) < 1) return _gdNo(`No ${def.name} seeds left: the shop has more`);
       const why = _gdPlaceOk(m, def, a.x, a.y, 'plant'); if (why) return _gdNo(why);
-      return _gdvDo('plant', { p: a.id, x: a.x, y: a.y }, 'seed:' + a.id);
+      return _gdvKeep('plant', { p: a.id, x: a.x, y: a.y }, _gdvDo('plant', { p: a.id, x: a.x, y: a.y }, 'seed:' + a.id));
     }
     case 'place': {
       const def = gardenDecor(a.id); if (!def) return _gdNo('Unknown decoration');
       if (!_gdvHow('place')) return _gdvDeny('place');
       if (gardenHas('decor:' + a.id) < 1) return _gdNo(`You have no ${def.name.toLowerCase()} to place: the shop has them`);
       const why = _gdPlaceOk(m, def, a.x, a.y, 'decor'); if (why) return _gdNo(why);
-      return _gdvDo('place', { p: a.id, x: a.x, y: a.y, ...(def.rot && a.r ? { r: Number(a.r) & 3 } : {}) }, 'decor:' + a.id);
+      const live = _gdvHow('place') === 'live';
+      return _gdvKeep('place', { p: a.id, x: a.x, y: a.y }, _gdvDo('place', { p: a.id, x: a.x, y: a.y, ...(def.rot && a.r ? { r: Number(a.r) & 3 } : {}) }, 'decor:' + a.id), live);
     }
     case 'water':
       if (!p) return _gdNo('Nothing to water there');
@@ -333,11 +334,37 @@ function gardenVisitQueueFlush() {
   for (const [k, e] of Object.entries(_gdG().led)) if (k.startsWith('gl.o.') && e && e.q && !e.qs && !e.ok) _gdvQueueSend(k.slice(5));
 }
 
+/* ---------- taking back what you put down here ---------- */
+/** What you put down or planted on this visit, while they are here: Undo (Ctrl+Z, or the Undo button) takes the newest back into your bag,
+ *  through the host like anything else you do here (build-PLAN 1.3 and 2.1: anything put down can be picked up again, by you or a friend). */
+function _gdvKeep(t, f, r, live) {
+  if (r && r.ok && (live !== undefined ? live : _gdvHow(t) === 'live')) { _gdv.mine.push({ t, p: f.p, x: f.x, y: f.y }); if (_gdv.mine.length > 20) _gdv.mine.shift(); }
+  return r;
+}
+function gardenVisitCanUndo() { return _gdv.on && _gdv.mine.length > 0 && typeof _glvLive === 'function' && _glvLive(); }
+/** The Undo button's words for the newest thing you could take back, or null. */
+function gardenVisitUndoTop() {
+  if (!gardenVisitCanUndo()) return null;
+  const e = _gdv.mine[_gdv.mine.length - 1], def = e.t === 'plant' ? gardenPlant(e.p) : gardenDecor(e.p);
+  return { label: (e.t === 'plant' ? 'planting the ' : 'putting down the ') + (def ? def.name.toLowerCase() : 'that') };
+}
+function gardenVisitUndo() {
+  const e = _gdv.mine.pop(); if (!e) return false;
+  const m = gardenHere(), say = (t) => { if (typeof gardenToast === 'function') gardenToast(t, { icon: 'undo-2' }); };
+  const it = e.t === 'plant' ? m.plants.find(q => q.x === e.x && q.y === e.y && q.def.id === e.p) : m.decor.find(q => q.x === e.x && q.y === e.y && q.def.id === e.p);
+  if (!it) { say('That is not there any more: someone has moved it or picked it up.'); return false; }
+  if (it.pend) { _gdv.mine.push(e); say('Just a moment: it is still on its way to ' + _gdvFirst() + '’s garden.'); return false; }
+  const r = _gdvDo(e.t === 'plant' ? 'dig' : 'take', { p: e.p, x: e.x, y: e.y }, '', _ghNodeOf(it.uid));
+  if (r && !r.ok) { if (r.msg) say(r.msg); return false; }
+  _gdvTouch();
+  return true;
+}
+
 /* ---------- the page ---------- */
 function gardenVisitMount(root, f, view) {
   const same = _gdv.on && _gdv.fid === f.id;
   if (same && _gdp.entry === view && _gdp.root && _gdp.root.isConnected && root.querySelector(':scope > .gd-tab-garden') === _gdp.root) { _gdv.f = f; _gdvTouch(); return; }
-  if (!same) { if (typeof _gw !== 'undefined') _gw.placed = false; _gdv.undo0 = _gd.undo.length; _gdv.watered.clear(); _gdv.clean = null; if (typeof gardenLifeVisitStop === 'function') gardenLifeVisitStop(); }
+  if (!same) { if (typeof gardenCarryForget === 'function') gardenCarryForget(); if (typeof _gw !== 'undefined') _gw.placed = false; _gdv.undo0 = _gd.undo.length; _gdv.mine = []; _gdv.watered.clear(); _gdv.clean = null; if (typeof gardenLifeVisitStop === 'function') gardenLifeVisitStop(); }
   _gdv.on = true; _gdv.fid = f.id; _gdv.f = f; _gdv.tagKey = ''; _gdvTouch();
   root.textContent = ''; root.className = 'gsv-worldhost';
   _gdpWorldMount(root, view);
@@ -347,6 +374,7 @@ function gardenVisitMount(root, f, view) {
 }
 function gardenVisitUnmount() {
   if (!_gdv.on) return;
+  if (typeof gardenCarryForget === 'function') gardenCarryForget();   // (what you carried there stays in that garden: its host has it where you stood)
   _gdpWorldUnmount();
   if (typeof gardenLifeVisitStop === 'function') gardenLifeVisitStop();
   _gdv.on = false; _gdv.fid = ''; _gdv.f = null; _gdv.memo = null; _gdv.raw = null; _gdv.clean = null;

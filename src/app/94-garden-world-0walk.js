@@ -598,12 +598,15 @@ function _gwGrid(m, groundOnly) {
 /** Can a new grid wait for a sliced build? Only while you walk on the same garden with a grid already there, on land. */
 function _gwGridSliceable(mm) {
   const g = _gw.grid; if (!g || _gw.boat || !g.model || !g.hard) return false;
-  if ((g.model.visit ? g.model.visit.key : '') !== (mm.visit ? mm.visit.key : '')) return false;
+  if ((g.model.visit ? g.model.visit.fid : '') !== (mm.visit ? mm.visit.fid : '')) return false;   // (the same garden: a visit's model key changes every minute)
   // while you walk, or when a level opens land (the land drawn after it waits for you to stand a moment, and the grid you stand
   // on is what you see until then): standing at a level-up, the whole build in one task was 95 ms of a 413 ms task
   if (g.landSig != null && g.landSig !== gardenLevelLandSig(mm.level.level)) return true;
   // (or the painted trees' trunks changed: the planting drawn again after a level-up, 104 ms of a 322 ms task)
   if (g.trunkSig != null && g.trunkSig !== (_gwTrunkSig() || '')) return true;
+  // (build phase 1, build-PLAN 6) and when only what is placed changed (a thing put down, a seed planted, by you or a friend): built
+  // whole, the grid and its routes were a 70-125 ms task on every screen for each one; in slices, the grid you stand on serves a moment
+  if (g.landSig != null && g.landSig === gardenLevelLandSig(mm.level.level) && (g.trunkSig == null || g.trunkSig === (_gwTrunkSig() || ''))) return true;
   return typeof gardenBakeWalking === 'function' && gardenBakeWalking();
 }
 function* _gwGridJobRows(mm) {
@@ -824,13 +827,14 @@ function _gwNearestFree(x, y, maxR) {
 // the ART-SHARED change), about 1.3 times the width of the shoes as before. At 0.2 x 0.12 the oval would have been 1.7
 // times the smaller shoes and you would have stopped short of a wall, a trunk or a fence (the verifier, 19 Nov 2026).
 const GW_FOOT = Object.freeze({ x: 0.16, y: 0.1 });
+const GW_ARRIVE = 24;                                 // (n-move) the slowest pace a click's walk eases down to before the spot (px a second)
 const GW_ACC = 1100;                                  // pixels a second, a second: how quickly you get going and stop
 const GW_CLEAR = 0.07;                                // planning keeps this much (cells) of room round corners, so a route never scrapes one
 /** Can the feet be here? Only the cells the oval touches count, so you can stand tight against a bench and slip past a plant. `m` fattens the feet (route planning). */
 function _gwFree(x, y, m) {
   const fx = GW_FOOT.x + (m || 0), fy = GW_FOOT.y + (m || 0);
   return _gwFootCells(x, y, fx, fy)
-    && !_gwSolidHit(x, y, fx, fy) && gardenWonderWalkFine(x, y, fy, m);   // (over the lake: the island's shape and the line of stones, not whole cells)
+    && !_gwSolidHit(x, y, fx, fy) && gardenWonderWalkFine(x, y, fy, m) && !(_gw.folkSolid && gardenFolkBlocks(x, y));   // (one of the folk in the way, 94-garden-wonder-0vale-folk.js)   // (over the lake: the island's shape and the line of stones, not whole cells)
 }
 /** Can the feet go in a straight line from a to b? (`m`: with that much room to spare.) Sampled finer than a corner can hide in. */
 function _gwLos(a, b, m) {
@@ -844,7 +848,40 @@ function _gwLos(a, b, m) {
  */
 function _gwMoveBy(dx, dy) {
   // (vf-perf) the step each frame takes, kept for the next frame's give (_gwMoveByEdge): which way the feet really went
-  const x0 = _gw.px, y0 = _gw.py, moved = _gwMoveByEdge(dx, dy);
+  const x0 = _gw.px, y0 = _gw.py, W = GARDEN_WORLD, sx = Math.sign(Math.abs(dx * W.cellW) > 1e-3 ? dx : 0), sy = Math.sign(Math.abs(dy * W.cellH) > 1e-3 ? dy : 0);
+  // (n-move) wedged: the feet went round in a little loop under this press (below), so they stay put until you press another way or something moves them
+  const wg = _gw.wedge;
+  if (wg && wg.sx === sx && wg.sy === sy && Math.hypot((x0 - wg.x) * W.cellW, (y0 - wg.y) * W.cellH) < .5) return false;
+  _gw.wedge = null;
+  // the vale's folk are solid to your own steps only (route planning and the folk's own paths do not see them: they move)
+  let moved = false; _gw.folkSolid = typeof gardenFolkBlocks === 'function'; try { moved = _gwMoveByEdge(dx, dy); } finally { _gw.folkSolid = false; }
+  // (n-move) wedged in a corner (between a bank and a trunk, say), the slides could nudge the feet a pixel back and forth for a few frames,
+  // the figure stepping on the spot and shimmering before it gave up. A step that gets almost nowhere is no step, and nor is a small one
+  // that backs off against the way you go, nor one no longer than a step that takes you
+  // back from where you press (a slanted edge crept you up and left, half a pixel at a time, while you pressed up and right): you stop, facing the way you press.
+  if (moved) {
+    const mx = (_gw.px - x0) * W.cellW, my = (_gw.py - y0) * W.cellH, vx = dx * W.cellW, vy = dy * W.cellH, st = Math.hypot(vx, vy) || 1;
+    const along = (mx * vx + my * vy) / st, backs = (vx && mx * Math.sign(vx) < -.1) || (vy && my * Math.sign(vy) < -.1);
+    const got = Math.hypot(mx, my);
+    // (next merge) except a give round the corner of a box or a slanted wall: the whole step on one key, a little give on the other, and
+    // the way on open for two more such steps. Those are slides, not shakes (the collision audit's slide-stall went from 2 to 866 without this)
+    // (nf-walk) and never a step that still gets on the way you press, however little: that is the feet sliding along a steep edge,
+    // giving a fraction of a pixel on one key (as 2.74.1 did). Refusing it stopped a diagonal press dead along fences and banks where
+    // 2.74.1 slid (the collision audit's slide-stall: 124 against 2). A step back overall, and the corner loop below, still stop you.
+    if (((backs && along < st * .1) || (backs && along < 0 && got < st)) && !(along > 0) && !_gwRoundsOn(x0, y0, _gw.px, _gw.py, dx, dy) || got < Math.min(.35, st * .12)) { _gw.px = x0; _gw.py = y0; moved = false; }
+  }
+  // (n-move) and a corner the slides take turns at (a few pixels one way, then back), each step honest on its own: when the feet come back
+  // within a pixel and a half of where they were two to ten steps ago, having got nowhere, it is a corner, and you stop there
+  let H = _gw.mvHist;
+  if (!H || H.sx !== sx || H.sy !== sy) H = _gw.mvHist = { sx, sy, p: [] };
+  if (moved) {
+    const p = H.p, d = (a, q) => Math.hypot((a.x - q.x) * W.cellW, (a.y - q.y) * W.cellH), me = { x: _gw.px, y: _gw.py };
+    let loop = false;   // back within 1.5 px of a spot the feet had gone more than 2 px from since (a slow start's small steps are no loop)
+    const was = p.concat([{ x: x0, y: y0 }]);   // (the spot this step set out from is part of the way round)
+    for (let i = was.length - 3; i >= 0 && i >= was.length - 11 && !loop; i--) if (d(me, was[i]) < 1.5) { for (let j = i + 1; j < was.length; j++) if (d(was[j], was[i]) > 2) { loop = true; break; } }
+    if (loop && p.length && Math.hypot((_gw.px - p[0].x) * W.cellW, (_gw.py - p[0].y) * W.cellH) < 4) { _gw.px = x0; _gw.py = y0; moved = false; _gw.wedge = { sx, sy, x: x0, y: y0 }; H.p = []; }
+    else { p.push({ x: x0, y: y0 }); if (p.length > 12) p.shift(); }
+  }
   if (_gw.giveFrom && (_gw.giveFrom.sx !== Math.sign(dx) || _gw.giveFrom.sy !== Math.sign(dy))) _gw.giveFrom = null;   /* (a new press forgets it) */
   _gw.lastStep = { sx: Math.sign(dx), sy: Math.sign(dy), mx: (_gw.px - x0) * GARDEN_WORLD.cellW, my: (_gw.py - y0) * GARDEN_WORLD.cellH };
   return moved;
@@ -906,12 +943,25 @@ function _gwMoveByEdge(dx, dy) {
   // edge: across with a give of up to 3.5 px against the up-and-down part (an edge up to about 50 degrees from level), or up and
   // down with a give under a pixel against the across part, open for three steps running. A wall met square and a true inside
   // corner are still honest stops. (The collision audit's slide-stall: 106 of them, most at banks the shore slide met at a kink.)
-  const useShore = shore.shore && shore.moved && !backOnGive && gain(shore.x, shore.y) >= gain(x, y), mx = useShore ? shore.x : x, my = useShore ? shore.y : y;
-  if (dx && dy && Math.hypot((mx - x0) * W.cellW, (my - y0) * W.cellH) < Math.hypot(dx * W.cellW, dy * W.cellH) * .15) {
+  // (move360 round 3) a slide that backs away on one key of a diagonal press more than it gets on the way you press is no slide
+  // (next merge) only a slide that all but turns its back on the press (under a tenth of the step the way you press): one that slides
+  // on round a slanted edge at a slower pace is a slide, as in any game (with .25 the collision audit's slide-stall went from 2 to 740)
+  const backs = (px, py) => dx && dy && gain(px, py) < .1 && ((px - x0) * W.cellW * Math.sign(dx) < -.5 || (py - y0) * W.cellH * Math.sign(dy) < -.5);
+  // (next merge) a give that would turn its back on the press is dropped here, before the last-resort give below gets its turn: that
+  // one goes on across or up the edge (open three steps running) where the first give only backed off, and you slide on, not stop
+  if ((x !== x0 || y !== y0) && (gain(x, y) < -.05 || backs(x, y)) && !(held && _gwRoundsOn(x0, y0, x, y, dx, dy))) { x = x0; y = y0; held = ''; _gw.slideHold = null; }
+  const useShore = shore.shore && shore.moved && !backOnGive && gain(shore.x, shore.y) >= gain(x, y) && gain(shore.x, shore.y) >= -.05 && !backs(shore.x, shore.y), mx = useShore ? shore.x : x, my = useShore ? shore.y : y;
+  // (next merge) also when what is left slides almost square to the press (under a tenth of the step the way you press): a give that gets
+  // on further wins then, so a steep bank or wall is slid along instead of crept along sideways and stopped by the step rules
+  const tiny = Math.hypot((mx - x0) * W.cellW, (my - y0) * W.cellH) < Math.hypot(dx * W.cellW, dy * W.cellH) * .15;
+  if (dx && dy && (tiny || gain(mx, my) < .1)) {
     const vx = dx * W.cellW, vy = dy * W.cellH, sx = Math.sign(dx), sy = Math.sign(dy), open3 = (ax, ay) => _gwFree(x0 + ax / W.cellW, y0 + ay / W.cellH) && _gwFree(x0 + 2 * ax / W.cellW, y0 + 2 * ay / W.cellH) && _gwFree(x0 + 3 * ax / W.cellW, y0 + 3 * ay / W.cellH);
+    // (nf-walk) only a give the step rules then keep (_gwMoveBy): one they threw back was still remembered as tried (giveFrom), and at a
+    // walk's slower first steps the feet stood stuck there for good, where a give the other way slid on
+    const keeps = (px, py) => gain(px, py) > 0 || _gwRoundsOn(x0, y0, px, py, dx, dy);
     let g2 = null;
-    for (let g = .5; g <= 3.5 && !g2; g += .5) if (open3(vx, -sy * g)) g2 = { x: x0 + vx / W.cellW, y: y0 - sy * g / W.cellH, kind: 'y' };
-    for (let g = .25; g <= .75 && !g2; g += .25) if (open3(-sx * g, vy)) g2 = { x: x0 - sx * g / W.cellW, y: y0 + vy / W.cellH, kind: 'x' };
+    for (let g = .5; g <= 3.5 && !g2; g += .5) if (open3(vx, -sy * g) && keeps(x0 + vx / W.cellW, y0 - sy * g / W.cellH)) g2 = { x: x0 + vx / W.cellW, y: y0 - sy * g / W.cellH, kind: 'y' };
+    for (let g = .25; g <= .75 && !g2; g += .25) if (open3(-sx * g, vy) && keeps(x0 - sx * g / W.cellW, y0 + vy / W.cellH)) g2 = { x: x0 - sx * g / W.cellW, y: y0 + vy / W.cellH, kind: 'x' };
     // (vf-perf) not a give that turns straight back on the way the feet went the frame before under the same press, while this
     // frame's own slide still gets them on: at a bend of the east coast's bank the slide crept along it for three frames and the
     // give threw the feet back 3 px on the fourth, a shake on the spot (a probe of _gwMoveBy at 89.75,47.5; 26 turns in 90 frames)
@@ -920,11 +970,25 @@ function _gwMoveByEdge(dx, dy) {
     // nor a give from where a give under the same press set out before: the slide had carried the feet back into the same bend,
     // so it is a closed corner, and the honest thing is to stop there (the shake came round every four frames)
     const F = _gw.giveFrom, loop = g2 && F && F.sx === sx && F.sy === sy && Math.hypot((x0 - F.x) * W.cellW, (y0 - F.y) * W.cellH) < 1.2;
-    if (g2 && !loop && !(back && Math.hypot((mx - x0) * W.cellW, (my - y0) * W.cellH) > .05)) { _gw.giveFrom = { x: x0, y: y0, sx, sy }; _gw.px = g2.x; _gw.py = g2.y; _gw.slideHold = { sx, sy, kind: g2.kind }; return true; }
+    if (g2 && !loop && (tiny || gain(g2.x, g2.y) > gain(mx, my)) && !(back && Math.hypot((mx - x0) * W.cellW, (my - y0) * W.cellH) > .05)) { _gw.giveFrom = { x: x0, y: y0, sx, sy }; _gw.px = g2.x; _gw.py = g2.y; _gw.slideHold = { sx, sy, kind: g2.kind }; return true; }
   }
   if (useShore) { _gw.px = shore.x; _gw.py = shore.y; return true; }
   if (x === x0 && y === y0) return false;
+  // (round 2, movement) never back against the way you press: at the shut plank gate a south-east press gave way north, step by step
+  if ((gain(x, y) < -.05 || backs(x, y)) && !(held && _gwRoundsOn(x0, y0, x, y, dx, dy))) { _gw.slideHold = null; return false; }   // (next merge: a give round a corner is a slide)
   _gw.px = x; _gw.py = y; return true;
+}
+/** (next merge) Does the step from (x0, y0) to (x1, y1) under a diagonal press (dx, dy) round a corner: the whole step on one key the way
+ *  you press, at most 3.6 px of give against the other key, and the same step open twice more ahead? Any edge of any layout: no places. */
+function _gwRoundsOn(x0, y0, x1, y1, dx, dy) {
+  if (!dx || !dy) return false;
+  const W = GARDEN_WORLD, mx = (x1 - x0) * W.cellW, my = (y1 - y0) * W.cellH, vx = dx * W.cellW, vy = dy * W.cellH;
+  const onX = mx * Math.sign(vx) >= Math.abs(vx) * .9 && my * Math.sign(vy) >= -3.6, onY = my * Math.sign(vy) >= Math.abs(vy) * .9 && mx * Math.sign(vx) >= -.76;   // (up to 3.5 px of give up or down, under a pixel across)
+  // (nf-walk) or any step that gets on the way you press at all, round a bend of the edge as much as a corner
+  const fwd = mx * vx + my * vy;
+  if ((!onX && !onY && !(fwd > 0)) || fwd < -.05 * (vx * vx + vy * vy)) return false;   // (never a step that goes back overall)
+  const sx = x1 - x0, sy = y1 - y0;
+  return _gwFree(x1 + sx, y1 + sy) && _gwFree(x1 + 2 * sx, y1 + 2 * sy);
 }
 /**
  * Walking by the keys (or steering with the pointer) onto and along a crossing: where you press within 38 degrees of a
@@ -970,6 +1034,7 @@ function _gwCrossingSteer(ux, uy, step) {
       // aim at the middle line a little ahead of where you are along it
       const aim = Math.max(0, along) + 16, gx = E.x + tx * aim - X, gy = E.y + ty * aim - Y, gl = Math.hypot(gx, gy);
       if (gl < 1e-6) continue;
+      if ((gx * ux + gy * uy) / gl < .2) return null;   // (round 2, movement) never steer you back against the way you press (at a shut gate it walked you north under a south-east press)
       return [gx / gl, gy / gl];
     }
   }
@@ -1518,7 +1583,8 @@ function _gwCamTarget() {
   if (fit) { x = (wpx - vw) / 2; y = vh > hpx ? hpx - vh : (hpx - vh) / 2; }
   else {
     const fx = _gw.px * W.cellW, fy = W.sky + _gw.py * W.cellH - 20;
-    x = Math.max(0, Math.min(wpx - vw, fx - vw / 2)); y = Math.max(0, Math.min(hpx - vh, fy - vh * 0.56));
+    const talk = typeof _wd !== 'undefined' && !!_wd.talk;   // (round 2, folk) a talk card along the bottom: the view rises so the two of you stand above it
+    x = Math.max(0, Math.min(wpx - vw, fx - vw / 2)); y = Math.max(0, Math.min(hpx - vh, fy - vh * (talk ? 0.4 : 0.56)));
   }
   return { x, y, w: vw, h: vh };
 }
@@ -1927,7 +1993,8 @@ function _gwOpenProp(p) {
     photo: () => { if (typeof gardenPhotoOpen === 'function') gardenPhotoOpen(); }, timelapse: () => { if (typeof gardenTimelapseOpen === 'function') gardenTimelapseOpen(); },
     sail: () => { if (typeof gardenBoatAsk === 'function' && gardenBoatAsk()) return; gardenPopupOpen('sail'); },
     hall: () => gardenPopupOpen('catch', { sub: 'hall', title: 'The lake hall' }), lake: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The lake' }),
-    angler: () => { if (typeof wdAnglerTalk === 'function' && wdAnglerTalk(p)) return; gardenPopupOpen('catch', { sub: 'lake', title: 'The old angler' }); },   // he talks first, once a day (94-garden-wonder-1kin.js) smoker: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The smoker' }),
+    angler: () => { if (typeof gardenFolkLive === 'function' && gardenFolkLive()) return;   // (he walks his own day now: talk to him where he is, 94-garden-wonder-0vale-folk.js)
+      if (typeof wdAnglerTalk === 'function' && wdAnglerTalk(p)) return; gardenPopupOpen('catch', { sub: 'lake', title: 'The old angler' }); },   // he talks first, once a day (94-garden-wonder-1kin.js) smoker: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The smoker' }),
     craft: () => gardenPopupOpen('craft'),
     lands: () => gardenPopupOpen('lands'),
     lf: () => gardenLandPropOpen(p),
@@ -2154,16 +2221,20 @@ function gardenWorldKey(ev, down, arrowsOnly) {
   if (k === 'Tab' && !ev.ctrlKey && !ev.altKey && !ev.metaKey && typeof gartActCycle === 'function' && gartActCycle(ev.shiftKey)) { ev.preventDefault(); return true; }   // several things close by: the next one is the prompt's (94-garden-zz-7act-1core.js)
   if ((k === 'j' || k === 'J') && !ev.ctrlKey && !ev.metaKey && !ev.altKey) { if (typeof gardenJournalOpen === 'function') gardenJournalOpen(); ev.preventDefault(); return true; }   // the Field Journal
   if (arrowsOnly) return false;
+  if ((k === 'e' || k === 'E') && typeof _wd !== 'undefined' && _wd.talk && _wd.talk.next) { if (!ev.repeat && performance.now() - (_wd.talk.at || 0) > 250) _wd.talk.next(); ev.preventDefault(); return true; }   // (round 2, folk) E moves a talk on
+  // (a panel open over the world: E does nothing behind it; Space and Enter are the focused button's own)
+  if ((k === ' ' || k === 'e' || k === 'E') && typeof gardenWorldCovered === 'function' && gardenWorldCovered()) { if (k !== ' ') ev.preventDefault(); return true; }
   if (k === ' ' || k === 'e' || k === 'E') { if (ev.repeat) { ev.preventDefault(); return true; } gardenWorldInteract(); ev.preventDefault(); return true; }
   return false;
 }
 /** Space / E: do the sensible thing right here: a bite, a door beside you, a bug in reach, a ripe plant, water in front of you. */
 function gardenWorldInteract() {
+  if (typeof gardenWorldCovered === 'function' && gardenWorldCovered()) return;   // (a panel over the world: nothing behind it is done)
   if (typeof _gwFishBusy === 'function' && _gwFishBusy()) { if (typeof _gwFishPress === 'function') _gwFishPress(); return; }
   if (typeof gartActInteract === 'function' && gartActInteract()) return;   // the prompt's action: sit, climb, ring... (94-garden-zz-7act-1core.js)
   const m = gardenHere(), W = GARDEN_WORLD;
   const px = Math.floor(_gw.px), py = Math.floor(_gw.py);
-  for (const p of gardenPropsNow()) if (p.act) { const door = _gwPropApproachPoint(p, false); if (door && Math.abs(door.x - .5 - px) <= 1 && Math.abs(door.y - .5 - py) <= 1) { _gwOpenProp(p); return; } }
+  for (const p of gardenPropsNow()) if (p.act && !(p.act === 'angler' && typeof gardenFolkLive === 'function' && gardenFolkLive())) { const door = _gwPropApproachPoint(p, false); if (door && Math.abs(door.x - .5 - px) <= 1 && Math.abs(door.y - .5 - py) <= 1) { _gwOpenProp(p); return; } }
   // a way in to a side place beside you (the boat loft's doorway, the hothouse, the den's doors): E went past them to
   // fishing off the quay, or to nothing at all (hunter, round 3). The way in stands where its sight paints its door.
   if (typeof GRM_ROOMS !== 'undefined' && typeof _grd !== 'undefined' && typeof gardenRoomGo === 'function') {

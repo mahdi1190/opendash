@@ -10,6 +10,19 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.75.0] - 2026-11-21
+
+### Added
+
+- The vale is lived in: villagers keep homes and daily routines, walk the lanes, and come to find you when they have something to say. Walk up to anyone and press E to talk; friends see the same villagers and can talk and help too.
+- Things you put down stay where you put them, for everyone in the garden, and a friend can take back what they put down.
+- Your gardener faces any direction (16 ways), with real arm and leg swing walking towards and away from you, and friends see the same facing.
+
+### Fixed
+
+- Walking slides along fences, banks and corners again, without the shaking.
+- The bag covers the garden while it is open, and nothing can be put down on top of something else.
+
 ## [2.74.1] - 2026-11-21
 
 ### Fixed

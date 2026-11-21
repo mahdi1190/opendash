@@ -125,15 +125,22 @@ function _ptwSpots() {
   const t = performance.now(); if (_ptwS.water && t - _ptwS.at < 1000) return _ptwS;
   _ptwS.at = t;
   let m = null; try { m = gardenHere(); } catch (e) { return _ptwS; }
-  const key = [m.visit ? m.visit.key : 'me', m.plants.length, m.decor.length, m.areas.length, gardenLakeOpenTo(), typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0, gardenPierMore(), _GD_WALK_EXTRA.size, _GD_ICE.size].join('|');
+  const key = [m.visit ? 'v:' + m.visit.fid : 'me', m.plants.length, m.decor.length, m.decor.reduce((h, d) => (h * 31 + d.x * 7 + d.y * 131) | 0, 0), m.areas.length, gardenLakeOpenTo(), typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0, gardenPierMore(), _GD_WALK_EXTRA.size, _GD_ICE.size].join('|');
   if (_ptwS.water && _ptwS.key === key && t - _ptwS.built < 300000) return _ptwS;   // the scan is a 150 ms task on a big island: redo it when the garden changes (the key), else only every five minutes, not every 30 s while walking
   _ptwS.key = key; _ptwS.built = t;
-  const G = GARDEN_WORLD, water = new Uint8Array(G.cols * G.rows), shore = [], perch = [], seat = [], drink = [], warm = [], shade = [], top = new Map(), zoneOk = (x, y) => { const n = gardenZoneOf(Math.floor(x), Math.floor(y)); return !n || m.areas.includes('zn-' + n); };
-  for (let y = 0; y < G.rows; y++) for (let x = 0; x < G.cols; x++) if (gardenIsWater(x, y) && !_GD_ICE.has(x + ',' + y) && !gardenWaterNo(x, y, m)) water[y * G.cols + x] = 1;
-  const wet = (x, y) => x >= 0 && y >= 0 && x < G.cols && y < G.rows && !!water[y * G.cols + x];
-  for (let y = 0; y < G.rows; y++) for (let x = 0; x < G.cols; x++) {
-    if (water[y * G.cols + x] || !zoneOk(x, y) || !gardenWalkable(x, y)) continue;
-    for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1]]) if (wet(x + dx, y + dy) && wet(x + dx * 2, y + dy * 2)) { shore.push({ x: x + 0.5 + dx * 0.25, y: y + 0.5 + dy * 0.25, wx: x + 0.5 + dx * 1.7, wy: y + 0.5 + dy * 1.7 }); break; }
+  const G = GARDEN_WORLD, perch = [], seat = [], drink = [], warm = [], shade = [], top = new Map(), zoneOk = (x, y) => { const n = gardenZoneOf(Math.floor(x), Math.floor(y)); return !n || m.areas.includes('zn-' + n); };
+  // (build phase 1, build-PLAN 6) the water and its shore (the 96 x 96 read, 60-80 ms) do not change when a thing is put down or a seed
+  // planted: read again only when the water or the land can have changed, not on every put-down, on every screen with a pet
+  const wkey = [m.visit ? 'v:' + m.visit.fid : 'me', m.areas.length, gardenLakeOpenTo(), typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0, gardenPierMore(), _GD_WALK_EXTRA.size, _GD_ICE.size].join('|');
+  let water = _ptwS.water, shore = _ptwS.shore;
+  if (!water || _ptwS.wkey !== wkey || t - (_ptwS.wbuilt || 0) > 300000) {
+    water = new Uint8Array(G.cols * G.rows); shore = []; _ptwS.wkey = wkey; _ptwS.wbuilt = t;
+    for (let y = 0; y < G.rows; y++) for (let x = 0; x < G.cols; x++) if (gardenIsWater(x, y) && !_GD_ICE.has(x + ',' + y) && !gardenWaterNo(x, y, m)) water[y * G.cols + x] = 1;
+    const wet = (x, y) => x >= 0 && y >= 0 && x < G.cols && y < G.rows && !!water[y * G.cols + x];
+    for (let y = 0; y < G.rows; y++) for (let x = 0; x < G.cols; x++) {
+      if (water[y * G.cols + x] || !zoneOk(x, y) || !gardenWalkable(x, y)) continue;
+      for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1]]) if (wet(x + dx, y + dy) && wet(x + dx * 2, y + dy * 2)) { shore.push({ x: x + 0.5 + dx * 0.25, y: y + 0.5 + dy * 0.25, wx: x + 0.5 + dx * 1.7, wy: y + 0.5 + dy * 1.7 }); break; }
+    }
   }
   const add = (id, x, y, z, up, seatUp, name, support) => {
     if (!zoneOk(x, y)) return;

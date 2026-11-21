@@ -823,7 +823,7 @@ function _gdpKey(ev) {
   if (ev.key === 'Escape' && typeof _gw !== 'undefined' && _gw.then && _gw.path && _gw.path.length) { ev.preventDefault(); ev.stopPropagation(); const nw = window.GardenNative && GardenNative.active() && GardenNative.world && GardenNative.world(); if (nw && nw.stopMoving) nw.stopMoving(); else { _gw.path = []; _gw.then = null; _gw.hold = null; _gw.spd = 0; } return; }
   if (typeof gardenWorldKey === 'function' && gardenWorldKey(ev, true, _gdpMode() === 'decorate')) return;   // 2.22: you walk, the camera zooms (while decorating only the arrows walk: R, S and Delete are yours)
   const m = gardenHere(), mode = _gdpMode();
-  if (ev.key === 'Enter') { ev.preventDefault(); gardenWorldInteract(); return; }
+  if (ev.key === 'Enter') { if (typeof gardenWorldCovered === 'function' && gardenWorldCovered()) return; ev.preventDefault(); gardenWorldInteract(); return; }   // (a panel over the world: Enter is its focused button's)
   if (/^[1-9]$/.test(ev.key) && !ev.ctrlKey && !ev.metaKey) { if (gardenSlotKey(Number(ev.key))) ev.preventDefault(); return; }
   const k = ev.key.toLowerCase();
   if (k === 'b' && !ev.ctrlKey && !ev.metaKey) { gardenSlotPick('bag'); ev.preventDefault(); return; }
@@ -855,7 +855,7 @@ function _gdpBindKeys() {
     if (!/^garden(:|$)/.test(String(state.view || '')) || !(ev.ctrlKey || ev.metaKey) || ev.shiftKey || ev.key.toLowerCase() !== 'z') return;
     const t = ev.target;
     if (t && (['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName) || t.isContentEditable)) return;
-    if (!gardenCanUndo()) return;
+    if (!gardenCanUndo() && !(typeof gardenVisitOn === 'function' && gardenVisitOn())) return;   // (on a visit it always answers, even "nothing to take back")
     ev.preventDefault(); ev.stopImmediatePropagation();
     gardenUndo();
   }, true);
