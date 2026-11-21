@@ -13,7 +13,11 @@
 (function () {
   'use strict';
   const V = window.GardenPaintVale; if (!V) return;
-  const inValley = (x, y) => { const r = typeof gardenIslandRegionAt === 'function' ? gardenIslandRegionAt(x + .5, y + .5) : null; return !!(r && /mill|valley/.test(String(r.id) + ' ' + String(r.theme || ''))); };
+  // (vf-perf) remembered per cell for the layout it was read from: the compose asks every cell of the map, and the region test
+  // (a point in each region's outline) was the valley's largest share of a level-up's repaint
+  let ivD = null; const ivMemo = new Map();
+  const inValley = (x, y) => { let D = null; try { D = typeof gardenIslandData === 'function' ? gardenIslandData() : null; } catch (e) { D = null; } if (D !== ivD) { ivD = D; ivMemo.clear(); }
+    const k = x + ',' + y; let v = ivMemo.get(k); if (v === undefined) { const r = typeof gardenIslandRegionAt === 'function' ? gardenIslandRegionAt(x + .5, y + .5) : null; v = !!(r && /mill|valley/.test(String(r.id) + ' ' + String(r.theme || ''))); ivMemo.set(k, v); } return v; };
   // fenced: open country, i.e. anywhere but a wood that shows its locked land as thicket
   const fenced = (x, y) => { const r = typeof gardenIslandRegionAt === 'function' ? gardenIslandRegionAt(x + .5, y + .5) : null; return !(r && window.GardenPaintWood && GardenPaintWood.thicketWood && GardenPaintWood.thicketWood(r.id)); };
   let plotsMemo = null;

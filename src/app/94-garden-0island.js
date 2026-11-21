@@ -322,9 +322,15 @@ function gardenIslandFreshwaterCell(x, y) {
 /** Authored frontier regions share the same contours with drawing, walking and visits. */
 function gardenIslandRegionForZone(zone) { return (gardenIslandData().regions || []).find(region => region.zone === Number(zone)) || null; }
 function _gardenIslandRegionForKnownLand(x, y) { return (gardenIslandData().regions || []).find(region => (region.polygons || []).some(points => _gardenIslandInLoop(x, y, points))) || null; }
+// (vf-perf) answered once per point for the layout and coast it was read from: painters ask it for every cell of the map on each
+// repaint (a level-up's compose spent a second in these outline tests), and the same points come back every time
+let _gardenIslandRegionMemo = null;
 function gardenIslandRegionAt(x, y) {
-  if (!Number.isFinite(x) || !Number.isFinite(y) || !gardenIslandLandContains(x, y)) return null;
-  return _gardenIslandRegionForKnownLand(x, y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const D = gardenIslandData(), G = typeof gardenIslandGeometry === 'function' ? gardenIslandGeometry() : null; let M = _gardenIslandRegionMemo;
+  if (!M || M.D !== D || M.G !== G || M.m.size > 250000) M = _gardenIslandRegionMemo = { D, G, m: new Map() };
+  const k = x + ',' + y; if (M.m.has(k)) return M.m.get(k);
+  const r = gardenIslandLandContains(x, y) ? _gardenIslandRegionForKnownLand(x, y) : null; M.m.set(k, r); return r;
 }
 /** Explicit host/open sets keep visitor and server access independent of the local owner. */
 function gardenIslandRegionOpen(region, open) { return !region || !region.zone || !!open && (open instanceof Set ? open.has('zn-' + region.zone) : Array.isArray(open) && open.includes('zn-' + region.zone)); }
