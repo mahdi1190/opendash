@@ -153,7 +153,7 @@ function _gllStationaryAt(A, x, y, source) {
 /** A place said on the wire a hair from where someone already is, while they hold a move (sat on a bench, on a branch): the rounding
  *  of the walk's tenth-of-a-cell, not a step. It is not walked, so the move is not wiped (they were seen standing in front of the seat). */
 function _gllHeldNudge(A, ev) { return !!(A && A.actHold && ev && !(ev.r && ev.r.length) && Number.isFinite(ev.x) && Number.isFinite(ev.y) && Math.hypot(ev.x - A.x, ev.y - A.y) < 0.12); }
-function _gllWalkTo(A, x, y, then) { A.stationaryPosition = null; if (typeof _gllPhotoClear === 'function') _gllPhotoClear(A); A.tx = x; A.ty = y; A.gx = x; A.gy = y; A.way = null; A.then = then || null; if (A.sit) { A.sit = false; _gllEmoteStop(A); } }
+function _gllWalkTo(A, x, y, then) { A.actAt = null; A.stationaryPosition = null; if (typeof _gllPhotoClear === 'function') _gllPhotoClear(A); A.tx = x; A.ty = y; A.gx = x; A.gy = y; A.way = null; A.then = then || null; if (A.sit) { A.sit = false; _gllEmoteStop(A); } }
 /** The same with the turns on the way: [[x, y], ...], then there. What they were going to do on arrival still happens. */
 function _gllWalkVia(A, turns, x, y) { const then = A.then; _gllWalkTo(A, x, y, then); const way = (turns || []).map(p => [p[0], p[1]]).concat([[x, y]]); const n = way.shift(); A.tx = n[0]; A.ty = n[1]; A.way = way; }
 /** Keys and holding send a walk as it goes, a place at a time: the figure takes each at the pace they come in, so it neither arrives early and stands nor falls behind. A destination (a click) walks at the walker's own speed. */
@@ -231,8 +231,11 @@ function _gllEmote(A, id, instant) {
 function _gllEmoteStop(A) { if (A.actUndo) { const u = A.actUndo; A.actUndo = null; try { u(); } catch (e) { /* gone */ } } clearTimeout(A.animT); for (const a of A.anims || []) { try { a.cancel(); } catch (e) { /* gone */ } } A.anims = null; A.hold = ''; }
 /** A move with a place (a seat): walk there first if they are not there yet, rather than jump. */
 function _gllEmoteAt(A, ev) {
-  if (Number.isFinite(ev.x) && Math.hypot(ev.x - A.x, ev.y - A.y) > 0.05) { _gllWalkVia(A, null, ev.x, ev.y); A.then = () => _gllEmote(A, ev.e); return; }
-  _gllEmote(A, ev.e);
+  // (where they said they did it, kept as theirs while they do it: a seat they are walking to, or sat on, is not free on this screen even
+  // when their figure here is still on its way or stopped a little off it; any step of theirs gives it up, _gllWalkTo)
+  const at = Number.isFinite(ev.x) && Number.isFinite(ev.y) ? { x: ev.x, y: ev.y } : null;
+  if (at && Math.hypot(ev.x - A.x, ev.y - A.y) > 0.05) { _gllWalkVia(A, null, ev.x, ev.y); A.actAt = at; A.then = () => _gllEmote(A, ev.e); return; }
+  _gllEmote(A, ev.e); A.actAt = at;
 }
 /**
  * A speech bubble over someone. Phrases come from the table on this side. The bubble is kept on the person (A.say) and drawn into whatever node

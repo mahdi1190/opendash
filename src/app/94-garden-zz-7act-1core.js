@@ -28,7 +28,11 @@ function gartActSeatDepth() {
 }
 function _gaSeatDepthOf(src) {
   const rec = _gaRec(src); const d = rec && rec.root && rec.root.depth;
-  return Number.isFinite(d) ? d : null;
+  if (Number.isFinite(d)) return d;
+  // a seat a painter stands from its own foot (the old woodland's benches by the well, the fells' seats: no prop record): drawn in
+  // the row of that foot, so a sitter is put just in front of it, on the seat, not behind its back rail (the owner: "sit behind the benches")
+  try { const t = typeof gardenAffordThings === 'function' ? gardenAffordThings().find(q => q.id === src) : null; if (t && Number.isFinite(t.y) && /^painted:/.test(src)) { const W = GARDEN_WORLD; return W.sky + (t.y + 0.04) * W.cellH; } } catch (e) { /* none */ }
+  return null;
 }
 function gartActRow(id) { return GARDEN_ACTS[id] || null; }
 /* ---------- what is in reach: every thing found where it stands, by its KIND (94-garden-zz-7act-0kinds.js, 0scan.js) ---------- */
@@ -143,7 +147,11 @@ function gartActTaken(r) {
   if (!r || !r.stand || !(r.seated || r.noProp || (row && (row.hold || (row.then && GARDEN_ACTS[row.then] && GARDEN_ACTS[row.then].hold))))) return false;   // (a seat, a bank, a wall to lean on, a telescope's eyepiece; any place a move is held: a branch, behind a trunk)
   try {
     if (typeof _gll === 'undefined' || !_gll.actors || !_gll.actors.size) return false;
-    for (const A of _gll.actors.values()) { if (!A || A.me || A.rm || A.away || A.moving || A.tx != null) continue; if (Math.hypot(A.x - r.stand.x, (A.y - r.stand.y) * 1.3) < GA_TAKEN_R) return true; }
+    for (const A of _gll.actors.values()) {
+      if (!A || A.me || A.rm || A.away) continue;
+      const at = A.actAt || (A.moving || A.tx != null ? null : A);   // (the place they said they took, even while their figure walks there)
+      if (at && Math.hypot(at.x - r.stand.x, (at.y - r.stand.y) * 1.3) < GA_TAKEN_R) return true;
+    }
   } catch (e) { /* alone */ }
   return false;
 }
