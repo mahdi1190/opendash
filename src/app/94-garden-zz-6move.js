@@ -61,6 +61,11 @@ function gartMoveSteer(ux, uy, dt) {
   const want = Math.atan2(uy, ux);
   if (!_gmv.steer || _gmv.steerT < performance.now() - 250) { _gmv.steer = want; _gmv.steerT = performance.now(); _gmv.keyH = _gmvKeyHeading(ux, uy); return [ux, uy]; }
   _gmv.steerT = performance.now();
+  // (n-move) two keys are never let go in the same instant: a diagonal that drops to one key for a moment before you stop keeps its way
+  // (and its facing) for that moment, so you stop facing the diagonal you walked, not turned a sixteenth towards the key let go last
+  const diag = Math.abs(ux) > 0.2 && Math.abs(uy) > 0.2, tNow = performance.now();
+  if (diag) { _gmv.diagH = _gmvKeyHeading(ux, uy); _gmv.diagU = [ux, uy]; _gmv.diagAt = tNow; }
+  else if (_gmv.diagU && tNow - (_gmv.diagAt || 0) < 110 && Math.abs(Math.atan2(Math.sin(want - Math.atan2(_gmv.diagU[1], _gmv.diagU[0])), Math.cos(want - Math.atan2(_gmv.diagU[1], _gmv.diagU[0])))) < 1.25) { _gmv.keyH = _gmv.diagH; return [Math.cos(_gmv.steer), Math.sin(_gmv.steer)]; }
   let d = want - _gmv.steer; d = Math.atan2(Math.sin(d), Math.cos(d));
   // (round 3) a reversal (or near one) is a pivot, as in Animal Crossing or Stardew: the feet go back the way you came at once, from a
   // planted step (the speed drops, then builds again), and only the drawing turns through the in-between ways. An arc there walked you
@@ -336,7 +341,7 @@ function gartMoveActor(A) {
     // (move360) stood still: they turn to the way they last said they face (every walk message carries it), through the in-between drawings
     if (!busy && !A.moving && A.hd != null && A.standDeg == null && motion) {
       let d = _gmvWrap(A.hd - st.h); const step = GPL_MOVE.turnRate * dt; st.h = _gmvWrap(st.h + (Math.abs(d) <= step ? d : Math.sign(d) * step));
-      const D = _gmvDrawing(st.h, Number.isFinite(A.yaw) && gplYawDir(A.yaw) === A.dir ? A.yaw : null, 45);
+      const D = _gmvDrawing(st.h, Number.isFinite(A.yaw) && gplYawDir(A.yaw) === A.dir ? A.yaw : null, GMV_STEP);
       if (D.dir !== A.dir || D.yaw !== A.yaw || ((D.yaw % 180) && D.mirror !== A.face)) { A.dir = D.dir; A.yaw = D.yaw; if (D.yaw % 180) A.face = D.mirror; A.key = ''; if (typeof _gllPaint === 'function') _gllPaint(A); }
     }
     if (!A.moving && A.standDeg != null && typeof gartActStandFace === 'function') gartActStandFace(A);
@@ -352,8 +357,8 @@ function gartMoveActor(A) {
       const step = GPL_MOVE.turnRate * dt; st.h = _gmvWrap(st.h + (Math.abs(d) <= step ? d : Math.sign(d) * step));
     }
   }
-  // (move360) a friend's figure turns through eight drawings (yours sixteen): fewer bodies kept per friend on your screen
-  const D = _gmvDrawing(st.h, Number.isFinite(A.yaw) && gplYawDir(A.yaw) === A.dir ? A.yaw : null, 45);
+  // (n-move) a friend's figure turns through the same sixteen drawings as yours: friends see the way you really face, not the nearest eighth
+  const D = _gmvDrawing(st.h, Number.isFinite(A.yaw) && gplYawDir(A.yaw) === A.dir ? A.yaw : null, GMV_STEP);
   if (D.dir !== A.dir || D.yaw !== A.yaw || ((D.yaw % 180) && D.mirror !== A.face)) { A.dir = D.dir; A.yaw = D.yaw; if (D.yaw % 180) A.face = D.mirror; A.key = ''; if (typeof _gllPaint === 'function') _gllPaint(A); }
   const S = typeof GL_ACT_SCALE === 'number' ? GL_ACT_SCALE : 0.74 * GARDEN_ACTOR_SCALE;
   const sneak = A.sneakUntil > Date.now(), mirror = (A.yaw % 180) && A.face < 0 ? -1 : 1, sx = motion ? D.sx : 1;   // clock-ok: a creep
@@ -392,7 +397,7 @@ function gartMoveTold(A, ev, whole) {
   if (Number.isInteger(ev.h) && ev.h >= 0 && ev.h < 16) {
     A.hd = _gmvWrap(ev.h * 22.5);
     if (whole && !A.moving && !(A.actId || A.sit || A.fish)) {
-      const D = _gmvDrawing(A.hd, null, 45);
+      const D = _gmvDrawing(A.hd, null, GMV_STEP);
       A.dir = D.dir; A.yaw = D.yaw; if (D.yaw % 180) A.face = D.mirror;
       if (A.gm) A.gm.h = A.hd;
       A.key = '';

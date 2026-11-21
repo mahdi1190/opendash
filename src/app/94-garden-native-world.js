@@ -1394,6 +1394,9 @@ window.GardenNativeWorld = (function () {
         _gw.glide = { ux, uy };   // (move360) let go and you carry on a hair's step as you slow, the way you were going
       } else if (!pushed && !casting && _gw.hold && _gw.hold.steer) {
         _gw.glide = null;
+        // (n-move) steering at the pointer, the click's way is done with: left in place it kept the friends' messages quiet (they are sent
+        // only when no way is being walked), and a friend saw you stand at the first spot until you let go
+        if (_gw.path.length) { _gw.path = []; _gw.then = null; }
         const pt = point(_gw.hold.cx, _gw.hold.cy); if (pt) { dx = (pt.x - _gw.px) * W.cellW; dy = (pt.y - _gw.py) * W.cellH; distance = Math.hypot(dx, dy); if (distance > 10) { ux = dx / distance; uy = dy / distance; direct = true; running = keys.has('shift') || distance > 150 || (_gw.gait === 'r' && distance > 40);   /* (n-move) Shift runs here too, as with the keys */ want = Math.min(running ? GW_SPEED.run : GW_SPEED.walk, Math.sqrt(2 * GW_ACC * distance) + 34); } }
       } else if (!pushed && !casting && _gw.path.length) {
         while (_gw.path.length > 1 && _gwLos({ x: _gw.px, y: _gw.py }, _gw.path[1], GW_CLEAR)) _gw.path.shift();
