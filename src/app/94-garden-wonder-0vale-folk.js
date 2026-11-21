@@ -86,10 +86,10 @@ function _vfrCtx(m) {
 function _vfrFlat(t) { const K = (t && GARDEN_KINDS[t.kind]) || {}; return !t.kind || K.solid === 'free' || /^(pier|bridge|fishing-bank|ball|leaf-pile|log|stepping|road|plaza|path|field|plot|pond|crossing|ford)/.test(t.kind); }
 /** Can a standing figure be here without covering a thing or being hidden behind it (rule 12)? The figure is about 0.6 cells wide and
  *  a little over a cell tall; a thing's drawn width is its own (a tree only its trunk). skip: the thing they are at. */
-function _vfrClearOfThings(C, x, y, skip) {
+function _vfrClearOfThings(C, x, y, skip, relaxed) {
   for (const t of C.things) {
     if (t.id === skip || Math.abs(t.x - x) > 8 || t.y - y > 9 || y - t.y > 1 || _vfrFlat(t)) continue;
-    const tree = /tree|oak|trunk/.test(t.kind), B = C.base(t), hw = (tree ? 0.5 : (B.w || 1) / 2) + 0.3, up = tree ? 1.4 : Math.min(2.6, Math.max(1.4, (B.h || 1.2) + 0.6));   // (just behind it: seen standing on it. Further back is only being behind something tall)
+    const tree = /tree|oak|trunk/.test(t.kind), B = C.base(t), hw = (tree ? 0.5 : (B.w || 1) / 2) + 0.3, up = tree ? 1.4 : relaxed ? Math.min(2.6, Math.max(1.4, (B.h || 1.2) + 0.6)) : Math.max(1.4, (B.h || 1.2) + 0.6);   // (anywhere in its picture's height behind it: seen standing on it or in it. relaxed: only just behind it)
     if (Math.abs(x - B.x) < hw && y > B.y - up && y < B.y + 0.8) return false;
   }
   return true;
@@ -238,21 +238,22 @@ function _vfrStep(V, dt, speedMul) {
   return !V.path.length;
 }
 /** Can a standing figure be here: the feet free with room for its width, clear of every drawn thing but `skip`, in open land. */
-function _vfrBodyOk(x, y, skip) {
+function _vfrBodyOk(x, y, skip, relaxed) {
   if (typeof _gwFree === 'function' && !(_gwFree(x, y, 0.04) && _gwFree(x - 0.28, y) && _gwFree(x + 0.28, y))) return false;
-  if (_vfr.ctx && !_vfrClearOfThings(_vfr.ctx, x, y, skip || '')) return false;
+  if (_vfr.ctx && !_vfrClearOfThings(_vfr.ctx, x, y, skip || '', relaxed)) return false;
   return !_vfr.m || _vfrOpenAt(x, y, _vfr.m);
 }
 /** Where to stand to talk to someone at tx, ty: side by side at talking distance (the figures are side-on), clear of everything, the
  *  nearest such place to where they are now. null: nowhere clear (they talk from where they are). */
 function _vfrTalkSpot(V, tx, ty) {
   let best = null, bd = Infinity;
-  for (const [ox, oy, w] of [[1.3, 0, 0], [-1.3, 0, 0], [1.25, 0.4, 0.4], [-1.25, 0.4, 0.4], [1.25, -0.4, 0.5], [-1.25, -0.4, 0.5], [1.6, 0.15, 0.3], [-1.6, 0.15, 0.3], [1.0, 0.9, 1], [-1.0, 0.9, 1]]) {
+  // (two passes: clear of everything; then, where you yourself stand in the height of something tall, only clear of standing on it)
+  for (const relaxed of [false, true]) { if (best) break; for (const [ox, oy, w] of [[1.3, 0, 0], [-1.3, 0, 0], [1.25, 0.4, 0.4], [-1.25, 0.4, 0.4], [1.25, -0.4, 0.5], [-1.25, -0.4, 0.5], [1.6, 0.15, 0.3], [-1.6, 0.15, 0.3], [1.0, 0.9, 1], [-1.0, 0.9, 1], [1.9, 0, 0.6], [-1.9, 0, 0.6]]) {
     const x = tx + ox, y = ty + oy;
-    if (!_vfrBodyOk(x, y, '')) continue;
+    if (!_vfrBodyOk(x, y, '', relaxed)) continue;
     if (_vfr.list && _vfr.list.some(O => O !== V && O.S && !O.inside && Math.hypot(O.x - x, (O.y - y) * 1.6) < 0.8)) continue;
     const d = Math.hypot(x - V.x, y - V.y) + w; if (d < bd) { bd = d; best = { x, y }; }
-  }
+  } }
   return best;
 }
 /** The folk are solid to your feet (94-garden-world-0walk.js asks while you walk): an oval round each one's feet that you cannot walk
