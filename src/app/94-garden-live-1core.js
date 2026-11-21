@@ -230,6 +230,7 @@ function _gllEmoteStop(A) { if (A.actUndo) { const u = A.actUndo; A.actUndo = nu
 /** A move with a place (a seat): walk there first if they are not there yet, rather than jump. */
 function _gllEmoteAt(A, ev) {
   A.emAt = Number.isFinite(ev.x) && Number.isFinite(ev.y) ? { e: String(ev.e), x: ev.x, y: ev.y } : null;   // (where their own screen put them for it: a held move keeps them exactly there, 94-garden-zz-7act-3music.js)
+  if (Number.isFinite(ev.x) && !A.moving && A.tx == null && Math.hypot(ev.x - A.x, ev.y - A.y) <= 0.05) { A.x = ev.x; A.y = ev.y; }   // (a hair from it, as a walk sent in tenths leaves them: exactly there, no walk)
   if (A.actHold && String(ev.e) === 'act-' + A.actHold && !A.moving && Number.isFinite(ev.x) && Math.hypot(ev.x - A.x, ev.y - A.y) <= 0.05) return;   // (the held move they are already doing, said again for someone new: it carries on, not starts again)
   if (Number.isFinite(ev.x) && Math.hypot(ev.x - A.x, ev.y - A.y) > 0.05) { _gllWalkVia(A, null, ev.x, ev.y); A.then = () => _gllEmote(A, ev.e); return; }
   _gllEmote(A, ev.e);
