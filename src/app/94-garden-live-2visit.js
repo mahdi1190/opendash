@@ -226,7 +226,7 @@ function _glvResult(b) {
       _glvRefund(b.i, P); _gdvTouch();
       const at = _glvCellAt(P.f && P.f.x, P.f && P.f.y);
       if (b.why === 'level' && typeof gardenVisitDenied === 'function') gardenVisitDenied(P.t);
-      else gameDeny(null, { at: at || undefined, say: P.t === 'gate' ? (b.why === 'have' ? 'It is open already.' : 'That gate needs its find first.') : (P.t === 'land' || P.t === 'build') ? ({ have: 'They have that already. Your coins are back.', 'not-yet': 'That is not open in this garden yet. Your coins are back.', spot: 'Something is in the way there. Your coins are back.' }[b.why] || 'That did not go through. Your coins are back.') : 'That did not work here.', kind: 'tool' });
+      else gameDeny(null, { at: at || undefined, say: P.t === 'solve' ? (b.why === 'have' ? 'It was solved here already.' : 'That did not reach their garden. It is solved on your screen.') : P.t === 'gate' ? (b.why === 'have' ? 'It is open already.' : 'That gate needs its find first.') : (P.t === 'land' || P.t === 'build') ? ({ have: 'They have that already. Your coins are back.', 'not-yet': 'That is not open in this garden yet. Your coins are back.', spot: 'Something is in the way there. Your coins are back.' }[b.why] || 'That did not go through. Your coins are back.') : 'That did not work here.', kind: 'tool' });
     }
     return;
   }

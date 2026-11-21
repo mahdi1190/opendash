@@ -10,6 +10,11 @@
    ============================================================ */
 function _gdzT() { return _gdzT.s || (_gdzT.s = { on: false, draft: null, lay: null, dm: {}, hist: [], tool: 'path', pathStyle: 0, groundStyle: 0, rubbing: false, cam: null, say: '', bad: false, lifted: null, stroke: null, press: null, was: null, make: { kind: 0, pair: 0, pat: 0, text: '' } }); }
 function gardenDesignOn() { return !!_gdzT.s && _gdzT.s.on; }
+/** (full co-op, 2.75) The garden being designed: your own, or the friend's you are in (Design works there too, playing together live). */
+function _gdzM() { return typeof gardenHere === 'function' ? gardenHere() : gardenModel(); }
+function _gdzVisit() { try { const v = typeof gardenVisitModel === 'function' ? gardenVisitModel() : null; return v && v.visit ? v : null; } catch (e) { return null; } }
+/** What is saved in the garden on screen: yours, or your friend's as their snapshot has it. */
+function _gdzSavedHere() { const v = _gdzVisit(); if (!v) return gardenDesignSaved(_gdG()); return gardenDesignClean(v.visit.snap && v.visit.snap.dz) || null; }
 function _gdzNativeWorld() { return window.GardenNative && GardenNative.active() ? GardenNative.world() : null; }
 function gardenDesignCam(ar, wpx, hpx) {
   if (!gardenDesignOn()) return null;
@@ -30,7 +35,7 @@ function gardenDesignDecorDraft(list) {
 }
 /** Your garden's model with the draft's decorations where the draft has them (for the checks: nothing is saved). */
 function _gdzModel() {
-  const m = gardenModel(), dm = _gdzT().dm; if (!Object.keys(dm).length) return m;
+  const m = _gdzM(), dm = _gdzT().dm; if (!Object.keys(dm).length) return m;
   const occ = new Map(); for (const [k, c] of m.occ) occ.set(k, Object.assign({}, c));
   const decor = gardenDesignDecorDraft(m.decor);
   for (const d of m.decor) if (dm[d.uid]) for (const c of occ.values()) { if (c.decor === d.uid) delete c.decor; if (c.ground === d.uid) delete c.ground; }
@@ -180,17 +185,19 @@ function _gdzDec(g) { const m = new Map(); for (const row of g || []) for (let i
 
 /* ---------- entering and leaving ---------- */
 function gardenDesignEnter() {
-  if (typeof gardenVisitOn === 'function' && gardenVisitOn()) { gardenToast('You can only design your own garden.', { now: true, icon: 'paintbrush' }); return; }
+  const V = typeof gardenVisitOn === 'function' && gardenVisitOn() ? _gdzVisit() : null;
+  if (typeof gardenVisitOn === 'function' && gardenVisitOn() && !(V && V.visit.live && typeof _glvSend === 'function')) { gardenToast('Designing a friend’s garden needs you both there: when they let you in to play together, Design works here too.', { now: true, icon: 'paintbrush', timeout: 9000 }); return; }
   if (typeof _gwFishBusy === 'function' && _gwFishBusy() && typeof _gwFishCancel === 'function') _gwFishCancel();
   const T = _gdzT(), g = _gdG(), box = _gdp.root && _gdp.root.querySelector('.gd-stagebox'); if (!box) return;
   if (_gdp.moving && typeof gardenMoveEnd === 'function') gardenMoveEnd();
   if (_gdp.carry && typeof _gdpCarryEnd === 'function') _gdpCarryEnd();
   if (typeof gardenHoldEnd === 'function') gardenHoldEnd();
   if (_gdp.press) { for (const node of _gdp.svg.querySelectorAll('.is-lifted')) node.classList.remove('is-lifted'); _gdp.press = null; }
-  const z = g.dz && g.dz.lay ? g.dz : { cur: 'l1', lay: { l1: { n: 'My garden', d: gardenDesignEmpty() } } };
+  const z = V ? { cur: 'v', lay: { v: { n: `${(V.visit.name || 'Your friend').split(/\s+/)[0]}’s garden`, d: _gdzSavedHere() || gardenDesignEmpty(), ...(GARDEN_WORLD.v >= 3 ? { island: [GARDEN_WORLD.v, GARDEN_WORLD.lh] } : {}) } } } : g.dz && g.dz.lay ? g.dz : { cur: 'l1', lay: { l1: { n: 'My garden', d: gardenDesignEmpty() } } };
+  T.visit = V ? String(V.visit.fid || 'v') : '';
   T.lay = JSON.parse(JSON.stringify(z));
   const cur = T.lay.lay[T.lay.cur] || (T.lay.lay[T.lay.cur] = { n: 'My garden', d: gardenDesignEmpty() });
-  T.draft = gardenDesignLayoutDraft(T.lay, T.lay.cur, g);
+  T.draft = V ? (gardenDesignClean(cur.d) || gardenDesignEmpty()) : gardenDesignLayoutDraft(T.lay, T.lay.cur, g);
   T.was = JSON.stringify(z); T.resume = null; T.dm = {}; T.hist = []; T.lifted = null; T.stroke = null; T.press = null; T.tool = 'path'; T.rubbing = false; T.on = true;
   _gdzHold().draftOf = () => _gdzT().draft;
   _gw.path = []; _gw.then = null; _gw.keys.clear();
@@ -201,9 +208,9 @@ function gardenDesignEnter() {
   _gdzBind(box);
   _gdzStage();
   gardenDesignPanel();
-  const earlier = GARDEN_WORLD.v >= 3 && !gardenDesignIslandVersion(cur) && gardenDesignArchives(g).some(a => a.id === T.lay.cur);
+  const earlier = !V && GARDEN_WORLD.v >= 3 && !gardenDesignIslandVersion(cur) && gardenDesignArchives(g).some(a => a.id === T.lay.cur);
   if (earlier) { T.tool = 'layouts'; T.archiveOpen = true; gardenDesignPanel(); }
-  _gdzSay(earlier ? 'Your complete earlier layout is archived. Choose Adapt to this island to place its objects with the current guides.' : 'Press on a path, a plaza or a door, and draw to another one.');
+  _gdzSay(earlier ? 'Your complete earlier layout is archived. Choose Adapt to this island to place its objects with the current guides.' : V ? `You are designing ${cur.n} together: what you keep is theirs too. Press on a path, a plaza or a door, and draw to another one.` : 'Press on a path, a plaza or a door, and draw to another one.');
 }
 /** Leaving by any door: back to what is saved. */
 function _gdzClose() {
@@ -216,23 +223,39 @@ function _gdzClose() {
   _gw.cam.dirty = true; if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop();
 }
 /** The page is going away under you (the sidebar, or the app redrawing the view): the draft waits, unsaved, and comes back with the garden (gardenDesignResume). */
-function gardenDesignAbort() { if (!gardenDesignOn()) return; const T = _gdzT(); T.resume = { draft: T.draft, dm: T.dm, lay: T.lay, hist: T.hist, tool: T.tool, was: T.was }; _gdzClose(); gardenDesignShow(gardenDesignSaved(_gdG())); }
+function gardenDesignAbort() { if (!gardenDesignOn()) return; const T = _gdzT(); T.resume = T.visit ? null : { draft: T.draft, dm: T.dm, lay: T.lay, hist: T.hist, tool: T.tool, was: T.was }; _gdzClose(); gardenDesignShow(_gdzSavedHere()); T.visit = ''; }
 function gardenDesignResume() {
   const T = _gdzT(), R = T.resume; if (!R || (typeof gardenVisitOn === 'function' && gardenVisitOn())) return;
   T.resume = null; gardenDesignEnter(); Object.assign(T, R); _gdzStage(); gardenDesignPanel(); _gdzSay('Your changes are still here, not saved yet.');
 }
 function _gdzSameAsSaved() { const T = _gdzT(); return !T.hist.length && !Object.keys(T.dm).length; }
 function gardenDesignCancel() {
-  const T = _gdzT(), keep = { draft: T.draft, dm: T.dm, lay: T.lay, hist: T.hist }, had = !_gdzSameAsSaved();
+  const T = _gdzT(), keep = { draft: T.draft, dm: T.dm, lay: T.lay, hist: T.hist, visit: T.visit }, had = !_gdzSameAsSaved();
   _gdzClose(); _gdzStageSaved();
-  if (had) gardenToast('Your changes are gone. The garden is as it was.', { now: true, icon: 'undo-2', timeout: 7000, action: { label: 'Bring them back', run: () => { gardenDesignEnter(); Object.assign(_gdzT(), keep); _gdzStage(); gardenDesignPanel(); } } });
+  if (had && !keep.visit) gardenToast('Your changes are gone. The garden is as it was.', { now: true, icon: 'undo-2', timeout: 7000, action: { label: 'Bring them back', run: () => { gardenDesignEnter(); Object.assign(_gdzT(), keep); _gdzStage(); gardenDesignPanel(); } } });
 }
-function _gdzStageSaved() { gardenDesignShow(gardenDesignSaved(_gdG())); _gd.rev++; _gd.memoKey = ''; gardenRepaintSoon(); }
+function _gdzStageSaved() { gardenDesignShow(_gdzSavedHere()); _gdzT().visit = ''; _gd.rev++; _gd.memoKey = ''; gardenRepaintSoon(); }
+/** Designing a friend's garden together: the finished design goes to their garden (gl:dz, in at most two pieces), and moved decorations
+ *  go as ordinary moves. Both screens show it at once; their page checks every row and keeps it (94-garden-live-3host.js, _glhDesignIn). */
+function _gdzKeepVisit() {
+  const T = _gdzT(), V = _gdzVisit(), moves = Object.entries(T.dm), draft = JSON.parse(JSON.stringify(T.draft));
+  if (!V || !V.visit.live || typeof _glvSend !== 'function') { gardenToast('Your friend’s garden is not live just now: your changes are still here. Keep them when you are playing together again.', { now: true, icon: 'wifi-off', timeout: 9000 }); return; }
+  const wire = _gdzIsEmpty(draft) ? { e: 1 } : gardenDesignWire(draft).wire, text = JSON.stringify(wire), of = Math.ceil(text.length / 3600) || 1;
+  if (of > 2) { gardenToast('That design is too big to send. Take out a few paths or some painted ground, then keep it.', { now: true, icon: 'paintbrush', timeout: 9000 }); return; }
+  const i = 'dz' + Date.now().toString(36);   // clock-ok: an id for the pieces
+  const sends = []; for (let n = 0; n < of; n++) sends.push(Promise.resolve(_glvSend('dz', { i, n, of, d: text.slice(n * 3600, (n + 1) * 3600) })).catch(() => null));
+  _gdzClose(); T.visit = '';
+  gardenDesignShow(draft); if (typeof _gd !== 'undefined') { _gd.rev++; _gd.memoKey = ''; } if (typeof gardenRepaintSoon === 'function') gardenRepaintSoon();
+  for (const [uid, [x, y]] of moves) { try { gardenMoveDecor(uid, x, y); } catch (e) { /* that one stays put */ } }
+  const first = (V.visit.name || 'your friend').split(/\s+/)[0];
+  Promise.all(sends).then(rs => { const ok = rs.every(r => r && r.sent !== false); gardenToast(ok ? `Sent to ${first}’s garden: you both see it now.` : `It did not reach ${first}’s garden. Open Design and keep it again.`, { now: true, icon: ok ? 'check' : 'wifi-off', timeout: ok ? 6000 : 10000 }); });
+}
 function gardenDesignKeep() {
+  if (_gdzT().visit) { _gdzKeepVisit(); return; }
   const T = _gdzT(), g = _gdG(), was = T.was, moves = Object.entries(T.dm), backs = [], fails = [];
   T.lay.lay[T.lay.cur].d = JSON.parse(JSON.stringify(T.draft));
   if (GARDEN_WORLD.v >= 3) T.lay.lay[T.lay.cur].island = [GARDEN_WORLD.v, GARDEN_WORLD.lh];
-  const m0 = gardenModel(), wired = gardenDesignWire(T.draft).dropped;
+  const m0 = _gdzM(), wired = gardenDesignWire(T.draft).dropped;
   _gdzClose();
   g.dz = JSON.parse(JSON.stringify(T.lay));
   gardenDesignShow(gardenDesignSaved(g));
@@ -384,7 +407,7 @@ function _gdzUp(ev) {
 function _gdzStrokeStart(pt) {
   const T = _gdzT(); if (!pt) return;
   if (T.draft.p.length >= GDZ_LIMITS.paths) { _gdzSay(`You have ${GDZ_LIMITS.paths} paths, which is all there is room for. Rub one out first.`, true); return; }
-  const a = gardenDesignAnchor(pt, T.draft, gardenModel());
+  const a = gardenDesignAnchor(pt, T.draft, _gdzM());
   if (!a) { _gdzPathHint(pt); _gdzSay('A path has to start on another path, a plaza or a door. Press nearer one.', true); return; }
   T.stroke = { pts: [[a.x, a.y]], raf: 0, check: null }; _gdzStrokePaint();
 }
@@ -399,7 +422,7 @@ function _gdzRing(x, y, good) { const W = GARDEN_WORLD; return `<circle cx="${_g
 /** Before you press: where would a path start from here? */
 function _gdzPathHint(pt) {
   const T = _gdzT(); if (!pt) return;
-  const a = gardenDesignAnchor(pt, T.draft, gardenModel());
+  const a = gardenDesignAnchor(pt, T.draft, _gdzM());
   _gdzLive(a ? _gdzRing(a.x, a.y, true) : _gdzRing(pt.x, pt.y, false));
 }
 function _gdzPathGhost(c, st) {
@@ -413,7 +436,7 @@ function _gdzPathGhost(c, st) {
 }
 function _gdzStrokePaint() {
   const T = _gdzT(), S = T.stroke; if (!S) return;
-  const c = S.check = S.pts.length > 1 ? gardenDesignPathCheck(S.pts, T.draft, gardenModel()) : { why: '', pts: S.pts, a: true, b: null, bad: [] };
+  const c = S.check = S.pts.length > 1 ? gardenDesignPathCheck(S.pts, T.draft, _gdzM()) : { why: '', pts: S.pts, a: true, b: null, bad: [] };
   _gdzLive(_gdzPathGhost(c, GDZ_PATHS[T.pathStyle]));
   if (S.pts.length > 1) _gdzSay(c.why || `Let go to lay this path. It joins ${c.b.what}.`, !!c.why && !/^Keep going/.test(c.why));
 }
@@ -430,7 +453,7 @@ function _gdzSimplify(pts, tol) {
   return pts.filter((_, i) => keep[i]);
 }
 function _gdzStrokeEnd() {
-  const T = _gdzT(), S = T.stroke, m = gardenModel(); T.stroke = null;
+  const T = _gdzT(), S = T.stroke, m = _gdzM(); T.stroke = null;
   if (S.pts.length < 2) { _gdzLive(''); _gdzSay('Press on a path and draw to make a new one.'); return; }
   const c = gardenDesignPathCheck(S.pts, T.draft, m);
   // refused: the red ghost stays until you move on, so you can see why
@@ -452,7 +475,7 @@ function _gdzRubEnd() { _gdzT().rubbed = false; }
 
 /* ---------- painting the ground ---------- */
 function _gdzPaintStart(cell) {
-  const T = _gdzT(), m = gardenModel(), mask = gardenDesignPathMask(T.draft, m);
+  const T = _gdzT(), m = _gdzM(), mask = gardenDesignPathMask(T.draft, m);
   T.paint = { cells: _gdzDec(T.draft.g), added: new Set(), done: new Set(), why: '', n: 0, full: false, d: '', mask, lv: m.level.level };
   _gdzPaintMore(cell);
   if (!T.paint.n && T.paint.why) _gdzSay(T.paint.why, true);

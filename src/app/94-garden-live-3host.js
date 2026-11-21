@@ -235,6 +235,7 @@ function _glhEvent(ev) {
       return;
     }
     case 'tr': if (typeof _gltHostOn === 'function') _gltHostOn(ev); return;
+    case 'dz': _glhDesignIn(ev); return;
     case 'leave': if (typeof _gltHostLeft === 'function') _gltHostLeft(ev.w); _glhRemove(ev.w); if (typeof gardenContestLeave === 'function') gardenContestLeave(ev.w); _glhReturnDrops(ev.w); gardenLiveLoad(true).then(_glhHud).catch(() => {}); return;
     case 'go': { const A = _gll.actors.get(ev.w); if (A) { _gllGoPace(A, ev); _glhWalk(A, ev); if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } return; }
     case 'em': {
@@ -273,6 +274,38 @@ function _glhSendSnap(fid) {
  * what everyone was last given, everyone gets the whole garden. Looked at every few seconds and only sent on a real change, so it costs next to nothing. The draft in the designer is not in a snapshot: only what is saved.
  */
 function _glhWorldSig(s) { const { v, at, ac, plants, decor, hearts, ...rest } = s; void v; void at; void ac; void plants; void decor; void hearts; return JSON.stringify(rest); }
+/* ---------- designing together (full co-op, 2.75) ----------
+   A friend here draws paths, paints ground, moves fixed things and makes things in your garden as you do (Menu > Design). Their finished
+   design comes as text in up to two pieces (gl:dz); every row is checked (gardenDesignClean) and it becomes your garden's design in use,
+   with Undo for you. Nothing else of yours goes anywhere: it only ever changes the layout's paths, ground and fixed things. */
+const _glhDz = new Map();
+function _glhDesignIn(ev) {
+  if (!ev || typeof ev.d !== 'string' || !Number.isInteger(ev.n) || !Number.isInteger(ev.of) || ev.n < 0 || ev.n >= ev.of || ev.of > 2) return;
+  const A = _gll.actors.get(ev.w); if (!A) return;
+  const key = A.f + '|' + String(ev.i || '').slice(0, 40); let P = _glhDz.get(key);
+  if (!P) { if (_glhDz.size > 8) _glhDz.clear(); P = { parts: [], at: Date.now() }; _glhDz.set(key, P); }   // clock-ok: only to forget a half-arrived design
+  P.parts[ev.n] = ev.d;
+  if (P.parts.filter(x => typeof x === 'string').length < ev.of) return;
+  _glhDz.delete(key);
+  let raw = null; try { raw = JSON.parse(P.parts.join('')); } catch (e) { return; }
+  const d = raw && raw.e === 1 ? gardenDesignEmpty() : gardenDesignClean(raw);
+  if (!d) return;
+  const g = _gdG(), was = JSON.stringify(g.dz || null);
+  const z = g.dz && g.dz.lay && g.dz.lay[g.dz.cur] ? JSON.parse(JSON.stringify(g.dz)) : { cur: 'l1', lay: { l1: { n: 'My garden', d: gardenDesignEmpty() } } };
+  if (!z.lay[z.cur]) z.lay[z.cur] = { n: 'My garden', d: gardenDesignEmpty() };
+  z.lay[z.cur].d = d;
+  if (GARDEN_WORLD.v >= 3) z.lay[z.cur].island = [GARDEN_WORLD.v, GARDEN_WORLD.lh];
+  if (typeof gardenDesignOn === 'function' && gardenDesignOn() && typeof gardenDesignAbort === 'function') gardenDesignAbort();   // (you were designing too: yours waits, unsaved, and comes back when you open Design again)
+  g.dz = z;
+  gardenDesignShow(gardenDesignSaved(g));
+  _gdSave();
+  if (typeof _gd !== 'undefined') { _gd.rev++; _gd.memoKey = ''; }
+  if (typeof gardenRepaintSoon === 'function') gardenRepaintSoon();
+  _gdEmit('landshow', {});
+  if (typeof _gscPublishSoon === 'function') _gscPublishSoon(3000);
+  setTimeout(() => { try { _glhSnapAll(); } catch (e) { /* the next world check */ } }, 60);
+  if (typeof gardenToast === 'function') gardenToast(`${A.n || 'Your friend'} changed the garden's paths and ground.`, { icon: 'paintbrush', timeout: 9000, action: { label: 'Undo', run: () => { const gg = _gdG(); gg.dz = JSON.parse(was); gardenDesignShow(gardenDesignSaved(gg)); _gdSave(); _gdEmit('landshow', {}); setTimeout(() => { try { _glhSnapAll(); } catch (e) { /* later */ } }, 60); } } });
+}
 function _glhSnapAll() {
   const s = gardenSnapshot(); if (s) _glh.worldSig = _glhWorldSig(s);
   for (const A of _gll.actors.values()) if (A.f) _glhSendSnap(A.f);
@@ -344,7 +377,7 @@ function _glhIntent(ev) {
   _glhPrune();
   _gdSave();
   if (!ev.away) { const result = _glhResOf(ev, e); _glhSend('all', 'res', result); _gllToolFeedback(result, false); }
-  if ((ev.t === 'land' || ev.t === 'build' || ev.t === 'gate') && typeof gardenToast === 'function') gardenToast(_glhDiaryWhat(e, 1) + (e.wait ? '. There was no room for it nearby: set it out from the land office.' : '!'), { icon: ev.t === 'land' ? 'trees' : ev.t === 'gate' ? 'key' : 'hammer', ...(e.wait ? { timeout: 12000 } : {}) });   // (full co-op: a friend's gift to the garden, said out loud)
+  if ((ev.t === 'land' || ev.t === 'build' || ev.t === 'gate' || ev.t === 'solve') && typeof gardenToast === 'function') gardenToast(_glhDiaryWhat(e, 1) + (e.wait ? (ev.t === 'solve' ? '. It is in Land, under discovered places, for you to set out.' : '. There was no room for it nearby: set it out from the land office.') : '!'), { icon: ev.t === 'land' ? 'trees' : ev.t === 'gate' ? 'key' : 'hammer', ...(e.wait ? { timeout: 12000 } : {}) });   // (full co-op: a friend's gift to the garden, said out loud)
   const A = _gll.actors.get(ev.w);
   if (A) _gllPose(A, _GL_POSE[ev.t] || 'pick', 760);
   if (ev.x != null && _GL_EMOJI[ev.t]) _gllFloat(_gw.svg, ev.x, ev.y, _GL_EMOJI[ev.t], A ? A.n : '');
@@ -489,7 +522,7 @@ function _glhApply(ev, key) {
       delete g.decor[d.uid];
       return put(mark, { u: d.uid, noUndo: !!rec.own, ...(gi ? { gi } : {}) });
     }
-    case 'land': case 'build': case 'gate': return _glhLand(ev, put, m);
+    case 'land': case 'build': case 'gate': case 'solve': return _glhLand(ev, put, m);
     case 'give': {
       if (!mine) return 'not-yours';
       const d = hit.d, lk = 'gl.d.' + ev.i, gi = rec.gi, mark = _gdMark([['decor', d.uid], ['led', lk]]);
@@ -529,6 +562,7 @@ function _glhApply(ev, key) {
  *  follow by themselves). A thing that stands is set out near where they stand. No Undo: their coins are spent. Your own coins and level are never touched. */
 function _glhLand(ev, put, m) {
   if (ev.t === 'gate') return _glhGate(ev, put, m);
+  if (ev.t === 'solve') return _glhSolve(ev, put, m);
   const feat = ev.t === 'build', id = String(ev.p || '');
   if (feat) {
     const info = typeof gardenLandFeatureInfo === 'function' ? gardenLandFeatureInfo(id, m) : null;
@@ -564,6 +598,19 @@ function _glhGate(ev, put, m) {
   if (typeof _glFx === 'function') { try { _glFx(gate.door.x + 0.5, gate.door.y + 0.5, 'sparkle', { lift: 20 }); _glSound('twinkle'); } catch (e) { /* only a flourish */ } }
   _gdEmit('landshow', {});
   return put(mark, { noUndo: true, land: gate.id, gate: 1 });
+}
+/** A friend solved one of your trail puzzles (full co-op, 2.75): it is solved in your garden, as if you had, and the place it leads to is set out next to them when there is room. */
+function _glhSolve(ev, put, m) {
+  const id = String(ev.p || ''); if (typeof gardenExploreIds !== 'function' || !gardenExploreIds().includes(id)) return 'gone';
+  if (typeof gpGet === 'function' && gpGet('explore.' + id)) return 'have';
+  const g = _gdG(), lk = 'gl.s.' + ev.i, mark = _gdMark([['led', lk]]);
+  if (typeof gpSet === 'function') gpSet('explore.' + id, m.today);
+  g.led[lk] = { d: m.today, k: 'gl', i: {}, n: 0, by: ev.f };
+  let out = false;
+  if (typeof gardenSightSetNearby === 'function' && typeof gardenSightIsSetOut === 'function' && !gardenSightIsSetOut(id)) { try { out = !!(gardenSightSetNearby(id).ok && gardenSightIsSetOut(id)); } catch (e) { out = false; } }
+  _gdEmit('landshow', {});
+  setTimeout(() => { try { _glhSnapAll(); } catch (e) { /* the next world check */ } }, 60);
+  return put(mark, { noUndo: true, land: id, solve: 1, ...(out ? {} : { wait: 1 }) });
 }
 function _glhPrune() {
   const g = _gdG(), ks = Object.keys(g.gl);
@@ -793,6 +840,7 @@ function _glhDiaryWhat(e, n) {
     case 'pick': return `${who} picked up a parcel`;
     case 'land': { const r = typeof gardenLandRow === 'function' ? gardenLandRow(e.land || e.p) : null; return `${who} bought ${r ? r.name : 'a piece of land'} for your garden`; }
     case 'build': { const r = typeof gardenLandFeature === 'function' ? gardenLandFeature(e.land || e.p) : null; return `${who} built ${r ? _gscA(r.name.toLowerCase().replace(/^the /, '')) : 'something'} in your garden`; }
+    case 'solve': { const sg = typeof gardenLandSight === 'function' ? gardenLandSight(e.land || e.p) : null; return `${who} solved the trail puzzle to ${sg ? String(sg.name).replace(/^The /, 'the ') : 'a hidden place'} in your garden`; }
     case 'gate': { const gt = typeof gardenGateOf === 'function' ? gardenGateOf(e.land || e.p) : null, z = gt && gardenZone(gt.n); return `${who} opened the way into ${z ? String(z.name).replace(/^The /, 'the ') : 'a new part'} of your garden`; }
     case 'trade': return e.f2 ? `${who} and ${_glhByName(e.f2)} traded` : `${who} traded with you`;
     default: return `${who} was here`;

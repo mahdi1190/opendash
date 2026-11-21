@@ -135,7 +135,7 @@ function gardenVisitModel() {
   gardenFeatureSet(s.fp || []);
   gardenSightSet(s.rp || []);
   gardenWorksSet(s.wk || [], s);
-  if (typeof gardenDesignShow === 'function') gardenDesignShow(s.dz || null);   // their design decides where things stand and where you can walk. It stays in memory: nothing of it reaches your save
+  if (typeof gardenDesignShow === 'function' && !(typeof gardenDesignOn === 'function' && gardenDesignOn())) gardenDesignShow(s.dz || null);   // (while you design here together, your draft is on screen)   // their design decides where things stand and where you can walk. It stays in memory: nothing of it reaches your save
   if (typeof gardenBuildLooksSet === 'function') gardenBuildLooksSet(s.bk);   // how they have painted their buildings
   const rows = _gdvRows(s), by = _gdvBy;
   const plants = [], decor = [], cats = {};

@@ -1026,6 +1026,7 @@ function gardenSnapshotClean(raw) {
   if (typeof raw.lh === 'string' && /^[0-9a-f]{24}$/.test(raw.lh)) out.lh = raw.lh;
   { const pa = Number(raw.pa); if (Number.isInteger(pa) && pa > 0 && pa < 1e14) out.pa = pa; }   // their pet is away until then: 94-garden-play-1pet.js
   { const wx = int(raw.wx, 1, 2); if (wx) out.wx = wx; }
+  if (Array.isArray(raw.ex)) { const ex = [...new Set(raw.ex.filter(k => typeof k === 'string' && /^ld-[a-z0-9-]{1,24}$/.test(k)))].slice(0, 16); if (ex.length) out.ex = ex; }   // 2.75: the trail puzzles solved in this garden (gardenExploreKnown on a visit); an older app drops it
   if (Array.isArray(raw.gk)) { const gk = [...new Set(raw.gk.filter(k => typeof k === 'string' && /^[a-z][a-z0-9-]{0,23}$/.test(k)))].slice(0, 12); if (gk.length) out.gk = gk; }   // 2.74.1: the gates' finds the owner holds: short ids only (the page reads them against GARDEN_GATE_ITEMS, gardenGateHere); an older app drops it   // 2.28: their rain (1) or snow (2) now
   { const ac = raw.ac; if (Array.isArray(ac) && ac.length === 2 && Number.isSafeInteger(ac[0]) && ac[0] >= 0 && ac[0] <= 8.64e15 && (ac[1] === 0 || ac[1] === 1)) out.ac = [ac[0], ac[1]]; }   // optional live ambient phase and canonical running state
   { const tz = int(raw.tz, -840, 840), sr = int(raw.sr, 0, 1439), ss = int(raw.ss, 0, 1439); if (tz !== null) { out.tz = tz; if (sr !== null && ss !== null) { out.sr = sr; out.ss = ss; } } }   // 2.28: their time zone, so a visit has their light

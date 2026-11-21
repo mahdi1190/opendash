@@ -130,7 +130,7 @@ function _gdzFitLine() {
 }
 function gardenDesignPanel() {
   const T = _gdzT(), box = _gdp.root && _gdp.root.querySelector('.gd-stagebox'); if (!box || !T.on) return;
-  const m = gardenModel(), c = gardenDesignCtx(m), rw = _gdzRw(m);
+  const m = _gdzM(), c = gardenDesignCtx(m), rw = _gdzRw(m);
   let el = box.querySelector(':scope > .gdz');
   const scroll = el && el.querySelector('.gdz-opts') ? el.querySelector('.gdz-opts').scrollTop : 0;
   if (el) el.remove();
@@ -140,7 +140,7 @@ function gardenDesignPanel() {
   top.appendChild(_gdzEl('h2', 'gdz-title', 'Garden designer'));
   top.appendChild(_gdzBtn('', 'Undo', 'undo-2', gardenDesignUndo, { disabled: !T.hist.length }));
   top.appendChild(_gdzBtn('', 'Cancel', 'x', gardenDesignCancel));
-  top.appendChild(_gdzBtn('gdz-go', 'Keep my changes', 'check', gardenDesignKeep));
+  top.appendChild(_gdzBtn('gdz-go', T.visit ? 'Keep for both of us' : 'Keep my changes', 'check', gardenDesignKeep));
   el.appendChild(top);
   const say = _gdzEl('p', 'gdz-say' + (T.bad ? ' is-bad' : ''), T.say); say.setAttribute('role', 'status'); el.appendChild(say);
   const fit = _gdzFitLine(); if (fit) el.appendChild(_gdzEl('p', 'gdz-fit', fit));
@@ -154,7 +154,7 @@ function gardenDesignPanel() {
   ({ path: _gdzPanelPath, ground: _gdzPanelGround, move: _gdzPanelMove, make: _gdzPanelMake, layouts: _gdzPanelLayouts }[T.tool] || _gdzPanelPath)(opts, m, c, rw);
   bottom.appendChild(opts);
   const tools = _gdzEl('div', 'gdz-tools');
-  for (const [k, label, ic] of _GDZ_TOOLS) tools.appendChild(_gdzBtn('gdz-tool', label, ic, () => { if (T.lifted && !T.lifted.fresh) _gdzDropCancel(); T.tool = k; T.rubbing = false; gardenDesignPanel(); _gdzSay({ path: 'Press on a path, a plaza or a door, and draw to another one.', ground: 'Paint a whole soft patch on your own land. Each land has its own colours.', move: 'Tap what you want to move.', make: 'Make something, then put it in the garden.', layouts: 'Keep a few designs and swap between them.' }[k]); }, { pressed: T.tool === k }));
+  for (const [k, label, ic] of _GDZ_TOOLS.filter(t => !(T.visit && t[0] === 'layouts'))) tools.appendChild(_gdzBtn('gdz-tool', label, ic, () => { if (T.lifted && !T.lifted.fresh) _gdzDropCancel(); T.tool = k; T.rubbing = false; gardenDesignPanel(); _gdzSay({ path: 'Press on a path, a plaza or a door, and draw to another one.', ground: 'Paint a whole soft patch on your own land. Each land has its own colours.', move: 'Tap what you want to move.', make: 'Make something, then put it in the garden.', layouts: 'Keep a few designs and swap between them.' }[k]); }, { pressed: T.tool === k }));
   bottom.appendChild(tools);
   el.appendChild(bottom);
   box.appendChild(el);
