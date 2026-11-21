@@ -145,6 +145,7 @@ function _gllStationaryAt(A, x, y, source) {
   const W = GARDEN_WORLD; if (!A || !Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x >= W.cols || y >= W.rows) return;
   const previous = A.stationaryPosition;
   if (source === 'cell' && previous && Math.floor(previous.x) === Math.floor(x) && Math.floor(previous.y) === Math.floor(y)) return;
+  if (source === 'cell' && !A.moving && A.tx == null && Number.isFinite(A.x) && Math.floor(A.x) === Math.floor(x) && Math.floor(A.y) === Math.floor(y)) { A.stationaryPosition = { x: A.x, y: A.y, source }; return; }   // (already in that cell, where their own move put them: never moved to its middle, on to what stands there)
   A.stationaryPosition = { x, y, source };
   // There is no visible walk to preserve when both ends of an already-complete pose are culled.
   if (typeof _gwInView === 'function' && !_gwInView(A.x, A.y, 1.5) && !_gwInView(x, y, 1.5)) { A.x = x; A.y = y; A.tx = null; A.ty = null; A.way = null; A.pace = 0; A.moving = false; A.key = ''; }
@@ -228,6 +229,7 @@ function _gllEmote(A, id, instant) {
 function _gllEmoteStop(A) { if (A.actUndo) { const u = A.actUndo; A.actUndo = null; try { u(); } catch (e) { /* gone */ } } clearTimeout(A.animT); for (const a of A.anims || []) { try { a.cancel(); } catch (e) { /* gone */ } } A.anims = null; A.hold = ''; }
 /** A move with a place (a seat): walk there first if they are not there yet, rather than jump. */
 function _gllEmoteAt(A, ev) {
+  A.emAt = Number.isFinite(ev.x) && Number.isFinite(ev.y) ? { e: String(ev.e), x: ev.x, y: ev.y } : null;   // (where their own screen put them for it: a held move keeps them exactly there, 94-garden-zz-7act-3music.js)
   if (Number.isFinite(ev.x) && Math.hypot(ev.x - A.x, ev.y - A.y) > 0.05) { _gllWalkVia(A, null, ev.x, ev.y); A.then = () => _gllEmote(A, ev.e); return; }
   _gllEmote(A, ev.e);
 }

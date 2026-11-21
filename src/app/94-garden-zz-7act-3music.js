@@ -15,9 +15,13 @@
                    the host alone) and the host answers (tune pong: its clock, seconds and ms into the tune); the answer that came back
                    quickest of the last few sets the visitor's offset (half the round trip added). Every screen then plays step
                    floor((now + offset) / step) of the same tune, so the parts meet whatever screen they are heard on.
-     the wire      fx tune on / off: { i: the thing's id, n: its place }, sent when you start and stop, and every GMU.beatMs while you play (a
-                   friend who comes in late hears you). Nothing per note. A player not heard from for GMU.staleMs, or whose figure is seen
-                   to walk off, has stopped.
+     the wire      fx tune on / off: { i: the thing's id, n: its place }, sent when you start and stop, every GMU.beatMs while you play,
+                   and again a moment after anyone new comes into the garden (they hear you at once, not at the next beat). Nothing per
+                   note. A player not heard from for GMU.staleMs, or whose figure is seen to walk off, has stopped. Where a friend stands
+                   to play is where their own move said (gl:em's x, y), or failing that the place worked out from the thing's own footing
+                   the same way their screen did (_gmStand), so the figure is at the instrument on every screen.
+     leaving       a garden you stop looking at (Home, Friends, another page) puts your instrument down and goes quiet: the tune is the
+                   garden's, never heard over the dashboard.
      the sound     made on the spot with Web Audio on the garden's own sound context (94-garden-0sound.js): the Volume and the Sounds
                    switch reach it, a little of the music echo for space. Heard at full within GMU.ear cells of the pitch, fading to
                    nothing at GMU.far, panned to where the pitch is. Scheduled 0.35 s ahead on a 100 ms timer that runs only while
@@ -28,7 +32,7 @@
    gardenMusicState()                              for checking: { me, them, off, synced, roles, n, step, notes }
    gardenMusicRender(voices, secs)                 the tune drawn into an OfflineAudioContext: for checking levels with no speakers
    ============================================================ */
-const GMU = Object.freeze({ bpm: 96, steps: 8, bars: 16, ear: 7, far: 20, ahead: 0.35, tickMs: 100, beatMs: 9000, staleMs: 26000, pingMs: 8000, walkOff: 1.2 });
+const GMU = Object.freeze({ bpm: 96, steps: 8, bars: 16, ear: 7, far: 20, ahead: 0.35, tickMs: 100, beatMs: 5000, staleMs: 26000, pingMs: 8000, pingQuickMs: 350, quickRtt: 220, awayMs: 400, newcomerMs: [900, 3000], walkOff: 1.2 });
 const GM_STEP = 60000 / GMU.bpm / 2, GM_LOOP = GM_STEP * GMU.steps * GMU.bars, GM_NSTEP = GMU.steps * GMU.bars, GM_SYNC = GM_LOOP * 2;   // (the clock is told modulo two times round, so every screen is on the same time round too: the descant is on the second)
 // the chord of each bar, and what is in it (MIDI notes): roots low for the bass, the triad round middle D
 const GM_BARS = Object.freeze(['D', 'G', 'D', 'A', 'D', 'G', 'A', 'D', 'Bm', 'G', 'D', 'A', 'Bm', 'G', 'A', 'D']);
@@ -68,6 +72,7 @@ function gmChordAbove(m, bar) { const tri = GM_CHORDS[GM_BARS[bar]].tri; let bes
 
 /* ---------- the sound ---------- */
 function _gmBus() {
+  if (typeof _gsShowing === 'function' && !_gsShowing()) return null;
   const B = typeof gardenSoundBus === 'function' ? gardenSoundBus({ always: true }) : null; if (!B) return null;
   if (_gmu.ac !== B.ac || !_gmu.bus) {
     const c = B.ac, g = c.createGain(), pan = c.createStereoPanner ? c.createStereoPanner() : null, send = c.createGain();
@@ -152,6 +157,19 @@ function gmStepNotes(voice, role, step, n, play) {
 
 /* ---------- the band nearest you, now ---------- */
 function _gmThing(id) { try { return (typeof gardenAffordThings === 'function' ? gardenAffordThings() : []).find(t => t.id === id) || null; } catch (e) { return null; } }
+/** Where a player stands at a place, worked out the way gartActRun and _gaStart put your own feet there (the row's stand; if that is
+ *  inside what stops the feet, the nearest free point; then a short nudge off anything solid), so every screen agrees. */
+function _gmStand(row) {
+  if (!row || !row.stand) return null;
+  let x = row.stand.x, y = row.stand.y;
+  try {
+    if (typeof _gwFree === 'function' && typeof _gwNearestFreePt === 'function') {
+      if (!_gwFree(x, y)) { const f = _gwNearestFreePt(x, y, 2.6); if (f) { x = f.x; y = f.y; } }
+      const f = _gwNearestFreePt(x, y, 0.4); if (f && Math.hypot(f.x - x, f.y - y) < 0.4) { x = f.x; y = f.y; }
+    }
+  } catch (e) { /* the row's own */ }
+  return { x, y };
+}
 function _gmSpotRow(id, i) { try { const t = _gmThing(id); if (!t) return null; const P = gmPlaces(t.kind).find(p => p.i === i); if (!P) return null; return (typeof _ga !== 'undefined' && _ga.list || _gaStaticRows()).find(r => r.src === id && r.act === P.act) || _gaStaticRows().find(r => r.src === id && r.act === P.act) || null; } catch (e) { return null; } }
 /** Everyone playing at one thing: [{ who ('me' | w), i, voice }] by the thing's id. */
 function _gmBands() {
@@ -203,7 +221,8 @@ function _gmPong(ev) {
   const off = ((host + rtt / 2 - t1) % GM_SYNC + GM_SYNC) % GM_SYNC;
   _gmu.samples.push({ rtt, off, at: t1 }); _gmu.samples = _gmu.samples.filter(s => t1 - s.at < 40000).slice(-8);
   const best = _gmu.samples.reduce((a, s) => (!a || s.rtt < a.rtt ? s : a), null);
-  const was = _gmu.off; _gmu.off = best.off; _gmu.synced = true;
+  const was = _gmu.off; _gmu.off = best.off;
+  _gmu.synced = best.rtt <= GMU.quickRtt || _gmu.samples.length >= 4;   // (one slow answer is not trusted: half its round trip is a guess. Until then the visitor asks again every GMU.pingQuickMs)
   const jump = Math.abs(((_gmu.off - was) % GM_SYNC + GM_SYNC * 1.5) % GM_SYNC - GM_SYNC / 2);
   if (jump > 25) _gmu.next = -1;   // (a new clock: start scheduling again from now, so nothing plays twice)
 }
@@ -214,12 +233,16 @@ function gardenMusicStart(cur) {
     const row = cur && cur.row, sp = cur && cur.spot; if (!row || !row.music || !sp || !sp.src) return;
     const t = _gmThing(sp.src), P = t && gmPlaces(t.kind).find(p => p.act === cur.id); if (!P) return;
     _gmu.me = { id: sp.src, i: P.i, voice: row.music };
+    _gmu.seen = new Set(typeof _gll !== 'undefined' && _gll.actors ? _gll.actors.keys() : []); _gmu.seenOnce = true;   // (those here now hear this first 'on'; anyone after them is told on arrival)
     _gmTell('on');
     clearInterval(_gmu.beatT); _gmu.beatT = setInterval(() => { if (_gmu.me) _gmTell('on'); else clearInterval(_gmu.beatT); }, GMU.beatMs);
     if (_gmVisitor()) { _gmPing(); setTimeout(_gmPing, 450); setTimeout(_gmPing, 1000); }
     _gmWake(); _gmHeldSync();
-    // the app's Sounds switch is off by default: say once how to hear the band (plain words, what to press)
-    _gmSoundNote('You are playing, but the garden’s sound is off.');
+    // the app's Sounds switch is off by default: say once how to hear the band (plain words, what to press). The first time you play, the
+    // journal's line (_gaFirst, just after this) would take the garden's one message place and hide it: the two are said as one
+    let first = '';
+    try { const g = _gdG(); if (row.first && !g.disc['act.' + cur.id] && !_gmu.told && typeof _gsPrefs === 'function' && !_gsPrefs().on) { g.disc['act.' + cur.id] = _gdToday(); _gdSave(); first = 'New in your journal: ' + row.first + ' '; } } catch (e) { first = ''; }
+    _gmSoundNote(first + (first ? 'You can’t hear it yet: the garden’s sound is off.' : 'You are playing, but the garden’s sound is off.'));
   } catch (e) { console.error('[garden music]', e); }
 }
 /** The app's Sound switch is off by default: say so once, with the switch on the note (plain words, one click). */
@@ -259,11 +282,12 @@ function gardenMusicHeard(A, ev) {
       if (_gmu.me && _gmu.me.id === id && _gmu.me.i === i) {
         const mine = _gmVisitor() ? (typeof _glv !== 'undefined' && Number.isInteger(_glv.w) ? _glv.w : 99) : 0;
         if (!(w < mine)) return;
-        try { gartActStop(); gardenToast(((A && A.n) || 'A friend') + ' took ' + ((GARDEN_KINDS[t.kind].acts.find(a => a.act === P.act) || {}).name || 'that place') + ' just before you.', { icon: 'music', timeout: 5000 }); } catch (e) { /* put down */ }
+        try { gartActStop(); _gmStepAside(id, i); gardenToast(((A && A.n) || 'A friend') + ' took ' + ((GARDEN_KINDS[t.kind].acts.find(a => a.act === P.act) || {}).name || 'that place') + ' just before you.', { icon: 'music', timeout: 5000 }); } catch (e) { /* put down */ }
       }
       for (const [w2, r] of _gmu.them) if (w2 !== w && r.id === id && r.i === i) { if (w2 < w && performance.now() - r.at < GMU.staleMs) return; _gmu.them.delete(w2); }   // (the same rule on a third screen)
-      const row = _gmSpotRow(id, i), was = _gmu.them.get(w);
-      _gmu.them.set(w, { id, i, voice: P.voice, stand: row && row.stand ? { x: row.stand.x, y: row.stand.y } : null, at: performance.now(), since: was && was.id === id && was.i === i ? was.since : performance.now() });
+      const row = _gmSpotRow(id, i), was = _gmu.them.get(w), told = A && A.emAt && A.emAt.e === GA_WIRE + P.act ? A.emAt : null, st = _gmStand(row);
+      const stand = told && (!st || Math.hypot(told.x - st.x, told.y - st.y) < 1.5) ? { x: told.x, y: told.y } : st;   // (their own word for where they stand, else the same working-out as theirs)
+      _gmu.them.set(w, { id, i, voice: P.voice, stand, at: performance.now(), since: was && was.id === id && was.i === i ? was.since : performance.now() });
       if (_gmVisitor() && !_gmu.synced) _gmPing();
       if (!was) { const h = _gmHeard(); if (h && h.id === id) _gmSoundNote((A && A.n ? A.n : 'A friend') + ' is playing music here, but the garden’s sound is off.'); }
       _gmWake(); _gmHeldSync();
@@ -271,12 +295,25 @@ function gardenMusicHeard(A, ev) {
     }
   } catch (e) { console.error('[garden music]', e); }
 }
+/** You lost a place to a friend who took it at the same moment: step off their spot (away from the thing, on to open ground), so the
+ *  two figures are not one on top of the other on any screen. */
+function _gmStepAside(id, i) {
+  try {
+    const t = _gmThing(id), st = _gmStand(_gmSpotRow(id, i)) || { x: _gw.px, y: _gw.py };
+    let dx = st.x - (t ? t.x : st.x), dy = st.y - (t ? t.y : st.y - 1); const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
+    const want = { x: st.x + dx * 1.1, y: st.y + dy * 1.1 }, f = typeof _gwNearestFreePt === 'function' ? _gwNearestFreePt(want.x, want.y, 1.6) : want;
+    if (f && typeof gardenWalkToPoint === 'function') gardenWalkToPoint({ x: f.x, y: f.y }, null, { radius: 0.2 });
+  } catch (e) { /* stays */ }
+}
 /** Their figure here shows them playing that instrument (after their move's own message, or a check that only knew they were "sitting"
  *  put a plain sit on it): from where they stand, it is put right; standing elsewhere, it walks there first. */
 function _gmHeal(w) {
   try {
     const r = _gmu.them.get(w), A = r && typeof _gll !== 'undefined' && _gll.actors ? _gll.actors.get(w) : null; if (!A || A.moving || A.then) return;
-    const t = _gmThing(r.id), P = t && gmPlaces(t.kind).find(p => p.i === r.i); if (!P || A.actHold === P.act) return;
+    const t = _gmThing(r.id), P = t && gmPlaces(t.kind).find(p => p.i === r.i); if (!P) return;
+    if (A.emAt && A.emAt.e === GA_WIRE + P.act && Number.isFinite(A.emAt.x) && (!r.stand || Math.hypot(A.emAt.x - r.stand.x, A.emAt.y - r.stand.y) < 1.5)) r.stand = { x: A.emAt.x, y: A.emAt.y };   // (their own move's word came after the tune's)
+    const off = r.stand && Number.isFinite(A.x) ? Math.hypot(A.x - r.stand.x, A.y - r.stand.y) : 0;
+    if (A.actHold === P.act && off <= 0.08) return;   // (playing it, where they stand on their own screen)
     if (r.stand && typeof _gllEmoteAt === 'function') _gllEmoteAt(A, { e: GA_WIRE + P.act, x: r.stand.x, y: r.stand.y }); else if (typeof gartActRemote === 'function') gartActRemote(A, P.act);
   } catch (e) { /* the next one */ }
 }
@@ -294,11 +331,31 @@ function _gmTick() {
   try {
     // a new garden or a new visit: friends heard in the last one are not here, and a visitor's clock is the new host's to learn
     const sess = typeof _gll === 'undefined' ? '' : _gll.role + ':' + (_gll.role === 'visit' && typeof _glv !== 'undefined' ? _glv.fid : '');
-    if (_gmu.sess != null && sess !== _gmu.sess) { _gmu.them.clear(); _gmu.synced = false; _gmu.samples = []; _gmu.off = 0; _gmu.next = -1; _gmHeldSync(); }
+    if (_gmu.sess != null && sess !== _gmu.sess) { _gmu.seen = null; _gmu.seenOnce = false; _gmu.them.clear(); _gmu.synced = false; _gmu.samples = []; _gmu.off = 0; _gmu.next = -1; _gmHeldSync(); }
     _gmu.sess = sess;
+    // a garden you are no longer looking at (Home, Friends, another page): your instrument is put down and nothing more is heard. The
+    // sound's own loop sleeps then; this timer must not wake the sound card again (gardenSoundBus resumes it)
+    const now0 = performance.now(), showing = typeof _gsShowing !== 'function' || _gsShowing();
+    if (!showing) {
+      if (!_gmu.awayAt) _gmu.awayAt = now0;
+      _gmQuiet();
+      if (now0 - _gmu.awayAt > GMU.awayMs) {
+        if (_gmu.me) { if (typeof _ga !== 'undefined' && _ga.cur && _ga.cur.row && _ga.cur.row.music) gartActStop(); if (_gmu.me) gardenMusicStop(); }
+        _gmu.them.clear(); _gmu.next = -1; _gmu.band = null; clearInterval(_gmu.iv); _gmu.iv = 0; _gmu.awayAt = 0; _gmHeldSync();
+      }
+      return;
+    }
+    _gmu.awayAt = 0;
+    // someone new in the garden while you play: tell them at once (twice, in case their garden was still opening), not at the next beat
+    if (_gmu.me && typeof _gll !== 'undefined' && _gll.actors) {
+      const seen = _gmu.seen || (_gmu.seen = new Set()), keys = [..._gll.actors.keys()];
+      for (const w of keys) if (!seen.has(w)) { seen.add(w); if (_gmu.seenOnce) for (const ms of GMU.newcomerMs) setTimeout(() => { if (_gmu.me) _gmTell('on'); }, ms); }
+      for (const w of [...seen]) if (!_gll.actors.has(w)) seen.delete(w);
+      _gmu.seenOnce = true;
+    }
     const band = _gmHeard();
     if (!_gmu.me && !_gmu.them.size) { clearInterval(_gmu.iv); _gmu.iv = 0; _gmu.next = -1; _gmQuiet(); _gmHeldSync(); return; }
-    if (_gmVisitor() && _gmLive() && (_gmu.me || _gmu.them.size) && performance.now() - _gmu.pingAt > (_gmu.synced ? GMU.pingMs : 1500)) _gmPing();
+    if (_gmVisitor() && _gmLive() && (_gmu.me || _gmu.them.size) && performance.now() - _gmu.pingAt > (_gmu.synced ? GMU.pingMs : GMU.pingQuickMs)) _gmPing();
     if (performance.now() % 1000 < GMU.tickMs) _gmHeldSync();
     if (performance.now() % 2000 < GMU.tickMs) for (const w of _gmu.them.keys()) _gmHeal(w);   // (their figure shows them playing, every two seconds at most)
     if (!band) { _gmu.next = -1; _gmQuiet(); return; }
