@@ -155,7 +155,7 @@ function _gllWalkTo(A, x, y, then) {
   // (2.74.1) the last steps of their walk to the spot they are using (a seat's stand point is a stride from its seat): they are there,
   // doing it. Their whole state (gl:dg) says when they stop; a walk away ends it there. Within 0.35 a sit came ~15 s late on the
   // friend's screen: the stand point's walk message cancelled the move the figure was walking over to do.
-  if ((A.actId || A.actWant) && Number.isFinite(A.actX) && Math.hypot(x - A.actX, y - A.actY) < 1.6 && !then) return;
+  if ((A.actId || A.actWant) && Number.isFinite(A.actX) && Math.hypot(x - A.actX, y - A.actY) < 1.6 && (!then || then === A.then)) return;   // (a walk message carries on the walk they had: _gllWalkVia passes their own then on)
   A.stationaryPosition = null; if (A.actId || A.actWant) { A.actId = ''; A.actWant = ''; _gllEmoteStop(A); } if (typeof _gllPhotoClear === 'function') _gllPhotoClear(A); A.tx = x; A.ty = y; A.gx = x; A.gy = y; A.way = null; A.then = then || null; if (A.sit) { A.sit = false; _gllEmoteStop(A); } }
 /** The same with the turns on the way: [[x, y], ...], then there. What they were going to do on arrival still happens. */
 function _gllWalkVia(A, turns, x, y) { const then = A.then; _gllWalkTo(A, x, y, then); const way = (turns || []).map(p => [p[0], p[1]]).concat([[x, y]]); const n = way.shift(); A.tx = n[0]; A.ty = n[1]; A.way = way; }
