@@ -94,7 +94,7 @@ const GARDEN_KINDS = Object.freeze({
   stones: { name: 'the stones', arts: ['stones'], words: ['stones', 'standing'], pet: 'wall' },
   lighthouse: { name: 'the lighthouse', arts: ['lighthouse'], decor: ['dc-lighthouse'], words: ['lighthouse'], pet: 'lighthouse', dw: 3.82,
     // the gallery round the lamp room, all the way round, up a long iron ladder on the tower's face (its painter draws the deck and rail)
-    levels: [{ id: 'gallery', name: 'the gallery', at: [0, 0], h: 5, shape: { ring: [0.49, 0.235, 0.4, 0.12] }, core: [0.42, 0], rail: { ring: [0.664, 0.265], h: 0.36, post: 0.106, post0: -0.652 }, ways: [{ by: 'ladder', art: 'ladder', name: 'the lighthouse ladder', foot: [0.34, 0.1], top: [0.34, 0.16] }] }] },
+    levels: [{ id: 'gallery', name: 'the gallery', at: [0, 0], h: 5, shape: { ring: [0.45, 0.235, 0.37, 0.12] }, core: [0.42, 0], rail: { ring: [0.664, 0.265], h: 0.36, post: 0.106, post0: -0.652 }, ways: [{ by: 'ladder', art: 'ladder', name: 'the lighthouse ladder', foot: [0.34, 0.1], top: [0.34, 0.16] }] }] },
   treehouse: { name: 'the treehouse', arts: ['treehouse'], words: ['treehouse'], pet: 'treehouse',
     // the deck of planks round the trunk, up the painter's own rope ladder: along the rail, in front of the trunk, to the house's door
     levels: [{ id: 'deck', name: 'the treehouse deck', at: [-0.29, 0], h: 2.59, shape: { rect: [-1.3, -0.14, 1.26, 0.12] }, minus: [{ rect: [0.1, -0.3, 1.4, -0.03] }, { ell: [0, -0.08, 0.38, 0.09] }], rail: { line: [-1.45, 1.4, 0.167], h: 0.434, post: 0.2896, post0: -1.4, gap: [-1.27, -0.8], color: '#9a7a54', postW: 2.6, railW: 2.6, mid: false }, ways: [{ by: 'ladder', name: 'the treehouse ladder', foot: [-1.34, 0.12], top: [-1.05, 0.06] }] }] },
@@ -102,9 +102,9 @@ const GARDEN_KINDS = Object.freeze({
   // east half is tumbled, a rowan in the gap). front: the battlements, drawn again over your legs as you pass behind them (its painter's
   // own crest, in H from the drawn foot)
   tower: { name: 'the old tower', arts: ['tower'], words: ['watchtower'], pet: 'wall',
-    levels: [{ id: 'top', name: 'the tower top', at: [-0.75, -0.1], h: 6.49, shape: { rect: [-0.64, -0.6, 0.78, 0.03] },
+    levels: [{ id: 'top', name: 'the tower top', at: [-0.75, -0.1], h: 6.49, shape: { rect: [-0.56, -0.47, 0.4, 0.02] }, minus: [{ rect: [0.1, -0.22, 0.5, 0.1] }],   // (the feet's: half a body in from the west wall's face and the back wall, short of where the crest tumbles at 0.6; kept back from the low broken crest to the east)
       front: { poly: [[-1.545, -6.467], [-1.545, -7.0], [-1.159, -7.0], [-1.159, -6.71], [-0.869, -6.71], [-0.869, -7.046], [-0.483, -7.046], [-0.434, -6.66], [-0.145, -6.515], [0.05, -6.42], [0.05, -6.37], [-1.545, -6.37]], fill: '#a39d8b', line: '#cbc5b1', lineTo: 9 },
-      ways: [{ by: 'stair', inside: true, name: 'the tower stair', foot: [0, 0.4], top: [0.42, 0.0], door: { w: 0.63, h: 1.25, up: 0.385 } }] }] },
+      ways: [{ by: 'stair', inside: true, name: 'the tower stair', foot: [0, 0.4], top: [0.25, -0.3], door: { w: 0.63, h: 1.25, up: 0.385 } }] }] },
   hollow: { name: 'the hollow tree', arts: ['hollow'], words: ['hollow'], pet: 'tree' },   // (the pets treat it as a tree: the treehouse's peek needs a window it has not got)
   barn: { name: 'the barn', arts: ['barn'], words: ['barn'], pet: 'hay',
     // the hay loft: a landing of boards out from the loft door up its side, a rail along its front, the ladder up through the rail's gap

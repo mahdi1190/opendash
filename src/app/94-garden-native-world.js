@@ -1480,6 +1480,13 @@ window.GardenNativeWorld = (function () {
         for (const record of fadingProps) if (record.behind && record.root && Number.isFinite(record.root.depth)) top = Math.max(top, record.root.depth + .002);
         for (const crown of canopyOccluders) if (crown.faded && Number.isFinite(crown.record.depth)) top = Math.max(top, crown.record.depth + .002);
         for (const im of externalCanopies) if (Number.isFinite(im.depth)) top = Math.max(top, im.depth + .002);
+        // (height round 2) but never over a thing that stands between you and that crown and has not faded (a treehouse with its ladder
+        // and deck, a wall): lifted over it you seemed to stand on its ladder, half way up, in front of its deck. The crown stays faded over you.
+        if (top !== y + .001) for (const record of fadingProps) {
+          const d = record.root && record.root.depth, b = record.bounds;
+          if (record.behind || record.editorLifted || !Number.isFinite(d) || d <= y + .001 || d >= top || !b || !record.root.visible) continue;
+          if (x + 8 >= b.x && x - 8 <= b.x + b.width && y >= b.y && y - (playerOcclusionHeight || 50) <= b.y + b.height) { top = y + .001; break; }
+        }
         if (top !== y + .001) playerNode.target.setDepth(top);
       }
     }
