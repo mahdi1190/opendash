@@ -314,14 +314,18 @@ function _vfrAwayFromRiver(x, y) {
 }
 function _vfrBackToWater(V, e) {
   if (V.id !== 'angler' || !e || e.act !== 'fish' || !e.spot || (typeof wdTaleFlag === 'function' && wdTaleFlag('mill.end'))) return null;
-  if (e._away === undefined) e._away = _vfrAwayFromRiver(e.spot.x, e.spot.y);
+  if (e._away === undefined) { const f = _vfrAwayFromRiver(e.spot.x, e.spot.y), w = _vfrWetSide(e.spot.x, e.spot.y); e._away = f && (!w || w === f || _vfrWetAt(e.spot.x + f * 1.3, e.spot.y)) ? f : null; }   // (only where that way is still water: never his line on the grass)
   return e._away;
 }
+function _vfrWetAt(x, y) { try { const t = typeof gardenTerrainAt === 'function' ? gardenTerrainAt(x, y) : ''; return t === 'water' || t === 'deep'; } catch (e) { return false; } }
+/** Which side of a point the water is on (-1 left, 1 right, 0 neither or both): a bank's stand faces its water. */
+function _vfrWetSide(x, y) { const l = _vfrWetAt(x - 1.3, y) || _vfrWetAt(x - 1.3, y - 0.5), r = _vfrWetAt(x + 1.3, y) || _vfrWetAt(x + 1.3, y - 0.5); return l && !r ? -1 : r && !l ? 1 : 0; }
 /** Which way someone faces on their spot (pure: worked out wherever they are, on screen or off, so someone you walk up to already faces
  *  the way their place says). */
 function _vfrFaceAt(V, e) {
   const sp = e && e.spot; if (!sp) return V.face;
   const bw = _vfrBackToWater(V, e); if (bw) return bw;
+  if (sp.edge && e.act === 'fish') { const w = _vfrWetSide(sp.x, sp.y); if (w) return w; }   // (fishing from a bank: facing its water)
   if (sp.at) { if (Math.abs(sp.at.x - sp.x) > 0.25) return sp.at.x > sp.x ? 1 : -1; }
   if (sp.deg != null) { const d = ((sp.deg % 360) + 360) % 360; if (d < 80 || d > 280) return 1; if (d > 100 && d < 260) return -1; }
   return V.face;
