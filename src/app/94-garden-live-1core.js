@@ -295,8 +295,8 @@ function _gllFloat(svg, x, y, emoji, who) {
   inner.appendChild(t); g.appendChild(inner); fx.appendChild(g);
   setTimeout(() => g.remove(), 1900);
 }
-const _GL_EMOJI = Object.freeze({ plant: '🌱', water: '💧', weed: '✂️', harvest: '🧺', dig: '🪴', place: '🪑', move: '↔️', take: '📦', give: '🎁', drop: '🎁', pick: '🎁', catch: '🦋', feed: '🌿', turn: '↻' });
-const _GL_POSE = Object.freeze({ plant: 'dig', water: 'water', weed: 'pick', harvest: 'pick', dig: 'dig', place: 'pick', move: 'pick', take: 'pick', give: 'pick', drop: 'pick', pick: 'pick', catch: 'pick', feed: 'pick', turn: 'pick' });
+const _GL_EMOJI = Object.freeze({ plant: '🌱', water: '💧', weed: '✂️', harvest: '🧺', dig: '🪴', place: '🪑', move: '↔️', take: '📦', give: '🎁', drop: '🎁', pick: '🎁', catch: '🦋', feed: '🌿', turn: '↻', land: '🗺️', build: '🔨', gate: '🗝️' });
+const _GL_POSE = Object.freeze({ plant: 'dig', water: 'water', weed: 'pick', harvest: 'pick', dig: 'dig', place: 'pick', move: 'pick', take: 'pick', give: 'pick', drop: 'pick', pick: 'pick', catch: 'pick', feed: 'pick', turn: 'pick', land: 'pick', build: 'dig', gate: 'pick' });
 const _GLL_PARCEL_SVG = '<ellipse cx="0" cy="1" rx="11" ry="3" fill="#000000" fill-opacity="0.16"/><rect x="-9" y="-15" width="18" height="15" rx="2" fill="#e8799a" stroke="#b84a6f"/><rect x="-2" y="-15" width="4" height="15" fill="#fff0c8"/><path d="M0 -15c-6 -7 -10 -2 -6 0zM0 -15c6 -7 10 -2 6 0z" fill="#fff0c8" stroke="#d9c188"/>';
 /** Someone in the world: a sprite like anything else that moves, sorted with everything else. The host's page and a visitor's use the same one. */
 function _gllSprite(A, onClick) {
@@ -430,7 +430,7 @@ function gardenLiveOnEvent(d) {
       if (typeof _gdvTouch === 'function') _gdvTouch();
       // The host just let me in (a tap at their gate) while I stand outside in the copy: knock again now, instead of waiting for me to find the Knock button
       const t = _gll.view && _gll.view.theirs && _gll.view.theirs[ev.f];
-      if (_gll.role === 'visit' && ev.f === _glv.fid && _glv.state === 'look' && _glv.why !== 'home' && t && t.lv && t.lv !== 'none' && typeof _glvKnockAgain === 'function') _glvKnockAgain();
+      if (_gll.role === 'visit' && ev.f === _glv.fid && _glv.state === 'look' && t && t.lv && t.lv !== 'none' && typeof _glvKnockAgain === 'function') _glvKnockAgain();
     }).catch(() => {});
     return;
   }

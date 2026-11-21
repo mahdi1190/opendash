@@ -48,7 +48,7 @@ function _gldFootprint(f) {
 /** {def, built, why ('' = you can buy it now), cost, spot (what is in the way)}. */
 function gardenLandFeatureInfo(id, mArg) {
   const def = gardenLandFeature(id); if (!def) return null;
-  const m = mArg || gardenModel(), built = gardenLandOwnsFeature(id);
+  const m = mArg || gardenModel(), built = m.visit ? m.areas.includes(id) : gardenLandOwnsFeature(id);   // (on a friend's land: what their garden has; full co-op, 2.75)
   let why = '';
   if (!built) {
     const sec = def.sec ? gardenLandRow(def.sec) : null;
@@ -123,6 +123,26 @@ function gardenLandCollect(id) {
   if (G.dew) bits.push(`${G.dew} more cans of water today`);
   if (G.x >= 50) bits.push(`${G.x} experience`);
   return _gldPay(f.name.toLowerCase(), bits.length ? `${f.name}: ${bits.join(', ')}` : f.name, body, [[_gldKey(id), info.period]], f.icon);
+}
+/** Full co-op (2.75): in a friend's garden, what they have built gives to you too, once a period like theirs, into YOUR bag (your own record of it, per friend and thing).
+ *  Their garden is not touched: their own share of it is still theirs. What only waters their garden (dew) is not for you. */
+function gardenLandCollectVisit(id, m) {
+  const f = gardenLandFeature(id);
+  if (!f || !f.per || !m || !m.visit || !m.areas.includes(id)) return _gdNo('Nothing to take');
+  const g = _gdG(), key = _gldKey('v.' + String(m.visit.fid).slice(0, 8) + '.' + id), p = _gldPeriod(f.per, m);
+  if (g.seen[key] === p) return _gdNo(_GLD_SOON[f.per]);
+  if (f.tod && m.tod !== f.tod) return _gdNo(_GLD_TOD[f.tod]);
+  const G = f.give || {}, body = {}, bits = [];
+  if (G.coins) { body.c = _gldInt('lcv|' + id + '|' + m.today + '|' + m.visit.fid, G.coins[0], G.coins[1]); bits.push(`${body.c} coins`); }
+  if (G.x) body.x = G.x;
+  if (G.i) { body.i = _gdResolve(G.i, 'lcv|' + id + '|' + p); for (const k of Object.keys(body.i)) bits.push(_gldItemName(k)); }
+  if (G.season) { const sid = GARDEN_LAND_SEASON_SEED[m.season]; body.i = { ['seed:' + sid]: 1 }; bits.push(_gldItemName('seed:' + sid)); }
+  if (!bits.length && !body.x) return _gdNo(`${f.name} helps ${m.visit.name ? String(m.visit.name).split(/\s+/)[0] + '’s' : 'this'} garden itself`);
+  return _gldPay(f.name.toLowerCase(), `${f.name}: ${bits.join(', ') || 'a little experience'}`, body, [[key, p]], f.icon);
+}
+function gardenLandCollectVisitInfo(f, m) {
+  const key = _gldKey('v.' + String(m.visit.fid).slice(0, 8) + '.' + f.id), got = _gdG().seen[key] === _gldPeriod(f.per, m), wrong = f.tod && m.tod !== f.tod;
+  return { ready: !got && !wrong, label: f.verb, soon: got ? _GLD_SOON[f.per] : wrong ? _GLD_TOD[f.tod] : '' };
 }
 function _gldItemName(k) {
   const [kind, id] = String(k).split(':');

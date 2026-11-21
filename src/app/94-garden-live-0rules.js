@@ -12,7 +12,7 @@
      GL_PP / glPpOk       pets in place (gl:pp); GL_PLAY / glPlayLevel playdates; GL_SNAP the group photo
      GL_QUEUE             what can wait for a host who is out
      GL_CT                contests: a timed round of fishing or bug-netting that the host referees; glCtFishPoints / glCtBugPoints score a catch
-     GL_TRADE             trading: the level, how much, how often; glTradeOk(b, fromHost) -> '' | why
+     GL_TRADE             trading: the level, how much, how often, the seal; glTradeOk(b, fromHost) -> '' | why
      GL_GOALS / GL_GOAL   shared goals (a joint quest in a live garden): the table, the pacing and the reward; glGoalOk(b) -> '' | why checks gl:goal, glGoalCap(of), glGoalSize(def, people)
      glAtLeast(lv, min)   glMayDo(lv, t) -> '' | why     glIntentOk(b) -> '' | why     glPostOk(p) -> '' | why
    ============================================================ */
@@ -35,7 +35,7 @@ function glProtocolForWorld(source){return glWorldSupported(source)?GL_V:0}
 function glSameWorld(body,expected){const a=glWorldFields(body),b=glWorldFields(expected);return glWorldSupported(a)&&glWorldSupported(b)&&a.wv===b.wv&&a.lh===b.lh}
 const GL_PEOPLE = 8;              // everyone in a garden at once, the host included
 const GL_LEVELS = Object.freeze(['none', 'look', 'help', 'play']);
-const GL_LEVEL_NAMES = Object.freeze({ none: 'Not yet', look: 'Look', help: 'Help', play: 'Play' });
+const GL_LEVEL_NAMES = Object.freeze({ none: 'Sent home', look: 'Look', help: 'Help', play: 'Play together' });   // (full co-op, 20 Nov 2026: a friend you made yourself plays here as you do, lib/friends/live.mjs permOf; Look and Help are only what an older app may still say)
 const GL_SHARES = Object.freeze(['keeper', 'split', 'owner']);
 const GL_SHARE_NAMES = Object.freeze({ keeper: 'Whoever planted keeps it', split: 'Half each', owner: 'All to me' });
 const GL_ACTS = Object.freeze({
@@ -53,10 +53,15 @@ const GL_ACTS = Object.freeze({
   catch: Object.freeze({ lv: 'look' }),
   feed: Object.freeze({ lv: 'play', on: 'plant' }),
   turn: Object.freeze({ lv: 'play', on: 'decor', mine: true }),
-  gate: Object.freeze({ lv: 'help' }),   // (2.74.1) open a gate of the owner's with the find they hold (p: the gate's id). Friends can do all the owner can (the owner, 20 Nov)
+  // full co-op (2.75): a friend buys a piece of this garden's land, or builds one of its things, with their own coins; it is the garden's for good (p: the section's or the thing's id; x, y: where they stand, for setting it out)
+  land: Object.freeze({ lv: 'play', land: 'land' }),
+  build: Object.freeze({ lv: 'play', land: 'feat' }),
+  gate: Object.freeze({ lv: 'play', land: 'gate' }),   // open one of this garden's gates (p: the gate's id; r 1: I bring its find myself)
+  solve: Object.freeze({ lv: 'play', land: 'solve' }),   // a trail puzzle solved here (p: the place it leads to; x, y: where they stand, for setting it out)
 });
 const GL_ACT_IDS = Object.freeze(Object.keys(GL_ACTS));
-const GL_CAPS = Object.freeze({ plant: 40, place: 20, water: 40, weed: 40, harvest: 60, dig: 40, move: 60, take: 40, give: 10, drop: 6, pick: 12, catch: 3, feed: 30, turn: 40, gate: 12, postsPerFriend: 120 });
+// Friends are trusted (full co-op, the owner, 20 Nov 2026): these are only there so a runaway loop cannot fill the diary, never to hold a friend back
+const GL_CAPS = Object.freeze({ plant: 2000, place: 1000, water: 2000, weed: 2000, harvest: 2000, dig: 2000, move: 2000, take: 1000, give: 500, drop: 200, pick: 200, catch: 200, feed: 1000, turn: 2000, land: 200, build: 200, gate: 50, solve: 50, postsPerFriend: 120 });
 /** What can wait for an owner who is out: which acts (each still needs its level in GL_ACTS), how many from one friend at once and in a day, and how many days it keeps. */
 const GL_QUEUE = Object.freeze({ acts: Object.freeze(['plant', 'place', 'water']), perFriend: 20, perDay: 30, days: 14 });
 /** Room messages a host's rooms carry in a day, what it sends and what arrives from visitors: 80,000 is 4,000 of Cloudflare's 100,000 free requests (incoming socket messages count 20 to 1). Over thin, walking sends less. guestDay: one visitor's share (the relay holds them to it too: ROOM.guestDay). */
@@ -320,6 +325,7 @@ function glIntentOk(b) {
   if (a.place || a.on) { if (!_glCell(b.x) || !Number.isInteger(b.y) || b.y < 0 || b.y >= GARDEN_WORLD.rows) return 'cell'; }
   if (a.to) { if (!_glCell(b.tx) || !Number.isInteger(b.ty) || b.ty < 0 || b.ty >= GARDEN_WORLD.rows) return 'cell'; }
   if (b.t === 'water' && !gsocWaterOk(b.p)) return 'plant';
+  if (a.land) { if (!GL_FX_ID_RE.test(String(b.p || ''))) return 'land'; if (a.land === 'land' && typeof gardenLandRow === 'function' && !(gardenLandRow(b.p) || {}).buy) return 'land'; if (a.land === 'feat' && typeof gardenLandFeature === 'function' && !gardenLandFeature(b.p)) return 'land'; if (a.land === 'gate' && typeof gardenGateOf === 'function' && !gardenGateOf(b.p)) return 'land'; if (a.land === 'solve' && typeof gardenExploreIds === 'function' && !gardenExploreIds().includes(String(b.p))) return 'land'; if (b.x != null && (!_glCell(b.x) || !Number.isInteger(b.y) || b.y < 0 || b.y >= GARDEN_WORLD.rows)) return 'cell'; }   // (the server has no land table: it checks the shape, the page the id)
   if (b.t === 'drop') { if (!gsocGiftOk(b.k, b.item)) return 'gift'; if (!Number.isInteger(b.to) || b.to < 0 || b.to >= GL_PEOPLE) return 'who'; }
   if (!GL_ID_RE.test(String(b.i || ''))) return 'id';
   return '';
@@ -329,7 +335,9 @@ function glIntentOk(b) {
    only one that does); each side holds what it offers when it confirms, and takes the other's offer when the host says go. gl:tr is a kind of its own (an older app drops it, GL_V stays 2).
    lv: the level both need. rows, qty: what one side may offer (seed, decor, fish, bug, as gsocGiftOk allows; never coins). perDay: trades one person may finish in a day.
    askMs: how long a request waits for the other app to say it can trade (an older one never does). idleMs: an open trade nobody touches is called off. */
-const GL_TRADE = Object.freeze({ lv: 'play', rows: 4, qty: 20, perDay: 10, askMs: 8000, idleMs: 5 * 60000 });
+// sealMs (2.75, the trading overhaul): once BOTH have agreed, the swap waits this long before it is final, and either of you can still say "Wait, undo". The referee keeps the time; nothing new goes on the wire
+// coins (full co-op, 2.75): friends may put coins in a trade too ('coin:c', at most this many in one trade), so one can buy a fish or a seed from the other
+const GL_TRADE = Object.freeze({ lv: 'play', rows: 4, qty: 20, perDay: 500, askMs: 8000, idleMs: 5 * 60000, sealMs: 5000, coins: 5000 });
 /** From a guest to the host: ask (to a slot), hi (I can trade), offer (my whole offer), ok (I confirm version v), no (I take my confirmation back), end, chk (what became of this trade?).
  *  From the host: st (the state, for you), go (it happened), x (it did not, why). Counters: n on a guest's offer, ok and no, answered by an in st (the host has seen up to n). */
 const GL_TRADE_GUEST = Object.freeze(['ask', 'hi', 'offer', 'ok', 'no', 'end', 'chk']);
@@ -337,13 +345,14 @@ const GL_TRADE_HOST = Object.freeze(['st', 'go', 'x']);
 const GL_TRADE_STEPS = Object.freeze([...GL_TRADE_GUEST, ...GL_TRADE_HOST]);
 const GL_TRADE_WHY = Object.freeze(['busy', 'gone', 'level', 'cap', 'left', 'cancel', 'idle', 'old', 'item', 'host', 'lost']);
 const GL_TRADE_ITEM_RE = /^(seed|decor|fish|bug):([a-z0-9-]{1,64})$/;
-function glTradeItemOk(item) { const m = GL_TRADE_ITEM_RE.exec(String(item || '')); return !!m && gsocGiftOk(m[1], m[2]); }
+const GL_TRADE_COIN = 'coin:c';   // coins, as a row of a trade (an older app does not know it, and says so: why 'item')
+function glTradeItemOk(item) { if (item === GL_TRADE_COIN) return true; const m = GL_TRADE_ITEM_RE.exec(String(item || '')); return !!m && gsocGiftOk(m[1], m[2]); }
 /** '' when rows ([[item, n], ...]) are a fitting offer: few, distinct, known and given-able, a few of each. */
 function glTradeRowsOk(rows) {
   if (!Array.isArray(rows) || rows.length > GL_TRADE.rows) return 'rows';
   const seen = new Set();
   for (const r of rows) {
-    if (!Array.isArray(r) || typeof r[0] !== 'string' || seen.has(r[0]) || !Number.isInteger(r[1]) || r[1] < 1 || r[1] > GL_TRADE.qty) return 'rows';
+    if (!Array.isArray(r) || typeof r[0] !== 'string' || seen.has(r[0]) || !Number.isInteger(r[1]) || r[1] < 1 || r[1] > (r[0] === GL_TRADE_COIN ? GL_TRADE.coins : GL_TRADE.qty)) return 'rows';
     seen.add(r[0]);
     if (!glTradeItemOk(r[0])) return 'item';
   }
@@ -397,3 +406,4 @@ function glGoalOk(b) {
   }
   return sum <= b.n ? '' : 'count';
 }
+

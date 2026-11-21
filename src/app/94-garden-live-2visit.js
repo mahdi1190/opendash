@@ -68,7 +68,7 @@ function _glvClear() {
   clearInterval(_glv.beatT); clearTimeout(_glv.goT); clearTimeout(_glv.doT);
   _glvPeopleOut();
   _gll.by.clear();
-  Object.assign(_glv, { fid: '', state: '', why: '', lv: 'none', w: null, road: null, snap: null, follow: null, ver: 0, boot: '', gen: null, here: false, resumeAt: 0, lookSig: '', selfName: '', doT: 0 });
+  Object.assign(_glv, { fid: '', state: '', why: '', lv: 'none', w: null, road: null, snap: null, follow: null, ver: 0, boot: '', gen: null, here: false, resumeAt: 0, lookSig: '', selfName: '', doT: 0, homeBack: false });
   _glv.pending.clear(); _glv.doQ.length = 0;
   _gllTip(null, '');
 }
@@ -90,7 +90,16 @@ function _glvTake(d) {
   if (was !== 'live' && _glv.state === 'live') { _glv.lookSig = _glvLookSig(_glvLook()); _glvResend(); _glvWatchStart(); if (!_glv.snap) _glvSend('me', _glvLook()); if (typeof _gltResume === 'function') _gltResume(); }   // (this page may be new to a visit the server already has: tell me who is here, and the garden as it is)
   else if (was === 'live' && _glv.state === 'live' && wasWhy === 'resume' && !_glv.why) { _glvResend(); if (typeof _gltResume === 'function') _gltResume(); }   // (back: what I asked for and never heard about, with the same ids)
   if (wasGen != null && wasGen !== _glv.gen && _glv.state === 'live') _glvRosterAgain();
+  _glvSayWhy(was, wasWhy);
   _glvHud();
+}
+/** Being sent home, or let back in, said out loud on the visitor's screen (a grey dot and a vanished friend told a novice nothing: critic, 21 Nov). */
+function _glvSayWhy(was, wasWhy) {
+  if (typeof gardenToast !== 'function') return;
+  let first = 'Your friend'; try { first = typeof _gdvFirst === 'function' && _gdvFirst() || first; } catch (e) { /* the plain word */ }
+  if (_glv.why === 'home') _glv.homeBack = true;
+  if (was === 'live' && _glv.state !== 'live' && _glv.why === 'home') gardenToast(`${first} sent you home for now. You can still look round their garden. Tap Knock to ask to come back in.`, { icon: 'log-out', timeout: 12000 });
+  else if (was !== 'live' && _glv.state === 'live' && _glv.homeBack) { _glv.homeBack = false; gardenToast(`${first} let you back in. You are playing together again.`, { icon: 'door-open', timeout: 6000 }); }
 }
 /** A new session (their app restarted): whoever it does not name again within a few seconds has gone. Everyone else never left the screen. */
 function _glvRosterAgain() {
@@ -155,17 +164,15 @@ function _glvDebit(i, t, f, debit, extra) {
   _gscSaveGarden();
 }
 /** An intent, with an id. `debit`: what leaves your bag now. Sent no faster than the rate allows: a drag across a row is a row of messages. */
-function _glvIntent(t, f, debit) {
+function _glvIntent(t, f, debit, extra) {
   if (!_glvLive()) return;
   const i = _gllNewId();
-  if (debit) _glvDebit(i, t, f, debit);
-  _glv.pending.set(i, { t, debit: !!debit, f });
+  if (debit || extra) _glvDebit(i, t, f, debit, extra);   // (extra: {c: -coins}, what buying a friend's land or building there costs you: full co-op, 2.75)
+  _glv.pending.set(i, { t, debit: !!(debit || extra), f });
   if (typeof gartPlayerAct === 'function') gartPlayerAct(_GL_POSE[t] || 'pick', 760);
   _glvSendDo({ i, t, ...f });
   if (typeof _gdvTouch === 'function') _gdvTouch();
 }
-/** (2.74.1) Open the owner's gate with the find they hold: their page opens it (_glhApply 'gate'), and everyone sees it open. */
-function gardenLiveGateOpen(gateId) { if (typeof gardenBubbleClose === 'function') { try { gardenBubbleClose(); } catch (e) { /* fine */ } } _glvIntent('gate', { p: String(gateId) }); }
 function _glvSendDo(body) { _glv.doQ.push(body); _glvDoPump(); }
 function _glvDoPump() {
   if (_glv.doT || !_glv.doQ.length) return;
@@ -219,7 +226,7 @@ function _glvResult(b) {
       _glvRefund(b.i, P); _gdvTouch();
       const at = _glvCellAt(P.f && P.f.x, P.f && P.f.y);
       if (b.why === 'level' && typeof gardenVisitDenied === 'function') gardenVisitDenied(P.t);
-      else gameDeny(null, { at: at || undefined, say: 'That did not work here.', kind: 'tool' });
+      else gameDeny(null, { at: at || undefined, say: P.t === 'solve' ? (b.why === 'have' ? 'It was solved here already.' : 'That did not reach their garden. It is solved on your screen.') : P.t === 'gate' ? (b.why === 'have' ? 'It is open already.' : 'That gate needs its find first.') : (P.t === 'land' || P.t === 'build') ? ({ have: 'They have that already. Your coins are back.', 'not-yet': 'That is not open in this garden yet. Your coins are back.', spot: 'Something is in the way there. Your coins are back.' }[b.why] || 'That did not go through. Your coins are back.') : 'That did not work here.', kind: 'tool' });
     }
     return;
   }
@@ -232,6 +239,7 @@ function _glvResult(b) {
   _gllToolFeedback(pendingFeedback ? Object.assign({}, pendingFeedback.f, b) : b, me);
   if (A) _gllPose(A, _GL_POSE[b.t] || 'pick', 760);
   if (b.t === 'drop') { _glvParcelAdd(b); }
+  if (!me && (b.t === 'land' || b.t === 'build') && b.p && typeof gardenToast === 'function') { const r = b.t === 'land' ? gardenLandRow(b.p) : gardenLandFeature(b.p); gardenToast(`${A ? A.n : 'A friend'} ${b.t === 'land' ? 'bought' : 'built'} ${r ? r.name : 'something'} for ${_gdvFirst()}’s garden`, { icon: b.t === 'land' ? 'trees' : 'hammer' }); }
   // a gift is what this page saw left for you, not what any message says it is
   if (b.t === 'pick' || b.t === 'dropend') { const P = _glv.parcels.get(b.u); if (P) { if (P.sprite) P.sprite.remove(); _glv.parcels.delete(b.u); if (b.t === 'pick' && b.to === _glv.w && P.to === _glv.w) _glvGot(b.u, P.k, P.item); } }
   if (b.x != null && _GL_EMOJI[b.t]) _gllFloat(_glvSvg(), b.x, b.y, _GL_EMOJI[b.t], me ? 'You' : A ? A.n : '');
@@ -242,6 +250,15 @@ function _glvResult(b) {
     const g = _gdG(), led = g.led['gl.o.' + b.i];
     if (led && !led.ok) { _glvSettled(b.i, led, b.t); _gscSaveGarden(); }
     if (b.t === 'water') _gscXp('water', _glv.fid, _gllToday());
+    if (b.t === 'gate' && P && P.f && typeof gardenToast === 'function') { const gt = gardenGateOf(P.f.p), z = gt && gardenZone(gt.n); gardenToast(`You opened the way into ${z ? String(z.name).replace(/^The /, 'the ') : 'a new part'} of ${_gdvFirst()}’s garden!`, { icon: 'key' }); }
+    if ((b.t === 'land' || b.t === 'build') && P && P.f && typeof gardenToast === 'function') {
+      const r = b.t === 'land' ? gardenLandRow(P.f.p) : gardenLandFeature(P.f.p), name = r ? r.name : 'It';
+      // (a build says where it went up: by you, a walk away, or waiting in the land office when there was no room anywhere: critic, 21 Nov)
+      let where = '';
+      if (b.t === 'build' && b.why === 'wait') where = ` There was no clear spot near you, so it waits in their land office, ready to set out where there is room.`;
+      else if (b.t === 'build' && Number.isInteger(b.tx) && typeof _gw !== 'undefined') { const d = Math.hypot(b.tx + .5 - _gw.px, b.ty + .5 - _gw.py); where = d <= 4 ? ' It stands just by you.' : ` It went up a short walk ${Math.abs(b.tx + .5 - _gw.px) > Math.abs(b.ty + .5 - _gw.py) ? (b.tx + .5 > _gw.px ? 'east' : 'west') : (b.ty + .5 > _gw.py ? 'south' : 'north')} of you, where there was room.`; try { _gllFloat(_glvSvg(), b.tx, b.ty, '🔨', 'Here'); } catch (e) { /* only a marker */ } }
+      gardenToast(`${name} is part of ${_gdvFirst()}’s garden now.${where} Thank you for chipping in!`, { icon: b.t === 'land' ? 'trees' : 'hammer', timeout: where ? 10000 : 6000 });
+    }
     if (b.t === 'catch') _glvGotBug(b.u, b.item);
     if (P && b.t === 'take' && b.u) { const d = g.led['gl.o.' + b.u]; if (d && d.to === _glv.fid) { delete g.led['gl.o.' + b.u]; _gscSaveGarden(); } }   // back in your bag (a post says the same, if this answer is lost)
     if (P && b.t === 'give' && b.u && b.p && gardenDecor(b.p)) {

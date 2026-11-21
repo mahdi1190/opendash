@@ -60,6 +60,9 @@
 .gd-reel-body { display: flex; gap: 8px; height: min(300px, 44vh); }
 .gd-reel-track { position: relative; width: 44px; border-radius: 10px; background: linear-gradient(#7fc4e8, #2f6a98); border: 2px solid color-mix(in srgb, var(--fg) 40%, transparent); overflow: hidden; }
 .gd-reel-bar { position: absolute; left: 2px; right: 2px; border-radius: 7px; background: color-mix(in srgb, #5fd35f 70%, transparent); border: 2px solid #2f8f3a; box-shadow: 0 0 0 1px #ffffff55 inset; transition: background .12s; }
+.gd-reel-helper { max-width: 150px; font-size: 11.5px; line-height: 1.25; text-align: center; font-weight: 600; color: var(--text-secondary, #555); }
+.gd-reel.is-helped .gd-reel-helper { color: #2f8f3a; }
+.gd-reel.is-helped .gd-reel-bar { border-color: #f0b429; box-shadow: 0 0 0 2px #f0b42966, 0 0 12px #f0b42988; }
 .gd-reel.is-in .gd-reel-bar { background: color-mix(in srgb, #8ff08a 85%, transparent); box-shadow: 0 0 10px #8ff08a; }
 .gd-reel-fish { position: absolute; left: 50%; width: 30px; height: 30px; margin-left: -15px; display: grid; place-items: center; z-index: 2; }
 .gd-reel-fish.is-hidden svg { filter: brightness(0.15) contrast(1.4); }

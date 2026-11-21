@@ -1280,6 +1280,10 @@ function gardenLandInfo(id, m) {
   if (!gardenWorldReady()) return null;
   const def = gardenArea(id); if (!def || !def.buy || !def.plot || def.relayoutEmpty) return null;
   m = m || gardenModel();
+  if (m.visit) {   // full co-op (2.75): a friend's land as their garden has it, and YOUR coins (a visit's wallet is the visitor's): you buy it for them
+    const keys = (m.visit.snap && m.visit.snap.lc) || [], key = !def.needs || (typeof GARDEN_LAND_KEY_ID !== 'undefined' && def.needs === 'key:old' && keys.includes(GARDEN_LAND_KEY_ID));
+    return { def, owned: m.areas.includes(id), cost: def.buy, lvOk: m.level.level >= def.lv, afford: m.wallet.coins >= def.buy, reach: (!def.zn || m.areas.includes('zn-' + def.zn)) && (!def.via || m.areas.includes(def.via)), keyOk: key, visit: true };
+  }
   const owned = gardenHas('land:' + id) > 0;
   return { def, owned, cost: def.buy, lvOk: m.level.level >= def.lv - (typeof gardenRewardEarly === 'function' ? gardenRewardEarly(def) : 0), afford: m.wallet.coins >= def.buy, reach: (!def.zn || m.areas.includes('zn-' + def.zn)) && (!def.via || m.areas.includes(def.via)), keyOk: !def.needs || gardenHas(def.needs) > 0 };
 }

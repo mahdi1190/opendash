@@ -520,7 +520,7 @@ function gardenSpotMark(cell) {
 function gardenLandBubble(id, m) {
   const info = gardenLandInfo(id, m); if (!info || info.owned) return;
   const a = info.def, K = GARDEN_LAND_KINDS[a.kind], D = gardenLandDoor(a);
-  const items = [{ svg: _GH_GLYPH.coin, label: `Buy for ${_gdpNum(info.cost)} coins`, n: _gdpNum(info.cost), cls: 'is-go is-buy', run: (b) => {
+  const items = [{ svg: _GH_GLYPH.coin, label: m.visit ? `Buy it for ${m.visit.name || 'them'}: ${_gdpNum(info.cost)} coins` : `Buy for ${_gdpNum(info.cost)} coins`, n: _gdpNum(info.cost), cls: 'is-go is-buy', run: (b) => {
     const r = gardenBuyLand(id);
     if (!r.ok) { gameDenyOf(r, b); return; }
     gameCheer(b, { text: '-' + info.cost, tone: 'coin', sound: true });
@@ -532,7 +532,7 @@ function gardenLandClick(id, ev) {
   const a = gardenArea(id), at = ev && ev.clientX != null ? { x: ev.clientX, y: ev.clientY } : null; if (!a) return;
   if (a.solid) { gameDeny(null, { at, say: 'Too thick to walk through.' }); return; }
   const m = gardenHere();
-  if (m.visit) { gameDeny(null, { kind: 'lock', at, say: 'That land is not open in this garden.' }); return; }
+  if (m.visit && !m.visit.live) { gameDeny(null, { kind: 'lock', at, say: /^zn-[1-9]$/.test(id) ? 'That way is still shut in your friend’s garden. Open it together while they are here.' : 'You can buy land here while your friend is in their garden too.' }); return; }   // (full co-op, 2.75: together, you buy their land with your coins)
   { const gate = /^zn-[1-9]$/.test(id) && typeof gardenGateOf === 'function' ? gardenGateOf(Number(id.slice(3))) : null; if (gate && gardenGateRule(gate) && typeof gardenGatePrompt === 'function') { const D = gate.door; if (!gardenWalkToPoint({ x: D.x + 0.5, y: D.y + 0.5 }, () => gardenGatePrompt(gate, { x: D.x + 0.5, y: D.y - 0.4 }, gardenHere()), { radius: 2 })) gardenGatePrompt(gate, { x: D.x + 0.5, y: D.y - 0.4 }, m); return; } }   // a shut region: walk to its gate, which says what it needs
   if (!a.buy) { gameDeny(null, { kind: 'lock', badge: 'Lv ' + a.lv, at, say: `${a.name} opens at garden level ${a.lv}.` }); return; }
   if (m.level.level < a.lv) { gameDeny(null, { kind: 'lock', badge: 'Lv ' + a.lv, at, say: `${a.name} can be bought from garden level ${a.lv}.` }); return; }

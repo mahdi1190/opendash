@@ -14,27 +14,8 @@
      gartActDoingIn(A, ev)   their state arrived (94-garden-live-2visit.js, 3host.js)
    ============================================================ */
 const GA_DG = Object.freeze({ againMs: 15000, gapMs: 200 });
-const _gad = { sig: '', at: 0, n: 0, sentAt: 0, sv: null };
-/** (puzzles) A trail puzzle solved in a friend's garden: it goes in what you are doing (sv) until you leave, and their page keeps it (gpSet), so it is solved for everyone there. */
-function _gadVisitKey() { try { return _gll.role === 'visit' && typeof _glv !== 'undefined' ? String(_glv.fid || '') : ''; } catch (e) { return ''; } }
-function gartActSolved(id) {
-  const k = _gadVisitKey(); if (!k || typeof id !== 'string' || !/^ld-[a-z0-9-]{1,24}$/.test(id)) return;
-  if (!_gad.sv || _gad.sv.k !== k) _gad.sv = { k, ids: new Set() };
-  _gad.sv.ids.add(id); gartActDoingPush(true);
-}
-function gartActSolvedHere(id) { const k = _gadVisitKey(); return !!(k && _gad.sv && _gad.sv.k === k && _gad.sv.ids.has(id)); }
-/** On the host's page: what a visitor solved here is solved in this garden (the owner's discovered places), said once. */
-function _gadSolvedIn(A, sv) {
-  if (_gll.role !== 'host' || !Array.isArray(sv) || typeof gpGet !== 'function' || typeof gardenExploreIds !== 'function') return;
-  const ok = gardenExploreIds();
-  for (const id of sv.slice(0, 8)) {
-    if (typeof id !== 'string' || !ok.includes(id) || gpGet('explore.' + id)) continue;
-    gpSet('explore.' + id, _gdToday());
-    const stop = typeof GARDEN_EXPLORATION_STOPS !== 'undefined' ? GARDEN_EXPLORATION_STOPS.find(r => r.sight === id) : null, sight = typeof gardenLandSight === 'function' ? gardenLandSight(id) : null;
-    try { gardenToast((A && A.n ? A.n : 'Your friend') + ' solved ' + (stop ? stop.name.replace(/^The /, 'the ') : 'a trail puzzle') + (sight && sight.name ? ': the way to ' + sight.name.replace(/^The /, 'the ') + ' is found.' : '.')); } catch (e) { /* fine */ }
-    _gd.rev++; _gd.memoKey = '';
-  }
-}
+const _gad = { sig: '', at: 0, n: 0, sentAt: 0 };
+// (puzzles solved on a visit go to the host as a 'solve' intent, 94-garden-wonder-h-trails.js and _glhSolve: one system for it)
 const _gadR2 = (v) => Math.round(v * 100) / 100;
 function _gadBody() {
   const b = {}, cur = _ga.cur;
@@ -50,7 +31,6 @@ function _gadBody() {
   const m = [];
   for (const [id, at] of _gaMoved) if (!(_ga.carry && _ga.carry.id === id) && at && Number.isFinite(at.x) && !at.theirs) m.push([String(id).slice(0, 64), Math.max(0, Math.round(at.x * 10)), Math.max(0, Math.round(at.y * 10))]);
   if (m.length) b.m = m.slice(-(typeof GL_DG_MAX_MOVED === 'number' ? GL_DG_MAX_MOVED : 6));
-  { const k = _gadVisitKey(); if (k && _gad.sv && _gad.sv.k === k && _gad.sv.ids.size) b.sv = [..._gad.sv.ids].slice(0, 8); }
   if (_gll.role === 'host') _gadGatesOut(b);
   return b;
 }
@@ -118,7 +98,6 @@ function gartActRedraw(A) {
 function gartActDoingIn(A, ev) {
   if (!A || !ev || (typeof glDoingOk === 'function' && glDoingOk(ev))) return;
   A.dg = true;
-  if (ev.sv) _gadSolvedIn(A, ev.sv);
   if (ev.gk || ev.gz) _gadGatesIn(ev);
   // the thing in their hands: off the ground here too, drawn in their arms (gartMoveActor)
   const hold = ev.i ? String(ev.i) : '';

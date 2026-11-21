@@ -51,6 +51,10 @@ function _gldVisitBubble(f, at, m) {
   if (f.does === 'observatory') sub = `${seen.z.length} of ${GARDEN_LAND_SKY.length} in their star book.`;
   if (f.does === 'post') { sub = 'Where to?'; for (const q of GARDEN_LAND_FEATURES) if (q.does === 'post' && q.id !== f.id && _GD_LAND.has(q.id)) items.push({ ic: 'milestone', label: q.name.replace(/^Way post /, ''), cls: 'is-go', run: () => gardenLandHop(q.id) }); }
   if (f.does === 'lookout') items.push({ ic: 'eye', label: 'Look out over the land', cls: 'is-go', run: () => gardenCamSet('fit') });
+  if (f.per && f.give && (f.give.coins || f.give.i || f.give.season || f.give.x) && !['lookout', 'observatory'].includes(f.does) && typeof gardenLandCollectVisitInfo === 'function') {   // (full co-op: it gives to you too, once a period)
+    const i = gardenLandCollectVisitInfo(f, m);
+    items.push({ ic: f.icon, label: i.ready ? i.label : i.soon, cls: i.ready ? 'is-go' : 'is-off', run: (b) => _gldSay(gardenLandCollectVisit(f.id, gardenHere()), b, f.icon) });
+  }
   if (typeof gardenRoomItems === 'function') gardenRoomItems(f.id, items);
   gardenBubbleOpen(at, { title: f.name, sub, items });
 }
@@ -161,13 +165,23 @@ function _gldCartBubble() {
 }
 
 /* ---------- the land office ---------- */
-/** On a friend's land: what they have, the way they would show you round. Only what their snapshot says, and nothing in it can be bought. */
+/** On a friend's land: what they have, the way they would show you round, from their snapshot; together (live), what you can buy and build for them. */
 function _gldFriendTab(el, m) {
   const box = _gdpEl('div', 'gld'), s = m.visit.snap || {}, S = gardenLandShowOf(s), name = m.visit.name || 'Your friend'; el.appendChild(box);
   const secs = GARDEN_LAND_SECTIONS.filter(q => q.buy && m.areas.includes(q.id)), built = GARDEN_LAND_FEATURES.filter(f => m.areas.includes(f.id));
   const head = _gdpEl('div', 'gld-head'), mp = _gdpEl('div', 'gld-mapbox'); mp.innerHTML = _gldMap(m); head.appendChild(mp);
   const txt = _gdpEl('div', 'gld-intro'); txt.appendChild(_gdpEl('h3', null, `${name}’s land`)); txt.appendChild(_gdpEl('p', null, `Garden level ${m.level.level} · ${secs.length} of ${GARDEN_LAND_SECTIONS.filter(q => q.buy).length} pieces of land · ${built.length} of ${GARDEN_LAND_FEATURES.length} things built${S.r ? ` · ${'★'.repeat(S.r)}` : ''}.`)); head.appendChild(txt); box.appendChild(head);
   const sec = (title) => { box.appendChild(_gdpEl('h4', 'gld-h', title)); const d = _gdpEl('div', 'gld-list'); box.appendChild(d); return d; };
+  if (m.visit.live) {   // full co-op (2.75): together, you can buy their land and build their things with your own coins; it is part of their garden for good
+    const first = String(name).split(/\s+/)[0];
+    box.appendChild(_gdpEl('p', 'gld-more gld-coop', `You have ${_gdpNum(m.wallet.coins)} coins. Anything you buy or build here becomes part of ${first}’s garden, for both of you to enjoy.`));
+    const done = (b, cost) => (r) => { if (!r.ok) gameDenyOf(r, b); else gameCheer(b, { text: '-' + cost, tone: 'coin', sound: true }); };
+    const canBuild = GARDEN_LAND_FEATURES.map(f => [f, gardenLandFeatureInfo(f.id, m)]).filter(([f, I]) => I && !I.built && !I.why && !f.prize).sort((a, b) => a[0].cost - b[0].cost);
+    const canLand = GARDEN_LAND_SECTIONS.filter(s => { const i = s.buy && !s.relayoutEmpty ? gardenLandInfo(s.id, m) : null; return i && !i.owned && i.lvOk && i.reach && i.keyOk; }).sort((a, b) => a.buy - b.buy);
+    if (canBuild.length) { const d = sec(`Build for ${first}`); for (const [f] of canBuild.slice(0, 8)) _gldRow(d, { icon: f.icon, name: f.name, sub: f.blurb + ' It goes up in the nearest clear spot to you.', btn: `${_gdpNum(f.cost)} coins`, off: m.wallet.coins < f.cost, run: (b) => done(b, f.cost)(gardenBuildFeature(f.id)) }); }
+    if (canLand.length) { const d = sec(`Buy land for ${first}`); for (const s of canLand.slice(0, 10)) { const K = GARDEN_LAND_KINDS[s.kind]; _gldRow(d, { icon: s.icon, name: s.name, sub: `${K.name}, ${s.cells.length} squares: ${gardenLandGrowsLine(s)}.`, btn: `${_gdpNum(s.buy)} coins`, off: m.wallet.coins < s.buy, run: (b) => done(b, s.buy)(gardenBuyLand(s.id)) }); } }
+    if (!canBuild.length && !canLand.length) box.appendChild(_gdpEl('p', 'gld-more', `Nothing to buy here just now: ${first}’s garden opens more as it levels up.`));
+  }
   if (GARDEN_WORLD.v >= 4) _gldRegionRows(box, m);
   if (built.length) { const d = sec('What they have built'); for (const f of built) _gldRow(d, { icon: f.icon, name: f.name, sub: f.blurb }); }
   if (S.c.length) { const d = sec('What they have dug up'); const g = _gdpEl('div', 'gld-chips'); for (const c of GARDEN_LAND_CURIOS) if (S.c.includes(c.id)) { const ch = _gdpEl('span', 'gld-chip is-on'); ch.innerHTML = gardenLandCurioSvg(c.id, 16); ch.appendChild(document.createTextNode(c.name)); g.appendChild(ch); } if (S.c.includes(GARDEN_LAND_KEY_ID)) { const ch = _gdpEl('span', 'gld-chip is-on'); ch.innerHTML = gardenLandCurioSvg(GARDEN_LAND_KEY_ID, 16); ch.appendChild(document.createTextNode('An old iron key')); g.appendChild(ch); } d.appendChild(g); }

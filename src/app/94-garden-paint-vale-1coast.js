@@ -186,7 +186,7 @@
     }
     // the rope while the land beyond is shut: drawn when the ground is baked, from what is open then (the ground bakes again
     // when a region opens: the key below)
-    const lockedAt = (x, y) => { try { return String(gardenAreaAt(Math.floor(x), Math.floor(y), (gardenModel().level || {}).level || 1)).startsWith('locked:zn-'); } catch (e) { return false; } };
+    const lockedAt = (x, y) => { try { return String(gardenAreaAt(Math.floor(x), Math.floor(y), ((typeof gardenHere === 'function' ? gardenHere() : gardenModel()).level || {}).level || 1)).startsWith('locked:zn-'); } catch (e) { return false; } };
     const plotAt = (x, y) => { const r = typeof gardenLandCell === 'function' ? gardenLandCell(Math.floor(x), Math.floor(y)) : null; if (!(r && r.plot)) return false;
       // (fix loop 1, west: a shut plot in a wood is drawn as a thicket knot on its own cells, not a fence along its edge, so
       //  the rope still runs there: on the cove beach the feet stopped at a shut field's edge with open sand drawn on it)
@@ -242,7 +242,7 @@
     // rough grass, a gorse or bramble mound, sea campion and thrift, in drifts by noise (coast fix round 2: dozens of empty
     // fenced squares were the main picture of the coast from any far view). Inside the fence, clear of it; gone once the
     // plot is bought (the ground bakes again then).
-    const levelNow = () => { try { return (gardenModel().level || {}).level || 1; } catch (e) { return 1; } }, wildAt = (x, y, lv) => { try { return /^locked:(?!zn-)/.test(String(gardenAreaAt(Math.floor(x), Math.floor(y), lv))); } catch (e) { return false; } };
+    const levelNow = () => { try { return ((typeof gardenHere === 'function' ? gardenHere() : gardenModel()).level || {}).level || 1; } catch (e) { return 1; } }, wildAt = (x, y, lv) => { try { return /^locked:(?!zn-)/.test(String(gardenAreaAt(Math.floor(x), Math.floor(y), lv))); } catch (e) { return false; } };
     const wildCells = []; for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) { if (!L.plot(x + .5, y + .5) || coastD(x + .5, y + .5) > 16 * cw) continue; wildCells.push([x, y]); }
     for (let i = 0; i < wildCells.length; i += 3) { const set = wildCells.slice(i, i + 3),   /* (three cells an op: twelve took 48 ms at level 2, one op a slice cannot split) */ pts = set.map(([x, y]) => L.cpt(x + .5, y + .5)), bb = kit.bboxOf(pts, 60);
       add(bb, 58, (B) => { const wint = C.season === 'winter', aut = C.season === 'autumn', lv = levelNow();
@@ -361,7 +361,7 @@
   }
   if (V) { V.parts.push({ id: 'coast', compose }, { id: 'coast-night', compose: night });
     // the ground bakes again when a region opens or shuts (the rope along a shut edge, 3a above)
-    V.groundSigs.push(() => { try { return '|zn:' + (gardenModel().areas || []).filter(a => /^zn-/.test(a)).sort().join(','); } catch (e) { return ''; } }); }
+    V.groundSigs.push(() => { try { return '|zn:' + ((typeof gardenHere === 'function' ? gardenHere() : gardenModel()).areas || []).filter(a => /^zn-/.test(a)).sort().join(','); } catch (e) { return ''; } }); }
 
   /* ---------- the buildings ---------- */
   const M = window.GardenPaintedMarks; if (!M || !M.ART) return;

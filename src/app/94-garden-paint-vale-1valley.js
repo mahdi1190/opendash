@@ -34,7 +34,7 @@
     }
     return plotsMemo = [...byId.values()];
   }
-  const level = () => { try { return gardenModel().level.level; } catch (e) { return 1; } };
+  const level = () => { try { return (typeof gardenHere === 'function' ? gardenHere() : gardenModel()).level.level; } catch (e) { return 1; } };
   const locked = (x, y, lv) => { try { return String(gardenAreaAt(x, y, lv)).startsWith('locked:'); } catch (e) { return false; } };
   // (a plot past a gate that is still shut has no fence yet: the mist stands at that edge, and a fence there drew a ruled
   // line of posts down the open meadow beside the village. It is fenced once its gate opens.)

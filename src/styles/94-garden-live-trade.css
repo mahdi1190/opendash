@@ -22,6 +22,9 @@
 .gll-trade-step .btn, .gll-trade-row > .btn { padding: 2px 4px; min-width: 0; }
 .gll-trade-row.is-edit { flex-wrap: wrap; }
 .gll-trade-ctl { flex: 0 0 100%; display: flex; align-items: center; justify-content: space-between; gap: 4px; padding-left: 36px; }
+.gll-trade-quick { flex: 0 0 100%; display: flex; flex-wrap: wrap; gap: 2px 4px; padding-left: 30px; }
+.gll-trade-quick .btn.gll-trade-qb { padding: 2px 7px; min-width: 0; border-radius: 999px; font-variant-numeric: tabular-nums; }
+.gll-trade-quick .btn.gll-trade-qb.is-fair { background: #eef6dc; color: #3d5a1e; }
 .gll-trade-q { min-width: 26px; text-align: center; font-variant-numeric: tabular-nums; font-weight: 600; }
 .gll-trade-empty { padding: 10px 6px; text-align: center; font-size: 12.5px; color: var(--muted, #6b6a5a); }
 .gll-trade-foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-top: 12px; }
@@ -33,3 +36,32 @@
 }
 @media (prefers-reduced-motion: reduce) { .gll-trade { animation: none; } }
 html[data-motion="reduced"] .gll-trade { animation: none; }
+/* 2.75, the trading overhaul: three plain steps, You give / You get with a swap arrow between, what you will have after, one sentence of the deal, and a short countdown you can undo */
+.gll-trade-steps { display: flex; gap: 4px; margin: 8px 0 2px; padding: 0; list-style: none; counter-reset: gllstep; }
+.gll-trade-stp { flex: 1; display: flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 999px; background: var(--surface-2, #f4f0e3); color: var(--muted, #6b6a5a); font-size: 12px; white-space: nowrap; counter-increment: gllstep; }
+.gll-trade-stp::before { content: counter(gllstep); display: inline-grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: rgba(0, 0, 0, .08); font-size: 11px; font-weight: 700; }
+.gll-trade-stp.is-past { color: #2f6f3a; }
+.gll-trade-stp.is-past::before { content: '✓'; background: #cfe8c9; }
+.gll-trade-stp.is-now { background: #2f8f46; color: #fff; font-weight: 600; }
+.gll-trade-stp.is-now::before { background: rgba(255, 255, 255, .28); }
+.gll-trade-st.is-seal { color: #1f6f36; font-weight: 600; }
+.gll-trade-cols { grid-template-columns: 1fr auto 1fr; align-items: stretch; }
+.gll-trade-mid { align-self: center; font-size: 22px; color: #8a7a4a; line-height: 1; }
+.gll-trade-from { font-size: 12px; }
+.gll-trade-nm { display: flex; flex-direction: column; gap: 0; }
+.gll-trade-nm-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gll-trade-after { font-size: 11px; color: var(--muted, #6b6a5a); text-transform: none; }
+.gll-trade-after.is-new { color: #b07a10; font-weight: 600; }
+.gll-trade-deal { margin: 10px 0 0; padding: 8px 10px; border-radius: 10px; background: #fff6df; font-size: 13px; line-height: 1.35; }
+.gll-trade-cols.is-swapped .gll-trade-col.is-mine .gll-trade-ic { animation: gll-trade-go-r .7s ease-in-out both; }
+.gll-trade-cols.is-swapped .gll-trade-col:not(.is-mine) .gll-trade-ic { animation: gll-trade-go-l .7s ease-in-out both; }
+.gll-trade-cols.is-swapped .gll-trade-mid { animation: gll-trade-spin .7s ease-in-out both; }
+@keyframes gll-trade-go-r { 0% { transform: none; } 50% { transform: translateX(28px) scale(1.15); } 100% { transform: none; } }
+@keyframes gll-trade-go-l { 0% { transform: none; } 50% { transform: translateX(-28px) scale(1.15); } 100% { transform: none; } }
+@keyframes gll-trade-spin { from { transform: rotate(0); } to { transform: rotate(180deg); } }
+@media (max-width: 640px) { .gll-trade-cols { grid-template-columns: 1fr; } .gll-trade-mid { transform: rotate(90deg); justify-self: center; } }
+@media (prefers-reduced-motion: reduce) { .gll-trade-cols.is-swapped * { animation: none !important; } }
+html[data-motion="reduced"] .gll-trade-cols.is-swapped * { animation: none !important; }
+/* full co-op (2.75): the add buttons side by side, and what a side is worth at the shop and the market */
+.gll-trade-adds { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.gll-trade-worth { align-self: center; font-size: 11px; color: var(--muted, #6b6a5a); }
