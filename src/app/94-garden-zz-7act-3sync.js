@@ -41,7 +41,7 @@ function _gadBody() {
   if (cur && cur.doing && typeof GL_EMOTES !== 'undefined' && GL_EMOTES.includes(GA_WIRE + cur.id)) {
     b.a = cur.id; b.x = _gadR2(Number.isFinite(cur.x) ? cur.x : _gw.px); b.y = _gadR2(Number.isFinite(cur.y) ? cur.y : _gw.py);
     { const deg = cur.spot && cur.spot.deg != null ? Math.round(_gmvWrap(cur.spot.deg)) : typeof gartMoveFacingDeg === 'function' ? Math.round(_gmvWrap(gartMoveFacingDeg())) : null; if (Number.isFinite(deg)) b.d = deg === -180 ? 180 : deg; }   // (2.74.2: the way the thing they use wants them to face, as _gaStart turns them, not the turn still under way)   // (the way they face for it: the same on every screen)
-    b.t = Math.max(0, Math.min(6000, Math.round((performance.now() - (cur.t0 || performance.now())) / 100)));
+    b.t = Math.max(0, Math.min(6000, Math.round((performance.now() - (cur.playT || cur.t0 || performance.now())) / 100)));   // (2.74.2: from when your figure really began it, after the turn: their copy and the stick keep time with yours)
   }
   else if (!_gw.moving && typeof gartMoveFacingDeg === 'function') { const deg = Math.round(_gmvWrap(gartMoveFacingDeg())); if (Number.isFinite(deg)) b.d = deg === -180 ? 180 : deg; }   // (standing: the way you face, to the degree, so their figure is drawn as yours is: to the nearest eighth, -64 became -45, a side view for a back view)
   if (_ga.carry && _ga.carry.id) { b.i = String(_ga.carry.id).slice(0, 64); if (_ga.carry.art) b.h = String(_ga.carry.art).slice(0, 64); }
@@ -136,8 +136,10 @@ function gartActDoingIn(A, ev) {
     _gaMoved.set(id, { x, y, theirs: true }); _gaHide.delete(id); _gaShow(id, false); _gaSetDownDraw(id, x, y); _ga.list = null;
   }
   // the stick of a throw
+  const wasStick = A.stick;
   A.stick = ev.p != null && Number.isFinite(ev.fx) ? { p: ev.p, x: ev.fx, y: ev.fy, t0: performance.now() - (ev.t || 0) * 100 } : null;
-  if (A.stick) _gadStickSprite(A);
+  if (A.stick) { _gadStickSprite(A); if (A.stickDown) { try { A.stickDown.remove(); } catch (e) { /* gone */ } A.stickDown = null; } }
+  else if (wasStick && wasStick.p >= 2) _gadStickDropped(A);   // (2.74.2) their pet dropped it at their feet: it lies there a while, as on their screen
   // the move
   const a = ev.a ? String(ev.a) : '';
   if (!a) {
@@ -250,7 +252,10 @@ function _gadStickSprite(A) {
         if (!s || _gll.actors.get(A.w) !== A) { A.stickSpr = null; Sp.remove(); return; }
         const ms = (GARDEN_ACTS.throwstick && GARDEN_ACTS.throwstick.ms) || 1500, tt = (performance.now() - s.t0) / ms, R0 = 0.32;
         let x = s.x, y = s.y, lift = 1;
-        if (s.p === 0) {
+        if (s.p === 0 && _gaMotion() && tt < R0) {   // (2.74.2) wound back over the shoulder in their hand, as yours is (_gaFetchDraw), before it flies
+          const flip = A.face < 0 ? -1 : 1, k = Math.max(0, tt) / R0;
+          x = A.x + (18 + 4 * Math.sin(k * Math.PI / 2)) * S / W.cellW * flip; y = A.y + 0.02; lift = (46 + 22 * k) * S;
+        } else if (s.p === 0) {
           const flip = A.face < 0 ? -1 : 1, hx = A.x + 8 * S / W.cellW * flip, hy = A.y + 0.02, k = !_gaMotion() ? 1 : Math.max(0, Math.min(1, (tt - R0) / (GA_STICK_LAND - R0)));
           x = hx + (s.x - hx) * k; y = hy + (s.y - hy) * k; lift = k >= 1 ? 1 : (72 * S) * (1 - k) + 90 * S * Math.sin(Math.PI * k);
         } else if (s.p === 2) {
@@ -259,6 +264,13 @@ function _gadStickSprite(A) {
         Sp.x = x; Sp.y = y; Sp.z = y + 0.02; Sp.lift = lift;
       } });
   } catch (e) { A.stickSpr = null; }
+}
+/** The stick their pet brought back, lying at their feet (as _gaStickDropped on their screen: there until they throw again, or 20 s). */
+function _gadStickDropped(A) {
+  if (typeof gardenWorldAdd !== 'function' || !Number.isFinite(A.x)) return;
+  try { if (A.stickDown) A.stickDown.remove(); } catch (e) { /* gone */ }
+  const K = typeof GARDEN_ACTOR_SCALE === 'number' ? GARDEN_ACTOR_SCALE : 1, t0 = performance.now(), x = A.x + 0.3, y = A.y + 0.12;
+  try { A.stickDown = gardenWorldAdd({ id: 'ga-stick-down-' + A.w, x, y, z: y, lift: 0, ground: false, svg: `<g transform="scale(${K})"><ellipse cx="0" cy="1.4" rx="12" ry="1.8" fill="#1a1408" opacity="0.22"/><g transform="translate(0 -0.6) rotate(-6)">${_GA_MOUTH_STICK}</g></g>`, update(dt, Sp) { if (A.stickDown !== Sp || performance.now() - t0 > 20000 || A.stick || _gll.actors.get(A.w) !== A) { if (A.stickDown === Sp) A.stickDown = null; Sp.remove(); } } }); } catch (e) { A.stickDown = null; }
 }
 /** Their hands empty again: the carried thing off every drawing of their figure. The walker keeps one drawing per pose and way round
  *  and puts it back (94-garden-native-art.js swapPlayerBody), so a basket left on one came back in their arms during a later move

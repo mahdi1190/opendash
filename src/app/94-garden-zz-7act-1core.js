@@ -139,7 +139,7 @@ function gartActFrame() {
   const now = performance.now();
   if (_ga.cur && _ga.cur.doing) {
     const cur = _ga.cur;
-    if (!cur.H) { const inner = _gw.node && _gw.node.querySelector('.gd-pl-in'), k = (inner && inner._gplKey) || ''; if (k.startsWith('idle' + cur.wantDir) || now - cur.t0 > 600) { const gpl = _gaMyFigure(); if (gpl) cur.H = gartActPlay(gpl, cur.id, { noProp: !!(cur.spot && cur.spot.noProp), skips: cur.skips, leaves: !!(cur.spot && cur.spot.kick === 'leaves'), tree: cur.spot && cur.spot.tree, at: cur.spot && cur.spot.stand }); } }
+    if (!cur.H) { const inner = _gw.node && _gw.node.querySelector('.gd-pl-in'), k = (inner && inner._gplKey) || ''; if (k.startsWith('idle' + cur.wantDir) || now - cur.t0 > 600) { const gpl = _gaMyFigure(); if (gpl) { cur.playT = now; if (cur.row.fetch && _ga.fetch && _ga.fetch.cur === cur) { if (!_ga.fetch.playT) _ga.fetch.playT = now; if (typeof gartActDoingPush === 'function') gartActDoingPush(true); } } if (gpl) cur.H = gartActPlay(gpl, cur.id, { noProp: !!(cur.spot && cur.spot.noProp), skips: cur.skips, leaves: !!(cur.spot && cur.spot.kick === 'leaves'), tree: cur.spot && cur.spot.tree, at: cur.spot && cur.spot.stand }); } }
     _gaTick(now);
     if (cur.row.rubPet) _gaRubTick(cur);
     if (cur.row.fetch) _gaFetchDraw();
@@ -263,8 +263,6 @@ function _gaStart(cur) {
   cur.wantDir = row.dir === 'n' ? 'n' : row.dir === 'e' || row.dir === 'w' ? 'e' : 's';
   if (typeof _GPL !== 'undefined') { _GPL.lastX = _gw.px; _GPL.lastY = _gw.py; }
   if (row.sound) { try { gardenSfx(row.sound); } catch (e) { /* no such sound: quiet */ } }
-  _gaTell(cur.id, spot && spot.stand ? _gw.px : null, spot && spot.stand ? _gw.py : null);
-  if (row.use && typeof gardenLiveFx === 'function' && (row.use === 'bell' || row.use === 'wish')) { try { gardenLiveFx('use', row.use, { x: Math.floor(_gw.px), y: Math.floor(_gw.py) }); } catch (e) { /* alone */ } }
   if (row.skim) _gaSkim(cur);
   if (spot && spot.src === 'water') _ga.wt++;
   if (row.shake) _gaShake(cur);
@@ -273,6 +271,9 @@ function _gaStart(cur) {
   if (row.carry && spot && spot.carry) _gaPick(cur);
   if (row.fetch) _gaFetch(cur);
   if (row.rubPet) { try { const P = typeof gpPetMe === 'function' ? gpPetMe() : null; if (P) { if (P.clipH) { try { P.clipH.stop(true); } catch (e) { /* gone */ } P.clipH = null; } if (typeof _plPropsDrop === 'function') _plPropsDrop(P); P.lifeCur = null; P.lifeHold = 0; P.busy = 0; P.cb = null; P.tx = null; P.perch = null; } } catch (e) { /* no pet */ } }   // (whatever row it was playing, it drops it and comes to your hand)
+  // (2.74.2) told after the extras above, so the first whole state already has the stick's throw, the thing in your arms, the ball
+  _gaTell(cur.id, spot && spot.stand ? _gw.px : null, spot && spot.stand ? _gw.py : null);
+  if (row.use && typeof gardenLiveFx === 'function' && (row.use === 'bell' || row.use === 'wish')) { try { gardenLiveFx('use', row.use, { x: Math.floor(_gw.px), y: Math.floor(_gw.py) }); } catch (e) { /* alone */ } }
   if (row.prop === 'fiddle' || row.fiddle) _gaResync();
   if (row.clouds) _gaSky(cur, true);
   _gaFirst(cur);
