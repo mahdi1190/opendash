@@ -71,6 +71,7 @@ function _vfrCtx(m) {
       return null;
     },
     public(x, y) { return _vfrOpenAt(x, y, m); },
+    reach(a, b) { return typeof gardenFolkReach !== 'function' || gardenFolkReach(a, b); },
     open(t) { return _vfrOpenAt(t.x, t.y - 0.2, m); },
     walkable(x, y, s, t) {
       if (s && (s.seat || s.pierEnd)) return true;
@@ -118,6 +119,7 @@ function _vfrRows(m) {
 }
 /* ---------- homes and the day's plans ---------- */
 function _vfrBegin(m) {
+  try { if (typeof gardenFolkFieldNow === 'function') gardenFolkFieldNow(); } catch (e) { /* planned without it: found as they go */ }
   const ctx = _vfrCtx(m), rows = _vfrRows(m), W = _wdG(), saved = {};
   for (const r of rows) if (W['vh.' + r.id]) saved[r.id] = W['vh.' + r.id];
   const homes = valeFolkSolveHomes(rows, ctx.things, saved, Object.assign({}, ctx, { open: null }));
@@ -139,7 +141,8 @@ function _vfrBegin(m) {
 /** (round 2) Where someone whose home is in closed land comes out by day and goes back at dusk: the open ground nearest their home, on
  *  the way to it (each their own, so nobody crowds the arrival road or the pier). Searched outwards in rings; null if nothing is open. */
 function _vfrGateFor(t, id, ctx) {
-  const free = (x, y) => (typeof _gwFree !== 'function' || _gwFree(x, y)) && ctx.open({ x, y });
+  const st = GARDEN_WORLD.start, inn = st ? { x: st.x + 0.5, y: st.y + 0.5 } : null;
+  const free = (x, y) => (typeof _gwFree !== 'function' || _gwFree(x, y)) && ctx.open({ x, y }) && (!inn || ctx.reach({ x, y }, inn));   // (and joined to the village: a pocket of open ground across the lake is no way in)
   for (let r = 1; r <= 48; r++) {
     let best = null, bd = Infinity;
     for (let k = 0; k < r * 8; k++) {
@@ -215,10 +218,15 @@ function _vfrV(id) {
 function _vfrWhere(id, minute) {
   const plan = _vfr.plans.get(id), at = valeFolkAt(plan, minute); if (!at || !at.e.spot) return null;
   const e = at.e, to = e.spot;
-  if (at.walking && at.prev && at.prev.spot) {
-    const a = at.prev.spot, k = at.along, pts = typeof gardenFolkPathKept === 'function' ? gardenFolkPathKept(a, to) : null;
-    if (pts && pts.length) { const q = gardenFolkAlong(a, pts, k); return { x: q.x, y: q.y, e, walking: true, inside: false, along: k, ahead: q.ahead, hx: q.hx }; }
-    return { x: a.x, y: a.y, e, walking: true, inside: false, along: k, ahead: [], hx: 0, wait: true };
+  // (the plan allows a straight walk's time and a little; the way round the lake is longer, so off screen they take the time that way
+  // really takes, at their own pace: a friend watching sees them walk, not dash)
+  if (at.prev && at.prev.spot && (at.walking || (e._rw && at.secs < e._rw))) {
+    const a = at.prev.spot, pts = typeof gardenFolkPathKept === 'function' ? gardenFolkPathKept(a, to) : null;
+    if (pts && pts.length) {
+      if (!e._rw) { const G = GARDEN_WORLD, row = VALE_FOLK_ROW.get(id) || {}; let len = 0, p = a; for (const q of pts) { len += Math.hypot((q.x - p.x) * G.cellW, (q.y - p.y) * G.cellH); p = q; } e._rw = len / (VALE_FOLK_SPEED * (row.speed || 1)); }
+      const k = Math.min(1, at.secs / Math.max(1, e.walk || 0, e._rw));
+      if (k < 1) { const q = gardenFolkAlong(a, pts, k); return { x: q.x, y: q.y, e, walking: true, inside: false, along: k, ahead: q.ahead, hx: q.hx }; }
+    } else if (at.walking) return { x: a.x, y: a.y, e, walking: true, inside: false, along: at.along, ahead: [], hx: 0, wait: true };
   }
   return { x: to.x, y: to.y, e, walking: false, inside: !!e.inside };
 }
@@ -735,6 +743,8 @@ function _vfrHostSend(now) {
     if (V.nod && performance.now() < V.nod.until) r.w = 1;   // (a wave in passing: friends see it too)
     l.push(r); if (l.length >= 16) break;
   }
+  // (a live message is at most 1400 bytes: the ways ahead are shortened, the farthest first, until it fits)
+  for (let guard = 0; guard < 40 && JSON.stringify({ l }).length > 1300; guard++) { let big = null; for (const r of l) if (r.p && (!big || r.p.length > big.p.length)) big = r; if (!big) break; big.p.length -= 2; if (!big.p.length) delete big.p; }
   const sig = JSON.stringify(l.map(r => [r.i, Math.round(r.x / 5), Math.round(r.y / 5), r.tx, r.ty, r.a, r.f, r.h, r.w, r.p ? r.p.slice(0, 2) : 0]));   // (where they are, to half a cell: a walk is told every 0.8 s, a rest every 8 s)
   if (sig === _vfl.sig && now - _vfl.sentAt < 8000) return;
   _vfl.sig = sig; _vfl.sentAt = now;
@@ -759,10 +769,11 @@ function gardenFolkGuestIn(l) {
     if (!V) { V = { id: r.i, row: VALE_FOLK_ROW.get(r.i), x: r.x / 10, y: r.y / 10, face: 1, S: null, drawn: '', path: null }; _vfg.V.set(r.i, V); }
     const to = { x: r.x / 10, y: r.y / 10 }, ahead = [];
     if (Array.isArray(r.p)) for (let k = 0; k + 1 < r.p.length && ahead.length < 8; k += 2) if (Number.isFinite(r.p[k]) && Number.isFinite(r.p[k + 1])) ahead.push({ x: r.p[k] / 10, y: r.p[k + 1] / 10 });
+    { const G = GARDEN_WORLD; V.need = Math.hypot((V.x - to.x) * G.cellW, (V.y - to.y) * G.cellH) + (r.a === 'walk' ? 0.8 * VALE_FOLK_SPEED * (VALE_FOLK_ROW.get(r.i).speed || 1) : 0); V.done = 0; }   // (0.8 s: about how old a message is when it comes, measured on a local relay: sent every 0.8 s, then carried)
     V.goal = { x: r.tx / 10, y: r.ty / 10 }; V.a = String(r.a || 'idle'); V.f = r.f ? -1 : 1; V.heldBy = r.h; V.wave = r.w ? performance.now() + 1600 : 0; V.at = performance.now();
     // the way the host's villager walks: first to where the host saw them (straight only where that is clear; else on along the way
     // they were already going, which leads there), then on along the host's own path. Nothing is ever walked straight through a wall.
-    if (Math.hypot(V.x - to.x, V.y - to.y) > 3) { V.x = to.x; V.y = to.y; V.route = ahead; }
+    if (Math.hypot(V.x - to.x, V.y - to.y) > 3) { V.x = to.x; V.y = to.y; V.route = ahead; V.need = 0; }
     else if (Math.hypot(V.x - to.x, V.y - to.y) < 0.15 || typeof _gwFree !== 'function' || _vfrLineFree(V, to)) V.route = [to].concat(ahead);
     else V.route = (V.route || []).slice(0, 16).concat([to], ahead);
   }
@@ -774,12 +785,19 @@ function _vfgFrame(dt) {
   for (const V of _vfg.V.values()) if (V.mine && !(typeof _wd !== 'undefined' && _wd.talk)) { V.mine = false; try { gardenLiveFx('folk', 'bye', { i: V.id }); } catch (e) { /* alone */ } }
   for (const V of _vfg.V.values()) {
     // along the host's own path, at their own pace (a little quicker while catching up)
-    let st = VALE_FOLK_SPEED * (V.row.speed || 1) * dt * (V.route && V.route.length > 1 ? 1.15 : 1), moved = false, hdx = 0, hdy = 0;
+    // (the host's villager has walked on since that message came: how far behind theirs this copy is, in px; quicker in proportion, up to
+    // half as fast again, so the two screens stay within a cell)
+    const v0 = VALE_FOLK_SPEED * (V.row.speed || 1);
+    if (V.a === 'walk' && V.route && V.route.length) V.need = (V.need || 0) + v0 * dt;
+    const lag = Math.max(0, (V.need || 0) - (V.done || 0)) / G.cellW;
+    let st = v0 * dt * (1 + Math.min(0.5, lag * 0.4)), moved = false, hdx = 0, hdy = 0;
+    const st0 = st;
     while (st > 0 && V.route && V.route.length) {
       const p = V.route[0], dx = (p.x - V.x) * G.cellW, dy = (p.y - V.y) * G.cellH, d = Math.hypot(dx, dy);
       if (d <= st) { V.x = p.x; V.y = p.y; V.route.shift(); st -= d; if (d > 0.01) { hdx = dx; hdy = dy; moved = true; } continue; }
       V.x += dx / d * st / G.cellW; V.y += dy / d * st / G.cellH; hdx = dx; hdy = dy; moved = true; st = 0;
     }
+    V.done = (V.done || 0) + (st0 - st);
     if (moved) _vfrHeadTo(V, hdx, hdy, dt);
     // (drawn only near your view, as the host draws theirs: someone thirty cells off is not drawn at all)
     const nearV = _vfrNearView(V.x, V.y, v, VFR_NEAR);

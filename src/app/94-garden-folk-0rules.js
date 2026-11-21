@@ -50,27 +50,27 @@ const VALE_ACTIVITIES = Object.freeze({
 /** Routines: per block, weighted choices [activity, weight, when?] (when: 'rain' | 'dry' | 'snow' | a season | a list). 4 or 5 blocks each
  *  carry a real choice; the rest are home or sleep. */
 const VALE_ROUTINES = Object.freeze({
-  angler: { dawn: [['fish', 6]], morning: [['fish', 8], ['sit', 1]], midday: [['fish', 5], ['sitout', 2, 'dry']], afternoon: [['fish', 7], ['shelter', 4, 'rain']], dusk: [['fish', 6], ['warm', 2]], evening: [['home', 5], ['warm', 2, 'dry']], night: [['sleep', 1]] },
+  angler: { dawn: [['fish', 6]], morning: [['fish', 8], ['sit', 1]], midday: [['fish', 5], ['sitout', 2, 'dry']], afternoon: [['fish', 7], ['shelter', 4, 'rain']], dusk: [['fish', 6], ['warm', 2]], evening: [['home', 3], ['warm', 3], ['sitout', 2, 'dry']], night: [['sleep', 1]] },
   thistle: { dawn: [['tend', 3], ['home', 2]], morning: [['sleep', 1]], midday: [['sleep', 1]], afternoon: [['home', 3], ['sit', 2, 'dry']], dusk: [['tend', 4], ['warm', 3], ['sitout', 1, 'dry']], evening: [['tend', 3], ['warm', 3], ['look', 1]], night: [['tend', 2, 'dry'], ['home', 2]] },
-  pip: { dawn: [['fish', 4], ['look', 2]], morning: [['wander', 5], ['fish', 3], ['read', 1]], midday: [['sitout', 3, 'dry'], ['wander', 3], ['post', 1]], afternoon: [['fish', 4], ['wander', 4], ['shelter', 3, 'rain']], dusk: [['wander', 2], ['sitout', 2, 'dry'], ['home', 1]], evening: [['home', 3], ['warm', 1]], night: [['sleep', 1]] },
-  tam: { dawn: [['tend', 4], ['look', 1]], morning: [['tend', 3], ['home', 2], ['wander', 2, 'rain']], midday: [['home', 3], ['sit', 1, 'dry']], afternoon: [['tend', 3], ['wander', 3, 'rain'], ['look', 1]], dusk: [['tend', 3], ['sit', 2]], evening: [['home', 1]], night: [['sleep', 1]] },
-  bramble: { dawn: [['home', 1]], morning: [['read', 3], ['sitout', 3, 'dry'], ['look', 3]], midday: [['sitout', 4, 'dry'], ['sit', 2], ['shelter', 4, 'rain']], afternoon: [['look', 3], ['read', 2], ['sitout', 3, 'dry'], ['wander', 2]], dusk: [['sit', 3], ['look', 2]], evening: [['home', 3], ['warm', 1]], night: [['sleep', 1]] },
-  quince: { dawn: [['tend', 4], ['look', 1]], morning: [['post', 3], ['read', 2], ['sitout', 2, 'dry']], midday: [['sit', 3], ['tend', 2], ['shelter', 3, 'rain']], afternoon: [['tend', 3], ['look', 2], ['wander', 2]], dusk: [['porch', 3], ['sit', 2]], evening: [['home', 1]], night: [['sleep', 1]] },
+  pip: { dawn: [['fish', 4], ['look', 2]], morning: [['wander', 5], ['fish', 3], ['read', 1]], midday: [['sitout', 3, 'dry'], ['wander', 3], ['post', 1]], afternoon: [['fish', 4], ['wander', 4], ['shelter', 3, 'rain']], dusk: [['wander', 2], ['sitout', 2, 'dry'], ['fish', 2], ['home', 1]], evening: [['home', 1], ['warm', 2], ['sitout', 2, 'dry'], ['fish', 1]], night: [['sleep', 1]] },
+  tam: { dawn: [['tend', 4], ['look', 1]], morning: [['tend', 3], ['home', 2], ['wander', 2, 'rain']], midday: [['home', 1], ['sit', 2, 'dry'], ['wander', 2], ['read', 1]], afternoon: [['tend', 3], ['wander', 3], ['sitout', 1, 'dry']], dusk: [['tend', 3], ['sit', 2]], evening: [['home', 2], ['warm', 1], ['sitout', 1, 'dry']], night: [['sleep', 1]] },
+  bramble: { dawn: [['home', 1]], morning: [['read', 3], ['sitout', 3, 'dry'], ['look', 3]], midday: [['sitout', 4, 'dry'], ['sit', 2], ['shelter', 4, 'rain']], afternoon: [['look', 3], ['read', 2], ['sitout', 3, 'dry'], ['wander', 2]], dusk: [['sit', 3], ['look', 2]], evening: [['home', 2], ['warm', 2], ['sitout', 1, 'dry']], night: [['sleep', 1]] },
+  quince: { dawn: [['tend', 4], ['look', 1]], morning: [['post', 3], ['read', 2], ['sitout', 2, 'dry']], midday: [['sit', 3], ['tend', 2], ['shelter', 3, 'rain']], afternoon: [['tend', 3], ['look', 2], ['wander', 2]], dusk: [['porch', 3], ['sit', 2], ['wander', 1]], evening: [['home', 2], ['sitout', 2, 'dry'], ['warm', 1]], night: [['sleep', 1]] },
   wick: { dawn: [['home', 1]], morning: [['sleep', 1]], midday: [['sleep', 1]], afternoon: [['sleep', 1]], dusk: [['look', 4], ['porch', 1]], evening: [['look', 4], ['sitout', 1, 'dry'], ['warm', 1]], night: [['look', 3, 'dry'], ['home', 2]] },
   hollin: { dawn: [['warm', 3], ['porch', 1]], morning: [['tend', 3], ['look', 2], ['fish', 1, 'thursday']], midday: [['sit', 3], ['warm', 2], ['fish', 3, 'thursday']], afternoon: [['tend', 3], ['look', 2], ['shelter', 3, 'rain']], dusk: [['warm', 4], ['sit', 1]], evening: [['warm', 2], ['home', 3]], night: [['sleep', 1]] },
-  perpetua: { dawn: [['home', 1]], morning: [['post', 3], ['wander', 2]], midday: [['wander', 3], ['post', 2]], afternoon: [['wander', 3], ['sitout', 1, 'dry'], ['shelter', 2, 'rain']], dusk: [['post', 2], ['home', 2]], evening: [['home', 1]], night: [['sleep', 1]] },
+  perpetua: { dawn: [['home', 1]], morning: [['post', 3], ['wander', 2]], midday: [['wander', 3], ['post', 2]], afternoon: [['wander', 3], ['sitout', 1, 'dry'], ['shelter', 2, 'rain']], dusk: [['post', 2], ['wander', 2], ['home', 1]], evening: [['home', 2], ['post', 1], ['wander', 1]], night: [['sleep', 1]] },
 });
 /** THE REGISTRY. look: the painted cast id (94-garden-art-g-cast.js), plus the classic drawing's colours (the classic style keeps its own).
  *  home: a query on kinds and words (valeFolkHomeOf), prefer: old landmark ids, tried first; region: where the old tables put them.
  *  caller: they were one of the daily callers (WD_FOLK). The caller rows' words (when, thanks, chance) stay in 94-garden-wonder-1folk.js. */
 const VALE_FOLK = Object.freeze([
   Object.freeze({ id: 'angler', name: 'The old angler', species: 'man', body: 'tall', cast: 'angler', temper: 'quiet', home: Object.freeze({ want: ['boathouse', 'cottage', 'house', 'hut'], near: Object.freeze({ kinds: ['pier'], r: 14 }) }), prefer: Object.freeze(['ld-boathouse', 'old-angler']), region: '', place: 'the pier', routine: 'angler', tells: Object.freeze(['back-to-water']), arrives: 'start' }),
-  Object.freeze({ id: 'thistle', name: 'Mother Thistle', species: 'hedgehog', body: 'small', cast: 'thistle', temper: 'cosy', home: Object.freeze({ want: ['hollow', 'burrow', 'cottage'], terrain: 'woodland' }), prefer: Object.freeze(['ld-hollow', 'great-oak-clearing']), region: 'west-woods', place: 'the Great Oak', routine: 'thistle', caller: 1, arrives: 'start' }),
+  Object.freeze({ id: 'thistle', name: 'Mother Thistle', species: 'hedgehog', body: 'small', cast: 'thistle', temper: 'cosy', nocturnal: 1, home: Object.freeze({ want: ['hollow', 'burrow', 'cottage'], terrain: 'woodland' }), prefer: Object.freeze(['ld-hollow', 'great-oak-clearing']), region: 'west-woods', place: 'the Great Oak', routine: 'thistle', caller: 1, arrives: 'start' }),
   Object.freeze({ id: 'pip', name: 'Pip', species: 'otter', body: 'tall', cast: 'pip', temper: 'bright', home: Object.freeze({ want: ['holt'], near: Object.freeze({ kinds: ['mill', 'bridge', 'falls'], r: 16 }) }), prefer: Object.freeze(['fk-holt-pip', 'ld-churn']), region: 'east-mill', place: 'the mill race', routine: 'pip', caller: 1, arrives: 'start' }),
   Object.freeze({ id: 'tam', name: 'Tam', species: 'mole', body: 'small', cast: 'tam', temper: 'deadpan', home: Object.freeze({ want: ['burrow'], near: Object.freeze({ kinds: ['chapel', 'maze', 'stones'], r: 18 }) }), prefer: Object.freeze(['fk-burrow-tam', 'ld-chapel']), region: 'southwest-ruins', place: 'the old chapel', routine: 'tam', caller: 1, arrives: 'start' }),
   Object.freeze({ id: 'bramble', name: 'Bramble', species: 'badger', body: 'tall', cast: 'bramble', temper: 'dry', home: Object.freeze({ want: ['cottage', 'house', 'oldhouse'], near: Object.freeze({ kinds: ['mill', 'barn'], r: 40 }) }), prefer: Object.freeze(['mill-yard']), region: 'east-mill', place: 'the mill yard', routine: 'bramble', caller: 1, tells: Object.freeze(['rub-out']), arrives: 'start' }),
   Object.freeze({ id: 'quince', name: 'Quince', species: 'hare', body: 'tall', cast: 'quince', temper: 'bright', home: Object.freeze({ want: ['house', 'cottage'], near: Object.freeze({ kinds: ['bell', 'trough'], r: 14 }) }), prefer: Object.freeze(['ld-quince-house', 'cider-square']), region: 'orchard-headland', place: 'the cider square', routine: 'quince', caller: 1, arrives: 'start' }),
-  Object.freeze({ id: 'wick', name: 'Wick', species: 'owl', body: 'bird', cast: 'wick', temper: 'dry', home: Object.freeze({ want: ['hut', 'bothy', 'nest'], high: true }), prefer: Object.freeze(['ld-hut', 'summit-cairn']), region: 'north-headland', place: 'the mountain hut', routine: 'wick', caller: 1, arrives: 'start' }),
+  Object.freeze({ id: 'wick', name: 'Wick', species: 'owl', body: 'bird', cast: 'wick', temper: 'dry', nocturnal: 1, home: Object.freeze({ want: ['hut', 'bothy', 'nest'], high: true }), prefer: Object.freeze(['ld-hut', 'summit-cairn']), region: 'north-headland', place: 'the mountain hut', routine: 'wick', caller: 1, arrives: 'start' }),
   Object.freeze({ id: 'hollin', name: 'Hollin', species: 'stag', body: 'tall', cast: 'hollin', temper: 'quiet', home: Object.freeze({ want: ['woodhut', 'hut', 'cottage'], away: Object.freeze({ kinds: ['trough', 'bell'], r: 12 }) }), prefer: Object.freeze(['ld-woodhut', 'ld-hollin-yard']), region: 'southwest-ruins', place: 'the woodman\u2019s hut', routine: 'hollin', resident: 1, tells: Object.freeze(['steps-aside']), arrives: 'start' }),
   Object.freeze({ id: 'perpetua', name: 'Perpetua', species: 'snail', body: 'shell', cast: 'perpetua', temper: 'proud', home: Object.freeze({ want: ['postbox'], postbox: true }), prefer: Object.freeze(['post-box']), region: '', place: 'the post box', routine: 'perpetua', speed: 0.42, arrives: 'start' }),
 ]);
@@ -78,7 +78,7 @@ const VALE_FOLK_ROW = new Map(VALE_FOLK.map(r => [r.id, r]));
 /** A layout thing that is a painted figure of one of the folk (its kind is a villager's cast, as the quay's seated angler is of kind
  *  'angler'): once the folk live their days, the villager is drawn where they really are and that thing is neither drawn nor solid.
  *  By kind, so any layout's stand-in for any villager works the same. */
-function valeFolkStandIn(t) { const k = t && t.kind; return !!k && VALE_FOLK.some(r => r.cast === k); }
+function valeFolkStandIn(t) { const k = t && t.kind; if (!k) return false; try { return VALE_FOLK.some(r => r.cast === k); } catch (e) { return false; } }   // (asked while the catalogue is built, before this file's tables exist: nothing is a stand-in yet)
 /** Reed stays a traveller: the road's own runtime walks him in by the arrival road (94-garden-travellers-1runtime.js). One system, so
  *  he is a row of that table, not this one. */
 const VALE_FOLK_TRAVELLERS = Object.freeze(['travelling-angler']);
@@ -171,6 +171,7 @@ function valeFolkFind(q, ctx, o) {
       const p = s.stand;
       if (q.public && ctx.public && !ctx.public(p.x, p.y)) continue;
       if (ctx.walkable && !ctx.walkable(p.x, p.y, s, t)) continue;
+      if (ctx.reach && from && !ctx.reach(from, p)) continue;   // (only somewhere they can walk to from where they are: never a place across the lake with no way round)
       let d = from ? _vfD(p, from) : 0;
       if (q.near === 'home' && home) { const hd = _vfD(p, ctx.door ? ctx.door(home) : home) / 48; if (hd > (q.r || 20)) continue; d = hd * 48; }
       cands.push({ t, s, d });
@@ -181,7 +182,9 @@ function valeFolkFind(q, ctx, o) {
   // the near ones, shuffled by the day's seed (any: anywhere public, the near ones still first)
   const n = Math.min(cands.length, q.any ? 10 : 5), pool = cands.slice(0, n);
   for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); const x = pool[i]; pool[i] = pool[j]; pool[j] = x; }
-  for (const c of pool.concat(cands.slice(n))) {
+  const order = pool.concat(cands.slice(n)), avoid = o.avoid || [];
+  if (avoid.length) order.sort((a, b) => (avoid.includes('s:' + a.t.id) ? 1 : 0) - (avoid.includes('s:' + b.t.id) ? 1 : 0));   // (stable: the near shuffle kept, the places just been to last)
+  for (const c of order) {
     // one villager to a thing at a time (two on a bench sat in each other's laps: the side-on figures are wider than its seats are apart)
     const key = 's:' + c.t.id;
     if (o.booked && o.booked(key)) continue;
@@ -232,7 +235,9 @@ function valeFolkPlanAll(rows, ctx) {
         // back by the road for the evening and the night
         // (their daytime sleep too: a night owl visiting sleeps at home, so by day they are out like the rest; the vale never feels empty
         // in a new garden, where most homes are still in closed land)
-        if (ctx.away && ctx.away.has(row.id) && VALE_ACTIVITIES[id] && VALE_ACTIVITIES[id].q.home) id = blk === 'evening' || blk === 'night' || blk === 'dawn' || id === 'sleep' ? 'sleep' : (_vfPick([['sitout', 3, 'dry'], ['look', 3], ['wander', 1], ['shelter', 3, 'rain']], ctx, rng) || 'look');   // (round 2: a seat, a view near the way home, now and then a stroll; not pacing)
+        // (a night owl the other way about: out in the evening and the night, asleep by day)
+        const offBlk = row.nocturnal ? blk === 'morning' || blk === 'midday' || blk === 'afternoon' : blk === 'evening' || blk === 'night' || blk === 'dawn';
+        if (ctx.away && ctx.away.has(row.id) && VALE_ACTIVITIES[id] && VALE_ACTIVITIES[id].q.home) id = offBlk || (id === 'sleep' && !row.nocturnal) ? 'sleep' : (_vfPick([['sitout', 3, 'dry'], ['look', 3], ['wander', 1], ['shelter', 3, 'rain']], ctx, rng) || 'look');   // (round 2: a seat, a view near the way home, now and then a stroll; not pacing)
         const A = VALE_ACTIVITIES[id] || VALE_ACTIVITIES.home;
         const share = used + 1 >= nIn ? b1 - t : Math.round((b1 - b0) / nIn * (0.8 + rng() * 0.4)); let t1 = Math.min(b1, t + Math.max(share, A.d[0]));
         if (A.d[1] <= 30) t1 = Math.min(t1, t + A.d[1] * 2);   // (a short errand, a stroll, a read of the board: then the block's other thing for the rest)
@@ -240,10 +245,14 @@ function valeFolkPlanAll(rows, ctx) {
         let spot = null;
         const prevE = out[out.length - 1];
         if (prevE && prevE.act === id && prevE.spot && !prevE.inside && !isBooked(prevE.spot.key, t, t1)) spot = prevE.spot;   // (fishing on into the next block: the same pier end, no walk to the bank and back)
-        for (let k = 0; k < 3 && !spot; k++) spot = valeFolkFind(A.q, fctx, { rng, from: at, booked: (key) => isBooked(key, t, t1) });
+        const recent = out.slice(-3).map(q => q.spot && q.spot.key).filter(Boolean);
+        for (let k = 0; k < 3 && !spot; k++) spot = valeFolkFind(A.q, fctx, { rng, from: at, booked: (key) => isBooked(key, t, t1), avoid: recent });
         let act = id, inside = !!A.inside;
         // nothing free for that: a visitor (home in closed land) wanders the open vale rather than leaving by the road and coming back
         if (!spot && ctx.away && ctx.away.has(row.id) && id !== 'sleep') { const strolled = out.length && out[out.length - 1].act === 'wander' && out[out.length - 1].t0 >= b0; for (const alt of ['sitout', 'look', 'wander']) { if (spot) break; if (alt === 'wander' && strolled) continue; const W = VALE_ACTIVITIES[alt]; if (alt === 'wander') t1 = Math.min(t1, t + W.d[1] * 2); for (let k = 0; k < 6 && !spot; k++) spot = valeFolkFind(W.q, fctx, { rng, from: at, booked: (key) => isBooked(key, t, t1) }); if (spot) { act = alt; inside = false; } } }
+        // (round 3) nothing free for what they wanted, by day: out and about anyway (a seat, a view, a stroll) rather than indoors; the vale
+        // was half empty at noon because a full pier or board sent people home
+        if (!spot && !A.inside && blk !== 'night' && id !== 'sleep') for (const alt of ['wander', 'sitout', 'look']) { if (spot) break; if (alt === id) continue; const W = VALE_ACTIVITIES[alt]; for (let k = 0; k < 4 && !spot; k++) spot = valeFolkFind(W.q, fctx, { rng, from: at, booked: (key) => isBooked(key, t, t1), avoid: recent }); if (spot) { act = alt; inside = false; if (alt === 'wander') t1 = Math.min(t1, t + W.d[1] * 2); } }
         { const pe = out[out.length - 1]; if (!spot && pe && pe.t0 >= b0 && pe.spot && !pe.inside && !isBooked(pe.spot.key, t, t1)) { pe.t1 = t1; doBook(pe.spot.key, t, t1); t = t1; continue; } }   // (round 2) nothing new free: they stay on where they are
         if (!spot) { spot = home ? valeFolkFind({ home: true }, fctx) : null; act = 'home'; inside = !!spot; }
         if (!spot) { t = t1; continue; }   // nowhere at all (a layout with no home and no seat): the time passes off the map
@@ -267,6 +276,8 @@ function valeFolkPlanAll(rows, ctx) {
         }
       }
     }
+    // (a night owl's early hours are the night they were out in, not asleep indoors: the last thing of the day carries on past midnight)
+    if (row.nocturnal && out.length > 2 && out[0].act === 'sleep' && out[0].t0 === 0 && out[0].t1 > 0) { const L = out[out.length - 1]; if (L && !L.inside && L.spot && !isBooked(L.spot.key, 0, out[0].t1)) { out[0] = Object.assign({}, L, { t0: 0, t1: out[0].t1, walk: 0 }); doBook(L.spot.key, 0, out[0].t1); } }
     // jitter: each start moves by a seeded few minutes, so the top of the hour doesn't hitch (never before the last one's start)
     for (let i = 1; i < out.length; i++) { if (out[i - 1].t1 !== out[i].t0) continue; const j = Math.round((rng() - 0.5) * 8); const t0 = Math.max(out[i - 1].t0 + 3, Math.min(out[i].t1 - 3, out[i].t0 + j)); out[i - 1].t1 = t0; out[i].t0 = t0; }
     plans.set(row.id, out);
