@@ -166,7 +166,7 @@ function valeFolkFind(q, ctx, o) {
       if (!s.stand) continue;
       const p = s.stand;
       if (q.public && ctx.public && !ctx.public(p.x, p.y)) continue;
-      if (ctx.walkable && !ctx.walkable(p.x, p.y, s)) continue;
+      if (ctx.walkable && !ctx.walkable(p.x, p.y, s, t)) continue;
       let d = from ? _vfD(p, from) : 0;
       if (q.near === 'home' && home) { const hd = _vfD(p, ctx.door ? ctx.door(home) : home) / 48; if (hd > (q.r || 20)) continue; d = hd * 48; }
       cands.push({ t, s, d });
@@ -181,7 +181,7 @@ function valeFolkFind(q, ctx, o) {
     // one villager to a thing at a time (two on a bench sat in each other's laps: the side-on figures are wider than its seats are apart)
     const key = 's:' + c.t.id;
     if (o.booked && o.booked(key)) continue;
-    return { x: c.s.stand.x, y: c.s.stand.y, deg: c.s.deg == null ? 90 : c.s.deg, src: c.t.id, kind: c.t.kind, act: c.s.act, seat: c.s.seat, key, at: { x: c.t.x, y: c.t.y } };
+    return { x: c.s.stand.x, y: c.s.stand.y, deg: c.s.deg == null ? 90 : c.s.deg, src: c.t.id, kind: c.t.kind, act: c.s.act, seat: c.s.seat, edge: !!c.s.edge, key, at: c.s.look ? { x: c.s.look.x, y: c.s.look.y } : { x: c.t.x, y: c.t.y } };   // (look: the point the figure turns to, the thing's own drawn middle)
   }
   return null;
 }
@@ -219,16 +219,20 @@ function valeFolkPlanAll(rows, ctx) {
     for (const blk of VALE_BLOCKS) {
       const [h0, h1] = H[blk], b0 = Math.round(h0 * 60), b1 = Math.min(1440, Math.round(h1 * 60));
       let t = b0, guard = 0;
-      while (t < b1 - 4 && guard++ < 12) {
+      while (t < b1 - 4 && guard++ < 40) {
         let id = _vfPick(R[blk] || [['home', 1]], ctx, rng) || 'home';
         // visiting by day (their own home is in land not open yet): what they would do at home they do out in the open vale; they go
         // back by the road for the evening and the night
-        if (ctx.away && ctx.away.has(row.id) && VALE_ACTIVITIES[id] && VALE_ACTIVITIES[id].q.home && id !== 'sleep') id = blk === 'evening' || blk === 'night' || blk === 'dawn' ? 'sleep' : rng() < 0.5 ? 'wander' : ctx.rain ? 'wander' : 'sitout';
+        // (their daytime sleep too: a night owl visiting sleeps at home, so by day they are out like the rest; the vale never feels empty
+        // in a new garden, where most homes are still in closed land)
+        if (ctx.away && ctx.away.has(row.id) && VALE_ACTIVITIES[id] && VALE_ACTIVITIES[id].q.home) id = blk === 'evening' || blk === 'night' || blk === 'dawn' ? 'sleep' : rng() < 0.5 ? 'wander' : ctx.rain ? 'wander' : 'sitout';
         const A = VALE_ACTIVITIES[id] || VALE_ACTIVITIES.home;
         const len = Math.round(A.d[0] + rng() * (A.d[1] - A.d[0])), t1 = Math.min(b1, t + len);
         let spot = null;
         for (let k = 0; k < 3 && !spot; k++) spot = valeFolkFind(A.q, fctx, { rng, from: at, booked: (key) => isBooked(key, t, t1) });
         let act = id, inside = !!A.inside;
+        // nothing free for that: a visitor (home in closed land) wanders the open vale rather than leaving by the road and coming back
+        if (!spot && ctx.away && ctx.away.has(row.id) && id !== 'sleep') { const W = VALE_ACTIVITIES.wander; for (let k = 0; k < 3 && !spot; k++) spot = valeFolkFind(W.q, fctx, { rng, from: at, booked: (key) => isBooked(key, t, t1) }); if (spot) { act = 'wander'; inside = false; } }
         if (!spot) { spot = home ? valeFolkFind({ home: true }, fctx) : null; act = 'home'; inside = !!spot; }
         if (!spot) { t = t1; continue; }   // nowhere at all (a layout with no home and no seat): the time passes off the map
         const walk = valeFolkWalkSecs(at, spot, speed);
@@ -237,6 +241,8 @@ function valeFolkPlanAll(rows, ctx) {
         else { out.push({ t0: t, t1, act, spot, inside, walk: Math.round(walk), clip: A.clip, prop: A.prop || '' }); doBook(spot.key, t, t1); }
         at = spot; t = t1;
       }
+      // (the block's last minutes: they stay where they are, booked, so nobody else is sent to the same spot while they are on it)
+      const last = out[out.length - 1]; if (last && last.t1 < b1) { if (last.spot) doBook(last.spot.key, last.t1, b1); last.t1 = b1; }
     }
     // jitter: each start moves by a seeded few minutes, so the top of the hour doesn't hitch (never before the last one's start)
     for (let i = 1; i < out.length; i++) { if (out[i - 1].t1 !== out[i].t0) continue; const j = Math.round((rng() - 0.5) * 8); const t0 = Math.max(out[i - 1].t0 + 3, Math.min(out[i].t1 - 3, out[i].t0 + j)); out[i - 1].t1 = t0; out[i].t0 = t0; }

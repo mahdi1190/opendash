@@ -61,30 +61,65 @@ const VALE_FOLK_ART = Object.freeze({
     s += _vfaSmoke(24, -57);
     return s;
   },
-  holt: () => {
+  holt: (o, inUse, row) => {
     const r = _vfaR('holt');
-    let s = '<ellipse cx="0" cy="1.5" rx="50" ry="6.5" fill="#1a2010" opacity=".2"/>';
-    // the bank: a turfed hump whose foot runs out into the lawn (no hard edge at the bottom: grass grows over it), the earth face under
-    // the turf where the way in is dug, all held in the old roots of the tree it is under
-    s += '<path d="M-48 2C-44 -12 -30 -30 -6 -34C18 -36 38 -22 47 2Z" fill="#4e6430"/><path d="M-45 1C-41 -11 -28 -27.5 -6 -31.6C16 -33.4 34 -21 43 1Z" fill="#6e8a42"/>';
-    s += '<path d="M-38 -12C-31 -23 -20 -29 -8 -31.4C-18 -25 -26 -18 -30 -9Z" fill="#9ab45e" opacity=".5"/>';
-    s += _vfaStrokes(r, 0, -18, 36, 12, 60, 3, -0.2, '#8eaa52', 0.9, 0.55) + _vfaStrokes(r, 8, -12, 32, 10, 34, 2.4, 0.4, '#465a2a', 0.8, 0.45);
-    s += '<path d="M-20 2C-21 -9 -15 -21 -1 -23C13 -24 20 -12 20 2Z" fill="#6e5236"/><path d="M-17 2C-18 -8 -13 -18.6 -1 -20.2C11 -21 17 -11 17.4 2Z" fill="#88684a"/>';
-    s += _vfaStrokes(r, 0, -9, 15, 9, 20, 1.8, 1.1, '#5a4028', 0.7, 0.5);
-    let roots = '';
-    for (let i = 0; i < 6; i++) { const x0 = -30 + i * 12 + r() * 4, y0 = -4 - r() * 8, x1 = x0 + (r() - 0.5) * 14, y1 = -24 - r() * 8; roots += `M${_vfaN(x0)} ${_vfaN(y0)}Q${_vfaN((x0 + x1) / 2 + (r() - 0.5) * 10)} ${_vfaN((y0 + y1) / 2)} ${_vfaN(x1)} ${_vfaN(y1)}`; }
-    s += `<path d="${roots}" stroke="#3e2a18" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/><path d="${roots}" stroke="#9a7a52" stroke-width=".7" fill="none" opacity=".7" transform="translate(-.6 -.6)"/>`;
-    // the dark way in, a driftwood door stood open against the bank, a worn sill of flat stones
-    s += '<path d="M-12 2C-13 -7 -9 -14.6 -1 -15.4C7 -15.6 11 -8 10.4 2Z" fill="#1e140c"/><path d="M-10 2C-10.6 -6 -7 -12.4 -1 -13.2" stroke="#4a3420" stroke-width="1.1" fill="none"/>';
-    s += '<path d="M6 2L7.4 -13L15.6 -9L15 2Z" fill="#a8987e"/><path d="M8 -10L15 -7.4M8 -5L15.2 -3.4M8 0L15.2 .6" stroke="#6a5a46" stroke-width=".7"/><circle cx="13.2" cy="-4.6" r=".9" fill="#c0a050"/>';
-    s += '<path d="M-14 2.6Q-6 .6 0 .8Q8 .6 14 2.6Q8 5 0 5Q-8 5 -14 2.6Z" fill="#8e877a"/><path d="M-11 2.2Q-4 1 2 1.2" stroke="#bcb4a4" stroke-width="1" fill="none"/>';
-    // a mooring post with its rope (an otter's front door is the water's), a fish on a nail, ferns and tufts all round the foot
-    s += '<path d="M30 3V-18" stroke="#4a3420" stroke-width="3.4" stroke-linecap="round"/><path d="M29.2 3V-18" stroke="#8a6a46" stroke-width="1"/><path d="M27 -11q3 2 6 0M27 -8q3 2 6 0" stroke="#c8b07a" stroke-width="1.2" fill="none"/>';
-    s += '<path d="M22 -14q3 -2 6 0q-3 2 -6 0zM28 -14l2 -1.6v3.2z" fill="#8ca0a8"/><circle cx="23.4" cy="-14.2" r=".5" fill="#1a1a1a"/>';
-    s += '<g class="vfa-reeds"><path d="M-40 3Q-44 -8 -48 -14M-37 3Q-38 -10 -36 -18M-34 3Q-31 -7 -28 -12" stroke="#5e7a36" stroke-width="1.1" fill="none" stroke-linecap="round"/><path d="M-47 -13q-3 -1 -4 -4M-36.4 -17q-2 -3 -1 -6" stroke="#7e9a48" stroke-width="1" fill="none"/></g>';
-    s += _vfaTufts(r, -50, -16, 2, 8, ['#4e6a2c', '#6a8a3a', '#3e5a24']) + _vfaTufts(r, 16, 50, 2, 8, ['#4e6a2c', '#6a8a3a', '#3e5a24']);
-    s += '<path d="M-26 0V-6M-22 1V-4" stroke="#4e6a2c" stroke-width=".8"/><circle cx="-26" cy="-6.6" r="1.5" fill="#f4f0e0"/><circle cx="-26" cy="-6.6" r=".6" fill="#e8b830"/><circle cx="-22" cy="-4.6" r="1.3" fill="#d8a0c8"/>';
-    s += _vfaSmoke(-6, -36);
+    // the tree it is dug under (the nearest standing tree behind its foot, from the layout as drawn): its roots come down over the bank
+    // from the trunk's foot, so the holt is IN the roots, one picture with the tree; with no tree near, the roots rise to an old stump
+    let tx = -10, ty = -34, tree = false;
+    try {
+      if (row && typeof gardenAffordThings === 'function') {
+        let bd = 2.2;
+        for (const t of gardenAffordThings()) {
+          if (!/tree/.test(t.kind || '') || t.y > row.y + 0.2) continue;
+          const d = Math.hypot(t.x - row.x, (t.y - row.y) * 0.8);
+          if (d < bd) { bd = d; tx = Math.max(-30, Math.min(30, (t.x - row.x) * 48)); ty = Math.max(-44, Math.min(-22, (t.y - row.y) * 30)); tree = true; }
+        }
+      }
+    } catch (e) { /* no tree */ }
+    // contact shadow under the bank, soft and wide, darker at the dug mouth's foot
+    let s = '<ellipse cx="0" cy="1" rx="58" ry="8" fill="#26301a" opacity=".22"/><ellipse cx="-2" cy="2" rx="22" ry="4" fill="#1a1208" opacity=".3"/>';
+    // the bank: no single hard outline. A shade body, then turf laid in overlapping tussocks toward the light (upper left), in the
+    // lawn's own olive and straw, so it is the same ground heaped up and not a brighter thing set on it
+    s += '<path d="M-54 3C-50 -6 -42 -18 -30 -26C-18 -33 -2 -36 12 -34C28 -31 42 -20 52 3Z" fill="#5f6a2e"/>';
+    let tus = '';
+    for (let i = 0; i < 16; i++) {
+      const a = Math.PI * (0.06 + 0.88 * i / 15), cx = -Math.cos(a) * 44, cy = -Math.sin(a) * 28 + 3, rx = 9 + r() * 6, ry = 6 + r() * 4, lit = cx < 8;
+      tus += `<ellipse cx="${_vfaN(cx)}" cy="${_vfaN(cy + 5)}" rx="${_vfaN(rx)}" ry="${_vfaN(ry)}" fill="${lit ? (i % 2 ? '#8e983e' : '#9aa246') : (i % 2 ? '#727c34' : '#7a8438')}"/>`;
+    }
+    s += tus + '<path d="M-26 -4C-24 -14 -12 -22 4 -22C18 -22 28 -14 30 -2C20 -8 -10 -10 -26 -4Z" fill="#848e3a"/>';
+    s += '<path d="M-42 -4C-36 -16 -24 -26 -8 -30C-20 -22 -30 -13 -34 -2Z" fill="#b0b45a" opacity=".45"/><path d="M14 -28C28 -24 40 -14 46 0C38 -10 28 -20 14 -24Z" fill="#4e5826" opacity=".45"/>';
+    s += _vfaStrokes(r, -4, -18, 44, 15, 90, 3.4, -0.25, '#b4b860', 0.9, 0.5) + _vfaStrokes(r, 10, -12, 40, 12, 60, 2.8, 0.35, '#4a5424', 0.8, 0.45) + _vfaStrokes(r, -10, -24, 30, 8, 40, 2.4, -0.5, '#c8c474', 0.7, 0.4);
+    // grass blades standing proud along the whole crown (the skyline is grass, not a drawn line)
+    let bl = '';
+    for (let i = 0; i < 46; i++) { const a = Math.PI * (0.03 + 0.94 * r()), x = -Math.cos(a) * 50, y = -Math.sin(a) * 33 + 2, h = 4 + r() * 6, l = (r() - 0.5) * 3; bl += `M${_vfaN(x)} ${_vfaN(y)}q${_vfaN(l * 0.4)} ${_vfaN(-h * 0.6)} ${_vfaN(l)} ${_vfaN(-h)}`; }
+    s += `<path d="${bl}" stroke="#7e8a36" stroke-width="1.1" fill="none" stroke-linecap="round"/><path d="${bl}" stroke="#b8bc62" stroke-width=".5" fill="none" opacity=".7" transform="translate(-.5 -.4)"/>`;
+    // the old roots: from the tree's foot down over the bank and into the ground on both sides, bark-coloured with a lit edge and moss
+    // on their backs; the root collar at the top is the trunk's own foot flaring into them
+    let rt = '', rl = '';
+    for (const [ex, ey] of [[-50, 2], [-36, -1], [-22, -5], [22, -5], [38, -1], [52, 2]]) {
+      const sx = tx + (ex > tx ? 3 : -3), mx = (tx + ex) / 2 + (r() - 0.5) * 8, my = ty + (ey - ty) * 0.3 - 4;
+      rt += `M${_vfaN(sx)} ${_vfaN(ty + 2)}Q${_vfaN(mx)} ${_vfaN(my)} ${_vfaN(ex)} ${_vfaN(ey)}`;
+      rl += `M${_vfaN(sx)} ${_vfaN(ty + 1)}Q${_vfaN(mx)} ${_vfaN(my - 1.4)} ${_vfaN(ex)} ${_vfaN(ey - 1.2)}`;
+    }
+    s += `<path d="${rt}" stroke="#3e2c1a" stroke-width="6" fill="none" stroke-linecap="round"/><path d="${rt}" stroke="#6a4c30" stroke-width="4" fill="none" stroke-linecap="round"/><path d="${rl}" stroke="#987654" stroke-width="1.3" fill="none" stroke-linecap="round" opacity=".85"/><path d="${rl}" stroke="#7a8a3a" stroke-width="1.8" fill="none" stroke-dasharray="3 9" opacity=".7"/>`;
+    const top = tree ? 12 : 9;
+    s += `<path d="M${_vfaN(tx - 13)} ${_vfaN(ty + 6)}Q${_vfaN(tx - 8)} ${_vfaN(ty - 4)} ${_vfaN(tx - 6)} ${_vfaN(ty - top)}L${_vfaN(tx + 6)} ${_vfaN(ty - top)}Q${_vfaN(tx + 8)} ${_vfaN(ty - 4)} ${_vfaN(tx + 13)} ${_vfaN(ty + 6)}Z" fill="#5c4228"/><path d="M${_vfaN(tx - 9)} ${_vfaN(ty + 4)}Q${_vfaN(tx - 6)} ${_vfaN(ty - 4)} ${_vfaN(tx - 4.5)} ${_vfaN(ty - top)}" stroke="#8e6c4a" stroke-width="1.4" fill="none"/>`;
+    if (!tree) s += `<ellipse cx="${_vfaN(tx)}" cy="${_vfaN(ty - 9)}" rx="6" ry="2.2" fill="#a88a62"/><ellipse cx="${_vfaN(tx)}" cy="${_vfaN(ty - 9)}" rx="3.6" ry="1.2" fill="#c8ac80"/>`;
+    // the way in, dug at the foot between two roots: warm dark earth going back into shadow, not a black hole; a lip of bare soil
+    s += '<path d="M-19 3C-20 -6 -15 -15 -3 -17C9 -18 16 -9 16 3Z" fill="#7a5a3a"/><path d="M-15 3C-16 -4 -12 -12 -3 -13.4C6 -14 12 -7 12 3Z" fill="#3a2816"/>';
+    s += '<path d="M-11 3C-11.6 -3 -8.6 -9 -3 -10C3 -10.4 7.6 -5 8 3Z" fill="#24180c"/><path d="M-13 -2C-12 -8 -8 -11.6 -3 -12.2" stroke="#9a7a54" stroke-width="1" fill="none" opacity=".8"/>';
+    s += _vfaStrokes(r, -2, -8, 16, 9, 22, 1.8, 1.1, '#5a4028', 0.7, 0.45);
+    // a driftwood door stood open against the bank, a sill of flat stones worn pale in the middle
+    s += '<path d="M9 3L10.6 -11.6L18 -8.4L17.4 3Z" fill="#a8987e"/><path d="M11 -9L17.4 -6.6M11 -4.4L17.6 -2.8M11 .4L17.6 1" stroke="#6a5a46" stroke-width=".7"/><circle cx="15.6" cy="-4.2" r=".9" fill="#c0a050"/>';
+    s += '<path d="M-17 3.4Q-8 1 0 1.2Q9 1 16 3.4Q9 6.2 0 6.2Q-9 6.2 -17 3.4Z" fill="#8e877a"/><path d="M-12 2.8Q-4 1.6 4 1.8" stroke="#c4bca8" stroke-width="1.1" fill="none"/><ellipse cx="-20" cy="5" rx="2.6" ry="1.5" fill="#9a9284"/><ellipse cx="21" cy="5.4" rx="2" ry="1.2" fill="#8a8478"/>';
+    // a mooring post with its rope and a fish on a nail (an otter's front door is the water's), reeds and ferns, tufts and two flowers
+    s += '<path d="M33 4V-16" stroke="#4a3420" stroke-width="3.4" stroke-linecap="round"/><path d="M32.2 4V-16" stroke="#8a6a46" stroke-width="1"/><path d="M30 -9q3 2 6 0M30 -6q3 2 6 0" stroke="#c8b07a" stroke-width="1.2" fill="none"/>';
+    s += '<path d="M25 -12q3 -2 6 0q-3 2 -6 0zM31 -12l2 -1.6v3.2z" fill="#8ca0a8"/><circle cx="26.4" cy="-12.2" r=".5" fill="#1a1a1a"/>';
+    s += '<g class="vfa-reeds"><path d="M-46 4Q-50 -8 -54 -14M-43 4Q-44 -10 -42 -18M-40 4Q-37 -7 -34 -12" stroke="#5e7a36" stroke-width="1.1" fill="none" stroke-linecap="round"/><path d="M-53 -13q-3 -1 -4 -4M-42.4 -17q-2 -3 -1 -6" stroke="#7e9a48" stroke-width="1" fill="none"/></g>';
+    s += '<path d="M42 4Q40 -4 34 -7M42 4Q44 -5 50 -8M42 4Q46 0 52 -1" stroke="#5a7030" stroke-width="1.4" fill="none" stroke-linecap="round"/>';
+    s += _vfaTufts(r, -58, -18, 4, 10, ['#6e7a30', '#8a9440', '#5a6628']) + _vfaTufts(r, 18, 58, 4, 10, ['#6e7a30', '#8a9440', '#5a6628']);
+    s += '<path d="M-28 2V-5M-24 3V-3" stroke="#4e6a2c" stroke-width=".8"/><circle cx="-28" cy="-5.6" r="1.5" fill="#f4f0e0"/><circle cx="-28" cy="-5.6" r=".6" fill="#e8b830"/><circle cx="-24" cy="-3.6" r="1.3" fill="#d8a0c8"/>';
+    s += _vfaSmoke(tx + 16, ty - 2);
     return s;
   },
 });

@@ -18,7 +18,7 @@
    gardenFolkLive()          true when the folk live their days here (the switch, the painted world, folk on in Settings)
    gardenFolkActRows(px, py) the prompt's rows for the folk in reach (94-garden-zz-7act-1core.js asks)
    gardenFolkTalkTo(id)      talk to them now (the prompt, a click)
-   gardenFolkFeet()          [{ x, y, name }] for the collision view (yellow: they step aside, never a wall)
+   gardenFolkFeet()          [{ x, y, name }] for the collision view (yellow: solid to your feet, gardenFolkBlocks)
    gardenFolkState()         the dev tools' and audit's view: [{ id, x, y, act, spot, inside, walking, on }]
    ============================================================ */
 const VFR_NEAR = 6, VFR_TICK = 0.1, VFR_MS_WALK = 3, VFR_MS_IDLE = 8;
@@ -43,9 +43,9 @@ function _vfrDoorOf(t) {
 function _vfrOpenAt(x, y, m) { try { const z = gardenIslandZoneAt(Math.floor(x), Math.floor(y)); return !z || (m.areas || []).includes('zn-' + z); } catch (e) { return true; } }
 function _vfrCtx(m) {
   const things = (typeof gardenAffordThings === 'function' ? gardenAffordThings() : []).filter(t => t.kind && t.kind !== 'person' && !(t.needs && typeof gardenWorkOwned === 'function' && !gardenWorkOwned(t.needs)));   // (a longer pier not built yet is not there to sit on)
-  const spotsMemo = new Map(), doorMemo = new Map();
+  const spotsMemo = new Map(), doorMemo = new Map(), baseMemo = new Map();
   const free = (x, y) => typeof _gwFree !== 'function' || _gwFree(x, y);
-  return {
+  const C = {
     seed: (() => { try { return String((gardenIslandData() || {}).id || '') + '|' + String((state && state.garden && state.garden.id) || ''); } catch (e) { return 'vale'; } })(),
     layout: (() => { try { return gardenIslandData().id; } catch (e) { return ''; } })(),
     things,
@@ -54,8 +54,10 @@ function _vfrCtx(m) {
       let B = { x: t.x, y: t.y, w: t.w }; try { if (typeof gardenAffordDrawnBase === 'function') B = gardenAffordDrawnBase(t); } catch (e) { /* the plan's */ }
       let s = []; try { s = gardenKindSpots({ kind: t.kind, x: B.x, y: B.y, w: B.w, front: t.front }); } catch (e) { s = []; }
       s = s.filter(q => !q.needs || gardenKindNeedsOk(q.needs, { season: m.season, night: m.tod === 'night', level: m.level && m.level.level }));
+      s = _vfrSideOn(s, C.base(t));
       spotsMemo.set(t.id, s); return s;
     },
+    base(t) { if (!baseMemo.has(t.id)) { let B = { x: t.x, y: t.y, w: t.w || 1 }; try { if (typeof gardenAffordDrawnBase === 'function') B = gardenAffordDrawnBase(t); } catch (e) { /* the plan's */ } baseMemo.set(t.id, B); } return baseMemo.get(t.id); },
     door(t) { if (!doorMemo.has(t.id)) doorMemo.set(t.id, _vfrDoorOf(t)); return doorMemo.get(t.id); },
     ground(type, x, y, r, rng) {
       for (let k = 0; k < 24; k++) { const a = rng() * Math.PI * 2, d = 0.8 + rng() * r, px = x + Math.cos(a) * d, py = y + Math.sin(a) * d * 0.7; if (typeof gardenTerrainAt === 'function' && gardenTerrainAt(px, py) === type && free(px, py) && _vfrOpenAt(px, py, m)) return { x: Math.round(px * 4) / 4, y: Math.round(py * 4) / 4 }; }
@@ -63,10 +65,40 @@ function _vfrCtx(m) {
     },
     public(x, y) { return _vfrOpenAt(x, y, m); },
     open(t) { return _vfrOpenAt(t.x, t.y - 0.2, m); },
-    walkable(x, y, s) { return s && (s.seat || s.pierEnd) ? true :   // (an edge to lean on is stood at only where the feet can be: a wheel pit's wall stands in water)
-      free(x, y) || (typeof _gwNearestFreePt === 'function' && !!_gwNearestFreePt(x, y, 0.35)); },
+    walkable(x, y, s, t) {
+      if (s && (s.seat || s.pierEnd)) return true;
+      // (an edge to lean on is stood at only where the feet can be: a wheel pit's wall stands in water)
+      if (!(s && s.edge) && !(free(x, y) || (typeof _gwNearestFreePt === 'function' && !!_gwNearestFreePt(x, y, 0.35)))) return false;
+      return _vfrClearOfThings(C, x, y, t && t.id);   // (rule 12: never behind a notice board, so as to stand on its roof, nor over another thing's foot)
+    },
     season: m.season, rain: !!(m.rain && m.rain.now), snow: !!(m.rain && m.rain.snow),
   };
+  return C;
+}
+/** Things a figure may stand on or beside freely (flat ground things); everything else is drawn and must not be overlapped. */
+function _vfrFlat(t) { const K = (t && GARDEN_KINDS[t.kind]) || {}; return !t.kind || K.solid === 'free' || /^(pier|bridge|fishing-bank|ball|leaf-pile|log|stepping|road|plaza|path|field|plot|pond|crossing|ford)/.test(t.kind); }
+/** Can a standing figure be here without covering a thing or being hidden behind it (rule 12)? The figure is about 0.6 cells wide and
+ *  a little over a cell tall; a thing's drawn width is its own (a tree only its trunk). skip: the thing they are at. */
+function _vfrClearOfThings(C, x, y, skip) {
+  for (const t of C.things) {
+    if (t.id === skip || Math.abs(t.x - x) > 8 || Math.abs(t.y - y) > 4 || _vfrFlat(t)) continue;
+    const B = C.base(t), hw = (/tree|oak|trunk/.test(t.kind) ? 0.5 : (B.w || 1) / 2) + 0.3;
+    if (Math.abs(x - B.x) < hw && y > B.y - 1.4 && y < B.y + 0.8) return false;
+  }
+  return true;
+}
+/** Stand points for side-on figures: a stand right in front of a thing (a notice board read face on) covers its foot and shows the
+ *  figure's back or side to it, so it is moved to stand beside the thing, at its foot, turned to it; one on each side (the booking
+ *  takes one). Seats, banks and pier ends are kept. Every stand also says what the figure turns to (look: the thing's drawn middle). */
+function _vfrSideOn(spots, B) {
+  const out = [], hw = (B.w || 1) / 2;
+  for (const q of spots) {
+    const st = q.stand;
+    if (!st || q.seat || q.edge || q.pierEnd) { out.push(q); continue; }
+    if (Math.abs(st.x - B.x) < hw + 0.2 && st.y > B.y - 1.4 && st.y < B.y + 1.0) { for (const sd of [-1, 1]) out.push(Object.assign({}, q, { stand: { x: B.x + sd * (hw + 0.5), y: B.y + 0.12 }, look: { x: B.x, y: B.y }, side: sd })); }
+    else out.push(Object.assign({}, q, { look: q.look || { x: B.x, y: B.y } }));
+  }
+  return out;
 }
 /** Who lives in the vale today: the eight and Perpetua (a resident's own `here` and the gentle telling still count). */
 function _vfrRows(m) {
@@ -132,9 +164,9 @@ function _vfrMarkup(V, pose, walk, face, mark) {
   const cls = { sit: 'gca-sit', read: 'gca-read', rub: 'gca-sit gca-rub', talk: 'gca-talk', sittalk: 'gca-sit gca-talk' }[pose] || '';
   if (cls) fig = fig.replace(/class="gca gca-(walk|idle)/, 'class="gca gca-$1 ' + cls);
   if (face < 0) fig = fig.replace('<g class="wd-flip">', '<g class="wd-flip" transform="scale(-1 1)">');
-  // a fishing line from the rod's tip into the water in front of them (the angler carries his rod; others are given one)
+  // a rod and line for those who fish without one of their own (the angler's own picture has his rod and line: nothing is added to it)
   let extra = '';
-  if (pose === 'fish') extra = cast === 'angler' ? `<path d="M${face * 30} -64Q${face * 62} -34 ${face * 88} 16" stroke="#f4f4ea" stroke-width=".5" fill="none" opacity=".8"/>` : `<path d="M${face * 6} -22L${face * 34} -52" stroke="#6e4c2a" stroke-width="1.6" stroke-linecap="round"/><path d="M${face * 34} -52Q${face * 64} -24 ${face * 88} 16" stroke="#f4f4ea" stroke-width=".5" fill="none" opacity=".8"/>`;
+  if (pose === 'fish' && cast !== 'angler') extra = `<path d="M${face * 6} -22L${face * 34} -52" stroke="#6e4c2a" stroke-width="1.6" stroke-linecap="round"/><path d="M${face * 34} -52Q${face * 64} -24 ${face * 88} 16" stroke="#f4f4ea" stroke-width=".5" fill="none" opacity=".8"/>`;
   const top = typeof gardenCastTop === 'function' ? gardenCastTop(cast) : 50;
   const m = mark ? `<g class="wd-mark" transform="translate(0 ${-top - 8})"><rect x="-9" y="-6" width="18" height="11" rx="5.5" fill="#fffdf4" stroke="#6a5a44" stroke-width="0.6"/><circle cx="-4" cy="-0.5" r="1.1" fill="#6a5a44"/><circle cy="-0.5" r="1.1" fill="#6a5a44"/><circle cx="4" cy="-0.5" r="1.1" fill="#6a5a44"/></g>` : '';
   s = gardenActorSized(fig + extra + m);
@@ -158,7 +190,7 @@ function _vfrDraw(V, walking) {
   const S = V.S; if (!S) return;
   const e = V.entry, at = !walking && e && V.arrived;
   let pose = 'idle';
-  if (V.hold) pose = at && e.clip === 'sit' ? 'sittalk' : 'talk';   // (sat down, they talk from the seat)
+  if (V.hold || V.greet) pose = at && e.clip === 'sit' ? 'sittalk' : 'talk';   // (sat down, they talk from the seat)
   else if (at && e.clip === 'sit') pose = V.id === 'bramble' && V.rubbing ? 'rub' : 'sit';
   else if (at && e.clip === 'fish') pose = 'fish';
   else if (at && e.clip === 'read') pose = 'read';
@@ -186,9 +218,54 @@ function _vfrStep(V, dt, speedMul) {
   while (left > 0 && V.path.length) {
     const p = V.path[0], dx = (p.x - V.x) * G.cellW, dy = (p.y - V.y) * G.cellH, d = Math.hypot(dx, dy);
     if (d <= left) { V.x = p.x; V.y = p.y; V.path.shift(); left -= d; continue; }
-    V.x += dx / d * left / G.cellW; V.y += dy / d * left / G.cellH; if (Math.abs(dx) > 0.5) V.face = dx > 0 ? 1 : -1; left = 0;
+    const nx = V.x + dx / d * left / G.cellW, ny = V.y + dy / d * left / G.cellH;
+    if (_vfrIntoYou(V, nx, ny)) { const now = performance.now(); if (!V.bumpT) V.bumpT = now; else if (now - V.bumpT > 900) { V.bumpT = 0; _vfrRoundYou(V); } V.waiting = true; return false; }
+    V.bumpT = 0; V.waiting = false;
+    V.x = nx; V.y = ny; if (Math.abs(dx) > 0.5) V.face = dx > 0 ? 1 : -1; left = 0;
   }
   return !V.path.length;
+}
+/** Can a standing figure be here: the feet free with room for its width, clear of every drawn thing but `skip`, in open land. */
+function _vfrBodyOk(x, y, skip) {
+  if (typeof _gwFree === 'function' && !(_gwFree(x, y, 0.04) && _gwFree(x - 0.28, y) && _gwFree(x + 0.28, y))) return false;
+  if (_vfr.ctx && !_vfrClearOfThings(_vfr.ctx, x, y, skip || '')) return false;
+  return !_vfr.m || _vfrOpenAt(x, y, _vfr.m);
+}
+/** Where to stand to talk to someone at tx, ty: side by side at talking distance (the figures are side-on), clear of everything, the
+ *  nearest such place to where they are now. null: nowhere clear (they talk from where they are). */
+function _vfrTalkSpot(V, tx, ty) {
+  let best = null, bd = Infinity;
+  for (const [ox, oy, w] of [[1.3, 0, 0], [-1.3, 0, 0], [1.25, 0.4, 0.4], [-1.25, 0.4, 0.4], [1.25, -0.4, 0.5], [-1.25, -0.4, 0.5], [1.6, 0.15, 0.3], [-1.6, 0.15, 0.3], [1.0, 0.9, 1], [-1.0, 0.9, 1]]) {
+    const x = tx + ox, y = ty + oy;
+    if (!_vfrBodyOk(x, y, '')) continue;
+    if (_vfr.list && _vfr.list.some(O => O !== V && O.S && !O.inside && Math.hypot(O.x - x, (O.y - y) * 1.6) < 0.8)) continue;
+    const d = Math.hypot(x - V.x, y - V.y) + w; if (d < bd) { bd = d; best = { x, y }; }
+  }
+  return best;
+}
+/** The folk are solid to your feet (94-garden-world-0walk.js asks while you walk): an oval round each one's feet that you cannot walk
+ *  into. A step that takes you out of one is always allowed, so nobody can pin you. A guest's copy of the host's folk counts too. */
+function gardenFolkBlocks(x, y) {
+  if (typeof _gw === 'undefined') return false;
+  const L = _vfr.on ? _vfr.list : (_vfg.V.size ? [..._vfg.V.values()] : null); if (!L) return false;
+  for (const V of L) {
+    if (!V.S || V.inside || V.x == null) continue;
+    const ex = (x - V.x) / VFR_BODY.x, ey = (y - V.y) / VFR_BODY.y, e = ex * ex + ey * ey; if (e >= 1) continue;
+    const ox = (_gw.px - V.x) / VFR_BODY.x, oy = (_gw.py - V.y) / VFR_BODY.y; if (e < ox * ox + oy * oy - 1e-6) return true;
+  }
+  return false;
+}
+const VFR_BODY = Object.freeze({ x: 0.5, y: 0.3 });
+/** Would a villager stepping to x, y walk into you? Then they wait, and after a moment go round you. */
+function _vfrIntoYou(V, x, y) {
+  if (typeof _gw === 'undefined' || V.hold) return false;
+  const ex = (x - _gw.px) / VFR_BODY.x, ey = (y - _gw.py) / VFR_BODY.y, e = ex * ex + ey * ey; if (e >= 1) return false;
+  const ox = (V.x - _gw.px) / VFR_BODY.x, oy = (V.y - _gw.py) / VFR_BODY.y; return e < ox * ox + oy * oy;
+}
+function _vfrRoundYou(V) {
+  const p = V.path && V.path[0]; if (!p) return;
+  const dx = p.x - V.x, dy = p.y - V.y, n = Math.hypot(dx, dy) || 1;
+  for (const s of [1, -1]) { const q = { x: _gw.px - dy / n * 0.9 * s, y: _gw.py + dx / n * 0.6 * s }; if (_vfrBodyOk(q.x, q.y, '') ) { V.path.unshift(q); return; } }
 }
 /* ---------- tells: what people do ---------- */
 const VALE_TELLS = Object.freeze({
@@ -208,9 +285,16 @@ function _vfrAwayFromRiver(x, y) {
   try { const R = (gardenIslandData().presentation || {}).rivers || {}; for (const r of Array.isArray(R) ? R : Object.values(R)) { const pts = (r && (r.points || r.path || r.line)) || []; for (const p of pts) { const px = Array.isArray(p) ? p[0] : p.x, py = Array.isArray(p) ? p[1] : p.y; const d = Math.hypot(px - x, py - y); if (d < bd) { bd = d; best = { x: px, y: py }; } } } } catch (e) { best = null; }
   return best ? (best.x > x ? -1 : 1) : null;
 }
+function _vfrBackToWater(V, e) {
+  if (V.id !== 'angler' || !e || e.act !== 'fish' || !e.spot || (typeof wdTaleFlag === 'function' && wdTaleFlag('mill.end'))) return null;
+  if (e._away === undefined) e._away = _vfrAwayFromRiver(e.spot.x, e.spot.y);
+  return e._away;
+}
+/** Which way someone faces on their spot (pure: worked out wherever they are, on screen or off, so someone you walk up to already faces
+ *  the way their place says). */
 function _vfrFaceAt(V, e) {
   const sp = e && e.spot; if (!sp) return V.face;
-  if (V.id === 'angler' && e.act === 'fish' && !(typeof wdTaleFlag === 'function' && wdTaleFlag('mill.end'))) { const f = _vfrAwayFromRiver(sp.x, sp.y); if (f) { _vfrTellSeen('back-to-water', V); return f; } }
+  const bw = _vfrBackToWater(V, e); if (bw) return bw;
   if (sp.at) { if (Math.abs(sp.at.x - sp.x) > 0.25) return sp.at.x > sp.x ? 1 : -1; }
   if (sp.deg != null) { const d = ((sp.deg % 360) + 360) % 360; if (d < 80 || d > 280) return 1; if (d > 100 && d < 260) return -1; }
   return V.face;
@@ -220,7 +304,15 @@ function _vfrCrossings(list) {
   for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
     const a = list[i], b = list[j]; if (!a.S || !b.S || a.inside || b.inside) continue;
     const d = Math.hypot(a.x - b.x, (a.y - b.y) * 1.3); if (d > 2.6) continue;
-    const who = valeFolkAside(a.id, b.id); if (!who) continue;
+    const who = valeFolkAside(a.id, b.id);
+    if (!who) {
+      // close friends meeting on the way stop for a word (the relationship table's 'close'), once an hour of play for a pair
+      if (valeFolkRel(a.id, b.id) !== 'close' || a.hold || b.hold || a.greet || b.greet || !(a.path && a.path.length) || !(b.path && b.path.length) || d > 1.9) continue;
+      const k = a.id < b.id ? a.id + '|' + b.id : b.id + '|' + a.id, now = performance.now(); _vfr.greeted = _vfr.greeted || new Map();
+      if (now - (_vfr.greeted.get(k) || -1e9) < 3600e3) continue; _vfr.greeted.set(k, now);
+      a.greet = { until: now + 2600, other: b.id }; b.greet = { until: now + 2600, other: a.id };
+      continue;
+    }
     const V = who === a.id ? a : b, O = V === a ? b : a;
     if (V.aside || !V.path || !V.path.length || V.hold) continue;
     // off to the side of the way, at right angles to where they were going, onto the first ground clear of it
@@ -245,6 +337,8 @@ function _vfrCrossingWait(V, list, now) {
   }
   return false;
 }
+/** Off screen, walking a leg: the way they face is the way the leg goes. */
+function at_prevDir(w) { const P = w.e && w.e.spot; return P && Number.isFinite(w.x) && Math.abs(P.x - w.x) > 0.05 ? (P.x > w.x ? 1 : -1) : 0; }
 /* ---------- the frame ---------- */
 function _vfrFrame(dt) {
   if (!_vfr.on) return;
@@ -269,12 +363,12 @@ function _vfrFrame(dt) {
     if (V.hold && !V.S && !V.inside && near) _vfrShow(V);   // (held while off the page: drawn as soon as you look)
     if (V.hold) { if (now > V.hold.until || (V.hold.by == null && typeof _wd !== 'undefined' && !_wd.talk && now - V.hold.t0 > 1500) || (V.hold.A && !_gll.actors.has(V.hold.by))) { V.hold = null; V.drawn = ''; } else { const tx = V.hold.A ? V.hold.A.x : _gw.px, ty = V.hold.A ? V.hold.A.y : _gw.py;
       // (stopped too close, on your feet: a step back first, to talking distance, then turn to you)
-      if (V.S && !V.hold.step && Math.hypot(V.x - tx, (V.y - ty) * 1.3) < 1.1) { const dx = V.x - tx || 0.01, dy = V.y - ty, n = Math.hypot(dx, dy) || 1; for (const k of [1, -1]) { const q = { x: tx + dx / n * 1.25 * k, y: ty + dy / n * 0.9 * k }; if (typeof _gwFree !== 'function' || _gwFree(q.x, q.y)) { V.hold.step = q; break; } } }
+      if (V.S && !V.hold.step && !V.hold.stepped && (Math.hypot(V.x - tx, (V.y - ty) * 1.3) < 1.1 || !_vfrBodyOk(V.x, V.y, V.entry && V.arrived && V.entry.spot ? V.entry.spot.src : ''))) { V.hold.stepped = 1; const q = _vfrTalkSpot(V, tx, ty); if (q) V.hold.step = q; }
       if (V.hold.step) { V.path = [V.hold.step]; if (_vfrStep(V, dt, 0.8)) V.hold.step = null; _vfrDraw(V, !!(V.path && V.path.length)); continue; }
       V.face = tx > V.x ? 1 : -1; if (V.S) _vfrDraw(V, false); continue; } }
     if (!near && !V.S) {
       // off screen: where the plan says, in a straight line along the leg (nothing walked frame by frame)
-      if (!goal) { V.x = w.x; V.y = w.y; V.inside = w.inside || !!e.offmap; V.arrived = !w.walking; }
+      if (!goal) { V.x = w.x; V.y = w.y; V.inside = w.inside || !!e.offmap; V.arrived = !w.walking; if (V.arrived) V.face = _vfrFaceAt(V, e); else if (w.e && at_prevDir(w)) V.face = at_prevDir(w); }
       else { V.inside = false; const G = GARDEN_WORLD, dx = (goal.at.x - V.x) * G.cellW, dy = (goal.at.y - V.y) * G.cellH, d = Math.hypot(dx, dy), st = VALE_FOLK_SPEED * (V.row.speed || 1) * dt; if (d > st) { V.x += dx / d * st / G.cellW; V.y += dy / d * st / G.cellH; } }   // (on the way over to you, off screen: along a straight line until the view is near, then on the path)
       continue;
     }
@@ -282,6 +376,7 @@ function _vfrFrame(dt) {
     if (V.inside) { _vfrHide(V); continue; }
     if (!near && V.S && !V.path) { _vfrHide(V); continue; }
     _vfrShow(V);
+    if (V.greet) { if (now > V.greet.until || V.hold) V.greet = null; else { const O = _vfr.V.get(V.greet.other); if (O) V.face = O.x > V.x ? 1 : -1; _vfrDraw(V, false); continue; } }   // (two who are close stop to pass the time of day)
     if (V.aside) { if (now > V.aside.until) { V.path = null; V.pathFor = ''; V.aside = null; } else { if (V.path && V.path.length) _vfrStep(V, dt, 0.8); _vfrDraw(V, !!(V.path && V.path.length)); continue; } }
     const there = Math.hypot((dest.x - V.x) * 48, (dest.y - V.y) * 30) < 3;
     if (!there) {
@@ -291,7 +386,7 @@ function _vfrFrame(dt) {
       const wait = !!V.path && _vfrCrossingWait(V, list, now);
       if (V.path && !wait) _vfrStep(V, dt, late);
       V.arrived = false;   // (arriving is the next frame's: there, they take their pose)
-      _vfrDraw(V, !wait && !!(V.path && V.path.length));
+      _vfrDraw(V, !wait && !V.waiting && !!(V.path && V.path.length));   // (waiting for you to pass: stood still, never walking on the spot)
     } else {
       V.x = dest.x; V.y = dest.y; V.path = null;
       if (!V.arrived) { V.arrived = true; V.face = goal ? (_gw.px > V.x ? 1 : -1) : _vfrFaceAt(V, e); if (V.id === 'bramble' && e.clip === 'sit') { V.rubbing = true; V.rubT = now; } }
@@ -299,6 +394,7 @@ function _vfrFrame(dt) {
       if (!goal && e.inside) { V.inside = true; _vfrHide(V); continue; }   // in at the door
       if (!goal && e.offmap) { V.inside = true; _vfrHide(V); continue; }
       _vfrDraw(V, false);
+      const bw = V.arrived && V.S ? _vfrBackToWater(V, e) : null; if (bw && V.face === bw) _vfrTellSeen('back-to-water', V);
     }
   }
   _vfrCrossings(list);
@@ -317,14 +413,25 @@ function _vfrTellerTick(m) {
     if (!t || t.b.heavy || (t.b.when && t.b.when.home)) continue;   // heavy beats wait for their calm hour at home
     const V = _vfr.V.get(row.id); if (!V || V.inside || V.x == null) continue;
     // a public spot near you that they can walk to (never on your own feet, never in land you have not opened)
-    let at = null;
-    for (let k = 0; k < 10 && !at; k++) { const a = (k / 10) * Math.PI * 2, q = { x: _gw.px + Math.cos(a) * 1.5, y: _gw.py + Math.sin(a) * 1 }; if (_vfrOpenAt(q.x, q.y, m) && (typeof _gwFree !== 'function' || _gwFree(q.x, q.y))) at = q; }
+    const at = _vfrTalkSpot(V, _gw.px, _gw.py);   // (side by side, clear of everything, in open land)
     if (!at) return;
-    V.visit = { at, until: performance.now() + 8 * 60000 }; V.mark = true; V.path = null; V.pathFor = '';
-    W.vtl = { d: today, id: row.id, went: 1 }; _wdSave();
-    if (Math.hypot(V.x - _gw.px, V.y - _gw.py) > 8) try { wdAmbient(`${row.name} is on the way over. ${row.body === 'bird' ? 'They look' : 'They look'} as if they have something to tell you.`, 9000, 'folk'); } catch (e) { /* quiet */ }
+    _vfrSendOver(V, row, at, m, 'something to tell you');
     return;
   }
+  // nobody has a story piece waiting: the day's visitor (the old daily caller's pick, with their request, favour and thanks: the talk is
+  // theirs, 94-garden-wonder-1folk.js) comes over instead, so a new garden still gets its daily visit (everything rewards)
+  if (_wd.t < 22) return;   // (as the old caller: not in your first moments in the garden)
+  let r = null; try { r = typeof _wdFolkPick === 'function' ? _wdFolkPick(m) : null; } catch (e) { r = null; }
+  if (!r || !_vfr.rows.some(q => q.id === r.id)) return;
+  const V = _vfr.V.get(r.id), e = V && V.entry; if (!V || V.x == null || (e && e.act === 'sleep')) return;
+  const at = _vfrTalkSpot(V, _gw.px, _gw.py); if (!at) return;
+  _vfrSendOver(V, VALE_FOLK_ROW.get(r.id), at, m, 'something to ask you');
+}
+function _vfrSendOver(V, row, at, m, what) {
+  const W = _wdG();
+  V.visit = { at, until: performance.now() + 8 * 60000 }; V.mark = true; V.path = null; V.pathFor = '';
+  W.vtl = { d: m.today, id: row.id, went: 1 }; _wdSave();
+  if (Math.hypot(V.x - _gw.px, V.y - _gw.py) > 8) try { wdAmbient(`${row.name} is on the way over. They look as if they have ${what}.`, 9000, 'folk'); } catch (e) { /* quiet */ }
 }
 /* ---------- the prompt and talking ---------- */
 function gardenFolkActRows(px, py) {
@@ -355,7 +462,10 @@ function gardenFolkTalkTo(id) {
     // a knock: "Coming!", and out they come to the step
     const H = _vfr.homes.get(id), d = H && _vfr.ctx.door(H); if (!d) return false;
     try { wdAmbient('“Coming!”', 2200, 'folk'); } catch (e) { /* quiet */ }
-    V.inside = false; V.x = d.x; V.y = d.y; V.hold = { t0: performance.now(), until: performance.now() + 90000 }; _vfrShow(V); _vfrDraw(V, false);
+    // (out of the door standing, then a step to stand beside you: never sat on the doorstep under your feet behind the talk card)
+    V.inside = false; V.x = d.x; V.y = d.y; V.arrived = false; V.hold = { t0: performance.now(), until: performance.now() + 90000 };
+    const q = _vfrTalkSpot(V, _gw.px, _gw.py); if (q) { V.hold.step = q; V.hold.stepped = 1; }
+    _vfrShow(V); _vfrDraw(V, !!q);
     setTimeout(() => gardenFolkTalkTo(id), 700);
     return true;
   }
@@ -398,7 +508,7 @@ function gardenFolkAtHome(who) {
   const d = _vfr.ctx && _vfr.ctx.door(H); if (!d) return false;
   return calm && Math.hypot(_gw.px - d.x, _gw.py - d.y) < 8;
 }
-function gardenFolkFeet() { return (_vfr.list || []).filter(V => V.S && !V.inside).map(V => ({ x: V.x, y: V.y, name: V.row.name })); }
+function gardenFolkFeet() { return (_vfr.on ? (_vfr.list || []) : [..._vfg.V.values()]).filter(V => V.S && !V.inside).map(V => ({ x: V.x, y: V.y, name: V.row.name })); }
 function gardenFolkState() {
   return (_vfr.rows || []).map(r => { const V = _vfr.V.get(r.id) || {}; const e = V.entry || {}; return { id: r.id, x: V.x, y: V.y, act: e.act, t0: e.t0, t1: e.t1, spot: e.spot ? { x: e.spot.x, y: e.spot.y, src: e.spot.src, kind: e.spot.kind } : null, inside: !!V.inside, drawn: !!V.S, walking: !!(V.path && V.path.length), arrived: !!V.arrived, home: (_vfr.homes.get(r.id) || {}).id, away: _vfr.away ? _vfr.away.has(r.id) : false, visit: !!V.visit }; });
 }

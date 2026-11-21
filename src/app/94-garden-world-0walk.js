@@ -830,7 +830,7 @@ const GW_CLEAR = 0.07;                                // planning keeps this muc
 function _gwFree(x, y, m) {
   const fx = GW_FOOT.x + (m || 0), fy = GW_FOOT.y + (m || 0);
   return _gwFootCells(x, y, fx, fy)
-    && !_gwSolidHit(x, y, fx, fy) && gardenWonderWalkFine(x, y, fy, m);   // (over the lake: the island's shape and the line of stones, not whole cells)
+    && !_gwSolidHit(x, y, fx, fy) && gardenWonderWalkFine(x, y, fy, m) && !(_gw.folkSolid && gardenFolkBlocks(x, y));   // (one of the folk in the way, 94-garden-wonder-0vale-folk.js)   // (over the lake: the island's shape and the line of stones, not whole cells)
 }
 /** Can the feet go in a straight line from a to b? (`m`: with that much room to spare.) Sampled finer than a corner can hide in. */
 function _gwLos(a, b, m) {
@@ -844,7 +844,8 @@ function _gwLos(a, b, m) {
  */
 function _gwMoveBy(dx, dy) {
   // (vf-perf) the step each frame takes, kept for the next frame's give (_gwMoveByEdge): which way the feet really went
-  const x0 = _gw.px, y0 = _gw.py, moved = _gwMoveByEdge(dx, dy);
+  // the vale's folk are solid to your own steps only (route planning and the folk's own paths do not see them: they move)
+  const x0 = _gw.px, y0 = _gw.py; let moved = false; _gw.folkSolid = typeof gardenFolkBlocks === 'function'; try { moved = _gwMoveByEdge(dx, dy); } finally { _gw.folkSolid = false; }
   if (_gw.giveFrom && (_gw.giveFrom.sx !== Math.sign(dx) || _gw.giveFrom.sy !== Math.sign(dy))) _gw.giveFrom = null;   /* (a new press forgets it) */
   _gw.lastStep = { sx: Math.sign(dx), sy: Math.sign(dy), mx: (_gw.px - x0) * GARDEN_WORLD.cellW, my: (_gw.py - y0) * GARDEN_WORLD.cellH };
   return moved;

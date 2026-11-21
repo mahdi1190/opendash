@@ -35,10 +35,12 @@ function _vfpBuildSlice() {
     const i = y * C + x;
     if ((B.grid.hard || B.grid)[i] || B.grid[i] || !_vfpZoneOpen(x, y, B.areas)) { B.cost[i] = Infinity; B.tier[i] = 9; continue; }
     let c = null; try { c = gardenIslandBaseCell(x, y); } catch (e) { c = null; }
-    let k = 1.8, t = 3;
-    if (c && (c.route || (typeof _plStoneAt === 'function' && _plStoneAt(x + 0.5, y + 0.5)))) { k = 1; t = 1; }
-    else if (c && c.beach) { k = 1.4; t = 2; }
-    else if (c && (c.reservation === 'plot' || c.plot || c.bed)) { k = 3; t = 4; }
+    // (a bed first: a planted bed laid over the plaza's setts is a bed, not paving; Hollin walked over the oak's flower bed as if it
+    // were the plaza. Grass dear enough that a lane round is taken over a cut across the lawn up to two and a half times as long.)
+    let k = 2.6, t = 3;
+    if (c && (c.reservation === 'plot' || c.plot || c.bed || _vfpBedAt(x + 0.5, y + 0.5))) { k = 6; t = 4; }
+    else if (c && (c.route || (typeof _plStoneAt === 'function' && _plStoneAt(x + 0.5, y + 0.5)))) { k = 1; t = 1; }
+    else if (c && c.beach) { k = 1.6; t = 2; }
     B.cost[i] = k; B.tier[i] = t;
   }
   // a water edge costs more (folk keep off the very lip of a bank)
@@ -51,6 +53,16 @@ function _vfpBuildSlice() {
   }
   _vfp.cost = B.cost; _vfp.tier = B.tier; _vfp.key = key; _vfp.build = null; _vfp.cache.clear(); _vfp.stats.ms += performance.now() - t0;
   return true;
+}
+/** A planted bed at a point (a flower bed, a herb bed, a veg bed: anything painted as soil and plants), from the presentation's own
+ *  bed shapes where the layout keeps them. Folk walk round beds, never over them. */
+function _vfpBedAt(x, y) {
+  try {
+    const P = gardenIslandData().presentation || {};
+    if (!_vfp.beds) { _vfp.beds = []; const D = gardenIslandData(), An = D.anchors || {}; for (const k of Object.keys(An)) { const b = An[k]; if (/bed/i.test(k) && b && Number.isFinite(b.x) && Number.isFinite(b.w)) _vfp.beds.push({ x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + (b.h || 1) }); } for (const k of ['beds', 'flowerBeds', 'plantings']) { const L = P[k]; for (const b of Array.isArray(L) ? L : L && typeof L === 'object' ? Object.values(L) : []) if (b && Number.isFinite(b.x) && Number.isFinite(b.y)) _vfp.beds.push({ x0: b.x, y0: b.y, x1: b.x + (b.w || 1), y1: b.y + (b.h || 1) }); } }
+    for (const b of _vfp.beds) if (x >= b.x0 && x < b.x1 && y >= b.y0 && y < b.y1) return true;
+  } catch (e) { /* none */ }
+  return typeof gardenFolkBedHook === 'function' ? !!gardenFolkBedHook(x, y) : false;
 }
 function gardenFolkCost(x, y) { const W = GARDEN_WORLD, cx = Math.floor(x), cy = Math.floor(y); if (!_vfp.cost || cx < 0 || cy < 0 || cx >= W.cols || cy >= W.rows) return Infinity; return _vfp.cost[cy * W.cols + cx]; }
 function gardenFolkTier(x, y) { const W = GARDEN_WORLD, cx = Math.floor(x), cy = Math.floor(y); if (!_vfp.tier || cx < 0 || cy < 0 || cx >= W.cols || cy >= W.rows) return 9; return _vfp.tier[cy * W.cols + cx]; }
@@ -116,13 +128,17 @@ function _vfpPoints(job) {
   for (let i = job.found; i >= 0; i = P.came[i]) { cells.push(i); if (i === job.s) break; }
   cells.reverse();
   const pt = (i) => ({ x: (i % C) + 0.5, y: Math.floor(i / C) + 0.5 });
-  const clear = (a, b) => {
-    const ta = gardenFolkTier(a.x, a.y), tb = gardenFolkTier(b.x, b.y), tmax = Math.max(ta, tb), n = Math.max(2, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) * 3));
+  const clear = (a, b, tmax) => {
+    const n = Math.max(2, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) * 3));
     for (let i = 1; i < n; i++) { const t = i / n, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t; if (gardenFolkTier(x, y) > tmax) return false; if (typeof _gwFree === 'function' && !_gwFree(x, y)) return false; }
     return true;
   };
+  // a pulled line may only cross ground as dear as the cells the search itself went over between its ends: a route that kept to the
+  // lane is never straightened across the grass beside it (the old rule allowed the dearer END's tier, so a leg from the plaza to a well
+  // on the lawn went straight across the lawn: the owner's "weird paths")
   const raw = cells.map(pt), out = []; let at = { x: job.a.x, y: job.a.y }, i = 0;
-  while (i < raw.length) { let j = Math.min(raw.length - 1, i + 24); while (j > i && !clear(at, raw[j])) j--; out.push(raw[j]); at = raw[j]; i = j + 1; }
+  const clearUpTo = (a, k0, k1) => { let tm = 0; for (let k = k0; k <= k1; k++) { const tt = gardenFolkTier(raw[k].x, raw[k].y); if (tt > tm) tm = tt; } return clear(a, raw[k1], tm); };
+  while (i < raw.length) { let j = Math.min(raw.length - 1, i + 24); while (j > i && !clearUpTo(at, i, j)) j--; out.push(raw[j]); at = raw[j]; i = j + 1; }
   // round the corners a little: a turn is taken as an arc, not a pivot
   const sm = [];
   for (let k = 0; k < out.length; k++) {

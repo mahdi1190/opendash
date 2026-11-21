@@ -105,7 +105,7 @@ function gardenActWorldRows() {
     if (t.src === 'thing' && K.paint && !K.art && t.drawn !== false) { out.push({ id: t.id, kind: t.kind, paint: K.paint, x: t.x, y: t.y, season: t.season || '', row: {} }); continue; }   // (its painter draws it: gardenActThingProp)
     if (t.src === 'thing' && K.art && t.drawn !== false) {
       const mv = typeof gartActMovedTo === 'function' ? gartActMovedTo(t.id) : null;
-      out.push({ id: t.id, kind: t.kind, art: K.art, x: mv ? mv.x : t.x, y: mv ? mv.y : t.y, season: t.season || '', carry: (K.acts || []).some(a => a.carry), flat: !!K.flat, row: {} });
+      out.push({ id: t.id, kind: t.kind, art: K.art, x: mv ? mv.x : t.x, y: mv ? mv.y : t.y, season: t.season || '', carry: (K.acts || []).some(a => a.carry), flat: !!K.flat, row: K.home ? { x: mv ? mv.x : t.x, y: mv ? mv.y : t.y, id: t.id } : {} });   // (a folk home is painted into what stands round it: the holt into its tree's roots)
     }
     if (t.static && K.levels && typeof gardenLevelWayParts === 'function') for (const r of gardenLevelWayParts(t)) out.push(r);   // (a floor's ladder: 94-garden-zz-7act-3height.js)
     if (t.static && (K.acts || []).some(a => a.at)) { const B = gardenAffordDrawnBase(t); for (const s of gardenKindSpots({ kind: t.kind, x: B.x, y: B.y, w: B.w, front: t.front })) if (s.at && s.art && s.drawn !== false) out.push({ id: 'part-' + t.id + '-' + s.i, owner: t.id, kind: t.kind, art: s.art, x: s.x, y: s.y, row: s }); }   // (on the thing as drawn)
