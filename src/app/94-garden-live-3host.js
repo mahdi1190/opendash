@@ -458,9 +458,12 @@ function _glhApply(ev, key) {
     case 'place': {
       const def = gardenDecor(ev.p);
       const whyNot = _gdPlaceOk(m, def, ev.x, ev.y, 'decor'); if (whyNot) return whyNot;
-      const uid = _gdUid('d'), mark = _gdMark([['decor', uid]]);
-      g.decor[uid] = { d: def.id, x: ev.x, y: ev.y, r: def.rot ? ((Number(ev.r) || 0) & 3) : 0, v: 0, at: now, by: f, own: f, gi: ev.i };
-      return put(mark, { u: uid, mp: 'decor' });
+      // (build phase 1, friends are trusted: one shared economy) what a friend puts down is a gift to this garden, marked `from`; the garden's
+      // ledger gains it (keyed by the friend's op id, once), so when anyone puts it away it goes into this garden's bag, never back by post
+      const uid = _gdUid('d'), lk = 'gl.f.' + ev.i, mark = _gdMark([['decor', uid], ['led', lk]]);
+      g.decor[uid] = { d: def.id, x: ev.x, y: ev.y, r: def.rot ? ((Number(ev.r) || 0) & 3) : 0, v: 0, at: now, by: f, from: f, gi: ev.i };
+      if (!g.led[lk]) g.led[lk] = { d: today, k: 'gl', i: { ['decor:' + def.id]: 1 }, n: 0 };
+      return put(mark, { u: uid, mp: 'decor', noUndo: true });
     }
     case 'water': {
       const p = hit.p; if (!p.def.thirst || p.def.special === 'heart') return 'no-need';
