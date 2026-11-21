@@ -96,7 +96,7 @@ const VALE_FOLK_ART = Object.freeze({
     // the old roots: from the tree's foot down over the bank and into the ground on both sides, bark-coloured with a lit edge and moss
     // on their backs; the root collar at the top is the trunk's own foot flaring into them
     let roots = '';
-    for (const [ex, ey, k] of [[-52, 3, 1], [-24, -20, 0], [26, -18, 0], [54, 3, 1]]) {
+    for (const [ex, ey, k] of [[-46, 3, 1], [-24, -20, 0], [26, -18, 0], [50, 3, 1]]) {
       // (each root hugs the bank: out along its crown first, then down its side into the ground; thick at the trunk, thinning, the short
       // ones sinking into the turf; moss along their backs)
       const sx = tx + (ex > tx ? 4 : -4), c1x = sx + (ex - sx) * 0.5, c1y = ty + 2 + (r() - 0.5) * 3, c2x = ex - (ex - sx) * 0.1, c2y = k ? ey - 14 - r() * 5 : ey - 4;

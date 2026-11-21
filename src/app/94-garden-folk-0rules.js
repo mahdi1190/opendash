@@ -227,18 +227,18 @@ function valeFolkPlanAll(rows, ctx) {
         // in a new garden, where most homes are still in closed land)
         if (ctx.away && ctx.away.has(row.id) && VALE_ACTIVITIES[id] && VALE_ACTIVITIES[id].q.home) id = blk === 'evening' || blk === 'night' || blk === 'dawn' ? 'sleep' : rng() < 0.5 ? 'wander' : ctx.rain ? 'wander' : 'sitout';
         const A = VALE_ACTIVITIES[id] || VALE_ACTIVITIES.home;
-        const len = Math.round(A.d[0] + rng() * (A.d[1] - A.d[0])), t1 = Math.min(b1, t + len);
+        const len = Math.round(A.d[0] + rng() * (A.d[1] - A.d[0])); let t1 = Math.min(b1, t + len);
         let spot = null;
         for (let k = 0; k < 3 && !spot; k++) spot = valeFolkFind(A.q, fctx, { rng, from: at, booked: (key) => isBooked(key, t, t1) });
         let act = id, inside = !!A.inside;
         // nothing free for that: a visitor (home in closed land) wanders the open vale rather than leaving by the road and coming back
-        if (!spot && ctx.away && ctx.away.has(row.id) && id !== 'sleep') { const W = VALE_ACTIVITIES.wander; for (let k = 0; k < 3 && !spot; k++) spot = valeFolkFind(W.q, fctx, { rng, from: at, booked: (key) => isBooked(key, t, t1) }); if (spot) { act = 'wander'; inside = false; } }
+        if (!spot && ctx.away && ctx.away.has(row.id) && id !== 'sleep') { const W = VALE_ACTIVITIES.wander; t1 = Math.min(b1, t + W.d[1]); for (let k = 0; k < 6 && !spot; k++) spot = valeFolkFind(W.q, fctx, { rng, from: at, booked: (key) => isBooked(key, t, t1) }); if (spot) { act = 'wander'; inside = false; } }
         if (!spot) { spot = home ? valeFolkFind({ home: true }, fctx) : null; act = 'home'; inside = !!spot; }
         if (!spot) { t = t1; continue; }   // nowhere at all (a layout with no home and no seat): the time passes off the map
         const walk = valeFolkWalkSecs(at, spot, speed);
         const prev = out[out.length - 1];
         if (prev && prev.act === act && prev.spot && prev.spot.key === spot.key) { prev.t1 = t1; doBook(spot.key, t, t1); }   // the same again: they stay
-        else { out.push({ t0: t, t1, act, spot, inside, walk: Math.round(walk), clip: A.clip, prop: A.prop || '' }); doBook(spot.key, t, t1); }
+        else { out.push({ t0: t, t1, act, spot, inside, walk: Math.round(walk), clip: (VALE_ACTIVITIES[act] || A).clip, prop: (VALE_ACTIVITIES[act] || A).prop || '' }); doBook(spot.key, t, t1); }
         at = spot; t = t1;
       }
       // (the block's last minutes: they stay where they are, booked, so nobody else is sent to the same spot while they are on it)

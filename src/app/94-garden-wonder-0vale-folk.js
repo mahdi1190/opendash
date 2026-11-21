@@ -89,7 +89,7 @@ function _vfrFlat(t) { const K = (t && GARDEN_KINDS[t.kind]) || {}; return !t.ki
 function _vfrClearOfThings(C, x, y, skip) {
   for (const t of C.things) {
     if (t.id === skip || Math.abs(t.x - x) > 8 || t.y - y > 9 || y - t.y > 1 || _vfrFlat(t)) continue;
-    const tree = /tree|oak|trunk/.test(t.kind), B = C.base(t), hw = (tree ? 0.5 : (B.w || 1) / 2) + 0.3, up = tree ? 1.4 : Math.max(1.4, (B.h || 1.2) + 0.6);
+    const tree = /tree|oak|trunk/.test(t.kind), B = C.base(t), hw = (tree ? 0.5 : (B.w || 1) / 2) + 0.3, up = tree ? 1.4 : Math.min(2.6, Math.max(1.4, (B.h || 1.2) + 0.6));   // (just behind it: seen standing on it. Further back is only being behind something tall)
     if (Math.abs(x - B.x) < hw && y > B.y - up && y < B.y + 0.8) return false;
   }
   return true;
