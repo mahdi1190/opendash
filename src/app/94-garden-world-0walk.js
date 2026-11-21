@@ -824,6 +824,7 @@ function _gwNearestFree(x, y, maxR) {
 // the ART-SHARED change), about 1.3 times the width of the shoes as before. At 0.2 x 0.12 the oval would have been 1.7
 // times the smaller shoes and you would have stopped short of a wall, a trunk or a fence (the verifier, 19 Nov 2026).
 const GW_FOOT = Object.freeze({ x: 0.16, y: 0.1 });
+const GW_ARRIVE = 24;                                 // (n-move) the slowest pace a click's walk eases down to before the spot (px a second)
 const GW_ACC = 1100;                                  // pixels a second, a second: how quickly you get going and stop
 const GW_CLEAR = 0.07;                                // planning keeps this much (cells) of room round corners, so a route never scrapes one
 /** Can the feet be here? Only the cells the oval touches count, so you can stand tight against a bench and slip past a plant. `m` fattens the feet (route planning). */

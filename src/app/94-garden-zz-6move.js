@@ -339,7 +339,7 @@ function gartMoveActor(A) {
     st.lpx = st.lpy = null;
     // (round 2) only when what they are drawn as is another family: resetting every busy frame swung a standing friend 45, 90, 45, 0
     if ((busy || !motion) && (!motion || _gmvDrawing(st.h, null, 45).dir !== A.dir)) st.h = A.dir === 'n' ? -90 : A.dir === 'e' ? (A.face < 0 ? 180 : 0) : 90;
-    if (!A.moving) st.v = 0;
+    if (!A.moving) { st.v = 0; A.keyEnd = false; }
     // (move360) stood still: they turn to the way they last said they face (every walk message carries it), through the in-between drawings
     if (!busy && !A.moving && A.hd != null && A.standDeg == null && motion) {
       let d = _gmvWrap(A.hd - st.h); const step = GPL_MOVE.turnRate * dt; st.h = _gmvWrap(st.h + (Math.abs(d) <= step ? d : Math.sign(d) * step));
@@ -353,7 +353,14 @@ function gartMoveActor(A) {
   if (Math.abs(cx) + Math.abs(cy * 1.6) >= 0.004) st.want = Math.atan2(cy * 1.6, cx) * 180 / Math.PI;   // (the heading in the same terms as your own: gartMoveStep)
   // (n-move) walking by the keys, they said which way they face: their figure catching up between two messages goes a little aslant, and
   // was drawn a sixteenth or two off the way they really face (a run diagonal showed side on)
-  if (A.keyWalk && A.hd != null && st.want != null && Math.abs(_gmvWrap(st.want - A.hd)) < 60) st.want = A.hd;
+  // (n-move, critic) and the same for the last stretch after they stop (the message that ends a key walk has no kw): a figure catching up
+  // from a diagonal to where they stopped facing east walked the slant facing 135, then spun on the spot. Within a cell or so of the spot a
+  // catch-up is only a correction, so it faces the way they say however far off it goes (short of walking backwards)
+  const keyed = A.keyWalk || A.keyEnd;
+  if (keyed && A.hd != null && st.want != null) {
+    const off = Math.abs(_gmvWrap(st.want - A.hd)), left = A.tx != null ? Math.hypot((A.tx - A.x) * W.cellW, (A.ty - A.y) * W.cellH) : 0;
+    if (off < 60 || (off < 115 && left < 64)) st.want = A.hd;
+  }
   if (st.want != null) {
     let d = _gmvWrap(st.want - st.h);
     if (!motion) st.h = st.want;
@@ -413,7 +420,7 @@ function gartMoveTold(A, ev, whole) {
     }
   }
   if (g === 'w' || g === 'r' || g === 'c') { A.gait = g; if (!whole) A.sneakUntil = g === 'c' ? Date.now() + 1500 : 0; }   // clock-ok: a creep lasts while they keep saying so
-  if (!whole) { A.keyWalk = ev.kw === 1; A.drift = null; A.lux = A.luy = null; }   // (kw: walking by the keys and still going; a message without it is where they stopped)
+  if (!whole) { const was = A.keyWalk; A.keyWalk = ev.kw === 1; A.keyEnd = !A.keyWalk && !!was; A.drift = null; A.lux = A.luy = null; }   // (keyEnd: the stop after a key walk; it lasts until the figure stands)   // (kw: walking by the keys and still going; a message without it is where they stopped)
 }
 /** (move360 round 3) A friend walking by the keys, between two of their messages: on the way they were going, at their pace, never into
  *  anything that blocks walking, for at most the time the next message takes. Returns whether the figure moved. */
@@ -426,3 +433,35 @@ function gartMoveDrift(A, dt) {
 }
 /** (move360) The same for the whole-state messages you send (your look: gl:me, the host's "here"): h and gt. */
 function gartMoveWhole() { const t = gartMoveTell(); return { h: t.h, gt: t.g }; }
+
+/* (n-move) DRAWINGS MADE AHEAD. Each of the sixteen ways round is one of nine drawings (the west half mirrored), walking and standing: 18 for a
+   figure. The first turn to one not made yet built it there and then, 20-42 ms in one frame on a friend's screen as your figure went round a
+   corner (long tasks of 55-92 ms with the frame's own work). They are now made one at a time while nobody is walking, hidden beside the one
+   shown (GardenNativeArt.warmBody), so a turn only swaps in a ready drawing. */
+const _gmvWarm = { q: [], busy: false, waitFrom: 0 };
+const GMV_WARM_POSES = ['stride', 'idle'];
+/** Queue the drawings for one figure. inner: its native inner group; sig: what it looks like (a new look queues them again);
+ *  svgOf(pose, dir, yaw): the drawing's source, exactly as the figure's own painter asks for it. */
+function gartMoveWarm(inner, sig, svgOf) {
+  if (!inner || !inner._native || inner._gmvWarmSig === sig) return;
+  if (!(window.GardenNativeArt && typeof GardenNativeArt.warmBody === 'function')) return;
+  inner._gmvWarmSig = sig;
+  _gmvWarm.q = _gmvWarm.q.filter(j => j.inner !== inner);
+  for (const pose of GMV_WARM_POSES) for (let i = 0; i <= 8; i++) _gmvWarm.q.push({ inner, sig, svgOf, pose, yaw: i * 22.5 });
+  if (!_gmvWarm.busy) { _gmvWarm.busy = true; _gmvWarmLater(); }
+}
+function _gmvWarmWalking() {
+  if (typeof _gw !== 'undefined' && (_gw.moving || (_gw.keys && _gw.keys.size))) return true;
+  try { if (typeof _gll !== 'undefined' && _gll.actors) for (const A of _gll.actors.values()) if (!A.me && A.moving) return true; } catch (e) { /* no friends here */ }
+  return false;
+}
+function _gmvWarmGo(dl) {
+  // while anyone walks the frame has no room for a drawing: wait for a standstill (or 3 s, then one at a time in the gaps between frames)
+  const now = performance.now(); if (!_gmvWarm.waitFrom) _gmvWarm.waitFrom = now;
+  if ((_gmvWarmWalking() && now - _gmvWarm.waitFrom < 3000) || (dl && !dl.didTimeout && dl.timeRemaining() < 6)) { _gmvWarmLater(); return; }
+  _gmvWarm.waitFrom = 0;
+  let j; while ((j = _gmvWarm.q.shift()) && (j.inner._dead || j.inner._gmvWarmSig !== j.sig)) { /* gone or out of date */ }
+  if (j) { try { const s = j.svgOf(j.pose, gplYawDir(j.yaw), j.yaw); if (s) GardenNativeArt.warmBody(j.inner, s); } catch (e) { /* made when it is needed instead */ } }
+  if (_gmvWarm.q.length) _gmvWarmLater(); else _gmvWarm.busy = false;
+}
+function _gmvWarmLater() { if (typeof requestIdleCallback === 'function') requestIdleCallback(_gmvWarmGo, { timeout: 500 }); else setTimeout(_gmvWarmGo, 60); }

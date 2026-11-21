@@ -10,6 +10,7 @@ window.GardenNativeArt = (function () {
   const parsed = new Map(), paths = new Map(), sceneStates = new WeakMap(), liveStates = new Set(), pausedAmbient = new Set(), triangleBatchStates = new WeakMap();
   const rules = [], indexedRules = new Map(), keyframes = new Map(), matchedRules = new Map(), selectorAttrs = new Set(), selectorClasses = new Set(), selectorIds = new Set(), compiledSelectors = new Map(), compiledAtoms = new Map(), candidateRules = new Map(), styleClassKeys = new Map();
   const inheritedStyles = new Set(['fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-dasharray', 'stroke-dashoffset', 'font-size', 'font-family', 'font-weight', 'font-style', 'text-anchor', 'dominant-baseline', 'color', 'visibility']);
+  const GARDEN_BODY_KEEP = 24;   // (n-move) drawings of one figure kept ready: 9 ways walking + 9 standing + poses
   let sourceBytes = 0, ruleOrder = 0, styleVersion = 0, positionalSelectors = false;
   const environmentState = { windX: 0, windY: 0, gust: 0, rain: 0, snow: 0, daylight: 1 };
   let ambientPause = { hush: false, frozen: false };
@@ -350,6 +351,30 @@ window.GardenNativeArt = (function () {
     for (const entry of bodies.values()) entry.node.destroy();
     bodies.clear();
   }
+  /** (n-move) Build a figure's drawing ahead of need, hidden, beside the one shown (which is left as it is): the first turn to a new one of
+   *  the sixteen ways then swaps in a ready drawing instead of building one mid-walk. Returns true when one was built. */
+  function warmPlayerBody(owner, source) {
+    if (!owner || owner._dead || !source) return false;
+    const local = owner.classList.contains('gd-pl-in') && owner.closest('.gd-player'), peer = owner.classList.contains('gll-in') && owner.closest('.gll-actor');
+    if (!local && !peer) return false;
+    source = String(source);
+    const bodies = owner._nativePlayerBodies || (owner._nativePlayerBodies = new Map());
+    const have = bodies.get(source); if (have && !have.node._dead && have.node.target.active) return false;
+    if (have) { bodies.delete(source); have.node.destroy(); }
+    if (bodies.size >= GARDEN_BODY_KEEP) return false;   // (never pushes out one already made)
+    const context = owner.context, building = context.building, ast = parse(source); collectDefs(ast, context.defs);
+    const body = new NativeNode(owner.scene, 'g', { 'data-native-player-body': '1' }, context);
+    context.building = true;
+    try { for (const child of ast.children) body.appendChild(build(owner.scene, child, context, 0)); body._text = ast.text; owner.appendChild(body); }
+    finally { context.building = building; }
+    body.restyle(true); stateFor(owner.scene).actorCaches.add(body);
+    owner.removeChild(body); body.target.setVisible(false);
+    const entry = { source, ast, node: body }, cur = owner._nativePlayerCurrent;
+    // the oldest end of the list, behind the one shown, so the shown one stays the newest
+    const rest = [...bodies.entries()]; bodies.clear(); bodies.set(source, entry); for (const [k, v] of rest) bodies.set(k, v);
+    if (cur && bodies.get(cur.source) === cur) { bodies.delete(cur.source); bodies.set(cur.source, cur); }
+    return true;
+  }
   function swapPlayerBody(owner, source) {
     const local = owner.classList.contains('gd-pl-in') && owner.closest('.gd-player'), peer = owner.classList.contains('gll-in') && owner.closest('.gll-actor');
     if (!local && !peer) return false;
@@ -394,7 +419,7 @@ window.GardenNativeArt = (function () {
       owner.restyle(false);
       if (fresh) stateFor(owner.scene).actorCaches.add(entry.node);
     }
-    while (bodies.size > (peer ? 12 : 22)) {   // (move360) yours: nine ways round walking and standing, and a few poses; a friend's: five ways round
+    while (bodies.size > GARDEN_BODY_KEEP) {   // (n-move) yours and a friend's alike: nine ways round walking and nine standing, and a few poses (a friend's kept twelve, so their figure was built again, 20-42 ms, at every few turns)
       const key = bodies.keys().next().value, expired = bodies.get(key);
       if (expired === entry) break;
       bodies.delete(key); expired.node.destroy();
@@ -1352,5 +1377,5 @@ window.GardenNativeArt = (function () {
   function environment(next) { if (next) Object.assign(environmentState, next); return { ...environmentState }; }
   // (dev view) the tracked nodes that draw as vectors now (no capture, or the capture is not shown): what a slow frame paints
   function vectors(scene) { const s = stateFor(scene), out = []; for (const node of s.cacheTrackedNodes) { if (!nativeVisible(node)) continue; const view = localView(node), b = node.getBBox(); if (view && !intersectBox(b, view)) continue; const c = node._cache; if (c && !c.showingVectors) continue; let g = 0; const count = n => { if (n._graphics) g++; for (const ch of n.children) count(ch); }; count(node); out.push({ cls: String(node.attrs && (node.attrs.class || node.attrs.id) || node.localName || '') + ' < ' + String(node.parentNode && node.parentNode.attrs && (node.parentNode.attrs.class || node.parentNode.attrs.id) || ''), w: Math.round(b.width), h: Math.round(b.height), cached: !!c, cropped: !!(c && c.cropped), graphics: g }); } return out.sort((a, b) => b.graphics - a.graphics).slice(0, 20); }
-  return Object.freeze({ vectors, create, draw: create, element, Node: NativeNode, configure, updateAll, cache: cacheNative, cacheQuality, cacheValid, pendingCaches, environment, pauseAmbient, parsePath, parse, matrix, multiply: mul, inverse: inv, point, stats });
+  return Object.freeze({ vectors, create, draw: create, element, Node: NativeNode, configure, updateAll, cache: cacheNative, cacheQuality, cacheValid, pendingCaches, warmBody: warmPlayerBody, environment, pauseAmbient, parsePath, parse, matrix, multiply: mul, inverse: inv, point, stats });
 })();

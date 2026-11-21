@@ -296,7 +296,7 @@ function gartPlayerSvg(avatar, o) {
   if (o.painted == null) o = Object.assign({}, o, { painted: !o.flat && typeof gardenFigurePaintOn === 'function' && gardenFigurePaintOn() });
   const key = JSON.stringify(a) + dir + pose + (yaw != null ? 'y' + yaw : '') + (o.painted ? 'p' : '') + (o.motion ? 'm' : '') + (o.stageRod ? 'r' : '') + (o.gear ? JSON.stringify(o.gear) : '');
   let s = _GPL.cache.get(key);
-  if (s == null) { try { s = _gplDraw(a, dir, pose, o); } catch (e) { s = ''; } if (_GPL.cache.size > 90) _GPL.cache.clear(); _GPL.cache.set(key, s); }
+  if (s == null) { try { s = _gplDraw(a, dir, pose, o); } catch (e) { s = ''; } if (_GPL.cache.size > 160) _GPL.cache.clear(); _GPL.cache.set(key, s); }
   return s && !o.flat && typeof gardenFigurePaintIf === 'function' ? gardenFigurePaintIf(s, 'actor') : s;   // the Painted village paints the figure into the scene's light (94-garden-art-g-paint.js)
 }
 /** (move360) Which of the three drawing families a yaw belongs to: front (s), side (e) or back (n). */
@@ -334,6 +334,8 @@ function gartPlayerPaint(inner, gw) {
       _GPL.key = key; inner._gplKey = key;
       inner.innerHTML = s;
     }
+    // (n-move) the other ways round made ahead, while nobody walks (94-garden-zz-6move.js gartMoveWarm)
+    if (typeof gartMoveWarm === 'function' && inner._native) gartMoveWarm(inner, JSON.stringify(av) + JSON.stringify(gear) + motion, (p, d, y) => gartPlayerSvg(av, { dir: d, pose: p, motion, stageRod: false, gear, yaw: y }));
     const S = typeof GW_SCALE === 'number' ? GW_SCALE : 0.74;
     inner.setAttribute('transform', `scale(${(yaw % 180) && (stageRod || typeof gartMoveMirror !== 'function' ? gw.face : gartMoveMirror()) < 0 ? -S : S} ${S})`);
     return true;

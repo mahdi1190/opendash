@@ -136,6 +136,8 @@ function _gllPaint(A) {
     if (typeof gartActRedraw === 'function') { if (A.actId && !A.moving) gartActRedraw(A); }   // (2.74.1) any move, held or not, goes back on the new drawing from where it had got to
     else if (A.actHold && typeof gartActRemote === 'function') { const id = A.actHold; setTimeout(() => { if (A.actHold === id) gartActRemote(A, id); }, 0); }   // a new drawing (they stopped walking, a look changed): the held move from the things-to-do table goes back on it
   }
+  // (n-move) the other fifteen ways round made ahead, while nobody walks: a turn then swaps in a ready drawing (94-garden-zz-6move.js)
+  if (typeof gartMoveWarm === 'function' && A.inner._native && typeof gartPlayerSvg === 'function') { const av = A.a, gear = A.g; gartMoveWarm(A.inner, JSON.stringify(av || null) + JSON.stringify(gear || null) + motion, (p, d, y) => gartPlayerSvg(av, { dir: d, pose: p, motion, stageRod: false, gear, yaw: y })); }
   const crouch = A.sneakUntil > Date.now() && A.moving ? 0.93 : 1;   // clock-ok: a creep (the net's creep up on a bug)
   A.inner.setAttribute('transform', `scale(${(yaw % 180) && A.face < 0 ? -GL_ACT_SCALE : GL_ACT_SCALE} ${GL_ACT_SCALE * crouch})`);
 }
