@@ -340,7 +340,7 @@ function _vfrStep(V, dt, speedMul) {
     if (d <= left) { V.x = p.x; V.y = p.y; V.path.shift(); left -= d; continue; }
     const nx = V.x + dx / d * left / G.cellW, ny = V.y + dy / d * left / G.cellH;
     const who = _vfrIntoYou(V, nx, ny);
-    if (who) { const now = performance.now(); if (!V.bumpT) V.bumpT = now; else if (now - V.bumpT > 900) { V.bumpT = 0; _vfrRoundYou(V, who); } V.waiting = true; return false; }
+    if (who) { const now = performance.now(); if (!V.bumpT) V.bumpT = now; else if (now - V.bumpT > 900) { V.bumpT = 0; if (!_vfrRoundYou(V, who)) { V.path = null; V.pathFor = ''; V.noWay = false; } } V.waiting = true; return false; }   // (no room either side: the way is looked for again, from here)
     V.bumpT = 0; V.waiting = false;
     V.x = nx; V.y = ny; _vfrHeadTo(V, dx, dy, dt); left = 0;
   }
@@ -378,6 +378,9 @@ function gardenFolkBlocks(x, y) {
   return false;
 }
 const VFR_BODY = Object.freeze({ x: 0.5, y: 0.3 });
+/** How close a walking villager comes to a player before they stop and go round: wider than the feet's oval, so two standing figures
+ *  never cover each other (a figure is over a cell tall: one just behind you was drawn inside you). */
+const VFR_PASS = Object.freeze({ x: 0.75, y: 0.62 });
 /** Every player figure in the garden: yours and each visiting friend's (friends are treated exactly as you are). */
 function _vfrFigures() {
   const out = []; if (typeof _gw !== 'undefined' && Number.isFinite(_gw.px)) out.push({ x: _gw.px, y: _gw.py });
@@ -388,15 +391,21 @@ function _vfrFigures() {
 function _vfrIntoYou(V, x, y) {
   if (V.hold) return null;
   for (const P of _vfrFigures()) {
-    const ex = (x - P.x) / VFR_BODY.x, ey = (y - P.y) / VFR_BODY.y, e = ex * ex + ey * ey; if (e >= 1) continue;
-    const ox = (V.x - P.x) / VFR_BODY.x, oy = (V.y - P.y) / VFR_BODY.y; if (e < ox * ox + oy * oy) return P;
+    const ex = (x - P.x) / VFR_PASS.x, ey = (y - P.y) / VFR_PASS.y, e = ex * ex + ey * ey; if (e >= 1) continue;
+    const ox = (V.x - P.x) / VFR_PASS.x, oy = (V.y - P.y) / VFR_PASS.y; if (e < ox * ox + oy * oy) return P;
   }
   return null;
 }
 function _vfrRoundYou(V, P) {
-  const p = V.path && V.path[0]; if (!p || !P) return;
-  const dx = p.x - V.x, dy = p.y - V.y, n = Math.hypot(dx, dy) || 1;
-  for (const s of [1, -1]) { const q = { x: P.x - dy / n * 0.9 * s, y: P.y + dx / n * 0.6 * s }; if (_vfrBodyOk(q.x, q.y, '') && (typeof _gwFree !== 'function' || _vfrLineFree(V, q))) { V.path.unshift(q); return; } }
+  const p = V.path && V.path[0]; if (!p || !P) return false;
+  const dx = p.x - V.x, dy = p.y - V.y, n = Math.hypot(dx, dy) || 1, ux = dx / n, uy = dy / n;
+  // a step out to the side of them and a step past, on ground the feet can take (wider each try; either side), then on along the way
+  for (const w of [1.05, 1.4, 1.8]) for (const s of [1, -1]) {
+    const q1 = { x: P.x - uy * w * s * 1.0 - ux * 0.6, y: P.y + ux * w * s * 0.8 - uy * 0.5 }, q2 = { x: P.x - uy * w * s * 1.0 + ux * 1.0, y: P.y + ux * w * s * 0.8 + uy * 0.9 };
+    if (typeof _gwFree === 'function' && !(_gwFree(q1.x, q1.y) && _gwFree(q2.x, q2.y) && _vfrLineFree(V, q1) && _vfrLineFree(q1, q2) && _vfrLineFree(q2, p))) continue;
+    V.path.unshift(q1, q2); return true;
+  }
+  return false;
 }
 /** Is the straight step from a villager to q clear of blocked ground (a step round someone never cuts through a wall)? */
 function _vfrLineFree(a, q) { const n = Math.max(2, Math.ceil(Math.hypot(q.x - a.x, q.y - a.y) * 4)); for (let i = 1; i <= n; i++) { const t = i / n; if (!_gwFree(a.x + (q.x - a.x) * t, a.y + (q.y - a.y) * t)) return false; } return true; }
@@ -723,6 +732,7 @@ function gardenFolkSnap() {
 const _vfl = { at: 0, sig: '', sentAt: 0 };
 function _vfrPoseWord(V) {
   const e = V.entry; if (V.hold) return V.arrived && e && e.clip === 'sit' ? 'sittalk' : 'talk';
+  if (V.waiting) return 'idle';   // (stopped for someone in the way: stood, on every screen)
   if (!V.arrived || !e) return 'walk';
   if (V.visit) return 'idle';
   return e.clip === 'sit' ? (V.rubbing ? 'rub' : 'sit') : e.clip === 'fish' ? 'fish' : e.clip === 'read' ? 'read' : 'idle';
@@ -735,7 +745,7 @@ function _vfrHostSend(now) {
   for (const V of _vfr.list || []) {
     if (V.inside || V.x == null) continue;
     // the way ahead (the next few points of their path, on screen or off), so a friend's copy walks the same way round things
-    const ahead = V.path && V.path.length ? V.path : V.offWalk && V.ahead && V.ahead.length ? V.ahead : null;
+    const ahead = V.waiting ? null : V.path && V.path.length ? V.path : V.offWalk && V.ahead && V.ahead.length ? V.ahead : null;
     const p = ahead ? ahead[ahead.length - 1] : { x: V.x, y: V.y };
     const r = { i: V.id, x: n10(V.x, W.cols), y: n10(V.y, W.rows), tx: n10(p.x, W.cols), ty: n10(p.y, W.rows), a: V.offWalk ? 'walk' : _vfrPoseWord(V), f: V.face < 0 ? 1 : 0 };
     if (ahead) { r.p = []; for (const q of ahead.slice(0, 6)) r.p.push(n10(q.x, W.cols), n10(q.y, W.rows)); }
@@ -773,8 +783,9 @@ function gardenFolkGuestIn(l) {
     V.goal = { x: r.tx / 10, y: r.ty / 10 }; V.a = String(r.a || 'idle'); V.f = r.f ? -1 : 1; V.heldBy = r.h; V.wave = r.w ? performance.now() + 1600 : 0; V.at = performance.now();
     // the way the host's villager walks: first to where the host saw them (straight only where that is clear; else on along the way
     // they were already going, which leads there), then on along the host's own path. Nothing is ever walked straight through a wall.
+    if (r.a !== 'walk') ahead.length = 0;   // (standing, or stopped for someone: only to where the host has them, no further)
     if (Math.hypot(V.x - to.x, V.y - to.y) > 3) { V.x = to.x; V.y = to.y; V.route = ahead; V.need = 0; }
-    else if (Math.hypot(V.x - to.x, V.y - to.y) < 0.15 || typeof _gwFree !== 'function' || _vfrLineFree(V, to)) V.route = [to].concat(ahead);
+    else if (r.a !== 'walk' || Math.hypot(V.x - to.x, V.y - to.y) < 0.15 || typeof _gwFree !== 'function' || _vfrLineFree(V, to)) V.route = [to].concat(ahead);
     else V.route = (V.route || []).slice(0, 16).concat([to], ahead);
   }
   for (const [id, V] of _vfg.V) if (!seen.has(id)) { if (V.S) { try { V.S.remove(); } catch (e) { /* gone */ } } _vfg.V.delete(id); }   // gone in at a door, or off by the road
