@@ -182,7 +182,9 @@ function _vfrMarksDraw() {
     // a building with a door of its own (a cottage, the boathouse): the mark on the door. A small home painted with its own (the holt's
     // fish on its nail, the burrow's round door) needs none.
     if (!H || H.kind === 'road' || H.src === 'thing' || !VFR_MARKS[id] || _vfr.away.has(id)) continue;
-    const p = GARDEN_PROPS.find(q => q.id === H.id); if (!p || !p.door || !Number.isFinite(p.door.x)) continue;
+    if (typeof valeFolkHomeOf === 'function' && (!valeFolkHomeOf(H) || valeFolkHomeOf(H) === 'postbox')) continue;   // (the snail post's post box is her round, not a door)
+    let p = null; try { p = GARDEN_PROPS.find(q => q.id === H.id) || (gardenIslandData().static || []).find(q => q.id === H.id) || null; } catch (e) { p = null; }
+    if (!p || !p.door || !Number.isFinite(p.door.x)) continue;
     const foot = p.y + p.h, row = VALE_FOLK_ROW.get(id);
     try { _vfr.marks.push(wdSprite({ id: 'vfm-' + id, x: p.door.x + 0.5, y: foot + 0.02, hit: 0.2, hitUp: 8, label: (row ? row.name : id) + '’s home', ground: true, svg: _vfrMarkSvg(id), lift: 30 + Math.max(0, (foot - p.door.y - 1)) * 30, update() { } })); } catch (e) { /* no stage */ }
   }
