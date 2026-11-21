@@ -15,7 +15,7 @@ function _glvAmbientClear() { if (window.GardenNativeLight) GardenNativeLight.cl
 function _glvFriend() { return _gscFriend(_glv.fid); }
 function _glvSend(k, body) { return _gllPipe('/api/garden-live/send', { k, body, f: _glv.fid, gen: _glv.gen, boot: _glv.boot }); }
 function _glvLookSig(l) { return JSON.stringify([l.a || null, l.g || null, l.pet || null]); }
-function _glvLook() { const l = gardenLiveLook(); if (typeof _gw !== 'undefined' && _gw.on) { l.x = Math.round(_gw.px * 10) / 10; l.y = Math.round(_gw.py * 10) / 10; } return l; }
+function _glvLook() { const l = gardenLiveLook(); if (typeof _gw !== 'undefined' && _gw.on) { l.x = Math.round(_gw.px * 10) / 10; l.y = Math.round(_gw.py * 10) / 10; if (typeof gartMoveWhole === 'function') Object.assign(l, gartMoveWhole()); } return l; }   // (move360: and the way you face and walk, h and gt)
 function gardenLiveVisitEnter(fid) {
   if (_glv.fid === fid && _gll.role === 'visit') return;
   _glvClear();
@@ -133,7 +133,7 @@ function _glvWalked(pt) {
 function _glvGoSend(x, y) {
   const gap = _glv.mode === 'thin' ? GL_WALK_GAP.thin : GL_WALK_GAP.normal, t = Date.now();   // clock-ok: spacing messages
   clearTimeout(_glv.goT);
-  const go = () => { _glv.goAt = Date.now(); _glvSend('go', { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 }); };  // clock-ok: spacing messages
+  const go = () => { _glv.goAt = Date.now(); const tell = typeof gartMoveTell === 'function' ? gartMoveTell() : {}; _glv.goH = tell.h; _glvSend('go', { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, ...tell }); };  // clock-ok: spacing messages
   if (t - _glv.goAt >= gap) go(); else _glv.goT = setTimeout(go, gap - (t - _glv.goAt));
 }
 /** Keys and holding have no destination: where you are is sent as you go, at most every 0.8 s, and once more when you stop. Nothing while you stand still. */
@@ -145,6 +145,8 @@ function _glvWatchStart() {
       if (!_glvLive() || (_gw.path && _gw.path.length)) return;
       const t = Date.now(), far = Math.hypot(_gw.px - _glv.goX, _gw.py - _glv.goY);   // clock-ok: spacing messages
       if (_gw.moving ? (t - _glv.lastGo >= 800 && far >= 0.4) : (t - _glv.lastGo >= 200 && far >= 0.15)) _glvWalked({ x: _gw.px, y: _gw.py });
+      // (n-move) stood still, turned (pressing against a wall, a turn finishing after you stopped): they see the way you now face
+      else if (!_gw.moving && t - _glv.lastGo >= 300 && !(typeof gartActBusy === 'function' && gartActBusy()) && !(_gw.fishing && _gw.fishing.state !== 'idle') && typeof gartMoveTell === 'function' && _glv.goH != null && gartMoveTell().h !== _glv.goH) _glvWalked({ x: _gw.px, y: _gw.py });
     },
   });
 }
@@ -317,6 +319,7 @@ function _glvGotBug(u, item) {
 /* ---------- the people here: sprites in your world, as they are in the host's ---------- */
 function _glvActorAdd(ev) {
   let A = _gll.actors.get(ev.w);
+  if (ev.w === 0 && !Number.isInteger(ev.h) && _glv.snap && Array.isArray(_glv.snap.pf)) ev = { ...ev, h: _glv.snap.pf[0], gt: _glv.snap.pf[1] };   // (move360) the host: the way they faced when the garden was last sent
   if (A && ev.pet && A.petAway) A.petAway = false;
   if (!A) { A = _gllActor(ev); _gll.actors.set(ev.w, A); }
   else _gllActorLook(A, ev);   // the same complete look changes nothing on screen
@@ -430,7 +433,7 @@ function _glvEvent(ev) {
     case 'go': {
       const A = _gll.actors.get(ev.w); if (!A) return;   // (you are not one of them: your own feet are the world's)
       if (_gllHeldNudge(A, ev)) return;
-      _gllGoPace(A, ev); _gllWalkVia(A, ev.r, ev.x, ev.y); if (_glv.follow === ev.w) _glvFollowGo(ev.x - 0.8, ev.y + 0.3);
+      _gllGoPace(A, ev); if (typeof gartMoveTold === 'function') gartMoveTold(A, ev); _gllWalkVia(A, ev.r, ev.x, ev.y); if (_glv.follow === ev.w) _glvFollowGo(ev.x - 0.8, ev.y + 0.3);
       return;
     }
     case 'em': {

@@ -15,7 +15,10 @@ function _gbbState() {
 /** Is the player walking now, or did they stop only a moment ago (a stop between two key presses is still a walk)? */
 function gardenBakeWalking() {
   const S = _gbbState(), now = performance.now();
-  const w = typeof _gw !== 'undefined' && _gw && !!(_gw.moving || (_gw.keys && _gw.keys.size) || (_gw.path && _gw.path.length));
+  let w = typeof _gw !== 'undefined' && _gw && !!(_gw.moving || (_gw.keys && _gw.keys.size) || (_gw.path && _gw.path.length));
+  // (n-move) a friend walking on your screen is a walk too: their figure is moved and drawn every frame, so the painters take the smaller
+  // slices (a friend who had just come in watched the host walk with 50-60 ms frames: the bake's standing slices on top of the walker)
+  if (!w && typeof _gll !== 'undefined' && _gll && _gll.actors && _gll.actors.size) for (const A of _gll.actors.values()) if (A && !A.me && A.moving && (typeof _gwInView !== 'function' || _gwInView(A.x, A.y, 1.5))) { w = true; break; }
   if (w) S.walkAt = now;
   return now - S.walkAt < 700;
 }

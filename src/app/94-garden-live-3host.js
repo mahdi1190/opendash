@@ -19,7 +19,7 @@ const _GLH_SEEN_KEY = 'opendash.gardenLive.seen.v1';
 function _glhSend(to, k, body) { return _gllPipe('/api/garden-live/host', { to, k, body, tab: _GLL_TAB }); }
 function _glhIsLegacyWorld() { return typeof gardenWorldIsLegacy === 'function' && gardenWorldIsLegacy(); }
 function _glhAmbientClock() { const native = window.GardenNative, light = native && native.active() && native.lighting(), clock = light && light.ambientClock ? light.ambientClock() : null; return clock || (typeof gardenTravellerAmbientClock === 'function' ? gardenTravellerAmbientClock() : null); }
-function _glhHereBody(on) { const l = gardenLiveLook(); if (typeof _gw !== 'undefined') { l.x = Math.round(_gw.px * 10) / 10; l.y = Math.round(_gw.py * 10) / 10; } return { role: 'host', on, ...glWorldFields(), v: GL_V, look: l, name: _gllMyName(), tab: _GLL_TAB, hidden: typeof document !== 'undefined' && !!document.hidden }; }
+function _glhHereBody(on) { const l = gardenLiveLook(); if (typeof _gw !== 'undefined') { l.x = Math.round(_gw.px * 10) / 10; l.y = Math.round(_gw.py * 10) / 10; if (typeof gartMoveWhole === 'function') Object.assign(l, gartMoveWhole()); } return { role: 'host', on, ...glWorldFields(), v: GL_V, look: l, name: _gllMyName(), tab: _GLL_TAB, hidden: typeof document !== 'undefined' && !!document.hidden }; }
 /** What this friend may do here, as the server reads it (lib/friends/live.mjs permOf): full co-op for a friend you made yourself, unless you sent them home; a group-made friend keeps the group rule. */
 function _glhPerm(fid) {
   const v = _gll.view, p = v && v.perms && v.perms[fid];
@@ -124,7 +124,7 @@ function gardenLiveHostGone() {
 // A reload: the visit goes on, and whichever tab speaks next is the host.
 if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') window.addEventListener('pagehide', () => { if (!_glh.on) return; try { fetch('/api/garden-live/here', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'host', on: 'release', tab: _GLL_TAB }) }); } catch (e) { /* the server sees the silence */ } });
 /** Your own walk: where you are going, once; keys and holding are sent as you go, at most every 0.8 s. Nothing while nobody is here. */
-function gardenLiveWalked(pt) { if (_gll.role === 'visit') { _glvWalked(pt); return; } if (!_glh.on || !_glhAnyone()) return; _glh.lastGo = Date.now(); _glh.goX = pt.x; _glh.goY = pt.y; _glhSend('all', 'go', { x: Math.round(pt.x * 10) / 10, y: Math.round(pt.y * 10) / 10, ..._glhTurns(_gw.path) }); }  // clock-ok: spacing messages
+function gardenLiveWalked(pt) { if (_gll.role === 'visit') { _glvWalked(pt); return; } if (!_glh.on || !_glhAnyone()) return; _glh.lastGo = Date.now(); _glh.goX = pt.x; _glh.goY = pt.y; const tell = typeof gartMoveTell === 'function' ? gartMoveTell() : {}; _glh.goH = tell.h; _glhSend('all', 'go', { x: Math.round(pt.x * 10) / 10, y: Math.round(pt.y * 10) / 10, ..._glhTurns(_gw.path), ...tell }); }  // clock-ok: spacing messages
 /** The way round the beds, as turns on the wire: every point but the last (that is the destination). */
 function _glhTurns(path) {
   const pts = (path || []).slice(0, -1).slice(0, 12).map(p => [Math.round(p.x * 10) / 10, Math.round(p.y * 10) / 10]);
@@ -151,7 +151,7 @@ function _glhWalk(A, ev) {
   if (GARDEN_WORLD.v >= 4 && routeTried && !way) { _glhSend(A.f, 'go', { w: A.w, x: A.x, y: A.y }); return; }
   const turns = _glhTurns(way);
   _gllWalkVia(A, turns.r, ev.x, ev.y);
-  if (_gll.actors.size > 1) _glhSend('all', 'go', { w: ev.w, x: ev.x, y: ev.y, ...turns });   // (with nobody else here, nobody needs telling: the walker's own feet are their own)
+  if (_gll.actors.size > 1) _glhSend('all', 'go', { w: ev.w, x: ev.x, y: ev.y, ...turns, ...(Number.isInteger(ev.h) ? { h: ev.h } : {}), ...(ev.g ? { g: ev.g } : {}), ...(ev.kw === 1 ? { kw: 1 } : {}) });   // (with nobody else here, nobody needs telling: the walker's own feet are their own)
 }
 function _glhWatchStart() {
   if (_glh.watch || typeof gardenWorldAdd !== 'function') return;
@@ -162,6 +162,8 @@ function _glhWatchStart() {
       // as you go, at most every 0.8 s, and once more when you stop: without that last one everyone else saw you stop short, up to a few cells away, until the next check
       const t = Date.now(), far = Math.hypot(_gw.px - (_glh.goX || 0), _gw.py - (_glh.goY || 0));   // clock-ok: spacing messages
       if (_gw.moving ? (t - _glh.lastGo >= 800 && far >= 0.4) : (t - _glh.lastGo >= 200 && far >= 0.15)) gardenLiveWalked({ x: _gw.px, y: _gw.py });
+      // (n-move) stood still, turned (pressing against a wall, a turn finishing after you stopped): they see the way you now face
+      else if (!_gw.moving && t - _glh.lastGo >= 300 && !(typeof gartActBusy === 'function' && gartActBusy()) && !(_gw.fishing && _gw.fishing.state !== 'idle') && typeof gartMoveTell === 'function' && _glh.goH != null && gartMoveTell().h !== _glh.goH) gardenLiveWalked({ x: _gw.px, y: _gw.py });
     },
   });
 }
@@ -238,7 +240,7 @@ function _glhEvent(ev) {
     case 'tr': if (typeof _gltHostOn === 'function') _gltHostOn(ev); return;
     case 'dz': _glhDesignIn(ev); return;
     case 'leave': if (typeof _gltHostLeft === 'function') _gltHostLeft(ev.w); _glhRemove(ev.w); if (typeof gardenContestLeave === 'function') gardenContestLeave(ev.w); _glhReturnDrops(ev.w); gardenLiveLoad(true).then(_glhHud).catch(() => {}); return;
-    case 'go': { const A = _gll.actors.get(ev.w); if (A && _gllHeldNudge(A, ev)) return; if (A) { _gllGoPace(A, ev); _glhWalk(A, ev); if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } return; }
+    case 'go': { const A = _gll.actors.get(ev.w); if (A && _gllHeldNudge(A, ev)) return; if (A) { _gllGoPace(A, ev); if (typeof gartMoveTold === 'function') gartMoveTold(A, ev); _glhWalk(A, ev); if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } return; }
     case 'em': {
       const A = _gll.actors.get(ev.w); if (!A) return;
       if (ev.c === 'em') _gllEmoteAt(A, ev);
@@ -275,7 +277,7 @@ function _glhSendSnap(fid) {
  * Plants and decorations go as changes (gl:d). Everything else a snapshot says (the land, what is built, the design, how buildings are painted, rooms, the lake, wonders, weather, the season) has no change message: when any of it differs from
  * what everyone was last given, everyone gets the whole garden. Looked at every few seconds and only sent on a real change, so it costs next to nothing. The draft in the designer is not in a snapshot: only what is saved.
  */
-function _glhWorldSig(s) { const { v, at, ac, plants, decor, hearts, ...rest } = s; void v; void at; void ac; void plants; void decor; void hearts; return JSON.stringify(rest); }
+function _glhWorldSig(s) { const { v, at, ac, plants, decor, hearts, pf, ...rest } = s; void v; void at; void ac; void plants; void decor; void hearts; void pf; return JSON.stringify(rest); }   // (pf: which way you face, not a change to the garden)
 /* ---------- designing together (full co-op, 2.75) ----------
    A friend here draws paths, paints ground, moves fixed things and makes things in your garden as you do (Menu > Design). Their finished
    design comes as text in up to two pieces (gl:dz); every row is checked (gardenDesignClean) and it becomes your garden's design in use,

@@ -195,7 +195,7 @@ window.GardenPaintGround = (function () {
     const tick = () => {
       if (dead || !host) return; if (!scene.textures || !scene.textures.game) { dead = true; clearInterval(timer); registry.delete(handle); return; }   /* (its scene is gone: stop, quietly) */
       if (lowHidden) return;   /* (a soft copy stands in for this whole layer at the whole-map zoom: nothing to paint) */
-      const v = viewBox(.05), near = viewBox(.35), keep = viewBox(.7); if (!v) return; const K = level(), moving = typeof _gw !== 'undefined' && !!_gw.moving;
+      const v = viewBox(.05), near = viewBox(.35), keep = viewBox(.7); if (!v) return; const K = level(), moving = (typeof _gw !== 'undefined' && !!_gw.moving) || (typeof gardenBakeWalking === 'function' && gardenBakeWalking());   /* (n-move: a friend walking on the screen counts) */
       { const t0 = performance.now(); for (const ch of list) { if (ch.image || !ch.cached || !meets(ch.bb, near)) continue; adopt(ch); if (performance.now() - t0 > 4) break; } }
       // one chunk a tick: on screen and bare first, then on screen and at the wrong sharpness or repainted, then the margin
       let best = null, bs = Infinity, wantRoom = false; held = 0;

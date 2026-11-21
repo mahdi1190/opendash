@@ -824,6 +824,7 @@ function _gwNearestFree(x, y, maxR) {
 // the ART-SHARED change), about 1.3 times the width of the shoes as before. At 0.2 x 0.12 the oval would have been 1.7
 // times the smaller shoes and you would have stopped short of a wall, a trunk or a fence (the verifier, 19 Nov 2026).
 const GW_FOOT = Object.freeze({ x: 0.16, y: 0.1 });
+const GW_ARRIVE = 24;                                 // (n-move) the slowest pace a click's walk eases down to before the spot (px a second)
 const GW_ACC = 1100;                                  // pixels a second, a second: how quickly you get going and stop
 const GW_CLEAR = 0.07;                                // planning keeps this much (cells) of room round corners, so a route never scrapes one
 /** Can the feet be here? Only the cells the oval touches count, so you can stand tight against a bench and slip past a plant. `m` fattens the feet (route planning). */
@@ -844,7 +845,34 @@ function _gwLos(a, b, m) {
  */
 function _gwMoveBy(dx, dy) {
   // (vf-perf) the step each frame takes, kept for the next frame's give (_gwMoveByEdge): which way the feet really went
-  const x0 = _gw.px, y0 = _gw.py, moved = _gwMoveByEdge(dx, dy);
+  const x0 = _gw.px, y0 = _gw.py, W = GARDEN_WORLD, sx = Math.sign(Math.abs(dx * W.cellW) > 1e-3 ? dx : 0), sy = Math.sign(Math.abs(dy * W.cellH) > 1e-3 ? dy : 0);
+  // (n-move) wedged: the feet went round in a little loop under this press (below), so they stay put until you press another way or something moves them
+  const wg = _gw.wedge;
+  if (wg && wg.sx === sx && wg.sy === sy && Math.hypot((x0 - wg.x) * W.cellW, (y0 - wg.y) * W.cellH) < .5) return false;
+  _gw.wedge = null;
+  let moved = _gwMoveByEdge(dx, dy);
+  // (n-move) wedged in a corner (between a bank and a trunk, say), the slides could nudge the feet a pixel back and forth for a few frames,
+  // the figure stepping on the spot and shimmering before it gave up. A step that gets almost nowhere is no step, and nor is a small one
+  // that backs off against the way you go, nor one no longer than a step that takes you
+  // back from where you press (a slanted edge crept you up and left, half a pixel at a time, while you pressed up and right): you stop, facing the way you press.
+  if (moved) {
+    const mx = (_gw.px - x0) * W.cellW, my = (_gw.py - y0) * W.cellH, vx = dx * W.cellW, vy = dy * W.cellH, st = Math.hypot(vx, vy) || 1;
+    const along = (mx * vx + my * vy) / st, backs = (vx && mx * Math.sign(vx) < -.1) || (vy && my * Math.sign(vy) < -.1);
+    const got = Math.hypot(mx, my);
+    if ((backs && along < st * .3 && got < st * .5) || (backs && along < 0 && got < st) || got < Math.min(.35, st * .12)) { _gw.px = x0; _gw.py = y0; moved = false; }
+  }
+  // (n-move) and a corner the slides take turns at (a few pixels one way, then back), each step honest on its own: when the feet come back
+  // within a pixel and a half of where they were two to ten steps ago, having got nowhere, it is a corner, and you stop there
+  let H = _gw.mvHist;
+  if (!H || H.sx !== sx || H.sy !== sy) H = _gw.mvHist = { sx, sy, p: [] };
+  if (moved) {
+    const p = H.p, d = (a, q) => Math.hypot((a.x - q.x) * W.cellW, (a.y - q.y) * W.cellH), me = { x: _gw.px, y: _gw.py };
+    let loop = false;   // back within 1.5 px of a spot the feet had gone more than 2 px from since (a slow start's small steps are no loop)
+    const was = p.concat([{ x: x0, y: y0 }]);   // (the spot this step set out from is part of the way round)
+    for (let i = was.length - 3; i >= 0 && i >= was.length - 11 && !loop; i--) if (d(me, was[i]) < 1.5) { for (let j = i + 1; j < was.length; j++) if (d(was[j], was[i]) > 2) { loop = true; break; } }
+    if (loop && p.length && Math.hypot((_gw.px - p[0].x) * W.cellW, (_gw.py - p[0].y) * W.cellH) < 4) { _gw.px = x0; _gw.py = y0; moved = false; _gw.wedge = { sx, sy, x: x0, y: y0 }; H.p = []; }
+    else { p.push({ x: x0, y: y0 }); if (p.length > 12) p.shift(); }
+  }
   if (_gw.giveFrom && (_gw.giveFrom.sx !== Math.sign(dx) || _gw.giveFrom.sy !== Math.sign(dy))) _gw.giveFrom = null;   /* (a new press forgets it) */
   _gw.lastStep = { sx: Math.sign(dx), sy: Math.sign(dy), mx: (_gw.px - x0) * GARDEN_WORLD.cellW, my: (_gw.py - y0) * GARDEN_WORLD.cellH };
   return moved;
@@ -906,7 +934,9 @@ function _gwMoveByEdge(dx, dy) {
   // edge: across with a give of up to 3.5 px against the up-and-down part (an edge up to about 50 degrees from level), or up and
   // down with a give under a pixel against the across part, open for three steps running. A wall met square and a true inside
   // corner are still honest stops. (The collision audit's slide-stall: 106 of them, most at banks the shore slide met at a kink.)
-  const useShore = shore.shore && shore.moved && !backOnGive && gain(shore.x, shore.y) >= gain(x, y), mx = useShore ? shore.x : x, my = useShore ? shore.y : y;
+  // (move360 round 3) a slide that backs away on one key of a diagonal press more than it gets on the way you press is no slide
+  const backs = (px, py) => dx && dy && gain(px, py) < .25 && ((px - x0) * W.cellW * Math.sign(dx) < -.5 || (py - y0) * W.cellH * Math.sign(dy) < -.5);
+  const useShore = shore.shore && shore.moved && !backOnGive && gain(shore.x, shore.y) >= gain(x, y) && gain(shore.x, shore.y) >= -.05 && !backs(shore.x, shore.y), mx = useShore ? shore.x : x, my = useShore ? shore.y : y;
   if (dx && dy && Math.hypot((mx - x0) * W.cellW, (my - y0) * W.cellH) < Math.hypot(dx * W.cellW, dy * W.cellH) * .15) {
     const vx = dx * W.cellW, vy = dy * W.cellH, sx = Math.sign(dx), sy = Math.sign(dy), open3 = (ax, ay) => _gwFree(x0 + ax / W.cellW, y0 + ay / W.cellH) && _gwFree(x0 + 2 * ax / W.cellW, y0 + 2 * ay / W.cellH) && _gwFree(x0 + 3 * ax / W.cellW, y0 + 3 * ay / W.cellH);
     let g2 = null;
@@ -924,6 +954,8 @@ function _gwMoveByEdge(dx, dy) {
   }
   if (useShore) { _gw.px = shore.x; _gw.py = shore.y; return true; }
   if (x === x0 && y === y0) return false;
+  // (round 2, movement) never back against the way you press: at the shut plank gate a south-east press gave way north, step by step
+  if (gain(x, y) < -.05 || backs(x, y)) { _gw.slideHold = null; return false; }
   _gw.px = x; _gw.py = y; return true;
 }
 /**
@@ -970,6 +1002,7 @@ function _gwCrossingSteer(ux, uy, step) {
       // aim at the middle line a little ahead of where you are along it
       const aim = Math.max(0, along) + 16, gx = E.x + tx * aim - X, gy = E.y + ty * aim - Y, gl = Math.hypot(gx, gy);
       if (gl < 1e-6) continue;
+      if ((gx * ux + gy * uy) / gl < .2) return null;   // (round 2, movement) never steer you back against the way you press (at a shut gate it walked you north under a south-east press)
       return [gx / gl, gy / gl];
     }
   }

@@ -1036,6 +1036,7 @@ function gardenSnapshotClean(raw) {
   if (out.wd && Number.isInteger(raw.wd.aw) && raw.wd.aw >= 0 && raw.wd.aw <= 6) out.wd.aw = raw.wd.aw;   // one owner-selected optional world activity; zero keeps the garden clear
   if (Array.isArray(raw.wk)) out.wk = raw.wk.slice(0, 13).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x));   // 2.38: what they have built for the lake (ids; one this version does not know is ignored)
   if (Array.isArray(raw.bk)) { const bk = raw.bk.slice(0, 12).filter(r => Array.isArray(r) && r.length === 8 && typeof r[0] === 'string' && /^[a-z0-9-]{1,32}$/.test(r[0]) && r.slice(1).every(n => Number.isInteger(n) && n >= 0 && n <= 31)); if (bk.length) out.bk = bk; }   // how they have painted their buildings, by building id; a number this version does not know draws as built
+  if (Array.isArray(raw.pf) && raw.pf.length === 2 && int(raw.pf[0], 0, 15) !== null && ['w', 'r', 'c'].includes(raw.pf[1])) out.pf = [raw.pf[0], raw.pf[1]];   // (move360) which way the gardener faces, in sixteenths, and how they last walked
   if (Array.isArray(raw.tk)) out.tk = raw.tk.slice(0, 24).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x));   // 2.23: ids of tricks; the page ignores any it does not know
   if (Array.isArray(raw.plants)) for (const p of raw.plants.slice(0, GARDEN_SNAPSHOT_MAX.plants)) {
     if (!Array.isArray(p) || !_GD_PLANT.has(p[0])) continue;

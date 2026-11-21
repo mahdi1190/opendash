@@ -746,11 +746,13 @@ function gardenLevelWayParts(t) {
 /* In the water the swimmer is drawn facing you or away (its legs under the water): side on, the drawing's legs hang below the surface. */
 if (typeof _gmvDrawing === 'function') {
   const _ghtDraw0 = _gmvDrawing;
+  // (n-move) every argument goes through: with only the heading, the sixteen-way turn (prev, step) fell back to the plain front, side
+  // or back, and the walk was drawn four ways round again
   _gmvDrawing = function (h) {   // eslint-disable-line no-func-assign
-    const D = _ghtDraw0(h);
+    const D = _ghtDraw0.apply(null, arguments);
     if (D.dir !== 'e' || !_ght.swim) return D;
-    const a = (((h + 180) % 360) + 360) % 360 - 180;
-    return { dir: a < 0 && a > -180 ? 'n' : 's', mirror: 1, sx: 1 };
+    const a = (((h + 180) % 360) + 360) % 360 - 180, n = a < 0 && a > -180;
+    return { dir: n ? 'n' : 's', yaw: n ? 180 : 0, mirror: 1, sx: 1 };
   };
 }
 /* The floor's front rail in front of your legs: the thing's picture has its rail, but you are drawn over the whole picture, so the piece
