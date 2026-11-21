@@ -763,6 +763,29 @@ function _gwLos(a, b, m) {
  * (slide along the wall), else step sideways a few pixels round the corner that caught the feet. Returns whether they moved.
  */
 function _gwMoveBy(dx, dy) {
+  // (vf-perf, east coast) A diagonal press into a bent edge could find a way on both ways along it, one each frame: across and
+  // down a few px, then up and back, then across again (the collision audit's slide-jitter by the east coast water). The feet
+  // never turn back on themselves while the same press is held: a step that would undo the last one's way goes on the same way
+  // as the last one instead (the same give again), or stops.
+  const W = GARDEN_WORLD, x0 = _gw.px, y0 = _gw.py, sx = Math.sign(dx), sy = Math.sign(dy), L = _gw.slideLast;
+  const moved = _gwMoveBy0(dx, dy), mx = (_gw.px - x0) * W.cellW, my = (_gw.py - y0) * W.cellH;
+  if (!(dx && dy)) { _gw.slideLast = null; return moved; }
+  const back = (ax, bx) => ax * bx < 0 && Math.abs(ax) > .5 && Math.abs(bx) > .5;
+  if (L && L.sx === sx && L.sy === sy && L.x === x0 && L.y === y0 && (back(mx, L.mx) || back(my, L.my))) {   // (only straight on from the last step: never after a jump)
+    _gw.px = x0; _gw.py = y0;
+    const vx = dx * W.cellW, vy = dy * W.cellH, open3 = (ax, ay) => _gwFree(x0 + ax / W.cellW, y0 + ay / W.cellH) && _gwFree(x0 + 2 * ax / W.cellW, y0 + 2 * ay / W.cellH) && _gwFree(x0 + 3 * ax / W.cellW, y0 + 3 * ay / W.cellH);
+    let g = L.kind ? _gwGiveSlide(x0, y0, dx, dy, L.kind) : null;
+    if (g && (back((g.x - x0) * W.cellW, L.mx) || back((g.y - y0) * W.cellH, L.my))) g = null;
+    if (!g && L.kind === 'y') for (let q = .5; q <= 3.5 && !g; q += .5) if (open3(vx, -sy * q)) g = { x: x0 + vx / W.cellW, y: y0 - sy * q / W.cellH, kind: 'y' };
+    if (!g && L.kind === 'x') for (let q = .25; q <= .75 && !g; q += .25) if (open3(-sx * q, vy)) g = { x: x0 - sx * q / W.cellW, y: y0 + vy / W.cellH, kind: 'x' };
+    if (!g) { _gw.slideHold = L.kind ? { sx, sy, kind: L.kind } : null; L.x = x0; L.y = y0; return false; }
+    _gw.px = g.x; _gw.py = g.y; _gw.slideHold = { sx, sy, kind: g.kind };
+    _gw.slideLast = { sx, sy, mx: (g.x - x0) * W.cellW, my: (g.y - y0) * W.cellH, kind: g.kind, x: g.x, y: g.y }; return true;
+  }
+  _gw.slideLast = Math.hypot(mx, my) > .2 ? { sx, sy, mx, my, kind: _gw.slideHold ? _gw.slideHold.kind : '', x: _gw.px, y: _gw.py } : L && L.sx === sx && L.sy === sy && L.x === x0 && L.y === y0 ? L : null;
+  return moved;
+}
+function _gwMoveBy0(dx, dy) {
   const W = GARDEN_WORLD, x0 = _gw.px, y0 = _gw.py;
   const shore = _gwShoreSlide(x0, y0, dx, dy, GW_FOOT.x, GW_FOOT.y, _gwFree, _gwGridNow(), _gw.shoreMove || (_gw.shoreMove = {}));
   // how far a candidate gets the way you are pressing, as a share of the step

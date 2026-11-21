@@ -234,7 +234,7 @@ window.GardenNativePainted = (function () {
     if (scene.textures.exists(key)) return { key, meta: scene.textures.get(key).customData && scene.textures.get(key).customData.gdpaint };
     const made = ok(() => objectCanvas(id, v, season, size, night)); if (!made) return null;
     // (addImage: no read back of every pixel from the graphics card as the texture is made; see the ground below)
-    const tex = scene.textures.addCanvas(key, made.c);
+    const tex = scene.textures.addImage(key, made.c);
     const meta = { ox: made.ox / made.c.width, oy: made.oy / made.c.height, crown: made.crown };
     tex.customData = Object.assign(tex.customData || {}, { gdpaint: meta }); return { key, meta };
   }

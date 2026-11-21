@@ -786,7 +786,7 @@ window.GardenPaintWood = (function () {
     // One small texture of the canopy field, shown by each chunk's own crop between the shared ground and the wood's floor,
     // and hidden as soon as that chunk's picture is up: the wood is never lighter in squares while it bakes.
     if (S.M.canopy) ok(() => {
-      const CF = S.M.canopy, key = TEX + '-shade-' + hash(String(performance.now())); scene.textures.addCanvas(key, CF.canvas); S.shadeKey = key;
+      const CF = S.M.canopy, key = TEX + '-shade-' + hash(String(performance.now())); scene.textures.addImage(key, CF.canvas); S.shadeKey = key;   // (vf-perf: addImage, as the chunks do: a canvas texture read every pixel back as it was made, on every repaint)
       const ox = CF.x0 - CF.st / 2, oy = CF.y0 - CF.st / 2, tw = CF.canvas.width, th = CF.canvas.height;
       for (const ch of S.chunks.values()) {
         const B = ch.box, cx0 = Math.max(0, (B.x - ox) / CF.st), cy0 = Math.max(0, (B.y - oy) / CF.st), cx1 = Math.min(tw, (B.x + B.w - ox) / CF.st), cy1 = Math.min(th, (B.y + B.h - oy) / CF.st);

@@ -314,7 +314,7 @@ window.GardenPaintTrees = (function () {
     const key = TEX + '|' + sp + '|' + season + '|' + v + '|' + H + (o.shadow ? '|s' : '');
     if (!scene.textures.exists(key)) {
       const m = canvas({ species: sp, season, v, h: H, shadow: !!o.shadow }); if (!m) return null;
-      scene.textures.addCanvas(key, m.c); scene.textures.get(key).customData = { gptree: { ox: m.ox / m.c.width, oy: m.oy / m.c.height } };
+      scene.textures.addImage(key, m.c);   /* (vf-perf: no read-back of every pixel as a tree is made while you walk) */ scene.textures.get(key).customData = { gptree: { ox: m.ox / m.c.width, oy: m.oy / m.c.height } };
     }
     const meta = scene.textures.get(key).customData.gptree, s = want / H / K;
     return scene.add.image(o.x || 0, o.y || 0, key).setOrigin(meta.ox, meta.oy).setScale((o.flip ? -1 : 1) * s, s);

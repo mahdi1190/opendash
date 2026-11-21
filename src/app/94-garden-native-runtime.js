@@ -384,7 +384,9 @@ window.GardenNative = (function () {
     if (typeof _ptwCheck === 'function') _ptwCheck();
   }
   function sync(model) {
-    const s = live; if (!s || s.dead) return; s.model = model;
+    // (vf-perf) a call with no model (a placed thing moved aside, an action's resync) reads the garden now (or keeps the model it has):
+    // it set the model to nothing, and a world still opening then built from nothing (a crash on opening: reading 'visit' or 'tod')
+    const s = live; if (!s || s.dead) return; if (!model) { try { model = typeof gardenHere === 'function' ? gardenHere() : null; } catch (e) { model = null; } model = model || s.model; } if (!model) return; s.model = model;
     if (!s.world) return;
     let key = null;
     try { key = presentationKey(model); } catch (error) { /* Unknown model extensions take the full paint path. */ }
