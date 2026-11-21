@@ -56,6 +56,7 @@ function _gllPetStep(A, dt, svg) {
   }
   const P = A.pp, pf = _gllPlaceFresh(A.pf);
   if (typeof _ptw !== 'undefined' && _ptw.frozen) return;
+  if (A.rub && typeof gartActRubHold === 'function' && gartActRubHold(A, A.pp)) { _ptwStep(A.pp, dt, Date.now() / 1000); return; }   // (2.74.2) a belly rub holds it at their hand, rolling over (94-garden-zz-7act-3sync.js)   // clock-ok: a walk cycle
   const d = Math.hypot(A.x - P.x, (A.y - P.y) * 1.4);
   if (pf) _gllPetFix(P, pf);   // (2.32) their computer said where it is: there, not behind them
   else if (d > 9) { const f = typeof _gwNearestFreePt === 'function' ? _gwNearestFreePt(A.x - 0.8, A.y + 0.3, 2) : null; if (f) { P.x = f.x; P.y = f.y; P.tx = null; P.z = -1; } }

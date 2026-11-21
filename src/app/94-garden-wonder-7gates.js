@@ -16,6 +16,11 @@ const WG_ITEM_ART = Object.freeze({
 /** A find's picture, for the gate prompt and the bag. */
 function gardenGateItemSvg(key, px) { const it = GARDEN_GATE_ITEMS[key], d = it && WG_ITEM_ART[it.art]; return `<svg class="gd-gate-pic" viewBox="-24 -30 48 36" width="${px || 48}" height="${Math.round((px || 48) * 0.75)}" aria-hidden="true">${d ? d() : ''}</svg>`; }
 function gardenGateHas(key) { return typeof gardenHas === 'function' && gardenHas('gk:' + key) > 0; }
+/** (2.74.1) What the garden on screen holds for its gates: yours at home, the owner's on a visit (their snapshot's gk), so a gate's sign says the same on every screen. */
+function gardenGateHere(key) {
+  try { const v = typeof gardenVisitModel === 'function' ? gardenVisitModel() : null, s = v && v.visit && v.visit.snap; if (s) return Array.isArray(s.gk) && s.gk.includes(key); } catch (e) { /* home */ }
+  return gardenGateHas(key);
+}
 function _wgtFishKinds() { try { return Object.keys(_gdG().fl || {}).filter(id => gardenFishDef(id)).length; } catch (e) { return 0; } }
 /** A zone's name inside a sentence: 'the way into the old woodland'. */
 function _wgtInto(zone) { return String(zone && zone.name || '').replace(/^The /, 'the '); }
@@ -28,9 +33,10 @@ function _wgtHint(gate, rule, m) {
 /** What a closed zone needs, in words, for the land office and its map: {tag, line}, or null when it opens by level only. */
 function gardenGateNeedWords(n) {
   const gate = gardenGateOf(Number(n)), rule = gate && gardenGateRule(gate), item = rule && GARDEN_GATE_ITEMS[rule.key]; if (!item) return null;
-  const z = GARDEN_ZONES[gate.n], have = gardenGateHas(rule.key);
+  const z = GARDEN_ZONES[gate.n], have = typeof gardenGateHere === 'function' ? gardenGateHere(rule.key) : gardenGateHas(rule.key);
   const gn = rule.name || 'the gate', it = item.them ? 'them' : 'it';
-  return { tag: have ? 'Ready to open' : 'Needs ' + (item.tag || item.name.replace(/^(A|An|The) /, '').toLowerCase()), line: have ? (item.ready ? `${item.ready} Go and open the ${gn}.` : `You have ${item.name.toLowerCase()}: take ${it} to the ${gn}.`) : `The ${gn} opens with ${item.name.toLowerCase()}, or by itself at garden level ${gardenZoneOpenLv(z)}.` };
+  let host = ''; try { const v = typeof gardenVisitModel === 'function' ? gardenVisitModel() : null; host = v && v.visit ? v.visit.name || 'Your friend' : ''; } catch (e) { host = ''; }   // (2.74.1: on a visit it is the owner's find)
+  return { tag: have ? 'Ready to open' : 'Needs ' + (item.tag || item.name.replace(/^(A|An|The) /, '').toLowerCase()), line: have ? (host ? `${host} has ${item.name.toLowerCase()}: the ${gn} is ready to open.` : item.ready ? `${item.ready} Go and open the ${gn}.` : `You have ${item.name.toLowerCase()}: take ${it} to the ${gn}.`) : `The ${gn} opens with ${item.name.toLowerCase()}, or by itself at garden level ${gardenZoneOpenLv(z)}.` };
 }
 /* ---------- the finds ---------- */
 function _wgtGate(f) { return gardenGateOf(f.gate); }
@@ -68,6 +74,8 @@ function gardenGateTake(key) {
   const g = _gdG(), lk = 'gk.' + key; if (!GARDEN_GATE_ITEMS[key] || g.led[lk]) return false;
   g.led[lk] = { d: _gdToday(), k: 'gk', i: { ['gk:' + key]: 1 }, n: 1 };
   _gdSave();
+  if (typeof gartActDoingPush === 'function') gartActDoingPush(true);   // (2.74.1) the small message first: the snapshot below queues behind it, not it behind the snapshot
+  _gdEmit('landshow', {});   // (2.74.1) friends in a live garden see the find now: the gate's sign says 'Ready to open' on their screens at once, not at the next snapshot (20 s)
   return true;
 }
 function _wgtClick(f, S) {
@@ -93,6 +101,7 @@ function gardenGateOpen(gateId) {
   _gdSave();
   _glFx(gate.door.x + 0.5, gate.door.y + 0.5, 'sparkle', { lift: 20 }); _glSound('twinkle');
   if (typeof gardenToast === 'function') gardenToast(`${rule.done} +${P.c} coins, +${P.x} XP.`, { icon: 'map-pin' });
+  if (typeof gartActDoingPush === 'function') gartActDoingPush(true);   // (2.74.1) the gate's state in one small message, ahead of the snapshot's pieces
   _gdEmit('landshow', {});   // (friends in a live garden see it open)
   return { ok: true, msg: rule.done };
 }
@@ -102,7 +111,12 @@ function gardenGatePrompt(gate, at, m) {
   _wgt.hint.add(gate.id); if (typeof _wgt.note === 'function') { _wgt.note(); _wgt.note = null; }   // (the prompt says it all: the note from walking up goes, and does not come back this visit)
   const zone = gardenZone(gate.n), item = GARDEN_GATE_ITEMS[rule.key], who = _wgtWho(rule.who), isOpen = gardenGateIsOpen(gate, m.areas), title = rule.name || zone.name, into = `The way into ${_wgtInto(zone)}.`;
   if (isOpen) { gardenBubbleOpen(at, { title, sub: into + ' It is open.', items: [], cls: 'is-empty is-words gd-gate' }); return true; }
-  if (m.visit) { gardenBubbleOpen(at, { title, sub: into + ' ' + rule.block + ' This way is still shut in your friend’s garden.', items: [], cls: 'is-empty is-words gd-gate' }); return true; }
+  if (m.visit) {   // (2.74.1: the owner's find, the same words on every screen; and a friend opens it as the owner would: friends can do everything the owner can)
+    const theirs = gardenGateHere(rule.key), host = m.visit.name || 'Your friend', live = typeof gardenLiveGateOpen === 'function' && typeof _glvLive === 'function' && _glvLive();
+    const items = theirs && live ? [{ svg: gardenGateItemSvg(rule.key, 22), label: rule.verb, text: rule.verb, cls: 'is-go gd-gate-use', run: () => gardenLiveGateOpen(gate.id) }] : [];
+    gardenBubbleOpen(at, { title, sub: into + ' ' + (theirs ? `${host} has ${item.name.toLowerCase()}: ${live ? 'you can open it.' : 'it is ready to open.'}` : rule.block + ' This way is still shut in your friend’s garden.'), need: { svg: gardenGateItemSvg(rule.key, 44), name: item.name, have: theirs, who: host }, items, cls: 'is-words gd-gate' + (items.length ? '' : ' is-empty') });
+    return true;
+  }   // (2.74.1: the owner's find, the same words on every screen)
   const have = gardenGateHas(rule.key), lv = m.level.level, findLv = gardenGateFindLv(gate), openLv = gardenZoneOpenLv(zone);
   // what someone said, in their own words; then, in one plain line, when they can help and when it opens anyway
   const said = _wgtHint(gate, rule, m), name = said && said.name || (who ? who.name : 'Someone');

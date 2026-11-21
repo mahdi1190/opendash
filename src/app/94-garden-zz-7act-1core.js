@@ -143,7 +143,7 @@ function gartActFrame() {
   const now = performance.now();
   if (_ga.cur && _ga.cur.doing) {
     const cur = _ga.cur;
-    if (!cur.H) { const inner = _gw.node && _gw.node.querySelector('.gd-pl-in'), k = (inner && inner._gplKey) || ''; if (k.startsWith('idle' + cur.wantDir) || now - cur.t0 > 600) { const gpl = _gaMyFigure(); if (gpl) cur.H = gartActPlay(gpl, cur.id, { noProp: !!(cur.spot && cur.spot.noProp), skips: cur.skips, leaves: !!(cur.spot && cur.spot.kick === 'leaves'), tree: cur.spot && cur.spot.tree, at: cur.spot && cur.spot.stand }); } }
+    if (!cur.H) { const inner = _gw.node && _gw.node.querySelector('.gd-pl-in'), k = (inner && inner._gplKey) || ''; if (k.startsWith('idle' + cur.wantDir) || now - cur.t0 > 600) { const gpl = _gaMyFigure(); if (gpl) { cur.playT = now; if (cur.row.fetch && _ga.fetch && _ga.fetch.cur === cur) { if (!_ga.fetch.playT) _ga.fetch.playT = now; if (typeof gartActDoingPush === 'function') gartActDoingPush(true); } } if (gpl) cur.H = gartActPlay(gpl, cur.id, { noProp: !!(cur.spot && cur.spot.noProp), skips: cur.skips, leaves: !!(cur.spot && cur.spot.kick === 'leaves'), tree: cur.spot && cur.spot.tree, at: cur.spot && cur.spot.stand }); } }
     _gaTick(now);
     if (cur.row.rubPet) _gaRubTick(cur);
     if (cur.row.fetch) _gaFetchDraw();
@@ -267,8 +267,6 @@ function _gaStart(cur) {
   cur.wantDir = row.dir === 'n' ? 'n' : row.dir === 'e' || row.dir === 'w' ? 'e' : 's';
   if (typeof _GPL !== 'undefined') { _GPL.lastX = _gw.px; _GPL.lastY = _gw.py; }
   if (row.sound) { try { gardenSfx(row.sound); } catch (e) { /* no such sound: quiet */ } }
-  _gaTell(cur.id, spot && spot.stand ? _gw.px : null, spot && spot.stand ? _gw.py : null);
-  if (row.use && typeof gardenLiveFx === 'function' && (row.use === 'bell' || row.use === 'wish')) { try { gardenLiveFx('use', row.use, { x: Math.floor(_gw.px), y: Math.floor(_gw.py) }); } catch (e) { /* alone */ } }
   if (row.skim) _gaSkim(cur);
   if (spot && spot.src === 'water') _ga.wt++;
   if (row.shake) _gaShake(cur);
@@ -277,6 +275,9 @@ function _gaStart(cur) {
   if (row.carry && spot && spot.carry) _gaPick(cur);
   if (row.fetch) _gaFetch(cur);
   if (row.rubPet) { try { const P = typeof gpPetMe === 'function' ? gpPetMe() : null; if (P) { if (P.clipH) { try { P.clipH.stop(true); } catch (e) { /* gone */ } P.clipH = null; } if (typeof _plPropsDrop === 'function') _plPropsDrop(P); P.lifeCur = null; P.lifeHold = 0; P.busy = 0; P.cb = null; P.tx = null; P.perch = null; } } catch (e) { /* no pet */ } }   // (whatever row it was playing, it drops it and comes to your hand)
+  // (2.74.2) told after the extras above, so the first whole state already has the stick's throw, the thing in your arms, the ball
+  _gaTell(cur.id, spot && spot.stand ? _gw.px : null, spot && spot.stand ? _gw.py : null);
+  if (row.use && typeof gardenLiveFx === 'function' && (row.use === 'bell' || row.use === 'wish')) { try { gardenLiveFx('use', row.use, { x: Math.floor(_gw.px), y: Math.floor(_gw.py) }); } catch (e) { /* alone */ } }
   if (row.prop === 'fiddle' || row.fiddle) _gaResync();
   if (row.clouds) _gaSky(cur, true);
   _gaFirst(cur);
@@ -461,15 +462,18 @@ function _gaResync() { try { if (typeof GardenNative !== 'undefined' && GardenNa
 function _gaRec(id) { try { const w = GardenNative.world(), e = w && w.entities; return e instanceof Map ? e.get('prop:' + id) : null; } catch (e) { return null; } }
 function _gaShow(id, on) { const rec = _gaRec(id); if (rec && rec.root && rec.root.setAlpha) rec.root.setAlpha(on ? 1 : 0); }
 /** The ball flies off the foot and rolls back to its place; the leaves burst and settle back slowly. */
-function _gaKick(cur) {
-  const sp = cur.spot, W = GARDEN_WORLD, id = sp.src, leaves = sp.kick === 'leaves';
+function _gaKick(cur) { _gaKickAt(cur.spot, _gaDirDeg(cur.row, cur.spot)); }
+/** (2.74.1) The kick itself, on any screen: the ball goes the way the kicker faces, the same distance everywhere, so both screens show it land in the same place. */
+function _gaKickAt(sp, deg) {
+  if (!sp) return;
+  const W = GARDEN_WORLD, id = sp.src, leaves = sp.kick === 'leaves', side = Math.cos((Number(deg) || 0) * Math.PI / 180) < -0.2 ? -1 : 1, lean = Math.sin((Number(deg) || 0) * Math.PI / 180);
   setTimeout(() => {
     if (leaves) { _gaHide.set(id, performance.now() + 20000); _gaShow(id, false); if (window.GardenNativeActions) for (let i = 0; i < 5; i++) setTimeout(() => { try { GardenNativeActions.effect(i % 2 ? 'harvest' : 'plant', (sp.x + (i - 2) * 0.3) * W.cellW, W.sky + sp.y * W.cellH, { width: 40 }); } catch (e) { /* fine */ } }, i * 90); setTimeout(() => { _gaHide.delete(id); _gaShow(id, true); }, 20000); return; }
     _gaHide.set(id, performance.now() + 4200); _gaShow(id, false);
     // the ball's flight: a native sprite of its own, from the world drawing
     try {
       const rec = _gaRec(id); if (!rec || !rec.root) return;
-      const r = rec.root, x0 = r.x, y0 = r.y, dx = (Math.random() < 0.5 ? -1 : 1) * (34 + Math.random() * 26), dy = 8 + Math.random() * 12, sc = r.scene;
+      const r = rec.root, x0 = r.x, y0 = r.y, dx = side * 46, dy = 10 + 6 * lean, sc = r.scene;
       r.setAlpha(1); _gaHide.set(id, performance.now() + 4200);
       if (sc && sc.tweens && _gaMotion()) {
         sc.tweens.add({ targets: r, x: x0 + dx, duration: 900, ease: 'Quad.out' });
@@ -489,8 +493,8 @@ const _GA_CARRY_SVG = Object.freeze({
   log: '<g transform="translate(0 -32)"><path d="M-14 -1Q-15 -8 -11 -8L11 -8Q15 -8 14 -1Q0 1 -14 -1z" fill="#7a5432" stroke="#3a2818" stroke-width="0.7"/><ellipse cx="12" cy="-4.4" rx="3" ry="3.6" fill="#c8a070" stroke="#6a4a2a" stroke-width="0.6"/></g>',
 });
 /** Once a walker frame while carrying: the thing in both hands, arms round it (from the moves frame). */
-function gartActCarryFrame(body, L) {
-  const c = _ga.carry; if (!c || !body) return;
+function gartActCarryFrame(body, L, art) {
+  const c = art ? { art } : _ga.carry; if (!c || !body) return;   // (art: a friend's figure carrying, 94-garden-zz-7act-3sync.js)
   if (!body._gaCarry || !body._gaCarry.parentNode) {
     const up = body.querySelector('.gpl-up') || body; let g;
     try { g = typeof gardenSceneElement === 'function' && gardenVisualIsNative(body) ? gardenSceneElement('g') : document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'ga-prop ga-carried'); g.innerHTML = _GA_CARRY_SVG[c.art] || _GA_CARRY_SVG.basket; up.appendChild(g); body._gaCarry = g; } catch (e) { return; }
@@ -671,6 +675,7 @@ function gartActDiary() { try { const g = _gdG(); return Object.keys(GARDEN_ACTS
 /* ---------- friends: what they see you do (and you see them) ---------- */
 /** One gl:em when it starts: the action's id, and where (a seat, a ladder) so their copy of you walks there first and does it in the same place. */
 function _gaTell(id, x, y) {
+  if (typeof gartActDoingPush === 'function') gartActDoingPush(true);   // (2.74.1) the whole state first: a newer app draws from it and ignores the one-off below
   const body = { c: 'em', e: GA_WIRE + id };
   if (x != null && Number.isFinite(x) && Number.isFinite(y)) { body.x = Math.round(x * 100) / 100; body.y = Math.round(y * 100) / 100; }
   try {
@@ -679,13 +684,19 @@ function _gaTell(id, x, y) {
     else if (typeof _glh !== 'undefined' && _glh.on && typeof _glhAnyone === 'function' && _glhAnyone()) _glhSend('all', 'em', body);
   } catch (e) { /* alone */ }
 }
-function gartActRemote(A, id) {
+function gartActRemote(A, id, off) {
   const row = GARDEN_ACTS[id]; if (!row || !A || !A.root) return false;
+  off = Math.max(0, Number(off) || 0);   // (2.74.1) how far into it they are: a late arrival, a redrawn figure, joins it there (a held pose at its end)
+  A.actId = id; A.actT0 = performance.now() - off;
   if (typeof _gllEmoteStop === 'function') _gllEmoteStop(A);
   A.dir = row.dir === 'n' ? 'n' : row.dir === 'e' || row.dir === 'w' ? 'e' : 's'; A.pose = ''; A.key = '';
-  if (typeof _gllPaint === 'function') _gllPaint(A);
+  if (A.actDeg != null && typeof _gmvDrawing === 'function') { const D = _gmvDrawing(A.actDeg); A.dir = D.dir; if (D.dir === 'e') A.face = D.mirror; if (A.gm) A.gm.h = A.actDeg; }   // (2.74.1) facing as they face (gl:dg d)
+  if (typeof _gllPaint === 'function') { A.actPainting = true; try { _gllPaint(A); } finally { A.actPainting = false; } }   // (2.74.1: this new drawing is the one the move goes on, so the redraw hook must not start it again: it restarted every frame)
   const gpl = A.root.querySelector('.gpl'); if (!gpl) return false;
   const H = gartActPlay(gpl, id, { motion: typeof _gllReduced === 'function' ? !_gllReduced() : true });
+  if (row.kick && off < 400 && A.kickT0 !== Math.round(A.actT0)) { A.kickT0 = Math.round(A.actT0); try { const sp = _gaStaticRows().concat(_gaDecorRows()).filter(q => q.act === id && q.stand && Math.hypot(q.stand.x - A.x, q.stand.y - A.y) < 1.2).sort((p, q) => Math.hypot(p.stand.x - A.x, p.stand.y - A.y) - Math.hypot(q.stand.x - A.x, q.stand.y - A.y))[0]; if (sp) _gaKickAt(sp, A.actDeg != null ? A.actDeg : 90); } catch (e) { /* the ball stays */ } }   // (2.74.1) the ball flies on their screen too
+  if (row.rubPet && typeof gartActRubCopy === 'function') gartActRubCopy(A, id);   // (2.74.1) their pet on its back at their hand, on my screen too
+  if (off > 0) for (const an of H.anims.concat(H.panims)) { try { an.currentTime = Math.min(off, Math.max(0, row.ms - 1)); } catch (e) { /* from the start */ } }
   // on a seat (or over the pier's edge) their figure is lifted as yours is: the same spot, found from where they are
   let lift = row.seat != null ? _gaSeatLift(row) : 0; if (!lift) try { const near = _gaStaticRows().concat(_gaDecorRows()).filter(r => r.act === id && r.stand && Math.hypot(r.stand.x - A.x, r.stand.y - A.y) < 0.6)[0]; lift = near ? near.lift || 0 : 0; } catch (e) { lift = 0; }
   if (lift && A.bob) { const bt = `translate(0 ${-lift})`; A.actLift = lift; A.bob.setAttribute('transform', bt); A.bobT = bt; const undo = H.stop; H.stop = () => { undo(); A.actLift = 0; if (A.bob && A.bobT === bt) { A.bob.setAttribute('transform', ''); A.bobT = ''; } }; }
@@ -693,7 +704,7 @@ function gartActRemote(A, id) {
   if (tag && (row.lying || lift)) { const y0 = tag.getAttribute('y'), y1 = row.lying ? String(Math.round(-26 * GARDEN_ACTOR_SCALE)) : String(Number(y0) - lift); tag.setAttribute('y', y1); const undo = H.stop; H.stop = () => { undo(); if (tag.getAttribute('y') === y1) tag.setAttribute('y', y0); }; }
   A.actHold = row.hold ? id : ''; { const undo = H.stop; H.stop = () => { A.actHold = ''; undo(); }; }
   A.anims = H.anims.concat(H.panims); A.actUndo = H.stop; A.sit = !!row.hold; A.hold = '';
-  if (!row.hold) A.animT = setTimeout(() => { if (typeof _gllEmoteStop === 'function') _gllEmoteStop(A); }, row.ms + 60);
+  if (!row.hold) A.animT = setTimeout(() => { if (typeof _gllEmoteStop === 'function') _gllEmoteStop(A); if (A.actId === id) A.actId = ''; if (A.dgNext && typeof gartActDoingNext === 'function') gartActDoingNext(A); }, Math.max(60, row.ms + 60 - off));   // (2.74.1: and what they went on to, after it)
   return true;
 }
 /* ---------- the pet comes and joins in ---------- */

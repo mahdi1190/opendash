@@ -85,7 +85,7 @@ function _glyAtIn(A, ev) {
       if (F && Math.floor(F.bx) === bx && Math.floor(F.by) === by) F.at = t;
       else { A.fish = { state: 'wait', t: 0, bx: bx + 0.5, by: by + 0.5, at: t, bait: typeof ev.i === 'string' ? ev.i : '' }; A.key = ''; if (typeof _gllFxClear === 'function') _gllFxClear(A); }   // (a line I never heard go out)
     } else if (A.fish && A.fish.state !== 'land' && t - A.fish.at > 4000) { A.fish = null; A.key = ''; if (typeof _gllFxClear === 'function') _gllFxClear(A); }   // (a line I never heard come in)
-    if (!A.moving) { if ((Number(ev.nw) & 2) && !A.sit) _gllEmote(A, 'sit', true); else if (!(Number(ev.nw) & 2) && A.sit) { A.sit = false; _gllEmoteStop(A); A.key = ''; } }
+    if (!A.moving && !A.dg) { if ((Number(ev.nw) & 2) && !A.sit) _gllEmote(A, 'sit', true); else if (!(Number(ev.nw) & 2) && A.sit) { A.sit = false; _gllEmoteStop(A); A.key = ''; } }
   }
   if (A.fish || A.sit || !A.moving && A.tx == null) _gllStationaryAt(A, ev.x + .5, ev.y + .5, 'cell');
   if (A.moving) return;
@@ -184,5 +184,6 @@ function _glyTick() {
     _gly.oldTold = true;
     if (typeof _gllFeed === 'function') _gllFeed('Their Freeflo is older, so you each see your own fish. Ask them to update.');
   }
+  if ((hostLive || guestLive) && typeof gartActDoingTick === 'function') gartActDoingTick();   // what you are doing, when it changes (94-garden-zz-7act-3sync.js)
   _glyPaint();
 }

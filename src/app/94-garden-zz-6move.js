@@ -132,6 +132,53 @@ function _gmvUphill(x, y, uy, ux) {
   try { const up = typeof gardenTerrainUp === 'function' ? gardenTerrainUp(x, y) : null; if (up) { const d = (ux || 0) * up.x + uy * up.y; return d > 0.3 ? 1 : d < -0.3 ? -1 : 0; } } catch (e) { /* no ground */ }
   return 0;
 }
+/** (2.74.1) The stride on any drawn body: the gardener's own (st = _gmv) and a friend's figure on your screen (st = their own record), the same legs from the same table. */
+function _gmvStride(st, body, S, o) {
+  const L = _gmvLimbs(body); if (!L.legA || !L.legB) return null;
+  const now = performance.now();
+  // the gait: run, creep, stairs or walk; the stride follows the ground actually covered
+  const v = o.moving ? Math.max(0, o.v || 0) : 0;
+  if (now - (st.stairT || 0) > 200) { st.stairT = now; st.onStairs = _gmvStairAt(o.px, o.py); const a = (st.h || 0) * Math.PI / 180; st.uphill = _gmvUphill(o.px, o.py, Math.sin(a), Math.cos(a)); }
+  const G = o.sneak ? GPL_MOVE.creep : st.onStairs ? GPL_MOVE.stairs : v > 205 ? GPL_MOVE.run : GPL_MOVE.walk;
+  const legLen = Math.max(8, Math.abs(L.legA.oy) * S);   // the hip's height in world px
+  const stride = G.stride * legLen;
+  // the ground actually covered this frame (not the speed asked for: a wall, a slide along it, a diagonal), along the way the drawing faces
+  const side = L.side, native = L.native, Wd = GARDEN_WORLD;
+  const ddx = st.lpx == null ? 0 : (o.px - st.lpx) * Wd.cellW, ddy = st.lpy == null ? 0 : (o.py - st.lpy) * Wd.cellH; st.lpx = o.px; st.lpy = o.py;
+  const covered = Math.min(40, side ? Math.abs(ddx) : Math.hypot(ddx, ddy));
+  st.phase = ((st.phase || 0) + (o.moving ? covered : 0) * G.stance / stride) % 1;
+  const leg = (p) => {   // -> [angle (deg), knee (scaleY), planted]
+    if (p < G.stance) { const x = stride / 2 - stride * (p / G.stance); return [Math.asin(Math.max(-0.98, Math.min(0.98, x / legLen))) * 180 / Math.PI, 1, x]; }
+    const q = (p - G.stance) / (1 - G.stance), e = q * q * (3 - 2 * q), x = -stride / 2 + stride * e;
+    const k = L.kneeA ? 0.35 : 1;   // with a knee the shin folds back instead (the leg is not squashed as much)
+    return [Math.asin(Math.max(-0.98, Math.min(0.98, x / legLen))) * 180 / Math.PI, 1 - G.lift * k * Math.sin(Math.PI * q), null, G.knee * Math.sin(Math.PI * Math.pow(q, 0.8))];
+  };
+  const pa = st.phase, pb = (pa + 0.5) % 1, A = leg(pa), B = leg(pb);
+  // the hip rides the planted leg (lower as the legs open); a run has a little flight between steps
+  const planted = A[2] != null ? A : B[2] != null ? B : null;
+  let hip = planted ? legLen * (1 - Math.cos(planted[0] * Math.PI / 180)) / S : 0;
+  if (!planted && G.flight) hip = -G.flight;
+  if (st.onStairs) hip += -Math.abs(Math.sin(pa * Math.PI * 2)) * 1.6;
+  const lean = (G.lean + (st.uphill > 0 ? 6 : st.uphill < 0 ? -3 : 0)) * Math.min(1, v / 120);
+  // where the planted foot is on the ground (world px), for checks: it should not move while planted
+  { const wx = o.px * GARDEN_WORLD.cellW, m = o.mirror || 1; st.feet = [A[2] != null ? wx + m * A[2] : null, B[2] != null ? wx + m * B[2] : null]; }
+  if (side) {
+    // side on (drawn facing east; the mirror flips it): legs turn about the hip, forward is +x, so a positive turn swings the foot back
+    _gmvSet(L.legA, -A[0], A[1], 0, native); _gmvSet(L.legB, -B[0], B[1], 0, native);
+    _gmvSet(L.kneeA, A[3] || 0, null, 0, native); _gmvSet(L.kneeB, B[3] || 0, null, 0, native);   // the swinging shin folds back at the knee
+    _gmvSet(L.armA, A[0] / 40 * G.arm, null, 0, native); _gmvSet(L.armB, B[0] / 40 * G.arm, null, 0, native);
+    _gmvSet(L.up, lean, null, 0, native);
+  } else {
+    // facing you or away: the swing leg lifts (knee up), the planted one takes the weight; arms swing a little out and in
+    const toward = o.dir === 's' ? 1 : -1;
+    _gmvSet(L.legA, 0, A[1] * (1 + (A[2] != null ? toward * A[2] / legLen * 0.12 : 0)), 0, native);
+    _gmvSet(L.legB, 0, B[1] * (1 + (B[2] != null ? toward * B[2] / legLen * 0.12 : 0)), 0, native);
+    _gmvSet(L.armA, A[0] / 40 * G.arm * 0.45, null, 0, native); _gmvSet(L.armB, B[0] / 40 * G.arm * 0.45, null, 0, native);
+    _gmvSet(L.up, (pa < 0.5 ? 1 : -1) * Math.min(1.6, v / 90), null, 0, native);
+  }
+  _gmvSet(L.root, 0, null, hip, native);
+  return L;
+}
 /**
  * Once a frame, after the walker has placed the figure: the turn's foreshortening, the hop, and (walking) the stride.
  * inner: the .gd-pl-in node (scaled), bob: .gd-pl-bob, gw: the walker. Returns nothing; touches transforms only.
@@ -163,48 +210,7 @@ function gartMoveFrame(inner, bob, gw, time) {
   if (body && gw.boat && !acting) { _gmvRow(body, gw, motion); return; }   // (16) in the boat: seated at the oars, pulling as it moves
   if (body && typeof _ga !== 'undefined' && _ga.carry && !acting && !(_GPL.pose === 'stride' || (inner._gplKey || '').startsWith('stride'))) gartActCarryFrame(body, _gmvLimbs(body));
   if (acting || !body || !motion || _GPL.pose !== 'stride' && !(inner._gplKey || '').startsWith('stride')) { _gmv.lpx = _gmv.lpy = null; return; }
-  const L = _gmvLimbs(body); if (!L.legA || !L.legB) return;
-  // the gait: run, creep, stairs or walk; the stride follows the ground actually covered
-  const v = gw.moving ? Math.max(0, gw.spd || 0) : 0;
-  if (now - (_gmv.stairT || 0) > 200) { _gmv.stairT = now; _gmv.onStairs = _gmvStairAt(gw.px, gw.py); const a = (_gmv.h || 0) * Math.PI / 180; _gmv.uphill = _gmvUphill(gw.px, gw.py, Math.sin(a), Math.cos(a)); }
-  const G = gw.sneak ? GPL_MOVE.creep : _gmv.onStairs ? GPL_MOVE.stairs : v > 205 ? GPL_MOVE.run : GPL_MOVE.walk;
-  const legLen = Math.max(8, Math.abs(L.legA.oy) * S);   // the hip's height in world px
-  const stride = G.stride * legLen;
-  // the ground actually covered this frame (not the speed asked for: a wall, a slide along it, a diagonal), along the way the drawing faces
-  const side = L.side, native = L.native, Wd = GARDEN_WORLD;
-  const ddx = _gmv.lpx == null ? 0 : (gw.px - _gmv.lpx) * Wd.cellW, ddy = _gmv.lpy == null ? 0 : (gw.py - _gmv.lpy) * Wd.cellH; _gmv.lpx = gw.px; _gmv.lpy = gw.py;
-  const covered = Math.min(40, side ? Math.abs(ddx) : Math.hypot(ddx, ddy));
-  _gmv.phase = (_gmv.phase + (gw.moving ? covered : 0) * G.stance / stride) % 1;
-  const leg = (p) => {   // -> [angle (deg), knee (scaleY), planted]
-    if (p < G.stance) { const x = stride / 2 - stride * (p / G.stance); return [Math.asin(Math.max(-0.98, Math.min(0.98, x / legLen))) * 180 / Math.PI, 1, x]; }
-    const q = (p - G.stance) / (1 - G.stance), e = q * q * (3 - 2 * q), x = -stride / 2 + stride * e;
-    const k = L.kneeA ? 0.35 : 1;   // with a knee the shin folds back instead (the leg is not squashed as much)
-    return [Math.asin(Math.max(-0.98, Math.min(0.98, x / legLen))) * 180 / Math.PI, 1 - G.lift * k * Math.sin(Math.PI * q), null, G.knee * Math.sin(Math.PI * Math.pow(q, 0.8))];
-  };
-  const pa = _gmv.phase, pb = (pa + 0.5) % 1, A = leg(pa), B = leg(pb);
-  // the hip rides the planted leg (lower as the legs open); a run has a little flight between steps
-  const planted = A[2] != null ? A : B[2] != null ? B : null;
-  let hip = planted ? legLen * (1 - Math.cos(planted[0] * Math.PI / 180)) / S : 0;
-  if (!planted && G.flight) hip = -G.flight;
-  if (_gmv.onStairs) hip += -Math.abs(Math.sin(pa * Math.PI * 2)) * 1.6;
-  const lean = (G.lean + (_gmv.uphill > 0 ? 6 : _gmv.uphill < 0 ? -3 : 0)) * Math.min(1, v / 120);
-  // where the planted foot is on the ground (world px), for checks: it should not move while planted
-  { const wx = gw.px * GARDEN_WORLD.cellW, m = _gmv.mirror || 1; _gmv.feet = [A[2] != null ? wx + m * A[2] : null, B[2] != null ? wx + m * B[2] : null]; }
-  if (side) {
-    // side on (drawn facing east; the mirror flips it): legs turn about the hip, forward is +x, so a positive turn swings the foot back
-    _gmvSet(L.legA, -A[0], A[1], 0, native); _gmvSet(L.legB, -B[0], B[1], 0, native);
-    _gmvSet(L.kneeA, A[3] || 0, null, 0, native); _gmvSet(L.kneeB, B[3] || 0, null, 0, native);   // the swinging shin folds back at the knee
-    _gmvSet(L.armA, A[0] / 40 * G.arm, null, 0, native); _gmvSet(L.armB, B[0] / 40 * G.arm, null, 0, native);
-    _gmvSet(L.up, lean, null, 0, native);
-  } else {
-    // facing you or away: the swing leg lifts (knee up), the planted one takes the weight; arms swing a little out and in
-    const toward = _GPL.dir === 's' ? 1 : -1;
-    _gmvSet(L.legA, 0, A[1] * (1 + (A[2] != null ? toward * A[2] / legLen * 0.12 : 0)), 0, native);
-    _gmvSet(L.legB, 0, B[1] * (1 + (B[2] != null ? toward * B[2] / legLen * 0.12 : 0)), 0, native);
-    _gmvSet(L.armA, A[0] / 40 * G.arm * 0.45, null, 0, native); _gmvSet(L.armB, B[0] / 40 * G.arm * 0.45, null, 0, native);
-    _gmvSet(L.up, (pa < 0.5 ? 1 : -1) * Math.min(1.6, v / 90), null, 0, native);
-  }
-  _gmvSet(L.root, 0, null, hip, native);
+  const L = _gmvStride(_gmv, body, S, { px: gw.px, py: gw.py, moving: !!gw.moving, v: gw.spd || 0, sneak: !!gw.sneak, dir: _GPL.dir, mirror: _gmv.mirror || 1 }); if (!L) return;
   if (typeof _ga !== 'undefined' && _ga.carry && typeof gartActCarryFrame === 'function') gartActCarryFrame(body, L);   // (25) carrying: both hands on it
 }
 /** (16) Rowing: seated low in the boat (the boat is drawn round the feet), the oars pulled through the water, a stroke every so much ground. */
@@ -225,3 +231,45 @@ function _gmvRow(body, gw, motion) {
 }
 /** How the walk is going, for checks: heading, drawing, gait, phase, stride (px). */
 function gartMoveState() { return { heading: Math.round(_gmv.h), want: Math.round(_gmv.want), dir: _GPL.dir, mirror: _gmv.mirror, sx: _gmv.sx, phase: _gmv.phase, stairs: !!_gmv.onStairs, uphill: _gmv.uphill, hop: _gmv.hop > 0, feet: _gmv.feet || null }; }
+/**
+ * (2.74.1) A friend's figure on your screen (94-garden-live-1core.js _gllStep calls this once a frame): the same turn through the
+ * in-between drawings and the same stride, walk or run, as your own, worked out from where their figure goes. Nothing extra is sent:
+ * the walk messages already carry where they are going and how fast, so the legs, the run and the turn follow on every screen.
+ * A: the live actor (x, y, moving, dir, face, inner). Leaves a figure that is doing something (an action, a line out, a seat) alone.
+ */
+function gartMoveActor(A) {
+  if (!A || !A.inner || A.inner._dead) return;
+  const W = GARDEN_WORLD, now = performance.now(), motion = _gmvMotion();
+  const st = A.gm || (A.gm = { h: A.dir === 'n' ? -90 : A.dir === 'e' ? (A.face < 0 ? 180 : 0) : 90, phase: 0, lpx: null, lpy: null, ox: A.x, oy: A.y, t: 0, v: 0 });
+  const dt = Math.min(0.1, st.t ? (now - st.t) / 1000 : 0); st.t = now;
+  const cx = A.x - st.ox, cy = A.y - st.oy, mx = cx * W.cellW, my = cy * W.cellH; st.ox = A.x; st.oy = A.y;
+  if (dt > 0) st.v = st.v * 0.75 + Math.min(600, Math.hypot(mx, my) / dt) * 0.25;
+  const busy = !!(A.actUndo || A.actId || A.fish || A.sit || A.actHold || A.hold || (A.anims && A.anims.length));
+  if (busy || !A.moving) {
+    st.lpx = st.lpy = null;
+    if (busy || !motion) st.h = A.dir === 'n' ? -90 : A.dir === 'e' ? (A.face < 0 ? 180 : 0) : 90;
+    if (!A.moving) st.v = 0;
+    if (!A.moving && A.standDeg != null && typeof gartActStandFace === 'function') gartActStandFace(A);
+    if (!busy && typeof gartActCarryActor === 'function') { const b0 = A.inner.firstChild; if (b0 && b0.querySelector) gartActCarryActor(A, b0); }
+    return;
+  }
+  if (Math.abs(cx) + Math.abs(cy * 1.6) >= 0.004) st.want = Math.atan2(cy * 1.6, cx) * 180 / Math.PI;   // (the heading in the same terms as your own: gartMoveStep)
+  if (st.want != null) {
+    let d = _gmvWrap(st.want - st.h);
+    if (!motion) st.h = st.want;
+    else {
+      if (Math.abs(Math.abs(d) - 180) < 8) { const a = _gmvWrap(st.h); d = (a > -90 && a < 90) ? 179 : -179; if (Math.abs(a + 90) < 30 || Math.abs(a - 90) < 30) d = 180 * Math.sign(d); }
+      const step = GPL_MOVE.turnRate * dt; st.h += Math.abs(d) <= step ? d : Math.sign(d) * step;
+    }
+  }
+  const D = _gmvDrawing(st.h);
+  if (D.dir !== A.dir || (D.dir === 'e' && D.mirror !== A.face)) { A.dir = D.dir; if (D.dir === 'e') A.face = D.mirror; A.key = ''; if (typeof _gllPaint === 'function') _gllPaint(A); }
+  const S = typeof GL_ACT_SCALE === 'number' ? GL_ACT_SCALE : 0.74 * GARDEN_ACTOR_SCALE;
+  const sneak = A.sneakUntil > Date.now(), mirror = A.dir === 'e' && A.face < 0 ? -1 : 1, sx = motion ? D.sx : 1;   // clock-ok: a creep
+  const tf = `scale(${_gmvN(mirror * S * sx)} ${_gmvN(S * (sneak ? GPL_MOVE.creep.crouch : 1))})`;
+  if (A.inner.getAttribute('transform') !== tf) A.inner.setAttribute('transform', tf);
+  if (!motion) return;
+  const body = A.inner.firstChild; if (!body || !body.querySelector) return;
+  const L = _gmvStride(st, body, S, { px: A.x, py: A.y, moving: true, v: st.v, sneak, dir: A.dir, mirror });
+  if (typeof gartActCarryActor === 'function') gartActCarryActor(A, body, L);   // (carrying: both hands on it, as yours)
+}

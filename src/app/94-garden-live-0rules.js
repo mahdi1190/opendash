@@ -21,7 +21,9 @@ const GL_WORLD_PREDECESSOR='94f5b2dbe4dce765cafb2b40',GL_WORLD_MECHANICS1='c3454
 function glWorldFields(source){
  if(source===undefined){
   if(typeof _gdv!=='undefined'&&_gdv.on&&_gdv.clean)source=_gdv.clean;
-  else if(typeof state!=='undefined'&&state?.garden)source=state.garden;
+  // (2.74.2) a garden never opened yet (a fresh pair who visit straight away) has no saved world: it will start on this one, so it says this one.
+  // It said none, the host's computer refused the visit as another world, and the first visit after pairing stayed 'look' until something saved it.
+  else if(typeof state!=='undefined'&&state?.garden&&(state.garden.seen?.world!=null||state.garden.wv!=null))source=state.garden;
   else source={wv:GARDEN_WORLD.v,lh:GARDEN_WORLD.lh};
  }
  source=source?.visit?.snap||source;
@@ -51,9 +53,10 @@ const GL_ACTS = Object.freeze({
   catch: Object.freeze({ lv: 'look' }),
   feed: Object.freeze({ lv: 'play', on: 'plant' }),
   turn: Object.freeze({ lv: 'play', on: 'decor', mine: true }),
+  gate: Object.freeze({ lv: 'help' }),   // (2.74.1) open a gate of the owner's with the find they hold (p: the gate's id). Friends can do all the owner can (the owner, 20 Nov)
 });
 const GL_ACT_IDS = Object.freeze(Object.keys(GL_ACTS));
-const GL_CAPS = Object.freeze({ plant: 40, place: 20, water: 40, weed: 40, harvest: 60, dig: 40, move: 60, take: 40, give: 10, drop: 6, pick: 12, catch: 3, feed: 30, turn: 40, postsPerFriend: 120 });
+const GL_CAPS = Object.freeze({ plant: 40, place: 20, water: 40, weed: 40, harvest: 60, dig: 40, move: 60, take: 40, give: 10, drop: 6, pick: 12, catch: 3, feed: 30, turn: 40, gate: 12, postsPerFriend: 120 });
 /** What can wait for an owner who is out: which acts (each still needs its level in GL_ACTS), how many from one friend at once and in a day, and how many days it keeps. */
 const GL_QUEUE = Object.freeze({ acts: Object.freeze(['plant', 'place', 'water']), perFriend: 20, perDay: 30, days: 14 });
 /** Room messages a host's rooms carry in a day, what it sends and what arrives from visitors: 80,000 is 4,000 of Cloudflare's 100,000 free requests (incoming socket messages count 20 to 1). Over thin, walking sends less. guestDay: one visitor's share (the relay holds them to it too: ROOM.guestDay). */
@@ -85,6 +88,28 @@ const GL_FX_TO_HOST = Object.freeze(new Set(['bug|claim', 'pick|claim', 'cr|poke
 const glFxHostOnly = (b) => !!b && (GL_FX_HOST_ONLY.has(b.c + '|' + b.e) || GL_FX_HOST_ONLY.has(b.c + '|*') || b.c === 'petplay' && b.u != null);
 const glFxToHost = (b) => !!b && GL_FX_TO_HOST.has(b.c + '|' + b.e);
 const GL_FX_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+/** WHAT I AM DOING (gl:dg, 2.74.1): one person's whole state, sent when it changes (never a stream), so every screen shows the same, and a late
+ *  arrival or a lost message comes right with the next one. a: the move from the things-to-do table (an 'act-' id of GL_EMOTES), none = nothing;
+ *  x, y: where it is done (cells); d: the way they face for it (degrees on the screen, 0 east, 90 south); t: tenths of a second since it began (a late arrival joins it part way, a held pose at its end); i, h: the thing
+ *  in your hands and how it is drawn (carry); p: the stick's part of a throw (0 in the hand, 1 lying out there, 2 coming back, 3 dropped at your
+ *  feet) with fx, fy where it landed; m: things you have set down elsewhere this visit [[id, x tenths, y tenths]]; sv: the trail puzzles a
+ *  visitor has solved here this visit (the host's page keeps them). Ids only: each side draws them. */
+const GL_DG_MAX_MOVED = 6;
+function glDoingOk(b) {
+  if (!b || typeof b !== 'object') return 'shape';
+  const cols = GARDEN_WORLD.cols, rows = GARDEN_WORLD.rows, num = (v, hi) => v == null || typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= hi;
+  if (b.a != null && (!GL_FX_ID_RE.test(String(b.a)) || !GL_EMOTES.includes('act-' + b.a))) return 'act';
+  if (!num(b.x, cols) || !num(b.y, rows) || !num(b.fx, cols) || !num(b.fy, rows)) return 'cell';
+  if (b.t != null && !(Number.isInteger(b.t) && b.t >= 0 && b.t <= 6000)) return 'time';
+  if (b.d != null && !(Number.isInteger(b.d) && b.d >= -180 && b.d <= 180)) return 'facing';
+  for (const k of ['i', 'h']) if (b[k] != null && !GL_FX_ID_RE.test(String(b[k]))) return 'thing';
+  if (b.p != null && !(Number.isInteger(b.p) && b.p >= 0 && b.p <= 3)) return 'stick';
+  if (b.gk != null && (!Array.isArray(b.gk) || b.gk.length > 12 || b.gk.some(k => typeof k !== 'string' || !/^[a-z][a-z0-9-]{0,23}$/.test(k)))) return 'finds';
+  if (b.gz != null && (!Array.isArray(b.gz) || b.gz.length > 32 || b.gz.some(n => !Number.isInteger(n) || n < 0 || n > 64))) return 'gates';
+  if (b.sv != null && (!Array.isArray(b.sv) || b.sv.length > 8 || b.sv.some(k => typeof k !== 'string' || !/^ld-[a-z0-9-]{1,24}$/.test(k)))) return 'solved';
+  if (b.m != null) { if (!Array.isArray(b.m) || b.m.length > GL_DG_MAX_MOVED) return 'moved'; for (const r of b.m) if (!Array.isArray(r) || r.length !== 3 || !GL_FX_ID_RE.test(String(r[0])) || !Number.isInteger(r[1]) || !Number.isInteger(r[2]) || r[1] < 0 || r[2] < 0 || r[1] > cols * 10 || r[2] > rows * 10) return 'moved'; }
+  return '';
+}
 /** CONTESTS (docs/dev/GARDEN_TOGETHER.md section 15). The host's page is the referee: it starts a timed round (`ct|start`), keeps the scores, sends the board (`ct|board`) and names the winner (`ct|end`);
  *  all of those are host-only. A guest says nothing new: its casts and nets are the `fish`, `bug` and `got` events it always sends, and the host counts only a catch it can match to the steps of a line.
  *  Points come from size and quality (a fish) or rarity (a bug), never from money. Everything here is data: change it here.

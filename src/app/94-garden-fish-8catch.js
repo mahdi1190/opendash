@@ -613,7 +613,7 @@ function _gcaHelpInviteCheck() {
 }
 function gardenHelpHeard(A, e, ev) {
   if (e === 'help') {
-    if (ev.to === _gfsSlot() && _gw.reel) { _gw.reel.help = (_gw.reel.help || 0) + 1; _gw.reel.note = 'Somebody has the second line.'; _gw.reel.noteTo = _gw.reel.t + 3; }
+    if ((ev.to === _gfsSlot() || (ev.to == null && _gll.role === 'host')) && _gw.reel) { const R = _gw.reel, first = !R.helpAt && !R.help; R.help = Math.min(2, (R.help || 0) + 1); R.helpAt = R.t; if (first) { R.note = (A && A.n ? A.n : 'Somebody') + ' has the second line.'; R.noteTo = R.t + 3; } if (R.el) R.el.classList.add('is-helped'); }   // (2.74.1) each pull on the second line helps for a few seconds
     return;
   }
   if (e !== 'big' || !A || !ev || !Number.isInteger(ev.x) || !Number.isInteger(ev.y)) return;
@@ -638,6 +638,28 @@ function _gcaHelpGo(A, ev) {
   _gwFishClearFx(); _gwFx(); _gwBody(); _gwFishFocus(true);
   gardenLiveFx('fish', 'cast', { x: ev.x, y: ev.y, i: 'worm' });   // (everyone sees your line go to the same float)
   gardenLiveFx('fish', 'help', { to: A.w });
+  _gcaHelpReelOpen(A);
+}
+/** (2.74.1) The second line has its own bar (the owner: it said I had the second line, but no fishing bar). The same game as any reel, on
+ * the same monster: while you keep it in your bar you pull with them (a 'help' every few seconds, never a stream), and their bar lifts easier. */
+function _gcaHelpReelOpen(A) {
+  if (typeof _gwReelOpen !== 'function') return;
+  _gwReelOpen({ helper: true, def: { cat: 'fish' }, diff: 6, bar: 0.26, beh: 'mixed', cm: 120, line: 1, vWords: 'The second line: keep it in your bar to help ' + (A && A.n ? A.n : 'them') });
+  const R = _gw.reel; if (!R) return;
+  R.helper = true; R.helpTo = A.w; R.pullAt = 0; R.inFor = 0; R.el.classList.add('is-second');
+  R.heavy = 0; if (R.tnBox) { R.tnBox.remove(); R.tnBox = null; R.tnEl = null; }   // (their line takes the strain: yours cannot snap)
+}
+/** Once a frame in the help state: the bar and the fish as any reel, with no landing of its own (the fish is theirs). */
+function gardenHelpReelStep(dt) {
+  const R = _gw.reel; if (!R || !R.helper) return;
+  if (R.p < 0.08) R.p = 0.3; if (R.p > 0.97) R.p = 0.6;
+  const p0 = R.p;
+  R.rounds = 99; R.round = 1; R.tn = 0;   // (never lands, never snaps here: their line decides)
+  gardenReelStep(R, dt);
+  if (_gw.reel !== R) return;
+  const inBar = R.p > p0;
+  R.inFor = inBar ? R.inFor + dt : 0;
+  if (R.inFor > 1.2 && R.t - R.pullAt > 3) { R.pullAt = R.t; R.inFor = 0; if (typeof gardenLiveFx === 'function') gardenLiveFx('fish', 'help', { to: R.helpTo }); }
 }
 /** The fight is over. Landed: you share the glory, and a little bait. */
 function gardenHelpDone(A, won) {

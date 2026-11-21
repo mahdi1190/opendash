@@ -145,7 +145,7 @@ function _wkMatch(tag, item) { if (tag === 'bug') return /^bug:/.test(item); try
 /* ---------- the vale’s story: the stories themselves are data (94-garden-wonder-1tales.js, engine 94-garden-wonder-1tale.js) ---------- */
 const _wkOpen = (m, n) => !!m && Array.isArray(m.areas) && m.areas.includes('zn-' + n);
 /** The mill turns: the gates’ 'mill' find, the mill’s first mending, or the orchard open (so nobody is stuck on an older build). */
-const _wkMill = (m) => { try { return (typeof gardenGateHas === 'function' && gardenGateHas('mill')) || (typeof _gpMillStage === 'function' && _gpMillStage() >= 1) || _wkOpen(m, 4); } catch (e) { return _wkOpen(m, 4); } };
+const _wkMill = (m) => { try { return (typeof gardenGateHere === 'function' ? gardenGateHere('mill') : typeof gardenGateHas === 'function' && gardenGateHas('mill')) || (typeof _gpMillStage === 'function' && _gpMillStage() >= 1) || _wkOpen(m, 4); } catch (e) { return _wkOpen(m, 4); } };
 /* The story setting: on (the default) is the full story, with its dark turns; off is the gentle telling (Settings > Garden). STORY_BIBLE: C:/tmp/folk/STORY_BIBLE.md. */
 function _wkDeep() { try { return typeof _wdOn !== 'function' || _wdOn('story'); } catch (e) { return true; } }
 /** A line in the right telling: {t, soft} (soft '' means the gentle telling leaves it out), or a plain string. */
@@ -201,7 +201,7 @@ const WK_GATES = Object.freeze({
 function _wkGateRow(id) { return WK_GATES[id] || null; }
 function _wkGateZone(row) { return row && GARDEN_ZONES[row.zone] || null; }
 function _wkGateKey(gateId) { const row = _wkGateRow(gateId); const rule = typeof GARDEN_GATE_RULES !== 'undefined' && GARDEN_GATE_RULES[gateId]; return rule && rule.key || (row && row.key) || ''; }
-function _wkHas(key) { try { return typeof gardenGateHas === 'function' && gardenGateHas(key); } catch (e) { return false; } }
+function _wkHas(key) { try { return typeof gardenGateHere === 'function' ? gardenGateHere(key) : typeof gardenGateHas === 'function' && gardenGateHas(key); } catch (e) { return false; } }
 /** Is this gate shut, with its near side open (so a hint makes sense)? */
 function _wkGateLive(gateId, m) {
   const row = _wkGateRow(gateId); if (!row || !m || m.visit || _wkOpen(m, row.zone)) return false;

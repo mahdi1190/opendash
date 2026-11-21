@@ -222,6 +222,7 @@ function _gwFishFrame(dt) {
     if (F.t >= 0.5) { _gwFishFinish(); return; }
   } else if (F.state === 'help') {
     by = ty + (motion ? Math.sin(F.t * 12) * 0.9 : 0); sag = 0.6;
+    if (typeof gardenHelpReelStep === 'function') gardenHelpReelStep(dt);   // (2.74.1) the second line's own bar
     if (F.t > 90) { _gwFishCancel(); return; }
   }
   if (contact && ['wait', 'bite', 'reel'].includes(F.state)) { bx = tx + (motion ? contact.tugX : 0); by = ty + contact.dip + (motion ? contact.tugY + (F.state === 'wait' ? Math.sin(F.t * 2.6) * .45 * (1 - contact.pulse) : 0) : 0); }
@@ -415,7 +416,7 @@ function _gwFishClick() { _gwFishPress(true); return true; }
 function _gwFishPress(fromClick) {
   const F = _gw.fishing; if (!F) return;
   if (F.state === 'bite') { _gwFishStrike(); if (!fromClick && _gw.reel) _gw.reel.hold = true; return; }
-  if (F.state === 'help') return;
+  if (F.state === 'help') { if (_gw.reel) _gw.reel.hold = true; return; }
   if (F.state === 'wait') {   // locked in: a click while you wait does nothing (Esc or the Reel in button winds the line in), but strike on a nibble and the fish bolts
     const mine = _gfsMine();
     if (mine && mine.st === GF_ST.nibble) { _gfsSay('free', mine.u); _gwFishLost('Too soon! It got a fright. Wait for the big splash.'); }

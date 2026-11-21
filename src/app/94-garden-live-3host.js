@@ -42,13 +42,14 @@ function _glhClaim() {
   if (_glhIsLegacyWorld()) { clearTimeout(_glh.claimT); _glh.claimT = 0; return; }
   if (_glh.claiming || _glh.claimT) return;
   _glh.claiming = true;
-  const later = () => { _glh.claimT = setTimeout(() => { _glh.claimT = 0; _glhClaim(); }, 30000); };
+  const later = (ms) => { _glh.claimT = setTimeout(() => { _glh.claimT = 0; _glhClaim(); }, ms || 30000); };
   _gllApi('/api/garden-live/here', _glhHereBody(true)).then((d) => {
     _glh.claiming = false;
     if (_glh.on || typeof _gw === 'undefined' || !_gw.on || state.view !== 'garden') return;
+    _glh.claimFails = 0;
     if (d && d.lead === false) { _glhElsewhere(true); later(); return; }
     _glhStart();
-  }).catch(() => { _glh.claiming = false; later(); });
+  }).catch(() => { _glh.claiming = false; _glh.claimFails = (_glh.claimFails || 0) + 1; later(_glh.claimFails <= 10 ? 4000 : 30000); });   // (2.74.2: a garden just opened may not be saved with its world yet: ask again soon, so a friend's knock finds you home)
 }
 function _glhStart() {
   if (_glhIsLegacyWorld()) return;
@@ -240,6 +241,7 @@ function _glhEvent(ev) {
     }
     case 'fx': { const A = _gll.actors.get(ev.w); if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return; }
     case 'pp': _gllPlacesIn(ev); return;
+    case 'dg': { const A = _gll.actors.get(ev.w); if (A && typeof gartActDoingIn === 'function') gartActDoingIn(A, ev); return; }   // what they are doing, whole (94-garden-zz-7act-3sync.js)
     case 'do': _glhIntent(Object.assign({}, ev, { k: ev.ik })); return;
     case 'queue': clearTimeout(_glh.queueT); _glh.queueT = setTimeout(() => { gardenLiveLoad(true).then(_glhQueueRun).catch(() => {}); }, 300); return;
     case 'knock': case 'host': case 'road': case 'budget': if (ev.note && _gll.view) _gll.view.host = Object.assign(_gll.view.host || {}, { note: ev.note }); gardenLiveLoad(true).then(_glhHud).catch(() => {}); return;
@@ -512,6 +514,14 @@ function _glhApply(ev, key) {
       B.caught.add(f);
       return put([], { noUndo: true, bug: B.p });
     }
+    case 'gate': {   // (2.74.1) a friend opens one of your gates with the find you hold: as if you had (the same prize, the same words, everyone sees it open)
+      const gate = typeof gardenGateOf === 'function' ? gardenGateOf(ev.p) : null, rule = gate && gardenGateRule(gate);
+      if (!rule) return 'kind';
+      if (gardenGateIsOpen(gate, m.areas)) return 'done';
+      if (!gardenGateHas(rule.key)) return 'gone';
+      const r = gardenGateOpen(gate.id); if (!r.ok) return 'gone';
+      return put([], { noUndo: true });
+    }
     default: return 'kind';
   }
 }
@@ -733,6 +743,7 @@ function _glhDiaryWhat(e, n) {
     case 'water': return n > 1 ? `${who} watered ${n} of your ${_glhMany(what)}` : `${who} watered your ${what}`;
     case 'feed': return `${who} fed your ${what}`;
     case 'turn': return `${who} turned the ${what}`;
+    case 'gate': { const gate = typeof gardenGateOf === 'function' ? gardenGateOf(e.p) : null, rule = gate && gardenGateRule(gate); return `${who} opened ${rule && rule.name ? rule.name.replace(/^The /, 'the ') : 'a gate'}`; }
     case 'weed': return `${who} tidied your ${what}`;
     case 'harvest': return `${who} picked the ${what}`;
     case 'dig': return `${who} dug up the ${what}`;

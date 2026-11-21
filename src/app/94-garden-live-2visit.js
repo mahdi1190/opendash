@@ -164,6 +164,8 @@ function _glvIntent(t, f, debit) {
   _glvSendDo({ i, t, ...f });
   if (typeof _gdvTouch === 'function') _gdvTouch();
 }
+/** (2.74.1) Open the owner's gate with the find they hold: their page opens it (_glhApply 'gate'), and everyone sees it open. */
+function gardenLiveGateOpen(gateId) { if (typeof gardenBubbleClose === 'function') { try { gardenBubbleClose(); } catch (e) { /* fine */ } } _glvIntent('gate', { p: String(gateId) }); }
 function _glvSendDo(body) { _glv.doQ.push(body); _glvDoPump(); }
 function _glvDoPump() {
   if (_glv.doT || !_glv.doQ.length) return;
@@ -439,6 +441,7 @@ function _glvEvent(ev) {
     case 'sum': if (typeof _glySumIn === 'function') _glySumIn(ev); return;
     case 'snap-missed': if (typeof _glyAsk === 'function') _glyAsk(false); return;
     case 'pp': _gllPlacesIn(ev); return;
+    case 'dg': { const A = _gll.actors.get(ev.w); if (A && typeof gartActDoingIn === 'function') gartActDoingIn(A, ev); return; }   // what they are doing, whole (94-garden-zz-7act-3sync.js)
     case 'tr': if (typeof _gltFromHost === 'function') _gltFromHost(ev); return;
     case 'goal': if (typeof _glgGuestIn === 'function') _glgGuestIn(ev); return;
     case 'fx': {

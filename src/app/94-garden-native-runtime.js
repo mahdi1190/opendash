@@ -384,7 +384,10 @@ window.GardenNative = (function () {
     if (typeof _ptwCheck === 'function') _ptwCheck();
   }
   function sync(model) {
-    const s = live; if (!s || s.dead) return; s.model = model;
+    const s = live; if (!s || s.dead) return;
+    // (2.74.1) a bare sync() (a placed thing moved, an action ended) means the garden on screen now: never an empty model, which left the create() of a slow first load painting nothing and the life engine reading undefined.tod
+    if (!model) { try { model = gardenHere(); } catch (error) { model = null; } if (!model) model = s.model; if (!model) return; }
+    s.model = model;
     if (!s.world) return;
     let key = null;
     try { key = presentationKey(model); } catch (error) { /* Unknown model extensions take the full paint path. */ }
@@ -545,6 +548,7 @@ window.GardenNative = (function () {
     if (cover.parentNode) s.openingObserver.observe(cover.parentNode, { childList: true });
   }
   function mount(parent, box, model) {
+    if (!model) { try { model = gardenHere(); } catch (error) { model = null; } }   // (2.74.1) never open on an empty model: every painter reads its tod
     if (live && live.parent === parent && !live.dead) { sync(model); return; }
     destroy(); if (window.GardenPhaser) GardenPhaser.destroy(); gardenWorldStop(true); lastError = null;
     const s = live = { id: ++serial, parent, box, model, dead: false, ready: false, frames: 0, started: performance.now() };
@@ -568,6 +572,8 @@ window.GardenNative = (function () {
         if (s.dead) return;
         try {
           s.scene = this; s.game = this.game;
+          if (!s.model || !s.model.tod) { try { s.model = gardenHere() || s.model; } catch (error) { /* keep what we have */ } }   // (2.74.1) a visit whose snapshot came late, a fresh garden still making itself: the garden on screen now
+          if (!s.model) throw new Error('The garden is still getting ready. Press Try again.');
           const position = _gwSavedPos(); if (position) { _gw.px = position.x; _gw.py = position.y; }
           _gw.root = _gdp.root; _gw.box = box; _gw.sizeOk = false;
           s.world = GardenNativeWorld.create(this, { model: s.model, box, root: _gdp.root, width: Math.max(1, box.clientWidth), height: Math.max(1, box.clientHeight) }); _gdp.svg = s.world.rootNode; _gw.svg = s.world.rootNode;
