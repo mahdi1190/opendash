@@ -114,6 +114,7 @@ function _ghtClimbMs(h) { return Math.max(GHT_CLIMB.min, Math.round(h / GHT_CLIM
 /** Climb a way: up from its foot (walking there first), or down from its top. */
 function gardenClimb(w, up) {
   if (!w || typeof _gw === 'undefined' || !_gw.on || _ght.climb) return false;
+  if (up) _ght.after = null;
   if (typeof gartActStop === 'function') gartActStop();
   if (_ght.swim) return false;
   const go = () => {
@@ -211,6 +212,7 @@ function _ghtClimbEnd() {
     try { const fid = C.w.by === 'stair' && GARDEN_ACTS.stairup ? 'stairup' : 'climbup'; _gaFirst({ id: fid, row: GARDEN_ACTS[fid] }); } catch (e) { /* fine */ }
     if (C.lv.L.sit && GARDEN_ACTS[C.lv.L.sit]) setTimeout(() => { if (_ght.lv === C.lv && !_ght.climb) gartActRun(C.lv.L.sit, { stand: { x: _gw.px, y: _gw.py }, seated: true, deg: 90, noProp: true, src: C.lv.id, lift: 0 }); }, 60);
   } else {
+    if (_ght.after) { const A = _ght.after; _ght.after = null; setTimeout(() => { if (!_ght.lv && !_ght.climb) gardenWalkToPoint(A.pt, A.then); }, 120); }   // (then on to where you clicked)
     _ght.lv = null; _gw.px = C.w.foot.x; _gw.py = C.w.foot.y + 0.06;
     _gaFace(90); try { _gwBody(); } catch (e) { /* fine */ }
     if (typeof _GPL !== 'undefined') { _GPL.lastX = _gw.px; _GPL.lastY = _gw.py; }
@@ -267,7 +269,7 @@ function _ghtSwimOut(x, y) {
   _gaTell('swimout', x, y);
 }
 /* ---------- the figure: hand over hand up a ladder, strokes in the water ---------- */
-const _GHT_SWIM_PROP = '<g class="ght-water"><ellipse cx="0" cy="-25" rx="19" ry="6.4" fill="#4f98ae" opacity="0.72"/><ellipse cx="0" cy="-26" rx="17" ry="4.4" fill="#8ccbdc" opacity="0.55"/><ellipse class="ght-ring" cx="0" cy="-26" rx="22" ry="5.6" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.7"/><path d="M-24 -23q4 2 8 0M16 -22q4 2 8 0" stroke="#e8f6fa" stroke-width="0.9" fill="none" opacity="0.75"/></g>';
+const _GHT_SWIM_PROP = '<g class="ght-water"><ellipse cx="0" cy="-25" rx="19" ry="6.4" fill="#4f98ae" opacity="0.62"/><ellipse cx="0" cy="-26" rx="17" ry="4.4" fill="#8ccbdc" opacity="0.4"/><ellipse class="ght-ring" cx="0" cy="-26" rx="22" ry="5.6" fill="none" stroke="#e8f6fa" stroke-width="1" opacity="0.5"/><path d="M-24 -23q4 2 8 0M16 -22q4 2 8 0" stroke="#e8f6fa" stroke-width="0.9" fill="none" opacity="0.75"/></g>';
 /** Called by the gait (94-garden-zz-6move.js) before the walk: true when this frame's pose is ours (a swimmer). */
 function gardenHeightBody(body, gw, motion) {
   const S = _ght.swim; if (!S || !body) return false;
@@ -345,7 +347,7 @@ if (typeof gardenWalkToPoint === 'function') {
       if (!pt || (_ght.swim && !_ght.swim.on)) return false;
       let tgt = { x: pt.x, y: pt.y };
       if (_ght.lv) { const sy = tgt.y + _ght.lv.h / GARDEN_WORLD.cellH; if (gardenLevelHas(_ght.lv, tgt.x, sy) || !gardenLevelHas(_ght.lv, tgt.x, tgt.y)) tgt.y = sy; }   // (a click on the floor as drawn: down to its ground plane)
-      if (!_gwFree(tgt.x, tgt.y)) { if (_ght.swim && !_ghtWet(tgt.x, tgt.y) && _ght.free0(tgt.x, tgt.y)) { /* a click on the bank: swim to it and climb out */ } else { const f = typeof _gwNearestFreePt === 'function' ? _gwNearestFreePt(tgt.x, tgt.y, 1.2) : null; if (!f) return false; tgt = f; } }
+      if (!_gwFree(tgt.x, tgt.y)) { if (_ght.swim && !_ghtWet(tgt.x, tgt.y) && _ght.free0(tgt.x, tgt.y)) { /* a click on the bank: swim to it and climb out */ } else { const f = typeof _gwNearestFreePt === 'function' ? _gwNearestFreePt(tgt.x, tgt.y, 1.2) : null; if (!f) return _ght.lv ? _ghtDownThen(pt, then) : false; tgt = f; } }
       _gw.path = [tgt]; _gw.then = then || null; _gw.goal = tgt; _gw.repaths = 0; _gw.blockT = 0;
       if (typeof gardenLiveWalked === 'function') try { gardenLiveWalked(tgt); } catch (e) { /* alone */ }
       if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop();
@@ -397,7 +399,15 @@ if (typeof gartActMoved === 'function') {
   gartActMoved = function () { if (_ght.climb) return; return _ghtMoved0(); };   // eslint-disable-line no-func-assign
 }
 /** Leaving the garden, a room or a reset: back on the ground, out of the water. */
-function gardenHeightReset() { if (_ght.climb && _ght.climb.inside) { _ghtAlpha(_gw && _gw.node, 1); _ghtDoor(_ght.climb.w, false); } _ght.lv = null; _ght.climb = null; _ght.swim = null; _ght.list = null; }
+/** A click on the ground far from the floor you are on: down the nearest way, then on to where you clicked. */
+function _ghtDownThen(pt, then) {
+  const lv = _ght.lv; if (!lv || !lv.ways.length) return false;
+  const w = lv.ways.slice().sort((a, b) => Math.hypot(a.top.x - _gw.px, a.top.y - _gw.py) - Math.hypot(b.top.x - _gw.px, b.top.y - _gw.py))[0];
+  if (!gardenClimb(w, false)) return false;
+  _ght.after = { pt: { x: pt.x, y: pt.y }, then: then || null };
+  return true;
+}
+function gardenHeightReset() { _ght.after = null; if (_ght.climb && _ght.climb.inside) { _ghtAlpha(_gw && _gw.node, 1); _ghtDoor(_ght.climb.w, false); } _ght.lv = null; _ght.climb = null; _ght.swim = null; _ght.list = null; }
 /** Where you would be on the ground: the foot of the way you went up, or the bank you swam from (the position saved, a garden left). */
 function _ghtGroundPoint() {
   const lv = _ght.lv || (_ght.climb && _ght.climb.lv); if (lv && lv.ways[0]) { const f = (_ght.climb && _ght.climb.w) || lv.ways[0]; return { x: f.foot.x, y: f.foot.y + 0.06 }; }
