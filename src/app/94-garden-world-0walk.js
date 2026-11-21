@@ -845,15 +845,31 @@ function _gwLos(a, b, m) {
  */
 function _gwMoveBy(dx, dy) {
   // (vf-perf) the step each frame takes, kept for the next frame's give (_gwMoveByEdge): which way the feet really went
-  const x0 = _gw.px, y0 = _gw.py; let moved = _gwMoveByEdge(dx, dy);
+  const x0 = _gw.px, y0 = _gw.py, W = GARDEN_WORLD, sx = Math.sign(Math.abs(dx * W.cellW) > 1e-3 ? dx : 0), sy = Math.sign(Math.abs(dy * W.cellH) > 1e-3 ? dy : 0);
+  // (n-move) wedged: the feet went round in a little loop under this press (below), so they stay put until you press another way or something moves them
+  const wg = _gw.wedge;
+  if (wg && wg.sx === sx && wg.sy === sy && Math.hypot((x0 - wg.x) * W.cellW, (y0 - wg.y) * W.cellH) < .5) return false;
+  _gw.wedge = null;
+  let moved = _gwMoveByEdge(dx, dy);
   // (n-move) wedged in a corner (between a bank and a trunk, say), the slides could nudge the feet a pixel back and forth for a few frames,
   // the figure stepping on the spot and shimmering before it gave up. A step that gets almost nowhere is no step, and nor is a small one
   // that backs off against the way you go: you stop, facing the way you press.
   if (moved) {
-    const W = GARDEN_WORLD, mx = (_gw.px - x0) * W.cellW, my = (_gw.py - y0) * W.cellH, sx = dx * W.cellW, sy = dy * W.cellH, st = Math.hypot(sx, sy) || 1;
-    const along = (mx * sx + my * sy) / st, backs = (sx && mx * Math.sign(sx) < -.1) || (sy && my * Math.sign(sy) < -.1);
+    const mx = (_gw.px - x0) * W.cellW, my = (_gw.py - y0) * W.cellH, vx = dx * W.cellW, vy = dy * W.cellH, st = Math.hypot(vx, vy) || 1;
+    const along = (mx * vx + my * vy) / st, backs = (vx && mx * Math.sign(vx) < -.1) || (vy && my * Math.sign(vy) < -.1);
     const got = Math.hypot(mx, my);
     if ((backs && along < st * .3 && got < st * .5) || got < Math.min(.35, st * .12)) { _gw.px = x0; _gw.py = y0; moved = false; }
+  }
+  // (n-move) and a corner the slides take turns at (a few pixels one way, then back), each step honest on its own: when the feet come back
+  // within a pixel and a half of where they were two to ten steps ago, having got nowhere, it is a corner, and you stop there
+  let H = _gw.mvHist;
+  if (!H || H.sx !== sx || H.sy !== sy) H = _gw.mvHist = { sx, sy, p: [] };
+  if (moved) {
+    const p = H.p, d = (a, q) => Math.hypot((a.x - q.x) * W.cellW, (a.y - q.y) * W.cellH), me = { x: _gw.px, y: _gw.py };
+    let loop = false;   // back within 1.5 px of a spot the feet had gone more than 2 px from since (a slow start's small steps are no loop)
+    for (let i = p.length - 2; i >= 0 && i >= p.length - 10 && !loop; i--) if (d(me, p[i]) < 1.5) { for (let j = i + 1; j < p.length; j++) if (d(p[j], p[i]) > 2) { loop = true; break; } }
+    if (loop && p.length && Math.hypot((_gw.px - p[0].x) * W.cellW, (_gw.py - p[0].y) * W.cellH) < 4) { _gw.px = x0; _gw.py = y0; moved = false; _gw.wedge = { sx, sy, x: x0, y: y0 }; H.p = []; }
+    else { p.push({ x: x0, y: y0 }); if (p.length > 12) p.shift(); }
   }
   if (_gw.giveFrom && (_gw.giveFrom.sx !== Math.sign(dx) || _gw.giveFrom.sy !== Math.sign(dy))) _gw.giveFrom = null;   /* (a new press forgets it) */
   _gw.lastStep = { sx: Math.sign(dx), sy: Math.sign(dy), mx: (_gw.px - x0) * GARDEN_WORLD.cellW, my: (_gw.py - y0) * GARDEN_WORLD.cellH };

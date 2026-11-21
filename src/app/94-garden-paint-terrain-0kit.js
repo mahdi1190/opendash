@@ -249,7 +249,7 @@ window.GardenPaintTerrainKit = (function () {
   const swap = (S, tex, K) => { const f = S.K / K; for (const im of S.images) { if (!im.active) continue; im.setTexture(tex).setScale(im.scaleX * f, im.scaleY * f); if (im._gpvBase) im._gpvBase *= f; } };
   const plain = S => { swap(S, S.key, S.K0); if (S.tex && S.scene.textures.exists(S.tex)) S.scene.textures.remove(S.tex); sharpPx -= S.px; S.tex = null; S.K = S.K0; S.px = 0; };
   function sharpen() {
-    const G = window.GardenPaintGround; if (!G || !sharp.size) return; const now = performance.now(); let best = null, bd = Infinity, moving = typeof _gw !== 'undefined' && !!_gw.moving; if (moving) lastMove = now; const settled = now - lastMove > 900;
+    const G = window.GardenPaintGround; if (!G || !sharp.size) return; const now = performance.now(); let best = null, bd = Infinity, moving = (typeof _gw !== 'undefined' && !!_gw.moving) || (typeof gardenBakeWalking === 'function' && gardenBakeWalking());   /* (n-move: a friend walking on the screen counts) */ if (moving) lastMove = now; const settled = now - lastMove > 900;
     for (const [key, S] of sharp) {
       for (const im of S.images) if (!im.active) S.images.delete(im);
       if (!S.images.size) { if (S.tex) { sharpPx -= S.px; ok(() => { if (S.scene.textures.exists(S.tex)) S.scene.textures.remove(S.tex); }); } sharp.delete(key); continue; }   /* (its scene may be gone with it) */

@@ -248,7 +248,9 @@ function _gmvStride(st, body, S, o) {
       const rotC = Math.atan2(-Math.sin(0.85 + r) * sy, Math.cos(0.85 + r)) * 180 / Math.PI - inSign * ac * 16;
       return [rotC, 0.74 + 0.1 * sy];
     }
-    const rot = Math.atan2(-sr * sy, Math.cos(r)) * 180 / Math.PI - inSign * ac * (runK ? 26 * fwd - 8 * bk : 22 * sr);
+    // (n-move) the turn seen side on uses the arm's own swing, not the wider end-on one: a quarter turned from behind (157.5) swung a hand out level with the shoulder
+    const r0 = r / armSpan * (runK ? 1.1 : 1);
+    const rot = Math.atan2(-Math.sin(r0) * sy, Math.cos(r0)) * 180 / Math.PI - inSign * ac * (runK ? 26 * fwd - 8 * bk : 22 * sr);
     const lenEnd = runK ? armLen * (1 - 0.42 * fwd + 0.06 * bk) : (1 + 0.6 * sr * cy) * armLen;   // a walk end on: forward (towards you) is lower on the screen, back is higher
     return [rot, ac > 0.2 || runK ? sy * sy + lenEnd * cy * cy : null];
   };
