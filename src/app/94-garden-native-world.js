@@ -132,7 +132,7 @@ window.GardenNativeWorld = (function () {
     const root = rootNode.target;
     const group = (name, depth) => { const node = element(scene, 'g', { class: name }); node.target.setDepth(depth); rootNode.appendChild(node); return node; };
     const oceanBackdrop = scene.add.graphics().setDepth(-10010).setVisible(false); rootNode._inner.add(oceanBackdrop);
-    const terrain = group('gd-ground', -10000), pierBoards = group('gd-pier-boards', -9250), design = group('gd-dz', -9400), objects = group('gd-objects', 0), actors = group('gd-actors', 50000), pets = group('gd-pets', 51000), ui = group('gd-ui', 90000);
+    const terrain = group('gd-ground', -10000), pierBoards = group('gd-pier-boards', -9250), design = group('gd-dz', -9342), objects = group('gd-objects', 0), actors = group('gd-actors', 50000), pets = group('gd-pets', 51000), ui = group('gd-ui', 90000);
     const needGround = group('gd-need-ground gd-needs', -9260); needGround.setAttribute('pointer-events', 'none');
     const effects = element(scene, 'g', { class: 'gd-fx' }); ui.appendChild(effects);
     const editorPreview = element(scene, 'g', { class: 'gdz-native-preview', 'pointer-events': 'none' }); ui.appendChild(editorPreview); editorPreview.target.setVisible(false);
@@ -157,7 +157,7 @@ window.GardenNativeWorld = (function () {
     const effectIds = new WeakMap(), creatureMotion = new WeakMap();
     const chunkWidth = W.cellW * 4, chunkHeight = W.cellH * 6;
     const route = scene.add.graphics(); route.setDepth(89000); root.add(route);
-    let model = null, modelKey = '', terrainKey = '', terrainVisit = '', terrainLater = false, terrainStillAt = 0, terrainLawnMemo = null, shorelineRevision = 0, sorted = false, dead = false, routeKey = '', fishZoom = 1, wasFishing = false, fishViewMode = '', playerViewKey = '', playerProfile = null, playerWardrobe = null, visibleStatic = 0, visibleTerrain = 0, cacheQuality = 0, terrainBaseQuality = 1, terrainBaseReady = 0;
+    let model = null, modelKey = '', terrainKey = '', terrainVisit = '', terrainLater = false, terrainFlush = false, terrainRest = '', terrainStillAt = 0, terrainLawnMemo = null, shorelineRevision = 0, sorted = false, dead = false, routeKey = '', fishZoom = 1, wasFishing = false, fishViewMode = '', playerViewKey = '', playerProfile = null, playerWardrobe = null, visibleStatic = 0, visibleTerrain = 0, cacheQuality = 0, terrainBaseQuality = 1, terrainBaseReady = 0;
     let camera = { x: 0, y: 0, w: 800, h: 600, scale: 1, left: 0, top: 0 }, zoomInputAt = 0, activityCamera = null, cameraUiMode = '', cameraUiZoomIn = null, cameraUiZoomOut = null, size = { w: options.width || scene.scale.width || 1000, h: options.height || scene.scale.height || 700 };
     const playerNode = element(scene, 'g', { class: 'gd-player', 'data-live': '1' });
     // The Painted village stands the figure in the scenes' soft contact shadow; the pale halo read as a sticker's edge (94-garden-art-g-paint.js).
@@ -1188,7 +1188,7 @@ window.GardenNativeWorld = (function () {
       const lake = typeof gardenLakeGeometry === 'function' ? gardenLakeGeometry(m) : null;
       const surfaceKey = (typeof _GD_ICE === 'undefined' ? 0 : _GD_ICE.size) + ':' + (typeof _GD_WALK_EXTRA === 'undefined' ? 0 : _GD_WALK_EXTRA.size);
       const decks = gardenPierDecks(m.works || [], m), deckKey = decks.map(p => [p.id, p.x, p.y, p.w, p.h].join(',')).join(';');
-      const key = (m.visit ? m.visit.key : _gd.memoKey || _gd.rev) + '|' + designRev + '|' + m.tod + '|' + m.season + '|' + surfaceKey + '|' + (lake && lake.revision || 0) + '|' + deckKey + '|' + (typeof gardenAffordRev === 'function' ? gardenAffordRev() : 0);   // (a placed thing moved aside: 94-garden-zz-7act-0scan.js)
+      const key = (m.visit ? m.visit.key : _gd.memoKey || _gd.rev) + '|' + designRev + '|' + m.tod + '|' + m.season + '|' + surfaceKey + '|' + (lake && lake.revision || 0) + '|' + deckKey + '|' + (typeof gardenAffordRev === 'function' ? gardenAffordRev() : 0) + '|' + (typeof gardenActDrawRev === 'function' ? gardenActDrawRev() : 0);   // (a placed thing moved aside: 94-garden-zz-7act-0scan.js)
       if (model === m && modelKey === key) return;
       model = m; modelKey = key;
       const sc = gardenSceneFromModel(m), opts = { uid: 'gnative', size: 'l', crop: 'world', interactive: true, still: false, native: true, readOnly: !!m.visit, friend: m.visit && m.visit.drawFriend };
@@ -1196,13 +1196,16 @@ window.GardenNativeWorld = (function () {
       // Precipitation changes the live atmosphere. Actual ice and shoreline
       // geometry already participate through the surface and lake revisions.
       const cultivated = typeof gardenIslandActive === 'function' && gardenIslandActive() ? cultivatedSections(m) : null;
-      const tk = [packOn() ? 'painted' : '', sc.season, sc.tod, m.level.level, (sc.areas || []).join(','), designRev, surfaceKey, lake && lake.revision, cultivated && [...cultivated].sort().join(','), deckKey].join('|');
+      const tk = [packOn() ? 'painted' : '', sc.season, sc.tod, typeof gardenLevelLandSig === 'function' ? gardenLevelLandSig(m.level.level) : m.level.level, (sc.areas || []).join(','), designRev, surfaceKey, lake && lake.revision, cultivated && [...cultivated].sort().join(','), deckKey].join('|');
       // (village fix round 3) a new level or a newly opened piece of land while you are walking (the garden earns a level
       // from what you find on a walk) waits to be drawn until you stop: drawing the whole ground again is far longer than a
       // frame, and walking must never stall. The walk itself already follows the new land; only the paint waits.
       const visitKey = m.visit ? m.visit.key : '', walkingNow = !!terrainKey && visitKey === terrainVisit && typeof _gw !== 'undefined' && !!(_gw.moving || (_gw.path && _gw.path.length) || (_gw.keys && _gw.keys.size));
-      if (terrainKey !== tk && walkingNow) terrainLater = true;
-      else if (terrainKey !== tk) { terrainKey = tk; terrainVisit = visitKey; terrainLater = false; drawTerrain(m, sc, lake, cultivated, decks); }
+      // (vf-perf) standing too, a change of land is drawn a moment later, in a task of its own: drawn in the same task as the new
+      // walking grid and the rest of this sync, a level-up held the picture for over half a second (a CPU profile, 21 Nov 2026)
+      const tkRest = [sc.season, sc.tod, designRev, surfaceKey, lake && lake.revision, deckKey].join('|');   /* (all but the level's land: a change there, a design or a new hour, is drawn at once) */
+      if (terrainKey !== tk && (walkingNow || (terrainKey && visitKey === terrainVisit && !terrainFlush && tkRest === terrainRest))) terrainLater = true;
+      else if (terrainKey !== tk) { terrainKey = tk; terrainRest = tkRest; terrainVisit = visitKey; terrainLater = false; drawTerrain(m, sc, lake, cultivated, decks); }
       shorelineRevision = lake && lake.revision || 0;
       const keep = new Set(), modelPlants = new Map(m.plants.map(p => [p.uid, p])), modelDecor = new Map(m.decor.map(p => [p.uid, p]));
       const add = (id, html, metadata, depth, parent) => { if (!html) return; keep.add(id); return nodeDrawing(id, html, metadata, depth, parent); };
@@ -1353,7 +1356,11 @@ window.GardenNativeWorld = (function () {
       { const d = typeof gardenIslandActive === 'function' && gardenIslandActive() && decks.find(p => p.side === 'south'); if (d) { const lx = (d.x + d.w) * W.cellW - 13, ly = W.sky + (d.y + d.h) * W.cellH; pointLights.push({ id: 'pier-lantern:halo', x: lx, y: ly - 50, radius: 96, color: nightMaterials ? 0xffc17a : 0xffd88e, intensity: .7 }, { id: 'pier-lantern', x: lx, y: ly - 44, ground: ly + 10, radius: 100, height: 40, color: nightMaterials ? 0xffc17a : 0xffd88e, intensity: .8 }); } }
       // and Hollin's window: someone lives in the hut
       { const hut = typeof gardenIslandLogStack === 'function' && GardenIslandLayout.data && (GardenIslandLayout.data.static || []).find(p => p.id === 'ld-woodhut'); if (hut && window.GardenPaintVale && GardenPaintVale.wanted()) pointLights.push({ id: 'oldwood-hut:window', x: (hut.x + hut.w / 2) * W.cellW, y: W.sky + (hut.y + hut.h) * W.cellH - 22, radius: 78, height: 20, color: 0xffc47c, intensity: .5 }); }
-      _gw.grid = null; _gw.gq = null; _gw.solids = null; _gw.gridKey = ''; _gw.cam.dirty = true;
+      // (vf-perf) the land drawn a moment after a level-up: the model is the one the sync before built the walking grid for, so
+      // that grid stands unless its own key says otherwise (the painted trunks); built again here it doubled the level-up's work
+      // (vf-perf, 2) the grid is looked at again, not thrown away: the one there serves while a level's new grid is built in slices
+      // (_gwGridSliceable); thrown away, it was built whole in this task, 90 ms of a 401 ms level-up
+      if (!terrainFlush) { _gw.gq = null; _gw.gridKey = ''; _gw.frameGrid = null; } _gw.cam.dirty = true;
       if (typeof _gwGrid === 'function') _gwGrid(m);
       sortObjects();
     }
@@ -1398,12 +1405,66 @@ window.GardenNativeWorld = (function () {
         if (target && distance <= step) {
           _gw.px = target.x; _gw.py = target.y; _gw.path.shift(); _gw.moving = !!_gw.path.length;
           if (!_gw.path.length) { _gw.spd = 0; const fn = _gw.then; _gw.then = null; if (typeof fn === 'function') fn(true); }
-        } else { if (direct && typeof _gwCrossingSteer === 'function') { const steer = _gwCrossingSteer(ux, uy, step); if (steer) { ux = steer[0]; uy = steer[1]; } }   // (onto and along a crossing: 94-garden-world-0walk.js)
+        } else { if (direct && typeof _gwCrossingSteer === 'function') { const steer = _gwCrossingSteer(ux, uy, step) || (typeof _gwDoorSteer === 'function' ? _gwDoorSteer(ux, uy) : null); if (steer) { ux = steer[0]; uy = steer[1]; } }   // (onto and along a crossing: 94-garden-world-0walk.js)
           _gw.moving = _gwMoveBy(ux * step / W.cellW, uy * step / W.cellH); if (!_gw.moving) { _gw.blockT = (_gw.blockT || 0) + dt; if (!direct && _gw.blockT > .25) { _gw.blockT = 0; if (!_gwRepath()) { _gw.path = []; _gw.then = null; } } } else _gw.blockT = 0; }
         if (Math.abs(ux) > .3) _gw.face = ux > 0 ? 1 : -1;
       }
       if (pushed) _gw.moving = true;
       if (_gw.moving && typeof _gwSaveSoon === 'function') _gwSaveSoon();
+    }
+    /** Is a figure with its feet at (sx, sy) world px, ph tall, behind this painted prop (so it fades)? memo keeps the last pixel test. */
+    function propCovers(record, sx, sy, ph, memo) {
+        const p = record.metadata.prop, b = record.bounds;
+        // (village fix round 2) a house fades only when it really stands over you: a good share of your figure inside the
+        // body of its picture (its eaves, flower boxes and the air at the picture's sides left out), with your feet behind
+        // its foot. Walking a lane beside a cottage, or standing at a door beside a tower, faded the whole building to
+        // half see-through, grass showing through its walls, as if it were a fault in the drawing.
+        // (across: the walls stand on the building's own ground, its cells, not across the whole picture, which is wider than the
+        // house by its eaves, its planting and, for the lighthouse, the air either side of a narrow tower)
+        const footY = W.sky + (p.y + p.h) * W.cellH, bx0 = Math.max(b.x, p.x * W.cellW) + 3, bx1 = Math.min(b.x + b.width, (p.x + p.w) * W.cellW) - 3, by0 = b.y + 18;
+        const ox = Math.max(0, Math.min(sx + 7, bx1) - Math.max(sx - 7, bx0)), oy = Math.max(0, Math.min(sy, footY) - Math.max(sy - ph, by0));
+        let behind = sy < footY - 6 && sx > bx0 && sx < bx1 && ox >= 8 && oy >= ph * .4;
+        if (behind && p.id === 'ld-falls' && record.handle.fallsCoversPlayer) behind = record.handle.fallsCoversPlayer(sx, sy);
+        // (only when you are within the middle of it and under its top: beside a barn's gable it faded with nothing hidden)
+        if (behind && p.id !== 'ld-falls') behind = sx > b.x + b.width * .12 && sx < b.x + b.width * .88 && sy - ph * .6 > b.y;
+        // (a lamp post or a finger post hides nothing: standing at the old lamp turned you into the dark outline, hunter, round 3)
+        if (behind && (p.art === 'lamp' || p.art === 'finger' || b.width < 46)) behind = false;
+        // (High orchard fix round 1) the treehouse chestnut fades by its crown, which spreads well past its two cells: walking the
+        // beach or the mother walk beside it you went behind the crown unseen, and standing at the trunk the whole tree faded
+        // (layfix east: the crown as drawn now, rounder and over its own trunk: standing at the ladder or on the beach beside it no longer ghosts the house)
+        // (vale final, east: the crown as drawn by the round 3 sights, 94-garden-paint-zsights3.js, spreads east over the cliff steps and
+        //  the gate; the old oval sat west of it, so a figure at the gate vanished into the leaves. Now by the picture's own pixels.)
+        else if (p.id === 'ld-treehouse') { behind = sy < footY - 6 && sx > b.x && sx < b.x + b.width && sy - ph * .9 < footY - 60;
+          if (behind && record.handle.hitPoint) { const k = Math.round(sx) + ',' + Math.round(sy); if (memo._fadeAt !== k) { memo._fadeAt = k; memo._fadeHit = [.85, .55, .25].some(f => record.handle.hitPoint(sx, sy - ph * f)); } behind = memo._fadeHit; }
+          else if (behind) { const tx = (p.x + p.w / 2) * W.cellW - 2, ty = footY - 170; behind = ((sx - tx) / 130) ** 2 + ((sy - 30 - ty) / 95) ** 2 < 1; } }
+        // a painted building fades only where its own picture covers you (head, chest or hips), not over the whole box round
+        // it: the lighthouse, its cottage and its rocks went ghostly whenever you stood beside the tower (coast round 3).
+        // Tested again only when you have moved a pixel, a handful of reads of one texture.
+        else if (behind && record.handle.hitPoint) { const k = Math.round(sx) + ',' + Math.round(sy); if (memo._fadeAt !== k) { memo._fadeAt = k; memo._fadeHit = [.85, .55, .25].some(f => record.handle.hitPoint(sx, sy - ph * f)); } behind = memo._fadeHit; }
+        return behind;
+    }
+    /** Friends on screen this frame, as figures for the fades: feet (world px), lift, height; top collects the depth they are drawn at. */
+    function friendFigures() {
+      const out = [];
+      if (typeof _gll === 'undefined' || !_gll.actors) return out;
+      for (const F of _gll.actors.values()) {
+        if (F.me || F.rm || F.away || !F.root || !F.root.target || !F.root.target.active || !Number.isFinite(F.x) || !Number.isFinite(F.y)) continue;
+        const lift = typeof gartActFriendLift === 'function' ? gartActFriendLift(F) : F.actLift || 0, row = F.actId && typeof GARDEN_ACTS !== 'undefined' ? GARDEN_ACTS[F.actId] : null;
+        const y = W.sky + F.y * W.cellH;
+        out.push({ F, w: F.w, x: F.x * W.cellW, y, lift: lift > 0 ? lift : 0, ph: 50 * GARDEN_ACTOR_SCALE, hide: !!(row && row.hideBehind), top: y + .001 });
+      }
+      return out;
+    }
+    /** After the fades: each friend drawn over what has faded for them (one frame's list), back in their row when nothing covers them. */
+    function placeFriends(peers) {
+      const now = performance.now();
+      for (const Q of peers) {
+        const F = Q.F;
+        if (F._crownHits) for (const [im, t] of F._crownHits) { if (now - t > 160 || !im.active) { F._crownHits.delete(im); continue; } if (im.visible && Number.isFinite(im.depth) && im.depth > Q.y + .01) Q.top = Math.max(Q.top, im.depth + .002); }
+        const raise = !Q.hide && Q.top > Q.y + .001, spr = F.spr;
+        if (raise) { if (spr) spr.z = (Q.top - W.sky) / W.cellH; if (F.root.target.depth !== Q.top) { F.root.target.setDepth(Q.top); sorted = true; } F._raised = true; }
+        else if (F._raised) { F._raised = false; if (spr) spr.z = null; F.root.target.setDepth(Q.y); sorted = true; }
+      }
     }
     function drawPlayer(time) {
       if (typeof gartPlayerStep === 'function') gartPlayerStep(_gw);
@@ -1416,8 +1477,13 @@ window.GardenNativeWorld = (function () {
         playerOcclusionHeight = clamp(-Math.min(...corners.map(point => point.y)), 44 * GARDEN_ACTOR_SCALE, 88);
       }
       const x = _gw.px * W.cellW, y = W.sky + _gw.py * W.cellH, z = Math.floor(_gw.py * 3);
-      playerNode.setAttribute('transform', 'translate(' + x + ' ' + y + ')'); playerNode.setAttribute('data-z', String(_gw.py + .001)); playerNode.target.setDepth(y + .001);
+      // up on a floor (a lighthouse's gallery, a treehouse's deck: 94-garden-zz-7act-3height.js) the figure and its shadow are drawn that
+      // high, and as deep as the floor says (in front of the thing, or under it behind its lamp room); swimming or on a ladder, no shadow
+      const heightLift = typeof gardenHeightLift === 'function' ? gardenHeightLift() : 0, heightDepth = typeof gardenHeightDepth === 'function' ? gardenHeightDepth() : null;
+      playerNode.setAttribute('transform', 'translate(' + x + ' ' + (y - heightLift) + ')'); playerNode.setAttribute('data-z', String(_gw.py + .001)); playerNode.target.setDepth(heightDepth != null ? heightDepth : y + .001);
+      { const sh = playerNode._ghtSh || (playerNode._ghtSh = playerNode.querySelector('.gd-pl-sh')), on = typeof gardenHeightShadowOn !== 'function' || gardenHeightShadowOn(); if (sh && sh._ghtOn !== on) { sh._ghtOn = on; sh.setAttribute('opacity', on ? '1' : '0'); } }
       if (z !== playerNode._nativeZ) { playerNode._nativeZ = z; sorted = true; }
+      { const hk = heightDepth == null ? '' : String(Math.round(heightDepth)); if (hk !== playerNode._ghtK) { playerNode._ghtK = hk; sorted = true; } }   // (up on a floor: behind its lamp room or in front, and on to or off it)
       const bob = !playerInner.querySelector('.gpl-root') && _gw.moving && gardenMotionOn() ? -Math.abs(Math.sin(time / 1000 * (_gw.sneak ? 7 : 11))) * 1.6 : 0;
       playerBob.setAttribute('transform', 'translate(0 ' + bob + ')');
       if (typeof gartMoveFrame === 'function') gartMoveFrame(playerInner, playerBob, _gw, time);   // the turn, the stride, the hop
@@ -1425,37 +1491,28 @@ window.GardenNativeWorld = (function () {
       // nearly solid and your outline shows through it: at .38 it went to a pale ghost, and a player at its door
       // seemed to stand inside a glass house (art director, round 3)
       propBehind = 0;
+      // (2.74.2) friends are drawn by the same rules as you: whatever they stand behind (a stall's awning, a house, a crown, a bush) fades on your
+      // screen and they are drawn over it, as their own screen draws them (the owner could not see a friend fishing behind the market stall).
+      // Hiding behind a tree is the one move that keeps the tree in front. By kind: any friend, any fading thing.
+      const peers = friendFigures();
       for (const record of fadingProps) {
         if (record.editorLifted) continue;
-        const p = record.metadata.prop, b = record.bounds, sx = _gw.px * W.cellW, sy = W.sky + _gw.py * W.cellH;
-        // (village fix round 2) a house fades only when it really stands over you: a good share of your figure inside the
-        // body of its picture (its eaves, flower boxes and the air at the picture's sides left out), with your feet behind
-        // its foot. Walking a lane beside a cottage, or standing at a door beside a tower, faded the whole building to
-        // half see-through, grass showing through its walls, as if it were a fault in the drawing.
-        // (across: the walls stand on the building's own ground, its cells, not across the whole picture, which is wider than the
-        // house by its eaves, its planting and, for the lighthouse, the air either side of a narrow tower)
-        const footY = W.sky + (p.y + p.h) * W.cellH, bx0 = Math.max(b.x, p.x * W.cellW) + 3, bx1 = Math.min(b.x + b.width, (p.x + p.w) * W.cellW) - 3, by0 = b.y + 18;
-        const ph = playerOcclusionHeight || 50, ox = Math.max(0, Math.min(sx + 7, bx1) - Math.max(sx - 7, bx0)), oy = Math.max(0, Math.min(sy, footY) - Math.max(sy - ph, by0));
-        let behind = sy < footY - 6 && sx > bx0 && sx < bx1 && ox >= 8 && oy >= ph * .4;
-        if (behind && p.id === 'ld-falls' && record.handle.fallsCoversPlayer) behind = record.handle.fallsCoversPlayer(sx, sy);
-        // (only when you are within the middle of it and under its top: beside a barn's gable it faded with nothing hidden)
-        if (behind && p.id !== 'ld-falls') behind = sx > b.x + b.width * .12 && sx < b.x + b.width * .88 && sy - playerOcclusionHeight * .6 > b.y;
-        // (a lamp post or a finger post hides nothing: standing at the old lamp turned you into the dark outline, hunter, round 3)
-        if (behind && (p.art === 'lamp' || p.art === 'finger' || b.width < 46)) behind = false;
-        // (High orchard fix round 1) the treehouse chestnut fades by its crown, which spreads well past its two cells: walking the
-        // beach or the mother walk beside it you went behind the crown unseen, and standing at the trunk the whole tree faded
-        // (layfix east: the crown as drawn now, rounder and over its own trunk: standing at the ladder or on the beach beside it no longer ghosts the house)
-        else if (p.id === 'ld-treehouse') { const tx = (p.x + p.w / 2) * W.cellW - 92, ty = footY - 176; behind = sy < footY - 6 && ((sx - tx) / 92) ** 2 + ((sy - 30 - ty) / 78) ** 2 < 1; }
-        // a painted building fades only where its own picture covers you (head, chest or hips), not over the whole box round
-        // it: the lighthouse, its cottage and its rocks went ghostly whenever you stood beside the tower (coast round 3).
-        // Tested again only when you have moved a pixel, a handful of reads of one texture.
-        else if (behind && record.handle.hitPoint) { const k = Math.round(sx) + ',' + Math.round(sy); if (record._fadeAt !== k) { record._fadeAt = k; record._fadeHit = [.85, .55, .25].some(f => record.handle.hitPoint(sx, sy - playerOcclusionHeight * f)); } behind = record._fadeHit; }
-        if (record.behind !== behind) { record.behind = behind; record.root.setAlpha(behind ? (p.id === 'ld-treehouse' ? .55 : .8) : 1); }
+        const p = record.metadata.prop, sx = _gw.px * W.cellW, sy = W.sky + _gw.py * W.cellH;
+        const behind = propCovers(record, sx, sy, playerOcclusionHeight || 50, record);
+        let seen = behind;
+        for (const Q of peers) { const memo = (record._peerMemo || (record._peerMemo = new Map())); let m = memo.get(Q.w); if (!m) memo.set(Q.w, m = {}); if (propCovers(record, Q.x, Q.y - Q.lift, Q.ph, m)) { seen = true; if (Number.isFinite(record.root.depth)) Q.top = Math.max(Q.top, record.root.depth + .002); } }
+        if (record.behind !== behind) record.behind = behind;
+        if (record.seenBehind !== seen) { record.seenBehind = seen; record.root.setAlpha(seen ? (p.id === 'ld-treehouse' ? .55 : .8) : 1); }
         if (behind) propBehind++;
       }
       coveringCanopies.length = 0;
       const actLift = typeof gartActLift === 'function' ? gartActLift() : 0;   // a figure up on a branch or a seat is that much higher
       const probes = [{ x, y: y - actLift - playerOcclusionHeight * .81 }, { x, y: y - actLift - playerOcclusionHeight * .48 }, { x: x - 6, y: y - actLift - playerOcclusionHeight * .54 }, { x: x + 6, y: y - actLift - playerOcclusionHeight * .54 }];
+      // (2.74.1) a friend up a tree or on a high seat: any crown over them fades on your screen too, as it does on theirs (the owner: you
+      // could not see them climb). Friends' figures stand in the objects layer, under every crown, so the crown they sit in counts as well.
+      // By kind: any lifted figure, any crown.
+      // (2.74.2: every friend, not only one up a tree: a crown in front of them fades and they are drawn over it, as on their screen)
+      const lifted = peers.map(Q => ({ Q, F: Q.F, x: Q.x, y: Q.y, lift: Q.lift, probes: [{ x: Q.x, y: Q.y - Q.lift - Q.ph * .8 }, { x: Q.x, y: Q.y - Q.lift - Q.ph * .45 }] }));
       for (const crown of canopyOccluders) {
         const b = crown.bounds;
         let covered = false;
@@ -1463,20 +1520,39 @@ window.GardenNativeWorld = (function () {
           const matrix = GardenNativeArt.inverse(crown.node._matrix);
           covered = probes.some(probe => { const point = GardenNativeArt.point(matrix, probe.x, probe.y); return crown.polygons.some(polygon => insidePolygon(point, polygon)); });
         }
+        const own = covered;
+        for (const L of lifted) {
+          if (!crown.record.root.visible || L.x + 8 < b.x - 3 || L.x - 8 > b.x + b.width + 3 || L.y - L.lift - 50 > b.y + b.height + 3 || L.y < b.y - 3) continue;
+          if (!(L.lift > 6) && !(crown.record.depth > L.y + .01)) continue;   // (a crown behind a friend on the ground is drawn under them anyway)
+          const matrix = GardenNativeArt.inverse(crown.node._matrix);
+          if (L.probes.some(probe => { const point = GardenNativeArt.point(matrix, probe.x, probe.y); return crown.polygons.some(polygon => insidePolygon(point, polygon)); })) { covered = true; if (Number.isFinite(crown.record.depth)) L.Q.top = Math.max(L.Q.top, crown.record.depth + .002); }
+        }
+        crown.ownCover = own;
         const alpha = crown.normalAlpha * (covered ? .24 : 1);
         if (crown.faded !== covered || Math.abs(crown.node.target.alpha - alpha) > .0001) { crown.faded = covered; crown.node.target.setAlpha(alpha); }
         if (covered) coveringCanopies.push(crown.id);
       }
       // (moves, round 5) while you do something the figure is the picture: whatever has faded because you are behind it (a crown, a rock, a painted canopy)
       // is drawn under you, so a see-through crown or trunk never lies over the figure and washes it out. Hiding is the one move that wants the tree in front.
-      const doing = !(typeof _ga !== 'undefined' && _ga.cur && _ga.cur.doing && _ga.cur.row && _ga.cur.row.hideBehind);   // (round 6: always, not only during a move: a faded crown never lies over you, and you never turn see-through green)
+      const doing = heightDepth == null && !(typeof _ga !== 'undefined' && _ga.cur && _ga.cur.doing && _ga.cur.row && _ga.cur.row.hideBehind);   // (up on a floor its own depth holds: behind the lamp room you are behind it)   // (round 6: always, not only during a move: a faded crown never lies over you, and you never turn see-through green)
       if (doing) {
         let top = y + .001;
         for (const record of fadingProps) if (record.behind && record.root && Number.isFinite(record.root.depth)) top = Math.max(top, record.root.depth + .002);
-        for (const crown of canopyOccluders) if (crown.faded && Number.isFinite(crown.record.depth)) top = Math.max(top, crown.record.depth + .002);
+        for (const crown of canopyOccluders) if (crown.faded && crown.ownCover && Number.isFinite(crown.record.depth)) top = Math.max(top, crown.record.depth + .002);
         for (const im of externalCanopies) if (Number.isFinite(im.depth)) top = Math.max(top, im.depth + .002);
+        // (height round 2) but never over a thing that stands between you and that crown and has not faded (a treehouse with its ladder
+        // and deck, a wall): lifted over it you seemed to stand on its ladder, half way up, in front of its deck. The crown stays faded over you.
+        if (top !== y + .001) for (const record of fadingProps) {
+          const d = record.root && record.root.depth, b = record.bounds;
+          if (record.behind || record.editorLifted || !Number.isFinite(d) || d <= y + .001 || d >= top || !b || !record.root.visible) continue;
+          if (x + 8 >= b.x && x - 8 <= b.x + b.width && y >= b.y && y - (playerOcclusionHeight || 50) <= b.y + b.height) { top = y + .001; break; }
+        }
         if (top !== y + .001) playerNode.target.setDepth(top);
       }
+      // sat on a seat the world draws as its own picture (a bench, a log, a stump): drawn on it, never behind its back rail
+      const seatDepth = typeof gartActSeatDepth === 'function' ? gartActSeatDepth() : null;
+      if (seatDepth != null && seatDepth + .002 > playerNode.target.depth) playerNode.target.setDepth(seatDepth + .002);
+      placeFriends(peers);
     }
     function restoreCanopyAlpha() { for (const crown of canopyOccluders) { if (crown.node.target.active) crown.node.target.setAlpha(crown.normalAlpha); crown.faded = false; } coveringCanopies.length = 0; externalCanopies.length = 0; silhouetteVisible = false; xray.target.setVisible(false); }
     function silhouetteBody(source, body) {
@@ -1546,7 +1622,7 @@ window.GardenNativeWorld = (function () {
       const activity = fishing ? null : activitySubject(); if (fishing) activityCamera = null;
       const fit = fishing ? fishViewMode === 'fit' : activity ? activityCamera.mode === 'fit' : prefs.cam === 'fit';
       let vh = fit ? Math.max(height, width / ar) : GW_ZOOMS[clamp(Number.isInteger(Number(prefs.zoom)) && prefs.zoom != null ? Number(prefs.zoom) : typeof _gwCamDefaultIdx === 'function' ? _gwCamDefaultIdx() : 2, 0, GW_ZOOMS.length - 1)], vw = vh * ar;
-      let x = _gw.px * W.cellW - vw / 2, y = W.sky + _gw.py * W.cellH - vh / 2 - 24;
+      let x = _gw.px * W.cellW - vw / 2, y = W.sky + _gw.py * W.cellH - vh / 2 - 24 - (typeof gardenHeightView === 'function' ? gardenHeightView() : 0);   // (up on a floor or a ladder: the view goes up with you)
       if (fishing && !fit) {
         const f = _gw.fishing, fx = _gw.px * W.cellW, fy = W.sky + _gw.py * W.cellH - 25, bx = f.bx * W.cellW, by = W.sky + f.by * W.cellH;
         vh = Math.max(190, Math.abs(by - fy) + 130, (Math.abs(bx - fx) + 170) / ar) * fishZoom; vw = vh * ar; x = (fx + bx) / 2 - vw / 2; y = (fy + by) / 2 - vh / 2;
@@ -1711,6 +1787,9 @@ window.GardenNativeWorld = (function () {
       for (const record of dynamic.values()) { const b = bounds(record.id); if (b) record.root.setVisible(inCamera({ x: b.left, y: b.top, width: b.width, height: b.height }, 150, view)); }
       cullSpecialMainActors(view);
       if (renderOnly) return;
+      // (vf-perf) no new picture captured while the drawn frames are late (a level-up's new ground on a slow graphics card: each
+      // capture is drawn by the card, and they queued up behind each other while no frame reached the screen for most of a second)
+      if (!preparing && typeof _gbb !== 'undefined' && _gbb && _gbb.frame > 0) { const late = performance.now() - _gbb.at; if (late > 80 && late < 2000) return; }
       const started = performance.now(); let count = 0;
       const capture = (node, opts) => { cacheQueue.delete(node); const { viewBounds, visibleRoot, ...captureOptions } = opts || {}; GardenNativeArt.cache(node, { quality: 2, adaptive: true, ...captureOptions, preparing: !!preparing }); count++; return count >= 1 || performance.now() - started >= 3; };
       // Nearby ground gets its sharp native cache before decorative upgrades.
@@ -1833,12 +1912,15 @@ window.GardenNativeWorld = (function () {
       // Frame-rate independence: a slow frame (under ~18 fps) is simulated as
       // up to five equal sub-steps of at most 55 ms, so walking keeps real
       // speed instead of slowing down. At normal frame rates this is one step.
+      // (vf-perf, 2) the shared bake budget is told when this frame's step began: once the step has already run long (the land
+      // drawn again after a level-up), the painters wait for the next frame rather than add their slices to it
+      if (typeof _gbbState === 'function') { const B = _gbbState(); B.stepAt = performance.now(); if (!B.inStep) { B.inStep = true; queueMicrotask(() => { B.inStep = false; }); } }
       if (dead) return; const frameDt = Math.min(.25, Math.max(0, delta / 1000 || .016)), steps = Math.max(1, Math.ceil(frameDt / .055 - 1e-9)), dt = frameDt / steps;
       // Old-version lines can briefly preserve a shoreline cove without a
       // dashboard repaint. Ordinary swimming keeps this resident revision.
       if (model && typeof gardenLakeGeometry === 'function' && gardenLakeGeometry(model).revision !== shorelineRevision) sync(model);
       // (village fix round 3) the ground held back while walking is drawn once you have stood still for a moment
-      if (terrainLater && model && !(_gw.moving || (_gw.path && _gw.path.length) || (_gw.keys && _gw.keys.size))) { if (!terrainStillAt) terrainStillAt = time; else if (time - terrainStillAt > 350) { terrainStillAt = 0; modelKey = ''; sync(model); } } else terrainStillAt = 0;
+      if (terrainLater && model && !(_gw.moving || (_gw.path && _gw.path.length) || (_gw.keys && _gw.keys.size))) { if (!terrainStillAt) terrainStillAt = time; else if (time - terrainStillAt > 350) { terrainStillAt = 0; modelKey = ''; terrainFlush = true; try { sync(model); } finally { terrainFlush = false; } } } else terrainStillAt = 0;
       _gw.frameActive = true; _gw.frameGrid = null; _gw.framePrefs = _gdpPrefs();
       try {
         if (editorPaint) { const paint = editorPaint; editorPaint = null; paint(); }
@@ -1963,7 +2045,8 @@ window.GardenNativeWorld = (function () {
           const row = { id, source: body.target, node: body, x, y, groundX: x, groundY: y, waterline: y, w: kind === 'pet' ? Math.min(42, Math.max(12, b.width * .8)) : 22 * GARDEN_ACTOR_SCALE, h: (kind === 'pet' ? 7 : 8) * GARDEN_ACTOR_SCALE, tall: Math.min(100, Math.max(12, b.height)), bounds: b, kind, moving: !!moving, dynamic: true, bakedContact: true, captureKey, lift: lift == null ? y - sourceFootY : lift, sourceFootY };
           effectActorRows.push(row); return row;
         };
-        add('player', playerNode, playerInner, _gw.px * W.cellW, W.sky + _gw.py * W.cellH, 'actor', _gw.moving, playerInner._gplKey);
+        // (a swimmer, or someone up a ladder or on a floor, casts no standing reflection: the water ring is their water; 94-garden-zz-7act-3height.js)
+        if (!(typeof gardenHeightReflects === 'function' && !gardenHeightReflects())) add('player', playerNode, playerInner, _gw.px * W.cellW, W.sky + _gw.py * W.cellH, 'actor', _gw.moving, playerInner._gplKey);
         const rig = (id, F, fx, footX, footY) => {
           if (!F || F.state === 'idle' || F.bx >= GARDEN_ROOM_X || !fx || !fx.rod || !fx.line || !fx.bob) return;
           const waterY = W.sky + F.by * W.cellH, u = F.state === 'cast' ? Math.max(0, Math.min(1, (F.t - .22) / .5)) : F.state === 'land' ? (1 - Math.min(1, F.t / .5)) ** 2 : 1;
@@ -1991,7 +2074,7 @@ window.GardenNativeWorld = (function () {
         if (_gw.pet) pet(_gw.pet, 'pet:follow');
         if (typeof _gll !== 'undefined' && _gll.actors) for (const A of _gll.actors.values()) {
           if (A.rm || A.away) continue;
-          add('peer:' + A.w, A.root, A.inner, A.x * W.cellW, W.sky + A.y * W.cellH, 'actor', A.moving, A.key);
+          if (!(A.swimming || A.ghtSwim || A.ghtClimb || A.hLv)) add('peer:' + A.w, A.root, A.inner, A.x * W.cellW, W.sky + A.y * W.cellH, 'actor', A.moving, A.key);
           rig('peer-rig:' + A.w, A.fish, A.fxe, A.x * W.cellW, W.sky + A.y * W.cellH);
           if (A.heldG || A.photoG) held('peer-held:' + A.w, A.heldG || A.photoG, A.x * W.cellW, W.sky + A.y * W.cellH);
           if (A.pp) pet(A.pp, 'peer-pet:' + A.w);

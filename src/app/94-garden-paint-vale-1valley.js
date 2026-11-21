@@ -13,7 +13,11 @@
 (function () {
   'use strict';
   const V = window.GardenPaintVale; if (!V) return;
-  const inValley = (x, y) => { const r = typeof gardenIslandRegionAt === 'function' ? gardenIslandRegionAt(x + .5, y + .5) : null; return !!(r && /mill|valley/.test(String(r.id) + ' ' + String(r.theme || ''))); };
+  // (vf-perf) remembered per cell for the layout it was read from: the compose asks every cell of the map, and the region test
+  // (a point in each region's outline) was the valley's largest share of a level-up's repaint
+  let ivD = null; const ivMemo = new Map();
+  const inValley = (x, y) => { let D = null; try { D = typeof gardenIslandData === 'function' ? gardenIslandData() : null; } catch (e) { D = null; } if (D !== ivD) { ivD = D; ivMemo.clear(); }
+    const k = x + ',' + y; let v = ivMemo.get(k); if (v === undefined) { const r = typeof gardenIslandRegionAt === 'function' ? gardenIslandRegionAt(x + .5, y + .5) : null; v = !!(r && /mill|valley/.test(String(r.id) + ' ' + String(r.theme || ''))); ivMemo.set(k, v); } return v; };
   // fenced: open country, i.e. anywhere but a wood that shows its locked land as thicket
   const fenced = (x, y) => { const r = typeof gardenIslandRegionAt === 'function' ? gardenIslandRegionAt(x + .5, y + .5) : null; return !(r && window.GardenPaintWood && GardenPaintWood.thicketWood && GardenPaintWood.thicketWood(r.id)); };
   let plotsMemo = null;
@@ -34,11 +38,15 @@
     }
     return plotsMemo = [...byId.values()];
   }
-  const level = () => { try { return gardenModel().level.level; } catch (e) { return 1; } };
+  const level = () => { try { return (typeof gardenHere === 'function' ? gardenHere() : gardenModel()).level.level; } catch (e) { return 1; } };
   const locked = (x, y, lv) => { try { return String(gardenAreaAt(x, y, lv)).startsWith('locked:'); } catch (e) { return false; } };
   // (a plot past a gate that is still shut has no fence yet: the mist stands at that edge, and a fence there drew a ruled
   // line of posts down the open meadow beside the village. It is fenced once its gate opens.)
   const zoneShut = (x, y) => { try { return typeof gardenZoneLockAt === 'function' && !!gardenZoneLockAt(x, y); } catch (e) { return false; } };
+  // (merge 1) the shut-land hedges re-bake with the open zones. Read from the open land itself, never from what compose found:
+  // a key that only appeared during the first compose changed the ground's key straight after it, so the whole vale composed
+  // and baked a second time while walking (a 2 to 3.6 s task).
+  V.groundSigs.push(() => { try { return '|zh:' + (typeof _GD_LAND !== 'undefined' && _GD_LAND ? [..._GD_LAND].filter(a => /^zn-/.test(a)).sort().join(',') : ''); } catch (e) { return ''; } });
   // The ground re-bakes when a valley plot opens or closes.
   // (and when you reach a plot's level: its sign turns from the level it needs to its price)
   V.groundSigs.push(() => { if (typeof gardenAreaAt !== 'function') return ''; const lv = level(); let h = 0, n = 0; for (const p of plots()) { const c = p.cells[0]; if (locked(c[0], c[1], lv)) { const row = gardenLandCell(c[0], c[1]); h = (h * 31 + p.cells.length + c[0] * 97 + c[1] + (row && lv >= (row.lv || 0) ? 7 : 0) + (zoneShut(c[0], c[1]) ? 3 : 0)) >>> 0; n++; } } return '|vf' + n + ':' + h; });
@@ -914,6 +922,35 @@
       if (p.cells.length && regionKind(p.cells[0][0], p.cells[0][1]) === 'field') add(bb, 4000 + p.cells.length, (B, r0, cb) => fallow(B, P, p.cells, W, season, cb));
       add(bb, 4100 + p.cells.length, (B, r, cb) => fence(B, r, P, p.edges, W, season, cb, p));
     }
+    // (vale final, east) Where a region past a shut gate meets ground you can walk on over dry land, a hedgerow stands just inside
+    // it, and where a path runs on into the shut land a wattle hurdle is pegged across it, so walking stops at something you can
+    // see (the mist alone left a straight invisible wall through the trees south of the east road). Any zone, by its cells: the
+    // gate's own crossing is left to the gate. In the woods that show locked land as thicket the thicket says it already.
+    { const D = gardenIslandData(), gates = (D && D.gates) || [], none = new Set();
+      const dry = (x, y) => { const b = gardenIslandBaseCell(x, y); return !!b && b.land && !b.freshwater && !b.solid && !b.ocean; };
+      const atGate = (x, y) => gates.some(g => Math.abs(x + .5 - (g.x + .5)) <= (g.dx ? 2.2 : (g.widthCells || 4) / 2 + 1.2) && Math.abs(y + .5 - (g.y + .5)) <= (g.dy ? 2.2 : (g.widthCells || 4) / 2 + 1.2));
+      const edges = [];
+      for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
+        if (!dry(x, y) || !fenced(x, y)) continue; const z = typeof gardenZoneLockOf === 'function' ? gardenZoneLockOf(x, y, none) : ''; if (!z) continue;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (!dry(nx, ny) || gardenZoneLockOf(nx, ny, none) === z || atGate(x, y) || atGate(nx, ny)) continue;
+          const b = gardenIslandBaseCell(x, y), bn = gardenIslandBaseCell(nx, ny); edges.push({ x, y, dx, dy, z, path: !!(b.route && bn.route) }); } }
+      // the ground re-bakes when one of these zones opens
+      // (the ground re-bakes when one of these zones opens: the '|zh' key registered with the module, below zoneShut)
+      const hh = gardenSizePx('hedge', .8);
+      for (const e of edges) { const X = e.x * cw, Y = W.sky + e.y * ch, bb = [X - 30, Y - hh - 10, X + cw + 30, Y + ch + 14];
+        add(bb, 4150, (B, r) => { if (!zoneShut(e.x, e.y)) return;
+          const keep = hedgeVar; hedgeVar = (e.x * 7 + e.y * 3) % 3;
+          const sand = !!(gardenIslandBaseCell(e.x, e.y) || {}).beach;
+          if (sand) {
+            // on the sand a chestnut paling, grey with weather, like a sand fence, bound with two twists of wire
+            const ph0 = gardenSizePx('fence', .9), horiz = !!e.dy, ax = horiz ? X : (e.dx < 0 ? X + 5 : X + cw - 5), ay = horiz ? (e.dy < 0 ? Y + Math.min(ch - 4, ph0 * .8) : Y + ch - 3) : Y, len = horiz ? cw : ch + 2, ux = horiz ? 1 : 0, uy = horiz ? 0 : 1;
+            B.s(`M${ax} ${ay + 1.5}L${ax + ux * len} ${ay + uy * len + 1.5}`, '#2e3420', 3.4, .14);
+            for (let t = 0; t <= len; t += horiz ? 3.4 : 3) { const px = ax + ux * t + (r() - .5) * .6, py = ay + uy * t, ph = ph0 * (.82 + r() * .3), lean = (r() - .5) * 1.4; B.s(`M${px} ${py}l${lean} ${-ph}`, r() < .5 ? '#a49680' : r() < .5 ? '#857864' : '#b8ac94', 1.9, .96); }
+            for (const f of [.3, .72]) B.s(`M${ax} ${ay - ph0 * f}L${ax + ux * len} ${ay + uy * len - ph0 * f}`, '#4a463e', .9, .85);
+          } else if (e.dy) { const y0 = e.dy < 0 ? Y + Math.min(ch - 4, hh * .8) : Y + ch - 3; (e.path ? hurdleRun : fieldHedge)(B, r, P, X, y0, true, cw, season, e.path ? gardenSizePx('fence', .6) : hh); }
+          else { const x0 = e.dx < 0 ? X + 6 : X + cw - 6; if (e.path) { for (const o of [-2.5, 2.5]) hurdleRun(B, r, P, x0 + o, Y, false, ch + 2, season, gardenSizePx('fence', .7)); }
+            else { fieldHedge(B, r, P, x0 + 3.5, Y, false, ch + 2, season, hh); thicketRun(B, r, P, x0 - 2.5, Y, false, ch + 2, season, hh); } }
+          hedgeVar = keep; }); } }
     // (layfix east) where the valley's turf meets the beach the cells met in ruled square notches (a grass rectangle cut into the
     // sand by the barn): the edge is blended, a feathered band of sandy turf with marram tufts on the sand side
     { const edges = [];

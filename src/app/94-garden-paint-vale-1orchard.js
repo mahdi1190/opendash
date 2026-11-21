@@ -196,12 +196,19 @@
           for (let k = 0; k < 7; k++) B.f(B.blob(r, c.x - 6 + k * 2 - r() * 4, c.y - 8 - r() * 10, 9 + r() * 5, 6 + r() * 3, 7, .45), k < 3 ? '#3f4e2e' : k < 5 ? '#55663a' : '#6a7a46', .95);
           if (season === 'spring') for (let k = 0; k < 14; k++) B.f(B.circ(c.x - 14 + r() * 26, c.y - 20 + r() * 14, 1.3), '#fbf7ee', .95);
           else if (season === 'autumn') for (let k = 0; k < 8; k++) B.f(B.circ(c.x - 12 + r() * 22, c.y - 16 + r() * 10, 1.6), '#3e4a7a', .95); }
-        // the cliff top's edge above the beach walk: a low blackthorn hedge, knee high (it stops the feet: 94-garden-wonder-7shortcuts.js)
-        for (let y = 36.6; y < 40.4; y += .3) { const c = L.cpt(85.25 + Math.sin(y * 3.1) * .06, y); B.f(B.ell(c.x + 4, c.y + 2, 13, 4), '#22301a', .2);
-          for (let k = 0; k < 4; k++) B.f(B.blob(r, c.x - 4 + r() * 8, c.y - 6 - r() * 12, 7 + r() * 4, 5 + r() * 3, 7, .45), k < 2 ? '#3f4e2e' : k < 3 ? '#55663a' : '#6a7a46', .97);
-          if (season === 'spring') for (let k = 0; k < 4; k++) B.f(B.circ(c.x - 7 + r() * 14, c.y - 18 + r() * 10, 1.3), '#fbf7ee', .95);
-          else if (season === 'autumn' && r() < .6) B.f(B.circ(c.x - 5 + r() * 10, c.y - 12 + r() * 6, 1.6), '#3e4a7a', .95); }
       }, {});
+      // the cliff top's edge above the cottage yard: a blackthorn hedge, standing (it stops the feet: 94-garden-wonder-7shortcuts.js).
+      // (vale final, east) painted into the ground it lay under the yard wall and the treehouse's crown, so the feet stopped at
+      // nothing seen: it stands now, in short lengths each sorted at its own foot, half a figure high and lumpy, with sloes.
+      for (let y0 = 36.5; y0 < 40.3; y0 += .55) { const y1 = Math.min(40.35, y0 + .55), c0 = L.cpt(85.25, y0), c1 = L.cpt(85.25, y1), hh = gardenSizePx('hedge', .9), salt = Math.round(y0 * 100);
+        thing({ key: 'cliff-blackthorn-' + salt + '|' + season, x: c1.x, y: c1.y, box: [-18, c0.y - c1.y - hh - 12, 20, 8], draw: B => { const r = kit.rng(salt + 7);
+          B.f(B.ell(3, 2, 14, 4), '#22301a', .25);
+          for (let yy = c0.y - c1.y; yy <= 0; yy += 3.2) { const sw = Math.sin((c1.y + yy) * .21) * 2;
+            for (let k = 0; k < 3; k++) B.f(B.blob(r, sw - 3 + r() * 6, yy - hh * (.25 + k * .25) - r() * 3, 7 + r() * 3, 5 + r() * 2, 7, .45), k === 0 ? '#2f3e24' : k === 1 ? '#46582f' : '#5f7040', .97);
+            if (r() < .5) B.f(B.blob(r, sw - 4 + r() * 3, yy - hh * .85, 3.4, 2, 6, .5), '#7d8c52', .9);
+            if (season === 'spring' && r() < .7) { for (let k = 0; k < 3; k++) B.f(B.circ(sw - 6 + r() * 12, yy - hh * (.4 + r() * .5), 1.2), '#fbf7ee', .95); }
+            else if (season === 'autumn' && r() < .5) B.f(B.circ(sw - 5 + r() * 10, yy - hh * (.3 + r() * .5), 1.5), '#3e4a7a', .95); }
+          if (season !== 'winter') B.tufts(r, 0, 3, 14, 4, ['#6f8a44', '#8c9a56'], 6); } }); }
       // A rock face falling from a lip (pts, px, in order along it) to its foot: broken into facets of their own height and tone, a
       // lit, broken lip, bedding ledges and cracks, darker toward the foot, wet and foamed where it meets the water (sea true) or
       // with tufts and fallen stones where it meets sand. Drawn in the thing's own space (origin ox, oy).
@@ -225,6 +232,62 @@
           if (o.sea) { if (r() < .8) B.f(B.blob(r, p.x + 4 + (r() - .5) * 10, p.y + 4, 9 + r() * 8, 2.6, 6, .5), '#f2f6f4', .55 + r() * .3); }
           else if (o.season !== 'winter' && r() < .4) B.tufts(r, p.x, p.y + 4, 8, 3, ['#7c8a44', '#a8a860'], 5); }
       };
+      // (vale final, east) A crag: a sea cliff of its own height and shape, not ruled panels. The height wanders along the coast
+      // (read from world position, so chunks agree where they meet), buttresses stand proud with a lit flank and a shaded one,
+      // gullies cut back dark with scree fanned under them, bedding runs along it in broken ledges that dip, blocks fracture off
+      // the upper face, thrift and turf hold to the ledges, and the foot is wet, bouldered and foamed. pts: the lip, world px.
+      const cragFace = (B, r, pts, ox, oy, o) => {
+        const D0 = o.depth, lean = o.lean || 0, NZ = (x, y, s) => Math.sin(x * .011 + y * .019 + s) * .5 + Math.sin(x * .037 - y * .029 + s * 2.1) * .3 + Math.sin(x * .093 + y * .071 + s * 3.7) * .2;
+        const seg = pts.map(p => { const t = o.taper ? o.taper(p) : 1, h = D0 * (1 + .3 * NZ(p.x, p.y, 1.7)) * t; return { x: p.x - ox + NZ(p.x, p.y, 4.1) * 2.5, y: p.y - oy + NZ(p.y, p.x, 5.3) * 3, h, wx: p.x, wy: p.y }; });
+        const foot = seg.map(p => ({ x: p.x + lean * p.h / D0 + NZ(p.wx, p.wy, 7.7) * 14, y: p.y + p.h }));
+        const at = (i, f) => ({ x: seg[i].x + (foot[i].x - seg[i].x) * f, y: seg[i].y + (foot[i].y - seg[i].y) * f });
+        const face = B.poly(seg.map(p => [p.x, p.y]).concat(foot.slice().reverse().map(p => [p.x, p.y])));
+        const top = Math.min(...seg.map(p => p.y)), bot = Math.max(...foot.map(p => p.y));
+        // the cast shadow on the water beyond the foot, then the face in one piece: lit near the top, cold and wet at the foot
+        B.cx.filter = 'blur(6px)'; B.f(B.poly(foot.map(p => [p.x, p.y - 6]).concat(foot.slice().reverse().map(p => [p.x + 14, p.y + 10]))), o.sea ? '#16303a' : '#2e3420', .35); B.cx.filter = 'none';
+        B.f(face, B.lin(0, top, 0, bot, [[0, '#b9ad94'], [.3, '#a09380'], [.62, '#857a68'], [.86, o.sea ? '#5a5246' : '#6c6352'], [1, o.sea ? '#34312b' : '#544c40']]));
+        // the crag's masses: the face broken along it, at uneven spacing, into blocks of rock each standing at its own angle (a lit
+        // plane, a mid one or one turned from the light), some proud and some set back, split by jagged arêtes; a narrow dark
+        // gully now and then, its scree fanned under it. The joints wander, so nothing reads as a ruled panel.
+        const cuts = [0]; for (let i = 0; i < seg.length - 1;) { i += 2 + Math.floor(r() * 5); if (i >= seg.length - 1) break; cuts.push(i); } cuts.push(seg.length - 1);
+        const jag = (i, f, s0) => { const p = at(i, f); return { x: p.x + Math.sin(f * 9 + s0) * 3 + Math.sin(f * 23 + s0 * 2) * 2, y: p.y }; };
+        for (let m = 1; m < cuts.length; m++) { const i0 = cuts[m - 1], i1 = cuts[m], t = r(), gully = i1 - i0 <= 2 && r() < .55;
+          const tone = gully ? ['#5a5246', '#3c372f', '#26231e'] : t < .38 ? ['#cbbfa4', '#a99c84', '#5e5648'] : t < .72 ? ['#ab9f88', '#8d816e', '#4c463c'] : ['#8e8371', '#71675a', '#3a362f'];
+          const left = [], right = []; for (let k = 0; k <= 8; k++) { const f = k / 8; left.push(jag(i0, f, i0 * 1.3)); right.push(jag(i1, f, i1 * 1.3)); }
+          const poly = seg.slice(i0, i1 + 1).map(p => [p.x, p.y]).concat(right.map(p => [p.x, p.y]), foot.slice(i0, i1 + 1).reverse().map(p => [p.x, p.y]), left.slice().reverse().map(p => [p.x, p.y]));
+          const y0 = Math.min(...seg.slice(i0, i1 + 1).map(p => p.y)), y1 = Math.max(...foot.slice(i0, i1 + 1).map(p => p.y));
+          B.f(B.poly(poly), B.lin(0, y0, 0, y1, [[0, tone[0]], [.55, tone[1]], [1, o.sea ? tone[2] : kit.mix(tone[2], '#6c6352', .5)]]), gully ? .85 : 1);
+          // the arête on the block's west edge catches the light; its east edge falls into shade
+          V.strokePts(B, left.map(p => ({ x: p.x + 1.5, y: p.y })), '#efe5ca', 1.6, gully ? .2 : .55);
+          const sh = right.map(p => [p.x, p.y]).concat(right.slice().reverse().map((p, k) => [p.x - 5 - (k % 3), p.y]));
+          B.f(B.poly(sh), '#1e1b17', gully ? .15 : .32);
+          if (gully) { const fb = foot[Math.round((i0 + i1) / 2)]; for (let k = 0; k < 11; k++) { const u = r(), sx = fb.x + (r() - .5) * 26 * u, sy = fb.y - 30 * (1 - u); B.f(B.blob(r, sx, sy, 1.8 + r() * 2.4, 1.2 + r() * 1.4, 5, .4), r() < .5 ? '#a89c86' : '#c7bca4', .85); } }
+          // a cap block overhanging the lip of a proud mass, its underside in shade
+          else if (t < .5 && i1 - i0 >= 3) { const c = seg[Math.round((i0 + i1) / 2)], w0 = 10 + r() * 10; B.f(B.poly([[c.x - w0, c.y + 1], [c.x - w0 + 4, c.y - 4], [c.x + w0 - 2, c.y - 3], [c.x + w0 + 2, c.y + 3], [c.x + w0 - 4, c.y + 8], [c.x - w0 + 2, c.y + 7]]), '#d2c7ac', .95); B.s(`M${c.x - w0 + 2} ${c.y + 7}L${c.x + w0 - 4} ${c.y + 8}`, '#2a2620', 2.2, .5); } }
+        // the beds: broken ledges that dip along it, each lit on its lip and shaded under, with thrift and turf holding on
+        const nb = 3 + Math.floor(r() * 2);
+        for (let k = 0; k < nb; k++) { const f0 = (k + .55 + (r() - .5) * .35) / (nb + .5), thick = 1.2 + r() * 2.2; let run = [];
+          const flush = () => { if (run.length > 1) { V.strokePts(B, run.map(q => ({ x: q.x, y: q.y + thick })), '#2c2822', thick + 1.2, .34); V.strokePts(B, run, '#ddd2b6', 1.4, .55); } run = []; };
+          for (let i = 0; i < seg.length; i++) { const f = f0 + NZ(seg[i].wx * .5, seg[i].wy * .5, k * 1.9) * .07; if (NZ(seg[i].wx, seg[i].wy, k * 3.3 + 1) < -.45) { flush(); continue; } const p = at(i, Math.max(.06, Math.min(.92, f))); run.push({ x: p.x, y: p.y + Math.sin(i * 1.7 + k) * 1.2 });
+            if (o.season !== 'winter' && r() < .1) B.f(B.blob(r, p.x, p.y - 1, 3 + r() * 3, 1.6, 6, .5), '#6f8a44', .9);
+            if ((o.season === 'spring' || o.season === 'summer') && r() < .05) for (let j = 0; j < 3; j++) B.f(B.circ(p.x + (r() - .5) * 5, p.y - 2 - r() * 2, 1.2), '#e8a0b8', .95); }
+          flush(); }
+        // blocks fractured off the upper face: facets of their own tone, each with a lit top and a dark joint under it
+        for (let i = 1; i < seg.length; i++) { if (r() > .55) continue; const f = .08 + r() * .45, p = at(i, f), w0 = 7 + r() * 10, h0 = 6 + r() * 9, sk = (r() - .5) * 5;
+          const blk = B.poly([[p.x - w0 / 2, p.y], [p.x + w0 / 2 + sk * .3, p.y - 1], [p.x + w0 / 2 + sk, p.y + h0], [p.x - w0 / 2 + sk * .6, p.y + h0 + 1]]);
+          B.f(blk, r() < .5 ? '#c9bea4' : '#7d7262', .28 + r() * .2); B.s(`M${p.x - w0 / 2} ${p.y}L${p.x + w0 / 2 + sk * .3} ${p.y - 1}`, '#ece2c8', 1.1, .5); B.s(`M${p.x - w0 / 2 + sk * .6} ${p.y + h0 + 1}L${p.x + w0 / 2 + sk} ${p.y + h0}`, '#26221c', 1.2, .45); }
+        // jointed cracks: a few, stepped and slanting, never a comb of verticals
+        for (let i = 2; i < seg.length - 1; i += 3) { if (r() < .5) continue; let p = at(i, .1 + r() * .3); let d = 'M' + p.x + ' ' + p.y; for (let k = 0; k < 4; k++) { p = { x: p.x + (r() - .3) * 7, y: p.y + 5 + r() * 9 }; d += 'L' + p.x + ' ' + p.y; } B.s(d, '#2a2620', .9, .5); }
+        // ivy and turf hanging from the lip, a broken lit edge
+        V.strokePts(B, seg.map(p => ({ x: p.x, y: p.y - 1 })), '#e2d8bf', 2.6, .9);
+        for (let i = 0; i < seg.length; i++) { const p = seg[i]; if (r() < .6) B.f(B.blob(r, p.x + (r() - .5) * 6, p.y - 1, 5 + r() * 5, 2.2 + r(), 6, .5), o.season === 'winter' ? '#8a9078' : '#6f8a44', .95);
+          if (o.season !== 'winter' && r() < .18) { const l = 6 + r() * 14; B.s(`M${p.x} ${p.y + 1}q${(r() - .5) * 4} ${l / 2} ${(r() - .5) * 3} ${l}`, '#4f6a34', 2.2, .8); } }
+        // the foot: wet dark rock where the sea works, boulders fallen from it, and white water round them
+        if (o.sea) V.strokePts(B, foot.map(p => ({ x: p.x, y: p.y - 5 })), '#1e1c18', 7, .35);
+        for (let i = 0; i < foot.length; i++) { const p = foot[i]; if (r() < .5) B.boulder(r, p.x + (r() - .5) * 12, p.y + 2 + r() * 4, 7 + r() * 12, 5 + r() * 6, STONE, false);
+          if (o.sea) { if (r() < .85) B.f(B.blob(r, p.x + 6 + (r() - .5) * 12, p.y + 6, 9 + r() * 10, 2.6, 6, .5), '#f2f6f4', .5 + r() * .35); }
+          else if (o.season !== 'winter' && r() < .4) B.tufts(r, p.x, p.y + 4, 8, 3, ['#7c8a44', '#a8a860'], 5); }
+      };
       // the sea cliff down the headland's east coast, north of the cove: chunks of a few cells each, standing over the sea at
       // their own depth (their lip's line), so the face is painted over the water, not under it
       { const lipMax = L.cpt(0, FACE_Y).y - 8;
@@ -234,7 +297,9 @@
           for (const part of parts) { if (part.length < 2) continue; const even0 = even(part.map(p => ({ x: p.x, y: p.y, w: 0 })), 14);
             for (let s0 = 0; s0 < even0.length - 1; s0 += 9) { const ch0 = even0.slice(s0, Math.min(even0.length, s0 + 10)); if (ch0.length < 2) continue;
               const xs = ch0.map(p => p.x), ys = ch0.map(p => p.y), ox = Math.min(...xs), oy = Math.max(...ys), salt = Math.round(ox + oy);
-              thing({ key: 'sea-cliff-' + salt + '|' + season, x: ox, y: oy, depth: oy - 40, box: [-24, Math.min(...ys) - oy - 20, Math.max(...xs) - ox + 50, 100], draw: B => rockFace(B, kit.rng(salt), ch0, ox, oy, { depth: 64, lean: 10, rough: 3, sea: true, season }) }); } } } }
+              // (vale final, east) a crag at least three figures high, its foot leaning out over the sea, stepping down into the cove
+              const tap = p => Math.max(.4, Math.min(1, (lipMax - p.y) / (ch * 4.5)));
+              thing({ key: 'sea-cliff-' + salt + '|' + season, x: ox, y: oy, depth: oy - 40, box: [-30, Math.min(...ys) - oy - 24, Math.max(...xs) - ox + 90, 190], draw: B => cragFace(B, kit.rng(salt), ch0, ox, oy, { depth: 132, lean: 34, sea: true, season, taper: tap }) }); } } } }
       // the cove's head: a rock face about a figure high from the steps to the sea, the steps cut through it
       const fpts = []; for (let x = faceFrom; x <= 91; x += .25) fpts.push(L.cpt(x, FACE_Y + Math.sin(x * 2.3) * .08));
       // (vale layouts merge: the face stands, a picture of its own in front of the cliff top (laid flat in the ground it was not
@@ -253,7 +318,7 @@
         B.cx.save(); B.cx.translate(-fox, -foy); B.cx.clip(coastP);
         const sl = rpts('cliff-steps'), gap = sl ? (() => { const q = sl.reduce((m, p) => Math.abs(p.y - L.cpt(0, FACE_Y).y) < Math.abs(m.y - L.cpt(0, FACE_Y).y) ? p : m, sl[0]); return [q.x - halfPx(q, { nx: 1, ny: 0 }) - 2, q.x + halfPx(q, { nx: 1, ny: 0 }) + 2]; })() : [0, 0];
         // (layfix east: broken into facets of their own height, its lip broken, not a ruled grey slab)
-        for (const seg of [fpts.filter(p => p.x < gap[0]), fpts.filter(p => p.x > gap[1])]) { if (seg.length < 2) continue; rockFace(B, r, seg.map(p => ({ x: p.x, y: p.y - 4 })), 0, 0, { depth: 46, lean: 2, rough: 4, vary: .16, season }); }
+        for (const seg of [fpts.filter(p => p.x < gap[0]), fpts.filter(p => p.x > gap[1])]) { if (seg.length < 2) continue; cragFace(B, r, seg.map(p => ({ x: p.x, y: p.y - 4 })), 0, 0, { depth: 50, lean: 4, season }); }
         B.cx.restore();
       } });
       const cs = rpts('cliff-steps'); if (cs) flight(cs, { step: 9, salt: 5, rock: true });
@@ -405,7 +470,7 @@
           const key = 'gpv-cloud-' + (i % 2);
           if (!scene.textures.exists(key)) { const c = document.createElement('canvas'); c.width = 256; c.height = 128; const x = c.getContext('2d'), rr = kit.rng(91 + i % 2);
             for (let k = 0; k < 7; k++) { const cx = 50 + rr() * 156, cy = 40 + rr() * 48, R = 28 + rr() * 34, g = x.createRadialGradient(cx, cy, 0, cx, cy, R); g.addColorStop(0, 'rgba(26,38,44,.55)'); g.addColorStop(.6, 'rgba(26,38,44,.3)'); g.addColorStop(1, 'rgba(26,38,44,0)'); x.fillStyle = g; x.beginPath(); x.ellipse(cx, cy, R * 1.3, R * .8, 0, 0, Math.PI * 2); x.fill(); }
-            scene.textures.addCanvas(key, c); }
+            scene.textures.addImage(key, c); }
           // (made small, then grown on its first frame: a tall image would be taken for a tree and faded as you walk under it)
           const im = scene.add.image(0, 0, key).setScale(.2).setAlpha(a); let grown = false;
           onUpdate(scene, im, time => { if (!grown) { im.setScale(sc, sc * .62); grown = true; } const t = time / 1000; im.x = x0 + ((t * vx + off) % span); im.y = yb + Math.sin(t * .01 + i) * 60 + ((t * vy) % 240) - 120; });
@@ -418,7 +483,7 @@
         const r = kit.rng(5100 + j * 13 + b), w = 1.6 + r() * 1.4, rx = 16 + r() * 14, ry = 7 + r() * 7, ph = r() * 6.28, sp = 1.1 + r() * 1.2;
         thing({ y: h.y + 3, make: scene => {
           const key = 'gpv-bee';
-          if (!scene.textures.exists(key)) { const c = document.createElement('canvas'); c.width = 12; c.height = 8; const x = c.getContext('2d'); x.fillStyle = 'rgba(244,240,224,.85)'; x.beginPath(); x.ellipse(5, 2.6, 2.6, 1.6, -.4, 0, Math.PI * 2); x.fill(); x.fillStyle = '#3a2c18'; x.beginPath(); x.ellipse(6, 5, 3, 2, 0, 0, Math.PI * 2); x.fill(); x.fillStyle = '#d8a83a'; x.fillRect(5.4, 3.4, 1.2, 3.2); scene.textures.addCanvas(key, c); }
+          if (!scene.textures.exists(key)) { const c = document.createElement('canvas'); c.width = 12; c.height = 8; const x = c.getContext('2d'); x.fillStyle = 'rgba(244,240,224,.85)'; x.beginPath(); x.ellipse(5, 2.6, 2.6, 1.6, -.4, 0, Math.PI * 2); x.fill(); x.fillStyle = '#3a2c18'; x.beginPath(); x.ellipse(6, 5, 3, 2, 0, 0, Math.PI * 2); x.fill(); x.fillStyle = '#d8a83a'; x.fillRect(5.4, 3.4, 1.2, 3.2); scene.textures.addImage(key, c); }
           const im = scene.add.image(h.x, h.y - 24, key).setScale(.42);
           onUpdate(scene, im, time => { const t = time / 1000 * sp + ph; im.x = h.x + Math.cos(t) * rx + Math.sin(t * 2.3) * 3; im.y = h.y - 22 - w * 4 + Math.sin(t * 1.4) * ry; });
           return im; } });

@@ -71,6 +71,7 @@ function gartEmoteRun(id, o) {
   gartEmoteStop();
   // face front, in the plain idle drawing
   if (typeof _GPL !== 'undefined') { _GPL.dir = 's'; _GPL.pose = ''; }
+  if (typeof _gaFace === 'function') _gaFace(90);   // (2.74.1: the turn engine too, or it drew you side on again a frame later and the move was lost from your own screen)
   try { if (typeof _gwBody === 'function') _gwBody(); } catch (e) { /* no walker */ }
   const node = _gw.node.querySelector('.gpl'); if (!node) return false;
   const ck = o.seat ? 'on-seat' : id; let comp = _peCache.get(ck); if (!comp) { comp = _peCompile(row); _peCache.set(ck, comp); }

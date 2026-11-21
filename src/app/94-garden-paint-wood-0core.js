@@ -165,7 +165,12 @@ window.GardenPaintWood = (function () {
       const byOak = (x, y) => !!oakFoot && kitWood && Math.abs(x + .5 - oakFoot.x) < 6.8 && y + 1 - oakFoot.y > -9.5 && y + 1 - oakFoot.y < 3.6;
       // (the old woodland's planting rules: no crown over its court, yards, garden, maze, chapel step or the view across the pond)
       const treeless = (pres.oldwood && pres.oldwood.treeless || []).map(t => t.box);
-      const clear = (x, y) => plazas.some(p => Math.hypot((x - p.x) / ((p.rx || 3.2) + 1), (y - p.y) / ((p.ry || 2.4) + 1)) < 1) || treeless.some(b => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]);
+      // (fix loop 1, west: and no tree stands in a paved place's own shape, nor just below it where its crown would rise over
+      //  the paving: an oak four rows south of the Great Oak's clearing stood its faded crown over the whole clearing, a muddy
+      //  blob you walked about inside. By the shape the layout gives any place, not by name.)
+      const shaped = (pres.plazas || []).filter(p => Array.isArray(p.shape) && p.shape.length > 2).map(p => { let a = 1e9, b = 1e9, c = -1e9, d = -1e9; for (const [sx, sy] of p.shape) { a = Math.min(a, sx); b = Math.min(b, sy); c = Math.max(c, sx); d = Math.max(d, sy); } return { poly: p.shape, x0: a, y0: b, x1: c, y1: d }; });
+      const overPlace = (x, y) => shaped.some(s => x >= s.x0 - .6 && x <= s.x1 + .6 && (inside(x, y, s.poly) || y > s.y1 - .4 && y < s.y1 + 4.2));
+      const clear = (x, y) => plazas.some(p => Math.hypot((x - p.x) / ((p.rx || 3.2) + 1), (y - p.y) / ((p.ry || 2.4) + 1)) < 1) || treeless.some(b => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]) || overPlace(x, y + .5);
       // the gates stay in view: no tree stands on a gate, nor where its crown would hide the arch, bridge or stair (the canopy rises up the screen)
       // (in the old wood, a few rows past its arch, yews may stand two cells off the lane and lean over it: the Hush is a yew
       //  tunnel, its crowns fading as you walk under them; nearer the arch, and anywhere else, the gate stays clear)
@@ -295,6 +300,7 @@ window.GardenPaintWood = (function () {
           }
         }
       }
+      out.overPlace = overPlace;
       for (const [id, cells] of knots) knot(out, id, cells, px, py, region.id);
       // The outer edge of the wood (not a border shared with another painted wood) fades into the lawn instead of a ruled line.
       const edge = new Path2D(), others = (data.regions || []).filter(o => o !== region && WOODS[o.id]).map(o => o.polygons[0]);
@@ -338,7 +344,8 @@ window.GardenPaintWood = (function () {
     // the Great Oak's shadow (the vale paints the tree, 94-garden-paint-vale-1places.js, at the same foot): laid on this floor as
     // the kit's own crown shade along the light, so it is soft, dappled and long at dusk like every other tree's
     { const g = (pres.plazas || []).find(p => p.id === 'great-oak-clearing'); if (g && window.GardenPaintTrees && typeof gardenSizePx === 'function') out.oakShadow = { kit: 'greatoak', x: (g.x + 2.9) * W.cellW, y: W.sky + (g.y - 1.5) * W.cellH, h: Math.round(gardenSizePx('greatOak', 1)) }; }
-    keepOldWoodInView(out, data, W, (x, y) => { const c = cellAt(x, y), r = (data.regions || []).find(q => WOODS[q.id] && WOODS[q.id].mood === 'old'); return !!(c && r && inside(x + .5, y + .5, r.polygons[0]) && !wet(c) && !c.plantingReserved && !isPath(c) && !statics.has(x + ',' + y) && !onWall(x + .5, y + 1) && !(c.row && (c.row.plot || c.locked && /^l[sc]-/.test(c.row.id || ''))) && !near(x, y, 1, isPath) && !plazas.some(p => Math.hypot((x + .5 - p.x) / ((p.rx || 3.2) + 1), (y + .5 - p.y) / ((p.ry || 2.4) + 1)) < 1)); });
+    // (every wood, not only the old one: the west woods' beech stood in front of the great stump and hid its parlour, and anyone sat on its log)
+    for (const wr of (data.regions || []).filter(q => WOODS[q.id] && q.polygons && q.polygons[0])) keepOldWoodInView(out, data, W, wr, (x, y) => { const c = cellAt(x, y), r = wr; return !!(c && r && inside(x + .5, y + .5, r.polygons[0]) && !wet(c) && !c.plantingReserved && !isPath(c) && !statics.has(x + ',' + y) && !onWall(x + .5, y + 1) && !(c.row && (c.row.plot || c.locked && /^l[sc]-/.test(c.row.id || ''))) && !near(x, y, 1, isPath) && !plazas.some(p => Math.hypot((x + .5 - p.x) / ((p.rx || 3.2) + 1), (y + .5 - p.y) / ((p.ry || 2.4) + 1)) < 1)); });
     // no tree stands in front of a house in the woods hiding its face (a willow at Sallow carr stood over Thistle's front
     // door): a crown that covers a fifth of a house's front, from in front of it, goes, and ferns grow at its foot instead
     { const fronts = houses.map(h => [h.x * W.cellW - 6, W.sky + (h.y + (h.h || 1)) * W.cellH - 120, (h.x + (h.w || 1)) * W.cellW + 6, W.sky + (h.y + (h.h || 1)) * W.cellH]);
@@ -486,7 +493,9 @@ window.GardenPaintWood = (function () {
     const spot = (yLo, yHi) => { for (let k = 0; k < 10; k++) { const cx = x0 + .12 + r() * (x1 - x0 + .76), cy = y0 + yLo + r() * (y1 - y0 + yHi - yLo); if (set.has(Math.floor(cx) + ',' + Math.floor(cy))) return [cx, cy]; } const c = cells[Math.floor(r() * cells.length)]; return [c[0] + .5, c[1] + .8]; };
     // (a tree in the knot, the big yew or beech at its back and the tall ones in it, has a trunk the feet stop at, like every
     //  other painted tree: walked through, they were the audit's walk-through trees in the woods; round 3 integration)
-    const put = (s, cx, cy) => { const kit = kitOf(s[0]), h = typeof s[1] === 'string' ? sz(s[1], s[2], s[3]) : s[1] + r() * (s[2] - s[1]), X = px(cx), Y = py(cy), GW = GARDEN_WORLD;
+    const put = (s, cx, cy) => { const kit = kitOf(s[0]), h0 = typeof s[1] === 'string' ? sz(s[1], s[2], s[3]) : s[1] + r() * (s[2] - s[1]), X = px(cx), Y = py(cy), GW = GARDEN_WORLD;
+      // (fix loop 1, west: a knot just below a paved place grows only low trees, so no crown rises over the paving)
+      const h = kit && out.overPlace && out.overPlace(cx, cy) ? Math.min(h0, 62) : h0;
       const F = kit && window.GardenPaintTrees && GardenPaintTrees.form ? GardenPaintTrees.form(kit) : null, half = kit ? Math.max(4, Math.min(13, h * ((F && F.girth) || .08) * .75)) : 0;
       const trunk = kit && h >= 50 ? { x0: (X - half) / GW.cellW, x1: (X + half) / GW.cellW, y0: (Y - 6 - GW.sky) / GW.cellH, y1: (Y + 1 - GW.sky) / GW.cellH } : null;
       out.trees.push({ id: s[0], kit, v: Math.floor(r() * 3), size: 0, h: kit ? Math.round(h) : Math.round(h / 6) * 6, x: X, y: Y, flip: r() < .5, scale: kit ? 1 : .88 + r() * .3, region, cx: Math.floor(cx), cy: Math.floor(cy), thicket: true, trunk }); };
@@ -523,8 +532,8 @@ window.GardenPaintWood = (function () {
    * wall, the pond or a ruin painted over it: the ring of wall, the postern and
    * the pond read as missing. A tree whose crown would cover one becomes a low
    * yew if that clears it, else ferns and holly at its foot. Only this wood. */
-  function keepOldWoodInView(out, data, W, spotOk) {
-    const region = (data.regions || []).find(r => WOODS[r.id] && WOODS[r.id].mood === 'old'); if (!region) return;
+  function keepOldWoodInView(out, data, W, region, spotOk) {
+    if (!region) return;
     const cw = W.cellW, ch = W.cellH, py = y => W.sky + y * ch, keep = [], poly = region.polygons[0];
     const box = (x0, y0, x1, y1) => keep.push([x0 * cw, py(y0), x1 * cw, py(y1)]);
     const LIFT = { 'ld-chapel': 6, 'ld-tower': 3.4, 'ld-statue': 2.6, 'ld-woodhut': 2.6, 'ld-icehouse': 2.2, 'ld-labyrinth': 1.2 };
@@ -728,7 +737,7 @@ window.GardenPaintWood = (function () {
     return im;
   }
   function liveTextures(scene) {
-    const make = (key, w, h, draw) => { const k = TEX + '-' + key; if (scene.textures.exists(k)) return k; const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); scene.textures.addCanvas(k, c); return k; };
+    const make = (key, w, h, draw) => { const k = TEX + '-' + key; if (scene.textures.exists(k)) return k; const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); scene.textures.addImage(k, c); return k; };
     return {
       dapple: make('dapple', 96, 48, (cx) => { const r = rng(5); for (let i = 0; i < 7; i++) { const x = 18 + r() * 60, y = 10 + r() * 28, rr = 6 + r() * 12; const g = cx.createRadialGradient(x, y, 0, x, y, rr); g.addColorStop(0, 'rgba(255,246,200,.9)'); g.addColorStop(1, 'rgba(255,246,200,0)'); cx.fillStyle = g; cx.save(); cx.translate(x, y); cx.scale(1, .55); cx.beginPath(); cx.arc(0, 0, rr, 0, Math.PI * 2); cx.restore(); cx.fill(); } }),
       shaft: make('shaft', 64, 256, (cx) => { const g = cx.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, 'rgba(255,248,214,0)'); g.addColorStop(.25, 'rgba(255,238,176,.8)'); g.addColorStop(.8, 'rgba(255,230,160,.5)'); g.addColorStop(1, 'rgba(255,244,200,0)'); cx.fillStyle = g; cx.filter = 'blur(5px)'; cx.beginPath(); cx.moveTo(25, 0); cx.lineTo(39, 0); cx.lineTo(54, 256); cx.lineTo(10, 256); cx.closePath(); cx.fill(); cx.filter = 'none'; cx.globalCompositeOperation = 'destination-in'; const s = cx.createLinearGradient(0, 0, 64, 0); s.addColorStop(0, 'rgba(0,0,0,0)'); s.addColorStop(.5, 'rgba(0,0,0,1)'); s.addColorStop(1, 'rgba(0,0,0,0)'); cx.fillStyle = s; cx.fillRect(0, 0, 64, 256); }),
@@ -778,7 +787,7 @@ window.GardenPaintWood = (function () {
     // One small texture of the canopy field, shown by each chunk's own crop between the shared ground and the wood's floor,
     // and hidden as soon as that chunk's picture is up: the wood is never lighter in squares while it bakes.
     if (S.M.canopy) ok(() => {
-      const CF = S.M.canopy, key = TEX + '-shade-' + hash(String(performance.now())); scene.textures.addCanvas(key, CF.canvas); S.shadeKey = key;
+      const CF = S.M.canopy, key = TEX + '-shade-' + hash(String(performance.now())); scene.textures.addImage(key, CF.canvas); S.shadeKey = key;   // (vf-perf: addImage, as the chunks do: a canvas texture read every pixel back as it was made, on every repaint)
       const ox = CF.x0 - CF.st / 2, oy = CF.y0 - CF.st / 2, tw = CF.canvas.width, th = CF.canvas.height;
       for (const ch of S.chunks.values()) {
         const B = ch.box, cx0 = Math.max(0, (B.x - ox) / CF.st), cy0 = Math.max(0, (B.y - oy) / CF.st), cx1 = Math.min(tw, (B.x + B.w - ox) / CF.st), cy1 = Math.min(th, (B.y + B.h - oy) / CF.st);
@@ -860,17 +869,19 @@ window.GardenPaintWood = (function () {
     if (S.stale.length && performance.now() - S.staleAt > 4000) { for (const o of S.stale) dropStale(S.scene, o); S.stale = []; }   // (any old picture left after four seconds goes)
     let resident = 0, budget = 1; const vx = view.x + view.w / 2, vy = view.y + view.h / 2, pick = () => { let best = null, bd = Infinity; for (const ch of S.chunks.values()) { const seen = hit(ch.box, view); if (ch.image && (ch.K >= wantK || !seen) || !hit(ch.box, near) || (S.job && S.job.ch === ch)) continue; const d = Math.hypot(ch.box.x + CH / 2 - vx, (ch.box.y + CH / 2 - vy) * 1.4) - (seen ? 1e6 : 0) + (ch.image ? 5e5 : 0); if (d < bd) { bd = d; best = ch; } } return best; };
     for (const ch of S.chunks.values()) if (ch.image) { resident++; if (hit(ch.box, view)) ch.used = S.frame; }
-    const j0 = performance.now();
-    for (let n = 0; n < 6 && performance.now() - j0 < 7; n++) {
+    const j0 = performance.now(), jRoom = typeof gardenBakeRoom === 'function' ? gardenBakeRoom(7) : 7;   // (the shared budget a frame, 94-garden-paint-0budget.js)
+    for (let n = 0; n < 6 && performance.now() - j0 < jRoom; n++) {
       if (!S.job) { const todo = pick(); if (!todo) break; S.job = { ch: todo, gen: bakeChunk(todo, hit(todo.box, view) ? wantK : Math.min(wantK, 1.5)) }; }
-      let done = false; try { while (performance.now() - j0 < 7) { const g0 = performance.now(); const st = S.job.gen.next(); const gd = performance.now() - g0; if (gd > slowStep.ms) { slowStep.ms = +gd.toFixed(1); slowStep.at = S.job.ch.key + ':' + (S.job.phase || ''); } if (st.done) { done = true; break; } } } catch (e) { lastError = String(e && e.stack || e); done = true; }
+      let done = false; try { while (performance.now() - j0 < jRoom) { const g0 = performance.now(); const st = S.job.gen.next(); const gd = performance.now() - g0; if (gd > slowStep.ms) { slowStep.ms = +gd.toFixed(1); slowStep.at = S.job.ch.key + ':' + (S.job.phase || ''); } if (st.done) { done = true; break; } } } catch (e) { lastError = String(e && e.stack || e); done = true; }
       budget = 0; if (!done) break; S.job.ch.used = S.frame; S.job = null; resident++;
     }
+    if (typeof gardenBakeSpent === 'function') gardenBakeSpent(performance.now() - j0);
     const tBake = performance.now() - t0; S.tw = S.tw || { bake: 0, trees: 0, sort: 0, light: 0 }; S.tw.bake = Math.max(S.tw.bake, tBake);
     { let bytes = 0; for (const c of S.chunks.values()) if (c.image) bytes += c.bytes || 0; if (resident > MAX_CHUNKS || bytes > CAP_MB * 1048576) { const far = [...S.chunks.values()].filter(c => c.image && !hit(c.box, near)).sort((a, b) => a.used - b.used); let over = bytes - CAP_MB * 1048576, n = resident - MAX_CHUNKS; for (const c of far) { if (over <= 0 && n <= 0) break; over -= c.bytes || 0; n--; dropChunk(c); } } }
     if (S.sortRoot && S.root.sort) { S.root.sort('depth'); S.sortRoot = false; }
     // trees: make a bucket's sprites once, when it comes near (one bucket a frame, and not on a bake frame)
     const pl = typeof _gw !== 'undefined' ? { x: _gw.px * S.W.cellW, y: S.W.sky + _gw.py * S.W.cellH } : null;
+    const friendsUp = pl && typeof gardenCrownFeet === 'function' ? gardenCrownFeet(S.W).filter(p => !p.me) : [];   // (2.74.1) a friend up a tree: its crown fades on your screen too
     let underN = 0, madeN = 0; const fading = [];   // (madeN: at most ten tree sprites made a frame, so a bucket coming into view never costs one long frame)
     for (const b of S.buckets.values()) {
       const vis = hit(b.box, view);
@@ -881,7 +892,7 @@ window.GardenPaintWood = (function () {
       // story house (Hollin's hut) once you are near it
       // (the picture's width includes its shadow and dapple margins: a fruit tree's fade oval by it was twice the crown, so
       // the tree beside the orchard bell stood as a grey ghost with you a stride away; the crown is at most about its height)
-      if (vis && pl) for (const t of b.trees) { if (!t.im) continue; const under = t.kit ? kitCrownCovers(pl, t) : gardenCrownCovers(pl.x, pl.y, t.x, t.y, t.h * t.scale, Math.min(t.im.displayWidth, t.h * t.scale * 1.05), t.im), near = t.hides && Math.hypot((pl.x - t.hides.x) / S.W.cellW, (pl.y - t.hides.y) / S.W.cellH) < 3.5; t.fade = near || under || GardenNativePainted.fishingCrownCovers(t.im); if (under) { underN++; if (t.im.active && t.im.visible) S.covering.push(t.im); } fading.push(t); }
+      if (vis && pl) for (const t of b.trees) { if (!t.im) continue; const cov = (q) => t.kit ? kitCrownCovers(q, t) : gardenCrownCovers(q.x, q.y, t.x, t.y, t.h * t.scale, Math.min(t.im.displayWidth, t.h * t.scale * 1.05), t.im), under = cov(pl), near = t.hides && Math.hypot((pl.x - t.hides.x) / S.W.cellW, (pl.y - t.hides.y) / S.W.cellH) < 3.5; t.fade = near || under || (typeof gardenCrownFeetHit === 'function' ? gardenCrownFeetHit(friendsUp, t.im, cov) : friendsUp.some(cov)) || GardenNativePainted.fishingCrownCovers(t.im); if (under) { underN++; if (t.im.active && t.im.visible) S.covering.push(t.im); } fading.push(t); }
     }
     // Several crowns over you fade further each, so you are as easy to see under three as under one (stacked at the one-crown
     // fade you read as a ghost deep in the wood)

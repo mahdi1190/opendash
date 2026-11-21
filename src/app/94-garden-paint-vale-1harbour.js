@@ -698,6 +698,12 @@
       const sag = seed ? 6 + r() * 8 : 4, net = `M${-hw + 1} ${-h0 + 3}Q0 ${-(h0 + h1) / 2 + 3 + sag} ${hw - 1} ${-h1 + 3}L${hw - 4} ${-16 + (seed ? r() * 6 : 0)}Q${hw * .1} ${-2 - (seed ? r() * 4 : 0)} ${-hw + 8} ${-20 + (seed ? r() * 6 : 0)}Z`;
       B.f(net, NET, .35); B.cx.save(); B.cx.clip(new Path2D(net)); for (let k = -70; k < 70; k += 5) { B.s(`M${k} ${-h0 - 2}l40 50`, '#2f3e3a', .7, .6); B.s(`M${k} ${-h0 - 2}l-40 50`, '#2f3e3a', .7, .6); } B.cx.restore();
       for (let x = -hw + 4; x <= hw - 4; x += 8) B.f(B.ell(x, -h0 + 4 + (x + hw) / (2 * hw) * (h0 - h1) + Math.abs(x) * .05, 2.2, 1.6), FL);
+      // (vale final fix 1) the net's foot: its lower edge let down and gathered in folds along the shingle between the posts, weighted
+      // with a few floats, so the net meets the ground the whole way (its block is a net you walk round, not a wall of air under it)
+      { const fold = `M${-hw + 2} ${-1}Q${-hw * .6} ${-9} ${-hw * .2} ${-4}Q${hw * .15} ${-10} ${hw * .5} ${-3}Q${hw * .8} ${-8} ${hw - 2} ${-1}Q${hw * .3} ${3} ${-hw + 2} ${-1}Z`;
+        B.f(`M${-hw + 8} ${-20}L${hw - 4} ${-16}L${hw - 3} ${-3}L${-hw + 3} ${-3}Z`, NET, .22);
+        B.f(fold, NET, .6); B.cx.save(); B.cx.clip(new Path2D(fold)); for (let k = -70; k < 70; k += 4) { B.s(`M${k} -12l14 14`, '#2a3632', .6, .55); B.s(`M${k} -12l-14 14`, '#2a3632', .6, .55); } B.cx.restore();
+        for (const x of [-hw * .55, 0, hw * .5]) B.f(B.ell(x, -2.5, 2.4, 1.6), FL).f(B.ell(x - .6, -3.1, 1, .6), '#fff', .4); }
       B.f(B.ell(-12, -6, 8, 2.4), NET, .4); return; }
     if (v === 1) {
       // a low trestle of two crossed legs and a pole, the net slung over it to the sand both sides
@@ -764,14 +770,14 @@
   // lighthouse, the strand's far end), a rope line on driftwood posts stands along the edge where the feet stop, wrack
   // caught round the posts' feet, so walking never stops at nothing. It follows the shut land's own cells (the stop line)
   // and goes when that country opens.
-  const shutKey = () => { try { return (gardenModel().areas || []).filter(a => /^zn-/.test(a)).sort().join(','); } catch (e) { return ''; } };
+  const shutKey = () => { try { return ((typeof gardenHere === 'function' ? gardenHere() : gardenModel()).areas || []).filter(a => /^zn-/.test(a)).sort().join(','); } catch (e) { return ''; } };
   V.groundSigs.push(() => '|rope:' + shutKey());
   // (round 3) and where Wren cove's beach runs on into the old woodland's shore, west of the village
   const ROPE_BOXES = [QUAY, { x0: 0, x1: 20, y0: 76, y1: 92 }];
   let ropeKey = null, ropeRuns = [];
   function ropeLine(W) {
     const k = shutKey(); if (k === ropeKey) return ropeRuns; ropeKey = k; ropeRuns = [];
-    let lv = 1; try { lv = gardenModel().level.level; } catch (e) { /* level 1 */ }
+    let lv = 1; try { lv = (typeof gardenHere === 'function' ? gardenHere() : gardenModel()).level.level; } catch (e) { /* level 1 */ }
     const base = (x, y) => { try { return gardenIslandBaseCell(x, y); } catch (e) { return null; } };
     const shut = (x, y) => { const b = base(x, y); if (!b || !b.land || b.ocean) return false; try { return /^locked:zn-/.test(String(gardenAreaAt(x, y, lv))); } catch (e) { return false; } };
     const sand = (x, y) => { const b = base(x, y); return !!b && b.land && !b.ocean && !!b.beach && !shut(x, y); };

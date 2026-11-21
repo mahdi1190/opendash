@@ -57,7 +57,7 @@
       const w = Math.ceil(H * 1.0), hgt = Math.ceil(H * 1.1), c = document.createElement('canvas'); c.width = w * K; c.height = hgt * K;
       const cx = c.getContext('2d'); cx.setTransform(K, 0, 0, K, w * K / 2, (hgt - 10) * K);
       try { draw(cx, kind, season, v, H); } catch (e) { return null; }
-      scene.textures.addCanvas(key, c); scene.textures.get(key).customData = { foot: [.5, (hgt - 10) / hgt] };
+      scene.textures.addImage(key, c); scene.textures.get(key).customData = { foot: [.5, (hgt - 10) / hgt] };
     }
     const meta = scene.textures.get(key).customData.foot;
     return scene.add.image(o.x || 0, o.y || 0, key).setOrigin(meta[0], meta[1]).setScale((o.flip ? -1 : 1) / K, 1 / K);

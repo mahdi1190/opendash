@@ -43,12 +43,18 @@
       return { me, poly };
     }
     const edgePts = (A, Bq) => { const n = Math.max(2, Math.round(Math.hypot(Bq[0] - A[0], Bq[1] - A[1]) / 40)), pts = []; for (let k = 0; k <= n; k++) { const t = k / n, x = A[0] + (Bq[0] - A[0]) * t, y = A[1] + (Bq[1] - A[1]) * t, w = k && k < n ? wob(x, y) : [0, 0]; pts.push([x + w[0], y + w[1]]); } return pts; };
-    function fieldsIn(B, cb) {
+    // (vf-perf) in three stages, each its own op so the kit can slice between them: the fields, the hedgerows, the farmsteads
+    // (one op of all three took up to 290 ms a chunk while walking); the chunk's fields are found once for the three
+    let fieldMemo = null;
+    function fieldsIn(B, cb, stage) {
+      const fk = cb.join(','); let cells = fieldMemo && fieldMemo.k === fk ? fieldMemo.cells : null;
+      if (!cells) { cells = [];
       const i0 = Math.floor((cb[0] - FS * 1.5) / FS), i1 = Math.ceil((cb[2] + FS * 1.5) / FS), j0 = Math.floor((cb[1] - FS * 1.5) / (FS * .8)), j1 = Math.ceil((cb[3] + FS * 1.5) / (FS * .8));
-      const cells = [];
+
       for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const c = cellOf(i, j); if (!c) continue; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const q of c.poly) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); } if (x1 < cb[0] - 40 || x0 > cb[2] + 40 || y1 < cb[1] - 40 || y0 > cb[3] + 40) continue; c.edges = c.poly.map((A, k) => edgePts(A, c.poly[(k + 1) % c.poly.length])); cells.push(c); }
+      fieldMemo = { k: fk, cells }; }
       // the fields: crop, pasture, the odd ploughed brown, a few rows or stripes
-      for (const c of cells) {
+      if (stage === 0) for (const c of cells) {
         const rr = kit.rng(kit.hash(c.me.i, c.me.j, 186)), roll = rr(), col = roll < .1 ? '#9a7a54' : P.mainField[Math.floor(rr() * P.mainField.length)], outline = [].concat(...c.edges.map(e => e.slice(0, -1)));
         const shape = 'M' + outline.map(q => q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join('L') + 'Z';
         B.f(shape, col, .92);
@@ -56,7 +62,7 @@
         else if (rr() < .3) for (let k = 0; k < 4; k++) { const x = c.me.x + (rr() - .5) * 90, y = c.me.y + (rr() - .5) * 60; B.f(B.ell(x, y, 2.4, 1.6), '#f4f0e6', .95); }   // sheep
       }
       // the hedgerows along every shared edge (drawn by the field with the lower number), trees standing in them
-      for (const c of cells) c.poly.forEach((A, k) => {
+      if (stage === 1) for (const c of cells) c.poly.forEach((A, k) => {
         const o = c.poly[(k + 1) % c.poly.length][2]; if (o && (o.j * 10000 + o.i) < (c.me.j * 10000 + c.me.i)) return;
         const pts = c.edges[k]; if (pts.length < 2) return;
         const d = 'M' + pts.map(q => q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join('L');
@@ -69,7 +75,7 @@
         }
       });
       // a farmstead now and then: house, barn, a yard
-      for (const c of cells) { const rr = kit.rng(kit.hash(c.me.i, c.me.j, 188)); if (rr() > .09) continue; const fx = c.me.x, fy = c.me.y; B.f(B.ell(fx + 4, fy + 4, 34, 12), '#b8a878', .6).f(B.rect(fx - 12, fy - 9, 18, 11), '#d8ccb0').f(`M${fx - 14} ${fy - 9}L${fx - 3} ${fy - 18}L${fx + 8} ${fy - 9}Z`, '#8a5a44').f(B.rect(fx + 10, fy - 7, 20, 10), '#8a6a4a').f(`M${fx + 8} ${fy - 7}L${fx + 20} ${fy - 14}L${fx + 32} ${fy - 7}Z`, '#5e5a52'); }
+      if (stage === 2) for (const c of cells) { const rr = kit.rng(kit.hash(c.me.i, c.me.j, 188)); if (rr() > .09) continue; const fx = c.me.x, fy = c.me.y; B.f(B.ell(fx + 4, fy + 4, 34, 12), '#b8a878', .6).f(B.rect(fx - 12, fy - 9, 18, 11), '#d8ccb0').f(`M${fx - 14} ${fy - 9}L${fx - 3} ${fy - 18}L${fx + 8} ${fy - 9}Z`, '#8a5a44').f(B.rect(fx + 10, fy - 7, 20, 10), '#8a6a4a').f(`M${fx + 8} ${fy - 7}L${fx + 20} ${fy - 14}L${fx + 32} ${fy - 7}Z`, '#5e5a52'); }
     }
 
     // in parts, so a chunk bakes in short slices (the kit slices between ops)
@@ -79,7 +85,9 @@
       // fields: an old patchwork, not a grid. Each field is the patch of ground nearest one of a scatter of
       // farm points (a warped lattice), so fields come in odd sizes and slant every way; their shared edges wobble
       // the same for both neighbours and carry the hedgerows, with hedgerow trees, gates and the odd farmstead.
-      fieldsIn(B, cb);
+      fieldsIn(B, cb, 0);
+      if (part === 'h') fieldsIn(B, cb, 1);
+      if (part === 'f') fieldsIn(B, cb, 2);
       // the island's west woods run on past the grid: a woodland floor that deepens toward the edge, so fields give way to wood, not to a line
       if (part === 1 && cb[0] < 0) { const x0 = Math.max(cb[0], -520), floor = kit.mix(P.floor || P.leaf[0], P.leaf[0], .35); B.f(B.rect(x0, Math.max(cb[1], 0), Math.min(0, cb[2]) + 40 - x0, Math.max(0, cb[3] - Math.max(cb[1], 0))), B.lin(-520, 0, -60, 0, [[0, kit.rgba(floor, 0)], [.6, kit.rgba(floor, .7)], [1, kit.rgba(floor, .95)]])); }
       // woods: the west woods run on, and copses dot the farmland
@@ -147,10 +155,10 @@
       main(band, 86 + i, (B) => { B.cx.clip(bandClip); for (const sh of [shoreS]) { V.strokePts(B, sh, P.shallow, 120, .3); V.strokePts(B, sh, P.sand, 60, 1); V.strokePts(B, sh, P.sandWet, 22, .5, 0, 18); B.cx.setLineDash([16, 8]); V.strokePts(B, sh, P.foam, 3, .7, 0, 32); B.cx.setLineDash([]); } });
       // the north-east headland meets the sea in low dark rock and a broken line of surf, misted like the land behind it
       if (i) main(band, 88, (B) => { B.cx.clip(bandClip); V.strokePts(B, shoreNE, P.shallow, 90, .1); V.strokePts(B, shoreNE, kit.mix('#6f6a60', P.haze, .62), 18, .42); V.strokePts(B, shoreNE, kit.mix('#9a9284', P.haze, .65), 7, .32, -3); B.cx.setLineDash([10, 14]); V.strokePts(B, shoreNE, P.foam, 3, .25, 9);   /* (misted far off: at full strength its shallows and rock read as a pale angular shape and a hard dark band over the sea in the north-east corner) */ B.cx.setLineDash([]); });
-      for (let part = 0; part < 4; part++) {
-        main(band, 90 + i * 10 + part, (B, r, cb) => { B.cx.clip(bandClip); B.cx.clip(bigP); B.cx.clip(outGrid, 'evenodd'); paintLand(B, r, cb, part); });
+      for (const [pi, part] of [0, 'h', 'f', 1, 2, 3].entries()) {
+        main(band, 90 + i * 10 + pi, (B, r, cb) => { B.cx.clip(bandClip); B.cx.clip(bigP); B.cx.clip(outGrid, 'evenodd'); paintLand(B, r, cb, part); });
         // inside the grid's corners, only where the island's coast leaves sea
-        main(band, 120 + i * 10 + part, (B, r, cb) => { if (cb[0] > 0 && cb[1] > 0) return; B.cx.clip(bandClip); B.cx.clip(bigP); B.cx.clip(outCoast, 'evenodd'); B.cx.clip(new Path2D(B.rect(0, 0, gw, 9000))); paintLand(B, r, cb, part); });
+        main(band, 120 + i * 10 + pi, (B, r, cb) => { if (cb[0] > 0 && cb[1] > 0) return; B.cx.clip(bandClip); B.cx.clip(bigP); B.cx.clip(outCoast, 'evenodd'); B.cx.clip(new Path2D(B.rect(0, 0, gw, 9000))); paintLand(B, r, cb, part); });
       }
       // the west fields rise into the haze at the foot of the far fells, not to a ruled line under them (the north band's haze above SEAM)
       // (and west of the island, the north band's strip of fields under the ridges hazes into the same: it stood as a ruled block on the sea)
@@ -172,10 +180,14 @@
       // (layout fix, north) the west bank lies over the mainland, thinning to nothing a cell inside the island, its inner edge
       // wandering in soft lobes (a straight gradient five cells deep stood over the woods as a pale band with the trees cut
       // at a ruled line, and over you when you walked the west edge)
-      C.thing({ key: 'mainland-haze-w', x: 0, y: rows, depth: 89990, K: .25, box: [-340, -rows - 800, 140, 0], draw: B => { const r = kit.rng(5303);
-        B.f(B.rect(-340, -rows - 800, 300, rows + 800), B.lin(-340, 0, -40, 0, [[0, haze], [.35, hz(.42)], [1, hz(.3)]]));
-        for (let y = -rows - 800; y < 40; y += 70 + r() * 60) { const rx = 70 + r() * 70, ry = 90 + r() * 80, x = -40 + (r() - .3) * 50;
-          B.cx.save(); B.cx.translate(x, y); B.cx.scale(1, ry / rx); B.cx.fillStyle = B.rad(0, 0, rx, [[0, hz(.3)], [.6, hz(.16)], [1, haze]]); B.cx.beginPath(); B.cx.arc(0, 0, rx, 0, Math.PI * 2); B.cx.fill(); B.cx.restore(); } } });
+      // (fix loop 1, west: the pale bank read from the overview as a blurred orange-brown smear down the whole west edge, the map
+      // ending in fog. It is the deep wood's shade now: the mainland's trees go into dark under-canopy westwards, its inner
+      // edge wandering in lobes over the island's own edge, so the woods run on into the dark of a bigger forest)
+      const deep = a => kit.rgba('#22301c', a);
+      C.thing({ key: 'mainland-haze-w2', x: 0, y: rows, depth: 89990, K: .25, box: [-340, -rows - 800, 140, 0], draw: B => { const r = kit.rng(5303);
+        B.f(B.rect(-340, -rows - 800, 340, rows + 800), B.lin(-340, 0, 0, 0, [[0, deep(.72)], [.55, deep(.56)], [.82, deep(.34)], [.95, deep(.12)], [1, deep(0)]]));
+        for (let y = -rows - 800; y < 40; y += 60 + r() * 50) { const rx = 50 + r() * 60, ry = 70 + r() * 70, x = -60 + (r() - .4) * 60;
+          B.cx.save(); B.cx.translate(x, y); B.cx.scale(1, ry / rx); B.cx.fillStyle = B.rad(0, 0, rx, [[0, deep(.22)], [.6, deep(.1)], [1, deep(0)]]); B.cx.beginPath(); B.cx.arc(0, 0, rx, 0, Math.PI * 2); B.cx.fill(); B.cx.restore(); } } });
       // the north bank stays above the island's top row (over the far fells and the summits of the range), gone by the range's foot
       C.thing({ key: 'mainland-haze-n', x: 0, y: W.sky + 40, depth: 89991, K: .2, box: [-2400, -1400, W.cols * cw + 2400, 0], draw: B => { B.f(B.rect(-2400, -1400, W.cols * cw + 4800, 1400), B.lin(0, -1400, 0, 0, [[0, haze], [.55, hz(.24)], [.82, hz(.28)], [1, haze]])); } });
     }

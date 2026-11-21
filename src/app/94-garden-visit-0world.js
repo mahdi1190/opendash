@@ -43,7 +43,7 @@ function _gdvHow(t) {
 function gardenVisitMay(t, item) {
   if (!_gdvHow(t)) return false;
   const a = GL_ACTS[t];
-  if (a && a.mine && item) return !!item.mine || (!item.by && _glv.touch === true);
+  if (a && a.mine && item) return !!item.mine || _glv.touch === true;   // (full co-op, 2.75: Play together reaches everything here, yours, theirs or another friend's)
   return true;
 }
 function gardenVisitWants(p) { return p.ripe ? gardenVisitMay('harvest', p) : gardenVisitMay('water', p) && _gdvHow('water') !== 'small'; }
@@ -135,7 +135,7 @@ function gardenVisitModel() {
   gardenFeatureSet(s.fp || []);
   gardenSightSet(s.rp || []);
   gardenWorksSet(s.wk || [], s);
-  if (typeof gardenDesignShow === 'function') gardenDesignShow(s.dz || null);   // their design decides where things stand and where you can walk. It stays in memory: nothing of it reaches your save
+  if (typeof gardenDesignShow === 'function' && !(typeof gardenDesignOn === 'function' && gardenDesignOn())) gardenDesignShow(s.dz || null);   // (while you design here together, your draft is on screen)   // their design decides where things stand and where you can walk. It stays in memory: nothing of it reaches your save
   if (typeof gardenBuildLooksSet === 'function') gardenBuildLooksSet(s.bk);   // how they have painted their buildings
   const rows = _gdvRows(s), by = _gdvBy;
   const plants = [], decor = [], cats = {};
@@ -162,17 +162,24 @@ function gardenVisitModel() {
   const first = _gdvFirst();
   const m = { now, today, season, south: _gdSouth(), tod, events: gardenEventsOn(today), rain, level: { level: s.lv }, areas, plants, decor, occ, blooms, ripe, thirsty, trees, cats, heart: s.heart, wallet: gardenWallet(), totalDone: 0, works: (s.wk || []).slice(), wv: s.wv, lh: s.lh, water: { cap: wleft, bonus: 0, used: 0, left: wleft, raining: false },
     visit: { fid: _gdv.fid, f: _gdv.f, name: gardenSocialName(_gdv.fid), live: _glvLive(), lv: _glvLive() ? _glv.lv : (_gdvTheirs() || {}).lv || 'none', key, snap: s, sh: s.sh || null, shSig: typeof gardenShowSig === 'function' ? gardenShowSig(s.sh) : '', drawFriend: _glvLive() ? null : _gdv.f,
-      no: { plant: _gdvHow('plant') ? '' : `${first} has not let you plant here yet`, decor: _gdvHow('place') ? '' : `${first} has not let you place things here yet` } } };
+      no: { plant: _gdvHow('plant') ? '' : _gdvWhyNot('plant'), decor: _gdvHow('place') ? '' : _gdvWhyNot('place') } } };
   m.visitors = _gdVisitorsNow(m);
   _gdv.memo = m; _gdv.memoKey = key;
   return m;
 }
 
 /* ---------- saying no, and asking for more ---------- */
-const _GDV_VERB = Object.freeze({ plant: 'plant', place: 'place things', water: 'water', weed: 'tidy', feed: 'feed the plants', harvest: 'pick', dig: 'dig', move: 'move things', take: 'take things', give: 'give things', turn: 'turn things' });
+const _GDV_VERB = Object.freeze({ land: 'buy land', build: 'build', plant: 'plant', place: 'place things', water: 'water', weed: 'tidy', feed: 'feed the plants', harvest: 'pick', dig: 'dig', move: 'move things', take: 'take things', give: 'give things', turn: 'turn things' });
 /** The same red flash and X as at home, with a padlock, and one tap asks them for more. */
+/** Why you cannot do this here just now, in plain words. Full co-op (2.75): a friend who plays together is only ever held back by their friend being away (some things need you both there) or by having been sent home. */
+function _gdvWhyNot(t) {
+  const first = _gdvFirst(), lv = _glvLive() ? _glv.lv : (_gdvTheirs() || {}).lv || 'none';
+  if (lv === 'play') return `That needs ${first} in their garden too. Plant, place and water now, and it waits for them.`;
+  return `${first} has not let you ${_GDV_VERB[t] || 'do that'} here yet`;
+}
 function _gdvDeny(t, target) {
-  gameDeny(target || null, { kind: 'lock', say: `${_gdvFirst()} has not let you ${_GDV_VERB[t] || 'do that'} here yet.` });
+  gameDeny(target || null, { kind: 'lock', say: _gdvWhyNot(t) + (/[.!]$/.test(_gdvWhyNot(t)) ? '' : '.') });
+  if (((_glvLive() ? _glv.lv : (_gdvTheirs() || {}).lv) || 'none') === 'play') return { ok: false, msg: '', shown: true };   // (nothing more to ask for)
   const was = _gdv.asked.get(_gdv.fid) || 0, now = Date.now();   // clock-ok: spacing a request
   if (now - was > 3600000 && typeof _gw !== 'undefined') {
     const first = _gdvFirst(), fid = _gdv.fid;
@@ -263,13 +270,29 @@ function gardenVisitAct(t, a) {
     case 'harvestAll': {
       if (!_gdvHow('harvest')) return _gdvDeny('harvest');
       const list = m.plants.filter(q => q.ripe && q.def.yield && !q.pend && gardenVisitMay('harvest', q));
-      if (!list.length) return _gdNo('Nothing here is yours to pick yet');
+      if (!list.length) return _gdNo('Nothing is ripe to pick yet');
       for (const q of list.slice(0, 30)) _gdvDo('harvest', { p: q.def.id, x: q.x, y: q.y }, '', _ghNodeOf(q.uid));
       return { ok: true, msg: '' };
     }
-    case 'collect': case 'land': return _gdvDeny('take', node);
+    case 'land': return _gdvLand(m, String(a.id || ''));
+    case 'collect': return typeof gardenLandCollectVisit === 'function' ? gardenLandCollectVisit(String(a.uid || ''), m) : _gdvDeny('take', node);   // (full co-op: a built thing gives to you too, into your own bag)
     default: return _gdNo('Not here');
   }
+}
+/** Full co-op (2.75): buy a piece of your friend's land, or build one of its things, with YOUR coins. It is theirs for good (their page writes it; a refusal puts your coins back). */
+function _gdvLand(m, id) {
+  const feat = typeof gardenLandFeature === 'function' ? gardenLandFeature(id) : null, first = _gdvFirst();
+  if (!_glvLive()) return _gdNo(`You can buy and build here while ${first} is in their garden too`);
+  if (!_gdvHow(feat ? 'build' : 'land')) return _gdvDeny(feat ? 'build' : 'land');
+  let cost;
+  if (feat) { const I = gardenLandFeatureInfo(id, m); if (!I) return _gdNo('That is not something you can build'); if (I.built) return _gdNo(`${first} has that already`); if (I.why) return _gdNo(I.why); cost = I.cost; }
+  else { const I = gardenLandInfo(id, m); if (!I) return _gdNo('That land is not for sale'); if (I.owned) return _gdNo(`That land is ${first}’s already`); if (!I.lvOk) return _gdNo(`${I.def.name} opens at garden level ${I.def.lv} in this garden`); if (!I.reach || !I.keyOk) return _gdNo(`The way to ${I.def.name} is not open in this garden yet`); cost = I.cost; }
+  const have = gardenWallet().coins;
+  if (have < cost) return _gdNo(`That costs ${_gdpNum(cost)} coins: you have ${_gdpNum(have)}`);
+  if ([..._glv.pending.values()].some(P => (P.t === 'land' || P.t === 'build') && P.f && P.f.p === id)) return { ok: true, msg: '' };   // (already on its way)
+  const x = typeof _gw !== 'undefined' && Number.isFinite(_gw.px) ? Math.max(0, Math.min(GARDEN_WORLD.cols - 1, Math.floor(_gw.px))) : null, y = x == null ? null : Math.max(0, Math.min(GARDEN_WORLD.rows - 1, Math.floor(_gw.py)));
+  _glvIntent(feat ? 'build' : 'land', { p: id, ...(x != null ? { x, y } : {}) }, '', { c: -cost });
+  return { ok: true, msg: '' };
 }
 /** The saved copy's one watering a day (garden:act): the rule it has always had. */
 function _gdvSmallWater(f, target) {
@@ -355,6 +378,6 @@ function gardenVisitTagPaint(box, m) {
     const pv = _gdv.f && typeof _pfWho === 'function' ? _pfWho(_gdv.f) : null, mu = pv && pv.profile && pv.profile.ext ? pv.profile.ext.music : null;
     if (live && mu && mu.l === true && /^[0-9a-f]{16}$/.test(String(_gdv.fid)) && typeof musicNowEl === 'function' && typeof spotifyLinked === 'function' && spotifyLinked()) el.appendChild(musicNowEl(_gdv.fid, { along: true }));
   } catch (e) { /* the tag does fine without it */ }
-  if (_glv.state === 'look' && _glv.why && _glv.why !== 'home') el.appendChild(_gsvBtn('Knock', { kind: 'btn-ghost', cls: 'gd-vt-knock', tip: 'Knock again', run: _glvKnockAgain }));
+  if (_glv.state === 'look' && _glv.why) el.appendChild(_gsvBtn('Knock', { kind: 'btn-ghost', cls: 'gd-vt-knock', tip: 'Knock again', run: _glvKnockAgain }));
   el.appendChild(_gsvBtn('', { icon: 'house', kind: 'btn-ghost', cls: 'gd-vt-home', aria: 'Back to your garden', tip: 'Back to your garden', run: () => setView('garden') }));
 }

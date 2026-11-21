@@ -43,12 +43,12 @@ function _plThings() {
   if (_pl.things && _pl.thingsKey === key) return _pl.things;
   const out = {}, put = (kind, x, y, name, extra) => { (out[kind] || (out[kind] = [])).push(Object.assign({ x, y, name }, extra || {})); };
   let season = ''; try { season = gardenModel().season || ''; } catch (e) { season = ''; }
-  try { for (const t of gardenAffordThings()) { const K = GARDEN_KINDS[t.kind]; if (!K || !K.pet || K.pet === 'pier' || (t.season && season && t.season !== season)) continue; put(K.pet, t.x, t.y, t.name || K.name, { kind: t.kind, id: t.id }); } } catch (e) { /* none */ }
+  try { for (const t of gardenAffordThings()) { const K = GARDEN_KINDS[t.kind]; if (!K || !K.pet || K.pet === 'pier' || (t.season && season && t.season !== season)) continue; put(K.pet, t.x, t.y, t.name || K.name, { kind: t.kind, id: t.id, w: t.w || 1, h: t.h || 1 }); } } catch (e) { /* none */ }
   // the end of a pier: as far as it is built, just short of the end (round 4, the critic: pier-watch played on the quay)
   try { const decks = typeof _gardenPierDecksNow === 'function' ? _gardenPierDecksNow() : [], d = decks[decks.length - 1]; if (d && gardenAffordOfPet('pier').length) put('pier', d.x + d.w / 2, d.y + d.h - 0.9, 'The end of the pier', { free: true, stage: 1 }); } catch (e) { /* none */ }
   // the water's edge where it is soft (grass, sand, a reed bank), not a paved quay: paddling and fish-watching want a real shore
   out.tree = S.shade.concat(out.tree || []);   // (a found thing of a kind the pets call a tree, a hollow oak, stays in)
-  try { if (typeof _gwPaintedTrunks === 'function') for (const b of _gwPaintedTrunks(gardenIslandData())) { const kind = gardenKindOf({ tree: b.sp || '' }), K = GARDEN_KINDS[kind]; if (K && K.pet === 'tree') out.tree.push({ x: (b.x0 + b.x1) / 2, y: b.y1, name: K.name, kind }); } } catch (e) { /* no painted trees */ }   // (every tree a painter drew counts, by its kind)
+  try { if (typeof _gwPaintedTrunks === 'function') for (const b of _gwPaintedTrunks(gardenIslandData())) { if (b.sp === 'water') continue; const kind = gardenKindOf({ tree: b.sp || '' }), K = GARDEN_KINDS[kind]; if (K && K.pet === 'tree') out.tree.push({ x: (b.x0 + b.x1) / 2, y: b.y1, name: K.name, kind }); } } catch (e) { /* no painted trees */ }   // (every tree a painter drew counts, by its kind)
   out.shore = S.shore.filter(q => typeof _plStoneAt !== 'function' || !_plStoneAt(q.x, q.y)); if (!out.shore.length) out.shore = S.shore.slice(); out.drink = S.drink.slice(); out.warm = S.warm.slice();
   _pl.things = out; _pl.thingsKey = key;
   return out;
@@ -156,7 +156,10 @@ function _plGoDo(P, t, clips, rest, after, run) {
   const offs = row && row.at === 'stall' ? [[-1.5, 1.0], [1.5, 1.0], [-2.0, .7], [2.0, .7], [-2.2, 1.2], [2.2, 1.2], [-1.6, 1.6], [1.6, 1.6]] : [[0, .8], [-.9, .5], [.9, .5], [0, 1.3], [-1.3, .8], [1.3, .8], [-1.6, .2], [1.6, .2], [0, 1.8]];
   // (round 6, the critic: at the stall it stood 2.6 cells off, out of the picture: of the free spots by the thing, the one nearest you, so it
   // plays beside the thing and beside you; the thing's own front first when that is as near)
-  const cand = t && !t.free ? offs.map(([x, y], i) => ({ x: t.x + x, y: t.y + y, i })).filter(q => _ptwFree(q.x, q.y) && clearOfYou(q) && !_plInRibbons(q.x, q.y, true)) : [];
+  // (vale final fix 1, rule 17) a big thing (the falls, the labyrinth, the lighthouse) is stood beside from its own drawn footprint: in front of
+  // it across its width and at its two ends, not only round the middle of its foot, which for a big thing is inside it or out on the water
+  const big = t && !t.free && (t.w || 1) > 1.6 ? (() => { const hw = t.w / 2, out = []; for (const k of [0, -.3, .3, -.5, .5]) out.push([k * t.w, .8]); for (const sx of [-1, 1]) for (const dy of [0, -.4 * (t.h || 1), .5]) out.push([sx * (hw + .7), dy]); for (const sx of [-1, 1]) out.push([sx * (hw + 1.3), .3]); return out; })() : [];
+  const cand = t && !t.free ? offs.concat(big).map(([x, y], i) => ({ x: t.x + x, y: t.y + y, i })).filter(q => _ptwFree(q.x, q.y) && clearOfYou(q) && !_plInRibbons(q.x, q.y, true)) : [];
   if (pl && cand.length) cand.sort((a, b) => (Math.hypot(a.x - pl.x, (a.y - pl.y) * 1.4) + a.i * 0.15) - (Math.hypot(b.x - pl.x, (b.y - pl.y) * 1.4) + b.i * 0.15));
   const near = t && (t.free ? freeT : cand[0]);
   const dN = near && pl ? Math.hypot(near.x - pl.x, (near.y - pl.y) * 1.4) : 99, onYou = near && !clearOfYou(near);
@@ -344,7 +347,7 @@ function _plGame(P, r) {
   if (r.id === 'belly-rub' && typeof petBondGive === 'function') { try { petBondGive('pat'); } catch (e) { /* only a moment */ } }
   // one belly rub: picked from the pet's bubble, you kneel and rub as the moves wheel's belly rub does (94-garden-zz-7act-1core.js, act
   // 'rub'): the pet comes to your hand and rolls on to its back with the same clip
-  if (r.id === 'belly-rub' && typeof gartActRun === 'function' && typeof _gw !== 'undefined' && _gw.on && !_gw.boat) { P.lifeCur = null; P.lifeHold = 0; setTimeout(() => { try { if (!gartActRun('rub', null)) _plPlay(P, _plClips(r), 1.5, () => { P.lifeCur = null; }, { at: 1, noProp: 1 }); } catch (e) { /* it just sits */ } }, 260); return true; }   // (a moment later: the tap on the bubble must not reach the ground as a walk, which would end it at once)
+  if (r.id === 'belly-rub' && typeof gartActRun === 'function' && typeof _gw !== 'undefined' && _gw.on && !_gw.boat) { P.lifeCur = null; P.lifeHold = 0; setTimeout(() => { try { let ran = false; try { if (typeof _ga !== 'undefined') _ga.quiet = true; ran = gartActRun('rub', null); } finally { if (typeof _ga !== 'undefined') _ga.quiet = false; } if (!ran) { P.tx = null; P.arrive = null; P.busy = 0; P.cb = null; if (P.clipH) { try { P.clipH.stop(true); } catch (e) { /* gone */ } P.clipH = null; } P.lifeCur = r; P.lifeRow = r.id; if (!_plCome(P, 'feet', _plClips(r), 1.5, () => { P.lifeCur = null; })) _plPlay(P, _plClips(r), 1.5, () => { P.lifeCur = null; }, { at: 1, noProp: 1 }); }   /* (vale final fix 1: no room to kneel beside you, by a trunk or the water: it still comes to your feet and rolls over there; it stayed on its last row before) */ } catch (e) { /* it just sits */ } }, 260); return true; }   // (a moment later: the tap on the bubble must not reach the ground as a walk, which would end it at once)
   const done = () => { P.hearts(); P.lifeCur = null; };
   if (_plCome(P, r.id === 'high-five' ? 'five' : 'side', _plClips(r), 1.5, done)) return true;
   const t = _plStage(P, true, '-');

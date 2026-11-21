@@ -371,7 +371,7 @@ window.GardenNative = (function () {
       typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0,
       state.profile, state.wardrobe, state.pet, state.game && state.game.seen,
       typeof _gm !== 'undefined' && _gm.rev, gardenFun(), gardenMotionOn(), ui,
-      weather && weather.today && [weather.today.sunrise, weather.today.sunset], typeof gardenSocialBadge === 'function' ? gardenSocialBadge() : 0,
+      weather && weather.today && [weather.today.sunrise, weather.today.sunset], typeof gardenSocialBadge === 'function' ? gardenSocialBadge() : 0, typeof gardenActDrawRev === 'function' ? gardenActDrawRev() : 0,
     ], (key, value) => key === 'def' && value && value.id ? value.id : value);
   }
   function refreshLiveHud(s, model) {
@@ -384,13 +384,17 @@ window.GardenNative = (function () {
     if (typeof _ptwCheck === 'function') _ptwCheck();
   }
   function sync(model) {
-    const s = live; if (!s || s.dead) return; s.model = model;
+    const s = live; if (!s || s.dead) return;
+    // (2.74.1) a bare sync() (a placed thing moved, an action ended) means the garden on screen now: never an empty model, which left the create() of a slow first load painting nothing and the life engine reading undefined.tod
+    if (!model) { try { model = gardenHere(); } catch (error) { model = null; } if (!model) model = s.model; if (!model) return; }
+    s.model = model;
     if (!s.world) return;
     let key = null;
     try { key = presentationKey(model); } catch (error) { /* Unknown model extensions take the full paint path. */ }
     if (key != null && s.presentationKey === key) { s.syncReused = (s.syncReused || 0) + 1; _gdp.svg = s.world.rootNode; _gw.svg = s.world.rootNode; refreshLiveHud(s, model); return; }
     s.syncFull = (s.syncFull || 0) + 1;
     s.world.sync(model); s.lighting.sync(model); if (s.water) s.water.sync(model); if (s.surface) s.surface.sync(model); _gdp.svg = s.world.rootNode; _gw.svg = s.world.rootNode;
+    if (!model) return;   // (the scene is made before a friend's garden has arrived: nothing of the garden's own to paint yet; reading it crashed the visit's opening, 'tod' and then 'visit')
     _gwBugsSync(model); gardenLifeSync(model); gardenWonderSync(model); gardenLiveHostPainted(model); gardenGamePainted(model); if (typeof gardenDesignPainted === 'function') gardenDesignPainted(_gdp.svg, model.dz);
     gardenHudPaint(model); if (typeof _ptwCheck === 'function') _ptwCheck();
     s.presentationKey = key;
@@ -545,6 +549,7 @@ window.GardenNative = (function () {
     if (cover.parentNode) s.openingObserver.observe(cover.parentNode, { childList: true });
   }
   function mount(parent, box, model) {
+    if (!model) { try { model = gardenHere(); } catch (error) { model = null; } }   // (2.74.1) never open on an empty model: every painter reads its tod
     if (live && live.parent === parent && !live.dead) { sync(model); return; }
     destroy(); if (window.GardenPhaser) GardenPhaser.destroy(); gardenWorldStop(true); lastError = null;
     const s = live = { id: ++serial, parent, box, model, dead: false, ready: false, frames: 0, started: performance.now() };
@@ -568,6 +573,8 @@ window.GardenNative = (function () {
         if (s.dead) return;
         try {
           s.scene = this; s.game = this.game;
+          if (!s.model || !s.model.tod) { try { s.model = gardenHere() || s.model; } catch (error) { /* keep what we have */ } }   // (2.74.1) a visit whose snapshot came late, a fresh garden still making itself: the garden on screen now
+          if (!s.model) throw new Error('The garden is still getting ready. Press Try again.');
           const position = _gwSavedPos(); if (position) { _gw.px = position.x; _gw.py = position.y; }
           _gw.root = _gdp.root; _gw.box = box; _gw.sizeOk = false;
           s.world = GardenNativeWorld.create(this, { model: s.model, box, root: _gdp.root, width: Math.max(1, box.clientWidth), height: Math.max(1, box.clientHeight) }); _gdp.svg = s.world.rootNode; _gw.svg = s.world.rootNode;

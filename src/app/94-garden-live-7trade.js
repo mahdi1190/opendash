@@ -6,6 +6,10 @@
    and decides exactly once: both confirmed the current version -> GO. It writes the decision (`gl.t.<id>` in the ledger, and a durable post to each guest) in the same save as its own side,
    and only then says go. A guest never learns another guest's friend id: they speak to the host in slot numbers and the host answers each one.
 
+   BOTH AGREE, THEN A MOMENT TO UNDO (2.75, the trading overhaul). When both have agreed, the referee waits GL_TRADE.sealMs before it decides, and either of you can still
+   say "Wait, undo" (the same `no` as ever). Both pages count down from what they are told (c and d both true); nothing new goes on the wire, so an older app still trades.
+   The panel reads like a swap: You give, You get, what you will have after, and one plain sentence of the whole deal. No one ever sees what is in the other's bag: only what they offer.
+
    HOLD, THEN SWAP. When you confirm, what you offer leaves your bag at once into a hold (`gl.x.<id>` in your ledger: the items, minus; and what you were shown they offer, `get`). A hold is
    released only by the referee: a state that says your confirmation is not in force (it has seen your last message: `an` >= the hold's `sq`, or the version has moved on), or `x`. On `go` the
    hold becomes the swap in one entry (what you gave minus, what you get plus): nothing is in flight, so nothing can be duplicated or lost on the way. A hold never times out by itself:
@@ -17,19 +21,31 @@
      _gltHostOn(ev) / _gltHostStart() / _gltHostStop() / _gltHostLeft(w, f)   the referee (94-garden-live-3host.js)
      _gltFromHost(ev) / _gltResume() / _gltLost()                             a guest (94-garden-live-2visit.js)
    ============================================================ */
-const _glt = { trades: new Map(), mine: null, panel: false, q: [], pumping: false, sweepT: 0, chkT: 0, keepT: 0, offerT: 0 };
+const _glt = { trades: new Map(), mine: null, panel: false, q: [], pumping: false, sweepT: 0, chkT: 0, keepT: 0, offerT: 0, sealT: 0 };
 const _gltHoldKey = (t) => 'gl.x.' + t;   // my hold, then my swap
 const _gltRecKey = (t) => 'gl.t.' + t;    // the host's record of its decision
 function _gltReady() { return typeof gardenReady === 'function' && gardenReady() && !!gardenEnsure(); }
 function _gltLive() { return _gll.role === 'host' ? !!_glh.on : _gll.role === 'visit' ? _glvLive() : false; }
 function _gltCanon(rows) { return (rows || []).map(r => [String(r[0]), r[1] | 0]).sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)); }
 function _gltSplit(item) { const i = item.indexOf(':'); return [item.slice(0, i), item.slice(i + 1)]; }
-function _gltItemName(item) { const [k, id] = _gltSplit(item); return _gscItemName(k, id); }
+function _gltItemName(item) { if (item === GL_TRADE_COIN) return 'coins'; const [k, id] = _gltSplit(item); return _gscItemName(k, id); }
 function _gltSum(rows) {
-  const parts = (rows || []).map(([item, n]) => (n > 1 ? n + ' × ' + _gltItemName(item) : _gscA(_gltItemName(item))));
+  const parts = (rows || []).map(([item, n]) => (item === GL_TRADE_COIN ? (n === 1 ? '1 coin' : _gdpNum(n) + ' coins') : n > 1 ? n + ' × ' + _gltItemName(item) : _gscA(_gltItemName(item))));
   return !parts.length ? 'nothing' : parts.length === 1 ? parts[0] : parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1];
 }
-function _gltHave(item) { return typeof gardenHas === 'function' ? gardenHas(item) : 0; }
+function _gltHave(item) { if (item === GL_TRADE_COIN) { const c = typeof gardenWallet === 'function' ? gardenWallet().coins : 0; return Number.isFinite(c) ? c : 1e9; } return typeof gardenHas === 'function' ? gardenHas(item) : 0; }
+/** About what a thing is worth at the market or the shop, in coins (0: nobody sells it), so a trade can say whether it is a fair swap. */
+function _gltWorth(item) {
+  if (item === GL_TRADE_COIN) return 1;
+  const [k, id] = _gltSplit(item);
+  try {
+    if (k === 'seed') { const p = gardenPlant(id); return p ? p.price || ({ rare: 40, epic: 60, legendary: 120 }[p.rarity] || 10) : 0; }
+    if (k === 'decor') { const d = gardenDecor(id); return d ? d.price || 0 : 0; }
+    if ((k === 'fish' || k === 'bug') && typeof gardenCatchEach === 'function') return gardenCatchEach(item) || 0;
+  } catch (e) { /* unknown here */ }
+  return 0;
+}
+function _gltWorthOf(rows) { let n = 0; for (const [item, q] of rows || []) { const w = _gltWorth(item); if (!w) return 0; n += w * q; } return n; }
 function _gltHoldOf(t) { const e = _gdG().led[_gltHoldKey(t)]; return e && e.t === 'trade' ? e : null; }
 function _gltOpenHolds() { return Object.entries(_gdG().led).filter(([k, e]) => k.startsWith('gl.x.') && e && e.t === 'trade' && !e.ok); }
 /** Trades you have confirmed or finished today: what your own daily limit counts (the host counts the same for you from its record). */
@@ -51,10 +67,12 @@ function _gltSettle(t) {
   const g = _gdG(), h = g.led[_gltHoldKey(t)];
   if (!h || h.t !== 'trade' || h.ok || glTradeRowsOk(h.get)) return false;
   const net = Object.assign({}, h.i);
-  for (const [item, n] of h.get) net[item] = (net[item] || 0) + n;
-  const gave = Object.entries(h.i || {}).map(([item, n]) => [item, -n]), got = h.get.map(r => [r[0], r[1]]);
-  h.i = net; h.ok = 1; h.sat = _gdNow();
+  let coin = Number(h.c) || 0;
+  for (const [item, n] of h.get) { if (item === GL_TRADE_COIN) coin += n; else net[item] = (net[item] || 0) + n; }
+  const gave = Object.entries(h.i || {}).map(([item, n]) => [item, -n]).concat(h.cg ? [[GL_TRADE_COIN, h.cg]] : []), got = h.get.map(r => [r[0], r[1]]);
+  h.i = net; h.ok = 1; h.sat = _gdNow(); if (coin) h.c = coin; else delete h.c;   // (coins live in c: what you gave off, what you got on)
   for (const [item] of got) {
+    if (item === GL_TRADE_COIN) continue;
     const [k, id] = _gltSplit(item), today = _gllToday();
     if (k === 'decor' && !g.disc[id]) g.disc[id] = today;
     if ((k === 'fish' || k === 'bug') && typeof gardenCatchReceived === 'function') gardenCatchReceived(k, id);
@@ -71,9 +89,24 @@ function _gltSettle(t) {
 function _gltOnGo(t) {
   const did = _gltSettle(t);
   const M = _glt.mine;
-  if (M && M.t === t && !M.done) { M.done = true; M.end = null; M.c = true; _gltPaint(); setTimeout(() => { if (_glt.mine === M) _gltClearMine(); }, 3200); }
+  if (M && M.t === t && !M.done) {
+    M.done = true; M.end = null; M.c = true; M.sealAt = 0; _glt.panel = true; _gltPaint();
+    // a little moment everyone there sees: you cheer (friends see the move), and the panel shows the swap
+    try { if (typeof gartEmoteRun === 'function') gartEmoteRun('cheer', { quiet: true }); if (typeof gardenLiveEmoted === 'function') gardenLiveEmoted('cheer'); } catch (e) { /* only a flourish */ }
+    setTimeout(() => { if (_glt.mine === M) _gltClearMine(); }, 4200);
+  }
   return did;
 }
+/** While both have agreed, the panel counts down (the status line only, four times a second). */
+function _gltSealTick() {
+  clearTimeout(_glt.sealT); _glt.sealT = 0;
+  const M = _glt.mine;
+  if (!M || !M.sealAt || M.done || M.end) return;
+  const st = typeof _gw !== 'undefined' && _gw.box ? _gw.box.querySelector('.gll-trade-st') : null;
+  if (st) st.textContent = _gltStatus(M);
+  _glt.sealT = setTimeout(_gltSealTick, 250);
+}
+function _gltSealLeft(M) { return Math.max(1, Math.ceil((GL_TRADE.sealMs - (Date.now() - M.sealAt)) / 1000)); }   // clock-ok: a countdown
 function _gltOnX(t, why) {
   const back = _gltRelease(t);
   const M = _glt.mine;
@@ -102,10 +135,12 @@ function _gltOnSt(ev) {
   const synced = !_glt.offerT && ev.an >= M.n;
   Object.assign(M, { w: ev.to, v: ev.v, p: ev.p.map(r => [r[0], r[1]]), c: ev.c, d: ev.d, r: ev.r, an: ev.an });
   if (synced) M.o = ev.o.map(r => [r[0], r[1]]);
+  if (M.c && M.d) { if (!M.sealAt) M.sealAt = Date.now(); } else M.sealAt = 0;   // clock-ok: the few seconds before the swap is final
+  _gltSealTick();
   // a hold goes only when the referee has seen my last word and my confirmation is not in force, or the terms have moved on
   const h = _gltHoldOf(M.t);
   if (h && !h.ok && !(ev.c && h.v === ev.v) && (ev.v > h.v || ev.an >= h.sq)) {
-    if (_gltRelease(M.t)) M.note = ev.v > h.v ? `${M.name} changed the offer, so your confirmation is off. Have a look and confirm again.` : 'Your confirmation is off. What you offered is back in your bag.';
+    if (_gltRelease(M.t)) M.note = ev.v > h.v ? `${M.name} changed what they give, so your yes is off. Have a look, and agree again if you are happy.` : 'You took your yes back. What you offered is back in your bag.';
   }
   _gltPaint();
   if (hello && _gll.role !== 'host') _gltSend({ t: M.t, e: 'hi' });   // (last: the referee's answer to it can arrive inside this call, and must find this state already in place)
@@ -189,6 +224,7 @@ function _gltCoord(from, b) {
   if (b.e === 'hi') { if (from === T.b && !T.open) { T.open = true; _gltTell(T); } return; }
   if (b.e === 'end') { _gltAbort(T, 'cancel'); return; }
   if (b.n > (T.an[from] || 0)) T.an[from] = b.n;
+  if (b.e === 'offer' || b.e === 'no') _gltUnseal(T);
   if (b.e === 'offer') {
     if (from === T.a) T.oa = _gltCanon(b.o); else T.ob = _gltCanon(b.o);
     T.v++; T.ca = false; T.cb = false;
@@ -197,7 +233,7 @@ function _gltCoord(from, b) {
     if (b.v !== T.v || !T.open || !T.oa.length || !T.ob.length) { _gltTell(T); return; }   // (stale: they will release their hold when they see this)
     if (from === T.a) T.ca = true; else T.cb = true;
     T.any = true; _gltRecOpen(T);
-    if (T.ca && T.cb) _gltDecide(T); else _gltTell(T);
+    if (T.ca && T.cb) _gltSeal(T); else _gltTell(T);
   } else if (b.e === 'no') {
     if (from === T.a) T.ca = false; else T.cb = false;
     _gltTell(T);
@@ -224,8 +260,16 @@ function _gltRecOpen(T) {
   g.led[k] = { d: _gllToday(), k: 'gl', n: 0, st: 'open', pa: T.fa, pb: T.fb, at: _gdNow() };
   _gscSaveGarden();
 }
+/** Both agreed: a few seconds in which either can still undo, then the decision. Only the same trade, still agreed by both, goes. */
+function _gltSeal(T) {
+  _gltUnseal(T);
+  T.sealT = setTimeout(() => { T.sealT = 0; if (_glt.trades.get(T.t) === T && T.ca && T.cb) _gltDecide(T); }, GL_TRADE.sealMs);
+  _gltTell(T);
+}
+function _gltUnseal(T) { if (T.sealT) { clearTimeout(T.sealT); T.sealT = 0; } }
 /** Both confirmed this version. The decision, my own side of it, and what tells the guests are written in ONE save; only then is anyone told. */
 function _gltDecide(T) {
+  _gltUnseal(T);
   const A = _gltWho(T.a), B = _gltWho(T.b);
   if (!A || !B) { _gltAbort(T, 'left'); return; }
   if (!glAtLeast(A.lv, GL_TRADE.lv) || !glAtLeast(B.lv, GL_TRADE.lv)) { _gltAbort(T, 'level'); return; }
@@ -244,6 +288,7 @@ function _gltDecide(T) {
 }
 /** It did not happen. Everyone is told; whoever may be holding things (anyone who has confirmed) is told by post as well, in case they are not here to hear it. */
 function _gltAbort(T, why) {
+  _gltUnseal(T);
   if (!_glt.trades.delete(T.t)) return;
   if (T.any) {
     const g = _gdG(), rec = g.led[_gltRecKey(T.t)];
@@ -324,7 +369,7 @@ function _gltKeep() {
     if (box && box.isConnected && !box.querySelector(':scope > .gll-trade-wrap')) _gltPaint();   // (a repaint of the garden made a new stage)
   }, 1500);
 }
-function _gltClearMine() { clearTimeout(_glt.offerT); _glt.offerT = 0; _glt.mine = null; _glt.panel = false; _gltPaint(); }
+function _gltClearMine() { clearTimeout(_glt.offerT); _glt.offerT = 0; clearTimeout(_glt.sealT); _glt.sealT = 0; _glt.mine = null; _glt.panel = false; _gltPaint(); }
 /** The trade is over for this seat: the panel says so, and closing it clears the seat. */
 function _gltClose() {
   const M = _glt.mine; if (!M) return;
@@ -352,6 +397,7 @@ const _gltSynced = (M) => !_glt.offerT && M.an >= M.n;
 function _gltWhyNot(M) {
   if (!M.r) return 'Waiting for them to say they can trade.';
   if (!M.o.length || !M.p.length) return 'You each need to offer something.';
+  if (JSON.stringify(_gltCanon(M.o)) === JSON.stringify(_gltCanon(M.p))) return 'You are both offering the same thing: change one side.';
   if (!_gltSynced(M)) return 'One moment…';
   if (_gltMineToday() >= GL_TRADE.perDay) return 'That is all the trades for today.';
   if (_gltHoldOf(M.t)) return 'One moment…';
@@ -365,20 +411,22 @@ function _gltConfirm() {
   if (!_gltReady()) return;
   // the hold first (your things leave your bag now, and are saved), then the word
   const g = _gdG(), i = {};
-  for (const [item, n] of M.o) i[item] = -n;
+  let coin = 0;
+  for (const [item, n] of M.o) { if (item === GL_TRADE_COIN) coin += n; else i[item] = -n; }
   M.n++;
-  g.led[_gltHoldKey(M.t)] = { d: _gllToday(), k: 'gl', n: 0, i, t: 'trade', to: _gll.role === 'host' ? 'self' : _glv.fid, v: M.v, sq: M.n, get: M.p.map(r => [r[0], r[1]]), at: _gdNow() };
+  g.led[_gltHoldKey(M.t)] = { d: _gllToday(), k: 'gl', n: 0, i, ...(coin ? { c: -coin, cg: coin } : {}), t: 'trade', to: _gll.role === 'host' ? 'self' : _glv.fid, v: M.v, sq: M.n, get: M.p.map(r => [r[0], r[1]]), at: _gdNow() };
   if (_gll.role === 'host') { const T = _glt.trades.get(M.t); if (T) { T.any = true; _gltRecOpen(T); } }
   _gscSaveGarden();
   M.c = true; M.note = '';
   _gltSend({ t: M.t, e: 'ok', v: M.v, n: M.n });
+  if (M.d && !M.sealAt) { M.sealAt = Date.now(); _gltSealTick(); }   // clock-ok: (they had agreed already: the countdown starts now; the referee's state follows)
   _gltPaint();
 }
 function _gltUnconfirm() {
   const M = _glt.mine; if (!M || !M.c || M.end || M.done) return;
   M.n++;
   const h = _gltHoldOf(M.t); if (h) { h.sq = M.n; _gscSaveGarden(); }
-  M.note = 'Taking it back…';
+  M.note = 'Taking your yes back…'; M.sealAt = 0;
   _gltSend({ t: M.t, e: 'no', n: M.n });
   _gltPaint();
 }
@@ -391,16 +439,40 @@ const _GLT_ENDS = {
   host: () => 'The garden\'s host left.', lost: (n, e) => (e.held ? 'The connection dropped. What you put on hold comes back, or the swap finishes, as soon as the host\'s computer says which.' : 'The connection dropped.'),
 };
 function _gltStatus(M) {
-  if (M.done) return 'Traded!';
+  if (M.done) return 'Traded! It is all in your bag now.';
   if (M.end) return (_GLT_ENDS[M.end.why] || _GLT_ENDS.gone)(M.name, M.end) + (M.end.back ? ' Everything you had put forward is back in your bag.' : '');
+  if (M.sealAt && M.c && M.d) return `You both agreed! Swapping in ${_gltSealLeft(M)}… You can still undo.`;
   if (M.note) return M.note;
   if (!M.r) return M.incoming ? 'Connecting…' : `Asking ${M.name}…`;
-  if (M.c) return `Waiting for ${M.name} to confirm.`;
-  if (M.d) return `${M.name} has confirmed. Look it over, then confirm if you are happy.`;
-  return 'Choose what each of you gives. Nothing moves until you both confirm.';
+  if (M.c) return `You agreed. Waiting for ${M.name} to agree too.`;
+  if (M.d) return `${M.name} agreed to this. Look it over, then agree if you are happy.`;
+  if (!M.o.length && !M.p.length) return `Pick something to give. ${M.name} picks what they give. You both see it here.`;
+  if (!M.o.length) return 'Pick something of yours to give.';
+  if (!M.p.length) return `Waiting for ${M.name} to pick something to give.`;
+  return 'Happy with it? Agree, and so must they. Nothing moves until you both agree.';
+}
+/** Which of the three steps you are on: 1 choose, 2 agree, 3 swap. */
+function _gltStage(M) { return M.done ? 3 : M.sealAt && M.c && M.d ? 3 : M.c || M.d ? 2 : M.o.length && M.p.length ? 2 : 1; }
+function _gltSteps(M) {
+  const n = _gltStage(M), ol = _gsvEl('ol', 'gll-trade-steps');
+  ['Choose', 'Both agree', 'Swap'].forEach((t, i) => { const li = _gsvEl('li', 'gll-trade-stp' + (i + 1 < n ? ' is-past' : i + 1 === n ? ' is-now' : ''), t); if (i + 1 === n) li.setAttribute('aria-current', 'step'); ol.appendChild(li); });
+  return ol;
+}
+/** The whole deal in one plain sentence. */
+function _gltDeal(M) {
+  if (!M.o.length && !M.p.length) return '';
+  return `You give ${_gltSum(M.o)}. You get ${_gltSum(M.p)}.` + (M.o.length && M.p.length ? ' ' + _gltFair(M) : '');
+}
+/** A friendly word on whether it is a fair swap, by what the shop and the market would say (nothing when something in it has no price). */
+function _gltFair(M) {
+  const a = _gltWorthOf(M.o), b = _gltWorthOf(M.p);
+  if (!a || !b) return '';
+  const r = b / a;
+  return r >= 0.8 && r <= 1.25 ? 'A fair swap.' : r > 1.25 ? 'A good deal for you!' : 'You give more than you get: kind of you!';
 }
 function _gltIcon(item, px) {
   const [k, id] = _gltSplit(item), s = _gsvEl('span', 'gll-trade-ic');
+  if (item === GL_TRADE_COIN) { s.innerHTML = `<svg viewBox="-10 -10 20 20" width="${px}" height="${px}" aria-hidden="true"><circle r="8" fill="#e8b830" stroke="#a87a10" stroke-width="1.4"/><circle r="5" fill="none" stroke="#fbe08a" stroke-width="1.2"/></svg>`; return s; }
   try {
     if (k === 'fish' || k === 'bug') { const m = k === 'fish' ? /^([a-z0-9-]+)-([0-3])$/.exec(id) : null; s.innerHTML = gardenCatchSvg(k, m ? m[1] : id, px, { uid: 'tr' + k + id }); }
     else s.innerHTML = gardenIconSvg(id, { kind: k === 'seed' ? 'seed' : 'decor', px });   // (drawings from the catalogue, for ids that passed the tables)
@@ -413,29 +485,47 @@ function _gltCol(M, mine) {
   const col = _gsvEl('section', 'gll-trade-col' + (mine ? ' is-mine' : ''));
   const rows = mine ? M.o : M.p, can = mine && !M.c && !M.end && !M.done && M.r;
   const head = _gsvEl('div', 'gll-trade-ch');
-  head.appendChild(_gsvEl('b', null, mine ? 'You give' : `${M.name} gives`));
-  if (mine ? M.c : M.d) head.appendChild(_gsvEl('span', 'gll-trade-ok', 'Confirmed'));
+  head.appendChild(_gsvEl('b', null, mine ? 'You give' : 'You get'));
+  if (!mine && !(M.d)) head.appendChild(_gsvEl('span', 'muted gll-trade-from', `from ${M.name}`));
+  if (mine ? M.c : M.d) head.appendChild(_gsvEl('span', 'gll-trade-ok', mine ? 'You agreed' : `${M.name} agreed`));
   col.appendChild(head);
   const ul = _gsvEl('ul', 'gll-trade-rows');
   for (const [item, n] of rows) {
     const li = _gsvEl('li', 'gll-trade-row' + (can ? ' is-edit' : ''));
     li.appendChild(_gltIcon(item, 30));
-    li.appendChild(_gsvEl('span', 'gll-trade-nm', _gltItemName(item)));
+    const nm = _gsvEl('span', 'gll-trade-nm'); nm.appendChild(_gsvEl('span', 'gll-trade-nm-t', _gltItemName(item)));
+    { const held = _gltHoldOf(M.t), heldN = held && !held.ok ? (item === GL_TRADE_COIN ? Number(held.cg) || 0 : -((held.i || {})[item] || 0)) : 0, now = _gltHave(item) + heldN, mineN = (M.o.find(r => r[0] === item) || [0, 0])[1], theirN = (M.p.find(r => r[0] === item) || [0, 0])[1], after = now - mineN + theirN;   // (what is on hold is still yours until the swap; the same thing can be on both sides)
+      nm.appendChild(_gsvEl('small', 'gll-trade-after' + (!mine && now === 0 ? ' is-new' : ''), M.done ? '' : !mine && now === 0 ? 'New for you!' : item === GL_TRADE_COIN ? `${_gdpNum(now)} → ${_gdpNum(Math.max(0, after))}` : `You have ${_gdpNum(now)}, then ${_gdpNum(Math.max(0, after))}`)); }
+    li.appendChild(nm);
     if (can) {
       const have = _gltHave(item), ctl = _gsvEl('span', 'gll-trade-ctl');
       const st = _gsvEl('span', 'gll-trade-step');
-      st.appendChild(_gltBtn('-' + item, '', { icon: 'minus', kind: 'btn-ghost', aria: `One fewer ${_gltItemName(item)}`, run: () => _gltEdit(r => r.map(x => (x[0] === item ? [item, x[1] - 1] : x)).filter(x => x[1] > 0)) }));
-      st.appendChild(_gsvEl('span', 'gll-trade-q', '×' + n));
-      st.appendChild(_gltBtn('+' + item, '', { icon: 'plus', kind: 'btn-ghost', aria: `One more ${_gltItemName(item)}`, disabled: n >= Math.min(have, GL_TRADE.qty), run: () => _gltEdit(r => r.map(x => (x[0] === item ? [item, Math.min(x[1] + 1, have, GL_TRADE.qty)] : x))) }));
+      const coin = item === GL_TRADE_COIN, step = coin ? 10 : 1, top = Math.min(have, coin ? GL_TRADE.coins : GL_TRADE.qty);   // (coins go ten at a time)
+      st.appendChild(_gltBtn('-' + item, '', { icon: 'minus', kind: 'btn-ghost', aria: coin ? 'Ten coins fewer' : `One fewer ${_gltItemName(item)}`, run: () => _gltEdit(r => r.map(x => (x[0] === item ? [item, x[1] - step] : x)).filter(x => x[1] > 0)) }));
+      st.appendChild(_gsvEl('span', 'gll-trade-q', coin ? _gdpNum(n) : '×' + n));
+      st.appendChild(_gltBtn('+' + item, '', { icon: 'plus', kind: 'btn-ghost', aria: coin ? 'Ten coins more' : `One more ${_gltItemName(item)}`, disabled: n >= top, run: () => _gltEdit(r => r.map(x => (x[0] === item ? [item, Math.min(x[1] + step, top)] : x))) }));
       ctl.appendChild(st);
       ctl.appendChild(_gltBtn('x' + item, '', { icon: 'x', kind: 'btn-ghost', aria: `Take ${_gltItemName(item)} out`, run: () => _gltEdit(r => r.filter(x => x[0] !== item)) }));
       li.appendChild(ctl);
-    } else li.appendChild(_gsvEl('span', 'gll-trade-q', '×' + n));
+      if (coin) {   // (500 coins was fifty taps of +: big steps in one tap, and one that makes it a fair swap: critic, 21 Nov)
+        const quick = _gsvEl('span', 'gll-trade-quick'), set = (v) => _gltEdit(r => r.map(x => (x[0] === item ? [item, Math.max(10, Math.min(top, v))] : x)));
+        for (const add of [50, 100, 500]) if (n + add <= top) quick.appendChild(_gltBtn('q' + add, '+' + _gdpNum(add), { kind: 'btn-ghost', cls: 'gll-trade-qb', aria: `${_gdpNum(add)} coins more`, run: () => set(n + add) }));
+        const theirW = M.p.length ? _gltWorthOf(M.p) : 0, myOther = _gltWorthOf(M.o.filter(x => x[0] !== item)) || 0, fair = Math.round(Math.max(0, theirW - myOther) / 10) * 10;
+        if (fair >= 10 && fair !== n && fair <= top) quick.appendChild(_gltBtn('qfair', 'Fair price', { kind: 'btn-ghost', cls: 'gll-trade-qb is-fair', tip: `${_gdpNum(fair)} coins: about what you get is worth`, run: () => set(fair) }));
+        if (quick.childNodes.length) li.appendChild(quick);
+      }
+    } else li.appendChild(_gsvEl('span', 'gll-trade-q', item === GL_TRADE_COIN ? _gdpNum(n) : '×' + n));
     ul.appendChild(li);
   }
-  if (!rows.length) ul.appendChild(_gsvEl('li', 'gll-trade-empty', mine ? 'Nothing yet' : 'Nothing yet'));
+  if (!rows.length) ul.appendChild(_gsvEl('li', 'gll-trade-empty', mine ? 'Nothing yet: add something' : `Nothing yet: ${M.name} is choosing`));
   col.appendChild(ul);
-  if (can) col.appendChild(_gltBtn('add', 'Add something', { icon: 'plus', kind: 'btn-secondary', run: (e, b) => _gltPicker(b) }));
+  if (can) {
+    const adds = _gsvEl('div', 'gll-trade-adds');
+    adds.appendChild(_gltBtn('add', rows.length ? 'Add more' : 'Add something', { icon: 'plus', kind: rows.length ? 'btn-ghost' : 'btn-secondary', run: (e, b) => _gltPicker(b) }));
+    if (!rows.some(r => r[0] === GL_TRADE_COIN) && _gltHave(GL_TRADE_COIN) >= 10) adds.appendChild(_gltBtn('addc', 'Add coins', { icon: 'coins', kind: 'btn-ghost', tip: 'Pay with coins: ten at a time', run: () => _gltEdit(r => { if (r.length >= GL_TRADE.rows) { gardenToast(`${GL_TRADE.rows} different things at most.`, { icon: 'repeat' }); return null; } r.push([GL_TRADE_COIN, 10]); return r; }) }));
+    col.appendChild(adds);
+  }
+  { const w = rows.length ? _gltWorthOf(rows) : 0; if (w) col.appendChild(_gsvEl('small', 'gll-trade-worth', `Worth about ${_gdpNum(w)} coins`)); }
   return col;
 }
 /** What you could add: your bag's seeds, decorations, fish and bugs that can be given (the same list gifts use), less what is already in. */
@@ -475,17 +565,22 @@ function _gltPanel(M) {
   head.appendChild(_gsvEl('h3', 'gll-trade-h', `Trade with ${M.name}`));
   head.appendChild(_gltBtn('close', '', { icon: 'x', kind: 'btn-ghost', aria: M.end || M.done ? 'Close' : 'Hide (the trade stays open)', tip: M.end || M.done ? 'Close' : 'Hide: the trade stays open', run: () => _gltClose() }));
   p.appendChild(head);
-  const st = _gsvEl('p', 'gll-trade-st' + (M.end ? ' is-end' : M.done ? ' is-done' : ''), _gltStatus(M)); st.setAttribute('role', 'status'); st.setAttribute('aria-live', 'polite');
+  if (!M.end) p.appendChild(_gltSteps(M));
+  const sealing = !!(M.sealAt && M.c && M.d && !M.done && !M.end);
+  const st = _gsvEl('p', 'gll-trade-st' + (M.end ? ' is-end' : M.done ? ' is-done' : sealing ? ' is-seal' : ''), _gltStatus(M)); st.setAttribute('role', 'status'); st.setAttribute('aria-live', 'polite');
   p.appendChild(st);
-  const cols = _gsvEl('div', 'gll-trade-cols');
-  cols.appendChild(_gltCol(M, true)); cols.appendChild(_gltCol(M, false));
+  const cols = _gsvEl('div', 'gll-trade-cols' + (M.done ? ' is-swapped' : ''));
+  cols.appendChild(_gltCol(M, true));
+  { const mid = _gsvEl('div', 'gll-trade-mid'); mid.setAttribute('aria-hidden', 'true'); mid.textContent = '⇄'; cols.appendChild(mid); }
+  cols.appendChild(_gltCol(M, false));
   p.appendChild(cols);
+  { const deal = _gltDeal(M); if (deal && !M.end && !M.done) p.appendChild(_gsvEl('p', 'gll-trade-deal', deal)); }
   const foot = _gsvEl('div', 'gll-trade-foot');
   if (M.end || M.done) foot.appendChild(_gltBtn('done', 'Close', { kind: 'btn-primary', run: () => _gltClearMine() }));
   else {
-    if (M.c) foot.appendChild(_gltBtn('unok', 'Take my confirmation back', { icon: 'undo-2', kind: 'btn-secondary', run: () => _gltUnconfirm() }));
-    else { const why = _gltWhyNot(M); foot.appendChild(_gltBtn('ok', 'Confirm trade', { icon: 'handshake', kind: 'btn-primary', disabled: !!why, tip: why || 'Your things go on hold until the trade happens or is called off', run: () => _gltConfirm() })); }
-    foot.appendChild(_gltBtn('cancel', 'Cancel trade', { kind: 'btn-ghost', run: () => _gltCancel() }));
+    if (M.c) foot.appendChild(_gltBtn('unok', sealing ? 'Wait, undo' : 'Change my mind', { icon: 'undo-2', kind: sealing ? 'btn-primary' : 'btn-secondary', tip: 'Take your yes back: your things come back to your bag', run: () => _gltUnconfirm() }));
+    else { const why = _gltWhyNot(M); foot.appendChild(_gltBtn('ok', 'I agree', { icon: 'handshake', kind: 'btn-primary', disabled: !!why, tip: why || 'Your things are kept safe until you both agree, and you can still undo', run: () => _gltConfirm() })); }
+    foot.appendChild(_gltBtn('cancel', 'Stop trading', { kind: 'btn-ghost', run: () => _gltCancel() }));
   }
   p.appendChild(foot);
   p.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); _gltClose(); } });
@@ -493,7 +588,7 @@ function _gltPanel(M) {
 }
 function _gltChip(M) {
   const c = _gsvEl('div', 'gll-trade-chip');
-  c.appendChild(_gsvEl('span', null, M.end ? 'The trade ended' : M.done ? 'Traded!' : M.incoming && !M.seenPanel ? `${M.name} wants to trade` : `Trade with ${M.name}`));
+  c.appendChild(_gsvEl('span', null, M.end ? 'The trade ended' : M.done ? 'Traded!' : M.sealAt && M.c && M.d ? `Swapping with ${M.name}…` : M.incoming && !M.seenPanel ? `${M.name} wants to trade` : `Trade with ${M.name}`));
   c.appendChild(_gsvBtn(M.incoming && !M.seenPanel ? 'Have a look' : 'Open', { icon: 'repeat', kind: 'btn-ghost', run: () => { M.seenPanel = true; _glt.panel = true; _gltPaint(); } }));
   if (M.incoming && !M.seenPanel && !M.end && !M.done) c.appendChild(_gsvBtn('No thanks', { kind: 'btn-ghost', run: () => _gltCancel() }));
   return c;

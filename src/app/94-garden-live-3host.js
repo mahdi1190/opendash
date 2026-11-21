@@ -20,7 +20,14 @@ function _glhSend(to, k, body) { return _gllPipe('/api/garden-live/host', { to, 
 function _glhIsLegacyWorld() { return typeof gardenWorldIsLegacy === 'function' && gardenWorldIsLegacy(); }
 function _glhAmbientClock() { const native = window.GardenNative, light = native && native.active() && native.lighting(), clock = light && light.ambientClock ? light.ambientClock() : null; return clock || (typeof gardenTravellerAmbientClock === 'function' ? gardenTravellerAmbientClock() : null); }
 function _glhHereBody(on) { const l = gardenLiveLook(); if (typeof _gw !== 'undefined') { l.x = Math.round(_gw.px * 10) / 10; l.y = Math.round(_gw.py * 10) / 10; } return { role: 'host', on, ...glWorldFields(), v: GL_V, look: l, name: _gllMyName(), tab: _GLL_TAB, hidden: typeof document !== 'undefined' && !!document.hidden }; }
-function _glhPerm(fid) { const v = _gll.view; const p = v && v.perms && v.perms[fid]; return p || { lv: 'none', touch: false, share: 'keeper' }; }
+/** What this friend may do here, as the server reads it (lib/friends/live.mjs permOf): full co-op for a friend you made yourself, unless you sent them home; a group-made friend keeps the group rule. */
+function _glhPerm(fid) {
+  const v = _gll.view, p = v && v.perms && v.perms[fid];
+  if (p) return p.lv === 'none' ? p : Object.assign({}, p, { lv: 'play', touch: true });
+  const f = typeof _gscFriend === 'function' ? _gscFriend(fid) : null;
+  if (f && f.how === 'group') return { lv: v && v.groupLook ? 'look' : 'none', touch: false, share: 'keeper' };
+  return { lv: 'play', touch: true, share: 'keeper' };
+}
 
 /* ---------- you are here ---------- */
 function gardenLiveHostPainted(m) {
@@ -42,13 +49,14 @@ function _glhClaim() {
   if (_glhIsLegacyWorld()) { clearTimeout(_glh.claimT); _glh.claimT = 0; return; }
   if (_glh.claiming || _glh.claimT) return;
   _glh.claiming = true;
-  const later = () => { _glh.claimT = setTimeout(() => { _glh.claimT = 0; _glhClaim(); }, 30000); };
+  const later = (ms) => { _glh.claimT = setTimeout(() => { _glh.claimT = 0; _glhClaim(); }, ms || 30000); };
   _gllApi('/api/garden-live/here', _glhHereBody(true)).then((d) => {
     _glh.claiming = false;
     if (_glh.on || typeof _gw === 'undefined' || !_gw.on || state.view !== 'garden') return;
+    _glh.claimFails = 0;
     if (d && d.lead === false) { _glhElsewhere(true); later(); return; }
     _glhStart();
-  }).catch(() => { _glh.claiming = false; later(); });
+  }).catch(() => { _glh.claiming = false; _glh.claimFails = (_glh.claimFails || 0) + 1; later(_glh.claimFails <= 10 ? 4000 : 30000); });   // (2.74.2: a garden just opened may not be saved with its world yet: ask again soon, so a friend's knock finds you home)
 }
 function _glhStart() {
   if (_glhIsLegacyWorld()) return;
@@ -228,8 +236,9 @@ function _glhEvent(ev) {
       return;
     }
     case 'tr': if (typeof _gltHostOn === 'function') _gltHostOn(ev); return;
+    case 'dz': _glhDesignIn(ev); return;
     case 'leave': if (typeof _gltHostLeft === 'function') _gltHostLeft(ev.w); _glhRemove(ev.w); if (typeof gardenContestLeave === 'function') gardenContestLeave(ev.w); _glhReturnDrops(ev.w); gardenLiveLoad(true).then(_glhHud).catch(() => {}); return;
-    case 'go': { const A = _gll.actors.get(ev.w); if (A) { _gllGoPace(A, ev); _glhWalk(A, ev); if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } return; }
+    case 'go': { const A = _gll.actors.get(ev.w); if (A && _gllHeldNudge(A, ev)) return; if (A) { _gllGoPace(A, ev); _glhWalk(A, ev); if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } return; }
     case 'em': {
       const A = _gll.actors.get(ev.w); if (!A) return;
       if (ev.c === 'em') _gllEmoteAt(A, ev);
@@ -238,8 +247,9 @@ function _glhEvent(ev) {
       else if (ev.c === 'do' && ev.e === 'follow' && ev.to === 0) _gllFloat(_gw.svg, A.x, A.y - 1.4, '🚶', A.n);
       return;
     }
-    case 'fx': { const A = _gll.actors.get(ev.w); if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return; }
+    case 'fx': { const A = _gll.actors.get(ev.w); if (ev.c === 'tune') { if (typeof gardenMusicHeard === 'function') gardenMusicHeard(A || null, ev); return; } if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return; }
     case 'pp': _gllPlacesIn(ev); return;
+    case 'dg': { const A = _gll.actors.get(ev.w); if (A && typeof gartActDoingIn === 'function') gartActDoingIn(A, ev); return; }   // what they are doing, whole (94-garden-zz-7act-3sync.js)
     case 'do': _glhIntent(Object.assign({}, ev, { k: ev.ik })); return;
     case 'queue': clearTimeout(_glh.queueT); _glh.queueT = setTimeout(() => { gardenLiveLoad(true).then(_glhQueueRun).catch(() => {}); }, 300); return;
     case 'knock': case 'host': case 'road': case 'budget': if (ev.note && _gll.view) _gll.view.host = Object.assign(_gll.view.host || {}, { note: ev.note }); gardenLiveLoad(true).then(_glhHud).catch(() => {}); return;
@@ -266,6 +276,38 @@ function _glhSendSnap(fid) {
  * what everyone was last given, everyone gets the whole garden. Looked at every few seconds and only sent on a real change, so it costs next to nothing. The draft in the designer is not in a snapshot: only what is saved.
  */
 function _glhWorldSig(s) { const { v, at, ac, plants, decor, hearts, ...rest } = s; void v; void at; void ac; void plants; void decor; void hearts; return JSON.stringify(rest); }
+/* ---------- designing together (full co-op, 2.75) ----------
+   A friend here draws paths, paints ground, moves fixed things and makes things in your garden as you do (Menu > Design). Their finished
+   design comes as text in up to two pieces (gl:dz); every row is checked (gardenDesignClean) and it becomes your garden's design in use,
+   with Undo for you. Nothing else of yours goes anywhere: it only ever changes the layout's paths, ground and fixed things. */
+const _glhDz = new Map();
+function _glhDesignIn(ev) {
+  if (!ev || typeof ev.d !== 'string' || !Number.isInteger(ev.n) || !Number.isInteger(ev.of) || ev.n < 0 || ev.n >= ev.of || ev.of > 2) return;
+  const A = _gll.actors.get(ev.w); if (!A) return;
+  const key = A.f + '|' + String(ev.i || '').slice(0, 40); let P = _glhDz.get(key);
+  if (!P) { if (_glhDz.size > 8) _glhDz.clear(); P = { parts: [], at: Date.now() }; _glhDz.set(key, P); }   // clock-ok: only to forget a half-arrived design
+  P.parts[ev.n] = ev.d;
+  if (P.parts.filter(x => typeof x === 'string').length < ev.of) return;
+  _glhDz.delete(key);
+  let raw = null; try { raw = JSON.parse(P.parts.join('')); } catch (e) { return; }
+  const d = raw && raw.e === 1 ? gardenDesignEmpty() : gardenDesignClean(raw);
+  if (!d) return;
+  const g = _gdG(), was = JSON.stringify(g.dz || null);
+  const z = g.dz && g.dz.lay && g.dz.lay[g.dz.cur] ? JSON.parse(JSON.stringify(g.dz)) : { cur: 'l1', lay: { l1: { n: 'My garden', d: gardenDesignEmpty() } } };
+  if (!z.lay[z.cur]) z.lay[z.cur] = { n: 'My garden', d: gardenDesignEmpty() };
+  z.lay[z.cur].d = d;
+  if (GARDEN_WORLD.v >= 3) z.lay[z.cur].island = [GARDEN_WORLD.v, GARDEN_WORLD.lh];
+  if (typeof gardenDesignOn === 'function' && gardenDesignOn() && typeof gardenDesignAbort === 'function') gardenDesignAbort();   // (you were designing too: yours waits, unsaved, and comes back when you open Design again)
+  g.dz = z;
+  gardenDesignShow(gardenDesignSaved(g));
+  _gdSave();
+  if (typeof _gd !== 'undefined') { _gd.rev++; _gd.memoKey = ''; }
+  if (typeof gardenRepaintSoon === 'function') gardenRepaintSoon();
+  _gdEmit('landshow', {});
+  if (typeof _gscPublishSoon === 'function') _gscPublishSoon(3000);
+  setTimeout(() => { try { _glhSnapAll(); } catch (e) { /* the next world check */ } }, 60);
+  if (typeof gardenToast === 'function') gardenToast(`${A.n || 'Your friend'} changed the garden's paths and ground.`, { icon: 'paintbrush', timeout: 9000, action: { label: 'Undo', run: () => { const gg = _gdG(); gg.dz = JSON.parse(was); gardenDesignShow(gardenDesignSaved(gg)); _gdSave(); _gdEmit('landshow', {}); setTimeout(() => { try { _glhSnapAll(); } catch (e) { /* later */ } }, 60); } } });
+}
 function _glhSnapAll() {
   const s = gardenSnapshot(); if (s) _glh.worldSig = _glhWorldSig(s);
   for (const A of _gll.actors.values()) if (A.f) _glhSendSnap(A.f);
@@ -337,6 +379,7 @@ function _glhIntent(ev) {
   _glhPrune();
   _gdSave();
   if (!ev.away) { const result = _glhResOf(ev, e); _glhSend('all', 'res', result); _gllToolFeedback(result, false); }
+  if ((ev.t === 'land' || ev.t === 'build' || ev.t === 'gate' || ev.t === 'solve') && typeof gardenToast === 'function') gardenToast(_glhDiaryWhat(e, 1) + (e.wait ? (ev.t === 'solve' ? '. It is in Land, under discovered places, for you to set out.' : '. There was no room for it nearby: set it out from the land office.') : '!'), { icon: ev.t === 'land' ? 'trees' : ev.t === 'gate' ? 'key' : 'hammer', timeout: e.wait ? 12000 : 9000 });   // (full co-op: a friend's gift to the garden, said out loud)
   const A = _gll.actors.get(ev.w);
   if (A) _gllPose(A, _GL_POSE[ev.t] || 'pick', 760);
   if (ev.x != null && _GL_EMOJI[ev.t]) _gllFloat(_gw.svg, ev.x, ev.y, _GL_EMOJI[ev.t], A ? A.n : '');
@@ -380,7 +423,7 @@ function _glhQueueRun(d) {
   _gllApi('/api/garden-live/queued', { ids: done }).then(() => gardenLiveLoad(true)).then(_glhHud).catch(() => {}).finally(() => { _glh.queueBusy = false; });
 }
 function _glhResOf(ev, e) {
-  return { i: ev.i, w: ev.w, t: e.t, ok: true, ...(e.p ? { p: e.p } : {}), ...(e.x != null ? { x: e.x, y: e.y } : {}), ...(e.tx != null ? { tx: e.tx, ty: e.ty } : {}), ...(e.gi ? { u: e.gi } : {}), ...(e.n ? { n: e.n } : {}), ...(e.t === 'harvest' && e.gold === true ? { gold: true } : {}), ...(e.bug ? { item: e.bug, u: ev.u } : {}), ...(e.dropU ? { u: e.dropU, k: e.k, item: e.item, to: e.to } : {}) };
+  return { i: ev.i, w: ev.w, t: e.t, ok: true, ...(e.wait ? { why: 'wait' } : {}), ...(e.p ? { p: e.p } : {}), ...(e.x != null ? { x: e.x, y: e.y } : {}), ...(e.tx != null ? { tx: e.tx, ty: e.ty } : {}), ...(e.gi ? { u: e.gi } : {}), ...(e.n ? { n: e.n } : {}), ...(e.t === 'harvest' && e.gold === true ? { gold: true } : {}), ...(e.bug ? { item: e.bug, u: ev.u } : {}), ...(e.dropU ? { u: e.dropU, k: e.k, item: e.item, to: e.to } : {}) };
 }
 /** A new line in the diary: the lines before it about the same record can no longer be undone, nor your own Undo steps on it, and Put my garden back knows what it did. */
 function _glhLine(key, e) {
@@ -398,8 +441,8 @@ function _glhApply(ev, key) {
   if (act.on && !rec) return 'gone';
   // Whose it is: a plant is its planter's, a decoration its owner's (`own`: given to the host, it is the host's); no name there, the host's.
   const owner = !rec ? '' : hit.p ? rec.by || '' : rec.own || '', mine = !!rec && owner === f;
-  // what is the host's stays the host's unless the host said otherwise, and what is another visitor's is theirs, whatever May touch says
-  if (act.mine && !mine && (owner || !_glhPermOf(ev).touch)) return 'not-yours';
+  // full co-op (2.75): a friend with Play together may do to anything here what you may, yours or another friend's; what is someone else's still goes home to them (a take posts it back)
+  if (act.mine && !mine && !_glhPermOf(ev).touch) return 'not-yours';
   const mp = hit.p ? 'plants' : hit.d ? 'decor' : '';
   const entry = { f, t, i: ev.i, d: today, at: _gdNow(), p: ev.p, x: ev.x, y: ev.y, ...(mp ? { mp } : {}) };   // (m.now is the model's, up to a minute behind: this one sorts against the visit's start)
   const put = (mark, extra) => { g.gl[key] = Object.assign(entry, { mark }, extra || {}); return ''; };
@@ -476,11 +519,12 @@ function _glhApply(ev, key) {
     }
     case 'take': {
       const d = hit.d, mark = _gdMark([['decor', d.uid]]);
-      const gi = mine ? rec.gi : '';
-      if (mine) _gdDecorBack(rec);                            // its own post too: if the answer is lost, it still comes back, once
+      const gi = rec.own ? rec.gi : '';
+      if (rec.own) _gdDecorBack(rec);                         // back in its owner's bag, whoever put it away: its own post too, so if the answer is lost it still comes back, once
       delete g.decor[d.uid];
-      return put(mark, { u: d.uid, noUndo: !!mine, ...(gi ? { gi } : {}) });
+      return put(mark, { u: d.uid, noUndo: !!rec.own, ...(gi ? { gi } : {}) });
     }
+    case 'land': case 'build': case 'gate': case 'solve': return _glhLand(ev, put, m);
     case 'give': {
       if (!mine) return 'not-yours';
       const d = hit.d, lk = 'gl.d.' + ev.i, gi = rec.gi, mark = _gdMark([['decor', d.uid], ['led', lk]]);
@@ -514,6 +558,64 @@ function _glhApply(ev, key) {
     }
     default: return 'kind';
   }
+}
+/** A friend buys a piece of this garden's land, or builds one of its things (full co-op, 2.75). They paid with their own coins before asking (their page's ledger); here it costs
+ *  you nothing and is yours for good, the same rows your own purchase writes (land:<id> / feat:<id> in the ledger, so the snapshot, the map, the gates and what you can walk on
+ *  follow by themselves). A thing that stands is set out near where they stand. No Undo: their coins are spent. Your own coins and level are never touched. */
+function _glhLand(ev, put, m) {
+  if (ev.t === 'gate') return _glhGate(ev, put, m);
+  if (ev.t === 'solve') return _glhSolve(ev, put, m);
+  const feat = ev.t === 'build', id = String(ev.p || '');
+  if (feat) {
+    const info = typeof gardenLandFeatureInfo === 'function' ? gardenLandFeatureInfo(id, m) : null;
+    if (!info) return 'gone'; if (info.built) return 'have'; if (info.why) return 'not-yet'; if (info.spot) return 'spot';
+  } else {
+    const info = typeof gardenLandInfo === 'function' ? gardenLandInfo(id, m) : null;
+    if (!info) return 'gone'; if (info.owned) return 'have'; if (!info.lvOk || !info.reach || !info.keyOk) return 'not-yet';
+  }
+  const g = _gdG(), lk = 'gl.l.' + ev.i, mark = _gdMark([['led', lk]]);
+  g.led[lk] = { d: m.today, k: 'b', c: 0, x: 0, i: { [(feat ? 'feat:' : 'land:') + id]: 1 }, n: 1, by: ev.f };   // (k b: it counts as bought here; c 0: they paid)
+  const def = feat ? gardenLandFeature(id) : gardenLandRow(id);
+  if (!feat && def) _gdEmit('land', { id, x: def.x, y: def.y, w: def.w, h: def.h });
+  gardenModel();   // (the land on screen, and what you can walk on, are the garden's from this moment)
+  let out = true, placed = null;
+  if (feat && GARDEN_WORLD.v >= 3 && typeof gardenFeatureSetNearby === 'function') {
+    // whatever you own shows (the owner's rule): next to the friend who built it, else next to you, else by the garden's arrival point; only when none of them has room does it wait in the land office
+    // (the nearest clear spot to the friend first, close and then a little wider, so it goes up where they can see it; only then by you, or the arrival point)
+    const A = _gll.actors.get(ev.w), them = ev.x != null ? { x: ev.x, y: ev.y } : A && Number.isFinite(A.x) ? { x: Math.floor(A.x), y: Math.floor(A.y) } : null;
+    const spots = [them && { ...them, r: 6 }, them && { ...them, r: 11 }, typeof _gw !== 'undefined' && Number.isFinite(_gw.px) ? { x: Math.floor(_gw.px), y: Math.floor(_gw.py), r: 8 } : null, GARDEN_WORLD.start ? { x: Math.floor(GARDEN_WORLD.start.x), y: Math.floor(GARDEN_WORLD.start.y), r: 12 } : null].filter(Boolean);
+    out = false;
+    for (const at of spots) { try { if (gardenFeatureSetNearby(id, at).ok && gardenFeatureIsSetOut(id)) { out = true; break; } } catch (e) { /* the next spot */ } }
+    if (out) { const p = gardenFeatureRow(gardenLandFeature(id)); if (p && Number.isInteger(p.x) && Number.isInteger(p.y)) { placed = { tx: p.x + Math.floor((p.w || 1) / 2), ty: p.y + (p.h || 1) - 1 }; } }
+  }
+  setTimeout(() => { try { _glhSnapAll(); } catch (e) { /* the next world check */ } }, 60);   // everybody here sees the new land at once
+  return put(mark, { noUndo: true, land: id, ...(feat ? { feat: 1 } : {}), ...(placed || {}), ...(out ? {} : { wait: 1 }) });
+}
+/** A friend opens one of your gates (full co-op, 2.75): with the find you hold, or one they bring themselves (r 1: friends are trusted). The same row your own opening writes, and its little prize is the garden's. */
+function _glhGate(ev, put, m) {
+  const gate = typeof gardenGateOf === 'function' ? gardenGateOf(String(ev.p || '')) : null, rule = gate && gardenGateRule(gate);
+  if (!rule) return 'gone';
+  if (gardenGateIsOpen(gate, m.areas)) return 'have';
+  if (!gardenGateHas(rule.key) && ev.r !== 1) return 'not-yet';
+  const g = _gdG(), lk = 'gt.' + gate.id, mark = _gdMark([['led', lk]]), P = GARDEN_GATE_PRIZE;
+  if (!g.led[lk]) g.led[lk] = { d: m.today, k: 'gk', c: P.c, x: P.x, i: { ['gate:' + gate.id]: 1 }, n: 1, by: ev.f };
+  gardenModel();
+  if (typeof _glFx === 'function') { try { _glFx(gate.door.x + 0.5, gate.door.y + 0.5, 'sparkle', { lift: 20 }); _glSound('twinkle'); } catch (e) { /* only a flourish */ } }
+  _gdEmit('landshow', {});
+  return put(mark, { noUndo: true, land: gate.id, gate: 1 });
+}
+/** A friend solved one of your trail puzzles (full co-op, 2.75): it is solved in your garden, as if you had, and the place it leads to is set out next to them when there is room. */
+function _glhSolve(ev, put, m) {
+  const id = String(ev.p || ''); if (typeof gardenExploreIds !== 'function' || !gardenExploreIds().includes(id)) return 'gone';
+  if (typeof gpGet === 'function' && gpGet('explore.' + id)) return 'have';
+  const g = _gdG(), lk = 'gl.s.' + ev.i, mark = _gdMark([['led', lk]]);
+  if (typeof gpSet === 'function') gpSet('explore.' + id, m.today);
+  g.led[lk] = { d: m.today, k: 'gl', i: {}, n: 0, by: ev.f };
+  let out = typeof gardenIslandDefaultSight === 'function' && gardenIslandDefaultSight(id);   // (a place the layout already holds stands where it is)
+  if (!out && typeof gardenSightSetNearby === 'function' && typeof gardenSightIsSetOut === 'function' && !gardenSightIsSetOut(id)) { try { out = !!(gardenSightSetNearby(id).ok && gardenSightIsSetOut(id)); } catch (e) { out = false; } }
+  _gdEmit('landshow', {});
+  setTimeout(() => { try { _glhSnapAll(); } catch (e) { /* the next world check */ } }, 60);
+  return put(mark, { noUndo: true, land: id, solve: 1, ...(out ? {} : { wait: 1 }) });
 }
 function _glhPrune() {
   const g = _gdG(), ks = Object.keys(g.gl);
@@ -733,6 +835,7 @@ function _glhDiaryWhat(e, n) {
     case 'water': return n > 1 ? `${who} watered ${n} of your ${_glhMany(what)}` : `${who} watered your ${what}`;
     case 'feed': return `${who} fed your ${what}`;
     case 'turn': return `${who} turned the ${what}`;
+    case 'gate': { const gate = typeof gardenGateOf === 'function' ? gardenGateOf(e.p) : null, rule = gate && gardenGateRule(gate); return `${who} opened ${rule && rule.name ? rule.name.replace(/^The /, 'the ') : 'a gate'}`; }
     case 'weed': return `${who} tidied your ${what}`;
     case 'harvest': return `${who} picked the ${what}`;
     case 'dig': return `${who} dug up the ${what}`;
@@ -741,6 +844,10 @@ function _glhDiaryWhat(e, n) {
     case 'give': return `${who} gave you the ${what}`;
     case 'drop': return `${who} left a parcel`;
     case 'pick': return `${who} picked up a parcel`;
+    case 'land': { const r = typeof gardenLandRow === 'function' ? gardenLandRow(e.land || e.p) : null; return `${who} bought ${r ? r.name : 'a piece of land'} for your garden`; }
+    case 'build': { const r = typeof gardenLandFeature === 'function' ? gardenLandFeature(e.land || e.p) : null; return `${who} built ${r ? _gscA(r.name.toLowerCase().replace(/^the /, '')) : 'something'} in your garden`; }
+    case 'solve': { const sg = typeof gardenLandSight === 'function' ? gardenLandSight(e.land || e.p) : null; return `${who} solved the trail puzzle to ${sg ? String(sg.name).replace(/^The /, 'the ') : 'a hidden place'} in your garden`; }
+    case 'gate': { const gt = typeof gardenGateOf === 'function' ? gardenGateOf(e.land || e.p) : null, z = gt && gardenZone(gt.n); return `${who} opened the way into ${z ? String(z.name).replace(/^The /, 'the ') : 'a new part'} of your garden`; }
     case 'trade': return e.f2 ? `${who} and ${_glhByName(e.f2)} traded` : `${who} traded with you`;
     default: return `${who} was here`;
   }
@@ -759,18 +866,18 @@ function _glhHud() {
   hud.appendChild(b);
   if (typeof gardenContestHostBtn === 'function') gardenContestHostBtn(hud);
   for (const A of people.slice(0, 7)) { const p = _gsvEl('span', 'gll-person', A.n.slice(0, 1).toUpperCase()); p.title = A.n; hud.appendChild(p); }
-  // someone at the gate: one tap lets them in
+  // someone at the gate (only a friend you sent home, or one a group made): one tap lets them in to play together
   for (const id of knocks.slice(0, 3)) {
     const k = _gsvEl('div', 'gll-knock');
     k.appendChild(_gsvEl('span', null, `${_gscFirst(id)} is at your gate`));
-    for (const lv of ['look', 'help', 'play']) k.appendChild(_gsvBtn(GL_LEVEL_NAMES[lv], { kind: 'btn-ghost', run: () => { _gllApi('/api/garden-live/perm', { id, lv }).then(() => gardenLiveLoad(true)).then(_glhHud).catch(() => {}); } }));
+    for (const lv of ['play']) k.appendChild(_gsvBtn('Let them in', { kind: 'btn-ghost', run: () => { _gllApi('/api/garden-live/perm', { id, lv, touch: true }).then(() => gardenLiveLoad(true)).then(_glhHud).catch(() => {}); } }));
     hud.appendChild(k);
   }
   // someone here, or away, asking to do more: one tap says yes
   for (const id of asks.slice(0, 3)) {
     const k = _gsvEl('div', 'gll-knock');
     k.appendChild(_gsvEl('span', null, `${_gscFirst(id)} asks to do more`));
-    for (const lv of ['help', 'play']) k.appendChild(_gsvBtn(GL_LEVEL_NAMES[lv], { kind: 'btn-ghost', run: () => { _gllApi('/api/garden-live/perm', { id, lv }).then(() => gardenLiveLoad(true)).then(_glhHud).catch(() => {}); } }));
+    for (const lv of ['play']) k.appendChild(_gsvBtn('Play together', { kind: 'btn-ghost', run: () => { _gllApi('/api/garden-live/perm', { id, lv, touch: true }).then(() => gardenLiveLoad(true)).then(_glhHud).catch(() => {}); } }));
     hud.appendChild(k);
   }
   let panel = box.querySelector(':scope > .gll-panel');
@@ -792,6 +899,7 @@ function _glhPanel(el, v) {
   if (note) { const msg = { 'old-mine': 'Friends on another network can only play here after a quick update: Settings > Your connection to friends > Update.', 'old-theirs': 'Friends on another network can only play here once the relay you share is updated.', norelay: 'Friends on another network need a relay to play here: Settings > Your connection to friends. On the same network they can play now.', unreachable: 'Your connection to friends cannot be reached just now.', refused: 'Your connection to friends does not let you host rooms now: its owner may have taken your access back.', rest: 'The relay is resting for a little while. Friends on your network can still play.' }[note]; if (msg) el.appendChild(_gsvEl('p', 'muted gsv-small gll-panel-note', msg)); }
   if (v.budget && v.budget.mode === 'over') el.appendChild(_gsvEl('p', 'muted gsv-small gll-panel-note', 'That is all the live play through your connection to friends for today. It keeps your sync safe. Friends on your network can still play.'));
   el.appendChild(_gsvEl('h4', 'gll-h', 'Who may come in'));
+  el.appendChild(_gsvEl('p', 'muted gsv-small gll-panel-note', 'Friends play here just as you do: plant, pick, build, buy land and trade, and it all goes into this garden. They only ever see the garden, never your tasks, calendar, mail or money.'));
   const list = _gsvEl('div', 'gll-friends');
   const setP = (id, o) => _gllApi('/api/garden-live/perm', { id, ...o }).then(() => gardenLiveLoad(true)).then(_glhHud).catch((e) => gardenToast(e.message, { kind: 'err' }));
   for (const f of _gscFriendList().slice(0, 60)) {
@@ -802,12 +910,11 @@ function _glhPanel(el, v) {
     if (here) { top.appendChild(_gsvEl('span', 'gll-here', 'here now')); top.appendChild(_gsvBtn('Send home', { kind: 'btn-ghost', icon: 'log-out', run: () => _gllApi('/api/garden-live/home', { id: f.id }).then(() => gardenLiveLoad(true)).then(_glhHud).catch(() => {}) })); }
     r.appendChild(top);
     const seg = _gsvEl('div', 'gll-switch');
-    for (const lv of GL_LEVELS) seg.appendChild(sw(GL_LEVEL_NAMES[lv], p.lv === lv, () => setP(f.id, { lv })));
+    const levels = p.lv === 'look' || p.lv === 'help' ? [p.lv, 'play', 'none'] : ['play', 'none'];   // (full co-op: playing together or sent home; a group-made friend may still be on Look)
+    for (const lv of levels) seg.appendChild(sw(GL_LEVEL_NAMES[lv], p.lv === lv, () => setP(f.id, { lv, touch: lv === 'play' })));
     r.appendChild(seg);
     if (p.lv === 'help' || p.lv === 'play') {
       const opt = _gsvEl('div', 'gll-friend-o');
-      const c = document.createElement('label'); c.className = 'gll-check'; const i = document.createElement('input'); i.type = 'checkbox'; i.checked = !!p.touch; i.onchange = () => setP(f.id, { touch: i.checked }); c.append(i, _gsvEl('span', null, 'May touch my things'));
-      opt.appendChild(c);
       const s = document.createElement('select'); s.className = 'input gll-select'; s.setAttribute('aria-label', 'Sharing the harvest'); for (const k of GL_SHARES) { const o = document.createElement('option'); o.value = k; o.textContent = GL_SHARE_NAMES[k]; if (p.share === k) o.selected = true; s.appendChild(o); } s.onchange = () => setP(f.id, { share: s.value });
       opt.appendChild(s);
       r.appendChild(opt);
@@ -817,7 +924,7 @@ function _glhPanel(el, v) {
   if (!list.children.length) list.appendChild(_gsvEl('p', 'muted gsv-small', 'Add a friend first.'));
   el.appendChild(list);
   { const c = document.createElement('label'); c.className = 'gll-check'; const i = document.createElement('input'); i.type = 'checkbox'; i.checked = !!v.groupLook; i.onchange = () => prefs({ groupLook: i.checked }); c.append(i, _gsvEl('span', null, 'People in my groups may look')); el.appendChild(c); }
-  { const c = document.createElement('label'); c.className = 'gll-check'; const i = document.createElement('input'); i.type = 'checkbox'; i.checked = v.queueOn !== false; i.onchange = () => prefs({ queue: i.checked }); c.append(i, _gsvEl('span', null, 'Friends with Help or Play can leave things for when I am back')); el.appendChild(c); }
+  { const c = document.createElement('label'); c.className = 'gll-check'; const i = document.createElement('input'); i.type = 'checkbox'; i.checked = v.queueOn !== false; i.onchange = () => prefs({ queue: i.checked }); c.append(i, _gsvEl('span', null, 'Friends can leave things for when I am back')); el.appendChild(c); }
   if (typeof gardenLiveGoalsOn === 'function') { const c = document.createElement('label'); c.className = 'gll-check'; const i = document.createElement('input'); i.type = 'checkbox'; i.checked = gardenLiveGoalsOn(); i.onchange = () => gardenLiveGoalsSet(i.checked); c.append(i, _gsvEl('span', null, 'Suggest shared goals while friends are here')); el.appendChild(c); }
   el.appendChild(_gsvEl('h4', 'gll-h', 'What happened here'));
   const diary = _gsvEl('ul', 'gll-diary');

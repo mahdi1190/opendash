@@ -22,6 +22,20 @@
                  A part (at) and its stand point are placed on the thing AS ITS PAINTER DREW IT, never on the layout's footprint: u is a
                  share of the drawn width (the native world's record of the picture, else the painter's own box, else dw below), from the
                  drawn foot's middle. A layout that makes the barn's footprint wider leaves its ladder on the barn's wall.
+     levels    upper floors you walk on (94-garden-zz-7act-3height.js): [{ id, name, at [x, y] (the floor's middle on the ground, in H, the
+               player's height, from the drawn foot), h (how high it is, in H), shape { ring: [rx, ry, inner rx, inner ry] } or { rect: [x0, y0,
+               x1, y1] } (where the feet may go, in H round its middle), minus [{ rect } | { ell: [x, y, rx, ry] }] (the trunk, a house on it),
+               core [rx, y] (a lamp room: you are behind it, drawn under the thing, when your feet are behind y and within rx of the middle),
+               sit (a level of one spot: the pose you take there), ways [{ by: 'ladder', art (drawn by the world; none: the painter's own),
+               loft, name, foot [x, y] (where you start up, in H from the drawn foot), top [x, y] (where you step off, in H from the middle) }] }]
+               A way may instead be { by: 'stair', inside: true, door: { w, h, up } }: a stair inside the thing; you go in at its door (drawn
+               standing open, w by h in H, its sill up from the foot), out of sight, and rise out of the stair head at the top, drawn behind the
+               thing so its own wall hides your legs. What stands in front of the floor is drawn again over your legs as you pass it:
+               rail { ring: [rx, ry] } or { line: [x0, x1, y] }, h, post, post0, gap, color (posts and rails, in H round the middle), or
+               front { poly: [[x, y], ...] (the painter's own outline, in H from the drawn foot), fill, line, lineTo } (battlements, a parapet).
+               The shape is where the FEET go, kept in from the drawn edge by half a body, so the whole figure stays over the floor as drawn.
+               boards: a landing the world draws (a loft's): the back of its boards, in H, when it lies behind the feet's shape.
+               tools/affordance-audit.mjs checks every way's foot is walkable and reachable on any layout.
      dw        the drawn width in cells when nothing else says (a painter that draws the thing at its own fixed size)
      paint     a fixed thing's painter (GardenPaintedProps: 'seat' the bench, 'wish' the well, 'board', 'post', 'tripod', 'fountain', 'lamp',
                'sundial', 'postbox'): a row of layout data of this kind (`things`) is drawn by that painter where the row puts it, blocks the
@@ -43,31 +57,33 @@
    ============================================================ */
 const GARDEN_KINDS = Object.freeze({
   /* seats */
-  bench: { name: 'the bench', arts: ['seat'], paint: 'seat', w: 1.75, h: 0.4, decor: [], words: ['bench', 'seat', 'settle', 'pew'], acts: [{ act: 'sit', stand: [0, -0.16], deg: 90, seat: 0.36 }], pet: 'bench', top: 28, petSeat: 15 },   // seat: the seat's height as drawn, a share of the figure's height
+  bench: { name: 'the bench', arts: ['seat'], paint: 'seat', w: 1.75, h: 0.4, decor: [], words: ['bench', 'seat', 'settle', 'pew'], acts: [{ act: 'sit', stand: [-0.25, -0.16], deg: 90, seat: 0.36 }, { act: 'sit', stand: [0.25, -0.16], deg: 90, seat: 0.36 }], pet: 'bench', top: 28, petSeat: 15 },   // two places along it (a friend sits beside you, never on you)   // seat: the seat's height as drawn, a share of the figure's height
   seat: { name: 'the seat', effects: ['sit'], decor: ['bench', 'stone-bench', 'driftwood-seat', 'deckchair', 'bistro-set', 'picnic-blanket', 'gazebo', 'dc-tea-table'], acts: [{ act: 'sit', stand: [0, 0.06], deg: 90, seat: 0.45 }], pet: 'bench' },
   chair: { name: 'the chair', decor: ['play-chair'], words: ['chair'], acts: [{ act: 'sit', stand: [0, 0.06], deg: 90, seat: 0.45 }], pet: 'chair' },
   swing: { name: 'the swing', decor: ['swing-seat'], words: ['swing'], acts: [{ act: 'sit', stand: [0, 0.06], deg: 90, seat: 0.45 }], pet: 'swing' },
   hammock: { name: 'the hammock', decor: ['hammock'], words: ['hammock'], acts: [{ act: 'sit', stand: [0, 0.06], deg: 90, seat: 0.45 }], pet: 'swing' },
   picnic: { name: 'the picnic rug', arts: ['picnic'], words: ['picnic'], pet: 'bench', top: 22, petSeat: 22 },
-  stump: { name: 'the stump', arts: ['stump'], words: ['stump'], acts: [{ act: 'sit', stand: [-0.1, 0.45], deg: 90, seat: 0.9 }], pet: 'stump', top: 24, petSeat: 24 },   // up on the top, legs down the front
-  'log-seat': { name: 'the log', art: 'logseat', place: true, w: 1.8, h: 0.4, acts: [{ act: 'sit', stand: [0, 0.12], deg: 90, seat: 0.42 }], pet: 'stump', solid: 'block' },   // a log laid by a fire to sit on
+  stump: { name: 'the stump', arts: ['stump'], words: ['stump'], acts: [{ act: 'sit', at: [-0.35, 0], drawn: false, stand: [-0.35, -0.02], deg: 90, seat: 0.5 }], pet: 'stump', top: 24, petSeat: 24 },   // on the fallen log its painter lays against the stump's left side (u: a share of the stump as drawn), legs down its front
+  'log-seat': { name: 'the log', art: 'logseat', place: true, w: 1.8, h: 0.4, acts: [{ act: 'sit', stand: [-0.25, 0.12], deg: 90, seat: 0.42 }, { act: 'sit', stand: [0.25, 0.12], deg: 90, seat: 0.42 }], pet: 'stump', solid: 'block' },   // a log laid by a fire to sit on
   'log-pile': { name: 'the log pile', decor: ['log-pile', 'rw-orn-logs'], words: ['logpile', 'logstack', 'woodpile', 'logs'], pet: 'stump' },
   /* water you work, wish in or drink from */
   pump: { name: 'the pump', arts: ['pump'], decor: ['water-pump'], words: ['pump'], acts: [{ act: 'pump', stand: [-0.74, 0.12], deg: 0, edge: true }], pet: 'pump', drink: true },   // side on at the lever's end
-  well: { name: 'the wishing well', arts: ['wish'], paint: 'wish', w: 1.4, h: 0.8, words: ['well', 'wish'], acts: [{ act: 'wish', stand: [0.45, 0.95], deg: -90, reach: 3.2 }], pet: 'well', drink: true },
+  well: { name: 'the wishing well', arts: ['wish'], paint: 'wish', w: 1.4, h: 0.8, words: ['well', 'wish'], acts: [{ act: 'wish', stand: [0, 0.95], deg: -90, reach: 3.2 }], pet: 'well', drink: true },
   'garden-well': { name: 'the well', decor: ['wishing-well'], effects: ['wish'], acts: [{ act: 'wish', stand: [0, 0.5], deg: -90 }], pet: 'well', drink: true },
   'village-well': { name: 'the well', arts: ['well'], pet: 'well', drink: true },   // a well with its own use (draw a bucket): the pets drink there
   trough: { name: 'the trough', arts: ['churn'], decor: ['water-butt', 'dc-milk-churns'], words: ['trough', 'churn'], pet: 'trough', drink: true },
   bath: { name: 'the bird bath', arts: ['fountain'], paint: 'fountain', w: 1.2, h: 0.6, decor: ['bird-bath', 'fountain', 'mini-pond'], words: ['fountain', 'birdbath'], pet: 'bath', drink: true },
   /* fire */
   campfire: { name: 'the campfire', art: 'fire', place: true, w: 1, h: 0.4, acts: [{ act: 'warm', stand: [0, -0.68], deg: 90 }], pet: 'fire', warm: true, noPerch: true, solid: 'block' },   // back from the ring of stones, the flames clear of your feet
-  fire: { name: 'the fire', arts: ['clamp'], decor: ['fire-pit', 'dc-clay-oven', 'dc-cauldron'], words: ['fire', 'firepit', 'firering', 'bonfire', 'campfire', 'brazier', 'soupcamp', 'firecamp', 'hearth'], pet: 'fire', warm: true, noPerch: true },
+  fire: { name: 'the fire', arts: ['clamp'], decor: ['fire-pit', 'dc-clay-oven', 'dc-cauldron'], words: ['fire', 'firepit', 'firering', 'bonfire', 'campfire', 'brazier', 'beacon', 'soupcamp', 'firecamp', 'hearth'], pet: 'fire', warm: true, noPerch: true },
   /* things that ring, play or chime */
   chapel: { name: 'the chapel bell', arts: ['chapel'], words: ['chapel'], acts: [{ act: 'bell', stand: [0, 0.6], deg: -90 }], pet: 'bell' },
   bell: { name: 'the bell', art: 'bell', place: true, words: ['bell'], acts: [{ act: 'bell', stand: [0, 0.6], deg: -90 }], pet: 'bell' },   // a ship's bell on a post (no drawing yet: offers nothing until one is drawn)
   chime: { name: 'the wind chimes', decor: ['wind-chimes', 'can-chimes'], words: ['chime', 'chimes'], pet: 'chime' },
   'music-box': { name: 'the music box', art: 'musicbox', place: true, decor: ['dc-gramophone'], words: ['music', 'gramophone'], pet: 'music' },
-  busker: { name: 'the fiddle', art: 'busker', place: true, onPath: true, w: 1.2, h: 0.4, acts: [{ act: 'play', stand: [0.75, 0.25], deg: 90 }], pet: 'music', solid: 'block' },   // a stool, an open fiddle case with a few coins, the fiddle on the stool
+  // a band's pitch (music, 20 Nov): four places, each one player's, each with its own instrument (the fiddle on its stool, the squeezebox on a
+  // crate, the tin whistle in the open case, the frame drum by a sack); whoever plays at once adds a part to one tune (94-garden-zz-7act-3music.js)
+  busker: { name: 'the band’s pitch', art: 'busker', place: true, onPath: true, w: 2.6, h: 0.45, acts: [{ act: 'play', name: 'the fiddle', stand: [-0.36, 0.5], deg: 90, music: 0 }, { act: 'squeeze', name: 'the squeezebox', stand: [-0.12, 0.62], deg: 90, music: 1 }, { act: 'whistle', name: 'the tin whistle', stand: [0.12, 0.62], deg: 90, music: 2 }, { act: 'drum', name: 'the drum', stand: [0.36, 0.5], deg: 90, music: 3 }], pet: 'music', solid: 'block' },
   /* to read */
   'notice-board': { name: 'the notices', arts: ['board', 'lakeboard', 'cider-board'], paint: 'board', w: 1.6, h: 0.4, words: ['board', 'notice', 'noticeboard'], acts: [{ act: 'read', stand: [0, 0.6], deg: 90 }], pet: 'board' },
   signpost: { name: 'the sign', arts: ['finger'], paint: 'post', w: 0.6, h: 0.3, decor: ['signpost', 'welcome-sign'], words: ['sign', 'signpost', 'finger'], acts: [{ act: 'read', stand: [0, 0.6], deg: 90 }], pet: 'board', top: 40 },
@@ -78,13 +94,26 @@ const GARDEN_KINDS = Object.freeze({
   /* walls to lean on, things to climb */
   wall: { name: 'the wall', arts: ['wall'], decor: ['stone-wall', 'dc-old-wall'], words: ['wall'], acts: [{ act: 'lean', stand: [-0.25, 0.03], deg: 90, pri: 1.2, edge: true }], pet: 'wall', top: 24, petSeat: 24 },   // back to it, right against it; its prompt before a tree's beside it
   stones: { name: 'the stones', arts: ['stones'], words: ['stones', 'standing'], pet: 'wall' },
-  lighthouse: { name: 'the lighthouse', arts: ['lighthouse'], decor: ['dc-lighthouse'], words: ['lighthouse'], pet: 'lighthouse',
-    dw: 3.82, acts: [{ act: 'ladder', name: 'the lighthouse ladder', at: [0.0576, 0.13], art: 'ladder', stand: [0.0576, 0.16], deg: -90, noProp: true }] },   // a ladder up its side to a plank landing with a rail (u: a share of the tower as drawn)
+  lighthouse: { name: 'the lighthouse', arts: ['lighthouse'], decor: ['dc-lighthouse'], words: ['lighthouse'], pet: 'lighthouse', dw: 3.82,
+    // the gallery round the lamp room, all the way round, up a long iron ladder on the tower's face (its painter draws the deck and rail)
+    levels: [{ id: 'gallery', name: 'the gallery', at: [0, 0], h: 5, shape: { ring: [0.45, 0.235, 0.37, 0.12] }, core: [0.42, 0], rail: { ring: [0.664, 0.265], h: 0.36, post: 0.106, post0: -0.652, mid: false }, ways: [{ by: 'ladder', art: 'ladder', name: 'the lighthouse ladder', foot: [0.34, 0.1], top: [0.34, 0.16] }] }] },
   treehouse: { name: 'the treehouse', arts: ['treehouse'], words: ['treehouse'], pet: 'treehouse',
-    dw: 4.79, acts: [{ act: 'ladderhi', name: 'the treehouse ladder', at: [0.073, 0.2], drawn: false, stand: [0.073, 0.23], deg: -90, noProp: true, edge: true }] },   // (the treehouse's own painter draws its ladder)
+    // the deck of planks round the trunk, up the painter's own rope ladder: along the rail, in front of the trunk, to the house's door
+    levels: [{ id: 'deck', name: 'the treehouse deck', at: [-0.29, 0], h: 2.59, shape: { rect: [-1.3, -0.14, 1.26, 0.12] }, minus: [{ rect: [0.1, -0.3, 1.4, -0.03] }, { ell: [0, -0.08, 0.38, 0.09] }], rail: { line: [-1.45, 1.4, 0.167], h: 0.434, post: 0.2896, post0: -1.4, gap: [-1.27, -0.8], color: '#9a7a54', postW: 2.6, railW: 2.6, mid: false }, ways: [{ by: 'ladder', name: 'the treehouse ladder', foot: [-1.34, 0.12], top: [-1.05, 0.06] }] }] },
+  // the old watchtower: up the stair inside it (in at the door, out at the top) to the walk behind its battlements, the west half (the
+  // east half is tumbled, a rowan in the gap). front: the battlements, drawn again over your legs as you pass behind them (its painter's
+  // own crest, in H from the drawn foot)
+  tower: { name: 'the old tower', arts: ['tower'], words: ['watchtower'], pet: 'wall',
+    levels: [{ id: 'top', name: 'the tower top', at: [-0.75, -0.1], h: 6.49, shape: { rect: [-0.56, -0.47, 0.4, -0.1] }, minus: [{ rect: [0.1, -0.22, 0.5, 0.1] }],   // (the feet's: half a body in from the west wall's face and the back wall, short of where the crest tumbles at 0.6; kept back from the low broken crest to the east)
+      front: { poly: [[-1.545, -6.467], [-1.545, -7.0], [-1.159, -7.0], [-1.159, -6.71], [-0.869, -6.71], [-0.869, -7.046], [-0.483, -7.046], [-0.434, -6.66], [-0.145, -6.515], [0.05, -6.42], [0.05, -6.37], [-1.545, -6.37]], fill: '#a39d8b', line: '#cbc5b1', lineTo: 9 },
+      ways: [{ by: 'stair', inside: true, name: 'the tower stair', foot: [0, 0.4], top: [0.25, -0.3], door: { w: 0.63, h: 1.25, up: 0.385 } }] }] },
   hollow: { name: 'the hollow tree', arts: ['hollow'], words: ['hollow'], pet: 'tree' },   // (the pets treat it as a tree: the treehouse's peek needs a window it has not got)
   barn: { name: 'the barn', arts: ['barn'], words: ['barn'], pet: 'hay',
-    dw: 4, acts: [{ act: 'ladderlo', name: 'the hay loft ladder', at: [0.275, 0.37], art: 'ladder', top: 96, loft: true, stand: [0.275, 0.4], deg: -90, noProp: true, edge: true }] },   // (u: a share of the barn as drawn)
+    // the hay loft: a landing of boards out from the loft door up its side, a rail along its front, the ladder up through the rail's gap
+    // (the world draws ladder, door and landing from these numbers: rail.own)
+    levels: [{ id: 'loft', name: 'the hay loft', at: [1.25, 0.27], h: 1.37, shape: { rect: [-0.07, 0.22, 0.36, 0.52] }, boards: 0.07,
+      rail: { line: [-0.33, 0.63, 0.6], h: 0.32, post: 0.24, post0: -0.33, gap: [-0.21, 0.21], color: '#7a5a36', postW: 1.6, railW: 1.9, mid: false, own: true },
+      ways: [{ by: 'ladder', art: 'ladder', loft: true, name: 'the hay loft ladder', foot: [1.25, 0.32], top: [0, 0.45] }] }] },
   hay: { name: 'the hay', arts: ['hay'], decor: ['hay-bale'], words: ['hay', 'haybale'], pet: 'hay', top: 38, petSeat: 38 },
   /* water's things */
   pier: { name: 'the pier end', words: ['pier', 'jetty', 'landing'], acts: [{ act: 'dangle', stand: [0, -0.3], deg: 90, pierEnd: true }], pet: 'pier', noPerch: true, solid: 'free' },   // the end of the pier as far as it is built today
@@ -103,8 +132,8 @@ const GARDEN_KINDS = Object.freeze({
   /* trees, by what the tree IS (its species, from whichever painter drew it: the walker's trunk list carries it) and its own size:
      a fruit tree is shaken wherever it grows; any tree with a trunk stout enough (big: the trunk's width in cells) is climbed and hidden
      behind, in a wood, a village or on a fell alike; every tree is napped under. A layout or painter that plants a new species needs no code. */
-  'fruit-tree': { name: 'the fruit tree', species: ['apple', 'pear', 'perry', 'plum', 'damson', 'gage', 'cherry', 'quince', 'medlar', 'crab', 'fig', 'mulberry', 'cider', 'pippin', 'fruit'], acts: [{ act: 'shake', stand: [0, 0.32], deg: -90 }, { act: 'hide', stand: [-0.02, -0.1], side: 1, edge: true, deg: 90, cells: true, big: 0.3 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90, cells: true }], pet: 'tree' },
-  tree: { name: 'the tree', species: ['*'], acts: [{ act: 'climbtree', stand: [0, 0.3], deg: -90, big: 0.3 }, { act: 'hide', stand: [-0.02, -0.1], side: 1, edge: true, deg: 90, cells: true, big: 0.28 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90, cells: true }], pet: 'tree' },
+  'fruit-tree': { name: 'the fruit tree', species: ['apple', 'pear', 'perry', 'plum', 'damson', 'gage', 'cherry', 'quince', 'medlar', 'crab', 'fig', 'mulberry', 'cider', 'pippin', 'fruit'], acts: [{ act: 'shake', stand: [0, 0.32], deg: -90 }, { act: 'hide', stand: [-0.02, -0.1], side: 1, edge: true, deg: 90, cells: true, big: 0.3 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], alt: [[-0.9, 0.45], [0.95, 0.9], [-0.95, 0.9]], deg: 90, cells: true }], pet: 'tree' },
+  tree: { name: 'the tree', species: ['*'], acts: [{ act: 'climbtree', stand: [0, 0.3], deg: -90, big: 0.3, edge: true }, { act: 'hide', stand: [-0.02, -0.1], side: 1, edge: true, deg: 90, cells: true, big: 0.28 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], alt: [[-0.9, 0.45], [0.95, 0.9], [-0.95, 0.9]], deg: 90, cells: true }], pet: 'tree' },
   /* things pets go to (no move of yours yet) */
   ladder: { name: 'the ladder', words: ['ladder'], noPerch: true },   // a ladder standing on its own (a ladder up a building is that building's part)
   'standing-tree': { name: 'the tree', words: ['tree', 'birch', 'oak', 'ash', 'beech', 'rowan', 'alder', 'willow', 'pine', 'yew', 'holly', 'hawthorn', 'chestnut', 'sapling', 'elder', 'lime'], noPerch: true },   // a tree a painter drew as a thing: its moves come from its trunk (the walker's trunk list)
@@ -123,7 +152,7 @@ const GARDEN_KINDS = Object.freeze({
   lamp: { name: 'the lamp', arts: ['lamp', 'lampbox'], paint: 'lamp', w: 0.5, h: 0.3, decor: ['lantern'], words: ['lamp'], top: 33 },
   /* known, nothing to do yet: listed so the audit does not call them unknown */
   scenery: { name: 'the rock', words: ['stone', 'rock', 'boulder', 'block', 'bollard', 'buoy', 'shingle', 'haze', 'ruin', 'crutch', 'posternpier', 'gatepier', 'plinth', 'crate', 'crates', 'pots', 'net', 'anchor', 'face', 'hatch', 'fence', 'baskets', 'sacks', 'barrel', 'barrels', 'hurdle', 'gap', 'water', 'brick', 'hedge', 'oldman', 'wallend', 'foot', 'weir', 'haze'], noPerch: true },   // the land's own stones and the harbour's clutter: nothing to do
-  building: { name: 'the building', arts: ['hall', 'oldhouse', 'summer', 'boathouse', 'hide', 'tower', 'smoke', 'shepherd', 'ice', 'grotto', 'temple', 'folly', 'hull', 'lectern', 'smoker', 'bench', 'cross', 'statue', 'topiary', 'gate', 'cairn', 'barrels', 'boles', 'beacon', 'warren', 'ring', 'frogstone', 'drift', 'cart', 'office', 'thatched-cottage', 'arch', 'bandstand', 'barrel', 'boots', 'circle', 'dew', 'help', 'kettle', 'lookout', 'moon', 'oak', 'observatory', 'rack', 'rg-fields', 'rg-garden', 'rg-hill', 'rg-lake', 'rg-marsh', 'rg-orchards', 'scarecrow', 'shelf', 'skeps', 'stars', 'stone', 'worms', 'chest'],
+  building: { name: 'the building', arts: ['hall', 'oldhouse', 'summer', 'boathouse', 'hide', 'smoke', 'shepherd', 'ice', 'grotto', 'temple', 'folly', 'hull', 'lectern', 'smoker', 'bench', 'cross', 'statue', 'topiary', 'gate', 'cairn', 'barrels', 'boles', 'beacon', 'warren', 'ring', 'frogstone', 'drift', 'cart', 'office', 'thatched-cottage', 'arch', 'bandstand', 'barrel', 'boots', 'circle', 'dew', 'help', 'kettle', 'lookout', 'moon', 'oak', 'observatory', 'rack', 'rg-fields', 'rg-garden', 'rg-hill', 'rg-lake', 'rg-marsh', 'rg-orchards', 'scarecrow', 'shelf', 'skeps', 'stars', 'stone', 'worms', 'chest'],
     words: ['house', 'hut', 'cottage', 'hall', 'office', 'tower', 'shed', 'folly', 'temple', 'grotto', 'icehouse', 'hide', 'beacon', 'cairn', 'cross', 'statue', 'journal', 'barrels', 'boles', 'warren', 'ring', 'frog', 'driftwood', 'hull', 'smoker', 'craft', 'press', 'bothy', 'toposcope', 'gate', 'box', 'arch', 'lamp', 'clamp', 'smoke', 'woodshed', 'quince', 'pippin', 'woodhut', 'oldhouse', 'labyrinth', 'boathouse', 'chapel', 'sunk'] },
 });
 /** Ground, read from the layout's own cells: what each type offers you and your pet. */
@@ -172,7 +201,7 @@ function gardenKindOf(t) {   // t.head: only the last word counts (a painter's '
  *  a kind whose `species` names a word of it, else the kind with '*' (any tree). A trunk list's rock (a pass's boulder) is no tree: ''. */
 function gardenTreeKind(sp) {
   const toks = String(sp || '').toLowerCase().replace(/^tree\./, '').split(/[^a-z]+/).filter(Boolean);
-  if (toks.some(w => /^(rock|boulder|stone|stones)$/.test(w))) return '';
+  if (toks.some(w => /^(rock|boulder|stone|stones|wall|hedge|falls|water|post)$/.test(w))) return '';   // (nor a hedge bank, a wall's course or a falling sheet of water: blocks in the same list, no tree)
   for (const w of toks) for (const [s, k] of _GK_SPECIES) if (w === s) return k;
   for (const [k, v] of Object.entries(GARDEN_KINDS)) if ((v.species || []).includes('*')) return k;
   return '';
@@ -222,55 +251,6 @@ function gardenKindSnap(kind, x, y, w, wet, front) {
   // the row's own side first (a bank the layout says faces north stays on a north shore when there is one within reach), then any side
   for (const set of want == null ? [D] : [D.filter(d => d[0] === want), D]) { let bd = 4.01; for (let dy = -4; dy <= 4; dy += 0.1) for (let dx = -4; dx <= 4; dx += 0.25) { const dd = Math.hypot(dx, dy); if (dd >= bd) continue; for (const d of set) if (ok(x + dx, y + dy, d)) { bd = dd; best = { x: x + dx, y: y + dy, moved: true, front: d[0], d }; break; } } if (best) break; }
   if (best) { const d = best.d; let k = 0; while (k < 25 && !wet(best.x + d[1] * (k * 0.02 + 0.14), best.y + d[2] * (k * 0.02 + 0.14))) k++; best.x = Math.round((best.x + d[1] * k * 0.02) * 100) / 100; best.y = Math.round((best.y + d[2] * k * 0.02) * 100) / 100; delete best.d; }   // (right up to the lip)
-  return best;
-}
-/** A painted tree's kind from its species (any painter's name for it: 'apple', 'tree.green-birch', 'pine'), never from who drew it:
- *  a kind whose `species` names a word of it, else the kind with '*' (any tree). A trunk list's rock (a pass's boulder) is no tree: ''. */
-function gardenTreeKind(sp) {
-  const toks = String(sp || '').toLowerCase().replace(/^tree\./, '').split(/[^a-z]+/).filter(Boolean);
-  if (toks.some(w => /^(rock|boulder|stone|stones)$/.test(w))) return '';
-  for (const w of toks) for (const [s, k] of _GK_SPECIES) if (w === s) return k;
-  for (const [k, v] of Object.entries(GARDEN_KINDS)) if ((v.species || []).includes('*')) return k;
-  return '';
-}
-/** Turn a vector laid out for a front facing the camera (90) round to a thing whose front faces `front` degrees. */
-function _gkTurn(dx, dy, front) {
-  const a = ((front == null ? 90 : front) - 90) * Math.PI / 180; if (!a) return [dx, dy];
-  const c = Math.cos(a), s = Math.sin(a); return [dx * c - dy * s, dx * s + dy * c];
-}
-/** What a thing offers, placed: [{ act, name, x, y (the thing, or the part), stand {x, y}, deg, ...its act row }]. t: { id, kind, x, y (its
- *  foot's middle, cells), w (its width, cells), front }. Pure: the audit calls it on any layout. */
-function gardenKindSpots(t) {
-  const K = GARDEN_KINDS[t.kind]; if (!K || !K.acts) return [];
-  const w = t.w || K.w || 1, out = [];
-  K.acts.forEach((a, i) => {
-    const sx = a.cells ? a.stand[0] : a.stand[0] * w, [ox, oy] = _gkTurn(sx, a.stand[1], t.front);
-    const p = a.at ? _gkTurn(a.at[0] * w, a.at[1], t.front) : [0, 0];
-    const fr = t.front == null ? 90 : ((t.front % 360) + 360) % 360, side = fr > 225 && fr < 315 ? 'n' : fr >= 45 && fr <= 135 ? 's' : fr > 135 && fr <= 225 ? 'w' : 'e';
-    const act = a.byFront && a.byFront[side] ? a.byFront[side] : a.act;   // (a move whose pose depends on which way the thing faces: sat on a north bank, back to you; on a south bank, facing you)
-    out.push(Object.assign({}, a, { act, kind: t.kind, i, name: a.name || K.name, x: t.x + p[0], y: t.y + p[1], stand: { x: t.x + ox, y: t.y + oy }, deg: a.deg == null ? null : a.deg + ((t.front == null ? 90 : t.front) - 90) }));
-  });
-  return out;
-}
-/** Does a spot's `needs` hold now? ctx: { season, night, level, has(id) -> n }. */
-function gardenKindNeedsOk(needs, ctx) {
-  if (!needs) return true; ctx = ctx || {};
-  if (needs.season && ctx.season && ctx.season !== needs.season) return false;
-  if (needs.winter && ctx.season && ctx.season !== 'winter') return false;
-  if (needs.time === 'night' && ctx.night === false) return false;
-  if (needs.time === 'day' && ctx.night === true) return false;
-  if (needs.level && ctx.level != null && ctx.level < needs.level) return false;
-  return true;   // (owning a thing is asked when you use it: the prompt says where to get one)
-}
-/** A placed thing's foot moved to the ground its kind needs (K.ground), within 4 cells: { x, y, moved } or null when there is none.
- *  wet(x, y) -> is it water there. Pure: the game and the audit both call it. */
-function gardenKindSnap(kind, x, y, w, wet) {
-  const K = GARDEN_KINDS[kind]; if (!K || K.ground !== 'water-edge') return { x, y, moved: false };
-  const hw = (w || K.w || 1) / 2, ok = (px, py) => !wet(px, py) && !wet(px - hw, py) && !wet(px + hw, py) && wet(px, py - 0.5) && wet(px - hw, py - 0.5) && wet(px + hw, py - 0.5) && wet(px, py - 1.6);
-  if (ok(x, y)) return { x, y, moved: false };
-  let best = null, bd = 4.01;
-  for (let dy = -4; dy <= 4; dy += 0.1) for (let dx = -4; dx <= 4; dx += 0.25) { const d = Math.hypot(dx, dy); if (d < bd && ok(x + dx, y + dy)) { bd = d; best = { x: x + dx, y: y + dy, moved: true }; } }
-  if (best) { let y1 = best.y; while (y1 - 0.02 > best.y - 0.5 && !wet(best.x, y1 - 0.02 - 0.12)) y1 -= 0.02; best.y = Math.round(y1 * 100) / 100; best.x = Math.round(best.x * 100) / 100; }   // (right up to the lip)
   return best;
 }
 /** Which way the ground you walk on rises at (x, y), read from the layout's own data, never a region's name: { x, y, hill } a unit vector

@@ -215,7 +215,11 @@ function _plStoneGeo() {
   // what the painters paved besides (a green's paved circle): they say so in GardenPaintPaved, [{ rect: [x0, y0, x1, y1] } | { poly }] world px
   try { for (const q of window.GardenPaintPaved || []) { if (q.rect) rects.push([q.rect[0] - 12, q.rect[1] - 10, q.rect[2] + 12, q.rect[3] + 10]); else if (q.poly && q.poly.length > 2) polys.push(q.poly); } } catch (e) { /* none */ }
   const st = D.anchors && D.anchors.start; if (st) { const c = cpt(st.x + 0.5, st.y + 0.5); rects.push([c.x - 125 - 12, c.y - 65 - 10, c.x + 125 + 12, c.y + 65 + 10]); }
-  _plStoneD = { segs, caps, polys, rects, D, k };
+  // (vf-perf) the segments in 64 px buckets (each in every bucket its box and half width reach) and every outline's box: a test
+  // reads one bucket, not every stretch of every road (the placed things' search asked this thousands of times on a level-up)
+  const grid = new Map(), GB = 64; segs.forEach((sg, i) => { const [ax, ay, bx, by, half] = sg; for (let gy = Math.floor((Math.min(ay, by) - half) / GB); gy <= Math.floor((Math.max(ay, by) + half) / GB); gy++) for (let gx = Math.floor((Math.min(ax, bx) - half) / GB); gx <= Math.floor((Math.max(ax, bx) + half) / GB); gx++) { const key = gx + ',' + gy; let l = grid.get(key); if (!l) grid.set(key, l = []); l.push(sg); } });
+  const polyBox = polys.map(P => { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const q of P) { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y); } return [x0, y0, x1, y1]; });
+  _plStoneD = { segs, caps, polys, rects, D, k, grid, GB, polyBox };
   return _plStoneD;
 }
 /** soft: a worn earth trail or a gravel lane does not count (a muddy puddle or a drift of leaves lies on one naturally). */
@@ -223,7 +227,7 @@ function _plStoneAt(x, y, soft) {
   try {
     const S = _plStoneGeo(), W = GARDEN_WORLD, px = x * W.cellW, py = W.sky + y * W.cellH;
     for (const [x0, y0, x1, y1] of S.rects) if (px > x0 && px < x1 && py > y0 && py < y1) return true;
-    for (const [ax, ay, bx, by, half, sf] of S.segs) {
+    for (const [ax, ay, bx, by, half, sf] of S.grid.get(Math.floor(px / S.GB) + ',' + Math.floor(py / S.GB)) || []) {
       if (soft && sf) continue;
       if (px < Math.min(ax, bx) - half || px > Math.max(ax, bx) + half || py < Math.min(ay, by) - half || py > Math.max(ay, by) + half) continue;
       const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l));
@@ -233,7 +237,7 @@ function _plStoneAt(x, y, soft) {
       const dx = (bx - ax) / rx, dy = (by - ay) / ry, qx = (px - ax) / rx, qy = (py - ay) / ry, l = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, (qx * dx + qy * dy) / l));
       if (Math.hypot(t * dx - qx, t * dy - qy) < 1) return true;
     }
-    for (const P of S.polys) { let inside = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a.y > py) !== (b.y > py) && px < (b.x - a.x) * (py - a.y) / (b.y - a.y || 1e-9) + a.x) inside = !inside; } if (inside) return true; }
+    for (let pi = 0; pi < S.polys.length; pi++) { const P = S.polys[pi], bx = S.polyBox[pi]; if (px < bx[0] || px > bx[2] || py < bx[1] || py > bx[3]) continue; let inside = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a.y > py) !== (b.y > py) && px < (b.x - a.x) * (py - a.y) / (b.y - a.y || 1e-9) + a.x) inside = !inside; } if (inside) return true; }
   } catch (e) { return false; }
   return false;
 }

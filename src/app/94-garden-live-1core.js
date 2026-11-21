@@ -24,7 +24,7 @@ function _gllApi(path, body, opts) { return _gscApi(path, body, opts); }
  * A newer whole list takes the place of one still waiting. -> Promise: the answer, or null.
  */
 const _gllQ = { list: [], busy: false, coalesced: 0, highWater: 0, failed: 0 };
-const _GLL_WHOLE = Object.freeze(['fs', 'cr', 'sum', 'snap', 'go', 'pp']);
+const _GLL_WHOLE = Object.freeze(['fs', 'cr', 'sum', 'snap', 'go', 'pp', 'dg']);   // (dg: what someone is doing, whole: a newer one waiting replaces the older)
 function _gllStateKey(path, body) {
   const fx = body && body.k === 'fx' && body.body;
   if (!body || !(_GLL_WHOLE.includes(body.k) || fx && (fx.c === 'pose' || fx.e === 'state' && !fx.p && (fx.c === 'soap' || fx.c === 'leaf' || fx.c === 'marble')))) return '';
@@ -118,7 +118,7 @@ function _gllPaint(A) {
   if (!A.inner || A.inner._native && (A.inner._dead || !A.inner.target || !A.inner.target.active)) return;
   const motion = !_gllReduced(), now = Date.now();   // clock-ok: how long a pose lasts
   if (A.pose && now > A.poseUntil) A.pose = '';
-  let pose = A.moving && motion ? 'walk' : A.pose || 'idle', dir = A.dir;
+  let pose = A.moving && motion ? (typeof gartMoveActor === 'function' ? 'stride' : 'walk') : A.pose || 'idle', dir = A.dir;
   if (A.photo && now < A.photo.until && !A.moving) { pose = A.photo.body.i ? 'hold' : 'idle'; dir = 's'; }
   if (A.fish && !A.moving) { pose = 'fish'; dir = 'e'; }   // a line out (94-garden-live-4fx.js): side on, the rod drawn there
   if (typeof GPL_POSE_FRONT !== 'undefined' && GPL_POSE_FRONT.has(pose)) dir = 's';
@@ -129,7 +129,8 @@ function _gllPaint(A) {
     if (!s) s = '<ellipse cx="0" cy="0.6" rx="11" ry="1.8" fill="#000000" opacity="0.14"/><rect x="-6" y="-40" width="12" height="26" rx="5" fill="#5a8a5a"/><circle cx="0" cy="-48" r="8" fill="#e8b890"/><rect x="-5" y="-14" width="4" height="14" rx="2" fill="#4a5a7a"/><rect x="1" y="-14" width="4" height="14" rx="2" fill="#4a5a7a"/>';
     A.inner.innerHTML = s;   // allow-listed ids through the avatar kit (profileAvatarNormalize), or the fixed figure above
     A.key = key;
-    if (A.actHold && typeof gartActRemote === 'function') { const id = A.actHold; setTimeout(() => { if (A.actHold === id) gartActRemote(A, id); }, 0); }   // a new drawing (they stopped walking, a look changed): the held move from the things-to-do table goes back on it
+    if (typeof gartActRedraw === 'function') { if (A.actId && !A.moving) gartActRedraw(A); }   // (2.74.1) any move, held or not, goes back on the new drawing from where it had got to
+    else if (A.actHold && typeof gartActRemote === 'function') { const id = A.actHold; setTimeout(() => { if (A.actHold === id) gartActRemote(A, id); }, 0); }   // a new drawing (they stopped walking, a look changed): the held move from the things-to-do table goes back on it
   }
   const crouch = A.sneakUntil > Date.now() && A.moving ? 0.93 : 1;   // clock-ok: a creep (the net's creep up on a bug)
   A.inner.setAttribute('transform', `scale(${dir === 'e' && A.face < 0 ? -GL_ACT_SCALE : GL_ACT_SCALE} ${GL_ACT_SCALE * crouch})`);
@@ -145,12 +146,23 @@ function _gllStationaryAt(A, x, y, source) {
   const W = GARDEN_WORLD; if (!A || !Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x >= W.cols || y >= W.rows) return;
   const previous = A.stationaryPosition;
   if (source === 'cell' && previous && Math.floor(previous.x) === Math.floor(x) && Math.floor(previous.y) === Math.floor(y)) return;
+  // a cell report only says which cell: a figure already inside it (sat on a seat at 42.97, behind a trunk, at a band's place) is where it is, never put back
+  // to the middle of the cell (a sitter seen later by a friend who was elsewhere when they sat was drawn on the bench's back rail)
+  if (source === 'cell' && !A.moving && A.tx == null && Number.isFinite(A.x) && Number.isFinite(A.y) && Math.floor(A.x) === Math.floor(x) && Math.floor(A.y) === Math.floor(y)) { A.stationaryPosition = { x: A.x, y: A.y, source }; return; }
   A.stationaryPosition = { x, y, source };
   // There is no visible walk to preserve when both ends of an already-complete pose are culled.
   if (typeof _gwInView === 'function' && !_gwInView(A.x, A.y, 1.5) && !_gwInView(x, y, 1.5)) { A.x = x; A.y = y; A.tx = null; A.ty = null; A.way = null; A.pace = 0; A.moving = false; A.key = ''; }
 }
 /** Walk there. Destinations only: the walking is worked out on each side, or the host says which way round the beds (_gllWalkVia). */
-function _gllWalkTo(A, x, y, then) { A.stationaryPosition = null; if (typeof _gllPhotoClear === 'function') _gllPhotoClear(A); A.tx = x; A.ty = y; A.gx = x; A.gy = y; A.way = null; A.then = then || null; if (A.sit) { A.sit = false; _gllEmoteStop(A); } }
+/** A place said on the wire a hair from where someone already is, while they hold a move (sat on a bench, on a branch): the rounding
+ *  of the walk's tenth-of-a-cell, not a step. It is not walked, so the move is not wiped (they were seen standing in front of the seat). */
+function _gllHeldNudge(A, ev) { return !!(A && A.actHold && ev && !(ev.r && ev.r.length) && Number.isFinite(ev.x) && Number.isFinite(ev.y) && Math.hypot(ev.x - A.x, ev.y - A.y) < 0.12); }
+function _gllWalkTo(A, x, y, then) {
+  // (2.74.1) the last steps of their walk to the spot they are using (a seat's stand point is a stride from its seat): they are there,
+  // doing it. Their whole state (gl:dg) says when they stop; a walk away ends it there. Within 0.35 a sit came ~15 s late on the
+  // friend's screen: the stand point's walk message cancelled the move the figure was walking over to do.
+  if ((A.actId || A.actWant) && Number.isFinite(A.actX) && Math.hypot(x - A.actX, y - A.actY) < 1.6 && (!then || then === A.then)) { A.goLater = { x, y }; return; }   // (a walk message carries on the walk they had: _gllWalkVia passes their own then on)
+  A.actAt = null; A.stationaryPosition = null; A.goLater = null; if (A.actId || A.actWant) { A.actId = ''; A.actWant = ''; _gllEmoteStop(A); } if (typeof _gllPhotoClear === 'function') _gllPhotoClear(A); A.tx = x; A.ty = y; A.gx = x; A.gy = y; A.way = null; A.then = then || null; if (A.sit) { A.sit = false; _gllEmoteStop(A); } }
 /** The same with the turns on the way: [[x, y], ...], then there. What they were going to do on arrival still happens. */
 function _gllWalkVia(A, turns, x, y) { const then = A.then; _gllWalkTo(A, x, y, then); const way = (turns || []).map(p => [p[0], p[1]]).concat([[x, y]]); const n = way.shift(); A.tx = n[0]; A.ty = n[1]; A.way = way; }
 /** Keys and holding send a walk as it goes, a place at a time: the figure takes each at the pace they come in, so it neither arrives early and stands nor falls behind. A destination (a click) walks at the walker's own speed. */
@@ -190,17 +202,20 @@ function _gllStep(A, dt, quiet) {
         }
       } else {
         A.x += dx / d * step / W.cellW; A.y += dy / d * step / W.cellH; moving = true;
-        const dir = Math.abs(dx) >= Math.abs(dy) * 0.8 ? 'e' : dy > 0 ? 's' : 'n';
-        if (Math.abs(dx) > 1) A.face = dx > 0 ? 1 : -1;
-        if (dir !== A.dir) { A.dir = dir; A.key = ''; }
+        if (typeof gartMoveActor !== 'function') {   // (2.74.1: else the turn goes round through the in-between drawings, as your own does: gartMoveActor below)
+          const dir = Math.abs(dx) >= Math.abs(dy) * 0.8 ? 'e' : dy > 0 ? 's' : 'n';
+          if (Math.abs(dx) > 1) A.face = dx > 0 ? 1 : -1;
+          if (dir !== A.dir) { A.dir = dir; A.key = ''; }
+        }
       }
       break;   // arrival callbacks can start another action; it gets its own frame
     }
   }
   if (!moving && A.moving && A.tx == null && Date.now() < (A.stopAt || 0)) moving = true;   // clock-ok: as above
   if (moving !== A.moving) { A.moving = moving; A.key = ''; }
-  if (!quiet && A.bob) { const bt = moving && !_gllReduced() ? `translate(0 ${(-Math.abs(Math.sin(Date.now() / 90)) * 1.6).toFixed(2)})` : A.actLift ? `translate(0 ${-A.actLift})` : '';   /* (on a seat or a branch: lifted to its height, 94-garden-zz-7act-1core.js) */ if (A.bobT !== bt) { A.bobT = bt; A.bob.setAttribute('transform', bt); } }  // clock-ok: a little bob
+  if (!quiet && A.bob) { const bt = moving && !_gllReduced() && typeof gartMoveActor !== 'function' ? `translate(0 ${(-Math.abs(Math.sin(Date.now() / 90)) * 1.6).toFixed(2)})` : A.actLift ? `translate(0 ${-A.actLift})` : '';   /* (on a seat or a branch: lifted to its height, 94-garden-zz-7act-1core.js) */ if (A.bobT !== bt) { A.bobT = bt; A.bob.setAttribute('transform', bt); } }  // clock-ok: a little bob
   if (!quiet && !A.key) _gllPaint(A);
+  if (!quiet && typeof gartMoveActor === 'function') { try { gartMoveActor(A); } catch (e) { /* the plain walk */ } }   // the stride, the run and the turn, as your own (94-garden-zz-6move.js)
   return moving;
 }
 /** Put a node in the row it stands in, among the plants, so what is in front of it hides it. */
@@ -211,6 +226,7 @@ function _gllPlace(svg, node, z) {
 /* ---------- what people do ---------- */
 function _gllEmote(A, id, instant) {
   if (!A.root || typeof GART_EMOTES === 'undefined') return false;
+  if (String(id).startsWith('act-') && A.dg && typeof gartActDoingIn === 'function') return true;   // (2.74.1) they send what they are doing whole (gl:dg): that draws it
   if (String(id).startsWith('act-') && typeof gartActRemote === 'function') return gartActRemote(A, String(id).slice(4));   // something done with the world (94-garden-zz-7act-1core.js)
   const row = GART_EMOTES[id]; if (!row) return false;
   _gllEmoteStop(A);
@@ -222,14 +238,24 @@ function _gllEmote(A, id, instant) {
     try { const a = gardenVisualAnimate(el, frames, { duration: row.ms, fill: row.hold ? 'forwards' : 'none', easing: 'linear' }); if (!motion) { a.pause(); a.currentTime = row.ms * (row.hold ? 1 : 0.5); } else if (instant) a.finish(); anims.push(a); } catch (e) { /* an old browser stands still */ }
   }
   A.anims = anims; A.sit = !!row.hold; A.hold = row.hold ? id : '';
+  if (row.hold && typeof gardenWorldObjects === 'function') {   // (2.74.1) sat on a seat you placed (any decoration that seats): up on it, as on their screen (gartEmoteRun's seat lift)
+    try { let best = null, bd = 0.8; for (const o of gardenWorldObjects()) { const d = o.kind === 'decor' && gardenDecor(o.id); if (!d || !d.effect || d.effect.kind !== 'sit' || !o.top) continue; const k = Math.hypot(o.top.x - A.x, o.top.y + 0.35 - A.y); if (k < bd) { bd = k; best = o; } } if (best) { A.actLift = (best.top.lift || 0) + 2; A.emLift = true; } } catch (e) { /* on the ground */ }
+  }
   if (!row.hold) A.animT = setTimeout(() => _gllEmoteStop(A), motion ? row.ms : 1200);
   return true;
 }
-function _gllEmoteStop(A) { if (A.actUndo) { const u = A.actUndo; A.actUndo = null; try { u(); } catch (e) { /* gone */ } } clearTimeout(A.animT); for (const a of A.anims || []) { try { a.cancel(); } catch (e) { /* gone */ } } A.anims = null; A.hold = ''; }
+function _gllEmoteStop(A) { if (A.emLift) { A.emLift = false; A.actLift = 0; } if (A.actUndo) { const u = A.actUndo; A.actUndo = null; try { u(); } catch (e) { /* gone */ } } clearTimeout(A.animT); for (const a of A.anims || []) { try { a.cancel(); } catch (e) { /* gone */ } } A.anims = null; A.hold = ''; }
 /** A move with a place (a seat): walk there first if they are not there yet, rather than jump. */
 function _gllEmoteAt(A, ev) {
-  if (Number.isFinite(ev.x) && Math.hypot(ev.x - A.x, ev.y - A.y) > 0.05) { _gllWalkVia(A, null, ev.x, ev.y); A.then = () => _gllEmote(A, ev.e); return; }
-  _gllEmote(A, ev.e);
+  A.emAt = Number.isFinite(ev.x) && Number.isFinite(ev.y) ? { e: String(ev.e), x: ev.x, y: ev.y } : null;   // (where their own screen put them for it: a held move keeps them exactly there, 94-garden-zz-7act-3music.js)
+  if (String(ev.e).startsWith('act-') && A.dg) return;   // (2.74.1) drawn from what they are doing, whole (gl:dg)
+  if (Number.isFinite(ev.x) && !A.moving && A.tx == null && Math.hypot(ev.x - A.x, ev.y - A.y) <= 0.05) { A.x = ev.x; A.y = ev.y; }   // (a hair from it, as a walk sent in tenths leaves them: exactly there, no walk)
+  if (A.actHold && String(ev.e) === 'act-' + A.actHold && !A.moving && Number.isFinite(ev.x) && Math.hypot(ev.x - A.x, ev.y - A.y) <= 0.05) { A.actAt = { x: ev.x, y: ev.y }; return; }   // (the held move they are already doing, said again for someone new: it carries on, not starts again)
+  // (where they said they did it, kept as theirs while they do it: a seat they are walking to, or sat on, is not free on this screen even
+  // when their figure here is still on its way or stopped a little off it; any step of theirs gives it up, _gllWalkTo)
+  const at = Number.isFinite(ev.x) && Number.isFinite(ev.y) ? { x: ev.x, y: ev.y } : null;
+  if (at && Math.hypot(ev.x - A.x, ev.y - A.y) > 0.05) { _gllWalkVia(A, null, ev.x, ev.y); A.actAt = at; A.then = () => _gllEmote(A, ev.e); return; }
+  _gllEmote(A, ev.e); A.actAt = at;
 }
 /**
  * A speech bubble over someone. Phrases come from the table on this side. The bubble is kept on the person (A.say) and drawn into whatever node
@@ -269,19 +295,24 @@ function _gllFloat(svg, x, y, emoji, who) {
   inner.appendChild(t); g.appendChild(inner); fx.appendChild(g);
   setTimeout(() => g.remove(), 1900);
 }
-const _GL_EMOJI = Object.freeze({ plant: '🌱', water: '💧', weed: '✂️', harvest: '🧺', dig: '🪴', place: '🪑', move: '↔️', take: '📦', give: '🎁', drop: '🎁', pick: '🎁', catch: '🦋', feed: '🌿', turn: '↻' });
-const _GL_POSE = Object.freeze({ plant: 'dig', water: 'water', weed: 'pick', harvest: 'pick', dig: 'dig', place: 'pick', move: 'pick', take: 'pick', give: 'pick', drop: 'pick', pick: 'pick', catch: 'pick', feed: 'pick', turn: 'pick' });
+const _GL_EMOJI = Object.freeze({ plant: '🌱', water: '💧', weed: '✂️', harvest: '🧺', dig: '🪴', place: '🪑', move: '↔️', take: '📦', give: '🎁', drop: '🎁', pick: '🎁', catch: '🦋', feed: '🌿', turn: '↻', land: '🗺️', build: '🔨', gate: '🗝️' });
+const _GL_POSE = Object.freeze({ plant: 'dig', water: 'water', weed: 'pick', harvest: 'pick', dig: 'dig', place: 'pick', move: 'pick', take: 'pick', give: 'pick', drop: 'pick', pick: 'pick', catch: 'pick', feed: 'pick', turn: 'pick', land: 'pick', build: 'dig', gate: 'pick' });
 const _GLL_PARCEL_SVG = '<ellipse cx="0" cy="1" rx="11" ry="3" fill="#000000" fill-opacity="0.16"/><rect x="-9" y="-15" width="18" height="15" rx="2" fill="#e8799a" stroke="#b84a6f"/><rect x="-2" y="-15" width="4" height="15" fill="#fff0c8"/><path d="M0 -15c-6 -7 -10 -2 -6 0zM0 -15c6 -7 10 -2 6 0z" fill="#fff0c8" stroke="#d9c188"/>';
 /** Someone in the world: a sprite like anything else that moves, sorted with everything else. The host's page and a visitor's use the same one. */
 function _gllSprite(A, onClick) {
-  return gardenWorldAdd({
+  return A.spr = gardenWorldAdd({   // (A.spr: the native world draws them over what they stand behind, 94-garden-native-world.js placeFriends)
     id: 'gl-' + A.w, svg: '', x: A.x, y: A.y, hit: 0.75, hitUp: 30, cursor: 'hand', label: A.n,
     update(dt, sp) {
       if (sp.dressed !== sp.node) { sp.dressed = sp.node; _gllDress(A, sp.node); }
       _gllStep(A, dt);
-      sp.x = A.x; sp.y = A.y;
+      sp.x = A.x; sp.y = A.y; sp.lift = A.hLift || 0;
+      // up on a floor (94-garden-zz-7act-3height.js) at its floor's depth; else sat on a bench: drawn on it (94-garden-zz-7act-1core.js); any held move at its exact row,
+      // not the row of a third of a cell it was last sorted in: a friend hiding behind a trunk was sorted in front of it, as the last step of their walk had left it
+      sp.z = A.hZ != null ? A.hZ : A.seatZ != null && !A.moving ? Math.max(A.y, A.seatZ) : A.actHold && !A.moving ? A.y : null;
+      if (typeof gardenHeightRail === 'function') gardenHeightRail(A, sp.node);   // (its floor's rail in front of its legs)
       _gllPetStep(A, dt, _gw.svg);
       if (typeof _gllFxStep === 'function') _gllFxStep(A, dt);
+      if (typeof gartActFriendTick === 'function') gartActFriendTick(A);   // (2.74.2) the coin's glow, the splash: where theirs is
     },
     onClick,
   });
@@ -399,7 +430,7 @@ function gardenLiveOnEvent(d) {
       if (typeof _gdvTouch === 'function') _gdvTouch();
       // The host just let me in (a tap at their gate) while I stand outside in the copy: knock again now, instead of waiting for me to find the Knock button
       const t = _gll.view && _gll.view.theirs && _gll.view.theirs[ev.f];
-      if (_gll.role === 'visit' && ev.f === _glv.fid && _glv.state === 'look' && _glv.why !== 'home' && t && t.lv && t.lv !== 'none' && typeof _glvKnockAgain === 'function') _glvKnockAgain();
+      if (_gll.role === 'visit' && ev.f === _glv.fid && _glv.state === 'look' && t && t.lv && t.lv !== 'none' && typeof _glvKnockAgain === 'function') _glvKnockAgain();
     }).catch(() => {});
     return;
   }

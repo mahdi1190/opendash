@@ -186,8 +186,11 @@
     }
     // the rope while the land beyond is shut: drawn when the ground is baked, from what is open then (the ground bakes again
     // when a region opens: the key below)
-    const lockedAt = (x, y) => { try { return String(gardenAreaAt(Math.floor(x), Math.floor(y), (gardenModel().level || {}).level || 1)).startsWith('locked:zn-'); } catch (e) { return false; } };
-    const plotAt = (x, y) => { const r = typeof gardenLandCell === 'function' ? gardenLandCell(Math.floor(x), Math.floor(y)) : null; return !!(r && r.plot); };
+    const lockedAt = (x, y) => { try { return String(gardenAreaAt(Math.floor(x), Math.floor(y), ((typeof gardenHere === 'function' ? gardenHere() : gardenModel()).level || {}).level || 1)).startsWith('locked:zn-'); } catch (e) { return false; } };
+    const plotAt = (x, y) => { const r = typeof gardenLandCell === 'function' ? gardenLandCell(Math.floor(x), Math.floor(y)) : null; if (!(r && r.plot)) return false;
+      // (fix loop 1, west: a shut plot in a wood is drawn as a thicket knot on its own cells, not a fence along its edge, so
+      //  the rope still runs there: on the cove beach the feet stopped at a shut field's edge with open sand drawn on it)
+      const rg = typeof gardenIslandRegionAt === 'function' ? gardenIslandRegionAt(x, y) : null; return !(rg && window.GardenPaintWood && GardenPaintWood.thicketWood && GardenPaintWood.thicketWood(rg.id)); };
     const roped = lines.map(pts => pts.filter(p => p && p.k !== 'sea' && p.k !== 'water' && p.d < 9 * cw));
     roped.forEach((pts, li) => { if (pts.length < 3) return; const bb = kit.bboxOf(pts, 40);
       add(bb, 52, (B) => {
@@ -239,7 +242,7 @@
     // rough grass, a gorse or bramble mound, sea campion and thrift, in drifts by noise (coast fix round 2: dozens of empty
     // fenced squares were the main picture of the coast from any far view). Inside the fence, clear of it; gone once the
     // plot is bought (the ground bakes again then).
-    const levelNow = () => { try { return (gardenModel().level || {}).level || 1; } catch (e) { return 1; } }, wildAt = (x, y, lv) => { try { return /^locked:(?!zn-)/.test(String(gardenAreaAt(Math.floor(x), Math.floor(y), lv))); } catch (e) { return false; } };
+    const levelNow = () => { try { return ((typeof gardenHere === 'function' ? gardenHere() : gardenModel()).level || {}).level || 1; } catch (e) { return 1; } }, wildAt = (x, y, lv) => { try { return /^locked:(?!zn-)/.test(String(gardenAreaAt(Math.floor(x), Math.floor(y), lv))); } catch (e) { return false; } };
     const wildCells = []; for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) { if (!L.plot(x + .5, y + .5) || coastD(x + .5, y + .5) > 16 * cw) continue; wildCells.push([x, y]); }
     for (let i = 0; i < wildCells.length; i += 3) { const set = wildCells.slice(i, i + 3),   /* (three cells an op: twelve took 48 ms at level 2, one op a slice cannot split) */ pts = set.map(([x, y]) => L.cpt(x + .5, y + .5)), bb = kit.bboxOf(pts, 60);
       add(bb, 58, (B) => { const wint = C.season === 'winter', aut = C.season === 'autumn', lv = levelNow();
@@ -270,9 +273,9 @@
         const g = x.createLinearGradient(0, 0, 640, 0); g.addColorStop(0, 'rgba(255,244,214,1)'); g.addColorStop(.12, 'rgba(255,238,196,.6)'); g.addColorStop(.55, 'rgba(255,232,186,.2)'); g.addColorStop(1, 'rgba(255,228,180,0)');
         x.filter = 'blur(5px)'; x.fillStyle = g; x.beginPath(); x.moveTo(4, 76); x.lineTo(636, 4); x.lineTo(636, 156); x.lineTo(4, 84); x.closePath(); x.fill(); x.filter = 'none';
         const v = x.createLinearGradient(0, 0, 0, 160); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(.32, 'rgba(0,0,0,.7)'); v.addColorStop(.5, 'rgba(0,0,0,1)'); v.addColorStop(.68, 'rgba(0,0,0,.7)'); v.addColorStop(1, 'rgba(0,0,0,0)');
-        x.globalCompositeOperation = 'destination-in'; x.fillStyle = v; x.fillRect(0, 0, 640, 160); scene.textures.addCanvas(BEAM, c); }
+        x.globalCompositeOperation = 'destination-in'; x.fillStyle = v; x.fillRect(0, 0, 640, 160); scene.textures.addImage(BEAM, c); }
       if (!scene.textures.exists(HALO)) { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'), g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
-        g.addColorStop(0, 'rgba(255,246,220,1)'); g.addColorStop(.18, 'rgba(255,226,160,.7)'); g.addColorStop(.5, 'rgba(255,200,120,.18)'); g.addColorStop(1, 'rgba(255,190,110,0)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128); scene.textures.addCanvas(HALO, c); }
+        g.addColorStop(0, 'rgba(255,246,220,1)'); g.addColorStop(.18, 'rgba(255,226,160,.7)'); g.addColorStop(.5, 'rgba(255,200,120,.18)'); g.addColorStop(1, 'rgba(255,190,110,0)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128); scene.textures.addImage(HALO, c); }
       const pivot = scene.add.container(0, 0).setDepth(80006).setVisible(false), beams = [0, Math.PI].map(a => { const im = scene.add.image(0, 0, BEAM).setOrigin(0, .5).setBlendMode(Phaser.BlendModes.ADD); im._a = a; pivot.add(im); return im; });
       const halo = scene.add.image(0, 0, HALO).setDepth(80006).setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
       let at = null, night = 0, checked = -1e9, ms = 0;
@@ -305,10 +308,10 @@
     const lit = ['ld-boathouse', 'ld-smoke', 'ld-hide'].map(id => L.stat(id)).filter(Boolean);
     C.live({ make: (scene) => {
       const GLOW = 'gpv-coast-glow', SPARK = 'gpv-coast-spark';
-      if (!scene.textures.exists(GLOW)) { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,214,140,.95)'); g.addColorStop(.3, 'rgba(255,190,110,.45)'); g.addColorStop(1, 'rgba(255,170,90,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); scene.textures.addCanvas(GLOW, c); }
-      if (!scene.textures.exists(SPARK)) { const c = document.createElement('canvas'); c.width = 32; c.height = 8; const x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 32, 0); g.addColorStop(0, 'rgba(230,240,255,0)'); g.addColorStop(.5, 'rgba(240,246,255,1)'); g.addColorStop(1, 'rgba(230,240,255,0)'); x.fillStyle = g; x.beginPath(); x.ellipse(16, 4, 16, 2.2, 0, 0, Math.PI * 2); x.fill(); scene.textures.addCanvas(SPARK, c); }
+      if (!scene.textures.exists(GLOW)) { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,214,140,.95)'); g.addColorStop(.3, 'rgba(255,190,110,.45)'); g.addColorStop(1, 'rgba(255,170,90,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); scene.textures.addImage(GLOW, c); }
+      if (!scene.textures.exists(SPARK)) { const c = document.createElement('canvas'); c.width = 32; c.height = 8; const x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 32, 0); g.addColorStop(0, 'rgba(230,240,255,0)'); g.addColorStop(.5, 'rgba(240,246,255,1)'); g.addColorStop(1, 'rgba(230,240,255,0)'); x.fillStyle = g; x.beginPath(); x.ellipse(16, 4, 16, 2.2, 0, 0, Math.PI * 2); x.fill(); scene.textures.addImage(SPARK, c); }
       const FLAME = 'gpv-coast-flame';
-      if (!scene.textures.exists(FLAME)) { const c = document.createElement('canvas'); c.width = 24; c.height = 40; const x = c.getContext('2d'), g = x.createRadialGradient(12, 30, 1, 12, 26, 18); g.addColorStop(0, 'rgba(255,232,160,1)'); g.addColorStop(.3, 'rgba(255,168,64,.95)'); g.addColorStop(.7, 'rgba(226,92,34,.6)'); g.addColorStop(1, 'rgba(200,60,20,0)'); x.fillStyle = g; x.beginPath(); x.moveTo(12, 2); x.quadraticCurveTo(22, 20, 19, 31); x.quadraticCurveTo(12, 40, 5, 31); x.quadraticCurveTo(2, 20, 12, 2); x.fill(); scene.textures.addCanvas(FLAME, c); }
+      if (!scene.textures.exists(FLAME)) { const c = document.createElement('canvas'); c.width = 24; c.height = 40; const x = c.getContext('2d'), g = x.createRadialGradient(12, 30, 1, 12, 26, 18); g.addColorStop(0, 'rgba(255,232,160,1)'); g.addColorStop(.3, 'rgba(255,168,64,.95)'); g.addColorStop(.7, 'rgba(226,92,34,.6)'); g.addColorStop(1, 'rgba(200,60,20,0)'); x.fillStyle = g; x.beginPath(); x.moveTo(12, 2); x.quadraticCurveTo(22, 20, 19, 31); x.quadraticCurveTo(12, 40, 5, 31); x.quadraticCurveTo(2, 20, 12, 2); x.fill(); scene.textures.addImage(FLAME, c); }
       const root = scene.add.container(0, 0).setDepth(80006).setVisible(false), glows = [], sparks = [], fires = [];
       for (let i = 0; i < 70; i++) { const im = scene.add.image(0, 0, SPARK).setBlendMode(Phaser.BlendModes.ADD).setVisible(false); root.add(im); sparks.push(im); }
       let night = 0, dusk = 0, checked = -1e9, placed = false, sunMode = false, colAt = -1e9, colF = -1;
@@ -358,7 +361,7 @@
   }
   if (V) { V.parts.push({ id: 'coast', compose }, { id: 'coast-night', compose: night });
     // the ground bakes again when a region opens or shuts (the rope along a shut edge, 3a above)
-    V.groundSigs.push(() => { try { return '|zn:' + (gardenModel().areas || []).filter(a => /^zn-/.test(a)).sort().join(','); } catch (e) { return ''; } }); }
+    V.groundSigs.push(() => { try { return '|zn:' + ((typeof gardenHere === 'function' ? gardenHere() : gardenModel()).areas || []).filter(a => /^zn-/.test(a)).sort().join(','); } catch (e) { return ''; } }); }
 
   /* ---------- the buildings ---------- */
   const M = window.GardenPaintedMarks; if (!M || !M.ART) return;
@@ -479,7 +482,7 @@ function gardenIslandHarbourThings(data) {
     ['crates', [[44.3, 76.6], [43.6, 75.4], [57.3, 75.4]], ['path', 'grass', 'beach'], -28, 34, 12],
     // (village fix round 2: each block as wide as the foot drawn on the ground: the audit found the pots' and the anchor's
     // blocks two to six times their base, and the net's a wall on the sand between its two posts with nothing at its foot)
-    ['pots', [[43.2, 77.6], [47.5, 76.7], [57.6, 75.2], [45.3, 78.7]], ['path', 'grass', 'beach'], -11, 11, 7],
+    ['pots', [[43.2, 77.6], [47.5, 76.7], [57.6, 75.2], [45.3, 78.7]], ['path', 'grass', 'beach'], -21, 21, 7],   // (vale final fix 1: as wide as the stack's drawn base, 0.9 of a cell; at 0.46 the feet stood on the pots)
     ['net', [[38.6, 82.4], [37.6, 81.6], [39.4, 81.4]], ['beach'], -36, 36, 5],   // (a drying net stands on the shingle by the boat, never out on the grass: layout round 3, critic 2)
     ['boat-sand', [[38.4, 83.6], [37.4, 84.4], [42.6, 81.2]], ['beach'], -40, 44, 10],
     ['crate1', [[53.2, 76.1], [46.6, 77.9]], ['path', 'beach'], -10, 10, 8],

@@ -291,9 +291,9 @@
       const oak = (L.pres.plazas || []).find(p => p.id === 'great-oak-clearing'), ox = oak && oak.oak ? oak.oak[0] : wd.soupCamp[0], oy = oak && oak.oak ? oak.oak[1] : wd.soupCamp[1];
       const s = near(ox + 3.6, oy + 1.2, (x, y) => clear(x, y) || Math.hypot(x - ox, y - oy) < 2.6) || near(ox - 3.4, oy + 1.4, (x, y) => clear(x, y) || Math.hypot(x - ox, y - oy) < 2.6);
       if (s) { used.push([s.x, s.y]); const p = L.cpt(s.x, s.y), r0 = kit.hashStr('soupcamp');
-        thing({ key: 'wood-soupcamp|' + season, x: p.x, y: p.y, box: [-40, -50, 40, 10], foot: [-16, 16, 7], draw: B => { const r = kit.rng(r0);
+        thing({ key: 'wood-soupcamp|' + season, x: p.x, y: p.y, box: [-58, -52, 60, 20], foot: [-16, 16, 7], draw: B => { const r = kit.rng(r0);
           // (critic round 2) set into a trodden patch of its own, ash blown out over it, a little stack of split wood and bracken behind
-          B.cx.save(); B.cx.filter = 'blur(4px)'; B.f(B.ell(4, 2, 46, 10), season === 'winter' ? '#c8c4b4' : '#7a6646', .42); B.cx.restore();
+          B.cx.save(); B.cx.filter = 'blur(4px)'; B.f(B.ell(3, 2, 46, 9),   /* (seats round 2: the picture is wide and deep enough for its patch, blur and log: its edges cut a square seam through the ground beside the log) */ season === 'winter' ? '#c8c4b4' : '#7a6646', .42); B.cx.restore();
           for (let k = 0; k < 14; k++) B.f(B.ell(-30 + r() * 64, -4 + r() * 10, 1.8, .9), k % 3 ? '#8a8478' : '#b0aa9c', .5);
           for (const [x, y] of [[-30, -4], [-22, -4], [-26, -10]]) B.f(B.rr(x - 5, y - 4, 10, 5, 2.4), '#7a6248').f(B.ell(x + 5, y - 1.5, 1.8, 2.4), '#d2bc90');
           for (let k = 0; k < 5; k++) { const a = -2.5 + k * .28; B.s(`M-36 -2q${Math.cos(a) * 7} ${Math.sin(a) * 10} ${Math.cos(a) * 13} ${Math.sin(a) * 16}`, season === 'autumn' ? '#a8823a' : season === 'winter' ? '#9a9884' : '#4f7a3a', 1.5, .9); }

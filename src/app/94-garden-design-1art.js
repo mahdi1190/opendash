@@ -19,7 +19,10 @@ function gardenDesignCurve(pts) {
   return d + `L${_gdzN(e[0])} ${_gdzN(e[1])}`;
 }
 function gardenDesignPathMarkup(st, d) {
-  return st.layers.map(([c, w, dash, cap]) => `<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="${cap || 'round'}" stroke-linejoin="round"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`).join('');
+  const w0 = st.layers[0] ? Number(st.layers[0][1]) || 24 : 24, dash0 = st.layers[0] && st.layers[0][2];
+  // a soft worn edge under the stones, so the path lies in the grass rather than on it (not under stepping stones: each stone has its own)
+  const seat = dash0 ? '' : `<path d="${d}" fill="none" stroke="#3a3322" stroke-opacity="0.16" stroke-width="${w0 + 9}" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="#8a7a55" stroke-opacity="0.22" stroke-width="${w0 + 4}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  return seat + st.layers.map(([c, w, dash, cap]) => `<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="${cap || 'round'}" stroke-linejoin="round"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`).join('');
 }
 function _gdzGroundMarkup(row) {
   const W = GARDEN_WORLD, st = GDZ_GROUND[row[0]]; if (!st) return '';
@@ -51,11 +54,7 @@ function gardenDesignLayer(sc) {
     for (const [st, line] of by) s += gardenDesignPathMarkup(GDZ_PATHS[st], line);
     s += _gdzJoinPads(d);
   }
-  if (s && typeof gardenIslandActive === 'function' && gardenIslandActive()) {
-    const W = GARDEN_WORLD, id = 'gdz-coast-' + W.lh;
-    const coast = gardenIslandGeometry().land.map(loop => loop.map((p, i) => `${i ? 'L' : 'M'}${p[0] * W.cellW} ${W.sky + p[1] * W.cellH}`).join('') + 'Z').join('');
-    return `<g class="gd-dz" pointer-events="none"><defs><clipPath id="${id}" clipPathUnits="userSpaceOnUse"><path d="${coast}" clip-rule="evenodd"/></clipPath></defs><g clip-path="url(#${id})">${s}</g></g>`;
-  }
+  // (no coast clip: the native world drew nothing at all inside it, so a friend's paths, and your own, never showed. The designer already keeps every stroke and cell off the water.)
   return `<g class="gd-dz" pointer-events="none">${s}</g>`;
 }
 

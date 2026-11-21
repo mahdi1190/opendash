@@ -197,7 +197,7 @@ function _gwBuildSolids(m) {
   }
   // Every painted tree on the map (village planting, the three painted woods, the orchard rows) has one trunk box at
   // its foot, from one list (_gwPaintedTrunks): the crowns are for walking behind.
-  for (const b of _gwPaintedTrunks(island)) add(b.x0, b.y0, b.x1, b.y1, 'tree trunk (' + ({ wood: 'painted wood', orchard: 'orchard', village: 'village', fells: 'fells', gate: 'crossing', forest: 'a big tree' }[b.src] || b.src) + ')');
+  for (const b of _gwPaintedTrunks(island)) add(b.x0, b.y0, b.x1, b.y1, b.sp && typeof gardenTreeKind === 'function' && !gardenTreeKind(b.sp) ? ({ falls: 'the falling water', hedge: 'a hedge bank', wall: 'a dry-stone wall' }[b.sp] || 'a rock') + ' (' + ({ gate: 'crossing', fells: 'fells' }[b.src] || b.src) + ')' : 'tree trunk (' + ({ wood: 'painted wood', orchard: 'orchard', village: 'village', fells: 'fells', gate: 'crossing', forest: 'a big tree' }[b.src] || b.src) + ')');
   // the old woodland's lamp plinths (94-garden-0island.js): a small block at the foot, the lantern above is walked behind
   if (typeof gardenIslandOldWoodLamps === 'function') { const lamps = gardenIslandOldWoodLamps(island); for (const q of lamps.concat(gardenIslandPosternPiers(island))) add(q.foot.x0, q.foot.y0, q.foot.x1, q.foot.y1, lamps.includes(q) ? 'lamp plinth' : 'postern pier'); }
   // the village's street lamps (ld-lamp-a by the Land Office, ld-lamp-b by the quay): an iron post on a small plinth, a block at its foot
@@ -226,6 +226,16 @@ function _gwBuildSolids(m) {
   // drawn there (the north edge is the sky over the fells; the east and south are sea).
   if (island && island.version >= 5) add(-1, -1, .34, GARDEN_WORLD.rows + 1, 'the edge of the map');
   for (const { form: f } of _gwFieldForms()) { const r = add(f.x0, f.y0, f.x1, f.y1, f.src); r.form = f; }
+  // A small thing set against a wall (sacks at a mill's door, a barrel by a house, a crate by a shed): the strip between its block
+  // and the wall behind it, narrower than a person, is shut, so the feet go round in front of it and never squeeze along the wall
+  // behind it with their legs hidden (the owner, 20 Nov: "animation buggy leading to the mill"). By geometry: any thing, any wall.
+  { const walls = list.filter(r => !r.form && r.x1 - r.x0 >= 1.2);
+    for (const p of gardenPropsNow()) if (gardenPropCol(p) === 'full' && !gardenPropPaintedFeet(p)) walls.push({ x0: p.x, y0: p.y, x1: p.x + (p.w || 1), y1: p.y + (p.h || 1) });
+    for (const r of list.slice()) {
+      if (r.form || r.x1 - r.x0 > 1.6 || r.y1 - r.y0 > 0.9) continue;
+      let top = null; for (const b of walls) if (b !== r && r.x0 < b.x1 - .05 && r.x1 > b.x0 + .05) { const gap = r.y0 - b.y1; if (gap > .01 && gap < .6 && (top == null || b.y1 > top)) top = b.y1; }
+      if (top != null) add(r.x0, top - .02, r.x1, r.y0 + .01, r.src);
+    } }
   return { list, at };
 }
 /** The one trunk-collision list for painted trees, in cells ({x0, y0, x1, y1, src}). Five painters plant trees, each
@@ -373,10 +383,20 @@ function gardenWalkFolds(island) {
 // watchtower are drawn wider than their old feet; the great stump, the old gardener, the moor gate and the beacon by their drawn bases)
 const GW_PROP_FEET = Object.freeze({ 'ld-mile': [[-12, 42, 10]], 'ld-tower': [[-70, 72, 0]], 'ld-hollow': [[-44, 50, 0]], 'ld-clamp': [[-38, 52, 20]], 'ld-cairn': [[-31, 31, 0]], 'ld-woodhut': [[-58, 58, 0]], 'ld-stump': [[-60, 56, 14]], 'ld-statue': [[-26, 42, 10]], 'ld-moor-gate': [[-24, 52, 12]], 'ld-beacon': [[-24, 8, 12]] });
 // soft things (a bench's seat) whose drawing is wider than the usual half their width: [w, d] in cells
-const GW_SOFT_BLOCK = Object.freeze({ 'ld-bench-a': [1.2, .3], 'ld-bench-b': [1.2, .3] });
+const GW_SOFT_BLOCK = Object.freeze({ 'ld-bench-a': [1.2, .3], 'ld-bench-b': [1.5, .62], 'ld-cross': [.9, .32] });   // (vale final fix 1: the shore bench's drawn ends and the market cross's bottom step, measured by the collision audit)
+/** A building (any of its kind: a summer house, a cottage, a barn) painted narrower than the cells it stands on: its walls stop the feet
+ *  where they are drawn, not a cell or more out to either side of them (the owner: "collision of the summer house is weird"). From its
+ *  painting's own box (px from its middle), the whole depth of its cells; null when the picture fills its cells or says nothing. */
+function _gwBuildingFeet(p) {
+  const a = GardenPaintedMarks.ART[p.id], box = a && a.box; if (!Array.isArray(box) || box.length < 4) return null;
+  const kind = typeof gardenKindOf === 'function' ? gardenKindOf({ art: p.art, id: p.id }) : ''; if (kind !== 'building' && kind !== 'barn') return null;
+  const W = GARDEN_WORLD, l = box[0] + 4, r = box[2] - 4;
+  if (!(r > l) || (p.w || 1) * W.cellW - (r - l) < W.cellW * 0.5) return null;   // (it fills its cells: as it was)
+  return { foot: [[l, r, 0]] };
+}
 function gardenPropPaintedFeet(p) {
   if (!p || typeof GardenPaintedMarks === 'undefined' || !GardenPaintedMarks || !GardenPaintedMarks.ART || GARDEN_WORLD.v < 5) return null;
-  const art = GardenPaintedMarks.ART[p.id] && GardenPaintedMarks.ART[p.id].foot ? GardenPaintedMarks.ART[p.id] : GW_PROP_FEET[p.id] ? { foot: GW_PROP_FEET[p.id] } : null; if (!art || !art.foot || gardenPropCol(p) !== 'full') return null;
+  const art = GardenPaintedMarks.ART[p.id] && GardenPaintedMarks.ART[p.id].foot ? GardenPaintedMarks.ART[p.id] : GW_PROP_FEET[p.id] ? { foot: GW_PROP_FEET[p.id] } : _gwBuildingFeet(p); if (!art || !art.foot || gardenPropCol(p) !== 'full') return null;
   if (!(typeof GardenNativePainted !== 'undefined' && GardenNativePainted && GardenNativePainted.wanted && GardenNativePainted.wanted())) return null;
   if (p.needs && !gardenWorkOwned(p.needs)) return null;
   if (typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(p.id) || {}).some(Boolean)) return null;   // (a look of your own choosing is drawn by another painter)
@@ -441,16 +461,20 @@ function gardenLockedPlotOpenToFeet(x, y, id) {
   const knots = GardenPaintWood.thicketCells ? GardenPaintWood.thicketCells() : null;
   return !!knots && !knots.has(y * GARDEN_WORLD.cols + x);
 }
-function _gwBuildGrid(m) {
+/** (vf-perf) The walking grid, built a row at a time: _gwBuildGrid runs it through at once; a new grid wanted while you walk
+ *  (a level-up opens land) is built in short slices between frames by _gwGridJobStep, so no frame waits for the whole map. */
+function _gwBuildGrid(m) { const it = _gwBuildGridRows(m); let r; while (!(r = it.next()).done); return r.value; }
+function* _gwBuildGridRows(m) {
   const W = GARDEN_WORLD, g = new Uint8Array(W.cols * W.rows), otherWater = new Uint8Array(g.length), waterCover = new Uint8Array(g.length), shore = typeof gardenLakeGeometry === 'function' ? gardenLakeGeometry(m) : null;
   const lvl = m.level.level;
   // a shut village field stops the feet along its painted outline (_gwBuildSolids); its cells only steer the routes round it
   const fieldOf = new Map(); for (const ff of _gwFieldForms()) for (const c of ff.cells) { const i = c[1] * W.cols + c[0]; (fieldOf.get(i) || fieldOf.set(i, []).get(i)).push(ff.form); }
   const fieldShut = [];
-  for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
+  for (let y = 0; y < W.rows; y++) { for (let x = 0; x < W.cols; x++) {
     let blocked = false;
     const a = gardenAreaAt(x, y, lvl);
-    if (a.startsWith('locked:') && fieldOf.has(y * W.cols + x)) fieldShut.push(y * W.cols + x);
+    if (a.startsWith('locked:zn-')) blocked = true;   // (vale final, east: land past a shut gate stops the feet at its cells, where its hedge is painted, even under a field's outline; 2 cells of the shut valley were walkable)
+    else if (a.startsWith('locked:') && fieldOf.has(y * W.cols + x)) fieldShut.push(y * W.cols + x);
     else if (a.startsWith('locked:') && !(a === 'locked:' + GARDEN_LAND_THICKET.id && _gwLandformCell(x, y)) && !gardenLockedPlotOpenToFeet(x, y, a.slice(7))) blocked = true;   // behind the little fence (a landform stops the feet along its outline: _gwBuildSolids)
     const pr = gardenPropAt(x, y), pc = pr ? gardenPropCol(pr) : '';
     if (pc === 'full') blocked = true;                                // (a shop is a wall; a lectern is a box, the mooring post, the reeds and the boat nothing: _gwBuildSolids)
@@ -462,7 +486,7 @@ function _gwBuildGrid(m) {
     if (c && c.decor) { const d = gardenDecorById(m, c.decor); if (!d || gardenDecorCol(d.def) === 'full') blocked = true; }   // (a seat is full: you walk up to it to sit)
     // (a tree's trunk and a small decoration are boxes, not cells: _gwBuildSolids)
     g[y * W.cols + x] = blocked ? 1 : 0;
-  }
+  } yield; }
   g.hard = g.slice();
   // (a painted fence, hedge or wall panel: the feet stop at the panel as drawn, _gwBuildSolids; its cell stays shut to the routes' planner)
   for (const dc of m.decor) { if (!gardenFenceBand(dc)) continue; const i = dc.y * W.cols + dc.x; if (dc.x >= 0 && dc.y >= 0 && dc.x < W.cols && dc.y < W.rows && !gardenAreaAt(dc.x, dc.y, lvl).startsWith('locked:') && !(gardenPropAt(dc.x, dc.y) && gardenPropCol(gardenPropAt(dc.x, dc.y)) === 'full')) g.hard[i] = 0; }
@@ -507,7 +531,7 @@ function _gwRouteSourceInputs(m) {
   // are in routeState and the canonical contours; the remaining mutable
   // inputs are prop footprints, trunk/soft boxes and full-decor occupancy.
   // Compare exact values, not a model revision or a lossy geometry hash.
-  const values = [m.level.level, m.visit ? 'visit:' + m.visit.fid : 'home'];
+  const values = [gardenLevelLandSig(m.level.level), m.visit ? 'visit:' + m.visit.fid : 'home'];   // (vf-perf: what the level changes on the land, not the level)
   let start = values.length, count = 0; values.push(0);
   for (const p of m.plants) if (gardenPlantBlocks(p)) { values.push(p.x, p.y, p.fp || 1); count++; }
   values[start] = count; start = values.length; count = 0; values.push(0);
@@ -533,14 +557,26 @@ function _gwRouteSourceInputs(m) {
 function _gwGrid(m, groundOnly) {
   if (_gw.boat && !groundOnly) return _gwContinuousBoatGrid(m);
   const mm = m || gardenHere(), shore = typeof gardenLakeGeometry === 'function' ? gardenLakeGeometry(mm) : null, otherShapes = typeof gardenOtherWaterShapes === 'function' ? gardenOtherWaterShapes(mm) : null, state = _gwRouteState();
-  const key = (mm.visit ? mm.visit.key : _gd.memoKey) + '|' + mm.level.level + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0) + '|' + (shore && shore.revision || 0) + '|' + gardenPierDeckSignature() + '|' + (_gwTrunkSig() || '') + '|' + (typeof gardenOrchardShortcutSig === 'function' ? gardenOrchardShortcutSig() : '');
+  const key = (mm.visit ? mm.visit.key : _gd.memoKey) + '|' + gardenLevelLandSig(mm.level.level) + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0) + '|' + (shore && shore.revision || 0) + '|' + gardenPierDeckSignature() + '|' + (_gwTrunkSig() || '') + '|' + (typeof gardenOrchardShortcutSig === 'function' ? gardenOrchardShortcutSig() : '');
+  // a placed thing moved aside (gardenAffordRev): only what stops the feet is made again (15 ms), its foot's box goes with it; the grid and
+  // its prepared routes (about 280 ms) stay
+  const ar = typeof gardenAffordRev === 'function' ? gardenAffordRev() : 0;
   if (!_gw.grid || _gw.gridKey !== key || _gw.grid.model !== mm || _gw.grid.routeState !== state || _gw.grid.otherShapes !== otherShapes) {
+    if (_gw.gridJob && _gw.gridJob.key === key && _gw.gridJob.state === state && _gwGridSliceable(mm)) { _gw.grid.model = mm; return _gw.grid; }   /* (its sliced build is on the way) */
     const saved = _gw.routeSnapshot, inputs = _gwRouteSourceInputs(mm);
     const stats = _gw.routeGridStats || (_gw.routeGridStats = { coarseBuilds: 0, preparations: 0, reused: 0, boatPreparations: 0, preflightChecks: 0, preflightReused: 0 }); stats.preflightChecks++;
     if (saved && saved.state === state && saved.grid.shore === shore && saved.grid.otherShapes === otherShapes && _gwRouteArraySame(saved.inputs, inputs)) {
-      _gw.grid = saved.grid; _gw.solids = saved.solids; _gw.grid.model = mm; _gw.gridKey = key; stats.preflightReused++; stats.reused++;
+      _gw.grid = saved.grid; _gw.solids = saved.solids; _gw.grid.model = mm; _gw.grid.landSig = gardenLevelLandSig(mm.level.level); _gw.grid.trunkSig = _gwTrunkSig() || ''; _gw.gridKey = key; stats.preflightReused++; stats.reused++;
       return _gw.grid;
     }
+    // (vf-perf) while you walk, the land changing under you (a level-up) is built in slices between frames and swapped in when
+    // it is whole; the grid you stand on serves until then, a fraction of a second. Built at once, it was a 125 ms task inside
+    // the step that moved you (a CPU profile of a real-key tour, 21 Nov 2026).
+    if (_gwGridSliceable(mm)) {
+      if (!_gw.gridJob) { _gw.gridJob = { key, mm, state, shore, otherShapes, inputs, saved, ar, it: _gwGridJobRows(mm), at: performance.now() }; setTimeout(_gwGridJobStep, 0); }
+      _gw.grid.model = mm; return _gw.grid;
+    }
+    _gw.gridJob = null;
     const grid = _gwBuildGrid(mm), solids = _gwBuildSolids(mm); stats.coarseBuilds++;
     // Model clocks, watering and Design paint invalidate presentation too. Keep
     // the prepared shoreline anchors when every physical input is unchanged,
@@ -553,14 +589,58 @@ function _gwGrid(m, groundOnly) {
       _gw.grid = grid; _gw.solids = solids; grid.routeRevision = ++stats.preparations;
       _gwPrepareRouteGrid(grid); _gw.routeSnapshot = { grid, solids, state, inputs };
     }
-    _gw.grid.routeState = state; _gw.gridKey = key;
+    _gw.grid.routeState = state; _gw.grid.landSig = gardenLevelLandSig(mm.level.level); _gw.grid.trunkSig = _gwTrunkSig() || ''; _gw.gridKey = key; _gw.grid.affordRev = ar;
   }
   _gw.grid.model = mm;
+  if (_gw.grid && _gw.solids && _gw.grid.affordRev !== ar) { const was = _gw.solids; _gw.solids = _gwBuildSolids(mm); _gw.grid.affordRev = ar; if (_gw.routeSnapshot && _gw.routeSnapshot.solids === was) _gw.routeSnapshot.solids = _gw.solids; }
   return _gw.grid;
+}
+/** Can a new grid wait for a sliced build? Only while you walk on the same garden with a grid already there, on land. */
+function _gwGridSliceable(mm) {
+  const g = _gw.grid; if (!g || _gw.boat || !g.model || !g.hard) return false;
+  if ((g.model.visit ? g.model.visit.key : '') !== (mm.visit ? mm.visit.key : '')) return false;
+  // while you walk, or when a level opens land (the land drawn after it waits for you to stand a moment, and the grid you stand
+  // on is what you see until then): standing at a level-up, the whole build in one task was 95 ms of a 413 ms task
+  if (g.landSig != null && g.landSig !== gardenLevelLandSig(mm.level.level)) return true;
+  // (or the painted trees' trunks changed: the planting drawn again after a level-up, 104 ms of a 322 ms task)
+  if (g.trunkSig != null && g.trunkSig !== (_gwTrunkSig() || '')) return true;
+  return typeof gardenBakeWalking === 'function' && gardenBakeWalking();
+}
+function* _gwGridJobRows(mm) {
+  const grid = yield* _gwBuildGridRows(mm); yield;
+  const solids = _gwBuildSolids(mm); yield;
+  return { grid, solids };
+}
+/** One slice of the walking grid's sliced build: about 4 ms, then the frames get their turn. */
+function _gwGridJobStep() {
+  const J = _gw.gridJob; if (!J) return;
+  const s = performance.now(), stats = _gw.routeGridStats;
+  try {
+    while (!J.done && performance.now() - s < 4) {
+      if (!J.built) {
+        const r = J.it.next(); if (!r.done) continue;
+        J.built = r.value; stats.coarseBuilds++;
+        if (_gwRoutePhysicalSame(J.saved, J.built.grid, J.built.solids, J.state)) { J.reuse = J.done = true; break; }
+        J.built.grid.routeRevision = ++stats.preparations; J.prep = _gwPrepareRouteGridRows(J.built.grid); continue;
+      }
+      // the grid's preparation reads the solid boxes from _gw.solids: the new ones while it runs, the old ones for the walk between
+      const old = _gw.solids; _gw.solids = J.built.solids;
+      try { while (performance.now() - s < 4) if (J.prep.next().done) { J.done = true; break; } } finally { _gw.solids = old; }
+    }
+  } catch (e) { if (_gw.gridJob === J) { _gw.gridJob = null; _gw.grid = null; } return; }   /* (a fault: the next look builds it whole) */
+  const spent = performance.now() - s; if (typeof gardenBakeSpent === 'function') gardenBakeSpent(spent);
+  _gw.gridJobWorst = Math.max(_gw.gridJobWorst || 0, +spent.toFixed(1));
+  if (_gw.gridJob !== J) return;
+  if (!J.done) { setTimeout(_gwGridJobStep, 0); return; }
+  const { grid, solids } = J.built, saved = J.saved;
+  if (J.reuse) { _gw.grid = saved.grid; _gw.solids = saved.solids; Object.assign(_gw.grid, { model: J.mm, shore: grid.shore, otherShapes: grid.otherShapes, otherBuckets: grid.otherBuckets }); saved.state = J.state; saved.inputs = J.inputs; stats.reused++; }
+  else { _gw.grid = grid; _gw.solids = solids; _gw.routeSnapshot = { grid, solids, state: J.state, inputs: J.inputs }; }
+  _gw.grid.routeState = J.state; _gw.grid.landSig = gardenLevelLandSig(J.mm.level.level); _gw.grid.trunkSig = _gwTrunkSig() || ''; _gw.gridKey = J.key; _gw.grid.affordRev = J.ar; _gw.gridJob = null; _gw.gq = null; _gw.frameGrid = null;
+  _gw.gridJobs = (_gw.gridJobs || 0) + 1; _gw.gridJobMs = Math.round(performance.now() - J.at);
 }
 function gardenWorldRouteGridStatus() {
   const stats = _gw.routeGridStats || {};
-  return { coarseBuilds: stats.coarseBuilds || 0, preparations: stats.preparations || 0, reused: stats.reused || 0, preflightChecks: stats.preflightChecks || 0, preflightReused: stats.preflightReused || 0, boatPreparations: stats.boatPreparations || 0, physicalRevision: _gw.grid && _gw.grid.routeRevision || 0, anchors: _gw.grid && _gw.grid.anchors ? _gw.grid.anchors.size : 0 };
+  return { coarseBuilds: stats.coarseBuilds || 0, preparations: stats.preparations || 0, reused: stats.reused || 0, preflightChecks: stats.preflightChecks || 0, preflightReused: stats.preflightReused || 0, boatPreparations: stats.boatPreparations || 0, physicalRevision: _gw.grid && _gw.grid.routeRevision || 0, anchors: _gw.grid && _gw.grid.anchors ? _gw.grid.anchors.size : 0, slicedBuilds: _gw.gridJobs || 0, slicedLastMs: _gw.gridJobMs || 0, slicedWorstSliceMs: _gw.gridJobWorst || 0 };
 }
 function _gwContinuousBoatGrid(m) {
   const land = _gwGrid(m || gardenHere(), true), to = gardenLakeOpenTo(), key = land.routeRevision + '|boat:' + to;
@@ -590,7 +670,8 @@ function _gwWaterProbe(grid, x, y, fx, fy) {
   if (!grid.liquid && grid.otherShapes) for (const shape of _gwOtherShoreCandidates(grid, x, y, fx, fy)) inspect(shape);
   return result;
 }
-function _gwPrepareRouteGrid(grid) {
+function _gwPrepareRouteGrid(grid) { const it = _gwPrepareRouteGridRows(grid); while (!it.next().done); }
+function* _gwPrepareRouteGridRows(grid) {
   // Only cells touched by a continuous shoreline need extra edge clearance.
   // Two dry cell centres can still have a wet bank tip between them.
   const shoreCells = grid.shoreCells = new Uint8Array(grid.length);
@@ -610,7 +691,7 @@ function _gwPrepareRouteGrid(grid) {
   }
   const W = GARDEN_WORLD, candidate = (x, y) => _gwGridFeet(grid, x, y, GW_FOOT.x, GW_FOOT.y) && !_gwSolidHit(x, y, GW_FOOT.x, GW_FOOT.y) && (grid.liquid || gardenWonderWalkFine(x, y, GW_FOOT.y));
   const offsets = [.5, .25, .75, .08, .92];
-  for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
+  for (let y = 0; y < W.rows; y++) { if (y) yield; for (let x = 0; x < W.cols; x++) {
     const index = y * W.cols + x; grid[index] = 1;
     if (grid.hard[index] || !grid.liquid && !grid.otherShapes && grid.otherWater[index]) continue;
     if (candidate(x + .5, y + .5)) { grid[index] = 0; continue; }
@@ -619,7 +700,7 @@ function _gwPrepareRouteGrid(grid) {
     const near = shape => { const b = shape.bounds; return b && x + 1 >= b.x && x <= b.x + b.width && y + 1 >= b.y && y <= b.y + b.height; };
     if (!(grid.shore && near(grid.shore)) && !(grid.otherShapes && _gwOtherShoreCandidates(grid, x + .5, y + .5, .5, .5).some(near))) { if (!grid.liquid) grid[index] = 0; continue; }
     search: for (const dy of offsets) for (const dx of offsets) if (candidate(x + dx, y + dy)) { grid[index] = 0; grid.anchors.set(index, { x: x + dx, y: y + dy }); break search; }
-  }
+  } }
   if (!grid.liquid && typeof gardenIslandCrossingGeometry === 'function') for (const crossing of gardenIslandCrossingGeometry()) {
     if (crossing.kind === 'hump-bridge') continue;
     // A narrow diagonal deck can pass between every coarse offset above, or
@@ -762,13 +843,23 @@ function _gwLos(a, b, m) {
  * (slide along the wall), else step sideways a few pixels round the corner that caught the feet. Returns whether they moved.
  */
 function _gwMoveBy(dx, dy) {
+  // (vf-perf) the step each frame takes, kept for the next frame's give (_gwMoveByEdge): which way the feet really went
+  const x0 = _gw.px, y0 = _gw.py, moved = _gwMoveByEdge(dx, dy);
+  if (_gw.giveFrom && (_gw.giveFrom.sx !== Math.sign(dx) || _gw.giveFrom.sy !== Math.sign(dy))) _gw.giveFrom = null;   /* (a new press forgets it) */
+  _gw.lastStep = { sx: Math.sign(dx), sy: Math.sign(dy), mx: (_gw.px - x0) * GARDEN_WORLD.cellW, my: (_gw.py - y0) * GARDEN_WORLD.cellH };
+  return moved;
+}
+function _gwMoveByEdge(dx, dy) {
   const W = GARDEN_WORLD, x0 = _gw.px, y0 = _gw.py;
   const shore = _gwShoreSlide(x0, y0, dx, dy, GW_FOOT.x, GW_FOOT.y, _gwFree, _gwGridNow(), _gw.shoreMove || (_gw.shoreMove = {}));
   // how far a candidate gets the way you are pressing, as a share of the step
   const len2 = (dx * W.cellW) ** 2 + (dy * W.cellH) ** 2, gain = (px, py) => len2 ? ((px - x0) * W.cellW * dx * W.cellW + (py - y0) * W.cellH * dy * W.cellH) / len2 : 0;
   // the bank's own slide, unless it all but stops a diagonal press dead (a corner of the gorge bank or the Mere shore): then the
   // wall slide below gets its turn, and whichever goes further the way you are pressing wins (17 Nov 2026)
-  if (shore.shore && (gain(shore.x, shore.y) >= .3 || !(dx && dy))) { _gw.px = shore.x; _gw.py = shore.y; _gw.slideHold = null; return shore.moved; }
+  // (a straight press square into a bank that runs across it, as at the brook under the Millwater bridge on the way to the mill, is a
+  // press into a wall: it stops you facing the way you pressed. It crept you along the bank sideways at a snail's pace, turned to face
+  // the camera with your feet sliding: the owner's "animation buggy leading to the mill". A slanting bank still slides you along it.)
+  if (shore.shore && gain(shore.x, shore.y) >= (dx && dy ? .3 : .25)) { _gw.px = shore.x; _gw.py = shore.y; _gw.slideHold = null; return shore.moved; }
   let x = x0, y = y0, held = '';
   const hold = _gw.slideHold;   // the give of the frame before, if any (_gwGiveSlide)
   if (_gwFree(x0 + dx, y0 + dy)) { x += dx; y += dy; }
@@ -811,7 +902,27 @@ function _gwMoveBy(dx, dy) {
   // the way they are getting on: it and the give took turns for four frames, a 2 px shake at one kink of the Millwater's
   // bank by the estuary, the last jitter the collision audit found, 18 Nov 2026)
   const backOnGive = held && (held === 'x' ? (shore.y - y0) * dy : (shore.x - x0) * dx) < 0;
-  if (shore.shore && shore.moved && !backOnGive && gain(shore.x, shore.y) >= gain(x, y)) { _gw.px = shore.x; _gw.py = shore.y; return true; }
+  // (vale final fix 1) last of all, a diagonal press that would stop dead (or crawl) where the feet plainly could go on along the
+  // edge: across with a give of up to 3.5 px against the up-and-down part (an edge up to about 50 degrees from level), or up and
+  // down with a give under a pixel against the across part, open for three steps running. A wall met square and a true inside
+  // corner are still honest stops. (The collision audit's slide-stall: 106 of them, most at banks the shore slide met at a kink.)
+  const useShore = shore.shore && shore.moved && !backOnGive && gain(shore.x, shore.y) >= gain(x, y), mx = useShore ? shore.x : x, my = useShore ? shore.y : y;
+  if (dx && dy && Math.hypot((mx - x0) * W.cellW, (my - y0) * W.cellH) < Math.hypot(dx * W.cellW, dy * W.cellH) * .15) {
+    const vx = dx * W.cellW, vy = dy * W.cellH, sx = Math.sign(dx), sy = Math.sign(dy), open3 = (ax, ay) => _gwFree(x0 + ax / W.cellW, y0 + ay / W.cellH) && _gwFree(x0 + 2 * ax / W.cellW, y0 + 2 * ay / W.cellH) && _gwFree(x0 + 3 * ax / W.cellW, y0 + 3 * ay / W.cellH);
+    let g2 = null;
+    for (let g = .5; g <= 3.5 && !g2; g += .5) if (open3(vx, -sy * g)) g2 = { x: x0 + vx / W.cellW, y: y0 - sy * g / W.cellH, kind: 'y' };
+    for (let g = .25; g <= .75 && !g2; g += .25) if (open3(-sx * g, vy)) g2 = { x: x0 - sx * g / W.cellW, y: y0 + vy / W.cellH, kind: 'x' };
+    // (vf-perf) not a give that turns straight back on the way the feet went the frame before under the same press, while this
+    // frame's own slide still gets them on: at a bend of the east coast's bank the slide crept along it for three frames and the
+    // give threw the feet back 3 px on the fourth, a shake on the spot (a probe of _gwMoveBy at 89.75,47.5; 26 turns in 90 frames)
+    const L = _gw.lastStep, gx = (g2 ? g2.x - x0 : 0) * W.cellW, gy = (g2 ? g2.y - y0 : 0) * W.cellH;
+    const back = g2 && L && L.sx === sx && L.sy === sy && (Math.abs(L.mx) > .2 && Math.abs(gx) > .2 && Math.sign(gx) !== Math.sign(L.mx) || Math.abs(L.my) > .2 && Math.abs(gy) > .2 && Math.sign(gy) !== Math.sign(L.my));
+    // nor a give from where a give under the same press set out before: the slide had carried the feet back into the same bend,
+    // so it is a closed corner, and the honest thing is to stop there (the shake came round every four frames)
+    const F = _gw.giveFrom, loop = g2 && F && F.sx === sx && F.sy === sy && Math.hypot((x0 - F.x) * W.cellW, (y0 - F.y) * W.cellH) < 1.2;
+    if (g2 && !loop && !(back && Math.hypot((mx - x0) * W.cellW, (my - y0) * W.cellH) > .05)) { _gw.giveFrom = { x: x0, y: y0, sx, sy }; _gw.px = g2.x; _gw.py = g2.y; _gw.slideHold = { sx, sy, kind: g2.kind }; return true; }
+  }
+  if (useShore) { _gw.px = shore.x; _gw.py = shore.y; return true; }
   if (x === x0 && y === y0) return false;
   _gw.px = x; _gw.py = y; return true;
 }
@@ -824,6 +935,22 @@ function _gwMoveBy(dx, dy) {
  * press, in screen px, unit length; step: its length this frame, in px. Returns the direction to walk, or null to walk
  * as pressed.
  */
+/** Walking up to a building's door with the keys (any building with a door on its front: the mill, a cottage, the barn): pressing
+ *  up towards it from just in front, you are drawn to the middle of its doorway, not stopped on its jamb and slid sideways along the wall
+ *  until you fit (walking up to the mill door you were caught short of it, slid east and stood at the left jamb; seats round 2). Read
+ *  from the layout's doors, any layout. Returns the direction to walk, or null to walk as pressed. */
+function _gwDoorSteer(ux, uy) {
+  if (!(uy < -.6) || typeof gardenIslandData !== 'function') return null;
+  const I = gardenIslandData(); if (!I || !Array.isArray(I.static)) return null;
+  if (_gw.doorsOf !== I) { _gw.doorsOf = I; _gw.doors = I.static.filter(o => o && o.door && o.walk === false && o.w > 1 && Number.isFinite(o.door.x) && o.door.y >= o.y + o.h - 1 && o.door.y <= o.y + o.h && o.door.x >= o.x && o.door.x < o.x + o.w).map(o => ({ x: o.door.x + .5, y: o.door.y })); }
+  const W = GARDEN_WORLD;
+  for (const d of _gw.doors) {
+    const ex = d.x - _gw.px, below = _gw.py - d.y;
+    if (below < .2 || below > 2.4 || Math.abs(ex) > 1 || Math.abs(ex) < .04) continue;
+    const vx = ex * W.cellW, vy = -Math.max(.35, below) * W.cellH, n = Math.hypot(vx, vy); return [vx / n, vy / n];
+  }
+  return null;
+}
 function _gwCrossingSteer(ux, uy, step) {
   if (GARDEN_WORLD.v < 5 || typeof gardenIslandCrossingGeometry !== 'function' || !(ux || uy)) return null;
   const W = GARDEN_WORLD, X = _gw.px * W.cellW, Y = W.sky + _gw.py * W.cellH;
@@ -2024,6 +2151,7 @@ function gardenWorldKey(ev, down, arrowsOnly) {
   if ((k === 'c' || k === 'C') && ev.shiftKey) { if (typeof gardenCollideToggle === 'function') gardenCollideToggle(); ev.preventDefault(); return true; }   // what blocks walking (94-garden-world-7collide.js)
   if (k === 'c' || k === 'C') { gardenCamSet('follow'); ev.preventDefault(); return true; }
   if (k === 'q' || k === 'Q') { if (typeof gartEmoteWheel === 'function') gartEmoteWheel(); ev.preventDefault(); return true; }
+  if (k === 'Tab' && !ev.ctrlKey && !ev.altKey && !ev.metaKey && typeof gartActCycle === 'function' && gartActCycle(ev.shiftKey)) { ev.preventDefault(); return true; }   // several things close by: the next one is the prompt's (94-garden-zz-7act-1core.js)
   if ((k === 'j' || k === 'J') && !ev.ctrlKey && !ev.metaKey && !ev.altKey) { if (typeof gardenJournalOpen === 'function') gardenJournalOpen(); ev.preventDefault(); return true; }   // the Field Journal
   if (arrowsOnly) return false;
   if (k === ' ' || k === 'e' || k === 'E') { if (ev.repeat) { ev.preventDefault(); return true; } gardenWorldInteract(); ev.preventDefault(); return true; }
@@ -2058,7 +2186,7 @@ function gardenWorldInteract() {
     for (let r = 1; r <= gardenRod().st.range; r++) for (const dy of [1, 0, -1]) { const x = px + _gw.face * r, y = py + dy; if (x >= 0 && x < W.cols && y >= 0 && y < W.rows && wet(x, y)) { gardenFishFront(); return; } }
     for (let r = 1; r <= gardenRod().st.range; r++) if (py + r < W.rows && wet(px, py + r)) { gardenFishFront(); return; }
   }
-  { const s = _ghProject(_gw.px, _gw.py - 1.4), r = _gw.box && _gw.box.getBoundingClientRect(); gameDeny(null, { at: s && r ? { x: r.left + s.x, y: r.top + s.y } : null, silent: true, say: 'Nothing in reach.' }); }
+  { const s = _ghProject(_gw.px, _gw.py - 1.4), r = _gw.box && _gw.box.getBoundingClientRect(), taken = typeof gartActTakenWords === 'function' ? gartActTakenWords() : ''; gameDeny(null, { at: s && r ? { x: r.left + s.x, y: r.top + s.y } : null, silent: true, say: taken || 'Nothing in reach.' }); }   // (a seat a friend is on: say so, not "nothing")
 }
 
 /* ---------- the world's API for anything that lives in it (docs/dev/GARDEN.md, "The world API") ---------- */
@@ -2142,7 +2270,7 @@ function _gwSpritesFrame(dt) {
     if (culled && S.node.parentNode) continue;   // out of the view: it goes on living (update above), and nothing is drawn or moved on the page
     const tf = `translate(${(S.x * W.cellW).toFixed(1)} ${(W.sky + S.y * W.cellH - S.lift).toFixed(1)})`;
     if (S.tf !== tf) { S.tf = tf; S.quiet = 0; S.node.setAttribute('transform', tf); } else S.quiet = (S.quiet || 0) + dt;
-    const z = S.z != null ? S.z : S.y, zk = Math.floor(z * 3);
+    const z = S.z != null ? S.z : S.y, zk = S.z != null ? 'z' + S.z.toFixed(3) : Math.floor(z * 3);   // (a depth of its own, a friend up on a floor behind a lamp room: to the hundredth)
     if (S.zk !== zk || !S.node.parentNode) { S.zk = zk; S.node.setAttribute('data-z', z.toFixed(2)); _gwPlace(S.node, z); }
   }
 }
@@ -2232,3 +2360,34 @@ function gardenWorldPainted(m) {
 }
 /** (the village's name for the same thing: 94-garden-world-0walk.js _gwFieldForms) */
 function _gwForm(pts, src) { return _gwFormOf(pts, src); }
+/** (vf-perf) What the garden's level changes in the land, the walk and the painted ground, as a short key: the level itself redrew
+ *  the whole world and rebuilt the walker's map at every level-up (1.7 to 2.2 s), though most levels change nothing there. The level
+ *  reaches the land only through gardenAreaAt's old areas (where no land cell answers first), the things a layout keeps for a level,
+ *  and the steps a painter registers (window.__gardenLevelSteps: the Cloudbreak's lip stones and cave stair). The key counts the
+ *  steps passed, so it changes exactly at a level where one of them does. */
+function gardenLevelLandSig(level) {
+  const lv = Number(level) || 0, W = GARDEN_WORLD, memoKey = (W.lh || '') + '|' + W.v + '|' + W.cols + 'x' + W.rows;
+  let M = gardenLevelLandSig._m;
+  if (!M || M.key !== memoKey) {
+    const steps = new Set();
+    try {
+      for (const a of GARDEN_AREAS) {
+        if (a.buy || !(a.lv > 1)) continue; let reached = false;
+        for (let y = Math.max(0, a.y); y < Math.min(W.rows, a.y + a.h) && !reached; y++) for (let x = Math.max(0, a.x); x < Math.min(W.cols, a.x + a.w); x++) {
+          if (typeof gardenIslandOceanCell === 'function' && gardenIslandOceanCell(x, y)) continue;
+          if (typeof gardenLandCell === 'function' && gardenLandCell(x, y)) continue;
+          reached = true; break;
+        }
+        if (reached) steps.add(a.lv);
+      }
+    } catch (e) { return 'lv' + lv; }   // (no table yet: the level itself, as before)
+    M = gardenLevelLandSig._m = { key: memoKey, steps };
+  }
+  const all = new Set(M.steps);
+  for (const s of (typeof window !== 'undefined' && window.__gardenLevelSteps) || []) all.add(Number(s) || 0);
+  const now = typeof performance !== 'undefined' ? performance.now() : 0;   // (the layout's things change only when it loads: looked at again every two seconds)
+  if (!M.thingSteps || now - M.thingAt > 2000) { M.thingAt = now; M.thingSteps = []; try { if (typeof gardenThingsPlaced === 'function') for (const r of gardenThingsPlaced()) if (r && r.level) M.thingSteps.push(Number(r.level) || 0); } catch (e) { /* none */ } }
+  for (const s of M.thingSteps) all.add(s);
+  let n = 0; for (const s of all) if (lv >= s) n++;
+  return 'ls' + n + '/' + all.size;
+}

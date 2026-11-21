@@ -21,7 +21,7 @@ function gardenReelSetup(R, plan) {
   if (R.rounds > 1) { R.pips = document.createElement('div'); R.pips.className = 'gd-reel-pips'; R.pips.innerHTML = Array.from({ length: R.rounds }, (_, i) => `<i class="${i ? '' : 'on'}"></i>`).join(''); head.appendChild(R.pips); }
   if (R.heavy) { const t = document.createElement('div'); t.className = 'gd-reel-tn'; t.setAttribute('aria-label', 'Line tension'); t.innerHTML = '<i></i>'; body.appendChild(t); R.tnEl = t.querySelector('i'); R.tnBox = t; }
   // a monster: anyone else in the garden can take the second line (94-garden-fish-8catch.js)
-  if (R.rounds > 1 && _gw.fishing && typeof gardenLiveFx === 'function') gardenLiveFx('fish', 'big', { x: Math.floor(_gw.fishing.bx), y: Math.floor(_gw.fishing.by) });
+  if (R.rounds > 1 && !plan.helper && _gw.fishing && typeof gardenLiveFx === 'function') gardenLiveFx('fish', 'big', { x: Math.floor(_gw.fishing.bx), y: Math.floor(_gw.fishing.by) });
 }
 /** The fish decides what to do next. Under moveFrom only the old swimming. */
 function _gcrMove(R, spd, jump) {
@@ -54,6 +54,7 @@ function gardenReelStep(R, dt) {
   const E = GARDEN_REEL, F = _gw.fishing;
   R.t += dt;
   // the bar: lifted while held, falls when let go. A better reel lifts quicker
+  if (R.helpAt != null && R.t - R.helpAt > 6) { R.help = 0; R.helpAt = null; if (R.el) { R.el.classList.remove('is-helped'); const hb = R.el.querySelector('.gd-reel-helper'); if (hb) hb.textContent = (R.helpBy || 'Your friend') + ' lost the second line'; } }   // (2.74.1) the second line helps while they keep at it
   const acc = R.hold ? 3.1 * (1 + R.lift) : -2.3, barH = R.barH + Math.min(2, R.help) * 0.04;
   R.vb = Math.max(-1.25, Math.min(1.25, R.vb + acc * dt)); R.b += R.vb * dt;
   if (R.b < 0) { R.b = 0; R.vb = R.vb < -0.5 ? -R.vb * 0.28 : 0; }

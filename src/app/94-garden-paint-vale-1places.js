@@ -42,12 +42,19 @@
     for (const c of L.pres.crossings || []) {
       const riv = L.pres.rivers && L.pres.rivers[c.over]; if (!riv || !riv.line) continue;
       const deck = physical.find(g => g.crossing.id === c.id);
-      const { Ln, n0, s0, s1 } = deck ? deck.span : crossingWaterSpan(L.pres, c, L.base), hw = riv.halfWidth || 1;
+      const sp0 = deck ? deck.span : crossingWaterSpan(L.pres, c, L.base), { Ln, n0 } = sp0, hw = riv.halfWidth || 1; let { s0, s1 } = sp0;
+      // (vale final, north) over a gorge the water under the stones runs on along the channel until it meets the painted
+      // water bodies either side: it filled only the stones' own deck, and the brook ended on a square cut beside them
+      const gorgeFill = !!deck && c.over === 'gorge';
+      if (gorgeFill) { const bodies = ((L.D && L.D.freshwater) || []).filter(b => b.boundary && b.boundary.length > 2), inPoly = (x, y, pg) => { let o = false; for (let i = 0, j = pg.length - 1; i < pg.length; j = i++) { const a = pg[i], b = pg[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) o = !o; } return o; };
+        const wet = s => { const p = at(Ln, s); return bodies.some(b => inPoly(p.x, p.y, b.boundary)); };
+        let a = n0.s, b = n0.s; for (let k = 0; k < 60 && a > 0 && !wet(a); k++) a -= .12; for (let k = 0; k < 60 && b < Ln.len && !wet(b); k++) b += .12;
+        s0 = Math.min(s0, Math.max(0, a - .45)); s1 = Math.max(s1, Math.min(Ln.len, b + .45)); }
       const mid = at(Ln, n0.s), anchor = { x: mid.x * cw, y: W.sky + mid.y * ch }, px = (x, y) => ({ x: x * cw - anchor.x, y: W.sky + y * ch - anchor.y });
       const left = [], right = [], centre = [];
       for (let s = s0; s <= s1 + 1e-6; s += .2) { const p = at(Ln, s), nx = -p.ty, ny = p.tx, k = hw * (1 + .06 * Math.sin(s * 3.1)); left.push(px(p.x + nx * k, p.y + ny * k)); right.push(px(p.x - nx * k, p.y - ny * k)); centre.push(px(p.x, p.y)); }
       if (left.length < 2) continue;
-      const strip = deck ? deck.points.map(p => px(p.x, p.y)) : left.concat(right.slice().reverse()), bb = V.hull(strip.map(q => ({ x: q.x, y: q.y }))).reduce((b, q) => [Math.min(b[0], q.x), Math.min(b[1], q.y), Math.max(b[2], q.x), Math.max(b[3], q.y)], [1e9, 1e9, -1e9, -1e9]);
+      const strip = deck && !gorgeFill ? deck.points.map(p => px(p.x, p.y)) : left.concat(right.slice().reverse()), bb = V.hull(strip.map(q => ({ x: q.x, y: q.y }))).reduce((b, q) => [Math.min(b[0], q.x), Math.min(b[1], q.y), Math.max(b[2], q.x), Math.max(b[3], q.y)], [1e9, 1e9, -1e9, -1e9]);
       // the water under the crossing: drawn under the painted river, so its banks lap over the ends
       under({ key: 'cross-water|' + c.id, x: anchor.x, y: anchor.y, box: [bb[0] - 16, bb[1] - 16, bb[2] + 16, bb[3] + 16], draw: (B, tod) => {
         const shape = B.poly(strip);
@@ -576,20 +583,22 @@
       });
       // dressing by job: the cider square's press, bell and lanterns; the mill yard's millstone and sacks; the court's fallen column
       const spot = (x, y) => L.free(x, y) && ['grass', 'path'].includes(L.kind(x, y));
-      const put = (cands, key, box, draw, foot, ok) => { for (const [x, y] of cands) if ((ok || spot)(x, y)) { const p = L.cpt(x, y); thing({ key, box, x: p.x, y: p.y, draw, foot }); return; } };   // foot: [left, right, depth] px the feet cannot enter (GardenPaintVale.feet)
+      const put = (cands, key, box, draw, foot, ok) => { for (const [x, y] of cands) if ((ok || spot)(x, y)) { const p = L.cpt(x, y); thing({ key, box, x: p.x, y: p.y, draw, foot }); return true; } return false; };   // foot: [left, right, depth] px the feet cannot enter (GardenPaintVale.feet)
       if (pz.id === 'cider-square') { if (!L.stat('ld-press')) put([[80.2, 36.4], [79.6, 35.4], [75.4, 37.6]], 'press', [-26, -50, 28, 6], drawPress(P), [-21, 23, 10]); if (!L.stat('ld-bell')) put([[79.6, 38.3], [80.4, 38.6]], 'bell', [-14, -64, 16, 5], drawBell(P), [-6, 7, 6]); /* (round 3 layouts: the hand-authored orchard has its own press and bell, ld-press and ld-bell) */ put([[77.1, 36.3], [76.3, 38.75]], 'baskets',   /* (High orchard fix round 2: by the lamp at the square's back edge, where the barrels are) */ [-24, -18, 26, 5], drawBaskets(P, C.season), [-18, 20, 8]); }
       if (pz.id === 'mill-yard') {
         // (round 3: the millstone stood alone in the middle of the yard. It leans on the mill's front wall now, past the door, and
         //  the sacks wait by the door: both from the mill's own layout row, the old spots kept only if the wall's foot is taken)
         const mill = (L.D.static || []).find(q => /mill/.test(String(q.id || '')) && Math.hypot(q.x + (q.w || 1) / 2 - pz.x, q.y - pz.y) < 6), wf = mill ? mill.y + (mill.h || 1) + .14 : 0, door = mill && mill.door;
-        const atWall = mill ? [[mill.x + (mill.w || 1) - .3, wf], [mill.x + (mill.w || 1) + .1, wf]] : [], byDoor = door ? [[door.x - .08, wf + .5], [door.x + 1.4, wf + .04]] : [];   // (fix round 2: beside the door, a stride out from the wall, clear of the wheel and its pit; they stood over the pit)
+        const atWall = mill ? [[mill.x + (mill.w || 1) - .3, wf], [mill.x + (mill.w || 1) + .1, wf]] : [], byDoor = door ? [[door.x - .32, wf + .5], [door.x + 1.6, wf + .5]] : [];   // (seats round 2: west of the door's column, never across the doors as drawn)   // (fix round 2: beside the door, a stride out from the wall, clear of the wheel and its pit; they stood over the pit)
         // (the mill's front is its yard's apron, held for its door: these stand on it, against the wall, never on the door's own cell)
         const apron = (x, y) => { const b = typeof gardenIslandBaseCell === 'function' ? gardenIslandBaseCell(Math.floor(x), Math.floor(y)) : null; return !!(b && b.land && !b.freshwater && !b.solid && !(door && Math.floor(x) === door.x && Math.floor(y) === door.y)) || spot(x, y); };
         put([...atWall, [76.6, 64.6], [77.2, 65.2]], 'millstone', [-22, -40, 24, 6], drawMillstone(P), [-12, 11, 8], apron); put([...byDoor, [77.3, 66.9], [73.6, 67.4]], 'sacks', [-22, -24, 24, 5], drawSacks(P), [-18, 20, 8], apron);
         // (layfix east) the yard at work, not a bare plaza: a hay wain unhitched by the barn, a stone trough and pump against the
         // lamp in the yard's middle, barrels and a sack barrow by the mill's doors; the setts give way to weeds at the yard's edges
         put([[87.1, 65.6], [86.9, 66], [87.3, 65.2]], 'yard-wain|' + C.season, [-72, -58, 52, 8], drawWain(P, C.season), [-38, 38, 10]);
-        put([[84.7, 67.1], [84.2, 66.9]], 'yard-trough', [-30, -50, 26, 6], drawTrough(P), [-26, 20, 8]);
+        // (vale final, east) the trough and pump against the barn's front wall east of its doors: in the open yard the far
+        // willows' alder stood over them and hid both under its crown
+        put([[85.6, 64.95], [86.55, 64.95]], 'yard-trough', [-30, -50, 26, 6], drawTrough(P), [-26, 20, 8], (x, y) => { const b = gardenIslandBaseCell(Math.floor(x), Math.floor(y)); return !!(b && b.land && !b.solid && !b.freshwater && !b.staticId); }) || put([[84.7, 67.1], [84.2, 66.9]], 'yard-trough', [-30, -50, 26, 6], drawTrough(P), [-26, 20, 8]);
         put([[82.6, 67.5], [83.2, 67.3]], 'yard-sacks2', [-22, -24, 24, 5], drawSacks(P), [-18, 20, 8]);
         put([[82.4, 64.9], [82.9, 65.0]], 'yard-barrels', [-22, -30, 22, 5], drawBarrels(P), [-17, 17, 8]);
         { const sh = shape; if (sh && sh.length > 2) add(kit.bboxOf(sh, 30), seed + 3, (B, r) => { const path = new Path2D(B.poly(sh)); B.cx.save(); B.cx.clip(path);
@@ -916,6 +925,9 @@
     const blooms = season === 'winter' ? ['#d8d2c4', '#b8a890'] : season === 'autumn' ? ['#c8783a', '#e0b050', '#a8503a', '#9a7ac8'] : season === 'spring' ? ['#f2efe2', '#e8c84a', '#d88aa8', '#9ab0e0'] : ['#9a7ac8', '#d86a7a', '#e8a040', '#f2efe2', '#c84a5a'];
     const leaf = season === 'winter' ? '#7a8468' : season === 'autumn' ? '#6e7a3e' : '#4f7a38', leafHi = season === 'winter' ? '#929a80' : season === 'autumn' ? '#8a9448' : '#6a9a48';
     const r0 = kit.rng(seed + 1), spots = []; for (const q of V.walk(pts, 9)) { const cy = (q.y - W.sky) / ch; if (cy < 59.2 || cy > 74.6) continue; for (const s of [-1, 1]) for (const d of [1.9, 2.4]) { const x = q.x + s * d * cw + (r0() - .5) * 6, y = q.y, gx = x / cw, gy = (y - W.sky) / ch; if (L.kind(gx, gy) === 'grass' && L.free(gx, gy) && !L.plot(gx, gy) && L.kind(gx - s * .5, gy) !== 'water') spots.push({ x, y, s }); } }
+    { const GP = window.GardenGroundPlanting || (window.GardenGroundPlanting = { rows: new Map(), set(id, cells) { this.rows.set(id, cells); }, has(x, y) { const k = x + ',' + y; for (const c of this.rows.values()) if (c.has(k)) return true; return false; } }), cells = new Set();
+      for (const p of spots) { const gy = Math.floor((p.y - W.sky) / ch); for (const dx of [-15, 0, 15]) cells.add(Math.floor((p.x + dx) / cw) + ',' + gy); }
+      GP.set('high-street', cells); }   // (what is planted here is in the ground for good: anything set out later keeps off it, 94-garden-1stored.js)
     if (!spots.length) return;
     const bb = kit.bboxOf(spots.map(p => ({ x: p.x, y: p.y })), 40);
     add(bb, seed, (B, r) => {

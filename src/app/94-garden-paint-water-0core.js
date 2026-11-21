@@ -518,12 +518,13 @@ window.GardenPaintWater = (function () {
           return;
         }
         const Q = S.mirrorQueue; if (!Q) return;
-        const t0 = performance.now();
-        while (Q.length && performance.now() - t0 < 4) {
+        const t0 = performance.now(), room = typeof gardenBakeRoom === 'function' ? gardenBakeRoom(4) : 4;   // (the shared budget a frame, 94-garden-paint-0budget.js)
+        while (Q.length && performance.now() - t0 < room) {
           const m = Q.shift(); if (mirrorIds.has(m.id)) continue; const pic = ok(() => mirrorCanvas(m)); mirrorIds.set(m.id, 1); m.o = null; if (!pic) continue;
           m.pic = pic; m.bb = [m.x0 - pic.pad, m.foot, m.x0 + m.w + pic.pad, m.foot + m.hu]; mirrors.push(m); mirrorMB += pic.c.width * pic.c.height * 4 / 1048576;
           L.add({ bb: m.bb, decor: true, seed: 9, tag: 'water mirror ping', draw() {} });   // (a no-op: it only marks the chunks it touches to be painted again)
         }
+        if (typeof gardenBakeSpent === 'function') gardenBakeSpent(performance.now() - t0);
         if (!Q.length) S.mirrorQueue = null;
       },
       count: () => mirrors.length, mb: () => +mirrorMB.toFixed(1),
@@ -991,7 +992,7 @@ window.GardenPaintWater = (function () {
 
   /* ---------- live layers ---------- */
   function liveTextures(scene) {
-    const make = (key, w, h, draw) => { const k = TEX + '-' + key; if (scene.textures.exists(k)) return k; const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); scene.textures.addCanvas(k, c); return k; };
+    const make = (key, w, h, draw) => { const k = TEX + '-' + key; if (scene.textures.exists(k)) return k; const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); scene.textures.addImage(k, c); return k; };
     return {
       glint: make('glint', 40, 8, (cx, w, h) => { const g = cx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.35, 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)'); cx.save(); cx.translate(w / 2, h / 2); cx.scale(1, h / w); cx.translate(-w / 2, -h / 2); cx.fillStyle = g; cx.fillRect(0, -w, w, w * 3); cx.restore(); }),
       spark: make('spark', 12, 12, (cx, w) => { const g = cx.createRadialGradient(6, 6, 0, 6, 6, 6); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.3, 'rgba(255,255,255,.6)'); g.addColorStop(1, 'rgba(255,255,255,0)'); cx.fillStyle = g; cx.fillRect(0, 0, w, w); cx.fillStyle = 'rgba(255,255,255,.8)'; cx.fillRect(5.5, 1, 1, 10); cx.fillRect(1, 5.5, 10, 1); }),
@@ -1279,7 +1280,7 @@ window.GardenPaintWater = (function () {
     // rafts drifting out into the Mere, spray and mist rising off it.
     const F = pres.falls;
     if (F) {
-      const lipX = cx(F.x + F.w / 2), lipY = cy(F.y + (F.h || 3) * .6), fs = (data.static || []).find(s => s.id === 'ld-falls'), fw = data.version >= 5 && typeof gardenFallsWater === 'function' ? gardenFallsWater(data) : null, pool = fw ? { x: cx(fw.foot.x), y: cy(fw.foot.y) } : data.version >= 5 && F.pool ? { x: cx(F.pool[0]), y: cy(F.pool[1]) } : fs ? { x: cx(fs.x + fs.w / 2), y: cy(fs.y + (fs.h || 1)) + 8 } : F.pool ? { x: cx(F.pool[0]), y: cy(F.pool[1]) } : { x: lipX, y: lipY + 60 }, r = rng(hash('falls-pool'));
+      const lipX = cx(F.x + F.w / 2), lipY = cy(F.y + (F.h || 3) * .6), fs = (data.static || []).find(s => s.id === 'ld-falls'), fw = data.version >= 5 && typeof gardenFallsWater === 'function' ? gardenFallsWater(data) : null, deepY = fw && typeof gardenFallsDeepFoot === 'function' ? gardenFallsDeepFoot(data) : null, pool = fw ? { x: cx(fw.foot.x), y: deepY ? deepY + 8 : cy(fw.foot.y) } : data.version >= 5 && F.pool ? { x: cx(F.pool[0]), y: cy(F.pool[1]) } : fs ? { x: cx(fs.x + fs.w / 2), y: cy(fs.y + (fs.h || 1)) + 8 } : F.pool ? { x: cx(F.pool[0]), y: cy(F.pool[1]) } : { x: lipX, y: lipY + 60 }, r = rng(hash('falls-pool'));
       const width = F.w * W.cellW * .55, rafts = []; for (let i = 0; i < 46; i++) { const a = r() * Math.PI, d = 20 + r() * 100; rafts.push([pool.x + Math.cos(a) * d * 1.3 * (r() < .5 ? -1 : 1), pool.y + Math.sin(a) * d * .45 + 8, 3 + r() * 8, r()]); }
       extras.push({ b: { x: pool.x - 200, y: pool.y - 120, w: 400, h: 260 }, draw(c, C) {
         const w = M.waters.find(w => w.kind === 'mere'); if (w) { const p = new Path2D(); p.moveTo(w.pts[0].x, w.pts[0].y); for (const z of w.pts) p.lineTo(z.x, z.y); p.closePath(); c.save(); c.clip(p); }

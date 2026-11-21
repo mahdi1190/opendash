@@ -10,7 +10,7 @@
   const KIT = () => window.GardenPaintTerrainKit;
   const { ashlar, mossOn, ivy, windowLit, leaf, grass, sz, STONE, MOSSY, OAK, WOOD, IRON } = M.SIGHT_KIT;
   const A = M.ART;
-  const turning = () => { try { return typeof gardenGateHas === 'function' && !!gardenGateHas('mill'); } catch (e) { return false; } };
+  const turning = () => { try { return typeof gardenGateHere === 'function' ? !!gardenGateHere('mill') : typeof gardenGateHas === 'function' && !!gardenGateHas('mill'); } catch (e) { return false; } };
   /** Rubble courses between a bottom line and a top profile: every stone its own size and weather, dark mortar between,
    *  lit on the west and shading to the east. top(x) is the wall's top at x (a ruin breaks it). */
   function rubble(B, r, x0, x1, y0, top, tones, o) {
@@ -60,10 +60,15 @@
     B.f(arch(0, -10, 19, dh + 4), '#c8c0ae').f(arch(0, -10, 15, dh), '#24302c').f(arch(0, -10, 13, dh - 2), B.lin(-6, 0, 6, 0, [[0, '#3e6a56'], [1, '#284838']]));
     B.s(`M-6.5 ${-10 - dh * .45}h13M-6.5 ${-10 - dh * .2}h13`, '#1e3428', .7, .7).f(B.circ(4, -10 - dh * .35, .9), '#d8b84a');
     B.f(B.rect(-11, -10, 22, 4), '#a8a294').f(B.rect(-11, -10, 22, 1.2), '#d0cabc').f(B.rect(-13, -6, 26, 4.4), '#8e887c').f(B.rect(-13, -6, 26, 1.2), '#bcb6a8');
-    // the gallery: a corbelled ring on brackets, an iron railing round it
-    const gw = R1 + 8;
-    for (let x = -R1 + 2; x <= R1 - 2; x += 5.5) B.f(B.poly([[x - 2, gal + 1], [x + 2, gal + 1], [x + .6, gal + 9], [x - .6, gal + 9]]), x < 0 ? '#c8c2b4' : '#8e887c');
-    B.f(`M${-gw} ${gal - 2}Q0 ${gal + 4} ${gw} ${gal - 2}L${gw} ${gal + 2}Q0 ${gal + 8} ${-gw} ${gal + 2}Z`, '#4a4e50').f(`M${-gw} ${gal - 2}Q0 ${gal + 4} ${gw} ${gal - 2}Q0 ${gal - 1} ${-gw} ${gal - 2}Z`, '#8a9092');
+    // the gallery: a corbelled iron deck all the way round the lamp room, wide enough to walk round (94-garden-zz-7act-3height.js: the
+    // lighthouse's floor), on brackets, its rail behind the lantern and in front of it
+    const gw = R1 + 14, gry = 11, rail = 15, ringY = (x, s) => gal + s * gry * Math.sqrt(Math.max(0, 1 - (x / gw) ** 2));
+    for (let x = -gw + 4; x <= gw - 4; x += 5) B.f(B.poly([[x - 2, ringY(x, 1) + 3], [x + 2, ringY(x, 1) + 3], [x * .6 + .6, ringY(x, 1) + 14], [x * .6 - .6, ringY(x, 1) + 14]]), x < 0 ? '#c8c2b4' : '#8e887c');
+    B.f(`M${-gw} ${gal}A${gw} ${gry} 0 0 0 ${gw} ${gal}V${gal + 4}A${gw} ${gry} 0 0 1 ${-gw} ${gal + 4}Z`, '#3e4244');
+    B.f(B.ell(0, gal, gw, gry), B.lin(-gw, 0, gw, 0, [[0, '#a4aaac'], [.5, '#868c8e'], [1, '#5e6466']]));
+    for (let k = -3; k <= 3; k++) B.s(`M${-gw * Math.sqrt(1 - (k / 4) ** 2) + 2} ${gal + k * gry / 4}H${gw * Math.sqrt(1 - (k / 4) ** 2) - 2}`, '#5a6062', .5, .55);
+    for (let x = -gw + 1.5; x <= gw - 1.5; x += 4.4) B.s(`M${x} ${ringY(x, -1)}v${-rail}`, '#2a2e30', .8, .9);
+    B.s(`M${-gw + 1} ${gal - rail}A${gw - 1} ${gry - .6} 0 0 1 ${gw - 1} ${gal - rail}`, '#2a2e30', 1.3);
     // the lantern: glazing in iron astragals, the lamp inside (lit at night), a verdigris cap, a ball vent, a vane
     const lw = 10.5, l0 = gal - 3, l1 = gal - 29;
     B.f(B.rect(-lw - 1.4, l1, lw * 2 + 2.8, l0 - l1), '#2a2e30');
@@ -71,8 +76,9 @@
     if (!o.night) B.f(B.rect(-lw + 1, l1 + 2, 3.4, l0 - l1 - 5), '#e8f4f4', .45).f(B.ell(1, (l0 + l1) / 2 + 2, 3, 5), '#e8c46a', .5);
     for (const x of [-lw * .5, 0, lw * .5]) B.s(`M${x} ${l1 + 1}V${l0 - 1}`, '#1e2224', 1.1);
     B.s(`M${-lw} ${(l0 + l1) / 2}H${lw}`, '#1e2224', .9, .8);
-    for (let x = -gw + 1; x <= gw - 1; x += 3.6) B.s(`M${x} ${gal - 2 + Math.cos(x / gw * 1.4) * 2.6}v-9`, '#2a2e30', .8, .9);
-    B.s(`M${-gw} ${gal - 11}Q0 ${gal - 6} ${gw} ${gal - 11}`, '#2a2e30', 1.3);
+    // the front rail, over the deck's front edge, in front of the lantern
+    for (let x = -gw + 1.5; x <= gw - 1.5; x += 4.4) B.s(`M${x} ${ringY(x, 1) - .6}v${-rail}`, '#2a2e30', .9, .95);
+    B.s(`M${-gw + 1} ${gal - rail}A${gw - 1} ${gry - .6} 0 0 0 ${gw - 1} ${gal - rail}`, '#2a2e30', 1.4).s(`M${-gw + 1} ${gal - rail * .5}A${gw - 1} ${gry - .6} 0 0 0 ${gw - 1} ${gal - rail * .5}`, '#2a2e30', .7, .8);
     B.f(`M${-lw - 3} ${l1}Q${-lw - 2} ${l1 - 13} 0 ${l1 - 15}Q${lw + 2} ${l1 - 13} ${lw + 3} ${l1}Z`, B.lin(-lw, 0, lw, 0, [[0, '#7aa898'], [.45, '#4e7e70'], [1, '#2e4e46']]));
     B.f(`M${-lw - 3} ${l1}Q0 ${l1 + 3} ${lw + 3} ${l1}`, '#2a3a36').f(B.circ(0, l1 - 17, 3.2), '#3e5e54').f(B.circ(-1, l1 - 18, 1.2), '#9ac4b4', .8);
     B.s(`M0 ${l1 - 20}V${l1 - 32}`, '#2a2e30', 1).s(`M-5 ${l1 - 29}H6`, '#2a2e30', .9).f(`M6 ${l1 - 29}l-3 -2v4z`, '#2a2e30');
@@ -191,7 +197,7 @@
     B.f(B.rect(x, y, w * .12, h), pal[2], .22).f(B.rect(x + w * .86, y, w * .14, h), pal[3], .26);
   };
   const MILL_WHEEL = { x: -90, y: -40, R: 40 };
-  A['ld-mill'] = { box: [-134, -224, 92, 18], door: { dx: 0, dy: 0 }, seat: { kind: 'earth', w: 132, front: 20, stones: 0 }, lit: true, lights: [[-38, -40, 80], [32, -80, 80], [-38, -122, 70]],
+  A['ld-mill'] = { box: [-134, -224, 92, 18], door: { dx: 24, dy: 0 }, seat: { kind: 'earth', w: 132, front: 20, stones: 0 }, lit: true, lights: [[-38, -40, 80], [32, -80, 80], [-38, -122, 70]],
     state: () => turning() ? 'turn' : 'still',
     parts: [
       { id: 'wheel', box: [-MILL_WHEEL.R - 10, -MILL_WHEEL.R - 10, MILL_WHEEL.R + 10, MILL_WHEEL.R + 10], at: [MILL_WHEEL.x, MILL_WHEEL.y], spin: o => o.state === 'turn' ? -.55 : 0, draw(B, o) {
@@ -230,7 +236,9 @@
       for (let i = 0; i < 7; i++) B.f(B.blob(r, x0 + 10 + r() * (x1 - x0 - 20), eaves - 6 - r() * (eaves - ridge - 14), 5 + r() * 5, 1.8, 7, .5), s === 'winter' ? '#eef2ee' : '#7d8f4e', .6);
       B.f(B.rect(x1 - 26, ridge - 18, 12, 22), BR[1]).f(B.rect(x1 - 26, ridge - 18, 3.6, 22), BR[2], .6).f(B.rect(x1 - 28, ridge - 21, 16, 4), STONE.rockLo);
       // the lucam: a weatherboarded hoist housing out over the sack doors, its own small gable, the chain and hook
-      const lx = -15, lw = 30;
+      // (seats round 2) the doors' column over the layout's door cell (its middle is half a cell east of the picture's anchor): the doors
+      // were drawn half a cell west of where you arrive, and the yard's sacks stood across them
+      const lx = 9, lw = 30;
       B.f(B.rect(lx, eaves - 40, lw, 46), WOOD[1]); for (let y = eaves - 36; y < eaves + 6; y += 4) B.s(`M${lx} ${y}h${lw}`, OAK[1], .6, .75);
       B.f(B.rect(lx, eaves - 40, 6, 46), WOOD[2], .4).f(B.poly([[lx - 4, eaves - 38], [lx + lw / 2, eaves - 56], [lx + lw + 4, eaves - 38]]), SLATE[1]).f(B.poly([[lx - 4, eaves - 38], [lx + lw / 2, eaves - 56], [lx + lw / 2, eaves - 50], [lx + 2, eaves - 38]]), SLATE[2], .5);
       B.f(B.rect(lx + 8, eaves - 30, 14, 20), '#24180f').s(`M${lx + 15} ${eaves - 10}V${f2 + 6}`, IRON[0], 1).s(`M${lx + 13} ${f2 + 6}q2 4 4 0`, IRON[0], 1.2);
@@ -240,9 +248,9 @@
       B.f(B.rect(lx, -10 - dh, lw, dh), OAK[1]).f(B.rect(lx + 2, -10 - dh + 2, 12, dh - 2), OAK[0]).f(B.rect(lx + 16, -10 - dh + 2, 12, dh - 2), '#2a1c12').s(`M${lx + 2} ${-10 - dh + 2}L${lx + 14} -12`, OAK[2], 1, .6).f(B.rect(lx - 2, -13 - dh, lw + 4, 3), STONE.rockHi);
       if (lit) B.f(B.rect(lx + 16, -10 - dh + 2, 12, dh - 2), 'rgba(255,200,110,.4)');
       const win = (x, y, w, h) => { B.f(B.rect(x - 1.6, y - 3, w + 3.2, 3), STONE.rockHi).f(B.rect(x - 1, y + h, w + 2, 2.2), STONE.rock); windowLit(B, x, y, w, h, lit, '#e8dcc0'); };
-      for (const x of [-50, -32, 26, 50]) { win(x, f1 + 12, 12, 18); win(x, f2 + 12, 12, 16); win(x, eaves + 12, 12, 14); }
+      for (const x of [-48, -31, -14, 50]) { win(x, f1 + 12, 12, 18); win(x, f2 + 12, 12, 16); win(x, eaves + 12, 12, 14); }
       // sacks of meal and a barrow by the doors, a wheelbarrow of sacks, nettles along the foot
-      for (const [x, y] of [[44, -1], [52, -2], [48, -10], [60, -1]]) B.f(B.rr(x - 5, y - 10, 10, 11, 4), '#d9caa0').f(B.rr(x - 5, y - 10, 4, 11, 3), '#efe4c6', .7).s(`M${x - 2} ${y - 9}q2 -2 4 0`, '#a8986e', .8);
+      for (const [x, y] of [[46, -1], [54, -2], [50, -10], [62, -1]]) B.f(B.rr(x - 5, y - 10, 10, 11, 4), '#d9caa0').f(B.rr(x - 5, y - 10, 4, 11, 3), '#efe4c6', .7).s(`M${x - 2} ${y - 9}q2 -2 4 0`, '#a8986e', .8);
       for (let i = 0; i < 9; i++) { const x = x0 + 4 + r() * 30; B.s(`M${x} 0q${(r() - .5) * 3} -7 ${(r() - .5) * 4} -${9 + r() * 6}`, leaf(s)[1], 1.2, .85); }
       B.tufts(r, x1 + 6, 4, 14, 7, grass(s), 7);
     } };

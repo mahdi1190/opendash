@@ -9,7 +9,14 @@ const GARDEN_EXPLORATION_STOPS = Object.freeze([
   Object.freeze({ id: 'foothill-horizon', zone: 5, name: 'The foothill horizon', hint: 'Below the high peaks, three flat stones frame the sea, ridge and cloud.', kind: 'mountain', near: [80, 22], sight: 'ld-hut', mode: 'cycle', target: [0, 1, 2], labels: ['Sea', 'Ridge', 'Cloud'], intro: 'Three flat horizon stones sit below the high pass. Each has a different edge cut into it.', clue: 'Stack the view from low to high: sea, ridge, cloud. Turn each stone to fit the layer.', found: 'Along the ridge you pick out a shepherd\'s hut. It is a real little place to explore, with a warm stove and nobody home.' }),
 ]);
 const _gexplore = { layout: null, points: new Map(), art: new Map(), sprites: new Map(), said: new Set(), talk: null };
-function gardenExploreKnown(id, model) { return !(model && model.visit) && typeof gardenSightKnown === 'function' && gardenSightKnown(id); }
+/** Every place a trail puzzle can lead to: the stops' own and the ones set out from Land. */
+function gardenExploreIds() { return [...new Set(GARDEN_EXPLORATION_STOPS.map(r => r.sight).concat(['ld-chapel'], typeof GARDEN_SIGHT_PLACE_IDS !== 'undefined' ? GARDEN_SIGHT_PLACE_IDS : []))]; }
+const _gexSolvedHere = new Set();   // (solved on this visit, before their snapshot says so)
+/** Is it solved in the garden on screen: yours, or (full co-op, 2.75) your friend's, by them or anyone playing there. */
+function gardenExploreKnown(id, model) {
+  if (model && model.visit) { const s = model.visit.snap; return !!(s && Array.isArray(s.ex) && s.ex.includes(id)) || _gexSolvedHere.has((model.visit.fid || '') + '|' + id); }
+  return typeof gardenSightKnown === 'function' && gardenSightKnown(id) || typeof gpGet === 'function' && !!gpGet('explore.' + id);   // (a place the layout already holds is known by its solved mark alone)
+}
 function _gexploreOpen(row, model) { return !!(model && !model.worldPending && GARDEN_WORLD.v >= 4 && (model.areas || []).includes('zn-' + row.zone)); }
 function _gexploreGround(row, x, y) {
   const cell = gardenIslandBaseCell(Math.floor(x), Math.floor(y)), land = typeof gardenLandCell === 'function' ? gardenLandCell(Math.floor(x), Math.floor(y)) : null;
@@ -83,7 +90,7 @@ function gardenExploreDetailRows(scene) {
   return gardenExploreStops(scene).map(({row,point}) => ({ id:'explore-detail:'+row.id,x:point.x,y:point.y,html:`<g pointer-events="none" transform="translate(${GART.f1(point.x*GARDEN_WORLD.cellW)} ${GART.f1(GARDEN_WORLD.sky+point.y*GARDEN_WORLD.cellH)})">${_gexploreArt(row,scene.season,true)}</g>` }));
 }
 function _gexploreOwnTalk(T,S,context) {
-  const m=gardenHere();return !!(T && _gexplore.talk===T && _wd.talk===T && T.el.isConnected && _gw.on && !(typeof _grm!=='undefined'&&_grm.on) && !(typeof _ee!=='undefined'&&_ee.on) && _gexplore.sprites.get(S.row.id)===S && _gexploreOpen(S.row,m) && wdNear(S.x,S.y,3) && (m.visit ? 'visit:'+(m.visit.key||m.visit.fid||'') : 'home')===context.key && (m.visit || _gdG()===context.garden));
+  const m=gardenHere();return !!(T && _gexplore.talk===T && _wd.talk===T && T.el.isConnected && _gw.on && !(typeof _grm!=='undefined'&&_grm.on) && !(typeof _ee!=='undefined'&&_ee.on) && _gexplore.sprites.get(S.row.id)===S && _gexploreOpen(S.row,m) && wdNear(S.x,S.y,3) && (m.visit ? 'visit:'+(m.visit.fid||m.visit.key||'') : 'home')===context.key && (m.visit || _gdG()===context.garden));
 }
 function gardenExploreOpenPlaces() {
   gardenPopupOpen('lands');
@@ -91,7 +98,8 @@ function gardenExploreOpenPlaces() {
   if(details){details.open=true;details.scrollIntoView({block:'nearest'});}
 }
 function _gexploreFoundActions(T,S,context) {
-  const row=S.row,m=gardenHere(); if(m.visit){T.say(row.found+' Only the garden owner can remember this place and choose where to set it out.');return;}
+  const row=S.row,m=gardenHere(),stands=typeof gardenIslandDefaultSight==='function'&&gardenIslandDefaultSight(row.sight); if(m.visit){const first=String(m.visit.name||'your friend').split(/\s+/)[0];T.say(row.found+` It is solved in ${first}\u2019s garden now, for both of you: `+(stands?'the place it leads to stands in their garden already, so walk to its door together.':'the place it leads to is set out in their garden when there is room, else it waits in their Land, under discovered places.'));return;}
+  if(stands){T.say(row.found+' The place it leads to stands in your garden already. Walk to its door: some doors open at particular hours or need the right key.');return;}   // (a place the layout holds is never set out again)
   const sight=gardenLandSight(row.sight),actions=[];
   if(!gardenSightIsSetOut(row.sight))actions.push({label:'Set out '+sight.name.toLowerCase()+' nearby',primary:true,run:()=>{if(!_gexploreOwnTalk(T,S,context))return;const r=gardenSightSetNearby(row.sight);if(!r.ok){T.say(r.msg||'Walk to a larger clear space, then use Your discovered places in Land.');return;}T.say('The place is now nearby. Walk up and click its door. Some doors open at particular hours or need the right key.');}});
   actions.push({label:'Open Your discovered places',run:()=>{if(!_gexploreOwnTalk(T,S,context))return;wdTalkClose(true);gardenExploreOpenPlaces();}});
@@ -100,7 +108,9 @@ function _gexploreFoundActions(T,S,context) {
 }
 function _gexploreFinish(T,S,context) {
   if(!_gexploreOwnTalk(T,S,context))return;
-  if(!gardenHere().visit && !gardenExploreKnown(S.row.sight,gardenHere()))gpSet('explore.'+S.row.sight,_gdToday());
+  const here=gardenHere();
+  if(!here.visit && !gardenExploreKnown(S.row.sight,here))gpSet('explore.'+S.row.sight,_gdToday());
+  else if(here.visit && !gardenExploreKnown(S.row.sight,here)){_gexSolvedHere.add((here.visit.fid||'')+'|'+S.row.sight);if(here.visit.live&&typeof _glvIntent==='function'){try{_glvIntent('solve',{p:S.row.sight,x:Math.floor(_gw.px),y:Math.floor(_gw.py)});}catch(e){/* it is solved on this screen */}}}
   _gexploreFoundActions(T,S,context);
 }
 function _gexplorePuzzle(T,S,context) {
@@ -116,7 +126,7 @@ function _gexplorePuzzle(T,S,context) {
 }
 function gardenExploreStopOpen(S) {
   const m=gardenHere();if(!_gexploreOpen(S.row,m)||!wdNear(S.x,S.y,3)||typeof _gwFishBusy==='function'&&_gwFishBusy())return;
-  const context={key:m.visit?'visit:'+(m.visit.key||m.visit.fid||''):'home',garden:m.visit?null:_gdG()};let T;
+  const context={key:m.visit?'visit:'+(m.visit.fid||m.visit.key||''):'home',garden:m.visit?null:_gdG()};let T;
   T=wdTalk({name:S.row.name,art:_gexploreArt(S.row,m.season,false),at:{x:S.x,y:S.y},lines:[S.row.intro],bye:'Leave the trail stop',closeQuiet:true,onClose(){if(_gexplore.talk===T)_gexplore.talk=null;}});if(!T)return;_gexplore.talk=T;
   if(gardenExploreKnown(S.row.sight,m))_gexploreFoundActions(T,S,context);
   else T.say(S.row.intro,[{label:S.row.mode==='sequence'?'Read the marks and answer':'Look more closely',primary:true,run:()=>{if(_gexploreOwnTalk(T,S,context))_gexplorePuzzle(T,S,context);}}]);

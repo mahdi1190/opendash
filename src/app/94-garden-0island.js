@@ -230,6 +230,16 @@ function gardenFallsWater(data) {
   if (!Number.isFinite(lx)) return null;
   return { lip: { x: lx, y: F.y }, foot: { x: lx + .15, y: F.pool[1] } };
 }
+/** (vale final fix 1, rule 14) Where a fed falls lands when open water lies below its foot: the sheet goes on down a rock prow
+ * into the water until the whole drop is at least 8 H (8.4 x 40 px), as far as the water reaches below it. World px y of that
+ * landing, or null when there is no room (the falls then land at their own foot). Read from the water cells, never a place. */
+function gardenFallsDeepFoot(data) {
+  const fw = gardenFallsWater(data), W = typeof GARDEN_WORLD !== 'undefined' && GARDEN_WORLD; if (!fw || !W || typeof gardenTerrainAt !== 'function') return null;
+  const lipY = W.sky + fw.lip.y * W.cellH - 6, y0 = W.sky + fw.foot.y * W.cellH - 8, fx = fw.foot.x, want = Math.round(8.4 * 40);
+  const wet = (cx, py) => { const t = gardenTerrainAt(Math.floor(cx), Math.floor((py + 30 - W.sky) / W.cellH)); return t === 'water' || t === 'deep'; };
+  let yy = y0; while (yy - lipY < want && wet(fx, yy) && wet(fx - 1.6, yy) && wet(fx + 1.8, yy) && yy < y0 + 14 * W.cellH) yy += 10;
+  return yy - y0 >= 3 * W.cellH ? yy : null;
+}
 /** Retained river water and the precise standing surfaces crossing it. */
 function gardenIslandCrossingGeometry() {
   if (_gardenIslandDerived.crossings) return _gardenIslandDerived.crossings;
@@ -312,9 +322,15 @@ function gardenIslandFreshwaterCell(x, y) {
 /** Authored frontier regions share the same contours with drawing, walking and visits. */
 function gardenIslandRegionForZone(zone) { return (gardenIslandData().regions || []).find(region => region.zone === Number(zone)) || null; }
 function _gardenIslandRegionForKnownLand(x, y) { return (gardenIslandData().regions || []).find(region => (region.polygons || []).some(points => _gardenIslandInLoop(x, y, points))) || null; }
+// (vf-perf) answered once per point for the layout and coast it was read from: painters ask it for every cell of the map on each
+// repaint (a level-up's compose spent a second in these outline tests), and the same points come back every time
+let _gardenIslandRegionMemo = null;
 function gardenIslandRegionAt(x, y) {
-  if (!Number.isFinite(x) || !Number.isFinite(y) || !gardenIslandLandContains(x, y)) return null;
-  return _gardenIslandRegionForKnownLand(x, y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const D = gardenIslandData(), G = typeof gardenIslandGeometry === 'function' ? gardenIslandGeometry() : null; let M = _gardenIslandRegionMemo;
+  if (!M || M.D !== D || M.G !== G || M.m.size > 250000) M = _gardenIslandRegionMemo = { D, G, m: new Map() };
+  const k = x + ',' + y; if (M.m.has(k)) return M.m.get(k);
+  const r = gardenIslandLandContains(x, y) ? _gardenIslandRegionForKnownLand(x, y) : null; M.m.set(k, r); return r;
 }
 /** Explicit host/open sets keep visitor and server access independent of the local owner. */
 function gardenIslandRegionOpen(region, open) { return !region || !region.zone || !!open && (open instanceof Set ? open.has('zn-' + region.zone) : Array.isArray(open) && open.includes('zn-' + region.zone)); }

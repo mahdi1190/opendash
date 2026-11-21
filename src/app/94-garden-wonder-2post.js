@@ -124,7 +124,7 @@ wdMod({
   id: 'post', pref: 'post',
   begin() { _wdp.snail = null; _wdp.flag = null; _wdp.tried = false; _wdPostFlag(); },
   tick(m) {
-    if (_wdp.tried || _wdp.snail || _wd.t < 40 || _wd.still) return;
+    if (_wdp.tried || _wdp.snail || _wd.t < 40 || _wd.still || wdWalkingLately()) return;
     _wdp.tried = true;
     const r = _wdLetterDue(m);
     if (r) _wdSnailStart(r, m);
