@@ -701,9 +701,10 @@ function _vfrHostSend(now) {
     const p = V.path && V.path.length ? V.path[V.path.length - 1] : { x: V.x, y: V.y };
     const r = { i: V.id, x: n10(V.x, W.cols), y: n10(V.y, W.rows), tx: n10(p.x, W.cols), ty: n10(p.y, W.rows), a: _vfrPoseWord(V), f: V.face < 0 ? 1 : 0 };
     if (V.hold && V.hold.by != null) r.h = Math.max(0, Math.min(9, Number(V.hold.by) || 0));
+    if (V.nod && performance.now() < V.nod.until) r.w = 1;   // (a wave in passing: friends see it too)
     l.push(r); if (l.length >= 16) break;
   }
-  const sig = JSON.stringify(l.map(r => [r.i, Math.round(r.x / 5), Math.round(r.y / 5), r.tx, r.ty, r.a, r.f, r.h]));   // (where they are, to half a cell: a walk is told every 0.8 s, a rest every 8 s)
+  const sig = JSON.stringify(l.map(r => [r.i, Math.round(r.x / 5), Math.round(r.y / 5), r.tx, r.ty, r.a, r.f, r.h, r.w]));   // (where they are, to half a cell: a walk is told every 0.8 s, a rest every 8 s)
   if (sig === _vfl.sig && now - _vfl.sentAt < 8000) return;
   _vfl.sig = sig; _vfl.sentAt = now;
   try { _glhSend('all', 'fk', { l }); } catch (e) { /* only a message */ }
@@ -725,7 +726,7 @@ function gardenFolkGuestIn(l) {
     seen.add(r.i);
     let V = _vfg.V.get(r.i);
     if (!V) { V = { id: r.i, row: VALE_FOLK_ROW.get(r.i), x: r.x / 10, y: r.y / 10, face: 1, S: null, drawn: '', path: null }; _vfg.V.set(r.i, V); }
-    V.to = { x: r.x / 10, y: r.y / 10 }; V.goal = { x: r.tx / 10, y: r.ty / 10 }; V.a = String(r.a || 'idle'); V.f = r.f ? -1 : 1; V.heldBy = r.h; V.at = performance.now();
+    V.to = { x: r.x / 10, y: r.y / 10 }; V.goal = { x: r.tx / 10, y: r.ty / 10 }; V.a = String(r.a || 'idle'); V.f = r.f ? -1 : 1; V.heldBy = r.h; V.wave = r.w ? performance.now() + 1600 : 0; V.at = performance.now();
     if (Math.hypot(V.x - V.to.x, V.y - V.to.y) > 3) { V.x = V.to.x; V.y = V.to.y; }
   }
   for (const [id, V] of _vfg.V) if (!seen.has(id)) { if (V.S) { try { V.S.remove(); } catch (e) { /* gone */ } } _vfg.V.delete(id); }   // gone in at a door, or off by the road
@@ -740,8 +741,8 @@ function _vfgFrame(dt) {
     const walking = d > 1.5 && V.a === 'walk';
     if (d > 0.5) { const k = Math.min(1, st / d); V.x += dx / G.cellW * k; V.y += dy / G.cellH * k; _vfrHeadTo(V, dx, dy, dt); }
     if (!walking) V.face = (V.a === 'talk' || V.a === 'sittalk') && V.mine && typeof _gw !== 'undefined' ? (_gw.px > V.x ? 1 : -1) : V.f;
-    const pose = V.a === 'walk' ? 'idle' : V.a, view = _vfrView3(V, walking, pose), face = V.face < 0 ? -1 : 1, k = pose + (walking ? 'w' : '') + face + view;
-    if (V.drawn !== k) { V.drawn = k; wdArt(V.S, _vfrMarkup(V, pose, walking, face, false, view)); }
+    const pose = V.a === 'walk' ? 'idle' : V.a, view = _vfrView3(V, walking, pose), face = V.face < 0 ? -1 : 1, wave = V.wave && performance.now() < V.wave, k = pose + (walking ? 'w' : '') + face + view + (wave ? 'v' : '');
+    if (V.drawn !== k) { V.drawn = k; wdArt(V.S, _vfrMarkup(V, pose, walking, face, wave ? 'wave' : false, view)); }
     V.S.x = V.x; V.S.y = V.y;
     _vfrStride(V, walking, view);
     const sat = pose === 'sit' || pose === 'rub' || pose === 'sittalk'; V.S.lift = sat ? _vfrSeatLift(V, null) : 0;
