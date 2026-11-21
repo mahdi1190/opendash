@@ -817,6 +817,13 @@ function _gwLos(a, b, m) {
  * (slide along the wall), else step sideways a few pixels round the corner that caught the feet. Returns whether they moved.
  */
 function _gwMoveBy(dx, dy) {
+  // (vf-perf) the step each frame takes, kept for the next frame's give (_gwMoveByEdge): which way the feet really went
+  const x0 = _gw.px, y0 = _gw.py, moved = _gwMoveByEdge(dx, dy);
+  if (_gw.giveFrom && (_gw.giveFrom.sx !== Math.sign(dx) || _gw.giveFrom.sy !== Math.sign(dy))) _gw.giveFrom = null;   /* (a new press forgets it) */
+  _gw.lastStep = { sx: Math.sign(dx), sy: Math.sign(dy), mx: (_gw.px - x0) * GARDEN_WORLD.cellW, my: (_gw.py - y0) * GARDEN_WORLD.cellH };
+  return moved;
+}
+function _gwMoveByEdge(dx, dy) {
   const W = GARDEN_WORLD, x0 = _gw.px, y0 = _gw.py;
   const shore = _gwShoreSlide(x0, y0, dx, dy, GW_FOOT.x, GW_FOOT.y, _gwFree, _gwGridNow(), _gw.shoreMove || (_gw.shoreMove = {}));
   // how far a candidate gets the way you are pressing, as a share of the step
@@ -876,7 +883,15 @@ function _gwMoveBy(dx, dy) {
     let g2 = null;
     for (let g = .5; g <= 3.5 && !g2; g += .5) if (open3(vx, -sy * g)) g2 = { x: x0 + vx / W.cellW, y: y0 - sy * g / W.cellH, kind: 'y' };
     for (let g = .25; g <= .75 && !g2; g += .25) if (open3(-sx * g, vy)) g2 = { x: x0 - sx * g / W.cellW, y: y0 + vy / W.cellH, kind: 'x' };
-    if (g2) { _gw.px = g2.x; _gw.py = g2.y; _gw.slideHold = { sx, sy, kind: g2.kind }; return true; }
+    // (vf-perf) not a give that turns straight back on the way the feet went the frame before under the same press, while this
+    // frame's own slide still gets them on: at a bend of the east coast's bank the slide crept along it for three frames and the
+    // give threw the feet back 3 px on the fourth, a shake on the spot (a probe of _gwMoveBy at 89.75,47.5; 26 turns in 90 frames)
+    const L = _gw.lastStep, gx = (g2 ? g2.x - x0 : 0) * W.cellW, gy = (g2 ? g2.y - y0 : 0) * W.cellH;
+    const back = g2 && L && L.sx === sx && L.sy === sy && (Math.abs(L.mx) > .2 && Math.abs(gx) > .2 && Math.sign(gx) !== Math.sign(L.mx) || Math.abs(L.my) > .2 && Math.abs(gy) > .2 && Math.sign(gy) !== Math.sign(L.my));
+    // nor a give from where a give under the same press set out before: the slide had carried the feet back into the same bend,
+    // so it is a closed corner, and the honest thing is to stop there (the shake came round every four frames)
+    const F = _gw.giveFrom, loop = g2 && F && F.sx === sx && F.sy === sy && Math.hypot((x0 - F.x) * W.cellW, (y0 - F.y) * W.cellH) < 1.2;
+    if (g2 && !loop && !(back && Math.hypot((mx - x0) * W.cellW, (my - y0) * W.cellH) > .05)) { _gw.giveFrom = { x: x0, y: y0, sx, sy }; _gw.px = g2.x; _gw.py = g2.y; _gw.slideHold = { sx, sy, kind: g2.kind }; return true; }
   }
   if (useShore) { _gw.px = shore.x; _gw.py = shore.y; return true; }
   if (x === x0 && y === y0) return false;
