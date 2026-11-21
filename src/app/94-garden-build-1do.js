@@ -163,7 +163,7 @@ function gardenCarrySet(key, x, y) {
 }
 /** Where a carried thing can lie near x, y (cells): its whole drawn foot on open ground (the walker's own test, across the kind's width),
  *  and in sight (no roof over it, not behind you), this spot or the nearest within a cell and a half. Null: no room near here. By kind: the width is the kind's. */
-function gardenCarryRoom(key, x, y) {
+function gardenCarryRoom(key, x, y, notMine) {
   if (typeof _gwFree !== 'function') return { x, y };
   const t = gardenCarryThing(key), K = t && GARDEN_KINDS[t.kind], half = Math.max(0.15, ((K && K.w) || 0.5) / 2);
   // and in sight: never where a building's picture stands over it (the walkable strip behind a cottage is under its roof), nor under
@@ -171,7 +171,7 @@ function gardenCarryRoom(key, x, y) {
   // (half a cell south of it under a roof too: just over a roof's top line it seemed to sit on the roof)
   const NW = typeof _gw !== 'undefined' && _gw.nativeWorld, cov = (px, py) => !!(NW && typeof NW.covered === 'function' && NW.covered(px, py, 26));
   let hid = false;
-  const seen = (px, py) => { const v = !cov(px, py) && !cov(px, py + 0.45) && !(Math.abs(px - _gw.px) < 0.3 && py < _gw.py - 0.05 && py > _gw.py - 1.3); if (!v) hid = true; return v; };
+  const seen = (px, py) => { const v = !cov(px, py) && !cov(px, py + 0.45) && !(!notMine && Math.abs(px - _gw.px) < 0.3 && py < _gw.py - 0.05 && py > _gw.py - 1.3); if (!v) hid = true; return v; };
   // (and open ground just in front of it: a hedge, a sign or a wall a step south is drawn over its foot, rule 12)
   const ok = (px, py) => _gwFree(px, py, 0.12) && _gwFree(px - half, py, 0.08) && _gwFree(px + half, py, 0.08) && _gwFree(px, py - 0.25, 0.08) && _gwFree(px, py + 0.45, 0.08) && seen(px, py);
   if (ok(x, y)) return { x, y };
@@ -319,8 +319,12 @@ function gardenDropLeft(A, only) {
   for (const [key, who] of [..._gbd.held]) {
     if (who !== A.f || (only && key !== only)) continue;
     _gbd.held.delete(key);
-    const x = Number.isFinite(A.x) ? A.x : (gardenCarryThing(key) || {}).x, y = Number.isFinite(A.y) ? A.y + 0.1 : (gardenCarryThing(key) || {}).y;
+    const t = gardenCarryThing(key);
+    let x = Number.isFinite(A.x) ? A.x : (t || {}).x, y = Number.isFinite(A.y) ? A.y + 0.1 : (t || {}).y;
     if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    // on open ground in sight near where they stood, as your own set-down is; none near: back at its own place
+    const r = Number.isFinite(A.x) ? gardenCarryRoom(key, x, y, true) : null;
+    if (r && !r.hidden) { x = r.x; y = r.y; } else if (t) { x = t.x; y = t.y; }
     gardenOpApply(_gdG(), { o: 'drop', i: 'thing:' + key, fx: Math.round(x * 10), fy: Math.round(y * 10), at: _gdNow() }, A.f, gardenOpWorld());
     any = true;
   }
