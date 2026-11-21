@@ -907,7 +907,9 @@ function _gwMoveByEdge(dx, dy) {
   // edge: across with a give of up to 3.5 px against the up-and-down part (an edge up to about 50 degrees from level), or up and
   // down with a give under a pixel against the across part, open for three steps running. A wall met square and a true inside
   // corner are still honest stops. (The collision audit's slide-stall: 106 of them, most at banks the shore slide met at a kink.)
-  const useShore = shore.shore && shore.moved && !backOnGive && gain(shore.x, shore.y) >= gain(x, y), mx = useShore ? shore.x : x, my = useShore ? shore.y : y;
+  // (move360 round 3) a slide that backs away on one key of a diagonal press more than it gets on the way you press is no slide
+  const backs = (px, py) => dx && dy && gain(px, py) < .25 && ((px - x0) * W.cellW * Math.sign(dx) < -.5 || (py - y0) * W.cellH * Math.sign(dy) < -.5);
+  const useShore = shore.shore && shore.moved && !backOnGive && gain(shore.x, shore.y) >= gain(x, y) && gain(shore.x, shore.y) >= -.05 && !backs(shore.x, shore.y), mx = useShore ? shore.x : x, my = useShore ? shore.y : y;
   if (dx && dy && Math.hypot((mx - x0) * W.cellW, (my - y0) * W.cellH) < Math.hypot(dx * W.cellW, dy * W.cellH) * .15) {
     const vx = dx * W.cellW, vy = dy * W.cellH, sx = Math.sign(dx), sy = Math.sign(dy), open3 = (ax, ay) => _gwFree(x0 + ax / W.cellW, y0 + ay / W.cellH) && _gwFree(x0 + 2 * ax / W.cellW, y0 + 2 * ay / W.cellH) && _gwFree(x0 + 3 * ax / W.cellW, y0 + 3 * ay / W.cellH);
     let g2 = null;
@@ -925,6 +927,8 @@ function _gwMoveByEdge(dx, dy) {
   }
   if (useShore) { _gw.px = shore.x; _gw.py = shore.y; return true; }
   if (x === x0 && y === y0) return false;
+  // (round 2, movement) never back against the way you press: at the shut plank gate a south-east press gave way north, step by step
+  if (gain(x, y) < -.05 || backs(x, y)) { _gw.slideHold = null; return false; }
   _gw.px = x; _gw.py = y; return true;
 }
 /**
@@ -971,6 +975,7 @@ function _gwCrossingSteer(ux, uy, step) {
       // aim at the middle line a little ahead of where you are along it
       const aim = Math.max(0, along) + 16, gx = E.x + tx * aim - X, gy = E.y + ty * aim - Y, gl = Math.hypot(gx, gy);
       if (gl < 1e-6) continue;
+      if ((gx * ux + gy * uy) / gl < .2) return null;   // (round 2, movement) never steer you back against the way you press (at a shut gate it walked you north under a south-east press)
       return [gx / gl, gy / gl];
     }
   }

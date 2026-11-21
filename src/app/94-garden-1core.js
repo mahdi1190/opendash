@@ -687,6 +687,7 @@ function gardenSnapshot() {
     try { const bk = typeof gardenBuildWire === 'function' ? gardenBuildWire() : null; if (bk) out.bk = bk; } catch (e) { /* optional */ }   // how you have painted your buildings: ids and small numbers, an older app drops the field
     try { const wd = typeof gardenWonderWire === 'function' ? gardenWonderWire() : null; if (wd) out.wd = wd; } catch (e) { /* optional */ }   // the sky you have learned, your cairn (94-garden-wonder-*.js)
     try { const tg = typeof gardenTogetherWire === 'function' ? gardenTogetherWire() : null; if (tg) out.tg = tg; } catch (e) { /* optional */ }   // what you share with friends (94-garden-zz-*.js)
+    try { if (typeof gartMoveTell === 'function') { const t = gartMoveTell(); out.pf = [t.h, t.g]; } } catch (e) { /* optional */ }   // (move360) which way you face (sixteenths) and how you last walked: a friend who arrives sees you turned the right way
     return out;
   } catch (e) { console.error('[garden]', e); return null; }
 }

@@ -394,7 +394,7 @@ window.GardenNativeArt = (function () {
       owner.restyle(false);
       if (fresh) stateFor(owner.scene).actorCaches.add(entry.node);
     }
-    while (bodies.size > (peer ? 8 : 10)) {
+    while (bodies.size > (peer ? 12 : 22)) {   // (move360) yours: nine ways round walking and standing, and a few poses; a friend's: five ways round
       const key = bodies.keys().next().value, expired = bodies.get(key);
       if (expired === entry) break;
       bodies.delete(key); expired.node.destroy();
