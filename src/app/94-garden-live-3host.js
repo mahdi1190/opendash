@@ -276,7 +276,7 @@ function _glhSendSnap(fid) {
  * Plants and decorations go as changes (gl:d). Everything else a snapshot says (the land, what is built, the design, how buildings are painted, rooms, the lake, wonders, weather, the season) has no change message: when any of it differs from
  * what everyone was last given, everyone gets the whole garden. Looked at every few seconds and only sent on a real change, so it costs next to nothing. The draft in the designer is not in a snapshot: only what is saved.
  */
-function _glhWorldSig(s) { const { v, at, ac, plants, decor, hearts, ...rest } = s; void v; void at; void ac; void plants; void decor; void hearts; return JSON.stringify(rest); }
+function _glhWorldSig(s) { const { v, at, ac, plants, decor, hearts, dr, ...rest } = s; void v; void at; void ac; void plants; void decor; void hearts; void dr; return JSON.stringify(rest); }   // (build phase 1: where carried things lie travels on its own, gl:dr: never the whole garden again)
 /* ---------- designing together (full co-op, 2.75) ----------
    A friend here draws paths, paints ground, moves fixed things and makes things in your garden as you do (Menu > Design). Their finished
    design comes as text in up to two pieces (gl:dz); every row is checked (gardenDesignClean) and it becomes your garden's design in use,
@@ -378,7 +378,7 @@ function _glhIntent(ev) {
   if (ev.away) { e.away = ev.away; g.gq['d' + ev.i + '0'] = { to: ev.f, why: 'did', i: ev.i, at: _gdNow() }; }   // (in the same save: the answer cannot be lost)
   _glhLine(key, e);
   _glhPrune();
-  _gdSave();
+  if (GL_ACTS[ev.t] && GL_ACTS[ev.t].carry) _gdSaveQuiet(); else _gdSave();   // (build phase 1: a thing picked up or set down is drawn as a sprite of its own: saved, no repaint of the garden)
   if (!ev.away) { const result = _glhResOf(ev, e); _glhSend('all', 'res', result); _gllToolFeedback(result, false); }
   if ((ev.t === 'land' || ev.t === 'build' || ev.t === 'gate' || ev.t === 'solve') && typeof gardenToast === 'function') gardenToast(_glhDiaryWhat(e, 1) + (e.wait ? (ev.t === 'solve' ? '. It is in Land, under discovered places, for you to set out.' : '. There was no room for it nearby: set it out from the land office.') : '!'), { icon: ev.t === 'land' ? 'trees' : ev.t === 'gate' ? 'key' : 'hammer', timeout: e.wait ? 12000 : 9000 });   // (full co-op: a friend's gift to the garden, said out loud)
   const A = _gll.actors.get(ev.w);

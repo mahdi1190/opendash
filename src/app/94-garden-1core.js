@@ -78,6 +78,13 @@ function _gdSave() {
   if (typeof schedulePersist === 'function') schedulePersist();
   gardenRepaintSoon();
 }
+/** Saved, with nothing on the stage to draw again (build phase 1: a carried thing set down is a sprite of its own, gardenDropShow). */
+function _gdSaveQuiet() {
+  _gd.rev++; _gd.memoKey = ''; _gd.walletKey = '';
+  if (typeof state !== 'undefined' && state) state._localDirty = true;
+  if (typeof saveUI === 'function') saveUI();
+  if (typeof schedulePersist === 'function') schedulePersist();
+}
 function gardenRepaintSoon() {
   if (_gd.paintQ) return;
   _gd.paintQ = requestAnimationFrame(() => {

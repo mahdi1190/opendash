@@ -161,6 +161,7 @@ function _glyPaint(force) {
 function _glyTick() {
   const now = Date.now();   // clock-ok: spacing
   if (typeof _gll === 'undefined' || typeof _gw === 'undefined' || !_gw.on) return;
+  if (typeof gardenDropTick === 'function') gardenDropTick();   // (build phase 1: where carried things lie, drawn, and told to friends: alone too)
   if (now - _gly.relayAt > GL_SYNC.relayMs) { _gly.relayAt = now; _gllApi('/api/relay').then((st) => { _gly.stale = !!(st && st.mine && st.stale); _glyPaint(true); }).catch(() => {}); }
   const hostLive = _gll.role === 'host' && _glh.on && _glhAnyone(), guestLive = _gll.role === 'visit' && _glvLive();
   if (guestLive && !_gly.liveAt) { _gly.liveAt = now; _gly.asks = 0; _gly.bad = 0; _gly.heard = 0; _gly.oldTold = false; }

@@ -171,7 +171,7 @@ function _glvIntent(t, f, debit, extra) {
   _glv.pending.set(i, { t, debit: !!(debit || extra), f });
   if (typeof gartPlayerAct === 'function' && !(GL_ACTS[t] && GL_ACTS[t].carry)) gartPlayerAct(_GL_POSE[t] || 'pick', 760);
   _glvSendDo({ i, t, ...f });
-  if (typeof _gdvTouch === 'function') _gdvTouch();
+  if (typeof _gdvTouch === 'function' && !(GL_ACTS[t] && GL_ACTS[t].carry)) _gdvTouch();
 }
 function _glvSendDo(body) { _glv.doQ.push(body); _glvDoPump(); }
 function _glvDoPump() {
@@ -268,8 +268,8 @@ function _glvResult(b) {
       if (d) { if (d.to === _glv.fid) { d.t = 'gave'; d.ok = 1; } } else g.led['gl.o.' + b.u] = { d: _gllToday(), k: 'gl', i: { ['decor:' + b.p]: -1 }, n: 0, to: _glv.fid, t: 'gave', ok: 1 };
       _gscSaveGarden();
     }
-    if (P && P.f && P.f.x != null && typeof gameCheer === 'function') { const at = _glvCellAt(P.f.x, P.f.y); if (at) gameCheer(null, { at, text: b.t === 'plant' ? '+2' : '', tone: b.t === 'water' ? 'water' : 'xp' }); }
-    _gdvTouch();
+    if (P && P.f && P.f.x != null && typeof gameCheer === 'function' && !(GL_ACTS[b.t] && GL_ACTS[b.t].carry)) { const at = _glvCellAt(P.f.x, P.f.y); if (at) gameCheer(null, { at, text: b.t === 'plant' ? '+2' : '', tone: b.t === 'water' ? 'water' : 'xp' }); }
+    if (!(GL_ACTS[b.t] && GL_ACTS[b.t].carry)) _gdvTouch();   // (build phase 1: picking up and setting down change nothing a repaint draws: the list, gl:dr, moves the thing by itself)
   }
 }
 function _glvSvg() { return typeof _gw !== 'undefined' ? _gw.svg : null; }

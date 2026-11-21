@@ -20,15 +20,18 @@ const _gbd = { held: new Map(), pend: new Map(), from: new Map(), memoKey: null,
 const GB_RESEND_MS = 20000;
 
 /* ---------- gardenDo ---------- */
-function gardenCarryThing(key) {
-  if (typeof gardenAffordThings !== 'function' || typeof GARDEN_KINDS === 'undefined') return null;
-  const list = gardenAffordThings();
-  if (_gbd.thingKey !== list) {
-    _gbd.thingKey = list; _gbd.things = new Map();
-    for (const t of list) { const K = t && t.src === 'thing' && GARDEN_KINDS[t.kind]; if (K && (K.acts || []).some(a => a.carry)) _gbd.things.set(t.id, { id: t.id, x: t.x, y: t.y, kind: t.kind, art: K.art || '' }); }
-  }
-  return _gbd.things.get(String(key)) || null;
+/** The things of this layout that can be carried (by kind, rule 17), at their own places: worked out once per layout and level (the scan is
+ *  40 ms when it has to look again, so drawing what lies about never asks it on its own). */
+function _gbdThings() {
+  if (typeof gardenAffordThings !== 'function' || typeof GARDEN_KINDS === 'undefined') return new Map();
+  let id = ''; try { id = gardenIslandData().id + '|' + GARDEN_WORLD.lh + '|' + (gardenModel().areas || []).length; } catch (e) { id = ''; }
+  if (_gbd.things && _gbd.thingKey === id && _gbd.things.size) return _gbd.things;
+  const list = gardenAffordThings(), map = new Map();
+  for (const t of list) { const K = t && t.src === 'thing' && GARDEN_KINDS[t.kind]; if (K && (K.acts || []).some(a => a.carry)) map.set(t.id, { id: t.id, x: t.x, y: t.y, kind: t.kind, art: K.art || '' }); }
+  _gbd.thingKey = id; _gbd.things = map;
+  return map;
 }
+function gardenCarryThing(key) { return _gbdThings().get(String(key)) || null; }
 function _gbWaterWhy(m, uid) {
   const p = gardenPlantById(m, uid); if (!p) return 'Nothing to water there';
   if (!p.def.thirst || p.def.special === 'heart') return p.def.cat === 'water' ? 'It lives in the pond: never thirsty' : 'Its roots go deep: it finds its own water';
@@ -52,6 +55,7 @@ function gardenOpWorld(m) {
 function gardenDo(op, o) {
   o = o || {};
   const m = gardenModel(), W = gardenOpWorld(m), who = o.who || '';
+  if (o.anyGround) W.free = () => true;   // (where your own feet are: the walker has already said it is ground you stand on)
   if (m.worldPending && (op.o === 'put' || op.o === 'plant')) return _gdNo('The garden update needs to finish before you can place anything');
   const why = gardenOpCheck(W, op, who); if (why) return _gdNo(why);
   if (!op.at) op.at = W.now; if (!op.day) op.day = W.today;
@@ -145,7 +149,7 @@ function gardenCarrySet(key, x, y) {
   const back = was ? { o: 'drop', i: item, fx: Math.round(was.x * 10), fy: Math.round(was.y * 10), rec: null } : { o: 'grab', i: item, rec: null };
   if (was) back.rec = { i: item, x: back.fx, y: back.fy, at: _gdNow() };
   const t = gardenCarryThing(key), name = t && GARDEN_KINDS[t.kind] ? String(GARDEN_KINDS[t.kind].name || 'it').replace(/^the /, '') : 'it';
-  const r = gardenDo({ o: 'drop', i: item, fx, fy }, { label: 'setting down the ' + name, quiet: true, inverse: back });
+  const r = gardenDo({ o: 'drop', i: item, fx, fy }, { label: 'setting down the ' + name, quiet: true, inverse: back, anyGround: true });
   gardenDropChanged();
   return r.ok ? '' : r.msg;
 }
@@ -155,7 +159,8 @@ function gardenCarryRefused(P, why) {
   if (P.t === 'grab' && _ga.carry && _ga.carry.id === key) {
     _ga.carry = null; _gaHide.delete(key); _gaShow(key, true); _gaCarriedSweep(true); _ga.list = null;
     try { if (typeof _gwBody === 'function') _gwBody(); } catch (e) { /* fine */ }
-    try { gardenToast(why === 'held' ? 'Someone picked that up just before you.' : 'That could not be picked up just now.', { icon: 'hand' }); } catch (e) { /* fine */ }
+    let who = 'Someone'; try { const h = _gbdHolder(key), A = /^w\d+$/.test(h) ? _gll.actors.get(Number(h.slice(1))) : null; if (A && A.n) who = String(A.n).split(/\s+/)[0]; } catch (e) { /* someone */ }
+    try { gardenToast(why === 'held' ? `${who} picked that up just before you.` : 'That could not be picked up just now.', { icon: 'hand' }); } catch (e) { /* fine */ }
   }
   if (P.t === 'set') { _gbd.pend.delete(key); try { gardenToast('That could not be put down there. It is back where it was.', { icon: 'hand' }); } catch (e) { /* fine */ } }
   gardenDropShow(true);
@@ -164,13 +169,12 @@ function gardenCarryRefused(P, why) {
 /** Every screen: a thing being carried is not on the ground; a thing that lies somewhere is drawn there (a sprite of the world, sorted by
  *  its foot, with its contact shadow); a thing back at its own place is drawn there by the world itself (one repaint, never while you walk). */
 function gardenDropShow(force) {
-  if (typeof _gaShow !== 'function' || typeof gardenAffordThings !== 'function') return;
+  if (typeof _gaShow !== 'function') return;
   const now = performance.now();
   for (const [k, p] of _gbd.pend) if (now - p.at > 8000 || (_gbdMap().has(k) ? Math.abs(_gbdMap().get(k).x - p.x) < 0.05 && Math.abs(_gbdMap().get(k).y - p.y) < 0.05 : p.home)) _gbd.pend.delete(k);
   if (!gardenDropKnown()) return;
   const want = [];
-  for (const t of gardenAffordThings()) {
-    if (!gardenCarryThing(t.id)) continue;
+  for (const t of _gbdThings().values()) {
     const held = !!_gbdHolder(t.id), at = gardenDropAt(t.id);
     want.push(t.id + ':' + (held ? 'h' : at ? Math.round(at.x * 10) + ',' + Math.round(at.y * 10) : 'home'));
   }
@@ -251,9 +255,16 @@ function gardenDropLeft(A) {
   }
   if (any) { _gdSave(); setTimeout(gardenDropChanged, 0); }
 }
-/** Four times a second (gartActDoingTick): the host's list again when it changed, and now and then anyway (a lost message comes right). */
+/** Four times a second (94-garden-live-8sync.js _glyTick, alone too): drawn as the list says; the host's list again when it changed, and now and then anyway (a lost message comes right). */
 function gardenDropTick() {
   try {
+    // another garden (you went home, or on a visit): what was in your arms stayed in the garden you left (its host set it down where you
+    // stood), and nothing from there is remembered here
+    const gk = _gbdVisit() ? 'v:' + (typeof _gdv !== 'undefined' ? _gdv.fid || '' : '') : 'home';
+    if (_gbd.gk !== gk) {
+      if (_gbd.gk != null && _ga.carry) { _ga.carry = null; _gaCarriedSweep(true); try { if (typeof _gwBody === 'function') _gwBody(); } catch (e) { /* fine */ } }
+      _gbd.gk = gk; _gbd.pend.clear(); _gbd.held.clear(); _gbd.from.clear(); _gbd.heard = null; _gbd.memo = null; _gbd.showSig = '';
+    }
     if (_gbdHosting()) {
       for (const [k, who] of [..._gbd.held]) if (who !== '@host' && ![..._gll.actors.values()].some(A => A.f === who)) _gbd.held.delete(k);
       gardenDropTell('all');
@@ -267,7 +278,7 @@ function gardenDropTick() {
 function gardenDropIn(ev) {
   if (!ev || !_gbdLive() || !_glv.snap) return;
   const l = gardenDropClean(ev.l);
-  _glv.snap = Object.assign({}, _glv.snap, { dr: l });
+  _glv.snap.dr = l;   // (in place: a new snapshot object would send the world's scan and the visit's model round again, 40 ms, for a list they do not read)
   _gbd.heard = performance.now();
   _gbd.held.clear();
   for (const r of Array.isArray(ev.h) ? ev.h.slice(0, 8) : []) if (Array.isArray(r) && typeof r[0] === 'string' && Number.isInteger(r[1]) && r[1] !== _glv.w) _gbd.held.set(r[0], 'w' + r[1]);

@@ -82,7 +82,6 @@ function gartActDoingPush(force) {
   _gadSend(b);
 }
 function gartActDoingTick() {
-  try { if (typeof gardenDropTick === 'function') gardenDropTick(); } catch (e) { /* next tick */ }
   try {
     const n = typeof _gll !== 'undefined' ? _gll.actors.size : 0;
     if (n !== _gad.n) { if (n > _gad.n) _gad.sig = ''; _gad.n = n; }   // (someone came in: they hear it all)
