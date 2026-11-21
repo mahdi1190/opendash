@@ -812,18 +812,18 @@ function _glhHud() {
   hud.appendChild(b);
   if (typeof gardenContestHostBtn === 'function') gardenContestHostBtn(hud);
   for (const A of people.slice(0, 7)) { const p = _gsvEl('span', 'gll-person', A.n.slice(0, 1).toUpperCase()); p.title = A.n; hud.appendChild(p); }
-  // someone at the gate: one tap lets them in
+  // someone at the gate (only a friend you sent home, or one a group made): one tap lets them in to play together
   for (const id of knocks.slice(0, 3)) {
     const k = _gsvEl('div', 'gll-knock');
     k.appendChild(_gsvEl('span', null, `${_gscFirst(id)} is at your gate`));
-    for (const lv of ['look', 'help', 'play']) k.appendChild(_gsvBtn(GL_LEVEL_NAMES[lv], { kind: 'btn-ghost', run: () => { _gllApi('/api/garden-live/perm', { id, lv }).then(() => gardenLiveLoad(true)).then(_glhHud).catch(() => {}); } }));
+    for (const lv of ['play']) k.appendChild(_gsvBtn('Let them in', { kind: 'btn-ghost', run: () => { _gllApi('/api/garden-live/perm', { id, lv, touch: true }).then(() => gardenLiveLoad(true)).then(_glhHud).catch(() => {}); } }));
     hud.appendChild(k);
   }
   // someone here, or away, asking to do more: one tap says yes
   for (const id of asks.slice(0, 3)) {
     const k = _gsvEl('div', 'gll-knock');
     k.appendChild(_gsvEl('span', null, `${_gscFirst(id)} asks to do more`));
-    for (const lv of ['help', 'play']) k.appendChild(_gsvBtn(GL_LEVEL_NAMES[lv], { kind: 'btn-ghost', run: () => { _gllApi('/api/garden-live/perm', { id, lv }).then(() => gardenLiveLoad(true)).then(_glhHud).catch(() => {}); } }));
+    for (const lv of ['play']) k.appendChild(_gsvBtn('Play together', { kind: 'btn-ghost', run: () => { _gllApi('/api/garden-live/perm', { id, lv, touch: true }).then(() => gardenLiveLoad(true)).then(_glhHud).catch(() => {}); } }));
     hud.appendChild(k);
   }
   let panel = box.querySelector(':scope > .gll-panel');
