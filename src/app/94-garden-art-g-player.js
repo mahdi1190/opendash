@@ -240,7 +240,7 @@ function _gplDraw(a, dir, pose, o) {
     const armFar = P ? _gplArm(far, j(F.shoulders.far), len, P.a[1] || '', P.a[0], P.a[2]) : _gplArm(far, j(F.shoulders.far), len, 'gpl-as gpl-a');
     const armNear = P ? _gplArm(near, j(F.shoulders.near), len, P.b[1] || '', P.b[0], P.tool || P.b[2]) : _gplArm(near, j(F.shoulders.near), len, 'gpl-as gpl-b', 0, held);
     // the head turned the way it walks: the face slides over the egg, the ears the other way; what hangs behind goes behind (a ponytail trails)
-    const t = _GPL_TURN * (yaw < 80 ? 0.7 : yaw > 100 ? 1.8 : 1);   // (at 112.5 the face has mostly gone round out of sight)   // (move360) at 67.5 the face is still partly towards you, at 112.5 turning away
+    const t = _GPL_TURN * (yaw < 50 ? 0.4 : yaw < 80 ? 0.7 : yaw > 125 ? 2.3 : yaw > 100 ? 1.8 : 1);   // (round 2: at 45 the face is mostly towards you, at 135 gone round)   // (at 112.5 the face has mostly gone round out of sight)   // (move360) at 67.5 the face is still partly towards you, at 112.5 turning away
     const head = _gplG(`translate(${_gplN(-t * 0.7)} 0)`, L.ears) + L.skull + `<clipPath id="${uid}h"><path d="${PF_HEAD_D}"/><rect x="20" y="60" width="45" height="70"/></clipPath><g clip-path="url(#${uid}h)">${_gplG(`translate(${t} 0)`, L.face)}</g>` + _gplG(`translate(${_gplN(t * 0.22)} 0)`, L.hair) + _gplG(`translate(${t} 0)`, L.glasses) + _gplG(`translate(${_gplN(t * 0.22)} 0)`, L.hat) + L.phones + L.extra;
     upper = `<g class="gpl-hd" style="${headO}">${_gplG(hs(_gplPort()), `<g transform="translate(100 0) scale(-1 1)">${L.hairback}</g>`)}</g>`
       + _gplG(fig, F.back) + armFar + _gplG(_gplPort(), L.neck) + _gplG(fig, F.mid) + _gplG(hs(_gplPort()), L.strands) + _gplG(_gplPort(), L.scarf) + armNear
@@ -300,7 +300,7 @@ function gartPlayerSvg(avatar, o) {
   return s && !o.flat && typeof gardenFigurePaintIf === 'function' ? gardenFigurePaintIf(s, 'actor') : s;   // the Painted village paints the figure into the scene's light (94-garden-art-g-paint.js)
 }
 /** (move360) Which of the three drawing families a yaw belongs to: front (s), side (e) or back (n). */
-function gplYawDir(yaw) { return yaw <= 45 ? 's' : yaw >= 135 ? 'n' : 'e'; }
+function gplYawDir(yaw) { return yaw < 30 ? 's' : yaw > 150 ? 'n' : 'e'; }   // (round 2) 45 and 135 are the side body turned: a front body walking a diagonal read as a crab
 /** (move360) The yaw a family is drawn at when it has no in-between drawing. */
 function gplDirYaw(dir) { return dir === 'e' ? 90 : dir === 'n' ? 180 : 0; }
 /** The same person as an <svg>, standing, front on: anywhere outside the walker (a friend's garden). */

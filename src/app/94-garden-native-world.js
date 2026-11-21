@@ -1399,6 +1399,7 @@ window.GardenNativeWorld = (function () {
         let remaining = distance; for (let i = 1; i < _gw.path.length; i++) remaining += Math.hypot((_gw.path[i].x - _gw.path[i - 1].x) * W.cellW, (_gw.path[i].y - _gw.path[i - 1].y) * W.cellH);
         want = Math.min(_gw.sneak ? GW_SPEED.sneak : (remaining > 170 ? GW_SPEED.run : GW_SPEED.walk) * _gwWalkBonus(), Math.sqrt(2 * GW_ACC * remaining) + 34);
       }
+      if (want) _gw.gait = _gw.sneak ? 'c' : want >= GW_SPEED.run * _gwWalkBonus() * 0.97 && (keys.has('shift') || !direct || (_gw.spd || 0) > GW_SPEED.walk * 1.2) ? 'r' : 'w';   // (round 2) the gait chosen, for the legs and for friends: slow ground no longer turns a run into a walk
       if (want && typeof gardenPlayWalk === 'function') want *= gardenPlayWalk();
       // (move360) keys let go: a short glide to a stop (a walk stops in about 0.08 s and 6 px, a run in 0.13 s), never a dead halt mid-stride
       const gliding = !want && !pushed && !casting && !_gw.path.length && !!_gw.glide && (_gw.spd || 0) > 3 && gardenMotionOn();
@@ -1410,8 +1411,10 @@ window.GardenNativeWorld = (function () {
         if (target && distance <= step) {
           _gw.px = target.x; _gw.py = target.y; _gw.path.shift(); _gw.moving = !!_gw.path.length;
           if (!_gw.path.length) { _gw.spd = 0; const fn = _gw.then; _gw.then = null; if (typeof fn === 'function') fn(true); }
-        } else { if (direct && typeof _gwCrossingSteer === 'function') { const steer = _gwCrossingSteer(ux, uy, step); if (steer) { ux = steer[0]; uy = steer[1]; } }   // (onto and along a crossing: 94-garden-world-0walk.js)
-          _gw.moving = _gwMoveBy(ux * step / W.cellW, uy * step / W.cellH); if (!_gw.moving) { _gw.blockT = (_gw.blockT || 0) + dt; if (!direct && _gw.blockT > .25) { _gw.blockT = 0; if (!_gwRepath()) { _gw.path = []; _gw.then = null; } } } else _gw.blockT = 0; }
+        } else { const ux0 = ux, uy0 = uy, x0 = _gw.px, y0 = _gw.py; let steered = false; if (direct && typeof _gwCrossingSteer === 'function') { const steer = _gwCrossingSteer(ux, uy, step); if (steer) { ux = steer[0]; uy = steer[1]; steered = true; } }   // (onto and along a crossing: 94-garden-world-0walk.js)
+          _gw.moving = _gwMoveBy(ux * step / W.cellW, uy * step / W.cellH);
+          // (round 2) what is left of a step steered onto a crossing's middle never goes back against the press (at the shut plank gate a south-east press crept you north)
+          if (_gw.moving && steered && ((_gw.px - x0) * W.cellW * ux0 + (_gw.py - y0) * W.cellH * uy0) < step * .15) { _gw.px = x0; _gw.py = y0; _gw.moving = false; } if (!_gw.moving) { _gw.blockT = (_gw.blockT || 0) + dt; if (!direct && _gw.blockT > .25) { _gw.blockT = 0; if (!_gwRepath()) { _gw.path = []; _gw.then = null; } } } else _gw.blockT = 0; }
         if (Math.abs(ux) > .3) _gw.face = ux > 0 ? 1 : -1;
       }
       if (pushed) _gw.moving = true;
@@ -1907,7 +1910,7 @@ window.GardenNativeWorld = (function () {
       if (!playerPosePreparation || playerPosePreparation.key !== key) {
         const poses = [];
         // (move360) the sixteen ways round are nine drawings (the west mirrors the east): all of them, walking and standing, made while loading
-        for (const pose of ['stride', 'idle']) for (let yaw = 0; yaw <= 180; yaw += 22.5) poses.push({ pose, dir: typeof gplYawDir === 'function' ? gplYawDir(yaw) : yaw <= 45 ? 's' : yaw >= 135 ? 'n' : 'e', yaw });
+        for (const pose of ['stride', 'idle']) for (let yaw = 0; yaw <= 180; yaw += 22.5) poses.push({ pose, dir: typeof gplYawDir === 'function' ? gplYawDir(yaw) : yaw < 30 ? 's' : yaw > 150 ? 'n' : 'e', yaw });
         poses.push({ pose: 'fish', dir: 'e', stageRod: true });
         playerPosePreparation = { key, poses, next: 0, frame: -1 };
       }

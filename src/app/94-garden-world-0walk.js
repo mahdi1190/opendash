@@ -768,7 +768,10 @@ function _gwMoveBy(dx, dy) {
   const len2 = (dx * W.cellW) ** 2 + (dy * W.cellH) ** 2, gain = (px, py) => len2 ? ((px - x0) * W.cellW * dx * W.cellW + (py - y0) * W.cellH * dy * W.cellH) / len2 : 0;
   // the bank's own slide, unless it all but stops a diagonal press dead (a corner of the gorge bank or the Mere shore): then the
   // wall slide below gets its turn, and whichever goes further the way you are pressing wins (17 Nov 2026)
-  if (shore.shore && (gain(shore.x, shore.y) >= .3 || !(dx && dy))) { _gw.px = shore.x; _gw.py = shore.y; _gw.slideHold = null; return shore.moved; }
+  // (round 2, movement) a bank met almost square with one key (less than a fifth of the step gets on the way you press): you stop at the edge,
+  // not creep sideways along it (holding right into the stream under the bridge drifted you south while you stood pressing)
+  if (shore.shore && !(dx && dy) && shore.moved && gain(shore.x, shore.y) < .2) { _gw.slideHold = null; return false; }
+  if (shore.shore && (gain(shore.x, shore.y) >= .3 || !(dx && dy))) { if (shore.moved && gain(shore.x, shore.y) < -.05) { _gw.slideHold = null; return false; } _gw.px = shore.x; _gw.py = shore.y; _gw.slideHold = null; return shore.moved; }
   let x = x0, y = y0, held = '';
   const hold = _gw.slideHold;   // the give of the frame before, if any (_gwGiveSlide)
   if (_gwFree(x0 + dx, y0 + dy)) { x += dx; y += dy; }
@@ -811,8 +814,10 @@ function _gwMoveBy(dx, dy) {
   // the way they are getting on: it and the give took turns for four frames, a 2 px shake at one kink of the Millwater's
   // bank by the estuary, the last jitter the collision audit found, 18 Nov 2026)
   const backOnGive = held && (held === 'x' ? (shore.y - y0) * dy : (shore.x - x0) * dx) < 0;
-  if (shore.shore && shore.moved && !backOnGive && gain(shore.x, shore.y) >= gain(x, y)) { _gw.px = shore.x; _gw.py = shore.y; return true; }
+  if (shore.shore && shore.moved && !backOnGive && gain(shore.x, shore.y) >= gain(x, y) && gain(shore.x, shore.y) >= -.05) { _gw.px = shore.x; _gw.py = shore.y; return true; }
   if (x === x0 && y === y0) return false;
+  // (round 2, movement) never back against the way you press: at the shut plank gate a south-east press gave way north, step by step
+  if (gain(x, y) < -.05) { _gw.slideHold = null; return false; }
   _gw.px = x; _gw.py = y; return true;
 }
 /**
@@ -843,6 +848,7 @@ function _gwCrossingSteer(ux, uy, step) {
       // aim at the middle line a little ahead of where you are along it
       const aim = Math.max(0, along) + 16, gx = E.x + tx * aim - X, gy = E.y + ty * aim - Y, gl = Math.hypot(gx, gy);
       if (gl < 1e-6) continue;
+      if ((gx * ux + gy * uy) / gl < .2) return null;   // (round 2, movement) never steer you back against the way you press (at a shut gate it walked you north under a south-east press)
       return [gx / gl, gy / gl];
     }
   }

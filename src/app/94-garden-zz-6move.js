@@ -51,20 +51,24 @@ function _gmvDrawing(h, prev, step) {
   if (Number.isFinite(prev) && Math.abs(yawRaw - prev) < step * 0.5 + 4 && prev % step === 0) yaw = prev;
   yaw = Math.max(0, Math.min(180, yaw));
   const off = Math.min(1, Math.abs(yawRaw - yaw) / step);   // how far between two drawings
-  const dir = typeof gplYawDir === 'function' ? gplYawDir(yaw) : yaw <= 45 ? 's' : yaw >= 135 ? 'n' : 'e';
+  const dir = typeof gplYawDir === 'function' ? gplYawDir(yaw) : yaw < 30 ? 's' : yaw > 150 ? 'n' : 'e';
   return { dir, yaw, mirror: yaw === 0 || yaw === 180 ? 1 : mirror, sx: 1 - 0.07 * off * Math.abs(Math.cos(yaw * Math.PI / 180)) - 0.05 * off };
 }
 /** Steer (keys only): the way you walk swings round too, so a reversal is a small arc, never a jump. ux, uy: unit vector wanted. */
 function gartMoveSteer(ux, uy, dt) {
-  if (!_gmvMotion()) { _gmv.steer = null; return [ux, uy]; }
+  _gmv.keyAt = performance.now();
+  if (!_gmvMotion()) { _gmv.steer = null; _gmv.keyH = _gmvKeyHeading(ux, uy); return [ux, uy]; }
   const want = Math.atan2(uy, ux);
-  if (!_gmv.steer || _gmv.steerT < performance.now() - 250) { _gmv.steer = want; _gmv.steerT = performance.now(); return [ux, uy]; }
+  if (!_gmv.steer || _gmv.steerT < performance.now() - 250) { _gmv.steer = want; _gmv.steerT = performance.now(); _gmv.keyH = _gmvKeyHeading(ux, uy); return [ux, uy]; }
   _gmv.steerT = performance.now();
   let d = want - _gmv.steer; d = Math.atan2(Math.sin(d), Math.cos(d));
   const step = 13 * dt;   // radians a second: a quarter turn in about 0.12 s, a reversal in 0.24 s
   _gmv.steer += Math.abs(d) <= step ? d : Math.sign(d) * step;
+  _gmv.keyH = _gmvKeyHeading(Math.cos(_gmv.steer), Math.sin(_gmv.steer));
   return [Math.cos(_gmv.steer), Math.sin(_gmv.steer)];
 }
+/** (round 2) A pressed way (screen px, unit) as a heading in the walker's own terms (cells, rows stretched by 1.6: gartMoveStep). */
+function _gmvKeyHeading(ux, uy) { const W = GARDEN_WORLD; return Math.atan2(uy / W.cellH * 1.6, ux / W.cellW) * 180 / Math.PI; }
 /** Once a walker frame (from gartPlayerStep): where am I heading, which drawing does that need. Returns true when the drawing changed. */
 function gartMoveStep(gw) {
   const now = performance.now(), dt = Math.min(0.1, _gmv.last ? (now - _gmv.last) / 1000 : 0); _gmv.last = now;
@@ -77,6 +81,8 @@ function gartMoveStep(gw) {
     if (typeof gartEmoteMoved === 'function') gartEmoteMoved();
     if (typeof gartActMoved === 'function') gartActMoved();
   }
+  // (round 2) keys held: you face the way you press, not the way a wall or a bank pushes the feet (pressing into the stream turned you to the camera)
+  if (_gmv.keyH != null && now - (_gmv.keyAt || 0) < 90) _gmv.want = _gmv.keyH;
   if (_gmv.faceTo != null) { _gmv.want = _gmv.faceTo; _gmv.faceTo = null; }
   let d = _gmvWrap(_gmv.want - _gmv.h);
   if (!_gmvMotion()) _gmv.h = _gmv.want;
@@ -161,11 +167,14 @@ function _gmvStride(st, body, S, o) {
   // the gait: run, creep, stairs or walk; the stride follows the ground actually covered
   const v = o.moving ? Math.max(0, o.v || 0) : 0;
   if (now - (st.stairT || 0) > 200) { st.stairT = now; st.onStairs = _gmvStairAt(o.px, o.py); const a = (st.h || 0) * Math.PI / 180; st.uphill = _gmvUphill(o.px, o.py, Math.sin(a), Math.cos(a)); }
-  const G = o.sneak ? GPL_MOVE.creep : st.onStairs ? GPL_MOVE.stairs : v > 205 ? GPL_MOVE.run : GPL_MOVE.walk;
+  // (round 2) the gait the walker chose (Shift, Z, a long click), not a guess from the speed: slow ground took a run under 205 and drew it as a walk
+  const gait = o.gait || (o.sneak ? 'c' : v > 205 ? 'r' : 'w');
+  const G = gait === 'c' || o.sneak ? GPL_MOVE.creep : st.onStairs ? GPL_MOVE.stairs : gait === 'r' ? GPL_MOVE.run : GPL_MOVE.walk;
+  const runK = G === GPL_MOVE.run ? 1 : 0, creepK = G === GPL_MOVE.creep ? 1 : 0;
   const legLen = Math.max(8, Math.abs(L.legA.oy) * S);   // the hip's height in world px
   // (move360) towards you or away the step is shorter and quicker: a long step seen end on stretches one leg far down the screen
   const yaw0 = Number.isFinite(o.yaw) ? o.yaw : L.side ? 90 : o.dir === 'n' ? 180 : 0;
-  const stride = G.stride * legLen * (0.6 + 0.4 * Math.abs(Math.sin(yaw0 * Math.PI / 180)));
+  const stride = G.stride * legLen * ((runK ? 0.78 : 0.6) + (runK ? 0.22 : 0.4) * Math.abs(Math.sin(yaw0 * Math.PI / 180)));   // (a run's step stays long end on too)
   // the ground actually covered this frame (not the speed asked for: a wall, a slide along it, a diagonal), along the way the drawing faces
   const side = L.side, native = L.native, Wd = GARDEN_WORLD;
   const ddx = st.lpx == null ? 0 : (o.px - st.lpx) * Wd.cellW, ddy = st.lpy == null ? 0 : (o.py - st.lpy) * Wd.cellH; st.lpx = o.px; st.lpy = o.py;
@@ -189,26 +198,31 @@ function _gmvStride(st, body, S, o) {
   // the hip rides the planted leg (lower as the legs open); a run has a little flight between steps
   const planted = A.planted ? A : B.planted ? B : null;
   const dip = planted ? dipOf(planted.x) : 0;
-  let hip = dip / S;
+  let hip = dip / S + creepK * legLen * 0.16 / S;   // (round 2) a creep goes along with bent knees, low
   if (!planted && G.flight) hip = -G.flight;
   if (st.onStairs) hip += -Math.abs(Math.sin(pa * Math.PI * 2)) * 1.6;
   const lean = (G.lean + (st.uphill > 0 ? 6 : st.uphill < 0 ? -3 : 0)) * Math.min(1, v / 120);
   // the leg as drawn: from the hip to where the foot is on the screen, as a turn about the hip and a stretch along the leg
   const pose = (Lg) => {
-    const down = Lg.planted ? legLen - dip : (legLen - dip) * (1 - Lg.lift);
+    const down = (Lg.planted ? legLen - dip : (legLen - dip) * (1 - Lg.lift)) - creepK * legLen * 0.16;
     const fx = Lg.x * sy, fy = down + Lg.x * cy * GMV_GROUND;
     return [Math.atan2(-fx, fy) * 180 / Math.PI, Math.hypot(fx, fy) / legLen];
   };
   const knee = (k) => {   // the shin folding back: side on it turns, from the front it shortens (the foot goes away from you), from behind it lengthens
+    k = (k || 0) + creepK * 26;   // (a creep: both knees bent all the time)
     if (!k) return [0, null];
     const r = k * Math.PI / 180, kx = Math.sin(r) * sy, ky = Math.cos(r) - Math.sin(r) * cy * 0.3;
     return [Math.atan2(kx, Math.max(0.3, ky)) * 180 / Math.PI, Math.max(0.62, Math.hypot(kx, ky))];
   };
   // the arms swing against the legs: forward is towards you from the front, so a hand coming forward is lower and one going back rises
+  // (round 2) from the front and back the swing is what you see of the hands, so it is wider there: the hand coming towards you drops
+  // and swings in across the body, the one going back rises and goes out; a run pumps with bent arms (shorter), a creep holds them low and still
+  const ac = Math.abs(cy), armSpan = (1 + 0.8 * ac) * (runK ? 1.1 : 1), armLen = runK ? 1 - 0.16 * ac : 1;
   const arm = (Lg, inSign) => {
-    const f = -Math.asin(lim(Lg.x / legLen)) * 180 / Math.PI / 40 * G.arm * (1 + 0.6 * Math.abs(cy)), r = f * Math.PI / 180;
-    const fx = Math.sin(r) * sy + inSign * Math.max(0, Math.sin(r)) * Math.abs(cy) * 0.35, fy = Math.cos(r) + Math.sin(r) * cy * GMV_GROUND * 0.9;
-    return [Math.atan2(-fx, fy) * 180 / Math.PI, Math.abs(cy) > 0.2 ? Math.hypot(fx, fy) : null];
+    const f = Math.max(-70, Math.min(70, -Math.asin(lim(Lg.x / legLen / (0.6 + 0.4 * Math.abs(sy)))) * 180 / Math.PI / 40 * G.arm * armSpan)), r = f * Math.PI / 180;
+    const rot = Math.atan2(-Math.sin(r) * sy, Math.cos(r)) * 180 / Math.PI - inSign * 9 * Math.sin(r) * ac;   // side on it turns; end on it tips in across the body
+    const lenEnd = (1 + 0.34 * Math.sin(r) * cy) * armLen;   // end on: forward (towards you) is lower on the screen, back is higher
+    return [rot, ac > 0.2 || runK ? sy * sy + lenEnd * cy * cy : null];
   };
   // where the planted foot is on the ground (world px), for checks: it should not move while planted
   { const wx = o.px * Wd.cellW, wy = Wd.sky + o.py * Wd.cellH, f = (Lg) => (Lg.planted ? [Math.round((wx + m * Lg.x * sy) * 10) / 10, Math.round((wy + Lg.x * cy * GMV_GROUND) * 10) / 10] : null); st.feet = [f(A), f(B)]; }
@@ -218,8 +232,10 @@ function _gmvStride(st, body, S, o) {
   const AA = arm(A, 1), AB = arm(B, -1);
   _gmvSet(L.armA, AA[0], AA[1], 0, native); _gmvSet(L.armB, AB[0], AB[1], 0, native);
   // the body leans into the pace (side on), and from the front the weight shifts over the planted foot, smoothly
-  const sway = Math.sin(pa * Math.PI * 2) * 1.1 * Math.abs(cy) * Math.min(1, v / 90);
-  _gmvSet(L.up, lean * sy + sway, null, 0, native);
+  const sway = Math.sin(pa * Math.PI * 2) * (1.1 + runK * 0.8) * Math.abs(cy) * Math.min(1, v / 90);
+  // (round 2) end on, a lean shows as the body shortened over the hips (towards you or away): a run and a creep bend into it
+  const leanEnd = ac * Math.min(1, v / 120) * (runK ? 0.06 : creepK ? 0.1 : 0.015);
+  _gmvSet(L.up, lean * sy + sway, 1 - leanEnd, creepK * ac * 1.2, native);
   _gmvSet(L.root, 0, null, hip, native);
   return L;
 }
@@ -255,7 +271,7 @@ function gartMoveFrame(inner, bob, gw, time) {
   if (body && gw.boat && !acting) { _gmvRow(body, gw, motion); return; }   // (16) in the boat: seated at the oars, pulling as it moves
   if (body && typeof _ga !== 'undefined' && _ga.carry && !acting && !(_GPL.pose === 'stride' || (inner._gplKey || '').startsWith('stride'))) gartActCarryFrame(body, _gmvLimbs(body));
   if (acting || !body || !motion || _GPL.pose !== 'stride' && !(inner._gplKey || '').startsWith('stride')) { _gmv.lpx = _gmv.lpy = null; return; }
-  const L = _gmvStride(_gmv, body, S, { px: gw.px, py: gw.py, moving: !!gw.moving, v: gw.spd || 0, sneak: !!gw.sneak, dir: _GPL.dir, yaw: drawnYaw, mirror }); if (!L) return;
+  const L = _gmvStride(_gmv, body, S, { px: gw.px, py: gw.py, moving: !!gw.moving, v: gw.spd || 0, sneak: !!gw.sneak, gait: gw.sneak ? 'c' : gw.gait || null, dir: _GPL.dir, yaw: drawnYaw, mirror }); if (!L) return;
   if (typeof _ga !== 'undefined' && _ga.carry && typeof gartActCarryFrame === 'function') gartActCarryFrame(body, L);   // (25) carrying: both hands on it
 }
 /** (16) Rowing: seated low in the boat (the boat is drawn round the feet), the oars pulled through the water, a stroke every so much ground. */
@@ -292,7 +308,8 @@ function gartMoveActor(A) {
   const busy = !!(A.actUndo || A.actId || A.fish || A.sit || A.actHold || A.hold || (A.anims && A.anims.length));
   if (busy || !A.moving) {
     st.lpx = st.lpy = null;
-    if (busy || !motion) st.h = A.dir === 'n' ? -90 : A.dir === 'e' ? (A.face < 0 ? 180 : 0) : 90;
+    // (round 2) only when what they are drawn as is another family: resetting every busy frame swung a standing friend 45, 90, 45, 0
+    if ((busy || !motion) && (!motion || _gmvDrawing(st.h, null, 45).dir !== A.dir)) st.h = A.dir === 'n' ? -90 : A.dir === 'e' ? (A.face < 0 ? 180 : 0) : 90;
     if (!A.moving) st.v = 0;
     // (move360) stood still: they turn to the way they last said they face (every walk message carries it), through the in-between drawings
     if (!busy && !A.moving && A.hd != null && motion) {
@@ -322,14 +339,17 @@ function gartMoveActor(A) {
   if (!motion) return;
   const body = A.inner.firstChild; if (!body || !body.querySelector) return;
   const v = A.gait === 'r' ? Math.max(st.v, 230) : A.gait === 'w' ? Math.min(st.v, 200) : st.v;   // (move360) the gait they said, not a guess from how fast their figure catches up
-  const L = _gmvStride(st, body, S, { px: A.x, py: A.y, moving: true, v, sneak, dir: A.dir, yaw: A.yaw, mirror });
+  const L = _gmvStride(st, body, S, { px: A.x, py: A.y, moving: true, v, sneak, gait: sneak ? 'c' : A.gait === 'r' || A.gait === 'w' ? A.gait : null, dir: A.dir, yaw: A.yaw, mirror });
   if (typeof gartActCarryActor === 'function') gartActCarryActor(A, body, L);   // (carrying: both hands on it, as yours)
 }
 
 /** (move360) What your walk messages say besides where: the way you face (in sixteenths of a turn, screen degrees as gartMoveFacingDeg) and the gait (w walk, r run, c creep). */
 function gartMoveTell() {
-  const h = Math.round(((_gmvWrap(_gmv.h || 0) % 360) + 360) % 360 / 22.5) % 16;
-  const g = typeof _gw === 'undefined' ? 'w' : _gw.sneak && _gw.moving ? 'c' : (_gw.spd || 0) > 205 ? 'r' : 'w';
+  // (round 2) the way you will face when the turn is done (want), and the gait you chose: the last one while moving, kept for the 'stopped' message,
+  // which used to say walk and drew the rest of a friend's run as a walk on their screen
+  const h = Math.round(((_gmvWrap(_gmv.want != null ? _gmv.want : _gmv.h || 0) % 360) + 360) % 360 / 22.5) % 16;
+  if (typeof _gw !== 'undefined' && _gw.moving) _gmv.tellGait = _gw.sneak ? 'c' : _gw.gait || 'w';
+  const g = _gmv.tellGait || 'w';
   return { h, g };
 }
 /** (move360) A friend's walk message heard: keep the way they face and their gait on their figure (gartMoveActor uses both). */
